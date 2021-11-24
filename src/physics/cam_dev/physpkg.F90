@@ -130,7 +130,7 @@ contains
     use ghg_data,           only: ghg_data_register
     use vertical_diffusion, only: vd_register
     use convect_deep,       only: convect_deep_register
-    use convect_shallow,    only: convect_shallow_register
+    use convect_diagnostics,only: convect_diagnostics_register
     use radiation,          only: radiation_register
     use co2_cycle,          only: co2_register
     use flux_avg,           only: flux_avg_register
@@ -302,8 +302,8 @@ contains
        ! deep convection
        call convect_deep_register
 
-       ! shallow convection
-       call convect_shallow_register
+       ! convection diagnostics
+       call convect_diagnostics_register
 
        ! SP-CAM  
        call spcam_register
@@ -735,7 +735,7 @@ contains
     use cldfrc2m,           only: cldfrc2m_init
     use co2_cycle,          only: co2_init, co2_transport
     use convect_deep,       only: convect_deep_init
-    use convect_shallow,    only: convect_shallow_init
+    use convect_diagnostics,only: convect_diagnostics_init
     use cam_diagnostics,    only: diag_init
     use gw_drag,            only: gw_init
     use cam3_aero_data,     only: cam3_aero_data_on, cam3_aero_data_init
@@ -903,7 +903,7 @@ contains
 
     call radheat_init(pref_mid)
 
-    call convect_shallow_init(pref_edge, pbuf2d)
+    call convect_diagnostics_init
 
     call cldfrc_init()
     call cldfrc2m_init()
@@ -2466,7 +2466,7 @@ contains
     use constituents,    only: pcnst, qmin, cnst_get_ind
     use convect_deep,    only: convect_deep_tend, convect_deep_tend_2, deep_scheme_does_scav_trans
     use time_manager,    only: is_first_step, get_nstep
-    use convect_shallow, only: convect_shallow_tend
+    use convect_diagnostics,only: convect_diagnostics_calc
     use check_energy,    only: check_energy_chng, check_energy_fix, check_energy_timestep_init
     use check_energy,    only: check_tracers_data, check_tracers_init, check_tracers_chng
     use check_energy,    only: calc_te_and_aam_budgets
@@ -2757,10 +2757,9 @@ contains
     call check_energy_chng(state, tend, "convect_deep", nstep, ztodt, zero, flx_cnd, snow_dp, zero)
     snow_dp(:ncol) = snow_dp(:ncol) - rice(:ncol)
 
-    !
-    ! Call Hack (1994) convection scheme to deal with shallow/mid-level convection
-    !
-    call t_startf ('convect_shallow_tend')
+    !===================================================
+    ! Compute convect diagnostics
+    !===================================================
 
     if (dlfzm_idx > 0) then
        call pbuf_get_field(pbuf, dlfzm_idx, dlfzm)
@@ -2769,38 +2768,9 @@ contains
        dlf(:,:) = 0._r8
     end if
 
-    if (trim(cam_take_snapshot_before) == "convect_shallow_tend") then
-       call camdev_snapshot_all_outfld_tphysbc(cam_snapshot_before_num, state, tend, cam_in, cam_out, pbuf, &
-           cmfmc, cmfcme, pflx, zdu, rliq, rice, dlf, dlf2, rliq2, net_flx)
-    end if
-
-    call convect_shallow_tend (ztodt   , cmfmc, &
-         dlf        , dlf2   ,  rliq   , rliq2, &
-         state      , ptend  ,  pbuf, cam_in)
-
-    call t_stopf ('convect_shallow_tend')
-
-    if ( (trim(cam_take_snapshot_after) == "convect_shallow_tend") .and. &
-         (trim(cam_take_snapshot_before) == trim(cam_take_snapshot_after))) then
-            call cam_snapshot_ptend_outfld(ptend, lchnk)
-    end if
-    if ( ptend%lu ) then
-      call outfld( 'UTEND_SHCONV', ptend%u, pcols, lchnk)
-    end if
-    if ( ptend%lv ) then
-      call outfld( 'VTEND_SHCONV', ptend%v, pcols, lchnk)
-    end if
-    call physics_update(state, ptend, ztodt, tend)
-
-    if (trim(cam_take_snapshot_after) == "convect_shallow_tend") then
-       call camdev_snapshot_all_outfld_tphysbc(cam_snapshot_after_num, state, tend, cam_in, cam_out, pbuf, &
-           cmfmc, cmfcme, pflx, zdu, rliq, rice, dlf, dlf2, rliq2, net_flx)
-    end if
-
-    flx_cnd(:ncol) = prec_sh(:ncol) + rliq2(:ncol)
-    call check_energy_chng(state, tend, "convect_shallow", nstep, ztodt, zero, flx_cnd, snow_sh, zero)
-
-    call check_tracers_chng(state, tracerint, "convect_shallow", nstep, ztodt, zero_tracers)
+    call convect_diagnostics_calc (ztodt   , cmfmc, &
+             dlf        , dlf2   ,  rliq   , rliq2, &
+             state      , pbuf)
 
     call t_stopf('moist_convection')
 
