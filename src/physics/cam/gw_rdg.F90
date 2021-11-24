@@ -565,10 +565,8 @@ subroutine gw_rdg_belowpeak(ncol, band, rdg_cd_llb, &
   real(r8), intent(inout) :: tau(ncol,-band%ngwv:band%ngwv,pver+1)
   ! Top of low-level flow layer.
   real(r8), intent(in)    :: tlb(ncol)
-     !real(r8), intent(inout) :: tlb(ncol)
   ! Bottom of linear wave region.
   real(r8), intent(in)    :: bwv(ncol)
-     !real(r8), intent(inout) :: bwv(ncol)
   ! surface stress from linear waves.
   real(r8), intent(out) :: tauoro(ncol)
   ! surface stress for downslope wind regime.
