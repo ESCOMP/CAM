@@ -25,7 +25,7 @@ contains
     use mo_chem_utls, only : get_extfrc_ndx, get_spc_ndx
     use cam_history,  only : addfld
     use spmd_utils,   only : masterproc
-    use mee_ionization,only: mee_ion_init
+    use mee_ionization,only : mee_ion_init
 
     implicit none
 
@@ -113,7 +113,7 @@ contains
     use mo_aurora,      only : aurora
     use gcr_ionization, only : gcr_ionization_ionpairs
     use epp_ionization, only : epp_ionization_ionpairs
-    use mee_ionization,only: mee_ionpairs
+    use mee_ionization, only : mee_ionpairs
     use spehox,         only : hox_prod_factor
 
     use physics_buffer, only : physics_buffer_desc

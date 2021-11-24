@@ -19,7 +19,7 @@ module chemistry
   use tracer_data,      only : MAXTRCRS
   use gcr_ionization,   only : gcr_ionization_readnl, gcr_ionization_init, gcr_ionization_adv
   use epp_ionization,   only : epp_ionization_readnl, epp_ionization_adv
-  use mee_ionization,only : mee_ion_readnl
+  use mee_ionization,   only : mee_ion_readnl
   use mo_apex,          only : mo_apex_readnl
   use ref_pres,         only : ptop_ref
   use phys_control,     only : waccmx_is   ! WACCM-X switch query function
