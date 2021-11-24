@@ -690,11 +690,11 @@ subroutine gw_init()
           'grid box area')
 
      call addfld ('Fr1_DIAG',     horiz_only,  'I','1', &
-          'grid box area')
+          'Critical Froude number for linear waves')
      call addfld ('Fr2_DIAG',     horiz_only,  'I','1', &
-          'grid box area')
+          'Critical Froude number for blocked flow')
      call addfld ('Frx_DIAG',     horiz_only,  'I','1', &
-          'grid box area')
+          'Obstacle Froude Number')
 
      call addfld('UEGW',  (/ 'lev' /) , 'A'  ,'1/s' ,  &
           'Zonal wind profile-entry to GW ' )
@@ -705,8 +705,8 @@ subroutine gw_init()
           'Temperature profile-entry to GW ' )
      call addfld('ZEGW',  (/ 'ilev' /) , 'A'  ,'m' ,  &
           'interface geopotential heights in GW code ' )
-     call addfld('ZMGW',  (/ 'ilev' /) , 'A'  ,'m' ,  &
-          'interface geopotential heights in GW code ' )
+     call addfld('ZMGW',  (/ 'lev' /) , 'A'  ,'m' ,  &
+          'midlayer geopotential heights in GW code ' )
  
      call addfld('TAUM1_DIAG' , (/ 'ilev' /) , 'I'  ,'N/m2' , &
           'Ridge based momentum flux profile')
