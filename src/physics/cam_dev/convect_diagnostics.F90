@@ -4,8 +4,8 @@
    ! Purpose:                                       !
    !                                                !
    ! CAM convection diagnostics                     !
-   ! must be called after convection routines       ! 
-   ! A. Herrington. Sep. 2021                       !
+   ! to be called after convection routines         ! 
+   ! A. Herrington. Nov. 2021                       !
    !----------------------------------------------- !
 
    use shr_kind_mod,      only: r8=>shr_kind_r8
