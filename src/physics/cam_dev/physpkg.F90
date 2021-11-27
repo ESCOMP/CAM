@@ -88,6 +88,7 @@ module physpkg
   integer ::  dlfzm_idx          = 0     ! detrained convective cloud water mixing ratio.
   integer ::  ducore_idx         = 0     ! ducore index in physics buffer
   integer ::  dvcore_idx         = 0     ! dvcore index in physics buffer
+  integer ::  dtcore_idx         = 0
   integer ::  cmfmczm_idx        = 0     ! Zhang-McFarlane convective mass fluxes
 
 !=======================================================================
@@ -1044,6 +1045,7 @@ contains
 
     ducore_idx = pbuf_get_index('DUCORE')
     dvcore_idx = pbuf_get_index('DVCORE')
+    dtcore_idx = pbuf_get_index('DTCORE')
 
   end subroutine phys_init
 
@@ -1562,9 +1564,7 @@ contains
     ! Associate pointers with physics buffer fields
     itim_old = pbuf_old_tim_idx()
 
-
-    ifld = pbuf_get_index('DTCORE')
-    call pbuf_get_field(pbuf, ifld, dtcore, start=(/1,1,itim_old/), kount=(/pcols,pver,1/) )
+    call pbuf_get_field(pbuf, dtcore_idx, dtcore, start=(/1,1,itim_old/), kount=(/pcols,pver,1/) )
     call pbuf_get_field(pbuf, ducore_idx, ducore, start=(/1,1,itim_old/), kount=(/pcols,pver,1/) )
     call pbuf_get_field(pbuf, dvcore_idx, dvcore, start=(/1,1,itim_old/), kount=(/pcols,pver,1/) )
 
@@ -2590,8 +2590,7 @@ contains
     call pbuf_get_field(pbuf, cldliqini_idx, cldliqini)
     call pbuf_get_field(pbuf, cldiceini_idx, cldiceini)
 
-    ifld   =  pbuf_get_index('DTCORE')
-    call pbuf_get_field(pbuf, ifld, dtcore, start=(/1,1,itim_old/), kount=(/pcols,pver,1/) )
+    call pbuf_get_field(pbuf, dtcore_idx, dtcore, start=(/1,1,itim_old/), kount=(/pcols,pver,1/) )
     call pbuf_get_field(pbuf, ducore_idx, ducore, start=(/1,1,itim_old/), kount=(/pcols,pver,1/) )
     call pbuf_get_field(pbuf, dvcore_idx, dvcore, start=(/1,1,itim_old/), kount=(/pcols,pver,1/) )
 

@@ -246,7 +246,7 @@ subroutine phys_ctl_readnl(nlfile)
       end if
       ! Add a check to make sure SPCAM is not used
       if (use_spcam) then
-         write(iulog,*)'SPCAM not compatbile with cam_dev physics.  Quitting'
+         write(iulog,*)'SPCAM not compatible with cam_dev physics.  Quitting'
          call endrun('SPCAM and cam_dev incompatible')
       end if
       ! Add check to make sure we are not trying to use `camrt`
