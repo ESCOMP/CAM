@@ -7,7 +7,7 @@ module mo_photo
   use ppgrid,           only : pcols, pver, pverp, begchunk, endchunk
   use cam_abortutils,   only : endrun
   use mo_constants,     only : pi,r2d,boltz,d2r
-  use ref_pres,         only : num_pr_lev, ptop_ref 
+  use ref_pres,         only : num_pr_lev, ptop_ref
   use pio
   use cam_pio_utils,    only : cam_pio_openfile
   use spmd_utils,       only : masterproc
@@ -21,7 +21,7 @@ module mo_photo
 
   public :: photo_inti, table_photo, xactive_photo
   public :: set_ub_col
-  public :: setcol 
+  public :: setcol
   public :: photo_timestep_init
   public :: photo_register
 
@@ -71,7 +71,7 @@ module mo_photo
   integer :: jhno3_ndx, jno3_ndx, jpan_ndx, jmpan_ndx
 
   integer :: jo1da_ndx, jo3pa_ndx, jno2a_ndx, jn2o5a_ndx, jn2o5b_ndx
-  integer :: jhno3a_ndx, jno3a_ndx, jpana_ndx, jmpana_ndx, jho2no2a_ndx 
+  integer :: jhno3a_ndx, jno3a_ndx, jpana_ndx, jmpana_ndx, jho2no2a_ndx
   integer :: jonitra_ndx
 
   integer :: jppi_ndx, jepn1_ndx, jepn2_ndx, jepn3_ndx, jepn4_ndx, jepn6_ndx
@@ -85,7 +85,7 @@ module mo_photo
 
 contains
 
-  
+
   !----------------------------------------------------------------------
   !----------------------------------------------------------------------
   subroutine photo_register
@@ -94,7 +94,7 @@ contains
 
     ! add photo-ionization rates to phys buffer for waccmx ionosphere module
 
-    call pbuf_add_field('IonRates' , 'physpkg', dtype_r8, (/pcols,pver,nIonRates/), ion_rates_idx) ! Ionization rates for O+,O2+,N+,N2+,NO+ 
+    call pbuf_add_field('IonRates' , 'physpkg', dtype_r8, (/pcols,pver,nIonRates/), ion_rates_idx) ! Ionization rates for O+,O2+,N+,N2+,NO+
 
   endsubroutine photo_register
 
@@ -102,7 +102,7 @@ contains
   !----------------------------------------------------------------------
   subroutine photo_inti( xs_coef_file, xs_short_file, xs_long_file, rsf_file, &
        photon_file, electron_file, &
-       exo_coldens_file, tuv_xsect_file, o2_xsect_file, xactive_prates )
+       exo_coldens_file, tuv_xsect_file, o2_xsect_file, xactive_prates, maxzen )
     !----------------------------------------------------------------------
     !	... initialize photolysis module
     !----------------------------------------------------------------------
@@ -110,7 +110,7 @@ contains
     use mo_photoin,    only : photoin_inti
     use mo_tuv_inti,   only : tuv_inti
     use mo_tuv_inti,   only : nlng
-    use mo_seto2,      only : o2_xsect_inti      
+    use mo_seto2,      only : o2_xsect_inti
     use interpolate_data, only: lininterp_init, lininterp, lininterp_finish, interp_type
     use chem_mods,     only : phtcnt
     use chem_mods,     only : ncol_abs => nabscol
@@ -122,7 +122,7 @@ contains
     use seasalt_model, only : sslt_names=>seasalt_names, sslt_ncnst=>seasalt_nbin
     use mo_jshort,     only : jshort_init
     use mo_jeuv,       only : jeuv_init, neuv
-    use phys_grid,     only : get_ncols_p, get_rlat_all_p    
+    use phys_grid,     only : get_ncols_p, get_rlat_all_p
     use solar_irrad_data,only : has_spectrum
     use photo_bkgrnd,  only : photo_bkgrnd_init
     use cam_history,   only : addfld
@@ -137,7 +137,8 @@ contains
     character(len=*), intent(in) :: tuv_xsect_file
     character(len=*), intent(in) :: o2_xsect_file
     logical, intent(in)          :: xactive_prates
-    ! waccm 
+    real(r8), intent(in)         :: maxzen
+    ! waccm
     character(len=*), intent(in) :: xs_coef_file
     character(len=*), intent(in) :: xs_short_file
     character(len=*), intent(in) :: photon_file
@@ -173,25 +174,22 @@ contains
        return
     end if
 
-    !----------------------------------------------------------------------------
-    !  Need a larger maximum zenith angle for WACCM-X extended to high altitudes
-    !----------------------------------------------------------------------------
-    if ( waccmx_is('ionosphere') .or. waccmx_is('neutral') ) then 
-       max_zen_angle = 116._r8
-    else if ( ptop_ref < 10._r8 ) then
-       max_zen_angle = 97.01_r8 ! degrees
-    else
-       max_zen_angle = 88.85_r8 ! degrees
-    endif
+    ! maximum solar zenith angle for which photo-chemical rates are computed
+    max_zen_angle = maxzen
+    if (.not. max_zen_angle>0._r8) then
+       write(iulog,*) 'photo_inti: max_zen_angle = ',max_zen_angle
+       call endrun ('photo_inti: max_zen_angle must be greater then zero')
+    end if
 
-    ! jeuv_1,,, jeuv_25 --> need euv calculations --> must be waccm 
+
+    ! jeuv_1,,, jeuv_25 --> need euv calculations --> must be waccm
     ! how to determine if shrt calc is needed ?? -- use top level pressure => waccm = true ? false
 
     if ( .not. has_spectrum ) then
        write(iulog,*) 'photo_inti: solar_irrad_data file needs to contain irradiance spectrum'
        call endrun('photo_inti: ERROR -- solar irradiance spectrum is missing')
     endif
-    
+
     !----------------------------------------------------------------------
     !	... allocate indexers
     !----------------------------------------------------------------------
@@ -287,7 +285,7 @@ contains
     end if
 
     do_jshort = o_ndx>0 .and. o2_ndx>0 .and. (o3_ndx>0.or.o3_inv_ndx>0) .and. n2_ndx>0 .and. no_ndx>0
-    
+
     call jeuv_init( photon_file, electron_file, euv_indexer )
     do_jeuv = any(euv_indexer(:)>0)
 
@@ -645,7 +643,7 @@ contains
     real(r8), allocatable ::  lng_prates(:,:) ! photorates matrix (1/s)
     real(r8), allocatable ::  sht_prates(:,:) ! photorates matrix (1/s)
     real(r8), allocatable ::  euv_prates(:,:) ! photorates matrix (1/s)
-    
+
 
     real(r8), allocatable :: zarg(:)
     real(r8), allocatable :: tline(:)               ! vertical temperature array
@@ -682,7 +680,7 @@ contains
 
     if ((.not.do_jshort) .or. (ptop_ref < 10._r8)) then
        n_jshrt_levs = pver
-       p1 = 1 
+       p1 = 1
        p2 = pver
     else
        n_jshrt_levs = pver+1
@@ -714,7 +712,7 @@ contains
           end if
        endif
     endif
-    
+
     if (nsht>0) then
        allocate( sht_prates(n_jshrt_levs,nsht),stat=astat )
        if( astat /= 0 ) then
@@ -787,7 +785,7 @@ contains
           lwc_line(:) = lwc(i,:)
           cld_line(:) = clouds(i,:)
 
-          
+
           tline(p1:p2) = temper(i,:pver)
 
           zarg(p1:p2) = zmid(i,:pver)
@@ -805,7 +803,7 @@ contains
             if (jpni3_ndx > 0 ) photos(i,:,jpni3_ndx) = photos(i,:,jpni3_ndx) + esfact * 0.15_r8
             if (jpni4_ndx > 0 ) photos(i,:,jpni4_ndx) = photos(i,:,jpni4_ndx) + esfact * 6.2e-3_r8
             ! added to v02
-            if (jpni5_ndx > 0 ) photos(i,:,jpni5_ndx) = photos(i,:,jpni5_ndx) + esfact * 1.0_r8 
+            if (jpni5_ndx > 0 ) photos(i,:,jpni5_ndx) = photos(i,:,jpni5_ndx) + esfact * 1.0_r8
         endif
           if (do_jshort) then
              if ( ptop_ref > 10._r8 ) then
@@ -840,7 +838,7 @@ contains
              !	... short wave length component
              !-----------------------------------------------------------------
              call jshort( n_jshrt_levs, sza, n2_den, o2_den, o3_den, &
-                  no_den, tline, zarg, jo2_sht, jno_sht, sht_prates )  
+                  no_den, tline, zarg, jo2_sht, jno_sht, sht_prates )
 
              do m = 1,phtcnt
                 if( sht_indexer(m) > 0 ) then
@@ -880,7 +878,7 @@ contains
           !-----------------------------------------------------------------
           !	... long wave length component
           !-----------------------------------------------------------------
-          call jlong( pver, sza, eff_alb, parg, tline, colo3, lng_prates )          
+          call jlong( pver, sza, eff_alb, parg, tline, colo3, lng_prates )
           do m = 1,phtcnt
              if( lng_indexer(m) > 0 ) then
                 alias_factor = pht_alias_mult(m,2)
@@ -912,9 +910,9 @@ contains
 
           !  Save photo-ionization rates to physics buffer accessed in ionosphere module for WACCMX
           if (ion_rates_idx>0) then
-							 
+
                 ionRates(i,1:pver,1:nIonRates) = esfact * euv_prates(1:pver,1:nIonRates)
-							 
+
           endif
 
        end if daylight
@@ -930,7 +928,7 @@ contains
        endif
 
     end do col_loop
-    
+
     if ( do_jeuv ) then
        qbktot(:ncol,:) = qbko1(:ncol,:)+qbko2(:ncol,:)+qbkn2(:ncol,:)+qbkn1(:ncol,:)+qbkno(:ncol,:)
        call outfld( 'Qbkgndtot', qbktot(:ncol,:),ncol, lchnk )
@@ -1032,15 +1030,15 @@ contains
     real(r8)    ::   xfrc(pverp)                   ! cloud fraction      xuexi
     real(r8)    ::   airdens(pverp)                ! atmospheric density
     real(r8)    ::   o3line(pverp)                 ! vertical o3 vmr
-    real(r8)    ::   aerocs1(pverp)   
-    real(r8)    ::   aerocs2(pverp)   
-    real(r8)    ::   aercbs1(pverp)   
-    real(r8)    ::   aercbs2(pverp)   
-    real(r8)    ::   aersoa(pverp)   
-    real(r8)    ::   aerant(pverp)   
-    real(r8)    ::   aerso4(pverp)   
+    real(r8)    ::   aerocs1(pverp)
+    real(r8)    ::   aerocs2(pverp)
+    real(r8)    ::   aercbs1(pverp)
+    real(r8)    ::   aercbs2(pverp)
+    real(r8)    ::   aersoa(pverp)
+    real(r8)    ::   aerant(pverp)
+    real(r8)    ::   aerso4(pverp)
     real(r8)    ::   aerds(4,pverp)
-    real(r8)    ::   rh(pverp)   
+    real(r8)    ::   rh(pverp)
     real(r8)    ::   zarg(pverp)                   ! vertical height array
     real(r8)    ::   aersal(pverp,4)
     real(r8)    ::   albedo(kw)                    ! wavelenght dependent albedo
@@ -1177,7 +1175,7 @@ secant_in_bounds : &
                 do ndx = 1,4
                    aerds(ndx,pverp:2:-1) = dust_vmr(i,:,ndx)
                 end do
-             else 
+             else
                 do ndx = 1,4
                    aerds(ndx,pverp:2:-1) = 0._r8
                 end do
@@ -1213,8 +1211,8 @@ secant_in_bounds : &
                            airdens, aerocs1, aerocs2, aercbs1, aercbs2, &
                            aersoa, aerant, aerso4, aersal, aerds, o3line, rh, &
                            prates, sza, nw, dt_xdiag )
-             dt_diag(i,:) = dt_xdiag(:) 
-             
+             dt_diag(i,:) = dt_xdiag(:)
+
              do m = 1,phtcnt
                 if( lng_indexer(m) > 0 ) then
                    alias_factor = pht_alias_mult(m,2)
@@ -1444,7 +1442,7 @@ secant_in_bounds : &
     real(r8)    :: o2_exo_col(ncol)
     real(r8)    :: o3_exo_col(ncol)
     integer :: i
- 
+
     !---------------------------------------------------------------
     !        ... assign column density at the upper boundary
     !            the first column is o3 and the second is o2.
@@ -1466,8 +1464,8 @@ secant_in_bounds : &
                         + delp * (o2_exo_coldens(ki,i,lchnk,next) &
                         - o2_exo_coldens(kl,i,lchnk,next))
                 else
-                   tint_vals(1) = o2_exo_coldens( 1,i,lchnk,last) 
-                   tint_vals(2) = o2_exo_coldens( 1,i,lchnk,next) 
+                   tint_vals(1) = o2_exo_coldens( 1,i,lchnk,last)
+                   tint_vals(2) = o2_exo_coldens( 1,i,lchnk,next)
                 endif
                 o2_exo_col(i) = tint_vals(1) + dels * (tint_vals(2) - tint_vals(1))
              end do
@@ -1484,8 +1482,8 @@ secant_in_bounds : &
                         + delp * (o3_exo_coldens(ki,i,lchnk,next) &
                         - o3_exo_coldens(kl,i,lchnk,next))
                 else
-                   tint_vals(1) = o3_exo_coldens( 1,i,lchnk,last) 
-                   tint_vals(2) = o3_exo_coldens( 1,i,lchnk,next) 
+                   tint_vals(1) = o3_exo_coldens( 1,i,lchnk,last)
+                   tint_vals(2) = o3_exo_coldens( 1,i,lchnk,next)
                 endif
                 o3_exo_col(i) = tint_vals(1) + dels * (tint_vals(2) - tint_vals(1))
              end do
@@ -1721,7 +1719,7 @@ secant_in_bounds : &
     ! Set jlong etf
     !-----------------------------------------------------------------------
     call jlong_timestep_init
-    
+
     if ( do_jshort ) then
        !-----------------------------------------------------------------------
        ! Set jshort etf

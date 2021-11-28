@@ -14,7 +14,7 @@ module stepon
 use shr_kind_mod,       only: r8 => shr_kind_r8
 
 use spmd_utils,         only: mpicom, iam, masterproc
-use cam_control_mod,    only: initial_run, moist_physics, simple_phys
+use cam_control_mod,    only: initial_run, moist_physics
 use ppgrid,             only: begchunk, endchunk
 use physconst,          only: zvir, cappa
 
@@ -59,7 +59,7 @@ subroutine stepon_init(dyn_in, dyn_out)
    use time_manager, only: get_step_size
    use physconst,    only: physconst_calc_kappav, rair, cpair
    use inic_analytic,      only: analytic_ic_active
-
+   use cam_initfiles,      only: scale_dry_air_mass
    type (dyn_import_t)   :: dyn_in             ! Dynamics import container
    type (dyn_export_t)   :: dyn_out            ! Dynamics export container
 
@@ -154,7 +154,7 @@ subroutine stepon_init(dyn_in, dyn_out)
    ! Print out diagnostic message if restart run
    !----------------------------------------------------------
 
-   if (.not. simple_phys) then
+   if (scale_dry_air_mass /= 0.0_r8) then
       call dryairm( grid, .true., dyn_in%ps, dyn_in%tracer,  &
                     dyn_in%delp, dyn_in%pe, nlres )
    endif

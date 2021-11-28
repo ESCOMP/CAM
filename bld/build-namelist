@@ -2546,6 +2546,19 @@ if ($chem eq 'trop_mam7') {
 
 my $waccmx = $cfg->get('waccmx');
 
+# set maximum solar zenith angle for photolysis
+my $maxzen = 0.0;
+if ($waccmx){
+    $maxzen = 116.;
+} elsif ($chem =~ "trop_strat" or $chem =~ "waccm_") {
+    $maxzen = 97.01;
+} elsif ($chem =~ "trop_mam" or $chem =~ "trop_mozart") {
+    $maxzen = 88.85;
+}
+if ($maxzen>0.0) {
+    add_default($nl, 'photo_max_zen', 'val'=>"${maxzen}D0");
+}
+
 # WACCM options.
 if ($chem =~ /waccm_ma/ or $chem =~ /waccm_tsmlt/) {
 
@@ -3762,6 +3775,9 @@ if ($dyn =~ /mpas/) {
     }
 
 }
+
+# Defaults for scaling initial pressure
+add_default($nl, 'scale_dry_air_mass');
 
 # Defaults for history output
 add_default($nl, 'history_amwg');
