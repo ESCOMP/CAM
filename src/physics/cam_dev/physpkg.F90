@@ -1362,7 +1362,10 @@ contains
     use rayleigh_friction,  only: rayleigh_friction_tend
     use constituents,       only: cnst_get_ind
     use physics_types,      only: physics_state, physics_tend, physics_ptend, physics_update,    &
-         physics_dme_adjust, set_dry_to_wet, physics_state_check
+!+++ARH
+         !physics_dme_adjust, set_dry_to_wet, physics_state_check
+                                  physics_dme_adjust, set_dry_to_wet, physics_state_check,       &
+                                  dyn_te_idx
     use waccmx_phys_intr,   only: waccmx_phys_mspd_tend  ! WACCM-X major diffusion
     use waccmx_phys_intr,   only: waccmx_phys_ion_elec_temp_tend ! WACCM-X
     use aoa_tracers,        only: aoa_tracers_timestep_tend
@@ -1410,6 +1413,8 @@ contains
     use check_energy,       only: check_energy_timestep_init
     use carma_intr,         only: carma_wetdep_tend, carma_timestep_tend, carma_emission_tend, carma_timestep_tend
     use carma_flags_mod,    only: carma_do_aerosol, carma_do_emission, carma_do_detrain, carma_do_cldice, carma_do_cldliq, carma_do_wetdep
+!+++ARH
+    use dyn_tests_utils,    only: vc_dycore
     !
     ! Arguments
     !
@@ -1500,6 +1505,8 @@ contains
     real(r8) :: tmp_trac  (pcols,pver,pcnst) ! tmp space
     real(r8) :: tmp_pdel  (pcols,pver) ! tmp space
     real(r8) :: tmp_ps    (pcols)      ! tmp space
+!+++ARH
+    logical  :: moist_mixing_ratio_dycore
 
     ! physics buffer fields for total energy and mass adjustment
     integer itim_old, ifld
@@ -2297,8 +2304,10 @@ contains
        call camdev_snapshot_all_outfld_tphysac(cam_snapshot_after_num, state, tend, cam_in, cam_out, pbuf,&
                     fh2o, surfric, obklen, flx_heat, cmfmc, dlf, det_s, det_ice, net_flx)
     end if
-
-    call calc_te_and_aam_budgets(state, 'pAP')
+!+++ARH
+    !call calc_te_and_aam_budgets(state, 'pAP')
+    call calc_te_and_aam_budgets(state, 'phAP')
+    call calc_te_and_aam_budgets(state, 'dyAP',vc=vc_dycore)
 
     !---------------------------------------------------------------------------------
     ! Enforce charge neutrality after O+ change from ionos_tend
@@ -2327,32 +2336,44 @@ contains
     endif
 
     !-------------- Energy budget checks vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
-
-    ! Save total energy for global fixer in next timestep (FV and SE dycores)
-    call pbuf_set_field(pbuf, teout_idx, state%te_cur, (/1,itim_old/),(/pcols,1/))
+!++ARH
+    !! Save total energy for global fixer in next timestep (FV and SE dycores)
+    !call pbuf_set_field(pbuf, teout_idx, state%te_cur, (/1,itim_old/),(/pcols,1/))
+    ! Save total energy for global fixer in next timestep
+    call pbuf_set_field(pbuf, teout_idx, state%te_cur(:,dyn_te_idx), (/1,itim_old/),(/pcols,1/))
     !
     ! FV: convert dry-type mixing ratios to moist here because physics_dme_adjust
     !     assumes moist. This is done in p_d_coupling for other dynamics. Bundy, Feb 2004.
-    if ( dycore_is('LR').or. dycore_is('FV3')) call set_dry_to_wet(state)    ! Physics had dry, dynamics wants moist
+!+++ARH
+    !if ( dycore_is('LR').or. dycore_is('FV3')) call set_dry_to_wet(state)    ! Physics had dry, dynamics wants moist
+    moist_mixing_ratio_dycore = dycore_is('LR').or. dycore_is('FV3')  
 
     ! Scale dry mass and energy (does nothing if dycore is EUL or SLD)
     tmp_q     (:ncol,:pver) = state%q(:ncol,:pver,ixq)
     tmp_cldliq(:ncol,:pver) = state%q(:ncol,:pver,ixcldliq)
     tmp_cldice(:ncol,:pver) = state%q(:ncol,:pver,ixcldice)
-
-    ! For not ('FV'|'FV3'), physics_dme_adjust is called for energy diagnostic purposes only.  So, save off tracers
-    if (.not.(dycore_is('FV').or.dycore_is('FV3')).and.&
-         (hist_fld_active('SE_pAM').or.hist_fld_active('KE_pAM').or.hist_fld_active('WV_pAM').or.&
-          hist_fld_active('WL_pAM').or.hist_fld_active('WI_pAM').or.hist_fld_active('MR_pAM').or.&
-          hist_fld_active('MO_pAM'))) then
+!+++ARH
+    !! For not ('FV'|'FV3'), physics_dme_adjust is called for energy diagnostic purposes only.  So, save off tracers
+    !if (.not.(dycore_is('FV').or.dycore_is('FV3')).and.&
+    !     (hist_fld_active('SE_pAM').or.hist_fld_active('KE_pAM').or.hist_fld_active('WV_pAM').or.&
+    !      hist_fld_active('WL_pAM').or.hist_fld_active('WI_pAM').or.hist_fld_active('MR_pAM').or.&
+    !      hist_fld_active('MO_pAM'))) then
+    ! for dry mixing ratio dycore, physics_dme_adjust is called for energy diagnostic purposes only.  
+    ! So, save off tracers 
+    if (.not.moist_mixing_ratio_dycore.and.&
+         (hist_fld_active('SE_phAM').or.hist_fld_active('KE_phAM').or.hist_fld_active('WV_phAM').or.&
+          hist_fld_active('WL_phAM').or.hist_fld_active('WI_phAM').or.hist_fld_active('MR_phAM').or.&
+          hist_fld_active('MO_phAM'))) then 
       tmp_trac(:ncol,:pver,:pcnst) = state%q(:ncol,:pver,:pcnst)
       tmp_pdel(:ncol,:pver)        = state%pdel(:ncol,:pver)
       tmp_ps(:ncol)                = state%ps(:ncol)
-      !
-      ! pint, lnpint,rpdel are altered by dme_adjust but not used for tendencies in dynamics of SE
-      ! we do not reset them to pre-dme_adjust values
-      !
-      if (dycore_is('SE')) call set_dry_to_wet(state)
+!+++ARH
+      !!
+      !! pint, lnpint,rpdel are altered by dme_adjust but not used for tendencies in dynamics of SE
+      !! we do not reset them to pre-dme_adjust values
+      !!
+      !if (dycore_is('SE')) call set_dry_to_wet(state)
+      call set_dry_to_wet(state)
 
       if (trim(cam_take_snapshot_before) == "physics_dme_adjust") then
          call camdev_snapshot_all_outfld_tphysac(cam_snapshot_before_num, state, tend, cam_in, cam_out, pbuf,&
@@ -2365,15 +2386,18 @@ contains
          call camdev_snapshot_all_outfld_tphysac(cam_snapshot_after_num, state, tend, cam_in, cam_out, pbuf,&
                     fh2o, surfric, obklen, flx_heat, cmfmc, dlf, det_s, det_ice, net_flx)
       end if
-
-      call calc_te_and_aam_budgets(state, 'pAM')
+!+++ARH
+      !call calc_te_and_aam_budgets(state, 'pAM')
+      call calc_te_and_aam_budgets(state, 'phAM')
+      call calc_te_and_aam_budgets(state, 'dyAM',vc=vc_dycore)
       ! Restore pre-"physics_dme_adjust" tracers
       state%q(:ncol,:pver,:pcnst) = tmp_trac(:ncol,:pver,:pcnst)
       state%pdel(:ncol,:pver)     = tmp_pdel(:ncol,:pver)
       state%ps(:ncol)             = tmp_ps(:ncol)
     end if
-
-    if (dycore_is('LR') .or. dycore_is('FV3')) then
+!+++ARH
+    !if (dycore_is('LR') .or. dycore_is('FV3')) then
+    if (moist_mixing_ratio_dycore) then
 
       if (trim(cam_take_snapshot_before) == "physics_dme_adjust") then
          call camdev_snapshot_all_outfld_tphysac(cam_snapshot_before_num, state, tend, cam_in, cam_out, pbuf,&
@@ -2386,8 +2410,10 @@ contains
          call camdev_snapshot_all_outfld_tphysac(cam_snapshot_after_num, state, tend, cam_in, cam_out, pbuf,&
                     fh2o, surfric, obklen, flx_heat, cmfmc, dlf, det_s, det_ice, net_flx)
       end if
-
-      call calc_te_and_aam_budgets(state, 'pAM')
+!+++ARH
+      !call calc_te_and_aam_budgets(state, 'pAM')
+      call calc_te_and_aam_budgets(state, 'phAM')
+      call calc_te_and_aam_budgets(state, 'dyAM',vc=vc_dycore)
     endif
 
 !!!   REMOVE THIS CALL, SINCE ONLY Q IS BEING ADJUSTED. WON'T BALANCE ENERGY. TE IS SAVED BEFORE THIS
@@ -2456,8 +2482,12 @@ contains
 
     use dadadj_cam,      only: dadadj_tend
     use physics_types,   only: physics_state, physics_tend, physics_ptend, &
-         physics_update, physics_ptend_init, physics_ptend_sum, &
-         physics_state_check, physics_ptend_scale
+!+++ARH
+         !physics_update, physics_ptend_init, physics_ptend_sum, &
+         !physics_state_check, physics_ptend_scale
+                               physics_update, physics_ptend_init, physics_ptend_sum, &
+                               physics_state_check, physics_ptend_scale, &
+                               phys_te_idx, dyn_te_idx
     use cam_diagnostics, only: diag_conv_tend_ini, diag_phys_writeout, diag_conv, diag_export, diag_state_b4_phys_write
     use cam_diagnostics, only: diag_clip_tend_writeout
     use cam_history,     only: outfld
@@ -2479,7 +2509,8 @@ contains
     use qneg_module,     only: qneg3
     use cam_snapshot,    only: camdev_snapshot_all_outfld_tphysbc
     use cam_snapshot,    only: cam_snapshot_ptend_outfld
-
+!+++ARH
+    use dyn_tests_utils, only: vc_dycore
     ! Arguments
 
     real(r8), intent(in) :: ztodt                          ! 2 delta t (model time increment)
@@ -2633,15 +2664,22 @@ contains
     ! Global mean total energy fixer
     !===================================================
     call t_startf('energy_fixer')
-
-    call calc_te_and_aam_budgets(state, 'pBF')
-    if (dycore_is('LR') .or. dycore_is('FV3') .or. dycore_is('SE'))  then
+!+++ARH
+    !call calc_te_and_aam_budgets(state, 'pBF')
+    call calc_te_and_aam_budgets(state, 'phBF')
+    call calc_te_and_aam_budgets(state, 'dyBF',vc=vc_dycore)
+!+++ARH
+    !if (dycore_is('LR') .or. dycore_is('FV3') .or. dycore_is('SE'))  then
+    if (.not.dycore_is('EUL')) then
        call check_energy_fix(state, ptend, nstep, flx_heat)
        call physics_update(state, ptend, ztodt, tend)
        call check_energy_chng(state, tend, "chkengyfix", nstep, ztodt, zero, zero, zero, flx_heat)
        call outfld( 'EFIX', flx_heat    , pcols, lchnk   )
     end if
-    call calc_te_and_aam_budgets(state, 'pBP')
+!+++ARH
+    !call calc_te_and_aam_budgets(state, 'pBP')
+    call calc_te_and_aam_budgets(state, 'phBP')
+    call calc_te_and_aam_budgets(state, 'dyBP',vc=vc_dycore)
     ! Save state for convective tendency calculations.
     call diag_conv_tend_ini(state, pbuf)
 
@@ -2653,8 +2691,11 @@ contains
     cldiceini(:ncol,:pver) = state%q(:ncol,:pver,ixcldice)
 
     call outfld('TEOUT', teout       , pcols, lchnk   )
-    call outfld('TEINP', state%te_ini, pcols, lchnk   )
-    call outfld('TEFIX', state%te_cur, pcols, lchnk   )
+!+++ARH
+    !call outfld('TEINP', state%te_ini, pcols, lchnk   )
+    !call outfld('TEFIX', state%te_cur, pcols, lchnk   )
+    call outfld('TEINP', state%te_ini(:,dyn_te_idx), pcols, lchnk   )
+    call outfld('TEFIX', state%te_cur(:,dyn_te_idx), pcols, lchnk   )
 
     ! T, U, V tendency due to dynamics
     if ( nstep > dyn_time_lvls-1 ) then
