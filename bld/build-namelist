@@ -2853,7 +2853,7 @@ if (($chem ne 'none') and ($chem ne 'terminator')) {
 add_default($nl, 'deep_scheme');
 
 # Aerosol convective processes
-if ($phys =~ /cam6/ and $nl->get_value('deep_scheme') =~ /ZM/) {
+if ($phys =~ /cam6/ or $phys =~ /cam_dev/ and $nl->get_value('deep_scheme') =~ /ZM/) {
     add_default($nl, 'convproc_do_aer', 'val'=>'.true.');
     add_default($nl, 'convproc_do_evaprain_atonce', 'val'=>'.true.');
     add_default($nl, 'convproc_pom_spechygro', 'val'=>'0.2D0');
@@ -2862,11 +2862,7 @@ if ($phys =~ /cam6/ and $nl->get_value('deep_scheme') =~ /ZM/) {
 
 # Aerosol convective processes
 if ($phys =~ /cam_dev/ and $nl->get_value('deep_scheme') =~ /ZM/) {
-    add_default($nl, 'convproc_do_aer', 'val'=>'.true.');
-    add_default($nl, 'convproc_do_evaprain_atonce', 'val'=>'.true.');
-    add_default($nl, 'convproc_pom_spechygro', 'val'=>'0.2D0');
-    add_default($nl, 'convproc_wup_max', 'val'=>'4.0D0');
-    # NB: XXgoldyXX: Add new ZM zm_conv_parcel_pbl switch when available
+    add_default($nl, 'zmconv_parcel_pbl', 'val'=>'.true.');
 }
 
 # Radiation scheme
