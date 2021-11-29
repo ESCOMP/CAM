@@ -413,7 +413,6 @@ contains
     endif
 
 !$  call omp_set_num_threads(nthrds)
-    print *,__FILE__,__LINE__,nthrds
 
     !----------------------------------------------------------------------------
     ! determine instance information

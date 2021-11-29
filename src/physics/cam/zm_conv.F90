@@ -86,7 +86,7 @@ contains
 subroutine zm_convi(limcnv_in, zmconv_c0_lnd, zmconv_c0_ocn, zmconv_ke, zmconv_ke_lnd, &
                     zmconv_momcu, zmconv_momcd, zmconv_num_cin, zmconv_org, &
                     zmconv_microp_in, no_deep_pbl_in, zmconv_tiedke_add, &
-                    zmconv_capelmt, zmconv_dmpdz, zmconv_parcel_pbl)
+                    zmconv_capelmt, zmconv_dmpdz, zmconv_parcel_pbl, zmconv_tau)
 
    integer, intent(in)           :: limcnv_in       ! top interface level limit for convection
    integer, intent(in)           :: zmconv_num_cin  ! Number negative buoyancy regions that are allowed 
@@ -104,7 +104,7 @@ subroutine zm_convi(limcnv_in, zmconv_c0_lnd, zmconv_c0_ocn, zmconv_ke, zmconv_k
    real(r8),intent(in)           :: zmconv_capelmt
    real(r8),intent(in)           :: zmconv_dmpdz
    logical, intent(in)           :: zmconv_parcel_pbl ! Should the parcel properties include PBL mixing? 
-
+   real(r8),intent(in)           :: zmconv_tau
 
    ! Initialization of ZM constants
    limcnv = limcnv_in
@@ -134,7 +134,7 @@ subroutine zm_convi(limcnv_in, zmconv_c0_lnd, zmconv_c0_ocn, zmconv_ke, zmconv_k
    no_deep_pbl = no_deep_pbl_in
    lparcel_pbl = zmconv_parcel_pbl
 
-   tau = 3600._r8
+   tau = zmconv_tau
 
    if ( masterproc ) then
       write(iulog,*) 'tuning parameters zm_convi: tau',tau
