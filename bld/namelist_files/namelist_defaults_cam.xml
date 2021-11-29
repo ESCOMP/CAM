@@ -2822,7 +2822,7 @@
 <mpas_dt hgrid="mpasa15"      >   90.0D0 </mpas_dt>
 <mpas_dt hgrid="mpasa15-3-conus"> 18.0D0 </mpas_dt>
 <mpas_dt hgrid="mpasa7.5"     >   45.0D0 </mpas_dt>
-<mpas_dt hgrid="mpasa3.75"    >   23.0D0 </mpas_dt>
+<mpas_dt hgrid="mpasa3.75"    >   24.0D0 </mpas_dt>
 
 <mpas_split_dynamics_transport>.true.</mpas_split_dynamics_transport>
 <mpas_number_of_sub_steps     > 2 </mpas_number_of_sub_steps>
