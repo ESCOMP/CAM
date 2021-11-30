@@ -1786,7 +1786,7 @@
       <option name="wallclock">00:10:00</option>
     </options>
   </test>
-  <test compset="FXHIST" grid="f19_f19_mg17" name="SMS_Ln9_Vmct" testmods="cam/outfrq9s_multi">
+  <test compset="FXHIST" grid="f19_f19_mg17" name="SMS_C2_Ln9_Vmct" testmods="cam/outfrq9s">
     <machines>
       <machine name="cheyenne" compiler="intel" category="waccmx"/>
       <machine name="cheyenne" compiler="intel" category="prealpha"/>
