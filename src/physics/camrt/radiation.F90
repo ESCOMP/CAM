@@ -59,6 +59,8 @@ public :: &
    radiation_tend,           &! compute heating rates and fluxes
    rad_out_t                  ! type for diagnostic outputs
 
+real(r8), public, protected :: nextsw_cday       ! future radiation calday for surface models
+
 type rad_out_t
    real(r8) :: solin(pcols)         ! Solar incident flux
    real(r8) :: fsntoa(pcols)        ! Net solar flux at TOA
@@ -788,6 +790,8 @@ subroutine radiation_tend( &
    integer :: lchnk, ncol
 
    logical :: dosw, dolw, doabsems
+   integer :: dtime                           ! time step increment (sec)
+   real(r8) :: caldayp1                       ! future calendar day
    integer, pointer :: nmxrgn(:)              ! pbuf pointer to Number of maximally overlapped regions
    real(r8),pointer :: pmxrgn(:,:)            ! Maximum values of pressure for each
                                               !    maximally overlapped region.
@@ -936,6 +940,13 @@ subroutine radiation_tend( &
    dolw     = radiation_do('lw')      ! do longwave heating calc this timestep?
 
    doabsems = radiation_do('absems')  ! do absorptivity/emissivity calc this timestep?
+
+   ! Get time of next radiation calculation - albedos will need to be
+   ! calculated by each surface model at this time
+   dtime = get_step_size()
+   caldayp1 = get_curr_calday(offset=int(dtime))
+   nextsw_cday = radiation_nextsw_cday()
+   if (caldayp1 /= nextsw_cday) nextsw_cday = -1._r8
 
    if (dosw .or. dolw) then
 
