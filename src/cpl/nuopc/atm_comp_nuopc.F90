@@ -108,6 +108,7 @@ module atm_comp_nuopc
   character(len=*) , parameter :: orb_variable_year    = 'variable_year'
   character(len=*) , parameter :: orb_fixed_parameters = 'fixed_parameters'
 
+  real(R8) , parameter         :: grid_tol = 1.e-2_r8 ! tolerance for calculated lat/lon vs read in
 !===============================================================================
 contains
 !===============================================================================
@@ -412,7 +413,6 @@ contains
     endif
 
 !$  call omp_set_num_threads(nthrds)
-    print *,__FILE__,__LINE__,nthrds
 
     !----------------------------------------------------------------------------
     ! determine instance information
@@ -692,12 +692,12 @@ contains
 
           ! error check differences between internally generated lons and those read in
           do n = 1,lsize
-             if (abs(lonMesh(n) - lon(n)) > 1.e-12_r8 .and. abs(lonMesh(n) - lon(n)) /= 360._r8) then
+             if (abs(lonMesh(n) - lon(n)) > grid_tol .and. abs(lonMesh(n) - lon(n)) /= 360._r8) then
                 write(6,100)n,lon(n),lonMesh(n), abs(lonMesh(n)-lon(n))
 100             format('ERROR: CAM n, lonmesh(n), lon(n), diff_lon = ',i6,2(f21.13,3x),d21.5)
                 call shr_sys_abort()
              end if
-             if (abs(latMesh(n) - lat(n)) > 1.e-12_r8) then
+             if (abs(latMesh(n) - lat(n)) > grid_tol) then
                 write(6,100)n,lat(n),latMesh(n), abs(latMesh(n)-lat(n))
 101             format('ERROR: CAM n, latmesh(n), lat(n), diff_lat = ',i6,2(f21.13,3x),d21.5)
                 call shr_sys_abort()

@@ -146,7 +146,6 @@
 <ncdata dyn="se"  hgrid="ne16np4"   nlev="126" waccmx="1" aquaplanet="1">atm/waccm/ic/waccmx_aqua_ne16np4_126L_c191108.nc</ncdata>
 <ncdata dyn="se"  hgrid="ne16np4"   nlev="126" waccmx="1" aquaplanet="1" ionosphere="none">atm/waccm/ic/waccmx4_neutral_aquap_ne16np4_126lev_c200827.nc</ncdata>
 <ncdata dyn="se"  hgrid="ne30np4"   nlev="130" waccmx="1"               >atm/waccm/ic/fx2000_phys-ionos-cpl_ne30_spinup01.cam.i.0002-01-01-00000_c201014.nc</ncdata>
-<ncdata dyn="se"  hgrid="ne30np4" npg="3" nlev="130" waccmx="1"         >atm/waccm/ic/fx2000_phys-ionos-cpl_ne30pg3_spinup01.cam.i.0002-01-01-00000_c201014.nc</ncdata>
 
 <ncdata dyn="fv3"   hgrid="C24"  nlev="32"  aquaplanet="1"  ic_ymd="101" >atm/cam/inic/fv3/aqua_0006-01-01_C24_L32_c200625.nc</ncdata>
 <ncdata dyn="fv3"   hgrid="C48"  nlev="32"  aquaplanet="1"  ic_ymd="101" >atm/cam/inic/fv3/aqua_0006-01-01_C48_L32_c200625.nc</ncdata>
@@ -245,7 +244,8 @@
 
 <ncdata dyn="se" hgrid="ne0np4CONUS.ne30x8"       nlev="70" ic_ymd="101">atm/waccm/ic/FW2000_CONUS_30x8_L70_01-01-0001_c200602.nc</ncdata>
 
-<ncdata hgrid="mpasa120" nlev="32" >atm/cam/inic/mpas/mpasa120_L32_init.umjs.dry_c201021.nc</ncdata>
+<ncdata hgrid="mpasa120" nlev="32" >atm/cam/inic/mpas/cami_01-01-2000_00Z_mpasa120_L32_CFSR_c210426.nc</ncdata>
+<ncdata hgrid="mpasa480" nlev="32" >atm/cam/inic/mpas/cami_01-01-2000_00Z_mpasa480_L32_CFSR_c211013.nc</ncdata>
 
 <!-- Topography -->
 <bnd_topo hgrid="256x512" >atm/cam/topo/topo-from-cami_0000-01-01_256x512_L26_c030918.nc</bnd_topo>
@@ -301,6 +301,17 @@
 <bnd_topo hgrid="ne0np4.ARCTICGRIS.ne30x8" >atm/cam/topo/se/ne30x8_ARCTICGRIS_nc3000_Co060_Fi001_MulG_PF_RR_Nsw042_c200428.nc</bnd_topo>
 
 <bnd_topo hgrid="mpasa120" >atm/cam/topo/mpas/mpas_120_nc3000_Co060_Fi001_MulG_PF_Nsw042_c200921.nc</bnd_topo>
+<bnd_topo hgrid="mpasa480" >atm/cam/topo/mpas_480_nc3000_Co240_Fi001_MulG_PF_Nsw170.nc</bnd_topo>
+
+<!-- Scale Dry Air Mass: 0=> no scaling / +nnn=>scale to nnn Pressure  -->
+<scale_dry_air_mass                                                                >      0.0D0 </scale_dry_air_mass>
+<scale_dry_air_mass aquaplanet="1"                                                 > 101080.0D0 </scale_dry_air_mass>
+<!-- Scale Dry Air Mass: for cases with topography -->
+<scale_dry_air_mass phys="cam4"                                                    >  98288.0D0 </scale_dry_air_mass>
+<scale_dry_air_mass phys="cam5"                                                    >  98288.0D0 </scale_dry_air_mass>
+<scale_dry_air_mass phys="cam6"                                                    >  98288.0D0 </scale_dry_air_mass>
+<scale_dry_air_mass phys="spcam_m2005"                                             >  98288.0D0 </scale_dry_air_mass>
+<scale_dry_air_mass phys="spcam_sam1mom"                                           >  98288.0D0 </scale_dry_air_mass>
 
 <!-- Ridge parameterization (gamma) -->
 <bnd_rdggm hgrid="0.9x1.25">atm/cam/topo/fv_0.9x1.25_nc3000_Nsw006_Nrs002_Co008_Fi001_ZR_c160505.nc</bnd_rdggm>
@@ -1840,8 +1851,8 @@
 <clubb_l_predict_upwp_vpwp                        > .false. </clubb_l_predict_upwp_vpwp>
 <clubb_l_rcm_supersat_adj                         > .false. </clubb_l_rcm_supersat_adj>
 <clubb_l_stability_correct_tau_zm                 > .true.  </clubb_l_stability_correct_tau_zm>
-<clubb_l_trapezoidal_rule_zm                      > .true.  </clubb_l_trapezoidal_rule_zm>
-<clubb_l_trapezoidal_rule_zt                      > .true.  </clubb_l_trapezoidal_rule_zt>
+<clubb_l_trapezoidal_rule_zm                      > .false. </clubb_l_trapezoidal_rule_zm>
+<clubb_l_trapezoidal_rule_zt                      > .false. </clubb_l_trapezoidal_rule_zt>
 <clubb_l_upwind_xpyp_ta                           > .true.  </clubb_l_upwind_xpyp_ta>
 <clubb_l_use_C7_Richardson                        > .false. </clubb_l_use_C7_Richardson>
 <clubb_l_use_C11_Richardson                       > .false. </clubb_l_use_C11_Richardson>
@@ -2443,6 +2454,9 @@
 <zmconv_dmpdz                                                         > -1.0E-3 </zmconv_dmpdz>
 <zmconv_tiedke_add                                                    > 0.5     </zmconv_tiedke_add>
 <zmconv_capelmt                                                       > 70.0    </zmconv_capelmt>
+<zmconv_tau                                                           > 3600.0    </zmconv_tau>
+
+<zmconv_parcel_pbl                                                    > .false. </zmconv_parcel_pbl>
 
 <!-- Cloud sedimentation -->
 
@@ -2569,6 +2583,8 @@
 <water_species_in_air phys="kessler"          >'Q','CLDLIQ','RAINQM'                  </water_species_in_air>
 <water_species_in_air phys="cam4"             >'Q','CLDLIQ','CLDICE'                  </water_species_in_air>
 <water_species_in_air phys="cam5"             >'Q','CLDLIQ','CLDICE'                  </water_species_in_air>
+<water_species_in_air phys="spcam_m2005"      >'Q','CLDLIQ','CLDICE'                  </water_species_in_air>
+<water_species_in_air phys="spcam_sam1mom"    >'Q','CLDLIQ','CLDICE'                  </water_species_in_air>
 <water_species_in_air phys="cam6"             >'Q','CLDLIQ','CLDICE','RAINQM','SNOWQM'</water_species_in_air>
 
 <!-- ================================================================== -->
@@ -2679,7 +2695,7 @@
 <se_hypervis_subcycle  hgrid="ne0np4CONUS.ne30x8" waccm_phys="1" > 1 </se_hypervis_subcycle>
 
 <se_hypervis_subcycle_sponge                                          > 1  </se_hypervis_subcycle_sponge>
-<se_hypervis_subcycle_sponge waccmx="1"                               > 5  </se_hypervis_subcycle_sponge>
+<se_hypervis_subcycle_sponge waccmx="1"                               > 20 </se_hypervis_subcycle_sponge>
 <se_hypervis_subcycle_sponge hgrid="ne120np4"                         > 4  </se_hypervis_subcycle_sponge>
 <se_hypervis_subcycle_sponge se_refined_mesh="1"                      > 2  </se_hypervis_subcycle_sponge>
 <se_hypervis_subcycle_sponge hgrid="ne0np4CONUS.ne30x8" waccm_phys="1"> 4  </se_hypervis_subcycle_sponge>
@@ -2809,7 +2825,7 @@
 <mpas_cam_coef                > 0.0D0 </mpas_cam_coef>
 <mpas_rayleigh_damp_u         > .true. </mpas_rayleigh_damp_u>
 <mpas_rayleigh_damp_u_timescale_days> 5.0 </mpas_rayleigh_damp_u_timescale_days>
-<mpas_number_rayleigh_damp_u_levels> 3 </mpas_number_rayleigh_damp_u_levels>
+<mpas_number_rayleigh_damp_u_levels> 5 </mpas_number_rayleigh_damp_u_levels>
 <mpas_apply_lbcs> .false. </mpas_apply_lbcs>
 <mpas_jedi_da> .false. </mpas_jedi_da>
 <mpas_print_detailed_minmax_vel> .true.  </mpas_print_detailed_minmax_vel>

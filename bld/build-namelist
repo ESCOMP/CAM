@@ -2544,6 +2544,19 @@ if ($chem eq 'trop_mam7') {
 
 my $waccmx = $cfg->get('waccmx');
 
+# set maximum solar zenith angle for photolysis
+my $maxzen = 0.0;
+if ($waccmx){
+    $maxzen = 116.;
+} elsif ($chem =~ "trop_strat" or $chem =~ "waccm_") {
+    $maxzen = 97.01;
+} elsif ($chem =~ "trop_mam" or $chem =~ "trop_mozart") {
+    $maxzen = 88.85;
+}
+if ($maxzen>0.0) {
+    add_default($nl, 'photo_max_zen', 'val'=>"${maxzen}D0");
+}
+
 # WACCM options.
 if ($chem =~ /waccm_ma/ or $chem =~ /waccm_tsmlt/) {
 
@@ -3165,6 +3178,7 @@ if (!$simple_phys) {
     add_default($nl, 'zmconv_dmpdz');
     add_default($nl, 'zmconv_tiedke_add');
     add_default($nl, 'zmconv_capelmt');
+    add_default($nl, 'zmconv_tau');
 }
 
 # moist convection rainwater coefficients
@@ -3744,6 +3758,9 @@ if ($dyn =~ /mpas/) {
     }
 
 }
+
+# Defaults for scaling initial pressure
+add_default($nl, 'scale_dry_air_mass');
 
 # Defaults for history output
 add_default($nl, 'history_amwg');
@@ -4344,9 +4361,10 @@ sub check_input_files {
     # Treat special cases...
 
     # These namelist variables are arrays of strings.
-    my @vars = qw(aircraft_specifier ext_frc_specifier srf_emis_specifier mode_defs
-                  rad_climate rad_diag_1 rad_diag_2 rad_diag_3 rad_diag_4 rad_diag_5
-                  rad_diag_6 rad_diag_7 rad_diag_8 rad_diag_9 rad_diag_10);
+    my @vars = qw(aircraft_specifier csw_specifier ext_frc_specifier
+                  rad_climate rad_diag_1 rad_diag_2 rad_diag_3 rad_diag_4
+                  rad_diag_5 rad_diag_6 rad_diag_7 rad_diag_8 rad_diag_9
+                  rad_diag_10 srf_emis_specifier mode_defs);
 
     foreach my $var (@vars) {
 
@@ -4369,7 +4387,7 @@ sub check_input_files {
                 # Extract name and filename
                 if ($spec =~ m/\s*(\w+)      # name of species preceded by optional whitespace
                                \s*->\s*      # -> separator surrounded by optional whitespace
-                               (\S+)         # filename (all characters up to optional whitespace)
+                               (.+)          # filename and possible coefficient(all characters up to optional whitespace)
                               /xo) {
                     my $name = $1;
                     my $file = $2;

@@ -22,7 +22,7 @@ use phys_control,    only: phys_getopts
 use constituents,    only: pcnst, cnst_name, cnst_longname, sflxnam, tendnam, &
                            fixcnam, tottnam, hadvnam, vadvnam, cnst_get_ind,  &
                            cnst_read_iv, qmin
-use cam_initfiles,   only: initial_file_get_id, topo_file_get_id, pertlim
+use cam_initfiles,   only: initial_file_get_id, topo_file_get_id, pertlim, scale_dry_air_mass
 use inic_analytic,   only: analytic_ic_active, analytic_ic_set_ic
 use dyn_tests_utils, only: vc_moist_pressure
 use cam_history,     only: addfld, add_default, horiz_only
@@ -225,7 +225,7 @@ subroutine dyn_init(dyn_in, dyn_out)
 #if (defined BFB_CAM_SCAM_IOP )
    use history_defaults,     only: initialize_iop_history
 #endif
-
+   use dyn_tests_utils, only: vc_dycore, vc_moist_pressure,string_vc, vc_str_lgth
    ! Arguments are not used in this dycore, included for compatibility
    type(dyn_import_t), intent(out) :: dyn_in
    type(dyn_export_t), intent(out) :: dyn_out
@@ -238,8 +238,13 @@ subroutine dyn_init(dyn_in, dyn_out)
                                  ! temperature, water vapor, cloud ice and cloud
                                  ! liquid budgets.
    integer :: history_budget_histfile_num  ! output history file number for budget fields
+   character (len=vc_str_lgth) :: str1
    !----------------------------------------------------------------------------
-
+   vc_dycore = vc_moist_pressure
+   if (masterproc) then
+     call string_vc(vc_dycore,str1)
+     write(iulog,*)'dycore vertical coordinate : ',trim(str1)
+   end if
    ! Initialize prognostics variables
    call initialize_prognostics
    call scanslt_alloc()
@@ -1086,8 +1091,7 @@ subroutine global_int()
          tmass0 = tmassf_tmp - qmassf_tmp
       else
          ! Globally avgd sfc. partial pressure of dry air (i.e. global dry mass):
-         tmass0 = 98222._r8/gravit
-         if (.not. associated(fh_topo)) tmass0 = (101325._r8-245._r8)/gravit
+         tmass0 = scale_dry_air_mass/gravit
       end if
 
       if (masterproc) then
