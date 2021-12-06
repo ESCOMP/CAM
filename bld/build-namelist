@@ -4593,7 +4593,7 @@ sub check_snapshot_settings {
         if ($chem ne 'none') {
             push (@validList_bc, ("'chem_timestep_tend'"));
         }
-    } else {
+    } elsif ($phys =~ /cam6/) {
         # CAM physpkg
         push(@validList_ac, ("'chem_emissions'",
                              "'aoa_tracers_timestep_tend'",
@@ -4619,6 +4619,27 @@ sub check_snapshot_settings {
             }
         }
         push (@validList_bc, ("'aero_model_wetdep'", "'radiation_tend'"));
+    } else {
+        # CAM_DEV physpkg
+        push(@validList_ac, ("'chem_emissions'",
+                             "'clubb_tend_cam'",
+                             "'microp_section'"));
+        if ($use_subcol_microp =~ /$TRUE/io) {
+            push (@validList_bc, ("'microp_driver_tend_subcol'"));
+        }
+        push (@validList_ac, ("'aero_model_wetdep'", 
+                              "'radiation_tend'",
+                              "'aoa_tracers_timestep_tend'",
+                              "'co2_cycle_set_ptend'"));
+        if ($chem ne 'none') {
+            push (@validList_ac, ("'chem_timestep_tend'"));
+        }
+        push (@validList_ac, ("'vertical_diffusion_section'",
+                              "'aero_model_drydep'", "'gw_tend'",
+                              "'qbo_relax'", "'iondrag_calc_section'",
+                              "'physics_dme_adjust'"));
+        push (@validList_bc, ("'dadadj_tend'", "'convect_deep_tend'",
+                              "'convect_diagnostics_calc'"));
     }
     if ($user_set_after) {
         # We cannot check order so mark all before matches okay.
