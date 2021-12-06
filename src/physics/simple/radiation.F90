@@ -13,6 +13,8 @@ public :: &
    radiation_nextsw_cday,    &
    radiation_do
 
+real(r8), public, protected :: nextsw_cday = -1._r8 ! future radiation calday for surface models
+
 !========================================================================================
 contains
 !========================================================================================
