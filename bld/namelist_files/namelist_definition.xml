@@ -2219,6 +2219,14 @@ Required for branch run.
 Default: none
 </entry>
 
+<entry id="scale_dry_air_mass" type="real" category="initial_conditions"
+       group="cam_initfiles_nl" valid_values="">
+Specify whether and how to perform dry surface pressure scaling. If less than or equal to 0.0,
+do not perform scaling. If greater than 0.0, perform scaling to scale_dry_air_mass
+value (in Pa) as the average dry surface pressure target.
+Default: set by build-namelist.
+</entry>
+
 <entry id="readtrace" type="logical"  category="initial_conditions"
        group="constituents_nl" valid_values="" >
 If TRUE, try to initialize data for all consituents by reading from the
@@ -2228,7 +2236,6 @@ try reading constituent data from the IC file; just use the
 internally-specified defaults.
 Default: TRUE
 </entry>
-
 
 <!-- COSP Cloud Simulator control LOGICALS -->
 
@@ -2547,7 +2554,7 @@ Default: 1
 
 <entry id="micro_mg_autocon_fact" type="real" category="microphys"
        group="micro_mg_nl" valid_values="" >
-Unitless ratio to directly scale the autoconversion process in microphysics as a method of accounting for unrepresented subgridscale variability. 
+Unitless ratio to directly scale the autoconversion process in microphysics as a method of accounting for unrepresented subgridscale variability.
 Default: 0.01
 </entry>
 
@@ -3045,6 +3052,18 @@ Default: 0.5K perturbation
        group="zmconv_nl" valid_values="" >
 Tunable triggering threshold for convection in ZM deep scheme in units of (J kg-1).
 Default: 70.0 J kg-1
+</entry>
+
+<entry id="zmconv_parcel_pbl" type="logical" category="conv"
+       group="zmconv_nl" valid_values="" >
+Turn on ZM deep convection initial parcel properties as a function of a well mixed boundary layer
+Default: .false.
+</entry>
+
+<entry id="zmconv_tau" type="real" category="conv"
+       group="zmconv_nl" valid_values="" >
+Convective adjustment timescale in units of (s)
+Default: 3600.0 s
 </entry>
 
 <!-- Cloud sedimentation -->
@@ -3679,7 +3698,7 @@ Default: 25.0e-6 m
 
 <entry id="clubb_detphase_lowtemp" type="real" category="pblrad"
        group="clubb_params_nl" valid_values="" >
-Temperature at which detrained water is classified as entirely ice (no liquid) 
+Temperature at which detrained water is classified as entirely ice (no liquid)
 in the CLUBB parameterization in units of (K).
 Default: 238.15 K
 </entry>
@@ -6801,6 +6820,13 @@ Default: set by build-namelist.
 Full pathname of cross section dataset for short wavelengh photolysis
 Default: set by build-namelist.
 </entry>
+
+<entry id="photo_max_zen" type="real" category="cam_chem"
+       group="chem_inparm" valid_values="" >
+Maximum zenith angle (degrees) used for photolysis.
+Default: set by build-namelist.
+</entry>
+
 
 <!-- Namelist read by seq_drydep_mod and shared by CAM and CLM -->
 

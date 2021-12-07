@@ -33,7 +33,7 @@ public ::&
    get_curr_time,            &! return components of elapsed time since reference date at end of current timestep
    get_prev_time,            &! return components of elapsed time since reference date at beg of current timestep
    get_curr_calday,          &! return calendar day at end of current timestep
-   get_julday,               &! return julian day from input date, time 
+   get_julday,               &! return julian day from input date, time
    get_calday,               &! return calendar day from input date
    is_first_step,            &! return true on first step of initial run
    is_first_restart_step,    &! return true on first step of restart or branch run
@@ -50,6 +50,7 @@ public ::&
    set_time_float_from_date, &! returns a float representation of time given  yr, mon, day, sec
    set_date_from_time_float   ! returns yr, mon, day, sec given time float
 
+public :: is_leapyear
 
 ! Private module data
 
@@ -65,7 +66,7 @@ integer :: cal_type = uninit_int            ! calendar type
 ! The target attribute for tm_cal is needed (at least by NAG) because there are
 ! pointers to this object inside ESMF_Time objects.
 type(ESMF_Calendar), target :: tm_cal        ! calendar
-type(ESMF_Clock)            :: tm_clock      ! Model clock   
+type(ESMF_Clock)            :: tm_clock      ! Model clock
 type(ESMF_Time)             :: tm_perp_date  ! perpetual date
 
 !=========================================================================================
@@ -259,16 +260,18 @@ subroutine set_time_float_from_date( time, year, month, day, sec )
   type(ESMF_TimeInterval) :: diff
   integer :: useday
 
-  if ( (calendar==shr_cal_noleap) .and. (month==2) .and. (day==29) ) then ! workaround leap days for NOLEAP cal
+  if ( ((calendar==shr_cal_noleap).or.(.not.is_leapyear(year))) &
+       .and. (month==2) .and. (day==29) ) then
+     ! set day to 28 when the calendar / year does not have a leap day
      useday = 28
-  else 
+  else
      useday = day
   endif
 
   call ESMF_TimeSet( date, yy=year, mm=month, dd=useday, s=sec, calendar=tm_cal, rc=rc)
 
   if ( rc .ne. ESMF_SUCCESS ) then
-     call chkrc(rc, sub//': error return from ESMF_TimeSet for set_time_float_from_date')        
+     call chkrc(rc, sub//': error return from ESMF_TimeSet for set_time_float_from_date')
   endif
 
   call ESMF_ClockGet(tm_clock, refTime=ref_date, rc=rc )
@@ -313,6 +316,14 @@ subroutine set_date_from_time_float( time, year, month, day, sec )
   call chkrc(rc, sub//': error return from ESMF_TimeGet for set_date_from_time_float')
 
 endsubroutine set_date_from_time_float
+
+!=========================================================================================
+
+logical function is_leapyear( yr )
+  integer, intent(in) :: yr
+  is_leapyear = (mod(yr, 400) == 0 .or. mod(yr,100) /= 0) .and. mod(yr,4)==0
+end function is_leapyear
+
 
 !=========================================================================================
 
@@ -550,7 +561,7 @@ subroutine get_curr_date(yr, mon, day, tod, offset)
       tod     ! time of day (seconds past 0Z)
 
    integer, optional, intent(in) :: offset  ! Offset from current time in seconds.
-                                            ! Positive for future times, negative 
+                                            ! Positive for future times, negative
                                             ! for previous times.
 
 ! Local variables
@@ -594,7 +605,7 @@ subroutine get_perp_date(yr, mon, day, tod, offset)
       tod     ! time of day (seconds past 0Z)
 
    integer, optional, intent(in) :: offset  ! Offset from current time in seconds.
-                                            ! Positive for future times, negative 
+                                            ! Positive for future times, negative
                                             ! for previous times.
 
 ! Local variables
@@ -829,7 +840,7 @@ function get_curr_calday(offset)
 
 ! Arguments
    integer, optional, intent(in) :: offset  ! Offset from current time in seconds.
-                                            ! Positive for future times, negative 
+                                            ! Positive for future times, negative
                                             ! for previous times.
 ! Return value
    real(r8) :: get_curr_calday
@@ -877,7 +888,7 @@ function get_curr_calday(offset)
 !
 ! The zenith angle calculation is only capable of using a 365-day calendar.
 ! If a Gregorian calendar is being used, the last day of a leap year (day 366)
-! is sent to the model as a repetition of the previous day (day 365). 
+! is sent to the model as a repetition of the previous day (day 365).
 ! This is done by decrementing calday by 1 immediately below.
 ! bundy, July 2008
 !
@@ -893,7 +904,7 @@ function get_curr_calday(offset)
    end if
 
 end function get_curr_calday
-  
+
 !==========================================================================
 ! return julian day
 function get_julday(yr_in,mon,day,sec) result(julday)
@@ -958,7 +969,7 @@ function get_calday(ymd, tod)
 !
 ! The zenith angle calculation is only capable of using a 365-day calendar.
 ! If a Gregorian calendar is being used, the last day of a leap year (day 366)
-! is sent to the model as a repetition of the previous day (day 365). 
+! is sent to the model as a repetition of the previous day (day 365).
 ! This is done by decrementing calday by 1 immediately below.
 ! bundy, July 2008
 !
@@ -996,7 +1007,7 @@ character(len=SHR_KIND_CS) function timemgr_get_calendar_cf()
 
 end function timemgr_get_calendar_cf
 !=========================================================================================
- 
+
 function timemgr_is_caltype( cal_in )
 
 ! Return true if incoming calendar type string matches actual calendar type in use
@@ -1012,7 +1023,7 @@ function timemgr_is_caltype( cal_in )
 
 end function timemgr_is_caltype
 !=========================================================================================
- 
+
 function is_end_curr_day()
 
 ! Return true if current timestep is last timestep in current day.

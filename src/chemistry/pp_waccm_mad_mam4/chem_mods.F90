@@ -25,7 +25,7 @@
                             clsze = 1, & ! loop length for implicit chemistry
                             rxt_tag_cnt = 607, &
                             enthalpy_cnt = 54, &
-                            nslvd = 52
+                            nslvd = 50
       integer :: clscnt(5) = 0
       integer :: cls_rxt_cnt(4,5) = 0
       integer :: clsmap(gas_pcnst,5) = 0
@@ -47,5 +47,4 @@
       logical :: is_vector
       logical :: is_scalar
       character(len=16) :: slvd_lst(max(1,nslvd))
-      integer, parameter :: veclen = 32
       end module chem_mods
