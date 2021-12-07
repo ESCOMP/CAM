@@ -193,10 +193,9 @@ contains
 
     use mo_chem_utls, only : utls_chem_is
 
-    chem_is = .false.
-    IF ( to_upper(name) == 'GEOSCHEM' ) THEN
-       chem_is = .true.
-    ENDIF
+    character(len=*), intent(in) :: name
+
+    chem_is = utls_chem_is(name)
 
   end function chem_is
 
@@ -275,7 +274,6 @@ contains
     ! hplin 2020-05-16: Call set_sim_dat to populate chemistry constituent information
     ! from mo_sim_dat.F90 in other places. This is needed for HEMCO_CESM.
     CALL Set_sim_dat()
-    IF ( MasterProc ) Write(iulog,*) 'GCCALL after set_sim_dat'
 
     ! Prevent Reporting
     IO%amIRoot             = .False.
@@ -714,7 +712,9 @@ contains
                            srf_emis_fixed_tod, &
                            srf_emis_type
 
-    nIgnored = 0
+    ! ghg chem
+
+    namelist /chem_inparm/ bndtvg, h2orates, ghg_chem
 
     ALLOCATE(drySpc_ndx(nddvels), STAT=IERR)
     IF ( IERR .NE. 0 ) CALL ENDRUN('Failed to allocate drySpc_ndx')
@@ -915,6 +915,7 @@ contains
     !-----------------------------------------------------------------------
     logical :: chem_is_active
     !-----------------------------------------------------------------------
+
     chem_is_active = .true.
 
   end function chem_is_active
@@ -1214,14 +1215,14 @@ contains
 
     DO I = BEGCHUNK, ENDCHUNK
 
-        ! Initialize fields of the Grid State object
-        CALL Init_State_Grid( Input_Opt  = Input_Opt,      &
-                              State_Grid = State_Grid(I),  &
-                              RC         = RC             )
+       ! Initialize fields of the Grid State object
+       CALL Init_State_Grid( Input_Opt  = Input_Opt,      &
+                             State_Grid = State_Grid(I),  &
+                             RC         = RC             )
 
        IF ( RC /= GC_SUCCESS ) THEN
-           ErrMsg = 'Error encountered within call to "Init_State_Grid"!'
-           CALL Error_Stop( ErrMsg, ThisLoc )
+          ErrMsg = 'Error encountered within call to "Init_State_Grid"!'
+          CALL Error_Stop( ErrMsg, ThisLoc )
        ENDIF
 
        State_Grid(I)%NX = nX
@@ -1229,14 +1230,13 @@ contains
        State_Grid(I)%NZ = nZ
 
        ! Initialize GEOS-Chem horizontal grid structure
-       CALL GC_Init_Grid( am_I_Root  = am_I_Root,      &
-                          Input_Opt  = Input_Opt,      &
+       CALL GC_Init_Grid( Input_Opt  = Input_Opt,      &
                           State_Grid = State_Grid(I),  &
                           RC         = RC             )
 
        IF ( RC /= GC_SUCCESS ) THEN
-           ErrMsg = 'Error encountered within call to "GC_Init_Grid"!'
-           CALL Error_Stop( ErrMsg, ThisLoc )
+          ErrMsg = 'Error encountered within call to "GC_Init_Grid"!'
+          CALL Error_Stop( ErrMsg, ThisLoc )
        ENDIF
 
        ! Define more variables for State_Grid
@@ -1245,9 +1245,9 @@ contains
 
        ! Set maximum number of levels in the chemistry grid
        IF ( Input_Opt%LUCX ) THEN
-          State_Grid(I)%MaxChemLev  = State_Grid(I)%MaxStratLev
+          State_Grid(I)%MaxChemLev = State_Grid(I)%MaxStratLev
        ELSE
-          State_Grid(I)%MaxChemLev  = State_Grid(I)%MaxTropLev
+          State_Grid(I)%MaxChemLev = State_Grid(I)%MaxTropLev
        ENDIF
 
     ENDDO
@@ -1288,7 +1288,7 @@ contains
 
        IF ( MasterProc ) THEN
           ! Read data in to Input_Opt%Linoz_TParm
-          CALL Linoz_Read( MasterProc, Input_Opt, RC )
+          CALL Linoz_Read( Input_Opt, RC )
           IF ( RC /= GC_SUCCESS ) THEN
              ErrMsg = 'Error encountered in "Linoz_Read"!'
              CALL Error_Stop( ErrMsg, ThisLoc )
@@ -1304,7 +1304,6 @@ contains
        ENDIF
        IF ( ALLOCATED( linozData ) ) DEALLOCATE(linozData)
     ENDIF
-
 
     ! Note: The following calculations do not setup the gridcell areas.
     !       In any case, we will need to be constantly updating this grid
@@ -1352,13 +1351,13 @@ contains
           latEdgeArr(nX+1,J)  = REAL((latVal) * PI_180, f4)
        ENDDO
 
-       CALL SetGridFromCtrEdges( am_I_Root  = MasterProc,    &
+       CALL SetGridFromCtrEdges( Input_Opt  = Input_Opt,     &
                                  State_Grid = State_Grid(L), &
                                  lonCtr     = lonMidArr,     &
                                  latCtr     = latMidArr,     &
                                  lonEdge    = lonEdgeArr,    &
                                  latEdge    = latEdgeArr,    &
-                                 RC         = RC         )
+                                 RC         = RC            )
 
        IF ( RC /= GC_SUCCESS ) THEN
           ErrMsg = 'Error encountered in "SetGridFromCtrEdges"!'
@@ -1371,7 +1370,6 @@ contains
     IF ( ALLOCATED( lonEdgeArr ) ) DEALLOCATE( lonEdgeArr )
     IF ( ALLOCATED( latEdgeArr ) ) DEALLOCATE( latEdgeArr )
 
-
     ! Set the times held by "time_mod"
     CALL Accept_External_Date_Time( value_NYMDb = Input_Opt%NYMDb, &
                                     value_NHMSb = Input_Opt%NHMSb, &
@@ -1380,6 +1378,7 @@ contains
                                     value_NYMD  = Input_Opt%NYMDb, &
                                     value_NHMS  = Input_Opt%NHMSb, &
                                     RC          = RC                )
+
     IF ( RC /= GC_SUCCESS ) THEN
        ErrMsg = 'Error encountered in "Accept_External_Date_Time"!'
        CALL Error_Stop( ErrMsg, ThisLoc )
@@ -1423,7 +1422,7 @@ contains
     ENDIF
 
     DO I = BEGCHUNK, ENDCHUNK
-       am_I_Root = (MasterProc .AND. (I == BEGCHUNK))
+       Input_Opt%amIRoot = (MasterProc .AND. (I == BEGCHUNK))
 
        CALL GC_Init_StateObj( Diag_List       = Diag_List,       & ! Diagnostic list obj
                               TaggedDiag_List = TaggedDiag_List, & ! TaggedDiag list obj
@@ -1560,8 +1559,8 @@ contains
     Ap_CAM_Flip = 0.0e+0_fp
     Bp_CAM_Flip = 0.0e+0_fp
     DO I = 1, nZ+1
-        Ap_CAM_Flip(I) = hyai(nZ+2-I) * ps0 * 0.01e+0_r8
-        Bp_CAM_Flip(I) = hybi(nZ+2-I)
+       Ap_CAM_Flip(I) = hyai(nZ+2-I) * ps0 * 0.01e+0_r8
+       Bp_CAM_Flip(I) = hybi(nZ+2-I)
     ENDDO
 
     !-----------------------------------------------------------------
@@ -1591,56 +1590,26 @@ contains
     IF ( ALLOCATED( Ap_CAM_Flip ) ) DEALLOCATE( Ap_CAM_Flip )
     IF ( ALLOCATED( Bp_CAM_Flip ) ) DEALLOCATE( Bp_CAM_Flip )
 
-    !! Initialize HEMCO?
-    !CALL Emissions_Init ( am_I_Root  = MasterProc, &
-    !                      Input_Opt  = Input_Opt,  &
-    !                      State_Met  = State_Met,  &
-    !                      State_Chm  = State_Chm,  &
-    !                      State_Grid = State_Grid, &
-    !                      State_Met  = State_Met,  &
-    !                      RC         = RC,         &
-    !                      HcoConfig  = HcoConfig  )
-    !
-    !IF ( RC /= GC_SUCCESS ) THEN
-    !    ErrMsg = 'Error encountered in "Emissions_Init"!'
-    !    CALL Error_Stop( ErrMsg, ThisLoc )
-    !ENDIF
-    !
+    ! Once the initial met fields have been read in, we need to find
+    ! the maximum PBL level for the non-local mixing algorithm.
+    CALL Max_PblHt_For_Vdiff( Input_Opt  = Input_Opt,            &
+                              State_Grid = State_Grid(BEGCHUNK), &
+                              State_Met  = State_Met(BEGCHUNK),  &
+                              RC         = RC                   )
 
-!#if   ( ALLDDVEL_GEOSCHEM && LANDTYPE_HEMCO )
-!    ! Populate the State_Met%LandTypeFrac field with data from HEMCO
-!    CALL Init_LandTypeFrac( am_I_Root = MasterProc,           &
-!                            Input_Opt = Input_Opt,            &
-!                            State_Met = State_Met(BEGCHUNK),  &
-!                            RC        = RC                   )
-!
-!    IF ( RC /= GC_SUCCESS ) THEN
-!       ErrMsg = 'Error encountered in "Init_LandTypeFrac"!'
-!       CALL Error_Stop( ErrMsg, ThisLoc )
-!    ENDIF
-!
-!    ! Compute the Olson landmap fields of State_Met
-!    ! (e.g. State_Met%IREG, State_Met%ILAND, etc.)
-!    CALL Compute_Olson_Landmap( am_I_Root  = MasterProc,           &
-!                                Input_Opt  = Input_Opt,            &
-!                                State_Grid = State_Grid(BEGCHUNK), &
-!                                State_Met  = State_Met(BEGCHUNK),  &
-!                                RC         = RC                   )
-!
-!    IF ( RC /= GC_SUCCESS ) THEN
-!       ErrMsg = 'Error encountered in "Compute_Olson_Landmap"!'
-!       CALL Error_Stop( ErrMsg, ThisLoc )
-!    ENDIF
-!#endif
+    IF ( RC /= GC_SUCCESS ) THEN
+       ErrMsg = 'Error encountered in "Max_PblHt_for_Vdiff"!'
+       CALL Error_Stop( ErrMsg, ThisLoc )
+    ENDIF
 
     IF ( Input_Opt%Its_A_FullChem_Sim .OR. &
          Input_Opt%Its_An_Aerosol_Sim ) THEN
-        ! This also initializes Fast-JX
-        CALL Init_Chemistry( Input_Opt  = Input_Opt,            &
-     &                       State_Chm  = State_Chm(BEGCHUNK),  &
-     &                       State_Diag = State_Diag(BEGCHUNK), &
-     &                       State_Grid = State_Grid(BEGCHUNK), &
-     &                       RC         = RC                    )
+       ! This also initializes Fast-JX
+       CALL Init_Chemistry( Input_Opt  = Input_Opt,            &
+                            State_Chm  = State_Chm(BEGCHUNK),  &
+                            State_Diag = State_Diag(BEGCHUNK), &
+                            State_Grid = State_Grid(BEGCHUNK), &
+                            RC         = RC                    )
 
        IF ( RC /= GC_SUCCESS ) THEN
           ErrMsg = 'Error encountered in "Init_Chemistry"!'
@@ -3101,47 +3070,6 @@ contains
     ! Dimensions : nX, nY, nZ
     State_Met(LCHNK)%OPTD =  State_Met(LCHNK)%TAUCLI + State_Met(LCHNK)%TAUCLW
 
-    ! Determine current date and time
-    CALL Get_Curr_Date( yr  = currYr,  &
-                        mon = currMo,  &
-                        day = currDy,  &
-                        tod = currTOD )
-
-    ! For now, force year to be 2000
-    currYr  = 2000
-    currYMD = (currYr*1000) + (currMo*100) + (currDy)
-    ! Deal with subdaily
-    currUTC = REAL(currTOD,f4)/3600.0e+0_f4
-    currSc  = 0
-    currMn  = 0
-    currHr  = 0
-    DO WHILE (currTOD > 3600)
-       currTOD = currTOD - 3600
-       currHr  = currHr + 1
-    ENDDO
-    DO WHILE (currTOD > 60)
-       currTOD = currTOD - 60
-       currMn  = currMn + 1
-    ENDDO
-    currSc  = currTOD
-    currHMS = (currHr*1000) + (currMn*100) + (currSc)
-
-    IF ( firstDay ) THEN
-       newDay   = .True.
-       newMonth = .True.
-       firstDay = .False.
-    ELSE IF ( currHMS < dT ) THEN
-       newDay = .True.
-       IF ( currDy == 1 ) THEN
-           newMonth = .True.
-       ELSE
-           newMonth = .False.
-       ENDIF
-    ELSE
-       newDay   = .False.
-       newMonth = .False.
-    ENDIF
-
     ! Pass time values obtained from the ESMF environment to GEOS-Chem
     CALL Accept_External_Date_Time( value_NYMD     = currYMD,            &
                                     value_NHMS     = currHMS,            &
@@ -3635,130 +3563,53 @@ contains
           CALL Error_Stop( ErrMsg, ThisLoc )
        ENDIF
 
-#if   ( OCNDDVEL_GEOSCHEM )
+       IF ( Input_Opt%ddVel_CLM ) THEN
+          DO N = 1, nddvels
 
-       DO N = 1, nddvels
+             !! Print debug
+             !IF ( rootChunk ) THEN
+             !    IF ( N == 1 ) THEN
+             !    Write(iulog,*) "Number of GC dry deposition species = ", &
+             !        SIZE(State_Chm(LCHNK)%DryDepVel(:,:,:),3)
+             !    Write(iulog,*) "Number of CESM dry deposition species = ", &
+             !        nddvels
+             !    ENDIF
+             !    Write(iulog,*) "N          = ", N
+             !    Write(iulog,*) "drySpc_ndx = ", drySpc_ndx(N)
+             !    Write(iulog,*) "GC index   = ", map2GC_dryDep(N)
+             !    IF ( map2GC_dryDep(N) > 0 ) THEN
+             !        Write(iulog,*) "GC name    = ", TRIM(DEPNAME(map2GC_dryDep(N)))
+             !    ENDIF
+             !    Write(iulog,*) "dry Species= ", TRIM(drydep_list(N))
+             !    IF ( drySpc_ndx(N) > 0 ) THEN
+             !        Write(iulog,*) "tracerName = ", TRIM(tracerNames(drySpc_ndx(N)))
+             !    ENDIF
+             !    Write(iulog,*) "CLM-depVel = ", &
+             !  MAXVAL(cam_in%depvel(:nY,N)) * 1.0e-02_fp, " [m/s]"
+             !    IF ( map2GC_dryDep(N) > 0 ) THEN
+             !        Write(iulog,*) "GC-depVel  = ", &
+             !  MAXVAL(State_Chm(LCHNK)%DryDepVel(1,:nY,map2GC_dryDep(N))), " [m/s]"
+             !    ENDIF
+             !ENDIF
 
-          !! Print debug
-          !IF ( rootChunk ) THEN
-          !    IF ( N == 1 ) THEN
-          !    Write(iulog,*) "Number of GC dry deposition species = ", &
-          !        SIZE(State_Chm(LCHNK)%DryDepVel(:,:,:),3)
-          !    Write(iulog,*) "Number of CESM dry deposition species = ", &
-          !        nddvels
-          !    ENDIF
-          !    Write(iulog,*) "N          = ", N
-          !    Write(iulog,*) "drySpc_ndx = ", drySpc_ndx(N)
-          !    Write(iulog,*) "GC index   = ", map2GC_dryDep(N)
-          !    IF ( map2GC_dryDep(N) > 0 ) THEN
-          !        Write(iulog,*) "GC name    = ", TRIM(DEPNAME(map2GC_dryDep(N)))
-          !    ENDIF
-          !    Write(iulog,*) "dry Species= ", TRIM(drydep_list(N))
-          !    IF ( drySpc_ndx(N) > 0 ) THEN
-          !        Write(iulog,*) "tracerName = ", TRIM(tracerNames(drySpc_ndx(N)))
-          !    ENDIF
-          !    Write(iulog,*) "CLM-depVel = ", &
-          !  MAXVAL(cam_in%depvel(:nY,N)) * 1.0e-02_fp, " [m/s]"
-          !    IF ( map2GC_dryDep(N) > 0 ) THEN
-          !        Write(iulog,*) "GC-depVel  = ", &
-          !  MAXVAL(State_Chm(LCHNK)%DryDepVel(1,:nY,map2GC_dryDep(N))), " [m/s]"
-          !    ENDIF
-          !ENDIF
-
-          IF ( map2GC_dryDep(N) > 0 ) THEN
-              ! State_Chm%DryDepVel is in m/s
-              State_Chm(LCHNK)%DryDepVel(1,:nY,map2GC_dryDep(N)) = &
-                 ! This first bit corresponds to the dry deposition
-                 ! velocities over land as computed from CLM and
-                 ! converted to m/s. This is scaled by the fraction
-                 ! of land.
-                   cam_in%depVel(:nY,N) * 1.0e-02_fp &
-                    * MAX(0._fp, 1.0_fp - State_Met(LCHNK)%FROCEAN(1,:nY)) &
-                 ! This second bit corresponds to the dry deposition
-                 ! velocities over ocean and sea ice as computed from
-                 ! GEOS-Chem. This is scaled by the fraction of ocean
-                 ! and sea ice.
-                 + State_Chm(LCHNK)%DryDepVel(1,:nY,map2GC_dryDep(N)) &
-                   * State_Met(LCHNK)%FROCEAN(1,:nY)
-          ENDIF
-       ENDDO
-
-#endif
-
-#elif ( OCNDDVEL_MOZART )
-       ! This routine updates the deposition velocities from CLM in the
-       ! pointer lnd(LCHNK)%dvel as long as drydep_method == DD_XLND is
-       ! True.
-       CALL drydep_update( State, cam_in )
-
-       windSpeed(:nY) = SQRT( state%U(:nY,nZ)*state%U(:nY,nZ) + &
-                              state%V(:nY,nZ)*state%V(:nY,nZ)  )
-       potT(:nY)      = state%t(:nY,nZ) * (1._fp + qH2O(:nY,nZ))
-
-       CALL get_lat_all_p( LCHNK, nY, latndx )
-       CALL get_lon_all_p( LCHNK, nY, lonndx )
-
-       CALL drydep_fromlnd( ocnfrac      = cam_in%ocnfrac(:),             &
-                            icefrac      = cam_in%icefrac(:),             &
-                            ncdate       = currYMD,                       &
-                            sfc_temp     = cam_in%TS(:),                  &
-                            pressure_sfc = state%PS(:),                   &
-                            wind_speed   = windSpeed(:),                  &
-                            spec_hum     = qH2O(:,nZ),                    &
-                            air_temp     = state%t(:,nZ),                 &
-                            pressure_10m = state%pmid(:,nZ),              &
-                            rain         = State_Met(LCHNK)%PRECTOT(1,:), &
-                            snow         = cam_in%Snowhland(:),           &
-                            solar_flux   = State_Met(LCHNK)%SWGDN(1,:),   &
-                            dvelocity    = MOZART_depVel(:,:),            &
-                            dflx         = MOZART_depFlx(:,:),            &
-                            State_Chm    = State_Chm(LCHNK),              &
-                            tv           = potT(:),                       &
-                            soilw        = -99._fp,                       &
-                            rh           = relHum(:,nZ),                  &
-                            ncol         = nY,                            &
-                            lonndx       = lonndx(:),                     &
-                            latndx       = latndx(:),                     &
-                            lchnk        = LCHNK                         )
-
-       DO N = 1, nddvels
-
-          !! Print debug
-          !IF ( rootChunk ) THEN
-          !    IF ( N == 1 ) THEN
-          !    Write(iulog,*) "Number of GC dry deposition species = ", &
-          !        SIZE(State_Chm(LCHNK)%DryDepVel(:,:,:),3)
-          !    Write(iulog,*) "Number of CESM dry deposition species = ", &
-          !        nddvels
-          !    ENDIF
-          !    Write(iulog,*) "N          = ", N
-          !    Write(iulog,*) "drySpc_ndx = ", drySpc_ndx(N)
-          !    Write(iulog,*) "GC index   = ", map2GC_dryDep(N)
-          !    IF ( map2GC_dryDep(N) > 0 ) THEN
-          !        Write(iulog,*) "GC name    = ", TRIM(DEPNAME(map2GC_dryDep(N)))
-          !    ENDIF
-          !    Write(iulog,*) "dry Species= ", TRIM(drydep_list(N))
-          !    IF ( drySpc_ndx(N) > 0 ) THEN
-          !        Write(iulog,*) "tracerName = ", TRIM(tracerNames(drySpc_ndx(N)))
-          !    ENDIF
-          !    Write(iulog,*) "CLM-depVel    = ", &
-          !  MAXVAL(cam_in%depvel(:nY,N)) * 1.0e-02_fp, " [m/s]", LCHNK
-          !    IF ( drySpc_ndx(N) > 0 ) THEN
-          !        Write(iulog,*) "Merged depVel = ", &
-          !  MAXVAL(MOZART_depVel(:nY,drySpc_ndx(N))) * 1.0e-02_fp, " [m/s]", LCHNK
-          !    ENDIF
-          !ENDIF
-
-          IF ( ( map2GC_dryDep(N) > 0 ) .AND. ( drySpc_ndx(N) > 0 ) ) THEN
-              ! State_Chm%DryDepVel is in m/s
-              State_Chm(LCHNK)%DryDepVel(1,:nY,map2GC_dryDep(N)) = &
-                 MOZART_depVel(:nY,drySpc_ndx(N)) * 1.0e-02_fp
-          ENDIF
-
-       ENDDO
-
-       !TMMF, Here set dry deposition velocities to zero if MAM performs its
-       !own deposition...
+             IF ( map2GC_dryDep(N) > 0 ) THEN
+                ! State_Chm%DryDepVel is in m/s
+                State_Chm(LCHNK)%DryDepVel(1,:nY,map2GC_dryDep(N)) = &
+                   ! This first bit corresponds to the dry deposition
+                   ! velocities over land as computed from CLM and
+                   ! converted to m/s. This is scaled by the fraction
+                   ! of land.
+                     cam_in%depVel(:nY,N) * 1.0e-02_fp &
+                      * MAX(0._fp, 1.0_fp - State_Met(LCHNK)%FROCEAN(1,:nY)) &
+                   ! This second bit corresponds to the dry deposition
+                   ! velocities over ocean and sea ice as computed from
+                   ! GEOS-Chem. This is scaled by the fraction of ocean
+                   ! and sea ice.
+                   + State_Chm(LCHNK)%DryDepVel(1,:nY,map2GC_dryDep(N)) &
+                     * State_Met(LCHNK)%FROCEAN(1,:nY)
+             ENDIF
+          ENDDO
+       ENDIF
 
        CALL Update_DryDepFreq( Input_Opt  = Input_Opt,         &
                                State_Chm  = State_Chm(LCHNK),  &
@@ -3768,36 +3619,6 @@ contains
                                RC         = RC                )
 
     ENDIF
-
-    !!===========================================================
-    !!             ***** E M I S S I O N S *****
-    !!
-    !! NOTE: For a complete description of how emissions from
-    !! HEMCO are added into GEOS-Chem (and how they are mixed
-    !! into the boundary layer), please see the wiki page:
-    !!
-    !! http://wiki-geos-chem.org/Distributing_emissions_in_the_PBL
-    !!===========================================================
-    !
-    !! EMISSIONS_RUN will call HEMCO run phase 2. HEMCO run phase
-    !! only calculates emissions. All data has been read to disk
-    !! in phase 1 at the beginning of the time step.
-    !! (ckeller, 4/1/15)
-    !CALL Emissions_Run( Input_Opt   = Input_Opt,         &
-    !                    State_Chm   = State_Chmk(LCHNK), &
-    !                    State_Diag  = State_Diag(LCHNK), &
-    !                    State_Grid  = State_Grid(LCHNK), &
-    !                    State_Met   = State_Met(LCHNK),  &
-    !                    TimeForEmis = TimeForEmis,       &
-    !                    Phase       = 2,                 &
-    !                    RC          = RC                )
-    !
-    !! Trap potential errors
-    !IF ( RC /= GC_SUCCESS ) THEN
-    !   ErrMsg =
-    !     'Error encountered in "Emissions_Run"! after drydep!'
-    !   CALL Error_Stop( ErrMsg, ThisLoc )
-    !ENDIF
 
     !===========================================================
     !      ***** M I X E D   L A Y E R   M I X I N G *****
@@ -3911,20 +3732,20 @@ contains
     IF ( Input_Opt%Its_A_FullChem_Sim .OR. &
          Input_Opt%Its_An_Aerosol_Sim ) THEN
 
-        IF ( Input_Opt%LChem ) THEN
-            CALL Compute_Overhead_O3( Input_Opt       = Input_Opt,                 &
-                                      State_Grid      = State_Grid(LCHNK),         &
-                                      State_Chm       = State_Chm(LCHNK),          &
-                                      DAY             = currDy,                    &
-                                      USE_O3_FROM_MET = Input_Opt%Use_O3_From_Met, &
-                                      TO3             = State_Met(LCHNK)%TO3,      &
-                                      RC              = RC )
+       IF ( Input_Opt%LChem ) THEN
+          CALL Compute_Overhead_O3( Input_Opt       = Input_Opt,                 &
+                                    State_Grid      = State_Grid(LCHNK),         &
+                                    State_Chm       = State_Chm(LCHNK),          &
+                                    DAY             = currDy,                    &
+                                    USE_O3_FROM_MET = Input_Opt%Use_O3_From_Met, &
+                                    TO3             = State_Met(LCHNK)%TO3,      &
+                                    RC              = RC                        )
 
-            IF ( RC /= GC_SUCCESS ) THEN
-               ErrMsg = 'Error encountered in "Compute_Overhead_O3"!'
-               CALL Error_Stop( ErrMsg, ThisLoc )
-            ENDIF
-        ENDIF
+          IF ( RC /= GC_SUCCESS ) THEN
+             ErrMsg = 'Error encountered in "Compute_Overhead_O3"!'
+             CALL Error_Stop( ErrMsg, ThisLoc )
+          ENDIF
+       ENDIF
     ENDIF
 
     IF ( Input_Opt%Its_A_Fullchem_Sim .and. iH2O > 0 ) THEN
@@ -4415,7 +4236,7 @@ contains
     ! Will need a simple mapping structure as well as the CAM tracer registration
     ! routines.
 
-    INTEGER  :: ILEV, NLEV, I
+    INTEGER  :: ilev, nlev, M
     REAL(r8) :: QTemp, Min_MMR
 
     nlev = SIZE(q, 2)
@@ -4518,10 +4339,10 @@ contains
 
     ! Loop over each chunk and cleanup the variables
     DO I = BEGCHUNK, ENDCHUNK
-        CALL Cleanup_State_Chm ( State_Chm(I),  RC )
-        CALL Cleanup_State_Diag( State_Diag(I), RC )
-        CALL Cleanup_State_Grid( State_Grid(I), RC )
-        CALL Cleanup_State_Met ( State_Met(I),  RC )
+       CALL Cleanup_State_Chm ( State_Chm(I),  RC )
+       CALL Cleanup_State_Diag( State_Diag(I), RC )
+       CALL Cleanup_State_Grid( State_Grid(I), RC )
+       CALL Cleanup_State_Met ( State_Met(I),  RC )
     ENDDO
     CALL Cleanup_Error
 
@@ -4533,7 +4354,6 @@ contains
 
     IF ( ALLOCATED( slvd_Lst     ) )  DEALLOCATE( slvd_Lst     )
     IF ( ALLOCATED( slvd_ref_MMR ) )  DEALLOCATE( slvd_ref_MMR )
-
 
     RETURN
 
@@ -4625,40 +4445,14 @@ contains
     nY    = state%NCOL
     rootChunk = ( MasterProc.and.(LCHNK.EQ.BEGCHUNK) )
 
-    sflx(:,:) = 0.0e+0_r8
+    !-----------------------------------------------------------------------
+    ! Reset surface fluxes
+    !-----------------------------------------------------------------------
 
-    DO N = 1, nTracers
-
-       fldname_ns = 'HCO_' // TRIM(tracerNames(N))
-       tmpIdx = pbuf_get_index(fldname_ns, RC)
-       IF ( tmpIdx < 0 ) THEN
-          IF ( rootChunk ) Write(iulog,*) "chem_emissions hemco: Field not found ", TRIM(fldname_ns)
-       ELSE
-          ! This is already in chunk, retrieve it
-          pbuf_chnk => pbuf_get_chunk(hco_pbuf2d, LCHNK)
-          CALL pbuf_get_field(pbuf_chnk, tmpIdx, pbuf_ik)
-
-          IF ( .NOT. ASSOCIATED(pbuf_ik) ) THEN ! Sanity check
-             CALL ENDRUN("chem_emissions: FATAL - tmpIdx > 0 but pbuf_ik not associated")
-          ENDIF
-
-          ! For each column retrieve data from pbuf_ik(I,K)
-          sflx(1:ncol,N) = pbuf_ik(1:ncol,pver) ! Only surface emissions for now,
-
-          ! Reset pointers
-          pbuf_ik   => NULL()
-          pbuf_chnk => NULL()
-
-          M = map2GCinv(N)
-
-          IF ( M <= 0 ) CYCLE
-
-          cam_in%cflx(1:ncol,M) = sflx(1:ncol,N)
-          If ( MAXVAL(sflx(1:ncol,N)) > 0.0e+0_fp ) &
-             Write(iulog,*) "chem_emissions: debug added emiss for ", &
-             TRIM(cnst_name(M)), MAXVAL(sflx(1:ncol,N)), " from ", TRIM(fldname_ns), &
-             ". Total emission flux is: ", MAXVAL(cam_in%cflx(1:ncol,M))
-       ENDIF
+    DO M = iFirstCnst, pcnst
+       !N = map2chm(M)
+       !IF ( N > 0 ) cam_in%cflx(1:nY,N) = 0.0e+0_r8
+       cam_in%cflx(1:nY,M) = 0.0e+0_r8
     ENDDO
 
   end subroutine chem_emissions
