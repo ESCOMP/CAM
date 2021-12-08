@@ -1,0 +1,2 @@
+./xmlchange CAM_CONFIG_OPTS=" -phys cam6 -age_of_air_trcs -chem waccm_ma_sulfur -carma sulfate"
+./xmlchange RUN_STARTDATE="0001-01-01"
