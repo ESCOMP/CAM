@@ -22,16 +22,19 @@ private
 save
 
 public :: &
-   modal_aero_wateruptake_init, &
-   modal_aero_wateruptake_dr,   &
-   modal_aero_wateruptake_sub,  &
-   modal_aero_kohler
+   modal_aero_wateruptake_init,  &
+   modal_aero_wateruptake_dr,    &
+   modal_aero_wateruptake_sub,   &
+   modal_aero_kohler,            &
+   modal_aero_wateruptake_rmmin, &
+   modal_aero_wateruptake_rmmax
 
 public :: modal_aero_wateruptake_reg
 
+real(r8), parameter :: modal_aero_wateruptake_rmmin = 0.01e-6_r8
+real(r8), parameter :: modal_aero_wateruptake_rmmax = 25.e-6_r8
 real(r8), parameter :: third = 1._r8/3._r8
 real(r8), parameter :: pi43  = pi*4.0_r8/3.0_r8
-
 
 ! Physics buffer indices
 integer :: cld_idx        = 0
@@ -133,7 +136,8 @@ subroutine modal_aero_wateruptake_init(pbuf2d)
 
    if (is_first_step()) then
       ! initialize fields in physics buffer
-      call pbuf_set_field(pbuf2d, dgnumwet_idx, 0.0_r8)
+      call pbuf_set_field(pbuf2d, dgnumwet_idx, modal_aero_wateruptake_rmmin)
+      call pbuf_set_field(pbuf2d, qaerwat_idx, 0._r8)
       if (modal_strat_sulfate) then
       ! initialize fields in physics buffer to NaN (not a number) 
       ! so model will crash if used before initialization
