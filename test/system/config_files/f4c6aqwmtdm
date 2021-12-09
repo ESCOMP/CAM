@@ -1,8 +1,0 @@
--spmd -nosmp
--chem waccm_tsmlt_mam4
--dyn fv
--hgrid 4x5
--phys cam6
--debug
--aquaplanet
--s

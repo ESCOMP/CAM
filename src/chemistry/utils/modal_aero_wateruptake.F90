@@ -393,7 +393,7 @@ subroutine modal_aero_wateruptake_dr(state, pbuf, list_idx_in, dgnumdry_m, dgnum
    call pbuf_get_field(pbuf, cld_idx, cldn, start=(/1,1,itim_old/), kount=(/pcols,pver,1/) )
 
    do k = top_lev, pver
-      call qsat_water(t(:ncol,k), pmid(:ncol,k), es(:ncol), qs(:ncol))
+      call qsat_water(t(1:ncol,k), pmid(1:ncol,k), es(1:ncol), qs(1:ncol), ncol)
       do i = 1, ncol
          if (qs(i) > h2ommr(i,k)) then
             rh(i,k) = h2ommr(i,k)/qs(i)
@@ -447,8 +447,8 @@ subroutine modal_aero_wateruptake_dr(state, pbuf, list_idx_in, dgnumdry_m, dgnum
          call outfld( 'dgnd_a'//trnum(2:3), dgncur_a(:,:,m),    pcols, lchnk)
          call outfld( 'dgnw_a'//trnum(2:3), dgncur_awet(:,:,m), pcols, lchnk)
 
-         ! calculate PM2.5 diagnostics
-         do k=1,pver
+         ! calculate PM2.5 diagnostics -- dgncur_a is zero above top_lev
+         do k = top_lev, pver
             do i=1,ncol
                pm25(i,k) = pm25(i,k)+maer(i,k,m)*(1._r8-(0.5_r8 - 0.5_r8*erf(log(2.5e-6_r8/dgncur_a(i,k,m))/ &
                                                  (2._r8**0.5_r8*alnsg(m)))))*rhoair(i,k)

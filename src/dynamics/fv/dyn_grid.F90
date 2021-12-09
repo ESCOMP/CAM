@@ -130,7 +130,7 @@ subroutine dyn_grid_init()
    ! Initialize FV specific grid object variables
    dt = get_step_size()
    call grid_vars_init(pi, rearth, omega, dt, state%fft_flt, &
-                       state%am_correction, grid)
+                       state%am_geom_crrct, grid)
 
    ! initialize commap variables
 
@@ -1113,8 +1113,13 @@ subroutine define_cam_grids()
     ind = ind + 1
     grid_map(1, ind) = 1
     grid_map(2, ind) = i
-    grid_map(3, ind) = 1
-    grid_map(4, ind) = i
+    if (beglonxy == 1) then
+      grid_map(3, ind) = 1
+      grid_map(4, ind) = i
+    else
+      grid_map(3, ind) = 0
+      grid_map(4, ind) = 0
+    end if
   end do
   ! We need a special, size-one "longigude" coordinate
   ! NB: This is never a distributed coordinate so calc even on inactive PEs

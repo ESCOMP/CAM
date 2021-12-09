@@ -1,5 +1,4 @@
 #define OVERLAP 1
-
 module prim_advection_mod
 !
 ! two formulations.  both are conservative
@@ -34,7 +33,7 @@ module prim_advection_mod
                                  neighbor_minmax_start, neighbor_minmax_finish
   use perf_mod,               only: t_startf, t_stopf, t_barrierf
   use cam_abortutils,         only: endrun
-  use thread_mod,             only: horz_num_threads, tracer_num_threads
+  use thread_mod,             only: horz_num_threads, vert_num_threads, tracer_num_threads
 
   implicit none
 
@@ -64,7 +63,7 @@ contains
 
 
   subroutine Prim_Advec_Init1(par, elem)
-    use dimensions_mod, only : nlev, qsize, nelemd
+    use dimensions_mod, only : nlev, qsize, nelemd,ntrac
     use parallel_mod,   only : parallel_t, boundaryCommMethod
     type(parallel_t)    :: par
     type (element_t)    :: elem(:)
@@ -75,24 +74,34 @@ contains
     ! threads. But in this case we want shared pointers.
     real(kind=r8), pointer :: buf_ptr(:) => null()
     real(kind=r8), pointer :: receive_ptr(:) => null()
+    integer       :: advec_remap_num_threads 
 
 
+    !
+    ! Set the number of threads used in the subroutine Prim_Advec_tracers_remap()
+    !
+    if (ntrac>0) then
+       advec_remap_num_threads = 1
+    else
+       advec_remap_num_threads = tracer_num_threads
+    endif
     ! this might be called with qsize=0
     ! allocate largest one first
     ! Currently this is never freed. If it was, only this first one should
     ! be freed, as only it knows the true size of the buffer.
     call initEdgeBuffer(par,edgeAdvp1,elem,qsize*nlev + nlev,bndry_type=boundaryCommMethod,&
-                         nthreads=horz_num_threads*tracer_num_threads)
+                         nthreads=horz_num_threads*advec_remap_num_threads)
     call initEdgeBuffer(par,edgeAdv,elem,qsize*nlev,bndry_type=boundaryCommMethod, &
-                         nthreads=horz_num_threads*tracer_num_threads)
-    call initEdgeBuffer(par,edgeAdv1,elem,nlev,bndry_type=boundaryCommMethod)
-    call initEdgeBuffer(par,edgeveloc,elem,2*nlev,bndry_type=boundaryCommMethod)
-
+                         nthreads=horz_num_threads*advec_remap_num_threads)
     ! This is a different type of buffer pointer allocation
     ! used for determine the minimum and maximum value from
     ! neighboring  elements
     call initEdgeSBuffer(par,edgeAdvQminmax,elem,qsize*nlev*2,bndry_type=boundaryCommMethod, &
-                        nthreads=horz_num_threads*tracer_num_threads)
+                        nthreads=horz_num_threads*advec_remap_num_threads)
+
+    call initEdgeBuffer(par,edgeAdv1,elem,nlev,bndry_type=boundaryCommMethod)
+    call initEdgeBuffer(par,edgeveloc,elem,2*nlev,bndry_type=boundaryCommMethod)
+
 
     ! Don't actually want these saved, if this is ever called twice.
     nullify(buf_ptr)
@@ -122,9 +131,9 @@ contains
   ! fvm driver
   !
   subroutine Prim_Advec_Tracers_fvm(elem,fvm,hvcoord,hybrid,&
-        dt,tl,nets,nete)
+        dt,tl,nets,nete,ghostbufQnhc,ghostBufQ1, ghostBufFlux,kmin,kmax)
     use fvm_consistent_se_cslam, only: run_consistent_se_cslam
-    use control_mod,             only: tracer_transport_type,TRACERTRANSPORT_CONSISTENT_SE_FVM
+    use edgetype_mod,            only: edgebuffer_t    
     implicit none
     type (element_t), intent(inout)   :: elem(:)
     type (fvm_struct), intent(inout)  :: fvm(:)
@@ -133,7 +142,8 @@ contains
     type (TimeLevel_t)                :: tl
 
     real(kind=r8) , intent(in) :: dt
-    integer,intent(in)                :: nets,nete
+    integer,intent(in)                :: nets,nete,kmin,kmax
+    type (EdgeBuffer_t), intent(inout):: ghostbufQnhc,ghostBufQ1, ghostBufFlux
 
     call t_barrierf('sync_prim_advec_tracers_fvm', hybrid%par%comm)
     call t_startf('prim_advec_tracers_fvm')
@@ -144,12 +154,8 @@ contains
     ! 2D advection step
     !
     !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-    if (tracer_transport_type == TRACERTRANSPORT_CONSISTENT_SE_FVM) then
-       call run_consistent_se_cslam(elem,fvm,hybrid,dt,tl,nets,nete,hvcoord)
-    else
-      call endrun('Bad tracer_transport_type in Prim_Advec_Tracers_fvm')
-    end if
-
+    call run_consistent_se_cslam(elem,fvm,hybrid,dt,tl,nets,nete,hvcoord,&
+           ghostbufQnhc,ghostBufQ1, ghostBufFlux,kmin,kmax)
     call t_stopf('prim_advec_tracers_fvm')
   end subroutine Prim_Advec_Tracers_fvm
 
@@ -169,6 +175,7 @@ contains
     integer              , intent(in   ) :: nete
 
 
+    !print *,'prim_Advec_Tracers_remap: qsize: ',qsize
     call Prim_Advec_Tracers_remap_rk2( elem , deriv , hvcoord , hybrid , dt , tl , nets , nete )
   end subroutine Prim_Advec_Tracers_remap
 
@@ -693,7 +700,7 @@ contains
     end if
   enddo
 
-  call bndry_exchange( hybrid , edgeAdvp1)
+  call bndry_exchange( hybrid , edgeAdvp1,location='edgeAdvp1')
 
   do ie = nets, nete
     ! only perform this operation on thread which owns the first tracer
@@ -906,7 +913,7 @@ contains
       enddo
     enddo
 
-    call bndry_exchange( hybrid , edgeAdv)
+    call bndry_exchange( hybrid , edgeAdv,location='advance_hypervis_scalar')
 
     do ie = nets, nete
       do q = qbeg, qend
@@ -926,79 +933,77 @@ contains
   call t_stopf('advance_hypervis_scalar')
   end subroutine advance_hypervis_scalar
 
-
-  subroutine vertical_remap(hybrid,elem,fvm,hvcoord,dt,np1,np1_qdp,n_fvm,nets,nete)
+  subroutine vertical_remap(hybrid,elem,fvm,hvcoord,np1,np1_qdp,nets,nete)
+    !
     ! This routine is called at the end of the vertically Lagrangian
     ! dynamics step to compute the vertical flux needed to get back
     ! to reference eta levels
     !
-    ! input:
-    !     derived%dp()  delta p on levels at beginning of timestep
-    !     state%dp3d(np1)  delta p on levels at end of timestep
-    ! output:
-    !     state%psdry(np1)          surface pressure at time np1
+    ! map tracers
+    ! map velocity components
+    ! map temperature (either by mapping thermal energy or virtual temperature over log(p)
+    ! (controlled by vert_remap_uvTq_alg > -20 or <= -20)
     !
-    
     use hybvcoord_mod, only          : hvcoord_t
-    use vertremap_mod,          only : remap1, remap1_nofilter
-    use hybrid_mod            , only : hybrid_t!, set_region_num_threads
+    use vertremap_mod,          only : remap1
+    use hybrid_mod            , only : hybrid_t, config_thread_region,get_loop_ranges, PrintHybrid
     use fvm_control_volume_mod, only : fvm_struct
-    use control_mod,            only : se_prescribed_wind_2d
     use dimensions_mod        , only : ntrac
-    use dimensions_mod        , only : qsize_condensate_loading, qsize_condensate_loading_idx_gll
-    use dimensions_mod,         only : lcp_moist,qsize_condensate_loading_cp
-    
+    use dimensions_mod,         only : lcp_moist, kord_tr,kord_tr_cslam
+    use cam_logfile,            only : iulog
+    use physconst,              only : pi,get_thermal_energy,get_dp,get_virtual_temp
+    use physconst             , only : thermodynamic_active_species_idx_dycore    
+    use thread_mod            , only : omp_set_nested
+    use control_mod,             only: vert_remap_uvTq_alg
     type (hybrid_t),  intent(in)    :: hybrid  ! distributed parallel structure (shared)
     type(fvm_struct), intent(inout) :: fvm(:)
     type (element_t), intent(inout) :: elem(:)
-    integer,          intent(in)    :: n_fvm
     !
-    real (kind=r8) :: cdp(1:nc,1:nc,nlev,ntrac)
-    real (kind=r8) :: dpc(nc,nc,nlev),dpc_star(nc,nc,nlev)
+    real (kind=r8)   :: dpc_star(nc,nc,nlev) !Lagrangian levels on CSLAM grid
     
     type (hvcoord_t) :: hvcoord
-    real (kind=r8)   :: dt
     integer          :: ie,i,j,k,np1,nets,nete,np1_qdp,q, m_cnst
-    real (kind=r8), dimension(np,np,nlev)  :: dp_moist,dp_star_moist, dp_inv,dp_dry,dp_star_dry
+    real (kind=r8), dimension(np,np,nlev)  :: dp_moist,dp_star_moist, dp_dry,dp_star_dry
     real (kind=r8), dimension(np,np,nlev)  :: internal_energy_star
     real (kind=r8), dimension(np,np,nlev,2):: ttmp
+    real(r8), parameter                    :: rad2deg = 180.0_r8/pi
+    integer :: region_num_threads,qbeg,qend,kord_uvT(1)
+    type (hybrid_t) :: hybridnew,hybridnew2 
+    real (kind=r8)  :: ptop
+
+    kord_uvT = vert_remap_uvTq_alg
     
-    
-    ! reference levels:
-    !   dp(k) = (hyai(k+1)-hyai(k))*ps0 + (hybi(k+1)-hybi(k))*ps(i,j)
-    !   hybi(1)=0          pure pressure at top of atmosphere
-    !   hyai(1)=ptop
-    !   hyai(nlev+1) = 0   pure sigma at bottom
-    !   hybi(nlev+1) = 1
-    !
-    ! sum over k=1,nlev
-    !  sum(dp(k)) = (hyai(nlev+1)-hyai(1))*ps0 + (hybi(nlev+1)-hybi(1))*ps
-    !             = -ps0 + ps
-    !  ps =  ps0+sum(dp(k))
-    !
-    ! reference levels:
-    !    dp(k) = (hyai(k+1)-hyai(k))*ps0 + (hybi(k+1)-hybi(k))*ps
-    !
+    ptop = hvcoord%hyai(1)*hvcoord%ps0
     do ie=nets,nete
-      if (lcp_moist) then
+      !
+      ! prepare for mapping of temperature
+      !
+      if (vert_remap_uvTq_alg>-20) then      
+        if (lcp_moist) then
+          !
+          ! compute internal energy on Lagrangian levels
+          ! (do it here since qdp is overwritten by remap1)
+          !
+          call get_thermal_energy(1,np,1,np,1,nlev,qsize,elem(ie)%state%qdp(:,:,:,1:qsize,np1_qdp), &
+               elem(ie)%state%t(:,:,:,np1),elem(ie)%state%dp3d(:,:,:,np1),internal_energy_star,     &
+               active_species_idx_dycore=thermodynamic_active_species_idx_dycore)
+        end if
+      else
         !
-        ! compute internal energy on Lagrangian levels
-        ! (do it here since qdp is overwritten by remap1)
+        ! map Tv over log(p) following FV and FV3
         !
-        internal_energy_star = cpair*elem(ie)%state%dp3d(:,:,:,np1)
-        do q=1,qsize_condensate_loading
-          m_cnst = qsize_condensate_loading_idx_gll(q)
-          internal_energy_star = internal_energy_star+&
-               qsize_condensate_loading_cp(q)*elem(ie)%state%qdp(:,:,:,m_cnst,np1_qdp)
-        end do
+        call get_virtual_temp(1,np,1,np,1,nlev,qsize,elem(ie)%state%qdp(:,:,:,1:qsize,np1_qdp), &
+             internal_energy_star,dp_dry=elem(ie)%state%dp3d(:,:,:,np1),                        &
+             active_species_idx_dycore=thermodynamic_active_species_idx_dycore)             
         internal_energy_star = internal_energy_star*elem(ie)%state%t(:,:,:,np1)
       end if
       !
-      !  REMAP u,v,T from levels in dp3d() to REF levels
+      ! update final psdry
       !
-      ! update final ps
-      elem(ie)%state%psdry(:,:) = hvcoord%hyai(1)*hvcoord%ps0 + &
+      elem(ie)%state%psdry(:,:) = ptop + &
            sum(elem(ie)%state%dp3d(:,:,:,np1),3)
+      !
+      ! compute dry vertical coordinate (Lagrangian and reference levels)
       !
       do k=1,nlev
         dp_star_dry(:,:,k) = elem(ie)%state%dp3d(:,:,k,np1)
@@ -1006,119 +1011,112 @@ contains
              ( hvcoord%hybi(k+1) - hvcoord%hybi(k) )*elem(ie)%state%psdry(:,:)
         elem(ie)%state%dp3d(:,:,k,np1) = dp_dry(:,:,k)
       enddo
-      if (minval(dp_star_dry)<0) call endrun('negative dry layer thickness.  timestep or remap time too large B')
       !
-      dp_star_moist(:,:,:) = dp_star_dry(:,:,:)
-      do q=1,qsize_condensate_loading
-        m_cnst = qsize_condensate_loading_idx_gll(q)
-        do k=1,nlev
-          dp_star_moist(:,:,k)= dp_star_moist(:,:,k)+elem(ie)%state%Qdp(:,:,k,m_cnst,np1_qdp)
+      call get_dp(1,np,1,np,1,nlev,qsize,elem(ie)%state%Qdp(:,:,:,1:qsize,np1_qdp),2,&
+         thermodynamic_active_species_idx_dycore,dp_star_dry,dp_star_moist(:,:,:))
+      !
+      ! Check if Lagrangian leves have crossed
+      !
+      if (minval(dp_star_moist)<1.0E-12_r8) then
+        write(iulog,*) "NEGATIVE LAYER THICKNESS DIAGNOSTICS:"
+        write(iulog,*) " "
+        do j=1,np
+          do i=1,np
+            if (minval(dp_star_moist(i,j,:))<1.0e-12_r8) then
+              write(iulog,'(A13,2f6.2)') "(lon,lat) = ",&
+                   elem(ie)%spherep(i,j)%lon*rad2deg,elem(ie)%spherep(i,j)%lat*rad2deg
+              write(iulog,*) " "
+              do k=1,nlev
+                write(iulog,'(A21,I5,A1,f16.12,3f10.2)') "k,dp_star_moist,u,v,T: ",k," ",dp_star_moist(i,j,k)/100.0_r8,&
+                     elem(ie)%state%v(i,j,1,k,np1),elem(ie)%state%v(i,j,2,k,np1),elem(ie)%state%T(i,j,k,np1)
+              end do
+            end if
+          end do
         end do
-      end do
-      if (minval(dp_star_moist)<0) call endrun('negative moist layer thickness.  timestep or remap time too large')
-      
-      call remap1(elem(ie)%state%Qdp(:,:,:,1:qsize,np1_qdp),np,1,qsize,qsize,dp_star_dry,dp_dry,hybrid=hybrid)
+        call endrun('negative moist layer thickness.  timestep or remap time too large')
+      endif
+
+      call remap1(elem(ie)%state%Qdp(:,:,:,1:qsize,np1_qdp),np,1,qsize,qsize,dp_star_dry,dp_dry,ptop,0,.true.,kord_tr)
       !
       ! compute moist reference pressure level thickness
       !
-      dp_moist(:,:,:) = dp_dry(:,:,:)
-      do q=1,qsize_condensate_loading
-        m_cnst = qsize_condensate_loading_idx_gll(q)
-        do k=1,nlev
-          dp_moist(:,:,k) = dp_moist(:,:,k)+elem(ie)%state%Qdp(:,:,k,m_cnst,np1_qdp)
-        end do
-      end do
-      if (minval(dp_star_moist)<0) call endrun('negative layer thickness.  timestep or remap time too large')
-      
-      dp_inv=1.0_R8/dp_moist !for efficiency
+      call get_dp(1,np,1,np,1,nlev,qsize,elem(ie)%state%Qdp(:,:,:,1:qsize,np1_qdp),2,&
+           thermodynamic_active_species_idx_dycore,dp_dry,dp_moist(:,:,:))
       
       !
-      ! remap internal energy and back out temperature
-      !      
-      if (lcp_moist) then
-        call remap1(internal_energy_star,np,1,1,1,dp_star_dry,dp_dry)
+      ! Remapping of temperature
+      !
+      if (vert_remap_uvTq_alg>-20) then      
         !
-        ! compute sum c^(l)_p*m^(l)*dp on arrival (Eulerian) grid
-        !       
-        ttmp(:,:,:,2) = cpair*dp_dry
-        do q=1,qsize_condensate_loading
-          m_cnst = qsize_condensate_loading_idx_gll(q)
-          ttmp(:,:,:,2) = ttmp(:,:,:,2)+qsize_condensate_loading_cp(q)*elem(ie)%state%qdp(:,:,:,m_cnst,np1_qdp)
-        end do
-        elem(ie)%state%t(:,:,:,np1)=internal_energy_star/ttmp(:,:,:,2)
+        ! remap internal energy and back out temperature
+        !        
+        if (lcp_moist) then
+          call remap1(internal_energy_star,np,1,1,1,dp_star_dry,dp_dry,ptop,1,.true.,kord_uvT)
+          !
+          ! compute sum c^(l)_p*m^(l)*dp on arrival (Eulerian) grid
+          !       
+          ttmp(:,:,:,1) = 1.0_r8
+          call get_thermal_energy(1,np,1,np,1,nlev,qsize,elem(ie)%state%qdp(:,:,:,1:qsize,np1_qdp),   &
+               ttmp(:,:,:,1),dp_dry,ttmp(:,:,:,2), &
+               active_species_idx_dycore=thermodynamic_active_species_idx_dycore)          
+          elem(ie)%state%t(:,:,:,np1)=internal_energy_star/ttmp(:,:,:,2)
+        else
+          internal_energy_star(:,:,:)=elem(ie)%state%t(:,:,:,np1)*dp_star_moist
+          call remap1(internal_energy_star,np,1,1,1,dp_star_moist,dp_moist,ptop,1,.true.,kord_uvT)
+          elem(ie)%state%t(:,:,:,np1)=internal_energy_star/dp_moist
+        end if
       else
-        internal_energy_star(:,:,:)=elem(ie)%state%t(:,:,:,np1)*dp_star_moist
-        call remap1(internal_energy_star,np,1,1,1,dp_star_moist,dp_moist)
-        elem(ie)%state%t(:,:,:,np1)=internal_energy_star*dp_inv
+        !
+        ! map Tv over log(p); following FV and FV3
+        !
+        call remap1(internal_energy_star,np,1,1,1,dp_star_moist,dp_moist,ptop,1,.false.,kord_uvT)
+        call get_virtual_temp(1,np,1,np,1,nlev,qsize,elem(ie)%state%qdp(:,:,:,1:qsize,np1_qdp), &
+             ttmp(:,:,:,1),dp_dry=dp_dry,                                                       &
+             active_species_idx_dycore=thermodynamic_active_species_idx_dycore)
+        !
+        ! convert new Tv to T
+        !
+        elem(ie)%state%t(:,:,:,np1)=internal_energy_star/ttmp(:,:,:,1)
       end if
       !
       ! remap velocity components
-      !      
-      ttmp(:,:,:,1)=elem(ie)%state%v(:,:,1,:,np1)*dp_star_moist
-      ttmp(:,:,:,2)=elem(ie)%state%v(:,:,2,:,np1)*dp_star_moist
-      ! remap with PPM filter: call remap1(ttmp,np,1,2,2,dp_star_moist,dp_moist)
-      call remap1_nofilter(ttmp,np,2,dp_star_moist,dp_moist)
-      
-      if ( .not. se_prescribed_wind_2d ) &
-           elem(ie)%state%v(:,:,1,:,np1)=ttmp(:,:,:,1)*dp_inv
-      if ( .not. se_prescribed_wind_2d ) &
-           elem(ie)%state%v(:,:,2,:,np1)=ttmp(:,:,:,2)*dp_inv
-#ifdef REMAP_TE
-        ! back out T from TE
-      elem(ie)%state%t(:,:,:,np1) = &
-           ( elem(ie)%state%t(:,:,:,np1) - ( (elem(ie)%state%v(:,:,1,:,np1)**2 + &
-           elem(ie)%state%v(:,:,2,:,np1)**2)/2))/cpair
-      
-#endif
-      
-      ! remap the gll tracers from lagrangian levels (dp_star)  to REF levels dp
-      if (qsize>0) then
-        
-        if ( se_prescribed_wind_2d ) then
-          ! Peter Lauritzen et al, "The terminator 'toy'-chemistry test: A simple tool to assess errors in transport schemes",
-          !   submitted to Geosci Model Dev, Oct 2014
-          ! -- code to let dp evolve without vertical transport of tracers (consistent mass tracer coupling)
-          do q=1,qsize
-            do k=1,nlev
-              do j=1,np
-                do i=1,np
-                  !elem(ie)%state%Qdp(i,j,k,q,np1_qdp) = elem(ie)%state%Qdp(i,j,k,q,np1_qdp) * dp(i,j,k)/dp_star(i,j,k)
-                  ttmp(i,j,k,1)= elem(ie)%state%Qdp(i,j,k,q,np1_qdp) / dp_star_moist(i,j,k) ! This is the actual q
-                  elem(ie)%state%Qdp(i,j,k,q,np1_qdp) = ttmp(i,j,k,1) * dp_moist(i,j,k)
-                enddo
-              enddo
-            enddo
-          enddo
-        endif
-      endif
-      
-      
-      if (ntrac>0) then
-        do i=1,nc
-          do j=1,nc
-            !
-            ! compute source (cdp) and target (dpc) pressure grids for vertical remapping
-            !
-            do k=1,nlev
-              dpc(i,j,k) = (hvcoord%hyai(k+1) - hvcoord%hyai(k))*hvcoord%ps0 + &
-                   (hvcoord%hybi(k+1) - hvcoord%hybi(k))*fvm(ie)%psc(i,j)
-              cdp(i,j,k,1:ntrac)=fvm(ie)%c(i,j,k,1:ntrac,n_fvm)*fvm(ie)%dp_fvm(i,j,k,n_fvm)
-            end do
-          end do
-        end do
-        dpc_star=fvm(ie)%dp_fvm(1:nc,1:nc,:,n_fvm)
-        call remap1(cdp,nc,1,ntrac,ntrac,dpc_star,dpc)
-        do k=1,nlev
-          do j=1,nc
-            do i=1,nc
-              fvm(ie)%dp_fvm(i,j,k,n_fvm)=dpc(i,j,k)
-              fvm(ie)%c(i,j,k,1:ntrac,n_fvm)=cdp(i,j,k,1:ntrac)/dpc(i,j,k)
-            end do
-          end do
-        end do
-      end if
-      !         call remap_velocityC(np1,dt,elem,fvm,hvcoord,ie)
+      !
+      call remap1(elem(ie)%state%v(:,:,1,:,np1),np,1,1,1,dp_star_moist,dp_moist,ptop,-1,.false.,kord_uvT)
+      call remap1(elem(ie)%state%v(:,:,2,:,np1),np,1,1,1,dp_star_moist,dp_moist,ptop,-1,.false.,kord_uvT)
     enddo
+    
+    if (ntrac>0) then
+      !
+      ! vertical remapping of CSLAM tracers
+      !
+      do ie=nets,nete
+        dpc_star=fvm(ie)%dp_fvm(1:nc,1:nc,:)        
+        do k=1,nlev
+         do j=1,nc
+           do i=1,nc
+             !
+             ! new pressure levels on CSLAM grid
+             !
+             fvm(ie)%dp_fvm(i,j,k) = (hvcoord%hyai(k+1) - hvcoord%hyai(k))*hvcoord%ps0 + &
+                  (hvcoord%hybi(k+1) - hvcoord%hybi(k))*fvm(ie)%psc(i,j)
+            end do
+          end do
+        end do
+        if(ntrac>tracer_num_threads) then 
+          call omp_set_nested(.true.)
+          !$OMP PARALLEL NUM_THREADS(tracer_num_threads), DEFAULT(SHARED), PRIVATE(hybridnew2,qbeg,qend)
+          hybridnew2 = config_thread_region(hybrid,'ctracer')
+          call get_loop_ranges(hybridnew2, qbeg=qbeg, qend=qend)
+          call remap1(fvm(ie)%c(1:nc,1:nc,:,1:ntrac),nc,qbeg,qend,ntrac,dpc_star, &
+                      fvm(ie)%dp_fvm(1:nc,1:nc,:),ptop,0,.false.,kord_tr_cslam)
+          !$OMP END PARALLEL 
+          call omp_set_nested(.false.)
+        else
+          call remap1(fvm(ie)%c(1:nc,1:nc,:,1:ntrac),nc,1,ntrac,ntrac,dpc_star, &
+                      fvm(ie)%dp_fvm(1:nc,1:nc,:),ptop,0,.false.,kord_tr_cslam)
+        endif
+      enddo
+    end if
   end subroutine vertical_remap
 
 end module prim_advection_mod

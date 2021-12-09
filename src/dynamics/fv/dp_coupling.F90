@@ -200,7 +200,7 @@ CONTAINS
 !--------------------------------------------
 !  Variables needed for WACCM-X
 !--------------------------------------------
-    integer  :: ixo, ixo2, ixh, ixh2, ixn  ! indices into state structure for O, O2, H, H2, and N
+    integer  :: ixo, ixo2, ixh, ixh2         ! indices into state structure for O, O2, H, and H2
     real(r8) :: mmrSum_O_O2_H                ! Sum of mass mixing ratios for O, O2, and H
     real(r8), parameter :: mmrMin=1.e-20_r8  ! lower limit of o2, o, and h mixing ratios
     real(r8), parameter :: N2mmrMin=1.e-6_r8 ! lower limit of o2, o, and h mixing ratios
@@ -270,7 +270,7 @@ CONTAINS
     allocate (v3(ifirstxy:ilastxy, km, jfirstxy:jlastxy))
 
     if (iam .lt. grid%npes_xy) then
-       call d2a3dikj(grid, dyn_state%am_correction, u3sxy,  v3sxy, u3, v3)
+       call d2a3dikj(grid, dyn_state%am_geom_crrct, u3sxy,  v3sxy, u3, v3)
     end if  ! (iam .lt. grid%npes_xy)
 
     call t_stopf  ('d2a3dikj')
@@ -303,9 +303,9 @@ CONTAINS
 
        if (iam .lt. grid%npes_xy) then
              ! (note dummy use of dva3 hence call order matters)
-          call d2a3dikj(grid, dyn_state%am_correction,duf3sxy,   dummy, duf3 ,dva3)
-          call d2a3dikj(grid, dyn_state%am_correction,dua3sxy, dva3sxy, dua3, dva3)
-          call d2a3dikj(grid, dyn_state%am_correction, du3sxy,  dv3sxy, du3 , dv3 )
+          call d2a3dikj(grid, dyn_state%am_geom_crrct,duf3sxy,   dummy, duf3 ,dva3)
+          call d2a3dikj(grid, dyn_state%am_geom_crrct,dua3sxy, dva3sxy, dua3, dva3)
+          call d2a3dikj(grid, dyn_state%am_geom_crrct, du3sxy,  dv3sxy, du3 , dv3 )
        end if  ! (iam .lt. grid%npes_xy)
 
        call t_startf('DP_CPLN_fv_am')
@@ -537,16 +537,6 @@ chnk_loop2 : &
 
     endif has_local_map
 
-!------------------------------------------------------
-!  Get indices to access O, O2, H, H2, and N species
-!------------------------------------------------------
-    if ( waccmx_is('ionosphere') .or. waccmx_is('neutral') ) then
-      call cnst_get_ind('O', ixo)
-      call cnst_get_ind('O2', ixo2)
-      call cnst_get_ind('H', ixh)
-      call cnst_get_ind('H2', ixh2)
-      call cnst_get_ind('N', ixn)
-    endif
 !
 ! Evaluate derived quantities
 !
@@ -599,6 +589,12 @@ chnk_loop2 : &
 ! Ensure O2 + O + H (N2) mmr greater than one.  Check for unusually large H2 values and set to lower value
 !-----------------------------------------------------------------------------------------------------------------
        if ( waccmx_is('ionosphere') .or. waccmx_is('neutral') ) then
+
+          call cnst_get_ind('O', ixo)
+          call cnst_get_ind('O2', ixo2)
+          call cnst_get_ind('H', ixh)
+          call cnst_get_ind('H2', ixh2)
+
           do i=1,ncol
              do k=1,pver
 
@@ -949,7 +945,7 @@ chnk_loop2 : &
        call t_startf('uv3s_update')
        if (iam .lt. grid%npes_xy) then
           call uv3s_update(grid, dudtxy, u3sxy, dvdtxy, v3sxy, dt5, &
-                           dyn_state%am_correction)
+                           dyn_state%am_geom_crrct)
        end if  ! (iam .lt. grid%npes_xy)
        call t_stopf('uv3s_update')
 

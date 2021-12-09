@@ -23,8 +23,8 @@ CONTAINS
 !==============================================================================
 
   subroutine cnst_init_default_col(m_cnst, latvals, lonvals, q, mask,         &
-       verbose, notfound)
-    use constituents,  only: cnst_name
+       verbose, notfound, z)
+    use constituents,  only: cnst_name, cnst_read_iv
     use aoa_tracers,   only: aoa_tracers_implements_cnst,   aoa_tracers_init_cnst
     use carma_intr,    only: carma_implements_cnst,         carma_init_cnst
     use chemistry,     only: chem_implements_cnst,          chem_init_cnst
@@ -50,7 +50,7 @@ CONTAINS
     logical, optional, intent(in)  :: mask(:)    ! Only initialize where .true.
     logical, optional, intent(in)  :: verbose    ! For internal use
     logical, optional, intent(in)  :: notfound   ! Turn off initial dataset warn
-
+    real(r8),optional, intent(in)  :: z(:,:)     ! height of full pressure level
     ! Local variables
     logical, allocatable           :: mask_use(:)
     character(len=max_chars)       :: name
@@ -75,6 +75,9 @@ CONTAINS
       verbose_use = .true.
     end if
 
+    ! default is to assume the constituent was not found on the initial file
+    ! before calling this routine.  But it is also possible that the constituent
+    ! was added with the "readiv=.false." option
     if (present(notfound)) then
       notfound_use = notfound
     else
@@ -83,8 +86,12 @@ CONTAINS
 
     q = 0.0_r8 ! Make sure we start fresh (insurance)
 
-    if(masterproc .and. verbose_use .and. notfound_use) then
-      write(iulog, *) 'Field ',trim(trim(name)),' not found on initial dataset'
+    if (masterproc .and. verbose_use .and. notfound_use) then
+       if (cnst_read_iv(m_cnst)) then
+          write(iulog, *) 'Field ',trim(trim(name)),' not found on initial dataset'
+       else
+          write(iulog, *) 'Field ',trim(trim(name)),' not read from initial dataset'
+       end if
     end if
 
     if (aoa_tracers_implements_cnst(trim(name))) then
@@ -123,7 +130,7 @@ CONTAINS
         write(iulog,*) '          ', trim(name), ' initialized by "rk_stratiform_init_cnst"'
       end if
     else if (tracers_implements_cnst(trim(name))) then
-      call tracers_init_cnst(trim(name), latvals, lonvals, mask_use, q)
+      call tracers_init_cnst(trim(name), latvals, lonvals, mask_use, q, z=z)
       if(masterproc .and. verbose_use) then
         write(iulog,*) '          ', trim(name), ' initialized by "tracers_init_cnst"'
       end if

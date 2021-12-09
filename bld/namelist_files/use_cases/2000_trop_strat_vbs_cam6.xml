@@ -154,7 +154,7 @@
          'CH3CL', 'CLO', 'CO2', 'HCL', 'HO2', 'HOCL', 'H2O', 'PHIS', 'Z3',
          'BENZENE', 'C2H2', 'C2H4', 'C2H6', 'C3H8', 'CCL4', 'CFC11', 'CFC113', 'CFC12',
          'CH2O', 'CH3BR', 'CH3CCL3', 'CH3CHO', 'CH3CL', 'CH3CN', 'CH3COCH3', 'CH3OH', 'CH4',
-         'CO', 'H2O2', 'HCFC22', 'HCN', 'HNO3', 'ISOP', 'MTERP', 'N2O', 'O3',
+         'CO', 'H2O2', 'HCFC22', 'HCN', 'HNO3', 'ISOP', 'MTERP', 'N2O', 'O3', 'O3S', 
          'PAN', 'SO2', 'TOLUENE', 'OH', 'ALKNIT', 'ALKOOH', 'BCARY', 'BENZENE', 'BENZOOH',
          'BEPOMUC', 'BIGALD', 'BIGALD1', 'BIGALD2', 'BIGALD3', 'BIGALD4', 'BIGALK', 'BIGENE', 'BR',
          'BRCL', 'BRO', 'BRONO2', 'BRY', 'BZALD', 'BZOOH', 'C2H2', 'C2H4', 'C2H5OH',
@@ -214,9 +214,8 @@
          'DF_SO2', 'DF_SOAG0', 'DF_SOAG1', 'DF_SOAG2', 'DF_SOAG3', 'DF_SOAG4', 'DF_SVOC', 'SO2_CLXF', 'SVOC_CLXF',
          'SFISOP', 'SFMTERP', 'SFCH3OH', 'SFCH3COCH3', 'SFCO', 'SFIVOC', 'SFSVOC', 'DO3CHM', 'DCOCHM',
          'O3_CHMP', 'O3_CHML', 'CH4_CHML', 'CO_CHMP', 'CO_CHML', 'CH3CCL3_CHML', 'SO2_CHML', 'SO2_CHMP', 'SO2_CLXF',
-         'SOAG0_CHMP', 'SOAG1_CHMP', 'SOAG2_CHMP', 'SOAG3_CHMP', 'SOAG4_CHMP', 'O3_Prod', 'O3_Loss', 'OddOx_Ox_Loss', 'OddOx_HOx_Loss',
-         'OddOx_NOx_Loss', 'OddOx_CLOxBROx_Loss', 'OddOx_Loss_Tot', 'OddOx_Prod_Tot', 'O3_Prod', 'O3_Loss', 'r_HO2_O3', 'r_OH_O3', 'r_OH_O',
-         'r_O1D_H2O', 'r_het1', 'r_het2', 'r_het3', 'r_het4', 'r_het5', 'r_het6', 
+         'SOAG0_CHMP', 'SOAG1_CHMP', 'SOAG2_CHMP', 'SOAG3_CHMP', 'SOAG4_CHMP',  
+         'r_HO2_O3', 'r_OH_O3', 'r_OH_O', 'r_O1D_H2O', 'r_het1', 'r_het2', 'r_het3', 'r_het4', 'r_het5', 'r_het6', 
          'jo3_a', 'jno2', 'jpan', 'jh2o2', 'jcl2o2', 'bc_a1', 'bc_a4', 'dst_a1', 'dst_a2',
          'dst_a3', 'ncl_a1', 'ncl_a1', 'ncl_a2', 'ncl_a3', 'pom_a1', 'pom_a4', 'so4_a1', 'so4_a2',
          'so4_a3', 'soa1_a1', 'soa2_a1', 'soa3_a1', 'soa4_a1', 'soa5_a1', 'soa1_a2', 'soa2_a2', 'soa3_a2',
@@ -244,31 +243,10 @@
          'soa3_a1_CHMP', 'soa4_a1_CHMP', 'soa5_a1_CHMP', 'soa1_a2_CHMP', 'soa2_a2_CHMP', 'soa3_a2_CHMP', 'soa4_a2_CHMP', 'soa5_a2_CHMP', 'r_jsoa1_a1',
          'r_jsoa2_a1', 'r_jsoa3_a1', 'r_jsoa4_a1', 'r_jsoa5_a1', 'r_jsoa1_a2', 'r_jsoa2_a2', 'r_jsoa3_a2', 'r_jsoa4_a2', 'r_jsoa5_a2',
          'r_GLYOXAL_aer', 'H2SO4_sfnnuc1', 'num_a2_sfnnuc1', 'TMOCS', 'TMSO2', 'TMDMS', 'TMso4_a1', 'TMso4_a2', 'TMso4_a3',
-         'BURDENDUSTdn', 'BURDENPOMdn', 'BURDENSO4dn', 'BURDENSOAdn', 'BURDENSEASALTdn','BURDENBCdn', 'PM25'
+         'BURDENDUSTdn', 'BURDENPOMdn', 'BURDENSO4dn', 'BURDENSOAdn', 'BURDENSEASALTdn','BURDENBCdn', 'PM25',
+         'O3_Prod','O3_Loss','O3S_Loss','RO2_NO_sum','O3_alkenes','RO2_NO3_sum','RO2_HO2_sum','RO2_RO2_sum','RCO2_NO2_sum',
+         'OddOx_Ox_Loss','OddOx_HOx_Loss','OddOx_NOx_Loss','OddOx_CLOxBROx_Loss','OddOx_Loss_Tot','OddOx_Prod_Tot',
+         'Ox_Prod','Ox_Loss'
 </fincl1>
-
-<rxn_rate_sums>
-  'O3_Prod = NO_HO2 + CH3O2_NO + PO2_NO + CH3CO3_NO + C2H5O2_NO + .92*ISOPAO2_NO + .92*ISOPBO2_NO + MACRO2_NOa + MCO3_NO + C3H7O2_NO + RO2_NO + XO2_NO + .9*TOLO2_NO +',
-          '.9*PHENO2_NO + .9*C6H5O2_NO + .9*BENZO2_NO + .9*MALO2_NO + .9*BZOO_NO + .9*ACBZO2_NO + .9*DICARBO2_NO + .9*MDIALO2_NO  + .9*XYLOLO2_NO + .9*XYLENO2_NO + TERPO2_NO +',
-          'TERP2O2_NO + NTERPO2_NO + ALKO2_NO + ENEO2_NO +  EO2_NO + MEKO2_NO + HOCH2OO_NO + jonitr',
-  'O3_Loss = O1D_H2O + OH_O3 + HO2_O3 + H_O3 + C3H6_O3 + .9*ISOP_O3 + C2H4_O3 + .8*MVK_O3 + 0.8*MACR_O3 + MTERP_O3 + BCARY_O3',
-  'RO2_NO_sum  = NO_HO2 + CH3O2_NO + HOCH2OO_NO + EO2_NO + C2H5O2_NO + CH3CO3_NO + C3H7O2_NO + PO2_NO + RO2_NO + ENEO2_NO + ENEO2_NOb + MEKO2_NO + MACRO2_NOa + MACRO2_NOb +',
-              'MCO3_NO + ISOPAO2_NO + ISOPBO2_NO + ALKO2_NO + ALKO2_NOb + XO2_NO + TOLO2_NO + PHENO2_NO + C6H5O2_NO + BENZO2_NO + MALO2_NO + BZOO_NO + ACBZO2_NO + DICARBO2_NO +',
-              'MDIALO2_NO + XYLOLO2_NO + XYLENO2_NO + TERPO2_NO + TERP2O2_NO + NTERPO2_NO',
-  'RO2_NO3_sum = NO3_HO2 + MACRO2_NO3 + MCO3_NO3 + ISOPAO2_NO3 + ISOPBO2_NO3 + XO2_NO3',
-  'RO2_HO2_sum = CH3O2_HO2 + HOCH2OO_HO2 + EO2_HO2 + C2H5O2_HO2 + CH3CO3_HO2 + C3H7O2_HO2 + PO2_HO2 + RO2_HO2 + MEKO2_HO2 + MACRO2_HO2 + ISOPAO2_HO2 + ISOPBO2_HO2 + ALKO2_HO2 +',
-                'XO2_HO2 + TOLO2_HO2 + PHENO2_HO2 + C6H5O2_HO2 + BENZO2_HO2 + MALO2_HO2 + BZOO_HO2 + ACBZO2_HO2 + DICARBO2_HO2 + MDIALO2_HO2 + XYLOLO2_HO2 + XYLENO2_HO2 + TERPO2_HO2 +',
-                'TERP2O2_HO2 + NTERPO2_HO2',
-  'RO2_RO2_sum = CH3O2_CH3O2a + CH3O2_CH3O2b + C2H5O2_CH3O2 + C2H5O2_C2H5O2 + CH3CO3_CH3O2 + CH3CO3_CH3CO3 + C3H7O2_CH3O2 + RO2_CH3O2 + MACRO2_CH3O2 + MACRO2_CH3CO3 + MCO3_CH3O2 +',
-               ' MCO3_CH3CO3 + MCO3_MCO3 + ISOPAO2_CH3O2 + ISOPBO2_CH3O2 + ISOPAO2_CH3CO3 + ISOPBO2_CH3CO3 + XO2_CH3O2 + XO2_CH3CO3',
-  'RCO2_NO2_sum = CH3CO3_NO2 + MCO3_NO2',
-  'OddOx_Ox_Loss  = 2.0*O_O3 + O1D_H2O',
-  'OddOx_HOx_Loss = HO2_O + HO2_O3 + OH_O + OH_O3 + H_O3',
-  'OddOx_NOx_Loss = 2.0*NO2_O + 2.0*jno3_b',
-  'OddOx_CLOxBROx_Loss = 2.0*CLO_O + 2.0*jcl2o2 + 2.0*CLO_CLOa + 2.0*CLO_CLOb + 2.0*BRO_CLOb + 2.0*BRO_CLOc + 2.0*BRO_BRO + 2.0*BRO_O + CLO_HO2 + BRO_HO2',
-  'OddOx_Loss_Tot = 2.0*O_O3 + O1D_H2O + HO2_O + HO2_O3 + OH_O + OH_O3 + H_O3 + 2.0*NO2_O + 2.0*jno3_b + 2.0*CLO_O + 2.0*jcl2o2 + 2.0*CLO_CLOa + 2.0*CLO_CLOb + 2.0*BRO_CLOb +',
-                  ' 2.0*BRO_CLOc + 2.0*BRO_BRO + 2.0*BRO_O + CLO_HO2 + BRO_HO2',
-  'OddOx_Prod_Tot = 2.0*jo2_a + 2.0*jo2_b'
-</rxn_rate_sums>
 
 </namelist_defaults>

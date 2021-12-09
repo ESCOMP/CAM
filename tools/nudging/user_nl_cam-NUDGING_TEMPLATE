@@ -1,0 +1,103 @@
+! Users should add all user specific namelist changes below in the form of 
+! namelist_var = new_namelist_value 
+!======================================================
+
+
+!======================================================
+!    &nudging_nl
+!      Nudge_Model         - LOGICAL toggle to activate nudging.
+!      Nudge_Path          - CHAR    path to the analyses files.
+!      Nudge_File_Template - CHAR    Analyses filename with year, month, day, and second
+!                                    values replaced by %y, %m, %d, and %s respectively.
+!      Nudge_Force_Opt     - INT     Select the for of the nudging forcing, 
+!                                    where (t'==Analysis times ; t==Model Times)
+!                                      0 -> NEXT-OBS: Target=Anal(t'_next)
+!                                      1 -> LINEAR:   Target=(F*Anal(t'_curr) +(1-F)*Anal(t'_next))
+!                                                        F =(t'_next - t_curr )/Tdlt_Anal
+!      Nudge_TimeScale_Opt - INT     Select the timescale of nudging force, 
+!                                    where (t'==Analysis times ; t==Model Times)
+!                                      0 -->  TimeScale = 1/Tdlt_Anal
+!                                      1 -->  TimeScale = 1/(t'_next - t_curr )
+!      Nudge_Times_Per_Day - INT     Number of analyses files available per day.
+!      Model_Times_Per_Day - INT     Number of times to update the model state (used for nudging) 
+!                                    each day. The value is restricted to be longer than the 
+!                                    current model timestep and shorter than the analyses 
+!                                    timestep. As this number is increased, the nudging
+!                                    force has the form of newtonian cooling.
+!      Nudge_Uprof         - INT     index of profile structure to use for U.  [0=OFF,1=ON,2=WINDOW] 
+!      Nudge_Vprof         - INT     index of profile structure to use for V.  [0=OFF,1=ON,2=WINDOW]
+!      Nudge_Tprof         - INT     index of profile structure to use for T.  [0=OFF,1=ON,2=WINDOW]
+!      Nudge_Qprof         - INT     index of profile structure to use for Q.  [0=OFF,1=ON,2=WINDOW]
+!      Nudge_PSprof        - INT     index of profile structure to use for PS. [0=OFF,N/A]
+!      Nudge_Ucoef         - REAL    fractional nudging coeffcient for U. 
+!                                       Utau=(Nudge_Ucoef/analyses_timestep)
+!      Nudge_Vcoef         - REAL    fractional nudging coeffcient for V. 
+!                                       Vtau=(Nudge_Vcoef/analyses_timestep)
+!      Nudge_Tcoef         - REAL    fractional nudging coeffcient for T. 
+!                                       Ttau=(Nudge_Tcoef/analyses_timestep)
+!      Nudge_Qcoef         - REAL    fractional nudging coeffcient for Q. 
+!                                       Qtau=(Nudge_Qcoef/analyses_timestep)
+!      Nudge_PScoef        - REAL    fractional nudging coeffcient for PS. 
+!                                       PStau=(Nudge_PScoef/analyses_timestep)
+!      Nudge_Beg_Year      - INT     nudging begining year.
+!      Nudge_Beg_Month     - INT     nudging begining month.
+!      Nudge_Beg_Day       - INT     nudging begining day.
+!      Nudge_End_Year      - INT     nudging ending year.
+!      Nudge_End_Month     - INT     nudging ending month.
+!      Nudge_End_Day       - INT     nudging ending day.
+!      Nudge_Hwin_lat0     - REAL    latitudinal center of window in degrees.
+!      Nudge_Hwin_lon0     - REAL    longitudinal center of window in degrees.
+!      Nudge_Hwin_latWidth - REAL    latitudinal width of window in degrees.
+!      Nudge_Hwin_lonWidth - REAL    longitudinal width of window in degrees.
+!      Nudge_Hwin_latDelta - REAL    latitudinal transition length of window in degrees.
+!      Nudge_Hwin_lonDelta - REAL    longitudinal transition length of window in degrees.
+!      Nudge_Hwin_Invert   - LOGICAL Invert Horizontal Window Function to its Compliment.
+!                                      TRUE  = value=0 inside the specified window, 1 outside
+!                                      FALSE = value=1 inside the specified window, 0 outside
+!      Nudge_Vwin_Lindex   - REAL    LO model index of transition
+!      Nudge_Vwin_Hindex   - REAL    HI model index of transition
+!      Nudge_Vwin_Ldelta   - REAL    LO transition length 
+!      Nudge_Vwin_Hdelta   - REAL    HI transition length 
+!      Nudge_Vwin_Invert   - LOGICAL Invert Vertical Window Function to its Compliment.
+!                                      TRUE  = value=0 inside the specified window, 1 outside
+!                                      FALSE = value=1 inside the specified window, 0 outside
+!    /
+!======================================================
+&nudging_nl
+ Nudge_Model        =.true.
+ Nudge_Path         ='/glade/scratch/USER/inputdata/nudging/ERAI-Data/'
+ Nudge_File_Template='%y/ERAI_ne30np4_L30.cam2.i.%y-%m-%d-%s.nc'
+ Nudge_Force_Opt    = 0
+ Nudge_TimeScale_Opt= 0
+ Nudge_Times_Per_Day= 4
+ Model_Times_Per_Day= 48
+ Nudge_Uprof  =1
+ Nudge_Ucoef  =1.00
+ Nudge_Vprof  =1
+ Nudge_Vcoef  =1.00
+ Nudge_Tprof  =1
+ Nudge_Tcoef  =1.00
+ Nudge_Qprof  =1
+ Nudge_Qcoef  =1.00
+ Nudge_PSprof =0
+ Nudge_PScoef =0.00
+ Nudge_Beg_Year =1979
+ Nudge_Beg_Month=1
+ Nudge_Beg_Day  =2 
+ Nudge_End_Year =1979
+ Nudge_End_Month=1
+ Nudge_End_Day  =5 
+ Nudge_Hwin_lat0    =0.0
+ Nudge_Hwin_latWidth=9999.
+ Nudge_Hwin_latDelta=1.
+ Nudge_Hwin_lon0    =180.
+ Nudge_Hwin_lonWidth=9999.   
+ Nudge_Hwin_lonDelta=1.
+ Nudge_Hwin_Invert  =.false.
+ Nudge_Vwin_Hindex  =31.
+ Nudge_Vwin_Hdelta  =0.1
+ Nudge_Vwin_Lindex  =0.
+ Nudge_Vwin_Ldelta  =0.1
+ Nudge_Vwin_Invert  =.false.
+/
+

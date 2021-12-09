@@ -26,10 +26,9 @@ module mo_neu_wetdep
   integer, allocatable, dimension(:) :: mapping_to_heff,mapping_to_mmr
   real(r8),allocatable, dimension(:) :: mol_weight
   logical ,allocatable, dimension(:) :: ice_uptake
-  integer                     :: index_cldice,index_cldliq,nh3_ndx,co2_ndx
+  integer                     :: index_cldice,index_cldliq,nh3_ndx,co2_ndx,so2_ndx
   logical                     :: debug   = .false.
   integer                     :: hno3_ndx = 0
-  integer                     :: h2o2_ndx = 0
 !
 ! diagnostics
 !
@@ -89,41 +88,25 @@ subroutine neu_wetdep_init
     select case( trim(test_name) )
 !
 ! CCMI: added SO2t and NH_50W
-!       
-      case( 'HYAC', 'CH3COOH' , 'HCOOH', 'EOOH', 'IEPOX' )
-         test_name = 'CH2O'
+!
       case ( 'SOGB','SOGI','SOGM','SOGT','SOGX' )
          test_name = 'H2O2'
       case ( 'SO2t' )
          test_name = 'SO2'
-      case ( 'CLONO2','BRONO2','HCL','HOCL','HOBR','HBR', 'Pb', 'MACROOH', 'ISOPOOH', 'XOOH', 'H2SO4', 'HF', 'COF2', 'COFCL')
+      case ( 'CLONO2','BRONO2','HCL','HOCL','HOBR','HBR', 'Pb', 'HF', 'COF2', 'COFCL')
          test_name = 'HNO3'
-      case ( 'NH_50W', 'NDEP', 'NHDEP', 'NH4', 'NH4NO3' ) 
+      case ( 'NH_50W', 'NDEP', 'NHDEP', 'NH4', 'NH4NO3' )
          test_name = 'HNO3'
-      case ( 'ALKOOH', 'MEKOOH', 'TOLOOH' )
-         test_name = 'CH3OOH'        
-      case( 'PHENOOH', 'BENZOOH', 'C6H5OOH', 'BZOOH', 'XYLOLOOH', 'XYLENOOH', 'HPALD' )
-         test_name = 'CH3OOH'
-      case( 'TERPOOH', 'TERP2OOH', 'MBOOOH' )
-         test_name = 'HNO3'
-      case( 'TERPROD1', 'TERPROD2' )
-         test_name = 'CH2O'
-      case( 'HMPROP' )
-          test_name = 'GLYALD'
-      case( 'NOA', 'ALKNIT', 'ISOPNITA', 'ISOPNITB', 'HONITR', 'ISOPNOOH' )
-         test_name = 'H2O2'
-      case( 'NC4CHO', 'NC4CH2OH', 'TERPNIT', 'NTERPOOH' )
-         test_name = 'H2O2'
       case(  'SOAGbb0' )  ! Henry's Law coeff. added for VBS SOA's, biomass burning is the same as fossil fuels
-         test_name = 'SOAGff0'  
+         test_name = 'SOAGff0'
       case(  'SOAGbb1' )
-         test_name = 'SOAGff1'  
+         test_name = 'SOAGff1'
       case(  'SOAGbb2' )
-         test_name = 'SOAGff2'  
+         test_name = 'SOAGff2'
       case(  'SOAGbb3' )
-         test_name = 'SOAGff3'  
+         test_name = 'SOAGff3'
       case(  'SOAGbb4' )
-         test_name = 'SOAGff4'  
+         test_name = 'SOAGff4'
     end select
 !
     do l = 1,n_species_table
@@ -152,26 +135,30 @@ subroutine neu_wetdep_init
     if ( trim(gas_wetdep_list(m)) == 'HNO3' ) then
       hno3_ndx = m
     end if
+    if ( trim(test_name) == 'SO2' ) then
+      so2_ndx = m
+    end if
 !
   end do
-   
+
    if (any ( mapping_to_heff(:) == -99 ))  call endrun('mo_neu_wet->depwetdep_init: unmapped species error' )
 !
-  if ( debug ) then
-    print '(a,i4)','co2_ndx',co2_ndx
-    print '(a,i4)','nh3_ndx',nh3_ndx
+  if ( debug .and. masterproc ) then
+    write(iulog, '(a,i4)') 'co2_ndx',co2_ndx
+    write(iulog, '(a,i4)') 'nh3_ndx',nh3_ndx
+    write(iulog, '(a,i4)') 'so2_ndx',so2_ndx
   end if
 !
 ! find mapping to species
 !
   mapping_to_mmr = -99
   do m=1,gas_wetdep_cnt
-    if ( debug ) print '(i4,a)',m,trim(gas_wetdep_list(m))
+    if ( debug .and. masterproc ) write(iulog, '(i4,a)') m,trim(gas_wetdep_list(m))
     call cnst_get_ind(gas_wetdep_list(m), mapping_to_mmr(m), abort=.false. )
-    if ( debug ) print '(a,i4)','mapping_to_mmr ',mapping_to_mmr(m)
+    if ( debug .and. masterproc ) write(iulog, '(a,i4)') 'mapping_to_mmr ',mapping_to_mmr(m)
     if ( mapping_to_mmr(m) <= 0 ) then
-      print *,'problem with mapping_to_mmr of ',gas_wetdep_list(m)
-      call endrun('problem with mapping_to_mmr of '//trim(gas_wetdep_list(m)))
+      if (masterproc) write(iulog,*) 'problem with mapping_to_mmr of ',gas_wetdep_list(m)
+      call endrun('neu_wetdep_init: problem with mapping_to_mmr of '//trim(gas_wetdep_list(m)))
     end if
   end do
 !
@@ -180,7 +167,7 @@ subroutine neu_wetdep_init
   do m=1,gas_wetdep_cnt
 !
     mol_weight(m) = cnst_mw(mapping_to_mmr(m))
-    if ( debug ) print '(i4,a,f8.4)',m,' mol_weight ',mol_weight(m)
+    if ( debug .and. masterproc ) write(iulog, '(i4,a,f8.4)') m,' mol_weight ',mol_weight(m)
     ice_uptake(m) = .false.
     if ( trim(gas_wetdep_list(m)) == 'HNO3' ) then
       ice_uptake(m) = .true.
@@ -227,7 +214,7 @@ subroutine neu_wetdep_tend(lchnk,ncol,mmr,pmid,pdel,zint,tfld,delt, &
      prain, nevapr, cld, cmfdqr, wd_tend, wd_tend_int)
 !
   use ppgrid,           only : pcols, pver
-!!DEK  
+!!DEK
   use phys_grid,        only : get_area_all_p, get_rlat_all_p
   use shr_const_mod,    only : SHR_CONST_REARTH,SHR_CONST_G
   use cam_history,      only : outfld
@@ -255,7 +242,7 @@ subroutine neu_wetdep_tend(lchnk,ncol,mmr,pmid,pdel,zint,tfld,delt, &
   real(r8), parameter                       :: rearth = SHR_CONST_REARTH    ! radius earth (m)
   real(r8), parameter                       :: gravit = SHR_CONST_G         ! m/s^2
   real(r8), dimension(ncol)                 :: area, wk_out
-  real(r8), dimension(ncol,pver)            :: cldice,cldliq,cldfrc,totprec,totevap,delz,delp,p
+  real(r8), dimension(ncol,pver)            :: cldice,cldliq,cldfrc,totprec,totevap,delz,p
   real(r8), dimension(ncol,pver)            :: rls,evaprate,mass_in_layer,temp
   real(r8), dimension(ncol,pver,gas_wetdep_cnt) :: trc_mass,heff,dtwr
   real(r8), dimension(ncol,pver,gas_wetdep_cnt) :: wd_mmr
@@ -322,7 +309,6 @@ subroutine neu_wetdep_tend(lchnk,ncol,mmr,pmid,pdel,zint,tfld,delt, &
 !
       trc_mass(i,k,:) = mmr(i,kk,mapping_to_mmr(:)) * mass_in_layer(i,k)
 !
-      delp(i,k) = pdel(i,kk) * 0.01_r8          ! in hPa
       p   (i,k) = pmid(i,kk) * 0.01_r8          ! in hPa
 !
     end do
@@ -340,7 +326,7 @@ subroutine neu_wetdep_tend(lchnk,ncol,mmr,pmid,pdel,zint,tfld,delt, &
   do k=pver-1,1,-1
     rls     (:,k) = max(0._r8,totprec(:,k)-totevap(:,k)+rls(:,k+1))
     !evaprate(:,k) = min(1._r8,totevap(:,k)/(rls(:,k+1)+totprec(:,k)+1.e-36_r8))
-    evaprate(:,k) = min(1._r8,totevap(:,k)/(rls(:,k+1)+1.e-36_r8)) 
+    evaprate(:,k) = min(1._r8,totevap(:,k)/(rls(:,k+1)+1.e-36_r8))
   end do
 !
 ! compute effective Henry's law coefficients
@@ -373,18 +359,20 @@ subroutine neu_wetdep_tend(lchnk,ncol,mmr,pmid,pdel,zint,tfld,delt, &
         endwhere
       end if
 !
-      if (k.eq.1 .and. maxval(test_flag) > 0 .and. debug ) print '(a,i4)','heff for m=',m
+      if (k.eq.1 .and. maxval(test_flag) > 0 .and. debug .and. masterproc ) then
+         write(iulog, '(a,i4)') 'heff for m=',m
+      endif
 !
       if( dheff(id+5) /= 0._r8 ) then
-        if( nh3_ndx > 0 .or. co2_ndx > 0 ) then
+        if( nh3_ndx > 0 .or. co2_ndx > 0 .or. so2_ndx > 0 ) then
           e298 = dheff(id+3)
           dhr  = dheff(id+4)
           dk1s(:) = e298*exp( dhr*wrk(:) )
           e298 = dheff(id+5)
           dhr  = dheff(id+6)
           dk2s(:) = e298*exp( dhr*wrk(:) )
-          if( m == co2_ndx ) then
-             heff(:,k,m) = heff(:,k,m)*(1._r8 + dk1s(:)*ph_inv)*(1._r8 + dk2s(:)*ph_inv)
+          if( m == co2_ndx .or. m == so2_ndx ) then
+             heff(:,k,m) = heff(:,k,m)*(1._r8 + dk1s(:)*ph_inv*(1._r8 + dk2s(:)*ph_inv))
           else if( m == nh3_ndx ) then
              heff(:,k,m) = heff(:,k,m)*(1._r8 + dk1s(:)*ph/dk2s(:))
           else
@@ -397,13 +385,13 @@ subroutine neu_wetdep_tend(lchnk,ncol,mmr,pmid,pdel,zint,tfld,delt, &
     end do
   end do
 !
-  if ( debug ) then
-    print '(a,50f8.2)','tckaqb     ',tckaqb
-    print '(a,50e12.4)','heff      ',heff(1,1,:)
-    print '(a,50i4)'  ,'ice_uptake ',ice_uptake
-    print '(a,50f8.2)','mol_weight ',mol_weight(:)
-    print '(a,50f8.2)','temp       ',temp(1,:)
-    print '(a,50f8.2)','p          ',p   (1,:)
+  if ( debug .and. masterproc ) then
+    write(iulog,'(a,50f8.2)')  'tckaqb     ',tckaqb
+    write(iulog,'(a,50e12.4)') 'heff       ',heff(1,1,:)
+    write(iulog,'(a,50i4)')    'ice_uptake ',ice_uptake
+    write(iulog,'(a,50f8.2)')  'mol_weight ',mol_weight(:)
+    write(iulog,'(a,50f8.2)')  'temp       ',temp(1,:)
+    write(iulog,'(a,50f8.2)')  'p          ',p   (1,:)
   end if
 !
 ! call J. Neu's subroutine
@@ -434,7 +422,7 @@ subroutine neu_wetdep_tend(lchnk,ncol,mmr,pmid,pdel,zint,tfld,delt, &
 ! tendency calculation (on model grid)
 !
   dtwr(1:ncol,:,:) = wd_mmr(1:ncol,:,:) - dtwr(1:ncol,:,:)
-  dtwr(1:ncol,:,:) = dtwr(1:ncol,:,:) / delt 
+  dtwr(1:ncol,:,:) = dtwr(1:ncol,:,:) / delt
 
 !!DEK polarward of 60S, 60N and <200hPa set to zero!
   call get_rlat_all_p(lchnk, pcols, lats )
@@ -443,7 +431,7 @@ subroutine neu_wetdep_tend(lchnk,ncol,mmr,pmid,pdel,zint,tfld,delt, &
       if ( abs( lats(i)*180._r8/pi ) > 60._r8 ) then
         if ( pmid(i,k) < 20000._r8) then
            dtwr(i,k,:) = 0._r8
-        endif 
+        endif
       endif
     end do
   end do
@@ -453,7 +441,7 @@ subroutine neu_wetdep_tend(lchnk,ncol,mmr,pmid,pdel,zint,tfld,delt, &
   do m=1,gas_wetdep_cnt
     wd_tend(1:ncol,:,mapping_to_mmr(m)) = wd_tend(1:ncol,:,mapping_to_mmr(m)) + dtwr(1:ncol,:,m)
     call outfld( 'DTWR_'//trim(gas_wetdep_list(m)),dtwr(:,:,m),ncol,lchnk )
-    
+
     call outfld( 'HEFF_'//trim(gas_wetdep_list(m)),heff(:,pver:1:-1,m),ncol,lchnk )
 !
 ! vertical integrated wet deposition rate [kg/m2/s]
@@ -467,7 +455,9 @@ subroutine neu_wetdep_tend(lchnk,ncol,mmr,pmid,pdel,zint,tfld,delt, &
 !
 ! to be used in mo_chm_diags to compute wet_deposition_NOy_as_N and wet_deposition_NHx_as_N (units: kg/m2/s)
 !
-    if ( debug) print *,'mo_neu ',mapping_to_mmr(m),(wk_out(1:ncol))
+    if ( debug .and. masterproc ) then
+       write(iulog,*) 'mo_neu ',mapping_to_mmr(m),(wk_out(1:ncol))
+    endif
     wd_tend_int(1:ncol,mapping_to_mmr(m)) = wk_out(1:ncol)
 !
   end do
@@ -504,21 +494,21 @@ end subroutine neu_wetdep_tend
 !-LAER could be used as LWASHTYP
 !---WILL THIS WORK FOR T42->T21???????????
 !-----------------------------------------------------------------------
-      
+
       integer LPAR, NTRACE
       real(r8),  intent(inout) ::  QTTJFL(LPAR,NTRACE)
       real(r8),  intent(in) :: DTSCAV, QM(LPAR),POFL(LPAR),DELZ(LPAR),GAREA
       real(r8),  intent(in) :: RLS(LPAR),CLWC(LPAR),CIWC(LPAR),CFR(LPAR),TEM(LPAR),      &
                                EVAPRATE(LPAR)
       real(r8),  intent(in) :: HSTAR(LPAR,NTRACE),TCMASS(NTRACE)
-      logical ,  intent(in) :: TCKAQB(NTRACE),TCNION(NTRACE) 
+      logical ,  intent(in) :: TCKAQB(NTRACE),TCNION(NTRACE)
 !
       real(r8),  intent(inout) :: qt_rain(lpar)
       real(r8),  intent(inout) :: qt_rime(lpar)
       real(r8),  intent(inout) :: qt_wash(lpar)
       real(r8),  intent(inout) :: qt_evap(lpar)
 !
-      integer I,J,L,N,LE, LM1
+      integer L,N,LE, LM1
       real(r8), dimension(LPAR) :: CFXX
       real(r8), dimension(LPAR) :: QTT, QTTNEW
 
@@ -528,7 +518,7 @@ end subroutine neu_wetdep_tend
       real(r8) MASSLOSS
       real(r8) DOR,DNEW,DEMP,COLEFFSNOW,RHOSNOW
       real(r8) WEMP,REMP,RRAIN,RWASH
-      real(r8) QTPRECIP,QTRAIN,QTCXA,QTAX,QTOC
+      real(r8) QTPRECIP,QTRAIN,QTCXA,QTAX
 
       real(r8) FAMA,RAMA,DAMA,FCA,RCA,DCA
       real(r8) FAX,RAX,DAX,FCXA,RCXA,DCXA,FCXB,RCXB,DCXB
@@ -542,11 +532,10 @@ end subroutine neu_wetdep_tend
       real(r8) QTTOPCA,QTTOPAA,QTTOPCAX,QTTOPAAX
 
       real(r8) AMPCT,AMCLPCT,CLNEWPCT,CLNEWAMPCT,CLOLDPCT,CLOLDAMPCT
-      real(r8) RAXLOC,RCXALOC,RCXBLOC,RCALOC,RAMALOC,RCXPCT
 
-      real(r8) QTNETLCXA,QTNETLCXB,QTNETLAX,QTNETL
+      real(r8) QTNETLCXA,QTNETLCXB,QTNETLAX
       real(r8) QTDISSTAR
-      
+
 
       real(r8), parameter  :: CFMIN=0.1_r8
       real(r8), parameter  :: CWMIN=1.0e-5_r8
@@ -587,21 +576,21 @@ end subroutine neu_wetdep_tend
       real(r8), parameter :: four = 4._r8
       real(r8), parameter :: adj_factor = one + 10._r8*epsilon( one )
 !
-      integer :: LWASHTYP,LICETYP
+      integer :: LICETYP
 !
-      if ( debug ) then
-        print '(a,50f8.2)','tckaqb     ',tckaqb
-        print '(a,50e12.4)','hstar     ',hstar(1,:)
-        print '(a,50i4)'  ,'ice_uptake ',TCNION
-        print '(a,50f8.2)','mol_weight ',TCMASS(:)
-        print '(a,50f8.2)','temp       ',tem(:)
-        print '(a,50f8.2)','p          ',pofl(:)
+      if ( debug .and. masterproc ) then
+        write(iulog,'(a,50f8.2)')  'tckaqb     ',tckaqb
+        write(iulog,'(a,50e12.4)') 'hstar      ',hstar(1,:)
+        write(iulog,'(a,50i4)')    'ice_uptake ',TCNION
+        write(iulog,'(a,50f8.2)')  'mol_weight ',TCMASS(:)
+        write(iulog,'(a,50f8.2)')  'temp       ',tem(:)
+        write(iulog,'(a,50f8.2)')  'p          ',pofl(:)
       end if
 
 !-----------------------------------------------------------------------
-      LE = LPAR-1   
+      LE = LPAR-1
 !
-      rls_flag(1:le) = rls(1:le) > zero 
+      rls_flag(1:le) = rls(1:le) > zero
       freezing(1:le) = tem(1:le) < tice
       rlsog(1:le) = rls(1:le)/garea
 !
@@ -698,15 +687,8 @@ level_loop : &
          QTWASHCXA  = zero
          QTRAINCXA  = zero
          QTRAINCXB  = zero
-         
-         RAMPCT = zero
-         RCXPCT = zero
 
-         RCXALOC = zero
-         RCXBLOC = zero
-         RAXLOC  = zero
-         RAMALOC = zero
-         RCALOC  = zero
+         RAMPCT = zero
 
          RPRECIP       = zero
          DELTARIMEMASS = zero
@@ -866,7 +848,7 @@ is_freezing : &
                endif
 !-----------------------------------------------------------------------
 !  If there is some in-cloud precip left, we have new precip formation
-!  Will be spread over whole cloud fraction 
+!  Will be spread over whole cloud fraction
 !-----------------------------------------------------------------------
 !  Calculate precip rate in old and new cloud fractions
 !-----------------------------------------------------------------------
@@ -922,14 +904,14 @@ is_freezing : &
                  if( is_hno3 .and. l >= 15 ) then
                    write(*,*) ' '
                    write(*,*) 'washout: rca,rcxa,deltarime,dor,rprecip,dnew @ l = ',l
-                   write(*,'(1p,6g15.7)') rca,rcxa,deltarime,dor,rprecip,dnew 
+                   write(*,'(1p,6g15.7)') rca,rcxa,deltarime,dor,rprecip,dnew
                    write(*,*) 'washout: dcxa,dcxb,wemp,remp,demp'
                    write(*,'(1p,5g15.7)') dcxa,dcxb,wemp,remp,demp
                    write(*,*) ' '
                  end if
                endif
 
-               if( QTT(L) > zero ) then   
+               if( QTT(L) > zero ) then
 !-----------------------------------------------------------------------
 !                       ICE SCAVENGING
 !-----------------------------------------------------------------------
@@ -962,11 +944,11 @@ is_freezing : &
                    endif
                  endif
 !-----------------------------------------------------------------------
-!  For ice, accretion removal for hno3 and aerosols is propotional to riming, 
+!  For ice, accretion removal for hno3 and aerosols is propotional to riming,
 !  no accretion removal for gases
 !  remove only in mixed portion of cloud
 !  Limit DELTARIMEMASS to RNEW*DTSCAV for ice - evaporation of rimed ice to match
-!  RNEW precip rate would result in HNO3 escaping from ice (no trapping) 
+!  RNEW precip rate would result in HNO3 escaping from ice (no trapping)
 !-----------------------------------------------------------------------
                  if( DELTARIME > zero ) then
                    if( LICETYP == 1 ) then
@@ -978,7 +960,7 @@ is_freezing : &
                      QTCXA = QTT(L)*FCXA
                      call DISGAS( CLWX*(FCXA/CFXX(L)), FCXA, TCMASS(N),   &
                                   HSTAR(L,N), TEM(L), POFL(L),            &
-                                  QM(L), QTCXA, QTDISRIME )       
+                                  QM(L), QTCXA, QTDISRIME )
                      QTDISSTAR = (QTDISRIME*QTCXA)/(QTDISRIME + QTCXA)
                      if ( debug ) then
                        if( is_hno3 .and. l >= 15 ) then
@@ -990,9 +972,9 @@ is_freezing : &
                      endif
                      QTRIMECXA = QTCXA*                             &
                         (one - exp((-COLEFFSNOW/(DCA*1.e-3_r8))*       &
-                        (RCA/(2._r8*RHOSNOW))*                         &  !uses GBA R    
+                        (RCA/(2._r8*RHOSNOW))*                         &  !uses GBA R
                         (QTDISSTAR/QTCXA)*DTSCAV))
-                     QTRIMECXA = min( QTRIMECXA, &               
+                     QTRIMECXA = min( QTRIMECXA, &
                         ((RNEW*GAREA*DTSCAV)/(CLWX*QM(L)*(FCXA/CFXX(L))))*QTDISSTAR)
                    elseif( LICETYP == 2 ) then
                      QTRIMECXA = zero
@@ -1031,13 +1013,13 @@ is_freezing : &
                  DELTARIME = zero
                endif
 !-----------------------------------------------------------------------
-!  If there is some in-cloud precip left, we have new precip formation 
+!  If there is some in-cloud precip left, we have new precip formation
 !-----------------------------------------------------------------------
                RPRECIP = (RNEW-(DELTARIME*FCXA))/CFXX(L)       !GBA
 
                RCXA = RCA + DELTARIME + RPRECIP            !kg/m2/s GBA
                RCXB = RPRECIP                              !kg/m2/s GBA
-               DCXA = FOUR  
+               DCXA = FOUR
                if( FCXB > zero ) then
                  DCXB = FOUR
                else
@@ -1080,8 +1062,8 @@ is_freezing : &
                    QTDISSTAR = (QTDISRIME*QTCXA)/(QTDISRIME + QTCXA)
                    QTRIMECXA = QTCXA*                              &
                       (one - exp(-0.24_r8*COLEFFRAIN*                 &
-                      ((RCA)**0.75_r8)*                               & !local 
-                      (QTDISSTAR/QTCXA)*DTSCAV))               
+                      ((RCA)**0.75_r8)*                               & !local
+                      (QTDISSTAR/QTCXA)*DTSCAV))
                    QTRIMECXA = min( QTRIMECXA, &
                       ((RNEW*GAREA*DTSCAV)/(CLWX*QM(L)*(FCXA/CFXX(L))))*QTDISSTAR)
                  else
@@ -1169,14 +1151,14 @@ is_freezing : &
                    RAXADJ = RAXADJF/FAXADJ
                  else
                    RAXADJ = zero
-                 endif              
+                 endif
                else
                  RAXADJ = zero
                  RAMPCT = zero
                  FAXADJ = zero
                endif
              endif
-  
+
              QTEVAPAXP = min( QTTOPAA,QTTOPAA - (RAMPCT*(QTTOPAA-QTEVAPAXP)) )
              FAX = FAXADJ
              RAX = RAXADJ
@@ -1206,9 +1188,9 @@ is_freezing : &
 !  T>Tmix, hno3&aerosols are incorporated into ice structure:
 !  do not release
 !  For rain, assume full evaporation of some raindrops
-!  proportional evaporation for all species 
-!  washout for gases using Rbot 
-!  impact washout for hno3/aerosol portion in gas phase              
+!  proportional evaporation for all species
+!  washout for gases using Rbot
+!  impact washout for hno3/aerosol portion in gas phase
 !-----------------------------------------------------------------------
 !              if (TEM(L) < TICE ) then
 is_freezing_a : &
@@ -1228,7 +1210,7 @@ is_freezing_a : &
                    else
                      QTEVAPCXA = zero
                    endif
-                 elseif( LICETYP == 2 ) then   
+                 elseif( LICETYP == 2 ) then
                    QTEVAPCXA = zero
                  endif
                else is_freezing_a
@@ -1292,7 +1274,7 @@ is_freezing_a : &
 
 !-----------------------------------------------------------------------
 !                  END SCAVENGING
-!  Require CF if our ambient evaporation rate would give less 
+!  Require CF if our ambient evaporation rate would give less
 !  precip than R from model.
 !-----------------------------------------------------------------------
            if( do_diag .and. is_hno3 ) then
@@ -1308,23 +1290,6 @@ is_freezing_a : &
            endif
 upper_level : &
            if( L > 1 ) then
-             FAMA = max( FCXA + FCXB + FAX - CFR(LM1),zero )
-             if( FAX > zero ) then
-               RAXLOC = RAX/FAX
-             else
-               RAXLOC = zero
-             endif
-             if( FCXA > zero ) then
-               RCXALOC = RCXA/FCXA
-             else
-               RCXALOC = zero
-             endif
-             if( FCXB > zero ) then
-               RCXBLOC = RCXB/FCXB
-             else
-               RCXBLOC = zero
-             endif
-
              if( CFR(LM1) >= CFMIN ) then
                CFXX(LM1) = CFR(LM1)
              else
@@ -1346,29 +1311,23 @@ upper_level : &
 !  Don't do for lowest level
 !-----------------------------------------------------------------------
              if( FAX > zero ) then
-               RAXLOC = RAX/FAX
                AMPCT = max( zero,min( one,(CFXX(L) + FAX - CFXX(LM1))/FAX ) )
                AMCLPCT = one - AMPCT
              else
-               RAXLOC  = zero
                AMPCT   = zero
                AMCLPCT = zero
              endif
              if( FCXB > zero ) then
-               RCXBLOC = RCXB/FCXB
                CLNEWPCT = max( zero,min( (CFXX(LM1) - FCXA)/FCXB,one ) )
                CLNEWAMPCT = one - CLNEWPCT
              else
-               RCXBLOC    = zero
                CLNEWPCT   = zero
                CLNEWAMPCT = zero
              endif
              if( FCXA > zero ) then
-               RCXALOC = RCXA/FCXA
                CLOLDPCT = max( zero,min( CFXX(LM1)/FCXA,one ) )
                CLOLDAMPCT = one - CLOLDPCT
              else
-               RCXALOC    = zero
                CLOLDPCT   = zero
                CLOLDAMPCT = zero
              endif
@@ -1393,16 +1352,16 @@ upper_level : &
                    write(*,*) ' '
                  endif
                endif
-               
+
 	       if (RCA > zero) then
-	         DCA = (RCXA*FCXA*CLOLDPCT)/(RCA*FCA)*DCXA + & 
+	         DCA = (RCXA*FCXA*CLOLDPCT)/(RCA*FCA)*DCXA + &
                        (RCXB*FCXB*CLNEWPCT)/(RCA*FCA)*DCXB + &
                        (RAX*FAX*AMCLPCT)/(RCA*FCA)*DAX
 	       else
 	         DCA = zero
 		 FCA = zero
 	       endif
-	       
+
              else
                FCA = zero
                DCA = zero
@@ -1472,13 +1431,13 @@ upper_level : &
 !-----------------------------------------------------------------------
          QTNETLCXA = QTRAINCXA + QTRIMECXA + QTWASHCXA - QTEVAPCXA
          QTNETLCXA = min( QTT(L)*FCXA,QTNETLCXA )
-   
+
          QTNETLCXB =QTRAINCXB
          QTNETLCXB = min( QTT(L)*FCXB,QTNETLCXB )
 
          QTNETLAX = QTWASHAX - QTEVAPAX
          QTNETLAX = min( QTT(L)*FAX,QTNETLAX )
-              
+
          QTTNEW(L) = QTT(L) - (QTNETLCXA + QTNETLCXB + QTNETLAX)
 
          if( do_diag .and. is_hno3 ) then
@@ -1572,7 +1531,7 @@ upper_level : &
          endif
        endif
 !-----------------------------------------------------------------------
-!  reload new tracer mass and rescale moments: check upper limits (LE) 
+!  reload new tracer mass and rescale moments: check upper limits (LE)
 !-----------------------------------------------------------------------
        QTTJFL(:le,N) = QTTNEW(:le)
 
@@ -1584,15 +1543,15 @@ upper_level : &
       subroutine DISGAS (CLWX,CFX,MOLMASS,HSTAR,TM,PR,QM,QT,QTDIS)
 !---------------------------------------------------------------------
       implicit none
-      real(r8), intent(in) :: CLWX,CFX    !cloud water,cloud fraction 
+      real(r8), intent(in) :: CLWX,CFX    !cloud water,cloud fraction
       real(r8), intent(in) :: MOLMASS     !molecular mass of tracer
       real(r8), intent(in) :: HSTAR       !Henry's Law coeffs A*exp(-B/T)
       real(r8), intent(in) :: TM          !temperature of box (K)
       real(r8), intent(in) :: PR          !pressure of box (hPa)
       real(r8), intent(in) :: QM          !air mass in box (kg)
       real(r8), intent(in) :: QT          !tracer in box (kg)
-      real(r8), intent(out) :: QTDIS      !tracer dissolved in aqueous phase 
- 
+      real(r8), intent(out) :: QTDIS      !tracer dissolved in aqueous phase
+
       real(r8)  MUEMP
       real(r8), parameter :: INV298 = 1._r8/298._r8
       real(r8), parameter  :: TMIX=258._r8
@@ -1620,10 +1579,10 @@ upper_level : &
       subroutine RAINGAS (RRAIN,DTSCAV,CLWX,CFX,QM,QT,QTDIS,QTRAIN)
 !-----------------------------------------------------------------------
 !---New trace-gas rainout from large-scale precip with two time scales,
-!---one based on precip formation from cloud water and one based on 
+!---one based on precip formation from cloud water and one based on
 !---Henry's Law solubility: correct limit for delta-t
-!---    
-!---NB this code does not consider the aqueous dissociation (eg, C-q) 
+!---
+!---NB this code does not consider the aqueous dissociation (eg, C-q)
 !---   that makes uptake of HNO3 and H2SO4 so complete.  To do so would
 !---   require that we keep track of the pH of the falling rain.
 !---THUS the Henry's Law coefficient KHA needs to be enhanced to incldue this!
@@ -1637,9 +1596,9 @@ upper_level : &
       real(r8), intent(in) :: DTSCAV      !time step (s)
       real(r8), intent(in) :: CLWX,CFX !cloud water and cloud fraction
       real(r8), intent(in) :: QM          !air mass in box (kg)
-      real(r8), intent(in) :: QT          !tracer in box (kg) 
-      real(r8), intent(in) :: QTDIS          !tracer in aqueous phase (kg) 
-      real(r8), intent(out) :: QTRAIN      !tracer picked up by new rain  
+      real(r8), intent(in) :: QT          !tracer in box (kg)
+      real(r8), intent(in) :: QTDIS          !tracer in aqueous phase (kg)
+      real(r8), intent(out) :: QTRAIN      !tracer picked up by new rain
 
       real(r8)   QTLF,QTDISSTAR
 
@@ -1648,12 +1607,12 @@ upper_level : &
 
 
       QTDISSTAR=(QTDIS*(QT*CFX))/(QTDIS+(QT*CFX))
- 
+
 !---Tracer Loss frequency (1/s) within cloud fraction:
       QTLF = (RRAIN*QTDISSTAR)/(CLWX*QM*QT*CFX)
 
-!---in time = DTSCAV, the amount of QTT scavenged is calculated 
-!---from CF*AMOUNT OF UPTAKE 
+!---in time = DTSCAV, the amount of QTT scavenged is calculated
+!---from CF*AMOUNT OF UPTAKE
       QTRAIN = QT*CFX*(1._r8 - exp(-DTSCAV*QTLF))
 
       return
@@ -1667,7 +1626,7 @@ upper_level : &
 !---for most gases below-cloud washout assume Henry-Law equilib with precip
 !---assumes that precip is liquid, if frozen, do not call this sub
 !---since solubility is moderate, fraction of box with rain does not matter
-!---NB this code does not consider the aqueous dissociation (eg, C-q) 
+!---NB this code does not consider the aqueous dissociation (eg, C-q)
 !---   that makes uptake of HNO3 and H2SO4 so complete.  To do so would
 !---   require that we keep track of the pH of the falling rain.
 !---THUS the Henry's Law coefficient KHA needs to be enhanced to incldue this!
@@ -1678,7 +1637,7 @@ upper_level : &
       real(r8), intent(in)  :: RWASH   ! precip leaving bottom of box (kg/s)
       real(r8), intent(in)  :: BOXF   ! fraction of box with washout
       real(r8), intent(in)  :: DTSCAV  ! time step (s)
-      real(r8), intent(in)  :: QTRTOP  ! tracer-T in rain entering top of box 
+      real(r8), intent(in)  :: QTRTOP  ! tracer-T in rain entering top of box
 !                                              over time step (kg)
       real(r8), intent(in)  :: HSTAR ! Henry's Law coeffs A*exp(-B/T)
       real(r8), intent(in)  :: TM      ! temperature of box (K)
@@ -1687,7 +1646,7 @@ upper_level : &
       real(r8), intent(in)  :: QM      ! air mass in box (kg)
       real(r8), intent(out) :: QTWASH  ! tracer picked up by precip (kg)
       real(r8), intent(out) :: QTEVAP  ! tracer evaporated from precip (kg)
-      
+
       real(r8), parameter :: INV298 = 1._r8/298._r8
       real(r8)            :: FWASH, QTMAX, QTDIF
 
@@ -1720,7 +1679,7 @@ upper_level : &
          QTWASH = 0._r8
          QTEVAP = QTRTOP - QTMAX
       endif
-     
+
       return
       end subroutine WASHGAS
 
@@ -1730,14 +1689,14 @@ upper_level : &
       use shr_spfn_mod, only: shr_spfn_gamma
 
       implicit none
-      real(r8), intent(in)  :: CWATER   
+      real(r8), intent(in)  :: CWATER
       real(r8), intent(in)  :: RRATE
 
       real(r8) :: DEMPIRICAL
- 
+
       real(r8) RRATEX,WX,THETA,PHI,ETA,BETA,ALPHA,BEE
       real(r8) GAMTHETA,GAMBETA
-  
+
 
 
       RRATEX=RRATE*3600._r8       !mm/hr
@@ -1757,7 +1716,7 @@ upper_level : &
       GAMBETA  = shr_spfn_gamma(BETA+1._r8)
       DEMPIRICAL=(((WX*ETA*GAMTHETA)/(1.0e6_r8*ALPHA*PHI*GAMBETA))** &
                  (-1._r8/BEE))*10._r8      ! in mm (wx/1e6 for cgs)
-      
+
 
       return
       end function DEMPIRICAL

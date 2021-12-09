@@ -1,3 +1,4 @@
+#define FVM_TIMERS .FALSE.
 !-----------------------------------------------------------------------------!
 !MODULE FVM_MOD-----------------------------------------------------CE-for FVM!
 ! FVM_MOD File for the fvm project in HOMME                                   !
@@ -13,6 +14,7 @@ module fvm_mod
   use edge_mod,               only: initghostbuffer, freeghostbuffer, ghostpack, ghostunpack
   use edgetype_mod,           only: edgebuffer_t
   use bndry_mod,              only: ghost_exchange
+  use thread_mod,             only: horz_num_threads, vert_num_threads
 
   use element_mod,            only: element_t
   use fvm_control_volume_mod, only: fvm_struct
@@ -22,8 +24,17 @@ module fvm_mod
   private
   save
   
-  type (EdgeBuffer_t)                         :: edgeveloc
-  type (EdgeBuffer_t), public  :: ghostBufQnhc, ghostBufQ1, ghostBufFlux
+  type (EdgeBuffer_t) :: edgeveloc
+  type (EdgeBuffer_t), public  :: ghostBufQnhc_s
+  type (EdgeBuffer_t), public  :: ghostBufQnhc_vh
+  type (EdgeBuffer_t), public  :: ghostBufQnhc_h
+  type (EdgeBuffer_t), public  :: ghostBufQ1_h
+  type (EdgeBuffer_t), public  :: ghostBufQ1_vh 
+!  type (EdgeBuffer_t), private  :: ghostBufFlux_h
+  type (EdgeBuffer_t), public  :: ghostBufFlux_vh
+  type (EdgeBuffer_t), public  :: ghostBufQnhcJet_h
+  type (EdgeBuffer_t), public  :: ghostBufFluxJet_h
+  type (EdgeBuffer_t), public  :: ghostBufPG_s
 
   interface fill_halo_fvm
      module procedure fill_halo_fvm_noprealloc
@@ -35,9 +46,9 @@ module fvm_mod
 
 contains
 
-  subroutine fill_halo_fvm_noprealloc(elem,fvm,hybrid,nets,nete,tnp0,ndepth,kmin,kmax)
+  subroutine fill_halo_fvm_noprealloc(elem,fvm,hybrid,nets,nete,ndepth,kmin,kmax,ksize)
     use perf_mod, only : t_startf, t_stopf ! _EXTERNAL
-    use dimensions_mod, only: nc, ntrac
+    use dimensions_mod, only: nc, ntrac, nlev
     implicit none
     type (element_t),intent(inout)            :: elem(:)
     type (fvm_struct),intent(inout)           :: fvm(:)
@@ -45,41 +56,57 @@ contains
 
     type (edgeBuffer_t)                      :: cellghostbuf
 
-    integer,intent(in)                        :: nets,nete,tnp0,ndepth,kmin,kmax
-    integer                                   :: ie,i1,i2,num_levels
-    !
-    !
+    integer,intent(in)                        :: nets,nete
+    integer,intent(in)                        :: ndepth     ! depth of halo
+    integer,intent(in)                        :: kmin,kmax  ! min and max vertical level 
+    integer,intent(in)                        :: ksize      ! the total number of vertical 
 
-    call t_startf('FVM:initbuf')
+    integer                                   :: ie,i1,i2,kblk,kptr,q
+    !
+    !
+     
+    if(kmin .ne. 1 .or. kmax .ne. nlev) then 
+       print *,'WARNING: fill_halo_fvm_noprealloc does not support the passing of non-contigous arrays'
+       print *,'WARNING:   incorrect answers are likely'
+    endif
+    if(FVM_TIMERS) call t_startf('FVM:initbuf')
     i1=1-ndepth
     i2=nc+ndepth
-    num_levels = kmax-kmin+1
-    call initghostbuffer(hybrid%par,cellghostbuf,elem,num_levels*(ntrac+1),ndepth,nc)
-    call t_stopf('FVM:initbuf')
-    call t_startf('FVM:pack')
+    kblk = kmax-kmin+1
+    call initghostbuffer(hybrid%par,cellghostbuf,elem,kblk*(ntrac+1),ndepth,nc)
+    if(FVM_TIMERS) call t_stopf('FVM:initbuf')
+    if(FVM_TIMERS) call t_startf('FVM:pack')
     do ie=nets,nete
-       call ghostpack(cellghostbuf, fvm(ie)%dp_fvm(i1:i2,i1:i2,kmin:kmax,tnp0),num_levels,      0,ie)
-       call ghostpack(cellghostbuf, fvm(ie)%c(i1:i2,i1:i2,kmin:kmax,:,tnp0)   ,num_levels*ntrac,num_levels,ie)
+       kptr = kmin-1
+       call ghostpack(cellghostbuf, fvm(ie)%dp_fvm(i1:i2,i1:i2,kmin:kmax),kblk,   kptr,ie)
+       do q=1,ntrac
+          kptr = kptr + ksize
+          call ghostpack(cellghostbuf, fvm(ie)%c(i1:i2,i1:i2,kmin:kmax,q)   ,kblk,kptr,ie)
+       enddo
     end do
-    call t_stopf('FVM:pack')
-    call t_startf('FVM:Communication')
-    call ghost_exchange(hybrid,cellghostbuf)
-    call t_stopf('FVM:Communication')
+    if(FVM_TIMERS) call t_stopf('FVM:pack')
+    if(FVM_TIMERS) call t_startf('FVM:Communication')
+    call ghost_exchange(hybrid,cellghostbuf,location='fill_halo_fvm_noprealloc')
+    if(FVM_TIMERS) call t_stopf('FVM:Communication')
     !-----------------------------------------------------------------------------------!                        
-    call t_startf('FVM:Unpack')
+    if(FVM_TIMERS) call t_startf('FVM:Unpack')
     do ie=nets,nete
-       call ghostunpack(cellghostbuf, fvm(ie)%dp_fvm(i1:i2,i1:i2,kmin:kmax,tnp0),num_levels      ,0,ie)
-       call ghostunpack(cellghostbuf, fvm(ie)%c(i1:i2,i1:i2,kmin:kmax,:,tnp0),   num_levels*ntrac,num_levels,ie)
+       kptr = kmin-1
+       call ghostunpack(cellghostbuf, fvm(ie)%dp_fvm(i1:i2,i1:i2,kmin:kmax),kblk   ,kptr,ie)
+       do q=1,ntrac
+          kptr = kptr + ksize
+          call ghostunpack(cellghostbuf, fvm(ie)%c(i1:i2,i1:i2,kmin:kmax,:),   kblk,kptr,ie)
+       enddo
     enddo
-    call t_stopf('FVM:Unpack')
-    call t_startf('FVM:freebuf')
+    if(FVM_TIMERS) call t_stopf('FVM:Unpack')
+    if(FVM_TIMERS) call t_startf('FVM:freebuf')
     call freeghostbuffer(cellghostbuf)
-    call t_stopf('FVM:freebuf')
+    if(FVM_TIMERS) call t_stopf('FVM:freebuf')
   end subroutine fill_halo_fvm_noprealloc
 
-subroutine fill_halo_fvm_prealloc(cellghostbuf,elem,fvm,hybrid,nets,nete,tnp0,ndepth,kmin,kmax)
+subroutine fill_halo_fvm_prealloc(cellghostbuf,elem,fvm,hybrid,nets,nete,ndepth,kmin,kmax,ksize,active)
     use perf_mod, only : t_startf, t_stopf ! _EXTERNAL
-    use dimensions_mod, only: nc, ntrac
+    use dimensions_mod, only: nc, ntrac, nlev
     implicit none
     type (EdgeBuffer_t), intent(inout)       :: cellghostbuf
     type (element_t),intent(inout)            :: elem(:)
@@ -87,31 +114,53 @@ subroutine fill_halo_fvm_prealloc(cellghostbuf,elem,fvm,hybrid,nets,nete,tnp0,nd
     type (hybrid_t),intent(in)                :: hybrid
 
 
-    integer,intent(in)                        :: nets,nete,tnp0,ndepth,kmin,kmax
-    integer                                   :: ie,i1,i2,num_levels
+    integer,intent(in)                        :: nets,nete
+    integer,intent(in)                        :: ndepth     ! depth of halo
+    integer,intent(in)                        :: kmin,kmax  ! min and max vertical level 
+    integer,intent(in)                        :: ksize      ! the total number of vertical 
+    logical, optional                         :: active     ! indicates if te current thread is active 
+    integer                                   :: ie,i1,i2,kblk,q,kptr
     !
     !
+    logical :: lactive
 
+    if(present(active)) then 
+       lactive = active
+    else
+       lactive = .true.
+    endif
 !    call t_startf('FVM:initbuf')
     i1=1-ndepth
     i2=nc+ndepth
-    num_levels = kmax-kmin+1
-    call t_startf('FVM:pack')
+    kblk = kmax-kmin+1
+    if(FVM_TIMERS) call t_startf('FVM:pack')
+    if(lactive) then 
     do ie=nets,nete
-       call ghostpack(cellghostbuf, fvm(ie)%dp_fvm(i1:i2,i1:i2,kmin:kmax,tnp0),num_levels,      0,ie)
-       call ghostpack(cellghostbuf, fvm(ie)%c(i1:i2,i1:i2,kmin:kmax,:,tnp0) ,num_levels*ntrac,num_levels,ie)
+       kptr = kmin-1
+       call ghostpack(cellghostbuf, fvm(ie)%dp_fvm(i1:i2,i1:i2,kmin:kmax),kblk, kptr,ie)
+       do q=1, ntrac
+          kptr = kptr + ksize
+          call ghostpack(cellghostbuf, fvm(ie)%c(i1:i2,i1:i2,kmin:kmax,q) ,kblk,kptr,ie)
+       enddo
     end do
-    call t_stopf('FVM:pack')
-    call t_startf('FVM:Communication')
-    call ghost_exchange(hybrid,cellghostbuf)
-    call t_stopf('FVM:Communication')
+    endif
+    if(FVM_TIMERS) call t_stopf('FVM:pack')
+    if(FVM_TIMERS) call t_startf('FVM:Communication')
+    call ghost_exchange(hybrid,cellghostbuf,location='fill_halo_fvm_prealloc')
+    if(FVM_TIMERS) call t_stopf('FVM:Communication')
     !-----------------------------------------------------------------------------------!                        
-    call t_startf('FVM:Unpack')
+    if(FVM_TIMERS) call t_startf('FVM:Unpack')
+    if(lactive) then 
     do ie=nets,nete
-       call ghostunpack(cellghostbuf, fvm(ie)%dp_fvm(i1:i2,i1:i2,kmin:kmax,tnp0),num_levels      ,0,ie)
-       call ghostunpack(cellghostbuf, fvm(ie)%c(i1:i2,i1:i2,kmin:kmax,:,tnp0), num_levels*ntrac,num_levels,ie)
+       kptr = kmin-1
+       call ghostunpack(cellghostbuf, fvm(ie)%dp_fvm(i1:i2,i1:i2,kmin:kmax),kblk, kptr,ie)
+       do q=1, ntrac
+          kptr = kptr + ksize
+          call ghostunpack(cellghostbuf, fvm(ie)%c(i1:i2,i1:i2,kmin:kmax,q), kblk,kptr,ie)
+       enddo
     enddo
-    call t_stopf('FVM:Unpack')
+    endif
+    if(FVM_TIMERS) call t_stopf('FVM:Unpack')
 
   end subroutine fill_halo_fvm_prealloc
 
@@ -173,7 +222,7 @@ subroutine fill_halo_fvm_prealloc(cellghostbuf,elem,fvm,hybrid,nets,nete,tnp0,nd
       do ie=nets,nete
         call ghostpack(cellghostbuf, fld(:,:,:,:,ie),numlev*num_flds,0,ie)
       end do
-      call ghost_exchange(hybrid,cellghostbuf)
+      call ghost_exchange(hybrid,cellghostbuf,location='fill_halo_and_extend_panel')
       do ie=nets,nete
         call ghostunpack(cellghostbuf, fld(:,:,:,:,ie),numlev*num_flds,0,ie)
       end do
@@ -238,19 +287,15 @@ subroutine fill_halo_fvm_prealloc(cellghostbuf,elem,fvm,hybrid,nets,nete,tnp0,nd
     use parallel_mod,           only: parallel_t
     use cam_abortutils,         only: endrun
     use cam_logfile,            only: iulog
-    use control_mod,            only: tracer_transport_type, rsplit
-    use control_mod,            only: TRACERTRANSPORT_CONSISTENT_SE_FVM
-    use fvm_control_volume_mod, only: n0_fvm, np1_fvm, fvm_supercycling
+    use control_mod,            only: rsplit
     use dimensions_mod,         only: qsize, qsize_d
+    use dimensions_mod,         only: fvm_supercycling, fvm_supercycling_jet
     use dimensions_mod,         only: nc,nhe, nhc, nlev,ntrac, ntrac_d,ns, nhr
-
+    use dimensions_mod,         only: large_Courant_incr
+    use dimensions_mod,         only: kmin_jet,kmax_jet
+    
     type (parallel_t) :: par
     type (element_t),intent(inout)            :: elem(:)
-    !
-    ! initialize fvm time-levels
-    !
-    n0_fvm  = 1
-    np1_fvm = 2
     !
     if (ntrac>0) then
       if (par%masterproc) then 
@@ -260,7 +305,7 @@ subroutine fill_halo_fvm_prealloc(cellghostbuf,elem,fvm,hybrid,nets,nete,tnp0,nd
         write(iulog,*) "|-----------------------------------------|"
         write(iulog,*) "                                           "
       end if
-      if (tracer_transport_type == TRACERTRANSPORT_CONSISTENT_SE_FVM) then
+      if (ntrac>0) then
         if (par%masterproc) then 
           write(iulog,*) "Running consistent SE-CSLAM, Lauritzen et al. (2017, MWR)."
           write(iulog,*) "CSLAM = Conservative Semi-LAgrangian Multi-tracer scheme"
@@ -268,89 +313,106 @@ subroutine fill_halo_fvm_prealloc(cellghostbuf,elem,fvm,hybrid,nets,nete,tnp0,nd
           write(iulog,*) "  "
         end if
       end if
-
+      !
+      ! PARAMETER ERROR CHECKING
+      !
+      if (kmin_jet>kmax_jet) &
+           call endrun("PARAMETER ERROR for fvm: kmin_jet must be < kmax_jet")
       if (ntrac>ntrac_d) &
            call endrun("PARAMETER ERROR for fvm: ntrac > ntrac_d")
 
-            if (qsize>0.and.mod(rsplit,fvm_supercycling).ne.0) then
+      if (qsize>0.and.mod(rsplit,fvm_supercycling).ne.0) then
         if (par%masterproc) then
           write(iulog,*)'cannot supercycle fvm tracers with respect to se tracers'
           write(iulog,*)'with this choice of rsplit =',rsplit
           write(iulog,*)'rsplit must be a multiple of fvm_supercycling=',fvm_supercycling
-          call endrun("PARAMETER ERROR for fvm: mod(rsplit,fvm_supercycling<>0")
         end if
+        call endrun("PARAMETER ERROR for fvm: mod(rsplit,fvm_supercycling)<>0")        
+      endif
+
+      if (qsize>0.and.mod(rsplit,fvm_supercycling_jet).ne.0) then
+        if (par%masterproc) then
+          write(iulog,*)'cannot supercycle fvm tracers with respect to se tracers'
+          write(iulog,*)'with this choice of rsplit =',rsplit
+          write(iulog,*)'rsplit must be a multiple of fvm_supercycling_jet=',fvm_supercycling_jet
+        end if
+        call endrun("PARAMETER ERROR for fvm: mod(rsplit,fvm_supercycling_jet)<>0")        
       endif
       
+      if (large_Courant_incr.and.(fvm_supercycling.ne.fvm_supercycling_jet)) then
+        if (par%masterproc) then
+          write(iulog,*)'Large Courant number increment requires no level dependent supercycling'
+          write(iulog,*)'i.e. fvm_supercycling must be equal to fvm_supercycling_jet'
+        end if
+        call endrun("PARAMETER ERROR for fvm: large_courant_incr requires fvm_supercycling=fvm_supercycling_jet")        
+      endif
       
       if (par%masterproc) then 
         write(iulog,*) "                                            "
         write(iulog,*) "Done Tracer transport scheme information    "
         write(iulog,*) "                                            "
       end if
-    end if
 
-      
-    if (par%masterproc) write(iulog,*) "fvm resolution is nc*nc in each element: nc = ",nc
-    if (par%masterproc) write(iulog,*)'ntrac,ntrac_d=',ntrac,ntrac_d      
-    if (par%masterproc) write(iulog,*)'qsize,qsize_d=',qsize,qsize_d
 
+      if (par%masterproc) write(iulog,*) "fvm resolution is nc*nc in each element: nc = ",nc
+      if (par%masterproc) write(iulog,*)'ntrac,ntrac_d=',ntrac,ntrac_d      
+      if (par%masterproc) write(iulog,*)'qsize,qsize_d=',qsize,qsize_d          
     
-    if (nc<3) then
-      if (par%masterproc) then 
-        write(iulog,*) "NUMBER OF CELLS ERROR for fvm: Number of cells parameter"
-        write(iulog,*) "parameter nc at least 3 (nc>=3), nc*nc cells per element. This is"
-        write(iulog,*) "needed for the cubic reconstruction, which is only implemented yet! STOP"
-      endif
-      call endrun("stopping")
-    end if
-    
-    if (par%masterproc) then
-      write(iulog,*) "  "
-      if (ns==1) then
-        write(iulog,*) "ns==1: using no interpolation for mapping cell averages values across edges"
-        write(iulog,*) "Note: this is not a recommended setting - large errors at panel edges!"
-      else if (ns==2) then
-        write(iulog,*) "ns==2: using linear interpolation for mapping cell averages values across edges"
-        write(iulog,*) "Note that ns=4 is default CSLAM setting used in Lauritzen et al. (2010)"
-        write(iulog,*) "so this option is slightly less accurate (but the stencil is smaller near panel edges!)"
-        
-      else if (ns==3) then
-        write(iulog,*) "ns==3: using quadratic interpolation for mapping cell averages values across edges"
-        write(iulog,*) "Note that ns=4 is default CSLAM setting used in Lauritzen et al. (2010)"
-        write(iulog,*) "so this option is slightly less accurate (but the stencil is smaller near panel edges!)"
-      else if (ns==4) then
-        write(iulog,*) "ns==4: using cubic interpolation for mapping cell averages values across edges"
-        write(iulog,*) "This is default CSLAM setting used in Lauritzen et al. (2010)"
-      else 
-        write(iulog,*) "Not a tested value for ns but it should work! You choose ns = ",ns
+      if (nc.ne.3) then
+        if (par%masterproc) then 
+          write(iulog,*) "Only nc==3 is supported for CSLAM"
+        endif
+        call endrun("PARAMETER ERRROR for fvm: only nc=3 supported for CSLAM")
       end if
       
-      !       if (ns.NE.3) then
-      !         write(*,*) "In fvm_reconstruction_mod function matmul_w has been hard-coded for ns=3 for performance"
-      !         write(*,*) "Revert to general code - outcommented above"
-      !         call endrun("stopping")
-      !       end if
-    end if
-    
-    if (MOD(ns,2)==0.and.nhr+(nhe-1)+ns/2>nc+nc) then
-      write(iulog,*) "to run this combination of ns and nhr you need to increase nc to ",nhr+ns/2+nhe-1
-      write(iulog,*) "You choose (ns,nhr,nc,nhe)=",ns,nhr,nc,nhe
-      call endrun("stopping")
-    end if
-    if (MOD(ns,2)==1.and.nhr+(ns-1)/2+(nhe-1)>nc+nc) then
-      write(iulog,*) "to run this combination of ns and nhr you need to increase nc to ",nhr+(ns-1)/2+nhe-1
-      write(iulog,*) "You choose (ns,nhr,nc,nhe)=",ns,nhr,nc,nhe
-      call endrun("stopping")
-    end if
-    
-    if (nc==3.and.ns.ne.3) then
       if (par%masterproc) then
-        write(iulog,*) "Recommended setting for nc=3 is ns=3 (linear interpolation in halo)"
-        write(iulog,*) "You choose ns=",ns
-        write(iulog,*) "Goto dimensions_mod to change value of ns"
-        write(iulog,*) "or outcomment call haltmop below (i.e. you know what you are doing!)"
-      endif
-      call endrun("stopping")
+        write(iulog,*) "  "
+        if (ns==1) then
+          write(iulog,*) "ns==1: using no interpolation for mapping cell averages values across edges"
+          write(iulog,*) "Note: this is not a recommended setting - large errors at panel edges!"
+        else if (ns==2) then
+          write(iulog,*) "ns==2: using linear interpolation for mapping cell averages values across edges"
+          write(iulog,*) "Note that ns=4 is default CSLAM setting used in Lauritzen et al. (2010)"
+          write(iulog,*) "so this option is slightly less accurate (but the stencil is smaller near panel edges!)"
+          
+        else if (ns==3) then
+          write(iulog,*) "ns==3: using quadratic interpolation for mapping cell averages values across edges"
+          write(iulog,*) "Note that ns=4 is default CSLAM setting used in Lauritzen et al. (2010)"
+          write(iulog,*) "so this option is slightly less accurate (but the stencil is smaller near panel edges!)"
+        else if (ns==4) then
+          write(iulog,*) "ns==4: using cubic interpolation for mapping cell averages values across edges"
+          write(iulog,*) "This is default CSLAM setting used in Lauritzen et al. (2010)"
+        else 
+          write(iulog,*) "Not a tested value for ns but it should work! You choose ns = ",ns
+        end if
+        
+        !       if (ns.NE.3) then
+        !         write(*,*) "In fvm_reconstruction_mod function matmul_w has been hard-coded for ns=3 for performance"
+        !         write(*,*) "Revert to general code - outcommented above"
+        !         call endrun("stopping")
+        !       end if
+      end if
+      
+      if (MOD(ns,2)==0.and.nhr+(nhe-1)+ns/2>nc+nc) then
+        write(iulog,*) "to run this combination of ns and nhr you need to increase nc to ",nhr+ns/2+nhe-1
+        write(iulog,*) "You choose (ns,nhr,nc,nhe)=",ns,nhr,nc,nhe
+        call endrun("stopping")
+      end if
+      if (MOD(ns,2)==1.and.nhr+(ns-1)/2+(nhe-1)>nc+nc) then
+        write(iulog,*) "to run this combination of ns and nhr you need to increase nc to ",nhr+(ns-1)/2+nhe-1
+        write(iulog,*) "You choose (ns,nhr,nc,nhe)=",ns,nhr,nc,nhe
+        call endrun("stopping")
+      end if
+      
+      if (nc==3.and.ns.ne.3) then
+        if (par%masterproc) then
+          write(iulog,*) "Recommended setting for nc=3 is ns=3 (linear interpolation in halo)"
+          write(iulog,*) "You choose ns=",ns
+          write(iulog,*) "Goto dimensions_mod to change value of ns"
+          write(iulog,*) "or outcomment call haltmop below (i.e. you know what you are doing!)"
+        endif
+        call endrun("stopping")
+      end if
     end if
     
     if (nc==4.and.ns.ne.4) then
@@ -369,8 +431,7 @@ subroutine fill_halo_fvm_prealloc(cellghostbuf,elem,fvm,hybrid,nets,nete,tnp0,nd
         write(iulog,*) "element nhe has to be 1, only this is available now! STOP!"
       endif
       call endrun("stopping")
-    end if
-    
+    end if   
   end subroutine fvm_init1
   
   
@@ -379,16 +440,20 @@ subroutine fill_halo_fvm_prealloc(cellghostbuf,elem,fvm,hybrid,nets,nete,tnp0,nd
   
   ! initialization that can be done in threaded regions
   subroutine fvm_init2(elem,fvm,hybrid,nets,nete)
-    use fvm_control_volume_mod, only: fvm_mesh,fvm_set_cubeboundary,n0_fvm,np1_fvm
+    use fvm_control_volume_mod, only: fvm_mesh,fvm_set_cubeboundary
     use bndry_mod,              only: compute_ghost_corner_orientation
     use dimensions_mod,         only: nlev, nc, nhc, nhe, ntrac, ntrac_d, np
+    use dimensions_mod,         only: nhc_phys, fv_nphys
+    use dimensions_mod,         only: fvm_supercycling, fvm_supercycling_jet
+    use dimensions_mod,         only: kmin_jet,kmax_jet
     use hycoef,                 only: hyai, hybi, ps0
     use derivative_mod,         only: subcell_integration
+    use physconst,              only: thermodynamic_active_species_num
     
     type (fvm_struct) :: fvm(:)
     type (element_t)  :: elem(:)
     type (hybrid_t)   :: hybrid
-    integer           :: ie,nets,nete,k
+    integer           :: ie,nets,nete,k,klev
     real(kind=r8)     :: one(np,np)
 
     one = 1.0_r8
@@ -399,9 +464,6 @@ subroutine fill_halo_fvm_prealloc(cellghostbuf,elem,fvm,hybrid,nets,nete,tnp0,nd
       end do
     end do
 
-    n0_fvm  = 1 !in case no cslam but physgrid
-    np1_fvm = 2
-    
     call compute_ghost_corner_orientation(hybrid,elem,nets,nete)
     ! run some tests:
     !    call test_ghost(hybrid,elem,nets,nete)
@@ -423,10 +485,32 @@ subroutine fill_halo_fvm_prealloc(cellghostbuf,elem,fvm,hybrid,nets,nete,tnp0,nd
     enddo
     ! Need to allocate ghostBufQnhc after compute_ghost_corner_orientation because it 
     ! changes the values for reverse
-    call initghostbuffer(hybrid%par,ghostBufQnhc,elem,nlev*(ntrac+1),nhc,nc)
-    call initghostbuffer(hybrid%par,ghostBufQ1,elem,nlev*(ntrac+1),1,nc)
-    call initghostbuffer(hybrid%par,ghostBufFlux,elem,4*nlev,nhe,nc)
 
+    call initghostbuffer(hybrid%par,ghostBufQnhc_s,elem,nlev*(ntrac+1),nhc,nc,nthreads=1)
+    call initghostbuffer(hybrid%par,ghostBufQnhc_h,elem,nlev*(ntrac+1),nhc,nc,nthreads=horz_num_threads)
+    call initghostbuffer(hybrid%par,ghostBufQnhc_vh,elem,nlev*(ntrac+1),nhc,nc,nthreads=vert_num_threads*horz_num_threads)
+    klev = kmax_jet-kmin_jet+1
+    call initghostbuffer(hybrid%par,ghostBufQ1_h,elem,klev*(ntrac+1),1,nc,nthreads=horz_num_threads)
+    call initghostbuffer(hybrid%par,ghostBufQ1_vh,elem,klev*(ntrac+1),1,nc,nthreads=vert_num_threads*horz_num_threads)
+!    call initghostbuffer(hybrid%par,ghostBufFlux_h,elem,4*nlev,nhe,nc,nthreads=horz_num_threads)
+    call initghostbuffer(hybrid%par,ghostBufFlux_vh,elem,4*nlev,nhe,nc,nthreads=vert_num_threads*horz_num_threads)
+    !
+    ! preallocate buffers for physics-dynamics coupling
+    !
+    if (fv_nphys.ne.nc) then
+       call initghostbuffer(hybrid%par,ghostBufPG_s,elem,nlev*(4+ntrac),nhc_phys,fv_nphys,nthreads=1)
+    else
+       call initghostbuffer(hybrid%par,ghostBufPG_s,elem,nlev*(3+thermodynamic_active_species_num),nhc_phys,fv_nphys,nthreads=1)
+    end if
+    
+    if (fvm_supercycling.ne.fvm_supercycling_jet) then
+      !
+      ! buffers for running different fvm time-steps in the jet region
+      !
+      klev = kmax_jet-kmin_jet+1
+      call initghostbuffer(hybrid%par,ghostBufQnhcJet_h,elem,klev*(ntrac+1),nhc,nc,nthreads=horz_num_threads)
+      call initghostbuffer(hybrid%par,ghostBufFluxJet_h,elem,4*klev,nhe,nc,nthreads=horz_num_threads)
+    end if
   end subroutine fvm_init2
 
   
@@ -436,7 +520,6 @@ subroutine fill_halo_fvm_prealloc(cellghostbuf,elem,fvm,hybrid,nets,nete,tnp0,nd
     use dimensions_mod  ,       only: fv_nphys
     use dimensions_mod,         only: nlev, nc, nhe, nlev, ntrac, ntrac_d,nhc
     use coordinate_systems_mod, only: cartesian2D_t,cartesian3D_t
-    use fvm_control_volume_mod, only: n0_fvm
     use coordinate_systems_mod, only: cubedsphere2cart, cart2cubedsphere
     implicit none
     type (element_t) ,intent(inout)  :: elem(:)
@@ -458,7 +541,7 @@ subroutine fill_halo_fvm_prealloc(cellghostbuf,elem,fvm,hybrid,nets,nete,tnp0,nd
       ! fill the fvm halo for mapping in d_p_coupling if
       ! physics grid resolution is different than fvm resolution
       !
-      call fill_halo_fvm(elem,fvm,hybrid,nets,nete,n0_fvm,nhc,1,nlev)
+      call fill_halo_fvm(elem,fvm,hybrid,nets,nete,nhc,1,nlev,nlev)
     end if
 
 
@@ -487,7 +570,7 @@ subroutine fill_halo_fvm_prealloc(cellghostbuf,elem,fvm,hybrid,nets,nete,tnp0,nd
         call ghostpack(cellghostbuf, fvm(ie)%spherecentroid(ixy,:,:) ,1,istart,ie)
       end do
     end do
-    call ghost_exchange(hybrid,cellghostbuf)
+    call ghost_exchange(hybrid,cellghostbuf,location='fvm_init3')
     do ie=nets,nete
       istart = 0
       call ghostunpack(cellghostbuf, fvm(ie)%norm_elem_coord(1,:,:),1,istart,ie)
@@ -705,7 +788,7 @@ subroutine fill_halo_fvm_prealloc(cellghostbuf,elem,fvm,hybrid,nets,nete,tnp0,nd
           call ghostpack(cellghostbuf, fvm(ie)%spherecentroid_physgrid(ixy,:,:) ,1,istart,ie)
         end do
       end do
-      call ghost_exchange(hybrid,cellghostbuf)
+      call ghost_exchange(hybrid,cellghostbuf,location='fvm_pg_init')
       do ie=nets,nete
         istart = 0
         call ghostunpack(cellghostbuf, fvm(ie)%norm_elem_coord_physgrid(1,:,:),1,istart,ie)

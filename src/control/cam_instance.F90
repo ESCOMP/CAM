@@ -1,31 +1,30 @@
 module cam_instance
 
-use seq_comm_mct, only: seq_comm_suffix, seq_comm_inst, seq_comm_name
+  implicit none
+  public
 
-implicit none
-private
-save
-
-public :: cam_instance_init
-
-integer,           public :: atm_id
-integer,           public :: inst_index
-character(len=16), public :: inst_name
-character(len=16), public :: inst_suffix
+  integer          , public :: atm_id
+  integer          , public :: inst_index
+  character(len=16), public :: inst_name
+  character(len=16), public :: inst_suffix
 
 !===============================================================================
 CONTAINS
 !===============================================================================
 
-subroutine cam_instance_init(in_atm_id)
+  subroutine cam_instance_init(atm_id_in, inst_name_in, inst_index_in, inst_suffix_in)
 
-   integer, intent(in) :: in_atm_id
+    integer          , intent(in) :: atm_id_in
+    character(len=*) , intent(in) :: inst_name_in
+    integer          , intent(in) :: inst_index_in
+    character(len=*) , intent(in) :: inst_suffix_in
 
-   atm_id      = in_atm_id
-   inst_name   = seq_comm_name(atm_id)
-   inst_index  = seq_comm_inst(atm_id)
-   inst_suffix = seq_comm_suffix(atm_id)
+    ! The following sets the module variables
+    atm_id      = atm_id_in
+    inst_name   = inst_name_in
+    inst_index  = inst_index_in
+    inst_suffix = inst_suffix_in
 
-end subroutine cam_instance_init
+  end subroutine cam_instance_init
 
 end module cam_instance

@@ -19,6 +19,7 @@ module rate_diags
   public :: rate_diags_init
   public :: rate_diags_calc
   public :: rate_diags_readnl
+  public :: rate_diags_o3s_loss
 
   character(len=fieldname_len) :: rate_names(rxt_tag_cnt)
 
@@ -27,6 +28,8 @@ module rate_diags
 
   integer, parameter :: maxlines = 200
   character(len=CL), allocatable :: rxn_rate_sums(:)
+
+  integer :: o3_ndx = -1
 
 contains
 
@@ -72,6 +75,7 @@ contains
 !--------------------------------------------------------------------------------
   subroutine rate_diags_init
     use phys_control, only : phys_getopts
+    use mo_chem_utls, only : get_spc_ndx
 
     integer :: i, len, pos
     character(len=64) :: name
@@ -105,6 +109,8 @@ contains
     do i = 1, ngrps
        call addfld( grps(i)%name, (/ 'lev' /),'A', 'molecules/cm3/sec','reaction rate group')
     enddo
+
+    o3_ndx = get_spc_ndx('O3')
 
   end subroutine rate_diags_init
 
@@ -142,6 +148,42 @@ contains
     end do
 
   end subroutine rate_diags_calc
+
+!--------------------------------------------------------------------------------
+!--------------------------------------------------------------------------------
+  function rate_diags_o3s_loss( rxt_rates, vmr, ncol ) result(o3s_loss)
+    use mo_rxt_rates_conv, only: set_rates
+    use chem_mods,         only: rxntot
+
+    real(r8), intent(in) :: rxt_rates(:,:,:)
+    real(r8), intent(in) :: vmr(:,:,:)
+    integer,  intent(in) :: ncol
+
+    real(r8) :: o3s_loss(ncol,pver) ! /sec
+
+    integer :: i, j, ndx
+    real(r8) :: group_rate(ncol,pver)
+    real(r8) :: lcl_rxt_rates(ncol,pver,rxntot)
+
+    o3s_loss(:,:) = 0._r8
+
+    if (o3_ndx>0) then
+       lcl_rxt_rates(:ncol,:,:) = rxt_rates(:ncol,:,:)
+       call set_rates( lcl_rxt_rates, vmr, ncol )
+
+       do i = 1, ngrps
+          if (trim(grps(i)%name)=='O3S_Loss') then
+             group_rate(:,:) = 0._r8
+             do j = 1, grps(i)%nmembers
+                ndx = lookup_tag_ndx(grps(i)%term(j))
+                group_rate(:ncol,:) = group_rate(:ncol,:) + grps(i)%multipler(j)*lcl_rxt_rates(:ncol,:,ndx)
+             enddo
+             o3s_loss(:ncol,:) = group_rate(:ncol,:)/vmr(:ncol,:,o3_ndx)
+          endif
+       end do
+    endif
+
+  end function rate_diags_o3s_loss
 
 !-------------------------------------------------------------------
 ! Private routines :

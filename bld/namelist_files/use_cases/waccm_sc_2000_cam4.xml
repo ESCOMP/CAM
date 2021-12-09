@@ -41,7 +41,6 @@
 <!-- QBO settings --> 
 <qbo_cyclic dyn="fv">.true.</qbo_cyclic>
 <qbo_forcing_file dyn="fv">atm/waccm/qbo/qbocyclic28months.nc'</qbo_forcing_file>
-<qbo_use_forcing dyn="fv">.true.</qbo_use_forcing>
 
 <!-- Kp Ap indices -->
 <solar_parms_data_file>atm/waccm/phot/wa_smax_c100517.nc</solar_parms_data_file>

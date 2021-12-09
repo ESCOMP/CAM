@@ -1,8 +1,0 @@
--spmd -smp
--chem trop_mam3
--offline_drv rad
--dyn fv
--hgrid 4x5
--phys cam5
--debug
--s

@@ -92,7 +92,7 @@ Class List
   cfc12_loss       (  4)   CFC12 -> (No products)                                               rate = ** User defined **         (  5)
   lyman_alpha      (  5)   H2O -> (No products)                                                 rate = ** User defined **         (  6)
   usr_HO2_HO2      (  6)   HO2 + HO2 ->  H2O2                                                   rate = ** User defined **         (  7)
-                   (  7)   H2O2 + OH ->  H2O + HO2                                              rate = 2.90E-12*exp(   -160./t)   (  8)
+                   (  7)   H2O2 + OH ->  H2O + HO2                                              rate = 1.80E-12                   (  8)
   usr_SO2_OH       (  8)   SO2 + OH ->  H2SO4                                                   rate = ** User defined **         (  9)
                    (  9)   DMS + OH ->  SO2                                                     rate = 9.60E-12*exp(   -234./t)   ( 10)
   usr_DMS_OH       ( 10)   DMS + OH ->  .5*SO2 + .5*HO2                                         rate = ** User defined **         ( 11)

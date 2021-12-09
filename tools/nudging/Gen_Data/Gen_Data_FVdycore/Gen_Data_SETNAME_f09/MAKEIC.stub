@@ -1,0 +1,627 @@
+C NCLFORTSTART
+      subroutine mask_ice(plat, plon  , ice, landfrac)
+C
+C--------1---------2---------3---------4---------5--------6---------7--
+C
+C Use land mask to overwrite land fraction with ice fraction to 
+C prepare for interpolation of ice fraction to new resolution
+C
+C-----------------------------------------------------------------------
+C
+      implicit none
+C
+C-----------------------------------------------------------------------
+C
+      integer plat      ! latitude  dimension of input/output fields
+      integer plon      ! longitude dimension of input/output fields
+C
+      real*8 ice      (plon,plat ) ! input/output ice fraction
+      real*8 landfrac (plon,plat ) ! land mask
+C
+C-----------------------------------------------------------------------
+C
+
+C NCLEND
+
+C NCLFORTSTART
+      subroutine mask_sst(plat, plon  , sst, landfrac, icefrac )
+C
+C--------1---------2---------3---------4---------5--------6---------7--
+C
+C Use land and ice masks to overwrite land fraction with SSTs to 
+C prepare for interpolation of SSTs to new resolution
+C
+C-----------------------------------------------------------------------
+C
+      implicit none
+C
+C-----------------------------------------------------------------------
+C
+      integer plat      ! latitude  dimension of input/output fields
+      integer plon      ! longitude dimension of input/output fields
+C
+      real*8 sst      (plon,plat ) ! input:  sst (K); output: masked sst 
+C                                  ! converted to degrees C
+      real*8 landfrac (plon,plat ) ! land mask
+      real*8 icefrac  (plon,plat ) ! ice  mask
+C
+C-----------------------------------------------------------------------
+C
+
+C NCLEND
+
+C NCLFORTSTART
+      subroutine jra_25_press_full_levels(plevp1, plev   ,plat   ,
+     $                                    plon  , psi    ,psm    )
+C
+C--------1---------2---------3---------4---------5--------6---------7--
+C
+C Interpolate JRA-25 full-level pressures from interface pressures
+C
+C-----------------------------------------------------------------------
+C
+      implicit none
+C
+C-----------------------------------------------------------------------
+C
+      integer plevp1    ! vertical  dimension of interface  pressure
+C                       !                              field (input )
+      integer plev      ! vertical  dimension of full-level pressure
+C                       !                              field (output)
+      integer plat      ! latitude  dimension of input/output fields
+      integer plon      ! longitude dimension of input/output fields
+C
+      real*8 psi (plon,plat,plevp1) ! input  interface  pressure field
+      real*8 psm (plon,plat,plev  ) ! output full-level pressure field
+C
+C-----------------------------------------------------------------------
+C
+
+C NCLEND
+
+C NCLFORTSTART
+      subroutine binning(plev   ,plato   ,plono   ,plat    ,plon ,
+     $                   xx     ,yy      ,clat    ,clon    ,gw   ,
+     $                   clato  ,clono   ,gwo     ,bin_factor    ,
+     $                   dyn_flag, dyn_flago      )
+C
+C--------1---------2---------3---------4---------5--------6---------7--
+C
+C Grid-Box Binning
+C
+C-----------------------------------------------------------------------
+C
+      implicit none
+C
+C-----------------------------------------------------------------------
+C
+      integer plev      ! vertical dimension of input/output field
+      integer plato     ! latitude dimension of output field
+      integer plono     ! longitude dimension of output field
+      integer plat      ! latitude dimension of input field
+      integer plon      ! longitude dimension of input field
+C
+      real*8 xx     (plon ,plat ,plev) ! input analysis field
+      real*8 yy     (plono,plato,plev) ! horizontally interpolated
+C                                      ! (output) field
+      real*8 clat (plat )              ! Input latitude in degrees
+C                                      ! starting from southern-most lat
+      real*8 clon (plon )              ! Input longitude in degrees
+C                                      ! starting at 0 deg and moving
+C                                      ! eastward
+      real*8 gw   (plat )              ! Input Gaussian wgts (if relevant grid)
+      real*8 clato(plato)              ! Output latitude in degrees
+C                                      ! starting from southern-most lat
+      real*8 clono(plono)              ! Output longitude in degrees
+C                                      ! starting at 0 deg and moving
+C                                      ! eastward
+      real*8 gwo  (plato)              ! Output Gaussian wgts (if relevant grid)
+      integer dyn_flag                 ! Dynamics flag of input grid:   Eul=1, FV=0
+      integer dyn_flago                ! Dynamics flag of output grid:  Eul=1, FV=0
+      real*8 bin_factor                ! bin-box area expansion/contraction factor relative to
+C                                      ! output grid-box area.
+C
+C-----------------------------------------------------------------------
+C
+
+C NCLEND
+
+C NCLFORTSTART
+      subroutine cubic_opt1(plev    ,plato   ,plono   ,plat    ,plon ,
+     $                      platm2  ,xx      ,yy      ,pext    ,xx_exts,
+     $                      clat    ,clon    ,clato   ,clono   ,limdr)
+C
+C--------1---------2---------3---------4---------5--------6---------7--
+C
+C Horizontal Cubic Interpolation Driver
+C
+C-----------------------------------------------------------------------
+C
+      implicit none
+C
+C-----------------------------------------------------------------------
+C
+      integer plev      ! vertical dimension of input/output field
+      integer plato     ! latitude dimension of output field
+      integer plono     ! longitude dimension of output field
+      integer plat      ! latitude dimension of input field
+      integer plon      ! longitude dimension of input field
+      integer platm2    ! input latitude dimension (less possible pole points)
+      integer pext      ! # of latitude extensions
+
+C
+      real*8 xx     (plon ,plat ,plev) ! input analysis field
+      real*8 yy     (plono,plato,plev) ! horizontally interpolated
+C                                      ! (output) field
+      real*8 xx_exts(plon ,pext ,plev) ! input latitude extensions
+      real*8 clat (plat )              ! Input latitude in degrees
+C                                      ! starting from southern-most lat
+      real*8 clon (plon )              ! Input longitude in degrees
+C                                      ! starting at 0 deg and moving
+C                                      ! eastward
+      real*8 clato(plato)              ! Output latitude in degrees
+C                                      ! starting from southern-most lat
+      real*8 clono(plono)              ! Output longitude in degrees
+C                                      ! starting at 0 deg and moving
+C                                      ! eastward
+      logical limdr                    ! Flag to use SCM0 derivative estimate limiter
+
+C-----------------------------------------------------------------------
+
+C NCLEND
+
+C NCLFORTSTART
+      subroutine extys(plon    ,plev    ,plat    ,extent_dim, clat    ,
+     $                 fb      ,fb_extents)
+
+C-----------------------------------------------------------------------
+C 
+C Purpose: 
+C Fill latitude extensions of a scalar extended array
+C 
+C Method: 
+C This is done in 2 steps:
+C   1) interpolate to the pole points; use the mean field value on the
+C      Gaussian latitude closest to the pole.
+C   2) add latitude lines beyond the poles.
+C 
+C Author: J. Olson
+C 
+C-----------------------------------------------------------------------
+
+      implicit none
+
+C------------------------------Arguments--------------------------------
+      integer plon               ! longitude dimension of input field
+      integer plev               ! vertical dimension of input/output
+      integer plat               ! Total latitude dimension of input grid
+      integer extent_dim         ! # of latitude extensions
+      real*8  clat (plat )       ! Input latitudes in degrees
+      real*8  fb(plon,plat,plev) ! input field on extended grid
+      real*8  fb_extents(plon,extent_dim,plev) ! latitude extensions
+
+C-----------------------------------------------------------------------
+
+C NCLEND
+
+C NCLFORTSTART
+      subroutine extyv(plon    ,plev    ,plat    ,extent_dim,clon   ,
+     $                 clat    ,
+     $                 fbu     ,fbv     ,fbu_extents, fbv_extents   )
+
+C-----------------------------------------------------------------------
+C 
+C Purpose: 
+C Fill latitude extensions of a vector quantity
+C 
+C Method: 
+C This is done in 2 steps:
+C   1) interpolate to the pole points; project the orthogonal wave 1
+C      of U and V to the pole; use the Gaussian latitude closest to the pole.
+C   2) add latitude lines beyond the poles.
+C 
+C Author: J. Olson
+C 
+C-----------------------------------------------------------------------
+
+      implicit none
+
+C------------------------------Arguments--------------------------------
+      integer plon               ! longitude dimension of input field
+      integer plev               ! vertical dimension of input/output
+      integer plat               ! Total latitude dimension of input grid
+      integer extent_dim         ! # of latitude extensions
+      real*8  clon (plon )       ! Input longitude in degrees
+      real*8  clat (plat )       ! Input latitude  in degrees
+      real*8  fbu(plon,plat,plev) ! input field on extended grid
+      real*8  fbv(plon,plat,plev) ! input field on extended grid
+      real*8  fbu_extents(plon,extent_dim,plev) ! latitude extensions
+      real*8  fbv_extents(plon,extent_dim,plev) ! latitude extensions
+
+C-----------------------------------------------------------------------
+
+C NCLEND
+
+C NCLFORTSTART
+      subroutine tsadj(plat    ,plon    ,phis_old,phis_new,ts      )
+C
+C-----------------------------------------------------------------------
+C
+C Adjust Ts based on difference between old and new phis.
+C
+C-----------------------------------------------------------------------
+C
+      implicit none
+C
+C-----------------------------------------------------------------------
+C
+C     INPUTS
+C
+      integer plat !  latitude dimension
+      integer plon !  longitude dimension
+C
+      real*8 phis_old(plon,plat) ! analysis phis (e.g., ECMWF)
+      real*8 phis_new(plon,plat) ! model phis
+C
+C     INPUT/OUTPUT
+C
+      real*8 ts      (plon,plat) ! Surface Temp
+C
+C-----------------------------------------------------------------------
+
+C NCLEND
+
+C NCLFORTSTART
+      subroutine vert_quad_opt1(plevi , plevip1 , plev , plat  ,plon,
+     $                 t_old ,pressi_m ,pressi_i ,presso_m, phis_old,
+     $                 ps_old  , t_new , loglin )
+C
+C-----------------------------------------------------------------------
+C
+C Quadratic interpolation (designed for Temperature interpolation)
+C
+C                         (if "loglin" == 1: in P
+C                          if "loglin" /= 1: in ln(P) )
+C
+C  Above input top           :  quadratic using top, levels 1 and 2 (top
+C                               defined as 1.e-10 Pa for now).  Top
+C                               value set to value at level 1
+C  Between levels 1 and "bot":  quadratic interp using 3 closest levels
+C  Between levels "bot"
+C                 and surface:  linear interpolation using "Tbot"and
+C                               "Tsurf".
+C  Below surface             :  You don"t wanna know (see doc)...
+C
+C
+C-----------------------------------------------------------------------
+C
+      implicit none
+C
+C-----------------------------------------------------------------------
+C
+C     INPUTS
+C
+      integer plevi     ! vertical dimension of input analysis fields
+      integer plevip1   ! "plevi+1 (vert dimension of input interfaces)
+      integer plev      ! vertical dimension of model fields
+      integer plat      ! latitude dimension
+      integer plon      ! longitude dimension
+C
+      real*8 t_old   (plevi  ,plon,plat)   ! analysis tempertatures
+      real*8 pressi_m (plevi  ,plon,plat)  ! analysis pressures at all levels
+      real*8 pressi_i (plevip1,plon,plat)  ! analysis interface pressures
+      real*8 presso_m (plev   ,plon,plat)  ! model pressures (based on adjusted PS)
+      real*8 phis_old(plon,     plat)      ! analysis phis
+      real*8 ps_old  (plon,     plat)      ! analysis surface pressure
+      real*8 ps_new  (plon,     plat)      ! "adjusted" model surface pressure
+      integer loglin                       ! interpolation flag
+C
+C     OUTPUT
+C
+      real*8 t_new   (plev   ,plon,plat)   ! Interpolated Temperatures
+C
+C
+C-----------------------------------------------------------------------
+
+C NCLEND
+
+C NCLFORTSTART
+      subroutine vert_int_opt2(plat    ,plon    ,plevi   ,plevo   ,
+     $                         pressi  ,presso  ,xxi     ,xxo     ,
+     $                         loglin  )
+C
+C-----------------------------------------------------------------------
+C
+C Designed for vertical interpolation of U/V
+C
+C Linear and Quadratic interpolation (if "loglin" == 1: in P
+C                                     if "loglin" /= 1: in ln(P) )
+C
+C  Above input top        :  quadratic using top, levels 1 and 2 (top
+C                            defined as 1.e-10 Pa for now).  Top value
+C                            determined from linear extrapolation from
+C                            levels 1 and 2
+C  Between levels 1 and 2 :  quadratic interp using levels 1,2, & 3
+C  Between levels 2 and K :  linear interpolation using adjacent levels
+C  Below level K          :  set equal to level K
+C
+C-----------------------------------------------------------------------
+C
+      implicit none
+C
+C-----------------------------------------------------------------------
+C
+C     INPUTS
+C
+      integer plat  ! latitude dimension
+      integer plon  ! longitude dimension
+      integer plevi ! vertical dimension of analysis fields
+      integer plevo ! vertical dimension of model fields
+C
+      real*8 pressi  (plevi,plon,plat) ! analysis pressures
+      real*8 presso  (plevo,plon,plat) ! model pressures (based on adjusted PS)
+      real*8 xxi     (plevi,plon,plat) ! input analysis field
+      integer loglin                   ! interpolation flag
+C
+C     OUTPUTS
+C
+      real*8 xxo     (plevo,plon,plat) ! model field
+C
+C-----------------------------------------------------------------------
+
+C NCLEND
+
+C NCLFORTSTART
+      subroutine vert_int_opt1(plat    ,plon    ,plevi   ,plevo   ,
+     $                         pressi  ,presso  ,xxi     ,xxo     ,
+     $                         loglin  )
+C
+C-----------------------------------------------------------------------
+C
+C Designed for moisture fields like q, cloud water, cloud ice, cloud frac, etc.
+C
+C Linearly interpolate (if "loglin" == 1: in P
+C                       if "loglin" /= 1: in ln(P) )
+C
+C  Above input top        :  set equal to level 1
+C  Between levels 1 and K :  linear interpolation using adjacent levels
+C  Below level K          :  set equal to level K
+C
+C-----------------------------------------------------------------------
+C
+      implicit none
+C
+C-----------------------------------------------------------------------
+C
+C     INPUTS
+C
+      integer plat   ! latitude dimension
+      integer plon   ! longitude dimension
+      integer plevi  ! vertical dimension of analysis fields
+      integer plevo  ! vertical dimension of model fields
+C
+      real*8 pressi  (plevi,plon,plat)  ! analysis pressures
+      real*8 presso  (plevo,plon,plat)  ! model pressures (based on adjusted PS)
+      real*8 xxi     (plevi,plon,plat)  ! analysis field
+      integer loglin                    ! interpolation flag
+C
+C     OUTPUTS
+C
+      real*8 xxo     (plevo,plon,plat)  ! model field
+C
+C-----------------------------------------------------------------------
+
+C NCLEND
+
+C NCLFORTSTART
+      subroutine myminmax(plev    ,plat    ,plon    ,x       ,fmin   ,
+     $                    fmax    )
+C
+C-----------------------------------------------------------------------
+C
+C Bracket "x" between fmin and fmax
+C
+C-----------------------------------------------------------------------
+C
+      implicit none
+C
+C-----------------------------------------------------------------------
+C
+      integer plev
+      integer plat
+      integer plon
+C
+      real*8 x       (plon,plat,plev)
+      real*8 fmin
+      real*8 fmax
+C
+C-----------------------------------------------------------------------
+
+C NCLEND
+
+C NCLFORTSTART
+      subroutine psadj(plev    ,plevp1  ,plat    ,plon    ,t       ,
+     $                 press_m ,press_i ,phis_old,phis_new,ps_old  ,
+     $                 ps_new  )
+C
+C-----------------------------------------------------------------------
+C
+C Adjust Ps based on difference between "analysis" phis and model phis.
+C Also uses T and P arrays
+C
+C-----------------------------------------------------------------------
+C
+      implicit none
+C
+C-----------------------------------------------------------------------
+C
+C     INPUTS
+C
+      integer plev      ! vertical dimension
+      integer plevp1    ! "plev+1"
+      integer plat      ! latitude dimension
+      integer plon      ! longitude dimension
+C
+      real*8 t       (plon,plat,plev)    ! analysis Temperatures
+      real*8 press_m (plon,plat,plev)    ! analysis pressures
+      real*8 press_i (plon,plat,plevp1)  ! analysis pressures (interfaces)
+      real*8 phis_old(plon,     plat)    ! analysis phis
+      real*8 phis_new(plon,     plat)    ! model phis
+      real*8 ps_old  (plon,     plat)    ! analysis Ps (horizontally
+C                                        ! interpolated to model grid)
+C
+C     OUTPUTS
+C
+      real*8 ps_new  (plon,     plat)    ! adjusted model Ps
+C
+C-----------------------------------------------------------------------
+
+C NCLEND
+
+C NCLFORTSTART
+      subroutine q2rh(plat    ,plev    ,plon    ,q       ,t       ,
+     $                press   )
+C
+C-----------------------------------------------------------------------
+C
+C Compute RH from T, Pressure, and Specific Humidity
+C
+C-----------------------------------------------------------------------
+C
+      implicit none
+C
+C-----------------------------------------------------------------------
+C
+      integer plat
+      integer plev
+      integer plon
+C
+      real*8 q    (plon,plat,plev)
+      real*8 t    (plon,plat,plev)
+      real*8 press(plon,plat,plev)
+C
+C-----------------------------------------------------------------------
+
+C NCLEND
+
+C NCLFORTSTART
+      subroutine rh2q(plat    ,plev    ,plon    ,q       ,t       ,
+     $                press   )
+C
+C-----------------------------------------------------------------------
+C
+C Compute Q from T, Pressure, and RH
+C
+C-----------------------------------------------------------------------
+C
+      implicit none
+C
+C-----------------------------------------------------------------------
+C
+      integer plat
+      integer plev
+      integer plon
+C
+      real*8 q    (plon,plat,plev)
+      real*8 t    (plon,plat,plev)
+      real*8 press(plon,plat,plev)
+C
+C-----------------------------------------------------------------------
+
+C NCLEND
+
+C NCLFORTSTART
+      subroutine mass_fixer(plev    , plevp1  ,plat    ,plon    ,q    ,
+     $                      hyai    , hybi    ,gw      ,gravit  ,ps0  ,
+     $                      tmass0  , ps      )
+C
+C-----------------------------------------------------------------------
+C
+C Adjust atmospheric mass based upon Q.
+C
+C-----------------------------------------------------------------------
+C
+      implicit none
+C
+C-----------------------------------------------------------------------
+C
+C     INPUTS
+C
+      integer plev   !  level dimension
+      integer plevp1 !  level dimension + 1
+      integer plat   !  latitude dimension
+      integer plon   !  longitude dimension
+C
+      real*8 hyai(plevp1)
+      real*8 hybi(plevp1)
+      real*8 gw  (plat)
+      real*8 q   (plon,plat,plev)   ! Specific humidity
+      real*8 gravit                 ! acceleration of gravity ~ m/s^2
+      real*8 ps0                    ! Ref. Surface pressure (10**5 Pa)
+      real*8 tmass0                 ! Dry mass of Ref. atmosphere
+C
+C     INPUT/OUTPUT
+C
+      real*8 ps  (plon,plat     )   ! Surface Pressure
+C
+C-----------------------------------------------------------------------
+
+C NCLEND
+
+C NCLFORTSTART
+      subroutine read_namelist(NAMENUMBER,MYTMPDIR,MYOUTDIR,INPUTDIR,TMP_clean,
+     $              REF_DATE, CASEx, DYCORE, PRECISIONx, VORT_DIV_TO_UV,
+     $              SST_MASK, ICE_MASK, OUTPUT_PHIS, REGRID_ALL,
+     $              ADJUST_STATE_FROM_TOPO, fname_phis_output,
+     $              ftype_phis_output, fname_grid_info, fields,
+     $              source_files, fname_phis_input, ftype_phis_input,
+     $              fname0, fname1, fname2, fname3, fname4, fname5,
+     $              ftype0, ftype1, ftype2, ftype3, ftype4, ftype5,
+     $              fdate0, fdate1, fdate2, fdate3, fdate4, fdate5)
+
+C
+C-----------------------------------------------------------------------
+C
+C Read Processing Namelist
+C
+C-----------------------------------------------------------------------
+C
+      implicit none
+C
+C-----------------------------------------------------------------------
+C
+C     INPUTS
+C
+      integer NAMENUMBER
+C
+C     OUTPUT
+C
+      character*(*) MYTMPDIR
+      character*(*) MYOUTDIR
+      character*(*) INPUTDIR
+      character*(*) TMP_clean
+      character*(*)  REF_DATE
+      character*(*)  CASEx
+      character*(*)  DYCORE
+      character*(*)  PRECISIONx
+      character*(*)  VORT_DIV_TO_UV
+      character*(*)  SST_MASK
+      character*(*)  ICE_MASK
+      character*(*)  OUTPUT_PHIS
+      character*(*)  REGRID_ALL
+      character*(*)  ADJUST_STATE_FROM_TOPO
+      character*(*)  fname_phis_output
+      character*(*)  ftype_phis_output
+      character*(*)  fname_grid_info
+      character*(*)  fields
+      character*(*)  source_files
+      character*(*)  fname_phis_input
+      character*(*)  ftype_phis_input
+      character*(*)  fname0, fname1, fname2, fname3, fname4, fname5
+      character*(*)  ftype0, ftype1, ftype2, ftype3, ftype4, ftype5
+      character*(*)  fdate0, fdate1, fdate2, fdate3, fdate4, fdate5
+C
+C-----------------------------------------------------------------------
+
+C NCLEND
+

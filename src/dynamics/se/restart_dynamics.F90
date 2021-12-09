@@ -21,7 +21,7 @@ use hycoef,           only: init_restart_hycoef, write_restart_hycoef, &
                             hyai, hybi, ps0
 use ref_pres,         only: ptop_ref
 
-use pio,              only: pio_global, pio_unlimited, pio_offset_kind, pio_double, &
+use pio,              only: pio_global, pio_unlimited, pio_offset_kind, pio_int, pio_double, &
                             pio_seterrorhandling, pio_bcast_error, pio_noerr, &
                             file_desc_t, var_desc_t, io_desc_t, &
                             pio_inq_dimid, pio_inq_dimlen, pio_inq_varid, &
@@ -29,7 +29,7 @@ use pio,              only: pio_global, pio_unlimited, pio_offset_kind, pio_doub
                             pio_enddef, &
                             pio_initdecomp, pio_freedecomp, pio_setframe, &
                             pio_put_att, pio_put_var, pio_write_darray, &
-                            pio_get_att, pio_read_darray
+                            pio_get_att, pio_get_var, pio_read_darray
 
 use cam_pio_utils,    only: pio_subsystem, cam_pio_handle_error
 use cam_grid_support, only: cam_grid_header_info_t, cam_grid_id, cam_grid_write_attr, &
@@ -43,7 +43,6 @@ use cam_abortutils,   only: endrun
 
 use parallel_mod,     only: par
 use thread_mod,       only: horz_num_threads
-use control_mod,      only: qsplit
 use dimensions_mod,   only: np, npsq, ne, nlev, qsize, nelemd, nc, ntrac
 use dof_mod,          only: UniquePoints
 use element_mod,      only: element_t
@@ -53,7 +52,7 @@ use edge_mod,         only: initEdgeBuffer, edgeVpack, edgeVunpack, FreeEdgeBuff
 use edgetype_mod,     only: EdgeBuffer_t
 use bndry_mod,        only: bndry_exchange
 
-use fvm_control_volume_mod, only: fvm_struct, n0_fvm
+use fvm_control_volume_mod, only: fvm_struct
 
 implicit none
 private
@@ -173,7 +172,7 @@ end subroutine init_restart_dynamics
 !=========================================================================================
 
 subroutine write_restart_dynamics(File, dyn_out)
-
+  use control_mod,      only: qsplit
    type(file_desc_t), intent(inout) :: File
    type(dyn_export_t), intent(in)   :: dyn_out
 
@@ -242,7 +241,7 @@ subroutine write_restart_dynamics(File, dyn_out)
             ii = 1
             do j = 1, nc
                do i = 1, nc
-                  buf3d(ii,k,ie) = fvm(ie)%dp_fvm(i,j,k,n0_fvm)
+                  buf3d(ii,k,ie) = fvm(ie)%dp_fvm(i,j,k)
                   ii = ii + 1
                end do
             end do
@@ -257,7 +256,7 @@ subroutine write_restart_dynamics(File, dyn_out)
                ii = 1
                do j = 1, nc
                   do i = 1, nc
-                     buf3d(ii,k,ie) = fvm(ie)%c(i,j,k,m,n0_fvm)
+                     buf3d(ii,k,ie) = fvm(ie)%c(i,j,k,m)
                      ii = ii + 1
                   end do
                end do
@@ -506,7 +505,7 @@ end subroutine write_restart_dynamics
 !=========================================================================================
 
 subroutine read_restart_dynamics(File, dyn_in, dyn_out)
-
+  use control_mod,      only: qsplit
    ! arguments
    type(File_desc_t), intent(inout) :: File
    type(dyn_import_t), intent(out)  :: dyn_in
@@ -657,7 +656,7 @@ subroutine read_restart_dynamics(File, dyn_in, dyn_out)
             ii = 1
             do j = 1, nc
                do i = 1, nc
-                  fvm(ie)%dp_fvm(i,j,k,n0_fvm) = var3d_fvm(ii,k,ie)
+                  fvm(ie)%dp_fvm(i,j,k) = var3d_fvm(ii,k,ie)
                   ii = ii + 1
                end do
             end do
@@ -674,7 +673,7 @@ subroutine read_restart_dynamics(File, dyn_in, dyn_out)
                ii = 1
                do j = 1, nc
                   do i = 1, nc
-                     fvm(ie)%c(i,j,k,m,n0_fvm) = var3d_fvm(ii,k,ie)
+                     fvm(ie)%c(i,j,k,m) = var3d_fvm(ii,k,ie)
                      ii = ii + 1
                   end do
                end do
@@ -686,7 +685,7 @@ subroutine read_restart_dynamics(File, dyn_in, dyn_out)
       do ie = 1, nelemd
          do j = 1, nc
             do i = 1, nc
-               fvm(ie)%psc(i,j) = sum(fvm(ie)%dp_fvm(i,j,:,n0_fvm)) +  ptop_ref
+               fvm(ie)%psc(i,j) = sum(fvm(ie)%dp_fvm(i,j,:)) +  ptop_ref
             end do
          end do
       end do

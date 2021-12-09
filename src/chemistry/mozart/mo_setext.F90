@@ -10,7 +10,7 @@ module mo_setext
 
   save
 
-  integer :: co_ndx, no_ndx, synoz_ndx, xno_ndx, o_ndx
+  integer :: co_ndx, no_ndx, xno_ndx, o_ndx
   integer :: op_ndx, o2p_ndx, np_ndx, n2p_ndx, n2d_ndx, n_ndx, e_ndx, oh_ndx
   logical :: has_ions = .false.
   logical :: has_dregion_ions = .false.
@@ -31,7 +31,6 @@ contains
 
     co_ndx    = get_extfrc_ndx( 'CO' )
     no_ndx    = get_extfrc_ndx( 'NO' )
-    synoz_ndx = get_extfrc_ndx( 'SYNOZ' )
     xno_ndx   = get_extfrc_ndx( 'XNO' )
     aoa_nh_ndx = get_extfrc_ndx('AOA_NH')
 
@@ -50,8 +49,8 @@ contains
 
     if (masterproc) then
        write(iulog,*) ' '
-       write(iulog,*) 'setext_inti: diagnostics: co_ndx, no_ndx, synoz_ndx, xno_ndx'
-       write(iulog,'(10i5)') co_ndx, no_ndx, synoz_ndx, xno_ndx
+       write(iulog,*) 'setext_inti: diagnostics: co_ndx, no_ndx, xno_ndx'
+       write(iulog,'(10i5)') co_ndx, no_ndx, xno_ndx
     endif
 
     call addfld( 'NO_Lightning', (/ 'lev' /), 'A','molec/cm3/s', 'lightning NO source' )
@@ -108,7 +107,6 @@ contains
     use chem_mods,    only : extcnt
     use tracer_srcs,  only : num_tracer_srcs, tracer_src_flds, get_srcs_data
     use mo_chem_utls, only : get_extfrc_ndx
-    use mo_synoz,     only : po3
 
     use mo_aurora,      only : aurora
     use gcr_ionization, only : gcr_ionization_ionpairs
@@ -194,15 +192,6 @@ contains
     call outfld( 'NO_Lightning', no_lgt(:ncol,:), ncol, lchnk )
 
     call airpl_set( lchnk, ncol, no_ndx, co_ndx, xno_ndx, cldtop, zint_abs, extfrc)
-
-    !---------------------------------------------------------------------
-    ! 	... synoz production
-    !---------------------------------------------------------------------
-    if( synoz_ndx > 0 ) then
-       do k = 1,pver
-          extfrc(:ncol,k,synoz_ndx) = extfrc(:ncol,k,synoz_ndx) + po3(:ncol,k,lchnk)
-       end do
-    end if
 
     do i = 1,num_tracer_srcs
 

@@ -26,11 +26,14 @@ public ::&
    get_curr_date,            &! return date components at end of current timestep
    get_prev_date,            &! return date components at beginning of current timestep
    get_start_date,           &! return components of the start date
+   get_stop_date,            &! return components of the stop date
+   get_run_duration,         &! return run duration in whole days and remaining seconds
    get_ref_date,             &! return components of the reference date
    get_perp_date,            &! return components of the perpetual date, and current time of day
    get_curr_time,            &! return components of elapsed time since reference date at end of current timestep
    get_prev_time,            &! return components of elapsed time since reference date at beg of current timestep
    get_curr_calday,          &! return calendar day at end of current timestep
+   get_julday,               &! return julian day from input date, time
    get_calday,               &! return calendar day from input date
    is_first_step,            &! return true on first step of initial run
    is_first_restart_step,    &! return true on first step of restart or branch run
@@ -47,6 +50,7 @@ public ::&
    set_time_float_from_date, &! returns a float representation of time given  yr, mon, day, sec
    set_date_from_time_float   ! returns yr, mon, day, sec given time float
 
+public :: is_leapyear
 
 ! Private module data
 
@@ -62,7 +66,7 @@ integer :: cal_type = uninit_int            ! calendar type
 ! The target attribute for tm_cal is needed (at least by NAG) because there are
 ! pointers to this object inside ESMF_Time objects.
 type(ESMF_Calendar), target :: tm_cal        ! calendar
-type(ESMF_Clock)            :: tm_clock      ! Model clock   
+type(ESMF_Clock)            :: tm_clock      ! Model clock
 type(ESMF_Time)             :: tm_perp_date  ! perpetual date
 
 !=========================================================================================
@@ -256,20 +260,19 @@ subroutine set_time_float_from_date( time, year, month, day, sec )
   type(ESMF_TimeInterval) :: diff
   integer :: useday
 
-  call ESMF_TimeSet( date, yy=year, mm=month, dd=day, s=sec, calendar=tm_cal, rc=rc)
-  !
-  ! If the subroutine returned error, check if it is Feb 29 of a non-leap year
-  ! (legitimately used by the time-interpolation routines in tracer_data.F90)
-  ! in which case, substitute Feb 28 for the day
-  !
+  if ( ((calendar==shr_cal_noleap).or.(.not.is_leapyear(year))) &
+       .and. (month==2) .and. (day==29) ) then
+     ! set day to 28 when the calendar / year does not have a leap day
+     useday = 28
+  else
+     useday = day
+  endif
+
+  call ESMF_TimeSet( date, yy=year, mm=month, dd=useday, s=sec, calendar=tm_cal, rc=rc)
+
   if ( rc .ne. ESMF_SUCCESS ) then
-     if ( ( month .eq. 2 ) .and. ( day .eq. 29 ) ) then ! assume the failure is because it is leap day
-        useday = 28
-        call ESMF_TimeSet( date, yy=year, mm=month, dd=useday, s=sec, calendar=tm_cal, rc=rc)
-     else  ! legitimate error, let the model quit
-        call chkrc(rc, sub//': error return from ESMF_TimeSet for set_time_float_from_date')        
-     endif 
-  endif  
+     call chkrc(rc, sub//': error return from ESMF_TimeSet for set_time_float_from_date')
+  endif
 
   call ESMF_ClockGet(tm_clock, refTime=ref_date, rc=rc )
   call chkrc(rc, sub//': error return from ESMF_ClockGet for set_time_float_from_date')
@@ -313,6 +316,14 @@ subroutine set_date_from_time_float( time, year, month, day, sec )
   call chkrc(rc, sub//': error return from ESMF_TimeGet for set_date_from_time_float')
 
 endsubroutine set_date_from_time_float
+
+!=========================================================================================
+
+logical function is_leapyear( yr )
+  integer, intent(in) :: yr
+  is_leapyear = (mod(yr, 400) == 0 .or. mod(yr,100) /= 0) .and. mod(yr,4)==0
+end function is_leapyear
+
 
 !=========================================================================================
 
@@ -550,7 +561,7 @@ subroutine get_curr_date(yr, mon, day, tod, offset)
       tod     ! time of day (seconds past 0Z)
 
    integer, optional, intent(in) :: offset  ! Offset from current time in seconds.
-                                            ! Positive for future times, negative 
+                                            ! Positive for future times, negative
                                             ! for previous times.
 
 ! Local variables
@@ -594,7 +605,7 @@ subroutine get_perp_date(yr, mon, day, tod, offset)
       tod     ! time of day (seconds past 0Z)
 
    integer, optional, intent(in) :: offset  ! Offset from current time in seconds.
-                                            ! Positive for future times, negative 
+                                            ! Positive for future times, negative
                                             ! for previous times.
 
 ! Local variables
@@ -679,6 +690,62 @@ subroutine get_start_date(yr, mon, day, tod)
    call chkrc(rc, sub//': error return from ESMF_TimeGet')
 
 end subroutine get_start_date
+
+!=========================================================================================
+
+subroutine get_stop_date(yr, mon, day, tod)
+
+   ! Return date components valid at end of run
+
+   ! Arguments
+   integer, intent(out) ::&
+      yr,    &! year
+      mon,   &! month
+      day,   &! day of month
+      tod     ! time of day (seconds past 0Z)
+
+   ! Local variables
+   character(len=*), parameter :: sub = 'get_stop_date'
+   integer :: rc
+   type(ESMF_Time) :: date
+   !----------------------------------------------------------------------------
+
+   call ESMF_ClockGet(tm_clock, stopTime=date, rc=rc)
+   call chkrc(rc, sub//': error return from ESMF_ClockGet')
+
+   call ESMF_TimeGet(date, yy=yr, mm=mon, dd=day, s=tod, rc=rc)
+   call chkrc(rc, sub//': error return from ESMF_TimeGet')
+
+end subroutine get_stop_date
+
+!=========================================================================================
+
+subroutine get_run_duration(nday, nsec)
+
+   ! Return run duration in days and seconds
+
+   ! Arguments
+   integer, intent(out) ::&
+      nday,    &! number of days in interval
+      nsec      ! remainder in seconds
+
+   ! Local variables
+   character(len=*), parameter :: sub = 'get_run_duration'
+   integer :: rc
+   type(ESMF_Time)         :: start_time, stop_time
+   type(ESMF_TimeInterval) :: diff
+   !----------------------------------------------------------------------------
+
+   call ESMF_ClockGet(tm_clock, startTime=start_time, stopTime=stop_time, rc=rc)
+   call chkrc(rc, sub//': error return from ESMF_ClockGet')
+
+   diff = stop_time - start_time
+
+   call ESMF_TimeIntervalGet(diff, d=nday, s=nsec, rc=rc)
+   call chkrc(rc, sub//': error return from ESMF_TimeIntervalGet')
+
+end subroutine get_run_duration
+
 !=========================================================================================
 
 subroutine get_ref_date(yr, mon, day, tod)
@@ -773,7 +840,7 @@ function get_curr_calday(offset)
 
 ! Arguments
    integer, optional, intent(in) :: offset  ! Offset from current time in seconds.
-                                            ! Positive for future times, negative 
+                                            ! Positive for future times, negative
                                             ! for previous times.
 ! Return value
    real(r8) :: get_curr_calday
@@ -821,7 +888,7 @@ function get_curr_calday(offset)
 !
 ! The zenith angle calculation is only capable of using a 365-day calendar.
 ! If a Gregorian calendar is being used, the last day of a leap year (day 366)
-! is sent to the model as a repetition of the previous day (day 365). 
+! is sent to the model as a repetition of the previous day (day 365).
 ! This is done by decrementing calday by 1 immediately below.
 ! bundy, July 2008
 !
@@ -837,6 +904,41 @@ function get_curr_calday(offset)
    end if
 
 end function get_curr_calday
+
+!==========================================================================
+! return julian day
+function get_julday(yr_in,mon,day,sec) result(julday)
+
+  integer,  intent(in) :: yr_in,mon,day,sec
+
+  real(r8) :: julday
+
+  integer :: yr
+  integer :: itimes(3), j, a,y,m
+
+  yr = yr_in
+
+  if (yr < 1000) then
+     if (yr < 40) then
+        yr = yr + 2000
+     else
+        yr = yr + 1900
+     endif
+  endif
+
+  itimes(1) = int(mon)
+  itimes(2) = int(day)
+  itimes(3) = int(yr)
+
+  a = int((14._r8-real(itimes(1),kind=r8))/12._r8)
+  y = itimes(3)+4800-a
+  m = itimes(1)+12*a-3
+  j = itimes(2) + int((153._r8*real(m,kind=r8)+2._r8) / 5._r8) + 365*y + &
+       int(real(y,kind=r8)/4._r8) - int(real(y,kind=r8)/100._r8) + int(real(y,kind=r8)/400._r8)- 32045
+  julday = real(j,kind=r8) + real(sec,kind=r8)/86400._r8
+
+end function get_julday
+!==========================================================================
 !=========================================================================================
 
 function get_calday(ymd, tod)
@@ -867,7 +969,7 @@ function get_calday(ymd, tod)
 !
 ! The zenith angle calculation is only capable of using a 365-day calendar.
 ! If a Gregorian calendar is being used, the last day of a leap year (day 366)
-! is sent to the model as a repetition of the previous day (day 365). 
+! is sent to the model as a repetition of the previous day (day 365).
 ! This is done by decrementing calday by 1 immediately below.
 ! bundy, July 2008
 !
@@ -905,7 +1007,7 @@ character(len=SHR_KIND_CS) function timemgr_get_calendar_cf()
 
 end function timemgr_get_calendar_cf
 !=========================================================================================
- 
+
 function timemgr_is_caltype( cal_in )
 
 ! Return true if incoming calendar type string matches actual calendar type in use
@@ -921,7 +1023,7 @@ function timemgr_is_caltype( cal_in )
 
 end function timemgr_is_caltype
 !=========================================================================================
- 
+
 function is_end_curr_day()
 
 ! Return true if current timestep is last timestep in current day.

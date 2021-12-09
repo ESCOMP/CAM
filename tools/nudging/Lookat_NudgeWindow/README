@@ -1,0 +1,34 @@
+
+======================
+Lookat_NudgeWindow
+======================
+
+Lookat_NudgeWindow is an NCL program to preview window settings in 
+the 'nudging_nl' namelist before comitting to a run. 
+
+Prior to use, a shared library for the Read_Namelist.f90 interface must
+be compiled using NCL WRAPIT:
+  
+     prompt> WRAPIT Read_Namelist.f90 Read_Namelist.stub
+ 
+     WRAPIT Version: 120209
+     COMPILING Read_Namelist.f90
+     LINKING
+     END WRAPIT
+
+The script is configured for a default iof 32 model levels and assumes that
+there is a user_nl_cam file with the desired window settings in the current 
+directory. The number of model levels can be specified on the command line 
+with the 'NLEV' varaible. 
+
+     prompt> ncl Lookat_NudgeWindow.ncl             ! Default 32 levels
+
+     prompt> ncl NLEV=60 Lookat_NudgeWindow.ncl     ! For 60 level model.
+
+The script by default will pop up a blank window. Clicking on the window
+or hitting return in the command window will display the horizontal 
+nudginig window in a lat,lon map as well as longitude/latitude profiles
+of the window. Clicking again, or hitting return again, will display the
+profile for the vertical window. A final click will exit the program. 
+
+

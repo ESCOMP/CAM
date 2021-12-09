@@ -18,7 +18,7 @@ contains
                      hs,      cp3v,    cap3v,  kord,    peln,            &
                      te0,     te,      dz,     mfx,     mfy,             &
                      uc,      vc,     du_s,    du_w,                     &
-                     am_correction, am_diag_lbl)
+                     am_geom_crrct, am_diag_lbl)
 !
 ! !USES:
 
@@ -84,7 +84,7 @@ contains
    real(r8) pkz(grid%ifirstxy:grid%ilastxy,grid%jfirstxy:grid%jlastxy,grid%km)     ! layer-mean pk for converting t to pt
 
    ! AM conservation mods
-   logical, intent(in)  ::  am_correction ! logical switch for AM correction
+   logical, intent(in)  ::  am_geom_crrct ! logical switch for AM correction
    logical, intent(in)  ::  am_diag_lbl   ! input
 
    real(r8), intent(in)                 :: du_s(grid%km)
@@ -147,6 +147,7 @@ contains
       integer :: jfirst, jlast         ! starting & ending latitude index
       integer :: myidxy_y, iam
       integer :: nprxy_x, nprxy_y
+      integer :: kk
 
 ! Local variables for Partial Remapping
 ! -------------------------------------
@@ -502,17 +503,21 @@ contains
         i1w = i1-1
         if (i1 == 1) i1w = im
         do k=1,km+1
-           do i=i1,i2
-              pe1(i,k) = pe(i,k,j)
-              if (k>1) then
-                if (pe1(i,k)-pe1(i,k-1)<lagrangianlevcrit) then
-                  write(iulog,*) "Lagrangian levels are crossing", lagrangianlevcrit
-                  write(iulog,*) "Run will ABORT!"
-                  write(iulog,*) "Suggest to increase NSPLTVRM"
-                  call endrun('te_map: Lagrangian levels are crossing')
-                endif
+          do i=i1,i2
+            pe1(i,k) = pe(i,k,j)
+            if (k>1) then
+              if (pe1(i,k)-pe1(i,k-1)<lagrangianlevcrit) then                
+                write(iulog,*) "Lagrangian levels are crossing", lagrangianlevcrit
+                write(iulog,*) "Run will ABORT!"
+                write(iulog,*) "Suggest to increase NSPLTVRM"
+                do kk=1,km
+                  write(iulog,'(A21,I5,A1,3f16.12)') "k,dp(unit=hPa),u,v: ",&
+                       kk," ",(pe(i,kk,j)-pe(i,kk-1,j))/100.0_r8,u(i,j,kk),v(i,j,kk)
+                end do
+                call endrun('te_map: Lagrangian levels are crossing')
               endif
-           enddo
+            endif
+          enddo
            if( itot == im ) then
                pe1w(k) = pe(i1w,k,j)
 #if defined( SPMD )
@@ -628,7 +633,7 @@ contains
 
         if(j /= 1) then
 
-           if (am_correction) then
+           if (am_geom_crrct) then
 
               ! WS 99.07.29 : protect j==jfirst case
               if (j > jfirst) then
@@ -678,7 +683,7 @@ contains
                  enddo
               enddo
 
-           else  ! not am_correction
+           else  ! not am_geom_crrct
 
               ! WS 99.07.29 : protect j==jfirst case
               if (j > jfirst) then
@@ -710,7 +715,7 @@ contains
 #endif
               endif  ! (j > jfirst)
 
-           endif ! (am_correction)
+           endif ! (am_geom_crrct)
 
 !-------------------------------
 
@@ -720,7 +725,7 @@ contains
                           0,    0,   itot, i1-ifirst+1, i2-ifirst+1,      &
                           j,    jfirst, jlast,  -1,    kord)
 
-          if (am_correction) then
+          if (am_geom_crrct) then
 
              ! compute zonal momentum difference due to remapping
              do k=1,km

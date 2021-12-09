@@ -7,19 +7,20 @@ module chemistry
   use shr_kind_mod,     only : r8 => shr_kind_r8, shr_kind_cl
   use ppgrid,           only : pcols, pver, begchunk, endchunk
   use physconst,        only : gravit
-  use constituents,     only : pcnst, cnst_add, cnst_name, cnst_fixed_ubc, cnst_type
+  use constituents,     only : pcnst, cnst_add, cnst_name, cnst_fixed_ubc
   use chem_mods,        only : gas_pcnst
   use cam_history,      only : fieldname_len
   use physics_types,    only : physics_state, physics_ptend, physics_ptend_init
   use spmd_utils,       only : masterproc
   use cam_logfile,      only : iulog
   use mo_gas_phase_chemdr, only : map2chm
-  use shr_megan_mod,    only : shr_megan_mechcomps, shr_megan_mechcomps_n 
+  use shr_megan_mod,    only : shr_megan_mechcomps, shr_megan_mechcomps_n
+  use srf_field_check,  only : active_Fall_flxvoc
   use tracer_data,      only : MAXTRCRS
   use gcr_ionization,   only : gcr_ionization_readnl, gcr_ionization_init, gcr_ionization_adv
   use epp_ionization,   only : epp_ionization_readnl, epp_ionization_adv
   use mo_apex,          only : mo_apex_readnl
-  use ref_pres,         only : do_molec_diff, ptop_ref
+  use ref_pres,         only : ptop_ref
   use phys_control,     only : waccmx_is   ! WACCM-X switch query function
 
   implicit none
@@ -31,7 +32,7 @@ module chemistry
 !---------------------------------------------------------------------------------
   public :: chem_is                        ! identify which chemistry is being used
   public :: chem_register                  ! register consituents
-  public :: chem_readnl                    ! read chem namelist 
+  public :: chem_readnl                    ! read chem namelist
   public :: chem_is_active                 ! returns true
   public :: chem_implements_cnst           ! returns true if consituent is implemented by this package
   public :: chem_init_cnst                 ! initialize mixing ratios if not read from initial file
@@ -45,11 +46,11 @@ module chemistry
   public :: chem_emissions
 
   integer, public :: imozart = -1       ! index of 1st constituent
-  
+
   ! Namelist variables
-  
+
   ! control
-  
+
   integer :: chem_freq = 1 ! time steps
 
   ! ghg
@@ -73,17 +74,15 @@ module chemistry
   character(len=shr_kind_cl) :: xs_long_file = 'xs_long_file'
   character(len=shr_kind_cl) :: electron_file = 'electron_file'
   character(len=shr_kind_cl) :: euvac_file = 'NONE'
+  real(r8)                   :: photo_max_zen=-huge(1._r8)
 
   ! solar / geomag data
 
   character(len=shr_kind_cl) :: photon_file = 'photon_file'
 
   ! dry dep
-  
-  character(len=shr_kind_cl) :: depvel_file = 'depvel_file'
+
   character(len=shr_kind_cl) :: depvel_lnd_file = 'depvel_lnd_file'
-  character(len=shr_kind_cl) :: clim_soilw_file = 'clim_soilw_file'
-  character(len=shr_kind_cl) :: season_wes_file = 'season_wes_file'
 
   ! emis
 
@@ -102,15 +101,9 @@ module chemistry
   integer            :: ext_frc_fixed_tod = 0
 
   ! fixed stratosphere
-  
+
   character(len=shr_kind_cl) :: fstrat_file = 'fstrat_file'
   character(len=16)  :: fstrat_list(pcnst)  = ''
-
-! for linoz
-  character(len=shr_kind_cl) :: chlorine_loading_file = ''
-  character(len=8)   :: chlorine_loading_type = 'SERIAL' ! "FIXED" or "SERIAL"
-  integer            :: chlorine_loading_fixed_ymd = 0         ! YYYYMMDD for "FIXED" type
-  integer            :: chlorine_loading_fixed_tod = 0         ! seconds of day for "FIXED" type
 
 !---------------------------------------------------------------------------------
 ! dummy values for specific heats at constant pressure
@@ -136,9 +129,9 @@ module chemistry
 
   character(len=32) :: chem_name = 'NONE'
   logical :: chem_rad_passive = .false.
-  
+
   ! for MEGAN emissions
-  integer, allocatable :: megan_indices_map(:) 
+  integer, allocatable :: megan_indices_map(:)
   real(r8),allocatable :: megan_wght_factors(:)
 
   logical :: chem_use_chemtrop = .false.
@@ -158,10 +151,10 @@ end function chem_is
 !================================================================================================
 
   subroutine chem_register
-!----------------------------------------------------------------------- 
-! 
+!-----------------------------------------------------------------------
+!
 ! Purpose: register advected constituents and physics buffer fields
-! 
+!
 !-----------------------------------------------------------------------
 
     use mo_sim_dat,          only : set_sim_dat
@@ -184,7 +177,7 @@ end function chem_is
     logical  :: ic_from_cam2                        ! wrk variable for initial cond input
     logical  :: has_fixed_ubc                       ! wrk variable for upper bndy cond
     logical  :: has_fixed_ubflx                     ! wrk variable for upper bndy flux
-    integer  :: ch4_ndx, n2o_ndx, o3_ndx 
+    integer  :: ch4_ndx, n2o_ndx, o3_ndx
     integer  :: cfc11_ndx, cfc12_ndx, o2_1s_ndx, o2_1d_ndx, o2_ndx
     integer  :: n_ndx, no_ndx, h_ndx, h2_ndx, o_ndx, e_ndx, np_ndx
     integer  :: op_ndx, o1d_ndx, n2d_ndx, nop_ndx, n2p_ndx, o2p_ndx
@@ -234,7 +227,7 @@ end function chem_is
     !-----------------------------------------------------------------------
     !----------------------------------------------------------------------------------
     ! For WACCM-X, change variable has_fixed_ubc from .true. to .false. which is a flag
-    ! used later to check for a fixed upper boundary condition for species. 
+    ! used later to check for a fixed upper boundary condition for species.
     !----------------------------------------------------------------------------------
      do m = 1,gas_pcnst
      ! setting of these variables is for registration of transported species
@@ -245,14 +238,14 @@ end function chem_is
        molectype = 'minor'
 
        qmin = 1.e-36_r8
-       
+
        if ( lng_name(1:5) .eq. 'num_a' ) then ! aerosol number density
           qmin = 1.e-5_r8
        else if ( m == o3_ndx ) then
           qmin = 1.e-12_r8
        else if ( m == ch4_ndx ) then
           qmin = 1.e-12_r8
-          if ( waccmx_is('ionosphere') .or. waccmx_is('neutral') ) then 
+          if ( waccmx_is('ionosphere') .or. waccmx_is('neutral') ) then
             has_fixed_ubc = .false.   ! diffusive equilibrium at UB
           else
             has_fixed_ubc = .true.
@@ -270,7 +263,7 @@ end function chem_is
           end if
        else if ( m==o2_ndx .or. m==n_ndx .or. m==no_ndx .or. m==h_ndx .or. m==h2_ndx .or. m==o_ndx .or. m==hf_ndx &
                .or. m==f_ndx ) then
-         if ( waccmx_is('ionosphere') .or. waccmx_is('neutral') ) then 
+         if ( waccmx_is('ionosphere') .or. waccmx_is('neutral') ) then
            has_fixed_ubc = .false.   ! diffusive equilibrium at UB
            if ( m == h_ndx ) has_fixed_ubflx = .true. ! fixed flux value for H at UB
            if ( m == o2_ndx .or. m == o_ndx ) molectype = 'major'
@@ -318,22 +311,22 @@ end function chem_is
        endif
 
     end do
-    
+
     call register_short_lived_species()
     call register_cfc11star()
 
-    if ( waccmx_is('ionosphere') ) then 
+    if ( waccmx_is('ionosphere') ) then
        call photo_register()
        call aurora_register()
     endif
-    
+
     ! add fields to pbuf needed by aerosol models
     call aero_model_register()
 
   end subroutine chem_register
 
 !================================================================================================
-  
+
   subroutine chem_readnl(nlfile)
 
     ! Read chem namelist group.
@@ -343,7 +336,6 @@ end function chem_is
     use units,           only: getunit, freeunit
     use mpishorthand
 
-    use linoz_data,       only: linoz_data_defaultopts,  linoz_data_setopts
     use tracer_cnst,      only: tracer_cnst_defaultopts, tracer_cnst_setopts
     use tracer_srcs,      only: tracer_srcs_defaultopts, tracer_srcs_setopts
     use aero_model,       only: aero_model_readnl
@@ -354,30 +346,21 @@ end function chem_is
     use noy_ubc,          only: noy_ubc_readnl
     use mo_sulf,          only: sulf_readnl
     use species_sums_diags,only: species_sums_readnl
+    use ocean_emis,       only: ocean_emis_readnl
 
-   ! args
+    ! args
 
     character(len=*), intent(in) :: nlfile  ! filepath for file containing namelist input
 
     ! local vars
     integer :: unitn, ierr
 
-    ! linoz data
-    character(len=shr_kind_cl) :: linoz_data_file               ! prescribed data file
-    character(len=shr_kind_cl) :: linoz_data_filelist           ! list of prescribed data files (series of files)
-    character(len=shr_kind_cl) :: linoz_data_path               ! absolute path of prescribed data files 
-    character(len=24)  :: linoz_data_type               ! 'INTERP_MISSING_MONTHS' | 'CYCLICAL' | 'SERIAL' (default)
-    logical            :: linoz_data_rmfile             ! remove data file from local disk (default .false.)
-    integer            :: linoz_data_cycle_yr
-    integer            :: linoz_data_fixed_ymd
-    integer            :: linoz_data_fixed_tod
-
     ! trop_mozart prescribed constituent concentratons
     character(len=shr_kind_cl) :: tracer_cnst_file              ! prescribed data file
     character(len=shr_kind_cl) :: tracer_cnst_filelist          ! list of prescribed data files (series of files)
-    character(len=shr_kind_cl) :: tracer_cnst_datapath          ! absolute path of prescribed data files 
+    character(len=shr_kind_cl) :: tracer_cnst_datapath          ! absolute path of prescribed data files
     character(len=24)  :: tracer_cnst_type              ! 'INTERP_MISSING_MONTHS' | 'CYCLICAL' | 'SERIAL' (default)
-    character(len=shr_kind_cl) :: tracer_cnst_specifier(MAXTRCRS) ! string array where each 
+    character(len=shr_kind_cl) :: tracer_cnst_specifier(MAXTRCRS) ! string array where each
     logical            :: tracer_cnst_rmfile            ! remove data file from local disk (default .false.)
     integer            :: tracer_cnst_cycle_yr
     integer            :: tracer_cnst_fixed_ymd
@@ -386,9 +369,9 @@ end function chem_is
     ! trop_mozart prescribed constituent sourrces/sinks
     character(len=shr_kind_cl) :: tracer_srcs_file              ! prescribed data file
     character(len=shr_kind_cl) :: tracer_srcs_filelist          ! list of prescribed data files (series of files)
-    character(len=shr_kind_cl) :: tracer_srcs_datapath          ! absolute path of prescribed data files 
+    character(len=shr_kind_cl) :: tracer_srcs_datapath          ! absolute path of prescribed data files
     character(len=24)  :: tracer_srcs_type              ! 'INTERP_MISSING_MONTHS' | 'CYCLICAL' | 'SERIAL' (default)
-    character(len=shr_kind_cl) :: tracer_srcs_specifier(MAXTRCRS) ! string array where each 
+    character(len=shr_kind_cl) :: tracer_srcs_specifier(MAXTRCRS) ! string array where each
     logical            :: tracer_srcs_rmfile            ! remove data file from local disk (default .false.)
     integer            :: tracer_srcs_cycle_yr
     integer            :: tracer_srcs_fixed_ymd
@@ -407,11 +390,11 @@ end function chem_is
 
     namelist /chem_inparm/ chem_freq, airpl_emis_file, &
          euvac_file, photon_file, electron_file, &
-         depvel_file, xs_coef_file, xs_short_file, &
+         xs_coef_file, xs_short_file, &
          exo_coldens_file, tuv_xsect_file, o2_xsect_file, &
-         xs_long_file, rsf_file, &
+         xs_long_file, rsf_file, photo_max_zen, &
          lght_no_prd_factor, xactive_prates, &
-         depvel_lnd_file, clim_soilw_file, season_wes_file, drydep_srf_file, &
+         depvel_lnd_file, drydep_srf_file, &
          srf_emis_type, srf_emis_cycle_yr, srf_emis_fixed_ymd, srf_emis_fixed_tod, srf_emis_specifier,  &
          fstrat_file, fstrat_list, &
          ext_frc_specifier, ext_frc_type, ext_frc_cycle_yr, ext_frc_fixed_ymd, ext_frc_fixed_tod
@@ -422,15 +405,6 @@ end function chem_is
 
     namelist /chem_inparm/ bndtvg, h2orates, ghg_chem
 
-    ! linoz inputs
-
-    namelist /chem_inparm/ &
-         linoz_data_file, linoz_data_filelist, linoz_data_path, &
-         linoz_data_type, &
-         linoz_data_rmfile, linoz_data_cycle_yr, linoz_data_fixed_ymd, linoz_data_fixed_tod
-    namelist /chem_inparm/ &
-         chlorine_loading_file, chlorine_loading_type, chlorine_loading_fixed_ymd, chlorine_loading_fixed_tod
-
     ! prescribed chem tracers
 
     namelist /chem_inparm/ &
@@ -439,8 +413,8 @@ end function chem_is
          tracer_srcs_file, tracer_srcs_filelist, tracer_srcs_datapath, &
          tracer_srcs_type, tracer_srcs_specifier, &
          tracer_cnst_rmfile, tracer_cnst_cycle_yr, tracer_cnst_fixed_ymd, tracer_cnst_fixed_tod, &
-         tracer_srcs_rmfile, tracer_srcs_cycle_yr, tracer_srcs_fixed_ymd, tracer_srcs_fixed_tod 
-    
+         tracer_srcs_rmfile, tracer_srcs_cycle_yr, tracer_srcs_fixed_ymd, tracer_srcs_fixed_tod
+
     ! upper boundary conditions
     namelist /chem_inparm/ tgcm_ubc_file, tgcm_ubc_data_type, tgcm_ubc_cycle_yr, tgcm_ubc_fixed_ymd, tgcm_ubc_fixed_tod, &
                            snoe_ubc_file, t_pert_ubc, no_xfac_ubc
@@ -450,15 +424,6 @@ end function chem_is
 
     ! get the default settings
 
-    call linoz_data_defaultopts( &
-         linoz_data_file_out      = linoz_data_file,      &
-         linoz_data_filelist_out  = linoz_data_filelist,  &
-         linoz_data_path_out      = linoz_data_path,      &
-         linoz_data_type_out      = linoz_data_type,      &
-         linoz_data_rmfile_out    = linoz_data_rmfile,    &
-         linoz_data_cycle_yr_out  = linoz_data_cycle_yr,  &
-         linoz_data_fixed_ymd_out = linoz_data_fixed_ymd, &
-         linoz_data_fixed_tod_out = linoz_data_fixed_tod  ) 
     call tracer_cnst_defaultopts( &
          tracer_cnst_file_out      = tracer_cnst_file,      &
          tracer_cnst_filelist_out  = tracer_cnst_filelist,  &
@@ -468,7 +433,7 @@ end function chem_is
          tracer_cnst_rmfile_out    = tracer_cnst_rmfile,    &
          tracer_cnst_cycle_yr_out  = tracer_cnst_cycle_yr,  &
          tracer_cnst_fixed_ymd_out = tracer_cnst_fixed_ymd, &
-         tracer_cnst_fixed_tod_out = tracer_cnst_fixed_tod  ) 
+         tracer_cnst_fixed_tod_out = tracer_cnst_fixed_tod  )
     call tracer_srcs_defaultopts( &
          tracer_srcs_file_out      = tracer_srcs_file,      &
          tracer_srcs_filelist_out  = tracer_srcs_filelist,  &
@@ -533,6 +498,7 @@ end function chem_is
     call mpibcast (xs_coef_file,      len(xs_coef_file),               mpichar, 0, mpicom)
     call mpibcast (xs_short_file,     len(xs_short_file),              mpichar, 0, mpicom)
     call mpibcast (xs_long_file,      len(xs_long_file),               mpichar, 0, mpicom)
+    call mpibcast (photo_max_zen,     1,                               mpir8,   0, mpicom)
     call mpibcast (xactive_prates,    1,                               mpilog,  0, mpicom)
     call mpibcast (electron_file,     len(electron_file),              mpichar, 0, mpicom)
     call mpibcast (euvac_file,        len(euvac_file),                 mpichar, 0, mpicom)
@@ -544,9 +510,6 @@ end function chem_is
     ! dry dep
 
     call mpibcast (depvel_lnd_file,   len(depvel_lnd_file),            mpichar, 0, mpicom)
-    call mpibcast (depvel_file,       len(depvel_file),                mpichar, 0, mpicom)
-    call mpibcast (clim_soilw_file,   len(clim_soilw_file),            mpichar, 0, mpicom)
-    call mpibcast (season_wes_file,   len(season_wes_file),            mpichar, 0, mpicom)
     call mpibcast (drydep_srf_file,   len(drydep_srf_file),            mpichar, 0, mpicom)
 
     ! emis
@@ -580,22 +543,6 @@ end function chem_is
     call mpibcast (t_pert_ubc,    1,                  mpir8,   0, mpicom)
     call mpibcast (no_xfac_ubc,   1,                  mpir8,   0, mpicom)
 
-    ! linoz data
-
-    call mpibcast (linoz_data_file,      len(linoz_data_file),                  mpichar, 0, mpicom)
-    call mpibcast (linoz_data_filelist,  len(linoz_data_filelist),              mpichar, 0, mpicom)
-    call mpibcast (linoz_data_path,      len(linoz_data_path),              mpichar, 0, mpicom)
-    call mpibcast (linoz_data_type,      len(linoz_data_type),                  mpichar, 0, mpicom)
-    call mpibcast (linoz_data_rmfile,    1,                                     mpilog, 0,  mpicom)
-    call mpibcast (linoz_data_cycle_yr,       1,                                     mpiint, 0,  mpicom)
-    call mpibcast (linoz_data_fixed_ymd,       1,                                     mpiint, 0,  mpicom)
-    call mpibcast (linoz_data_fixed_tod,       1,                                     mpiint, 0,  mpicom)
-
-    call mpibcast (chlorine_loading_file,len(chlorine_loading_file), mpichar, 0, mpicom)
-    call mpibcast (chlorine_loading_type,len(chlorine_loading_type), mpichar, 0, mpicom)
-    call mpibcast (chlorine_loading_fixed_ymd, 1,                    mpiint,  0, mpicom)
-    call mpibcast (chlorine_loading_fixed_tod, 1,                    mpiint,  0, mpicom)
-
     ! prescribed chemical tracers
 
     call mpibcast (tracer_cnst_specifier, len(tracer_cnst_specifier(1))*MAXTRCRS, mpichar, 0, mpicom)
@@ -624,15 +571,6 @@ end function chem_is
 
     ! set the options
 
-   call linoz_data_setopts( &
-        linoz_data_file_in      = linoz_data_file,      &
-        linoz_data_filelist_in  = linoz_data_filelist,  &
-        linoz_data_path_in      = linoz_data_path,      &
-        linoz_data_type_in      = linoz_data_type,      &
-        linoz_data_rmfile_in    = linoz_data_rmfile,    &
-        linoz_data_cycle_yr_in  = linoz_data_cycle_yr,  &
-        linoz_data_fixed_ymd_in = linoz_data_fixed_ymd, &
-        linoz_data_fixed_tod_in = linoz_data_fixed_tod )
    call tracer_cnst_setopts( &
         tracer_cnst_file_in      = tracer_cnst_file,      &
         tracer_cnst_filelist_in  = tracer_cnst_filelist,  &
@@ -666,7 +604,7 @@ end function chem_is
         tgcm_ubc_fixed_tod_in = tgcm_ubc_fixed_tod )
 
    call aero_model_readnl(nlfile)
-   call dust_readnl(nlfile)     
+   call dust_readnl(nlfile)
 !
    call gas_wetdep_readnl(nlfile)
    call gcr_ionization_readnl(nlfile)
@@ -675,13 +613,14 @@ end function chem_is
    call noy_ubc_readnl(nlfile)
    call sulf_readnl(nlfile)
    call species_sums_readnl(nlfile)
+   call ocean_emis_readnl(nlfile)
 
-  endsubroutine chem_readnl
+ end subroutine chem_readnl
 
 !================================================================================================
 
 function chem_is_active()
-!----------------------------------------------------------------------- 
+!-----------------------------------------------------------------------
 ! Purpose: return true if this package is active
 !-----------------------------------------------------------------------
    logical :: chem_is_active
@@ -692,12 +631,12 @@ end function chem_is_active
 !================================================================================================
 
   function chem_implements_cnst(name)
-!----------------------------------------------------------------------- 
-! 
+!-----------------------------------------------------------------------
+!
 ! Purpose: return true if specified constituent is implemented by this package
-! 
+!
 ! Author: B. Eaton
-! 
+!
 !-----------------------------------------------------------------------
     use chem_mods,       only : gas_pcnst, inv_lst, nfs
     use mo_tracname,     only : solsym
@@ -711,7 +650,7 @@ end function chem_is_active
 !       ... local variables
 !-----------------------------------------------------------------------
     integer :: m
-    
+
     chem_implements_cnst = .false.
     do m = 1,gas_pcnst
        if( trim(name) /= 'H2O' ) then
@@ -734,29 +673,26 @@ end function chem_is_active
 
   subroutine chem_init(phys_state, pbuf2d)
 
-!----------------------------------------------------------------------- 
-! 
+!-----------------------------------------------------------------------
+!
 ! Purpose: initialize parameterized greenhouse gas chemistry
 !          (declare history variables)
-! 
-! Method: 
-! <Describe the algorithm(s) used in the routine.> 
-! <Also include any applicable external references.> 
-! 
+!
+! Method:
+! <Describe the algorithm(s) used in the routine.>
+! <Also include any applicable external references.>
+!
 ! Author: NCAR CMS
-! 
+!
 !-----------------------------------------------------------------------
     use physics_buffer,      only : physics_buffer_desc, pbuf_get_index
-    
+
     use constituents,        only : cnst_get_ind
     use cam_history,         only : addfld, add_default, horiz_only, fieldname_len
     use chem_mods,           only : gas_pcnst
     use mo_chemini,          only : chemini
     use mo_ghg_chem,         only : ghg_chem_init
     use mo_tracname,         only : solsym
-    use llnl_O1D_to_2OH_adj, only : O1D_to_2OH_adj_init
-    use lin_strat_chem,      only : lin_strat_chem_inti
-    use chlorine_loading_data, only : chlorine_loading_init
     use cfc11star,             only : init_cfc11star
     use phys_control,          only : phys_getopts
     use chem_mods,             only : adv_mass
@@ -769,11 +705,12 @@ end function chem_is_active
     use noy_ubc,             only : noy_ubc_init
     use fire_emissions,      only : fire_emissions_init
     use short_lived_species, only : short_lived_species_initic
-    
+    use ocean_emis,          only : ocean_emis_init
+
     type(physics_buffer_desc), pointer :: pbuf2d(:,:)
     type(physics_state), intent(in):: phys_state(begchunk:endchunk)
 
-    
+
 !-----------------------------------------------------------------------
 ! Local variables
 !-----------------------------------------------------------------------
@@ -784,7 +721,7 @@ end function chem_is_active
     logical :: history_chemistry
     logical :: history_cesm_forcing
 
-    character(len=2)  :: unit_basename  ! Units 'kg' or '1' 
+    character(len=2)  :: unit_basename  ! Units 'kg' or '1'
     logical :: history_budget                 ! output tendencies and state variables for CAM
                                               ! temperature, water vapor, cloud ice and cloud
                                               ! liquid budgets.
@@ -832,17 +769,17 @@ end function chem_is_active
        srcnam(m) = 'CT_' // spc_name ! chem tendancy (source/sink)
 
        call addfld( srcnam(m), (/ 'lev' /), 'A', 'kg/kg/s', trim(spc_name)//' source/sink' )
-       call cnst_get_ind(solsym(m), n, abort=.false. ) 
+       call cnst_get_ind(solsym(m), n, abort=.false. )
        if ( n > 0 ) then
 
           if (sflxnam(n)(3:5) == 'num') then  ! name is in the form of "SF****"
              unit_basename = ' 1'
           else
-             unit_basename = 'kg'  
+             unit_basename = 'kg'
           endif
 
           call addfld (sflxnam(n),horiz_only,    'A',  unit_basename//'/m2/s',trim(solsym(m))//' surface flux')
-          if ( history_aerosol .or. history_chemistry ) then 
+          if ( history_aerosol .or. history_chemistry ) then
              call add_default( sflxnam(n), 1, ' ' )
           endif
 
@@ -851,18 +788,12 @@ end function chem_is_active
                 call add_default( sflxnam(n), 1, ' ' )
              endif
           endif
-  
-          ! this is moved out of chem_register because we need to know where (what pressure) 
-          ! the upper boundary is to determine if this is a high top configuration -- after
-          ! initialization of ref_pres ...
-          if ( do_molec_diff ) then ! molecular diffusion requires 'wet' mixing ratios
-             cnst_type(n) = 'wet'
-          endif
+
        endif
     end do
 
     ! Add chemical tendency of water vapor to water budget output
-    if ( history_budget ) then 
+    if ( history_budget ) then
       call add_default ('CT_H2O'  , history_budget_histfile_num, ' ')
     endif
 
@@ -871,7 +802,7 @@ end function chem_is_active
     !      required because water vapor is not declared by chemistry but
     !      has a fixed ubc only if WACCM chemistry is running.
     !-----------------------------------------------------------------------
-    ! this is moved out of chem_register because we need to know where (what pressure) 
+    ! this is moved out of chem_register because we need to know where (what pressure)
     ! the upper boundary is to determine if this is a high top configuration -- after
     ! initialization of ref_pres ...
     if ( 1.e-2_r8 >= ptop_ref .and. ptop_ref > 1.e-5_r8 ) then ! around waccm top, below top of waccmx
@@ -890,13 +821,11 @@ end function chem_is_active
        , photon_file &
        , electron_file &
        , airpl_emis_file &
-       , depvel_file &
        , depvel_lnd_file &
-       , clim_soilw_file &
-       , season_wes_file &
        , xs_coef_file &
        , xs_short_file &
        , xs_long_file &
+       , photo_max_zen &
        , rsf_file &
        , fstrat_file &
        , fstrat_list &
@@ -921,17 +850,9 @@ end function chem_is_active
      if ( ghg_chem ) then
         call ghg_chem_init(phys_state, bndtvg, h2orates)
      endif
-     
-     call O1D_to_2OH_adj_init()
-
-     call lin_strat_chem_inti(phys_state)
-     call chlorine_loading_init( chlorine_loading_file, &
-                                 type = chlorine_loading_type, &
-                                 ymd = chlorine_loading_fixed_ymd, &
-                                 tod = chlorine_loading_fixed_tod )
 
      call init_cfc11star(pbuf2d)
-     
+
      ! MEGAN emissions initialize
      if (shr_megan_mechcomps_n>0) then
 
@@ -958,7 +879,7 @@ end function chem_is_active
 
         enddo
      endif
-     
+
      call noy_ubc_init()
 
      ! Galatic Cosmic Rays ...
@@ -968,19 +889,21 @@ end function chem_is_active
      call fire_emissions_init()
 
      call short_lived_species_initic()
-     
+
+     call ocean_emis_init()
+
   end subroutine chem_init
 
 !================================================================================
 !================================================================================
   subroutine chem_emissions( state, cam_in )
     use aero_model,       only: aero_model_emissions
-    use camsrfexch,       only: cam_in_t     
+    use camsrfexch,       only: cam_in_t
     use constituents,     only: sflxnam
     use cam_history,      only: outfld
     use mo_srf_emissions, only: set_srf_emissions
-    use cam_cpl_indices,  only: index_x2a_Fall_flxvoc
     use fire_emissions,   only: fire_emissions_srf
+    use ocean_emis,       only: ocean_emis_getflux
 
     ! Arguments:
 
@@ -990,28 +913,28 @@ end function chem_is_active
     ! local vars
 
     integer :: lchnk, ncol
-    integer :: i, m,n 
+    integer :: i, m,n
 
     real(r8) :: sflx(pcols,gas_pcnst)
     real(r8) :: megflx(pcols)
 
     lchnk = state%lchnk
     ncol = state%ncol
-    
+
     ! initialize chemistry constituent surface fluxes to zero
     do m = 2,pcnst
        n = map2chm(m)
-       if (n>0) cam_in%cflx(:,m) = 0._r8 
+       if (n>0) cam_in%cflx(:,m) = 0._r8
     enddo
 
     ! aerosol emissions ...
     call aero_model_emissions( state, cam_in )
 
    ! MEGAN emissions ...
- 
-    if ( index_x2a_Fall_flxvoc>0 .and. shr_megan_mechcomps_n>0 ) then
 
-       ! set MEGAN fluxes 
+    if ( active_Fall_flxvoc .and. shr_megan_mechcomps_n>0 ) then
+
+       ! set MEGAN fluxes
        do n = 1,shr_megan_mechcomps_n
           do i =1,ncol
              megflx(i) = -cam_in%meganflx(i,n) * megan_wght_factors(n)
@@ -1026,9 +949,9 @@ end function chem_is_active
 
    ! prescribed emissions from file ...
 
-    !-----------------------------------------------------------------------      
+    !-----------------------------------------------------------------------
     !        ... Set surface emissions
-    !-----------------------------------------------------------------------      
+    !-----------------------------------------------------------------------
     call set_srf_emissions( lchnk, ncol, sflx(:,:) )
 
     do m = 1,pcnst
@@ -1042,16 +965,19 @@ end function chem_is_active
     ! fire surface emissions if not elevated forcing
     call fire_emissions_srf( lchnk, ncol, cam_in%fireflx, cam_in%cflx )
 
+    ! air-sea exchange of trace gases
+    call ocean_emis_getflux(lchnk, ncol, state, cam_in%u10, cam_in%sst, cam_in%ocnfrac, cam_in%icefrac, cam_in%cflx)
+
   end subroutine chem_emissions
 
 !================================================================================
 
   subroutine chem_init_cnst( name, latvals, lonvals, mask, q)
-!----------------------------------------------------------------------- 
-! 
-! Purpose: 
+!-----------------------------------------------------------------------
+!
+! Purpose:
 ! Specify initial mass mixing ratios
-! 
+!
 !-----------------------------------------------------------------------
 
     use chem_mods, only : inv_lst
@@ -1073,7 +999,7 @@ end function chem_is_active
 !-----------------------------------------------------------------------
 ! Local variables
 !-----------------------------------------------------------------------
-    
+
     real(r8) :: rmwn2o != mwn2o/mwdry ! ratio of mol weight n2o   to dry air
     real(r8) :: rmwch4 != mwch4/mwdry ! ratio of mol weight ch4   to dry air
     real(r8) :: rmwf11 != mwf11/mwdry ! ratio of mol weight cfc11 to dry air
@@ -1084,10 +1010,10 @@ end function chem_is_active
 ! initialize local variables
 !-----------------------------------------------------------------------
 
-    rmwn2o = mwn2o/mwdry 
-    rmwch4 = mwch4/mwdry 
-    rmwf11 = mwf11/mwdry 
-    rmwf12 = mwf12/mwdry 
+    rmwn2o = mwn2o/mwdry
+    rmwch4 = mwch4/mwdry
+    rmwf11 = mwf11/mwdry
+    rmwf12 = mwf12/mwdry
 
 !-----------------------------------------------------------------------
 ! Get initial mixing ratios
@@ -1146,16 +1072,15 @@ end function chem_is_active
 
     use mo_aurora,         only : aurora_timestep_init
     use mo_photo,          only : photo_timestep_init
-    use linoz_data,        only : linoz_data_adv
-    use chlorine_loading_data, only : chlorine_loading_advance
     use noy_ubc,           only : noy_ubc_advance
 
     use cfc11star,         only : update_cfc11star
     use physics_buffer,    only : physics_buffer_desc
+    use ocean_emis,        only : ocean_emis_advance
 
     implicit none
 
-    type(physics_state), intent(inout) :: phys_state(begchunk:endchunk)                 
+    type(physics_state), intent(inout) :: phys_state(begchunk:endchunk)
     type(physics_buffer_desc), pointer :: pbuf2d(:,:)
 
     !-----------------------------------------------------------------------
@@ -1209,16 +1134,10 @@ end function chem_is_active
     !-----------------------------------------------------------------------
     call tracer_srcs_adv(pbuf2d, phys_state)
 
-    !-----------------------------------------------------------------------
-    ! Advance the linoz data
-    !-----------------------------------------------------------------------
-    call linoz_data_adv(pbuf2d, phys_state)
-    call chlorine_loading_advance()
-
     if ( ghg_chem ) then
        call ghg_chem_timestep_init(phys_state)
     endif
-    
+
     !-----------------------------------------------------------------------
     ! Set up aurora
     !-----------------------------------------------------------------------
@@ -1230,40 +1149,42 @@ end function chem_is_active
     call photo_timestep_init( calday )
 
     call update_cfc11star( pbuf2d, phys_state )
-    
+
     ! Galatic Cosmic Rays ...
     call gcr_ionization_adv( pbuf2d, phys_state )
     call epp_ionization_adv()
+
+    call ocean_emis_advance( pbuf2d, phys_state )
 
   end subroutine chem_timestep_init
 
   subroutine chem_timestep_tend( state, ptend, cam_in, cam_out, dt, pbuf,  fh2o)
 
-!----------------------------------------------------------------------- 
-! 
-! Purpose: 
+!-----------------------------------------------------------------------
+!
+! Purpose:
 ! Interface to parameterized greenhouse gas chemisty (source/sink).
-! 
-! Method: 
-! <Describe the algorithm(s) used in the routine.> 
-! <Also include any applicable external references.> 
-! 
+!
+! Method:
+! <Describe the algorithm(s) used in the routine.>
+! <Also include any applicable external references.>
+!
 ! Author: B.A. Boville
-! 
+!
 !-----------------------------------------------------------------------
 
     use physics_buffer,      only : physics_buffer_desc, pbuf_get_field, pbuf_old_tim_idx
     use cam_history,         only : outfld
     use time_manager,        only : get_curr_calday
     use mo_gas_phase_chemdr, only : gas_phase_chemdr
-    use camsrfexch,          only : cam_in_t, cam_out_t     
+    use camsrfexch,          only : cam_in_t, cam_out_t
     use perf_mod,            only : t_startf, t_stopf
-    use tropopause,          only : tropopause_findChemTrop, TROP_ALG_HYBSTOB, TROP_ALG_CLIMATE, tropopause_find
+    use tropopause,          only : tropopause_findChemTrop, tropopause_find
     use mo_drydep,           only : drydep_update
     use mo_neu_wetdep,       only : neu_wetdep_tend
     use aerodep_flx,         only : aerodep_flx_prescribed
     use short_lived_species, only : short_lived_species_writeic
-    
+
     implicit none
 
 !-----------------------------------------------------------------------
@@ -1275,7 +1196,7 @@ end function chem_is_active
     type(cam_in_t),      intent(inout) :: cam_in
     type(cam_out_t),     intent(inout) :: cam_out
     real(r8),            intent(out)   :: fh2o(pcols)     ! h2o flux to balance source from chemistry
-    
+
 
     type(physics_buffer_desc), pointer :: pbuf(:)
 
@@ -1325,7 +1246,7 @@ end function chem_is_active
     if ( ghg_chem ) lq(1) = .true.
 
     call physics_ptend_init(ptend, state%psetcols, 'chemistry', lq=lq)
-    
+
     call drydep_update( state, cam_in )
 
 !-----------------------------------------------------------------------
@@ -1397,7 +1318,7 @@ end function chem_is_active
           call outfld( srcnam(m), ptend%q(:,:,n), pcols, lchnk )
        end if
 
-       ! if the user has specified prescribed aerosol dep fluxes then 
+       ! if the user has specified prescribed aerosol dep fluxes then
        ! do not set cam_out dep fluxes according to the prognostic aerosols
        if (.not.aerodep_flx_prescribed()) then
           ! set deposition fluxes in the export state
@@ -1443,7 +1364,7 @@ end function chem_is_active
     do k = 1,pver
        fh2o(:ncol) = fh2o(:ncol) + ptend%q(:ncol,k,1)*state%pdel(:ncol,k)/gravit
     end do
-    
+
   end subroutine chem_timestep_tend
 
 !-------------------------------------------------------------------
@@ -1458,7 +1379,6 @@ end function chem_is_active
     use pio, only : file_desc_t
     use tracer_cnst,      only: init_tracer_cnst_restart
     use tracer_srcs,      only: init_tracer_srcs_restart
-    use linoz_data, only : init_linoz_data_restart
     implicit none
     type(file_desc_t),intent(inout) :: File     ! pio File pointer
 
@@ -1467,14 +1387,12 @@ end function chem_is_active
     !
     call init_tracer_cnst_restart(File)
     call init_tracer_srcs_restart(File)
-    call init_linoz_data_restart(File)
   end subroutine chem_init_restart
 !-------------------------------------------------------------------
 !-------------------------------------------------------------------
   subroutine chem_write_restart( File )
     use tracer_cnst, only: write_tracer_cnst_restart
     use tracer_srcs, only: write_tracer_srcs_restart
-    use linoz_data,  only: write_linoz_data_restart
     use pio, only : file_desc_t
     implicit none
     type(file_desc_t) :: File
@@ -1484,7 +1402,6 @@ end function chem_is_active
     !
     call write_tracer_cnst_restart(File)
     call write_tracer_srcs_restart(File)
-    call write_linoz_data_restart(File)
   end subroutine chem_write_restart
 
 !-------------------------------------------------------------------
@@ -1492,7 +1409,6 @@ end function chem_is_active
   subroutine chem_read_restart( File )
     use tracer_cnst, only: read_tracer_cnst_restart
     use tracer_srcs, only: read_tracer_srcs_restart
-    use linoz_data,  only: read_linoz_data_restart
 
     use pio, only : file_desc_t
     implicit none
@@ -1503,7 +1419,6 @@ end function chem_is_active
     !
     call read_tracer_cnst_restart(File)
     call read_tracer_srcs_restart(File)
-    call read_linoz_data_restart(File)
   end subroutine chem_read_restart
 
 end module chemistry

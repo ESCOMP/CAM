@@ -25,6 +25,7 @@ module physpkg
   use cam_logfile,     only: iulog
   use cam_abortutils,  only: endrun
   use shr_sys_mod,     only: shr_sys_flush
+  use dyn_tests_utils, only: vc_dycore
 
   implicit none
   private
@@ -49,6 +50,12 @@ module physpkg
 
   logical :: state_debug_checks  ! Debug physics_state.
 
+  character(len=32) :: cam_take_snapshot_before ! Physics routine to take a snapshot "before"
+  character(len=32) :: cam_take_snapshot_after  ! Physics routine to take a snapshot "after"
+  integer           :: cam_snapshot_before_num ! tape number for before snapshots
+  integer           :: cam_snapshot_after_num  ! tape number for after snapshots
+
+
 !=======================================================================
 contains
 !=======================================================================
@@ -63,7 +70,7 @@ contains
 
     use physconst,          only: mwh2o, cpwv
     use constituents,       only: cnst_add, cnst_chk_dim
-    use physics_buffer,     only: pbuf_init_time, dtype_r8, pbuf_add_field
+    use physics_buffer,     only: pbuf_init_time, dtype_r8, pbuf_add_field, pbuf_cam_snapshot_register
 
     use cam_diagnostics,    only: diag_register
     use chemistry,          only: chem_register
@@ -78,7 +85,11 @@ contains
     !-----------------------------------------------------------------------
 
     ! Get physics options
-    call phys_getopts(state_debug_checks_out = state_debug_checks)
+    call phys_getopts(state_debug_checks_out = state_debug_checks, &
+                      cam_take_snapshot_before_out= cam_take_snapshot_before, &
+                      cam_take_snapshot_after_out = cam_take_snapshot_after, &
+                      cam_snapshot_before_num_out = cam_snapshot_before_num, &
+                      cam_snapshot_after_num_out  = cam_snapshot_after_num)
 
     ! Initialize dyn_time_lvls
     call pbuf_init_time()
@@ -125,6 +136,11 @@ contains
 
     ! ***NOTE*** No registering constituents after the call to cnst_chk_dim.
 
+    ! This needs to be last as it requires all pbuf fields to be added
+    if (cam_snapshot_before_num > 0 .or. cam_snapshot_after_num > 0) then
+        call pbuf_cam_snapshot_register()
+    end if
+
   end subroutine phys_register
 
   !======================================================================================
@@ -159,7 +175,7 @@ contains
 
   !======================================================================================
 
-  subroutine phys_init( phys_state, phys_tend, pbuf2d, cam_out )
+  subroutine phys_init( phys_state, phys_tend, pbuf2d, cam_in, cam_out )
 
     !-----------------------------------------------------------------------
     !
@@ -175,18 +191,20 @@ contains
     use chemistry,          only: chem_init, chem_is_active
     use cam_diagnostics,    only: diag_init
     use held_suarez_cam,    only: held_suarez_init
-    use kessler_cam,        only: kessler_init
+    use kessler_cam,        only: kessler_cam_init
     use tj2016_cam,         only: thatcher_jablonowski_init
     use tracers,            only: tracers_init
     use wv_saturation,      only: wv_sat_init
     use phys_debug_util,    only: phys_debug_init
     use qneg_module,        only: qneg_init
+    use cam_snapshot,       only: cam_snapshot_init
 
     ! Input/output arguments
     type(physics_state), pointer       :: phys_state(:)
     type(physics_tend ), pointer       :: phys_tend(:)
     type(physics_buffer_desc), pointer :: pbuf2d(:,:)
 
+    type(cam_in_t), intent(in)         :: cam_in(begchunk:endchunk)
     type(cam_out_t),intent(inout)      :: cam_out(begchunk:endchunk)
 
     ! local variables
@@ -233,7 +251,7 @@ contains
     if (ideal_phys) then
       call held_suarez_init(pbuf2d)
     else if (kessler_phys) then
-      call kessler_init(pbuf2d)
+      call kessler_cam_init(pbuf2d)
     else if (tj2016_phys) then
       call thatcher_jablonowski_init(pbuf2d)
     end if
@@ -245,6 +263,9 @@ contains
 
     ! Initialize qneg3 and qneg4
     call qneg_init()
+
+    ! Initialize the snapshot capability
+    call cam_snapshot_init(cam_in, cam_out, pbuf2d, begchunk)
 
   end subroutine phys_init
 
@@ -450,6 +471,8 @@ contains
     use dycore,          only: dycore_is
     use check_energy,    only: calc_te_and_aam_budgets
     use cam_history,     only: hist_fld_active
+    use cam_snapshot,    only: cam_snapshot_all_outfld
+    use cam_snapshot,    only: cam_snapshot_ptend_outfld
 
     ! Arguments
     !
@@ -476,6 +499,7 @@ contains
     integer                                  :: k
     integer                                  :: ncol
     integer                                  :: itim_old
+    logical                                  :: moist_mixing_ratio_dycore
 
     real(r8) :: tmp_trac  (pcols,pver,pcnst) ! tmp space
     real(r8) :: tmp_pdel  (pcols,pver)       ! tmp space
@@ -503,8 +527,6 @@ contains
       cldiceini = 0.0_r8
     end if
 
-    call calc_te_and_aam_budgets(state, 'pAP')
-
     !=========================
     ! Compute physics tendency
     !=========================
@@ -514,11 +536,15 @@ contains
        call physics_update(state, ptend, ztodt, tend)
     end if
 
+    call calc_te_and_aam_budgets(state, 'phAP')
+    call calc_te_and_aam_budgets(state, 'dyAP',vc=vc_dycore)
+    
     ! FV: convert dry-type mixing ratios to moist here because
     !     physics_dme_adjust assumes moist. This is done in p_d_coupling for
     !     other dynamics. Bundy, Feb 2004.
     !
-    if (moist_physics .and.dycore_is('LR')) then
+    moist_mixing_ratio_dycore = dycore_is('LR').or. dycore_is('FV3')    
+    if (moist_physics .and. moist_mixing_ratio_dycore) then
       call set_dry_to_wet(state)    ! Physics had dry, dynamics wants moist
     end if
 
@@ -538,11 +564,12 @@ contains
         tmp_cldice(:ncol,:pver) = 0.0_r8
       end if
 
-      ! For not 'FV', physics_dme_adjust is called for energy diagnostic purposes only.
+      ! for dry mixing ratio dycore, physics_dme_adjust is called for energy diagnostic purposes only.  
       ! So, save off tracers
-      if (.not.dycore_is('FV') .and. &
-           (hist_fld_active('SE_pAM').or.hist_fld_active('KE_pAM').or.hist_fld_active('WV_pAM').or.&
-           hist_fld_active('WL_pAM').or.hist_fld_active('WI_pAM'))) then
+      if (.not.moist_mixing_ratio_dycore.and.&
+         (hist_fld_active('SE_phAM').or.hist_fld_active('KE_phAM').or.hist_fld_active('WV_phAM').or.&
+          hist_fld_active('WL_phAM').or.hist_fld_active('WI_phAM').or.hist_fld_active('MR_phAM').or.&
+          hist_fld_active('MO_phAM'))) then
         tmp_trac(:ncol,:pver,:pcnst) = state%q(:ncol,:pver,:pcnst)
         tmp_pdel(:ncol,:pver)        = state%pdel(:ncol,:pver)
         tmp_ps(:ncol)                = state%ps(:ncol)
@@ -550,25 +577,30 @@ contains
         ! pint, lnpint,rpdel are altered by dme_adjust but not used for tendencies in dynamics of SE
         ! we do not reset them to pre-dme_adjust values
         !
-        if (dycore_is('SE')) call set_dry_to_wet(state)
+        call set_dry_to_wet(state)
+
         call physics_dme_adjust(state, tend, qini, ztodt)
-        call calc_te_and_aam_budgets(state, 'pAM')
+
+        call calc_te_and_aam_budgets(state, 'phAM')
+        call calc_te_and_aam_budgets(state, 'dyAM',vc=vc_dycore)
         ! Restore pre-"physics_dme_adjust" tracers
         state%q(:ncol,:pver,:pcnst) = tmp_trac(:ncol,:pver,:pcnst)
         state%pdel(:ncol,:pver)     = tmp_pdel(:ncol,:pver)
-        state%ps(:ncol)             = tmp_ps(:ncol)    
+        state%ps(:ncol)             = tmp_ps(:ncol)
       end if
 
-      if (dycore_is('LR')) then
+      if (moist_mixing_ratio_dycore) then
         call physics_dme_adjust(state, tend, qini, ztodt)
-        call calc_te_and_aam_budgets(state, 'pAM')
+        call calc_te_and_aam_budgets(state, 'phAM')
+        call calc_te_and_aam_budgets(state, 'dyAM',vc=vc_dycore)
       end if
 
     else
       tmp_q     (:ncol,:pver) = 0.0_r8
       tmp_cldliq(:ncol,:pver) = 0.0_r8
       tmp_cldice(:ncol,:pver) = 0.0_r8
-      call calc_te_and_aam_budgets(state, 'pAM')
+      call calc_te_and_aam_budgets(state, 'phAM')
+      call calc_te_and_aam_budgets(state, 'dyAM',vc=vc_dycore)
     end if
 
     ! store T in buffer for use in computing dynamics T-tendency in next timestep
@@ -623,7 +655,9 @@ contains
     use kessler_cam,       only: kessler_tend
     use tj2016_cam,        only: thatcher_jablonowski_precip_tend
     use dycore,            only: dycore_is
-
+    use cam_snapshot,      only: cam_snapshot_all_outfld
+    use cam_snapshot,      only: cam_snapshot_ptend_outfld
+    use physics_types,     only: dyn_te_idx
     ! Arguments
 
     real(r8),                  intent(in)    :: ztodt ! model time increment
@@ -701,7 +735,8 @@ contains
     !===================================================
     ! Global mean total energy fixer and AAM diagnostics
     !===================================================
-    call calc_te_and_aam_budgets(state, 'pBF')
+    call calc_te_and_aam_budgets(state, 'phBF')
+    call calc_te_and_aam_budgets(state, 'dyBF',vc=vc_dycore)
 
     call t_startf('energy_fixer')
 
@@ -714,7 +749,8 @@ contains
 
     call t_stopf('energy_fixer')
 
-    call calc_te_and_aam_budgets(state, 'pBP')
+    call calc_te_and_aam_budgets(state, 'phBP')
+    call calc_te_and_aam_budgets(state, 'dyBP',vc=vc_dycore)
 
     ! Save state for convective tendency calculations.
     call diag_conv_tend_ini(state, pbuf)
@@ -733,8 +769,8 @@ contains
     end if
 
     call outfld('TEOUT', teout       , pcols, lchnk   )
-    call outfld('TEINP', state%te_ini, pcols, lchnk   )
-    call outfld('TEFIX', state%te_cur, pcols, lchnk   )
+    call outfld('TEINP', state%te_ini(:,dyn_te_idx), pcols, lchnk   )
+    call outfld('TEFIX', state%te_cur(:,dyn_te_idx), pcols, lchnk   )
 
     ! T tendency due to dynamics
     if( nstep > dyn_time_lvls-1 ) then
@@ -746,18 +782,56 @@ contains
     ! Compute physics tendency
     !===================================================
     if (ideal_phys) then
+
+      if (trim(cam_take_snapshot_before) == "held_suarez_tend") then
+         call cam_snapshot_all_outfld(cam_snapshot_before_num, state, tend, cam_in, cam_out, pbuf)
+      end if
+
       call held_suarez_tend(state, ptend, ztodt)
+      if ( (trim(cam_take_snapshot_after) == "held_suarez_tend") .and.       &
+           (trim(cam_take_snapshot_before) == trim(cam_take_snapshot_after))) then
+         call cam_snapshot_ptend_outfld(ptend, lchnk)
+      end if
       call physics_update(state, ptend, ztodt, tend)
 
+      if (trim(cam_take_snapshot_after) == "held_suarez_tend") then
+         call cam_snapshot_all_outfld(cam_snapshot_after_num, state, tend, cam_in, cam_out, pbuf)
+      end if
+
     else if (kessler_phys) then
+
+      if (trim(cam_take_snapshot_before) == "kessler_tend") then
+         call cam_snapshot_all_outfld(cam_snapshot_before_num, state, tend, cam_in, cam_out, pbuf)
+      end if
+
       call kessler_tend(state, ptend, ztodt, pbuf)
+      if ( (trim(cam_take_snapshot_after) == "kessler_tend") .and.            &
+           (trim(cam_take_snapshot_before) == trim(cam_take_snapshot_after))) then
+         call cam_snapshot_ptend_outfld(ptend, lchnk)
+      end if
       call physics_update(state, ptend, ztodt, tend)
+
+      if (trim(cam_take_snapshot_after) == "kessler_tend") then
+         call cam_snapshot_all_outfld(cam_snapshot_after_num, state, tend, cam_in, cam_out, pbuf)
+      end if
 
     else if (tj2016_phys) then
        ! Compute the large-scale precipitation
+
+       if (trim(cam_take_snapshot_before) == "thatcher_jablonowski_precip_tend") then
+          call cam_snapshot_all_outfld(cam_snapshot_before_num, state, tend, cam_in, cam_out, pbuf)
+       end if
+
        call thatcher_jablonowski_precip_tend(state, ptend, ztodt, pbuf)
+       if ( (trim(cam_take_snapshot_after) == "thatcher_jablonowski_precip_tend") .and. &
+            (trim(cam_take_snapshot_before) == trim(cam_take_snapshot_after))) then
+          call cam_snapshot_ptend_outfld(ptend, lchnk)
+       end if
        call physics_update(state, ptend, ztodt, tend)
 
+       if (trim(cam_take_snapshot_after) == "thatcher_jablonowski_precip_tend") then
+          call cam_snapshot_all_outfld(cam_snapshot_after_num, state, tend, cam_in, cam_out, pbuf)
+       end if
     end if
 
     ! Can't turn on conservation error messages unless the appropriate heat
@@ -770,8 +844,22 @@ contains
       call t_startf('simple_chem')
 
       call check_tracers_init(state, tracerint)
+
+      if (trim(cam_take_snapshot_before) == "chem_timestep_tend") then
+         call cam_snapshot_all_outfld(cam_snapshot_before_num, state, tend, cam_in, cam_out, pbuf)
+      end if
+
       call chem_timestep_tend(state, ptend, cam_in, cam_out, ztodt, pbuf)
+      if ( (trim(cam_take_snapshot_after) == "chem_timestep_tend") .and.      &
+           (trim(cam_take_snapshot_before) == trim(cam_take_snapshot_after))) then
+         call cam_snapshot_ptend_outfld(ptend, lchnk)
+      end if
       call physics_update(state, ptend, ztodt, tend)
+
+      if (trim(cam_take_snapshot_after) == "chem_timestep_tend") then
+         call cam_snapshot_all_outfld(cam_snapshot_after_num, state, tend, cam_in, cam_out, pbuf)
+      end if
+
       call check_tracers_chng(state, tracerint, "chem_timestep_tend", nstep, ztodt, cam_in%cflx)
 
       call t_stopf('simple_chem')
@@ -785,7 +873,7 @@ contains
     call t_stopf('bc_history_write')
 
     ! Save total enery after physics for energy conservation checks
-    teout = state%te_cur
+    teout = state%te_cur(:,dyn_te_idx)
 
     call cam_export(state, cam_out, pbuf)
 

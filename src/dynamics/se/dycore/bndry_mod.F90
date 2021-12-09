@@ -92,9 +92,7 @@ contains
         locstring = TRIM(subname)
       endif
       ! location 1 for copyBuffer
-      call t_startf('bndry_copy')
       call copyBuffer(nthreads,ithr,buffer,locstring)
-      call t_stopf('bndry_copy')
 
       call MPI_wait(request,lstatus,ierr)
       call t_stopf('bndry_a2a')
@@ -105,9 +103,7 @@ contains
       else
         locstring = TRIM(subname)
       endif
-      call t_startf('bndry_copy')
       call copyBuffer(nthreads,ithr,buffer,locstring)
-      call t_stopf('bndry_copy')
 
    endif
 #else
@@ -152,7 +148,7 @@ contains
           endif
        enddo
     endif
-30  format(a,'Potential performance issue: ',a,'LenMoveptr,nthreads: ',2(i3))
+30  format(a,'Potential perf issue: ',a,'LenMoveptr,nthreads: ',2(i3))
   end subroutine copyBuffer
 
   subroutine bndry_exchange_a2ao(par,nthreads,ithr,buffer,location)
@@ -212,9 +208,7 @@ contains
       call MPI_wait(requestIntra,lstatus,ierr)
 
       ! location 3 for copyBuffer
-      call t_startf('bndry_copy')
       call copyBuffer(nthreads,ithr,buffer,locstring)
-      call t_stopf('bndry_copy')
 
       ! Finish the Inter-node communication
       call MPI_wait(requestInter,lstatus,ierr)
@@ -228,9 +222,7 @@ contains
         locstring = TRIM(subname)
       endif
       !Copy buffer for ithr!=0
-      call t_startf('bndry_copy')
       call copyBuffer(nthreads,ithr,buffer,locstring)
-      call t_stopf('bndry_copy')
 
    endif
 #else
@@ -323,9 +315,7 @@ contains
     else
       locstring = TRIM(subname)
     endif
-    call t_startf('bndry_copy')
     call copyBuffer(nthreads,ithr,buffer,locstring)
-    call t_stopf('bndry_copy')
     if (nSendCycles>0) call MPI_Waitall(nSendCycles,buffer%Srequest,buffer%status,ierr)
     if (nRecvCycles>0) call MPI_Waitall(nRecvCycles,buffer%Rrequest,buffer%status,ierr)
   else
@@ -334,9 +324,7 @@ contains
     else
       locstring = TRIM(subname)
     endif
-    call t_startf('bndry_copy')
     call copyBuffer(nthreads,ithr,buffer,locstring)
-    call t_stopf('bndry_copy')
   endif
 
   end subroutine bndry_exchange_p2p
@@ -456,9 +444,7 @@ contains
   else
     locstring = TRIM(subname)
   endif
-  call t_startf('bndry_copy')
   call copyBuffer(nthreads,ithr,buffer,locstring)
-  call t_stopf('bndry_copy')
 
   if(ithr == 0) then
 
@@ -596,6 +582,12 @@ contains
     character(len=*), optional  :: location
 
     character(len=*), parameter :: subname = 'bndry_exchange_threaded'
+!VERBOSE
+!    if(present(location)) then 
+!       print *,subname,' ',location 
+!    else
+!       print *,subname,' somewhere'
+!    endif
 
     call gbarrier(buffer%gbarrier, hybrid%ithr)
     if(buffer%bndry_type == HME_BNDRY_A2A) then
@@ -762,7 +754,7 @@ contains
   if (hybrid%nthreads > 1) then
      call endrun('ERROR: compute_ghost_corner_orientation must be called before threaded region')
   endif
-  call initghostbuffer(hybrid%par,ghostbuf_cv,elem,nlev,nc,nc)
+  call initghostbuffer(hybrid%par,ghostbuf_cv,elem,nlev,nc,nc,nthreads=1)
 
 
   cin = 0._r8
@@ -781,7 +773,7 @@ contains
      kptr=0
      call ghostpack(ghostbuf_cv, cin(:,:,:,ie),nlev,kptr,ie)
   end do
-  call ghost_exchange(hybrid,ghostbuf_cv)
+  call ghost_exchange(hybrid,ghostbuf_cv,location='compute_ghost_corner_orientation')
   do ie=nets,nete
      kptr=0
      call ghostunpack(ghostbuf_cv, cout(:,:,:,ie),nlev,kptr,ie)

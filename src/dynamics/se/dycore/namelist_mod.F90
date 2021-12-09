@@ -13,23 +13,14 @@ module namelist_mod
        numnodes,              &
        tasknum,               & ! used dg model in AIX machine
        remapfreq,             & ! number of steps per remapping call
-       remap_type,            & ! selected remapping option
        statefreq,             & ! number of steps per printstate call
        runtype,               &
        cubed_sphere_map,      &
-       prescribed_wind,       &
        limiter_option,        &
-       nu,                    &
-       nu_s,                  &
-       nu_q,                  &
-       nu_div,                &
        nu_top,                &
        hypervis_scaling,      & ! use tensor HV instead of scalar coefficient
-       disable_diagnostics,   & ! Use to disable diagnostics for timing reasons
        hypervis_power,        &
-       columnpackage,         &
-       tracer_transport_type, &
-       TRACERTRANSPORT_CONSISTENT_SE_FVM
+       columnpackage
 
   !-----------------
   use thread_mod, only : omp_get_max_threads, max_num_threads, horz_num_threads, vert_num_threads, tracer_num_threads
@@ -70,18 +61,16 @@ module namelist_mod
     runtype             = 0
     statefreq           = 1
     remapfreq           = 240
-    remap_type          = "parabolic"
     tasknum             =-1
     columnpackage       = "none"
     nu_top              = 0
     ne                  = 0
-    disable_diagnostics = .false.
 
   end subroutine homme_set_defaults
 
   subroutine homme_postprocess_namelist(mesh_file, par)
     use mesh_mod,        only: MeshOpen
-
+    use dimensions_mod,  only: ntrac
     ! Dummy arguments
     character(len=*),  intent(in) :: mesh_file
     type (parallel_t), intent(in) :: par
@@ -131,8 +120,7 @@ module namelist_mod
       end if
     end if
 
-    if ((cubed_sphere_map /= 0) .AND.                                         &
-        tracer_transport_type .eq. TRACERTRANSPORT_CONSISTENT_SE_FVM) then
+    if ((cubed_sphere_map /= 0) .AND. ntrac>0) then
       if (par%masterproc) then
         write(iulog, *) subname, 'fvm transport and require equi-angle gnomonic cube sphere mapping.'
         write(iulog, *) '         Set cubed_sphere_map = 0 or comment it out all together.                          '
@@ -154,21 +142,6 @@ module namelist_mod
         end if
         call endrun(subname//"ERROR: hypervis_power>0 and hypervis_scaling>0")
       end if
-    end if
-
-    if((prescribed_wind /= 0) .and. (prescribed_wind /= 1))then
-      call endrun(subname//'prescribed_wind should be either 0 or 1')
-    end if
-
-    ! some default diffusion coefficiets
-    if (nu_s < 0) then
-      nu_s = nu
-    end if
-    if (nu_q < 0) then
-      nu_q = nu
-    end if
-    if (nu_div < 0) then
-      nu_div = nu
     end if
 
     if (multilevel <= 0) then

@@ -13,6 +13,7 @@ module mo_extfrc
   use cam_logfile,   only : iulog
   use tracer_data,   only : trfld,trfile
   use mo_constants,  only : avogadro
+  use ioFileMod,     only : getfil
 
   implicit none
 
@@ -49,7 +50,7 @@ contains
     ! 	... initialize the surface forcings
     !-----------------------------------------------------------------------
     use cam_pio_utils, only : cam_pio_openfile, cam_pio_closefile
-    use pio,           only : pio_inquire, pio_inq_varndims
+    use pio,           only : pio_inquire, pio_inq_varndims, pio_inq_dimid
     use pio,           only : pio_inq_varname, pio_nowrite, file_desc_t
     use pio,           only : pio_get_att, PIO_NOERR, PIO_GLOBAL
     use pio,           only : pio_seterrorhandling, PIO_BCAST_ERROR,PIO_INTERNAL_ERROR
@@ -83,9 +84,11 @@ contains
     integer            :: frc_indexes(gas_pcnst)
     integer            :: indx(gas_pcnst)
 
-    integer ::  vid, ndims, nvars, isec, ierr
+    integer ::  vid, ndims, nvars, isec, ierr, num_dims_xfrc, dimid
+    logical, allocatable :: is_sector(:)
     type(file_desc_t) :: ncid
     character(len=32)  :: varname
+    logical :: unstructured
 
     character(len=1), parameter :: filelist = ''
     character(len=1), parameter :: datapath = ''
@@ -99,6 +102,7 @@ contains
     character(len=256) :: tmp_string = ' '
     character(len=32) :: xchr = ' '
     real(r8) :: xdbl
+    character(len=256) :: locfn
 
     !-----------------------------------------------------------------------
  
@@ -246,16 +250,30 @@ contains
 
        forcings(m)%nsectors = 0
 
-       call cam_pio_openfile ( ncid, trim(forcings(m)%filename), PIO_NOWRITE)
+       call getfil (forcings(m)%filename, locfn, 0)
+       call cam_pio_openfile ( ncid, trim(locfn), PIO_NOWRITE)
        ierr = pio_inquire (ncid, nVariables=nvars)
 
+       call pio_seterrorhandling(ncid, PIO_BCAST_ERROR)
+       ierr = pio_inq_dimid( ncid, 'ncol', dimid )
+       unstructured = ierr==PIO_NOERR
+       call pio_seterrorhandling(ncid, PIO_INTERNAL_ERROR)
+
+       allocate(is_sector(nvars))
+       is_sector(:) = .false.
+       
        do vid = 1,nvars
 
           ierr = pio_inq_varndims (ncid, vid, ndims)
+          if (unstructured) then
+             num_dims_xfrc = 3
+          else
+             num_dims_xfrc = 4
+          endif
 
-          if( ndims < 4 ) then
+          if( ndims < num_dims_xfrc ) then
              cycle
-          elseif( ndims > 4 ) then
+          elseif( ndims > num_dims_xfrc ) then
              ierr = pio_inq_varname (ncid, vid, varname)
              write(iulog,*) 'extfrc_inti: Skipping variable ', trim(varname),', ndims = ',ndims, &
                   ' , species=',trim(forcings(m)%species)
@@ -263,7 +281,8 @@ contains
           end if
 
           forcings(m)%nsectors = forcings(m)%nsectors+1
-
+          is_sector(vid)=.true.
+          
        enddo
 
        allocate( forcings(m)%sectors(forcings(m)%nsectors), stat=astat )
@@ -274,14 +293,12 @@ contains
 
        isec = 1
        do vid = 1,nvars
-
-          ierr = pio_inq_varndims (ncid, vid, ndims)
-          if( ndims == 4 ) then
+          if( is_sector(vid) ) then
              ierr = pio_inq_varname(ncid, vid, forcings(m)%sectors(isec))
              isec = isec+1
           endif
-
        enddo
+       deallocate(is_sector)
 
        ! Global attribute 'input_method' overrides the ext_frc_type namelist setting on
        ! a file-by-file basis.  If the ext_frc file does not contain the 'input_method' 

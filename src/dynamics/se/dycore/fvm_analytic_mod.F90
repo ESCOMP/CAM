@@ -437,7 +437,7 @@ CONTAINS
     real (kind=r8), dimension(4,2,1-nhc:nc+nhc,1-nhc:nc+nhc)      , intent(in) :: vtx_cart
 
     real (kind=r8), dimension(7,1-nhe:nc+nhe,1-nhe:nc+nhe)        , intent(out):: centroid_stretch
-    real (kind=r8), dimension(1:irecons-1,4,1-nhe:nc+nhe,1-nhe:nc+nhe), intent(out):: vertex_recons_weights
+    real (kind=r8), dimension(4,1:irecons-1,1-nhe:nc+nhe,1-nhe:nc+nhe), intent(out):: vertex_recons_weights
     real (kind=r8), dimension(3,1-nhe:nc+nhe,1-nhe:nc+nhe)        , intent(out):: recons_metrics
     real (kind=r8), dimension(3,1-nhe:nc+nhe,1-nhe:nc+nhe)        , intent(out):: recons_metrics_integral
 
@@ -456,8 +456,8 @@ CONTAINS
             do m = i, i+1
               cartx = vtx_cart(count,1,i,j); carty = vtx_cart(count,2,i,j);
 
-              vertex_recons_weights(1,count,i,j) = cartx - spherecentroid(1,i,j)
-              vertex_recons_weights(2,count,i,j) = carty - spherecentroid(2,i,j)
+              vertex_recons_weights(count,1,i,j) = cartx - spherecentroid(1,i,j)
+              vertex_recons_weights(count,2,i,j) = carty - spherecentroid(2,i,j)
 
               count=count+1
             end do
@@ -496,17 +496,17 @@ CONTAINS
           do count=1,4
             cartx = vtx_cart(count,1,i,j); carty = vtx_cart(count,2,i,j);
 
-            vertex_recons_weights(1,count,i,j) = cartx - spherecentroid(1,i,j)
-            vertex_recons_weights(2,count,i,j) = carty - spherecentroid(2,i,j)
+            vertex_recons_weights(count,1,i,j) = cartx - spherecentroid(1,i,j)
+            vertex_recons_weights(count,2,i,j) = carty - spherecentroid(2,i,j)
 
-            vertex_recons_weights(3,count,i,j) = (spherecentroid(1,i,j)**2 - &
+            vertex_recons_weights(count,3,i,j) = (spherecentroid(1,i,j)**2 - &
                  spherecentroid(3,i,j))   + &
                  (cartx - spherecentroid(1,i,j))**2
-            vertex_recons_weights(4,count,i,j) = (spherecentroid(2,i,j)**2 - &
+            vertex_recons_weights(count,4,i,j) = (spherecentroid(2,i,j)**2 - &
                  spherecentroid(4,i,j)) + &
                  (carty - spherecentroid(2,i,j))**2
 
-            vertex_recons_weights(5,count,i,j) = (cartx - spherecentroid(1,i,j))*     &
+            vertex_recons_weights(count,5,i,j) = (cartx - spherecentroid(1,i,j))*     &
                  (carty - spherecentroid(2,i,j))+     &
                  (spherecentroid(1,i,j) *             &
                  spherecentroid(2,i,j) - &

@@ -1,0 +1,61 @@
+ se_phys_dyn_cp = 2
+ gw_polar_taper = .true.
+
+ mfilt=1,1,1,1,1,1,1,1,1
+ ndens=1,1,1,1,1,1,1,1,1
+ nhtfrq=-24,-24,-24,-24,-24,-24,-24,-24,-24
+
+ inithist='ENDOFRUN'
+
+ ncdata = '$DIN_LOC_ROOT/atm/cam/inic/se/fchist_ne0conus30x8_L32_2012-11-01_c191203.nc'
+
+ fincl2 = 'SFBENZENE','SFBIGALK','SFC2H2','SFCH2O','SFCH3COOH','SFCO','SFNO'
+
+ ext_frc_specifier =
+         'bc_a4  -> $DIN_LOC_ROOT/atm/cam/chem/emis/CMIP6_emissions_1750_2015/emissions-cmip6_bc_a4_aircraft_vertical_1750-2015_0.9x1.25_c20170608.nc',
+         'NO2    -> $DIN_LOC_ROOT/atm/cam/chem/emis/CAM-SE_ne0conus_30x8/emissions-EPA_NO2_vertical_anthro_201306-201310_conus_30x8_c190906.nc',
+         'num_a1 -> $DIN_LOC_ROOT/atm/cam/chem/emis/CMIP6_emissions_1750_2015/emissions-cmip6_num_so4_a1_anthro-ene_vertical_1750-2015_0.9x1.25_c20170616.nc',
+         'num_a1 -> $DIN_LOC_ROOT/atm/cam/chem/emis/CMIP6_emissions_1750_2015/emissions-cmip6_num_a1_so4_contvolcano_vertical_850-5000_0.9x1.25_c20170724.nc',
+         'num_a2 -> $DIN_LOC_ROOT/atm/cam/chem/emis/CMIP6_emissions_1750_2015/emissions-cmip6_num_a2_so4_contvolcano_vertical_850-5000_0.9x1.25_c20170724.nc',
+         'num_a4 -> $DIN_LOC_ROOT/atm/cam/chem/emis/CMIP6_emissions_1750_2015/emissions-cmip6_num_bc_a4_aircraft_vertical_1750-2015_0.9x1.25_c20170608.nc',
+         'SO2    -> $DIN_LOC_ROOT/atm/cam/chem/emis/CAM-SE_ne0conus_30x8/emissions-EPA_SO2_vertical_anthro_201306-201310_conus_30x8_c190906.nc',
+         'SO2    -> $DIN_LOC_ROOT/atm/cam/chem/emis/CMIP6_emissions_1750_2015/emissions-cmip6_SO2_contvolcano_vertical_850-5000_0.9x1.25_c20170724.nc',
+         'SO2    -> $DIN_LOC_ROOT/atm/cam/chem/stratvolc/VolcanEESMv3.11_SO2_850-2016_Mscale_Zreduc_1deg_c191203.nc',
+         'so4_a1 -> $DIN_LOC_ROOT/atm/cam/chem/emis/CMIP6_emissions_1750_2015/emissions-cmip6_so4_a1_anthro-ene_vertical_1750-2015_0.9x1.25_c20170616.nc',
+         'so4_a1 -> $DIN_LOC_ROOT/atm/cam/chem/emis/CMIP6_emissions_1750_2015/emissions-cmip6_so4_a1_contvolcano_vertical_850-5000_0.9x1.25_c20170724.nc',
+         'so4_a2 -> $DIN_LOC_ROOT/atm/cam/chem/emis/CMIP6_emissions_1750_2015/emissions-cmip6_so4_a2_contvolcano_vertical_850-5000_0.9x1.25_c20170724.nc'
+
+ srf_emis_specifier =         
+         'BENZENE  -> $DIN_LOC_ROOT/atm/cam/chem/emis/CAM-SE_ne0conus_30x8/emissions-CMIP6_BENZENE_surface_anthro_2012-2014_masked_conus_30x8_c190903.nc',
+         'BIGENE   -> $DIN_LOC_ROOT/atm/cam/chem/emis/CAM-SE_ne0conus_30x8/emissions-CMIP6_BIGENE_surface_anthro_2012-2014_masked_conus_30x8_c190903.nc',
+         'C2H2     -> $DIN_LOC_ROOT/atm/cam/chem/emis/CAM-SE_ne0conus_30x8/emissions-CMIP6_C2H2_surface_anthro_2012-2014_masked_conus_30x8_c190903.nc',
+         'C2H4     -> $DIN_LOC_ROOT/atm/cam/chem/emis/CAM-SE_ne0conus_30x8/emissions-CMIP6_C2H4_surface_anthro_2012-2014_masked_conus_30x8_c190903.nc',
+         'C2H6     -> $DIN_LOC_ROOT/atm/cam/chem/emis/CAM-SE_ne0conus_30x8/emissions-CMIP6_C2H6_surface_anthro_2012-2014_masked_conus_30x8_c190903.nc',
+         'C3H6     -> $DIN_LOC_ROOT/atm/cam/chem/emis/CAM-SE_ne0conus_30x8/emissions-CMIP6_C3H6_surface_anthro_2012-2014_masked_conus_30x8_c190903.nc',
+         'C3H8     -> $DIN_LOC_ROOT/atm/cam/chem/emis/CAM-SE_ne0conus_30x8/emissions-CMIP6_C3H8_surface_anthro_2012-2014_masked_conus_30x8_c190903.nc',
+         'CH2O     -> $DIN_LOC_ROOT/atm/cam/chem/emis/CAM-SE_ne0conus_30x8/emissions-CMIP6_CH2O_surface_anthro_2012-2014_masked_conus_30x8_c190903.nc',
+         'CH3CHO   -> $DIN_LOC_ROOT/atm/cam/chem/emis/CAM-SE_ne0conus_30x8/emissions-CMIP6_CH3CHO_surface_anthro_2012-2014_masked_conus_30x8_c190903.nc',
+         'CH3CN    -> $DIN_LOC_ROOT/atm/cam/chem/emis/CAM-SE_ne0conus_30x8/emissions-CMIP6_CH3CN_surface_anthro_2012-2014_conus_30x8_c190903.nc',
+         'CH3COOH  -> $DIN_LOC_ROOT/atm/cam/chem/emis/CAM-SE_ne0conus_30x8/emissions-CMIP6_CH3COOH_surface_anthro_2012-2014_conus_30x8_c190903.nc',
+         'CO       -> $DIN_LOC_ROOT/atm/cam/chem/emis/CAM-SE_ne0conus_30x8/emissions-CMIP6_CO_surface_anthro_2012-2014_masked_conus_30x8_c190903.nc',
+         'E90      -> $DIN_LOC_ROOT/atm/cam/chem/emis/CMIP6_emissions_1750_2015/emissions_E90global_surface_1750-2100_0.9x1.25_c20170322.nc',
+         'HCN      -> $DIN_LOC_ROOT/atm/cam/chem/emis/CAM-SE_ne0conus_30x8/emissions-CMIP6_HCN_surface_anthro_2012-2014_conus_30x8_c190903.nc',
+         'HCOOH    -> $DIN_LOC_ROOT/atm/cam/chem/emis/CAM-SE_ne0conus_30x8/emissions-CMIP6_HCOOH_surface_anthro_2012-2014_conus_30x8_c190903.nc',
+         'IVOC     -> $DIN_LOC_ROOT/atm/cam/chem/emis/CMIP6_emissions_1750_2015/emissions-cmip6_IVOC_anthro_surface_1750-2015_0.9x1.25_c20170608.nc',
+         'NH3      -> $DIN_LOC_ROOT/atm/cam/chem/emis/CAM-SE_ne0conus_30x8/emissions-CMIP6_NH3_surface_anthro_2012-2014_masked_conus_30x8_c190903.nc',
+         'NO       -> $DIN_LOC_ROOT/atm/cam/chem/emis/CAM-SE_ne0conus_30x8/emissions-CMIP6_NOx_surface_anthro_2012-2014_masked_conus_30x8_c190903.nc',
+         'SVOC     -> $DIN_LOC_ROOT/atm/cam/chem/emis/CMIP6_emissions_1750_2015/emissions-cmip6_SVOC_anthro_surface_1750-2015_0.9x1.25_c20170608.nc',
+         'TOLUENE  -> $DIN_LOC_ROOT/atm/cam/chem/emis/CAM-SE_ne0conus_30x8/emissions-CMIP6_TOLUENE_surface_anthro_2012-2014_masked_conus_30x8_c190903.nc',
+         'DMS      -> $DIN_LOC_ROOT/atm/cam/chem/emis/CMIP6_emissions_1750_2015/emissions-cmip6_DMS_other_surface_1750-2015_0.9x1.25_c20170322.nc',
+         'bc_a4    -> $DIN_LOC_ROOT/atm/cam/chem/emis/CAM-SE_ne0conus_30x8/emissions-CMIP6_BC_surface_anthro_2012-2014_masked_conus_30x8_c190903.nc',
+         'num_a1   -> $DIN_LOC_ROOT/atm/cam/chem/emis/CMIP6_emissions_1750_2015/emissions-cmip6_num_so4_a1_bb_surface_1750-2015_0.9x1.25_c20170322.nc',
+         'num_a1   -> $DIN_LOC_ROOT/atm/cam/chem/emis/CMIP6_emissions_1750_2015/emissions-cmip6_num_so4_a1_anthro-ag-ship_surface_1750-2015_0.9x1.25_c20170616.nc',
+         'num_a2   -> $DIN_LOC_ROOT/atm/cam/chem/emis/CMIP6_emissions_1750_2015/emissions-cmip6_num_so4_a2_anthro-res_surface_1750-2015_0.9x1.25_c20170616.nc',
+         'num_a4   -> $DIN_LOC_ROOT/atm/cam/chem/emis/CAM-SE_ne0conus_30x8/emissions-CMIP6_num_bc_a4_surface_anthro_2012-2014_masked_conus_30x8_c190903.nc',
+         'num_a4   -> $DIN_LOC_ROOT/atm/cam/chem/emis/CMIP6_emissions_1750_2015/emissions-cmip6_num_pom_a4_anthro_surface_1750-2015_0.9x1.25_c20170608.nc',
+         'pom_a4   -> $DIN_LOC_ROOT/atm/cam/chem/emis/CMIP6_emissions_1750_2015/emissions-cmip6_pom_a4_anthro_surface_1750-2015_0.9x1.25_c20170608.nc',
+         'SO2      -> $DIN_LOC_ROOT/atm/cam/chem/emis/CAM-SE_ne0conus_30x8/emissions-CMIP6_SO2_surface_anthro_2012-2014_masked_conus_30x8_c190903.nc',
+         'SO2      -> $DIN_LOC_ROOT/atm/cam/chem/emis/CMIP6_emissions_1750_2015/emissions-cmip6_SO2_anthro-ene_surface_1750-2015_0.9x1.25_c20170616.nc',
+         'so4_a1   -> $DIN_LOC_ROOT/atm/cam/chem/emis/CMIP6_emissions_1750_2015/emissions-cmip6_so4_a1_anthro-ag-ship_surface_1750-2015_0.9x1.25_c20170616.nc',
+         'so4_a1   -> $DIN_LOC_ROOT/atm/cam/chem/emis/CMIP6_emissions_1750_2015/emissions-cmip6_so4_a1_bb_surface_1750-2015_0.9x1.25_c20170322.nc',
+         'so4_a2   -> $DIN_LOC_ROOT/atm/cam/chem/emis/CMIP6_emissions_1750_2015/emissions-cmip6_so4_a2_anthro-res_surface_1750-2015_0.9x1.25_c20170616.nc'

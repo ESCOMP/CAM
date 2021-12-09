@@ -3,53 +3,43 @@
 #
 # build-namelist
 #
-# This script builds the namelists for the standalone CAM configuration of CCSM4.
-# Eventually the system's build will be reworked so that individual components are responsible
-# for building their own namelists.
+# This script builds the namelists for the standalone CAM configuration of
+# CESM.
 #
-# build-namelist is designed to be used in conjuction with configure.  By default configure
-# produces a config_cache.xml file that contains all information needed at build time to procduce
-# a CAM executable.  build-namelist reads this file to obtain information it needs to provide
-# default values that are consistent with the CAM executable.  For example, the grid resolution
-# is obtained from the cache file and used to determine appropriate defaults for boundary datasets
+# build-namelist is designed to be used in conjuction with configure.
+# By default configure produces a config_cache.xml file that contains all
+# information needed at build time to procduce a CAM executable.
+# build-namelist reads this file to obtain information it needs to provide
+# default values that are consistent with the CAM executable.
+# For example, the grid resolution is obtained from the cache file and
+# used to determine appropriate defaults for boundary datasets
 # that are resolution dependent.
 #
-# The simplest use of build-namelist is to execute it from the build directory where configure
-# was run.  By default it will use the config_cache.xml file that was written by configure to
-# determine the build time properties of the executable, and will write the files that contain
-# the output namelists in that same directory.  But if multiple runs are to made using the
-# same executable, successive invocations of build-namelist will overwrite previously generated
-# namelist files.  So generally the best strategy is to invoke build-namelist from the run
-# directory and use the -config option to provide the filepath of the config_cache.xml file.
+# build-namelist is called from <root>/cime_config/buildnml
+# buildnml is called by preview_namelists or before a job is run (directly
+# or from case.submit)
+# By default it will use the config_cache.xml file that was written by
+# configure to determine the build time properties of the executable,
+# and will write the files that contain the output namelists in that
+# same directory.  But if multiple runs are to made using the
+# same executable, successive invocations of build-namelist will overwrite
+# previously generated namelist files.
 #
-#
-# Date        Contributor      Modification
-# -------------------------------------------------------------------------------------------
-# 2007-12-31  Brian Eaton      Original version
-# 2008-02-02  B. Eaton         Restore -test functionality.
-# 2008-07-01  Sean Santos      Added -inputdata functionality.
-# 2008-07-09  B. Eaton         Provide default values for rad_climate variable which
-#                              specifies the radiatively active constituents.
-# 2008-08-26  B. Eaton         Add the driver namelist group ccsm_pes to specify the
-#                              task/thread layout for all components.
-# 2008-11-14  B. Eaton         Extend use_case functionality.
-# 2009-09-02  B. Eaton         Allow namelist definition, defaults, and use case files
-#                              to come from the user source mod directories.
-#--------------------------------------------------------------------------------------------
+#------------------------------------------------------------------------------
 
 use strict;
-#use warnings;
-#use diagnostics;
 
 use Cwd;
 use English;
 use File::Basename;
 use Getopt::Long;
 use IO::File;
+use List::Util 'first';
 use FindBin qw($Bin);
 use lib "$Bin/perl5lib";
 use Build::ChemNamelist qw(set_dep_lists set_aero_modes_info chem_has_species);
-#-----------------------------------------------------------------------------------------------
+use List::Util qw[min max];
+#------------------------------------------------------------------------------
 
 sub usage {
     die <<EOF;
@@ -74,11 +64,12 @@ OPTIONS
                            file specified.
      -namelist "namelist"  Specify namelist settings directly on the commandline by supplying
                            a string containing FORTRAN namelist syntax, e.g.,
-                              -namelist "&camexp stop_option='ndays' stop_n=10 /"
+                            -namelist "&camexp nhtfrq=0,-24,-6 inithist='ENDOFRUN' /"
      -ntasks <n>           Specify the number of MPI tasks being used by the run.  This is used
                            to set a default decomposition for the FV dycore only (npr_yz).
      -runtype "type"       Type of simulation (startup, continue, or branch)
      -silent [-s]          Turns on silent mode - only fatal messages issued.
+     -start_ymd "ymd"      Start YMD from the case RUN_STARTDATE
      -test                 Enable checking that input datasets exist on local filesystem.
      -use_case             Specify a use case.  Default: present day climatology
      -verbose [or -v]      Turn on verbose echoing of informational messages.
@@ -88,7 +79,7 @@ Note: The precedence for setting the values of namelist variables is (highest to
       1. namelist values set by specific command-line options, i.e., -case,
          -runtype
       2. values set on the command-line using the -namelist option,
-      3. values read from the file specified by -infile,
+      3. values read from the file specified by -infile (from user_nl_cam)
       4. values specified by the -use_case option,
       5. values from the namelist defaults file.
 EOF
@@ -150,6 +141,7 @@ GetOptions(
     "ntasks=s"                  => \$opts{'ntasks'},
     "runtype=s"                 => \$opts{'runtype'},
     "s|silent"                  => \$opts{'silent'},
+    "start_ymd=s"               => \$opts{'start_ymd'},
     "test"                      => \$opts{'test'},
     "uc|use_case=s"             => \$opts{'use_case'},
     "v|verbose"                 => \$opts{'verbose'},
@@ -448,95 +440,15 @@ if (defined $use_case_file) {
 
 # Add default values for required namelist variables that have not been previously set.
 # This is done either by using the namelist default object, or directly with inline logic.
-
-# Are we building namelists for the CESM scripts or for standalone CAM  scripts.  If
-# CESM then only produce namelists for the CAM component.  If CAM standalone then produce
-# output for the required non-cam components as well.
-
-my $ccsm_build = $cfg->get('ccsm_seq');
-my $cam_build  = $ccsm_build ? 0 : 1;
 if ($print>=2) {
-    if ($ccsm_build) {
-        print "Writing namelist files for cesm scripts$eol";
-    }
-    elsif ($cam_build) {
-        print "Writing namelist files for cam standalone scripts$eol";
-    }
+    print "Writing namelist files for cesm scripts$eol";
 }
 
-# Start with the driver component.  These settings are communicated by the driver to
-# all subcomponents.
-
-####################################
-# namelist group: cime_driver_inst #
-####################################
-
-add_default($nl, 'ninst_driver', 'val'=>'1');
-
-######################################
-# namelist group: seq_cplflds_inparm #
-######################################
-add_default($nl, 'flds_co2_dmsa',  'val'=>'.false.');
-add_default($nl, 'flds_co2a',      'val'=>'.true.');
-add_default($nl, 'flds_co2b',      'val'=>'.false.');
-add_default($nl, 'flds_co2c',      'val'=>'.false.');
-add_default($nl, 'cplflds_custom', 'val'=>'');
-
-############################
-# namelist group: cime_pes #
-############################
-
-# By default the driver sets all components to use all tasks.  This is the
-# appropriate default for the standalone CAM configuration.
-
-# By default the driver sets all components to use 1 thread.  This should be
-# reset either to user specified values, or by default use the OMP_NUM_THREADS
-# environment variable to set the thread count for each component.
-
-# Is this an smp build?
-my $smp = $cfg->get('smp');
-if ($smp) {
-
-    # If user has set the specific variables for component threads on the commandline
-    # those values will be used.  If not, the highest precedence will be given the the
-    # value of the environment variable OMP_NUM_THREADS.  That is because the number of
-    # threads specified on the configure commandline is used to determine an appropriate
-    # decomposition for the CICE model, but that decomposition may be valid for a range
-    # of ntask/nthread settings.
-
-    # Check for OMP_NUM_THREADS
-    my $nthreads;
-    if (defined $ENV{'OMP_NUM_THREADS'}) {
-        $nthreads = $ENV{'OMP_NUM_THREADS'};
-    }
-
-    if ($nthreads) {
-        add_default($nl, 'atm_nthreads', 'val'=>$nthreads);
-        add_default($nl, 'cpl_nthreads', 'val'=>$nthreads);
-        add_default($nl, 'ocn_nthreads', 'val'=>$nthreads);
-    }
-}
-
-#######################################
-# namelist group: seq_infodata_inparm #
-#######################################
-# Case name
-add_default($nl, 'case_name');
-
-# Run type
-add_default($nl, 'start_type');
-
-# CIME model version
-add_default($nl, 'cime_model', 'val'=>'cesm');
-
-# CESM driver defaults
-add_default($nl, 'coldair_outbreak_mod', 'val'=>'.true.');
-add_default($nl, 'flux_max_iteration', 'val'=>'5');
-add_default($nl, 'gust_fac', 'val'=>'0');
-
+# Composition of air
+add_default($nl, 'dry_air_species');
+add_default($nl, 'water_species_in_air');
 # Spectral Element dycore
 my $dyn = $cfg->get('dyn');
-if ($dyn =~ /se/) {add_default($nl, 'vect_map', 'val'=>'cart3d');}
 
 # Physics package checks done here since aqua_planet setting is in
 # the seq_infodata_inparm group
@@ -549,18 +461,8 @@ my $phys = $cfg->get('phys');
 # Aqua planet
 
 my $aqua_mode = $cfg->get('aquaplanet');
-my $nl_aqua_flag = $nl->get_value('aqua_planet');
-
-# Consistency check between configuration and namelist variables used for aquaplanet.
-if ($aqua_mode and defined $nl_aqua_flag  and ($nl_aqua_flag  =~ m/$FALSE/io)) {
-   die "$ProgName - ERROR: Configured CAM for aquaplanet but aqua_planet set to FALSE in the namelist. \n";
-}
-if (!($aqua_mode) and defined $nl_aqua_flag  and ($nl_aqua_flag  =~ m/$TRUE/io)) {
-   die "$ProgName - ERROR: CAM not configured for aquaplanet but aqua_planet set to TRUE in the namelist. \n";
-}
 
 if ($aqua_mode) {
-    add_default($nl, 'aqua_planet', 'val'=>'.true.');
     ++$phys_mode_flags;
 }
 
@@ -583,65 +485,14 @@ if ($phys_mode_flags > 1) {
 my $simple_phys = 0;
 if ($adia_mode or $ideal_mode) { $simple_phys = 1; }
 
-# Note that the prescribed SSTs
-# used by aqua-planet mode are implemented in the cam_aqua component.)
-
 # Single column mode
 my $scam = $cfg->get('scam');
-if ($scam) {
-    add_default($nl, 'single_column', 'val'=>'.true.');
-    add_default($nl, 'scmlat');
-    add_default($nl, 'scmlon');
-}
-
-######################################
-# namelist group: seq_timemgr_inparm #
-######################################
-
-# Length of simulation
-add_default($nl, 'stop_option');
-unless (defined $nl->get_value('stop_ymd')) { add_default($nl, 'stop_n'); }
-
-# Restart interval
-add_default($nl, 'restart_option');
-
-# Start date
-# The following check should be done for CAM standalone builds only.
-if ($cam_build) {
-    # When the user specifies ncdata there is no default for start_ymd since there is
-    # no way to determine the corresponding date of the ncdata file.  So only add
-    # a default for start_ymd if the user has not specified ncdata.
-    if (defined $nl->get_value('ncdata')) {
-        unless (defined $nl->get_value('start_ymd')) {
-            die "$ProgName - ERROR: It is not allowed to set ncdata without also setting start_ymd. \n";
-        }
-    }
-    else {
-        add_default($nl, 'start_ymd');
-    }
-}
-
-# Orbit (if not coupled)
-# If orbital parameters have not been specified then check for orbit year.
-# If orbit year has not been specified, then set a default value.
-if ($cam_build) {
-    if (not defined $nl->get_value('orb_obliq') or
-        not defined $nl->get_value('orb_eccen') or
-        not defined $nl->get_value('orb_mvelp')     ) {
-        if (not defined $nl->get_value('orb_iyear')) {
-            add_default($nl, 'orb_iyear');
-        }
-    }
-}
-
-add_default($nl, 'cpl_seq_option');
 
 # Coupling interval
 # The default is for CAM to couple to the surface components every CAM timestep.
 # So start by making sure CAM's dtime is set.
 add_default($nl, 'dtime');
 my $dtime = $nl->get_value('dtime');
-add_default($nl, 'atm_cpl_dt', 'val'=>$dtime);
 
 #-----------------------------------------------------------------------------------------------
 # Add defaults for the CAM component
@@ -737,10 +588,7 @@ if ( ($chem ne 'none') or ( $prog_species ) ){
     }
     if (length($gas_drydep_list)>2){
         add_default($nl, 'drydep_list', 'val'=>$gas_drydep_list );
-        add_default($nl, 'depvel_file' );
         add_default($nl, 'depvel_lnd_file' );
-        add_default($nl, 'clim_soilw_file' );
-        add_default($nl, 'season_wes_file' );
     }
     if (length($aer_drydep_list)>2){
         add_default($nl, 'aer_drydep_list', 'val'=>$aer_drydep_list );
@@ -751,14 +599,9 @@ if ( ($chem ne 'none') or ( $prog_species ) ){
     $nl->set_variable_value('wetdep_inparm', 'gas_wetdep_list', $gas_wetdep_list);
 }
 if ($chem) {
-    # Dry Deposition -- The responsibility for dry deposition is shared between CAM and CLM.
-    # The namelist is read by a driver module, seq_drydep_mod, and the information is shared
-    # between CAM and CLM by use association of that module.
-    add_default($nl, 'drydep_method');
-
     # drydep_srf_file is only needed for prognostic MAM when the grid is unstructured.
     # structured grids can do interpolation on the fly.
-    if ($chem =~ /_mam/ and $dyn =~ /se/) {
+    if ($chem =~ /_mam/ and ($dyn =~ /se|fv3|mpas/)) {
         add_default($nl, 'drydep_srf_file');
     }
 }
@@ -774,7 +617,12 @@ my %atts = ();
 # The initial date is an attribute in the defaults file which should be matched unless
 # the user explicitly requests to ignore the initial date via the -ignore_ic_date option,
 # or just ignore the year of the initial date via the -ignore_ic_year option.
-my $ic_date = $nl->get_value('start_ymd');
+my $ic_date;
+if (defined $opts{'start_ymd'}) {
+    $ic_date = $opts{'start_ymd'};
+} else {
+    die "$ProgName - ERROR: -start_ymd is required"
+}
 if ($opts{'ignore_ic_date'}) {
     # Don't set any attribute for date matching.  By putting this option first it
     # will take precedence in the case that the user has set both -ignore_ic_date
@@ -904,9 +752,17 @@ if ($co2_cycle) {
         # Check whether user has explicitly turned off reading the aircraft CO2 dataset.
         # (user specification has higher precedence than the true value set above)
         if ($nl->get_value('co2_readflux_aircraft') =~ /$TRUE/io) {
-            add_default($nl, 'aircraft_specifier');
+
+            my $rel_filepath = get_default_value('ac_CO2_emis');
+            my $emisval = quote_string('ac_CO2 -> ' . $rel_filepath);
+            add_default($nl, 'aircraft_specifier', 'val'=>$emisval);
+
             add_default($nl, 'aircraft_datapath');
             add_default($nl, 'aircraft_type');
+            # This should be the same file as the one in the aircraft_specifier file.
+            # This is a workaround to get this filepath into the cam.input_data_list file
+            # to allow the CESM scripts to obtain all required data for a run.
+            add_default($nl, 'aircraft_co2_file');
         }
     }
 }
@@ -1649,7 +1505,7 @@ elsif ($carma eq 'tholin') {
 
 # turn on stratospheric aerosol forcings in CAM6 configurations
 my $chem_has_ocs = chem_has_species($cfg, 'OCS');
-if ($phys =~ /cam6/) {
+if ($phys =~ /cam6/ and $chem =~ /_mam/) {
   # turn on volc forcings in cam6 -- prognostic or prescribed
   if ( $chem_has_ocs ) {
       # turn on prognostic stratospheric aerosols
@@ -1663,6 +1519,17 @@ if ($phys =~ /cam6/) {
 if ( $nl->get_value('modal_strat_sulfate')=~ /$TRUE/io and
      $nl->get_value('prescribed_strataero_feedback') =~ /$TRUE/io ) {
     die "Cannot set both modal_strat_sulfate and prescribed_strataero_feedback to TRUE \n";
+}
+
+# check O3S_Loss setting ...
+if (chem_has_species($cfg, 'O3S')) {
+    add_default($nl, 'rxn_rate_sums');
+    my $rate_sums = $nl->get_value('rxn_rate_sums');
+    if ($rate_sums =~ /O3S_Loss.*=/) {
+	if ($print>=2) { print "OK rxn_rate_sums includes O3S_Loss \n"; }
+    } else {
+	die "Must specify O3S_Loss in rxn_rate_sums \n";
+    }
 }
 
 # stratospheric aerosols are needed for heterogeneous chemistry as well as radiation feedback
@@ -1760,6 +1627,10 @@ if ($chem =~ /waccm_sc/) {
     unless (defined $nl->get_value('waccm_forcing_file')) {
         add_default($nl, 'waccm_forcing_datapath');
         add_default($nl, 'waccm_forcing_file');
+    }
+    unless (defined $nl->get_value('waccm_forcing_type')) {
+        add_default($nl, 'waccm_forcing_type', 'val'=>'CYCLICAL');
+        add_default($nl, 'waccm_forcing_cycle_yr');
     }
     add_default($nl, 'nlte_use_mo', 'val'=>".false.");
     add_default($nl, 'h2orates');
@@ -2286,7 +2157,7 @@ if ($chem =~ /_mam4/ and $phys =~ /cam6/) {
                 'pom_a4_an_srf_file'  => 'pom_a4',
                 'pom_a4_bb_srf_file'  => 'pom_a4' );
     }
-	    
+
     # for mechanism missing full tropospheric chemistry
     if ($chem =~ /trop_mam/ or $chem =~ /waccm_ma/ or $chem =~ /waccm_sc/) {
         %species = (%species,
@@ -2352,7 +2223,6 @@ if ($chem =~ /_mam4/ and $phys =~ /cam6/) {
                     'ISOP_bb_srf_file' => 'ISOP',
                     'MEK_an_srf_file' => 'MEK',
                     'MEK_bb_srf_file' => 'MEK',
-                    'MTERP_bb_srf_file' => 'MTERP',
                     'NH3_an_srf_file' => 'NH3',
                     'NH3_bb_srf_file' => 'NH3',
                     'NH3_ot_srf_file' => 'NH3',
@@ -2361,6 +2231,25 @@ if ($chem =~ /_mam4/ and $phys =~ /cam6/) {
                     'XYLENES_an_srf_file' => 'XYLENES',
                     'XYLENES_bb_srf_file' => 'XYLENES',
                     'E90_srf_file' => 'E90' );
+        if ($chem =~ /trop_strat_mam4_ts2/) {
+            %species = (%species,
+                    'MTERP_bb_srf_file' => 'APIN') ;
+        } else {
+            %species = (%species,
+                    'MTERP_bb_srf_file' => 'MTERP' );
+        }
+        if ($cfg->get('hgrid') =~ /ne0np4CONUS.ne30x8/) {
+            %species = (%species,
+                    'BIGALD_bb_srf_file' => 'BIGALD',
+                    'CH3COCHO_bb_srf_file' => 'CH3COCHO',
+                    'CRESOL_bb_srf_file' => 'CRESOL',
+                    'HYAC_bb_srf_file' => 'HYAC',
+                    'ISOP_an_srf_file' => 'ISOP',
+                    'MACR_bb_srf_file' => 'MACR',
+                    'MVK_bb_srf_file' => 'MVK',
+                    'MTERP_an_srf_file' => 'MTERP',
+                    'NO2_bb_srf_file' => 'NO2' );
+        }
         if ($chem =~ /_vbsext/) {
             %species = (%species,
                     'IVOC_an_srf_file' => 'IVOCff',
@@ -2461,7 +2350,7 @@ if ($chem =~ /_mam4/ and $phys =~ /cam6/) {
     }
 
     # MEGAN emissions
-    if ($chem =~ /trop_strat/ or $chem =~ /_tsmlt/ or $chem =~ /geoschem/) {
+    if ($chem =~ /trop_strat_mam4_vbsext/ or $chem =~ /waccm_tsmlt/ or $chem =~ /geoschem/) {
         my $val = "'ISOP = isoprene',"
                 . "'MTERP = pinene_a + carene_3 + thujene_a + 2met_styrene + cymene_p + cymene_o + terpinolene + bornene "
                 . "+ fenchene_a + ocimene_al + pinene_b + sabinene + camphene + limonene + phellandrene_a + terpinene_g "
@@ -2483,6 +2372,83 @@ if ($chem =~ /_mam4/ and $phys =~ /cam6/) {
                 . "'BIGALK = pentane + hexane + heptane + tricyclene',"
                 . "'BIGENE = butene',"
                 . "'TOLUENE = toluene'";
+        add_default($nl, 'megan_specifier', 'val'=>$val);
+        add_default($nl, 'megan_factors_file');
+        add_default($nl, 'megan_mapped_emisfctrs', 'val'=>'.false.');
+    }
+    if ($chem =~ /trop_strat_mam4_vbs/ ) {
+        my $val = "'ISOP = isoprene',"
+                . "'MTERP = carene_3 + pinene_a + thujene_a + bornene + terpineol_4 + terpineol_a + terpinyl_ACT_a "
+                . "+ myrtenal + sabinene + pinene_b + camphene + fenchene_a + limonene + phellandrene_a + terpinene_a "
+                . "+ terpinene_g + terpinolene + phellandrene_b + linalool + ionone_b + geranyl_acetone + neryl_acetone "
+                . "+ jasmone + verbenene + ipsenol + myrcene + ocimene_t_b + ocimene_al + ocimene_c_b + 2met_nonatriene',"
+                . "'BCARY = farnescene_a + caryophyllene_b + acoradiene + aromadendrene + bergamotene_a + bergamotene_b "
+                . "+ bisabolene_a + bisabolene_b + bourbonene_b + cadinene_d + cadinene_g + cedrene_a + copaene_a "
+                . "+ cubebene_a + cubebene_b + elemene_b + farnescene_b + germacrene_B + germacrene_D + gurjunene_b "
+                . "+ humulene_a + humulene_g + isolongifolene + longifolene + longipinene + muurolene_a + muurolene_g "
+                . "+ selinene_b + selinene_d + nerolidol_c + nerolidol_t',"
+                . "'BIGALK = tricyclene + camphor + fenchone + thujone_a + thujone_b + cineole_1_8 + borneol + bornyl_ACT "
+                . "+ cedrol + decanal + heptanal + heptane + hexane + nonanal + octanal + octanol + oxopentanal + pentane "
+                . "+ hexanal + hexanol_1 + pentanal + heptanone',"
+                . "'BIGENE = 2met_styrene + estragole + piperitone + linalool_OXD_c + linalool_OXD_t + dodecene_1 "
+                . "+ met_heptenone + nonenal + octenol_1e3ol + tetradecene_1 + butene + diallyl_2s + met_propenyl_2s "
+                . "+ met_jasmonate + hexenal_c3 + hexenal_t2 + hexenol_c3 + hexenyl_ACT_c3',"
+                . "'TOLUENE = toluene + met_benzoate + phenyl_CCO + met_salicylate + indole + anisole + benzyl-acetate "
+                . "+ benzyl-alcohol + Napthalene',"
+                . "'XYLENES = cymene_p + cymene_o + homosalate + meta-cymenene',"
+                . "'CH3OH = methanol',"
+                . "'CH3COCH3 = acetone',"
+                . "'CH3CHO = acetaldehyde',"
+                . "'C2H5OH = ethanol',"
+                . "'HCOOH = formic_acid',"
+                . "'CH2O = formaldehyde',"
+                . "'CH3COOH = acetic_acid',"
+                . "'BZALD = benzaldehyde',"
+                . "'MEK = butanone_2',"
+                . "'CO = carbon_monoxide',"
+                . "'C2H6 = ethane',"
+                . "'C2H4 = ethene',"
+                . "'HCN = hydrogen_cyanide',"
+                . "'C3H8 = propane',"
+                . "'C3H6 = propene'";
+        add_default($nl, 'megan_specifier', 'val'=>$val);
+        add_default($nl, 'megan_factors_file');
+        add_default($nl, 'megan_mapped_emisfctrs', 'val'=>'.false.');
+    }
+    if ($chem =~ /trop_strat_mam4_ts2/ ) {
+        my $val = "'ISOP = isoprene',"
+                . "'APIN = pinene_a + myrtenal',"
+                . "'BPIN = carene_3 + thujene_a + bornene + fenchene_a + pinene_b + sabinene + camphene + terpineol_4 + terpineol_a + terpinyl_ACT_a',"
+                . "'LIMON = terpinolene + limonene + phellandrene_a + terpinene_g + terpinene_a + phellandrene_b + linalool + ionone_b "
+                . "+ geranyl_acetone + neryl_acetone + jasmone + verbenene + ipsenol',"
+                . "'MYRC = ocimene_al + myrcene + ocimene_t_b + ocimene_c_b + 2met_nonatriene',"
+                . "'BCARY = farnescene_a + caryophyllene_b + acoradiene + aromadendrene + bergamotene_a + bergamotene_b + bisabolene_a "
+                . "+ bisabolene_b + bourbonene_b + cadinene_d + cadinene_g + cedrene_a + copaene_a + cubebene_a + cubebene_b + elemene_b "
+                . "+ farnescene_b + germacrene_B + germacrene_D + gurjunene_b + humulene_a + humulene_g + isolongifolene + longifolene "
+                . "+ longipinene + muurolene_a + muurolene_g + selinene_b + selinene_d + nerolidol_c + nerolidol_t',"
+                . "'BIGALK = tricyclene + camphor + fenchone + thujone_a + thujone_b + cineole_1_8 + borneol + bornyl_ACT + cedrol "
+                . "+ decanal + heptanal + heptane + hexane + nonanal + octanal + octanol + oxopentanal + pentane + hexanal "
+                . "+ hexanol_1 + pentanal + heptanone',"
+                . "'BIGENE = 2met_styrene + estragole + piperitone + linalool_OXD_c + linalool_OXD_t + dodecene_1 + met_heptenone "
+                . "+ nonenal + octenol_1e3ol + tetradecene_1 + butene + diallyl_2s + met_propenyl_2s + met_jasmonate + hexenal_c3 "
+                . "+ hexenal_t2 + hexenol_c3 + hexenyl_ACT_c3',"
+                . "'TOLUENE = toluene + met_benzoate + phenyl_CCO + met_salicylate + indole + anisole + benzyl-acetate + benzyl-alcohol + Napthalene',"
+                . "'XYLENES = cymene_p + cymene_o + homosalate + meta-cymenene',"
+                . "'CH3OH = methanol',"
+                . "'CH3COCH3 = acetone',"
+                . "'CH3CHO = acetaldehyde',"
+                . "'C2H5OH = ethanol',"
+                . "'HCOOH = formic_acid',"
+                . "'CH2O = formaldehyde',"
+                . "'CH3COOH = acetic_acid',"
+                . "'BZALD = benzaldehyde',"
+                . "'MEK = butanone_2',"
+                . "'CO = carbon_monoxide',"
+                . "'C2H6 = ethane',"
+                . "'C2H4 = ethene',"
+                . "'HCN = hydrogen_cyanide',"
+                . "'C3H8 = propane',"
+                . "'C3H6 = propene'";
         add_default($nl, 'megan_specifier', 'val'=>$val);
         add_default($nl, 'megan_factors_file');
         add_default($nl, 'megan_mapped_emisfctrs', 'val'=>'.false.');
@@ -2621,6 +2587,19 @@ if ($chem eq 'trop_mam7') {
 
 my $waccmx = $cfg->get('waccmx');
 
+# set maximum solar zenith angle for photolysis
+my $maxzen = 0.0;
+if ($waccmx){
+    $maxzen = 116.;
+} elsif ($chem =~ "trop_strat" or $chem =~ "waccm_") {
+    $maxzen = 97.01;
+} elsif ($chem =~ "trop_mam" or $chem =~ "trop_mozart") {
+    $maxzen = 88.85;
+}
+if ($maxzen>0.0) {
+    add_default($nl, 'photo_max_zen', 'val'=>"${maxzen}D0");
+}
+
 # WACCM options.
 if ($chem =~ /waccm_ma/ or $chem =~ /waccm_tsmlt/) {
 
@@ -2644,10 +2623,10 @@ if ($chem =~ /waccm_ma/ or $chem =~ /waccm_tsmlt/) {
     }
 
     # Datasets
-    my @files = ('flbc_file', 'efield_lflux_file', 'efield_hflux_file', 'efield_wei96_file',
+    my @files = ('flbc_file', 'efield_lflux_file', 'efield_hflux_file',
                  'photon_file', 'electron_file', 'igrf_geomag_coefs_file',
                  'euvac_file', 'solar_parms_data_file',
-                 'depvel_lnd_file', 'clim_soilw_file', 'season_wes_file',
+                 'depvel_lnd_file',
                  'xs_coef_file', 'xs_short_file','xs_long_file', 'rsf_file',
                  'soil_erod_file' );
 
@@ -2715,6 +2694,9 @@ if ($chem =~ /waccm_ma/ or $chem =~ /waccm_tsmlt/) {
     if ($dyn eq 'fv') {
         add_default($nl, 'do_circulation_diags', 'val'=>'.true.');
     }
+
+    # max cross cap electric potential of 120 kV to keep WACCM stable through large geo-mag storms
+    add_default($nl, 'efield_potential_max', 'val'=>'120.D0');
 }
 
 # Determine the source of the prescribed GHG values.
@@ -2823,20 +2805,15 @@ if ($waccmx) {
   if (($ionos eq 'none') and ($wmx_opt =~ /ionosphere/) ) {
     die "CAM Namelist ERROR: WACCMX must be configured with an active ionosphere wmx_opt is set to ionosphere\n";
   }
-  if (($ionos ne 'none') and ($wmx_opt =~ /neutral/) ) {
+  if (($ionos eq 'wxie') and ($wmx_opt =~ /neutral/) ) {
     die "CAM Namelist ERROR: WACCMX cannot be configured with an active ionosphere wmx_opt is set to neutral\n";
   }
 
-  if (($ionos eq 'wxie') and ($wmx_opt =~ /ionosphere/) and ($dyn eq 'fv')) {
+  if (($ionos eq 'wxie') and ($wmx_opt =~ /ionosphere/)) {
     # turn on electro-dynamo generated ion drift velocities
     add_default($nl, 'ionos_xport_active', 'val'=>'.true.');
     add_default($nl, 'ionos_edyn_active', 'val'=>'.true.');
     add_default($nl, 'empirical_ion_velocities', 'val'=>'.false.');
-  } elsif (($ionos eq 'wxi') and ($wmx_opt =~ /ionosphere/) and ($dyn eq 'fv')) {
-    # turn off electro-dynamo generated ion drift velocities
-    add_default($nl, 'ionos_xport_active', 'val'=>'.true.');
-    add_default($nl, 'ionos_edyn_active', 'val'=>'.false.');
-    add_default($nl, 'empirical_ion_velocities', 'val'=>'.true.');
   } elsif (($ionos eq 'none') and ($wmx_opt =~ /neutral/)) {
     add_default($nl, 'ionos_xport_active', 'val'=>'.false.');
     add_default($nl, 'ionos_edyn_active', 'val'=>'.false.');
@@ -2847,14 +2824,20 @@ if ($waccmx) {
   if  ($dyn eq 'fv') {
     add_default($nl, 'fv_high_altitude', 'val'=>'.true.');
   }
+  if ($ionos ne 'none') {
+    add_default($nl, 'cam_physics_mesh');
+    add_default($nl, 'oplus_grid');
+    add_default($nl, 'edyn_grid');
+  }
   add_default($nl,'dadadj_niter');
   add_default($nl,'ionos_epotential_model');
   if ($nl->get_value('ionos_epotential_model') =~ 'weimer') {
     add_default($nl,'wei05_coefs_file');
     add_default($nl,'solar_wind_data_file');
   }
-  add_default($nl,'ionos_xport_nsplit');  
-  add_default($nl,'steady_state_ion_elec_temp', 'val'=>'.false.');  
+  add_default($nl,'ionos_xport_nsplit');
+  add_default($nl,'steady_state_ion_elec_temp', 'val'=>'.false.');
+  add_default($nl,'oplus_ring_polar_filter');
 }
 
 # Chemistry options
@@ -2899,6 +2882,7 @@ $cam_chempkg = "'" . "$chem" . "'";  # add quotes to this string value
 
 $nl->set_variable_value('phys_ctl_nl', 'cam_chempkg', $cam_chempkg);
 
+
 # Tropopause climatology
 if (!$simple_phys) {
     add_default($nl, 'tropopause_climo_file');
@@ -2911,6 +2895,14 @@ if (($chem ne 'none') and ($chem ne 'terminator') and !($chem =~ /geoschem/)) {
 
 # Deep convection scheme
 add_default($nl, 'deep_scheme');
+
+# Aerosol convective processes
+if ($phys =~ /cam6/ and $nl->get_value('deep_scheme') =~ /ZM/) {
+    add_default($nl, 'convproc_do_aer', 'val'=>'.true.');
+    add_default($nl, 'convproc_do_evaprain_atonce', 'val'=>'.true.');
+    add_default($nl, 'convproc_pom_spechygro', 'val'=>'0.2D0');
+    add_default($nl, 'convproc_wup_max', 'val'=>'4.0D0');
+}
 
 # Radiation scheme
 add_default($nl, 'radiation_scheme', 'val'=>$rad_pkg);
@@ -2944,14 +2936,39 @@ if ($cfg->get('microphys') =~ /^mg/) {
     add_default($nl, 'micro_mg_berg_eff_factor');
     add_default($nl, 'nucleate_ice_incloud');
     add_default($nl, 'nucleate_ice_strat');
+    add_default($nl, 'micro_mg_do_hail');
+    add_default($nl, 'micro_mg_do_graupel');
+    add_default($nl, 'graupel_in_rad');
+    add_default($nl, 'micro_do_massless_droplet_destroyer');
+    add_default($nl, 'micro_mg_accre_enhan_fact');
+    add_default($nl, 'micro_mg_autocon_fact');
+    add_default($nl, 'micro_mg_autocon_nd_exp');
+    add_default($nl, 'micro_mg_autocon_lwp_exp');
+    add_default($nl, 'micro_mg_homog_size');
+    add_default($nl, 'micro_mg_vtrmi_factor');
+    add_default($nl, 'micro_mg_effi_factor');
+    add_default($nl, 'micro_mg_iaccr_factor');
+    add_default($nl, 'micro_mg_max_nicons');
 
     # For CESM2, the decision was made to set micro_do_sb_physics to false
     add_default($nl, 'micro_do_sb_physics', 'val'=>'.false.');
 }
 
+# Aerosol Namelist options
+add_default($nl, 'microp_aero_bulk_scale');
+add_default($nl, 'microp_aero_npccn_scale');
+add_default($nl, 'microp_aero_wsub_scale');
+add_default($nl, 'microp_aero_wsubi_scale');
+add_default($nl, 'microp_aero_wsub_min');
+add_default($nl, 'microp_aero_wsubi_min');
+
 # Ice nucleation options
 if (!$simple_phys) {
-    add_default($nl, 'use_hetfrz_classnuc');
+    if ($chem =~ /_mam/) {
+        add_default($nl, 'use_hetfrz_classnuc');
+    } else {
+        add_default($nl, 'use_hetfrz_classnuc', 'val'=>'.false.');
+    }
     add_default($nl, 'use_preexisting_ice');
     if ($chem =~ /_mam7/) {
         if ($nl->get_value('use_preexisting_ice') =~ m/$TRUE/io) {
@@ -2989,6 +3006,32 @@ if ($subcol_scheme eq 'tstcp') {
 
 if ($subcol_scheme eq 'SILHS') {
    add_default($nl, 'subcol_silhs_weight');
+   add_default($nl, 'subcol_silhs_var_covar_src');
+   add_default($nl, 'subcol_silhs_weight');
+   add_default($nl, 'subcol_silhs_numsubcol');
+   add_default($nl, 'subcol_silhs_corr_file_path');
+   add_default($nl, 'subcol_silhs_corr_file_name');
+   add_default($nl, 'subcol_silhs_meanice');
+   add_default($nl, 'subcol_silhs_q_to_micro');
+   add_default($nl, 'subcol_silhs_n_to_micro');
+   add_default($nl, 'subcol_silhs_constrainmn');
+   add_default($nl, 'subcol_silhs_use_clear_col');
+   add_default($nl, 'subcol_silhs_var_covar_src');
+   add_default($nl, 'subcol_silhs_ncnp2_on_ncnm2');
+   add_default($nl, 'subcol_silhs_hmp2_ip_on_hmm2_ip_intrcpt%rr');
+   add_default($nl, 'subcol_silhs_hmp2_ip_on_hmm2_ip_intrcpt%Nr');
+   add_default($nl, 'subcol_silhs_hmp2_ip_on_hmm2_ip_intrcpt%rs');
+   add_default($nl, 'subcol_silhs_hmp2_ip_on_hmm2_ip_intrcpt%Ns');
+   add_default($nl, 'subcol_silhs_hmp2_ip_on_hmm2_ip_intrcpt%ri');
+   add_default($nl, 'subcol_silhs_hmp2_ip_on_hmm2_ip_intrcpt%Ni');
+   add_default($nl, 'subcol_silhs_hmp2_ip_on_hmm2_ip_slope%rr');
+   add_default($nl, 'subcol_silhs_hmp2_ip_on_hmm2_ip_slope%Nr');
+   add_default($nl, 'subcol_silhs_hmp2_ip_on_hmm2_ip_slope%rs');
+   add_default($nl, 'subcol_silhs_hmp2_ip_on_hmm2_ip_slope%Ns');
+   add_default($nl, 'subcol_silhs_hmp2_ip_on_hmm2_ip_slope%ri');
+   add_default($nl, 'subcol_silhs_hmp2_ip_on_hmm2_ip_slope%Ni');
+
+
 }
 
 if ($subcol_scheme eq 'vamp') {
@@ -3017,32 +3060,78 @@ if ($clubb_sgs  =~ /$TRUE/io) {
      die "$ProgName - ERROR: clubb_history = .true. with multiple threads is not supported. \n";
    }
 
+   add_default($nl, 'clubb_do_icesuper');
+
    add_default($nl, 'clubb_expldiff');
    add_default($nl, 'clubb_rainevap_turb');
    add_default($nl, 'clubb_cloudtop_cooling');
    add_default($nl, 'clubb_timestep');
    add_default($nl, 'clubb_rnevap_effic');
-   add_default($nl, 'clubb_stabcorrect');
 
+   add_default($nl, 'clubb_beta');
+   add_default($nl, 'clubb_c1');
+   add_default($nl, 'clubb_c1b');
    add_default($nl, 'clubb_c11');
    add_default($nl, 'clubb_c11b');
    add_default($nl, 'clubb_c14');
-   add_default($nl, 'clubb_mult_coef');
-   add_default($nl, 'clubb_gamma_coef');
-   add_default($nl, 'clubb_c_K10');
-   add_default($nl, 'clubb_c_K10h');
-   add_default($nl, 'clubb_beta');
    add_default($nl, 'clubb_C2rt');
    add_default($nl, 'clubb_C2thl');
    add_default($nl, 'clubb_C2rtthl');
-   add_default($nl, 'clubb_C8');
+   add_default($nl, 'clubb_C4');
+   add_default($nl, 'clubb_c6rt');
+   add_default($nl, 'clubb_c6rtb');
+   add_default($nl, 'clubb_c6rtc');
+   add_default($nl, 'clubb_c6thl');
+   add_default($nl, 'clubb_c6thlb');
+   add_default($nl, 'clubb_c6thlc');
    add_default($nl, 'clubb_C7');
    add_default($nl, 'clubb_C7b');
-   add_default($nl, 'clubb_lambda0_stability_coef');
-   add_default($nl, 'clubb_Skw_denom_coef');
-   add_default($nl, 'clubb_l_lscale_plume_centered');
-   add_default($nl, 'clubb_l_use_ice_latent');
+   add_default($nl, 'clubb_C8');
+   add_default($nl, 'clubb_C8b');
+   add_default($nl, 'clubb_c_K9');
+   add_default($nl, 'clubb_nu9');
+   add_default($nl, 'clubb_c_K10');
+   add_default($nl, 'clubb_c_K10h');
    add_default($nl, 'clubb_do_liqsupersat');
+   add_default($nl, 'clubb_gamma_coef');
+   add_default($nl, 'clubb_gamma_coefb');
+   add_default($nl, 'clubb_lambda0_stability_coef');
+   add_default($nl, 'clubb_lmin_coef');
+   add_default($nl, 'clubb_mult_coef');
+   add_default($nl, 'clubb_Skw_denom_coef');
+   add_default($nl, 'clubb_skw_max_mag');
+   add_default($nl, 'clubb_up2_vp2_factor');
+   add_default($nl, 'clubb_C_wp2_splat');
+   add_default($nl, 'clubb_wpxp_L_thresh');
+   add_default($nl, 'clubb_detliq_rad');
+   add_default($nl, 'clubb_detice_rad');
+   add_default($nl, 'clubb_detphase_lowtemp');
+
+   add_default($nl, 'clubb_l_brunt_vaisala_freq_moist');
+   add_default($nl, 'clubb_l_call_pdf_closure_twice');
+   add_default($nl, 'clubb_l_damp_wp3_Skw_squared');
+   add_default($nl, 'clubb_l_lscale_plume_centered');
+   add_default($nl, 'clubb_l_min_wp2_from_corr_wx');
+   add_default($nl, 'clubb_l_min_xp2_from_corr_wx');
+   add_default($nl, 'clubb_l_predict_upwp_vpwp');
+   add_default($nl, 'clubb_l_rcm_supersat_adj');
+   add_default($nl, 'clubb_l_stability_correct_tau_zm');
+   add_default($nl, 'clubb_l_trapezoidal_rule_zm');
+   add_default($nl, 'clubb_l_trapezoidal_rule_zt');
+   add_default($nl, 'clubb_l_upwind_xpyp_ta');
+   add_default($nl, 'clubb_l_use_C7_Richardson');
+   add_default($nl, 'clubb_l_use_C11_Richardson');
+   add_default($nl, 'clubb_l_use_cloud_cover');
+   add_default($nl, 'clubb_l_use_ice_latent');
+   add_default($nl, 'clubb_l_use_thvm_in_bv_freq');
+   add_default($nl, 'clubb_l_vert_avg_closure');
+   add_default($nl, 'clubb_l_diag_Lscale_from_tau');
+   add_default($nl, 'clubb_l_damp_wp2_using_em');
+   add_default($nl, 'do_clubb_mf');
+   add_default($nl, 'do_clubb_mf_diag');
+   add_default($nl, 'clubb_mf_L0');
+   add_default($nl, 'clubb_mf_ent0');
+   add_default($nl, 'clubb_mf_nup');
 }
 
 # Tuning for wet scavenging of modal aerosols
@@ -3132,6 +3221,10 @@ if (!$simple_phys) {
     add_default($nl, 'zmconv_org');
     add_default($nl, 'zmconv_microp');
     add_default($nl, 'zmconv_num_cin');
+    add_default($nl, 'zmconv_dmpdz');
+    add_default($nl, 'zmconv_tiedke_add');
+    add_default($nl, 'zmconv_capelmt');
+    add_default($nl, 'zmconv_tau');
 }
 
 # moist convection rainwater coefficients
@@ -3261,9 +3354,19 @@ if ($waccm_phys or
     add_default($nl, 'use_gw_front'     , 'val'=>'.true.');
     add_default($nl, 'use_gw_convect_dp', 'val'=>'.true.');
     my $hdepth_scaling = '0.25D0' ;
+    my $qbo_forcing = '.false.';
+    if ($dyn eq 'fv') {
+	my $nlon = $cfg->get('nlon');
+	my $nlat = $cfg->get('nlat');
+        # turn on QBO nudging only for coarse FV grids
+        if ($nlat <= 96 and $nlon <= 144) {
+	    $qbo_forcing = '.true.';
+        }
+    }
+    add_default($nl, 'qbo_use_forcing','val'=>$qbo_forcing);
     if ($nl->get_value('qbo_use_forcing') =~ /$TRUE/io) {
        $hdepth_scaling = '1.D0' ;
-       add_default($nl, 'qbo_cyclic','val'=>'.true.');
+       add_default($nl, 'qbo_cyclic','val'=>'.false.');
        add_default($nl, 'qbo_forcing_file');
     }
     add_default($nl, 'gw_qbo_hdepth_scaling', 'val'=>$hdepth_scaling);
@@ -3410,6 +3513,11 @@ if ($dyn eq 'fv') {
     add_default($nl, 'fv_del2coef');
     add_default($nl, 'fv_filtcw');
     add_default($nl, 'fv_nspltvrm');
+    add_default($nl, 'fv_am_correction');
+    add_default($nl, 'fv_am_fixer');
+    add_default($nl, 'fv_am_fix_lbl');
+    add_default($nl, 'fv_am_diag');
+
     if ($waccm_phys) {
         add_default($nl, 'fv_nsplit');
         add_default($nl, 'fv_nspltrac');
@@ -3421,6 +3529,82 @@ if ($dyn eq 'fv') {
         $npr_yz = fv_decomp_set();
         add_default($nl, 'npr_yz', 'val'=>$npr_yz);
     }
+}
+
+# FV3 dycore
+if ( $dyn eq 'fv3') {
+
+    add_default($nl, 'fv3_adjust_dry_mass');
+    add_default($nl, 'fv3_beta');
+    add_default($nl, 'fv3_clock_grain');
+    add_default($nl, 'fv3_consv_am');
+    add_default($nl, 'fv3_consv_te');
+    add_default($nl, 'fv3_d2_bg');
+    add_default($nl, 'fv3_d2_bg_k1');
+    add_default($nl, 'fv3_d2_bg_k2');
+    add_default($nl, 'fv3_d4_bg');
+    add_default($nl, 'fv3_d_con');
+    add_default($nl, 'fv3_d_ext');
+    add_default($nl, 'fv3_dddmp');
+    add_default($nl, 'fv3_delt_max');
+    add_default($nl, 'fv3_dnats');
+    add_default($nl, 'fv3_do_sat_adj');
+    add_default($nl, 'fv3_do_vort_damp');
+    add_default($nl, 'fv3_domains_stack_size');
+    add_default($nl, 'fv3_dwind_2d');
+    add_default($nl, 'fv3_fill');
+    add_default($nl, 'fv3_fv_debug');
+    add_default($nl, 'fv3_fv_sg_adj');
+    add_default($nl, 'fv3_grid_type');
+    add_default($nl, 'fv3_hord_dp');
+    add_default($nl, 'fv3_hord_mt');
+    add_default($nl, 'fv3_hord_tm');
+    add_default($nl, 'fv3_hord_tr');
+    add_default($nl, 'fv3_hord_vt');
+    add_default($nl, 'fv3_hydrostatic');
+    add_default($nl, 'fv3_k_split');
+    add_default($nl, 'fv3_ke_bg');
+    add_default($nl, 'fv3_kord_mt');
+    add_default($nl, 'fv3_kord_tm');
+    add_default($nl, 'fv3_kord_tr');
+    add_default($nl, 'fv3_kord_wz');
+    add_default($nl, 'fv3_lcv_moist');
+    add_default($nl, 'fv3_lcp_moist');
+    add_default($nl, 'fv3_make_nh');
+    add_default($nl, 'fv3_n_split');
+    add_default($nl, 'fv3_n_sponge');
+    add_default($nl, 'fv3_na_init');
+    add_default($nl, 'fv3_no_dycore');
+    add_default($nl, 'fv3_nord');
+    add_default($nl, 'fv3_npx');
+    add_default($nl, 'fv3_npy');
+    add_default($nl, 'fv3_ntiles');
+    add_default($nl, 'fv3_nwat');
+    add_default($nl, 'fv3_print_freq');
+    add_default($nl, 'fv3_print_memory_usage');
+    add_default($nl, 'fv3_range_warn');
+    add_default($nl, 'fv3_rf_cutoff');
+    add_default($nl, 'fv3_scale_ttend');
+    add_default($nl, 'fv3_stack_size');
+    add_default($nl, 'fv3_tau');
+    add_default($nl, 'fv3_vtdm4');
+
+    # By default, FV3 uses nlev levels
+    if (! defined $opts{'fv3_npz'}) {
+        add_default($nl, 'fv3_npz', 'val'=>$cfg->get('nlev'));
+    }
+    if (! defined $opts{'fv3_ncnst'}) {
+        add_default($nl, 'fv3_ncnst', 'val'=>$cfg->get('nadv'));
+    }
+
+    # If the user hasn't specified a decomposition via the fv3 namelist
+    # parameter layout then use -ntasks to determine the decomposition.
+    my $layout = $nl->get_value('fv3_layout');
+    if (defined $opts{'ntasks'} and ! defined $layout ) {
+	$layout = fv3_decomp_set();
+	add_default($nl, 'fv3_layout', 'val'=>$layout);
+    }
+
 }
 
 # EUL dycore
@@ -3483,8 +3667,11 @@ if ($dyn =~ /se/) {
     my @vars = qw(
                   se_ftype
                   se_horz_num_threads
-                  se_hypervis_on_plevs
+                  se_hypervis_dynamic_ref_state
+                  se_lcp_moist
+		  se_large_Courant_incr
                   se_hypervis_subcycle
+                  se_hypervis_subcycle_sponge
                   se_hypervis_subcycle_q
                   se_limiter_option
                   se_nsplit
@@ -3492,7 +3679,9 @@ if ($dyn =~ /se/) {
                   se_nu_div
                   se_nu_p
                   se_nu_top
-                  se_qsize_condensate_loading
+                  se_sponge_del4_nu_fac
+                  se_sponge_del4_nu_div_fac
+                  se_sponge_del4_lev
                   se_qsplit
                   se_rsplit
                   se_statediag_numtrac
@@ -3500,23 +3689,34 @@ if ($dyn =~ /se/) {
                   se_tracer_num_threads
                   se_tstep_type
                   se_vert_num_threads
-                  se_vert_remap_q_alg
+                  se_vert_remap_T
+                  se_vert_remap_uvTq_alg
+                  se_vert_remap_tracer_alg
+		  se_fvm_supercycling
+		  se_fvm_supercycling_jet
+		  se_kmin_jet
+		  se_kmax_jet
+		  se_phys_dyn_cp
+                  se_molecular_diff
         );
 
     my %opts;
 
-    # Do we need special refined mesh processing?
+    # Settings for refined mesh.
     add_default($nl, 'se_refined_mesh');
     my $refined_mesh = $nl->get_value('se_refined_mesh');
     if ($refined_mesh =~ m/$TRUE/i) {
-        $opts{'refined_mesh'} = "1";
+        $opts{'se_refined_mesh'} = "1";
+
         add_default($nl, 'se_mesh_file');
         my $se_mesh_file = $nl->get_value('se_mesh_file');
-        if (!defined $se_mesh_file or ($refined_mesh =~ m/none/i) or ((length $refined_mesh) == 0)) {
+        if (!defined $se_mesh_file or ($se_mesh_file =~ m/none/i) or ((length $se_mesh_file) == 0)) {
             die "$ProgName - ERROR: se_mesh_file is required for a refined mesh run\n";
         }
+
         # We are in a refined mesh situation, set appropriate defaults
         $nl->set_variable_value('dyn_se_inparm', 'se_ne', 0);
+
         add_default($nl, 'se_hypervis_power');
         my $hypervis_power = $nl->get_value('se_hypervis_power');
         if ($hypervis_power == 0) {
@@ -3540,6 +3740,73 @@ if ($dyn =~ /se/) {
         add_default($nl, $var, %opts);
     }
 }
+
+# MPAS-Atmosphere dycore
+# ======================
+
+if ($dyn =~ /mpas/) {
+
+    ####################################################
+    # namelist group: dyn_mpas                         #
+    ####################################################
+
+    add_default($nl, 'mpas_time_integration');
+    add_default($nl, 'mpas_time_integration_order');
+    add_default($nl, 'mpas_dt');
+    add_default($nl, 'mpas_split_dynamics_transport');
+    add_default($nl, 'mpas_number_of_sub_steps');
+    add_default($nl, 'mpas_dynamics_split_steps');
+    add_default($nl, 'mpas_h_mom_eddy_visc2');
+    add_default($nl, 'mpas_h_mom_eddy_visc4');
+    add_default($nl, 'mpas_v_mom_eddy_visc2');
+    add_default($nl, 'mpas_h_theta_eddy_visc2');
+    add_default($nl, 'mpas_h_theta_eddy_visc4');
+    add_default($nl, 'mpas_v_theta_eddy_visc2');
+    add_default($nl, 'mpas_horiz_mixing');
+    add_default($nl, 'mpas_len_disp');
+    add_default($nl, 'mpas_visc4_2dsmag');
+    add_default($nl, 'mpas_del4u_div_factor');
+    add_default($nl, 'mpas_w_adv_order');
+    add_default($nl, 'mpas_theta_adv_order');
+    add_default($nl, 'mpas_scalar_adv_order');
+    add_default($nl, 'mpas_u_vadv_order');
+    add_default($nl, 'mpas_w_vadv_order');
+    add_default($nl, 'mpas_theta_vadv_order');
+    add_default($nl, 'mpas_scalar_vadv_order');
+    add_default($nl, 'mpas_scalar_advection');
+    add_default($nl, 'mpas_positive_definite');
+    add_default($nl, 'mpas_monotonic');
+    add_default($nl, 'mpas_coef_3rd_order');
+    add_default($nl, 'mpas_smagorinsky_coef');
+    add_default($nl, 'mpas_mix_full');
+    add_default($nl, 'mpas_epssm');
+    add_default($nl, 'mpas_smdiv');
+    add_default($nl, 'mpas_apvm_upwinding');
+    add_default($nl, 'mpas_h_ScaleWithMesh');
+    add_default($nl, 'mpas_zd');
+    add_default($nl, 'mpas_xnutr');
+    add_default($nl, 'mpas_cam_coef');
+    add_default($nl, 'mpas_print_detailed_minmax_vel');
+    add_default($nl, 'mpas_rayleigh_damp_u');
+    add_default($nl, 'mpas_rayleigh_damp_u_timescale_days');
+    add_default($nl, 'mpas_number_rayleigh_damp_u_levels');
+    add_default($nl, 'mpas_apply_lbcs');
+    add_default($nl, 'mpas_jedi_da');
+    add_default($nl, 'mpas_do_restart');
+    add_default($nl, 'mpas_print_global_minmax_vel');
+    add_default($nl, 'mpas_print_detailed_minmax_vel');
+    add_default($nl, 'mpas_print_global_minmax_sca');
+
+    # mpas_block_decomp_file_prefix should only be set when more than one task is used.
+    # Otherwise the file is not used and should not be added to the input dataset file.
+    if ($opts{'ntasks'} > 1) {
+        add_default($nl, 'mpas_block_decomp_file_prefix');
+    }
+
+}
+
+# Defaults for scaling initial pressure
+add_default($nl, 'scale_dry_air_mass');
 
 # Defaults for history output
 add_default($nl, 'history_amwg');
@@ -3612,209 +3879,6 @@ if ($phys eq 'spcam_sam1mom' or $phys eq 'spcam_m2005') {
 }
 
 #-----------------------------------------------------------------------------------------------
-# Add defaults for the ocean component.
-
-# Which ocean model?
-my $ocn_comp = $cfg->get('ocn');
-
-# The aquaplanet namelist is written only for standalone runs.  The 'aquaplanet' component
-# is implemented by CAM.  The cesm scripts use the 'docn' component to implement aquaplanet
-# functionality.
-my $aqua_planet_sst;
-if ($aqua_mode) {
-    add_default($nl, 'aqua_planet_sst', 'val'=>'1');
-    $aqua_planet_sst = $nl->get_value('aqua_planet_sst');
-}
-
-# The following variables are set by namelist variables in the special camexp namelist
-# group.  They are used to ensure consistency between the setting of namelist variables
-# in the ocean and sea ice components.
-my $bndtvs = '';
-my $bndtvs_domain = '';
-my $focndomain = '';
-
-# Namelist settings for CAMDOM or DOCN
-if ($cam_build and  ($ocn_comp =~ /docn|dom|som/)) {
-
-    # bndtvs
-    add_default($nl, 'bndtvs', 'sim_year'=>$sim_year);
-    $bndtvs = $nl->get_value('bndtvs');
-
-    # bndtvs_domain
-    if ($dyn =~ /se/){
-       add_default($nl, 'bndtvs_domain', 'sim_year'=>$sim_year);
-       $bndtvs_domain = $nl->get_value('bndtvs_domain');
-    }
-
-    # focndomain
-    # For CAM in standalone mode, CAM determines the focndomain file to use, and then specifies
-    # that file to DOM or DOCN.
-    add_default($nl, 'focndomain');
-    $focndomain = $nl->get_value('focndomain');
-
-    ##############################
-    # namelist group: dom_inparm #
-    ##############################
-    if ($ocn_comp eq 'dom') {
-        $nl->set_variable_value('dom_inparm', 'bndtvs',     $bndtvs);
-        $nl->set_variable_value('dom_inparm', 'focndomain', $focndomain);
-    }
-
-}
-
-# Create docn namelists and stream txt file
-
-if ($cam_build and  ($ocn_comp =~ /docn|som/)) {
-
-    my  $fh = new IO::File;
-
-    my $stream_year_first = $nl->get_value('stream_year_first');
-    unless (defined $stream_year_first) { $stream_year_first = 0; }
-    my $stream_year_last = $nl->get_value('stream_year_last');
-    unless (defined $stream_year_last) { $stream_year_last = 0; }
-
-    my $temp = $focndomain;
-    $temp  =~ s/['"]//g;   #"'
-    my $focndomain_file = basename($temp);
-    my $focndomain_path = dirname($temp);
-
-    $temp = $bndtvs;
-    $temp  =~ s/['"]//g;   #"'
-    my $sstdata_file = basename($temp);
-    my $sstdata_path = dirname($temp);
-
-    my $fsstdomain_file=$focndomain_file;
-    my $fsstdomain_path=$focndomain_path;
-    if ($ocn_comp eq 'som') {
-        $fsstdomain_file=$sstdata_file;
-        $fsstdomain_path=$sstdata_path;
-    }
-
-    if ($dyn =~ /se/){
-      $temp = $bndtvs_domain;
-      $temp  =~ s/['"]//g;   #"'
-      $fsstdomain_file = basename($temp);
-      $fsstdomain_path = dirname($temp);
-    }
-
-    # add docn variables
-    # ------------------
-
-    add_default($nl, 'decomp', 'val'=>'1d');
-    if ($ocn_comp eq 'som') {
-        add_default($nl, 'force_prognostic_true', 'val'=>'.false.');
-    }
-
-    my $datamode = 'SSTDATA';
-    if ($aqua_mode) { $datamode = "SST_AQUAP$aqua_planet_sst";}
-    if ($ocn_comp eq 'som') { $datamode = 'SOM';}
-    add_default($nl, 'dataMode', 'val'=>$datamode);
-
-    add_default($nl, 'domainFile', 'val'=>$focndomain);
-
-    my $ocn_str = 'null';
-    if (!$aqua_mode) {
-        $ocn_str = "docn.stream.txt $stream_year_first $stream_year_first $stream_year_last" ;
-    }
-    add_default($nl, 'streams',    'val'=> $ocn_str);
-
-    if ($ocn_comp eq 'docn') {
-        add_default($nl, 'vectors',    'val'=>'null');
-    }
-    elsif ($ocn_comp eq 'som') {
-        add_default($nl, 'fillalgo',    'val'=>'nn');
-        add_default($nl, 'fillmask',    'val'=>'nomask');
-        add_default($nl, 'mapalgo',     'val'=>'bilinear');
-        add_default($nl, 'mapmask',     'val'=>'dstmask');
-        add_default($nl, 'taxmode',     'val'=>'cycle');
-        add_default($nl, 'tintalgo',    'val'=>'linear');
-    }
-
-    # Create docn.stream.txt
-    # ----------------------
-    if (!$aqua_mode) {
-        my $outfile = "$opts{'dir'}/docn.stream.txt";
-        $fh->open(">$outfile") or die "** can't open file: $outfile\n";
-
-        my $datasource = 'DATASET';
-        if ($ocn_comp eq 'som') { $datasource = 'GENERIC';}
-
-
-        print $fh  <<"EOF";
-<streamstemplate>
-<stream>
-      <dataSource>
-         $datasource
-      </dataSource>
-      <domainInfo>
-         <variableNames>
-            time    time
-            xc      lon
-            yc      lat
-            area    area
-            mask    mask
-         </variableNames>
-         <filePath>
-            $fsstdomain_path
-         </filePath>
-         <fileNames>
-            $fsstdomain_file
-         </fileNames>
-      </domainInfo>
-EOF
-        if ($ocn_comp eq 'docn') {
-            print $fh  <<"EOF";
-      <fieldInfo>
-         <variableNames>
-            SST_cpl    t
-         </variableNames>
-         <filePath>
-            $sstdata_path
-         </filePath>
-         <fileNames>
-            $sstdata_file
-         </fileNames>
-      </fieldInfo>
-</stream>
-</streamstemplate>
-EOF
-        }
-        elsif ($ocn_comp eq 'som') {
-            print $fh  <<"EOF";
-      <fieldInfo>
-         <variableNames>
-            T     t
-            S     s
-            U     u
-            V     v
-            dhdx  dhdx
-            dhdy  dhdy
-            hblt  h
-            qdp   qbot
-         </variableNames>
-         <filePath>
-            $sstdata_path
-         </filePath>
-         <fileNames>
-            $sstdata_file
-         </fileNames>
-         <offset>
-            0
-         </offset>
-      </fieldInfo>
-</stream>
-</streamstemplate>
-EOF
-        }
-
-        $fh->close;
-        if ($print>=1) { print "Writing DOCN stream file to $outfile $eol"; }
-
-    } # if (!$aqua_mode)
-
-}
-
-#-----------------------------------------------------------------------------------------------
 # Rename component logfiles.
 #
 # This requires special handling because the logfiles are coordinated using
@@ -3852,6 +3916,11 @@ foreach my $comp (@comps) {
     }
 }
 
+# Check the snapshot settings.
+add_default($nl, 'cam_snapshot_before_num');
+add_default($nl, 'cam_snapshot_after_num');
+check_snapshot_settings();
+
 #-----------------------------------------------------------------------------------------------
 # Write output files
 
@@ -3867,44 +3936,14 @@ my $outfile;
 my %nl_group = ();
 foreach my $name (@nl_groups) { $nl_group{$name} = ''; }
 
-# Write fixed sets of namelist groups for the components other than CAM.
-# Remove the group names from %nl_group as they are written.
-
-# Driver
-@comp_groups = qw(cime_driver_inst seq_cplflds_inparm seq_cplflds_userspec cime_pes
-    seq_infodata_inparm seq_timemgr_inparm prof_inparm papi_inparm pio_default_inparm esmf_inparm);
-$outfile = "$opts{'dir'}/drv_in";
-if ($cam_build) {
-    $nl->write($outfile, 'groups'=>\@comp_groups);
-    if ($print>=1) { print "Writing driver namelist to $outfile $eol"; }
-}
-delete @nl_group{@comp_groups};
-
 # Dry deposition and MEGAN VOC emis namelists
 @comp_groups = qw(drydep_inparm megan_emis_nl fire_emis_nl carma_inparm ndep_inparm);
 $outfile = "$opts{'dir'}/drv_flds_in";
 $nl->write($outfile, 'groups'=>\@comp_groups);
-if ($print>=1) { print "CAM writing dry deposition namelist to drv_flds_in $eol"; }
+if ($print>=1) {
+    print "CAM writing dry deposition namelist to drv_flds_in $eol";
+}
 delete @nl_group{@comp_groups};
-
-# Ocean component (dom, docn, or aquaplanet)
-if ($ocn_comp eq 'dom') {
-    @comp_groups = qw(dom_inparm);
-    $outfile = "$opts{'dir'}/ocn_in";
-}
-elsif ($ocn_comp eq 'docn' or $ocn_comp eq 'som') {
-    @comp_groups = qw(docn_nml shr_strdata_nml);
-    $outfile = "$opts{'dir'}/docn_in";
-}
-elsif ($ocn_comp eq 'aquaplanet') {
-    @comp_groups = qw(aquap_nl);
-    $outfile = "$opts{'dir'}/aquap_in";
-}
-if (@comp_groups) {
-    $nl->write($outfile, 'groups'=>\@comp_groups);
-    delete @nl_group{@comp_groups};
-    if ($print>=1) { print "Writing ocean component namelist to $outfile $eol"; }
-}
 
 # CAM
 #
@@ -3936,6 +3975,24 @@ if ($opts{'inputdata'}) {
 
 # END OF MAIN SCRIPT
 #===============================================================================================
+
+# This is a slow implementation of first_index from List::MoreUtils,
+# because that module does not seem to be generally available.
+sub first_index {
+  my $check_str = shift; # String to find in list
+  my @check_list = @_; # List of available strings
+  my $findex = -1;
+  my $lindex = 0;
+  foreach my $cstr (@check_list) {
+    if ($check_str eq $cstr) {
+      $findex = $lindex;
+      last;
+    } else {
+      $lindex++;
+    }
+  }
+    return $findex;
+}
 
 sub create_mode_defs {
 
@@ -4142,7 +4199,7 @@ sub fv_decomp_set{
 
 # Return a decomposition for the FV dycore, expressed as the value for the namelist
 # variable npr_yz.  The value of npr_yz is ny,nz,nx,ny where ny, nz, and nx are
-# respecitively the number of y, z, and x subdomains in the multi-2D decomposition.
+# respectively the number of y, z, and x subdomains in the multi-2D decomposition.
 # The following constraints must be observed:
 # 1) ny*nz = ntasks  (ny*nz can be less than ntasks in the case that the dynamics runs
 #                     on a subset of the total tasks.  Assume the user will set the
@@ -4191,6 +4248,73 @@ sub fv_decomp_set{
 }
 
 #-----------------------------------------------------------------------------------------------
+sub fv3_decomp_set{
+# Return a decomposition for the FV3 dycore, expressed as the value for the namelist
+# variable layout.  The value of layout is nx,ny where nx and ny are
+# respecitively the number of x, y, subdomains of an FV3 tile in the multi-2D decomposition.
+# The following constraints must be observed:
+# 1) nx*ny*6 = ntasks (nx*ny*6 must be equal to ntasks.  fv3 can handle other cases but for
+#                     now this decomp routine requires that constraint.
+#                     Assume the user will set the
+#                     decomp explicitly if that is what is desired.)
+# 2) tilesizex/nx >=4 decomp must allow for a minimum of 4 elements in a x direction task
+# 3) tilesizey/ny >=4 decomp must allow for a minimum of 4 elements in a y direction task
+# 4) tilesizex%nx =0  decomp requires that tile points in x direction must divide evenly by nx
+# 5) tilesizey%ny =0  decomp requires that tile points in y direction must divide evenly by ny
+#
+# The strategy for setting the default decomposition is to use a decomposition with approximately
+# equal nx and ny values
+
+    my $tasks = $opts{'ntasks'};
+    my $xpts = $nl->get_value('fv3_npx') - 1;
+    my $ypts = $nl->get_value('fv3_npy') - 1;
+    my $nx;
+    my $ny;
+    my $aspect = $xpts;
+    my $layoutx = 0;
+    my $layouty = 0;
+
+    # die if bad input
+    if ($tasks < 1) {
+        die "$ProgName - ERROR: fv3_decomp_set: bad input: ntasks=$tasks.\n" .
+            "  -ntask argument to build-namelist is wrong.";
+    }
+
+  NZ: for ($nx = 1; $nx <= int $xpts/4; ++$nx) {
+
+      # test that $nx divides $xpts evenly
+      if ($xpts%$nx == 0) {
+	  $ny = int $tasks/$nx/6;
+	  # test that $ny divides $ypts exactly
+	  # if so then get aspect ratio
+	  if ($ny != 0) {
+	      if ($ypts%$ny == 0 and  $nx*$ny*6 == $tasks) {
+		  if ($nx == $ny) {
+		      $layoutx=$nx;
+		      $layouty=$ny;
+		      last NZ;
+		  }else{
+		      if (max($nx,$ny) / min($nx,$ny) < $aspect) {
+			  $aspect=max($nx,$ny) / min($nx,$ny);
+			  $layoutx=$nx;
+			  $layouty=$ny;
+		      }
+		  }
+	      }
+	  }
+      }
+    }
+    # die if algorithm failed
+    if ($layoutx > $xpts/4 or $layouty > $ypts/4  or  $layoutx*$layouty*6 != $tasks) {
+        die "$ProgName - ERROR: fv3_decomp_set failed to find a decomposition.\n" .
+            "  layout needs to be set by the user.";
+    }
+
+    return "$layoutx,$layouty";
+
+}
+
+#-----------------------------------------------------------------------------------------------
 
 sub check_input_files {
 
@@ -4235,6 +4359,14 @@ sub check_input_files {
 
                 if ($input_pathname_type eq 'abs') {
                     if ($inputdata_rootdir) {
+
+                        # Special cases:
+                        # The file referenced by mpas_block_decomp_file_prefix needs to have the
+                        # task count appended before being added to the inputdata file.
+                        if ($var eq 'mpas_block_decomp_file_prefix') {
+                            $pathname = "$pathname$opts{'ntasks'}";
+                        }
+
                         print $fh "$var = $pathname\n";
                     }
                     else {
@@ -4275,9 +4407,10 @@ sub check_input_files {
     # Treat special cases...
 
     # These namelist variables are arrays of strings.
-    my @vars = qw(aircraft_specifier ext_frc_specifier srf_emis_specifier mode_defs
-                  rad_climate rad_diag_1 rad_diag_2 rad_diag_3 rad_diag_4 rad_diag_5
-                  rad_diag_6 rad_diag_7 rad_diag_8 rad_diag_9 rad_diag_10);
+    my @vars = qw(aircraft_specifier csw_specifier ext_frc_specifier
+                  rad_climate rad_diag_1 rad_diag_2 rad_diag_3 rad_diag_4
+                  rad_diag_5 rad_diag_6 rad_diag_7 rad_diag_8 rad_diag_9
+                  rad_diag_10 srf_emis_specifier mode_defs);
 
     foreach my $var (@vars) {
 
@@ -4300,7 +4433,7 @@ sub check_input_files {
                 # Extract name and filename
                 if ($spec =~ m/\s*(\w+)      # name of species preceded by optional whitespace
                                \s*->\s*      # -> separator surrounded by optional whitespace
-                               (\S+)         # filename (all characters up to optional whitespace)
+                               (.+)          # filename and possible coefficient(all characters up to optional whitespace)
                               /xo) {
                     my $name = $1;
                     my $file = $2;
@@ -4408,6 +4541,179 @@ sub check_input_files {
     close $fh if defined $inputdata_rootdir;
 
     return 0;
+}
+
+#-----------------------------------------------------------------------------------------------
+
+sub check_snapshot_settings {
+
+    # This checks the snapshot settings
+
+    my $cam_take_snapshot_before = $nl->get_variable_value('phys_ctl_nl', 'cam_take_snapshot_before');
+    my $cam_take_snapshot_after  = $nl->get_variable_value('phys_ctl_nl', 'cam_take_snapshot_after');
+    my $cam_snapshot_before_num  =  $nl->get_variable_value('phys_ctl_nl', 'cam_snapshot_before_num');
+    my $cam_snapshot_after_num   =  $nl->get_variable_value('phys_ctl_nl', 'cam_snapshot_after_num');
+    my $microphys = $cfg->get('microphys');
+
+    if (($cam_snapshot_before_num >= 0) or ($cam_snapshot_after_num >= 0)) {
+        print  "cam_snapshot settings\n";
+        print "cam_take_snapshot_before = $cam_take_snapshot_before\n";
+        print "cam_take_snapshot_after  = $cam_take_snapshot_after\n";
+        print "cam_snapshot_before_num = $cam_snapshot_before_num\n";
+        print "cam_snapshot_after_num  = $cam_snapshot_after_num\n";
+    } else {
+        return;  # No snapshots are requested
+    }
+
+    # Set the empty_htapes always to false for snapshot runs
+    $nl->set_variable_value('cam_history_nl', 'empty_htapes', $FALSE);
+
+    # Check for "take_snapshot" and history file number both being set or not set.  Only one set is an error
+    if ( ((defined $cam_take_snapshot_before ) xor  (defined $cam_snapshot_before_num))) {
+        die "ERROR: cam_take_snapshot_before is set to $cam_take_snapshot_before \n and cam_snapshot_before_num is set to
+                      $cam_snapshot_before_num \n Both need to be set or not set";
+    }
+
+    if ( ((defined $cam_take_snapshot_after ) xor  (defined $cam_snapshot_after_num))) {
+        die "ERROR: cam_take_snapshot_after is set to $cam_take_snapshot_after \n and cam_snapshot_after_num is set to
+                      $cam_snapshot_after_num \n Both need to be set or not set";
+    }
+
+    # If a snapshot history file number is negative, turn off that snapshot
+    if ((defined $cam_snapshot_before_num) and ($cam_snapshot_before_num lt 0)) {
+        print "WARNING: No history file assigned to before snapshot, disabling\n";
+        $nl->set_variable_value('phys_ctl_nl', 'cam_take_snapshot_before', "'UNSET'");
+    }
+    if ((defined $cam_snapshot_after_num) and ($cam_snapshot_after_num lt 0)) {
+        print "WARNING: No history file assigned to after snapshot, disabling\n";
+        $nl->set_variable_value('phys_ctl_nl', 'cam_take_snapshot_after', "'UNSET'");
+    }
+
+
+    # Check for "cam_take_snapshot" values for before and after being compatible
+    # Due to the physics call structure, only some before/after pairs are valid
+    # After the appropriate check is found, return as no other checks will pertain
+
+    my $user_set_before = ((defined $cam_take_snapshot_before) and
+                               ($cam_take_snapshot_before eq "'user_set'"));
+    my $user_set_after = ((defined $cam_take_snapshot_after) and
+                              ($cam_take_snapshot_after eq "'user_set'"));
+    if ($user_set_before and $user_set_after) {
+        return; # This is okay, user will set before and after code
+    } elsif ($user_set_before and (not defined $cam_take_snapshot_after)) {
+        return; # This iis okay, user will set before code only
+    } elsif ($user_set_after and (not defined $cam_take_snapshot_before)) {
+        return; # This iis okay, user will set after code only
+    } # No else, just proceed with list checks
+    my @validList_bc = ();
+    my @validList_ac = ();
+    if ($user_set_before) {
+        # We cannot check order so mark all after matches okay.
+        push (@validList_ac, ("'user_set'"));
+        push (@validList_bc, ("'user_set'"));
+    }
+    if ($simple_phys) {
+        # Simple physpkg
+        push (@validList_ac, ("'physics_dme_adjust'"));
+        if ($phys eq 'held_suarez') {
+            push (@validList_bc, ("'held_suarez_tend'"));
+        } elsif ($phys eq 'kessler') {
+            push (@validList_bc, ("'kessler_tend'"));
+        } elsif ($phys eq 'tj2016') {
+            push (@validList_bc, ("'thatcher_jablonowski_precip_tend'"));
+        }
+        if ($chem ne 'none') {
+            push (@validList_bc, ("'chem_timestep_tend'"));
+        }
+    } else {
+        # CAM physpkg
+        push(@validList_ac, ("'chem_emissions'",
+                             "'aoa_tracers_timestep_tend'",
+                             "'co2_cycle_set_ptend'"));
+        if ($chem ne 'none') {
+            push (@validList_ac, ("'chem_timestep_tend'"));
+        }
+        push (@validList_ac, ("'vertical_diffusion_section'",
+                              "'aero_model_drydep'", "'gw_tend'",
+                              "'qbo_relax'", "'iondrag_calc_section'",
+                              "'physics_dme_adjust'"));
+        push (@validList_bc, ("'dadadj_tend'", "'convect_deep_tend'",
+                              "'convect_shallow_tend'"));
+        if ($microphys =~ /^mg/) {
+            if ($clubb_sgs  =~ /$TRUE/io) {
+                push (@validList_bc, ("'clubb_tend_cam'"));
+            } else {
+                push (@validList_bc, ("'macrop_driver_tend'"));
+            }
+            push (@validList_bc, ("'microp_section'"));
+            if ($use_subcol_microp =~ /$TRUE/io) {
+                push (@validList_bc, ("'microp_driver_tend_subcol'"));
+            }
+        }
+        push (@validList_bc, ("'aero_model_wetdep'", "'radiation_tend'"));
+    }
+    if ($user_set_after) {
+        # We cannot check order so mark all before matches okay.
+        push (@validList_ac, ("'user_set'"));
+        push (@validList_bc, ("'user_set'"));
+    }
+
+    my $before_index_bc = first_index($cam_take_snapshot_before, @validList_bc);
+    my $after_index_bc = first_index($cam_take_snapshot_after, @validList_bc);
+    my $before_index_ac = first_index($cam_take_snapshot_before, @validList_ac);
+    my $after_index_ac = first_index($cam_take_snapshot_after, @validList_ac);
+
+    # If before is set, it must be valid
+    if ((defined $cam_snapshot_before_num) and
+          ($cam_snapshot_before_num ge 0) and
+          (defined $cam_take_snapshot_before) and
+          (($before_index_ac lt 0) and ($before_index_bc lt 0))) {
+        die "ERROR: Invalid cam_take_snapshot_before setting, $cam_take_snapshot_before\n"
+    }
+    # If after is set, it must be valid
+    if ((defined $cam_snapshot_after_num) and
+          ($cam_snapshot_after_num ge 0) and
+          (defined $cam_take_snapshot_after) and
+          (($after_index_ac lt 0) and ($after_index_bc lt 0))) {
+        die "ERROR: Invalid cam_take_snapshot_after setting, $cam_take_snapshot_after\n"
+    }
+    # If at least one of before/after are not set requires no further checking
+    if (  (! defined $cam_take_snapshot_before) or
+          (! defined $cam_take_snapshot_after)) {
+        return;
+    }
+    # If either before or after is 'user_set', end checks
+    if ($user_set_before or $user_set_after) {
+        return;
+    }
+
+    # Some checks to do if both before and after snapshots are being used
+    if ((defined $cam_take_snapshot_before) and
+          ($cam_snapshot_before_num ge 0) and
+          (defined $cam_take_snapshot_after) and
+          ($cam_snapshot_after_num ge 0)) {
+        if ($before_index_ac ge 0) {
+            if ($after_index_bc ge 0) {
+                die "ERROR: before and after snapshots must both be in ",
+                  "tphysbc or both be in tphysac\n";
+            } elsif ($before_index_ac gt $after_index_ac) {
+                die "ERROR: cam_take_snapshot_before is set to ",
+                  "$cam_take_snapshot_before\n and cam_take_snapshot_after is ",
+                  "set to $cam_take_snapshot_after\n",
+                  "This combination is invalid\n";
+            }
+        } else {
+            if ($after_index_ac ge 0) {
+                die "ERROR: before and after snapshots must both be in ",
+                  "tphysbc or both be in tphysac\n";
+            } elsif ($before_index_bc gt $after_index_bc) {
+                die "ERROR: cam_take_snapshot_before is set to ",
+                  "$cam_take_snapshot_before\n and cam_take_snapshot_after is ",
+                  "set to $cam_take_snapshot_after\n",
+                  "This combination is invalid\n";
+            }
+        }
+    }
 }
 
 #-----------------------------------------------------------------------------------------------
@@ -4576,7 +4882,6 @@ sub validate_use_case {
             or die "$ProgName - ERROR: invalid value of $opt ($old) specified in $source\n".
                    "expected one of: @expect\n";
     }
-
 }
 
 #-------------------------------------------------------------------------------

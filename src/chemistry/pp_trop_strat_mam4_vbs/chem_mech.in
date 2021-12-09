@@ -1,11 +1,11 @@
 * Comments
-* User-given Tag Description: TS1-simpleVBS for CESM2.0
-* Tag database identifier : MZ198_TS1-simpleVBS_20180423
+* User-given Tag Description: TS1.1-simple-NOxdep-VBS
+* Tag database identifier : MZ272_TS1.1_simpleVBS_20200302
 * Tag created by : lke
-* Tag created from branch : TS1-simpleVBS
-* Tag created on : 2018-04-23 17:49:48.65279-06
+* Tag created from branch : TS1.1-simpleVBS
+* Tag created on : 2020-03-02 16:38:42.063276-07
 * Comments for this tag follow:
-*     lke : 2018-04-23 : Latest change only removes O3S loss reactions.
+*     lke : 2020-03-02 : Update VBS-SOA for NOx-dependence
 
       SPECIES
 
@@ -144,6 +144,7 @@
  num_a4 -> H,
  O,
  O3,
+ O3S -> O3,
  OCLO -> OClO,
  OCS -> OCS,
  ONITR -> C4H7NO4,
@@ -182,7 +183,7 @@
  ST80_25 -> CO,
  SVOC -> C22H46,
  TEPOMUC -> C7H8O3,
- TERP2OOH -> C10H18O3,
+ TERP2OOH -> C10H16O4,
  TERPNIT -> C10H17NO4,
  TERPOOH -> C10H18O3,
  TERPROD1 -> C10H16O2,
@@ -198,7 +199,9 @@
  NDEP -> N,
  ACBZO2 -> C7H5O3,
  ALKO2 -> C5H11O2,
+ BCARYO2VBS -> C15H25O3,
  BENZO2 -> C6H7O5,
+ BENZO2VBS -> C6H7O5,
  BZOO -> C7H7O2,
  C2H5O2,
  C3H7O2,
@@ -213,11 +216,14 @@
  HOCH2OO,
  ISOPAO2 -> HOC5H8O2,
  ISOPBO2 -> HOC5H8O2,
+ ISOPO2VBS -> C5H9O3,
+ IVOCO2VBS -> C13H29O3,
  MACRO2 -> CH3COCHO2CH2OH,
  MALO2 -> C4H3O4,
  MCO3 -> CH2CCH3CO3,
  MDIALO2 -> C4H5O4,
  MEKO2 -> C4H7O3,
+ MTERPO2VBS -> C10H17O3,
  NTERPO2 -> C10H16NO5,
  O1D -> O,
  OH,
@@ -227,8 +233,10 @@
  TERP2O2 -> C10H15O4,
  TERPO2 -> C10H17O3,
  TOLO2 -> C7H9O5,
+ TOLUO2VBS -> C7H9O5,
  XO2 -> HOCH2COOCH3CHOHCHO,
  XYLENO2 -> C8H11O5,
+ XYLEO2VBS -> C8H11O5,
  XYLOLO2 -> C8H11O6,
  H2O
 
@@ -236,7 +244,7 @@
 
 
       Fixed
- M, N2, O2
+ M, O2, N2
       End Fixed
 
       Col-int
@@ -247,7 +255,9 @@
       Not-Transported
  ACBZO2,
  ALKO2,
+ BCARYO2VBS,
  BENZO2,
+ BENZO2VBS,
  BZOO,
  C2H5O2,
  C3H7O2,
@@ -262,11 +272,14 @@
  HOCH2OO,
  ISOPAO2,
  ISOPBO2,
+ ISOPO2VBS,
+ IVOCO2VBS,
  MACRO2,
  MALO2,
  MCO3,
  MDIALO2,
  MEKO2,
+ MTERPO2VBS,
  NTERPO2,
  O1D,
  OH,
@@ -276,8 +289,10 @@
  TERP2O2,
  TERPO2,
  TOLO2,
+ TOLUO2VBS,
  XO2,
  XYLENO2,
+ XYLEO2VBS,
  XYLOLO2
       End Not-Transported
 
@@ -312,6 +327,7 @@
  N2O
  NH_5
  NH_50
+ O3S
  SF6
  ST80_25
  NHDEP
@@ -477,7 +493,9 @@
  XYLOLOOH
  ACBZO2
  ALKO2
+ BCARYO2VBS
  BENZO2
+ BENZO2VBS
  BZOO
  C2H5O2
  C3H7O2
@@ -492,11 +510,14 @@
  HOCH2OO
  ISOPAO2
  ISOPBO2
+ ISOPO2VBS
+ IVOCO2VBS
  MACRO2
  MALO2
  MCO3
  MDIALO2
  MEKO2
+ MTERPO2VBS
  NTERPO2
  O1D
  OH
@@ -506,8 +527,10 @@
  TERP2O2
  TERPO2
  TOLO2
+ TOLUO2VBS
  XO2
  XYLENO2
+ XYLEO2VBS
  XYLOLO2
  H2O
       End Implicit
@@ -1044,6 +1067,8 @@
 *********************************
 *** Sulfur
 *********************************
+[DMS_NO3]              DMS + NO3  -> SO2 + HNO3                                 ; 1.9e-13, 520 
+[DMS_OHa]              DMS + OH  -> SO2                                         ; 9.6e-12, -234 
 [OCS_O]                OCS + O  -> SO + CO                                      ; 2.1e-11, -2200 
 [OCS_OH]               OCS + OH  -> SO2 + CO + H                                ; 7.2e-14, -1070 
 [S_O2]                 S + O2  -> SO + O                                        ; 2.3e-12 
@@ -1056,15 +1081,13 @@
 [SO_O3]                SO + O3  -> SO2 + O2                                     ; 3.4e-12, -1100 
 [SO_OCLO]              SO + OCLO  -> SO2 + CLO                                  ; 1.9e-12 
 [SO_OH]                SO + OH  -> SO2 + H                                      ; 2.7e-11, 335 
+[usr_DMS_OH]           DMS + OH  -> 0.5*SO2 + 0.5*HO2                            
 [usr_SO2_OH]           SO2 + OH  -> SO3 + HO2                                    
 [usr_SO3_H2O]          SO3 + H2O  -> H2SO4                                       
 *********************************
 *** Tropospheric Aerosol
 *********************************
-[DMS_NO3]              DMS + NO3  -> SO2 + HNO3                                 ; 1.9e-13, 520 
-[DMS_OHa]              DMS + OH  -> SO2                                         ; 9.6e-12, -234 
 [NH3_OH]               NH3 + OH  -> H2O + 1*NHDEP                               ; 1.7e-12, -710 
-[usr_DMS_OH]           DMS + OH  -> 0.5*SO2 + 0.5*HO2                            
 [usr_GLYOXAL_aer]      GLYOXAL  -> SOAG0                                         
 [usr_HO2_aer]          HO2  -> 0.5*H2O2                                          
 [usr_HONITR_aer]       HONITR  -> HNO3                                           
@@ -1083,19 +1106,33 @@
 *** SOA
 *********************************
 [BCARY_NO3_vbs]        BCARY + NO3  -> BCARY + NO3 + 0.17493*SOAG3 + 0.59019*SOAG4 ; 1.9e-11 
+[BCARYO2_HO2_vbs]      BCARYO2VBS + HO2  -> HO2 + 0.2202*SOAG0 + 0.2067*SOAG1 + 0.0653*SOAG2 + 0.1284*SOAG3 + 0.114*SOAG4 ; 2.75e-13, 1300 
+[BCARYO2_NO_vbs]       BCARYO2VBS + NO  -> NO + 0.1279*SOAG0 + 0.1792*SOAG1 + 0.0676*SOAG2 + 0.079*SOAG3 + 0.1254*SOAG4 ; 2.7e-12, 360 
 [BCARY_O3_vbs]         BCARY + O3  -> BCARY + O3 + 0.2202*SOAG0 + 0.2067*SOAG1 + 0.0653*SOAG2 + 0.1284*SOAG3 + 0.114*SOAG4 ; 1.2e-14 
-[BCARY_OH_vbs]         BCARY + OH  -> BCARY + OH + 0.2202*SOAG0 + 0.2067*SOAG1 + 0.0653*SOAG2 + 0.1284*SOAG3 + 0.114*SOAG4 ; 2e-10 
-[BENZENE_OH_vbs]       BENZENE + OH  -> BENZENE + OH + 0.0023*SOAG0 + 0.0008*SOAG1 + 0.0843*SOAG2 + 0.0443*SOAG3 + 0.1621*SOAG4 ; 2.3e-12, -193 
+[BCARY_OH_vbs]         BCARY + OH  -> BCARY + OH + BCARYO2VBS  ; 2e-10 
+[BENZENE_OH_vbs]       BENZENE + OH  -> BENZENE + OH + BENZO2VBS     ; 2.3e-12, -193 
+[BENZO2_HO2_vbs]       BENZO2VBS + HO2  -> HO2 + 0.0023*SOAG0 + 0.0008*SOAG1 + 0.0843*SOAG2 + 0.0443*SOAG3 + 0.1621*SOAG4 ; 7.5e-13, 700 
+[BENZO2_NO_vbs]        BENZO2VBS + NO  -> NO + 0.0097*SOAG0 + 0.0034*SOAG1 + 0.1579*SOAG2 + 0.0059*SOAG3 + 0.0536*SOAG4 ; 2.6e-12, 365 
 [ISOP_NO3_vbs]         ISOP + NO3  -> ISOP + NO3 + 0.059024*SOAG3 + 0.025024*SOAG4 ; 3.03e-12, -446 
+[ISOPO2_HO2_vbs]       ISOPO2VBS + HO2  -> HO2 + 0.0031*SOAG0 + 0.0035*SOAG1 + 0.0003*SOAG2 + 0.0271*SOAG3 + 0.0474*SOAG4 ; 2.12e-13, 1300 
+[ISOPO2_NO_vbs]        ISOPO2VBS + NO  -> NO + 0.0003*SOAG0 + 0.0003*SOAG1 + 0.0073*SOAG2 + 0.0057*SOAG3 + 0.0623*SOAG4 ; 2.7e-12, 350 
 [ISOP_O3_vbs]          ISOP + O3  -> ISOP + O3 + 0.0033*SOAG3                   ; 1.05e-14, -2000 
-[ISOP_OH_vbs]          ISOP + OH  -> ISOP + OH + 0.0031*SOAG0 + 0.0035*SOAG1 + 0.0003*SOAG2 + 0.0271*SOAG3 + 0.0474*SOAG4 ; 2.54e-11, 410 
-[IVOC_OH]              IVOC + OH  -> OH + 0.2381*SOAG0 + 0.1308*SOAG1 + 0.0348*SOAG2 + 0.0076*SOAG3 + 0.0113*SOAG4 ; 1.34e-11 
+[ISOP_OH_vbs]          ISOP + OH  -> ISOP + OH + ISOPO2VBS                      ; 2.54e-11, 410 
+[IVOCO2_HO2_vbs]       IVOCO2VBS + HO2  -> HO2 + 0.2381*SOAG0 + 0.1308*SOAG1 + 0.0348*SOAG2 + 0.0076*SOAG3 + 0.0113*SOAG4 ; 7.5e-13, 700 
+[IVOCO2_NO_vbs]        IVOCO2VBS + NO  -> NO + 0.1056*SOAG0 + 0.1026*SOAG1 + 0.0521*SOAG2 + 0.0143*SOAG3 + 0.0166*SOAG4 ; 2.6e-12, 365 
+[IVOC_OH_vbs]          IVOC + OH  -> OH + IVOCO2VBS                             ; 1.34e-11 
 [MTERP_NO3_vbs]        MTERP + NO3  -> MTERP + NO3 + 0.17493*SOAG3 + 0.59019*SOAG4 ; 1.2e-12, 490 
+[MTERPO2_HO2_vbs]      MTERPO2VBS + HO2  -> HO2 + 0.0508*SOAG0 + 0.1149*SOAG1 + 0.0348*SOAG2 + 0.0554*SOAG3 + 0.1278*SOAG4 ; 2.6e-13, 1300 
+[MTERPO2_NO_vbs]       MTERPO2VBS + NO  -> NO + 0.0245*SOAG0 + 0.0082*SOAG1 + 0.0772*SOAG2 + 0.0332*SOAG3 + 0.13*SOAG4 ; 2.7e-12, 360 
 [MTERP_O3_vbs]         MTERP + O3  -> MTERP + O3 + 0.0508*SOAG0 + 0.1149*SOAG1 + 0.0348*SOAG2 + 0.0554*SOAG3 + 0.1278*SOAG4 ; 6.3e-16, -580 
-[MTERP_OH_vbs]         MTERP + OH  -> MTERP + OH + 0.0508*SOAG0 + 0.1149*SOAG1 + 0.0348*SOAG2 + 0.0554*SOAG3 + 0.1278*SOAG4 ; 1.2e-11, 440 
+[MTERP_OH_vbs]         MTERP + OH  -> MTERP + OH + MTERPO2VBS                   ; 1.2e-11, 440 
 [SVOC_OH]              SVOC + OH  -> OH + 0.5931*SOAG0 + 0.1534*SOAG1 + 0.0459*SOAG2 + 0.0085*SOAG3 + 0.0128*SOAG4 ; 1.34e-11 
-[TOLUENE_OH_vbs]       TOLUENE + OH  -> TOLUENE + OH + 0.1364*SOAG0 + 0.0101*SOAG1 + 0.0763*SOAG2 + 0.2157*SOAG3 + 0.0232*SOAG4 ; 1.7e-12, 352 
-[XYLENES_OH_vbs]       XYLENES + OH  -> XYLENES + OH + 0.1677*SOAG0 + 0.0174*SOAG1 + 0.086*SOAG2 + 0.0512*SOAG3 + 0.1598*SOAG4 ; 1.7e-11 
+[TOLUENE_OH_vbs]       TOLUENE + OH  -> TOLUENE + OH + TOLUO2VBS                ; 1.7e-12, 352 
+[TOLUO2_HO2_vbs]       TOLUO2VBS + HO2  -> HO2 + 0.1364*SOAG0 + 0.0101*SOAG1 + 0.0763*SOAG2 + 0.2157*SOAG3 + 0.0738*SOAG4 ; 7.5e-13, 700 
+[TOLUO2_NO_vbs]        TOLUO2VBS + NO  -> NO + 0.0154*SOAG0 + 0.0452*SOAG1 + 0.0966*SOAG2 + 0.0073*SOAG3 + 0.238*SOAG4 ; 2.6e-12, 365 
+[XYLENES_OH_vbs]       XYLENES + OH  -> XYLENES + OH + XYLEO2VBS                ; 1.7e-11 
+[XYLEO2_HO2_vbs]       XYLEO2VBS + HO2  -> HO2 + 0.1677*SOAG0 + 0.0174*SOAG1 + 0.086*SOAG2 + 0.0512*SOAG3 + 0.1598*SOAG4 ; 7.5e-13, 700 
+[XYLEO2_NO_vbs]        XYLEO2VBS + NO  -> NO + 0.0063*SOAG0 + 0.0237*SOAG1 + 0.0025*SOAG2 + 0.011*SOAG3 + 0.1185*SOAG4 ; 2.6e-12, 365 
 *********************************
 *** Stratospheric Aerosol
 *********************************
@@ -1126,23 +1163,22 @@
       End Reactions
 
       Ext Forcing
- so4_a2 <- dataset 
+ so4_a1 <- dataset 
+ bc_a4 <- dataset 
+ SVOC <- dataset 
+ bc_a1 <- dataset 
+ CO <- dataset 
  NO <- dataset 
  NO2 <- dataset 
- SO2 <- dataset 
- SVOC <- dataset 
- pom_a1 <- dataset 
- pom_a4 <- dataset 
- so4_a1 <- dataset 
- CO <- dataset 
- bc_a1 <- dataset 
- bc_a4 <- dataset 
  num_a1 <- dataset 
  num_a2 <- dataset 
  num_a4 <- dataset 
- OH 
- N 
+ pom_a1 <- dataset 
+ pom_a4 <- dataset 
+ so4_a2 <- dataset 
+ SO2 <- dataset 
  AOA_NH 
+ N 
       End Ext Forcing
 
       End Chemistry
@@ -1155,7 +1191,6 @@
         model_architecture = VECTOR
         vector_length = 32
         architecture = hybrid
-*       vec_ftns = on
         namemod = on
       End Version Options
 

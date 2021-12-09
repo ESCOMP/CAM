@@ -1,0 +1,4 @@
+./xmlchange ROF_NCPL=\$ATM_NCPL
+./xmlchange GLC_NCPL=\$ATM_NCPL
+./xmlchange CAM_NML_USE_CASE=UNSET
+./xmlchange RUN_STARTDATE="00000101"

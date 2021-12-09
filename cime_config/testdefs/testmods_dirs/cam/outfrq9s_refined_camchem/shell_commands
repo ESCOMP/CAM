@@ -1,0 +1,8 @@
+driver=`./xmlquery --value COMP_INTERFACE`
+if [ "$driver" = "mct" ]; then
+  ./xmlchange NTASKS=-50
+else
+  ./xmlchange NTASKS=-65
+  ./xmlchange ROF_NCPL=\$ATM_NCPL
+  ./xmlchange GLC_NCPL=\$ATM_NCPL
+fi

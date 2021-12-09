@@ -11,17 +11,20 @@ use spmd_utils,      only: masterproc, npes, mpicom, mpir8
 
 use physconst,       only: pi
 use pmgrid,          only: plon, plat, plev, plevp, plnlv, beglat, endlat
+use commap,          only: clat, clon
 use dyn_grid,        only: ptimelevels
+
 
 use prognostics,     only: n3, ps, u3, v3, t3, q3, phis, pdeld, dpsm, dpsl, div, vort
 
-use cam_control_mod, only: initial_run, ideal_phys, moist_physics, adiabatic
+use cam_control_mod, only: initial_run, moist_physics, adiabatic, simple_phys
 use phys_control,    only: phys_getopts
 use constituents,    only: pcnst, cnst_name, cnst_longname, sflxnam, tendnam, &
                            fixcnam, tottnam, hadvnam, vadvnam, cnst_get_ind,  &
                            cnst_read_iv, qmin
-use cam_initfiles,   only: initial_file_get_id, topo_file_get_id, pertlim
+use cam_initfiles,   only: initial_file_get_id, topo_file_get_id, pertlim, scale_dry_air_mass
 use inic_analytic,   only: analytic_ic_active, analytic_ic_set_ic
+use dyn_tests_utils, only: vc_moist_pressure
 use cam_history,     only: addfld, add_default, horiz_only
 
 use eul_control_mod, only: dif2, hdif_order, kmnhdn, hdif_coef, divdampn, eps, &
@@ -31,7 +34,7 @@ use scamMod,         only: single_column, use_camiop, have_u, have_v, &
                            have_cldliq, have_cldice, loniop, latiop, scmlat, scmlon, &
                            qobs,tobs,scm_cambfb_mode
 
-use cam_pio_utils,   only: clean_iodesc_list
+use cam_pio_utils,   only: clean_iodesc_list, cam_pio_get_var
 use pio,             only: file_desc_t, pio_noerr, pio_inq_varid, pio_get_att, &
                            pio_inq_attlen, pio_inq_dimid, pio_inq_dimlen,      &
                            pio_get_var,var_desc_t, pio_seterrorhandling,       &
@@ -222,7 +225,7 @@ subroutine dyn_init(dyn_in, dyn_out)
 #if (defined BFB_CAM_SCAM_IOP )
    use history_defaults,     only: initialize_iop_history
 #endif
-
+   use dyn_tests_utils, only: vc_dycore, vc_moist_pressure,string_vc, vc_str_lgth
    ! Arguments are not used in this dycore, included for compatibility
    type(dyn_import_t), intent(out) :: dyn_in
    type(dyn_export_t), intent(out) :: dyn_out
@@ -235,8 +238,13 @@ subroutine dyn_init(dyn_in, dyn_out)
                                  ! temperature, water vapor, cloud ice and cloud
                                  ! liquid budgets.
    integer :: history_budget_histfile_num  ! output history file number for budget fields
+   character (len=vc_str_lgth) :: str1
    !----------------------------------------------------------------------------
-
+   vc_dycore = vc_moist_pressure
+   if (masterproc) then
+     call string_vc(vc_dycore,str1)
+     write(iulog,*)'dycore vertical coordinate : ',trim(str1)
+   end if
    ! Initialize prognostics variables
    call initialize_prognostics
    call scanslt_alloc()
@@ -246,6 +254,8 @@ subroutine dyn_init(dyn_in, dyn_out)
    ! routines and in dp_coupling.  Call must come after phys_grid_init.
    call spmdbuf ()
 #endif
+
+   call set_phis()
 
    if (initial_run) then
 
@@ -353,12 +363,9 @@ subroutine read_inidat()
 
    use ppgrid,           only: begchunk, endchunk, pcols
    use phys_grid,        only: clat_p, clon_p
-   use commap,           only: clat, clon
    use comspe,           only: alp, dalp
 
    use ncdio_atm,        only: infld
-   use cam_pio_utils,    only: cam_pio_get_var
-   use dyn_tests_utils,  only: vc_moist_pressure
 
    use iop,              only: setiopupdate,readiopdata
 
@@ -372,7 +379,7 @@ subroutine read_inidat()
    integer :: lonid, latid
    integer :: mlon, morec      ! lon/lat dimension lengths from IC file
 
-   type(file_desc_t), pointer :: fh_ini, fh_topo
+   type(file_desc_t), pointer :: fh_ini
 
    real(r8), pointer, dimension(:,:,:)   :: convptr_2d
    real(r8), pointer, dimension(:,:,:,:) :: convptr_3d
@@ -399,16 +406,15 @@ subroutine read_inidat()
    !----------------------------------------------------------------------------
 
    fh_ini  => initial_file_get_id()
-   fh_topo => topo_file_get_id()
 
    allocate ( ps_tmp  (plon,plat     ) )
-   allocate ( phis_tmp(plon,plat     ) )
    allocate ( q3_tmp  (plon,plev,plat) )
    allocate ( t3_tmp  (plon,plev,plat) )
    allocate ( arr3d_a (plon,plev,plat) )
    allocate ( arr3d_b (plon,plev,plat) )
 
    if (analytic_ic_active()) then
+
       allocate(glob_ind(plon * plat))
       m = 1
       do c = 1, plat
@@ -419,12 +425,12 @@ subroutine read_inidat()
          end do
       end do
       call analytic_ic_set_ic(vc_moist_pressure, clat(:), clon(:,1),            &
-           glob_ind(:), U=arr3d_a, V=arr3d_b, T=t3_tmp, PS=ps_tmp, PHIS=phis_tmp)
+           glob_ind(:), U=arr3d_a, V=arr3d_b, T=t3_tmp, PS=ps_tmp, PHIS_IN=phis_tmp)
       readvar = .false.
       call process_inidat('PS')
       call process_inidat('UV')
       call process_inidat('T')
-      call process_inidat('PHIS')
+
       allocate(q4_tmp(plon,plev,plat,1))
       do m = 1, pcnst
          m_cnst(1) = m
@@ -510,21 +516,6 @@ subroutine read_inidat()
       call process_inidat('PS')
    end if
 
-   ! PHIS processing.  This code allows an analytic specification of PHIS to be
-   ! overridden by one from a specified topo file.
-   fieldname = 'PHIS'
-   readvar   = .false.
-   if (associated(fh_topo)) then
-      call cam_pio_get_var(fieldname, fh_topo, arraydims2, phis_tmp, found=readvar)
-      if (.not. readvar) then
-         call endrun(sub//': ERROR: reading '//trim(fieldname))
-      end if
-      call process_inidat('PHIS', fh=fh_topo)
-   else if (.not. analytic_ic_active()) then
-      phis_tmp(:,:) = 0._r8
-      call process_inidat('PHIS')
-   end if
-
    if (single_column) then
       ps(:,:,1) = ps_tmp(:,:)
    else
@@ -533,6 +524,7 @@ subroutine read_inidat()
       call global_int
    end if
 
+   ! module data used in global_int
    deallocate ( ps_tmp   )
    deallocate ( phis_tmp )
 
@@ -609,6 +601,80 @@ subroutine read_inidat()
    call copytimelevels()
 
 end subroutine read_inidat
+
+!=========================================================================================
+
+subroutine set_phis()
+
+   ! Local variables
+   type(file_desc_t), pointer :: fh_topo
+   
+   integer :: ierr, pio_errtype
+   integer :: lonid, latid
+   integer :: mlon, morec      ! lon/lat dimension lengths from topo file
+   character(len=3), parameter :: arraydims2(2) = (/ 'lon', 'lat' /)
+
+   character(len=16)           :: fieldname
+
+   integer                     :: c, i, m
+   integer,  allocatable       :: glob_ind(:)
+
+   character(len=*), parameter :: sub='set_phis'
+   !----------------------------------------------------------------------------
+
+   fh_topo => topo_file_get_id()
+
+   allocate( phis_tmp(plon,plat) )
+
+   readvar = .false.
+
+   if (associated(fh_topo)) then    
+
+      call pio_seterrorhandling(fh_topo, PIO_BCAST_ERROR, pio_errtype)
+
+      ierr = pio_inq_dimid(fh_topo, 'lon', lonid)
+      ierr = pio_inq_dimid(fh_topo, 'lat', latid)
+      ierr = pio_inq_dimlen(fh_topo, lonid, mlon)
+      ierr = pio_inq_dimlen(fh_topo, latid, morec)
+      if (.not. single_column .and. (mlon /= plon .or. morec /= plat)) then
+         write(iulog,*) sub//': ERROR: model parameters do not match initial dataset parameters'
+         write(iulog,*)'Model Parameters:    plon = ',plon,' plat = ',plat
+         write(iulog,*)'Dataset Parameters:  dlon = ',mlon,' dlat = ',morec
+         call endrun(sub//': ERROR: model parameters do not match initial dataset parameters')
+      end if
+      call pio_seterrorhandling(fh_topo, pio_errtype)
+
+      fieldname = 'PHIS'
+      call cam_pio_get_var(fieldname, fh_topo, arraydims2, phis_tmp, found=readvar)
+      if (.not. readvar) then
+         call endrun(sub//': ERROR: reading '//trim(fieldname))
+      end if
+
+   else if (analytic_ic_active()) then
+
+      allocate(glob_ind(plon*plat))
+      m = 1
+      do c = 1, plat
+         do i = 1, plon
+            ! Create a global column index
+            glob_ind(m) = i + (c-1)*plon
+            m = m + 1
+         end do
+      end do
+      call analytic_ic_set_ic(vc_moist_pressure, clat(:), clon(:,1), &
+                              glob_ind(:), PHIS_OUT=phis_tmp)
+
+      deallocate(glob_ind)
+
+   else
+
+      phis_tmp(:,:) = 0._r8
+
+   end if
+
+   call process_inidat('PHIS', fh=fh_topo)
+
+end subroutine set_phis
 
 !=========================================================================================
 
@@ -918,6 +984,7 @@ subroutine global_int()
    use hycoef,          only: hyai, ps0
    use eul_control_mod, only: pdela, qmass1, tmassf, fixmas, &
                               tmass0, zgsint, qmass2, qmassf
+   use inic_analytic,   only: analytic_ic_active
 
    !---------------------------Local workspace-----------------------------
 
@@ -1020,11 +1087,12 @@ subroutine global_int()
       zgsint_tmp = zgsint_tmp*.5_r8/gravit
       qmassf_tmp = qmass1_tmp + qmass2_tmp
 
-      ! Globally avgd sfc. partial pressure of dry air (i.e. global dry mass):
-      tmass0 = 98222._r8/gravit
-      if (.not. associated(fh_topo)) tmass0 = (101325._r8-245._r8)/gravit
-      if (adiabatic)                 tmass0 =  tmassf_tmp
-      if (ideal_phys )               tmass0 =  100000._r8/gravit
+      if (simple_phys) then
+         tmass0 = tmassf_tmp - qmassf_tmp
+      else
+         ! Globally avgd sfc. partial pressure of dry air (i.e. global dry mass):
+         tmass0 = scale_dry_air_mass/gravit
+      end if
 
       if (masterproc) then
          write(iulog,*) sub//': INFO:'
@@ -1034,14 +1102,14 @@ subroutine global_int()
          write(iulog,*) '  Globally averaged geopotential height (m)   = ', zgsint_tmp
       end if
 
-      ! Compute and apply an initial mass fix factor which preserves horizontal
-      ! gradients of ln(ps).
-      if (.not. moist_physics) then
-         fixmas = tmass0/tmassf_tmp
+      if (simple_phys) then
+         fixmas = 1._r8
       else
+         ! Compute and apply an initial mass fix factor which preserves horizontal
+         ! gradients of ln(ps).
          fixmas = (tmass0 + qmass1_tmp)/(tmassf_tmp - qmass2_tmp)
+         ps_tmp = ps_tmp*fixmas
       end if
-      ps_tmp = ps_tmp*fixmas
 
       ! Global integerals
       tmassf = tmassf_tmp

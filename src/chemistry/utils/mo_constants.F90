@@ -33,6 +33,9 @@ module mo_constants
 
   real(r8), parameter :: seasalt_density = 2.2e+3_r8        ! [kg m-3] Aerosol density
   real(r8), parameter :: dust_density    = 2.5e+3_r8        ! [kg m-3] Aerosol density
+
+  real(r8), parameter :: n2min = 1.e-36_r8                  ! lower limit of N2 mixing ratios
+
 contains
 
   subroutine mo_constants_inti

@@ -31,6 +31,7 @@ private
   integer, allocatable :: work_pool_horz(:,:)
   integer, allocatable :: work_pool_vert(:,:)
   integer, allocatable :: work_pool_trac(:,:)
+  integer, allocatable :: work_pool_ctrac(:,:)
 
   integer :: nelemd_save
   logical :: init_ranges = .true.
@@ -101,6 +102,13 @@ contains
          new%qbeg = qbeg_range;    new%qend = qend_range
       endif
 
+      if ( TRIM(region_name) == 'ctracer' ) then
+         region_num_threads = tracer_num_threads
+         call set_thread_ranges_1D ( work_pool_ctrac, qbeg_range, qend_range, ithr)
+         new%ibeg = old%ibeg;      new%iend = old%iend
+         new%kbeg = old%kbeg;      new%kend = old%kend
+         new%qbeg = qbeg_range;    new%qend = qend_range
+      endif
 
       if ( TRIM(region_name) == 'vertical_and_tracer' ) then
          region_num_threads = vert_num_threads*tracer_num_threads
@@ -171,6 +179,13 @@ contains
          hybrid%qbeg = qbeg_range; hybrid%qend = qend_range
       endif
 
+      if ( TRIM(region_name) == 'ctracer' ) then
+         region_num_threads = tracer_num_threads
+         call set_thread_ranges_1D ( work_pool_ctrac, qbeg_range, qend_range, ithr)
+         hybrid%ibeg = 1;          hybrid%iend = nelemd_save
+         hybrid%kbeg = 1;          hybrid%kend = nlev
+         hybrid%qbeg = qbeg_range; hybrid%qend = qend_range
+      endif
     
       if ( TRIM(region_name) == 'vertical_and_tracer' ) then
          region_num_threads = vert_num_threads*tracer_num_threads
@@ -198,14 +213,18 @@ contains
       
       if ( init_ranges ) then
         nelemd_save=nelemd
-!JMD#ifdef _OPENMP
         if ( .NOT. allocated(work_pool_horz) ) allocate(work_pool_horz(horz_num_threads,2))
+        if(nelemd<horz_num_threads) &
+          print *,'WARNING: insufficient horizontal parallelism to support ',horz_num_threads,' horizontal threads'
+         
         do ith=0,horz_num_threads-1
           call create_work_pool( 1, nelemd, horz_num_threads, ith, beg_index, end_index )
           work_pool_horz(ith+1,1) = beg_index
           work_pool_horz(ith+1,2) = end_index
         end do
 
+        if(nlev<vert_num_threads) &
+          print *,'WARNING: insufficient vertical parallelism to support ',vert_num_threads,' vertical threads'
         if ( .NOT. allocated(work_pool_vert) ) allocate(work_pool_vert(vert_num_threads,2))
         do ith=0,vert_num_threads-1
           call create_work_pool( 1, nlev, vert_num_threads, ith, beg_index, end_index )
@@ -213,6 +232,8 @@ contains
           work_pool_vert(ith+1,2) = end_index
         end do
 
+        if(qsize<tracer_num_threads) &
+          print *,'WARNING: insufficient tracer parallelism to support ',tracer_num_threads,' tracer threads'
         if ( .NOT. allocated(work_pool_trac) ) allocate(work_pool_trac(tracer_num_threads,2))
         do ith=0,tracer_num_threads-1
           call create_work_pool( 1, qsize, tracer_num_threads, ith, beg_index, end_index )
@@ -220,7 +241,15 @@ contains
           work_pool_trac(ith+1,2) = end_index
         end do
 
-!JMD#endif
+        if(ntrac>0 .and. ntrac<tracer_num_threads) &
+          print *,'WARNING: insufficient CSLAM tracer parallelism to support ',tracer_num_threads,' tracer threads'
+        if ( .NOT. allocated(work_pool_ctrac) ) allocate(work_pool_ctrac(tracer_num_threads,2))
+        do ith=0,tracer_num_threads-1
+          call create_work_pool( 1, ntrac, tracer_num_threads, ith, beg_index, end_index )
+          work_pool_ctrac(ith+1,1) = beg_index
+          work_pool_ctrac(ith+1,2) = end_index
+        end do
+
         init_ranges = .false.
       endif
 
@@ -290,6 +319,13 @@ contains
 
   if ( TRIM(region_name) == 'tracer' ) then
     call set_thread_ranges_1D ( work_pool_trac, qbeg_range, qend_range, idthread )
+    !FIXME: need to set ibeg, iend as well
+    pybrid%kbeg = 1;          pybrid%kend = nlev
+    pybrid%qbeg = qbeg_range; pybrid%qend = qend_range
+  endif
+
+  if ( TRIM(region_name) == 'ctracer' ) then
+    call set_thread_ranges_1D ( work_pool_ctrac, qbeg_range, qend_range, idthread )
     !FIXME: need to set ibeg, iend as well
     pybrid%kbeg = 1;          pybrid%kend = nlev
     pybrid%qbeg = qbeg_range; pybrid%qend = qend_range

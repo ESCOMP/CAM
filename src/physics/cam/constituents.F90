@@ -25,6 +25,7 @@ public :: &
    cnst_chk_dim,        &! check that number of constituents added equals dimensions (pcnst)
    cnst_cam_outfld,     &! Returns true if default CAM output was specified in the cnst_add calls.
    cnst_set_spec_class, &! Sets the type of species class
+   cnst_is_a_water_species,&! Returns true for constituents identified as water species
    cnst_set_convtran2    ! Override for convtran2 values set by the cnst_add routine
 
 ! Public data
@@ -51,7 +52,7 @@ integer, public, protected :: cnst_species_class(pcnst) = cnst_spec_class_undefi
 real(r8),    public :: cnst_cp  (pcnst)          ! specific heat at constant pressure (J/kg/K)
 real(r8),    public :: cnst_cv  (pcnst)          ! specific heat at constant volume (J/kg/K)
 real(r8),    public :: cnst_mw  (pcnst)          ! molecular weight (kg/kmole)
-character*3, public :: cnst_type(pcnst)          ! wet or dry mixing ratio
+character*3, public, protected :: cnst_type(pcnst)! wet or dry mixing ratio
 character*5, public :: cnst_molec(pcnst)         ! major or minor species molecular diffusion
 real(r8),    public :: cnst_rgas(pcnst)          ! gas constant ()
 real(r8),    public :: qmin     (pcnst)          ! minimum permitted constituent concentration (kg/kg)
@@ -527,6 +528,26 @@ function cnst_cam_outfld(m)
    end if
 
 end function cnst_cam_outfld
+
+!==============================================================================
+
+pure logical function cnst_is_a_water_species(name)
+
+   ! test whether the input name matches the name of a water species
+
+   character(len=*), intent(in) :: name  
+   !-------------------------------------------------------------------------
+
+   cnst_is_a_water_species = .false.
+
+   if (name == 'Q'      .or. &
+       name == 'CLDLIQ' .or. &
+       name == 'CLDICE' .or. &
+       name == 'RAINQM' .or. &
+       name == 'SNOWQM' .or. &
+       name == 'GRAUQM'      ) cnst_is_a_water_species = .true.
+      
+end function cnst_is_a_water_species
 
 !==============================================================================
 

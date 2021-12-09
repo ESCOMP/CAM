@@ -110,15 +110,14 @@
       use mo_setinv,         only : setinv
       use mo_mass_xforms,    only : mmr2vmr
       use physics_types,     only : physics_state
-      use phys_grid,         only : get_rlat_all_p, get_rlon_all_p, &
-                                    get_lat_all_p, get_lon_all_p
+      use phys_grid,         only : get_rlat_all_p, get_rlon_all_p
       use mo_mean_mass,      only : set_mean_mass
       use set_cp,            only : calc_cp
       use cam_history,       only : outfld
       use shr_orb_mod,       only : shr_orb_decl
       use time_manager,      only : get_curr_calday
       use cam_control_mod,   only : lambm0, eccen, mvelpp, obliqr
-      use mo_constants,      only : r2d
+      use mo_constants,      only : r2d, n2min
       use short_lived_species,only: get_short_lived_species
       use physics_buffer,    only : physics_buffer_desc
       use phys_control,      only : waccmx_is
@@ -145,8 +144,6 @@
       integer      ::  kbot_hrates
       real(r8)     ::  esfact
       real(r8)     ::  sza                                           ! solar zenith angle (degrees)
-      integer      ::  latndx(pcols)                                 ! chunk lat indicies
-      integer      ::  lonndx(pcols)                                 ! chunk lon indicies
       real(r8)     ::  invariants(ncol,pver,nfs)
       real(r8)     ::  col_dens(ncol,pver,max(1,nabscol))            ! column densities (molecules/cm^2)
       real(r8)     ::  col_delta(ncol,0:pver,max(1,nabscol))         ! layer column densities (molecules/cm^2)
@@ -223,8 +220,6 @@
 !-----------------------------------------------------------------------      
       lchnk = state%lchnk
 
-      call get_lat_all_p( lchnk, ncol, latndx )
-      call get_lon_all_p( lchnk, ncol, lonndx )
       call get_rlat_all_p( lchnk, ncol, rlats )
       call get_rlon_all_p( lchnk, ncol, rlons )
 
@@ -364,6 +359,9 @@ column_loop : &
             o2_line(:)  = vmr(i,:,id_o2)
             co2_line(:) = vmr(i,:,id_co2)
             n2_line(:)  = 1._r8 - (o_line(:) + o2_line(:) + vmr(i,:,id_h))
+            where( n2_line(:) < n2min ) 
+               n2_line = n2min
+            end where
             o3_line(:)  = vmr(i,:,id_o3)
             occ(:)      = o_line(:) * invariants(i,:,indexm)
             o2cc(:)     = o2_line(:) * invariants(i,:,indexm)

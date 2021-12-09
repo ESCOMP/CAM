@@ -1,21 +1,20 @@
 module fvm_consistent_se_cslam
   use shr_kind_mod,           only: r8=>shr_kind_r8
-  use dimensions_mod,         only: nc, nhe, nlev, ntrac, np, nhr, nhc, ngpc, ns, nht, lbc,ubc
+  use dimensions_mod,         only: nc, nhe, nlev, ntrac, np, nhr, nhc, ngpc, ns, nht
   use dimensions_mod,         only: irecons_tracer
   use dimensions_mod,         only: kmin_jet,kmax_jet
   use cam_abortutils,         only: endrun
+  use cam_logfile,            only: iulog
 
   use time_mod,               only: timelevel_t
   use element_mod,            only: element_t
   use fvm_control_volume_mod, only: fvm_struct
-  use hybrid_mod,             only: hybrid_t
+  use hybrid_mod,             only: hybrid_t, config_thread_region, get_loop_ranges, threadOwnsVertLevel
   use perf_mod,               only: t_startf, t_stopf 
-
   implicit none
   private
   save
 
-  real (kind=r8), dimension(ngpc), private :: gsweights, gspts
   real (kind=r8),parameter       , private :: eps=1.0e-14_r8
   public :: run_consistent_se_cslam
 contains
@@ -30,17 +29,19 @@ contains
   !
   !**************************************************************************************
   !
-  subroutine run_consistent_se_cslam(elem,fvm,hybrid,dt_fvm,tl,nets,nete,hvcoord)
+  subroutine run_consistent_se_cslam(elem,fvm,hybrid,dt_fvm,tl,nets,nete,hvcoord,&
+       ghostbufQnhc,ghostBufQ1, ghostBufFlux,kminp,kmaxp)
     ! ---------------------------------------------------------------------------------
-    use fvm_control_volume_mod, only: n0_fvm, np1_fvm
-    use fvm_mod               , only:  fill_halo_fvm, ghostBufQnhc, ghostBufQ1, ghostBufFlux
+    use fvm_mod               , only: fill_halo_fvm
     use fvm_reconstruction_mod, only: reconstruction
     use fvm_analytic_mod      , only: gauss_points
-    use derivative_mod        , only: subcell_integration
     use edge_mod              , only: ghostpack, ghostunpack
+    use edgetype_mod          , only: edgebuffer_t    
     use bndry_mod             , only: ghost_exchange
     use hybvcoord_mod         , only: hvcoord_t
     use constituents          , only: qmin
+    use dimensions_mod        , only: large_Courant_incr,irecons_tracer_lev
+    use thread_mod            , only: vert_num_threads, omp_set_nested
     implicit none
     type (element_t)      , intent(inout) :: elem(:)
     type (fvm_struct)     , intent(inout) :: fvm(:)
@@ -50,57 +51,110 @@ contains
     integer               , intent(in)    :: nets  ! starting thread element number (private)
     integer               , intent(in)    :: nete  ! ending thread element number   (private)
     real (kind=r8)        , intent(in)    :: dt_fvm
-
+    type (EdgeBuffer_t)   , intent(inout) :: ghostbufQnhc,ghostBufQ1, ghostBufFlux
+    integer               , intent(in)    :: kminp,kmaxp
 
     !high-order air density reconstruction
     real (kind=r8) :: ctracer(irecons_tracer,1-nhe:nc+nhe,1-nhe:nc+nhe,ntrac)
-    real (kind=r8) :: inv_dp_area(nc,nc), ps_se(nc,nc)
+    real (kind=r8) :: inv_dp_area(nc,nc)
+    type (hybrid_t) :: hybridnew
+
+    real (kind=r8), dimension(ngpc) :: gsweights, gspts
 
     logical :: llimiter(ntrac)
-    integer :: i,j,k,ie,itr,ntmp
+    integer :: i,j,k,ie,itr,kptr,q
+    integer :: kmin_jet_local,kmax_jet_local
+    integer :: kmin,kmax
+    integer :: ir
+    integer :: kblk               ! total number of vertical levels per thread
+    integer :: klev               ! total number of vertical levels in the JET region  
+    integer :: region_num_threads
+    logical :: inJetCall
+    logical :: ActiveJetThread
+  
 
     llimiter = .true.
 
+    inJetCall = .false.
+    if(((kminp .ne. 1) .or. (kmaxp .ne. nlev)) .and. vert_num_threads>1) then 
+       write(iulog,*)'WARNING: deactivating vertical threading for JET region call'   
+       inJetCall = .true.
+       region_num_threads = 1
+    else
+       region_num_threads = vert_num_threads
+    endif
+
+    call omp_set_nested(.true.)
+    !$OMP PARALLEL NUM_THREADS(region_num_threads), DEFAULT(SHARED), & 
+    !$OMP PRIVATE(hybridnew,kblk,ie,k,kmin,gspts,inv_dp_area,itr), &
+    !$OMP PRIVATE(kmin_jet_local,kmax,kmax_jet_local,kptr,q,ctracer,ActiveJetThread)
     call gauss_points(ngpc,gsweights,gspts) !set gauss points/weights
     gspts = 0.5_r8*(gspts+1.0_r8) !shift location so in [0:1] instead of [-1:1]
 
-    call t_startf('fvm:before_Qnhc')
+    if(inJetCall) then 
+      ! ===============================================================================
+      ! if this is the reduced Jet region call then do not thread over the vertical.... 
+      ! Just use the number of vertical levels that were passed into subroutine
+      ! ===============================================================================
+      hybridnew = config_thread_region(hybrid,'serial')
+      kmin = kminp
+      kmax = kmaxp
+    else
+      hybridnew = config_thread_region(hybrid,'vertical')
+      call get_loop_ranges(hybridnew,kbeg=kmin,kend=kmax)
+    endif
+
+    kblk = kmax-kmin+1
+    !call t_startf('fvm:before_Qnhc')
     do ie=nets,nete
-       do k=1,nlev
+       do k=kmin,kmax
           elem(ie)%sub_elem_mass_flux(:,:,:,k) = dt_fvm*elem(ie)%sub_elem_mass_flux(:,:,:,k)*fvm(ie)%dp_ref_inverse(k)
-          fvm(ie)%dp_fvm(1:nc,1:nc,k,n0_fvm)   =         fvm(ie)%dp_fvm (1:nc,1:nc,k,n0_fvm)*fvm(ie)%dp_ref_inverse(k)
+          fvm(ie)%dp_fvm(1:nc,1:nc,k)          =         fvm(ie)%dp_fvm (1:nc,1:nc,k)*fvm(ie)%dp_ref_inverse(k)
        end do
-       call ghostpack(ghostbufQnhc,fvm(ie)%dp_fvm(1-nhc:nc+nhc,1-nhc:nc+nhc,1:nlev,n0_fvm),nlev,      0,ie)
-       call ghostpack(ghostbufQnhc,fvm(ie)%c(1-nhc:nc+nhc,1-nhc:nc+nhc,1:nlev,1:ntrac,n0_fvm)   ,nlev*ntrac,nlev,ie)
+       kptr = kmin-1
+       call ghostpack(ghostbufQnhc,fvm(ie)%dp_fvm(1-nhc:nc+nhc,1-nhc:nc+nhc,kmin:kmax)   ,kblk,      kptr,ie)
+       do q=1,ntrac
+          kptr = kptr + nlev
+          call ghostpack(ghostbufQnhc,fvm(ie)%c(1-nhc:nc+nhc,1-nhc:nc+nhc,kmin:kmax,q),kblk,kptr,ie)
+       enddo
     end do
-    call t_stopf('fvm:before_Qnhc')
-
-    call t_startf('fvm:ghost_exchange:Qnhc')
-    call ghost_exchange(hybrid,ghostbufQnhc)
-    call t_stopf('fvm:ghost_exchange:Qnhc')
-
-    call t_startf('fvm:orthogonal_swept_areas')
+    !call t_stopf('fvm:before_Qnhc')
+    !call t_startf('fvm:ghost_exchange:Qnhc')
+    call ghost_exchange(hybridnew,ghostbufQnhc,location='ghostbufQnhc')
+    !call t_stopf('fvm:ghost_exchange:Qnhc')
+    !call t_startf('fvm:orthogonal_swept_areas')
     do ie=nets,nete
-      fvm(ie)%se_flux    (1:nc,1:nc,:,:) = elem(ie)%sub_elem_mass_flux(:,:,:,:)
-      call ghostunpack(ghostbufQnhc, fvm(ie)%dp_fvm(1-nhc:nc+nhc,1-nhc:nc+nhc,1:nlev,n0_fvm),nlev     ,0,ie)
-      call ghostunpack(ghostbufQnhc, fvm(ie)%c(1-nhc:nc+nhc,1-nhc:nc+nhc,1:nlev,1:ntrac,n0_fvm),   nlev*ntrac,nlev,ie) 
-      call compute_displacements_for_swept_areas (fvm(ie),fvm(ie)%dp_fvm(1-nhe:nc+nhe,1-nhe:nc+nhe,:,n0_fvm),1)
-      call ghostpack(ghostBufFlux, fvm(ie)%se_flux(:,:,:,:),4*nlev,0,ie)
+      do k=kmin,kmax
+        fvm(ie)%se_flux    (1:nc,1:nc,:,k) = elem(ie)%sub_elem_mass_flux(:,:,:,k)
+      end do
+      kptr = kmin-1
+      call ghostunpack(ghostbufQnhc, fvm(ie)%dp_fvm(1-nhc:nc+nhc,1-nhc:nc+nhc,kmin:kmax)   , kblk      ,kptr,ie)
+      do q=1,ntrac
+         kptr = kptr + nlev
+         call ghostunpack(ghostbufQnhc, fvm(ie)%c(1-nhc:nc+nhc,1-nhc:nc+nhc,kmin:kmax,q),kblk,kptr,ie)
+      enddo
+      do k=kmin,kmax
+        call compute_displacements_for_swept_areas (fvm(ie),fvm(ie)%dp_fvm(:,:,k),k,gsweights,gspts)
+      end do
+      kptr = 4*(kmin-1)
+      call ghostpack(ghostBufFlux, fvm(ie)%se_flux(:,:,:,kmin:kmax),4*kblk,kptr,ie)
     end do
-    call ghost_exchange(hybrid,ghostBufFlux)
+
+    call ghost_exchange(hybridnew,ghostBufFlux,location='ghostBufFlux')
+
     do ie=nets,nete
-      call ghostunpack(ghostBufFlux, fvm(ie)%se_flux(:,:,:,:),4*nlev,0,ie)
-      call ghost_flux_unpack(fvm(ie))
+      kptr = 4*(kmin-1)
+      call ghostunpack(ghostBufFlux, fvm(ie)%se_flux(:,:,:,kmin:kmax),4*kblk,kptr,ie)
+      do k=kmin,kmax
+         call ghost_flux_unpack(fvm(ie),fvm(ie)%se_flux(:,:,:,k))
+      end do
     enddo
 
-    call t_stopf('fvm:orthogonal_swept_areas')
-
+    !call t_stopf('fvm:orthogonal_swept_areas')
     do ie=nets,nete
-      fvm(ie)%c(:,:,:,:,np1_fvm)    = 0.0_r8!to avoid problems when uninitialized variables are set to NaN
-      fvm(ie)%dp_fvm(:,:,:,np1_fvm) = 0.0_r8!to avoid problems when uninitialized variables are set to NaN      
-      do k=1,nlev
-        call t_startf('fvm:tracers_reconstruct')
-        call reconstruction(fvm(ie)%c(1-nhc:nc+nhc,1-nhc:nc+nhc,k,1:ntrac,n0_fvm),&
+      do k=kmin,kmax
+        !call t_startf('fvm:tracers_reconstruct')
+        call reconstruction(fvm(ie)%c(:,:,:,:),nlev,k,&
              ctracer(:,:,:,:),irecons_tracer,llimiter,ntrac,&
              nc,nhe,nhr,nhc,nht,ns,nhr+(nhe-1),&
              fvm(ie)%jx_min,fvm(ie)%jx_max,fvm(ie)%jy_min,fvm(ie)%jy_max,&
@@ -108,99 +162,103 @@ contains
              fvm(ie)%spherecentroid(:,1-nhe:nc+nhe,1-nhe:nc+nhe),&
              fvm(ie)%recons_metrics,fvm(ie)%recons_metrics_integral,&
              fvm(ie)%rot_matrix,fvm(ie)%centroid_stretch,&
-             fvm(ie)%vertex_recons_weights,fvm(ie)%vtx_cart&
-             )
-        call t_stopf('fvm:tracers_reconstruct')
-        call t_startf('fvm:swept_flux')
-        call swept_flux(elem(ie),fvm(ie),k,ctracer)
-        call t_stopf('fvm:swept_flux')
+             fvm(ie)%vertex_recons_weights,fvm(ie)%vtx_cart,&
+             irecons_tracer_lev(k))
+        !call t_stopf('fvm:tracers_reconstruct')
+        !call t_startf('fvm:swept_flux')
+        call swept_flux(elem(ie),fvm(ie),k,ctracer,irecons_tracer_lev(k),gsweights,gspts)
+        !call t_stopf('fvm:swept_flux')
       end do
     end do
-     !
-     !***************************************
-     !
-     ! Large Courant number increment
-     !
-     !***************************************
-     !
-     ! In the jet region the effective Courant number
-     ! in the cslam trajectory algorithm can be > 1
-     ! (by up to 20%)
-     !
-     ! We limit the trajectories to < 1 but in this step
-     ! we do a piecewise constant update for the
-     ! amount of mass for which the Courant number is >1
-     !
-     !
-     call t_startf('fvm:fill_halo_fvm:large_Courant')
-     call fill_halo_fvm(ghostbufQ1,elem,fvm,hybrid,nets,nete,np1_fvm,1,kmin_jet,kmax_jet)
-     call t_stopf('fvm:fill_halo_fvm:large_Courant')
-     call t_startf('fvm:large_Courant_number_increment')
-     do ie=nets,nete
-       do k=kmin_jet,kmax_jet !1,nlev
-          call large_courant_number_increment(fvm(ie),k)
+    !
+    !***************************************
+    !
+    ! Large Courant number increment
+    !
+    !***************************************
+    !
+    ! In the jet region the effective Courant number
+    ! in the cslam trajectory algorithm can be > 1
+    ! (by up to 20%) in CAM
+    !
+    ! We limit the trajectories to < 1 but in this step
+    ! we do a piecewise constant update for the
+    ! amount of mass for which the Courant number is >1
+    !
+    !
+    if (large_Courant_incr) then
+      !call t_startf('fvm:fill_halo_fvm:large_Courant')
+      !if (kmin_jet<kmin.or.kmax_jet>kmax) then
+      !  call endrun('ERROR: kmax_jet must be .le. kmax passed to run_consistent_se_cslam')
+      !end if      
+      ! Determine the extent of the JET that is owned by this thread
+      ActiveJetThread = threadOwnsVertLevel(hybridnew,kmin_jet) .or. threadOwnsVertLevel(hybridnew,kmax_jet)
+      kmin_jet_local = max(kmin_jet,kmin)
+      kmax_jet_local = min(kmax_jet,kmax)
+      klev = kmax_jet-kmin_jet+1
+      call fill_halo_fvm(ghostbufQ1,elem,fvm,hybridnew,nets,nete,1,kmin_jet_local,kmax_jet_local,klev,active=ActiveJetThread)
+      !call t_stopf('fvm:fill_halo_fvm:large_Courant')
+      !call t_startf('fvm:large_Courant_number_increment')
+      if(ActiveJetThread) then 
+        do k=kmin_jet_local,kmax_jet_local !1,nlev
+          do ie=nets,nete
+            call large_courant_number_increment(fvm(ie),k)
+          end do
         end do
+      endif
+      !call t_stopf('fvm:large_Courant_number_increment')
+    end if
+
+    !call t_startf('fvm:end_of_reconstruct_subroutine')
+    do k=kmin,kmax
+      !
+      ! convert to mixing ratio
+      !
+      do ie=nets,nete
+        do j=1,nc
+          do i=1,nc
+            inv_dp_area(i,j) = 1.0_r8/fvm(ie)%dp_fvm(i,j,k)
+          end do
+        end do
+        
+        do itr=1,ntrac
+          do j=1,nc
+            do i=1,nc
+              ! convert to mixing ratio
+              fvm(ie)%c(i,j,k,itr) = fvm(ie)%c(i,j,k,itr)*inv_dp_area(i,j)
+              ! remove round-off undershoots
+              fvm(ie)%c(i,j,k,itr) = MAX(fvm(ie)%c(i,j,k,itr),qmin(itr))
+            end do
+          end do
+        end do
+        !
+        ! convert to dp and scale back dp
+        !
+        fvm(ie)%dp_fvm(1:nc,1:nc,k) = fvm(ie)%dp_fvm(1:nc,1:nc,k)*fvm(ie)%dp_ref(k)*fvm(ie)%inv_area_sphere
+#ifdef waccm_debug
+        do j=1,nc
+          do i=1,nc
+            fvm(ie)%CSLAM_gamma(i,j,k,1) = MAXVAL(fvm(ie)%CSLAM_gamma(i,j,k,:))
+          end do
+        end do
+#endif
+        elem(ie)%sub_elem_mass_flux(:,:,:,k)=0
       end do
-     call t_stopf('fvm:large_Courant_number_increment')
-
-     call t_startf('fvm:end_of_reconstruct_subroutine')
-     do ie=nets,nete
-       !
-       ! convert to mixing ratio
-       !
-       do k=1,nlev         
-         do j=1,nc
-           do i=1,nc
-             inv_dp_area(i,j) = 1.0_r8/fvm(ie)%dp_fvm(i,j,k,np1_fvm)
-           end do
-         end do
-
-         do itr=1,ntrac
-           do j=1,nc
-             do i=1,nc
-               ! convert to mixing ratio
-               fvm(ie)%c(i,j,k,itr,np1_fvm) = fvm(ie)%c(i,j,k,itr,np1_fvm)*inv_dp_area(i,j)
-               ! remove round-off undershoots
-               fvm(ie)%c(i,j,k,itr,np1_fvm) = MAX(fvm(ie)%c(i,j,k,itr,np1_fvm),qmin(itr))
-             end do
-           end do
-         end do
-         !
-         ! convert to dp and scale back dp
-         !
-         fvm(ie)%dp_fvm(1:nc,1:nc,k,np1_fvm) = fvm(ie)%dp_fvm(1:nc,1:nc,k,np1_fvm)*fvm(ie)%dp_ref(k)*fvm(ie)%inv_area_sphere
-       end do
-       !
-       ! to avoid accumulation of truncation error overwrite CSLAM surface pressure with SE
-       ! surface pressure
-       !
-       call subcell_integration(elem(ie)%state%psdry(:,:), np, nc, elem(ie)%metdet,ps_se)
-       fvm(ie)%psc = ps_se*fvm(ie)%inv_se_area_sphere
-!       do j=1,nc
-!         do i=1,nc
-!           fvm(ie)%psc(i,j) = sum(fvm(ie)%dp_fvm(i,j,:,np1_fvm)) +  hvcoord%hyai(1)*hvcoord%ps0
-!         end do
-!       end do
-     end do
-     call t_stopf('fvm:end_of_reconstruct_subroutine')
-     !
-     ! advance fvm time-levels
-     !
-     ntmp     = np1_fvm
-     np1_fvm  = n0_fvm
-     n0_fvm   = ntmp
+    end do
+    !call t_stopf('fvm:end_of_reconstruct_subroutine')
+    !$OMP END PARALLEL 
+    call omp_set_nested(.false.)
   end subroutine run_consistent_se_cslam
 
-  subroutine swept_flux(elem,fvm,ilev,ctracer)
-    use fvm_control_volume_mod, only: n0_fvm, np1_fvm
+  subroutine swept_flux(elem,fvm,ilev,ctracer,irecons_tracer_actual,gsweights,gspts)
     use fvm_analytic_mod      , only: get_high_order_weights_over_areas
     use dimensions_mod, only : kmin_jet,kmax_jet
     implicit none
     type (element_t) , intent(in)   :: elem
     type (fvm_struct), intent(inout):: fvm
-    integer          , intent(in) :: ilev
+    integer          , intent(in) :: ilev, irecons_tracer_actual
     real (kind=r8), intent(inout) :: ctracer(irecons_tracer,1-nhe:nc+nhe,1-nhe:nc+nhe,ntrac)
-
+    real (kind=r8), dimension(ngpc), intent(in) :: gsweights, gspts
     integer, parameter :: num_area=5, num_sides=4, imin= 0, imax=nc+1
     real (kind=r8)    , dimension(0:7       , imin:imax,imin:imax,num_sides) :: displ
     integer (kind=r8) , dimension(1:2,11    , imin:imax,imin:imax,num_sides) :: base_vec
@@ -221,6 +279,8 @@ contains
 
     REAL(KIND=r8), dimension(num_area) :: dp_area
 
+    real (kind=r8) :: dp(1-nhc:nc+nhc,1-nhc:nc+nhc)
+    
     logical :: tl1,tl2,tr1,tr2
 
     integer, dimension(4), parameter :: imin_side = (/1   ,0   ,1   ,1   /)
@@ -240,12 +300,14 @@ contains
     !
     ! prepare for air/tracer update
     !
-    fvm%dp_fvm(1:nc,1:nc,ilev,np1_fvm) = fvm%dp_fvm(1:nc,1:nc,ilev,n0_fvm)*fvm%area_sphere
+!    dp = fvm%dp_fvm(1-nhe:nc+nhe,1-nhe:nc+nhe,ilev)
+    dp = fvm%dp_fvm(1-nhc:nc+nhc,1-nhc:nc+nhc,ilev)
+    fvm%dp_fvm(1:nc,1:nc,ilev) = fvm%dp_fvm(1:nc,1:nc,ilev)*fvm%area_sphere
     do itr=1,ntrac
-      fvm%c(1:nc,1:nc,ilev,itr,np1_fvm) = fvm%c(1:nc,1:nc,ilev,itr,n0_fvm)*fvm%dp_fvm(1:nc,1:nc,ilev,np1_fvm)
-      do iw=1,irecons_tracer
+      fvm%c(1:nc,1:nc,ilev,itr) = fvm%c(1:nc,1:nc,ilev,itr)*fvm%dp_fvm(1:nc,1:nc,ilev)
+      do iw=1,irecons_tracer_actual
         ctracer(iw,1-nhe:nc+nhe,1-nhe:nc+nhe,itr)=ctracer(iw,1-nhe:nc+nhe,1-nhe:nc+nhe,itr)*&
-             fvm%dp_fvm(1-nhe:nc+nhe,1-nhe:nc+nhe,ilev,n0_fvm)
+             dp(1-nhe:nc+nhe,1-nhe:nc+nhe)
       end do
     end do
 
@@ -470,13 +532,14 @@ contains
             !
             ! iterate to get flux area
             !
-            call t_startf('fvm:swept_area:get_gamma')
+            !call t_startf('fvm:swept_area:get_gamma')
             do iarea=1,num_area
-              dp_area(iarea) = fvm%dp_fvm(idx(1,iarea,i,j,iside),idx(2,iarea,i,j,iside),ilev,n0_fvm)
+              dp_area(iarea) = dp(idx(1,iarea,i,j,iside),idx(2,iarea,i,j,iside))
             end do
             call get_flux_segments_area_iterate(x,x_static,dx_static,dx,x_start,dgam_vec,num_seg,num_seg_static,&
-                 num_seg_max,num_area,dp_area,flowcase,gamma,mass_flux_se(i,j,iside),0.0_r8,gamma_max)
-            call t_stopf('fvm:swept_area:get_gamma')
+                 num_seg_max,num_area,dp_area,flowcase,gamma,mass_flux_se(i,j,iside),0.0_r8,gamma_max,          &
+                 gsweights,gspts,ilev)
+            !call t_stopf('fvm:swept_area:get_gamma')
             !
             ! pack segments for high-order weights computation
             !
@@ -491,9 +554,10 @@ contains
             !
             ! compute higher-order weights
             !
-            call t_startf('fvm:swept_area:get_high_order_w')
-            call get_high_order_weights_over_areas(x,dx,num_seg,num_seg_max,num_area,weights,ngpc,gsweights, gspts,irecons_tracer)
-            call t_stopf('fvm:swept_area:get_high_order_w')
+            !call t_startf('fvm:swept_area:get_high_order_w')
+            call get_high_order_weights_over_areas(x,dx,num_seg,num_seg_max,num_area,weights,ngpc,&
+                 gsweights, gspts,irecons_tracer)
+            !call t_stopf('fvm:swept_area:get_high_order_w')
             !
             !**************************************************
             !
@@ -501,14 +565,14 @@ contains
             !
             !**************************************************
             !
-            call t_startf('fvm:swept_area:remap')
+            !call t_startf('fvm:swept_area:remap')
             flux=0.0_r8; flux_tracer=0.0_r8
             do iarea=1,num_area
               if (num_seg(iarea)>0) then
                 ii=idx(1,iarea,i,j,iside); jj=idx(2,iarea,i,j,iside)
-                flux=flux+weights(1,iarea)*fvm%dp_fvm(ii,jj,ilev,n0_fvm)
+                flux=flux+weights(1,iarea)*dp(ii,jj)
                 do itr=1,ntrac
-                  do iw=1,irecons_tracer
+                  do iw=1,irecons_tracer_actual
                     flux_tracer(itr) = flux_tracer(itr)+weights(iw,iarea)*ctracer(iw,ii,jj,itr)
                   end do
                 end do
@@ -516,34 +580,35 @@ contains
             end do
             fvm%se_flux(i,j,iside,ilev) = mass_flux_se(i,j,iside)-flux
             if (fvm%se_flux(i,j,iside,ilev)>1.0E-13_r8.and.(ilev<kmin_jet.or.ilev>kmax_jet)) then
-              write(*,*) "CN excess flux outside of pre-scribed jet region"
-              write(*,*) "Increase jet region with kmin_jet and kmax_jet ",&
+              write(iulog,*) "CN excess flux outside of pre-scribed jet region"
+              write(iulog,*) "Increase jet region with kmin_jet and kmax_jet ",&
                    ilev,fvm%se_flux(i,j,iside,ilev),mass_flux_se(i,j,iside),flux,flowcase,&
                    kmin_jet,kmax_jet
+              call endrun('ERROR in CSLAM: local Courant number is > 1; Increase kmin_jet/kmax_jet?')
             end if
 
-            fvm%dp_fvm(i  ,j  ,ilev        ,np1_fvm) = fvm%dp_fvm(i  ,j  ,ilev        ,np1_fvm)-flux
-            fvm%     c(i  ,j  ,ilev,1:ntrac,np1_fvm) = fvm%     c(i  ,j  ,ilev,1:ntrac,np1_fvm)-flux_tracer(1:ntrac)
+            fvm%dp_fvm(i  ,j  ,ilev        ) = fvm%dp_fvm(i  ,j  ,ilev        )-flux
+            fvm%     c(i  ,j  ,ilev,1:ntrac) = fvm%     c(i  ,j  ,ilev,1:ntrac)-flux_tracer(1:ntrac)
             !
             ! update flux in nearest neighbor cells
             !
             if (iside==1) then
-              fvm%dp_fvm(i,j-1,ilev        ,np1_fvm) = fvm%dp_fvm(i,j-1,ilev        ,np1_fvm)+flux
-              fvm%     c(i,j-1,ilev,1:ntrac,np1_fvm) = fvm%     c(i,j-1,ilev,1:ntrac,np1_fvm)+flux_tracer(1:ntrac)
+              fvm%dp_fvm(i,j-1,ilev        ) = fvm%dp_fvm(i,j-1,ilev        )+flux
+              fvm%     c(i,j-1,ilev,1:ntrac) = fvm%     c(i,j-1,ilev,1:ntrac)+flux_tracer(1:ntrac)
             end if
             if (iside==2) then
-              fvm%dp_fvm(i+1,j,ilev        ,np1_fvm) = fvm%dp_fvm(i+1,j,ilev        ,np1_fvm)+flux
-              fvm%     c(i+1,j,ilev,1:ntrac,np1_fvm) = fvm%     c(i+1,j,ilev,1:ntrac,np1_fvm)+flux_tracer(1:ntrac)
+              fvm%dp_fvm(i+1,j,ilev        ) = fvm%dp_fvm(i+1,j,ilev        )+flux
+              fvm%     c(i+1,j,ilev,1:ntrac) = fvm%     c(i+1,j,ilev,1:ntrac)+flux_tracer(1:ntrac)
             end if
             if (iside==3) then
-              fvm%dp_fvm(i,j+1,ilev        ,np1_fvm) = fvm%dp_fvm(i,j+1,ilev        ,np1_fvm)+flux
-              fvm%     c(i,j+1,ilev,1:ntrac,np1_fvm) = fvm%     c(i,j+1,ilev,1:ntrac,np1_fvm)+flux_tracer(1:ntrac)
+              fvm%dp_fvm(i,j+1,ilev        ) = fvm%dp_fvm(i,j+1,ilev        )+flux
+              fvm%     c(i,j+1,ilev,1:ntrac) = fvm%     c(i,j+1,ilev,1:ntrac)+flux_tracer(1:ntrac)
             end if
             if (iside==4) then
-              fvm%dp_fvm(i-1,j,ilev        ,np1_fvm) = fvm%dp_fvm(i-1,j,ilev        ,np1_fvm)+flux
-              fvm%     c(i-1,j,ilev,1:ntrac,np1_fvm) = fvm%     c(i-1,j,ilev,1:ntrac,np1_fvm)+flux_tracer(1:ntrac)
+              fvm%dp_fvm(i-1,j,ilev        ) = fvm%dp_fvm(i-1,j,ilev        )+flux
+              fvm%     c(i-1,j,ilev,1:ntrac) = fvm%     c(i-1,j,ilev,1:ntrac)+flux_tracer(1:ntrac)
             end if
-            call t_stopf('fvm:swept_area:remap')
+            !call t_stopf('fvm:swept_area:remap')
           end if
         end do
       end do
@@ -552,7 +617,6 @@ contains
 
 
   subroutine large_courant_number_increment(fvm,ilev)
-    use fvm_control_volume_mod, only: np1_fvm
     implicit none
     type (fvm_struct), intent(inout):: fvm
     integer          , intent(in) :: ilev
@@ -569,36 +633,43 @@ contains
     real (kind=r8), dimension(0:nc+1,0:nc+1)      :: inv_dp_area
     real (kind=r8), dimension(0:nc+1,0:nc+1,ntrac):: c_tmp
 
-    inv_dp_area=1.0_r8/fvm%dp_fvm(0:nc+1,0:nc+1,ilev,np1_fvm)
-    c_tmp      = fvm%c(0:nc+1,0:nc+1,ilev,1:ntrac,np1_fvm)
+    inv_dp_area=1.0_r8/fvm%dp_fvm(0:nc+1,0:nc+1,ilev)
+    c_tmp      = fvm%c(0:nc+1,0:nc+1,ilev,1:ntrac)
     do iside=1,4
       do j=jmin_side(iside),jmax_side(iside)
         do i=imin_side(iside),imax_side(iside)
           if (fvm%se_flux(i,j,iside,ilev)>eps) then
             flux = fvm%se_flux(i,j,iside,ilev)
+#ifdef waccm_debug
+            if (i>0.and.j>0.and.i<nc+1.and.j<nc+1) then
+               fvm%CSLAM_gamma(i,j,ilev,iside) = fvm%CSLAM_gamma(i,j,ilev,iside)+&
+                    fvm%se_flux(i,j,iside,ilev)*inv_dp_area(i,j)
+            end if
+#endif
+            
             do itr=1,ntrac
               flux_tracer(itr) = fvm%se_flux(i,j,iside,ilev)*c_tmp(i,j,itr)*inv_dp_area(i,j)
             end do
-            fvm%dp_fvm(i  ,j  ,ilev        ,np1_fvm) = fvm%dp_fvm(i  ,j  ,ilev        ,np1_fvm)-flux
-            fvm%     c(i  ,j  ,ilev,1:ntrac,np1_fvm) = fvm%     c(i  ,j  ,ilev,1:ntrac,np1_fvm)-flux_tracer(1:ntrac)
+            fvm%dp_fvm(i  ,j  ,ilev        ) = fvm%dp_fvm(i  ,j  ,ilev        )-flux
+            fvm%     c(i  ,j  ,ilev,1:ntrac) = fvm%     c(i  ,j  ,ilev,1:ntrac)-flux_tracer(1:ntrac)
             !
             ! update flux in nearest neighbor cells
             !
             if (iside==1) then
-              fvm%dp_fvm(i,j-1,ilev        ,np1_fvm) = fvm%dp_fvm(i,j-1,ilev        ,np1_fvm)+flux
-              fvm%     c(i,j-1,ilev,1:ntrac,np1_fvm) = fvm%     c(i,j-1,ilev,1:ntrac,np1_fvm)+flux_tracer(1:ntrac)
+              fvm%dp_fvm(i,j-1,ilev        ) = fvm%dp_fvm(i,j-1,ilev        )+flux
+              fvm%     c(i,j-1,ilev,1:ntrac) = fvm%     c(i,j-1,ilev,1:ntrac)+flux_tracer(1:ntrac)
             end if
             if (iside==2) then
-              fvm%dp_fvm(i+1,j,ilev        ,np1_fvm) = fvm%dp_fvm(i+1,j,ilev        ,np1_fvm)+flux
-              fvm%     c(i+1,j,ilev,1:ntrac,np1_fvm) = fvm%     c(i+1,j,ilev,1:ntrac,np1_fvm)+flux_tracer(1:ntrac)
+              fvm%dp_fvm(i+1,j,ilev        ) = fvm%dp_fvm(i+1,j,ilev        )+flux
+              fvm%     c(i+1,j,ilev,1:ntrac) = fvm%     c(i+1,j,ilev,1:ntrac)+flux_tracer(1:ntrac)
             end if
             if (iside==3) then
-              fvm%dp_fvm(i,j+1,ilev        ,np1_fvm) = fvm%dp_fvm(i,j+1,ilev        ,np1_fvm)+flux
-              fvm%     c(i,j+1,ilev,1:ntrac,np1_fvm) = fvm%     c(i,j+1,ilev,1:ntrac,np1_fvm)+flux_tracer(1:ntrac)
+              fvm%dp_fvm(i,j+1,ilev        ) = fvm%dp_fvm(i,j+1,ilev        )+flux
+              fvm%     c(i,j+1,ilev,1:ntrac) = fvm%     c(i,j+1,ilev,1:ntrac)+flux_tracer(1:ntrac)
             end if
             if (iside==4) then
-              fvm%dp_fvm(i-1,j,ilev        ,np1_fvm) = fvm%dp_fvm(i-1,j,ilev        ,np1_fvm)+flux
-              fvm%     c(i-1,j,ilev,1:ntrac,np1_fvm) = fvm%     c(i-1,j,ilev,1:ntrac,np1_fvm)+flux_tracer(1:ntrac)
+              fvm%dp_fvm(i-1,j,ilev        ) = fvm%dp_fvm(i-1,j,ilev        )+flux
+              fvm%     c(i-1,j,ilev,1:ntrac) = fvm%     c(i-1,j,ilev,1:ntrac)+flux_tracer(1:ntrac)
             end if
           end if
         end do
@@ -606,44 +677,45 @@ contains
     end do
   end subroutine large_courant_number_increment
 
-  subroutine ghost_flux_unpack(fvm)
+  subroutine ghost_flux_unpack(fvm,var)
     use control_mod, only : neast, nwest, seast, swest
     implicit none
     type (fvm_struct), intent(inout) :: fvm
+    real(kind=r8)                    :: var(1-nhe:nc+nhe,1-nhe:nc+nhe,4)
 
-    integer :: i,j,k,ishft
+    integer :: i,j,ishft
     !
     ! rotate coordinates if needed
     !
     if (fvm%cubeboundary.NE.0) then
-       do k=1,nlev
-          do j=1-nhe,nc+nhe
-             do i=1-nhe,nc+nhe
-                ishft = NINT(fvm%flux_orient(2,i,j))
-                fvm%se_flux(i,j,1:4,k) = cshift(fvm%se_flux(i,j,1:4,k),shift=ishft)
-             end do
-          end do
-       end do
-       !
-       ! non-existent cells in physical space - necessary?
-       !
-       if (fvm%cubeboundary==nwest) then
-          fvm%se_flux(1-nhe:0,nc+1 :nc+nhe,:,:) = 0.0_r8
-       else if (fvm%cubeboundary==swest) then
-          fvm%se_flux(1-nhe:0,1-nhe:0     ,:,:) = 0.0_r8
-       else if (fvm%cubeboundary==neast) then
-          fvm%se_flux(nc+1 :nc+nhe,nc+1 :nc+nhe,:,:) = 0.0_r8
-       else if (fvm%cubeboundary==seast) then
-          fvm%se_flux(nc+1 :nc+nhe,1-nhe:0,:,:) = 0.0_r8
-       end if
+      do j=1-nhe,nc+nhe
+        do i=1-nhe,nc+nhe
+          ishft = NINT(fvm%flux_orient(2,i,j))
+          var(i,j,1:4) = cshift(var(i,j,1:4),shift=ishft)
+        end do
+      end do
+      !
+      ! non-existent cells in physical space - necessary?
+      !
+      if (fvm%cubeboundary==nwest) then
+        var(1-nhe:0,nc+1 :nc+nhe,:) = 0.0_r8
+      else if (fvm%cubeboundary==swest) then
+        var(1-nhe:0,1-nhe:0     ,:) = 0.0_r8
+      else if (fvm%cubeboundary==neast) then
+        var(nc+1 :nc+nhe,nc+1 :nc+nhe,:) = 0.0_r8
+      else if (fvm%cubeboundary==seast) then
+        var(nc+1 :nc+nhe,1-nhe:0,:) = 0.0_r8
+      end if
     end if
   end subroutine ghost_flux_unpack
 
-  subroutine compute_displacements_for_swept_areas(fvm,cair,irecons)
+  subroutine compute_displacements_for_swept_areas(fvm,cair,k,gsweights,gspts)
+    use dimensions_mod, only: large_Courant_incr
     implicit none
     type (fvm_struct), intent(inout)     :: fvm
-    integer, intent(in) :: irecons
-    real (kind=r8)                :: cair(1-nhe:nc+nhe,1-nhe:nc+nhe,irecons,nlev) !high-order air density reconstruction
+    integer, intent(in) :: k
+    real (kind=r8)      :: cair(1-nhc:nc+nhc,1-nhc:nc+nhc) !high-order air density reconstruction
+    real (kind=r8), dimension(ngpc), intent(in) :: gsweights, gspts
     !
     !   flux iside 1                     flux iside 3                    flux iside 2       flux iside 4
     !
@@ -667,7 +739,7 @@ contains
     !   zero line-
     !   integral!
     !
-    integer               :: i,j,k,iside,ix
+    integer               :: i,j,iside,ix
     integer, parameter :: num_area=1, num_seg_max=2
     REAL(KIND=r8), dimension(2,num_seg_max,num_area,4,nc,nc) :: x_static, dx_static
     REAL(KIND=r8), dimension(2,num_seg_max,num_area,4,nc,nc) :: x, dx
@@ -747,10 +819,10 @@ contains
        end do
     end do
 
-    do k=1,nlev
+!    do k=1,nlev
       do j=1,nc
         do i=1,nc
-          dp_area = cair(i,j,1,k)
+          dp_area = cair(i,j)
           do iside=1,4
             flux_se = -fvm%se_flux(i,j,iside,k)
             if (flux_se>eps) then
@@ -763,24 +835,35 @@ contains
               call get_flux_segments_area_iterate(&
                    x_tmp(:,:,:),x_static(:,:,:,iside,i,j),dx_static(:,:,:,iside,i,j),dx_tmp(:,:,:),&
                    x_start(:,:,iside,i,j),dgam_vec(:,:,iside,i,j),num_seg(:,iside),num_seg_static(:,iside),&
-                   num_seg_max,num_area,dp_area,flowcase(iside),gamma(iside),flux_se,0.0_r8,1.0_r8)
+                   num_seg_max,num_area,dp_area,flowcase(iside),gamma(iside),flux_se,0.0_r8,1.0_r8,        &
+                   gsweights,gspts,k)
               fvm%se_flux(i,j,iside,k) = ABS(SUM(gamma(iside)*dgam_vec(:,1,iside,i,j)))
+#ifdef waccm_debug
+              fvm%CSLAM_gamma(i,j,k,iside) = gamma(iside)
+#endif              
               if (gamma(iside)>1_r8) then
+                 if (.not.large_Courant_incr) then
+                    write(iulog,*) 'ERROR in CSLAM: local Courant number is >1: gamma=',gamma(iside),' k=',k
+                    call endrun('ERROR in CSLAM: local Courant number is > 1; set namelist se_large_Courant_incr=.true. ')
+                 endif
                 gamma(iside)=1.0_r8-eps
               end if              
             else
               fvm%se_flux(i,j,iside,k) = 0.0_r8
+#ifdef waccm_debug
+              fvm%CSLAM_gamma(i,j,k,iside) = 0.0_r8
+#endif                            
             end if
           enddo
         end do
       end do
-    end do
+!    end do
   end subroutine compute_displacements_for_swept_areas
 
 
 
   subroutine get_flux_segments_area_iterate(x,x_static,dx_static,dx,x_start,dgam_vec,num_seg,num_seg_static,&
-       num_seg_max,num_area,c,flow_case,gamma,flux,gamma_min,gamma_max)
+       num_seg_max,num_area,c,flow_case,gamma,flux,gamma_min,gamma_max,gsweights,gspts,ilev)
     implicit none
     integer                                                , intent(in)    :: num_area, num_seg_max
     REAL(KIND=r8), dimension(2,num_seg_max,num_area), intent(in)    :: x_static, dx_static
@@ -789,9 +872,10 @@ contains
     REAL(KIND=r8), dimension(2,8)                   , intent(in) :: x_start, dgam_vec
     REAL(KIND=r8)                                   , intent(inout) :: gamma
     REAL(KIND=r8)                                   , intent(in) :: flux,gamma_min,gamma_max
-    integer                                                , intent(in) :: flow_case
+    integer                                                , intent(in) :: flow_case,ilev
 
     real (kind=r8), dimension(num_area)             , intent(in) :: c
+    real (kind=r8), dimension(ngpc)                 , intent(in) :: gsweights, gspts
 
     real (kind=r8)                                :: flux_static
     real (kind=r8)                                :: weight_area(num_area), xtmp(2), xtmp2(2)
@@ -803,7 +887,7 @@ contains
     real (kind=r8) :: xq2,xq2i, rho, rhoi, yrh, w_static(num_area)
 
     integer :: iseg,iarea,iter,ipt
-    integer, parameter :: iter_max=20
+    integer, parameter :: iter_max=40
     logical :: lexit_after_one_more_iteration
 
     lexit_after_one_more_iteration = .false.
@@ -1159,7 +1243,6 @@ contains
            ! dgamma set to minimum displacement to avoid f2-f1=0
            !
            gamma3=gamma2-SIGN(1.0_r8,dgamma)*eps
-           write(*,*) "WARNING: setting gamma to min",gamma3,iter
          end if
          gamma3=MAX(gamma3,gamma_min)
          !
@@ -1168,8 +1251,8 @@ contains
          gamma1 = gamma2; f1 = f2; gamma2 = gamma3;
        endif
      end do
-     if (iter>iter_max) write(*,*) "WARNING: iteration not converged",&
-          ABS(f2),flux,gamma1,gamma2,gamma3
+     if (iter>iter_max) write(iulog,*) "WARNING: iteration not converged",&
+          ABS(f2),flux,gamma1,gamma2,gamma3,ilev
   end subroutine get_flux_segments_area_iterate
 
   subroutine define_swept_areas(fvm,ilev,displ,base_vec,base_vtx,idx)
@@ -1183,9 +1266,9 @@ contains
     real (kind=r8)    , dimension(0:7       , imin:imax,imin:imax,num_sides), intent(out) :: displ
     integer (kind=r8) , dimension(1:2,11    , imin:imax,imin:imax,num_sides), intent(out) :: base_vec
     real (kind=r8)    , dimension(1:2, 6    , imin:imax,imin:imax,num_sides), intent(out) :: base_vtx
-    integer                  , dimension(2,num_area, imin:imax,imin:imax,num_sides), intent(out) :: idx
+    integer           , dimension(2,num_area, imin:imax,imin:imax,num_sides), intent(out) :: idx
 
-    real (kind=r8) :: flux_sum     (0:nc+1,0:nc+1,2)
+    real (kind=r8)        :: flux_sum     (0:nc+1,0:nc+1,2)
     integer               :: degenerate   (1:nc+1,1:nc+1  )
     integer               :: circular_flow(1:nc+1,1:nc+1  )
     integer               :: illcond      (1:nc+1,1:nc+1)
@@ -1465,7 +1548,7 @@ contains
     if (SUM(ABS(base_vec(:,9,i,j,iside))).NE.0) then
        gamma = displ(0,i,j,iside)*displ(7,i,j,iside)/(displ(0,i,j,iside)-displ(6,i,j,iside))
 !       gamma = MAX(MIN(gamma,displ(7,i,j,iside),-displ(3,i,j,iside)),0.0_r8)!MWR manuscript
-       gamma = MAX(MIN(gamma,displ(7,i,j,iside),-0.25_r8*displ(3,i,j,iside)),0.0_r8)!dbgxxx
+       gamma = MAX(MIN(gamma,displ(7,i,j,iside),-0.25_r8*displ(3,i,j,iside)),0.0_r8)
     else
        !
        ! corner case

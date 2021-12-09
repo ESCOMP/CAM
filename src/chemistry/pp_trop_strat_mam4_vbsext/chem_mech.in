@@ -1,17 +1,18 @@
 * Comments
-* User-given Tag Description: TS1-fullVBS for CESM2.0
-* Tag database identifier : MZ199_TS1-fullVBS_20180423
+* User-given Tag Description: TS1-fullVBS for CESM2.2
+* Tag database identifier : MZ264_TS1_fullVBS_20190611
 * Tag created by : lke
 * Tag created from branch : TS1-fullVBS
-* Tag created on : 2018-04-23 17:51:39.415645-06
+* Tag created on : 2019-06-11 17:47:07.589299-06
 * Comments for this tag follow:
-*     lke : 2018-04-23 : Latest change only removes O3S loss reactions.
+*     lke : 2019-06-11 : TS1, with SOA by sector, for CESM2, correcting TERP2OOH chemical formula, and TOLUENE+OH VBS coefficient.  With O3S.
 
       SPECIES
 
       Solution
  ALKNIT -> C5H11ONO2,
  ALKOOH -> C5H12O2,
+ AOA_NH -> CO,
  bc_a1 -> C,
  bc_a4 -> C,
  BCARY -> C15H24,
@@ -142,6 +143,7 @@
  num_a4 -> H,
  O,
  O3,
+ O3S -> O3,
  OCLO -> OClO,
  OCS -> OCS,
  ONITR -> C4H7NO4,
@@ -212,7 +214,7 @@
  SVOCbb -> C22H46,
  SVOCff -> C22H46,
  TEPOMUC -> C7H8O3,
- TERP2OOH -> C10H18O3,
+ TERP2OOH -> C10H16O4,
  TERPNIT -> C10H17NO4,
  TERPOOH -> C10H18O3,
  TERPROD1 -> C10H16O2,
@@ -316,6 +318,7 @@
 
    Solution classes
       Explicit
+ AOA_NH
  BRY
  CCL4
  CF2CLBR
@@ -342,6 +345,7 @@
  SF6
  NHDEP
  NDEP
+ O3S
       End Explicit
 
       Implicit
@@ -1124,6 +1128,8 @@
 *********************************
 *** Sulfur
 *********************************
+[DMS_NO3]              DMS + NO3  -> SO2 + HNO3                                 ; 1.9e-13, 520 
+[DMS_OHa]              DMS + OH  -> SO2                                         ; 9.6e-12, -234 
 [OCS_O]                OCS + O  -> SO + CO                                      ; 2.1e-11, -2200 
 [OCS_OH]               OCS + OH  -> SO2 + CO + H                                ; 7.2e-14, -1070 
 [S_O2]                 S + O2  -> SO + O                                        ; 2.3e-12 
@@ -1136,15 +1142,13 @@
 [SO_O3]                SO + O3  -> SO2 + O2                                     ; 3.4e-12, -1100 
 [SO_OCLO]              SO + OCLO  -> SO2 + CLO                                  ; 1.9e-12 
 [SO_OH]                SO + OH  -> SO2 + H                                      ; 2.7e-11, 335 
+[usr_DMS_OH]           DMS + OH  -> 0.5*SO2 + 0.5*HO2                            
 [usr_SO2_OH]           SO2 + OH  -> SO3 + HO2                                    
 [usr_SO3_H2O]          SO3 + H2O  -> H2SO4                                       
 *********************************
 *** Tropospheric Aerosol
 *********************************
-[DMS_NO3]              DMS + NO3  -> SO2 + HNO3                                 ; 1.9e-13, 520 
-[DMS_OHa]              DMS + OH  -> SO2                                         ; 9.6e-12, -234 
 [NH3_OH]               NH3 + OH  -> H2O + 1*NHDEP                               ; 1.7e-12, -710 
-[usr_DMS_OH]           DMS + OH  -> 0.5*SO2 + 0.5*HO2                            
 [usr_GLYOXAL_aer]      GLYOXAL  -> SOAGbg0                                       
 [usr_HO2_aer]          HO2  -> 0.5*H2O2                                          
 [usr_HONITR_aer]       HONITR  -> HNO3                                           
@@ -1176,7 +1180,7 @@
 [MTERP_OH_vbs]         MTERP + OH  -> MTERP + OH + 0.0508*SOAGbg0 + 0.1149*SOAGbg1 + 0.0348*SOAGbg2 + 0.0554*SOAGbg3 + 0.1278*SOAGbg4 ; 1.2e-11, 440 
 [SVOCbb_OH]            SVOCbb + OH  -> OH + 0.5931*SOAGbb0 + 0.1534*SOAGbb1 + 0.0459*SOAGbb2 + 0.0085*SOAGbb3 + 0.0128*SOAGbb4 ; 1.34e-11 
 [SVOCff_OH]            SVOCff + OH  -> OH + 0.5931*SOAGff0 + 0.1534*SOAGff1 + 0.0459*SOAGff2 + 0.0085*SOAGff3 + 0.0128*SOAGff4 ; 1.34e-11 
-[TOLUENE_OH_vbs]       TOLUENE + OH  -> TOLUENE + OH + 0.1364*SOAGff0 + 0.0101*SOAGff1 + 0.0763*SOAGff2 + 0.2157*SOAGff3 + 0.0232*SOAGff4 ; 1.7e-12, 352 
+[TOLUENE_OH_vbs]       TOLUENE + OH  -> TOLUENE + OH + 0.1364*SOAGff0 + 0.0101*SOAGff1 + 0.0763*SOAGff2 + 0.2157*SOAGff3 + 0.0738*SOAGff4 ; 1.7e-12, 352 
 [XYLENES_OH_vbs]       XYLENES + OH  -> XYLENES + OH + 0.1677*SOAGff0 + 0.0174*SOAGff1 + 0.086*SOAGff2 + 0.0512*SOAGff3 + 0.1598*SOAGff4 ; 1.7e-11 
 *********************************
 *** Stratospheric Aerosol
@@ -1205,7 +1209,7 @@
       End Reactions
 
       Ext Forcing
- pombb1_a4 <- dataset 
+ bc_a1 <- dataset 
  bc_a4 <- dataset 
  CO <- dataset 
  NO <- dataset 
@@ -1219,7 +1223,8 @@
  SVOCbb <- dataset 
  SVOCff <- dataset 
  pomff1_a4 <- dataset 
- bc_a1 <- dataset 
+ pombb1_a4 <- dataset 
+ AOA_NH 
  N 
  OH 
       End Ext Forcing
@@ -1234,7 +1239,6 @@
         model_architecture = VECTOR
         vector_length = 32
         architecture = hybrid
-*       vec_ftns = on
         namemod = on
       End Version Options
 

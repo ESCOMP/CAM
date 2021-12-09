@@ -98,6 +98,7 @@ private
   public  :: divergence_sphere_wk
   public  :: laplace_sphere_wk
   public  :: vlaplace_sphere_wk
+  public  :: vlaplace_sphere_wk_mol
   public  :: element_boundary_integral
   public  :: edge_flux_u_cg
   public  :: gll_to_dgmodal
@@ -162,18 +163,12 @@ contains
           if (i.eq.j) then
              deriv%dvv_diag(i,j)   = dvv(i,j)
           else
-             deriv%dvv_diag(i,j) = 0.0D0
+             deriv%dvv_diag(i,j) = 0.0_r8
           endif
         end do
      end do
 
-
-
-
-
-
-
-    v2v = 0.0D0
+    v2v = 0.0_r8
     do i=1,np
        v2v(i,i) = gp%weights(i)
     end do
@@ -1664,17 +1659,18 @@ end do
 
 
 !DIR$ ATTRIBUTES FORCEINLINE :: laplace_sphere_wk
-  subroutine laplace_sphere_wk(s,deriv,elem,laplace,var_coef)
+  subroutine laplace_sphere_wk(s,deriv,elem,laplace,var_coef,mol_nu)
 !
 !   input:  s = scalar
 !   ouput:  -< grad(PHI), grad(s) >   = weak divergence of grad(s)
 !     note: for this form of the operator, grad(s) does not need to be made C0
 !
     real(kind=r8), intent(in) :: s(np,np)
-    type (derivative_t), intent(in) :: deriv
-    type (element_t), intent(in) :: elem
-    real(kind=r8)             :: laplace(np,np)
-    logical, intent(in),optional :: var_coef
+    type (derivative_t), intent(in)     :: deriv
+    type (element_t), intent(in)        :: elem
+    real(kind=r8)                       :: laplace(np,np)
+    logical,       intent(in)           :: var_coef
+    real(kind=r8), intent(in), optional :: mol_nu(np,np)  !variable nu (e.g. molecular diffusion)
 
     real(kind=r8)             :: laplace2(np,np)
     integer i,j
@@ -1683,6 +1679,15 @@ end do
     real(kind=r8) :: grads(np,np,2), oldgrads(np,np,2)
 
     call gradient_sphere(s,deriv,elem%Dinv,grads)
+    !
+    ! molecular diffusion coefficient
+    !
+    if (present(mol_nu)) then
+      if (var_coef) &
+           call endrun('ERROR: this option is only for non-grid dependent variable viscosity')
+      grads(:,:,1) = grads(:,:,1)*mol_nu(:,:)
+      grads(:,:,2) = grads(:,:,2)*mol_nu(:,:)
+    end if
 
     if (var_coef) then
        if (hypervis_power/=0 ) then
@@ -1701,7 +1706,7 @@ end do
              end do
           end do
        else
-          ! do nothing: constant coefficient viscsoity
+          ! do nothing: constant coefficient viscosity
        endif
     endif
 
@@ -1713,7 +1718,7 @@ end do
   end subroutine laplace_sphere_wk
 
 !DIR$ ATTRIBUTES FORCEINLINE :: vlaplace_sphere_wk
-  subroutine vlaplace_sphere_wk(v,deriv,elem,laplace,var_coef,nu_ratio)
+  subroutine vlaplace_sphere_wk(v,deriv,elem,undamprrcart,laplace,var_coef,nu_ratio)
 !
 !   input:  v = vector in lat-lon coordinates
 !   ouput:  weak laplacian of v, in lat-lon coordinates
@@ -1724,41 +1729,83 @@ end do
 !
 !   One combination NOT supported:  tensorHV and nu_div/=nu then abort
 !
-    real(kind=r8), intent(in) :: v(np,np,2)
-    logical, intent(in),optional :: var_coef
-    type (derivative_t), intent(in) :: deriv
-    type (element_t), intent(in) :: elem
-    real(kind=r8), optional :: nu_ratio
-    real(kind=r8), intent(out) :: laplace(np,np,2)
+    real(kind=r8),           intent(in)  :: v(np,np,2)
+    type (derivative_t),     intent(in)  :: deriv
+    type (element_t),        intent(in)  :: elem
+    logical,                 intent(in)  :: undamprrcart
+    real(kind=r8),           intent(out) :: laplace(np,np,2)
+    logical,       optional, intent(in)  :: var_coef
+    real(kind=r8), optional, intent(in)  :: nu_ratio
 
 
     if (hypervis_scaling/=0 .and. var_coef) then
        ! tensorHV is turned on - requires cartesian formulation
        if (present(nu_ratio)) then
-          if (nu_ratio /= 1) then
+          if (nu_ratio /= 1._r8) then
              call endrun('ERROR: tensorHV can not be used with nu_div/=nu')
           endif
        endif
-       laplace=vlaplace_sphere_wk_cartesian(v,deriv,elem,var_coef)
+       laplace=vlaplace_sphere_wk_cartesian(v,deriv,elem,var_coef,undamprrcart)
     else
        ! all other cases, use contra formulation:
-       laplace=vlaplace_sphere_wk_contra(v,deriv,elem,var_coef,nu_ratio)
+       laplace=vlaplace_sphere_wk_contra(v,deriv,elem,var_coef,undamprrcart,nu_ratio)
     endif
 
   end subroutine vlaplace_sphere_wk
+  !
+  ! version of vlaplace_sphere_wk for molecular diffusion
+  !
+  subroutine vlaplace_sphere_wk_mol(v,deriv,elem,undamprrcart,mol_nu,laplace)
+    !
+    !   input:  v = vector in lat-lon coordinates
+    !   ouput:  weak laplacian of v, in lat-lon coordinates
+    !
+    real(kind=r8), intent(in)      :: v(np,np,2)
+    type (derivative_t), intent(in):: deriv
+    type (element_t), intent(in)   :: elem
+    logical,             intent(in) :: undamprrcart
+    real(kind=r8), intent(in)      :: mol_nu(np,np)
+    real(kind=r8), intent(out)     :: laplace(np,np,2)
+
+    real(kind=r8) :: vor(np,np),div(np,np)
+
+    integer :: n,m
+
+    call divergence_sphere(v,deriv,elem,div)
+    call vorticity_sphere(v,deriv,elem,vor)
+
+    div = div*mol_nu(:,:)
+    vor = vor*mol_nu(:,:)
+
+    laplace = gradient_sphere_wk_testcov(div,deriv,elem) - &
+         curl_sphere_wk_testcov(vor,deriv,elem)
+
+    if (undamprrcart) then
+      do n=1,np
+        do m=1,np
+          ! add in correction so we dont damp rigid rotation
+          laplace(m,n,1)=laplace(m,n,1) + 2*elem%spheremp(m,n)*v(m,n,1)*(ra**2)
+          laplace(m,n,2)=laplace(m,n,2) + 2*elem%spheremp(m,n)*v(m,n,2)*(ra**2)
+        enddo
+      enddo
+    end if
+
+
+  end subroutine vlaplace_sphere_wk_mol
 
 
 
-  function vlaplace_sphere_wk_cartesian(v,deriv,elem,var_coef) result(laplace)
+  function vlaplace_sphere_wk_cartesian(v,deriv,elem,var_coef,undamprrcart) result(laplace)
 !
 !   input:  v = vector in lat-lon coordinates
 !   ouput:  weak laplacian of v, in lat-lon coordinates
 
-    real(kind=r8), intent(in) :: v(np,np,2)
-    logical :: var_coef
+    real(kind=r8),       intent(in) :: v(np,np,2)
     type (derivative_t), intent(in) :: deriv
-    type (element_t), intent(in) :: elem
-    real(kind=r8) :: laplace(np,np,2)
+    type (element_t),    intent(in) :: elem
+    logical,             intent(in) :: var_coef
+    logical,             intent(in) :: undamprrcart
+    real(kind=r8)                   :: laplace(np,np,2)
     ! Local
 
     integer component
@@ -1782,17 +1829,17 @@ end do
                                 dum_cart(:,:,3)*elem%vec_sphere2cart(:,:,3,component)
     end do
 
-#define UNDAMPRRCART
-#ifdef UNDAMPRRCART
-    ! add in correction so we dont damp rigid rotation
-    laplace(:,:,1)=laplace(:,:,1) + 2*elem%spheremp(:,:)*v(:,:,1)*(ra**2)
-    laplace(:,:,2)=laplace(:,:,2) + 2*elem%spheremp(:,:)*v(:,:,2)*(ra**2)
-#endif
+    if (undamprrcart) then
+      ! add in correction so we dont damp rigid rotation
+      laplace(:,:,1)=laplace(:,:,1) + 2*elem%spheremp(:,:)*v(:,:,1)*(ra**2)
+      laplace(:,:,2)=laplace(:,:,2) + 2*elem%spheremp(:,:)*v(:,:,2)*(ra**2)
+    end if
+
   end function vlaplace_sphere_wk_cartesian
 
 
 
-  function vlaplace_sphere_wk_contra(v,deriv,elem,var_coef,nu_ratio) result(laplace)
+  function vlaplace_sphere_wk_contra(v,deriv,elem,var_coef,undamprrcart,nu_ratio) result(laplace)
 !
 !   input:  v = vector in lat-lon coordinates
 !   ouput:  weak laplacian of v, in lat-lon coordinates
@@ -1802,12 +1849,15 @@ end do
 !                 = < PHI grad(div) >  - < PHI curl(vor) >
 !                 = grad_wk(div) - curl_wk(vor)
 !
-    real(kind=r8), intent(in) :: v(np,np,2)
-    logical, intent(in) :: var_coef
-    type (derivative_t), intent(in) :: deriv
-    type (element_t), intent(in) :: elem
-    real(kind=r8) :: laplace(np,np,2)
-    real(kind=r8), optional :: nu_ratio
+    real(kind=r8),           intent(in) :: v(np,np,2)
+    logical,                 intent(in) :: var_coef
+    type (derivative_t),     intent(in) :: deriv
+    type (element_t),        intent(in) :: elem
+    logical,                 intent(in) :: undamprrcart
+    real(kind=r8), optional, intent(in) :: nu_ratio
+
+    real(kind=r8)                       :: laplace(np,np,2)
+
     ! Local
 
     integer i,j,l,m,n
@@ -1828,16 +1878,15 @@ end do
     laplace = gradient_sphere_wk_testcov(div,deriv,elem) - &
          curl_sphere_wk_testcov(vor,deriv,elem)
 
-    do n=1,np
-       do m=1,np
+    if (undamprrcart) then
+      do n=1,np
+        do m=1,np
           ! add in correction so we dont damp rigid rotation
-#define UNDAMPRR
-#ifdef UNDAMPRR
           laplace(m,n,1)=laplace(m,n,1) + 2*elem%spheremp(m,n)*v(m,n,1)*(ra**2)
           laplace(m,n,2)=laplace(m,n,2) + 2*elem%spheremp(m,n)*v(m,n,2)*(ra**2)
-#endif
-       enddo
-    enddo
+        enddo
+      enddo
+    end if
   end function vlaplace_sphere_wk_contra
 
   function gll_to_dgmodal(p,deriv) result(phat)
@@ -2060,6 +2109,7 @@ end do
 
     v(:,:,1) = elem%Dinv(:,:,1,1)*g(:,:,1) + elem%Dinv(:,:,1,2)*g(:,:,2)
     v(:,:,2) = elem%Dinv(:,:,2,1)*g(:,:,1) + elem%Dinv(:,:,2,2)*g(:,:,2)
+
     do j=1,p
     do i=1,p
        div(i,j,1) = -SUM(elem%spheremp(:,j)*v(:,j,1)*deriv%Dvv(i,:))
@@ -2177,7 +2227,7 @@ end do
     real (kind=r8)              :: values(intervals,intervals)
 
 
-    real(kind=r8), parameter :: zero = 0.0D0, one=1.0D0, two=2.0D0
+    real(kind=r8), parameter :: zero = 0.0_r8, one=1.0_r8, two=2.0_r8
 
 
     real (kind=r8) :: sub_gll        (intervals,np)
@@ -2266,7 +2316,8 @@ end do
     ! they are defined for a 2x2 square
     integration_matrix = integration_matrix/intervals
 
-    boundary_interp_matrix(:,:,:) = Lagrange_interp(:,(/1,np/),:)
+    boundary_interp_matrix(:,1,:) = Lagrange_interp(:,1,:)
+    boundary_interp_matrix(:,2,:) = Lagrange_interp(:,np,:)
   end subroutine allocate_subcell_integration_matrix_cslam
 
   subroutine allocate_subcell_integration_matrix_physgrid(np, intervals)
@@ -2281,7 +2332,7 @@ end do
     real (kind=r8)              :: values(intervals,intervals)
 
 
-    real(kind=r8), parameter :: zero = 0.0D0, one=1.0D0, two=2.0D0
+    real(kind=r8), parameter :: zero = 0.0_r8, one=1.0_r8, two=2.0_r8
 
 
     real (kind=r8) :: sub_gll        (intervals,np)

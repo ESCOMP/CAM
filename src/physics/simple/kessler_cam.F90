@@ -9,13 +9,14 @@ module kessler_cam
   private
   save
 
-  public :: kessler_register, kessler_init, kessler_tend
+  public :: kessler_register, kessler_cam_init, kessler_tend
 
   integer :: ixcldliq = -1 ! cloud liquid mixing ratio index
   integer :: ixrain   = -1 ! rain liquid mixing ratio index
 
   ! physics buffer indices
   integer :: prec_sed_idx  = 0
+  integer :: relhum_idx    = 0
 
 !========================================================================================
 contains
@@ -32,19 +33,30 @@ contains
          longname='Grid box averaged rain water amount', is_convtran1=.true.)
 
     call pbuf_add_field('PREC_SED', 'physpkg', dtype_r8, (/pcols/), prec_sed_idx)
+    call pbuf_add_field('RELHUM',   'physpkg', dtype_r8, (/pcols,pver/), relhum_idx)
 
   end subroutine kessler_register
 
 !========================================================================================
 
-  subroutine kessler_init(pbuf2d)
+  subroutine kessler_cam_init(pbuf2d)
 
     use physconst,      only: cpair, latvap,pstd, rair, rhoh2o
     use constituents,   only: cnst_name, cnst_longname, bpcnst, apcnst
     use cam_history,    only: addfld, add_default, horiz_only
-    use kessler_mod,    only: kessler_set_const
+    use cam_abortutils, only: endrun
+
+      use state_converters, only: pres_to_density_dry_init
+      use kessler,          only: kessler_init
+      use state_converters, only: calc_exner_init
+
+      integer                           :: errflg
+      character(len=512)                :: errmsg
+
 
     type(physics_buffer_desc), pointer :: pbuf2d(:,:)
+
+    errflg = 0
 
     ! mass mixing ratios
     call addfld(cnst_name(ixcldliq), (/ 'lev' /), 'A', 'kg/kg', trim(cnst_longname(ixcldliq)))
@@ -56,9 +68,27 @@ contains
     call add_default(cnst_name(ixrain),   1, ' ')
 
     ! Initialize Kessler with CAM physical constants
-    call kessler_set_const(rair, cpair, latvap, pstd/100.0_r8, rhoh2o)
 
-  end subroutine kessler_init
+      if (errflg == 0) then
+         call kessler_init(cpair, latvap, pstd, rair, rhoh2o, errmsg, errflg)
+         if (errflg /=0) then
+            call endrun('kessler_cam_init error: Error returned from kessler_init: '//trim(errmsg))
+         end if
+      end if
+      if (errflg == 0) then
+         call pres_to_density_dry_init(cpair, rair, errmsg, errflg)
+         if (errflg /=0) then
+            call endrun('kessler_cam_init error: Error returned from pres_to_density_dry_init: '//trim(errmsg))
+         end if
+      end if
+      if (errflg == 0) then
+         call calc_exner_init(errmsg, errflg)
+         if (errflg /=0) then
+            call endrun('kessler_cam_init error: Error returned from calc_exner_init: '//trim(errmsg))
+         end if
+      end if
+
+  end subroutine kessler_cam_init
 
 !========================================================================================
 
@@ -74,9 +104,16 @@ contains
     use physics_types,      only: physics_ptend_init
     use constituents,       only: pcnst, cnst_name, cnst_type
 
+    use kessler,          only: kessler_run
+    use state_converters, only: wet_to_dry_run
+    use state_converters, only: dry_to_wet_run
+    use state_converters, only: pres_to_density_dry_run
+    use state_converters, only: temp_to_potential_temp_run
+    use state_converters, only: calc_exner_run
+    use state_converters, only: potential_temp_to_temp_run
+
     use cam_abortutils,     only: endrun
     use cam_history,        only: outfld
-    use kessler_mod,        only: kessler
 
 
     ! arguments
@@ -89,31 +126,36 @@ contains
     !
     integer                            :: lchnk            ! chunk identifier
     integer                            :: ncol             ! number of atmospheric columns
+    integer                            :: lyr_surf
+    integer                            :: lyr_toa
 
-    real(r8)                           :: pmid(pcols,pver) ! mid-point pressure
     real(r8)                           :: rho(pcols,pver)  ! Dry air density
-    real(r8)                           :: exner(pcols,pver)! exner (CAM vertical order)
     real(r8)                           :: pk(pcols,pver)   ! exner func.
     real(r8)                           :: th(pcols,pver)   ! Potential temp.
+    real(r8)                           :: temp(pcols,pver) ! temperature
     real(r8)                           :: qv(pcols,pver)   ! Water vapor
     real(r8)                           :: qc(pcols,pver)   ! Cloud water
     real(r8)                           :: qr(pcols,pver)   ! Rain water
-    real(r8)                           :: z(pcols,pver)    ! height
-    real(r8)                           :: wet_to_dry(pcols)! factor to convert from wet to dry mixing ratio 
-    real(r8)                           :: dry_to_wet(pcols)! factor to convert from dry to wet mixing ratio 
     integer                            :: k,rk             ! vert. indices
     logical                            :: lq(pcnst)        ! Calc tendencies?
     character(len=SHR_KIND_CM)         :: errmsg
 
+    integer                            :: errflg
+
     real(r8), pointer                  :: prec_sed(:) ! total precip from cloud sedimentation
+    real(r8), pointer                  :: relhum(:,:) ! relative humidity
 
     integer :: i
 
     !
     !-----------------------------------------------------------------------
     !
+    errflg = 0
     lchnk = state%lchnk
     ncol  = state%ncol
+
+    lyr_surf = pver
+    lyr_toa = 1
 
     ! initialize individual parameterization tendencies
     lq           = .false.
@@ -123,72 +165,67 @@ contains
     call physics_ptend_init(ptend, state%psetcols, 'kessler',                 &
          ls=.true., lu=.true., lv=.true., lq=lq)
 
-    do k=1,pver
-      exner(:ncol,k) = (state%pmid(:ncol,k)/1.e5_r8)**(rair/cpair)
-    end do
-
     call pbuf_get_field(pbuf, prec_sed_idx, prec_sed)
+    call pbuf_get_field(pbuf, relhum_idx,   relhum)
 
     do k = 1, pver
-      rk = pver - k + 1
-      rho(:ncol,rk) = state%pmiddry(:ncol,k)/(rair*state%t(:ncol,k))
-      pk(:ncol,rk) =  exner(:ncol,k) 
       ! Create temporaries for state variables changed by Kessler routine
-      th(:ncol,rk) = state%t(:ncol,k) / exner(:ncol,k)
-      z(:ncol,rk)  = state%zm(:ncol,k)
-      qv(:ncol,rk) = state%q(:ncol,k,1)
-      qc(:ncol,rk) = state%q(:ncol,k,ixcldliq)
-      qr(:ncol,rk) = state%q(:ncol,k,ixrain)
-      !
-      ! mixing ratios are wet - convert to dry for Kessler physics
-      !
-      wet_to_dry(:ncol) = state%pdel(:ncol,k)/state%pdeldry(:ncol,k)
-
-      if (cnst_type(1).eq.'wet')        qv(:ncol,rk) = wet_to_dry(:ncol)*qv(:ncol,rk)     
-      if (cnst_type(ixcldliq).eq.'wet') qc(:ncol,rk) = wet_to_dry(:ncol)*qc(:ncol,rk)
-      if (cnst_type(ixrain).eq.'wet')   qr(:ncol,rk) = wet_to_dry(:ncol)*qr(:ncol,rk)
+      temp(:ncol,k) = state%t(:ncol,k)
+      qv(:ncol,k)   = state%q(:ncol,k,1)
+      qc(:ncol,k)   = state%q(:ncol,k,ixcldliq)
+      qr(:ncol,k)   = state%q(:ncol,k,ixrain)
     end do
-
-    ! Kessler physics arguments
-    ! ncol:  Number of columns
-    ! nz:    Number of vertical levels
-    ! dt:    Time step (s) (in)
-    ! rho:   Dry air density (not mean state as in KW) (kg/m^3) (in)
-    ! z:     Heights of thermo. levels in the grid column (m) (in)
-    ! pk:    Exner function (p/p0)**(R/cp) (in)
-    ! th:    Potential Temperature (K) (inout)
-    ! qv:    Water vapor mixing ratio (gm/gm) (inout)
-    ! qc:    Cloud water mixing ratio (gm/gm) (inout)
-    ! qr:    Rain  water mixing ratio (gm/gm) (inout)
-    ! precl: Precipitation rate (m_water / s) (out)
-    ! errmsg: Error string if error found
-    call kessler(ncol, pver, ztodt, rho(:ncol,:), z(:ncol,:), pk(:ncol,:),    &
-         th(:ncol,:), qv(:ncol,:), qc(:ncol,:), qr(:ncol,:), prec_sed, errmsg)
-
-    if (len_trim(errmsg) > 0) then
-      call endrun(trim(errmsg))
+    
+    if (errflg == 0) then
+       call calc_exner_run(ncol, pver, cpair, rair, state%pmid, pk, errmsg, errflg)
+       if (errflg /=0) then
+          call endrun('kessler_tend error: Error returned from calc_exner_run: '//trim(errmsg))
+       end if
     end if
-
-    do k = 1, pver
-      rk = pver - k + 1
-      !
-      ! mixing ratios are dry - convert to wet
-      !
-      dry_to_wet(:ncol) = state%pdeldry(:ncol,k)/state%pdel(:ncol,k)
-
-      if (cnst_type(1).eq.'wet')        qv(:ncol,rk) = dry_to_wet(:ncol)*qv(:ncol,rk)     
-      if (cnst_type(ixcldliq).eq.'wet') qc(:ncol,rk) = dry_to_wet(:ncol)*qc(:ncol,rk)
-      if (cnst_type(ixrain).eq.'wet')   qr(:ncol,rk) = dry_to_wet(:ncol)*qr(:ncol,rk)
-    end do
-
+    if (errflg == 0) then
+       call temp_to_potential_temp_run(ncol, pver, temp, pk, th, errmsg, errflg)
+       if (errflg /=0) then
+          call endrun('kessler_tend error: Error returned from temp_to_potential_temp_run: '//trim(errmsg))
+       end if
+    end if
+    if (errflg == 0) then
+       call pres_to_density_dry_run(ncol, pver, state%pmiddry, temp, rho, errmsg, errflg)
+       if (errflg /=0) then
+          call endrun('kessler_tend error: Error returned from pres_to_density_dry_run: '//trim(errmsg))
+       end if
+    end if
+    if (errflg == 0) then
+       call wet_to_dry_run(ncol, pver, state%pdel, state%pdeldry, qv, qc, qr, errmsg, errflg)
+       if (errflg /=0) then
+          call endrun('kessler_tend error: Error returned from wet_to_dry_run: '//trim(errmsg))
+       end if
+    end if
+    if (errflg == 0) then
+       call kessler_run(ncol, pver, ztodt, lyr_surf, lyr_toa,        &
+                        rho, state%zm, pk, th, qv, qc, qr, prec_sed, relhum, errmsg, errflg)
+       if (errflg /=0) then
+          call endrun('kessler_tend error: Error returned from kessler_run: '//trim(errmsg))
+       end if
+    end if
+    if (errflg == 0) then
+       call potential_temp_to_temp_run(ncol, pver, th, pk, temp, errmsg, errflg)
+       if (errflg /=0) then
+          call endrun('kessler_tend error: Error returned from potential_temp_to_temp_run: '//trim(errmsg))
+       end if
+    end if
+    if (errflg == 0) then
+       call dry_to_wet_run(ncol, pver, state%pdel, state%pdeldry, qv, qc, qr, errmsg, errflg)
+       if (errflg /=0) then
+          call endrun('kessler_tend error: Error returned from dry_to_wet_run: '//trim(errmsg))
+       end if
+    end if
 
     ! Back out tendencies from updated fields
     do k = 1, pver
-      rk = pver - k + 1
-      ptend%s(:ncol,k) = (th(:ncol,rk)*exner(:ncol,k) - state%t(:ncol,k)) * cpair / ztodt
-      ptend%q(:ncol,k,1) = (qv(:ncol,rk) - state%q(:ncol,k,1)) / ztodt
-      ptend%q(:ncol,k,ixcldliq) = (qc(:ncol,rk) - state%q(:ncol,k,ixcldliq)) / ztodt
-      ptend%q(:ncol,k,ixrain) = (qr(:ncol,rk) - state%q(:ncol,k,ixrain)) / ztodt
+      ptend%s(:ncol,k)          = (th(:ncol,k)*pk(:ncol,k) - state%t(:ncol,k)) * cpair / ztodt
+      ptend%q(:ncol,k,1)        = (qv(:ncol,k) - state%q(:ncol,k,1)) / ztodt
+      ptend%q(:ncol,k,ixcldliq) = (qc(:ncol,k) - state%q(:ncol,k,ixcldliq)) / ztodt
+      ptend%q(:ncol,k,ixrain)   = (qr(:ncol,k) - state%q(:ncol,k,ixrain)) / ztodt
     end do
 
     ! Output liquid tracers

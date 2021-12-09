@@ -1,8 +1,0 @@
--spmd -smp
--dyn se
--hgrid ne16np4.pg3
--phys cam5
--aquaplanet
--nadv_tt 5
--debug
--s

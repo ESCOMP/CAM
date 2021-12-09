@@ -1,0 +1,17 @@
+use_gw_front            = .false.
+iopfile="$DIN_LOC_ROOT/atm/cam/scam/iop/SAS_ideal_4scam.nc"
+ncdata="$DIN_LOC_ROOT/atm/cam/scam/iop/CESM2.F2000climo.IOP_SITES.cam.i.0003-06-01-00000.nc"
+mfilt=30
+nhtfrq=1
+co2vmr=368.9e-6
+scm_use_obs_uv = .true.
+scm_backfill_iop_w_init = .true.
+scm_relaxation         = .true.
+scm_relax_fincl =  'bc_a1', 'bc_a4', 'dst_a1', 'dst_a2', 'dst_a3', 'ncl_a1', 'ncl_a2',
+                   'ncl_a3', 'num_a1', 'num_a2', 'num_a3',
+                   'num_a4', 'pom_a1', 'pom_a4', 'so4_a1', 'so4_a2', 'so4_a3', 'soa_a1', 'soa_a2'
+scm_relax_bot_p              = 105000.
+scm_relax_top_p        = 200.
+scm_relax_linear             = .true.
+scm_relax_tau_bot_sec                = 864000.
+scm_relax_tau_top_sec                = 172800.

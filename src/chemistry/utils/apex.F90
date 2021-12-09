@@ -36,6 +36,7 @@ module apex
   use shr_kind_mod,  only : r8 => shr_kind_r8
   use cam_logfile,   only : iulog
   use cam_abortutils,only : endrun
+  use spmd_utils,    only : masterproc
 
   implicit none
 
@@ -121,6 +122,7 @@ module apex
   integer, protected :: apex_end_yr
 
   logical :: igrf_set = .false.
+  logical :: first_warning = .false.
 
 contains
 !-----------------------------------------------------------------------
@@ -203,9 +205,11 @@ subroutine ggrid(nvert,glatmin,glatmax,glonmin,glonmax,altmin,altmax, &
   if (gplon(nlon-1) >= glonmax) nlon = nlon-1
   gpalt(1) = max(gpalt(1),0._r8)
 
-  write(iulog,"('ggrid: nlat=',i4,' gplat=',/,(6f9.2))") nlat,gplat
-  write(iulog,"('ggrid: nlon=',i4,' gplon=',/,(6f9.2))") nlon,gplon
-  write(iulog,"('ggrid: nalt=',i4,' gpalt=',/,(6f9.2))") nalt,gpalt
+  if (masterproc) then
+     write(iulog,"('ggrid: nlat=',i4,' gplat=',/,(6f9.2))") nlat,gplat
+     write(iulog,"('ggrid: nlon=',i4,' gplon=',/,(6f9.2))") nlon,gplon
+     write(iulog,"('ggrid: nalt=',i4,' gpalt=',/,(6f9.2))") nalt,gpalt
+  endif
 
 end subroutine ggrid
 
@@ -1947,10 +1951,13 @@ subroutine cofrm(date)
     call endrun( 'cofrm' )
   endif
   if (date > apex_end_yr-5) then
+   if (masterproc .and. .not. first_warning) then
     write(iulog,"('>>> WARNING cofrm:')")
     write(iulog,"(/,'   This version of IGRF is intended for use up to ')")
     write(iulog,"('     2020. Values for ',f9.3,' will be computed but')") date
     write(iulog,"('     may be of reduced accuracy.',/)")
+    first_warning=.true.
+   endif
   endif
 !
 ! Set gh from g1,g2:

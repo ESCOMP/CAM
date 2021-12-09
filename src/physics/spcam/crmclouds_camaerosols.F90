@@ -243,7 +243,7 @@ subroutine spcam_modal_aero_wateruptake_dr(state,pbuf)
       do ii = 1, crm_nx
          do k = top_lev, pver
             mm=pver-k+1
-            call qsat_water(t(:ncol,k), pmid(:ncol,k), es(:ncol), qs(:ncol))
+            call qsat_water(t(:ncol,k), pmid(:ncol,k), es(:ncol), qs(:ncol),ncol)
             do i = 1, ncol
                if (qs(i) > h2ommr(i,k)) then
                   rh(i,k) = h2ommr(i,k)/qs(i)
@@ -259,7 +259,7 @@ subroutine spcam_modal_aero_wateruptake_dr(state,pbuf)
             end do
 
             if (mm <= crm_nz) call qsat_water(t_crm(:ncol,ii,jj,mm), &
-                                                 pmid(:ncol,k), es_crm(:ncol), qs_crm(:ncol))
+                                              pmid(:ncol,k), es_crm(:ncol), qs_crm(:ncol),ncol)
             do i = 1, ncol
                rh_crm(i, ii, jj, k) = rh(i,k)
                if(mm.le.crm_nz) then

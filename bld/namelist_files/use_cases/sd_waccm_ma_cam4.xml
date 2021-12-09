@@ -13,7 +13,7 @@
 <met_fix_mass>.true.</met_fix_mass>
 <met_data_file dyn="fv"  hgrid="0.9x1.25">2005/MERRA2_0.9x1.25_20050101.nc</met_data_file>
 <met_data_path dyn="fv"  hgrid="0.9x1.25">atm/cam/met/MERRA2/0.9x1.25</met_data_path>
-<met_filenames_list dyn="fv"  hgrid="0.9x1.25">atm/cam/met/MERRA2/0.9x1.25/filenames_1975-2017_c180430.txt</met_filenames_list>
+<met_filenames_list dyn="fv"  hgrid="0.9x1.25">atm/cam/met/MERRA2/0.9x1.25/filenames_1975-2017_c190125.txt</met_filenames_list>
 <met_data_file dyn="fv" hgrid="1.9x2.5">2005/MERRA2_1.9x2.5_20050101.nc</met_data_file>
 <met_data_path dyn="fv" hgrid="1.9x2.5">atm/cam/met/MERRA2/1.9x2.5</met_data_path>
 <met_filenames_list dyn="fv" hgrid="1.9x2.5">atm/cam/met/MERRA2/1.9x2.5/filenames_list_c180824</met_filenames_list>
@@ -36,11 +36,6 @@
 <!-- Galactic Cosmics Rays -->
 <gcr_ionization_datapath>atm/waccm/gcrs</gcr_ionization_datapath>
 <gcr_ionization_filename>gcr_prod_NO_1949-2142_c150309.nc</gcr_ionization_filename>
-
-<!-- QBO settings --> 
-<qbo_cyclic>.false.</qbo_cyclic>
-<qbo_forcing_file>atm/waccm/qbo/qbocoefficients_c151023.nc</qbo_forcing_file>
-<qbo_use_forcing>.true.</qbo_use_forcing>
 
 <!-- Lower Boundary Conditions -->
 <flbc_file>atm/waccm/lb/LBC_1765-2100_1.9x2.5_CCMI_RCP60_za_c130313.nc </flbc_file>
@@ -83,7 +78,6 @@
 <srf_emis_type>'INTERP_MISSING_MONTHS'</srf_emis_type>
 
 <!-- turn on clm MEGAN VOC emis -->
-<megan_factors_file>atm/cam/chem/trop_mozart/emis/megan21_emis_factors_c20120313.nc</megan_factors_file>
 <megan_mapped_emisfctrs>.false.</megan_mapped_emisfctrs>
 <megan_specifier>
  'CH2O = formaldehyde',

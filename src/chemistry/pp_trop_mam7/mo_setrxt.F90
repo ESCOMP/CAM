@@ -33,9 +33,9 @@
       real(r8)  ::  itemp(ncol,pver)
       real(r8)  ::  exp_fac(ncol,pver)
 
+      rate(:,:,3) = 1.8e-12_r8
       itemp(:ncol,:) = 1._r8 / temp(:ncol,:)
       n = ncol*pver
-      rate(:,:,3) = 2.9e-12_r8 * exp( -160._r8 * itemp(:,:) )
       rate(:,:,5) = 9.6e-12_r8 * exp( -234._r8 * itemp(:,:) )
       rate(:,:,7) = 1.9e-13_r8 * exp( 520._r8 * itemp(:,:) )
       rate(:,:,8) = 1.7e-12_r8 * exp( -710._r8 * itemp(:,:) )

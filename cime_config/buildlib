@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 """
 create the cam library
@@ -19,23 +19,40 @@ from standard_script_setup import *
 from CIME.case import Case
 from CIME.utils import run_cmd, expect
 from CIME.buildlib import parse_input
+from CIME.build import get_standard_makefile_args
 
 logger = logging.getLogger(__name__)
 
 ###############################################################################
-def _build_cam():
+def _build_fms(caseroot, libroot, bldroot):
 ###############################################################################
-
-    caseroot, libroot, bldroot = parse_input(sys.argv)
 
     with Case(caseroot) as case:
 
-        casetools = case.get_value("CASETOOLS")
-        srcroot = case.get_value("SRCROOT")
-        gmake_j = case.get_value("GMAKE_J")
-        gmake = case.get_value("GMAKE")
-        mach = case.get_value("MACH")
+        # Only need FMS for fv3 dycore
+        cam_dycore = case.get_value("CAM_DYCORE")
+        if cam_dycore == 'fv3':
+            # Check to see if some other component built it already
+            if not os.path.exists(os.path.join(libroot,"libfms.a")):
+                # first check for the external FMS library and build it
+                srcroot = case.get_value("SRCROOT")
+                fmsbuildlib = os.path.join(srcroot,"libraries","FMS","buildlib")
+                fmsbuilddir = os.path.join(case.get_value("EXEROOT"),"FMS")
+                expect(os.path.exists(fmsbuildlib), "FMS external not found")
+                stat, _, err = run_cmd("{} {} {} {}".format(fmsbuildlib, case.get_value("EXEROOT"), fmsbuilddir, caseroot), verbose=True)
+                expect(stat==0, "FMS build Failed {}".format(err))
+                
+                libfms = os.path.join(bldroot,"FMS","libfms.a")
+                if os.path.exists(libfms):
+                    shutil.copy(libfms, libroot)
 
+###############################################################################
+def _build_cam(caseroot, libroot, bldroot):
+###############################################################################
+
+    with Case(caseroot, read_only=False) as case:
+
+        srcroot = case.get_value("SRCROOT")
         #-------------------------------------------------------
         # Call cam's buildcpp
         #-------------------------------------------------------
@@ -51,6 +68,14 @@ def _build_cam():
             cam_cppdefs = mod.buildcpp(case)
         except:
             raise
+
+    with Case(caseroot) as case:
+
+        casetools = case.get_value("CASETOOLS")
+        srcroot = case.get_value("SRCROOT")
+        gmake_j = case.get_value("GMAKE_J")
+        gmake = case.get_value("GMAKE")
+        mach = case.get_value("MACH")
 
         #-------------------------------------------------------
         # Filepath is created in caseroot/camconf by the call
@@ -73,14 +98,11 @@ def _build_cam():
         #-------------------------------------------------------
         complib  = os.path.join(libroot, "libatm.a")
         makefile = os.path.join(casetools, "Makefile")
-        macfile  = os.path.join(caseroot, "Macros.%s" % mach)
 
+        cmd = "{} complib -j {} MODEL=cam COMPLIB={} -f {} {} " \
+            .format(gmake, gmake_j, complib, makefile, get_standard_makefile_args(case))
         if cam_cppdefs:
-            cmd = "%s complib -j %d MODEL=cam COMPLIB=%s -f %s MACFILE=%s USER_CPPDEFS='%s'" \
-                  % (gmake, gmake_j, complib, makefile, macfile, cam_cppdefs)
-        else:
-            cmd = "%s complib -j %d MODEL=cam COMPLIB=%s -f %s MACFILE=%s " \
-                  % (gmake, gmake_j, complib, makefile, macfile)
+            cmd += " USER_CPPDEFS='{}'".format(cam_cppdefs)
 
         rc, out, err = run_cmd(cmd)
         logger.info("%s: \n\n output:\n %s \n\n err:\n\n%s\n", cmd, out, err)
@@ -88,5 +110,12 @@ def _build_cam():
 
 ###############################################################################
 
+def _main_func():
+    caseroot, libroot, bldroot = parse_input(sys.argv)
+    _build_fms(caseroot, libroot, bldroot)
+    _build_cam(caseroot, libroot, bldroot)
+
+###############################################################################
+
 if __name__ == "__main__":
-    _build_cam()
+    _main_func()

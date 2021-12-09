@@ -5,24 +5,24 @@
 <start_ymd>19790101</start_ymd>
 
 <!-- Solar data from NRL -->
-<solar_irrad_data_file>atm/cam/solar/SolarForcingCMIP6_18491230-22991231_c171031.nc</solar_irrad_data_file>
+<solar_irrad_data_file>atm/cam/solar/SolarForcingCMIP6_18491230-23000102_c20200615.nc</solar_irrad_data_file>
 
 <!-- Kp and F10.7 -->
-<solar_parms_data_file>atm/cam/solar/SolarForcingCMIP6_18491230-22991231_c171031.nc</solar_parms_data_file>
+<solar_parms_data_file>atm/cam/solar/SolarForcingCMIP6_18491230-23000102_c20200615.nc</solar_parms_data_file>
 
 <!-- Energetic Particle Precipitation -->
-<epp_all_filepath>atm/cam/solar/SolarForcingCMIP6_18491230-22991231_c171031.nc</epp_all_filepath>
+<epp_all_filepath>atm/cam/solar/SolarForcingCMIP6_18491230-23000102_c20200615.nc</epp_all_filepath>
 <epp_all_varname>'epp_ion_rates'</epp_all_varname>
 
 <!--Species IC -->
-<ncdata dyn="fv"  hgrid="0.9x1.25">cesm2_init/b.e21.BWHIST.f09_g17.CMIP6-historical-WACCM.001/1950-01-01/b.e21.BWHIST.f09_g17.CMIP6-historical-WACCM.001.cam.i.1950-01-01-00000.nc</ncdata>
-<ncdata dyn="fv"  hgrid="1.9x2.5" >atm/waccm/ic/f.e15.FWmaAMIP.f19_f19.misc08_cam5_4_81.003.cam.i.1980-01-01-00000_c160928.nc</ncdata>
-<ncdata dyn="fv"  hgrid="4x5"     >atm/waccm/ic/f2000.waccm-mam3_4x5_L70.cam2.i.0017-01-01.c121113.nc</ncdata>
+<ncdata dyn="fv"  hgrid="0.9x1.25" chem="waccm_mad_mam4">cesm2_init/f.e21.FWmadHIST.f09_f09_mg17.cesm2.1-exp011.001/2005-01-01/f.e21.FWmadHIST.f09_f09_mg17.cesm2.1-exp011.001.cam.i.2005-01-01-00000.nc</ncdata>
+<ncdata dyn="fv"  hgrid="0.9x1.25" chem="waccm_ma_mam4" >cesm2_init/f.e21.FWmaHIST.f09_f09_mg17.cesm2.1-exp011.1975-2015.001/1979-01-01/f.e21.FWmaHIST.f09_f09_mg17.cesm2.1-exp011.1975-2015.001.cam.i.1979-01-01-00000.nc</ncdata>
+<ncdata dyn="fv"  hgrid="1.9x2.5" >cesm2_init/b.e20.BWma1850.f19_g17.release_cesm2_1_0.020/0289-01-01/b.e20.BWma1850.f19_g17.release_cesm2_1_0.020.cam.i.0289-01-01-00000.nc</ncdata>
 
 
 <!-- LBC, UBC Files -->
 <flbc_type>SERIAL</flbc_type>
-<flbc_file>atm/waccm/lb/LBC_17500116-20150116_CMIP6_0p5degLat_c180227.nc</flbc_file>
+<flbc_file>atm/waccm/lb/LBC_17500116-20150116_CMIP6_0p5degLat_c180905.nc</flbc_file>
 <flbc_list>
  'CCL4', 'CF2CLBR', 'CF3BR', 'CFC11', 'CFC113', 'CFC12', 'CH3BR', 'CH3CCL3', 'CH3CL', 'CH4', 'CO2', 'H2',
  'HCFC22', 'N2O', 'CFC114', 'CFC115', 'HCFC141B', 'HCFC142B', 'CH2BR2', 'CHBR3', 'H2402', 'OCS', 'CFC11eq'
@@ -32,12 +32,6 @@
 <tgcm_ubc_file>atm/waccm/ub/tgcm_ubc_1850-2100_c100204.nc</tgcm_ubc_file>
 <tgcm_ubc_data_type>'INTERP_MISSING_MONTHS'</tgcm_ubc_data_type>
 
-<!-- QBO settings -->
-<qbo_use_forcing >.true.</qbo_use_forcing>
-<qbo_use_forcing hgrid="0.9x1.25">.false.</qbo_use_forcing>
-<qbo_cyclic>.false.</qbo_cyclic>
-<qbo_forcing_file>atm/waccm/qbo/qbocoefficients_c091230.nc</qbo_forcing_file>
-
 <!-- emissions -->
 
 <!-- External forcing -->
@@ -45,6 +39,8 @@
 
 <!-- Surface emissions -->
 <srf_emis_type>INTERP_MISSING_MONTHS</srf_emis_type>
+
+<ndep_list>'noy', 'nhx'</ndep_list>
 
 <!-- History Streams -->
 
@@ -74,7 +70,7 @@
   'BURDENPOMdn', 'bc_a1', 'bc_a4', 'dst_a1', 'dst_a2', 'dst_a3', 'ncl_a1', 'ncl_a1',
   'ncl_a2', 'ncl_a3', 'pom_a1', 'pom_a4', 'so4_a1', 'so4_a2', 'so4_a3', 'soa_a1',
   'soa_a2', 'bc_c1', 'bc_c4', 'dst_c1', 'dst_c2', 'dst_c3', 'ncl_c1', 'ncl_c1',
-  'ncl_c2', 'ncl_c3', 'pom_c1', 'pom_c4', 'so4_c1', 'so4_c2', 'so4_c3', 'soa_c1', 'soa_c2', 
+  'ncl_c2', 'ncl_c3', 'pom_c1', 'pom_c4', 'so4_c1', 'so4_c2', 'so4_c3', 'soa_c1', 'soa_c2',
   'num_a1','num_a2','num_a3','num_a4','num_c1','num_c2','num_c3','num_c4',
   'CO2', 'H2O', 'N2O', 'CH4', 'N2O5', 'NO2',  'NO',
   'dgnumwet1', 'dgnumwet2', 'dgnumwet3', 'LNO_PROD', 'LNO_COL_PROD', 'dry_deposition_NHx_as_N', 'dry_deposition_NOy_as_N',

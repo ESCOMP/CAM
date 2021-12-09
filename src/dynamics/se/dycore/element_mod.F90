@@ -51,11 +51,12 @@ module element_mod
     real (kind=r8) :: dp(np,np,nlev)                           ! for dp_tracers at physics timestep
     real (kind=r8) :: divdp(np,np,nlev)                        ! divergence of dp
     real (kind=r8) :: divdp_proj(np,np,nlev)                   ! DSSed divdp
-    real (kind=r8) :: mass(MAX(qsize_d,ntrac_d)+8)             ! total tracer mass for diagnostics
+    real (kind=r8) :: mass(MAX(qsize_d,ntrac_d)+9)             ! total tracer mass for diagnostics
 
     ! forcing terms for CAM
     real (kind=r8) :: FQ(np,np,nlev,qsize_d)                   ! tracer forcing
     real (kind=r8) :: FM(np,np,2,nlev)                         ! momentum forcing
+    real (kind=r8) :: FDP(np,np,nlev)                          ! save full updated dp right after physics
     real (kind=r8) :: FT(np,np,nlev)                           ! temperature forcing
     real (kind=r8) :: etadot_prescribed(np,np,nlevp)           ! prescribed vertical tendency
     real (kind=r8) :: u_met(np,np,nlev)                        ! zonal component of prescribed meteorology winds

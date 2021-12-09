@@ -2,34 +2,40 @@
 
 <namelist_defaults>
 
-<start_ymd>20050101</start_ymd>
-
 <!-- Solar data from NRL -->
-<solar_irrad_data_file>atm/cam/solar/SolarForcingCMIP6_18491230-22991231_c171031.nc</solar_irrad_data_file>
+<solar_irrad_data_file>atm/cam/solar/SolarForcingNRLSSI2_daily_s18820101_e20171231_c191122.nc</solar_irrad_data_file>
 
 <!-- Kp and F10.7 -->
-<solar_parms_data_file>atm/cam/solar/SolarForcingCMIP6_18491230-22991231_c171031.nc</solar_parms_data_file>
+<solar_parms_data_file>atm/cam/solar/SolarParmsEPP_CMIP6_daily_s18491230_e20150101_c190109.nc</solar_parms_data_file>
 
 <!-- Energetic Particle Precipitation -->
-<epp_all_filepath>atm/cam/solar/SolarForcingCMIP6_18491230-22991231_c171031.nc</epp_all_filepath>
+<epp_all_filepath>atm/cam/solar/SolarParmsEPP_CMIP6_daily_s18491230_e20150101_c190109.nc</epp_all_filepath>
 <epp_all_varname>'epp_ion_rates'</epp_all_varname>
 
 <!--Species IC -->
-<ncdata dyn="fv"  hgrid="0.9x1.25">atm/cam/inic/fv/f.e21.FWSD.f09_f09_mg17.spinup02.cam.i.2005-01-01-00000_c180801.nc</ncdata>
+<ncdata dyn="fv"  hgrid="0.9x1.25" chem="waccm_ma_mam4" >cesm2_init/f.e21.FWmaSD.f09_f09_mg17.cesm2.1-exp011.1978-2015.001/1980-01-01/f.e21.FWmaSD.f09_f09_mg17.cesm2.1-exp011.1978-2015.001.cam.i.1980-01-01-00000.nc</ncdata>
+<ncdata dyn="fv"  hgrid="0.9x1.25" chem="waccm_mad_mam4">cesm2_init/f.e21.FWmadSD.f09_f09_mg17.cesm2.1-exp011.001/2005-01-01/f.e21.FWmadSD.f09_f09_mg17.cesm2.1-exp011.001.cam.i.2005-01-01-00000.nc</ncdata>
+<ncdata hgrid="1.9x2.5">atm/waccm/ic/f.e21.FWmaSD.f19_f19_mg17.HETALL.001.cam.i.1980-01-02_c190910.nc</ncdata>
 
 <met_rlx_bot>50.</met_rlx_bot>
 <met_rlx_top>60.</met_rlx_top>
 <met_rlx_time>50.</met_rlx_time>
 <met_fix_mass>.true.</met_fix_mass>
-<met_data_file dyn="fv"  hgrid="0.9x1.25">2005/MERRA2_0.9x1.25_20050101.nc</met_data_file>
+<met_data_file hgrid="1.9x2.5">1980/MERRA2_1.9x2.5_19800101.nc</met_data_file>
+<met_data_path hgrid="1.9x2.5">atm/cam/met/MERRA2/1.9x2.5</met_data_path>
+<met_filenames_list hgrid="1.9x2.5">atm/cam/met/MERRA2/1.9x2.5/filenames_list_c190911.txt</met_filenames_list>
+<met_data_file dyn="fv"  hgrid="0.9x1.25" chem="waccm_ma_mam4" >1980/MERRA2_0.9x1.25_19800101.nc</met_data_file>
+<met_data_file dyn="fv"  hgrid="0.9x1.25" chem="waccm_mad_mam4">2005/MERRA2_0.9x1.25_20050101.nc</met_data_file>
 <met_data_path dyn="fv"  hgrid="0.9x1.25">atm/cam/met/MERRA2/0.9x1.25</met_data_path>
-<met_filenames_list dyn="fv"  hgrid="0.9x1.25">atm/cam/met/MERRA2/0.9x1.25/filenames_1975-2017_c180430.txt</met_filenames_list>
+<met_filenames_list dyn="fv"  hgrid="0.9x1.25">atm/cam/met/MERRA2/0.9x1.25/filenames_1975-2017_c190125.txt</met_filenames_list>
+<met_qflx_factor>0.84</met_qflx_factor>
 
 <bnd_topo hgrid="0.9x1.25">atm/cam/met/MERRA2/0.9x1.25/fv_0.9x1.25_nc3000_Nsw042_Nrs008_Co060_Fi001_ZR_sgh30_24km_GRNL_MERRA2_c171218.nc</bnd_topo>
+<bnd_topo hgrid="1.9x2.5">atm/cam/met/MERRA2/fv_1.9x2.5_nc3000_Nsw084_Nrs016_Co120_Fi001_ZR_MERRA2_PHIS_c180925.nc</bnd_topo>
 
 <!-- LBC, UBC Files -->
 <flbc_type>SERIAL</flbc_type>
-<flbc_file>atm/waccm/lb/LBC_17500116-20150116_CMIP6_0p5degLat_c180227.nc</flbc_file>
+<flbc_file>atm/waccm/lb/LBC_17500116-20150116_CMIP6_0p5degLat_c180905.nc</flbc_file>
 <flbc_list>
  'CCL4', 'CF2CLBR', 'CF3BR', 'CFC11', 'CFC113', 'CFC12', 'CH3BR', 'CH3CCL3', 'CH3CL', 'CH4', 'CO2', 'H2',
  'HCFC22', 'N2O', 'CFC114', 'CFC115', 'HCFC141B', 'HCFC142B', 'CH2BR2', 'CHBR3', 'H2402', 'OCS', 'CFC11eq'
@@ -40,12 +46,12 @@
 <tgcm_ubc_data_type>'INTERP_MISSING_MONTHS'</tgcm_ubc_data_type>
 
 <!-- QBO settings -->
-<qbo_use_forcing >.true.</qbo_use_forcing>
-<qbo_use_forcing hgrid="0.9x1.25">.false.</qbo_use_forcing>
-<qbo_cyclic>.true.</qbo_cyclic>
-<qbo_forcing_file>atm/waccm/qbo/qbocyclic28months.nc</qbo_forcing_file>
+<qbo_use_forcing>.false.</qbo_use_forcing>
 
 <!-- emissions -->
+
+<dust_emis_fact hgrid="1.9x2.5">0.7D0</dust_emis_fact>
+<lght_no_prd_factor hgrid="1.9x2.5">6.0D0</lght_no_prd_factor>
 
 <!-- External forcing -->
 <ext_frc_type>INTERP_MISSING_MONTHS</ext_frc_type>

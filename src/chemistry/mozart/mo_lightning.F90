@@ -5,7 +5,7 @@ module mo_lightning
 
   use shr_kind_mod,      only : r8 => shr_kind_r8
   use ppgrid,            only : begchunk, endchunk, pcols, pver
-  use phys_grid,         only : ngcols_p
+  use phys_grid,         only : ngcols_p => num_global_phys_cols
   use cam_abortutils,    only : endrun
   use cam_logfile,       only : iulog
   use spmd_utils,        only : masterproc, mpicom
@@ -19,7 +19,6 @@ module mo_lightning
 
   save
 
-  real(r8) :: csrf
   real(r8) :: factor = 0.1_r8              ! user-controlled scaling factor to achieve arbitrary no prod.
   real(r8) :: geo_factor                   ! grid cell area factor
   real(r8) :: vdist(16,3)                  ! vertical distribution of lightning
@@ -36,11 +35,9 @@ contains
     !       ... initialize the lightning module
     !----------------------------------------------------------------------
     use mo_constants,  only : pi
-    use ioFileMod,     only : getfil
     use mo_chem_utls,  only : get_spc_ndx
 
     use cam_history,   only : addfld, add_default, horiz_only
-    use dyn_grid,      only : get_dyn_grid_parm
     use phys_control,  only : phys_getopts
 
     implicit none
@@ -54,17 +51,6 @@ contains
     !	... local variables
     !----------------------------------------------------------------------
     integer  :: astat
-    integer  :: ncid
-    integer  :: dimid
-    integer  :: vid
-    integer  :: gndx
-    integer  :: jl, ju
-    integer  :: nlat, nlon
-    integer  :: plon, plat
-    real(r8), allocatable :: lats(:)
-    real(r8), allocatable :: lons(:)
-    real(r8), allocatable :: landmask(:,:)
-    character(len=256) :: locfn
     logical :: history_cesm_forcing
 
     call phys_getopts( history_cesm_forcing_out = history_cesm_forcing )
@@ -75,7 +61,7 @@ contains
     has_no_lightning_prod = no_ndx>0 .or. xno_ndx>0
     if (.not.has_no_lightning_prod) return
 
-    
+
     if( lght_no_prd_factor /= 1._r8 ) then
        factor = factor*lght_no_prd_factor
     end if
@@ -133,10 +119,10 @@ contains
     !	... set no production from lightning
     !----------------------------------------------------------------------
     use physics_types,    only : physics_state
-    
+
     use physics_buffer,   only : pbuf_get_index, physics_buffer_desc, pbuf_get_field, pbuf_get_chunk
     use physconst,        only : rga
-    use phys_grid,        only : get_rlat_all_p, get_lat_all_p, get_lon_all_p, get_wght_all_p
+    use phys_grid,        only : get_rlat_all_p, get_wght_all_p
     use cam_history,      only : outfld
     use camsrfexch,       only : cam_in_t
     use shr_reprosum_mod, only : shr_reprosum_calc
@@ -147,7 +133,7 @@ contains
     !	... dummy args
     !----------------------------------------------------------------------
     type(physics_state), intent(in) :: state(begchunk:endchunk) ! physics state
-    
+
     type(physics_buffer_desc), pointer :: pbuf2d(:,:)
     type(cam_in_t), intent(in) :: cam_in(begchunk:endchunk) ! physics state
 
@@ -160,8 +146,6 @@ contains
     integer :: i, c
     integer :: cldtind             ! level index for cloud top
     integer :: cldbind             ! level index for cloud base > 273k
-    integer :: surf_type
-    integer :: file                ! file index
     integer :: k, kk, zlow_ind, zhigh_ind, itype
     real(r8) :: glob_flashfreq     ! global flash frequency [s-1]
     real(r8) :: glob_noprod        ! global rate of no production [as tgn/yr]
@@ -201,7 +185,6 @@ contains
     real(r8), parameter  :: km2cm = 1.e5_r8
     real(r8), parameter  :: lat25 = 25._r8*d2r      ! 25 degrees latitude in radians
     integer  :: cldtop_ndx, cldbot_ndx
-    integer  :: istat
     real(r8) :: flash_freq_land, flash_freq_ocn
 
     if (.not.has_no_lightning_prod) return
@@ -246,7 +229,7 @@ contains
        call pbuf_get_field(pbuf_get_chunk(pbuf2d,lchnk), cldtop_ndx, cldtop )
        call pbuf_get_field(pbuf_get_chunk(pbuf2d,lchnk), cldbot_ndx, cldbot )
        zsurf(:ncol) = state(c)%phis(:ncol)*rga
-       call get_rlat_all_p( c, ncol, rlats(1,c) )
+       call get_rlat_all_p(c, ncol, rlats(1,c) )
        call get_wght_all_p(c, ncol, wght)
 
        do k = 1,pver
@@ -278,7 +261,7 @@ contains
              !       ... compute flash frequency for given cloud top height
              !           (flashes storm^-1 min^-1)
              !--------------------------------------------------------------------------------
-             flash_freq_land = 3.44e-5_r8 * cldhgt(i,c)**4.9_r8 
+             flash_freq_land = 3.44e-5_r8 * cldhgt(i,c)**4.9_r8
              flash_freq_ocn  = 6.40e-4_r8 * cldhgt(i,c)**1.7_r8
              flash_freq(i,c) = cam_in(c)%landfrac(i)*flash_freq_land + &
                                cam_in(c)%ocnfrac(i) *flash_freq_ocn
@@ -301,8 +284,8 @@ contains
              flash_energy(i,c) = 6.7e9_r8 * flash_freq(i,c)/60._r8
              !--------------------------------------------------------------------------------
              !       ... LKE Aug 23, 2005: scale production to account for different grid
-             !           box sizes. This requires a reduction in the overall fudge factor 
-             !           (e.g., from 1.2 to 0.5) 
+             !           box sizes. This requires a reduction in the overall fudge factor
+             !           (e.g., from 1.2 to 0.5)
              !--------------------------------------------------------------------------------
              flash_energy(i,c) =  flash_energy(i,c) * wght(i) * geo_factor
              !--------------------------------------------------------------------------------

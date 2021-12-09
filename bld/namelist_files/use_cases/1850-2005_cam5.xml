@@ -30,7 +30,6 @@
 <mam4_num_a1_emis_file >atm/cam/chem/trop_mozart_aero/emis/ar5_mam4_num_a1_surf_1850-2005_c150205.nc </mam4_num_a1_emis_file>
 <mam4_num_a4_emis_file >atm/cam/chem/trop_mozart_aero/emis/ar5_mam4_num_a4_surf_1850-2005_c150205.nc </mam4_num_a4_emis_file>
 
-<!-- External forcing 
 <!-- External forcing for MAM -->
 <ext_frc_type>INTERP_MISSING_MONTHS</ext_frc_type>
 <so2_ext_file      ver="mam">atm/cam/chem/trop_mozart_aero/emis/ar5_mam3_so2_elev_1850-2005_c090804.nc     </so2_ext_file>

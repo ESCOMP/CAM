@@ -574,6 +574,7 @@ subroutine gw_init()
           'Zonal gravity wave surface stress')
      call addfld ('TAUGWY',     horiz_only,  'A','N/m2', &
           'Meridional gravity wave surface stress')
+     call register_vector_field('TAUGWX', 'TAUGWY')
 
      if (history_amwg) then
         call add_default('TAUGWX  ', 1, ' ')
@@ -661,6 +662,7 @@ subroutine gw_init()
           'Zonal wind profile-entry to GW ' )
      call addfld('VEGW',  (/ 'lev' /) , 'A'  ,'1/s' ,  &
           'Merdional wind profile-entry to GW ' )
+     call register_vector_field('UEGW','VEGW')
      call addfld('TEGW',  (/ 'lev' /) , 'A'  ,'K' ,  &
           'Temperature profile-entry to GW ' )
 
@@ -677,16 +679,19 @@ subroutine gw_init()
           'Ridge based momentum flux profile')
         call addfld('TAU'//cn//'RDGBETAX' , (/ 'ilev' /), 'I', 'N/m2', &
           'Ridge based momentum flux profile')
+        call register_vector_field('TAU'//cn//'RDGBETAX','TAU'//cn//'RDGBETAY')
         call addfld('UT'//cn//'RDGBETA',    (/ 'lev' /),  'I', 'm/s', &
           'U wind tendency from ridge '//cn)
         call addfld('VT'//cn//'RDGBETA',    (/ 'lev' /),  'I', 'm/s', &
           'V wind tendency from ridge '//cn)
+        call register_vector_field('UT'//cn//'RDGBETA','VT'//cn//'RDGBETA')
      end do
 
      call addfld('TAUARDGBETAY' , (/ 'ilev' /) , 'I'  ,'N/m2' , &
           'Ridge based momentum flux profile')
      call addfld('TAUARDGBETAX' , (/ 'ilev' /) , 'I'  ,'N/m2' , &
           'Ridge based momentum flux profile')
+     call register_vector_field('TAUARDGBETAX','TAUARDGBETAY')
 
      if (history_waccm) then
         call add_default('TAUARDGBETAX', 1, ' ')
@@ -764,21 +769,24 @@ subroutine gw_init()
           'U wind tendency from ridge '//cn)
         call addfld('VT'//cn//'RDGGAMMA' , (/ 'lev' /),  'I', 'm/s', &
           'V wind tendency from ridge '//cn)
+        call register_vector_field('UT'//cn//'RDGGAMMA','VT'//cn//'RDGGAMMA')
      end do
 
      call addfld ('TAUARDGGAMMAY' , (/ 'ilev' /) , 'I'  ,'N/m2' , &
           'Ridge based momentum flux profile')
      call addfld ('TAUARDGGAMMAX' , (/ 'ilev' /) , 'I'  ,'N/m2' , &
           'Ridge based momentum flux profile')
+     call register_vector_field('TAUARDGGAMMAX','TAUARDGGAMMAY')
      call addfld ('TAURDGGMX',     horiz_only,  'A','N/m2', &
           'Zonal gravity wave surface stress')
      call addfld ('TAURDGGMY',     horiz_only,  'A','N/m2', &
           'Meridional gravity wave surface stress')
+     call register_vector_field('TAURDGGMX','TAURDGGMY')
      call addfld ('UTRDGGM' , (/ 'lev' /) , 'I'  ,'m/s' , &
           'U wind tendency from ridge 6     ')
      call addfld ('VTRDGGM' , (/ 'lev' /) , 'I'  ,'m/s' , &
-          'U wind tendency from ridge 6     ')
-
+          'V wind tendency from ridge 6     ')
+     call register_vector_field('UTRDGGM','VTRDGGM')
   end if
 
   if (use_gw_front .or. use_gw_front_igw) then
@@ -965,6 +973,9 @@ subroutine gw_init()
 
   call addfld ('UTGW_TOTAL',    (/ 'lev' /), 'A','m/s2', &
        'Total U tendency due to gravity wave drag')
+  call addfld ('VTGW_TOTAL',    (/ 'lev' /), 'A','m/s2', &
+       'Total V tendency due to gravity wave drag')
+  call register_vector_field('UTGW_TOTAL', 'VTGW_TOTAL')
 
   ! Total temperature tendency output.
   call addfld ('TTGW', (/ 'lev' /), 'A', 'K/s',  &
@@ -1172,6 +1183,9 @@ subroutine gw_tend(state, pbuf, dt, ptend, cam_in, flx_heat)
   !-----------------------------------------------------------------------
   ! Interface for multiple gravity wave drag parameterization.
   !-----------------------------------------------------------------------
+
+  use physics_types,  only: physics_state_copy, set_dry_to_wet
+  use constituents,   only: cnst_type
   use physics_buffer, only: physics_buffer_desc, pbuf_get_field
   use camsrfexch, only: cam_in_t
   ! Location-dependent cpair
@@ -1183,8 +1197,9 @@ subroutine gw_tend(state, pbuf, dt, ptend, cam_in, flx_heat)
   use gw_oro,     only: gw_oro_src
   use gw_front,   only: gw_cm_src
   use gw_convect, only: gw_beres_src
+
   !------------------------------Arguments--------------------------------
-  type(physics_state), intent(in) :: state      ! physics state structure
+  type(physics_state), intent(in) :: state   ! physics state structure
   type(physics_buffer_desc), pointer :: pbuf(:) ! Physics buffer
   real(r8), intent(in) :: dt                    ! time step
   ! Parameterization net tendencies.
@@ -1193,6 +1208,9 @@ subroutine gw_tend(state, pbuf, dt, ptend, cam_in, flx_heat)
   real(r8), intent(out) :: flx_heat(pcols)
 
   !---------------------------Local storage-------------------------------
+
+  type(physics_state) :: state1     ! Local copy of state variable
+
   integer :: lchnk                  ! chunk identifier
   integer :: ncol                   ! number of atmospheric columns
 
@@ -1325,25 +1343,30 @@ subroutine gw_tend(state, pbuf, dt, ptend, cam_in, flx_heat)
   real(r8) :: piln(state%ncol,pver+1)
   real(r8) :: zm(state%ncol,pver)
   real(r8) :: zi(state%ncol,pver+1)
-
   !------------------------------------------------------------------------
 
-  lchnk = state%lchnk
-  ncol  = state%ncol
+  ! Make local copy of input state.
+  call physics_state_copy(state, state1)
 
-  p = Coords1D(state%pint(:ncol,:))
+  ! constituents are all treated as wet mmr
+  call set_dry_to_wet(state1)
 
-  dse = state%s(:ncol,:)
-  t = state%t(:ncol,:)
-  u = state%u(:ncol,:)
-  v = state%v(:ncol,:)
-  q = state%q(:ncol,:,:)
-  piln = state%lnpint(:ncol,:)
-  zm = state%zm(:ncol,:)
-  zi = state%zi(:ncol,:)
+  lchnk = state1%lchnk
+  ncol  = state1%ncol
+
+  p = Coords1D(state1%pint(:ncol,:))
+
+  dse = state1%s(:ncol,:)
+  t = state1%t(:ncol,:)
+  u = state1%u(:ncol,:)
+  v = state1%v(:ncol,:)
+  q = state1%q(:ncol,:,:)
+  piln = state1%lnpint(:ncol,:)
+  zm = state1%zm(:ncol,:)
+  zi = state1%zi(:ncol,:)
 
   lq = .true.
-  call physics_ptend_init(ptend, state%psetcols, "Gravity wave drag", &
+  call physics_ptend_init(ptend, state1%psetcols, "Gravity wave drag", &
        ls=.true., lu=.true., lv=.true., lq=lq)
 
   ! Profiles of background state variables
@@ -1377,7 +1400,7 @@ subroutine gw_tend(state, pbuf, dt, ptend, cam_in, flx_heat)
   end if
 
   if (use_gw_front_igw) then
-     u_coriolis = coriolis_speed(band_long, state%lat(:ncol))
+     u_coriolis = coriolis_speed(band_long, state1%lat(:ncol))
   end if
 
   ! Totals that accumulate over different sources.
@@ -1399,7 +1422,7 @@ subroutine gw_tend(state, pbuf, dt, ptend, cam_in, flx_heat)
 
      ! Efficiency of gravity wave momentum transfer.
      ! This is really only to remove the pole points.
-     where (pi/2._r8 - abs(state%lat(:ncol)) >= 4*epsilon(1._r8))
+     where (pi/2._r8 - abs(state1%lat(:ncol)) >= 4*epsilon(1._r8))
         effgw = effgw_beres_dp
      elsewhere
         effgw = 0._r8
@@ -1484,7 +1507,7 @@ subroutine gw_tend(state, pbuf, dt, ptend, cam_in, flx_heat)
 
      ! Efficiency of gravity wave momentum transfer.
      ! This is really only to remove the pole points.
-     where (pi/2._r8 - abs(state%lat(:ncol)) >= 4*epsilon(1._r8))
+     where (pi/2._r8 - abs(state1%lat(:ncol)) >= 4*epsilon(1._r8))
         effgw = effgw_beres_sh
      elsewhere
         effgw = 0._r8
@@ -1574,7 +1597,7 @@ subroutine gw_tend(state, pbuf, dt, ptend, cam_in, flx_heat)
      effgw = effgw_cm
      ! Frontogenesis is too high at the poles (at least for the FV
      ! dycore), so introduce a polar taper.
-     if (gw_polar_taper) effgw = effgw * cos(state%lat(:ncol))
+     if (gw_polar_taper) effgw = effgw * cos(state1%lat(:ncol))
 
      ! Determine the wave source for C&M background spectrum
      call gw_cm_src(ncol, band_mid, cm_desc, u, v, frontgf(:ncol,:), &
@@ -1651,10 +1674,10 @@ subroutine gw_tend(state, pbuf, dt, ptend, cam_in, flx_heat)
      ! Frontogenesis is too high at the poles (at least for the FV
      ! dycore), so introduce a polar taper.
      if (gw_polar_taper) then
-        where (abs(state%lat(:ncol)) <= 89._r8*degree2radian)
+        where (abs(state1%lat(:ncol)) <= 89._r8*degree2radian)
            effgw = effgw * 0.25_r8 * &
-                 (1._r8+tanh((state%lat(:ncol)+al0)/dlat0)) * &
-                 (1._r8-tanh((state%lat(:ncol)-al0)/dlat0))
+                 (1._r8+tanh((state1%lat(:ncol)+al0)/dlat0)) * &
+                 (1._r8-tanh((state1%lat(:ncol)-al0)/dlat0))
         elsewhere
            effgw = 0._r8
         end where
@@ -1757,7 +1780,7 @@ subroutine gw_tend(state, pbuf, dt, ptend, cam_in, flx_heat)
              src_level, tend_level, tau, ubm, ubi, xv, yv, c)
      endif
      do i = 1, ncol
-        if (state%lat(i) < 0._r8) then
+        if (state1%lat(i) < 0._r8) then
            tau(i,:,:) = tau(i,:,:) * gw_oro_south_fac
         end if
      end do
@@ -1885,11 +1908,23 @@ subroutine gw_tend(state, pbuf, dt, ptend, cam_in, flx_heat)
 
   endif
 
+  ! Convert the tendencies for the dry constituents to dry air basis.
+  do m = 1, pcnst
+     if (cnst_type(m).eq.'dry') then
+        do k = 1, pver
+           do i = 1, ncol
+              ptend%q(i,k,m) = ptend%q(i,k,m)*state1%pdel(i,k)/state1%pdeldry(i,k)
+           end do
+        end do
+     end if
+  end do
+
   ! Write totals to history file.
   call outfld('EKGW', egwdffi_tot , ncol, lchnk)
   call outfld('TTGW', ptend%s/cpairv(:,:,lchnk),  pcols, lchnk)
  
   call outfld('UTGW_TOTAL', ptend%u, pcols, lchnk)
+  call outfld('VTGW_TOTAL', ptend%v, pcols, lchnk)
 
   call outfld('QTGW', ptend%q(:,:,1), pcols, lchnk)
   call outfld('CLDLIQTGW', ptend%q(:,:,ixcldliq), pcols, lchnk)
@@ -2175,7 +2210,7 @@ end subroutine gw_rdg_calc
 
 ! Add all history fields for a gravity wave spectrum source.
 subroutine gw_spec_addflds(prefix, scheme, band, history_defaults)
-  use cam_history, only: addfld, add_default
+  use cam_history, only: addfld, add_default, register_vector_field
 
   !------------------------------Arguments--------------------------------
 
@@ -2205,6 +2240,8 @@ subroutine gw_spec_addflds(prefix, scheme, band, history_defaults)
        trim(scheme)//' U tendency - gravity wave spectrum')
   call addfld (trim(prefix)//'VTGWSPEC',(/ 'lev' /), 'A','m/s2', &
        trim(scheme)//' V tendency - gravity wave spectrum')
+  call register_vector_field(trim(prefix)//'UTGWSPEC',trim(prefix)//'VTGWSPEC')
+
   call addfld (trim(prefix)//'TTGWSPEC',(/ 'lev' /), 'A','K/s', &
        trim(scheme)//' T tendency - gravity wave spectrum')
 

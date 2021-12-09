@@ -248,7 +248,7 @@ subroutine crm_physics_init(pbuf2d)
 !--------------------------------------------------------------------------------------------------------
   use physics_buffer,  only: physics_buffer_desc, pbuf_set_field, pbuf_get_index
 #ifdef CRM
-  use physconst,       only: tmelt, cpair, rh2o, latvap, latice
+  use physconst,       only: tmelt, rair, cpair, rh2o, latvap, latice
   use constituents,    only: pcnst, cnst_species_class, cnst_spec_class_gas
   use cam_history,     only: addfld, add_default, horiz_only
   use crmdims,         only: crm_nx, crm_ny, crm_nz
@@ -297,7 +297,7 @@ subroutine crm_physics_init(pbuf2d)
   !------------------------- 
   ! Initialize the micro_mg_utils
   ! Value of dcs in MG 1.0 is 400.e-6_r8
-  call micro_mg_utils_init(r8, rh2o, cpair, tmelt, latvap, latice, 400.e-6_r8,  errstring)
+  call micro_mg_utils_init(r8, rair, rh2o, cpair, tmelt, latvap, latice, 400.e-6_r8,  errstring)
 
   !------------------------- 
   ! Register general history fields

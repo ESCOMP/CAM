@@ -4,10 +4,9 @@ Tag name:
 Originator(s):
 Date:
 One-line Summary:
+Github PR URL:
 
-Purpose of changes:
-
-Bugs fixed (include bugzilla ID):
+Purpose of changes (include the issue number and title text for each relevant GitHub issue):
 
 Describe any changes made to build system:
 
@@ -30,13 +29,11 @@ platform, and checkin with these failures has been OK'd by the gatekeeper,
 then copy the lines from the td.*.status files for the failed tests to the
 appropriate machine below.  All failed tests must be justified.
 
-cheyenne/intel:
-
 cheyenne/intel/aux_cam:
 
-hobart/nag:
+izumi/nag/aux_cam:
 
-hobart/pgi:
+izumi/pgi/aux_cam:
 
 CAM tag used for the baseline comparison tests if different than previous
 tag:

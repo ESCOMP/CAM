@@ -1,0 +1,4 @@
+! CAM history files have different names when DA is active so turn them off
+nhtfrq = 0,-10000,-10000,-10000,-10000,-10000
+fexcl1 = 'OMEGA','OMEGAT','PHIS','PS','PSL','QRS','T','U','UU','V','VT','VU','VV','Z3'
+fexcl2 = 'T','U','V'

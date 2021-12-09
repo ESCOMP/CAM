@@ -1,8 +1,0 @@
-&camexp
- mfilt=1,1,1,1,1,1
- ndens=1,1,1,1,1,1
- nhtfrq=9,9,9,9,9,9
- start_ymd = 10101
- inithist='ENDOFRUN'
- aqua_planet_sst=3
- /

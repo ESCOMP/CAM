@@ -1,11 +1,11 @@
 * Comments
-* User-given Tag Description: TSMLT1 for CESM2.0
-* Tag database identifier : MZ197_TSMLT1_20180423
+* User-given Tag Description: TSMLT1 for CESM2.2
+* Tag database identifier : MZ262_TSMLT1_20190611
 * Tag created by : lke
 * Tag created from branch : TSMLT1
-* Tag created on : 2018-04-23 17:47:30.657331-06
+* Tag created on : 2019-06-11 17:30:44.906645-06
 * Comments for this tag follow:
-*     lke : 2018-04-23 : Latest change only removes O3S loss reactions.
+*     lke : 2019-06-11 : TSMLT for CESM2, correcting TERP2OOH chemical formula, and TOLUENE+OH VBS coefficient.  With O3S.
 
       SPECIES
 
@@ -145,6 +145,7 @@
  O,
  O2,
  O3,
+ O3S -> O3,
  OCLO -> OClO,
  OCS -> OCS,
  ONITR -> C4H7NO4,
@@ -183,7 +184,7 @@
  ST80_25 -> CO,
  SVOC -> C22H46,
  TEPOMUC -> C7H8O3,
- TERP2OOH -> C10H18O3,
+ TERP2OOH -> C10H16O4,
  TERPNIT -> C10H17NO4,
  TERPOOH -> C10H18O3,
  TERPROD1 -> C10H16O2,
@@ -335,6 +336,7 @@
  ST80_25
  NHDEP
  NDEP
+ O3S
       End Explicit
 
       Implicit
@@ -1116,6 +1118,8 @@
 *********************************
 *** Sulfur
 *********************************
+[DMS_NO3]              DMS + NO3  -> SO2 + HNO3                                 ; 1.9e-13, 520 
+[DMS_OHa]              DMS + OH  -> SO2                                         ; 9.6e-12, -234 
 [OCS_O]                OCS + O  -> SO + CO                                      ; 2.1e-11, -2200 
 [OCS_OH]               OCS + OH  -> SO2 + CO + H                                ; 7.2e-14, -1070 
 [S_O2]                 S + O2  -> SO + O                                        ; 2.3e-12 
@@ -1128,15 +1132,13 @@
 [SO_O3]                SO + O3  -> SO2 + O2                                     ; 3.4e-12, -1100 
 [SO_OCLO]              SO + OCLO  -> SO2 + CLO                                  ; 1.9e-12 
 [SO_OH]                SO + OH  -> SO2 + H                                      ; 2.7e-11, 335 
+[usr_DMS_OH]           DMS + OH  -> 0.5*SO2 + 0.5*HO2                            
 [usr_SO2_OH]           SO2 + OH  -> SO3 + HO2                                    
 [usr_SO3_H2O]          SO3 + H2O  -> H2SO4                                       
 *********************************
 *** Tropospheric Aerosol
 *********************************
-[DMS_NO3]              DMS + NO3  -> SO2 + HNO3                                 ; 1.9e-13, 520 
-[DMS_OHa]              DMS + OH  -> SO2                                         ; 9.6e-12, -234 
 [NH3_OH]               NH3 + OH  -> H2O + 1*NHDEP                               ; 1.7e-12, -710 
-[usr_DMS_OH]           DMS + OH  -> 0.5*SO2 + 0.5*HO2                            
 [usr_GLYOXAL_aer]      GLYOXAL  -> SOAG0                                         
 [usr_HO2_aer]          HO2  -> 0.5*H2O2                                          
 [usr_HONITR_aer]       HONITR  -> HNO3                                           
@@ -1166,7 +1168,7 @@
 [MTERP_O3_vbs]         MTERP + O3  -> MTERP + O3 + 0.0508*SOAG0 + 0.1149*SOAG1 + 0.0348*SOAG2 + 0.0554*SOAG3 + 0.1278*SOAG4 ; 6.3e-16, -580 
 [MTERP_OH_vbs]         MTERP + OH  -> MTERP + OH + 0.0508*SOAG0 + 0.1149*SOAG1 + 0.0348*SOAG2 + 0.0554*SOAG3 + 0.1278*SOAG4 ; 1.2e-11, 440 
 [SVOC_OH]              SVOC + OH  -> OH + 0.5931*SOAG0 + 0.1534*SOAG1 + 0.0459*SOAG2 + 0.0085*SOAG3 + 0.0128*SOAG4 ; 1.34e-11 
-[TOLUENE_OH_vbs]       TOLUENE + OH  -> TOLUENE + OH + 0.1364*SOAG0 + 0.0101*SOAG1 + 0.0763*SOAG2 + 0.2157*SOAG3 + 0.0232*SOAG4 ; 1.7e-12, 352 
+[TOLUENE_OH_vbs]       TOLUENE + OH  -> TOLUENE + OH + 0.1364*SOAG0 + 0.0101*SOAG1 + 0.0763*SOAG2 + 0.2157*SOAG3 + 0.0738*SOAG4 ; 1.7e-12, 352 
 [XYLENES_OH_vbs]       XYLENES + OH  -> XYLENES + OH + 0.1677*SOAG0 + 0.0174*SOAG1 + 0.086*SOAG2 + 0.0512*SOAG3 + 0.1598*SOAG4 ; 1.7e-11 
 *********************************
 *** Stratospheric Aerosol
@@ -1251,7 +1253,6 @@
         model_architecture = VECTOR
         vector_length = 32
         architecture = hybrid
-*       vec_ftns = on
         namemod = on
       End Version Options
 

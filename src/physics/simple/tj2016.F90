@@ -176,7 +176,7 @@ CONTAINS
     real(r8), intent(in)    :: clat(ncol)                ! latitude
     real(r8), intent(in)    :: PS(ncol)                  ! surface pressure (Pa)
     real(r8), intent(in)    :: pmid(ncol,pver)           ! mid-point pressure (Pa)
-    real(r8), intent(in)    :: pint(ncol,pver)           ! interface pressure (Pa)
+    real(r8), intent(in)    :: pint(ncol,pver+1)         ! interface pressure (Pa)
     real(r8), intent(in)    :: lnpint(ncol,2)            ! ln(interface pressure (Pa)) at and above the surface 
     real(r8), intent(in)    :: rpdel(ncol,pver)          ! reciprocal of layer thickness (Pa)
 

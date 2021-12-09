@@ -1,15 +1,12 @@
 module cam_control_mod
 !------------------------------------------------------------------------------------------------
-! 
+!
 ! High level control variables.  Information received from the driver/coupler is
 ! stored here.
-! 
+!
 !------------------------------------------------------------------------------------------------
 
 use shr_kind_mod,     only: r8=>shr_kind_r8, cs=>shr_kind_cs, cl=>shr_kind_cl
-use seq_infodata_mod, only: seq_infodata_start_type_start, seq_infodata_start_type_cont, &
-                            seq_infodata_start_type_brnch
-
 use spmd_utils,       only: masterproc
 use cam_logfile,      only: iulog
 use cam_abortutils,   only: endrun
@@ -30,6 +27,7 @@ character(len=cl), protected :: ctitle  ! case title
 logical, protected :: initial_run  ! startup mode which only requires a minimal initial file
 logical, protected :: restart_run  ! continue a previous run; requires a restart file
 logical, protected :: branch_run   ! branch from a previous run; requires a restart file
+logical, protected :: post_assim    ! We are resuming after a pause
 
 logical, protected :: adiabatic         ! true => no physics
 logical, protected :: ideal_phys        ! true => run Held-Suarez (1994) physics
@@ -40,14 +38,13 @@ logical, protected :: simple_phys       ! true => adiabatic or ideal_phys or kes
 logical, protected :: aqua_planet       ! Flag to run model in "aqua planet" mode
 logical, protected :: moist_physics     ! true => moist physics enabled, i.e.,
                                         ! (.not. ideal_phys) .and. (.not. adiabatic)
-logical, protected :: dart_mode         ! Flag to run model with DART
 
 logical, protected :: brnch_retain_casename ! true => branch run may use same caseid as
                                             !         the run being branched from
 
 real(r8), protected :: eccen       ! Earth's eccentricity factor (unitless) (typically 0 to 0.1)
 real(r8), protected :: obliqr      ! Earth's obliquity in radians
-real(r8), protected :: lambm0      ! Mean longitude of perihelion at the 
+real(r8), protected :: lambm0      ! Mean longitude of perihelion at the
                                    ! vernal equinox (radians)
 real(r8), protected :: mvelpp      ! Earth's moving vernal equinox longitude
                                    ! of perihelion plus pi (radians)
@@ -57,45 +54,30 @@ contains
 !================================================================================================
 
 subroutine cam_ctrl_init( &
-   caseid_in, ctitle_in, start_type, dart_mode_in, &
+   caseid_in, ctitle_in, &
+   initial_run_in, restart_run_in, branch_run_in, post_assim_in, &
    aqua_planet_in, brnch_retain_casename_in)
 
    character(len=cl), intent(in) :: caseid_in            ! case ID
    character(len=cl), intent(in) :: ctitle_in            ! case title
-   character(len=cs), intent(in) :: start_type           ! start type: initial, restart, or branch
-   logical,           intent(in) :: dart_mode_in         ! Flag to run model with DART
+   logical,           intent(in) :: initial_run_in       ! true => inital run
+   logical,           intent(in) :: restart_run_in       ! true => restart run
+   logical,           intent(in) :: branch_run_in        ! true => branch run
+   logical,           intent(in) :: post_assim_in        ! true => resume mode
    logical,           intent(in) :: aqua_planet_in       ! Flag to run model in "aqua planet" mode
    logical,           intent(in) :: brnch_retain_casename_in ! Flag to allow a branch to use the same
                                                              ! caseid as the run being branched from.
 
-   integer :: unitn, ierr
-
    character(len=*), parameter :: sub='cam_ctrl_init'
-   character(len=128) :: errmsg
    !---------------------------------------------------------------------------------------------
 
    caseid = caseid_in
    ctitle = ctitle_in
-   dart_mode = dart_mode_in
 
-   initial_run = .false.
-   restart_run = .false.
-   branch_run  = .false.
-   if (dart_mode) then
-      initial_run = .true.
-   else
-      select case (trim(start_type))
-      case (seq_infodata_start_type_start)
-         initial_run = .true.
-      case (seq_infodata_start_type_cont)
-         restart_run = .true.
-      case (seq_infodata_start_type_brnch)
-         branch_run = .true.
-      case default
-         write(errmsg,*) sub // ': FATAL: unknown start type: ', trim(start_type)
-         call endrun(errmsg)
-      end select
-   end if
+   initial_run = initial_run_in
+   restart_run = restart_run_in
+   branch_run  = branch_run_in
+   post_assim  = post_assim_in
 
    aqua_planet = aqua_planet_in
 
@@ -110,12 +92,10 @@ subroutine cam_ctrl_init( &
          write(iulog,*) '  Restart of an earlier run'
       else if (branch_run) then
          write(iulog,*) '  Branch of an earlier run'
+      else if (post_assim) then
+         write(iulog,*) '  DART run using CAM initial mode'
       else
-         if (dart_mode) then
-            write(iulog,*) '  DART run using CAM initial mode'
-         else
-            write(iulog,*) '         Initial run'
-         end if
+         write(iulog,*) '         Initial run'
       end if
       write(iulog,*) ' ********** CASE = ',trim(caseid),' **********'
       write(iulog,'(1x,a)') ctitle
