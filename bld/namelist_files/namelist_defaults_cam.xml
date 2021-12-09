@@ -2152,8 +2152,8 @@
 <dust_emis_fact dyn="se" hgrid="ne30np4"   phys="cam_dev"          waccm_phys="1">0.8D0</dust_emis_fact>
 <dust_emis_fact dyn="se" hgrid="ne0np4CONUS.ne30x8" phys="cam6"    waccm_phys="1">0.8D0</dust_emis_fact>
 <dust_emis_fact dyn="se" hgrid="ne0np4CONUS.ne30x8" phys="cam_dev" waccm_phys="1">0.8D0</dust_emis_fact>
-<dust_emis_fact dyn="fv"                   phys="cam6"                    >0.7D0</dust_emis_fact>
-<dust_emis_fact dyn="fv"                   phys="cam_dev"                 >0.7D0</dust_emis_fact>
+<dust_emis_fact dyn="fv"                   phys="cam6"                    >0.70D0</dust_emis_fact>
+<dust_emis_fact dyn="fv"                   phys="cam_dev"                 >0.70D0</dust_emis_fact>
 <dust_emis_fact dyn="fv"                   phys="spcam_m2005" spcam_clubb_sgs="1">0.13D0</dust_emis_fact>
 
 <dust_emis_fact hgrid="1.9x2.5"                   phys="cam6"    ver="chem">0.26D0</dust_emis_fact>
