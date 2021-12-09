@@ -601,7 +601,7 @@
       <machine name="izumi" compiler="nag" category="carma"/>
     </machines>
     <options>
-      <option name="comment" >430 tsm, ter</option>
+      <option name="comment" >CARMA sea salt test</option>
       <option name="wallclock">00:30:00</option>
     </options>
   </test>
@@ -611,7 +611,7 @@
       <machine name="izumi" compiler="nag" category="carma"/>
     </machines>
     <options>
-      <option name="comment" >430 tsm, ter</option>
+      <option name="comment" >CARMA radiation test</option>
       <option name="wallclock">00:30:00</option>
     </options>
   </test>
@@ -619,9 +619,10 @@
   <test compset="QPC5" grid="f10_f10_mg37" name="ERC_D_Ln9_Vmct" testmods="cam/carma_test_tracers">
     <machines>
       <machine name="izumi" compiler="nag" category="carma"/>
+      <machine name="izumi" compiler="nag" category="aux_cam"/>
     </machines>
     <options>
-      <option name="comment" >430 tsm, ter</option>
+      <option name="comment" >CARMA tracers test</option>
       <option name="wallclock">00:30:00</option>
     </options>
   </test>
@@ -631,7 +632,7 @@
       <machine name="izumi" compiler="nag" category="carma"/>
     </machines>
     <options>
-      <option name="comment" >433 tsm, ter</option>
+      <option name="comment" >CARMA tracers2 test</option>
       <option name="wallclock">00:30:00</option>
     </options>
   </test>
@@ -641,7 +642,7 @@
       <machine name="izumi" compiler="nag" category="carma"/>
     </machines>
     <options>
-      <option name="comment" >434 tsm, ter</option>
+      <option name="comment" >CARMA cloud water detraining test</option>
       <option name="wallclock">00:30:00</option>
     </options>
   </test>
@@ -651,7 +652,7 @@
       <machine name="izumi" compiler="nag" category="carma"/>
     </machines>
     <options>
-      <option name="comment" >435 tsm, ter</option>
+      <option name="comment" >CARMA passive test</option>
       <option name="wallclock">00:30:00</option>
     </options>
   </test>
@@ -661,7 +662,7 @@
       <machine name="izumi" compiler="nag" category="carma"/>
     </machines>
     <options>
-      <option name="comment" >436 tsm, ter</option>
+      <option name="comment" >CARMA particle swelling test</option>
       <option name="wallclock">00:30:00</option>
     </options>
   </test>
@@ -671,7 +672,7 @@
       <machine name="izumi" compiler="nag" category="carma"/>
     </machines>
     <options>
-      <option name="comment" >437 tsm, ter</option>
+      <option name="comment" >CARMA particle growth test</option>
       <option name="wallclock">00:30:00</option>
     </options>
   </test>
@@ -681,7 +682,7 @@
       <machine name="izumi" compiler="nag" category="carma"/>
     </machines>
     <options>
-      <option name="comment" >440 tsm, ter</option>
+      <option name="comment" >CARMA dust test</option>
       <option name="wallclock">00:30:00</option>
     </options>
   </test>
@@ -691,7 +692,7 @@
       <machine name="izumi" compiler="nag" category="carma"/>
     </machines>
     <options>
-      <option name="comment" >450 tsm, ter</option>
+      <option name="comment" >CARMA pure sulfate test</option>
       <option name="wallclock">00:30:00</option>
     </options>
   </test>
@@ -701,7 +702,7 @@
       <machine name="izumi" compiler="nag" category="carma"/>
     </machines>
     <options>
-      <option name="comment" >451 tsm, ter</option>
+      <option name="comment" >CARMA mixed sulfate test</option>
       <option name="wallclock">00:30:00</option>
     </options>
   </test>
@@ -711,7 +712,7 @@
       <machine name="izumi" compiler="nag" category="carma"/>
     </machines>
     <options>
-      <option name="comment" >460 tsm, ter</option>
+      <option name="comment" >CARMA test of aerosol from meteor smoke</option>
       <option name="wallclock">00:30:00</option>
     </options>
   </test>
@@ -721,7 +722,7 @@
       <machine name="izumi" compiler="nag" category="carma"/>
     </machines>
     <options>
-      <option name="comment" >461 tsm, ter</option>
+      <option name="comment" >CARMA test of aerosols from meteor impact</option>
       <option name="wallclock">00:30:00</option>
     </options>
   </test>
@@ -731,7 +732,7 @@
       <machine name="izumi" compiler="nag" category="carma"/>
     </machines>
     <options>
-      <option name="comment" >462 tsm, ter</option>
+      <option name="comment" >CARMA Test of Polar Mesospheric Clouds (pmc)</option>
       <option name="wallclock">00:30:00</option>
     </options>
   </test>
