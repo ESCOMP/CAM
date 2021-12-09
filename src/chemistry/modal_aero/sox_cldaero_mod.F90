@@ -7,6 +7,7 @@ module sox_cldaero_mod
   use cam_abortutils,  only : endrun
   use ppgrid,          only : pcols, pver
   use mo_chem_utls,    only : get_spc_ndx
+  use mo_chem_utls,    only:  utls_chem_is
   use cldaero_mod,     only : cldaero_conc_t, cldaero_allocate, cldaero_deallocate
   use modal_aero_data, only : ntot_amode, modeptr_accum, lptr_so4_cw_amode, lptr_msa_cw_amode
   use modal_aero_data, only : numptrcw_amode, lptr_nh4_cw_amode
@@ -228,6 +229,12 @@ contains
     dqdt_aqh2so4(:,:,:) = 0.0_r8
     dqdt_aqhprxn(:,:) = 0.0_r8
     dqdt_aqo3rxn(:,:) = 0.0_r8
+
+    ! Avoid double counting in-cloud sulfur oxidation when running with
+    ! GEOS-Chem (CESM2-GC). If running with CESM2-GC, sulfur oxidation
+    ! is performed internally to GEOS-Chem. Here, we just return to the 
+    ! parent routine and thus we do not apply tendencies calculated by MAM.
+    if ( utls_chem_is('GEOS-Chem') ) return
 
     lev_loop: do k = 1,pver
        col_loop: do i = 1,ncol
