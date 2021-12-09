@@ -69,6 +69,7 @@ integer :: &
 integer, parameter :: MAM3_nmodes = 3
 integer, parameter :: MAM7_nmodes = 7
 integer, parameter :: MAM4_nmodes = 4
+integer, parameter :: MAM5_nmodes = 5
 integer :: nmodes = -1             ! number of aerosol modes
 
 ! mode indices
@@ -77,6 +78,7 @@ integer :: mode_coarse_idx = -1    ! coarse mode
 integer :: mode_finedust_idx = -1  ! fine dust mode
 integer :: mode_coardust_idx = -1  ! coarse dust mode
 integer :: mode_pcarbon_idx = -1   ! primary carbon mode
+integer :: mode_statcoar_idx = -1  ! strat_coarse mode
 
 ! mode properties
 real(r8) :: alnsg_mode_accum
@@ -84,6 +86,7 @@ real(r8) :: alnsg_mode_coarse
 real(r8) :: alnsg_mode_finedust
 real(r8) :: alnsg_mode_coardust
 real(r8) :: alnsg_mode_pcarbon
+real(r8) :: alnsg_mode_statcoar
 
 ! specie properties
 real(r8) :: specdens_dust
@@ -376,7 +379,7 @@ subroutine hetfrz_classnuc_cam_init(mincld_in)
             mode_coardust_idx, mode_finedust_idx, mode_pcarbon_idx
          call endrun(routine//': ERROR required mode type not found')
       end if
-   else if (nmodes == MAM4_nmodes) then
+   else if (nmodes == MAM4_nmodes .or. nmodes == MAM5_nmodes) then
       if (mode_accum_idx == -1 .or. mode_coarse_idx == -1 .or. mode_pcarbon_idx == -1) then
          write(iulog,*) routine//': ERROR required mode type not found - mode idx:', &
             mode_accum_idx, mode_coarse_idx, mode_pcarbon_idx
@@ -403,7 +406,7 @@ subroutine hetfrz_classnuc_cam_init(mincld_in)
       call rad_cnst_get_mode_props(0, mode_pcarbon_idx, sigmag=sigma_logr_aer)
       alnsg_mode_pcarbon = log(sigma_logr_aer)
 
-   else if (nmodes == MAM4_nmodes) then
+   else if (nmodes == MAM4_nmodes .or. nmodes == MAM5_nmodes) then
       call rad_cnst_get_mode_props(0, mode_coarse_idx, sigmag=sigma_logr_aer)
       alnsg_mode_coarse = log(sigma_logr_aer)
 
@@ -445,7 +448,7 @@ subroutine hetfrz_classnuc_cam_init(mincld_in)
       bc_pcarbon   = 5
       pom_pcarbon  = 14
       num_pcarbon  = 15
-   else if (nmodes == MAM4_nmodes) then
+   else if (nmodes == MAM4_nmodes  .or. nmodes == MAM5_nmodes) then
       ncnst = 14
       so4_accum  =  1
       bc_accum   =  2
@@ -496,7 +499,7 @@ subroutine hetfrz_classnuc_cam_init(mincld_in)
    mode_idx(soa_accum) = mode_accum_idx
    spec_idx(ncl_accum) = rad_cnst_get_spec_idx(0, mode_accum_idx, 'seasalt')
    mode_idx(ncl_accum) = mode_accum_idx
-   if (nmodes == MAM3_nmodes .or. nmodes == MAM4_nmodes) then
+   if (nmodes == MAM3_nmodes .or. nmodes == MAM4_nmodes .or. nmodes == MAM5_nmodes) then
       spec_idx(dst_accum) = rad_cnst_get_spec_idx(0, mode_accum_idx, 'dust')
       mode_idx(dst_accum) = mode_accum_idx
    end if
@@ -550,7 +553,7 @@ subroutine hetfrz_classnuc_cam_init(mincld_in)
    end if
 
    ! Get some specie specific properties.
-   if (nmodes == MAM3_nmodes .or. nmodes == MAM4_nmodes) then
+   if (nmodes == MAM3_nmodes .or. nmodes == MAM4_nmodes .or. nmodes == MAM5_nmodes) then
       call rad_cnst_get_aer_props(0, mode_idx(dst_accum), spec_idx(dst_accum), density_aer=specdens_dust)
    else if (nmodes == MAM7_nmodes) then
       call rad_cnst_get_aer_props(0, mode_idx(dst_finedust), spec_idx(dst_finedust), density_aer=specdens_dust)
@@ -788,7 +791,7 @@ subroutine hetfrz_classnuc_cam_calc( &
             supersatice = esl(i)/esi(i)
 
             fn(1) = factnum(i,k,mode_accum_idx)  ! bc accumulation mode
-            if (nmodes == MAM3_nmodes .or. nmodes == MAM4_nmodes) then
+            if (nmodes == MAM3_nmodes .or. nmodes == MAM4_nmodes .or. nmodes == MAM5_nmodes) then
                 fn(2) = factnum(i,k,mode_accum_idx)  ! dust_a1 accumulation mode
                 fn(3) = factnum(i,k,mode_coarse_idx) ! dust_a3 coarse mode
             else if (nmodes == MAM7_nmodes) then
@@ -999,7 +1002,7 @@ subroutine get_aer_num(ii, kk, ncnst, aer, aer_cb, rhoair,&
    !                calculate intersitial aerosol 
    !*****************************************************************************
    
-   if (nmodes == MAM3_nmodes .or. nmodes == MAM4_nmodes) then
+   if (nmodes == MAM3_nmodes .or. nmodes == MAM4_nmodes .or. nmodes == MAM5_nmodes) then
 
       if (.not. num_to_mass_in) then
 
@@ -1038,7 +1041,7 @@ subroutine get_aer_num(ii, kk, ncnst, aer, aer_cb, rhoair,&
          dst3_num = 0.0_r8
       end if
 
-      if (nmodes == MAM4_nmodes) then
+      if (nmodes == MAM4_nmodes .or. nmodes == MAM5_nmodes) then
         bc_num = bc_num+(aer(ii,kk,bc_pcarbon)) * bc_num_to_mass*1.0e-6_r8 ! #/cm^3
       end if
    else if (nmodes == MAM7_nmodes) then
@@ -1051,7 +1054,7 @@ subroutine get_aer_num(ii, kk, ncnst, aer, aer_cb, rhoair,&
    !                calculate cloud borne aerosol 
    !*****************************************************************************    
    
-   if (nmodes == MAM3_nmodes .or. nmodes == MAM4_nmodes) then
+   if (nmodes == MAM3_nmodes .or. nmodes == MAM4_nmodes .or. nmodes == MAM5_nmodes) then
 
       as_so4 = aer_cb(ii,kk,so4_accum)
       as_bc  = aer_cb(ii,kk,bc_accum)
@@ -1112,7 +1115,7 @@ subroutine get_aer_num(ii, kk, ncnst, aer, aer_cb, rhoair,&
    ! calculate mass mean radius
    !*****************************************************************************    
    
-   if (nmodes == MAM3_nmodes .or. nmodes == MAM4_nmodes) then
+   if (nmodes == MAM3_nmodes .or. nmodes == MAM4_nmodes .or. nmodes == MAM5_nmodes) then
 
       if (nmodes == MAM3_nmodes) then
 
@@ -1176,7 +1179,7 @@ subroutine get_aer_num(ii, kk, ncnst, aer, aer_cb, rhoair,&
    !                calculate coated fraction 
    !*****************************************************************************
    
-   if (nmodes == MAM3_nmodes .or. nmodes == MAM4_nmodes) then
+   if (nmodes == MAM3_nmodes .or. nmodes == MAM4_nmodes .or. nmodes == MAM5_nmodes) then
 
       fac_volsfc_bc      = exp(2.5_r8*alnsg_mode_accum**2)
       fac_volsfc_dust_a1 = exp(2.5_r8*alnsg_mode_accum**2)
@@ -1271,13 +1274,13 @@ subroutine get_aer_num(ii, kk, ncnst, aer, aer_cb, rhoair,&
       uncoated_aer_num(i) = total_interstial_aer_num(i)*(1._r8-dstcoat(i))
    end do
     
-   if (nmodes == MAM4_nmodes .or. nmodes == MAM7_nmodes) then
+   if (nmodes == MAM4_nmodes .or. nmodes == MAM7_nmodes .or. nmodes == MAM5_nmodes) then
       coated_aer_num(1)   = (aer(ii,kk,bc_pcarbon)*bc_num_to_mass*1.0e-6_r8)*dstcoat(1)+ &
                             (aer(ii,kk,bc_accum)*bc_num_to_mass*1.0e-6_r8)
       uncoated_aer_num(1) = (aer(ii,kk,bc_pcarbon)*bc_num_to_mass*1.0e-6_r8)*(1._r8-dstcoat(1))
    end if
     
-   if (nmodes == MAM3_nmodes .or. nmodes == MAM4_nmodes) then
+   if (nmodes == MAM3_nmodes .or. nmodes == MAM4_nmodes .or. nmodes == MAM5_nmodes) then
       dst1_scale = 0.488_r8    ! scaled for D>0.5-1 um from 0.1-1 um
    else if (nmodes == MAM7_nmodes) then
       dst1_scale = 0.566_r8    ! scaled for D>0.5-2 um from 0.1-2 um
@@ -1293,7 +1296,7 @@ subroutine get_aer_num(ii, kk, ncnst, aer, aer_cb, rhoair,&
    !                prepare some variables for water activity 
    !*****************************************************************************
    
-   if (nmodes == MAM3_nmodes .or. nmodes == MAM4_nmodes) then
+   if (nmodes == MAM3_nmodes .or. nmodes == MAM4_nmodes .or. nmodes == MAM5_nmodes) then
       ! accumulation mode for dust_a1 
       if (aer(ii,kk,num_accum) > 0._r8) then 
          awcam(2) = (dst1_num*1.0e6_r8)/aer(ii,kk,num_accum)* &

@@ -20,8 +20,10 @@
   use modal_aero_data, only: alnsg_amode, voltonumblo_amode, voltonumbhi_amode, dgnum_amode, nspec_amode
   use modal_aero_data, only: specmw_amode, specdens_amode, lmassptr_amode, lmassptrcw_amode
   use modal_aero_data, only: numptr_amode, numptrcw_amode, modeptr_coarse, modeptr_accum
+  use modal_aero_data, only: modeptr_stracoar
   use modal_aero_data, only: specmw_amode, specdens_amode, lmassptr_amode, lmassptrcw_amode, numptr_amode, numptrcw_amode
   use modal_aero_data, only: dgnumhi_amode, dgnumlo_amode, cnst_name_cw, modeptr_aitken
+  use rad_constituents,only: rad_cnst_get_mode_idx
 
   implicit none
   private
@@ -33,23 +35,15 @@
 ! !PUBLIC DATA MEMBERS:
   integer, parameter :: pcnstxx = gas_pcnst
 
-! *** select one of the 3 following options
-! *** for maxpair_renamexf = 2 or 3, use mode definition files with
-!     dgnumhi_amode(modeptr_accum)  = 1.1e-6 m
-!     dgnumlo_amode(modeptr_coarse) = 0.9e-6 m
-
-! integer, parameter, public :: maxpair_renamexf = 1
-! integer, parameter, public :: ipair_select_renamexf(maxpair_renamexf) = (/ 2001 /)
-
-! integer, parameter, public :: maxpair_renamexf = 2
-! integer, parameter, public :: ipair_select_renamexf(maxpair_renamexf) = (/ 2001, 1003 /)
-
   integer, parameter, public :: maxpair_renamexf = 3
-  integer, parameter, public :: ipair_select_renamexf(maxpair_renamexf) = (/ 2001, 1003, 3001 /)
+
+  integer, protected, public :: ipair_select_renamexf(maxpair_renamexf)
 ! ipair_select_renamexf defines the mode_from and mode_too for each renaming pair
 ! 2001 = aitken --> accum
 ! 1003 = accum  --> coarse
 ! 3001 = coarse --> accum
+! 1005 = accum  --> stracoar
+! 5001 = stracoar --> accum
 
   integer, parameter, public :: method_optbb_renamexf = 2
 
@@ -108,7 +102,19 @@ contains
   !------------------------------------------------------------------
   subroutine modal_aero_rename_init(modal_accum_coarse_exch_in)
     logical, optional, intent(in) :: modal_accum_coarse_exch_in
-    
+
+    ! ipair_select_renamexf defines the mode_from and mode_too for each renaming pair
+    ! 2001 = aitken --> accum
+    ! 1003 = accum  --> coarse
+    ! 3001 = coarse --> accum
+    ! 1005 = accum  --> stracoar
+    ! 5001 = stracoar --> accum
+    if( rad_cnst_get_mode_idx(0,'coarse_strat') > 0 ) then
+       ipair_select_renamexf(1:maxpair_renamexf) = (/ 2001, 1005, 5001 /)
+    else
+       ipair_select_renamexf(1:maxpair_renamexf) = (/ 2001, 1003, 3001 /)
+    endif
+
     allocate( lspecfrma_renamexf(maxspec_renamexf,maxpair_renamexf) )
     allocate( lspecfrmc_renamexf(maxspec_renamexf,maxpair_renamexf) )
     allocate( lspectooa_renamexf(maxspec_renamexf,maxpair_renamexf) )
@@ -170,18 +176,18 @@ contains
     real(r8), intent(in)    :: qqcw(ncol,pver,pcnstxx) ! like q but for cloud-borne species
 
     real(r8), intent(inout) :: dqdt(ncol,pver,pcnstxx)  ! TMR tendency array;
-    ! incoming dqdt = tendencies for the 
-    !     "fromwhere" continuous growth process 
+    ! incoming dqdt = tendencies for the
+    !     "fromwhere" continuous growth process
     ! the renaming tendencies are added on
     ! *** NOTE ncol and pcnstxx dimensions
     real(r8), intent(inout) :: dqqcwdt(ncol,pver,pcnstxx)
-    real(r8), intent(in)    :: dqdt_other(ncol,pver,pcnstxx)  
-    ! tendencies for "other" continuous growth process 
+    real(r8), intent(in)    :: dqdt_other(ncol,pver,pcnstxx)
+    ! tendencies for "other" continuous growth process
     ! currently in cam3
     !     dqdt is from gas (h2so4, nh3) condensation
     !     dqdt_other is from aqchem and soa
     ! *** NOTE ncol and pcnstxx dimensions
-    real(r8), intent(in)    :: dqqcwdt_other(ncol,pver,pcnstxx)  
+    real(r8), intent(in)    :: dqqcwdt_other(ncol,pver,pcnstxx)
     logical,  intent(inout) :: dotendrn(pcnstxx) ! identifies the species for which
     !     renaming dqdt is computed
     logical,  intent(inout) :: dotendqqcwrn(pcnstxx)
@@ -193,7 +199,7 @@ contains
     integer,  intent(in)    :: nsrflx               ! last dimension of qsrflx
 
     real(r8), intent(inout) :: qsrflx(pcols,pcnstxx,nsrflx)
-    ! process-specific column tracer tendencies 
+    ! process-specific column tracer tendencies
     real(r8), intent(inout) :: qqcwsrflx(pcols,pcnstxx,nsrflx)
     real(r8), optional, intent(out) &
          :: dqdt_rnpos(ncol,pver,pcnstxx)
@@ -273,18 +279,18 @@ contains
    real(r8), intent(in)    :: qqcw(ncol,pver,pcnstxx) ! like q but for cloud-borne species
 
    real(r8), intent(inout) :: dqdt(ncol,pver,pcnstxx)  ! TMR tendency array;
-                              ! incoming dqdt = tendencies for the 
-                              !     "fromwhere" continuous growth process 
+                              ! incoming dqdt = tendencies for the
+                              !     "fromwhere" continuous growth process
                               ! the renaming tendencies are added on
                               ! *** NOTE ncol and pcnstxx dimensions
    real(r8), intent(inout) :: dqqcwdt(ncol,pver,pcnstxx)
-   real(r8), intent(in)    :: dqdt_other(ncol,pver,pcnstxx)  
-                              ! tendencies for "other" continuous growth process 
+   real(r8), intent(in)    :: dqdt_other(ncol,pver,pcnstxx)
+                              ! tendencies for "other" continuous growth process
                               ! currently in cam3
                               !     dqdt is from gas (h2so4, nh3) condensation
                               !     dqdt_other is from aqchem and soa
                               ! *** NOTE ncol and pcnstxx dimensions
-   real(r8), intent(in)    :: dqqcwdt_other(ncol,pver,pcnstxx)  
+   real(r8), intent(in)    :: dqqcwdt_other(ncol,pver,pcnstxx)
    logical,  intent(inout) :: dotendrn(pcnstxx) ! identifies the species for which
                               !     renaming dqdt is computed
    logical,  intent(inout) :: dotendqqcwrn(pcnstxx)
@@ -296,10 +302,10 @@ contains
    integer,  intent(in)    :: nsrflx               ! last dimension of qsrflx
 
    real(r8), intent(inout) :: qsrflx(pcols,pcnstxx,nsrflx)
-                              ! process-specific column tracer tendencies 
+                              ! process-specific column tracer tendencies
    real(r8), intent(inout) :: qqcwsrflx(pcols,pcnstxx,nsrflx)
 
-! !DESCRIPTION: 
+! !DESCRIPTION:
 ! computes TMR (tracer mixing ratio) tendencies for "mode renaming"
 !    during a continuous growth process
 ! currently this transfers number and mass (and surface) from the aitken
@@ -465,7 +471,7 @@ mainloop1_ipair:  do ipair = 1, npair_renamexf
 	mfrm = modefrm_renamexf(ipair)
 	mtoo = modetoo_renamexf(ipair)
 
-!   dryvol_t_old is the old total (a+c) dry-volume for the "from" mode 
+!   dryvol_t_old is the old total (a+c) dry-volume for the "from" mode
 !	in m^3-AP/kmol-air
 !   dryvol_t_new is the new total dry-volume
 !	(old/new = before/after the continuous growth)
@@ -486,7 +492,7 @@ mainloop1_ipair:  do ipair = 1, npair_renamexf
 	num_t_oldbnd = min( dryvol_t_oldbnd*v2nlorlx(mfrm), num_t_old )
 	num_t_oldbnd = max( dryvol_t_oldbnd*v2nhirlx(mfrm), num_t_oldbnd )
 
-!   no renaming if dgnum < "base" dgnum, 
+!   no renaming if dgnum < "base" dgnum,
 	dgn_t_new = (dryvol_t_new/(num_t_oldbnd*factoraa(mfrm)))**onethird
 	if (dgn_t_new .le. dgnum_amode(mfrm)) cycle mainloop1_ipair
 
@@ -501,7 +507,7 @@ mainloop1_ipair:  do ipair = 1, npair_renamexf
 !   compute old fraction of number and mass in the tail (dp > dp_cut)
 	dgn_t_old =   &
 		(dryvol_t_oldbnd/(num_t_oldbnd*factoraa(mfrm)))**onethird
-!   if dgn_t_new exceeds dp_cut, use the minimum of dgn_t_old and 
+!   if dgn_t_new exceeds dp_cut, use the minimum of dgn_t_old and
 !   dp_belowcut to guarantee some transfer
 	if (dgn_t_new .ge. dp_cut(ipair)) then
 	    dgn_t_old = min( dgn_t_old, dp_belowcut(ipair) )
@@ -519,7 +525,7 @@ mainloop1_ipair:  do ipair = 1, npair_renamexf
 	if (dum .le. 0.0_r8) cycle mainloop1_ipair
 
 	xferfrac_vol = min( dum, dryvol_t_new )/dryvol_t_new
-	xferfrac_vol = min( xferfrac_vol, xferfrac_max ) 
+	xferfrac_vol = min( xferfrac_vol, xferfrac_max )
 	xferfrac_num = tailfr_numnew - tailfr_numold
 	xferfrac_num = max( 0.0_r8, min( xferfrac_num, xferfrac_vol ) )
 
@@ -865,18 +871,18 @@ aa_iqfrm: do iqfrm = -1, nspec_amode(mfrm)
    real(r8), intent(in)    :: qqcw(ncol,pver,pcnstxx) ! like q but for cloud-borne species
 
    real(r8), intent(inout) :: dqdt(ncol,pver,pcnstxx)  ! TMR tendency array;
-                              ! incoming dqdt = tendencies for the 
-                              !     "fromwhere" continuous growth process 
+                              ! incoming dqdt = tendencies for the
+                              !     "fromwhere" continuous growth process
                               ! the renaming tendencies are added on
                               ! *** NOTE ncol and pcnstxx dimensions
    real(r8), intent(inout) :: dqqcwdt(ncol,pver,pcnstxx)
-   real(r8), intent(in)    :: dqdt_other(ncol,pver,pcnstxx)  
-                              ! tendencies for "other" continuous growth process 
+   real(r8), intent(in)    :: dqdt_other(ncol,pver,pcnstxx)
+                              ! tendencies for "other" continuous growth process
                               ! currently in cam3
                               !     dqdt is from gas (h2so4, nh3) condensation
                               !     dqdt_other is from aqchem and soa
                               ! *** NOTE ncol and pcnstxx dimensions
-   real(r8), intent(in)    :: dqqcwdt_other(ncol,pver,pcnstxx)  
+   real(r8), intent(in)    :: dqqcwdt_other(ncol,pver,pcnstxx)
    logical,  intent(inout) :: dotendrn(pcnstxx) ! identifies the species for which
                               !     renaming dqdt is computed
    logical,  intent(inout) :: dotendqqcwrn(pcnstxx)
@@ -888,13 +894,13 @@ aa_iqfrm: do iqfrm = -1, nspec_amode(mfrm)
    integer,  intent(in)    :: nsrflx               ! last dimension of qsrflx
 
    real(r8), intent(inout) :: qsrflx(pcols,pcnstxx,nsrflx)
-                              ! process-specific column tracer tendencies 
+                              ! process-specific column tracer tendencies
    real(r8), intent(inout) :: qqcwsrflx(pcols,pcnstxx,nsrflx)
    real(r8), optional, intent(out) &
                            :: dqdt_rnpos(ncol,pver,pcnstxx)
                               ! the positive (production) part of the renaming tendency
 
-! !DESCRIPTION: 
+! !DESCRIPTION:
 ! computes TMR (tracer mixing ratio) tendencies for "mode renaming"
 !    during a continuous growth process
 ! currently this transfers number and mass (and surface) from the aitken
@@ -987,9 +993,9 @@ mainloop1_ipair:  do ipair = 1, npair_renamexf
 	mfrm = modefrm_renamexf(ipair)
 	mtoo = modetoo_renamexf(ipair)
 
-	flagaa_shrink = .false.
-	if ((mfrm==modeptr_coarse) .and. (mtoo==modeptr_accum)) &
-	    flagaa_shrink = .true.
+        flagaa_shrink = &
+            ((mfrm==modeptr_coarse) .and.  (mtoo==modeptr_accum)) .or. &
+            ((mfrm==modeptr_stracoar) .and. (mtoo==modeptr_accum))
 
 !
 !   compute aerosol dry-volume for the "from mode" of each renaming pair
@@ -1062,7 +1068,7 @@ mainloop1_i:  do i = 1, ncol
         end if
 
 
-!   dryvol_t_old is the old total (a+c) dry-volume for the "from" mode 
+!   dryvol_t_old is the old total (a+c) dry-volume for the "from" mode
 !	in m^3-AP/kmol-air
 !   dryvol_t_new is the new total dry-volume
 !	(old/new = before/after the continuous growth)
@@ -1111,7 +1117,7 @@ grow_shrink_conditional1: &
 	    end if
 
 	else if (dgn_t_new .ge. dp_cut(ipair)) then
-!   if dgn_t_new exceeds dp_cut, use the minimum of dgn_t_oldb and 
+!   if dgn_t_new exceeds dp_cut, use the minimum of dgn_t_oldb and
 !   dp_belowcut to guarantee some transfer
 	    dgn_t_oldb = min( dgn_t_oldb, dp_belowcut(ipair) )
 	end if
@@ -1149,7 +1155,7 @@ grow_shrink_conditional1: &
 	    xferfrac_vol = 1.0_r8
 	    xferfrac_num = 1.0_r8
 	else
-	    xferfrac_vol = min( xferfrac_vol, xferfrac_max ) 
+	    xferfrac_vol = min( xferfrac_vol, xferfrac_max )
 	    xferfrac_num = tailfr_numnew - tailfr_numold
 	    xferfrac_num = max( 0.0_r8, min( xferfrac_num, xferfrac_vol ) )
 	end if
@@ -1179,7 +1185,7 @@ grow_shrink_conditional1: &
 !   no renaming if (dryvol_t_old ~ 0)
 	if (dryvol_t_old .le. dryvol_smallest(mfrm)) cycle mainloop1_i
 
-!   when (delta_dryvol is very small or positive), 
+!   when (delta_dryvol is very small or positive),
 !      which means particles are not evaporating,
 !      only do renaming if [(flagaa_shrink true) and (in stratosphere)]],
 !   and set flagbb_shrink true to identify this special case
@@ -1244,7 +1250,7 @@ grow_shrink_conditional1: &
 	    xferfrac_vol = 1.0_r8
 	    xferfrac_num = 1.0_r8
 	else
-	    xferfrac_vol = min( xferfrac_vol, xferfrac_max ) 
+	    xferfrac_vol = min( xferfrac_vol, xferfrac_max )
 !   transfer fraction for number cannot be less than that of volume
 	    xferfrac_num = max( xferfrac_num, xferfrac_vol )
 	    xferfrac_num = min( xferfrac_max, xferfrac_num )
@@ -1405,58 +1411,70 @@ grow_shrink_conditional1: &
 !   define "from mode" and "to mode" for each tail-xfer pairing
 !	using the values in ipair_select_renamexf(:)
 !
-	npair_renamexf = 0
-	do ipair = 1, maxpair_renamexf
-	    itmpa = ipair_select_renamexf(ipair)
-	    if (itmpa == 0) then
-		exit
-	    else if (itmpa == 2001) then
-		mfrm = modeptr_aitken
-		mtoo = modeptr_accum
-		igrow_shrink_renamexf(ipair) = 1
-		ixferable_all_needed_renamexf(ipair) = 1
-                strat_only_renamexf(ipair) = .false.
-	    else if (itmpa == 1003) then
-		mfrm = modeptr_accum
-		mtoo = modeptr_coarse
-		igrow_shrink_renamexf(ipair) = 1
-		ixferable_all_needed_renamexf(ipair) = 0
-                strat_only_renamexf(ipair) = .true.
-	    else if (itmpa == 3001) then
-		mfrm = modeptr_coarse
-		mtoo = modeptr_accum
-		igrow_shrink_renamexf(ipair) = -1
-		ixferable_all_needed_renamexf(ipair) = 0
-                strat_only_renamexf(ipair) = .true.
-	    else
-		write(lunout,'(/2a,3(1x,i12))') &
-		    '*** subr. modal_aero_rename_acc_crs_init', &
-		    'bad ipair_select_renamexf', ipair, itmpa
-		call endrun( 'modal_aero_rename_acc_crs_init error' )
-	    end if
+        npair_renamexf = 0
+        do ipair = 1, maxpair_renamexf
+           itmpa = ipair_select_renamexf(ipair)
+           if (itmpa == 0) then
+              exit
+           else if (itmpa == 2001) then  !both mam4 and mam5
+              mfrm = modeptr_aitken
+              mtoo = modeptr_accum
+              igrow_shrink_renamexf(ipair) = 1
+              ixferable_all_needed_renamexf(ipair) = 1
+              strat_only_renamexf(ipair) = .false.
+           else if (itmpa == 1003) then
+              mfrm = modeptr_accum
+              mtoo = modeptr_coarse
+              igrow_shrink_renamexf(ipair) = 1
+              ixferable_all_needed_renamexf(ipair) = 0
+              strat_only_renamexf(ipair) = .true.
+           else if (itmpa == 1005) then
+              mfrm = modeptr_accum
+              mtoo = modeptr_stracoar
+              igrow_shrink_renamexf(ipair) = 1
+              ixferable_all_needed_renamexf(ipair) = 0
+              strat_only_renamexf(ipair) = .true.
+           else if (itmpa == 3001) then
+              mfrm = modeptr_coarse
+              mtoo = modeptr_accum
+              igrow_shrink_renamexf(ipair) = -1
+              ixferable_all_needed_renamexf(ipair) = 0
+              strat_only_renamexf(ipair) = .true.
+           else if (itmpa == 5001) then
+              mfrm = modeptr_stracoar
+              mtoo = modeptr_accum
+              igrow_shrink_renamexf(ipair) = -1
+              ixferable_all_needed_renamexf(ipair) = 0
+              strat_only_renamexf(ipair) = .true.
+           else
+              write(lunout,'(/2a,3(1x,i12))') &
+                   '*** subr. modal_aero_rename_acc_crs_init', &
+                   'bad ipair_select_renamexf', ipair, itmpa
+              call endrun( 'modal_aero_rename_acc_crs_init error' )
+           end if
 
-	    do i = 1, ipair-1
-		if (itmpa .eq. ipair_select_renamexf(i)) then
-		    write(lunout,'(/2a/10(1x,i12))') &
-			'*** subr. modal_aero_rename_acc_crs_init', &
-			'duplicates in ipair_select_renamexf', &
-			ipair_select_renamexf(1:ipair)
-		    call endrun( 'modal_aero_rename_acc_crs_init error' )
-		end if
-	    end do
+           do i = 1, ipair-1
+              if (itmpa .eq. ipair_select_renamexf(i)) then
+                 write(lunout,'(/2a/10(1x,i12))') &
+                      '*** subr. modal_aero_rename_acc_crs_init', &
+                      'duplicates in ipair_select_renamexf', &
+                      ipair_select_renamexf(1:ipair)
+                 call endrun( 'modal_aero_rename_acc_crs_init error' )
+              end if
+           end do
 
-	    if ( (mfrm .ge. 1) .and. (mfrm .le. ntot_amode) .and. &
-	         (mtoo .ge. 1) .and. (mtoo .le. ntot_amode) ) then
-		npair_renamexf = ipair
-		modefrm_renamexf(ipair) = mfrm
-		modetoo_renamexf(ipair) = mtoo
-	    else
-		write(lunout,'(/2a,3(1x,i12))') &
-		    '*** subr. modal_aero_rename_acc_crs_init', &
-		    'bad mfrm or mtoo', ipair, mfrm, mtoo
-		call endrun( 'modal_aero_rename_acc_crs_init error' )
-	    end if
-	end do ! ipair
+           if ( (mfrm .ge. 1) .and. (mfrm .le. ntot_amode) .and. &
+                (mtoo .ge. 1) .and. (mtoo .le. ntot_amode) ) then
+              npair_renamexf = ipair
+              modefrm_renamexf(ipair) = mfrm
+              modetoo_renamexf(ipair) = mtoo
+           else
+              write(lunout,'(/2a,3(1x,i12))') &
+                   '*** subr. modal_aero_rename_acc_crs_init', &
+                   'bad mfrm or mtoo', ipair, mfrm, mtoo
+              call endrun( 'modal_aero_rename_acc_crs_init error' )
+           end if
+        end do ! ipair
 
 	if (npair_renamexf .le. 0) then
 	    write(lunout,'(/a/a,3(1x,i12))') &
@@ -1631,31 +1649,32 @@ grow_shrink_conditional1: &
 !   dryvol_smallest is a very small volume mixing ratio (m3-AP/kmol-air)
 !   used for avoiding overflow.  it corresponds to dp = 1 nm
 !   and number = 1e-5 #/mg-air ~= 1e-5 #/cm3-air
-	    dryvol_smallest(mfrm) = 1.0e-25_r8
-	    v2nlorlx(mfrm) = voltonumblo_amode(mfrm)*frelax
-	    v2nhirlx(mfrm) = voltonumbhi_amode(mfrm)/frelax
+            dryvol_smallest(mfrm) = 1.0e-25_r8
+            v2nlorlx(mfrm) = voltonumblo_amode(mfrm)*frelax
+            v2nhirlx(mfrm) = voltonumbhi_amode(mfrm)/frelax
 
 	    factor_3alnsg2(ipair) = 3.0_r8 * (alnsg_amode(mfrm)**2)
 
-	    dp_cut(ipair) = sqrt(   &
-		dgnum_amode(mfrm)*exp(1.5_r8*(alnsg_amode(mfrm)**2)) *   &
-		dgnum_amode(mtoo)*exp(1.5_r8*(alnsg_amode(mtoo)**2)) )
+	    dp_cut(ipair) = sqrt( &
+                 dgnum_amode(mfrm)*exp(1.5_r8*(alnsg_amode(mfrm)**2)) *   &
+                 dgnum_amode(mtoo)*exp(1.5_r8*(alnsg_amode(mtoo)**2)) )
 	    dp_xferall_thresh(ipair) = dgnum_amode(mtoo)
 	    dp_xfernone_threshaa(ipair) = dgnum_amode(mfrm)
-
-	    if ((mfrm == modeptr_accum) .and. (mtoo == modeptr_coarse)) then
-		dp_cut(ipair)               = 4.4e-7_r8 
-		dp_xfernone_threshaa(ipair) = 1.6e-7_r8 
-		dp_xferall_thresh(ipair)    = 4.7e-7_r8 
-	    else if ((mfrm == modeptr_coarse) .and. (mtoo == modeptr_accum)) then
-		dp_cut(ipair)               = 4.4e-7_r8
-		dp_xfernone_threshaa(ipair) = 4.4e-7_r8
-		dp_xferall_thresh(ipair)    = 4.1e-7_r8
-	    end if
+	    if (((mfrm == modeptr_accum) .and. (mtoo == modeptr_coarse)).or.&
+                ((mfrm == modeptr_accum) .and. (mtoo == modeptr_stracoar))) then
+               dp_cut(ipair)               = 4.4e-7_r8
+               dp_xfernone_threshaa(ipair) = 1.6e-7_r8
+               dp_xferall_thresh(ipair)    = 4.7e-7_r8
+            else if (((mfrm == modeptr_coarse) .and. (mtoo == modeptr_accum)).or.&
+                     ((mfrm == modeptr_stracoar) .and. (mtoo == modeptr_accum))) then
+               dp_cut(ipair)               = 4.4e-7_r8
+               dp_xfernone_threshaa(ipair) = 4.4e-7_r8
+               dp_xferall_thresh(ipair)    = 4.1e-7_r8
+            end if
 
 	    lndp_cut(ipair) = log( dp_cut(ipair) )
 	    dp_belowcut(ipair) = 0.99_r8*dp_cut(ipair)
-	end do
+         end do
 
 
 !

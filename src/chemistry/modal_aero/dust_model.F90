@@ -1,7 +1,7 @@
 !===============================================================================
 ! Dust for Modal Aerosol Model
 !===============================================================================
-module dust_model 
+module dust_model
   use shr_kind_mod,     only: r8 => shr_kind_r8, cl => shr_kind_cl
   use spmd_utils,       only: masterproc
   use cam_abortutils,   only: endrun
@@ -104,7 +104,7 @@ module dust_model
     if ( ntot_amode == 3 ) then
        dust_dmt_grd(:) = (/ 0.1e-6_r8, 1.0e-6_r8, 10.0e-6_r8/)
        dust_emis_sclfctr(:) = (/ 0.011_r8,0.989_r8 /)
-    elseif ( ntot_amode == 4 ) then
+    elseif ( ntot_amode == 4 .or. ntot_amode == 5 ) then
        dust_dmt_grd(:) = (/ 0.01e-6_r8, 0.1e-6_r8, 1.0e-6_r8, 10.0e-6_r8 /) ! Aitken dust
        dust_emis_sclfctr(:) = (/ 1.65E-05_r8, 0.011_r8, 0.989_r8 /) ! Aitken dust
     else if( ntot_amode == 7 ) then
@@ -130,7 +130,7 @@ module dust_model
 
     dust_active = any(dust_indices(:) > 0)
     if (.not.dust_active) return
-   
+
     call  soil_erod_init( dust_emis_fact, soil_erod_file )
 
     call dust_set_params( dust_nbin, dust_dmt_grd, dust_dmt_vwr, dust_stk_crc )
@@ -172,7 +172,7 @@ module dust_model
           cflx(i,idst) = sum( -dust_flux_in(i,:) ) &
                * dust_emis_sclfctr(m)*soil_erod(i)/soil_erod_fact*1.15_r8
 
-          x_mton = 6._r8 / (pi * dust_density * (dust_dmt_vwr(m)**3._r8))                
+          x_mton = 6._r8 / (pi * dust_density * (dust_dmt_vwr(m)**3._r8))
 
           inum = dust_indices(m+dust_nbin)
 
