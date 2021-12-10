@@ -599,6 +599,8 @@
   <test compset="QPC5" grid="f10_f10_mg37" name="ERC_D_Ln9_Vmct" testmods="cam/carma_sea_salt">
     <machines>
       <machine name="izumi" compiler="nag" category="carma"/>
+      <machine name="cheyenne" compiler="intel" category="carma"/>
+      <machine name="izumi" compiler="nag" category="aux_cam"/>
     </machines>
     <options>
       <option name="comment" >CARMA sea salt test</option>
@@ -619,7 +621,6 @@
   <test compset="QPC5" grid="f10_f10_mg37" name="ERC_D_Ln9_Vmct" testmods="cam/carma_test_tracers">
     <machines>
       <machine name="izumi" compiler="nag" category="carma"/>
-      <machine name="izumi" compiler="nag" category="aux_cam"/>
     </machines>
     <options>
       <option name="comment" >CARMA tracers test</option>
