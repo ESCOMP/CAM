@@ -2797,12 +2797,8 @@ contains
       ! Run wet deposition routines to intialize aerosols
       !===================================================
 
-      if ( .not. deep_scheme_does_scav_trans() ) then
-         if (clim_modal_aero .and. .not. prog_modal_aero) then
-            call modal_aero_calcsize_diag(state, pbuf)
-            call modal_aero_wateruptake_dr(state, pbuf)
-         endif
-      end if
+      call modal_aero_calcsize_diag(state, pbuf)
+      call modal_aero_wateruptake_dr(state, pbuf)
 
       !===================================================
       ! Radiation computations
