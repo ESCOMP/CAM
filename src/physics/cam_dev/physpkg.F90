@@ -2794,6 +2794,17 @@ contains
       end if
 
       !===================================================
+      ! Run wet deposition routines to intialize aerosols
+      !===================================================
+
+      if ( .not. deep_scheme_does_scav_trans() ) then
+         if (clim_modal_aero .and. .not. prog_modal_aero) then
+            call modal_aero_calcsize_diag(state, pbuf)
+            call modal_aero_wateruptake_dr(state, pbuf)
+         endif
+      end if
+
+      !===================================================
       ! Radiation computations
       !===================================================
 
@@ -2808,8 +2819,6 @@ contains
       call physics_update(state, ptend, ztodt, tend)
 
       call check_energy_chng(state, tend, "radheat", nstep, ztodt, zero, zero, zero, net_flx)
-
-      call t_stopf('radiation')
 
     end if
 
