@@ -3,7 +3,7 @@
 !================================================================================
 module fire_emissions
 
-  use shr_kind_mod,      only : r8 => shr_kind_r8, shr_kind_cl
+  use shr_kind_mod,      only : r8 => shr_kind_r8
   use shr_fire_emis_mod, only : shr_fire_emis_mechcomps, shr_fire_emis_mechcomps_n, shr_fire_emis_elevated
   use srf_field_check,   only : active_Fall_flxfire
   use shr_const_mod,     only : pi => SHR_CONST_PI
@@ -48,14 +48,12 @@ contains
   !------------------------------------------------------------------------------
   subroutine fire_emissions_init()
 
-
     ! local vars
     integer :: n, ii
 
-    integer :: frc_ndx, spc_ndx, ndx
+    integer :: frc_ndx, spc_ndx
     integer :: mode, spec
     character(len=16) :: name
-    character(len=32) :: spc_name
     character(len=32) :: num_name
 
     real(r8), parameter :: demis_acc = 0.134e-6_r8 ! meters
