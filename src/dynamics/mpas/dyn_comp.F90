@@ -131,7 +131,6 @@ type dyn_import_t
                                                   ! of the sphere [dimensionless]       (3,ncol)
    integer, dimension(:,:), pointer :: cellsOnEdge ! Indices of cells separated by an edge (2,nedge)
 
-
    !
    ! State that may be directly derived from dycore prognostic state
    !
@@ -197,6 +196,19 @@ type dyn_export_t
                                                   ! interface [dimensionless]             (nver)
    real(r8), dimension(:),     pointer :: fzp     ! Interp weight from k-1 layer midpoint to k
                                                   ! layer interface [dimensionless]       (nver)
+
+   !
+   ! Invariant -- needed for computing the frontogenesis function
+   !
+   real(r8), dimension(:,:),   pointer :: defc_a
+   real(r8), dimension(:,:),   pointer :: defc_b
+   real(r8), dimension(:,:),   pointer :: cell_gradient_coef_x
+   real(r8), dimension(:,:),   pointer :: cell_gradient_coef_y
+   real(r8), dimension(:,:),   pointer :: edgesOnCell_sign
+   real(r8), dimension(:),     pointer :: dvEdge
+
+   integer, dimension(:,:), pointer :: edgesOnCell
+   integer, dimension(:),   pointer :: nEdgesOnCell
 
    !
    ! State that may be directly derived from dycore prognostic state
@@ -479,6 +491,19 @@ subroutine dyn_init(dyn_in, dyn_out)
    dyn_out % rho   => dyn_in % rho
    dyn_out % ux    => dyn_in % ux
    dyn_out % uy    => dyn_in % uy
+
+   ! components only needed in output, no time level index
+
+   call mpas_pool_get_array(mesh_pool,  'defc_a',                dyn_out % defc_a)
+   call mpas_pool_get_array(mesh_pool,  'defc_b',                dyn_out % defc_b)
+   call mpas_pool_get_array(mesh_pool,  'cell_gradient_coef_x',  dyn_out % cell_gradient_coef_x)
+   call mpas_pool_get_array(mesh_pool,  'cell_gradient_coef_y',  dyn_out % cell_gradient_coef_y)
+   call mpas_pool_get_array(mesh_pool,  'edgesOnCell_sign',      dyn_out % edgesOnCell_sign)
+   call mpas_pool_get_array(mesh_pool,  'dvEdge',                dyn_out % dvEdge)
+   call mpas_pool_get_array(mesh_pool,  'edgesOnCell',           dyn_out % edgesOnCell)
+   call mpas_pool_get_array(mesh_pool,  'nEdgesOnCell',          dyn_out % nEdgesOnCell)
+
+   ! cam-required hydrostatic pressures
 
    allocate(dyn_out % pmiddry(nVertLevels,   nCells), stat=ierr)
    if( ierr /= 0 ) call endrun(subname//': failed to allocate dyn_out%pmiddry array')
