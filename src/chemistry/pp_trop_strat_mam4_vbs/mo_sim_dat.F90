@@ -246,12 +246,12 @@
                           1278,1291,1304,1327,1352,1507,1549,1640,1691,1716, &
                           1739,1845,1876,1900,1935,1993,2054,2080 /)
 
-      extfrc_lst(: 24) = (/ 'so4_a1          ','bc_a4           ','SVOC            ','bc_a1           ','CO              ', &
+      extfrc_lst(: 16) = (/ 'so4_a1          ','bc_a4           ','SVOC            ','bc_a1           ','CO              ', &
                             'NO              ','NO2             ','num_a1          ','num_a2          ','num_a4          ', &
                             'pom_a1          ','pom_a4          ','so4_a2          ','SO2             ','AOA_NH          ',&
                             'N               ' /)
 
-      frc_from_dataset(: 24) = (/ .true., .true., .true., .true.,  .true., &
+      frc_from_dataset(: 16) = (/ .true., .true., .true., .true.,  .true., &
                                   .true., .true., .true., .true.,  .true., &
                                   .true., .true., .true., .true.,  .false., &
                                   .false. /)

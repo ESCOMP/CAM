@@ -69,9 +69,8 @@ contains
     if (( gas_wetdep_cnt>0 ).and. &
        ( .not.(gas_wetdep_method=='MOZ' .or. &
                gas_wetdep_method=='NEU' .or. &
-               gas_wetdep_method=='GEOS-CHEM' .or. &
                gas_wetdep_method=='OFF') )) then
-       call endrun('gas_wetdep_readnl; gas_wetdep_method must be set to either MOZ, NEU or GEOS-CHEM')
+       call endrun('gas_wetdep_readnl; gas_wetdep_method must be set to either MOZ or NEU')
     endif
 
   end subroutine gas_wetdep_readnl
