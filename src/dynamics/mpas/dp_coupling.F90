@@ -765,7 +765,8 @@ subroutine hydrostatic_pressure(nCells, nVertLevels, zz, zgrid, rho_zz, theta_m,
       do k = nVertLevels, 1, -1
         !hydrostatic mid-level pressure - MPAS full pressure is (rhok*rgas*thetavk*kap1)**kap2 
         pmid   (k,iCell) = 0.5_r8*(pint(k+1)+pint(k))       
-        !hydrostatic dry mid-level dry pressure - MPAS non-hydrostatic dry pressure is pmiddry(k,iCell) = (rhodryk*rgas*theta*kap1)**kap2
+        !hydrostatic dry mid-level dry pressure - 
+        !MPAS non-hydrostatic dry pressure is pmiddry(k,iCell) = (rhodryk*rgas*theta*kap1)**kap2
         pmiddry(k,iCell) = 0.5_r8*(pintdry(k+1,iCell)+pintdry(k,iCell))  
       end do
     end do
