@@ -2802,20 +2802,12 @@ contains
 
       !===================================================
       ! Radiation computations
+      ! initialize fluxes only, do not update state
       !===================================================
 
       call radiation_tend( &
          state, ptend, pbuf, cam_out, cam_in, net_flx)
   
-      ! Set net flux used by spectral dycores
-      do i=1,ncol
-         tend%flx_net(i) = net_flx(i)
-      end do
-
-      call physics_update(state, ptend, ztodt, tend)
-
-      call check_energy_chng(state, tend, "radheat", nstep, ztodt, zero, zero, zero, net_flx)
-
     end if
 
     ! Save atmospheric fields to force surface models
