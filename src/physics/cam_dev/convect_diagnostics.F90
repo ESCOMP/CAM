@@ -12,6 +12,7 @@
    use ppgrid,            only: pver, pcols, pverp
    use cam_history,       only: outfld, addfld, horiz_only
    use phys_control,      only: phys_getopts
+   use cam_abortutils,    only: endrun
    implicit none
    private                 
    save
@@ -99,7 +100,6 @@
 
    use physics_buffer,  only : physics_buffer_desc, pbuf_get_field, pbuf_set_field
    use physics_types,   only : physics_state
-   use cam_abortutils,  only : endrun
    implicit none
 
    ! ---------------------- !
