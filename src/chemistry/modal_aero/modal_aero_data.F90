@@ -98,7 +98,7 @@
            modeptr_ufine,  modeptr_coarse,                               &
            modeptr_pcarbon,                                              &
            modeptr_finedust,  modeptr_fineseas,                          &
-           modeptr_coardust,  modeptr_coarseas
+           modeptr_coardust,  modeptr_coarseas, modeptr_stracoar
 
       !2D lptr variables added by RCE to access speciated species
       integer, public, protected, allocatable :: &
@@ -850,6 +850,8 @@
        modeptr_finedust = init_val
        modeptr_coarseas = init_val
        modeptr_coardust = init_val
+       modeptr_stracoar = init_val
+
        do m = 1, ntot_amode
           if (modename_amode(m) .eq. 'accum') then
              modeptr_accum = m
@@ -869,6 +871,8 @@
              modeptr_coarseas = m
           else if (modename_amode(m) .eq. 'coarse_dust') then
              modeptr_coardust = m
+          else if (modename_amode(m) .eq. 'coarse_strat') then
+             modeptr_stracoar = m
           end if
        end do
 
@@ -977,6 +981,7 @@
        write(iulog,*) 'modeptr_finedust =', modeptr_finedust
        write(iulog,*) 'modeptr_coarseas =', modeptr_coarseas
        write(iulog,*) 'modeptr_coardust =', modeptr_coardust
+       write(iulog,*) 'modeptr_stracoar =', modeptr_stracoar
 
        dumname = 'none'
        write(iulog,9240)
