@@ -4,11 +4,8 @@ module physpkg
   !
   ! Provides the interface to CAM physics package
   !
-  ! Revision history:
-  ! Aug  2005,  E. B. Kluzek,  Creation of module from physpkg subroutine
-  ! 2005-10-17  B. Eaton       Add contents of inti.F90 to phys_init().  Add
-  !                            initialization of grid info in phys_state.
-  ! Nov 2010    A. Gettelman   Put micro/macro physics into separate routines
+  ! Module contains reordered physics to accomodate CLUBB
+  ! Modified after original physpkg module, Dec 2021, A. Herrington
   !-----------------------------------------------------------------------
 
   use shr_kind_mod,     only: r8 => shr_kind_r8

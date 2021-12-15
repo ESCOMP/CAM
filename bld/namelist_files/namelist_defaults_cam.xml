@@ -1970,6 +1970,8 @@
 <micro_mg_sub_version microphys="mg3">                                 0          </micro_mg_sub_version>
 <micro_mg_num_steps   microphys="mg3">                                 1          </micro_mg_num_steps>
 <micro_mg_dcs         microphys="mg3">                                 500.D-6    </micro_mg_dcs>
+<micro_mg_dcs         microphys="mg3"                   silhs="1"   >  390.D-6    </micro_mg_dcs>
+<micro_mg_dcs         microphys="mg3" hgrid="1.9x2.5">                 200.D-6    </micro_mg_dcs>
 
 <micro_do_massless_droplet_destroyer                             >  .false. </micro_do_massless_droplet_destroyer>
 <micro_do_massless_droplet_destroyer   microphys="mg2" silhs="1" >  .true.  </micro_do_massless_droplet_destroyer>
