@@ -2095,7 +2095,8 @@ sub write_filepath
     print $fh "$camsrcdir/src/unit_drivers\n";
     print $fh "$camsrcdir/src/unit_drivers/${offline_drv}\n";
 
-    if ($phys_pkg eq 'cam_dev') {
+    #if ($phys_pkg eq 'cam_dev') {
+    if ($camdev_phys) {
       print $fh "$camsrcdir/src/physics/cam_dev\n";
     }
 
