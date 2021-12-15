@@ -222,8 +222,6 @@ subroutine phys_ctl_readnl(nlfile)
       call endrun('PBL and Microphysics schemes incompatible')
    endif
 
-!+++ARH remove comment after code review.
-!+++ARH This MG check is outside cam_dev and so is not needed inside cam_dev, i believe.
    ! Add a check to make sure CLUBB and MG are used together
    if ( do_clubb_sgs .and. ( microp_scheme .ne. 'MG') .and. .not. use_spcam) then
       write(iulog,*)'CLUBB is only compatible with MG microphysics.  Quiting'

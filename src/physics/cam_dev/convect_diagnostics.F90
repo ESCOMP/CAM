@@ -61,6 +61,11 @@
   ! Updraft mass flux by shallow convection [ kg/s/m2 ]
   call pbuf_add_field('CMFMC_SH',   'physpkg' ,dtype_r8,(/pcols,pverp/),      cmfmc_sh_idx )
 
+  ! for this implementation, only CLUBB_SGS is supported
+  if (shallow_scheme /= 'CLUBB_SGS') then
+     call endrun("convect_diagnostics_register: Unsupported shallow_scheme")
+  end if
+
   end subroutine convect_diagnostics_register
 
   !=============================================================================== !
@@ -77,8 +82,8 @@
   call addfld( 'CMFMC',      (/ 'ilev' /), 'A', 'kg/m2/s',  'Moist convection (deep+shallow) mass flux'                 )
   call addfld( 'CLDTOP',     horiz_only,   'I', '1',        'Vertical index of cloud top'                               )
   call addfld( 'CLDBOT',     horiz_only,   'I', '1',        'Vertical index of cloud base'                              )
-  call addfld( 'PCLDTOP',    horiz_only,   'A', '1',        'Pressure of cloud top'                                     )
-  call addfld( 'PCLDBOT',    horiz_only,   'A', '1',        'Pressure of cloud base'                                    )
+  call addfld( 'PCLDTOP',    horiz_only,   'A', 'Pa',       'Pressure of cloud top'                                     )
+  call addfld( 'PCLDBOT',    horiz_only,   'A', 'Pa',       'Pressure of cloud base'                                    )
 
   rprddp_idx   = pbuf_get_index('RPRDDP')
 
@@ -170,9 +175,6 @@
      cnb2        = 1._r8
      evapcsh     = 0._r8
      snow        = 0._r8
-   else
-     ! for this implementation, only CLUBB_SGS is supported
-     call endrun("Unsupported shallow_scheme")
    end if
 
    ! ------------------------------------------------------------------------------ !

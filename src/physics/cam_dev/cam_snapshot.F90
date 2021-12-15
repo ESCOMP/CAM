@@ -30,6 +30,8 @@ private
 public :: cam_snapshot_init
 public :: cam_snapshot_all_outfld_tphysbc, cam_snapshot_all_outfld_tphysac
 
+private :: cam_tphysbc_snapshot_init, cam_tphysac_snapshot_init
+
 integer :: ntphysbc_var
 integer :: ntphysac_var
 

@@ -13,7 +13,7 @@ module physpkg
 
   use shr_kind_mod,     only: r8 => shr_kind_r8
   use spmd_utils,       only: masterproc
-  use physconst,        only: latvap, latice, rh2o
+  use physconst,        only: latvap, latice
   use physics_types,    only: physics_state, physics_tend, physics_state_set_grid, &
        physics_ptend, physics_tend_init, physics_update,    &
        physics_type_alloc, physics_ptend_dealloc,&
@@ -108,20 +108,17 @@ contains
     use cam_abortutils,     only: endrun
     use physics_buffer,     only: pbuf_init_time, pbuf_cam_snapshot_register
     use physics_buffer,     only: pbuf_add_field, dtype_r8, pbuf_register_subcol
-    use shr_kind_mod,       only: r8 => shr_kind_r8
-    use spmd_utils,         only: masterproc
-    use constituents,       only: pcnst, cnst_add, cnst_chk_dim, cnst_name
+    use constituents,       only: cnst_add, cnst_chk_dim
 
     use cam_control_mod,    only: moist_physics
     use chemistry,          only: chem_register
     use cloud_fraction,     only: cldfrc_register
-    use rk_stratiform,      only: rk_stratiform_register
     use microp_driver,      only: microp_driver_register
     use microp_aero,        only: microp_aero_register
     use macrop_driver,      only: macrop_driver_register
     use clubb_intr,         only: clubb_register_cam
     use conv_water,         only: conv_water_register
-    use physconst,          only: mwdry, cpair, mwh2o, cpwv
+    use physconst,          only: mwh2o, cpwv
     use tracers,            only: tracers_register
     use check_energy,       only: check_energy_register
     use carma_intr,         only: carma_register
@@ -136,7 +133,6 @@ contains
     use flux_avg,           only: flux_avg_register
     use iondrag,            only: iondrag_register
     use waccmx_phys_intr,   only: waccmx_phys_ion_elec_temp_reg
-    use string_utils,       only: to_lower
     use prescribed_ozone,   only: prescribed_ozone_register
     use prescribed_volcaero,only: prescribed_volcaero_register
     use prescribed_strataero,only: prescribed_strataero_register
@@ -152,7 +148,6 @@ contains
     use subcol,             only: subcol_register
     use subcol_utils,       only: is_subcol_on, subcol_get_scheme
     use dyn_comp,           only: dyn_register
-    use spcam_drivers,      only: spcam_register
     use offline_driver,     only: offline_driver_reg
 
     !---------------------------Local variables-----------------------------
@@ -217,13 +212,9 @@ contains
        call cldfrc_register()
 
        ! cloud water
-       if( microp_scheme == 'RK' ) then
-          call rk_stratiform_register()
-       elseif( microp_scheme == 'MG' ) then
-          if (.not. do_clubb_sgs) call macrop_driver_register()
-          call microp_aero_register()
-          call microp_driver_register()
-       end if
+       if (.not. do_clubb_sgs) call macrop_driver_register()
+       call microp_aero_register()
+       call microp_driver_register()
 
        ! Register CLUBB_SGS here
        if (do_clubb_sgs) call clubb_register_cam()
@@ -305,9 +296,6 @@ contains
        ! convection diagnostics
        call convect_diagnostics_register
 
-       ! SP-CAM  
-       call spcam_register
-
        ! radiation
        call radiation_register
        call cloud_diagnostics_register
@@ -354,7 +342,7 @@ contains
   subroutine phys_inidat( cam_out, pbuf2d )
     use cam_abortutils,      only: endrun
 
-    use physics_buffer,      only: pbuf_get_index, pbuf_get_field, physics_buffer_desc, pbuf_set_field, dyn_time_lvls
+    use physics_buffer,      only: pbuf_get_index, physics_buffer_desc, pbuf_set_field, dyn_time_lvls
 
 
     use cam_initfiles,       only: initial_file_get_id, topo_file_get_id
@@ -711,9 +699,8 @@ contains
     !-----------------------------------------------------------------------
 
     use physics_buffer,     only: physics_buffer_desc, pbuf_initialize, pbuf_get_index
-    use physconst,          only: rair, cpair, gravit, stebol, tmelt, &
-                                  latvap, latice, rh2o, rhoh2o, pstd, zvir, &
-                                  karman, rhodair, physconst_init
+    use physconst,          only: rair, cpair, gravit, zvir, &
+                                  karman, physconst_init
     use ref_pres,           only: pref_edge, pref_mid
 
     use carma_intr,         only: carma_init
@@ -739,13 +726,11 @@ contains
     use radheat,            only: radheat_init
     use radiation,          only: radiation_init
     use cloud_diagnostics,  only: cloud_diagnostics_init
-    use rk_stratiform,      only: rk_stratiform_init
     use wv_saturation,      only: wv_sat_init
     use microp_driver,      only: microp_driver_init
     use microp_aero,        only: microp_aero_init
     use macrop_driver,      only: macrop_driver_init
     use conv_water,         only: conv_water_init
-    use spcam_drivers,      only: spcam_init
     use tracers,            only: tracers_init
     use aoa_tracers,        only: aoa_tracers_init
     use rayleigh_friction,  only: rayleigh_friction_init
@@ -759,7 +744,7 @@ contains
     use qbo,                only: qbo_init
     use qneg_module,        only: qneg_init
     use lunar_tides,        only: lunar_tides_init
-    use iondrag,            only: iondrag_init, do_waccm_ions
+    use iondrag,            only: iondrag_init
 #if ( defined OFFLINE_DYN )
     use metdata,            only: metdata_phys_init
 #endif
@@ -775,7 +760,6 @@ contains
     use nudging,            only: Nudge_Model, nudging_init
     use cam_snapshot,       only: cam_snapshot_init
     use cam_history,        only: addfld, register_vector_field, add_default
-    use phys_control,       only: phys_getopts
 
     ! Input/output arguments
     type(physics_state), pointer       :: phys_state(:)
@@ -906,22 +890,13 @@ contains
 
     call convect_deep_init(pref_edge)
 
-    if( microp_scheme == 'RK' ) then
-       call rk_stratiform_init()
-    elseif( microp_scheme == 'MG' ) then
-       if (.not. do_clubb_sgs) call macrop_driver_init(pbuf2d)
-       call microp_aero_init(pbuf2d)
-       call microp_driver_init(pbuf2d)
-       call conv_water_init
-    elseif( microp_scheme == 'SPCAM_m2005') then
-       call conv_water_init
-    end if
-
+    if (.not. do_clubb_sgs) call macrop_driver_init(pbuf2d)
+    call microp_aero_init(pbuf2d)
+    call microp_driver_init(pbuf2d)
+    call conv_water_init
 
     ! initiate CLUBB within CAM
     if (do_clubb_sgs) call clubb_ini_cam(pbuf2d)
-
-    call spcam_init(pbuf2d)
 
     call qbo_init
 
@@ -1059,13 +1034,12 @@ contains
     use time_manager,   only: get_nstep
     use cam_diagnostics,only: diag_allocate, diag_physvar_ic
     use check_energy,   only: check_energy_gmean
-    use phys_control,   only: phys_getopts
-    use spcam_drivers,  only: tphysbc_spcam
     use spmd_utils,     only: mpicom
     use physics_buffer, only: physics_buffer_desc, pbuf_get_chunk, pbuf_allocate
 #if (defined BFB_CAM_SCAM_IOP )
     use cam_history,    only: outfld
 #endif
+    use cam_abortutils, only: endrun
     use cam_abortutils, only: endrun
 #if ( defined OFFLINE_DYN )
      use metdata,       only: get_met_srf1
@@ -1090,7 +1064,6 @@ contains
     integer :: c                                 ! indices
     integer :: ncol                              ! number of columns
     integer :: nstep                             ! current timestep number
-    logical :: use_spcam
     type(physics_buffer_desc), pointer :: phys_buffer_chunk(:)
 
     call t_startf ('physpkg_st1')
@@ -1112,10 +1085,6 @@ contains
     call t_startf ('chk_en_gmean')
     call check_energy_gmean(phys_state, pbuf2d, ztodt, nstep)
     call t_stopf ('chk_en_gmean')
-
-    call t_stopf ('physpkg_st1')
-
-    call t_startf ('physpkg_st1')
 
     call pbuf_allocate(pbuf2d, 'physpkg')
     call diag_allocate()
@@ -1148,8 +1117,6 @@ contains
     call t_startf ('bc_physics')
     call t_adj_detailf(+1)
 
-    call phys_getopts( use_spcam_out = use_spcam)
-
 !$OMP PARALLEL DO PRIVATE (C, phys_buffer_chunk)
     do c=begchunk, endchunk
       !
@@ -1161,16 +1128,9 @@ contains
       call diag_physvar_ic ( c,  phys_buffer_chunk, cam_out(c), cam_in(c) )
       call t_stopf ('diag_physvar_ic')
 
-      if (use_spcam) then
-        call tphysbc_spcam (ztodt, phys_state(c),     &
-             phys_tend(c), phys_buffer_chunk, &
-             cam_out(c), cam_in(c) )
-      else
-        call tphysbc (ztodt, phys_state(c),           &
-             phys_tend(c), phys_buffer_chunk, &
-             cam_out(c), cam_in(c) )
-      end if
-
+      call tphysbc (ztodt, phys_state(c),           &
+           phys_tend(c), phys_buffer_chunk, &
+           cam_out(c), cam_in(c) )
     end do
 
     call t_adj_detailf(-1)
@@ -1200,7 +1160,6 @@ contains
     use physics_buffer,  only: physics_buffer_desc, pbuf_get_chunk, pbuf_deallocate, pbuf_update_tim_idx
     use mo_lightning,    only: lightning_no_prod
     use cam_diagnostics, only: diag_deallocate, diag_surf
-    use physconst,       only: stebol, latvap
     use carma_intr,      only: carma_accumulate_stats
     use spmd_utils,      only: mpicom
     use iop_forcing,     only: scam_use_iop_srf
@@ -1353,20 +1312,17 @@ contains
     !   o Scale Dry Mass Energy
     !-----------------------------------------------------------------------
     use physics_buffer, only: physics_buffer_desc, pbuf_set_field, pbuf_get_index, pbuf_get_field, pbuf_old_tim_idx
-    use shr_kind_mod,       only: r8 => shr_kind_r8
     use chemistry,          only: chem_is_active, chem_timestep_tend, chem_emissions
     use cam_diagnostics,    only: diag_phys_tend_writeout
     use gw_drag,            only: gw_tend
     use vertical_diffusion, only: vertical_diffusion_tend
     use rayleigh_friction,  only: rayleigh_friction_tend
-    use constituents,       only: cnst_get_ind
-    use physics_types,      only: physics_state, physics_tend, physics_ptend, physics_update,    &
-                                  physics_dme_adjust, set_dry_to_wet, physics_state_check,       &
+    use physics_types,      only: physics_dme_adjust, set_dry_to_wet, physics_state_check,       &
                                   dyn_te_idx
     use waccmx_phys_intr,   only: waccmx_phys_mspd_tend  ! WACCM-X major diffusion
     use waccmx_phys_intr,   only: waccmx_phys_ion_elec_temp_tend ! WACCM-X
     use aoa_tracers,        only: aoa_tracers_timestep_tend
-    use physconst,          only: rhoh2o, latvap,latice
+    use physconst,          only: rhoh2o
     use aero_model,         only: aero_model_drydep
     use check_energy,       only: check_energy_chng, calc_te_and_aam_budgets
     use check_energy,       only: check_tracers_data, check_tracers_init, check_tracers_chng
@@ -1392,7 +1348,6 @@ contains
     use physics_types,      only: physics_ptend_init, physics_ptend_sum, physics_ptend_scale
     use microp_driver,      only: microp_driver_tend
     use microp_aero,        only: microp_aero_run
-    use macrop_driver,      only: macrop_driver_tend
     use clubb_intr,         only: clubb_tend_cam
     use subcol,             only: subcol_gen, subcol_ptend_avg
     use subcol_utils,       only: subcol_ptend_copy, is_subcol_on
@@ -1408,8 +1363,9 @@ contains
     use aero_model,         only: aero_model_wetdep
     use physics_buffer,     only: col_type_subcol
     use check_energy,       only: check_energy_timestep_init
-    use carma_intr,         only: carma_wetdep_tend, carma_timestep_tend, carma_emission_tend, carma_timestep_tend
-    use carma_flags_mod,    only: carma_do_aerosol, carma_do_emission, carma_do_detrain, carma_do_cldice, carma_do_cldliq, carma_do_wetdep
+    use carma_intr,         only: carma_wetdep_tend, carma_timestep_tend, carma_emission_tend
+    use carma_flags_mod,    only: carma_do_aerosol, carma_do_emission, carma_do_detrain
+    use carma_flags_mod,    only: carma_do_cldice, carma_do_cldliq, carma_do_wetdep
     use dyn_tests_utils,    only: vc_dycore
     !
     ! Arguments
@@ -2444,23 +2400,19 @@ contains
     use physics_buffer,  only: physics_buffer_desc, pbuf_get_field
     use physics_buffer,  only: pbuf_get_index, pbuf_old_tim_idx
     use physics_buffer,  only: col_type_subcol, dyn_time_lvls
-    use shr_kind_mod,    only: r8 => shr_kind_r8
 
     use dadadj_cam,      only: dadadj_tend
-    use physics_types,   only: physics_state, physics_tend, physics_ptend, &
-                               physics_update, physics_ptend_init, physics_ptend_sum, &
-                               physics_state_check, physics_ptend_scale, &
-                               phys_te_idx, dyn_te_idx
-    use cam_diagnostics, only: diag_conv_tend_ini, diag_phys_writeout, diag_conv, diag_export, diag_state_b4_phys_write
-    use cam_diagnostics, only: diag_clip_tend_writeout
+    use physics_types,   only: physics_update, &
+                               physics_state_check, &
+                               dyn_te_idx
+    use cam_diagnostics, only: diag_conv_tend_ini, diag_conv, diag_export, diag_state_b4_phys_write
     use cam_history,     only: outfld
-    use physconst,       only: cpair, latvap
-    use constituents,    only: pcnst, qmin, cnst_get_ind
-    use convect_deep,    only: convect_deep_tend, convect_deep_tend_2, deep_scheme_does_scav_trans
+    use constituents,    only: qmin
+    use convect_deep,    only: convect_deep_tend
     use time_manager,    only: is_first_step, get_nstep
     use convect_diagnostics,only: convect_diagnostics_calc
-    use check_energy,    only: check_energy_chng, check_energy_fix, check_energy_timestep_init
-    use check_energy,    only: check_tracers_data, check_tracers_init, check_tracers_chng
+    use check_energy,    only: check_energy_chng, check_energy_fix
+    use check_energy,    only: check_tracers_data, check_tracers_init
     use check_energy,    only: calc_te_and_aam_budgets
     use dycore,          only: dycore_is
     use radiation,       only: radiation_tend
@@ -2838,7 +2790,6 @@ subroutine phys_timestep_init(phys_state, cam_in, cam_out, pbuf2d)
 !          datasets.
 !
 !-----------------------------------------------------------------------------------
-  use shr_kind_mod,        only: r8 => shr_kind_r8
   use chemistry,           only: chem_timestep_init
   use chem_surfvals,       only: chem_surfvals_set
   use physics_types,       only: physics_state

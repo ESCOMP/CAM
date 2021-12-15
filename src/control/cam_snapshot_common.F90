@@ -36,6 +36,16 @@ public :: cam_out_snapshot_init
 public :: cam_pbuf_snapshot_init
 public :: snapshot_addfld
 
+private :: snapshot_addfld_nd
+private :: state_snapshot_all_outfld
+private :: cnst_snapshot_all_outfld
+private :: tend_snapshot_all_outfld
+private :: cam_in_snapshot_all_outfld
+private :: cam_out_snapshot_all_outfld
+private :: cam_pbuf_snapshot_all_outfld
+private :: fill_pbuf_info
+
+
 
 ! This is the number of pbuf fields in the CAM code that are declared with the fieldname as opposed to being data driven.
 integer, parameter :: npbuf_all = 327
