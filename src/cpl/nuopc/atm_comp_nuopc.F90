@@ -768,10 +768,8 @@ contains
     integer                            :: n, fieldCount
     integer                            :: shrlogunit    ! original log unit
     integer(ESMF_KIND_I8)              :: stepno        ! time step
-    integer                            :: dtime         ! time step increment (sec)
     integer                            :: atm_cpl_dt    ! driver atm coupling time step
     integer                            :: nstep         ! CAM nstep
-    real(r8)                           :: caldayp1      ! CAM calendar day for for next cam time step
     real(r8)                           :: nextsw_cday   ! calendar of next atm shortwave
     logical                            :: importDone    ! true => import data is valid
     logical                            :: atCorrectTime ! true => field is at correct time
@@ -887,23 +885,11 @@ contains
        end if
 
        ! Compute time of next radiation computation, like in run method for exact restart
-!+++ARH
-! comment to be deleted after code review
-! I'm not changing this because if I move radiation out of CAM_run1
-! then the public var rad_nextsw_cday has not yet
-! been defined. I don't want to allow for radiation to be called in CAM_run1
-! for the first step of a restart run (like I do for an initial run), 
-! because then a continous run would not be bfb compared to a run 
-! with multiple restarts of the same run length.  
-!---ARH
-       dtime = get_step_size()
        nstep = get_nstep()
        if (nstep < 1) then
-          nextsw_cday = radiation_nextsw_cday()
+          nextsw_cday = rad_nextsw_cday
        else 
-          caldayp1 = get_curr_calday(offset=int(dtime))
           nextsw_cday = radiation_nextsw_cday()
-          if (caldayp1 /= nextsw_cday) nextsw_cday = -1._r8
        end if
 
        call State_SetScalar(nextsw_cday, flds_scalar_index_nextsw_cday, exportState, &

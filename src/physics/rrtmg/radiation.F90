@@ -321,8 +321,9 @@ real(r8) function radiation_nextsw_cday()
    integer :: nstep      ! timestep counter
    logical :: dosw       ! true => do shosrtwave calc   
    integer :: offset     ! offset for calendar day calculation
-   integer :: dTime      ! integer timestep size
+   integer :: dtime      ! integer timestep size
    real(r8):: calday     ! calendar day of 
+   real(r8):: caldayp1   ! calendar day of next time-step
    !-----------------------------------------------------------------------
 
    radiation_nextsw_cday = -1._r8
@@ -341,7 +342,12 @@ real(r8) function radiation_nextsw_cday()
    if(radiation_nextsw_cday == -1._r8) then
       call endrun('error in radiation_nextsw_cday')
    end if
-        
+
+   ! determine if next radiation time-step not equal to next time-step
+   if (get_nstep() >= 1) then
+      caldayp1 = get_curr_calday(offset=int(dtime))
+      if (caldayp1 /= radiation_nextsw_cday) radiation_nextsw_cday = -1._r8
+   end if    
 end function radiation_nextsw_cday
 
 !================================================================================================
@@ -752,10 +758,7 @@ subroutine radiation_tend( &
    integer  :: i, k
    integer  :: lchnk, ncol
    logical  :: dosw, dolw
-   integer  :: dtime           ! time step increment (sec)
-
    real(r8) :: calday          ! current calendar day
-   real(r8) :: caldayp1        ! future calendar day
    real(r8) :: delta           ! Solar declination angle  in radians
    real(r8) :: eccf            ! Earth orbit eccentricity factor
    real(r8) :: clat(pcols)     ! current latitudes(radians)
@@ -953,10 +956,7 @@ subroutine radiation_tend( &
 
    ! Get time of next radiation calculation - albedos will need to be
    ! calculated by each surface model at this time
-   dtime = get_step_size()
-   caldayp1 = get_curr_calday(offset=int(dtime))
    nextsw_cday = radiation_nextsw_cday()
-   if (caldayp1 /= nextsw_cday) nextsw_cday = -1._r8
 
    if (dosw .or. dolw) then
 

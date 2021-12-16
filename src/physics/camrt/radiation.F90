@@ -322,6 +322,7 @@ real(r8) function radiation_nextsw_cday()
    integer :: offset     ! offset for calendar day calculation
    integer :: dTime      ! integer timestep size
    real(r8):: calday     ! calendar day of 
+   real(r8):: caldayp1   ! calendar day of next time-step
    !-----------------------------------------------------------------------
 
    radiation_nextsw_cday = -1._r8
@@ -339,6 +340,12 @@ real(r8) function radiation_nextsw_cday()
    end do
    if(radiation_nextsw_cday == -1._r8) then
       call endrun('error in radiation_nextsw_cday')
+   end if
+
+   ! determine if next radiation time-step not equal to next time-step
+   if (get_nstep() >= 1) then
+      caldayp1 = get_curr_calday(offset=int(dtime))
+      if (caldayp1 /= radiation_nextsw_cday) radiation_nextsw_cday = -1._r8
    end if
         
 end function radiation_nextsw_cday
@@ -790,8 +797,6 @@ subroutine radiation_tend( &
    integer :: lchnk, ncol
 
    logical :: dosw, dolw, doabsems
-   integer :: dtime                           ! time step increment (sec)
-   real(r8) :: caldayp1                       ! future calendar day
    integer, pointer :: nmxrgn(:)              ! pbuf pointer to Number of maximally overlapped regions
    real(r8),pointer :: pmxrgn(:,:)            ! Maximum values of pressure for each
                                               !    maximally overlapped region.
@@ -943,10 +948,7 @@ subroutine radiation_tend( &
 
    ! Get time of next radiation calculation - albedos will need to be
    ! calculated by each surface model at this time
-   dtime = get_step_size()
-   caldayp1 = get_curr_calday(offset=int(dtime))
    nextsw_cday = radiation_nextsw_cday()
-   if (caldayp1 /= nextsw_cday) nextsw_cday = -1._r8
 
    if (dosw .or. dolw) then
 

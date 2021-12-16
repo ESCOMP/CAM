@@ -128,7 +128,6 @@ CONTAINS
     integer           :: stepno                ! time step
     integer           :: dtime                 ! time step increment (sec)
     integer           :: nstep                 ! CAM nstep
-    real(r8)          :: caldayp1              ! CAM calendar day for for next cam time step
     integer           :: start_ymd             ! Start date (YYYYMMDD)
     integer           :: start_tod             ! Start time of day (sec)
     integer           :: curr_ymd              ! Start date (YYYYMMDD)
@@ -360,23 +359,11 @@ CONTAINS
        end if
 
        ! Compute time of next radiation computation, like in run method for exact restart
-!+++ARH
-! comment to be deleted after code review
-! I'm not changing this because if I move radiation out of CAM_run1
-! then the public var rad_nextsw_cday has not yet
-! been defined. I don't want to allow for radiation to be called in CAM_run1
-! for the first step of a restart run (like I do for an initial run), 
-! because then a continous run would not be bfb compared to a run 
-! with multiple restarts of the same run length.  
-!---ARH
-       dtime = get_step_size()
        nstep = get_nstep()
        if (nstep < 1) then
-          nextsw_cday = radiation_nextsw_cday()
+          nextsw_cday = rad_nextsw_cday
        else 
-          caldayp1 = get_curr_calday(offset=int(dtime))
           nextsw_cday = radiation_nextsw_cday()
-          if (caldayp1 /= nextsw_cday) nextsw_cday = -1._r8
        end if
        call seq_infodata_PutData( infodata, nextsw_cday=nextsw_cday )
 
