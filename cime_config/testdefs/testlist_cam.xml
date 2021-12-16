@@ -599,8 +599,8 @@
   <test compset="QPC5" grid="f10_f10_mg37" name="ERC_D_Ln9_Vmct" testmods="cam/carma_sea_salt">
     <machines>
       <machine name="izumi" compiler="nag" category="carma"/>
-      <machine name="cheyenne" compiler="intel" category="carma"/>
       <machine name="izumi" compiler="nag" category="aux_cam"/>
+      <machine name="cheyenne" compiler="intel" category="carma"/>
     </machines>
     <options>
       <option name="comment" >CARMA sea salt test</option>
@@ -608,7 +608,7 @@
     </options>
   </test>
 <!--              431 carma test_radiative    -->
-  <test compset="QPC5" grid="f10_f10_mg37" name="ERC_D_Ln9_Vmct" testmods="cam/carma_test_radiative">
+  <test compset="QPC5" grid="f10_f10_mg37" name="ERS_D_Ln9_Vmct" testmods="cam/carma_test_radiative">
     <machines>
       <machine name="izumi" compiler="nag" category="carma"/>
       <machine name="cheyenne" compiler="intel" category="carma"/>
@@ -654,8 +654,8 @@
 <!--              435 carma test_passive      -->
   <test compset="QPC5" grid="f10_f10_mg37" name="ERC_D_Ln9_Vmct" testmods="cam/carma_test_passive">
     <machines>
-      <machine name="cheyenne" compiler="intel" category="carma"/>
       <machine name="izumi" compiler="nag" category="carma"/>
+      <machine name="cheyenne" compiler="intel" category="carma"/>
     </machines>
     <options>
       <option name="comment" >CARMA passive test</option>
@@ -665,8 +665,8 @@
 <!--              436 carma test_swelling     -->
   <test compset="QPC5" grid="f10_f10_mg37" name="ERC_D_Ln9_Vmct" testmods="cam/carma_test_swelling">
     <machines>
-      <machine name="cheyenne" compiler="intel" category="carma"/>
       <machine name="izumi" compiler="nag" category="carma"/>
+      <machine name="cheyenne" compiler="intel" category="carma"/>
     </machines>
     <options>
       <option name="comment" >CARMA particle swelling test</option>
@@ -685,7 +685,7 @@
     </options>
   </test>
 <!--              440 carma dust              -->
-  <test compset="F2000climo" grid="f10_f10_mg37" name="ERC_D_Ln9_Vmct" testmods="cam/carma_dust">
+  <test compset="F2000climo" grid="f10_f10_mg37" name="ERP_D_Ln9_Vmct" testmods="cam/carma_dust">
     <machines>
       <machine name="izumi" compiler="nag" category="carma"/>
       <machine name="cheyenne" compiler="intel" category="carma"/>
@@ -718,7 +718,7 @@
     </options>
   </test>
 <!--              460 carma meteor_smoke      -->
-  <test compset="QPWmaC6" grid="f10_f10_mg37" name="ERC_D_Ln9_Vmct" testmods="cam/carma_meteor_smoke">
+  <test compset="QPWmaC6" grid="f10_f10_mg37" name="ERS_D_Ln9_Vmct" testmods="cam/carma_meteor_smoke">
     <machines>
       <machine name="izumi" compiler="nag" category="carma"/>
       <machine name="cheyenne" compiler="intel" category="carma"/>
@@ -729,7 +729,7 @@
     </options>
   </test>
 <!--              461 carma meteor_impact     -->
-  <test compset="QPWmaC6" grid="f10_f10_mg37" name="ERC_D_Ln9_Vmct" testmods="cam/carma_meteor_impact">
+  <test compset="QPWmaC6" grid="f10_f10_mg37" name="ERS_D_Ln9_Vmct" testmods="cam/carma_meteor_impact">
     <machines>
       <machine name="izumi" compiler="nag" category="carma"/>
       <machine name="cheyenne" compiler="intel" category="carma"/>
