@@ -154,7 +154,7 @@ subroutine zm_conv_register
    ! detrained convective cloud ice mixing ratio.
    call pbuf_add_field('DIFZM', 'physpkg', dtype_r8, (/pcols,pver/), difzm_idx)
    ! convective mass fluxes
-   call pbuf_add_field('CMFMCDZM', 'physpkg', dtype_r8, (/pcols,pverp/), mconzm_idx)
+   call pbuf_add_field('CMFMC_DP', 'physpkg', dtype_r8, (/pcols,pverp/), mconzm_idx)
 
    if (zmconv_microp) then
       ! Only add the number conc fields if the microphysics is active.
@@ -298,7 +298,7 @@ subroutine zm_conv_init(pref_edge)
     call addfld ('ZMNTSNPD', (/ 'lev' /) , 'A', 'kg/kg/s','Net snow production from ZM convection'         )
     call addfld ('ZMEIHEAT', (/ 'lev' /) , 'A', 'W/kg'   ,'Heating by ice and evaporation in ZM convection')
 
-    call addfld ('CMFMCDZM', (/ 'ilev' /), 'A', 'kg/m2/s','Convection mass flux from ZM deep ')
+    call addfld ('CMFMC_DP', (/ 'ilev' /), 'A', 'kg/m2/s','Convection mass flux from ZM deep ')
     call addfld ('PRECCDZM', horiz_only,   'A', 'm/s','Convective precipitation rate from ZM deep')
 
     call addfld ('PCONVB',   horiz_only ,  'A', 'Pa'    ,'convection base pressure')
@@ -684,7 +684,7 @@ subroutine zm_conv_tend(pblh    ,mcon    ,cme     , &
    mcon(:ncol,:pverp) = mcon(:ncol,:pverp) * 100._r8/gravit
    mconzm(:ncol,:pverp) = mcon(:ncol,:pverp)
 
-   call outfld('CMFMCDZM', mconzm, pcols, lchnk)
+   call outfld('CMFMC_DP', mconzm, pcols, lchnk)
 
    ! Store upward and downward mass fluxes in un-gathered arrays
    ! + convert from mb/s to kg/m^2/s
@@ -782,7 +782,7 @@ subroutine zm_conv_tend(pblh    ,mcon    ,cme     , &
    call outfld('ZMNTPRPD', ntprprd, pcols, lchnk)
    call outfld('ZMNTSNPD', ntsnprd, pcols, lchnk)
    call outfld('ZMEIHEAT', ptend_loc%s, pcols, lchnk)
-   call outfld('CMFMCDZM   ',mcon ,  pcols   ,lchnk   )
+   call outfld('CMFMC_DP   ',mcon ,  pcols   ,lchnk   )
    call outfld('PRECCDZM   ',prec,  pcols   ,lchnk   )
 
 

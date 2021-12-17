@@ -47,7 +47,7 @@
   !-------------------------------------------------- !
   ! Purpose : Register fields with the physics buffer !
   !-------------------------------------------------- !
-  use physics_buffer, only : pbuf_add_field, dtype_r8
+  use physics_buffer, only: pbuf_add_field, dtype_r8
 
   call phys_getopts( shallow_scheme_out = shallow_scheme )
 
@@ -78,7 +78,7 @@
   !------------------------------------------------------------------------------- !
   ! Purpose : Declare output fields, and initialize variables needed by convection !
   !------------------------------------------------------------------------------- !
-  use physics_buffer,    only : pbuf_get_index
+  use physics_buffer,    only: pbuf_get_index
 
   call addfld( 'CMFMC',      (/ 'ilev' /), 'A', 'kg/m2/s',  'Moist convection (deep+shallow) mass flux'                 )
   call addfld( 'CLDTOP',     horiz_only,   'I', '1',        'Vertical index of cloud top'                               )
@@ -98,8 +98,8 @@
                                        qc     , qc2      , rliq     , rliq2    , & 
                                        state  , pbuf)
 
-   use physics_buffer,  only : physics_buffer_desc, pbuf_get_field, pbuf_set_field
-   use physics_types,   only : physics_state
+   use physics_buffer,  only: physics_buffer_desc, pbuf_get_field, pbuf_set_field
+   use physics_types,   only: physics_state
    implicit none
 
    ! ---------------------- !
@@ -171,7 +171,7 @@
      icwmr       = 0._r8
      rliq2       = 0._r8
      qc2         = 0._r8
-     cnt2        = pver
+     cnt2        = real(pver, r8)
      cnb2        = 1._r8
      evapcsh     = 0._r8
      snow        = 0._r8
