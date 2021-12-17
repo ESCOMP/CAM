@@ -249,6 +249,7 @@ subroutine phys_ctl_readnl(nlfile)
       end if
       ! Add check to make sure we are not trying to use `camrt`
       if (trim(radiation_scheme) == 'camrt') then
+         write(iulog,*) ' camrt specified and it is not compatible with cam_dev'
          call endrun('cam_dev is not compatible with camrt radiation scheme')
       end if
    end if

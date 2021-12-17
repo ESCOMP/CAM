@@ -83,7 +83,7 @@ use time_manager,   only: is_first_step, is_first_restart_step
 !--------------------------------------------------------
 ! This subroutine does the outfld calls for ALL state, tend and pbuf fields for routines in tphysbc.
 ! It also includes the cam_in and cam_out elements which are used within CAM as well as variables which
-! are local to tphysac.
+! are local to tphysbc.
 !--------------------------------------------------------
 
    integer,                            intent(in) :: file_num
