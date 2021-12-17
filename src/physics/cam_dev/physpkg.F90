@@ -1015,7 +1015,6 @@ contains
     use cam_history,    only: outfld
 #endif
     use cam_abortutils, only: endrun
-    use cam_abortutils, only: endrun
 #if ( defined OFFLINE_DYN )
      use metdata,       only: get_met_srf1
 #endif
