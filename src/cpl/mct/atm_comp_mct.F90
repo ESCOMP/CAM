@@ -30,7 +30,6 @@ module atm_comp_mct
   use cam_comp,          only: cam_init, cam_run1, cam_run2, cam_run3, cam_run4, cam_final
   use cam_instance     , only: cam_instance_init
   use cam_control_mod  , only: cam_ctrl_set_orbit
-  use radiation        , only: radiation_nextsw_cday, rad_nextsw_cday=>nextsw_cday
   use phys_grid        , only: pgcols => num_global_phys_cols
   use phys_grid        , only: get_ncols_p, get_gcol_p, get_area_all_p
   use phys_grid        , only: get_rlat_all_p, get_rlon_all_p
@@ -87,6 +86,7 @@ CONTAINS
 
   subroutine atm_init_mct( EClock, cdata_a, x2a_a, a2x_a, NLFilename )
 
+    use radiation        , only: radiation_nextsw_cday
     !-----------------------------------------------------------------------
     !
     ! Arguments
@@ -127,7 +127,6 @@ CONTAINS
     real(r8)          :: nextsw_cday           ! calendar of next atm shortwave
     integer           :: stepno                ! time step
     integer           :: dtime                 ! time step increment (sec)
-    integer           :: nstep                 ! CAM nstep
     integer           :: start_ymd             ! Start date (YYYYMMDD)
     integer           :: start_tod             ! Start time of day (sec)
     integer           :: curr_ymd              ! Start date (YYYYMMDD)
@@ -358,13 +357,8 @@ CONTAINS
           call cam_run1 ( cam_in, cam_out )
        end if
 
-       ! Compute time of next radiation computation, like in run method for exact restart
-       nstep = get_nstep()
-       if (nstep < 1) then
-          nextsw_cday = rad_nextsw_cday
-       else 
-          nextsw_cday = radiation_nextsw_cday()
-       end if
+       ! Compute time of next radiation computation
+       nextsw_cday = radiation_nextsw_cday()
        call seq_infodata_PutData( infodata, nextsw_cday=nextsw_cday )
 
        ! End redirection of share output to cam log
@@ -390,6 +384,7 @@ CONTAINS
 
  subroutine atm_run_mct( EClock, cdata_a, x2a_a, a2x_a)
 
+    use radiation        , only: nextsw_cday
     !-----------------------------------------------------------------------
     !
     ! Arguments
@@ -520,7 +515,7 @@ CONTAINS
 
     ! Pass time of next radiation calculation - albedos will need to be
     ! calculated by each surface model at this time
-    call seq_infodata_PutData( infodata, nextsw_cday=rad_nextsw_cday )
+    call seq_infodata_PutData( infodata, nextsw_cday=nextsw_cday )
 
     ! Write merged surface data restart file if appropriate
 

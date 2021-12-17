@@ -1092,8 +1092,7 @@ if (defined $opts{'cosp'}) {
 my $cosp = $cfg_ref->get('cosp');
 
 # cosp is only implemented with the cam5 and cam6 physics packages
-#if ($cosp and ($phys_pkg ne 'cam5' and $phys_pkg ne 'cam6' and $phys_pkg ne 'cam_dev')) {
-if ($cosp and ($phys_pkg ne 'cam5' and $phys_pkg ne 'cam6')) {
+if ($cosp and ($phys_pkg ne 'cam5' and $phys_pkg ne 'cam6' and $phys_pkg ne 'cam_dev')) {
         die "configure ERROR: cosp not implemented for the $phys_pkg physics package \n";
 }
 

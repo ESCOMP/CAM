@@ -24,7 +24,6 @@ module atm_comp_nuopc
   use shr_orb_mod         , only : shr_orb_decl, shr_orb_params, SHR_ORB_UNDEF_REAL, SHR_ORB_UNDEF_INT
   use cam_instance        , only : cam_instance_init, inst_suffix, inst_index
   use cam_comp            , only : cam_init, cam_run1, cam_run2, cam_run3, cam_run4, cam_final
-  use radiation           , only : radiation_nextsw_cday, rad_nextsw_cday=>nextsw_cday
   use camsrfexch          , only : cam_out_t, cam_in_t
   use cam_logfile         , only : iulog
   use spmd_utils          , only : spmdinit, masterproc, iam, mpicom
@@ -754,6 +753,8 @@ contains
 
   !===============================================================================
   subroutine DataInitialize(gcomp, rc)
+
+    use radiation, only : radiation_nextsw_cday
     type(ESMF_GridComp)  :: gcomp
     integer, intent(out) :: rc
 
@@ -769,7 +770,6 @@ contains
     integer                            :: shrlogunit    ! original log unit
     integer(ESMF_KIND_I8)              :: stepno        ! time step
     integer                            :: atm_cpl_dt    ! driver atm coupling time step
-    integer                            :: nstep         ! CAM nstep
     real(r8)                           :: nextsw_cday   ! calendar of next atm shortwave
     logical                            :: importDone    ! true => import data is valid
     logical                            :: atCorrectTime ! true => field is at correct time
@@ -884,14 +884,8 @@ contains
           if (ChkErr(rc,__LINE__,u_FILE_u)) return
        end if
 
-       ! Compute time of next radiation computation, like in run method for exact restart
-       nstep = get_nstep()
-       if (nstep < 1) then
-          nextsw_cday = rad_nextsw_cday
-       else 
-          nextsw_cday = radiation_nextsw_cday()
-       end if
-
+       ! Compute time of next radiation computation
+       nextsw_cday = radiation_nextsw_cday()
        call State_SetScalar(nextsw_cday, flds_scalar_index_nextsw_cday, exportState, &
             flds_scalar_name, flds_scalar_num, rc)
        if (ChkErr(rc,__LINE__,u_FILE_u)) return
@@ -960,7 +954,7 @@ contains
   subroutine ModelAdvance(gcomp, rc)
 
     use ESMF, only : ESMF_GridCompGet, esmf_vmget, esmf_vm
-
+    use radiation, only : nextsw_cday
     ! Run CAM
 
     ! Input/output variables
@@ -1142,7 +1136,7 @@ contains
        ! Set the coupling scalars
        ! Return time of next radiation calculation - albedos will need to be
        ! calculated by each surface model at this time
-       call State_SetScalar(rad_nextsw_cday, flds_scalar_index_nextsw_cday, exportState, &
+       call State_SetScalar(nextsw_cday, flds_scalar_index_nextsw_cday, exportState, &
             flds_scalar_name, flds_scalar_num, rc)
        if (ChkErr(rc,__LINE__,u_FILE_u)) return
 
