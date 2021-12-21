@@ -471,8 +471,6 @@ contains
     use dycore,          only: dycore_is
     use check_energy,    only: calc_te_and_aam_budgets
     use cam_history,     only: hist_fld_active
-    use cam_snapshot,    only: cam_snapshot_all_outfld
-    use cam_snapshot,    only: cam_snapshot_ptend_outfld
 
     ! Arguments
     !
@@ -655,8 +653,8 @@ contains
     use kessler_cam,       only: kessler_tend
     use tj2016_cam,        only: thatcher_jablonowski_precip_tend
     use dycore,            only: dycore_is
-    use cam_snapshot,      only: cam_snapshot_all_outfld
-    use cam_snapshot,      only: cam_snapshot_ptend_outfld
+    use cam_snapshot_common,only: cam_snapshot_all_outfld
+    use cam_snapshot_common,only: cam_snapshot_ptend_outfld
     use physics_types,     only: dyn_te_idx
     ! Arguments
 

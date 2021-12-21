@@ -11,7 +11,7 @@ fincl1 = 'ABSORB:A', 'ACTREL:A', 'AODABSdn:A', 'AODBCdn:A', 'AODdnDUST1:A', 'AOD
    'bc_a1SFWET:A', 'bc_a4:A', 'bc_a4DDF:A', 'bc_a4SFWET:A', 'bc_c1:A', 'bc_c1DDF:A', 'bc_c1SFWET:A', 'bc_c4:A', 'bc_c4DDF:A', 
    'bc_c4SFWET:A', 'BROX:A', 'BROY:A', 'BURDENBCdn', 'BURDENDUSTdn:A', 'BURDENPOMdn:A', 'BURDENSEASALTdn:A', 'BURDENSO4dn:A', 
    'BURDENSOAdn:A', 'CDNUMC:A', 'CLDICE:A', 'CLDLIQ:A', 'CLDTOT:A', 'CLOUD:A', 'CLOX:A', 'CLOY:A', 'CME:A', 'CMFDQ:A', 'CMFMC:A', 
-   'CMFMCDZM:A', 'CO2:A', 'CONCLD:A', 'DF_H2O2:A', 'DF_H2SO4:A', 
+   'CMFMC_DP:A', 'CO2:A', 'CONCLD:A', 'DF_H2O2:A', 'DF_H2SO4:A', 
    'DF_SO2:A', 'dgnumwet1:A', 'dgnumwet2:A', 'dgnumwet3:A', 'DH2O2CHM:A', 'DMS:A', 'dry_deposition_NHx_as_N:A', 
    'dry_deposition_NOy_as_N:A', 'Dso4_a1CHM:A', 'Dso4_a2CHM:A', 'Dso4_a3CHM:A', 'dst_a1:A', 'dst_a1DDF:A', 'dst_a1SFWET:A', 'dst_a2:A', 'dst_a2DDF:A', 
    'dst_a2SFWET:A', 'dst_a3:A', 'dst_a3DDF:A', 'dst_a3SFWET:A', 'dst_c1:A', 'dst_c1DDF:A', 'dst_c1SFWET:A', 'dst_c2:A', 'dst_c2DDF:A', 'dst_c2SFWET:A', 
@@ -56,7 +56,7 @@ fincl1 = 'ABSORB:A', 'ACTREL:A', 'AODABSdn:A', 'AODBCdn:A', 'AODdnDUST1:A', 'AOD
 
 
 fincl2 = 'ACTNL:A', 'ACTREL:A', 'BURDENBCdn:A', 'BURDENDUSTdn:A', 'BURDENPOMdn:A', 'BURDENSEASALTdn:A', 'BURDENSO4dn:A', 'BURDENSOAdn:A',
-   'CDNUMC:A', 'CLDICE:A', 'CLDLIQ:A', 'CLDTOT:A', 'CLOUD:A', 'CMFMC:A', 'CMFMCDZM:A', 'FCTL:A', 'FLDS:A', 'FLDSC:A', 'FLNR:A', 'FLNS:A', 'FLNSC:A', 
+   'CDNUMC:A', 'CLDICE:A', 'CLDLIQ:A', 'CLDTOT:A', 'CLOUD:A', 'CMFMC:A', 'CMFMC_DP:A', 'FCTL:A', 'FLDS:A', 'FLDSC:A', 'FLNR:A', 'FLNS:A', 'FLNSC:A', 
    'FLNT:A', 'FLNTC:A', 'FLUT:A', 'FLUTC:A', 'FSDS:A', 'FSDSC:A', 'FSNR:A', 'FSNS:A', 'FSNSC:A', 'FSNTOA:A', 'FSNTOAC:A', 'LHFLX:A', 'MASS:A', 'OMEGA:A', 
    'OMEGA500:A', 'PBLH:A', 'PDELDRY:A', 'PRECC:A', 'PRECT:A', 'PS:A', 'PSL:A', 'Q:A', 'QREFHT:A', 'QSNOW:A', 'RELHUM:A', 'RHREFHT:A', 'SHFLX:A', 
    'SOLIN:A', 'SOLLD:A', 'SOLSD:A', 'T:A', 'T500:A', 'T700:A', 'T850:A', 'TAUBLJX:A', 'TAUBLJY:A', 'TAUGWX:A', 'TAUGWY:A', 'TAUX:A', 'TAUY:A', 
