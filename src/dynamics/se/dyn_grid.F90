@@ -62,6 +62,9 @@ integer, parameter :: ini_decomp = 104 ! alternate dynamics grid for reading ini
 
 character(len=3), protected :: ini_grid_name
 
+! Name of horizontal grid dimension in initial file.
+character(len=6), protected :: ini_grid_hdim_name = ''
+
 integer, parameter :: ptimelevels = 2
 
 type (TimeLevel_t)         :: TimeLevel     ! main time level struct (used by tracers)
@@ -71,6 +74,7 @@ type(fvm_struct),  pointer :: fvm(:) => null()   ! local FVM elements for this t
 
 public :: dyn_decomp
 public :: ini_grid_name
+public :: ini_grid_hdim_name
 public :: ptimelevels
 public :: TimeLevel
 public :: hvcoord
@@ -98,9 +102,6 @@ public :: dyn_grid_get_colndx ! get element block/column and MPI process indices
 character(len=16),          public :: se_write_grid_file   = 'no'
 character(len=shr_kind_cl), public :: se_grid_filename     = ''
 logical,                    public :: se_write_gll_corners = .false.
-
-! Name of horizontal grid dimension in initial file.
-character(len=6) :: ini_grid_hdim_name = ' '
 
 type(physics_column_t), allocatable, target :: local_dyn_columns(:)
 
@@ -548,7 +549,11 @@ subroutine physgrid_copy_attributes_d(gridname, grid_attribute_names)
       allocate(grid_attribute_names(3))
       ! For standard CAM-SE, we need to copy the area attribute.
       ! For physgrid, the physics grid will create area (GLL has area_d)
-      grid_attribute_names(1) = 'area'
+      if (trim(ini_grid_hdim_name) == 'ncol_d') then
+         grid_attribute_names(1) = 'area_d'
+      else
+         grid_attribute_names(1) = 'area'
+      end if
       grid_attribute_names(2) = 'np'
       grid_attribute_names(3) = 'ne'
    end if
@@ -680,6 +685,7 @@ subroutine get_hdim_name(fh_ini, ini_grid_hdim_name)
    integer  :: ncol_did
 
    character(len=*), parameter :: sub = 'get_hdim_name'
+
    !----------------------------------------------------------------------------
 
    ! Set PIO to return error flags.
@@ -800,7 +806,7 @@ subroutine define_cam_grids()
    ! '_d' suffixes and the physics grid will use the unadorned names.
    ! This allows fields on both the GLL and physics grids to be written to history
    ! output files.
-   if (fv_nphys > 0) then
+   if (trim(ini_grid_hdim_name) == 'ncol_d') then
       latname  = 'lat_d'
       lonname  = 'lon_d'
       ncolname = 'ncol_d'
@@ -840,7 +846,7 @@ subroutine define_cam_grids()
    ! With CSLAM if the initial file uses the horizontal dimension 'ncol' rather than
    ! 'ncol_d' then we need a grid object with the names ncol,lat,lon to read it.
    ! Create that grid object here if it's needed.
-   if (fv_nphys > 0 .and. ini_grid_hdim_name == 'ncol') then
+   if (fv_nphys > 0 .and. trim(ini_grid_hdim_name) == 'ncol') then
 
       lat_coord => horiz_coord_create('lat', 'ncol', ngcols_d,  &
          'latitude', 'degrees_north', 1, size(pelat_deg), pelat_deg, map=pemap)
