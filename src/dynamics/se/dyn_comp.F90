@@ -2040,10 +2040,14 @@ subroutine check_file_layout(file, elem, dyn_cols, file_desc, dyn_ok)
    !----------------------------------------------------------------------------
 
    ! Check that number of columns in IC file matches grid definition.
+   if (trim(ini_grid_hdim_name) == 'none') then
+      call endrun(sub//': ERROR: no horizontal dimension in initial data file. &
+         Cannot read data from file')
+   end if
 
    ierr = pio_inq_dimid(file, trim(ini_grid_hdim_name), ncol_did)
    if (ierr /= PIO_NOERR) then
-      call endrun(sub//': ERROR: either ncol or ncol_d dimension not found in ' &
+      call endrun(sub//': ERROR: '//trim(ini_grid_hdim_name)//' dimension not found in ' &
          //trim(file_desc)//' file')
    end if
 
@@ -2053,7 +2057,7 @@ subroutine check_file_layout(file, elem, dyn_cols, file_desc, dyn_ok)
          write(iulog, '(a,2(a,i0))') trim(sub), ': ncol_size=', ncol_size, &
              ' : dyn_cols=', dyn_cols
       end if
-      call endrun(sub//': ERROR: dimension ncol size not same as in ncdata file')
+      call endrun(sub//': ERROR: dimension '//trim(ini_grid_hdim_name)//' size not same as in ncdata file')
    end if
 
    ! Set coordinate name associated with ini_grid_hdim_name.
