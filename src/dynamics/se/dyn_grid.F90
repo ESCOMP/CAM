@@ -685,7 +685,6 @@ subroutine get_hdim_name(fh_ini, ini_grid_hdim_name)
    integer  :: ncol_did
 
    character(len=*), parameter :: sub = 'get_hdim_name'
-
    !----------------------------------------------------------------------------
 
    ! Set PIO to return error flags.
