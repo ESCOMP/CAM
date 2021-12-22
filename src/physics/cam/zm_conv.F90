@@ -4140,9 +4140,14 @@ if (lparcel_pbl) then
       
    do i = 1,ncol ! Loop columns
       do k = pver,msg + 1,-1
-         if ((zf(i,k+1)-zf(i,pver+1)) <= parcel_ztop(i)) then ! Has to be relative to surface geo height.  
+         if (zi(i,k+1) <= parcel_ztop(i)) then ! Has to be relative to surface geo height.  
             ipar = k
-            dp_zfrac =  min(1._r8,(parcel_ztop(i)-zf(i,k+1))/(zf(i,k)-zf(i,k+1))) ! Fraction of grid cell depth (mostly 1, except when parcel_ztop is in between levels.
+
+            if (k.eq.pver) then ! Always at least the full depth of lowest model layer.
+               dp_zfrac = 1._r8 
+            else
+               dp_zfrac =  min(1._r8,(parcel_ztop(i)-zi(i,k+1))/(zi(i,k)-zi(i,k+1))) ! Fraction of grid cell depth (mostly 1, except when parcel_ztop is in between levels.
+            end if
 
             parcel_hdp(i) = parcel_hdp(i)+hmn_zdp(i,k)*dp_zfrac ! Sum parcel profile up to a certain level.
             parcel_qdp(i) = parcel_qdp(i)+q_zdp(i,k)*dp_zfrac ! Sum parcel profile up to a certain level.
