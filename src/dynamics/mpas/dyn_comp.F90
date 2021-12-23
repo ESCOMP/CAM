@@ -206,9 +206,14 @@ type dyn_export_t
    real(r8), dimension(:,:),   pointer :: cell_gradient_coef_y
    real(r8), dimension(:,:),   pointer :: edgesOnCell_sign
    real(r8), dimension(:),     pointer :: dvEdge
+   real(r8), dimension(:),     pointer :: areaCell ! cell area (m^2)
 
    integer, dimension(:,:), pointer :: edgesOnCell
+   integer, dimension(:,:), pointer :: cellsOnEdge
    integer, dimension(:),   pointer :: nEdgesOnCell
+
+   real(r8), dimension(:,:),     pointer :: utangential  ! velocity tangent to cell edge,
+                                                         ! diagnosed by mpas
 
    !
    ! State that may be directly derived from dycore prognostic state
@@ -234,6 +239,10 @@ integer, public, protected :: &
    ixo2 = -1, &
    ixh  = -1, &
    ixh2 = -1
+
+! Frontogenesis indices
+integer, public    :: frontgf_idx      = -1
+integer, public    :: frontga_idx      = -1
 
 real(r8), parameter :: rad2deg = 180.0_r8 / pi
 real(r8), parameter :: deg2rad = pi / 180.0_r8
@@ -313,8 +322,17 @@ subroutine dyn_register()
 
    use physics_buffer,  only: pbuf_add_field, dtype_r8
    use ppgrid,          only: pcols, pver
-   !----------------------------------------------------------------------------
+   use phys_control,    only: use_gw_front, use_gw_front_igw
 
+   ! These fields are computed by the dycore and passed to the physics via the
+   ! physics buffer.
+
+   if (use_gw_front .or. use_gw_front_igw) then
+      call pbuf_add_field("FRONTGF", "global", dtype_r8, (/pcols,pver/), frontgf_idx)
+      call pbuf_add_field("FRONTGA", "global", dtype_r8, (/pcols,pver/), frontga_idx)
+   end if
+
+   !----------------------------------------------------------------------------
 
 end subroutine dyn_register
 
@@ -500,7 +518,10 @@ subroutine dyn_init(dyn_in, dyn_out)
    dyn_out % ux    => dyn_in % ux
    dyn_out % uy    => dyn_in % uy
 
-   ! components only needed in output, no time level index
+   ! components needed in output, no time level index
+
+   dyn_out % areaCell => dyn_in % areaCell
+   dyn_out % cellsOnEdge => dyn_in % cellsOnEdge
 
    call mpas_pool_get_array(mesh_pool,  'defc_a',                dyn_out % defc_a)
    call mpas_pool_get_array(mesh_pool,  'defc_b',                dyn_out % defc_b)
@@ -510,6 +531,8 @@ subroutine dyn_init(dyn_in, dyn_out)
    call mpas_pool_get_array(mesh_pool,  'dvEdge',                dyn_out % dvEdge)
    call mpas_pool_get_array(mesh_pool,  'edgesOnCell',           dyn_out % edgesOnCell)
    call mpas_pool_get_array(mesh_pool,  'nEdgesOnCell',          dyn_out % nEdgesOnCell)
+
+   call mpas_pool_get_array(diag_pool,  'v',                     dyn_out % utangential)
 
    ! cam-required hydrostatic pressures
 

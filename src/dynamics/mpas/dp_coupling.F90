@@ -44,8 +44,10 @@ subroutine d_p_coupling(phys_state, phys_tend, pbuf2d, dyn_out)
    ! Convert the dynamics output state into the physics input state.
    ! Note that all pressures and tracer mixing ratios coming from the dycore are based on
    ! dry air mass.
-   use cam_history,    only : hist_fld_active
-   use mpas_constants, only : Rv_over_Rd => rvord
+   use cam_history,    only: hist_fld_active
+   use dyn_comp,       only: frontgf_idx, frontga_idx
+   use mpas_constants, only: Rv_over_Rd => rvord
+   use phys_control,   only: use_gw_front, use_gw_front_igw
 
    ! arguments
    type(physics_state),       intent(inout) :: phys_state(begchunk:endchunk)
@@ -70,6 +72,36 @@ subroutine d_p_coupling(phys_state, phys_tend, pbuf2d, dyn_out)
    real(r8), pointer :: theta_m(:,:)
    real(r8), pointer :: tracers(:,:,:)
 
+   !
+   ! mesh information and coefficients needed for 
+   ! frontogenesis function calculation
+   !
+   real(r8), dimension(:,:),   pointer :: defc_a
+   real(r8), dimension(:,:),   pointer :: defc_b
+   real(r8), dimension(:,:),   pointer :: cell_gradient_coef_x
+   real(r8), dimension(:,:),   pointer :: cell_gradient_coef_y
+   real(r8), dimension(:,:),   pointer :: edgesOnCell_sign
+   real(r8), dimension(:),     pointer :: dvEdge
+   real(r8), dimension(:),     pointer :: areaCell
+
+   integer, dimension(:,:), pointer :: cellsOnEdge
+   integer, dimension(:,:), pointer :: edgesOnCell
+   integer, dimension(:),   pointer :: nEdgesOnCell
+
+   real(r8), dimension(:,:),   pointer :: uperp
+   real(r8), dimension(:,:),   pointer :: utangential
+
+   !
+   ! local storage for frontogenesis function and angle
+   !
+   real(r8), dimension(:,:),  pointer :: frontogenesisFunction
+   real(r8), dimension(:,:),  pointer :: frontogenesisAngle
+   real(r8), dimension(:,:),  pointer :: pbuf_frontgf
+   real(r8), dimension(:,:),  pointer :: pbuf_frontga
+   real(r8), allocatable :: frontgf_phys(:,:,:)
+   real(r8), allocatable :: frontga_phys(:,:,:)
+
+   type(physics_buffer_desc), pointer :: pbuf_chnk(:)
 
    integer :: lchnk, icol, icol_p, k, kk      ! indices over chunks, columns, physics columns and layers
    integer :: i, m, ncols, blockid
@@ -129,6 +161,45 @@ subroutine d_p_coupling(phys_state, phys_tend, pbuf2d, dyn_out)
         nCellsSolve, plev, zz, zint, rho_zz, theta_m, tracers(index_qv,:,:),&
         pmiddry, pintdry, pmid)
 
+   if (use_gw_front .or. use_gw_front_igw) then
+      nullify(pbuf_chnk)
+      nullify(pbuf_frontgf)
+      nullify(pbuf_frontga)
+      !
+      ! compute frontogenesis function and angle for gravity wave scheme
+      !
+      defc_a => dyn_out % defc_a
+      defc_b => dyn_out % defc_b
+      cell_gradient_coef_x => dyn_out % cell_gradient_coef_x
+      cell_gradient_coef_y => dyn_out % cell_gradient_coef_y
+      edgesOnCell_sign => dyn_out % edgesOnCell_sign
+      dvEdge => dyn_out % dvEdge
+      areaCell => dyn_out % areaCell
+      cellsOnEdge => dyn_out % cellsOnEdge
+      edgesOnCell => dyn_out % edgesOnCell
+      nEdgesOnCell => dyn_out % nEdgesOnCell
+      uperp => dyn_out % uperp
+      utangential => dyn_out % utangential
+
+      allocate(frontogenesisFunction(plev, nCellsSolve), stat=ierr)
+      if( ierr /= 0 ) call endrun(subname//':failed to allocate frontogenesisFunction array')
+      allocate(frontogenesisAngle(plev, nCellsSolve), stat=ierr)
+
+      allocate(frontgf_phys(pcols, pver, begchunk:endchunk))
+      allocate(frontga_phys(pcols, pver, begchunk:endchunk))
+
+      if( ierr /= 0 ) call endrun(subname//':failed to allocate frontogenesisAngle array')
+
+      call calc_frontogenesis( frontogenesisFunction, frontogenesisAngle,  &
+                               theta_m, tracers(index_qv,:,:),             &
+                               uperp, utangential, defc_a, defc_b,         &
+                               cell_gradient_coef_x, cell_gradient_coef_y, &
+                               areaCell, dvEdge, cellsOnEdge, edgesOnCell, &
+                               nEdgesOnCell, edgesOnCell_sign,             &
+                               plev, nCellsSolve )
+
+   end if
+
    call t_startf('dpcopy')
 
    ncols = columns_on_task
@@ -154,6 +225,11 @@ subroutine d_p_coupling(phys_state, phys_tend, pbuf2d, dyn_out)
          phys_state(lchnk)%omega(icol_p,k)   = -rho_zz(kk,i)*zz(kk,i)*gravit*0.5_r8*(w(kk,i)+w(kk+1,i))   ! omega
          phys_state(lchnk)%pmiddry(icol_p,k) = pmiddry(kk,i)
          phys_state(lchnk)%pmid(icol_p,k)    = pmid(kk,i)
+
+         if (use_gw_front .or. use_gw_front_igw) then
+            frontgf_phys(icol_p, k, lchnk) = frontogenesisFunction(kk, i)
+            frontga_phys(icol_p, k, lchnk) = frontogenesisAngle(kk, i)
+         end if
       end do
 
       do k = 1, pverp
@@ -169,6 +245,25 @@ subroutine d_p_coupling(phys_state, phys_tend, pbuf2d, dyn_out)
       end do
    end do
 
+   if (use_gw_front .or. use_gw_front_igw) then
+
+      !$omp parallel do private (lchnk, ncols, icol, k, pbuf_chnk, pbuf_frontgf, pbuf_frontga)
+      do lchnk = begchunk, endchunk
+         ncols = get_ncols_p(lchnk)
+         pbuf_chnk => pbuf_get_chunk(pbuf2d, lchnk)
+         call pbuf_get_field(pbuf_chnk, frontgf_idx, pbuf_frontgf)
+         call pbuf_get_field(pbuf_chnk, frontga_idx, pbuf_frontga)
+         do icol = 1, ncols
+            do k = 1, pver
+               pbuf_frontgf(icol, k) = frontgf_phys(icol, k, lchnk)
+               pbuf_frontga(icol, k) = frontga_phys(icol, k, lchnk)
+            end do
+         end do
+      end do
+      deallocate(frontgf_phys)
+      deallocate(frontga_phys)
+   end if
+
    call t_stopf('dpcopy')
 
    call t_startf('derived_phys')
@@ -176,6 +271,8 @@ subroutine d_p_coupling(phys_state, phys_tend, pbuf2d, dyn_out)
    call t_stopf('derived_phys')
 
    deallocate(pmid,pintdry,pmiddry)
+
+   if (use_gw_front .or. use_gw_front_igw) deallocate(frontogenesisFunction, frontogenesisAngle)
 
 end subroutine d_p_coupling
 
@@ -874,5 +971,115 @@ subroutine tot_energy(nCells, nVertLevels, qsize, index_qv, zz, zgrid, rho_zz, t
     end if
   end if
  end subroutine tot_energy
+
+   subroutine calc_frontogenesis( frontogenesisFunction, frontogenesisAngle,             &
+           theta_m, qv, u,v, defc_a, defc_b, cell_gradient_coef_x, cell_gradient_coef_y, &
+           areaCell, dvEdge, cellsOnEdge, edgesOnCell, nEdgesOnCell, edgesOnCell_sign,   &
+           nVertLevels, nCellsSolve )
+
+   use mpas_constants, only : rvord
+
+   implicit none
+
+   ! inputs
+
+   integer, intent(in) :: nVertLevels, nCellsSolve
+   real(r8), dimension(:,:), intent(in) :: theta_m, qv
+   real(r8), dimension(:,:), intent(in) :: u, v
+   real(r8), dimension(:,:), intent(in) :: defc_a
+   real(r8), dimension(:,:), intent(in) :: defc_b
+   real(r8), dimension(:,:), intent(in) :: cell_gradient_coef_x
+   real(r8), dimension(:,:), intent(in) :: cell_gradient_coef_y
+   real(r8), dimension(:,:), intent(in) :: edgesOnCell_sign
+   real(r8), dimension(:), intent(in) :: dvEdge
+   real(r8), dimension(:), intent(in) :: areaCell
+   integer, dimension(:,:), intent(in) :: cellsOnEdge
+   integer, dimension(:,:), intent(in) :: edgesOnCell
+   integer, dimension(:), intent(in) :: nEdgesOnCell  
+
+   ! outputs
+   
+   real(r8), dimension(:,:), intent(out) :: frontogenesisFunction
+   real(r8), dimension(:,:), intent(out) :: frontogenesisAngle
+
+   ! local storage
+
+   integer :: iCell, iEdge, k, cell1, cell2
+   integer :: CellStart, CellEnd
+   real(r8), dimension(nVertLevels) :: d_diag, d_off_diag, divh, theta_x, theta_y
+   real(r8) :: edge_sign, thetaEdge
+
+   !
+   ! for each column, compute frontogenesis function and del(theta) angle
+   !
+   CellStart = 1
+   CellEnd = nCellsSolve
+
+   do iCell = cellStart,cellEnd
+
+      d_diag(1:nVertLevels) = 0.0
+      d_off_diag(1:nVertLevels) = 0.0
+      divh(1:nVertLevels) = 0.0
+      theta_x(1:nVertLevels) = 0.0
+      theta_y(1:nVertLevels) = 0.0
+
+      !
+      ! Integrate over edges to compute cell-averaged divergence, deformation,
+      ! d(theta)/dx, and d(theta)/dy.  (x,y) are aligned with (lon,lat) at the
+      ! cell center in the 2D tangent-plane approximation used here.  This alignment
+      ! is set in the initialization routine for the coefficients
+      ! defc_a, defc_b, cell_gradient_coef_x and cell_gradient_coef_y that is
+      ! part of the MPAS mesh initialization.  The horizontal divergence is calculated
+      ! as it is in the MPAS solver, i.e. on the sphere as opposed to on the tangent plane.
+      !
+      do iEdge=1,nEdgesOnCell(iCell)
+
+         edge_sign = edgesOnCell_sign(iEdge,iCell) * dvEdge(edgesOnCell(iEdge,iCell)) / areaCell(iCell)
+         cell1 = cellsOnEdge(1,edgesOnCell(iEdge,iCell))
+         cell2 = cellsOnEdge(2,edgesOnCell(iEdge,iCell))
+
+         do k=1,nVertLevels
+
+            d_diag(k)     = d_diag(k)     + defc_a(iEdge,iCell)*u(k,EdgesOnCell(iEdge,iCell))  &
+                 - defc_b(iEdge,iCell)*v(k,EdgesOnCell(iEdge,iCell))
+            d_off_diag(k) = d_off_diag(k) + defc_b(iEdge,iCell)*u(k,EdgesOnCell(iEdge,iCell))  &
+                 + defc_a(iEdge,iCell)*v(k,EdgesOnCell(iEdge,iCell))
+            divh(k) = divh(k) + edge_sign * u(k,EdgesOnCell(iEdge,iCell))
+            thetaEdge = 0.5*( theta_m(k,cell1)/(1.0_r8 + rvord*qv(k,cell1))  &
+                             +theta_m(k,cell2)/(1.0_r8 + rvord*qv(k,cell2)) )
+            theta_x(k) = theta_x(k) + cell_gradient_coef_x(iEdge,iCell)*thetaEdge
+            theta_y(k) = theta_y(k) + cell_gradient_coef_y(iEdge,iCell)*thetaEdge
+
+         end do
+
+      end do
+
+      !
+      ! compute the frontogenesis function:
+      !  1/2  |del(theta)/dt)| = 1/2 (
+      !                - Div * |del(theta)|^2
+      !                - E  (d(theta)/dx)^2
+      !                - 2F (d(theta)/dx)*(d(theta)/dy)
+      !                + E  (d(theta)/dy)  )
+      ! where
+      !        Div = u_x + v_y (horizontal velocity divergence)
+      !        E = u_x - v_y (stretching deformation)
+      !        F = v_x + u_y (shearing deformation)
+      !
+      !DIR$ IVDEP
+      do k=1, nVertLevels
+
+         frontogenesisFunction(k,iCell) = 0.5*(         &
+              -divh(k)*(theta_x(k)**2 + theta_y(k)**2)  &
+              -d_diag(k)*theta_x(k)**2                  &
+              -2.0*d_off_diag(k)*theta_x(k)*theta_y(k)  &
+              +d_diag(k)*theta_y(k)**2                )
+         frontogenesisAngle(k,iCell) = atan2(theta_y(k),theta_x(k))
+
+      end do
+
+   end do
+
+end subroutine calc_frontogenesis
 
 end module dp_coupling
