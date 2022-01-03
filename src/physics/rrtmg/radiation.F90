@@ -313,11 +313,15 @@ end function radiation_do
 
 !================================================================================================
 
-real(r8) function radiation_nextsw_cday()
+real(r8) function radiation_nextsw_cday(init)
+
+   use phys_control,   only: cam_physpkg_is 
   
    ! Return calendar day of next sw radiation calculation
+   logical, intent(in), optional :: init
 
    ! Local variables
+   logical :: doinit     ! flag indicating call occurs during initialization
    integer :: nstep      ! timestep counter
    logical :: dosw       ! true => do shosrtwave calc   
    integer :: offset     ! offset for calendar day calculation
@@ -326,11 +330,24 @@ real(r8) function radiation_nextsw_cday()
    real(r8):: caldayp1   ! calendar day of next time-step
    !-----------------------------------------------------------------------
 
+   if (present(init)) then
+     doinit = init
+   else
+     doinit = .false.
+   end if
+
    radiation_nextsw_cday = -1._r8
    dosw   = .false.
    nstep  = get_nstep()
    dtime  = get_step_size()
    offset = 0
+
+   ! wind back the clock to characterize radiation in restarts (for suites w/ radiation in tphysac)
+   if (doinit .and. is_first_restart_step() .and. cam_physpkg_is("cam_dev")) then
+     nstep = nstep - 1
+     offset = offset - dtime
+   end if
+
    do while (.not. dosw)
       nstep = nstep + 1
       offset = offset + dtime
@@ -345,9 +362,14 @@ real(r8) function radiation_nextsw_cday()
 
    ! determine if next radiation time-step not equal to next time-step
    if (get_nstep() >= 1) then
-      caldayp1 = get_curr_calday(offset=int(dtime))
+      if (doinit .and. is_first_restart_step() .and. cam_physpkg_is("cam_dev")) then
+        caldayp1 = get_curr_calday()
+      else
+        caldayp1 = get_curr_calday(offset=int(dtime))
+      end if
       if (caldayp1 /= radiation_nextsw_cday) radiation_nextsw_cday = -1._r8
    end if    
+
 end function radiation_nextsw_cday
 
 !================================================================================================

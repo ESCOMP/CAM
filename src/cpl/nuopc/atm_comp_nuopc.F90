@@ -885,7 +885,7 @@ contains
        end if
 
        ! Compute time of next radiation computation
-       nextsw_cday = radiation_nextsw_cday()
+       nextsw_cday = radiation_nextsw_cday(init=.true.)
        call State_SetScalar(nextsw_cday, flds_scalar_index_nextsw_cday, exportState, &
             flds_scalar_name, flds_scalar_num, rc)
        if (ChkErr(rc,__LINE__,u_FILE_u)) return

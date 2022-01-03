@@ -1477,7 +1477,7 @@ contains
 
     if (cmfmczm_idx > 0) then
       call pbuf_get_field(pbuf, cmfmczm_idx, cmfmczm)
-      cmfmc(:ncol,:) = cmfmczm
+      cmfmc(:ncol,:) = cmfmczm(:ncol,:)
     else
       cmfmc(:ncol,:) = 0._r8
     end if

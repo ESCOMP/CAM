@@ -358,7 +358,7 @@ CONTAINS
        end if
 
        ! Compute time of next radiation computation
-       nextsw_cday = radiation_nextsw_cday()
+       nextsw_cday = radiation_nextsw_cday(init=.true.)
        call seq_infodata_PutData( infodata, nextsw_cday=nextsw_cday )
 
        ! End redirection of share output to cam log
