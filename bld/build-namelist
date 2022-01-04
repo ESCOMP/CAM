@@ -908,6 +908,7 @@ if ($aer_model eq 'mam' ) {
   my $aero_modes = '3mode';
   if ($chem =~ /_mam7/) {$aero_modes = '7mode';}
   if ($chem =~ /_mam4/) {$aero_modes = '4mode';}
+  if ($chem =~ /_mam5/) {$aero_modes = '5mode';}
 
   my @mode_names;
   my @mode_types;
@@ -971,6 +972,28 @@ if ($aer_model eq 'mam' ) {
                       'primary_carbon' => [qw(pom bc)] );
 
     @mode_num_src  = qw(A A A A);
+
+  }  elsif($aero_modes eq '5mode') {
+      # For 5 modes
+
+    # MAM rad_climate settings.  The externally mixed quantities in the modal aerosol
+    # model are the modes.
+    push @aero_names, qw(mam5_mode1 mam5_mode2 mam5_mode3 mam5_mode4 mam5_mode5);
+    push @aerosources, qw(M: M: M: M: M:);
+
+    # Each of the mode names put into the @aero_names array needs to be defined.
+    @mode_names    = qw(mam5_mode1 mam5_mode2 mam5_mode3 mam5_mode4 mam5_mode5);
+    @mode_types    = qw(accum aitken coarse primary_carbon coarse_strat);
+    @mode_num      = qw(num_a1 num_a2 num_a3 num_a4 num_a5);
+    @mode_num_cw   = qw(num_c1 num_c2 num_c3 num_c4 num_c5);
+
+    %modal_groups = ( 'accum'  => [qw(so4 pom soa bc dst ncl)],
+                      'aitken' => [qw(so4 soa ncl dst)],
+                      'coarse' => [qw(dst ncl so4)],
+                      'primary_carbon' => [qw(pom bc)], 
+                      'coarse_strat' => [qw(so4)] );
+
+    @mode_num_src  = qw(A A A A A);
 
   } elsif($aero_modes eq '7mode') {
 
@@ -1806,7 +1829,7 @@ if (($chem =~ /trop_mozart/ or $chem =~ /trop_strat/ or $chem =~ /waccm_tsmlt/) 
                    'num_a2   -> ' => 'num_a2_emis_file',
                    );
         %verhash = ('ver'=>'mam');
-    } elsif ($chem =~ /_tsmlt_mam4/ or $chem =~ /mam4_vbs/) {
+    } elsif ($chem =~ /_tsmlt_mam4/ or $chem =~ /_tsmlt_mam5/ or $chem =~ /mam4_vbs/) {
         %species = (%species,
                    'BENZENE  -> ' => 'soa_benzene_emis_file',
                    'XYLENES  -> ' => 'soa_xylene_emis_file',
@@ -1820,6 +1843,17 @@ if (($chem =~ /trop_mozart/ or $chem =~ /trop_strat/ or $chem =~ /waccm_tsmlt/) 
                    'num_a2   -> ' => 'num_a2_emis_file',
                    'num_a4   -> ' => 'mam4_num_a4_emis_file',
                    );
+    } elsif ($chem =~ /mam5/) {
+        %species = (%species,
+                   'SOAG     -> ' => 'soag_emis_file',
+                   'bc_a4    -> ' => 'bc_a4_emis_file',
+                   'pom_a4   -> ' => 'pom_a4_emis_file',
+                   'so4_a1   -> ' => 'so4_a1_emis_file',
+                   'so4_a2   -> ' => 'so4_a2_emis_file',
+                   'num_a1   -> ' => 'mam4_num_a1_emis_file',
+                   'num_a2   -> ' => 'num_a2_emis_file',
+                   'num_a4   -> ' => 'mam4_num_a4_emis_file',
+                   );								
     } elsif ($chem =~ /mam4/) {
         %species = (%species,
                    'SOAG     -> ' => 'soag_emis_file',
@@ -1881,7 +1915,7 @@ if (($chem =~ /trop_mozart/ or $chem =~ /trop_strat/ or $chem =~ /waccm_tsmlt/) 
                    'num_a1 -> ' => 'num_a1_ext_file',
                    'num_a2 -> ' => 'num_a2_ext_file', );
       $cyc_yr = '2000';
-    } elsif ($chem =~ /_tsmlt_mam4/ or $chem =~ /mam4_vbs/) {
+    } elsif ($chem =~ /_tsmlt_mam4/ or $chem =~ /_tsmlt_mam5/ or $chem =~ /mam4_vbs/) {
       %species = ( 'NO2    -> ' => 'no2_aircraft_emis_file',
                    'SO2    -> ' => 'so2_ext_file',
                    'so4_a1 -> ' => 'so4_a1_ext_file',
@@ -1893,6 +1927,16 @@ if (($chem =~ /trop_mozart/ or $chem =~ /trop_strat/ or $chem =~ /waccm_tsmlt/) 
                    'num_a4 -> ' => 'mam4_num_a4_ext_file',
                    'SVOC -> ' => 'svocbb_ext_file' );
       $cyc_yr = '2000';
+    }  elsif ($chem =~ /mam5/) {
+      %species = ( 'NO2    -> ' => 'no2_aircraft_emis_file',
+                   'SO2    -> ' => 'so2_ext_file',
+                   'so4_a1 -> ' => 'so4_a1_ext_file',
+                   'so4_a2 -> ' => 'so4_a2_ext_file',
+                   'pom_a4 -> ' => 'pom_a4_ext_file',
+                   'bc_a4  -> ' => 'bc_a4_ext_file',
+                   'num_a1 -> ' => 'mam4_num_a1_ext_file',
+                   'num_a2 -> ' => 'num_a2_ext_file',
+                   'num_a4 -> ' => 'mam4_num_a4_ext_file' );
     } elsif ($chem =~ /mam4/) {
       %species = ( 'NO2    -> ' => 'no2_aircraft_emis_file',
                    'SO2    -> ' => 'so2_ext_file',
@@ -2084,7 +2128,7 @@ if ($chem eq 'trop_mam3') {
 }
 
 # CMIP6 emissions
-if ($chem =~ /_mam4/ and $phys =~ /cam6/) {
+if (($chem =~ /_mam4/ or $chem =~ /_mam5/) and $phys =~ /cam6/) {
     my %species;
 
     # Surface emission datasets:
@@ -2418,7 +2462,7 @@ if ($chem =~ /_mam4/ and $phys =~ /cam6/) {
     }
 }
 
-if ($chem eq 'trop_mam4' or $chem eq 'waccm_sc_mam4') {
+if ($chem eq 'trop_mam4' or $chem eq 'waccm_sc_mam4' or $chem eq 'trop_mam5') {
 
     # Prescribed species
     if ($chem eq 'waccm_sc_mam4') {
@@ -3178,6 +3222,7 @@ if (!$simple_phys) {
     add_default($nl, 'zmconv_dmpdz');
     add_default($nl, 'zmconv_tiedke_add');
     add_default($nl, 'zmconv_capelmt');
+    add_default($nl, 'zmconv_tau');
 }
 
 # moist convection rainwater coefficients
@@ -4360,9 +4405,10 @@ sub check_input_files {
     # Treat special cases...
 
     # These namelist variables are arrays of strings.
-    my @vars = qw(aircraft_specifier ext_frc_specifier srf_emis_specifier mode_defs
-                  rad_climate rad_diag_1 rad_diag_2 rad_diag_3 rad_diag_4 rad_diag_5
-                  rad_diag_6 rad_diag_7 rad_diag_8 rad_diag_9 rad_diag_10);
+    my @vars = qw(aircraft_specifier csw_specifier ext_frc_specifier
+                  rad_climate rad_diag_1 rad_diag_2 rad_diag_3 rad_diag_4
+                  rad_diag_5 rad_diag_6 rad_diag_7 rad_diag_8 rad_diag_9
+                  rad_diag_10 srf_emis_specifier mode_defs);
 
     foreach my $var (@vars) {
 
@@ -4385,7 +4431,7 @@ sub check_input_files {
                 # Extract name and filename
                 if ($spec =~ m/\s*(\w+)      # name of species preceded by optional whitespace
                                \s*->\s*      # -> separator surrounded by optional whitespace
-                               (\S+)         # filename (all characters up to optional whitespace)
+                               (.+)          # filename and possible coefficient(all characters up to optional whitespace)
                               /xo) {
                     my $name = $1;
                     my $file = $2;

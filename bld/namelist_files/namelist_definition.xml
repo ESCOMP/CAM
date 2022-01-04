@@ -3054,6 +3054,18 @@ Tunable triggering threshold for convection in ZM deep scheme in units of (J kg-
 Default: 70.0 J kg-1
 </entry>
 
+<entry id="zmconv_parcel_pbl" type="logical" category="conv"
+       group="zmconv_nl" valid_values="" >
+Turn on ZM deep convection initial parcel properties as a function of a well mixed boundary layer
+Default: .false.
+</entry>
+
+<entry id="zmconv_tau" type="real" category="conv"
+       group="zmconv_nl" valid_values="" >
+Convective adjustment timescale in units of (s)
+Default: 3600.0 s
+</entry>
+
 <!-- Cloud sedimentation -->
 
 <entry id="cldsed_ice_stokes_fac" type="real" category="cldsed"
@@ -4484,8 +4496,8 @@ Default: set by build-namelist
 </entry>
 
 <entry id="cam_chempkg" type="char*32" category="build"
-       group="phys_ctl_nl" valid_values="trop_mam3,trop_mam4,trop_mam7,trop_mozart,trop_strat_mam4_vbs,trop_strat_mam4_vbsext,
-                                         waccm_ma,waccm_mad_mam4,waccm_ma_mam4,waccm_ma_sulfur,waccm_sc,waccm_sc_mam4,waccm_tsmlt_mam4,
+       group="phys_ctl_nl" valid_values="trop_mam3,trop_mam4,trop_mam5,trop_mam7,trop_mozart,trop_strat_mam4_vbs,trop_strat_mam4_vbsext,
+                                         waccm_ma,waccm_mad_mam4,waccm_ma_mam4,waccm_ma_sulfur,waccm_sc,waccm_sc_mam4,waccm_tsmlt_mam4,waccm_tsmlt_mam5,
                                          terminator,none" >
 Name of the CAM chemistry package.  N.B. this variable may not be set by
 the user.  It is set by build-namelist via information in the configure

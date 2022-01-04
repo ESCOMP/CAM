@@ -442,6 +442,12 @@
 <mam4_mode1_file rad="rrtmg" ver="strat">atm/cam/physprops/mam4_mode1_rrtmg_aeronetdust_sig1.6_dgnh.48_c140304.nc</mam4_mode1_file>
 <mam4_mode3_file rad="rrtmg" ver="strat">atm/cam/physprops/mam4_mode3_rrtmg_aeronetdust_sig1.2_dgnl.40_c150219.nc</mam4_mode3_file>
 
+<mam5_mode1_file rad="rrtmg" ver="strat">atm/cam/physprops/mam4_mode1_rrtmg_aeronetdust_sig1.6_dgnh.48_c140304.nc</mam5_mode1_file>
+<mam5_mode2_file rad="rrtmg" ver="strat">atm/cam/physprops/mam4_mode2_rrtmg_aitkendust_c141106.nc</mam5_mode2_file>
+<mam5_mode3_file rad="rrtmg" ver="strat">atm/cam/physprops/mam4_mode3_rrtmg_aeronetdust_c141106.nc</mam5_mode3_file>
+<mam5_mode4_file rad="rrtmg" ver="strat">atm/cam/physprops/mam4_mode4_rrtmg_c130628.nc</mam5_mode4_file>
+<mam5_mode5_file rad="rrtmg" ver="strat">atm/cam/physprops/mam4_mode3_rrtmg_aeronetdust_sig1.2_dgnl.40_c150219.nc</mam5_mode5_file>
+
 <mam7_mode1_file rad="rrtmg">atm/cam/physprops/mam7_mode1_rrtmg_c120904.nc</mam7_mode1_file>
 <mam7_mode2_file rad="rrtmg">atm/cam/physprops/mam7_mode2_rrtmg_c120904.nc</mam7_mode2_file>
 <mam7_mode3_file rad="rrtmg">atm/cam/physprops/mam7_mode3_rrtmg_c120904.nc</mam7_mode3_file>
@@ -1851,8 +1857,8 @@
 <clubb_l_predict_upwp_vpwp                        > .false. </clubb_l_predict_upwp_vpwp>
 <clubb_l_rcm_supersat_adj                         > .false. </clubb_l_rcm_supersat_adj>
 <clubb_l_stability_correct_tau_zm                 > .true.  </clubb_l_stability_correct_tau_zm>
-<clubb_l_trapezoidal_rule_zm                      > .true.  </clubb_l_trapezoidal_rule_zm>
-<clubb_l_trapezoidal_rule_zt                      > .true.  </clubb_l_trapezoidal_rule_zt>
+<clubb_l_trapezoidal_rule_zm                      > .false. </clubb_l_trapezoidal_rule_zm>
+<clubb_l_trapezoidal_rule_zt                      > .false. </clubb_l_trapezoidal_rule_zt>
 <clubb_l_upwind_xpyp_ta                           > .true.  </clubb_l_upwind_xpyp_ta>
 <clubb_l_use_C7_Richardson                        > .false. </clubb_l_use_C7_Richardson>
 <clubb_l_use_C11_Richardson                       > .false. </clubb_l_use_C11_Richardson>
@@ -2454,6 +2460,9 @@
 <zmconv_dmpdz                                                         > -1.0E-3 </zmconv_dmpdz>
 <zmconv_tiedke_add                                                    > 0.5     </zmconv_tiedke_add>
 <zmconv_capelmt                                                       > 70.0    </zmconv_capelmt>
+<zmconv_tau                                                           > 3600.0    </zmconv_tau>
+
+<zmconv_parcel_pbl                                                    > .false. </zmconv_parcel_pbl>
 
 <!-- Cloud sedimentation -->
 
