@@ -4130,10 +4130,10 @@ subroutine buoyan_dilute(lchnk   ,ncol    , &
 if (lparcel_pbl) then
 
 ! Vertical profile of MSE and pressure weighted of the same.
-   hmn_lev = cp*t + grav*z + rl*q
+   hmn_lev(:ncol,1:pver) = cp*t(:ncol,1:pver) + grav*z(:ncol,1:pver) + rl*q(:ncol,1:pver)
    dp_lev(:ncol,1:pver) = pf(:ncol,2:pver+1)-pf(:ncol,1:pver)
-   hmn_zdp = hmn_lev*dp_lev
-   q_zdp = q*dp_lev
+   hmn_zdp(:ncol,1:pver) = hmn_lev(:ncol,1:pver)*dp_lev(:ncol,1:pver)
+   q_zdp(:ncol,1:pver) = q(:ncol,1:pver)*dp_lev(:ncol,1:pver)
 
 
 ! Mix profile over vertical length scale of 0.5*PBLH.
