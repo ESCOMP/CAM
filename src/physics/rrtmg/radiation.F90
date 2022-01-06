@@ -312,7 +312,7 @@ end function radiation_do
 
 !================================================================================================
 
-real(r8) function radiation_nextsw_cday
+real(r8) function radiation_nextsw_cday()
 
    use phys_control,   only: cam_physpkg_is 
   

@@ -313,7 +313,7 @@ end function radiation_do
 
 !================================================================================================
 
-real(r8) function radiation_nextsw_cday
+real(r8) function radiation_nextsw_cday()
   
    ! Returns calendar day of next sw radiation calculation
 
@@ -321,7 +321,7 @@ real(r8) function radiation_nextsw_cday
    integer :: nstep      ! timestep counter
    logical :: dosw       ! true => do shosrtwave calc   
    integer :: offset     ! offset for calendar day calculation
-   integer :: dTime      ! integer timestep size
+   integer :: dtime      ! integer timestep size
    real(r8):: calday     ! calendar day of 
    real(r8):: caldayp1   ! calendar day of next time-step
    !-----------------------------------------------------------------------

@@ -44,7 +44,7 @@ end function radiation_do
 
 !========================================================================================
 
-real(r8) function radiation_nextsw_cday
+real(r8) function radiation_nextsw_cday()
   
    ! Returns calendar day of next sw radiation calculation
    !---------------------------------------------------------------------------
