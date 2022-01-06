@@ -314,8 +314,6 @@ end function radiation_do
 
 real(r8) function radiation_nextsw_cday()
 
-   use phys_control,   only: cam_physpkg_is 
-  
    ! Return calendar day of next sw radiation calculation
 
    ! Local variables
@@ -407,6 +405,11 @@ subroutine radiation_init(pbuf2d)
    if (use_rad_dt_cosz)  then
       dtime  = get_step_size()
       dt_avg = iradsw*dtime
+   end if
+
+   ! Surface components to get radiation computed today
+   if (.not. is_first_restart_step()) then
+      nextsw_cday = get_curr_calday()
    end if
 
    call phys_getopts(history_amwg_out   = history_amwg,    &

@@ -319,7 +319,7 @@ CONTAINS
        ! This will only be used on the first timestep of an initial run
        !
        if (initial_run) then
-          call seq_infodata_PutData( infodata, nextsw_cday=get_curr_calday() )
+          call seq_infodata_PutData( infodata, nextsw_cday=nextsw_cday )
        end if
 
        ! End redirection of share output to cam log

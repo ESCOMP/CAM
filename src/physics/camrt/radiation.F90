@@ -404,6 +404,11 @@ subroutine radiation_init(pbuf2d)
       dt_avg = real(iradsw*dtime, r8)
    end if
 
+   ! Surface components to get radiation computed today
+   if (.not. is_first_restart_step()) then
+      nextsw_cday = get_curr_calday()
+   end if
+
    ! Get physics buffer indices
    cld_idx    = pbuf_get_index('CLD')
    rel_idx    = pbuf_get_index('REL')
