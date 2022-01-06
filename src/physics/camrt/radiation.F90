@@ -36,7 +36,7 @@ use pio,                 only: file_desc_t, var_desc_t, &
                                pio_seterrorhandling, pio_bcast_error, &
                                pio_inq_varid, &
                                pio_def_var, pio_def_dim, &
-                               pio_put_var, pio_get_var
+                               pio_put_var, pio_get_var, pio_put_att
 
 use cam_abortutils,      only: endrun
 use error_messages,      only: handle_err
@@ -144,6 +144,7 @@ real(r8), parameter :: cgs2mks = 1.e-3_r8
 
 type(var_desc_t), allocatable :: abstot_desc(:)
 type(var_desc_t) :: emstot_desc, absnxt_desc(4)
+type(var_desc_t) :: nextsw_cday_desc
 
 logical  :: use_rad_uniform_angle = .false. ! if true, use the namelist rad_uniform_angle for the zenith calculation
 real(r8) :: rad_uniform_angle = -99._r8
@@ -318,6 +319,7 @@ real(r8) function radiation_nextsw_cday(init)
    logical, intent(in), optional :: init
 
    ! Local variables
+   logical :: doinit     ! flag indicating call occurs during initialization
    integer :: nstep      ! timestep counter
    logical :: dosw       ! true => do shosrtwave calc   
    integer :: offset     ! offset for calendar day calculation
@@ -325,6 +327,16 @@ real(r8) function radiation_nextsw_cday(init)
    real(r8):: calday     ! calendar day of 
    real(r8):: caldayp1   ! calendar day of next time-step
    !-----------------------------------------------------------------------
+   if (present(init)) then
+     doinit = init
+   else
+     doinit = .false.
+   end if
+
+   if (doinit .and. is_first_restart_step()) then
+     radiation_nextsw_cday = nextsw_cday
+     return
+   end if
 
    radiation_nextsw_cday = -1._r8
    dosw   = .false.
@@ -577,6 +589,9 @@ subroutine radiation_define_restart(file)
 
    call pio_seterrorhandling(File, PIO_BCAST_ERROR)
 
+   ierr = pio_def_var(File, 'nextsw_cday', pio_int, nextsw_cday_desc)
+   ierr = pio_put_att(File, nextsw_cday_desc, 'long_name', 'future radiation calday for surface models')
+
    if (radiation_do('aeres')) then
 
       grid_id = cam_grid_id('physgrid')
@@ -634,6 +649,8 @@ subroutine radiation_write_restart(file)
    integer :: nhdims
    integer :: ncol
    !----------------------------------------------------------------------------
+
+   ierr = pio_put_var(File, nextsw_cday_desc, (/ nextsw_cday /))
 
    if ( radiation_do('aeres')  ) then
          
@@ -749,6 +766,9 @@ subroutine radiation_read_restart(file)
               gdims(1:nhdims+1), absnxt_3d(:,:,i,:), vardesc)
       end do
    end if
+
+   ierr = pio_inq_varid(File, 'nextsw_cday', vardesc)
+   ierr = pio_get_var(File, vardesc, nextsw_cday)
 
 end subroutine radiation_read_restart
   

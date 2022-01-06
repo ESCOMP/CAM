@@ -36,7 +36,7 @@ use pio,                 only: file_desc_t, var_desc_t,               &
                                pio_int, pio_noerr,                    &
                                pio_seterrorhandling, pio_bcast_error, &
                                pio_inq_varid, pio_def_var,            &
-                               pio_put_var, pio_get_var
+                               pio_put_var, pio_get_var, pio_put_att
 
 use cam_abortutils,      only: endrun
 use error_messages,      only: handle_err
@@ -155,7 +155,7 @@ real(r8) :: rad_uniform_angle = -99._r8
 
 ! PIO descriptors (for restarts)
 type(var_desc_t) :: cospcnt_desc
-
+type(var_desc_t) :: nextsw_cday_desc
 !===============================================================================
 contains
 !===============================================================================
@@ -336,18 +336,16 @@ real(r8) function radiation_nextsw_cday(init)
      doinit = .false.
    end if
 
+   if (doinit .and. is_first_restart_step()) then
+     radiation_nextsw_cday = nextsw_cday
+     return
+   end if
+
    radiation_nextsw_cday = -1._r8
    dosw   = .false.
    nstep  = get_nstep()
    dtime  = get_step_size()
    offset = 0
-
-   ! wind back the clock to characterize radiation in restarts (for suites w/ radiation in tphysac)
-   if (doinit .and. is_first_restart_step() .and. cam_physpkg_is("cam_dev")) then
-     nstep = nstep - 1
-     offset = offset - dtime
-   end if
-
    do while (.not. dosw)
       nstep = nstep + 1
       offset = offset + dtime
@@ -362,11 +360,7 @@ real(r8) function radiation_nextsw_cday(init)
 
    ! determine if next radiation time-step not equal to next time-step
    if (get_nstep() >= 1) then
-      if (doinit .and. is_first_restart_step() .and. cam_physpkg_is("cam_dev")) then
-        caldayp1 = get_curr_calday()
-      else
-        caldayp1 = get_curr_calday(offset=int(dtime))
-      end if
+      caldayp1 = get_curr_calday(offset=int(dtime))
       if (caldayp1 /= radiation_nextsw_cday) radiation_nextsw_cday = -1._r8
    end if    
 
@@ -664,6 +658,8 @@ subroutine radiation_define_restart(file)
 
    call pio_seterrorhandling(File, PIO_BCAST_ERROR)
 
+   ierr = pio_def_var(File, 'nextsw_cday', pio_int, nextsw_cday_desc)
+   ierr = pio_put_att(File, nextsw_cday_desc, 'long_name', 'future radiation calday for surface models')
    if (docosp) then
       ierr = pio_def_var(File, 'cosp_cnt_init', pio_int, cospcnt_desc)
    end if
@@ -683,6 +679,7 @@ subroutine radiation_write_restart(file)
    integer :: ierr
    !----------------------------------------------------------------------------
 
+   ierr = pio_put_var(File, nextsw_cday_desc, (/ nextsw_cday /))
    if (docosp) then
       ierr = pio_put_var(File, cospcnt_desc, (/cosp_cnt(begchunk)/))
    end if
@@ -716,6 +713,9 @@ subroutine radiation_read_restart(file)
          ierr = pio_get_var(File, vardesc, cosp_cnt_init)
       end if
    end if
+
+   ierr = pio_inq_varid(File, 'nextsw_cday', vardesc)
+   ierr = pio_get_var(File, vardesc, nextsw_cday)
 
 end subroutine radiation_read_restart
   
