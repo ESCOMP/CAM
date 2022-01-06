@@ -313,13 +313,11 @@ end function radiation_do
 
 !================================================================================================
 
-real(r8) function radiation_nextsw_cday(init)
+real(r8) function radiation_nextsw_cday
   
    ! Returns calendar day of next sw radiation calculation
-   logical, intent(in), optional :: init
 
    ! Local variables
-   logical :: doinit     ! flag indicating call occurs during initialization
    integer :: nstep      ! timestep counter
    logical :: dosw       ! true => do shosrtwave calc   
    integer :: offset     ! offset for calendar day calculation
@@ -327,16 +325,6 @@ real(r8) function radiation_nextsw_cday(init)
    real(r8):: calday     ! calendar day of 
    real(r8):: caldayp1   ! calendar day of next time-step
    !-----------------------------------------------------------------------
-   if (present(init)) then
-     doinit = init
-   else
-     doinit = .false.
-   end if
-
-   if (doinit .and. is_first_restart_step()) then
-     radiation_nextsw_cday = nextsw_cday
-     return
-   end if
 
    radiation_nextsw_cday = -1._r8
    dosw   = .false.

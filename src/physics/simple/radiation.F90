@@ -44,11 +44,10 @@ end function radiation_do
 
 !========================================================================================
 
-real(r8) function radiation_nextsw_cday(init)
+real(r8) function radiation_nextsw_cday
   
    ! Returns calendar day of next sw radiation calculation
    !---------------------------------------------------------------------------
-   logical, intent(in), optional :: init
 
    radiation_nextsw_cday = -1._r8
 
