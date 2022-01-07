@@ -62,6 +62,8 @@ public :: &
 integer,public, allocatable :: cosp_cnt(:)       ! counter for cosp
 integer,public              :: cosp_cnt_init = 0 !initial value for cosp counter
 
+real(r8), public, protected :: nextsw_cday       ! future radiation calday for surface models
+
 type rad_out_t
    real(r8) :: solin(pcols)         ! Solar incident flux
 
@@ -319,8 +321,9 @@ real(r8) function radiation_nextsw_cday()
    integer :: nstep      ! timestep counter
    logical :: dosw       ! true => do shosrtwave calc   
    integer :: offset     ! offset for calendar day calculation
-   integer :: dTime      ! integer timestep size
+   integer :: dtime      ! integer timestep size
    real(r8):: calday     ! calendar day of 
+   real(r8):: caldayp1   ! calendar day of next time-step
    !-----------------------------------------------------------------------
 
    radiation_nextsw_cday = -1._r8
@@ -339,7 +342,12 @@ real(r8) function radiation_nextsw_cday()
    if(radiation_nextsw_cday == -1._r8) then
       call endrun('error in radiation_nextsw_cday')
    end if
-        
+
+   ! determine if next radiation time-step not equal to next time-step
+   if (get_nstep() >= 1) then
+      caldayp1 = get_curr_calday(offset=int(dtime))
+      if (caldayp1 /= radiation_nextsw_cday) radiation_nextsw_cday = -1._r8
+   end if    
 end function radiation_nextsw_cday
 
 !================================================================================================
@@ -750,7 +758,6 @@ subroutine radiation_tend( &
    integer  :: i, k
    integer  :: lchnk, ncol
    logical  :: dosw, dolw
-
    real(r8) :: calday          ! current calendar day
    real(r8) :: delta           ! Solar declination angle  in radians
    real(r8) :: eccf            ! Earth orbit eccentricity factor
@@ -946,6 +953,10 @@ subroutine radiation_tend( &
    if (hist_fld_active('FSNR') .or. hist_fld_active('FLNR')) then
       call tropopause_find(state, troplev, tropP=p_trop, primary=TROP_ALG_HYBSTOB, backup=TROP_ALG_CLIMATE)
    endif
+
+   ! Get time of next radiation calculation - albedos will need to be
+   ! calculated by each surface model at this time
+   nextsw_cday = radiation_nextsw_cday()
 
    if (dosw .or. dolw) then
 

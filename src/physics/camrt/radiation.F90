@@ -59,6 +59,8 @@ public :: &
    radiation_tend,           &! compute heating rates and fluxes
    rad_out_t                  ! type for diagnostic outputs
 
+real(r8), public, protected :: nextsw_cday       ! future radiation calday for surface models
+
 type rad_out_t
    real(r8) :: solin(pcols)         ! Solar incident flux
    real(r8) :: fsntoa(pcols)        ! Net solar flux at TOA
@@ -320,6 +322,7 @@ real(r8) function radiation_nextsw_cday()
    integer :: offset     ! offset for calendar day calculation
    integer :: dTime      ! integer timestep size
    real(r8):: calday     ! calendar day of 
+   real(r8):: caldayp1   ! calendar day of next time-step
    !-----------------------------------------------------------------------
 
    radiation_nextsw_cday = -1._r8
@@ -337,6 +340,12 @@ real(r8) function radiation_nextsw_cday()
    end do
    if(radiation_nextsw_cday == -1._r8) then
       call endrun('error in radiation_nextsw_cday')
+   end if
+
+   ! determine if next radiation time-step not equal to next time-step
+   if (get_nstep() >= 1) then
+      caldayp1 = get_curr_calday(offset=int(dtime))
+      if (caldayp1 /= radiation_nextsw_cday) radiation_nextsw_cday = -1._r8
    end if
         
 end function radiation_nextsw_cday
@@ -936,6 +945,10 @@ subroutine radiation_tend( &
    dolw     = radiation_do('lw')      ! do longwave heating calc this timestep?
 
    doabsems = radiation_do('absems')  ! do absorptivity/emissivity calc this timestep?
+
+   ! Get time of next radiation calculation - albedos will need to be
+   ! calculated by each surface model at this time
+   nextsw_cday = radiation_nextsw_cday()
 
    if (dosw .or. dolw) then
 
