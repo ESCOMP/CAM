@@ -666,19 +666,19 @@ end subroutine dyn_grid_get_elem_coords
 ! Private routines.
 !=========================================================================================
 
-subroutine get_hdim_name(fh_ini, ini_grid_hdim_name)
+subroutine get_hdim_name(fh_ptr, grid_hdim_name)
    use pio, only: pio_inq_dimid, pio_seterrorhandling
    use pio, only: PIO_BCAST_ERROR, PIO_NOERR
 
-   ! Determine whether the initial file uses 'ncol' or 'ncol_d' horizontal
+   ! Determine whether the supplied file uses 'ncol' or 'ncol_d' horizontal
    ! dimension in the unstructured grid.  It is also possible when using
-   ! analytic initial conditions that the initial file only contains
+   ! analytic initial conditions that the file only contains
    ! vertical coordinates.
    ! Return 'none' if that is the case.
 
    ! Arguments
-   type(file_desc_t),   pointer  :: fh_ini
-   character(len=6), intent(out) :: ini_grid_hdim_name ! horizontal dimension name
+   type(file_desc_t),   pointer  :: fh_ptr
+   character(len=6), intent(out) :: grid_hdim_name ! horizontal dimension name
 
    ! local variables
    integer  :: ierr, pio_errtype
@@ -688,33 +688,33 @@ subroutine get_hdim_name(fh_ini, ini_grid_hdim_name)
    !----------------------------------------------------------------------------
 
    ! Set PIO to return error flags.
-   call pio_seterrorhandling(fh_ini, PIO_BCAST_ERROR, pio_errtype)
+   call pio_seterrorhandling(fh_ptr, PIO_BCAST_ERROR, pio_errtype)
 
-   ! Check for ncol_d first just in case the initial file also contains fields on
+   ! Check for ncol_d first just in case the file also contains fields on
    ! the physics grid.
-   ierr = pio_inq_dimid(fh_ini, 'ncol_d', ncol_did)
+   ierr = pio_inq_dimid(fh_ptr, 'ncol_d', ncol_did)
    if (ierr == PIO_NOERR) then
 
-      ini_grid_hdim_name = 'ncol_d'
+      grid_hdim_name = 'ncol_d'
 
    else
 
       ! if 'ncol_d' not in file, check for 'ncol'
-      ierr = pio_inq_dimid(fh_ini, 'ncol', ncol_did)
+      ierr = pio_inq_dimid(fh_ptr, 'ncol', ncol_did)
 
       if (ierr == PIO_NOERR) then
 
-         ini_grid_hdim_name = 'ncol'
+         grid_hdim_name = 'ncol'
 
       else
 
-         ini_grid_hdim_name = 'none'
+         grid_hdim_name = 'none'
 
       end if
    end if
 
    ! Return PIO to previous error handling.
-   call pio_seterrorhandling(fh_ini, pio_errtype)
+   call pio_seterrorhandling(fh_ptr, pio_errtype)
 
 end subroutine get_hdim_name
 
