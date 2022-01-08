@@ -45,7 +45,6 @@
     <lname>2000_CAM40_CLM50%SP_CICE%PRES_DOCN%DOM_SROF_SGLC_SWAV</lname>
   </compset>
 
-
   <!-- ****************************** -->
   <!-- CAM science supported compsets -->
   <!-- ****************************** -->
@@ -269,6 +268,11 @@
   <compset>
     <alias>FHIST_BDRD</alias>
     <lname>HIST_CAM60_CLM50%BGC-CROP_CICE%PRES_DOCN%DOM_MOSART_SGLC_SWAV_BGC%BDRD</lname>
+  </compset>
+
+  <compset>
+    <alias>F2000dev</alias>
+    <lname>2000_CAM%DEV_CLM50%SP_CICE%PRES_DOCN%DOM_MOSART_SGLC_SWAV</lname>
   </compset>
 
   <!-- PORT compsets -->
