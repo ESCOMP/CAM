@@ -24,14 +24,42 @@
 <!-- emissions -->
 
 <fire_emis_specifier>
- 'bc_a4 = BC','pom_a4 = 1.4*OC', 'SO2 = 0.975*SO2', 'so4_a1 = 0.025*SO2', 'NO = NO', 'CO = CO', 'BIGALK = BIGALK', 'BIGENE = BIGENE',
- 'TOLUENE = TOLUENE','XYLENES = XYLENE','BENZENE = BENZENE','C2H2 = C2H2', 'C2H4 = C2H4', 'C2H6 = C2H6', 'C3H6 = C3H6', 'C3H8 = C3H8', 'CH3COCHO = CH3COCHO',
- 'GLYALD = GLYALD','CH3COCH3 = CH3COCH3', 'CH2O = CH2O', 'CH3CHO = CH3CHO','HCOOH = HCOOH', 'CH3COOH = CH3COOH', 'CH3OH = CH3OH',
- 'C2H5OH = C2H5OH', 'HCN = HCN', 'CH3CN = CH3CN', 'MEK = MEK', 'MTERP = C10H16','ISOP = ISOP','NH3 = NH3','SVOC = 0.03251613*OC', 'DMS = DMS',
- 'IVOC = 0.033*C2H4 + 0.035*C2H6 + 0.049*C3H6 + 0.052*C3H8 + 0.066*BIGENE +  0.068*BIGALK + 0.068*CH3COCH3 + 0.085*MEK + 0.052*CH3CHO + 0.035*CH2O + 0.108*TOLUENE + 0.092*BENZENE + 0.125*XYLENE'
+      'bc_a4 = bc_a4',
+      'pom_a4 = pom_a4',
+      'num_a4 = num_a4_bc + num_a4_pom',
+      'SO2 = SO2',
+      'NO = NO',
+      'CO = CO',
+      'BIGALK = BIGALK',
+      'BIGENE = BIGENE',
+      'TOLUENE = TOLUENE',
+      'XYLENES = XYLENE',
+      'BENZENE = BENZENE',
+      'C2H2 = C2H2',
+      'C2H4 = C2H4',
+      'C2H6 = C2H6',
+      'C3H6 = C3H6',
+      'C3H8 = C3H8',
+      'CH3COCHO = CH3COCHO',
+      'GLYALD = GLYALD',
+      'CH3COCH3 = CH3COCH3',
+      'CH2O = CH2O',
+      'CH3CHO = CH3CHO',
+      'HCOOH = HCOOH',
+      'CH3COOH = CH3COOH',
+      'CH3OH = CH3OH',
+      'C2H5OH = C2H5OH',
+      'HCN = HCN',
+      'CH3CN = CH3CN',
+      'MEK = MEK',
+      'MTERP = C10H16',
+      'ISOP = ISOP',
+      'NH3 = NH3', 'DMS = DMS',
+      'SVOC = 0.03251613*OC',
+      'IVOC = 0.033*C2H4 + 0.035*C2H6 + 0.049*C3H6 + 0.052*C3H8 + 0.066*BIGENE +  0.068*BIGALK + 0.068*CH3COCH3 + 0.085*MEK + 0.052*CH3CHO + 0.035*CH2O + 0.108*TOLUENE + 0.092*BENZENE + 0.125*XYLENE'
 </fire_emis_specifier>
 <fire_emis_elevated>.false.</fire_emis_elevated>
-<fire_emis_factors_file>lnd/clm2/firedata/fire_emission_factors_78PFTs_c180912.nc</fire_emis_factors_file>
+<fire_emis_factors_file>lnd/clm2/firedata/fire_emission_factors_78PFTs_c20210803.nc</fire_emis_factors_file>
 
 <ext_frc_type>INTERP_MISSING_MONTHS</ext_frc_type>
 
@@ -55,14 +83,14 @@
 <history_cesm_forcing>.false.</history_cesm_forcing>
 <history_scwaccm_forcing>.false.</history_scwaccm_forcing>
 
-<!-- Monthly --> 
+<!-- Monthly -->
 <fincl1>
          'CFC11STAR', 'AODDUST', 'AODDUST2', 'T', 'U', 'V', 'O3', 'OH', 'NO3', 'HO2',
          'LNO_COL_PROD', 'NO2_CLXF', 'SFNO', 'SFNH3', 'BRO',
          'CH3CL', 'CLO', 'CO2', 'HCL', 'HO2', 'HOCL', 'H2O', 'PHIS', 'Z3',
          'BENZENE', 'C2H2', 'C2H4', 'C2H6', 'C3H8', 'CCL4', 'CFC11', 'CFC113', 'CFC12',
          'CH2O', 'CH3BR', 'CH3CCL3', 'CH3CHO', 'CH3CL', 'CH3CN', 'CH3COCH3', 'CH3OH', 'CH4',
-         'CO', 'H2O2', 'HCFC22', 'HCN', 'HNO3', 'ISOP', 'MTERP', 'N2O', 'O3', 'O3S',  
+         'CO', 'H2O2', 'HCFC22', 'HCN', 'HNO3', 'ISOP', 'MTERP', 'N2O', 'O3', 'O3S',
          'PAN', 'SO2', 'TOLUENE', 'OH', 'ALKNIT', 'ALKOOH', 'BCARY', 'BENZENE', 'BENZOOH',
          'BEPOMUC', 'BIGALD', 'BIGALD1', 'BIGALD2', 'BIGALD3', 'BIGALD4', 'BIGALK', 'BIGENE', 'BR',
          'BRCL', 'BRO', 'BRONO2', 'BRY', 'BZALD', 'BZOOH', 'C2H2', 'C2H4', 'C2H5OH',
@@ -122,8 +150,8 @@
          'DF_SO2', 'DF_SOAG0', 'DF_SOAG1', 'DF_SOAG2', 'DF_SOAG3', 'DF_SOAG4', 'DF_SVOC', 'SO2_CLXF', 'SVOC_CLXF',
          'SFISOP', 'SFMTERP', 'SFCH3OH', 'SFCH3COCH3', 'SFCO', 'SFIVOC', 'SFSVOC', 'DO3CHM', 'DCOCHM',
          'O3_CHMP', 'O3_CHML', 'CH4_CHML', 'CO_CHMP', 'CO_CHML', 'CH3CCL3_CHML', 'SO2_CHML', 'SO2_CHMP', 'SO2_CLXF',
-         'SOAG0_CHMP', 'SOAG1_CHMP', 'SOAG2_CHMP', 'SOAG3_CHMP', 'SOAG4_CHMP',  
-         'r_HO2_O3', 'r_OH_O3', 'r_OH_O', 'r_O1D_H2O', 'r_het1', 'r_het2', 'r_het3', 'r_het4', 'r_het5', 'r_het6', 
+         'SOAG0_CHMP', 'SOAG1_CHMP', 'SOAG2_CHMP', 'SOAG3_CHMP', 'SOAG4_CHMP',
+         'r_HO2_O3', 'r_OH_O3', 'r_OH_O', 'r_O1D_H2O', 'r_het1', 'r_het2', 'r_het3', 'r_het4', 'r_het5', 'r_het6',
          'jo3_a', 'jno2', 'jpan', 'jh2o2', 'jcl2o2', 'bc_a1', 'bc_a4', 'dst_a1', 'dst_a2',
          'dst_a3', 'ncl_a1', 'ncl_a1', 'ncl_a2', 'ncl_a3', 'pom_a1', 'pom_a4', 'so4_a1', 'so4_a2',
          'so4_a3', 'soa1_a1', 'soa2_a1', 'soa3_a1', 'soa4_a1', 'soa5_a1', 'soa1_a2', 'soa2_a2', 'soa3_a2',
@@ -156,5 +184,53 @@
          'OddOx_Ox_Loss','OddOx_HOx_Loss','OddOx_NOx_Loss','OddOx_CLOxBROx_Loss','OddOx_Loss_Tot','OddOx_Prod_Tot',
          'Ox_Prod','Ox_Loss'
 </fincl1>
+
+<srf_emis_specifier>
+         'BENZENE -> $INPUTDATA_ROOT/atm/cam/chem/emis/CMIP6_emissions_1750_2015/emissions-cmip6_BENZENE_anthro_surface_1750-2015_0.9x1.25_c20170608.nc',
+         'BIGALK -> $INPUTDATA_ROOT/atm/cam/chem/emis/CMIP6_emissions_1750_2015/emissions-cmip6_BIGALK_anthro_surface_1750-2015_0.9x1.25_c20170608.nc',
+         'BIGENE -> $INPUTDATA_ROOT/atm/cam/chem/emis/CMIP6_emissions_1750_2015/emissions-cmip6_BIGENE_anthro_surface_1750-2015_0.9x1.25_c20170608.nc',
+         'C2H2 -> $INPUTDATA_ROOT/atm/cam/chem/emis/CMIP6_emissions_1750_2015/emissions-cmip6_C2H2_anthro_surface_1750-2015_0.9x1.25_c20170608.nc',
+         'C2H4 -> $INPUTDATA_ROOT/atm/cam/chem/emis/CMIP6_emissions_1750_2015/emissions-cmip6_C2H4_anthro_surface_1750-2015_0.9x1.25_c20170608.nc',
+         'C2H4 -> $INPUTDATA_ROOT/atm/cam/chem/emis/CMIP6_emissions_1750_2015/emissions-cmip6_C2H4_other_surface_1750-2015_0.9x1.25_c20170322.nc',
+         'C2H5OH -> $INPUTDATA_ROOT/atm/cam/chem/emis/CMIP6_emissions_1750_2015/emissions-cmip6_C2H5OH_anthro_surface_1750-2015_0.9x1.25_c20170608.nc',
+         'C2H6 -> $INPUTDATA_ROOT/atm/cam/chem/emis/CMIP6_emissions_1750_2015/emissions-cmip6_C2H6_anthro_surface_1750-2015_0.9x1.25_c20170608.nc',
+         'C2H6 -> $INPUTDATA_ROOT/atm/cam/chem/emis/CMIP6_emissions_1750_2015/emissions-cmip6_C2H6_other_surface_1750-2015_0.9x1.25_c20170322.nc',
+         'C3H6 -> $INPUTDATA_ROOT/atm/cam/chem/emis/CMIP6_emissions_1750_2015/emissions-cmip6_C3H6_anthro_surface_1750-2015_0.9x1.25_c20170608.nc',
+         'C3H6 -> $INPUTDATA_ROOT/atm/cam/chem/emis/CMIP6_emissions_1750_2015/emissions-cmip6_C3H6_other_surface_1750-2015_0.9x1.25_c20170322.nc',
+         'C3H8 -> $INPUTDATA_ROOT/atm/cam/chem/emis/CMIP6_emissions_1750_2015/emissions-cmip6_C3H8_anthro_surface_1750-2015_0.9x1.25_c20170608.nc',
+         'C3H8 -> $INPUTDATA_ROOT/atm/cam/chem/emis/CMIP6_emissions_1750_2015/emissions-cmip6_C3H8_other_surface_1750-2015_0.9x1.25_c20170322.nc',
+         'CH2O -> $INPUTDATA_ROOT/atm/cam/chem/emis/CMIP6_emissions_1750_2015/emissions-cmip6_CH2O_anthro_surface_1750-2015_0.9x1.25_c20170608.nc',
+         'CH3CHO -> $INPUTDATA_ROOT/atm/cam/chem/emis/CMIP6_emissions_1750_2015/emissions-cmip6_CH3CHO_anthro_surface_1750-2015_0.9x1.25_c20170608.nc',
+         'CH3CN -> $INPUTDATA_ROOT/atm/cam/chem/emis/CMIP6_emissions_1750_2015/emissions-cmip6_CH3CN_anthro_surface_1750-2015_0.9x1.25_c20170608.nc',
+         'CH3COCH3 -> $INPUTDATA_ROOT/atm/cam/chem/emis/CMIP6_emissions_1750_2015/emissions-cmip6_CH3COCH3_anthro_surface_1750-2015_0.9x1.25_c20170608.nc',
+         'CH3COOH -> $INPUTDATA_ROOT/atm/cam/chem/emis/CMIP6_emissions_1750_2015/emissions-cmip6_CH3COOH_anthro_surface_1750-2015_0.9x1.25_c20170608.nc',
+         'CH3OH -> $INPUTDATA_ROOT/atm/cam/chem/emis/CMIP6_emissions_1750_2015/emissions-cmip6_CH3OH_anthro_surface_1750-2015_0.9x1.25_c20170608.nc',
+         'CO -> $INPUTDATA_ROOT/atm/cam/chem/emis/CMIP6_emissions_1750_2015/emissions-cmip6_CO_anthro_surface_1750-2015_0.9x1.25_c20180504.nc',
+         'CO -> $INPUTDATA_ROOT/atm/cam/chem/emis/CMIP6_emissions_1750_2015/emissions-cmip6_CO_other_surface_1750-2015_0.9x1.25_c20170322.nc',
+         'E90 -> $INPUTDATA_ROOT/atm/cam/chem/emis/CMIP6_emissions_1750_2015/emissions_E90global_surface_1750-2100_0.9x1.25_c20170322.nc',
+         'HCN -> $INPUTDATA_ROOT/atm/cam/chem/emis/CMIP6_emissions_1750_2015/emissions-cmip6_HCN_anthro_surface_1750-2015_0.9x1.25_c20170608.nc',
+         'HCOOH -> $INPUTDATA_ROOT/atm/cam/chem/emis/CMIP6_emissions_1750_2015/emissions-cmip6_HCOOH_anthro_surface_1750-2015_0.9x1.25_c20170608.nc',
+         'IVOC -> $INPUTDATA_ROOT/atm/cam/chem/emis/CMIP6_emissions_1750_2015/emissions-cmip6_IVOC_anthro_surface_1750-2015_0.9x1.25_c20170608.nc',
+         'MEK -> $INPUTDATA_ROOT/atm/cam/chem/emis/CMIP6_emissions_1750_2015/emissions-cmip6_MEK_anthro_surface_1750-2015_0.9x1.25_c20170608.nc',
+         'NH3 -> $INPUTDATA_ROOT/atm/cam/chem/emis/CMIP6_emissions_1750_2015/emissions-cmip6_NH3_anthro_surface_1750-2015_0.9x1.25_c20170608.nc',
+         'NH3 -> $INPUTDATA_ROOT/atm/cam/chem/emis/CMIP6_emissions_1750_2015/emissions-cmip6_NH3_other_surface_1750-2015_0.9x1.25_c20170322.nc',
+         'NO -> $INPUTDATA_ROOT/atm/cam/chem/emis/CMIP6_emissions_1750_2015/emissions-cmip6_NO_anthro_surface_1750-2015_0.9x1.25_c20170608.nc',
+         'NO -> $INPUTDATA_ROOT/atm/cam/chem/emis/CMIP6_emissions_1750_2015/emissions-cmip6_NO_other_surface_1750-2015_0.9x1.25_c20170322.nc',
+         'SVOC -> $INPUTDATA_ROOT/atm/cam/chem/emis/CMIP6_emissions_1750_2015/emissions-cmip6_SVOC_anthro_surface_1750-2015_0.9x1.25_c20170608.nc',
+         'TOLUENE -> $INPUTDATA_ROOT/atm/cam/chem/emis/CMIP6_emissions_1750_2015/emissions-cmip6_TOLUENE_anthro_surface_1750-2015_0.9x1.25_c20170608.nc',
+         'XYLENES -> $INPUTDATA_ROOT/atm/cam/chem/emis/CMIP6_emissions_1750_2015/emissions-cmip6_XYLENES_anthro_surface_1750-2015_0.9x1.25_c20170608.nc',
+         'bc_a4 -> $INPUTDATA_ROOT/atm/cam/chem/emis/CMIP6_emissions_1750_2015/emissions-cmip6_bc_a4_anthro_surface_1750-2015_0.9x1.25_c20170608.nc',
+         'DMS -> $INPUTDATA_ROOT/atm/cam/chem/emis/CMIP6_emissions_1750_2015/emissions-cmip6_DMS_other_surface_1750-2015_0.9x1.25_c20170322.nc',
+         'num_a1 -> $INPUTDATA_ROOT/atm/cam/chem/emis/CMIP6_emissions_1750_2015/emissions-cmip6_num_so4_a1_anthro-ag-ship_surface_1750-2015_0.9x1.25_c20170616.nc',
+         'num_a2 -> $INPUTDATA_ROOT/atm/cam/chem/emis/CMIP6_emissions_1750_2015/emissions-cmip6_num_so4_a2_anthro-res_surface_1750-2015_0.9x1.25_c20170616.nc',
+         'num_a4 -> $INPUTDATA_ROOT/atm/cam/chem/emis/CMIP6_emissions_1750_2015/emissions-cmip6_num_bc_a4_anthro_surface_1750-2015_0.9x1.25_c20170608.nc',
+         'num_a4 -> $INPUTDATA_ROOT/atm/cam/chem/emis/CMIP6_emissions_1750_2015/emissions-cmip6_num_pom_a4_anthro_surface_1750-2015_0.9x1.25_c20170608.nc',
+         'pom_a4 -> $INPUTDATA_ROOT/atm/cam/chem/emis/CMIP6_emissions_1750_2015/emissions-cmip6_pom_a4_anthro_surface_1750-2015_0.9x1.25_c20170608.nc',
+         'SO2 -> $INPUTDATA_ROOT/atm/cam/chem/emis/CMIP6_emissions_1750_2015/emissions-cmip6_SO2_anthro-ag-ship-res_surface_1750-2015_0.9x1.25_c20170616.nc',
+         'SO2 -> $INPUTDATA_ROOT/atm/cam/chem/emis/CMIP6_emissions_1750_2015/emissions-cmip6_SO2_anthro-ene_surface_1750-2015_0.9x1.25_c20170616.nc',
+         'so4_a1 -> $INPUTDATA_ROOT/atm/cam/chem/emis/CMIP6_emissions_1750_2015/emissions-cmip6_so4_a1_anthro-ag-ship_surface_1750-2015_0.9x1.25_c20170616.nc',
+         'so4_a2 -> $INPUTDATA_ROOT/atm/cam/chem/emis/CMIP6_emissions_1750_2015/emissions-cmip6_so4_a2_anthro-res_surface_1750-2015_0.9x1.25_c20170616.nc'
+</srf_emis_specifier>
+
 
 </namelist_defaults>
