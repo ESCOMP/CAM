@@ -25,6 +25,7 @@ module atm_comp_nuopc
   use cam_instance        , only : cam_instance_init, inst_suffix, inst_index
   use cam_comp            , only : cam_init, cam_run1, cam_run2, cam_run3, cam_run4, cam_final
   use camsrfexch          , only : cam_out_t, cam_in_t
+  use radiation           , only : nextsw_cday
   use cam_logfile         , only : iulog
   use spmd_utils          , only : spmdinit, masterproc, iam, mpicom
   use time_manager        , only : get_curr_calday, advance_timestep, get_curr_date, get_nstep, get_step_size
@@ -754,7 +755,6 @@ contains
   !===============================================================================
   subroutine DataInitialize(gcomp, rc)
 
-    use radiation, only : radiation_nextsw_cday
     type(ESMF_GridComp)  :: gcomp
     integer, intent(out) :: rc
 
@@ -770,7 +770,6 @@ contains
     integer                            :: shrlogunit    ! original log unit
     integer(ESMF_KIND_I8)              :: stepno        ! time step
     integer                            :: atm_cpl_dt    ! driver atm coupling time step
-    real(r8)                           :: nextsw_cday   ! calendar of next atm shortwave
     logical                            :: importDone    ! true => import data is valid
     logical                            :: atCorrectTime ! true => field is at correct time
     character(CL)                      :: cvalue
@@ -885,7 +884,6 @@ contains
        end if
 
        ! Compute time of next radiation computation
-       nextsw_cday = radiation_nextsw_cday()
        call State_SetScalar(nextsw_cday, flds_scalar_index_nextsw_cday, exportState, &
             flds_scalar_name, flds_scalar_num, rc)
        if (ChkErr(rc,__LINE__,u_FILE_u)) return
@@ -954,7 +952,6 @@ contains
   subroutine ModelAdvance(gcomp, rc)
 
     use ESMF, only : ESMF_GridCompGet, esmf_vmget, esmf_vm
-    use radiation, only : nextsw_cday
     ! Run CAM
 
     ! Input/output variables

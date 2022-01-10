@@ -163,7 +163,7 @@
     </options>
   </test>
 
-  <test compset="F2000dev" grid="ne30pg3_ne30pg3_mg17" name="ERP_Ln9_Vmct" testmods="cam/outfrq9s" supported="false">
+  <test compset="F2000dev" grid="ne30pg3_ne30pg3_mg17" name="ERP_D_Ln9_Vmct" testmods="cam/outfrq9s" supported="false">
     <machines>
       <machine name="cheyenne" compiler="intel" category="aux_cam"/>
       <machine name="cheyenne" compiler="intel" category="prealpha"/>
