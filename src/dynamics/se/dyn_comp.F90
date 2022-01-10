@@ -2041,8 +2041,8 @@ subroutine check_file_layout(file, elem, dyn_cols, file_desc, dyn_ok)
 
    ! Check that number of columns in IC file matches grid definition.
    if (trim(ini_grid_hdim_name) == 'none') then
-      call endrun(sub//': ERROR: no horizontal dimension in initial data file. ' &
-         '&Cannot read data from file')
+      call endrun(sub//': ERROR: no horizontal dimension in initial data file. &
+         &Cannot read data from file')
    end if
 
    ierr = pio_inq_dimid(file, trim(ini_grid_hdim_name), ncol_did)
