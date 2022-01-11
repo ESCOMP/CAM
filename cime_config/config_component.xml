@@ -8,7 +8,7 @@
       CAM
     ===============
    -->
-    <desc atm="CAM60[%1PCT][%4xCO2][%CCTS1]][%CCTS2][%CFIRE][%CVBSX][%NUDG][%PORT][%RCO2][%SCAM][%SDYN][%WCCM][%WCMD][%WCSC][%WCTS][%WXIE][%WXIED]">CAM cam6 physics:</desc>
+    <desc atm="CAM60[%1PCT][%4xCO2][%CCTS1]][%CCTS2][%CFIRE][%CVBSX][%MAM5][%NUDG][%PORT][%RCO2][%SCAM][%SDYN][%WCCM][%WCMD][%WCSC][%WCTS][%WXIE][%WXIED]">CAM cam6 physics:</desc>
     <desc atm="CAM50[%CCTS1][%CLB][%PORT][%RCO2][%MAM7][%SCAM][%SDYN][%WCSC][%WCTS]"                                                               >CAM cam5 physics:</desc>
     <desc atm="CAM40[%PORT][%RCO2][%SCAM][%SDYN][%TMOZ][%WX][%WXIE][%WXIED][%WCCM][%WCMD]"                                                         >CAM cam4 physics:</desc>
     <desc atm="CAM30"                                                                                                                              >CAM cam3 physics:</desc>
@@ -145,7 +145,9 @@
       <value compset="_(CAM50|CAM60)%WCCM">-chem waccm_ma_mam4</value>
       <value compset="_(CAM50|CAM60)%WCMD">-chem waccm_mad_mam4</value>
       <value compset="_(CAM50|CAM60)%WCSC">-chem waccm_sc_mam4</value>
-      <value compset="_(CAM50|CAM60)%WCTS">-chem waccm_tsmlt_mam4</value>
+      <value compset="_(CAM50|CAM60)%WCTS(_|%SDYN)">-chem waccm_tsmlt_mam4</value>
+      <value compset="_CAM60%WCTS%MAM5_">-chem waccm_tsmlt_mam5</value>
+      <value compset="_CAM60%MAM5_">-chem trop_mam5</value>
       <value compset="_CAM40%WCMD">-chem waccm_mad</value>
       <value compset="_CAM\d0%WXIE">-waccmx -ionosphere wxie</value>
       <value compset="_CAM\d0%WX_" >-waccmx -ionosphere none -chem waccm_ma</value>

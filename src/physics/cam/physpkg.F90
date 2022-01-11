@@ -1217,7 +1217,10 @@ contains
     ! If exit condition just return
     !
 
-    if(single_column.and.scm_crm_mode) return
+    if(single_column.and.scm_crm_mode) then
+       call diag_deallocate()
+       return
+    end if
     !-----------------------------------------------------------------------
     ! if using IOP values for surface fluxes overwrite here after surface components run
     !-----------------------------------------------------------------------
@@ -1875,17 +1878,7 @@ contains
 
       call set_dry_to_wet(state)
 
-      if (trim(cam_take_snapshot_before) == "physics_dme_adjust") then
-         call cam_snapshot_all_outfld_tphysac(cam_snapshot_before_num, state, tend, cam_in, cam_out, pbuf,&
-                    fh2o, surfric, obklen, flx_heat)
-      end if
-
       call physics_dme_adjust(state, tend, qini, ztodt)
-
-      if (trim(cam_take_snapshot_after) == "physics_dme_adjust") then
-         call cam_snapshot_all_outfld_tphysac(cam_snapshot_after_num, state, tend, cam_in, cam_out, pbuf,&
-                    fh2o, surfric, obklen, flx_heat)
-      end if
 
       call calc_te_and_aam_budgets(state, 'phAM')
       call calc_te_and_aam_budgets(state, 'dyAM',vc=vc_dycore)

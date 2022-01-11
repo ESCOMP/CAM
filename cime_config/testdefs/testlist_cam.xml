@@ -1595,6 +1595,38 @@
       <option name="wallclock">00:10:00</option>
     </options>
   </test>
+  <test compset="QPMAM5" grid="f10_f10_mg37" name="SMS_D_Ln9_Vmct" testmods="cam/outfrq3s">
+    <machines>
+      <machine name="izumi" compiler="nag" category="aux_cam"/>
+    </machines>
+    <options>
+      <option name="wallclock">00:20:00</option>
+    </options>
+  </test>
+  <test compset="F2000mam5" grid="f09_f09_mg17" name="ERP_Ld3_Vmct" testmods="cam/outfrq1d">
+    <machines>
+      <machine name="cheyenne" compiler="intel" category="prebeta"/>
+    </machines>
+    <options>
+      <option name="wallclock">00:20:00</option>
+    </options>
+  </test>
+  <test compset="FW2000mam5" grid="f09_f09_mg17" name="SMS_D_Ln9_Vmct" testmods="cam/outfrq9s">
+    <machines>
+      <machine name="cheyenne" compiler="intel" category="waccm"/>
+    </machines>
+    <options>
+      <option name="wallclock">00:30:00</option>
+    </options>
+  </test>
+  <test compset="FW2000mam5" grid="f09_f09_mg17" name="ERP_Ln9_Vmct" testmods="cam/outfrq9s">
+    <machines>
+      <machine name="cheyenne" compiler="intel" category="waccm"/>
+    </machines>
+    <options>
+      <option name="wallclock">00:30:00</option>
+    </options>
+  </test>
   <test compset="FW2000climo" grid="f09_f09_mg17" name="SMS_Ld1_Vmct" testmods="cam/outfrq1d">
     <machines>
       <machine name="cheyenne" compiler="intel" category="aux_cam"/>
@@ -1744,7 +1776,7 @@
       <machine name="cheyenne" compiler="intel" category="aux_cam"/>
     </machines>
     <options>
-      <option name="wallclock">00:10:00</option>
+      <option name="wallclock">00:20:00</option>
     </options>
   </test>
   <test compset="FX2000" grid="f09_f09_mg17" name="ERS_Ln9_Vmct"   testmods="cam/outfrq9s">
@@ -1778,7 +1810,7 @@
       <option name="wallclock">00:10:00</option>
     </options>
   </test>
-  <test compset="FXHIST" grid="f19_f19_mg17" name="SMS_Ln9_Vmct" testmods="cam/outfrq9s_multi">
+  <test compset="FXHIST" grid="f19_f19_mg17" name="SMS_C2_Ln9_Vmct" testmods="cam/outfrq9s">
     <machines>
       <machine name="cheyenne" compiler="intel" category="waccmx"/>
       <machine name="cheyenne" compiler="intel" category="prealpha"/>
