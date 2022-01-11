@@ -799,7 +799,7 @@ subroutine zm_convr(lchnk   ,ncol    , &
                   tp      ,qstp    ,tl      ,rl      ,cape     , &
                   pblt    ,lcl     ,lel     ,lon     ,maxi     , &
                   rgas    ,grav    ,cpres   ,msg     , &
-                  zf      ,tpert   , org2d  , landfrac)
+                  zi      ,tpert   , org2d  , landfrac)
    end if
 
 !
@@ -3966,7 +3966,7 @@ subroutine buoyan_dilute(lchnk   ,ncol    , &
                   tp      ,qstp    ,tl      ,rl      ,cape    , &
                   pblt    ,lcl     ,lel     ,lon     ,mx      , &
                   rd      ,grav    ,cp      ,msg     , &
-                  zf,     tpert    ,org    , landfrac)
+                  zi,     tpert    ,org    , landfrac)
 !----------------------------------------------------------------------- 
 ! 
 ! Purpose: 
@@ -4009,7 +4009,7 @@ subroutine buoyan_dilute(lchnk   ,ncol    , &
    real(r8), intent(in) :: tpert(pcols)         ! perturbation temperature by pbl processes
 
 ! Use z interface for parcel calculations.
-   real(r8), intent(in) :: zf(pcols,pver+1)     ! height at interfaces
+   real(r8), intent(in) :: zi(pcols,pver+1)
 
 !
 ! output arguments
@@ -4130,19 +4130,24 @@ subroutine buoyan_dilute(lchnk   ,ncol    , &
 if (lparcel_pbl) then
 
 ! Vertical profile of MSE and pressure weighted of the same.
-   hmn_lev = cp*t + grav*z + rl*q
+   hmn_lev(:ncol,1:pver) = cp*t(:ncol,1:pver) + grav*z(:ncol,1:pver) + rl*q(:ncol,1:pver)
    dp_lev(:ncol,1:pver) = pf(:ncol,2:pver+1)-pf(:ncol,1:pver)
-   hmn_zdp = hmn_lev*dp_lev
-   q_zdp = q*dp_lev
+   hmn_zdp(:ncol,1:pver) = hmn_lev(:ncol,1:pver)*dp_lev(:ncol,1:pver)
+   q_zdp(:ncol,1:pver) = q(:ncol,1:pver)*dp_lev(:ncol,1:pver)
 
 
 ! Mix profile over vertical length scale of 0.5*PBLH.
       
    do i = 1,ncol ! Loop columns
       do k = pver,msg + 1,-1
-         if ((zf(i,k+1)-zf(i,pver+1)) <= parcel_ztop(i)) then ! Has to be relative to surface geo height.  
+         if (zi(i,k+1)<= parcel_ztop(i)) then ! Has to be relative to surface geo height.  
             ipar = k
-            dp_zfrac =  min(1._r8,(parcel_ztop(i)-zf(i,k+1))/(zf(i,k)-zf(i,k+1))) ! Fraction of grid cell depth (mostly 1, except when parcel_ztop is in between levels.
+            if (k == pver) then ! Always at least the full depth of lowest model layer.
+               dp_zfrac = 1._r8
+            else
+               ! Fraction of grid cell depth (mostly 1, except when parcel_ztop is in between levels.
+               dp_zfrac =  min(1._r8,(parcel_ztop(i)-zi(i,k+1))/(zi(i,k)-zi(i,k+1)))
+            end if
 
             parcel_hdp(i) = parcel_hdp(i)+hmn_zdp(i,k)*dp_zfrac ! Sum parcel profile up to a certain level.
             parcel_qdp(i) = parcel_qdp(i)+q_zdp(i,k)*dp_zfrac ! Sum parcel profile up to a certain level.
