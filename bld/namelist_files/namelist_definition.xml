@@ -3248,6 +3248,61 @@ Intercept of linear equation that calculates precribed in-cloud ice mixing ratio
 Intercept of linear equation that calculates precribed in-cloud ice concentration ratio [N_i'^2] / [N_i]^2   [-]
 </entry>
 
+<entry id="l_lh_importance_sampling" type="logical" category="conv"
+       group="silhs_config_flags_nl" valid_values="" >
+Enables importance sampling for SILHS subcolumns
+</entry>
+
+<entry id="l_Lscale_vert_avg" type="logical" category="conv"
+       group="silhs_config_flags_nl" valid_values="" >
+Enables calculation of Lscale_vert_avg, used to generate SILHS samples.
+</entry>
+
+<entry id="l_lh_straight_mc" type="logical" category="conv"
+       group="silhs_config_flags_nl" valid_values="" >
+Enables straight Monte Carlo sampling, this overrides l_lh_importance_sampling.
+</entry>
+
+<entry id="l_lh_clustered_sampling" type="logical" category="conv"
+       group="silhs_config_flags_nl" valid_values="" >
+Enables the "new" SILHS importance sampling scheme with prescribed probabilities. Requires l_lh_importance_sampling.
+</entry>
+
+<entry id="l_rcm_in_cloud_k_lh_start" type="logical" category="conv"
+       group="silhs_config_flags_nl" valid_values="" >
+Determine k_lh_start based on maximum within-cloud rcm.
+</entry>
+
+<entry id="l_random_k_lh_start" type="logical" category="conv"
+       group="silhs_config_flags_nl" valid_values="" >
+Determine k_lh_start based on random choice. Overrides l_rcm_in_cloud_k_lh_start.
+</entry>
+
+<entry id="l_max_overlap_in_cloud" type="logical" category="conv"
+       group="silhs_config_flags_nl" valid_values="" >
+Assumption of maximum vertical overlap when grid-box rcm exceeds cloud threshold.
+</entry>
+
+<entry id="l_lh_instant_var_covar_src" type="logical" category="conv"
+       group="silhs_config_flags_nl" valid_values="" >
+Produces "instantaneous" variance-covariance microphysical source terms, ignoring discretization effects.
+</entry>
+
+<entry id="l_lh_limit_weights" type="logical" category="conv"
+       group="silhs_config_flags_nl" valid_values="" >
+Limit SILHS sample point weights for stability.
+</entry>
+
+<entry id="l_lh_var_frac" type="logical" category="conv"
+       group="silhs_config_flags_nl" valid_values="" >
+Prescribe variance fractions.
+</entry>
+
+<entry id="l_lh_normalize_weights" type="logical" category="conv"
+       group="silhs_config_flags_nl" valid_values="" >
+Scale sample point weights to sum to num_samples (the "ratio estimate").
+</entry>
+
 <!-- VAMP Sub-Column Generator -->
 
 <entry id="subcol_vamp_ctyp" type="integer" category="conv"
@@ -3558,6 +3613,16 @@ C4 coefficient in the wp2 return-to-isotropy term.  A higher value of C4
 tends wp2 more towards the value of subgrid TKE.
 </entry>
 
+<entry id="clubb_C_uu_shr" type="real" category="pblrad"
+       group="clubb_params_nl" valid_values="" >
+Coefficient in the wp2 (variance of vertical velocity) pressure term.
+</entry>
+
+<entry id="clubb_C_uu_buoy" type="real" category="pblrad"
+       group="clubb_params_nl" valid_values="" >
+Coefficient in the wp2 (variance of vertical velocity) buoyancy term.
+</entry
+
 <entry id="clubb_C7" type="real" category="pblrad"
        group="clubb_params_nl" valid_values="" >
 Low Skewness in C7 Skw. Function
@@ -3578,6 +3643,35 @@ Coef. #1 in C8 Skewness Equation
 Coefficient in the C8 skewness equation.  Increasing the value of C8b increases
 the damping of CLUBB's wp3 when skewness of w (vertical velocity) is large in
 magnitude.
+</entry>
+
+<entry id="clubb_C_wp3_pr_turb" type="real" category="pblrad"
+       group="clubb_params_nl" valid_values="" >
+Coefficient in the pressure-turbulence term of CLUBB's wp3 predictive equation.
+</entry>
+
+<entry id="clubb_c_K1" type="real" category="pblrad"
+       group="clubb_params_nl" valid_values="" >
+Coefficient of Kh_zm (diffusivity on momentum grid levels) in the wp2 (variance
+of vertical velocity) predictive equation.
+</entry>
+
+<entry id="clubb_c_K2" type="real" category="pblrad"
+       group="clubb_params_nl" valid_values="" >
+Coefficient of Kh_zm (diffusivity on momentum grid levels) in the scalar
+variance predictive equations (e.g. rtp2, variance of total water).
+</entry>
+
+<entry id="clubb_nu2" type="real" category="pblrad"
+       group="clubb_params_nl" valid_values="" >
+Constant in the diffusivity term in the scalar variance predictive equations
+(e.g. rtp2, variance of total water).
+</entry>
+
+<entry id="clubb_c_K8" type="real" category="pblrad"
+       group="clubb_params_nl" valid_values="" >
+Coefficient of Kh_zt (diffusivity on thermodynamic grid levels) in the wp3
+(third-order moment of vertical velocity) predictive equation.
 </entry>
 
 <entry id="clubb_c_K9" type="real" category="pblrad"
@@ -3660,11 +3754,11 @@ Default: 0.0
 Maximum magnitude of skewness allowed.
 </entry>
 
-<entry id="clubb_up2_vp2_factor" type="real" category="pblrad"
+<entry id="clubb_up2_sfc_coef" type="real" category="pblrad"
        group="clubb_params_nl" valid_values="" >
 Factor used in calculating the surface values of up2 (variance of the u wind
 component) and vp2 (variance of the v wind component).  Increasing
-clubb_up2_vp2_factor increases the values of up2 and vp2 at the surface.
+clubb_up2_sfc_coef increases the values of up2 and vp2 at the surface.
 </entry>
 
 <entry id="clubb_C_wp2_splat" type="real" category="pblrad"
@@ -3811,12 +3905,6 @@ of pressure and buoyancy in the wp3 predictive equation.
 Flag to allow cloud fraction and mean cloud water at adjacent vertical grid
 levels influence the amount of cloudiness and amount of cloud water in a
 grid box.
-</entry>
-
-<entry id="clubb_l_use_ice_latent" type="logical" category="pblrad"
-       group="clubb_params_nl" valid_values="" >
-Include the effects of ice latent heating in turbulence terms
-Default: .false.
 </entry>
 
 <entry id="clubb_l_use_thvm_in_bv_freq" type="logical" category="pblrad"

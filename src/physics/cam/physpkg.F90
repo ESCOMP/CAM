@@ -2016,7 +2016,7 @@ contains
     use subcol,          only: subcol_gen, subcol_ptend_avg
     use subcol_utils,    only: subcol_ptend_copy, is_subcol_on
     use qneg_module,     only: qneg3
-    use subcol_SILHS,    only: subcol_SILHS_var_covar_driver
+    use subcol_SILHS,    only: subcol_SILHS_var_covar_driver, init_state_subcol
     use subcol_SILHS,    only: subcol_SILHS_fill_holes_conserv
     use subcol_SILHS,    only: subcol_SILHS_hydromet_conc_tend_lim
     use micro_mg_cam,    only: massless_droplet_destroyer
@@ -2550,13 +2550,21 @@ contains
           ! Calculate cloud microphysics
           !===================================================
 
+          if (is_subcol_on() .neqv. use_subcol_microp ) then
+            call endrun("Error calculating cloud microphysics: is_subcol_on() != use_subcol_microp")
+          end if
+
           if (is_subcol_on()) then
              ! Allocate sub-column structures.
              call physics_state_alloc(state_sc, lchnk, psubcols*pcols)
              call physics_tend_alloc(tend_sc, psubcols*pcols)
 
              ! Generate sub-columns using the requested scheme
+             !$acc data copyin(state_sc) &
+             !$acc&     copyout( state_sc%t, state_sc%s, state_sc%omega, state_sc%q )
+             call init_state_subcol(state, tend, state_sc, tend_sc)
              call subcol_gen(state, tend, state_sc, tend_sc, pbuf)
+             !$acc end data
 
              !Initialize check energy for subcolumns
              call check_energy_timestep_init(state_sc, tend_sc, pbuf, col_type_subcol)
