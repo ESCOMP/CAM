@@ -595,7 +595,18 @@
       <option name="wallclock">00:40:00</option>
     </options>
   </test>
-<!--              430 carma sea_salt          -->
+<!--              carma dust              -->
+  <test compset="F2000climo" grid="f10_f10_mg37" name="ERS_D_Ln9_Vmct" testmods="cam/carma_dust">
+    <machines>
+      <machine name="izumi" compiler="nag" category="carma"/>
+      <machine name="cheyenne" compiler="intel" category="carma"/>
+    </machines>
+    <options>
+      <option name="comment" >CARMA dust test</option>
+      <option name="wallclock">00:30:00</option>
+    </options>
+  </test>
+<!--              carma sea_salt          -->
   <test compset="QPC5" grid="f10_f10_mg37" name="ERC_D_Ln9_Vmct" testmods="cam/carma_sea_salt">
     <machines>
       <machine name="izumi" compiler="nag" category="carma"/>
@@ -607,117 +618,7 @@
       <option name="wallclock">00:30:00</option>
     </options>
   </test>
-<!--              431 carma test_radiative    -->
-  <test compset="QPC5" grid="f10_f10_mg37" name="ERS_D_Ln9_Vmct" testmods="cam/carma_test_radiative">
-    <machines>
-      <machine name="izumi" compiler="nag" category="carma"/>
-      <machine name="cheyenne" compiler="intel" category="carma"/>
-    </machines>
-    <options>
-      <option name="comment" >CARMA radiation test</option>
-      <option name="wallclock">00:30:00</option>
-    </options>
-  </test>
-<!--              432 carma test_tracers      -->
-  <test compset="QPC5" grid="f10_f10_mg37" name="ERC_D_Ln9_Vmct" testmods="cam/carma_test_tracers">
-    <machines>
-      <machine name="izumi" compiler="nag" category="carma"/>
-      <machine name="cheyenne" compiler="intel" category="carma"/>
-    </machines>
-    <options>
-      <option name="comment" >CARMA tracers test</option>
-      <option name="wallclock">00:30:00</option>
-    </options>
-  </test>
-<!--             433 carma test_tracers2      -->
-  <test compset="QPC5" grid="f10_f10_mg37" name="ERC_D_Ln9_Vmct" testmods="cam/carma_test_tracers2">
-    <machines>
-      <machine name="izumi" compiler="nag" category="carma"/>
-      <machine name="cheyenne" compiler="intel" category="carma"/>
-    </machines>
-    <options>
-      <option name="comment" >CARMA tracers2 test</option>
-      <option name="wallclock">00:30:00</option>
-    </options>
-  </test>
-<!--              434 carma test_detrain      -->
-  <test compset="QPC5" grid="f10_f10_mg37" name="ERC_D_Ln9_Vmct" testmods="cam/carma_test_detrain">
-    <machines>
-      <machine name="izumi" compiler="nag" category="carma"/>
-      <machine name="cheyenne" compiler="intel" category="carma"/>
-    </machines>
-    <options>
-      <option name="comment" >CARMA cloud water detraining test</option>
-      <option name="wallclock">00:30:00</option>
-    </options>
-  </test>
-<!--              435 carma test_passive      -->
-  <test compset="QPC5" grid="f10_f10_mg37" name="ERC_D_Ln9_Vmct" testmods="cam/carma_test_passive">
-    <machines>
-      <machine name="izumi" compiler="nag" category="carma"/>
-      <machine name="cheyenne" compiler="intel" category="carma"/>
-    </machines>
-    <options>
-      <option name="comment" >CARMA passive test</option>
-      <option name="wallclock">00:30:00</option>
-    </options>
-  </test>
-<!--              436 carma test_swelling     -->
-  <test compset="QPC5" grid="f10_f10_mg37" name="ERC_D_Ln9_Vmct" testmods="cam/carma_test_swelling">
-    <machines>
-      <machine name="izumi" compiler="nag" category="carma"/>
-      <machine name="cheyenne" compiler="intel" category="carma"/>
-    </machines>
-    <options>
-      <option name="comment" >CARMA particle swelling test</option>
-      <option name="wallclock">00:30:00</option>
-    </options>
-  </test>
-<!--              437 carma test_growth       -->
-  <test compset="QPC5" grid="f10_f10_mg37" name="ERC_D_Ln9_Vmct" testmods="cam/carma_test_growth">
-    <machines>
-      <machine name="izumi" compiler="nag" category="carma"/>
-      <machine name="cheyenne" compiler="intel" category="carma"/>
-    </machines>
-    <options>
-      <option name="comment" >CARMA particle growth test</option>
-      <option name="wallclock">00:30:00</option>
-    </options>
-  </test>
-<!--              440 carma dust              -->
-  <test compset="F2000climo" grid="f10_f10_mg37" name="ERP_D_Ln9_Vmct" testmods="cam/carma_dust">
-    <machines>
-      <machine name="izumi" compiler="nag" category="carma"/>
-      <machine name="cheyenne" compiler="intel" category="carma"/>
-    </machines>
-    <options>
-      <option name="comment" >CARMA dust test</option>
-      <option name="wallclock">00:30:00</option>
-    </options>
-  </test>
-<!--              450 carma sulfate           -->
-  <test compset="FW4ma2000" grid="f10_f10_mg37" name="ERC_D_Ln9_Vmct" testmods="cam/carma_sulfate">
-    <machines>
-      <machine name="izumi" compiler="nag" category="carma"/>
-      <machine name="cheyenne" compiler="intel" category="carma"/>
-   </machines>
-    <options>
-      <option name="comment" >CARMA pure sulfate test</option>
-      <option name="wallclock">00:30:00</option>
-    </options>
-  </test>
-<!--              451 carma mixed_sulfate     -->
-  <test compset="FW4ma2000" grid="f10_f10_mg37" name="ERC_D_Ln9_Vmct" testmods="cam/carma_mixed_sulfate">
-    <machines>
-      <machine name="izumi" compiler="nag" category="carma"/>
-      <machine name="cheyenne" compiler="intel" category="carma"/>
-    </machines>
-    <options>
-      <option name="comment" >CARMA mixed sulfate test</option>
-      <option name="wallclock">00:30:00</option>
-    </options>
-  </test>
-<!--              460 carma meteor_smoke      -->
+<!--              carma meteor_smoke      -->
   <test compset="QPWmaC6" grid="f10_f10_mg37" name="ERS_D_Ln9_Vmct" testmods="cam/carma_meteor_smoke">
     <machines>
       <machine name="izumi" compiler="nag" category="carma"/>
@@ -728,7 +629,7 @@
       <option name="wallclock">00:30:00</option>
     </options>
   </test>
-<!--              461 carma meteor_impact     -->
+<!--              carma meteor_impact     -->
   <test compset="QPWmaC6" grid="f10_f10_mg37" name="ERS_D_Ln9_Vmct" testmods="cam/carma_meteor_impact">
     <machines>
       <machine name="izumi" compiler="nag" category="carma"/>
@@ -739,7 +640,7 @@
       <option name="wallclock">00:30:00</option>
     </options>
   </test>
-<!--              462 carma pmc               -->
+<!--              carma pmc               -->
   <test compset="QPWmaC6" grid="f10_f10_mg37" name="ERC_D_Ln9_Vmct" testmods="cam/carma_pmc">
     <machines>
       <machine name="izumi" compiler="nag" category="carma"/>
@@ -747,6 +648,83 @@
     </machines>
     <options>
       <option name="comment" >CARMA Test of Polar Mesospheric Clouds (pmc)</option>
+      <option name="wallclock">00:30:00</option>
+    </options>
+  </test>
+<!--              carma test_radiative    -->
+  <test compset="QPC5" grid="f10_f10_mg37" name="ERS_D_Ln9_Vmct" testmods="cam/carma_test_radiative">
+    <machines>
+      <machine name="izumi" compiler="nag" category="carma"/>
+      <machine name="cheyenne" compiler="intel" category="carma"/>
+    </machines>
+    <options>
+      <option name="comment" >CARMA radiation test</option>
+      <option name="wallclock">00:30:00</option>
+    </options>
+  </test>
+<!--              carma test_tracers      -->
+  <test compset="QPC5" grid="f10_f10_mg37" name="ERS_D_Ln9_Vmct" testmods="cam/carma_test_tracers">
+    <machines>
+      <machine name="izumi" compiler="nag" category="carma"/>
+      <machine name="cheyenne" compiler="intel" category="carma"/>
+    </machines>
+    <options>
+      <option name="comment" >CARMA tracers test</option>
+      <option name="wallclock">00:30:00</option>
+    </options>
+  </test>
+<!--             carma test_tracers2      -->
+  <test compset="QPC5" grid="f10_f10_mg37" name="ERC_D_Ln9_Vmct" testmods="cam/carma_test_tracers2">
+    <machines>
+      <machine name="izumi" compiler="nag" category="carma"/>
+      <machine name="cheyenne" compiler="intel" category="carma"/>
+    </machines>
+    <options>
+      <option name="comment" >CARMA tracers2 test</option>
+      <option name="wallclock">00:30:00</option>
+    </options>
+  </test>
+<!--               carma test_passive      -->
+  <test compset="QPC5" grid="f10_f10_mg37" name="ERC_D_Ln9_Vmct" testmods="cam/carma_test_passive">
+    <machines>
+      <machine name="izumi" compiler="nag" category="carma"/>
+      <machine name="cheyenne" compiler="intel" category="carma"/>
+    </machines>
+    <options>
+      <option name="comment" >CARMA passive test</option>
+      <option name="wallclock">00:30:00</option>
+    </options>
+  </test>
+<!--              carma test_swelling     -->
+  <test compset="QPC5" grid="f10_f10_mg37" name="ERC_D_Ln9_Vmct" testmods="cam/carma_test_swelling">
+    <machines>
+      <machine name="izumi" compiler="nag" category="carma"/>
+      <machine name="cheyenne" compiler="intel" category="carma"/>
+    </machines>
+    <options>
+      <option name="comment" >CARMA particle swelling test</option>
+      <option name="wallclock">00:30:00</option>
+    </options>
+  </test>
+<!--              carma sulfate           -->
+  <test compset="FW4ma2000" grid="f10_f10_mg37" name="SMS_D_Ln9_Vmct" testmods="cam/carma_sulfate">
+    <machines>
+      <machine name="izumi" compiler="nag" category="carma"/>
+      <machine name="cheyenne" compiler="intel" category="carma"/>
+   </machines>
+    <options>
+      <option name="comment" >CARMA pure sulfate test</option>
+      <option name="wallclock">00:30:00</option>
+    </options>
+  </test>
+<!--              carma test_growth       -->
+  <test compset="QPC5" grid="f10_f10_mg37" name="ERC_D_Ln9_Vmct" testmods="cam/carma_test_growth">
+    <machines>
+      <machine name="izumi" compiler="nag" category="carma"/>
+      <machine name="cheyenne" compiler="intel" category="carma"/>
+    </machines>
+    <options>
+      <option name="comment" >CARMA particle growth test</option>
       <option name="wallclock">00:30:00</option>
     </options>
   </test>
