@@ -467,7 +467,7 @@ contains
     call addfld ('Q1000',      horiz_only,  'A', 'kg/kg','Specific Humidity at 1000 mbar pressure surface')
     call addfld ('Q925',       horiz_only,  'A', 'kg/kg','Specific Humidity at 925 mbar pressure surface')
     call addfld ('Q850',       horiz_only,  'A', 'kg/kg','Specific Humidity at 850 mbar pressure surface')
-    call addfld ('Q200',       horiz_only,  'A', 'kg/kg','Specific Humidity at 700 mbar pressure surface')
+    call addfld ('Q200',       horiz_only,  'A', 'kg/kg','Specific Humidity at 200 mbar pressure surface')
     call addfld ('QBOT',       horiz_only,  'A', 'kg/kg','Lowest model level water vapor mixing ratio')
 
     call addfld ('PSDRY',      horiz_only,  'A', 'Pa', 'Dry surface pressure')

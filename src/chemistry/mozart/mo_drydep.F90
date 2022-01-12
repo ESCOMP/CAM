@@ -69,8 +69,6 @@ module mo_drydep
   real(r8), parameter    :: ph_inv      = 1._r8/ph
   real(r8), parameter    :: rovcp = r/cp
 
-  integer, pointer :: index_season_lai(:,:)
-
   logical, public :: has_dvel(gas_pcnst) = .false.
   integer         :: map_dvel(gas_pcnst) = 0
 
@@ -425,19 +423,7 @@ contains
 
     if(dycore_is('UNSTRUCTURED') ) then
        call get_landuse_and_soilw_from_file()
-       allocate( index_season_lai(plon,12),stat=astat )
-       index_season_lai = -huge(1)
-       if( astat /= 0 ) then
-          write(iulog,*) 'dvel_inti: failed to allocate index_season_lai; error = ',astat
-          call endrun
-       end if
     else
-       allocate( index_season_lai(plat,12),stat=astat )
-       index_season_lai = -huge(1)
-       if( astat /= 0 ) then
-          write(iulog,*) 'dvel_inti: failed to allocate index_season_lai; error = ',astat
-          call endrun
-       end if
        !---------------------------------------------------------------------------
        ! 	... read landuse map
        !---------------------------------------------------------------------------
