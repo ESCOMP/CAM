@@ -36,7 +36,7 @@ use pio,                 only: file_desc_t, var_desc_t,               &
                                pio_int, pio_noerr,                    &
                                pio_seterrorhandling, pio_bcast_error, &
                                pio_inq_varid, pio_def_var,            &
-                               pio_put_var, pio_get_var
+                               pio_put_var, pio_get_var, pio_put_att
 
 use cam_abortutils,      only: endrun
 use error_messages,      only: handle_err
@@ -61,6 +61,7 @@ public :: &
 
 integer,public, allocatable :: cosp_cnt(:)       ! counter for cosp
 integer,public              :: cosp_cnt_init = 0 !initial value for cosp counter
+real(r8), public, protected :: nextsw_cday       ! future radiation calday for surface models
 
 type rad_out_t
    real(r8) :: solin(pcols)         ! Solar incident flux
@@ -153,7 +154,7 @@ real(r8) :: rad_uniform_angle = -99._r8
 
 ! PIO descriptors (for restarts)
 type(var_desc_t) :: cospcnt_desc
-
+type(var_desc_t) :: nextsw_cday_desc
 !===============================================================================
 contains
 !===============================================================================
@@ -312,15 +313,16 @@ end function radiation_do
 !================================================================================================
 
 real(r8) function radiation_nextsw_cday()
-  
+
    ! Return calendar day of next sw radiation calculation
 
    ! Local variables
    integer :: nstep      ! timestep counter
    logical :: dosw       ! true => do shosrtwave calc   
    integer :: offset     ! offset for calendar day calculation
-   integer :: dTime      ! integer timestep size
+   integer :: dtime      ! integer timestep size
    real(r8):: calday     ! calendar day of 
+   real(r8):: caldayp1   ! calendar day of next time-step
    !-----------------------------------------------------------------------
 
    radiation_nextsw_cday = -1._r8
@@ -339,7 +341,13 @@ real(r8) function radiation_nextsw_cday()
    if(radiation_nextsw_cday == -1._r8) then
       call endrun('error in radiation_nextsw_cday')
    end if
-        
+
+   ! determine if next radiation time-step not equal to next time-step
+   if (get_nstep() >= 1) then
+      caldayp1 = get_curr_calday(offset=int(dtime))
+      if (caldayp1 /= radiation_nextsw_cday) radiation_nextsw_cday = -1._r8
+   end if    
+
 end function radiation_nextsw_cday
 
 !================================================================================================
@@ -397,6 +405,11 @@ subroutine radiation_init(pbuf2d)
    if (use_rad_dt_cosz)  then
       dtime  = get_step_size()
       dt_avg = iradsw*dtime
+   end if
+
+   ! Surface components to get radiation computed today
+   if (.not. is_first_restart_step()) then
+      nextsw_cday = get_curr_calday()
    end if
 
    call phys_getopts(history_amwg_out   = history_amwg,    &
@@ -634,6 +647,8 @@ subroutine radiation_define_restart(file)
 
    call pio_seterrorhandling(File, PIO_BCAST_ERROR)
 
+   ierr = pio_def_var(File, 'nextsw_cday', pio_int, nextsw_cday_desc)
+   ierr = pio_put_att(File, nextsw_cday_desc, 'long_name', 'future radiation calday for surface models')
    if (docosp) then
       ierr = pio_def_var(File, 'cosp_cnt_init', pio_int, cospcnt_desc)
    end if
@@ -653,6 +668,7 @@ subroutine radiation_write_restart(file)
    integer :: ierr
    !----------------------------------------------------------------------------
 
+   ierr = pio_put_var(File, nextsw_cday_desc, (/ nextsw_cday /))
    if (docosp) then
       ierr = pio_put_var(File, cospcnt_desc, (/cosp_cnt(begchunk)/))
    end if
@@ -686,6 +702,9 @@ subroutine radiation_read_restart(file)
          ierr = pio_get_var(File, vardesc, cosp_cnt_init)
       end if
    end if
+
+   ierr = pio_inq_varid(File, 'nextsw_cday', vardesc)
+   ierr = pio_get_var(File, vardesc, nextsw_cday)
 
 end subroutine radiation_read_restart
   
@@ -750,7 +769,6 @@ subroutine radiation_tend( &
    integer  :: i, k
    integer  :: lchnk, ncol
    logical  :: dosw, dolw
-
    real(r8) :: calday          ! current calendar day
    real(r8) :: delta           ! Solar declination angle  in radians
    real(r8) :: eccf            ! Earth orbit eccentricity factor
@@ -946,6 +964,10 @@ subroutine radiation_tend( &
    if (hist_fld_active('FSNR') .or. hist_fld_active('FLNR')) then
       call tropopause_find(state, troplev, tropP=p_trop, primary=TROP_ALG_HYBSTOB, backup=TROP_ALG_CLIMATE)
    endif
+
+   ! Get time of next radiation calculation - albedos will need to be
+   ! calculated by each surface model at this time
+   nextsw_cday = radiation_nextsw_cday()
 
    if (dosw .or. dolw) then
 
