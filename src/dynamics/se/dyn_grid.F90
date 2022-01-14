@@ -547,13 +547,7 @@ subroutine physgrid_copy_attributes_d(gridname, grid_attribute_names)
    else
       gridname = 'GLL'
       allocate(grid_attribute_names(3))
-      ! For standard CAM-SE, we need to copy the area attribute.
-      ! For physgrid, the physics grid will create area (GLL has area_d)
-      if (trim(ini_grid_hdim_name) == 'ncol_d') then
-         grid_attribute_names(1) = 'area_d'
-      else
-         grid_attribute_names(1) = 'area'
-      end if
+      grid_attribute_names(1) = 'area_d'
       grid_attribute_names(2) = 'np'
       grid_attribute_names(3) = 'ne'
    end if
@@ -816,9 +810,9 @@ subroutine define_cam_grids()
       ncolname = 'ncol'
       areaname = 'area'
    end if
-   lat_coord => horiz_coord_create(trim(latname), trim(ncolname), ngcols_d,  &
+   lat_coord => horiz_coord_create('lat_d', 'ncol_d', ngcols_d,  &
          'latitude', 'degrees_north', 1, size(pelat_deg), pelat_deg, map=pemap)
-   lon_coord => horiz_coord_create(trim(lonname), trim(ncolname), ngcols_d,  &
+   lon_coord => horiz_coord_create('lon_d', 'ncol_d', ngcols_d,  &
          'longitude', 'degrees_east', 1, size(pelon_deg), pelon_deg, map=pemap)
 
    ! Map for GLL grid
@@ -837,15 +831,14 @@ subroutine define_cam_grids()
    ! The native SE GLL grid
    call cam_grid_register('GLL', dyn_decomp, lat_coord, lon_coord,           &
          grid_map, block_indexed=.false., unstruct=.true.)
-   call cam_grid_attribute_register('GLL', trim(areaname), 'gll grid areas', &
-         trim(ncolname), pearea, map=pemap)
+   call cam_grid_attribute_register('GLL', 'area_d', 'gll grid areas', &
+         'ncol_d', pearea, map=pemap)
    call cam_grid_attribute_register('GLL', 'np', '', np)
    call cam_grid_attribute_register('GLL', 'ne', '', ne)
 
-   ! With CSLAM if the initial file uses the horizontal dimension 'ncol' rather than
-   ! 'ncol_d' then we need a grid object with the names ncol,lat,lon to read it.
-   ! Create that grid object here if it's needed.
-   if (fv_nphys > 0 .and. trim(ini_grid_hdim_name) == 'ncol') then
+   ! If dim name is 'ncol', create INI grid
+   ! We will read from INI grid, but use GLL grid for all output
+   if (trim(ini_grid_hdim_name) == 'ncol') then
 
       lat_coord => horiz_coord_create('lat', 'ncol', ngcols_d,  &
          'latitude', 'degrees_north', 1, size(pelat_deg), pelat_deg, map=pemap)
@@ -854,6 +847,8 @@ subroutine define_cam_grids()
 
       call cam_grid_register('INI', ini_decomp, lat_coord, lon_coord,         &
          grid_map, block_indexed=.false., unstruct=.true.)
+      call cam_grid_attribute_register('INI', 'area', 'ini grid areas', &
+               'ncol', pearea, map=pemap)
 
       ini_grid_name = 'INI'
    else
