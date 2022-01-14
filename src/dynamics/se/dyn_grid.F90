@@ -545,8 +545,8 @@ subroutine physgrid_copy_attributes_d(gridname, grid_attribute_names)
       grid_attribute_names(1) = 'fv_nphys'
       grid_attribute_names(2) = 'ne'
    else
-      allocate(grid_attribute_names(3))
       gridname = 'GLL'
+      allocate(grid_attribute_names(3))
       grid_attribute_names(1) = 'area_d'
       grid_attribute_names(2) = 'np'
       grid_attribute_names(3) = 'ne'
