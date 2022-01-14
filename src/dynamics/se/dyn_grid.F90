@@ -546,15 +546,8 @@ subroutine physgrid_copy_attributes_d(gridname, grid_attribute_names)
       grid_attribute_names(2) = 'ne'
    else
       allocate(grid_attribute_names(3))
-      ! For standard CAM-SE, we need to copy the area attribute.
-      ! For physgrid, the physics grid will create area (GLL has area_d)
-      if (trim(ini_grid_hdim_name) == 'ncol_d') then
-         grid_attribute_names(1) = 'area_d'
-         gridname = 'GLL'
-      else
-         grid_attribute_names(1) = 'area'
-         gridname = 'INI'
-      end if
+      gridname = 'GLL'
+      grid_attribute_names(1) = 'area_d'
       grid_attribute_names(2) = 'np'
       grid_attribute_names(3) = 'ne'
    end if
