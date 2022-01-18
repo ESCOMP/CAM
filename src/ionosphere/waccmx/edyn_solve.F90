@@ -99,6 +99,8 @@ module edyn_solve
     allocate(rim_glb(nmlonp1,nmlat,2))
     allocate(phisolv(0:nmlonp1,0:nmlat+1))
 
+    phisolv(:,:) = 0._r8
+    
     nmlon0=nmlon+1
     nmlat0=(nmlat +1)/2
     nmlon1=(nmlon0+1)/2
@@ -934,20 +936,20 @@ module edyn_solve
     ressolv = 0.0_r8
     do j = 1,nmlat0
       do i = 1,nmlon0-1
-        cofum_solv(i,j,:)=  cofum(i,j,:)
+        cofum_solv(i,j,:) = cofum(i,j,:)
 !
 ! fields: phisolv(0:nmlonp1,0:nmlat+1)       ! 2d solution/ electric potential
 !
         ressolv(i,j) = (                    &
-        cofum_solv(i,j,1)*phisolv(i+1,j)+   &
-        cofum_solv(i,j,2)*phisolv(i+1,j+1)+ &
-        cofum_solv(i,j,3)*phisolv(i,j+1)+   &
-        cofum_solv(i,j,4)*phisolv(i-1,j+1)+ &
-        cofum_solv(i,j,5)*phisolv(i-1,j)+   &
-        cofum_solv(i,j,6)*phisolv(i-1,j-1)+ &
-        cofum_solv(i,j,7)*phisolv(i,j-1)+   &
-        cofum_solv(i,j,8)*phisolv(i+1,j-1)+ &
-        cofum_solv(i,j,9)*phisolv(i,j))
+             cofum_solv(i,j,1)*phisolv(i+1,j)+   &
+             cofum_solv(i,j,2)*phisolv(i+1,j+1)+ &
+             cofum_solv(i,j,3)*phisolv(i,j+1)+   &
+             cofum_solv(i,j,4)*phisolv(i-1,j+1)+ &
+             cofum_solv(i,j,5)*phisolv(i-1,j)+   &
+             cofum_solv(i,j,6)*phisolv(i-1,j-1)+ &
+             cofum_solv(i,j,7)*phisolv(i,j-1)+   &
+             cofum_solv(i,j,8)*phisolv(i+1,j-1)+ &
+             cofum_solv(i,j,9)*phisolv(i,j))
 
         ressolv(i,j) = c0(i,j,10)-ressolv(i,j)
         l2norm = l2norm + ressolv(i,j)*ressolv(i,j)

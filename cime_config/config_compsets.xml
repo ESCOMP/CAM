@@ -45,26 +45,35 @@
     <lname>2000_CAM40_CLM50%SP_CICE%PRES_DOCN%DOM_SROF_SGLC_SWAV</lname>
   </compset>
 
-
   <!-- ****************************** -->
   <!-- CAM science supported compsets -->
   <!-- ****************************** -->
 
   <compset>
     <alias>F2000climo</alias>
-    <lname>2000_CAM60_CLM50%SP_CICE%PRES_DOCN%DOM_MOSART_CISM2%NOEVOLVE_SWAV</lname>
+    <lname>2000_CAM60_CLM50%SP_CICE%PRES_DOCN%DOM_MOSART_SGLC_SWAV</lname>
     <science_support grid="f09_f09_mg17"/>
   </compset>
 
   <compset>
+    <alias>F2000mam5</alias>
+    <lname>2000_CAM60%MAM5_CLM50%SP_CICE%PRES_DOCN%DOM_MOSART_CISM2%NOEVOLVE_SWAV</lname>
+  </compset>
+
+  <compset>
+    <alias>QPMAM5</alias>
+    <lname>2000_CAM60%MAM5_SLND_SICE_DOCN%AQP3_SROF_SGLC_SWAV</lname>
+  </compset>
+
+  <compset>
     <alias>FHIST</alias>
-    <lname>HIST_CAM60_CLM50%SP_CICE%PRES_DOCN%DOM_MOSART_CISM2%NOEVOLVE_SWAV</lname>
+    <lname>HIST_CAM60_CLM50%SP_CICE%PRES_DOCN%DOM_MOSART_SGLC_SWAV</lname>
     <science_support grid="f09_f09_mg17"/>
   </compset>
 
   <compset>
     <alias>FHIST_BGC</alias>
-    <lname>HIST_CAM60_CLM50%BGC-CROP_CICE%PRES_DOCN%DOM_MOSART_CISM2%NOEVOLVE_SWAV</lname>
+    <lname>HIST_CAM60_CLM50%BGC-CROP_CICE%PRES_DOCN%DOM_MOSART_SGLC_SWAV</lname>
 <!--    <science_support grid="f09_f09_mg17"/> -->
   </compset>
 
@@ -198,8 +207,21 @@
   </compset>
 
   <compset>
+    <alias>QPWmaC4</alias>
+    <lname>2000_CAM40%WCCM_SLND_SICE_DOCN%AQP3_SROF_SGLC_SWAV</lname>
+  </compset>
+  <compset>
     <alias>QPWmaC6</alias>
     <lname>2000_CAM60%WCCM_SLND_SICE_DOCN%AQP3_SROF_SGLC_SWAV</lname>
+  </compset>
+
+  <compset>
+    <alias>QPWmadC4</alias>
+    <lname>2000_CAM40%WCMD_SLND_SICE_DOCN%AQP3_SROF_SGLC_SWAV</lname>
+  </compset>
+  <compset>
+    <alias>QPWmadC6</alias>
+    <lname>2000_CAM60%WCMD_SLND_SICE_DOCN%AQP3_SROF_SGLC_SWAV</lname>
   </compset>
 
   <compset>
@@ -225,12 +247,12 @@
 
   <compset>
     <alias>F2010climo</alias>
-    <lname>2010_CAM60_CLM50%SP_CICE%PRES_DOCN%DOM_MOSART_CISM2%NOEVOLVE_SWAV</lname>
+    <lname>2010_CAM60_CLM50%SP_CICE%PRES_DOCN%DOM_MOSART_SGLC_SWAV</lname>
   </compset>
 
   <compset>
     <alias>F1850</alias>
-    <lname>1850_CAM60_CLM50%SP_CICE%PRES_DOCN%DOM_MOSART_CISM2%NOEVOLVE_SWAV</lname>
+    <lname>1850_CAM60_CLM50%SP_CICE%PRES_DOCN%DOM_MOSART_SGLC_SWAV</lname>
   </compset>
 
   <compset>
@@ -245,7 +267,12 @@
 
   <compset>
     <alias>FHIST_BDRD</alias>
-    <lname>HIST_CAM60_CLM50%BGC-CROP_CICE%PRES_DOCN%DOM_MOSART_CISM2%NOEVOLVE_SWAV_BGC%BDRD</lname>
+    <lname>HIST_CAM60_CLM50%BGC-CROP_CICE%PRES_DOCN%DOM_MOSART_SGLC_SWAV_BGC%BDRD</lname>
+  </compset>
+
+  <compset>
+    <alias>F2000dev</alias>
+    <lname>2000_CAM%DEV_CLM50%SP_CICE%PRES_DOCN%DOM_MOSART_SGLC_SWAV</lname>
   </compset>
 
   <!-- PORT compsets -->
@@ -285,25 +312,25 @@
 
   <compset>
     <alias>FC2000climo</alias>
-    <lname>2000_CAM60%CCTS1_CLM50%SP_CICE%PRES_DOCN%DOM_MOSART_CISM2%NOEVOLVE_SWAV</lname>
+    <lname>2000_CAM60%CCTS1_CLM50%SP_CICE%PRES_DOCN%DOM_MOSART_SGLC_SWAV</lname>
   </compset>
 
   <compset>
     <alias>FC2010climo</alias>
-    <lname>2010_CAM60%CCTS1_CLM50%SP_CICE%PRES_DOCN%DOM_MOSART_CISM2%NOEVOLVE_SWAV</lname>
+    <lname>2010_CAM60%CCTS1_CLM50%SP_CICE%PRES_DOCN%DOM_MOSART_SGLC_SWAV</lname>
   </compset>
 
   <compset>
     <alias>FCHIST</alias>
-    <lname>HIST_CAM60%CCTS1_CLM50%SP_CICE%PRES_DOCN%DOM_MOSART_CISM2%NOEVOLVE_SWAV</lname>
+    <lname>HIST_CAM60%CCTS1_CLM50%SP_CICE%PRES_DOCN%DOM_MOSART_SGLC_SWAV</lname>
   </compset>
   <compset>
     <alias>FCvbsxHIST</alias>
-    <lname>HIST_CAM60%CVBSX_CLM50%SP_CICE%PRES_DOCN%DOM_MOSART_CISM2%NOEVOLVE_SWAV</lname>
+    <lname>HIST_CAM60%CVBSX_CLM50%SP_CICE%PRES_DOCN%DOM_MOSART_SGLC_SWAV</lname>
   </compset>
   <compset>
     <alias>FCfireHIST</alias>
-    <lname>HIST_CAM60%CFIRE_CLM50%BGC-CROP_CICE%PRES_DOCN%DOM_MOSART_CISM2%NOEVOLVE_SWAV</lname>
+    <lname>HIST_CAM60%CFIRE_CLM50%BGC-CROP_CICE%PRES_DOCN%DOM_MOSART_SGLC_SWAV</lname>
   </compset>
 
   <compset>
@@ -336,7 +363,7 @@
 
   <compset>
     <alias>F1850_BDRD</alias>
-    <lname>1850_CAM60_CLM50%BGC_CICE%PRES_DOCN%DOM_MOSART_CISM2%NOEVOLVE_SWAV_BGC%BDRD</lname>
+    <lname>1850_CAM60_CLM50%BGC_CICE%PRES_DOCN%DOM_MOSART_SGLC_SWAV_BGC%BDRD</lname>
   </compset>
 
   <compset>
@@ -351,43 +378,43 @@
 
   <compset>
     <alias>FWHIST</alias>
-    <lname>HIST_CAM60%WCTS_CLM50%SP_CICE%PRES_DOCN%DOM_MOSART_CISM2%NOEVOLVE_SWAV</lname>
+    <lname>HIST_CAM60%WCTS_CLM50%SP_CICE%PRES_DOCN%DOM_MOSART_SGLC_SWAV</lname>
     <science_support grid="f09_f09_mg17"/>
   </compset>
 
   <compset>
     <alias>FWHIST_BGC</alias>
-    <lname>HIST_CAM60%WCTS_CLM50%BGC-CROP_CICE%PRES_DOCN%DOM_MOSART_CISM2%NOEVOLVE_SWAV</lname>
+    <lname>HIST_CAM60%WCTS_CLM50%BGC-CROP_CICE%PRES_DOCN%DOM_MOSART_SGLC_SWAV</lname>
     <science_support grid="f09_f09_mg17"/>
   </compset>
 
   <compset>
     <alias>FWsc2010climo</alias>
-    <lname>2010_CAM60%WCSC_CLM50%SP_CICE%PRES_DOCN%DOM_MOSART_CISM2%NOEVOLVE_SWAV</lname>
+    <lname>2010_CAM60%WCSC_CLM50%SP_CICE%PRES_DOCN%DOM_MOSART_SGLC_SWAV</lname>
     <science_support grid="f09_f09_mg17"/>
   </compset>
 
   <compset>
     <alias>FWsc2000climo</alias>
-    <lname>2000_CAM60%WCSC_CLM50%SP_CICE%PRES_DOCN%DOM_MOSART_CISM2%NOEVOLVE_SWAV</lname>
+    <lname>2000_CAM60%WCSC_CLM50%SP_CICE%PRES_DOCN%DOM_MOSART_SGLC_SWAV</lname>
     <science_support grid="f09_f09_mg17"/>
   </compset>
 
   <compset>
     <alias>FWsc1850</alias>
-    <lname>1850_CAM60%WCSC_CLM50%SP_CICE%PRES_DOCN%DOM_MOSART_CISM2%NOEVOLVE_SWAV</lname>
+    <lname>1850_CAM60%WCSC_CLM50%SP_CICE%PRES_DOCN%DOM_MOSART_SGLC_SWAV</lname>
     <science_support grid="f09_f09_mg17"/>
   </compset>
 
   <compset>
     <alias>FWscHIST</alias>
-    <lname>HIST_CAM60%WCSC_CLM50%SP_CICE%PRES_DOCN%DOM_MOSART_CISM2%NOEVOLVE_SWAV</lname>
+    <lname>HIST_CAM60%WCSC_CLM50%SP_CICE%PRES_DOCN%DOM_MOSART_SGLC_SWAV</lname>
     <science_support grid="f09_f09_mg17"/>
   </compset>
 
   <compset>
     <alias>FW1850</alias>
-    <lname>1850_CAM60%WCTS_CLM50%SP_CICE%PRES_DOCN%DOM_MOSART_CISM2%NOEVOLVE_SWAV</lname>
+    <lname>1850_CAM60%WCTS_CLM50%SP_CICE%PRES_DOCN%DOM_MOSART_SGLC_SWAV</lname>
     <science_support grid="f09_f09_mg17"/>
   </compset>
 
@@ -397,17 +424,21 @@
 
   <compset>
     <alias>FWma2000climo</alias>
-    <lname>2000_CAM60%WCCM_CLM50%SP_CICE%PRES_DOCN%DOM_MOSART_CISM2%NOEVOLVE_SWAV</lname>
+    <lname>2000_CAM60%WCCM_CLM50%SP_CICE%PRES_DOCN%DOM_MOSART_SGLC_SWAV</lname>
   </compset>
 
   <compset>
     <alias>FW2000climo</alias>
-    <lname>2000_CAM60%WCTS_CLM50%SP_CICE%PRES_DOCN%DOM_MOSART_CISM2%NOEVOLVE_SWAV</lname>
+    <lname>2000_CAM60%WCTS_CLM50%SP_CICE%PRES_DOCN%DOM_MOSART_SGLC_SWAV</lname>
+  </compset>
+  <compset>
+    <alias>FW2000mam5</alias>
+    <lname>2000_CAM60%WCTS%MAM5_CLM50%SP_CICE%PRES_DOCN%DOM_MOSART_CISM2%NOEVOLVE_SWAV</lname>
   </compset>
 
   <compset>
     <alias>FW2010climo</alias>
-    <lname>2010_CAM60%WCTS_CLM50%SP_CICE%PRES_DOCN%DOM_MOSART_CISM2%NOEVOLVE_SWAV</lname>
+    <lname>2010_CAM60%WCTS_CLM50%SP_CICE%PRES_DOCN%DOM_MOSART_SGLC_SWAV</lname>
   </compset>
 
   <compset>
@@ -422,7 +453,7 @@
 
   <compset>
     <alias>FWmaHIST</alias>
-    <lname>HIST_CAM60%WCCM_CLM50%SP_CICE%PRES_DOCN%DOM_MOSART_CISM2%NOEVOLVE_SWAV</lname>
+    <lname>HIST_CAM60%WCCM_CLM50%SP_CICE%PRES_DOCN%DOM_MOSART_SGLC_SWAV</lname>
   </compset>
 
   <compset>
@@ -432,7 +463,7 @@
 
   <compset>
     <alias>FWmadHIST</alias>
-    <lname>HIST_CAM60%WCMD_CLM50%SP_CICE%PRES_DOCN%DOM_MOSART_CISM2%NOEVOLVE_SWAV</lname>
+    <lname>HIST_CAM60%WCMD_CLM50%SP_CICE%PRES_DOCN%DOM_MOSART_SGLC_SWAV</lname>
   </compset>
 
   <compset>

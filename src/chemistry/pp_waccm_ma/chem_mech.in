@@ -1,15 +1,16 @@
 * Comments
-* User-given Tag Description: MA_1
-* Tag database identifier : MZ255_MA_20190128
-* Tag created by : ajc
+* User-given Tag Description: WACCM_MA
+* Tag database identifier : MZ282_MA_20210122
+* Tag created by : lke
 * Tag created from branch : MA
-* Tag created on : 2019-01-28 15:31:03.753615-07
+* Tag created on : 2021-01-22 15:26:54.35253-07
 * Comments for this tag follow:
-*     ajc : 2019-01-28 : add ion_Op_N2D
+*     lke : 2021-01-22 : Middle Atmosphere mechanism for WACCM, no aerosols, with BR, CL transported
 
       SPECIES
 
       Solution
+ BR -> Br,
  BRCL -> BrCl,
  BRO -> BrO,
  BRONO2 -> BrONO2,
@@ -31,6 +32,7 @@
  CH3OOH,
  CH4,
  CHBR3 -> CHBr3,
+ CL -> Cl,
  CL2 -> Cl2,
  CL2O2 -> Cl2O2,
  CLO -> ClO,
@@ -52,7 +54,6 @@
  HCL -> HCl,
  HF,
  HNO3,
- HO2,
  HO2NO2,
  HOBR -> HOBr,
  HOCL -> HOCl,
@@ -67,9 +68,8 @@
  O3,
  OCLO -> OClO,
  SF6,
- BR -> Br,
- CL -> Cl,
  e -> E,
+ HO2,
  N2D -> N,
  N2p -> N2,
  NOp -> NO,
@@ -97,9 +97,8 @@
       End Col-int
 
       Not-Transported
- BR,
- CL,
  e,
+ HO2,
  N2D,
  N2p,
  NOp,
@@ -145,12 +144,14 @@
       End Explicit
 
       Implicit
+ BR
  BRCL
  BRO
  BRONO2
  CH2O
  CH3O2
  CH3OOH
+ CL
  CL2
  CL2O2
  CLO
@@ -166,7 +167,6 @@
  HCL
  HF
  HNO3
- HO2
  HO2NO2
  HOBR
  HOCL
@@ -179,9 +179,8 @@
  O2
  O3
  OCLO
- BR
- CL
  e
+ HO2
  N2D
  N2p
  NOp

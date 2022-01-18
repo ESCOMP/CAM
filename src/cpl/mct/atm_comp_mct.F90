@@ -30,13 +30,13 @@ module atm_comp_mct
   use cam_comp,          only: cam_init, cam_run1, cam_run2, cam_run3, cam_run4, cam_final
   use cam_instance     , only: cam_instance_init
   use cam_control_mod  , only: cam_ctrl_set_orbit
-  use radiation        , only: radiation_nextsw_cday
   use phys_grid        , only: pgcols => num_global_phys_cols
   use phys_grid        , only: get_ncols_p, get_gcol_p, get_area_all_p
   use phys_grid        , only: get_rlat_all_p, get_rlon_all_p
   use phys_grid        , only: get_grid_dims
   use ppgrid           , only: pcols, begchunk, endchunk
   use camsrfexch       , only: cam_out_t, cam_in_t
+  use radiation        , only: nextsw_cday
   use cam_initfiles    , only: cam_initfiles_get_caseid, cam_initfiles_get_restdir
   use filenames        , only: interpret_filename_spec
   use spmd_utils       , only: spmdinit, masterproc, iam
@@ -124,12 +124,8 @@ CONTAINS
     logical           :: perpetual_run         ! If in perpetual mode or not
     integer           :: perpetual_ymd         ! Perpetual date (YYYYMMDD)
 
-    real(r8)          :: nextsw_cday           ! calendar of next atm shortwave
     integer           :: stepno                ! time step
     integer           :: dtime                 ! time step increment (sec)
-    integer           :: atm_cpl_dt            ! driver atm coupling time step
-    integer           :: nstep                 ! CAM nstep
-    real(r8)          :: caldayp1              ! CAM calendar day for for next cam time step
     integer           :: start_ymd             ! Start date (YYYYMMDD)
     integer           :: start_tod             ! Start time of day (sec)
     integer           :: curr_ymd              ! Start date (YYYYMMDD)
@@ -323,7 +319,6 @@ CONTAINS
        ! This will only be used on the first timestep of an initial run
        !
        if (initial_run) then
-          nextsw_cday = get_curr_calday()
           call seq_infodata_PutData( infodata, nextsw_cday=nextsw_cday )
        end if
 
@@ -360,20 +355,7 @@ CONTAINS
           call cam_run1 ( cam_in, cam_out )
        end if
 
-       ! Compute time of next radiation computation, like in run method for exact restart
-
-       call seq_timemgr_EClockGetData(Eclock,dtime=atm_cpl_dt)
-       dtime = get_step_size()
-       nstep = get_nstep()
-       if (nstep < 1 .or. dtime < atm_cpl_dt) then
-          nextsw_cday = radiation_nextsw_cday()
-       else if (dtime == atm_cpl_dt) then
-          caldayp1 = get_curr_calday(offset=int(dtime))
-          nextsw_cday = radiation_nextsw_cday()
-          if (caldayp1 /= nextsw_cday) nextsw_cday = -1._r8
-       else
-          call shr_sys_abort('dtime must be less than or equal to atm_cpl_dt')
-       end if
+       ! Compute time of next radiation computation
        call seq_infodata_PutData( infodata, nextsw_cday=nextsw_cday )
 
        ! End redirection of share output to cam log
@@ -419,7 +401,6 @@ CONTAINS
 
     logical :: dosend          ! true => send data back to driver
     integer :: dtime           ! time step increment (sec)
-    integer :: atm_cpl_dt      ! driver atm coupling time step
     integer :: ymd_sync        ! Sync date (YYYYMMDD)
     integer :: yr_sync         ! Sync current year
     integer :: mon_sync        ! Sync current month
@@ -431,8 +412,6 @@ CONTAINS
     integer :: day             ! CAM current day
     integer :: tod             ! CAM current time of day (sec)
 
-    real(r8):: caldayp1        ! CAM calendar day for for next cam time step
-    real(r8):: nextsw_cday     ! calendar of next atm shortwave
     logical :: rstwr           ! .true. ==> write restart file before returning
     logical :: nlend           ! Flag signaling last time-step
     logical :: rstwr_sync      ! .true. ==> write restart file before returning
@@ -530,21 +509,8 @@ CONTAINS
 
     end do
 
-    ! Get time of next radiation calculation - albedos will need to be
+    ! Pass time of next radiation calculation - albedos will need to be
     ! calculated by each surface model at this time
-
-    call seq_timemgr_EClockGetData(Eclock,dtime=atm_cpl_dt)
-    dtime = get_step_size()
-    if (dtime < atm_cpl_dt) then
-       nextsw_cday = radiation_nextsw_cday()
-    else if (dtime == atm_cpl_dt) then
-       caldayp1 = get_curr_calday(offset=int(dtime))
-       nextsw_cday = radiation_nextsw_cday()
-       if (caldayp1 /= nextsw_cday) nextsw_cday = -1._r8
-    else
-       call shr_sys_abort('dtime must be less than or equal to atm_cpl_dt')
-    end if
-
     call seq_infodata_PutData( infodata, nextsw_cday=nextsw_cday )
 
     ! Write merged surface data restart file if appropriate

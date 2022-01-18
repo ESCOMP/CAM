@@ -74,6 +74,7 @@ module chemistry
   character(len=shr_kind_cl) :: xs_long_file = 'xs_long_file'
   character(len=shr_kind_cl) :: electron_file = 'electron_file'
   character(len=shr_kind_cl) :: euvac_file = 'NONE'
+  real(r8)                   :: photo_max_zen=-huge(1._r8)
 
   ! solar / geomag data
 
@@ -396,7 +397,7 @@ end function chem_is
          euvac_file, photon_file, electron_file, &
          xs_coef_file, xs_short_file, &
          exo_coldens_file, tuv_xsect_file, o2_xsect_file, &
-         xs_long_file, rsf_file, &
+         xs_long_file, rsf_file, photo_max_zen, &
          lght_no_prd_factor, xactive_prates, &
          depvel_lnd_file, drydep_srf_file, &
          srf_emis_type, srf_emis_cycle_yr, srf_emis_fixed_ymd, srf_emis_fixed_tod, srf_emis_specifier,  &
@@ -502,6 +503,7 @@ end function chem_is
     call mpibcast (xs_coef_file,      len(xs_coef_file),               mpichar, 0, mpicom)
     call mpibcast (xs_short_file,     len(xs_short_file),              mpichar, 0, mpicom)
     call mpibcast (xs_long_file,      len(xs_long_file),               mpichar, 0, mpicom)
+    call mpibcast (photo_max_zen,     1,                               mpir8,   0, mpicom)
     call mpibcast (xactive_prates,    1,                               mpilog,  0, mpicom)
     call mpibcast (electron_file,     len(electron_file),              mpichar, 0, mpicom)
     call mpibcast (euvac_file,        len(euvac_file),                 mpichar, 0, mpicom)
@@ -828,6 +830,7 @@ end function chem_is_active
        , xs_coef_file &
        , xs_short_file &
        , xs_long_file &
+       , photo_max_zen &
        , rsf_file &
        , fstrat_file &
        , fstrat_list &
