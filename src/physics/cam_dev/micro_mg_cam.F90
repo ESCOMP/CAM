@@ -169,8 +169,12 @@ logical  ::  micro_mg_evap_scl_ifs = .false.      ! Scale evaporation as IFS doe
 logical  ::  micro_mg_evap_rhthrsh_ifs = .false.  ! Evap RH threhold following IFS
 logical  ::  micro_mg_rainfreeze_ifs = .false.    ! Rain freezing at 0C following IFS
 logical  ::  micro_mg_ifs_sed = .false.           ! Snow sedimentation = 1 m/s following IFS
-logical  ::  micro_mg_precip_fall_corr = .false.    ! Precip fall speed following IFS 
+logical  ::  micro_mg_precip_fall_corr = .false.    ! Precip fall speed following IFS (does not go to zero)
 
+logical  ::  micro_mg_implicit_fall = .false. !Implicit fall speed (sedimentation) for hydrometeors
+
+logical  ::  micro_mg_accre_sees_auto = .false.    !Accretion sees autoconverted rain    
+      
 character(len=10), parameter :: &      ! Constituent names
    cnst_names(10) = (/'CLDLIQ', 'CLDICE','NUMLIQ','NUMICE', &
                      'RAINQM', 'SNOWQM','NUMRAI','NUMSNO','GRAUQM','NUMGRA'/)
@@ -332,8 +336,8 @@ subroutine micro_mg_cam_readnl(nlfile)
        micro_do_massless_droplet_destroyer, &
        micro_mg_evap_sed_off, micro_mg_icenuc_rh_off, micro_mg_icenuc_use_meyers, &
        micro_mg_evap_scl_ifs, micro_mg_evap_rhthrsh_ifs, &
-       micro_mg_rainfreeze_ifs, micro_mg_ifs_sed, micro_mg_precip_fall_corr
-
+       micro_mg_rainfreeze_ifs, micro_mg_ifs_sed, micro_mg_precip_fall_corr, &
+       micro_mg_accre_sees_auto, micro_mg_implicit_fall
 
   !-----------------------------------------------------------------------------
 
@@ -526,7 +530,13 @@ subroutine micro_mg_cam_readnl(nlfile)
   
   call mpi_bcast(micro_mg_precip_fall_corr, 1, mpi_logical, mstrid, mpicom, ierr)
   if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: micro_mg_precip_fall_corr")
-  
+
+  call mpi_bcast(micro_mg_implicit_fall, 1, mpi_logical, mstrid, mpicom, ierr)
+  if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: micro_mg_implicit_fall")
+
+  call mpi_bcast(micro_mg_accre_sees_auto, 1, mpi_logical, mstrid, mpicom, ierr)
+  if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: micro_mg_accre_sees_auto")
+ 
   if(micro_mg_berg_eff_factor == unset_r8) call endrun(sub//": FATAL: micro_mg_berg_eff_factor is not set")
   if(micro_mg_accre_enhan_fact == unset_r8) call endrun(sub//": FATAL: micro_mg_accre_enhan_fact is not set")
   if(micro_mg_autocon_fact == unset_r8) call endrun(sub//": FATAL: micro_mg_autocon_fact is not set")
@@ -582,6 +592,8 @@ subroutine micro_mg_cam_readnl(nlfile)
      write(iulog,*) '  micro_mg_rainfreeze_ifs     = ', micro_mg_rainfreeze_ifs
      write(iulog,*) '  micro_mg_ifs_sed            = ', micro_mg_ifs_sed
      write(iulog,*) '  micro_mg_precip_fall_corr     = ', micro_mg_precip_fall_corr
+     write(iulog,*) '  micro_mg_implicit_fall     = ', micro_mg_implicit_fall
+     write(iulog,*) '  micro_mg_accre_sees_auto     = ', micro_mg_accre_sees_auto
   end if
 
 contains
@@ -968,6 +980,7 @@ subroutine micro_mg_cam_init(pbuf2d)
            micro_mg_evap_sed_off, micro_mg_icenuc_rh_off, micro_mg_icenuc_use_meyers, &
            micro_mg_evap_scl_ifs, micro_mg_evap_rhthrsh_ifs, &
            micro_mg_rainfreeze_ifs,  micro_mg_ifs_sed, micro_mg_precip_fall_corr,&
+           micro_mg_accre_sees_auto, micro_mg_implicit_fall, &
            micro_mg_nccons, micro_mg_nicons, micro_mg_ncnst, &
            micro_mg_ninst, micro_mg_ngcons, micro_mg_ngnst, &
            micro_mg_nrcons,  micro_mg_nrnst, micro_mg_nscons, micro_mg_nsnst, errstring)
@@ -1040,7 +1053,7 @@ subroutine micro_mg_cam_init(pbuf2d)
    call addfld ('BERGO',      (/ 'lev' /), 'A', 'kg/kg/s',  'Conversion of cloud water to cloud ice from bergeron'    )
    call addfld ('MELTO',      (/ 'lev' /), 'A', 'kg/kg/s',  'Melting of cloud ice'                                    )
    call addfld ('MELTSTOT',   (/ 'lev' /), 'A', 'kg/kg/s',  'Melting of snow'                                    )
-   call addfld ('MNUDEPO',   (/ 'lev' /), 'A', 'kg/kg/s',  'Deposition Nucleation'                                    )
+   call addfld ('MNUDEPO',    (/ 'lev' /), 'A', 'kg/kg/s',  'Deposition Nucleation'                                    )
    call addfld ('HOMOO',      (/ 'lev' /), 'A', 'kg/kg/s',  'Homogeneous freezing of cloud water'                     )
    call addfld ('QCRESO',     (/ 'lev' /), 'A', 'kg/kg/s',  'Residual condensation term for cloud water'              )
    call addfld ('PRCIO',      (/ 'lev' /), 'A', 'kg/kg/s',  'Autoconversion of cloud ice to snow'                     )
@@ -1049,6 +1062,7 @@ subroutine micro_mg_cam_init(pbuf2d)
    call addfld ('MNUCCRO',    (/ 'lev' /), 'A', 'kg/kg/s',  'Heterogeneous freezing of rain to snow'                  )
    call addfld ('MNUCCRIO',   (/ 'lev' /), 'A', 'kg/kg/s',  'Heterogeneous freezing of rain to ice'                  )
    call addfld ('PRACSO',     (/ 'lev' /), 'A', 'kg/kg/s',  'Accretion of rain by snow'                               )
+   call addfld ('VAPDEPSO',   (/ 'lev' /), 'A', 'kg/kg/s',  'Vapor deposition onto snow'                            )
    call addfld ('MELTSDT',    (/ 'lev' /), 'A', 'W/kg',     'Latent heating rate due to melting of snow'              )
    call addfld ('FRZRDT',     (/ 'lev' /), 'A', 'W/kg',     'Latent heating rate due to homogeneous freezing of rain' )
    if (micro_mg_version > 1) then
@@ -1271,6 +1285,7 @@ subroutine micro_mg_cam_init(pbuf2d)
       call add_default ('PRAO     ', budget_histfile, ' ')
       call add_default ('PRAIO    ', budget_histfile, ' ')
       call add_default ('PRACSO   ', budget_histfile, ' ')
+      call add_default ('VAPDEPSO ', budget_histfile, ' ')
       call add_default ('MSACWIO  ', budget_histfile, ' ')
       call add_default ('MPDW2V   ', budget_histfile, ' ')
       call add_default ('MPDW2P   ', budget_histfile, ' ')
@@ -1588,6 +1603,7 @@ subroutine micro_mg_cam_tend_pack(state, ptend, dtime, pbuf, mgncol, mgcols, nle
    real(r8), target :: meltstot(state%psetcols,pver)
    real(r8), target :: meltgtot(state%psetcols,pver)
    real(r8), target :: pracso (state%psetcols,pver)
+   real(r8), target :: vapdepso(state%psetcols,pver)   ! Vapor deposition onto snow
    real(r8), target :: meltsdt(state%psetcols,pver)
    real(r8), target :: frzrdt (state%psetcols,pver)
    real(r8), target :: mnuccdo(state%psetcols,pver)
@@ -1637,6 +1653,7 @@ subroutine micro_mg_cam_tend_pack(state, ptend, dtime, pbuf, mgncol, mgcols, nle
 
    ! Object that packs columns with clouds/precip.
    type(MGPacker) :: packer
+   type(MGPacker) :: packerp
 
    ! Packed versions of inputs.
    real(r8) :: packed_t(mgncol,nlev)
@@ -1657,6 +1674,7 @@ subroutine micro_mg_cam_tend_pack(state, ptend, dtime, pbuf, mgncol, mgcols, nle
 
    real(r8) :: packed_p(mgncol,nlev)
    real(r8) :: packed_pdel(mgncol,nlev)
+   real(r8) :: packed_pint(mgncol,nlev+1)
 
    real(r8) :: packed_cldn(mgncol,nlev)
    real(r8) :: packed_liqcldf(mgncol,nlev)
@@ -1746,6 +1764,7 @@ subroutine micro_mg_cam_tend_pack(state, ptend, dtime, pbuf, mgncol, mgcols, nle
    real(r8), target :: packed_meltgtot(mgncol,nlev)
    real(r8), target :: packed_meltstot(mgncol,nlev)
    real(r8), target :: packed_pracs(mgncol,nlev)
+   real(r8), target :: packed_vapdeps(mgncol,nlev)
    real(r8), target :: packed_meltsdt(mgncol,nlev)
    real(r8), target :: packed_frzrdt(mgncol,nlev)
    real(r8), target :: packed_mnuccd(mgncol,nlev)
@@ -2364,6 +2383,7 @@ subroutine micro_mg_cam_tend_pack(state, ptend, dtime, pbuf, mgncol, mgcols, nle
    call physics_ptend_init(ptend, psetcols, "cldwat", ls=.true., lq=lq)
 
    packer = MGPacker(psetcols, pver, mgcols, top_lev)
+   packerp = MGPacker(psetcols, pverp, mgcols, top_lev)
    post_proc = MGPostProc(packer)
    pckdptr => packed_rate1ord_cw2pr_st ! workaround an apparent pgi compiler bug
    call post_proc%add_field(p(rate1cld), pckdptr)
@@ -2438,6 +2458,7 @@ subroutine micro_mg_cam_tend_pack(state, ptend, dtime, pbuf, mgncol, mgcols, nle
    call post_proc%add_field(p(qireso), p(packed_qires))
    call post_proc%add_field(p(mnuccro), p(packed_mnuccr))
    call post_proc%add_field(p(pracso), p(packed_pracs))
+   call post_proc%add_field(p(vapdepso), p(packed_vapdeps))
    call post_proc%add_field(p(meltsdt), p(packed_meltsdt))
    call post_proc%add_field(p(frzrdt), p(packed_frzrdt))
    call post_proc%add_field(p(mnuccdo), p(packed_mnuccd))
@@ -2515,6 +2536,7 @@ subroutine micro_mg_cam_tend_pack(state, ptend, dtime, pbuf, mgncol, mgcols, nle
 
    packed_p = packer%pack(state_loc%pmid)
    packed_pdel = packer%pack(state_loc%pdel)
+   packed_pint = packerp%pack(state_loc%pint)
 
    packed_cldn = packer%pack(ast)
    packed_liqcldf = packer%pack(alst_mic)
@@ -2612,7 +2634,7 @@ subroutine micro_mg_cam_tend_pack(state, ptend, dtime, pbuf, mgncol, mgcols, nle
               packed_nr,              packed_ns,              &
               packed_qg,              packed_ng,              &
               packed_relvar,          packed_accre_enhan,     &
-              packed_p,               packed_pdel,            &
+              packed_p,               packed_pdel, packed_pint, &
               packed_cldn, packed_liqcldf, packed_icecldf, packed_qsatfac, &
               packed_rate1ord_cw2pr_st,                       &
               packed_naai,            packed_npccn,           &
@@ -2645,7 +2667,7 @@ subroutine micro_mg_cam_tend_pack(state, ptend, dtime, pbuf, mgncol, mgcols, nle
               packed_qrsedten,        packed_qssedten,        &
               packed_pra,             packed_prc,             &
               packed_mnuccc,  packed_mnucct,  packed_msacwi,  &
-              packed_psacws,  packed_bergs,   packed_berg,    &
+              packed_psacws,  packed_bergs,   packed_vapdeps, packed_berg,    &
               packed_melt,    packed_meltstot,packed_meltgtot,  packed_homo, &
               packed_qcres,   packed_prci,    packed_prai,    &
               packed_qires,   packed_mnuccr,  packed_mnudeptot, packed_mnuccri, packed_pracs, &
@@ -3629,6 +3651,7 @@ subroutine micro_mg_cam_tend_pack(state, ptend, dtime, pbuf, mgncol, mgcols, nle
    call outfld('MNUCCDOhet',  mnuccdohet,  psetcols, lchnk, avg_subcol_field=use_subcol_microp)
    call outfld('MNUCCRO',     mnuccro,     psetcols, lchnk, avg_subcol_field=use_subcol_microp)
    call outfld('PRACSO',      pracso ,     psetcols, lchnk, avg_subcol_field=use_subcol_microp)
+   call outfld('VAPDEPSO',    vapdepso,    psetcols, lchnk, avg_subcol_field=use_subcol_microp)
    call outfld('MELTSDT',     meltsdt,     psetcols, lchnk, avg_subcol_field=use_subcol_microp)
    call outfld('FRZRDT',      frzrdt ,     psetcols, lchnk, avg_subcol_field=use_subcol_microp)
    call outfld('FICE',        nfice,       psetcols, lchnk, avg_subcol_field=use_subcol_microp)
