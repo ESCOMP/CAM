@@ -135,6 +135,7 @@ contains
     call fldlist_add(fldsFrAtm_num, fldsFrAtm, 'Sa_pbot'       )
     call fldlist_add(fldsFrAtm_num, fldsFrAtm, 'Sa_dens'       )
     call fldlist_add(fldsFrAtm_num, fldsFrAtm, 'Sa_pslv'       )
+    call fldlist_add(fldsFrAtm_num, fldsFrAtm, 'Sa_o3'         )
     call fldlist_add(fldsFrAtm_num, fldsFrAtm, 'Faxa_rainc'    )
     call fldlist_add(fldsFrAtm_num, fldsFrAtm, 'Faxa_rainl'    )
     call fldlist_add(fldsFrAtm_num, fldsFrAtm, 'Faxa_snowc'    )
@@ -869,6 +870,7 @@ contains
     real(r8), pointer :: fldptr_shum(:)    , fldptr_dens(:)
     real(r8), pointer :: fldptr_ptem(:)    , fldptr_pslv(:)
     real(r8), pointer :: fldptr_co2prog(:) , fldptr_co2diag(:)
+    real(r8), pointer :: fldptr_ozone(:)
     character(len=*), parameter :: subname='(atm_import_export:export_fields)'
     !---------------------------------------------------------------------------
 
@@ -985,6 +987,18 @@ contains
           g = g + 1
        end do
     end do
+
+    call state_getfldptr(exportState, 'Sa_o3', fldptr=fldptr_ozone, exists=exists, rc=rc)
+    if (ChkErr(rc,__LINE__,u_FILE_u)) return
+    if (exists) then
+       g = 1
+       do c = begchunk,endchunk
+          do i = 1,get_ncols_p(c)
+             fldptr_ozone(g) = cam_out(c)%ozone(i) ! atm ozone
+             g = g + 1
+          end do
+       end do
+    end if
 
     call state_getfldptr(exportState, 'Sa_co2prog', fldptr=fldptr_co2prog, exists=exists, rc=rc)
     if (ChkErr(rc,__LINE__,u_FILE_u)) return

@@ -2714,7 +2714,7 @@ Default: .false.
 
 <entry id="micro_mg_evap_rhthrsh_ifs" type="logical" category="microphys"
        group="micro_mg_nl" valid_values="" >
-Do not evaporate precipitation until RH<90% as done in the
+Do not evaporate precipitation until RH &lt; 90% as done in the
 IFS model (https://www.ecmwf.int/en/forecasts/documentation-and-support)
 Default: .false.
 </entry>
@@ -6982,6 +6982,17 @@ Default: .false.
 <entry id="carma_fields" type="char*256" category="carma"
        group="carma_inparm" valid_values="" >
 List of fluxes needed by the CARMA model, from CLM to CAM.
+Default: set by build-namelist.
+</entry>
+
+<!-- Ozone namelist variables shared between CAM and driver -->
+
+<entry id="atm_ozone_frequency" type="char*64" category="ozone_coupling"
+       group="ozone_coupling_nl" valid_values="subdaily,multiday_average">
+Frequency of surface ozone field passed from CAM to surface components.
+Surface ozone is passed every coupling interval, but this namelist flag
+indicates whether the timestep-level values are interpolated from a
+coarser temporal resolution.
 Default: set by build-namelist.
 </entry>
 

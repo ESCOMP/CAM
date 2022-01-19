@@ -146,6 +146,7 @@ GetOptions(
     "uc|use_case=s"             => \$opts{'use_case'},
     "v|verbose"                 => \$opts{'verbose'},
     "version"                   => \$opts{'version'},
+    "cmeps"                     => \$opts{'cmeps'},
 )  or usage();
 
 # Give usage message.
@@ -3950,8 +3951,17 @@ my $outfile;
 my %nl_group = ();
 foreach my $name (@nl_groups) { $nl_group{$name} = ''; }
 
-# Dry deposition and MEGAN VOC emis namelists
-@comp_groups = qw(drydep_inparm megan_emis_nl fire_emis_nl carma_inparm ndep_inparm);
+# Dry deposition, MEGAN VOC emis and ozone namelists
+@comp_groups = qw(drydep_inparm megan_emis_nl fire_emis_nl carma_inparm ndep_inparm ozone_coupling_nl);
+
+# nature of ozone data passed to surface models -- only if cmeps (nuopc) coupling is used
+if ($opts{'cmeps'}) {
+  if ($rad_prog_ozone) {
+    add_default($nl, 'atm_ozone_frequency', 'val'=>'subdaily');
+  } else {
+    add_default($nl, 'atm_ozone_frequency', 'val'=>'multiday_average');
+  }
+}
 $outfile = "$opts{'dir'}/drv_flds_in";
 $nl->write($outfile, 'groups'=>\@comp_groups);
 if ($print>=1) {
