@@ -2741,13 +2741,13 @@ Default: .false.
 <entry id="micro_mg_implicit_fall" type="logical" category="microphys"
        group="micro_mg_nl" valid_values="" >
 If .true., use implicit fall speed (sedimentation) routine for all hydrometeors. Improves numerical stability of precipitation
-Default: .false.
+Default: .true.
 </entry>
 
 <entry id="micro_mg_accre_sees_auto" type="logical" category="microphys"
        group="micro_mg_nl" valid_values="" >
 If true, then the autoconverted liquid is added to rain and removed from cloud before accretion is estimated.
-Default: .false.
+Default: .true.
 </entry>
 
 
