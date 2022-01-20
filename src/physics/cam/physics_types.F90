@@ -1162,8 +1162,8 @@ end subroutine physics_ptend_copy
        ! Check for unusually large H2 values and set to lower value.
        !------------------------------------------------------------
 
-       do i=1,ncol
-          do k=1,pver
+       do k=1,pver
+          do i=1,ncol
 
              if (state%q(i,k,ixo) < mmrMin) state%q(i,k,ixo) = mmrMin
              if (state%q(i,k,ixo2) < mmrMin) state%q(i,k,ixo2) = mmrMin
