@@ -1,0 +1,199 @@
+<?xml version="1.0"?>
+<!-- waccm_sc_1850_cam6 + smyle specific mods -->
+
+<namelist_defaults>
+
+<start_ymd>19790101</start_ymd>
+
+<!-- Solar data -->
+<solar_irrad_data_file>atm/cam/solar/SolarForcingCMIP6piControl_c160921.nc</solar_irrad_data_file>
+<solar_data_ymd>18500101</solar_data_ymd>
+<solar_data_type>FIXED</solar_data_type>
+
+<!-- Kp and F10.7 -->
+<solar_parms_data_file>atm/cam/solar/SolarForcingCMIP6piControl_c160921.nc</solar_parms_data_file>
+
+<!--Species IC -->
+<ncdata dyn="fv"  hgrid="0.9x1.25">cesm2_init/b.e21.BWsc1850.test.002/0014-01-01/b.e21.BWsc1850.test.002.cam.i.0014-01-01-00000.nc</ncdata>
+<ncdata dyn="fv"  hgrid="1.9x2.5" >atm/waccm/ic/f.e15.FWmaAMIP.f19_f19.misc08_cam5_4_81.003.cam.i.1980-01-01-00000_c160928.nc</ncdata>
+
+<!-- LBC, UBC Files -->
+<flbc_type>CYCLICAL</flbc_type>
+<flbc_cycle_yr>1850</flbc_cycle_yr>
+<flbc_file>atm/waccm/lb/LBC_17500116-20150116_CMIP6_0p5degLat_c180905.nc</flbc_file>
+<flbc_list>'CO2','CH4','N2O','CFC11','CFC12','CFC11eq'</flbc_list>
+
+<!-- QBO settings -->
+<qbo_use_forcing >.true.</qbo_use_forcing>
+<qbo_use_forcing hgrid="0.9x1.25">.false.</qbo_use_forcing>
+<qbo_cyclic>.false.</qbo_cyclic>
+<qbo_forcing_file>atm/waccm/qbo/qbocoefficients_c151023.nc</qbo_forcing_file>
+
+<!-- 1850 upper atmos forcings -->
+<waccm_forcing_type>CYCLICAL</waccm_forcing_type>
+<waccm_forcing_cycle_yr>1850</waccm_forcing_cycle_yr>
+<waccm_forcing_file>SCWACCM_forcing_zm_L70_CMIP6piControl001_MonthlyCycle1850_y21-50avg_c181012.nc</waccm_forcing_file>
+<waccm_forcing_datapath>atm/waccm/waccm_forcing</waccm_forcing_datapath>
+
+<!-- 1850 ozone data -->
+<prescribed_ozone_cycle_yr>   1850                                                                                      </prescribed_ozone_cycle_yr>
+<prescribed_ozone_datapath>   'atm/cam/ozone_strataero'                                                                 </prescribed_ozone_datapath>
+<prescribed_ozone_file    >   'ozone_strataero_cyclical_WACCM6_L70_CMIP6-piControl.001_y21-50avg_zm_5day_c180802.nc'    </prescribed_ozone_file>
+<prescribed_ozone_name    >   'O3'                                                                                      </prescribed_ozone_name>
+<prescribed_ozone_type    >   'CYCLICAL'                                                                                </prescribed_ozone_type>
+
+<!-- Prescribed stratospheric aerosols -->
+<prescribed_strataero_use_chemtrop>   .true.                                                                                    </prescribed_strataero_use_chemtrop>
+<prescribed_strataero_cycle_yr    >   1850                                                                                      </prescribed_strataero_cycle_yr>
+<prescribed_strataero_datapath    >   'atm/cam/ozone_strataero'                                                                 </prescribed_strataero_datapath>
+<prescribed_strataero_file        >   'ozone_strataero_cyclical_WACCM6_L70_CMIP6-piControl.001_y21-50avg_zm_5day_c180802.nc'    </prescribed_strataero_file>
+<prescribed_strataero_type        >   'CYCLICAL'                                                                                </prescribed_strataero_type>
+
+<!-- Prescribed oxidants for aerosol chemistry -->
+<tracer_cnst_cycle_yr >   1850                                                                                          </tracer_cnst_cycle_yr>
+<tracer_cnst_datapath >   'atm/cam/tracer_cnst'                                                                         </tracer_cnst_datapath>
+<tracer_cnst_file     >   'tracer_cnst_WACCM6_halons_3DmonthlyL70_1850climoCMIP6piControl001_y21-50avg_c180802.nc'      </tracer_cnst_file>
+<tracer_cnst_specifier>   'O3','OH','NO3','HO2','HALONS'                                                                </tracer_cnst_specifier>
+<tracer_cnst_type     >   'CYCLICAL'                                                                                    </tracer_cnst_type>
+<tracer_cnst_filelist >   ''                                                                                            </tracer_cnst_filelist>
+
+<!-- emissions -->
+
+<!-- External forcing -->
+<ext_frc_type>CYCLICAL</ext_frc_type>
+<ext_frc_cycle_yr>1850</ext_frc_cycle_yr>
+
+<!-- Surface emissions -->
+<srf_emis_type>CYCLICAL</srf_emis_type>
+<srf_emis_cycle_yr>1850</srf_emis_cycle_yr>
+
+<!-- History Files -->
+<do_circulation_diags>.true.</do_circulation_diags>
+<history_chemistry>.true.</history_chemistry>
+
+<mfilt>1,5,20,40,5,240,365,73,365</mfilt>
+<nhtfrq>0,-24,-6,-3,-24,1,-24,-120,-240</nhtfrq>
+<avgflag_pertape>'A','A','A','A','A','A','A','A','I'</avgflag_pertape>
+<ndens>2,2,2,2,2,2,1,1,1</ndens>
+
+<fincl1>
+'ABSORB:A', 'ACTREL:A', 'AODABSdn:A', 'AODBCdn:A', 'AODdnDUST1:A',
+'AODdnDUST2:A', 'AODdnDUST3:A', 'AODdnMODE1:A', 'AODdnMODE2:A',
+'AODdnMODE3:A', 'AODDUST2:A', 'AODDUST:A', 'AODNIRstdn:A',
+'AODPOMdn:A', 'AODSO4dn:A', 'AODSOAdn:A', 'AODSSdn:A', 'AODUVdn:A',
+'AODUVstdn:A', 'AODVIS:A', 'AODVISdn:A', 'AODVISstdn:A', 'AQ_SO2:A',
+'AREA:A', 'AREI:A', 'AREL:A', 'bc_a1:A', 'bc_a1DDF:A', 'bc_a1SFWET:A',
+'bc_a4:A', 'bc_a4DDF:A', 'bc_a4SFWET:A', 'bc_c1:A', 'bc_c1DDF:A',
+'bc_c1SFWET:A', 'bc_c4:A', 'bc_c4DDF:A', 'bc_c4SFWET:A', 'BROX:A',
+'BROY:A', 'BURDENBCdn', 'BURDENDUSTdn:A', 'BURDENPOMdn:A',
+'BURDENSEASALTdn:A', 'BURDENSO4dn:A', 'BURDENSOAdn:A', 'CDNUMC:A',
+'CLDICE:A', 'CLDLIQ:A', 'CLDTOT:A', 'CLOUD:A', 'CLOX:A', 'CLOY:A',
+'CME:A', 'CMFDQ:A', 'CMFMC:A', 'CMFMCDZM:A', 'CO2:A', 'CONCLD:A',
+'DF_H2O2:A', 'DF_H2SO4:A', 'DF_SO2:A', 'dgnumwet1:A', 'dgnumwet2:A',
+'dgnumwet3:A', 'DH2O2CHM:A', 'DMS:A', 'dry_deposition_NHx_as_N:A',
+'dry_deposition_NOy_as_N:A', 'Dso4_a1CHM:A', 'Dso4_a2CHM:A',
+'Dso4_a3CHM:A', 'dst_a1:A', 'dst_a1DDF:A', 'dst_a1SFWET:A',
+'dst_a2:A', 'dst_a2DDF:A', 'dst_a2SFWET:A', 'dst_a3:A', 'dst_a3DDF:A',
+'dst_a3SFWET:A', 'dst_c1:A', 'dst_c1DDF:A', 'dst_c1SFWET:A',
+'dst_c2:A', 'dst_c2DDF:A', 'dst_c2SFWET:A', 'dst_c3:A', 'dst_c3DDF:A',
+'dst_c3SFWET:A', 'DTCORE:A', 'EVAPPREC:A', 'EVAPQZM:A', 'EVAPTZM:A',
+'EXTINCTdn:A', 'EXTINCTNIRdn:A', 'EXTINCTUVdn:A', 'EXTxASYMdn:A',
+'FCTL:A', 'FLDS:A', 'FLDSC:A', 'FLNR:A', 'FLNS:A', 'FLNSC:A',
+'FLNT:A', 'FLNTC:A', 'FLUT:A', 'FLUTC:A', 'FREQI:A', 'FREQL:A',
+'FREQZM:A', 'FSDS:A', 'FSDSC:A', 'FSNR:A', 'FSNS:A', 'FSNSC:A',
+'FSNT:A', 'FSNTC:A', 'FSNTOAC:A', 'FSUTOA:A', 'GS_SO2:A', 'H2O2:A',
+'H2O:A', 'H2SO4:A', 'H2SO4M_C:A', 'H2SO4_sfnnuc1:A', 'HCL_GAS:A',
+'HNO3_GAS:A', 'HNO3_NAT:A', 'HNO3_STS:A', 'HO2:A',
+'ICEFRAC:A','jh2o2:A','KVH_CLUBB:A', 'LANDFRAC:A', 'LHFLX:A',
+'MASS:A', 'ncl_a1:A', 'ncl_a1DDF:A', 'ncl_a1SFWET:A', 'ncl_a2:A',
+'ncl_a2DDF:A', 'ncl_a2SFWET:A', 'ncl_a3:A', 'ncl_a3DDF:A',
+'ncl_a3SFWET:A', 'ncl_c1:A', 'ncl_c1DDF:A', 'ncl_c1SFWET:A',
+'ncl_c2:A', 'ncl_c2DDF:A', 'ncl_c2SFWET:A', 'ncl_c3:A', 'ncl_c3DDF:A',
+'ncl_c3SFWET:A', 'NITROP_PD:A', 'NO3:A', 'NOX:A', 'NOY:A', 'num_a1:A',
+'num_a1_CLXF:A', 'num_a1DDF:A', 'num_a2:A', 'num_a2_CLXF:A',
+'num_a2DDF:A', 'num_a2_sfnnuc1:A', 'num_a3:A', 'num_a3DDF:A',
+'num_a4:A', 'num_a4DDF:A', 'num_c1:A', 'num_c1DDF:A', 'num_c2:A',
+'num_c2DDF:A', 'num_c3:A', 'num_c3DDF:A', 'num_c4:A', 'num_c4DDF:A',
+'NUMLIQ:A', 'O3:A', 'OH:A', 'OMEGA:A', 'OMEGAT:A', 'PBLH:A',
+'PDELDRY:A', 'PHIS:A', 'pom_a1:A', 'pom_a1DDF:A', 'pom_a1SFWET:A',
+'pom_a4:A', 'pom_a4DDF:A', 'pom_a4SFWET:A', 'pom_c1:A', 'pom_c1DDF:A',
+'pom_c1SFWET:A', 'pom_c4:A', 'pom_c4DDF:A', 'pom_c4SFWET:A',
+'PRECC:A', 'PRECT:A', 'PS:A', 'PSL:A', 'PTEQ:A', 'PTTEND:A', 'Q:A',
+'QFLX:A', 'QRAIN:A', 'QREFHT:A', 'QRL:A', 'QRLC:A', 'QRS:A', 'QRSC:A',
+'QSNOW:A', 'RAD_ICE:A', 'RAD_LNAT:A', 'RAD_SULFC:A', 'REFF_AERO:A',
+'RELHUM:A', 'RHREFHT:A', 'SAD_AERO:A', 'SAD_ICE:A', 'SAD_LNAT:A',
+'SAD_SULFC:A', 'SAD_TROP:A', 'SFbc_a4:A', 'SFDMS:A', 'SFdst_a1:A',
+'SFdst_a2:A', 'SFdst_a3:A', 'SFncl_a1:A', 'SFncl_a2:A', 'SFncl_a3:A',
+'SFnum_a1:A', 'SFnum_a2:A', 'SFnum_a3:A', 'SFpom_a4:A', 'SFSO2:A',
+'SFso4_a1:A', 'SFso4_a2:A', 'SHFLX:A', 'SO2:A', 'SO2_CHML:A',
+'SO2_CHMP:A', 'SO2_CLXF:A', 'SO2_XFRC:A', 'so4_a1:A', 'so4_a1_CHMP:A',
+'so4_a1_CLXF:A', 'so4_a1DDF:A', 'so4_a1_sfgaex1:A', 'so4_a1SFWET:A',
+'so4_a2:A', 'so4_a2_CHMP:A', 'so4_a2_CLXF:A', 'so4_a2DDF:A',
+'so4_a2_sfgaex1:A', 'so4_a2_sfnnuc1:A', 'so4_a2SFWET:A', 'so4_a3:A',
+'so4_a3DDF:A', 'so4_a3_sfgaex1:A', 'so4_a3SFWET:A', 'so4_c1:A',
+'so4_c1AQH2SO4:A', 'so4_c1AQSO4:A', 'so4_c1DDF:A', 'so4_c1SFWET:A',
+'so4_c2:A', 'so4_c2AQH2SO4:A', 'so4_c2AQSO4:A', 'so4_c2DDF:A',
+'so4_c2SFWET:A', 'so4_c3:A', 'so4_c3AQH2SO4:A', 'so4_c3AQSO4:A',
+'so4_c3DDF:A', 'so4_c3SFWET:A', 'SOLIN:A', 'SOLLD:A', 'SOLSD:A',
+'SSAVIS:A', 'SST:A', 'T:A', 'TAQ:A', 'TAUBLJX:A', 'TAUBLJY:A',
+'TAUGWX:A', 'TAUGWY:A', 'TAUX:A', 'TAUY:A', 'TBRY:A', 'TCLY:A',
+'TGCLDIWP:A', 'TGCLDLWP:A', 'TMDMS:A', 'TMQ:A', 'TMSO2:A',
+'TMso4_a1:A', 'TMso4_a2:A', 'TMso4_a3:A', 'TOT_CLD_VISTAU:A',
+'TOTH:A', 'TREFHT:A', 'TREFHTMN:M', 'TREFHTMX:X', 'TROP_P:A',
+'TROP_T:A', 'TROP_Z:A', 'TS:A', 'TSMN:M', 'TSMX:X', 'TTEND_TOT:A',
+'TTGWORO:A', 'U10:A', 'U:A', 'UTGWORO:A', 'UU:A', 'V:A', 'VD01:A',
+'VV:A', 'WD_H2O2:A', 'WD_H2SO4:A', 'WD_SO2:A',
+'wet_deposition_NHx_as_N:A', 'wet_deposition_NOy_as_N:A', 'Z3:A',
+'ZMDQ:A', 'ZMDT:A', 'ZMMTT:A',
+'ZMMU:A','VTHzm','UVzm','UWzm','Uzm','Vzm','THzm','Wzm','MSKtem'
+</fincl1>
+
+<fincl7 dyn="fv">
+   'VTHzm','UVzm','UWzm','Uzm','Vzm','THzm','Wzm','MSKtem'                 
+</fincl7>
+
+<fincl2>
+ 'ACTNL:A', 'ACTREL:A', 'BURDENBCdn:A', 'BURDENDUSTdn:A',
+ 'BURDENPOMdn:A', 'BURDENSEASALTdn:A', 'BURDENSO4dn:A',
+ 'BURDENSOAdn:A', 'CDNUMC:A', 'CLDICE:A', 'CLDLIQ:A', 'CLDTOT:A',
+ 'CLOUD:A', 'CMFMC:A', 'CMFMCDZM:A', 'FCTL:A', 'FLDS:A', 'FLDSC:A',
+ 'FLNR:A', 'FLNS:A', 'FLNSC:A', 'FLNT:A', 'FLNTC:A', 'FLUT:A',
+ 'FLUTC:A', 'FSDS:A', 'FSDSC:A', 'FSNR:A', 'FSNS:A', 'FSNSC:A',
+ 'FSNTOA:A', 'FSNTOAC:A', 'LHFLX:A', 'MASS:A', 'OMEGA:A',
+ 'OMEGA500:A', 'PBLH:A', 'PDELDRY:A', 'PRECC:A', 'PRECT:A', 'PS:A',
+ 'PSL:A', 'Q:A', 'QREFHT:A', 'QSNOW:A', 'RELHUM:A', 'RHREFHT:A',
+ 'SHFLX:A', 'SOLIN:A', 'SOLLD:A', 'SOLSD:A', 'T:A', 'T500:A',
+ 'T700:A', 'T850:A', 'TAUBLJX:A', 'TAUBLJY:A', 'TAUGWX:A', 'TAUGWY:A',
+ 'TAUX:A', 'TAUY:A', 'TGCLDIWP:A', 'TGCLDLWP:A', 'TMQ:A', 'TREFHT:A',
+ 'TREFHTMN:M', 'TREFHTMX:X', 'TS:A', 'TSMN:M', 'TSMX:X', 'U:A',
+ 'U10:A', 'UTGWORO:A',
+</fincl2>
+<fincl3>
+'PRECC:A','PRECL:A','PRECSC:A','PRECSL:A','PRECT:A','PSL:I',
+'U200:A','U850:I','UBOT:I','V850:I','VBOT:I','Z300:I','Z500:I',
+'OMEGA500:A', 'FLUT:A'
+</fincl3>
+<!-- Reduce output size by removing some variables. -->
+<fexcl1>
+ 'BTAUN', 'BTAUS', 'BTAUE', 'BTAUW', 'BTAUNET', 'BUTEND1', 'BUTEND2',
+ 'BUTEND3', 'BUTEND4', 'BUTEND5','BVTGWSPEC', 'MAXQ0', 'HDEPTH',
+ 'NETDT', 'TAUN', 'TAUS', 'TAUE', 'TAUW', 'TAUGWX', 'TAUGWY','UTEND1',
+ 'UTEND2', 'UTEND3', 'UTEND4', 'UTEND5', 'FRONTGF', 'FRONTGFA',
+ 'EKGW', 'QNO', 'QRLNLTE','QRL_TOT','DUV', 'DVV'
+</fexcl1>
+
+<effgw_beres_dp>0.90D0</effgw_beres_dp>
+<gw_qbo_hdepth_scaling>0.25D0</gw_qbo_hdepth_scaling>
+<qbo_use_forcing>.false.</qbo_use_forcing>
+<tau_0_ubc>.true.</tau_0_ubc>
+<frontgfc>2.7D-15</frontgfc>
+<taubgnd>2.5D-3</taubgnd>
+<effgw_rdg_beta>0.75D0</effgw_rdg_beta>
+<effgw_rdg_beta_max>0.75D0</effgw_rdg_beta_max>
+<do_circulation_diags>.true.</do_circulation_diags>
+<history_dust>.true.</history_dust>
+<fv_nsplit>16</fv_nsplit>
+<fv_nspltrac>8</fv_nspltrac>
+<fv_nspltvrm>8</fv_nspltvrm>
+
+</namelist_defaults>
