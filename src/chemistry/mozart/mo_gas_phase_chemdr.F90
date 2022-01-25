@@ -49,6 +49,10 @@ module mo_gas_phase_chemdr
   logical :: convproc_do_aer
   integer :: ele_temp_ndx, ion_temp_ndx
 
+#if defined ( HEMCO_CESM )
+  integer :: hco_jno2_idx, hco_joh_idx
+#endif
+
 contains
 
   subroutine gas_phase_chemdr_inti()
@@ -236,6 +240,12 @@ contains
     call addfld( 'O3S_LOSS',      (/ 'lev' /), 'I', '1/sec', 'O3S loss rate const' )
 
     call chem_prod_loss_diags_init
+
+#if defined ( HEMCO_CESM )
+    ! diagnostics for HEMCO ParaNOx extension
+    hco_jno2_idx = pbuf_get_index('HCO_IN_JNO2')
+    hco_joh_idx  = pbuf_get_index('HCO_IN_JOH' )
+#endif
 
   end subroutine gas_phase_chemdr_inti
 
@@ -435,6 +445,12 @@ contains
   ! for aerosol formation....
     real(r8) :: del_h2so4_gasprod(ncol,pver)
     real(r8) :: vmr0(ncol,pver,gas_pcnst)
+
+#if defined ( HEMCO_CESM )
+  ! for HEMCO-CESM ...
+    integer  :: jno2_idx, joh_idx
+    real(r8), pointer :: hco_j_tmp_fld(:)    ! J-value pointer (sfc only) [1/s]
+#endif
 
 !
 ! CCMI
@@ -843,6 +859,33 @@ contains
     !     	... Adjust the photodissociation rates
     !-----------------------------------------------------------------------
     call phtadj( reaction_rates, invariants, invariants(:,:,indexm), ncol,pver )
+
+#if defined ( HEMCO_CESM )
+    !-------------------------- HEMCO_CESM ---------------------------------
+    !  ... save photo rxn rates for HEMCO ParaNOx, chem_mech rxns:
+    !    jo3_b            (  8)   O3 + hv ->  O + O2
+    !    jno2             ( 16)   NO2 + hv ->  NO + O
+    ! (hplin, 5/17/21)
+    !
+    ! Note hplin 1/25/22: might have to check if this rxt_idx available for
+    ! all sub-mechanisms in CAM-chem
+    !-----------------------------------------------------------------------
+    jno2_idx  = get_rxt_ndx( 'jno2' )
+    joh_idx   = get_rxt_ndx( 'jo3_b' )
+    
+    ! get the rxn rate [1/s] and write to pbuf
+    if(hco_jno2_idx > 0) then
+      call pbuf_get_field(pbuf, hco_jno2_idx, hco_j_tmp_fld)
+      ! this is already in chunk, write /pcols/ at surface
+      hco_j_tmp_fld(:ncol) = reaction_rates(:ncol,pver,jno2_idx)
+    endif
+
+    if(hco_joh_idx > 0) then
+      call pbuf_get_field(pbuf, hco_joh_idx, hco_j_tmp_fld)
+      ! this is already in chunk, write /pcols, pver/
+      hco_j_tmp_fld(:ncol) = reaction_rates(:ncol,pver,joh_idx)
+    endif
+#endif
 
     !-----------------------------------------------------------------------
     !        ... Compute the extraneous frcing at time = t(n+1)

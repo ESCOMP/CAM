@@ -10,6 +10,9 @@ module mo_srf_emissions
   use ioFileMod,     only : getfil
   use cam_logfile,   only : iulog
   use tracer_data,   only : trfld,trfile
+#if defined( HEMCO_CESM )
+  use physics_buffer,only : physics_buffer_desc
+#endif
 
   implicit none
 
@@ -37,6 +40,10 @@ module mo_srf_emissions
   type(emission), allocatable :: emissions(:)
   integer                     :: n_emis_files 
   integer :: c10h16_ndx, isop_ndx
+#if defined( HEMCO_CESM )
+  ! keep a copy of pbuf descriptor
+  type(physics_buffer_desc), pointer :: hco_pbuf2d(:,:)  ! ptr to 2d pbuf
+#endif
 
 contains
 
@@ -106,6 +113,7 @@ contains
     nn = 0
     indx(:) = 0
 
+#if !defined ( HEMCO_CESM )
     count_emis: do n=1,gas_pcnst
        if ( len_trim(srf_emis_specifier(n) ) == 0 ) then
           exit count_emis
@@ -282,6 +290,7 @@ contains
 
     c10h16_ndx = get_spc_ndx('C10H16')
     isop_ndx = get_spc_ndx('ISOP')
+#endif
 
   end subroutine srf_emissions_inti
 
@@ -305,9 +314,14 @@ contains
     !-----------------------------------------------------------------------
     integer :: m
 
+#if !defined( HEMCO_CESM )
     do m = 1,n_emis_files
        call advance_trcdata( emissions(m)%fields, emissions(m)%file, state, pbuf2d  )
     end do
+#else
+    ! save pbuf for use later in set_srf_emissions
+    hco_pbuf2d => pbuf2d
+#endif
 
   end subroutine set_srf_emissions_time
 
@@ -322,6 +336,14 @@ contains
     use string_utils, only : to_lower, GLC
     use phys_grid,    only : get_rlat_all_p, get_rlon_all_p
 
+#if defined( HEMCO_CESM )
+    !--------------------------------------------------------
+    ! ... using the physics buffer for HEMCO_CESM
+    !--------------------------------------------------------
+    use physics_buffer, only : pbuf_get_chunk, pbuf_get_field, pbuf_get_index
+    use ppgrid,         only : pver ! for vertical
+#endif
+
     implicit none
 
     !--------------------------------------------------------
@@ -330,6 +352,17 @@ contains
     integer,  intent(in)  :: ncol                  ! columns in chunk
     integer,  intent(in)  :: lchnk                 ! chunk index
     real(r8), intent(out) :: sflx(:,:) ! surface emissions ( kg/m^2/s )
+
+#if defined( HEMCO_CESM )
+    !--------------------------------------------------------
+    ! ... using the physics buffer for HEMCO_CESM
+    !--------------------------------------------------------
+    type(physics_buffer_desc), pointer :: pbuf_chnk(:) ! slice of pbuf in chnk
+    real(r8), pointer     :: pbuf_ik(:,:)              ! ptr to pbuf data (/pcols,pver/)
+    integer               :: tmpIdx                    ! pbuf field id
+    character(len=255)    :: fldname_ns                ! field name HCO_NH3
+    integer               :: RC                        ! return code
+#endif
 
     !--------------------------------------------------------
     !	... local variables
@@ -368,6 +401,7 @@ contains
 
     sflx(:,:) = 0._r8
 
+#if !defined( HEMCO_CESM )
     !--------------------------------------------------------
     !	... set non-zero emissions
     !--------------------------------------------------------
@@ -390,7 +424,52 @@ contains
        endif
 
     end do emis_loop
+#else
+    !--------------------------------------------------------
+    ! ... set HEMCO_CESM emissions 
+    ! hplin 7/19/20
+    !--------------------------------------------------------
 
+    ! for every species index retrieve the species name, compute the pbuf name,
+    ! and write it into sflx(col, n)
+    ! where n is spc_ndx
+
+    ! if the pbuf exists, set has_emis(1:gas_pcnst) to .true.
+    ! this process is supposed to be set by srf_emissions_inti but it is just
+    ! used below, so we shunt it here and decide later
+
+    ! ncol: # of columns in chunk
+    ! lchnk: chunk number
+
+    ! sflx is given in (pcols, gas_pcnst) so it is a in-chunk slice of the
+    ! srf flux specifier. maybe this loop needs to be done higher up so
+    ! we loop over the pbuf to prevent inquiries. tbd hplin 7/19/20
+
+    do n = 1, gas_pcnst
+      ! species name: solsym(n)
+      fldname_ns = 'HCO_' // trim(solsym(n))
+      tmpIdx = pbuf_get_index(fldname_ns, RC)
+      if ( tmpIdx < 0 ) then
+        if ( masterproc ) write(iulog,*) "mo_srf_emissions hemco: Field not found ", TRIM(fldname_ns)
+      else
+        ! this is already in chunk, retrieve it
+        pbuf_chnk => pbuf_get_chunk(hco_pbuf2d, lchnk)
+        call pbuf_get_field(pbuf_chnk, tmpIdx, pbuf_ik)
+
+        if(.not. associated(pbuf_ik)) then ! sanity check
+          call endrun("mo_srf_emissions hemco: FATAL - tmpIdx > 0 but pbuf_ik unassoc")
+        endif
+
+        ! for each col retrieve data from pbuf_ik(I, K)
+        sflx(1:ncol,n) = pbuf_ik(1:ncol,pver) ! only surface emissions for now, remember vertical is inverted
+
+        ! if(masterproc) write(iulog,*) "mo_srf_emissions hemco: debug added emiss for", solsym(n), maxval(sflx(1:ncol, n))
+        ! fixme: hemco process above OVERWRITES existing sflx!!! (hplin)
+      endif
+    enddo
+#endif
+
+#if !defined( HEMCO_CESM )
     call get_rlat_all_p( lchnk, ncol, rlats )
     call get_rlon_all_p( lchnk, ncol, rlons )
 
@@ -471,6 +550,7 @@ contains
        end if
 
     end do
+#endif
 
   end subroutine set_srf_emissions
 

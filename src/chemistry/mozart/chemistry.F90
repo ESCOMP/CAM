@@ -190,6 +190,10 @@ end function chem_is
     character(len=128) :: molectype
     integer :: islvd
 
+#if defined ( HEMCO_CESM )
+    integer  :: hco_jno2_idx, hco_joh_idx
+#endif
+
 !-----------------------------------------------------------------------
 ! Set the simulation chemistry variables
 !-----------------------------------------------------------------------
@@ -327,6 +331,12 @@ end function chem_is
 
     ! add fields to pbuf needed by aerosol models
     call aero_model_register()
+
+#if defined ( HEMCO_CESM )
+    ! add fields to pbuf needed by HEMCO-CESM hplin 5/17/21
+    call pbuf_add_field('HCO_IN_JNO2', 'global', dtype_r8, (/pcols/), hco_jno2_idx)
+    call pbuf_add_field('HCO_IN_JOH',  'global', dtype_r8, (/pcols/), hco_joh_idx )
+#endif
 
   end subroutine chem_register
 
