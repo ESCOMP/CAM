@@ -1925,6 +1925,11 @@ if ($silhs == 1) {
 # UNICON
 if ($unicon) { $cfg_cppdefs .= ' -DUSE_UNICON'; }
 
+# Harmonized Emissions Component (HEMCO)
+if ($hemco) {
+    $cfg_cppdefs .= ' -DMODEL_ -DMODEL_CESM -DHEMCO_CESM -DUSE_REAL8 ';
+}
+
 #-----------------------------------------------------------------------------------------------
 # CPP defines to put on Makefile
 
