@@ -309,6 +309,11 @@ contains
     use rate_diags,        only : rate_diags_calc, rate_diags_o3s_loss
     use mo_mass_xforms,    only : mmr2vmr, vmr2mmr, h2o_to_vmr, mmr2vmri
     use orbit,             only : zenith
+
+#if defined ( HEMCO_CESM )
+    use mo_chem_utls,      only : get_rxt_ndx
+#endif
+
 !
 ! for aqueous chemistry and aerosol growth
 !

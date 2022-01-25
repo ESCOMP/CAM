@@ -12,6 +12,7 @@ module mo_srf_emissions
   use tracer_data,   only : trfld,trfile
 #if defined( HEMCO_CESM )
   use physics_buffer,only : physics_buffer_desc
+  use mo_tracname,   only : solsym
 #endif
 
   implicit none
