@@ -146,6 +146,7 @@ GetOptions(
     "uc|use_case=s"             => \$opts{'use_case'},
     "v|verbose"                 => \$opts{'verbose'},
     "version"                   => \$opts{'version'},
+    "cmeps"                     => \$opts{'cmeps'},
 )  or usage();
 
 # Give usage message.
@@ -1001,7 +1002,7 @@ if ($aer_model eq 'mam' ) {
     %modal_groups = ( 'accum'  => [qw(so4 pom soa bc dst ncl)],
                       'aitken' => [qw(so4 soa ncl dst)],
                       'coarse' => [qw(dst ncl so4)],
-                      'primary_carbon' => [qw(pom bc)], 
+                      'primary_carbon' => [qw(pom bc)],
                       'coarse_strat' => [qw(so4)] );
 
     @mode_num_src  = qw(A A A A A);
@@ -1864,7 +1865,7 @@ if (($chem =~ /trop_mozart/ or $chem =~ /trop_strat/ or $chem =~ /waccm_tsmlt/) 
                    'num_a1   -> ' => 'mam4_num_a1_emis_file',
                    'num_a2   -> ' => 'num_a2_emis_file',
                    'num_a4   -> ' => 'mam4_num_a4_emis_file',
-                   );								
+                   );
     } elsif ($chem =~ /mam4/) {
         %species = (%species,
                    'SOAG     -> ' => 'soag_emis_file',
@@ -2953,6 +2954,8 @@ if (($phys =~ /cam6/ or $phys =~ /cam_dev/) and $nl->get_value('deep_scheme') =~
 # cam_dev specific namelists
 if ($phys =~ /cam_dev/ and $nl->get_value('deep_scheme') =~ /ZM/) {
     add_default($nl, 'zmconv_parcel_pbl', 'val'=>'.true.');
+} else {
+    add_default($nl, 'zmconv_parcel_pbl', 'val'=>'.false.');
 }
 
 # Radiation scheme
@@ -3994,8 +3997,17 @@ my $outfile;
 my %nl_group = ();
 foreach my $name (@nl_groups) { $nl_group{$name} = ''; }
 
-# Dry deposition and MEGAN VOC emis namelists
-@comp_groups = qw(drydep_inparm megan_emis_nl fire_emis_nl carma_inparm ndep_inparm);
+# Dry deposition, MEGAN VOC emis and ozone namelists
+@comp_groups = qw(drydep_inparm megan_emis_nl fire_emis_nl carma_inparm ndep_inparm ozone_coupling_nl);
+
+# nature of ozone data passed to surface models -- only if cmeps (nuopc) coupling is used
+if ($opts{'cmeps'}) {
+  if ($rad_prog_ozone) {
+    add_default($nl, 'atm_ozone_frequency', 'val'=>'subdaily');
+  } else {
+    add_default($nl, 'atm_ozone_frequency', 'val'=>'multiday_average');
+  }
+}
 $outfile = "$opts{'dir'}/drv_flds_in";
 $nl->write($outfile, 'groups'=>\@comp_groups);
 if ($print>=1) {
@@ -4691,7 +4703,7 @@ sub check_snapshot_settings {
         if ($use_subcol_microp =~ /$TRUE/io) {
             push (@validList_bc, ("'microp_driver_tend_subcol'"));
         }
-        push (@validList_ac, ("'aero_model_wetdep'", 
+        push (@validList_ac, ("'aero_model_wetdep'",
                               "'radiation_tend'",
                               "'aoa_tracers_timestep_tend'",
                               "'co2_cycle_set_ptend'"));

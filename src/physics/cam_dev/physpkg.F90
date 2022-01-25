@@ -87,7 +87,7 @@ module physpkg
   integer ::  dvcore_idx         = 0     ! dvcore index in physics buffer
   integer ::  dtcore_idx         = 0
   integer ::  cmfmczm_idx        = 0     ! Zhang-McFarlane convective mass fluxes
-
+  integer ::  rliqbc_idx         = 0     ! tphysbc reserve liquid 
 !=======================================================================
 contains
 !=======================================================================
@@ -228,6 +228,9 @@ contains
          call pbuf_register_subcol('PREC_SED', 'phys_register', prec_sed_idx)
          call pbuf_register_subcol('SNOW_SED', 'phys_register', snow_sed_idx)
        end if
+
+       ! Reserve liquid at end of tphysbc
+       call pbuf_add_field('RLIQBC','physpkg',dtype_r8,(/pcols/),rliqbc_idx)
 
     ! Who should add FRACIS?
     ! -- It does not seem that aero_intr should add it since FRACIS is used in convection
@@ -1394,8 +1397,9 @@ contains
     real(r8) :: zero_sc(pcols*psubcols)        ! array of zeros
     real(r8) :: zero_tracers(pcols,pcnst)
 
-    real(r8), pointer :: dlfzm(:,:)                ! ZM detrained convective cloud water mixing ratio.
-    real(r8), pointer :: cmfmczm(:,:)              ! ZM convective mass fluxes
+    real(r8), pointer :: dlfzm(:,:)            ! ZM detrained convective cloud water mixing ratio.
+    real(r8), pointer :: cmfmczm(:,:)          ! ZM convective mass fluxes
+    real(r8), pointer :: rliqbc(:)             ! tphysbc reserve liquid
 
     ! stratiform precipitation variables
     real(r8),pointer :: prec_str(:)    ! sfc flux of precip from stratiform (m/s)
@@ -1477,10 +1481,13 @@ contains
 
     if (cmfmczm_idx > 0) then
       call pbuf_get_field(pbuf, cmfmczm_idx, cmfmczm)
-      cmfmc(:ncol,:) = cmfmczm
+      cmfmc(:ncol,:) = cmfmczm(:ncol,:)
     else
       cmfmc(:ncol,:) = 0._r8
     end if
+
+    call pbuf_get_field(pbuf, rliqbc_idx, rliqbc)
+    rliq(:ncol) = rliqbc(:ncol)
 
     ! Adjust the surface fluxes to reduce instabilities in near sfc layer
     if (phys_do_flux_avg()) then
@@ -2454,6 +2461,7 @@ contains
     real(r8), pointer, dimension(:,:,:) :: fracis  ! fraction of transported species that are insoluble
 
     real(r8), pointer :: dlfzm(:,:)                ! ZM detrained convective cloud water mixing ratio.
+    real(r8), pointer :: rliqbc(:)                 ! tphysbc reserve liquid
 
     ! convective precipitation variables
     real(r8),pointer :: prec_dp(:)                ! total precipitation from ZM convection
@@ -2701,6 +2709,10 @@ contains
          (trim(cam_take_snapshot_before) == trim(cam_take_snapshot_after))) then
             call cam_snapshot_ptend_outfld(ptend, lchnk)
     end if
+
+    ! add reserve liquid to pbuf
+    call pbuf_get_field(pbuf, rliqbc_idx, rliqbc)
+    rliqbc(:ncol) = rliq(:ncol)
 
     call t_stopf('moist_convection')
 
