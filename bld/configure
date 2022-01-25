@@ -2191,7 +2191,7 @@ sub write_filepath
         # until we figure out a better compile routine.
         print $fh "$camsrcdir/src/hemco/HEMCO/src/Core\n";
         print $fh "$camsrcdir/src/hemco/HEMCO/src/Extensions\n";
-        print $fh "$camsrcdir/src/hemco/HEMCO/src/Interfaces\n";
+        print $fh "$camsrcdir/src/hemco/HEMCO/src/Interfaces/Shared\n";
     }
 
     print $fh "$camsrcdir/src/chemistry/utils\n";
