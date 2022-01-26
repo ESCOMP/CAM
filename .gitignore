@@ -1,4 +1,5 @@
 # Ignore externals
+ccs_config
 chem_proc
 cime
 components
