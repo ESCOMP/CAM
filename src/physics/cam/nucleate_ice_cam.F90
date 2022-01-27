@@ -826,7 +826,7 @@ subroutine nucleate_ice_cam_calc( &
                     nihf(i,k) = nihf(i,k) + dso4_num
                  end if
               end if
-            else
+           else
 
               ! This maintains backwards compatibility with the previous version.
               if (pmid(i,k) <= 12500._r8 .and. pmid(i,k) > 100._r8 .and. abs(state%lat(i)) >= 60._r8 * pi / 180._r8) then
@@ -838,90 +838,90 @@ subroutine nucleate_ice_cam_calc( &
                     nihf(i,k) = nihf(i,k) + dso4_num
                  end if
               end if
-            end if
+           end if
 
-            if (cam_physpkg_is("cam_dev")) then
-               !Updates for pumas v1.21+
+           if (cam_physpkg_is("cam_dev")) then
+              !Updates for pumas v1.21+
 
-               naai_hom(i,k) = nihf(i,k)/dtime
-               naai(i,k)= naai(i,k)/dtime            
+              naai_hom(i,k) = nihf(i,k)/dtime
+              naai(i,k)= naai(i,k)/dtime            
 
-               ! output activated ice (convert from #/kg -> #/m3/s)
-               nihf(i,k)     = nihf(i,k) *rho(i,k)/dtime
-               niimm(i,k)    = niimm(i,k)*rho(i,k)/dtime
-               nidep(i,k)    = nidep(i,k)*rho(i,k)/dtime
-               nimey(i,k)    = nimey(i,k)*rho(i,k)/dtime
+              ! output activated ice (convert from #/kg -> #/m3/s)
+              nihf(i,k)     = nihf(i,k) *rho(i,k)/dtime
+              niimm(i,k)    = niimm(i,k)*rho(i,k)/dtime
+              nidep(i,k)    = nidep(i,k)*rho(i,k)/dtime
+              nimey(i,k)    = nimey(i,k)*rho(i,k)/dtime
                
-               if (use_preexisting_ice) then
-                  INnso4(i,k) =so4_num*1e6_r8/dtime  ! (convert from #/cm3 -> #/m3/s)
-                  INnbc(i,k)  =soot_num*1e6_r8/dtime
-                  INndust(i,k)=dst_num*1e6_r8/dtime
-                  INondust(i,k)=odst_num*1e6_r8/dtime
-                  INFreIN(i,k)=1.0_r8          ! 1,ice nucleation occur
-                  INhet(i,k) = (niimm(i,k) + nidep(i,k))   ! #/m3, nimey not in cirrus
-                  INhom(i,k) = nihf(i,k)                 ! #/m3
-                  if (INhom(i,k).gt.1e3_r8)   then ! > 1/L
-                     INFrehom(i,k)=1.0_r8       ! 1, hom freezing occur
-                  endif
+              if (use_preexisting_ice) then
+                 INnso4(i,k) =so4_num*1e6_r8/dtime  ! (convert from #/cm3 -> #/m3/s)
+                 INnbc(i,k)  =soot_num*1e6_r8/dtime
+                 INndust(i,k)=dst_num*1e6_r8/dtime
+                 INondust(i,k)=odst_num*1e6_r8/dtime
+                 INFreIN(i,k)=1.0_r8          ! 1,ice nucleation occur
+                 INhet(i,k) = (niimm(i,k) + nidep(i,k))   ! #/m3, nimey not in cirrus
+                 INhom(i,k) = nihf(i,k)                 ! #/m3
+                 if (INhom(i,k).gt.1e3_r8)   then ! > 1/L
+                    INFrehom(i,k)=1.0_r8       ! 1, hom freezing occur
+                 endif
 
-                  ! exclude  no ice nucleaton
-                  if ((INFrehom(i,k) < 0.5_r8) .and. (INhet(i,k) < 1.0_r8))   then
-                     INnso4(i,k) =0.0_r8
-                     INnbc(i,k)  =0.0_r8
-                     INndust(i,k)=0.0_r8
-                     INondust(i,k)=0.0_r8
-                     INFreIN(i,k)=0.0_r8
-                     INhet(i,k) = 0.0_r8
-                     INhom(i,k) = 0.0_r8
-                     INFrehom(i,k)=0.0_r8
-                     wice(i,k) = 0.0_r8
-                     weff(i,k) = 0.0_r8
-                     fhom(i,k) = 0.0_r8
-                  endif
-               end if
+                 ! exclude  no ice nucleaton
+                 if ((INFrehom(i,k) < 0.5_r8) .and. (INhet(i,k) < 1.0_r8))   then
+                    INnso4(i,k) =0.0_r8
+                    INnbc(i,k)  =0.0_r8
+                    INndust(i,k)=0.0_r8
+                    INondust(i,k)=0.0_r8
+                    INFreIN(i,k)=0.0_r8
+                    INhet(i,k) = 0.0_r8
+                    INhom(i,k) = 0.0_r8
+                    INFrehom(i,k)=0.0_r8
+                    wice(i,k) = 0.0_r8
+                    weff(i,k) = 0.0_r8
+                    fhom(i,k) = 0.0_r8
+                 endif
+              endif
 
-            else ! Not cam_dev
+           else ! Not cam_dev
 
-               naai_hom(i,k) = nihf(i,k)
+              naai_hom(i,k) = nihf(i,k)
+              
+              ! output activated ice (convert from #/kg -> #/m3/s)
+              nihf(i,k)     = nihf(i,k) *rho(i,k)
+              niimm(i,k)    = niimm(i,k)*rho(i,k)
+              nidep(i,k)    = nidep(i,k)*rho(i,k)
+              nimey(i,k)    = nimey(i,k)*rho(i,k)
 
-               ! output activated ice (convert from #/kg -> #/m3/s)
-               nihf(i,k)     = nihf(i,k) *rho(i,k)
-               niimm(i,k)    = niimm(i,k)*rho(i,k)
-               nidep(i,k)    = nidep(i,k)*rho(i,k)
-               nimey(i,k)    = nimey(i,k)*rho(i,k)
+              if (use_preexisting_ice) then
+                 INnso4(i,k) =so4_num*1e6_r8 ! (convert from #/cm3 -> #/m3/s)
+                 INnbc(i,k)  =soot_num*1e6_r8
+                 INndust(i,k)=dst_num*1e6_r8
+                 INondust(i,k)=odst_num*1e6_r8
+                 INFreIN(i,k)=1.0_r8          ! 1,ice nucleation occur
+                 INhet(i,k) = (niimm(i,k) + nidep(i,k))   ! #/m3, nimey not in cirrus
+                 INhom(i,k) = nihf(i,k)                 ! #/m3
+                 if (INhom(i,k).gt.1e3_r8)   then ! > 1/L
+                    INFrehom(i,k)=1.0_r8       ! 1, hom freezing occur
+                 endif
 
-               if (use_preexisting_ice) then
-                  INnso4(i,k) =so4_num*1e6_r8 ! (convert from #/cm3 -> #/m3/s)
-                  INnbc(i,k)  =soot_num*1e6_r8
-                  INndust(i,k)=dst_num*1e6_r8
-                  INondust(i,k)=odst_num*1e6_r8
-                  INFreIN(i,k)=1.0_r8          ! 1,ice nucleation occur
-                  INhet(i,k) = (niimm(i,k) + nidep(i,k))   ! #/m3, nimey not in cirrus
-                  INhom(i,k) = nihf(i,k)                 ! #/m3
-                  if (INhom(i,k).gt.1e3_r8)   then ! > 1/L
-                     INFrehom(i,k)=1.0_r8       ! 1, hom freezing occur
-                  endif
+                 ! exclude  no ice nucleaton
+                 if ((INFrehom(i,k) < 0.5_r8) .and. (INhet(i,k) < 1.0_r8))   then
+                    INnso4(i,k) =0.0_r8
+                    INnbc(i,k)  =0.0_r8
+                    INndust(i,k)=0.0_r8
+                    INondust(i,k)=0.0_r8
+                    INFreIN(i,k)=0.0_r8
+                    INhet(i,k) = 0.0_r8
+                    INhom(i,k) = 0.0_r8
+                    INFrehom(i,k)=0.0_r8
+                    wice(i,k) = 0.0_r8
+                    weff(i,k) = 0.0_r8
+                    fhom(i,k) = 0.0_r8
+                 endif
+              end if
 
-                  ! exclude  no ice nucleaton
-                  if ((INFrehom(i,k) < 0.5_r8) .and. (INhet(i,k) < 1.0_r8))   then
-                     INnso4(i,k) =0.0_r8
-                     INnbc(i,k)  =0.0_r8
-                     INndust(i,k)=0.0_r8
-                     INondust(i,k)=0.0_r8
-                     INFreIN(i,k)=0.0_r8
-                     INhet(i,k) = 0.0_r8
-                     INhom(i,k) = 0.0_r8
-                     INFrehom(i,k)=0.0_r8
-                     wice(i,k) = 0.0_r8
-                     weff(i,k) = 0.0_r8
-                     fhom(i,k) = 0.0_r8
-                  endif
-               end if
-
-            end if ! cam_dev
-
-      end do
-   end do
+           end if ! cam_dev
+          end if
+        end do
+     end do
 
    if (.not. clim_modal_aero) then
 
