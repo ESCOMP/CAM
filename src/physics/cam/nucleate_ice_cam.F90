@@ -222,10 +222,10 @@ subroutine nucleate_ice_cam_init(mincld_in, bulk_scale_in, pbuf2d)
    
    if (cam_physpkg_is("cam_dev")) then
       ! Updates for PUMAS v1.21+
-      call addfld('NIHF',  (/ 'lev' /), 'A', '1/m3/s', 'Activated Ice Number Concentration tendency due to homogenous freezing')
-      call addfld('NIDEP', (/ 'lev' /), 'A', '1/m3/s', 'Activated Ice Number Concentration tendency due to deposition nucleation')
-      call addfld('NIIMM', (/ 'lev' /), 'A', '1/m3/s', 'Activated Ice Number Concentration tendency due to immersion freezing')
-      call addfld('NIMEY', (/ 'lev' /), 'A', '1/m3/s', 'Activated Ice Number Concentration tendency due to meyers deposition')
+      call addfld('NIHFTEN',  (/ 'lev' /), 'A', '1/m3/s', 'Activated Ice Number Concentration tendency due to homogenous freezing')
+      call addfld('NIDEPTEN', (/ 'lev' /), 'A', '1/m3/s', 'Activated Ice Number Concentration tendency due to deposition nucleation')
+      call addfld('NIIMMTEN', (/ 'lev' /), 'A', '1/m3/s', 'Activated Ice Number Concentration tendency due to immersion freezing')
+      call addfld('NIMEYTEN', (/ 'lev' /), 'A', '1/m3/s', 'Activated Ice Number Concentration tendency due to meyers deposition')
    else
       call addfld('NIHF',  (/ 'lev' /), 'A', '1/m3', 'Activated Ice Number Concentration due to homogenous freezing')
       call addfld('NIDEP', (/ 'lev' /), 'A', '1/m3', 'Activated Ice Number Concentration due to deposition nucleation')
@@ -247,13 +247,13 @@ subroutine nucleate_ice_cam_init(mincld_in, bulk_scale_in, pbuf2d)
 
       if (cam_physpkg_is("cam_dev")) then
          ! Updates for PUMAS v1.21+
-         call addfld ('INnso4',   (/ 'lev' /), 'A','1/m3/s','Number Concentration tendency so4 (in) to ice_nucleation')
-         call addfld ('INnbc',    (/ 'lev' /), 'A','1/m3/s','Number Concentration tendency bc  (in) to ice_nucleation')
-         call addfld ('INndust',  (/ 'lev' /), 'A','1/m3/s','Number Concentration tendency dust (in) ice_nucleation')
-         call addfld ('INondust',  (/ 'lev' /), 'A','1/m3/s','Number Concentration tendency dust (out) from ice_nucleation')
-         call addfld ('INhet',    (/ 'lev' /), 'A','1/m3/s', &
+         call addfld ('INnso4TEN',   (/ 'lev' /), 'A','1/m3/s','Number Concentration tendency so4 (in) to ice_nucleation')
+         call addfld ('INnbcTEN',    (/ 'lev' /), 'A','1/m3/s','Number Concentration tendency bc  (in) to ice_nucleation')
+         call addfld ('INndustTEN',  (/ 'lev' /), 'A','1/m3/s','Number Concentration tendency dust (in) ice_nucleation')
+         call addfld ('INondustTEN',  (/ 'lev' /), 'A','1/m3/s','Number Concentration tendency dust (out) from ice_nucleation')
+         call addfld ('INhetTEN',    (/ 'lev' /), 'A','1/m3/s', &
               'Tendency for contribution for in-cloud ice number density increase by het nucleation in ice cloud')
-         call addfld ('INhom',    (/ 'lev' /), 'A','1/m3/s', &
+         call addfld ('INhomTEN',    (/ 'lev' /), 'A','1/m3/s', &
               'Tendency for contribution for in-cloud ice number density increase by hom nucleation in ice cloud')
       else
          call addfld ('INnso4',   (/ 'lev' /), 'A','1/m3','Number Concentration so4 (in) to ice_nucleation')
@@ -858,8 +858,8 @@ subroutine nucleate_ice_cam_calc( &
                  INndust(i,k)=dst_num*1e6_r8/dtime
                  INondust(i,k)=odst_num*1e6_r8/dtime
                  INFreIN(i,k)=1.0_r8          ! 1,ice nucleation occur
-                 INhet(i,k) = (niimm(i,k) + nidep(i,k))   ! #/m3, nimey not in cirrus
-                 INhom(i,k) = nihf(i,k)                 ! #/m3
+                 INhet(i,k) = (niimm(i,k) + nidep(i,k))   ! #/m3/s, nimey not in cirrus
+                 INhom(i,k) = nihf(i,k)                 ! #/m3/s
                  if (INhom(i,k).gt.1e3_r8)   then ! > 1/L
                     INFrehom(i,k)=1.0_r8       ! 1, hom freezing occur
                  endif
