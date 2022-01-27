@@ -207,11 +207,12 @@ end interface
 logical :: verbose = .true.
 character(len=1), parameter :: nl = achar(10)
 
-integer, parameter :: num_mode_types = 8
+integer, parameter :: num_mode_types = 9
 integer, parameter :: num_spec_types = 8
 character(len=14), parameter :: mode_type_names(num_mode_types) = (/ &
    'accum         ', 'aitken        ', 'primary_carbon', 'fine_seasalt  ', &
-   'fine_dust     ', 'coarse        ', 'coarse_seasalt', 'coarse_dust   '  /)
+   'fine_dust     ', 'coarse        ', 'coarse_seasalt', 'coarse_dust   ', &
+   'coarse_strat  '  /)
 character(len=9), parameter :: spec_type_names(num_spec_types) = (/ &
    'sulfate  ', 'ammonium ', 'nitrate  ', 'p-organic', &
    's-organic', 'black-c  ', 'seasalt  ', 'dust     '/)

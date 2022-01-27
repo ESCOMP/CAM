@@ -2219,6 +2219,14 @@ Required for branch run.
 Default: none
 </entry>
 
+<entry id="scale_dry_air_mass" type="real" category="initial_conditions"
+       group="cam_initfiles_nl" valid_values="">
+Specify whether and how to perform dry surface pressure scaling. If less than or equal to 0.0,
+do not perform scaling. If greater than 0.0, perform scaling to scale_dry_air_mass
+value (in Pa) as the average dry surface pressure target.
+Default: set by build-namelist.
+</entry>
+
 <entry id="readtrace" type="logical"  category="initial_conditions"
        group="constituents_nl" valid_values="" >
 If TRUE, try to initialize data for all consituents by reading from the
@@ -2228,7 +2236,6 @@ try reading constituent data from the IC file; just use the
 internally-specified defaults.
 Default: TRUE
 </entry>
-
 
 <!-- COSP Cloud Simulator control LOGICALS -->
 
@@ -2547,7 +2554,7 @@ Default: 1
 
 <entry id="micro_mg_autocon_fact" type="real" category="microphys"
        group="micro_mg_nl" valid_values="" >
-Unitless ratio to directly scale the autoconversion process in microphysics as a method of accounting for unrepresented subgridscale variability. 
+Unitless ratio to directly scale the autoconversion process in microphysics as a method of accounting for unrepresented subgridscale variability.
 Default: 0.01
 </entry>
 
@@ -2707,7 +2714,7 @@ Default: .false.
 
 <entry id="micro_mg_evap_rhthrsh_ifs" type="logical" category="microphys"
        group="micro_mg_nl" valid_values="" >
-Do not evaporate precipitation until RH<90% as done in the
+Do not evaporate precipitation until RH &lt; 90% as done in the
 IFS model (https://www.ecmwf.int/en/forecasts/documentation-and-support)
 Default: .false.
 </entry>
@@ -3045,6 +3052,18 @@ Default: 0.5K perturbation
        group="zmconv_nl" valid_values="" >
 Tunable triggering threshold for convection in ZM deep scheme in units of (J kg-1).
 Default: 70.0 J kg-1
+</entry>
+
+<entry id="zmconv_parcel_pbl" type="logical" category="conv"
+       group="zmconv_nl" valid_values="" >
+Turn on ZM deep convection initial parcel properties as a function of a well mixed boundary layer
+Default: .false.
+</entry>
+
+<entry id="zmconv_tau" type="real" category="conv"
+       group="zmconv_nl" valid_values="" >
+Convective adjustment timescale in units of (s)
+Default: 3600.0 s
 </entry>
 
 <!-- Cloud sedimentation -->
@@ -3679,7 +3698,7 @@ Default: 25.0e-6 m
 
 <entry id="clubb_detphase_lowtemp" type="real" category="pblrad"
        group="clubb_params_nl" valid_values="" >
-Temperature at which detrained water is classified as entirely ice (no liquid) 
+Temperature at which detrained water is classified as entirely ice (no liquid)
 in the CLUBB parameterization in units of (K).
 Default: 238.15 K
 </entry>
@@ -4477,8 +4496,8 @@ Default: set by build-namelist
 </entry>
 
 <entry id="cam_chempkg" type="char*32" category="build"
-       group="phys_ctl_nl" valid_values="trop_mam3,trop_mam4,trop_mam7,trop_mozart,trop_strat_mam4_vbs,trop_strat_mam4_vbsext,
-                                         waccm_ma,waccm_mad_mam4,waccm_ma_mam4,waccm_ma_sulfur,waccm_sc,waccm_sc_mam4,waccm_tsmlt_mam4,
+       group="phys_ctl_nl" valid_values="trop_mam3,trop_mam4,trop_mam5,trop_mam7,trop_mozart,trop_strat_mam4_vbs,trop_strat_mam4_vbsext,
+                                         waccm_ma,waccm_mad_mam4,waccm_ma_mam4,waccm_ma_sulfur,waccm_sc,waccm_sc_mam4,waccm_tsmlt_mam4,waccm_tsmlt_mam5,
                                          terminator,none" >
 Name of the CAM chemistry package.  N.B. this variable may not be set by
 the user.  It is set by build-namelist via information in the configure
@@ -4881,7 +4900,7 @@ Default:
 </entry>
 
 <entry id="cam_take_snapshot_before" type="char*32"  category="diagnostics"
-       group="phys_ctl_nl" valid_values="chem_emissions,aoa_tracers_timestep_tend,co2_cycle_set_ptend,chem_timestep_tend,vertical_diffusion_section,aero_model_drydep,gw_tend,qbo_relax,iondrag_calc_section,physics_dme_adjust,physics_dme_adjust,dadadj_tend,convect_deep_tend,convect_shallow_tend,macrop_driver_tend,clubb_tend_cam,microp_section,microp_driver_tend_subcol,aero_model_wetdep,radiation_tend,held_suarez_tend,kessler_tend,thatcher_jablonowski_precip_tend,user_set" >
+       group="phys_ctl_nl" valid_values="chem_emissions,aoa_tracers_timestep_tend,co2_cycle_set_ptend,chem_timestep_tend,vertical_diffusion_section,aero_model_drydep,gw_tend,qbo_relax,iondrag_calc_section,physics_dme_adjust,physics_dme_adjust,dadadj_tend,convect_deep_tend,convect_shallow_tend,convect_diagnostics_calc,macrop_driver_tend,clubb_tend_cam,microp_section,microp_driver_tend_subcol,aero_model_wetdep,radiation_tend,held_suarez_tend,kessler_tend,thatcher_jablonowski_precip_tend,user_set" >
 Name of parameterization to take snapshot before running
 user_set is used when a user inserts a call to cam_snapshot_all_outfld
   using cam_snapshot_before_num as the first argument.
@@ -4889,7 +4908,7 @@ Default: Unused
 </entry>
 
 <entry id="cam_take_snapshot_after" type="char*32"  category="diagnostics"
-       group="phys_ctl_nl" valid_values="chem_emissions,aoa_tracers_timestep_tend,co2_cycle_set_ptend,chem_timestep_tend,vertical_diffusion_section,aero_model_drydep,gw_tend,qbo_relax,iondrag_calc_section,physics_dme_adjust,physics_dme_adjust,dadadj_tend,convect_deep_tend,convect_shallow_tend,macrop_driver_tend,clubb_tend_cam,microp_section,microp_driver_tend_subcol,aero_model_wetdep,radiation_tend,held_suarez_tend,kessler_tend,thatcher_jablonowski_precip_tend,user_set" >
+       group="phys_ctl_nl" valid_values="chem_emissions,aoa_tracers_timestep_tend,co2_cycle_set_ptend,chem_timestep_tend,vertical_diffusion_section,aero_model_drydep,gw_tend,qbo_relax,iondrag_calc_section,physics_dme_adjust,physics_dme_adjust,dadadj_tend,convect_deep_tend,convect_shallow_tend,convect_diagnostics_calc,macrop_driver_tend,clubb_tend_cam,microp_section,microp_driver_tend_subcol,aero_model_wetdep,radiation_tend,held_suarez_tend,kessler_tend,thatcher_jablonowski_precip_tend,user_set" >
 Name of parameterization to take snapshot after running
 user_set is used when a user inserts a call to cam_snapshot_all_outfld
   using cam_snapshot_after_num as the first argument.
@@ -6802,6 +6821,13 @@ Full pathname of cross section dataset for short wavelengh photolysis
 Default: set by build-namelist.
 </entry>
 
+<entry id="photo_max_zen" type="real" category="cam_chem"
+       group="chem_inparm" valid_values="" >
+Maximum zenith angle (degrees) used for photolysis.
+Default: set by build-namelist.
+</entry>
+
+
 <!-- Namelist read by seq_drydep_mod and shared by CAM and CLM -->
 
 <entry id="drydep_list" type="char*16(1000)" category="dry_deposition"
@@ -6956,6 +6982,17 @@ Default: .false.
 <entry id="carma_fields" type="char*256" category="carma"
        group="carma_inparm" valid_values="" >
 List of fluxes needed by the CARMA model, from CLM to CAM.
+Default: set by build-namelist.
+</entry>
+
+<!-- Ozone namelist variables shared between CAM and driver -->
+
+<entry id="atm_ozone_frequency" type="char*64" category="ozone_coupling"
+       group="ozone_coupling_nl" valid_values="subdaily,multiday_average">
+Frequency of surface ozone field passed from CAM to surface components.
+Surface ozone is passed every coupling interval, but this namelist flag
+indicates whether the timestep-level values are interpolated from a
+coarser temporal resolution.
 Default: set by build-namelist.
 </entry>
 

@@ -59,7 +59,8 @@ module zm_conv_intr
       dnlfzm_idx,    &     ! detrained convective cloud water num concen.
       dnifzm_idx,    &     ! detrained convective cloud ice num concen.
       prec_dp_idx,   &
-      snow_dp_idx
+      snow_dp_idx,   &
+      mconzm_idx           ! convective mass flux
 
    real(r8), parameter :: unset_r8 = huge(1.0_r8)
    real(r8) :: zmconv_c0_lnd = unset_r8
@@ -76,6 +77,8 @@ module zm_conv_intr
    real(r8) :: zmconv_dmpdz = unset_r8        ! Parcel fractional mass entrainment rate
    real(r8) :: zmconv_tiedke_add = unset_r8   ! Convective parcel temperature perturbation
    real(r8) :: zmconv_capelmt = unset_r8      ! Triggering thereshold for ZM convection
+   logical  :: zmconv_parcel_pbl = .false.             ! switch for parcel pbl calculation
+   real(r8) :: zmconv_tau = unset_r8          ! Timescale for convection
 
 
 !  indices for fields in the physics buffer
@@ -150,6 +153,8 @@ subroutine zm_conv_register
    call pbuf_add_field('DLFZM', 'physpkg', dtype_r8, (/pcols,pver/), dlfzm_idx)
    ! detrained convective cloud ice mixing ratio.
    call pbuf_add_field('DIFZM', 'physpkg', dtype_r8, (/pcols,pver/), difzm_idx)
+   ! convective mass fluxes
+   call pbuf_add_field('CMFMC_DP', 'physpkg', dtype_r8, (/pcols,pverp/), mconzm_idx)
 
    if (zmconv_microp) then
       ! Only add the number conc fields if the microphysics is active.
@@ -183,7 +188,8 @@ subroutine zm_conv_readnl(nlfile)
    namelist /zmconv_nl/ zmconv_c0_lnd, zmconv_c0_ocn, zmconv_num_cin, &
                         zmconv_ke, zmconv_ke_lnd, zmconv_org, &
                         zmconv_momcu, zmconv_momcd, zmconv_microp, &
-                        zmconv_dmpdz, zmconv_tiedke_add, zmconv_capelmt
+                        zmconv_dmpdz, zmconv_tiedke_add, zmconv_capelmt, &
+                        zmconv_parcel_pbl, zmconv_tau
    !-----------------------------------------------------------------------------
 
    if (masterproc) then
@@ -226,6 +232,10 @@ subroutine zm_conv_readnl(nlfile)
    if (ierr /= 0) call endrun("zm_conv_readnl: FATAL: mpi_bcast: zmconv_tiedke_add")
    call mpi_bcast(zmconv_capelmt,           1, mpi_real8, masterprocid, mpicom, ierr)
    if (ierr /= 0) call endrun("zm_conv_readnl: FATAL: mpi_bcast: zmconv_capelmt")
+   call mpi_bcast(zmconv_parcel_pbl,        1, mpi_logical, masterprocid, mpicom, ierr)
+   if (ierr /= 0) call endrun("zm_conv_readnl: FATAL: mpi_bcast: zmconv_parcel_pbl") 
+   call mpi_bcast(zmconv_tau,               1, mpi_real8, masterprocid, mpicom, ierr)
+   if (ierr /= 0) call endrun("zm_conv_readnl: FATAL: mpi_bcast: zmconv_tau")
 
 end subroutine zm_conv_readnl
 
@@ -288,7 +298,7 @@ subroutine zm_conv_init(pref_edge)
     call addfld ('ZMNTSNPD', (/ 'lev' /) , 'A', 'kg/kg/s','Net snow production from ZM convection'         )
     call addfld ('ZMEIHEAT', (/ 'lev' /) , 'A', 'W/kg'   ,'Heating by ice and evaporation in ZM convection')
 
-    call addfld ('CMFMCDZM', (/ 'ilev' /), 'A', 'kg/m2/s','Convection mass flux from ZM deep ')
+    call addfld ('CMFMC_DP', (/ 'ilev' /), 'A', 'kg/m2/s','Convection mass flux from ZM deep ')
     call addfld ('PRECCDZM', horiz_only,   'A', 'm/s','Convective precipitation rate from ZM deep')
 
     call addfld ('PCONVB',   horiz_only ,  'A', 'Pa'    ,'convection base pressure')
@@ -364,7 +374,7 @@ subroutine zm_conv_init(pref_edge)
     call zm_convi(limcnv,zmconv_c0_lnd, zmconv_c0_ocn, zmconv_ke, zmconv_ke_lnd, &
                   zmconv_momcu, zmconv_momcd, zmconv_num_cin, zmconv_org, &
                   zmconv_microp, no_deep_pbl, zmconv_tiedke_add, &
-                  zmconv_capelmt, zmconv_dmpdz)
+                  zmconv_capelmt, zmconv_dmpdz,zmconv_parcel_pbl, zmconv_tau)
 
     cld_idx         = pbuf_get_index('CLD')
     fracis_idx      = pbuf_get_index('FRACIS')
@@ -457,6 +467,7 @@ subroutine zm_conv_tend(pblh    ,mcon    ,cme     , &
    real(r8), pointer :: dnif(:,:)   ! detrained convective cloud ice num concen.
    real(r8), pointer :: lambdadpcu(:,:) ! slope of cloud liquid size distr
    real(r8), pointer :: mudpcu(:,:)     ! width parameter of droplet size distr
+   real(r8), pointer :: mconzm(:,:)     !convective mass fluxes
 
    real(r8), pointer :: mu(:,:)    ! (pcols,pver)
    real(r8), pointer :: eu(:,:)    ! (pcols,pver)
@@ -595,6 +606,7 @@ subroutine zm_conv_tend(pblh    ,mcon    ,cme     , &
 
    call pbuf_get_field(pbuf, dlfzm_idx,  dlf)
    call pbuf_get_field(pbuf, difzm_idx,  dif)
+   call pbuf_get_field(pbuf, mconzm_idx, mconzm)
 
    if (zmconv_microp) then
       call pbuf_get_field(pbuf, dnlfzm_idx, dnlf)
@@ -669,9 +681,10 @@ subroutine zm_conv_tend(pblh    ,mcon    ,cme     , &
 !
 ! Convert mass flux from reported mb/s to kg/m^2/s
 !
-   mcon(:ncol,:pver) = mcon(:ncol,:pver) * 100._r8/gravit
+   mcon(:ncol,:pverp) = mcon(:ncol,:pverp) * 100._r8/gravit
+   mconzm(:ncol,:pverp) = mcon(:ncol,:pverp)
 
-   call outfld('CMFMCDZM', mcon, pcols, lchnk)
+   call outfld('CMFMC_DP', mconzm, pcols, lchnk)
 
    ! Store upward and downward mass fluxes in un-gathered arrays
    ! + convert from mb/s to kg/m^2/s
@@ -769,7 +782,7 @@ subroutine zm_conv_tend(pblh    ,mcon    ,cme     , &
    call outfld('ZMNTPRPD', ntprprd, pcols, lchnk)
    call outfld('ZMNTSNPD', ntsnprd, pcols, lchnk)
    call outfld('ZMEIHEAT', ptend_loc%s, pcols, lchnk)
-   call outfld('CMFMCDZM   ',mcon ,  pcols   ,lchnk   )
+   call outfld('CMFMC_DP   ',mcon ,  pcols   ,lchnk   )
    call outfld('PRECCDZM   ',prec,  pcols   ,lchnk   )
 
 

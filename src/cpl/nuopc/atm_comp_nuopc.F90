@@ -24,8 +24,8 @@ module atm_comp_nuopc
   use shr_orb_mod         , only : shr_orb_decl, shr_orb_params, SHR_ORB_UNDEF_REAL, SHR_ORB_UNDEF_INT
   use cam_instance        , only : cam_instance_init, inst_suffix, inst_index
   use cam_comp            , only : cam_init, cam_run1, cam_run2, cam_run3, cam_run4, cam_final
-  use radiation           , only : radiation_nextsw_cday
   use camsrfexch          , only : cam_out_t, cam_in_t
+  use radiation           , only : nextsw_cday
   use cam_logfile         , only : iulog
   use spmd_utils          , only : spmdinit, masterproc, iam, mpicom
   use time_manager        , only : get_curr_calday, advance_timestep, get_curr_date, get_nstep, get_step_size
@@ -108,6 +108,7 @@ module atm_comp_nuopc
   character(len=*) , parameter :: orb_variable_year    = 'variable_year'
   character(len=*) , parameter :: orb_fixed_parameters = 'fixed_parameters'
 
+  real(R8) , parameter         :: grid_tol = 1.e-2_r8 ! tolerance for calculated lat/lon vs read in
 !===============================================================================
 contains
 !===============================================================================
@@ -412,7 +413,6 @@ contains
     endif
 
 !$  call omp_set_num_threads(nthrds)
-    print *,__FILE__,__LINE__,nthrds
 
     !----------------------------------------------------------------------------
     ! determine instance information
@@ -692,12 +692,12 @@ contains
 
           ! error check differences between internally generated lons and those read in
           do n = 1,lsize
-             if (abs(lonMesh(n) - lon(n)) > 1.e-12_r8 .and. abs(lonMesh(n) - lon(n)) /= 360._r8) then
+             if (abs(lonMesh(n) - lon(n)) > grid_tol .and. abs(lonMesh(n) - lon(n)) /= 360._r8) then
                 write(6,100)n,lon(n),lonMesh(n), abs(lonMesh(n)-lon(n))
 100             format('ERROR: CAM n, lonmesh(n), lon(n), diff_lon = ',i6,2(f21.13,3x),d21.5)
                 call shr_sys_abort()
              end if
-             if (abs(latMesh(n) - lat(n)) > 1.e-12_r8) then
+             if (abs(latMesh(n) - lat(n)) > grid_tol) then
                 write(6,100)n,lat(n),latMesh(n), abs(latMesh(n)-lat(n))
 101             format('ERROR: CAM n, latmesh(n), lat(n), diff_lat = ',i6,2(f21.13,3x),d21.5)
                 call shr_sys_abort()
@@ -754,6 +754,7 @@ contains
 
   !===============================================================================
   subroutine DataInitialize(gcomp, rc)
+
     type(ESMF_GridComp)  :: gcomp
     integer, intent(out) :: rc
 
@@ -768,11 +769,7 @@ contains
     integer                            :: n, fieldCount
     integer                            :: shrlogunit    ! original log unit
     integer(ESMF_KIND_I8)              :: stepno        ! time step
-    integer                            :: dtime         ! time step increment (sec)
     integer                            :: atm_cpl_dt    ! driver atm coupling time step
-    integer                            :: nstep         ! CAM nstep
-    real(r8)                           :: caldayp1      ! CAM calendar day for for next cam time step
-    real(r8)                           :: nextsw_cday   ! calendar of next atm shortwave
     logical                            :: importDone    ! true => import data is valid
     logical                            :: atCorrectTime ! true => field is at correct time
     character(CL)                      :: cvalue
@@ -886,19 +883,7 @@ contains
           if (ChkErr(rc,__LINE__,u_FILE_u)) return
        end if
 
-       ! Compute time of next radiation computation, like in run method for exact restart
-       dtime = get_step_size()
-       nstep = get_nstep()
-       if (nstep < 1 .or. dtime < atm_cpl_dt) then
-          nextsw_cday = radiation_nextsw_cday()
-       else if (dtime == atm_cpl_dt) then
-          caldayp1 = get_curr_calday(offset=int(dtime))
-          nextsw_cday = radiation_nextsw_cday()
-          if (caldayp1 /= nextsw_cday) nextsw_cday = -1._r8
-       else
-          call shr_sys_abort('dtime must be less than or equal to atm_cpl_dt')
-       end if
-
+       ! Compute time of next radiation computation
        call State_SetScalar(nextsw_cday, flds_scalar_index_nextsw_cday, exportState, &
             flds_scalar_name, flds_scalar_num, rc)
        if (ChkErr(rc,__LINE__,u_FILE_u)) return
@@ -967,7 +952,6 @@ contains
   subroutine ModelAdvance(gcomp, rc)
 
     use ESMF, only : ESMF_GridCompGet, esmf_vmget, esmf_vm
-
     ! Run CAM
 
     ! Input/output variables
@@ -993,7 +977,6 @@ contains
     real(r8)                :: mvelpp
     logical                 :: dosend      ! true => send data back to driver
     integer                 :: dtime       ! time step increment (sec)
-    integer                 :: atm_cpl_dt  ! driver atm coupling time step
     integer                 :: ymd_sync    ! Sync ymd
     integer                 :: yr_sync     ! Sync current year
     integer                 :: mon_sync    ! Sync current month
@@ -1004,8 +987,6 @@ contains
     integer                 :: mon         ! CAM current month
     integer                 :: day         ! CAM current day
     integer                 :: tod         ! CAM current time of day (sec)
-    real(r8)                :: caldayp1    ! CAM calendar day for for next cam time step
-    real(r8)                :: nextsw_cday ! calendar of next atm shortwave
     logical                 :: rstwr       ! .true. ==> write restart file before returning
     logical                 :: nlend       ! Flag signaling last time-step
     integer                 :: lbnum
@@ -1070,10 +1051,6 @@ contains
     ! Unpack import state
     if (mediator_present) then
        call t_startf ('CAM_import')
-       call State_GetScalar(importState, flds_scalar_index_nextsw_cday, nextsw_cday, &
-            flds_scalar_name, flds_scalar_num, rc)
-       if (ChkErr(rc,__LINE__,u_FILE_u)) return
-
        call State_diagnose(importState, string=subname//':IS', rc=rc)
        if (ChkErr(rc,__LINE__,u_FILE_u)) return
 
@@ -1156,23 +1133,6 @@ contains
        ! Set the coupling scalars
        ! Return time of next radiation calculation - albedos will need to be
        ! calculated by each surface model at this time
-
-       call ESMF_ClockGet( clock, TimeStep=timeStep, rc=rc)
-       if (ChkErr(rc,__LINE__,u_FILE_u)) return
-       call ESMF_TimeIntervalGet( timeStep, s=atm_cpl_dt, rc=rc )
-       if (ChkErr(rc,__LINE__,u_FILE_u)) return
-
-       dtime = get_step_size()
-       if (dtime < atm_cpl_dt) then
-          nextsw_cday = radiation_nextsw_cday()
-       else if (dtime == atm_cpl_dt) then
-          caldayp1 = get_curr_calday(offset=int(dtime))
-          nextsw_cday = radiation_nextsw_cday()
-          if (caldayp1 /= nextsw_cday) nextsw_cday = -1._r8
-       else
-          call shr_sys_abort('dtime must be less than or equal to atm_cpl_dt')
-       end if
-
        call State_SetScalar(nextsw_cday, flds_scalar_index_nextsw_cday, exportState, &
             flds_scalar_name, flds_scalar_num, rc)
        if (ChkErr(rc,__LINE__,u_FILE_u)) return
@@ -1378,6 +1338,8 @@ contains
     !--------------------------------
 
     rc = ESMF_SUCCESS
+
+    call cam_final( cam_out, cam_in )
 
     call shr_file_getLogUnit (shrlogunit)
     call shr_file_setLogUnit (iulog)

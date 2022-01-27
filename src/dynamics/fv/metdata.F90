@@ -1318,6 +1318,7 @@ contains
 
     character(len=*), intent(in) :: filename ! present dynamical dataset filename
     character(len=256) :: incr_filename      ! next filename in the sequence
+    character(len=*), parameter :: subname = 'incr_filename'
 
     ! set new next_filename ...
 
@@ -1344,7 +1345,7 @@ contains
        if( istat /= 0 ) then
           write(iulog,*) 'incr_flnm: incstr returned ', istat
           write(iulog,*) '           while trying to decrement ',trim( fn_new )
-          call endrun
+          call endrun (subname // ':: ERRROR - check atm.log for error message')
        end if
 
     else
@@ -1394,6 +1395,7 @@ contains
     type(file_desc_t), intent(out) :: fids(2) ! ids of files that contains these recs
     real(r8), intent(in) :: time    ! time of interest
     real(r8), intent(out):: datatm, datatp
+    character(len=*), parameter :: subname = 'find_times'
 
     integer np1        ! current forward time index of dataset
     integer n,i      ! 
@@ -1427,7 +1429,7 @@ contains
     write(iulog,*)' datatp = ',datatp
     write(iulog,*)' all_data_times = ',all_data_times
 
-    call endrun
+    call endrun (subname // ':: ERRROR - check atm.log for error message')
 
 20  continue
 
@@ -2066,6 +2068,7 @@ contains
 
     character(len=256) :: filepath   
     character(len=256) :: filen   
+    character(len=*), parameter :: subname = 'open_met_datafile'
     integer :: year, month, day, dsize, i, timesize
     integer :: dateid,secid
     integer, allocatable , dimension(:) :: dates, datesecs
@@ -2135,12 +2138,12 @@ contains
           call get_dimension( fileid, 'lon', dsize )
           if (dsize /= im) then
              write(iulog,*)'open_met_datafile: lonsiz=',dsize,' must = ',im
-             call endrun
+             call endrun (subname // ':: ERRROR - check atm.log for error message')
           endif
           call get_dimension( fileid, 'lat', dsize )
           if (dsize /= jm) then
              write(iulog,*)'open_met_datafile: latsiz=',dsize,' must = ',jm
-             call endrun
+             call endrun (subname // ':: ERRROR - check atm.log for error message')
           endif
           call get_dimension( fileid, 'lev', dsize )
           met_levels = min( dsize, km )

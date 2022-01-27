@@ -10,8 +10,9 @@ save
 
 public :: &
    radiation_readnl,         &
-   radiation_nextsw_cday,    &
    radiation_do
+
+real(r8), public, protected :: nextsw_cday = -1._r8 ! future radiation calday for surface models
 
 !========================================================================================
 contains
@@ -39,17 +40,6 @@ function radiation_do(op, timestep)
    radiation_do = .false.
 
 end function radiation_do
-
-!========================================================================================
-
-real(r8) function radiation_nextsw_cday()
-  
-   ! Returns calendar day of next sw radiation calculation
-   !---------------------------------------------------------------------------
-
-   radiation_nextsw_cday = -1._r8
-
-end function radiation_nextsw_cday
 
 !========================================================================================
 

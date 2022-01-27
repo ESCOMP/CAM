@@ -36,7 +36,7 @@ use pio,                 only: file_desc_t, var_desc_t, &
                                pio_seterrorhandling, pio_bcast_error, &
                                pio_inq_varid, &
                                pio_def_var, pio_def_dim, &
-                               pio_put_var, pio_get_var
+                               pio_put_var, pio_get_var, pio_put_att
 
 use cam_abortutils,      only: endrun
 use error_messages,      only: handle_err
@@ -58,6 +58,8 @@ public :: &
    radiation_read_restart,   &!
    radiation_tend,           &! compute heating rates and fluxes
    rad_out_t                  ! type for diagnostic outputs
+
+real(r8), public, protected :: nextsw_cday       ! future radiation calday for surface models
 
 type rad_out_t
    real(r8) :: solin(pcols)         ! Solar incident flux
@@ -142,6 +144,7 @@ real(r8), parameter :: cgs2mks = 1.e-3_r8
 
 type(var_desc_t), allocatable :: abstot_desc(:)
 type(var_desc_t) :: emstot_desc, absnxt_desc(4)
+type(var_desc_t) :: nextsw_cday_desc
 
 logical  :: use_rad_uniform_angle = .false. ! if true, use the namelist rad_uniform_angle for the zenith calculation
 real(r8) :: rad_uniform_angle = -99._r8
@@ -318,8 +321,9 @@ real(r8) function radiation_nextsw_cday()
    integer :: nstep      ! timestep counter
    logical :: dosw       ! true => do shosrtwave calc   
    integer :: offset     ! offset for calendar day calculation
-   integer :: dTime      ! integer timestep size
+   integer :: dtime      ! integer timestep size
    real(r8):: calday     ! calendar day of 
+   real(r8):: caldayp1   ! calendar day of next time-step
    !-----------------------------------------------------------------------
 
    radiation_nextsw_cday = -1._r8
@@ -337,6 +341,12 @@ real(r8) function radiation_nextsw_cday()
    end do
    if(radiation_nextsw_cday == -1._r8) then
       call endrun('error in radiation_nextsw_cday')
+   end if
+
+   ! determine if next radiation time-step not equal to next time-step
+   if (get_nstep() >= 1) then
+      caldayp1 = get_curr_calday(offset=int(dtime))
+      if (caldayp1 /= radiation_nextsw_cday) radiation_nextsw_cday = -1._r8
    end if
         
 end function radiation_nextsw_cday
@@ -392,6 +402,11 @@ subroutine radiation_init(pbuf2d)
    if (use_rad_dt_cosz)  then
       dtime  = get_step_size()
       dt_avg = real(iradsw*dtime, r8)
+   end if
+
+   ! Surface components to get radiation computed today
+   if (.not. is_first_restart_step()) then
+      nextsw_cday = get_curr_calday()
    end if
 
    ! Get physics buffer indices
@@ -567,6 +582,9 @@ subroutine radiation_define_restart(file)
 
    call pio_seterrorhandling(File, PIO_BCAST_ERROR)
 
+   ierr = pio_def_var(File, 'nextsw_cday', pio_int, nextsw_cday_desc)
+   ierr = pio_put_att(File, nextsw_cday_desc, 'long_name', 'future radiation calday for surface models')
+
    if (radiation_do('aeres')) then
 
       grid_id = cam_grid_id('physgrid')
@@ -624,6 +642,8 @@ subroutine radiation_write_restart(file)
    integer :: nhdims
    integer :: ncol
    !----------------------------------------------------------------------------
+
+   ierr = pio_put_var(File, nextsw_cday_desc, (/ nextsw_cday /))
 
    if ( radiation_do('aeres')  ) then
          
@@ -739,6 +759,9 @@ subroutine radiation_read_restart(file)
               gdims(1:nhdims+1), absnxt_3d(:,:,i,:), vardesc)
       end do
    end if
+
+   ierr = pio_inq_varid(File, 'nextsw_cday', vardesc)
+   ierr = pio_get_var(File, vardesc, nextsw_cday)
 
 end subroutine radiation_read_restart
   
@@ -936,6 +959,10 @@ subroutine radiation_tend( &
    dolw     = radiation_do('lw')      ! do longwave heating calc this timestep?
 
    doabsems = radiation_do('absems')  ! do absorptivity/emissivity calc this timestep?
+
+   ! Get time of next radiation calculation - albedos will need to be
+   ! calculated by each surface model at this time
+   nextsw_cday = radiation_nextsw_cday()
 
    if (dosw .or. dolw) then
 
