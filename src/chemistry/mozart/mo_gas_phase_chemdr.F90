@@ -961,7 +961,6 @@ contains
 
        wrk(:ncol,:) = (vmr(:ncol,:,h2o_ndx) - wrk(:ncol,:))*delt_inverse
        call outfld( 'QDCHEM',   wrk(:ncol,:),         ncol, lchnk )
-       call outfld( 'HNO3_GAS', vmr(:ncol,:,hno3_ndx), ncol ,lchnk )
 
        !-----------------------------------------------------------------------
        !         ... aerosol settling
