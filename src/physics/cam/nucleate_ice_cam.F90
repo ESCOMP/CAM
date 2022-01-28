@@ -931,10 +931,18 @@ subroutine nucleate_ice_cam_calc( &
 
    end if
 
-   call outfld('NIHF',   nihf, pcols, lchnk)
-   call outfld('NIIMM', niimm, pcols, lchnk)
-   call outfld('NIDEP', nidep, pcols, lchnk)
-   call outfld('NIMEY', nimey, pcols, lchnk)
+   if (cam_physpkg_is("cam_dev")) then
+      ! Updates for PUMAS v1.21+
+      call outfld('NIHFTEN',   nihf, pcols, lchnk)
+      call outfld('NIIMMTEN', niimm, pcols, lchnk)
+      call outfld('NIDEPTEN', nidep, pcols, lchnk)
+      call outfld('NIMEYTEN', nimey, pcols, lchnk)
+   else
+      call outfld('NIHF',   nihf, pcols, lchnk)
+      call outfld('NIIMM', niimm, pcols, lchnk)
+      call outfld('NIDEP', nidep, pcols, lchnk)
+      call outfld('NIMEY', nimey, pcols, lchnk)
+   end if
    call outfld('NIREGM', regm, pcols, lchnk)
    call outfld('NISUBGRID', subgrid, pcols, lchnk)
    call outfld('NITROP_PD', trop_pd, pcols, lchnk)
@@ -943,12 +951,22 @@ subroutine nucleate_ice_cam_calc( &
       call outfld( 'fhom' , fhom, pcols, lchnk)
       call outfld( 'WICE' , wice, pcols, lchnk)
       call outfld( 'WEFF' , weff, pcols, lchnk)
-      call outfld('INnso4  ',INnso4 , pcols,lchnk)
-      call outfld('INnbc   ',INnbc  , pcols,lchnk)
-      call outfld('INndust ',INndust, pcols,lchnk)
-      call outfld('INondust ',INondust, pcols,lchnk)
-      call outfld('INhet   ',INhet  , pcols,lchnk)
-      call outfld('INhom   ',INhom  , pcols,lchnk)
+      if (cam_physpkg_is("cam_dev")) then
+         ! Updates for PUMAS v1.21+
+         call outfld('INnso4TEN',INnso4 , pcols,lchnk)
+         call outfld('INnbcTEN',INnbc  , pcols,lchnk)
+         call outfld('INndustTEN',INndust, pcols,lchnk)
+         call outfld('INondustTEN',INondust, pcols,lchnk)
+         call outfld('INhetTEN',INhet  , pcols,lchnk)
+         call outfld('INhomTEN',INhom  , pcols,lchnk)
+      else
+         call outfld('INnso4  ',INnso4 , pcols,lchnk)
+         call outfld('INnbc   ',INnbc  , pcols,lchnk)
+         call outfld('INndust ',INndust, pcols,lchnk)
+         call outfld('INondust ',INondust, pcols,lchnk)
+         call outfld('INhet   ',INhet  , pcols,lchnk)
+         call outfld('INhom   ',INhom  , pcols,lchnk)
+      end if
       call outfld('INFrehom',INFrehom,pcols,lchnk)
       call outfld('INFreIN ',INFreIN, pcols,lchnk)
    end if
