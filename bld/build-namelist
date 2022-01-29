@@ -146,6 +146,7 @@ GetOptions(
     "uc|use_case=s"             => \$opts{'use_case'},
     "v|verbose"                 => \$opts{'verbose'},
     "version"                   => \$opts{'version'},
+    "cmeps"                     => \$opts{'cmeps'},
 )  or usage();
 
 # Give usage message.
@@ -908,6 +909,7 @@ if ($aer_model eq 'mam' ) {
   my $aero_modes = '3mode';
   if ($chem =~ /_mam7/) {$aero_modes = '7mode';}
   if ($chem =~ /_mam4/) {$aero_modes = '4mode';}
+  if ($chem =~ /_mam5/) {$aero_modes = '5mode';}
 
   my @mode_names;
   my @mode_types;
@@ -971,6 +973,28 @@ if ($aer_model eq 'mam' ) {
                       'primary_carbon' => [qw(pom bc)] );
 
     @mode_num_src  = qw(A A A A);
+
+  }  elsif($aero_modes eq '5mode') {
+      # For 5 modes
+
+    # MAM rad_climate settings.  The externally mixed quantities in the modal aerosol
+    # model are the modes.
+    push @aero_names, qw(mam5_mode1 mam5_mode2 mam5_mode3 mam5_mode4 mam5_mode5);
+    push @aerosources, qw(M: M: M: M: M:);
+
+    # Each of the mode names put into the @aero_names array needs to be defined.
+    @mode_names    = qw(mam5_mode1 mam5_mode2 mam5_mode3 mam5_mode4 mam5_mode5);
+    @mode_types    = qw(accum aitken coarse primary_carbon coarse_strat);
+    @mode_num      = qw(num_a1 num_a2 num_a3 num_a4 num_a5);
+    @mode_num_cw   = qw(num_c1 num_c2 num_c3 num_c4 num_c5);
+
+    %modal_groups = ( 'accum'  => [qw(so4 pom soa bc dst ncl)],
+                      'aitken' => [qw(so4 soa ncl dst)],
+                      'coarse' => [qw(dst ncl so4)],
+                      'primary_carbon' => [qw(pom bc)],
+                      'coarse_strat' => [qw(so4)] );
+
+    @mode_num_src  = qw(A A A A A);
 
   } elsif($aero_modes eq '7mode') {
 
@@ -1494,7 +1518,7 @@ elsif ($carma eq 'tholin') {
 
 # turn on stratospheric aerosol forcings in CAM6 configurations
 my $chem_has_ocs = chem_has_species($cfg, 'OCS');
-if ($phys =~ /cam6/ and $chem =~ /_mam/) {
+if (($phys =~ /cam6/ or $phys =~ /cam_dev/) and $chem =~ /_mam/) {
   # turn on volc forcings in cam6 -- prognostic or prescribed
   if ( $chem_has_ocs ) {
       # turn on prognostic stratospheric aerosols
@@ -1526,7 +1550,7 @@ my $het_chem = chem_has_species($cfg, 'N2O5');
 
 # Default for CAM6, is that prescribed_strataero_3modes is TRUE, but allow user to override
 my $prescribed_strataero_3modes = $FALSE;
-if ($phys =~ /cam6/) {
+if ($phys =~ /cam6/ or $phys =~ /cam_dev/) {
    $prescribed_strataero_3modes = $TRUE;
 }
 if (defined $nl->get_value('prescribed_strataero_3modes')) {
@@ -1758,7 +1782,7 @@ my $megan_emis = defined $nl->get_value('megan_specifier');
 if ( $megan_emis ) { add_default($nl, 'megan_factors_file'); }
 
 # Tropospheric full chemistry options
-if (($chem =~ /trop_mozart/ or $chem =~ /trop_strat/ or $chem =~ /waccm_tsmlt/) and ($phys !~ /cam6/)) {
+if (($chem =~ /trop_mozart/ or $chem =~ /trop_strat/ or $chem =~ /waccm_tsmlt/) and ($phys !~ /cam6/) and ($phys !~ /cam_dev/)) {
 
     # Surface emission datasets:
     my %verhash;
@@ -1806,12 +1830,23 @@ if (($chem =~ /trop_mozart/ or $chem =~ /trop_strat/ or $chem =~ /waccm_tsmlt/) 
                    'num_a2   -> ' => 'num_a2_emis_file',
                    );
         %verhash = ('ver'=>'mam');
-    } elsif ($chem =~ /_tsmlt_mam4/ or $chem =~ /mam4_vbs/) {
+    } elsif ($chem =~ /_tsmlt_mam4/ or $chem =~ /_tsmlt_mam5/ or $chem =~ /mam4_vbs/) {
         %species = (%species,
                    'BENZENE  -> ' => 'soa_benzene_emis_file',
                    'XYLENES  -> ' => 'soa_xylene_emis_file',
                    'TOLUENE  -> ' => 'soa_toluene_emis_file',
                    'IVOC     -> ' => 'ivocbb_emis_file',
+                   'bc_a4    -> ' => 'bc_a4_emis_file',
+                   'pom_a4   -> ' => 'pom_a4_emis_file',
+                   'so4_a1   -> ' => 'so4_a1_emis_file',
+                   'so4_a2   -> ' => 'so4_a2_emis_file',
+                   'num_a1   -> ' => 'mam4_num_a1_emis_file',
+                   'num_a2   -> ' => 'num_a2_emis_file',
+                   'num_a4   -> ' => 'mam4_num_a4_emis_file',
+                   );
+    } elsif ($chem =~ /mam5/) {
+        %species = (%species,
+                   'SOAG     -> ' => 'soag_emis_file',
                    'bc_a4    -> ' => 'bc_a4_emis_file',
                    'pom_a4   -> ' => 'pom_a4_emis_file',
                    'so4_a1   -> ' => 'so4_a1_emis_file',
@@ -1881,7 +1916,7 @@ if (($chem =~ /trop_mozart/ or $chem =~ /trop_strat/ or $chem =~ /waccm_tsmlt/) 
                    'num_a1 -> ' => 'num_a1_ext_file',
                    'num_a2 -> ' => 'num_a2_ext_file', );
       $cyc_yr = '2000';
-    } elsif ($chem =~ /_tsmlt_mam4/ or $chem =~ /mam4_vbs/) {
+    } elsif ($chem =~ /_tsmlt_mam4/ or $chem =~ /_tsmlt_mam5/ or $chem =~ /mam4_vbs/) {
       %species = ( 'NO2    -> ' => 'no2_aircraft_emis_file',
                    'SO2    -> ' => 'so2_ext_file',
                    'so4_a1 -> ' => 'so4_a1_ext_file',
@@ -1893,6 +1928,16 @@ if (($chem =~ /trop_mozart/ or $chem =~ /trop_strat/ or $chem =~ /waccm_tsmlt/) 
                    'num_a4 -> ' => 'mam4_num_a4_ext_file',
                    'SVOC -> ' => 'svocbb_ext_file' );
       $cyc_yr = '2000';
+    }  elsif ($chem =~ /mam5/) {
+      %species = ( 'NO2    -> ' => 'no2_aircraft_emis_file',
+                   'SO2    -> ' => 'so2_ext_file',
+                   'so4_a1 -> ' => 'so4_a1_ext_file',
+                   'so4_a2 -> ' => 'so4_a2_ext_file',
+                   'pom_a4 -> ' => 'pom_a4_ext_file',
+                   'bc_a4  -> ' => 'bc_a4_ext_file',
+                   'num_a1 -> ' => 'mam4_num_a1_ext_file',
+                   'num_a2 -> ' => 'num_a2_ext_file',
+                   'num_a4 -> ' => 'mam4_num_a4_ext_file' );
     } elsif ($chem =~ /mam4/) {
       %species = ( 'NO2    -> ' => 'no2_aircraft_emis_file',
                    'SO2    -> ' => 'so2_ext_file',
@@ -2084,7 +2129,7 @@ if ($chem eq 'trop_mam3') {
 }
 
 # CMIP6 emissions
-if ($chem =~ /_mam4/ and $phys =~ /cam6/) {
+if (($chem =~ /_mam4/ or $chem =~ /_mam5/) and ($phys =~ /cam6/ or $phys =~ /cam_dev/)) {
     my %species;
 
     # Surface emission datasets:
@@ -2222,6 +2267,8 @@ if ($chem =~ /_mam4/ and $phys =~ /cam6/) {
         }
     }
 
+    # Note, this section might need to be modified if cam_dev values
+    #   diverge from cam6 values
     my %verhash = ('ver'=>'cam6');
     my $first = 1;
     my $pre = "";
@@ -2418,7 +2465,7 @@ if ($chem =~ /_mam4/ and $phys =~ /cam6/) {
     }
 }
 
-if ($chem eq 'trop_mam4' or $chem eq 'waccm_sc_mam4') {
+if ($chem eq 'trop_mam4' or $chem eq 'waccm_sc_mam4' or $chem eq 'trop_mam5') {
 
     # Prescribed species
     if ($chem eq 'waccm_sc_mam4') {
@@ -2851,11 +2898,18 @@ if (($chem ne 'none') and ($chem ne 'terminator')) {
 add_default($nl, 'deep_scheme');
 
 # Aerosol convective processes
-if ($phys =~ /cam6/ and $nl->get_value('deep_scheme') =~ /ZM/) {
+if (($phys =~ /cam6/ or $phys =~ /cam_dev/) and $nl->get_value('deep_scheme') =~ /ZM/) {
     add_default($nl, 'convproc_do_aer', 'val'=>'.true.');
     add_default($nl, 'convproc_do_evaprain_atonce', 'val'=>'.true.');
     add_default($nl, 'convproc_pom_spechygro', 'val'=>'0.2D0');
     add_default($nl, 'convproc_wup_max', 'val'=>'4.0D0');
+}
+
+# cam_dev specific namelists
+if ($phys =~ /cam_dev/ and $nl->get_value('deep_scheme') =~ /ZM/) {
+    add_default($nl, 'zmconv_parcel_pbl', 'val'=>'.true.');
+} else {
+    add_default($nl, 'zmconv_parcel_pbl', 'val'=>'.false.');
 }
 
 # Radiation scheme
@@ -3088,6 +3142,13 @@ if ($clubb_sgs  =~ /$TRUE/io) {
    add_default($nl, 'clubb_mf_nup');
 }
 
+# Force exit if running cam_dev and CLUBB is off
+if ($phys eq 'cam_dev') {
+    if ($clubb_sgs  =~ /$FALSE/io) {
+        die "$ProgName - ERROR: If running cam_dev physics, do_clubb_sgs must be .true.\n";
+    }
+}
+
 # Tuning for wet scavenging of modal aerosols
 if ($chem =~ /_mam/) {
     add_default($nl, 'sol_facti_cloud_borne');
@@ -3178,6 +3239,7 @@ if (!$simple_phys) {
     add_default($nl, 'zmconv_dmpdz');
     add_default($nl, 'zmconv_tiedke_add');
     add_default($nl, 'zmconv_capelmt');
+    add_default($nl, 'zmconv_tau');
 }
 
 # moist convection rainwater coefficients
@@ -3270,7 +3332,7 @@ if ($chem =~ /_mam(\d)/) {
 # By default, orographic waves are always on
 if (!$simple_phys) {
 
-    if ($phys =~ /cam6/) {
+    if ($phys =~ /cam6/ or $phys =~ /cam_dev/) {
 
        add_default($nl, 'use_gw_oro',        'val'=>'.false.');
 
@@ -3889,8 +3951,17 @@ my $outfile;
 my %nl_group = ();
 foreach my $name (@nl_groups) { $nl_group{$name} = ''; }
 
-# Dry deposition and MEGAN VOC emis namelists
-@comp_groups = qw(drydep_inparm megan_emis_nl fire_emis_nl carma_inparm ndep_inparm);
+# Dry deposition, MEGAN VOC emis and ozone namelists
+@comp_groups = qw(drydep_inparm megan_emis_nl fire_emis_nl carma_inparm ndep_inparm ozone_coupling_nl);
+
+# nature of ozone data passed to surface models -- only if cmeps (nuopc) coupling is used
+if ($opts{'cmeps'}) {
+  if ($rad_prog_ozone) {
+    add_default($nl, 'atm_ozone_frequency', 'val'=>'subdaily');
+  } else {
+    add_default($nl, 'atm_ozone_frequency', 'val'=>'multiday_average');
+  }
+}
 $outfile = "$opts{'dir'}/drv_flds_in";
 $nl->write($outfile, 'groups'=>\@comp_groups);
 if ($print>=1) {
@@ -4360,9 +4431,10 @@ sub check_input_files {
     # Treat special cases...
 
     # These namelist variables are arrays of strings.
-    my @vars = qw(aircraft_specifier ext_frc_specifier srf_emis_specifier mode_defs
-                  rad_climate rad_diag_1 rad_diag_2 rad_diag_3 rad_diag_4 rad_diag_5
-                  rad_diag_6 rad_diag_7 rad_diag_8 rad_diag_9 rad_diag_10);
+    my @vars = qw(aircraft_specifier csw_specifier ext_frc_specifier
+                  rad_climate rad_diag_1 rad_diag_2 rad_diag_3 rad_diag_4
+                  rad_diag_5 rad_diag_6 rad_diag_7 rad_diag_8 rad_diag_9
+                  rad_diag_10 srf_emis_specifier mode_defs);
 
     foreach my $var (@vars) {
 
@@ -4385,7 +4457,7 @@ sub check_input_files {
                 # Extract name and filename
                 if ($spec =~ m/\s*(\w+)      # name of species preceded by optional whitespace
                                \s*->\s*      # -> separator surrounded by optional whitespace
-                               (\S+)         # filename (all characters up to optional whitespace)
+                               (.+)          # filename and possible coefficient(all characters up to optional whitespace)
                               /xo) {
                     my $name = $1;
                     my $file = $2;
@@ -4577,6 +4649,27 @@ sub check_snapshot_settings {
         if ($chem ne 'none') {
             push (@validList_bc, ("'chem_timestep_tend'"));
         }
+    } elsif ($phys =~ /cam_dev/) {
+        # CAM_DEV physpkg
+        push(@validList_ac, ("'chem_emissions'",
+                             "'clubb_tend_cam'",
+                             "'microp_section'"));
+        if ($use_subcol_microp =~ /$TRUE/io) {
+            push (@validList_bc, ("'microp_driver_tend_subcol'"));
+        }
+        push (@validList_ac, ("'aero_model_wetdep'",
+                              "'radiation_tend'",
+                              "'aoa_tracers_timestep_tend'",
+                              "'co2_cycle_set_ptend'"));
+        if ($chem ne 'none') {
+            push (@validList_ac, ("'chem_timestep_tend'"));
+        }
+        push (@validList_ac, ("'vertical_diffusion_section'",
+                              "'aero_model_drydep'", "'gw_tend'",
+                              "'qbo_relax'", "'iondrag_calc_section'",
+                              "'physics_dme_adjust'"));
+        push (@validList_bc, ("'dadadj_tend'", "'convect_deep_tend'",
+                              "'convect_diagnostics_calc'"));
     } else {
         # CAM physpkg
         push(@validList_ac, ("'chem_emissions'",

@@ -3,7 +3,7 @@
 !===============================================================================
 module cloud_cover_diags
 
-  use shr_kind_mod,  only: r8=>shr_kind_r8
+  use shr_kind_mod,  only: r8=>shr_kind_r8, shr_kind_CS
   use ppgrid,        only: pcols, pver,pverp
   use cam_history,   only: addfld, add_default, outfld, horiz_only
   use phys_control,  only: phys_getopts
@@ -15,6 +15,18 @@ module cloud_cover_diags
   public :: cloud_cover_diags_init
   public :: cloud_cover_diags_out
 
+   real(r8) plowmax             ! Max prs for low cloud cover range
+   real(r8) plowmin             ! Min prs for low cloud cover range
+   real(r8) pmedmax             ! Max prs for mid cloud cover range
+   real(r8) pmedmin             ! Min prs for mid cloud cover range
+   real(r8) phghmax             ! Max prs for hgh cloud cover range
+   real(r8) phghmin             ! Min prs for hgh cloud cover range
+!
+   parameter (plowmax = 120000._r8,plowmin = 70000._r8, &
+              pmedmax =  70000._r8,pmedmin = 40000._r8, &
+              phghmax =  40000._r8,phghmin =  5000._r8)
+
+
 contains
 
 !===============================================================================
@@ -23,13 +35,21 @@ subroutine cloud_cover_diags_init(sampling_seq)
 
   character(len=*), intent(in) :: sampling_seq
   logical :: history_amwg         ! output the variables used by the AMWG diag package
+  character(len=shr_kind_CS) :: long_name_string
 
   call addfld ('CLOUD', (/ 'lev' /), 'A','fraction','Cloud fraction'                        , sampling_seq=sampling_seq)
   call addfld ('CLDTOT',horiz_only,  'A','fraction','Vertically-integrated total cloud'     , sampling_seq=sampling_seq)
-  call addfld ('CLDLOW',horiz_only,  'A','fraction','Vertically-integrated low cloud'       , sampling_seq=sampling_seq)
-  call addfld ('CLDMED',horiz_only,  'A','fraction','Vertically-integrated mid-level cloud' , sampling_seq=sampling_seq)
-  call addfld ('CLDHGH',horiz_only,  'A','fraction','Vertically-integrated high cloud'      , sampling_seq=sampling_seq)
 
+  write(long_name_string,999) 'Vertically-integrated low cloud from ', plowmin, ' to ', plowmax, ' Pa'
+  call addfld ('CLDLOW',horiz_only,  'A','fraction',long_name_string , sampling_seq=sampling_seq)
+
+  write(long_name_string,999) 'Vertically-integrated mid-level cloud from ', pmedmin, ' to ', pmedmax, ' Pa'
+  call addfld ('CLDMED',horiz_only,  'A','fraction',long_name_string , sampling_seq=sampling_seq)
+
+  write(long_name_string,999) 'Vertically-integrated high cloud from ', phghmin, ' to ', phghmax, ' Pa'
+  call addfld ('CLDHGH',horiz_only,  'A','fraction',long_name_string , sampling_seq=sampling_seq)
+
+999 format(A,F7.0,A,F7.0,A)
   ! determine the add_default fields
   call phys_getopts(history_amwg_out           = history_amwg  )
  
@@ -128,17 +148,6 @@ subroutine cldsav(lchnk   ,ncol    , &
    real(r8) clrsky(pcols)       ! Max-random clear sky fraction
    real(r8) clrskymax(pcols)    ! Maximum overlap clear sky fraction
 !------------------------------Parameters-------------------------------
-   real(r8) plowmax             ! Max prs for low cloud cover range
-   real(r8) plowmin             ! Min prs for low cloud cover range
-   real(r8) pmedmax             ! Max prs for mid cloud cover range
-   real(r8) pmedmin             ! Min prs for mid cloud cover range
-   real(r8) phghmax             ! Max prs for hgh cloud cover range
-   real(r8) phghmin             ! Min prs for hgh cloud cover range
-!
-   parameter (plowmax = 120000._r8,plowmin = 70000._r8, &
-              pmedmax =  70000._r8,pmedmin = 40000._r8, &
-              phghmax =  40000._r8,phghmin =  5000._r8)
-
    real(r8) ptypmin(4)
    real(r8) ptypmax(4)
 

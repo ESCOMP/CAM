@@ -63,10 +63,10 @@ OPTIONS
                           test_tracers, test_tracers2].
                         Default: none.
      -chem <name>       Build CAM with specified prognostic chemistry package
-                        [ trop_mam3 | trop_mam4 | trop_mam7 | trop_mozart |
+                        [ trop_mam3 | trop_mam4 | trop_mam5 | trop_mam7 | trop_mozart |
                           trop_strat_mam4_ts2 | trop_strat_mam4_vbs | trop_strat_mam4_vbsext |
                           waccm_ma | waccm_mad | waccm_mad_mam4 | waccm_ma_mam4 |
-                          waccm_ma_sulfur | waccm_sc | waccm_sc_mam4 | waccm_tsmlt_mam4 |
+                          waccm_ma_sulfur | waccm_sc | waccm_sc_mam4 | waccm_tsmlt_mam4 | waccm_tsmlt_mam5 |
                           terminator | none ].
                         Default: trop_mam4 for cam6 and trop_mam3 for cam5.
      -[no]clubb_sgs     Switch on [off] CLUBB_SGS.  Default: on for cam6, otherwise off.
@@ -96,7 +96,7 @@ OPTIONS
      -pbl <name>        Specify the PBL option [uw | hb | hbr].
      -pcols <n>         Set maximum number of columns in a chunk to <n>.
      -pergro            Switch enables building CAM for perturbation growth tests.
-     -phys <name>       Physics option [cam3 | cam4 | cam5 | cam6 |
+     -phys <name>       Physics option [cam3 | cam4 | cam5 | cam6 | cam_dev |
                                         held_suarez | adiabatic | kessler | tj2016 |
                                         spcam_sam1mom | spcam_m2005].  Default: cam6
      -prog_species <list>Comma-separate list of prognostic mozart species packages.
@@ -815,6 +815,9 @@ elsif ($phys_pkg eq 'cam5') {
 elsif ($phys_pkg eq 'cam6') {
     $microphys_pkg = 'mg2';
 }
+elsif ($phys_pkg eq 'cam_dev') {
+    $microphys_pkg = 'mg3';
+}
 elsif ($phys_pkg eq 'spcam_sam1mom') {
     $microphys_pkg = 'spcam_sam1mom';
 }
@@ -857,7 +860,7 @@ if ($print>=2) { print "CARMA microphysical model: $carma_pkg$eol"; }
 #-----------------------------------------------------------------------------------------------
 # CLUBB
 my $clubb_sgs = 0;
-if ($phys_pkg eq 'cam6') {
+if ($phys_pkg eq 'cam6' or $phys_pkg eq 'cam_dev') {
     $clubb_sgs = 1;
 }
 
@@ -946,6 +949,9 @@ elsif ($phys_pkg =~ /cam6/ and $clubb_sgs) {
 elsif ($phys_pkg =~ /cam6/ and !$clubb_sgs) {
     $macrophys_pkg = 'park';
 }
+elsif ($phys_pkg =~ /cam_dev/ and $clubb_sgs) {
+    $macrophys_pkg = 'clubb_sgs';
+}
 elsif ($phys_pkg eq 'spcam_sam1mom') {
     $macrophys_pkg = 'spcam_sam1mom';
 }
@@ -983,6 +989,9 @@ elsif ($phys_pkg =~ /cam6/ and $clubb_sgs) {
 }
 elsif ($phys_pkg =~ /cam6/ and !$clubb_sgs) {
     $pbl_pkg = 'uw';
+}
+elsif ($phys_pkg =~ /cam_dev/ and $clubb_sgs) {
+    $pbl_pkg = 'clubb_sgs';
 }
 elsif ($phys_pkg eq 'spcam_sam1mom') {
     $pbl_pkg = 'spcam_sam1mom';
@@ -1044,10 +1053,9 @@ my $rad_pkg = 'none';
 if ($phys_pkg =~ m/^cam[34]$|^spcam_sam1mom$/) {
     $rad_pkg = 'camrt';
 }
-elsif ($phys_pkg =~ m/^cam[56]$|^spcam_m2005$/) {
+elsif ($phys_pkg =~ m/^cam[56]$|^cam_dev$|^spcam_m2005$/) {
     $rad_pkg = 'rrtmg';
 }
-
 # Allow the user to override the default via the commandline.
 if (defined $opts{'rad'}) {
     $rad_pkg = lc($opts{'rad'});
@@ -1084,7 +1092,7 @@ if (defined $opts{'cosp'}) {
 my $cosp = $cfg_ref->get('cosp');
 
 # cosp is only implemented with the cam5 and cam6 physics packages
-if ($cosp and ($phys_pkg ne 'cam5' and $phys_pkg ne 'cam6')) {
+if ($cosp and ($phys_pkg ne 'cam5' and $phys_pkg ne 'cam6' and $phys_pkg ne 'cam_dev')) {
         die "configure ERROR: cosp not implemented for the $phys_pkg physics package \n";
 }
 
@@ -1275,6 +1283,8 @@ my $nlev = 0;
 if ($waccmx) {
     if ($phys_pkg eq 'cam6') {
         $nlev = 130;
+    } elsif ($phys_pkg eq 'cam_dev') {
+        $nlev = 130;
     } else {
         $nlev = 126;
     }
@@ -1286,6 +1296,9 @@ elsif ($chem_pkg =~ /waccm_/) {
     else {
         $nlev = 70;
     }
+}
+elsif ($phys_pkg eq 'cam_dev') {
+    $nlev = 32;
 }
 elsif ($phys_pkg eq 'cam6') {
     $nlev = 32;
@@ -1372,6 +1385,8 @@ if ($chem_pkg =~ '_mam3') {
     $chem_cppdefs = ' -DMODAL_AERO -DMODAL_AERO_3MODE ';
 } elsif ($chem_pkg =~ '_mam4') {
     $chem_cppdefs = ' -DMODAL_AERO -DMODAL_AERO_4MODE ';
+} elsif ($chem_pkg =~ '_mam5') {
+    $chem_cppdefs = ' -DMODAL_AERO -DMODAL_AERO_5MODE ';
 } elsif ($chem_pkg =~ '_mam7') {
     $chem_cppdefs = ' -DMODAL_AERO -DMODAL_AERO_7MODE ';
 }
@@ -2087,6 +2102,10 @@ sub write_filepath
     # offline unit driver (defaults to stub)
     print $fh "$camsrcdir/src/unit_drivers\n";
     print $fh "$camsrcdir/src/unit_drivers/${offline_drv}\n";
+
+    if ($phys_pkg eq 'cam_dev') {
+      print $fh "$camsrcdir/src/physics/cam_dev\n";
+    }
 
     if ($simple_phys) {
       print $fh "$camsrcdir/src/physics/simple\n";

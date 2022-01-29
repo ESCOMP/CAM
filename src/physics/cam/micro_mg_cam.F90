@@ -1382,6 +1382,8 @@ subroutine micro_mg_cam_init(pbuf2d)
       call pbuf_set_field(pbuf2d, evpsnow_st_idx, 0._r8)
       call pbuf_set_field(pbuf2d, prer_evap_idx,  0._r8)
       call pbuf_set_field(pbuf2d, bergso_idx, 0._r8)
+      call pbuf_set_field(pbuf2d, icswp_idx, 0._r8)
+      call pbuf_set_field(pbuf2d, cldfsnow_idx, 0._r8)
 
       if (qrain_idx > 0)   call pbuf_set_field(pbuf2d, qrain_idx, 0._r8)
       if (qsnow_idx > 0)   call pbuf_set_field(pbuf2d, qsnow_idx, 0._r8)
@@ -1400,14 +1402,16 @@ subroutine micro_mg_cam_init(pbuf2d)
 
       ! If sub-columns turned on, need to set the sub-column fields as well
       if (use_subcol_microp) then
-         call pbuf_set_field(pbuf2d, cldo_idx,   0._r8, col_type=col_type_subcol)
-         call pbuf_set_field(pbuf2d, cc_t_idx,   0._r8, col_type=col_type_subcol)
-         call pbuf_set_field(pbuf2d, cc_qv_idx,  0._r8, col_type=col_type_subcol)
-         call pbuf_set_field(pbuf2d, cc_ql_idx,  0._r8, col_type=col_type_subcol)
-         call pbuf_set_field(pbuf2d, cc_qi_idx,  0._r8, col_type=col_type_subcol)
-         call pbuf_set_field(pbuf2d, cc_nl_idx,  0._r8, col_type=col_type_subcol)
-         call pbuf_set_field(pbuf2d, cc_ni_idx,  0._r8, col_type=col_type_subcol)
-         call pbuf_set_field(pbuf2d, cc_qlst_idx,0._r8, col_type=col_type_subcol)
+         call pbuf_set_field(pbuf2d, cldo_idx,    0._r8, col_type=col_type_subcol)
+         call pbuf_set_field(pbuf2d, cc_t_idx,    0._r8, col_type=col_type_subcol)
+         call pbuf_set_field(pbuf2d, cc_qv_idx,   0._r8, col_type=col_type_subcol)
+         call pbuf_set_field(pbuf2d, cc_ql_idx,   0._r8, col_type=col_type_subcol)
+         call pbuf_set_field(pbuf2d, cc_qi_idx,   0._r8, col_type=col_type_subcol)
+         call pbuf_set_field(pbuf2d, cc_nl_idx,   0._r8, col_type=col_type_subcol)
+         call pbuf_set_field(pbuf2d, cc_ni_idx,   0._r8, col_type=col_type_subcol)
+         call pbuf_set_field(pbuf2d, cc_qlst_idx, 0._r8, col_type=col_type_subcol)
+         call pbuf_set_field(pbuf2d, icswp_idx,   0._r8, col_type=col_type_subcol)
+         call pbuf_set_field(pbuf2d, cldfsnow_idx,0._r8, col_type=col_type_subcol)
       end if
 
    end if
