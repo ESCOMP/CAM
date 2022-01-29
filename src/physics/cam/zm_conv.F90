@@ -4140,6 +4140,7 @@ if (lparcel_pbl) then
       
    do i = 1,ncol ! Loop columns
       do k = pver,msg + 1,-1
+
          if (zi(i,k+1)<= parcel_ztop(i)) then ! Has to be relative to surface geo height.  
             ipar = k
             if (k == pver) then ! Always at least the full depth of lowest model layer.
