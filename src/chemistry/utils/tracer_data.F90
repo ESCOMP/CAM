@@ -110,6 +110,12 @@ module tracer_data
      real(r8), pointer, dimension(:,:) :: weight_x => null(), weight_y => null()
      integer, pointer, dimension(:) :: count_x => null(), count_y => null()
      integer, pointer, dimension(:,:) :: index_x => null(), index_y => null()
+
+     real(r8), pointer, dimension(:,:) :: weight0_x=>null(), weight0_y=>null()
+     integer, pointer, dimension(:) :: count0_x=>null(), count0_y=>null()
+     integer, pointer, dimension(:,:) :: index0_x=>null(), index0_y=>null()
+     logical :: dist
+     
      real(r8)                        :: p0
      type(var_desc_t) :: ps_id
      logical,  allocatable, dimension(:) :: in_pbuf
@@ -162,9 +168,7 @@ contains
     use phys_grid,       only : get_rlat_all_p, get_rlon_all_p, get_ncols_p
     use dycore,          only : dycore_is
     use horizontal_interpolate, only : xy_interp_init
-#if ( defined SPMD )
-    use mpishorthand,    only: mpicom, mpir8, mpiint
-#endif
+    use spmd_utils,       only: mpicom, mstrid=>masterprocid, mpi_real8, mpi_integer
 
     implicit none
 
@@ -179,6 +183,8 @@ contains
     integer,             intent(in)    :: data_fixed_ymd
     integer,             intent(in)    :: data_fixed_tod
     character(len=*),    intent(in)    :: data_type
+
+    character(len=*), parameter :: sub = 'trcdata_init'
 
     integer :: f, mxnflds, astat
     integer :: str_yr, str_mon, str_day
@@ -197,6 +203,7 @@ contains
     real(r8):: rlats(pcols), rlons(pcols)
     integer :: lchnk, ncol, icol, i,j
     logical :: found
+    integer :: aircraft_cnt
 
     call specify_fields( specifier, flds )
 
@@ -215,6 +222,7 @@ contains
     file%fill_in_months = .false.
     file%cyclical = .false.
     file%cyclical_list = .false.
+    file%dist = .false.
 
     select case ( data_type )
     case( 'FIXED' )
@@ -588,8 +596,8 @@ contains
         call get_horiz_grid_d(plat, clat_d_out=phi)
         call get_horiz_grid_d(plon, clon_d_out=lam)
 
-        allocate(lon_global_grid_ndx(pcols,begchunk:endchunk))
-        allocate(lat_global_grid_ndx(pcols,begchunk:endchunk))
+         if(.not.allocated(lon_global_grid_ndx)) allocate(lon_global_grid_ndx(pcols,begchunk:endchunk))
+         if(.not.allocated(lat_global_grid_ndx)) allocate(lat_global_grid_ndx(pcols,begchunk:endchunk))
         lon_global_grid_ndx=-huge(1)
         lat_global_grid_ndx=-huge(1)
 
@@ -617,12 +625,36 @@ contains
         deallocate(phi,lam)
 
 ! weight_x & weight_y are weighting function for x & y interpolation
-        allocate(file%weight_x(plon,file%nlon))
-        allocate(file%weight_y(plat,file%nlat))
-        allocate(file%count_x(plon))
-        allocate(file%count_y(plat))
-        allocate(file%index_x(plon,file%nlon))
-        allocate(file%index_y(plat,file%nlat))
+        allocate(file%weight_x(plon,file%nlon), stat=astat)
+        if( astat /= 0 ) then
+           write(iulog,*) 'trcdata_init: file%weight_x allocation error = ',astat
+           call endrun('trcdata_init: failed to allocate weight_x array')
+        end if
+        allocate(file%weight_y(plat,file%nlat), stat=astat)
+        if( astat /= 0 ) then
+           write(iulog,*) 'trcdata_init: file%weight_y allocation error = ',astat
+           call endrun('trcdata_init: failed to allocate weight_y array')
+        end if
+        allocate(file%count_x(plon), stat=astat)
+        if( astat /= 0 ) then
+           write(iulog,*) 'trcdata_init: file%count_x allocation error = ',astat
+           call endrun('trcdata_init: failed to allocate count_x array')
+        end if
+        allocate(file%count_y(plat), stat=astat)
+        if( astat /= 0 ) then
+           write(iulog,*) 'trcdata_init: file%count_y allocation error = ',astat
+           call endrun('trcdata_init: failed to allocate count_y array')
+        end if
+        allocate(file%index_x(plon,file%nlon), stat=astat)
+        if( astat /= 0 ) then
+           write(iulog,*) 'trcdata_init: file%index_x allocation error = ',astat
+           call endrun('trcdata_init: failed to allocate index_x array')
+        end if
+        allocate(file%index_y(plat,file%nlat), stat=astat)
+        if( astat /= 0 ) then
+           write(iulog,*) 'trcdata_init: file%index_y allocation error = ',astat
+           call endrun('trcdata_init: failed to allocate index_y array')
+        end if
         file%weight_x(:,:) = 0.0_r8
         file%weight_y(:,:) = 0.0_r8
         file%count_x(:) = 0
@@ -630,14 +662,54 @@ contains
         file%index_x(:,:) = 0
         file%index_y(:,:) = 0
 
+        if( file%dist ) then
+           allocate(file%weight0_x(plon,file%nlon), stat=astat)
+           if( astat /= 0 ) then
+              write(iulog,*) 'trcdata_init: file%weight0_x allocation error = ',astat
+              call endrun('trcdata_init: failed to allocate weight0_x array')
+           end if
+           allocate(file%weight0_y(plat,file%nlat), stat=astat)
+           if( astat /= 0 ) then
+              write(iulog,*) 'trcdata_init: file%weight0_y allocation error = ',astat
+              call endrun('trcdata_init: failed to allocate weight0_y array')
+           end if
+           allocate(file%count0_x(plon), stat=astat)
+           if( astat /= 0 ) then
+              write(iulog,*) 'trcdata_init: file%count0_x allocation error = ',astat
+              call endrun('trcdata_init: failed to allocate count0_x array')
+           end if
+           allocate(file%count0_y(plat), stat=astat)
+           if( astat /= 0 ) then
+              write(iulog,*) 'trcdata_init: file%count0_y allocation error = ',astat
+              call endrun('trcdata_init: failed to allocate count0_y array')
+           end if
+           allocate(file%index0_x(plon,file%nlon), stat=astat)
+           if( astat /= 0 ) then
+              write(iulog,*) 'trcdata_init: file%index0_x allocation error = ',astat
+              call endrun('trcdata_init: failed to allocate index0_x array')
+           end if
+           allocate(file%index0_y(plat,file%nlat), stat=astat)
+           if( astat /= 0 ) then
+              write(iulog,*) 'trcdata_init: file%index0_y allocation error = ',astat
+              call endrun('trcdata_init: failed to allocate index0_y array')
+           end if
+           file%weight0_x(:,:) = 0.0_r8
+           file%weight0_y(:,:) = 0.0_r8
+           file%count0_x(:) = 0
+           file%count0_y(:) = 0
+           file%index0_x(:,:) = 0
+           file%index0_y(:,:) = 0
+        endif
+
         if(masterproc) then
 ! compute weighting
-            call xy_interp_init(file%nlon,file%nlat,file%lons,file%lats,plon,plat,file%weight_x,file%weight_y)
+            call xy_interp_init(file%nlon,file%nlat,file%lons,file%lats, &
+                                plon,plat,file%weight_x,file%weight_y,file%dist)
 
             do i2=1,plon
                file%count_x(i2) = 0
                do i1=1,file%nlon
-                  if(file%weight_x(i2,i1).gt.0.0_r8 ) then
+                  if(file%weight_x(i2,i1)>0.0_r8 ) then
                      file%count_x(i2) = file%count_x(i2) + 1
                      file%index_x(i2,file%count_x(i2)) = i1
                   endif
@@ -647,22 +719,65 @@ contains
             do j2=1,plat
                file%count_y(j2) = 0
                do j1=1,file%nlat
-                  if(file%weight_y(j2,j1).gt.0.0_r8 ) then
+                  if(file%weight_y(j2,j1)>0.0_r8 ) then
                      file%count_y(j2) = file%count_y(j2) + 1
                      file%index_y(j2,file%count_y(j2)) = j1
                   endif
                enddo
             enddo
-        endif
 
-#if ( defined SPMD)
-        call mpibcast(file%weight_x, plon*file%nlon, mpir8 , 0, mpicom)
-        call mpibcast(file%weight_y, plat*file%nlat, mpir8 , 0, mpicom)
-        call mpibcast(file%count_x, plon, mpiint , 0, mpicom)
-        call mpibcast(file%count_y, plat, mpiint , 0, mpicom)
-        call mpibcast(file%index_x, plon*file%nlon, mpiint , 0, mpicom)
-        call mpibcast(file%index_y, plat*file%nlat, mpiint , 0, mpicom)
-#endif
+           if( file%dist ) then
+            call xy_interp_init(file%nlon,file%nlat,file%lons,file%lats,&
+                                plon,plat,file%weight0_x,file%weight0_y,file%dist)
+
+            do i2=1,plon
+               file%count0_x(i2) = 0
+               do i1=1,file%nlon
+                  if(file%weight0_x(i2,i1)>0.0_r8 ) then
+                     file%count0_x(i2) = file%count0_x(i2) + 1
+                     file%index0_x(i2,file%count0_x(i2)) = i1
+                  endif
+               enddo
+            enddo
+
+            do j2=1,plat
+               file%count0_y(j2) = 0
+               do j1=1,file%nlat
+                  if(file%weight0_y(j2,j1)>0.0_r8 ) then
+                     file%count0_y(j2) = file%count0_y(j2) + 1
+                     file%index0_y(j2,file%count0_y(j2)) = j1
+                  endif
+               enddo
+            enddo
+           endif
+        endif
+   
+        call mpi_bcast(file%weight_x, plon*file%nlon, mpi_real8 , mstrid, mpicom,ierr)
+        if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: file%weight_x")
+        call mpi_bcast(file%weight_y, plat*file%nlat, mpi_real8 , mstrid, mpicom,ierr)
+        if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: file%weight_y")
+        call mpi_bcast(file%count_x, plon, mpi_integer , mstrid, mpicom,ierr)
+        if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: file%count_x")
+        call mpi_bcast(file%count_y, plat, mpi_integer , mstrid, mpicom,ierr)
+        if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: file%count_y")
+        call mpi_bcast(file%index_x, plon*file%nlon, mpi_integer , mstrid, mpicom,ierr)
+        if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: file%index_x")
+        call mpi_bcast(file%index_y, plat*file%nlat, mpi_integer , mstrid, mpicom,ierr)
+        if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: file%index_y")
+        if( file%dist ) then
+           call mpi_bcast(file%weight0_x, plon*file%nlon, mpi_real8 , mstrid, mpicom,ierr)
+           if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: file%weight0_x")
+           call mpi_bcast(file%weight0_y,  plat*file%nlat, mpi_real8 , mstrid, mpicom,ierr)
+           if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: file%weight0_y")
+           call mpi_bcast(file%count0_x, plon, mpi_integer , mstrid, mpicom,ierr)
+           if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: file%count0_x")
+           call mpi_bcast(file%count0_y, plon, mpi_integer , mstrid, mpicom,ierr)
+           if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: file%count0_y")
+           call mpi_bcast(file%index0_x, plon*file%nlon, mpi_integer , mstrid, mpicom,ierr)
+           if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: file%index0_x")
+           call mpi_bcast(file%index0_y,  plat*file%nlat, mpi_integer , mstrid, mpicom,ierr)
+           if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: file%index0_y")
+        endif
     endif
 
   end subroutine trcdata_init
@@ -1087,7 +1202,7 @@ contains
           datatimep = all_data_times(np1) !+ file%offset_time
        ! When stepTime, datatimep may not equal the time (as only datatimem is used)
        ! Should not break other runs?
-          if ( (time .ge. datatimem) .and. (time .lt. datatimep) ) then
+          if ( (time >= datatimem) .and. (time < datatimep) ) then
              times_found = .true.
              exit find_times_loop
           endif
@@ -1626,16 +1741,27 @@ contains
    if(file%weight_by_lat) then
 
      call t_startf('xy_interp')
-
-     do c = begchunk,endchunk
+     if( file%dist ) then
+      do c = begchunk,endchunk
         ncols = get_ncols_p(c)
         lons(:ncols) = lon_global_grid_ndx(:ncols,c)
         lats(:ncols) = lat_global_grid_ndx(:ncols,c)
 
-        call xy_interp(file%nlon,file%nlat,file%nlev,plon,plat,pcols,ncols,file%weight_x,file%weight_y,wrk3d_in, &
-             loc_arr(:,:,c-begchunk+1), lons,lats,file%count_x,file%count_y,file%index_x,file%index_y)
-     enddo
+        call xy_interp(file%nlon,file%nlat,file%nlev,plon,plat,pcols,ncols, &
+                       file%weight0_x,file%weight0_y,wrk3d_in,loc_arr(:,:,c-begchunk+1),  &
+                       lons,lats,file%count0_x,file%count0_y,file%index0_x,file%index0_y) 
+      enddo
+     else
+      do c = begchunk,endchunk
+        ncols = get_ncols_p(c)
+        lons(:ncols) = lon_global_grid_ndx(:ncols,c)
+        lats(:ncols) = lat_global_grid_ndx(:ncols,c)
 
+        call xy_interp(file%nlon,file%nlat,file%nlev,plon,plat,pcols,ncols,&
+                       file%weight_x,file%weight_y,wrk3d_in,loc_arr(:,:,c-begchunk+1), &
+                       lons,lats,file%count_x,file%count_y,file%index_x,file%index_y)
+      enddo
+     endif
      call t_stopf('xy_interp')
 
    else
@@ -1839,7 +1965,7 @@ contains
                 else if(file%conserve_column) then
                    call vert_interp_mixrat(ncol,file%nlev,pver,state(c)%pint, &
                         datain, data_out(:,:), &
-                        file%p0,ps,file%hyai,file%hybi)
+                        file%p0,ps,file%hyai,file%hybi,file%dist)
                 else
                    call vert_interp(ncol, file%nlev, pin, state(c)%pmid, datain, data_out(:,:) )
                 endif
@@ -2263,20 +2389,20 @@ contains
 
     do i = 1, ntrg
        tl = trg_x(i)
-       if ( (tl.lt.src_x(nsrc+1)).and.(trg_x(i+1).gt.src_x(1)) ) then
+       if ( (tl<src_x(nsrc+1)).and.(trg_x(i+1)>src_x(1)) ) then
           do sil = 1,nsrc
-             if ( (tl-src_x(sil))*(tl-src_x(sil+1)).le.0.0_r8 ) then
+             if ( (tl-src_x(sil))*(tl-src_x(sil+1))<=0.0_r8 ) then
                 exit
              end if
           end do
 
-          if ( tl.lt.src_x(1) ) sil = 1
+          if ( tl<src_x(1) ) sil = 1
 
           y = 0.0_r8
           bot = max(tl,src_x(1))
           top = trg_x(i+1)
           do j = sil, nsrc
-             if ( top.gt.src_x(j+1) ) then
+             if ( top>src_x(j+1) ) then
                 y = y+(src_x(j+1)-bot)*src(j)/(src_x(j+1)-src_x(j))
                 bot = src_x(j+1)
              else
@@ -2290,12 +2416,12 @@ contains
        end if
     end do
 
-    if ( trg_x(1).gt.src_x(1) ) then
+    if ( trg_x(1)>src_x(1) ) then
        top = trg_x(1)
        bot = src_x(1)
        y = 0.0_r8
        do j = 1, nsrc
-          if ( top.gt.src_x(j+1) ) then
+          if ( top>src_x(j+1) ) then
              y = y+(src_x(j+1)-bot)*src(j)/(src_x(j+1)-src_x(j))
              bot = src_x(j+1)
           else
@@ -2310,7 +2436,7 @@ contains
   end subroutine interpz_conserve
 
 !------------------------------------------------------------------------------
-   subroutine vert_interp_mixrat( ncol, nsrc, ntrg, trg_x, src, trg, p0, ps, hyai, hybi)
+   subroutine vert_interp_mixrat( ncol, nsrc, ntrg, trg_x, src, trg, p0, ps, hyai, hybi, use_flight_distance)
 
     implicit none
 
@@ -2320,6 +2446,7 @@ contains
     real(r8)              :: src_x(nsrc+1)         ! source coordinates
     real(r8), intent(in)      :: trg_x(pcols,ntrg+1)         ! target coordinates
     real(r8), intent(in)      :: src(pcols,nsrc)             ! source array
+    logical, intent(in)   :: use_flight_distance                    ! .true. = flight distance, .false. = mixing ratio 
     real(r8), intent(out)     :: trg(pcols,ntrg)             ! target array
 
     real(r8) :: ps(pcols), p0, hyai(nsrc+1), hybi(nsrc+1)
@@ -2335,59 +2462,77 @@ contains
 
     do n = 1,ncol
 
-    do i=1,nsrc+1
-     src_x(i) = p0*hyai(i)+ps(n)*hybi(i)
-    enddo
+       do i=1,nsrc+1
+          src_x(i) = p0*hyai(i)+ps(n)*hybi(i)
+       enddo
 
-    do i = 1, ntrg
-       tl = trg_x(n,i+1)
-       if( (tl.gt.src_x(1)).and.(trg_x(n,i).lt.src_x(nsrc+1)) ) then
-          do sil = 1,nsrc
-             if( (tl-src_x(sil))*(tl-src_x(sil+1)).le.0.0_r8 ) then
-                exit
-             end if
-          end do
+       do i = 1, ntrg
+          tl = trg_x(n,i+1)
+          if( (tl>src_x(1)).and.(trg_x(n,i)<src_x(nsrc+1)) ) then
+             do sil = 1,nsrc
+                if( (tl-src_x(sil))*(tl-src_x(sil+1))<=0.0_r8 ) then
+                   exit
+                end if
+             end do
 
-          if( tl.gt.src_x(nsrc+1)) sil = nsrc
+          if( tl>src_x(nsrc+1)) sil = nsrc
 
+             y = 0.0_r8
+             bot = min(tl,src_x(nsrc+1))
+             top = trg_x(n,i)
+             do j = sil,1,-1
+                if( top<src_x(j) ) then
+                    if(use_flight_distance) then
+                        y = y+(bot-src_x(j))*src(n,j)/(src_x(j+1)-src_x(j))
+                    else
+                        y = y+(bot-src_x(j))*src(n,j)
+                    endif
+                    bot = src_x(j)
+                else
+                   if(use_flight_distance) then
+                      y = y+(bot-top)*src(n,j)/(src_x(j+1)-src_x(j))
+                   else
+                      y = y+(bot-top)*src(n,j)
+                   endif
+                   exit
+                endif
+             enddo
+             trg(n,i) = y
+          else
+             trg(n,i) = 0.0_r8
+          end if
+       end do
+
+       if( trg_x(n,ntrg+1)<src_x(nsrc+1) ) then
+          top = trg_x(n,ntrg+1)
+          bot = src_x(nsrc+1)
           y = 0.0_r8
-          bot = min(tl,src_x(nsrc+1))
-          top = trg_x(n,i)
-          do j = sil,1,-1
-           if( top.lt.src_x(j) ) then
-             y = y+(bot-src_x(j))*src(n,j)
-            bot = src_x(j)
-           else
-            y = y+(bot-top)*src(n,j)
-            exit
-           endif
+          do j=nsrc,1,-1
+             if( top<src_x(j) ) then
+                if(use_flight_distance) then
+                   y = y+(bot-src_x(j))*src(n,j)/(src_x(j+1)-src_x(j))
+                else
+                   y = y+(bot-src_x(j))*src(n,j)
+                endif
+                bot = src_x(j)
+             else
+                if(use_flight_distance) then
+                   y = y+(bot-top)*src(n,j)/(src_x(j+1)-src_x(j))
+                else
+                   y = y+(bot-top)*src(n,j)
+                endif
+                exit
+             endif
           enddo
-          trg(n,i) = y
-       else
-        trg(n,i) = 0.0_r8
-       end if
-    end do
+          trg(n,ntrg) = trg(n,ntrg)+y
+       endif
 
-    if( trg_x(n,ntrg+1).lt.src_x(nsrc+1) ) then
-     top = trg_x(n,ntrg+1)
-     bot = src_x(nsrc+1)
-     y = 0.0_r8
-     do j=nsrc,1,-1
-      if( top.lt.src_x(j) ) then
-       y = y+(bot-src_x(j))*src(n,j)
-       bot = src_x(j)
-      else
-       y = y+(bot-top)*src(n,j)
-       exit
-      endif
-     enddo
-     trg(n,ntrg) = trg(n,ntrg)+y
-    endif
-
-! turn mass into mixing ratio
-    do i=1,ntrg
-     trg(n,i) = trg(n,i)/(trg_x(n,i+1)-trg_x(n,i))
-    enddo
+       ! turn mass into mixing ratio
+       if(.not. use_flight_distance) then
+          do i=1,ntrg
+             trg(n,i) = trg(n,i)/(trg_x(n,i+1)-trg_x(n,i))
+          enddo
+       endif
 
     enddo
 
@@ -2442,16 +2587,16 @@ contains
        !
        do kk=kkstart,levsiz-1
           do i=1,ncol
-             if (pin(i,kk).lt.pmid(i,k) .and. pmid(i,k).le.pin(i,kk+1)) then
+             if (pin(i,kk)<pmid(i,k) .and. pmid(i,k)<=pin(i,kk+1)) then
                 kupper(i) = kk
              end if
           end do
        end do
        ! interpolate or extrapolate...
        do i=1,ncol
-          if (pmid(i,k) .lt. pin(i,1)) then
+          if (pmid(i,k) < pin(i,1)) then
              dataout(i,k) = datain(i,1)*pmid(i,k)/pin(i,1)
-          else if (pmid(i,k) .gt. pin(i,levsiz)) then
+          else if (pmid(i,k) > pin(i,levsiz)) then
              dataout(i,k) = datain(i,levsiz)
           else
              dpu = pmid(i,k) - pin(i,kupper(i))

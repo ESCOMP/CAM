@@ -375,9 +375,9 @@ ifneq ($(strip $(FV3CORE_LIBDIR)),)
   mod_path += -I$(FV3CORE_LIBDIR)
 endif
 
-# PGI
+# PGI and NVHPC compilers
 
-ifeq ($(FC_TYPE),pgi)
+ifneq (,$(filter $(FC_TYPE),pgi nvhpc pgi-gpu nvhpc-gpu))
 
   CPPDEF        += -DNO_R16 -DCPRPGI $(NO_CONTIGUOUS_FLAG)
   CFLAGS        += -gopt -O2

@@ -56,7 +56,6 @@ contains
     use time_mod,          only: TimeLevel_t,  timelevel_qdp, tevolve
     use dimensions_mod,    only: lcp_moist
     use fvm_control_volume_mod, only: fvm_struct
-    use control_mod,       only: raytau0
     use physconst,         only: get_cp, thermodynamic_active_species_num
     use physconst,         only: get_kappa_dry, dry_air_species_num
     use physconst,         only: thermodynamic_active_species_idx_dycore
@@ -107,9 +106,6 @@ contains
     !                 (K&G 2nd order method has CFL=4. tiny CFL improvement not worth 2nd order)
     !
 
-    if (dry_air_species_num > 0) &
-      call endrun('ERROR: SE dycore not ready for species dependent thermodynamics - ABORT')
-
     call omp_set_nested(.true.)
 
     ! default weights for computing mean dynamics fluxes
@@ -150,7 +146,6 @@ contains
 
     dt_vis = dt
 
-    if (raytau0>0) call rayleigh_friction(elem,n0,nets,nete,dt)
     if (tstep_type==1) then
       ! RK2-SSP 3 stage.  matches tracer scheme. optimal SSP CFL, but
       ! not optimal for regular CFL
@@ -444,7 +439,7 @@ contains
     !
     !  take one timestep of:
     !          u(:,:,:,np) = u(:,:,:,np) +  dt2*nu*laplacian**order ( u )
-    !          T(:,:,:,np) = T(:,:,:,np) +  dt2*nu_s*laplacian**order ( T )
+    !          T(:,:,:,np) = T(:,:,:,np) +  dt2*nu_t*laplacian**order ( T )
     !
     !
     !  For correct scaling, dt2 should be the same 'dt2' used in the leapfrog advace
@@ -454,8 +449,8 @@ contains
     use dimensions_mod, only: np, nlev, nc, ntrac, npsq, qsize
     use dimensions_mod, only: hypervis_dynamic_ref_state,ksponge_end
     use dimensions_mod, only: nu_scale_top,nu_lev,kmvis_ref,kmcnd_ref,rho_ref,km_sponge_factor
-    use dimensions_mod, only: kmvisi_ref,kmcndi_ref,rhoi_ref
-    use control_mod,    only: nu, nu_s, hypervis_subcycle,hypervis_subcycle_sponge, nu_p, nu_top
+    use dimensions_mod, only: kmvisi_ref,kmcndi_ref,nu_t_lev
+    use control_mod,    only: nu, nu_t, hypervis_subcycle,hypervis_subcycle_sponge, nu_p, nu_top
     use control_mod,    only: molecular_diff
     use hybrid_mod,     only: hybrid_t!, get_loop_ranges
     use element_mod,    only: element_t
@@ -486,7 +481,7 @@ contains
     integer :: kbeg, kend, kblk
     real (kind=r8), dimension(np,np,2,nlev,nets:nete)      :: vtens
     real (kind=r8), dimension(np,np,nlev,nets:nete)        :: ttens, dptens
-    real (kind=r8), dimension(np,np,nlev,nets:nete)        :: dp3d_ref, T_ref
+    real (kind=r8), dimension(np,np,nlev,nets:nete)        :: dp3d_ref, T_ref, pmid_ref
     real (kind=r8), dimension(np,np,nets:nete)             :: ps_ref
     real (kind=r8), dimension(0:np+1,0:np+1,nlev)          :: corners
     real (kind=r8), dimension(2,2,2)                       :: cflux
@@ -499,8 +494,6 @@ contains
     real (kind=r8), dimension(np,np)            :: tmp, tmp2
     real (kind=r8), dimension(np,np,ksponge_end,nets:nete):: kmvis,kmcnd,rho_dry
     real (kind=r8), dimension(np,np,ksponge_end+1):: kmvisi,kmcndi
-    real (kind=r8), dimension(np,np,ksponge_end+1):: pint,rhoi_dry
-    real (kind=r8), dimension(np,np,ksponge_end  ):: pmid
     real (kind=r8), dimension(np,np,nlev)       :: tmp_kmvis,tmp_kmcnd
     real (kind=r8), dimension(np,np,2)          :: lap_v
     real (kind=r8)                              :: v1,v2,v1new,v2new,dt,heating,T0,T1
@@ -510,7 +503,7 @@ contains
     real (kind=r8), dimension(ksponge_end)      :: dtemp,du,dv
     real (kind=r8)                              :: nu_temp, nu_dp, nu_velo
 
-    if (nu_s == 0 .and. nu == 0 .and. nu_p==0 ) return;
+    if (nu_t == 0 .and. nu == 0 .and. nu_p==0 ) return;
 
     ptop = hvcoord%hyai(1)*hvcoord%ps0
 
@@ -542,11 +535,15 @@ contains
     T0 = Tref-T1
     do ie=nets,nete
       do k=1,nlev
+        pmid_ref(:,:,k,ie) =hvcoord%hyam(k)*hvcoord%ps0 + hvcoord%hybm(k)*ps_ref(:,:,ie)
         dp3d_ref(:,:,k,ie) = ((hvcoord%hyai(k+1)-hvcoord%hyai(k))*hvcoord%ps0 + &
                               (hvcoord%hybi(k+1)-hvcoord%hybi(k))*ps_ref(:,:,ie))
-        tmp                = hvcoord%hyam(k)*hvcoord%ps0+hvcoord%hybm(k)*ps_ref(:,:,ie)
-        tmp2               = (tmp/hvcoord%ps0)**cappa
-        T_ref(:,:,k,ie)    = (T0+T1*tmp2)
+        if (hvcoord%hybm(k)>0) then
+          tmp2               = (pmid_ref(:,:,k,ie)/hvcoord%ps0)**cappa
+          T_ref(:,:,k,ie)    = (T0+T1*tmp2)
+        else
+          T_ref(:,:,k,ie)    = 0.0_r8
+        end if
       end do
     end do
 
@@ -564,8 +561,8 @@ contains
       call calc_tot_energy_dynamics(elem,fvm,nets,nete,nt,qn0,'dBH')
 
       rhypervis_subcycle=1.0_r8/real(hypervis_subcycle,kind=r8)
-      call biharmonic_wk_dp3d(elem,dptens,dpflux,ttens,vtens,deriv,edge3,hybrid,nt,nets,nete,kbeg,kend,&
-           dp3d_ref,T_ref)
+      call biharmonic_wk_dp3d(elem,dptens,dpflux,ttens,vtens,deriv,edge3,hybrid,nt,nets,nete,kbeg,kend,hvcoord,&
+           dp3d_ref=dp3d_ref,pmid_ref=pmid_ref)
 
       do ie=nets,nete
         ! compute mean flux
@@ -593,7 +590,7 @@ contains
           !DIR_VECTOR_ALIGNED
           do j=1,np
             do i=1,np
-              ttens(i,j,k,ie)   = -nu_s*ttens(i,j,k,ie)
+              ttens(i,j,k,ie)   = -nu_t_lev(k)*ttens(i,j,k,ie)
               dptens(i,j,k,ie)  = -nu_p*dptens(i,j,k,ie)
               vtens(i,j,1,k,ie) = -nu_lev(k)*vtens(i,j,1,k,ie)
               vtens(i,j,2,k,ie) = -nu_lev(k)*vtens(i,j,2,k,ie)
@@ -752,57 +749,11 @@ contains
     !
     !***************************************************************
     !
-    !
-    ! vertical diffusion
-    !
-    call t_startf('vertical_molec_diff')
-    if (molecular_diff>1) then
-      do ie=nets,nete
-        call get_rho_dry(1,np,1,np,ksponge_end,nlev,qsize,elem(ie)%state%Qdp(:,:,:,1:qsize,qn0),  &
-             elem(ie)%state%T(:,:,:,nt),ptop,elem(ie)%state%dp3d(:,:,:,nt),&
-             .true.,rhoi_dry=rhoi_dry(:,:,:),                           &
-             active_species_idx_dycore=thermodynamic_active_species_idx_dycore,&
-             pint_out=pint,pmid_out=pmid)
-        !
-        ! constant coefficients
-        !
-        do k=1,ksponge_end+1
-           kmvisi(:,:,k) = kmvisi_ref(k)*rhoi_dry(:,:,k)
-           kmcndi(:,:,k) = kmcndi_ref(k)*rhoi_dry(:,:,k)
-        end do
-        !
-        ! do vertical diffusion
-        !
-        do j=1,np
-          do i=1,np
-            call solve_diffusion(dt2,np,nlev,i,j,ksponge_end,pmid,pint,kmcndi(:,:,:)/cpair,elem(ie)%state%T(:,:,:,nt),&
-                 0,dtemp)
-            call solve_diffusion(dt2,np,nlev,i,j,ksponge_end,pmid,pint,kmvisi(:,:,:),elem(ie)%state%v(:,:,1,:,nt),1,du)
-            call solve_diffusion(dt2,np,nlev,i,j,ksponge_end,pmid,pint,kmvisi(:,:,:),elem(ie)%state%v(:,:,2,:,nt),1,dv)
-            do k=1,ksponge_end
-              v1    = elem(ie)%state%v(i,j,1,k,nt)
-              v2    = elem(ie)%state%v(i,j,2,k,nt)
-              v1new = v1 + du(k)
-              v2new = v2 + dv(k)
-              !
-              ! frictional heating
-              !
-              heating = 0.5_r8*((v1new*v1new+v2new*v2new) - (v1*v1+v2*v2))
-              elem(ie)%state%T(i,j,k,nt)=elem(ie)%state%T(i,j,k,nt) &
-                   -heating*inv_cp_full(i,j,k,ie)+dtemp(k)
-              elem(ie)%state%v(i,j,1,k,nt)=v1new
-              elem(ie)%state%v(i,j,2,k,nt)=v2new
-            end do
-          end do
-        end do
-      end do
-    end if
-    call t_stopf('vertical_molec_diff')
     call t_startf('sponge_diff')
     !
     ! compute coefficients for horizontal diffusion
     !
-    if (molecular_diff>0) then
+    if (molecular_diff==1) then
       do ie=nets,nete
         call get_rho_dry(1,np,1,np,ksponge_end,nlev,qsize,elem(ie)%state%Qdp(:,:,:,1:qsize,qn0),  &
              elem(ie)%state%T(:,:,:,nt),ptop,elem(ie)%state%dp3d(:,:,:,nt),&
@@ -810,27 +761,15 @@ contains
              active_species_idx_dycore=thermodynamic_active_species_idx_dycore)
       end do
 
-      if (molecular_diff==1) then
-        do ie=nets,nete
-          !
-          ! compute molecular diffusion and thermal conductivity coefficients at mid-levels
-          !
-          call get_molecular_diff_coef(1,np,1,np,ksponge_end,nlev,&
-               elem(ie)%state%T(:,:,:,nt),0,km_sponge_factor(1:ksponge_end),kmvis(:,:,:,ie),kmcnd(:,:,:,ie),qsize,&
-               elem(ie)%state%Qdp(:,:,:,1:qsize,qn0),fact=1.0_r8/elem(ie)%state%dp3d(:,:,1:ksponge_end,nt),&
-               active_species_idx_dycore=thermodynamic_active_species_idx_dycore)
-        end do
-      else
+      do ie=nets,nete
         !
-        ! constant coefficients
+        ! compute molecular diffusion and thermal conductivity coefficients at mid-levels
         !
-        do ie=nets,nete
-          do k=1,ksponge_end
-            kmvis  (:,:,k,ie) = kmvis_ref(k)
-            kmcnd  (:,:,k,ie) = kmcnd_ref(k)
-          end do
-        end do
-      end if
+        call get_molecular_diff_coef(1,np,1,np,ksponge_end,nlev,&
+             elem(ie)%state%T(:,:,:,nt),0,km_sponge_factor(1:ksponge_end),kmvis(:,:,:,ie),kmcnd(:,:,:,ie),qsize,&
+             elem(ie)%state%Qdp(:,:,:,1:qsize,qn0),fact=1.0_r8/elem(ie)%state%dp3d(:,:,1:ksponge_end,nt),&
+             active_species_idx_dycore=thermodynamic_active_species_idx_dycore)
+      end do
       !
       ! diagnostics
       !
@@ -1100,7 +1039,7 @@ contains
      use physconst,       only: epsilo, get_gz_given_dp_Tv_Rdry
      use physconst,       only: thermodynamic_active_species_num, get_virtual_temp, get_cp_dry
      use physconst,       only: thermodynamic_active_species_idx_dycore,get_R_dry
-     use physconst,       only: dry_air_species_num,get_exner
+     use physconst,       only: dry_air_species_num,get_exner,tref,cpair,gravit,lapse_rate
      use time_mod, only : tevolve
 
      implicit none
@@ -1147,6 +1086,9 @@ contains
      real (kind=r8) :: stashdp3d (np,np,nlev),tempdp3d(np,np), tempflux(nc,nc,4)
      real (kind=r8) :: ckk, term, T_v(np,np,nlev)
      real (kind=r8), dimension(np,np,2) :: grad_exner
+     real (kind=r8), dimension(np,np,2) :: grad_exner_term
+     real (kind=r8), dimension(np,np,2) :: grad_logexner
+     real (kind=r8) :: T0,T1
      real (kind=r8), dimension(np,np)   :: theta_v
 
      type (EdgeDescriptor_t):: desc
@@ -1293,13 +1235,13 @@ contains
          call gradient_sphere(Ephi(:,:),deriv,elem(ie)%Dinv,vtemp)
          density_inv(:,:) = R_dry(:,:,k)*T_v(:,:,k)/p_full(:,:,k)
 
-         if (dry_air_species_num==0) then        
+         if (dry_air_species_num==0) then
            exner(:,:)=(p_full(:,:,k)/hvcoord%ps0)**kappa(:,:,k,ie)
            theta_v(:,:)=T_v(:,:,k)/exner(:,:)
            call gradient_sphere(exner(:,:),deriv,elem(ie)%Dinv,grad_exner)
 
-           grad_exner(:,:,1) = cp_dry(:,:,k)*theta_v(:,:)*grad_exner(:,:,1)
-           grad_exner(:,:,2) = cp_dry(:,:,k)*theta_v(:,:)*grad_exner(:,:,2)
+           grad_exner_term(:,:,1) = cp_dry(:,:,k)*theta_v(:,:)*grad_exner(:,:,1)
+           grad_exner_term(:,:,2) = cp_dry(:,:,k)*theta_v(:,:)*grad_exner(:,:,2)
          else
            exner(:,:)=(p_full(:,:,k)/hvcoord%ps0)**kappa(:,:,k,ie)
            theta_v(:,:)=T_v(:,:,k)/exner(:,:)
@@ -1310,14 +1252,34 @@ contains
            grad_kappa_term(:,:,1)=-suml*grad_kappa_term(:,:,1)
            grad_kappa_term(:,:,2)=-suml*grad_kappa_term(:,:,2)
 
-           grad_exner(:,:,1) = cp_dry(:,:,k)*theta_v(:,:)*(grad_exner(:,:,1)+grad_kappa_term(:,:,1))
-           grad_exner(:,:,2) = cp_dry(:,:,k)*theta_v(:,:)*(grad_exner(:,:,2)+grad_kappa_term(:,:,2))
+           grad_exner_term(:,:,1) = cp_dry(:,:,k)*theta_v(:,:)*(grad_exner(:,:,1)+grad_kappa_term(:,:,1))
+           grad_exner_term(:,:,2) = cp_dry(:,:,k)*theta_v(:,:)*(grad_exner(:,:,2)+grad_kappa_term(:,:,2))
          end if
 
+         ! balanced ref profile correction:
+         ! reference temperature profile (Simmons and Jiabin, 1991, QJRMS, Section 2a)
+         !
+         !  Tref = T0+T1*Exner
+         !  T1 = .0065*Tref*Cp/g ! = ~191
+         !  T0 = Tref-T1         ! = ~97
+         !
+         T1 = lapse_rate*Tref*cpair/gravit
+         T0 = Tref-T1
+
+         if (hvcoord%hybm(k)>0) then
+           call gradient_sphere(log(exner(:,:)),deriv,elem(ie)%Dinv,grad_logexner)
+           grad_exner_term(:,:,1)=grad_exner_term(:,:,1) + &
+                cpair*T0*(grad_logexner(:,:,1)-grad_exner(:,:,1)/exner(:,:))
+           grad_exner_term(:,:,2)=grad_exner_term(:,:,2) + &
+                cpair*T0*(grad_logexner(:,:,2)-grad_exner(:,:,2)/exner(:,:))
+         end if
+
+
+         
          do j=1,np
            do i=1,np
-             glnps1 = grad_exner(i,j,1)
-             glnps2 = grad_exner(i,j,2)
+             glnps1 = grad_exner_term(i,j,1)
+             glnps2 = grad_exner_term(i,j,2)
              v1     = elem(ie)%state%v(i,j,1,k,n0)
              v2     = elem(ie)%state%v(i,j,2,k,n0)
 
@@ -2181,79 +2143,5 @@ contains
     !------------
     return
   end subroutine fill_element
-
-  subroutine rayleigh_friction(elem,nt,nets,nete,dt)
-    use dimensions_mod, only: nlev, otau
-    use hybrid_mod,     only: hybrid_t!, get_loop_ranges
-    use element_mod,    only: element_t
-
-    type (element_t)   , intent(inout), target :: elem(:)
-    integer            , intent(in)   :: nets,nete, nt
-    real(r8)                          :: dt
-
-    real(r8) :: c1, c2
-    integer  :: k,ie
-
-    do ie=nets,nete
-      do k=1,nlev
-        c2 = 1._r8 / (1._r8 + otau(k)*dt)
-        c1 = -otau(k) * c2 * dt
-        elem(ie)%state%v(:,:,:,k,nt) = elem(ie)%state%v(:,:,:,k,nt)+c1 * elem(ie)%state%v(:,:,:,k,nt)
-!         ptend%s(:ncol,k) = c3 * (state%u(:ncol,k)**2 + state%v(:ncol,k)**2)
-      enddo
-    end do
-  end subroutine rayleigh_friction
-
-
-
-  subroutine solve_diffusion(dt,nx,nlev,i,j,nlay,pmid,pint,km,fld,boundary_condition,dfld)
-    use physconst,      only: gravit
-    real(kind=r8), intent(in)    :: dt
-    integer      , intent(in)    :: nlay, nlev,nx, i, j
-    real(kind=r8), intent(in)    :: pmid(nx,nx,nlay),pint(nx,nx,nlay+1),km(nx,nx,nlay+1)
-    real(kind=r8), intent(in)    :: fld(nx,nx,nlev)
-    real(kind=r8), intent(out)   :: dfld(nlay)
-    integer :: boundary_condition
-    !
-    real(kind=r8), dimension(nlay) :: current_guess,next_iterate
-    real(kind=r8)                  :: alp, alm, value_level0
-    integer                        :: k,iter, niterations=4
-
-    ! Make the guess for the next time step equal to the initial value
-    current_guess(:)= fld(i,j,1:nlay)
-    do iter = 1, niterations
-      ! two formulations of the upper boundary condition
-      !next_iterate(1) = (initial_value(1) + alp * current_guess(i+1) + alm * current_guess(1)) /(1. + alp + alm) ! top BC, u'=0
-      if (boundary_condition==0) then
-        next_iterate(1) = fld(i,j,1) ! u doesn't get prognosed by diffusion at top
-      else if (boundary_condition==1) then
-        value_level0 = 0.75_r8*fld(i,j,1) ! value above sponge
-        k=1
-        alp = dt*(km(i,j,k+1)*gravit*gravit/(pmid(i,j,k)-pmid(i,j,k+1)))/(pint(i,j,k)-pint(i,j,k+1))
-        alm = dt*(km(i,j,k  )*gravit*gravit/(0.5_r8*(pmid(i,j,1)-pmid(i,j,2))))/(pint(i,j,k)-pint(i,j,k+1))
-        next_iterate(k) = (fld(i,j,k) + alp * current_guess(k+1) + alm * value_level0)/(1._r8 + alp + alm)
-      else
-        !
-        ! set fld'=0 at model top
-        !
-        k=1
-        alp = dt*(km(i,j,k+1)*gravit*gravit/(pmid(i,j,k)-pmid(i,j,k+1)))/(pint(i,j,k)-pint(i,j,k+1))
-        alm = dt*(km(i,j,k  )*gravit*gravit/(0.5_r8*(pmid(i,j,1)-pmid(i,j,2))))/(pint(i,j,k)-pint(i,j,k+1))
-        next_iterate(k) = (fld(i,j,1) + alp * current_guess(2) + alm * current_guess(1))/(1._r8 + alp + alm)
-      end if
-      do k = 2, nlay-1
-        alp = dt*(km(i,j,k+1)*gravit*gravit/(pmid(i,j,k  )-pmid(i,j,k+1)))/(pint(i,j,k)-pint(i,j,k+1))
-        alm = dt*(km(i,j,k  )*gravit*gravit/(pmid(i,j,k-1)-pmid(i,j,k  )))/(pint(i,j,k)-pint(i,j,k+1))
-        next_iterate(k) = (fld(i,j,k) + alp * current_guess(k+1) + alm * current_guess(k-1))/(1._r8 + alp + alm)
-      end do
-      next_iterate(nlay) = (fld(i,j,nlay) + alp * fld(i,j,nlay) + alm * current_guess(nlay-1))/(1._r8 + alp + alm) ! bottom BC
-
-      ! before the next iterate, make the current guess equal to the values of the last iteration
-      current_guess(:) = next_iterate(:)
-    end do
-    dfld(:) = next_iterate(:) - fld(i,j,1:nlay)
-
-  end subroutine solve_diffusion
-
 
 end module prim_advance_mod

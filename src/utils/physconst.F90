@@ -44,7 +44,6 @@ public  :: get_virtual_theta                  ! virtual potential temperature
 public  :: get_gz                             ! geopotential
 public  :: get_gz_given_dp_Tv_Rdry            ! geopotential (with dp,dry R and Tv as input)
 public  :: get_Richardson_number              ! Richardson number at layer interfaces
-public  :: get_hydrostatic_static_energy      ! geopotential, dry static energy, and kinetic energy
 public  :: get_R_dry                          ! (generalized) dry air gas constant
 public  :: get_kappa_dry                      ! (generalized) dry kappa = R_dry/cp_dry
 public  :: get_dp_ref                         ! reference pressure layer thickness (include topography)
@@ -53,6 +52,7 @@ public  :: get_molecular_diff_coef_reference  ! reference vertical profile of de
                                               ! and thermal conductivity
 public  :: get_rho_dry                        ! dry densisty from temperature (temp) and pressure (dp_dry and tracer)
 public  :: get_exner                          ! Exner pressure
+public  :: get_hydrostatic_energy             ! Vertically integrated total energy
 
 ! Constants based off share code or defined in physconst
 
@@ -93,7 +93,6 @@ real(r8), public, parameter :: mwso4       =  96._r8
 real(r8), public, parameter :: mwh2o2      =  34._r8
 real(r8), public, parameter :: mwdms       =  62._r8
 real(r8), public, parameter :: mwnh4       =  18._r8
-
 
 ! modifiable physical constants for aquaplanet
 
@@ -142,13 +141,23 @@ integer, protected, public      :: water_species_in_air_num
 
 integer,               protected, public :: thermodynamic_active_species_num
 integer,  allocatable, protected, public :: thermodynamic_active_species_idx(:)
-integer,  allocatable,            public :: thermodynamic_active_species_idx_dycore(:)    
+integer,  allocatable,            public :: thermodynamic_active_species_idx_dycore(:)
 real(r8), allocatable, protected, public :: thermodynamic_active_species_cp(:)
 real(r8), allocatable, protected, public :: thermodynamic_active_species_cv(:)
 real(r8), allocatable, protected, public :: thermodynamic_active_species_R(:)
 real(r8), allocatable, protected, public :: thermodynamic_active_species_mwi(:)!inverse molecular weights dry air
 real(r8), allocatable, protected, public :: thermodynamic_active_species_kv(:) !molecular diffusion
 real(r8), allocatable, protected, public :: thermodynamic_active_species_kc(:) !thermal conductivity
+!
+! for energy computations liquid and ice species need to be identified
+!
+integer,               protected, public :: thermodynamic_active_species_liq_num          !number of liquid water species
+integer,               protected, public :: thermodynamic_active_species_ice_num          !number of frozen water species
+integer,  allocatable, protected, public :: thermodynamic_active_species_liq_idx(:)       !index of liquid water species
+integer,  allocatable,            public :: thermodynamic_active_species_liq_idx_dycore(:)!index of liquid water species
+integer,  allocatable, protected, public :: thermodynamic_active_species_ice_idx(:)       !index of ice water species
+integer,  allocatable           , public :: thermodynamic_active_species_ice_idx_dycore(:)!index of ice water species
+character(len=3) :: enthalpy_reference_state! choices: ice,liq,wv
 
 ! standard dry air (constant composition)
 real(r8) :: mmro2, mmrn2           ! Mass mixing ratios of O2 and N2
@@ -174,18 +183,17 @@ contains
 
 ! Read namelist variables.
 subroutine physconst_readnl(nlfile)
-
    use namelist_utils,  only: find_group_name
    use spmd_utils,      only: masterproc, mpicom, masterprocid, mpi_real8, mpi_character
    use cam_logfile,     only: iulog
-
+   use dyn_tests_utils, only: vc_physics, vc_dycore, string_vc, vc_moist_pressure, vc_str_lgth
    character(len=*), intent(in) :: nlfile  ! filepath for file containing namelist input
 
    ! Local variables
    integer :: unitn, ierr, i
    character(len=*), parameter :: subname = 'physconst_readnl'
    logical :: newg, newsday, newmwh2o, newcpwv, newmwdry, newcpair, newrearth, newtmelt, newomega
-
+   character (len=vc_str_lgth) :: str
 
    ! Physical constants needing to be reset (e.g., for aqua planet experiments)
    namelist /physconst_nl/  gravit, sday, mwh2o, cpwv, mwdry, cpair, rearth, tmelt, omega
@@ -217,15 +225,15 @@ subroutine physconst_readnl(nlfile)
    call MPI_bcast(tmelt,  1, mpi_real8, masterprocid, mpicom, ierr)
    call MPI_bcast(omega,  1, mpi_real8, masterprocid, mpicom, ierr)
 
-   newg     =  gravit .ne. shr_const_g
-   newsday  =  sday   .ne. shr_const_sday
-   newmwh2o =  mwh2o  .ne. shr_const_mwwv
-   newcpwv  =  cpwv   .ne. shr_const_cpwv
-   newmwdry =  mwdry  .ne. shr_const_mwdair
-   newcpair =  cpair  .ne. shr_const_cpdair
-   newrearth=  rearth .ne. shr_const_rearth
-   newtmelt =  tmelt  .ne. shr_const_tkfrz
-   newomega =  omega  .ne. shr_const_omega
+   newg     =  gravit /= shr_const_g
+   newsday  =  sday   /= shr_const_sday
+   newmwh2o =  mwh2o  /= shr_const_mwwv
+   newcpwv  =  cpwv   /= shr_const_cpwv
+   newmwdry =  mwdry  /= shr_const_mwdair
+   newcpair =  cpair  /= shr_const_cpdair
+   newrearth=  rearth /= shr_const_rearth
+   newtmelt =  tmelt  /= shr_const_tkfrz
+   newomega =  omega  /= shr_const_omega
 
    if (newg .or. newsday .or. newmwh2o .or. newcpwv .or. newmwdry .or. newrearth .or. newtmelt .or. newomega) then
       if (masterproc) then
@@ -273,8 +281,8 @@ subroutine physconst_readnl(nlfile)
    ! Read variable components of dry air and water species in air
 
    dry_air_species   = (/ (' ', i=1,num_names_max) /)
-   water_species_in_air = (/ (' ', i=1,num_names_max) /)    
-    
+   water_species_in_air = (/ (' ', i=1,num_names_max) /)
+
    if (masterproc) then
       open( newunit=unitn, file=trim(nlfile), status='old' )
       call find_group_name(unitn, 'air_composition_nl', status=ierr)
@@ -286,16 +294,16 @@ subroutine physconst_readnl(nlfile)
       end if
       close(unitn)
    end if
-    
+
    call mpi_bcast(dry_air_species, len(dry_air_species)*num_names_max, mpi_character, &
                   masterprocid, mpicom, ierr)
    call mpi_bcast(water_species_in_air, len(water_species_in_air)*num_names_max, mpi_character, &
                   masterprocid, mpicom, ierr)
-    
+
    dry_air_species_num   = 0
    water_species_in_air_num = 0
    do i = 1, num_names_max
-      if (.not. LEN(TRIM(dry_air_species(i)))==0) then
+      if ((.not. LEN(TRIM(dry_air_species(i)))==0).and.(TRIM(dry_air_species(i))/='N2')) then
          dry_air_species_num = dry_air_species_num + 1
       end if
       if (.not. LEN(TRIM(water_species_in_air(i)))==0) then
@@ -325,12 +333,18 @@ subroutine physconst_readnl(nlfile)
       do i = 1, water_species_in_air_num
          write(iulog,*)'   ', trim(water_species_in_air(i))
       end do
-
       write(iulog,*)' '
       write(iulog,*)'****************************************************************************'
 
    end if
-
+   !
+   ! vertical coordinate info
+   !
+   vc_physics = vc_moist_pressure
+   if (masterproc) then
+     call string_vc(vc_physics,str)
+     write(iulog,*)'vertical coordinate physics : ',trim(str)
+   end if
 end subroutine physconst_readnl
 
 !===============================================================================
@@ -369,28 +383,41 @@ end subroutine physconst_init
     character(len=*), parameter :: subname = 'composition_init'
     real(r8) :: mw, dof1, dof2, dof3
 
-    integer  :: icnst,ix,i
+    integer  :: icnst,ix,i,ierr
 
+    integer                                      :: liq_num, ice_num
+    integer, dimension(water_species_in_air_num) :: liq_idx, ice_idx
+    logical                                      :: liq,ice
+    liq_num=0
+    ice_num=0
+    liq    =.false.
+    ice    =.false.
     ! standard dry air (constant composition)
     o2_mwi = 1._r8/32._r8
     n2_mwi = 1._r8/28._r8
     mmro2  = 0.235_r8
     mmrn2  = 0.765_r8
     mbar = 1._r8/(mmro2*o2_mwi + mmrn2*n2_mwi)
-    
+
     ! init for variable composition dry air
 
-    i = dry_air_species_num+water_species_in_air_num  
-    allocate(thermodynamic_active_species_idx(i))
-    allocate(thermodynamic_active_species_idx_dycore(i))
-    allocate(thermodynamic_active_species_cp(0:i))
-    allocate(thermodynamic_active_species_cv(0:i))
-    allocate(thermodynamic_active_species_R(0:i))
-    
+    i = dry_air_species_num+water_species_in_air_num
+    allocate(&
+         thermodynamic_active_species_idx(i),       &
+         thermodynamic_active_species_idx_dycore(i),&
+         thermodynamic_active_species_cp(0:i),      &
+         thermodynamic_active_species_cv(0:i),      &
+         thermodynamic_active_species_R(0:i),       &
+         stat=ierr)
+    if ( ierr /= 0 ) call endrun('composition_init error: allocation error for thermodynamic_active_species arrays 1')
+
     i = dry_air_species_num
-    allocate(thermodynamic_active_species_mwi(i))
-    allocate(thermodynamic_active_species_kv(i))
-    allocate(thermodynamic_active_species_kc(i))
+    allocate(&
+         thermodynamic_active_species_mwi(0:i),&
+         thermodynamic_active_species_kv(0:i), &
+         thermodynamic_active_species_kc(0:i), &
+         stat=ierr)
+    if ( ierr /= 0 ) call endrun('composition_init error: allocation error for thermodynamic_active_species arrays 2')
     thermodynamic_active_species_idx        = -999
     thermodynamic_active_species_idx_dycore = -999
     thermodynamic_active_species_cp         = 0.0_r8
@@ -414,15 +441,14 @@ end subroutine physconst_init
       ! last major species in dry_air_species is derived from the others and constants associated with it
       ! are initialized here
       !
-      if (TRIM(dry_air_species(dry_air_species_num))=='N2') then
+      if (TRIM(dry_air_species(dry_air_species_num+1))=='N2') then
         call cnst_get_ind('N' ,ix, abort=.false.)
         if (ix<1) then
-          write(iulog, *) subname//' dry air component not found: ', dry_air_species(dry_air_species_num)
-          call endrun(subname // ':: dry air component not found')         
-        else         
+          write(iulog, *) subname//' dry air component not found: ', dry_air_species(dry_air_species_num+1)
+          call endrun(subname // ':: dry air component not found')
+        else
           mw = 2.0_r8*cnst_mw(ix)
-          icnst = dry_air_species_num
-          thermodynamic_active_species_idx(icnst) = 1!note - this is not used since this tracer value is derived
+          icnst = 0 ! index for the derived tracer N2
           thermodynamic_active_species_cp (icnst) = 0.5_r8*shr_const_rgas*(2._r8+dof2)/mw !N2
           thermodynamic_active_species_cv (icnst) = 0.5_r8*shr_const_rgas*dof2/mw !N2
           thermodynamic_active_species_R  (icnst) = shr_const_rgas/mw
@@ -454,7 +480,7 @@ end subroutine physconst_init
     !******************************************************************************
     !
     icnst = 1
-    do i=1,dry_air_species_num-1
+    do i=1,dry_air_species_num
       select case (TRIM(dry_air_species(i)))
         !
         ! O
@@ -463,7 +489,7 @@ end subroutine physconst_init
         call cnst_get_ind('O' ,ix, abort=.false.)
         if (ix<1) then
           write(iulog, *) subname//' dry air component not found: ', dry_air_species(i)
-          call endrun(subname // ':: dry air component not found')         
+          call endrun(subname // ':: dry air component not found')
         else
           mw = cnst_mw(ix)
           thermodynamic_active_species_idx(icnst) = ix
@@ -482,7 +508,7 @@ end subroutine physconst_init
         call cnst_get_ind('O2' ,ix, abort=.false.)
         if (ix<1) then
           write(iulog, *) subname//' dry air component not found: ', dry_air_species(i)
-          call endrun(subname // ':: dry air component not found')         
+          call endrun(subname // ':: dry air component not found')
         else
           mw = cnst_mw(ix)
           thermodynamic_active_species_idx(icnst) = ix
@@ -501,7 +527,7 @@ end subroutine physconst_init
         call cnst_get_ind('H' ,ix, abort=.false.)
         if (ix<1) then
           write(iulog, *) subname//' dry air component not found: ', dry_air_species(i)
-          call endrun(subname // ':: dry air component not found')         
+          call endrun(subname // ':: dry air component not found')
         else
           mw = cnst_mw(ix)
           thermodynamic_active_species_idx(icnst) = ix
@@ -515,12 +541,12 @@ end subroutine physconst_init
         end if
         !
         ! If support for more major species is to be included add code here
-        !       
+        !
       case default
         write(iulog, *) subname//' dry air component not found: ', dry_air_species(i)
-        call endrun(subname // ':: dry air component not found')         
+        call endrun(subname // ':: dry air component not found')
       end select
-      
+
       if (masterproc) then
         write(iulog, *) "Dry air composition ",TRIM(dry_air_species(i)),&
              icnst-1,thermodynamic_active_species_idx(icnst-1),&
@@ -529,11 +555,12 @@ end subroutine physconst_init
              thermodynamic_active_species_cv(icnst-1)
       end if
     end do
-    i = dry_air_species_num
+    i = dry_air_species_num+1
+    icnst = 0 ! N2
     if (i>0) then
       if (masterproc) then
         write(iulog, *) "Dry air composition ",TRIM(dry_air_species(i)),&
-             icnst,thermodynamic_active_species_idx(icnst),&
+             icnst, -1,&
              thermodynamic_active_species_mwi(icnst),&
              thermodynamic_active_species_cp(icnst),&
              thermodynamic_active_species_cv(icnst)
@@ -556,7 +583,7 @@ end subroutine physconst_init
         call cnst_get_ind('Q' ,ix, abort=.false.)
         if (ix<1) then
           write(iulog, *) subname//' moist air component not found: ', water_species_in_air(i)
-          call endrun(subname // ':: moist air component not found')         
+          call endrun(subname // ':: moist air component not found')
         else
           mw = cnst_mw(ix)
           thermodynamic_active_species_idx(icnst) = ix
@@ -572,12 +599,15 @@ end subroutine physconst_init
         call cnst_get_ind('CLDLIQ' ,ix, abort=.false.)
         if (ix<1) then
           write(iulog, *) subname//' moist air component not found: ', water_species_in_air(i)
-          call endrun(subname // ':: moist air component not found')         
+          call endrun(subname // ':: moist air component not found')
         else
           thermodynamic_active_species_idx(icnst) = ix
           thermodynamic_active_species_cp (icnst) = cpliq
           thermodynamic_active_species_cv (icnst) = cpliq
+          liq_num           = liq_num+1
+          liq_idx (liq_num) = ix
           icnst = icnst+1
+          liq = .true.
         end if
         !
         ! CLDICE
@@ -586,12 +616,15 @@ end subroutine physconst_init
         call cnst_get_ind('CLDICE' ,ix, abort=.false.)
         if (ix<1) then
           write(iulog, *) subname//' moist air component not found: ', water_species_in_air(i)
-          call endrun(subname // ':: moist air component not found')         
+          call endrun(subname // ':: moist air component not found')
         else
           thermodynamic_active_species_idx(icnst) = ix
           thermodynamic_active_species_cp (icnst) = cpice
           thermodynamic_active_species_cv (icnst) = cpice
+          ice_num           = ice_num+1
+          ice_idx(ice_num)  = ix
           icnst = icnst+1
+          ice = .true.
         end if
         !
         ! RAINQM
@@ -600,12 +633,15 @@ end subroutine physconst_init
         call cnst_get_ind('RAINQM' ,ix, abort=.false.)
         if (ix<1) then
           write(iulog, *) subname//' moist air component not found: ', water_species_in_air(i)
-          call endrun(subname // ':: moist air component not found')         
+          call endrun(subname // ':: moist air component not found')
         else
           thermodynamic_active_species_idx(icnst) = ix
           thermodynamic_active_species_cp (icnst) = cpliq
           thermodynamic_active_species_cv (icnst) = cpliq
+          liq_num           = liq_num+1
+          liq_idx(liq_num)  = ix
           icnst = icnst+1
+          liq = .true.
         end if
         !
         ! SNOWQM
@@ -614,12 +650,15 @@ end subroutine physconst_init
         call cnst_get_ind('SNOWQM' ,ix, abort=.false.)
         if (ix<1) then
           write(iulog, *) subname//' moist air component not found: ', water_species_in_air(i)
-          call endrun(subname // ':: moist air component not found')         
+          call endrun(subname // ':: moist air component not found')
         else
           thermodynamic_active_species_idx(icnst) = ix
           thermodynamic_active_species_cp (icnst) = cpice
           thermodynamic_active_species_cv (icnst) = cpice
+          ice_num           = ice_num+1
+          ice_idx(ice_num)  = ix
           icnst = icnst+1
+          ice = .true.
         end if
         !
         ! GRAUQM
@@ -628,48 +667,85 @@ end subroutine physconst_init
         call cnst_get_ind('GRAUQM' ,ix, abort=.false.)
         if (ix<1) then
           write(iulog, *) subname//' moist air component not found: ', water_species_in_air(i)
-          call endrun(subname // ':: moist air component not found')         
+          call endrun(subname // ':: moist air component not found')
         else
           mw = cnst_mw(ix)
           thermodynamic_active_species_idx(icnst) = ix
           thermodynamic_active_species_cp (icnst) = cpice
           thermodynamic_active_species_cv (icnst) = cpice
+          ice_num           = ice_num+1
+          ice_idx(ice_num)  = ix
           icnst = icnst+1
+          ice = .true.
         end if
         !
         ! If support for more major species is to be included add code here
-        !       
+        !
       case default
         write(iulog, *) subname//' moist air component not found: ', water_species_in_air(i)
-        call endrun(subname // ':: moist air component not found')         
+        call endrun(subname // ':: moist air component not found')
       end select
       !
       !
       !
       if (masterproc) then
-        write(iulog, *) "Thermodynamic active species ",TRIM(water_species_in_air(i)),&
-             icnst-1,thermodynamic_active_species_idx(icnst-1),&
-             thermodynamic_active_species_cp(icnst-1),&
-             thermodynamic_active_species_cv(icnst-1)
+        write(iulog, *) "Thermodynamic active species ",TRIM(water_species_in_air(i))
+        write(iulog, *) "   global index                           : ",icnst-1
+        write(iulog, *) "   thermodynamic_active_species_idx       : ",thermodynamic_active_species_idx(icnst-1)
+        write(iulog, *) "   cp                                     : ",thermodynamic_active_species_cp(icnst-1)
+        write(iulog, *) "   cv                                     : ",thermodynamic_active_species_cv(icnst-1)
+        if (liq) write(iulog, *) "   register phase (liquid or ice)         : liquid"
+        if (ice) write(iulog, *) "   register phase (liquid or ice)         : ice"
+        write(iulog, *) "  "
       end if
+      liq = .false.
+      ice = .false.
     end do
-    
-  end subroutine composition_init  
+
+    allocate(&
+         thermodynamic_active_species_liq_idx(liq_num),        &
+         thermodynamic_active_species_liq_idx_dycore(liq_num), &
+         thermodynamic_active_species_ice_idx(ice_num),        &
+         thermodynamic_active_species_ice_idx_dycore(ice_num), &
+         stat=ierr)
+    if ( ierr /= 0 ) call endrun('composition_init error: allocation error for thermodynamic_active_species_liq/ice arrays')
+
+    thermodynamic_active_species_liq_idx = liq_idx(1:liq_num)
+    thermodynamic_active_species_liq_num = liq_num
+
+    ! array initialized by the dycore
+    thermodynamic_active_species_liq_idx_dycore = -99
+
+    thermodynamic_active_species_ice_idx = ice_idx(1:ice_num)
+    thermodynamic_active_species_ice_num = ice_num
+
+    ! array initialized by the dycore
+    thermodynamic_active_species_ice_idx_dycore = -99
+
+    if (water_species_in_air_num /= 1+liq_num+ice_num) then
+      write(iulog, *) subname//'  water_species_in_air_num /= 1+liq_num+ice_num'
+      call endrun(subname // ':: water_species_in_air_num /= 1+liq_num+ice_num')
+    end if
+    enthalpy_reference_state = 'ice'
+    if (masterproc) then
+      write(iulog, *)   'Enthalpy reference state           : ',TRIM(enthalpy_reference_state)
+    end if
+  end subroutine composition_init
   !
   !****************************************************************************************************************
   !
   ! update species dependent constants for physics
   !
   !****************************************************************************************************************
-  ! 
+  !
   subroutine physconst_update(mmr, t, lchnk, ncol, to_moist_factor)
-    
+
     !-----------------------------------------------------------------------
     ! Update the physics "constants" that vary
     !-----------------------------------------------------------------------
-    
+
     !------------------------------Arguments--------------------------------------------------------------
-    
+
     real(r8), intent(in) :: mmr(pcols,pver,pcnst) ! constituents q array from state structure
     real(r8), intent(in) :: t(pcols,pver)   ! temperature t array from state structure
     integer, intent(in)  :: lchnk           ! Chunk number
@@ -679,13 +755,13 @@ end subroutine physconst_init
     !---------------------------Local storage-------------------------------------------------------------
     real(r8):: to_moist_fact(ncol,pver)
     real(r8):: sponge_factor(pver)
-    
+
     to_moist_fact(:,:) = 1._r8
-    
+
     if (present(to_moist_factor)) then
       to_moist_fact(:ncol,:) = to_moist_factor(:ncol,:)
     end if
-    
+
     !--------------------------------------------
     ! update cpairv, rairv, mbarv, and cappav
     !--------------------------------------------
@@ -699,7 +775,7 @@ end subroutine physconst_init
     call get_molecular_diff_coef(1,ncol,1,1,pver,pver,t(:ncol,:),1,sponge_factor,kmvis(:ncol,:,lchnk), &
        kmcnd(:ncol,:,lchnk), pcnst, tracer=mmr(:ncol,:,:), fact=to_moist_fact(:ncol,:),                &
        active_species_idx_dycore=thermodynamic_active_species_idx)
-
+    cappav(:ncol,:,lchnk) = rairv(:ncol,:,lchnk)/cpairv(:ncol,:,lchnk)
   end subroutine physconst_update
   !
   !****************************************************************************************************************
@@ -707,15 +783,15 @@ end subroutine physconst_init
   ! update species dependent kappa for FV dycore
   !
   !****************************************************************************************************************
-  ! 
+  !
   subroutine physconst_calc_kappav( i0,i1,j0,j1,k0,k1,ntotq, tracer, kappav, cpv )
     ! assumes moist MMRs
-    
+
     ! args
     integer,  intent(in) :: i0,i1,j0,j1,k0,k1, ntotq
     real(r8), intent(in) :: tracer(i0:i1,j0:j1,k0:k1,ntotq) ! Tracer array
      real(r8), intent(out) :: kappav(i0:i1,j0:j1,k0:k1)
-     real(r8), optional, intent(out) :: cpv(i0:i1,j0:j1,k0:k1) 
+     real(r8), optional, intent(out) :: cpv(i0:i1,j0:j1,k0:k1)
 
      ! local vars
      real(r8),  dimension(i0:i1,j0:j1,k0:k1) :: rgas_var, cp_var
@@ -754,7 +830,7 @@ end subroutine physconst_init
      real(r8), intent(in)  :: tracer(i0:i1,j0:j1,k0:k1,1:ntrac)  ! tracers; quantity specified by mixing_ratio arg
      integer,  intent(in)  :: mixing_ratio                       ! 1 => tracer is dry mixing ratio
                                                                  ! 2 => tracer is mass (q*dp)
-     integer,  intent(in)  :: active_species_idx(:)              ! index for thermodynamic species in tracer array     
+     integer,  intent(in)  :: active_species_idx(:)              ! index for thermodynamic species in tracer array
      real(r8), intent(in)  :: dp_dry(i0:i1,j0:j1,k0:k1)          ! dry pressure level thickness
      real(r8), intent(out) :: dp(i0:i1,j0:j1,k0:k1)              ! pressure level thickness
      real(r8), optional,intent(out) :: ps(i0:i1,j0:j1)           ! surface pressure (if ps present then ptop
@@ -762,11 +838,11 @@ end subroutine physconst_init
      real(r8), optional,intent(in)  :: ptop                      ! pressure at model top
 
      integer :: i,j,k,m_cnst,nq
-    
+
      dp = dp_dry
      if (mixing_ratio==1) then
-       do nq=dry_air_species_num+1,thermodynamic_active_species_num       
-         m_cnst = active_species_idx(nq)       
+       do nq=dry_air_species_num+1,thermodynamic_active_species_num
+         m_cnst = active_species_idx(nq)
          do k=k0,k1
            do j=j0,j1
              do i = i0,i1
@@ -774,10 +850,10 @@ end subroutine physconst_init
              end do
            end do
          end do
-       end do       
+       end do
      else
-       do nq=dry_air_species_num+1,thermodynamic_active_species_num              
-         m_cnst = active_species_idx(nq)       
+       do nq=dry_air_species_num+1,thermodynamic_active_species_num
+         m_cnst = active_species_idx(nq)
          do k=k0,k1
            do j=j0,j1
              do i = i0,i1
@@ -817,7 +893,7 @@ end subroutine physconst_init
      integer,  intent(in)  :: mixing_ratio                       ! 1 => tracer is mixing ratio
                                                                  ! 2 => tracer is mass (q*dp)
      integer,  intent(in)  :: active_species_idx(:)              ! index for thermodynamic species in tracer array
-     real(r8), intent(in)  :: dp_dry(i0:i1,j0:j1,nlev)           ! dry pressure level thickness     
+     real(r8), intent(in)  :: dp_dry(i0:i1,j0:j1,nlev)           ! dry pressure level thickness
      real(r8), intent(in)  :: ptop                               ! model top pressure
      real(r8), intent(out) :: pmid(i0:i1,j0:j1,nlev)             ! mid-level pressure
      real(r8), optional, intent(out) :: pint(i0:i1,j0:j1,nlev+1) ! half-level pressure
@@ -834,7 +910,7 @@ end subroutine physconst_init
      end do
 
      call get_pmid_from_dp(i0,i1,j0,j1,1,nlev,dp_local,ptop,pmid,pint_local)
-     
+
      if (present(pint)) pint=pint_local
      if (present(dp)) dp=dp_local
    end subroutine get_pmid_from_dpdry
@@ -846,14 +922,14 @@ end subroutine physconst_init
    !*************************************************************************************************************************
    !
    subroutine get_pmid_from_dp(i0,i1,j0,j1,k0,k1,dp,ptop,pmid,pint)
-     use dycore, only: dycore_is     
+     use dycore, only: dycore_is
      integer,  intent(in)            :: i0,i1,j0,j1,k0,k1         ! array bounds
-     real(r8), intent(in)            :: dp(i0:i1,j0:j1,k0:k1)     ! dry pressure level thickness     
+     real(r8), intent(in)            :: dp(i0:i1,j0:j1,k0:k1)     ! dry pressure level thickness
      real(r8), intent(in)            :: ptop                      ! pressure at model top
      real(r8), intent(out)           :: pmid(i0:i1,j0:j1,k0:k1)   ! mid (full) level pressure
      real(r8), optional, intent(out) :: pint(i0:i1,j0:j1,k0:k1+1) ! pressure at interfaces (half levels)
 
-     real(r8) :: pint_local(i0:i1,j0:j1,k0:k1+1)        
+     real(r8) :: pint_local(i0:i1,j0:j1,k0:k1+1)
      integer  :: k
 
      pint_local(:,:,k0) = ptop
@@ -861,23 +937,23 @@ end subroutine physconst_init
        pint_local(:,:,k) = dp(:,:,k-1)+pint_local(:,:,k-1)
      end do
 
-     if (dycore_is ('LR').or.dycore_is ('SE')) then
+     if (dycore_is('LR').or.dycore_is('FV3')) then
        do k=k0,k1
          pmid(:,:,k) = dp(:,:,k)/(log(pint_local(:,:,k+1))-log(pint_local(:,:,k)))
        end do
      else
        do k=k0,k1
          pmid(:,:,k) = 0.5_r8*(pint_local(:,:,k)+pint_local(:,:,k+1))
-       end do       
+       end do
      end if
-     if (present(pint)) pint=pint_local     
-   end subroutine get_pmid_from_dp   
+     if (present(pint)) pint=pint_local
+   end subroutine get_pmid_from_dp
    !
-   !****************************************************************************************************************   
-   !   
+   !****************************************************************************************************************
+   !
    ! Compute Exner pressure
    !
-   !****************************************************************************************************************   
+   !****************************************************************************************************************
    !
    subroutine get_exner(i0,i1,j0,j1,nlev,ntrac,tracer,mixing_ratio,active_species_idx,&
         dp_dry,ptop,p00,inv_exner,exner,poverp0)
@@ -885,12 +961,12 @@ end subroutine physconst_init
      real(r8), intent(in)  :: tracer(i0:i1,j0:j1,nlev,1:ntrac)   ! tracers; quantity specified by mixing_ratio arg
      integer,  intent(in)  :: mixing_ratio                       ! 1 => tracer is mixing ratio
                                                                  ! 2 => tracer is mass (q*dp)
-     integer,  intent(in)  :: active_species_idx(:)              ! index for thermodynamic species in tracer array          
-     real(r8), intent(in)  :: dp_dry(i0:i1,j0:j1,nlev)           ! dry pressure level thickness     
+     integer,  intent(in)  :: active_species_idx(:)              ! index for thermodynamic species in tracer array
+     real(r8), intent(in)  :: dp_dry(i0:i1,j0:j1,nlev)           ! dry pressure level thickness
      real(r8), intent(in)  :: ptop                               ! pressure at model top
      real(r8), intent(in)  :: p00                                ! reference pressure for Exner pressure (usually 1000hPa)
      logical , intent(in)  :: inv_exner                          ! logical for outputting inverse Exner or Exner pressure
-     real(r8), intent(out) :: exner(i0:i1,j0:j1,nlev)        
+     real(r8), intent(out) :: exner(i0:i1,j0:j1,nlev)
      real(r8), optional, intent(out) :: poverp0(i0:i1,j0:j1,nlev)! for efficiency when a routine needs this variable
 
      real(r8) :: pmid(i0:i1,j0:j1,nlev),kappa_dry(i0:i1,j0:j1,nlev)
@@ -907,19 +983,19 @@ end subroutine physconst_init
        call get_kappa_dry(i0,i1,j0,j1,1,nlev,nlev,ntrac,tracer,active_species_idx,kappa_dry,1.0_r8/dp_dry)
      end if
      if (inv_exner) then
-       exner(:,:,:) = (p00/pmid(:,:,:))**kappa_dry(:,:,:)       
+       exner(:,:,:) = (p00/pmid(:,:,:))**kappa_dry(:,:,:)
      else
        exner(:,:,:) = (pmid(:,:,:)/p00)**kappa_dry(:,:,:)
      end if
      if (present(poverp0)) poverp0=pmid(:,:,:)/p00
    end subroutine get_exner
    !
-   !****************************************************************************************************************   
-   !   
+   !****************************************************************************************************************
+   !
    ! Compute virtual potential temperature from dp_dry, m, T and ptop.
    !
-   !****************************************************************************************************************   
-   !   
+   !****************************************************************************************************************
+   !
    subroutine get_virtual_theta(i0,i1,j0,j1,nlev,ntrac,tracer,mixing_ratio,active_species_idx, &
                                 dp_dry,ptop,p00,temp,theta_v)
      integer,  intent(in)  :: i0,i1,j0,j1,nlev,ntrac
@@ -927,7 +1003,7 @@ end subroutine physconst_init
      integer,  intent(in)  :: mixing_ratio                       ! 1 => tracer is dry mixing ratio
                                                                  ! 2 => tracer is mass (q*dp)
      integer,  intent(in)  :: active_species_idx(:)              ! index for thermodynamic species in tracer array
-     real(r8), intent(in)  :: dp_dry(i0:i1,j0:j1,nlev)           ! dry pressure level thickness     
+     real(r8), intent(in)  :: dp_dry(i0:i1,j0:j1,nlev)           ! dry pressure level thickness
      real(r8), intent(in)  :: ptop                               ! pressure at model top
      real(r8), intent(in)  :: p00                                ! reference pressure for Exner pressure (usually 1000hPa)
      real(r8), intent(in)  :: temp(i0:i1,j0:j1,nlev)             ! temperature
@@ -937,17 +1013,17 @@ end subroutine physconst_init
 
      call get_exner(i0,i1,j0,j1,nlev,ntrac,tracer,mixing_ratio,active_species_idx, &
                     dp_dry,ptop,p00,.true.,iexner)
-     
+
      theta_v(:,:,:) = temp(:,:,:)*iexner(:,:,:)
 
    end subroutine get_virtual_theta
    !
-   !****************************************************************************************************************   
-   !   
+   !****************************************************************************************************************
+   !
    ! Compute geopotential from dry pressure level thichkness, water tracers, model top pressure and temperature
    !
-   !****************************************************************************************************************   
-   !   
+   !****************************************************************************************************************
+   !
    subroutine get_gz(i0,i1,j0,j1,nlev,ntrac,tracer,mixing_ratio,active_species_idx, &
                      dp_dry,ptop,temp,phis,gz,pmid,dp,T_v)
      integer,  intent(in)  :: i0,i1,j0,j1,nlev,ntrac             ! array bounds
@@ -955,7 +1031,7 @@ end subroutine physconst_init
      integer,  intent(in)  :: mixing_ratio                       ! 1 => tracer is dry mixing ratio
                                                                  ! 2 => tracer is mass (q*dp)
      integer,  intent(in)  :: active_species_idx(:)              ! index for thermodynamic species in tracer array
-     real(r8), intent(in)  :: dp_dry(i0:i1,j0:j1,nlev)           ! dry pressure level thickness     
+     real(r8), intent(in)  :: dp_dry(i0:i1,j0:j1,nlev)           ! dry pressure level thickness
      real(r8), intent(in)  :: ptop                               ! pressure at model top
      real(r8), intent(in)  :: temp(i0:i1,j0:j1,nlev)             ! temperature
      real(r8), intent(in)  :: phis(i0:i1,j0:j1)                  ! surface geopotential
@@ -963,14 +1039,14 @@ end subroutine physconst_init
      real(r8), optional, intent(out) :: pmid(i0:i1,j0:j1,nlev)   ! mid-level pressure
      real(r8), optional, intent(out) :: dp(i0:i1,j0:j1,nlev)     ! pressure level thickness
      real(r8), optional, intent(out) :: t_v(i0:i1,j0:j1,nlev)    ! virtual temperature
-     
+
 
      real(r8), dimension(i0:i1,j0:j1,nlev)   :: pmid_local, t_v_local, dp_local, R_dry
      real(r8), dimension(i0:i1,j0:j1,nlev+1) :: pint
 
      call get_pmid_from_dpdry(i0,i1,j0,j1,nlev,ntrac,tracer,mixing_ratio,active_species_idx, &
-                              dp_dry,ptop,pmid_local,pint=pint,dp=dp_local)       
-     if (mixing_ratio==1) then 
+                              dp_dry,ptop,pmid_local,pint=pint,dp=dp_local)
+     if (mixing_ratio==1) then
        call get_virtual_temp(i0,i1,j0,j1,1,nlev,ntrac,tracer,t_v_local,temp=temp,&
             active_species_idx_dycore=active_species_idx)
        call get_R_dry(i0,i1,j0,j1,1,nlev,1,nlev,ntrac,tracer,active_species_idx,R_dry)
@@ -987,16 +1063,16 @@ end subroutine physconst_init
      if (present(dp))   dp=dp_local
    end subroutine get_gz
    !
-   !****************************************************************************************************************   
-   !   
+   !****************************************************************************************************************
+   !
    ! Compute geopotential from pressure level thickness and virtual temperature
    !
-   !****************************************************************************************************************   
-   !   
+   !****************************************************************************************************************
+   !
    subroutine get_gz_given_dp_Tv_Rdry(i0,i1,j0,j1,nlev,dp,T_v,R_dry,phis,ptop,gz,pmid)
-     use dycore, only: dycore_is          
+     use dycore, only: dycore_is
      integer,  intent(in)  :: i0,i1,j0,j1,nlev                 ! array bounds
-     real(r8), intent(in)  :: dp   (i0:i1,j0:j1,nlev)          ! pressure level thickness 
+     real(r8), intent(in)  :: dp   (i0:i1,j0:j1,nlev)          ! pressure level thickness
      real(r8), intent(in)  :: T_v  (i0:i1,j0:j1,nlev)          ! virtual temperature
      real(r8), intent(in)  :: R_dry(i0:i1,j0:j1,nlev)          ! R dry
      real(r8), intent(in)  :: phis (i0:i1,j0:j1)               ! surface geopotential
@@ -1016,7 +1092,7 @@ end subroutine physconst_init
      ! integrate hydrostatic eqn
      !
      gzh = phis
-     if (dycore_is ('LR').or.dycore_is ('SE')) then       
+     if (dycore_is('LR').or.dycore_is('FV3')) then
        do k=nlev,1,-1
          Rdry_tv(:,:) = R_dry(:,:,k)*T_v(:,:,k)
          gz(:,:,k) = gzh(:,:)+Rdry_tv(:,:)*(1.0_r8-pint(:,:,k)/pmid_local(:,:,k))
@@ -1027,17 +1103,17 @@ end subroutine physconst_init
          Rdry_tv(:,:) = R_dry(:,:,k)*T_v(:,:,k)
          gz(:,:,k) = gzh(:,:)+Rdry_tv(:,:)*0.5_r8*dp(:,:,k)/pmid_local(:,:,k)
          gzh(:,:)  = gzh(:,:) + Rdry_tv(:,:)*dp(:,:,k)/pmid_local(:,:,k)
-       end do       
+       end do
      end if
      if (present(pmid)) pmid=pmid_local
    end subroutine get_gz_given_dp_Tv_Rdry
    !
-   !****************************************************************************************************************   
-   !   
+   !****************************************************************************************************************
+   !
    ! Compute Richardson number at cell interfaces (half levels)
    !
-   !****************************************************************************************************************   
-   !   
+   !****************************************************************************************************************
+   !
    subroutine get_Richardson_number(i0,i1,j0,j1,nlev,ntrac,tracer,mixing_ratio,active_species_idx,&
         dp_dry,ptop,p00,temp,v,Richardson_number,pmid,dp)
      integer,  intent(in)  :: i0,i1,j0,j1,nlev,ntrac
@@ -1045,30 +1121,30 @@ end subroutine physconst_init
      integer,  intent(in)  :: mixing_ratio                         ! 1 => tracer is dry mixing ratio
                                                                    ! 2 => tracer is mass (q*dp)
      integer,  intent(in)  :: active_species_idx(:)                ! index for thermodynamic species in tracer array
-     real(r8), intent(in)  :: dp_dry(i0:i1,j0:j1,nlev)             ! dry pressure level thickness     
+     real(r8), intent(in)  :: dp_dry(i0:i1,j0:j1,nlev)             ! dry pressure level thickness
      real(r8), intent(in)  :: ptop                                 ! pressure at model top
      real(r8), intent(in)  :: p00                                  ! reference pressure for Exner pressure (usually 1000hPa)
      real(r8), intent(in)  :: temp(i0:i1,j0:j1,nlev)               ! temperature
      real(r8), intent(in)  :: v(i0:i1,j0:j1,2,nlev)                ! velocity components
      real(r8), intent(out) :: Richardson_number(i0:i1,j0:j1,nlev+1)!
      real(r8), optional, intent(out) :: pmid(i0:i1,j0:j1,nlev)   !
-     real(r8), optional, intent(out) :: dp(i0:i1,j0:j1,nlev)   !     
+     real(r8), optional, intent(out) :: dp(i0:i1,j0:j1,nlev)   !
 
      real(r8), dimension(i0:i1,j0:j1,nlev):: gz,theta_v
      real(r8), dimension(i0:i1,j0:j1)     :: pt1, pt2, phis
      integer :: k,km1
-     real(r8), parameter:: ustar2 = 1.E-4_r8     
+     real(r8), parameter:: ustar2 = 1.E-4_r8
 
      phis = 0.0_r8
      if (present(pmid).and.present(dp)) then
         call get_gz(i0,i1,j0,j1,nlev,ntrac,tracer,mixing_ratio,active_species_idx, &
-                    dp_dry,ptop,temp,phis,gz,pmid=pmid,dp=dp)              
+                    dp_dry,ptop,temp,phis,gz,pmid=pmid,dp=dp)
      else if (present(pmid)) then
         call get_gz(i0,i1,j0,j1,nlev,ntrac,tracer,mixing_ratio,active_species_idx, &
-                    dp_dry,ptop,temp,phis,gz,pmid=pmid)       
+                    dp_dry,ptop,temp,phis,gz,pmid=pmid)
      else if (present(dp)) then
         call get_gz(i0,i1,j0,j1,nlev,ntrac,tracer,mixing_ratio,active_species_idx, &
-                    dp_dry,ptop,temp,phis,gz,dp=dp)       
+                    dp_dry,ptop,temp,phis,gz,dp=dp)
      else
         call get_gz(i0,i1,j0,j1,nlev,ntrac,tracer,mixing_ratio,active_species_idx, &
                     dp_dry,ptop,temp,phis,gz)
@@ -1080,48 +1156,185 @@ end subroutine physconst_init
      do k=nlev-1,2,-1
        km1=k-1
        pt1(:,:) = theta_v(:,:,km1)
-       pt2(:,:) = theta_v(:,:,k)       
+       pt2(:,:) = theta_v(:,:,k)
        Richardson_number(:,:,k) = (gz(:,:,km1)-gz(:,:,k))*(pt1-pt2)/( 0.5_r8*(pt1+pt2)*        &
             ((v(:,:,1,km1)-v(:,:,1,k))**2+(v(:,:,2,km1)-v(:,:,2,k))**2+ustar2) )
      end do
    end subroutine get_Richardson_number
-
-   subroutine get_hydrostatic_static_energy(i0,i1,j0,j1,nlev,ntrac,tracer,mixing_ratio,active_species_idx,&
-        dp_dry,ptop,temp,phis,v,KE,thermalE,gz)
-     integer,  intent(in)  :: i0,i1,j0,j1,nlev,ntrac
-     real(r8), intent(in)  :: tracer(i0:i1,j0:j1,nlev,1:ntrac)     ! tracer; quantity specified by mixing_ratio arg
-     integer,  intent(in)  :: mixing_ratio                         ! 1 => tracer is dry mixing ratio
-                                                                   ! 2 => tracer is mass (q*dp)
-     integer,  intent(in)  :: active_species_idx(:)                ! index for thermodynamic species in tracer array
-     real(r8), intent(in)  :: dp_dry(i0:i1,j0:j1,nlev)             ! dry pressure level thickness     
-     real(r8), intent(in)  :: ptop                                 ! pressure at model top
-     real(r8), intent(in)  :: phis(i0:i1,j0:j1)                    ! surface geopotential
-     real(r8), intent(in)  :: temp(i0:i1,j0:j1,nlev)               ! temperature
-     real(r8), intent(in)  :: v(i0:i1,j0:j1,2,nlev)                ! velocity components
-
-     real(r8), intent(out) :: KE(i0:i1,j0:j1,nlev),thermalE(i0:i1,j0:j1,nlev),gz(i0:i1,j0:j1,nlev)
-
-     real(r8), dimension(i0:i1,j0:j1,nlev):: T_v,cp_dry
-
-     call get_gz(i0,i1,j0,j1,nlev,ntrac,tracer,mixing_ratio,active_species_idx, &
-                 dp_dry,ptop,temp,phis,gz,T_v=T_v)
-     if (mixing_ratio==1) then
-       call get_cp_dry(i0,i1,j0,j1,1,nlev,1,nlev,ntrac,tracer,active_species_idx,cp_dry)       
-     else
-        call get_cp_dry(i0,i1,j0,j1,1,nlev,1,nlev,ntrac,tracer,active_species_idx,cp_dry, &
-                        fact=1.0_r8/dp_dry)              
-     end if
-     
-     thermalE(:,:,:) = cp_dry(:,:,:)*T_v(:,:,:)
-     KE(:,:,:)       = 0.5_r8*(v(:,:,2,:)**2+v(:,:,1,:)**2)
-   end subroutine get_hydrostatic_static_energy
    !
-   !****************************************************************************************************************   
+   !****************************************************************************************************************
+   !
+   ! compute column integrated total energy consistent with vertical coordinate as well as vertical integrals 
+   ! of water mass (H2O,wv,liq,ice)
+   !
+   ! if subroutine is asked to compute "te" then the latent heat terms are added to the kinetic (ke), internal + 
+   ! geopotential (se)  energy terms
+   !
+   ! subroutine assumes that enthalpy term (rho*cp*T) uses dry air heat capacity
+   !
+   !****************************************************************************************************************
+   !
+   subroutine get_hydrostatic_energy(i0,i1,j0,j1,nlev,ntrac,tracer,pdel,cp_or_cv,u,v,T,vcoord,ps,phis,z,dycore_idx,&
+        te,se,ke,wv,H2O,liq,ice)
+     use dyn_tests_utils, only: vc_moist_pressure, vc_height, vc_moist_pressure, vc_dry_pressure, vc_height
+     use cam_logfile,     only: iulog
+     integer,  intent(in)            :: i0,i1,j0,j1,nlev,ntrac
+     real(r8), intent(in)            :: tracer(i0:i1,j0:j1,nlev,1:ntrac)     ! tracer mixing ratio
+     real(r8), intent(in)            :: pdel(i0:i1,j0:j1,nlev)               ! pressure level thickness
+     real(r8), intent(in)            :: cp_or_cv(i0:i1,j0:j1,nlev)           ! dry air heat capacity under constant pressure
+                                                                             ! or constant volume (depends on vcoord)
+     real(r8), intent(in)            :: u(i0:i1,j0:j1,nlev)                  ! U
+     real(r8), intent(in)            :: v(i0:i1,j0:j1,nlev)                  ! V
+     real(r8), intent(in)            :: T(i0:i1,j0:j1,nlev)                  ! T
+     integer,  intent(in)            :: vcoord                               ! vertical coordinate
+     real(r8), intent(in), optional  :: ps(i0:i1,j0:j1)                      ! PS
+     real(r8), intent(in), optional  :: phis(i0:i1,j0:j1)                    ! PHIS
+     real(r8), intent(in), optional  :: z(i0:i1,j0:j1,nlev)                  ! Z mid
+     logical,  intent(in), optional  :: dycore_idx                           ! use dycore index for thermodynamic active species
+
+     real(r8), intent(out), optional :: H2O(i0:i1,j0:j1) !vertically integrated total water
+     real(r8), intent(out), optional :: te (i0:i1,j0:j1) !vertically integrated total energy
+     real(r8), intent(out), optional :: ke (i0:i1,j0:j1) !vertically integrated kinetic energy
+     real(r8), intent(out), optional :: se (i0:i1,j0:j1) !vertically integrated internal+geopotential energy
+     real(r8), intent(out), optional :: wv (i0:i1,j0:j1) !vertically integrated water vapor
+     real(r8), intent(out), optional :: liq(i0:i1,j0:j1) !vertically integrated liquid
+     real(r8), intent(out), optional :: ice(i0:i1,j0:j1) !vertically integrated ice
+
+     real(r8), dimension(i0:i1,j0:j1):: ke_loc,se_loc,wv_loc,liq_loc,ice_loc !variables for vertical integrals
+     real(r8)                        :: latsub         !latent heat of sublimation
+     integer                         :: i,j,k,idx,ierr
+     character(len=22)               :: subname='get_hydrostatic_energy' ! subroutine name
+     integer, allocatable            :: species_idx(:),species_liq_idx(:),species_ice_idx(:)
+
+     allocate(&
+          species_idx(thermodynamic_active_species_num),        &
+          species_liq_idx(thermodynamic_active_species_liq_num),&
+          species_ice_idx(thermodynamic_active_species_ice_num),&
+          stat=ierr)
+     if ( ierr /= 0 ) call endrun('get_hydrostatic_energy: allocation error for species_xxx arrays')
+
+     if (present(dycore_idx))then
+        if (dycore_idx) then
+           species_idx(:) = thermodynamic_active_species_idx_dycore(:)
+           species_liq_idx(:) = thermodynamic_active_species_liq_idx_dycore(:)
+           species_ice_idx(:) = thermodynamic_active_species_ice_idx_dycore(:)
+        else
+           species_idx(:) = thermodynamic_active_species_idx(:)
+           species_liq_idx(:) = thermodynamic_active_species_liq_idx(:)
+           species_ice_idx(:) = thermodynamic_active_species_ice_idx(:)
+        end if
+     else
+        species_idx(:) = thermodynamic_active_species_idx(:)
+        species_liq_idx(:) = thermodynamic_active_species_liq_idx(:)
+        species_ice_idx(:) = thermodynamic_active_species_ice_idx(:)
+     end if
+   
+     select case (vcoord)  
+     case(vc_moist_pressure,vc_dry_pressure)          
+       if (.not. present(ps) .or. .not. present(phis)) then
+         write(iulog, *) subname//' ps and phis must be present for moist/dry pressure vertical coordinate'
+         call endrun(subname // '::  ps and phis must be present for moist/dry pressure vertical coordinate')
+       endif
+       ke_loc = 0._r8
+       se_loc = 0._r8
+       wv_loc = 0._r8
+       do k = 1, nlev
+         do j = j0,j1
+           do i = i0,i1
+             ke_loc(i,j) = ke_loc(i,j) + 0.5_r8*(u(i,j,k)**2 + v(i,j,k)**2)*pdel(i,j,k)/gravit
+             se_loc(i,j) = se_loc(i,j) +         T(i,j,k)*cp_or_cv(i,j,k)  *pdel(i,j,k)/gravit
+             wv_loc(i,j) = wv_loc(i,j) +         tracer(i,j,k,1)           *pdel(i,j,k)/gravit
+           end do
+         end do
+       end do
+       do j = j0,j1
+         do i = i0,i1
+           se_loc(i,j) = se_loc(i,j) + phis(i,j)*ps(i,j)/gravit
+         end do
+       end do
+     case(vc_height)
+       if (.not. present(z)) then
+         write(iulog, *) subname//' z must be present for height vertical coordinate'
+         call endrun(subname // '::  z must be present for height vertical coordinate')
+       endif
+       ke_loc = 0._r8
+       se_loc = 0._r8
+       wv_loc = 0._r8
+       do k = 1, nlev
+         do j = j0,j1
+           do i = i0,i1
+             ke_loc(i,j) = ke_loc(i,j) + 0.5_r8*(u(i,j,k)**2 + v(i,j,k)**2)*pdel(i,j,k)/gravit
+             se_loc(i,j) = se_loc(i,j) +         T(i,j,k)*cp_or_cv(i,j,k)  *pdel(i,j,k)/gravit!internal energy
+             ! z is height above ground
+             se_loc(i,j) = se_loc(i,j) +         (z(i,j,k)+phis(i,j)/gravit)*pdel(i,j,k)       !potential energy
+             wv_loc(i,j) = wv_loc(i,j) +         tracer(i,j,k,1)            *pdel(i,j,k)/gravit
+           end do
+         end do
+       end do
+     case default
+       write(iulog, *) subname//' vertical coordinate not supported: ',vcoord
+       call endrun(subname // ':: vertical coordinate not supported')
+     end select
+     if (present(te)) te  = se_loc + ke_loc       
+     if (present(se)) se = se_loc
+     if (present(ke)) ke = ke_loc
+     if (present(wv)) wv = wv_loc
+     !
+     ! vertical integral of total liquid water
+     !
+     liq_loc = 0._r8     
+     do idx = 1,thermodynamic_active_species_liq_num
+       do k = 1, nlev
+         do j = j0,j1
+           do i = i0,i1
+             liq_loc(i,j) = liq_loc(i,j) + tracer(i,j,k,species_liq_idx(idx))*pdel(i,j,k)/gravit
+           end do
+         end do
+       end do
+     end do
+     if (present(liq)) liq = liq_loc
+          
+     !
+     ! vertical integral of total frozen (ice) water
+     !
+     ice_loc = 0._r8
+     do idx = 1,thermodynamic_active_species_ice_num
+       do k = 1, nlev
+         do j = j0,j1
+           do i = i0,i1
+             ice_loc(i,j) = ice_loc(i,j) + tracer(i,j,k,species_ice_idx(idx))*pdel(i,j,k)/gravit
+           end do
+         end do
+       end do
+     end do     
+     if (present(ice)) ice = ice_loc
+     ! Compute vertical integrals of total water.
+     if (present(H2O)) H2O = wv_loc + liq_loc + ice_loc
+     !
+     ! latent heat terms depend on enthalpy reference state
+     !
+     latsub = latvap+latice
+     select case (TRIM(enthalpy_reference_state))
+     case('ice')
+       if (present(te)) te = te + latsub*wv_loc  + latice*liq_loc
+     case('liq')
+       if (present(te)) te = te + latvap*wv_loc  - latice*ice_loc
+     case('wv')
+       if (present(te)) te = te - latvap*liq_loc - latsub*ice_loc
+     case default
+       write(iulog, *) subname//' enthalpy reference state not supported: ',TRIM(enthalpy_reference_state) 
+       call endrun(subname // ':: enthalpy reference state not supported')
+     end select
+     deallocate(species_idx,species_liq_idx,species_ice_idx)
+   end subroutine get_hydrostatic_energy
+
+   !
+   !****************************************************************************************************************
    !
    ! get pressure from dry pressure and thermodynamic active species (e.g., forms of water: water vapor, cldliq, etc.)
    !
    !****************************************************************************************************************
-   !     
+   !
    subroutine get_ps(i0,i1,j0,j1,k0,k1,ntrac,tracer_mass,active_species_idx,dp_dry,ps,ptop)
      integer,  intent(in)   :: i0,i1,j0,j1,k0,k1,ntrac
      real(r8), intent(in)   :: tracer_mass(i0:i1,j0:j1,k0:k1,1:ntrac) ! Tracer array
@@ -1132,10 +1345,10 @@ end subroutine physconst_init
 
      integer                    :: i,j,k,m_cnst,nq
      real(r8)                   :: dp(i0:i1,j0:j1,k0:k1)       ! dry pressure level thickness
-     
+
      dp = dp_dry
-     do nq=dry_air_species_num+1,thermodynamic_active_species_num                   
-       m_cnst = active_species_idx(nq)       
+     do nq=dry_air_species_num+1,thermodynamic_active_species_num
+       m_cnst = active_species_idx(nq)
        do k=k0,k1
          do j=j0,j1
            do i = i0,i1
@@ -1155,20 +1368,20 @@ end subroutine physconst_init
    end subroutine get_ps
    !
    !****************************************************************************************************************
-   !  
+   !
    ! Compute dry air heaet capacity under constant pressure
    !
    !****************************************************************************************************************
-   !     
+   !
    subroutine get_cp_dry(i0,i1,j0,j1,k0,k1,k0_trac,k1_trac,ntrac,tracer,active_species_idx,cp_dry,fact)
      integer,  intent(in)  :: i0,i1,j0,j1,k0,k1,ntrac,k0_trac,k1_trac
      real(r8), intent(in)  :: tracer(i0:i1,j0:j1,k0_trac:k1_trac,1:ntrac) ! Tracer array
      integer,  intent(in)  :: active_species_idx(:)
      real(r8), optional, intent(in) :: fact(i0:i1,j0:j1,k0_trac:k1_trac)       ! dry pressure level thickness
-     real(r8), intent(out) :: cp_dry(i0:i1,j0:j1,k0:k1)       ! dry pressure level thickness     
-     
+     real(r8), intent(out) :: cp_dry(i0:i1,j0:j1,k0:k1)       ! dry pressure level thickness
+
      integer  :: i,j,k,m_cnst,nq
-     real(r8) :: factor(i0:i1,j0:j1,k0_trac:k1_trac)       ! dry pressure level thickness          
+     real(r8) :: factor(i0:i1,j0:j1,k0_trac:k1_trac)       ! dry pressure level thickness
      real(r8) :: residual(i0:i1,j0:j1,k0:k1), mm
      !
      ! dry air not species dependent
@@ -1180,12 +1393,12 @@ end subroutine physconst_init
          factor = fact(:,:,:)
        else
          factor = 1.0_r8
-       endif       
+       endif
 
        cp_dry = 0.0_r8
        residual = 1.0_r8
-       do nq=1,dry_air_species_num-1
-         m_cnst = active_species_idx(nq)       
+       do nq=1,dry_air_species_num
+         m_cnst = active_species_idx(nq)
          do k=k0,k1
            do j=j0,j1
              do i = i0,i1
@@ -1196,7 +1409,7 @@ end subroutine physconst_init
            end do
          end do
        end do
-       nq = dry_air_species_num
+       nq = 0 ! N2
        do k=k0,k1
          do j=j0,j1
            do i = i0,i1
@@ -1208,18 +1421,18 @@ end subroutine physconst_init
    end subroutine get_cp_dry
    !
    !****************************************************************************************************************
-   !  
+   !
    ! Compute generalized dry air gas constant R
    !
    !****************************************************************************************************************
-   !     
+   !
    subroutine get_R_dry(i0,i1,j0,j1,k0,k1,k0_trac,k1_trac,ntrac,tracer,active_species_idx_dycore,R_dry,fact)
      integer,  intent(in)  :: i0,i1,j0,j1,k0,k1,ntrac,k0_trac,k1_trac    !array boundas
      real(r8), intent(in)  :: tracer(i0:i1,j0:j1,k0_trac:k1_trac,1:ntrac)!tracer array
      integer,  intent(in)  :: active_species_idx_dycore(:)               !index of active species in tracer
      real(r8), intent(out) :: R_dry(i0:i1,j0:j1,k0:k1)                   !dry air R
      real(r8), optional, intent(in) :: fact(i0:i1,j0:j1,k0_trac:k1_trac) !factor for converting tracer to dry mixing ratio
-     
+
      integer :: i,j,k,m_cnst,nq
      real(r8):: factor(i0:i1,j0:j1,k0_trac:k1_trac), residual(i0:i1,j0:j1,k0:k1), mm
      if (dry_air_species_num==0) then
@@ -1232,12 +1445,12 @@ end subroutine physconst_init
          factor = fact(:,:,:)
        else
          factor = 1.0_r8
-       endif       
+       endif
 
        R_dry = 0.0_r8
        residual = 1.0_r8
-       do nq=1,dry_air_species_num-1
-         m_cnst = active_species_idx_dycore(nq)       
+       do nq=1,dry_air_species_num
+         m_cnst = active_species_idx_dycore(nq)
          do k=k0,k1
            do j=j0,j1
              do i = i0,i1
@@ -1249,9 +1462,9 @@ end subroutine physconst_init
          end do
        end do
        !
-       ! last dry air constituent derived from the others
+       ! N2 derived from the others
        !
-       nq = dry_air_species_num
+       nq = 0
        do k=k0,k1
          do j=j0,j1
            do i = i0,i1
@@ -1274,7 +1487,7 @@ end subroutine physconst_init
      integer,  intent(in)  :: active_species_idx(:)                      !index of active species in tracer
      real(r8), intent(out) :: R(i0:i1,j0:j1,k0:k1)                       !generalized gas constant
      real(r8), optional, intent(in) :: fact(i0:i1,j0:j1,k0_trac:k1_trac) !factor for converting tracer to dry mixing ratio
-     
+
      integer :: nq,itrac
      real(r8):: factor(i0:i1,j0:j1,k0_trac:k1_trac)
      real(r8), dimension(i0:i1,j0:j1,k0:k1)              :: sum_species
@@ -1289,11 +1502,11 @@ end subroutine physconst_init
      idx_local = active_species_idx
      sum_species = 1.0_r8 !all dry air species sum to 1
      do nq=dry_air_species_num+1,thermodynamic_active_species_num
-       itrac = idx_local(nq)       
+       itrac = idx_local(nq)
        sum_species(:,:,:) = sum_species(:,:,:) + tracer(:,:,:,itrac)*factor(:,:,:)
      end do
      do nq=dry_air_species_num+1,thermodynamic_active_species_num
-       itrac = idx_local(nq)              
+       itrac = idx_local(nq)
        R(:,:,:)      = R(:,:,:)+thermodynamic_active_species_R(nq)*tracer(:,:,:,itrac)*factor(:,:,:)
      end do
      R=R/sum_species
@@ -1311,7 +1524,7 @@ end subroutine physconst_init
      integer,  intent(in)  :: active_species_idx(:)              !index of active species in tracer
      real(r8), intent(out) :: mbarv(i0:i1,j0:j1,k0:k1)           !molecular weight of dry air
      real(r8), optional, intent(in) :: fact(i0:i1,j0:j1,nlev)    !factor for converting tracer to dry mixing ratio
-     
+
      integer :: i,j,k,m_cnst,nq
      real(r8):: factor(i0:i1,j0:j1,k0:k1), residual(i0:i1,j0:j1,k0:k1), mm
      !
@@ -1321,15 +1534,15 @@ end subroutine physconst_init
        mbarv = mwdry
      else
        if (present(fact)) then
-         factor = fact(:,:,:)
+         factor(i0:i1,j0:j1,k0:k1) = fact(i0:i1,j0:j1,k0:k1)
        else
-         factor = 1.0_r8
-       endif       
+         factor(i0:i1,j0:j1,k0:k1) = 1.0_r8
+       endif
 
        mbarv = 0.0_r8
        residual = 1.0_r8
-       do nq=1,dry_air_species_num-1
-         m_cnst = active_species_idx(nq)       
+       do nq=1,dry_air_species_num
+         m_cnst = active_species_idx(nq)
          do k=k0,k1
            do j=j0,j1
              do i = i0,i1
@@ -1340,7 +1553,7 @@ end subroutine physconst_init
            end do
          end do
        end do
-       nq = dry_air_species_num
+       nq = 0 ! N2
        do k=k0,k1
          do j=j0,j1
            do i = i0,i1
@@ -1374,13 +1587,13 @@ end subroutine physconst_init
        allocate(R_dry(i0:i1,j0:j1,k0:k1))
        allocate(cp_dry(i0:i1,j0:j1,k0:k1))
        if (present(fact)) then
-         call get_cp_dry(i0,i1,j0,j1,k0,k1,1,nlev,ntrac,tracer,active_species_idx,cp_dry,fact=fact)         
-         call get_R_dry(i0,i1,j0,j1,k0,k1,1,nlev,ntrac,tracer,active_species_idx,R_dry,fact=fact)         
+         call get_cp_dry(i0,i1,j0,j1,k0,k1,1,nlev,ntrac,tracer,active_species_idx,cp_dry,fact=fact)
+         call get_R_dry(i0,i1,j0,j1,k0,k1,1,nlev,ntrac,tracer,active_species_idx,R_dry,fact=fact)
        else
-         call get_cp_dry(i0,i1,j0,j1,k0,k1,1,nlev,ntrac,tracer,active_species_idx,cp_dry)         
-         call get_R_dry(i0,i1,j0,j1,k0,k1,1,nlev,ntrac,tracer,active_species_idx,R_dry)         
+         call get_cp_dry(i0,i1,j0,j1,k0,k1,1,nlev,ntrac,tracer,active_species_idx,cp_dry)
+         call get_R_dry(i0,i1,j0,j1,k0,k1,1,nlev,ntrac,tracer,active_species_idx,R_dry)
        end if
-       kappa_dry = R_dry/cp_dry       
+       kappa_dry = R_dry/cp_dry
        deallocate(R_dry,cp_dry)
      end if
    end subroutine get_kappa_dry
@@ -1404,7 +1617,7 @@ end subroutine physconst_init
 
      real(r8) :: factor(i0:i1,j0:j1,k0:k1)
      integer  :: nq,itrac
-     
+
      if (present(dp_dry)) then
        factor = 1.0_r8/dp_dry(:,:,:)
      else
@@ -1419,15 +1632,15 @@ end subroutine physconst_init
    !
    !****************************************************************************************************************
    !
-   ! g*compute thermal energy = cp*T*dp, where dp is pressure level thickness, cp is generalized cp and T temperature
+   ! Compute thermal energy = cp*T*dp, where dp is pressure level thickness, cp is generalized cp and T temperature
    !
-   ! Note:tracer is in units of m*dp_dry ("mass")
+   ! Note: tracer is in units of m*dp_dry ("mass")
    !
-   !****************************************************************************************************************   
+   !****************************************************************************************************************
    !
    subroutine get_thermal_energy(i0,i1,j0,j1,k0,k1,ntrac,tracer_mass,temp,dp_dry,thermal_energy, &
                                  active_species_idx_dycore)
-     integer,  intent(in)           :: i0,i1,j0,j1,k0,k1,ntrac      
+     integer,  intent(in)           :: i0,i1,j0,j1,k0,k1,ntrac
      real(r8), intent(in)           :: tracer_mass(i0:i1,j0:j1,k0:k1,ntrac)!tracer array (mass weighted)
      real(r8), intent(in)           :: temp(i0:i1,j0:j1,k0:k1)             !temperature
      real(r8), intent(in)           :: dp_dry(i0:i1,j0:j1,k0:k1)           !dry presure level thickness
@@ -1437,7 +1650,7 @@ end subroutine physconst_init
      ! (if different from physics index)
      !
      integer, optional, dimension(:) :: active_species_idx_dycore
-     
+
      ! local vars
      integer :: nq, itrac
      integer, dimension(thermodynamic_active_species_num)                   :: idx_local
@@ -1448,7 +1661,7 @@ end subroutine physconst_init
        idx_local = active_species_idx_dycore
      else
        idx_local = thermodynamic_active_species_idx
-     end if     
+     end if
      !
      ! "mass-weighted" cp (dp must be dry)
      !
@@ -1460,7 +1673,7 @@ end subroutine physconst_init
      end if
      !
      ! tracer is in units of m*dp ("mass"), where m is dry mixing ratio and dry pressure level thickness
-     !         
+     !
      do nq=dry_air_species_num+1,thermodynamic_active_species_num
        itrac = idx_local(nq)
        thermal_energy(:,:,:) = thermal_energy(:,:,:)+thermodynamic_active_species_cp(nq)*tracer_mass(:,:,:,itrac)
@@ -1469,7 +1682,7 @@ end subroutine physconst_init
    end subroutine get_thermal_energy
    !
    !****************************************************************************************************************
-   !  
+   !
    ! Compute virtual temperature T_v
    !
    ! tracer is in units of dry mixing ratio unless optional argument dp_dry is present in which case tracer is
@@ -1494,7 +1707,7 @@ end subroutine physconst_init
      ! (if different from physics index)
      !
      integer, optional,  intent(in) :: active_species_idx_dycore(:)
-     
+
      ! local vars
      integer :: itrac,nq
      real(r8),  dimension(i0:i1,j0:j1,k0:k1)              :: sum_species, factor, Rd
@@ -1509,15 +1722,15 @@ end subroutine physconst_init
      if (present(dp_dry)) then
        factor = 1.0_r8/dp_dry
      else
-       factor = 1.0_r8       
+       factor = 1.0_r8
      end if
 
      sum_species = 1.0_r8 !all dry air species sum to 1
      do nq=dry_air_species_num+1,thermodynamic_active_species_num
-       itrac = idx_local(nq)       
+       itrac = idx_local(nq)
        sum_species(:,:,:) = sum_species(:,:,:) + tracer(:,:,:,itrac)*factor(:,:,:)
      end do
-   
+
      call get_R_dry (i0,i1,j0,j1,k0,k1,k0,k1,ntrac,tracer,idx_local,Rd,fact=factor)
      t_v(:,:,:)  = Rd(:,:,:)
      do nq=dry_air_species_num+1,thermodynamic_active_species_num
@@ -1527,10 +1740,11 @@ end subroutine physconst_init
      if (present(temp)) then
        t_v(:,:,:)  = t_v(:,:,:)*temp(:,:,:)/(Rd(:,:,:)*sum_species)
      else
-       t_v(:,:,:)  = t_v(:,:,:)/(Rd(:,:,:)*sum_species)       
+       t_v(:,:,:)  = t_v(:,:,:)/(Rd(:,:,:)*sum_species)
      end if
      if (present(sum_q)) sum_q=sum_species
    end subroutine get_virtual_temp
+
    !
    !*************************************************************************************************************************
    !
@@ -1551,7 +1765,7 @@ end subroutine physconst_init
      ! (if different from physics index)
      !
      integer, optional, intent(in)  :: active_species_idx_dycore(:)
-     
+
      ! local vars
      integer :: nq,i,j,k, itrac
      real(r8),  dimension(i0:i1,j0:j1,k0:k1)  :: sum_species, sum_cp, factor
@@ -1566,12 +1780,12 @@ end subroutine physconst_init
      if (present(dp_dry)) then
        factor = 1.0_r8/dp_dry
      else
-       factor = 1.0_r8       
+       factor = 1.0_r8
      end if
 
      sum_species = 1.0_r8 !all dry air species sum to 1
      do nq=dry_air_species_num+1,thermodynamic_active_species_num
-       itrac = idx_local(nq)       
+       itrac = idx_local(nq)
        sum_species(:,:,:) = sum_species(:,:,:) + tracer(:,:,:,itrac)*factor(:,:,:)
      end do
 
@@ -1581,7 +1795,7 @@ end subroutine physconst_init
        call get_cp_dry(i0,i1,j0,j1,k0,k1,k0,k1,ntrac,tracer,idx_local,sum_cp,fact=factor)
      end if
      do nq=dry_air_species_num+1,thermodynamic_active_species_num
-       itrac = idx_local(nq)              
+       itrac = idx_local(nq)
        sum_cp(:,:,:)      = sum_cp(:,:,:)+thermodynamic_active_species_cp(nq)*tracer(:,:,:,itrac)*factor(:,:,:)
      end do
      if (inv_cp) then
@@ -1591,6 +1805,7 @@ end subroutine physconst_init
      end if
 
    end subroutine get_cp
+
    !
    !*************************************************************************************************************************
    !
@@ -1638,7 +1853,7 @@ end subroutine physconst_init
      integer, optional, intent(in)   :: active_species_idx_dycore(:)
      real(r8),optional,intent(out)   :: pint_out(i0:i1,j0:j1,1:k1+1)
      real(r8),optional,intent(out)   :: pmid_out(i0:i1,j0:j1,1:k1)
-     
+
      ! local vars
      integer :: i,j,k
      real(r8),  dimension(i0:i1,j0:j1,1:k1)              :: pmid
@@ -1659,7 +1874,7 @@ end subroutine physconst_init
      if (present(pint_out)) pmid_out=pmid
      if (present(rhoi_dry)) then
        allocate(R_dry(i0:i1,j0:j1,1:k1+1))
-       if (tracer_mass) then           
+       if (tracer_mass) then
          call get_R_dry(i0,i1,j0,j1,1,k1+1,1,nlev,ntrac,tracer,idx_local,R_dry,fact=1.0_r8/dp_dry)
        else
          call get_R_dry(i0,i1,j0,j1,1,k1+1,1,nlev,ntrac,tracer,idx_local,R_dry)
@@ -1696,7 +1911,7 @@ end subroutine physconst_init
    !*************************************************************************************************************************
    !
    ! compute 3D molecular diffusion and thermal conductivity
-   !   
+   !
    !*************************************************************************************************************************
    !
    subroutine get_molecular_diff_coef(i0,i1,j0,j1,k1,nlev,temp,get_at_interfaces,sponge_factor,kmvis,kmcnd, ntrac,&
@@ -1721,7 +1936,7 @@ end subroutine physconst_init
      integer :: i,j,k,icnst,ispecies
      real(r8):: mbarvi,mm,residual             ! Mean mass at mid level
      real(r8):: cnst_vis, cnst_cnd, temp_local
-     real(r8), dimension(i0:i1,j0:j1,1:k1)                :: factor,mbarv       
+     real(r8), dimension(i0:i1,j0:j1,1:k1)                :: factor,mbarv
      integer,  dimension(thermodynamic_active_species_num):: idx_local
 
      !--------------------------------------------
@@ -1737,7 +1952,7 @@ end subroutine physconst_init
              do j=j0,j1
                do i=i0,i1
                  temp_local   = 0.5_r8*(temp(i,j,k)+temp(i,j,k-1))
-                 kmvis(i,j,k) = sponge_factor(k)*cnst_vis*temp_local**kv4                               
+                 kmvis(i,j,k) = sponge_factor(k)*cnst_vis*temp_local**kv4
                  kmcnd(i,j,k) = sponge_factor(k)*cnst_cnd*temp_local**kc4
                end do
              end do
@@ -1747,11 +1962,11 @@ end subroutine physconst_init
            !
            kmvis(i0:i1,j0:j1,1) = 1.5_r8*kmvis(i0:i1,j0:j1,2)-0.5_r8*kmvis(i0:i1,j0:j1,3)
            kmcnd(i0:i1,j0:j1,1) = 1.5_r8*kmcnd(i0:i1,j0:j1,2)-0.5_r8*kmcnd(i0:i1,j0:j1,3)
-       else if (get_at_interfaces==0) then 
+       else if (get_at_interfaces==0) then
          do k=1,k1
            do j=j0,j1
              do i=i0,i1
-               kmvis(i,j,k) = sponge_factor(k)*cnst_vis*temp(i,j,k)**kv4                               
+               kmvis(i,j,k) = sponge_factor(k)*cnst_vis*temp(i,j,k)**kv4
                kmcnd(i,j,k) = sponge_factor(k)*cnst_cnd*temp(i,j,k)**kc4
              end do
            end do
@@ -1781,11 +1996,11 @@ end subroutine physconst_init
        if (get_at_interfaces==1) then
          do k=2,k1
            do j=j0,j1
-             do i=i0,i1               
+             do i=i0,i1
                kmvis(i,j,k) = 0.0_r8
                kmcnd(i,j,k) = 0.0_r8
                residual = 1.0_r8
-               do icnst=1,dry_air_species_num-1             
+               do icnst=1,dry_air_species_num
                  ispecies = idx_local(icnst)
                  mm       = 0.5_r8*(tracer(i,j,k,ispecies)*factor(i,j,k)+tracer(i,j,k-1,ispecies)*factor(i,j,k-1))
                  kmvis(i,j,k) = kmvis(i,j,k)+thermodynamic_active_species_kv(icnst)* &
@@ -1794,16 +2009,15 @@ end subroutine physconst_init
                                              thermodynamic_active_species_mwi(icnst)*mm
                  residual         = residual - mm
                end do
-               icnst=dry_air_species_num
-               ispecies = idx_local(icnst)
+               icnst=0 ! N2
                kmvis(i,j,k) = kmvis(i,j,k)+thermodynamic_active_species_kv(icnst)* &
                                            thermodynamic_active_species_mwi(icnst)*residual
                kmcnd(i,j,k) = kmcnd(i,j,k)+thermodynamic_active_species_kc(icnst)* &
                                            thermodynamic_active_species_mwi(icnst)*residual
-               
+
                temp_local = .5_r8*(temp(i,j,k-1)+temp(i,j,k))
                mbarvi = 0.5_r8*(mbarv(i,j,k-1)+mbarv(i,j,k))
-               kmvis(i,j,k) = kmvis(i,j,k)*mbarvi*temp_local**kv4*1.e-7_r8                              
+               kmvis(i,j,k) = kmvis(i,j,k)*mbarvi*temp_local**kv4*1.e-7_r8
                kmcnd(i,j,k) = kmcnd(i,j,k)*mbarvi*temp_local**kc4*1.e-5_r8
              enddo
            enddo
@@ -1816,7 +2030,33 @@ end subroutine physconst_init
              kmcnd(i,j,k1+1) = kmcnd(i,j,k1)
            end do
          end do
-       else if (get_at_interfaces==0) then 
+       else if (get_at_interfaces==0) then
+         do k=1,k1
+           do j=j0,j1
+             do i=i0,i1
+               kmvis(i,j,k) = 0.0_r8
+               kmcnd(i,j,k) = 0.0_r8
+               residual = 1.0_r8
+               do icnst=1,dry_air_species_num-1
+                 ispecies = idx_local(icnst)
+                 mm       = tracer(i,j,k,ispecies)*factor(i,j,k)
+                 kmvis(i,j,k) = kmvis(i,j,k)+thermodynamic_active_species_kv(icnst)* &
+                                thermodynamic_active_species_mwi(icnst)*mm
+                 kmcnd(i,j,k) = kmcnd(i,j,k)+thermodynamic_active_species_kc(icnst)* &
+                                thermodynamic_active_species_mwi(icnst)*mm
+                 residual     = residual - mm
+               end do
+               icnst=dry_air_species_num
+               kmvis(i,j,k) = kmvis(i,j,k)+thermodynamic_active_species_kv(icnst)* &
+                              thermodynamic_active_species_mwi(icnst)*residual
+               kmcnd(i,j,k) = kmcnd(i,j,k)+thermodynamic_active_species_kc(icnst)* &
+                              thermodynamic_active_species_mwi(icnst)*residual
+
+               kmvis(i,j,k) = kmvis(i,j,k)*mbarv(i,j,k)*temp(i,j,k)**kv4*1.e-7_r8
+               kmcnd(i,j,k) = kmcnd(i,j,k)*mbarv(i,j,k)*temp(i,j,k)**kc4*1.e-5_r8
+             enddo
+           enddo
+         end do
        else
          call endrun('get_molecular_diff_coef: get_at_interfaces must be 0 or 1')
        end if
@@ -1826,7 +2066,7 @@ end subroutine physconst_init
    !*************************************************************************************************************************
    !
    ! compute reference vertical profile of density, molecular diffusion and thermal conductivity
-   !   
+   !
    !*************************************************************************************************************************
    !
    subroutine get_molecular_diff_coef_reference(k0,k1,tref,press,sponge_factor,kmvis_ref,kmcnd_ref,rho_ref)
@@ -1838,10 +2078,10 @@ end subroutine physconst_init
      real(r8), intent(out)          :: kmvis_ref(k0:k1)     !reference molecular diffusion coefficient
      real(r8), intent(out)          :: kmcnd_ref(k0:k1)     !reference thermal conductivity coefficient
      real(r8), intent(out)          :: rho_ref(k0:k1)       !reference density
-     
+
      ! local vars
      integer :: k
-    
+
      !--------------------------------------------
      ! Set constants needed for updates
      !--------------------------------------------
