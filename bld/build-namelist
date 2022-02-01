@@ -2960,6 +2960,13 @@ if ($cfg->get('microphys') =~ /^mg/) {
 
     # For CESM2, the decision was made to set micro_do_sb_physics to false
     add_default($nl, 'micro_do_sb_physics', 'val'=>'.false.');
+
+    # namelist options for pumas tag release_v1.22 or later
+    #   (currently only in the cam_dev physics package)
+    if ($phys =~ /cam_dev/) {
+	add_default($nl, 'micro_mg_accre_sees_auto');
+	add_default($nl, 'micro_mg_implicit_fall');
+    }
 }
 
 # Aerosol Namelist options

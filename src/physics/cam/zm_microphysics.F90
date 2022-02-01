@@ -21,7 +21,7 @@ use shr_spfn_mod,     only: gamma => shr_spfn_gamma
 use wv_saturation,  only: svp_water, svp_ice
 use cam_logfile,       only: iulog
 use cam_abortutils,        only: endrun
-use micro_mg_utils, only:ice_autoconversion, snow_self_aggregation, accrete_cloud_water_snow, &
+use micro_pumas_utils, only:ice_autoconversion, snow_self_aggregation, accrete_cloud_water_snow, &
                          secondary_ice_production, accrete_rain_snow, heterogeneous_rain_freezing, &
                          accrete_cloud_water_rain, self_collection_rain, accrete_cloud_ice_snow
 
