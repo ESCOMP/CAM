@@ -1,2 +1,0 @@
-./xmlchange CAM_CONFIG_OPTS="-phys cam5 -aquaplanet -carma test_detrain"
-./xmlchange RUN_STARTDATE="0001-01-01"

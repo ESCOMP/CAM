@@ -733,7 +733,7 @@
     </options>
   </test>
 <!--              carma mixed sulfate           -->
-  <test compset="FW4ma2000" grid="f10_f10_mg37" name="SMS_D_Ln9_Vmct" testmods="cam/carma_mixed_sulfate">
+  <test compset="FW4ma2000" grid="f10_f10_mg37" name="ERS_D_Ln9_Vmct" testmods="cam/carma_mixed_sulfate">
     <machines>
       <machine name="izumi" compiler="nag" category="carma"/>
       <machine name="cheyenne" compiler="intel" category="carma"/>
