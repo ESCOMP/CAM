@@ -3,7 +3,7 @@
 !================================================================================
 module fire_emissions
 
-  use shr_kind_mod,      only : r8 => shr_kind_r8, shr_kind_cl
+  use shr_kind_mod,      only : r8 => shr_kind_r8
   use shr_fire_emis_mod, only : shr_fire_emis_mechcomps, shr_fire_emis_mechcomps_n, shr_fire_emis_elevated
   use srf_field_check,   only : active_Fall_flxfire
   use shr_const_mod,     only : pi => SHR_CONST_PI
@@ -27,7 +27,7 @@ module fire_emissions
   public :: fire_emissions_vrt
 
   ! for surface emissions
-  integer, allocatable :: fire_emis_indices_map(:) 
+  integer, allocatable :: fire_emis_indices_map(:)
 
   ! for vertically distributed forcings
   integer,  allocatable :: frc_spc_map(:)
@@ -48,26 +48,25 @@ contains
   !------------------------------------------------------------------------------
   subroutine fire_emissions_init()
 
-
     ! local vars
-    integer :: n, ii 
-    
-    integer :: frc_ndx, spc_ndx, ndx
+    integer :: n, ii
+
+    integer :: frc_ndx, spc_ndx
     integer :: mode, spec
     character(len=16) :: name
-    character(len=32) :: spc_name
     character(len=32) :: num_name
 
-    real(r8), parameter :: demis_acc = 0.134e-6_r8 ! meters 
+    real(r8), parameter :: demis_acc = 0.134e-6_r8 ! meters
     ! volume-mean emissions diameter of primary BC/OM aerosols, see :
-    ! Liu et al, Toward a minimal representation of aerosols in climate models: 
-    ! Description and evaluation in the Community Atmosphere Model CAM5. 
+    ! Liu et al, Toward a minimal representation of aerosols in climate models:
+    ! Description and evaluation in the Community Atmosphere Model CAM5.
     ! Geosci. Model Dev., 5, 709–739, doi:10.5194/gmd-5-709-2012
     ! and Table S1 in Supplement: http://www.geosci-model-dev.net/5/709/2012/gmd-5-709-2012-supplement.pdf
 
-    real(r8), parameter :: x_numfact = 1.e-6_r8 * avogad * 6.0_r8 / (pi*(demis_acc**3))   ! 1.e-6 converts m-3 to cm-3. 
+    real(r8), parameter :: x_numfact = 1.e-6_r8 * avogad * 6.0_r8 / (pi*(demis_acc**3))   ! 1.e-6 converts m-3 to cm-3.
     real(r8) :: specdens  ! kg/m3
     logical :: found
+    character(len=12) :: units
 
     if (shr_fire_emis_mechcomps_n<1) return
 
@@ -114,10 +113,10 @@ contains
              call endrun('fire_emissions_init: not able to map '//trim(name)//' to chem species/forcing ')
           endif
 
-          spc_mass_factor(n) = 1.e-6_r8 * avogad / adv_mass(spc_ndx) ! 1.e-6 converts m-3 to cm-3. 
+          spc_mass_factor(n) = 1.e-6_r8 * avogad / adv_mass(spc_ndx) ! 1.e-6 converts m-3 to cm-3.
           ! (molecules/kmole) / (g/mole) --> molecules/kg
 
-          ! for MAM need to include cooresponding forcings of number densities 
+          ! for MAM need to include cooresponding forcings of number densities
 
           found = rad_cnst_num_name(0, name, num_name, mode_out=mode, spec_out=spec )
 
@@ -126,7 +125,7 @@ contains
              frc_ndx = get_extfrc_ndx( num_name )
 
              call rad_cnst_get_aer_props(0, mode, spec, density_aer=specdens)
-             frc_num_map(n) = frc_ndx 
+             frc_num_map(n) = frc_ndx
              num_mass_factor(n) = x_numfact / specdens
 
              fire_numfrc_name(n) = 'FireFrc_'//trim(name)//'_'//trim(num_name)
@@ -150,8 +149,14 @@ contains
                   //trim(shr_fire_emis_mechcomps(n)%name))
           endif
 
+          if (index(shr_fire_emis_mechcomps(n)%name,'num_')>0) then
+             units = '1/m2/sec'
+          else
+             units = 'kg/m2/sec'
+          endif
+
           ! Fire emis history fields
-          call addfld( 'FireSF_'//trim(shr_fire_emis_mechcomps(n)%name),horiz_only,'A','kg/m2/sec',&
+          call addfld( 'FireSF_'//trim(shr_fire_emis_mechcomps(n)%name),horiz_only,'A',units,&
                trim(shr_fire_emis_mechcomps(n)%name)//' Fire emissions flux')
 
        enddo
@@ -161,7 +166,7 @@ contains
   end subroutine fire_emissions_init
 
   !------------------------------------------------------------------------------
-  ! sets surface emissions 
+  ! sets surface emissions
   !------------------------------------------------------------------------------
   subroutine fire_emissions_srf( lchnk, ncol, fireflx, sflx )
 
@@ -180,7 +185,7 @@ contains
        do i =1,ncol
           do n = 1,shr_fire_emis_mechcomps_n
              sflx(i,fire_emis_indices_map(n)) &
-                  = sflx(i,fire_emis_indices_map(n)) + fireflx(i,n) 
+                  = sflx(i,fire_emis_indices_map(n)) + fireflx(i,n)
           enddo
        end do
 
@@ -195,7 +200,7 @@ contains
 
   !------------------------------------------------------------------------------
   ! sets vertical emissions (forcings)
-  ! vertically distributes wild fire emissions 
+  ! vertically distributes wild fire emissions
   !------------------------------------------------------------------------------
   subroutine fire_emissions_vrt( ncol, lchnk, zint, fire_sflx, fire_ztop, frcing )
 
@@ -245,7 +250,7 @@ contains
        ! vertical intergration of the forcing should get back the surface flux
        sflx(:) = 0._r8
        do k = 1,pver
-          sflx(:ncol) = sflx(:ncol) + 1.e5_r8*(zint(:ncol,k)-zint(:ncol,k+1))*fire_frc(:ncol,k) ! molecules/cm3/s --> molecules/cm2/sec 
+          sflx(:ncol) = sflx(:ncol) + 1.e5_r8*(zint(:ncol,k)-zint(:ncol,k+1))*fire_frc(:ncol,k) ! molecules/cm3/s --> molecules/cm2/sec
        enddo
        sflx(:ncol) = sflx(:ncol) * 1.e4_r8 * adv_mass(chm_spc_map(n))/avogad ! molecules/cm2/sec --> kg/m2/sec
                                                                              ! / avogad     --> kmoles/cm2/sec
@@ -254,15 +259,15 @@ contains
        call outfld( fire_vflx_name(n),      sflx(:ncol  ), ncol, lchnk )
        call outfld( fire_sflx_name(n), fire_sflx(:ncol,n), ncol, lchnk )
 
-       ! for MAM need to include corresponding forcings of number densities 
+       ! for MAM need to include corresponding forcings of number densities
        if (frc_num_map(n)>0) then
           do k = 1,pver
-             fire_frc(:ncol,k) = fire_sflx(:ncol,n) * vertical_fire(:ncol,k) * num_mass_factor(n)  ! molecules/cm3/s 
+             fire_frc(:ncol,k) = fire_sflx(:ncol,n) * vertical_fire(:ncol,k) * num_mass_factor(n)  ! molecules/cm3/s
           enddo
           call outfld( fire_numfrc_name(n), fire_frc, ncol, lchnk )
           frcing(:ncol,:,frc_num_map(n)) = frcing(:ncol,:,frc_num_map(n)) + fire_frc(:ncol,:)
        endif
-       
+
     enddo
 
     call outfld( 'Fire_ZTOP', fire_ztop(:ncol), ncol, lchnk )

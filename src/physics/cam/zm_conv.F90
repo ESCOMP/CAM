@@ -21,6 +21,7 @@ module zm_conv
   use cam_abortutils,  only: endrun
   use cam_logfile,     only: iulog
   use zm_microphysics, only: zm_mphy, zm_aero_t, zm_conv_t
+  use cam_history,     only: outfld
 
   implicit none
 
@@ -73,6 +74,9 @@ module zm_conv
    
    integer  limcnv       ! top interface level limit for convection
 
+   logical :: lparcel_pbl     ! Switch to turn on mixing of parcel MSE air, and picking launch level to be the top of the PBL.
+
+
    real(r8) :: tiedke_add      ! namelist configurable
    real(r8) :: dmpdz_param     ! namelist configurable
 
@@ -82,7 +86,7 @@ contains
 subroutine zm_convi(limcnv_in, zmconv_c0_lnd, zmconv_c0_ocn, zmconv_ke, zmconv_ke_lnd, &
                     zmconv_momcu, zmconv_momcd, zmconv_num_cin, zmconv_org, &
                     zmconv_microp_in, no_deep_pbl_in, zmconv_tiedke_add, &
-                    zmconv_capelmt, zmconv_dmpdz)
+                    zmconv_capelmt, zmconv_dmpdz, zmconv_parcel_pbl, zmconv_tau)
 
    integer, intent(in)           :: limcnv_in       ! top interface level limit for convection
    integer, intent(in)           :: zmconv_num_cin  ! Number negative buoyancy regions that are allowed 
@@ -99,7 +103,8 @@ subroutine zm_convi(limcnv_in, zmconv_c0_lnd, zmconv_c0_ocn, zmconv_ke, zmconv_k
    real(r8),intent(in)           :: zmconv_tiedke_add
    real(r8),intent(in)           :: zmconv_capelmt
    real(r8),intent(in)           :: zmconv_dmpdz
-
+   logical, intent(in)           :: zmconv_parcel_pbl ! Should the parcel properties include PBL mixing? 
+   real(r8),intent(in)           :: zmconv_tau
 
    ! Initialization of ZM constants
    limcnv = limcnv_in
@@ -127,8 +132,9 @@ subroutine zm_convi(limcnv_in, zmconv_c0_lnd, zmconv_c0_ocn, zmconv_ke, zmconv_k
    capelmt = zmconv_capelmt
    dmpdz_param = zmconv_dmpdz
    no_deep_pbl = no_deep_pbl_in
+   lparcel_pbl = zmconv_parcel_pbl
 
-   tau = 3600._r8
+   tau = zmconv_tau
 
    if ( masterproc ) then
       write(iulog,*) 'tuning parameters zm_convi: tau',tau
@@ -139,6 +145,7 @@ subroutine zm_convi(limcnv_in, zmconv_c0_lnd, zmconv_c0_ocn, zmconv_ke, zmconv_k
       write(iulog,*) 'tuning parameters zm_convi: zm_capelmt', capelmt
       write(iulog,*) 'tuning parameters zm_convi: zm_dmpdz', dmpdz_param
       write(iulog,*) 'tuning parameters zm_convi: zm_tiedke_add', tiedke_add 
+      write(iulog,*) 'tuning parameters zm_convi: zm_parcel_pbl', lparcel_pbl 
    endif
 
    if (masterproc) write(iulog,*)'**** ZM: DILUTE Buoyancy Calculation ****'
@@ -792,7 +799,7 @@ subroutine zm_convr(lchnk   ,ncol    , &
                   tp      ,qstp    ,tl      ,rl      ,cape     , &
                   pblt    ,lcl     ,lel     ,lon     ,maxi     , &
                   rgas    ,grav    ,cpres   ,msg     , &
-                  tpert   , org2d  , landfrac)
+                  zi      ,tpert   , org2d  , landfrac)
    end if
 
 !
@@ -1593,15 +1600,12 @@ subroutine zm_conv_evap(ncol,lchnk, &
 ! scheme to be used for small flxprec amounts.  This is to address error growth problems.
 
       if( old_snow ) then
-#ifdef PERGRO
-          work1 = min(max(0._r8,flxsnow(i,k)/(flxprec(i,k)+8.64e-11_r8)),1._r8)
-#else
           if (flxprec(i,k).gt.0._r8) then
              work1 = min(max(0._r8,flxsnow(i,k)/flxprec(i,k)),1._r8)
           else
              work1 = 0._r8
           endif
-#endif
+
           work2 = max(fsnow_conv(i,k), work1)
           if (snowmlt(i).gt.0._r8) work2 = 0._r8
 !         work2 = fsnow_conv(i,k)
@@ -2471,9 +2475,6 @@ subroutine buoyan(lchnk   ,ncol    , &
 
    real(r8) rd
    real(r8) rl
-#ifdef PERGRO
-   real(r8) rhd
-#endif
 !
 !-----------------------------------------------------------------------
 !
@@ -2506,21 +2507,6 @@ subroutine buoyan(lchnk   ,ncol    , &
 ! set "launching" level(mx) to be at maximum moist static energy.
 ! search for this level stops at planetary boundary layer top.
 !
-#ifdef PERGRO
-   do k = pver,msg + 1,-1
-      do i = 1,ncol
-         hmn(i) = cp*t(i,k) + grav*z(i,k) + rl*q(i,k)
-!
-! Reset max moist static energy level when relative difference exceeds 1.e-4
-!
-         rhd = (hmn(i) - hmax(i))/(hmn(i) + hmax(i))
-         if (k >= nint(pblt(i)) .and. k <= lon(i) .and. rhd > -1.e-4_r8) then
-            hmax(i) = hmn(i)
-            mx(i) = k
-         end if
-      end do
-   end do
-#else
    do k = pver,msg + 1,-1
       do i = 1,ncol
          hmn(i) = cp*t(i,k) + grav*z(i,k) + rl*q(i,k)
@@ -2530,7 +2516,7 @@ subroutine buoyan(lchnk   ,ncol    , &
          end if
       end do
    end do
-#endif
+
 !
    do i = 1,ncol
       lcl(i) = mx(i)
@@ -3980,7 +3966,7 @@ subroutine buoyan_dilute(lchnk   ,ncol    , &
                   tp      ,qstp    ,tl      ,rl      ,cape    , &
                   pblt    ,lcl     ,lel     ,lon     ,mx      , &
                   rd      ,grav    ,cp      ,msg     , &
-                  tpert   , org    , landfrac)
+                  zi,     tpert    ,org    , landfrac)
 !----------------------------------------------------------------------- 
 ! 
 ! Purpose: 
@@ -4022,6 +4008,9 @@ subroutine buoyan_dilute(lchnk   ,ncol    , &
    real(r8), intent(in) :: pblt(pcols)          ! index of pbl depth
    real(r8), intent(in) :: tpert(pcols)         ! perturbation temperature by pbl processes
 
+! Use z interface for parcel calculations.
+   real(r8), intent(in) :: zi(pcols,pver+1)
+
 !
 ! output arguments
 !
@@ -4057,6 +4046,29 @@ subroutine buoyan_dilute(lchnk   ,ncol    , &
    integer knt(pcols)
    integer lelten(pcols,5)
 
+
+
+
+! Parcel property variables 
+    
+  real(r8)           :: hmn_lev(pcols,pver)  ! Vertical profile of moist static energy for each column
+  real(r8)           :: dp_lev(pcols,pver)   ! Level dpressure between interfaces
+  real(r8)           :: hmn_zdp(pcols,pver)  ! Integrals of hmn_lev*dp_lev at each level
+  real(r8)           :: q_zdp(pcols,pver)    ! Integrals of q*dp_lev at each level  
+  real(r8)           :: dp_zfrac             ! Fraction of vertical grid box below mixing top (usually pblt)
+  real(r8)           :: parcel_ztop(pcols)   ! Depth of parcel mixing (usually pblt)
+  real(r8)           :: parcel_dp(pcols)     ! Pressure integral over parcel mixing depth (usually pblt)
+  real(r8)           :: parcel_hdp(pcols)    ! Pressure*MSE integral over parcel mixing depth (usually pblt)
+  real(r8)           :: parcel_qdp(pcols)    ! Pressure*q integral over parcel mixing depth (usually pblt)  
+  real(r8)           :: pbl_z(pcols)         ! Previously diagnosed PBL height
+  real(r8)           :: hpar(pcols)          ! Initial MSE of the parcel 
+  real(r8)           :: qpar(pcols)          ! Initial humidity of the parcel
+  real(r8)           :: ql(pcols)          ! Initial parcel humidity (for ientropy routine)
+  integer            :: ipar ! Index for top of parcel mixing/launch level.
+    
+
+
+
    real(r8) cp
    real(r8) e
    real(r8) grav
@@ -4068,9 +4080,6 @@ subroutine buoyan_dilute(lchnk   ,ncol    , &
 
    real(r8) rd
    real(r8) rl
-#ifdef PERGRO
-   real(r8) rhd
-#endif
 !
 !-----------------------------------------------------------------------
 !
@@ -4088,57 +4097,116 @@ subroutine buoyan_dilute(lchnk   ,ncol    , &
       mx(i) = lon(i)
       cape(i) = 0._r8
       hmax(i) = 0._r8
+      pbl_z(i) = z(i,nint(pblt(i))) 
+      parcel_ztop(i) = 0.5_r8*pbl_z(i) ! 0.5*Boundary layer top by default
+      parcel_hdp(i) = 0._r8
+      parcel_dp(i) = 0._r8
+      parcel_qdp(i) = 0._r8
+      hpar(i) = 0._r8
+      qpar(i) = 0._r8
    end do
 
    tp(:ncol,:) = t(:ncol,:)
    qstp(:ncol,:) = q(:ncol,:)
+   hmn_lev(:ncol,:) = 0._r8 
+    
 
-!!! RBN - Initialize tv and buoy for output.
+
+!!! Initialize tv and buoy for output.
 !!! tv=tv : tpv=tpv : qstp=q : buoy=0.
    tv(:ncol,:) = t(:ncol,:) *(1._r8+1.608_r8*q(:ncol,:))/ (1._r8+q(:ncol,:))
    tpv(:ncol,:) = tv(:ncol,:)
    buoy(:ncol,:) = 0._r8
 
-!
-! set "launching" level(mx) to be at maximum moist static energy.
-! search for this level stops at planetary boundary layer top.
-!
-#ifdef PERGRO
-   do k = pver,msg + 1,-1
-      do i = 1,ncol
-         hmn(i) = cp*t(i,k) + grav*z(i,k) + rl*q(i,k)
-!
-! Reset max moist static energy level when relative difference exceeds 1.e-4
-!
-         rhd = (hmn(i) - hmax(i))/(hmn(i) + hmax(i))
-         if (k >= nint(pblt(i)) .and. k <= lon(i) .and. rhd > -1.e-4_r8) then
-            hmax(i) = hmn(i)
-            mx(i) = k
+
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+! Mix the parcel over a certain dp or dz and take the launch level as the top level
+! of this mixing region and the parcel properties as this mixed value
+! Should be well mixed by other processes in the very near PBL.
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+   
+
+if (lparcel_pbl) then
+
+! Vertical profile of MSE and pressure weighted of the same.
+   hmn_lev(:ncol,1:pver) = cp*t(:ncol,1:pver) + grav*z(:ncol,1:pver) + rl*q(:ncol,1:pver)
+   dp_lev(:ncol,1:pver) = pf(:ncol,2:pver+1)-pf(:ncol,1:pver)
+   hmn_zdp(:ncol,1:pver) = hmn_lev(:ncol,1:pver)*dp_lev(:ncol,1:pver)
+   q_zdp(:ncol,1:pver) = q(:ncol,1:pver)*dp_lev(:ncol,1:pver)
+
+
+! Mix profile over vertical length scale of 0.5*PBLH.
+      
+   do i = 1,ncol ! Loop columns
+      do k = pver,msg + 1,-1
+         if (zi(i,k+1)<= parcel_ztop(i)) then ! Has to be relative to surface geo height.  
+            ipar = k
+            if (k == pver) then ! Always at least the full depth of lowest model layer.
+               dp_zfrac = 1._r8
+            else
+               ! Fraction of grid cell depth (mostly 1, except when parcel_ztop is in between levels.
+               dp_zfrac =  min(1._r8,(parcel_ztop(i)-zi(i,k+1))/(zi(i,k)-zi(i,k+1)))
+            end if
+
+            parcel_hdp(i) = parcel_hdp(i)+hmn_zdp(i,k)*dp_zfrac ! Sum parcel profile up to a certain level.
+            parcel_qdp(i) = parcel_qdp(i)+q_zdp(i,k)*dp_zfrac ! Sum parcel profile up to a certain level.
+            parcel_dp(i)  = parcel_dp(i)+dp_lev(i,k)*dp_zfrac ! SUM dp's for weighting of parcel_hdp 
+
          end if
       end do
+      hpar(i) = parcel_hdp(i)/parcel_dp(i)
+      qpar(i) = parcel_qdp(i)/parcel_dp(i)
+      mx(i) = ipar       
    end do
-#else
-   do k = pver,msg + 1,-1
-      do i = 1,ncol
-         hmn(i) = cp*t(i,k) + grav*z(i,k) + rl*q(i,k)
-         if (k >= nint(pblt(i)) .and. k <= lon(i) .and. hmn(i) > hmax(i)) then
-            hmax(i) = hmn(i)
-            mx(i) = k
-         end if
-      end do
-   end do
-#endif
+
+else ! Default method finding level of MSE maximum (nlev sensitive though)
+    !
+    ! set "launching" level(mx) to be at maximum moist static energy.
+    ! search for this level stops at planetary boundary layer top.
+    !
+    do k = pver,msg + 1,-1
+       do i = 1,ncol
+          hmn(i) = cp*t(i,k) + grav*z(i,k) + rl*q(i,k)
+          if (k >= nint(pblt(i)) .and. k <= lon(i) .and. hmn(i) > hmax(i)) then
+             hmax(i) = hmn(i)
+             mx(i) = k
+          end if
+       end do
+    end do
+
+end if ! Default method of determining parcel launch properties.
+
 
 ! LCL dilute calculation - initialize to mx(i)
 ! Determine lcl in parcel_dilute and get pl,tl after parcel_dilute
 ! Original code actually sets LCL as level above wher condensate forms.
 ! Therefore in parcel_dilute lcl(i) will be at first level where qsmix < qtmix.
 
-   do i = 1,ncol ! Initialise LCL variables.
+if (lparcel_pbl) then
+         
+! For parcel dilute need to invert hpar and qpar.
+! Now need to supply ql(i) as it is mixed parcel version, just q(i,max(i)) in default
+  
+   do i = 1,ncol             ! Initialise LCL variables.
       lcl(i) = mx(i)
-      tl(i) = t(i,mx(i))
+      tl(i) = (hpar(i)-rl*qpar(i)-grav*parcel_ztop(i))/cp
+      ql(i) = qpar(i)
       pl(i) = p(i,mx(i))
    end do
+    
+else
+
+   do i = 1,ncol       
+      lcl(i) = mx(i)
+      tl(i) = t(i,mx(i))
+      ql(i) = q(i,mx(i))
+      pl(i) = p(i,mx(i))
+   end do
+      
+end if ! Mixed parcel properties
+ 
+
 
 !
 ! main buoyancy calculation.
@@ -4148,7 +4216,7 @@ subroutine buoyan_dilute(lchnk   ,ncol    , &
 !!!   RBN 9/9/04   !!!
 
    call parcel_dilute(lchnk, ncol, msg, mx, p, t, q, &
-   tpert, tp, tpv, qstp, pl, tl, lcl, &
+   tpert, tp, tpv, qstp, pl, tl, ql, lcl, &
    org, landfrac)
 
 
@@ -4231,7 +4299,7 @@ subroutine buoyan_dilute(lchnk   ,ncol    , &
 end subroutine buoyan_dilute
 
 subroutine parcel_dilute (lchnk, ncol, msg, klaunch, p, t, q, &
-  tpert, tp, tpv, qstp, pl, tl, lcl, &
+  tpert, tp, tpv, qstp, pl, tl, ql, lcl, &
   org, landfrac)
 
 ! Routine  to determine 
@@ -4256,6 +4324,7 @@ real(r8), intent(in), dimension(pcols) :: tpert ! PBL temperature perturbation.
 real(r8), intent(inout), dimension(pcols,pver) :: tp    ! Parcel temp.
 real(r8), intent(inout), dimension(pcols,pver) :: qstp  ! Parcel water vapour (sat value above lcl).
 real(r8), intent(inout), dimension(pcols) :: tl         ! Actual temp of LCL.
+real(r8), intent(inout), dimension(pcols) :: ql ! Actual humidity of LCL  
 real(r8), intent(inout), dimension(pcols) :: pl          ! Actual pressure of LCL. 
 
 integer, intent(inout), dimension(pcols) :: lcl ! Lifting condesation level (first model level with saturation).
@@ -4366,8 +4435,19 @@ do k = pver, msg+1, -1
 ! Initialize parcel values at launch level.
 
       if (k == klaunch(i)) then 
-         qtp0(i) = q(i,k)   ! Parcel launch total water (assuming subsaturated) - OK????.
-         sp0(i)  = entropy(t(i,k),p(i,k),qtp0(i))  ! Parcel launch entropy.
+
+         if (lparcel_pbl) then ! Modifcations to parcel properties if lparcel_pbl set.
+
+            qtp0(i) = ql(i)     ! Parcel launch q (PBL mixed value).
+            sp0(i)  = entropy(tl(i),pl(i),qtp0(i)) ! Parcel launch entropy could be a mixed parcel.
+
+         else
+
+            qtp0(i) = q(i,k)    ! Parcel launch total water (assuming subsaturated) 
+            sp0(i)  = entropy(t(i,k),p(i,k),qtp0(i)) ! Parcel launch entropy.
+
+         end if
+
          mp0(i)  = 1._r8       ! Parcel launch relative mass (i.e. 1 parcel stays 1 parcel for dmpdp=0, undilute). 
          smix(i,k)  = sp0(i)
          qtmix(i,k) = qtp0(i)
