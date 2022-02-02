@@ -1,0 +1,97 @@
+<?xml version="1.0"?>
+
+<namelist_defaults>
+
+
+<!-- Emissions  -->
+<ext_frc_specifier>
+	 'H2O    -> $INPUTDATA_ROOT/atm/cam/chem/emis/elev/H2OemissionCH4oxidationx2_3D_L70_1849-2101_CMIP6_HistEnsAvg_SSP3-7.0.002_c20220120.nc',
+         'num_a1 -> $INPUTDATA_ROOT/atm/cam/chem/emis/emissions_ssp370/emissions-cmip6-ScenarioMIP_IAMC-AIM-ssp370-1-1_num_so4_a1_anthro-ene_vertical_mol_175001-210101_0.9x1.25_c20190222.nc',
+         'num_a1 -> $INPUTDATA_ROOT/atm/cam/chem/emis/CMIP6_emissions_1750_2015/emissions-cmip6_num_a1_so4_contvolcano_vertical_850-5000_0.9x1.25_c20200320.nc',
+         'num_a2 -> $INPUTDATA_ROOT/atm/cam/chem/emis/CMIP6_emissions_1750_2015/emissions-cmip6_num_a2_so4_contvolcano_vertical_850-5000_0.9x1.25_c20200320.nc',
+         'SO2    -> $INPUTDATA_ROOT/atm/cam/chem/emis/CMIP6_emissions_1750_2015/emissions-cmip6_SO2_contvolcano_vertical_850-5000_0.9x1.25_c20200320.nc',
+         'so4_a1 -> $INPUTDATA_ROOT/atm/cam/chem/emis/emissions_ssp370/emissions-cmip6-ScenarioMIP_IAMC-AIM-ssp370-1-1_so4_a1_anthro-ene_vertical_mol_175001-210101_0.9x1.25_c20190222.nc',
+         'so4_a1 -> $INPUTDATA_ROOT/atm/cam/chem/emis/CMIP6_emissions_1750_2015/emissions-cmip6_so4_a1_contvolcano_vertical_850-5000_0.9x1.25_c20200320.nc',
+         'so4_a2 -> $INPUTDATA_ROOT/atm/cam/chem/emis/CMIP6_emissions_1750_2015/emissions-cmip6_so4_a2_contvolcano_vertical_850-5000_0.9x1.25_c20200320.nc'
+
+</ext_frc_specifier>
+
+<srf_emis_specifier>
+         'bc_a4    -> $INPUTDATA_ROOT/atm/cam/chem/emis/emissions_ssp370/emissions-cmip6-ScenarioMIP_IAMC-AIM-ssp370-1-1_bc_a4_anthro_surface_mol_175001-210101_0.9x1.25_c20190222.nc',
+         'bc_a4    -> $INPUTDATA_ROOT/atm/cam/chem/emis/emissions_ssp370-BB_smoothed/emissions-cmip6-ScenarioMIP_IAMC-AIM-ssp370-1-1_smoothed_bc_a4_bb_surface_mol_175001-210101_0.9x1.25_c20201016.nc',
+         'DMS      -> $INPUTDATA_ROOT/atm/cam/chem/emis/emissions_ssp370-BB_smoothed/emissions-cmip6-ScenarioMIP_IAMC-AIM-ssp370-1-1_smoothed_DMS_bb_surface_mol_175001-210101_0.9x1.25_c20201016.nc',
+         'DMS      -> $INPUTDATA_ROOT/atm/cam/chem/emis/emissions_ssp370/emissions-cmip6-SSP_DMS_other_surface_mol_175001-210101_0.9x1.25_c20190222.nc',
+         'num_a1   -> $INPUTDATA_ROOT/atm/cam/chem/emis/emissions_ssp370-BB_smoothed/emissions-cmip6-ScenarioMIP_IAMC-AIM-ssp370-1-1_smoothed_num_so4_a1_bb_surface_mol_175001-210101_0.9x1.25_c20201016.nc',
+         'num_a1   -> $INPUTDATA_ROOT/atm/cam/chem/emis/emissions_ssp370/emissions-cmip6-ScenarioMIP_IAMC-AIM-ssp370-1-1_num_so4_a1_anthro-ag-ship_surface_mol_175001-210101_0.9x1.25_c20200924.nc',
+         'num_a2   -> $INPUTDATA_ROOT/atm/cam/chem/emis/emissions_ssp370/emissions-cmip6-ScenarioMIP_IAMC-AIM-ssp370-1-1_num_so4_a2_anthro-res_surface_mol_175001-210101_0.9x1.25_c20200924.nc',
+         'num_a4   -> $INPUTDATA_ROOT/atm/cam/chem/emis/emissions_ssp370-BB_smoothed/emissions-cmip6-ScenarioMIP_IAMC-AIM-ssp370-1-1_smoothed_num_bc_a4_bb_surface_mol_175001-210101_0.9x1.25_c20201016.nc',
+         'num_a4   -> $INPUTDATA_ROOT/atm/cam/chem/emis/emissions_ssp370/emissions-cmip6-ScenarioMIP_IAMC-AIM-ssp370-1-1_num_bc_a4_anthro_surface_mol_175001-210101_0.9x1.25_c20190222.nc',
+         'num_a4   -> $INPUTDATA_ROOT/atm/cam/chem/emis/emissions_ssp370/emissions-cmip6-ScenarioMIP_IAMC-AIM-ssp370-1-1_num_pom_a4_anthro_surface_mol_175001-210101_0.9x1.25_c20190222.nc',
+         'num_a4   -> $INPUTDATA_ROOT/atm/cam/chem/emis/emissions_ssp370-BB_smoothed/emissions-cmip6-ScenarioMIP_IAMC-AIM-ssp370-1-1_smoothed_num_pom_a4_bb_surface_mol_175001-210101_0.9x1.25_c20201016.nc',
+         'pom_a4   -> $INPUTDATA_ROOT/atm/cam/chem/emis/emissions_ssp370/emissions-cmip6-ScenarioMIP_IAMC-AIM-ssp370-1-1_pom_a4_anthro_surface_mol_175001-210101_0.9x1.25_c20190222.nc',
+         'pom_a4   -> $INPUTDATA_ROOT/atm/cam/chem/emis/emissions_ssp370-BB_smoothed/emissions-cmip6-ScenarioMIP_IAMC-AIM-ssp370-1-1_smoothed_pom_a4_bb_surface_mol_175001-210101_0.9x1.25_c20201016.nc',
+         'SO2      -> $INPUTDATA_ROOT/atm/cam/chem/emis/emissions_ssp370/emissions-cmip6-ScenarioMIP_IAMC-AIM-ssp370-1-1_SO2_anthro-ag-ship-res_surface_mol_175001-210101_0.9x1.25_c20200924.nc',
+         'SO2      -> $INPUTDATA_ROOT/atm/cam/chem/emis/emissions_ssp370/emissions-cmip6-ScenarioMIP_IAMC-AIM-ssp370-1-1_SO2_anthro-ene_surface_mol_175001-210101_0.9x1.25_c20190222.nc',
+         'SO2      -> $INPUTDATA_ROOT/atm/cam/chem/emis/emissions_ssp370-BB_smoothed/emissions-cmip6-ScenarioMIP_IAMC-AIM-ssp370-1-1_smoothed_SO2_bb_surface_mol_175001-210101_0.9x1.25_c20201016.nc',
+         'so4_a1   -> $INPUTDATA_ROOT/atm/cam/chem/emis/emissions_ssp370/emissions-cmip6-ScenarioMIP_IAMC-AIM-ssp370-1-1_so4_a1_anthro-ag-ship_surface_mol_175001-210101_0.9x1.25_c20200924.nc',
+         'so4_a1   -> $INPUTDATA_ROOT/atm/cam/chem/emis/emissions_ssp370-BB_smoothed/emissions-cmip6-ScenarioMIP_IAMC-AIM-ssp370-1-1_smoothed_so4_a1_bb_surface_mol_175001-210101_0.9x1.25_c20201016.nc',
+         'so4_a2   -> $INPUTDATA_ROOT/atm/cam/chem/emis/emissions_ssp370/emissions-cmip6-ScenarioMIP_IAMC-AIM-ssp370-1-1_so4_a2_anthro-res_surface_mol_175001-210101_0.9x1.25_c20200924.nc',
+         'SOAG     -> $INPUTDATA_ROOT/atm/cam/chem/emis/emissions_ssp370/emissions-cmip6-ScenarioMIP_IAMC-AIM-ssp370-1-1_SOAGx1.5_anthro_surface_mol_175001-210101_0.9x1.25_c20200403.nc',
+         'SOAG     -> $INPUTDATA_ROOT/atm/cam/chem/emis/emissions_ssp370-BB_smoothed/emissions-cmip6-ScenarioMIP_IAMC-AIM-ssp370-1-1_smoothed_SOAGx1.5_bb_surface_mol_175001-210101_0.9x1.25_c20201016.nc',
+         'SOAG     -> $INPUTDATA_ROOT/atm/cam/chem/emis/emissions_ssp/emissions-cmip6-SOAGx1.5_biogenic_surface_mol_175001-210101_0.9x1.25_c20190329.nc'
+</srf_emis_specifier>
+
+  <srf_emis_type            >    CYCLICAL  </srf_emis_type>
+  <srf_emis_cycle_yr        >    2100      </srf_emis_cycle_yr>
+  <ext_frc_type             >    CYCLICAL  </ext_frc_type>
+  <ext_frc_cycle_yr         >    2100      </ext_frc_cycle_yr>
+
+<!-- Solar data -->
+  <solar_irrad_data_file>atm/cam/solar/SolarForcingCMIP6-3.2_18491231-26490629_sumEPP_c20220114.nc </solar_irrad_data_file>
+
+<!-- Tracer/ozone/strataero data -->
+  <tracer_cnst_cycle_yr     >   2101                                                         </tracer_cnst_cycle_yr>
+  <tracer_cnst_datapath     >   'atm/cam/tracer_cnst'                                        </tracer_cnst_datapath>
+  <tracer_cnst_file         >   'tracer_cnst_halons_3D_L70_1849-2100_CMIP6_HistEnsAvg_SSP3-7.0.002_c20211215.nc' </tracer_cnst_file>
+  <tracer_cnst_specifier    >   'O3','OH','NO3','HO2'                                        </tracer_cnst_specifier>
+  <tracer_cnst_type         >   'CYCLICAL'                                                   </tracer_cnst_type>
+  <tracer_cnst_filelist     >   ''                                                           </tracer_cnst_filelist>
+
+  <prescribed_ozone_cycle_yr>   2100                                                                         </prescribed_ozone_cycle_yr>
+  <prescribed_ozone_datapath>   'atm/cam/ozone_strataero'                                                    </prescribed_ozone_datapath>
+  <prescribed_ozone_file    >   'ozone_strataero_cyclical_WACCM6_L70_zm5day_2095climo_CMIP6_SSP370.002_c20220121.nc'   </prescribed_ozone_file>
+  <prescribed_ozone_name    >   'O3'                                                                         </prescribed_ozone_name>
+  <prescribed_ozone_type    >   'CYCLICAL'                                                                     </prescribed_ozone_type>
+
+  <prescribed_strataero_cycle_yr>     2100                                                                         </prescribed_strataero_cycle_yr>
+  <prescribed_strataero_type    >     'CYCLICAL'                                                                   </prescribed_strataero_type>
+  <prescribed_strataero_datapath>     'atm/cam/ozone_strataero'                                                    </prescribed_strataero_datapath>
+  <prescribed_strataero_file>         'ozone_strataero_cyclical_WACCM6_L70_zm5day_2095climo_CMIP6_SSP370.002_c20220121.nc' </prescribed_strataero_file> 
+  <prescribed_strataero_use_chemtrop> .true.                                                                       </prescribed_strataero_use_chemtrop>
+
+  <!-- co2 cycle settings -->
+  <co2_readflux_fuel>                      .true.       </co2_readflux_fuel>
+  <co2flux_fuel_file    hgrid="0.9x1.25">  atm/cam/ggas/emissions-cmip6_CO2_anthro_surface_ScenarioMIP_IAMC-AIM-ssp370ext_209901-250112_fv_0.9x1.25_c20211217.nc' </co2flux_fuel_file>
+  <co2flux_fuel_file    hgrid="1.9x2.5">   atm/cam/ggas/emissions-cmip6_CO2_anthro_surface_ScenarioMIP_IAMC-AIM-ssp370_201401-210112_fv_1.9x2.5_c20190207.nc' </co2flux_fuel_file>
+  <co2_readflux_aircraft>                  .true.       </co2_readflux_aircraft>
+
+<aircraft_type>           SERIAL            </aircraft_type>
+<aircraft_datapath>       atm/cam/ggas      </aircraft_datapath>
+<aircraft_specifier hgrid="0.9x1.25">  ac_CO2 -> emissions-cmip6_CO2_anthro_ac_ScenarioMIP_IAMC-AIM-ssp370ext_209901-250112_fv_0.9x1.25_c20211217.txt        </aircraft_specifier>
+<aircraft_co2_file  hgrid="0.9x1.25">         atm/cam/ggas/emissions-cmip6_CO2_anthro_ac_ScenarioMIP_IAMC-AIM-ssp370_201401-210112_fv_0.9x1.25_c20190207.nc  </aircraft_co2_file>
+<aircraft_specifier hgrid="1.9x2.5">   ac_CO2 -> emissions-cmip6_CO2_anthro_ac_ssp370_201401-210112_fv_1.9x2.5_c20190207.txt                                 </aircraft_specifier>
+<aircraft_co2_file  hgrid="1.9x2.5">          atm/cam/ggas/emissions-cmip6_CO2_anthro_ac_ScenarioMIP_IAMC-AIM-ssp370_201401-210112_fv_1.9x2.5_c20190207.nc   </aircraft_co2_file>
+
+
+ <!-- LBC file -->
+  <scenario_ghg> 'CHEM_LBC_FILE'                                                         </scenario_ghg>
+  <flbc_file>    atm/waccm/lb/LBC_2014-2500_CMIP6_SSP370_0p5degLat_GlobAnnAvg_c190301.nc </flbc_file>
+  <flbc_type>    'SERIAL'                                                                </flbc_type>
+  <flbc_list>    'CO2','CH4','N2O','CFC11eq','CFC12'                                     </flbc_list>
+
+  <!-- sim_year used for CLM datasets and SSTs forcings -->
+  <sim_year>  1850-2100 </sim_year>
+
+
+
+</namelist_defaults>
