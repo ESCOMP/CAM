@@ -1339,6 +1339,8 @@ contains
 
     rc = ESMF_SUCCESS
 
+    call cam_final( cam_out, cam_in )
+
     call shr_file_getLogUnit (shrlogunit)
     call shr_file_setLogUnit (iulog)
 

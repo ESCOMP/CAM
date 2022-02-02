@@ -1331,7 +1331,7 @@ contains
     use subcol_SILHS,       only: subcol_SILHS_var_covar_driver
     use subcol_SILHS,       only: subcol_SILHS_fill_holes_conserv
     use subcol_SILHS,       only: subcol_SILHS_hydromet_conc_tend_lim
-    use micro_mg_cam,       only: massless_droplet_destroyer
+    use micro_pumas_cam,       only: massless_droplet_destroyer
     use convect_deep,       only: convect_deep_tend_2, deep_scheme_does_scav_trans
     use cloud_diagnostics,  only: cloud_diagnostics_calc
     use radiation,          only: radiation_tend
