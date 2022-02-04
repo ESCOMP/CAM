@@ -160,12 +160,13 @@ end function chem_is
     use mo_sim_dat,          only : set_sim_dat
     use chem_mods,           only : gas_pcnst, adv_mass
     use mo_tracname,         only : solsym
-    use mo_chem_utls,        only : get_spc_ndx
+    use mo_chem_utls,        only : get_spc_ndx, get_inv_ndx
     use short_lived_species, only : slvd_index, short_lived_map=>map, register_short_lived_species
     use cfc11star,           only : register_cfc11star
     use mo_photo,            only : photo_register
     use mo_aurora,           only : aurora_register
     use aero_model,          only : aero_model_register
+    use physics_buffer,      only : pbuf_add_field, dtype_r8
 
     implicit none
 
@@ -177,7 +178,7 @@ end function chem_is
     logical  :: ic_from_cam2                        ! wrk variable for initial cond input
     logical  :: has_fixed_ubc                       ! wrk variable for upper bndy cond
     logical  :: has_fixed_ubflx                     ! wrk variable for upper bndy flux
-    integer  :: ch4_ndx, n2o_ndx, o3_ndx
+    integer  :: ch4_ndx, n2o_ndx, o3_ndx, o3_inv_ndx, ndx
     integer  :: cfc11_ndx, cfc12_ndx, o2_1s_ndx, o2_1d_ndx, o2_ndx
     integer  :: n_ndx, no_ndx, h_ndx, h2_ndx, o_ndx, e_ndx, np_ndx
     integer  :: op_ndx, o1d_ndx, n2d_ndx, nop_ndx, n2p_ndx, o2p_ndx
@@ -195,6 +196,7 @@ end function chem_is
     call set_sim_dat
 
     o3_ndx    = get_spc_ndx('O3')
+    o3_inv_ndx= get_inv_ndx('O3')
     ch4_ndx   = get_spc_ndx('CH4')
     n2o_ndx   = get_spc_ndx('N2O')
 
@@ -221,6 +223,9 @@ end function chem_is
     f_ndx     = get_spc_ndx('F')
     hf_ndx    = get_spc_ndx('HF')
 
+    if (o3_ndx>0 .or. o3_inv_ndx>0) then
+       call pbuf_add_field('SRFOZONE','global',dtype_r8,(/pcols/),ndx)
+    endif
 
     !-----------------------------------------------------------------------
     ! Set names of diffused variable tendencies and declare them as history variables

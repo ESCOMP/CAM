@@ -2203,7 +2203,7 @@ contains
   subroutine write_cam_grid_attr_1d_int(attr, File)
     use pio,           only: file_desc_t, pio_put_att, pio_noerr
     use pio,           only: pio_inq_dimid, pio_int
-    use cam_pio_utils, only: cam_pio_def_var
+    use cam_pio_utils, only: cam_pio_def_var, cam_pio_closefile
 
     ! Dummy arguments
     class(cam_grid_attribute_1d_int_t), intent(inout) :: attr
@@ -2224,6 +2224,7 @@ contains
         ! NB: It should have been defined as part of a coordinate
         write(errormsg, *) 'write_cam_grid_attr_1d_int: dimension, ',         &
              trim(attr%dimname), ', does not exist'
+        call cam_pio_closefile(File)
         call endrun(errormsg)
       end if
       ! Time to define the variable
@@ -2247,7 +2248,7 @@ contains
   subroutine write_cam_grid_attr_1d_r8(attr, File)
     use pio,           only: file_desc_t, pio_put_att, pio_noerr, pio_double, &
          pio_inq_dimid
-    use cam_pio_utils, only: cam_pio_def_var
+    use cam_pio_utils, only: cam_pio_def_var, cam_pio_closefile
 
     ! Dummy arguments
     class(cam_grid_attribute_1d_r8_t), intent(inout) :: attr
@@ -2268,6 +2269,7 @@ contains
         ! NB: It should have been defined as part of a coordinate
         write(errormsg, *) 'write_cam_grid_attr_1d_r8: dimension, ',          &
              trim(attr%dimname), ', does not exist'
+        call cam_pio_closefile(File)
         call endrun(errormsg)
       end if
       ! Time to define the variable
