@@ -15,7 +15,7 @@ use spmd_utils,     only: mpicom, iam, masterproc
 
 use dyn_comp,       only: dyn_export_t, dyn_import_t
 
-use physics_types,  only: physics_state, physics_tend
+use physics_types,  only: physics_state, physics_tend, physics_cnst_limit
 use phys_grid,      only: get_dyn_col_p, get_chunk_info_p, get_ncols_p, get_gcol_all_p
 use phys_grid,      only: columns_on_task
 
@@ -333,7 +333,6 @@ subroutine derived_phys(phys_state, phys_tend, pbuf2d)
    use phys_control,  only: waccmx_is
    use physconst,     only: rairv, physconst_update
    use qneg_module,   only: qneg3
-   use dyn_comp,      only: ixo, ixo2, ixh, ixh2
    use shr_const_mod, only: shr_const_rwv
    use constituents,  only: qmin
    ! Arguments
@@ -353,15 +352,6 @@ subroutine derived_phys(phys_state, phys_tend, pbuf2d)
    type(physics_buffer_desc), pointer :: pbuf_chnk(:)
 
    character(len=*), parameter :: subname = 'dp_coupling::derived_phys'
-
-   !--------------------------------------------
-   !  Variables needed for WACCM-X
-   !--------------------------------------------
-    real(r8) :: mmrSum_O_O2_H                ! Sum of mass mixing ratios for O, O2, and H
-    real(r8), parameter :: mmrMin=1.e-20_r8  ! lower limit of o2, o, and h mixing ratios
-    real(r8), parameter :: N2mmrMin=1.e-6_r8 ! lower limit of N2 mass mixing ratio
-    real(r8), parameter :: H2lim=6.e-5_r8    ! H2 limiter: 10x global H2 MMR (Roble, 1995)
-   !----------------------------------------------------------------------------
 
    !$omp parallel do private (lchnk, ncol, k, factor)
    do lchnk = begchunk,endchunk
@@ -436,45 +426,18 @@ subroutine derived_phys(phys_state, phys_tend, pbuf2d)
          end if
       end do
 
-      !------------------------------------------------------------
-      ! Ensure N2 = 1-(O2 + O + H) mmr is greater than 0
-      ! Check for unusually large H2 values and set to lower value.
-      !------------------------------------------------------------
-       if ( waccmx_is('ionosphere') .or. waccmx_is('neutral') ) then
 
-          do i=1,ncol
-             do k=1,pver
-
-                if (phys_state(lchnk)%q(i,k,ixo) < mmrMin) phys_state(lchnk)%q(i,k,ixo) = mmrMin
-                if (phys_state(lchnk)%q(i,k,ixo2) < mmrMin) phys_state(lchnk)%q(i,k,ixo2) = mmrMin
-
-                mmrSum_O_O2_H = phys_state(lchnk)%q(i,k,ixo)+phys_state(lchnk)%q(i,k,ixo2)+phys_state(lchnk)%q(i,k,ixh)
-
-                if ((1._r8-mmrMin-mmrSum_O_O2_H) < 0._r8) then
-
-                   phys_state(lchnk)%q(i,k,ixo) = phys_state(lchnk)%q(i,k,ixo) * (1._r8 - N2mmrMin) / mmrSum_O_O2_H
-
-                   phys_state(lchnk)%q(i,k,ixo2) = phys_state(lchnk)%q(i,k,ixo2) * (1._r8 - N2mmrMin) / mmrSum_O_O2_H
-
-                   phys_state(lchnk)%q(i,k,ixh) = phys_state(lchnk)%q(i,k,ixh) * (1._r8 - N2mmrMin) / mmrSum_O_O2_H
-
-                endif
-
-                if(phys_state(lchnk)%q(i,k,ixh2) > H2lim) then
-                   phys_state(lchnk)%q(i,k,ixh2) = H2lim
-                endif
-
-             end do
-          end do
-       endif
-
-      !-----------------------------------------------------------------------------
-      ! Call physconst_update to compute cpairv, rairv, mbarv, and cappav as
-      ! constituent dependent variables.
-      ! Compute molecular viscosity(kmvis) and conductivity(kmcnd).
-      ! Fill local zvirv variable; calculated for WACCM-X.
-      !-----------------------------------------------------------------------------
       if ( waccmx_is('ionosphere') .or. waccmx_is('neutral') ) then
+        !------------------------------------------------------------
+        ! Apply limiters to mixing ratios of major species
+        !------------------------------------------------------------
+        call physics_cnst_limit( phys_state(lchnk) )
+        !-----------------------------------------------------------------------------
+        ! Call physconst_update to compute cpairv, rairv, mbarv, and cappav as
+        ! constituent dependent variables.
+        ! Compute molecular viscosity(kmvis) and conductivity(kmcnd).
+        ! Fill local zvirv variable; calculated for WACCM-X.
+        !-----------------------------------------------------------------------------
         call physconst_update(phys_state(lchnk)%q, phys_state(lchnk)%t, lchnk, ncol)
         zvirv(:,:) = shr_const_rwv / rairv(:,:,lchnk) -1._r8
       else
@@ -726,7 +689,8 @@ subroutine hydrostatic_pressure(nCells, nVertLevels, zz, zgrid, rho_zz, theta_m,
 
    ! Local variables
    integer :: iCell, k
-   real(r8), dimension(nVertLevels) :: dz    ! Geometric layer thickness in column
+   real(r8), dimension(nVertLevels)   :: dz    ! Geometric layer thickness in column
+   real(r8), dimension(nVertLevels+1) :: pint  ! hydrostatic pressure at interface
    real(r8) :: pi, t
    real(r8) :: pk,rhok,rhodryk,theta,thetavk,kap1,kap2
 
@@ -750,6 +714,7 @@ subroutine hydrostatic_pressure(nCells, nVertLevels, zz, zgrid, rho_zz, theta_m,
       ! is at height z(nVertLevels-1)+0.5*dz
       !
       pintdry(nVertLevels+1,iCell) = pk-0.5_r8*dz(nVertLevels)*rhok*gravity  !hydrostatic
+      pint   (nVertLevels+1)       = pintdry(nVertLevels+1,iCell)
       do k = nVertLevels, 1, -1
         !
         ! compute hydrostatic dry interface pressure so that (pintdry(k+1)-pintdry(k))/g is pseudo density
@@ -757,13 +722,15 @@ subroutine hydrostatic_pressure(nCells, nVertLevels, zz, zgrid, rho_zz, theta_m,
         rhodryk = zz(k,iCell) * rho_zz(k,iCell)
         rhok    = (1.0_r8+q(k,iCell))*rhodryk
         pintdry(k,iCell) = pintdry(k+1,iCell) + gravity * rhodryk * dz(k)
-        !
-        ! compute non-hydrostatic mid level pressures based on equation of state consistent with MPAS
-        !
-        thetavk          = theta_m(k,iCell)/ (1.0_r8 + q(k,iCell))            !convert modified theta to virtual theta
-        pmid(k,iCell)    = (rhok*rgas*thetavk*kap1)**kap2                     !mid-level pressure
-        theta            = theta_m(k,iCell)/(1.0_r8 + Rv_over_Rd * q(k,iCell))!potential temperature
-        pmiddry(k,iCell) = (rhodryk*rgas*theta*kap1)**kap2                    !mid-level dry pressure
+        pint   (k)       = pint   (k+1)       + gravity * rhok    * dz(k)
+      end do
+
+      do k = nVertLevels, 1, -1
+        !hydrostatic mid-level pressure - MPAS full pressure is (rhok*rgas*thetavk*kap1)**kap2 
+        pmid   (k,iCell) = 0.5_r8*(pint(k+1)+pint(k))       
+        !hydrostatic dry mid-level dry pressure - 
+        !MPAS non-hydrostatic dry pressure is pmiddry(k,iCell) = (rhodryk*rgas*theta*kap1)**kap2
+        pmiddry(k,iCell) = 0.5_r8*(pintdry(k+1,iCell)+pintdry(k,iCell))  
       end do
     end do
 end subroutine hydrostatic_pressure
@@ -821,13 +788,13 @@ subroutine tot_energy(nCells, nVertLevels, qsize, index_qv, zz, zgrid, rho_zz, t
         dz(k,iCell)   = zgrid(k+1,iCell) - zgrid(k,iCell)
         zcell         = 0.5_r8*(zgrid(k,iCell)+zgrid(k+1,iCell))
         rhod(k,iCell) = zz(k,iCell) * rho_zz(k,iCell)
-        rho_dz        = (1.0_r8+q(index_qv,k,iCell))*rhod(iCell,k)*dz(iCell,k)
+        rho_dz        = (1.0_r8+q(index_qv,k,iCell))*rhod(k,iCell)*dz(k,iCell)
         theta         = theta_m(k,iCell)/(1.0_r8 + Rv_over_Rd *q(index_qv,k,iCell))!convert theta_m to theta
 
         exner         = (rgas*rhod(k,iCell)*theta_m(k,iCell)/p0)**(rgas/cv)
         temperature   = exner*theta
 
-        water_vapor(iCell)      = water_vapor(iCell) + rhod(k,iCell)*q(index_qv,k,iCell)*dz(iCell,k)
+        water_vapor(iCell)      = water_vapor(iCell) + rhod(k,iCell)*q(index_qv,k,iCell)*dz(k,iCell)
         kinetic_energy(iCell)   = kinetic_energy(iCell)  + &
                                   0.5_r8*(ux(k,iCell)**2._r8+uy(k,iCell)**2._r8)*rho_dz
         potential_energy(iCell) = potential_energy(iCell)+ rho_dz*gravit*zcell
@@ -847,7 +814,7 @@ subroutine tot_energy(nCells, nVertLevels, qsize, index_qv, zz, zgrid, rho_zz, t
         do iCell = 1, nCells
           do k = 1, nVertLevels
             liq(iCell) = liq(iCell) + &
-                 q(thermodynamic_active_species_liq_idx_dycore(idx),k,iCell)*rhod(iCell,k)*dz(iCell,k)
+                 q(thermodynamic_active_species_liq_idx_dycore(idx),k,iCell)*rhod(k,iCell)*dz(k,iCell)
           end do
         end do
       end do
@@ -862,7 +829,7 @@ subroutine tot_energy(nCells, nVertLevels, qsize, index_qv, zz, zgrid, rho_zz, t
         do iCell = 1, nCells
           do k = 1, nVertLevels
             ice(iCell) = ice(iCell) + &
-                 q(thermodynamic_active_species_ice_idx_dycore(idx),k,iCell)*rhod(iCell,k)*dz(iCell,k)
+                 q(thermodynamic_active_species_ice_idx_dycore(idx),k,iCell)*rhod(k,iCell)*dz(k,iCell)
           end do
         end do
       end do

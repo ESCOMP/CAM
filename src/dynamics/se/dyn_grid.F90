@@ -62,6 +62,9 @@ integer, parameter :: ini_decomp = 104 ! alternate dynamics grid for reading ini
 
 character(len=3), protected :: ini_grid_name
 
+! Name of horizontal grid dimension in initial file.
+character(len=6), protected :: ini_grid_hdim_name = ''
+
 integer, parameter :: ptimelevels = 2
 
 type (TimeLevel_t)         :: TimeLevel     ! main time level struct (used by tracers)
@@ -71,6 +74,7 @@ type(fvm_struct),  pointer :: fvm(:) => null()   ! local FVM elements for this t
 
 public :: dyn_decomp
 public :: ini_grid_name
+public :: ini_grid_hdim_name
 public :: ptimelevels
 public :: TimeLevel
 public :: hvcoord
@@ -98,9 +102,6 @@ public :: dyn_grid_get_colndx ! get element block/column and MPI process indices
 character(len=16),          public :: se_write_grid_file   = 'no'
 character(len=shr_kind_cl), public :: se_grid_filename     = ''
 logical,                    public :: se_write_gll_corners = .false.
-
-! Name of horizontal grid dimension in initial file.
-character(len=6) :: ini_grid_hdim_name = ' '
 
 type(physics_column_t), allocatable, target :: local_dyn_columns(:)
 
@@ -545,12 +546,9 @@ subroutine physgrid_copy_attributes_d(gridname, grid_attribute_names)
       grid_attribute_names(2) = 'ne'
    else
       gridname = 'GLL'
-      allocate(grid_attribute_names(3))
-      ! For standard CAM-SE, we need to copy the area attribute.
-      ! For physgrid, the physics grid will create area (GLL has area_d)
-      grid_attribute_names(1) = 'area'
-      grid_attribute_names(2) = 'np'
-      grid_attribute_names(3) = 'ne'
+      allocate(grid_attribute_names(2))
+      grid_attribute_names(1) = 'np'
+      grid_attribute_names(2) = 'ne'
    end if
 
 end subroutine physgrid_copy_attributes_d
@@ -661,19 +659,19 @@ end subroutine dyn_grid_get_elem_coords
 ! Private routines.
 !=========================================================================================
 
-subroutine get_hdim_name(fh_ini, ini_grid_hdim_name)
+subroutine get_hdim_name(fh_ptr, grid_hdim_name)
    use pio, only: pio_inq_dimid, pio_seterrorhandling
    use pio, only: PIO_BCAST_ERROR, PIO_NOERR
 
-   ! Determine whether the initial file uses 'ncol' or 'ncol_d' horizontal
+   ! Determine whether the supplied file uses 'ncol' or 'ncol_d' horizontal
    ! dimension in the unstructured grid.  It is also possible when using
-   ! analytic initial conditions that the initial file only contains
+   ! analytic initial conditions that the file only contains
    ! vertical coordinates.
    ! Return 'none' if that is the case.
 
    ! Arguments
-   type(file_desc_t),   pointer  :: fh_ini
-   character(len=6), intent(out) :: ini_grid_hdim_name ! horizontal dimension name
+   type(file_desc_t),   pointer  :: fh_ptr
+   character(len=6), intent(out) :: grid_hdim_name ! horizontal dimension name
 
    ! local variables
    integer  :: ierr, pio_errtype
@@ -683,33 +681,33 @@ subroutine get_hdim_name(fh_ini, ini_grid_hdim_name)
    !----------------------------------------------------------------------------
 
    ! Set PIO to return error flags.
-   call pio_seterrorhandling(fh_ini, PIO_BCAST_ERROR, pio_errtype)
+   call pio_seterrorhandling(fh_ptr, PIO_BCAST_ERROR, pio_errtype)
 
-   ! Check for ncol_d first just in case the initial file also contains fields on
+   ! Check for ncol_d first just in case the file also contains fields on
    ! the physics grid.
-   ierr = pio_inq_dimid(fh_ini, 'ncol_d', ncol_did)
+   ierr = pio_inq_dimid(fh_ptr, 'ncol_d', ncol_did)
    if (ierr == PIO_NOERR) then
 
-      ini_grid_hdim_name = 'ncol_d'
+      grid_hdim_name = 'ncol_d'
 
    else
 
       ! if 'ncol_d' not in file, check for 'ncol'
-      ierr = pio_inq_dimid(fh_ini, 'ncol', ncol_did)
+      ierr = pio_inq_dimid(fh_ptr, 'ncol', ncol_did)
 
       if (ierr == PIO_NOERR) then
 
-         ini_grid_hdim_name = 'ncol'
+         grid_hdim_name = 'ncol'
 
       else
 
-         ini_grid_hdim_name = 'none'
+         grid_hdim_name = 'none'
 
       end if
    end if
 
    ! Return PIO to previous error handling.
-   call pio_seterrorhandling(fh_ini, pio_errtype)
+   call pio_seterrorhandling(fh_ptr, pio_errtype)
 
 end subroutine get_hdim_name
 
@@ -800,7 +798,7 @@ subroutine define_cam_grids()
    ! '_d' suffixes and the physics grid will use the unadorned names.
    ! This allows fields on both the GLL and physics grids to be written to history
    ! output files.
-   if (fv_nphys > 0) then
+   if (trim(ini_grid_hdim_name) == 'ncol_d') then
       latname  = 'lat_d'
       lonname  = 'lon_d'
       ncolname = 'ncol_d'
@@ -811,9 +809,9 @@ subroutine define_cam_grids()
       ncolname = 'ncol'
       areaname = 'area'
    end if
-   lat_coord => horiz_coord_create(trim(latname), trim(ncolname), ngcols_d,  &
+   lat_coord => horiz_coord_create('lat_d', 'ncol_d', ngcols_d,  &
          'latitude', 'degrees_north', 1, size(pelat_deg), pelat_deg, map=pemap)
-   lon_coord => horiz_coord_create(trim(lonname), trim(ncolname), ngcols_d,  &
+   lon_coord => horiz_coord_create('lon_d', 'ncol_d', ngcols_d,  &
          'longitude', 'degrees_east', 1, size(pelon_deg), pelon_deg, map=pemap)
 
    ! Map for GLL grid
@@ -832,15 +830,14 @@ subroutine define_cam_grids()
    ! The native SE GLL grid
    call cam_grid_register('GLL', dyn_decomp, lat_coord, lon_coord,           &
          grid_map, block_indexed=.false., unstruct=.true.)
-   call cam_grid_attribute_register('GLL', trim(areaname), 'gll grid areas', &
-         trim(ncolname), pearea, map=pemap)
+   call cam_grid_attribute_register('GLL', 'area_d', 'gll grid areas', &
+         'ncol_d', pearea, map=pemap)
    call cam_grid_attribute_register('GLL', 'np', '', np)
    call cam_grid_attribute_register('GLL', 'ne', '', ne)
 
-   ! With CSLAM if the initial file uses the horizontal dimension 'ncol' rather than
-   ! 'ncol_d' then we need a grid object with the names ncol,lat,lon to read it.
-   ! Create that grid object here if it's needed.
-   if (fv_nphys > 0 .and. ini_grid_hdim_name == 'ncol') then
+   ! If dim name is 'ncol', create INI grid
+   ! We will read from INI grid, but use GLL grid for all output
+   if (trim(ini_grid_hdim_name) == 'ncol') then
 
       lat_coord => horiz_coord_create('lat', 'ncol', ngcols_d,  &
          'latitude', 'degrees_north', 1, size(pelat_deg), pelat_deg, map=pemap)
@@ -849,6 +846,8 @@ subroutine define_cam_grids()
 
       call cam_grid_register('INI', ini_decomp, lat_coord, lon_coord,         &
          grid_map, block_indexed=.false., unstruct=.true.)
+      call cam_grid_attribute_register('INI', 'area', 'ini grid areas', &
+               'ncol', pearea, map=pemap)
 
       ini_grid_name = 'INI'
    else

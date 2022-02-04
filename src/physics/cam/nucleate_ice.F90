@@ -90,7 +90,8 @@ subroutine nucleati(  &
    so4_num, dst_num, soot_num, subgrid, &
    nuci, onihf, oniimm, onidep, onimey, &
    wpice, weff, fhom, regm, &
-   oso4_num, odst_num, osoot_num, call_frm_zm_in)
+   oso4_num, odst_num, osoot_num, &
+   call_frm_zm_in, add_preexisting_ice_in)
 
    ! Input Arguments
    real(r8), intent(in) :: wbar        ! grid cell mean vertical velocity (m/s)
@@ -123,6 +124,7 @@ subroutine nucleati(  &
 
    ! Optional Arguments
    logical,  intent(in), optional :: call_frm_zm_in ! true if called from ZM convection scheme
+   logical,  intent(in), optional :: add_preexisting_ice_in ! only false if called with pumas_v1.21+
 
    ! Local workspace
    real(r8) :: nihf                      ! nucleated number from homogeneous freezing of so4
@@ -143,7 +145,7 @@ subroutine nucleati(  &
 
    real(r8) :: weffhet    ! effective Vertical velocity for ice nucleation (m/s)  weff=wbar-wpicehet 
 
-   logical  :: call_frm_zm
+   logical  :: call_frm_zm, add_preexisting_ice
    !-------------------------------------------------------------------------------
 
    RHimean = relhum*svp_water(tair)/svp_ice(tair)*subgrid
@@ -160,6 +162,12 @@ subroutine nucleati(  &
      call_frm_zm = call_frm_zm_in
    else
      call_frm_zm = .false.
+   end if
+
+   if (present(add_preexisting_ice_in)) then
+     add_preexisting_ice = add_preexisting_ice_in
+   else
+     add_preexisting_ice = .true.
    end if
 
    if (use_preexisting_ice .and. (.not. call_frm_zm)) then
@@ -327,9 +335,11 @@ subroutine nucleati(  &
             ! MG is expecting to find.
             ni = n1
 
-            ! If using prexsiting ice, then add it to the total.
-            if (use_preexisting_ice .and. (.not. call_frm_zm)) then
-              ni = ni + Ni_preice * 1e-6_r8
+            ! If using prexsiting ice, and allowed to add, then add it to the total.
+            if (use_preexisting_ice) then
+               if (add_preexisting_ice .and. (.not. call_frm_zm)) then
+                  ni = ni + Ni_preice * 1e-6_r8
+               end if
             end if
          end if
       end if

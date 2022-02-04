@@ -1217,7 +1217,10 @@ contains
     ! If exit condition just return
     !
 
-    if(single_column.and.scm_crm_mode) return
+    if(single_column.and.scm_crm_mode) then
+       call diag_deallocate()
+       return
+    end if
     !-----------------------------------------------------------------------
     ! if using IOP values for surface fluxes overwrite here after surface components run
     !-----------------------------------------------------------------------
@@ -1370,7 +1373,7 @@ contains
     use co2_cycle,          only: co2_cycle_set_ptend
     use nudging,            only: Nudge_Model,Nudge_ON,nudging_timestep_tend
     use cam_snapshot,       only: cam_snapshot_all_outfld_tphysac
-    use cam_snapshot,       only: cam_snapshot_ptend_outfld
+    use cam_snapshot_common,only: cam_snapshot_ptend_outfld
     use lunar_tides,        only: lunar_tides_tend
 
     !
@@ -1875,17 +1878,7 @@ contains
 
       call set_dry_to_wet(state)
 
-      if (trim(cam_take_snapshot_before) == "physics_dme_adjust") then
-         call cam_snapshot_all_outfld_tphysac(cam_snapshot_before_num, state, tend, cam_in, cam_out, pbuf,&
-                    fh2o, surfric, obklen, flx_heat)
-      end if
-
       call physics_dme_adjust(state, tend, qini, ztodt)
-
-      if (trim(cam_take_snapshot_after) == "physics_dme_adjust") then
-         call cam_snapshot_all_outfld_tphysac(cam_snapshot_after_num, state, tend, cam_in, cam_out, pbuf,&
-                    fh2o, surfric, obklen, flx_heat)
-      end if
 
       call calc_te_and_aam_budgets(state, 'phAM')
       call calc_te_and_aam_budgets(state, 'dyAM',vc=vc_dycore)
@@ -2019,11 +2012,12 @@ contains
     use subcol_SILHS,    only: subcol_SILHS_var_covar_driver
     use subcol_SILHS,    only: subcol_SILHS_fill_holes_conserv
     use subcol_SILHS,    only: subcol_SILHS_hydromet_conc_tend_lim
-    use micro_mg_cam,    only: massless_droplet_destroyer
+    use micro_pumas_cam,    only: massless_droplet_destroyer
     use cam_snapshot,    only: cam_snapshot_all_outfld_tphysbc
-    use cam_snapshot,    only: cam_snapshot_ptend_outfld
-    use ssatcontrail,    only: ssatcontrail_d0
+    use cam_snapshot_common, only: cam_snapshot_ptend_outfld
+    use ssatcontrail,       only: ssatcontrail_d0
     use dyn_tests_utils, only: vc_dycore
+
     ! Arguments
 
     real(r8), intent(in) :: ztodt                          ! 2 delta t (model time increment)
