@@ -194,7 +194,8 @@
       <value compset="1850_CAM60%WCCM"   >waccm_ma_1850_cam6</value>
       <value compset="1850_CAM60%WCSC"   >waccm_sc_1850_cam6</value>
       <!-- smyle L83 compset -->
-      <value compset="1850_CAM60%WCSC%SMYLE">waccm_sc_smyle_L83</value>
+      <value compset="1850_CAM60%WCSC%SMYLE">waccm_sc_control_smyle_L83</value>
+      <value compset="HIST_CAM60%WCSC%SMYLE">waccm_sc_hist_smyle_L83</value>
 
       <value compset="2000_CAM40%TMOZ"   >2000_cam4_trop_chem</value>
       <value compset="2000_CAM40%WXIE"   >waccmxie_ma_2000_cam4</value>
