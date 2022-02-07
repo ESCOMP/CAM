@@ -117,9 +117,6 @@ module camsrfexch
      real(r8), pointer, dimension(:)   :: fv    !friction velocity (m/s) (pcols)
      real(r8), pointer, dimension(:)   :: soilw !volumetric soil water (m3/m3)
      real(r8), pointer, dimension(:,:) :: depvel ! deposition velocities
-     real(r8), pointer, dimension(:,:) :: lwtgcell ! landunit areas
-     real(r8), pointer, dimension(:,:) :: pwtgcell ! patch areas
-     real(r8), pointer, dimension(:,:) :: lai      ! leaf area indices
      real(r8), pointer, dimension(:,:) :: dstflx ! dust fluxes
      real(r8), pointer, dimension(:,:) :: meganflx ! MEGAN fluxes
      real(r8), pointer, dimension(:,:) :: fireflx ! wild fire emissions
@@ -135,7 +132,7 @@ CONTAINS
     ! Allocate space for the surface to atmosphere data type. And initialize
     ! the values.
 
-    use seq_drydep_mod,  only: lnd_drydep, n_drydep, NLUse, NPatch
+    use seq_drydep_mod,  only: lnd_drydep, n_drydep
     use shr_megan_mod,   only: shr_megan_mechcomps_n
     use shr_fire_emis_mod,only: shr_fire_emis_mechcomps_n
 
@@ -160,9 +157,6 @@ CONTAINS
        nullify(cam_in(c)%fv)
        nullify(cam_in(c)%soilw)
        nullify(cam_in(c)%depvel)
-       nullify(cam_in(c)%lwtgcell)
-       nullify(cam_in(c)%pwtgcell)
-       nullify(cam_in(c)%lai)
        nullify(cam_in(c)%dstflx)
        nullify(cam_in(c)%meganflx)
        nullify(cam_in(c)%fireflx)
@@ -196,12 +190,6 @@ CONTAINS
        do c = begchunk,endchunk
           allocate (cam_in(c)%depvel(pcols,n_drydep), stat=ierror)
           if ( ierror /= 0 ) call endrun(sub//': allocation error depvel')
-          allocate (cam_in(c)%lwtgcell(pcols,NLUse), stat=ierror)
-          if ( ierror /= 0 ) call endrun(sub//': allocation error lwtgcell')
-          allocate (cam_in(c)%pwtgcell(pcols,NPatch), stat=ierror)
-          if ( ierror /= 0 ) call endrun(sub//': allocation error pwtgcell')
-          allocate (cam_in(c)%lai(pcols,NPatch), stat=ierror)
-          if ( ierror /= 0 ) call endrun(sub//': allocation error lai')
        end do
     endif
 
@@ -257,11 +245,6 @@ CONTAINS
        cam_in(c)%ssq      (:) = 0._r8
        if (lnd_drydep .and. n_drydep>0) then
           cam_in(c)%depvel (:,:) = 0._r8
-       endif
-       if (lnd_drydep) then
-          cam_in(c)%lwtgcell (:,:) = 0._r8
-          cam_in(c)%pwtgcell (:,:) = 0._r8
-          cam_in(c)%lai      (:,:) = 0._r8
        endif
        if (active_Fall_flxfire .and. shr_fire_emis_mechcomps_n>0) then
           cam_in(c)%fireflx(:,:) = 0._r8
@@ -400,18 +383,6 @@ CONTAINS
           if(associated(cam_in(c)%depvel)) then
              deallocate(cam_in(c)%depvel)
              nullify(cam_in(c)%depvel)
-          end if
-          if(associated(cam_in(c)%lwtgcell)) then
-             deallocate(cam_in(c)%lwtgcell)
-             nullify(cam_in(c)%lwtgcell)
-          end if
-          if(associated(cam_in(c)%pwtgcell)) then
-             deallocate(cam_in(c)%pwtgcell)
-             nullify(cam_in(c)%pwtgcell)
-          end if
-          if(associated(cam_in(c)%lai)) then
-             deallocate(cam_in(c)%lai)
-             nullify(cam_in(c)%lai)
           end if
 
        enddo

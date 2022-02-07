@@ -1,5 +1,7 @@
 package Build::ChemNamelist;
 
+no if $] >= 5.017011, warnings => 'experimental::smartmatch';
+
 #-------------------------------------------------------------------------------------
 # generates species lists for chemistry namelist settings
 #-------------------------------------------------------------------------------------
@@ -313,7 +315,7 @@ sub get_dep_list
 #-------------------------------------------------------------------------------
 sub filter_dep_list
 {
-    my ( $input_list, $print_lvl, @species_list_ref, $nottransported_list_ref ) = @_;
+    my ( $input_list, $print_lvl, $species_list_ref, $nottransported_list_ref ) = @_;
 
     if ($print_lvl>=2){ print "Filtering deposition species list \n"; }
 
