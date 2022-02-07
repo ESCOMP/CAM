@@ -13,12 +13,12 @@
                             nfs = 2, & ! number of "fixed" species
                             relcnt = 0, & ! number of relationship species
                             grpcnt = 0, & ! number of group members
-                            nzcnt = 1856, & ! number of non-zero matrix entries
+                            nzcnt = 1936, & ! number of non-zero matrix entries
                             extcnt = 23, & ! number of species with external forcing
-                            clscnt1 = 23, & ! number of species in explicit class
+                            clscnt1 = 22, & ! number of species in explicit class
                             clscnt2 = 0, & ! number of species in hov class
                             clscnt3 = 0, & ! number of species in ebi class
-                            clscnt4 = 114, & ! number of species in implicit class
+                            clscnt4 = 115, & ! number of species in implicit class
                             clscnt5 = 0, & ! number of species in rodas class
                             indexm = 1, & ! index of total atm density in invariant array
                             indexh2o = 0, & ! index of water vapor density

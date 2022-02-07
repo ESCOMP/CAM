@@ -1942,6 +1942,11 @@
       <machine name="cheyenne" compiler="intel" category="waccmx"/>
     </machines>
   </test>
+  <test compset="FX2000" grid="f05_f05_mg17" name="SMS_D_Ln9_Vmct"   testmods="cam/outfrq9s_f05">
+    <machines>
+      <machine name="cheyenne" compiler="intel" category="waccmx"/>
+    </machines>
+  </test>
   <test compset="FXHIST" grid="f19_f19_mg17" name="SMS_D_Ln9_Vmct" testmods="cam/outfrq9s_amie">
     <machines>
       <machine name="cheyenne" compiler="intel" category="waccmx"/>
