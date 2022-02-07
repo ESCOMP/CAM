@@ -121,6 +121,7 @@
 <ncdata dyn="fv"  hgrid="1.9x2.5"   nlev="70"   ic_ymd="20000101" >atm/waccm/ic/f2000.waccm-mam3_1.9x2.5_L70.cam2.i.0017-01-01.c120410.nc</ncdata>
 <ncdata dyn="fv"  hgrid="1.9x2.5"   nlev="70"  aquaplanet="1" ic_ymd="20000101" >atm/waccm/ic/aqua.cam6.waccmsc_1.9x2.5_L70.2000-01-01.c170123.nc</ncdata>
 <ncdata dyn="fv"  hgrid="1.9x2.5"   nlev="70"  aquaplanet="1" ic_ymd="20000101" chem="waccm_tsmlt_mam4">atm/waccm/ic/aqua.waccm_tsmlt_1.9x2.5_L70_c170814.nc</ncdata>
+<ncdata dyn="fv"  hgrid="1.9x2.5"   nlev="70"  aquaplanet="1" ic_ymd="20000101" chem="waccm_ma_mam4">atm/waccm/ic/aqua.waccm_tsmlt_1.9x2.5_L70_c170814.nc</ncdata>
 <ncdata dyn="fv"  hgrid="4x5"       nlev="70"   ic_ymd="20000101" >atm/waccm/ic/f2000.waccm-mam3_4x5_L70.cam2.i.0017-01-01.c121113.nc</ncdata>
 <ncdata dyn="fv"  hgrid="10x15"     nlev="70"   ic_ymd="20000101" >atm/waccm/ic/f2000.waccm-mam3_10x15_L70.cam2.i.0017-01-01.c141016.nc</ncdata>
 <ncdata dyn="fv"  hgrid="1.9x2.5"   nlev="70"   ic_ymd="18500101" >atm/waccm/ic/b1850.waccm-mam3_1.9x2.5_L70.cam2.i.0156-01-01.c120523.nc</ncdata>

@@ -1124,12 +1124,18 @@
       <machine name="cheyenne" compiler="intel" category="aux_cam"/>
       <machine name="cheyenne" compiler="intel" category="test_scam"/>
     </machines>
+    <options>
+      <option name="wallclock">00:10:00</option>
+    </options>
   </test>
   <test compset="FSCAM" grid="T42_T42" name="SMS_D_Ln9_Vmct" testmods="cam/scam_mpace_outfrq9s">
     <machines>
       <machine name="cheyenne" compiler="intel" category="prealpha"/>
       <machine name="cheyenne" compiler="intel" category="test_scam"/>
     </machines>
+    <options>
+      <option name="wallclock">00:10:00</option>
+    </options>
   </test>
 
 <!--              @@@@@@@@@@@@@@@@@@@@@@@@@@@                 -->
@@ -1455,6 +1461,9 @@
       <machine name="izumi" compiler="pgi" category="test_spcam"/>
       <machine name="cheyenne" compiler="intel" category="aux_cam"/>
     </machines>
+    <options>
+      <option name="wallclock">00:20:00</option>
+    </options>
   </test>
   <test compset="FSPCAMS" grid="f19_f19_mg17" name="ERS_Ln9_Vmct" testmods="cam/outfrq9s">
     <machines>
@@ -2104,6 +2113,9 @@
       <machine name="cheyenne" compiler="intel" category="waccm"/>
       <machine name="cheyenne" compiler="intel" category="aux_cam"/>
     </machines>
+    <options>
+      <option name="wallclock">00:40:00</option>
+    </options>
   </test>
   <test compset="FW2000climo" grid="ne30pg3_ne30pg3_mg17" name="SMS_D_Ln9_Vmct" testmods="cam/outfrq9s_wcm_ne30">
     <machines>
@@ -2181,6 +2193,9 @@
     <machines>
       <machine name="cheyenne" compiler="intel" category="aux_cam"/>
     </machines>
+    <options>
+      <option name="wallclock">00:10:00</option>
+    </options>
   </test>
 
 <!--              @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@                -->
