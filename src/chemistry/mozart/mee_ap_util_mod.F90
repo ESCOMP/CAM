@@ -147,9 +147,9 @@ contains
   !------------------------------------------------------------------------------
   pure function FluxSpectrum( en, lshell, Ap ) result(flux)
 
-    real(r8), intent(in) :: en(:)
-    real(r8), intent(in) :: lshell
-    real(r8), intent(in) :: Ap
+    real(r8), intent(in) :: en(:)  ! electron energy bins (keV)
+    real(r8), intent(in) :: lshell ! magnetosphere L-Shell number
+    real(r8), intent(in) :: Ap     ! geomagnetic activity index
 
     real(r8) :: flux(size(en))
 
@@ -189,8 +189,8 @@ contains
     k = -1.0_r8 / (E*exp(-bk*Spp) + 0.30450_r8*cosh(0.20098_r8*(Spp-sk))) - 1._r8
 
     x=k+1
-    c = F30*x/(1e3_r8**x-30._r8**x)
-    flux(:) = en(:)**k*c
+    c = F30*x / ((1e3_r8**x) - (30._r8**x))
+    flux(:) = c * (en(:)**k)
 
   end function FluxSpectrum
 
@@ -215,10 +215,10 @@ contains
   !
   !------------------------------------------------------------------------------
   function iprmono(e, flux, rho, scaleh) result(ipr)
-    real(r8), intent(in) :: e(:)
-    real(r8), intent(in) :: flux(:)
-    real(r8), intent(in) :: rho(:)
-    real(r8), intent(in) :: scaleh(:)
+    real(r8), intent(in) :: e(:)      ! electron energy bins (keV)
+    real(r8), intent(in) :: flux(:)   ! top of atmos electron fluxes (electrons / (cm2 sr s keV))
+    real(r8), intent(in) :: rho(:)    ! density of atmos (g/cm3)
+    real(r8), intent(in) :: scaleh(:) ! scale  height (cm)
 
     real(r8) :: ipr(size(e),size(rho))
     integer :: nenergies, n
@@ -264,8 +264,8 @@ contains
 
 
       ! eq. (4) - Normalized energy deposition
-      f = fang_coefs(1,n)*y**fang_coefs(2,n)*exp(-fang_coefs(3,n)*y**fang_coefs(4,n)) &
-        + fang_coefs(5,n)*y**fang_coefs(6,n)*exp(-fang_coefs(7,n)*y**fang_coefs(8,n))
+      f = fang_coefs(1,n) * (y**fang_coefs(2,n)) * exp(-fang_coefs(3,n)*y**fang_coefs(4,n)) &
+        + fang_coefs(5,n) * (y**fang_coefs(6,n)) * exp(-fang_coefs(7,n)*y**fang_coefs(8,n))
 
     end function fang
 
@@ -279,7 +279,8 @@ contains
     integer :: n,i
 
     real(r8) :: lne, lne2, lne3
-    ! Table 1.
+    ! Table 1. of Fang et al., 2010
+    ! (https://agupubs.onlinelibrary.wiley.com/doi/10.1029/2010GL045406)
     real(r8), parameter :: p1(8,4) = reshape( &
          (/ 1.24616E+0_r8,  1.45903E+0_r8, -2.42269E-1_r8,  5.95459E-2_r8, &
             2.23976E+0_r8, -4.22918E-7_r8,  1.36458E-2_r8,  2.53332E-3_r8, &

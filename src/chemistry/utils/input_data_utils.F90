@@ -184,14 +184,13 @@ contains
        day_str = time_units(dayi:dayi+1)
        hr_str  = time_units(hri:hri+1)
        min_str = time_units(mini:mini+1)
-       sec_str = time_units(seci:seci+1)
 
        read( yr_str,  * ) ref_yr
        read( mon_str, * ) ref_mon
        read( day_str, * ) ref_day
        read( hr_str,  * ) ref_hr
        read( min_str, * ) ref_min
-       if (index(time_units,':ss')>0) then
+       if (len_trim(time_units)>seci) then
           sec_str = time_units(seci:seci+1)
           read( sec_str, * ) ref_sec
        else
