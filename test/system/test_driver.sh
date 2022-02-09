@@ -117,7 +117,7 @@ fi
 
 # Initialize variables which may not be set
 submit_script_cime=''
-xml_driver=''
+xml_driver='nuopc'
 
 while [ "${1:0:1}" == "-" ]; do
     case $1 in
@@ -552,9 +552,7 @@ if [ "${cesm_test_suite}" != "none" -a -n "${cesm_test_mach}" ]; then
       fi
     fi
 
-    if [ -n "${xml_driver}" ] ; then
-        testargs="${testargs} --xml-driver ${xml_driver}"
-    fi
+    testargs="${testargs} --xml-driver ${xml_driver}"
 
     echo ""
     echo "CESM test results will be in: ${cesm_testdir}" | tee -a ${logfile}
