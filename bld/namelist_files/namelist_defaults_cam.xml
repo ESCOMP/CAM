@@ -629,6 +629,13 @@
 
 <solar_wind_data_file>atm/waccm/solar/solar_wind_imf_OMNI_WACCMX_2000001-2017365_c180731.nc</solar_wind_data_file>
 
+<!-- Default bounce cone loss angle (degrees) for medium-energy electrons
+  80 degrees is the value used to generate CMIP6 MEE forcings provided by SOLARISHEPPA (http://solarisheppa.geomar.de).
+  (Recommendations for CMIP6 solar forcing data, Geosci. Model Dev., 10, doi:10.5194/gmd-10-2247-2017)
+  (Private communication with Pekka Verronen)
+-->
+<mee_ion_blc>80.D0</mee_ion_blc>
+
 <!-- nudged QBO  -->
 <qbo_forcing_file>atm/waccm/qbo/qbocoefficients_c151023.nc</qbo_forcing_file>
 

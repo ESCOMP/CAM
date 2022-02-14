@@ -2814,11 +2814,8 @@ if ($nl->get_value('mee_ion_inline') =~ m/$TRUE/io) {
       ($nl->get_value('mee_ion_diagonly') !~ m/$TRUE/io)) {
     die "Cannot specify both epp_mee_filepath and mee_ion_inline without mee_ion_diagonly set to .true.\n";
   }
-  # Set default bounce cone loss angle to 80 degrees.  This is the value used to
-  # generate CMIP6 MEE forcings provided by SOLARISHEPPA (http://solarisheppa.geomar.de).
-  # (Recommendations for CMIP6 solar forcing data, Geosci. Model Dev., 10, doi:10.5194/gmd-10-2247-2017)
-  # (Private communication with Pekka Verronen)
-  add_default($nl, 'mee_ion_blc', 'val'=>'80.D0');
+  # Set default bounce cone loss angle.
+  add_default($nl, 'mee_ion_blc');
 }
 
 if ($gcr_ion_file and $gcr_ion_file ne 'NONE') {
