@@ -618,7 +618,7 @@
   </test>
   <test compset="QPWmaC4" grid="f10_f10_mg37" name="SMS_D_Ln9_Vmct" testmods="cam/outfrq9s_apmee" supported="false">
     <machines>
-      <machine name="izumi" compiler="nag" category="aux_cam"/>
+      <machine name="izumi" compiler="pgi" category="aux_cam"/>
       <machine name="izumi" compiler="nag" category="waccm"/>
     </machines>
     <options>

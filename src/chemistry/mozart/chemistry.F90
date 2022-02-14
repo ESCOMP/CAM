@@ -1375,7 +1375,9 @@ end function chem_is_active
 
 !-------------------------------------------------------------------
 !-------------------------------------------------------------------
-  subroutine chem_final
+  subroutine chem_final()
+    use mee_ionization, only: mee_ion_final
+    call mee_ion_final()
   end subroutine chem_final
 
 !-------------------------------------------------------------------

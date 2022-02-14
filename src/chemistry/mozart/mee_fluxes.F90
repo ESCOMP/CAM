@@ -16,6 +16,7 @@ module mee_fluxes
   private
   public :: mee_fluxes_readnl
   public :: mee_fluxes_init
+  public :: mee_fluxes_final
   public :: mee_fluxes_adv     ! read and time interpolate fluxes
   public :: mee_fluxes_extract ! interpolate flux to column L-shell
   public :: mee_fluxes_active  ! true when input flux file is specified
@@ -23,8 +24,8 @@ module mee_fluxes
   public :: mee_fluxes_energy  ! center of each energy bin
   public :: mee_fluxes_nenergy ! number of energy bins
 
-  real(r8),protected, pointer :: mee_fluxes_denergy(:)
-  real(r8),protected, pointer :: mee_fluxes_energy(:)
+  real(r8),protected, pointer :: mee_fluxes_denergy(:) => null()
+  real(r8),protected, pointer :: mee_fluxes_energy(:) => null()
   integer, protected :: mee_fluxes_nenergy
   logical, protected :: mee_fluxes_active = .false.
 
@@ -79,9 +80,13 @@ contains
 
     mee_fluxes_active = mee_fluxes_filepath /= 'NONE'
 
-    if ( mee_fluxes_active .and. masterproc ) then
-       write(iulog,*) subname//':: Input electron fluxes filepath: '//trim(mee_fluxes_filepath)
-       write(iulog,*) subname//':: Fill in missing fluxes with vdk-derived fluxes: ', mee_fluxes_fillin
+    if ( masterproc ) then
+       if ( mee_fluxes_active ) then
+          write(iulog,*) subname//':: Input electron fluxes filepath: '//trim(mee_fluxes_filepath)
+          write(iulog,*) subname//':: Fill in missing fluxes with vdk-derived fluxes: ', mee_fluxes_fillin
+       else
+          write(iulog,*) subname//':: Electron fluxes are not prescribed'
+       end if
     end if
 
   end subroutine mee_fluxes_readnl
@@ -139,6 +144,28 @@ contains
   end subroutine mee_fluxes_init
 
   !-----------------------------------------------------------------------------
+  !-----------------------------------------------------------------------------
+  subroutine mee_fluxes_final()
+    use cam_pio_utils, only : cam_pio_closefile
+
+    if (.not.mee_fluxes_active) return
+
+    call cam_pio_closefile(file_id)
+
+    deallocate(indata)
+    deallocate(influx)
+    deallocate(valflx)
+    deallocate(lshell)
+
+    deallocate(mee_fluxes_energy)
+    deallocate(mee_fluxes_denergy)
+
+    nullify(mee_fluxes_energy)
+    nullify(mee_fluxes_denergy)
+
+  end subroutine mee_fluxes_final
+
+  !-----------------------------------------------------------------------------
   ! time interpolate the input fluxes
   ! reads data as needed
   !-----------------------------------------------------------------------------
@@ -178,11 +205,7 @@ contains
     logical :: found
     real(r8) :: wght1,wght2
 
-    if (mee_fluxes_fillin) then
-       valid(:) = .false.
-    else
-       valid(:) = .true.
-    endif
+    valid(:) = .not. mee_fluxes_fillin
     fluxes(:) = 0._r8
 
     if (.not.mee_fluxes_active) return

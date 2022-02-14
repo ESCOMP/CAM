@@ -13,6 +13,7 @@ module mee_ap_util_mod
   private
   public :: mee_ap_iprs
   public :: mee_ap_init
+  public :: mee_ap_final
   public :: mee_ap_error
   public :: mee_ap_noerror
 
@@ -21,8 +22,8 @@ module mee_ap_util_mod
 
   integer :: nbins=0
 
-  real(r8),pointer :: energies(:)
-  real(r8),pointer :: denergies(:) ! width of each energy bin
+  real(r8),pointer :: energies(:) => null()  ! energy bins
+  real(r8),pointer :: denergies(:) => null() ! width of each energy bin
   real(r8) :: solid_angle_factor = -huge(1._r8)
   real(r8),allocatable :: fang_coefs(:,:)
 
@@ -43,7 +44,7 @@ contains
        return
     endif
 
-    ! The area of the BLC in sr is 2pi(1-cosd(BLC))
+    ! The area of the BLC in sr is 2pi(1-cos(BLC))
     solid_angle_factor = 2._r8*pi*(1._r8-cos(loss_cone_angle*pi/180._r8))
 
     if (mee_fluxes_active) then
@@ -62,20 +63,34 @@ contains
   end subroutine mee_ap_init
 
   !-----------------------------------------------------------------------------
+  !-----------------------------------------------------------------------------
+  subroutine mee_ap_final()
+
+    deallocate(fang_coefs)
+
+    if (.not.mee_fluxes_active) then
+       deallocate(energies)
+       deallocate(denergies)
+    endif
+    nullify(energies)
+    nullify(denergies)
+
+ end subroutine mee_ap_final
+
+  !-----------------------------------------------------------------------------
   ! Computes ion pair production rates base on Ap geomagnetic activity index
   ! or observed electron fluxes
   !-----------------------------------------------------------------------------
-  function mee_ap_iprs( ncols, nlyrs, airden, scaleh, Ap, status, maglat, lshell) result(ionpairs )
+  subroutine mee_ap_iprs( ncols, nlyrs, airden, scaleh, Ap, ionpairs, status, maglat, lshell)
 
     integer ,intent(in) :: ncols, nlyrs
     real(r8),intent(in) :: airden(ncols,nlyrs)     ! g/cm3
     real(r8),intent(in) :: scaleh(ncols,nlyrs)     ! cm
     real(r8),intent(in) :: Ap                      ! geomagnetic activity index
+    real(r8),intent(out) :: ionpairs(ncols,nlyrs)  ! pairs/cm3/sec
     integer, intent(out) :: status                 ! error status
     real(r8),intent(in), optional :: maglat(ncols) ! magnetic latitude (radians)
     real(r8),intent(in), optional :: lshell(ncols) ! magnetosphere L-Shells
-
-    real(r8) :: ionpairs(ncols,nlyrs)  ! pairs/cm3/sec
 
     integer :: i,k
     real(r8) :: flux_sd(nbins)
@@ -133,7 +148,7 @@ contains
 
     end do
 
-  end function mee_ap_iprs
+  end subroutine mee_ap_iprs
 
   !------------------------------------------------------------------------------
   ! Electron fluxes for a specific L-shell and Ap
@@ -310,7 +325,7 @@ contains
 
   !------------------------------------------------------------------------------
   ! Generate a grid of energy bins for the flux spectrum.
-  ! The energy range of the spectrum is 30–1000 keV,
+  ! The energy range of the spectrum is 30-1000 keV,
   ! with nbins of logarithmically spaced grid points.
   !------------------------------------------------------------------------------
   subroutine gen_energy_grid(nbins, energies, deltas)
@@ -319,11 +334,11 @@ contains
     real(r8),intent(out) :: deltas(nbins)
 
     integer :: i
-    real(r8) :: e1,e2
     real(r8) :: low,med,hig
 
-    e1 = log10(30._r8)
-    e2 = log10(1000._r8)
+    ! for energy bins ranging from 30 keV to 1000 keV
+    real(r8), parameter :: e1 = log10(30._r8)
+    real(r8), parameter :: e2 = log10(1000._r8)
 
     do i = 1,nbins
        low = e1 + (e2-e1)*(i-1.0_r8)/nbins
@@ -343,6 +358,10 @@ contains
     real(r8), intent(in) :: rmaglat ! mag latitude in radians
     real(r8) :: lshell  ! magnetosphere L-Shell number
 
+    ! lshell = r/(cos(rmaglat)**2) (https://en.wikipedia.org/wiki/L-shell)
+    ! where r is the radial distance (in planetary radii) to a point on the line.
+    ! r = 1.01 corresponds to an altitude in the lower mesosphere (~64 km)
+    ! where medium-energy electrons typically deposit their energy.
     lshell = 1.01_r8/(cos(rmaglat)**2)
 
   end function maglat2lshell

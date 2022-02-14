@@ -19,6 +19,7 @@ module mee_ionization
   private
   public :: mee_ion_readnl
   public :: mee_ion_init
+  public :: mee_ion_final
   public :: mee_ionpairs
 
   logical :: mee_ion_inline = .false.
@@ -97,6 +98,17 @@ contains
 
   !-----------------------------------------------------------------------------
   !-----------------------------------------------------------------------------
+  subroutine mee_ion_final()
+    use mee_fluxes, only : mee_fluxes_final
+    use mee_ap_util_mod, only: mee_ap_final
+
+    call mee_fluxes_final()
+    call mee_ap_final()
+
+  end subroutine mee_ion_final
+
+  !-----------------------------------------------------------------------------
+  !-----------------------------------------------------------------------------
   subroutine mee_ionpairs(ncol, lchnk, pmid, alt, temp, ionpairs)
 
     use physconst, only: mbarv  ! kg/kmole
@@ -131,7 +143,8 @@ contains
     scaleh(:ncol,:) = avogad * boltz*temp(:ncol,:)/(mbarv(:ncol,:,lchnk)*grvty(:ncol,:)) ! m
     scaleh(:ncol,:) = scaleh(:ncol,:) * 1.0e2_r8 ! m -> cm
 
-    ionpairs(:ncol,:) = mee_ap_iprs(ncol, pver, rho(:ncol,:), scaleh(:ncol,:), Ap, status=err, maglat=alatm(:ncol,lchnk))
+    call mee_ap_iprs(ncol, pver, rho(:ncol,:), scaleh(:ncol,:), Ap, ionpairs(:ncol,:), &
+                     status=err, maglat=alatm(:ncol,lchnk))
     if (err==mee_ap_error) then
        call endrun('mee_ionpairs: error in Ap based MEE ionization calculation')
     end if
