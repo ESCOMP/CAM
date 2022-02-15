@@ -2714,7 +2714,7 @@ Default: .false.
 
 <entry id="micro_mg_evap_rhthrsh_ifs" type="logical" category="microphys"
        group="micro_mg_nl" valid_values="" >
-Do not evaporate precipitation until RH<90% as done in the
+Do not evaporate precipitation until RH &lt; 90% as done in the
 IFS model (https://www.ecmwf.int/en/forecasts/documentation-and-support)
 Default: .false.
 </entry>
@@ -2737,6 +2737,19 @@ Default: .false.
 If .true., ensure non-zero precipitation fallspeed (rain,snow and graupel) if precipitation exists above in column (from M2005 in WRFv3.3)
 Default: .false.
 </entry>
+
+<entry id="micro_mg_implicit_fall" type="logical" category="microphys"
+       group="micro_mg_nl" valid_values="" >
+If .true., use implicit fall speed (sedimentation) routine for all hydrometeors. Improves numerical stability of precipitation
+Default: .true.
+</entry>
+
+<entry id="micro_mg_accre_sees_auto" type="logical" category="microphys"
+       group="micro_mg_nl" valid_values="" >
+If true, then the autoconverted liquid is added to rain and removed from cloud before accretion is estimated.
+Default: .true.
+</entry>
+
 
 <!-- Aerosol microphysics -->
 <entry id="microp_aero_bulk_scale" type="real" category="microphys"
@@ -4496,8 +4509,8 @@ Default: set by build-namelist
 </entry>
 
 <entry id="cam_chempkg" type="char*32" category="build"
-       group="phys_ctl_nl" valid_values="trop_mam3,trop_mam4,trop_mam7,trop_mozart,trop_strat_mam4_vbs,trop_strat_mam4_vbsext,
-                                         waccm_ma,waccm_mad_mam4,waccm_ma_mam4,waccm_ma_sulfur,waccm_sc,waccm_sc_mam4,waccm_tsmlt_mam4,
+       group="phys_ctl_nl" valid_values="trop_mam3,trop_mam4,trop_mam5,trop_mam7,trop_mozart,trop_strat_mam4_vbs,trop_strat_mam4_vbsext,
+                                         waccm_ma,waccm_mad_mam4,waccm_ma_mam4,waccm_ma_sulfur,waccm_sc,waccm_sc_mam4,waccm_tsmlt_mam4,waccm_tsmlt_mam5,
                                          terminator,none" >
 Name of the CAM chemistry package.  N.B. this variable may not be set by
 the user.  It is set by build-namelist via information in the configure
@@ -4591,6 +4604,13 @@ Default: set by build-namelist
        group="ionosphere_nl" valid_values="heelis,weimer">
 Electric potential model used in the waccmx ionosphere.
 Default: set by build-namelist
+</entry>
+
+<entry id="ionos_debug_hist" type="logical"  category="waccmx"
+       group="ionosphere_nl" valid_values="">
+Switch to add history fields to master field list for the purpose
+of debugging ionospheric processes in WACCMX.
+Default: FALSE
 </entry>
 
 <entry id="epot_crit_colats" type="real*2"  category="waccmx"
@@ -4900,7 +4920,7 @@ Default:
 </entry>
 
 <entry id="cam_take_snapshot_before" type="char*32"  category="diagnostics"
-       group="phys_ctl_nl" valid_values="chem_emissions,aoa_tracers_timestep_tend,co2_cycle_set_ptend,chem_timestep_tend,vertical_diffusion_section,aero_model_drydep,gw_tend,qbo_relax,iondrag_calc_section,physics_dme_adjust,physics_dme_adjust,dadadj_tend,convect_deep_tend,convect_shallow_tend,macrop_driver_tend,clubb_tend_cam,microp_section,microp_driver_tend_subcol,aero_model_wetdep,radiation_tend,held_suarez_tend,kessler_tend,thatcher_jablonowski_precip_tend,user_set" >
+       group="phys_ctl_nl" valid_values="chem_emissions,aoa_tracers_timestep_tend,co2_cycle_set_ptend,chem_timestep_tend,vertical_diffusion_section,aero_model_drydep,gw_tend,qbo_relax,iondrag_calc_section,physics_dme_adjust,physics_dme_adjust,dadadj_tend,convect_deep_tend,convect_shallow_tend,convect_diagnostics_calc,macrop_driver_tend,clubb_tend_cam,microp_section,microp_driver_tend_subcol,aero_model_wetdep,radiation_tend,held_suarez_tend,kessler_tend,thatcher_jablonowski_precip_tend,user_set" >
 Name of parameterization to take snapshot before running
 user_set is used when a user inserts a call to cam_snapshot_all_outfld
   using cam_snapshot_before_num as the first argument.
@@ -4908,7 +4928,7 @@ Default: Unused
 </entry>
 
 <entry id="cam_take_snapshot_after" type="char*32"  category="diagnostics"
-       group="phys_ctl_nl" valid_values="chem_emissions,aoa_tracers_timestep_tend,co2_cycle_set_ptend,chem_timestep_tend,vertical_diffusion_section,aero_model_drydep,gw_tend,qbo_relax,iondrag_calc_section,physics_dme_adjust,physics_dme_adjust,dadadj_tend,convect_deep_tend,convect_shallow_tend,macrop_driver_tend,clubb_tend_cam,microp_section,microp_driver_tend_subcol,aero_model_wetdep,radiation_tend,held_suarez_tend,kessler_tend,thatcher_jablonowski_precip_tend,user_set" >
+       group="phys_ctl_nl" valid_values="chem_emissions,aoa_tracers_timestep_tend,co2_cycle_set_ptend,chem_timestep_tend,vertical_diffusion_section,aero_model_drydep,gw_tend,qbo_relax,iondrag_calc_section,physics_dme_adjust,physics_dme_adjust,dadadj_tend,convect_deep_tend,convect_shallow_tend,convect_diagnostics_calc,macrop_driver_tend,clubb_tend_cam,microp_section,microp_driver_tend_subcol,aero_model_wetdep,radiation_tend,held_suarez_tend,kessler_tend,thatcher_jablonowski_precip_tend,user_set" >
 Name of parameterization to take snapshot after running
 user_set is used when a user inserts a call to cam_snapshot_all_outfld
   using cam_snapshot_after_num as the first argument.
@@ -6982,6 +7002,17 @@ Default: .false.
 <entry id="carma_fields" type="char*256" category="carma"
        group="carma_inparm" valid_values="" >
 List of fluxes needed by the CARMA model, from CLM to CAM.
+Default: set by build-namelist.
+</entry>
+
+<!-- Ozone namelist variables shared between CAM and driver -->
+
+<entry id="atm_ozone_frequency" type="char*64" category="ozone_coupling"
+       group="ozone_coupling_nl" valid_values="subdaily,multiday_average">
+Frequency of surface ozone field passed from CAM to surface components.
+Surface ozone is passed every coupling interval, but this namelist flag
+indicates whether the timestep-level values are interpolated from a
+coarser temporal resolution.
 Default: set by build-namelist.
 </entry>
 

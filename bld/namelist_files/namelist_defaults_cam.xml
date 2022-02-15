@@ -47,6 +47,7 @@
 <ncdata hgrid="mpasa480" nlev="32" analytic_ic="1" >atm/cam/inic/mpas/mpasa480_L32_notopo_coords_c201125.nc</ncdata>
 <ncdata hgrid="mpasa120" nlev="32" analytic_ic="1" >atm/cam/inic/mpas/mpasa120_L32_notopo_coords_c201216.nc</ncdata>
 <ncdata hgrid="mpasa120" nlev="32" analytic_ic="1" phys="cam6" >atm/cam/inic/mpas/mpasa120_L32_topo_coords_c201022.nc</ncdata>
+<ncdata hgrid="mpasa120" nlev="32" analytic_ic="1" phys="cam_dev" >atm/cam/inic/mpas/mpasa120_L32_topo_coords_c201022.nc</ncdata>
 
 <!-- Files with initial conditions -->
 <ncdata dyn="fv"  hgrid="0.23x0.31" nlev="26" ic_ymd="101"      >atm/cam/inic/fv/cami_0000-01-01_0.23x0.31_L26_c100513.nc</ncdata>
@@ -259,6 +260,7 @@
 <bnd_topo hgrid="0.23x0.31" >atm/cam/topo/USGS_gtopo30_0.23x0.31_remap_c061107.nc</bnd_topo>
 <bnd_topo hgrid="0.47x0.63" >atm/cam/topo/USGS_gtopo30_0.47x0.63_remap_c061106.nc</bnd_topo>
 <bnd_topo hgrid="0.47x0.63" phys="cam6">atm/cam/topo/fv_0.47x0.63_nc3000_Co030_Fi001_PF_nullRR_Nsw021_20171023.nc</bnd_topo>
+<bnd_topo hgrid="0.47x0.63" phys="cam_dev">atm/cam/topo/fv_0.47x0.63_nc3000_Co030_Fi001_PF_nullRR_Nsw021_20171023.nc</bnd_topo>
 <bnd_topo hgrid="0.5x0.625" >atm/cam/topo/topo-from-cami_0000-10-01_0.5x0.625_L26_c031204.nc</bnd_topo>
 <bnd_topo hgrid="0.9x1.25"  >atm/cam/topo/fv_0.9x1.25_nc3000_Nsw042_Nrs008_Co060_Fi001_ZR_sgh30_24km_GRNL_c170103.nc</bnd_topo>
 <bnd_topo hgrid="1.9x2.5"   >atm/cam/topo/fv_1.9x2.5_nc3000_Nsw084_Nrs016_Co120_Fi001_ZR_GRNL_c190405.nc</bnd_topo>
@@ -311,6 +313,7 @@
 <scale_dry_air_mass phys="cam4"                                                    >  98288.0D0 </scale_dry_air_mass>
 <scale_dry_air_mass phys="cam5"                                                    >  98288.0D0 </scale_dry_air_mass>
 <scale_dry_air_mass phys="cam6"                                                    >  98288.0D0 </scale_dry_air_mass>
+<scale_dry_air_mass phys="cam_dev"                                                 >  98288.0D0 </scale_dry_air_mass>
 <scale_dry_air_mass phys="spcam_m2005"                                             >  98288.0D0 </scale_dry_air_mass>
 <scale_dry_air_mass phys="spcam_sam1mom"                                           >  98288.0D0 </scale_dry_air_mass>
 
@@ -443,6 +446,12 @@
 <mam4_mode1_file rad="rrtmg" ver="strat">atm/cam/physprops/mam4_mode1_rrtmg_aeronetdust_sig1.6_dgnh.48_c140304.nc</mam4_mode1_file>
 <mam4_mode3_file rad="rrtmg" ver="strat">atm/cam/physprops/mam4_mode3_rrtmg_aeronetdust_sig1.2_dgnl.40_c150219.nc</mam4_mode3_file>
 
+<mam5_mode1_file rad="rrtmg" ver="strat">atm/cam/physprops/mam4_mode1_rrtmg_aeronetdust_sig1.6_dgnh.48_c140304.nc</mam5_mode1_file>
+<mam5_mode2_file rad="rrtmg" ver="strat">atm/cam/physprops/mam4_mode2_rrtmg_aitkendust_c141106.nc</mam5_mode2_file>
+<mam5_mode3_file rad="rrtmg" ver="strat">atm/cam/physprops/mam4_mode3_rrtmg_aeronetdust_c141106.nc</mam5_mode3_file>
+<mam5_mode4_file rad="rrtmg" ver="strat">atm/cam/physprops/mam4_mode4_rrtmg_c130628.nc</mam5_mode4_file>
+<mam5_mode5_file rad="rrtmg" ver="strat">atm/cam/physprops/mam4_mode3_rrtmg_aeronetdust_sig1.2_dgnl.40_c150219.nc</mam5_mode5_file>
+
 <mam7_mode1_file rad="rrtmg">atm/cam/physprops/mam7_mode1_rrtmg_c120904.nc</mam7_mode1_file>
 <mam7_mode2_file rad="rrtmg">atm/cam/physprops/mam7_mode2_rrtmg_c120904.nc</mam7_mode2_file>
 <mam7_mode3_file rad="rrtmg">atm/cam/physprops/mam7_mode3_rrtmg_c120904.nc</mam7_mode3_file>
@@ -453,8 +462,9 @@
 
 <water_refindex_file>atm/cam/physprops/water_refindex_rrtmg_c080910.nc</water_refindex_file>
 
-<modal_accum_coarse_exch            >.false.</modal_accum_coarse_exch>
-<modal_accum_coarse_exch phys="cam6">.true.</modal_accum_coarse_exch>
+<modal_accum_coarse_exch               >.false.</modal_accum_coarse_exch>
+<modal_accum_coarse_exch phys="cam6"   >.true.</modal_accum_coarse_exch>
+<modal_accum_coarse_exch phys="cam_dev">.true.</modal_accum_coarse_exch>
 
 <!-- Cloud optics for RRTMG -->
 <liqcldoptics  rad="rrtmg" microphys="rk">slingo</liqcldoptics>
@@ -491,7 +501,9 @@
 
 <!-- Smaller ozone files used when running SCAM and asking for a CAMIOP file) -->
 <prescribed_ozone_file    phys="cam6"    scam="1" >ozone_strataero_CAM6chem_2000climo_zm_5day_c171004.nc</prescribed_ozone_file>
-<prescribed_ozone_file    phys="cam6"  camiop="1" >ozone_strataero_CAM6chem_2000climo_zm_5day_c171004.nc</prescribed_ozone_file>
+<prescribed_ozone_file    phys="cam_dev" scam="1" >ozone_strataero_CAM6chem_2000climo_zm_5day_c171004.nc</prescribed_ozone_file>
+<prescribed_ozone_file    phys="cam6"    camiop="1" >ozone_strataero_CAM6chem_2000climo_zm_5day_c171004.nc</prescribed_ozone_file>
+<prescribed_ozone_file    phys="cam_dev" camiop="1" >ozone_strataero_CAM6chem_2000climo_zm_5day_c171004.nc</prescribed_ozone_file>
 
 <prescribed_ozone_file chem="waccm_sc">waccm_ozone_c121126.nc</prescribed_ozone_file>
 <prescribed_ozone_cycle_yr chem="waccm_sc">0</prescribed_ozone_cycle_yr>
@@ -760,12 +772,16 @@
 
 <!-- For scaling lightning sources of NOx -->
 <lght_no_prd_factor                                              >1.00D0</lght_no_prd_factor>
-<lght_no_prd_factor             hgrid="ne30np4"                  >1.80D0</lght_no_prd_factor>
-<lght_no_prd_factor             hgrid="ne0np4CONUS.ne30x8"       >1.80D0</lght_no_prd_factor>
-<lght_no_prd_factor phys="cam6" hgrid="0.9x1.25"                 >1.50D0</lght_no_prd_factor>
-<lght_no_prd_factor phys="cam6"                   offline_dyn="1">1.30D0</lght_no_prd_factor>
-<lght_no_prd_factor phys="cam6" hgrid="0.9x1.25"  offline_dyn="1">1.60D0</lght_no_prd_factor>
-<lght_no_prd_factor phys="cam6" hgrid="0.47x0.63" offline_dyn="1">0.32D0</lght_no_prd_factor>
+<lght_no_prd_factor                hgrid="ne30np4"                  >1.80D0</lght_no_prd_factor>
+<lght_no_prd_factor                hgrid="ne0np4CONUS.ne30x8"       >1.80D0</lght_no_prd_factor>
+<lght_no_prd_factor phys="cam6"    hgrid="0.9x1.25"                 >1.50D0</lght_no_prd_factor>
+<lght_no_prd_factor phys="cam6"                      offline_dyn="1">1.30D0</lght_no_prd_factor>
+<lght_no_prd_factor phys="cam6"    hgrid="0.9x1.25"  offline_dyn="1">1.60D0</lght_no_prd_factor>
+<lght_no_prd_factor phys="cam6"    hgrid="0.47x0.63" offline_dyn="1">0.32D0</lght_no_prd_factor>
+<lght_no_prd_factor phys="cam_dev" hgrid="0.9x1.25"                 >1.50D0</lght_no_prd_factor>
+<lght_no_prd_factor phys="cam_dev"                   offline_dyn="1">1.30D0</lght_no_prd_factor>
+<lght_no_prd_factor phys="cam_dev" hgrid="0.9x1.25"  offline_dyn="1">1.60D0</lght_no_prd_factor>
+<lght_no_prd_factor phys="cam_dev" hgrid="0.47x0.63" offline_dyn="1">0.32D0</lght_no_prd_factor>
 
 <!-- For MEGAN VOCs -->
 <megan_factors_file>atm/cam/chem/trop_mozart/emis/megan21_emis_factors_78pft_c20161108.nc</megan_factors_file>
@@ -1643,10 +1659,14 @@
 <tracer_cnst_file     ver="fixed_ox">oxid_1.9x2.5_L26_1850-2005_c091123.nc</tracer_cnst_file>
 
 <!-- prescribed oxidants for prognostic aerosol chemistry -lightweight set for running SCAM and producing SCAM IOP boundary data -->
-<tracer_cnst_file     phys="cam6"  ver="fixed_ox" scam="1">oxid_1.9x2.5_L26_1850clim_c091123.nc</tracer_cnst_file>
-<tracer_cnst_cycle_yr phys="cam6"  ver="fixed_ox" scam="1">1850</tracer_cnst_cycle_yr>
-<tracer_cnst_file     phys="cam6"  ver="fixed_ox" camiop="1">oxid_1.9x2.5_L26_1850clim_c091123.nc</tracer_cnst_file>
-<tracer_cnst_cycle_yr phys="cam6"  ver="fixed_ox" camiop="1">1850</tracer_cnst_cycle_yr>
+<tracer_cnst_file     phys="cam6"     ver="fixed_ox" scam="1">oxid_1.9x2.5_L26_1850clim_c091123.nc</tracer_cnst_file>
+<tracer_cnst_cycle_yr phys="cam6"     ver="fixed_ox" scam="1">1850</tracer_cnst_cycle_yr>
+<tracer_cnst_file     phys="cam6"     ver="fixed_ox" camiop="1">oxid_1.9x2.5_L26_1850clim_c091123.nc</tracer_cnst_file>
+<tracer_cnst_cycle_yr phys="cam6"     ver="fixed_ox" camiop="1">1850</tracer_cnst_cycle_yr>
+<tracer_cnst_file     phys="cam_dev"  ver="fixed_ox" scam="1">oxid_1.9x2.5_L26_1850clim_c091123.nc</tracer_cnst_file>
+<tracer_cnst_cycle_yr phys="cam_dev"  ver="fixed_ox" scam="1">1850</tracer_cnst_cycle_yr>
+<tracer_cnst_file     phys="cam_dev"  ver="fixed_ox" camiop="1">oxid_1.9x2.5_L26_1850clim_c091123.nc</tracer_cnst_file>
+<tracer_cnst_cycle_yr phys="cam_dev"  ver="fixed_ox" camiop="1">1850</tracer_cnst_cycle_yr>
 
 <tracer_cnst_datapath ver="fixed_ox">atm/cam/chem/trop_mozart_aero/oxid</tracer_cnst_datapath>
 <tracer_cnst_type     ver="fixed_ox">CYCLICAL</tracer_cnst_type>
@@ -1678,14 +1698,20 @@
 <prescribed_ghg_cycle_yr  ver="fixed_ch4">1995</prescribed_ghg_cycle_yr>
 
 <!-- SAD data -->
-<prescribed_strataero_file                             >CESM_1949_2100_sad_V2_c130627.nc</prescribed_strataero_file>
-<prescribed_strataero_datapath                         >atm/waccm/sulf</prescribed_strataero_datapath>
-<prescribed_strataero_file                  phys="cam6">CESM_1849_2100_sad_V3_c160211.nc</prescribed_strataero_file>
-<prescribed_strataero_datapath              phys="cam6">atm/cam/volc</prescribed_strataero_datapath>
-<prescribed_strataero_file     ver="3modes" phys="cam6">ozone_strataero_CAM6chem_1849-2014_zm_5day_c170924.nc</prescribed_strataero_file>
-<prescribed_strataero_datapath ver="3modes" phys="cam6">atm/cam/ozone</prescribed_strataero_datapath>
-<prescribed_strataero_file     ver="3modes" phys="cam6" chem="waccm_sc_mam4">ozone_strataero_WACCM6_L70_zm5day_19750101-20141229_c180216.nc</prescribed_strataero_file>
-<prescribed_strataero_datapath ver="3modes" phys="cam6" chem="waccm_sc_mam4">atm/cam/ozone_strataero</prescribed_strataero_datapath>
+<prescribed_strataero_file                                >CESM_1949_2100_sad_V2_c130627.nc</prescribed_strataero_file>
+<prescribed_strataero_datapath                            >atm/waccm/sulf</prescribed_strataero_datapath>
+<prescribed_strataero_file                  phys="cam6"   >CESM_1849_2100_sad_V3_c160211.nc</prescribed_strataero_file>
+<prescribed_strataero_datapath              phys="cam6"   >atm/cam/volc</prescribed_strataero_datapath>
+<prescribed_strataero_file     ver="3modes" phys="cam6"   >ozone_strataero_CAM6chem_1849-2014_zm_5day_c170924.nc</prescribed_strataero_file>
+<prescribed_strataero_datapath ver="3modes" phys="cam6"   >atm/cam/ozone</prescribed_strataero_datapath>
+<prescribed_strataero_file     ver="3modes" phys="cam6"    chem="waccm_sc_mam4">ozone_strataero_WACCM6_L70_zm5day_19750101-20141229_c180216.nc</prescribed_strataero_file>
+<prescribed_strataero_datapath ver="3modes" phys="cam6"    chem="waccm_sc_mam4">atm/cam/ozone_strataero</prescribed_strataero_datapath>
+<prescribed_strataero_file                  phys="cam_dev">CESM_1849_2100_sad_V3_c160211.nc</prescribed_strataero_file>
+<prescribed_strataero_datapath              phys="cam_dev">atm/cam/volc</prescribed_strataero_datapath>
+<prescribed_strataero_file     ver="3modes" phys="cam_dev">ozone_strataero_CAM6chem_1849-2014_zm_5day_c170924.nc</prescribed_strataero_file>
+<prescribed_strataero_datapath ver="3modes" phys="cam_dev">atm/cam/ozone</prescribed_strataero_datapath>
+<prescribed_strataero_file     ver="3modes" phys="cam_dev" chem="waccm_sc_mam4">ozone_strataero_WACCM6_L70_zm5day_19750101-20141229_c180216.nc</prescribed_strataero_file>
+<prescribed_strataero_datapath ver="3modes" phys="cam_dev" chem="waccm_sc_mam4">atm/cam/ozone_strataero</prescribed_strataero_datapath>
 
 <!-- sulfate data -->
 <sulf_file>atm/waccm/sulf/sulfate.ar5_camchem_c130304.nc</sulf_file>
@@ -1756,6 +1782,7 @@
 <do_tms                   waccm_phys="1"      phys="cam4"   > .true.  </do_tms>
 <do_tms                                       phys="cam5"   > .true.  </do_tms>
 <do_tms                                       phys="cam6"   > .false. </do_tms>
+<do_tms                                       phys="cam_dev"> .false. </do_tms>
 <do_tms                                       phys="spcam_m2005"   > .true.  </do_tms>
 
 <tms_z0fac                                                  > 0.075D0 </tms_z0fac>
@@ -1767,17 +1794,20 @@
 <!-- Beljaars -->
 <do_beljaars                                                > .false. </do_beljaars>
 <do_beljaars                                  phys="cam6"   > .true.  </do_beljaars>
+<do_beljaars                                  phys="cam_dev"> .true.  </do_beljaars>
 
 <!-- Implicit Turbulent Surface Stress -->
 <do_iss                  > .false. </do_iss>
 <do_iss phys="cam5"      > .true.  </do_iss>
 <do_iss phys="cam6"      > .true.  </do_iss>
+<do_iss phys="cam_dev"   > .true.  </do_iss>
 <do_iss phys="spcam_m2005"  > .true.  </do_iss>
 
 <!-- Use convective water in radiation calculation -->
 <conv_water_in_rad                  > 0 </conv_water_in_rad>
 <conv_water_in_rad phys="cam5"      > 1 </conv_water_in_rad>
 <conv_water_in_rad phys="cam6"      > 1 </conv_water_in_rad>
+<conv_water_in_rad phys="cam_dev"   > 1 </conv_water_in_rad>
 <conv_water_in_rad phys="spcam_m2005"> 1 </conv_water_in_rad>
 
 <conv_water_frac_limit            > 0.01d0  </conv_water_frac_limit>
@@ -1954,6 +1984,8 @@
 <micro_mg_sub_version microphys="mg3">                                 0          </micro_mg_sub_version>
 <micro_mg_num_steps   microphys="mg3">                                 1          </micro_mg_num_steps>
 <micro_mg_dcs         microphys="mg3">                                 500.D-6    </micro_mg_dcs>
+<micro_mg_dcs         microphys="mg3"                   silhs="1"   >  390.D-6    </micro_mg_dcs>
+<micro_mg_dcs         microphys="mg3" hgrid="1.9x2.5">                 200.D-6    </micro_mg_dcs>
 
 <micro_do_massless_droplet_destroyer                             >  .false. </micro_do_massless_droplet_destroyer>
 <micro_do_massless_droplet_destroyer   microphys="mg2" silhs="1" >  .true.  </micro_do_massless_droplet_destroyer>
@@ -2004,6 +2036,8 @@
 <micro_mg_max_nicons                  >  1.D8    </micro_mg_max_nicons>
 <micro_mg_max_nicons  microphys="mg2"  > 1.D8    </micro_mg_max_nicons>
 
+<micro_mg_implicit_fall   phys="cam_dev" > .true. </micro_mg_implicit_fall>
+<micro_mg_accre_sees_auto phys="cam_dev" > .true. </micro_mg_accre_sees_auto>
 
 <cld_macmic_num_steps>                                            1 </cld_macmic_num_steps>
 <cld_macmic_num_steps microphys="mg2" clubb_sgs="1"             > 3 </cld_macmic_num_steps>
@@ -2034,16 +2068,19 @@
 <nucleate_ice_subgrid_strat microphys="mg2"            >1.2D0</nucleate_ice_subgrid_strat>
 <nucleate_ice_subgrid_strat microphys="mg3"            >1.2D0</nucleate_ice_subgrid_strat>
 
-<use_hetfrz_classnuc            >.false.</use_hetfrz_classnuc>
-<use_hetfrz_classnuc phys="cam6">.true.</use_hetfrz_classnuc>
+<use_hetfrz_classnuc               >.false.</use_hetfrz_classnuc>
+<use_hetfrz_classnuc phys="cam6"   >.true.</use_hetfrz_classnuc>
+<use_hetfrz_classnuc phys="cam_dev">.true.</use_hetfrz_classnuc>
 
-<use_preexisting_ice            >.false.</use_preexisting_ice>
-<use_preexisting_ice phys="cam6">.true.</use_preexisting_ice>
+<use_preexisting_ice               >.false.</use_preexisting_ice>
+<use_preexisting_ice phys="cam6"   >.true.</use_preexisting_ice>
+<use_preexisting_ice phys="cam_dev">.true.</use_preexisting_ice>
 
-<nucleate_ice_incloud                >.true.</nucleate_ice_incloud>
-<nucleate_ice_incloud    phys="cam6" >.false.</nucleate_ice_incloud>
-<nucleate_ice_strat                  >1.0D0</nucleate_ice_strat>
-<nucleate_ice_use_troplev            >.true.</nucleate_ice_use_troplev>
+<nucleate_ice_incloud                   >.true.</nucleate_ice_incloud>
+<nucleate_ice_incloud    phys="cam6"    >.false.</nucleate_ice_incloud>
+<nucleate_ice_incloud    phys="cam_dev" >.false.</nucleate_ice_incloud>
+<nucleate_ice_strat                     >1.0D0</nucleate_ice_strat>
+<nucleate_ice_use_troplev               >.true.</nucleate_ice_use_troplev>
 
 <chem_use_chemtrop>.true.</chem_use_chemtrop>
 
@@ -2070,22 +2107,25 @@
   <!-- limit high diffusivities with diag_TKE. -->
 <kv_top_pressure                      >0.D0</kv_top_pressure>
 
-<kv_top_scale                            >1.D0</kv_top_scale>
-<kv_top_scale phys="cam5" waccm_phys="1" >0.D0</kv_top_scale>
-<kv_top_scale phys="cam6" waccm_phys="1" >0.D0</kv_top_scale>
+<kv_top_scale                               >1.D0</kv_top_scale>
+<kv_top_scale phys="cam5"    waccm_phys="1" >0.D0</kv_top_scale>
+<kv_top_scale phys="cam6"    waccm_phys="1" >0.D0</kv_top_scale>
+<kv_top_scale phys="cam_dev" waccm_phys="1" >0.D0</kv_top_scale>
 
 <kv_freetrop_scale                    >1.D0</kv_freetrop_scale>
 
 <eddy_lbulk_max                       >40.D3</eddy_lbulk_max>
 
-<eddy_leng_max                            >40.D3</eddy_leng_max>
-<eddy_leng_max carma="cirrus"             >30.D0</eddy_leng_max>
-<eddy_leng_max phys="cam5" waccm_phys="1" >100.D0</eddy_leng_max>
-<eddy_leng_max phys="cam6" waccm_phys="1" >100.D0</eddy_leng_max>
+<eddy_leng_max                               >40.D3</eddy_leng_max>
+<eddy_leng_max carma="cirrus"                >30.D0</eddy_leng_max>
+<eddy_leng_max phys="cam5"    waccm_phys="1" >100.D0</eddy_leng_max>
+<eddy_leng_max phys="cam6"    waccm_phys="1" >100.D0</eddy_leng_max>
+<eddy_leng_max phys="cam_dev" waccm_phys="1" >100.D0</eddy_leng_max>
 
-<eddy_max_bot_pressure                            >100.D3</eddy_max_bot_pressure>
-<eddy_max_bot_pressure phys="cam5" waccm_phys="1" >100.D0</eddy_max_bot_pressure>
-<eddy_max_bot_pressure phys="cam6" waccm_phys="1" >100.D0</eddy_max_bot_pressure>
+<eddy_max_bot_pressure                               >100.D3</eddy_max_bot_pressure>
+<eddy_max_bot_pressure phys="cam5"    waccm_phys="1" >100.D0</eddy_max_bot_pressure>
+<eddy_max_bot_pressure phys="cam6"    waccm_phys="1" >100.D0</eddy_max_bot_pressure>
+<eddy_max_bot_pressure phys="cam_dev" waccm_phys="1" >100.D0</eddy_max_bot_pressure>
 
 <eddy_moist_entrain_a2l           >30.D0</eddy_moist_entrain_a2l>
 <eddy_moist_entrain_a2l unicon="1">40.D0</eddy_moist_entrain_a2l>
@@ -2105,27 +2145,43 @@
 <dust_emis_fact          hgrid="0.47x0.63" phys="spcam_m2005"           >0.45D0</dust_emis_fact>
 <dust_emis_fact          hgrid="0.23x0.31" phys="cam5"                  >0.45D0</dust_emis_fact>
 <dust_emis_fact                            phys="cam6"                  >0.35D0</dust_emis_fact>
+<dust_emis_fact                            phys="cam_dev"               >0.35D0</dust_emis_fact>
 <dust_emis_fact                            phys="cam6"      silhs="1"   >0.30D0</dust_emis_fact>
+<dust_emis_fact                            phys="cam_dev"   silhs="1"   >0.30D0</dust_emis_fact>
 <dust_emis_fact          hgrid="0.47x0.63" phys="cam6"                  >0.45D0</dust_emis_fact>
+<dust_emis_fact          hgrid="0.47x0.63" phys="cam_dev"               >0.45D0</dust_emis_fact>
 <dust_emis_fact          hgrid="0.23x0.31" phys="cam6"                  >0.45D0</dust_emis_fact>
+<dust_emis_fact          hgrid="0.23x0.31" phys="cam_dev"               >0.45D0</dust_emis_fact>
 <dust_emis_fact          hgrid="0.23x0.31" phys="spcam_m2005"           >0.45D0</dust_emis_fact>
 
 <dust_emis_fact dyn="se"                   phys="cam5"                    >0.55D0</dust_emis_fact>
 <dust_emis_fact dyn="fv"                   phys="cam5"   clubb_sgs="1"    >0.22D0</dust_emis_fact>
 <dust_emis_fact dyn="se"                   phys="cam6"                    >0.70D0</dust_emis_fact>
-<dust_emis_fact dyn="se" hgrid="ne30np4"   phys="cam6"          chem="trop_strat_mam4_vbs">0.8D0</dust_emis_fact>
-<dust_emis_fact dyn="se" hgrid="ne0np4CONUS.ne30x8" phys="cam6" chem="trop_strat_mam4_vbs">0.8D0</dust_emis_fact>
-<dust_emis_fact dyn="se" hgrid="ne30np4"   phys="cam6"          chem="trop_strat_mam4_ts1">0.8D0</dust_emis_fact>
-<dust_emis_fact dyn="se" hgrid="ne0np4CONUS.ne30x8" phys="cam6" chem="trop_strat_mam4_tst">0.8D0</dust_emis_fact>
-<dust_emis_fact dyn="se" hgrid="ne30np4"   phys="cam6"          waccm_phys="1">0.8D0</dust_emis_fact>
-<dust_emis_fact dyn="se" hgrid="ne0np4CONUS.ne30x8" phys="cam6" waccm_phys="1">0.8D0</dust_emis_fact>
+<dust_emis_fact dyn="se"                   phys="cam_dev"                 >0.70D0</dust_emis_fact>
+<dust_emis_fact dyn="se" hgrid="ne30np4"   phys="cam6"             chem="trop_strat_mam4_vbs">0.8D0</dust_emis_fact>
+<dust_emis_fact dyn="se" hgrid="ne30np4"   phys="cam_dev"          chem="trop_strat_mam4_vbs">0.8D0</dust_emis_fact>
+<dust_emis_fact dyn="se" hgrid="ne0np4CONUS.ne30x8" phys="cam6"    chem="trop_strat_mam4_vbs">0.8D0</dust_emis_fact>
+<dust_emis_fact dyn="se" hgrid="ne0np4CONUS.ne30x8" phys="cam_dev" chem="trop_strat_mam4_vbs">0.8D0</dust_emis_fact>
+<dust_emis_fact dyn="se" hgrid="ne30np4"   phys="cam6"             chem="trop_strat_mam4_ts1">0.8D0</dust_emis_fact>
+<dust_emis_fact dyn="se" hgrid="ne30np4"   phys="cam_dev"          chem="trop_strat_mam4_ts1">0.8D0</dust_emis_fact>
+<dust_emis_fact dyn="se" hgrid="ne0np4CONUS.ne30x8" phys="cam6"    chem="trop_strat_mam4_tst">0.8D0</dust_emis_fact>
+<dust_emis_fact dyn="se" hgrid="ne0np4CONUS.ne30x8" phys="cam_dev" chem="trop_strat_mam4_tst">0.8D0</dust_emis_fact>
+<dust_emis_fact dyn="se" hgrid="ne30np4"   phys="cam6"             waccm_phys="1">0.8D0</dust_emis_fact>
+<dust_emis_fact dyn="se" hgrid="ne30np4"   phys="cam_dev"          waccm_phys="1">0.8D0</dust_emis_fact>
+<dust_emis_fact dyn="se" hgrid="ne0np4CONUS.ne30x8" phys="cam6"    waccm_phys="1">0.8D0</dust_emis_fact>
+<dust_emis_fact dyn="se" hgrid="ne0np4CONUS.ne30x8" phys="cam_dev" waccm_phys="1">0.8D0</dust_emis_fact>
 <dust_emis_fact dyn="fv"                   phys="cam6"                    >0.70D0</dust_emis_fact>
+<dust_emis_fact dyn="fv"                   phys="cam_dev"                 >0.70D0</dust_emis_fact>
 <dust_emis_fact dyn="fv"                   phys="spcam_m2005" spcam_clubb_sgs="1">0.13D0</dust_emis_fact>
 
-<dust_emis_fact hgrid="1.9x2.5"                   phys="cam6" ver="chem">0.26D0</dust_emis_fact>
-<dust_emis_fact hgrid="0.9x1.25"                  phys="cam6" ver="chem">0.7D0</dust_emis_fact>
-<dust_emis_fact hgrid="1.9x2.5"   offline_dyn="1" phys="cam6" ver="chem">0.24D0</dust_emis_fact>
-<dust_emis_fact hgrid="0.47x0.63" offline_dyn="1" phys="cam6" ver="chem">0.9D0</dust_emis_fact>
+<dust_emis_fact hgrid="1.9x2.5"                   phys="cam6"    ver="chem">0.26D0</dust_emis_fact>
+<dust_emis_fact hgrid="1.9x2.5"                   phys="cam_dev" ver="chem">0.26D0</dust_emis_fact>
+<dust_emis_fact hgrid="0.9x1.25"                  phys="cam6"    ver="chem">0.7D0</dust_emis_fact>
+<dust_emis_fact hgrid="0.9x1.25"                  phys="cam_dev" ver="chem">0.7D0</dust_emis_fact>
+<dust_emis_fact hgrid="1.9x2.5"   offline_dyn="1" phys="cam6"    ver="chem">0.24D0</dust_emis_fact>
+<dust_emis_fact hgrid="1.9x2.5"   offline_dyn="1" phys="cam_dev" ver="chem">0.24D0</dust_emis_fact>
+<dust_emis_fact hgrid="0.47x0.63" offline_dyn="1" phys="cam6"    ver="chem">0.9D0</dust_emis_fact>
+<dust_emis_fact hgrid="0.47x0.63" offline_dyn="1" phys="cam_dev" ver="chem">0.9D0</dust_emis_fact>
 
 <!-- seasalt emission tuning factor -->
 <!-- Note that ver="strat" when modal_accum_coarse_exch=.true. -->
@@ -2229,6 +2285,7 @@
 <cldfrc_ice               >.false.</cldfrc_ice>
 <cldfrc_ice phys="cam5"   >.true.</cldfrc_ice>
 <cldfrc_ice phys="cam6"   >.true.</cldfrc_ice>
+<cldfrc_ice phys="cam_dev">.true.</cldfrc_ice>
 
 <cldfrc_rhminl                                                        > 0.900D0 </cldfrc_rhminl>
 <cldfrc_rhminl                   phys="cam5" carma="cirrus"           > 0.910D0 </cldfrc_rhminl>
@@ -2241,12 +2298,19 @@
 <cldfrc_rhminl hgrid="1.9x2.5"   phys="cam5" microphys="mg1"          > 0.8875D0 </cldfrc_rhminl>
 <cldfrc_rhminl hgrid="1.9x2.5"   phys="cam5"                          > 0.9125D0 </cldfrc_rhminl>
 
-<cldfrc_rhminl                   phys="cam6" carma="cirrus"           > 0.910D0 </cldfrc_rhminl>
-<cldfrc_rhminl                   phys="cam6" microphys="mg2"          > 0.950D0 </cldfrc_rhminl>
-<cldfrc_rhminl                   phys="cam6" microphys="mg3"          > 0.950D0 </cldfrc_rhminl>
+<cldfrc_rhminl                   phys="cam6"    carma="cirrus"        > 0.910D0 </cldfrc_rhminl>
+<cldfrc_rhminl                   phys="cam6"    microphys="mg2"       > 0.950D0 </cldfrc_rhminl>
+<cldfrc_rhminl                   phys="cam6"    microphys="mg3"       > 0.950D0 </cldfrc_rhminl>
 <cldfrc_rhminl                   phys="cam6"                          > 0.8975D0 </cldfrc_rhminl>
-<cldfrc_rhminl hgrid="1.9x2.5"   phys="cam6" microphys="mg1"          > 0.8875D0 </cldfrc_rhminl>
+<cldfrc_rhminl hgrid="1.9x2.5"   phys="cam6"    microphys="mg1"       > 0.8875D0 </cldfrc_rhminl>
 <cldfrc_rhminl hgrid="1.9x2.5"   phys="cam6"                          > 0.9125D0 </cldfrc_rhminl>
+
+<cldfrc_rhminl                   phys="cam_dev" carma="cirrus"        > 0.910D0 </cldfrc_rhminl>
+<cldfrc_rhminl                   phys="cam_dev" microphys="mg2"       > 0.950D0 </cldfrc_rhminl>
+<cldfrc_rhminl                   phys="cam_dev" microphys="mg3"       > 0.950D0 </cldfrc_rhminl>
+<cldfrc_rhminl                   phys="cam_dev"                       > 0.8975D0 </cldfrc_rhminl>
+<cldfrc_rhminl hgrid="1.9x2.5"   phys="cam_dev" microphys="mg1"       > 0.8875D0 </cldfrc_rhminl>
+<cldfrc_rhminl hgrid="1.9x2.5"   phys="cam_dev"                       > 0.9125D0 </cldfrc_rhminl>
 
 <cldfrc_rhminl hgrid="1.9x2.5"   phys="cam4"                          > 0.910D0 </cldfrc_rhminl>
 <cldfrc_rhminl hgrid="0.9x1.25"  phys="cam4"                          > 0.920D0 </cldfrc_rhminl>
@@ -2260,6 +2324,7 @@
 
 <cldfrc_rhminl_adj_land                                               > 0.100D0 </cldfrc_rhminl_adj_land>
 <cldfrc_rhminl_adj_land          phys="cam6"                          > 0.000D0 </cldfrc_rhminl_adj_land>
+<cldfrc_rhminl_adj_land          phys="cam_dev"                       > 0.000D0 </cldfrc_rhminl_adj_land>
 <cldfrc_rhminl_adj_land                      carma="cirrus"           > 0.000D0 </cldfrc_rhminl_adj_land>
 
 <cldfrc_rhminh                                                        > 0.800D0 </cldfrc_rhminh>
@@ -2283,6 +2348,7 @@
 <cldfrc_dp1                                                           > 0.14D0 </cldfrc_dp1>
 <cldfrc_dp1             phys="cam5"                                   > 0.10D0 </cldfrc_dp1>
 <cldfrc_dp1             phys="cam6"                                   > 0.10D0 </cldfrc_dp1>
+<cldfrc_dp1             phys="cam_dev"                                > 0.10D0 </cldfrc_dp1>
 <cldfrc_dp1 dyn="fv"    phys="cam4"                                   > 0.10D0 </cldfrc_dp1>
 <cldfrc_dp1 dyn="se"    phys="cam4"                                   > 0.10D0 </cldfrc_dp1>
 
@@ -2307,20 +2373,25 @@
 <cldfrc_premib                > 750.0D2 </cldfrc_premib>
 <cldfrc_premib  phys="cam5"   > 700.0D2 </cldfrc_premib>
 <cldfrc_premib  phys="cam6"   > 700.0D2 </cldfrc_premib>
+<cldfrc_premib  phys="cam_dev"> 700.0D2 </cldfrc_premib>
 
 <cldfrc_iceopt                               > 1 </cldfrc_iceopt>
 <cldfrc_iceopt  phys="cam5"                  > 5 </cldfrc_iceopt>
 <cldfrc_iceopt  phys="cam6"                  > 5 </cldfrc_iceopt>
-<cldfrc_iceopt  phys="cam4" carma="cirrus"   > 4 </cldfrc_iceopt>
-<cldfrc_iceopt  phys="cam5" carma="cirrus"   > 4 </cldfrc_iceopt>
-<cldfrc_iceopt  phys="cam6" carma="cirrus"   > 4 </cldfrc_iceopt>
+<cldfrc_iceopt  phys="cam_dev"               > 5 </cldfrc_iceopt>
+<cldfrc_iceopt  phys="cam4"    carma="cirrus"> 4 </cldfrc_iceopt>
+<cldfrc_iceopt  phys="cam5"    carma="cirrus"> 4 </cldfrc_iceopt>
+<cldfrc_iceopt  phys="cam6"    carma="cirrus"> 4 </cldfrc_iceopt>
+<cldfrc_iceopt  phys="cam_dev" carma="cirrus"> 4 </cldfrc_iceopt>
 
 <cldfrc_icecrit                              > 0.95D0 </cldfrc_icecrit>
 <cldfrc_icecrit phys="cam5"                  > 0.93D0 </cldfrc_icecrit>
 <cldfrc_icecrit phys="cam6"                  > 0.93D0 </cldfrc_icecrit>
-<cldfrc_icecrit               carma="cirrus" > 0.70D0 </cldfrc_icecrit>
-<cldfrc_icecrit phys="cam5"   carma="cirrus" > 0.70D0 </cldfrc_icecrit>
-<cldfrc_icecrit phys="cam6"   carma="cirrus" > 0.70D0 </cldfrc_icecrit>
+<cldfrc_icecrit phys="cam_dev"               > 0.93D0 </cldfrc_icecrit>
+<cldfrc_icecrit                carma="cirrus"> 0.70D0 </cldfrc_icecrit>
+<cldfrc_icecrit phys="cam5"    carma="cirrus"> 0.70D0 </cldfrc_icecrit>
+<cldfrc_icecrit phys="cam6"    carma="cirrus"> 0.70D0 </cldfrc_icecrit>
+<cldfrc_icecrit phys="cam_dev" carma="cirrus"> 0.70D0 </cldfrc_icecrit>
 
 <cldfrc2m_rhmini               >  0.80D0  </cldfrc2m_rhmini>
 <cldfrc2m_rhmini   unicon="1"  >  0.85D0  </cldfrc2m_rhmini>
@@ -2339,8 +2410,9 @@
 
 <micro_mg_adjust_cpt>.false.</micro_mg_adjust_cpt>
 
-<cldfrc2m_do_subgrid_growth>.false.</cldfrc2m_do_subgrid_growth>
-<cldfrc2m_do_subgrid_growth phys="cam6">.true.</cldfrc2m_do_subgrid_growth>
+<cldfrc2m_do_subgrid_growth               >.false.</cldfrc2m_do_subgrid_growth>
+<cldfrc2m_do_subgrid_growth phys="cam6"   >.true.</cldfrc2m_do_subgrid_growth>
+<cldfrc2m_do_subgrid_growth phys="cam_dev">.true.</cldfrc2m_do_subgrid_growth>
 
 <!-- Cldwat -->
 <rk_strat_icritc                                                        >  5.0e-6  </rk_strat_icritc>
@@ -2418,6 +2490,11 @@
 <zmconv_c0_lnd                   hgrid="C384"     phys="cam6"         > 0.0035D0 </zmconv_c0_lnd>
 <zmconv_c0_lnd  microphys="mg2"  clubb_sgs="1"    phys="cam6"         > 0.0075D0 </zmconv_c0_lnd>
 <zmconv_c0_lnd  microphys="mg3"  clubb_sgs="1"    phys="cam6"         > 0.0075D0 </zmconv_c0_lnd>
+<zmconv_c0_lnd                                    phys="cam_dev"      > 0.0059D0 </zmconv_c0_lnd>
+<zmconv_c0_lnd                   hgrid="ne120np4" phys="cam_dev"      > 0.0035D0 </zmconv_c0_lnd>
+<zmconv_c0_lnd                   hgrid="C384"     phys="cam_dev"      > 0.0035D0 </zmconv_c0_lnd>
+<zmconv_c0_lnd  microphys="mg2"  clubb_sgs="1"    phys="cam_dev"      > 0.0075D0 </zmconv_c0_lnd>
+<zmconv_c0_lnd  microphys="mg3"  clubb_sgs="1"    phys="cam_dev"      > 0.0075D0 </zmconv_c0_lnd>
 <zmconv_c0_lnd  dyn="fv"                          phys="cam4"         > 0.0035D0 </zmconv_c0_lnd>
 <zmconv_c0_lnd  dyn="se"                          phys="cam4"         > 0.0035D0 </zmconv_c0_lnd>
 <zmconv_c0_lnd                   hgrid="48x96"    phys="cam4"         > 0.0020D0 </zmconv_c0_lnd>
@@ -2434,6 +2511,11 @@
 <zmconv_c0_ocn                   hgrid="C384"     phys="cam6"         > 0.0035D0 </zmconv_c0_ocn>
 <zmconv_c0_ocn  microphys="mg2"  clubb_sgs="1"    phys="cam6"         > 0.0300D0 </zmconv_c0_ocn>
 <zmconv_c0_ocn  microphys="mg3"  clubb_sgs="1"    phys="cam6"         > 0.0300D0 </zmconv_c0_ocn>
+<zmconv_c0_ocn                                    phys="cam_dev"      > 0.0450D0 </zmconv_c0_ocn>
+<zmconv_c0_ocn                   hgrid="ne120np4" phys="cam_dev"      > 0.0035D0 </zmconv_c0_ocn>
+<zmconv_c0_ocn                   hgrid="C384"     phys="cam_dev"      > 0.0035D0 </zmconv_c0_ocn>
+<zmconv_c0_ocn  microphys="mg2"  clubb_sgs="1"    phys="cam_dev"      > 0.0300D0 </zmconv_c0_ocn>
+<zmconv_c0_ocn  microphys="mg3"  clubb_sgs="1"    phys="cam_dev"      > 0.0300D0 </zmconv_c0_ocn>
 <zmconv_c0_ocn  dyn="fv"                          phys="cam4"         > 0.0035D0 </zmconv_c0_ocn>
 <zmconv_c0_ocn  dyn="se"                          phys="cam4"         > 0.0035D0 </zmconv_c0_ocn>
 <zmconv_c0_ocn                   hgrid="48x96"    phys="cam4"         > 0.0020D0 </zmconv_c0_ocn>
@@ -2458,6 +2540,7 @@
 <zmconv_microp                                                        > .false. </zmconv_microp>
 <zmconv_num_cin                                                       > 5       </zmconv_num_cin>
 <zmconv_num_cin                                       phys="cam6"     > 1       </zmconv_num_cin>
+<zmconv_num_cin                                       phys="cam_dev"  > 1       </zmconv_num_cin>
 
 <zmconv_dmpdz                                                         > -1.0E-3 </zmconv_dmpdz>
 <zmconv_tiedke_add                                                    > 0.5     </zmconv_tiedke_add>
@@ -2479,6 +2562,7 @@
 <fv_div24del2flag                                       > 2</fv_div24del2flag>
 <fv_div24del2flag                   phys="cam5"         > 4</fv_div24del2flag>
 <fv_div24del2flag                   phys="cam6"         > 4</fv_div24del2flag>
+<fv_div24del2flag                   phys="cam_dev"      > 4</fv_div24del2flag>
 <fv_div24del2flag                   phys="spcam_m2005"  > 4</fv_div24del2flag>
 <fv_div24del2flag hgrid="0.23x0.31" phys="cam4"         >42</fv_div24del2flag>
 <fv_div24del2flag hgrid="0.23x0.31" phys="spcam_sam1mom">42</fv_div24del2flag>
@@ -2488,7 +2572,9 @@
 <fv_div24del2flag hgrid="0.23x0.31" phys="spcam_m2005"  >42</fv_div24del2flag>
 <fv_div24del2flag hgrid="0.47x0.63" phys="cam5"         >42</fv_div24del2flag>
 <fv_div24del2flag hgrid="0.23x0.31" phys="cam6"         >42</fv_div24del2flag>
+<fv_div24del2flag hgrid="0.23x0.31" phys="cam_dev"      >42</fv_div24del2flag>
 <fv_div24del2flag hgrid="0.47x0.63" phys="cam6"         >42</fv_div24del2flag>
+<fv_div24del2flag hgrid="0.47x0.63" phys="cam_dev"      >42</fv_div24del2flag>
 <fv_div24del2flag hgrid="0.47x0.63" phys="spcam_m2005"  >42</fv_div24del2flag>
 
 <fv_nspltvrm                  >1</fv_nspltvrm>
@@ -2594,6 +2680,7 @@
 <water_species_in_air phys="spcam_m2005"      >'Q','CLDLIQ','CLDICE'                  </water_species_in_air>
 <water_species_in_air phys="spcam_sam1mom"    >'Q','CLDLIQ','CLDICE'                  </water_species_in_air>
 <water_species_in_air phys="cam6"             >'Q','CLDLIQ','CLDICE','RAINQM','SNOWQM'</water_species_in_air>
+<water_species_in_air phys="cam_dev"          >'Q','CLDLIQ','CLDICE','RAINQM','SNOWQM'</water_species_in_air>
 
 <!-- ================================================================== -->
 <!-- Defaults for FV3                                                   -->
@@ -2633,7 +2720,9 @@
 <fv3_nwat phys="cam4"                                                       > 3         </fv3_nwat>
 <fv3_nwat phys="cam5"                                                       > 3         </fv3_nwat>
 <fv3_nwat phys="cam6"                                                       > 5         </fv3_nwat>
-<fv3_nwat phys="cam6"  microphys="mg3"                                      > 6         </fv3_nwat>
+<fv3_nwat phys="cam_dev"                                                    > 5         </fv3_nwat>
+<fv3_nwat phys="cam6"    microphys="mg3"                                    > 6         </fv3_nwat>
+<fv3_nwat phys="cam_dev" microphys="mg3"                                    > 6         </fv3_nwat>
 <fv3_nwat phys="held_suarez"                                                > 1         </fv3_nwat>
 <fv3_nwat phys="adiabatic"                                                  > 1         </fv3_nwat>
 <fv3_nwat phys="kessler"                                                    > 3         </fv3_nwat>

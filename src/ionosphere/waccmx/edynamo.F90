@@ -101,6 +101,8 @@ module edynamo
   real(r8), allocatable, dimension(:,:) :: ed1_glb, ed2_glb
   logical :: debug = .false. ! set true for prints to stdout at each call
 
+  logical, public :: debug_hist = .false.
+
   public :: alloc_edyn, ed1, ed2, ed1_glb, ed2_glb
   public :: zigm11, zigmc, zigm2, zigm22, rim1, rim2
   public :: dynamo
@@ -333,8 +335,10 @@ contains
         call outfld('PED_MAG',ped_mag(mlon0:omlon1,j,mlev1:mlev0:-1),omlon1-mlon0+1,j)
         call outfld('HAL_MAG',hall_mag(mlon0:omlon1,j,mlev1:mlev0:-1),omlon1-mlon0+1,j)
         call outfld('ZPOT_MAG',zpot_mag(mlon0:omlon1,j,mlev1:mlev0:-1),omlon1-mlon0+1,j)
-        call outfld('ADOTV1_MAG',adotv1_mag(mlon0:omlon1,j,mlev1:mlev0:-1),omlon1-mlon0+1,j)
-        call outfld('ADOTV2_MAG',adotv2_mag(mlon0:omlon1,j,mlev1:mlev0:-1),omlon1-mlon0+1,j)
+        if (debug_hist) then
+           call outfld('ADOTV1_MAG',adotv1_mag(mlon0:omlon1,j,mlev1:mlev0:-1),omlon1-mlon0+1,j)
+           call outfld('ADOTV2_MAG',adotv2_mag(mlon0:omlon1,j,mlev1:mlev0:-1),omlon1-mlon0+1,j)
+        endif
      end do
   end subroutine dynamo_set_data
 !-----------------------------------------------------------------------
@@ -646,9 +650,10 @@ contains
       enddo ! i = 1,nmlon
    enddo ! j=mlat0,mlat1 (without poles)
 
-   call savefld_waccm(adota1_mag(mlon0:mlon1,mlat0:mlat1)   ,'adota1_mag_a'  ,1,mlon0,mlon1,mlat0,mlat1)
-
-   call savefld_waccm(zigm11(mlon0:mlon1,mlat0:mlat1)   ,'ZIGM11_a'  ,1,mlon0,mlon1,mlat0,mlat1)
+   if (debug_hist) then
+      call savefld_waccm(adota1_mag(mlon0:mlon1,mlat0:mlat1)   ,'adota1_mag_a'  ,1,mlon0,mlon1,mlat0,mlat1)
+      call savefld_waccm(zigm11(mlon0:mlon1,mlat0:mlat1)   ,'ZIGM11_a'  ,1,mlon0,mlon1,mlat0,mlat1)
+   endif
 
   end subroutine fieldline_integrals
 !-----------------------------------------------------------------------
@@ -918,11 +923,13 @@ contains
 !
 ! Reverse sign of zigmc in northern hemisphere.
     do j=mlat0,mlat1
-      if (j >= nmlath) then
-        zigmc(mlon0:mlon1,j) = -zigmc(mlon0:mlon1,j)
-      endif
-      call outfld('EDYN_RIM1',rim1(mlon0:omlon1,j),omlon1-mlon0+1,j)
-      call outfld('EDYN_RIM2',rim2(mlon0:omlon1,j),omlon1-mlon0+1,j)
+       if (j >= nmlath) then
+          zigmc(mlon0:mlon1,j) = -zigmc(mlon0:mlon1,j)
+       endif
+       if (debug_hist) then
+          call outfld('EDYN_RIM1',rim1(mlon0:omlon1,j),omlon1-mlon0+1,j)
+          call outfld('EDYN_RIM2',rim2(mlon0:omlon1,j),omlon1-mlon0+1,j)
+       endif
     enddo
 
     if (debug.and.masterproc) then
@@ -941,12 +948,14 @@ contains
    	minval(rim2  (mlon0:mlon1,mlat0:mlat1)),maxval(rim2  (mlon0:mlon1,mlat0:mlat1))
     endif
 
-    call savefld_waccm(zigm11(mlon0:mlon1,mlat0:mlat1)   ,'EDYN_ZIGM11'  ,1,mlon0,mlon1,mlat0,mlat1)
-    call savefld_waccm(zigm22(mlon0:mlon1,mlat0:mlat1)   ,'EDYN_ZIGM22'  ,1,mlon0,mlon1,mlat0,mlat1)
-    call savefld_waccm(zigmc (mlon0:mlon1,mlat0:mlat1)   ,'EDYN_ZIGMC'   ,1,mlon0,mlon1,mlat0,mlat1)
-    call savefld_waccm(zigm2 (mlon0:mlon1,mlat0:mlat1)   ,'EDYN_ZIGM2'   ,1,mlon0,mlon1,mlat0,mlat1)
-    call savefld_waccm(rim1  (mlon0:mlon1,mlat0:mlat1)   ,'EDYN_RIM1'    ,1,mlon0,mlon1,mlat0,mlat1)
-    call savefld_waccm(rim2  (mlon0:mlon1,mlat0:mlat1)   ,'EDYN_RIM2'    ,1,mlon0,mlon1,mlat0,mlat1)
+    if (debug_hist) then
+       call savefld_waccm(zigm11(mlon0:mlon1,mlat0:mlat1)   ,'EDYN_ZIGM11'  ,1,mlon0,mlon1,mlat0,mlat1)
+       call savefld_waccm(zigm22(mlon0:mlon1,mlat0:mlat1)   ,'EDYN_ZIGM22'  ,1,mlon0,mlon1,mlat0,mlat1)
+       call savefld_waccm(zigmc (mlon0:mlon1,mlat0:mlat1)   ,'EDYN_ZIGMC'   ,1,mlon0,mlon1,mlat0,mlat1)
+       call savefld_waccm(zigm2 (mlon0:mlon1,mlat0:mlat1)   ,'EDYN_ZIGM2'   ,1,mlon0,mlon1,mlat0,mlat1)
+       call savefld_waccm(rim1  (mlon0:mlon1,mlat0:mlat1)   ,'EDYN_RIM1'    ,1,mlon0,mlon1,mlat0,mlat1)
+       call savefld_waccm(rim2  (mlon0:mlon1,mlat0:mlat1)   ,'EDYN_RIM2'    ,1,mlon0,mlon1,mlat0,mlat1)
+    endif
 
   end subroutine complete_integrals
 !-----------------------------------------------------------------------
@@ -1642,15 +1651,20 @@ contains
       call mp_mag_periodic_f2d(phim3d(:,:,k),mlon0,mlon1,mlat0,mlat1,1)
     enddo
 !
-    do j=mlat0,mlat1
-      call outfld('EPHI3D',ephi3d(mlon0:omlon1,j,mlev1:mlev0:-1),omlon1-mlon0+1,j)
-      call outfld('ELAM3D',elam3d(mlon0:omlon1,j,mlev1:mlev0:-1),omlon1-mlon0+1,j)
-      call outfld('EMZ3D', emz3d(mlon0:omlon1,j,mlev1:mlev0:-1),omlon1-mlon0+1,j)
+    if (debug_hist) then
+       do j=mlat0,mlat1
+          call outfld('EPHI3D',ephi3d(mlon0:omlon1,j,mlev1:mlev0:-1),omlon1-mlon0+1,j)
+          call outfld('ELAM3D',elam3d(mlon0:omlon1,j,mlev1:mlev0:-1),omlon1-mlon0+1,j)
+          call outfld('EMZ3D', emz3d(mlon0:omlon1,j,mlev1:mlev0:-1),omlon1-mlon0+1,j)
+       enddo
+    endif
 
-      call outfld('PHIM3D',phim3d(mlon0:omlon1,j,mlev1:mlev0:-1),omlon1-mlon0+1,j)
-      call outfld('ED13D' ,ed13d (mlon0:omlon1,j,mlev1:mlev0:-1),omlon1-mlon0+1,j)
-      call outfld('ED23D' ,ed23d (mlon0:omlon1,j,mlev1:mlev0:-1),omlon1-mlon0+1,j)
+    do j=mlat0,mlat1
+       call outfld('PHIM3D',phim3d(mlon0:omlon1,j,mlev1:mlev0:-1),omlon1-mlon0+1,j)
+       call outfld('ED13D' ,ed13d (mlon0:omlon1,j,mlev1:mlev0:-1),omlon1-mlon0+1,j)
+       call outfld('ED23D' ,ed23d (mlon0:omlon1,j,mlev1:mlev0:-1),omlon1-mlon0+1,j)
     enddo
+
   end subroutine pthreed
 !-----------------------------------------------------------------------
   subroutine pefield()
@@ -1773,12 +1787,6 @@ contains
 
      call savefld_waccm(poten(1:nlev,lon0:lon1,lat0:lat1),'POTEN', &
           nlev,lon0,lon1,lat0,lat1)
-     call savefld_waccm(ex(1:nlev,lon0:lon1,lat0:lat1),'EX',       &
-          nlev,lon0,lon1,lat0,lat1)
-     call savefld_waccm(ey(1:nlev,lon0:lon1,lat0:lat1),'EY',       &
-          nlev,lon0,lon1,lat0,lat1)
-     call savefld_waccm(ez(1:nlev,lon0:lon1,lat0:lat1),'EZ',       &
-          nlev,lon0,lon1,lat0,lat1)
 
   end subroutine pefield
   !-----------------------------------------------------------------------
@@ -1806,8 +1814,8 @@ contains
       ui,vi,wi
 !
 ! Local:
-    integer :: i,ii,k,j
-    real(r8), dimension(lev0:lev1,lon0:lon1) :: eex,eey,eez
+    integer :: i,k,j
+    real(r8), dimension(lev0:lev1,lon0:lon1,lat0:lat1) :: eex,eey,eez
     real(r8), dimension(lev0:lev1,lon0:lon1,lat0:lat1) :: rjac_out
 
 ! mag field diagnostics
@@ -1820,93 +1828,81 @@ contains
 ! Scan geographic latitude subdomain:
 !
     do j=lat0,lat1
-      do i=lon0,lon1
-        ii = i
-        do k=lev0,lev1
-          eex(k,i) = (rjac(ii,j,1,1)*ex(k,i,j)+ &
-                      rjac(ii,j,2,1)*ey(k,i,j))/(Rearth+z(k,i,j))
-          eey(k,i) = (rjac(ii,j,1,2)*ex(k,i,j)+ &
-                      rjac(ii,j,2,2)*ey(k,i,j))/(Rearth+z(k,i,j))
-        enddo ! k=lev0,lev1
-      enddo
-!
-      do i=lon0,lon1
-        do k=lev0+1,lev1-1
-          eez(k,i) = ez(k,i,j)/(z(k+1,i,j)-z(k-1,i,j))
-        enddo ! k=lev0+1,lev1-1
-      enddo
+       do i=lon0,lon1
+          do k=lev0,lev1
+             eex(k,i,j) = (rjac(i,j,1,1)*ex(k,i,j)+rjac(i,j,2,1)*ey(k,i,j))/(Rearth+z(k,i,j)) ! V/cm
+             eey(k,i,j) = (rjac(i,j,1,2)*ex(k,i,j)+rjac(i,j,2,2)*ey(k,i,j))/(Rearth+z(k,i,j))
+          enddo
+       enddo
+
+       do i=lon0,lon1
+          do k=lev0+1,lev1-1
+             eez(k,i,j) = ez(k,i,j)/(z(k+1,i,j)-z(k-1,i,j))
+          enddo
+       enddo
 !
 ! Extrapolate for lower and upper boundaries:
-      do i=lon0,lon1
-        eez(lev0,i) = 2._r8*eez(2,i)-eez(3,i)
-        eez(lev1,i) = 2._r8*eez(lev1-1,i)-eez(lev1-2,i)
-      enddo
-
-    if (debug.and.masterproc) then
-      write(iulog,"('ionvel: j=',i4,' eex=',2e12.4,' eey=',2e12.4,' eez=',2e12.4)") &
-        j,minval(eex),maxval(eex),minval(eey),maxval(eey),minval(eez),maxval(eez)
-    endif
-
+       do i=lon0,lon1
+          eez(lev0,i,j) = 2._r8*eez(2,i,j)-eez(3,i,j)
+          eez(lev1,i,j) = 2._r8*eez(lev1-1,i,j)-eez(lev1-2,i,j)
+       enddo
 !
 ! ion velocities = (e x b/b**2) (x 1.e6 for m/sec)
 ! ui = zonal, vi = meridional, wi = vertical
 !
-      do k=lev0,lev1
-        do i=lon0,lon1
-          ii = i
-          ui(k,i,j) = -(eey(k,i)*zb(ii,j)+eez(k,i)*xb(ii,j))* &
-            1.e6_r8/bmod(ii,j)**2
-          vi(k,i,j) =  (eez(k,i)*yb(ii,j)+eex(k,i)*zb(ii,j))* &
-            1.e6_r8/bmod(ii,j)**2
-          wi(k,i,j) =  (eex(k,i)*xb(ii,j)-eey(k,i)*yb(ii,j))* &
-            1.e6_r8/bmod(ii,j)**2
-        enddo ! i=lon0,lon1
-      enddo ! k=lev0,lev1
-
-    if (debug.and.masterproc) then
-      write(iulog,"('ionvel: j=',i4,' ui=',2e12.4,' vi=',2e12.4,' wi=',2e12.4)") &
-        j,minval(ui),maxval(ui),minval(vi),maxval(vi),minval(wi),maxval(wi)
-    endif
+       do i=lon0,lon1
+          do k=lev0,lev1
+             ui(k,i,j) = -(eey(k,i,j)*zb(i,j)+eez(k,i,j)*xb(i,j))*1.e6_r8/(bmod(i,j)**2)
+             vi(k,i,j) =  (eez(k,i,j)*yb(i,j)+eex(k,i,j)*zb(i,j))*1.e6_r8/(bmod(i,j)**2)
+             wi(k,i,j) =  (eex(k,i,j)*xb(i,j)-eey(k,i,j)*yb(i,j))*1.e6_r8/(bmod(i,j)**2)
+          enddo
+       enddo
 !
 ! Output ion drifts in cm/s for oplus_xport call from dpie_coupling:
-      do i=lon0,lon1
-        ui(:,i,j) = ui(:,i,j)*100._r8
-        vi(:,i,j) = vi(:,i,j)*100._r8
-        wi(:,i,j) = wi(:,i,j)*100._r8
-      enddo
+       do i=lon0,lon1
+          ui(:,i,j) = ui(:,i,j)*100._r8
+          vi(:,i,j) = vi(:,i,j)*100._r8
+          wi(:,i,j) = wi(:,i,j)*100._r8
+       enddo
     enddo ! j=lat0,lat1
 
+    call savefld_waccm(eex*100._r8,'EX',nlev,lon0,lon1,lat0,lat1) ! V/m
+    call savefld_waccm(eey*100._r8,'EY',nlev,lon0,lon1,lat0,lat1)
+    call savefld_waccm(eez*100._r8,'EZ',nlev,lon0,lon1,lat0,lat1)
+
     if (debug.and.masterproc) then
-      write(iulog,"('ionvel: ion drifts on geo grid: ui=',2e12.4,' vi=',2e12.4,' wi=',2e12.4)") &
-                  minval(ui),maxval(ui), minval(vi),maxval(vi), minval(wi),maxval(wi)
+       write(iulog,"('ionvel: ion drifts on geo grid: ui=',2e12.4,' vi=',2e12.4,' wi=',2e12.4)") &
+                   minval(ui),maxval(ui), minval(vi),maxval(vi), minval(wi),maxval(wi)
     endif
 
-    if (hist_fld_active('RJAC11')) then
-       do i=1,nlev
-          rjac_out(i,lon0:lon1,lat0:lat1) = rjac(lon0:lon1,lat0:lat1,1,1)
-       end do
-       call savefld_waccm(rjac_out,'RJAC11',nlev,lon0,lon1,lat0,lat1)
-    endif
+    if (debug_hist) then
+       if (hist_fld_active('RJAC11')) then
+          do i=1,nlev
+             rjac_out(i,lon0:lon1,lat0:lat1) = rjac(lon0:lon1,lat0:lat1,1,1)
+          end do
+          call savefld_waccm(rjac_out,'RJAC11',nlev,lon0,lon1,lat0,lat1)
+       endif
 
-    if (hist_fld_active('RJAC12')) then
-       do i=1,nlev
-          rjac_out(i,lon0:lon1,lat0:lat1) = rjac(lon0:lon1,lat0:lat1,1,2)
-       end do
-       call savefld_waccm(rjac_out,'RJAC12',nlev,lon0,lon1,lat0,lat1)
-    endif
+       if (hist_fld_active('RJAC12')) then
+          do i=1,nlev
+             rjac_out(i,lon0:lon1,lat0:lat1) = rjac(lon0:lon1,lat0:lat1,1,2)
+          end do
+          call savefld_waccm(rjac_out,'RJAC12',nlev,lon0,lon1,lat0,lat1)
+       endif
 
-    if (hist_fld_active('RJAC21')) then
-       do i=1,nlev
-          rjac_out(i,lon0:lon1,lat0:lat1) = rjac(lon0:lon1,lat0:lat1,2,1)
-       end do
-       call savefld_waccm(rjac_out,'RJAC21',nlev,lon0,lon1,lat0,lat1)
-    endif
+       if (hist_fld_active('RJAC21')) then
+          do i=1,nlev
+             rjac_out(i,lon0:lon1,lat0:lat1) = rjac(lon0:lon1,lat0:lat1,2,1)
+          end do
+          call savefld_waccm(rjac_out,'RJAC21',nlev,lon0,lon1,lat0,lat1)
+       endif
 
-    if (hist_fld_active('RJAC22')) then
-       do i=1,nlev
-          rjac_out(i,lon0:lon1,lat0:lat1) = rjac(lon0:lon1,lat0:lat1,2,2)
-       end do
-       call savefld_waccm(rjac_out,'RJAC22',nlev,lon0,lon1,lat0,lat1)
+       if (hist_fld_active('RJAC22')) then
+          do i=1,nlev
+             rjac_out(i,lon0:lon1,lat0:lat1) = rjac(lon0:lon1,lat0:lat1,2,2)
+          end do
+          call savefld_waccm(rjac_out,'RJAC22',nlev,lon0,lon1,lat0,lat1)
+       endif
     endif
 
   end subroutine ionvel
