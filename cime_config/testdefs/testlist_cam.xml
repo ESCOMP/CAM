@@ -168,6 +168,9 @@
       <machine name="cheyenne" compiler="intel" category="aux_cam"/>
       <machine name="cheyenne" compiler="intel" category="prealpha"/>
     </machines>
+    <options>
+      <option name="wallclock">01:00:00</option>
+    </options>
   </test>
 
 

@@ -102,6 +102,8 @@ contains
     use mee_fluxes, only : mee_fluxes_final
     use mee_ap_util_mod, only: mee_ap_final
 
+    if (.not.mee_ion_inline) return
+
     call mee_fluxes_final()
     call mee_ap_final()
 
