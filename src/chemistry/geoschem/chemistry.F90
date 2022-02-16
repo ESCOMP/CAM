@@ -2528,7 +2528,7 @@ contains
 
     ! Calculate RH (range 0-1, note still level 1 = TOA)
     relHum(:,:) = 0.0e+0_r8
-    CALL QSat(state%t(:nY,:), state%pmid(:nY,:), satV, satQ)
+    CALL QSat(state%t(:nY,:), state%pmid(:nY,:), satV, satQ, state%NCOL,PVER)
     DO J = 1, nY
     DO L = 1, nZ
        relHum(J,L) = 0.622e+0_r8 * h2ovmr(J,L) / satQ(J,L)

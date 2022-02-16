@@ -273,11 +273,11 @@ CONTAINS
     USE STRING_UTILS,        ONLY : to_upper
     USE PHYSCONSTANTS,       ONLY : PI
 
-    ! Data from CLM
-    USE CAM_CPL_INDICES,     ONLY : index_x2a_Fall_flxvoc
-
     ! Lightning emissions
     USE MO_LIGHTNING,        ONLY : prod_NO
+
+    ! MEGAN emissions
+    USE SRF_FIELD_CHECK,     ONLY : active_Fall_flxvoc
 
     ! Fire emissions
     USE FIRE_EMISSIONS,      ONLY : fire_emissions_srf
@@ -531,7 +531,7 @@ CONTAINS
     ! MEGAN emissions ...
     !-----------------------------------------------------------------------
 
-    IF ( index_x2a_Fall_flxvoc > 0 .AND. shr_megan_mechcomps_n > 0 ) THEN
+    IF ( active_Fall_flxvoc > 0 .AND. shr_megan_mechcomps_n > 0 ) THEN
        ! set MEGAN fluxes 
        DO N = 1, shr_megan_mechcomps_n
           DO J = 1, nY

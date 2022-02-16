@@ -15,7 +15,6 @@
 !
     USE camsrfexch,       ONLY : cam_in_t
     USE State_Met_Mod,    ONLY : MetState
-    USE seq_drydep_mod,   ONLY : NPatch
     USE shr_kind_mod,     ONLY : r8 => shr_kind_r8
     USE PRECISION_MOD,    ONLY : fp, f4     ! Flexible precision
     USE CMN_SIZE_Mod,     ONLY : NSURFTYPE
