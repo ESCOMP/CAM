@@ -557,6 +557,20 @@ contains
        call physics_update(state, ptend, ztodt, tend)
     end if
 
+    if (frierson_phys) then
+       ! Update surface, PBL
+       call frierson_pbl_tend(state, ptend, ztodt, cam_in)
+       call physics_update(state, ptend, ztodt, tend)
+    end if
+
+    ! Update Nudging values, if needed
+    !----------------------------------
+    if((Nudge_Model).and.(Nudge_ON)) then
+      call nudging_timestep_tend(state,ptend)
+      call physics_update(state, ptend, ztodt, tend)
+      call check_energy_chng(state, tend, "nudging", nstep, ztodt, zero, zero, zero, zero)
+    endif
+
     call calc_te_and_aam_budgets(state, 'phAP')
     call calc_te_and_aam_budgets(state, 'dyAP',vc=vc_dycore)
 

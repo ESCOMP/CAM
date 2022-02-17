@@ -341,6 +341,23 @@
 <analytic_ic_type phys="tj2016"     > moist_baroclinic_wave_dcmip2016 </analytic_ic_type>
 <analytic_ic_type phys="frierson"   > moist_baroclinic_wave_dcmip2016 </analytic_ic_type>
 
+<!-- Frierson Grey Radiation -->
+
+<frierson_Wind_min   phys="frierson"   > 1.0d-5    </frierson_Wind_min>
+<frierson_Z0         phys="frierson"   > 3.21d-5   </frierson_Z0>
+<frierson_Ri_c       phys="frierson"   > 1.0d0     </frierson_Ri_c>
+<frierson_Fb         phys="frierson"   > 0.1d0     </frierson_Fb>
+<frierson_Albedo     phys="frierson"   > 0.310d0   </frierson_Albedo>
+<frierson_DeltaS     phys="frierson"   > 1.4d0     </frierson_DeltaS>
+<frierson_Tau_eqtr   phys="frierson"   > 6.0d0     </frierson_Tau_eqtr>
+<frierson_Tau_pole   phys="frierson"   > 1.5d0     </frierson_Tau_pole>
+<frierson_LinFrac    phys="frierson"   > 0.1d0     </frierson_LinFrac>
+<frierson_C0         phys="frierson"   > 1.d7      </frierson_C0>
+<frierson_WetDryCoef phys="frierson"   > 1.d0      </frierson_WetDryCoef>
+<frierson_Tmin       phys="frierson"   > 271.d0    </frierson_Tmin>
+<frierson_Tdlt       phys="frierson"   > 39.d0     </frierson_Tdlt>
+<frierson_Twidth     phys="frierson"   > 26.d0     </frierson_Twidth>
+
 <!-- Bulk aerosol physical properties (includes optics) -->
 
 <!-- CAM3 Bulk aerosols.  Optics for CAM-RT -->

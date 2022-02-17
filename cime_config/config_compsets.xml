@@ -271,34 +271,8 @@
   </compset>
 
   <compset>
-    <alias>FADIAB</alias>
-    <lname>2000_CAM%ADIAB_SLND_SICE_SOCN_SROF_SGLC_SWAV</lname>
-  </compset>
-
-  <compset>
     <alias>F2000dev</alias>
     <lname>2000_CAM%DEV_CLM50%SP_CICE%PRES_DOCN%DOM_MOSART_SGLC_SWAV</lname>
-  </compset>
-
-  <!-- CAM Dycore test compsets -->
-  <compset>
-    <alias>FHIST_DARTC6</alias>
-    <lname>HIST_CAM60_CLM50%SP_CICE%PRES_DOCN%DOM_SROF_SGLC_SWAV</lname>
-  </compset>
-
-  <compset>
-    <alias>FTJ16</alias>
-    <lname>2000_CAM%TJ16_SLND_SICE_SOCN_SROF_SGLC_SWAV</lname>
-  </compset>
-
-  <compset>
-    <alias>FFRIERSON</alias>
-    <lname>2000_CAM%FRIERSON_SLND_SICE_SOCN_SROF_SGLC_SWAV</lname>
-  </compset>
-
-  <compset>
-    <alias>FKESSLER</alias>
-    <lname>2000_CAM%KESSLER_SLND_SICE_SOCN_SROF_SGLC_SWAV</lname>
   </compset>
 
   <!-- PORT compsets -->
@@ -398,33 +372,8 @@
   </compset>
 
   <compset>
-    <alias>FTJ16</alias>
-    <lname>2000_CAM%TJ16_SLND_SICE_SOCN_SROF_SGLC_SWAV</lname>
-  </compset>
-
-  <compset>
     <alias>FFRIERSON</alias>
     <lname>2000_CAM%FRIERSON_SLND_SICE_SOCN_SROF_SGLC_SWAV</lname>
-  </compset>
-
-  <compset>
-    <alias>FKESSLER</alias>
-    <lname>2000_CAM%KESSLER_SLND_SICE_SOCN_SROF_SGLC_SWAV</lname>
-  </compset>
-
-  <compset>
-    <alias>QSC4</alias>
-    <lname>2000_CAM40_SLND_SICE_DOCN%SOMAQP_SROF_SGLC_SWAV</lname>
-  </compset>
-
-  <compset>
-    <alias>QSC5</alias>
-    <lname>2000_CAM50_SLND_SICE_DOCN%SOMAQP_SROF_SGLC_SWAV</lname>
-  </compset>
-
-  <compset>
-    <alias>QPRCEMIP</alias>
-    <lname>2000_CAM60_SLND_SICE_DOCN%AQPCONST_SROF_SGLC_SWAV</lname>
   </compset>
 
   <!-- ****************************** -->
