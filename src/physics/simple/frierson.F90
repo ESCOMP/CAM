@@ -199,6 +199,7 @@ contains
 
 
   !=======================================================================
+  ! CACQUESTION -- This appears to be identical to Frierson_convection_NONE routine - Should it be different?
   subroutine frierson_convection(ncol,pver,dtime,pmid,pdel,T,qv,relhum,precc)
     ! 
     ! Frierson_convection_NONE: Implement NO convective precipitation.
@@ -386,7 +387,7 @@ contains
       ! calculate saturation value for Q
       !----------------------------------
       do i = 1,ncol
-        if(pmid(i,k).gt.(1._r8-epsilo)*esat(i,k)) then
+        if(pmid(i,k) > (1._r8-epsilo)*esat(i,k)) then
           qsat (i,k) = epsilo*esat(i,k)/pmid(i,k)
           dqsat(i,k) = (latvap/rh2o)*qsat(i,k)/(T(i,k)**2)
 !x        dqsat(i,k) = epsilo*latvap*qsat(i,k)/(rair*T(i,k)**2)  !PFC - check this before deletinig it.
@@ -398,7 +399,7 @@ contains
 
       ! if > 100% relative humidity, rain falls out
       !---------------------------------------------
-      where(((qv(:,k)-qsat(:,k))*qsat(:,k)).gt.0._r8) 
+      where(((qv(:,k)-qsat(:,k))*qsat(:,k)) > 0._r8) 
         qdel (:,k) = (qsat(:,k)-qv(:,k))/(1._r8+(latvap/cpair)*dqsat(:,k))
         tdel (:,k) = -(latvap/cpair)*qdel(:,k)
       else where
@@ -425,11 +426,11 @@ contains
 
         ! Add qdel for the current level to the excess
         !----------------------------------------------
-        where(qdel(:,k).lt.0._r8) qext(:) = qext(:) - qdel(:,k)*pdel(:,k)/gravit
+        where(qdel(:,k) < 0._r8) qext(:) = qext(:) - qdel(:,k)*pdel(:,k)/gravit
 
         ! Evaporate excess Q where needed
         !----------------------------------
-        where((qdel(:,k).ge.0._r8).and.(qext(:).gt.0._r8))
+        where((qdel(:,k) >= 0._r8).and.(qext(:) > 0._r8))
           qext(:)   = qext(:)*gravit/pdel(:,k)
           qdef(:)   = (qsat(:,k)-qv(:,k))/(1._r8+(latvap/cpair)*dqsat(:,k))
           qdef(:)   = min(qext(:),max(qdef(:),0._r8))
@@ -763,9 +764,9 @@ contains
       Thv_a(i) = Thv(i,pver)
       Thv_s(i) = Tsfc(i)*(1._R8+zvir*Qsfc(i)  )*((ps0/Psfc(i))**cappa)
       Ri_a (i) = (gravit*Z_a(i)/(Ws_a(i)**2))*(Thv_a(i)-Thv_s(i))/Thv_s(i)
-      if(Ri_a(i).le.0._r8) then
+      if(Ri_a(i) <= 0._r8) then
         Cdrag(i) = (Karman/log((Z_a(i)/Z0)))**2
-      elseif(Ri_a(i).ge.Ri_c) then
+      elseif(Ri_a(i) >= Ri_c) then
         Cdrag(i) = 0._R8
       else
         Cdrag(i) = ((1._R8-(Ri_a(i)/Ri_c))*Karman/log((Z_a(i)/Z0)))**2
@@ -786,7 +787,7 @@ contains
       Z_pbl(i) = Zm(i,pver)
       K_pbl(i) = pver
       do k = (pver-1),1,-1
-        if(Rf(i,k).gt.1._r8) then
+        if(Rf(i,k) > 1._r8) then
           K_pbl(i) = k + 1
           Z_pbl(i) = (Zm(i,k+1)*(Rf(i,k)- 1._r8    )                    &
                      +Zm(i,k  )*( 1._r8 - Rf(i,k+1)))/(Rf(i,k)-Rf(i,k+1))
@@ -800,7 +801,7 @@ contains
       Z_sfc(i) = Fb*Z_pbl(i)   
       K_sfc(i) = pver
       do k = (pver-1),1,-1
-        if(Zm(i,k).gt.Z_sfc(i)) then
+        if(Zm(i,k) > Z_sfc(i)) then
           K_sfc (i) = k + 1
           Rf_sfc(i) = (Rf(i,k+1)*(Zm(i,k)  - Z_sfc(i) )                    &
                      + Rf(i,k  )*(Z_sfc(i) - Zm(i,k+1)))/(Zm(i,k)-Zm(i,k+1))
@@ -814,21 +815,21 @@ contains
     Ke(:,:)   = 0._r8
     Ke_pbl(:) = 0._r8
     do i = 1,ncol
-      if(Cdrag(i).eq.0._r8) then
+      if(Cdrag(i) == 0._r8) then
         Ke(i,:) = 0._r8
       else
         do k = pver,K_pbl(i),-1
           ZETA = Zi(i,k)*Karman*Bstar(i)/(Ustar(i)*Ustar(i))
-          if(ZETA.lt.0._r8) then
-            if(k.ge.K_sfc(i)) then
+          if(ZETA < 0._r8) then
+            if(k >= K_sfc(i)) then
               Ke(i,k) = Karman*Ustar(i)*Zi(i,k)
             else
               Ke(i,k) = Karman*Ustar(i)*Zi(i,k)                  &
                               *(((Z_pbl(i)-Zi(i,k))/(Z_pbl(i)-Z_sfc(i)))**2)
             endif
-          elseif((0._r8.le.ZETA).and.(ZETA.lt.Ri_c)) then
+          elseif((0._r8 <= ZETA).and.(ZETA < Ri_c)) then
             PHI = 1._r8 + ZETA
-            if(k.ge.K_sfc(i)) then
+            if(k >= K_sfc(i)) then
               Ke(i,k) = Karman*Ustar(i)*Zi(i,k)/PHI
             else
               Ke(i,k) = Karman*Ustar(i)*Zi(i,k)                  &

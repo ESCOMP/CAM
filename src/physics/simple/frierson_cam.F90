@@ -177,9 +177,9 @@ contains
       unitn = getunit()
       open(unitn,file=trim(nlfile),status='old')
       call find_group_name(unitn,'frierson_nl',status=ierr)
-      if(ierr.eq.0) then
+      if(ierr == 0) then
         read(unitn,frierson_nl,iostat=ierr)
-        if(ierr.ne.0) then
+        if(ierr /= 0) then
           call endrun('frierson_readnl:: ERROR reading namelist')
         endif
       endif
@@ -486,21 +486,21 @@ contains
 
     ! Call the Selected convection routine
     !--------------------------------------------------------
-    if(CONVECTION_OPT.eq.CONVECTION_NONE) then
+    if(CONVECTION_OPT == CONVECTION_NONE) then
       call frierson_convection_NONE(ncol,pver,ztodt,state%pmid(:ncol,:), &
                                                     state%pdel(:ncol,:), &
                                                              T(:ncol,:), &
                                                             qv(:ncol,:), &
                                                         relhum(:ncol,:), &
                                                        prec_dp(:ncol)    )
-    elseif(CONVECTION_OPT.eq.CONVECTION_FRIERSON) then
+    elseif(CONVECTION_OPT == CONVECTION_FRIERSON) then
       call frierson_convection(ncol,pver,ztodt,state%pmid(:ncol,:), &
                                                state%pdel(:ncol,:), &
                                                         T(:ncol,:), &
                                                        qv(:ncol,:), &
                                                    relhum(:ncol,:), &
                                                   prec_dp(:ncol)    )
-    elseif(CONVECTION_OPT.eq.CONVECTION_USER) then
+    elseif(CONVECTION_OPT == CONVECTION_USER) then
       call frierson_convection_USER(ncol,pver,ztodt,state%pmid(:ncol,:), &
                                                     state%pdel(:ncol,:), &
                                                              T(:ncol,:), &
@@ -580,28 +580,28 @@ contains
 
     ! Call the Selected condensation routine  ~~DEVO style~~
     !--------------------------------------------------------
-    if(CONDENSATE_OPT.eq.CONDENSATE_NONE) then
+    if(CONDENSATE_OPT == CONDENSATE_NONE) then
       call frierson_condensate_NONE(ncol,pver,ztodt,state%pmid(:ncol,:), &
                                                     state%pdel(:ncol,:), &
                                                              T(:ncol,:), &
                                                             qv(:ncol,:), &
                                                         relhum(:ncol,:), &
                                                       prec_pcw(:ncol)    )
-    elseif(CONDENSATE_OPT.eq.CONDENSATE_FRIERSON) then
+    elseif(CONDENSATE_OPT == CONDENSATE_FRIERSON) then
       call frierson_condensate(ncol,pver,ztodt,state%pmid(:ncol,:), &
                                                state%pdel(:ncol,:), &
                                                         T(:ncol,:), &
                                                        qv(:ncol,:), &
                                                    relhum(:ncol,:), &
                                                  prec_pcw(:ncol)    )
-    elseif(CONDENSATE_OPT.eq.CONDENSATE_TJ16) then
+    elseif(CONDENSATE_OPT == CONDENSATE_TJ16) then
       call frierson_condensate_TJ16(ncol,pver,ztodt,state%pmid(:ncol,:), &
                                                     state%pdel(:ncol,:), &
                                                              T(:ncol,:), &
                                                             qv(:ncol,:), &
                                                         relhum(:ncol,:), &
                                                       prec_pcw(:ncol)    )
-    elseif(CONDENSATE_OPT.eq.CONDENSATE_USER) then
+    elseif(CONDENSATE_OPT == CONDENSATE_USER) then
       call frierson_condensate_USER(ncol,pver,ztodt,state%pmid(:ncol,:), &
                                                     state%pdel(:ncol,:), &
                                                              T(:ncol,:), &
@@ -701,7 +701,7 @@ contains
     !--------------------------------------------------------
     Tsfc(:ncol) = Tsurf(:ncol,lchnk)
     Qsfc(:ncol) = Qsurf(:ncol,lchnk)
-    if(PBL_OPT.eq.PBL_FRIERSON) then
+    if(PBL_OPT == PBL_FRIERSON) then
       ! Call Frierson PBL scheme
       !--------------------------------------------------
       call frierson_pbl(ncol, pver, ztodt,state%pmid (:ncol,:),     &
@@ -728,7 +728,7 @@ contains
                                            dtdt_vdiff(:ncol,:),     &
                                            dudt_vdiff(:ncol,:),     &
                                            dvdt_vdiff(:ncol,:)      )
-    elseif(PBL_OPT.eq.PBL_USER) then
+    elseif(PBL_OPT == PBL_USER) then
       ! Call USER implemented routine in frierson module
       !--------------------------------------------------
       call frierson_pbl_USER(ncol, pver, ztodt,state%pmid (:ncol,:),     &
@@ -848,7 +848,7 @@ contains
 
     ! Call the Selected radiative routine 
     !--------------------------------------------------------
-    if(RADIATION_OPT.eq.RADIATION_FRIERSON) then
+    if(RADIATION_OPT == RADIATION_FRIERSON) then
       call frierson_radiation(ncol,pver,ztodt,clat(:ncol,lchnk), &
                                         state%pint(:ncol,:),     &
                                         state%pmid(:ncol,:),     &
@@ -861,7 +861,7 @@ contains
                                             Fsolar(:ncol,lchnk), &
                                                Fup(:ncol,lchnk), &
                                              Fdown(:ncol,lchnk)  )
-    elseif(RADIATION_OPT.eq.RADIATION_USER) then
+    elseif(RADIATION_OPT == RADIATION_USER) then
       call frierson_radiation_USER(ncol,pver,ztodt,clat(:ncol,lchnk), &
                                              state%pint(:ncol,:),     &
                                              state%pmid(:ncol,:),     &
