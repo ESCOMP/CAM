@@ -37,21 +37,21 @@ module frierson
   !   T0 and E0  are the temperature and saturation vapor pressure used 
   !   to calculate qsat values, the saturation value for Q (kg/kg)
   !--------------------------------------------------------------------
-  real(r8):: T0       = 273.16_r8
-  real(r8):: E0       = 610.78_r8
-  real(r8):: Erad     = 6.376d6
-  real(r8):: Wind_min = 1.0d-5
-  real(r8):: Z0       = 3.21d-5
-  real(r8):: Ri_c     = 1.0_r8
-  real(r8):: Karman   = 0.4_r8
-  real(r8):: Fb       = 0.1_r8
-  real(r8):: Rs0      = 938.4_r8
-  real(r8):: DeltaS   = 1.4_r8
-  real(r8):: Tau_eqtr = 6.0_r8
-  real(r8):: Tau_pole = 1.5_r8
-  real(r8):: LinFrac  = 0.1_r8
-  real(r8):: Boltz    = 5.6734d-8
-  real(r8):: C_ocn    = 1.d7
+  real(r8):: T0
+  real(r8):: E0
+  real(r8):: Erad
+  real(r8):: Wind_min
+  real(r8):: Z0
+  real(r8):: Ri_c
+  real(r8):: Karman
+  real(r8):: Fb
+  real(r8):: Rs0
+  real(r8):: DeltaS
+  real(r8):: Tau_eqtr
+  real(r8):: Tau_pole
+  real(r8):: LinFrac
+  real(r8):: Boltz
+  real(r8):: C_ocn
 
   ! Private data
   !----------------------
@@ -97,52 +97,49 @@ contains
     real(r8),intent(in):: I_ps0
     real(r8),intent(in):: I_etamid(:)
 
-    real(r8),intent(in),optional:: I_T0
-    real(r8),intent(in),optional:: I_E0
-    real(r8),intent(in),optional:: I_Erad
-    real(r8),intent(in),optional:: I_Wind_min
-    real(r8),intent(in),optional:: I_Z0
-    real(r8),intent(in),optional:: I_Ri_c
-    real(r8),intent(in),optional:: I_Karman
-    real(r8),intent(in),optional:: I_Fb
-    real(r8),intent(in),optional:: I_Rs0
-    real(r8),intent(in),optional:: I_DeltaS
-    real(r8),intent(in),optional:: I_Tau_eqtr
-    real(r8),intent(in),optional:: I_Tau_pole
-    real(r8),intent(in),optional:: I_LinFrac
-    real(r8),intent(in),optional:: I_Boltz
-    real(r8),intent(in),optional:: I_Cocn 
+    real(r8),intent(in) :: I_T0
+    real(r8),intent(in) :: I_E0
+    real(r8),intent(in) :: I_Erad
+    real(r8),intent(in) :: I_Wind_min
+    real(r8),intent(in) :: I_Z0
+    real(r8),intent(in) :: I_Ri_c
+    real(r8),intent(in) :: I_Karman
+    real(r8),intent(in) :: I_Fb
+    real(r8),intent(in) :: I_Rs0
+    real(r8),intent(in) :: I_DeltaS
+    real(r8),intent(in) :: I_Tau_eqtr
+    real(r8),intent(in) :: I_Tau_pole
+    real(r8),intent(in) :: I_LinFrac
+    real(r8),intent(in) :: I_Boltz
+    real(r8),intent(in) :: I_Cocn 
 
     ! Set global constants for later use
     !------------------------------------
     gravit = I_gravit
     cappa  = I_cappa
     rair   = I_rair
-    cpair  = I_cpair
-    latvap = I_latvap
-    rh2o   = I_rh2o
-    epsilo = I_epsilo
-    rhoh2o = I_rhoh2o
-    zvir   = I_zvir
-    ps0    = I_ps0
-
-    ! Over-ride values if present
-    !----------------------------
-    if(present(I_T0      )) T0       = I_T0
-    if(present(I_E0      )) E0       = I_E0
-    if(present(I_Erad    )) Erad     = I_Erad
-    if(present(I_Wind_min)) Wind_min = I_Wind_min
-    if(present(I_Z0      )) Z0       = I_Z0
-    if(present(I_Ri_c    )) Ri_c     = I_Ri_c
-    if(present(I_Karman  )) Karman   = I_Karman
-    if(present(I_Fb      )) Fb       = I_Fb
-    if(present(I_Rs0     )) Rs0      = I_Rs0
-    if(present(I_DeltaS  )) DeltaS   = I_DeltaS
-    if(present(I_Tau_eqtr)) Tau_eqtr = I_Tau_eqtr
-    if(present(I_Tau_pole)) Tau_pole = I_Tau_pole
-    if(present(I_LinFrac )) LinFrac  = I_LinFrac
-    if(present(I_Boltz   )) Boltz    = I_Boltz
-    if(present(I_Cocn    )) C_ocn    = I_Cocn
+    cpair    = I_cpair
+    latvap   = I_latvap
+    rh2o     = I_rh2o
+    epsilo   = I_epsilo
+    rhoh2o   = I_rhoh2o
+    zvir     = I_zvir
+    ps0      = I_ps0
+    T0       = I_T0
+    E0       = I_E0
+    Erad     = I_Erad
+    Wind_min = I_Wind_min
+    Z0       = I_Z0
+    Ri_c     = I_Ri_c
+    Karman   = I_Karman
+    Fb       = I_Fb
+    Rs0      = I_Rs0
+    DeltaS   = I_DeltaS
+    Tau_eqtr = I_Tau_eqtr
+    Tau_pole = I_Tau_pole
+    LinFrac  = I_LinFrac
+    Boltz    = I_Boltz
+    C_ocn    = I_Cocn
 
     ! allocate space and set the level information
     !----------------------------------------------
