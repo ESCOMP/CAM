@@ -23,9 +23,7 @@ module frierson_cam
   use spmd_utils,     only: masterproc
   use cam_logfile,    only: iulog
   use hycoef,         only: ps0, etamid
-#ifdef SPMD
-  use mpishorthand
-#endif
+  use spmd_utils,     only: mpicom, mstrid=>masterprocid, mpi_logical, mpi_real8
 
   use pio             ,only: file_desc_t, var_desc_t, io_desc_t, pio_double, pio_def_var
   use pio             ,only: pio_write_darray, pio_read_darray, pio_inq_varid
@@ -77,13 +75,14 @@ module frierson_cam
   integer,parameter:: CONDENSATE_OPT   = CONDENSATE_FRIERSON
   integer,parameter:: RADIATION_OPT    = RADIATION_FRIERSON
 
+  ! CACQUESTION -- LOOK AT share/src/shr_const_mod.F90 for some of these
   ! Global Constants 
   !---------------------
   real(r8),parameter:: frierson_T0     = 273.16_r8     ! Reference Temperature for E0 
   real(r8),parameter:: frierson_E0     = 610.78_r8     ! Saturation Vapor pressure @ T0
-  real(r8),parameter:: frierson_Erad   = 6.376d6       ! Earth Radius
+  real(r8),parameter:: frierson_Erad   = 6.376e6_r8    ! Earth Radius
   real(r8),parameter:: frierson_Karman = 0.4_r8        ! Von Karman constant
-  real(r8),parameter:: frierson_Boltz  = 5.6734d-8     ! Stefan-Boltzmann constant
+  real(r8),parameter:: frierson_Boltz  = 5.6734e-8_r8  ! Stefan-Boltzmann constant
   real(r8),parameter:: frierson_Rs0    = 1360.0_r8     ! Solar Constant  
 
   ! Some Physics buffer indicies
@@ -111,22 +110,24 @@ module frierson_cam
   real(r8),allocatable:: clat  (:,:)     ! latitudes(radians) for columns
   real(r8),allocatable:: Fnet  (:,:)     ! Net Radiative Surface Heating
 
+  real(r8), parameter :: unset_r8 = huge(1.0_r8)
+
   ! Global Tuning values
   !------------------------
-  real(r8):: frierson_Wind_min   = 1.0d-5        ! Minimum wind threshold
-  real(r8):: frierson_Z0         = 3.21d-5       ! Roughness Length
-  real(r8):: frierson_Ri_c       = 1.0_r8        ! Crit. Richardson # for stable mixing
-  real(r8):: frierson_Fb         = 0.1_r8        ! Surface layer Fraction
-  real(r8):: frierson_Albedo     = .310_r8       ! Frierson Albeo
-  real(r8):: frierson_DeltaS     = 1.4_r8        ! Lat variation of shortwave radiation
-  real(r8):: frierson_Tau_eqtr   = 6.0_r8        ! Longwave optical depth at Equator
-  real(r8):: frierson_Tau_pole   = 1.5_r8        ! Longwave optical depth at poles.
-  real(r8):: frierson_LinFrac    = 0.1_r8        ! Stratosphere Linear optical depth param
-  real(r8):: frierson_C0         = 1.e7_R8       ! Ocean mixed layer heat capacity
-  real(r8):: frierson_WetDryCoef = 1._R8         ! E0 Scale factor to control moisture
-  real(r8):: frierson_Tmin       = 271._R8       ! IC: Minimum sst (K)
-  real(r8):: frierson_Tdlt       = 39._R8        ! IC: eq-polar difference sst (K)
-  real(r8):: frierson_Twidth     = 26._R8        ! IC: width parameter for sst (C)
+  real(r8):: frierson_Wind_min   = unset_r8      ! Minimum wind threshold
+  real(r8):: frierson_Z0         = unset_r8      ! Roughness Length
+  real(r8):: frierson_Ri_c       = unset_r8      ! Crit. Richardson # for stable mixing
+  real(r8):: frierson_Fb         = unset_r8      ! Surface layer Fraction
+  real(r8):: frierson_Albedo     = unset_r8      ! Frierson Albeo
+  real(r8):: frierson_DeltaS     = unset_r8      ! Lat variation of shortwave radiation
+  real(r8):: frierson_Tau_eqtr   = unset_r8      ! Longwave optical depth at Equator
+  real(r8):: frierson_Tau_pole   = unset_r8      ! Longwave optical depth at poles.
+  real(r8):: frierson_LinFrac    = unset_r8      ! Stratosphere Linear optical depth param
+  real(r8):: frierson_C0         = unset_r8      ! Ocean mixed layer heat capacity
+  real(r8):: frierson_WetDryCoef = unset_r8      ! E0 Scale factor to control moisture
+  real(r8):: frierson_Tmin       = unset_r8      ! IC: Minimum sst (K)
+  real(r8):: frierson_Tdlt       = unset_r8      ! IC: eq-polar difference sst (K)
+  real(r8):: frierson_Twidth     = unset_r8      ! IC: width parameter for sst (C)
 
 contains
   !==============================================================================
@@ -162,28 +163,13 @@ contains
     !--------------
     integer:: ierr,unitn
 
+    character(len=*), parameter :: sub = 'frierson_readnl'
+
     namelist /frierson_nl/ frierson_Wind_min, frierson_Z0        , frierson_Ri_c   , &
                            frierson_Fb      , frierson_Albedo    , frierson_DeltaS , &
                            frierson_Tau_eqtr, frierson_Tau_pole  , frierson_LinFrac, &
                            frierson_C0      , frierson_WetDryCoef, frierson_Tmin   , &
                            frierson_Tdlt    , frierson_Twidth
-
-    ! Set default namelist values
-    !-----------------------------
-    frierson_Wind_min   = 1.0d-5
-    frierson_Z0         = 3.21d-5
-    frierson_Ri_c       = 1.0_r8
-    frierson_Fb         = 0.1_r8
-    frierson_Albedo     = 0.31_r8
-    frierson_DeltaS     = 1.4_r8
-    frierson_Tau_eqtr   = 6.0_r8
-    frierson_Tau_pole   = 1.5_r8
-    frierson_LinFrac    = 0.1_r8
-    frierson_C0         = 1.e7_R8
-    frierson_WetDryCoef = 1._R8
-    frierson_Tmin       = 271._R8
-    frierson_Tdlt       = 39._R8
-    frierson_Twidth     = 26._R8
 
     ! Read in namelist values
     !-------------------------
@@ -201,28 +187,40 @@ contains
       call freeunit(unitn)
     endif
 
+    ! CACQUESTION - Either add checks or remove this comment
     ! Sanity Check namelist values
     !--------------------------------
 
-
     ! Broadcast namelist values
     !---------------------------
-#ifdef SPMD
-    call mpibcast(frierson_Wind_min  , 1, mpir8 , 0, mpicom)
-    call mpibcast(frierson_Z0        , 1, mpir8 , 0, mpicom)
-    call mpibcast(frierson_Ri_c      , 1, mpir8 , 0, mpicom)
-    call mpibcast(frierson_Fb        , 1, mpir8 , 0, mpicom)
-    call mpibcast(frierson_Albedo    , 1, mpir8 , 0, mpicom)
-    call mpibcast(frierson_DeltaS    , 1, mpir8 , 0, mpicom)
-    call mpibcast(frierson_Tau_eqtr  , 1, mpir8 , 0, mpicom)
-    call mpibcast(frierson_Tau_pole  , 1, mpir8 , 0, mpicom)
-    call mpibcast(frierson_LinFrac   , 1, mpir8 , 0, mpicom)
-    call mpibcast(frierson_C0        , 1, mpir8 , 0, mpicom)
-    call mpibcast(frierson_WetDryCoef, 1, mpir8 , 0, mpicom)
-    call mpibcast(frierson_Tmin      , 1, mpir8 , 0, mpicom)
-    call mpibcast(frierson_Tdlt      , 1, mpir8 , 0, mpicom)
-    call mpibcast(frierson_Twidth    , 1, mpir8 , 0, mpicom)
-#endif
+    call mpi_bcast(frierson_Wind_min  , 1, mpi_real8 , mstrid, mpicom, ierr)
+    if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: frierson_Wind_min")
+    call mpi_bcast(frierson_Z0        , 1, mpi_real8 , mstrid, mpicom, ierr)
+    if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: frierson_Z0")
+    call mpi_bcast(frierson_Ri_c      , 1, mpi_real8 , mstrid, mpicom, ierr)
+    if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: frierson_Ri_c")
+    call mpi_bcast(frierson_Fb        , 1, mpi_real8 , mstrid, mpicom, ierr)
+    if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: frierson_Fb")
+    call mpi_bcast(frierson_Albedo    , 1, mpi_real8 , mstrid, mpicom, ierr)
+    if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: frierson_Albedo")
+    call mpi_bcast(frierson_DeltaS    , 1, mpi_real8 , mstrid, mpicom, ierr)
+    if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: frierson_DeltaS")
+    call mpi_bcast(frierson_Tau_eqtr  , 1, mpi_real8 , mstrid, mpicom, ierr)
+    if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: frierson_Tau_eqtr")
+    call mpi_bcast(frierson_Tau_pole  , 1, mpi_real8 , mstrid, mpicom, ierr)
+    if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: frierson_Tau_pole")
+    call mpi_bcast(frierson_LinFrac   , 1, mpi_real8 , mstrid, mpicom, ierr)
+    if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: frierson_LinFrac")
+    call mpi_bcast(frierson_C0        , 1, mpi_real8 , mstrid, mpicom, ierr)
+    if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: frierson_C0")
+    call mpi_bcast(frierson_Tmin      , 1, mpi_real8 , mstrid, mpicom, ierr)
+    if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: frierson_Tmin")
+    call mpi_bcast(frierson_Tdlt      , 1, mpi_real8 , mstrid, mpicom, ierr)
+    if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: frierson_Tdlt")
+    call mpi_bcast(frierson_Twidth    , 1, mpi_real8 , mstrid, mpicom, ierr)
+    if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: frierson_Twidth")
+    call mpi_bcast(frierson_WetDryCoef, 1, mpi_real8 , mstrid, mpicom, ierr)
+    if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: frierson_WetDryCoef")
 
     ! End Routine
     !-------------
