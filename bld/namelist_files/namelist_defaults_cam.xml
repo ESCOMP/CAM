@@ -357,6 +357,7 @@
 <frierson_Tmin       phys="frierson"   > 271.d0    </frierson_Tmin>
 <frierson_Tdlt       phys="frierson"   > 39.d0     </frierson_Tdlt>
 <frierson_Twidth     phys="frierson"   > 26.d0     </frierson_Twidth>
+<frierson_C_ocn      phys="frierson"   > 1.d7      </frierson_C_ocn>
 
 <!-- Bulk aerosol physical properties (includes optics) -->
 

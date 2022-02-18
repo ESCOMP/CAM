@@ -28,6 +28,7 @@ module frierson_cam
   use pio             ,only: file_desc_t, var_desc_t, io_desc_t, pio_double, pio_def_var
   use pio             ,only: pio_write_darray, pio_read_darray, pio_inq_varid
   use cam_grid_support,only: cam_grid_id, cam_grid_dimensions, cam_grid_get_decomp
+  use shr_const_mod,   only: SHR_CONST_STEBOL, SHR_CONST_REARTH, SHR_CONST_KARMAN
 
   ! Set all Global values and routines to private by default
   ! and then explicitly set their exposure. 
@@ -75,15 +76,14 @@ module frierson_cam
   integer,parameter:: CONDENSATE_OPT   = CONDENSATE_FRIERSON
   integer,parameter:: RADIATION_OPT    = RADIATION_FRIERSON
 
-  ! CACQUESTION -- LOOK AT share/src/shr_const_mod.F90 for some of these
   ! Global Constants 
   !---------------------
   real(r8),parameter:: frierson_T0     = 273.16_r8     ! Reference Temperature for E0 
   real(r8),parameter:: frierson_E0     = 610.78_r8     ! Saturation Vapor pressure @ T0
-  real(r8),parameter:: frierson_Erad   = 6.376e6_r8    ! Earth Radius
-  real(r8),parameter:: frierson_Karman = 0.4_r8        ! Von Karman constant
-  real(r8),parameter:: frierson_Boltz  = 5.6734e-8_r8  ! Stefan-Boltzmann constant
   real(r8),parameter:: frierson_Rs0    = 1360.0_r8     ! Solar Constant  
+  real(r8),parameter:: frierson_Erad   = SHR_CONST_REARTH  ! Earth Radius
+  real(r8),parameter:: frierson_Karman = SHR_CONST_KARMAN  ! Von Karman constant
+  real(r8),parameter:: frierson_Boltz  = SHR_CONST_STEBOL  ! Stefan-Boltzmann constant
 
   ! Some Physics buffer indicies
   !-------------------------------
@@ -128,6 +128,7 @@ module frierson_cam
   real(r8):: frierson_Tmin       = unset_r8      ! IC: Minimum sst (K)
   real(r8):: frierson_Tdlt       = unset_r8      ! IC: eq-polar difference sst (K)
   real(r8):: frierson_Twidth     = unset_r8      ! IC: width parameter for sst (C)
+  real(r8):: frierson_C_ocn      = unset_r8      ! CACQUESTION -- NEEDS description
 
 contains
   !==============================================================================
@@ -169,7 +170,7 @@ contains
                            frierson_Fb      , frierson_Albedo    , frierson_DeltaS , &
                            frierson_Tau_eqtr, frierson_Tau_pole  , frierson_LinFrac, &
                            frierson_C0      , frierson_WetDryCoef, frierson_Tmin   , &
-                           frierson_Tdlt    , frierson_Twidth
+                           frierson_Tdlt    , frierson_Twidth    , frierson_C_ocn
 
     ! Read in namelist values
     !-------------------------
@@ -221,6 +222,8 @@ contains
     if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: frierson_Twidth")
     call mpi_bcast(frierson_WetDryCoef, 1, mpi_real8 , mstrid, mpicom, ierr)
     if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: frierson_WetDryCoef")
+    call mpi_bcast(frierson_C_ocn, 1, mpi_real8 , mstrid, mpicom, ierr)
+    if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: frierson_C_ocn")
 
     ! End Routine
     !-------------
