@@ -128,7 +128,6 @@ module frierson_cam
   real(r8):: frierson_Tmin       = unset_r8      ! IC: Minimum sst (K)
   real(r8):: frierson_Tdlt       = unset_r8      ! IC: eq-polar difference sst (K)
   real(r8):: frierson_Twidth     = unset_r8      ! IC: width parameter for sst (C)
-  real(r8):: frierson_C_ocn      = unset_r8      ! CACQUESTION -- NEEDS description
 
 contains
   !==============================================================================
@@ -170,7 +169,7 @@ contains
                            frierson_Fb      , frierson_Albedo    , frierson_DeltaS , &
                            frierson_Tau_eqtr, frierson_Tau_pole  , frierson_LinFrac, &
                            frierson_C0      , frierson_WetDryCoef, frierson_Tmin   , &
-                           frierson_Tdlt    , frierson_Twidth    , frierson_C_ocn
+                           frierson_Tdlt    , frierson_Twidth
 
     ! Read in namelist values
     !-------------------------
@@ -222,8 +221,6 @@ contains
     if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: frierson_Twidth")
     call mpi_bcast(frierson_WetDryCoef, 1, mpi_real8 , mstrid, mpicom, ierr)
     if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: frierson_WetDryCoef")
-    call mpi_bcast(frierson_C_ocn, 1, mpi_real8 , mstrid, mpicom, ierr)
-    if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: frierson_C_ocn")
 
     ! End Routine
     !-------------

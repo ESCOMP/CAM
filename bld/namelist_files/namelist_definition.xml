@@ -170,12 +170,6 @@
        Default: 26.
        </entry>
 
-<entry id="frierson_C_ocn" type="real" category="frierson"
-       group="frierson_nl" valid_values="" >
-       CACQUESTION --- NEEDS DESCRIPTION ??????????????????????????????
-       Default: 1.e7
-       </entry>
-
 <!-- Nudging Parameters -->
 
 <entry id="Nudge_Model" type="logical" category="nudging"
