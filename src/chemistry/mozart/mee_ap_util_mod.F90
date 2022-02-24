@@ -7,6 +7,7 @@ module mee_ap_util_mod
   use shr_const_mod, only: pi => shr_const_pi
   use mee_fluxes, only: mee_fluxes_nenergy, mee_fluxes_energy, mee_fluxes_denergy
   use mee_fluxes, only: mee_fluxes_active, mee_fluxes_extract
+  use cam_abortutils, only : endrun
 
   implicit none
 
@@ -38,6 +39,9 @@ contains
     real(r8), intent(in) :: loss_cone_angle ! Bounce Loss Cone angle (degrees)
     integer, intent(out) :: status          ! error status
 
+    integer :: ierr
+    character(len=*), parameter :: subname = 'mee_ap_init: '
+
     status = mee_ap_noerror
     if ( loss_cone_angle<0._r8 .or. loss_cone_angle>90._r8 ) then
        status = mee_ap_error
@@ -53,8 +57,10 @@ contains
        denergies=>mee_fluxes_denergy
     else
        nbins=100
-       allocate(energies(nbins))
-       allocate(denergies(nbins))
+       allocate(energies(nbins), stat=ierr)
+       if (ierr/=0) call endrun(subname//'not able to allocate energies')
+       allocate(denergies(nbins), stat=ierr)
+       if (ierr/=0) call endrun(subname//'not able to allocate denergies')
        call gen_energy_grid(nbins, energies, denergies)
     endif
 
@@ -136,7 +142,7 @@ contains
           ! The area of the BLC in sr is 2pi(1-cosd(BLC))
           flux(:) = solid_angle_factor*flux_sd(:)
 
-          ! calculate the IPR as a function f height and energy
+          ! calculate the IPR as a function of height and energy
           ipr(:,:) = iprmono(energies, flux, airden(i,:), scaleh(i,:))
 
           ! integrate across the energy range to get total IPR
@@ -291,7 +297,7 @@ contains
   !------------------------------------------------------------------------------
   subroutine init_fang_coefs
 
-    integer :: n,i
+    integer :: n,i, ierr
 
     real(r8) :: lne, lne2, lne3
     ! Table 1. of Fang et al., 2010
@@ -307,7 +313,8 @@ contains
             9.48930E-1_r8,  1.97385E-1_r8, -2.50660E-3_r8, -2.06938E-3_r8 /), &
          shape=(/8,4/),order=(/2,1/))
 
-    allocate(fang_coefs(8,nbins))
+    allocate(fang_coefs(8,nbins), stat=ierr)
+    if (ierr/=0) call endrun('init_fang_coefs: not able to allocate fang_coefs')
 
     do n = 1,nbins
        ! terms in eq. (5)

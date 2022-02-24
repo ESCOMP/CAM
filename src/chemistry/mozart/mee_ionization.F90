@@ -81,7 +81,7 @@ contains
   !-----------------------------------------------------------------------------
   subroutine mee_ion_init()
     use cam_history, only: addfld
-    use mee_fluxes,  only : mee_fluxes_init
+    use mee_fluxes,  only: mee_fluxes_init
 
     integer :: err
 

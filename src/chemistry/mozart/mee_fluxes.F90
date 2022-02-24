@@ -101,6 +101,7 @@ contains
     character(len=cl) :: filen
     integer :: ierr, dimid, varid
     real(r8), allocatable :: logdelta(:)
+    character(len=*), parameter :: subname = 'mee_fluxes_init: '
 
     if (.not.mee_fluxes_active) return
 
@@ -117,13 +118,20 @@ contains
 
     ierr = pio_inq_varid(file_id, 'RBSP_flux_scaled', flux_var_id)
 
-    allocate( indata( mee_fluxes_nenergy, nlshells, 2 ) )
-    allocate( influx( mee_fluxes_nenergy, nlshells ) )
-    allocate( valflx( mee_fluxes_nenergy, nlshells ) )
-    allocate( mee_fluxes_energy( mee_fluxes_nenergy ) )
-    allocate( mee_fluxes_denergy( mee_fluxes_nenergy ) )
-    allocate( logdelta( mee_fluxes_nenergy ) )
-    allocate( lshell( nlshells ) )
+    allocate( indata( mee_fluxes_nenergy, nlshells, 2 ), stat=ierr)
+    if (ierr/=0) call endrun(subname//'not able to allocate indata')
+    allocate( influx( mee_fluxes_nenergy, nlshells ), stat=ierr )
+    if (ierr/=0) call endrun(subname//'not able to allocate influx')
+    allocate( valflx( mee_fluxes_nenergy, nlshells ), stat=ierr )
+    if (ierr/=0) call endrun(subname//'not able to allocate valflx')
+    allocate( mee_fluxes_energy( mee_fluxes_nenergy ), stat=ierr )
+    if (ierr/=0) call endrun(subname//'not able to allocate mee_fluxes_energy')
+    allocate( mee_fluxes_denergy( mee_fluxes_nenergy ), stat=ierr )
+    if (ierr/=0) call endrun(subname//'not able to allocate mee_fluxes_denergy')
+    allocate( logdelta( mee_fluxes_nenergy ), stat=ierr )
+    if (ierr/=0) call endrun(subname//'not able to allocate logdelta')
+    allocate( lshell( nlshells ), stat=ierr )
+    if (ierr/=0) call endrun(subname//'not able to allocate lshell')
 
 
     ierr = pio_inq_varid(file_id, 'energy', varid)
