@@ -1372,8 +1372,8 @@
 !   bands and an effective O2 optical depth at all altitudes.  Parameterized  !
 !   after:  Chabrillat, S., and G. Kockarts, Simple parameterization of the   !
 !   absorption of the solar Lyman-Alpha line, Geophysical Research Letters,   !
-!   Vol.24, No.21, pp 2659-2662, 1997. (note there is a correction to this    !
-!   paper - the table was missing minuses in the exponents).                  !
+!   Vol.24, No.21, pp 2659-2662, 1997. doi:10.1029/97GL52690 (note there is a !
+!   correction to this paper - the table was missing minuses in the exponents)!
 !-----------------------------------------------------------------------------!
 !   PARAMETERS:                                                               !
 !   nz      - INTEGER, number of specified altitude levels in the working (I) !
@@ -1385,7 +1385,7 @@
 !   xso2la  - REAL, molecular absorption cross section in LA bands        (O) !
 !-----------------------------------------------------------------------------!
 !   EDIT HISTORY:                                                             !
-!   01/15/2002 Taken from Sasha Madronich's TUV Version 4.1a, Doug Kinnison   !                  !
+!   01/15/2002 Taken from Sasha Madronich's TUV Version 4.1a, Doug Kinnison   !
 !   01/15/2002 Upgraded to F90, DK                                            !
 !-----------------------------------------------------------------------------!
 
