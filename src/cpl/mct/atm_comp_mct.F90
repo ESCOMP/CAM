@@ -36,6 +36,7 @@ module atm_comp_mct
   use phys_grid        , only: get_grid_dims
   use ppgrid           , only: pcols, begchunk, endchunk
   use camsrfexch       , only: cam_out_t, cam_in_t
+  use radiation        , only: nextsw_cday
   use cam_initfiles    , only: cam_initfiles_get_caseid, cam_initfiles_get_restdir
   use filenames        , only: interpret_filename_spec
   use spmd_utils       , only: spmdinit, masterproc, iam
@@ -86,7 +87,6 @@ CONTAINS
 
   subroutine atm_init_mct( EClock, cdata_a, x2a_a, a2x_a, NLFilename )
 
-    use radiation        , only: radiation_nextsw_cday
     !-----------------------------------------------------------------------
     !
     ! Arguments
@@ -124,7 +124,6 @@ CONTAINS
     logical           :: perpetual_run         ! If in perpetual mode or not
     integer           :: perpetual_ymd         ! Perpetual date (YYYYMMDD)
 
-    real(r8)          :: nextsw_cday           ! calendar of next atm shortwave
     integer           :: stepno                ! time step
     integer           :: dtime                 ! time step increment (sec)
     integer           :: start_ymd             ! Start date (YYYYMMDD)
@@ -320,7 +319,6 @@ CONTAINS
        ! This will only be used on the first timestep of an initial run
        !
        if (initial_run) then
-          nextsw_cday = get_curr_calday()
           call seq_infodata_PutData( infodata, nextsw_cday=nextsw_cday )
        end if
 
@@ -358,7 +356,6 @@ CONTAINS
        end if
 
        ! Compute time of next radiation computation
-       nextsw_cday = radiation_nextsw_cday()
        call seq_infodata_PutData( infodata, nextsw_cday=nextsw_cday )
 
        ! End redirection of share output to cam log
@@ -384,7 +381,6 @@ CONTAINS
 
  subroutine atm_run_mct( EClock, cdata_a, x2a_a, a2x_a)
 
-    use radiation        , only: nextsw_cday
     !-----------------------------------------------------------------------
     !
     ! Arguments

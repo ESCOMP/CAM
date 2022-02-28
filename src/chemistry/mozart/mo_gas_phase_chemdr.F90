@@ -21,7 +21,7 @@ module mo_gas_phase_chemdr
   integer :: map2chm(pcnst) = 0           ! index map to/from chemistry/constituents list
 
   integer :: so4_ndx, h2o_ndx, o2_ndx, o_ndx, hno3_ndx, hcl_ndx, cldice_ndx, snow_ndx
-  integer :: o3_ndx, o3s_ndx
+  integer :: o3_ndx, o3s_ndx, o3_inv_ndx, srf_ozone_pbf_ndx=-1
   integer :: het1_ndx
   integer :: ndx_cldfr, ndx_cmfdqr, ndx_nevapr, ndx_cldtop, ndx_prain
   integer :: ndx_h2so4
@@ -52,7 +52,7 @@ contains
 
   subroutine gas_phase_chemdr_inti()
 
-    use mo_chem_utls,      only : get_spc_ndx, get_extfrc_ndx, get_rxt_ndx
+    use mo_chem_utls,      only : get_spc_ndx, get_extfrc_ndx, get_rxt_ndx, get_inv_ndx
     use cam_history,       only : addfld,add_default,horiz_only
     use mo_chm_diags,      only : chm_diags_inti
     use constituents,      only : cnst_get_ind
@@ -115,6 +115,7 @@ contains
 !
     het1_ndx= get_rxt_ndx('het1')
     o3_ndx  = get_spc_ndx('O3')
+    o3_inv_ndx  = get_inv_ndx( 'O3' )
     o3s_ndx = get_spc_ndx('O3S')
     o_ndx   = get_spc_ndx('O')
     o2_ndx  = get_spc_ndx('O2')
@@ -125,6 +126,9 @@ contains
     call cnst_get_ind( 'CLDICE', cldice_ndx )
     call cnst_get_ind( 'SNOWQM', snow_ndx, abort=.false. )
 
+    if (o3_ndx>0 .or. o3_inv_ndx>0) then
+       srf_ozone_pbf_ndx = pbuf_get_index('SRFOZONE')
+    endif
 
     do m = 1,extcnt
        WRITE(UNIT=string, FMT='(I2.2)') m
@@ -438,6 +442,7 @@ contains
     real(r8) :: loss_out(ncol,pver,max(1,clscnt4))
 
     real(r8) :: o3s_loss(ncol,pver)
+    real(r8), pointer :: srf_ozone_fld(:)
 
     if ( ele_temp_ndx>0 .and. ion_temp_ndx>0 ) then
        call pbuf_get_field(pbuf, ele_temp_ndx, ele_temp_fld)
@@ -910,7 +915,6 @@ contains
 
        wrk(:ncol,:) = (vmr(:ncol,:,h2o_ndx) - wrk(:ncol,:))*delt_inverse
        call outfld( 'QDCHEM',   wrk(:ncol,:),         ncol, lchnk )
-       call outfld( 'HNO3_GAS', vmr(:ncol,:,hno3_ndx), ncol ,lchnk )
 
        !-----------------------------------------------------------------------
        !         ... aerosol settling
@@ -1029,6 +1033,15 @@ contains
          wetdepflx_diag(:ncol,n) = wetdepflx(:ncol,m)
        endif
     end do
+
+    if (srf_ozone_pbf_ndx>0) then
+       call pbuf_get_field(pbuf, srf_ozone_pbf_ndx, srf_ozone_fld)
+       if (o3_ndx>0) then
+          srf_ozone_fld(:ncol) = vmr(:ncol,pver,o3_ndx)
+       else
+          srf_ozone_fld(:ncol) = invariants(:ncol,pver,o3_inv_ndx)/invariants(:ncol,pver,indexm)
+       endif
+    endif
 
     call chm_diags( lchnk, ncol, vmr(:ncol,:,:), mmr_new(:ncol,:,:), &
                     reaction_rates(:ncol,:,:), invariants(:ncol,:,:), depvel(:ncol,:),  sflx(:ncol,:), &

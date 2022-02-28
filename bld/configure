@@ -2172,7 +2172,11 @@ sub write_filepath
        print $fh "$camsrcdir/src/physics/silhs\n";
     }
 
-    print $fh "$camsrcdir/src/physics/pumas\n";
+    if ($phys_pkg eq 'cam_dev') {
+	print $fh "$camsrcdir/src/physics/pumas\n";
+    } else {
+	print $fh "$camsrcdir/src/physics/pumas-frozen\n";
+    }
 
     # Superparameterization
     if ($phys_pkg eq 'spcam_m2005' or $phys_pkg eq 'spcam_sam1mom') {
