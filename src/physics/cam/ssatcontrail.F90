@@ -147,7 +147,7 @@ contains
         G = (ei*cpair*p)/(epsi*Q*(1.0_r8-eta))   ! eq 7, Ponater JGR 2002
 
         if( G > 0.053_r8 ) then
-            T_contr = -46.46_r8+9.43_r8*log(G-0.053_r8)+0.72_r8*log(G-0.053_r8)*log(G-0.053_r8) ! eq 8, Ponater JGR 2002
+            T_contr = -46.46_r8+9.43_r8*log(G-0.053_r8)+0.72_r8*log(G-0.053_r8)*log(G-0.053_r8) ! eq 6, Ponater JGR 2002
             T_contr = T_contr + tmelt  ! convert to Kelvin
  
             ! compute saturation pressure
