@@ -18,7 +18,7 @@ module nlte_aliarms
      nlte_aliarms_init, &
      nlte_aliarms_calc
 
-  real(r8) :: max_pressure_aliarms   ! max_pressure_lw scaled mbar
+  real(r8) :: max_pressure_aliarms   ! max_pressure_lw scaled bar
 
 contains
 
@@ -31,19 +31,19 @@ contains
 
   use cam_history,  only: addfld
 
-  implicit none
-  
-  real(r8), intent(in)  :: max_pressure_lw
+  real(r8), intent(in)  :: max_pressure_lw  ! Pa
 
   if (masterproc) then
     write(iulog,*) 'init: ALI-ARMS non-LTE code'
   end if
 
   call addfld ('ALIARMS_Q',(/ 'lev' /), 'A','K/s','Non-LTE LW CO2 heating')
+
+  ! Scale the max_pressure_aliarms to bar
   max_pressure_aliarms = max_pressure_lw * 1.e-05_r8
 
   end subroutine nlte_aliarms_init
-  
+
 !-----------------------------------------------------------------
   subroutine nlte_aliarms_calc (lchnk,ncol,state_zm,pmid,t,xo2,xo,xn2,xco2,cool)
 !-----------------------------------------------------------------
@@ -54,8 +54,6 @@ contains
   use cam_history,  only: outfld
   use iso_c_binding, only: c_float, c_int
 
-  implicit none
-
 ! Input variables
   integer, intent(in) :: ncol                          ! number of atmospheric columns
   integer, intent(in) :: lchnk                         ! chunk identifier
@@ -63,10 +61,10 @@ contains
   real(r8), intent(in) :: state_zm(pcols,pver)         ! model height
   real(r8), intent(in) :: pmid(pcols,pver)             ! model pressure at mid-point
   real(r8), intent(in) :: t(pcols,pver)                ! Neutral temperature (K)
-  real(r8), intent(in) :: xco2(pcols,pver)             ! CO2 profile
-  real(r8), intent(in) :: xn2(pcols,pver)              ! N2 profile
-  real(r8), intent(in) :: xo(pcols,pver)               ! O profile
-  real(r8), intent(in) :: xo2(pcols,pver)              ! O2 profile
+  real(r8), intent(in) :: xco2(pcols,pver)             ! CO2 volume mixing ratio profile
+  real(r8), intent(in) :: xn2(pcols,pver)              ! N2 volume mixing ratio profile
+  real(r8), intent(in) :: xo(pcols,pver)               ! O volume mixing ratio profile
+  real(r8), intent(in) :: xo2(pcols,pver)              ! O2 volume mixing ratio profile
 
 ! Output variables
   real(r8), intent(out) :: cool(pcols,pver)            ! CO2 NLTE cooling rate
@@ -76,7 +74,7 @@ contains
   real(c_float), dimension(pver) :: p, tn, zkm
   real(c_float), dimension(pver) :: co2_vmr, o_vmr, n2_vmr, o2_vmr
   real(c_float), dimension(pver) :: ali_cool
-  
+
   integer(c_int) :: pver_c
 
   integer :: icol, iver
@@ -91,12 +89,12 @@ contains
         integer(c_int) :: pver_c
      end subroutine ali_
   end interface
-  
+
   cool(:,:) = 0.0_r8
-  
+
   do icol=1,ncol
-  
-      ali_cool(:) = 0.0_r8 
+
+      ali_cool(:) = 0.0_r8
       zkm(:)      = 0.0_r8
       tn(:)       = 0.0_r8
       co2_vmr(:)  = 0.0_r8
@@ -110,26 +108,26 @@ contains
         if (p(iver) .lt. max_pressure_aliarms) then
           pver_c=pver_c+1
         else
-          exit  ! Have gone pas the maximum pressure
+          exit  ! Have gone past the maximum pressure
         end if
       end do
-      zkm(:pver_c) = state_zm(icol,:pver_c)/1000._r8
+      zkm(:pver_c) = state_zm(icol,:pver_c)*1.e-3_r8
       tn(:pver_c) = t(icol,:pver_c)
-      
+
       co2_vmr(:pver_c) = xco2(icol,:pver_c)
       o_vmr(:pver_c) = xo(icol,:pver_c)
       n2_vmr(:pver_c) = xn2(icol,:pver_c)
       o2_vmr(:pver_c) = xo2(icol,:pver_c)
-      
+
       call ali(zkm, p, tn, co2_vmr, o_vmr, n2_vmr, o2_vmr, ali_cool, pver_c)
-      
-      cool(icol,:) = ali_cool(:) 
-  
+
+      cool(icol,:) = ali_cool(:)
+
   enddo
-  
+
   call outfld ('ALIARMS_Q', cool, pcols, lchnk)
-  
+
   end subroutine nlte_aliarms_calc
-  
+
   end module nlte_aliarms
 
