@@ -1,10 +1,12 @@
 module frierson
 !------------------------------------------------------------------------------------
 !
-! Purpose: Implement idealized forcings described in 
-!          Frierson, et al. (2006), "A Gray-Radiation 
+! Purpose: Implement idealized forcings described in
+!          Frierson, et al. (2006), "A Gray-Radiation
 !          Aquaplanet Moist GCM. Part I. Static Stability and Eddy Scale"
 !          J. Atmos. Sci., Vol. 63, 2548-2566.
+!
+!          DOI: https://doi.org/10.1175/JAS3753.1
 !
 !====================================================================================
   !
@@ -33,8 +35,8 @@ module frierson
   public:: frierson_radiation
   public:: frierson_radiation_USER
 
-  ! Global Tuning Parameters: 
-  !   T0 and E0  are the temperature and saturation vapor pressure used 
+  ! Global Tuning Parameters:
+  !   T0 and E0  are the temperature and saturation vapor pressure used
   !   to calculate qsat values, the saturation value for Q (kg/kg)
   !--------------------------------------------------------------------
   real(r8):: T0
@@ -78,7 +80,7 @@ contains
                                 I_DeltaS,I_Tau_eqtr,I_Tau_pole,I_LinFrac,I_Boltz   , &
                                 I_Cocn                                               )
     !
-    ! frierson_set_const: Set parameters and constants for the Frierson 
+    ! frierson_set_const: Set parameters and constants for the Frierson
     !                     Model fomulation. Optional inputs can be provided
     !                     to over-ride the model defaults.
     !=====================================================================
@@ -111,7 +113,7 @@ contains
     real(r8),intent(in) :: I_Tau_pole
     real(r8),intent(in) :: I_LinFrac
     real(r8),intent(in) :: I_Boltz
-    real(r8),intent(in) :: I_Cocn 
+    real(r8),intent(in) :: I_Cocn
 
     ! Set global constants for later use
     !------------------------------------
@@ -155,10 +157,10 @@ contains
 
   !=======================================================================
   subroutine frierson_convection_NONE(ncol,pver,dtime,pmid,pdel,T,qv,relhum,precc)
-    ! 
+    !
     ! Frierson_convection_NONE: Implement NO convective precipitation.
     !=======================================================================
-    ! 
+    !
     ! Passed Variables
     !---------------------
     integer ,intent(in)   :: ncol              ! number of columns
@@ -173,7 +175,7 @@ contains
     !
     ! Local Values
     !-------------
-    real(r8):: qsat 
+    real(r8):: qsat
     real(r8):: Crate
     integer :: i, k
 
@@ -181,11 +183,11 @@ contains
     do i = 1, ncol
       ! calculate saturation value for Q
       !----------------------------------
-      qsat = epsilo*E0/pmid(i,k)*exp(-latvap/rh2o*((1._r8/T(i,k))-1._r8/T0)) 
+      qsat = epsilo*E0/pmid(i,k)*exp(-latvap/rh2o*((1._r8/T(i,k))-1._r8/T0))
 
       ! Set percent relative humidity
       !-------------------------------
-      relhum(i,k) = (qv(i,k)/qsat)*100._r8 
+      relhum(i,k) = (qv(i,k)/qsat)*100._r8
     end do
     end do
 
@@ -201,10 +203,10 @@ contains
   !=======================================================================
   ! CACQUESTION -- This appears to be identical to Frierson_convection_NONE routine - Should it be different?
   subroutine frierson_convection(ncol,pver,dtime,pmid,pdel,T,qv,relhum,precc)
-    ! 
+    !
     ! Frierson_convection_NONE: Implement NO convective precipitation.
     !=======================================================================
-    ! 
+    !
     ! Passed Variables
     !---------------------
     integer ,intent(in)   :: ncol              ! number of columns
@@ -215,11 +217,11 @@ contains
     real(r8),intent(inout):: T     (ncol,pver) ! temperature (K)
     real(r8),intent(inout):: qv    (ncol,pver) ! specific humidity Q (kg/kg)
     real(r8),intent(out)  :: relhum(ncol,pver) ! relative humidity
-    real(r8),intent(out)  :: precc (ncol)      ! convective precipitation (m/s) 
+    real(r8),intent(out)  :: precc (ncol)      ! convective precipitation (m/s)
     !
     ! Local Values
     !-------------
-    real(r8):: qsat 
+    real(r8):: qsat
     real(r8):: Crate
     integer :: i, k
 
@@ -227,11 +229,11 @@ contains
     do i = 1, ncol
       ! calculate saturation value for Q
       !----------------------------------
-      qsat = epsilo*E0/pmid(i,k)*exp(-latvap/rh2o*((1._r8/T(i,k))-1._r8/T0)) 
+      qsat = epsilo*E0/pmid(i,k)*exp(-latvap/rh2o*((1._r8/T(i,k))-1._r8/T0))
 
       ! Set percent relative humidity
       !-------------------------------
-      relhum(i,k) = (qv(i,k)/qsat)*100._r8 
+      relhum(i,k) = (qv(i,k)/qsat)*100._r8
     end do
     end do
 
@@ -246,11 +248,11 @@ contains
 
   !=======================================================================
   subroutine frierson_convection_USER(ncol,pver,dtime,pmid,pdel,T,qv,relhum,precc)
-    ! 
-    ! frierson_convection_USER: This routine is a stub which users can use 
+    !
+    ! frierson_convection_USER: This routine is a stub which users can use
     !                           to develop and test their own convection scheme
     !=======================================================================
-    ! 
+    !
     ! Passed Variables
     !---------------------
     integer ,intent(in)   :: ncol              ! number of columns
@@ -261,11 +263,11 @@ contains
     real(r8),intent(inout):: T     (ncol,pver) ! temperature (K)
     real(r8),intent(inout):: qv    (ncol,pver) ! specific humidity Q (kg/kg)
     real(r8),intent(out)  :: relhum(ncol,pver) ! relative humidity
-    real(r8),intent(out)  :: precc (ncol)      ! convective precipitation (m/s) 
+    real(r8),intent(out)  :: precc (ncol)      ! convective precipitation (m/s)
     !
     ! Local Values
     !-------------
-    real(r8):: qsat 
+    real(r8):: qsat
     real(r8):: Crate
     integer :: i, k
 
@@ -273,11 +275,11 @@ contains
     do i = 1, ncol
       ! calculate saturation value for Q
       !----------------------------------
-      qsat = epsilo*E0/pmid(i,k)*exp(-latvap/rh2o*((1._r8/T(i,k))-1._r8/T0)) 
+      qsat = epsilo*E0/pmid(i,k)*exp(-latvap/rh2o*((1._r8/T(i,k))-1._r8/T0))
 
       ! Set percent relative humidity
       !-------------------------------
-      relhum(i,k) = (qv(i,k)/qsat)*100._r8 
+      relhum(i,k) = (qv(i,k)/qsat)*100._r8
     end do
     end do
 
@@ -292,10 +294,10 @@ contains
 
   !=======================================================================
   subroutine frierson_condensate_NONE(ncol,pver,dtime,pmid,pdel,T,qv,relhum,precl)
-    ! 
-    ! Precip_process: Implement NO large-scale consensation/precipitation 
+    !
+    ! Precip_process: Implement NO large-scale consensation/precipitation
     !=======================================================================
-    ! 
+    !
     ! Passed Variables
     !---------------------
     integer ,intent(in)   :: ncol              ! number of columns
@@ -310,7 +312,7 @@ contains
     !
     ! Local Values
     !-------------
-    real(r8):: qsat 
+    real(r8):: qsat
     real(r8):: Crate
     integer :: i, k
 
@@ -318,17 +320,17 @@ contains
     !--------------------------------------------------------------------------
     precl(:) = 0.0_r8
 
-    ! Large-Scale Condensation and Precipitation without cloud stage 
+    ! Large-Scale Condensation and Precipitation without cloud stage
     !---------------------------------------------------------------
     do k = 1, pver
     do i = 1, ncol
       ! calculate saturation value for Q
       !----------------------------------
-      qsat = epsilo*E0/pmid(i,k)*exp(-latvap/rh2o*((1._r8/T(i,k))-1._r8/T0)) 
+      qsat = epsilo*E0/pmid(i,k)*exp(-latvap/rh2o*((1._r8/T(i,k))-1._r8/T0))
 
       ! Set percent relative humidity
       !-------------------------------
-      relhum(i,k) = (qv(i,k)/qsat)*100._r8 
+      relhum(i,k) = (qv(i,k)/qsat)*100._r8
     end do
     end do
 
@@ -341,12 +343,12 @@ contains
 
   !=======================================================================
   subroutine frierson_condensate(ncol,pver,dtime,pmid,pdel,T,qv,relhum,precl)
-    ! 
-    ! Precip_process: Implement large-scale consensation/precipitation 
+    !
+    ! Precip_process: Implement large-scale consensation/precipitation
     !                 from Frierson 2006.
     !
     !=======================================================================
-    ! 
+    !
     ! Passed Variables
     !---------------------
     integer ,intent(in)   :: ncol              ! number of columns
@@ -376,13 +378,13 @@ contains
     real(r8):: Crate
     integer :: i, k
 
-    ! Large-Scale Condensation and Precipitation 
+    ! Large-Scale Condensation and Precipitation
     !--------------------------------------------
     do k = 1,pver
 
       ! calculate saturation vapor pressure
       !-------------------------------------
-      esat(:,k) = E0*exp(-(latvap/rh2o)*((1._r8/T(:,k))-1._r8/T0)) 
+      esat(:,k) = E0*exp(-(latvap/rh2o)*((1._r8/T(:,k))-1._r8/T0))
 
       ! calculate saturation value for Q
       !----------------------------------
@@ -399,7 +401,7 @@ contains
 
       ! if > 100% relative humidity, rain falls out
       !---------------------------------------------
-      where(((qv(:,k)-qsat(:,k))*qsat(:,k)) > 0._r8) 
+      where(((qv(:,k)-qsat(:,k))*qsat(:,k)) > 0._r8)
         qdel (:,k) = (qsat(:,k)-qv(:,k))/(1._r8+(latvap/cpair)*dqsat(:,k))
         tdel (:,k) = -(latvap/cpair)*qdel(:,k)
       else where
@@ -416,7 +418,7 @@ contains
     ! optionally allow for re-evaporation of falling precip
     !-------------------------------------------------------
     if(do_evap) then
-      ! Initialize work array for excess Q 
+      ! Initialize work array for excess Q
       !--------------------------------------
       qext(:) = 0._r8
 
@@ -454,8 +456,8 @@ contains
     !--------------------------------------------------------
     do k = 1, pver
       precl (:)   = precl(:) - (qdel(:,k)*pdel(:,k))/(gravit*rhoh2o)
-      qsat  (:,k) = (epsilo/pmid(:,k))*E0*exp(-latvap/rh2o*((1._r8/tnew(:,k))-1._r8/T0)) 
-      relhum(:,k) = (qnew(:,k)/qsat (:,k))*100._r8 
+      qsat  (:,k) = (epsilo/pmid(:,k))*E0*exp(-latvap/rh2o*((1._r8/tnew(:,k))-1._r8/T0))
+      relhum(:,k) = (qnew(:,k)/qsat (:,k))*100._r8
     end do
     precl(:) = max(precl(:),0._r8)/dtime
 
@@ -473,12 +475,12 @@ contains
 
   !=======================================================================
   subroutine frierson_condensate_TJ16(ncol,pver,dtime,pmid,pdel,T,qv,relhum,precl)
-    ! 
-    ! Precip_process: Implement large-scale consensation/precipitation 
+    !
+    ! Precip_process: Implement large-scale consensation/precipitation
     !                 from TJ16.
     !
     !=======================================================================
-    ! 
+    !
     ! Passed Variables
     !---------------------
     integer ,intent(in)   :: ncol              ! number of columns
@@ -493,7 +495,7 @@ contains
     !
     ! Local Values
     !-------------
-    real(r8):: qsat 
+    real(r8):: qsat
     real(r8):: Crate
     integer :: i, k
 
@@ -501,13 +503,13 @@ contains
     !--------------------------------------------------------------------------
     precl(:) = 0.0_r8
 
-    ! Large-Scale Condensation and Precipitation without cloud stage 
+    ! Large-Scale Condensation and Precipitation without cloud stage
     !---------------------------------------------------------------
     do k = 1, pver
     do i = 1, ncol
       ! calculate saturation value for Q
       !----------------------------------
-      qsat = epsilo*E0/pmid(i,k)*exp(-latvap/rh2o*((1._r8/T(i,k))-1._r8/T0)) 
+      qsat = epsilo*E0/pmid(i,k)*exp(-latvap/rh2o*((1._r8/T(i,k))-1._r8/T0))
 
       ! if > 100% relative humidity rain falls out
       !-------------------------------------------
@@ -520,8 +522,8 @@ contains
 
         ! Update T and qv values due to precipitation
         !--------------------------------------------
-        T (i,k) = T (i,k) + Crate*(latvap/cpair)*dtime 
-        qv(i,k) = qv(i,k) - Crate*dtime 
+        T (i,k) = T (i,k) + Crate*(latvap/cpair)*dtime
+        qv(i,k) = qv(i,k) - Crate*dtime
 
         ! recompute qsat with updated T
         !-------------------------------
@@ -530,7 +532,7 @@ contains
 
       ! Set percent relative humidity
       !-------------------------------
-      relhum(i,k) = (qv(i,k)/qsat)*100._r8 
+      relhum(i,k) = (qv(i,k)/qsat)*100._r8
     end do
     end do
 
@@ -543,12 +545,12 @@ contains
 
   !=======================================================================
   subroutine frierson_condensate_USER(ncol,pver,dtime,pmid,pdel,T,qv,relhum,precl)
-    ! 
-    ! frierson_condensate_USER: This routine is a stub which users can use 
-    !                           to develop and test their own large scale 
+    !
+    ! frierson_condensate_USER: This routine is a stub which users can use
+    !                           to develop and test their own large scale
     !                           condensation scheme
     !=======================================================================
-    ! 
+    !
     ! Passed Variables
     !---------------------
     integer ,intent(in)   :: ncol              ! number of columns
@@ -563,7 +565,7 @@ contains
     !
     ! Local Values
     !-------------
-    real(r8):: qsat 
+    real(r8):: qsat
     real(r8):: Crate
     integer :: i, k
 
@@ -571,17 +573,17 @@ contains
     !--------------------------------------------------------------------------
     precl(:) = 0.0_r8
 
-    ! Large-Scale Condensation and Precipitation without cloud stage 
+    ! Large-Scale Condensation and Precipitation without cloud stage
     !---------------------------------------------------------------
     do k = 1, pver
     do i = 1, ncol
       ! calculate saturation value for Q
       !----------------------------------
-      qsat = epsilo*E0/pmid(i,k)*exp(-latvap/rh2o*((1._r8/T(i,k))-1._r8/T0)) 
+      qsat = epsilo*E0/pmid(i,k)*exp(-latvap/rh2o*((1._r8/T(i,k))-1._r8/T0))
 
       ! Set percent relative humidity
       !-------------------------------
-      relhum(i,k) = (qv(i,k)/qsat)*100._r8 
+      relhum(i,k) = (qv(i,k)/qsat)*100._r8
     end do
     end do
 
@@ -597,15 +599,15 @@ contains
                           Psfc, Tsfc, Qsfc, T, U, V, Q,  Fsw, Fdn,         &
                           Cdrag, Km, Ke, VSE, Z_pbl, Rf, dQa, dTa, dUa, dVa)
     !
-    ! The implicit PBL parameterization based on Frierson, et al. 2006. 
+    ! The implicit PBL parameterization based on Frierson, et al. 2006.
     !
-    ! frierson_pbl: This is an implementation of the implicit computation 
-    !               derived from the code of the Frierson model. The 
-    !               calculations are roughly divided up into sections of 
+    ! frierson_pbl: This is an implementation of the implicit computation
+    !               derived from the code of the Frierson model. The
+    !               calculations are roughly divided up into sections of
     !               the model where they should be carried out.
     !
     !==========================================================================
-    ! 
+    !
     ! Passed Variables
     !------------------
     integer ,intent(in)   :: ncol                ! Number of columns
@@ -617,7 +619,7 @@ contains
     real(r8),intent(in)   :: Zm   (ncol,pver)    ! Height at model levels.
     real(r8),intent(in)   :: Zi   (ncol,pver)    ! Height at interface levels.
     real(r8),intent(in)   :: Psfc (ncol)         ! Surface Pressure.
-    real(r8),intent(inout):: Tsfc (ncol)         ! SST temperature K 
+    real(r8),intent(inout):: Tsfc (ncol)         ! SST temperature K
     real(r8),intent(inout):: Qsfc (ncol)         ! sea surface water vapor (kg/kg)
     real(r8),intent(inout):: T    (ncol,pver)    ! ATM Temperature values.
     real(r8),intent(inout):: U    (ncol,pver)    ! ATM Zonal Wind values.
@@ -626,8 +628,8 @@ contains
     real(r8),intent(in)   :: Fdn  (ncol)         ! Downward LW flux at surface
     real(r8),intent(in)   :: Fsw  (ncol)         ! Net SW flux at surface from gray radiation
     real(r8),intent(out)  :: Cdrag(ncol)         ! Surface drage coef.
-    real(r8),intent(out)  :: Km   (ncol,pver+1)  ! Eddy diffusivity for PBL 
-    real(r8),intent(out)  :: Ke   (ncol,pver+1)  ! Eddy diffusivity for PBL 
+    real(r8),intent(out)  :: Km   (ncol,pver+1)  ! Eddy diffusivity for PBL
+    real(r8),intent(out)  :: Ke   (ncol,pver+1)  ! Eddy diffusivity for PBL
     real(r8),intent(out)  :: VSE  (ncol,pver)    ! Virtual-Dry Static energy.(huh?)
     real(r8),intent(out)  :: Z_pbl(ncol)         ! Height of PBL layer.
     real(r8),intent(out)  :: Rf   (ncol,pver)
@@ -660,7 +662,7 @@ contains
     real(r8):: Thv_s (ncol)
     real(r8):: Ustar (ncol)
     real(r8):: Bstar (ncol)
-    real(r8):: E_denom,M_denom,Tnext,Qnext  
+    real(r8):: E_denom,M_denom,Tnext,Qnext
     real(r8):: ZETA,PHI
 
     real(r8):: MU (ncol,pver)
@@ -676,23 +678,23 @@ contains
     real(r8):: FLv(ncol,pver)
     real(r8):: FLq(ncol,pver)
     real(r8):: FLt(ncol,pver)
-    real(r8):: Et (ncol,pver) 
-    real(r8):: Eq (ncol,pver) 
+    real(r8):: Et (ncol,pver)
+    real(r8):: Eq (ncol,pver)
     real(r8):: Eu (ncol,pver)
     real(r8):: Ev (ncol,pver)
 
-    real(r8):: Fval_t(ncol,pver) 
-    real(r8):: Fval_q(ncol,pver) 
+    real(r8):: Fval_t(ncol,pver)
+    real(r8):: Fval_q(ncol,pver)
     real(r8):: Fval_u(ncol,pver)
     real(r8):: Fval_v(ncol,pver)
     real(r8):: Eval_m(ncol,pver)
     real(r8):: Eval_e(ncol,pver)
     integer :: i, k
 
-    real(r8):: Su(ncol,pver) 
-    real(r8):: Sv(ncol,pver) 
-    real(r8):: St(ncol,pver) 
-    real(r8):: Sq(ncol,pver) 
+    real(r8):: Su(ncol,pver)
+    real(r8):: Sv(ncol,pver)
+    real(r8):: St(ncol,pver)
+    real(r8):: Sq(ncol,pver)
 
     real(r8)::  Estar_u(ncol)
     real(r8)::  Estar_v(ncol)
@@ -733,14 +735,14 @@ contains
   !============================================================================
   ! <PHYSICS> tphysbc():
   !
-  !     Required Values: 
+  !     Required Values:
   !       T(:,:),Q(:,:),U(:,:),V(:,:)
   !       Pmid(:,:),Pint(:,:),Zm(:,:),Zi(:,:)
   !       Tsfc(:),Qsfc(:),Psfc(:)
   !============================================================================
 
-    ! Sx() values allow for explicit source tendencies passed to 
-    ! implicit PBL calculation.  Set all value to 0. for now. 
+    ! Sx() values allow for explicit source tendencies passed to
+    ! implicit PBL calculation.  Set all value to 0. for now.
     !-------------------------------------------------------------------------
     Su(:,:) = 0._r8
     Sv(:,:) = 0._r8
@@ -775,7 +777,7 @@ contains
       Bstar(i) = sqrt(Cdrag(i))*(gravit*(Thv_a(i)-Thv_s(i))/Thv_s(i))
     end do
 
-    ! Calcualte a bulk Richardson number and determine 
+    ! Calcualte a bulk Richardson number and determine
     ! depths of bounddary/surface layers.
     !----------------------------------------------------
     do k = 1,pver
@@ -798,7 +800,7 @@ contains
       ! surface layer height is a fixed fraction of the PBL
       ! determine the corresponding level index and Rf value
       !-----------------------------------------------------
-      Z_sfc(i) = Fb*Z_pbl(i)   
+      Z_sfc(i) = Fb*Z_pbl(i)
       K_sfc(i) = pver
       do k = (pver-1),1,-1
         if(Zm(i,k) > Z_sfc(i)) then
@@ -843,7 +845,7 @@ contains
 
     ! The Same coefs used for momentum
     !-----------------------------------
-    Km(:,:)   = Ke(:,:)     
+    Km(:,:)   = Ke(:,:)
     Km_pbl(:) = Ke_pbl(:)
 
     ! Compute downward values for the implicit PBL scheme
@@ -874,8 +876,8 @@ contains
       Ae(:,k) = MU(:,k)*NUe(:,k+1)
       Ce(:,k) = MU(:,k)*NUe(:,k  )
     end do
-    Bm(:,:) = 1._r8 - Am(:,:) - Cm(:,:) 
-    Be(:,:) = 1._r8 - Ae(:,:) - Ce(:,:) 
+    Bm(:,:) = 1._r8 - Am(:,:) - Cm(:,:)
+    Be(:,:) = 1._r8 - Ae(:,:) - Ce(:,:)
 
     FLu(:,1) = 0._r8
     FLv(:,1) = 0._r8
@@ -897,7 +899,7 @@ contains
     Ev(:,pver) = Sv(:,pver) + MU(:,pver)*FLv(:,pver)
     Eq(:,pver) = Sq(:,pver) + MU(:,pver)*FLq(:,pver)
     Et(:,pver) = St(:,pver) + MU(:,pver)*FLt(:,pver)
-    
+
     Eval_m(:,1) = -Am(:,1)/Bm(:,1)
     Eval_e(:,1) = -Ae(:,1)/Be(:,1)
     Fval_u(:,1) =  Eu(:,1)/Bm(:,1)
@@ -936,7 +938,7 @@ contains
   !============================================================================
   ! <SHARE> flux calculation():
   !
-  !     Required Values: 
+  !     Required Values:
   !       Passed from <PHYSICS>:
   !           T(:,pver),Q(:,pver),U(:,pver),V(:,pver),Cdrag(:),Pmid(:,pver)
   !           MU(:,pver),dFa_dTa(:),dFa_dQa(:),dFa_dUa(:),dFa_dVa(:)
@@ -953,10 +955,10 @@ contains
       Th_s(i) = Tsfc(i)     *((ps0/Psfc  (i)  )**cappa)
       rho (i) = pmid (i,pver)/(rair*Tv(i,pver))
 
-      Ft     (i) =  rho(i)*Cdrag(i)*Ws_a(i)*(Th_s (i) - Th_a(i)) 
-      Fq     (i) =  rho(i)*Cdrag(i)*Ws_a(i)*(Qsfc(i) - Q(i,pver)) 
-      Fu     (i) = -rho(i)*Cdrag(i)*Ws_a(i)*U(i,pver) 
-      Fv     (i) = -rho(i)*Cdrag(i)*Ws_a(i)*V(i,pver) 
+      Ft     (i) =  rho(i)*Cdrag(i)*Ws_a(i)*(Th_s (i) - Th_a(i))
+      Fq     (i) =  rho(i)*Cdrag(i)*Ws_a(i)*(Qsfc(i) - Q(i,pver))
+      Fu     (i) = -rho(i)*Cdrag(i)*Ws_a(i)*U(i,pver)
+      Fv     (i) = -rho(i)*Cdrag(i)*Ws_a(i)*V(i,pver)
       Fup    (i) =  Boltz*Tsfc(i)**4
 
       dFt_dTa(i) = -rho(i)*Cdrag(i)*Ws_a(i)*((ps0/pmid(i,pver))**cappa)
@@ -995,21 +997,21 @@ contains
   !============================================================================
   ! <DOCN> surface calculation():
   !
-  !     Required Values: 
+  !     Required Values:
   !       Passed from <SHARE>:
   !           Fup(:),Ft(:),Fq(:)
   !           dFup_dTs(:),dFt_dTs(:),dFq_dTs(:)
   !           Fsw(:)
   !       Passed from <PHYSICS>:
   !           Fdn(:)
-  !      
+  !
   !============================================================================
 
     ! Update surface values
     !-----------------------
     Tsfc_bc(:) = Tsfc(:)
 
-    Flux (:) = (dtime/C_ocn)*(Fdn(:) -     Fup(:) +      Fsw(:)  & 
+    Flux (:) = (dtime/C_ocn)*(Fdn(:) -     Fup(:) +      Fsw(:)  &
                                      -cpair*Ft(:) -latvap*Fq(:)  )
     dFlux(:) = (dtime/C_ocn)*(-dFup_dTs(:) -cpair*dFt_dTs(:) -latvap*dFq_dTs(:))
     Tsfc (:) = Tsfc(:) + (Flux(:)/(1._r8-dFlux(:)))
@@ -1019,7 +1021,7 @@ contains
   !============================================================================
   ! <PHYSICS> tphysac():
   !
-  !     Required Values: 
+  !     Required Values:
   !       Passed from <SHARE>:
   !           FN_t(:),FN_q(:),FN_u(:),FN_v(:)
   !           EN_t(:),EN_q(:),dTs(:)
@@ -1068,10 +1070,10 @@ contains
                                Psfc, Tsfc, Qsfc, T, U, V, Q,  Fsw, Fdn,         &
                                Cdrag, Km, Ke, VSE, Z_pbl, Rf, dQa, dTa, dUa, dVa)
     !
-    ! frierson_pbl_USER: This routine is a stub which users can use 
+    ! frierson_pbl_USER: This routine is a stub which users can use
     !                    to develop and test their own PBL scheme
     !==========================================================================
-    ! 
+    !
     ! Passed Variables
     !------------------
     integer ,intent(in)   :: ncol                ! Number of columns
@@ -1083,7 +1085,7 @@ contains
     real(r8),intent(in)   :: Zm   (ncol,pver)    ! Height at model levels.
     real(r8),intent(in)   :: Zi   (ncol,pver)    ! Height at interface levels.
     real(r8),intent(in)   :: Psfc (ncol)         ! Surface Pressure.
-    real(r8),intent(inout):: Tsfc (ncol)         ! SST temperature K 
+    real(r8),intent(inout):: Tsfc (ncol)         ! SST temperature K
     real(r8),intent(inout):: Qsfc (ncol)         ! sea surface water vapor (kg/kg)
     real(r8),intent(inout):: T    (ncol,pver)    ! ATM Temperature values.
     real(r8),intent(inout):: U    (ncol,pver)    ! ATM Zonal Wind values.
@@ -1092,8 +1094,8 @@ contains
     real(r8),intent(in)   :: Fdn  (ncol)         ! Downward LW flux at surface
     real(r8),intent(in)   :: Fsw  (ncol)         ! Net SW flux at surface from gray radiation
     real(r8),intent(out)  :: Cdrag(ncol)         ! Surface drage coef.
-    real(r8),intent(out)  :: Km   (ncol,pver+1)  ! Eddy diffusivity for PBL 
-    real(r8),intent(out)  :: Ke   (ncol,pver+1)  ! Eddy diffusivity for PBL 
+    real(r8),intent(out)  :: Km   (ncol,pver+1)  ! Eddy diffusivity for PBL
+    real(r8),intent(out)  :: Ke   (ncol,pver+1)  ! Eddy diffusivity for PBL
     real(r8),intent(out)  :: VSE  (ncol,pver)    ! Virtual-Dry Static energy.(huh?)
     real(r8),intent(out)  :: Z_pbl(ncol)         ! Height of PBL layer.
     real(r8),intent(out)  :: Rf   (ncol,pver)
@@ -1119,11 +1121,11 @@ contains
   subroutine frierson_radiation(ncol,pver,dtime,clat,pint,pmid,  &
                                 Psfc,Tsfc,Qsfc,T,qv,dtdt_rad, &
                                 Fsolar,Fup_s,Fdown_s)
-    ! 
-    ! The gray radiation parameterization based on Frierson, et al. 2006. 
+    !
+    ! The gray radiation parameterization based on Frierson, et al. 2006.
     !
     ! frierson_radiation: This is an implementation of the gray radiation
-    !                     scheme user in the Frierson model. 
+    !                     scheme user in the Frierson model.
     !==========================================================================
     !
     ! Passed Variables
@@ -1134,22 +1136,22 @@ contains
     real(r8),intent(in)   :: clat    (ncol)        ! latitude
     real(r8),intent(in)   :: pint    (ncol,pver+1) ! mid-point pressure (Pa)
     real(r8),intent(in)   :: pmid    (ncol,pver)   ! mid-point pressure (Pa)
-    real(r8),intent(in)   :: Psfc    (ncol)        ! surface pressure 
+    real(r8),intent(in)   :: Psfc    (ncol)        ! surface pressure
     real(r8),intent(in)   :: Tsfc    (ncol)        ! surface temperature (K)
-    real(r8),intent(in)   :: Qsfc    (ncol)   
+    real(r8),intent(in)   :: Qsfc    (ncol)
     real(r8),intent(inout):: T       (ncol,pver)   ! temperature (K)
     real(r8),intent(in)   :: qv      (ncol,pver)   ! Q (kg/kg)
     real(r8),intent(out)  :: dtdt_rad(ncol,pver)   ! temperature tendency in K/s from relaxation
-    real(r8),intent(out)  :: Fsolar  (ncol)        ! 
-    real(r8),intent(out)  :: Fup_s   (ncol)        ! 
-    real(r8),intent(out)  :: Fdown_s (ncol)        ! 
+    real(r8),intent(out)  :: Fsolar  (ncol)        !
+    real(r8),intent(out)  :: Fup_s   (ncol)        !
+    real(r8),intent(out)  :: Fdown_s (ncol)        !
     !
     ! Local Values
     !-------------
     real(r8):: sinsq  (ncol)    ! sinlat**2
-    real(r8):: Tv_srf (ncol)   
-    real(r8):: Tv     (ncol,pver  )   
-    real(r8):: Zm     (ncol,pver  )   
+    real(r8):: Tv_srf (ncol)
+    real(r8):: Tv     (ncol,pver  )
+    real(r8):: Zm     (ncol,pver  )
     real(r8):: Zscl   (ncol)
     real(r8):: Tbar   (ncol)
     real(r8):: Tdif   (ncol)
@@ -1172,7 +1174,7 @@ contains
       Tv(:,k) = T(:,k)*(1._r8+zvir*qv(:,k))
     end do
 
-    ! Calc Geopotential Heights at model interface 
+    ! Calc Geopotential Heights at model interface
     ! levels and at model layer levels
     !----------------------------------------------
     Zi(:,pver+1) = 0._r8
@@ -1250,8 +1252,8 @@ contains
   subroutine frierson_radiation_USER(ncol,pver,dtime,clat,pint,pmid,  &
                                      Psfc,Tsfc,Qsfc,T,qv,dtdt_rad, &
                                      Fsolar,Fup_s,Fdown_s)
-    ! 
-    ! frierson_radiation_USER: This routine is a stub which users can use 
+    !
+    ! frierson_radiation_USER: This routine is a stub which users can use
     !                          to develop and test their own radiation scheme
     !==========================================================================
     !
@@ -1263,15 +1265,15 @@ contains
     real(r8),intent(in)   :: clat    (ncol)        ! latitude
     real(r8),intent(in)   :: pint    (ncol,pver+1) ! mid-point pressure (Pa)
     real(r8),intent(in)   :: pmid    (ncol,pver)   ! mid-point pressure (Pa)
-    real(r8),intent(in)   :: Psfc    (ncol)        ! surface pressure 
+    real(r8),intent(in)   :: Psfc    (ncol)        ! surface pressure
     real(r8),intent(in)   :: Tsfc    (ncol)        ! surface temperature (K)
-    real(r8),intent(in)   :: Qsfc    (ncol)   
+    real(r8),intent(in)   :: Qsfc    (ncol)
     real(r8),intent(inout):: T       (ncol,pver)   ! temperature (K)
     real(r8),intent(in)   :: qv      (ncol,pver)   ! Q (kg/kg)
     real(r8),intent(out)  :: dtdt_rad(ncol,pver)   ! temperature tendency in K/s from relaxation
-    real(r8),intent(out)  :: Fsolar  (ncol)        ! 
-    real(r8),intent(out)  :: Fup_s   (ncol)        ! 
-    real(r8),intent(out)  :: Fdown_s (ncol)        ! 
+    real(r8),intent(out)  :: Fsolar  (ncol)        !
+    real(r8),intent(out)  :: Fup_s   (ncol)        !
+    real(r8),intent(out)  :: Fdown_s (ncol)        !
     !
     ! Local Values
     !-------------
