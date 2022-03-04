@@ -8,10 +8,10 @@ module nlte_lw
   use ppgrid,             only: pcols, pver
   use pmgrid,             only: plev
   use rad_constituents,   only: rad_cnst_get_gas, rad_cnst_get_info
- 
+
   use nlte_fomichev,      only: nlte_fomichev_init, nlte_fomichev_calc, nocooling, o3pcooling
   use nlte_aliarms,       only: nlte_aliarms_init, nlte_aliarms_calc
- 
+
   use waccm_forcing,      only: waccm_forcing_init, waccm_forcing_adv,  get_cnst
   use cam_logfile,        only: iulog
   use cam_abortutils,     only: endrun
@@ -147,7 +147,7 @@ contains
           if (psh(k) >= pshmx) nbot_mlt = k
           if (psh(k) >= pshmn) ntop_cam = k+1
        end do
-       
+
        wt_o3_mrg(:) = 0._r8
        do k = nbot_mlt+1, ntop_cam-1
           wt_o3_mrg(k) = 1._r8 - tanh( (psh(k)-pshmn)/pshdd )
@@ -204,13 +204,13 @@ contains
 
        if (nlte_use_mo) then
           write(iulog,*) 'NLTE constituents are obtained from the MOZART chemistry module'
-       else 
+       else
           write(iulog,*) 'NLTE constituents are obtained from boundary dataset'
        endif
     end if
 
 ! add to masterfield list
-    if (nlte_use_aliarms) then 
+    if (nlte_use_aliarms) then
        call addfld ('qrlaliarms',(/ 'lev' /), 'A','K/s','qrlaliarms')
     end if
 
@@ -245,13 +245,13 @@ contains
 !
 !------------------------------------------------------------------------
 
-    type(physics_state), intent(in):: state(begchunk:endchunk)                 
+    type(physics_state), intent(in):: state(begchunk:endchunk)
     type(physics_buffer_desc), pointer :: pbuf2d(:,:)
 
 
 
 !---------------------------Local workspace--------------------------------------
-    
+
     if (use_waccm_forcing) then
        call waccm_forcing_adv (state, pbuf2d)
     endif
@@ -274,7 +274,7 @@ contains
 
 ! Arguments
     type(physics_state), target, intent(in)  :: state   ! Physics state variables
-    
+
     type(physics_buffer_desc), pointer :: pbuf(:)
 
     real(r8), intent(out) :: qrlf(pcols,pver)   ! nlte longwave heating rate
@@ -293,13 +293,13 @@ contains
 
     real(r8) :: qrlfomichev(pcols,pver) ! Fomichev cooling rate
 
-    real(r8), pointer, dimension(:,:) :: xco2mmr  ! CO2 mmr 
-    real(r8), pointer, dimension(:,:) :: xommr    ! O   mmr 
-    real(r8), pointer, dimension(:,:) :: xo2mmr   ! O2  mmr 
-    real(r8), pointer, dimension(:,:) :: xo3mmr   ! O3  mmr 
-    real(r8), pointer, dimension(:,:) :: xhmmr    ! H  mmr  
+    real(r8), pointer, dimension(:,:) :: xco2mmr  ! CO2 mmr
+    real(r8), pointer, dimension(:,:) :: xommr    ! O   mmr
+    real(r8), pointer, dimension(:,:) :: xo2mmr   ! O2  mmr
+    real(r8), pointer, dimension(:,:) :: xo3mmr   ! O3  mmr
+    real(r8), pointer, dimension(:,:) :: xhmmr    ! H  mmr
     real(r8), pointer, dimension(:,:) :: xnommr   ! NO mmr
-    real(r8), pointer, dimension(:,:) :: xn2mmr   ! N2  mmr 
+    real(r8), pointer, dimension(:,:) :: xn2mmr   ! N2  mmr
 
     ! VMR for ALI-ARMS
     real(r8), allocatable, dimension(:,:) :: xco2VMR  ! CO2 VMR
@@ -308,12 +308,12 @@ contains
     real(r8), allocatable, dimension(:,:) :: xn2VMR   ! N2  VMR
     real(r8), allocatable, dimension(:,:) :: xo3VMR   ! O3  VMR
 
-    real(r8), target :: n2mmr (pcols,pver)   ! N2  mmr 
+    real(r8), target :: n2mmr (pcols,pver)   ! N2  mmr
     real(r8), target :: o3mrg(pcols,pver)    ! merged O3
     real(r8), pointer, dimension(:,:) :: to3mmr  ! O3 mmr   (tgcm)
 
     integer :: i,j,k, ierr
-    
+
     character (len=80) :: errstring
     character (len=7) :: subname='nlte_lw'
 
@@ -335,11 +335,11 @@ contains
     if (nlte_use_mo) then
 
 ! Get relevant constituents from the chemistry module
-       xco2mmr => state%q(:,:,ico2) 
-       xommr   => state%q(:,:,io1) 
-       xo2mmr  => state%q(:,:,io2) 
-       xhmmr   => state%q(:,:,ih) 
-       xnommr  => state%q(:,:,ino) 
+       xco2mmr => state%q(:,:,ico2)
+       xommr   => state%q(:,:,io1)
+       xo2mmr  => state%q(:,:,io2)
+       xhmmr   => state%q(:,:,ih)
+       xnommr  => state%q(:,:,ino)
 
     else
 
@@ -352,7 +352,7 @@ contains
     enddo
     xn2mmr  => n2mmr(:,:)
 
-    
+
     ! Create the VMR arrays for ALI-ARMS
     if (nlte_use_aliarms) then
 
@@ -404,7 +404,7 @@ contains
     call nlte_fomichev_calc (lchnk,ncol,state%pmid,state%pint,state%t, &
          xo2mmr,xommr,xo3mmr,xn2mmr,xco2mmr,qrlfomichev,co2cool,o3cool,c2scool)
     call t_stopf('nlte_fomichev_calc')
-         
+
 
     call t_startf('nlte_aliarms_calc')
     if (nlte_use_aliarms) then
@@ -424,9 +424,9 @@ contains
 
           qrlaliarms(:ncol,:) = qrlaliarms(:ncol,:) * cpairv(:ncol,:,lchnk)
 
-!!! CAC NOTE - PROBABABLY NEED TO PICK A MORE REALISTIC NUMBER THAN 1
+          ! Check qrlaliarms for any way out-of-bounds values
           if (any(qrlaliarms(:,:) > 1.0_r8)) then
-             write(errstring,*) 'nlte_lw: Invalid value in qrlaliarms for chunk', lchnk, 'and column',ncol
+             write(errstring,*) 'nlte_lw: Cooling rate (qrlaliarms) exceeds 1K/s for chunk', lchnk, 'and column',ncol
              call endrun (errstring)
           end if
           aliarms_count(:) = 1
@@ -447,17 +447,17 @@ contains
 
     call t_stopf('nlte_aliarms_calc')
 
-! do NO cooling 
+! do NO cooling
     call nocooling (ncol, state%t, state%pmid, xnommr,xommr,xo2mmr,xo3mmr,xn2mmr,nocool)
 
-! do O3P cooling 
+! do O3P cooling
     call o3pcooling (ncol, state%t, xommr, o3pcool)
 
     do k = 1,pver
        qrlf(:ncol,k) = qrlf(:ncol,k) + nocool(:ncol,k) + o3pcool(:ncol,k)
     end do
 
-    if (nlte_use_aliarms) then 
+    if (nlte_use_aliarms) then
        qout(:ncol,:) = qrlaliarms(:ncol,:)
        call outfld ('qrlaliarms'    , qout, pcols, lchnk)
     end if
