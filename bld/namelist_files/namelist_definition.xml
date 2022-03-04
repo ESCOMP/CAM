@@ -7092,13 +7092,13 @@ Default: FALSE
 
 <entry id="nlte_use_aliarms" type="logical" category="waccm_phys"
        group="radheat_nl" valid_values="" >
-If TRUE, then use the ALI-ARMS scheme (NOTE---Needs additional details)
+If TRUE, then use the ALI-ARMS scheme (an alternative method of computing non-LTE heating rates in the upper atmosphere)
 Default: FALSE
 </entry>
 
 <entry id="nlte_aliarms_every_x" type="integer" category="waccm_phys"
        group="radheat_nl" valid_values="" >
-Call ALI-ARMS every X times
+Call ALI-ARMS every X timesteps
 Default: 1
 </entry>
 

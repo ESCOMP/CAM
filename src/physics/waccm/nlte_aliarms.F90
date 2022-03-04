@@ -3,9 +3,8 @@ module nlte_aliarms
 !
 ! provides calculation of non-LTE heating rates by ALI-ARMS non-LTE code
 !
-  use ppgrid,             only: pcols, pver, pverp
+  use ppgrid,             only: pcols, pver
   use shr_kind_mod,       only: r8 => shr_kind_r8
-  use cam_abortutils,     only: endrun
   use cam_logfile,        only: iulog
   use spmd_utils,         only: masterproc
 
