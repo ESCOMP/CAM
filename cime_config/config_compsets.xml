@@ -513,13 +513,7 @@
   <!-- Note: GEOS-Chem compsets require NTHRDS=1 -->
   <!--       To do so, we enforce NTHRDS for all compset that contain "GC" -->
   <!--       Thus, make sure that all GEOS-Chem compset contain "GC" -->
-  <!--       We base what we did by copying what is done for SPCAMM -->
   <!--       Make sure you check config_pes.xml as well -->
-
-  <compset>
-    <alias>FSPCAMM_GC</alias>
-    <lname>2000_CAM%SPCAMMGC_CLM50%SP_CICE%PRES_DOCN%DOM_RTM_SGLC_SWAV</lname>
-  </compset>
 
   <compset>
     <alias>FC2000climo_GC</alias>
