@@ -45,6 +45,7 @@ def buildnml(case, caseroot, compname):
     RUN_REFCASE         = case.get_value("RUN_REFCASE")
     RUN_REFDATE         = case.get_value("RUN_REFDATE")
     RUN_REFTOD          = case.get_value("RUN_REFTOD")
+    COMP_INTERFACE      = case.get_value("COMP_INTERFACE")
 
     testsrc = os.path.join(srcroot, "components", "cam")
     if os.path.exists(testsrc):
@@ -167,6 +168,9 @@ def buildnml(case, caseroot, compname):
 
         buildnl_opts += ["-namelist",
                          '" &atmexp ' + CAM_NAMELIST_OPTS + '/" ']
+
+        if COMP_INTERFACE == 'nuopc':
+            buildnl_opts.append("-cmeps")
 
         cmd = os.path.join(srcroot,  "bld", "build-namelist")
         cmd += " " + " ".join(buildnl_opts)

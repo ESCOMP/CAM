@@ -446,6 +446,10 @@
     <lname>HIST_CAM60%WCTS%SDYN_CLM50%SP_CICE%PRES_DOCN%DOM_MOSART_SGLC_SWAV</lname>
   </compset>
 
+  <compset>
+    <alias>FW4ma2000</alias>
+    <lname>2000_CAM40%WCCM_CLM50%SP_CICE%PRES_DOCN%DOM_RTM_SGLC_SWAV</lname>
+  </compset>
 
   <!-- ****************************** -->
   <!-- WACCM untested compsets -->

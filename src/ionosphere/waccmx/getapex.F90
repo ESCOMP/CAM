@@ -8,6 +8,7 @@ module getapex
    use cam_abortutils, only: endrun
    use edyn_geogrid, only: nlon,nlonp1,jspole,jnpole
    use edyn_maggrid, only: nmlonp1,nmlat,ylatm,ylonm
+   use infnan,       only: nan, assignment(=)
 
    implicit none
    save
@@ -92,8 +93,8 @@ contains
       call alloc_apex
       call alloc_magfield
 
-      dddarr = 0._r8
-      dvec = 0._r8
+      dddarr = nan
+      dvec = nan
       rekm = re_dyn*cm2km  ! earth radius (km)
       h0km = h0*cm2km
       alt  = hs*cm2km  ! modified apex reference altitude (km)
