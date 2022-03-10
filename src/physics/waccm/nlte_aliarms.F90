@@ -93,24 +93,24 @@ contains
 
   do icol=1,ncol
 
-      ali_cool(:) = 0.0_r8
-      zkm(:)      = 0.0_r8
-      tn(:)       = 0.0_r8
-      co2_vmr(:)  = 0.0_r8
-      o_vmr(:)    = 0.0_r8
-      n2_vmr(:)   = 0.0_r8
-      o2_vmr(:)   = 0.0_r8
+      ali_cool(:) = 0.0_c_float
+      zkm(:)      = 0.0_c_float
+      tn(:)       = 0.0_c_float
+      co2_vmr(:)  = 0.0_c_float
+      o_vmr(:)    = 0.0_c_float
+      n2_vmr(:)   = 0.0_c_float
+      o2_vmr(:)   = 0.0_c_float
 
-      p = pmid(icol,:)*1.0e-5_r8 ! conver pmid in Pa to bars
+      p = pmid(icol,:)*1.0e-5_c_float ! convert pmid in Pa to bars
       pver_c=0
       do iver = 1,pver
-        if (p(iver) .lt. max_pressure_aliarms) then
+        if (p(iver) < max_pressure_aliarms) then
           pver_c=pver_c+1
         else
           exit  ! Have gone past the maximum pressure
         end if
       end do
-      zkm(:pver_c) = state_zm(icol,:pver_c)*1.e-3_r8
+      zkm(:pver_c) = state_zm(icol,:pver_c)*1.e-3_c_float
       tn(:pver_c) = t(icol,:pver_c)
 
       co2_vmr(:pver_c) = xco2(icol,:pver_c)

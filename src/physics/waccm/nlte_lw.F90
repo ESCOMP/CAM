@@ -193,7 +193,9 @@ contains
     call nlte_fomichev_init (co2_mw, n2_mw, o1_mw, o2_mw, o3_mw, no_mw, nlte_limit_co2)
 
 ! Initialize ALI-ARMS parameterization
-    if (nlte_use_aliarms) call nlte_aliarms_init (max_pressure_lw)
+    if (nlte_use_aliarms) then
+       call nlte_aliarms_init (max_pressure_lw)
+    end if
 
 ! Initialize waccm forcing data
     if (use_waccm_forcing) then
@@ -283,15 +285,15 @@ contains
     integer :: lchnk              ! chunk identifier
     integer :: ncol               ! no. of columns in chunk
 
-    real(r8) :: nocool (pcols,pver)  ! NO cooling
-    real(r8) :: o3pcool (pcols,pver) ! O3P cooling
+    real(r8) :: nocool (pcols,pver)  ! NO cooling (K/s)
+    real(r8) :: o3pcool (pcols,pver) ! O3P cooling (K/s)
     real(r8) :: qout (pcols,pver)    ! temp for outfld
-    real(r8) :: co2cool(pcols,pver), o3cool(pcols,pver), c2scool(pcols,pver)
+    real(r8) :: co2cool(pcols,pver), o3cool(pcols,pver), c2scool(pcols,pver) ! (K/s)
 
-    real(r8), pointer :: qrlaliarms(:,:) ! ALI-ARMS NLTE CO2 cooling rate
+    real(r8), pointer :: qrlaliarms(:,:) ! ALI-ARMS NLTE CO2 cooling rate (K/s)
     integer, pointer :: aliarms_count(:)! Counter for optional skipping of ALI-ARMS
 
-    real(r8) :: qrlfomichev(pcols,pver) ! Fomichev cooling rate
+    real(r8) :: qrlfomichev(pcols,pver) ! Fomichev cooling rate ! (K/s)
 
     real(r8), pointer, dimension(:,:) :: xco2mmr  ! CO2 mmr
     real(r8), pointer, dimension(:,:) :: xommr    ! O   mmr
@@ -314,7 +316,7 @@ contains
 
     integer :: i,j,k, ierr
 
-    character (len=80) :: errstring
+    character (len=160) :: errstring
     character (len=7) :: subname='nlte_lw'
 
 !------------------------------------------------------------------------
@@ -406,27 +408,27 @@ contains
     call t_stopf('nlte_fomichev_calc')
 
 
+ !  Call the optional ALI-ARMS.  Note that this does not replace the fomichev
+ !  call as the other individual cooling rates from fomichev still need to be calculated
+
     call t_startf('nlte_aliarms_calc')
     if (nlte_use_aliarms) then
        ! Only need to test the first aliarms_count as all pcols of them move together
        if (aliarms_count(1) == nlte_aliarms_every_X) then
-          qrlaliarms(:,:) = 0._r8
           call nlte_aliarms_calc (lchnk,ncol,state%zm, state%pmid,state%t, &
                                 xo2VMR,xoVMR,xn2VMR,xco2VMR,qrlaliarms)
           do j=1,pver
              do i=1,ncol
                 if (is_nan(qrlaliarms(i,j))) then
-                   write(errstring,*) 'nlte_lw: Nan in qrlaliarms for chunk', lchnk, 'and column',ncol
+                   write(errstring,*) 'nlte_lw: Nan in qrlaliarms for chunk', lchnk
                    call endrun (errstring)
                 end if
              end do
           end do
 
-          qrlaliarms(:ncol,:) = qrlaliarms(:ncol,:) * cpairv(:ncol,:,lchnk)
-
           ! Check qrlaliarms for any way out-of-bounds values
-          if (any(qrlaliarms(:,:) > 1.0_r8)) then
-             write(errstring,*) 'nlte_lw: Cooling rate (qrlaliarms) exceeds 1K/s for chunk', lchnk, 'and column',ncol
+          if (any(qrlaliarms(:ncol,:) > 0.2_r8) .or. any(qrlaliarms(:ncol,:)<-1.0_r8)) then
+             write(errstring,*) 'nlte_lw: Cooling rate (qrlaliarms) is greater than .2 or less than -1 K/s for chunk ', lchnk
              call endrun (errstring)
           end if
           aliarms_count(:) = 1
@@ -435,8 +437,7 @@ contains
        end if
 
        ! Apply the ALI-ARMS heating rate to the qrlf summation
-       qrlf(:ncol,:) = 0._r8
-       qrlf(:ncol,:) = o3cool(:ncol,:) + qrlaliarms(:ncol,:)
+       qrlf(:ncol,:) = o3cool(:ncol,:) + qrlaliarms(:ncol,:) * cpairv(:ncol,:,lchnk)
 
     else
 
