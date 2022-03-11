@@ -38,7 +38,7 @@ module nlte_lw
 
   logical :: nlte_use_aliarms
   integer :: nlte_aliarms_every_X
-  integer, allocatable :: aliarms_count(:)    ! Counter for optional skipping of ALI-ARMS
+  integer :: aliarms_count    ! Counter for optional skipping of ALI-ARMS
 
   logical :: use_data_o3
   logical :: use_waccm_forcing = .false.
@@ -119,13 +119,8 @@ contains
     nlte_use_aliarms     = nlte_use_aliarms_in
     nlte_aliarms_every_X = nlte_aliarms_every_X_in
 
-    ! Force the aliarms to be called on the first timestep by setting it to the value of nlte_aliarms_every_X
-    allocate(aliarms_count(begchunk:endchunk), stat=ierr)
-    if (ierr /= 0) then
-       call endrun(subname // ': Allocate error for xo2VMR')
-    end if
-
-    aliarms_count(:) = nlte_aliarms_every_X
+    ! Force the aliarms to be called on the first timestep by setting it to the value of nlte_aliarms_every_X - 1
+    aliarms_count = nlte_aliarms_every_X - 1
 
     ! ask rad_constituents module whether the O3 used in the climate
     ! calculation is from data
@@ -260,6 +255,8 @@ contains
     if (use_waccm_forcing) then
        call waccm_forcing_adv (state, pbuf2d)
     endif
+
+    aliarms_count = aliarms_count + 1
 
     return
   end subroutine nlte_timestep_init
@@ -405,7 +402,7 @@ contains
     call t_startf('nlte_aliarms_calc')
     if (nlte_use_aliarms) then
        ! Only run ALI-ARMS every nlte_aliarms_every_X timesteps
-       if (aliarms_count(lchnk) == nlte_aliarms_every_X) then
+       if (MOD(aliarms_count, nlte_aliarms_every_X) == 0) then
           call nlte_aliarms_calc (lchnk,ncol,state%zm, state%pmid,state%t, &
                                 xo2VMR,xoVMR,xn2VMR,xco2VMR,qrlaliarms)
           do j=1,pver
@@ -422,9 +419,6 @@ contains
              write(errstring,*) 'nlte_lw: Cooling rate (qrlaliarms) is greater than .2 or less than -1 K/s for chunk ', lchnk
              call endrun (errstring)
           end if
-          aliarms_count(lchnk) = 1
-       else
-          aliarms_count(lchnk) = aliarms_count(lchnk)+1
        end if
 
        ! Apply the ALI-ARMS heating rate to the qrlf summation

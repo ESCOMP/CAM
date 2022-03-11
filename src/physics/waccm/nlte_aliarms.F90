@@ -120,7 +120,7 @@ contains
 
       call ali(zkm, p, tn, co2_vmr, o_vmr, n2_vmr, o2_vmr, ali_cool, pver_c)
 
-      cool(icol,:) = ali_cool(:)
+      cool(icol,:pver_c) = ali_cool(:pver_c)
 
   enddo
 
