@@ -212,7 +212,6 @@ contains
     use State_Chm_Mod,       only : Init_State_Chm, Cleanup_State_Chm
     use State_Chm_Mod,       only : Ind_
     use Input_Opt_Mod,       only : Set_Input_Opt,  Cleanup_Input_Opt
-    use CMN_SIZE_Mod,        only : Init_CMN_SIZE
 
     use mo_sim_dat,          only : set_sim_dat
     use mo_chem_utls,        only : get_spc_ndx
@@ -291,7 +290,6 @@ contains
     ! Options needed by Init_State_Chm
     IO%ITS_A_FULLCHEM_SIM  = .True.
     IO%LLinoz              = .True.
-    IO%LUCX                = .True.
     IO%LPRT                = .False.
     IO%N_Advect            = nTracers
     DO I = 1, nTracers
@@ -325,9 +323,6 @@ contains
         ErrMsg = 'Error in GC_Init_Grid"!'
         CALL Error_Stop( ErrMsg, ThisLoc )
     ENDIF
-
-    CALL Init_CMN_SIZE( Input_Opt = IO,  &
-                        RC        = RC  )
 
     IF ( RC /= GC_SUCCESS ) THEN
         ErrMsg = 'Error encountered within call to "Init_CMN_SIZE"!'
@@ -1002,7 +997,7 @@ contains
     use Pressure_Mod,          only : Accept_External_ApBp
     use Chemistry_Mod,         only : Init_Chemistry
     use Ucx_Mod,               only : Init_Ucx
-    use Strat_chem_Mod,        only : Init_Strat_Chem
+    use Linear_Chem_Mod,       only : Init_Linear_Chem
     use isorropiaII_Mod,       only : Init_IsorropiaII
     use Input_Mod,             only : Read_Input_File
     use Input_Mod,             only : Validate_Directories
@@ -1207,11 +1202,7 @@ contains
     ! Define more variables for maxGrid
     maxGrid%MaxTropLev  = nTrop
     maxGrid%MaxStratLev = nStrat
-    IF ( Input_Opt%LUCX ) THEN
-       maxGrid%MaxChemLev = maxGrid%MaxStratLev
-    ELSE
-       maxGrid%MaxChemLev = maxGrid%MaxTropLev
-    ENDIF
+    maxGrid%MaxChemLev = maxGrid%MaxStratLev
 
     DO I = BEGCHUNK, ENDCHUNK
 
@@ -1244,11 +1235,7 @@ contains
        State_Grid(I)%MaxStratLev = nStrat
 
        ! Set maximum number of levels in the chemistry grid
-       IF ( Input_Opt%LUCX ) THEN
-          State_Grid(I)%MaxChemLev = State_Grid(I)%MaxStratLev
-       ELSE
-          State_Grid(I)%MaxChemLev = State_Grid(I)%MaxTropLev
-       ENDIF
+       State_Grid(I)%MaxChemLev = State_Grid(I)%MaxStratLev
 
     ENDDO
 
@@ -1617,23 +1604,22 @@ contains
        ENDIF
     ENDIF
 
-    IF ( Input_Opt%LChem .AND. &
-         Input_Opt%LUCX ) THEN
+    IF ( Input_Opt%LChem ) THEN
        CALL Init_UCX( Input_Opt  = Input_Opt,            &
                       State_Chm  = State_Chm(BEGCHUNK),  &
                       State_Diag = State_Diag(BEGCHUNK), &
                       State_Grid = maxGrid              )
     ENDIF
 
-    IF ( Input_Opt%LSCHEM ) THEN
-        CALL Init_Strat_Chem( Input_Opt  = Input_Opt,           &
-                              State_Chm  = State_Chm(BEGCHUNK), &
-                              State_Met  = State_Met(BEGCHUNK), &
-                              State_Grid = maxGrid,             &
-                              RC         = RC                  )
+    IF ( Input_Opt%Linear_Chem ) THEN
+        CALL Init_Linear_Chem( Input_Opt  = Input_Opt,           &
+                               State_Chm  = State_Chm(BEGCHUNK), &
+                               State_Met  = State_Met(BEGCHUNK), &
+                               State_Grid = maxGrid,             &
+                               RC         = RC                  )
 
         IF ( RC /= GC_SUCCESS ) THEN
-           ErrMsg = 'Error encountered in "Init_Strat_Chem"!'
+           ErrMsg = 'Error encountered in "Init_Linear_Chem"!'
            CALL Error_Stop( ErrMsg, ThisLoc )
         ENDIF
     ENDIF
@@ -1877,13 +1863,13 @@ contains
     use PBL_Mix_Mod,         only : Compute_PBL_Height
     use UCX_Mod,             only : Set_H2O_Trac
     use CMN_FJX_MOD,         only : ZPJ
-    use FAST_JX_MOD,         only : RXN_NO2, RXN_O3_1, RXN_O3_2a
+    use FAST_JX_MOD,         only : RXN_NO2, RXN_O3_1
     use State_Diag_Mod,      only : get_TagInfo
     use Unitconv_Mod,        only : Convert_Spc_Units
     use State_Chm_Mod,       only : Ind_
 
-    use Strat_Chem_Mod,      only : Strat_TrID_GC, GC_Bry_TrID, NSCHEM
-    use Strat_Chem_Mod,      only : BrPtrDay, BrPtrNight, PLVEC, STRAT_OH 
+    use Linear_Chem_Mod,     only : TrID_GC, GC_Bry_TrID, NSCHEM
+    use Linear_Chem_Mod,     only : BrPtrDay, BrPtrNight, PLVEC, GMI_OH
 
     use CESMGC_Emissions_Mod,only : CESMGC_Emissions_Calc
     use CESMGC_Diag_Mod,     only : CESMGC_Diag_Calc
@@ -3178,15 +3164,14 @@ contains
     ENDIF
 
     ! SDE 05/28/13: Set H2O to State_Chm tracer if relevant and,
-    ! if LUCX=T and LSETH2O=F and LACTIVEH2O=T, update specific humidity
+    ! if LSETH2O=F and LACTIVEH2O=T, update specific humidity
     ! in the stratosphere
     !
     ! NOTE: Specific humidity may change in SET_H2O_TRAC and
     ! therefore this routine may call AIRQNT again to update
     ! air quantities and tracer concentrations (ewl, 10/28/15)
     IF ( Input_Opt%Its_A_Fullchem_Sim .and. iH2O > 0 ) THEN
-       CALL Set_H2O_Trac( SETSTRAT   = ( ( .not. Input_Opt%LUCX )  &
-                                         .or. Input_Opt%LSETH2O ), &
+       CALL Set_H2O_Trac( SETSTRAT   = Input_Opt%LSETH2O,          &
                           Input_Opt  = Input_Opt,                  &
                           State_Chm  = State_Chm(LCHNK),           &
                           State_Grid = State_Grid(LCHNK),          &
@@ -3263,7 +3248,7 @@ contains
     ! Dimensions : nX, nY
     State_Met(LCHNK)%TO3       (1,:nY) = O3col(:nY)
 
-    IF ( Input_Opt%LSCHEM .AND. &
+    IF ( Input_Opt%Linear_Chem .AND. &
          State_Grid(LCHNK)%MaxChemLev /= State_Grid(LCHNK)%nZ ) THEN
        IF ( iStep == 1 ) THEN
           ALLOCATE( BrPtrDay  ( 6 ), STAT=IERR )
@@ -3320,7 +3305,7 @@ contains
           DO N = 1,NSCHEM
 
              ! Get GEOS-Chem species index
-             M = Strat_TrID_GC(N)
+             M = TrID_GC(N)
 
              ! Skip if species is not defined
              IF ( M <= 0 ) CYCLE
@@ -3333,11 +3318,7 @@ contains
              ! ---------------------------------------------------------------
 
              ! Production rates [v/v/s]
-             IF ( Input_Opt%LUCX ) THEN
-                FieldName = 'GMI_PROD_'//TRIM(SpcName)
-             ELSE
-                FieldName = 'UCX_PROD_'//TRIM(SpcName)
-             ENDIF
+             FieldName = 'GMI_PROD_'//TRIM(SpcName)
 
              ALLOCATE( PLVEC(N)%PROD(1,PCOLS,nZ), STAT=IERR )
              IF ( IERR .NE. 0 ) CALL ENDRUN('Failure while allocating PLVEC%PROD')
@@ -3369,11 +3350,7 @@ contains
              ENDIF
 
              ! Loss frequency [s-1]
-             IF ( Input_Opt%LUCX ) THEN
-                FieldName = 'GMI_LOSS_'//TRIM(SpcName)
-             ELSE
-                FieldName = 'UCX_LOSS_'//TRIM(SpcName)
-             ENDIF
+             FieldName = 'GMI_LOSS_'//TRIM(SpcName)
 
              ! Get pointer from HEMCO
              tmpIdx = pbuf_get_index(FieldName, RC)
@@ -3401,19 +3378,19 @@ contains
 
           ENDDO !N
 
-          ! Get pointer to STRAT_OH
+          ! Get pointer to GMI_OH
 
-          ALLOCATE( STRAT_OH(1,PCOLS,nZ), STAT=IERR )
-          IF ( IERR .NE. 0 ) CALL ENDRUN('Failure while allocating STRAT_OH')
+          ALLOCATE( GMI_OH(1,PCOLS,nZ), STAT=IERR )
+          IF ( IERR .NE. 0 ) CALL ENDRUN('Failure while allocating GMI_OH')
 
           tmpIdx = pbuf_get_index(FieldName, RC)
           IF ( tmpIdx < 0 .or. ( iStep == 1 ) ) THEN
              IF ( rootChunk ) Write(iulog,*) "chem_timestep_tend: Field not found ", TRIM(FieldName)
-             STRAT_OH(1,:nY,nZ:1:-1) = 0.0e+0_f4
+             GMI_OH(1,:nY,nZ:1:-1) = 0.0e+0_f4
           ELSE
              pbuf_chnk => pbuf_get_chunk(hco_pbuf2d, LCHNK)
              CALL pbuf_get_field(pbuf_chnk, tmpIdx, pbuf_ik)
-             STRAT_OH(1,:nY,nZ:1:-1) = REAL(pbuf_ik(:nY,:nZ), f4)
+             GMI_OH(1,:nY,nZ:1:-1) = REAL(pbuf_ik(:nY,:nZ), f4)
              pbuf_chnk => NULL()
              pbuf_ik   => NULL()
           ENDIF
@@ -3749,7 +3726,7 @@ contains
     ENDIF
 
     IF ( Input_Opt%Its_A_Fullchem_Sim .and. iH2O > 0 ) THEN
-       CALL Set_H2O_Trac( SETSTRAT   = (.not. Input_Opt%LUCX), &
+       CALL Set_H2O_Trac( SETSTRAT   = .False.               , &
                           Input_Opt  = Input_Opt,              &
                           State_Chm  = State_Chm(LCHNK),       &
                           State_Grid = State_Grid(LCHNK),      &
@@ -3853,13 +3830,8 @@ contains
        pbuf_chnk => pbuf_get_chunk(hco_pbuf2d, LCHNK)
        CALL pbuf_get_field(pbuf_chnk, tmpIdx, pbuf_i)
 
-       IF ( Input_Opt%LUCX ) THEN
-          ! RXN_O3_1: O3  + hv --> O2  + O
-          pbuf_i(:nY) = ZPJ(1,RXN_O3_1,1,:nY)
-       ELSE
-          ! RXN_O3_2a: O3 + hv --> 2OH
-          pbuf_i(:nY) = ZPJ(1,RXN_O3_2a,1,:nY)
-       ENDIF
+       ! RXN_O3_1: O3  + hv --> O2  + O
+       pbuf_i(:nY) = ZPJ(1,RXN_O3_1,1,:nY)
        pbuf_chnk => NULL()
        pbuf_i   => NULL()
     ENDIF
@@ -4259,31 +4231,29 @@ contains
 
   subroutine chem_final
 
-    use Input_Opt_Mod,  only : Cleanup_Input_Opt
-    use State_Chm_Mod,  only : Cleanup_State_Chm
-    use State_Diag_Mod, only : Cleanup_State_Diag
-    use State_Grid_Mod, only : Cleanup_State_Grid
-    use State_Met_Mod,  only : Cleanup_State_Met
-    use Error_Mod,      only : Cleanup_Error
+    use Input_Opt_Mod,   only : Cleanup_Input_Opt
+    use State_Chm_Mod,   only : Cleanup_State_Chm
+    use State_Diag_Mod,  only : Cleanup_State_Diag
+    use State_Grid_Mod,  only : Cleanup_State_Grid
+    use State_Met_Mod,   only : Cleanup_State_Met
+    use Error_Mod,       only : Cleanup_Error
+    use Fullchem_Mod,    only : Cleanup_FullChem
+    use UCX_Mod,         only : Cleanup_UCX
+    use Drydep_Mod,      only : Cleanup_Drydep
+    use Carbon_Mod,      only : Cleanup_Carbon
+    use Dust_Mod,        only : Cleanup_Dust
+    use Seasalt_Mod,     only : Cleanup_Seasalt
+    use Aerosol_Mod,     only : Cleanup_Aerosol
+    use Sulfate_Mod,     only : Cleanup_Sulfate
+    use Pressure_Mod,    only : Cleanup_Pressure
+    use Linear_Chem_Mod, only : Cleanup_Linear_Chem
 
-    use FlexChem_Mod,   only : Cleanup_FlexChem
-    use UCX_Mod,        only : Cleanup_UCX
-    use Drydep_Mod,     only : Cleanup_Drydep
-    use Carbon_Mod,     only : Cleanup_Carbon
-    use Dust_Mod,       only : Cleanup_Dust
-    use Seasalt_Mod,    only : Cleanup_Seasalt
-    use Aerosol_Mod,    only : Cleanup_Aerosol
-    use Sulfate_Mod,    only : Cleanup_Sulfate
-    use Pressure_Mod,   only : Cleanup_Pressure
-    use Strat_Chem_Mod, only : Cleanup_Strat_Chem
-
-    use CMN_Size_Mod,   only : Cleanup_CMN_Size
-    use CMN_FJX_Mod,    only : Cleanup_CMN_FJX
+    use CMN_FJX_Mod,     only : Cleanup_CMN_FJX
 
 #ifdef BPCH_DIAG
-    use CMN_O3_Mod,     only : Cleanup_CMN_O3
+    use CMN_O3_Mod,      only : Cleanup_CMN_O3
     ! Special: cleans up after NDXX_Setup
-    use Diag_Mod,       only : Cleanup_Diag
+    use Diag_Mod,        only : Cleanup_Diag
 #endif
 
     use CESMGC_Emissions_Mod, only: CESMGC_Emissions_Final
@@ -4298,24 +4268,18 @@ contains
     CALL Cleanup_Carbon
     CALL Cleanup_Drydep
     CALL Cleanup_Dust
-    CALL Cleanup_FlexChem( RC )
+    CALL Cleanup_FullChem( RC )
     IF ( RC /= GC_SUCCESS ) THEN
-       ErrMsg = 'Error encountered in "Cleanup_FlexChem"!'
+       ErrMsg = 'Error encountered in "Cleanup_FullChem"!'
        CALL Error_Stop( ErrMsg, ThisLoc )
     ENDIF
 
     CALL Cleanup_Pressure
     CALL Cleanup_Seasalt
     CALL Cleanup_Sulfate
-    CALL Cleanup_Strat_Chem
+    CALL Cleanup_Linear_Chem
 
     CALL CESMGC_Emissions_Final
-
-    CALL Cleanup_CMN_SIZE( RC )
-    IF ( RC /= GC_SUCCESS ) THEN
-       ErrMsg = 'Error encountered in "Cleanup_CMN_SIZE"!'
-       CALL Error_Stop( ErrMsg, ThisLoc )
-    ENDIF
 
     CALL Cleanup_CMN_FJX( RC )
     IF ( RC /= GC_SUCCESS ) THEN
