@@ -5,7 +5,7 @@ module nlte_lw
 !
   use shr_kind_mod,       only: r8 => shr_kind_r8
   use spmd_utils,         only: masterproc
-  use ppgrid,             only: pcols, pver
+  use ppgrid,             only: pcols, pver, begchunk, endchunk
   use pmgrid,             only: plev
   use rad_constituents,   only: rad_cnst_get_gas, rad_cnst_get_info
 
@@ -38,6 +38,7 @@ module nlte_lw
 
   logical :: nlte_use_aliarms
   integer :: nlte_aliarms_every_X
+  integer, allocatable :: aliarms_count(:)    ! Counter for optional skipping of ALI-ARMS
 
   logical :: use_data_o3
   logical :: use_waccm_forcing = .false.
@@ -57,7 +58,6 @@ module nlte_lw
   integer :: ih                             ! H index
   integer :: ino                            ! NO index
   integer :: qrlaliarms_idx = -1
-  integer :: aliarms_count_idx = -1
 
 ! merge limits for data ozone
   integer :: nbot_mlt                       ! bottom of pure tgcm range
@@ -74,10 +74,6 @@ contains
   integer, intent(in) :: nlte_aliarms_every_X
 
   call pbuf_add_field('qrlaliarms',  'global', dtype_r8, (/pcols,pver/),qrlaliarms_idx)
-
-  if (nlte_aliarms_every_X > 1) then
-     call pbuf_add_field('aliarms_count',  'global', dtype_i4, (/pcols/),aliarms_count_idx)
-  end if
 
   end subroutine nlte_register
 
@@ -104,12 +100,14 @@ contains
 
     type(physics_buffer_desc), pointer :: pbuf2d(:,:)
 
+    character (len=7) :: subname='nlte_init'
 
     real(r8) :: psh(pver)                  ! pressure scale height
     real(r8) :: pshmn                      ! lower range of merge
     real(r8) :: pshmx                      ! upper range of merge
     real(r8) :: pshdd                      ! scale
     integer  :: k                          ! index
+    integer  :: ierr
     logical  :: rad_use_data_o3
     logical  :: history_waccm
 !----------------------------------------------------------------------------------------
@@ -122,7 +120,12 @@ contains
     nlte_aliarms_every_X = nlte_aliarms_every_X_in
 
     ! Force the aliarms to be called on the first timestep by setting it to the value of nlte_aliarms_every_X
-    if (aliarms_count_idx > 1) call pbuf_set_field(pbuf2d, aliarms_count_idx, nlte_aliarms_every_X)
+    allocate(aliarms_count(begchunk:endchunk), stat=ierr)
+    if (ierr /= 0) then
+       call endrun(subname // ': Allocate error for xo2VMR')
+    end if
+
+    aliarms_count(:) = nlte_aliarms_every_X
 
     ! ask rad_constituents module whether the O3 used in the climate
     ! calculation is from data
@@ -291,7 +294,6 @@ contains
     real(r8) :: co2cool(pcols,pver), o3cool(pcols,pver), c2scool(pcols,pver) ! (K/s)
 
     real(r8), pointer :: qrlaliarms(:,:) ! ALI-ARMS NLTE CO2 cooling rate (K/s)
-    integer, pointer :: aliarms_count(:)! Counter for optional skipping of ALI-ARMS
 
     real(r8) :: qrlfomichev(pcols,pver) ! Fomichev cooling rate ! (K/s)
 
@@ -360,17 +362,6 @@ contains
 
        call pbuf_get_field(pbuf, qrlaliarms_idx, qrlaliarms )
 
-       ! If not skipping ALI-ARMS calls, need to allocate space and set to 1
-       if (nlte_aliarms_every_X == 1) then
-          allocate(aliarms_count(pcols),stat=ierr)
-          if (ierr /=0) then
-            call endrun(subname // ': Allocate error for aliarms_count')
-          end if
-          aliarms_count(:) = 1
-       else
-          call pbuf_get_field(pbuf, aliarms_count_idx, aliarms_count)
-       end if
-
        allocate (xo2VMR(pcols,pver),stat=ierr)
        if (ierr /=0) then
          call endrun(subname // ': Allocate error for xo2VMR')
@@ -413,8 +404,8 @@ contains
 
     call t_startf('nlte_aliarms_calc')
     if (nlte_use_aliarms) then
-       ! Only need to test the first aliarms_count as all pcols of them move together
-       if (aliarms_count(1) == nlte_aliarms_every_X) then
+       ! Only run ALI-ARMS every nlte_aliarms_every_X timesteps
+       if (aliarms_count(lchnk) == nlte_aliarms_every_X) then
           call nlte_aliarms_calc (lchnk,ncol,state%zm, state%pmid,state%t, &
                                 xo2VMR,xoVMR,xn2VMR,xco2VMR,qrlaliarms)
           do j=1,pver
@@ -431,9 +422,9 @@ contains
              write(errstring,*) 'nlte_lw: Cooling rate (qrlaliarms) is greater than .2 or less than -1 K/s for chunk ', lchnk
              call endrun (errstring)
           end if
-          aliarms_count(:) = 1
+          aliarms_count(lchnk) = 1
        else
-         aliarms_count(:) = aliarms_count(:) +1
+          aliarms_count(lchnk) = aliarms_count(lchnk)+1
        end if
 
        ! Apply the ALI-ARMS heating rate to the qrlf summation
@@ -482,7 +473,6 @@ contains
        deallocate (xco2VMR)
        deallocate (xoVMR)
        deallocate (xo3VMR)
-       if (nlte_aliarms_every_X == 1) deallocate(aliarms_count)
     end if
 
   end subroutine nlte_tend
