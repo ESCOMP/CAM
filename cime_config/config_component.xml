@@ -343,6 +343,26 @@
     <desc>User mods to apply to specific compset matches. </desc>
   </entry>
 
+  <entry id="CAM_STREAM_NDEP">
+    <type>char</type>
+    <valid_values>clim_1850,clim_2000,clim_2010,hist,SSP1-2.6,SSP2-4.5,SSP3-7.0,SSP5-3.4,SSP5-8.5</valid_values>
+    <default_value>clim_2000</default_value>
+    <values match="last">
+      <value compset="^1850_"   >clim_1850</value>
+      <value compset="^2000_"   >clim_2000</value>
+      <value compset="^2010_"   >clim_2010</value>
+      <value compset="^SSP126_" >SSP1-2.6</value>
+      <value compset="^SSP245_" >SSP2-4.5</value>
+      <value compset="^SSP370_" >SSP3-7.0</value>
+      <value compset="^SSP585_" >SSP5-8.5</value>
+      <value compset="^HIST_"   >hist</value>
+      <value compset="^20TR_"   >hist</value>
+    </values>
+    <group>run_component_datm</group>
+    <file>env_run.xml</file>
+    <desc>CAM prescribed nitrogen deposition forcing (used if CAM prognostic ndep is not on)</desc>
+  </entry>
+
   <help>
     =========================================
     CAM naming conventions

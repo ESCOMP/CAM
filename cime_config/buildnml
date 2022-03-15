@@ -37,6 +37,7 @@ def buildnml(case, caseroot, compname):
     atm_ncpl            = case.get_value("ATM_NCPL")
     CAM_NAMELIST_OPTS   = case.get_value("CAM_NAMELIST_OPTS")
     CAM_NML_USE_CASE    = case.get_value("CAM_NML_USE_CASE")
+    CAM_STREAM_NDEP     = case.get_value("CAM_STREAM_NDEP")
     DEBUG               = case.get_value("DEBUG")
     NINST_ATM           = case.get_value("NINST_ATM")
     NTASKS              = case.get_value("NTASKS_PER_INST_ATM")

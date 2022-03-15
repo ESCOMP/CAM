@@ -23,6 +23,8 @@ module atm_import_export
   use srf_field_check   , only : set_active_Faoo_fco2_ocn
   use srf_field_check   , only : set_active_Faxa_nhx
   use srf_field_check   , only : set_active_Faxa_noy
+  use srf_field_check   , only : active_Faxa_nhx, active_Faxa_noy
+  use atm_stream_ndep   , only : stream_ndep_interp
 
   implicit none
   private ! except
@@ -52,13 +54,6 @@ module atm_import_export
   real(r8), allocatable :: mod2med_areacor(:)
   real(r8), allocatable :: med2mod_areacor(:)
 
-  character(len=cx)      :: carma_fields     ! list of CARMA fields from lnd->atm
-  integer                :: drydep_nflds     ! number of dry deposition velocity fields lnd-> atm
-  integer                :: megan_nflds      ! number of MEGAN voc fields from lnd-> atm
-  integer                :: emis_nflds       ! number of fire emission fields from lnd-> atm
-  integer, public        :: ndep_nflds       ! number  of nitrogen deposition fields from atm->lnd/ocn
-  character(*),parameter :: F01 = "('(cam_import_export) ',a,i8,2x,i8,2x,d21.14)"
-  character(*),parameter :: F02 = "('(cam_import_export) ',a,i8,2x,i8,2x,i8,2x,d21.14)"
   character(*),parameter :: u_FILE_u = &
        __FILE__
 
@@ -84,13 +79,15 @@ contains
     type(ESMF_State)       :: exportState
     character(ESMF_MAXSTR) :: stdname
     character(ESMF_MAXSTR) :: cvalue
-    character(len=2)       :: nec_str
     integer                :: n, num
-    logical                :: flds_co2a      ! use case
-    logical                :: flds_co2b      ! use case
-    logical                :: flds_co2c      ! use case
-    integer                :: ndep_nflds, megan_nflds, emis_nflds
-    character(len=128)     :: fldname
+    logical                :: flds_co2a    ! use case
+    logical                :: flds_co2b    ! use case
+    logical                :: flds_co2c    ! use case
+    integer                :: emis_nflds   ! number of fire emission fields from lnd-> atm
+    integer                :: ndep_nflds   ! number  of nitrogen deposition fields from atm->lnd/ocn
+    integer                :: drydep_nflds ! number of dry deposition velocity fields lnd-> atm
+    integer                :: megan_nflds  ! number of MEGAN voc fields from lnd-> atm
+    character(len=cx)      :: carma_fields ! list of CARMA fields from lnd->atm
     character(len=*), parameter :: subname='(atm_import_export:advertise_fields)'
     !-------------------------------------------------------------------------------
 
@@ -171,12 +168,17 @@ contains
        call fldlist_add(fldsFrAtm_num, fldsFrAtm, 'Sa_co2diag' )
     end if
 
-    ! from atm - nitrogen deposition
+    ! from atm - nitrogen deposition is now always sent
     call shr_ndep_readnl("drv_flds_in", ndep_nflds)
     if (ndep_nflds > 0) then
        call fldlist_add(fldsFrAtm_num, fldsFrAtm, 'Faxa_ndep', ungridded_lbound=1, ungridded_ubound=ndep_nflds)
        call set_active_Faxa_nhx(.true.)
        call set_active_Faxa_noy(.true.)
+    else
+       ! The following is used for reading in stream data
+       call set_active_Faxa_nhx(.false.)
+       call set_active_Faxa_noy(.false.)
+       call fldlist_add(fldsFrAtm_num, fldsFrAtm, 'Faxa_ndep', ungridded_lbound=1, ungridded_ubound=2)
     end if
 
     ! Now advertise above export fields
@@ -844,9 +846,9 @@ contains
     !-------------------------------
 
     ! input/output variables
-    type(ESMF_GridComp)           :: gcomp
-    type(cam_out_t) , intent(in)  :: cam_out(begchunk:endchunk)
-    integer         , intent(out) :: rc
+    type(ESMF_GridComp)              :: gcomp
+    type(cam_out_t) , intent(inout)  :: cam_out(begchunk:endchunk)
+    integer         , intent(out)    :: rc
 
     ! local variables
     type(ESMF_State)  :: exportState
@@ -854,6 +856,7 @@ contains
     integer           :: ncols      ! Number of columns
     integer           :: nstep
     logical           :: exists
+    real(r8)          :: scale_ndep
     ! 2d pointers
     real(r8), pointer :: fldptr_ndep(:,:)
     real(r8), pointer :: fldptr_bcph(:,:)  , fldptr_ocph(:,:)
@@ -1024,19 +1027,27 @@ contains
        end do
     end if
 
-    call state_getfldptr(exportState, 'Faxa_ndep', fldptr2d=fldptr_ndep, exists=exists, rc=rc)
+    ! If ndep fields are not computed in cam and must be obtained from 
+    ! the ndep input stream
+    call state_getfldptr(exportState, 'Faxa_ndep', fldptr2d=fldptr_ndep, rc=rc)
     if (ChkErr(rc,__LINE__,u_FILE_u)) return
-    if (exists) then
-       ! (1) => nhx, (2) => noy
-       g = 1
-       do c = begchunk,endchunk
-          do i = 1,get_ncols_p(c)
-             fldptr_ndep(1,g) = cam_out(c)%nhx_nitrogen_flx(i) * mod2med_areacor(g)
-             fldptr_ndep(2,g) = cam_out(c)%noy_nitrogen_flx(i) * mod2med_areacor(g)
-             g = g + 1
-          end do
-       end do
+    if (.not. active_Faxa_nhx .and. .not. active_Faxa_noy) then
+       call stream_ndep_interp(cam_out, rc)
+       if (ChkErr(rc,__LINE__,u_FILE_u)) return
+       scale_ndep = 1._r8
+    else
+       ! If waccm computes ndep, then its in of kgN/m2/s - and the mediator expects
+       ! units of gN/m2/sec, so the following conversion needs to happen
+       scale_ndep = 1000._r8
     end if
+    g = 1
+    do c = begchunk,endchunk
+       do i = 1,get_ncols_p(c)
+          fldptr_ndep(1,g) = cam_out(c)%nhx_nitrogen_flx(i) * scale_ndep * mod2med_areacor(g)
+          fldptr_ndep(2,g) = cam_out(c)%noy_nitrogen_flx(i) * scale_ndep * mod2med_areacor(g)
+          g = g + 1
+       end do
+    end do
 
   end subroutine export_fields
 

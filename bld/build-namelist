@@ -3947,11 +3947,21 @@ add_default($nl, 'cam_snapshot_before_num');
 add_default($nl, 'cam_snapshot_after_num');
 check_snapshot_settings();
 
+# Ndep stream forching 
+# TODO: mah the cam_pres_ndep an input argument to the namelist
+my %valhash = ('cam_pres_ndep'=>'clim_1850');
+add_default($nl, 'stream_datafile_ndep'  , %valhash );
+add_default($nl, 'stream_meshfile_ndep'  , %valhash );
+add_default($nl, 'stream_year_first_ndep', %valhash );
+add_default($nl, 'stream_year_last_ndep' , %valhash );
+add_default($nl, 'model_year_align_ndep' , %valhash );
+
 #-----------------------------------------------------------------------------------------------
 # Write output files
 
 # Get array of group names that have been defined in the namelist.
 my @nl_groups = $nl->get_group_names();
+print "DEBUG: nl_groups are @nl_groups \n";
 
 # Temp vars reused for each component.
 my @comp_groups;
@@ -3964,6 +3974,7 @@ foreach my $name (@nl_groups) { $nl_group{$name} = ''; }
 
 # Dry deposition, MEGAN VOC emis and ozone namelists
 @comp_groups = qw(drydep_inparm megan_emis_nl fire_emis_nl carma_inparm ndep_inparm ozone_coupling_nl);
+
 
 # nature of ozone data passed to surface models -- only if cmeps (nuopc) coupling is used
 if ($opts{'cmeps'}) {

@@ -31,6 +31,9 @@ module atm_comp_nuopc
   use time_manager        , only : get_curr_calday, advance_timestep, get_curr_date, get_nstep, get_step_size
   use atm_import_export   , only : advertise_fields, realize_fields
   use atm_import_export   , only : import_fields, export_fields
+  use atm_comp_shr        , only : model_mesh, model_clock
+  use srf_field_check     , only : active_Faxa_nhx, active_Faxa_noy
+  use atm_stream_ndep     , only : stream_ndep_init
   use nuopc_shr_methods   , only : chkerr, state_setscalar, state_getscalar, state_diagnose, alarmInit
   use nuopc_shr_methods   , only : set_component_logging, get_component_instance, log_clock_advance
   use perf_mod            , only : t_startf, t_stopf
@@ -316,7 +319,6 @@ contains
     type(ESMF_TimeInterval) :: timeStep
     type(ESMF_CalKind_Flag) :: esmf_caltype                      ! esmf calendar type
     type(ESMF_DistGrid)     :: distGrid
-    type(ESMF_Mesh)         :: mesh
     integer                 :: spatialDim
     integer                 :: numOwnedElements
     real(R8), pointer       :: ownedElemCoords(:)
@@ -390,6 +392,10 @@ contains
     end if
 
     call shr_file_setLogUnit (iulog)
+
+    ! Set model clock in atm_comp_shr
+    model_clock = clock
+
 
     !----------------------------------------------------------------------------
     ! generate local mpi comm
@@ -618,7 +624,7 @@ contains
 
        if (single_column) then
 
-          call cam_set_mesh_for_single_column(scol_lon, scol_lat, mesh, rc)
+          call cam_set_mesh_for_single_column(scol_lon, scol_lat, model_mesh, rc)
           if (ChkErr(rc,__LINE__,u_FILE_u)) return
 
        else
@@ -647,7 +653,7 @@ contains
           call NUOPC_CompAttributeGet(gcomp, name='mesh_atm', value=cvalue, rc=rc)
           if (ChkErr(rc,__LINE__,u_FILE_u)) return
 
-          mesh = ESMF_MeshCreate(filename=trim(cvalue), fileformat=ESMF_FILEFORMAT_ESMFMESH, &
+          model_mesh = ESMF_MeshCreate(filename=trim(cvalue), fileformat=ESMF_FILEFORMAT_ESMFMESH, &
                elementDistgrid=Distgrid, rc=rc)
           if (ChkErr(rc,__LINE__,u_FILE_u)) return
           if (masterproc) then
@@ -655,7 +661,7 @@ contains
           end if
 
           ! obtain mesh lats and lons
-          call ESMF_MeshGet(mesh, spatialDim=spatialDim, numOwnedElements=numOwnedElements, rc=rc)
+          call ESMF_MeshGet(model_mesh, spatialDim=spatialDim, numOwnedElements=numOwnedElements, rc=rc)
           if (ChkErr(rc,__LINE__,u_FILE_u)) return
           if (numOwnedElements /= lsize) then
              write(tempc1,'(i10)') numOwnedElements
@@ -667,7 +673,7 @@ contains
           end if
           allocate(ownedElemCoords(spatialDim*numOwnedElements))
           allocate(lonMesh(lsize), latMesh(lsize))
-          call ESMF_MeshGet(mesh, ownedElemCoords=ownedElemCoords)
+          call ESMF_MeshGet(model_mesh, ownedElemCoords=ownedElemCoords)
           if (ChkErr(rc,__LINE__,u_FILE_u)) return
           do n = 1,lsize
              lonMesh(n) = ownedElemCoords(2*n-1)
@@ -712,8 +718,15 @@ contains
        end if ! end of if single_column
 
        ! realize the actively coupled fields
-       call realize_fields(gcomp,  mesh, flds_scalar_name, flds_scalar_num, single_column, rc)
+       call realize_fields(gcomp,  model_mesh, flds_scalar_name, flds_scalar_num, single_column, rc)
        if (ChkErr(rc,__LINE__,u_FILE_u)) return
+
+       ! initialize stream ndep if appropriate
+       ! NOTE: this depends on the chemistry setting the ndep_nflds value (TODO: add more documention)
+       if (.not. active_Faxa_nhx .and. .not. active_Faxa_noy) then
+          call stream_ndep_init(model_mesh, clock, rc)
+          if (ChkErr(rc,__LINE__,u_FILE_u)) return
+       end if
 
        ! Create cam export array and set the state scalars
        call export_fields( gcomp, cam_out, rc=rc  )

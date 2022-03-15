@@ -139,10 +139,6 @@ OPTIONS
      -verbose [or -v]   Turn on verbose echoing of settings made by configure.
      -version           Echo the CVS tag name used to check out this CAM distribution.
 
-  Options for surface components used in standalone CAM mode:
-
-     -ocn <name>        Build CAM with ocean model [docn | dom | som | socn | aquaplanet | pop]. Default: aquaplanet
-
   Options for building CAM via standalone scripts:
 
      -cam_bld <dir>     Directory where CAM will be built.  This is where configure will write the
