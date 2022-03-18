@@ -122,6 +122,7 @@
 <ncdata dyn="fv"  hgrid="1.9x2.5"   nlev="70"   ic_ymd="20000101" >atm/waccm/ic/f2000.waccm-mam3_1.9x2.5_L70.cam2.i.0017-01-01.c120410.nc</ncdata>
 <ncdata dyn="fv"  hgrid="1.9x2.5"   nlev="70"  aquaplanet="1" ic_ymd="20000101" >atm/waccm/ic/aqua.cam6.waccmsc_1.9x2.5_L70.2000-01-01.c170123.nc</ncdata>
 <ncdata dyn="fv"  hgrid="1.9x2.5"   nlev="70"  aquaplanet="1" ic_ymd="20000101" chem="waccm_tsmlt_mam4">atm/waccm/ic/aqua.waccm_tsmlt_1.9x2.5_L70_c170814.nc</ncdata>
+<ncdata dyn="fv"  hgrid="1.9x2.5"   nlev="70"  aquaplanet="1" ic_ymd="20000101" chem="waccm_ma_mam4">atm/waccm/ic/aqua.waccm_tsmlt_1.9x2.5_L70_c170814.nc</ncdata>
 <ncdata dyn="fv"  hgrid="4x5"       nlev="70"   ic_ymd="20000101" >atm/waccm/ic/f2000.waccm-mam3_4x5_L70.cam2.i.0017-01-01.c121113.nc</ncdata>
 <ncdata dyn="fv"  hgrid="10x15"     nlev="70"   ic_ymd="20000101" >atm/waccm/ic/f2000.waccm-mam3_10x15_L70.cam2.i.0017-01-01.c141016.nc</ncdata>
 <ncdata dyn="fv"  hgrid="1.9x2.5"   nlev="70"   ic_ymd="18500101" >atm/waccm/ic/b1850.waccm-mam3_1.9x2.5_L70.cam2.i.0156-01-01.c120523.nc</ncdata>
@@ -639,6 +640,13 @@
 <solar_parms_data_file             waccm_phys="1">atm/cam/solar/SolarForcing1995-2005avg_c160929.nc</solar_parms_data_file>
 
 <solar_wind_data_file>atm/waccm/solar/solar_wind_imf_OMNI_WACCMX_2000001-2017365_c180731.nc</solar_wind_data_file>
+
+<!-- Default bounce cone loss angle (degrees) for medium-energy electrons
+  80 degrees is the value used to generate CMIP6 MEE forcings provided by SOLARISHEPPA (http://solarisheppa.geomar.de).
+  (Recommendations for CMIP6 solar forcing data, Geosci. Model Dev., 10, doi:10.5194/gmd-10-2247-2017)
+  (Private communication with Pekka Verronen)
+-->
+<mee_ion_blc>80.D0</mee_ion_blc>
 
 <!-- nudged QBO  -->
 <qbo_forcing_file>atm/waccm/qbo/qbocoefficients_c151023.nc</qbo_forcing_file>
@@ -1743,8 +1751,6 @@
 
 <!-- photolysis inputs -->
 <xs_coef_file>atm/waccm/phot/effxstex.txt</xs_coef_file>
-<tuv_xsect_file>atm/cam/chem/trop_mozart/phot/tuv_xsect.nc</tuv_xsect_file>
-<o2_xsect_file>atm/cam/chem/trop_mozart/phot/o2src.nc</o2_xsect_file>
 <xs_short_file>atm/waccm/phot/xs_short_jpl10_c140303.nc</xs_short_file>
 <xs_long_file >atm/waccm/phot/temp_prs_GT200nm_JPL10_c140624.nc</xs_long_file>
 <rsf_file     >atm/waccm/phot/RSF_GT200nm_v3.0_c080811.nc</rsf_file>
