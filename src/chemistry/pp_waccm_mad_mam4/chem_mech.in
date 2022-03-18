@@ -234,7 +234,6 @@
  CH4
  CHBR3
  CLY
- CO2
  H2402
  HCFC141B
  HCFC142B
@@ -261,6 +260,7 @@
  CO
  COF2
  COFCL
+ CO2
  DMS
  dst_a1
  dst_a2

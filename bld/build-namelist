@@ -2118,7 +2118,6 @@ if ($chem eq 'trop_mam3') {
 
     add_default($nl, 'fstrat_list', 'val'=>"' '");
     add_default($nl, 'flbc_list', 'val'=>"' '");
-    add_default($nl, 'xactive_prates', 'val'=>'.false.');
 
     # Datasets
     my @files = ('soil_erod_file',
@@ -2489,7 +2488,6 @@ if ($chem eq 'trop_mam4' or $chem eq 'waccm_sc_mam4' or $chem eq 'trop_mam5') {
 
     add_default($nl, 'fstrat_list', 'val'=>"' '");
     add_default($nl, 'flbc_list', 'val'=>"' '");
-    add_default($nl, 'xactive_prates', 'val'=>'.false.');
 
     # Datasets
     my @files = ('soil_erod_file',
@@ -2579,7 +2577,6 @@ if ($chem eq 'trop_mam7') {
 
     add_default($nl, 'fstrat_list', 'val'=>"' '");
     add_default($nl, 'flbc_list', 'val'=>"' '");
-    add_default($nl, 'xactive_prates', 'val'=>'.false.');
 
     # Datasets
     my @files = ('soil_erod_file',
@@ -2692,8 +2689,6 @@ if ($chem =~ /waccm_ma/ or $chem =~ /waccm_tsmlt/) {
         add_default($nl, 'srf_emis_type',  'val'=>'CYCLICAL');
         add_default($nl, 'srf_emis_cycle_yr',  'val'=>'1997');
     }
-
-    add_default($nl, 'xactive_prates', 'val'=>'.false.');
 
     if ($dyn eq 'fv') {
         add_default($nl, 'do_circulation_diags', 'val'=>'.true.');
@@ -2855,6 +2850,15 @@ $epp_spe_file =~ s/['"]//g; # strip quotes "'
 $epp_gcr_file =~ s/['"]//g; # strip quotes "'
 $epp_mee_file =~ s/['"]//g; # strip quotes "'
 $gcr_ion_file =~ s/['"]//g; # strip quotes "'
+
+if ($nl->get_value('mee_ion_inline') =~ m/$TRUE/io) {
+  if ((defined $epp_mee_file) and ($epp_mee_file ne 'NONE') and
+      ($nl->get_value('mee_ion_diagonly') !~ m/$TRUE/io)) {
+    die "Cannot specify both epp_mee_filepath and mee_ion_inline without mee_ion_diagonly set to .true.\n";
+  }
+  # Set default bounce cone loss angle.
+  add_default($nl, 'mee_ion_blc');
+}
 
 if ($gcr_ion_file and $gcr_ion_file ne 'NONE') {
     if (($epp_all_file and $epp_all_file ne 'NONE') or ($epp_gcr_file and $epp_gcr_file ne 'NONE')) {

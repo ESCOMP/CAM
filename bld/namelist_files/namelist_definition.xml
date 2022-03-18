@@ -4694,6 +4694,13 @@ Electric potential model used in the waccmx ionosphere.
 Default: set by build-namelist
 </entry>
 
+<entry id="ionos_debug_hist" type="logical"  category="waccmx"
+       group="ionosphere_nl" valid_values="">
+Switch to add history fields to master field list for the purpose
+of debugging ionospheric processes in WACCMX.
+Default: FALSE
+</entry>
+
 <entry id="epot_crit_colats" type="real*2"  category="waccmx"
        group="ionosphere_nl" valid_values="">
 Co-latitudes (degrees) of the critical angles where the ionosphere
@@ -6083,18 +6090,6 @@ Full pathname of dataset for the neutral species absorption cross sections.
 Default: set by build-namelist.
 </entry>
 
-<entry id="tuv_xsect_file" type="char*256" input_pathname="abs" category="cam_chem"
-       group="chem_inparm" valid_values="" >
-Full pathname of dataset for fast-tuv photolysis cross sections
-Default: set by build-namelist.
-</entry>
-
-<entry id="o2_xsect_file" type="char*256" input_pathname="abs" category="cam_chem"
-       group="chem_inparm" valid_values="" >
-Full pathname of dataset of O2 cross sections for fast-tuv photolysis
-Default: set by build-namelist.
-</entry>
-
 <entry id="exo_coldens_file" type="char*256" input_pathname="abs" category="cam_chem"
        group="chem_inparm" valid_values="" >
 Full pathname of dataset of O2 and 03 column densities above the model for look-up-table photolysis
@@ -6896,13 +6891,6 @@ if {{ hilight }}tracer_srcs_type{{ closehilight }} is 'FIXED'.
 Default: 0 seconds
 </entry>
 
-<entry id="xactive_prates" type="logical" category="cam_chem"
-       group="chem_inparm" valid_values="" >
-If TRUE then use the FTUV method to calculate the photolysis reactions rates,
-otherwise use the look up table method.
-Default: FALSE
-</entry>
-
 <entry id="xs_coef_file" type="char*256" input_pathname="abs" category="cam_chem"
        group="chem_inparm" valid_values="" >
 Full pathname of dataset for  Chebyshev polynomial Coeff data used for photolysis
@@ -7268,6 +7256,41 @@ Default: None.
 Variable name in netCDF file {{ hilight }}epp_gcr_filepath{{ closehilight }} which contains
 ion pairs production rates.
 Default: None.
+</entry>
+
+<entry id="mee_ion_inline" type="logical" category="waccm"
+       group="mee_ion_nl" valid_values="" >
+Switch to turn on medium energy electron ionization chemical forcings
+computed inline using Ap geomagnetic activity index input data.
+Default: FALSE
+</entry>
+
+<entry id="mee_ion_blc" type="real" category="waccm"
+       group="mee_ion_nl" valid_values="" >
+Bounce cone loss angle (degrees) for medium energy electrons in radiation belts.
+Must range from 0 to 90 degrees.
+Default: 80 degrees
+</entry>
+
+<entry id="mee_ion_diagonly" type="logical" category="waccm"
+       group="mee_ion_nl" valid_values="" >
+If TRUE, compute medium energy electron ionization rates only for output to history stream.
+Otherwise,  apply the ionization rates as forcings to the chemistry.
+Default: FALSE
+</entry>
+
+<entry id="mee_fluxes_filepath" type="char*256" input_pathname="abs" category="waccm"
+       group="mee_fluxes_opts" valid_values="" >
+Filepath input dataset for radiation belt medium energy electrons fluxes incident
+on upper atmosphere.
+Default: None.
+</entry>
+
+<entry id="mee_fluxes_fillin" type="logical" category="waccm"
+       group="mee_fluxes_opts" valid_values="" >
+If TRUE, fill in missing fluxes with computed fluxes based in Ap index using van de Kamp
+method.
+Default: FALSE
 </entry>
 
 <entry id="apply_lunar_tides" type="logical" category="waccm_phys"
