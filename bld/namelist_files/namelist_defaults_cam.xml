@@ -1863,6 +1863,16 @@
 <clubb_c_K10h                                     > 0.3     </clubb_c_K10h>
 <clubb_do_liqsupersat                             > .false. </clubb_do_liqsupersat>
 <clubb_wpxp_L_thresh                              > 60.0    </clubb_wpxp_L_thresh>
+<clubb_C_invrs_tau_bkgnd                          > 1.0     </clubb_C_invrs_tau_bkgnd>
+<clubb_C_invrs_tau_sfc                            > 0.1     </clubb_C_invrs_tau_sfc>
+<clubb_C_invrs_tau_shear                          > 0.02    </clubb_C_invrs_tau_shear>
+<clubb_C_invrs_tau_N2                             > 0.1     </clubb_C_invrs_tau_N2>
+<clubb_C_invrs_tau_N2_wp2                         > 0.2     </clubb_C_invrs_tau_N2_wp2>
+<clubb_C_invrs_tau_N2_xp2                         > 0.2     </clubb_C_invrs_tau_N2_xp2>
+<clubb_C_invrs_tau_N2_wpxp                        > 0.0     </clubb_C_invrs_tau_N2_wpxp>
+<clubb_C_invrs_tau_N2_clear_wp3                   > 0.0     </clubb_C_invrs_tau_N2_clear_wp3>
+<clubb_C_uu_shr                                   > 0.4     </clubb_C_uu_shr>
+<clubb_C_uu_buoy                                  > 0.3     </clubb_C_uu_buoy>
 <clubb_gamma_coef                                 > 0.308   </clubb_gamma_coef>
 <clubb_gamma_coef hgrid="1.9x2.5"                 > 0.280   </clubb_gamma_coef>
 <clubb_gamma_coef dyn="se"                        > 0.270   </clubb_gamma_coef>

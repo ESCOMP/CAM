@@ -3736,6 +3736,56 @@ Apply liquid supersaturation adjustment code
 Default: false
 </entry>
 
+<entry id="clubb_C_invrs_tau_bkgnd" type="real" category="pblrad"
+       group="clubb_params_nl" valid_values="" >
+Default: 1.0
+</entry>
+
+<entry id="clubb_C_invrs_tau_sfc" type="real" category="pblrad"
+       group="clubb_params_nl" valid_values="" >
+Default: 0.1
+</entry>
+
+<entry id="clubb_C_invrs_tau_shear" type="real" category="pblrad"
+       group="clubb_params_nl" valid_values="" >
+Default: 0.02
+</entry>
+
+<entry id="clubb_C_invrs_tau_N2" type="real" category="pblrad"
+       group="clubb_params_nl" valid_values="" >
+Default: 0.1
+</entry>
+
+<entry id="clubb_C_invrs_tau_N2_wp2" type="real" category="pblrad"
+       group="clubb_params_nl" valid_values="" >
+Default: 0.2
+</entry>
+
+<entry id="clubb_C_invrs_tau_N2_xp2" type="real" category="pblrad"
+       group="clubb_params_nl" valid_values="" >
+Default: 0.2
+</entry>
+
+<entry id="clubb_C_invrs_tau_N2_wpxp" type="real" category="pblrad"
+       group="clubb_params_nl" valid_values="" >
+Default: 0.0
+</entry>
+
+<entry id="clubb_C_invrs_tau_N2_clear_wp3" type="real" category="pblrad"
+      group="clubb_params_nl" valid_values="" >
+Default: 0.0
+</entry>
+
+<entry id="clubb_C_uu_shr" type="real" category="pblrad"
+       group="clubb_params_nl" valid_values="" >
+Default: 0.4
+</entry>
+
+<entry id="clubb_C_uu_buoy" type="real" category="pblrad"
+       group="clubb_params_nl" valid_values="" >
+Default: 0.3
+</entry>
+
 <entry id="clubb_gamma_coef" type="real" category="pblrad"
        group="clubb_params_nl" valid_values="" >
 Low Skw.: gamma coef. Skw. Fnct.

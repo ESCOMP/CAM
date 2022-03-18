@@ -3115,6 +3115,16 @@ if ($clubb_sgs  =~ /$TRUE/io) {
    add_default($nl, 'clubb_c_K10');
    add_default($nl, 'clubb_c_K10h');
    add_default($nl, 'clubb_do_liqsupersat');
+   add_default($nl, 'clubb_C_invrs_tau_bkgnd');
+   add_default($nl, 'clubb_C_invrs_tau_sfc');
+   add_default($nl, 'clubb_C_invrs_tau_shear');
+   add_default($nl, 'clubb_C_invrs_tau_N2');
+   add_default($nl, 'clubb_C_invrs_tau_N2_wp2');
+   add_default($nl, 'clubb_C_invrs_tau_N2_xp2');
+   add_default($nl, 'clubb_C_invrs_tau_N2_wpxp');
+   add_default($nl, 'clubb_C_invrs_tau_N2_clear_wp3');
+   add_default($nl, 'clubb_C_uu_shr');
+   add_default($nl, 'clubb_C_uu_buoy');
    add_default($nl, 'clubb_gamma_coef');
    add_default($nl, 'clubb_gamma_coefb');
    add_default($nl, 'clubb_lambda0_stability_coef');
