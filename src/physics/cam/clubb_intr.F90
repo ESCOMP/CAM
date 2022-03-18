@@ -83,8 +83,8 @@ module clubb_intr
   logical         :: clubb_do_icesuper
 
 #ifdef CLUBB_SGS
-  type(clubb_config_flags_type), public, save :: clubb_config_flags
-  real(r8), dimension(nparams), public, save :: clubb_params    ! Adjustable CLUBB parameters (C1, C2 ...)
+  type(clubb_config_flags_type), public :: clubb_config_flags
+  real(r8), dimension(nparams), public :: clubb_params    ! Adjustable CLUBB parameters (C1, C2 ...)
 #endif
 
   ! ------------ !
@@ -1506,8 +1506,10 @@ end subroutine clubb_init_cnst
     endif
 
     ! Print configurable CLUBB flags
-    write(iulog,'(a,i0,a)') " CLUBB configurable flags set in thread ", iam, ":"
-    call print_clubb_config_flags_api( iulog, clubb_config_flags ) ! Intent(in)
+    if ( masterproc ) then
+       write(iulog,'(a,i0,a)') " CLUBB configurable flags "
+       call print_clubb_config_flags_api( iulog, clubb_config_flags ) ! Intent(in)
+    endif
 
     ! ----------------------------------------------------------------- !
     ! Set-up HB diffusion.  Only initialized to diagnose PBL depth      !
