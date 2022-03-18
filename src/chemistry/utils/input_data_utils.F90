@@ -47,6 +47,7 @@ contains
     use ioFileMod,      only : getfil
     use cam_pio_utils,  only : cam_pio_openfile, cam_pio_closefile
     use string_utils,   only : to_upper
+    use shr_const_mod,  only : SHR_CONST_CDAY
 
     class(time_coordinate), intent(inout) :: this
     character(len=*), intent(in) :: filepath
@@ -73,10 +74,10 @@ contains
     real(r8), allocatable :: times_modl(:)
     real(r8), allocatable :: time_bnds_file(:,:)
     type(file_desc_t) :: fileid
-    logical :: force_interp
+    logical :: force_interp, time_in_secs
     logical :: set_wghts
     logical :: use_time, adj_times, use_time_bnds
-    integer :: i
+    integer :: i, yri, moni, dayi, hri, mini, seci
 
     if (present(fixed)) this%fixed = fixed
     if (present(fixed_ymd)) this%fixed_ymd = fixed_ymd
@@ -116,7 +117,8 @@ contains
     ierr = pio_get_att( fileid, varid, 'units', time_units)
     use_time = ierr.eq.PIO_NOERR .and. use_time
     if (use_time) then
-       use_time = time_units(1:10).eq.'days since'
+       use_time = time_units(1:10) == 'days since' .or. &
+                  time_units(1:13) == 'seconds since'
     endif
 
     if (present(try_dates)) then
@@ -147,22 +149,49 @@ contains
           end if
        end if
 
-       ! parse out ref date and time
-       !  time:units = "days since YYYY-MM-DD hh:mm:ss" ;
+       time_in_secs = .false.
 
-       yr_str  = time_units(12:15)
-       mon_str = time_units(17:18)
-       day_str = time_units(20:21)
-       hr_str  = time_units(23:24)
-       min_str = time_units(26:27)
+       if (index( time_units, 'days since') > 0) then
+          !  time:units = "days since YYYY-MM-DD hh:mm:ss"
+          !                1234567890123456789012345678901234567890
+          !                         1         2         3
+          yri = 12
+          moni = 17
+          dayi = 20
+          hri = 23
+          mini = 26
+          seci = 29
+       else if(index( time_units, 'seconds since') > 0) then
+          !  time:units = "seconds since YYYY-MM-DD hh:mm:ss"
+          !                1234567890123456789012345678901234567890
+          !                         1         2         3
+          yri = 15
+          moni = 20
+          dayi = 23
+          hri = 26
+          mini = 29
+          seci = 32
+          time_in_secs = .true.
+       else
+          call endrun('time units not recognized')
+       end if
+
+
+       ! parse out ref date and time
+
+       yr_str  = time_units(yri:yri+3)
+       mon_str = time_units(moni:moni+1)
+       day_str = time_units(dayi:dayi+1)
+       hr_str  = time_units(hri:hri+1)
+       min_str = time_units(mini:mini+1)
 
        read( yr_str,  * ) ref_yr
        read( mon_str, * ) ref_mon
        read( day_str, * ) ref_day
        read( hr_str,  * ) ref_hr
        read( min_str, * ) ref_min
-       if (len_trim(time_units).ge.30) then
-          sec_str = time_units(29:30)
+       if (len_trim(time_units)>seci) then
+          sec_str = time_units(seci:seci+1)
           read( sec_str, * ) ref_sec
        else
           ref_sec = 0
@@ -172,6 +201,10 @@ contains
        call set_time_float_from_date( ref_time, ref_yr, ref_mon, ref_day, tod )
 
        ierr = pio_get_var( fileid, varid, times_file )
+       if (time_in_secs) then
+          times_file = times_file/SHR_CONST_CDAY
+       endif
+
        if (ierr.ne.PIO_NOERR) then
           call endrun('time_coordinate%initialize: not able to read times')
        endif

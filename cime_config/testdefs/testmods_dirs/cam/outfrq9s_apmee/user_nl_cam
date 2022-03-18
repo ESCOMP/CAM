@@ -1,0 +1,8 @@
+mfilt=1,1,1,1,1,1
+ndens=1,1,1,1,1,1
+nhtfrq=9,9,9,9,9,9
+inithist='ENDOFRUN'
+
+mee_ion_inline=.true.
+mee_ion_diagonly=.true.
+fincl2 = 'EPP_ionpairs', 'APMEEionprs','N2D_EPP','N4S_EPP'
