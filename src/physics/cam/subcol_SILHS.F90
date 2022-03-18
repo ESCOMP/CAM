@@ -17,11 +17,17 @@ module subcol_SILHS
    use ref_pres,         only: top_lev => trop_cloud_top_lev
 #ifdef CLUBB_SGS
 #ifdef SILHS
-   use clubb_intr,       only: pdf_params_chnk
+  use clubb_intr, only: &
+        clubb_config_flags, &
+        clubb_params, &
+        stats_zt, stats_zm, stats_sfc, &
+        pdf_params_chnk
+        
    use clubb_api_module, only: &
         hmp2_ip_on_hmm2_ip_slope_type, &
         hmp2_ip_on_hmm2_ip_intrcpt_type, &
-        precipitation_fractions
+        precipitation_fractions, &
+        stats
 
    use silhs_api_module, only: &
         silhs_config_flags_type
@@ -48,6 +54,10 @@ module subcol_SILHS
    ! Calc subcol mean ! Calc subcol variance
    private :: meansc
    private :: stdsc
+   
+   type (stats), target, save :: stats_lh_zt,   &
+                                 stats_lh_sfc
+   !$omp threadprivate(stats_lh_zt, stats_lh_sfc)
 #endif
 
    !-----
@@ -106,9 +116,6 @@ module subcol_SILHS
     type(hmp2_ip_on_hmm2_ip_intrcpt_type) :: subcol_SILHS_hmp2_ip_on_hmm2_ip_intrcpt
 
     type(silhs_config_flags_type) :: silhs_config_flags
-    
-    type(precipitation_fractions), dimension(:), allocatable :: precip_fracs
-    
 #endif
 #endif
 
@@ -336,11 +343,7 @@ contains
                                          setup_corr_varnce_array_api, &
                                          init_pdf_hydromet_arrays_api, &
                                          Ncnp2_on_Ncnm2, &
-                                         init_precip_fracs_api, &
                                          set_clubb_debug_level_api
-
-      use clubb_intr,              only: init_clubb_config_flags, &
-                                         clubb_config_flags
 
 #endif
 #endif
@@ -378,8 +381,6 @@ contains
       !-------------------------------
       ! CLUBB-SILHS Parameters (global module variables)
       !-------------------------------
-
-      call init_clubb_config_flags( clubb_config_flags ) ! In/Out
       clubb_config_flags%l_fix_w_chi_eta_correlations = .true.
       clubb_config_flags%l_diagnose_correlations = .false.
       clubb_config_flags%l_calc_w_corr = .false.
@@ -403,16 +404,6 @@ contains
 !      mu = subcol_SILHS_mu
 
       !call set_clubb_debug_level( 0 )  !#KTCtodo: Add a namelist variable to set debug level
-      
-      ! Allocate a precip_fracs variable for each chunk
-      allocate( precip_fracs(begchunk:endchunk) )
-      
-      ! Allocate 2D arrays in precip_fracs for all grid columns and vertical levels in each chunk
-      do l = begchunk, endchunk
-        call init_precip_fracs_api( pverp-top_lev+1, pcols, &
-                                    precip_fracs(l) )
-      end do
-     
 
       ! Get constituent indices
       call cnst_get_ind('Q', ixq)
@@ -651,17 +642,14 @@ contains
 
                                          nparams, ic_K, &
                                          read_parameters_api, &
-                                         Cp, Lv
+                                         Cp, Lv, &
+                                         grid, setup_grid_api, &
+                                         init_precip_fracs_api
    
       use silhs_api_module, only :       generate_silhs_sample_api, & ! Ncn_to_Nc, &
                                          clip_transform_silhs_output_api, &
                                          est_kessler_microphys_api, &
                                          vert_decorr_coef
-
-      use clubb_intr, only:              clubb_config_flags, gr, &
-                                         clubb_params, &
-                                         stats_zt, stats_zm, stats_sfc, &
-                                         stats_lh_zt, stats_lh_sfc
 
 #endif
 #endif
@@ -689,7 +677,7 @@ contains
 
       integer :: i, j, k, ngrdcol, ncol, lchnk, stncol
       integer :: begin_height, end_height ! Output from setup_grid call
-      real(r8) :: sfc_elevation  ! Surface elevation
+      real(r8) :: sfc_elevation(state%ngrdcol)  ! Surface elevation
       
       real(r8), dimension(state%ngrdcol,pverp-top_lev+1) :: zt_g, zi_g ! Thermo & Momentum grids for clubb
       
@@ -869,6 +857,10 @@ contains
       logical, parameter :: l_est_kessler_microphys = .false.
       logical, parameter :: l_outfld_subcol         = .false.
       
+      type(grid) :: gr(state%ngrdcol)
+      
+      type(precipitation_fractions) :: precip_fracs      
+      
       !------------------------------------------------
       !                     Begin Code
       !------------------------------------------------
@@ -974,6 +966,19 @@ contains
           ! Thermodynamic ghost point is below surface
           zt_g(i,1) = -1._r8*zt_g(i,2)
         end do
+      end do
+      
+      do i=1, ncol
+        !  Set the elevation of the surface
+        sfc_elevation(i) = state%zi(i,pver+1)
+      end do
+      
+      !  Heights need to be set at each timestep.
+      do i=1, ncol
+        call setup_grid_api( pver + 1 - top_lev, sfc_elevation(i), l_implemented,         & ! intent(in)
+                             grid_type, zi_g(i,2), zi_g(i,1), zi_g(i,pver + 1 - top_lev+1), & ! intent(in)
+                             zi_g(i,:), zt_g(i,:),                            & ! intent(in)
+                             gr(i), begin_height, end_height )                  ! intent(out)
       end do
          
       ! Calculate the distance between grid levels on the host model grid,
@@ -1144,6 +1149,10 @@ contains
           khzm(i,k) = khzm_in(i,pverp-k+1)
         end do
       end do
+      
+      ! Allocate 2D arrays in precip_fracs for all grid columns and vertical levels
+      call init_precip_fracs_api( pverp-top_lev+1, ngrdcol, &
+                                  precip_fracs )
        
       call setup_pdf_parameters_api( gr, pverp-top_lev+1, ngrdcol, pdf_dim, ztodt, &    ! In
                                      Nc_in_cloud, rcm_in, cld_frac_in, khzm, &          ! In
@@ -1158,13 +1167,13 @@ contains
                                      clubb_config_flags%l_calc_w_corr, &                ! In
                                      clubb_config_flags%l_const_Nc_in_cloud, &          ! In
                                      clubb_config_flags%l_fix_w_chi_eta_correlations, & ! In
-                                     stats_zt, stats_zm, stats_sfc, &                   ! intent(inout)
+                                     stats_zt, stats_zm, stats_sfc, &                   ! In
                                      hydrometp2, &                                      ! Inout
                                      mu_x_1, mu_x_2, &                                  ! Out
                                      sigma_x_1, sigma_x_2, &                            ! Out
                                      corr_array_1, corr_array_2, &                      ! Out
                                      corr_cholesky_mtx_1, corr_cholesky_mtx_2, &        ! Out
-                                     precip_fracs(lchnk) )                              ! Inout
+                                     precip_fracs )                                     ! Inout
       
       ! In order for Lscale to be used properly, it needs to be passed out of
       ! advance_clubb_core, saved to the pbuf, and then pulled out of the
@@ -1238,7 +1247,7 @@ contains
                     rho_ds_zt, &                                          ! In 
                     mu_x_1, mu_x_2, sigma_x_1, sigma_x_2, &               ! In 
                     corr_cholesky_mtx_1, corr_cholesky_mtx_2, &           ! In
-                    precip_fracs(lchnk), silhs_config_flags, &            ! In
+                    precip_fracs, silhs_config_flags, &                   ! In
                     clubb_params, &                                       ! In
                     clubb_config_flags%l_uv_nudge, &                      ! In
                     clubb_config_flags%l_tke_aniso, &                     ! In
@@ -1639,7 +1648,7 @@ contains
         ! Pack precip_frac for output
         do k = 2, pverp-top_lev+1
           do i = 1, ngrdcol
-            precip_frac_out(i,pver-k+2) = precip_fracs(lchnk)%precip_frac(i,k)
+            precip_frac_out(i,pver-k+2) = precip_fracs%precip_frac(i,k)
           end do
         end do
         
