@@ -13,14 +13,10 @@ module modal_aerosol_properties_mod
   type, extends(aerosol_properties) :: modal_aerosol_properties
      private
      real(r8), allocatable :: sigmag_amode(:)
-     real(r8), allocatable :: f1(:)
-     real(r8), allocatable :: f2(:)
      real(r8), allocatable :: exp45logsig_(:)
      real(r8), allocatable :: voltonumblo_(:)
      real(r8), allocatable :: voltonumbhi_(:)
    contains
-     procedure :: abdraz_f1
-     procedure :: abdraz_f2
      procedure :: get
      procedure :: exp45logsig
      procedure :: voltonumblo
@@ -51,6 +47,8 @@ contains
     integer,allocatable :: nmasses(:)
     real(r8),allocatable :: amcubecoefs(:)
     real(r8),allocatable :: alogsig(:)
+    real(r8),allocatable :: f1(:)
+    real(r8),allocatable :: f2(:)
 
     allocate(newobj)
 
@@ -60,10 +58,10 @@ contains
     allocate(nmasses(nmodes))
     allocate(amcubecoefs(nmodes))
     allocate(alogsig(nmodes))
+    allocate( f1(nmodes) )
+    allocate( f2(nmodes) )
 
     allocate(newobj%sigmag_amode(nmodes))
-    allocate(newobj%f1(nmodes))
-    allocate(newobj%f2(nmodes))
     allocate(newobj%exp45logsig_(nmodes))
     allocate(newobj%voltonumblo_(nmodes))
     allocate(newobj%voltonumbhi_(nmodes))
@@ -85,8 +83,8 @@ contains
 
        amcubecoefs(m)=3._r8/(4._r8*pi*newobj%exp45logsig_(m))
 
-       newobj%f1(m) = 0.5_r8*exp(2.5_r8*alogsig(m)*alogsig(m))
-       newobj%f2(m) = 1._r8 + 0.25_r8*alogsig(m)
+       f1(m) = 0.5_r8*exp(2.5_r8*alogsig(m)*alogsig(m))
+       f2(m) = 1._r8 + 0.25_r8*alogsig(m)
 
        newobj%voltonumblo_(m) = 1._r8 / ( (pi/6._r8)*                          &
             (dgnumlo**3._r8)*exp(4.5_r8*alogsig(m)**2._r8) )
@@ -95,11 +93,13 @@ contains
 
     end do
 
-    call newobj%initialize(nmodes,ncnst_tot,nspecies,nmasses,amcubecoefs,alogsig)
+    call newobj%initialize(nmodes,ncnst_tot,nspecies,nmasses,amcubecoefs,alogsig,f1,f2)
     deallocate(nspecies)
     deallocate(nmasses)
     deallocate(amcubecoefs)
     deallocate(alogsig)
+    deallocate(f1)
+    deallocate(f2)
 
   end function constructor
 
@@ -109,8 +109,6 @@ contains
     type(modal_aerosol_properties), intent(inout) :: self
 
     deallocate(self%sigmag_amode)
-    deallocate(self%f1)
-    deallocate(self%f2)
     deallocate(self%exp45logsig_)
     deallocate(self%voltonumblo_)
     deallocate(self%voltonumbhi_)
@@ -155,26 +153,6 @@ contains
     call rad_cnst_get_aer_props(0, m, l, density_aer=density, hygro_aer=hygro)
 
   end subroutine get
-
-  !------------------------------------------------------------------------------
-  !------------------------------------------------------------------------------
-  function abdraz_f1(self,m) result(f)
-    class(modal_aerosol_properties), intent(in) :: self
-    integer, intent(in) :: m
-    real(r8) :: f
-
-    f = self%f1(m)
-  end function abdraz_f1
-
-  !------------------------------------------------------------------------------
-  !------------------------------------------------------------------------------
-  function abdraz_f2(self,m) result(f)
-    class(modal_aerosol_properties), intent(in) :: self
-    integer, intent(in) :: m
-    real(r8) :: f
-
-    f = self%f2(m)
-  end function abdraz_f2
 
   !------------------------------------------------------------------------------
   ! amcube is overridden to keep MAM b4b

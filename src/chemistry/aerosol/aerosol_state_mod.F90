@@ -29,24 +29,25 @@ module aerosol_state_mod
   end type ptr2d_t
 
   interface
+
      !------------------------------------------------------------------------
      !------------------------------------------------------------------------
-     function aero_get_state_mmr(self, l,m) result(x)
+     subroutine aero_get_state_mmr(self, l,m, x)
        import
        class(aerosol_state), intent(in) :: self
        integer, intent(in) :: l
        integer, intent(in) :: m
        real(r8), pointer :: x(:,:)
-     end function aero_get_state_mmr
+     end subroutine aero_get_state_mmr
 
      !------------------------------------------------------------------------
      !------------------------------------------------------------------------
-     function aero_get_state_num(self, m) result(x)
+     subroutine aero_get_state_num(self, m, x)
        import
        class(aerosol_state), intent(in) :: self
        integer, intent(in) :: m
        real(r8), pointer :: x(:,:)
-     end function aero_get_state_num
+     end subroutine aero_get_state_num
 
      !------------------------------------------------------------------------
      !------------------------------------------------------------------------
@@ -106,8 +107,8 @@ contains
 
     do l = 1, aero_props%nspecies(m)
 
-       raer => self%get_ambient_mmr(l,m)
-       qqcw => self%get_cldbrne_mmr(l,m)
+       call self%get_ambient_mmr(l,m, raer)
+       call self%get_cldbrne_mmr(l,m, qqcw)
        call aero_props%get(m,l, density=specdens, hygro=spechygro)
 
        if (phase == 3) then
@@ -145,8 +146,8 @@ contains
     end do
 
     ! aerosol number
-    raer => self%get_ambient_num(m)
-    qqcw => self%get_cldbrne_num(m)
+    call self%get_ambient_num(m, raer)
+    call self%get_cldbrne_num(m, qqcw)
     if (phase == 3) then
        do i = istart, istop
           naerosol(i) = (raer(i,k) + qqcw(i,k))*cs(i,k)

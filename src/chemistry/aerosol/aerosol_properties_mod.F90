@@ -16,6 +16,8 @@ module aerosol_properties_mod
      integer, allocatable :: indexer_(:,:)
      real(r8), allocatable :: amcubecoefs_(:)
      real(r8), allocatable :: alogsig_(:)
+     real(r8), allocatable :: f1_(:)
+     real(r8), allocatable :: f2_(:)
    contains
      procedure :: initialize => aero_props_init
      procedure :: nbins
@@ -25,12 +27,10 @@ module aerosol_properties_mod
      procedure,private :: nmassesv
      generic :: nmasses => nmassesa,nmassesv
      procedure :: indexer
-     procedure :: maxsat     ! *** Does this belong with this class ??
+     procedure :: maxsat
      procedure :: amcubecoef
      procedure :: amcube
      procedure :: alogsig
-     procedure(aero_props_abdraz_f), deferred :: abdraz_f1
-     procedure(aero_props_abdraz_f), deferred :: abdraz_f2
      procedure(aero_props_get), deferred :: get
      procedure(aero_actfracs), deferred :: actfracs
      procedure(aero_num_names), deferred :: get_num_names
@@ -40,6 +40,7 @@ module aerosol_properties_mod
   end type aerosol_properties
 
   interface
+
      !------------------------------------------------------------------------
      !------------------------------------------------------------------------
      subroutine aero_props_get(self, m,l, density,hygro)
@@ -49,15 +50,6 @@ module aerosol_properties_mod
        real(r8), optional, intent(out) :: density
        real(r8), optional, intent(out) :: hygro
      end subroutine aero_props_get
-
-     !------------------------------------------------------------------------
-     !------------------------------------------------------------------------
-     function aero_props_abdraz_f(self, m) result(f)
-       import
-       class(aerosol_properties), intent(in) :: self
-       integer, intent(in) :: m
-       real(r8) :: f
-     end function aero_props_abdraz_f
 
      !------------------------------------------------------------------------
      !------------------------------------------------------------------------
@@ -95,7 +87,7 @@ contains
 
   !------------------------------------------------------------------------------
   !------------------------------------------------------------------------------
-  subroutine aero_props_init(self, nbin, ncnst, nspec, nmasses, amcubecoefs, alogsig )
+  subroutine aero_props_init(self, nbin, ncnst, nspec, nmasses, amcubecoefs, alogsig, f1,f2 )
     class(aerosol_properties), intent(inout) :: self
     integer, intent(in) :: nbin
     integer, intent(in) :: ncnst
@@ -103,6 +95,8 @@ contains
     integer, intent(in) :: nmasses(nbin)
     real(r8),intent(in) :: amcubecoefs(nbin)
     real(r8),intent(in) :: alogsig(nbin)
+    real(r8),intent(in) :: f1(nbin)
+    real(r8),intent(in) :: f2(nbin)
 
     integer :: l,m,mm
 
@@ -110,6 +104,8 @@ contains
     allocate(self%nmasses_(nbin))
     allocate(self%amcubecoefs_(nbin))
     allocate(self%alogsig_(nbin))
+    allocate(self%f1_(nbin))
+    allocate(self%f2_(nbin))
 
     allocate( self%indexer_(nbin,0:maxval(nmasses)) )
 
@@ -129,6 +125,8 @@ contains
     self%nspecies_(:) = nspec(:)
     self%amcubecoefs_(:) = amcubecoefs(:)
     self%alogsig_(:) = alogsig(:)
+    self%f1_(:) = f1(:)
+    self%f2_(:) = f2(:)
 
   end subroutine aero_props_init
 
@@ -151,6 +149,12 @@ contains
     endif
     if (allocated(self%alogsig_)) then
        deallocate(self%alogsig_)
+    endif
+    if (allocated(self%f1_)) then
+       deallocate(self%f1_)
+    endif
+    if (allocated(self%f2_)) then
+       deallocate(self%f2_)
     endif
 
     self%nbins_ = 0
@@ -242,9 +246,7 @@ contains
 
   end function amcube
 
-
   !------------------------------------------------------------------------------
-  ! *** Does maxsat belong with this class ??
   !------------------------------------------------------------------------------
   function maxsat(self, zeta,eta,smc) result(smax)
 
@@ -291,7 +293,7 @@ contains
           g2=smc(m)/sqrt(eta(m)+3._r8*zeta(m))
           g2sqrt=sqrt(g2)
           g2=g2sqrt*g2
-          sum=sum+(self%abdraz_f1(m)*g1+self%abdraz_f2(m)*g2)/(smc(m)*smc(m))
+          sum=sum+(self%f1_(m)*g1+self%f2_(m)*g2)/(smc(m)*smc(m))
        else
           sum=1.e20_r8
        endif

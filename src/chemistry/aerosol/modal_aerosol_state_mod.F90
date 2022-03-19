@@ -62,45 +62,45 @@ contains
 
   !------------------------------------------------------------------------------
   !------------------------------------------------------------------------------
-  function get_ambient_mmr(self,l,m) result(x)
+  subroutine get_ambient_mmr(self,l,m, x)
     class(modal_aerosol_state), intent(in) :: self
     integer, intent(in) :: l
     integer, intent(in) :: m
     real(r8), pointer :: x(:,:)
 
     call rad_cnst_get_aer_mmr(0, m, l, 'a', self%state, self%pbuf, x)
-  end function get_ambient_mmr
+  end subroutine get_ambient_mmr
 
   !------------------------------------------------------------------------------
   !------------------------------------------------------------------------------
-  function get_cldbrne_mmr(self,l,m) result(x)
+  subroutine get_cldbrne_mmr(self,l,m, x)
     class(modal_aerosol_state), intent(in) :: self
     integer, intent(in) :: l
     integer, intent(in) :: m
     real(r8), pointer :: x(:,:)
 
     call rad_cnst_get_aer_mmr(0, m, l, 'c', self%state, self%pbuf, x)
-  end function get_cldbrne_mmr
+  end subroutine get_cldbrne_mmr
 
   !------------------------------------------------------------------------------
   !------------------------------------------------------------------------------
-  function get_ambient_num(self,m) result(x)
+  subroutine get_ambient_num(self,m, x)
     class(modal_aerosol_state), intent(in) :: self
     integer, intent(in) :: m
     real(r8), pointer :: x(:,:)
 
     call rad_cnst_get_mode_num(0, m, 'a', self%state, self%pbuf, x)
-  end function get_ambient_num
+  end subroutine get_ambient_num
 
   !------------------------------------------------------------------------------
   !------------------------------------------------------------------------------
-  function get_cldbrne_num(self,m) result(x)
+  subroutine get_cldbrne_num(self,m, x)
     class(modal_aerosol_state), intent(in) :: self
     integer, intent(in) :: m
     real(r8), pointer :: x(:,:)
 
     call rad_cnst_get_mode_num(0, m, 'c', self%state, self%pbuf, x)
-  end function get_cldbrne_num
+  end subroutine get_cldbrne_num
 
   !------------------------------------------------------------------------------
   !------------------------------------------------------------------------------
@@ -114,12 +114,12 @@ contains
 
     do m = 1, aero_props%nbins()
        mm = aero_props%indexer(m, 0)
-       raer(mm)%fld => self%get_ambient_num(m)
-       qqcw(mm)%fld => self%get_cldbrne_num(m)
+       call self%get_ambient_num(m, raer(mm)%fld)
+       call self%get_cldbrne_num(m, qqcw(mm)%fld)
        do l = 1, aero_props%nspecies(m)
           mm = aero_props%indexer(m, l)
-          raer(mm)%fld => self%get_ambient_mmr(l,m)
-          qqcw(mm)%fld => self%get_cldbrne_mmr(l,m)
+          call self%get_ambient_mmr(l,m, raer(mm)%fld)
+          call self%get_cldbrne_mmr(l,m, qqcw(mm)%fld)
        end do
     end do
 
