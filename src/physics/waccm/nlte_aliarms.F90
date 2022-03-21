@@ -74,7 +74,7 @@ contains
   real(r8), intent(in) :: xo2mmr(pcols,pver)           ! O2 mass mixing ratio profile
 
 ! Output variables
-  real(r8), intent(out) :: cool(pcols,pver)            ! CO2 NLTE cooling rate
+  real(r8), intent(out) :: cool(pcols,pver)            ! CO2 NLTE cooling rate  (K/s)
 
 ! local variables
 
@@ -92,9 +92,9 @@ contains
   interface
      subroutine ali_(zkm, p, tn, co2_vmr, o_vmr, n2_vmr, o2_vmr, ali_cool, pver_c) bind(c,name='ali_')
         use iso_c_binding, only: c_float, c_int
-        real(c_float), dimension(*) :: p, tn, zkm
-        real(c_float), dimension(*) :: co2_vmr, o_vmr, n2_vmr, o2_vmr
-        real(c_float), dimension(*) :: ali_cool
+        real(c_float), dimension(*) :: p, tn, zkm                      ! (in) input pressure(Pa), temperature(K) and height (km)
+        real(c_float), dimension(*) :: co2_vmr, o_vmr, n2_vmr, o2_vmr  ! (in) volume mixing ratios
+        real(c_float), dimension(*) :: ali_cool                        ! (out) cooling rate (K/s)
         integer(c_int) :: pver_c
      end subroutine ali_
   end interface

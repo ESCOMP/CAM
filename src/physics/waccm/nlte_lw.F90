@@ -24,6 +24,9 @@ module nlte_lw
        nlte_register,      &
        nlte_init,          &
        nlte_timestep_init, &
+       nlte_init_restart,  &
+       nlte_read_restart,  &
+       nlte_write_restart, &
        nlte_tend
 
 ! Private module data
@@ -241,7 +244,6 @@ contains
     type(physics_buffer_desc), pointer :: pbuf2d(:,:)
 
 
-
 !---------------------------Local workspace--------------------------------------
 
     if (use_waccm_forcing) then
@@ -253,6 +255,39 @@ contains
     return
   end subroutine nlte_timestep_init
 
+!================================================================================================
+  subroutine nlte_init_restart(File)
+
+    use pio,           only: file_desc_t, PIO_GLOBAL, pio_put_att
+
+    type(file_desc_t), intent(inout) :: File
+
+    integer :: ierr
+
+    ierr = PIO_Put_Att(File, PIO_GLOBAL, 'aliarms_count', aliarms_count)
+
+  end subroutine nlte_init_restart
+!================================================================================================
+  subroutine nlte_read_restart(File)
+
+    use pio,           only: file_desc_t, PIO_GLOBAL, pio_get_att
+
+    type(file_desc_t), intent(inout) :: File
+
+    integer :: ierr
+
+    ierr = PIO_Get_Att(File, PIO_GLOBAL, 'aliarms_count', aliarms_count)
+
+  end subroutine nlte_read_restart
+!================================================================================================
+  subroutine nlte_write_restart(File)
+
+    use pio,           only: file_desc_t
+    type(file_desc_t), intent(inout) :: File
+
+  ! Stub routine
+
+  end subroutine nlte_write_restart
 !================================================================================================
 
   subroutine nlte_tend(state, pbuf,  qrlf)
