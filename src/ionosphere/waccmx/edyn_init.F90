@@ -72,6 +72,8 @@ contains
 
       call addfld ('EDYN_ZIGM2_HAL' , horiz_only, 'I', 'S','Hall Conductance' ,gridname='gmag_grid')
       call addfld ('EDYN_ZIGM11_PED', horiz_only, 'I', 'S','Pedersen Conductance',gridname='gmag_grid')
+      call addfld ('PED_CONDUCTANCE', horiz_only, 'I', 'S','Pedersen Conductance'  ,gridname='gmag_grid')
+      call addfld ('HALL_CONDUCTANCE',horiz_only, 'I', 'S','Hall Conductance'  ,gridname='gmag_grid')
 
       call addfld ('POTEN',(/ 'lev' /), 'I', 'Volts','POTEN: Electric Potential', gridname='geo_grid')
 
