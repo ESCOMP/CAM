@@ -70,9 +70,7 @@ contains
       call addfld ('ED23D'     ,(/ 'lev' /), 'I', 'V/m  ','ED23D: Equatorward Electric Field',gridname='gmag_grid')
       call addfld ('ZPOT_MAG'  ,(/ 'lev' /), 'I', 'cm   ','Geopotential on mag grid (h0 min)',gridname='gmag_grid')
 
-      call addfld ('EDYN_ZIGM2_HAL' , horiz_only, 'I', 'S','Hall Conductance' ,gridname='gmag_grid')
-      call addfld ('EDYN_ZIGM11_PED', horiz_only, 'I', 'S','Pedersen Conductance',gridname='gmag_grid')
-      call addfld ('PED_CONDUCTANCE', horiz_only, 'I', 'S','Pedersen Conductance'  ,gridname='gmag_grid')
+      call addfld ('PED_CONDUCTANCE', horiz_only, 'I', 'S','Pedersen Conductance',gridname='gmag_grid')
       call addfld ('HALL_CONDUCTANCE',horiz_only, 'I', 'S','Hall Conductance'  ,gridname='gmag_grid')
 
       call addfld ('POTEN',(/ 'lev' /), 'I', 'Volts','POTEN: Electric Potential', gridname='geo_grid')
@@ -115,8 +113,8 @@ contains
       call phys_getopts(history_waccmx_out=history_waccmx)
 
       if (history_waccmx) then
-         call add_default ('EDYN_ZIGM11_PED', 1, ' ')
-         call add_default ('EDYN_ZIGM2_HAL' , 1, ' ')
+         call add_default ('PED_CONDUCTANCE', 1, ' ')
+         call add_default ('HALL_CONDUCTANCE' , 1, ' ')
       end if
 
    end subroutine add_fields

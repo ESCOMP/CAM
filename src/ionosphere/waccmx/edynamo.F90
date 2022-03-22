@@ -764,12 +764,6 @@ contains
       endif ! j at equator
     enddo ! j=mlat0,mlat1
 !
-    do j=mlat0,mlat1
-      call outfld('EDYN_ZIGM11_PED',zigm11(mlon0:omlon1,j),omlon1-mlon0+1,j)
-      call outfld('EDYN_ZIGM2_HAL',zigm2(mlon0:omlon1,j),omlon1-mlon0+1,j)
-    enddo
-
-!
 ! Using notation of Richmond (1995) on right-hand side below:
 ! Sigma_(phi phi) = zigm11*abs(sin I_m)
 ! Sigma_(lam lam) = zigm22/abs(sin I_m)
