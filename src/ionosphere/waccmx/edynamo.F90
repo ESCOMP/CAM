@@ -32,8 +32,8 @@ module edynamo
   real(r8), allocatable, dimension(:,:) :: &
     zigm11,    & ! sigma11*cos(theta0)
     zigmc,     & ! sigmac
-    zigm1,     & ! for Hall conductance diag
-    zigm2,     & ! sigma2 -- Pedersen conductance
+    zigm1,     & ! for Hall conductance diagnostic
+    zigm2,     & ! sigma2
     zigm22,    & ! sigma22/cos(theta0)
     rim1,rim2, & ! see description in comment below
     rhs,       & ! right-hand side of PDE

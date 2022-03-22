@@ -70,8 +70,8 @@ contains
       call addfld ('ED23D'     ,(/ 'lev' /), 'I', 'V/m  ','ED23D: Equatorward Electric Field',gridname='gmag_grid')
       call addfld ('ZPOT_MAG'  ,(/ 'lev' /), 'I', 'cm   ','Geopotential on mag grid (h0 min)',gridname='gmag_grid')
 
+      call addfld ('HALL_CONDUCTANCE',horiz_only, 'I', 'S','Hall Conductance',    gridname='gmag_grid')
       call addfld ('PED_CONDUCTANCE', horiz_only, 'I', 'S','Pedersen Conductance',gridname='gmag_grid')
-      call addfld ('HALL_CONDUCTANCE',horiz_only, 'I', 'S','Hall Conductance'  ,gridname='gmag_grid')
 
       call addfld ('POTEN',(/ 'lev' /), 'I', 'Volts','POTEN: Electric Potential', gridname='geo_grid')
 
