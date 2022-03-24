@@ -60,8 +60,8 @@ contains
   integer, intent(in) :: ncol                          ! number of atmospheric columns
   integer, intent(in) :: lchnk                         ! chunk identifier
 
-  real(r8), intent(in) :: state_zm(pcols,pver)         ! model height
-  real(r8), intent(in) :: pmid(pcols,pver)             ! model pressure at mid-point
+  real(r8), intent(in) :: state_zm(pcols,pver)         ! model height (m)
+  real(r8), intent(in) :: pmid(pcols,pver)             ! model pressure at mid-point (Pa)
   real(r8), intent(in) :: t(pcols,pver)                ! Neutral temperature (K)
   real(r8), intent(in) :: o1_mw                        ! O molecular weight
   real(r8), intent(in) :: o2_mw                        ! O2 molecular weight

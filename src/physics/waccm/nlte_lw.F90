@@ -100,8 +100,6 @@ contains
 
     type(physics_buffer_desc), pointer :: pbuf2d(:,:)
 
-    character (len=7) :: subname='nlte_init'
-
     real(r8) :: psh(pver)                  ! pressure scale height
     real(r8) :: pshmn                      ! lower range of merge
     real(r8) :: pshmx                      ! upper range of merge
@@ -334,8 +332,6 @@ contains
     real(r8), pointer, dimension(:,:) :: to3mmr  ! O3 mmr   (tgcm)
 
     integer :: i,j,k, ierr
-
-    character (len=7) :: subname='nlte_lw'
 
 !------------------------------------------------------------------------
 
