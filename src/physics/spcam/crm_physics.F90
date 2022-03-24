@@ -254,7 +254,7 @@ subroutine crm_physics_init(pbuf2d)
   use crmdims,         only: crm_nx, crm_ny, crm_nz
   use ndrop,           only: ndrop_init
   use gas_wetdep_opts, only: gas_wetdep_method
-  use micro_mg_utils,  only: micro_mg_utils_init
+  use micro_pumas_utils,  only: micro_pumas_utils_init
   use time_manager,    only: is_first_step
 
     use cam_history,     only: fieldname_len
@@ -295,9 +295,9 @@ subroutine crm_physics_init(pbuf2d)
   endif
 
   !------------------------- 
-  ! Initialize the micro_mg_utils
+  ! Initialize the micro_pumas_utils
   ! Value of dcs in MG 1.0 is 400.e-6_r8
-  call micro_mg_utils_init(r8, rair, rh2o, cpair, tmelt, latvap, latice, 400.e-6_r8,  errstring)
+  call micro_pumas_utils_init(r8, rair, rh2o, cpair, tmelt, latvap, latice, 400.e-6_r8,  errstring)
 
   !------------------------- 
   ! Register general history fields
@@ -745,7 +745,7 @@ end subroutine crm_init_cnst
    use check_energy,        only: check_energy_chng
    use phys_grid,           only: get_rlat_all_p, get_rlon_all_p, get_lon_all_p, get_lat_all_p
    use modal_aero_calcsize, only: modal_aero_calcsize_sub
-   use micro_mg_utils,      only: size_dist_param_liq, mg_liq_props, mincld, qsmall
+   use micro_pumas_utils,      only: size_dist_param_liq, mg_liq_props, mincld, qsmall
 
 #ifdef MODAL_AERO
      use crmclouds_camaerosols, only: crmclouds_mixnuc_tend, spcam_modal_aero_wateruptake_dr

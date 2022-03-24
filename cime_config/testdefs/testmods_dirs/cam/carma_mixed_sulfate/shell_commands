@@ -1,0 +1,4 @@
+./xmlchange CAM_CONFIG_OPTS=" -phys cam4 -rad rrtmg -chem waccm_ma_sulfur -carma mixed_sulfate"
+./xmlchange ROF_NCPL=\$ATM_NCPL
+./xmlchange GLC_NCPL=\$ATM_NCPL
+./xmlchange RUN_STARTDATE="0001-01-01"

@@ -35,10 +35,7 @@ contains
        , ext_frc_cycle_yr &
        , ext_frc_fixed_ymd &
        , ext_frc_fixed_tod &
-       , xactive_prates &
        , exo_coldens_file &
-       , tuv_xsect_file &
-       , o2_xsect_file &
        , lght_no_prd_factor &
        , pbuf2d &
        )
@@ -67,7 +64,6 @@ contains
 
     use tracer_cnst,       only : tracer_cnst_init
     use tracer_srcs,       only : tracer_srcs_init
-    use mo_chem_utls,      only : get_spc_ndx
     use mo_airglow,        only : init_airglow
     use mo_mean_mass,      only : init_mean_mass
     use mo_mass_xforms,    only : init_mass_xforms
@@ -98,10 +94,7 @@ contains
     character(len=*), intent(in) :: fstrat_list(:)
     character(len=*), dimension(:), intent(in) :: srf_emis_specifier
     character(len=*), dimension(:), intent(in) :: ext_frc_specifier
-    logical, intent(in)          :: xactive_prates
     character(len=*), intent(in) :: exo_coldens_file
-    character(len=*), intent(in) :: tuv_xsect_file
-    character(len=*), intent(in) :: o2_xsect_file
     real(r8),         intent(in) :: lght_no_prd_factor
     character(len=*), intent(in) :: ext_frc_type
     integer,          intent(in) :: ext_frc_cycle_yr
@@ -208,7 +201,7 @@ contains
 
     call photo_inti( xs_coef_file, xs_short_file, xs_long_file, rsf_file, &
          photon_file, electron_file, &
-         exo_coldens_file, tuv_xsect_file, o2_xsect_file, xactive_prates, photo_max_zen )
+         exo_coldens_file, photo_max_zen )
 
     if (masterproc) write(iulog,*) 'chemini: after photo_inti on node ',iam
 
