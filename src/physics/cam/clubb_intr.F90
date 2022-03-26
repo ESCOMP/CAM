@@ -295,6 +295,7 @@ module clubb_intr
     clubb_l_use_tke_in_wp3_pr_turb_term,& ! Use TKE formulation for wp3 pr_turb term
     clubb_l_use_tke_in_wp2_wp3_K_dfsn,  & ! Use TKE in eddy diffusion for wp2 and wp3
     clubb_l_smooth_Heaviside_tau_wpxp,  & ! Use smooth Heaviside 'Peskin' in computation of invrs_tau
+    clubb_l_enable_relaxed_clipping,    & ! Flag to relax clipping on wpxp in xm_wpxp_clipping_and_stats
     clubb_l_single_C2_Skw,              & ! Use a single Skewness dependent C2 for rtp2, thlp2, and
                                           ! rtpthlp
     clubb_l_damp_wp3_Skw_squared,       & ! Set damping on wp3 to use Skw^2 rather than Skw^4
@@ -790,7 +791,8 @@ end subroutine clubb_init_cnst
                                              clubb_l_vary_convect_depth, & ! Out
                                              clubb_l_use_tke_in_wp3_pr_turb_term, & ! Out
                                              clubb_l_use_tke_in_wp2_wp3_K_dfsn, & ! Out
-                                             clubb_l_smooth_Heaviside_tau_wpxp ) ! Out
+                                             clubb_l_smooth_Heaviside_tau_wpxp, & ! Out
+                                             clubb_l_enable_relaxed_clipping ) ! Out
 
     !  Call CLUBB+MF namelist
     call clubb_mf_readnl(nlfile)
@@ -1129,6 +1131,7 @@ end subroutine clubb_init_cnst
                                                  clubb_l_use_tke_in_wp3_pr_turb_term, & ! In
                                                  clubb_l_use_tke_in_wp2_wp3_K_dfsn, & ! In 
                                                  clubb_l_smooth_Heaviside_tau_wpxp, & ! In
+                                                 clubb_l_enable_relaxed_clipping, & ! In
                                                  clubb_config_flags ) ! Out
 
 #endif
@@ -1527,6 +1530,7 @@ end subroutine clubb_init_cnst
            clubb_config_flags%l_prescribed_avg_deltaz, &              ! In
            clubb_config_flags%l_damp_wp2_using_em, &                  ! In
            clubb_config_flags%l_stability_correct_tau_zm, &           ! In
+           clubb_config_flags%l_enable_relaxed_clipping, &            ! In
            dummy_gr, dummy_lmin, dummy_nu_vert_res_dep, err_code )    ! Out
 
     if ( err_code == clubb_fatal_error ) then
