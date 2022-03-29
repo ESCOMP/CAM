@@ -96,6 +96,7 @@ module atm_comp_nuopc
 
   logical                      :: dart_mode = .false.
   logical                      :: mediator_present
+  logical                      :: write_restart_at_endofrun = .false.
 
   character(len=CL)            :: orb_mode            ! attribute - orbital mode
   integer                      :: orb_iyear           ! attribute - orbital year
@@ -369,6 +370,7 @@ contains
     character(CS)           :: inst_suffix
     integer                 :: lmpicom
     logical                 :: isPresent
+    logical                 :: isSet
     character(len=512)      :: diro
     character(len=512)      :: logfile
     integer                 :: compid                            ! component id
@@ -504,6 +506,13 @@ contains
        end if
     else
        single_column = .false.
+    end if
+
+    call NUOPC_CompAttributeGet(gcomp, name="write_restart_at_endofrun", &
+       value=cvalue, isPresent=isPresent, isSet=isSet, rc=rc)
+    if (ChkErr(rc,__LINE__,u_FILE_u)) return
+    if (isPresent .and. isSet) then
+       if (trim(cvalue) .eq. '.true.') write_restart_at_endofrun = .true.
     end if
 
     ! aqua planet input
@@ -1093,6 +1102,24 @@ contains
        else
           nlend = .false.
        endif
+
+       ! Determine if time to write restart
+
+       rstwr = .false.
+       if (nlend .and. write_restart_at_endofrun) then
+          rstwr = .true.
+       else
+          call ESMF_ClockGetAlarm(clock, alarmname='alarm_restart', alarm=alarm, rc=rc)
+          if (ChkErr(rc,__LINE__,u_FILE_u)) return
+          if (ESMF_AlarmIsCreated(alarm, rc=rc)) then
+             if (ESMF_AlarmIsRinging(alarm, rc=rc)) then
+                if (ChkErr(rc,__LINE__,u_FILE_u)) return
+                rstwr = .true.
+                call ESMF_AlarmRingerOff( alarm, rc=rc )
+                if (ChkErr(rc,__LINE__,u_FILE_u)) return
+             endif
+          endif
+       end if
 
        ! Run CAM (run2, run3, run4)
 
