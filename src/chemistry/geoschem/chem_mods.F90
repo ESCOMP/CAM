@@ -7,7 +7,7 @@
       implicit none
       save
 
-      INTEGER, PARAMETER   :: nTracersMax = 251    ! Must be equal to chem_nadv
+      INTEGER, PARAMETER   :: nTracersMax = 252    ! Must be equal to chem_nadv
       INTEGER              :: nTracers
       CHARACTER(LEN=255)   :: tracerNames(nTracersMax)
       CHARACTER(LEN=255)   :: tracerLongNames(nTracersMax)
