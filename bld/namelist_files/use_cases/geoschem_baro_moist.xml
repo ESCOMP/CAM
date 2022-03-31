@@ -7,6 +7,11 @@
 <!-- Force PHIS to be set to zero -->
 <use_topo_file>.false.</use_topo_file>
 
+<!-- for emssions -->
+<cam_physics_mesh hgrid="0.9x1.25">/glade/p/cesmdata/cseg/inputdata/atm/cam/coords/fv0.9x1.25_esmf_141008.nc'</cam_physics_mesh>
+
+<cam_physics_mesh hgrid="1.9x2.5">/glade/p/cesmdata/cseg/inputdata/atm/cam/coords/fv1.9x2.5_esmf_141008.nc'</cam_physics_mesh>
+
 <!-- history output customization -->
 <nhtfrq>0,-6</nhtfrq>
 <fincl2>
