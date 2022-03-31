@@ -250,6 +250,10 @@ contains
 
        forcings(m)%nsectors = 0
 
+       if (masterproc) then
+          write(iulog,'(a,i3,a)') 'extfrc_inti m: ',m,' init file : '//trim(forcings(m)%filename)
+       endif
+
        call getfil (forcings(m)%filename, locfn, 0)
        call cam_pio_openfile ( ncid, trim(locfn), PIO_NOWRITE)
        ierr = pio_inquire (ncid, nVariables=nvars)

@@ -187,6 +187,10 @@ contains
 
        emissions(m)%nsectors = 0
 
+       if (masterproc) then
+          write(iulog,'(a,i3,a)') 'srf_emissions_inti m: ',m,' init file : '//trim(emissions(m)%filename)
+       endif
+
        call getfil (emissions(m)%filename, locfn, 0)
        call cam_pio_openfile ( ncid, trim(locfn), PIO_NOWRITE)
        ierr = pio_inquire (ncid, nVariables=nvars)
