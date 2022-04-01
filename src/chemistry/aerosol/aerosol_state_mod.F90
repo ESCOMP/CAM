@@ -32,21 +32,21 @@ module aerosol_state_mod
 
      !------------------------------------------------------------------------
      !------------------------------------------------------------------------
-     subroutine aero_get_state_mmr(self, l,m, x)
+     subroutine aero_get_state_mmr(self, species_ndx, bin_ndx, mmr)
        import
        class(aerosol_state), intent(in) :: self
-       integer, intent(in) :: l
-       integer, intent(in) :: m
-       real(r8), pointer :: x(:,:)
+       integer, intent(in) :: species_ndx  ! species index
+       integer, intent(in) :: bin_ndx      ! bin index
+       real(r8), pointer :: mmr(:,:)       ! mass mixing ratios
      end subroutine aero_get_state_mmr
 
      !------------------------------------------------------------------------
      !------------------------------------------------------------------------
-     subroutine aero_get_state_num(self, m, x)
+     subroutine aero_get_state_num(self, bin_ndx, num)
        import
        class(aerosol_state), intent(in) :: self
-       integer, intent(in) :: m
-       real(r8), pointer :: x(:,:)
+       integer, intent(in) :: bin_ndx      ! bin index
+       real(r8), pointer :: num(:,:)       ! number densities
      end subroutine aero_get_state_num
 
      !------------------------------------------------------------------------
@@ -55,9 +55,9 @@ module aerosol_state_mod
        import
 
        class(aerosol_state), intent(in) :: self
-       class(aerosol_properties), intent(in) :: aero_props
-       type(ptr2d_t), intent(out) :: raer(:)
-       type(ptr2d_t), intent(out) :: qqcw(:)
+       class(aerosol_properties), intent(in) :: aero_props ! properties of the aerosol model
+       type(ptr2d_t), intent(out) :: raer(:) ! state of interstitual aerosols
+       type(ptr2d_t), intent(out) :: qqcw(:) ! state of cloud-borne aerosols
 
      end subroutine aero_get_states
 
@@ -66,6 +66,7 @@ module aerosol_state_mod
 contains
 
   !------------------------------------------------------------------------------
+  ! returns aerosol number, volume concentrations, and bulk hygroscopicity
   !------------------------------------------------------------------------------
   subroutine loadaer1( self, aero_props, istart, istop, k,  m, cs, phase, &
                        naerosol, vaerosol, hygro)
