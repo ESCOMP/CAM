@@ -970,17 +970,17 @@ subroutine dropmixnuc( aero_props, aero_state, &
             coltend(i,mm)    = sum( pdel(i,:)*raertend )/gravit
             coltend_cw(i,mm) = sum( pdel(i,:)*qqcwtend )/gravit
 
-            ! some CARMA interstetial species are not advected, check:
-            if (lptr>0) then ! adveced species
+            ! check for advected aerosol constituents
+            if (lptr>0) then ! advected aerosol parts
                ptend%q(i,:,lptr) = 0.0_r8
-               ptend%q(i,top_lev:pver,lptr) = raertend(top_lev:pver)           ! set tendencies for interstitial aerosol
+               ptend%q(i,top_lev:pver,lptr) = raertend(top_lev:pver)         ! set tendencies for interstitial aerosol
             else
                raer(mm)%fld(i,:) = 0.0_r8
-               raer(mm)%fld(i,top_lev:pver)  = raercol(top_lev:pver,mm,nnew)           ! update interstitial aerosol
+               raer(mm)%fld(i,top_lev:pver)  = raercol(top_lev:pver,mm,nnew) ! update non-advected interstitial aerosol (pbuf)
             end if
 
             qqcw(mm)%fld(i,:) = 0.0_r8
-            qqcw(mm)%fld(i,top_lev:pver) = raercol_cw(top_lev:pver,mm,nnew) ! update cloud-borne aerosol
+            qqcw(mm)%fld(i,top_lev:pver) = raercol_cw(top_lev:pver,mm,nnew)  ! update cloud-borne aerosol
 
          end do
       end do
@@ -1201,8 +1201,8 @@ subroutine activate_aerosol(wbar, sigw, wdiab, wminf, wmaxf, tair, rhoair,  &
    real(r8) gamma
    real(r8) beta
    real(r8) sqrtg
-   real(r8) :: amcube(nbins) ! cube of dry mode radius (m)
-   real(r8) smc(nbins) ! critical supersaturation for number mode radius
+   real(r8) :: amcube(nbins) ! cube of dry bin radius (m)
+   real(r8) smc(nbins) ! critical supersaturation for number bin radius
    real(r8) sumflx_fullact
    real(r8) sumflxn(nbins)
    real(r8) sumflxm(nbins)

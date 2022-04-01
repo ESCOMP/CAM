@@ -143,37 +143,38 @@ contains
 
   !------------------------------------------------------------------------------
   !------------------------------------------------------------------------------
-  subroutine get(self, m,l, density,hygro)
+  subroutine get(self, bin_ndx, species_ndx, density,hygro)
 
     class(modal_aerosol_properties), intent(in) :: self
-    integer, intent(in) :: m,l
+    integer, intent(in) :: bin_ndx             ! bin index
+    integer, intent(in) :: species_ndx         ! species index
     real(r8), optional, intent(out) :: density
     real(r8), optional, intent(out) :: hygro
 
-    call rad_cnst_get_aer_props(0, m, l, density_aer=density, hygro_aer=hygro)
+    call rad_cnst_get_aer_props(0, bin_ndx, species_ndx, density_aer=density, hygro_aer=hygro)
 
   end subroutine get
 
   !------------------------------------------------------------------------------
   ! amcube is overridden to keep MAM b4b
   !------------------------------------------------------------------------------
-  pure real(r8) function amcube(self, m, volconc, numconc)
+  pure real(r8) function amcube(self, bin_ndx, volconc, numconc)
 
     class(modal_aerosol_properties), intent(in) :: self
-    integer, intent(in) :: m
+    integer, intent(in) :: bin_ndx
     real(r8), intent(in) :: volconc
     real(r8), intent(in) :: numconc
 
-    amcube = (3._r8*volconc/(4._r8*pi*self%exp45logsig_(m)*numconc))
+    amcube = (3._r8*volconc/(4._r8*pi*self%exp45logsig_(bin_ndx)*numconc))
 
   end function amcube
 
   !------------------------------------------------------------------------------
   !------------------------------------------------------------------------------
-  subroutine actfracs(self, m, smc, smax, fn, fm )
+  subroutine actfracs(self, bin_ndx, smc, smax, fn, fm )
     use shr_spfn_mod, only: erf => shr_spfn_erf
     class(modal_aerosol_properties), intent(in) :: self
-    integer, intent(in) :: m
+    integer, intent(in) :: bin_ndx
     real(r8),intent(in) :: smc
     real(r8),intent(in) :: smax
     real(r8),intent(out) :: fn, fm
@@ -182,8 +183,8 @@ contains
     real(r8), parameter :: twothird = 2._r8/3._r8
     real(r8), parameter :: sq2      = sqrt(2._r8)
 
-    x=twothird*(log(smc)-log(smax))/(sq2*self%alogsig(m))
-    y=x-1.5_r8*sq2*self%alogsig(m)
+    x=twothird*(log(smc)-log(smax))/(sq2*self%alogsig(bin_ndx))
+    y=x-1.5_r8*sq2*self%alogsig(bin_ndx)
 
     fn = 0.5_r8*(1._r8-erf(x))
     fm = 0.5_r8*(1._r8-erf(y))
@@ -192,22 +193,23 @@ contains
 
   !------------------------------------------------------------------------
   !------------------------------------------------------------------------
-  subroutine get_num_names(self, m, name_a, name_c)
+  subroutine get_num_names(self, bin_ndx, name_a, name_c)
     class(modal_aerosol_properties), intent(in) :: self
-    integer, intent(in) :: m
+    integer, intent(in) :: bin_ndx           ! bin number
     character(len=32), intent(out) :: name_a, name_c
 
-    call rad_cnst_get_info(0, m, num_name=name_a, num_name_cw=name_c)
+    call rad_cnst_get_info(0,bin_ndx, num_name=name_a, num_name_cw=name_c)
   end subroutine get_num_names
 
   !------------------------------------------------------------------------
   !------------------------------------------------------------------------
-  subroutine get_mmr_names(self, m,l, name_a, name_c)
+  subroutine get_mmr_names(self, bin_ndx, species_ndx, name_a, name_c)
     class(modal_aerosol_properties), intent(in) :: self
-    integer, intent(in) :: m,l
+    integer, intent(in) :: bin_ndx           ! bin number
+    integer, intent(in) :: species_ndx       ! species number
     character(len=32), intent(out) :: name_a, name_c
 
-    call rad_cnst_get_info(0, m, l, spec_name=name_a, spec_name_cw=name_c)
+    call rad_cnst_get_info(0, bin_ndx, species_ndx, spec_name=name_a, spec_name_cw=name_c)
   end subroutine get_mmr_names
 
 end module modal_aerosol_properties_mod

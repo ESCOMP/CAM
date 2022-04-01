@@ -42,43 +42,52 @@ module aerosol_properties_mod
   interface
 
      !------------------------------------------------------------------------
+     ! returns aerosol properties:
+     !  density
+     !  hygroscopicity
      !------------------------------------------------------------------------
-     subroutine aero_props_get(self, m,l, density,hygro)
+     subroutine aero_props_get(self, bin_ndx, species_ndx, density,hygro)
        import
        class(aerosol_properties), intent(in) :: self
-       integer, intent(in) :: m,l
-       real(r8), optional, intent(out) :: density
-       real(r8), optional, intent(out) :: hygro
+       integer, intent(in) :: bin_ndx             ! bin index
+       integer, intent(in) :: species_ndx         ! species index
+       real(r8), optional, intent(out) :: density ! density (kg/m3)
+       real(r8), optional, intent(out) :: hygro   ! hygroscopicity
      end subroutine aero_props_get
 
      !------------------------------------------------------------------------
+     ! returns mass and number activation fractions
      !------------------------------------------------------------------------
-     subroutine aero_actfracs(self, m, smc, smax, fn, fm )
+     subroutine aero_actfracs(self, bin_ndx, smc, smax, fn, fm )
        import
        class(aerosol_properties), intent(in) :: self
-       integer, intent(in) :: m
-       real(r8),intent(in) :: smc
-       real(r8),intent(in) :: smax
-       real(r8),intent(out) :: fn, fm
+       integer, intent(in) :: bin_ndx   ! bin index
+       real(r8),intent(in) :: smc       ! critical supersaturation for particles of bin radius
+       real(r8),intent(in) :: smax      ! maximum supersaturation for multiple competing aerosols
+       real(r8),intent(out) :: fn       ! activation fraction for aerosol number
+       real(r8),intent(out) :: fm       ! activation fraction for aerosol mass
 
      end subroutine aero_actfracs
 
      !------------------------------------------------------------------------
      !------------------------------------------------------------------------
-     subroutine aero_num_names(self, m, name_a, name_c)
+     subroutine aero_num_names(self, bin_ndx, name_a, name_c)
        import
        class(aerosol_properties), intent(in) :: self
-       integer, intent(in) :: m
-       character(len=32), intent(out) :: name_a, name_c
+       integer, intent(in) :: bin_ndx           ! bin number
+       character(len=32), intent(out) :: name_a ! constituent name of ambient aerosol number dens
+       character(len=32), intent(out) :: name_c ! constituent name of cloud-borne aerosol number dens
      end subroutine aero_num_names
 
      !------------------------------------------------------------------------
      !------------------------------------------------------------------------
-     subroutine aero_mmr_names(self, m,l, name_a, name_c)
+     subroutine aero_mmr_names(self, bin_ndx, species_ndx, name_a, name_c)
        import
        class(aerosol_properties), intent(in) :: self
-       integer, intent(in) :: m,l
-       character(len=32), intent(out) :: name_a, name_c
+       integer, intent(in) :: bin_ndx           ! bin number
+       integer, intent(in) :: species_ndx       ! species number
+       character(len=32), intent(out) :: name_a ! constituent name of ambient aerosol MMR
+       character(len=32), intent(out) :: name_c ! constituent name of cloud-borne aerosol MMR
      end subroutine aero_mmr_names
 
   end interface
@@ -86,17 +95,18 @@ module aerosol_properties_mod
 contains
 
   !------------------------------------------------------------------------------
+  ! ojbect initializer
   !------------------------------------------------------------------------------
   subroutine aero_props_init(self, nbin, ncnst, nspec, nmasses, amcubecoefs, alogsig, f1,f2 )
     class(aerosol_properties), intent(inout) :: self
-    integer, intent(in) :: nbin
-    integer, intent(in) :: ncnst
-    integer, intent(in) :: nspec(nbin)
-    integer, intent(in) :: nmasses(nbin)
-    real(r8),intent(in) :: amcubecoefs(nbin)
-    real(r8),intent(in) :: alogsig(nbin)
-    real(r8),intent(in) :: f1(nbin)
-    real(r8),intent(in) :: f2(nbin)
+    integer, intent(in) :: nbin               ! number of bins
+    integer, intent(in) :: ncnst              ! total number of constituents
+    integer, intent(in) :: nspec(nbin)        ! number of species in each bin
+    integer, intent(in) :: nmasses(nbin)      ! number of masses in each bin
+    real(r8),intent(in) :: amcubecoefs(nbin)  ! coefficient used to calc the radius^3 of each bin
+    real(r8),intent(in) :: alogsig(nbin)      ! ??? some log factor of each bin ???
+    real(r8),intent(in) :: f1(nbin)           ! abdul-razzak functions of width
+    real(r8),intent(in) :: f2(nbin)           ! abdul-razzak functions of width
 
     integer :: l,m,mm
 
@@ -131,6 +141,7 @@ contains
   end subroutine aero_props_init
 
   !------------------------------------------------------------------------------
+  ! Ojbect clean
   !------------------------------------------------------------------------------
   subroutine aero_props_final(self)
     class(aerosol_properties), intent(inout) :: self
@@ -163,25 +174,28 @@ contains
   end subroutine aero_props_final
 
   !------------------------------------------------------------------------------
+  ! returns number of species in a bin
   !------------------------------------------------------------------------------
-  pure integer function nspecies(self,m)
+  pure integer function nspecies(self,bin_ndx)
     class(aerosol_properties), intent(in) :: self
-    integer, intent(in) :: m
+    integer, intent(in) :: bin_ndx           ! bin number
 
-    nspecies = self%nspecies_(m)
+    nspecies = self%nspecies_(bin_ndx)
   end function nspecies
 
   !------------------------------------------------------------------------------
+  ! returns number of species masses in a given bin number
   !------------------------------------------------------------------------------
-  pure function nmassesv(self,m) result(val)
+  pure function nmassesv(self,bin_ndx) result(val)
     class(aerosol_properties), intent(in) :: self
-    integer, intent(in) :: m
+    integer, intent(in) :: bin_ndx           ! bin number
     integer :: val
 
-    val = self%nmasses_(m)
+    val = self%nmasses_(bin_ndx)
   end function nmassesv
 
   !------------------------------------------------------------------------------
+  ! returns an array of number of species masses for all bins
   !------------------------------------------------------------------------------
   pure function nmassesa(self) result(arr)
     class(aerosol_properties), intent(in) :: self
@@ -191,15 +205,18 @@ contains
   end function nmassesa
 
   !------------------------------------------------------------------------------
+  ! returns a single index for given bin and species
   !------------------------------------------------------------------------------
-  pure integer function indexer(self,m,l)
+  pure integer function indexer(self,bin_ndx,species_ndx)
     class(aerosol_properties), intent(in) :: self
-    integer, intent(in) :: m,l
+    integer, intent(in) :: bin_ndx           ! bin number
+    integer, intent(in) :: species_ndx       ! species number
 
-    indexer = self%indexer_(m,l)
+    indexer = self%indexer_(bin_ndx,species_ndx)
   end function indexer
 
   !------------------------------------------------------------------------------
+  ! returns the total number of bins
   !------------------------------------------------------------------------------
   pure integer function nbins(self)
     class(aerosol_properties), intent(in) :: self
@@ -208,6 +225,7 @@ contains
   end function nbins
 
   !------------------------------------------------------------------------------
+  ! returns number of constituents (or elements) totaled across all bins
   !------------------------------------------------------------------------------
   pure integer function ncnst_tot(self)
     class(aerosol_properties), intent(in) :: self
@@ -216,51 +234,55 @@ contains
   end function ncnst_tot
 
   !------------------------------------------------------------------------------
+  ! returns coefficient factor for radius^3 calc
   !------------------------------------------------------------------------------
-  pure real(r8) function amcubecoef(self, m)
+  pure real(r8) function amcubecoef(self, bin_ndx)
     class(aerosol_properties), intent(in) :: self
-    integer, intent(in) :: m
+    integer, intent(in) :: bin_ndx           ! bin number
 
-    amcubecoef = self%amcubecoefs_(m)
+    amcubecoef = self%amcubecoefs_(bin_ndx)
   end function amcubecoef
 
   !------------------------------------------------------------------------------
+  ! returns log of geometric standard deviation of the number distribution for aerosol bin
   !------------------------------------------------------------------------------
-  pure real(r8) function alogsig(self, m)
+  pure real(r8) function alogsig(self, bin_ndx)
     class(aerosol_properties), intent(in) :: self
-    integer, intent(in) :: m
+    integer, intent(in) :: bin_ndx           ! bin number
 
-    alogsig = self%alogsig_(m)
+    alogsig = self%alogsig_(bin_ndx)
   end function alogsig
 
   !------------------------------------------------------------------------------
+  ! returns radius^3 (m3)
   !------------------------------------------------------------------------------
-  pure real(r8) function amcube(self, m, volconc, numconc)
+  pure real(r8) function amcube(self, bin_ndx, volconc, numconc)
 
     class(aerosol_properties), intent(in) :: self
-    integer, intent(in) :: m
-    real(r8), intent(in) :: volconc
-    real(r8), intent(in) :: numconc
+    integer, intent(in) :: bin_ndx  ! bin number
+    real(r8), intent(in) :: volconc ! volume conc (m3/m3)
+    real(r8), intent(in) :: numconc ! number conc (1/m3)
 
-    amcube = self%amcubecoefs_(m)*volconc/numconc
+    amcube = self%amcubecoefs_(bin_ndx)*volconc/numconc
 
   end function amcube
 
   !------------------------------------------------------------------------------
+  ! returns maximum supersaturation
   !------------------------------------------------------------------------------
   function maxsat(self, zeta,eta,smc) result(smax)
 
     !-------------------------------------------------------------------------
-    ! Calculates maximum supersaturation for multiple competing aerosol modes.
+    ! Calculates maximum supersaturation for multiple competing aerosols.
     !
     ! Abdul-Razzak and Ghan, A parameterization of aerosol activation.
     ! 2. Multiple aerosol types. J. Geophys. Res., 105, 6837-6844.
     !-------------------------------------------------------------------------
 
     class(aerosol_properties), intent(in) :: self
-    real(r8), intent(in)  :: zeta(self%nbins_)
-    real(r8), intent(in)  :: eta(self%nbins_)
-    real(r8), intent(in)  :: smc(self%nbins_) ! critical supersaturation for number mode radius
+    real(r8), intent(in)  :: zeta(self%nbins_) ! Abdul-Razzak and Ghan eq 10
+    real(r8), intent(in)  :: eta(self%nbins_)  ! Abdul-Razzak and Ghan eq 11
+    real(r8), intent(in)  :: smc(self%nbins_)  ! critical supersaturation
 
     real(r8) :: smax ! maximum supersaturation
 
