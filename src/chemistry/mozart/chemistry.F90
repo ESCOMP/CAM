@@ -83,7 +83,7 @@ module chemistry
   character(len=shr_kind_cl) :: depvel_lnd_file = 'depvel_lnd_file'
 
   ! emis
-  integer, parameter :: max_num_emis_files = max(100,4*pcnst)
+  integer, parameter :: max_num_emis_files = max(100,2*pcnst)
   character(len=shr_kind_cl) :: airpl_emis_file = '' ! airplane emissions
   character(len=shr_kind_cl) :: srf_emis_specifier(max_num_emis_files) = ''
   character(len=shr_kind_cl) :: ext_frc_specifier(max_num_emis_files) = ''
