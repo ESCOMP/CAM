@@ -545,25 +545,6 @@
       <option name="wallclock">00:30:00</option>
     </options>
   </test>
-<!--              335                         -->
-  <test compset="FHS94" grid="f10_f10_mg37" name="ERC_D_Ln9_Vnuopc" testmods="cam/idphys">
-    <machines>
-      <machine name="izumi" compiler="nag" category="aux_cam"/>
-    </machines>
-    <options>
-      <option name="comment" >335 tsm, ter</option>
-      <option name="wallclock">00:30:00</option>
-    </options>
-  </test>
-  <test compset="FHS94" grid="f10_f10_mg37" name="ERC_D_Ln9_Vmct" testmods="cam/idphys">
-    <machines>
-      <machine name="izumi" compiler="nag" category="aux_cam"/>
-    </machines>
-    <options>
-      <option name="comment" >335 tsm, ter</option>
-      <option name="wallclock">00:30:00</option>
-    </options>
-  </test>
 <!--              338                         -->
   <test compset="QPC5" grid="f10_f10_mg37" name="SMS_D_Ln9_Vnuopc" testmods="cam/rad_diag_mam">
     <machines>
