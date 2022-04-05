@@ -2012,7 +2012,7 @@ contains
     use subcol_SILHS,    only: subcol_SILHS_var_covar_driver
     use subcol_SILHS,    only: subcol_SILHS_fill_holes_conserv
     use subcol_SILHS,    only: subcol_SILHS_hydromet_conc_tend_lim
-    use micro_mg_cam,    only: massless_droplet_destroyer
+    use micro_pumas_cam,    only: massless_droplet_destroyer
     use cam_snapshot,    only: cam_snapshot_all_outfld_tphysbc
     use cam_snapshot_common, only: cam_snapshot_ptend_outfld
     use ssatcontrail,       only: ssatcontrail_d0

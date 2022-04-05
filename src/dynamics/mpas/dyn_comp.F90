@@ -216,13 +216,6 @@ type dyn_export_t
                                                       !                              (nver,ncol)
 end type dyn_export_t
 
-! constituent indices for waccm-x dry air properties
-integer, public, protected :: &
-   ixo  = -1, &
-   ixo2 = -1, &
-   ixh  = -1, &
-   ixh2 = -1
-
 real(r8), parameter :: rad2deg = 180.0_r8 / pi
 real(r8), parameter :: deg2rad = pi / 180.0_r8
 
@@ -322,7 +315,6 @@ subroutine dyn_init(dyn_in, dyn_out)
    use mpas_derived_types, only : mpas_pool_type
    use mpas_constants,     only : mpas_constants_compute_derived
    use dyn_tests_utils,    only : vc_dycore, vc_height, string_vc, vc_str_lgth
-   use phys_control,       only : waccmx_is
    use constituents,       only : cnst_get_ind
    ! arguments:
    type(dyn_import_t), intent(inout)  :: dyn_in
@@ -575,14 +567,6 @@ subroutine dyn_init(dyn_in, dyn_out)
        write(iulog,*) subname//": m,thermodynamic_active_species_idx_ice_dycore: ",m,thermodynamic_active_species_ice_idx_dycore(m)
      end if
    end do
-
-   ! constituent indices for waccm-x
-   if ( waccmx_is('ionosphere') .or. waccmx_is('neutral') ) then
-      call cnst_get_ind('O',  ixo)
-      call cnst_get_ind('O2', ixo2)
-      call cnst_get_ind('H',  ixh)
-      call cnst_get_ind('H2', ixh2)
-   end if
 
 end subroutine dyn_init
 

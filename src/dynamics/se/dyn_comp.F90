@@ -10,7 +10,7 @@ use constituents,           only: pcnst, cnst_get_ind, cnst_name, cnst_longname,
                                   cnst_is_a_water_species
 use cam_control_mod,        only: initial_run
 use cam_initfiles,          only: initial_file_get_id, topo_file_get_id, pertlim
-use phys_control,           only: use_gw_front, use_gw_front_igw, waccmx_is
+use phys_control,           only: use_gw_front, use_gw_front_igw
 use dyn_grid,               only: ini_grid_name, timelevel, hvcoord, edgebuf, &
                                   ini_grid_hdim_name
 
@@ -76,13 +76,6 @@ logical, public, protected :: write_restart_unstruct
 ! Frontogenesis indices
 integer, public    :: frontgf_idx      = -1
 integer, public    :: frontga_idx      = -1
-
-! constituent indices for waccm-x dry air properties
-integer, public, protected :: &
-   ixo  = -1, &
-   ixo2 = -1, &
-   ixh  = -1, &
-   ixh2 = -1
 
 interface read_dyn_var
   module procedure read_dyn_field_2d
@@ -952,14 +945,6 @@ subroutine dyn_init(dyn_in, dyn_out)
       call add_default(tottnam(       1), budget_hfile_num, ' ')
       call add_default(tottnam(ixcldliq), budget_hfile_num, ' ')
       call add_default(tottnam(ixcldice), budget_hfile_num, ' ')
-   end if
-
-   ! constituent indices for waccm-x
-   if ( waccmx_is('ionosphere') .or. waccmx_is('neutral') ) then
-      call cnst_get_ind('O',  ixo)
-      call cnst_get_ind('O2', ixo2)
-      call cnst_get_ind('H',  ixh)
-      call cnst_get_ind('H2', ixh2)
    end if
 
    call test_mapping_addfld
