@@ -1533,6 +1533,7 @@ end subroutine clubb_init_cnst
            clubb_config_flags%l_damp_wp2_using_em, &                  ! In
            clubb_config_flags%l_stability_correct_tau_zm, &           ! In
            clubb_config_flags%l_enable_relaxed_clipping, &            ! In
+           clubb_config_flags%l_diag_Lscale_from_tau, &               ! In
            dummy_gr, dummy_lmin, dummy_nu_vert_res_dep, err_code )    ! Out
 
     if ( err_code == clubb_fatal_error ) then
