@@ -44,7 +44,7 @@
   </test>
   <test compset="F2000climo" grid="f09_f09_mg17" name="PFS_Vmct">
     <machines>
-      <machine name="cheyenne" compiler="pgi" category="prebeta"/>
+      <machine name="cheyenne" compiler="gnu" category="prebeta"/>
     </machines>
     <options>
       <option name="wallclock">00:10:00</option>
@@ -236,7 +236,7 @@
   </test>
   <test compset="QPC5" grid="ne5_ne5_mg37" name="ERP_Ln9_Vmct" testmods="cam/outfrq9s" supported="false">
     <machines>
-      <machine name="izumi" compiler="pgi" category="aux_cam"/>
+      <machine name="izumi" compiler="gnu" category="aux_cam"/>
     </machines>
   </test>
 
@@ -343,7 +343,7 @@
 <!--              112 tsm, ter, tbl                              -->
   <test compset="QPC3" grid="T5_T5_mg37" name="ERC_D_Ln9_Vmct" testmods="cam/outfrq3s_usecase">
     <machines>
-      <machine name="izumi" compiler="pgi" category="aux_cam"/>
+      <machine name="izumi" compiler="gnu" category="aux_cam"/>
     </machines>
     <options>
       <option name="comment" >112 tsm, ter</option>
@@ -363,7 +363,7 @@
 <!--              114 tsm, ter, tbr, tbl                             -->
   <test compset="QPC4" grid="T5_T5_mg37" name="ERI_D_Ln18_Vmct" testmods="cam/co2rmp">
     <machines>
-      <machine name="izumi" compiler="pgi" category="aux_cam"/>
+      <machine name="izumi" compiler="gnu" category="aux_cam"/>
     </machines>
     <options>
       <option name="comment" >114 tsm, ter, tbr</option>
@@ -383,7 +383,7 @@
 <!--              222 tsm, ter                         -->
   <test compset="QPSPCAMM" grid="f10_f10_mg37" name="ERC_D_Ln9_Vmct" testmods="cam/outfrq3s">
     <machines>
-      <machine name="izumi" compiler="pgi" category="aux_cam"/>
+      <machine name="izumi" compiler="gnu" category="aux_cam"/>
     </machines>
     <options>
       <option name="comment" >222 tsm, ter</option>
@@ -443,7 +443,7 @@
 <!--              314 tsm ter tbl             -->
   <test compset="QPC4" grid="f10_f10_mg37" name="ERC_D_Ln9_Vmct" testmods="cam/outfrq3s_diags">
     <machines>
-      <machine name="izumi" compiler="pgi" category="aux_cam"/>
+      <machine name="izumi" compiler="gnu" category="aux_cam"/>
     </machines>
     <options>
       <option name="comment" >314 tsm ter</option>
@@ -473,7 +473,7 @@
 <!--              320 tsm ter tbl                        -->
   <test compset="QPC5" grid="f10_f10_mg37" name="ERC_D_Ln9_Vmct" testmods="cam/rad_diag">
     <machines>
-      <machine name="izumi" compiler="pgi" category="aux_cam"/>
+      <machine name="izumi" compiler="gnu" category="aux_cam"/>
     </machines>
     <options>
       <option name="comment" >320 tsm ter</option>
@@ -503,7 +503,7 @@
 <!--              334 tsm ter tbl                        -->
   <test compset="QPC5" grid="f10_f10_mg37" name="ERC_D_Ln9_Vmct" testmods="cam/outfrq3s_unicon">
     <machines>
-      <machine name="izumi" compiler="pgi" category="aux_cam"/>
+      <machine name="izumi" compiler="gnu" category="aux_cam"/>
     </machines>
     <options>
       <option name="comment" >334 tsm, ter</option>
@@ -533,7 +533,7 @@
 <!--              339 tsm ter tbl                        -->
   <test compset="FADIAB" grid="f10_f10_mg37" name="ERC_D_Ln9_Vmct" testmods="cam/terminator">
     <machines>
-      <machine name="izumi" compiler="pgi" category="aux_cam"/>
+      <machine name="izumi" compiler="gnu" category="aux_cam"/>
     </machines>
     <options>
       <option name="comment" >339 tsm, ter</option>
@@ -582,7 +582,7 @@
   </test>
   <test compset="QPC4X" grid="ne5_ne5_mg37" name="SMS_Ln9_Vmct" testmods="cam/outfrq9s">
     <machines>
-      <machine name="izumi" compiler="pgi" category="waccmx"/>
+      <machine name="izumi" compiler="gnu" category="waccmx"/>
     </machines>
     <options>
       <option name="wallclock">00:30:00</option>
@@ -770,7 +770,7 @@
   </test>
   <test compset="QPWmaC4" grid="f10_f10_mg37" name="SMS_D_Ln9_Vmct" testmods="cam/outfrq9s_apmee" supported="false">
     <machines>
-      <machine name="izumi" compiler="pgi" category="aux_cam"/>
+      <machine name="izumi" compiler="gnu" category="aux_cam"/>
       <machine name="izumi" compiler="nag" category="waccm"/>
     </machines>
     <options>
@@ -825,7 +825,7 @@
 <!--              704 tsm  ter tbl                       -->
   <test compset="FADIAB" grid="ne5pg4_ne5pg4_mg37" name="ERC_D_Ln9_Vmct" testmods="cam/outfrq3s">
     <machines>
-      <machine name="izumi" compiler="pgi" category="aux_cam"/>
+      <machine name="izumi" compiler="gnu" category="aux_cam"/>
     </machines>
     <options>
       <option name="comment" >704 tsm, ter</option>
@@ -855,7 +855,7 @@
 <!--              706  tsm teq                      -->
   <test compset="FADIAB" grid="ne5pg3_ne5pg3_mg37" name="PEM_D_Ln9_Vmct" testmods="cam/outfrq3s">
     <machines>
-      <machine name="izumi" compiler="pgi" category="aux_cam"/>
+      <machine name="izumi" compiler="gnu" category="aux_cam"/>
     </machines>
     <options>
       <option name="comment" >706 tsm, teq</option>
@@ -865,7 +865,7 @@
 <!--              707  tsm teq                      -->
   <test compset="FADIAB" grid="ne5pg2_ne5pg2_mg37" name="ERC_D_Ln9_Vmct" testmods="cam/outfrq3s">
     <machines>
-      <machine name="izumi" compiler="pgi" category="aux_cam"/>
+      <machine name="izumi" compiler="gnu" category="aux_cam"/>
     </machines>
     <options>
       <option name="comment" >707 tsm, ter</option>
@@ -885,7 +885,7 @@
 <!--              714  sms                      -->
   <test compset="QPC5" grid="ne5pg3_ne5pg3_mg37" name="SMS_D_Ln9_Vmct" testmods="cam/outfrq3s_ttrac">
     <machines>
-      <machine name="izumi" compiler="pgi" category="aux_cam"/>
+      <machine name="izumi" compiler="gnu" category="aux_cam"/>
     </machines>
     <options>
       <option name="comment" >714 tsm, ter</option>
@@ -895,7 +895,7 @@
 <!--              712                        -->
   <test compset="QPC5" grid="ne5_ne5_mg37" name="ERC_D_Ln9_Vmct" testmods="cam/outfrq3s_ba">
     <machines>
-      <machine name="izumi" compiler="pgi" category="aux_cam"/>
+      <machine name="izumi" compiler="gnu" category="aux_cam"/>
     </machines>
     <options>
       <option name="comment" >712 tsm, ter</option>
@@ -935,7 +935,7 @@
 <!--              711 teq                       -->
   <test compset="QPC5" grid="ne5pg3_ne5pg3_mg37" name="PLB_D_Ln9_Vmct" testmods="cam/ttrac_loadbal0">
     <machines>
-      <machine name="izumi" compiler="pgi" category="aux_cam"/>
+      <machine name="izumi" compiler="gnu" category="aux_cam"/>
     </machines>
     <options>
       <option name="comment" >711 teq</option>
@@ -945,7 +945,7 @@
 <!--              712 teq                       -->
   <test compset="QPC5" grid="ne5pg3_ne5pg3_mg37" name="PLB_D_Ln9_Vmct" testmods="cam/ttrac_loadbal1">
     <machines>
-      <machine name="izumi" compiler="pgi" category="aux_cam"/>
+      <machine name="izumi" compiler="gnu" category="aux_cam"/>
     </machines>
     <options>
       <option name="comment" >712 teq</option>
@@ -955,7 +955,7 @@
 <!--              713 teq                       -->
   <test compset="QPC5" grid="ne5pg3_ne5pg3_mg37" name="PLB_D_Ln9_Vmct" testmods="cam/ttrac_loadbal3">
     <machines>
-      <machine name="izumi" compiler="pgi" category="aux_cam"/>
+      <machine name="izumi" compiler="gnu" category="aux_cam"/>
     </machines>
     <options>
       <option name="comment" >713 teq</option>
@@ -995,7 +995,7 @@
 <!--              002 tsc                       -->
   <test compset="QPC4" grid="T42_T42_mg17" name="SCT_D_Ln7_Vmct" testmods="cam/scm_prep">
     <machines>
-      <machine name="izumi" compiler="pgi" category="aux_cam"/>
+      <machine name="izumi" compiler="gnu" category="aux_cam"/>
     </machines>
     <options>
       <option name="comment" >002 tsc</option>
@@ -1005,7 +1005,7 @@
 <!--              sc004 tsc                       -->
   <test compset="QPC6" grid="T42_T42_mg17" name="SCT_D_Ln7_Vmct" testmods="cam/scm_prep_c6">
     <machines>
-      <machine name="izumi" compiler="pgi" category="aux_cam"/>
+      <machine name="izumi" compiler="gnu" category="aux_cam"/>
     </machines>
     <options>
       <option name="comment" >004 tsc</option>
@@ -1610,7 +1610,6 @@
   <test compset="FSPCAMS" grid="f19_f19_mg17" name="ERS_Ln9_Vmct" testmods="cam/outfrq9s">
     <machines>
       <machine name="izumi" compiler="nag" category="test_spcam"/>
-      <machine name="izumi" compiler="pgi" category="test_spcam"/>
       <machine name="cheyenne" compiler="intel" category="aux_cam"/>
     </machines>
     <options>
@@ -1654,7 +1653,7 @@
     <machines>
       <machine name="cheyenne" compiler="intel" category="fv3_cam"/>
       <machine name="izumi" compiler="intel"   category="fv3_cam"/>
-      <machine name="izumi" compiler="pgi"     category="fv3_cam"/>
+      <machine name="izumi" compiler="gnu"     category="fv3_cam"/>
     </machines>
     <options>
       <option name="wallclock">00:10:00</option>
@@ -2367,7 +2366,7 @@
 
   <test compset="FHS94" grid="ne5_ne5_mg37" name="ERP_Ln9_Vmct" testmods="cam/outfrq9s">
     <machines>
-      <machine name="izumi" compiler="pgi" category="aux_cam"/>
+      <machine name="izumi" compiler="gnu" category="aux_cam"/>
     </machines>
   </test>
 
