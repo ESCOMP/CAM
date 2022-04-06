@@ -1451,8 +1451,9 @@ subroutine micro_mg_cam_tend(state, ptend, dtime, pbuf)
 
    end select
 
-!  CAC addition to force mgncol to match ncol and override what set in the micro_mg_get_cols routine
+!  CAC addition to force mgncol to match ncol and nlev to pver and override what set in the micro_mg_get_cols routine
    mgncol = ncol
+   nlev = pver
 
    call micro_mg_cam_tend_pack(state, ptend, dtime, pbuf, mgncol, mgcols, nlev)
 
@@ -1653,11 +1654,6 @@ subroutine micro_mg_cam_tend_pack(state, ptend, dtime, pbuf, mgncol, mgcols, nle
 
    ! Object that packs columns with clouds/precip.
 !   type(MGPacker) :: packer
-
-   ! Optional outputs
-   real(r8), target :: tnd_qsnow_opt(mgncol,nlev)
-   real(r8), target :: tnd_nsnow_opt(mgncol,nlev)
-   real(r8), target :: re_ice_opt(mgncol,nlev)
 
    ! Initialized versions of inputs.
    real(r8) :: graupel(mgncol,nlev)
@@ -2577,39 +2573,39 @@ subroutine micro_mg_cam_tend_pack(state, ptend, dtime, pbuf, mgncol, mgcols, nle
 !        accum_method=accum_null)
 
    ! Assign state_loc variables to non-pointers (gnu compiler might be getting confused if pointers passed in)
-    state_loc_t(:mgncol,1:nlev)    = state_loc%t(:mgncol,top_lev:pver)
-    state_loc_q(:mgncol,1:nlev)    = state_loc%q(:mgncol,top_lev:pver,1)
-    state_loc_pmid(:mgncol,1:nlev) = state_loc%pmid(:mgncol,top_lev:pver)
-    state_loc_pdel(:mgncol,1:nlev) = state_loc%pdel(:mgncol,top_lev:pver)
-    state_loc_liq(:mgncol,1:nlev)  = state_loc%q(:mgncol,top_lev:pver,ixcldliq)
-    state_loc_ice(:mgncol,1:nlev)  = state_loc%q(:mgncol,top_lev:pver,ixcldice)
-    state_loc_numliq(:mgncol,1:nlev) = state_loc%q(:mgncol,top_lev:pver,ixnumliq)
-    state_loc_numice(:mgncol,1:nlev) = state_loc%q(:mgncol,top_lev:pver,ixnumice)
+    state_loc_t(:mgncol,:)    = state_loc%t(:mgncol,:)
+    state_loc_q(:mgncol,:)    = state_loc%q(:mgncol,:,1)
+    state_loc_pmid(:mgncol,:) = state_loc%pmid(:mgncol,:)
+    state_loc_pdel(:mgncol,:) = state_loc%pdel(:mgncol,:)
+    state_loc_liq(:mgncol,:)  = state_loc%q(:mgncol,:,ixcldliq)
+    state_loc_ice(:mgncol,:)  = state_loc%q(:mgncol,:,ixcldice)
+    state_loc_numliq(:mgncol,:) = state_loc%q(:mgncol,:,ixnumliq)
+    state_loc_numice(:mgncol,:) = state_loc%q(:mgncol,:,ixnumice)
 
     if (micro_mg_version > 1) then
-       state_loc_rain(:mgncol,1:nlev) = state_loc%q(:mgncol,top_lev:pver,ixrain)
-       state_loc_snow(:mgncol,1:nlev) = state_loc%q(:mgncol,top_lev:pver,ixsnow)
-       state_loc_numrain(:mgncol,1:nlev) = state_loc%q(:mgncol,top_lev:pver,ixnumrain)
-       state_loc_numsnow(:mgncol,1:nlev) = state_loc%q(:mgncol,top_lev:pver,ixnumsnow)
+       state_loc_rain(:mgncol,:) = state_loc%q(:mgncol,:,ixrain)
+       state_loc_snow(:mgncol,:) = state_loc%q(:mgncol,:,ixsnow)
+       state_loc_numrain(:mgncol,:) = state_loc%q(:mgncol,:,ixnumrain)
+       state_loc_numsnow(:mgncol,:) = state_loc%q(:mgncol,:,ixnumsnow)
     end if
 
     if (micro_mg_version > 1) then
        if (micro_mg_version > 2) then
-          state_loc_graup(:mgncol,1:nlev) = state_loc%q(:mgncol,top_lev:pver,ixgraupel)
-          state_loc_numgraup(:mgncol,1:nlev) = state_loc%q(:mgncol,top_lev:pver,ixnumgraupel)
+          state_loc_graup(:mgncol,:) = state_loc%q(:mgncol,:,ixgraupel)
+          state_loc_numgraup(:mgncol,:) = state_loc%q(:mgncol,:,ixnumgraupel)
        else
-          state_loc_graup(:mgncol,1:nlev) = 0._r8
-          state_loc_numgraup(:mgncol,1:nlev) = 0._r8
+          state_loc_graup(:mgncol,:) = 0._r8
+          state_loc_numgraup(:mgncol,:) = 0._r8
        end if
     end if
 
     ! Previously, the packer would only pass values from top_lev and below into microphys.
     ! So, here we will zero out values above top_lev before passing into _tend for some
     ! pbuf variables that are inputs.
-!!!!!    naai(:mgncol,:top_lev-1) = 0._r8
-!!!!!    npccn(:mgncol,:top_lev-1) = 0._r8
-!!!!!    ! The null value for qsatfac is 1, not zero
-!!!!!    qsatfac(:mgncol,:top_lev-1) = 1._r8
+    naai(:mgncol,:top_lev-1) = 0._r8
+    npccn(:mgncol,:top_lev-1) = 0._r8
+    ! The null value for qsatfac is 1, not zero
+    qsatfac(:mgncol,:top_lev-1) = 1._r8
 
    do it = 1, num_steps
 
@@ -2632,7 +2628,7 @@ subroutine micro_mg_cam_tend_pack(state, ptend, dtime, pbuf, mgncol, mgcols, nle
          case (0)
             call micro_mg_tend1_0( &
                  microp_uniform, mgncol, nlev, mgncol, 1, dtime/num_steps, &
-                 state_loc%t(mgncol,:), state_loc%q(:mgncol,:,1), state_loc%q(:mgncol,:,ixcldliq), &
+                 state_loc%t(:mgncol,:), state_loc%q(:mgncol,:,1), state_loc%q(:mgncol,:,ixcldliq), &
                  state_loc%q(:mgncol,:,ixcldice), state_loc%q(:mgncol,:,ixnumliq),     &
                  state_loc%q(:mgncol,:,ixnumice), state_loc%pmid(:mgncol,:),  state_loc%pdel(:mgncol,:), &
                  ast(:mgncol,:), alst_mic(:mgncol,:),&
@@ -2669,10 +2665,10 @@ subroutine micro_mg_cam_tend_pack(state, ptend, dtime, pbuf, mgncol, mgcols, nle
               state_loc_graup,                state_loc_numgraup,     &
               relvar(:mgncol,:),         accre_enhan(:mgncol,:),     &
               state_loc_pmid,                state_loc_pdel,          &
-              ast, alst_mic, aist_mic, qsatfac(:,top_lev:pver), &
+              ast, alst_mic, aist_mic, qsatfac(:,:), &
               rate1cld(:mgncol,:),                         &
-              naai(:,top_lev:pver),            npccn(:,top_lev:pver),           &
-              rndst(:mgncol,top_lev:pver,:),    nacon(:mgncol,top_lev:pver,:),           &
+              naai(:,:),            npccn(:,:),           &
+              rndst(:mgncol,:,:),    nacon(:mgncol,:,:),           &
               tlat(:mgncol,:),            qvlat(:mgncol,:),           &
               qctend(:mgncol,:),          qitend(:mgncol,:),          &
               nctend(:mgncol,:),          nitend(:mgncol,:),          &
