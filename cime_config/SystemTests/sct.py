@@ -52,7 +52,8 @@ class SCT(SystemTestsCompareTwo):
             self._case.set_value("NTHRDS_{}".format(comp), 1)
             self._case.set_value("ROOTPE_{}".format(comp), 0)
 
-        self._case.set_value("PTS_MODE","TRUE")
+        if self._case.get_value("COMP_INTERFACE") == "mct":
+            self._case.set_value("PTS_MODE","TRUE")
         self._case.set_value("PTS_LAT",-20.0)
         self._case.set_value("PTS_LON",140.0)
 
