@@ -123,6 +123,7 @@ module clubb_intr
     rtpthlp_const = 0.01_r8             ! Constant to add to rtpthlp when moments are advected
     
   real(r8), parameter :: unset_r8 = huge(1.0_r8)
+  integer, parameter  :: unset_i = huge(1)
 
   ! Commonly used temperature for the melting temp of ice crystals [K] 
   real(r8), parameter :: meltpt_temp = 268.15_r8  
@@ -188,8 +189,8 @@ module clubb_intr
                                  ! (double Gaussian) PDF type to use for the w, rt,
                                  ! and theta-l (or w, chi, and eta) portion of
                                  ! CLUBB's multivariate, two-component PDF.
-    clubb_ipdf_call_placement    ! Selected option for the placement of the call to
-                                 ! CLUBB's PDF.
+    clubb_ipdf_call_placement = unset_i    ! Selected option for the placement of the call to
+                                           ! CLUBB's PDF.
 
    
   logical :: &
@@ -678,7 +679,8 @@ end subroutine clubb_init_cnst
     use namelist_utils,  only: find_group_name
     use units,           only: getunit, freeunit
     use cam_abortutils,  only: endrun
-    use spmd_utils,      only: mpicom, mstrid=>masterprocid, mpi_logical, mpi_real8
+    use spmd_utils,      only: mpicom, mstrid=>masterprocid, mpi_logical, mpi_real8, &
+                               mpi_integer
     use clubb_mf,        only: clubb_mf_readnl
     
     use clubb_api_module, only: &
@@ -1023,6 +1025,8 @@ end subroutine clubb_init_cnst
     if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: clubb_l_use_tke_in_wp2_wp3_K_dfsn")
     call mpi_bcast(clubb_l_smooth_Heaviside_tau_wpxp,   1, mpi_logical, mstrid, mpicom, ierr)
     if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: clubb_l_smooth_Heaviside_tau_wpxp")
+    call mpi_bcast(clubb_ipdf_call_placement,    1, mpi_integer, mstrid, mpicom, ierr)
+    if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: clubb_ipdf_call_placement")
 
     !  Overwrite defaults if they are true
     if (clubb_history) l_stats = .true.
@@ -1086,6 +1090,7 @@ end subroutine clubb_init_cnst
     if(clubb_C_wp2_splat == unset_r8) call endrun(sub//": FATAL: clubb_C_wp2_splatis not set")
     if(clubb_detliq_rad == unset_r8) call endrun(sub//": FATAL: clubb_detliq_rad not set")
     if(clubb_detice_rad == unset_r8) call endrun(sub//": FATAL: clubb_detice_rad not set")
+    if(clubb_ipdf_call_placement == unset_i) call endrun(sub//": FATAL: clubb_ipdf_call_placement not set")
     if(clubb_detphase_lowtemp == unset_r8) call endrun(sub//": FATAL: clubb_detphase_lowtemp not set")
     if(clubb_detphase_lowtemp >= meltpt_temp) & 
     call endrun(sub//": ERROR: clubb_detphase_lowtemp must be less than 268.15 K")

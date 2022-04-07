@@ -3080,19 +3080,22 @@ if ($clubb_sgs  =~ /$TRUE/io) {
    }
 
    add_default($nl, 'clubb_do_icesuper');
-
+   add_default($nl, 'clubb_cloudtop_cooling');
    add_default($nl, 'clubb_expldiff');
    add_default($nl, 'clubb_rainevap_turb');
-   add_default($nl, 'clubb_cloudtop_cooling');
-   add_default($nl, 'clubb_timestep');
    add_default($nl, 'clubb_rnevap_effic');
 
-   add_default($nl, 'clubb_beta');
+   add_default($nl, 'clubb_timestep');
+
+   my $clubb_Lscale_from_tau = $cfg->get('Lscale_from_tau');
+   if($clubb_Lscale_from_tau == '1') {
+       add_default($nl, 'clubb_l_diag_Lscale_from_tau', 'val'=>'.true.');
+   } else {
+       add_default($nl, 'clubb_l_diag_Lscale_from_tau', 'val'=>'.false.');
+   }
+
    add_default($nl, 'clubb_c1');
    add_default($nl, 'clubb_c1b');
-   add_default($nl, 'clubb_c11');
-   add_default($nl, 'clubb_c11b');
-   add_default($nl, 'clubb_c14');
    add_default($nl, 'clubb_C2rt');
    add_default($nl, 'clubb_C2thl');
    add_default($nl, 'clubb_C2rtthl');
@@ -3109,6 +3112,9 @@ if ($clubb_sgs  =~ /$TRUE/io) {
    add_default($nl, 'clubb_C7b');
    add_default($nl, 'clubb_C8');
    add_default($nl, 'clubb_C8b');
+   add_default($nl, 'clubb_c11');
+   add_default($nl, 'clubb_c11b');
+   add_default($nl, 'clubb_c14');
    add_default($nl, 'clubb_C_wp3_pr_turb');
    add_default($nl, 'clubb_c_K1');
    add_default($nl, 'clubb_c_K2');
@@ -3119,6 +3125,7 @@ if ($clubb_sgs  =~ /$TRUE/io) {
    add_default($nl, 'clubb_c_K10');
    add_default($nl, 'clubb_c_K10h');
    add_default($nl, 'clubb_do_liqsupersat');
+   add_default($nl, 'clubb_wpxp_L_thresh');
    add_default($nl, 'clubb_C_invrs_tau_bkgnd');
    add_default($nl, 'clubb_C_invrs_tau_sfc');
    add_default($nl, 'clubb_C_invrs_tau_shear');
@@ -3127,10 +3134,9 @@ if ($clubb_sgs  =~ /$TRUE/io) {
    add_default($nl, 'clubb_C_invrs_tau_N2_xp2');
    add_default($nl, 'clubb_C_invrs_tau_N2_wpxp');
    add_default($nl, 'clubb_C_invrs_tau_N2_clear_wp3');
-   add_default($nl, 'clubb_C_uu_shr');
-   add_default($nl, 'clubb_C_uu_buoy');
    add_default($nl, 'clubb_gamma_coef');
    add_default($nl, 'clubb_gamma_coefb');
+   add_default($nl, 'clubb_beta');
    add_default($nl, 'clubb_lambda0_stability_coef');
    add_default($nl, 'clubb_lmin_coef');
    add_default($nl, 'clubb_mult_coef');
@@ -3138,10 +3144,11 @@ if ($clubb_sgs  =~ /$TRUE/io) {
    add_default($nl, 'clubb_skw_max_mag');
    add_default($nl, 'clubb_up2_sfc_coef');
    add_default($nl, 'clubb_C_wp2_splat');
-   add_default($nl, 'clubb_wpxp_L_thresh');
    add_default($nl, 'clubb_detliq_rad');
    add_default($nl, 'clubb_detice_rad');
    add_default($nl, 'clubb_detphase_lowtemp');
+   add_default($nl, 'clubb_ipdf_call_placement');
+
    add_default($nl, 'clubb_l_brunt_vaisala_freq_moist');
    add_default($nl, 'clubb_l_call_pdf_closure_twice');
    add_default($nl, 'clubb_l_damp_wp3_Skw_squared');
@@ -3159,8 +3166,9 @@ if ($clubb_sgs  =~ /$TRUE/io) {
    add_default($nl, 'clubb_l_use_cloud_cover');
    add_default($nl, 'clubb_l_use_thvm_in_bv_freq');
    add_default($nl, 'clubb_l_vert_avg_closure');
-   add_default($nl, 'clubb_l_diag_Lscale_from_tau');
    add_default($nl, 'clubb_l_damp_wp2_using_em');
+
+   #CLUBB+MF options
    add_default($nl, 'do_clubb_mf');
    add_default($nl, 'do_clubb_mf_diag');
    add_default($nl, 'clubb_mf_L0');

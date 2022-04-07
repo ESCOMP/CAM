@@ -1836,28 +1836,51 @@
 <clubb_timestep  hgrid="ne0np4.ARCTIC.ne30x4"     > 150.0D0 </clubb_timestep>
 <clubb_timestep  hgrid="ne0np4.ARCTICGRIS.ne30x8" > 75.0D0 </clubb_timestep>
 
+<!-- Lscale_from_tau set by clubb_opts config option -->
+<clubb_l_diag_Lscale_from_tau                     > .false. </clubb_l_diag_Lscale_from_tau>
+
 <clubb_c1                                         > 1.0     </clubb_c1>
+<clubb_c1                     Lscale_from_tau="1" > 1.0     </clubb_c1>
 <clubb_c1b                                        > 1.0     </clubb_c1b>
+<clubb_c1b                    Lscale_from_tau="1" > 1.0     </clubb_c1b>
 <clubb_C2rt                                       > 1.0     </clubb_C2rt>
+<clubb_C2rt                   Lscale_from_tau="1" > 1.0     </clubb_C2rt>
 <clubb_C2thl                                      > 1.0     </clubb_C2thl>
+<clubb_C2thl                  Lscale_from_tau="1" > 1.0     </clubb_C2thl>
 <clubb_C2rtthl                                    > 1.3     </clubb_C2rtthl>
+<clubb_C2rtthl                Lscale_from_tau="1" > 1.0     </clubb_C2rtthl>
 <clubb_C4                                         > 5.2     </clubb_C4>
+<clubb_C4                     Lscale_from_tau="1" > 5.2     </clubb_C4>
 <clubb_C_uu_shr                                   > 0.3     </clubb_C_uu_shr>
+<clubb_C_uu_shr               Lscale_from_tau="1" > 0.1076484659222455  </clubb_C_uu_shr>
 <clubb_C_uu_buoy                                  > 0.3     </clubb_C_uu_buoy>
+<clubb_C_uu_buoy              Lscale_from_tau="1" > 0.3     </clubb_C_uu_buoy>
 <clubb_c6rt                                       > 4.0     </clubb_c6rt>
+<clubb_c6rt                   Lscale_from_tau="1" > 2.0     </clubb_c6rt>
 <clubb_c6rtb                                      > 6.0     </clubb_c6rtb>
+<clubb_c6rtb                  Lscale_from_tau="1" > 2.0     </clubb_c6rtb>
 <clubb_c6rtc                                      > 1.0     </clubb_c6rtc>
+<clubb_c6rtc                  Lscale_from_tau="1" > 1.0     </clubb_c6rtc>
 <clubb_c6thl                                      > 4.0     </clubb_c6thl>
+<clubb_c6thl                  Lscale_from_tau="1" > 2.0     </clubb_c6thl>
 <clubb_c6thlb                                     > 6.0     </clubb_c6thlb>
+<clubb_c6thlb                 Lscale_from_tau="1" > 2.0     </clubb_c6thlb>
 <clubb_c6thlc                                     > 1.0     </clubb_c6thlc>
+<clubb_c6thlc                 Lscale_from_tau="1" > 1.0     </clubb_c6thlc>
 <clubb_C7                                         > 0.5     </clubb_C7>
 <clubb_C7b                                        > 0.5     </clubb_C7b>
 <clubb_C8                                         > 4.2     </clubb_C8>
+<clubb_C8                     Lscale_from_tau="1" > 3.440377776099962   </clubb_C8>
 <clubb_C8b                                        > 0.0     </clubb_C8b>
+<clubb_C8b                    Lscale_from_tau="1" > 0.0     </clubb_C8b>
 <clubb_c11                                        > 0.7D0   </clubb_c11>
+<clubb_c11                    Lscale_from_tau="1" > 0.31057411754034614 </clubb_c11>
 <clubb_c11b                                       > 0.35D0  </clubb_c11b>
+<clubb_c11b                   Lscale_from_tau="1" > 0.3250718127387944  </clubb_c11b>
 <clubb_c14                                        > 2.2D0   </clubb_c14>
+<clubb_c14                    Lscale_from_tau="1" > 1.0     </clubb_c14>
 <clubb_c14 dyn="se"                               > 1.6D0   </clubb_c14>
+<clubb_c14 dyn="se"           Lscale_from_tau="1" > 1.0     </clubb_c14>
 <clubb_C_wp3_pr_turb                              > 0.4     </clubb_C_wp3_pr_turb>
 <clubb_c_K1                                       > 0.75    </clubb_c_K1>
 <clubb_c_K2                                       > 0.125   </clubb_c_K2>
@@ -1869,31 +1892,43 @@
 <clubb_c_K10h                                     > 0.3     </clubb_c_K10h>
 <clubb_do_liqsupersat                             > .false. </clubb_do_liqsupersat>
 <clubb_wpxp_L_thresh                              > 60.0    </clubb_wpxp_L_thresh>
-<clubb_C_invrs_tau_bkgnd                          > 1.0     </clubb_C_invrs_tau_bkgnd>
-<clubb_C_invrs_tau_sfc                            > 0.1     </clubb_C_invrs_tau_sfc>
-<clubb_C_invrs_tau_shear                          > 0.02    </clubb_C_invrs_tau_shear>
-<clubb_C_invrs_tau_N2                             > 0.1     </clubb_C_invrs_tau_N2>
-<clubb_C_invrs_tau_N2_wp2                         > 0.2     </clubb_C_invrs_tau_N2_wp2>
-<clubb_C_invrs_tau_N2_xp2                         > 0.2     </clubb_C_invrs_tau_N2_xp2>
-<clubb_C_invrs_tau_N2_wpxp                        > 0.0     </clubb_C_invrs_tau_N2_wpxp>
-<clubb_C_invrs_tau_N2_clear_wp3                   > 0.0     </clubb_C_invrs_tau_N2_clear_wp3>
-<clubb_C_uu_shr                                   > 0.4     </clubb_C_uu_shr>
-<clubb_C_uu_buoy                                  > 0.3     </clubb_C_uu_buoy>
-<clubb_gamma_coef                                 > 0.308   </clubb_gamma_coef>
-<clubb_gamma_coef hgrid="1.9x2.5"                 > 0.280   </clubb_gamma_coef>
-<clubb_gamma_coef dyn="se"                        > 0.270   </clubb_gamma_coef>
-<clubb_gamma_coefb                                > 0.32    </clubb_gamma_coefb>
-<clubb_beta                                       > 2.4     </clubb_beta>
-<clubb_lambda0_stability_coef                     > 0.04    </clubb_lambda0_stability_coef>
-<clubb_lmin_coef                                  > 0.1     </clubb_lmin_coef>
-<clubb_mult_coef                                  > 1.0D0   </clubb_mult_coef>
-<clubb_Skw_denom_coef                             > 0.0     </clubb_Skw_denom_coef>
-<clubb_skw_max_mag                                > 4.5     </clubb_skw_max_mag>
-<clubb_up2_sfc_coef                               > 2.0     </clubb_up2_sfc_coef>
-<clubb_C_wp2_splat                                > 0.0     </clubb_C_wp2_splat>
-<clubb_detliq_rad                                 > 8.0D-6  </clubb_detliq_rad>
-<clubb_detice_rad                                 > 25.0D-6 </clubb_detice_rad>
-<clubb_detphase_lowtemp                           > 238.15D0 </clubb_detphase_lowtemp>
+<clubb_C_invrs_tau_bkgnd                          > 1.0                 </clubb_C_invrs_tau_bkgnd>
+<clubb_C_invrs_tau_bkgnd      Lscale_from_tau="1" > 3.727123755772682   </clubb_C_invrs_tau_bkgnd>
+<clubb_C_invrs_tau_sfc                            > 0.1                 </clubb_C_invrs_tau_sfc>
+<clubb_C_invrs_tau_sfc        Lscale_from_tau="1" > 0.12743072568015346 </clubb_C_invrs_tau_sfc>
+<clubb_C_invrs_tau_shear                          > 0.02                </clubb_C_invrs_tau_shear>
+<clubb_C_invrs_tau_shear      Lscale_from_tau="1" > 0.12502726304767026 </clubb_C_invrs_tau_shear>
+<clubb_C_invrs_tau_N2                             > 0.1                 </clubb_C_invrs_tau_N2>
+<clubb_C_invrs_tau_N2         Lscale_from_tau="1" > 0.08122667220596895 </clubb_C_invrs_tau_N2>
+<clubb_C_invrs_tau_N2_wp2                         > 0.2                 </clubb_C_invrs_tau_N2_wp2>
+<clubb_C_invrs_tau_N2_wp2     Lscale_from_tau="1" > 0.1                 </clubb_C_invrs_tau_N2_wp2>
+<clubb_C_invrs_tau_N2_xp2                         > 0.2                 </clubb_C_invrs_tau_N2_xp2>
+<clubb_C_invrs_tau_N2_xp2     Lscale_from_tau="1" > 0.05                </clubb_C_invrs_tau_N2_xp2>
+<clubb_C_invrs_tau_N2_wpxp                        > 0.0                 </clubb_C_invrs_tau_N2_wpxp>
+<clubb_C_invrs_tau_N2_wpxp    Lscale_from_tau="1" > 0.0                 </clubb_C_invrs_tau_N2_wpxp>
+<clubb_C_invrs_tau_N2_clear_wp3                   > 0.0                 </clubb_C_invrs_tau_N2_clear_wp3>
+<clubb_C_invrs_tau_N2_clear_wp3 Lscale_from_tau="1" > 1.0               </clubb_C_invrs_tau_N2_clear_wp3>
+<clubb_gamma_coef                                 > 0.308               </clubb_gamma_coef>
+<clubb_gamma_coef             Lscale_from_tau="1" > 0.5492223674353673  </clubb_gamma_coef>
+<clubb_gamma_coef hgrid="1.9x2.5"                 > 0.280               </clubb_gamma_coef>
+<clubb_gamma_coef hgrid="1.9x2.5" Lscale_from_tau="1" > 0.5492223674353673  </clubb_gamma_coef>
+<clubb_gamma_coef dyn="se"                        > 0.270               </clubb_gamma_coef>
+<clubb_gamma_coef dyn="se"    Lscale_from_tau="1" > 0.5492223674353673  </clubb_gamma_coef>
+<clubb_gamma_coefb                                > 0.32                </clubb_gamma_coefb>
+<clubb_gamma_coefb            Lscale_from_tau="1" > 0.2531868210746816  </clubb_gamma_coefb>
+<clubb_beta                                       > 2.4                 </clubb_beta>
+<clubb_beta                   Lscale_from_tau="1" > 2.27756371212011    </clubb_beta>
+<clubb_lambda0_stability_coef                     > 0.04                </clubb_lambda0_stability_coef>
+<clubb_lmin_coef                                  > 0.1                 </clubb_lmin_coef>
+<clubb_mult_coef                                  > 1.0D0               </clubb_mult_coef>
+<clubb_Skw_denom_coef                             > 0.0                 </clubb_Skw_denom_coef>
+<clubb_skw_max_mag                                > 4.5                 </clubb_skw_max_mag>
+<clubb_up2_sfc_coef                               > 2.0                 </clubb_up2_sfc_coef>
+<clubb_C_wp2_splat                                > 0.0                 </clubb_C_wp2_splat>
+<clubb_detliq_rad                                 > 8.0D-6              </clubb_detliq_rad>
+<clubb_detice_rad                                 > 25.0D-6             </clubb_detice_rad>
+<clubb_detphase_lowtemp                           > 238.15D0            </clubb_detphase_lowtemp>
+<clubb_ipdf_call_placement                        > 2                   </clubb_ipdf_call_placement>
 
 <clubb_l_brunt_vaisala_freq_moist                 > .false. </clubb_l_brunt_vaisala_freq_moist>
 <clubb_l_call_pdf_closure_twice                   > .true.  </clubb_l_call_pdf_closure_twice>
@@ -1912,12 +1947,11 @@
 <clubb_l_use_cloud_cover                          > .true.  </clubb_l_use_cloud_cover>
 <clubb_l_use_thvm_in_bv_freq                      > .false. </clubb_l_use_thvm_in_bv_freq>
 <clubb_l_vert_avg_closure                         > .true.  </clubb_l_vert_avg_closure>
-<clubb_l_diag_Lscale_from_tau                     > .false. </clubb_l_diag_Lscale_from_tau>
 <clubb_l_damp_wp2_using_em                        > .false. </clubb_l_damp_wp2_using_em>
+<clubb_l_e3sm_config                              > .false. </clubb_l_e3sm_config>
 
 <!-- SILHS options -->
 <clubb_do_icesuper                      silhs="1" > .true.  </clubb_do_icesuper>
-
 <clubb_C2rt                             silhs="1" > 0.2     </clubb_C2rt>
 <clubb_C2thl                            silhs="1" > 0.2     </clubb_C2thl>
 <clubb_C2rtthl                          silhs="1" > 0.2     </clubb_C2rtthl>

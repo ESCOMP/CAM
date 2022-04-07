@@ -71,7 +71,8 @@ OPTIONS
                         Default: trop_mam4 for cam6 and trop_mam3 for cam5.
      -[no]clubb_sgs     Switch on [off] CLUBB_SGS.  Default: on for cam6, otherwise off.
      -clubb_opts <list> Comma separated list of CLUBB options to turn on/off.  By default they are all off.
-                        Current option is: clubb_do_adv (Advect CLUBB moments)
+                        Current options are: clubb_do_adv (Advect CLUBB moments), and 
+                        Lscale_from_tau (use tau parameters)
      -co2_cycle         This option modifies the CAM configuration by
                         increasing the number of advected constituents by 4.
      -cosp              Enable the COSP simulator.
@@ -921,6 +922,8 @@ if (defined $opts{'clubb_opts'}) {
 }
 my $clubb_do_adv = $cfg_ref->get('clubb_do_adv');
 if ($print>=2) { print "clubb_do_adv: $clubb_do_adv$eol"; }
+my $Lscale_from_tau = $cfg_ref->get('Lscale_from_tau');
+if ($print>=2) { print "Lscale_from_tau: $Lscale_from_tau$eol"; }
 
 #-----------------------------------------------------------------------------------------------
 # ZM convective organization

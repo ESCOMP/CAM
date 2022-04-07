@@ -3295,12 +3295,12 @@ Enables the "new" SILHS importance sampling scheme with prescribed probabilities
 
 <entry id="l_rcm_in_cloud_k_lh_start" type="logical" category="conv"
        group="silhs_config_flags_nl" valid_values="" >
-Determine k_lh_start based on maximum within-cloud rcm.
+Determine starting SILHS first sampling level (k_lh_start) based on maximum within-cloud rcm. If false, and if l_random_k_lh_start is also false, then the SILHS first sampling level is the column maximum of liquid cloud water. 
 </entry>
 
 <entry id="l_random_k_lh_start" type="logical" category="conv"
        group="silhs_config_flags_nl" valid_values="" >
-Determine k_lh_start based on random choice. Overrides l_rcm_in_cloud_k_lh_start.
+Determine starting SILHS first sampling level (k_lh_start) based on random choice. Overrides l_rcm_in_cloud_k_lh_start if true.
 </entry>
 
 <entry id="l_max_overlap_in_cloud" type="logical" category="conv"
@@ -3555,6 +3555,11 @@ Default: FALSE
 Plume widths for theta_l and rt
 </entry>
 
+<entry id="clubb_ipdf_call_placement" type="integer" category="pblrad"
+       group="clubb_params_nl" valid_values="" >
+Option for the placement of the call to CLUBB's PDF closure. ipdf_pre_advance_fields (1) calls the PDf closure before advancing prognostic fields. ipdf_post_advance_fields (2, default) calls after advancing prognostic fields, and ipdf_pre_post_advance_fields (3) calls both before and after advancing prognostic fields.
+</entry>
+
 <entry id="clubb_c1" type="real" category="pblrad"
        group="clubb_params_nl" valid_values="" >
 Limiting value of C1 when skewness of w (vertical velocity) is small in
@@ -3738,57 +3743,68 @@ Default: false
 
 <entry id="clubb_C_invrs_tau_bkgnd" type="real" category="pblrad"
        group="clubb_params_nl" valid_values="" >
+Coefficient of inverse tau term contributed by background constant value (units: none)
 Default: 1.0
 </entry>
 
 <entry id="clubb_C_invrs_tau_sfc" type="real" category="pblrad"
        group="clubb_params_nl" valid_values="" >
+Coefficient of inverse tau term contributed by surface log law (units: none)
 Default: 0.1
 </entry>
 
 <entry id="clubb_C_invrs_tau_shear" type="real" category="pblrad"
        group="clubb_params_nl" valid_values="" >
+Coefficient of inverse tau term contributed by vertical wind shear (units: none)
 Default: 0.02
 </entry>
 
 <entry id="clubb_C_invrs_tau_N2" type="real" category="pblrad"
        group="clubb_params_nl" valid_values="" >
+Coefficient of inverse tau term contributed by Brunt Vaisala frequency (units: none)
 Default: 0.1
 </entry>
 
 <entry id="clubb_C_invrs_tau_N2_wp2" type="real" category="pblrad"
        group="clubb_params_nl" valid_values="" >
+Coefficient of inverse tau term contributed by Brunt Vaisala frequency but for wp3_wp2 (units: none)
 Default: 0.2
 </entry>
 
 <entry id="clubb_C_invrs_tau_N2_xp2" type="real" category="pblrad"
        group="clubb_params_nl" valid_values="" >
+Coefficient of inverse tau term contributed by Brunt Vaisala frequency but for xp2_wpxp (units: none)
 Default: 0.2
 </entry>
 
 <entry id="clubb_C_invrs_tau_N2_wpxp" type="real" category="pblrad"
        group="clubb_params_nl" valid_values="" >
+Coefficient of inverse tau term contributed by Brunt Vaisala frequency but for xm_wpxp (units: none)
 Default: 0.0
 </entry>
 
 <entry id="clubb_C_invrs_tau_N2_clear_wp3" type="real" category="pblrad"
       group="clubb_params_nl" valid_values="" >
+Coefficient of inverse tau term contributed by Brunt Vaisala frequency but for wp3 (units: none)
 Default: 0.0
 </entry>
 
 <entry id="clubb_C_uu_shr" type="real" category="pblrad"
        group="clubb_params_nl" valid_values="" >
+Constant for shear terms in wp2 pressure term 2 (units: none)
 Default: 0.4
 </entry>
 
 <entry id="clubb_C_uu_buoy" type="real" category="pblrad"
        group="clubb_params_nl" valid_values="" >
+Constant for buoyancy terms in wp2 pressure term 2 (units: none)
 Default: 0.3
 </entry>
 
 <entry id="clubb_gamma_coef" type="real" category="pblrad"
        group="clubb_params_nl" valid_values="" >
-Low Skw.: gamma coef. Skw. Fnct.
+Low Skewness in gamma coefficient Skewness Function (units: none)
+Default: Changes depending on grid and physics options
 </entry>
 
 <entry id="clubb_gamma_coefb" type="real" category="pblrad"
