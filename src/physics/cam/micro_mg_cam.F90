@@ -2178,6 +2178,8 @@ subroutine micro_mg_cam_tend_pack(state, ptend, dtime, pbuf, mgncol, mgcols, nle
    nrtend = 0._r8
    nstend = 0._r8
    ngtend = 0._r8
+   preci  = 0._r8
+   prect  = 0._r8
 
    nan_array = nan
 
@@ -2572,32 +2574,32 @@ subroutine micro_mg_cam_tend_pack(state, ptend, dtime, pbuf, mgncol, mgcols, nle
 !   call post_proc%add_field(p(prer_evap), p(packed_prer_evap), &
 !        accum_method=accum_null)
 
-   ! Assign state_loc variables to non-pointers (gnu compiler might be getting confused if pointers passed in)
-    state_loc_t(:mgncol,:)    = state_loc%t(:mgncol,:)
-    state_loc_q(:mgncol,:)    = state_loc%q(:mgncol,:,1)
-    state_loc_pmid(:mgncol,:) = state_loc%pmid(:mgncol,:)
-    state_loc_pdel(:mgncol,:) = state_loc%pdel(:mgncol,:)
-    state_loc_liq(:mgncol,:)  = state_loc%q(:mgncol,:,ixcldliq)
-    state_loc_ice(:mgncol,:)  = state_loc%q(:mgncol,:,ixcldice)
-    state_loc_numliq(:mgncol,:) = state_loc%q(:mgncol,:,ixnumliq)
-    state_loc_numice(:mgncol,:) = state_loc%q(:mgncol,:,ixnumice)
+!   ! Assign state_loc variables to non-pointers (gnu compiler might be getting confused if pointers passed in)
+!    state_loc_t(:mgncol,:)    = state_loc%t(:mgncol,:)
+!    state_loc_q(:mgncol,:)    = state_loc%q(:mgncol,:,1)
+!    state_loc_pmid(:mgncol,:) = state_loc%pmid(:mgncol,:)
+!    state_loc_pdel(:mgncol,:) = state_loc%pdel(:mgncol,:)
+!    state_loc_liq(:mgncol,:)  = state_loc%q(:mgncol,:,ixcldliq)
+!    state_loc_ice(:mgncol,:)  = state_loc%q(:mgncol,:,ixcldice)
+!    state_loc_numliq(:mgncol,:) = state_loc%q(:mgncol,:,ixnumliq)
+!    state_loc_numice(:mgncol,:) = state_loc%q(:mgncol,:,ixnumice)
+!
+!    if (micro_mg_version > 1) then
+!       state_loc_rain(:mgncol,:) = state_loc%q(:mgncol,:,ixrain)
+!       state_loc_snow(:mgncol,:) = state_loc%q(:mgncol,:,ixsnow)
+!       state_loc_numrain(:mgncol,:) = state_loc%q(:mgncol,:,ixnumrain)
+!       state_loc_numsnow(:mgncol,:) = state_loc%q(:mgncol,:,ixnumsnow)
+!    end if
 
-    if (micro_mg_version > 1) then
-       state_loc_rain(:mgncol,:) = state_loc%q(:mgncol,:,ixrain)
-       state_loc_snow(:mgncol,:) = state_loc%q(:mgncol,:,ixsnow)
-       state_loc_numrain(:mgncol,:) = state_loc%q(:mgncol,:,ixnumrain)
-       state_loc_numsnow(:mgncol,:) = state_loc%q(:mgncol,:,ixnumsnow)
-    end if
-
-    if (micro_mg_version > 1) then
-       if (micro_mg_version > 2) then
-          state_loc_graup(:mgncol,:) = state_loc%q(:mgncol,:,ixgraupel)
-          state_loc_numgraup(:mgncol,:) = state_loc%q(:mgncol,:,ixnumgraupel)
-       else
-          state_loc_graup(:mgncol,:) = 0._r8
-          state_loc_numgraup(:mgncol,:) = 0._r8
-       end if
-    end if
+     if (micro_mg_version > 1) then
+        if (micro_mg_version > 2) then
+           state_loc_graup(:mgncol,:) = state_loc%q(:mgncol,:,ixgraupel)
+           state_loc_numgraup(:mgncol,:) = state_loc%q(:mgncol,:,ixnumgraupel)
+        else
+           state_loc_graup(:mgncol,:) = 0._r8
+           state_loc_numgraup(:mgncol,:) = 0._r8
+        end if
+     end if
 
     ! Previously, the packer would only pass values from top_lev and below into microphys.
     ! So, here we will zero out values above top_lev before passing into _tend for some
@@ -2657,14 +2659,14 @@ subroutine micro_mg_cam_tend_pack(state, ptend, dtime, pbuf, mgncol, mgcols, nle
       case(2:3)
          call micro_mg_tend3_0( &
               mgncol,         nlev,           dtime/num_steps,&
-              state_loc_t,                    state_loc_q,            &
-              state_loc_liq,                  state_loc_ice,          &
-              state_loc_numliq,               state_loc_numice,       &
-              state_loc_rain,                 state_loc_snow,         &
-              state_loc_numrain,              state_loc_numsnow,      &
-              state_loc_graup,                state_loc_numgraup,     &
+              state_loc%t(:mgncol,:),              state_loc%q(:mgncol,:,1),            &
+              state_loc%q(:mgncol,:,ixcldliq),     state_loc%q(:mgncol,:,ixcldice),          &
+              state_loc%q(:mgncol,:,ixnumliq),     state_loc%q(:mgncol,:,ixnumice),       &
+              state_loc%q(:mgncol,:,ixrain),       state_loc%q(:mgncol,:,ixsnow),         &
+              state_loc%q(:mgncol,:,ixnumrain),    state_loc%q(:mgncol,:,ixnumsnow),      &
+              state_loc_graup(:mgncol,:),    state_loc_numgraup(:mgncol,:),     &
               relvar(:mgncol,:),         accre_enhan(:mgncol,:),     &
-              state_loc_pmid,                state_loc_pdel,          &
+              state_loc%pmid(:mgncol,:),                state_loc%pdel(:mgncol,:),          &
               ast, alst_mic, aist_mic, qsatfac(:,:), &
               rate1cld(:mgncol,:),                         &
               naai(:,:),            npccn(:,:),           &
