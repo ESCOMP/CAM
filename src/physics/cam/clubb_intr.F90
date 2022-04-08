@@ -4985,7 +4985,6 @@ end function diag_ustar
         sub   = temp1
         if (len(temp1) > 16) sub = temp1(1:16)
        
-  !!XXgoldyXX: Probably need a hist coord for nnzp for the vertical
           call addfld(trim(sub),(/ 'ilev' /),&
                'A',trim(stats_zt%file%grid_avg_var(i)%units),trim(stats_zt%file%grid_avg_var(i)%description))
       enddo
@@ -4996,13 +4995,12 @@ end function diag_ustar
         sub   = temp1
         if (len(temp1) > 16) sub = temp1(1:16)
       
-  !!XXgoldyXX: Probably need a hist coord for nnzp for the vertical
          call addfld(trim(sub),(/ 'ilev' /),&
               'A',trim(stats_zm%file%grid_avg_var(i)%units),trim(stats_zm%file%grid_avg_var(i)%description))
       enddo
 
       if (l_output_rad_files) then     
-  !!XXgoldyXX: Probably need a hist coord for nnzp for the vertical
+
          do i = 1, stats_rad_zt%num_output_fields
             call addfld(trim(stats_rad_zt%file%grid_avg_var(i)%name),(/ 'ilev' /),&
                'A',trim(stats_rad_zt%file%grid_avg_var(i)%units),trim(stats_rad_zt%file%grid_avg_var(i)%description))

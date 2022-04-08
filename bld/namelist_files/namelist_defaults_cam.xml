@@ -1851,7 +1851,7 @@
 <clubb_C2rtthl                Lscale_from_tau="1" > 1.0     </clubb_C2rtthl>
 <clubb_C4                                         > 5.2     </clubb_C4>
 <clubb_C4                     Lscale_from_tau="1" > 5.2     </clubb_C4>
-<clubb_C_uu_shr                                   > 0.3     </clubb_C_uu_shr>
+<clubb_C_uu_shr                                   > 0.4     </clubb_C_uu_shr>
 <clubb_C_uu_shr               Lscale_from_tau="1" > 0.1076484659222455  </clubb_C_uu_shr>
 <clubb_C_uu_buoy                                  > 0.3     </clubb_C_uu_buoy>
 <clubb_C_uu_buoy              Lscale_from_tau="1" > 0.3     </clubb_C_uu_buoy>
@@ -1948,7 +1948,7 @@
 <clubb_l_use_thvm_in_bv_freq                      > .false. </clubb_l_use_thvm_in_bv_freq>
 <clubb_l_vert_avg_closure                         > .true.  </clubb_l_vert_avg_closure>
 <clubb_l_damp_wp2_using_em                        > .false. </clubb_l_damp_wp2_using_em>
-<clubb_l_e3sm_config                              > .false. </clubb_l_e3sm_config>
+<clubb_l_e3sm_config                              > .true.  </clubb_l_e3sm_config>
 
 <!-- SILHS options -->
 <clubb_do_icesuper                      silhs="1" > .true.  </clubb_do_icesuper>
