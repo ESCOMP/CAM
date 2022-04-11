@@ -56,7 +56,7 @@ character*5, public :: cnst_molec(pcnst)         ! major or minor species molecu
 real(r8),    public :: cnst_rgas(pcnst)          ! gas constant ()
 real(r8),    public :: qmin     (pcnst)          ! minimum permitted constituent concentration (kg/kg)
 real(r8),    public :: qmincg   (pcnst)          ! for backward compatibility only
-logical, public, protected :: cnst_fixed_ubc(pcnst) = .false.     ! upper bndy condition = fixed ?
+logical, public, protected :: cnst_fixed_ubc(pcnst) = .false.     ! upper boundary condition (concentration)
 logical, public, protected :: cnst_fixed_ubflx(pcnst) = .false.   ! upper boundary non-zero fixed constituent flux
 logical, public, protected :: cnst_is_convtran1(pcnst) = .false.  ! do convective transport in phase 1
 logical, public, protected :: cnst_is_convtran2(pcnst) = .false.  ! do convective transport in phase 2

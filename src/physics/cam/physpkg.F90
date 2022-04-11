@@ -145,7 +145,7 @@ contains
     use dyn_comp,           only: dyn_register
     use spcam_drivers,      only: spcam_register
     use offline_driver,     only: offline_driver_reg
-    use upper_bc, only: ubc_fixed_conc
+    use upper_bc,           only: ubc_fixed_conc
 
     !---------------------------Local variables-----------------------------
     !

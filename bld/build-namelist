@@ -2251,7 +2251,7 @@ if ($chem =~ /_mam4/ and $phys =~ /cam6/) {
                 'pom_a4_an_srf_file'  => 'pom_a4',
                 'pom_a4_bb_srf_file'  => 'pom_a4' );
     }
-	    
+
     # for mechanism missing full tropospheric chemistry
     if ($chem =~ /trop_mam/ or $chem =~ /waccm_ma/ or $chem =~ /waccm_sc/) {
         %species = (%species,
@@ -2586,6 +2586,17 @@ if ($chem eq 'trop_mam7') {
 
 my $waccmx = $cfg->get('waccmx');
 
+# upper boundary specifier
+my $ubc_ver;
+if (($chem =~ /waccm_ma/ or $chem =~ /waccm_tsmlt/ ) and !$waccmx) {
+    $ubc_ver = 'waccmchem';
+} elsif ($chem =~ /waccm_sc/) {
+    $ubc_ver = 'waccmsc';
+}
+if (defined $ubc_ver) {
+    add_default($nl, 'ubc_specifier', 'ver'=>$ubc_ver);
+}
+
 # WACCM options.
 if ($chem =~ /waccm_ma/ or $chem =~ /waccm_tsmlt/) {
 
@@ -2815,8 +2826,8 @@ if ($waccmx) {
     add_default($nl,'wei05_coefs_file');
     add_default($nl,'solar_wind_data_file');
   }
-  add_default($nl,'ionos_xport_nsplit');  
-  add_default($nl,'steady_state_ion_elec_temp', 'val'=>'.false.');  
+  add_default($nl,'ionos_xport_nsplit');
+  add_default($nl,'steady_state_ion_elec_temp', 'val'=>'.false.');
 }
 
 # Chemistry options

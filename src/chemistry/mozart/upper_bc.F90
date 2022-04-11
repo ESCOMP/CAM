@@ -1,11 +1,8 @@
 module upper_bc
 
 !---------------------------------------------------------------------------------
-! Module to compute the upper boundary condition for temperature (dry static energy)
-! and trace gases. Uses the MSIS model, and SNOE and TIME GCM data.
-!
-! original code by Stacy Walters
-! adapted by B. A. Boville
+! Module to compute the upper boundary conditions for temperature (dry static energy)
+! and trace gases. Uses the MSIS model, and SNOE and TIME GCM and general prescribed UBC data.
 !---------------------------------------------------------------------------------
 
   use shr_kind_mod, only: r8 => shr_kind_r8
@@ -18,6 +15,12 @@ module upper_bc
   use cam_logfile,  only: iulog
   use spmd_utils,   only: masterproc
   use ref_pres,     only: do_molec_diff, ptop_ref
+  use shr_kind_mod, only: cx=>SHR_KIND_CX
+  use cam_abortutils,only: endrun
+  use cam_history,   only: addfld, horiz_only, outfld, fieldname_len
+  !use cam_history,   only: add_default
+
+  use upper_bc_file, only: upper_bc_file_readnl, upper_bc_file_specified, upper_bc_file_adv, upper_bc_file_get
     use infnan,       only : nan, assignment(=)
 
   implicit none
@@ -26,149 +29,169 @@ module upper_bc
 !
 ! Public interfaces
 !
-  public :: ubc_defaultopts    ! set default values of namelist variables
-  public :: ubc_setopts        ! get namelist input
+  public :: ubc_readnl         ! read namelist options for UBCs
   public :: ubc_init           ! global initialization
   public :: ubc_timestep_init  ! time step initialization
   public :: ubc_get_vals       ! get ubc values for this step
   public :: ubc_get_flxs       ! get ub fluxes for this step
-  public :: ubc_fixed_conc
+  public :: ubc_fixed_conc     ! returns true for constituents that have fixed UBC
+  public :: ubc_fixed_temp     ! true if temperature at upper bounary is fixed
 
-  integer, parameter :: num_fixed = 10
-  integer            :: spc_ndx(num_fixed) = -1
-!!$  character(len=3), parameter :: fixed_spc(num_fixed) = &
-!!$       (/ 'Q  ','CH4','F  ','HF ','H  ','N  ','O  ','O2 ','H2 ','NO ' /)
-  character(len=3) :: fixed_spc(num_fixed) = ' '
-  character(len=2), parameter :: msis_spc(4) = &
-       (/ 'H ','N ','O ','O2' /)
-  character(len=2), parameter :: tgcm_spc(1) = &
+  character(len=64) :: ubc_specifier(pcnst) = 'NOTSET'
+
+  character(len=16) :: ubc_flds(pcnst) = 'NOTSET'
+  character(len=16) :: ubc_file_spfr(pcnst) = ' '
+  character(len=32) :: ubc_source(pcnst) = ' '
+
+  integer :: n_fixed_mmr=0
+  integer :: n_fixed_vmr=0
+
+  integer, allocatable :: fixed_mmr_ndx(:)
+  integer, allocatable :: fixed_vmr_ndx(:)
+  real(r8), allocatable :: fixed_mmr(:)
+  real(r8), allocatable :: fixed_vmr(:)
+
+  integer :: num_infile = 0
+  integer :: num_fixed = 0
+  character(len=2), parameter :: msis_flds(5) = &
+       (/ 'H ','N ','O ','O2','T ' /)
+  character(len=2), parameter :: tgcm_flds(1) = &
        (/ 'H2' /)
-  character(len=2), parameter :: snoe_spc(1) = &
+  character(len=2), parameter :: snoe_flds(1) = &
        (/ 'NO' /)
 
-  logical, public, protected :: msis_active =.false.
+  logical, protected :: ubc_fixed_temp =.false.
+  logical :: msis_active =.false.
   logical :: tgcm_active =.false.
   logical :: snoe_active =.false.
 
 ! Namelist variables
-  character(len=256) :: snoe_ubc_file = ' '
+  character(len=256) :: snoe_ubc_file = 'NONE'
   real(r8)           :: t_pert_ubc  = 0._r8
   real(r8)           :: no_xfac_ubc = 1._r8
 
-  integer            :: f_ndx=-1, hf_ndx=-1, ch4_ndx=-1, q_ndx=-1, h_ndx=-1
+  integer :: h_ndx=-1
+  integer :: h_msis_ndx=-1, n_msis_ndx=-1, o_msis_ndx=-1, o2_msis_ndx=-1
 
-  character(len=256) :: tgcm_ubc_file = ' '
+  character(len=256) :: tgcm_ubc_file = 'NONE'
   integer            :: tgcm_ubc_cycle_yr = 0
   integer            :: tgcm_ubc_fixed_ymd = 0
   integer            :: tgcm_ubc_fixed_tod = 0
   character(len=32)  :: tgcm_ubc_data_type = 'CYCLICAL'
 
   logical :: apply_upper_bc = .false.
-  logical :: reported= .false.
+
+  integer, allocatable :: file_spc_ndx(:)
+  integer, allocatable :: spc_ndx(:)
+  character(len=fieldname_len), allocatable :: hist_names(:)
+
 !================================================================================================
 contains
 !================================================================================================
 
-subroutine ubc_defaultopts(tgcm_ubc_file_out, tgcm_ubc_data_type_out, tgcm_ubc_cycle_yr_out, tgcm_ubc_fixed_ymd_out, &
-     tgcm_ubc_fixed_tod_out, snoe_ubc_file_out, t_pert_ubc_out, no_xfac_ubc_out)
 !-----------------------------------------------------------------------
-! Purpose: Return default runtime options
 !-----------------------------------------------------------------------
+  subroutine ubc_readnl(nlfile)
+    use namelist_utils, only : find_group_name
+    use spmd_utils, only : mpicom, masterprocid, mpi_character, mpi_integer, mpi_real8
+    use string_utils, only : to_lower
 
-   real(r8), intent(out), optional         :: t_pert_ubc_out
-   real(r8), intent(out), optional         :: no_xfac_ubc_out
-   character(len=*), intent(out), optional :: tgcm_ubc_file_out
-   character(len=*), intent(out), optional :: snoe_ubc_file_out
-   integer         , intent(out), optional :: tgcm_ubc_cycle_yr_out
-   integer         , intent(out), optional :: tgcm_ubc_fixed_ymd_out
-   integer         , intent(out), optional :: tgcm_ubc_fixed_tod_out
-   character(len=*), intent(out), optional :: tgcm_ubc_data_type_out
+    character(len=*), intent(in) :: nlfile
+    integer :: unitn, ierr, m, n, ndx_co, ndx_ar
 
-!-----------------------------------------------------------------------
+    character(len=*), parameter :: prefix = 'ubc_readnl: '
 
-   if ( present(tgcm_ubc_file_out) ) then
-      tgcm_ubc_file_out = tgcm_ubc_file
-   endif
-   if ( present(tgcm_ubc_data_type_out) ) then
-      tgcm_ubc_data_type_out = tgcm_ubc_data_type
-   endif
-   if ( present(tgcm_ubc_cycle_yr_out) ) then
-      tgcm_ubc_cycle_yr_out = tgcm_ubc_cycle_yr
-   endif
-   if ( present(tgcm_ubc_fixed_ymd_out) ) then
-      tgcm_ubc_fixed_ymd_out = tgcm_ubc_fixed_ymd
-   endif
-   if ( present(tgcm_ubc_fixed_tod_out) ) then
-      tgcm_ubc_fixed_tod_out = tgcm_ubc_fixed_tod
-   endif
-   if ( present(snoe_ubc_file_out) ) then
-      snoe_ubc_file_out = snoe_ubc_file
-   endif
-   if ( present(t_pert_ubc_out) ) then
-      t_pert_ubc_out = t_pert_ubc
-   endif
-   if ( present(no_xfac_ubc_out) ) then
-      no_xfac_ubc_out = no_xfac_ubc
-   endif
+    namelist /upper_bc_opts/ tgcm_ubc_file,tgcm_ubc_data_type,tgcm_ubc_cycle_yr,tgcm_ubc_fixed_ymd, &
+                             tgcm_ubc_fixed_tod, snoe_ubc_file, no_xfac_ubc, t_pert_ubc
+    namelist /upper_bc_opts/ ubc_specifier
 
-end subroutine ubc_defaultopts
+    if (masterproc) then
+       ! read namelist
+       open( newunit=unitn, file=trim(nlfile), status='old' )
+       call find_group_name(unitn, 'upper_bc_opts', status=ierr)
+       if (ierr == 0) then
+          read(unitn, upper_bc_opts, iostat=ierr)
+          if (ierr /= 0) then
+             call endrun(prefix//'upper_bc_opts: ERROR reading namelist')
+          end if
+       end if
+       close(unitn)
 
-!================================================================================================
+       ! log the UBC options
+       write(iulog,*) prefix//'tgcm_ubc_file = '//trim(tgcm_ubc_file)
+       write(iulog,*) prefix//'tgcm_ubc_data_type = '//trim(tgcm_ubc_data_type)
+       write(iulog,*) prefix//'tgcm_ubc_cycle_yr = ', tgcm_ubc_cycle_yr
+       write(iulog,*) prefix//'tgcm_ubc_fixed_ymd = ', tgcm_ubc_fixed_ymd
+       write(iulog,*) prefix//'tgcm_ubc_fixed_tod = ', tgcm_ubc_fixed_tod
+       write(iulog,*) prefix//'snoe_ubc_file = '//trim(snoe_ubc_file)
+       write(iulog,*) prefix//'t_pert_ubc = ', t_pert_ubc
+       write(iulog,*) prefix//'no_xfac_ubc = ', no_xfac_ubc
+       write(iulog,*) prefix//'ubc_specifier : '
 
-subroutine ubc_setopts(tgcm_ubc_file_in, tgcm_ubc_data_type_in, tgcm_ubc_cycle_yr_in, tgcm_ubc_fixed_ymd_in, &
-     tgcm_ubc_fixed_tod_in, snoe_ubc_file_in, t_pert_ubc_in, no_xfac_ubc_in)
-!-----------------------------------------------------------------------
-! Purpose: Set runtime options
-!-----------------------------------------------------------------------
+       n=1
+       m=1
+       do while(ubc_specifier(n)/='NOTSET')
+          write(iulog,'(i4,a)') n,'  '//trim(ubc_specifier(n))
 
-   use cam_abortutils, only : endrun
+          ndx_ar = index(ubc_specifier(n),'->')
 
-   real(r8), intent(in), optional         :: t_pert_ubc_in
-   real(r8), intent(in), optional         :: no_xfac_ubc_in
-   character(len=*), intent(in), optional :: tgcm_ubc_file_in
-   character(len=*), intent(in), optional :: snoe_ubc_file_in
-   integer         , intent(in), optional :: tgcm_ubc_cycle_yr_in
-   integer         , intent(in), optional :: tgcm_ubc_fixed_ymd_in
-   integer         , intent(in), optional :: tgcm_ubc_fixed_tod_in
-   character(len=*), intent(in), optional :: tgcm_ubc_data_type_in
+          if (ndx_ar<1) then
+             call endrun(prefix//'ubc_specifier "'//trim(ubc_specifier(n))//'" must include "->"')
+          endif
 
-!-----------------------------------------------------------------------
+          ubc_source(n) = trim(to_lower(adjustl(ubc_specifier(n)(ndx_ar+2:))))
 
-   if ( present(tgcm_ubc_file_in) ) then
-      tgcm_ubc_file = tgcm_ubc_file_in
-   endif
-   if ( present(tgcm_ubc_data_type_in) ) then
-      tgcm_ubc_data_type = tgcm_ubc_data_type_in
-   endif
-   if ( present(tgcm_ubc_cycle_yr_in) ) then
-      tgcm_ubc_cycle_yr = tgcm_ubc_cycle_yr_in
-   endif
-   if ( present(tgcm_ubc_fixed_ymd_in) ) then
-      tgcm_ubc_fixed_ymd = tgcm_ubc_fixed_ymd_in
-   endif
-   if ( present(tgcm_ubc_fixed_tod_in) ) then
-      tgcm_ubc_fixed_tod = tgcm_ubc_fixed_tod_in
-   endif
-   if ( present(snoe_ubc_file_in) ) then
-      snoe_ubc_file = snoe_ubc_file_in
-   endif
+          if (trim(ubc_source(n))=='ubc_file') then
+             ubc_file_spfr(m) = trim(ubc_specifier(n)(:ndx_ar-1))
+             m=m+1
+          endif
+          if (index(ubc_source(n),'mmr')>0) then
+             n_fixed_mmr=n_fixed_mmr+1
+          end if
+          if (index(ubc_source(n),'vmr')>0) then
+             n_fixed_vmr=n_fixed_vmr+1
+          end if
 
-   if (len_trim(snoe_ubc_file)>0 .and. len_trim(tgcm_ubc_file)>0) then
-      fixed_spc(1:10) = (/ 'Q  ','CH4','F  ','HF ','H  ','N  ','O  ','O2 ','H2 ','NO ' /)
-   endif
+          ndx_co = index(ubc_specifier(n),':')
 
-   if ( present(t_pert_ubc_in) ) then
-      t_pert_ubc = t_pert_ubc_in
-   endif
-   if ( present(no_xfac_ubc_in) ) then
-      no_xfac_ubc = no_xfac_ubc_in
-      if( no_xfac_ubc < 0._r8 ) then
-         write(iulog,*) 'ubc_setopts: no_xfac_ubc = ',no_xfac_ubc,' must be >= 0'
-         call endrun
-      end if
-   endif
+          if (ndx_co>0) then
+             ubc_flds(n) = ubc_specifier(n)(:ndx_co-1)
+          else
+             ubc_flds(n) = ubc_specifier(n)(:ndx_ar-1)
+          end if
 
-end subroutine ubc_setopts
+          n=n+1
+       end do
+       num_fixed=n-1
+       num_infile=m-1
+    end if
+
+
+    ! broadcast to all MPI tasks
+    call mpi_bcast(num_fixed, 1, mpi_integer, masterprocid, mpicom, ierr)
+    call mpi_bcast(num_infile, 1, mpi_integer, masterprocid, mpicom, ierr)
+    call mpi_bcast(n_fixed_mmr, 1, mpi_integer, masterprocid, mpicom, ierr)
+    call mpi_bcast(n_fixed_vmr, 1, mpi_integer, masterprocid, mpicom, ierr)
+    call mpi_bcast(tgcm_ubc_file, len(tgcm_ubc_file), mpi_character, masterprocid, mpicom, ierr)
+    call mpi_bcast(tgcm_ubc_data_type, len(tgcm_ubc_data_type),mpi_character, masterprocid, mpicom, ierr)
+    call mpi_bcast(tgcm_ubc_cycle_yr, 1, mpi_integer, masterprocid, mpicom, ierr)
+    call mpi_bcast(tgcm_ubc_fixed_ymd, 1, mpi_integer, masterprocid, mpicom, ierr)
+    call mpi_bcast(tgcm_ubc_fixed_tod, 1, mpi_integer, masterprocid, mpicom, ierr)
+    call mpi_bcast(snoe_ubc_file, len(snoe_ubc_file), mpi_character, masterprocid, mpicom, ierr)
+    call mpi_bcast(t_pert_ubc, 1, mpi_real8, masterprocid, mpicom, ierr)
+    call mpi_bcast(no_xfac_ubc,1, mpi_real8, masterprocid, mpicom, ierr)
+    call mpi_bcast(ubc_specifier, pcnst*len(ubc_specifier(1)), mpi_character,masterprocid, mpicom, ierr)
+    call mpi_bcast(ubc_flds,      pcnst*len(ubc_flds(1)),      mpi_character,masterprocid, mpicom, ierr)
+    call mpi_bcast(ubc_file_spfr, pcnst*len(ubc_file_spfr(1)), mpi_character,masterprocid, mpicom, ierr)
+    call mpi_bcast(ubc_source,    pcnst*len(ubc_source(1)),    mpi_character,masterprocid, mpicom, ierr)
+
+    apply_upper_bc = num_fixed>0
+
+    if (apply_upper_bc) then
+       call upper_bc_file_readnl(nlfile)
+    end if
+
+  end subroutine ubc_readnl
 
 !===============================================================================
 
@@ -181,51 +204,118 @@ end subroutine ubc_setopts
     use mo_snoe,     only: snoe_inti
     use mo_msis_ubc, only: msis_ubc_inti
     use constituents,only: cnst_get_ind
+    use upper_bc_file, only: upper_bc_file_init
 
-!---------------------------Local workspace-----------------------------
+    !---------------------------Local workspace-----------------------------
     logical, parameter :: zonal_avg = .false.
-    integer :: m
-!-----------------------------------------------------------------------
+    integer :: m, mm
+    integer :: mmrndx, vmrndx, m_mmr, m_vmr
 
-    if (masterproc)   write(iulog,*) 'FVDBG.ubc_init ptop_ref = ', ptop_ref
+    real(r8) :: val
+    character(len=32) :: str
+    character(len=*), parameter :: prefix = 'ubc_init: '
+    !-----------------------------------------------------------------------
 
-    apply_upper_bc = .true. !do_molec_diff ! ptop_ref<1._r8 ! Pa
+    call cnst_get_ind('H', h_ndx, abort=.false.) ! for H fluxes UBC (WACCMX)
 
     if (.not.apply_upper_bc) return
 
-    call cnst_get_ind('F', f_ndx, abort=.false.)
-    call cnst_get_ind('HF', hf_ndx, abort=.false.)
-    call cnst_get_ind('CH4', ch4_ndx, abort=.false.)
-    call cnst_get_ind('Q', q_ndx, abort=.false.)
-    call cnst_get_ind('H', h_ndx, abort=.false.)
+    if (num_infile>0) then
+       call upper_bc_file_init( ubc_file_spfr(:num_infile) )
+    endif
+
+    ! possible MSIS, TGCM, SNOE and ubc_file inputs
+
+    mm=1
+
+    allocate(hist_names(num_fixed))
+    allocate(spc_ndx(num_fixed))
+    spc_ndx=-1
+    if (num_infile>0) then
+       allocate(file_spc_ndx(num_infile))
+       file_spc_ndx=-1
+    end if
+    if (n_fixed_mmr>0) then
+       allocate(fixed_mmr_ndx(n_fixed_mmr))
+       allocate(fixed_mmr(n_fixed_mmr))
+       fixed_mmr_ndx=-1
+       fixed_mmr = nan
+    end if
+    if (n_fixed_vmr>0) then
+       allocate(fixed_vmr_ndx(n_fixed_vmr))
+       allocate(fixed_vmr(n_fixed_vmr))
+       fixed_vmr_ndx=-1
+       fixed_vmr = nan
+    end if
+
+    m_mmr = 0
+    m_vmr = 0
 
     do m = 1,num_fixed
-       call cnst_get_ind(fixed_spc(m), spc_ndx(m), abort=.false.)
-       if (spc_ndx(m)>0) then
-          if (.not.msis_active) then
-             msis_active = (any(msis_spc == fixed_spc(m)))
-          endif
-          if (.not.snoe_active) then
-             snoe_active = (any(snoe_spc == fixed_spc(m)))
-          endif
-          if (.not.tgcm_active) then
-             tgcm_active = (any(tgcm_spc == fixed_spc(m)))
-          endif
-       endif
+       hist_names(m) = trim(ubc_flds(m))//'_UBC'
+       if (ubc_flds(m)=='T') then
+          ubc_fixed_temp=.true.
+          spc_ndx(m) = -1
+          call addfld(hist_names(m), horiz_only, 'I', 'K', trim(ubc_flds(m))//' at upper boundary' )
+       else
+          call cnst_get_ind(ubc_flds(m), spc_ndx(m), abort=.true.)
+          call addfld(hist_names(m), horiz_only, 'I', 'kg/kg', trim(ubc_flds(m))//' at upper boundary' )
+       end if
+       !call add_default(hist_names(m), 2, ' ' )
+
+       if (trim(ubc_source(m))=='msis') then
+          if (do_molec_diff .and. any(msis_flds==ubc_flds(m))) then
+             msis_active = .true.
+             if (trim(ubc_flds(m))=='H') h_msis_ndx=spc_ndx(m)
+             if (trim(ubc_flds(m))=='N') n_msis_ndx=spc_ndx(m)
+             if (trim(ubc_flds(m))=='O') o_msis_ndx=spc_ndx(m)
+             if (trim(ubc_flds(m))=='O2') o2_msis_ndx=spc_ndx(m)
+          else
+             call endrun(prefix//'MSIS is not allowed in this configuration')
+          end if
+       else if (trim(ubc_source(m))=='tgcm') then
+          if (do_molec_diff .and. any(tgcm_flds==ubc_flds(m))) then
+             tgcm_active = .true.
+          else
+             call endrun(prefix//'TGCM is not allowed in this configuration')
+          end if
+       else if (trim(ubc_source(m))=='snoe') then
+          if (do_molec_diff .and. any(snoe_flds==ubc_flds(m))) then
+             snoe_active = .true.
+          else
+             call endrun(prefix//'SNOE is not allowed in this configuration')
+          end if
+          continue
+       else if (trim(ubc_source(m))=='ubc_file') then
+          file_spc_ndx(mm) = spc_ndx(m)
+          mm = mm+1
+       else
+          mmrndx = index(trim(ubc_source(m)),'mmr')
+          vmrndx = index(trim(ubc_source(m)),'vmr')
+          if (mmrndx>0) then
+             str = ubc_source(m)(:mmrndx-1)
+             read(str,*) val
+             m_mmr = m_mmr + 1
+             fixed_mmr(m_mmr) = val
+             fixed_mmr_ndx(m_mmr) = spc_ndx(m)
+          else if (vmrndx>0) then
+             str = ubc_source(m)(:vmrndx-1)
+             read(str,*) val
+             m_vmr = m_vmr + 1
+             fixed_vmr(m_vmr) = val
+             fixed_vmr_ndx(m_vmr) = spc_ndx(m)
+          else
+             call endrun(prefix//'unrecognized UBC source: '//trim(ubc_source(m)))
+          end if
+       end if
     end do
-    if (masterproc) then
-       write(iulog,*) 'FVDBG.ubc_init fixed_spc = ',fixed_spc
-       write(iulog,*) 'FVDBG.ubc_init msis_active = ',msis_active
-       write(iulog,*) 'FVDBG.ubc_init snoe_active = ',snoe_active
-       write(iulog,*) 'FVDBG.ubc_init tgcm_active = ',tgcm_active
-    end if
 
     if (tgcm_active) then
        !-----------------------------------------------------------------------
        !       ... initialize the tgcm upper boundary module
        !-----------------------------------------------------------------------
        call tgcm_ubc_inti( tgcm_ubc_file, tgcm_ubc_data_type, tgcm_ubc_cycle_yr, &
-                           tgcm_ubc_fixed_ymd, tgcm_ubc_fixed_tod)
+            tgcm_ubc_fixed_ymd, tgcm_ubc_fixed_tod)
        if (masterproc) write(iulog,*) 'ubc_init: after tgcm_ubc_inti'
     endif
 
@@ -241,7 +331,7 @@ end subroutine ubc_setopts
        !-----------------------------------------------------------------------
        !       ... initialize the msis module
        !-----------------------------------------------------------------------
-       call msis_ubc_inti( zonal_avg )
+       call msis_ubc_inti( zonal_avg, n_msis_ndx,h_msis_ndx,o_msis_ndx,o2_msis_ndx )
        if (masterproc) write(iulog,*) 'ubc_init: after msis_ubc_inti'
     endif
 
@@ -259,7 +349,7 @@ end subroutine ubc_setopts
     ubc_fixed_conc = .false.
 
     do m = 1,num_fixed
-       if ( trim(fixed_spc(m)) == trim(name) ) then
+       if ( trim(ubc_flds(m)) == trim(name) ) then
           ubc_fixed_conc = .true.
           return
        endif
@@ -288,19 +378,24 @@ end subroutine ubc_setopts
 
     if (.not.apply_upper_bc) return
 
-    if (msis_active) &
-         call msis_timestep_init( ap, f107p, f107a )
-    if (tgcm_active) &
-         call tgcm_timestep_init( pbuf2d, state )
-    if (snoe_active) &
-         call snoe_timestep_init( kp, f107 )
+    if (num_infile>0) then
+       call upper_bc_file_adv( pbuf2d, state )
+    end if
+    if (msis_active) then
+       call msis_timestep_init( ap, f107p, f107a )
+    end if
+    if (tgcm_active) then
+       call tgcm_timestep_init( pbuf2d, state )
+    end if
+    if (snoe_active) then
+       call snoe_timestep_init( kp, f107 )
+    end if
 
   end subroutine ubc_timestep_init
 
 !===============================================================================
 
-  subroutine ubc_get_vals (lchnk, ncol, pint, zi, &
-                           msis_temp, ubc_mmr)
+  subroutine ubc_get_vals (lchnk, ncol, pint, zi, ubc_temp, ubc_mmr)
 
 !-----------------------------------------------------------------------
 ! interface routine for vertical diffusion and pbl scheme
@@ -310,7 +405,7 @@ end subroutine ubc_setopts
     use mo_tgcm_ubc,      only: set_tgcm_ubc
     use cam_abortutils,   only: endrun
     use physconst,        only: rairv, mbarv
-    use constituents,     only: cnst_mw, cnst_fixed_ubc, cnst_name  ! Needed for ubc_flux
+    use constituents,     only: cnst_mw
 
 !------------------------------Arguments--------------------------------
     integer,  intent(in)  :: lchnk                 ! chunk identifier
@@ -318,52 +413,54 @@ end subroutine ubc_setopts
     real(r8), intent(in)  :: pint(pcols,pverp)     ! interface pressures
     real(r8), intent(in)  :: zi(pcols,pverp)       ! interface geoptl height above sfc
 
-    real(r8), intent(out) :: msis_temp(pcols)      ! upper bndy temperature (K)
+    real(r8), intent(out) :: ubc_temp(pcols)      ! upper bndy temperature (K)
     real(r8), intent(out) :: ubc_mmr(pcols,pcnst)  ! upper bndy mixing ratios (kg/kg)
 
-!---------------------------Local storage-------------------------------
+    !---------------------------Local storage-------------------------------
     integer :: m                                   ! constituent index
     real(r8) :: rho_top(pcols)                     ! density at top interface
     real(r8) :: z_top(pcols)                       ! height of top interface (km)
+    real(r8) :: vals(pcols,num_infile)
 
     real(r8), parameter :: m2km = 1.e-3_r8         ! meter to km
 
-    !--------------------------------------------------------------------
-    !	... local variables
-    !--------------------------------------------------------------------
-    real(r8), parameter ::  h2o_ubc_vmr = 2.e-8_r8            ! fixed ub h2o concentration (kg/kg)
-    real(r8), parameter ::  ch4_ubc_vmr = 2.e-10_r8           ! fixed ub ch4 concentration (kg/kg)
-
     !-----------------------------------------------------------------------
 
-    character(len=16) :: source(pcnst) = 'NONE'
-
-    real(r8), parameter :: NOTSET = -huge(1._r8)
-
-    ubc_mmr(:,:) = nan
-    msis_temp(:) = nan
-    ubc_mmr(:,:) = NOTSET ! nan
+    ubc_mmr(:,:) = 0._r8
+    ubc_temp(:) = nan
 
     if (.not. apply_upper_bc) return
 
+    ! UBC_FILE
+    if (num_infile>0) then
+       call upper_bc_file_get(lchnk, ncol, vals)
+       do m = 1,num_infile
+          if (file_spc_ndx(m)>0) then
+             ubc_mmr(:ncol,file_spc_ndx(m)) = vals(:ncol,m)
+          else
+             ubc_temp(:ncol) = vals(:ncol,m)
+          end if
+
+       end do
+
+    endif
+
+    ! MSIS
     if (msis_active) then
-       call get_msis_ubc( lchnk, ncol, msis_temp, ubc_mmr )
+       call get_msis_ubc( lchnk, ncol, ubc_temp, ubc_mmr )
        if( t_pert_ubc /= 0._r8 ) then
-          msis_temp(:ncol) = msis_temp(:ncol) + t_pert_ubc
-          if( any( msis_temp(:ncol) < 0._r8 ) ) then
+          ubc_temp(:ncol) = ubc_temp(:ncol) + t_pert_ubc
+          if( any( ubc_temp(:ncol) < 0._r8 ) ) then
              write(iulog,*) 'ubc_get_vals: msis temp < 0 after applying offset = ',t_pert_ubc
-             call endrun
+             call endrun('ubc_get_vals: msis temp < 0 after applying t_pert_ubc')
           end if
        end if
     end if
-    do m = 1,pcnst
-       if (source(m)=='NONE' .and. any(ubc_mmr(:ncol,m)/=NOTSET) )  &
-            source(m)='MSIS'
-    end do
 
+    ! SNOE
     if (snoe_active) then
 
-       rho_top(:ncol) = pint(:ncol,1) / (rairv(:ncol,1,lchnk)*msis_temp(:ncol))
+       rho_top(:ncol) = pint(:ncol,1) / (rairv(:ncol,1,lchnk)*ubc_temp(:ncol))
        z_top(:ncol)   = m2km * zi(:ncol,1)
 
        call set_no_ubc  ( lchnk, ncol, z_top, ubc_mmr, rho_top )
@@ -373,68 +470,27 @@ end subroutine ubc_setopts
 
     endif
 
-    do m = 1,pcnst
-       if (source(m)=='NONE' .and. any(ubc_mmr(:ncol,m)/=NOTSET) )  &
-            source(m)='SNOE'
-    end do
-
-
+    ! TIE-GCM
     if (tgcm_active) then
        call set_tgcm_ubc( lchnk, ncol, ubc_mmr )
     endif
 
-    do m = 1,pcnst
-       if (source(m)=='NONE' .and. any(ubc_mmr(:ncol,m)/=NOTSET) )  &
-            source(m)='TGCM'
+    ! fixed values
+    do m = 1,n_fixed_mmr
+       ubc_mmr(:ncol,fixed_mmr_ndx(m)) = fixed_mmr(m)
+    end do
+    do m = 1,n_fixed_vmr
+       ubc_mmr(:ncol,fixed_vmr_ndx(m)) = cnst_mw(fixed_vmr_ndx(m))*fixed_vmr(m)/mbarv(:ncol,1,lchnk)
     end do
 
-    !--------------------------------------------------------
-    ! hard wired UBCs
-    !--------------------------------------------------------
-    if (f_ndx>0) then
-       if (cnst_fixed_ubc(f_ndx)) then
-          ubc_mmr(:ncol, f_ndx) = 1.0e-15_r8
-       endif
-    endif
-    if (hf_ndx>0) then
-       if (cnst_fixed_ubc(hf_ndx)) then
-          ubc_mmr(:ncol, hf_ndx) = 1.0e-15_r8
-       endif
-    endif
-    if (q_ndx>0) then
-       if (masterproc .and. .not.reported) &
-            write(iulog,*) 'FVDBG... q_ndx,cnst_fixed_ubc(q_ndx): ',q_ndx,cnst_fixed_ubc(q_ndx)
-       if (cnst_fixed_ubc(q_ndx)) then
-          ubc_mmr(:ncol, q_ndx) = cnst_mw(q_ndx)*h2o_ubc_vmr/mbarv(:ncol,1,lchnk)
-       endif
-    endif
-    if (ch4_ndx>0) then
-       if (cnst_fixed_ubc(ch4_ndx)) then
-          ubc_mmr(:ncol, ch4_ndx) = cnst_mw(ch4_ndx)*ch4_ubc_vmr/mbarv(:ncol,1,lchnk)
-       endif
-    endif
-
-    do m = 1,pcnst
-       if (source(m)=='NONE' .and. any(ubc_mmr(:ncol,m)/=NOTSET) )  &
-            source(m)='CONST_MMR'
-    end do
-
-    ! Zero out constituent ubc's that are not used.
-    do m = 1, pcnst
-       if (.not. cnst_fixed_ubc(m)) then
-          ubc_mmr(:,m) = 0.0_r8
+    ! diagnostic output
+    do m = 1,num_fixed
+       if (ubc_flds(m)=='T') then
+          call outfld(hist_names(m),ubc_temp(:ncol),ncol,lchnk)
+       else
+          call outfld(hist_names(m),ubc_mmr(:ncol,spc_ndx(m)),ncol,lchnk)
        end if
     end do
-
-
-    if (masterproc.and..not.reported) then
-       do m = 1,pcnst
-          if ( cnst_fixed_ubc(m) ) &
-             write(iulog,*) 'FVDBG.ubc_get_vals  cnst_name,source,max mmr: '//cnst_name(m)//source(m), maxval(ubc_mmr(:ncol,m)), cnst_fixed_ubc(m)
-       end do
-       reported=.true.
-       write(iulog,*) 'FVDBG.ubc_get_vals  msis_temp: ',msis_temp(1) !maxval( msis_temp(:ncol))
-    endif
 
   end subroutine ubc_get_vals
 
@@ -466,9 +522,6 @@ end subroutine ubc_setopts
     real(r8), pointer :: qh_top(:)         ! Top level hydrogen mixing ratio (kg/kg)
 
     ubc_flux(:,:) = nan
-
-    if (.not. apply_upper_bc) return
-!!$    if (.not. ( waccmx_is('ionosphere') .or. waccmx_is('neutral') ) ) return
 
     qh_top => q(:,1,h_ndx)
 
