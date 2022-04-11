@@ -208,8 +208,7 @@ contains
       subcol_SILHS_hmp2_ip_on_hmm2_ip_intrcpt%Ni = 0.5_core_rknd
 
       if (masterproc) then
-         unitn = getunit()
-         open( unitn, file=trim(nlfile), status='old' )
+         open( newunit=unitn, file=trim(nlfile), status='old' )
          call find_group_name(unitn, 'subcol_SILHS_nl', status=ierr)
          if (ierr == 0) then
             read(unitn, subcol_SILHS_nl, iostat=ierr)
@@ -237,8 +236,7 @@ contains
 
       ! Get silhs_config_flags entries from namelist
       if (masterproc) then
-        unitn = getunit()
-        open( unitn, file=trim(nlfile), status='old' )
+        open( newunit=unitn, file=trim(nlfile), status='old' )
         call find_group_name(unitn, 'silhs_config_flags_nl', status=ierr)
         if (ierr == 0) then
           read(unitn, silhs_config_flags_nl, iostat=ierr)
@@ -865,7 +863,7 @@ contains
       !                     Begin Code
       !------------------------------------------------
       
-#ifdef _OPENACC
+#ifdef SILHS_OPENACC
       if ( l_est_kessler_microphys ) then
         call endrun('subcol_gen error: compilation with OpenACC requires l_est_kessler_microphys = .false.')
       end if
