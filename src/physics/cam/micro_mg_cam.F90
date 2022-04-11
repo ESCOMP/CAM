@@ -2667,9 +2667,9 @@ subroutine micro_mg_cam_tend_pack(state, ptend, dtime, pbuf, mgncol, mgcols, nle
               state_loc_graup(:mgncol,:),    state_loc_numgraup(:mgncol,:),     &
               relvar(:mgncol,:),         accre_enhan(:mgncol,:),     &
               state_loc%pmid(:mgncol,:),                state_loc%pdel(:mgncol,:),          &
-              ast, alst_mic, aist_mic, qsatfac(:,:), &
+              ast, alst_mic, aist_mic, qsatfac(:mgncol,:), &
               rate1cld(:mgncol,:),                         &
-              naai(:,:),            npccn(:,:),           &
+              naai(:mgncol,:),            npccn(:mgncol,:),           &
               rndst(:mgncol,:,:),    nacon(:mgncol,:,:),           &
               tlat(:mgncol,:),            qvlat(:mgncol,:),           &
               qctend(:mgncol,:),          qitend(:mgncol,:),          &
