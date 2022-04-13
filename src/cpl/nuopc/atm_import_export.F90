@@ -308,6 +308,8 @@ contains
     real(r8)              :: max_med2mod_areacor_glob
     real(r8)              :: min_mod2med_areacor_glob
     real(r8)              :: min_med2mod_areacor_glob
+    logical               :: samegrid_atm_lnd_ocn
+    character(len=cl)     :: cvalue
     character(len=*), parameter :: subname='(atm_import_export:realize_fields)'
     !---------------------------------------------------------------------------
 
@@ -338,6 +340,14 @@ contains
          mesh=Emesh, rc=rc)
     if (ChkErr(rc,__LINE__,u_FILE_u)) return
 
+    call NUOPC_CompAttributeGet(gcomp, name='samegrid_atm_lnd_ocn', value=cvalue, isPresent=isPresent, isSet=isSet, rc=rc)
+    if (ChkErr(rc,__LINE__,u_FILE_u)) return
+    if (isPresent .and. isSet) then
+       read(cvalue,*) samegrid_atm_lnd_ocn
+       if (masterproc) write(iulog,'(a)') trim(subname)//'samegrid_atm_lnd_ocn = '// trim(cvalue)
+    else
+       samegrid_atm_lnd_ocn = .false.
+    end if
 
     ! allocate area correction factors
     call ESMF_MeshGet(Emesh, numOwnedElements=numOwnedElements, rc=rc)
@@ -345,7 +355,7 @@ contains
     allocate (mod2med_areacor(numOwnedElements))
     allocate (med2mod_areacor(numOwnedElements))
 
-    if (single_column) then
+    if (single_column .or. samegrid_atm_lnd_ocn) then
 
        mod2med_areacor(:) = 1._r8
        med2mod_areacor(:) = 1._r8
