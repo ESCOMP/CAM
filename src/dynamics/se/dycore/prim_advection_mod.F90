@@ -270,7 +270,7 @@ contains
         gradQ(:,:,2)=elem(ie)%derived%vn0(:,:,2,k)
         ! elem(ie)%derived%divdp(:,:,k) = divergence_sphere(gradQ,deriv,elem(ie))
         call divergence_sphere(gradQ,deriv,elem(ie),elem(ie)%derived%divdp(:,:,k))
-        elem(ie)%derived%divdp_proj(:,:,k) = elem(ie)%derived%divdp(:,:,k)
+        elem(ie)%derived%divdp_proj(:,:,k) = elem(ie)%derived%divdp(:,:,k) + elem(ie)%derived%dp0(:,:,k)
       enddo
     enddo
 

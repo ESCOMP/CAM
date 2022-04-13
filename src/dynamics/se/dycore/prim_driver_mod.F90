@@ -417,6 +417,7 @@ contains
     ! for use by advection
     ! ===============
     do ie=nets,nete
+      elem(ie)%derived%dp0=0
       elem(ie)%derived%vn0=0              ! mean horizontal mass flux
       elem(ie)%derived%omega=0
       if (nu_p>0) then
