@@ -578,7 +578,7 @@ contains
     if (iset == nn) iset = nn-1
     iset1 = iset + 1
 
-    denoma = amie_sh_ut(iset1) - amie_sh_ut(iset)
+    denoma = (day(iset1) - day(iset))*24._r8 + amie_sh_ut(iset1)-amie_sh_ut(iset)
     if (denoma > 1._r8) then
        write(iulog, "(a,2(a,i0))")                                        &
             subname, ': Finding a gap in the AMIE Data set: modelday = ', &
@@ -592,7 +592,7 @@ contains
     else
        f1 = (amie_sh_ut(iset1) - (model_ut+(iday- &
             day(iset1))*24._r8))/denoma
-       f2 = (model_ut+(iday-day(iset1))*24._r8 - &
+       f2 = (model_ut+(iday-day(iset))*24._r8 - &
             amie_sh_ut(iset))/denoma
     end if
     cusplat_sh_amie = (f1*cusplat_sh_input(iset1) + &
@@ -642,7 +642,7 @@ contains
     if (iset == nn) iset = nn-1
     iset1 = iset + 1
 
-    denoma = amie_nh_ut(iset1) - amie_nh_ut(iset)
+    denoma = (day(iset1) - day(iset))*24._r8 + amie_nh_ut(iset1)-amie_nh_ut(iset)
     if (denoma > 1._r8) then
        write(iulog, "('getamie: Finding a gap in the AMIE Data set:',  &
             'modelday, amieday =',2I5)") iday,day(n)
@@ -655,7 +655,7 @@ contains
     else
        f1 = (amie_nh_ut(iset1) - (model_ut+(iday- &
             day(iset1))*24._r8))/denoma
-       f2 = (model_ut+(iday-day(iset1))*24._r8 - &
+       f2 = (model_ut+(iday-day(iset))*24._r8 - &
             amie_nh_ut(iset))/denoma
     end if
     cusplat_nh_amie = (f1*cusplat_nh_input(iset1) + &
