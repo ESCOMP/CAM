@@ -1098,38 +1098,6 @@ contains
      integer        :: i,j,k,kptr,ie
      real (kind=r8) :: u_m_umet, v_m_vmet, t_m_tmet, ptop
 
-     real(kind=r8):: Fvec        (np,np,2,nlev)
-     real(kind=r8):: Zm          (np,np  ,nlev)
-     real(kind=r8):: grad_Zm     (np,np,2,nlev)
-     real(kind=r8):: grad_Zs     (np,np,2)
-     real(kind=r8):: Hdev        (np,np  ,nlev)
-     real(kind=r8):: grad_HdynPhi(np,np,2,nlev)
-     real(kind=r8):: grad_lnHdev (np,np,2,nlev)
-     real(kind=r8):: DPdev_dry   (np,np  ,nlev)
-     real(kind=r8):: DPdev_full  (np,np  ,nlev)
-     real(kind=r8):: Omega_sfc   (np,np  ,nlev)
-     real(kind=r8):: Vtens_sfc   (np,np,2,nlev)
-     real(kind=r8):: VgradZ      (np,np)
-     real(kind=r8):: Sfc_dpdz    (np,np)
-     real(kind=r8):: Sprof       (nlev)
-
-     ! Namelist Parameters for Hydrodynamic Balance and Lower Boundary Forcing. 
-     ! Just set here for now until they can be added to SE namelist.
-     !
-     ! HydroDynamicBalance: TRUE  = Apply Hydrodynamic Balance corrections
-     !                      FALSE = Default Hydrostatic Balance
-     !
-     ! Apply_Sfc_Bcond:     TRUE  = Add surface forcing terms to represent
-     !                              the Earths surface as a material boundary
-     !                      FALSE = Default behavior at the lower boundary.
-     !
-     ! Srf_Prof_Exp:        Exponent controlling the depth of influence 
-     !                      of the lower boundary forcing.
-     !------------------------------------------------------------------
-     logical,parameter:: HydroDynamicBalance = .true.
-     logical,parameter:: Apply_Srf_Bcond     = .true.
-     integer,parameter:: Srf_Prof_Exp        = 8
-
 !JMD  call t_barrierf('sync_compute_and_apply_rhs', hybrid%par%comm)
      call t_adj_detailf(+1)
      call t_startf('compute_and_apply_rhs')
@@ -1150,93 +1118,7 @@ contains
          dp_dry(:,:,k)  = elem(ie)%state%dp3d(:,:,k,n0)
          dp_full(:,:,k) = sum_water(:,:,k)*dp_dry(:,:,k)
        end do
-
-       ! Hydrostatic or Hydrodynamic Balance
-       !-----------------------------------------
-       if(.not.HydroDynamicBalance) then
-         !========================
-         ! HYDROSTATIC BALANCE
-         !========================
-
-         ! Compute Hydrostatic phi
-         !-------------------------
-         call get_gz_given_dp_Tv_Rdry(1,np,1,np,nlev,dp_full,T_v,R_dry,elem(ie)%state%phis,ptop,phi,pmid=p_full)
-
-         ! set values for Hydyostatic balance
-         !-----------------------------------
-         grad_HdynPhi(:,:,:,:) = 0._r8
-         DPdev_full  (:,:  ,:) = 0._r8
-         DPdev_dry   (:,:  ,:) = 0._r8
-
-         ! Compute Surface Boundary Contributions
-         !-----------------------------------------
-         if(Apply_Srf_Bcond) then
-           call gradient_sphere((elem(ie)%state%phis/gravit),deriv,elem(ie)%Dinv,grad_Zs)
-
-           Sfc_dpdz(:,:) = gravit*p_full(:,:,nlev)/(R_dry(:,:,nlev)*T_v(:,:,nlev))
-           do k=1,nlev
-             Sprof(k)    = (hvcoord%hybm(k)/hvcoord%hybm(nlev))**Srf_Prof_Exp
-             VgradZ(:,:) = ( elem(ie)%state%v(:,:,1,k,n0)*grad_Zs(:,:,1)  &
-                            +elem(ie)%state%v(:,:,2,k,n0)*grad_Zs(:,:,2)) &
-                                 /(1._r8 + grad_Zs(:,:,1)*grad_Zs(:,:,1)  &
-                                         + grad_Zs(:,:,2)*grad_Zs(:,:,2))
-             Omega_sfc(:,:  ,k) = -Sprof(k)*VgradZ(:,:)*Sfc_dpdz(:,:)
-             Vtens_sfc(:,:,1,k) = -Sprof(k)*VgradZ(:,:)*grad_Zs(:,:,1)/dt2
-             Vtens_sfc(:,:,2,k) = -Sprof(k)*VgradZ(:,:)*grad_Zs(:,:,2)/dt2
-           end do
-         endif
-       else
-         !========================
-         ! HYDRODYNAMIC BALANCE
-         !========================
-
-         ! Remainig momentum forcing terms go here.
-         !-------------------------------------------------
-         do k=1,nlev
-           Fvec(:,:,1,k) =  elem(ie)%fcor(:,:)*elem(ie)%state%v(:,:,2,k,n0)
-           Fvec(:,:,2,k) = -elem(ie)%fcor(:,:)*elem(ie)%state%v(:,:,1,k,n0)
-         end do
-
-         ! Compute model Heights satifying Hydrodynamic Balance
-         !------------------------------------------------------
-         call hydrodynamic_balance(hvcoord,deriv,elem(ie)%Dinv,elem(ie)%state%phis,Fvec,       &
-                                   R_dry,T_v,dp_full,p_full,Zm,grad_Zm,grad_Zs,Hdev,grad_lnHdev)
-
-         ! Compute Hydrodynamic values
-         !-----------------------------------
-         do k=1,nlev
-           phi(:,:,k) = 0._r8
-
-           ! Compute [V.grad_lnHdev] Hdev advective Contributions to (dp/dn)
-           !-----------------------------------------------------------------
-           DPdev_full(:,:,k) = dp_full(:,:,k)*(grad_lnHdev(:,:,1,k)*elem(ie)%state%v(:,:,1,k,n0) &
-                                              +grad_lnHdev(:,:,2,k)*elem(ie)%state%v(:,:,2,k,n0) )
-           DPdev_dry (:,:,k) = dp_dry (:,:,k)*(grad_lnHdev(:,:,1,k)*elem(ie)%state%v(:,:,1,k,n0) &
-                                              +grad_lnHdev(:,:,2,k)*elem(ie)%state%v(:,:,2,k,n0) )
-
-           ! Formulate gradient of Hydrodynamic geopotential
-           !--------------------------------------------------
-           grad_HdynPhi(:,:,1,k) = gravit*grad_Zm(:,:,1,k)/Hdev(:,:,k)
-           grad_HdynPhi(:,:,2,k) = gravit*grad_Zm(:,:,2,k)/Hdev(:,:,k)
-         end do
-
-         ! Compute Surface Boundary Contributions
-         !-----------------------------------------
-         if(Apply_Srf_Bcond) then
-           Sfc_dpdz(:,:) = gravit*p_full(:,:,nlev)/(R_dry(:,:,nlev)*T_v(:,:,nlev))
-           do k=1,nlev
-             Sprof(k)    = (hvcoord%hybm(k)/hvcoord%hybm(nlev))**Srf_Prof_Exp
-             VgradZ(:,:) = ( elem(ie)%state%v(:,:,1,k,n0)*grad_Zs(:,:,1)  &
-                            +elem(ie)%state%v(:,:,2,k,n0)*grad_Zs(:,:,2)) &
-                                 /(1._r8 + grad_Zs(:,:,1)*grad_Zs(:,:,1)  &
-                                         + grad_Zs(:,:,2)*grad_Zs(:,:,2))
-             Omega_sfc(:,:  ,k) = -Sprof(k)*VgradZ(:,:)*Sfc_dpdz(:,:)
-             Vtens_sfc(:,:,1,k) = -Sprof(k)*VgradZ(:,:)*grad_Zs(:,:,1)/dt2
-             Vtens_sfc(:,:,2,k) = -Sprof(k)*VgradZ(:,:)*grad_Zs(:,:,2)/dt2
-           end do
-         endif
-       endif
-
+       call get_gz_given_dp_Tv_Rdry(1,np,1,np,nlev,dp_full,T_v,R_dry,elem(ie)%state%phis,ptop,phi,pmid=p_full)
        do k=1,nlev
          ! vertically lagrangian code: we advect dp3d instead of ps
          ! we also need grad(p) at all levels (not just grad(ps))
@@ -1271,7 +1153,6 @@ contains
          !DIR_VECTOR_ALIGNED
          do j=1,np
            do i=1,np
-             elem(ie)%derived%dp0(i,j  ,k)=elem(ie)%derived%dp0(i,j  ,k)+eta_ave_w*DPdev_dry(i,j,k)
              elem(ie)%derived%vn0(i,j,1,k)=elem(ie)%derived%vn0(i,j,1,k)+eta_ave_w*vdp_dry(i,j,1,k)
              elem(ie)%derived%vn0(i,j,2,k)=elem(ie)%derived%vn0(i,j,2,k)+eta_ave_w*vdp_dry(i,j,2,k)
            enddo
@@ -1300,7 +1181,7 @@ contains
         !DIR_VECTOR_ALIGNED
          do j=1,np   !   Loop inversion (AAM)
            do i=1,np
-             term         = -divdp_full(i,j,k) - DPdev_full(i,j,k)
+             term         = -divdp_full(i,j,k)
 
              v1 = elem(ie)%state%v(i,j,1,k,n0)
              v2 = elem(ie)%state%v(i,j,2,k,n0)
@@ -1313,15 +1194,6 @@ contains
 #if (defined COLUMN_OPENMP)
      !$omp parallel do num_threads(vert_num_threads) private(k)
 #endif
-
-       ! Optionally Apply effect of surface forcing to Omega
-       !-----------------------------------------------------
-       if(Apply_Srf_Bcond) then
-         do k = 1,nlev
-           omega_full(:,:,k) = omega_full(:,:,k) + Omega_sfc(:,:,k)
-         end do
-       endif
-
        do k=1,nlev  !  Loop index added (AAM)
          elem(ie)%derived%omega(:,:,k) = &
               elem(ie)%derived%omega(:,:,k) + eta_ave_w*omega_full(:,:,k)
@@ -1413,26 +1285,17 @@ contains
 
              vtens1(i,j,k) =   &
                   + v2*(elem(ie)%fcor(i,j) + vort(i,j,k))        &
-                  - vtemp(i,j,1) - glnps1 - grad_HdynPhi(i,j,1,k)
+                  - vtemp(i,j,1) - glnps1
 
              vtens2(i,j,k) =   &
                   - v1*(elem(ie)%fcor(i,j) + vort(i,j,k))        &
-                  - vtemp(i,j,2) - glnps2 - grad_HdynPhi(i,j,2,k)
+                  - vtemp(i,j,2) - glnps2
              ttens(i,j,k)  =  - vgrad_T(i,j) + &
                   density_inv(i,j)*omega_full(i,j,k)*inv_cp_full(i,j,k,ie)
            end do
          end do
 
        end do vertloop
-
-       ! Optionally Apply Surface Forcing of horizontal momentum
-       !---------------------------------------------------------
-       if(Apply_Srf_Bcond) then
-         do k=1,nlev
-           vtens1(:,:,k) = vtens1(:,:,k) + Vtens_sfc(:,:,1,k)
-           vtens2(:,:,k) = vtens2(:,:,k) + Vtens_sfc(:,:,2,k)
-         end do
-       endif
 
        ! =========================================================
        ! local element timestep, store in np1.
@@ -2280,183 +2143,5 @@ contains
     !------------
     return
   end subroutine fill_element
-  !=============================================================================
-
-
-  !=============================================================================
-  subroutine hydrodynamic_balance(hvcoord,deriv,Dinv,phis,Fcor,R_gas,T_v,    &
-                                  dp3d,Pm,Zm,grad_Zm,grad_Zs,Hdev,grad_lnHdev)
-    !
-    ! hydrodynamic_balance: Carry out a fixed point iteration to compute the 
-    !                       instantaneous adjustment of geopotential heights of 
-    !                       models surfaces so that they maintain hydrodynamic balance.
-    !
-    !                       Return the surface heights and their gradient, 
-    !                       the terms needed to add hydrodynamic effects to the
-    !                       governing equations, and the gradient of surface 
-    !                       topography needed to impose boundary conditions at 
-    !                       the surface.
-    !=======================================================================
-    use hybvcoord_mod ,only: hvcoord_t
-    use physconst     ,only: gravit
-    use dimensions_mod,only: np,nlev
-    use derivative_mod,only: derivative_t, gradient_sphere
-    !
-    ! Parameters
-    !------------
-    integer ,parameter:: ITER_MAX = 10
-    real(r8),parameter:: ITER_TOL = 1.d-10
-    !
-    ! Passed Variables 
-    !-----------------
-    type(hvcoord_t)   ,intent(in ):: hvcoord
-    type(derivative_t),intent(in ):: deriv
-    real(r8)          ,intent(in ):: Dinv(np,np,2,2)
-    real(r8)          ,intent(in ):: phis   (np,np)
-    real(r8)          ,intent(in ):: Fcor   (np,np,2,nlev)
-    real(r8)          ,intent(in ):: R_gas  (np,np  ,nlev)
-    real(r8)          ,intent(in ):: T_v    (np,np  ,nlev)
-    real(r8)          ,intent(in ):: dp3d   (np,np  ,nlev)
-    real(r8)          ,intent(out):: Pm     (np,np  ,nlev)
-    real(r8)          ,intent(out):: Zm     (np,np  ,nlev)
-    real(r8)          ,intent(out):: grad_Zm(np,np,2,nlev)
-    real(r8)          ,intent(out):: grad_Zs(np,np,2)
-    real(r8)          ,intent(out):: Hdev       (np,np  ,nlev)
-    real(r8)          ,intent(out):: grad_lnHdev(np,np,2,nlev)
-    !
-    ! Local Values
-    !-------------
-    real(r8):: Zi       (np,np  ,nlev+1)
-    real(r8):: grad_Zi  (np,np,2,nlev+1)
-    real(r8):: Vvec     (np,np,2,nlev)
-    real(r8):: Pi       (np,np,nlev)
-    real(r8):: R_Tv_g   (np,np,nlev)
-    real(r8):: grad_lnP (np,np,2)
-    real(r8):: Dvec     (np,np,2)
-    real(r8):: Bvec     (np,np,2)
-    real(r8):: Pval     (np,np  )
-    real(r8):: Norm     (np,np)
-    real(r8):: Vdev     (np,np)
-    real(r8):: Cval     (np,np)
-    real(r8):: Aval     (np,np)
-    real(r8):: Zdev_last(np,np)
-    real(r8):: Zdev     (np,np)
-    real(r8):: grad_Zdev(np,np,2)
-
-    integer :: ii,jj,kk
-    integer :: iter
-    real(r8):: Rval,deta2
-
-    ! Set some local values
-    !---------------------
-    deta2 = -0.5_r8
-    do kk=1,nlev
-      R_Tv_g(:,:,kk) = R_gas(:,:,kk)*T_v(:,:,kk)/gravit
-    end do
-
-    ! Integrate dp3d values downward to get mid-point pressures
-    !-----------------------------------------------------------
-    Pi(:,:,1) = hvcoord%hyai(1)*hvcoord%ps0
-    do kk=2,nlev+1
-      Pi(:,:,kk) = Pi(:,:,kk-1) + dp3d(:,:,kk-1)
-    end do
-    do kk=1,nlev
-      Pm(:,:,kk) = dp3d(:,:,kk)/(log(Pi(:,:,kk+1)) - log(Pi(:,:,kk)))
-    end do
-
-    ! Compute gradient of PHIS and initialize Zi values at 
-    ! the bottom of the atmosphere
-    !-------------------------------------------------------
-    call gradient_sphere((phis(:,:)/gravit),deriv,Dinv,grad_Zs(:,:,:))
-    Zi     (:,:  ,nlev+1) = phis(:,:)/gravit
-    grad_Zi(:,:,:,nlev+1) = grad_Zs(:,:,:)
-
-    ! Loop over vertical layers from bottom to top
-    !------------------------------------------------
-    do kk=nlev,1,-1
-
-      ! Calculate gradient of lnP 
-      !--------------------------------------
-      call gradient_sphere(log(Pm(:,:,kk)),deriv,Dinv,grad_lnP(:,:,:))
-
-      ! Compute Constants for fixed point iteration 
-      !---------------------------------------------
-      Pval(:,:) = (-R_Tv_g(:,:,kk)/Pm(:,:,kk))*dp3d(:,:,kk)
-
-      Vvec(:,:,1,kk) =  -R_Tv_g(:,:,kk)*grad_lnP(:,:,1) + (Fcor(:,:,1,kk)/gravit)
-      Vvec(:,:,2,kk) =  -R_Tv_g(:,:,kk)*grad_lnP(:,:,2) + (Fcor(:,:,2,kk)/gravit)
-
-      Norm(:,:) = 1._r8 + grad_Zi(:,:,1,kk)*grad_Zi(:,:,1,kk) &
-                        + grad_Zi(:,:,2,kk)*grad_Zi(:,:,2,kk)
-      Vdev(:,:) = 1._r8 + grad_Zi(:,:,1,kk)*Vvec   (:,:,1,kk) &
-                        + grad_Zi(:,:,2,kk)*Vvec   (:,:,2,kk)
-
-      Dvec(:,:,1) = Vvec(:,:,1,kk)/Vdev(:,:)
-      Dvec(:,:,2) = Vvec(:,:,2,kk)/Vdev(:,:)
-
-      Cval(:,:) = deta2*Pval(:,:)*Norm(:,:)/Vdev(:,:)
-
-      Bvec(:,:,1) = 2._r8*Cval(:,:)*grad_Zi(:,:,1,kk+1)
-      Bvec(:,:,2) = 2._r8*Cval(:,:)*grad_Zi(:,:,2,kk+1)
-
-      Aval(:,:) = Cval(:,:)*Norm(:,:)
-
-      ! Initialize Zdev values
-      !------------------------
-      Zdev_last(:,:) = Aval(:,:)
-
-      ! Fixed point iteration to determine Zdev values 
-      ! that satisfy hydrodynamic balance
-      !-------------------------------------------------
-      do iter=1,ITER_MAX
-
-        ! Compute new Zdev, and the RMS change since 
-        ! the last iteration 
-        !------------------------------------------------
-        call gradient_sphere(Zdev_last(:,:),deriv,Dinv,grad_Zdev(:,:,:))
-
-        Zdev(:,:) = Aval(:,:) + grad_Zdev(:,:,1)*(Bvec(:,:,1) + Cval(:,:  )*grad_Zdev(:,:,1)  &
-                                                              - Dvec(:,:,1)*Zdev_last(:,:  )) &
-                              + grad_Zdev(:,:,2)*(Bvec(:,:,2) + Cval(:,:  )*grad_Zdev(:,:,2)  &
-                                                              - Dvec(:,:,2)*Zdev_last(:,:  ))
-        ! Exit loop if the surface has converged
-        !------------------------------------------
-        Rval = 0._r8
-        do jj=1,np
-        do ii=1,np
-          Rval = Rval + (Zdev(ii,jj) - Zdev_last(ii,jj))**2
-        end do
-        end do
-        if(sqrt(Rval).lt.ITER_TOL) exit
-
-        Zdev_last(:,:) = Zdev(:,:)
-      end do ! iter=1,ITER_MAX
-
-      ! Use Zdev to set the heights at the layer 
-      ! midpoint and top, then compute their gradients
-      !------------------------------------------------
-      Zm(:,:,kk) = Zi(:,:,kk+1) +       Zdev(:,:)
-      Zi(:,:,kk) = Zi(:,:,kk+1) + 2._r8*Zdev(:,:)
-
-      call gradient_sphere(Zm(:,:,kk),deriv,Dinv,grad_Zm(:,:,:,kk))
-      call gradient_sphere(Zi(:,:,kk),deriv,Dinv,grad_Zi(:,:,:,kk))
-
-      ! Compute the Hydrostatic Deviation and its gradient which are
-      ! used to implement hydrodynamic effects in the governing equations.
-      !------------------------------------------------------------------
-      Hdev(:,:,kk) = (1._r8 + grad_Zm(:,:,1,kk)*grad_Zm(:,:,1,kk)  &
-                            + grad_Zm(:,:,2,kk)*grad_Zm(:,:,2,kk)) &
-                    /(1._r8 + grad_Zm(:,:,1,kk)*Vvec   (:,:,1,kk)  &
-                            + grad_Zm(:,:,2,kk)*Vvec   (:,:,2,kk))
-
-      call gradient_sphere(log(Hdev(:,:,kk)),deriv,Dinv,grad_lnHdev(:,:,:,kk))
-
-    end do ! kk=nlev,1,-1
-
-    ! End Routine
-    !------------
-    return
-  end subroutine hydrodynamic_balance
-  !=============================================================================
 
 end module prim_advance_mod

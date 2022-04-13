@@ -35,7 +35,6 @@ module element_mod
      !
      ! storage for subcycling tracers/dynamics
      !
-    real (kind=r8) :: dp0  (np,np,nlev)                        ! Hydrodynamic balance correction term
     real (kind=r8) :: vn0  (np,np,2,nlev)                      ! velocity for SE tracer advection
     real (kind=r8) :: dpdiss_biharmonic(np,np,nlev)            ! mean dp dissipation tendency, if nu_p>0
     real (kind=r8) :: dpdiss_ave(np,np,nlev)                   ! mean dp used to compute psdiss_tens
