@@ -2554,11 +2554,8 @@ contains
              call physics_tend_alloc(tend_sc, psubcols*pcols)
 
              ! Generate sub-columns using the requested scheme
-             !$acc data copyin(state_sc) &
-             !$acc&     copyout( state_sc%t, state_sc%s, state_sc%omega, state_sc%q )
              call init_state_subcol(state, tend, state_sc, tend_sc)
              call subcol_gen(state, tend, state_sc, tend_sc, pbuf)
-             !$acc end data
 
              !Initialize check energy for subcolumns
              call check_energy_timestep_init(state_sc, tend_sc, pbuf, col_type_subcol)

@@ -140,7 +140,6 @@ contains
 #ifdef CLUBB_SGS
 #ifdef SILHS
       use namelist_utils,   only: find_group_name
-      use units,            only: getunit, freeunit
       use spmd_utils,       only: masterproc, masterprocid, mpicom
       use spmd_utils,       only: mpi_integer, mpi_logical, mpi_character, mpir8, iam
       use clubb_api_module, only: core_rknd
@@ -333,7 +332,6 @@ contains
 
       use physics_buffer,          only: physics_buffer_desc, pbuf_get_field, &
                                          dtype_r8, pbuf_get_index
-      use units,                   only: getunit, freeunit 
 #ifdef CLUBB_SGS
 #ifdef SILHS
       use clubb_api_module,        only: core_rknd, &
@@ -477,17 +475,11 @@ contains
       corr_file_path_cloud = trim( subcol_SILHS_corr_file_path )//trim( subcol_SILHS_corr_file_name )//cloud_file_ext
       corr_file_path_below = trim( subcol_SILHS_corr_file_path )//trim( subcol_SILHS_corr_file_name )//below_file_ext
 
-      iunit = getunit()
-
-
       call setup_corr_varnce_array_api( corr_file_path_cloud, corr_file_path_below, &
-                                        iunit, &
+                                        getnewunit(iunit), &
                                         clubb_config_flags%l_fix_w_chi_eta_correlations )
-      call freeunit(iunit) 
-
       !-------------------------------
       ! Register output fields from SILHS
-      ! #KTCtodo: Remove these from the default output list
       !-------------------------------
       call addfld('SILHS_NCLD_SCOL', (/'psubcols', 'ilev    '/), 'I', 'm^-3', &
            'Subcolumn Cloud Number Concentration', flag_xyfill=.true., fill_value=1.e30_r8)
@@ -1230,6 +1222,7 @@ contains
       !$acc&             NRAIN_lh_out, SNOW_lh_out, NSNOW_lh_out, WM_lh_out, &
       !$acc&             OMEGA_lh_out ) &
       !$acc&     copyin( state, state%zm, state%phis, rho_ds_zt, invs_exner ) &
+      !$acc&     copyout( state%t, state%s, state%omega, state_sc%q )
       !$acc& async(1)
       
       ! Set the seed to the random number generator based on a quantity that
@@ -4145,5 +4138,27 @@ contains
    end subroutine subcol_SILHS_hydromet_conc_tend_lim
 
    !============================================================================
+
+   ! Getunit and Freeunit are depreciated in Fortran going forward, so this is a 
+   ! small function to get an unused stream identifier to send to setup_corr_varnce_array_api
+   ! or any other silhs/clubb functions that require a unit number argument
+   ! This comes directly from the Fortran wiki
+   integer function getnewunit(unit)
+     integer, intent(out), optional :: unit
+    
+     integer, parameter :: LUN_MIN=10, LUN_MAX=1000
+     logical :: opened
+     integer :: lun, newunit
+   
+     newunit=-1
+     do lun=LUN_MIN,LUN_MAX
+        inquire(unit=lun,opened=opened)
+        if (.not. opened) then
+           newunit=lun
+           exit
+        end if
+     end do
+     if (present(unit)) unit=newunit
+   end function getnewunit
    
 end module subcol_SILHS 

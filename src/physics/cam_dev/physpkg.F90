@@ -1328,7 +1328,7 @@ contains
     use clubb_intr,         only: clubb_tend_cam
     use subcol,             only: subcol_gen, subcol_ptend_avg
     use subcol_utils,       only: subcol_ptend_copy, is_subcol_on
-    use subcol_SILHS,       only: subcol_SILHS_var_covar_driver
+    use subcol_SILHS,       only: subcol_SILHS_var_covar_driver, init_state_subcol
     use subcol_SILHS,       only: subcol_SILHS_fill_holes_conserv
     use subcol_SILHS,       only: subcol_SILHS_hydromet_conc_tend_lim
     use micro_pumas_cam,       only: massless_droplet_destroyer
@@ -1674,12 +1674,17 @@ contains
           ! Calculate cloud microphysics
           !===================================================
 
+          if (is_subcol_on() .neqv. use_subcol_microp ) then
+            call endrun("Error calculating cloud microphysics: is_subcol_on() != use_subcol_microp")
+          end if
+
           if (is_subcol_on()) then
              ! Allocate sub-column structures.
              call physics_state_alloc(state_sc, lchnk, psubcols*pcols)
              call physics_tend_alloc(tend_sc, psubcols*pcols)
 
              ! Generate sub-columns using the requested scheme
+             call init_state_subcol(state, tend, state_sc, tend_sc)
              call subcol_gen(state, tend, state_sc, tend_sc, pbuf)
 
              !Initialize check energy for subcolumns
