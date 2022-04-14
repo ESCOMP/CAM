@@ -296,6 +296,7 @@ module clubb_intr
     clubb_l_use_tke_in_wp2_wp3_K_dfsn,  & ! Use TKE in eddy diffusion for wp2 and wp3
     clubb_l_smooth_Heaviside_tau_wpxp,  & ! Use smooth Heaviside 'Peskin' in computation of invrs_tau
     clubb_l_enable_relaxed_clipping,    & ! Flag to relax clipping on wpxp in xm_wpxp_clipping_and_stats
+    clubb_l_linearize_pbl_winds,        & ! Code to linearize PBL winds
     clubb_l_single_C2_Skw,              & ! Use a single Skewness dependent C2 for rtp2, thlp2, and
                                           ! rtpthlp
     clubb_l_damp_wp3_Skw_squared,       & ! Set damping on wp3 to use Skw^2 rather than Skw^4
@@ -792,7 +793,8 @@ end subroutine clubb_init_cnst
                                              clubb_l_use_tke_in_wp3_pr_turb_term, & ! Out
                                              clubb_l_use_tke_in_wp2_wp3_K_dfsn, & ! Out
                                              clubb_l_smooth_Heaviside_tau_wpxp, & ! Out
-                                             clubb_l_enable_relaxed_clipping ) ! Out
+                                             clubb_l_enable_relaxed_clipping, & ! Out
+                                             clubb_l_linearize_pbl_winds ) ! Out
 
     !  Call CLUBB+MF namelist
     call clubb_mf_readnl(nlfile)
@@ -1132,6 +1134,7 @@ end subroutine clubb_init_cnst
                                                  clubb_l_use_tke_in_wp2_wp3_K_dfsn, & ! In 
                                                  clubb_l_smooth_Heaviside_tau_wpxp, & ! In
                                                  clubb_l_enable_relaxed_clipping, & ! In
+                                                 clubb_l_linearize_pbl_winds, & ! In
                                                  clubb_config_flags ) ! Out
 
 #endif
@@ -2060,9 +2063,11 @@ end subroutine clubb_init_cnst
    real(r8) :: wprtp_sfc(pcols)                        ! w' r_t' at surface                            [(kg m)/( kg s)]
    real(r8) :: upwp_sfc(pcols)                         ! u'w' at surface                               [m^2/s^2]
    real(r8) :: vpwp_sfc(pcols)                         ! v'w' at surface                               [m^2/s^2]   
-   real(r8) :: sclrm_forcing(pcols,pverp+1-top_lev,sclr_dim)    ! Passive scalar forcing                        [{units vary}/s]
+   real(r8) :: upwp_sfc_pert(pcols)                    ! perturbed u'w' at surface                     [m^2/s^2]
+   real(r8) :: vpwp_sfc_pert(pcols)                    ! perturbed v'w' at surface                     [m^2/s^2]   
+   real(r8) :: sclrm_forcing(pcols,pverp+1-top_lev,sclr_dim)    ! Passive scalar forcing              [{units vary}/s]
    real(r8) :: wpsclrp_sfc(pcols,sclr_dim)            ! Scalar flux at surface                        [{units vary} m/s]
-   real(r8) :: edsclrm_forcing(pcols,pverp+1-top_lev,edsclr_dim)! Eddy passive scalar forcing                   [{units vary}/s]
+   real(r8) :: edsclrm_forcing(pcols,pverp+1-top_lev,edsclr_dim)! Eddy passive scalar forcing         [{units vary}/s]
    real(r8) :: wpedsclrp_sfc(pcols,edsclr_dim)        ! Eddy-scalar flux at surface                   [{units vary} m/s]
    real(r8) :: sclrm(pcols,pverp+1-top_lev,sclr_dim)  ! Passive scalar mean (thermo. levels)          [units vary]
    real(r8) :: wpsclrp(pcols,pverp+1-top_lev,sclr_dim)! w'sclr' (momentum levels)                     [{units vary} m/s]
@@ -2086,7 +2091,11 @@ end subroutine clubb_init_cnst
    real(r8) :: wp2hmp(pcols,pverp+1-top_lev,hydromet_dim)
    real(r8) :: rtphmp_zt(pcols,pverp+1-top_lev,hydromet_dim)
    real(r8) :: thlphmp_zt (pcols,pverp+1-top_lev,hydromet_dim)
-   real(r8) :: bflx22(pcols)                           ! Variable for buoyancy flux for pbl            [K m/s]
+   real(r8) :: um_pert_inout(pcols,pverp+1-top_lev)   ! Perturbed U wind                          [m/s]
+   real(r8) :: vm_pert_inout(pcols,pverp+1-top_lev)   ! Perturbed V wind                          [m/s]
+   real(r8) :: upwp_pert_inout(pcols,pverp+1-top_lev) ! Perturbed u'w'                            [m^2/s^2]
+   real(r8) :: vpwp_pert_inout(pcols,pverp+1-top_lev) ! Perturbed v'w'                            [m^2/s^2]
+   real(r8) :: bflx22(pcols)                          ! Variable for buoyancy flux for pbl            [K m/s]
    real(r8) :: khzm_out(pcols,pverp+1-top_lev)        ! Eddy diffusivity of heat/moisture on momentum (i.e. interface) levels  [m^2/s]
    real(r8) :: khzt_out(pcols,pverp+1-top_lev)        ! eddy diffusivity on thermo grids              [m^2/s]
    real(r8) :: qclvar_out(pcols,pverp+1-top_lev)      ! cloud water variance                          [kg^2/kg^2]
@@ -2912,6 +2921,10 @@ end subroutine clubb_init_cnst
       upwp_sfc(i)   = cam_in%wsx(i)/rho_zt(i,2)               ! Surface meridional momentum flux
       vpwp_sfc(i)   = cam_in%wsy(i)/rho_zt(i,2)               ! Surface zonal momentum flux  
     end do
+
+    ! Perturbed winds are not used in CAM
+    upwp_sfc_pert = 0.0_r8
+    vpwp_sfc_pert = 0.0_r8
     
     !  Need to flip arrays around for CLUBB core
     do k=1,nlev+1
@@ -2971,9 +2984,11 @@ end subroutine clubb_init_cnst
       end do
     end do
 
-    do i=1,ncol
-      rcm_inout(i,1) = rcm_inout(i,2)
-    end do
+    ! Perturbed winds are not used in CAM
+    um_pert_inout   = 0.0_r8
+    vm_pert_inout   = 0.0_r8
+    upwp_pert_inout = 0.0_r8
+    vpwp_pert_inout = 0.0_r8
         
     do k=2,nlev+1
       do i=1,ncol
@@ -2983,6 +2998,10 @@ end subroutine clubb_init_cnst
       
     do i=1,ncol
       pre_in(i,1) = pre_in(i,2)
+    end do
+
+    do i=1,ncol
+      rcm_inout(i,1) = rcm_inout(i,2)
     end do
       
     !  Initialize these to prevent crashing behavior
@@ -3180,6 +3199,7 @@ end subroutine clubb_init_cnst
       end if
       
       ! Arrays are allocated as if they have pcols grid columns, but there can be less.
+<<<<<<< HEAD
       ! Only pass clubb_core the number of columns (ncol) with valid data.
       !  Advance CLUBB CORE one timestep in the future
       call advance_clubb_core_api( gr(:ncol), pverp+1-top_lev, ncol, &
@@ -3219,6 +3239,94 @@ end subroutine clubb_init_cnst
           qclvar_out(:ncol,:), thlprcp_out(:ncol,:), &
           wprcp_out(:ncol,:), w_up_in_cloud_out(:ncol,:),  &
           rcm_in_layer_out(:ncol,:), cloud_cover_out(:ncol,:), invrs_tau_zm_out(:ncol,:) )
+=======
+      ! So if pcols=ncol, we have no problem, but if that isn't the case, then ncol<pcol, 
+      ! and we will have to slice the input arrays. This is very annoying, and we should
+      ! change it.
+      if ( pcols == ncol ) then
+
+        !  Advance CLUBB CORE one timestep in the future
+        call advance_clubb_core_api( gr, pverp+1-top_lev, ncol, &
+            l_implemented, dtime, fcor, sfc_elevation, hydromet_dim, &
+            thlm_forcing, rtm_forcing, um_forcing, vm_forcing, &
+            sclrm_forcing, edsclrm_forcing, wprtp_forcing, &
+            wpthlp_forcing, rtp2_forcing, thlp2_forcing, &
+            rtpthlp_forcing, wm_zm, wm_zt, &
+            wpthlp_sfc, wprtp_sfc, upwp_sfc, vpwp_sfc, &
+            wpsclrp_sfc, wpedsclrp_sfc, &
+            upwp_sfc_pert, vpwp_sfc_pert, &
+            rtm_ref, thlm_ref, um_ref, vm_ref, ug, vg, &
+            p_in_Pa, rho_zm, rho_in, exner, &
+            rho_ds_zm, rho_ds_zt, invrs_rho_ds_zm, &
+            invrs_rho_ds_zt, thv_ds_zm, thv_ds_zt, hydromet, &
+            rfrzm, radf, &
+            wphydrometp, wp2hmp, rtphmp_zt, thlphmp_zt, &
+            grid_dx, grid_dy, &
+            clubb_params, nu_vert_res_dep, lmin, &
+            clubb_config_flags, &
+            stats_zt, stats_zm, stats_sfc, &
+            um_in, vm_in, upwp_in, vpwp_in, up2_in, vp2_in, up3_in, vp3_in, &
+            thlm_in, rtm_in, wprtp_in, wpthlp_in, &
+            wp2_in, wp3_in, rtp2_in, rtp3_in, thlp2_in, thlp3_in, rtpthlp_in, &
+            sclrm, &
+            sclrp2, sclrp3, sclrprtp, sclrpthlp, &
+            wpsclrp, edsclr_in, err_code(1), &
+            rcm_inout, cloud_frac_inout, &
+            wpthvp_in, wp2thvp_in, rtpthvp_in, thlpthvp_in, &
+            sclrpthvp_inout, &
+            wp2rtp_inout, wp2thlp_inout, uprcp_inout, &
+            vprcp_inout, rc_coef_inout, &
+            wp4_inout, wpup2_inout, wpvp2_inout, &
+            wp2up2_inout, wp2vp2_inout, ice_supersat_frac_inout, &
+            um_pert_inout, vm_pert_inout, upwp_pert_inout, vpwp_pert_inout, &
+            pdf_params_chnk(lchnk), pdf_params_zm_chnk(lchnk), &
+            pdf_implicit_coefs_terms_chnk(:,lchnk), &
+            khzm_out, khzt_out, &
+            qclvar_out, thlprcp_out, &
+            wprcp_out, w_up_in_cloud_out, &
+            rcm_in_layer_out, cloud_cover_out, invrs_tau_zm_out )
+            
+      else
+          
+        !  Advance CLUBB CORE one timestep in the future
+        call advance_clubb_core_api( gr(:ncol), pverp+1-top_lev, ncol, &
+            l_implemented, dtime, fcor(:ncol), sfc_elevation(:ncol), hydromet_dim, &
+            thlm_forcing(:ncol,:), rtm_forcing(:ncol,:), um_forcing(:ncol,:), vm_forcing(:ncol,:), &
+            sclrm_forcing(:ncol,:,:), edsclrm_forcing(:ncol,:,:), wprtp_forcing(:ncol,:), &
+            wpthlp_forcing(:ncol,:), rtp2_forcing(:ncol,:), thlp2_forcing(:ncol,:), &
+            rtpthlp_forcing(:ncol,:), wm_zm(:ncol,:), wm_zt(:ncol,:), &
+            wpthlp_sfc(:ncol), wprtp_sfc(:ncol), upwp_sfc(:ncol), vpwp_sfc(:ncol), &
+            wpsclrp_sfc(:ncol,:), wpedsclrp_sfc(:ncol,:), &
+            rtm_ref(:ncol,:), thlm_ref(:ncol,:), um_ref(:ncol,:), vm_ref(:ncol,:), ug(:ncol,:), vg(:ncol,:), &
+            p_in_Pa(:ncol,:), rho_zm(:ncol,:), rho_in(:ncol,:), exner(:ncol,:), &
+            rho_ds_zm(:ncol,:), rho_ds_zt(:ncol,:), invrs_rho_ds_zm(:ncol,:), &
+            invrs_rho_ds_zt(:ncol,:), thv_ds_zm(:ncol,:), thv_ds_zt(:ncol,:), hydromet(:ncol,:,:), &
+            rfrzm(:ncol,:), radf(:ncol,:), &
+            wphydrometp(:ncol,:,:), wp2hmp(:ncol,:,:), rtphmp_zt(:ncol,:,:), thlphmp_zt(:ncol,:,:), &
+            grid_dx(:ncol), grid_dy(:ncol), &
+            clubb_params, nu_vert_res_dep(:ncol), lmin(:ncol), &
+            clubb_config_flags, &
+            stats_zt(:ncol), stats_zm(:ncol), stats_sfc(:ncol), &
+            um_in(:ncol,:), vm_in(:ncol,:), upwp_in(:ncol,:), vpwp_in(:ncol,:), up2_in(:ncol,:), vp2_in(:ncol,:), up3_in(:ncol,:), vp3_in(:ncol,:), &
+            thlm_in(:ncol,:), rtm_in(:ncol,:), wprtp_in(:ncol,:), wpthlp_in(:ncol,:), &
+            wp2_in(:ncol,:), wp3_in(:ncol,:), rtp2_in(:ncol,:), rtp3_in(:ncol,:), thlp2_in(:ncol,:), thlp3_in(:ncol,:), rtpthlp_in(:ncol,:), &
+            sclrm(:ncol,:,:), &
+            sclrp2(:ncol,:,:), sclrp3(:ncol,:,:), sclrprtp(:ncol,:,:), sclrpthlp(:ncol,:,:), &
+            wpsclrp(:ncol,:,:), edsclr_in(:ncol,:,:), err_code(1), &
+            rcm_inout(:ncol,:), cloud_frac_inout(:ncol,:), &
+            wpthvp_in(:ncol,:), wp2thvp_in(:ncol,:), rtpthvp_in(:ncol,:), thlpthvp_in(:ncol,:), &
+            sclrpthvp_inout(:ncol,:,:), &
+            wp2rtp_inout(:ncol,:), wp2thlp_inout(:ncol,:), uprcp_inout(:ncol,:), &
+            vprcp_inout(:ncol,:), rc_coef_inout(:ncol,:), &
+            wp4_inout(:ncol,:), wpup2_inout(:ncol,:), wpvp2_inout(:ncol,:), &
+            wp2up2_inout(:ncol,:), wp2vp2_inout(:ncol,:), ice_supersat_frac_inout(:ncol,:), &
+            pdf_params_chnk(lchnk), pdf_params_zm_chnk(lchnk), &
+            pdf_implicit_coefs_terms_chnk(:ncol,lchnk), &
+            khzm_out(:ncol,:), khzt_out(:ncol,:), &
+            qclvar_out(:ncol,:), thlprcp_out(:ncol,:), &
+            wprcp_out(:ncol,:), w_up_in_cloud_out(:ncol,:),  &
+            rcm_in_layer_out(:ncol,:), cloud_cover_out(:ncol,:), invrs_tau_zm_out(:ncol,:) )
+>>>>>>> 4ae23381... Added code to interface with the latest version of CLUBB.
             
       
       ! Note that CLUBB does not produce an error code specific to any column, and
