@@ -8,11 +8,11 @@
       CAM
     ===============
    -->
-    <desc atm="CAM60[%1PCT][%4xCO2][%CCTS1]][%CCTS2][%CFIRE][%CVBSX][%NUDG][%PORT][%RCO2][%SCAM][%SDYN][%WCCM][%WCMD][%WCSC][%WCTS][%WXIE][%WXIED]">CAM cam6 physics:</desc>
+    <desc atm="CAM60[%1PCT][%4xCO2][%CCTS1]][%CCTS2][%CFIRE][%CVBSX][%MAM5][%NUDG][%PORT][%RCO2][%SCAM][%SDYN][%WCCM][%WCMD][%WCSC][%WCTS][%WXIE][%WXIED]">CAM cam6 physics:</desc>
     <desc atm="CAM50[%CCTS1][%CLB][%PORT][%RCO2][%MAM7][%SCAM][%SDYN][%WCSC][%WCTS]"                                                               >CAM cam5 physics:</desc>
-    <desc atm="CAM40[%PORT][%RCO2][%SCAM][%SDYN][%TMOZ][%WX][%WXIE][%WXIED][%WCMD]"                                                                >CAM cam4 physics:</desc>
+    <desc atm="CAM40[%PORT][%RCO2][%SCAM][%SDYN][%TMOZ][%WX][%WXIE][%WXIED][%WCCM][%WCMD]"                                                         >CAM cam4 physics:</desc>
     <desc atm="CAM30"                                                                                                                              >CAM cam3 physics:</desc>
-    <desc atm="CAM[%ADIAB][%DABIP04][%TJ16][%HS94][%KESSLER][%RCO2][%SPCAMS][%SPCAMCLBS][%SPCAMM][%SPCAMCLBM]"                                     >CAM simplified and non-versioned physics :</desc>
+    <desc atm="CAM[%ADIAB][%DABIP04][%TJ16][%HS94][%KESSLER][%RCO2][%SPCAMS][%SPCAMCLBS][%SPCAMM][%SPCAMCLBM][%DEV]"                                     >CAM simplified and non-versioned physics :</desc>
 
   <!--
     ===============
@@ -35,6 +35,7 @@
      CAM Options
     ===============
    -->
+    <desc option="DEV"          >CAM development physics:</desc>
     <desc option="CCTS1"        >CAM-Chem troposphere/stratosphere chemistry with simplified VBS-SOA:</desc>
     <desc option="CCTS2"        >CAM-Chem troposphere/stratosphere chemistry with simplified VBS-SOA and expanded isoprene and terpene oxidation:</desc>
     <desc option="CFIRE"        >CAM-Chem troposphere/stratosphere chem with simplified volatility basis set SOA scheme and fire emissons :</desc>
@@ -123,6 +124,7 @@
       <value compset="_CAM60">-phys cam6</value>
 
       <!-- Modifiers for CAM runs (%.* includes SCAM runs) -->
+      <value compset="_CAM%DEV">-phys cam_dev</value>
       <value compset="_(CAM50|CAM60)%.*(CCTS1|CFIRE)">-chem trop_strat_mam4_vbs</value>
 
       <value compset="%MAM7">-chem trop_mam7</value>
@@ -145,7 +147,9 @@
       <value compset="_(CAM50|CAM60)%WCCM">-chem waccm_ma_mam4</value>
       <value compset="_(CAM50|CAM60)%WCMD">-chem waccm_mad_mam4</value>
       <value compset="_(CAM50|CAM60)%WCSC">-chem waccm_sc_mam4</value>
-      <value compset="_(CAM50|CAM60)%WCTS">-chem waccm_tsmlt_mam4</value>
+      <value compset="_(CAM50|CAM60)%WCTS(_|%SDYN)">-chem waccm_tsmlt_mam4</value>
+      <value compset="_CAM60%WCTS%MAM5_">-chem waccm_tsmlt_mam5</value>
+      <value compset="_CAM60%MAM5_">-chem trop_mam5</value>
       <value compset="_CAM40%WCMD">-chem waccm_mad</value>
       <value compset="_CAM\d0%WXIE">-waccmx -ionosphere wxie</value>
       <value compset="_CAM\d0%WX_" >-waccmx -ionosphere none -chem waccm_ma</value>
@@ -203,6 +207,7 @@
       <value compset="2000_CAM40%WXIE"   >waccmxie_ma_2000_cam4</value>
       <value compset="2000_CAM40%WX_"    >waccmx_ma_2000_cam4</value>
 
+      <value compset="2000_CAM%DEV"      >2000_cam6</value>
       <value compset="2000_CAM60"        >2000_cam6</value>
       <value compset="2000_CAM60%WCTS"   >waccm_tsmlt_2000_cam6</value>
       <value compset="2000_CAM60%WCCM"   >waccm_ma_2000_cam6</value>
@@ -218,7 +223,7 @@
       <value compset="2000_CAM60_SLND_SICE_DOCN%SOMAQP">aquaplanet_cam6</value>
       <value compset="2000_CAM60_SLND_SICE_DOCN%AQP"   >aquaplanet_cam6</value>
       <value compset="2000_CAM60_SLND_SICE_DOCN%AQPCONST" >aquaplanet_rce_cam6</value>
-      <value compset="2000_CAM60%WCCM_SLND_SICE_DOCN%AQP"   >aquaplanet_waccm_ma_2000_cam6</value>
+      <value compset="2000_CAM\d0%WC.*_SLND_SICE_DOCN%AQP">aquaplanet_waccm_2000</value>
 
       <value compset="2010_CAM60"        >2010_cam6</value>
       <value compset="2010_CAM60%.*CCTS1"  >2010_trop_strat_vbs_cam6</value>

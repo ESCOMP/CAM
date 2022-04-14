@@ -1,4 +1,5 @@
 # Ignore externals
+ccs_config
 chem_proc
 cime
 components
@@ -8,10 +9,14 @@ src/physics/clubb
 src/physics/cosp2/src
 src/physics/silhs
 src/physics/pumas
+src/physics/pumas-frozen
 src/dynamics/fv3/atmos_cubed_sphere
 libraries/FMS
+libraries/mct
+libraries/parallelio
 src/atmos_phys
 src/dynamics/mpas/dycore
+share
 
 # Ignore compiled python
 buildnmlc

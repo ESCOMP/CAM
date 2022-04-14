@@ -21,6 +21,7 @@ contains
        , xs_coef_file &
        , xs_short_file &
        , xs_long_file &
+       , photo_max_zen &
        , rsf_file &
        , fstrat_file &
        , fstrat_list &
@@ -34,10 +35,7 @@ contains
        , ext_frc_cycle_yr &
        , ext_frc_fixed_ymd &
        , ext_frc_fixed_tod &
-       , xactive_prates &
        , exo_coldens_file &
-       , tuv_xsect_file &
-       , o2_xsect_file &
        , lght_no_prd_factor &
        , pbuf2d &
        )
@@ -63,10 +61,9 @@ contains
     use mo_setext,         only : setext_inti
     use mo_setinv,         only : setinv_inti
     use mo_gas_phase_chemdr,only: gas_phase_chemdr_inti
-    
+
     use tracer_cnst,       only : tracer_cnst_init
     use tracer_srcs,       only : tracer_srcs_init
-    use mo_chem_utls,      only : get_spc_ndx
     use mo_airglow,        only : init_airglow
     use mo_mean_mass,      only : init_mean_mass
     use mo_mass_xforms,    only : init_mass_xforms
@@ -78,7 +75,7 @@ contains
     use mo_waccm_hrates,   only : init_hrates
     use mo_aurora,         only : aurora_inti
     use clybry_fam,        only : clybry_fam_init
-    use mo_neu_wetdep,     only : neu_wetdep_init 
+    use mo_neu_wetdep,     only : neu_wetdep_init
     use physics_buffer,    only : physics_buffer_desc
     use cam_abortutils,    only : endrun
 
@@ -91,15 +88,13 @@ contains
     character(len=*), intent(in) :: xs_coef_file
     character(len=*), intent(in) :: xs_short_file
     character(len=*), intent(in) :: xs_long_file
+    real(r8),         intent(in) :: photo_max_zen
     character(len=*), intent(in) :: rsf_file
     character(len=*), intent(in) :: fstrat_file
     character(len=*), intent(in) :: fstrat_list(:)
     character(len=*), dimension(:), intent(in) :: srf_emis_specifier
     character(len=*), dimension(:), intent(in) :: ext_frc_specifier
-    logical, intent(in)          :: xactive_prates
     character(len=*), intent(in) :: exo_coldens_file
-    character(len=*), intent(in) :: tuv_xsect_file
-    character(len=*), intent(in) :: o2_xsect_file
     real(r8),         intent(in) :: lght_no_prd_factor
     character(len=*), intent(in) :: ext_frc_type
     integer,          intent(in) :: ext_frc_cycle_yr
@@ -206,7 +201,7 @@ contains
 
     call photo_inti( xs_coef_file, xs_short_file, xs_long_file, rsf_file, &
          photon_file, electron_file, &
-         exo_coldens_file, tuv_xsect_file, o2_xsect_file, xactive_prates )
+         exo_coldens_file, photo_max_zen )
 
     if (masterproc) write(iulog,*) 'chemini: after photo_inti on node ',iam
 

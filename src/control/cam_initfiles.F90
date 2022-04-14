@@ -1,8 +1,8 @@
 module cam_initfiles
 !---------------------------------------------------------------------------------------
-! 
+!
 ! Open, close, and provide access to the initial, topography, and primary restart files.
-! 
+!
 !---------------------------------------------------------------------------------------
 
 use shr_kind_mod,     only: r8=>shr_kind_r8, cl=>shr_kind_cl
@@ -15,7 +15,7 @@ use pio,              only: file_desc_t, pio_offset_kind, pio_global, &
                             pio_closefile
 use cam_logfile,      only: iulog
 use cam_abortutils,   only: endrun
- 
+
 implicit none
 private
 save
@@ -40,10 +40,12 @@ real(r8), public, protected :: pertlim = 0.0_r8 ! maximum abs value of scale fac
                                                 ! initial values
 character(len=cl) :: cam_branch_file = ' '      ! Filepath of primary restart file for a branch run
 
+real(r8), public, protected :: scale_dry_air_mass = 0.0_r8 ! Toggle and target avg air mass for MPAS dycore
+
 ! The restart pointer file contains name of most recently written primary restart file.
 ! The contents of this file are updated by cam_write_restart as new restart files are written.
 character(len=cl), public, protected :: rest_pfile
-                                                   
+
 ! Filename for initial restart file.
 character(len=cl) :: restart_file = ' '
 
@@ -80,7 +82,7 @@ subroutine cam_initfiles_readnl(nlfile)
    character(len=*), parameter :: sub = 'cam_initfiles_readnl'
 
    namelist /cam_initfiles_nl/ ncdata, use_topo_file, bnd_topo, pertlim, &
-                               cam_branch_file
+                               cam_branch_file, scale_dry_air_mass
    !-----------------------------------------------------------------------------
 
    if (masterproc) then
@@ -107,6 +109,8 @@ subroutine cam_initfiles_readnl(nlfile)
    if (ierr /= 0) call endrun(sub//": ERROR: mpi_bcast: pertlim")
    call mpi_bcast(cam_branch_file, len(cam_branch_file), mpichar, mstrid, mpicom, ierr)
    if (ierr /= 0) call endrun(sub//": ERROR: mpi_bcast: cam_branch_file")
+   call mpi_bcast(scale_dry_air_mass, 1, mpir8, mstrid, mpicom, ierr)
+   if (ierr /= 0) call endrun(sub//": ERROR: mpi_bcast: scale_dry_air_mass")
 
    ! Set pointer file name based on instance suffix
    rest_pfile = './rpointer.atm' // trim(inst_suffix)
@@ -127,7 +131,7 @@ subroutine cam_initfiles_readnl(nlfile)
 
       call mpi_bcast(restart_file, len(restart_file), mpichar, mstrid, mpicom, ierr)
       if (ierr /= 0) call endrun(sub//": ERROR: mpi_bcast: restart_file")
-      
+
    else if (branch_run) then
       ! use namelist input
       restart_file = trim(cam_branch_file)
@@ -178,6 +182,13 @@ subroutine cam_initfiles_readnl(nlfile)
 
       write(iulog,*) &
          '  Maximum abs value of scale factor used to perturb initial conditions, pertlim= ', pertlim
+      if (scale_dry_air_mass > 0) then
+         write(iulog,*) &
+              '  Initial condition dry mass will be scaled to: ',scale_dry_air_mass,' Pa'
+      else
+         write(iulog,*) &
+              '  Initial condition dry mass will not be scaled.'
+      end if
 
 #ifdef PERGRO
       write(iulog,*)'  The PERGRO CPP token is defined.'
@@ -187,7 +198,7 @@ subroutine cam_initfiles_readnl(nlfile)
 
 end subroutine cam_initfiles_readnl
 
-!======================================================================= 
+!=======================================================================
 
 subroutine cam_initfiles_open()
 
@@ -195,8 +206,8 @@ subroutine cam_initfiles_open()
 
    character(len=256) :: ncdata_loc     ! filepath of initial file on local disk
    character(len=256) :: bnd_topo_loc   ! filepath of topo file on local disk
-   !----------------------------------------------------------------------- 
-   
+   !-----------------------------------------------------------------------
+
    ! Open initial dataset
 
    if (initial_run) then
@@ -228,21 +239,21 @@ subroutine cam_initfiles_open()
 
 end subroutine cam_initfiles_open
 
-!======================================================================= 
+!=======================================================================
 
 function initial_file_get_id()
    type(file_desc_t), pointer :: initial_file_get_id
    initial_file_get_id => fh_ini
 end function initial_file_get_id
 
-!======================================================================= 
+!=======================================================================
 
 function topo_file_get_id()
    type(file_desc_t), pointer :: topo_file_get_id
    topo_file_get_id => fh_topo
 end function topo_file_get_id
 
-!======================================================================= 
+!=======================================================================
 
 subroutine cam_initfiles_close()
 
@@ -259,7 +270,7 @@ subroutine cam_initfiles_close()
          ! then it just needs to be nullified.
          nullify(fh_topo)
       end if
-     
+
       call pio_closefile(fh_ini)
       deallocate(fh_ini)
       nullify(fh_ini)
@@ -267,7 +278,7 @@ subroutine cam_initfiles_close()
    end if
 end subroutine cam_initfiles_close
 
-!======================================================================= 
+!=======================================================================
 
 character(len=cl) function cam_initfiles_get_caseid()
 
@@ -283,7 +294,7 @@ character(len=cl) function cam_initfiles_get_caseid()
 
 end function cam_initfiles_get_caseid
 
-!======================================================================= 
+!=======================================================================
 
 character(len=cl) function cam_initfiles_get_restdir()
 

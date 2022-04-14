@@ -4,24 +4,23 @@ module mo_photo
   !----------------------------------------------------------------------
 
   use shr_kind_mod,     only : r8 => shr_kind_r8
-  use ppgrid,           only : pcols, pver, pverp, begchunk, endchunk
+  use ppgrid,           only : pcols, pver, begchunk, endchunk
   use cam_abortutils,   only : endrun
-  use mo_constants,     only : pi,r2d,boltz,d2r
-  use ref_pres,         only : num_pr_lev, ptop_ref 
+  use mo_constants,     only : r2d,d2r
+  use ref_pres,         only : num_pr_lev, ptop_ref
   use pio
   use cam_pio_utils,    only : cam_pio_openfile
   use spmd_utils,       only : masterproc
   use cam_logfile,      only : iulog
-  use phys_control,     only : waccmx_is
   use solar_parms_data, only : f107=>solar_parms_f107, f107a=>solar_parms_f107a
 
   implicit none
 
   private
 
-  public :: photo_inti, table_photo, xactive_photo
+  public :: photo_inti, table_photo
   public :: set_ub_col
-  public :: setcol 
+  public :: setcol
   public :: photo_timestep_init
   public :: photo_register
 
@@ -33,15 +32,8 @@ module mo_photo
   integer ::  jno_ndx
   integer ::  jonitr_ndx
   integer ::  jho2no2_ndx
-  integer ::  jch3cho_a_ndx, jch3cho_b_ndx, jch3cho_c_ndx
   integer ::  jo2_a_ndx, jo2_b_ndx
   integer ::  ox_ndx, o3_ndx, o3_inv_ndx, o3rad_ndx
-  integer ::  oc1_ndx, oc2_ndx
-  integer ::  cb1_ndx, cb2_ndx
-  integer ::  soa_ndx
-  integer ::  ant_ndx
-  integer ::  so4_ndx
-  integer ::  sa1_ndx, sa2_ndx, sa3_ndx, sa4_ndx
   integer ::  n2_ndx, no_ndx, o2_ndx, o_ndx
   integer, allocatable :: lng_indexer(:)
   integer, allocatable :: sht_indexer(:)
@@ -71,21 +63,18 @@ module mo_photo
   integer :: jhno3_ndx, jno3_ndx, jpan_ndx, jmpan_ndx
 
   integer :: jo1da_ndx, jo3pa_ndx, jno2a_ndx, jn2o5a_ndx, jn2o5b_ndx
-  integer :: jhno3a_ndx, jno3a_ndx, jpana_ndx, jmpana_ndx, jho2no2a_ndx 
+  integer :: jhno3a_ndx, jno3a_ndx, jpana_ndx, jmpana_ndx, jho2no2a_ndx
   integer :: jonitra_ndx
 
   integer :: jppi_ndx, jepn1_ndx, jepn2_ndx, jepn3_ndx, jepn4_ndx, jepn6_ndx
   integer :: jepn7_ndx, jpni1_ndx, jpni2_ndx, jpni3_ndx, jpni4_ndx, jpni5_ndx
   logical :: do_jeuv = .false.
   logical :: do_jshort = .false.
-#ifdef DEBUG
-  logical :: do_diag = .false.
-#endif
   integer :: ion_rates_idx = -1
 
 contains
 
-  
+
   !----------------------------------------------------------------------
   !----------------------------------------------------------------------
   subroutine photo_register
@@ -94,7 +83,7 @@ contains
 
     ! add photo-ionization rates to phys buffer for waccmx ionosphere module
 
-    call pbuf_add_field('IonRates' , 'physpkg', dtype_r8, (/pcols,pver,nIonRates/), ion_rates_idx) ! Ionization rates for O+,O2+,N+,N2+,NO+ 
+    call pbuf_add_field('IonRates' , 'physpkg', dtype_r8, (/pcols,pver,nIonRates/), ion_rates_idx) ! Ionization rates for O+,O2+,N+,N2+,NO+
 
   endsubroutine photo_register
 
@@ -102,15 +91,11 @@ contains
   !----------------------------------------------------------------------
   subroutine photo_inti( xs_coef_file, xs_short_file, xs_long_file, rsf_file, &
        photon_file, electron_file, &
-       exo_coldens_file, tuv_xsect_file, o2_xsect_file, xactive_prates )
+       exo_coldens_file, maxzen )
     !----------------------------------------------------------------------
     !	... initialize photolysis module
     !----------------------------------------------------------------------
 
-    use mo_photoin,    only : photoin_inti
-    use mo_tuv_inti,   only : tuv_inti
-    use mo_tuv_inti,   only : nlng
-    use mo_seto2,      only : o2_xsect_inti      
     use interpolate_data, only: lininterp_init, lininterp, lininterp_finish, interp_type
     use chem_mods,     only : phtcnt
     use chem_mods,     only : ncol_abs => nabscol
@@ -119,10 +104,9 @@ contains
     use ioFileMod,     only : getfil
     use mo_chem_utls,  only : get_spc_ndx, get_rxt_ndx, get_inv_ndx
     use mo_jlong,      only : jlong_init
-    use seasalt_model, only : sslt_names=>seasalt_names, sslt_ncnst=>seasalt_nbin
     use mo_jshort,     only : jshort_init
     use mo_jeuv,       only : jeuv_init, neuv
-    use phys_grid,     only : get_ncols_p, get_rlat_all_p    
+    use phys_grid,     only : get_ncols_p, get_rlat_all_p
     use solar_irrad_data,only : has_spectrum
     use photo_bkgrnd,  only : photo_bkgrnd_init
     use cam_history,   only : addfld
@@ -134,10 +118,8 @@ contains
     !----------------------------------------------------------------------
     character(len=*), intent(in) :: xs_long_file, rsf_file
     character(len=*), intent(in) :: exo_coldens_file
-    character(len=*), intent(in) :: tuv_xsect_file
-    character(len=*), intent(in) :: o2_xsect_file
-    logical, intent(in)          :: xactive_prates
-    ! waccm 
+    real(r8), intent(in)         :: maxzen
+    ! waccm
     character(len=*), intent(in) :: xs_coef_file
     character(len=*), intent(in) :: xs_short_file
     character(len=*), intent(in) :: photon_file
@@ -173,25 +155,22 @@ contains
        return
     end if
 
-    !----------------------------------------------------------------------------
-    !  Need a larger maximum zenith angle for WACCM-X extended to high altitudes
-    !----------------------------------------------------------------------------
-    if ( waccmx_is('ionosphere') .or. waccmx_is('neutral') ) then 
-       max_zen_angle = 116._r8
-    else if ( ptop_ref < 10._r8 ) then
-       max_zen_angle = 97.01_r8 ! degrees
-    else
-       max_zen_angle = 88.85_r8 ! degrees
-    endif
+    ! maximum solar zenith angle for which photo-chemical rates are computed
+    max_zen_angle = maxzen
+    if (.not. max_zen_angle>0._r8) then
+       write(iulog,*) 'photo_inti: max_zen_angle = ',max_zen_angle
+       call endrun ('photo_inti: max_zen_angle must be greater then zero')
+    end if
 
-    ! jeuv_1,,, jeuv_25 --> need euv calculations --> must be waccm 
+
+    ! jeuv_1,,, jeuv_25 --> need euv calculations --> must be waccm
     ! how to determine if shrt calc is needed ?? -- use top level pressure => waccm = true ? false
 
     if ( .not. has_spectrum ) then
        write(iulog,*) 'photo_inti: solar_irrad_data file needs to contain irradiance spectrum'
        call endrun('photo_inti: ERROR -- solar irradiance spectrum is missing')
     endif
-    
+
     !----------------------------------------------------------------------
     !	... allocate indexers
     !----------------------------------------------------------------------
@@ -287,37 +266,27 @@ contains
     end if
 
     do_jshort = o_ndx>0 .and. o2_ndx>0 .and. (o3_ndx>0.or.o3_inv_ndx>0) .and. n2_ndx>0 .and. no_ndx>0
-    
+
     call jeuv_init( photon_file, electron_file, euv_indexer )
     do_jeuv = any(euv_indexer(:)>0)
 
     !----------------------------------------------------------------------
     !	... call module initializers
     !----------------------------------------------------------------------
-    is_xactive : if( xactive_prates ) then
-       do_jshort = .false.
-       jch3cho_a_ndx = get_rxt_ndx( 'jch3cho_a' )
-       jch3cho_b_ndx = get_rxt_ndx( 'jch3cho_b' )
-       jch3cho_c_ndx = get_rxt_ndx( 'jch3cho_c' )
-       jonitr_ndx    = get_rxt_ndx( 'jonitr' )
-       jho2no2_ndx   = get_rxt_ndx( 'jho2no2' )
-       call tuv_inti( pverp, tuv_xsect_file, lng_indexer )
-    else is_xactive
-       call jlong_init( xs_long_file, rsf_file, lng_indexer )
-       if (do_jeuv) then
-          call photo_bkgrnd_init()
-          call addfld('Qbkgndtot', (/ 'lev' /), 'A','cm-3 sec-1', 'background ionization rate ' )
-          call addfld('Qbkgnd_o1', (/ 'lev' /), 'A','cm-3 sec-1', 'background ionization rate ' )
-          call addfld('Qbkgnd_o2', (/ 'lev' /), 'A','cm-3 sec-1', 'background ionization rate ' )
-          call addfld('Qbkgnd_n2', (/ 'lev' /), 'A','cm-3 sec-1', 'background ionization rate ' )
-          call addfld('Qbkgnd_n1', (/ 'lev' /), 'A','cm-3 sec-1', 'background ionization rate ' )
-          call addfld('Qbkgnd_no', (/ 'lev' /), 'A','cm-3 sec-1', 'background ionization rate ' )
-       endif
-       if (do_jshort) then
-          call jshort_init( xs_coef_file, xs_short_file, sht_indexer )
-       endif
-       jho2no2_ndx = get_rxt_ndx( 'jho2no2_b' )
-    end if is_xactive
+    call jlong_init( xs_long_file, rsf_file, lng_indexer )
+    if (do_jeuv) then
+       call photo_bkgrnd_init()
+       call addfld('Qbkgndtot', (/ 'lev' /), 'A','cm-3 sec-1', 'background ionization rate ' )
+       call addfld('Qbkgnd_o1', (/ 'lev' /), 'A','cm-3 sec-1', 'background ionization rate ' )
+       call addfld('Qbkgnd_o2', (/ 'lev' /), 'A','cm-3 sec-1', 'background ionization rate ' )
+       call addfld('Qbkgnd_n2', (/ 'lev' /), 'A','cm-3 sec-1', 'background ionization rate ' )
+       call addfld('Qbkgnd_n1', (/ 'lev' /), 'A','cm-3 sec-1', 'background ionization rate ' )
+       call addfld('Qbkgnd_no', (/ 'lev' /), 'A','cm-3 sec-1', 'background ionization rate ' )
+    endif
+    if (do_jshort) then
+       call jshort_init( xs_coef_file, xs_short_file, sht_indexer )
+    endif
+    jho2no2_ndx = get_rxt_ndx( 'jho2no2_b' )
 
     !----------------------------------------------------------------------
     !        ... check that each photorate is in short or long datasets
@@ -380,11 +349,6 @@ contains
        write(iulog,*) ' '
     endif
 
-    if( xactive_prates ) then
-       call o2_xsect_inti( o2_xsect_file )
-       call photoin_inti( nlng, lng_indexer )
-    end if
-
     !----------------------------------------------------------------------
     !	... check for o2, o3 absorber columns
     !----------------------------------------------------------------------
@@ -415,20 +379,6 @@ contains
     if ( len_trim(exo_coldens_file) == 0 ) then
        has_o2_col = .false.
        has_o3_col = .false.
-    endif
-
-    oc1_ndx = get_spc_ndx( 'OC1' )
-    oc2_ndx = get_spc_ndx( 'OC2' )
-    cb1_ndx = get_spc_ndx( 'CB1' )
-    cb2_ndx = get_spc_ndx( 'CB2' )
-    soa_ndx = get_spc_ndx( 'SOA' )
-    ant_ndx = get_spc_ndx( 'NH4NO3' )
-    so4_ndx = get_spc_ndx( 'SO4' )
-    if (sslt_ncnst == 4) then
-       sa1_ndx = get_spc_ndx( sslt_names(1) )
-       sa2_ndx = get_spc_ndx( sslt_names(2) )
-       sa3_ndx = get_spc_ndx( sslt_names(3) )
-       sa4_ndx = get_spc_ndx( sslt_names(4) )
     endif
 
     has_abs_columns : if( has_o2_col .or. has_o3_col ) then
@@ -645,7 +595,7 @@ contains
     real(r8), allocatable ::  lng_prates(:,:) ! photorates matrix (1/s)
     real(r8), allocatable ::  sht_prates(:,:) ! photorates matrix (1/s)
     real(r8), allocatable ::  euv_prates(:,:) ! photorates matrix (1/s)
-    
+
 
     real(r8), allocatable :: zarg(:)
     real(r8), allocatable :: tline(:)               ! vertical temperature array
@@ -682,7 +632,7 @@ contains
 
     if ((.not.do_jshort) .or. (ptop_ref < 10._r8)) then
        n_jshrt_levs = pver
-       p1 = 1 
+       p1 = 1
        p2 = pver
     else
        n_jshrt_levs = pver+1
@@ -714,7 +664,7 @@ contains
           end if
        endif
     endif
-    
+
     if (nsht>0) then
        allocate( sht_prates(n_jshrt_levs,nsht),stat=astat )
        if( astat /= 0 ) then
@@ -787,7 +737,7 @@ contains
           lwc_line(:) = lwc(i,:)
           cld_line(:) = clouds(i,:)
 
-          
+
           tline(p1:p2) = temper(i,:pver)
 
           zarg(p1:p2) = zmid(i,:pver)
@@ -805,7 +755,7 @@ contains
             if (jpni3_ndx > 0 ) photos(i,:,jpni3_ndx) = photos(i,:,jpni3_ndx) + esfact * 0.15_r8
             if (jpni4_ndx > 0 ) photos(i,:,jpni4_ndx) = photos(i,:,jpni4_ndx) + esfact * 6.2e-3_r8
             ! added to v02
-            if (jpni5_ndx > 0 ) photos(i,:,jpni5_ndx) = photos(i,:,jpni5_ndx) + esfact * 1.0_r8 
+            if (jpni5_ndx > 0 ) photos(i,:,jpni5_ndx) = photos(i,:,jpni5_ndx) + esfact * 1.0_r8
         endif
           if (do_jshort) then
              if ( ptop_ref > 10._r8 ) then
@@ -840,7 +790,7 @@ contains
              !	... short wave length component
              !-----------------------------------------------------------------
              call jshort( n_jshrt_levs, sza, n2_den, o2_den, o3_den, &
-                  no_den, tline, zarg, jo2_sht, jno_sht, sht_prates )  
+                  no_den, tline, zarg, jo2_sht, jno_sht, sht_prates )
 
              do m = 1,phtcnt
                 if( sht_indexer(m) > 0 ) then
@@ -880,7 +830,7 @@ contains
           !-----------------------------------------------------------------
           !	... long wave length component
           !-----------------------------------------------------------------
-          call jlong( pver, sza, eff_alb, parg, tline, colo3, lng_prates )          
+          call jlong( pver, sza, eff_alb, parg, tline, colo3, lng_prates )
           do m = 1,phtcnt
              if( lng_indexer(m) > 0 ) then
                 alias_factor = pht_alias_mult(m,2)
@@ -912,9 +862,9 @@ contains
 
           !  Save photo-ionization rates to physics buffer accessed in ionosphere module for WACCMX
           if (ion_rates_idx>0) then
-							 
+
                 ionRates(i,1:pver,1:nIonRates) = esfact * euv_prates(1:pver,1:nIonRates)
-							 
+
           endif
 
        end if daylight
@@ -930,7 +880,7 @@ contains
        endif
 
     end do col_loop
-    
+
     if ( do_jeuv ) then
        qbktot(:ncol,:) = qbko1(:ncol,:)+qbko2(:ncol,:)+qbkn2(:ncol,:)+qbkn1(:ncol,:)+qbkno(:ncol,:)
        call outfld( 'Qbkgndtot', qbktot(:ncol,:),ncol, lchnk )
@@ -958,321 +908,6 @@ contains
     call set_xnox_photo( photos, ncol  )
 
   end subroutine table_photo
-
-  subroutine xactive_photo( photos, vmr, temper, cwat, cldfr, &
-                            pmid, zmid, col_dens, zen_angle, srf_alb, &
-                            tdens, ps, ts, esfact, relhum, dust_vmr, &
-                            dt_diag, fracday, &
-                            ncol, lchnk )
-    !-----------------------------------------------------------------
-    !   	... fast online photo rates
-    !-----------------------------------------------------------------
-
-    use ppgrid,       only : pver, pverp
-    use chem_mods,    only : ncol_abs => nabscol, pcnstm1 => gas_pcnst, phtcnt
-    use chem_mods,    only : pht_alias_mult
-    use mo_params,    only : kw
-    use mo_wavelen,   only : nw
-    use mo_photoin,   only : photoin
-    use mo_tuv_inti,  only : nlng
-    use time_manager, only : get_curr_date
-    use dust_model,   only : dust_nbin
-    use phys_grid,    only : get_rlat_all_p, get_rlon_all_p
-
-    implicit none
-
-    !----------------------------------------------------------------
-    !   	... dummy arguments
-    !-----------------------------------------------------------------
-    integer,  intent(in)    :: ncol, lchnk
-    real(r8), intent(in)    :: esfact                       ! earth sun distance factor
-    real(r8), intent(in)    :: ps(pcols)                    ! surface pressure (Pa)
-    real(r8), intent(in)    :: ts(ncol)                     ! surface temperature (K)
-    real(r8), intent(in)    :: col_dens(ncol,pver,ncol_abs) ! column densities (molecules/cm^2)
-    real(r8), intent(in)    :: zen_angle(ncol)              ! solar zenith angle (radians)
-    real(r8), intent(in)    :: srf_alb(pcols)               ! surface albedo
-    real(r8), intent(in)    :: tdens(ncol,pver)             ! total atms density (molecules/cm^3)
-    real(r8), intent(in)    :: vmr(ncol,pver,pcnstm1)       ! species concentration (mol/mol)
-    real(r8), intent(in)    :: pmid(pcols,pver)             ! midpoint pressure (Pa)
-    real(r8), intent(in)    :: zmid(ncol,pver)              ! midpoint height (m)
-    real(r8), intent(in)    :: temper(pcols,pver)           ! midpoint temperature (K)
-    real(r8), intent(in)    :: relhum(ncol,pver)            ! relative humidity
-    real(r8), intent(in)    :: cwat(ncol,pver)              ! cloud water (kg/kg)
-    real(r8), intent(in)    :: cldfr(ncol,pver)             ! cloud fraction
-    real(r8), intent(in)    :: dust_vmr(ncol,pver,dust_nbin)! dust concentration (mol/mol)
-    real(r8), intent(inout) :: photos(ncol,pver,phtcnt)     ! photodissociation rates (1/s)
-    real(r8), intent(out)   :: dt_diag(pcols,8)              ! od diagnostics
-    real(r8), intent(out)   :: fracday(pcols)                ! fraction of day
-    !-----------------------------------------------------------------
-    !    	... local variables
-    !-----------------------------------------------------------------
-    integer, parameter  ::  k_diag = 3
-    real(r8), parameter :: secant_limit = 50._r8
-
-    integer  ::  astat
-    integer  ::  i                      ! index
-    integer  ::  k                      ! index
-    integer  ::  m                      ! index
-    integer  ::  ndx                    ! index
-    integer  ::  spc_ndx                ! index
-    integer  ::  yr, mon, day, tod      ! time of day (seconds past 0Z)
-    integer  ::  ncdate                 ! current date(yyyymmdd)
-
-    real(r8)    ::   sza
-    real(r8)    ::   secant
-    real(r8)    ::   alias_factor
-    real(r8)    ::   alat
-    real(r8)    ::   along
-    real(r8)    ::   ut
-    real(r8)    ::   fac1(pver)                    ! work space for j(no) calc
-    real(r8)    ::   fac2(pver)                    ! work space for j(no) calc
-    real(r8)    ::   tlay(pver)                    ! vertical temperature array at layer midpoint
-    real(r8)    ::   tline(pverp)                  ! vertical temperature array
-    real(r8)    ::   xlwc(pverp)                   ! cloud water (kg/kg)
-    real(r8)    ::   xfrc(pverp)                   ! cloud fraction      xuexi
-    real(r8)    ::   airdens(pverp)                ! atmospheric density
-    real(r8)    ::   o3line(pverp)                 ! vertical o3 vmr
-    real(r8)    ::   aerocs1(pverp)   
-    real(r8)    ::   aerocs2(pverp)   
-    real(r8)    ::   aercbs1(pverp)   
-    real(r8)    ::   aercbs2(pverp)   
-    real(r8)    ::   aersoa(pverp)   
-    real(r8)    ::   aerant(pverp)   
-    real(r8)    ::   aerso4(pverp)   
-    real(r8)    ::   aerds(4,pverp)
-    real(r8)    ::   rh(pverp)   
-    real(r8)    ::   zarg(pverp)                   ! vertical height array
-    real(r8)    ::   aersal(pverp,4)
-    real(r8)    ::   albedo(kw)                    ! wavelenght dependent albedo
-    real(r8)    ::   dt_xdiag(8)                   ! wrk array
-    real(r8), allocatable :: prates(:,:)           ! photorates matrix
-
-    logical  ::  zagtz(ncol)                       ! zenith angle > 0 flag array
-    real(r8), dimension(ncol)  :: rlats, rlons     ! chunk latitudes and longitudes (radians)
-
-    call get_rlat_all_p( lchnk, ncol, rlats )
-    call get_rlon_all_p( lchnk, ncol, rlons )
-
-    !-----------------------------------------------------------------
-    !	... any photorates ?
-    !-----------------------------------------------------------------
-    if( phtcnt < 1 ) then
-       return
-    end if
-
-    !-----------------------------------------------------------------
-    !	... zero all photorates
-    !-----------------------------------------------------------------
-    do m = 1,phtcnt
-       do k = 1,pver
-          photos(:,k,m) = 0._r8
-       end do
-    end do
-
-!-----------------------------------------------------------------
-!	... allocate "working" rate array
-!-----------------------------------------------------------------
-      allocate( prates(pverp,nlng), stat=astat )
-      if( astat /= 0 ) then
-         write(iulog,*) 'xactive_photo: failed to allocate prates; error = ',astat
-         call endrun
-      end if
-
-    zagtz(:) = zen_angle(:) < .99_r8*pi/2._r8 .and. zen_angle(:) > 0._r8 !! daylight
-    fracday(:) = 0._r8
-    dt_diag(:,:) = 0._r8
-
-    call get_curr_date(yr, mon, day, tod, 0)
-    ncdate = yr*10000 + mon*100 + day
-    ut   = real(tod)/3600._r8
-#ifdef DEBUG
-    if (masterproc) then
-       write(iulog,*) 'photo: nj = ',nlng
-       write(iulog,*) 'photo: esfact = ',esfact
-    endif
-#endif
-    col_loop : do i = 1,ncol
-daylight : &
-       if( zagtz(i) ) then
-          sza    = zen_angle(i)*r2d
-          secant = 1._r8 / cos( zen_angle(i) )
-secant_in_bounds : &
-          if( secant <= secant_limit ) then
-             fracday(i) = 1._r8
-             zarg(pverp:2:-1)     = zmid(i,:)
-             zarg(1)              = 0._r8
-             airdens(pverp:2:-1)  = tdens(i,:)
-             airdens(1)           = 10._r8 * ps(i) / (boltz*ts(i))
-             if( o3rad_ndx > 0 ) then
-                spc_ndx = o3rad_ndx
-             else
-                spc_ndx = ox_ndx
-             end if
-             if( spc_ndx < 1 ) then
-                spc_ndx = o3_ndx
-             end if
-             if( spc_ndx > 0 ) then
-                o3line(pverp:2:-1) = vmr(i,:,spc_ndx)
-             else
-                o3line(pverp:2:-1) = 0._r8
-             end if
-             o3line(1)            = o3line(2)
-             tline(pverp:2:-1)    = temper(i,:)
-             tline(1)             = tline(2)
-             rh(pverp:2:-1)       = relhum(i,:)
-             rh(1)                = rh(2)
-             xlwc(pverp:2:-1)     = cwat(i,:) * pmid(i,:)/(temper(i,:)*287._r8) * kg2g  !! TIE
-             xlwc(1)              = xlwc(2)
-             xfrc(pverp:2:-1)     = cldfr(i,:)                      ! cloud fraction
-             xfrc(1)              = xfrc(2)
-             tlay(1:pver)         = .5_r8*(tline(1:pver) + tline(2:pverp))
-             albedo(1:nw)       = srf_alb(i)
-
-             alat = rlats(i)
-             along= rlons(i)
-
-             if( oc1_ndx > 0 ) then
-                aerocs1(pverp:2:-1) = vmr(i,:,oc1_ndx)
-             else
-                aerocs1(pverp:2:-1) = 0._r8
-             end if
-             aerocs1(1)            = aerocs1(2)
-             if( oc2_ndx > 0 ) then
-                aerocs2(pverp:2:-1) = vmr(i,:,oc2_ndx)
-             else
-                aerocs2(pverp:2:-1) = 0._r8
-             end if
-             aerocs2(1)          = aerocs2(2)
-             if( cb1_ndx > 0 ) then
-                aercbs1(pverp:2:-1) = vmr(i,:,cb1_ndx)
-             else
-                aercbs1(pverp:2:-1) = 0._r8
-             end if
-             aercbs1(1)          = aercbs1(2)
-             if( cb2_ndx > 0 ) then
-                aercbs2(pverp:2:-1) = vmr(i,:,cb2_ndx)
-             else
-                aercbs2(pverp:2:-1) = 0._r8
-             end if
-             aercbs2(1)          = aercbs2(2)
-             if( soa_ndx > 0 ) then
-                aersoa(pverp:2:-1) = vmr(i,:,soa_ndx)
-             else
-                aersoa(pverp:2:-1) = 0._r8
-             end if
-             aersoa(1)          = aersoa(2)
-             if( ant_ndx > 0 ) then
-                aerant(pverp:2:-1) = vmr(i,:,ant_ndx)
-             else
-                aerant(pverp:2:-1) = 0._r8
-             end if
-             aerant(1)            = aerant(2)
-             if( so4_ndx > 0 ) then
-                aerso4(pverp:2:-1) = vmr(i,:,so4_ndx)
-             else
-                aerso4(pverp:2:-1) = 0._r8
-             end if
-             aerso4(1)            = aerso4(2)
-             if ( dust_nbin == 4 ) then
-                do ndx = 1,4
-                   aerds(ndx,pverp:2:-1) = dust_vmr(i,:,ndx)
-                end do
-             else 
-                do ndx = 1,4
-                   aerds(ndx,pverp:2:-1) = 0._r8
-                end do
-             endif
-             aerds(1,1)          = aerds(1,2)
-             aerds(2,1)          = aerds(2,2)
-             aerds(3,1)          = aerds(3,2)
-             aerds(4,1)          = aerds(4,2)
-             if( sa1_ndx > 0 ) then
-                aersal(pverp:2:-1,1) = vmr(i,:,sa1_ndx)
-             else
-                aersal(pverp:2:-1,1) = 0._r8
-             end if
-             if( sa2_ndx > 0 ) then
-                aersal(pverp:2:-1,2) = vmr(i,:,sa2_ndx)
-             else
-                aersal(pverp:2:-1,2) = 0._r8
-             end if
-             if( sa3_ndx > 0 ) then
-                aersal(pverp:2:-1,3) = vmr(i,:,sa3_ndx)
-             else
-                aersal(pverp:2:-1,3) = 0._r8
-             end if
-             if( sa4_ndx > 0 ) then
-                aersal(pverp:2:-1,4) = vmr(i,:,sa4_ndx)
-             else
-                aersal(pverp:2:-1,4) = 0._r8
-             end if
-             aersal(1,:) = aersal(2,:)
-             call photoin( ncdate, alat, along, &
-                           ut, esfact, col_dens(i,1,1), col_dens(i,1,2), albedo, &
-                           zarg, tline, tlay, xlwc, xfrc, &
-                           airdens, aerocs1, aerocs2, aercbs1, aercbs2, &
-                           aersoa, aerant, aerso4, aersal, aerds, o3line, rh, &
-                           prates, sza, nw, dt_xdiag )
-             dt_diag(i,:) = dt_xdiag(:) 
-             
-             do m = 1,phtcnt
-                if( lng_indexer(m) > 0 ) then
-                   alias_factor = pht_alias_mult(m,2)
-                   if( alias_factor == 1._r8 ) then
-                      photos(i,:,m) = prates(1:pver,lng_indexer(m))
-                   else
-                      photos(i,:,m) = alias_factor * prates(1:pver,lng_indexer(m))
-                   end if
-                end if
-
-#ifdef DEBUG
-                if( do_diag ) then
-                   write(iulog,'(''xactive_photo: prates('',i2,'',.)'')') m
-                   write(iulog,'(1p,5e21.13)') photos(i,:pver,m)
-                   write(iulog,*) ' '
-                end if
-#endif
-
-             end do
-!-----------------------------------------------------------------
-!	... set j(onitr)
-!-----------------------------------------------------------------
-               if( jonitr_ndx > 0 ) then
-                  if( jch3cho_a_ndx > 0 ) then
-                     photos(i,1:pver,jonitr_ndx) = photos(i,1:pver,jch3cho_a_ndx)
-                  end if
-                  if( jch3cho_b_ndx > 0 ) then
-                     photos(i,1:pver,jonitr_ndx) = photos(i,1:pver,jonitr_ndx) + photos(i,1:pver,jch3cho_b_ndx)
-                  end if
-                  if( jch3cho_c_ndx > 0 ) then
-                     photos(i,1:pver,jonitr_ndx) = photos(i,1:pver,jonitr_ndx) + photos(i,1:pver,jch3cho_c_ndx)
-                  end if
-               end if
-!-----------------------------------------------------------------
-!	... calculate j(no) from formula
-!-----------------------------------------------------------------
-               if( jno_ndx > 0 ) then
-                  if( has_o2_col .and. has_o3_col ) then
-                     fac1(:) = 1.e-8_r8 * (col_dens(i,:,2)/cos(zen_angle(i)))**.38_r8
-                     fac2(:) = 5.e-19_r8 * col_dens(i,:,1) / cos(zen_angle(i))
-                     photos(i,:,jno_ndx) = 4.5e-6_r8 * exp( -(fac1(:) + fac2(:)) )
-                  end if
-               end if
-!-----------------------------------------------------------------
-! 	... add near IR correction to j(ho2no2)
-!-----------------------------------------------------------------
-               if( jho2no2_ndx > 0 ) then
-                  photos(i,:,jho2no2_ndx) = photos(i,:,jho2no2_ndx) + 1.e-5_r8
-               endif
-          end if secant_in_bounds
-       end if daylight
-    end do col_loop
-
-    call set_xnox_photo( photos, ncol  )
-
-    deallocate( prates )
-
-  end subroutine xactive_photo
 
   subroutine cloud_mod( zen_angle, clouds, lwc, delp, srf_alb, &
                         eff_alb, cld_mult )
@@ -1444,7 +1079,7 @@ secant_in_bounds : &
     real(r8)    :: o2_exo_col(ncol)
     real(r8)    :: o3_exo_col(ncol)
     integer :: i
- 
+
     !---------------------------------------------------------------
     !        ... assign column density at the upper boundary
     !            the first column is o3 and the second is o2.
@@ -1466,8 +1101,8 @@ secant_in_bounds : &
                         + delp * (o2_exo_coldens(ki,i,lchnk,next) &
                         - o2_exo_coldens(kl,i,lchnk,next))
                 else
-                   tint_vals(1) = o2_exo_coldens( 1,i,lchnk,last) 
-                   tint_vals(2) = o2_exo_coldens( 1,i,lchnk,next) 
+                   tint_vals(1) = o2_exo_coldens( 1,i,lchnk,last)
+                   tint_vals(2) = o2_exo_coldens( 1,i,lchnk,next)
                 endif
                 o2_exo_col(i) = tint_vals(1) + dels * (tint_vals(2) - tint_vals(1))
              end do
@@ -1484,8 +1119,8 @@ secant_in_bounds : &
                         + delp * (o3_exo_coldens(ki,i,lchnk,next) &
                         - o3_exo_coldens(kl,i,lchnk,next))
                 else
-                   tint_vals(1) = o3_exo_coldens( 1,i,lchnk,last) 
-                   tint_vals(2) = o3_exo_coldens( 1,i,lchnk,next) 
+                   tint_vals(1) = o3_exo_coldens( 1,i,lchnk,last)
+                   tint_vals(2) = o3_exo_coldens( 1,i,lchnk,next)
                 endif
                 o3_exo_col(i) = tint_vals(1) + dels * (tint_vals(2) - tint_vals(1))
              end do
@@ -1615,21 +1250,18 @@ secant_in_bounds : &
 
   end subroutine p_interp
 
-  subroutine setcol( col_delta, col_dens, vmr, pdel,  ncol )
+  subroutine setcol( col_delta, col_dens )
     !---------------------------------------------------------------
     !     	... set the column densities
     !---------------------------------------------------------------
 
-    use chem_mods, only : ncol_abs=>nabscol, gas_pcnst
+    use chem_mods, only : ncol_abs=>nabscol
 
     implicit none
 
     !---------------------------------------------------------------
     !     	... dummy arguments
     !---------------------------------------------------------------
-    integer,  intent(in)    :: ncol                              ! no. of columns in current chunk
-    real(r8), intent(in)    :: vmr(ncol,pver,gas_pcnst)          ! xported species vmr
-    real(r8), intent(in)    :: pdel(pcols,pver)                  ! delta about midpoints
     real(r8), intent(in)    :: col_delta(:,0:,:)                 ! layer column densities (molecules/cm^2)
     real(r8), intent(out)   :: col_dens(:,:,:)                   ! column densities ( /cm**2 )
 
@@ -1721,7 +1353,7 @@ secant_in_bounds : &
     ! Set jlong etf
     !-----------------------------------------------------------------------
     call jlong_timestep_init
-    
+
     if ( do_jshort ) then
        !-----------------------------------------------------------------------
        ! Set jshort etf

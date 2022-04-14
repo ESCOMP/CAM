@@ -1175,7 +1175,7 @@ contains
     end if
 
     ! Back to whatever error handling was running before this routine
-    call pio_seterrorhandling(File, err_handling)
+    call pio_seterrorhandling(pio_subsystem, err_handling)
 
   end function cam_pio_fileexists
 
