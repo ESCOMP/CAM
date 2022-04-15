@@ -1358,48 +1358,6 @@ end subroutine micro_pumas_cam_init
 
 subroutine micro_pumas_cam_tend(state, ptend, dtime, pbuf)
 
-   use micro_mg1_0, only: micro_mg_get_cols1_0 => micro_mg_get_cols
-   use micro_pumas_v1, only: micro_mg_get_cols3_0 => micro_pumas_get_cols
-
-   type(physics_state),         intent(in)    :: state
-   type(physics_ptend),         intent(out)   :: ptend
-   real(r8),                    intent(in)    :: dtime
-   type(physics_buffer_desc),   pointer       :: pbuf(:)
-
-   ! Local variables
-   integer :: ncol, nlev, mgncol
-   integer, allocatable :: mgcols(:) ! Columns with microphysics performed
-
-   ! Find the number of levels used in the microphysics.
-   nlev  = pver - top_lev + 1
-   ncol  = state%ncol
-
-   select case (micro_mg_version)
-   case (1)
-      call micro_mg_get_cols1_0(ncol, nlev, top_lev, state%q(:,:,ixcldliq), &
-           state%q(:,:,ixcldice), mgncol, mgcols)
-   case (2:3)
-
-      if (micro_mg_do_hail .or. micro_mg_do_graupel) then
-         call micro_mg_get_cols3_0(ncol, nlev, top_lev, mgncol, mgcols, state%q(:,:,ixcldliq), &
-              state%q(:,:,ixcldice), state%q(:,:,ixrain), state%q(:,:,ixsnow), state%q(:,:,ixgraupel))
-      else
-         call micro_mg_get_cols3_0(ncol, nlev, top_lev, mgncol, mgcols, state%q(:,:,ixcldliq), &
-              state%q(:,:,ixcldice), state%q(:,:,ixrain), state%q(:,:,ixsnow))
-      endif
-
-   end select
-
-!  Force mgncol to match ncol and nlev to pver and override what set in the micro_mg_get_cols routine
-   mgncol = ncol
-   nlev = pver
-
-   call micro_pumas_cam_tend_pack(state, ptend, dtime, pbuf, mgncol, mgcols, nlev)
-
-end subroutine micro_pumas_cam_tend
-
-subroutine micro_pumas_cam_tend_pack(state, ptend, dtime, pbuf, mgncol, mgcols, nlev)
-
    use micro_pumas_utils, only: size_dist_param_basic, size_dist_param_liq, &
         mg_liq_props, mg_ice_props, avg_diameter, rhoi, rhosn, rhow, rhows, &
         rhog, &
@@ -1413,15 +1371,10 @@ subroutine micro_pumas_cam_tend_pack(state, ptend, dtime, pbuf, mgncol, mgcols, 
    use tropopause,      only: tropopause_find, TROP_ALG_CPP, TROP_ALG_NONE, NOTFOUND
    use wv_saturation,   only: qsat
    use infnan,          only: nan, assignment(=)
-
    type(physics_state),         intent(in)    :: state
    type(physics_ptend),         intent(out)   :: ptend
    real(r8),                    intent(in)    :: dtime
    type(physics_buffer_desc),   pointer       :: pbuf(:)
-
-   integer, intent(in) :: nlev
-   integer, intent(in) :: mgncol
-   integer, intent(in) :: mgcols(:)
 
    ! Local variables
    integer :: lchnk, ncol, psetcols, ngrdcol
@@ -1583,23 +1536,23 @@ subroutine micro_pumas_cam_tend_pack(state, ptend, dtime, pbuf, mgncol, mgcols, 
    real(r8), target :: ptend_loc_mpdliq(state%psetcols,pver)
 
 !Hail/Graupel Process Rates
-   real(r8) :: npracg(mgncol,nlev)
-   real(r8) :: nscng(mgncol,nlev)
-   real(r8) :: ngracs(mgncol,nlev)
-   real(r8) :: nmultg(mgncol,nlev)
-   real(r8) :: nmultrg(mgncol,nlev)
-   real(r8) :: npsacwg(mgncol,nlev)
+   real(r8) :: npracg(state%ncol,pver)
+   real(r8) :: nscng(state%ncol,pver)
+   real(r8) :: ngracs(state%ncol,pver)
+   real(r8) :: nmultg(state%ncol,pver)
+   real(r8) :: nmultrg(state%ncol,pver)
+   real(r8) :: npsacwg(state%ncol,pver)
 
    ! Dummy arrays for cases where we throw away the MG version and
    ! recalculate sizes on the CAM grid to avoid time/subcolumn averaging
    ! issues.
-   real(r8) :: rel_fn_dum(mgncol,nlev)
-   real(r8) :: dsout2_dum(mgncol,nlev)
-   real(r8) :: drout_dum(mgncol,nlev)
-   real(r8) :: reff_rain_dum(mgncol,nlev)
-   real(r8) :: reff_snow_dum(mgncol,nlev)
-   real(r8) :: reff_grau_dum(mgncol,nlev)   !not used for now or passed to COSP.
-   real(r8), target :: nan_array(mgncol,nlev)   ! Array for NaN's
+   real(r8) :: rel_fn_dum(state%ncol,pver)
+   real(r8) :: dsout2_dum(state%ncol,pver)
+   real(r8) :: drout_dum(state%ncol,pver)
+   real(r8) :: reff_rain_dum(state%ncol,pver)
+   real(r8) :: reff_snow_dum(state%ncol,pver)
+   real(r8) :: reff_grau_dum(state%ncol,pver)   !not used for now or passed to COSP.
+   real(r8), target :: nan_array(state%ncol,pver)   ! Array for NaN's
 
    ! Heterogeneous-only version of mnuccdo.
    real(r8) :: mnuccdohet(state%psetcols,pver)
@@ -1960,24 +1913,24 @@ subroutine micro_pumas_cam_tend_pack(state, ptend, dtime, pbuf, mgncol, mgcols, 
    if (qsatfac_idx > 0) then
       call pbuf_get_field(pbuf, qsatfac_idx, qsatfac, col_type=col_type, copy_if_needed=use_subcol_microp)
    else
-      allocate(qsatfac(mgncol,nlev))
+      allocate(qsatfac(ncol,pver))
       qsatfac = 1._r8
    end if
 
    ! allocate tendency variables
    allocate(prco(state%psetcols,pver))
-   allocate(tlat(mgncol,nlev))
-   allocate(qvlat(mgncol,nlev))
-   allocate(qctend(mgncol,nlev))
-   allocate(qitend(mgncol,nlev))
-   allocate(qrtend(mgncol,nlev))
-   allocate(qstend(mgncol,nlev))
-   allocate(qgtend(mgncol,nlev))
-   allocate(nctend(mgncol,nlev))
-   allocate(nitend(mgncol,nlev))
-   allocate(nrtend(mgncol,nlev))
-   allocate(nstend(mgncol,nlev))
-   allocate(ngtend(mgncol,nlev))
+   allocate(tlat(ncol,pver))
+   allocate(qvlat(ncol,pver))
+   allocate(qctend(ncol,pver))
+   allocate(qitend(ncol,pver))
+   allocate(qrtend(ncol,pver))
+   allocate(qstend(ncol,pver))
+   allocate(qgtend(ncol,pver))
+   allocate(nctend(ncol,pver))
+   allocate(nitend(ncol,pver))
+   allocate(nrtend(ncol,pver))
+   allocate(nstend(ncol,pver))
+   allocate(ngtend(ncol,pver))
    tlat   = 0._r8
    qvlat  = 0._r8
    qctend = 0._r8
@@ -1995,20 +1948,20 @@ subroutine micro_pumas_cam_tend_pack(state, ptend, dtime, pbuf, mgncol, mgcols, 
 
    nan_array = nan
 
-   allocate(state_loc_t(mgncol,nlev))
-   allocate(state_loc_q(mgncol,nlev))
-   allocate(state_loc_pmid(mgncol,nlev))
-   allocate(state_loc_pdel(mgncol,nlev))
-   allocate(state_loc_liq(mgncol,nlev))
-   allocate(state_loc_ice(mgncol,nlev))
-   allocate(state_loc_numliq(mgncol,nlev))
-   allocate(state_loc_numice(mgncol,nlev))
-   allocate(state_loc_rain(mgncol,nlev))
-   allocate(state_loc_snow(mgncol,nlev))
-   allocate(state_loc_numrain(mgncol,nlev))
-   allocate(state_loc_numsnow(mgncol,nlev))
-   allocate(state_loc_graup(mgncol,nlev))
-   allocate(state_loc_numgraup(mgncol,nlev))
+   allocate(state_loc_t(ncol,pver))
+   allocate(state_loc_q(ncol,pver))
+   allocate(state_loc_pmid(ncol,pver))
+   allocate(state_loc_pdel(ncol,pver))
+   allocate(state_loc_liq(ncol,pver))
+   allocate(state_loc_ice(ncol,pver))
+   allocate(state_loc_numliq(ncol,pver))
+   allocate(state_loc_numice(ncol,pver))
+   allocate(state_loc_rain(ncol,pver))
+   allocate(state_loc_snow(ncol,pver))
+   allocate(state_loc_numrain(ncol,pver))
+   allocate(state_loc_numsnow(ncol,pver))
+   allocate(state_loc_graup(ncol,pver))
+   allocate(state_loc_numgraup(ncol,pver))
    state_loc_t      = 0._r8
    state_loc_q      = 0._r8
    state_loc_pmid   = 0._r8
@@ -2242,19 +2195,19 @@ subroutine micro_pumas_cam_tend_pack(state, ptend, dtime, pbuf, mgncol, mgcols, 
 
      if (micro_mg_version > 1) then
         if (micro_mg_version > 2) then
-           state_loc_graup(:mgncol,:) = state_loc%q(:mgncol,:,ixgraupel)
-           state_loc_numgraup(:mgncol,:) = state_loc%q(:mgncol,:,ixnumgraupel)
+           state_loc_graup(:ncol,:) = state_loc%q(:ncol,:,ixgraupel)
+           state_loc_numgraup(:ncol,:) = state_loc%q(:ncol,:,ixnumgraupel)
         else
-           state_loc_graup(:mgncol,:) = 0._r8
-           state_loc_numgraup(:mgncol,:) = 0._r8
+           state_loc_graup(:ncol,:) = 0._r8
+           state_loc_numgraup(:ncol,:) = 0._r8
         end if
      end if
 
    ! Zero out values above top_lev before passing into _tend for some pbuf variables that are inputs
-   naai(:mgncol,:top_lev-1) = 0._r8
-   npccn(:mgncol,:top_lev-1) = 0._r8
+   naai(:ncol,:top_lev-1) = 0._r8
+   npccn(:ncol,:top_lev-1) = 0._r8
    ! The null value for qsatfac is 1, not zero
-   qsatfac(:mgncol,:top_lev-1) = 1._r8
+   qsatfac(:ncol,:top_lev-1) = 1._r8
 
    do it = 1, num_steps
 
@@ -2267,132 +2220,132 @@ subroutine micro_pumas_cam_tend_pack(state, ptend, dtime, pbuf, mgncol, mgcols, 
          select case (micro_mg_sub_version)
          case (0)
             call micro_mg_tend1_0( &
-                 microp_uniform, mgncol, nlev, mgncol, 1, dtime/num_steps, &
-                 state_loc%t(:mgncol,:), state_loc%q(:mgncol,:,1), state_loc%q(:mgncol,:,ixcldliq), &
-                 state_loc%q(:mgncol,:,ixcldice), state_loc%q(:mgncol,:,ixnumliq),     &
-                 state_loc%q(:mgncol,:,ixnumice), state_loc%pmid(:mgncol,:),  state_loc%pdel(:mgncol,:), &
-                 ast(:mgncol,:), alst_mic(:mgncol,:),&
-                 relvar(:mgncol,:), accre_enhan(:mgncol,:),                             &
-                 aist_mic(:mgncol,:), rate1cld(:mgncol,:), naai(:mgncol,:), npccn(:mgncol,:),                 &
-                 rndst(:mgncol,:,:), nacon(:mgncol,:,:), tlat(:mgncol,:), qvlat(:mgncol,:), qctend(:mgncol,:),                &
-                 qitend(:mgncol,:), nctend(:mgncol,:), nitend(:mgncol,:), rel(:mgncol,:), rel_fn_dum(:mgncol,:),      &
-                 rei(:mgncol,:), prect(:mgncol), preci(:mgncol), nevapr(:mgncol,:), evapsnow(:mgncol,:), am_evp_st(:mgncol,:), &
-                 prain(:mgncol,:), prodsnow(:mgncol,:), cmeice(:mgncol,:), dei(:mgncol,:), mu(:mgncol,:),                &
-                 lambdac(:mgncol,:), qsout(:mgncol,:), des(:mgncol,:), rflx(:mgncol,:), sflx(:mgncol,:),                 &
-                 qrout(:mgncol,:), reff_rain_dum(:mgncol,:), reff_snow_dum(:mgncol,:), qcsevap(:mgncol,:), qisevap(:mgncol,:),   &
-                 qvres(:mgncol,:), cmeiout(:mgncol,:), vtrmc(:mgncol,:), vtrmi(:mgncol,:), qcsedten(:mgncol,:),          &
-                 qisedten(:mgncol,:), prao(:mgncol,:), prco(:mgncol,:), mnuccco(:mgncol,:), mnuccto(:mgncol,:),          &
-                 msacwio(:mgncol,:), psacwso(:mgncol,:), bergso(:mgncol,:), bergo(:mgncol,:), melto(:mgncol,:),          &
-                 homoo(:mgncol,:), qcreso(:mgncol,:), prcio(:mgncol,:), praio(:mgncol,:), qireso(:mgncol,:),             &
-                 mnuccro(:mgncol,:), pracso(:mgncol,:), meltsdt(:mgncol,:), frzrdt(:mgncol,:), mnuccdo(:mgncol,:),       &
-                 nrout(:mgncol,:), nsout(:mgncol,:), refl(:mgncol,:), arefl(:mgncol,:), areflz(:mgncol,:),               &
-                 frefl(:mgncol,:), csrfl(:mgncol,:), acsrfl(:mgncol,:), fcsrfl(:mgncol,:), rercld(:mgncol,:),            &
-                 ncai(:mgncol,:), ncal(:mgncol,:), qrout2(:mgncol,:), qsout2(:mgncol,:), nrout2(:mgncol,:),              &
-                 nsout2(:mgncol,:), drout_dum(:mgncol,:), dsout2_dum(:mgncol,:), freqs(:mgncol,:),freqr(:mgncol,:),            &
-                 nfice(:mgncol,:), prer_evap(:mgncol,:), do_cldice, errstring,                      &
-                 tnd_qsnow(:mgncol,:), tnd_nsnow(:mgncol,:), re_ice(:mgncol,:),             &
-                 frzimm(:mgncol,:), frzcnt(:mgncol,:), frzdep(:mgncol,:))
+                 microp_uniform, ncol, pver, ncol, 1, dtime/num_steps, &
+                 state_loc%t(:ncol,:), state_loc%q(:ncol,:,1), state_loc%q(:ncol,:,ixcldliq), &
+                 state_loc%q(:ncol,:,ixcldice), state_loc%q(:ncol,:,ixnumliq),     &
+                 state_loc%q(:ncol,:,ixnumice), state_loc%pmid(:ncol,:),  state_loc%pdel(:ncol,:), &
+                 ast(:ncol,:), alst_mic(:ncol,:),&
+                 relvar(:ncol,:), accre_enhan(:ncol,:),                             &
+                 aist_mic(:ncol,:), rate1cld(:ncol,:), naai(:ncol,:), npccn(:ncol,:),                 &
+                 rndst(:ncol,:,:), nacon(:ncol,:,:), tlat(:ncol,:), qvlat(:ncol,:), qctend(:ncol,:),                &
+                 qitend(:ncol,:), nctend(:ncol,:), nitend(:ncol,:), rel(:ncol,:), rel_fn_dum(:ncol,:),      &
+                 rei(:ncol,:), prect(:ncol), preci(:ncol), nevapr(:ncol,:), evapsnow(:ncol,:), am_evp_st(:ncol,:), &
+                 prain(:ncol,:), prodsnow(:ncol,:), cmeice(:ncol,:), dei(:ncol,:), mu(:ncol,:),                &
+                 lambdac(:ncol,:), qsout(:ncol,:), des(:ncol,:), rflx(:ncol,:), sflx(:ncol,:),                 &
+                 qrout(:ncol,:), reff_rain_dum(:ncol,:), reff_snow_dum(:ncol,:), qcsevap(:ncol,:), qisevap(:ncol,:),   &
+                 qvres(:ncol,:), cmeiout(:ncol,:), vtrmc(:ncol,:), vtrmi(:ncol,:), qcsedten(:ncol,:),          &
+                 qisedten(:ncol,:), prao(:ncol,:), prco(:ncol,:), mnuccco(:ncol,:), mnuccto(:ncol,:),          &
+                 msacwio(:ncol,:), psacwso(:ncol,:), bergso(:ncol,:), bergo(:ncol,:), melto(:ncol,:),          &
+                 homoo(:ncol,:), qcreso(:ncol,:), prcio(:ncol,:), praio(:ncol,:), qireso(:ncol,:),             &
+                 mnuccro(:ncol,:), pracso(:ncol,:), meltsdt(:ncol,:), frzrdt(:ncol,:), mnuccdo(:ncol,:),       &
+                 nrout(:ncol,:), nsout(:ncol,:), refl(:ncol,:), arefl(:ncol,:), areflz(:ncol,:),               &
+                 frefl(:ncol,:), csrfl(:ncol,:), acsrfl(:ncol,:), fcsrfl(:ncol,:), rercld(:ncol,:),            &
+                 ncai(:ncol,:), ncal(:ncol,:), qrout2(:ncol,:), qsout2(:ncol,:), nrout2(:ncol,:),              &
+                 nsout2(:ncol,:), drout_dum(:ncol,:), dsout2_dum(:ncol,:), freqs(:ncol,:),freqr(:ncol,:),            &
+                 nfice(:ncol,:), prer_evap(:ncol,:), do_cldice, errstring,                      &
+                 tnd_qsnow(:ncol,:), tnd_nsnow(:ncol,:), re_ice(:ncol,:),             &
+                 frzimm(:ncol,:), frzcnt(:ncol,:), frzdep(:ncol,:))
 
          end select
       case(2:3)
          call micro_pumas_tend( &
-              mgncol,         nlev,           dtime/num_steps,&
-              state_loc%t(:mgncol,:),              state_loc%q(:mgncol,:,1),            &
-              state_loc%q(:mgncol,:,ixcldliq),     state_loc%q(:mgncol,:,ixcldice),          &
-              state_loc%q(:mgncol,:,ixnumliq),     state_loc%q(:mgncol,:,ixnumice),       &
-              state_loc%q(:mgncol,:,ixrain),       state_loc%q(:mgncol,:,ixsnow),         &
-              state_loc%q(:mgncol,:,ixnumrain),    state_loc%q(:mgncol,:,ixnumsnow),      &
-              state_loc_graup(:mgncol,:),    state_loc_numgraup(:mgncol,:),     &
-              relvar(:mgncol,:),         accre_enhan(:mgncol,:),     &
-              state_loc%pmid(:mgncol,:),                state_loc%pdel(:mgncol,:),          &
-              ast(:mgncol,:), alst_mic(:mgncol,:), aist_mic(:mgncol,:), qsatfac(:mgncol,:), &
-              rate1cld(:mgncol,:),                         &
-              naai(:mgncol,:),            npccn(:mgncol,:),           &
-              rndst(:mgncol,:,:),    nacon(:mgncol,:,:),           &
-              tlat(:mgncol,:),            qvlat(:mgncol,:),           &
-              qctend(:mgncol,:),          qitend(:mgncol,:),          &
-              nctend(:mgncol,:),          nitend(:mgncol,:),          &
-              qrtend(:mgncol,:),          qstend(:mgncol,:),          &
-              nrtend(:mgncol,:),          nstend(:mgncol,:),          &
-              qgtend(:mgncol,:),          ngtend(:mgncol,:),          &
-              rel(:mgncol,:),     rel_fn_dum(:mgncol,:),     rei(:mgncol,:),     &
-              sadice(:mgncol,:),          sadsnow(:mgncol,:),         &
-              prect(:mgncol),           preci(:mgncol),           &
-              nevapr(:mgncol,:),          evapsnow(:mgncol,:),        &
-              am_evp_st(:mgncol,:),                               &
-              prain(:mgncol,:),           prodsnow(:mgncol,:),        &
-              cmeice(:mgncol,:),          dei(:mgncol,:),             &
-              mu(:mgncol,:),              lambdac(:mgncol,:),         &
-              qsout(:mgncol,:),           des(:mgncol,:),             &
-              qgout(:mgncol,:),   ngout(:mgncol,:),   dgout(:mgncol,:),   &
-              cflx(:mgncol,:),    iflx(:mgncol,:),                    &
-              gflx(:mgncol,:),                                    &
-              rflx(:mgncol,:),    sflx(:mgncol,:),    qrout(:mgncol,:),   &
-              reff_rain_dum(:mgncol,:),          reff_snow_dum(:mgncol,:),   reff_grau_dum(:mgncol,:),       &
-              qcsevap(:mgncol,:), qisevap(:mgncol,:), qvres(:mgncol,:),   &
-              cmeiout(:mgncol,:),    vtrmc(:mgncol,:),   vtrmi(:mgncol,:),   &
-              umr(:mgncol,:),             ums(:mgncol,:),             &
-              umg(:mgncol,:),             qgsedten(:mgncol,:),        &
-              qcsedten(:mgncol,:),        qisedten(:mgncol,:),        &
-              qrsedten(:mgncol,:),        qssedten(:mgncol,:),        &
-              prao(:mgncol,:),             prco(:mgncol,:),             &
-              mnuccco(:mgncol,:),  mnuccto(:mgncol,:),  msacwio(:mgncol,:),  &
-              psacwso(:mgncol,:),  bergso(:mgncol,:),   bergo(:mgncol,:),    &
-              melto(:mgncol,:),    meltstot(:mgncol,:), meltgtot(:mgncol,:),           homoo(:mgncol,:),            &
-              qcreso(:mgncol,:),   prcio(:mgncol,:),    praio(:mgncol,:),    &
-              qireso(:mgncol,:),   mnuccro(:mgncol,:),  mnudepo(:mgncol,:), mnuccrio(:mgncol,:), pracso(:mgncol,:),   &
-              meltsdt(:mgncol,:), frzrdt(:mgncol,:),  mnuccdo(:mgncol,:),  &
-              pracgo(:mgncol,:),   psacwgo(:mgncol,:),  pgsacwo(:mgncol,:),  &
-              pgracso(:mgncol,:),  prdgo(:mgncol,:),   &
-              qmultgo(:mgncol,:),  qmultrgo(:mgncol,:), psacro(:mgncol,:),   &
-              npracg(:mgncol,:),  nscng(:mgncol,:),   ngracs(:mgncol,:),  &
-              nmultg(:mgncol,:),  nmultrg(:mgncol,:), npsacwg(:mgncol,:), &
-              nrout(:mgncol,:),           nsout(:mgncol,:),           &
-              refl(:mgncol,:),    arefl(:mgncol,:),   areflz(:mgncol,:),  &
-              frefl(:mgncol,:),   csrfl(:mgncol,:),   acsrfl(:mgncol,:),  &
-              fcsrfl(:mgncol,:),          rercld(:mgncol,:),          &
-              ncai(:mgncol,:),            ncal(:mgncol,:),            &
-              qrout2(:mgncol,:),          qsout2(:mgncol,:),          &
-              nrout2(:mgncol,:),          nsout2(:mgncol,:),          &
-              drout_dum(:mgncol,:),              dsout2_dum(:mgncol,:),             &
-              qgout2(:mgncol,:), ngout2(:mgncol,:), dgout2(:mgncol,:), freqg(:mgncol,:),   &
-              freqs(:mgncol,:),           freqr(:mgncol,:),           &
-              nfice(:mgncol,:),           qcrat(:mgncol,:),           &
+              ncol,         pver,           dtime/num_steps,&
+              state_loc%t(:ncol,:),              state_loc%q(:ncol,:,1),            &
+              state_loc%q(:ncol,:,ixcldliq),     state_loc%q(:ncol,:,ixcldice),          &
+              state_loc%q(:ncol,:,ixnumliq),     state_loc%q(:ncol,:,ixnumice),       &
+              state_loc%q(:ncol,:,ixrain),       state_loc%q(:ncol,:,ixsnow),         &
+              state_loc%q(:ncol,:,ixnumrain),    state_loc%q(:ncol,:,ixnumsnow),      &
+              state_loc_graup(:ncol,:),    state_loc_numgraup(:ncol,:),     &
+              relvar(:ncol,:),         accre_enhan(:ncol,:),     &
+              state_loc%pmid(:ncol,:),                state_loc%pdel(:ncol,:),          &
+              ast(:ncol,:), alst_mic(:ncol,:), aist_mic(:ncol,:), qsatfac(:ncol,:), &
+              rate1cld(:ncol,:),                         &
+              naai(:ncol,:),            npccn(:ncol,:),           &
+              rndst(:ncol,:,:),    nacon(:ncol,:,:),           &
+              tlat(:ncol,:),            qvlat(:ncol,:),           &
+              qctend(:ncol,:),          qitend(:ncol,:),          &
+              nctend(:ncol,:),          nitend(:ncol,:),          &
+              qrtend(:ncol,:),          qstend(:ncol,:),          &
+              nrtend(:ncol,:),          nstend(:ncol,:),          &
+              qgtend(:ncol,:),          ngtend(:ncol,:),          &
+              rel(:ncol,:),     rel_fn_dum(:ncol,:),     rei(:ncol,:),     &
+              sadice(:ncol,:),          sadsnow(:ncol,:),         &
+              prect(:ncol),           preci(:ncol),           &
+              nevapr(:ncol,:),          evapsnow(:ncol,:),        &
+              am_evp_st(:ncol,:),                               &
+              prain(:ncol,:),           prodsnow(:ncol,:),        &
+              cmeice(:ncol,:),          dei(:ncol,:),             &
+              mu(:ncol,:),              lambdac(:ncol,:),         &
+              qsout(:ncol,:),           des(:ncol,:),             &
+              qgout(:ncol,:),   ngout(:ncol,:),   dgout(:ncol,:),   &
+              cflx(:ncol,:),    iflx(:ncol,:),                    &
+              gflx(:ncol,:),                                    &
+              rflx(:ncol,:),    sflx(:ncol,:),    qrout(:ncol,:),   &
+              reff_rain_dum(:ncol,:),          reff_snow_dum(:ncol,:),   reff_grau_dum(:ncol,:),       &
+              qcsevap(:ncol,:), qisevap(:ncol,:), qvres(:ncol,:),   &
+              cmeiout(:ncol,:),    vtrmc(:ncol,:),   vtrmi(:ncol,:),   &
+              umr(:ncol,:),             ums(:ncol,:),             &
+              umg(:ncol,:),             qgsedten(:ncol,:),        &
+              qcsedten(:ncol,:),        qisedten(:ncol,:),        &
+              qrsedten(:ncol,:),        qssedten(:ncol,:),        &
+              prao(:ncol,:),             prco(:ncol,:),             &
+              mnuccco(:ncol,:),  mnuccto(:ncol,:),  msacwio(:ncol,:),  &
+              psacwso(:ncol,:),  bergso(:ncol,:),   bergo(:ncol,:),    &
+              melto(:ncol,:),    meltstot(:ncol,:), meltgtot(:ncol,:),           homoo(:ncol,:),            &
+              qcreso(:ncol,:),   prcio(:ncol,:),    praio(:ncol,:),    &
+              qireso(:ncol,:),   mnuccro(:ncol,:),  mnudepo(:ncol,:), mnuccrio(:ncol,:), pracso(:ncol,:),   &
+              meltsdt(:ncol,:), frzrdt(:ncol,:),  mnuccdo(:ncol,:),  &
+              pracgo(:ncol,:),   psacwgo(:ncol,:),  pgsacwo(:ncol,:),  &
+              pgracso(:ncol,:),  prdgo(:ncol,:),   &
+              qmultgo(:ncol,:),  qmultrgo(:ncol,:), psacro(:ncol,:),   &
+              npracg(:ncol,:),  nscng(:ncol,:),   ngracs(:ncol,:),  &
+              nmultg(:ncol,:),  nmultrg(:ncol,:), npsacwg(:ncol,:), &
+              nrout(:ncol,:),           nsout(:ncol,:),           &
+              refl(:ncol,:),    arefl(:ncol,:),   areflz(:ncol,:),  &
+              frefl(:ncol,:),   csrfl(:ncol,:),   acsrfl(:ncol,:),  &
+              fcsrfl(:ncol,:),          rercld(:ncol,:),          &
+              ncai(:ncol,:),            ncal(:ncol,:),            &
+              qrout2(:ncol,:),          qsout2(:ncol,:),          &
+              nrout2(:ncol,:),          nsout2(:ncol,:),          &
+              drout_dum(:ncol,:),              dsout2_dum(:ncol,:),             &
+              qgout2(:ncol,:), ngout2(:ncol,:), dgout2(:ncol,:), freqg(:ncol,:),   &
+              freqs(:ncol,:),           freqr(:ncol,:),           &
+              nfice(:ncol,:),           qcrat(:ncol,:),           &
               errstring, &
-              tnd_qsnow(:mgncol,:),tnd_nsnow(:mgncol,:),re_ice(:mgncol,:),&
-              prer_evap(:mgncol,:),                                     &
-              frzimm(:mgncol,:),  frzcnt(:mgncol,:),  frzdep(:mgncol,:)   )
+              tnd_qsnow(:ncol,:),tnd_nsnow(:ncol,:),re_ice(:ncol,:),&
+              prer_evap(:ncol,:),                                     &
+              frzimm(:ncol,:),  frzcnt(:ncol,:),  frzdep(:ncol,:)   )
       end select
 
       call handle_errmsg(errstring, subname="micro_pumas_tend")
 
       ! Set local tendency.
-      ptend_loc%s(:mgncol,:) = tlat(:mgncol,:)
-      ptend_loc%q(:mgncol,:,1) = qvlat(:mgncol,:)
-      ptend_loc%q(:mgncol,:,ixcldliq) = qctend(:mgncol,:)
-      ptend_loc%q(:mgncol,:,ixcldice) = qitend(:mgncol,:)
-      ptend_loc%q(:mgncol,:,ixnumliq) = nctend(:mgncol,:)
+      ptend_loc%s(:ncol,:) = tlat(:ncol,:)
+      ptend_loc%q(:ncol,:,1) = qvlat(:ncol,:)
+      ptend_loc%q(:ncol,:,ixcldliq) = qctend(:ncol,:)
+      ptend_loc%q(:ncol,:,ixcldice) = qitend(:ncol,:)
+      ptend_loc%q(:ncol,:,ixnumliq) = nctend(:ncol,:)
 
       if (do_cldice) then
-         ptend_loc%q(:mgncol,:,ixnumice) = nitend(:mgncol,:)
+         ptend_loc%q(:ncol,:,ixnumice) = nitend(:ncol,:)
       else
          ! In this case, the tendency should be all 0.
-         if (any(nitend(:mgncol,:) /= 0._r8)) &
+         if (any(nitend(:ncol,:) /= 0._r8)) &
               call endrun("micro_pumas_cam:ERROR - MG microphysics is configured not to prognose cloud ice,"// &
               " but micro_pumas_tend has ice number tendencies.")
-         ptend_loc%q(:mgncol,:,ixnumice) = 0._r8
+         ptend_loc%q(:ncol,:,ixnumice) = 0._r8
       end if
 
       if (micro_mg_version > 1) then
-         ptend_loc%q(:mgncol,:,ixrain) = qrtend(:mgncol,:)
-         ptend_loc%q(:mgncol,:,ixsnow) = qstend(:mgncol,:)
-         ptend_loc%q(:mgncol,:,ixnumrain) = nrtend(:mgncol,:)
-         ptend_loc%q(:mgncol,:,ixnumsnow) = nstend(:mgncol,:)
+         ptend_loc%q(:ncol,:,ixrain) = qrtend(:ncol,:)
+         ptend_loc%q(:ncol,:,ixsnow) = qstend(:ncol,:)
+         ptend_loc%q(:ncol,:,ixnumrain) = nrtend(:ncol,:)
+         ptend_loc%q(:ncol,:,ixnumsnow) = nstend(:ncol,:)
       end if
 
       if (micro_mg_version > 2) then
-         ptend_loc%q(:mgncol,:,ixgraupel) = qgtend(:mgncol,:)
-         ptend_loc%q(:mgncol,:,ixnumgraupel) = ngtend(:mgncol,:)
+         ptend_loc%q(:ncol,:,ixgraupel) = qgtend(:ncol,:)
+         ptend_loc%q(:ncol,:,ixnumgraupel) = ngtend(:ncol,:)
       end if
 
       ! Save output variables
@@ -2405,9 +2358,6 @@ subroutine micro_pumas_cam_tend_pack(state, ptend, dtime, pbuf, mgncol, mgcols, 
 
       ! Update local state
       call physics_update(state_loc, ptend_loc, dtime/num_steps)
-
-!      ! Sum all outputs for averaging.
-!      call post_proc%accumulate()
 
    end do
 
@@ -3472,7 +3422,7 @@ subroutine micro_pumas_cam_tend_pack(state, ptend, dtime, pbuf, mgncol, mgcols, 
    deallocate(state_loc_snow)
    deallocate(state_loc_numrain)
    deallocate(state_loc_numsnow)
-end subroutine micro_pumas_cam_tend_pack
+end subroutine micro_pumas_cam_tend
 
 subroutine massless_droplet_destroyer(ztodt, state,  ptend)
 
