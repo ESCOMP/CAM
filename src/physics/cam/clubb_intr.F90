@@ -3297,6 +3297,7 @@ end subroutine clubb_init_cnst
             rtpthlp_forcing(:ncol,:), wm_zm(:ncol,:), wm_zt(:ncol,:), &
             wpthlp_sfc(:ncol), wprtp_sfc(:ncol), upwp_sfc(:ncol), vpwp_sfc(:ncol), &
             wpsclrp_sfc(:ncol,:), wpedsclrp_sfc(:ncol,:), &
+            upwp_sfc_pert(:ncol), vpwp_sfc_pert(:ncol), &
             rtm_ref(:ncol,:), thlm_ref(:ncol,:), um_ref(:ncol,:), vm_ref(:ncol,:), ug(:ncol,:), vg(:ncol,:), &
             p_in_Pa(:ncol,:), rho_zm(:ncol,:), rho_in(:ncol,:), exner(:ncol,:), &
             rho_ds_zm(:ncol,:), rho_ds_zt(:ncol,:), invrs_rho_ds_zm(:ncol,:), &
@@ -3320,6 +3321,7 @@ end subroutine clubb_init_cnst
             vprcp_inout(:ncol,:), rc_coef_inout(:ncol,:), &
             wp4_inout(:ncol,:), wpup2_inout(:ncol,:), wpvp2_inout(:ncol,:), &
             wp2up2_inout(:ncol,:), wp2vp2_inout(:ncol,:), ice_supersat_frac_inout(:ncol,:), &
+            um_pert_inout(:ncol,:), vm_pert_inout(:ncol,:), upwp_pert_inout(:ncol,:), vpwp_pert_inout(:ncol,:), &
             pdf_params_chnk(lchnk), pdf_params_zm_chnk(lchnk), &
             pdf_implicit_coefs_terms_chnk(:ncol,lchnk), &
             khzm_out(:ncol,:), khzt_out(:ncol,:), &
