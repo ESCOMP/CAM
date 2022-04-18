@@ -111,11 +111,12 @@ logical  ::  micro_mg_evap_scl_ifs = .false.      ! Scale evaporation as IFS doe
 logical  ::  micro_mg_evap_rhthrsh_ifs = .false.  ! Evap RH threhold following IFS
 logical  ::  micro_mg_rainfreeze_ifs = .false.    ! Rain freezing at 0C following IFS
 logical  ::  micro_mg_ifs_sed = .false.           ! Snow sedimentation = 1 m/s following IFS
-logical  ::  micro_mg_precip_fall_corr = .false.    ! Precip fall speed following IFS
+logical  ::  micro_mg_precip_fall_corr = .false.    ! Precip fall speed following IFS (does not go to zero)
 
 logical  ::  micro_mg_implicit_fall = .false. !Implicit fall speed (sedimentation) for hydrometeors
 
 logical  ::  micro_mg_accre_sees_auto = .false.    !Accretion sees autoconverted rain
+
 
 character(len=10), parameter :: &      ! Constituent names
    cnst_names(10) = (/'CLDLIQ', 'CLDICE','NUMLIQ','NUMICE', &
@@ -272,7 +273,7 @@ subroutine micro_pumas_cam_readnl(nlfile)
        micro_do_massless_droplet_destroyer, &
        micro_mg_evap_sed_off, micro_mg_icenuc_rh_off, micro_mg_icenuc_use_meyers, &
        micro_mg_evap_scl_ifs, micro_mg_evap_rhthrsh_ifs, &
-       micro_mg_rainfreeze_ifs, micro_mg_ifs_sed, micro_mg_precip_fall_corr, &
+       micro_mg_rainfreeze_ifs, micro_mg_ifs_sed, micro_mg_precip_fall_corrr, &
        micro_mg_accre_sees_auto, micro_mg_implicit_fall
 
   !-----------------------------------------------------------------------------
@@ -1432,24 +1433,21 @@ subroutine micro_pumas_cam_tend(state, ptend, dtime, pbuf)
    real(r8) :: rho(state%psetcols,pver)
    real(r8) :: cldmax(state%psetcols,pver)
 
-   real(r8), allocatable :: tlat(:,:)
-   real(r8), allocatable :: qvlat(:,:)
-   real(r8), allocatable :: qctend(:,:)
-   real(r8), allocatable :: qitend(:,:)
-   real(r8), allocatable :: qrtend(:,:)
-   real(r8), allocatable :: qstend(:,:)
-   real(r8), allocatable :: qgtend(:,:)
-   real(r8), allocatable :: nctend(:,:)
-   real(r8), allocatable :: nitend(:,:)
-   real(r8), allocatable :: nrtend(:,:)
-   real(r8), allocatable :: nstend(:,:)
-   real(r8), allocatable :: ngtend(:,:)
-
    real(r8), target :: rate1cld(state%psetcols,pver) ! array to hold rate1ord_cw2pr_st from microphysics
 
+   real(r8), target :: tlat(state%psetcols,pver)
+   real(r8), target :: qvlat(state%psetcols,pver)
+   real(r8), target :: qcten(state%psetcols,pver)
    real(r8), target :: qiten(state%psetcols,pver)
    real(r8), target :: ncten(state%psetcols,pver)
    real(r8), target :: niten(state%psetcols,pver)
+
+   real(r8), target :: qrten(state%psetcols,pver)
+   real(r8), target :: qsten(state%psetcols,pver)
+   real(r8), target :: nrten(state%psetcols,pver)
+   real(r8), target :: nsten(state%psetcols,pver)
+   real(r8), target :: qgten(state%psetcols,pver)
+   real(r8), target :: ngten(state%psetcols,pver)
 
    real(r8), target :: prect(state%psetcols)
    real(r8), target :: preci(state%psetcols)
@@ -1480,8 +1478,7 @@ subroutine micro_pumas_cam_tend(state, ptend, dtime, pbuf)
    real(r8), target :: umg(state%psetcols,pver)        ! Mass-weighted Graupel/Hail fallspeed
 
    real(r8), target :: prao(state%psetcols,pver)
-!   real(r8), allocatable :: prco(state%psetcols,pver)
-   real(r8), allocatable :: prco(:,:)
+   real(r8), target :: prco(state%psetcols,pver)
    real(r8), target :: mnuccco(state%psetcols,pver)
    real(r8), target :: mnuccto(state%psetcols,pver)
    real(r8), target :: msacwio(state%psetcols,pver)
@@ -1550,14 +1547,6 @@ subroutine micro_pumas_cam_tend(state, ptend, dtime, pbuf)
    real(r8), target :: ptend_loc_mpdt(state%psetcols,pver)
    real(r8), target :: ptend_loc_mpdq(state%psetcols,pver)
    real(r8), target :: ptend_loc_mpdliq(state%psetcols,pver)
-
-!Hail/Graupel Process Rates
-   real(r8) :: npracg(state%ncol,pver)
-   real(r8) :: nscng(state%ncol,pver)
-   real(r8) :: ngracs(state%ncol,pver)
-   real(r8) :: nmultg(state%ncol,pver)
-   real(r8) :: nmultrg(state%ncol,pver)
-   real(r8) :: npsacwg(state%ncol,pver)
 
    ! Dummy arrays for cases where we throw away the MG version and
    ! recalculate sizes on the CAM grid to avoid time/subcolumn averaging
@@ -1789,20 +1778,8 @@ subroutine micro_pumas_cam_tend(state, ptend, dtime, pbuf)
    real(r8) :: es
    real(r8) :: qs
 
-   real(r8), allocatable :: state_loc_t(:,:)
-   real(r8), allocatable :: state_loc_q(:,:)
-   real(r8), allocatable :: state_loc_pmid(:,:)
-   real(r8), allocatable :: state_loc_pdel(:,:)
-   real(r8), allocatable :: state_loc_liq(:,:)
-   real(r8), allocatable :: state_loc_ice(:,:)
-   real(r8), allocatable :: state_loc_numliq(:,:)
-   real(r8), allocatable :: state_loc_numice(:,:)
-   real(r8), allocatable :: state_loc_rain(:,:)
-   real(r8), allocatable :: state_loc_snow(:,:)
-   real(r8), allocatable :: state_loc_numrain(:,:)
-   real(r8), allocatable :: state_loc_numsnow(:,:)
-   real(r8), allocatable :: state_loc_graup(:,:)
-   real(r8), allocatable :: state_loc_numgraup(:,:)
+   real(r8) :: state_loc_graup(pcols,pver)
+   real(r8) :: state_loc_numgraup(pcols,pver)
 
    real(r8), pointer :: cmeliq_grid(:,:)
 
@@ -1866,8 +1843,6 @@ subroutine micro_pumas_cam_tend(state, ptend, dtime, pbuf)
    real(r8), parameter :: mucon  = 5.3_r8            ! Convective size distribution shape parameter
    real(r8), parameter :: deicon = 50._r8            ! Convective ice effective diameter (meters)
 
-!   real(r8), pointer :: pckdptr(:,:)
-
    !-------------------------------------------------------------------------------
 
    lchnk = state%lchnk
@@ -1875,6 +1850,8 @@ subroutine micro_pumas_cam_tend(state, ptend, dtime, pbuf)
    psetcols = state%psetcols
    ngrdcol  = state%ngrdcol
    itim_old = pbuf_old_tim_idx()
+
+   nan_array = nan
 
    call phys_getopts(use_subcol_microp_out=use_subcol_microp)
 
@@ -1908,8 +1885,8 @@ subroutine micro_pumas_cam_tend(state, ptend, dtime, pbuf)
       call pbuf_get_field(pbuf, tnd_nsnow_idx,   tnd_nsnow,   col_type=col_type, copy_if_needed=use_subcol_microp)
       call pbuf_get_field(pbuf, re_ice_idx,      re_ice,      col_type=col_type, copy_if_needed=use_subcol_microp)
    else
-      ! If we ARE prognosing tendencies, then just point to the optional output fields to have
-      ! something for PUMAS to use
+      ! If we ARE prognosing tendencies, then just point to to an array of NaN fields to have
+      ! something for PUMAS to use in call
       tnd_qsnow => nan_array
       tnd_nsnow => nan_array
       re_ice => nan_array
@@ -1920,7 +1897,7 @@ subroutine micro_pumas_cam_tend(state, ptend, dtime, pbuf)
       call pbuf_get_field(pbuf, frzcnt_idx, frzcnt, col_type=col_type, copy_if_needed=use_subcol_microp)
       call pbuf_get_field(pbuf, frzdep_idx, frzdep, col_type=col_type, copy_if_needed=use_subcol_microp)
    else
-      ! Needed to satisfy gnu compiler with optional argument and needing to be subset
+      ! Needed to satisfy gnu compiler with optional argument - set to an array of NaNs
       frzimm => nan_array
       frzcnt => nan_array
       frzdep => nan_array
@@ -1932,66 +1909,6 @@ subroutine micro_pumas_cam_tend(state, ptend, dtime, pbuf)
       allocate(qsatfac(ncol,pver))
       qsatfac = 1._r8
    end if
-
-   ! allocate tendency variables
-   allocate(prco(state%psetcols,pver))
-   allocate(tlat(ncol,pver))
-   allocate(qvlat(ncol,pver))
-   allocate(qctend(ncol,pver))
-   allocate(qitend(ncol,pver))
-   allocate(qrtend(ncol,pver))
-   allocate(qstend(ncol,pver))
-   allocate(qgtend(ncol,pver))
-   allocate(nctend(ncol,pver))
-   allocate(nitend(ncol,pver))
-   allocate(nrtend(ncol,pver))
-   allocate(nstend(ncol,pver))
-   allocate(ngtend(ncol,pver))
-   tlat   = 0._r8
-   qvlat  = 0._r8
-   qctend = 0._r8
-   qitend = 0._r8
-   qrtend = 0._r8
-   qstend = 0._r8
-   qgtend = 0._r8
-   nctend = 0._r8
-   nitend = 0._r8
-   nrtend = 0._r8
-   nstend = 0._r8
-   ngtend = 0._r8
-   preci  = 0._r8
-   prect  = 0._r8
-
-   nan_array = nan
-
-   allocate(state_loc_t(ncol,pver))
-   allocate(state_loc_q(ncol,pver))
-   allocate(state_loc_pmid(ncol,pver))
-   allocate(state_loc_pdel(ncol,pver))
-   allocate(state_loc_liq(ncol,pver))
-   allocate(state_loc_ice(ncol,pver))
-   allocate(state_loc_numliq(ncol,pver))
-   allocate(state_loc_numice(ncol,pver))
-   allocate(state_loc_rain(ncol,pver))
-   allocate(state_loc_snow(ncol,pver))
-   allocate(state_loc_numrain(ncol,pver))
-   allocate(state_loc_numsnow(ncol,pver))
-   allocate(state_loc_graup(ncol,pver))
-   allocate(state_loc_numgraup(ncol,pver))
-   state_loc_t      = 0._r8
-   state_loc_q      = 0._r8
-   state_loc_pmid   = 0._r8
-   state_loc_pdel   = 0._r8
-   state_loc_liq    = 0._r8
-   state_loc_ice    = 0._r8
-   state_loc_numliq = 0._r8
-   state_loc_numice = 0._r8
-   state_loc_rain   = 0._r8
-   state_loc_snow   = 0._r8
-   state_loc_numrain = 0._r8
-   state_loc_numsnow = 0._r8
-   state_loc_graup  = 0._r8
-   state_loc_numgraup = 0._r8
 
    !-----------------------
    ! These physics buffer fields are calculated and set in this parameterization
@@ -2209,15 +2126,13 @@ subroutine micro_pumas_cam_tend(state, ptend, dtime, pbuf)
    ! and cldice in physics_update
    call physics_ptend_init(ptend, psetcols, "cldwat", ls=.true., lq=lq)
 
-     if (micro_mg_version > 1) then
-        if (micro_mg_version > 2) then
-           state_loc_graup(:ncol,:) = state_loc%q(:ncol,:,ixgraupel)
-           state_loc_numgraup(:ncol,:) = state_loc%q(:ncol,:,ixnumgraupel)
-        else
-           state_loc_graup(:ncol,:) = 0._r8
-           state_loc_numgraup(:ncol,:) = 0._r8
-        end if
-     end if
+   if (micro_mg_version > 2) then
+      state_loc_graup(:ncol,:) = state_loc%q(:ncol,:,ixgraupel)
+      state_loc_numgraup(:ncol,:) = state_loc%q(:ncol,:,ixnumgraupel)
+   else
+      state_loc_graup(:ncol,:) = 0._r8
+      state_loc_numgraup(:ncol,:) = 0._r8
+   end if
 
    ! Zero out values above top_lev before passing into _tend for some pbuf variables that are inputs
    naai(:ncol,:top_lev-1) = 0._r8
@@ -2226,10 +2141,6 @@ subroutine micro_pumas_cam_tend(state, ptend, dtime, pbuf)
    qsatfac(:ncol,:top_lev-1) = 1._r8
 
    do it = 1, num_steps
-
-! Set up the ptend_loc structure
-      call physics_ptend_init(ptend_loc, psetcols, "micro_pumas", &
-                              ls=.true., lq=lq)
 
       select case (micro_mg_version)
       case (1)
@@ -2243,8 +2154,8 @@ subroutine micro_pumas_cam_tend(state, ptend, dtime, pbuf)
                  ast(:ncol,:), alst_mic(:ncol,:),&
                  relvar(:ncol,:), accre_enhan(:ncol,:),                             &
                  aist_mic(:ncol,:), rate1cld(:ncol,:), naai(:ncol,:), npccn(:ncol,:),                 &
-                 rndst(:ncol,:,:), nacon(:ncol,:,:), tlat(:ncol,:), qvlat(:ncol,:), qctend(:ncol,:),                &
-                 qitend(:ncol,:), nctend(:ncol,:), nitend(:ncol,:), rel(:ncol,:), rel_fn_dum(:ncol,:),      &
+                 rndst(:ncol,:,:), nacon(:ncol,:,:), tlat(:ncol,:), qvlat(:ncol,:), qcten(:ncol,:),                &
+                 qiten(:ncol,:), ncten(:ncol,:), niten(:ncol,:), rel(:ncol,:), rel_fn_dum(:ncol,:),      &
                  rei(:ncol,:), prect(:ncol), preci(:ncol), nevapr(:ncol,:), evapsnow(:ncol,:), am_evp_st(:ncol,:), &
                  prain(:ncol,:), prodsnow(:ncol,:), cmeice(:ncol,:), dei(:ncol,:), mu(:ncol,:),                &
                  lambdac(:ncol,:), qsout(:ncol,:), des(:ncol,:), rflx(:ncol,:), sflx(:ncol,:),                 &
@@ -2279,11 +2190,11 @@ subroutine micro_pumas_cam_tend(state, ptend, dtime, pbuf)
               naai(:ncol,:),            npccn(:ncol,:),           &
               rndst(:ncol,:,:),    nacon(:ncol,:,:),           &
               tlat(:ncol,:),            qvlat(:ncol,:),           &
-              qctend(:ncol,:),          qitend(:ncol,:),          &
-              nctend(:ncol,:),          nitend(:ncol,:),          &
-              qrtend(:ncol,:),          qstend(:ncol,:),          &
-              nrtend(:ncol,:),          nstend(:ncol,:),          &
-              qgtend(:ncol,:),          ngtend(:ncol,:),          &
+              qcten(:ncol,:),          qiten(:ncol,:),          &
+              ncten(:ncol,:),          niten(:ncol,:),          &
+              qrten(:ncol,:),          qsten(:ncol,:),          &
+              nrten(:ncol,:),          nsten(:ncol,:),          &
+              qgten(:ncol,:),          ngten(:ncol,:),          &
               rel(:ncol,:),     rel_fn_dum(:ncol,:),     rei(:ncol,:),     &
               sadice(:ncol,:),          sadsnow(:ncol,:),         &
               prect(:ncol),           preci(:ncol),           &
@@ -2306,7 +2217,7 @@ subroutine micro_pumas_cam_tend(state, ptend, dtime, pbuf)
               qrsedten(:ncol,:),        qssedten(:ncol,:),        &
               prao(:ncol,:),             prco(:ncol,:),             &
               mnuccco(:ncol,:),  mnuccto(:ncol,:),  msacwio(:ncol,:),  &
-              psacwso(:ncol,:),  bergso(:ncol,:),   vapdepso(:ncol,:),  bergo(:ncol,:),    &
+              psacwso(:ncol,:),  bergso(:ncol,:),   vapdepso(:ncol,:),           bergo(:ncol,:),    &
               melto(:ncol,:),    meltstot(:ncol,:), meltgtot(:ncol,:),           homoo(:ncol,:),            &
               qcreso(:ncol,:),   prcio(:ncol,:),    praio(:ncol,:),    &
               qireso(:ncol,:),   mnuccro(:ncol,:),  mnudepo(:ncol,:), mnuccrio(:ncol,:), pracso(:ncol,:),   &
@@ -2314,8 +2225,8 @@ subroutine micro_pumas_cam_tend(state, ptend, dtime, pbuf)
               pracgo(:ncol,:),   psacwgo(:ncol,:),  pgsacwo(:ncol,:),  &
               pgracso(:ncol,:),  prdgo(:ncol,:),   &
               qmultgo(:ncol,:),  qmultrgo(:ncol,:), psacro(:ncol,:),   &
-              npracg(:ncol,:),  nscng(:ncol,:),   ngracs(:ncol,:),  &
-              nmultg(:ncol,:),  nmultrg(:ncol,:), npsacwg(:ncol,:), &
+              npracgo(:ncol,:),  nscngo(:ncol,:),   ngracso(:ncol,:),  &
+              nmultgo(:ncol,:),  nmultrgo(:ncol,:), npsacwgo(:ncol,:), &
               nrout(:ncol,:),           nsout(:ncol,:),           &
               refl(:ncol,:),    arefl(:ncol,:),   areflz(:ncol,:),  &
               frefl(:ncol,:),   csrfl(:ncol,:),   acsrfl(:ncol,:),  &
@@ -2335,33 +2246,36 @@ subroutine micro_pumas_cam_tend(state, ptend, dtime, pbuf)
 
       call handle_errmsg(errstring, subname="micro_pumas_tend")
 
+      call physics_ptend_init(ptend_loc, psetcols, "micro_pumas", &
+                              ls=.true., lq=lq)
+
       ! Set local tendency.
       ptend_loc%s(:ncol,:) = tlat(:ncol,:)
       ptend_loc%q(:ncol,:,1) = qvlat(:ncol,:)
-      ptend_loc%q(:ncol,:,ixcldliq) = qctend(:ncol,:)
-      ptend_loc%q(:ncol,:,ixcldice) = qitend(:ncol,:)
-      ptend_loc%q(:ncol,:,ixnumliq) = nctend(:ncol,:)
+      ptend_loc%q(:ncol,:,ixcldliq) = qcten(:ncol,:)
+      ptend_loc%q(:ncol,:,ixcldice) = qiten(:ncol,:)
+      ptend_loc%q(:ncol,:,ixnumliq) = ncten(:ncol,:)
 
       if (do_cldice) then
-         ptend_loc%q(:ncol,:,ixnumice) = nitend(:ncol,:)
+         ptend_loc%q(:ncol,:,ixnumice) = niten(:ncol,:)
       else
          ! In this case, the tendency should be all 0.
-         if (any(nitend(:ncol,:) /= 0._r8)) &
+         if (any(niten(:ncol,:) /= 0._r8)) &
               call endrun("micro_pumas_cam:ERROR - MG microphysics is configured not to prognose cloud ice,"// &
               " but micro_pumas_tend has ice number tendencies.")
          ptend_loc%q(:ncol,:,ixnumice) = 0._r8
       end if
 
       if (micro_mg_version > 1) then
-         ptend_loc%q(:ncol,:,ixrain) = qrtend(:ncol,:)
-         ptend_loc%q(:ncol,:,ixsnow) = qstend(:ncol,:)
-         ptend_loc%q(:ncol,:,ixnumrain) = nrtend(:ncol,:)
-         ptend_loc%q(:ncol,:,ixnumsnow) = nstend(:ncol,:)
+         ptend_loc%q(:ncol,:,ixrain) = qrten(:ncol,:)
+         ptend_loc%q(:ncol,:,ixsnow) = qsten(:ncol,:)
+         ptend_loc%q(:ncol,:,ixnumrain) = nrten(:ncol,:)
+         ptend_loc%q(:ncol,:,ixnumsnow) = nsten(:ncol,:)
       end if
 
       if (micro_mg_version > 2) then
-         ptend_loc%q(:ncol,:,ixgraupel) = qgtend(:ncol,:)
-         ptend_loc%q(:ncol,:,ixnumgraupel) = ngtend(:ncol,:)
+         ptend_loc%q(:ncol,:,ixgraupel) = qgten(:ncol,:)
+         ptend_loc%q(:ncol,:,ixnumgraupel) = ngten(:ncol,:)
       end if
 
       ! Save output variables
@@ -2442,11 +2356,11 @@ subroutine micro_pumas_cam_tend(state, ptend, dtime, pbuf)
    ! Microphysical tendencies for use in the macrophysics at the next time step
    CC_T(:ncol,top_lev:pver)    = tlat(:ncol,top_lev:pver)/cpair
    CC_qv(:ncol,top_lev:pver)   = qvlat(:ncol,top_lev:pver)
-   CC_ql(:ncol,top_lev:pver)   = qctend(:ncol,top_lev:pver)
-   CC_qi(:ncol,top_lev:pver)   = qitend(:ncol,top_lev:pver)
-   CC_nl(:ncol,top_lev:pver)   = nctend(:ncol,top_lev:pver)
-   CC_ni(:ncol,top_lev:pver)   = nitend(:ncol,top_lev:pver)
-   CC_qlst(:ncol,top_lev:pver) = qctend(:ncol,top_lev:pver)/max(0.01_r8,alst_mic(:ncol,top_lev:pver))
+   CC_ql(:ncol,top_lev:pver)   = qcten(:ncol,top_lev:pver)
+   CC_qi(:ncol,top_lev:pver)   = qiten(:ncol,top_lev:pver)
+   CC_nl(:ncol,top_lev:pver)   = ncten(:ncol,top_lev:pver)
+   CC_ni(:ncol,top_lev:pver)   = niten(:ncol,top_lev:pver)
+   CC_qlst(:ncol,top_lev:pver) = qcten(:ncol,top_lev:pver)/max(0.01_r8,alst_mic(:ncol,top_lev:pver))
 
    ! Net micro_pumas_cam condensation rate
    qme(:ncol,:top_lev-1) = 0._r8
@@ -3420,25 +3334,6 @@ subroutine micro_pumas_cam_tend(state, ptend, dtime, pbuf)
       deallocate(qsatfac)
    end if
 
-   deallocate(tlat)
-   deallocate(qvlat)
-   deallocate(qctend)
-   deallocate(qitend)
-   deallocate(qrtend)
-   deallocate(qstend)
-   deallocate(qgtend)
-   deallocate(state_loc_t)
-   deallocate(state_loc_q)
-   deallocate(state_loc_pmid)
-   deallocate(state_loc_pdel)
-   deallocate(state_loc_liq)
-   deallocate(state_loc_ice)
-   deallocate(state_loc_numliq)
-   deallocate(state_loc_numice)
-   deallocate(state_loc_rain)
-   deallocate(state_loc_snow)
-   deallocate(state_loc_numrain)
-   deallocate(state_loc_numsnow)
 end subroutine micro_pumas_cam_tend
 
 subroutine massless_droplet_destroyer(ztodt, state,  ptend)
