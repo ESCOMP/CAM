@@ -22,9 +22,7 @@
 ./xmlchange NTASKS_CPL=36
 ./xmlchange NTHRDS_CPL=1
 ./xmlchange ROOTPE_CPL='0'
-./xmlchange ROF_NCPL=\$ATM_NCPL
-./xmlchange GLC_NCPL=\$ATM_NCPL
-./xmlchange CAM_CONFIG_OPTS=' -microphys mg3' --append
+./xmlchange ROF_NCPL=`./xmlquery --value ATM_NCPL`
+./xmlchange GLC_NCPL=`./xmlquery --value ATM_NCPL`
 ./xmlchange TIMER_DETAIL='6'
 ./xmlchange TIMER_LEVEL='999'
-./xmlchange JOB_WALLCLOCK_TIME='00:30:00'
