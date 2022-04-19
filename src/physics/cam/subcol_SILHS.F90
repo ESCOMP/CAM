@@ -216,7 +216,6 @@ contains
             end if
          end if
          close(unitn)
-         call freeunit(unitn)
       end if
 
       ! Set default silhs_config_flags entires
@@ -244,7 +243,6 @@ contains
           end if
         end if
         close(unitn)
-        call freeunit(unitn)
       end if
 
       ! Save silhs_config_flags entries into module variable silhs_config_flags
@@ -478,6 +476,7 @@ contains
       call setup_corr_varnce_array_api( corr_file_path_cloud, corr_file_path_below, &
                                         getnewunit(iunit), &
                                         clubb_config_flags%l_fix_w_chi_eta_correlations )
+
       !-------------------------------
       ! Register output fields from SILHS
       !-------------------------------
