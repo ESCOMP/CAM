@@ -1761,8 +1761,8 @@ subroutine micro_pumas_cam_tend(state, ptend, dtime, pbuf)
    real(r8) :: es
    real(r8) :: qs
 
-   real(r8) :: state_loc_graup(pcols,pver)
-   real(r8) :: state_loc_numgraup(pcols,pver)
+   real(r8) :: state_loc_graup(state%psetcols,pver)
+   real(r8) :: state_loc_numgraup(state%psetcols,pver)
 
    real(r8), pointer :: cmeliq_grid(:,:)
 

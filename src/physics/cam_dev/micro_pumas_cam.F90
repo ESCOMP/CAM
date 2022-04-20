@@ -273,7 +273,7 @@ subroutine micro_pumas_cam_readnl(nlfile)
        micro_do_massless_droplet_destroyer, &
        micro_mg_evap_sed_off, micro_mg_icenuc_rh_off, micro_mg_icenuc_use_meyers, &
        micro_mg_evap_scl_ifs, micro_mg_evap_rhthrsh_ifs, &
-       micro_mg_rainfreeze_ifs, micro_mg_ifs_sed, micro_mg_precip_fall_corrr, &
+       micro_mg_rainfreeze_ifs, micro_mg_ifs_sed, micro_mg_precip_fall_corr, &
        micro_mg_accre_sees_auto, micro_mg_implicit_fall
 
   !-----------------------------------------------------------------------------
@@ -1778,8 +1778,8 @@ subroutine micro_pumas_cam_tend(state, ptend, dtime, pbuf)
    real(r8) :: es
    real(r8) :: qs
 
-   real(r8) :: state_loc_graup(pcols,pver)
-   real(r8) :: state_loc_numgraup(pcols,pver)
+   real(r8) :: state_loc_graup(state%psetcols,pver)
+   real(r8) :: state_loc_numgraup(state%psetcols,pver)
 
    real(r8), pointer :: cmeliq_grid(:,:)
 
