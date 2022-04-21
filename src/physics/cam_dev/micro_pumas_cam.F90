@@ -1910,6 +1910,10 @@ subroutine micro_pumas_cam_tend(state, ptend, dtime, pbuf)
       qsatfac = 1._r8
    end if
 
+   ! initialize tendency variables
+    preci  = 0._r8
+    prect  = 0._r8
+
    !-----------------------
    ! These physics buffer fields are calculated and set in this parameterization
    ! If subcolumns is turned on, then these fields will be calculated on a subcolumn grid, otherwise they will be a normal grid
