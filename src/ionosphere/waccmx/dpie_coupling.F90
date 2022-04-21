@@ -673,9 +673,9 @@ contains
        call regrid_phys2geo_3d( pmid, pmid_geo, plev, cols, cole )
        call regrid_phys2geo_3d( mbar, mbar_geo, plev, cols, cole )
 
-       call t_startf('dpie_halo')
        if (mytid<ntask) then
 
+          call t_startf('dpie_halo')
           do k = 1, nlev
              kk = nlev-k+1
              do j = lat0, lat1
