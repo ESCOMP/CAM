@@ -43,8 +43,10 @@ module check_energy
   public :: check_energy_get_integrals ! get energy integrals computed in check_energy_gmean
   public :: check_energy_init      ! initialization of module
   public :: check_energy_timestep_init  ! timestep initialization of energy integrals and cumulative boundary fluxes
+  public :: check_energy_budget_init    ! initialization of energy budget integrals
   public :: check_energy_chng      ! check changes in integrals against cumulative boundary fluxes
   public :: check_energy_gmean     ! global means of physics input and output total energy
+  public :: check_energy_budget    ! global budgets of physics energies
   public :: check_energy_fix       ! add global mean energy difference as a heating
   public :: check_tracers_init      ! initialize tracer integrals and cumulative boundary fluxes
   public :: check_tracers_chng      ! check changes in integrals against cumulative boundary fluxes
@@ -207,6 +209,16 @@ end subroutine check_energy_get_integrals
        call add_default ('DTCORE', 1, ' ')
     end if
 
+! register history budget variables
+    call addfld('BP_phy_params',  horiz_only,  'A', 'W/m2', 'dE/dt CAM physics parameterizations (phAP-phBP)')
+    call addfld('BD_phy_params',  horiz_only,  'A', 'W/m2', 'dE/dt CAM physics parameterizations using dycore E (dyAP-dyBP)')
+    call addfld('BP_pwork',  horiz_only,  'A', 'W/m2', 'dE/dt dry mass adjustment (phAM-phAP)')
+    call addfld('BD_pwork',  horiz_only,  'A', 'W/m2', 'dE/dt dry mass adjustment using dycore E (dyAM-dyAP)')
+    call addfld('BP_efix',  horiz_only,  'A', 'W/m2', 'dE/dt energy fixer (phBP-phBF)')
+    call addfld('BD_efix',  horiz_only,  'A', 'W/m2', 'dE/dt energy fixer using dycore E (dyBP-dyBF)')
+    call addfld('BP_phys_tot',  horiz_only,  'A', 'W/m2', 'dE/dt physics total (phAM-phBF)')
+    call addfld('BD_phys_tot',  horiz_only,  'A', 'W/m2', 'dE/dt physics total using dycore E (dyAM-dyBF)')
+
   end subroutine check_energy_init
 
 !===============================================================================
@@ -299,6 +311,32 @@ end subroutine check_energy_get_integrals
   end subroutine check_energy_timestep_init
 
 !===============================================================================
+  subroutine check_energy_budget_init(state)
+!-----------------------------------------------------------------------
+! Compute initial values of energy and water integrals,
+! zero cumulative tendencies
+!-----------------------------------------------------------------------
+    use cam_history,       only: addfld, add_default, horiz_only
+!------------------------------Arguments--------------------------------
+
+    type(physics_state),   intent(inout)    :: state
+!---------------------------Local storage-------------------------------
+    integer ncol                                   ! number of atmospheric columns
+!-----------------------------------------------------------------------
+
+    ncol  = state%ncol
+! zero cummulative boundary fluxes
+    state%te_AP(:ncol,:) = 0._r8
+    state%te_BP(:ncol,:) = 0._r8
+    state%te_BF(:ncol,:) = 0._r8
+    state%te_AM(:ncol,:) = 0._r8
+    state%teAPcnt(:) = 0
+    state%teBPcnt(:) = 0
+    state%teBFcnt(:) = 0
+    state%teAMcnt(:) = 0
+  end subroutine check_energy_budget_init
+
+!===============================================================================
 
   subroutine check_energy_chng(state, tend, name, nstep, ztodt,        &
        flx_vap, flx_cnd, flx_ice, flx_sen)
@@ -345,6 +383,12 @@ end subroutine check_energy_get_integrals
     real(r8) :: scaling(state%psetcols,pver)       ! scaling for conversion of temperature increment
     real(r8) :: temp(state%ncol,pver)              ! temperature
 
+    real(r8) :: se(pcols)                          ! Dry Static energy (J/m2)
+    real(r8) :: ke(pcols)                          ! kinetic energy    (J/m2)
+    real(r8) :: wv(pcols)                          ! column integrated vapor       (kg/m2)
+    real(r8) :: liq(pcols)                         ! column integrated liquid      (kg/m2)
+    real(r8) :: ice(pcols)                         ! column integrated ice         (kg/m2)
+
     integer lchnk                                  ! chunk identifier
     integer ncol                                   ! number of atmospheric columns
     integer  i,k                                   ! column, level indices
@@ -371,8 +415,7 @@ end subroutine check_energy_get_integrals
          state%pdel(1:ncol,1:pver), cp_or_cv(1:ncol,1:pver),                         &
          state%u(1:ncol,1:pver), state%v(1:ncol,1:pver), state%T(1:ncol,1:pver),     &
          vc_physics, ps = state%ps(1:ncol), phis = state%phis(1:ncol),               &
-         te = te, H2O = tw)
-
+         te = te, H2O = tw, se=se,ke=ke,wv=wv,liq=liq,ice=ice)
     ! compute expected values and tendencies
     do i = 1, ncol
        ! change in static energy and total water
@@ -455,7 +498,8 @@ end subroutine check_energy_get_integrals
            state%u(1:ncol,1:pver), state%v(1:ncol,1:pver), temp(1:ncol,1:pver),        &
            vc_dycore, ps = state%ps(1:ncol), phis = state%phis(1:ncol),                &
            z = state%z_ini(1:ncol,:),                                                  &
-           te = state%te_cur(1:ncol,dyn_te_idx), H2O = state%tw_cur(1:ncol,dyn_te_idx))
+           te = state%te_cur(1:ncol,dyn_te_idx), H2O = state%tw_cur(1:ncol,dyn_te_idx), &
+           se=se, ke=ke, wv=wv, liq=liq, ice=ice)
     else
       state%te_cur(1:ncol,dyn_te_idx) = te(1:ncol)
       state%tw_cur(1:ncol,dyn_te_idx) = tw(1:ncol)
@@ -528,6 +572,95 @@ end subroutine check_energy_get_integrals
     end if  !  (begchunk .le. endchunk)
 
   end subroutine check_energy_gmean
+
+  subroutine check_energy_budget(state, pbuf2d, dtime, nstep)
+
+    use cam_history,     only: outfld
+    use physics_buffer,  only: physics_buffer_desc, pbuf_get_field, pbuf_get_chunk
+    use dyn_tests_utils, only: vc_dycore, vc_height
+    use physics_types,   only: phys_te_idx, dyn_te_idx
+!-----------------------------------------------------------------------
+! Compute global mean total energy of physics input and output states
+! computed consistently with dynamical core vertical coordinate
+! (under hydrostatic assumption)
+!-----------------------------------------------------------------------
+!------------------------------Arguments--------------------------------
+
+    type(physics_state), intent(in   ), dimension(begchunk:endchunk) :: state
+    type(physics_buffer_desc),    pointer    :: pbuf2d(:,:)
+
+    real(r8), intent(in) :: dtime        ! physics time step
+    integer , intent(in) :: nstep        ! current timestep number
+
+!---------------------------Local storage-------------------------------
+    integer :: ncol                      ! number of active columns
+    integer :: lchnk                     ! chunk index
+
+    real(r8) :: te(pcols,begchunk:endchunk,8)
+                                         ! total energy of input/output states (copy)
+    real(r8) :: te_glob(8)               ! global means of total energy
+    real(r8) :: phparam,dyparam,phpwork,dypwork,phefix,dyefix,phphys,dyphys
+!-----------------------------------------------------------------------
+
+    ! Copy total energy out of input and output states
+    do lchnk = begchunk, endchunk
+       ncol = state(lchnk)%ncol
+       if (state(lchnk)%teAPcnt(phys_te_idx)==0.or.state(lchnk)%teBPcnt(phys_te_idx)==0) then
+          te(:ncol,lchnk,1:2)=0._r8
+       else
+          te(:ncol,lchnk,1) = (state(lchnk)%te_AP(:ncol,dyn_te_idx)-state(lchnk)%te_BP(:ncol,dyn_te_idx))/state(lchnk)%teAPcnt(dyn_te_idx)/dtime
+          te(:ncol,lchnk,2) = (state(lchnk)%te_AP(:ncol,phys_te_idx)-state(lchnk)%te_BP(:ncol,phys_te_idx))/state(lchnk)%teAPcnt(phys_te_idx)/dtime
+       end if
+       if (state(lchnk)%teAMcnt(phys_te_idx)==0.or.state(lchnk)%teAPcnt(phys_te_idx)==0) then
+          te(:ncol,lchnk,3:4)=0._r8
+       else
+          te(:ncol,lchnk,3) = (state(lchnk)%te_AM(:ncol,dyn_te_idx)-state(lchnk)%te_AP(:ncol,dyn_te_idx))/state(lchnk)%teAMcnt(dyn_te_idx)/dtime
+          te(:ncol,lchnk,4) = (state(lchnk)%te_AM(:ncol,phys_te_idx)-state(lchnk)%te_AP(:ncol,phys_te_idx))/state(lchnk)%teAMcnt(phys_te_idx)/dtime
+       end if
+       if (state(lchnk)%teBPcnt(phys_te_idx)==0.or.state(lchnk)%teBFcnt(phys_te_idx)==0) then
+          te(:ncol,lchnk,5:6)=0._r8
+       else
+          te(:ncol,lchnk,5) = (state(lchnk)%te_BP(:ncol,dyn_te_idx)-state(lchnk)%te_BF(:ncol,dyn_te_idx))/state(lchnk)%teBPcnt(dyn_te_idx)/dtime
+          te(:ncol,lchnk,6) = (state(lchnk)%te_BP(:ncol,phys_te_idx)-state(lchnk)%te_BF(:ncol,phys_te_idx))/state(lchnk)%teBPcnt(phys_te_idx)/dtime
+       end if
+       if (state(lchnk)%teAMcnt(phys_te_idx)==0.or.state(lchnk)%teBFcnt(phys_te_idx)==0) then
+          te(:ncol,lchnk,7:8)=0._r8
+       else
+          te(:ncol,lchnk,7) = (state(lchnk)%te_AM(:ncol,dyn_te_idx)-state(lchnk)%te_BF(:ncol,dyn_te_idx))/state(lchnk)%teBFcnt(dyn_te_idx)/dtime
+          te(:ncol,lchnk,8) = (state(lchnk)%te_AM(:ncol,phys_te_idx)-state(lchnk)%te_BF(:ncol,phys_te_idx))/state(lchnk)%teBFcnt(phys_te_idx)/dtime
+       end if
+
+       call outfld('BP_phy_params', te(:ncol,lchnk,1), pcols, lchnk)
+       call outfld('BD_phy_params', te(:ncol,lchnk,2), pcols, lchnk)
+       call outfld('BP_pwork', te(:ncol,lchnk,3), pcols, lchnk)
+       call outfld('BD_pwork', te(:ncol,lchnk,4), pcols, lchnk)
+       call outfld('BP_efix', te(:ncol,lchnk,5), pcols, lchnk)
+       call outfld('BD_efix', te(:ncol,lchnk,6), pcols, lchnk)
+       call outfld('BP_phys_tot', te(:ncol,lchnk,7), pcols, lchnk)
+       call outfld('BD_phys_tot', te(:ncol,lchnk,8), pcols, lchnk)
+
+    end do
+
+    ! Compute global means of input and output energies and of
+    ! surface pressure for heating rate (assume uniform ptop)
+    call gmean(te, te_glob, 8)
+
+    if (begchunk .le. endchunk) then
+       dyparam = te_glob(1)
+       phparam = te_glob(2)
+       dypwork = te_glob(3)
+       phpwork = te_glob(4)
+       dyefix = te_glob(5)
+       phefix = te_glob(6)
+       dyphys = te_glob(7)
+       phphys = te_glob(8)
+       if (masterproc) then
+          write(iulog,'(1x,a,1x,4(1x,e25.17))') "nstep, phys param,pwork,efix,phys", phparam, phpwork, phefix, phphys
+          write(iulog,'(1x,a,1x,4(1x,e25.17))') "nstep, dyn param,pwork,efix,phys", dyparam, dypwork, dyefix, dyphys
+       end if
+    end if  !  (begchunk .le. endchunk)
+
+  end subroutine check_energy_budget
 
 !===============================================================================
   subroutine check_energy_fix(state, ptend, nstep, eshflx)
@@ -779,15 +912,18 @@ end subroutine check_energy_get_integrals
 
 !#######################################################################
 
-  subroutine calc_te_and_aam_budgets(state, outfld_name_suffix,vc)
+  subroutine calc_te_and_aam_budgets(state, outfld_name_suffix, te_budget, te_budget_cnt, vc)
     use physconst,       only: gravit,cpair,pi,rearth,omega,get_hydrostatic_energy
     use cam_history,     only: hist_fld_active, outfld
     use dyn_tests_utils, only: vc_physics, vc_height
     use cam_abortutils,  only: endrun
+    use physics_types,   only: phys_te_idx, dyn_te_idx
 !------------------------------Arguments--------------------------------
 
     type(physics_state), intent(inout) :: state
     character(len=*),    intent(in)    :: outfld_name_suffix ! suffix for "outfld"
+    real(r8),optional,   intent(inout) :: te_budget(pcols,2)   ! se + ke
+    integer, optional,   intent(inout) :: te_budget_cnt(2)   ! te budget counts for physics and dynamics energies
     integer, optional,   intent(in)    :: vc                 ! vertical coordinate
 
 !---------------------------Local storage-------------------------------
@@ -809,6 +945,7 @@ end subroutine check_energy_get_integrals
     integer :: ncol                                ! number of atmospheric columns
     integer :: i,k                                 ! column, level indices
     integer :: vc_loc                              ! local vertical coordinate variable
+    integer :: index_loc                           ! use physics or dynamics array position for te_budget
     integer :: ixtt                                ! test tracer index
     character(len=16) :: name_out1,name_out2,name_out3,name_out4,name_out5,name_out6
 !-----------------------------------------------------------------------
@@ -827,8 +964,10 @@ end subroutine check_energy_get_integrals
       ncol  = state%ncol
 
       if (present(vc)) then
+        index_loc=dyn_te_idx
         vc_loc = vc
       else
+        index_loc=phys_te_idx
         vc_loc = vc_physics
       end if
 
@@ -859,6 +998,13 @@ end subroutine check_energy_get_integrals
            vc_loc, ps = state%ps(1:ncol), phis = state%phis(1:ncol),                   &
            z = state%z_ini(1:ncol,:), se = se, ke = ke, wv = wv, liq = liq, ice = ice)
 
+      if (present(te_budget)) then
+!jt         te_budget(1:ncol,index_loc)=te_budget(1:ncol,index_loc)+(se(1:ncol)+ke(1:ncol))*state%area_scale(1:ncol,index_loc)
+!jt         te_budget_cnt(index_loc)=te_budget_cnt(index_loc) + 1
+!jt         te_budget(1:ncol,index_loc)=(se(1:ncol)+ke(1:ncol))*state%area_scale(1:ncol,index_loc)
+         te_budget(1:ncol,index_loc)=(se(1:ncol)+ke(1:ncol))
+         te_budget_cnt(index_loc)= 1
+      end if
       call cnst_get_ind('TT_LW' , ixtt    , abort=.false.)
 
       tt    = 0._r8

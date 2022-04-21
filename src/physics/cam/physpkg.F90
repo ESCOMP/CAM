@@ -763,6 +763,7 @@ contains
     use nudging,            only: Nudge_Model, nudging_init
     use cam_snapshot,       only: cam_snapshot_init
     use cam_history,        only: addfld, register_vector_field, add_default
+    use check_energy,       only: check_energy_budget_init
     use phys_control,       only: phys_getopts
 
     ! Input/output arguments
@@ -788,6 +789,7 @@ contains
 
     do lchnk = begchunk, endchunk
        call physics_state_set_grid(lchnk, phys_state(lchnk))
+       call check_energy_budget_init(phys_state(lchnk))
     end do
 
     !-------------------------------------------------------------------------------------------
@@ -1044,7 +1046,7 @@ contains
     !-----------------------------------------------------------------------
     use time_manager,   only: get_nstep
     use cam_diagnostics,only: diag_allocate, diag_physvar_ic
-    use check_energy,   only: check_energy_gmean
+    use check_energy,   only: check_energy_gmean, check_energy_budget
     use phys_control,   only: phys_getopts
     use spcam_drivers,  only: tphysbc_spcam
     use spmd_utils,     only: mpicom
@@ -1097,6 +1099,7 @@ contains
     ! Compute total energy of input state and previous output state
     call t_startf ('chk_en_gmean')
     call check_energy_gmean(phys_state, pbuf2d, ztodt, nstep)
+    call check_energy_budget(phys_state, pbuf2d ,ztodt,nstep)
     call t_stopf ('chk_en_gmean')
 
     call t_stopf ('physpkg_st1')
@@ -1801,8 +1804,8 @@ contains
                     fh2o, surfric, obklen, flx_heat)
     end if
 
-    call calc_te_and_aam_budgets(state, 'phAP')
-    call calc_te_and_aam_budgets(state, 'dyAP',vc=vc_dycore)
+    call calc_te_and_aam_budgets(state, 'phAP', state%te_AP, state%teAPcnt)
+    call calc_te_and_aam_budgets(state, 'dyAP', state%te_AP, state%teAPcnt, vc=vc_dycore)
 
     !---------------------------------------------------------------------------------
     ! Enforce charge neutrality after O+ change from ionos_tend
@@ -1880,8 +1883,8 @@ contains
 
       call physics_dme_adjust(state, tend, qini, ztodt)
 
-      call calc_te_and_aam_budgets(state, 'phAM')
-      call calc_te_and_aam_budgets(state, 'dyAM',vc=vc_dycore)
+      call calc_te_and_aam_budgets(state, 'phAM', state%te_AM, state%teAMcnt)
+      call calc_te_and_aam_budgets(state, 'dyAM', state%te_AM, state%teAMcnt, vc=vc_dycore)
       ! Restore pre-"physics_dme_adjust" tracers
       state%q(:ncol,:pver,:pcnst) = tmp_trac(:ncol,:pver,:pcnst)
       state%pdel(:ncol,:pver)     = tmp_pdel(:ncol,:pver)
@@ -1902,8 +1905,8 @@ contains
                     fh2o, surfric, obklen, flx_heat)
       end if
 
-      call calc_te_and_aam_budgets(state, 'phAM')
-      call calc_te_and_aam_budgets(state, 'dyAM',vc=vc_dycore)
+      call calc_te_and_aam_budgets(state, 'phAM', state%te_AM, state%teAMcnt)
+      call calc_te_and_aam_budgets(state, 'dyAM', state%te_AM, state%teAMcnt, vc=vc_dycore)
     endif
 
 !!!   REMOVE THIS CALL, SINCE ONLY Q IS BEING ADJUSTED. WON'T BALANCE ENERGY. TE IS SAVED BEFORE THIS
@@ -1939,7 +1942,7 @@ contains
   end subroutine tphysac
 
   subroutine tphysbc (ztodt, state,  &
-       tend,    pbuf,              &
+       tend,    pbuf,                &
        cam_out, cam_in )
     !-----------------------------------------------------------------------
     !
@@ -2193,16 +2196,16 @@ contains
     !===================================================
     call t_startf('energy_fixer')
 
-    call calc_te_and_aam_budgets(state, 'phBF')
-    call calc_te_and_aam_budgets(state, 'dyBF',vc=vc_dycore)
+    call calc_te_and_aam_budgets(state, 'phBF', state%te_BF, state%teBFcnt)
+    call calc_te_and_aam_budgets(state, 'dyBF', state%te_BF, state%teBFcnt, vc=vc_dycore)
     if (.not.dycore_is('EUL')) then
        call check_energy_fix(state, ptend, nstep, flx_heat)
        call physics_update(state, ptend, ztodt, tend)
        call check_energy_chng(state, tend, "chkengyfix", nstep, ztodt, zero, zero, zero, flx_heat)
        call outfld( 'EFIX', flx_heat    , pcols, lchnk   )
     end if
-    call calc_te_and_aam_budgets(state, 'phBP')
-    call calc_te_and_aam_budgets(state, 'dyBP',vc=vc_dycore)
+    call calc_te_and_aam_budgets(state, 'phBP', state%te_BP, state%teBPcnt)
+    call calc_te_and_aam_budgets(state, 'dyBP', state%te_BP, state%teBPcnt, vc=vc_dycore)
     ! Save state for convective tendency calculations.
     call diag_conv_tend_ini(state, pbuf)
 
