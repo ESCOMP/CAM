@@ -1915,7 +1915,7 @@
 <clubb_l_use_thvm_in_bv_freq                      > .false. </clubb_l_use_thvm_in_bv_freq>
 <clubb_l_vert_avg_closure                         > .true.  </clubb_l_vert_avg_closure>
 <clubb_l_damp_wp2_using_em                        > .false. </clubb_l_damp_wp2_using_em>
-<clubb_l_e3sm_config                              > .true.  </clubb_l_e3sm_config>
+<clubb_l_e3sm_config                              > .false.  </clubb_l_e3sm_config>
 
 <!-- SILHS options -->
 <clubb_do_icesuper                      silhs="1" > .true.  </clubb_do_icesuper>
