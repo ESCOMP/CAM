@@ -605,39 +605,58 @@ end subroutine check_energy_get_integrals
     ! Copy total energy out of input and output states
     do lchnk = begchunk, endchunk
        ncol = state(lchnk)%ncol
-       if (state(lchnk)%teAPcnt(phys_te_idx)==0.or.state(lchnk)%teBPcnt(phys_te_idx)==0) then
-          te(:ncol,lchnk,1:2)=0._r8
+       if (state(lchnk)%teAPcnt(dyn_te_idx)==0.or.state(lchnk)%teBPcnt(dyn_te_idx)==0) then
+          te(:ncol,lchnk,1)=0._r8
        else
           te(:ncol,lchnk,1) = (state(lchnk)%te_AP(:ncol,dyn_te_idx)-state(lchnk)%te_BP(:ncol,dyn_te_idx))/state(lchnk)%teAPcnt(dyn_te_idx)/dtime
+       end if
+       if (state(lchnk)%teAPcnt(phys_te_idx)==0.or.state(lchnk)%teBPcnt(phys_te_idx)==0) then
+          te(:ncol,lchnk,2)=0._r8
+       else
           te(:ncol,lchnk,2) = (state(lchnk)%te_AP(:ncol,phys_te_idx)-state(lchnk)%te_BP(:ncol,phys_te_idx))/state(lchnk)%teAPcnt(phys_te_idx)/dtime
        end if
-       if (state(lchnk)%teAMcnt(phys_te_idx)==0.or.state(lchnk)%teAPcnt(phys_te_idx)==0) then
-          te(:ncol,lchnk,3:4)=0._r8
+
+       if (state(lchnk)%teAMcnt(dyn_te_idx)==0.or.state(lchnk)%teAPcnt(dyn_te_idx)==0) then
+          te(:ncol,lchnk,3)=0._r8
        else
           te(:ncol,lchnk,3) = (state(lchnk)%te_AM(:ncol,dyn_te_idx)-state(lchnk)%te_AP(:ncol,dyn_te_idx))/state(lchnk)%teAMcnt(dyn_te_idx)/dtime
+       end if
+       if (state(lchnk)%teAMcnt(phys_te_idx)==0.or.state(lchnk)%teAPcnt(phys_te_idx)==0) then
+          te(:ncol,lchnk,4)=0._r8
+       else
           te(:ncol,lchnk,4) = (state(lchnk)%te_AM(:ncol,phys_te_idx)-state(lchnk)%te_AP(:ncol,phys_te_idx))/state(lchnk)%teAMcnt(phys_te_idx)/dtime
        end if
-       if (state(lchnk)%teBPcnt(phys_te_idx)==0.or.state(lchnk)%teBFcnt(phys_te_idx)==0) then
-          te(:ncol,lchnk,5:6)=0._r8
+
+       if (state(lchnk)%teBPcnt(dyn_te_idx)==0.or.state(lchnk)%teBFcnt(dyn_te_idx)==0) then
+          te(:ncol,lchnk,5)=0._r8
        else
           te(:ncol,lchnk,5) = (state(lchnk)%te_BP(:ncol,dyn_te_idx)-state(lchnk)%te_BF(:ncol,dyn_te_idx))/state(lchnk)%teBPcnt(dyn_te_idx)/dtime
+       end if
+       if (state(lchnk)%teBPcnt(phys_te_idx)==0.or.state(lchnk)%teBFcnt(phys_te_idx)==0) then
+          te(:ncol,lchnk,6)=0._r8
+       else
           te(:ncol,lchnk,6) = (state(lchnk)%te_BP(:ncol,phys_te_idx)-state(lchnk)%te_BF(:ncol,phys_te_idx))/state(lchnk)%teBPcnt(phys_te_idx)/dtime
        end if
-       if (state(lchnk)%teAMcnt(phys_te_idx)==0.or.state(lchnk)%teBFcnt(phys_te_idx)==0) then
-          te(:ncol,lchnk,7:8)=0._r8
+
+       if (state(lchnk)%teAMcnt(dyn_te_idx)==0.or.state(lchnk)%teBFcnt(dyn_te_idx)==0) then
+          te(:ncol,lchnk,7)=0._r8
        else
           te(:ncol,lchnk,7) = (state(lchnk)%te_AM(:ncol,dyn_te_idx)-state(lchnk)%te_BF(:ncol,dyn_te_idx))/state(lchnk)%teBFcnt(dyn_te_idx)/dtime
+       end if
+       if (state(lchnk)%teAMcnt(phys_te_idx)==0.or.state(lchnk)%teBFcnt(phys_te_idx)==0) then
+          te(:ncol,lchnk,8)=0._r8
+       else
           te(:ncol,lchnk,8) = (state(lchnk)%te_AM(:ncol,phys_te_idx)-state(lchnk)%te_BF(:ncol,phys_te_idx))/state(lchnk)%teBFcnt(phys_te_idx)/dtime
        end if
 
-       call outfld('BP_phy_params', te(:ncol,lchnk,1), pcols, lchnk)
-       call outfld('BD_phy_params', te(:ncol,lchnk,2), pcols, lchnk)
-       call outfld('BP_pwork', te(:ncol,lchnk,3), pcols, lchnk)
-       call outfld('BD_pwork', te(:ncol,lchnk,4), pcols, lchnk)
-       call outfld('BP_efix', te(:ncol,lchnk,5), pcols, lchnk)
-       call outfld('BD_efix', te(:ncol,lchnk,6), pcols, lchnk)
-       call outfld('BP_phys_tot', te(:ncol,lchnk,7), pcols, lchnk)
-       call outfld('BD_phys_tot', te(:ncol,lchnk,8), pcols, lchnk)
+       call outfld('BD_phy_params', te(:ncol,lchnk,1), pcols, lchnk)
+       call outfld('BP_phy_params', te(:ncol,lchnk,2), pcols, lchnk)
+       call outfld('BD_pwork', te(:ncol,lchnk,3), pcols, lchnk)
+       call outfld('BP_pwork', te(:ncol,lchnk,4), pcols, lchnk)
+       call outfld('BD_efix', te(:ncol,lchnk,5), pcols, lchnk)
+       call outfld('BP_efix', te(:ncol,lchnk,6), pcols, lchnk)
+       call outfld('BD_phys_tot', te(:ncol,lchnk,7), pcols, lchnk)
+       call outfld('BP_phys_tot', te(:ncol,lchnk,8), pcols, lchnk)
 
     end do
 
@@ -970,7 +989,7 @@ end subroutine check_energy_get_integrals
         index_loc=phys_te_idx
         vc_loc = vc_physics
       end if
-
+      write(6,*)'calc_te index_loc,outfld_name_suffix,present(vc)=',index_loc,outfld_name_suffix,present(vc)
       if (state%psetcols == pcols) then
         if (vc_loc == vc_height) then
           !
