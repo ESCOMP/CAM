@@ -1894,20 +1894,8 @@ subroutine micro_pumas_cam_tend(state, ptend, dtime, pbuf)
    end if
 
    ! initialize tendency variables
-!   tlat   = 0._r8
-!   qvlat  = 0._r8
-!   qcten = 0._r8
-!   qiten = 0._r8
-!   qrten = 0._r8
-!   qsten = 0._r8
-!   qgten = 0._r8
-!   ncten = 0._r8
-!   niten = 0._r8
-!   nrten = 0._r8
-!   nsten = 0._r8
-!   ngten = 0._r8
-!   preci  = 0._r8
-!   prect  = 0._r8
+    preci  = 0._r8
+    prect  = 0._r8
 
 
    !-----------------------
