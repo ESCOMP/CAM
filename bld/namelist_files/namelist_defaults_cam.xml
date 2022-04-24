@@ -1823,9 +1823,6 @@
 <!-- CLUBB options -->
 <clubb_do_icesuper                                > .false. </clubb_do_icesuper>
 <clubb_cloudtop_cooling                           > .false. </clubb_cloudtop_cooling>
-<clubb_expldiff                                   > .false. </clubb_expldiff>
-<clubb_expldiff       clubb_sgs="1"               > .true.  </clubb_expldiff>
-<clubb_expldiff       clubb_sgs="1" silhs="1"     > .false. </clubb_expldiff>
 <clubb_rainevap_turb                              > .false. </clubb_rainevap_turb>
 <clubb_rnevap_effic                               > 1.0D0   </clubb_rnevap_effic>
 
@@ -1915,7 +1912,8 @@
 <clubb_l_use_thvm_in_bv_freq                      > .false. </clubb_l_use_thvm_in_bv_freq>
 <clubb_l_vert_avg_closure                         > .true.  </clubb_l_vert_avg_closure>
 <clubb_l_damp_wp2_using_em                        > .false. </clubb_l_damp_wp2_using_em>
-<clubb_l_e3sm_config                              > .false.  </clubb_l_e3sm_config>
+<clubb_l_do_expldiff_rtm_thlm                     > .false. </clubb_l_do_expldiff_rtm_thlm>
+<clubb_l_e3sm_config                              > .false. </clubb_l_e3sm_config>
 
 <!-- SILHS options -->
 <clubb_do_icesuper                      silhs="1" > .true.  </clubb_do_icesuper>

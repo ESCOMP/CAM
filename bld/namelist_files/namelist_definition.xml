@@ -3524,11 +3524,6 @@ Include effects of precip evaporation on turbulent moments
 Default: .false.
 </entry>
 
-<entry id="clubb_expldiff" type="logical"  category="pblrad"
-       group="clubbpbl_diff_nl" valid_values="" >
-Explicit diffusion on temperature and moisture when CLUBB is on
-Default: .false.
-</entry>
 
 <!-- Clubb timestep -->
 <entry id="clubb_timestep" type="real" category="pblrad"
@@ -4022,6 +4017,13 @@ Default: .false.
        group="clubb_params_nl" valid_values="" >
 Flag to use a dissipation formula of -(2/3)*em/tau_zm, as in Bougeault (1981),
 in the wp2 (variance of vertical velocity) predictive equation.
+</entry>
+
+<entry id="clubb_l_do_expldiff_rtm_thlm" type="logical"  category="pblrad"
+       group="clubb_params_nl" valid_values="" >
+Explicit diffusion on temperature and moisture by CLUBB, in addition to CLUBB's
+normal prognostic equations for rtm and thlm.
+Default: .false.
 </entry>
 
 <entry id="clubb_do_energyfix" type="logical"  category="conv"
