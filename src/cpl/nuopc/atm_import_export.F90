@@ -308,8 +308,11 @@ contains
     real(r8)              :: max_med2mod_areacor_glob
     real(r8)              :: min_mod2med_areacor_glob
     real(r8)              :: min_med2mod_areacor_glob
-    logical               :: samegrid_atm_lnd_ocn
     character(len=cl)     :: cvalue
+    character(len=cl)     :: mesh_atm
+    character(len=cl)     :: mesh_lnd
+    character(len=cl)     :: mesh_ocn
+    logical               :: samegrid_atm_lnd_ocn
     character(len=*), parameter :: subname='(atm_import_export:realize_fields)'
     !---------------------------------------------------------------------------
 
@@ -340,13 +343,21 @@ contains
          mesh=Emesh, rc=rc)
     if (ChkErr(rc,__LINE__,u_FILE_u)) return
 
-    call NUOPC_CompAttributeGet(gcomp, name='samegrid_atm_lnd_ocn', value=cvalue, isPresent=isPresent, isSet=isSet, rc=rc)
+    ! Determine if atm/lnd/ocn are on the same grid - if so set area correction factors to 1
+    call NUOPC_CompAttributeGet(gcomp, name='mesh_atm', value=mesh_atm, rc=rc)
     if (ChkErr(rc,__LINE__,u_FILE_u)) return
-    if (isPresent .and. isSet) then
-       read(cvalue,*) samegrid_atm_lnd_ocn
-       if (masterproc) write(iulog,'(a)') trim(subname)//'samegrid_atm_lnd_ocn = '// trim(cvalue)
-    else
-       samegrid_atm_lnd_ocn = .false.
+    call NUOPC_CompAttributeGet(gcomp, name='mesh_lnd', value=mesh_lnd, rc=rc)
+    if (ChkErr(rc,__LINE__,u_FILE_u)) return
+    call NUOPC_CompAttributeGet(gcomp, name='mesh_ocn', value=mesh_ocn, rc=rc)
+    if (ChkErr(rc,__LINE__,u_FILE_u)) return
+    samegrid_atm_lnd_ocn = .false
+    if ( trim(mesh_lnd) /= 'UNSET' .and. trim(mesh_atm) == trim(mesh_lnd) .and. &
+         trim(mesh_ocn) /= 'UNSET' .and. trim(mesh_atm) == trim(mesh_ocn)) then
+       samegrid_atm_ocn = .true.
+    elseif ( trim(mesh_lnd) == 'UNSET' .and. trim(mesh_atm) == trim(mesh_ocn)) then
+       samegrid_atm_ocn = .true.
+    elseif ( trim(mesh_ocn) == 'UNSET' .and. trim(mesh_atm) == trim(mesh_lnd)) then
+       samegrid_atm_ocn = .true.
     end if
 
     ! allocate area correction factors
