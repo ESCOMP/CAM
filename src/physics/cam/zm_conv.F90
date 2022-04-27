@@ -17,11 +17,13 @@ module zm_conv
   use ppgrid,          only: pcols, pver, pverp
   use cloud_fraction,  only: cldfrc_fice
   use physconst,       only: cpair, epsilo, gravit, latice, latvap, tmelt, rair, &
-                             cpwv, cpliq, rh2o
+                             cpwv, cpliq, rh2o,r_universal
   use cam_abortutils,  only: endrun
   use cam_logfile,     only: iulog
   use zm_microphysics, only: zm_mphy, zm_aero_t, zm_conv_t
   use cam_history,     only: outfld
+
+
 
   implicit none
 
@@ -80,6 +82,13 @@ module zm_conv
    real(r8) :: tiedke_add      ! namelist configurable
    real(r8) :: dmpdz_param     ! namelist configurable
 
+
+! RBN: KE parcel
+   logical :: ltau_dynamic    ! Use a dynamic tau calculation
+   logical :: lparcel_dynamic ! Calculate buoyancy/convective top base on parcel K.E.
+   
+
+   
 contains
 
 
@@ -136,6 +145,11 @@ subroutine zm_convi(limcnv_in, zmconv_c0_lnd, zmconv_c0_ocn, zmconv_ke, zmconv_k
 
    tau = zmconv_tau
 
+! RBN: Modification logicals switches
+   
+   ltau_dynamic = .false. ! Use a dynamic tau calculation
+   lparcel_dynamic = .false. ! Calculate buoyancy/convective top base on parcel K.E.
+   
    if ( masterproc ) then
       write(iulog,*) 'tuning parameters zm_convi: tau',tau
       write(iulog,*) 'tuning parameters zm_convi: c0_lnd',c0_lnd, ', c0_ocn', c0_ocn 
@@ -155,7 +169,7 @@ end subroutine zm_convi
 
 
 subroutine zm_convr(lchnk   ,ncol    , &
-                    t       ,qh      ,prec    ,jctop   ,jcbot   , &
+                    t       ,qh      ,omega   ,prec    ,jctop   ,jcbot   , &
                     pblh    ,zm      ,geos    ,zi      ,qtnd    , &
                     heat    ,pap     ,paph    ,dpp     , &
                     delt    ,mcon    ,cme     ,cape    , &
@@ -288,6 +302,7 @@ subroutine zm_convr(lchnk   ,ncol    , &
 
    real(r8), intent(in) :: t(pcols,pver)          ! grid slice of temperature at mid-layer.
    real(r8), intent(in) :: qh(pcols,pver)   ! grid slice of specific humidity.
+   real(r8), intent(in) :: omega(pcols,pver)      ! RBN - Omega to be used in parcel energy calculation
    real(r8), intent(in) :: pap(pcols,pver)     
    real(r8), intent(in) :: paph(pcols,pver+1)
    real(r8), intent(in) :: dpp(pcols,pver)        ! local sigma half-level thickness (i.e. dshj).
@@ -436,6 +451,10 @@ subroutine zm_convr(lchnk   ,ncol    , &
    real(r8) qldeg(pcols,pver)        ! cloud liquid water mixing ratio for detrainment (kg/kg)
    real(r8) mb(pcols)                ! wg cloud base mass flux.
 
+   !RBN - Convective in-cloud vertical velocities.
+   real(r8) wm_incld(pcols)          ! Convective in-cloud vertical velocity
+   real(r8) wm_incldg(pcols)         ! Gathered Convective in-cloud vertical velocity
+   
    integer jlcl(pcols)
    integer j0(pcols)                 ! wg detrainment initiation level index.
    integer jd(pcols)                 ! wg downdraft initiation level index.
@@ -695,6 +714,8 @@ subroutine zm_convr(lchnk   ,ncol    , &
       jctop(i) = pver
       jcbot(i) = 1
 
+      wm_incld(i) = 0._r8  !RBN: Initialize in-cloud parcel velocity
+
    end do
 
    if (zmconv_microp) then
@@ -777,6 +798,7 @@ subroutine zm_convr(lchnk   ,ncol    , &
       maxg(i) = 1
       tlg(i) = 400._r8
       dsubcld(i) = 0._r8
+      wm_incldg(i) = 0._r8
    end do
 
    if( cam_physpkg_is('cam3')) then
@@ -795,11 +817,12 @@ subroutine zm_convr(lchnk   ,ncol    , &
       !     lcl, lel, parcel launch level at index maxi()=hmax
 
       call buoyan_dilute(lchnk   ,ncol    , &
-                  q       ,t       ,p       ,z       ,pf       , &
+                  q       ,t       ,omega  ,p       ,z       ,pf       , &
                   tp      ,qstp    ,tl      ,rl      ,cape     , &
                   pblt    ,lcl     ,lel     ,lon     ,maxi     , &
                   rgas    ,grav    ,cpres   ,msg     , &
-                  zi      ,tpert   , org2d  , landfrac)
+                  tpert   , org2d  , landfrac, wm_incld)
+
    end if
 
 !
@@ -884,6 +907,7 @@ subroutine zm_convr(lchnk   ,ncol    , &
       maxg(i) = maxi(ideep(i))
       tlg(i) = tl(ideep(i))
       landfracg(i) = landfrac(ideep(i))
+      wm_incldg(i) = wm_incld(ideep(i)) !RBN in-cloud convective vertical velocity.
    end do
 !
 ! calculate sub-cloud layer pressure "thickness" for use in
@@ -977,7 +1001,7 @@ subroutine zm_convr(lchnk   ,ncol    , &
                 qlg     ,dsubcld ,mb      ,capeg   ,tlg     , &
                 lclg    ,lelg    ,jt      ,maxg    ,1       , &
                 lengath ,rgas    ,grav    ,cpres   ,rl      , &
-                msg     ,capelmt    )
+                msg     ,capelmt ,wm_incldg   )
 !
 ! limit cloud base mass flux to theoretical upper bound.
 !
@@ -3608,7 +3632,7 @@ subroutine closure(lchnk   , &
                    ql      ,dsubcld ,mb      ,cape    ,tl      , &
                    lcl     ,lel     ,jt      ,mx      ,il1g    , &
                    il2g    ,rd      ,grav    ,cp      ,rl      , &
-                   msg     ,capelmt )
+                   msg     ,capelmt ,wm_ic )
 !----------------------------------------------------------------------- 
 ! 
 ! Purpose: 
@@ -3664,6 +3688,12 @@ subroutine closure(lchnk   , &
    integer, intent(in) :: lel(pcols)        ! index of launch leve
    integer, intent(in) :: jt(pcols)         ! top of updraft
    integer, intent(in) :: mx(pcols)         ! base of updraft
+
+! RBN mean in-cloud vertical velocity for use in generating grid-box specific timescale.
+   real(r8), intent(in) :: wm_ic(pcols)         ! in-cloud vertical velocity  
+
+!
+   
 !
 !--------------------------Local variables------------------------------
 !
@@ -3674,6 +3704,10 @@ subroutine closure(lchnk   , &
    real(r8) dboydt(pcols,pver)
    real(r8) thetavp(pcols,pver)
    real(r8) thetavm(pcols,pver)
+
+   ! RBN Tau base on convective height and in-cloud vertical velocity.  
+
+   real(r8) tau_wz(pcols)
 
    real(r8) dtbdt(pcols),dqbdt(pcols),dtldt(pcols)
    real(r8) beta
@@ -3804,12 +3838,39 @@ subroutine closure(lchnk   , &
          endif
       end do
    end do
-   do i = il1g,il2g
-      dltaa = -1._r8* (cape(i)-capelmt)
-      if (dadt(i) /= 0._r8) mb(i) = max(dltaa/tau/dadt(i),0._r8)
-   end do
+
+
+   
+!RBN calculate timescale based on convective height and mean in-cloud velocity.
+
+  
+
+   if (ltau_dynamic) then
+      do i = il1g,il2g
+         tau_wz(i) = 0._r8
+         if (wm_ic(i) > 0._r8) then
+            tau_wz(i) = (z(i,lel(i))-z(i,mx(i)))/wm_ic(i)
+         else
+            tau_wz(i) =  10000._r8
+         end if
+         write(iulog,*)'ZMTAU', tau_wz(i)
+         dltaa = -1._r8* (cape(i)-capelmt)
+         if (dadt(i) /= 0._r8) mb(i) = max(dltaa/tau/dadt(i),0._r8)
+      end do
 !
+      call outfld('TAUZM',tau_wz, pcols, lchnk)  
+
+   else ! Use default constant value of tau
+   
+      do i = il1g,il2g
+         dltaa = -1._r8* (cape(i)-capelmt)
+         if (dadt(i) /= 0._r8) mb(i) = max(dltaa/tau/dadt(i),0._r8)
+      end do
+!
+   end if
+
    return
+      
 end subroutine closure
 
 subroutine q1q2_pjr(lchnk   , &
@@ -3962,11 +4023,13 @@ subroutine q1q2_pjr(lchnk   , &
 end subroutine q1q2_pjr
 
 subroutine buoyan_dilute(lchnk   ,ncol    , &
-                  q       ,t       ,p       ,z       ,pf      , &
+                  q       ,t       ,omega ,p       ,z       ,pf      , &
                   tp      ,qstp    ,tl      ,rl      ,cape    , &
                   pblt    ,lcl     ,lel     ,lon     ,mx      , &
                   rd      ,grav    ,cp      ,msg     , &
                   zi,     tpert    ,org    , landfrac)
+                  tpert   ,org     ,landfrac ,wm_incld)
+
 !----------------------------------------------------------------------- 
 ! 
 ! Purpose: 
@@ -4002,6 +4065,7 @@ subroutine buoyan_dilute(lchnk   ,ncol    , &
 
    real(r8), intent(in) :: q(pcols,pver)        ! spec. humidity
    real(r8), intent(in) :: t(pcols,pver)        ! temperature
+   real(r8), intent(in) :: omega(pcols,pver)    ! RBN - Omega to be use in parcel energy calculation.
    real(r8), intent(in) :: p(pcols,pver)        ! pressure
    real(r8), intent(in) :: z(pcols,pver)        ! height
    real(r8), intent(in) :: pf(pcols,pver+1)     ! pressure at interfaces
@@ -4018,6 +4082,8 @@ subroutine buoyan_dilute(lchnk   ,ncol    , &
    real(r8), intent(out) :: qstp(pcols,pver)     ! saturation mixing ratio of parcel (only above lcl, just q below).
    real(r8), intent(out) :: tl(pcols)            ! parcel temperature at lcl
    real(r8), intent(out) :: cape(pcols)          ! convective aval. pot. energy.
+   real(r8), intent(out) :: wm_incld(pcols)      ! Mean deep convective in-cloud vertical velocity.
+  
    integer lcl(pcols)        !
    integer lel(pcols)        !
    integer lon(pcols)        ! level of onset of deep convection
@@ -4028,10 +4094,12 @@ subroutine buoyan_dilute(lchnk   ,ncol    , &
 !
 !--------------------------Local Variables------------------------------
 !
-   real(r8) capeten(pcols,5)     ! provisional value of cape
+   real(r8) capeten(pcols,num_cin)     ! provisional value of cape
    real(r8) tv(pcols,pver)       !
    real(r8) tpv(pcols,pver)      !
    real(r8) buoy(pcols,pver)
+   real(r8) w_incld(pcols,pver) 
+
 
    real(r8) a1(pcols)
    real(r8) a2(pcols)
@@ -4044,9 +4112,7 @@ subroutine buoyan_dilute(lchnk   ,ncol    , &
 
    logical plge600(pcols)
    integer knt(pcols)
-   integer lelten(pcols,5)
-
-
+   integer lelten(pcols,num_cin)
 
 
 ! Parcel property variables 
@@ -4069,6 +4135,15 @@ subroutine buoyan_dilute(lchnk   ,ncol    , &
 
 
 
+=======
+! RBN variables for parcel total energy consideration
+   real(r8),parameter :: pini_ke  = 5._r8        ! Convective parcel initial kinetic energy (J/kg).
+   real(r8),parameter :: pe2ke_eff = 0.1_r8      ! PE->KE parcel energy conversion efficiency.
+   real(r8)           :: plev_ke(pcols,pver)  ! Parcel kinetic energy at a particular level (J/kg).
+   real(r8)           :: w_nrg(pcols,pver)    ! Energy associated with the large scale w(omega) 
+   logical            :: first_kelt0(pcols)   ! Indicating first time ke<0 in a column.   
+   
+
    real(r8) cp
    real(r8) e
    real(r8) grav
@@ -4083,7 +4158,7 @@ subroutine buoyan_dilute(lchnk   ,ncol    , &
 !
 !-----------------------------------------------------------------------
 !
-   do n = 1,5
+   do n = 1,num_cin
       do i = 1,ncol
          lelten(i,n) = pver
          capeten(i,n) = 0._r8
@@ -4104,6 +4179,7 @@ subroutine buoyan_dilute(lchnk   ,ncol    , &
       parcel_qdp(i) = 0._r8
       hpar(i) = 0._r8
       qpar(i) = 0._r8
+      first_kelt0 = .True.
    end do
 
    tp(:ncol,:) = t(:ncol,:)
@@ -4117,6 +4193,9 @@ subroutine buoyan_dilute(lchnk   ,ncol    , &
    tv(:ncol,:) = t(:ncol,:) *(1._r8+1.608_r8*q(:ncol,:))/ (1._r8+q(:ncol,:))
    tpv(:ncol,:) = tv(:ncol,:)
    buoy(:ncol,:) = 0._r8
+   plev_ke(:ncol,:) = 0._r8
+   w_incld(:ncol,:) = 0._r8   
+   w_nrg(:ncol,:) = -r_universal*t(:ncol,:)*omega(:ncol,:)/(grav*100._r8*p(:ncol,:))  
 
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -4250,32 +4329,97 @@ end if ! Mixed parcel properties
 !-------------------------------------------------------------------------------
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-
-
-
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !
-   do k = msg + 2,pver
-      do i = 1,ncol
-         if (k < lcl(i) .and. plge600(i)) then
-            if (buoy(i,k+1) > 0._r8 .and. buoy(i,k) <= 0._r8) then
-               knt(i) = min(num_cin,knt(i) + 1)
-               lelten(i,knt(i)) = k
-            end if
-         end if
-      end do
-   end do
+! -- RBN July 2006 --
+! If parcel obtains a total energy deficit (KE+PE) then
+! it detrains.
+! Assumes a parcel initial energy and PE->KE conversion 
+! efficiency.
+! -RBN 3 Nov 2008
+! For CIN to really matter need to include the parcel calculation below the LCL
 !
-! calculate convective available potential energy (cape).
-!
-   do n = 1,num_cin
-      do k = msg + 1,pver
+! -Calcuated bottom to top 
+! -Initializes parcel energy with initial value at hmax level
+! -Increments KE base on buoyancy conversion with pe2ke efficiency
+! -Parcel terminates at level of zero energy   
+
+   lparcel_dynamic = .false.
+   
+   if (lparcel_dynamic) then ! Calculate dynamic parcel energy?
+      
+      do k = pver, msg + 2, -1
          do i = 1,ncol
-            if (plge600(i) .and. k <= mx(i) .and. k > lelten(i,n)) then
-               capeten(i,n) = capeten(i,n) + rd*buoy(i,k)*log(pf(i,k+1)/pf(i,k))
+            if (k == mx(i)) then
+               plev_ke(i,k) = pini_ke
+            end if
+            if (k < mx(i).and.plge600(i)) then
+               plev_ke(i,k) = plev_ke(i,k+1) + pe2ke_eff*rd*buoy(i,k)*log(pf(i,k+1)/pf(i,k)) + 0.5*w_nrg(i,k)*w_nrg(i,k)
+               w_incld(i,k) = sqrt(max(0._r8,2._r8*plev_ke(i,k)))
+               if (plev_ke(i,k) <= 0._r8 .and. first_kelt0(i)) then ! Parcel terminates at level of zero energy
+                  knt(i) = 1 ! This is regardless of num_cin (integer)
+                  lelten(i,1) = k
+                  first_kelt0(i) = .False. ! Make sure that this bit of code cannot be used once ke<0.
+               end if
             end if
          end do
       end do
-   end do
+
+!                                                                                                                                                                                                                                    
+! calculate convective available potential energy (cape).                                                                                                                                             
+! INCLUDE Negative CAPE for CAM6 default calculation  
+!                                                                                                                                                                                                                                       
+     
+      do n = 1,num_cin
+         do k = msg + 1,pver
+            do i = 1,ncol
+               if (plge600(i) .and. k <= mx(i) .and. k > lelten(i,n)) then
+                 capeten(i,n) = capeten(i,n) + rd*buoy(i,k)*log(pf(i,k+1)/pf(i,k))                                                                                                                                                       
+                end if
+            end do
+         end do
+      end do
+
+
+      
+   else ! Or default parcel energy.
+ 
+ ! Default way to determine plume top
+ ! -Calculated top to bottom
+ ! -Starts at LCL
+   
+      do k = msg + 2,pver
+         do i = 1,ncol
+            if (k < lcl(i) .and. plge600(i)) then
+               if (buoy(i,k+1) > 0._r8 .and. buoy(i,k) <= 0._r8) then
+                  knt(i) = min(num_cin,knt(i) + 1)
+                  lelten(i,knt(i)) = k
+               end if
+            end if
+         end do
+      end do
+      
+!                                                                                                                                                                                                                                               
+! calculate convective available potential energy (cape).                                                                                                                                                                                                      
+! EXCLUDE -ve CAPE for dynamic parcel calculation. 
+!                                                                                                                                                                                                                   
+      do n = 1,num_cin
+         do k = msg + 1,pver
+            do i = 1,ncol
+               if (plge600(i) .and. k <= mx(i) .and. k > lelten(i,n) .and. buoy(i,k) > 0) then
+                  capeten(i,n) = capeten(i,n) + rd*buoy(i,k)*log(pf(i,k+1)/pf(i,k))                                                                                                                                                                                      
+               end if
+            end do
+         end do
+      end do     
+
+!!
+
+   end if ! End dynamic parcel logic
+
+!!!!!
+!!!!! 
+
 !
 ! find maximum cape from all possible tentative capes from
 ! one sounding,
@@ -4289,6 +4433,30 @@ end if ! Mixed parcel properties
          end if
       end do
    end do
+
+! For dynamic parcel, Now we know convective top let's find mean in-cloud w
+
+   if (lparcel_dynamic) then
+      do k = msg + 1,pver
+         do i = 1,ncol
+            if ( k >= lel(i) .and. k <= lcl(i) - 1) then
+              wm_incld(i) =  wm_incld(i)+w_incld(i,k)*(pf(i,k+1)-pf(i,k))/(pf(i,lcl(i))-pf(i,lel(i)))
+            end if
+         end do
+      end do
+ 
+
+   end if
+   
+   call outfld('MWINCLD',wm_incld, pcols, lchnk)  ! In-cloud vertical velocity
+   call outfld('WINCLD', w_incld, pcols, lchnk)     
+   call outfld('LCL',real(lcl,r8),pcols, lchnk)
+   call outfld('KHMAX',real(mx,r8),pcols, lchnk)  
+   call outfld('PLCL', pl, pcols, lchnk)            ! Pressure at the lifting condensation level.
+   call outfld('TLCL', tl, pcols, lchnk)            ! Temp        "
+   call outfld('HMAX', hmax, pcols, lchnk)     
+   call outfld('KEPAR', plev_ke, pcols, lchnk)    ! Parcel K.E.
+   
 !
 ! put lower bound on cape for diagnostic purposes.
 !
@@ -4404,7 +4572,7 @@ if (zm_org) then
 endif
 nit_lheat = 2 ! iterations for ds,dq changes from condensation freezing.
 dmpdz=dmpdz_param       ! Entrainment rate. (-ve for /m)
-dmpdz_lnd=-1.e-3_r8
+dmpdz_lnd=dmpdz_param
 !dmpdpc = 3.e-2_r8   ! In cloud entrainment rate (/mb).
 lwmax = 1.e-3_r8    ! Need to put formula in for this.
 tscool = 0.0_r8   ! Temp at which water loading freezes in the cloud.
@@ -4581,7 +4749,7 @@ do k = pver, msg+1, -1
 
       if (k < klaunch(i)) then
             
-! Initiaite loop if switch(2) = .T. - RBN:DILUTE - TAKEN OUT BUT COULD BE RETURNED LATER.
+! Initiate loop if switch(2) = .T. - RBN:DILUTE - TAKEN OUT BUT COULD BE RETURNED LATER.
 
 ! Iterate nit_lheat times for s,qt changes.
 
