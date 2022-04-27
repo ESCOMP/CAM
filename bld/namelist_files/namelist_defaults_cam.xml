@@ -2546,6 +2546,7 @@
 <zmconv_tau                                                           > 3600.0    </zmconv_tau>
 
 <zmconv_parcel_pbl                                                    > .false. </zmconv_parcel_pbl>
+<zmconv_parcel_ke                                                     > .false. </zmconv_parcel_ke>
 
 <!-- Cloud sedimentation -->
 

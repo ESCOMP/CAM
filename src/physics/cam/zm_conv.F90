@@ -85,7 +85,7 @@ module zm_conv
 
 ! RBN: KE parcel
    logical :: ltau_dynamic    ! Use a dynamic tau calculation
-   logical :: lparcel_dynamic ! Calculate buoyancy/convective top base on parcel K.E.
+   logical :: lparcel_ke ! Calculate buoyancy/convective top base on parcel K.E.
    
 
    
@@ -95,7 +95,7 @@ contains
 subroutine zm_convi(limcnv_in, zmconv_c0_lnd, zmconv_c0_ocn, zmconv_ke, zmconv_ke_lnd, &
                     zmconv_momcu, zmconv_momcd, zmconv_num_cin, zmconv_org, &
                     zmconv_microp_in, no_deep_pbl_in, zmconv_tiedke_add, &
-                    zmconv_capelmt, zmconv_dmpdz, zmconv_parcel_pbl, zmconv_tau)
+                    zmconv_capelmt, zmconv_dmpdz, zmconv_parcel_pbl, zmconv_parcel_ke, zmconv_tau)
 
    integer, intent(in)           :: limcnv_in       ! top interface level limit for convection
    integer, intent(in)           :: zmconv_num_cin  ! Number negative buoyancy regions that are allowed 
@@ -113,6 +113,7 @@ subroutine zm_convi(limcnv_in, zmconv_c0_lnd, zmconv_c0_ocn, zmconv_ke, zmconv_k
    real(r8),intent(in)           :: zmconv_capelmt
    real(r8),intent(in)           :: zmconv_dmpdz
    logical, intent(in)           :: zmconv_parcel_pbl ! Should the parcel properties include PBL mixing? 
+   logical, intent(in)           :: zmconv_parcel_ke ! Should the parcel properties consider a simple kinetic energy representation?            
    real(r8),intent(in)           :: zmconv_tau
 
    ! Initialization of ZM constants
@@ -142,17 +143,17 @@ subroutine zm_convi(limcnv_in, zmconv_c0_lnd, zmconv_c0_ocn, zmconv_ke, zmconv_k
    dmpdz_param = zmconv_dmpdz
    no_deep_pbl = no_deep_pbl_in
    lparcel_pbl = zmconv_parcel_pbl
+   lparcel_ke = zmconv_parcel_ke
 
    tau = zmconv_tau
 
 ! RBN: Modification logicals switches
    
    ltau_dynamic = .false. ! Use a dynamic tau calculation
-   lparcel_dynamic = .false. ! Calculate buoyancy/convective top base on parcel K.E.
    
    if ( masterproc ) then
       write(iulog,*) 'tuning parameters zm_convi: tau',tau
-      write(iulog,*) 'tuning parameters zm_convi: c0_lnd',c0_lnd, ', c0_ocn', c0_ocn 
+      write(iulog,*) 'tuning parameters zm_convi: c0_lnd',c0_lnd,'c0_ocn',c0_ocn 
       write(iulog,*) 'tuning parameters zm_convi: num_cin', num_cin
       write(iulog,*) 'tuning parameters zm_convi: ke',ke
       write(iulog,*) 'tuning parameters zm_convi: no_deep_pbl',no_deep_pbl
@@ -160,6 +161,7 @@ subroutine zm_convi(limcnv_in, zmconv_c0_lnd, zmconv_c0_ocn, zmconv_ke, zmconv_k
       write(iulog,*) 'tuning parameters zm_convi: zm_dmpdz', dmpdz_param
       write(iulog,*) 'tuning parameters zm_convi: zm_tiedke_add', tiedke_add 
       write(iulog,*) 'tuning parameters zm_convi: zm_parcel_pbl', lparcel_pbl 
+      write(iulog,*) 'tuning parameters zm_convi: zm_parcel_ke', lparcel_ke                       
    endif
 
    if (masterproc) write(iulog,*)'**** ZM: DILUTE Buoyancy Calculation ****'
@@ -4344,9 +4346,7 @@ end if ! Mixed parcel properties
 ! -Increments KE base on buoyancy conversion with pe2ke efficiency
 ! -Parcel terminates at level of zero energy   
 
-   lparcel_dynamic = .false.
-   
-   if (lparcel_dynamic) then ! Calculate dynamic parcel energy?
+   if (lparcel_ke) then ! Calculate dynamic parcel energy?
       
       do k = pver, msg + 2, -1
          do i = 1,ncol
@@ -4436,7 +4436,7 @@ end if ! Mixed parcel properties
 
 ! For dynamic parcel, Now we know convective top let's find mean in-cloud w
 
-   if (lparcel_dynamic) then
+   if (lparcel_ke) then
       do k = msg + 1,pver
          do i = 1,ncol
             if ( k >= lel(i) .and. k <= lcl(i) - 1) then

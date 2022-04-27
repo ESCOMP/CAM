@@ -2916,6 +2916,10 @@ if ($phys =~ /cam_dev/ and $nl->get_value('deep_scheme') =~ /ZM/) {
     add_default($nl, 'zmconv_parcel_pbl', 'val'=>'.false.');
 }
 
+# ZM Parcel KE
+add_default($nl, 'zmconv_parcel_ke', 'val'=>'.false.');
+
+
 # Radiation scheme
 add_default($nl, 'radiation_scheme', 'val'=>$rad_pkg);
 
