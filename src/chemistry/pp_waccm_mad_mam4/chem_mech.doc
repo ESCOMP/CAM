@@ -169,13 +169,12 @@ Class List
       ( 14)  CH4             
       ( 15)  CHBR3           
       ( 16)  CLY             
-      ( 17)  CO2             
-      ( 18)  H2402           
-      ( 19)  HCFC141B        
-      ( 20)  HCFC142B        
-      ( 21)  HCFC22          
-      ( 22)  N2O             
-      ( 23)  SF6             
+      ( 17)  H2402           
+      ( 18)  HCFC141B        
+      ( 19)  HCFC142B        
+      ( 20)  HCFC22          
+      ( 21)  N2O             
+      ( 22)  SF6             
   
  Implicit  
  --------
@@ -196,103 +195,104 @@ Class List
       ( 15)  CO              
       ( 16)  COF2            
       ( 17)  COFCL           
-      ( 18)  DMS             
-      ( 19)  dst_a1          
-      ( 20)  dst_a2          
-      ( 21)  dst_a3          
-      ( 22)  F               
-      ( 23)  H               
-      ( 24)  H2              
-      ( 25)  H2O2            
-      ( 26)  H2SO4           
-      ( 27)  HBR             
-      ( 28)  HCL             
-      ( 29)  HF              
-      ( 30)  HNO3            
-      ( 31)  HO2NO2          
-      ( 32)  HOBR            
-      ( 33)  HOCL            
-      ( 34)  HONO            
-      ( 35)  N               
-      ( 36)  N2O5            
-      ( 37)  ncl_a1          
-      ( 38)  ncl_a2          
-      ( 39)  ncl_a3          
-      ( 40)  NO              
-      ( 41)  NO2             
-      ( 42)  NO3             
-      ( 43)  num_a1          
-      ( 44)  num_a2          
-      ( 45)  num_a3          
-      ( 46)  num_a4          
-      ( 47)  O               
-      ( 48)  O1D             
-      ( 49)  O2              
-      ( 50)  O3              
-      ( 51)  OCLO            
-      ( 52)  OCS             
-      ( 53)  pom_a1          
-      ( 54)  pom_a4          
-      ( 55)  S               
-      ( 56)  SO              
-      ( 57)  SO2             
-      ( 58)  SO3             
-      ( 59)  so4_a1          
-      ( 60)  so4_a2          
-      ( 61)  so4_a3          
-      ( 62)  soa_a1          
-      ( 63)  soa_a2          
-      ( 64)  SOAG            
-      ( 65)  CLm             
-      ( 66)  CLm_H2O         
-      ( 67)  CLm_HCL         
-      ( 68)  CLOm            
-      ( 69)  CO3m            
-      ( 70)  CO3m2H2O        
-      ( 71)  CO3m_H2O        
-      ( 72)  CO4m            
-      ( 73)  e               
-      ( 74)  H3Op_OH         
-      ( 75)  HCO3m           
-      ( 76)  HO2             
-      ( 77)  Hp_2H2O         
-      ( 78)  Hp_3H2O         
-      ( 79)  Hp_3N1          
-      ( 80)  Hp_4H2O         
-      ( 81)  Hp_4N1          
-      ( 82)  Hp_5H2O         
-      ( 83)  Hp_H2O          
-      ( 84)  N2D             
-      ( 85)  N2p             
-      ( 86)  NO2m            
-      ( 87)  NO2m_H2O        
-      ( 88)  NO3m            
-      ( 89)  NO3m2H2O        
-      ( 90)  NO3m_H2O        
-      ( 91)  NO3m_HCL        
-      ( 92)  NO3mHNO3        
-      ( 93)  NOp             
-      ( 94)  NOp_2H2O        
-      ( 95)  NOp_3H2O        
-      ( 96)  NOp_CO2         
-      ( 97)  NOp_H2O         
-      ( 98)  NOp_N2          
-      ( 99)  Np              
-      (100)  O2_1D           
-      (101)  O2_1S           
-      (102)  O2m             
-      (103)  O2p             
-      (104)  O2p_H2O         
-      (105)  O3m             
-      (106)  O4m             
-      (107)  O4p             
-      (108)  OH              
-      (109)  OHm             
-      (110)  Om              
-      (111)  Op              
-      (112)  Op2D            
-      (113)  Op2P            
-      (114)  H2O             
+      ( 18)  CO2             
+      ( 19)  DMS             
+      ( 20)  dst_a1          
+      ( 21)  dst_a2          
+      ( 22)  dst_a3          
+      ( 23)  F               
+      ( 24)  H               
+      ( 25)  H2              
+      ( 26)  H2O2            
+      ( 27)  H2SO4           
+      ( 28)  HBR             
+      ( 29)  HCL             
+      ( 30)  HF              
+      ( 31)  HNO3            
+      ( 32)  HO2NO2          
+      ( 33)  HOBR            
+      ( 34)  HOCL            
+      ( 35)  HONO            
+      ( 36)  N               
+      ( 37)  N2O5            
+      ( 38)  ncl_a1          
+      ( 39)  ncl_a2          
+      ( 40)  ncl_a3          
+      ( 41)  NO              
+      ( 42)  NO2             
+      ( 43)  NO3             
+      ( 44)  num_a1          
+      ( 45)  num_a2          
+      ( 46)  num_a3          
+      ( 47)  num_a4          
+      ( 48)  O               
+      ( 49)  O1D             
+      ( 50)  O2              
+      ( 51)  O3              
+      ( 52)  OCLO            
+      ( 53)  OCS             
+      ( 54)  pom_a1          
+      ( 55)  pom_a4          
+      ( 56)  S               
+      ( 57)  SO              
+      ( 58)  SO2             
+      ( 59)  SO3             
+      ( 60)  so4_a1          
+      ( 61)  so4_a2          
+      ( 62)  so4_a3          
+      ( 63)  soa_a1          
+      ( 64)  soa_a2          
+      ( 65)  SOAG            
+      ( 66)  CLm             
+      ( 67)  CLm_H2O         
+      ( 68)  CLm_HCL         
+      ( 69)  CLOm            
+      ( 70)  CO3m            
+      ( 71)  CO3m2H2O        
+      ( 72)  CO3m_H2O        
+      ( 73)  CO4m            
+      ( 74)  e               
+      ( 75)  H3Op_OH         
+      ( 76)  HCO3m           
+      ( 77)  HO2             
+      ( 78)  Hp_2H2O         
+      ( 79)  Hp_3H2O         
+      ( 80)  Hp_3N1          
+      ( 81)  Hp_4H2O         
+      ( 82)  Hp_4N1          
+      ( 83)  Hp_5H2O         
+      ( 84)  Hp_H2O          
+      ( 85)  N2D             
+      ( 86)  N2p             
+      ( 87)  NO2m            
+      ( 88)  NO2m_H2O        
+      ( 89)  NO3m            
+      ( 90)  NO3m2H2O        
+      ( 91)  NO3m_H2O        
+      ( 92)  NO3m_HCL        
+      ( 93)  NO3mHNO3        
+      ( 94)  NOp             
+      ( 95)  NOp_2H2O        
+      ( 96)  NOp_3H2O        
+      ( 97)  NOp_CO2         
+      ( 98)  NOp_H2O         
+      ( 99)  NOp_N2          
+      (100)  Np              
+      (101)  O2_1D           
+      (102)  O2_1S           
+      (103)  O2m             
+      (104)  O2p             
+      (105)  O2p_H2O         
+      (106)  O3m             
+      (107)  O4m             
+      (108)  O4p             
+      (109)  OH              
+      (110)  OHm             
+      (111)  Om              
+      (112)  Op              
+      (113)  Op2D            
+      (114)  Op2P            
+      (115)  H2O             
   
      Photolysis
   jh2o_b           (  1)   H2O + hv ->  H2 + O1D                                                rate = ** User defined **         (  1)

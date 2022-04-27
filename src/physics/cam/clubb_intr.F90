@@ -1144,7 +1144,9 @@ end subroutine clubb_init_cnst
     endif
 
     ! Print configurable CLUBB flags
-    call print_clubb_config_flags_api( iulog, clubb_config_flags ) ! Intent(in)
+    if ( masterproc ) then
+       call print_clubb_config_flags_api( iulog, clubb_config_flags ) ! Intent(in)
+    end if
 
     ! ----------------------------------------------------------------- !
     ! Set-up HB diffusion.  Only initialized to diagnose PBL depth      !

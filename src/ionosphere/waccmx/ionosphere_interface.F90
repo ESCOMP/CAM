@@ -20,6 +20,7 @@ module ionosphere_interface
    use pio,                 only: var_desc_t
    use perf_mod,            only: t_startf, t_stopf
    use epotential_params,   only: epot_active, epot_crit_colats
+
    implicit none
 
    private
@@ -90,6 +91,7 @@ module ionosphere_interface
    integer           :: ionos_npes = -1
 
    logical :: state_debug_checks = .false.
+   logical :: ionos_debug_hist = .false.
 
    integer :: mag_nlon=0, mag_nlat=0, mag_nlev=0, mag_ngrid=0
 
@@ -121,6 +123,7 @@ module ionosphere_interface
       namelist /ionosphere_nl/ epot_crit_colats
       namelist /ionosphere_nl/ ionos_npes
       namelist /ionosphere_nl/ oplus_grid, edyn_grid
+      namelist /ionosphere_nl/ ionos_debug_hist
 
       oplus_grid = 0
 
@@ -159,6 +162,7 @@ module ionosphere_interface
       call mpi_bcast(ionos_npes,          1, mpi_integer, masterprocid, mpicom, ierr)
       call mpi_bcast(oplus_grid,          2, mpi_integer, masterprocid, mpicom, ierr)
       call mpi_bcast(edyn_grid,           8, mpi_character, masterprocid, mpicom, ierr)
+      call mpi_bcast(ionos_debug_hist,    1, mpi_logical, masterprocid, mpicom, ierr)
 
       ! Extract grid settings
       oplus_nlon = oplus_grid(1)
@@ -324,26 +328,25 @@ module ionosphere_interface
             end if
          end if
 
-         call d_pie_init(ionos_edyn_active, ionos_oplus_xport,                &
-              ionos_xport_nsplit, epot_crit_colats)
-
          call alloc_maggrid( mag_nlon, mag_nlat, mag_nlev, mag_ngrid )
 
          call mp_init(mpicom, ionos_npes, oplus_nlon, oplus_nlat, pver) ! set ntask,mytid
+
          ! set global geographic grid (sets coordinate distribution)
          ! lon0, lon1, etc. are set here
-         call set_geogrid(oplus_nlon, oplus_nlat, pver, ionos_npes, iam,   &
-              pref_mid, pref_edge)
+         call set_geogrid(oplus_nlon, oplus_nlat, pver, ionos_npes, iam, pref_mid, pref_edge)
 
-         call edynamo_init(mpicom)
+         call edynamo_init(mpicom, ionos_debug_hist)
+
+         call d_pie_init(ionos_edyn_active, ionos_oplus_xport, ionos_xport_nsplit, epot_crit_colats, &
+                         ionos_debug_hist)
 
          call ionosphere_alloc()
 
-         call oplus_init(oplus_adiff_limiter, oplus_shapiro_const,            &
-              oplus_enforce_floor, oplus_ring_polar_filter)
+         call oplus_init(oplus_adiff_limiter, oplus_shapiro_const, oplus_enforce_floor, &
+                         oplus_ring_polar_filter, ionos_debug_hist)
 
-         call addfld('OpTM1&IC', (/ 'lev' /), 'I', 'kg/kg',                   &
-              'O+ at time step minus 1', gridname='physgrid')
+         call addfld('OpTM1&IC', (/ 'lev' /), 'I', 'kg/kg', 'O+ at time step minus 1', gridname='physgrid')
          call add_default ('OpTM1&IC',0, 'I')
 
       end if op_transport

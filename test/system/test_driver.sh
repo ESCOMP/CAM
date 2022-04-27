@@ -117,7 +117,6 @@ fi
 
 # Initialize variables which may not be set
 submit_script_cime=''
-xml_driver=''
 
 while [ "${1:0:1}" == "-" ]; do
     case $1 in
@@ -415,6 +414,7 @@ if [ "${cesm_test_suite}" != "none" -a -n "${cesm_test_mach}" ]; then
     module load python
   fi
 
+
   for cesm_test in ${cesm_test_suite}; do
     testargs="--xml-category ${cesm_test} --xml-machine ${cesm_test_mach} --retry 2"
 
@@ -551,8 +551,8 @@ if [ "${cesm_test_suite}" != "none" -a -n "${cesm_test_mach}" ]; then
       fi
     fi
 
-    if [ -n "${xml_driver}" ] ; then
-        testargs="${testargs} --xml-driver ${xml_driver}"
+    if [ -n "${xml_driver}" ]; then
+      testargs="${testargs} --xml-driver ${xml_driver}"
     fi
 
     echo ""
@@ -561,6 +561,7 @@ if [ "${cesm_test_suite}" != "none" -a -n "${cesm_test_mach}" ]; then
 
     if [ "${hostname:0:2}" == "ch" ]; then
       echo "cd ${script_dir}" >> ${submit_script_cime}
+      echo "module load python" >> ${submit_script_cime}
       echo './create_test' ${testargs} >> ${submit_script_cime}
       chmod u+x ${submit_script_cime}
       qsub ${submit_script_cime}

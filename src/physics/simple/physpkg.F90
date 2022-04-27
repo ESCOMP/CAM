@@ -471,8 +471,6 @@ contains
     use dycore,          only: dycore_is
     use check_energy,    only: calc_te_and_aam_budgets
     use cam_history,     only: hist_fld_active
-    use cam_snapshot,    only: cam_snapshot_all_outfld
-    use cam_snapshot,    only: cam_snapshot_ptend_outfld
 
     ! Arguments
     !
@@ -579,15 +577,7 @@ contains
         !
         call set_dry_to_wet(state)
 
-        if (trim(cam_take_snapshot_before) == "physics_dme_adjust") then
-           call cam_snapshot_all_outfld(cam_snapshot_before_num, state, tend, cam_in, cam_out, pbuf)
-        end if
-
         call physics_dme_adjust(state, tend, qini, ztodt)
-
-        if (trim(cam_take_snapshot_after) == "physics_dme_adjust") then
-           call cam_snapshot_all_outfld(cam_snapshot_after_num, state, tend, cam_in, cam_out, pbuf)
-        end if
 
         call calc_te_and_aam_budgets(state, 'phAM')
         call calc_te_and_aam_budgets(state, 'dyAM',vc=vc_dycore)
@@ -663,8 +653,8 @@ contains
     use kessler_cam,       only: kessler_tend
     use tj2016_cam,        only: thatcher_jablonowski_precip_tend
     use dycore,            only: dycore_is
-    use cam_snapshot,      only: cam_snapshot_all_outfld
-    use cam_snapshot,      only: cam_snapshot_ptend_outfld
+    use cam_snapshot_common,only: cam_snapshot_all_outfld
+    use cam_snapshot_common,only: cam_snapshot_ptend_outfld
     use physics_types,     only: dyn_te_idx
     ! Arguments
 
