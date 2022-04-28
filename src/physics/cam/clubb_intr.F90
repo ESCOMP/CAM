@@ -720,28 +720,19 @@ end subroutine clubb_init_cnst
                                clubb_C_invrs_tau_bkgnd, clubb_C_invrs_tau_sfc, clubb_C_invrs_tau_shear, &
                                clubb_C_invrs_tau_N2, clubb_C_invrs_tau_N2_wp2, clubb_C_invrs_tau_N2_xp2, &
                                clubb_C_invrs_tau_N2_wpxp, clubb_C_invrs_tau_N2_clear_wp3, &
-                               clubb_iiPDF_type, clubb_ipdf_call_placement, &
-                               clubb_l_use_precip_frac, clubb_l_predict_upwp_vpwp, &
+                               clubb_ipdf_call_placement, clubb_l_predict_upwp_vpwp, &
                                clubb_l_min_wp2_from_corr_wx, clubb_l_min_xp2_from_corr_wx, &
-                               clubb_l_C2_cloud_frac, clubb_l_diffuse_rtm_and_thlm, &
-                               clubb_l_stability_correct_Kh_N2_zm, clubb_l_calc_thlp2_rad, &
-                               clubb_l_upwind_xpyp_ta, clubb_l_upwind_xm_ma, &
-                               clubb_l_uv_nudge, clubb_l_rtm_nudge, &
-                               clubb_l_tke_aniso, clubb_l_vert_avg_closure, &
+                               clubb_l_upwind_xpyp_ta, clubb_l_vert_avg_closure, &
                                clubb_l_trapezoidal_rule_zt, clubb_l_trapezoidal_rule_zm, &
-                               clubb_l_call_pdf_closure_twice, clubb_l_standard_term_ta, &
-                               clubb_l_partial_upwind_wp3, clubb_l_godunov_upwind_wpxp_ta, &
+                               clubb_l_call_pdf_closure_twice, clubb_l_godunov_upwind_wpxp_ta, &
                                clubb_l_godunov_upwind_xpyp_ta, clubb_l_use_cloud_cover, &
-                               clubb_l_diagnose_correlations, clubb_l_calc_w_corr, &
-                               clubb_l_const_Nc_in_cloud, clubb_l_fix_w_chi_eta_correlations, &
-                               clubb_l_stability_correct_tau_zm, clubb_l_damp_wp2_using_em, &
-                               clubb_l_do_expldiff_rtm_thlm, clubb_l_Lscale_plume_centered, & 
+                               clubb_l_damp_wp2_using_em, &
                                clubb_l_diag_Lscale_from_tau, clubb_l_use_C7_Richardson, &
                                clubb_l_use_C11_Richardson, clubb_l_use_shear_Richardson, &
                                clubb_l_brunt_vaisala_freq_moist, clubb_l_use_thvm_in_bv_freq, &
                                clubb_l_rcm_supersat_adj, clubb_l_damp_wp3_Skw_squared, &
-                               clubb_l_prescribed_avg_deltaz, clubb_l_lmm_stepping, & 
-                               clubb_l_e3sm_config, clubb_l_vary_convect_depth, & 
+                               clubb_l_lmm_stepping, & 
+                               clubb_l_e3sm_config, & 
                                clubb_l_use_tke_in_wp3_pr_turb_term, clubb_l_use_tke_in_wp2_wp3_K_dfsn, &
                                clubb_l_smooth_Heaviside_tau_wpxp
 

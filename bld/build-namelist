@@ -3080,6 +3080,7 @@ if ($clubb_sgs  =~ /$TRUE/io) {
    }
 
    add_default($nl, 'clubb_do_icesuper');
+   add_default($nl, 'clubb_do_energyfix');
    add_default($nl, 'clubb_cloudtop_cooling');
    add_default($nl, 'clubb_expldiff');
    add_default($nl, 'clubb_rainevap_turb');
@@ -3184,6 +3185,8 @@ if ($clubb_sgs  =~ /$TRUE/io) {
    add_default($nl, 'clubb_l_brunt_vaisala_freq_moist');
    add_default($nl, 'clubb_l_call_pdf_closure_twice');
    add_default($nl, 'clubb_l_damp_wp3_Skw_squared');
+   add_default($nl, 'clubb_l_lmm_stepping');
+   add_default($nl, 'clubb_l_e3sm_config');
    add_default($nl, 'clubb_l_lscale_plume_centered');
    add_default($nl, 'clubb_l_min_wp2_from_corr_wx');
    add_default($nl, 'clubb_l_min_xp2_from_corr_wx');
@@ -3199,6 +3202,12 @@ if ($clubb_sgs  =~ /$TRUE/io) {
    add_default($nl, 'clubb_l_use_thvm_in_bv_freq');
    add_default($nl, 'clubb_l_vert_avg_closure');
    add_default($nl, 'clubb_l_damp_wp2_using_em');
+   add_default($nl, 'clubb_l_godunov_upwind_wpxp_ta');
+   add_default($nl, 'clubb_l_godunov_upwind_xpyp_ta');
+   add_default($nl, 'clubb_l_use_shear_Richardson');
+   add_default($nl, 'clubb_l_use_tke_in_wp3_pr_turb_term');
+   add_default($nl, 'clubb_l_use_tke_in_wp2_wp3_K_dfsn');
+   add_default($nl, 'clubb_l_smooth_Heaviside_tau_wpxp');
 
    #CLUBB+MF options
    add_default($nl, 'do_clubb_mf');

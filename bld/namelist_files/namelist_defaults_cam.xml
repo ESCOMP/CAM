@@ -1895,8 +1895,9 @@
 <clubb_detliq_rad                                 > 8.0D-6              </clubb_detliq_rad>
 <clubb_detice_rad                                 > 25.0D-6             </clubb_detice_rad>
 <clubb_detphase_lowtemp                           > 238.15D0            </clubb_detphase_lowtemp>
-<clubb_ipdf_call_placement                        > 2                   </clubb_ipdf_call_placement>
+<clubb_ipdf_call_placement                        > 1                   </clubb_ipdf_call_placement>
 
+<clubb_do_energyfix                               > .true.  </clubb_do_energyfix>
 <clubb_l_brunt_vaisala_freq_moist                 > .false. </clubb_l_brunt_vaisala_freq_moist>
 <clubb_l_call_pdf_closure_twice                   > .true.  </clubb_l_call_pdf_closure_twice>
 <clubb_l_damp_wp3_Skw_squared                     > .false. </clubb_l_damp_wp3_Skw_squared>
@@ -1908,14 +1909,21 @@
 <clubb_l_stability_correct_tau_zm                 > .true.  </clubb_l_stability_correct_tau_zm>
 <clubb_l_trapezoidal_rule_zm                      > .false. </clubb_l_trapezoidal_rule_zm>
 <clubb_l_trapezoidal_rule_zt                      > .false. </clubb_l_trapezoidal_rule_zt>
+<clubb_l_godunov_upwind_wpxp_ta                   > .false. </clubb_l_godunov_upwind_wpxp_ta>
+<clubb_l_godunov_upwind_xpyp_ta                   > .false. </clubb_l_godunov_upwind_xpyp_ta>
 <clubb_l_upwind_xpyp_ta                           > .true.  </clubb_l_upwind_xpyp_ta>
 <clubb_l_use_C7_Richardson                        > .false. </clubb_l_use_C7_Richardson>
 <clubb_l_use_C11_Richardson                       > .false. </clubb_l_use_C11_Richardson>
+<clubb_l_use_shear_Richardson                     > .false. </clubb_l_use_shear_Richardson>
 <clubb_l_use_cloud_cover                          > .true.  </clubb_l_use_cloud_cover>
 <clubb_l_use_thvm_in_bv_freq                      > .false. </clubb_l_use_thvm_in_bv_freq>
 <clubb_l_vert_avg_closure                         > .true.  </clubb_l_vert_avg_closure>
 <clubb_l_damp_wp2_using_em                        > .false. </clubb_l_damp_wp2_using_em>
-<clubb_l_e3sm_config                              > .false.  </clubb_l_e3sm_config>
+<clubb_l_lmm_stepping                             > .false. </clubb_l_lmm_stepping>
+<clubb_l_e3sm_config                              > .true.  </clubb_l_e3sm_config>
+<clubb_l_use_tke_in_wp2_wp3_K_dfsn                > .false. </clubb_l_use_tke_in_wp2_wp3_K_dfsn>
+<clubb_l_use_tke_in_wp3_pr_turb_term              > .false. </clubb_l_use_tke_in_wp3_pr_turb_term>
+<clubb_l_smooth_Heaviside_tau_wpxp                > .false. </clubb_l_smooth_Heaviside_tau_wpxp>
 
 <!-- SILHS options -->
 <clubb_do_icesuper                      silhs="1" > .true.  </clubb_do_icesuper>
