@@ -26,7 +26,7 @@ body:
   - type: input
     id: cam-tag
     attributes:
-      label: CAM tag you are using
+      label: What CAM tag you were using
       description: Type "git describe --tags" to see the tag
       placeholder: ex. cam6_3_042
     validations:
