@@ -521,7 +521,7 @@ if [ "${cesm_test_suite}" != "none" -a -n "${cesm_test_mach}" ]; then
 
     ## Setup CESM work directory
     if [ "${hostname:0:6}" == "casper" ] || [ "${hostname:0:5}" == "crhtc" ]; then
-       ## Would fail to compile on Casper with long foler name
+       ## Would fail to compile on Casper with long folder name
        cesm_testdir=$mach_workspace/$LOGNAME/$cesm_test
     else
        cesm_testdir=$mach_workspace/$LOGNAME/$test_id
