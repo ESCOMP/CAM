@@ -6,6 +6,7 @@ body:
     id: other-type
     attributes:
       label: Issue Type
+      description: If applicable, please add relevant label(s)
       multiple: false
       options:
         - Code Clean-up
