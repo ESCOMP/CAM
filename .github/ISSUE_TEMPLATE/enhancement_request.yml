@@ -18,7 +18,7 @@ body:
       placeholder: ex. @confucius
     validations:
       required: false
- - type: dropdown
+  - type: dropdown
     id: answer-changing
     attributes:
       label: Will this change answers?
