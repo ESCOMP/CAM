@@ -1,0 +1,8 @@
+name: Enhancement Request
+description: File a bug report
+title: "Put enhancement title here!"
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to fill out this enhancement request!
