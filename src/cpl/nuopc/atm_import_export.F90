@@ -350,14 +350,15 @@ contains
     if (ChkErr(rc,__LINE__,u_FILE_u)) return
     call NUOPC_CompAttributeGet(gcomp, name='mesh_ocn', value=mesh_ocn, rc=rc)
     if (ChkErr(rc,__LINE__,u_FILE_u)) return
-    samegrid_atm_lnd_ocn = .false
+
+    samegrid_atm_lnd_ocn = .false.
     if ( trim(mesh_lnd) /= 'UNSET' .and. trim(mesh_atm) == trim(mesh_lnd) .and. &
          trim(mesh_ocn) /= 'UNSET' .and. trim(mesh_atm) == trim(mesh_ocn)) then
-       samegrid_atm_ocn = .true.
+       samegrid_atm_lnd_ocn = .true.
     elseif ( trim(mesh_lnd) == 'UNSET' .and. trim(mesh_atm) == trim(mesh_ocn)) then
-       samegrid_atm_ocn = .true.
+       samegrid_atm_lnd_ocn = .true.
     elseif ( trim(mesh_ocn) == 'UNSET' .and. trim(mesh_atm) == trim(mesh_lnd)) then
-       samegrid_atm_ocn = .true.
+       samegrid_atm_lnd_ocn = .true.
     end if
 
     ! allocate area correction factors
@@ -405,22 +406,22 @@ contains
        deallocate(model_areas)
        deallocate(mesh_areas)
 
-       min_mod2med_areacor = minval(mod2med_areacor)
-       max_mod2med_areacor = maxval(mod2med_areacor)
-       min_med2mod_areacor = minval(med2mod_areacor)
-       max_med2mod_areacor = maxval(med2mod_areacor)
-       call shr_mpi_max(max_mod2med_areacor, max_mod2med_areacor_glob, mpicom)
-       call shr_mpi_min(min_mod2med_areacor, min_mod2med_areacor_glob, mpicom)
-       call shr_mpi_max(max_med2mod_areacor, max_med2mod_areacor_glob, mpicom)
-       call shr_mpi_min(min_med2mod_areacor, min_med2mod_areacor_glob, mpicom)
+    end if
 
-       if (masterproc) then
-          write(iulog,'(2A,2g23.15,A )') trim(subname),' :  min_mod2med_areacor, max_mod2med_areacor ',&
-               min_mod2med_areacor_glob, max_mod2med_areacor_glob, 'CAM'
-          write(iulog,'(2A,2g23.15,A )') trim(subname),' :  min_med2mod_areacor, max_med2mod_areacor ',&
-               min_med2mod_areacor_glob, max_med2mod_areacor_glob, 'CAM'
-       end if
+    min_mod2med_areacor = minval(mod2med_areacor)
+    max_mod2med_areacor = maxval(mod2med_areacor)
+    min_med2mod_areacor = minval(med2mod_areacor)
+    max_med2mod_areacor = maxval(med2mod_areacor)
+    call shr_mpi_max(max_mod2med_areacor, max_mod2med_areacor_glob, mpicom)
+    call shr_mpi_min(min_mod2med_areacor, min_mod2med_areacor_glob, mpicom)
+    call shr_mpi_max(max_med2mod_areacor, max_med2mod_areacor_glob, mpicom)
+    call shr_mpi_min(min_med2mod_areacor, min_med2mod_areacor_glob, mpicom)
 
+    if (masterproc) then
+       write(iulog,'(2A,2g23.15,A )') trim(subname),' :  min_mod2med_areacor, max_mod2med_areacor ',&
+            min_mod2med_areacor_glob, max_mod2med_areacor_glob, 'CAM'
+       write(iulog,'(2A,2g23.15,A )') trim(subname),' :  min_med2mod_areacor, max_med2mod_areacor ',&
+            min_med2mod_areacor_glob, max_med2mod_areacor_glob, 'CAM'
     end if
 
     call ESMF_LogWrite(trim(subname)//' done', ESMF_LOGMSG_INFO)
