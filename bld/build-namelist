@@ -3082,7 +3082,6 @@ if ($clubb_sgs  =~ /$TRUE/io) {
    add_default($nl, 'clubb_do_icesuper');
    add_default($nl, 'clubb_do_energyfix');
    add_default($nl, 'clubb_cloudtop_cooling');
-   add_default($nl, 'clubb_expldiff');
    add_default($nl, 'clubb_rainevap_turb');
    add_default($nl, 'clubb_rnevap_effic');
 
@@ -3208,6 +3207,7 @@ if ($clubb_sgs  =~ /$TRUE/io) {
    add_default($nl, 'clubb_l_use_tke_in_wp3_pr_turb_term');
    add_default($nl, 'clubb_l_use_tke_in_wp2_wp3_K_dfsn');
    add_default($nl, 'clubb_l_smooth_Heaviside_tau_wpxp');
+   add_default($nl, 'clubb_l_do_expldiff_rtm_thlm');
 
    #CLUBB+MF options
    add_default($nl, 'do_clubb_mf');

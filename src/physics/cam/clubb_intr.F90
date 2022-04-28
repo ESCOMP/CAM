@@ -311,7 +311,6 @@ module clubb_intr
   logical            :: lq(pcnst)
   logical            :: prog_modal_aero
   logical            :: do_rainturb
-  logical            :: do_expldiff
   logical            :: clubb_do_adv
   logical            :: clubb_do_liqsupersat = .false.
   logical            :: clubb_do_energyfix   = .true.
@@ -695,15 +694,14 @@ end subroutine clubb_init_cnst
 
     character(len=*), parameter :: sub = 'clubb_readnl'
 
-    logical :: clubb_history, clubb_rad_history, clubb_cloudtop_cooling, clubb_rainevap_turb, &
-               clubb_expldiff ! Stats enabled (T/F)      
+    logical :: clubb_history, clubb_rad_history  ! Stats enabled (T/F) 
+    logical :: clubb_cloudtop_cooling, clubb_rainevap_turb
 
     integer :: iunit, read_status, ierr
 
     namelist /clubb_his_nl/ clubb_history, clubb_rad_history
-    namelist /clubbpbl_diff_nl/ clubb_cloudtop_cooling, clubb_rainevap_turb, clubb_expldiff, &
-                                clubb_do_adv, clubb_timestep,  &
-                                clubb_rnevap_effic,clubb_do_icesuper
+    namelist /clubbpbl_diff_nl/ clubb_cloudtop_cooling, clubb_rainevap_turb, clubb_do_adv, clubb_timestep, &
+                                clubb_rnevap_effic, clubb_do_icesuper
     namelist /clubb_params_nl/ clubb_c1, clubb_c1b, clubb_c11, clubb_c11b, clubb_c14, &
                                clubb_C_wp3_pr_turb, clubb_mult_coef, clubb_gamma_coef, &
                                clubb_c_K10, clubb_c_K10h, clubb_beta, clubb_C2rt, clubb_C2thl, &
@@ -744,7 +742,6 @@ end subroutine clubb_init_cnst
     l_output_rad_files = .false.   ! Initialize to false
     do_cldcool         = .false.   ! Initialize to false
     do_rainturb        = .false.   ! Initialize to false
-    do_expldiff        = .false.   ! Initialize to false
     
     ! Initialize namelist variables to clubb defaults
     call set_default_clubb_config_flags_api( clubb_iiPDF_type, & ! Out
@@ -844,8 +841,6 @@ end subroutine clubb_init_cnst
     if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: clubb_cloudtop_cooling")
     call mpi_bcast(clubb_rainevap_turb,          1, mpi_logical, mstrid, mpicom, ierr)
     if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: clubb_rainevap_turb")
-    call mpi_bcast(clubb_expldiff,               1, mpi_logical, mstrid, mpicom, ierr)
-    if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: clubb_expldiff")
     call mpi_bcast(clubb_do_adv,                 1, mpi_logical, mstrid, mpicom, ierr)
     if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: clubb_do_adv")
     call mpi_bcast(clubb_timestep,               1, mpi_real8,   mstrid, mpicom, ierr)
@@ -1006,6 +1001,8 @@ end subroutine clubb_init_cnst
     if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: clubb_l_diag_Lscale_from_tau")
     call mpi_bcast(clubb_l_damp_wp2_using_em,         1, mpi_logical, mstrid, mpicom, ierr)
     if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: clubb_l_damp_wp2_using_em")
+    call mpi_bcast(clubb_l_do_expldiff_rtm_thlm,      1, mpi_logical, mstrid, mpicom, ierr)
+    if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: clubb_l_do_expldiff_rtm_thlm")
     call mpi_bcast(clubb_l_lmm_stepping,         1, mpi_logical, mstrid, mpicom, ierr)
     if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: clubb_l_lmm_stepping")
     call mpi_bcast(clubb_l_e3sm_config,         1, mpi_logical, mstrid, mpicom, ierr)
@@ -1024,7 +1021,6 @@ end subroutine clubb_init_cnst
     if (clubb_rad_history) l_output_rad_files = .true. 
     if (clubb_cloudtop_cooling) do_cldcool = .true.
     if (clubb_rainevap_turb) do_rainturb = .true.
-    if (clubb_expldiff) do_expldiff = .true.
     
     ! Check that all namelists have been set
     if(clubb_timestep == unset_r8) call endrun(sub//": FATAL: clubb_timestep is not set")
@@ -1392,7 +1388,7 @@ end subroutine clubb_init_cnst
     ! Define number of tracers for CLUBB to diffuse
     ! ----------------------------------------------------------------- !    
     
-    if (do_expldiff) then
+    if (clubb_l_do_expldiff_rtm_thlm) then
        offset = 2 ! diffuse temperature and moisture explicitly
        edsclr_dim = edsclr_dim + offset 
     endif
@@ -3108,7 +3104,7 @@ end subroutine clubb_init_cnst
     end do
 
     
-    if (do_expldiff) then 
+    if (clubb_l_do_expldiff_rtm_thlm) then 
       do k=1,nlev
         do i=1, ncol
           edsclr_in(i,k+1,icnt+1) = thlm(i,pver-k+1)
