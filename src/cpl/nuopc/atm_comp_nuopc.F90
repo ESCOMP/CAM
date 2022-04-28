@@ -494,6 +494,8 @@ contains
     call NUOPC_CompAttributeGet(gcomp, name='scol_spval', value=cvalue, rc=rc)
     if (ChkErr(rc,__LINE__,u_FILE_u)) return
     read(cvalue,*) scol_spval
+
+    ! For single column mode in cam need to have a valid single_column_lnd_domainfile for the mask
     call NUOPC_CompAttributeGet(gcomp, name='single_column_lnd_domainfile', value=single_column_lnd_domainfile, rc=rc)
     if (ChkErr(rc,__LINE__,u_FILE_u)) return
     if (scol_lon > scol_spval .and. scol_lat > scol_spval) then
