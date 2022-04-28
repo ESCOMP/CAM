@@ -18,6 +18,18 @@ body:
       placeholder: ex. @confucius
     validations:
       required: false
+ - type: dropdown
+    id: answer-changing
+    attributes:
+      label: Will this change answers?
+      description: If yes, please also add the "answer changing" label
+      multiple: false
+      options:
+        - "Yes"
+        - "No"
+        - "I Don't Know"
+    validations:
+      required: true
   - type: dropdown
     id: implemenation
     attributes:
