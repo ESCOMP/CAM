@@ -19,18 +19,10 @@ body:
     id: steps-to-reproduce
     attributes:
       label: What are the steps to reproduce the bug?
-      description: How can we see this?
+      description: How can we see this issue?
       placeholder: ex. Sneeze twice and then do a 5-second jig
     validations:
       required: true
-  - type: input
-    id: case-directory
-    attributes:
-      label: Path to a case directory, if applicable
-      description: The full path to a case in which the error occurred
-      placeholder: ex. /glade/scratch/3p0/where-could-he-be
-    validations:
-      required: false
   - type: input
     id: cam-tag
     attributes:
@@ -65,6 +57,14 @@ body:
         - Other (please specify below)
     validations:
       required: true
+  - type: input
+    id: case-directory
+    attributes:
+      label: Path to a case directory, if applicable
+      description: The full path to a case in which the error occurred
+      placeholder: ex. /glade/scratch/3p0/where-could-he-be
+    validations:
+      required: false
   - type: textarea
     id: extra-info
     attributes:
