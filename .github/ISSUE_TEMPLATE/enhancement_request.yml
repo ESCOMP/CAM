@@ -1,17 +1,30 @@
 name: Enhancement Request
-description: File a bug report
-title: "Put enhancement title here!"
+description: Request an enhancement and/or open a science discussion
+title: "Put title here!"
 body:
-  - type: markdown
-    attributes:
-      value: |
-        Thanks for taking the time to fill out this enhancement request!
   - type: textarea
-    id: what-happened
+    id: enhancement-description
     attributes:
-      label: What happened?
+      label: What is the feature/what would you like to discuss?
       description: Also tell us, what did you expect to happen?
-      placeholder: Tell us what you see!
-      value: "A bug happened!"
+      placeholder: ex. I'd like to entirely refactor chemistry and here's how.
     validations:
       required: true
+  - type: textarea
+    id: user-reference
+    attributes:
+      label: Is there anyone in particular you want to be part of this conversation?
+      description: Add the user(s) with @<username>
+      placeholder: ex. @confucius
+    validations:
+      required: false
+  - type: dropdown
+    id: implemenation
+    attributes:
+      label: Will you be implementing this enhancement yourself?
+      multiple: false
+      options:
+        - Yes
+        - No
+    validations:
+      required: false
