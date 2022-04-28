@@ -6,7 +6,6 @@ body:
     id: enhancement-description
     attributes:
       label: What is the feature/what would you like to discuss?
-      description: Also tell us, what did you expect to happen?
       placeholder: ex. I'd like to entirely refactor chemistry and here's how.
     validations:
       required: true
