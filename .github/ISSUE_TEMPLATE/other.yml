@@ -9,8 +9,9 @@ body:
       multiple: false
       options:
         - Code Clean-up
-        - Infrastructure Change
+        - Infrastructure Update
         - Externals Update
+        - Documentation Update
         - Other (please describe below)
     validations:
       required: true
@@ -21,3 +22,10 @@ body:
       description: Describe what will change
     validations:
       required: true
+   - type: textarea
+     id: answer-changing
+     attributes:
+       label: Will this change answers? (Yes, No, I Don't Know) If yes, why?
+       description: If yes, please also add the "answer changing" label
+     validations:
+       required: true
