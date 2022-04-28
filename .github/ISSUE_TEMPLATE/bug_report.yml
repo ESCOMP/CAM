@@ -25,7 +25,8 @@ body:
       required: true
   - type: input
     id: case-directory
-    attributes: Path to a case directory, if applicable
+    attributes:
+      label: Path to a case directory, if applicable
       description: The full path to a case in which the error occurred
       placeholder: ex. /glade/scratch/3p0/where-could-he-be
     validations:
