@@ -1,6 +1,7 @@
 name: Enhancement Request
 description: Request an enhancement and/or open a science discussion
 title: "Put title here!"
+labels: ["enhancement"]
 body:
   - type: textarea
     id: enhancement-description
