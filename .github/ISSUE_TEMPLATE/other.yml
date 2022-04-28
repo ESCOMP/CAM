@@ -1,0 +1,23 @@
+name: Other
+description: ex. code clean-up, infrastructure updates
+title: "Put title here!"
+body:
+  - type: dropdown
+    id: other-type
+    attributes:
+      label: Issue Type
+      multiple: false
+      options:
+        - Code Clean-up
+        - Infrastructure Change
+        - Externals Update
+        - Other (please describe below)
+    validations:
+      required: true
+  - type: textarea
+    id: issue-description
+    attributes:
+      label: Issue Description
+      description: Describe what will change
+    validations:
+      required: true
