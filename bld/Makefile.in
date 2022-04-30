@@ -208,7 +208,7 @@ endif
 	$(AS) -m  $<
 
 %.F90: %.F90.in
-	 $(ROOTDIR)/cime/src/externals/genf90/genf90.pl $< > $@
+	 $(ROOTDIR)/cime/CIME/non_py/externals/genf90/genf90.pl $< > $@
 
 # Rules used for the tests run by "configure -test"
 test_fc: test_fc.o
