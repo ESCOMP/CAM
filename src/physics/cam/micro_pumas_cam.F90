@@ -118,6 +118,7 @@ character(len=10), parameter :: &      ! Constituent names
                      'RAINQM', 'SNOWQM','NUMRAI','NUMSNO','GRAUQM','NUMGRA'/)
 
 integer :: &
+   ixq = -1,           &! water vapor
    ixcldliq = -1,      &! cloud liquid amount index
    ixcldice = -1,      &! cloud ice amount index
    ixnumliq = -1,      &! cloud liquid number index
@@ -911,6 +912,9 @@ subroutine micro_pumas_cam_init(pbuf2d)
 
    call handle_errmsg(errstring, subname="micro_mg_init")
 
+   ! Retrieve the index for water vapor
+   call cnst_get_ind('Q', ixq)
+
    ! Register history variables
    do m = 1, ncnst
       call cnst_get_ind(cnst_names(m), mm)
@@ -1417,119 +1421,119 @@ subroutine micro_pumas_cam_tend(state, ptend, dtime, pbuf)
    real(r8) :: rho(state%psetcols,pver)
    real(r8) :: cldmax(state%psetcols,pver)
 
-   real(r8), target :: rate1cld(state%psetcols,pver) ! array to hold rate1ord_cw2pr_st from microphysics
+   real(r8)  :: rate1cld(state%psetcols,pver) ! array to hold rate1ord_cw2pr_st from microphysics
 
-   real(r8), target :: tlat(state%psetcols,pver)
-   real(r8), target :: qvlat(state%psetcols,pver)
-   real(r8), target :: qcten(state%psetcols,pver)
-   real(r8), target :: qiten(state%psetcols,pver)
-   real(r8), target :: ncten(state%psetcols,pver)
-   real(r8), target :: niten(state%psetcols,pver)
+   real(r8)  :: tlat(state%psetcols,pver)
+   real(r8)  :: qvlat(state%psetcols,pver)
+   real(r8)  :: qcten(state%psetcols,pver)
+   real(r8)  :: qiten(state%psetcols,pver)
+   real(r8)  :: ncten(state%psetcols,pver)
+   real(r8)  :: niten(state%psetcols,pver)
 
-   real(r8), target :: qrten(state%psetcols,pver)
-   real(r8), target :: qsten(state%psetcols,pver)
-   real(r8), target :: nrten(state%psetcols,pver)
-   real(r8), target :: nsten(state%psetcols,pver)
-   real(r8), target :: qgten(state%psetcols,pver)
-   real(r8), target :: ngten(state%psetcols,pver)
+   real(r8)  :: qrten(state%psetcols,pver)
+   real(r8)  :: qsten(state%psetcols,pver)
+   real(r8)  :: nrten(state%psetcols,pver)
+   real(r8)  :: nsten(state%psetcols,pver)
+   real(r8)  :: qgten(state%psetcols,pver)
+   real(r8)  :: ngten(state%psetcols,pver)
 
-   real(r8), target :: prect(state%psetcols)
-   real(r8), target :: preci(state%psetcols)
-   real(r8), target :: am_evp_st(state%psetcols,pver)  ! Area over which precip evaporates
-   real(r8), target :: evapsnow(state%psetcols,pver)   ! Local evaporation of snow
-   real(r8), target :: prodsnow(state%psetcols,pver)   ! Local production of snow
-   real(r8), target :: cmeice(state%psetcols,pver)     ! Rate of cond-evap of ice within the cloud
-   real(r8), target :: qsout(state%psetcols,pver)      ! Snow mixing ratio
-   real(r8), target :: cflx(state%psetcols,pverp)      ! grid-box avg liq condensate flux (kg m^-2 s^-1)
-   real(r8), target :: iflx(state%psetcols,pverp)      ! grid-box avg ice condensate flux (kg m^-2 s^-1)
-   real(r8), target :: rflx(state%psetcols,pverp)      ! grid-box average rain flux (kg m^-2 s^-1)
-   real(r8), target :: sflx(state%psetcols,pverp)      ! grid-box average snow flux (kg m^-2 s^-1)
-   real(r8), target :: gflx(state%psetcols,pverp)      ! grid-box average snow flux (kg m^-2 s^-1)
-   real(r8), target :: qrout(state%psetcols,pver)      ! Rain mixing ratio
-   real(r8), target :: qcsevap(state%psetcols,pver)    ! Evaporation of falling cloud water
-   real(r8), target :: qisevap(state%psetcols,pver)    ! Sublimation of falling cloud ice
-   real(r8), target :: qvres(state%psetcols,pver)      ! Residual condensation term to remove excess saturation
-   real(r8), target :: cmeiout(state%psetcols,pver)    ! Deposition/sublimation rate of cloud ice
-   real(r8), target :: vtrmc(state%psetcols,pver)      ! Mass-weighted cloud water fallspeed
-   real(r8), target :: vtrmi(state%psetcols,pver)      ! Mass-weighted cloud ice fallspeed
-   real(r8), target :: umr(state%psetcols,pver)        ! Mass-weighted rain fallspeed
-   real(r8), target :: ums(state%psetcols,pver)        ! Mass-weighted snow fallspeed
-   real(r8), target :: qcsedten(state%psetcols,pver)   ! Cloud water mixing ratio tendency from sedimentation
-   real(r8), target :: qisedten(state%psetcols,pver)   ! Cloud ice mixing ratio tendency from sedimentation
-   real(r8), target :: qrsedten(state%psetcols,pver)   ! Rain mixing ratio tendency from sedimentation
-   real(r8), target :: qssedten(state%psetcols,pver)   ! Snow mixing ratio tendency from sedimentation
-   real(r8), target :: qgsedten(state%psetcols,pver)   ! Graupel/Hail mixing ratio tendency from sedimentation
-   real(r8), target :: umg(state%psetcols,pver)        ! Mass-weighted Graupel/Hail fallspeed
+   real(r8)  :: prect(state%psetcols)
+   real(r8)  :: preci(state%psetcols)
+   real(r8)  :: am_evp_st(state%psetcols,pver)  ! Area over which precip evaporates
+   real(r8)  :: evapsnow(state%psetcols,pver)   ! Local evaporation of snow
+   real(r8)  :: prodsnow(state%psetcols,pver)   ! Local production of snow
+   real(r8)  :: cmeice(state%psetcols,pver)     ! Rate of cond-evap of ice within the cloud
+   real(r8)  :: qsout(state%psetcols,pver)      ! Snow mixing ratio
+   real(r8)  :: cflx(state%psetcols,pverp)      ! grid-box avg liq condensate flux (kg m^-2 s^-1)
+   real(r8)  :: iflx(state%psetcols,pverp)      ! grid-box avg ice condensate flux (kg m^-2 s^-1)
+   real(r8)  :: rflx(state%psetcols,pverp)      ! grid-box average rain flux (kg m^-2 s^-1)
+   real(r8)  :: sflx(state%psetcols,pverp)      ! grid-box average snow flux (kg m^-2 s^-1)
+   real(r8)  :: gflx(state%psetcols,pverp)      ! grid-box average snow flux (kg m^-2 s^-1)
+   real(r8)  :: qrout(state%psetcols,pver)      ! Rain mixing ratio
+   real(r8)  :: qcsevap(state%psetcols,pver)    ! Evaporation of falling cloud water
+   real(r8)  :: qisevap(state%psetcols,pver)    ! Sublimation of falling cloud ice
+   real(r8)  :: qvres(state%psetcols,pver)      ! Residual condensation term to remove excess saturation
+   real(r8)  :: cmeiout(state%psetcols,pver)    ! Deposition/sublimation rate of cloud ice
+   real(r8)  :: vtrmc(state%psetcols,pver)      ! Mass-weighted cloud water fallspeed
+   real(r8)  :: vtrmi(state%psetcols,pver)      ! Mass-weighted cloud ice fallspeed
+   real(r8)  :: umr(state%psetcols,pver)        ! Mass-weighted rain fallspeed
+   real(r8)  :: ums(state%psetcols,pver)        ! Mass-weighted snow fallspeed
+   real(r8)  :: qcsedten(state%psetcols,pver)   ! Cloud water mixing ratio tendency from sedimentation
+   real(r8)  :: qisedten(state%psetcols,pver)   ! Cloud ice mixing ratio tendency from sedimentation
+   real(r8)  :: qrsedten(state%psetcols,pver)   ! Rain mixing ratio tendency from sedimentation
+   real(r8)  :: qssedten(state%psetcols,pver)   ! Snow mixing ratio tendency from sedimentation
+   real(r8)  :: qgsedten(state%psetcols,pver)   ! Graupel/Hail mixing ratio tendency from sedimentation
+   real(r8)  :: umg(state%psetcols,pver)        ! Mass-weighted Graupel/Hail fallspeed
 
-   real(r8), target :: prao(state%psetcols,pver)
-   real(r8), target :: prco(state%psetcols,pver)
-   real(r8), target :: mnuccco(state%psetcols,pver)
-   real(r8), target :: mnuccto(state%psetcols,pver)
-   real(r8), target :: msacwio(state%psetcols,pver)
-   real(r8), target :: psacwso(state%psetcols,pver)
-   real(r8), target :: bergo(state%psetcols,pver)
-   real(r8), target :: melto(state%psetcols,pver)
-   real(r8), target :: homoo(state%psetcols,pver)
-   real(r8), target :: qcreso(state%psetcols,pver)
-   real(r8), target :: prcio(state%psetcols,pver)
-   real(r8), target :: praio(state%psetcols,pver)
-   real(r8), target :: qireso(state%psetcols,pver)
-   real(r8), target :: mnuccro(state%psetcols,pver)
-   real(r8), target :: mnuccrio(state%psetcols,pver)
-   real(r8), target :: mnudepo(state%psetcols,pver)
-   real(r8), target :: meltstot(state%psetcols,pver)
-   real(r8), target :: meltgtot(state%psetcols,pver)
-   real(r8), target :: pracso (state%psetcols,pver)
-   real(r8), target :: meltsdt(state%psetcols,pver)
-   real(r8), target :: frzrdt (state%psetcols,pver)
-   real(r8), target :: mnuccdo(state%psetcols,pver)
-   real(r8), target :: nrout(state%psetcols,pver)
-   real(r8), target :: nsout(state%psetcols,pver)
-   real(r8), target :: refl(state%psetcols,pver)    ! analytic radar reflectivity
-   real(r8), target :: arefl(state%psetcols,pver)   ! average reflectivity will zero points outside valid range
-   real(r8), target :: areflz(state%psetcols,pver)  ! average reflectivity in z.
-   real(r8), target :: frefl(state%psetcols,pver)
-   real(r8), target :: csrfl(state%psetcols,pver)   ! cloudsat reflectivity
-   real(r8), target :: acsrfl(state%psetcols,pver)  ! cloudsat average
-   real(r8), target :: fcsrfl(state%psetcols,pver)
-   real(r8), target :: rercld(state%psetcols,pver)  ! effective radius calculation for rain + cloud
-   real(r8), target :: ncai(state%psetcols,pver)    ! output number conc of ice nuclei available (1/m3)
-   real(r8), target :: ncal(state%psetcols,pver)    ! output number conc of CCN (1/m3)
-   real(r8), target :: qrout2(state%psetcols,pver)
-   real(r8), target :: qsout2(state%psetcols,pver)
-   real(r8), target :: nrout2(state%psetcols,pver)
-   real(r8), target :: nsout2(state%psetcols,pver)
-   real(r8), target :: freqs(state%psetcols,pver)
-   real(r8), target :: freqr(state%psetcols,pver)
-   real(r8), target :: nfice(state%psetcols,pver)
-   real(r8), target :: qcrat(state%psetcols,pver)   ! qc limiter ratio (1=no limit)
+   real(r8)  :: prao(state%psetcols,pver)
+   real(r8)  :: prco(state%psetcols,pver)
+   real(r8)  :: mnuccco(state%psetcols,pver)
+   real(r8)  :: mnuccto(state%psetcols,pver)
+   real(r8)  :: msacwio(state%psetcols,pver)
+   real(r8)  :: psacwso(state%psetcols,pver)
+   real(r8)  :: bergo(state%psetcols,pver)
+   real(r8)  :: melto(state%psetcols,pver)
+   real(r8)  :: homoo(state%psetcols,pver)
+   real(r8)  :: qcreso(state%psetcols,pver)
+   real(r8)  :: prcio(state%psetcols,pver)
+   real(r8)  :: praio(state%psetcols,pver)
+   real(r8)  :: qireso(state%psetcols,pver)
+   real(r8)  :: mnuccro(state%psetcols,pver)
+   real(r8)  :: mnuccrio(state%psetcols,pver)
+   real(r8)  :: mnudepo(state%psetcols,pver)
+   real(r8)  :: meltstot(state%psetcols,pver)
+   real(r8)  :: meltgtot(state%psetcols,pver)
+   real(r8)  :: pracso (state%psetcols,pver)
+   real(r8)  :: meltsdt(state%psetcols,pver)
+   real(r8)  :: frzrdt (state%psetcols,pver)
+   real(r8)  :: mnuccdo(state%psetcols,pver)
+   real(r8)  :: nrout(state%psetcols,pver)
+   real(r8)  :: nsout(state%psetcols,pver)
+   real(r8)  :: refl(state%psetcols,pver)    ! analytic radar reflectivity
+   real(r8)  :: arefl(state%psetcols,pver)   ! average reflectivity will zero points outside valid range
+   real(r8)  :: areflz(state%psetcols,pver)  ! average reflectivity in z.
+   real(r8)  :: frefl(state%psetcols,pver)
+   real(r8)  :: csrfl(state%psetcols,pver)   ! cloudsat reflectivity
+   real(r8)  :: acsrfl(state%psetcols,pver)  ! cloudsat average
+   real(r8)  :: fcsrfl(state%psetcols,pver)
+   real(r8)  :: rercld(state%psetcols,pver)  ! effective radius calculation for rain + cloud
+   real(r8)  :: ncai(state%psetcols,pver)    ! output number conc of ice nuclei available (1/m3)
+   real(r8)  :: ncal(state%psetcols,pver)    ! output number conc of CCN (1/m3)
+   real(r8)  :: qrout2(state%psetcols,pver)
+   real(r8)  :: qsout2(state%psetcols,pver)
+   real(r8)  :: nrout2(state%psetcols,pver)
+   real(r8)  :: nsout2(state%psetcols,pver)
+   real(r8)  :: freqs(state%psetcols,pver)
+   real(r8)  :: freqr(state%psetcols,pver)
+   real(r8)  :: nfice(state%psetcols,pver)
+   real(r8)  :: qcrat(state%psetcols,pver)   ! qc limiter ratio (1=no limit)
 !Hail/Graupel Output
-   real(r8), target :: freqg(state%psetcols,pver)
-   real(r8), target :: qgout(state%psetcols,pver)
-   real(r8), target :: ngout(state%psetcols,pver)
-   real(r8), target :: dgout(state%psetcols,pver)
-   real(r8), target :: qgout2(state%psetcols,pver)
-   real(r8), target :: ngout2(state%psetcols,pver)
-   real(r8), target :: dgout2(state%psetcols,pver)
+   real(r8)  :: freqg(state%psetcols,pver)
+   real(r8)  :: qgout(state%psetcols,pver)
+   real(r8)  :: ngout(state%psetcols,pver)
+   real(r8)  :: dgout(state%psetcols,pver)
+   real(r8)  :: qgout2(state%psetcols,pver)
+   real(r8)  :: ngout2(state%psetcols,pver)
+   real(r8)  :: dgout2(state%psetcols,pver)
 !Hail/Graupel Process Rates
-   real(r8), target :: psacro(state%psetcols,pver)
-   real(r8), target :: pracgo(state%psetcols,pver)
-   real(r8), target :: psacwgo(state%psetcols,pver)
-   real(r8), target :: pgsacwo(state%psetcols,pver)
-   real(r8), target :: pgracso(state%psetcols,pver)
-   real(r8), target :: prdgo(state%psetcols,pver)
-   real(r8), target :: qmultgo(state%psetcols,pver)
-   real(r8), target :: qmultrgo(state%psetcols,pver)
-   real(r8), target :: npracgo(state%psetcols,pver)
-   real(r8), target :: nscngo(state%psetcols,pver)
-   real(r8), target :: ngracso(state%psetcols,pver)
-   real(r8), target :: nmultgo(state%psetcols,pver)
-   real(r8), target :: nmultrgo(state%psetcols,pver)
-   real(r8), target :: npsacwgo(state%psetcols,pver)
+   real(r8)  :: psacro(state%psetcols,pver)
+   real(r8)  :: pracgo(state%psetcols,pver)
+   real(r8)  :: psacwgo(state%psetcols,pver)
+   real(r8)  :: pgsacwo(state%psetcols,pver)
+   real(r8)  :: pgracso(state%psetcols,pver)
+   real(r8)  :: prdgo(state%psetcols,pver)
+   real(r8)  :: qmultgo(state%psetcols,pver)
+   real(r8)  :: qmultrgo(state%psetcols,pver)
+   real(r8)  :: npracgo(state%psetcols,pver)
+   real(r8)  :: nscngo(state%psetcols,pver)
+   real(r8)  :: ngracso(state%psetcols,pver)
+   real(r8)  :: nmultgo(state%psetcols,pver)
+   real(r8)  :: nmultrgo(state%psetcols,pver)
+   real(r8)  :: npsacwgo(state%psetcols,pver)
 !Local tendencies
-   real(r8), target :: ptend_loc_mpdt(state%psetcols,pver)
-   real(r8), target :: ptend_loc_mpdq(state%psetcols,pver)
-   real(r8), target :: ptend_loc_mpdliq(state%psetcols,pver)
+   real(r8)  :: ptend_loc_mpdt(state%psetcols,pver)
+   real(r8)  :: ptend_loc_mpdq(state%psetcols,pver)
+   real(r8)  :: ptend_loc_mpdliq(state%psetcols,pver)
 
    ! Dummy arrays for cases where we throw away the MG version and
    ! recalculate sizes on the CAM grid to avoid time/subcolumn averaging
@@ -1818,6 +1822,7 @@ subroutine micro_pumas_cam_tend(state, ptend, dtime, pbuf)
 
    logical :: use_subcol_microp
    integer :: col_type ! Flag to store whether accessing grid or sub-columns in pbuf_get_field
+   integer :: ierr
 
    character(128) :: errstring   ! return status (non-blank for error return)
 
@@ -1863,7 +1868,7 @@ subroutine micro_pumas_cam_tend(state, ptend, dtime, pbuf)
         col_type=col_type, copy_if_needed=use_subcol_microp)
 
    if (.not. do_cldice) then
-      ! If we are NOT progronosing ice and snow tendencies, then get them from the Pbuf
+      ! If we are NOT prognosing ice and snow tendencies, then get them from the Pbuf
       call pbuf_get_field(pbuf, tnd_qsnow_idx,   tnd_qsnow,   col_type=col_type, copy_if_needed=use_subcol_microp)
       call pbuf_get_field(pbuf, tnd_nsnow_idx,   tnd_nsnow,   col_type=col_type, copy_if_needed=use_subcol_microp)
       call pbuf_get_field(pbuf, re_ice_idx,      re_ice,      col_type=col_type, copy_if_needed=use_subcol_microp)
@@ -1889,7 +1894,10 @@ subroutine micro_pumas_cam_tend(state, ptend, dtime, pbuf)
    if (qsatfac_idx > 0) then
       call pbuf_get_field(pbuf, qsatfac_idx, qsatfac, col_type=col_type, copy_if_needed=use_subcol_microp)
    else
-      allocate(qsatfac(ncol,pver))
+      allocate(qsatfac(ncol,pver),stat=ierr)
+      if (ierr /= 0) then
+        call endrun(' micro_pumas_cam_tend: error allocating qsatfac')
+      end if
       qsatfac = 1._r8
    end if
 
@@ -2094,7 +2102,7 @@ subroutine micro_pumas_cam_tend(state, ptend, dtime, pbuf)
 
    ! Initialize ptend for output.
    lq = .false.
-   lq(1) = .true.
+   lq(ixq) = .true.
    lq(ixcldliq) = .true.
    lq(ixcldice) = .true.
    lq(ixnumliq) = .true.
@@ -2136,7 +2144,7 @@ subroutine micro_pumas_cam_tend(state, ptend, dtime, pbuf)
          case (0)
             call micro_mg_tend1_0( &
                  microp_uniform, ncol, pver, ncol, 1, dtime/num_steps, &
-                 state_loc%t(:ncol,:), state_loc%q(:ncol,:,1), state_loc%q(:ncol,:,ixcldliq), &
+                 state_loc%t(:ncol,:), state_loc%q(:ncol,:,ixq), state_loc%q(:ncol,:,ixcldliq), &
                  state_loc%q(:ncol,:,ixcldice), state_loc%q(:ncol,:,ixnumliq),     &
                  state_loc%q(:ncol,:,ixnumice), state_loc%pmid(:ncol,:),  state_loc%pdel(:ncol,:), &
                  ast(:ncol,:), alst_mic(:ncol,:),&
@@ -2165,7 +2173,7 @@ subroutine micro_pumas_cam_tend(state, ptend, dtime, pbuf)
       case(2:3)
          call micro_pumas_tend( &
               ncol,         pver,           dtime/num_steps,&
-              state_loc%t(:ncol,:),              state_loc%q(:ncol,:,1),            &
+              state_loc%t(:ncol,:),              state_loc%q(:ncol,:,ixq),            &
               state_loc%q(:ncol,:,ixcldliq),     state_loc%q(:ncol,:,ixcldice),          &
               state_loc%q(:ncol,:,ixnumliq),     state_loc%q(:ncol,:,ixnumice),       &
               state_loc%q(:ncol,:,ixrain),       state_loc%q(:ncol,:,ixsnow),         &
@@ -2239,7 +2247,7 @@ subroutine micro_pumas_cam_tend(state, ptend, dtime, pbuf)
 
       ! Set local tendency.
       ptend_loc%s(:ncol,:) = tlat(:ncol,:)
-      ptend_loc%q(:ncol,:,1) = qvlat(:ncol,:)
+      ptend_loc%q(:ncol,:,ixq) = qvlat(:ncol,:)
       ptend_loc%q(:ncol,:,ixcldliq) = qcten(:ncol,:)
       ptend_loc%q(:ncol,:,ixcldice) = qiten(:ncol,:)
       ptend_loc%q(:ncol,:,ixnumliq) = ncten(:ncol,:)
@@ -2248,9 +2256,10 @@ subroutine micro_pumas_cam_tend(state, ptend, dtime, pbuf)
          ptend_loc%q(:ncol,:,ixnumice) = niten(:ncol,:)
       else
          ! In this case, the tendency should be all 0.
-         if (any(niten(:ncol,:) /= 0._r8)) &
+         if (any(niten(:ncol,:) /= 0._r8)) then
               call endrun("micro_pumas_cam:ERROR - MG microphysics is configured not to prognose cloud ice,"// &
               " but micro_pumas_tend has ice number tendencies.")
+         end if
          ptend_loc%q(:ncol,:,ixnumice) = 0._r8
       end if
 
@@ -2268,7 +2277,7 @@ subroutine micro_pumas_cam_tend(state, ptend, dtime, pbuf)
 
       ! Save output variables
       ptend_loc_mpdt = ptend_loc%s
-      ptend_loc_mpdq = ptend_loc%q(:,:,1)
+      ptend_loc_mpdq = ptend_loc%q(:,:,ixq)
       ptend_loc_mpdliq = ptend_loc%q(:,:,ixcldliq)
 
       ! Sum into overall ptend
@@ -3307,7 +3316,7 @@ subroutine micro_pumas_cam_tend(state, ptend, dtime, pbuf)
          ! Calculate the RH including any T change that we make.
          do k = top_lev, pver
            call qsat(state_loc%t(i,k), state_loc%pmid(i,k), es, qs)
-           cp_rh(i,k) = state_loc%q(i, k, 1) / qs * 100._r8
+           cp_rh(i,k) = state_loc%q(i, k, ixq) / qs * 100._r8
          end do
       end do
 
@@ -3317,7 +3326,7 @@ subroutine micro_pumas_cam_tend(state, ptend, dtime, pbuf)
    ! ptend_loc is deallocated in physics_update above
    call physics_state_dealloc(state_loc)
 
-   if (qsatfac_idx == 0) then
+   if (qsatfac_idx <= 0) then
       deallocate(qsatfac)
    end if
 
