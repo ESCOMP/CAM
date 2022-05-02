@@ -3552,7 +3552,8 @@ Plume widths for theta_l and rt
 
 <entry id="clubb_ipdf_call_placement" type="integer" category="pblrad"
        group="clubb_params_nl" valid_values="" >
-Option for the placement of the call to CLUBB's PDF closure. ipdf_pre_advance_fields (1) calls the PDf closure before advancing prognostic fields. ipdf_post_advance_fields (2, default) calls after advancing prognostic fields, and ipdf_pre_post_advance_fields (3) calls both before and after advancing prognostic fields.
+Option for the placement of the call to CLUBB's PDF closure. The optins include: ipdf_pre_advance_fields (1) calls the PDf closure before advancing prognostic fields. ipdf_post_advance_fields (2) calls after advancing prognostic fields, and ipdf_pre_post_advance_fields (3) calls both before and after advancing prognostic fields.
+Default: 1
 </entry>
 
 <entry id="clubb_c1" type="real" category="pblrad"
