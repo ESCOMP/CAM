@@ -1,6 +1,6 @@
 name: Other
 description: ex. code clean-up, infrastructure updates
-title: "Put title here!"
+title: "Put brief (<65 char) title here!"
 body:
   - type: dropdown
     id: other-type
