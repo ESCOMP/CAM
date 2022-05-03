@@ -7,7 +7,7 @@ body:
     attributes:
       label: Issue Type
       description: If applicable, please add relevant label(s)
-      multiple: false
+      multiple: true
       options:
         - Code Clean-up
         - Infrastructure Update

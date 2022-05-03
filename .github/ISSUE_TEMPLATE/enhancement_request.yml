@@ -37,6 +37,7 @@ body:
       multiple: false
       options:
         - "Yes"
+        - "Yes, but I will need some help"
         - "No"
     validations:
       required: false

@@ -1,5 +1,5 @@
 name: Bug Report
-description: File a bug report
+description: File a bug report - for CAM developers' use only (all other users should use the CESM forum)
 title: "Put brief (<65 char) bug title here!"
 labels: ["bug"]
 body:
@@ -22,7 +22,7 @@ body:
   - type: input
     id: cam-tag
     attributes:
-      label: What CAM tag you were using
+      label: What CAM tag were you using?
       description: Type "git describe" to see the tag
       placeholder: ex. cam6_3_042
     validations:
