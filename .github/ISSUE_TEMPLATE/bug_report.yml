@@ -62,6 +62,18 @@ body:
       placeholder: ex. /glade/scratch/3p0/where-could-he-be
     validations:
       required: false
+  - type: dropdown
+    id: implemenation
+    attributes:
+      label: Will you be addressing this bug yourself?
+      description: If Yes, please also assign this issue to yourself
+      multiple: false
+      options:
+        - "Yes"
+        - "Yes, but I will need some help"
+        - "No"
+    validations:
+      required: true
   - type: textarea
     id: extra-info
     attributes:

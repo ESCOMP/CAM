@@ -35,3 +35,15 @@ body:
         - "I Don't Know"
     validations:
       required: true
+  - type: dropdown
+    id: implemenation
+    attributes:
+      label: Will you be implementing this yourself?
+      description: If Yes, please also assign this issue to yourself
+      multiple: false
+      options:
+        - "Yes"
+        - "Yes, but I will need some help"
+        - "No"
+    validations:
+      required: true
