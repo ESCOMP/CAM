@@ -40,6 +40,8 @@ contains
     use hybvcoord_mod,          only: hvcoord_t
     use prim_advection_mod,     only: prim_advec_init2,deriv
     use prim_advance_mod,       only: compute_omega
+    use physconst,              only: gravit, cappa, cpair, tref, lapse_rate, get_dp_ref
+    use physconst,              only: pstd
 
     type (element_t), intent(inout) :: elem(:)
     type (fvm_struct), intent(inout)    :: fvm(:)
@@ -62,7 +64,8 @@ contains
     real (kind=r8) :: dt_dyn_del2_sponge, dt_remap 
     real (kind=r8) :: dt_tracer_vis      ! viscosity timestep used in tracers
 
-    real (kind=r8) :: dp
+    real (kind=r8) :: dp,T1,T0,pmid_ref(np,np)
+    real (kind=r8) :: ps_ref(np,np,nets:nete)
 
     integer :: i,j,k,ie,t,q
     integer :: n0,n0_qdp
@@ -120,7 +123,7 @@ contains
     ! so only now does HOMME learn the timstep.  print them out:
     call print_cfl(elem,hybrid,nets,nete,dtnu,&
          !p top and p mid levels
-         hvcoord%hyai(1)*hvcoord%ps0,(hvcoord%hyam(:)+hvcoord%hybm(:))*hvcoord%ps0,&
+         hvcoord%hyai(1)*hvcoord%ps0,hvcoord%hyam(:)*hvcoord%ps0+hvcoord%hybm(:)*pstd,&
          !dt_remap,dt_tracer_fvm,dt_tracer_se
          tstep*qsplit*rsplit,tstep*qsplit*fvm_supercycling,tstep*qsplit,&
          !dt_dyn,dt_dyn_visco,dt_tracer_visco, dt_phys
@@ -138,6 +141,32 @@ contains
      n0=tl%n0
      call TimeLevel_Qdp( tl, qsplit, n0_qdp)
      call compute_omega(hybrid,n0,n0_qdp,elem,deriv,nets,nete,dt_remap,hvcoord)
+     !
+     ! pre-compute pressure-level thickness reference profile
+     !
+     do ie=nets,nete
+       call get_dp_ref(hvcoord%hyai, hvcoord%hybi, hvcoord%ps0,1,np,1,np,1,nlev,&
+            elem(ie)%state%phis(:,:),elem(ie)%derived%dp_ref(:,:,:),ps_ref(:,:,ie))
+     end do
+     !
+     ! pre-compute reference temperature profile (Simmons and Jiabin, 1991, QJRMS, Section 2a)
+     !
+     !  Tref = T0+T1*Exner
+     !  T1 = .0065*Tref*Cp/g ! = ~191
+     !  T0 = Tref-T1         ! = ~97
+     !
+     T1 = lapse_rate*Tref*cpair/gravit
+     T0 = Tref-T1
+     do ie=nets,nete
+       do k=1,nlev
+         pmid_ref =hvcoord%hyam(k)*hvcoord%ps0 + hvcoord%hybm(k)*ps_ref(:,:,ie)
+         if (hvcoord%hybm(k)>0) then
+           elem(ie)%derived%T_ref(:,:,k)    = T0+T1*(pmid_ref/hvcoord%ps0)**cappa
+         else
+           elem(ie)%derived%T_ref(:,:,k)    = 0.0_r8
+         end if
+       end do
+     end do
 
      if (hybrid%masterthread) write(iulog,*) "initial state:"
      call prim_printstate(elem, tl, hybrid,nets,nete, fvm)
