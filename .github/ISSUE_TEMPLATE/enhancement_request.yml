@@ -34,6 +34,7 @@ body:
     id: implemenation
     attributes:
       label: Will you be implementing this enhancement yourself?
+      description: If Yes, please also assign this issue to yourself
       multiple: false
       options:
         - "Yes"
