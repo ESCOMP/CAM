@@ -27,7 +27,7 @@ body:
     id: answer-changing
     attributes:
       label: Will this change answers?
-      description: If yes, please also add the "answer changing" label
+      description: If yes, please also add the "answer changing" label (if possible)
       multiple: false
       options:
         - "Yes"
@@ -39,7 +39,7 @@ body:
     id: implemenation
     attributes:
       label: Will you be implementing this yourself?
-      description: If Yes, please also assign this issue to yourself
+      description: If Yes, please also assign this issue to yourself (if possible)
       multiple: false
       options:
         - "Yes"
