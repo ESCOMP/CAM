@@ -2332,7 +2332,7 @@ subroutine micro_pumas_cam_tend(state, ptend, dtime, pbuf)
               state_loc%q(:ncol,top_lev:,ixnumrain),    state_loc%q(:ncol,top_lev:,ixnumsnow),      &
               state_loc_graup(:ncol,top_lev:),    state_loc_numgraup(:ncol,top_lev:),     &
               relvar(:ncol,top_lev:),         accre_enhan(:ncol,top_lev:),     &
-              state_loc%pmid(:ncol,top_lev:),                state_loc%pdel(:ncol,top_lev:),  state_loc%pint(:ncol,top_lev:) &
+              state_loc%pmid(:ncol,top_lev:),                state_loc%pdel(:ncol,top_lev:),  state_loc%pint(:ncol,top_lev:), &
               ast(:ncol,top_lev:), alst_mic(:ncol,top_lev:), aist_mic(:ncol,top_lev:), qsatfac(:ncol,top_lev:), &
               rate1cld(:ncol,top_lev:),                         &
               naai(:ncol,top_lev:),            npccn(:ncol,top_lev:),           &
