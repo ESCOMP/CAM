@@ -1530,10 +1530,6 @@ subroutine micro_pumas_cam_tend(state, ptend, dtime, pbuf)
    real(r8)  :: nmultgo(state%psetcols,pver)
    real(r8)  :: nmultrgo(state%psetcols,pver)
    real(r8)  :: npsacwgo(state%psetcols,pver)
-!Local tendencies
-   real(r8)  :: ptend_loc_mpdt(state%psetcols,pver)
-   real(r8)  :: ptend_loc_mpdq(state%psetcols,pver)
-   real(r8)  :: ptend_loc_mpdliq(state%psetcols,pver)
 
    ! Dummy arrays for cases where we throw away the MG version and
    ! recalculate sizes on the CAM grid to avoid time/subcolumn averaging
@@ -2415,11 +2411,6 @@ subroutine micro_pumas_cam_tend(state, ptend, dtime, pbuf)
          ptend_loc%q(:ncol,:,ixgraupel) = qgten(:ncol,:)
          ptend_loc%q(:ncol,:,ixnumgraupel) = ngten(:ncol,:)
       end if
-
-      ! Save output variables
-      ptend_loc_mpdt = ptend_loc%s
-      ptend_loc_mpdq = ptend_loc%q(:,:,ixq)
-      ptend_loc_mpdliq = ptend_loc%q(:,:,ixcldliq)
 
       ! Sum into overall ptend
       call physics_ptend_sum(ptend_loc, ptend, ncol)
@@ -3307,9 +3298,9 @@ subroutine micro_pumas_cam_tend(state, ptend, dtime, pbuf)
    call outfld('ANSNOW',      nsout2,      psetcols, lchnk, avg_subcol_field=use_subcol_microp)
    call outfld('FREQR',       freqr,       psetcols, lchnk, avg_subcol_field=use_subcol_microp)
    call outfld('FREQS',       freqs,       psetcols, lchnk, avg_subcol_field=use_subcol_microp)
-   call outfld('MPDT',        ptend_loc_mpdt,   psetcols, lchnk, avg_subcol_field=use_subcol_microp)
-   call outfld('MPDQ',        ptend_loc_mpdq,   psetcols, lchnk, avg_subcol_field=use_subcol_microp)
-   call outfld('MPDLIQ',      ptend_loc_mpdliq, psetcols, lchnk, avg_subcol_field=use_subcol_microp)
+   call outfld('MPDT',        tlat,        psetcols, lchnk, avg_subcol_field=use_subcol_microp)
+   call outfld('MPDQ',        ptend_loc%q(:,:,ixq),      psetcols, lchnk, avg_subcol_field=use_subcol_microp)
+   call outfld('MPDLIQ',      ptend_loc%q(:,:,ixcldliq), psetcols, lchnk, avg_subcol_field=use_subcol_microp)
    call outfld('MPDICE',      qiten,       psetcols, lchnk, avg_subcol_field=use_subcol_microp)
    call outfld('MPDNLIQ',     ncten,       psetcols, lchnk, avg_subcol_field=use_subcol_microp)
    call outfld('MPDNICE',     niten,       psetcols, lchnk, avg_subcol_field=use_subcol_microp)
