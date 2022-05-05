@@ -21,7 +21,7 @@ body:
   - type: dropdown
     id: answer-changing
     attributes:
-      label: Will this change answers?
+      label: Will this change (regression test) answers?
       description: If yes, please also add the "answer changing" label (if possible)
       multiple: false
       options:
