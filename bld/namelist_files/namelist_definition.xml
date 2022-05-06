@@ -4029,7 +4029,7 @@ Default: .true.
 
 <entry id="clubb_l_lmm_stepping" type="logical" category="pblrad"
        group="clubb_params_nl" valid_values="" >
-Flag to aplly Linear Multistep Method (LMM) stepping in CLUBB.
+Flag to apply Linear Multistep Method (LMM) stepping in CLUBB.
 Default: .false.
 </entry>
 
