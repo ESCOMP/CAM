@@ -1363,8 +1363,8 @@ end subroutine micro_pumas_cam_init
 subroutine micro_pumas_cam_tend(state, ptend, dtime, pbuf)
 
    use micro_pumas_utils, only: size_dist_param_basic, size_dist_param_liq
-   use micro_pumas_utils, only: mg_liq_props, mg_ice_props, avg_diameter, rhoi, rhosn, rhow, rhows
-   use micro_pumas_utils, only: rhog, qsmall, mincld
+   use micro_pumas_utils, only: mg_liq_props, mg_ice_props, avg_diameter
+   use micro_pumas_utils, only: rhoi, rhosn, rhow, rhows, rhog, qsmall, mincld
 
    use micro_mg1_0, only: micro_mg_tend1_0 => micro_mg_tend
    use micro_pumas_v1, only: micro_pumas_tend => micro_pumas_tend
