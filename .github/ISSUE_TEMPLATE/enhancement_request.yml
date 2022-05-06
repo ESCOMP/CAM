@@ -1,0 +1,44 @@
+name: Enhancement Request
+description: Request an enhancement and/or open a science discussion
+title: "Put brief (<65 char) title here!"
+labels: ["enhancement"]
+body:
+  - type: textarea
+    id: enhancement-description
+    attributes:
+      label: What is the feature/what would you like to discuss?
+      placeholder: ex. I'd like to entirely refactor chemistry and here's how.
+    validations:
+      required: true
+  - type: textarea
+    id: user-reference
+    attributes:
+      label: Is there anyone in particular you want to be part of this conversation?
+      description: Add the user(s) with @<username>
+      placeholder: ex. @confucius
+    validations:
+      required: false
+  - type: dropdown
+    id: answer-changing
+    attributes:
+      label: Will this change (regression test) answers?
+      description: If yes, please also add the "answer changing" label (if possible)
+      multiple: false
+      options:
+        - "Yes"
+        - "No"
+        - "I Don't Know"
+    validations:
+      required: true
+  - type: dropdown
+    id: implemenation
+    attributes:
+      label: Will you be implementing this enhancement yourself?
+      description: If Yes, please also assign this issue to yourself
+      multiple: false
+      options:
+        - "Yes"
+        - "Yes, but I will need some help"
+        - "No"
+    validations:
+      required: true

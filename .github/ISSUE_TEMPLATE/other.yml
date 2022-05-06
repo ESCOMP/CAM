@@ -1,0 +1,49 @@
+name: Other
+description: ex. code clean-up, infrastructure updates
+title: "Put brief (<65 char) title here!"
+body:
+  - type: dropdown
+    id: other-type
+    attributes:
+      label: Issue Type
+      description: If applicable, please add relevant label(s)
+      multiple: true
+      options:
+        - Code Clean-up
+        - Infrastructure Update
+        - Externals Update
+        - Documentation Update
+        - Other (please describe below)
+    validations:
+      required: true
+  - type: textarea
+    id: issue-description
+    attributes:
+      label: Issue Description
+      description: Describe what will change
+    validations:
+      required: true
+  - type: dropdown
+    id: answer-changing
+    attributes:
+      label: Will this change answers?
+      description: If yes, please also add the "answer changing" label (if possible)
+      multiple: false
+      options:
+        - "Yes"
+        - "No"
+        - "I Don't Know"
+    validations:
+      required: true
+  - type: dropdown
+    id: implemenation
+    attributes:
+      label: Will you be implementing this yourself?
+      description: If Yes, please also assign this issue to yourself (if possible)
+      multiple: false
+      options:
+        - "Yes"
+        - "Yes, but I will need some help"
+        - "No"
+    validations:
+      required: true
