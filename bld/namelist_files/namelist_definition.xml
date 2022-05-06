@@ -3551,8 +3551,8 @@ Plume widths for theta_l and rt
 </entry>
 
 <entry id="clubb_ipdf_call_placement" type="integer" category="pblrad"
-       group="clubb_params_nl" valid_values="" >
-Option for the placement of the call to CLUBB's PDF closure. The optins include: ipdf_pre_advance_fields (1) calls the PDf closure before advancing prognostic fields. ipdf_post_advance_fields (2) calls after advancing prognostic fields, and ipdf_pre_post_advance_fields (3) calls both before and after advancing prognostic fields.
+       group="clubb_params_nl" valid_values="1,2,3" >
+Option for the placement of the call to CLUBB's PDF closure. The options include: ipdf_pre_advance_fields (1) calls the PDF closure before advancing prognostic fields. ipdf_post_advance_fields (2) calls after advancing prognostic fields, and ipdf_pre_post_advance_fields (3) calls both before and after advancing prognostic fields.
 Default: 1
 </entry>
 
@@ -3853,6 +3853,7 @@ Maximum magnitude of skewness allowed.
 Factor used in calculating the surface values of up2 (variance of the u wind
 component) and vp2 (variance of the v wind component).  Increasing
 clubb_up2_sfc_coef increases the values of up2 and vp2 at the surface.
+Default: 2.0
 </entry>
 
 <entry id="clubb_C_wp2_splat" type="real" category="pblrad"
@@ -4010,11 +4011,13 @@ Default: .false.
 Flag to allow cloud fraction and mean cloud water at adjacent vertical grid
 levels influence the amount of cloudiness and amount of cloud water in a
 grid box.
+Default: .true.
 </entry>
 
 <entry id="clubb_l_use_thvm_in_bv_freq" type="logical" category="pblrad"
        group="clubb_params_nl" valid_values="" >
 Flag to use mean theta-v in the calculation of Brunt-Vaisala frequency.
+Default: .false.
 </entry>
 
 <entry id="clubb_l_vert_avg_closure" type="logical" category="pblrad"
@@ -4027,13 +4030,13 @@ Default: .true.
 <entry id="clubb_l_lmm_stepping" type="logical" category="pblrad"
        group="clubb_params_nl" valid_values="" >
 Flag to aplly Linear Multistep Method (LMM) stepping in CLUBB.
-Defualt: .false.
+Default: .false.
 </entry>
 
 <entry id="clubb_l_e3sm_config" type="logical" category="pblrad"
        group="clubb_params_nl" valid_values="" >
 Flag to run CLUBB with E3SM settings. 
-Defualt: .true.
+Default: .true.
 </entry>
 
 <entry id="clubb_l_diag_Lscale_from_tau" type="logical" category="pblrad"
@@ -4084,6 +4087,7 @@ Default: .false.
        group="clubb_params_nl" valid_values="" >
 Flag to use a dissipation formula of -(2/3)*em/tau_zm, as in Bougeault (1981),
 in the wp2 (variance of vertical velocity) predictive equation.
+Default: .false.
 </entry>
 
 <entry id="clubb_l_do_expldiff_rtm_thlm" type="logical"  category="pblrad"

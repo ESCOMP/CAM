@@ -3634,7 +3634,7 @@ end subroutine clubb_init_cnst
       se_dis(i) = (te_a(i) - te_b(i))/(state1%pint(i,pverp)-state1%pint(i,clubbtop(i)+1))
     end do
 
-    ! Fix the total energy coming out of CLUBB so it achieves enery conservation.
+    ! Fix the total energy coming out of CLUBB so it achieves energy conservation.
     ! Apply this fixer throughout the column evenly, but only at layers where 
     ! CLUBB is active.
     !
