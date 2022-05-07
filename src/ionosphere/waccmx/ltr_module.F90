@@ -25,10 +25,7 @@ module ltr_module
   public :: getltr
 
   ! Define parameters for LTR input data file:
-  integer, parameter ::  &
-       ithmx = 91,       & ! maximum number of latitudes of LTR data
-       jmxm = 2*ithmx-1, & ! maximum number of global latitudes
-       lonmx = 361          ! maximum number of longitudes of LTR data
+  integer :: ithmx=-huge(1), jmxm=-huge(1), lonmx=-huge(1)
   integer :: lonp1,latp1
   !
   ! Define fields for LTR input data file:
@@ -112,6 +109,11 @@ contains
     istat = pio_inq_dimid(ncid, 'lat', id_lat)
     istat = pio_inquire_dimension(ncid, id_lat, len=latp1)
     call check_ncerr(istat, subname, 'LTR latitude dimension')
+
+    lonmx = lonp1
+    jmxm  = latp1
+    ithmx = (jmxm+1)/2
+
     !
     ! Get time dimension:
     istat = pio_inquire(ncid, unlimiteddimid=id_time)
