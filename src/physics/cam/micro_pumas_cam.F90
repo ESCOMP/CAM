@@ -1373,7 +1373,6 @@ subroutine micro_pumas_cam_tend(state, ptend, dtime, pbuf)
    use subcol,          only: subcol_field_avg
    use tropopause,      only: tropopause_find, TROP_ALG_CPP, TROP_ALG_NONE, NOTFOUND
    use wv_saturation,   only: qsat
-   use infnan,          only: nan, assignment(=)
 
    type(physics_state),         intent(in)    :: state
    type(physics_ptend),         intent(out)   :: ptend
@@ -1540,7 +1539,6 @@ subroutine micro_pumas_cam_tend(state, ptend, dtime, pbuf)
    real(r8) :: reff_rain_dum(state%ncol,pver)
    real(r8) :: reff_snow_dum(state%ncol,pver)
    real(r8) :: reff_grau_dum(state%ncol,pver)   !not used for now or passed to COSP.
-   real(r8), target :: nan_array(state%ncol,pver)   ! Array for NaN's
 
    ! Heterogeneous-only version of mnuccdo.
    real(r8) :: mnuccdohet(state%psetcols,pver)
@@ -1837,8 +1835,6 @@ subroutine micro_pumas_cam_tend(state, ptend, dtime, pbuf)
    itim_old = pbuf_old_tim_idx()
    nlev = pver - top_lev + 1
 
-   nan_array = nan
-
    call phys_getopts(use_subcol_microp_out=use_subcol_microp)
 
    ! Set the col_type flag to grid or subcolumn dependent on the value of use_subcol_microp
@@ -1871,11 +1867,11 @@ subroutine micro_pumas_cam_tend(state, ptend, dtime, pbuf)
       call pbuf_get_field(pbuf, tnd_nsnow_idx,   tnd_nsnow,   col_type=col_type, copy_if_needed=use_subcol_microp)
       call pbuf_get_field(pbuf, re_ice_idx,      re_ice,      col_type=col_type, copy_if_needed=use_subcol_microp)
    else
-      ! If we ARE prognosing tendencies, then just point to to an array of NaN fields to have
+      ! If we ARE prognosing tendencies, then just point to NULL
       ! something for PUMAS to use in call
-      tnd_qsnow => nan_array
-      tnd_nsnow => nan_array
-      re_ice => nan_array
+      tnd_qsnow => NULL()
+      tnd_nsnow => NULL()
+      re_ice => NULL()
    end if
 
    if (use_hetfrz_classnuc) then
@@ -1883,10 +1879,10 @@ subroutine micro_pumas_cam_tend(state, ptend, dtime, pbuf)
       call pbuf_get_field(pbuf, frzcnt_idx, frzcnt, col_type=col_type, copy_if_needed=use_subcol_microp)
       call pbuf_get_field(pbuf, frzdep_idx, frzdep, col_type=col_type, copy_if_needed=use_subcol_microp)
    else
-      ! Needed to satisfy gnu compiler with optional argument - set to an array of NaNs
-      frzimm => nan_array
-      frzcnt => nan_array
-      frzdep => nan_array
+      ! Needed to satisfy gnu compiler with optional argument - set to NULL
+      frzimm => NULL()
+      frzcnt => NULL()
+      frzdep => NULL()
    end if
 
    if (qsatfac_idx > 0) then
@@ -2383,14 +2379,14 @@ subroutine micro_pumas_cam_tend(state, ptend, dtime, pbuf)
                               ls=.true., lq=lq)
 
       ! Set local tendency.
-      ptend_loc%s(:ncol,:) = tlat(:ncol,:)
-      ptend_loc%q(:ncol,:,ixq) = qvlat(:ncol,:)
-      ptend_loc%q(:ncol,:,ixcldliq) = qcten(:ncol,:)
-      ptend_loc%q(:ncol,:,ixcldice) = qiten(:ncol,:)
-      ptend_loc%q(:ncol,:,ixnumliq) = ncten(:ncol,:)
+      ptend_loc%s(:ncol,top_lev:) = tlat(:ncol,top_lev:)
+      ptend_loc%q(:ncol,top_lev:,ixq) = qvlat(:ncol,top_lev:)
+      ptend_loc%q(:ncol,top_lev:,ixcldliq) = qcten(:ncol,top_lev:)
+      ptend_loc%q(:ncol,top_lev:,ixcldice) = qiten(:ncol,top_lev:)
+      ptend_loc%q(:ncol,top_lev:,ixnumliq) = ncten(:ncol,top_lev:)
 
       if (do_cldice) then
-         ptend_loc%q(:ncol,:,ixnumice) = niten(:ncol,:)
+         ptend_loc%q(:ncol,top_lev:,ixnumice) = niten(:ncol,top_lev:)
       else
          ! In this case, the tendency should be all 0.
          if (any(niten(:ncol,:) /= 0._r8)) then
@@ -2401,15 +2397,15 @@ subroutine micro_pumas_cam_tend(state, ptend, dtime, pbuf)
       end if
 
       if (micro_mg_version > 1) then
-         ptend_loc%q(:ncol,:,ixrain) = qrten(:ncol,:)
-         ptend_loc%q(:ncol,:,ixsnow) = qsten(:ncol,:)
-         ptend_loc%q(:ncol,:,ixnumrain) = nrten(:ncol,:)
-         ptend_loc%q(:ncol,:,ixnumsnow) = nsten(:ncol,:)
+         ptend_loc%q(:ncol,top_lev:,ixrain) = qrten(:ncol,top_lev:)
+         ptend_loc%q(:ncol,top_lev:,ixsnow) = qsten(:ncol,top_lev:)
+         ptend_loc%q(:ncol,top_lev:,ixnumrain) = nrten(:ncol,top_lev:)
+         ptend_loc%q(:ncol,top_lev:,ixnumsnow) = nsten(:ncol,top_lev:)
       end if
 
       if (micro_mg_version > 2) then
-         ptend_loc%q(:ncol,:,ixgraupel) = qgten(:ncol,:)
-         ptend_loc%q(:ncol,:,ixnumgraupel) = ngten(:ncol,:)
+         ptend_loc%q(:ncol,top_lev:,ixgraupel) = qgten(:ncol,top_lev:)
+         ptend_loc%q(:ncol,top_lev:,ixnumgraupel) = ngten(:ncol,top_lev:)
       end if
 
       ! Sum into overall ptend
@@ -2587,7 +2583,7 @@ subroutine micro_pumas_cam_tend(state, ptend, dtime, pbuf)
       ! Cloud fraction for purposes of precipitation is maximum cloud
       ! fraction out of all the layers that the precipitation may be
       ! falling down from.
-      cldmax(:ncol,:) = max(mincld, ast(:ncol,:))
+      cldmax(:ncol,top_lev:) = max(mincld, ast(:ncol,top_lev:))
       do k = top_lev+1, pver
          where (state_loc%q(:ncol,k-1,ixrain) >= qsmall .or. &
               state_loc%q(:ncol,k-1,ixsnow) >= qsmall)
