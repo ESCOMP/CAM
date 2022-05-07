@@ -2248,13 +2248,7 @@ subroutine micro_pumas_cam_tend(state, ptend, dtime, pbuf)
    freqr(:ncol,:top_lev-1)=0._r8
    nfice(:ncol,:top_lev-1)=0._r8
    qcrat(:ncol,:top_lev-1)=0._r8
-   tnd_qsnow(:ncol,:top_lev-1)=0._r8
-   tnd_nsnow(:ncol,:top_lev-1)=0._r8
-   re_ice(:ncol,:top_lev-1)=0._r8
    prer_evap(:ncol,:top_lev-1)=0._r8
-   frzimm(:ncol,:top_lev-1)=0._r8
-   frzcnt(:ncol,:top_lev-1)=0._r8
-   frzdep(:ncol,:top_lev-1)=0._r8
 
    do it = 1, num_steps
 
