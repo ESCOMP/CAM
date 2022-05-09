@@ -24,8 +24,7 @@ module ltr_module
   public :: init_ltr
   public :: getltr
 
-  ! Define parameters for LTR input data file:
-  integer :: ithmx=-huge(1), jmxm=-huge(1), lonmx=-huge(1)
+  ! Grid dimension sizes for LTR input data file:
   integer :: lonp1,latp1
   !
   ! Define fields for LTR input data file:
@@ -109,10 +108,6 @@ contains
     istat = pio_inq_dimid(ncid, 'lat', id_lat)
     istat = pio_inquire_dimension(ncid, id_lat, len=latp1)
     call check_ncerr(istat, subname, 'LTR latitude dimension')
-
-    lonmx = lonp1
-    jmxm  = latp1
-    ithmx = (jmxm+1)/2
 
     !
     ! Get time dimension:
@@ -287,14 +282,14 @@ contains
     !
     !
     !     Local:
-    real(r8)                    :: potm(lonp1,jmxm)
-    real(r8)                    :: efxm(lonp1,jmxm), ekvm(lonp1,jmxm)
-    real(r8)                    :: alat(jmxm), alon(lonp1)
-    real(r8)                    :: alatm(jmxm), alonm(lonp1)
+    real(r8)                    :: potm(lonp1,latp1)
+    real(r8)                    :: efxm(lonp1,latp1), ekvm(lonp1,latp1)
+    real(r8)                    :: alat(latp1), alon(lonp1)
+    real(r8)                    :: alatm(latp1), alonm(lonp1)
     integer                     :: ier, lw, liw, intpol(2)
     integer,  allocatable       :: iw(:)
     real(r8), allocatable       :: w(:)
-    integer                     :: i, j
+    integer                     :: i, j, ithmx
     integer                     :: nn, iset, iset1, m, mp1, n
     integer                     :: idate, bdate, edate
     real(r8)                    :: model_ut, denoma, f1, f2
@@ -419,7 +414,7 @@ contains
        end if
        rot = rot / 15._r8        !  convert from degree to hrs
 
-       dmltm = 24._r8 / real(lonmx, kind=r8)
+       dmltm = 24._r8 / real(lonp1, kind=r8)
 
        do i = 1, lonp1
           xmlt = (real(i-1, kind=r8) * dmltm) - rot + 24._r8
@@ -429,7 +424,7 @@ contains
           if (mp1 > lonp1) mp1 = 2
           del = xmlt - (m-1)*dmltm
           !     Put in LTR arrays from south pole to north pole
-          do j=1,jmxm
+          do j=1,latp1
              potm(i,j) = (1._r8-del)*pot_ltr(m,j) + &
                   del*pot_ltr(mp1,j)
              ekvm(i,j) = (1._r8-del)*ekv_ltr(m,j) + &
@@ -445,22 +440,23 @@ contains
 
        !     ****     SET GRID SPACING DLATM, DLONG, DLONM
        !     DMLAT=lat spacing in degrees of LTR apex grid
-       dmlat = 180._r8 / real(jmxm-1, kind=r8)
+       dmlat = 180._r8 / real(latp1-1, kind=r8)
        dlatm = dmlat * dtr
-       dlonm = 2._r8 * pi / real(lonmx, kind=r8)
-       dmltm = 24._r8 / real(lonmx, kind=r8)
+       dlonm = 2._r8 * pi / real(lonp1, kind=r8)
+       dmltm = 24._r8 / real(lonp1, kind=r8)
        !     ****
        !     ****     SET ARRAY YLATM (LATITUDE VALUES FOR GEOMAGNETIC GRID
        !     ****
        alatm(1) = -pi / 2._r8
        alat(1) = -90._r8
-       alatm(jmxm) = pi / 2._r8
-       alat(jmxm) = 90._r8
+       alatm(latp1) = pi / 2._r8
+       alat(latp1) = 90._r8
+       ithmx = (latp1+1)/2
        do i = 2, ithmx
           alat(i) = alat(i-1)+dlatm*rtd
-          alat(jmxm+1-i) = alat(jmxm+2-i)-dlatm*rtd
+          alat(latp1+1-i) = alat(latp1+2-i)-dlatm*rtd
           alatm(i) = alatm(i-1)+dlatm
-          alatm(jmxm+1-i) = alatm(jmxm+2-i)-dlatm
+          alatm(latp1+1-i) = alatm(latp1+2-i)-dlatm
        end do
        alon(1) = -pi*rtd
        alonm(1) = -pi
@@ -488,8 +484,8 @@ contains
        if (alatm(1) > ylatm(1)) then
           alatm(1) = ylatm(1)
        end if
-       if (alatm(jmxm) < ylatm(nmlat)) then
-          alatm(jmxm) = ylatm(nmlat)
+       if (alatm(latp1) < ylatm(nmlat)) then
+          alatm(latp1) = ylatm(nmlat)
        end if
        if (alonm(1) > ylonm(1)) then
           alonm(1) = ylonm(1)
@@ -499,11 +495,11 @@ contains
        end if
 
        !     ylatm from -pi/2 to pi/2, and ylonm from -pi to pi
-       call rgrd2(lonp1, jmxm, alonm, alatm, potm, nmlonp1, nmlat,  &
+       call rgrd2(lonp1, latp1, alonm, alatm, potm, nmlonp1, nmlat,  &
             ylonm, ylatm, phihm, intpol, w, lw, iw, liw, ier)
-       call rgrd2(lonp1, jmxm, alonm, alatm, ekvm, nmlonp1, nmlat,  &
+       call rgrd2(lonp1, latp1, alonm, alatm, ekvm, nmlonp1, nmlat,  &
             ylonm, ylatm, ltr_kevm, intpol, w, lw, iw, liw, ier)
-       call rgrd2(lonp1, jmxm, alonm, alatm, efxm, nmlonp1, nmlat,  &
+       call rgrd2(lonp1, latp1, alonm, alatm, efxm, nmlonp1, nmlat,  &
             ylonm, ylatm, ltr_efxm, intpol, w, lw, iw, liw, ier)
 
        if (iprint > 0 .and. masterproc) then
