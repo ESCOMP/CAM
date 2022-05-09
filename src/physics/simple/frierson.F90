@@ -392,7 +392,6 @@ contains
         if(pmid(i,k) > (1._r8-epsilo)*esat(i,k)) then
           qsat (i,k) = epsilo*esat(i,k)/pmid(i,k)
           dqsat(i,k) = (latvap/rh2o)*qsat(i,k)/(T(i,k)**2)
-!x        dqsat(i,k) = epsilo*latvap*qsat(i,k)/(rair*T(i,k)**2)  !PFC - check this before deletinig it.
         else
           qsat (i,k) = 0._r8
           dqsat(i,k) = 0._r8

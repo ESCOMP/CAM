@@ -1,7 +1,7 @@
 module frierson_cam
 !-----------------------------------------------------------------------
 !
-! Purpose: Implement idealized forcings described in 
+! Purpose: Implement idealized forcings described in
 !          Frierson, et al. (2006), " A Gray-Radiation Aquaplanet
 !          Moist GCM, Part I. Static Stability and Eddy Scale"
 !          J. Atmos. Sci, Vol 63, 2548-2566.
@@ -31,7 +31,7 @@ module frierson_cam
   use shr_const_mod,   only: SHR_CONST_STEBOL, SHR_CONST_REARTH, SHR_CONST_KARMAN
 
   ! Set all Global values and routines to private by default
-  ! and then explicitly set their exposure. 
+  ! and then explicitly set their exposure.
   !---------------------------------------------------------
   implicit none
   private
@@ -69,18 +69,17 @@ module frierson_cam
   integer,parameter:: RADIATION_USER        = 1  ! Optional user defined Radiation scheme
 
   ! Options selecting which PRECIP, PBL, RADIATION, etc.. formulations to use.
-  !   PFC todo: Eventually change these to namelist options??
   !---------------------------------------------------------------------------------
   integer,parameter:: PBL_OPT          = PBL_FRIERSON
   integer,parameter:: CONVECTION_OPT   = CONVECTION_NONE
   integer,parameter:: CONDENSATE_OPT   = CONDENSATE_FRIERSON
   integer,parameter:: RADIATION_OPT    = RADIATION_FRIERSON
 
-  ! Global Constants 
+  ! Global Constants
   !---------------------
-  real(r8),parameter:: frierson_T0     = 273.16_r8     ! Reference Temperature for E0 
+  real(r8),parameter:: frierson_T0     = 273.16_r8     ! Reference Temperature for E0
   real(r8),parameter:: frierson_E0     = 610.78_r8     ! Saturation Vapor pressure @ T0
-  real(r8),parameter:: frierson_Rs0    = 1360.0_r8     ! Solar Constant  
+  real(r8),parameter:: frierson_Rs0    = 1360.0_r8     ! Solar Constant
   real(r8),parameter:: frierson_Erad   = SHR_CONST_REARTH  ! Earth Radius
   real(r8),parameter:: frierson_Karman = SHR_CONST_KARMAN  ! Von Karman constant
   real(r8),parameter:: frierson_Boltz  = SHR_CONST_STEBOL  ! Stefan-Boltzmann constant
@@ -95,7 +94,7 @@ module frierson_cam
   !----------------------------------------------------------------------
   type(var_desc_t)    :: Tsurf_desc      ! Vardesc for restarts
   type(var_desc_t)    :: Qsurf_desc      ! Vardesc for restarts
-  real(r8),allocatable:: Tsurf (:,:)     ! Surface Temp 
+  real(r8),allocatable:: Tsurf (:,:)     ! Surface Temp
   real(r8),allocatable:: Qsurf (:,:)     ! Surface Q
   real(r8),allocatable:: Fsolar(:,:)     ! Net Solar Heating
   real(r8),allocatable:: Fup   (:,:)     ! Upward Longwave heating
@@ -132,7 +131,7 @@ module frierson_cam
 contains
   !==============================================================================
   subroutine frierson_register()
-    ! 
+    !
     ! frierson_register: Register physics buffer values
     !=====================================================================
 
@@ -149,16 +148,16 @@ contains
 
   !==============================================================================
   subroutine frierson_readnl(nlfile)
-    ! 
+    !
     ! frierson_readnl: Read in parameters controlling Frierson parameterizations.
     !=====================================================================
     use namelist_utils,only: find_group_name
     use units         ,only: getunit, freeunit
-    ! 
+    !
     ! Passed Variables
     !------------------
     character(len=*),intent(in):: nlfile
-    ! 
+    !
     ! Local Values
     !--------------
     integer:: ierr,unitn
@@ -186,10 +185,6 @@ contains
       close(unitn)
       call freeunit(unitn)
     endif
-
-    ! CACQUESTION - Either add checks or remove this comment
-    ! Sanity Check namelist values
-    !--------------------------------
 
     ! Broadcast namelist values
     !---------------------------
@@ -232,7 +227,7 @@ contains
   !==============================================================================
   subroutine frierson_init(phys_state,pbuf2d)
     !
-    ! frierson_init: allocate space for global arrays and initialize values. 
+    ! frierson_init: allocate space for global arrays and initialize values.
     !                Add variables to history outputs
     !=====================================================================
     use physics_types, only: physics_state
@@ -240,7 +235,7 @@ contains
     use cam_history,   only: addfld, add_default,horiz_only
     use phys_grid,     only: get_ncols_p, get_rlat_p
     use frierson,      only: frierson_set_const
-    ! 
+    !
     ! Passed Variables
     !------------------
     type(physics_state)      ,pointer:: phys_state(:)
@@ -262,7 +257,7 @@ contains
                             frierson_Rs     ,frierson_DeltaS,frierson_Tau_eqtr,frierson_Tau_pole,  &
                             frierson_LinFrac,frierson_Boltz ,frierson_C0                           )
 
-    ! Add values for history output 
+    ! Add values for history output
     !---------------------------------
     call addfld('QRS',(/'lev'/),'A','K/s','Temperature tendency associated with the '//           &
                                           'relaxation toward the equilibrium temperature profile' )
@@ -362,14 +357,14 @@ contains
         ! Set to reference values for initialization
         !------------------------------------------------------------
         phys_state(lchnk)%ps(:ncol) = ps0
-  
+
         call frierson_surface_init(ncol,         clat(:ncol,lchnk), &
                                  phys_state(lchnk)%ps(:ncol),       &
                                                 Tsurf(:ncol,lchnk), &
                                                 Qsurf(:ncol,lchnk)  )
       end do
     endif
-      
+
     ! Initialize radition and flux values to 0.0  (Add Init from restart file???)
     !---------------------------------------------------------------------------
     do lchnk = begchunk,endchunk
@@ -438,7 +433,7 @@ contains
   !==============================================================================
   subroutine frierson_convection_tend(state, ptend, ztodt, pbuf)
     !
-    ! frierson_convection_tend: Run the selected process to compute precipitation 
+    ! frierson_convection_tend: Run the selected process to compute precipitation
     !                           due to convection.
     !=====================================================================
     use physics_types,only: physics_state, physics_ptend
@@ -450,8 +445,8 @@ contains
     ! Passed Variables
     !------------------
     type(physics_state)      ,intent(in) :: state
-    real(r8)                 ,intent(in) :: ztodt 
-    type(physics_ptend)      ,intent(out):: ptend 
+    real(r8)                 ,intent(in) :: ztodt
+    type(physics_ptend)      ,intent(out):: ptend
     type(physics_buffer_desc),pointer    :: pbuf(:)
     !
     ! Local Values
@@ -514,7 +509,7 @@ contains
       call endrun('frierson_convection_tend() CONVECTION_OPT ERROR')
     endif
 
-    ! Back out temperature and specific humidity 
+    ! Back out temperature and specific humidity
     ! tendencies from updated fields
     !--------------------------------------------
     do k = 1, pver
@@ -532,7 +527,7 @@ contains
   !==============================================================================
   subroutine frierson_condensate_tend(state, ptend, ztodt, pbuf)
     !
-    ! frierson_condensate_tend: Run the selected process to compute precipitation 
+    ! frierson_condensate_tend: Run the selected process to compute precipitation
     !                           due to large scale condensation.
     !=====================================================================
     use physics_types,only: physics_state, physics_ptend
@@ -544,8 +539,8 @@ contains
     ! Passed Variables
     !------------------
     type(physics_state)      ,intent(inout):: state
-    real(r8)                 ,intent(in)   :: ztodt 
-    type(physics_ptend)      ,intent(out)  :: ptend 
+    real(r8)                 ,intent(in)   :: ztodt
+    type(physics_ptend)      ,intent(out)  :: ptend
     type(physics_buffer_desc),pointer      :: pbuf(:)
     !
     ! Local Values
@@ -615,7 +610,7 @@ contains
       call endrun('frierson_condensate_tend() CONDENSATE_OPT ERROR')
     endif
 
-    ! Back out temperature and specific humidity 
+    ! Back out temperature and specific humidity
     ! tendencies from updated fields
     !--------------------------------------------
     do k = 1, pver
@@ -661,20 +656,20 @@ contains
     real(r8) :: Km        (state%ncol,pver+1) ! Eddy diffusivity at layer interfaces (m2/s)
     real(r8) :: Ke        (state%ncol,pver+1) ! Eddy diffusivity at layer interfaces (m2/s)
     real(r8) :: VSE       (state%ncol,pver)   ! Dry Static Energy divided by Cp (K)
-    real(r8) :: Zm        (state%ncol,pver)   ! 
-    real(r8) :: Zi        (state%ncol,pver)   ! 
-    real(r8) :: Z_pbl     (state%ncol)        ! 
-    real(r8) :: Rf        (state%ncol,pver)   ! 
-    real(r8) :: Tsfc      (state%ncol)        ! Surface T 
+    real(r8) :: Zm        (state%ncol,pver)   !
+    real(r8) :: Zi        (state%ncol,pver)   !
+    real(r8) :: Z_pbl     (state%ncol)        !
+    real(r8) :: Rf        (state%ncol,pver)   !
+    real(r8) :: Tsfc      (state%ncol)        ! Surface T
     real(r8) :: Qsfc      (state%ncol)        ! Surface Q (saturated)
     real(r8) :: Cdrag     (state%ncol)        ! Cdrag coef from surface calculation
 
     logical  :: lq        (pcnst)             ! Calc tendencies?
-    real(r8) :: dTs       (state%ncol)   
-    real(r8) :: dUa       (state%ncol,pver)   
-    real(r8) :: dVa       (state%ncol,pver)   
-    real(r8) :: dTa       (state%ncol,pver)   
-    real(r8) :: dQa       (state%ncol,pver)   
+    real(r8) :: dTs       (state%ncol)
+    real(r8) :: dUa       (state%ncol,pver)
+    real(r8) :: dVa       (state%ncol,pver)
+    real(r8) :: dTa       (state%ncol,pver)
+    real(r8) :: dQa       (state%ncol,pver)
     integer  :: lchnk                        ! chunk identifier
     integer  :: ncol                         ! number of atmospheric columns
     integer  :: kk                           ! loop index
@@ -697,7 +692,7 @@ contains
     call physics_ptend_init(ptend,state%psetcols,'Frierson pbl_tend',        &
                                        ls=.true., lu=.true., lv=.true., lq=lq)
 
-    ! Call the Selected PBL routine  
+    ! Call the Selected PBL routine
     !--------------------------------------------------------
     Tsfc(:ncol) = Tsurf(:ncol,lchnk)
     Qsfc(:ncol) = Qsurf(:ncol,lchnk)
@@ -778,17 +773,17 @@ contains
     call outfld('KVH'  ,Ke        ,ncol,lchnk) ! Eddy diffusivity (heat and moisture,m2/s)
     call outfld('KVM'  ,Km        ,ncol,lchnk) ! Eddy diffusivity (momentum, m2/s)
     call outfld('VSE'  ,VSE       ,ncol,lchnk) ! Virtual Dry Static Energy divided by Cp (K)
-    call outfld('Zm'   ,Zm        ,ncol,lchnk) ! 
-    call outfld('Z_pbl',Z_pbl     ,ncol,lchnk) ! 
-    call outfld('Rf'   ,Rf        ,ncol,lchnk) ! 
+    call outfld('Zm'   ,Zm        ,ncol,lchnk) !
+    call outfld('Z_pbl',Z_pbl     ,ncol,lchnk) !
+    call outfld('Rf'   ,Rf        ,ncol,lchnk) !
     call outfld('DUV'  ,dudt_vdiff,ncol,lchnk) ! PBL u tendency (m/s2)
     call outfld('DVV'  ,dvdt_vdiff,ncol,lchnk) ! PBL v tendency (m/s2)
     call outfld('DTV'  ,dtdt_vdiff,ncol,lchnk) ! PBL + surface flux T tendency (K/s)
     call outfld('VD01' ,dqdt_vdiff,ncol,lchnk) ! PBL + surface flux Q tendency (kg/kg/s)
-    call outfld('Cdrag',Cdrag     ,ncol,lchnk) ! 
+    call outfld('Cdrag',Cdrag     ,ncol,lchnk) !
 
-    call outfld('R_Tsurf' , Tsurf (:ncol,lchnk),ncol,lchnk) 
-    call outfld('R_Qsurf' , Qsurf (:ncol,lchnk),ncol,lchnk) 
+    call outfld('R_Tsurf' , Tsurf (:ncol,lchnk),ncol,lchnk)
+    call outfld('R_Qsurf' , Qsurf (:ncol,lchnk),ncol,lchnk)
 
     ! End Routine
     !--------------
@@ -821,14 +816,14 @@ contains
     real(r8):: T           (state%ncol,pver) ! T temporary
     real(r8):: qv          (state%ncol,pver) ! Q temporary
     real(r8):: dtdt_heating(state%ncol,pver) ! temperature tendency from relaxation in K/s
-    real(r8):: Tsfc        (state%ncol)      ! Surface T 
+    real(r8):: Tsfc        (state%ncol)      ! Surface T
     real(r8):: Qsfc        (state%ncol)      ! Surface Q (saturated)
     logical :: lq(pcnst)                     ! Calc tendencies?
     integer :: lchnk                         ! chunk identifier
     integer :: ncol                          ! number of atmospheric columns
     integer :: k                             ! loop index
 
-    ! Copy to local values 
+    ! Copy to local values
     !-------------------------------------------------
     lchnk         = state%lchnk
     ncol          = state%ncol
@@ -846,7 +841,7 @@ contains
     call physics_ptend_init(ptend, state%psetcols, 'Frierson radiative_tend',   &
                                         ls=.true., lu=.false., lv=.false., lq=lq)
 
-    ! Call the Selected radiative routine 
+    ! Call the Selected radiative routine
     !--------------------------------------------------------
     if(RADIATION_OPT == RADIATION_FRIERSON) then
       call frierson_radiation(ncol,pver,ztodt,clat(:ncol,lchnk), &
@@ -900,7 +895,7 @@ contains
 
     ! Archive T tendency from temperature relaxation (mimics radiation, K/s)
     !-----------------------------------------------------------------------
-    call outfld('QRS',dtdt_heating, ncol,lchnk) 
+    call outfld('QRS',dtdt_heating, ncol,lchnk)
 
     ! End Routine
     !------------
@@ -930,7 +925,7 @@ contains
 
     ! set SST profile
     !------------------
-    T_width = frierson_Twidth*pi/180.0_r8 
+    T_width = frierson_Twidth*pi/180.0_r8
     do ii = 1, ncol
       Tsfc(ii) = frierson_Tmin + frierson_Tdlt*exp(-((clat(ii)/T_width)**2)/2.0_r8)
       Qsfc(ii) = epsilo*frierson_E0/PS(ii)                             &
