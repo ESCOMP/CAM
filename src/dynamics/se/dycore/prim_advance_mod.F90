@@ -56,9 +56,9 @@ contains
     use time_mod,          only: TimeLevel_t,  timelevel_qdp, tevolve
     use dimensions_mod,    only: lcp_moist
     use fvm_control_volume_mod, only: fvm_struct
-    use physconst,         only: get_cp, thermodynamic_active_species_num
-    use physconst,         only: get_kappa_dry, dry_air_species_num
-    use physconst,         only: thermodynamic_active_species_idx_dycore
+    use cam_thermo,        only: get_cp, get_kappa_dry
+    use air_composition,   only: thermodynamic_active_species_num, dry_air_species_num
+    use air_composition,   only: thermodynamic_active_species_idx_dycore
     use physconst,         only: cpair, rair
     implicit none
 
@@ -131,8 +131,8 @@ contains
     !
     if (lcp_moist) then
       do ie=nets,nete
-        call get_cp(1,np,1,np,1,nlev,thermodynamic_active_species_num,qwater(:,:,:,:,ie),&
-             .true.,inv_cp_full(:,:,:,ie),active_species_idx_dycore=qidx)
+        call get_cp(thermodynamic_active_species_num,qwater(:,:,:,:,ie),&
+             .true., inv_cp_full(:,:,:,ie), active_species_idx_dycore=qidx)
       end do
     else
       do ie=nets,nete
@@ -140,7 +140,7 @@ contains
       end do
     end if
     do ie=nets,nete
-      call get_kappa_dry(1,np,1,np,1,nlev,nlev,thermodynamic_active_species_num,qwater(:,:,:,:,ie),qidx,kappa(:,:,:,ie))
+      call get_kappa_dry(thermodynamic_active_species_num, qwater(:,:,:,:,ie), qidx, kappa(:,:,:,ie))
     end do
 
 
@@ -274,7 +274,8 @@ contains
     use element_mod,            only: element_t
     use control_mod,            only: ftype, ftype_conserve
     use fvm_control_volume_mod, only: fvm_struct
-    use physconst,              only: get_dp, thermodynamic_active_species_idx_dycore
+    use air_composition,        only: thermodynamic_active_species_idx_dycore
+    use cam_thermo,             only: get_dp
     type (element_t)     , intent(inout) :: elem(:)
     type(fvm_struct)     , intent(inout) :: fvm(:)
     real (kind=r8), intent(in) :: dt_dribble, dt_phys
@@ -399,8 +400,8 @@ contains
 
 
       if (ftype_conserve==1) then
-        call get_dp(1,np,1,np,1,nlev,qsize,elem(ie)%state%Qdp(:,:,:,1:qsize,np1_qdp),2, &
-            thermodynamic_active_species_idx_dycore,elem(ie)%state%dp3d(:,:,:,np1),pdel)
+        call get_dp(elem(ie)%state%Qdp(:,:,:,1:qsize,np1_qdp), 2, &
+            thermodynamic_active_species_idx_dycore, elem(ie)%state%dp3d(:,:,:,np1), pdel)
         do k=1,nlev
           do j=1,np
             do i = 1,np
@@ -445,7 +446,8 @@ contains
     !  For correct scaling, dt2 should be the same 'dt2' used in the leapfrog advace
     !
     !
-    use physconst,      only: gravit, cappa, cpair, tref, lapse_rate, get_dp_ref
+    use physconst,      only: gravit, cappa, cpair, tref, lapse_rate
+    use cam_thermo,     only: get_dp_ref, get_molecular_diff_coef, get_rho_dry
     use dimensions_mod, only: np, nlev, nc, ntrac, npsq, qsize
     use dimensions_mod, only: hypervis_dynamic_ref_state,ksponge_end
     use dimensions_mod, only: nu_scale_top,nu_lev,kmvis_ref,kmcnd_ref,rho_ref,km_sponge_factor
@@ -462,8 +464,7 @@ contains
     use viscosity_mod,  only: biharmonic_wk_dp3d
     use hybvcoord_mod,  only: hvcoord_t
     use fvm_control_volume_mod, only: fvm_struct
-    use physconst,       only: thermodynamic_active_species_idx_dycore
-    use physconst,       only: get_molecular_diff_coef,get_rho_dry
+    use air_composition, only: thermodynamic_active_species_idx_dycore
     use cam_history,     only: outfld, hist_fld_active
 
     type (hybrid_t)    , intent(in)   :: hybrid
@@ -520,8 +521,8 @@ contains
       ! use static reference pressure (hydrostatic balance incl. effect of topography)
       !
       do ie=nets,nete
-        call get_dp_ref(hvcoord%hyai, hvcoord%hybi, hvcoord%ps0,1,np,1,np,1,nlev,&
-             elem(ie)%state%phis(:,:),dp3d_ref(:,:,:,ie),ps_ref(:,:,ie))
+        call get_dp_ref(hvcoord%hyai, hvcoord%hybi, hvcoord%ps0,&
+             elem(ie)%state%phis(:,:), dp3d_ref(:,:,:,ie), ps_ref(:,:,ie))
       end do
     endif
     !
@@ -755,9 +756,9 @@ contains
     !
     if (molecular_diff==1) then
       do ie=nets,nete
-        call get_rho_dry(1,np,1,np,ksponge_end,nlev,qsize,elem(ie)%state%Qdp(:,:,:,1:qsize,qn0),  &
-             elem(ie)%state%T(:,:,:,nt),ptop,elem(ie)%state%dp3d(:,:,:,nt),&
-             .true.,rho_dry=rho_dry(:,:,:,ie),                                              &
+        call get_rho_dry(elem(ie)%state%Qdp(:,:,:,1:qsize,qn0),  &
+             elem(ie)%state%T(:,:,:,nt), ptop, elem(ie)%state%dp3d(:,:,:,nt),&
+             .true., rho_dry=rho_dry(:,:,:,ie),                                              &
              active_species_idx_dycore=thermodynamic_active_species_idx_dycore)
       end do
 
@@ -765,9 +766,8 @@ contains
         !
         ! compute molecular diffusion and thermal conductivity coefficients at mid-levels
         !
-        call get_molecular_diff_coef(1,np,1,np,ksponge_end,nlev,&
-             elem(ie)%state%T(:,:,:,nt),0,km_sponge_factor(1:ksponge_end),kmvis(:,:,:,ie),kmcnd(:,:,:,ie),qsize,&
-             elem(ie)%state%Qdp(:,:,:,1:qsize,qn0),fact=1.0_r8/elem(ie)%state%dp3d(:,:,1:ksponge_end,nt),&
+        call get_molecular_diff_coef(elem(ie)%state%T(:,:,:,nt), 0, km_sponge_factor(1:ksponge_end), kmvis(:,:,:,ie),&
+             kmcnd(:,:,:,ie), qsize, elem(ie)%state%Qdp(:,:,:,1:qsize,qn0), fact=1.0_r8/elem(ie)%state%dp3d(:,:,1:ksponge_end,nt),&
              active_species_idx_dycore=thermodynamic_active_species_idx_dycore)
       end do
       !
@@ -1036,10 +1036,11 @@ contains
      use edgetype_mod,    only: edgedescriptor_t
      use bndry_mod,       only: bndry_exchange
      use hybvcoord_mod,   only: hvcoord_t
-     use physconst,       only: epsilo, get_gz_given_dp_Tv_Rdry
-     use physconst,       only: thermodynamic_active_species_num, get_virtual_temp, get_cp_dry
-     use physconst,       only: thermodynamic_active_species_idx_dycore,get_R_dry
-     use physconst,       only: dry_air_species_num,get_exner,tref,cpair,gravit,lapse_rate
+     use physconst,       only: epsilo
+     use cam_thermo,      only: get_gz, get_virtual_temp, get_cp_dry, get_R_dry
+     use air_composition, only: thermodynamic_active_species_num, dry_air_species_num
+     use air_composition, only: thermodynamic_active_species_idx_dycore
+     use physconst,       only: tref,cpair,gravit,lapse_rate
      use time_mod, only : tevolve
 
      implicit none
@@ -1106,19 +1107,18 @@ contains
        !
        ! compute virtual temperature and sum_water
        !
-       call get_virtual_temp(1,np,1,np,1,nlev,thermodynamic_active_species_num,qwater(:,:,:,:,ie),&
-            t_v(:,:,:),temp=elem(ie)%state%T(:,:,:,n0),sum_q =sum_water(:,:,:),&
-            active_species_idx_dycore=qidx)
-       call get_R_dry(1,np,1,np,1,nlev,1,nlev,thermodynamic_active_species_num,&
-            qwater(:,:,:,:,ie),qidx,R_dry)
-       call get_cp_dry(1,np,1,np,1,nlev,1,nlev,thermodynamic_active_species_num,&
-            qwater(:,:,:,:,ie),qidx,cp_dry)
+       call get_virtual_temp(qwater(:,:,:,:,ie), t_v(:,:,:),temp=elem(ie)%state%T(:,:,:,n0),&
+            sum_q =sum_water(:,:,:), active_species_idx_dycore=qidx)
+       call get_R_dry(thermodynamic_active_species_num,&
+            qwater(:,:,:,:,ie), qidx, R_dry)
+       call get_cp_dry(thermodynamic_active_species_num,&
+            qwater(:,:,:,:,ie), qidx,cp_dry)
 
        do k=1,nlev
          dp_dry(:,:,k)  = elem(ie)%state%dp3d(:,:,k,n0)
          dp_full(:,:,k) = sum_water(:,:,k)*dp_dry(:,:,k)
        end do
-       call get_gz_given_dp_Tv_Rdry(1,np,1,np,nlev,dp_full,T_v,R_dry,elem(ie)%state%phis,ptop,phi,pmid=p_full)
+       call get_gz(dp_full, T_v, R_dry, elem(ie)%state%phis, ptop, phi, pmid=p_full)
        do k=1,nlev
          ! vertically lagrangian code: we advect dp3d instead of ps
          ! we also need grad(p) at all levels (not just grad(ps))
@@ -1495,15 +1495,15 @@ contains
 
   subroutine calc_tot_energy_dynamics(elem,fvm,nets,nete,tl,tl_qdp,outfld_name_suffix)
     use dimensions_mod,         only: npsq,nlev,np,lcp_moist,nc,ntrac,qsize
-    use physconst,              only: gravit, cpair, rearth,omega
+    use physconst,              only: gravit, cpair, rearth, omega
     use element_mod,            only: element_t
     use cam_history,            only: outfld, hist_fld_active
     use constituents,           only: cnst_get_ind
     use string_utils,           only: strlist_get_ind
     use hycoef,                 only: hyai, ps0
     use fvm_control_volume_mod, only: fvm_struct
-    use physconst,              only: get_dp, get_cp
-    use physconst,              only: thermodynamic_active_species_idx_dycore
+    use cam_thermo,             only: get_dp, get_cp
+    use air_composition,        only: thermodynamic_active_species_idx_dycore
     use dimensions_mod,         only: cnst_name_gll
     !------------------------------Arguments--------------------------------
 
@@ -1568,10 +1568,10 @@ contains
       do ie=nets,nete
         se    = 0.0_r8
         ke    = 0.0_r8
-        call get_dp(1,np,1,np,1,nlev,qsize,elem(ie)%state%Qdp(:,:,:,1:qsize,tl_qdp),2,thermodynamic_active_species_idx_dycore,&
-             elem(ie)%state%dp3d(:,:,:,tl),pdel,ps=ps,ptop=hyai(1)*ps0)
-        call get_cp(1,np,1,np,1,nlev,qsize,elem(ie)%state%Qdp(:,:,:,1:qsize,tl_qdp),&
-             .false.,cp,dp_dry=elem(ie)%state%dp3d(:,:,:,tl),&
+        call get_dp(elem(ie)%state%Qdp(:,:,:,1:qsize,tl_qdp), 2, thermodynamic_active_species_idx_dycore,&
+             elem(ie)%state%dp3d(:,:,:,tl), pdel, ps=ps, ptop=hyai(1)*ps0)
+        call get_cp(elem(ie)%state%Qdp(:,:,:,1:qsize,tl_qdp),&
+             .false., cp, dp_dry=elem(ie)%state%dp3d(:,:,:,tl),&
              active_species_idx_dycore=thermodynamic_active_species_idx_dycore)
         do k = 1, nlev
           do j=1,np
@@ -1656,8 +1656,8 @@ contains
       do ie=nets,nete
         mr    = 0.0_r8
         mo    = 0.0_r8
-        call get_dp(1,np,1,np,1,nlev,qsize,elem(ie)%state%Qdp(:,:,:,1:qsize,tl_qdp),2,thermodynamic_active_species_idx_dycore,&
-             elem(ie)%state%dp3d(:,:,:,tl),pdel,ps=ps,ptop=hyai(1)*ps0)
+        call get_dp(elem(ie)%state%Qdp(:,:,:,1:qsize,tl_qdp), 2, thermodynamic_active_species_idx_dycore,&
+             elem(ie)%state%dp3d(:,:,:,tl), pdel, ps=ps, ptop=hyai(1)*ps0)
         do k = 1, nlev
           do j=1,np
             do i = 1, np
@@ -1753,8 +1753,9 @@ contains
      use edge_mod,       only : edgevpack, edgevunpack
      use bndry_mod,      only : bndry_exchange
      use viscosity_mod,  only: biharmonic_wk_omega
-     use physconst,      only: thermodynamic_active_species_num, get_dp
-     use physconst,      only: thermodynamic_active_species_idx_dycore
+     use cam_thermo,     only: get_dp
+     use air_composition,only: thermodynamic_active_species_num
+     use air_composition,only: thermodynamic_active_species_idx_dycore
      implicit none
      type (hybrid_t)      , intent(in)            :: hybrid
      type (element_t)     , intent(inout), target :: elem(:)
@@ -1773,8 +1774,8 @@ contains
      logical, parameter  :: del4omega = .true.
 
      do ie=nets,nete
-        call get_dp(1,np,1,np,1,nlev,qsize,elem(ie)%state%Qdp(:,:,:,1:qsize,qn0),2,&
-           thermodynamic_active_species_idx_dycore,elem(ie)%state%dp3d(:,:,:,n0),dp_full)
+        call get_dp(elem(ie)%state%Qdp(:,:,:,1:qsize,qn0), 2,&
+           thermodynamic_active_species_idx_dycore, elem(ie)%state%dp3d(:,:,:,n0), dp_full)
         do k=1,nlev
            if (k==1) then
               p_full(:,:,k) = hvcoord%hyai(k)*hvcoord%ps0 + dp_full(:,:,k)/2

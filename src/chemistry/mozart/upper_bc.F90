@@ -229,7 +229,8 @@ end subroutine ubc_setopts
     use mo_snoe,          only: set_no_ubc, ndx_no
     use mo_tgcm_ubc,      only: set_tgcm_ubc
     use cam_abortutils,   only: endrun
-    use physconst,        only: avogad, rairv, mbarv, rga ! Avogadro, gas constant, mean mass, universal gas constant
+    use physconst,        only: avogad, rga ! Avogadro, universal gas constant
+    use cam_thermo,       only: rairv, mbarv ! gas constant, mean mass
     use phys_control,     only: waccmx_is
     use constituents,     only: cnst_get_ind, cnst_mw, cnst_fixed_ubc  ! Needed for ubc_flux
 

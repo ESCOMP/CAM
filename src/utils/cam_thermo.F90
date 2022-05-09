@@ -1,6 +1,7 @@
 module cam_thermo
 
    use shr_kind_mod,    only: r8 => shr_kind_r8
+   use cam_abortutils,  only: endrun
    use air_composition, only: thermodynamic_active_species_num
    use air_composition, only: thermodynamic_active_species_idx
    use air_composition, only: thermodynamic_active_species_idx_dycore
@@ -75,6 +76,8 @@ module cam_thermo
    public :: get_exner
    ! get_hydrostatic_energy: Vertically integrated total energy
    public :: get_hydrostatic_energy
+   ! get_mbarv: molecular weight of dry air
+   public :: get_mbarv
 
    ! Public variables
    !---------------  Variables below here are for WACCM-X ---------------------
@@ -130,9 +133,10 @@ module cam_thermo
 
    interface get_gz
       ! get_gz_geopotential (with dp_dry, ptop, temp, and phis as input)
-      module procedure get_gz_from_dp_dry_ptop_temp
+      module procedure get_gz_from_dp_dry_ptop_temp_1hd
       ! get_gz_given_dp_Tv_Rdry: geopotential (with dp,dry R and Tv as input)
-      module procedure get_gz_given_dp_Tv_Rdry
+      module procedure get_gz_given_dp_Tv_Rdry_1hd
+      module procedure get_gz_given_dp_Tv_Rdry_2hd
    end interface get_gz
 
    interface get_thermal_energy
@@ -149,6 +153,57 @@ module cam_thermo
       module procedure get_sum_species_1hd
       module procedure get_sum_species_2hd
    end interface get_sum_species
+
+   interface get_dp
+      module procedure get_dp_1hd
+      module procedure get_dp_2hd
+   end interface get_dp
+
+   interface get_pmid_from_dp
+      module procedure get_pmid_from_dpdry_1hd
+      module procedure get_pmid_from_dp_1hd
+   end interface get_pmid_from_dp
+
+   interface get_exner
+      module procedure get_exner_1hd
+   end interface get_exner
+
+   interface get_virtual_theta
+      module procedure get_virtual_theta_1hd
+   end interface get_virtual_theta
+
+   interface get_Richardson_number
+      module procedure get_Richardson_number_1hd
+   end interface get_Richardson_number
+
+   interface get_ps
+      module procedure get_ps_1hd
+      module procedure get_ps_2hd
+   end interface get_ps
+
+   interface get_mbarv
+      module procedure get_mbarv_1hd
+   end interface get_mbarv
+
+   interface get_kappa_dry
+      module procedure get_kappa_dry_1hd
+      module procedure get_kappa_dry_2hd
+   end interface get_kappa_dry
+
+   interface get_dp_ref
+      module procedure get_dp_ref_1hd
+      module procedure get_dp_ref_2hd
+   end interface get_dp_ref
+
+   interface get_rho_dry
+      module procedure get_rho_dry_1hd
+      module procedure get_rho_dry_2hd
+   end interface get_rho_dry
+
+   interface get_molecular_diff_coef
+      module procedure get_molecular_diff_coef_1hd
+      module procedure get_molecular_diff_coef_2hd
+   end interface get_molecular_diff_coef
 
    interface cam_thermo_calc_kappav
       ! Since this routine is currently only used by the FV dycore,
@@ -224,7 +279,7 @@ CONTAINS
    !***************************************************************************
    !
    subroutine cam_thermo_update(mmr, T, lchnk, ncol, to_moist_factor)
-
+      use constituents,  only: pcnst
       !-----------------------------------------------------------------------
       ! Update the physics "constants" that vary
       !-------------------------------------------------------------------------
@@ -289,7 +344,7 @@ CONTAINS
       real(r8),           intent(out) :: cp_dry(:,:)
 
       ! Local variables
-      integer  :: idx, jdx, kdx , m_cnst, qdx
+      integer  :: idx, kdx , m_cnst, qdx
       ! factor: dry pressure level thickness
       real(r8) :: factor(SIZE(cp_dry, 1), SIZE(cp_dry, 2))
       real(r8) :: residual(SIZE(cp_dry, 1), SIZE(cp_dry, 2))
@@ -322,7 +377,7 @@ CONTAINS
             do kdx = 1, SIZE(cp_dry, 2)
                do idx = 1, SIZE(cp_dry, 1)
                   mmr = tracer(idx, kdx, m_cnst) * factor(idx, kdx)
-                  cp_dry(idx, jdx, kdx) = cp_dry(idx, jdx, kdx) +             &
+                  cp_dry(idx, kdx) = cp_dry(idx, kdx) +             &
                        (thermodynamic_active_species_cp(qdx) * mmr)
                   residual(idx, kdx) = residual(idx, kdx) - mmr
                end do
@@ -422,8 +477,8 @@ CONTAINS
       sum_species = 1.0_r8 ! all dry air species sum to 1
       do qdx = dry_air_species_num+1, thermodynamic_active_species_num
          itrac = idx_local(qdx)
-         sum_species(:,:,:) = sum_species(:,:,:) +                            &
-              (tracer(:,:,:,itrac) * factor(:,:,:))
+         sum_species(:,:) = sum_species(:,:) +                            &
+              (tracer(:,:,itrac) * factor(:,:))
       end do
 
       if (dry_air_species_num == 0) then
@@ -433,9 +488,9 @@ CONTAINS
       end if
       do qdx = dry_air_species_num+1, thermodynamic_active_species_num
          itrac = idx_local(qdx)
-         sum_cp(:,:,:) = sum_cp(:,:,:) +                                      &
-              (thermodynamic_active_species_cp(qdx) * tracer(:,:,:,itrac) *   &
-              factor(:,:,:))
+         sum_cp(:,:) = sum_cp(:,:) +                                      &
+              (thermodynamic_active_species_cp(qdx) * tracer(:,:,itrac) *   &
+              factor(:,:))
       end do
       if (inv_cp) then
          cp = sum_species / sum_cp
@@ -576,10 +631,10 @@ CONTAINS
 
       do jdx = 1, SIZE(R_dry, 2)
          if (present(fact)) then
-            call get_R_dry(tracer(:, jdx, :), active_species_idx_dycore,      &
+            call get_R_dry(tracer(:, jdx, :, :), active_species_idx_dycore,      &
                  R_dry(:, jdx, :), fact=fact(:, jdx, :))
          else
-            call get_R_dry(tracer(:, jdx, :), active_species_idx_dycore,      &
+            call get_R_dry(tracer(:, jdx, :, :), active_species_idx_dycore,      &
                  R_dry(:, jdx, :))
          end if
       end do
@@ -626,7 +681,7 @@ CONTAINS
                  int2str(SIZE(fact, 2))//' /= '//int2str(SIZE(factor, 2)))
          end if
          call get_R_dry(tracer, active_species_idx, R, fact=fact)
-         factor = fact(:,:,:)
+         factor = fact(:,:)
       else
          call get_R_dry(tracer, active_species_idx, R)
          factor = 1.0_r8
@@ -635,14 +690,14 @@ CONTAINS
       sum_species = 1.0_r8 ! all dry air species sum to 1
       do qdx = dry_air_species_num+1, thermodynamic_active_species_num
          itrac = idx_local(qdx)
-         sum_species(:,:,:) = sum_species(:,:,:) +                            &
-              (tracer(:,:,:,itrac) * factor(:,:,:))
+         sum_species(:,:) = sum_species(:,:) +                            &
+              (tracer(:,:,itrac) * factor(:,:))
       end do
       do qdx = dry_air_species_num+1, thermodynamic_active_species_num
          itrac = idx_local(qdx)
-         R(:,:,:) = R(:,:,:) +                                                &
-              (thermodynamic_active_species_R(qdx) * tracer(:,:,:,itrac) *    &
-              factor(:,:,:))
+         R(:,:) = R(:,:) +                                                &
+              (thermodynamic_active_species_R(qdx) * tracer(:,:,itrac) *    &
+              factor(:,:))
       end do
       R = R / sum_species
    end subroutine get_R_1hd
@@ -666,10 +721,10 @@ CONTAINS
 
       do jdx = 1, SIZE(R, 2)
          if (present(fact)) then
-            call get_R(tracer(:, jdx, :), active_species_idx_dycore,          &
+            call get_R(tracer(:, jdx, :, :), active_species_idx,          &
                  R(:, jdx, :), fact=fact(:, jdx, :))
          else
-            call get_R(tracer(:, jdx, :), active_species_idx_dycore,          &
+            call get_R(tracer(:, jdx, :, :), active_species_idx,          &
                  R(:, jdx, :))
          end if
       end do
@@ -694,13 +749,13 @@ CONTAINS
       !
       ! Dummy arguments
       ! tracer_mass: tracer array (mass weighted)
-      real(r8),          intent(in)  :: tracer_mass(:,:,:,:)
+      real(r8),          intent(in)  :: tracer_mass(:,:,:)
       ! temp: temperature
-      real(r8),          intent(in)  :: temp(:,:,:)
+      real(r8),          intent(in)  :: temp(:,:)
       ! dp_dry: dry presure level thickness
-      real(r8),          intent(in)  :: dp_dry(:,:,:)
+      real(r8),          intent(in)  :: dp_dry(:,:)
       ! thermal_energy: thermal energy in each column: sum cp*T*dp
-      real(r8),          intent(out) :: thermal_energy(:,:,:)
+      real(r8),          intent(out) :: thermal_energy(:,:)
       !
       ! active_species_idx_dycore:
       !    array of indicies for index of thermodynamic active species in
@@ -716,17 +771,17 @@ CONTAINS
       ! "mass-weighted" cp (dp must be dry)
       !
       if (dry_air_species_num == 0) then
-         thermal_energy(:,:,:) = thermodynamic_active_species_cp(0) *         &
-              dp_dry(:,:,:)
+         thermal_energy(:,:) = thermodynamic_active_species_cp(0) *         &
+              dp_dry(:,:)
       else
          if (present(active_species_idx_dycore)) then
             call get_cp_dry(tracer_mass, active_species_idx_dycore,           &
-                 thermal_energy, fact=1.0_r8/dp_dry(:,:,:))
+                 thermal_energy, fact=1.0_r8/dp_dry(:,:))
          else
             call get_cp_dry(tracer_mass, thermodynamic_active_species_idx,    &
-                 thermal_energy, fact=1.0_r8/dp_dry(:,:,:))
+                 thermal_energy, fact=1.0_r8/dp_dry(:,:))
          end if
-         thermal_energy(:,:,:) = thermal_energy(:,:,:) * dp_dry(:,:,:)
+         thermal_energy(:,:) = thermal_energy(:,:) * dp_dry(:,:)
       end if
       !
       ! tracer is in units of m*dp ("mass"), where:
@@ -739,10 +794,10 @@ CONTAINS
          else
             itrac = thermodynamic_active_species_idx(qdx)
          end if
-         thermal_energy(:,:,:) = thermal_energy(:,:,:) +                      &
-              (thermodynamic_active_species_cp(qdx) * tracer_mass(:,:,:,itrac))
+         thermal_energy(:,:) = thermal_energy(:,:) +                      &
+              (thermodynamic_active_species_cp(qdx) * tracer_mass(:,:,itrac))
       end do
-      thermal_energy(:,:,:) = thermal_energy(:,:,:) * temp(:,:,:)
+      thermal_energy(:,:) = thermal_energy(:,:) * temp(:,:)
 
    end subroutine get_thermal_energy_1hd
 
@@ -781,7 +836,7 @@ CONTAINS
       character(len=*), parameter :: subname = 'get_thermal_energy_2hd: '
 
       do jdx = 1, SIZE(tracer_mass, 2)
-         call get_thermal_energy(tracer_mass(:, jdx, :), temp(:, jdx, :),     &
+         call get_thermal_energy(tracer_mass(:, jdx, :, :), temp(:, jdx, :),     &
               dp_dry(:, jdx, :), thermal_energy(:, jdx, :),                   &
               active_species_idx_dycore=active_species_idx_dycore)
       end do
@@ -827,8 +882,8 @@ CONTAINS
 
       ! Local Variables
       integer                     :: itrac, qdx
-      real(r8)                    :: sum_species
-      real(r8)                    :: factor
+      real(r8)                    :: sum_species(SIZE(tracer, 1), SIZE(tracer, 2))
+      real(r8)                    :: factor(SIZE(tracer, 1), SIZE(tracer, 2))
       real(r8)                    :: Rd(SIZE(tracer, 1), SIZE(tracer, 2))
       integer                     :: idx_local(thermodynamic_active_species_num)
       character(len=*), parameter :: subname = 'get_virtual_temp_1hd: '
@@ -1009,7 +1064,7 @@ CONTAINS
       do jdx = 1, SIZE(tracer, 2)
          if (present(dp_dry)) then
             call get_sum_species(tracer(:, jdx, :, :), active_species_idx,    &
-                 dp_dry=dp_dry(:, jdx, :), sum_species(:, jdx, :))
+                 sum_species(:, jdx, :), dp_dry=dp_dry(:, jdx, :))
          end if
       end do
 
@@ -1027,40 +1082,39 @@ CONTAINS
    !
    !***************************************************************************
    !
-   subroutine get_dp(i0,i1,j0,j1,k0,k1,ntrac,tracer,mixing_ratio,active_species_idx,dp_dry,dp,ps,ptop)
-     integer,  intent(in)  :: i0,i1,j0,j1,k0,k1,ntrac            ! array bounds
-     real(r8), intent(in)  :: tracer(i0:i1,j0:j1,k0:k1,1:ntrac)  ! tracers; quantity specified by mixing_ratio arg
+   subroutine get_dp_1hd(tracer, mixing_ratio, active_species_idx, dp_dry, dp, ps, ptop)
+     use air_composition,  only: dry_air_species_num
+
+     real(r8), intent(in)  :: tracer(:, :, :)                    ! tracers; quantity specified by mixing_ratio arg
      integer,  intent(in)  :: mixing_ratio                       ! 1 => tracer is dry mixing ratio
                                                                  ! 2 => tracer is mass (q*dp)
      integer,  intent(in)  :: active_species_idx(:)              ! index for thermodynamic species in tracer array
-     real(r8), intent(in)  :: dp_dry(i0:i1,j0:j1,k0:k1)          ! dry pressure level thickness
-     real(r8), intent(out) :: dp(i0:i1,j0:j1,k0:k1)              ! pressure level thickness
-     real(r8), optional,intent(out) :: ps(i0:i1,j0:j1)           ! surface pressure (if ps present then ptop
+     real(r8), intent(in)  :: dp_dry(:, :)                       ! dry pressure level thickness
+     real(r8), intent(out) :: dp(:, :)                           ! pressure level thickness
+     real(r8), optional,intent(out) :: ps(:, :)                  ! surface pressure (if ps present then ptop
                                                                  !                   must be present)
      real(r8), optional,intent(in)  :: ptop                      ! pressure at model top
 
-     integer :: i, j, k, m_cnst, nq
+     integer :: idx, kdx, m_cnst, nq
+
+     character(len=*), parameter :: subname = 'get_dp_1hd: '
 
      dp = dp_dry
-     if (mixing_ratio==1) then
-       do nq=dry_air_species_num+1,thermodynamic_active_species_num
+     if (mixing_ratio == 1) then
+       do nq = dry_air_species_num + 1, thermodynamic_active_species_num
          m_cnst = active_species_idx(nq)
-         do k=k0,k1
-           do j=j0,j1
-             do i = i0,i1
-               dp(i,j,k) = dp(i,j,k) + dp_dry(i,j,k)*tracer(i,j,k,m_cnst)
-             end do
+         do kdx = 1, SIZE(dp, 2)
+           do idx = 1, SIZE(dp, 1)
+             dp(idx, kdx) = dp(idx, kdx) + dp_dry(idx, kdx)*tracer(idx, kdx, m_cnst)
            end do
          end do
        end do
      else
-       do nq=dry_air_species_num+1,thermodynamic_active_species_num
+       do nq = dry_air_species_num + 1, thermodynamic_active_species_num
          m_cnst = active_species_idx(nq)
-         do k=k0,k1
-           do j=j0,j1
-             do i = i0,i1
-               dp(i,j,k) = dp(i,j,k) + tracer(i,j,k,m_cnst)
-             end do
+         do kdx = 1, SIZE(dp, 2)
+           do idx = 1, SIZE(dp, 1)
+             dp(idx, kdx) = dp(idx, kdx) + tracer(idx, kdx, m_cnst)
            end do
          end do
        end do
@@ -1068,19 +1122,47 @@ CONTAINS
      if (present(ps)) then
        if (present(ptop)) then
          ps = ptop
-         do k=k0,k1
-           do j=j0,j1
-             do i = i0,i1
-               ps(i,j) = ps(i,j)+dp(i,j,k)
-             end do
+         do kdx = 1, SIZE(dp, 2)
+           do idx = 1, SIZE(dp, 1)
+             ps(idx, kdx) = ps(idx, kdx) + dp(idx, kdx)
            end do
          end do
        else
-         call endrun('get_dp: if ps is present ptop must be present')
+         call endrun(subname//'if ps is present ptop must be present')
        end if
      end if
-   end subroutine get_dp
+   end subroutine get_dp_1hd
 
+   subroutine get_dp_2hd(tracer, mixing_ratio, active_species_idx, dp_dry, dp, ps, ptop)
+     ! Version of get_dp for arrays that have a second horizontal index
+     real(r8), intent(in)  :: tracer(:,:,:,:)                    ! tracers; quantity specified by mixing_ratio arg
+     integer,  intent(in)  :: mixing_ratio                       ! 1 => tracer is dry mixing ratio
+                                                                 ! 2 => tracer is mass (q*dp)
+     integer,  intent(in)  :: active_species_idx(:)              ! index for thermodynamic species in tracer array
+     real(r8), intent(in)  :: dp_dry(:,:,:)                      ! dry pressure level thickness
+     real(r8), intent(out) :: dp(:,:,:)                          ! pressure level thickness
+     real(r8), optional,intent(out) :: ps(:,:)                   ! surface pressure
+     real(r8), optional,intent(in)  :: ptop                      ! pressure at model top
+
+     integer :: jdx
+
+     do jdx = 1, SIZE(tracer, 2)
+       if (present(ps)) then
+         call get_dp(tracer(:, jdx, :, :), mixing_ratio, active_species_idx,  &
+                 dp_dry(:, jdx, :), dp(:, jdx, :), ps=ps)
+       else if (present(ptop)) then
+         call get_dp(tracer(:, jdx, :, :), mixing_ratio, active_species_idx,  &
+                 dp_dry(:, jdx, :), dp(:, jdx, :), ptop=ptop)
+       else if (present(ps) .and. present(ptop)) then
+         call get_dp(tracer(:, jdx, :, :), mixing_ratio, active_species_idx,  &
+                 dp_dry(:, jdx, :), dp(:, jdx, :), ps=ps, ptop=ptop)
+       else
+         call get_dp(tracer(:, jdx, :, :), mixing_ratio, active_species_idx, &
+                 dp_dry(:, jdx, :), dp(:, jdx, :))
+       end if
+     end do
+
+   end subroutine get_dp_2hd
    !===========================================================================
 
    !*************************************************************************************************************************
@@ -1089,35 +1171,33 @@ CONTAINS
    !
    !*************************************************************************************************************************
    !
-   subroutine get_pmid_from_dpdry(i0,i1,j0,j1,nlev,ntrac,tracer,mixing_ratio,active_species_idx, &
-                                  dp_dry, ptop, pmid, pint, dp)
+   subroutine get_pmid_from_dpdry_1hd(tracer, mixing_ratio, active_species_idx, dp_dry, ptop, pmid, pint, dp)
 
-     integer,  intent(in)  :: i0,i1,j0,j1,nlev,ntrac             ! array bounds
-     real(r8), intent(in)  :: tracer(i0:i1,j0:j1,nlev,1:ntrac)   ! tracers; quantity specified by mixing_ratio arg
+     real(r8), intent(in)  :: tracer(:,:,:)                      ! tracers; quantity specified by mixing_ratio arg
      integer,  intent(in)  :: mixing_ratio                       ! 1 => tracer is mixing ratio
                                                                  ! 2 => tracer is mass (q*dp)
      integer,  intent(in)  :: active_species_idx(:)              ! index for thermodynamic species in tracer array
-     real(r8), intent(in)  :: dp_dry(i0:i1,j0:j1,nlev)           ! dry pressure level thickness
+     real(r8), intent(in)  :: dp_dry(:,:)                        ! dry pressure level thickness
      real(r8), intent(in)  :: ptop                               ! model top pressure
-     real(r8), intent(out) :: pmid(i0:i1,j0:j1,nlev)             ! mid-level pressure
-     real(r8), optional, intent(out) :: pint(i0:i1,j0:j1,nlev+1) ! half-level pressure
-     real(r8), optional, intent(out) :: dp(i0:i1,j0:j1,nlev)     ! presure level thickness
+     real(r8), intent(out) :: pmid(:,:)                          ! mid-level pressure
+     real(r8), optional, intent(out) :: pint(:,:)                ! half-level pressure
+     real(r8), optional, intent(out) :: dp(:,:)                  ! presure level thickness
 
-     real(r8) :: dp_local(i0:i1,j0:j1,nlev)                      ! local pressure level thickness
-     real(r8) :: pint_local(i0:i1,j0:j1,nlev+1)                  ! local interface pressure
-     integer  :: k
+     real(r8) :: dp_local(SIZE(dp_dry, 1), SIZE(dp_dry, 2))      ! local pressure level thickness
+     real(r8) :: pint_local(SIZE(dp_dry, 1), SIZE(dp_dry, 2))    ! local interface pressure
+     integer  :: kdx
 
-     call get_dp(i0,i1,j0,j1,1,nlev,ntrac,tracer,mixing_ratio,active_species_idx,dp_dry,dp_local)
-     pint_local(:,:,1) = ptop
-     do k=2,nlev+1
-       pint_local(:,:,k) = dp_local(:,:,k-1)+pint_local(:,:,k-1)
+     call get_dp(tracer, mixing_ratio, active_species_idx, dp_dry, dp_local)
+     pint_local(:,1) = ptop
+     do kdx = 2, SIZE(dp, 2) + 1
+       pint_local(:, kdx) = dp_local(:, kdx - 1) + pint_local(:, kdx - 1)
      end do
 
-     call get_pmid_from_dp(i0,i1,j0,j1,1,nlev,dp_local,ptop,pmid,pint_local)
+     call get_pmid_from_dp(dp_local, ptop, pmid, pint_local)
 
      if (present(pint)) pint=pint_local
      if (present(dp)) dp=dp_local
-   end subroutine get_pmid_from_dpdry
+   end subroutine get_pmid_from_dpdry_1hd
 
    !===========================================================================
 
@@ -1127,33 +1207,32 @@ CONTAINS
    !
    !*************************************************************************************************************************
    !
-   subroutine get_pmid_from_dp(i0,i1,j0,j1,k0,k1,dp,ptop,pmid,pint)
+   subroutine get_pmid_from_dp_1hd(dp, ptop, pmid, pint)
      use dycore, only: dycore_is
-     integer,  intent(in)            :: i0,i1,j0,j1,k0,k1         ! array bounds
-     real(r8), intent(in)            :: dp(i0:i1,j0:j1,k0:k1)     ! dry pressure level thickness
+     real(r8), intent(in)            :: dp(:,:)     ! dry pressure level thickness
      real(r8), intent(in)            :: ptop                      ! pressure at model top
-     real(r8), intent(out)           :: pmid(i0:i1,j0:j1,k0:k1)   ! mid (full) level pressure
-     real(r8), optional, intent(out) :: pint(i0:i1,j0:j1,k0:k1+1) ! pressure at interfaces (half levels)
+     real(r8), intent(out)           :: pmid(:,:)   ! mid (full) level pressure
+     real(r8), optional, intent(out) :: pint(:,:) ! pressure at interfaces (half levels)
 
-     real(r8) :: pint_local(i0:i1,j0:j1,k0:k1+1)
-     integer  :: k
+     real(r8) :: pint_local(SIZE(dp, 1), SIZE(dp,2))
+     integer  :: kdx
 
-     pint_local(:,:,k0) = ptop
-     do k=k0+1,k1+1
-       pint_local(:,:,k) = dp(:,:,k-1)+pint_local(:,:,k-1)
+     pint_local(:, 1) = ptop
+     do kdx = 2, SIZE(dp, 2) + 1
+       pint_local(:, kdx) = dp(:, kdx - 1) + pint_local(:, kdx - 1)
      end do
 
-     if (dycore_is('LR').or.dycore_is('FV3')) then
-       do k=k0,k1
-         pmid(:,:,k) = dp(:,:,k) / (log(pint_local(:,:,k+1))-log(pint_local(:,:,k)))
+     if (dycore_is('LR') .or. dycore_is('FV3')) then
+       do kdx = 1, SIZE(dp, 2)
+         pmid(:, kdx) = dp(:, kdx) / (log(pint_local(:, kdx + 1)) - log(pint_local(:, kdx)))
        end do
      else
-       do k=k0,k1
-         pmid(:,:,k) = 0.5_r8*(pint_local(:,:,k)+pint_local(:,:,k+1))
+       do kdx = 1, SIZE(dp, 2)
+         pmid(:, kdx) = 0.5_r8 * (pint_local(:, kdx) + pint_local(:, kdx + 1))
        end do
      end if
      if (present(pint)) pint=pint_local
-   end subroutine get_pmid_from_dp
+   end subroutine get_pmid_from_dp_1hd
 
    !===========================================================================
 
@@ -1163,40 +1242,39 @@ CONTAINS
    !
    !****************************************************************************************************************
    !
-   subroutine get_exner(i0,i1,j0,j1,nlev,ntrac,tracer,mixing_ratio,active_species_idx,&
-        dp_dry,ptop,p00,inv_exner,exner,poverp0)
-     integer,  intent(in)  :: i0,i1,j0,j1,nlev,ntrac             ! index bounds
-     real(r8), intent(in)  :: tracer(i0:i1,j0:j1,nlev,1:ntrac)   ! tracers; quantity specified by mixing_ratio arg
+   subroutine get_exner_1hd(tracer, mixing_ratio, active_species_idx, dp_dry, ptop, p00, inv_exner, exner, poverp0)
+     real(r8), intent(in)  :: tracer(:,:,:)                      ! tracers; quantity specified by mixing_ratio arg
      integer,  intent(in)  :: mixing_ratio                       ! 1 => tracer is mixing ratio
                                                                  ! 2 => tracer is mass (q*dp)
      integer,  intent(in)  :: active_species_idx(:)              ! index for thermodynamic species in tracer array
-     real(r8), intent(in)  :: dp_dry(i0:i1,j0:j1,nlev)           ! dry pressure level thickness
+     real(r8), intent(in)  :: dp_dry(:,:)                        ! dry pressure level thickness
      real(r8), intent(in)  :: ptop                               ! pressure at model top
      real(r8), intent(in)  :: p00                                ! reference pressure for Exner pressure (usually 1000hPa)
      logical , intent(in)  :: inv_exner                          ! logical for outputting inverse Exner or Exner pressure
-     real(r8), intent(out) :: exner(i0:i1,j0:j1,nlev)
-     real(r8), optional, intent(out) :: poverp0(i0:i1,j0:j1,nlev)! for efficiency when a routine needs this variable
+     real(r8), intent(out) :: exner(:,:)
+     real(r8), optional, intent(out) :: poverp0(:,:)             ! for efficiency when a routine needs this variable
 
-     real(r8) :: pmid(i0:i1,j0:j1,nlev),kappa_dry(i0:i1,j0:j1,nlev)
+     real(r8) :: pmid(SIZE(exner,1),SIZE(exner,2))
+     real(r8) :: kappa_dry(SIZE(exner,1), SIZE(exner,2))
      !
      ! compute mid level pressure
      !
-     call get_pmid_from_dpdry(i0,i1,j0,j1,nlev,ntrac,tracer,mixing_ratio,active_species_idx,dp_dry,ptop,pmid)
+     call get_pmid_from_dp(tracer, mixing_ratio, active_species_idx, dp_dry, ptop, pmid)
      !
      ! compute kappa = Rd / cpd
      !
-     if (mixing_ratio==1) then
-       call get_kappa_dry(i0,i1,j0,j1,1,nlev,nlev,ntrac,tracer,active_species_idx,kappa_dry)
+     if (mixing_ratio == 1) then
+       call get_kappa_dry(tracer, active_species_idx, kappa_dry)
      else
-       call get_kappa_dry(i0,i1,j0,j1,1,nlev,nlev,ntrac,tracer,active_species_idx,kappa_dry,1.0_r8 / dp_dry)
+       call get_kappa_dry(tracer, active_species_idx, kappa_dry, 1.0_r8 / dp_dry)
      end if
      if (inv_exner) then
-       exner(:,:,:) = (p00 / pmid(:,:,:))**kappa_dry(:,:,:)
+       exner(:,:) = (p00 / pmid(:,:)) ** kappa_dry(:,:)
      else
-       exner(:,:,:) = (pmid(:,:,:) / p00)**kappa_dry(:,:,:)
+       exner(:,:) = (pmid(:,:) / p00) ** kappa_dry(:,:)
      end if
-     if (present(poverp0)) poverp0=pmid(:,:,:) / p00
-   end subroutine get_exner
+     if (present(poverp0)) poverp0 = pmid(:,:) / p00
+   end subroutine get_exner_1hd
 
    !===========================================================================
 
@@ -1206,27 +1284,24 @@ CONTAINS
    !
    !****************************************************************************************************************
    !
-   subroutine get_virtual_theta(i0,i1,j0,j1,nlev,ntrac,tracer,mixing_ratio,active_species_idx, &
-                                dp_dry,ptop,p00,temp,theta_v)
-     integer,  intent(in)  :: i0,i1,j0,j1,nlev,ntrac
-     real(r8), intent(in)  :: tracer(i0:i1,j0:j1,nlev,1:ntrac)   ! tracers; quantity specified by mixing_ratio arg
+   subroutine get_virtual_theta_1hd(tracer, mixing_ratio, active_species_idx, dp_dry, ptop, p00, temp, theta_v)
+     real(r8), intent(in)  :: tracer(:,:,:)                      ! tracers; quantity specified by mixing_ratio arg
      integer,  intent(in)  :: mixing_ratio                       ! 1 => tracer is dry mixing ratio
                                                                  ! 2 => tracer is mass (q*dp)
      integer,  intent(in)  :: active_species_idx(:)              ! index for thermodynamic species in tracer array
-     real(r8), intent(in)  :: dp_dry(i0:i1,j0:j1,nlev)           ! dry pressure level thickness
+     real(r8), intent(in)  :: dp_dry(:,:)                        ! dry pressure level thickness
      real(r8), intent(in)  :: ptop                               ! pressure at model top
      real(r8), intent(in)  :: p00                                ! reference pressure for Exner pressure (usually 1000hPa)
-     real(r8), intent(in)  :: temp(i0:i1,j0:j1,nlev)             ! temperature
-     real(r8), intent(out) :: theta_v(i0:i1,j0:j1,nlev)          ! virtual potential temperature
+     real(r8), intent(in)  :: temp(:,:)                          ! temperature
+     real(r8), intent(out) :: theta_v(:,:)                       ! virtual potential temperature
 
-     real(r8) :: iexner(i0:i1,j0:j1,nlev)
+     real(r8) :: iexner(SIZE(temp,1), SIZE(temp,2))
 
-     call get_exner(i0,i1,j0,j1,nlev,ntrac,tracer,mixing_ratio,active_species_idx, &
-                    dp_dry,ptop,p00,.true.,iexner)
+     call get_exner(tracer, mixing_ratio, active_species_idx, dp_dry, ptop, p00, .true., iexner)
 
-     theta_v(:,:,:) = temp(:,:,:)*iexner(:,:,:)
+     theta_v(:,:) = temp(:,:) * iexner(:,:)
 
-   end subroutine get_virtual_theta
+   end subroutine get_virtual_theta_1hd
 
    !===========================================================================
 
@@ -1236,44 +1311,40 @@ CONTAINS
    !
    !****************************************************************************************************************
    !
-   subroutine get_gz_from_dp_dry_ptop_temp(i0,i1,j0,j1,nlev,ntrac,tracer,mixing_ratio,active_species_idx, &
-                     dp_dry,ptop,temp,phis,gz,pmid,dp,T_v)
-     integer,  intent(in)  :: i0,i1,j0,j1,nlev,ntrac             ! array bounds
-     real(r8), intent(in)  :: tracer(i0:i1,j0:j1,nlev,1:ntrac)   ! tracer; quantity specified by mixing_ratio arg
+   subroutine get_gz_from_dp_dry_ptop_temp_1hd(tracer, mixing_ratio, active_species_idx, &
+                     dp_dry, ptop, temp, phis, gz, pmid, dp, T_v)
+     real(r8), intent(in)  :: tracer(:,:,:)                      ! tracer; quantity specified by mixing_ratio arg
      integer,  intent(in)  :: mixing_ratio                       ! 1 => tracer is dry mixing ratio
                                                                  ! 2 => tracer is mass (q*dp)
      integer,  intent(in)  :: active_species_idx(:)              ! index for thermodynamic species in tracer array
-     real(r8), intent(in)  :: dp_dry(i0:i1,j0:j1,nlev)           ! dry pressure level thickness
+     real(r8), intent(in)  :: dp_dry(:,:)                        ! dry pressure level thickness
      real(r8), intent(in)  :: ptop                               ! pressure at model top
-     real(r8), intent(in)  :: temp(i0:i1,j0:j1,nlev)             ! temperature
-     real(r8), intent(in)  :: phis(i0:i1,j0:j1)                  ! surface geopotential
-     real(r8), intent(out) :: gz(i0:i1,j0:j1,nlev)               ! geopotential
-     real(r8), optional, intent(out) :: pmid(i0:i1,j0:j1,nlev)   ! mid-level pressure
-     real(r8), optional, intent(out) :: dp(i0:i1,j0:j1,nlev)     ! pressure level thickness
-     real(r8), optional, intent(out) :: t_v(i0:i1,j0:j1,nlev)    ! virtual temperature
+     real(r8), intent(in)  :: temp(:,:)                          ! temperature
+     real(r8), intent(in)  :: phis(:)                            ! surface geopotential
+     real(r8), intent(out) :: gz(:,:)                            ! geopotential
+     real(r8), optional, intent(out) :: pmid(:,:)                ! mid-level pressure
+     real(r8), optional, intent(out) :: dp(:,:)                  ! pressure level thickness
+     real(r8), optional, intent(out) :: t_v(:,:)                 ! virtual temperature
 
 
-     real(r8), dimension(i0:i1,j0:j1,nlev)   :: pmid_local, t_v_local, dp_local, R_dry
-     real(r8), dimension(i0:i1,j0:j1,nlev+1) :: pint
+     real(r8), dimension(SIZE(dp,1), SIZE(dp,2))     :: pmid_local, t_v_local, dp_local, R_dry
+     real(r8), dimension(SIZE(dp,1), SIZE(dp,2) + 1) :: pint
 
-     call get_pmid_from_dpdry(i0,i1,j0,j1,nlev,ntrac,tracer,mixing_ratio,active_species_idx, &
-                              dp_dry,ptop,pmid_local,pint=pint,dp=dp_local)
+     call get_pmid_from_dp(tracer, mixing_ratio, active_species_idx, &
+                              dp_dry, ptop, pmid_local, pint=pint, dp=dp_local)
      if (mixing_ratio==1) then
-       call get_virtual_temp(i0,i1,j0,j1,1,nlev,ntrac,tracer,t_v_local,temp=temp,&
-            active_species_idx_dycore=active_species_idx)
-       call get_R_dry(i0,i1,j0,j1,1,nlev,1,nlev,ntrac,tracer,active_species_idx,R_dry)
+       call get_virtual_temp(tracer, t_v_local, temp=temp, active_species_idx_dycore=active_species_idx)
+       call get_R_dry(tracer, active_species_idx, R_dry)
      else
-       call get_virtual_temp(i0,i1,j0,j1,1,nlev,ntrac,tracer,t_v_local,temp=temp,dp_dry=dp_dry,&
-            active_species_idx_dycore=active_species_idx)
-       call get_R_dry(i0,i1,j0,j1,1,nlev,1,nlev,ntrac,tracer,active_species_idx, &
-                      R_dry,fact=1.0_r8 / dp_dry)
+       call get_virtual_temp(tracer, t_v_local, temp=temp, dp_dry=dp_dry, active_species_idx_dycore=active_species_idx)
+       call get_R_dry(tracer,active_species_idx, R_dry, fact=1.0_r8 / dp_dry)
      end if
-     call get_gz_given_dp_Tv_Rdry(i0,i1,j0,j1,nlev,dp_local,T_v_local,R_dry,phis,ptop,gz,pmid_local)
+     call get_gz(dp_local, T_v_local, R_dry, phis, ptop, gz, pmid_local)
 
      if (present(pmid)) pmid=pmid_local
      if (present(T_v))  T_v=T_v_local
      if (present(dp))   dp=dp_local
-  end subroutine get_gz_from_dp_dry_ptop_temp
+  end subroutine get_gz_from_dp_dry_ptop_temp_1hd
 
    !===========================================================================
 
@@ -1283,44 +1354,67 @@ CONTAINS
    !
    !***************************************************************************
    !
-   subroutine get_gz_given_dp_Tv_Rdry(i0,i1,j0,j1,nlev,dp,T_v,R_dry,phis,ptop,gz,pmid)
+   subroutine get_gz_given_dp_Tv_Rdry_1hd(dp, T_v, R_dry, phis, ptop, gz, pmid)
      use dycore, only: dycore_is
-     integer,  intent(in)  :: i0,i1,j0,j1,nlev                 ! array bounds
-     real(r8), intent(in)  :: dp   (i0:i1,j0:j1,nlev)          ! pressure level thickness
-     real(r8), intent(in)  :: T_v  (i0:i1,j0:j1,nlev)          ! virtual temperature
-     real(r8), intent(in)  :: R_dry(i0:i1,j0:j1,nlev)          ! R dry
-     real(r8), intent(in)  :: phis (i0:i1,j0:j1)               ! surface geopotential
+     real(r8), intent(in)  :: dp   (:,:)                       ! pressure level thickness
+     real(r8), intent(in)  :: T_v  (:,:)                       ! virtual temperature
+     real(r8), intent(in)  :: R_dry(:,:)                       ! R dry
+     real(r8), intent(in)  :: phis (:)                         ! surface geopotential
      real(r8), intent(in)  :: ptop                             ! model top presure
-     real(r8), intent(out) :: gz(i0:i1,j0:j1,nlev)             ! geopotential
-     real(r8), optional, intent(out) :: pmid(i0:i1,j0:j1,nlev) ! mid-level pressure
+     real(r8), intent(out) :: gz(:,:)                          ! geopotential
+     real(r8), optional, intent(out) :: pmid(:,:)              ! mid-level pressure
 
 
-     real(r8), dimension(i0:i1,j0:j1,nlev)   :: pmid_local
-     real(r8), dimension(i0:i1,j0:j1,nlev+1) :: pint
-     real(r8), dimension(i0:i1,j0:j1)        :: gzh, Rdry_tv
-     integer :: k
+     real(r8), dimension(SIZE(dp, 1), SIZE(dp, 2))      :: pmid_local
+     real(r8), dimension(SIZE(dp, 1), SIZE(dp, 2) + 1)  :: pint
+     real(r8), dimension(SIZE(dp, 1))                   :: gzh, Rdry_tv
+     integer :: kdx
 
-     call get_pmid_from_dp(i0,i1,j0,j1,1,nlev,dp,ptop,pmid_local,pint)
+     call get_pmid_from_dp(dp, ptop, pmid_local, pint)
 
      !
      ! integrate hydrostatic eqn
      !
      gzh = phis
-     if (dycore_is('LR').or.dycore_is('FV3')) then
-       do k=nlev,1,-1
-         Rdry_tv(:,:) = R_dry(:,:,k)*T_v(:,:,k)
-         gz(:,:,k) = gzh(:,:)+Rdry_tv(:,:)*(1.0_r8-pint(:,:,k) / pmid_local(:,:,k))
-         gzh(:,:)  = gzh(:,:) + Rdry_tv(:,:)*(log(pint(:,:,k+1))-log(pint(:,:,k)))
+     if (dycore_is('LR') .or. dycore_is('FV3')) then
+       do kdx = SIZE(dp, 2), 1, -1
+         Rdry_tv(:) = R_dry(:, kdx) * T_v(:, kdx)
+         gz(:, kdx) = gzh(:) + Rdry_tv(:) * (1.0_r8 - pint(:, kdx) / pmid_local(:, kdx))
+         gzh(:)  = gzh(:) + Rdry_tv(:) * (log(pint(:, kdx + 1)) - log(pint(:, kdx)))
        end do
      else
-       do k=nlev,1,-1
-         Rdry_tv(:,:) = R_dry(:,:,k)*T_v(:,:,k)
-         gz(:,:,k) = gzh(:,:)+Rdry_tv(:,:)*0.5_r8*dp(:,:,k) / pmid_local(:,:,k)
-         gzh(:,:)  = gzh(:,:) + Rdry_tv(:,:)*dp(:,:,k) / pmid_local(:,:,k)
+       do kdx = SIZE(dp,2), 1, -1
+         Rdry_tv(:) = R_dry(:,kdx) * T_v(:, kdx)
+         gz(:,kdx) = gzh(:) + Rdry_tv(:) * 0.5_r8 * dp(:, kdx) / pmid_local(:, kdx)
+         gzh(:)  = gzh(:) + Rdry_tv(:) * dp(:, kdx) / pmid_local(:, kdx)
        end do
      end if
      if (present(pmid)) pmid=pmid_local
-   end subroutine get_gz_given_dp_Tv_Rdry
+   end subroutine get_gz_given_dp_Tv_Rdry_1hd
+
+   subroutine get_gz_given_dp_Tv_Rdry_2hd(dp, T_v, R_dry, phis, ptop, gz, pmid)
+     ! Version of get_gz_given_dp_Tv_Rdry for arrays that have a second horizontal index
+     real(r8), intent(in)  :: dp   (:,:,:)                     ! pressure level thickness
+     real(r8), intent(in)  :: T_v  (:,:,:)                     ! virtual temperature
+     real(r8), intent(in)  :: R_dry(:,:,:)                     ! R dry
+     real(r8), intent(in)  :: phis (:,:)                       ! surface geopotential
+     real(r8), intent(in)  :: ptop                             ! model top presure
+     real(r8), intent(out) :: gz(:,:,:)                        ! geopotential
+     real(r8), optional, intent(out) :: pmid(:,:,:)            ! mid-level pressure
+
+     integer :: jdx
+
+     do jdx = 1, SIZE(dp, 2)
+       if (present(pmid)) then
+         call get_gz(dp(:, jdx, :), T_v(:, jdx, :), R_dry(:, jdx, :), phis(:, jdx), &
+              ptop, gz(:, jdx, :), pmid=pmid(:, jdx, :))
+       else
+         call get_gz(dp(:, jdx, :), T_v(:, jdx, :), R_dry(:, jdx, :), phis(:, jdx), ptop, gz(:, jdx, :))
+       end if
+     end do
+
+
+   end subroutine get_gz_given_dp_Tv_Rdry_2hd
 
    !===========================================================================
 
@@ -1330,53 +1424,47 @@ CONTAINS
    !
    !***************************************************************************
    !
-   subroutine get_Richardson_number(i0,i1,j0,j1,nlev,ntrac,tracer,mixing_ratio,active_species_idx,&
-        dp_dry,ptop,p00,temp,v,Richardson_number,pmid,dp)
-     integer,  intent(in)  :: i0,i1,j0,j1,nlev,ntrac
-     real(r8), intent(in)  :: tracer(i0:i1,j0:j1,nlev,1:ntrac)     ! tracer; quantity specified by mixing_ratio arg
+   subroutine get_Richardson_number_1hd(tracer,mixing_ratio, active_species_idx, dp_dry, ptop, &
+        p00, temp, v, Richardson_number, pmid, dp)
+     real(r8), intent(in)  :: tracer(:,:,:)                        ! tracer; quantity specified by mixing_ratio arg
      integer,  intent(in)  :: mixing_ratio                         ! 1 => tracer is dry mixing ratio
                                                                    ! 2 => tracer is mass (q*dp)
      integer,  intent(in)  :: active_species_idx(:)                ! index for thermodynamic species in tracer array
-     real(r8), intent(in)  :: dp_dry(i0:i1,j0:j1,nlev)             ! dry pressure level thickness
+     real(r8), intent(in)  :: dp_dry(:,:)                          ! dry pressure level thickness
      real(r8), intent(in)  :: ptop                                 ! pressure at model top
      real(r8), intent(in)  :: p00                                  ! reference pressure for Exner pressure (usually 1000hPa)
-     real(r8), intent(in)  :: temp(i0:i1,j0:j1,nlev)               ! temperature
-     real(r8), intent(in)  :: v(i0:i1,j0:j1,2,nlev)                ! velocity components
-     real(r8), intent(out) :: Richardson_number(i0:i1,j0:j1,nlev+1)!
-     real(r8), optional, intent(out) :: pmid(i0:i1,j0:j1,nlev)   !
-     real(r8), optional, intent(out) :: dp(i0:i1,j0:j1,nlev)   !
+     real(r8), intent(in)  :: temp(:,:)                            ! temperature
+     real(r8), intent(in)  :: v(:,:,:)                             ! velocity components
+     real(r8), intent(out) :: Richardson_number(:,:)
+     real(r8), optional, intent(out) :: pmid(:,:)
+     real(r8), optional, intent(out) :: dp(:,:)
 
-     real(r8), dimension(i0:i1,j0:j1,nlev):: gz,theta_v
-     real(r8), dimension(i0:i1,j0:j1)     :: pt1, pt2, phis
-     integer :: k,km1
+     real(r8), dimension(SIZE(dp_dry,1), SIZE(dp_dry, 2)) :: gz, theta_v
+     real(r8), dimension(SIZE(dp_dry,1))                  :: pt1, pt2, phis
+     integer :: kdx, kdxm1
      real(r8), parameter:: ustar2 = 1.E-4_r8
 
      phis = 0.0_r8
      if (present(pmid).and.present(dp)) then
-        call get_gz(i0,i1,j0,j1,nlev,ntrac,tracer,mixing_ratio,active_species_idx, &
-                    dp_dry,ptop,temp,phis,gz,pmid=pmid,dp=dp)
+        call get_gz(tracer, mixing_ratio, active_species_idx, dp_dry, ptop, temp, phis, gz, pmid=pmid, dp=dp)
      else if (present(pmid)) then
-        call get_gz(i0,i1,j0,j1,nlev,ntrac,tracer,mixing_ratio,active_species_idx, &
-                    dp_dry,ptop,temp,phis,gz,pmid=pmid)
+        call get_gz(tracer, mixing_ratio, active_species_idx, dp_dry, ptop, temp, phis, gz, pmid=pmid)
      else if (present(dp)) then
-        call get_gz(i0,i1,j0,j1,nlev,ntrac,tracer,mixing_ratio,active_species_idx, &
-                    dp_dry,ptop,temp,phis,gz,dp=dp)
+        call get_gz(tracer, mixing_ratio, active_species_idx, dp_dry, ptop, temp, phis, gz, dp=dp)
      else
-        call get_gz(i0,i1,j0,j1,nlev,ntrac,tracer,mixing_ratio,active_species_idx, &
-                    dp_dry,ptop,temp,phis,gz)
+        call get_gz(tracer, mixing_ratio, active_species_idx, dp_dry, ptop, temp, phis, gz)
      end if
-     call get_virtual_theta(i0,i1,j0,j1,nlev,ntrac,tracer,mixing_ratio,active_species_idx, &
-                            dp_dry,ptop,p00,temp,theta_v)
-     Richardson_number(:,:,1)      = 0.0_r8
-     Richardson_number(:,:,nlev+1) = 0.0_r8
-     do k=nlev-1,2,-1
-       km1=k-1
-       pt1(:,:) = theta_v(:,:,km1)
-       pt2(:,:) = theta_v(:,:,k)
-       Richardson_number(:,:,k) = (gz(:,:,km1)-gz(:,:,k))*(pt1-pt2) / ( 0.5_r8*(pt1+pt2)*        &
-            ((v(:,:,1,km1)-v(:,:,1,k))**2+(v(:,:,2,km1)-v(:,:,2,k))**2+ustar2) )
+     call get_virtual_theta(tracer, mixing_ratio, active_species_idx, dp_dry, ptop, p00, temp, theta_v)
+     Richardson_number(:, 1)                  = 0.0_r8
+     Richardson_number(:, SIZE(dp_dry,2) + 1) = 0.0_r8
+     do kdx = SIZE(dp_dry,2) - 1, 2, -1
+       kdxm1 = kdx - 1
+       pt1(:) = theta_v(:, kdxm1)
+       pt2(:) = theta_v(:, kdx)
+       Richardson_number(:, kdx) = (gz(:, kdxm1) - gz(:, kdx)) * (pt1 - pt2) / ( 0.5_r8*(pt1 + pt2) *        &
+            ((v(:, 1, kdxm1) - v(:, 1, kdx)) ** 2 + (v(:, 2, kdxm1) - v(:, 2, kdx)) ** 2 + ustar2) )
      end do
-   end subroutine get_Richardson_number
+   end subroutine get_Richardson_number_1hd
 
    !
    !****************************************************************************************************************
@@ -1385,37 +1473,50 @@ CONTAINS
    !
    !****************************************************************************************************************
    !
-   subroutine get_ps(i0,i1,j0,j1,k0,k1,ntrac,tracer_mass,active_species_idx,dp_dry,ps,ptop)
-     integer,  intent(in)   :: i0,i1,j0,j1,k0,k1,ntrac
-     real(r8), intent(in)   :: tracer_mass(i0:i1,j0:j1,k0:k1,1:ntrac) ! Tracer array
-     real(r8), intent(in)   :: dp_dry(i0:i1,j0:j1,k0:k1)       ! dry pressure level thickness
-     real(r8), intent(out)  :: ps(i0:i1,j0:j1)             ! surface pressure
+   subroutine get_ps_1hd(tracer_mass, active_species_idx, dp_dry, ps, ptop)
+     use air_composition,  only: dry_air_species_num
+     
+     real(r8), intent(in)   :: tracer_mass(:,:,:)                      ! Tracer array
+     real(r8), intent(in)   :: dp_dry(:,:)                             ! dry pressure level thickness
+     real(r8), intent(out)  :: ps(:)                                   ! surface pressure
      real(r8), intent(in)   :: ptop
      integer,  intent(in)   :: active_species_idx(:)
 
-     integer                    :: i,j,k,m_cnst,nq
-     real(r8)                   :: dp(i0:i1,j0:j1,k0:k1)       ! dry pressure level thickness
+     integer                    :: idx, kdx, m_cnst, nq
+     real(r8)                   :: dp(SIZE(dp_dry,1), SIZE(dp_dry,2))  ! dry pressure level thickness
 
      dp = dp_dry
-     do nq=dry_air_species_num+1,thermodynamic_active_species_num
+     do nq = dry_air_species_num + 1, thermodynamic_active_species_num
        m_cnst = active_species_idx(nq)
-       do k=k0,k1
-         do j=j0,j1
-           do i = i0,i1
-             dp(i,j,k) = dp(i,j,k) + tracer_mass(i,j,k,m_cnst)
-           end do
+       do kdx = 1, SIZE(dp_dry, 2)
+         do idx = 1, SIZE(dp_dry, 1)
+           dp(idx, kdx) = dp(idx, kdx) + tracer_mass(idx, kdx, m_cnst)
          end do
        end do
      end do
      ps = ptop
-     do k=k0,k1
-       do j=j0,j1
-         do i = i0,i1
-           ps(i,j) = ps(i,j)+dp(i,j,k)
-         end do
+     do kdx = 1, SIZE(dp_dry, 2)
+       do idx = 1, SIZE(dp_dry, 1)
+         ps(idx) = ps(idx) + dp(idx, kdx)
        end do
      end do
-   end subroutine get_ps
+   end subroutine get_ps_1hd
+
+   subroutine get_ps_2hd(tracer_mass, active_species_idx, dp_dry, ps, ptop)
+     ! Version of get_gz_give_dp_Tv_Rdry for arrays that have a second horizontal index
+     real(r8), intent(in)   :: tracer_mass(:,:,:,:)                      ! Tracer array
+     real(r8), intent(in)   :: dp_dry(:,:,:)                             ! dry pressure level thickness
+     real(r8), intent(out)  :: ps(:,:)                                   ! surface pressure
+     real(r8), intent(in)   :: ptop
+     integer,  intent(in)   :: active_species_idx(:)
+
+     integer :: jdx
+
+     do jdx = 1, SIZE(tracer_mass, 2)
+       call get_ps(tracer_mass(:, jdx, :, :), active_species_idx, dp_dry(:, jdx, :), ps(:, jdx), ptop)
+     end do
+
+   end subroutine get_ps_2hd
 
    !===========================================================================
 
@@ -1425,15 +1526,18 @@ CONTAINS
    !
    !*************************************************************************************************************************
    !
-   subroutine get_mbarv(i0,i1,j0,j1,k0,k1,nlev,ntrac,tracer,active_species_idx,mbarv,fact)
-     integer,  intent(in)  :: i0,i1,j0,j1,k0,k1,ntrac, nlev
-     real(r8), intent(in)  :: tracer(i0:i1,j0:j1,nlev,1:ntrac)   !tracer array
+   subroutine get_mbarv_1hd(tracer, active_species_idx, mbarv, fact)
+     use air_composition,  only: dry_air_species_num
+     use physconst,        only: mwdry, rair, cpair
+     real(r8), intent(in)  :: tracer(:,:,:)                      !tracer array
      integer,  intent(in)  :: active_species_idx(:)              !index of active species in tracer
-     real(r8), intent(out) :: mbarv(i0:i1,j0:j1,k0:k1)           !molecular weight of dry air
-     real(r8), optional, intent(in) :: fact(i0:i1,j0:j1,nlev)    !factor for converting tracer to dry mixing ratio
+     real(r8), intent(out) :: mbarv(:,:)                        !molecular weight of dry air
+     real(r8), optional, intent(in) :: fact(:,:)                 !factor for converting tracer to dry mixing ratio
 
-     integer :: i,j,k,m_cnst,nq
-     real(r8):: factor(i0:i1,j0:j1,k0:k1), residual(i0:i1,j0:j1,k0:k1), mm
+     integer :: idx, kdx, m_cnst, nq
+     real(r8):: factor(SIZE(mbarv, 1), SIZE(mbarv, 2))
+     real(r8):: residual(SIZE(mbarv, 1), SIZE(mbarv, 2))
+     real(r8):: mm
      !
      ! dry air not species dependent
      !
@@ -1441,36 +1545,32 @@ CONTAINS
        mbarv = mwdry
      else
        if (present(fact)) then
-         factor(i0:i1,j0:j1,k0:k1) = fact(i0:i1,j0:j1,k0:k1)
+         factor(:,:) = fact(:,:)
        else
-         factor(i0:i1,j0:j1,k0:k1) = 1.0_r8
+         factor(:,:) = 1.0_r8
        endif
 
        mbarv = 0.0_r8
        residual = 1.0_r8
-       do nq=1,dry_air_species_num
+       do nq = 1, dry_air_species_num
          m_cnst = active_species_idx(nq)
-         do k=k0,k1
-           do j=j0,j1
-             do i = i0,i1
-               mm = tracer(i,j,k,m_cnst)*factor(i,j,k)
-               mbarv(i,j,k) = mbarv(i,j,k)+thermodynamic_active_species_mwi(nq)*mm
-               residual(i,j,k) = residual(i,j,k) - mm
-             end do
+         do kdx = 1, SIZE(mbarv, 2)
+           do idx = 1, SIZE(mbarv, 1)
+             mm = tracer(idx, kdx, m_cnst) * factor(idx, kdx)
+             mbarv(idx, kdx) = mbarv(idx, kdx) + thermodynamic_active_species_mwi(nq) * mm
+             residual(idx, kdx) = residual(idx, kdx) - mm
            end do
          end do
        end do
        nq = 0 ! N2
-       do k=k0,k1
-         do j=j0,j1
-           do i = i0,i1
-             mbarv(i,j,k) = mbarv(i,j,k)+thermodynamic_active_species_mwi(nq)*residual(i,j,k)
-           end do
+       do kdx = 1, SIZE(mbarv, 2)
+         do idx = 1, SIZE(mbarv, 1)
+           mbarv(idx, kdx) = mbarv(idx, kdx) + thermodynamic_active_species_mwi(nq) * residual(idx, kdx)
          end do
        end do
-       mbarv(i0:i1,j0:j1,k0:k1) = 1.0_r8/mbarv(i0:i1,j0:j1,k0:k1)
+       mbarv(:,:) = 1.0_r8 / mbarv(:,:)
      end if
-   end subroutine get_mbarv
+   end subroutine get_mbarv_1hd
 
    !===========================================================================
 
@@ -1480,32 +1580,50 @@ CONTAINS
    !
    !*************************************************************************************************************************
    !
-   subroutine get_kappa_dry(i0,i1,j0,j1,k0,k1,nlev,ntrac,tracer,active_species_idx,kappa_dry,fact)
-     integer,  intent(in)  :: i0,i1,j0,j1,k0,k1,ntrac,nlev
-     real(r8), intent(in)  :: tracer(i0:i1,j0:j1,nlev,1:ntrac)   !tracer array
-     integer,  intent(in)  :: active_species_idx(:)              !index of thermodynamic active tracers
-     real(r8), intent(out) :: kappa_dry(i0:i1,j0:j1,k0:k1)       !kappa dry
-     real(r8), optional, intent(in) :: fact(i0:i1,j0:j1,nlev)    !factor for converting tracer to dry mixing ratio
+   subroutine get_kappa_dry_1hd(tracer, active_species_idx, kappa_dry, fact)
+     use air_composition,  only: dry_air_species_num
+     use physconst,        only: rair, cpair
+
+     real(r8), intent(in)  :: tracer(:,:,:)              !tracer array
+     integer,  intent(in)  :: active_species_idx(:)      !index of thermodynamic active tracers
+     real(r8), intent(out) :: kappa_dry(:,:)             !kappa dry
+     real(r8), optional, intent(in) :: fact(:,:)         !factor for converting tracer to dry mixing ratio
      !
-     real(r8), allocatable, dimension(:,:,:) :: cp_dry,R_dry
+     real(r8), dimension(SIZE(kappa_dry, 1), SIZE(kappa_dry, 2)) :: cp_dry, R_dry
      !
      ! dry air not species dependent
      if (dry_air_species_num==0) then
-       kappa_dry= rair/cpair
+       kappa_dry = rair / cpair
      else
-       allocate(R_dry(i0:i1,j0:j1,k0:k1))
-       allocate(cp_dry(i0:i1,j0:j1,k0:k1))
        if (present(fact)) then
-         call get_cp_dry(i0,i1,j0,j1,k0,k1,1,nlev,ntrac,tracer,active_species_idx,cp_dry,fact=fact)
-         call get_R_dry(i0,i1,j0,j1,k0,k1,1,nlev,ntrac,tracer,active_species_idx,R_dry,fact=fact)
+         call get_cp_dry(tracer, active_species_idx, cp_dry, fact=fact)
+         call get_R_dry( tracer, active_species_idx, R_dry,  fact=fact)
        else
-         call get_cp_dry(i0,i1,j0,j1,k0,k1,1,nlev,ntrac,tracer,active_species_idx,cp_dry)
-         call get_R_dry(i0,i1,j0,j1,k0,k1,1,nlev,ntrac,tracer,active_species_idx,R_dry)
+         call get_cp_dry(tracer, active_species_idx, cp_dry)
+         call get_R_dry( tracer, active_species_idx, R_dry)
        end if
-       kappa_dry = R_dry/cp_dry
-       deallocate(R_dry,cp_dry)
+       kappa_dry = R_dry / cp_dry
      end if
-   end subroutine get_kappa_dry
+   end subroutine get_kappa_dry_1hd
+
+   subroutine get_kappa_dry_2hd(tracer, active_species_idx, kappa_dry, fact)
+     ! Version of get_kappa_dry for arrays that have a second horizontal index
+     real(r8), intent(in)  :: tracer(:,:,:,:)              !tracer array
+     integer,  intent(in)  :: active_species_idx(:)        !index of thermodynamic active tracers
+     real(r8), intent(out) :: kappa_dry(:,:,:)             !kappa dry
+     real(r8), optional, intent(in) :: fact(:,:,:)         !factor for converting tracer to dry mixing ratio
+
+     integer :: jdx
+
+     do jdx = 1, SIZE(tracer, 2)
+       if (present(fact)) then
+         call get_kappa_dry(tracer(:, jdx, :, :), active_species_idx, kappa_dry(:, jdx, :), fact=fact(:, jdx, :))
+       else
+         call get_kappa_dry(tracer(:, jdx, :, :), active_species_idx, kappa_dry(:, jdx, :))
+       end if
+     end do
+
+   end subroutine get_kappa_dry_2hd
 
    !===========================================================================
 
@@ -1515,21 +1633,39 @@ CONTAINS
    !
    !*************************************************************************************************************************
    !
-   subroutine get_dp_ref(hyai, hybi, ps0, i0,i1,j0,j1,k0,k1,phis,dp_ref,ps_ref)
-     integer,  intent(in)           :: i0,i1,j0,j1,k0,k1
-     real(r8), intent(in)           :: hyai(k0:k1+1),hybi(k0:k1+1),ps0
-     real(r8), intent(in)           :: phis(i0:i1,j0:j1)
-     real(r8), intent(out)          :: dp_ref(i0:i1,j0:j1,k0:k1)
-     real(r8), intent(out)          :: ps_ref(i0:i1,j0:j1)
-     integer :: k
+   subroutine get_dp_ref_1hd(hyai, hybi, ps0, phis, dp_ref, ps_ref)
+     use physconst,  only: tref, rair
+     real(r8), intent(in)           :: hyai(:)
+     real(r8), intent(in)           :: hybi(:)
+     real(r8), intent(in)           :: ps0
+     real(r8), intent(in)           :: phis(:)
+     real(r8), intent(out)          :: dp_ref(:,:)
+     real(r8), intent(out)          :: ps_ref(:)
+     integer :: kdx
      !
      ! use static reference pressure (hydrostatic balance incl. effect of topography)
      !
-     ps_ref(:,:) = ps0*exp(-phis(:,:)/(Rair*Tref))
-     do k=k0,k1
-       dp_ref(:,:,k) = ((hyai(k+1)-hyai(k))*ps0 + (hybi(k+1)-hybi(k))*ps_ref(:,:))
+     ps_ref(:) = ps0 * exp(-phis(:) / (rair * tref))
+     do kdx = 1, SIZE(dp_ref, 2)
+       dp_ref(:,kdx) = ((hyai(kdx + 1) - hyai(kdx)) * ps0 + (hybi(kdx + 1) - hybi(kdx)) * ps_ref(:))
      end do
-   end subroutine get_dp_ref
+   end subroutine get_dp_ref_1hd
+
+   subroutine get_dp_ref_2hd(hyai, hybi, ps0, phis, dp_ref, ps_ref)
+     ! Version of get_dp_ref for arrays that have a second horizontal index
+     real(r8), intent(in)           :: hyai(:)
+     real(r8), intent(in)           :: hybi(:)
+     real(r8), intent(in)           :: ps0
+     real(r8), intent(in)           :: phis(:,:)
+     real(r8), intent(out)          :: dp_ref(:,:,:)
+     real(r8), intent(out)          :: ps_ref(:,:)
+     integer :: jdx
+
+     do jdx = 1, SIZE(dp_ref, 2)
+       call get_dp_ref(hyai, hybi, ps0, phis(:, jdx), dp_ref(:, jdx, :), ps_ref(:, jdx))
+     end do
+
+   end subroutine get_dp_ref_2hd
 
    !===========================================================================
 
@@ -1539,31 +1675,30 @@ CONTAINS
    !
    !*************************************************************************************************************************
    !
-   subroutine get_rho_dry(i0,i1,j0,j1,k1,nlev,ntrac,tracer,temp,ptop,dp_dry,tracer_mass,&
-        rho_dry, rhoi_dry,active_species_idx_dycore,pint_out,pmid_out)
+   subroutine get_rho_dry_1hd(tracer, temp, ptop, dp_dry, tracer_mass, rho_dry, rhoi_dry, &
+              active_species_idx_dycore, pint_out, pmid_out)
      ! args
-     integer,  intent(in)           :: i0,i1,j0,j1,k1,ntrac,nlev
-     real(r8), intent(in)           :: tracer(i0:i1,j0:j1,nlev,ntrac) ! Tracer array
-     real(r8), intent(in)           :: temp(i0:i1,j0:j1,1:nlev) ! Temperature
+     real(r8), intent(in)           :: tracer(:,:,:)      ! Tracer array
+     real(r8), intent(in)           :: temp(:,:)          ! Temperature
      real(r8), intent(in)           :: ptop
-     real(r8), intent(in)           :: dp_dry(i0:i1,j0:j1,nlev)
+     real(r8), intent(in)           :: dp_dry(:,:)
      logical,  intent(in)           :: tracer_mass
-     real(r8), optional,intent(out) :: rho_dry(i0:i1,j0:j1,1:k1)
-     real(r8), optional,intent(out) :: rhoi_dry(i0:i1,j0:j1,1:k1+1)
+     real(r8), optional,intent(out) :: rho_dry(:,:)
+     real(r8), optional,intent(out) :: rhoi_dry(:,:)
      !
      ! array of indicies for index of thermodynamic active species in dycore tracer array
      ! (if different from physics index)
      !
      integer, optional, intent(in)   :: active_species_idx_dycore(:)
-     real(r8),optional,intent(out)   :: pint_out(i0:i1,j0:j1,1:k1+1)
-     real(r8),optional,intent(out)   :: pmid_out(i0:i1,j0:j1,1:k1)
+     real(r8),optional,intent(out)   :: pint_out(:,:)
+     real(r8),optional,intent(out)   :: pmid_out(:,:)
 
      ! local vars
-     integer :: i,j,k
-     real(r8),  dimension(i0:i1,j0:j1,1:k1)              :: pmid
-     real(r8):: pint(i0:i1,j0:j1,1:k1+1)
-     real(r8), allocatable :: R_dry(:,:,:)
-     integer,  dimension(thermodynamic_active_species_num):: idx_local
+     integer :: idx, kdx
+     real(r8),  dimension(SIZE(rho_dry, 1), SIZE(rho_dry, 2))      :: pmid
+     real(r8),  dimension(SIZE(rho_dry, 1), SIZE(rho_dry, 2) + 1)  :: pint
+     real(r8),  allocatable                                        :: R_dry(:,:)
+     integer,  dimension(thermodynamic_active_species_num)         :: idx_local
 
      if (present(active_species_idx_dycore)) then
        idx_local = active_species_idx_dycore
@@ -1573,45 +1708,71 @@ CONTAINS
      !
      ! we assume that air is dry where molecular viscosity may be significant
      !
-     call get_pmid_from_dp(i0,i1,j0,j1,1,k1,dp_dry,ptop,pmid,pint=pint)
+     call get_pmid_from_dp(dp_dry, ptop, pmid, pint=pint)
      if (present(pint_out)) pint_out=pint
      if (present(pint_out)) pmid_out=pmid
      if (present(rhoi_dry)) then
-       allocate(R_dry(i0:i1,j0:j1,1:k1+1))
+       allocate(R_dry(SIZE(rho_dry, 1), size(rho_dry, 2) + 1))
        if (tracer_mass) then
-         call get_R_dry(i0,i1,j0,j1,1,k1+1,1,nlev,ntrac,tracer,idx_local,R_dry,fact=1.0_r8/dp_dry)
+         call get_R_dry(tracer, idx_local, R_dry, fact=1.0_r8 / dp_dry)
        else
-         call get_R_dry(i0,i1,j0,j1,1,k1+1,1,nlev,ntrac,tracer,idx_local,R_dry)
+         call get_R_dry(tracer, idx_local, R_dry)
        end if
-       do k=2,k1+1
-         rhoi_dry(i0:i1,j0:j1,k) = 0.5_r8*(temp(i0:i1,j0:j1,k)+temp(i0:i1,j0:j1,k-1))!could be more accurate!
-         rhoi_dry(i0:i1,j0:j1,k) = pint(i0:i1,j0:j1,k)/(rhoi_dry(i0:i1,j0:j1,k)*R_dry(i0:i1,j0:j1,k)) !ideal gas law for dry air
+       do kdx = 2, SIZE(rho_dry, 2) + 1
+         rhoi_dry(:, kdx) = 0.5_r8 * (temp(:, kdx) + temp(:, kdx - 1))!could be more accurate!
+         rhoi_dry(:, kdx) = pint(:,kdx) / (rhoi_dry(:, kdx) * R_dry(:, kdx)) !ideal gas law for dry air
        end do
        !
        ! extrapolate top level value
        !
-       k=1
-       rhoi_dry(i0:i1,j0:j1,k) = 1.5_r8*(temp(i0:i1,j0:j1,1)-0.5_r8*temp(i0:i1,j0:j1,2))
-       rhoi_dry(i0:i1,j0:j1,k) = pint(i0:i1,j0:j1,1)/(rhoi_dry(i0:i1,j0:j1,k)*R_dry(i0:i1,j0:j1,k)) !ideal gas law for dry air
+       kdx=1
+       rhoi_dry(:, kdx) = 1.5_r8 * (temp(:, kdx) - 0.5_r8 * temp(:, kdx + 1))
+       rhoi_dry(:, kdx) = pint(:, kdx) / (rhoi_dry(:, kdx) * R_dry(:, kdx)) !ideal gas law for dry air
        deallocate(R_dry)
      end if
      if (present(rho_dry)) then
-       allocate(R_dry(i0:i1,j0:j1,1:k1))
+       allocate(R_dry(SIZE(rho_dry, 1), size(rho_dry, 2)))
        if (tracer_mass) then
-         call get_R_dry(i0,i1,j0,j1,1,k1,1,nlev,ntrac,tracer,idx_local,R_dry,fact=1.0_r8/dp_dry)
+         call get_R_dry(tracer, idx_local, R_dry, fact=1.0_r8 / dp_dry)
        else
-         call get_R_dry(i0,i1,j0,j1,1,k1,1,nlev,ntrac,tracer,idx_local,R_dry)
+         call get_R_dry(tracer, idx_local, R_dry)
        end if
-       do k=1,k1
-         do j=j0,j1
-           do i=i0,i1
-             rho_dry(i,j,k) = pmid(i,j,k)/(temp(i,j,k)*R_dry(i,j,k)) !ideal gas law for dry air
-           end do
+       do kdx = 1, SIZE(rho_dry, 2)
+         do idx = 1, SIZE(rho_dry, 1)
+           rho_dry(idx, kdx) = pmid(idx, kdx) / (temp(idx, kdx) * R_dry(idx, kdx)) !ideal gas law for dry air
          end do
        end do
      end if
-   end subroutine get_rho_dry
+   end subroutine get_rho_dry_1hd
 
+   subroutine get_rho_dry_2hd(tracer, temp, ptop, dp_dry, tracer_mass, rho_dry, rhoi_dry, &
+              active_species_idx_dycore, pint_out, pmid_out)
+     ! Version of get_rho_dry for arrays that have a second horizontal index
+     real(r8), intent(in)           :: tracer(:,:,:,:)      ! Tracer array
+     real(r8), intent(in)           :: temp(:,:,:)          ! Temperature
+     real(r8), intent(in)           :: ptop
+     real(r8), intent(in)           :: dp_dry(:,:,:)
+     logical,  intent(in)           :: tracer_mass
+     real(r8), optional,intent(out) :: rho_dry(:,:,:)
+     real(r8), optional,intent(out) :: rhoi_dry(:,:,:)
+     !
+     ! array of indicies for index of thermodynamic active species in dycore tracer array
+     ! (if different from physics index)
+     !
+     integer, optional, intent(in)   :: active_species_idx_dycore(:)
+     real(r8),optional,intent(out)   :: pint_out(:,:,:)
+     real(r8),optional,intent(out)   :: pmid_out(:,:,:)
+
+     integer :: jdx
+
+     do jdx = 1, SIZE(tracer, 2)
+       call get_rho_dry(tracer(:, jdx, :, :), temp(:, jdx, :), ptop, dp_dry(:, jdx, :), &
+              tracer_mass, rho_dry=rho_dry(:, jdx, :), rhoi_dry=rhoi_dry(:, jdx, :), &
+              active_species_idx_dycore=active_species_idx_dycore,&
+              pint_out=pint_out(:, jdx, :), pmid_out=pmid_out(:, jdx, :))
+     end do
+
+   end subroutine get_rho_dry_2hd
    !===========================================================================
 
    !*************************************************************************************************************************
@@ -1620,30 +1781,32 @@ CONTAINS
    !
    !*************************************************************************************************************************
    !
-   subroutine get_molecular_diff_coef(i0,i1,j0,j1,k1,nlev,temp,get_at_interfaces,sponge_factor,kmvis,kmcnd, ntrac,&
+   subroutine get_molecular_diff_coef_1hd(temp, get_at_interfaces, sponge_factor, kmvis, kmcnd, ntrac, &
         tracer, fact, active_species_idx_dycore, mbarv_in)
+     use air_composition,  only: dry_air_species_num
+
      ! args
-     integer,  intent(in)           :: i0,i1,j0,j1,k1,nlev
-     real(r8), intent(in)           :: temp(i0:i1,j0:j1,nlev) ! temperature
-     integer,  intent(in)           :: get_at_interfaces      ! 1: compute kmvis and kmcnd at interfaces
-                                                              ! 0: compute kmvis and kmcnd at mid-levels
-     real(r8), intent(in)           :: sponge_factor(1:k1)    ! multiply kmvis and kmcnd with sponge_factor (for sponge layer)
-     real(r8), intent(out)          :: kmvis(i0:i1,j0:j1,1:k1+get_at_interfaces)
-     real(r8), intent(out)          :: kmcnd(i0:i1,j0:j1,1:k1+get_at_interfaces)
+     real(r8), intent(in)           :: temp(:,:)                     ! temperature
+     integer,  intent(in)           :: get_at_interfaces             ! 1: compute kmvis and kmcnd at interfaces
+                                                                     ! 0: compute kmvis and kmcnd at mid-levels
+     real(r8), intent(in)           :: sponge_factor(:)              ! multiply kmvis and kmcnd with sponge_factor (for sponge layer)
+     real(r8), intent(out)          :: kmvis(:,:)
+     real(r8), intent(out)          :: kmcnd(:,:)
      integer , intent(in)           :: ntrac
-     real(r8), intent(in)           :: tracer(i0:i1,j0:j1,nlev,1:ntrac)   ! tracer array
+     real(r8), intent(in)           :: tracer(:,:,:)                 ! tracer array
      integer,  intent(in), optional :: active_species_idx_dycore(:)  ! index of active species in tracer
-     real(r8), intent(in), optional :: fact(i0:i1,j0:j1,k1)          ! if tracer is in units of mass or moist
-                                                                          ! fact converts to dry mixing ratio: tracer/fact
-     real(r8), intent(in), optional :: mbarv_in(i0:i1,j0:j1,1:k1)         ! composition dependent atmosphere mean mass
+     real(r8), intent(in), optional :: fact(:,:)                     ! if tracer is in units of mass or moist
+                                                                     ! fact converts to dry mixing ratio: tracer/fact
+     real(r8), intent(in), optional :: mbarv_in(:,:)                 ! composition dependent atmosphere mean mass
      !
      ! local vars
      !
-     integer :: i,j,k,icnst,ispecies
-     real(r8):: mbarvi,mm,residual             ! Mean mass at mid level
+     integer :: idx, kdx, icnst, ispecies
+     real(r8):: mbarvi, mm, residual             ! Mean mass at mid level
      real(r8):: cnst_vis, cnst_cnd, temp_local
-     real(r8), dimension(i0:i1,j0:j1,1:k1)                :: factor,mbarv
-     integer,  dimension(thermodynamic_active_species_num):: idx_local
+     real(r8), dimension(SIZE(kmvis,1), SIZE(kmvis, 2))        :: factor, mbarv
+     integer,  dimension(thermodynamic_active_species_num)     :: idx_local
+     character(len=*), parameter :: subname = 'get_molecular_diff_coef_1hd: '
 
      !--------------------------------------------
      ! Set constants needed for updates
@@ -1651,34 +1814,30 @@ CONTAINS
 
      if (dry_air_species_num==0) then
 
-       cnst_vis = (kv1*mmro2*o2_mwi + kv2*mmrn2*n2_mwi)*mbar*1.e-7_r8
-       cnst_cnd = (kc1*mmro2*o2_mwi + kc2*mmrn2*n2_mwi)*mbar*1.e-5_r8
+       cnst_vis = (kv1 * mmro2 * o2_mwi + kv2 * mmrn2 * n2_mwi) * mbar * 1.e-7_r8
+       cnst_cnd = (kc1 * mmro2 * o2_mwi + kc2 * mmrn2 * n2_mwi) * mbar * 1.e-5_r8
        if (get_at_interfaces==1) then
-           do k=2,k1
-             do j=j0,j1
-               do i=i0,i1
-                 temp_local   = 0.5_r8*(temp(i,j,k)+temp(i,j,k-1))
-                 kmvis(i,j,k) = sponge_factor(k)*cnst_vis*temp_local**kv4
-                 kmcnd(i,j,k) = sponge_factor(k)*cnst_cnd*temp_local**kc4
-               end do
+           do kdx = 2, SIZE(kmvis, 2)
+             do idx = 1, SIZE(kmvis, 1)
+               temp_local   = 0.5_r8 * (temp(idx, kdx) + temp(idx, kdx - 1))
+               kmvis(idx, kdx) = sponge_factor(kdx) * cnst_vis * temp_local ** kv4
+               kmcnd(idx, kdx) = sponge_factor(kdx) * cnst_cnd * temp_local ** kc4
              end do
            end do
            !
            ! extrapolate top level value
            !
-           kmvis(i0:i1,j0:j1,1) = 1.5_r8*kmvis(i0:i1,j0:j1,2)-0.5_r8*kmvis(i0:i1,j0:j1,3)
-           kmcnd(i0:i1,j0:j1,1) = 1.5_r8*kmcnd(i0:i1,j0:j1,2)-0.5_r8*kmcnd(i0:i1,j0:j1,3)
-       else if (get_at_interfaces==0) then
-         do k=1,k1
-           do j=j0,j1
-             do i=i0,i1
-               kmvis(i,j,k) = sponge_factor(k)*cnst_vis*temp(i,j,k)**kv4
-               kmcnd(i,j,k) = sponge_factor(k)*cnst_cnd*temp(i,j,k)**kc4
-             end do
+           kmvis(1:SIZE(kmvis, 1), 1) = 1.5_r8 * kmvis(1:SIZE(kmvis, 1), 2) - 0.5_r8 * kmvis(1:SIZE(kmvis, 1), 3)
+           kmcnd(1:SIZE(kmvis, 1), 1) = 1.5_r8 * kmcnd(1:SIZE(kmvis, 1), 2) - 0.5_r8 * kmcnd(1:SIZE(kmvis, 1), 3)
+       else if (get_at_interfaces == 0) then
+         do kdx = 1, SIZE(kmvis, 2)
+           do idx = 1, SIZE(kmvis, 1)
+             kmvis(idx, kdx) = sponge_factor(kdx) * cnst_vis * temp(idx, kdx) ** kv4
+             kmcnd(idx, kdx) = sponge_factor(kdx) * cnst_cnd * temp(idx, kdx) ** kc4
            end do
          end do
        else
-         call endrun('get_molecular_diff_coef: get_at_interfaces must be 0 or 1')
+         call endrun(subname//'get_at_interfaces must be 0 or 1')
        end if
      else
        if (present(active_species_idx_dycore)) then
@@ -1687,88 +1846,134 @@ CONTAINS
          idx_local = thermodynamic_active_species_idx
        end if
        if (present(fact)) then
-         factor = fact(:,:,:)
+         factor = fact(:,:)
        else
          factor = 1.0_r8
        endif
        if (present(mbarv_in)) then
          mbarv = mbarv_in
        else
-         call get_mbarv(i0,i1,j0,j1,1,k1,nlev,ntrac,tracer,idx_local,mbarv,fact=factor)
+         call get_mbarv(tracer, idx_local, mbarv, fact=factor)
        end if
        !
        ! major species dependent code
        !
-       if (get_at_interfaces==1) then
-         do k=2,k1
-           do j=j0,j1
-             do i=i0,i1
-               kmvis(i,j,k) = 0.0_r8
-               kmcnd(i,j,k) = 0.0_r8
-               residual = 1.0_r8
-               do icnst=1,dry_air_species_num
-                 ispecies = idx_local(icnst)
-                 mm       = 0.5_r8*(tracer(i,j,k,ispecies)*factor(i,j,k)+tracer(i,j,k-1,ispecies)*factor(i,j,k-1))
-                 kmvis(i,j,k) = kmvis(i,j,k)+thermodynamic_active_species_kv(icnst)* &
-                                             thermodynamic_active_species_mwi(icnst)*mm
-                 kmcnd(i,j,k) = kmcnd(i,j,k)+thermodynamic_active_species_kc(icnst)* &
-                                             thermodynamic_active_species_mwi(icnst)*mm
-                 residual         = residual - mm
-               end do
-               icnst=0 ! N2
-               kmvis(i,j,k) = kmvis(i,j,k)+thermodynamic_active_species_kv(icnst)* &
-                                           thermodynamic_active_species_mwi(icnst)*residual
-               kmcnd(i,j,k) = kmcnd(i,j,k)+thermodynamic_active_species_kc(icnst)* &
-                                           thermodynamic_active_species_mwi(icnst)*residual
+       if (get_at_interfaces == 1) then
+         do kdx = 2, SIZE(kmvis, 2)
+           do idx = 1, SIZE(kmvis, 1)
+             kmvis(idx, kdx) = 0.0_r8
+             kmcnd(idx, kdx) = 0.0_r8
+             residual = 1.0_r8
+             do icnst = 1, dry_air_species_num
+               ispecies = idx_local(icnst)
+               mm       = 0.5_r8 * (tracer(idx, kdx, ispecies) * factor(idx, kdx) + tracer(idx, kdx - 1, ispecies) * factor(idx, kdx-1))
+               kmvis(idx, kdx) = kmvis(idx, kdx) + thermodynamic_active_species_kv(icnst) * &
+                                           thermodynamic_active_species_mwi(icnst) * mm
+               kmcnd(idx, kdx) = kmcnd(idx, kdx) + thermodynamic_active_species_kc(icnst) * &
+                                           thermodynamic_active_species_mwi(icnst) * mm
+               residual        = residual - mm
+             end do
+             icnst = 0 ! N2
+             kmvis(idx, kdx) = kmvis(idx, kdx) + thermodynamic_active_species_kv(icnst) * &
+                                         thermodynamic_active_species_mwi(icnst) * residual
+             kmcnd(idx, kdx) = kmcnd(idx, kdx) + thermodynamic_active_species_kc(icnst) * &
+                                         thermodynamic_active_species_mwi(icnst) * residual
 
-               temp_local = .5_r8*(temp(i,j,k-1)+temp(i,j,k))
-               mbarvi = 0.5_r8*(mbarv(i,j,k-1)+mbarv(i,j,k))
-               kmvis(i,j,k) = kmvis(i,j,k)*mbarvi*temp_local**kv4*1.e-7_r8
-               kmcnd(i,j,k) = kmcnd(i,j,k)*mbarvi*temp_local**kc4*1.e-5_r8
-             enddo
+             temp_local = .5_r8 * (temp(idx, kdx - 1) + temp(idx, kdx))
+             mbarvi = 0.5_r8 * (mbarv(idx, kdx - 1) + mbarv(idx, kdx))
+             kmvis(idx, kdx) = kmvis(idx, kdx) * mbarvi * temp_local ** kv4 * 1.e-7_r8
+             kmcnd(idx, kdx) = kmcnd(idx, kdx) * mbarvi * temp_local ** kc4 * 1.e-5_r8
            enddo
          end do
-         do j=j0,j1
-           do i=i0,i1
-             kmvis(i,j,1)    = 1.5_r8*kmvis(i,j,2)-.5_r8*kmvis(i,j,3)
-             kmcnd(i,j,1)    = 1.5_r8*kmcnd(i,j,2)-.5_r8*kmcnd(i,j,3)
-             kmvis(i,j,k1+1) = kmvis(i,j,k1)
-             kmcnd(i,j,k1+1) = kmcnd(i,j,k1)
-           end do
+         do idx = 1, SIZE(kmvis, 1)
+           kmvis(idx, 1) = 1.5_r8 * kmvis(idx, 2) - .5_r8 * kmvis(idx, 3)
+           kmcnd(idx, 1) = 1.5_r8 * kmcnd(idx, 2) - .5_r8 * kmcnd(idx, 3)
+           kmvis(idx, SIZE(kmvis, 2) + 1) = kmvis(idx, SIZE(kmvis, 2))
+           kmcnd(idx, SIZE(kmvis, 2) + 1) = kmcnd(idx, SIZE(kmvis, 2))
          end do
-       else if (get_at_interfaces==0) then
-         do k=1,k1
-           do j=j0,j1
-             do i=i0,i1
-               kmvis(i,j,k) = 0.0_r8
-               kmcnd(i,j,k) = 0.0_r8
-               residual = 1.0_r8
-               do icnst=1,dry_air_species_num-1
-                 ispecies = idx_local(icnst)
-                 mm       = tracer(i,j,k,ispecies)*factor(i,j,k)
-                 kmvis(i,j,k) = kmvis(i,j,k)+thermodynamic_active_species_kv(icnst)* &
-                                thermodynamic_active_species_mwi(icnst)*mm
-                 kmcnd(i,j,k) = kmcnd(i,j,k)+thermodynamic_active_species_kc(icnst)* &
-                                thermodynamic_active_species_mwi(icnst)*mm
-                 residual     = residual - mm
-               end do
-               icnst=dry_air_species_num
-               kmvis(i,j,k) = kmvis(i,j,k)+thermodynamic_active_species_kv(icnst)* &
-                              thermodynamic_active_species_mwi(icnst)*residual
-               kmcnd(i,j,k) = kmcnd(i,j,k)+thermodynamic_active_species_kc(icnst)* &
-                              thermodynamic_active_species_mwi(icnst)*residual
+       else if (get_at_interfaces == 0) then
+         do kdx = 1, SIZE(kmvis, 2)
+           do idx = 1, SIZE(kmvis, 1)
+             kmvis(idx, kdx) = 0.0_r8
+             kmcnd(idx, kdx) = 0.0_r8
+             residual = 1.0_r8
+             do icnst = 1, dry_air_species_num - 1
+               ispecies = idx_local(icnst)
+               mm       = tracer(idx, kdx, ispecies) * factor(idx, kdx)
+               kmvis(idx, kdx) = kmvis(idx, kdx) + thermodynamic_active_species_kv(icnst) * &
+                              thermodynamic_active_species_mwi(icnst) * mm
+               kmcnd(idx, kdx) = kmcnd(idx, kdx) + thermodynamic_active_species_kc(icnst) * &
+                              thermodynamic_active_species_mwi(icnst) * mm
+               residual     = residual - mm
+             end do
+             icnst = dry_air_species_num
+             kmvis(idx, kdx) = kmvis(idx, kdx) + thermodynamic_active_species_kv(icnst) * &
+                            thermodynamic_active_species_mwi(icnst) * residual
+             kmcnd(idx, kdx) = kmcnd(idx,kdx) + thermodynamic_active_species_kc(icnst) * &
+                            thermodynamic_active_species_mwi(icnst) * residual
 
-               kmvis(i,j,k) = kmvis(i,j,k)*mbarv(i,j,k)*temp(i,j,k)**kv4*1.e-7_r8
-               kmcnd(i,j,k) = kmcnd(i,j,k)*mbarv(i,j,k)*temp(i,j,k)**kc4*1.e-5_r8
-             enddo
+             kmvis(idx, kdx) = kmvis(idx, kdx) * mbarv(idx, kdx) * temp(idx, kdx) ** kv4 * 1.e-7_r8
+             kmcnd(idx, kdx) = kmcnd(idx, kdx) * mbarv(idx, kdx) * temp(idx, kdx) ** kc4 * 1.e-5_r8
            enddo
          end do
        else
-         call endrun('get_molecular_diff_coef: get_at_interfaces must be 0 or 1')
+         call endrun(subname//'get_at_interfaces must be 0 or 1')
        end if
      end if
-   end subroutine get_molecular_diff_coef
+   end subroutine get_molecular_diff_coef_1hd
 
+   subroutine get_molecular_diff_coef_2hd(temp, get_at_interfaces, sponge_factor, kmvis, kmcnd, ntrac, &
+        tracer, fact, active_species_idx_dycore, mbarv_in)
+     ! Version of get_molecular_diff_coef for arrays that have a second horizontal index
+     real(r8), intent(in)           :: temp(:,:,:)                     ! temperature
+     integer,  intent(in)           :: get_at_interfaces               ! 1: compute kmvis and kmcnd at interfaces
+                                                                       ! 0: compute kmvis and kmcnd at mid-levels
+     real(r8), intent(in)           :: sponge_factor(:)                ! multiply kmvis and kmcnd with sponge_factor (for sponge layer)
+     real(r8), intent(out)          :: kmvis(:,:,:)
+     real(r8), intent(out)          :: kmcnd(:,:,:)
+     integer , intent(in)           :: ntrac
+     real(r8), intent(in)           :: tracer(:,:,:,:)                 ! tracer array
+     integer,  intent(in), optional :: active_species_idx_dycore(:)    ! index of active species in tracer
+     real(r8), intent(in), optional :: fact(:,:,:)                     ! if tracer is in units of mass or moist
+                                                                       ! fact converts to dry mixing ratio: tracer/fact
+     real(r8), intent(in), optional :: mbarv_in(:,:,:)                 ! composition dependent atmosphere mean mass
+     integer :: jdx
+
+     do jdx = 1, SIZE(kmvis, 2)
+       if (present(active_species_idx_dycore) .and. present(fact) .and. present(mbarv_in)) then
+         call get_molecular_diff_coef(temp(:, jdx, :), get_at_interfaces, sponge_factor, &
+              kmvis(:, jdx, :), kmcnd(:, jdx, :), ntrac, tracer(:, jdx, :, :), fact=fact(:, jdx, :), &
+              active_species_idx_dycore=active_species_idx_dycore, mbarv_in=mbarv_in(:, jdx, :))
+       else if (present(active_species_idx_dycore) .and. present(fact)) then
+         call get_molecular_diff_coef(temp(:, jdx, :), get_at_interfaces, sponge_factor, &
+              kmvis(:, jdx, :), kmcnd(:, jdx, :), ntrac, tracer(:, jdx, :, :), fact=fact(:, jdx, :), &
+              active_species_idx_dycore=active_species_idx_dycore)
+       else if (present(fact) .and. present(mbarv_in)) then
+         call get_molecular_diff_coef(temp(:, jdx, :), get_at_interfaces, sponge_factor, &
+              kmvis(:, jdx, :), kmcnd(:, jdx, :), ntrac, tracer(:, jdx, :, :), fact=fact(:, jdx, :), &
+              mbarv_in=mbarv_in(:, jdx, :))
+       else if (present(active_species_idx_dycore) .and. present(mbarv_in)) then
+         call get_molecular_diff_coef(temp(:, jdx, :), get_at_interfaces, sponge_factor, &
+              kmvis(:, jdx, :), kmcnd(:, jdx, :), ntrac, tracer(:, jdx, :, :), &
+              active_species_idx_dycore=active_species_idx_dycore, mbarv_in=mbarv_in(:, jdx, :))
+       else if (present(active_species_idx_dycore)) then
+         call get_molecular_diff_coef(temp(:, jdx, :), get_at_interfaces, sponge_factor, &
+              kmvis(:, jdx, :), kmcnd(:, jdx, :), ntrac, tracer(:, jdx, :, :), &
+              active_species_idx_dycore=active_species_idx_dycore)
+       else if (present(fact)) then
+         call get_molecular_diff_coef(temp(:, jdx, :), get_at_interfaces, sponge_factor, &
+              kmvis(:, jdx, :), kmcnd(:, jdx, :), ntrac, tracer(:, jdx, :, :), fact=fact(:, jdx, :))
+       else if (present(mbarv_in)) then
+         call get_molecular_diff_coef(temp(:, jdx, :), get_at_interfaces, sponge_factor, &
+              kmvis(:, jdx, :), kmcnd(:, jdx, :), ntrac, tracer(:, jdx, :, :), &
+              mbarv_in=mbarv_in(:, jdx, :))
+       else
+         call get_molecular_diff_coef(temp(:, jdx, :), get_at_interfaces, sponge_factor, &
+              kmvis(:, jdx, :), kmcnd(:, jdx, :), ntrac, tracer(:, jdx, :, :))
+       end if
+     end do
+
+   end subroutine get_molecular_diff_coef_2hd
    !===========================================================================
 
    !***************************************************************************
@@ -1777,33 +1982,33 @@ CONTAINS
    !
    !***************************************************************************
    !
-   subroutine get_molecular_diff_coef_reference(k0,k1,tref,press,sponge_factor,kmvis_ref,kmcnd_ref,rho_ref)
+   subroutine get_molecular_diff_coef_reference(tref,press,sponge_factor,kmvis_ref,kmcnd_ref,rho_ref)
+     use physconst,  only: rair
      ! args
-     integer,  intent(in)           :: k0,k1                !min/max vertical index
      real(r8), intent(in)           :: tref                 !reference temperature
-     real(r8), intent(in)           :: press(k0:k1)         !pressure
-     real(r8), intent(in)           :: sponge_factor(k0:k1) !multiply kmvis and kmcnd with sponge_factor (for sponge layer)
-     real(r8), intent(out)          :: kmvis_ref(k0:k1)     !reference molecular diffusion coefficient
-     real(r8), intent(out)          :: kmcnd_ref(k0:k1)     !reference thermal conductivity coefficient
-     real(r8), intent(out)          :: rho_ref(k0:k1)       !reference density
+     real(r8), intent(in)           :: press(:)             !pressure
+     real(r8), intent(in)           :: sponge_factor(:)     !multiply kmvis and kmcnd with sponge_factor (for sponge layer)
+     real(r8), intent(out)          :: kmvis_ref(:)         !reference molecular diffusion coefficient
+     real(r8), intent(out)          :: kmcnd_ref(:)         !reference thermal conductivity coefficient
+     real(r8), intent(out)          :: rho_ref(:)           !reference density
 
      ! local vars
-     integer :: k
+     integer :: kdx
 
      !--------------------------------------------
      ! Set constants needed for updates
      !--------------------------------------------
 
-     do k=k0,k1
-       rho_ref(k) = press(k)/(tref*Rair) !ideal gas law for dry air
-       kmvis_ref(k) = sponge_factor(k)* &
-            (kv1*mmro2*o2_mwi +         &
-             kv2*mmrn2*n2_mwi)*mbar*    &
-             tref**kv4 * 1.e-7_r8
-       kmcnd_ref(k) = sponge_factor(k)* &
-            (kc1*mmro2*o2_mwi +         &
-             kc2*mmrn2*n2_mwi)*mbar*    &
-             tref**kc4 * 1.e-5_r8
+     do kdx = 1, SIZE(press, 1)
+       rho_ref(kdx) = press(kdx) / (tref * rair) !ideal gas law for dry air
+       kmvis_ref(kdx) = sponge_factor(kdx) * &
+            (kv1 * mmro2 * o2_mwi +         &
+             kv2 * mmrn2 * n2_mwi) * mbar *    &
+             tref ** kv4 * 1.e-7_r8
+       kmcnd_ref(kdx) = sponge_factor(kdx) * &
+            (kc1 * mmro2 * o2_mwi +         &
+             kc2 * mmrn2 * n2_mwi) * mbar *    &
+             tref ** kc4 * 1.e-5_r8
      end do
    end subroutine get_molecular_diff_coef_reference
 
@@ -1870,6 +2075,7 @@ CONTAINS
       use cam_logfile,     only: iulog
       use dyn_tests_utils, only: vc_height, vc_moist_pressure, vc_dry_pressure
       use air_composition, only: wv_idx
+      use physconst,       only: gravit, latvap, latice
 
       ! Dummy arguments
       ! tracer: tracer mixing ratio
@@ -1972,7 +2178,7 @@ CONTAINS
             do idx = 1, SIZE(tracer, 1)
                ke_vint(idx) = ke_vint(idx) + (pdel(idx, kdx) *                &
                     0.5_r8 * (U(idx, kdx)**2 + V(idx, kdx)**2) / gravit)
-               se_vint(i,j) = se_vint(i,j) + (T(idx, kdx) *                   &
+               se_vint(idx) = se_vint(idx) + (T(idx, kdx) *                   &
                     cp_or_cv(idx, kdx) * pdel(idx, kdx) / gravit)
                wv_vint(idx) = wv_vint(idx) + (tracer(idx, kdx, wvidx) *       &
                     pdel(idx, kdx) / gravit)
@@ -1992,7 +2198,7 @@ CONTAINS
          se_vint = 0._r8
          wv_vint = 0._r8
          do kdx = 1, SIZE(tracer, 2)
-            do i = 1, SIZE(tracer, 1)
+            do idx = 1, SIZE(tracer, 1)
                ke_vint(idx) = ke_vint(idx) + (pdel(idx, kdx) *                &
                     0.5_r8 * (U(idx, kdx)**2 + V(idx, kdx)**2) / gravit)
                se_vint(idx) = se_vint(idx) + (T(idx, kdx) *                   &

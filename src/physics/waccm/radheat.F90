@@ -20,7 +20,8 @@ module radheat
   use spmd_utils,    only: masterproc
   use ppgrid,        only: pcols, pver
   use physics_types, only: physics_state, physics_ptend, physics_ptend_init
-  use physconst,     only: gravit, cpairv
+  use physconst,     only: gravit
+  use cam_thermo,    only: cpairv
   use perf_mod
   use cam_logfile,   only: iulog
 

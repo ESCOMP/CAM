@@ -93,7 +93,8 @@
 
       use chem_mods,         only : nabscol, nfs, gas_pcnst, rxntot, indexm
       use ppgrid,            only : pcols, pver
-      use physconst,         only : rga, mbarv, cpairv
+      use physconst,         only : rga
+      use cam_thermo,        only : mbarv, cpairv
       use constituents,      only : pcnst
       use mo_gas_phase_chemdr,only: map2chm
       use mo_photo,          only : set_ub_col, setcol

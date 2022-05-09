@@ -90,7 +90,7 @@ contains
 !===============================================================================
 
 subroutine dyn_readnl(NLFileName)
-   use physconst,      only: thermodynamic_active_species_num
+   use air_composition,only: thermodynamic_active_species_num
    use namelist_utils, only: find_group_name
    use namelist_mod,   only: homme_set_defaults, homme_postprocess_namelist
    use units,          only: getunit, freeunit
@@ -589,11 +589,12 @@ subroutine dyn_init(dyn_in, dyn_out)
    use prim_advance_mod,   only: prim_advance_init
    use dyn_grid,           only: elem, fvm
    use cam_pio_utils,      only: clean_iodesc_list
-   use physconst,          only: thermodynamic_active_species_num, thermodynamic_active_species_idx
-   use physconst,          only: thermodynamic_active_species_idx_dycore, rair, cpair
-   use physconst,          only: thermodynamic_active_species_liq_idx,thermodynamic_active_species_ice_idx
-   use physconst,          only: thermodynamic_active_species_liq_idx_dycore,thermodynamic_active_species_ice_idx_dycore
-   use physconst,          only: thermodynamic_active_species_liq_num, thermodynamic_active_species_ice_num
+   use air_composition,    only: rair, cpair
+   use air_composition,    only: thermodynamic_active_species_num, thermodynamic_active_species_idx
+   use air_composition,    only: thermodynamic_active_species_idx_dycore
+   use air_composition,    only: thermodynamic_active_species_liq_idx,thermodynamic_active_species_ice_idx
+   use air_composition,    only: thermodynamic_active_species_liq_idx_dycore,thermodynamic_active_species_ice_idx_dycore
+   use air_composition,    only: thermodynamic_active_species_liq_num, thermodynamic_active_species_ice_num
    use cam_history,        only: addfld, add_default, horiz_only, register_vector_field
    use gravity_waves_sources, only: gws_init
 
@@ -608,7 +609,7 @@ subroutine dyn_init(dyn_in, dyn_out)
    use control_mod,        only: runtype, molecular_diff, nu_top
    use test_fvm_mapping,   only: test_mapping_addfld
    use phys_control,       only: phys_getopts
-   use physconst,          only: get_molecular_diff_coef_reference
+   use cam_thermo,         only: get_molecular_diff_coef_reference
    use control_mod,        only: vert_remap_uvTq_alg, vert_remap_tracer_alg
    use std_atm_profile,    only: std_atm_height
    use dyn_tests_utils,    only: vc_dycore, vc_dry_pressure, string_vc, vc_str_lgth
@@ -789,7 +790,7 @@ subroutine dyn_init(dyn_in, dyn_out)
      !
      ! get rho, kmvis and kmcnd at mid-levels
      !
-     call get_molecular_diff_coef_reference(1,nlev,tref,&
+     call get_molecular_diff_coef_reference(tref,&
           (hvcoord%hyam(:)+hvcoord%hybm(:))*hvcoord%ps0,km_sponge_factor,&
           kmvis_ref,kmcnd_ref,rho_ref)
 
@@ -953,8 +954,8 @@ end subroutine dyn_init
 !=========================================================================================
 
 subroutine dyn_run(dyn_state)
-   use physconst,        only: thermodynamic_active_species_num, dry_air_species_num
-   use physconst,        only: thermodynamic_active_species_idx_dycore
+   use air_composition,  only: thermodynamic_active_species_num, dry_air_species_num
+   use air_composition,  only: thermodynamic_active_species_idx_dycore
    use prim_advance_mod, only: calc_tot_energy_dynamics
    use prim_driver_mod,  only: prim_run_subcycle
    use dimensions_mod,   only: cnst_name_gll
@@ -1144,7 +1145,7 @@ end subroutine dyn_final
 !===============================================================================
 
 subroutine read_inidat(dyn_in)
-   use physconst,           only: thermodynamic_active_species_num, dry_air_species_num
+   use air_composition,     only: thermodynamic_active_species_num, dry_air_species_num
    use shr_sys_mod,         only: shr_sys_flush
    use hycoef,              only: hyai, hybi, ps0
    use const_init,          only: cnst_init_default
@@ -1153,7 +1154,7 @@ subroutine read_inidat(dyn_in)
    use fvm_mapping,         only: dyn2fvm_mass_vars
    use control_mod,         only: runtype,initial_global_ave_dry_ps
    use prim_driver_mod,     only: prim_set_dry_mass
-   use physconst,           only: thermodynamic_active_species_idx
+   use air_composition,     only: thermodynamic_active_species_idx
    use cam_initfiles,       only: scale_dry_air_mass
    ! Arguments
    type (dyn_import_t), target, intent(inout) :: dyn_in   ! dynamics import

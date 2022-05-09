@@ -1,6 +1,7 @@
 module air_composition
 
-   use shr_kind_mod, only: r8 => shr_kind_r8
+   use shr_kind_mod,   only: r8 => shr_kind_r8
+   use cam_abortutils, only: endrun
 
    implicit none
    private
@@ -574,8 +575,8 @@ CONTAINS
       if (water_species_in_air_num /= 1 + liq_num+ice_num) then
          write(iulog, '(2a,2(i0,a))') subname,                                &
               "  water_species_in_air_num = ",                                &
-              int2str(water_species_in_air_num), ", should be ",              &
-              int2str(1 + liq_num + ice_num), " (1 + liq_num + ice_num)"
+              water_species_in_air_num, ", should be ",              &
+              (1 + liq_num + ice_num), " (1 + liq_num + ice_num)"
          call endrun(subname//': water_species_in_air_num /= 1+liq_num+ice_num')
       end if
       enthalpy_reference_state = 'ice'

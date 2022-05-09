@@ -70,7 +70,7 @@ contains
 
   subroutine steady_state_tei_tend(state,istate, dse_tend, pbuf)
     use tei_mod,          only : settei
-    use physconst,        only : mbarv                       ! Constituent dependent mbar
+    use cam_thermo,       only : mbarv                       ! Constituent dependent mbar
     use solar_parms_data, only : f107=>solar_parms_f107      ! 10.7 cm solar flux
     use mo_apex,          only : alatm
     use perf_mod,         only : t_startf, t_stopf           ! timing utils

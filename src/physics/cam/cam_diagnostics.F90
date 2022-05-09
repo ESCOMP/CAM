@@ -937,7 +937,7 @@ contains
     use co2_cycle,          only: c_i, co2_transport
 
     use tidal_diag,         only: tidal_diag_write
-    use physconst,          only: cpairv,rairv
+    use cam_thermo,         only: cpairv,rairv
 
     !-----------------------------------------------------------------------
     !

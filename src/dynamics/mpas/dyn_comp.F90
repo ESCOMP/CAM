@@ -302,11 +302,11 @@ end subroutine dyn_register
 !=========================================================================================
 
 subroutine dyn_init(dyn_in, dyn_out)
-   use physconst,          only : thermodynamic_active_species_idx, thermodynamic_active_species_idx_dycore
-   use physconst,          only : thermodynamic_active_species_num
-   use physconst,          only : thermodynamic_active_species_liq_idx,thermodynamic_active_species_ice_idx
-   use physconst,          only : thermodynamic_active_species_liq_idx_dycore,thermodynamic_active_species_ice_idx_dycore
-   use physconst,          only : thermodynamic_active_species_liq_num, thermodynamic_active_species_ice_num
+   use air_composition,    only : thermodynamic_active_species_idx, thermodynamic_active_species_idx_dycore
+   use air_composition,    only : thermodynamic_active_species_num
+   use air_composition,    only : thermodynamic_active_species_liq_idx,thermodynamic_active_species_ice_idx
+   use air_composition,    only : thermodynamic_active_species_liq_idx_dycore,thermodynamic_active_species_ice_idx_dycore
+   use air_composition,    only : thermodynamic_active_species_liq_num, thermodynamic_active_species_ice_num
    use cam_mpas_subdriver, only : domain_ptr, cam_mpas_init_phase4
    use cam_mpas_subdriver, only : cam_mpas_define_scalars
    use mpas_pool_routines, only : mpas_pool_get_subpool, mpas_pool_get_array, mpas_pool_get_dimension, &

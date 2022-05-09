@@ -1189,7 +1189,8 @@ subroutine gw_tend(state, pbuf, dt, ptend, cam_in, flx_heat)
   use physics_buffer, only: physics_buffer_desc, pbuf_get_field
   use camsrfexch, only: cam_in_t
   ! Location-dependent cpair
-  use physconst,  only: cpairv, pi
+  use cam_thermo, only: cpairv
+  use physconst,  only: pi
   use coords_1d,  only: Coords1D
   use gw_common,  only: gw_prof, gw_drag_prof, calc_taucd, &
        momentum_flux, momentum_fixer, energy_change, energy_fixer, &

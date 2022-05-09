@@ -215,11 +215,12 @@ contains
 
 !================================================================================================
 
-  subroutine nlte_tend(state, pbuf,  qrlf)
+  subroutine nlte_tend(state, pbuf, qrlf)
 !
 ! Driver for nlte calculations
 !-------------------------------------------------------------------------
-    use physconst,     only: mwdry, cpairv
+    use physconst,     only: mwdry
+    use cam_thermo,    only: cpairv
     use physics_types, only: physics_state
     use physics_buffer, only : physics_buffer_desc
     use cam_history,   only: outfld

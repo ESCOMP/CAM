@@ -19,7 +19,7 @@ module molec_diff
   !------------------------------------------------------------------------------------------------- !
 
   use perf_mod
-  use physconst,    only : mbarv
+  use cam_thermo,    only : mbarv
   use phys_control, only : waccmx_is             !WACCM-X runtime switch
 
   implicit none
@@ -122,7 +122,7 @@ contains
        kvm, kvt, tint, rhoi, kq_scal, cnst_mw, &
        mw_fac_out, nbot_molec)
 
-    use physconst,       only : cpairv, kmvis, kmcnd
+    use cam_thermo,       only : cpairv, kmvis, kmcnd
 
     ! --------------------- !
     ! Input-Output Argument !

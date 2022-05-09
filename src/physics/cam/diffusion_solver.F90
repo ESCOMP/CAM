@@ -163,7 +163,7 @@
     use vdiff_lu_solver,     only : fin_vol_lu_decomp
     use beljaars_drag_cam,   only : do_beljaars
     ! FIXME: This should not be needed
-    use physconst, only: rairv
+    use cam_thermo, only: rairv
   
     use phys_control,        only : phys_getopts 
  

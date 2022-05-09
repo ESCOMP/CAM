@@ -1,4 +1,4 @@
-module majorsp_diffusion
+m odule majorsp_diffusion
 
 !--------------------------------------------------------------------------
 ! This module computes the diffusion of major species (O2 and O) mass mixing
@@ -136,7 +136,7 @@ contains
 !-------------------------------------------------------------------------------
     use physics_types,  only: physics_state, physics_ptend
     use upper_bc,       only: ubc_get_vals
-    use physconst,      only: rairv, mbarv
+    use cam_thermo,     only: rairv, mbarv
 
 !------------------------------Arguments--------------------------------
     real(r8), intent(in) :: ztodt                  ! 2 delta-t

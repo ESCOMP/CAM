@@ -20,7 +20,8 @@ module clubb_intr
   use shr_kind_mod,  only: r8=>shr_kind_r8                                                                  
   use ppgrid,        only: pver, pverp, pcols, begchunk, endchunk
   use phys_control,  only: phys_getopts
-  use physconst,     only: rairv, cpairv, cpair, gravit, latvap, latice, zvir, rh2o, karman
+  use physconst,     only: cpair, gravit, latvap, latice, zvir, rh2o, karman
+  use cam_thermo,    only: rairv, cpairv
 
   use spmd_utils,    only: masterproc 
   use constituents,  only: pcnst, cnst_add
