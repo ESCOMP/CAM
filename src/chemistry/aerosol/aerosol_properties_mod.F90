@@ -7,6 +7,18 @@ module aerosol_properties_mod
 
   public :: aerosol_properties
 
+  !> aerosol_properties defines the configuration of any aerosol package (using
+  !! any aerosol representation) based on user specification. These values are
+  !! set during initialization and do not vary during the simulation.
+  !!
+  !! Each aerosol package (e.g., MAM, CARMA, etc) must extend the abstract
+  !! aerosol_properties class to define the details of their configuration. Any
+  !! package must implement each of the deferred procedures of the abstract
+  !! aerosol_properties class, may include additional private data members and
+  !! type-bound procedures, and may override functions of the abstract class.
+  !!
+  !! Please see the modal_aerosol_properties module for an example of how the
+  !! aerosol_properties class can be extended for a specific aerosol package.
   type, abstract :: aerosol_properties
      private
      integer :: nbins_ = 0
@@ -14,7 +26,6 @@ module aerosol_properties_mod
      integer, allocatable :: nmasses_(:)
      integer, allocatable :: nspecies_(:)
      integer, allocatable :: indexer_(:,:)
-     real(r8), allocatable :: amcubecoefs_(:)
      real(r8), allocatable :: alogsig_(:)
      real(r8), allocatable :: f1_(:)
      real(r8), allocatable :: f2_(:)
@@ -23,18 +34,17 @@ module aerosol_properties_mod
      procedure :: nbins
      procedure :: ncnst_tot
      procedure :: nspecies
-     procedure,private :: nmassesa
-     procedure,private :: nmassesv
-     generic :: nmasses => nmassesa,nmassesv
+     procedure,private :: n_masses_all_bins
+     procedure,private :: n_masses_per_bin
+     generic :: nmasses => n_masses_all_bins,n_masses_per_bin
      procedure :: indexer
      procedure :: maxsat
-     procedure :: amcubecoef
-     procedure :: amcube
+     procedure(aero_amcube), deferred :: amcube
      procedure :: alogsig
      procedure(aero_props_get), deferred :: get
      procedure(aero_actfracs), deferred :: actfracs
-     procedure(aero_num_names), deferred :: get_num_names
-     procedure(aero_mmr_names), deferred :: get_mmr_names
+     procedure(aero_num_names), deferred :: num_names
+     procedure(aero_mmr_names), deferred :: mmr_names
 
      procedure :: final=>aero_props_final
   end type aerosol_properties
@@ -90,6 +100,19 @@ module aerosol_properties_mod
        character(len=32), intent(out) :: name_c ! constituent name of cloud-borne aerosol MMR
      end subroutine aero_mmr_names
 
+     !------------------------------------------------------------------------------
+     ! returns radius^3 (m3) of a given bin number
+     !------------------------------------------------------------------------------
+     pure elemental real(r8) function aero_amcube(self, bin_ndx, volconc, numconc)
+       import
+
+       class(aerosol_properties), intent(in) :: self
+       integer, intent(in) :: bin_ndx  ! bin number
+       real(r8), intent(in) :: volconc ! volume conc (m3/m3)
+       real(r8), intent(in) :: numconc ! number conc (1/m3)
+
+     end function aero_amcube
+
   end interface
 
 contains
@@ -97,14 +120,13 @@ contains
   !------------------------------------------------------------------------------
   ! ojbect initializer
   !------------------------------------------------------------------------------
-  subroutine aero_props_init(self, nbin, ncnst, nspec, nmasses, amcubecoefs, alogsig, f1,f2 )
+  subroutine aero_props_init(self, nbin, ncnst, nspec, nmasses, alogsig, f1,f2 )
     class(aerosol_properties), intent(inout) :: self
     integer, intent(in) :: nbin               ! number of bins
     integer, intent(in) :: ncnst              ! total number of constituents
     integer, intent(in) :: nspec(nbin)        ! number of species in each bin
     integer, intent(in) :: nmasses(nbin)      ! number of masses in each bin
-    real(r8),intent(in) :: amcubecoefs(nbin)  ! coefficient used to calc the radius^3 of each bin
-    real(r8),intent(in) :: alogsig(nbin)      ! ??? some log factor of each bin ???
+    real(r8),intent(in) :: alogsig(nbin)      ! natural log of the standard deviation (sigma) of the aerosol bins
     real(r8),intent(in) :: f1(nbin)           ! abdul-razzak functions of width
     real(r8),intent(in) :: f2(nbin)           ! abdul-razzak functions of width
 
@@ -112,12 +134,16 @@ contains
 
     allocate(self%nspecies_(nbin))
     allocate(self%nmasses_(nbin))
-    allocate(self%amcubecoefs_(nbin))
     allocate(self%alogsig_(nbin))
     allocate(self%f1_(nbin))
     allocate(self%f2_(nbin))
 
     allocate( self%indexer_(nbin,0:maxval(nmasses)) )
+
+    ! Local indexing compresses the mode and number/mass indices into one index.
+    ! This indexing is used by the pointer arrays used to reference state and pbuf
+    ! fields. We add number = 0, total mass = 1 (if available), and mass from each
+    ! constituency into mm.
 
     self%indexer_ = -1
     mm = 0
@@ -133,7 +159,6 @@ contains
     self%ncnst_tot_ = ncnst
     self%nmasses_(:) = nmasses(:)
     self%nspecies_(:) = nspec(:)
-    self%amcubecoefs_(:) = amcubecoefs(:)
     self%alogsig_(:) = alogsig(:)
     self%f1_(:) = f1(:)
     self%f2_(:) = f2(:)
@@ -151,9 +176,6 @@ contains
     end if
     if (allocated(self%nmasses_)) then
        deallocate(self%nmasses_)
-    end if
-    if (allocated(self%amcubecoefs_)) then
-       deallocate(self%amcubecoefs_)
     end if
     if (allocated(self%indexer_)) then
        deallocate(self%indexer_)
@@ -186,23 +208,23 @@ contains
   !------------------------------------------------------------------------------
   ! returns number of species masses in a given bin number
   !------------------------------------------------------------------------------
-  pure function nmassesv(self,bin_ndx) result(val)
+  pure function n_masses_per_bin(self,bin_ndx) result(val)
     class(aerosol_properties), intent(in) :: self
     integer, intent(in) :: bin_ndx           ! bin number
     integer :: val
 
     val = self%nmasses_(bin_ndx)
-  end function nmassesv
+  end function n_masses_per_bin
 
   !------------------------------------------------------------------------------
   ! returns an array of number of species masses for all bins
   !------------------------------------------------------------------------------
-  pure function nmassesa(self) result(arr)
+  pure function n_masses_all_bins(self) result(arr)
     class(aerosol_properties), intent(in) :: self
     integer :: arr(self%nbins_)
 
     arr(:) = self%nmasses_(:)
-  end function nmassesa
+  end function n_masses_all_bins
 
   !------------------------------------------------------------------------------
   ! returns a single index for given bin and species
@@ -234,17 +256,7 @@ contains
   end function ncnst_tot
 
   !------------------------------------------------------------------------------
-  ! returns coefficient factor for radius^3 calc
-  !------------------------------------------------------------------------------
-  pure real(r8) function amcubecoef(self, bin_ndx)
-    class(aerosol_properties), intent(in) :: self
-    integer, intent(in) :: bin_ndx           ! bin number
-
-    amcubecoef = self%amcubecoefs_(bin_ndx)
-  end function amcubecoef
-
-  !------------------------------------------------------------------------------
-  ! returns log of geometric standard deviation of the number distribution for aerosol bin
+  ! returns the natural log of geometric standard deviation of the number distribution for aerosol bin
   !------------------------------------------------------------------------------
   pure real(r8) function alogsig(self, bin_ndx)
     class(aerosol_properties), intent(in) :: self
@@ -252,20 +264,6 @@ contains
 
     alogsig = self%alogsig_(bin_ndx)
   end function alogsig
-
-  !------------------------------------------------------------------------------
-  ! returns radius^3 (m3)
-  !------------------------------------------------------------------------------
-  pure real(r8) function amcube(self, bin_ndx, volconc, numconc)
-
-    class(aerosol_properties), intent(in) :: self
-    integer, intent(in) :: bin_ndx  ! bin number
-    real(r8), intent(in) :: volconc ! volume conc (m3/m3)
-    real(r8), intent(in) :: numconc ! number conc (1/m3)
-
-    amcube = self%amcubecoefs_(bin_ndx)*volconc/numconc
-
-  end function amcube
 
   !------------------------------------------------------------------------------
   ! returns maximum supersaturation

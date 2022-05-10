@@ -12,19 +12,17 @@ module modal_aerosol_properties_mod
 
   type, extends(aerosol_properties) :: modal_aerosol_properties
      private
-     real(r8), allocatable :: sigmag_amode(:)
      real(r8), allocatable :: exp45logsig_(:)
      real(r8), allocatable :: voltonumblo_(:)
      real(r8), allocatable :: voltonumbhi_(:)
    contains
      procedure :: get
-     procedure :: exp45logsig
      procedure :: voltonumblo
      procedure :: voltonumbhi
      procedure :: amcube
      procedure :: actfracs
-     procedure :: get_num_names
-     procedure :: get_mmr_names
+     procedure :: num_names
+     procedure :: mmr_names
      final :: destructor
   end type modal_aerosol_properties
 
@@ -45,7 +43,7 @@ contains
     real(r8) :: dgnumhi
     integer,allocatable :: nspecies(:)
     integer,allocatable :: nmasses(:)
-    real(r8),allocatable :: amcubecoefs(:)
+    real(r8),allocatable :: sigmag(:)
     real(r8),allocatable :: alogsig(:)
     real(r8),allocatable :: f1(:)
     real(r8),allocatable :: f2(:)
@@ -56,12 +54,11 @@ contains
 
     allocate(nspecies(nmodes))
     allocate(nmasses(nmodes))
-    allocate(amcubecoefs(nmodes))
     allocate(alogsig(nmodes))
     allocate( f1(nmodes) )
     allocate( f2(nmodes) )
 
-    allocate(newobj%sigmag_amode(nmodes))
+    allocate(sigmag(nmodes))
     allocate(newobj%exp45logsig_(nmodes))
     allocate(newobj%voltonumblo_(nmodes))
     allocate(newobj%voltonumbhi_(nmodes))
@@ -74,14 +71,12 @@ contains
        ncnst_tot =  ncnst_tot + nspecies(m) + 1
        nmasses(m) = nspecies(m)
 
-       call rad_cnst_get_mode_props(0, m, sigmag=newobj%sigmag_amode(m), &
+       call rad_cnst_get_mode_props(0, m, sigmag=sigmag(m), &
                                     dgnumhi=dgnumhi, dgnumlo=dgnumlo )
 
-       alogsig(m) = log(newobj%sigmag_amode(m))
+       alogsig(m) = log(sigmag(m))
 
        newobj%exp45logsig_(m) = exp(4.5_r8*alogsig(m)*alogsig(m))
-
-       amcubecoefs(m)=3._r8/(4._r8*pi*newobj%exp45logsig_(m))
 
        f1(m) = 0.5_r8*exp(2.5_r8*alogsig(m)*alogsig(m))
        f2(m) = 1._r8 + 0.25_r8*alogsig(m)
@@ -93,11 +88,11 @@ contains
 
     end do
 
-    call newobj%initialize(nmodes,ncnst_tot,nspecies,nmasses,amcubecoefs,alogsig,f1,f2)
+    call newobj%initialize(nmodes,ncnst_tot,nspecies,nmasses,alogsig,f1,f2)
     deallocate(nspecies)
     deallocate(nmasses)
-    deallocate(amcubecoefs)
     deallocate(alogsig)
+    deallocate(sigmag)
     deallocate(f1)
     deallocate(f2)
 
@@ -108,7 +103,6 @@ contains
   subroutine destructor(self)
     type(modal_aerosol_properties), intent(inout) :: self
 
-    deallocate(self%sigmag_amode)
     deallocate(self%exp45logsig_)
     deallocate(self%voltonumblo_)
     deallocate(self%voltonumbhi_)
@@ -116,14 +110,6 @@ contains
     call self%final()
 
   end subroutine destructor
-
-  !------------------------------------------------------------------------------
-  !------------------------------------------------------------------------------
-  pure real(r8) function exp45logsig(self,m)
-    class(modal_aerosol_properties), intent(in) :: self
-    integer,intent(in) :: m
-    exp45logsig = self%exp45logsig_(m)
-  end function exp45logsig
 
   !------------------------------------------------------------------------------
   !------------------------------------------------------------------------------
@@ -156,14 +142,14 @@ contains
   end subroutine get
 
   !------------------------------------------------------------------------------
-  ! amcube is overridden to keep MAM b4b
+  ! returns radius^3 (m3) of a given bin number
   !------------------------------------------------------------------------------
-  pure real(r8) function amcube(self, bin_ndx, volconc, numconc)
+  pure elemental real(r8) function amcube(self, bin_ndx, volconc, numconc)
 
     class(modal_aerosol_properties), intent(in) :: self
-    integer, intent(in) :: bin_ndx
-    real(r8), intent(in) :: volconc
-    real(r8), intent(in) :: numconc
+    integer, intent(in) :: bin_ndx  ! bin number
+    real(r8), intent(in) :: volconc ! volume conc (m3/m3)
+    real(r8), intent(in) :: numconc ! number conc (1/m3)
 
     amcube = (3._r8*volconc/(4._r8*pi*self%exp45logsig_(bin_ndx)*numconc))
 
@@ -193,23 +179,23 @@ contains
 
   !------------------------------------------------------------------------
   !------------------------------------------------------------------------
-  subroutine get_num_names(self, bin_ndx, name_a, name_c)
+  subroutine num_names(self, bin_ndx, name_a, name_c)
     class(modal_aerosol_properties), intent(in) :: self
     integer, intent(in) :: bin_ndx           ! bin number
     character(len=32), intent(out) :: name_a, name_c
 
     call rad_cnst_get_info(0,bin_ndx, num_name=name_a, num_name_cw=name_c)
-  end subroutine get_num_names
+  end subroutine num_names
 
   !------------------------------------------------------------------------
   !------------------------------------------------------------------------
-  subroutine get_mmr_names(self, bin_ndx, species_ndx, name_a, name_c)
+  subroutine mmr_names(self, bin_ndx, species_ndx, name_a, name_c)
     class(modal_aerosol_properties), intent(in) :: self
     integer, intent(in) :: bin_ndx           ! bin number
     integer, intent(in) :: species_ndx       ! species number
     character(len=32), intent(out) :: name_a, name_c
 
     call rad_cnst_get_info(0, bin_ndx, species_ndx, spec_name=name_a, spec_name_cw=name_c)
-  end subroutine get_mmr_names
+  end subroutine mmr_names
 
 end module modal_aerosol_properties_mod

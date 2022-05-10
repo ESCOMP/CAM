@@ -11,8 +11,24 @@ module aerosol_state_mod
   public :: aerosol_state
   public :: ptr2d_t
 
+  !> aerosol_state defines the interface to the time-varying aerosol state
+  !! variables (e.g., mixing ratios, number concentrations). This includes the
+  !! aerosol portion of the overall model state.
+  !!
+  !! Each aerosol package (e.g., MAM, CARMA, etc) must extend the aerosol_state
+  !! class to allow access to the state information (transported and not transported)
+  !! of the aerosol package. Any package must implement each of the deferred
+  !! procedures of the abstract aerosol_state class, may include additional private
+  !! data members and type-bound procedures, and may override functions of the
+  !! abstract class.
+  !!
+  !! Please see the modal_aerosol_state module for an example of how the aerosol_state
+  !! class can be extended for a specific aerosol package.
   type, abstract :: aerosol_state
    contains
+     procedure :: number_transported
+     procedure :: get_transported
+     procedure :: set_transported
      procedure(aero_get_state_mmr), deferred :: get_ambient_mmr
      procedure(aero_get_state_mmr), deferred :: get_cldbrne_mmr
      procedure(aero_get_state_num), deferred :: get_ambient_num
@@ -64,6 +80,33 @@ module aerosol_state_mod
   end interface
 
 contains
+
+  !------------------------------------------------------------------------------
+  ! returns number of transported elements
+  !------------------------------------------------------------------------------
+  integer function number_transported(self)
+    class(aerosol_state), intent(in) :: self
+    ! to be implemented later
+    number_transported = -1
+  end function number_transported
+
+  !------------------------------------------------------------------------------
+  ! sets transported components
+  !------------------------------------------------------------------------------
+  subroutine set_transported( self, transported_array )
+    class(aerosol_state), intent(inout) :: self
+    real(r8), intent(in) :: transported_array(:,:,:)
+    ! to be implemented later
+  end subroutine set_transported
+
+  !------------------------------------------------------------------------------
+  ! returns transported components
+  !------------------------------------------------------------------------------
+  subroutine get_transported( self, transported_array )
+    class(aerosol_state), intent(in) :: self
+    real(r8), intent(out) :: transported_array(:,:,:)
+    ! to be implemented later
+  end subroutine get_transported
 
   !------------------------------------------------------------------------------
   ! returns aerosol number, volume concentrations, and bulk hygroscopicity
