@@ -1,6 +1,5 @@
-
 module mo_setext
-  
+
   use shr_kind_mod, only : r8 => shr_kind_r8
   use shr_const_mod,only : pi => shr_const_pi
   use cam_logfile,  only : iulog
@@ -26,6 +25,7 @@ contains
     use mo_chem_utls, only : get_extfrc_ndx, get_spc_ndx
     use cam_history,  only : addfld
     use spmd_utils,   only : masterproc
+    use mee_ionization,only : mee_ion_init
 
     implicit none
 
@@ -59,8 +59,8 @@ contains
 
     call addfld( 'EPP_ionpairs', (/ 'lev' /), 'A', 'pairs/cm3/s', 'EPP ionization forcing' )
     call addfld( 'GCR_ionpairs', (/ 'lev' /), 'A', 'pairs/cm3/s', 'GCR ionization forcing' )
-    
-    if (.not.has_dregion_ions) then 
+
+    if (.not.has_dregion_ions) then
        if ( n2d_ndx > 0 .and. n_ndx>0 ) then
           call addfld( 'N4S_EPP', (/ 'lev' /), 'I', 'molec/cm3/s', 'solar proton event N(4S) source' )
           call addfld( 'N2D_EPP', (/ 'lev' /), 'I', 'molec/cm3/s', 'solar proton event N(2D) source' )
@@ -83,6 +83,8 @@ contains
     if ( aoa_nh_ndx > 0 ) then
        call addfld('AOA_NH_XFRC', (/ 'lev' /), 'A', 'molec/cm3/s',  'external forcing for AOA_NH' )
     endif
+
+    call mee_ion_init()
 
   end subroutine setext_inti
 
@@ -111,6 +113,7 @@ contains
     use mo_aurora,      only : aurora
     use gcr_ionization, only : gcr_ionization_ionpairs
     use epp_ionization, only : epp_ionization_ionpairs
+    use mee_ionization, only : mee_ionpairs
     use spehox,         only : hox_prod_factor
 
     use physics_buffer, only : physics_buffer_desc
@@ -156,6 +159,10 @@ contains
     real(r8), parameter :: rad2deg = 180._r8/pi                ! radians to degrees conversion factor
     real(r8) :: xlat
 
+    real(r8) :: mee_ap_ipr(ncol,pver) ! ion pairs production rate from Ap formulation
+
+    call mee_ionpairs(ncol, lchnk, pmid, zmid*1.e3_r8, tfld, mee_ap_ipr)
+
     extfrc(:,:,:) = 0._r8
 
     no_lgt(:,:) = 0._r8
@@ -164,7 +171,7 @@ contains
     !     ... set frcing from datasets
     !--------------------------------------------------------
     call extfrc_set( lchnk, zint_rel, extfrc, ncol )
-    
+
     !--------------------------------------------------------
     !     ... set nox production from lighting
     !         note: from ground to cloud top production is c shaped
@@ -243,8 +250,8 @@ contains
 
     !---------------------------------------------------------------------
     !     ... set SPE NOx and HOx production
-    !     Jackman et al., JGR, 2005 
-    !     production of 1.25 Nitrogen atoms/ion pair with branching ratios 
+    !     Jackman et al., JGR, 2005
+    !     production of 1.25 Nitrogen atoms/ion pair with branching ratios
     !     of 0.55 N(4S) and 0.7 N(2D).
     !---------------------------------------------------------------------
     !---------------------------------------------------------------------
@@ -259,9 +266,9 @@ contains
     call epp_ionization_ionpairs( ncol, lchnk, pmid, tfld, epp_ipr )
     call outfld( 'EPP_ionpairs', epp_ipr, ncol, lchnk )
 
-    epp_ipr(:ncol,:pver) = epp_ipr(:ncol,:) + gcr_ipr(:ncol,:)
+    epp_ipr(:ncol,:pver) = epp_ipr(:ncol,:) + gcr_ipr(:ncol,:) + mee_ap_ipr(:ncol,:)
 
-    if (has_dregion_ions) then 
+    if (has_dregion_ions) then
        ! D-region ion chemistry is active ...
        ! N2p production
        extfrc(:ncol,:pver,n2p_ndx) = extfrc(:ncol,:pver,n2p_ndx) + 0.585_r8 * epp_ipr(:ncol,:pver)
@@ -278,7 +285,7 @@ contains
        ! O
        extfrc(:ncol,:pver,o_ndx)   = extfrc(:ncol,:pver,o_ndx)   + 1.074_r8 * epp_ipr(:ncol,:pver)
 
-    else 
+    else
        ! D-region ion chemistry is NOT active
        if ( n2d_ndx>0 .and. n_ndx>0 ) then
           extfrc(:ncol,:pver,n2d_ndx) = extfrc(:ncol,:pver,n2d_ndx) +  0.7_r8*epp_ipr(:ncol,:pver)
@@ -286,7 +293,7 @@ contains
           call outfld( 'N2D_EPP', 0.7_r8*epp_ipr(:ncol,:), ncol, lchnk ) ! N(2D) produciton (molec/cm3/s)
           call outfld( 'N4S_EPP',0.55_r8*epp_ipr(:ncol,:), ncol, lchnk ) ! N(4S) produciton (molec/cm3/s)
        elseif ( no_ndx>0 .and. n_ndx>0 ) then
-          ! for mechanisms that do not include N2D -- the EPP produce NO 
+          ! for mechanisms that do not include N2D -- the EPP produce NO
           extfrc(:ncol,:pver, no_ndx) = extfrc(:ncol,:pver, no_ndx) +  0.7_r8*epp_ipr(:ncol,:pver)
           extfrc(:ncol,:pver,  n_ndx) = extfrc(:ncol,:pver,  n_ndx) + 0.55_r8*epp_ipr(:ncol,:pver)
           call outfld( 'NO_EPP',  0.7_r8*epp_ipr(:ncol,:), ncol, lchnk ) ! NO produciton (molec/cm3/s)
@@ -315,7 +322,7 @@ contains
        call outfld( 'P_N2p', extfrc(:,:,n2p_ndx), ncol, lchnk )
        call outfld( 'P_IONS',extfrc(:,:,e_ndx), ncol, lchnk )
     end if
-    
+
   end subroutine setext
 
 end module mo_setext

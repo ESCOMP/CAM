@@ -12,10 +12,10 @@ module nucleate_ice
 !  The current method is based on Liu & Penner (2005) & Liu et al. (2007)
 !  It related the ice nucleation with the aerosol number, temperature and the
 !  updraft velocity. It includes homogeneous freezing of sulfate & immersion
-!  freezing on mineral dust (soot disabled) in cirrus clouds, and 
+!  freezing on mineral dust (soot disabled) in cirrus clouds, and
 !  Meyers et al. (1992) deposition nucleation in mixed-phase clouds
 !
-!  The effect of preexisting ice crystals on ice nucleation in cirrus clouds is included, 
+!  The effect of preexisting ice crystals on ice nucleation in cirrus clouds is included,
 !  and also consider the sub-grid variability of temperature in cirrus clouds,
 !  following X. Shi et al. ACP (2014).
 !
@@ -49,10 +49,10 @@ real(r8) :: mincld
 real(r8), parameter :: Shet   = 1.3_r8     ! het freezing threshold
 real(r8), parameter :: rhoice = 0.5e3_r8   ! kg/m3, Wpice is not sensitive to rhoice
 real(r8), parameter :: minweff= 0.001_r8   ! m/s
-real(r8), parameter :: gamma1=1.0_r8 
-real(r8), parameter :: gamma2=1.0_r8 
-real(r8), parameter :: gamma3=2.0_r8 
-real(r8), parameter :: gamma4=6.0_r8 
+real(r8), parameter :: gamma1=1.0_r8
+real(r8), parameter :: gamma2=1.0_r8
+real(r8), parameter :: gamma3=2.0_r8
+real(r8), parameter :: gamma4=6.0_r8
 
 real(r8) :: ci
 
@@ -90,7 +90,8 @@ subroutine nucleati(  &
    so4_num, dst_num, soot_num, subgrid, &
    nuci, onihf, oniimm, onidep, onimey, &
    wpice, weff, fhom, regm, &
-   oso4_num, odst_num, osoot_num, call_frm_zm_in)
+   oso4_num, odst_num, osoot_num, &
+   call_frm_zm_in, add_preexisting_ice_in)
 
    ! Input Arguments
    real(r8), intent(in) :: wbar        ! grid cell mean vertical velocity (m/s)
@@ -100,7 +101,7 @@ subroutine nucleati(  &
    real(r8), intent(in) :: cldn        ! new value of cloud fraction    (fraction)
    real(r8), intent(in) :: qc          ! liquid water mixing ratio (kg/kg)
    real(r8), intent(in) :: qi          ! grid-mean preexisting cloud ice mass mixing ratio (kg/kg)
-   real(r8), intent(in) :: ni_in       ! grid-mean preexisting cloud ice number conc (#/kg) 
+   real(r8), intent(in) :: ni_in       ! grid-mean preexisting cloud ice number conc (#/kg)
    real(r8), intent(in) :: rhoair      ! air density (kg/m3)
    real(r8), intent(in) :: so4_num     ! so4 aerosol number (#/cm^3)
    real(r8), intent(in) :: dst_num     ! total dust aerosol number (#/cm^3)
@@ -123,6 +124,7 @@ subroutine nucleati(  &
 
    ! Optional Arguments
    logical,  intent(in), optional :: call_frm_zm_in ! true if called from ZM convection scheme
+   logical,  intent(in), optional :: add_preexisting_ice_in ! only false if called with pumas_v1.21+
 
    ! Local workspace
    real(r8) :: nihf                      ! nucleated number from homogeneous freezing of so4
@@ -135,16 +137,18 @@ subroutine nucleati(  &
    real(r8) :: wbar1, wbar2
 
    ! used in SUBROUTINE Vpreice
-   real(r8) :: Ni_preice        ! cloud ice number conc (1/m3)   
+   real(r8) :: Ni_preice        ! cloud ice number conc (1/m3)
    real(r8) :: lami,Ri_preice   ! mean cloud ice radius (m)
    real(r8) :: Shom             ! initial ice saturation ratio; if <1, use hom threshold Si
    real(r8) :: detaT,RHimean    ! temperature standard deviation, mean cloudy RHi
    real(r8) :: wpicehet   ! diagnosed Vertical velocity Reduction caused by preexisting ice (m/s), at shet
 
-   real(r8) :: weffhet    ! effective Vertical velocity for ice nucleation (m/s)  weff=wbar-wpicehet 
+   real(r8) :: weffhet    ! effective Vertical velocity for ice nucleation (m/s)  weff=wbar-wpicehet
 
-   logical  :: call_frm_zm
+   logical  :: call_frm_zm, add_preexisting_ice
    !-------------------------------------------------------------------------------
+
+   nuci = 0._r8
 
    RHimean = relhum*svp_water(tair)/svp_ice(tair)*subgrid
 
@@ -162,12 +166,18 @@ subroutine nucleati(  &
      call_frm_zm = .false.
    end if
 
+   if (present(add_preexisting_ice_in)) then
+     add_preexisting_ice = add_preexisting_ice_in
+   else
+     add_preexisting_ice = .true.
+   end if
+
    if (use_preexisting_ice .and. (.not. call_frm_zm)) then
 
       Ni_preice = ni_in*rhoair                    ! (convert from #/kg -> #/m3)
-      Ni_preice = Ni_preice / max(mincld,cldn)   ! in-cloud ice number density 
+      Ni_preice = Ni_preice / max(mincld,cldn)   ! in-cloud ice number density
 
-      if (Ni_preice > 10.0_r8 .and. qi > 1.e-10_r8) then    ! > 0.01/L = 10/m3   
+      if (Ni_preice > 10.0_r8 .and. qi > 1.e-10_r8) then    ! > 0.01/L = 10/m3
          Shom = -1.5_r8   ! if Shom<1 , Shom will be recalculated in SUBROUTINE Vpreice, according to Ren & McKenzie, 2005
          lami = (gamma4*ci*ni_in/qi)**(1._r8/3._r8)
          Ri_preice = 0.5_r8/lami                  ! radius
@@ -235,7 +245,7 @@ subroutine nucleati(  &
                      niimm     = dst_num + soot_num       ! assuming dst_num freeze firstly
                      odst_num  = dst_num
                      osoot_num = soot_num
-                     
+
                      oso4_num  = nihf
                   endif
 
@@ -249,9 +259,9 @@ subroutine nucleati(  &
 
                   nihf = 0._r8
                   n1   = niimm + nidep
-                  
-                  osoot_num = soot_num * (niimm + nidep) / (soot_num + dst_num) 
-                  odst_num  = dst_num  * (niimm + nidep) / (soot_num + dst_num) 
+
+                  osoot_num = soot_num * (niimm + nidep) / (soot_num + dst_num)
+                  odst_num  = dst_num  * (niimm + nidep) / (soot_num + dst_num)
                endif
 
             ! homogeneous nucleation only
@@ -267,7 +277,7 @@ subroutine nucleati(  &
                   niimm     = dst_num + soot_num       ! assuming dst_num freeze firstly
                   odst_num  = dst_num
                   osoot_num = soot_num
-                     
+
                   oso4_num  = nihf
                endif
 
@@ -311,7 +321,7 @@ subroutine nucleati(  &
                   if (nihf.gt.1e-3_r8) then ! hom occur,  add preexisting ice
                      oso4_num  = nihf
                   endif
-                     
+
                   osoot_num = soot_num * (niimm + nidep) / (soot_num + dst_num)
                   odst_num  = dst_num  * (niimm + nidep) / (soot_num + dst_num)
 
@@ -327,9 +337,11 @@ subroutine nucleati(  &
             ! MG is expecting to find.
             ni = n1
 
-            ! If using prexsiting ice, then add it to the total.
-            if (use_preexisting_ice .and. (.not. call_frm_zm)) then
-              ni = ni + Ni_preice * 1e-6_r8
+            ! If using prexsiting ice, and allowed to add, then add it to the total.
+            if (use_preexisting_ice) then
+               if (add_preexisting_ice .and. (.not. call_frm_zm)) then
+                  ni = ni + Ni_preice * 1e-6_r8
+               end if
             end if
          end if
       end if
@@ -340,7 +352,7 @@ subroutine nucleati(  &
       esl = svp_water(tair)     ! over water in mixed clouds
       esi = svp_ice(tair)     ! over ice
       deles = (esl - esi)
-      nimey=1.e-3_r8*exp(12.96_r8*deles/esi - 0.639_r8) 
+      nimey=1.e-3_r8*exp(12.96_r8*deles/esi - 0.639_r8)
    else
       nimey=0._r8
    endif
@@ -483,25 +495,25 @@ SUBROUTINE Vpreice(P_in, T_in, R_in, C_in, S_in, V_out)
    !  VERTICAL VELOCITY CALCULATED FROM DEPOSITIONAL LOSS TERM
 
    ! SUBROUTINE arguments
-   REAL(r8), INTENT(in)  :: P_in       ! [Pa],INITIAL AIR pressure 
-   REAL(r8), INTENT(in)  :: T_in       ! [K] ,INITIAL AIR temperature 
-   REAL(r8), INTENT(in)  :: R_in       ! [m],INITIAL MEAN  ICE CRYSTAL NUMBER RADIUS 
+   REAL(r8), INTENT(in)  :: P_in       ! [Pa],INITIAL AIR pressure
+   REAL(r8), INTENT(in)  :: T_in       ! [K] ,INITIAL AIR temperature
+   REAL(r8), INTENT(in)  :: R_in       ! [m],INITIAL MEAN  ICE CRYSTAL NUMBER RADIUS
    REAL(r8), INTENT(in)  :: C_in       ! [m-3],INITIAL TOTAL ICE CRYSTAL NUMBER DENSITY, [1/cm3]
-   REAL(r8), INTENT(in)  :: S_in       ! [-],INITIAL ICE SATURATION RATIO;; if <1, use hom threshold Si 
+   REAL(r8), INTENT(in)  :: S_in       ! [-],INITIAL ICE SATURATION RATIO;; if <1, use hom threshold Si
    REAL(r8), INTENT(out) :: V_out      ! [m/s], VERTICAL VELOCITY REDUCTION (caused by preexisting ice)
 
    ! SUBROUTINE parameters
-   REAL(r8), PARAMETER :: ALPHAc  = 0.5_r8 ! density of ice (g/cm3), !!!V is not related to ALPHAc 
-   REAL(r8), PARAMETER :: FA1c    = 0.601272523_r8        
+   REAL(r8), PARAMETER :: ALPHAc  = 0.5_r8 ! density of ice (g/cm3), !!!V is not related to ALPHAc
+   REAL(r8), PARAMETER :: FA1c    = 0.601272523_r8
    REAL(r8), PARAMETER :: FA2c    = 0.000342181855_r8
-   REAL(r8), PARAMETER :: FA3c    = 1.49236645E-12_r8        
-   REAL(r8), PARAMETER :: WVP1c   = 3.6E+10_r8   
+   REAL(r8), PARAMETER :: FA3c    = 1.49236645E-12_r8
+   REAL(r8), PARAMETER :: WVP1c   = 3.6E+10_r8
    REAL(r8), PARAMETER :: WVP2c   = 6145.0_r8
    REAL(r8), PARAMETER :: FVTHc   = 11713803.0_r8
    REAL(r8), PARAMETER :: THOUBKc = 7.24637701E+18_r8
    REAL(r8), PARAMETER :: SVOLc   = 3.23E-23_r8    ! SVOL=XMW/RHOICE
    REAL(r8), PARAMETER :: FDc     = 249.239822_r8
-   REAL(r8), PARAMETER :: FPIVOLc = 3.89051704E+23_r8         
+   REAL(r8), PARAMETER :: FPIVOLc = 3.89051704E+23_r8
    REAL(r8) :: T,P,S,R,C
    REAL(r8) :: A1,A2,A3,B1,B2
    REAL(r8) :: T_1,PICE,FLUX,ALP4,CISAT,DLOSS,VICE
@@ -519,22 +531,22 @@ SUBROUTINE Vpreice(P_in, T_in, R_in, C_in, S_in, V_out)
    C     = C_in*1e-6_r8  ! m-3 => cm-3
    T_1   = 1.0_r8/ T
    PICE  = WVP1c * EXP(-(WVP2c*T_1))
-   ALP4  = 0.25_r8 * ALPHAc      
+   ALP4  = 0.25_r8 * ALPHAc
    FLUX  = ALP4 * SQRT(FVTHc*T)
-   CISAT = THOUBKc * PICE * T_1   
-   A1    = ( FA1c * T_1 - FA2c ) * T_1 
-   A2    = 1.0_r8/ CISAT      
+   CISAT = THOUBKc * PICE * T_1
+   A1    = ( FA1c * T_1 - FA2c ) * T_1
+   A2    = 1.0_r8/ CISAT
    A3    = FA3c * T_1 / P
-   B1    = FLUX * SVOLc * CISAT * ( S-1.0_r8 ) 
-   B2    = FLUX * FDc * P * T_1**1.94_r8 
-   DLOSS = FPIVOLc * C * B1 * R**2 / ( 1.0_r8+ B2 * R )         
+   B1    = FLUX * SVOLc * CISAT * ( S-1.0_r8 )
+   B2    = FLUX * FDc * P * T_1**1.94_r8
+   DLOSS = FPIVOLc * C * B1 * R**2 / ( 1.0_r8+ B2 * R )
    VICE  = ( A2 + A3 * S ) * DLOSS / ( A1 * S )  ! 2006,(19)
    V_out = VICE*1e-2_r8  ! cm/s => m/s
 
 END SUBROUTINE Vpreice
 
 subroutine frachom(Tmean,RHimean,detaT,fhom)
-   ! How much fraction of cirrus might reach Shom  
+   ! How much fraction of cirrus might reach Shom
    ! base on "A cirrus cloud scheme for general circulation models",
    ! B. Karcher and U. Burkhardt 2008
 
@@ -545,7 +557,7 @@ subroutine frachom(Tmean,RHimean,detaT,fhom)
    integer,  parameter :: Nbin=200          ! (Tmean - 3*detaT, Tmean + 3*detaT)
 
    real(r8) :: PDF_T(Nbin)    ! temperature PDF;  ! PDF_T=0  outside (Tmean-3*detaT, Tmean+3*detaT)
-   real(r8) :: Sbin(Nbin)     ! the fluctuations of Si that are driven by the T variations 
+   real(r8) :: Sbin(Nbin)     ! the fluctuations of Si that are driven by the T variations
    real(r8) :: Sihom, deta
    integer  :: i
 
@@ -557,7 +569,7 @@ subroutine frachom(Tmean,RHimean,detaT,fhom)
       deta     = (i - 0.5_r8 - Nbin/2)*6.0_r8/Nbin   ! PDF_T=0  outside (Tmean-3*detaT, Tmean+3*detaT)
       Sbin(i)  = RHimean*exp(deta*detaT*seta/Tmean**2.0_r8)
       PDF_T(i) = exp(-deta**2.0_r8/2.0_r8)*6.0_r8/(sqrt(2.0_r8*Pi)*Nbin)
-      
+
 
       if (Sbin(i).ge.Sihom) then
          fhom = fhom + PDF_T(i)

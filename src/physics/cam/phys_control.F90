@@ -236,6 +236,24 @@ subroutine phys_ctl_readnl(nlfile)
       endif
    endif
 
+   if (cam_physpkg_is("cam_dev")) then
+      ! Check that eddy_scheme, macrop_scheme, shallow_scheme are all set to CLUBB
+      if (eddy_scheme /= 'CLUBB_SGS' .or. macrop_scheme /= 'CLUBB_SGS' .or. shallow_scheme /= 'CLUBB_SGS') then
+         write(iulog,*) 'cam_dev is only compatible with CLUBB.  Quitting'
+         call endrun('cam_dev is only compatible with eddy, macrop, and shallow schemes = CLUBB_SGS')
+      end if
+      ! Add a check to make sure SPCAM is not used
+      if (use_spcam) then
+         write(iulog,*)'SPCAM not compatible with cam_dev physics.  Quitting'
+         call endrun('SPCAM and cam_dev incompatible')
+      end if
+      ! Add check to make sure we are not trying to use `camrt`
+      if (trim(radiation_scheme) == 'camrt') then
+         write(iulog,*) ' camrt specified and it is not compatible with cam_dev'
+         call endrun('cam_dev is not compatible with camrt radiation scheme')
+      end if
+   end if
+
    ! Macro/micro co-substepping support.
    if (cld_macmic_num_steps > 1) then
       if (microp_scheme /= "MG" .or. (macrop_scheme /= "park" .and. macrop_scheme /= "CLUBB_SGS")) then
