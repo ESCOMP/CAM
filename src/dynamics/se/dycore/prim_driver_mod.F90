@@ -149,7 +149,8 @@ contains
             elem(ie)%state%phis(:,:),elem(ie)%derived%dp_ref(:,:,:),ps_ref(:,:,ie))
      end do
      !
-     ! pre-compute reference temperature profile (Simmons and Jiabin, 1991, QJRMS, Section 2a)
+     ! pre-compute reference temperature profile (Simmons and Jiabin, 1991, QJRMS, Section 2a
+     !                                            doi: https://doi.org/10.1002/qj.49711749703c)
      !
      !  Tref = T0+T1*Exner
      !  T1 = .0065*Tref*Cp/g ! = ~191
