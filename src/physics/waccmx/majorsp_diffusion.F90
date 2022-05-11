@@ -1,4 +1,4 @@
-m odule majorsp_diffusion
+module majorsp_diffusion
 
 !--------------------------------------------------------------------------
 ! This module computes the diffusion of major species (O2 and O) mass mixing
