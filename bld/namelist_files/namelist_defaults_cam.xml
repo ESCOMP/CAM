@@ -2273,6 +2273,17 @@
 <subcol_silhs_hmp2_ip_on_hmm2_ip_slope%ri   > 0.0 </subcol_silhs_hmp2_ip_on_hmm2_ip_slope%ri>
 <subcol_silhs_hmp2_ip_on_hmm2_ip_slope%Ni   > 0.0 </subcol_silhs_hmp2_ip_on_hmm2_ip_slope%Ni>
 
+<subcol_silhs_l_lh_importance_sampling   > .true.  </subcol_silhs_l_lh_importance_sampling>
+<subcol_silhs_l_Lscale_vert_avg          > .false. </subcol_silhs_l_Lscale_vert_avg>
+<subcol_silhs_l_lh_straight_mc           > .false. </subcol_silhs_l_lh_straight_mc>
+<subcol_silhs_l_lh_clustered_sampling    > .true.  </subcol_silhs_l_lh_clustered_sampling>
+<subcol_silhs_l_rcm_in_cloud_k_lh_start  > .true.  </subcol_silhs_l_rcm_in_cloud_k_lh_start>
+<subcol_silhs_l_random_k_lh_start        > .false. </subcol_silhs_l_random_k_lh_start>
+<subcol_silhs_l_max_overlap_in_cloud     > .true.  </subcol_silhs_l_max_overlap_in_cloud>
+<subcol_silhs_l_lh_instant_var_covar_src > .true.  </subcol_silhs_l_lh_instant_var_covar_src>
+<subcol_silhs_l_lh_limit_weights         > .true.  </subcol_silhs_l_lh_limit_weights>
+<subcol_silhs_l_lh_var_frac              > .false. </subcol_silhs_l_lh_var_frac>
+<subcol_silhs_l_lh_normalize_weights     > .true.  </subcol_silhs_l_lh_normalize_weights>
 
 <!-- PBL scheme -->
 <eddy_scheme pbl="none"           >NONE           </eddy_scheme>

@@ -3273,57 +3273,57 @@ Intercept of linear equation that calculates precribed in-cloud ice mixing ratio
 Intercept of linear equation that calculates precribed in-cloud ice concentration ratio [N_i'^2] / [N_i]^2   [-]
 </entry>
 
-<entry id="l_lh_importance_sampling" type="logical" category="conv"
+<entry id="subcol_silhs_l_lh_importance_sampling" type="logical" category="conv"
        group="silhs_config_flags_nl" valid_values="" >
 Enables importance sampling for SILHS subcolumns
 </entry>
 
-<entry id="l_Lscale_vert_avg" type="logical" category="conv"
+<entry id="subcol_silhs_l_Lscale_vert_avg" type="logical" category="conv"
        group="silhs_config_flags_nl" valid_values="" >
 Enables calculation of Lscale_vert_avg, used to generate SILHS samples.
 </entry>
 
-<entry id="l_lh_straight_mc" type="logical" category="conv"
+<entry id="subcol_silhs_l_lh_straight_mc" type="logical" category="conv"
        group="silhs_config_flags_nl" valid_values="" >
 Enables straight Monte Carlo sampling, this overrides l_lh_importance_sampling.
 </entry>
 
-<entry id="l_lh_clustered_sampling" type="logical" category="conv"
+<entry id="subcol_silhs_l_lh_clustered_sampling" type="logical" category="conv"
        group="silhs_config_flags_nl" valid_values="" >
 Enables the "new" SILHS importance sampling scheme with prescribed probabilities. Requires l_lh_importance_sampling.
 </entry>
 
-<entry id="l_rcm_in_cloud_k_lh_start" type="logical" category="conv"
+<entry id="subcol_silhs_l_rcm_in_cloud_k_lh_start" type="logical" category="conv"
        group="silhs_config_flags_nl" valid_values="" >
 Determine starting SILHS first sampling level (k_lh_start) based on maximum within-cloud rcm. If false, and if l_random_k_lh_start is also false, then the SILHS first sampling level is the column maximum of liquid cloud water. 
 </entry>
 
-<entry id="l_random_k_lh_start" type="logical" category="conv"
+<entry id="subcol_silhs_l_random_k_lh_start" type="logical" category="conv"
        group="silhs_config_flags_nl" valid_values="" >
 Determine starting SILHS first sampling level (k_lh_start) based on random choice. Overrides l_rcm_in_cloud_k_lh_start if true.
 </entry>
 
-<entry id="l_max_overlap_in_cloud" type="logical" category="conv"
+<entry id="subcol_silhs_l_max_overlap_in_cloud" type="logical" category="conv"
        group="silhs_config_flags_nl" valid_values="" >
 Assumption of maximum vertical overlap when grid-box rcm exceeds cloud threshold.
 </entry>
 
-<entry id="l_lh_instant_var_covar_src" type="logical" category="conv"
+<entry id="subcol_silhs_l_lh_instant_var_covar_src" type="logical" category="conv"
        group="silhs_config_flags_nl" valid_values="" >
 Produces "instantaneous" variance-covariance microphysical source terms, ignoring discretization effects.
 </entry>
 
-<entry id="l_lh_limit_weights" type="logical" category="conv"
+<entry id="subcol_silhs_l_lh_limit_weights" type="logical" category="conv"
        group="silhs_config_flags_nl" valid_values="" >
 Limit SILHS sample point weights for stability.
 </entry>
 
-<entry id="l_lh_var_frac" type="logical" category="conv"
+<entry id="subcol_silhs_l_lh_var_frac" type="logical" category="conv"
        group="silhs_config_flags_nl" valid_values="" >
 Prescribe variance fractions.
 </entry>
 
-<entry id="l_lh_normalize_weights" type="logical" category="conv"
+<entry id="subcol_silhs_l_lh_normalize_weights" type="logical" category="conv"
        group="silhs_config_flags_nl" valid_values="" >
 Scale sample point weights to sum to num_samples (the "ratio estimate").
 </entry>

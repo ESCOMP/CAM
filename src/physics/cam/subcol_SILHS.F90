@@ -55,8 +55,8 @@ module subcol_SILHS
    private :: meansc
    private :: stdsc
    
-   type (stats), target, save :: stats_lh_zt,   &
-                                 stats_lh_sfc
+   type (stats), target :: stats_lh_zt,   &
+                           stats_lh_sfc
    !$omp threadprivate(stats_lh_zt, stats_lh_sfc)
 #endif
 
@@ -154,6 +154,23 @@ contains
       integer :: unitn, ierr
 #ifdef CLUBB_SGS
 #ifdef SILHS
+
+      integer :: &
+          cluster_allocation_strategy
+
+      logical :: &
+          subcol_silhs_l_lh_importance_sampling, &
+          subcol_silhs_l_Lscale_vert_avg, &
+          subcol_silhs_l_lh_straight_mc, &
+          subcol_silhs_l_lh_clustered_sampling, &
+          subcol_silhs_l_rcm_in_cloud_k_lh_start, &
+          subcol_silhs_l_random_k_lh_start, &
+          subcol_silhs_l_max_overlap_in_cloud, &
+          subcol_silhs_l_lh_instant_var_covar_src, &
+          subcol_silhs_l_lh_limit_weights, &
+          subcol_silhs_l_lh_var_frac, &
+          subcol_silhs_l_lh_normalize_weights
+
       namelist /subcol_SILHS_nl/ subcol_SILHS_weight, &
                                  subcol_SILHS_numsubcol, &
                                  subcol_SILHS_corr_file_path, &
@@ -171,33 +188,17 @@ contains
 !                                 subcol_SILHS_c8, subcol_SILHS_c11, subcol_SILHS_c11b, &
 !                                 subcol_SILHS_gamma_coef, subcol_SILHS_mult_coef, subcol_SILHS_mu
 
-     namelist /silhs_config_flags_nl/ l_lh_importance_sampling, &
-                                      l_Lscale_vert_avg, &
-                                      l_lh_straight_mc, &
-                                      l_lh_clustered_sampling, &
-                                      l_rcm_in_cloud_k_lh_start, &
-                                      l_random_k_lh_start, &
-                                      l_max_overlap_in_cloud, &
-                                      l_lh_instant_var_covar_src, &
-                                      l_lh_limit_weights, &
-                                      l_lh_var_frac, &
-                                      l_lh_normalize_weights
-
-      integer :: &
-          cluster_allocation_strategy
-
-      logical :: &
-          l_lh_importance_sampling, &
-          l_Lscale_vert_avg, &
-          l_lh_straight_mc, &
-          l_lh_clustered_sampling, &
-          l_rcm_in_cloud_k_lh_start, &
-          l_random_k_lh_start, &
-          l_max_overlap_in_cloud, &
-          l_lh_instant_var_covar_src, &
-          l_lh_limit_weights, &
-          l_lh_var_frac, &
-          l_lh_normalize_weights
+     namelist /silhs_config_flags_nl/ subcol_silhs_l_lh_importance_sampling, &
+                                      subcol_silhs_l_Lscale_vert_avg, &
+                                      subcol_silhs_l_lh_straight_mc, &
+                                      subcol_silhs_l_lh_clustered_sampling, &
+                                      subcol_silhs_l_rcm_in_cloud_k_lh_start, &
+                                      subcol_silhs_l_random_k_lh_start, &
+                                      subcol_silhs_l_max_overlap_in_cloud, &
+                                      subcol_silhs_l_lh_instant_var_covar_src, &
+                                      subcol_silhs_l_lh_limit_weights, &
+                                      subcol_silhs_l_lh_var_frac, &
+                                      subcol_silhs_l_lh_normalize_weights
 
       !-----------------------------------------------------------------------------
       ! Set defaults
@@ -220,17 +221,17 @@ contains
 
       ! Set default silhs_config_flags entires
       call set_default_silhs_config_flags_api( cluster_allocation_strategy, &
-                                               l_lh_importance_sampling, &
-                                               l_Lscale_vert_avg, &
-                                               l_lh_straight_mc, &
-                                               l_lh_clustered_sampling, &
-                                               l_rcm_in_cloud_k_lh_start, &
-                                               l_random_k_lh_start, &
-                                               l_max_overlap_in_cloud, &
-                                               l_lh_instant_var_covar_src, &
-                                               l_lh_limit_weights, &
-                                               l_lh_var_frac, &
-                                               l_lh_normalize_weights )
+                                               subcol_silhs_l_lh_importance_sampling, &
+                                               subcol_silhs_l_Lscale_vert_avg, &
+                                               subcol_silhs_l_lh_straight_mc, &
+                                               subcol_silhs_l_lh_clustered_sampling, &
+                                               subcol_silhs_l_rcm_in_cloud_k_lh_start, &
+                                               subcol_silhs_l_random_k_lh_start, &
+                                               subcol_silhs_l_max_overlap_in_cloud, &
+                                               subcol_silhs_l_lh_instant_var_covar_src, &
+                                               subcol_silhs_l_lh_limit_weights, &
+                                               subcol_silhs_l_lh_var_frac, &
+                                               subcol_silhs_l_lh_normalize_weights )
 
       ! Get silhs_config_flags entries from namelist
       if (masterproc) then
@@ -247,17 +248,17 @@ contains
 
       ! Save silhs_config_flags entries into module variable silhs_config_flags
       call initialize_silhs_config_flags_type_api( cluster_allocation_strategy, &
-                                                   l_lh_importance_sampling, &
-                                                   l_Lscale_vert_avg, &
-                                                   l_lh_straight_mc, &
-                                                   l_lh_clustered_sampling, &
-                                                   l_rcm_in_cloud_k_lh_start, &
-                                                   l_random_k_lh_start, &
-                                                   l_max_overlap_in_cloud, &
-                                                   l_lh_instant_var_covar_src, &
-                                                   l_lh_limit_weights, &
-                                                   l_lh_var_frac, &
-                                                   l_lh_normalize_weights, &
+                                                   subcol_silhs_l_lh_importance_sampling, &
+                                                   subcol_silhs_l_Lscale_vert_avg, &
+                                                   subcol_silhs_l_lh_straight_mc, &
+                                                   subcol_silhs_l_lh_clustered_sampling, &
+                                                   subcol_silhs_l_rcm_in_cloud_k_lh_start, &
+                                                   subcol_silhs_l_random_k_lh_start, &
+                                                   subcol_silhs_l_max_overlap_in_cloud, &
+                                                   subcol_silhs_l_lh_instant_var_covar_src, &
+                                                   subcol_silhs_l_lh_limit_weights, &
+                                                   subcol_silhs_l_lh_var_frac, &
+                                                   subcol_silhs_l_lh_normalize_weights, &
                                                    silhs_config_flags )
 
       ! Print the SILHS configurable flags
