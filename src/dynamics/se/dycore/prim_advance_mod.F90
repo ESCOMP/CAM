@@ -131,7 +131,7 @@ contains
     !
     if (lcp_moist) then
       do ie=nets,nete
-        call get_cp(thermodynamic_active_species_num,qwater(:,:,:,:,ie),&
+        call get_cp(qwater(:,:,:,:,ie),&
              .true., inv_cp_full(:,:,:,ie), active_species_idx_dycore=qidx)
       end do
     else
@@ -140,7 +140,7 @@ contains
       end do
     end if
     do ie=nets,nete
-      call get_kappa_dry(thermodynamic_active_species_num, qwater(:,:,:,:,ie), qidx, kappa(:,:,:,ie))
+      call get_kappa_dry(qwater(:,:,:,:,ie), qidx, kappa(:,:,:,ie))
     end do
 
 
@@ -1109,10 +1109,8 @@ contains
        !
        call get_virtual_temp(qwater(:,:,:,:,ie), t_v(:,:,:),temp=elem(ie)%state%T(:,:,:,n0),&
             sum_q =sum_water(:,:,:), active_species_idx_dycore=qidx)
-       call get_R_dry(thermodynamic_active_species_num,&
-            qwater(:,:,:,:,ie), qidx, R_dry)
-       call get_cp_dry(thermodynamic_active_species_num,&
-            qwater(:,:,:,:,ie), qidx,cp_dry)
+       call get_R_dry(qwater(:,:,:,:,ie), qidx, R_dry)
+       call get_cp_dry(qwater(:,:,:,:,ie), qidx, cp_dry)
 
        do k=1,nlev
          dp_dry(:,:,k)  = elem(ie)%state%dp3d(:,:,k,n0)

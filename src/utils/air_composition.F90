@@ -263,7 +263,7 @@ CONTAINS
          !    others and constants associated with it are initialized here
          !
          if (TRIM(dry_air_species(dry_air_species_num + 1)) == 'N2') then
-            call dry_air_species_info('N2', ix, mw)
+            call dry_air_species_info('N', ix, mw)
             mw = 2.0_r8 * cnst_mw(ix)
             icnst = 0 ! index for the derived tracer N2
             thermodynamic_active_species_cp(icnst) = cp2 / mw
