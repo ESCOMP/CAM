@@ -36,6 +36,7 @@ subroutine read_namelist(nlfilename, single_column, scmlat, scmlon)
    use spmd_utils,          only: spmd_utils_readnl
    use cam_history,         only: history_readnl
    use physconst,           only: physconst_readnl
+   use air_composition,     only: air_composition_readnl
    use physics_buffer,      only: pbuf_readnl
    use phys_control,        only: phys_ctl_readnl
    use wv_saturation,       only: wv_sat_readnl
@@ -121,6 +122,7 @@ subroutine read_namelist(nlfilename, single_column, scmlat, scmlon)
 
    call spmd_utils_readnl(nlfilename)
    call phys_grid_readnl(nlfilename)
+   call air_composition_readnl(nlfilename)
    call physconst_readnl(nlfilename)
 !++bee 13 Oct 2015, need to fix the pbuf_global_allocate functionality, then
 !                   can uncomment the pbuf_readnl line

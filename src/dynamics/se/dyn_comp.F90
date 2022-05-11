@@ -589,7 +589,7 @@ subroutine dyn_init(dyn_in, dyn_out)
    use prim_advance_mod,   only: prim_advance_init
    use dyn_grid,           only: elem, fvm
    use cam_pio_utils,      only: clean_iodesc_list
-   use air_composition,    only: rair, cpair
+   use physconst,          only: rair, cpair
    use air_composition,    only: thermodynamic_active_species_num, thermodynamic_active_species_idx
    use air_composition,    only: thermodynamic_active_species_idx_dycore
    use air_composition,    only: thermodynamic_active_species_liq_idx,thermodynamic_active_species_ice_idx

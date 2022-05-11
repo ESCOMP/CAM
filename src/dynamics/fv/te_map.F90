@@ -334,7 +334,7 @@ contains
 #endif
 
        if (high_alt) then
-          call cam_thermo_calc_kappav( tracer, cap3v, cpv=cp3v)
+          call cam_thermo_calc_kappav( tracer, cap3v, cpv=cp3v )
        endif
 
 !$omp  parallel do        &
@@ -857,7 +857,7 @@ contains
 2000  continue
 
        if (high_alt) then
-          call cam_thermo_calc_kappav( tracer, cap3v, cpv=cp3v)
+          call cam_thermo_calc_kappav( tracer, cap3v, cpv=cp3v )
           !$omp parallel do private(i,j,k)
           do k=2,km
              do j=jfirst,jlast

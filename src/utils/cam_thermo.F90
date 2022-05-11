@@ -1589,12 +1589,23 @@ CONTAINS
      real(r8), intent(out) :: kappa_dry(:,:)             !kappa dry
      real(r8), optional, intent(in) :: fact(:,:)         !factor for converting tracer to dry mixing ratio
      !
-     real(r8), dimension(SIZE(kappa_dry, 1), SIZE(kappa_dry, 2)) :: cp_dry, R_dry
+     real(r8), allocatable, dimension(:,:) :: cp_dry,R_dry
+     integer                     :: ierr
+     character(len=*), parameter :: subname = "get_kappa_dry_1hd"
+     character(len=*), parameter :: errstr = subname//": failed to allocate "
      !
      ! dry air not species dependent
      if (dry_air_species_num==0) then
        kappa_dry = rair / cpair
      else
+       allocate(R_dry(SIZE(kappa_dry, 1), SIZE(kappa_dry, 2)), stat=ierr)
+       if (ierr /= 0) then
+         call endrun(errstr//"R_dry")
+       end if
+       allocate(cp_dry(SIZE(kappa_dry, 1), SIZE(kappa_dry, 2)), stat=ierr)
+       if (ierr /= 0) then
+         call endrun(errstr//"cp_dry")
+       end if
        if (present(fact)) then
          call get_cp_dry(tracer, active_species_idx, cp_dry, fact=fact)
          call get_R_dry( tracer, active_species_idx, R_dry,  fact=fact)
@@ -1603,6 +1614,7 @@ CONTAINS
          call get_R_dry( tracer, active_species_idx, R_dry)
        end if
        kappa_dry = R_dry / cp_dry
+       deallocate(R_dry, cp_dry)
      end if
    end subroutine get_kappa_dry_1hd
 
@@ -1699,6 +1711,9 @@ CONTAINS
      real(r8),  dimension(SIZE(rho_dry, 1), SIZE(rho_dry, 2) + 1)  :: pint
      real(r8),  allocatable                                        :: R_dry(:,:)
      integer,  dimension(thermodynamic_active_species_num)         :: idx_local
+     integer                     :: ierr
+     character(len=*), parameter :: subname = "get_rho_dry_1hd"
+     character(len=*), parameter :: errstr = subname//": failed to allocate "
 
      if (present(active_species_idx_dycore)) then
        idx_local = active_species_idx_dycore
@@ -1712,7 +1727,10 @@ CONTAINS
      if (present(pint_out)) pint_out=pint
      if (present(pint_out)) pmid_out=pmid
      if (present(rhoi_dry)) then
-       allocate(R_dry(SIZE(rho_dry, 1), size(rho_dry, 2) + 1))
+       allocate(R_dry(SIZE(rho_dry, 1), size(rho_dry, 2) + 1), stat=ierr)
+       if (ierr /= 0) then
+         call endrun(errstr//"R_dry")
+       end if
        if (tracer_mass) then
          call get_R_dry(tracer, idx_local, R_dry, fact=1.0_r8 / dp_dry)
        else
@@ -1731,7 +1749,10 @@ CONTAINS
        deallocate(R_dry)
      end if
      if (present(rho_dry)) then
-       allocate(R_dry(SIZE(rho_dry, 1), size(rho_dry, 2)))
+       allocate(R_dry(SIZE(rho_dry, 1), size(rho_dry, 2)), stat=ierr)
+       if (ierr /= 0) then
+         call endrun(errstr//"R_dry")
+       end if
        if (tracer_mass) then
          call get_R_dry(tracer, idx_local, R_dry, fact=1.0_r8 / dp_dry)
        else
@@ -1742,6 +1763,7 @@ CONTAINS
            rho_dry(idx, kdx) = pmid(idx, kdx) / (temp(idx, kdx) * R_dry(idx, kdx)) !ideal gas law for dry air
          end do
        end do
+       deallocate(R_dry)
      end if
    end subroutine get_rho_dry_1hd
 
@@ -2039,7 +2061,7 @@ CONTAINS
       !-----------------------------------------------------------------------
       call get_R_dry(tracer, thermodynamic_active_species_idx, rgas_var)
       call get_cp_dry(tracer, thermodynamic_active_species_idx, cp_var)
-      !$omp parallel do private(i,j,k)
+      !$omp parallel do private(ind,jnd,knd)
       do knd = 1, SIZE(tracer, 3)
          do jnd = 1, SIZE(tracer, 2)
             do ind = 1, SIZE(tracer, 1)
