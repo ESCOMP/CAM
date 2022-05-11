@@ -816,11 +816,12 @@ end subroutine micro_pumas_cam_init_cnst
 
 !===============================================================================
 
-subroutine micro_pumas_cam_init(pbuf2d)
+subroutine micro_pumas_cam_init(pbuf2d, proc_rates)
    use time_manager,   only: is_first_step
    use micro_pumas_utils, only: micro_pumas_utils_init
    use micro_mg1_0, only: micro_mg_init1_0 => micro_mg_init
    use micro_pumas_v1, only: micro_mg_init3_0 => micro_pumas_init
+   use micro_pumas_diag, only: proc_rates_type
 
    !-----------------------------------------------------------------------
    !
@@ -829,6 +830,7 @@ subroutine micro_pumas_cam_init(pbuf2d)
    !-----------------------------------------------------------------------
 
    type(physics_buffer_desc), pointer :: pbuf2d(:,:)
+   type(proc_rates_type), pointer     :: proc_rates
 
    integer :: m, mm
    logical :: history_amwg         ! output the variables used by the AMWG diag package
@@ -845,6 +847,9 @@ subroutine micro_pumas_cam_init(pbuf2d)
 
    call phys_getopts(use_subcol_microp_out=use_subcol_microp, &
                      do_clubb_sgs_out     =do_clubb_sgs)
+
+   ! Allocate the elements within the proc_rates DDT
+   call proc_rates%allocate(psetcols,nlev)
 
    if (do_clubb_sgs) then
      allow_sed_supersat = .false.
@@ -952,7 +957,7 @@ subroutine micro_pumas_cam_init(pbuf2d)
    call addfld ('CME',        (/ 'lev' /), 'A', 'kg/kg/s',  'Rate of cond-evap within the cloud'                      )
    call addfld ('PRODPREC',   (/ 'lev' /), 'A', 'kg/kg/s',  'Rate of conversion of condensate to precip'              )
    call addfld ('EVAPPREC',   (/ 'lev' /), 'A', 'kg/kg/s',  'Rate of evaporation of falling precip'                   )
-   call addfld ('EVAPSNOW',   (/ 'lev' /), 'A', 'kg/kg/s',  'Rate of evaporation of falling snow'                     )
+   call addfld ('EVAPSNOW',   (/ 'trop_cld_nlev' /), 'A', 'kg/kg/s',  'Rate of evaporation of falling snow'                     )
    call addfld ('HPROGCLD',   (/ 'lev' /), 'A', 'W/kg'    , 'Heating from prognostic clouds'                          )
    call addfld ('FICE',       (/ 'lev' /), 'A', 'fraction', 'Fractional ice content within cloud'                     )
    call addfld ('CLDFSNOW',   (/ 'lev' /), 'A', '1',        'Cloud fraction adjusted for snow'                        )
@@ -1440,8 +1445,8 @@ subroutine micro_pumas_cam_tend(state, ptend, dtime, pbuf)
    real(r8)  :: prect(state%psetcols)
    real(r8)  :: preci(state%psetcols)
    real(r8)  :: am_evp_st(state%psetcols,pver)  ! Area over which precip evaporates
-   real(r8)  :: evapsnow(state%psetcols,pver)   ! Local evaporation of snow
-   real(r8)  :: prodsnow(state%psetcols,pver)   ! Local production of snow
+!   real(r8)  :: evapsnow(state%psetcols,pver)   ! Local evaporation of snow
+!   real(r8)  :: prodsnow(state%psetcols,pver)   ! Local production of snow
    real(r8)  :: cmeice(state%psetcols,pver)     ! Rate of cond-evap of ice within the cloud
    real(r8)  :: qsout(state%psetcols,pver)      ! Snow mixing ratio
    real(r8)  :: cflx(state%psetcols,pverp)      ! grid-box avg liq condensate flux (kg m^-2 s^-1)
@@ -2156,10 +2161,10 @@ subroutine micro_pumas_cam_tend(state, ptend, dtime, pbuf)
    prect(:ncol)=0._r8
    preci(:ncol)=0._r8
    nevapr(:ncol,:top_lev-1)=0._r8
-   evapsnow(:ncol,:top_lev-1)=0._r8
+!  NO LONGER NEEDED AS THE FIELDS ONLY GO TO top_lev?evapsnow(:ncol,:top_lev-1)=0._r8
    am_evp_st(:ncol,:top_lev-1)=0._r8
    prain(:ncol,:top_lev-1)=0._r8
-   prodsnow(:ncol,:top_lev-1)=0._r8
+!  NO LONGER NEEDED AS THE FIELDS ONLY GO TO top_lev?   prodsnow(:ncol,:top_lev-1)=0._r8
    cmeice(:ncol,:top_lev-1)=0._r8
    dei(:ncol,:top_lev-1)=0._r8
    mu(:ncol,:top_lev-1)=0._r8
@@ -2280,6 +2285,7 @@ subroutine micro_pumas_cam_tend(state, ptend, dtime, pbuf)
                  rel_fn_dum(:ncol,top_lev:),      &
                  rei(:ncol,top_lev:), prect(:ncol), preci(:ncol), nevapr(:ncol,top_lev:), evapsnow(:ncol,top_lev:), &
                  am_evp_st(:ncol,top_lev:), &
+! CAC proc_rates will replace the individual elements
                  prain(:ncol,top_lev:), prodsnow(:ncol,top_lev:), cmeice(:ncol,top_lev:), dei(:ncol,top_lev:), mu(:ncol,top_lev:), &
                  lambdac(:ncol,top_lev:), qsout(:ncol,top_lev:), des(:ncol,top_lev:), rflx(:ncol,top_lev:), sflx(:ncol,top_lev:), &
                  qrout(:ncol,top_lev:), reff_rain_dum(:ncol,top_lev:), reff_snow_dum(:ncol,top_lev:), qcsevap(:ncol,top_lev:), &
@@ -2332,6 +2338,7 @@ subroutine micro_pumas_cam_tend(state, ptend, dtime, pbuf)
               prect(:ncol),           preci(:ncol),           &
               nevapr(:ncol,top_lev:),          evapsnow(:ncol,top_lev:),        &
               am_evp_st(:ncol,top_lev:),                               &
+! CAC proc_rates will replace the individual elements
               prain(:ncol,top_lev:),           prodsnow(:ncol,top_lev:),        &
               cmeice(:ncol,top_lev:),          dei(:ncol,top_lev:),             &
               mu(:ncol,top_lev:),              lambdac(:ncol,top_lev:),         &
@@ -2613,6 +2620,8 @@ subroutine micro_pumas_cam_tend(state, ptend, dtime, pbuf)
       call subcol_field_avg(qme,       ngrdcol, lchnk, qme_grid)
       call subcol_field_avg(nevapr,    ngrdcol, lchnk, nevapr_grid)
       call subcol_field_avg(prain,     ngrdcol, lchnk, prain_grid)
+! CAC - Check whether this will work with fields only going to top_lev - YES it is okay as it finds the size of the second and
+! subsequent dimensions of the field passed in
       call subcol_field_avg(evapsnow,  ngrdcol, lchnk, evpsnow_st_grid)
       call subcol_field_avg(bergso,    ngrdcol, lchnk, bergso_grid)
 
@@ -2715,7 +2724,7 @@ subroutine micro_pumas_cam_tend(state, ptend, dtime, pbuf)
 
       am_evp_st_grid  = am_evp_st
 
-      evpsnow_st_grid = evapsnow
+      evpsnow_st_grid(:,top_lev:) = proc_rates%evapsnow
       qrout_grid      = qrout
       qsout_grid      = qsout
       nsout_grid      = nsout
@@ -3304,7 +3313,7 @@ subroutine micro_pumas_cam_tend(state, ptend, dtime, pbuf)
    call outfld('MPDICE',      qiten,       psetcols, lchnk, avg_subcol_field=use_subcol_microp)
    call outfld('MPDNLIQ',     ncten,       psetcols, lchnk, avg_subcol_field=use_subcol_microp)
    call outfld('MPDNICE',     niten,       psetcols, lchnk, avg_subcol_field=use_subcol_microp)
-   call outfld('EVAPSNOW',    evapsnow,    psetcols, lchnk, avg_subcol_field=use_subcol_microp)
+   call outfld('EVAPSNOW',    proc_rates%evapsnow,    psetcols, lchnk, avg_subcol_field=use_subcol_microp)
    call outfld('QCSEVAP',     qcsevap,     psetcols, lchnk, avg_subcol_field=use_subcol_microp)
    call outfld('QISEVAP',     qisevap,     psetcols, lchnk, avg_subcol_field=use_subcol_microp)
    call outfld('QVRES',       qvres,       psetcols, lchnk, avg_subcol_field=use_subcol_microp)
