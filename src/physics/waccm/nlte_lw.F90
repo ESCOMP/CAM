@@ -24,9 +24,6 @@ module nlte_lw
        nlte_register,      &
        nlte_init,          &
        nlte_timestep_init, &
-       nlte_init_restart,  &
-       nlte_read_restart,  &
-       nlte_write_restart, &
        nlte_tend
 
 ! Private module data
@@ -38,7 +35,6 @@ module nlte_lw
 
   logical :: nlte_use_aliarms = .false.
   integer :: nlte_aliarms_every_X = 0
-  integer :: aliarms_count = -huge(1)    ! Counter for optional skipping of ALI-ARMS
 
   logical :: use_data_o3
   logical :: use_waccm_forcing = .false.
@@ -117,9 +113,6 @@ contains
     nlte_use_aliarms     = nlte_use_aliarms_in
     nlte_aliarms_every_X = nlte_aliarms_every_X_in
 
-    ! Force the aliarms to be called on the first timestep by setting it to the value of nlte_aliarms_every_X - 1
-    aliarms_count = nlte_aliarms_every_X - 1
-
     ! ask rad_constituents module whether the O3 used in the climate
     ! calculation is from data
     call rad_cnst_get_info(0, use_data_o3=rad_use_data_o3)
@@ -190,7 +183,7 @@ contains
 
 ! Initialize ALI-ARMS parameterization
     if (nlte_use_aliarms) then
-       call nlte_aliarms_init (max_pressure_lw)
+       call nlte_aliarms_init (max_pressure_lw,co2_mw,n2_mw,o1_mw,o2_mw)
     end if
 
 ! Initialize waccm forcing data
@@ -248,44 +241,10 @@ contains
        call waccm_forcing_adv (state, pbuf2d)
     endif
 
-    aliarms_count = aliarms_count + 1
-
     return
   end subroutine nlte_timestep_init
 
 !================================================================================================
-  subroutine nlte_init_restart(File)
-
-    use pio,           only: file_desc_t, PIO_GLOBAL, pio_put_att
-
-    type(file_desc_t), intent(inout) :: File
-
-    integer :: ierr
-
-    ierr = PIO_Put_Att(File, PIO_GLOBAL, 'aliarms_count', aliarms_count)
-
-  end subroutine nlte_init_restart
-!================================================================================================
-  subroutine nlte_read_restart(File)
-
-    use pio,           only: file_desc_t, PIO_GLOBAL, pio_get_att
-
-    type(file_desc_t), intent(inout) :: File
-
-    integer :: ierr
-
-    ierr = PIO_Get_Att(File, PIO_GLOBAL, 'aliarms_count', aliarms_count)
-
-  end subroutine nlte_read_restart
-!================================================================================================
-  subroutine nlte_write_restart(File)
-
-    use pio,           only: file_desc_t
-    type(file_desc_t), intent(inout) :: File
-
-  ! Stub routine
-
-  end subroutine nlte_write_restart
 !================================================================================================
 
   subroutine nlte_tend(state, pbuf,  qrlf)
@@ -298,6 +257,7 @@ contains
     use perf_mod,      only: t_startf, t_stopf
     use cam_history,   only: outfld
     use physics_buffer,only: pbuf_get_field
+    use time_manager,  only: get_nstep
 
 ! Arguments
     type(physics_state), target, intent(in)  :: state   ! Physics state variables
@@ -332,6 +292,7 @@ contains
     real(r8), pointer, dimension(:,:) :: to3mmr  ! O3 mmr   (tgcm)
 
     integer :: i,j,k, ierr
+    integer :: nstep
 
 !------------------------------------------------------------------------
 
@@ -383,9 +344,9 @@ contains
     if (nlte_use_aliarms) then
        call pbuf_get_field(pbuf, qrlaliarms_idx, qrlaliarms )
        ! Only run ALI-ARMS every nlte_aliarms_every_X timesteps
-       if (MOD(aliarms_count, nlte_aliarms_every_X) == 0) then
-          call nlte_aliarms_calc (lchnk,ncol,state%zm, state%pmid,state%t, co2_mw, n2_mw, o1_mw, o2_mw, &
-                                xo2mmr,xommr,xn2mmr,xco2mmr,qrlaliarms)
+       nstep = get_nstep()
+       if (MOD(nstep, nlte_aliarms_every_X) == 0) then
+          call nlte_aliarms_calc (lchnk,ncol,state%zm, state%pmid,state%t,xo2mmr,xommr,xn2mmr,xco2mmr,qrlaliarms)
        end if
 
        ! Apply the ALI-ARMS heating rate to the qrlf summation

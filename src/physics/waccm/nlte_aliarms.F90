@@ -19,10 +19,14 @@ module nlte_aliarms
 
   real(r8) :: max_pressure_aliarms = -huge(1.0_r8)  ! max_pressure_lw scaled bar
 
+  real(r8) :: o1_mw_inv                        ! O molecular weight (inverse)
+  real(r8) :: o2_mw_inv                        ! O2 molecular weight (inverse)
+  real(r8) :: co2_mw_inv                       ! CO2 molecular weight (inverse)
+  real(r8) :: n2_mw_inv                        ! N2 molecular weight (inverse)
 contains
 
 !-----------------------------------------------------------------
-  subroutine nlte_aliarms_init(max_pressure_lw)
+  subroutine nlte_aliarms_init(max_pressure_lw,co2_mw,n2_mw,o1_mw,o2_mw)
 !-----------------------------------------------------------------
 !
 !
@@ -31,20 +35,29 @@ contains
   use cam_history,  only: addfld
 
   real(r8), intent(in)  :: max_pressure_lw  ! Pa
+  real(r8), intent(in) :: o1_mw             ! O molecular weight
+  real(r8), intent(in) :: o2_mw             ! O2 molecular weight
+  real(r8), intent(in) :: co2_mw            ! CO2 molecular weight
+  real(r8), intent(in) :: n2_mw             ! N2 molecular weight
 
   if (masterproc) then
     write(iulog,*) 'init: ALI-ARMS non-LTE code'
   end if
 
-  call addfld ('ALIARMS_Q',(/ 'lev' /), 'A','K/s','Non-LTE LW CO2 heating')
+  call addfld ('ALIARMS_Q',(/ 'lev' /), 'A','K/s','Non-LTE LW CO2 heating rate')
 
   ! Scale the max_pressure_aliarms to bar
   max_pressure_aliarms = max_pressure_lw * 1.e-05_r8
 
+  co2_mw_inv = 1._r8/co2_mw
+  o1_mw_inv  = 1._r8/o1_mw
+  o2_mw_inv  = 1._r8/o2_mw
+  n2_mw_inv  = 1._r8/n2_mw
+
   end subroutine nlte_aliarms_init
 
 !-----------------------------------------------------------------
-  subroutine nlte_aliarms_calc (lchnk,ncol,state_zm,pmid,t,co2_mw,n2_mw,o1_mw,o2_mw,xo2mmr,xommr,xn2mmr,xco2mmr,cool)
+  subroutine nlte_aliarms_calc (lchnk,ncol,state_zm,pmid,t,xo2mmr,xommr,xn2mmr,xco2mmr,cool)
 !-----------------------------------------------------------------
 !
 !
@@ -63,10 +76,6 @@ contains
   real(r8), intent(in) :: state_zm(pcols,pver)         ! model height (m)
   real(r8), intent(in) :: pmid(pcols,pver)             ! model pressure at mid-point (Pa)
   real(r8), intent(in) :: t(pcols,pver)                ! Neutral temperature (K)
-  real(r8), intent(in) :: o1_mw                        ! O molecular weight
-  real(r8), intent(in) :: o2_mw                        ! O2 molecular weight
-  real(r8), intent(in) :: co2_mw                       ! CO2 molecular weight
-  real(r8), intent(in) :: n2_mw                        ! N2 molecular weight
 
   real(r8), intent(in) :: xco2mmr(pcols,pver)          ! CO2 mass mixing ratio profile
   real(r8), intent(in) :: xn2mmr(pcols,pver)           ! N2 mass mixing ratio profile
@@ -124,10 +133,10 @@ contains
       tn(:pver_c) = t(icol,:pver_c)
 
       ! Convert to VMR from mmr
-      co2_vmr(:pver_c) = mbarv(icol,:pver_c ,lchnk) * xco2mmr(icol,:pver_c) / co2_mw
-      o_vmr(:pver_c) = mbarv(icol,:pver_c ,lchnk) * xommr(icol,:pver_c) / o1_mw
-      n2_vmr(:pver_c) = mbarv(icol,:pver_c ,lchnk) * xn2mmr(icol,:pver_c) / n2_mw
-      o2_vmr(:pver_c) = mbarv(icol,:pver_c ,lchnk) * xo2mmr(icol,:pver_c) / o2_mw
+      co2_vmr(:pver_c) = mbarv(icol,:pver_c ,lchnk) * xco2mmr(icol,:pver_c) * co2_mw_inv
+      o_vmr(:pver_c) = mbarv(icol,:pver_c ,lchnk) * xommr(icol,:pver_c) * o1_mw_inv
+      n2_vmr(:pver_c) = mbarv(icol,:pver_c ,lchnk) * xn2mmr(icol,:pver_c) * n2_mw_inv
+      o2_vmr(:pver_c) = mbarv(icol,:pver_c ,lchnk) * xo2mmr(icol,:pver_c) * o2_mw_inv
 
       call ali(zkm, p, tn, co2_vmr, o_vmr, n2_vmr, o2_vmr, ali_cool, pver_c)
 
