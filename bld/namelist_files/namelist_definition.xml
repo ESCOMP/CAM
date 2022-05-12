@@ -3641,13 +3641,13 @@ tends wp2 more towards the value of subgrid TKE.
 
 <entry id="clubb_C_uu_shr" type="real" category="pblrad"
        group="clubb_params_nl" valid_values="" >
-Coefficient in the wp2 (variance of vertical velocity) pressure term.
+Coefficient in the wp2 (variance of vertical velocity) pressure terms opposing shear production.
 </entry>
 
 <entry id="clubb_C_uu_buoy" type="real" category="pblrad"
        group="clubb_params_nl" valid_values="" >
-Coefficient in the wp2 (variance of vertical velocity) buoyancy term.
-</entry
+Coefficient in the wp2 (variance of vertical velocity) pressure terms opposing buoyancy production.
+</entry>
 
 <entry id="clubb_C7" type="real" category="pblrad"
        group="clubb_params_nl" valid_values="" >
@@ -3790,18 +3790,6 @@ Default: 0.0
       group="clubb_params_nl" valid_values="" >
 Coefficient of inverse tau term contributed by Brunt Vaisala frequency but for wp3 (units: none)
 Default: 0.0
-</entry>
-
-<entry id="clubb_C_uu_shr" type="real" category="pblrad"
-       group="clubb_params_nl" valid_values="" >
-Constant for shear terms in wp2 pressure term 2 (units: none)
-Default: 0.4
-</entry>
-
-<entry id="clubb_C_uu_buoy" type="real" category="pblrad"
-       group="clubb_params_nl" valid_values="" >
-Constant for buoyancy terms in wp2 pressure term 2 (units: none)
-Default: 0.3
 </entry>
 
 <entry id="clubb_gamma_coef" type="real" category="pblrad"

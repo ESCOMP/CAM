@@ -20,7 +20,7 @@ module clubb_intr
   use shr_kind_mod,  only: r8=>shr_kind_r8                                                                  
   use ppgrid,        only: pver, pverp, pcols, begchunk, endchunk
   use phys_control,  only: phys_getopts
-  use physconst,     only: rairv, cpairv, cpair, gravit, latvap, latice, zvir, rh2o, karman
+  use physconst,     only: rairv, cpairv, cpair, gravit, latvap, latice, zvir, rh2o, karman, rga
 
   use spmd_utils,    only: masterproc 
   use constituents,  only: pcnst, cnst_add
@@ -199,7 +199,7 @@ module clubb_intr
                                           ! flag is turned off.
     clubb_l_predict_upwp_vpwp,          & ! Flag to predict <u'w'> and <v'w'> along with <u> and <v>
                                           ! alongside the advancement of <rt>, <w'rt'>, <thl>,
-                                          ! <wpthlp>, <sclr>, and <w'sclr'> in subroutine
+                                          ! <w'thl'>, <sclr>, and <w'sclr'> in subroutine
                                           ! advance_xm_wpxp.  Otherwise, <u'w'> and <v'w'> are still
                                           ! approximated by eddy diffusivity when <u> and <v> are
                                           ! advanced in subroutine advance_windm_edsclrm.
@@ -1236,7 +1236,7 @@ end subroutine clubb_init_cnst
     ! CAM defines zi at the surface to be zero.
     real(r8), parameter :: sfc_elevation = 0._r8
 
-    integer :: nlev
+    integer :: nlev, ierr
 
     real(r8) :: &
       C1, C1b, C1c, C2rt, C2thl, C2rtthl, &
@@ -1327,7 +1327,7 @@ end subroutine clubb_init_cnst
        !  tendencies to avoid double counted.  Else, we apply tendencies.
        lq(ixnumliq) = .false.
        edsclr_dim = edsclr_dim-1
-    endif
+    end if
 
     ! ----------------------------------------------------------------- !
     ! Set the debug level.  Level 2 has additional computational expense since
@@ -1390,7 +1390,7 @@ end subroutine clubb_init_cnst
     if (clubb_l_do_expldiff_rtm_thlm) then
        offset = 2 ! diffuse temperature and moisture explicitly
        edsclr_dim = edsclr_dim + offset 
-    endif
+    end if
     
     ! ----------------------------------------------------------------- !
     ! Setup CLUBB core
@@ -1538,13 +1538,13 @@ end subroutine clubb_init_cnst
        do j = 1, nparams, 1
           write(iulog,*) params_list(j), " = ", clubb_params(j)
        enddo
-    endif
+    end if
 
     ! Print configurable CLUBB flags
     if ( masterproc ) then
        write(iulog,'(a,i0,a)') " CLUBB configurable flags "
        call print_clubb_config_flags_api( iulog, clubb_config_flags ) ! Intent(in)
-    endif
+    end if
 
     ! ----------------------------------------------------------------- !
     ! Set-up HB diffusion.  Only initialized to diagnose PBL depth      !
@@ -1667,14 +1667,19 @@ end subroutine clubb_init_cnst
                                stats_rad_zt(i), stats_rad_zm(i))
       end do             
 
-       allocate(out_zt(pcols,pverp,stats_zt(1)%num_output_fields))
-       allocate(out_zm(pcols,pverp,stats_zm(1)%num_output_fields))
-       allocate(out_sfc(pcols,1,stats_sfc(1)%num_output_fields))
+      allocate(out_zt(pcols,pverp,stats_zt(1)%num_output_fields), stat=ierr)
+      if( ierr /= 0) call endrun('clubb_intr: failed to allocate out_zt')
+      allocate(out_zm(pcols,pverp,stats_zm(1)%num_output_fields), stat=ierr)
+      if( ierr /= 0) call endrun('clubb_intr: failed to allocate out_zm')
+      allocate(out_sfc(pcols,1,stats_sfc(1)%num_output_fields), stat=ierr)
+      if( ierr /= 0) call endrun('clubb_intr: failed to allocate out_sfc')
 
-       allocate(out_radzt(pcols,pverp,stats_rad_zt(1)%num_output_fields))
-       allocate(out_radzm(pcols,pverp,stats_rad_zm(1)%num_output_fields))
+      allocate(out_radzt(pcols,pverp,stats_rad_zt(1)%num_output_fields), stat=ierr)
+      if( ierr /= 0) call endrun('clubb_intr: failed to allocate out_radzt')
+      allocate(out_radzm(pcols,pverp,stats_rad_zm(1)%num_output_fields), stat=ierr)
+      if( ierr /= 0) call endrun('clubb_intr: failed to allocate out_radzm')
 
-    endif
+    end if
   
     ! ----------------------------------------------------------------- !
     ! Make all of this output default, this is not CLUBB history
@@ -1791,7 +1796,7 @@ end subroutine clubb_init_cnst
        call add_default('RVMTEND_CLUBB',    history_budget_histfile_num, ' ')
        call add_default('UTEND_CLUBB',      history_budget_histfile_num, ' ')
        call add_default('VTEND_CLUBB',      history_budget_histfile_num, ' ')
-    endif 
+    end if
      
 
     ! --------------- !
@@ -1853,7 +1858,7 @@ end subroutine clubb_init_cnst
        call pbuf_set_field(pbuf2d, pdf_zm_varnce_w_2_idx, 0.0_r8)
        call pbuf_set_field(pbuf2d, pdf_zm_mixt_frac_idx, 0.0_r8)
 
-    endif
+    end if
   
     ! The following is physpkg, so it needs to be initialized every time
     call pbuf_set_field(pbuf2d, fice_idx,    0.0_r8)
@@ -1991,7 +1996,7 @@ end subroutine clubb_init_cnst
    integer :: icnt  
    logical :: lq2(pcnst)
 
-   integer :: iter
+   integer :: iter, ierr
    
    integer :: clubbtop(pcols)
    
@@ -2179,6 +2184,7 @@ end subroutine clubb_init_cnst
                rtm_integral_ltend(pcols)
 
    real(r8) :: rtm_integral_1, rtm_integral_update, rtm_integral_forcing
+   real(r8) :: recip_hdtime
 
     ! --------------- !
     ! Pointers        !
@@ -2362,7 +2368,7 @@ end subroutine clubb_init_cnst
      apply_const = 1._r8  ! Initialize to one, only if CLUBB's moments are advected
    else
      apply_const = 0._r8  ! Never want this if CLUBB's moments are not advected
-   endif
+   end if
 
  !  Get indicees for cloud and ice mass and cloud and ice number
 
@@ -2387,7 +2393,7 @@ end subroutine clubb_init_cnst
 
    if (clubb_do_liqsupersat) then
       call pbuf_get_field(pbuf, npccn_idx, npccn)
-   endif
+   end if
 
    !  Determine number of columns and which chunk computation is to be performed on
 
@@ -2490,10 +2496,11 @@ end subroutine clubb_init_cnst
    if (clubb_do_adv .and. (is_first_step() .or. all(wpthlp(1:ncol,1:pver)  ==  0._r8))) then
       apply_const = 0._r8  ! On first time through do not remove constant 
                            !  from moments since it has not been added yet 
-   endif
+   end if
 
    !  Set the ztodt timestep in pbuf for SILHS
    ztodtptr(:) = 1.0_r8*hdtime
+   recip_hdtime = 1.0_r8/hdtime
 
    ! Define the grid box size.  CLUBB needs this information to determine what
    !  the maximum length scale should be.  This depends on the column for 
@@ -2554,7 +2561,7 @@ end subroutine clubb_init_cnst
      call outfld( 'QITENDICE', qitend, pcols, lchnk )
      call outfld( 'NITENDICE', initend, pcols, lchnk )
    
-   endif
+   end if
 
 
    !  Determine CLUBB time step and make it sub-step friendly
@@ -2573,7 +2580,7 @@ end subroutine clubb_init_cnst
    
    if (dtime > hdtime) then
      dtime = hdtime
-   endif
+   end if
    
    !  Now check to see if CLUBB time step divides evenly into
    !    the host model time step.  If not, force it to divide evenly.
@@ -2586,14 +2593,14 @@ end subroutine clubb_init_cnst
      do while (dtime > clubb_timestep) 
        dtime = dtime/2._r8
      end do
-   endif   
+   end if
 
    !  If resulting host model time step and CLUBB time step do not divide evenly
    !    into each other, have model throw a fit.  
 
    if (mod(hdtime,dtime) .ne. 0) then
      call endrun(subr//':  CLUBB time step and HOST time step NOT compatible')
-   endif
+   end if
    
    !  determine number of timesteps CLUBB core should be advanced, 
    !  host time step divided by CLUBB time step  
@@ -2644,8 +2651,8 @@ end subroutine clubb_init_cnst
             wp3(i,k)     = state1%q(i,k,ixwp3) - (wp3_const*apply_const)
             up2(i,k)     = state1%q(i,k,ixup2)
             vp2(i,k)     = state1%q(i,k,ixvp2)
-          endif
-       endif
+          end if
+       end if
 
      enddo
    enddo
@@ -2657,8 +2664,8 @@ end subroutine clubb_init_cnst
        apply_const = 1._r8 
      else
        apply_const = 0._r8
-     endif
-   endif   
+     end if
+   end if
 
    rtm(1:ncol,pverp)  = rtm(1:ncol,pver)
    um(1:ncol,pverp)   = state1%u(1:ncol,pver)
@@ -2675,7 +2682,7 @@ end subroutine clubb_init_cnst
       wp3(1:ncol,pverp)=wp3(1:ncol,pver)
       up2(1:ncol,pverp)=up2(1:ncol,pver)
       vp2(1:ncol,pverp)=vp2(1:ncol,pver)
-   endif
+   end if
 
    !  Compute virtual potential temperature, which is needed for CLUBB  
    do k=1,pver
@@ -2757,7 +2764,7 @@ end subroutine clubb_init_cnst
       do i=1, ncol
         p_in_Pa(i,k+1)         = state1%pmid(i,pver-k+1)                              ! Pressure profile
         exner(i,k+1)           = 1._r8/inv_exner_clubb(i,pver-k+1)
-        rho_ds_zt(i,k+1)       = (1._r8/gravit)*(state1%pdel(i,pver-k+1)/dz_g(i,pver-k+1))
+        rho_ds_zt(i,k+1)       = (1._r8*rga)*(state1%pdel(i,pver-k+1)/dz_g(i,pver-k+1))
         invrs_rho_ds_zt(i,k+1) = 1._r8/(rho_ds_zt(i,k+1))                             ! Inverse ds rho at thermo
         rho_in(i,k+1)          = rho_ds_zt(i,k+1)                                     ! rho on thermo 
         thv_ds_zt(i,k+1)       = thv(i,pver-k+1)                                      ! thetav on thermo
@@ -2793,7 +2800,7 @@ end subroutine clubb_init_cnst
   
     ! ------------------------------------------------- !
     ! Begin case specific code for SCAM cases.          !
-    ! This section of code block NOT called in          !
+    ! This section of code block is NOT called in       !
     ! global simulations                                !
     ! ------------------------------------------------- !
     if (single_column) then
@@ -2803,7 +2810,7 @@ end subroutine clubb_init_cnst
          zo(1) = 0.035_r8
       else
          zo(1) = 0.0001_r8
-      endif
+      end if
 
       !  Compute surface wind (ubar)
       ubar = sqrt(um(1,pver)**2+vm(1,pver)**2)
@@ -2817,15 +2824,15 @@ end subroutine clubb_init_cnst
   
       if(trim(scm_clubb_iop_name)  ==  'BOMEX_5day') then
          ustar = 0.28_r8
-      endif
+      end if
   
       if(trim(scm_clubb_iop_name)  ==  'ATEX_48hr') then
          ustar = 0.30_r8
-      endif
+      end if
   
       if(trim(scm_clubb_iop_name)  ==  'RICO_3day') then
          ustar      = 0.28_r8
-      endif
+      end if
 
       if(trim(scm_clubb_iop_name)  ==  'arm97' .or. trim(scm_clubb_iop_name)  ==  'gate' .or. &
          trim(scm_clubb_iop_name)  ==  'toga' .or. trim(scm_clubb_iop_name)  ==  'mpace' .or. &
@@ -2833,7 +2840,7 @@ end subroutine clubb_init_cnst
      
            bflx22(1) = (gravit/theta0)*wpthlp_sfc(1)
            ustar  = diag_ustar(zt_g(1,2),bflx22(1),ubar,zo(1))      
-      endif
+      end if
   
       !  Compute the surface momentum fluxes, if this is a SCAM simulation       
       upwp_sfc(1) = -um(1,pver)*ustar**2/ubar
@@ -2956,7 +2963,7 @@ end subroutine clubb_init_cnst
         rcm_inout(i,k)  = rcm(i,pverp-k+1)
         cloud_frac_inout(i,k) = cloud_frac(i,pverp-k+1)
 
-        ! We only need to copy pdf_params from pbuf if this is a restart and the
+        ! We only need to copy pdf_params from pbuf if this is a restart and
         ! we're calling pdf_closure at the end of advance_clubb_core
         if ( is_first_restart_step() &
              .and. clubb_config_flags%ipdf_call_placement .eq. ipdf_post_advance_fields ) then
@@ -3119,7 +3126,7 @@ end subroutine clubb_init_cnst
         edsclr_in(i,1,icnt+2) = edsclr_in(i,2,icnt+2)  
       end do
       
-    endif    
+    end if
 
 
     do t=1,nadv    ! do needed number of "sub" timesteps for each CAM step
@@ -3127,7 +3134,7 @@ end subroutine clubb_init_cnst
       !  Increment the statistics then being stats timestep
       if (l_stats) then
         call stats_begin_timestep_api(t, stats_nsamp, stats_nout)
-      endif
+      end if
 
       !#######################################################################
       !###################### CALL MF DIAGNOSTIC PLUMES ######################
@@ -3518,16 +3525,16 @@ end subroutine clubb_init_cnst
         
         se_upper_a(i) = se_upper_a(i) + (clubb_s(i,k)+0.5_r8*(um(i,k)**2+vm(i,k)**2) &
                         +(latvap+latice)*(rtm(i,k)-rcm(i,k)) &
-                        +(latice)*rcm(i,k))*state1%pdel(i,k)/gravit
+                        +(latice)*rcm(i,k))*state1%pdel(i,k)*rga
                      
         se_upper_b(i) = se_upper_b(i) + (state1%s(i,k)+0.5_r8*(state1%u(i,k)**2+state1%v(i,k)**2) &
                         + (latvap+latice)*state1%q(i,k,ixq) &
-                        + (latice)*state1%q(i,k,ixcldliq))*state1%pdel(i,k)/gravit
+                        + (latice)*state1%q(i,k,ixcldliq))*state1%pdel(i,k)*rga
                      
-        tw_upper_a(i) = tw_upper_a(i) + rtm(i,k)*state1%pdel(i,k)/gravit
+        tw_upper_a(i) = tw_upper_a(i) + rtm(i,k)*state1%pdel(i,k)*rga
         
         tw_upper_b(i) = tw_upper_b(i) + (state1%q(i,k,ixq) &
-                        +state1%q(i,k,ixcldliq))*state1%pdel(i,k)/gravit
+                        +state1%q(i,k,ixcldliq))*state1%pdel(i,k)*rga
       end do
     end do
       
@@ -3598,10 +3605,10 @@ end subroutine clubb_init_cnst
        
     do k=1,pver
       do i=1, ncol
-        se_a(i) = se_a(i) + clubb_s(i,k)*state1%pdel(i,k)/gravit
-        ke_a(i) = ke_a(i) + 0.5_r8*(um(i,k)**2+vm(i,k)**2)*state1%pdel(i,k)/gravit
-        wv_a(i) = wv_a(i) + (rtm(i,k)-rcm(i,k))*state1%pdel(i,k)/gravit
-        wl_a(i) = wl_a(i) + (rcm(i,k))*state1%pdel(i,k)/gravit
+        se_a(i) = se_a(i) + clubb_s(i,k)*state1%pdel(i,k)*rga
+        ke_a(i) = ke_a(i) + 0.5_r8*(um(i,k)**2+vm(i,k)**2)*state1%pdel(i,k)*rga
+        wv_a(i) = wv_a(i) + (rtm(i,k)-rcm(i,k))*state1%pdel(i,k)*rga
+        wl_a(i) = wl_a(i) + (rcm(i,k))*state1%pdel(i,k)*rga
       end do
     end do   
     
@@ -3613,10 +3620,10 @@ end subroutine clubb_init_cnst
     
     do k=1, pver
       do i=1, ncol
-        se_b(i) = se_b(i) + state1%s(i,k)*state1%pdel(i,k)/gravit
-        ke_b(i) = ke_b(i) + 0.5_r8*(state1%u(i,k)**2+state1%v(i,k)**2)*state1%pdel(i,k)/gravit
-        wv_b(i) = wv_b(i) + state1%q(i,k,ixq)*state1%pdel(i,k)/gravit
-        wl_b(i) = wl_b(i) + state1%q(i,k,ixcldliq)*state1%pdel(i,k)/gravit 
+        se_b(i) = se_b(i) + state1%s(i,k)*state1%pdel(i,k)*rga
+        ke_b(i) = ke_b(i) + 0.5_r8*(state1%u(i,k)**2+state1%v(i,k)**2)*state1%pdel(i,k)*rga
+        wv_b(i) = wv_b(i) + state1%q(i,k,ixq)*state1%pdel(i,k)*rga
+        wl_b(i) = wl_b(i) + state1%q(i,k,ixcldliq)*state1%pdel(i,k)*rga 
       end do
     end do
       
@@ -3647,7 +3654,7 @@ end subroutine clubb_init_cnst
           clubb_s(i,k) = clubb_s(i,k) - se_dis(i)*gravit
         end do
       end do
-    endif       
+    end if
       
       
     !  Now compute the tendencies of CLUBB to CAM, note that pverp is the ghost point
@@ -3658,14 +3665,14 @@ end subroutine clubb_init_cnst
     do k=1, pver
       do i=1, ncol
 
-        ptend_loc%u(i,k)          = (um(i,k) - state1%u(i,k))               / hdtime ! east-west wind
-        ptend_loc%v(i,k)          = (vm(i,k) - state1%v(i,k))               / hdtime ! north-south wind
-        ptend_loc%q(i,k,ixq)      = (rtm(i,k) - rcm(i,k)-state1%q(i,k,ixq)) / hdtime ! water vapor
-        ptend_loc%q(i,k,ixcldliq) = (rcm(i,k) - state1%q(i,k,ixcldliq))     / hdtime ! Tendency of liquid water
-        ptend_loc%s(i,k)          = (clubb_s(i,k) - state1%s(i,k))          / hdtime ! Tendency of static energy
+        ptend_loc%u(i,k)          = (um(i,k) - state1%u(i,k))               * recip_hdtime ! east-west wind
+        ptend_loc%v(i,k)          = (vm(i,k) - state1%v(i,k))               * recip_hdtime ! north-south wind
+        ptend_loc%q(i,k,ixq)      = (rtm(i,k) - rcm(i,k)-state1%q(i,k,ixq)) * recip_hdtime ! water vapor
+        ptend_loc%q(i,k,ixcldliq) = (rcm(i,k) - state1%q(i,k,ixcldliq))     * recip_hdtime ! Tendency of liquid water
+        ptend_loc%s(i,k)          = (clubb_s(i,k) - state1%s(i,k))          * recip_hdtime ! Tendency of static energy
 
-        rtm_integral_ltend(i) = rtm_integral_ltend(i) + ptend_loc%q(i,k,ixcldliq)*state1%pdel(i,k)/gravit
-        rtm_integral_vtend(i) = rtm_integral_vtend(i) + ptend_loc%q(i,k,ixq)*state1%pdel(i,k)/gravit
+        rtm_integral_ltend(i) = rtm_integral_ltend(i) + ptend_loc%q(i,k,ixcldliq)*state1%pdel(i,k)*rga
+        rtm_integral_vtend(i) = rtm_integral_vtend(i) + ptend_loc%q(i,k,ixq)*state1%pdel(i,k)*rga
 
       end do
     end do
@@ -3685,15 +3692,15 @@ end subroutine clubb_init_cnst
             wpthlp(i,k)  = wpthlp(i,k)  + wpthlp_const
             wprtp(i,k)   = wprtp(i,k)   + wprtp_const
 
-            ptend_loc%q(i,k,ixthlp2)   = (thlp2(i,k)   - state1%q(i,k,ixthlp2))   / hdtime ! THLP Variance
-            ptend_loc%q(i,k,ixrtp2)    = (rtp2(i,k)    - state1%q(i,k,ixrtp2))    / hdtime ! RTP Variance
-            ptend_loc%q(i,k,ixrtpthlp) = (rtpthlp(i,k) - state1%q(i,k,ixrtpthlp)) / hdtime ! RTP THLP covariance
-            ptend_loc%q(i,k,ixwpthlp)  = (wpthlp(i,k)  - state1%q(i,k,ixwpthlp))  / hdtime ! WPTHLP 
-            ptend_loc%q(i,k,ixwprtp)   = (wprtp(i,k)   - state1%q(i,k,ixwprtp))   / hdtime ! WPRTP
-            ptend_loc%q(i,k,ixwp2)     = (wp2(i,k)     - state1%q(i,k,ixwp2))     / hdtime ! WP2
-            ptend_loc%q(i,k,ixwp3)     = (wp3(i,k)     - state1%q(i,k,ixwp3))     / hdtime ! WP3
-            ptend_loc%q(i,k,ixup2)     = (up2(i,k)     - state1%q(i,k,ixup2))     / hdtime ! UP2
-            ptend_loc%q(i,k,ixvp2)     = (vp2(i,k)     - state1%q(i,k,ixvp2))     / hdtime ! VP2
+            ptend_loc%q(i,k,ixthlp2)   = (thlp2(i,k)   - state1%q(i,k,ixthlp2))   * recip_hdtime ! THLP Variance
+            ptend_loc%q(i,k,ixrtp2)    = (rtp2(i,k)    - state1%q(i,k,ixrtp2))    * recip_hdtime ! RTP Variance
+            ptend_loc%q(i,k,ixrtpthlp) = (rtpthlp(i,k) - state1%q(i,k,ixrtpthlp)) * recip_hdtime ! RTP THLP covariance
+            ptend_loc%q(i,k,ixwpthlp)  = (wpthlp(i,k)  - state1%q(i,k,ixwpthlp))  * recip_hdtime ! WPTHLP 
+            ptend_loc%q(i,k,ixwprtp)   = (wprtp(i,k)   - state1%q(i,k,ixwprtp))   * recip_hdtime ! WPRTP
+            ptend_loc%q(i,k,ixwp2)     = (wp2(i,k)     - state1%q(i,k,ixwp2))     * recip_hdtime ! WP2
+            ptend_loc%q(i,k,ixwp3)     = (wp3(i,k)     - state1%q(i,k,ixwp3))     * recip_hdtime ! WP3
+            ptend_loc%q(i,k,ixup2)     = (up2(i,k)     - state1%q(i,k,ixup2))     * recip_hdtime ! UP2
+            ptend_loc%q(i,k,ixvp2)     = (vp2(i,k)     - state1%q(i,k,ixvp2))     * recip_hdtime ! VP2
             
           end do
         end do
@@ -3733,7 +3740,7 @@ end subroutine clubb_init_cnst
             
           do k=1, pver
             do i=1, ncol
-              ptend_loc%q(i,k,ixind) = (edsclr_out(i,k,icnt)-state1%q(i,k,ixind))/hdtime ! transported constituents 
+              ptend_loc%q(i,k,ixind) = (edsclr_out(i,k,icnt)-state1%q(i,k,ixind))*recip_hdtime ! transported constituents 
             end do
           end do
               
@@ -3878,7 +3885,7 @@ end subroutine clubb_init_cnst
             dum1 = 1.0_r8
          else
             dum1 = ( meltpt_temp - state1%t(i,k) ) / ( meltpt_temp - dt_low ) 
-         endif
+         end if
 
          if (zmconv_microp) then
             ptend_loc%q(i,k,ixcldliq) = dlfzm(i,k) + dlf2(i,k) * ( 1._r8 - dum1 )
@@ -3910,8 +3917,8 @@ end subroutine clubb_init_cnst
          ! Only rliq is saved from deep convection, which is the reserved liquid.  We need to keep
          !   track of the integrals of ice and static energy that is effected from conversion to ice
          !   so that the energy checker doesn't complain.
-         det_s(i)                  = det_s(i) + ptend_loc%s(i,k)*state1%pdel(i,k)/gravit
-         det_ice(i)                = det_ice(i) - ptend_loc%q(i,k,ixcldice)*state1%pdel(i,k)/gravit
+         det_s(i)                  = det_s(i) + ptend_loc%s(i,k)*state1%pdel(i,k)*rga
+         det_ice(i)                = det_ice(i) - ptend_loc%q(i,k,ixcldice)*state1%pdel(i,k)*rga
  
       enddo
    enddo
@@ -3949,14 +3956,14 @@ end subroutine clubb_init_cnst
       relvarmax = 2.0_r8
    else
       relvarmax = 10.0_r8
-   endif
+   end if
    
    relvar(:,:) = relvarmax  ! default
 
    if (deep_scheme .ne. 'CLUBB_SGS') then    
       where (rcm(:ncol,:pver) /= 0 .and. qclvar(:ncol,:pver) /= 0) &
           relvar(:ncol,:pver) = min(relvarmax,max(0.001_r8,rcm(:ncol,:pver)**2/qclvar(:ncol,:pver)))
-   endif
+   end if
    
    ! ------------------------------------------------- !
    ! Optional Accretion enhancement factor             !
@@ -4011,9 +4018,13 @@ end subroutine clubb_init_cnst
    !  FIRST PART COMPUTES THE STRATIFORM CLOUD FRACTION FROM CLUBB CLOUD FRACTION      !
    ! --------------------------------------------------------------------------------- ! 
  
-   !  initialize variables 
-   alst(:,:) = 0.0_r8
-   qlst(:,:) = 0.0_r8 
+!  initialize variables
+   do k=1,pver
+      do i=1,ncol
+         alst(i,k) = 0.0_r8
+         qlst(i,k) = 0.0_r8
+      enddo
+   enddo
  
    do k=1,pver
       do i=1,ncol
@@ -4027,8 +4038,12 @@ end subroutine clubb_init_cnst
    ! --------------------------------------------------------------------------------- ! 
  
    ! Initialize cloud fraction
-   deepcu(:,:) = 0.0_r8
-   shalcu(:,:) = 0.0_r8
+   do k=1,pver-1
+      do i=1,ncol
+         deepcu(i,k) = 0.0_r8
+         shalcu(i,k) = 0.0_r8
+      end do
+   end do
  
    do k=1,pver-1
       do i=1,ncol
@@ -4041,7 +4056,7 @@ end subroutine clubb_init_cnst
        
          if (deepcu(i,k) <= frac_limit .or. dp_icwmr(i,k) < ic_limit) then
             deepcu(i,k) = 0._r8
-         endif
+         end if
              
          !  using the deep convective cloud fraction, and CLUBB cloud fraction (variable 
          !  "cloud_frac"), compute the convective cloud fraction.  This follows the formulation
@@ -4062,8 +4077,8 @@ end subroutine clubb_init_cnst
              deepcu(:,:) = 0.0_r8
              concld(:,:) = 0.0_r8
        
-      endif       
-   endif
+      end if
+   end if
    
    ! --------------------------------------------------------------------------------- !  
    !  COMPUTE THE ICE CLOUD FRACTION PORTION                                           !
@@ -4098,7 +4113,7 @@ end subroutine clubb_init_cnst
          call aist_vector(state1%q(:,k,ixq),state1%t(:,k),state1%pmid(:,k),state1%q(:,k,ixcldice), &
               state1%q(:,k,ixnumice), cam_in%landfrac(:),cam_in%snowhland(:),aist(:,k),ncol,&
               qsatfac_out=qsatfac(:,k), rhmini_in=rhmini, rhmaxi_in=rhmaxi)
-      endif
+      end if
    enddo
   
    ! --------------------------------------------------------------------------------- !  
@@ -4143,7 +4158,7 @@ end subroutine clubb_init_cnst
    enddo
  
    ! diagnose surface friction and obukhov length (inputs to diagnose PBL depth)
-   rrho(1:ncol) = (1._r8/gravit)*(state1%pdel(1:ncol,pver)/dz_g(1:ncol,pver)) 
+   rrho(1:ncol) = (rga)*(state1%pdel(1:ncol,pver)/dz_g(1:ncol,pver))
    call calc_ustar( ncol, state1%t(1:ncol,pver), state1%pmid(1:ncol,pver), cam_in%wsx(1:ncol), cam_in%wsy(1:ncol), &
                     rrho(1:ncol), ustar2(1:ncol))
    ! use correct qflux from coupler
@@ -4288,13 +4303,13 @@ end subroutine clubb_init_cnst
          do j=1,stats_rad_zm(1)%num_output_fields
             call outfld(trim(stats_rad_zm(1)%file%grid_avg_var(j)%name), out_radzm(:,:,j), pcols, lchnk)
          enddo
-      endif
+      end if
    
       do j=1,stats_sfc(1)%num_output_fields
          call outfld(trim(stats_sfc(1)%file%grid_avg_var(j)%name), out_sfc(:,:,j), pcols, lchnk)
       enddo
    
-   endif
+   end if
    
    call t_stopf("clubb_tend_cam")
    
@@ -4423,7 +4438,7 @@ if (abs(bflx) > 1.e-6_r8) then
             ustar = wnd*vonk/(lnz - psi1)
          end if
 
-      endif
+      end if
 
    end do
 end if
@@ -4637,7 +4652,7 @@ end function diag_ustar
                         'model.in file.'
        write(fstderr,*) 'stats_tsamp = ', stats_tsamp
        write(fstderr,*) 'delt = ', delt
-    endif
+    end if
 
     !  Initialize zt (mass points)
 
@@ -4655,21 +4670,31 @@ end function diag_ustar
                         "in the stats namelist, or change nvarmax_zt."
        write(fstderr,*) "nvarmax_zt = ", nvarmax_zt
        call endrun ("stats_init_clubb:  number of zt statistical variables exceeds limit")
-    endif
+    end if
 
     stats_zt%num_output_fields = ntot
     stats_zt%kk = nnzp
 
-    allocate( stats_zt%z( stats_zt%kk ) )
+      allocate( stats_zt%z( stats_zt%kk ), stat=ierr )
+      if( ierr /= 0) call endrun('clubb_intr: failed to allocate stats_zt%z')
 
-    allocate( stats_zt%accum_field_values( 1, 1, stats_zt%kk, stats_zt%num_output_fields ) )
-    allocate( stats_zt%accum_num_samples( 1, 1, stats_zt%kk, stats_zt%num_output_fields ) )
-    allocate( stats_zt%l_in_update( 1, 1, stats_zt%kk, stats_zt%num_output_fields ) )
-    call stats_zero( stats_zt%kk, stats_zt%num_output_fields, stats_zt%accum_field_values, &
-                     stats_zt%accum_num_samples, stats_zt%l_in_update )
+      allocate( stats_zt%accum_field_values( 1, 1, stats_zt%kk, stats_zt%num_output_fields ), stat=ierr )
+      if( ierr /= 0) call endrun('clubb_intr: failed to allocate stats_zt%accum_field_values')
 
-    allocate( stats_zt%file%grid_avg_var( stats_zt%num_output_fields ) )
-    allocate( stats_zt%file%z( stats_zt%kk ) )
+      allocate( stats_zt%accum_num_samples( 1, 1, stats_zt%kk, stats_zt%num_output_fields ), stat=ierr )
+      if( ierr /= 0) call endrun('clubb_intr: failed to allocate stats_zt%accum_num_samples')
+
+      allocate( stats_zt%l_in_update( 1, 1, stats_zt%kk, stats_zt%num_output_fields ), stat=ierr )
+      if( ierr /= 0) call endrun('clubb_intr: failed to allocate stats_zt%l_in_update')
+
+     call stats_zero( stats_zt%kk, stats_zt%num_output_fields, stats_zt%accum_field_values, &
+                      stats_zt%accum_num_samples, stats_zt%l_in_update )
+      
+      allocate( stats_zt%file%grid_avg_var( stats_zt%num_output_fields ), stat=ierr )
+      if( ierr /= 0) call endrun('clubb_intr: failed to allocate stats_zt%file%grid_avg_var')
+
+      allocate( stats_zt%file%z( stats_zt%kk ), stat=ierr )
+      if( ierr /= 0) call endrun('clubb_intr: failed to allocate stats_zt%file%z')
 
     first_call = (.not. allocated(ztscr01))
 
@@ -4740,21 +4765,26 @@ end function diag_ustar
                         "in the stats namelist, or change nvarmax_zm."
        write(fstderr,*) "nvarmax_zm = ", nvarmax_zm
        call endrun ("stats_init_clubb:  number of zm statistical variables exceeds limit")
-    endif
+    end if
 
     stats_zm%num_output_fields = ntot
     stats_zm%kk = nnzp
 
-    allocate( stats_zm%z( stats_zm%kk ) )
-
-    allocate( stats_zm%accum_field_values( 1, 1, stats_zm%kk, stats_zm%num_output_fields ) )
-    allocate( stats_zm%accum_num_samples( 1, 1, stats_zm%kk, stats_zm%num_output_fields ) )
-    allocate( stats_zm%l_in_update( 1, 1, stats_zm%kk, stats_zm%num_output_fields ) )
+    allocate( stats_zm%z( stats_zm%kk ), stat=ierr )
+    if( ierr /= 0) call endrun('clubb_intr: failed to allocate stats_zm%kk')
+    allocate( stats_zm%accum_num_samples( 1, 1, stats_zm%kk, stats_zm%num_output_fields ), &
+              stat=ierr)
+    if( ierr /= 0) call endrun('clubb_intr: failed to allocate stats_zm%accum_num_samples')
+    allocate( stats_zm%l_in_update( 1, 1, stats_zm%kk, stats_zm%num_output_fields ), &
+              stat=ierr)
+    if( ierr /= 0) call endrun('clubb_intr: failed to allocate stats_zm%l_in_update')
     call stats_zero( stats_zm%kk, stats_zm%num_output_fields, stats_zm%accum_field_values, &
                      stats_zm%accum_num_samples, stats_zm%l_in_update )
 
-    allocate( stats_zm%file%grid_avg_var( stats_zm%num_output_fields ) )
-    allocate( stats_zm%file%z( stats_zm%kk ) )
+    allocate( stats_zm%file%grid_avg_var( stats_zm%num_output_fields ), stat=ierr )
+    if( ierr /= 0) call endrun('clubb_intr: failed to allocate stats_zm%file%grid_avg_var')
+    allocate( stats_zm%file%z( stats_zm%kk ), stat=ierr )
+    if( ierr /= 0) call endrun('clubb_intr: failed to allocate stats_zm%file%z')
 
     !  Allocate scratch space
 
@@ -4817,7 +4847,7 @@ end function diag_ustar
                            "in the stats namelist, or change nvarmax_rad_zt."
           write(fstderr,*) "nvarmax_rad_zt = ", nvarmax_rad_zt
           call endrun ("stats_init_clubb:  number of rad_zt statistical variables exceeds limit")
-       endif
+       end if
 
       stats_rad_zt%num_output_fields = ntot
       stats_rad_zt%kk = nnrad_zt
@@ -4853,7 +4883,7 @@ end function diag_ustar
                            "in the stats namelist, or change nvarmax_rad_zm."
           write(fstderr,*) "nvarmax_rad_zm = ", nvarmax_rad_zm
           call endrun ("stats_init_clubb:  number of rad_zm statistical variables exceeds limit")
-       endif
+       end if
 
        stats_rad_zm%num_output_fields = ntot
        stats_rad_zm%kk = nnrad_zm
@@ -4891,7 +4921,7 @@ end function diag_ustar
                         "in the stats namelist, or change nvarmax_sfc."
        write(fstderr,*) "nvarmax_sfc = ", nvarmax_sfc
        call endrun ("stats_init_clubb:  number of sfc statistical variables exceeds limit")
-    endif
+    end if
 
     stats_sfc%num_output_fields = ntot
     stats_sfc%kk = 1
@@ -4917,7 +4947,7 @@ end function diag_ustar
 
     if ( l_error ) then
        call endrun ('stats_init:  errors found')
-    endif
+    end if
 
 !   Now call add fields
     if (first_call) then
@@ -4953,7 +4983,7 @@ end function diag_ustar
             call addfld(trim(stats_rad_zm%file%grid_avg_var(i)%name),(/ 'ilev' /),&
                'A',trim(stats_rad_zm%file%grid_avg_var(i)%units),trim(stats_rad_zm%file%grid_avg_var(i)%description))
          enddo
-      endif 
+      end if
       
       do i = 1, stats_sfc%num_output_fields
          call addfld(trim(stats_sfc%file%grid_avg_var(i)%name),horiz_only,&
@@ -5074,7 +5104,7 @@ end function diag_ustar
       out_radzt(thecol,:top_lev-1,:) = 0.0_r8
       out_radzm(thecol,:top_lev-1,:) = 0.0_r8
 
-    endif ! l_output_rad_files
+    end if ! l_output_rad_files
     
     do i = 1, stats_sfc%num_output_fields
       out_sfc(thecol,1,i) = stats_sfc%accum_field_values(1,1,1,i)   
