@@ -1684,7 +1684,7 @@ contains
              call physics_tend_alloc(tend_sc, psubcols*pcols)
 
              ! Generate sub-columns using the requested scheme
-             call init_state_subcol(state, tend, state_sc, tend_sc)
+             if (trim(subcol_scheme) == 'SILHS') call init_state_subcol(state, tend, state_sc, tend_sc)
              call subcol_gen(state, tend, state_sc, tend_sc, pbuf)
 
              !Initialize check energy for subcolumns
