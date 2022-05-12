@@ -571,7 +571,7 @@ CONTAINS
       ! Local variables
       integer  :: idx, kdx, m_cnst, qdx
       real(r8) :: factor(SIZE(tracer, 1), SIZE(tracer, 2))
-      real(r8) :: residual(SIZE(tracer, 1), SIZE(tracer, 2))
+      real(r8) :: residual(SIZE(R_dry, 1), SIZE(R_dry, 2))
       real(r8) :: mmr
 
       if (dry_air_species_num == 0) then
@@ -590,8 +590,8 @@ CONTAINS
          residual = 1.0_r8
          do qdx = 1, dry_air_species_num
             m_cnst = active_species_idx_dycore(qdx)
-            do kdx = 1, SIZE(tracer, 2)
-               do idx = 1, SIZE(tracer, 1)
+            do kdx = 1, SIZE(R_dry, 2)
+               do idx = 1, SIZE(R_dry, 1)
                   mmr = tracer(idx, kdx, m_cnst) * factor(idx, kdx)
                   R_dry(idx, kdx) = R_dry(idx, kdx) +                         &
                        (thermodynamic_active_species_R(qdx) * mmr)
@@ -603,8 +603,8 @@ CONTAINS
          ! N2 derived from the others
          !
          qdx = 0
-         do kdx = 1, SIZE(tracer, 2)
-            do idx = 1, SIZE(tracer, 1)
+         do kdx = 1, SIZE(R_dry, 2)
+            do idx = 1, SIZE(R_dry, 1)
                R_dry(idx, kdx) = R_dry(idx, kdx) +                            &
                     (thermodynamic_active_species_R(qdx) * residual(idx, kdx))
             end do
@@ -666,7 +666,7 @@ CONTAINS
       ! Local variables
       integer  :: qdx, itrac
       real(r8) :: factor(SIZE(tracer, 1), SIZE(tracer, 2))
-      real(r8) :: sum_species(SIZE(tracer, 1), SIZE(tracer, 2))
+      real(r8) :: sum_species(SIZE(R, 1), SIZE(R, 2))
       integer  :: idx_local(thermodynamic_active_species_num)
 
       character(len=*), parameter :: subname = 'get_R_1hd: '
@@ -1187,7 +1187,7 @@ CONTAINS
      real(r8), optional, intent(out) :: dp(:,:)                  ! presure level thickness
 
      real(r8) :: dp_local(SIZE(tracer, 1), SIZE(tracer, 2))      ! local pressure level thickness
-     real(r8) :: pint_local(SIZE(tracer, 1), SIZE(tracer, 2))    ! local interface pressure
+     real(r8) :: pint_local(SIZE(tracer, 1), SIZE(tracer, 2) + 1)! local interface pressure
      integer  :: kdx
 
      call get_dp(tracer, mixing_ratio, active_species_idx, dp_dry, dp_local)
@@ -1538,8 +1538,8 @@ CONTAINS
      real(r8), optional, intent(in) :: fact(:,:)                 !factor for converting tracer to dry mixing ratio
 
      integer :: idx, kdx, m_cnst, nq
-     real(r8):: factor(SIZE(tracer, 1), SIZE(tracer, 2))
-     real(r8):: residual(SIZE(tracer, 1), SIZE(tracer, 2))
+     real(r8):: factor(SIZE(mbarv, 1), SIZE(mbarv, 2))
+     real(r8):: residual(SIZE(tracer, 1), SIZE(mbarv, 2))
      real(r8):: mm
      !
      ! dry air not species dependent
@@ -1557,8 +1557,8 @@ CONTAINS
        residual = 1.0_r8
        do nq = 1, dry_air_species_num
          m_cnst = active_species_idx(nq)
-         do kdx = 1, SIZE(tracer, 2)
-           do idx = 1, SIZE(tracer, 1)
+         do kdx = 1, SIZE(mbarv, 2)
+           do idx = 1, SIZE(mbarv, 1)
              mm = tracer(idx, kdx, m_cnst) * factor(idx, kdx)
              mbarv(idx, kdx) = mbarv(idx, kdx) + thermodynamic_active_species_mwi(nq) * mm
              residual(idx, kdx) = residual(idx, kdx) - mm
@@ -1566,8 +1566,8 @@ CONTAINS
          end do
        end do
        nq = 0 ! N2
-       do kdx = 1, SIZE(tracer, 2)
-         do idx = 1, SIZE(tracer, 1)
+       do kdx = 1, SIZE(mbarv, 2)
+         do idx = 1, SIZE(mbarv, 1)
            mbarv(idx, kdx) = mbarv(idx, kdx) + thermodynamic_active_species_mwi(nq) * residual(idx, kdx)
          end do
        end do
@@ -1601,11 +1601,11 @@ CONTAINS
      if (dry_air_species_num==0) then
        kappa_dry = rair / cpair
      else
-       allocate(R_dry(SIZE(tracer, 1), SIZE(tracer, 2)), stat=ierr)
+       allocate(R_dry(SIZE(kappa_dry, 1), SIZE(kappa_dry, 2)), stat=ierr)
        if (ierr /= 0) then
          call endrun(errstr//"R_dry")
        end if
-       allocate(cp_dry(SIZE(tracer, 1), SIZE(tracer, 2)), stat=ierr)
+       allocate(cp_dry(SIZE(kappa_dry, 1), SIZE(kappa_dry, 2)), stat=ierr)
        if (ierr /= 0) then
          call endrun(errstr//"cp_dry")
        end if
@@ -1761,8 +1761,8 @@ CONTAINS
        else
          call get_R_dry(tracer, idx_local, R_dry)
        end if
-       do kdx = 1, SIZE(tracer, 2)
-         do idx = 1, SIZE(tracer, 1)
+       do kdx = 1, SIZE(rho_dry, 2)
+         do idx = 1, SIZE(rho_dry, 1)
            rho_dry(idx, kdx) = pmid(idx, kdx) / (temp(idx, kdx) * R_dry(idx, kdx)) !ideal gas law for dry air
          end do
        end do
@@ -1894,7 +1894,7 @@ CONTAINS
      integer :: idx, kdx, icnst, ispecies
      real(r8):: mbarvi, mm, residual             ! Mean mass at mid level
      real(r8):: cnst_vis, cnst_cnd, temp_local
-     real(r8), dimension(SIZE(tracer,1), SIZE(tracer, 2))        :: factor, mbarv
+     real(r8), dimension(SIZE(tracer,1), SIZE(sponge_factor, 1))        :: factor, mbarv
      integer,  dimension(thermodynamic_active_species_num)     :: idx_local
      character(len=*), parameter :: subname = 'get_molecular_diff_coef_1hd: '
 
@@ -1907,7 +1907,7 @@ CONTAINS
        cnst_vis = (kv1 * mmro2 * o2_mwi + kv2 * mmrn2 * n2_mwi) * mbar * 1.e-7_r8
        cnst_cnd = (kc1 * mmro2 * o2_mwi + kc2 * mmrn2 * n2_mwi) * mbar * 1.e-5_r8
        if (get_at_interfaces==1) then
-           do kdx = 2, SIZE(tracer, 2)
+           do kdx = 2, SIZE(sponge_factor, 1)
              do idx = 1, SIZE(tracer, 1)
                temp_local   = 0.5_r8 * (temp(idx, kdx) + temp(idx, kdx - 1))
                kmvis(idx, kdx) = sponge_factor(kdx) * cnst_vis * temp_local ** kv4
@@ -1920,7 +1920,7 @@ CONTAINS
            kmvis(1:SIZE(tracer, 1), 1) = 1.5_r8 * kmvis(1:SIZE(tracer, 1), 2) - 0.5_r8 * kmvis(1:SIZE(tracer, 1), 3)
            kmcnd(1:SIZE(tracer, 1), 1) = 1.5_r8 * kmcnd(1:SIZE(tracer, 1), 2) - 0.5_r8 * kmcnd(1:SIZE(tracer, 1), 3)
        else if (get_at_interfaces == 0) then
-         do kdx = 1, SIZE(tracer, 2)
+         do kdx = 1, SIZE(sponge_factor, 1)
            do idx = 1, SIZE(tracer, 1)
              kmvis(idx, kdx) = sponge_factor(kdx) * cnst_vis * temp(idx, kdx) ** kv4
              kmcnd(idx, kdx) = sponge_factor(kdx) * cnst_cnd * temp(idx, kdx) ** kc4
@@ -1949,7 +1949,7 @@ CONTAINS
        ! major species dependent code
        !
        if (get_at_interfaces == 1) then
-         do kdx = 2, SIZE(tracer, 2)
+         do kdx = 2, SIZE(sponge_factor, 1)
            do idx = 1, SIZE(tracer, 1)
              kmvis(idx, kdx) = 0.0_r8
              kmcnd(idx, kdx) = 0.0_r8
@@ -1978,11 +1978,11 @@ CONTAINS
          do idx = 1, SIZE(tracer, 1)
            kmvis(idx, 1) = 1.5_r8 * kmvis(idx, 2) - .5_r8 * kmvis(idx, 3)
            kmcnd(idx, 1) = 1.5_r8 * kmcnd(idx, 2) - .5_r8 * kmcnd(idx, 3)
-           kmvis(idx, SIZE(tracer, 2) + 1) = kmvis(idx, SIZE(tracer, 2))
-           kmcnd(idx, SIZE(tracer, 2) + 1) = kmcnd(idx, SIZE(tracer, 2))
+           kmvis(idx, SIZE(sponge_factor, 1) + 1) = kmvis(idx, SIZE(sponge_factor, 1))
+           kmcnd(idx, SIZE(sponge_factor, 1) + 1) = kmcnd(idx, SIZE(sponge_factor, 1))
          end do
        else if (get_at_interfaces == 0) then
-         do kdx = 1, SIZE(tracer, 2)
+         do kdx = 1, SIZE(sponge_factor, 1)
            do idx = 1, SIZE(tracer, 1)
              kmvis(idx, kdx) = 0.0_r8
              kmcnd(idx, kdx) = 0.0_r8
