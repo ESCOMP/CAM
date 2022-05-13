@@ -7,6 +7,7 @@ module nlte_aliarms
   use shr_kind_mod,       only: r8 => shr_kind_r8
   use cam_logfile,        only: iulog
   use spmd_utils,         only: masterproc
+  use iso_c_binding,      only: c_float, c_int
 
   implicit none
   private
@@ -17,7 +18,8 @@ module nlte_aliarms
      nlte_aliarms_init, &
      nlte_aliarms_calc
 
-  real(r8) :: max_pressure_aliarms = -huge(1.0_r8)  ! max_pressure_lw scaled bar
+
+  integer(c_int) :: pver_c                     ! pver for the ALI_ARMS C code (limited by max_pressure_lw)
 
   real(r8) :: o1_mw_inv                        ! O molecular weight (inverse)
   real(r8) :: o2_mw_inv                        ! O2 molecular weight (inverse)
@@ -33,6 +35,7 @@ contains
 !-----------------------------------------------------------------
 
   use cam_history,  only: addfld
+  use ref_pres,      only: pref_mid
 
   real(r8), intent(in)  :: max_pressure_lw  ! Pa
   real(r8), intent(in) :: o1_mw             ! O molecular weight
@@ -40,19 +43,27 @@ contains
   real(r8), intent(in) :: co2_mw            ! CO2 molecular weight
   real(r8), intent(in) :: n2_mw             ! N2 molecular weight
 
+  integer :: iver
+
   if (masterproc) then
     write(iulog,*) 'init: ALI-ARMS non-LTE code'
   end if
 
   call addfld ('ALIARMS_Q',(/ 'lev' /), 'A','K/s','Non-LTE LW CO2 heating rate')
 
-  ! Scale the max_pressure_aliarms to bar
-  max_pressure_aliarms = max_pressure_lw * 1.e-05_r8
-
   co2_mw_inv = 1._r8/co2_mw
   o1_mw_inv  = 1._r8/o1_mw
   o2_mw_inv  = 1._r8/o2_mw
   n2_mw_inv  = 1._r8/n2_mw
+
+  pver_c=0
+  do iver = 1,pver
+    if (pref_mid(iver) < max_pressure_lw) then
+      pver_c=pver_c+1
+    else
+      exit  ! Have gone past the maximum pressure
+    end if
+  end do
 
   end subroutine nlte_aliarms_init
 
@@ -65,7 +76,6 @@ contains
 
   use physconst,     only: mbarv
   use cam_history,   only: outfld
-  use iso_c_binding, only: c_float, c_int
   use shr_infnan_mod, only: is_nan => shr_infnan_isnan
   use cam_abortutils,     only: endrun
 
@@ -87,11 +97,9 @@ contains
 
 ! local variables
 
-  real(c_float), dimension(pver) :: p, tn, zkm
-  real(c_float), dimension(pver) :: co2_vmr, o_vmr, n2_vmr, o2_vmr
-  real(c_float), dimension(pver) :: ali_cool
-
-  integer(c_int) :: pver_c
+  real(c_float), dimension(pver_c) :: p, tn, zkm
+  real(c_float), dimension(pver_c) :: co2_vmr, o_vmr, n2_vmr, o2_vmr
+  real(c_float), dimension(pver_c) :: ali_cool
 
   integer :: icol, iver, i, j
 
@@ -120,15 +128,7 @@ contains
       n2_vmr(:)   = 0.0_c_float
       o2_vmr(:)   = 0.0_c_float
 
-      p = pmid(icol,:)*1.0e-5_c_float ! convert pmid in Pa to bars
-      pver_c=0
-      do iver = 1,pver
-        if (p(iver) < max_pressure_aliarms) then
-          pver_c=pver_c+1
-        else
-          exit  ! Have gone past the maximum pressure
-        end if
-      end do
+      p(:pver_c) = pmid(icol,:pver_c)*1.0e-5_c_float ! convert pmid in Pa to bars
       zkm(:pver_c) = state_zm(icol,:pver_c)*1.e-3_c_float
       tn(:pver_c) = t(icol,:pver_c)
 
