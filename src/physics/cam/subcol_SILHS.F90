@@ -33,7 +33,7 @@ module subcol_SILHS
         silhs_config_flags_type
 #endif
 #endif
-   use physconst,     only: cpair, gravit, latvap, latice, rair
+   use physconst,     only: cpair, gravit, latvap, latice, rair, rga, cappa
 
    implicit none
    private
@@ -262,7 +262,6 @@ contains
                                                    silhs_config_flags )
 
       ! Print the SILHS configurable flags
-      !write(iulog,'(a,i0,a)') " SILHS configurable flags set in thread ", iam, ":"
       call print_silhs_config_flags_api( iulog, silhs_config_flags ) ! Intent(in)
 
 #ifdef SPMD
@@ -925,13 +924,8 @@ contains
       ! for SILHS here and then set again for CLUBB in subroutine clubb_tend_cam.
       gr%nz = pverp - top_lev + 1
       
-      ! Calculate radiation only once in a while
-      ! l_rad_itime = (mod( itime, floor(dt_rad/dt_main) ) == 0 .or. itime == 1)  
-
       ! Calculate sample weights separately at all grid levels when
       ! radiation is not called  
-      ! l_calc_weights_all_levs_itime = l_calc_weights_all_levs .and. .not.
-      ! l_rad_itime  
       l_calc_weights_all_levs_itime = .false. ! subcol_utils cannot compute weighted avgs
                                               !   when the weights vary with height.   
                                               !   Don't set to true until this is fixed!!
@@ -965,8 +959,8 @@ contains
       
       !  Heights need to be set at each timestep.
       do i=1, ncol
-        call setup_grid_api( pver + 1 - top_lev, sfc_elevation(i), l_implemented,         & ! intent(in)
-                             grid_type, zi_g(i,2), zi_g(i,1), zi_g(i,pver + 1 - top_lev+1), & ! intent(in)
+        call setup_grid_api( pverp - top_lev, sfc_elevation(i), l_implemented,         & ! intent(in)
+                             grid_type, zi_g(i,2), zi_g(i,1), zi_g(i,pverp - top_lev+1), & ! intent(in)
                              zi_g(i,:), zt_g(i,:),                            & ! intent(in)
                              gr(i), begin_height, end_height )                  ! intent(out)
       end do
@@ -992,7 +986,7 @@ contains
       ! Compute dry static density on CLUBB vertical grid
       do k = 1, pver-top_lev+1
         do i = 1, ngrdcol
-          rho_ds_zt(i,k+1) = (1._r8/gravit)*state%pdel(i,pver-k+1)/dz_g(i,pver-k+1)
+          rho_ds_zt(i,k+1) = (rga)*state%pdel(i,pverp-k)/dz_g(i,pverp-k)
           
           ! CLUBB ghost point under the surface
           rho_ds_zt(i,1) = rho_ds_zt(i,2)
@@ -1117,7 +1111,7 @@ contains
       !  the subcolumn state)
       do k = 1, pver-top_lev+1
         do i = 1, ngrdcol
-          invs_exner(i,k) = ((state%pmid(i,k)/p0_clubb)**(rair/cpair))
+          invs_exner(i,k) = ((state%pmid(i,k)/p0_clubb)**(cappa))
         end do
       end do
      
@@ -1262,15 +1256,6 @@ contains
        
       if ( l_est_kessler_microphys ) then
         call endrun('subcol_SILHS: l_est_kessler_microphys = T is not currently supported')
-        !do i = 1, ngrdcol
-          ! Test subcolumns by comparing to an estimate of kessler autoconversion
-        !  call est_kessler_microphys_api &
-        !        ( pverp-top_lev+1, num_subcols, pdf_dim, X_nl_all_levs(i,:,:,:), &
-        !          pdf_params_chnk(i,lchnk), &
-        !          rcm_in(i,:), cld_frac_in(i,:), X_mixt_comp_all_levs(i,:,:), lh_sample_point_weights(i,:,:), &
-        !          silhs_config_flags%l_lh_importance_sampling, &
-        !          lh_AKm(i,:), AKm(i,:), AKstd(i,:), AKstd_cld(i,:), AKm_rcm(i,:), AKm_rcc(i,:), lh_rcm_avg(i,:))
-        !end do
       end if
 
       !-------------------------------------------------------------------------
@@ -1500,10 +1485,12 @@ contains
             do i = 1, ngrdcol
               state_sc%q(num_subcols*(i-1)+j,k,ixcldliq) = state%q(i,k,ixcldliq)
               state_sc%q(num_subcols*(i-1)+j,k,ixcldice) = state%q(i,k,ixcldice)
-              if (ixrain > 0) &
-                state_sc%q(num_subcols*(i-1)+j,k,ixrain) = state%q(i,k,ixrain)
-              if (ixsnow > 0) &
-                state_sc%q(num_subcols*(i-1)+j,k,ixsnow) = state%q(i,k,ixsnow)
+              if (ixrain > 0) then
+                 state_sc%q(num_subcols*(i-1)+j,k,ixrain) = state%q(i,k,ixrain)
+              end if
+              if (ixsnow > 0) then
+                 state_sc%q(num_subcols*(i-1)+j,k,ixsnow) = state%q(i,k,ixsnow)
+              end if
             end do
           end do
         end do
@@ -1557,10 +1544,12 @@ contains
             do i = 1, ngrdcol
               state_sc%q(num_subcols*(i-1)+j,k,ixnumliq) = state%q(i,k,ixnumliq)
               state_sc%q(num_subcols*(i-1)+j,k,ixnumice) = state%q(i,k,ixnumice)
-              if (ixnumrain > 0) &
-                state_sc%q(num_subcols*(i-1)+j,k,ixnumrain) = state%q(i,k,ixnumrain)
-              if (ixnumsnow > 0) &
-                state_sc%q(num_subcols*(i-1)+j,k,ixnumsnow) = state%q(i,k,ixnumsnow)
+              if (ixnumrain > 0) then
+                 state_sc%q(num_subcols*(i-1)+j,k,ixnumrain) = state%q(i,k,ixnumrain)
+              end if
+              if (ixnumsnow > 0) then
+                 state_sc%q(num_subcols*(i-1)+j,k,ixnumsnow) = state%q(i,k,ixnumsnow)
+              end if
             end do
           end do
         end do
@@ -1592,8 +1581,8 @@ contains
         do k = 1, pver-top_lev+1
           do j = 1, num_subcols   
             do i = 1, ngrdcol   
-              if(state_sc%q(num_subcols*(i-1)+j,k,ixnumrain) .lt. min_num_conc) then
-                 state_sc%q(num_subcols*(i-1)+j,k,ixnumrain) = min_num_conc
+               if(state_sc%q(num_subcols*(i-1)+j,k,ixnumrain) .lt. min_num_conc) then
+                  state_sc%q(num_subcols*(i-1)+j,k,ixnumrain) = min_num_conc
                end if
             end do
           end do
@@ -1782,7 +1771,7 @@ contains
        wpthlp_mc_zt_idx,  &
        rtpthlp_mc_zt_idx
        
-     type(pdf_parameter):: pdf_params_single_col
+     type(pdf_parameter) :: pdf_params_single_col
 
      !----- Begin Code -----
      
@@ -1844,7 +1833,7 @@ contains
            ! Compute dry static density on CLUBB vertical grid
            do k = top_lev, pver
               dz_g(igrdcol,isubcol,k) = zi_all(igrdcol,isubcol,k) - zi_all(igrdcol,isubcol,k+1) ! thickness
-              rho(igrdcol,isubcol,k) = (1._r8/gravit)*pdel_all(igrdcol,isubcol,k)/dz_g(igrdcol,isubcol,k)
+              rho(igrdcol,isubcol,k) = (rga)*pdel_all(igrdcol,isubcol,k)/dz_g(igrdcol,isubcol,k)
            end do
 
            ! Compute w from omega
@@ -2414,18 +2403,18 @@ contains
                     + ptend%q(icol,k,ixcldliq) * dt &
                     + state%q(icol,k,ixcldice) &
                     + ptend%q(icol,k,ixcldice) * dt ) &
-                  * state%pdel(icol,k) / gravit
+                  * state%pdel(icol,k) * rga
               if ( ixrain > 0 ) then
                  grand_total_water_column_start(icol) &
                  = grand_total_water_column_start(icol) &
                    + ( state%q(icol,k,ixrain) + ptend%q(icol,k,ixrain) * dt ) &
-                     * state%pdel(icol,k) / gravit
+                     * state%pdel(icol,k) * rga
               endif
               if ( ixsnow > 0 ) then
                  grand_total_water_column_start(icol) &
                  = grand_total_water_column_start(icol) &
                    + ( state%q(icol,k,ixsnow) + ptend%q(icol,k,ixsnow) * dt ) &
-                     * state%pdel(icol,k) / gravit
+                     * state%pdel(icol,k) * rga
               endif
            end do ! k = top_lev, pver
            grand_total_water_column_start(icol) &
@@ -2449,13 +2438,13 @@ contains
                       * ( state%q(icol,k,1) + ptend%q(icol,k,1) * dt ) &
                     + latice * ( state%q(icol,k,ixcldliq) &
                                  + ptend%q(icol,k,ixcldliq) * dt ) ) &
-                  * state%pdel(icol,k) / gravit
+                  * state%pdel(icol,k) * rga
               if ( ixrain > 0 ) then
                  total_energy_column_start(icol) &
                  = total_energy_column_start(icol) &
                    + latice * ( state%q(icol,k,ixrain) &
                                 + ptend%q(icol,k,ixrain) * dt ) &
-                     * state%pdel(icol,k) / gravit
+                     * state%pdel(icol,k) * rga
               endif
            end do ! k = top_lev, pver
            total_energy_column_start(icol) &
@@ -3251,18 +3240,18 @@ contains
                     + ptend%q(icol,k,ixcldliq) * dt &
                     + state%q(icol,k,ixcldice) &
                     + ptend%q(icol,k,ixcldice) * dt ) &
-                  * state%pdel(icol,k) / gravit
+                  * state%pdel(icol,k) * rga
               if ( ixrain > 0 ) then
                  grand_total_water_column_finish(icol) &
                  = grand_total_water_column_finish(icol) &
                    + ( state%q(icol,k,ixrain) + ptend%q(icol,k,ixrain) * dt ) &
-                     * state%pdel(icol,k) / gravit
+                     * state%pdel(icol,k) * rga
               endif
               if ( ixsnow > 0 ) then
                  grand_total_water_column_finish(icol) &
                  = grand_total_water_column_finish(icol) &
                    + ( state%q(icol,k,ixsnow) + ptend%q(icol,k,ixsnow) * dt ) &
-                     * state%pdel(icol,k) / gravit
+                     * state%pdel(icol,k) * rga
               endif
            end do ! k = top_lev, pver
            grand_total_water_column_finish(icol) &
@@ -3287,13 +3276,13 @@ contains
                       * ( state%q(icol,k,1) + ptend%q(icol,k,1) * dt ) &
                     + latice * ( state%q(icol,k,ixcldliq) &
                                  + ptend%q(icol,k,ixcldliq) * dt ) ) &
-                  * state%pdel(icol,k) / gravit
+                  * state%pdel(icol,k) * rga
               if ( ixrain > 0 ) then
                  total_energy_column_finish(icol) &
                  = total_energy_column_finish(icol) &
                    + latice * ( state%q(icol,k,ixrain) &
                                 + ptend%q(icol,k,ixrain) * dt ) &
-                     * state%pdel(icol,k) / gravit
+                     * state%pdel(icol,k) * rga
               endif
            end do ! k = top_lev, pver
            total_energy_column_finish(icol) &
@@ -3497,7 +3486,7 @@ contains
                  ! to be filled.
                  ! The value of the hydrometeor mixing ratio is negative, but
                  ! the value of total_hole is positive.
-                 total_hole = ( qmin_hm - hm_curr(k) ) * pdel(icol,k) / gravit
+                 total_hole = ( qmin_hm - hm_curr(k) ) * pdel(icol,k) * rga
 
                  ! Calculate the total hydrometeor mass available from below
                  ! to fill the hole.
@@ -3579,7 +3568,7 @@ contains
                              total_fill_mass &
                              = total_fill_mass &
                                + ( hm_curr(idx) - qmin_hm ) &
-                                 * pdel(icol,idx) / gravit
+                                 * pdel(icol,idx) * rga
                           endif ! l_pos_hm(idx)
                        end do ! idx = k+1, pver, 1
                        ! Contribution to total fill mass from the surface.
@@ -3593,7 +3582,7 @@ contains
                              total_fill_mass &
                              = total_fill_mass &
                                + ( hm_curr(idx) - qmin_hm ) &
-                                 * pdel(icol,idx) / gravit
+                                 * pdel(icol,idx) * rga
                           endif ! l_pos_hm(idx)
                           if ( idx >= lowest_level_idx ) then
                              ! Check if enough mass has been gathered in
@@ -3647,7 +3636,7 @@ contains
                           total_fill_mass &
                           = total_fill_mass &
                             + ( hm_curr(idx) - qmin_hm ) &
-                              * pdel(icol,idx) / gravit
+                              * pdel(icol,idx) * rga
                        endif ! l_pos_hm(idx)
                     end do ! idx = top_lev, k-1, 1
                  endif ! total_fill_mass >= total_hole
@@ -3890,7 +3879,7 @@ contains
                  ! to be filled.
                  ! The value of the hydrometeor mixing ratio is negative, but
                  ! the value of total_hole is positive.
-                 total_hole = ( qmin_hm - hm_curr(k) ) * pdel(icol,k) / gravit
+                 total_hole = ( qmin_hm - hm_curr(k) ) * pdel(icol,k) * rga
 
                  ! Calculate the total hydrometeor mass available from the
                  ! filler hydrometeor to fill the hole.
@@ -3900,7 +3889,7 @@ contains
                         total_fill_mass &
                         = total_fill_mass &
                           + ( hm_curr_filler(idx) - qmin_hm_filler ) &
-                            * pdel(icol,idx) / gravit
+                            * pdel(icol,idx) * rga
                      endif ! l_pos_hm_filler(idx)
                  end do ! idx = top_lev, pver, 1
 
