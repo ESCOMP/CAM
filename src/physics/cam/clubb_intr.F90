@@ -3055,7 +3055,7 @@ end subroutine clubb_init_cnst
         invrs_exner_zt(i,1) = invrs_exner_zt(i,2)
       end do
 
-      kappa_zm(:,:) = zt2zm_api(pverp+1-top_lev, ncol, gr, kappa_zt(1:ncol,:)) 
+      kappa_zm(1:ncol,:) = zt2zm_api(pverp+1-top_lev, ncol, gr, kappa_zt(1:ncol,:))
       
       do k=1,pverp
         do i=1,ncol
