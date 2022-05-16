@@ -40,11 +40,6 @@ module nlte_lw
   logical :: use_waccm_forcing = .false.
 
   real(r8) :: o3_mw = -huge(1.0_r8)        ! O3 molecular weight
-  real(r8) :: o1_mw = -huge(1.0_r8)        ! O molecular weight
-  real(r8) :: o2_mw = -huge(1.0_r8)        ! O2 molecular weight
-  real(r8) :: co2_mw = -huge(1.0_r8)       ! CO2 molecular weight
-  real(r8) :: n2_mw = -huge(1.0_r8)        ! N2 molecular weight
-  real(r8) :: no_mw = -huge(1.0_r8)        ! NO molecular weight
 
 ! indexes of required constituents in model constituent array
   integer :: ico2                           ! CO2 index
@@ -64,10 +59,8 @@ module nlte_lw
 contains
 !================================================================================================
 
-  subroutine nlte_register(nlte_aliarms_every_X)
+  subroutine nlte_register()
   use physics_buffer,   only: pbuf_add_field, dtype_r8, dtype_i4
-
-  integer, intent(in) :: nlte_aliarms_every_X
 
   call pbuf_add_field('qrlaliarms',  'global', dtype_r8, (/pcols,pver/),qrlaliarms_idx)
 
@@ -75,8 +68,7 @@ contains
 
 !================================================================================================
 
-  subroutine nlte_init (pref_mid, max_pressure_lw, nlte_use_mo_in, nlte_limit_co2, nlte_use_aliarms_in, nlte_aliarms_every_X_in,&
-                        pbuf2d)
+  subroutine nlte_init (pref_mid, max_pressure_lw, nlte_use_mo_in, nlte_limit_co2, nlte_use_aliarms_in, nlte_aliarms_every_X_in)
 !
 ! Initialize the nlte parameterizations and tgcm forcing data, if required
 !------------------------------------------------------------------------
@@ -94,14 +86,17 @@ contains
     logical,          intent(in) :: nlte_use_aliarms_in
     integer,          intent(in) :: nlte_aliarms_every_X_in
 
-    type(physics_buffer_desc), pointer :: pbuf2d(:,:)
 
+    real(r8) :: o1_mw = -huge(1.0_r8)      ! O molecular weight
+    real(r8) :: o2_mw = -huge(1.0_r8)      ! O2 molecular weight
+    real(r8) :: co2_mw = -huge(1.0_r8)     ! CO2 molecular weight
+    real(r8) :: n2_mw = -huge(1.0_r8)      ! N2 molecular weight
+    real(r8) :: no_mw = -huge(1.0_r8)      ! NO molecular weight
     real(r8) :: psh(pver)                  ! pressure scale height
     real(r8) :: pshmn                      ! lower range of merge
     real(r8) :: pshmx                      ! upper range of merge
     real(r8) :: pshdd                      ! scale
     integer  :: k                          ! index
-    integer  :: ierr
     logical  :: rad_use_data_o3
     logical  :: history_waccm
 !----------------------------------------------------------------------------------------
@@ -291,7 +286,7 @@ contains
     real(r8), target :: o3mrg(pcols,pver)    ! merged O3
     real(r8), pointer, dimension(:,:) :: to3mmr  ! O3 mmr   (tgcm)
 
-    integer :: i,j,k, ierr
+    integer :: k
     integer :: nstep
 
 !------------------------------------------------------------------------
