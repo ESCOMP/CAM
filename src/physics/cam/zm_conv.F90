@@ -823,7 +823,7 @@ subroutine zm_convr(lchnk   ,ncol    , &
                   tp      ,qstp    ,tl      ,rl      ,cape     , &
                   pblt    ,lcl     ,lel     ,lon     ,maxi     , &
                   rgas    ,grav    ,cpres   ,msg     , &
-                  tpert   , org2d  , landfrac, wm_incld)
+                  zi, tpert  , org2d  , landfrac, wm_incld)
 
    end if
 
@@ -4029,8 +4029,7 @@ subroutine buoyan_dilute(lchnk   ,ncol    , &
                   tp      ,qstp    ,tl      ,rl      ,cape    , &
                   pblt    ,lcl     ,lel     ,lon     ,mx      , &
                   rd      ,grav    ,cp      ,msg     , &
-                  zi,     tpert    ,org    , landfrac)
-                  tpert   ,org     ,landfrac ,wm_incld)
+                  zi      ,tpert   ,org     ,landfrac ,wm_incld)
 
 !----------------------------------------------------------------------- 
 ! 
@@ -4135,9 +4134,6 @@ subroutine buoyan_dilute(lchnk   ,ncol    , &
   integer            :: ipar ! Index for top of parcel mixing/launch level.
     
 
-
-
-=======
 ! RBN variables for parcel total energy consideration
    real(r8),parameter :: pini_ke  = 5._r8        ! Convective parcel initial kinetic energy (J/kg).
    real(r8),parameter :: pe2ke_eff = 0.1_r8      ! PE->KE parcel energy conversion efficiency.

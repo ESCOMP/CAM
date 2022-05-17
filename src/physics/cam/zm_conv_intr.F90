@@ -190,7 +190,7 @@ subroutine zm_conv_readnl(nlfile)
                         zmconv_ke, zmconv_ke_lnd, zmconv_org, &
                         zmconv_momcu, zmconv_momcd, zmconv_microp, &
                         zmconv_dmpdz, zmconv_tiedke_add, zmconv_capelmt, &
-                        zmconv_parcel_pbl, zm_parcel_ke,  zmconv_tau
+                        zmconv_parcel_pbl, zmconv_parcel_ke,  zmconv_tau
    !-----------------------------------------------------------------------------
 
    if (masterproc) then
@@ -402,7 +402,7 @@ subroutine zm_conv_init(pref_edge)
     call zm_convi(limcnv,zmconv_c0_lnd, zmconv_c0_ocn, zmconv_ke, zmconv_ke_lnd, &
                   zmconv_momcu, zmconv_momcd, zmconv_num_cin, zmconv_org, &
                   zmconv_microp, no_deep_pbl, zmconv_tiedke_add, &
-                  zmconv_capelmt, zmconv_dmpdz,zmconv_parcel_pbl, zm_parcel_pbl, zmconv_tau)
+                  zmconv_capelmt, zmconv_dmpdz,zmconv_parcel_pbl, zmconv_parcel_ke, zmconv_tau)
 
     cld_idx         = pbuf_get_index('CLD')
     fracis_idx      = pbuf_get_index('FRACIS')
