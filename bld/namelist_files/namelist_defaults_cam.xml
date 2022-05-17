@@ -2776,7 +2776,6 @@
 
 <se_ftype> 2 </se_ftype>
 
-<se_hypervis_dynamic_ref_state> .false.  </se_hypervis_dynamic_ref_state>
 <se_lcp_moist                 > .true.  </se_lcp_moist>
 
 <se_large_Courant_incr        > .true.  </se_large_Courant_incr>

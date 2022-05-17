@@ -3693,7 +3693,6 @@ if ($dyn =~ /se/) {
     my @vars = qw(
                   se_ftype
                   se_horz_num_threads
-                  se_hypervis_dynamic_ref_state
                   se_lcp_moist
 		  se_large_Courant_incr
                   se_hypervis_subcycle
