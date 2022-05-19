@@ -34,6 +34,7 @@ module input_data_utils
      procedure :: initialize
      procedure :: advance
      procedure :: read_more
+     procedure :: times_check
      procedure :: copy
      procedure :: destroy
   end type time_coordinate
@@ -70,6 +71,11 @@ contains
 
     integer,  allocatable :: dates(:)
     integer,  allocatable :: datesecs(:)
+    integer,  allocatable :: year(:)
+    integer,  allocatable :: month(:)
+    integer,  allocatable :: day(:)
+    real(r8),  allocatable :: ut(:)
+
     real(r8), allocatable :: times_file(:)
     real(r8), allocatable :: times_modl(:)
     real(r8), allocatable :: time_bnds_file(:,:)
@@ -250,16 +256,47 @@ contains
           call endrun('time_coordinate%initialize: failed to allocate datesecs')
        end if
 
-       ierr = pio_inq_varid( fileid, 'date', varid  )
-       if (ierr/=PIO_NOERR) then
-          call endrun('time_coordinate%initialize: input file must contain time or date variable '//trim(filepath))
+       ierr = pio_inq_varid( fileid, 'date', varid )
+       if (ierr==PIO_NOERR) then
+          ierr = pio_get_var( fileid, varid, dates )
+       else
+          ! try year, month, day
+          allocate(year(this%ntimes), stat=ierr )
+          allocate(month(this%ntimes), stat=ierr )
+          allocate(day(this%ntimes), stat=ierr )
+
+          ierr = pio_inq_varid( fileid, 'year', varid )
+          ierr = pio_get_var( fileid, varid, year )
+
+          ierr = pio_inq_varid( fileid, 'month', varid  )
+          ierr = pio_get_var( fileid, varid, month )
+
+          ierr = pio_inq_varid( fileid, 'day', varid  )
+          ierr = pio_get_var( fileid, varid, day )
+
+          dates(:) = year(:)*10000 + month(:)*100 + day(:)
+
+          deallocate(year,month,day)
+
+          if (ierr/=PIO_NOERR) then
+             call endrun('time_coordinate%initialize: input file must contain time or date variables '//trim(filepath))
+          endif
        endif
-       ierr = pio_get_var( fileid, varid, dates )
        ierr = pio_inq_varid( fileid, 'datesec', varid )
        if (ierr==PIO_NOERR) then
           ierr = pio_get_var( fileid, varid, datesecs )
        else
-          datesecs(:) = 0
+          ! try ut
+
+          allocate(ut(this%ntimes), stat=ierr )
+          ierr = pio_inq_varid( fileid, 'ut', varid ) ! fractional hours
+          if (ierr==PIO_NOERR) then
+             ierr = pio_get_var( fileid, varid, ut )
+             datesecs = int(3600._r8*ut) ! hours -> secs
+          else
+             datesecs(:) = 0
+          endif
+          deallocate(ut)
        endif
 
        call convert_dates( dates, datesecs, times_modl )
@@ -330,6 +367,28 @@ contains
     endif
 
   end function read_more
+
+  !-----------------------------------------------------------------------------
+  ! times_check -- returns timing status indicator
+  !  -1 : current model time is before the data times
+  !   0 : current model time is within the data times
+  !   1 : current model time is after the data times
+  !-----------------------------------------------------------------------------
+  integer function times_check(this)
+    class(time_coordinate), intent(in) :: this
+
+    real(r8) :: model_time
+
+    model_time = get_model_time()
+
+    times_check = 0
+    if (model_time<this%times(1)) then
+       times_check = -1
+    else if (model_time>this%times(this%ntimes)) then
+       times_check = 1
+    end if
+
+  end function times_check
 
   !-----------------------------------------------------------------------------
   ! destroy method -- deallocate memory and revert to default settings
