@@ -17,6 +17,7 @@ module ltr_module
   use utils_mod,      only: check_ncerr, check_alloc
   use edyn_mpi,       only: ntask, mytid
   use edyn_params,    only: pi, dtr, rtd
+  use input_data_utils, only : time_coordinate
 
   implicit none
 
@@ -47,6 +48,8 @@ module ltr_module
 
   character(len=cl), allocatable :: ltr_files(:)
   integer :: num_files, file_ndx
+
+  type(time_coordinate) :: time_coord
 
 contains
 
@@ -109,6 +112,7 @@ contains
     istat = pio_inquire_dimension(ncid, id_lat, len=latp1)
     call check_ncerr(istat, subname, 'LTR latitude dimension')
 
+    call time_coord%initialize( ltrfile, set_weights=.false. )
     !
     ! Get time dimension:
     istat = pio_inquire(ncid, unlimiteddimid=id_time)
@@ -202,17 +206,17 @@ contains
     !
     ! Allocate 3-d fields:
     if (.not. allocated(pot_input)) then
-       allocate(pot_input(lonp1, latp1, ntimes), stat=ier)
+       allocate(pot_input(lonp1, latp1, 2), stat=ier)
        call check_alloc(ier, subname, 'pot_input', &
             lonp1=lonp1, latp1=latp1, ntimes=ntimes)
     end if
     if (.not. allocated(ekv_input)) then
-       allocate(ekv_input(lonp1, latp1, ntimes), stat=ier)
+       allocate(ekv_input(lonp1, latp1, 2), stat=ier)
        call check_alloc(ier, subname, 'ekv_input', &
             lonp1=lonp1, latp1=latp1, ntimes=ntimes)
     end if
     if (.not. allocated(efx_input)) then
-       allocate(efx_input(lonp1, latp1, ntimes), stat=ier)
+       allocate(efx_input(lonp1, latp1, 2), stat=ier)
        call check_alloc(ier, subname, 'efx_input', &
             lonp1=lonp1, latp1=latp1, ntimes=ntimes)
     end if
@@ -290,9 +294,8 @@ contains
     integer,  allocatable       :: iw(:)
     real(r8), allocatable       :: w(:)
     integer                     :: i, j, ithmx
-    integer                     :: nn, iset, iset1, m, mp1, n
-    integer                     :: idate, bdate, edate
-    real(r8)                    :: model_ut, denoma, f1, f2
+    integer                     :: nn, iset2, iset1, m, mp1, n
+    real(r8)                    :: f1, f2
     real(r8)                    :: del, xmlt, dmlat, dlatm, dlonm, dmltm, rot
     integer                     :: offset(3), kount(3)
     character(len=*), parameter :: subname = 'getltr'
@@ -309,51 +312,41 @@ contains
     end if
 
     nn = size(ltr_ut)
-    bdate = year(1)*10000+month(1)*100+day(1)
-    edate = year(nn)*10000+month(nn)*100+day(nn)
-    idate = iyear*10000+imo*100+iday
-    model_ut = real(iutsec, kind=r8) / 3600._r8
 
     !
     !     Check times:
     !
-    iltr=-1
+    iltr = 1 - time_coord%times_check()
+
     check_loop: do while( iltr/=1 )
+
        if (masterproc) write(iulog,*) 'file_ndx = ',file_ndx
 
-       iltr = 1
-
-       if (idate<bdate) then
+       if (iltr==2) then
           if (masterproc) then
              write(iulog, "(a,': Model date prior to LTR first date:',3I5)")   &
                   subname, year(1), month(1), day(1)
           end if
-          iltr = 2
           return
        endif
 
-       if (idate*24._r8+model_ut>edate*24._r8+ltr_ut(nn)) then
+       if (iltr==0) then
           if (masterproc) then
              write(iulog, "(a,': Model date beyond the LTR last Data:',3I5)")  &
                   subname, year(nn), month(nn), day(nn)
           end if
-          iltr = 0
 
           if (file_ndx<num_files) then
              file_ndx = file_ndx+1
              call close_files()
              call open_files()
+             iltr = 1 - time_coord%times_check()
           else
              return
           end if
 
        endif
     end do check_loop
-
-    if (ltr_ut(1) > (model_ut+(iday-day(1))*24._r8)) then
-       iltr = 2
-       return
-    endif
 
     !
     !     get LTR data
@@ -363,47 +356,23 @@ contains
     hpi_ltr = 0._r8
     pcp_ltr = 0._r8
 
-    iset = 0
-    iset1 = nn
-    do i=1,nn
-       if (ltr_ut(i) <= model_ut+(iday-day(i))*24._r8) iset = i
-    end do
+    call time_coord%advance()
 
-    if (iset == 0) iset = 1
-    if (iset == nn) iset = nn-1
-    iset1 = iset + 1
+    iset1 = time_coord%indxs(1)
+    iset2 = time_coord%indxs(2)
 
-    denoma = ltr_ut(iset1)+day(iset1)*24._r8 - (ltr_ut(iset)+day(iset)*24._r8)
+    f1 = time_coord%wghts(1)
+    f2 = time_coord%wghts(2)
 
-    if (denoma > 0.1_r8) then
-       write(iulog, "('getltr: Finding a gap in the LTR Data set:',  &
-            'modelday, ltrday =',2I5)") iday,day(n)
-       iltr = 2
-       return
-    end if
-    if (denoma == 0._r8) then
-       f1 = 1._r8
-       f2 = 0._r8
-    else
-       f1 = (ltr_ut(iset1) - (model_ut+(iday- &
-            day(iset1))*24._r8))/denoma
-       f2 = (model_ut+(iday-day(iset))*24._r8 - &
-            ltr_ut(iset))/denoma
-    end if
-    if (masterproc) &
-         write(iulog,"('getltr: LTR Data model_day,model_ut,ltr_day,', &
-         'ltr_ut,denoma,f1,f2,iset,iset1 =',i2,f7.3,i3,f7.3,3f5.2,2i6)") &
-         iday,model_ut,day(iset),ltr_ut(iset),denoma,f1,f2,iset,iset1
+    hpi_ltr = (f1*hpi_input(iset1) + f2*hpi_input(iset2))
+    pcp_ltr = (f1*pcp_input(iset1) + f2*pcp_input(iset2))
 
-    hpi_ltr = (f1*hpi_input(iset1) + f2*hpi_input(iset))
-    pcp_ltr = (f1*pcp_input(iset1) + f2*pcp_input(iset))
-
-    offset = (/1,1,iset/)
+    offset = (/1,1,iset1/)
     kount = (/lonp1,latp1,2/)
     call update_3d_fields( ncid, offset, kount, pot_input,ekv_input,efx_input )
-    pot_ltr(:,:) = (f1*pot_input(:,:,2) + f2*pot_input(:,:,1))
-    ekv_ltr(:,:) = (f1*ekv_input(:,:,2) + f2*ekv_input(:,:,1))
-    efx_ltr(:,:) = (f1*efx_input(:,:,2) + f2*efx_input(:,:,1))
+    pot_ltr(:,:) = (f1*pot_input(:,:,1) + f2*pot_input(:,:,2))
+    ekv_ltr(:,:) = (f1*ekv_input(:,:,1) + f2*ekv_input(:,:,2))
+    efx_ltr(:,:) = (f1*efx_input(:,:,1) + f2*efx_input(:,:,2))
 
     active_task: if ( mytid<ntask ) then
 
@@ -508,9 +477,9 @@ contains
           write(iulog, "('getltr: LTR data interpolated to date and time')")
           write(iulog,"('getltr: iyear,imo,iday,iutsec = ',3i6,i10)")  &
                iyear,imo,iday,iutsec
-          write(iulog,"('getltr: LTR iset f1,f2,year,mon,day,ut = ',  &
+          write(iulog,"('getltr: LTR iset1 f1,f2,year,mon,day,ut = ',  &
                i6,2F9.5,3I6,f10.4)")  &
-               iset,f1,f2,year(iset),month(iset),day(iset),ltr_ut(iset)
+               iset1,f1,f2,year(iset1),month(iset1),day(iset1),ltr_ut(iset1)
           write(iulog,*)'getltr: max,min phihm= ', maxval(phihm),minval(phihm)
        end if
 
