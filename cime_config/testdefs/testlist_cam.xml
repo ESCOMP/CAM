@@ -1240,7 +1240,7 @@
 
   <test compset="F2000climo" grid="mpasa480_mpasa480" name="ERS_Ln9_P36x1_Vnuopc" testmods="cam/outfrq9s_mpasa480">
     <machines>
-      <machine name="izumi" compiler="intel" category="aux_cam"/>
+      <machine name="cheyenne" compiler="intel" category="aux_cam"/>
     </machines>
     <options>
       <option name="wallclock">00:45:00</option>
