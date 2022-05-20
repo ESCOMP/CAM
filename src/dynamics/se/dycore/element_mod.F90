@@ -74,6 +74,9 @@ module element_mod
 
     real (kind=r8) :: pecnd(np,np,nlev)                        ! pressure perturbation from condensate
 
+    ! reference profiles
+    real (kind=r8) :: T_ref(np,np,nlev)                        ! reference temperature
+    real (kind=r8) :: dp_ref(np,np,nlev)                       ! reference pressure level thickness
   end type derived_state_t
 
   !___________________________________________________________________
