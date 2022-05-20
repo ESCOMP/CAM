@@ -29,6 +29,8 @@
     use physconst,        only: stebol, latvap
     use scamMod
     use cam_abortutils,   only: endrun
+    use cam_logfile,      only: iulog
+    use spmd_utils,       only: masterproc
 
     implicit none
     save
@@ -36,6 +38,17 @@
     type(cam_in_t), intent(INOUT) :: cam_in(begchunk:endchunk)
     integer                       :: c    ! Chunk index
     integer                       :: ncol ! Number of columns
+
+
+    if (masterproc) write(iulog,*) " Parameters in iop_forcing :"
+    if (masterproc) write(iulog,*) " scm_iop_lhflxshflxTg =", scm_iop_lhflxshflxTg
+    if (masterproc) write(iulog,*) "           scm_iop_Tg =", scm_iop_Tg
+    if (masterproc) write(iulog,*) "         scm_crm_mode =", scm_crm_mode
+    if (masterproc) write(iulog,*) "           have_lhflx =", have_lhflx
+    if (masterproc) write(iulog,*) "           have_shflx =", have_shflx
+    if (masterproc) write(iulog,*) "              have_Tg =", have_Tg
+    if (masterproc) write(iulog,*) "              Tground =", tground
+
 
     if( scm_iop_lhflxshflxTg .and. scm_iop_Tg ) then
         call endrun( 'scam_use_iop_srf : scm_iop_lhflxshflxTg and scm_iop_Tg must not be specified at the same time.')

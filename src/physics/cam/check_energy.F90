@@ -66,6 +66,9 @@ module check_energy
 
   integer  :: teout_idx  = 0       ! teout index in physics buffer
   integer  :: dtcore_idx = 0       ! dtcore index in physics buffer
+!+++ARH
+  integer  :: dqcore_idx = 0
+!---ARH
   integer  :: ducore_idx = 0       ! ducore index in physics buffer
   integer  :: dvcore_idx = 0       ! dvcore index in physics buffer
 
@@ -139,6 +142,9 @@ end subroutine check_energy_readnl
 
     call pbuf_add_field('TEOUT', 'global',dtype_r8 , (/pcols,dyn_time_lvls/),      teout_idx)
     call pbuf_add_field('DTCORE','global',dtype_r8,  (/pcols,pver,dyn_time_lvls/),dtcore_idx)
+!+++ARH
+    call pbuf_add_field('DQCORE','global',dtype_r8,  (/pcols,pver,dyn_time_lvls/),dqcore_idx)
+!---ARH
     call pbuf_add_field('DUCORE','global',dtype_r8,  (/pcols,pver,dyn_time_lvls/),ducore_idx)
     call pbuf_add_field('DVCORE','global',dtype_r8,  (/pcols,pver,dyn_time_lvls/),dvcore_idx)
     if(is_subcol_on()) then
@@ -199,12 +205,18 @@ end subroutine check_energy_get_integrals
     call addfld('TEFIX',  horiz_only,  'A', 'J/m2', 'Total energy after fixer')
     call addfld('EFIX',   horiz_only,  'A', 'W/m2', 'Effective sensible heat flux due to energy fixer')
     call addfld('DTCORE', (/ 'lev' /), 'A', 'K/s' , 'T tendency due to dynamical core')
+!+++ARH
+    call addfld('DQCORE', (/ 'lev' /), 'A', 'kg/kg/s' , 'Q tendency due to dynamical core')
+!---ARH
 
     if ( history_budget ) then
        call add_default ('DTCORE', history_budget_histfile_num, ' ')
     end if
     if ( history_waccm ) then
        call add_default ('DTCORE', 1, ' ')
+!+++ARH
+       call add_default ('DQCORE', history_budget_histfile_num, ' ')
+!---ARH
     end if
 
   end subroutine check_energy_init

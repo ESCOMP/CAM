@@ -5336,6 +5336,79 @@ Force scam to use the lat lon fields specified in the scam namelist not what is 
 Default: FALSE
 </entry>
 
+<entry id="use_scm_ana_frc" type="logical" category="scam"
+       group="scam_nl" valid_values="">
+SCAM to calculate or read tendencies from a global ana/dycore
+Default: FALSE
+</entry>
+
+<entry id="scm_ana_upwind" type="logical" category="scam"
+       group="scam_nl" valid_values="">
+Use 1st order upwind for ana tendencies (instead of 2nd order space centered)
+Default: FALSE
+</entry>
+
+<entry id="scm_ana_t_react" type="logical" category="scam"
+       group="scam_nl" valid_values="">
+Use scam state as center column in stencil for ana adv tendencies
+Default: FALSE
+</entry>
+
+<entry id="scm_ana_q_react" type="logical" category="scam"
+       group="scam_nl" valid_values="">
+Use scam state as center column in stencil for ana adv tendencies
+Default: FALSE
+</entry>
+
+<entry id="scm_ana_u_react" type="logical" category="scam"
+       group="scam_nl" valid_values="">
+Use scam state as center column in stencil for ana adv tendencies
+Default: FALSE
+</entry>
+
+<entry id="scm_ana_v_react" type="logical" category="scam"
+       group="scam_nl" valid_values="">
+Use scam state as center column in stencil for ana adv tendencies
+Default: FALSE
+</entry>
+
+<entry id="scm_ana_direct_ttend" type="logical" category="scam"
+       group="scam_nl" valid_values="">
+Force scam to use tendencies directly from dycore or ana (not recalculated)
+Default: FALSE
+</entry>
+
+<entry id="scm_ana_direct_omega" type="logical" category="scam"
+       group="scam_nl" valid_values="">
+Force scam to use omega directly from dycore or ana (not recalculated)
+Default: FALSE
+</entry>
+
+<entry id="scm_ana_x_plevels" type="logical" category="scam"
+       group="scam_nl" valid_values="">
+Interpolate ana fields to constant pressure surfaces
+Default: FALSE
+</entry>
+
+
+<entry id="scm_ana_frc_file_template" type="char*128" input_pathname="abs" category="scam"
+       group="scam_nl" valid_values="" >
+template for analysis forcing dataset.
+Default: set by build-namelist.
+</entry>
+
+<entry id="scm_ana_frc_path" type="char*128" input_pathname="abs" category="scam"
+       group="scam_nl" valid_values="" >
+templatefull path for analysis forcing dataset.
+Default: set by build-namelist.
+</entry>
+
+<entry id="scm_use_ana_iop" type="logical" category="scam"
+       group="scam_nl" valid_values="">
+Force scam to compute large-scale forcing from renalysis or 3D model output
+Default: FALSE
+</entry>
+
 <!-- Solar Parameters -->
 
 <entry id="solar_const" type="real" category="solar"

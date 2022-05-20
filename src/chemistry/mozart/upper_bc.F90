@@ -157,11 +157,16 @@ end subroutine ubc_setopts
     use mo_snoe,     only: snoe_inti
     use mo_msis_ubc, only: msis_ubc_inti
     use constituents,only: cnst_get_ind
+    use scamMod,only: single_column
 
 !---------------------------Local workspace-----------------------------
     logical :: zonal_avg
 !-----------------------------------------------------------------------
-    apply_upper_bc = ptop_ref<1._r8 ! Pa
+    if (single_column) then
+       apply_upper_bc = .FALSE.
+    else
+       apply_upper_bc = ptop_ref<1._r8 ! Pa
+    endif
 
     if (.not.apply_upper_bc) return
 
