@@ -1005,7 +1005,6 @@ subroutine micro_pumas_cam_init(pbuf2d)
    call addfld ('VAPDEPSO',   (/ 'lev' /), 'A', 'kg/kg/s',  'Vapor deposition onto snow'                            )
    call addfld ('MELTSDT',    (/ 'lev' /), 'A', 'W/kg',     'Latent heating rate due to melting of snow'              )
    call addfld ('FRZRDT',     (/ 'lev' /), 'A', 'W/kg',     'Latent heating rate due to homogeneous freezing of rain' )
-!++ag
    call addfld ('NNUCCCO',    (/ 'lev' /), 'A', '#/kg/s',  'Number Tendency due to Immersion freezing of cloud water')
    call addfld ('NNUCCTO',    (/ 'lev' /), 'A', '#/kg/s',  'Number Tendency due to Contact freezing of cloud water')
    call addfld ('NNUCCDO',    (/ 'lev' /), 'A', '#/kg/s',  'Number Tendency due to Ice nucleation')
@@ -1026,7 +1025,6 @@ subroutine micro_pumas_cam_init(pbuf2d)
    call addfld ('NSSEDTEN',   (/ 'lev' /), 'A', '#/kg/s',  'Number Tendency due to snow sedimentation')
    call addfld ('NMELTO',     (/ 'lev' /), 'A', '#/kg/s',  'Number Tendency due to Melting of cloud ice ')
    call addfld ('NMELTS',     (/ 'lev' /), 'A', '#/kg/s',  'Number Tendency due to Melting of snow')
-!--ag
    if (micro_mg_version > 1) then
       call addfld ('QRSEDTEN', (/ 'lev' /), 'A', 'kg/kg/s', 'Rain mixing ratio tendency from sedimentation'           )
       call addfld ('QSSEDTEN', (/ 'lev' /), 'A', 'kg/kg/s', 'Snow mixing ratio tendency from sedimentation'           )
@@ -1034,10 +1032,8 @@ subroutine micro_pumas_cam_init(pbuf2d)
 
 
    if (micro_mg_version > 2) then
-!++ag
          call addfld ('NMELTG',     (/ 'lev' /), 'A', '#/kg/s',  'Number Tendency due to Melting of graupel')
          call addfld ('NGSEDTEN',   (/ 'lev' /), 'A', '#/kg/s',  'Number Tendency due to graupel sedimentation')
-!--ag
          call addfld ('PSACRO',    (/ 'lev' /), 'A', 'kg/kg/s', 'Collisions between rain & snow (Graupel collecting snow)')
          call addfld ('PRACGO',    (/ 'lev' /), 'A', 'kg/kg/s',  'Change in q collection rain by graupel'             )
          call addfld ('PSACWGO',   (/ 'lev' /), 'A', 'kg/kg/s',  'Change in q collection droplets by graupel'         )
@@ -1275,7 +1271,6 @@ subroutine micro_pumas_cam_init(pbuf2d)
       call add_default ('BERGO    ', budget_histfile, ' ')
       call add_default ('MELTSTOT ', budget_histfile, ' ')
       call add_default ('MNUDEPO  ', budget_histfile, ' ')
-!++ag
       call add_default ('NNUCCCO  ', budget_histfile, ' ')
       call add_default ('NNUCCTO  ', budget_histfile, ' ')
       call add_default ('NNUCCDO  ', budget_histfile, ' ')
@@ -1297,7 +1292,6 @@ subroutine micro_pumas_cam_init(pbuf2d)
       call add_default ('NMELTO   ', budget_histfile, ' ')
       call add_default ('NMELTS   ', budget_histfile, ' ')
       call add_default ('NCAL     ', budget_histfile, ' ')
-!--ag
       if (micro_mg_version > 2) then
          call add_default ('QGSEDTEN ', budget_histfile, ' ')
          call add_default ('PSACRO    ', budget_histfile, ' ')
@@ -1309,7 +1303,6 @@ subroutine micro_pumas_cam_init(pbuf2d)
          call add_default ('QMULTGO   ', budget_histfile, ' ')
          call add_default ('QMULTRGO  ', budget_histfile, ' ')
          call add_default ('MELTGTOT  ', budget_histfile, ' ')
-!++ag
          call add_default ('NPRACGO   ', budget_histfile, ' ')
          call add_default ('NSCNGO    ', budget_histfile, ' ')
          call add_default ('NGRACSO   ', budget_histfile, ' ')
@@ -1318,7 +1311,6 @@ subroutine micro_pumas_cam_init(pbuf2d)
          call add_default ('NPSACWGO  ', budget_histfile, ' ')
          call add_default ('NGSEDTEN ', budget_histfile, ' ')
          call add_default ('NMELTG   ', budget_histfile, ' ')
-!--ag
       end if
       call add_default(cnst_name(ixcldliq), budget_histfile, ' ')
       call add_default(cnst_name(ixcldice), budget_histfile, ' ')
@@ -1581,7 +1573,6 @@ subroutine micro_pumas_cam_tend(state, ptend, dtime, pbuf)
    real(r8)  :: freqr(state%psetcols,pver)
    real(r8)  :: nfice(state%psetcols,pver)
    real(r8)  :: qcrat(state%psetcols,pver)   ! qc limiter ratio (1=no limit)
-!++ag
 !Number Tendencies
    real(r8)  :: nnuccco(state%psetcols,pver)       
    real(r8)  :: nnuccto(state%psetcols,pver)   
@@ -1983,7 +1974,7 @@ subroutine micro_pumas_cam_tend(state, ptend, dtime, pbuf)
       call pbuf_get_field(pbuf, frzcnt_idx, frzcnt, col_type=col_type, copy_if_needed=use_subcol_microp)
       call pbuf_get_field(pbuf, frzdep_idx, frzdep, col_type=col_type, copy_if_needed=use_subcol_microp)
    else
-      ! Needed to satisfy gnu compiler with optional argument - set to an array of Nan fields
+      ! Needed to satisfy gnu compiler with optional argument - set to an array of NaN fields
       frzimm => nan_array
       frzcnt => nan_array
       frzdep => nan_array
@@ -2359,7 +2350,6 @@ subroutine micro_pumas_cam_tend(state, ptend, dtime, pbuf)
    frzimm(:ncol,:top_lev-1)=0._r8
    frzcnt(:ncol,:top_lev-1)=0._r8
    frzdep(:ncol,:top_lev-1)=0._r8
-!++ag
    nnuccco(:ncol,:top_lev-1)=0._r8
    nnuccto(:ncol,:top_lev-1)=0._r8
    nnuccdo(:ncol,:top_lev-1)=0._r8
@@ -2382,7 +2372,6 @@ subroutine micro_pumas_cam_tend(state, ptend, dtime, pbuf)
    nmelto(:ncol,:top_lev-1)=0._r8
    nmeltso(:ncol,:top_lev-1)=0._r8
    nmeltgo(:ncol,:top_lev-1)=0._r8   
-!--ag
 
    do it = 1, num_steps
 
@@ -2484,7 +2473,6 @@ subroutine micro_pumas_cam_tend(state, ptend, dtime, pbuf)
               qmultgo(:ncol,top_lev:),  qmultrgo(:ncol,top_lev:), psacro(:ncol,top_lev:),   &
               npracgo(:ncol,top_lev:),  nscngo(:ncol,top_lev:),   ngracso(:ncol,top_lev:),  &
               nmultgo(:ncol,top_lev:),  nmultrgo(:ncol,top_lev:), npsacwgo(:ncol,top_lev:), &
-!++ag
               nnuccco(:ncol,top_lev:),          nnuccto(:ncol,top_lev:),          nnuccdo(:ncol,top_lev:),  &
               nnudepo(:ncol,top_lev:),          nhomoo(:ncol,top_lev:),           nnuccro(:ncol,top_lev:),  &
               nnuccrio(:ncol,top_lev:),         nsacwio(:ncol,top_lev:),          nprao(:ncol,top_lev:), &
@@ -2493,7 +2481,6 @@ subroutine micro_pumas_cam_tend(state, ptend, dtime, pbuf)
               nisedten(:ncol,top_lev:),         nrsedten(:ncol,top_lev:),         nssedten(:ncol,top_lev:), &
               ngsedten(:ncol,top_lev:),         nmelto(:ncol,top_lev:),           nmeltso(:ncol,top_lev:), &
               nmeltgo(:ncol,top_lev:), &
-!--ag                 
               nrout(:ncol,top_lev:),           nsout(:ncol,top_lev:),           &
               refl(:ncol,top_lev:),    arefl(:ncol,top_lev:),   areflz(:ncol,top_lev:),  &
               frefl(:ncol,top_lev:),   csrfl(:ncol,top_lev:),   acsrfl(:ncol,top_lev:),  &
@@ -3462,7 +3449,6 @@ subroutine micro_pumas_cam_tend(state, ptend, dtime, pbuf)
    call outfld('FRZRDT',      frzrdt ,     psetcols, lchnk, avg_subcol_field=use_subcol_microp)
    call outfld('FICE',        nfice,       psetcols, lchnk, avg_subcol_field=use_subcol_microp)
    call outfld('CLDFSNOW',    cldfsnow,    psetcols, lchnk, avg_subcol_field=use_subcol_microp)
-!++ag
    call outfld ('NNUCCCO',  nnuccco  , psetcols, lchnk, avg_subcol_field=use_subcol_microp)
    call outfld ('NNUCCTO',  nnuccto  , psetcols, lchnk, avg_subcol_field=use_subcol_microp) 
    call outfld ('NNUCCDO',  nnuccdo  , psetcols, lchnk, avg_subcol_field=use_subcol_microp)
@@ -3483,7 +3469,6 @@ subroutine micro_pumas_cam_tend(state, ptend, dtime, pbuf)
    call outfld ('NSSEDTEN', nssedten , psetcols, lchnk, avg_subcol_field=use_subcol_microp)
    call outfld ('NMELTO',   nmelto   , psetcols, lchnk, avg_subcol_field=use_subcol_microp)
    call outfld ('NMELTS',   nmeltso  , psetcols, lchnk, avg_subcol_field=use_subcol_microp)
-!--ag
 
    if (micro_mg_version > 1) then
       call outfld('UMR',      umr,         psetcols, lchnk, avg_subcol_field=use_subcol_microp)
@@ -3502,10 +3487,8 @@ subroutine micro_pumas_cam_tend(state, ptend, dtime, pbuf)
       call outfld('ANGRAU',      ngout2,      psetcols, lchnk, avg_subcol_field=use_subcol_microp)
       call outfld('CLDFGRAU',    cldfgrau,    psetcols, lchnk, avg_subcol_field=use_subcol_microp)
       call outfld('MELTGTOT',    meltgtot,    psetcols, lchnk, avg_subcol_field=use_subcol_microp)
-!++ag
       call outfld('NMELTG',      nmeltgo,     psetcols, lchnk, avg_subcol_field=use_subcol_microp)
       call outfld('NGSEDTEN',    ngsedten ,   psetcols, lchnk, avg_subcol_field=use_subcol_microp)
-!--ag
    end if
 
    ! Example subcolumn outfld call
