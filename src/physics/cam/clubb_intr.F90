@@ -2023,7 +2023,6 @@ end subroutine clubb_init_cnst
    real(r8) :: rvm_in(pcols,pverp+1-top_lev)                  ! water vapor mixing ratio                      [kg/kg]
    real(r8) :: um_in(pcols,pverp+1-top_lev)			! meridional wind				[m/s]
    real(r8) :: vm_in(pcols,pverp+1-top_lev)			! zonal wind					[m/s]
-   real(r8) :: rho_in(pcols,pverp+1-top_lev)			! mid-point density				[kg/m^3]
    real(r8) :: pre_in(pcols,pverp+1-top_lev)                  ! input for precip evaporation
    real(r8) :: rtp2_mc_out(pcols,pverp+1-top_lev)             ! total water tendency from rain evap  
    real(r8) :: thlp2_mc_out(pcols,pverp+1-top_lev)            ! thetal tendency from rain evap
@@ -2044,6 +2043,8 @@ end subroutine clubb_init_cnst
    real(r8) :: invrs_rho_ds_zt(pcols,pverp+1-top_lev)		! Inv. dry, static density on thermo. levels  	[m^3/kg]
    real(r8) :: thv_ds_zm(pcols,pverp+1-top_lev)			! Dry, base-state theta_v on momentum levels  	[K]
    real(r8) :: thv_ds_zt(pcols,pverp+1-top_lev)			! Dry, base-state theta_v on thermo. levels   	[K]
+   real(r8) :: p_ds_zt(pcols,pverp+1-top_lev)                   ! Dry, base-state pressure on thermo. levels    [Pa]
+   real(r8) :: exner_ds_zt(pcols,pverp+1-top_lev)               ! Dry, base-state exner on thermo. levels       [-]
    real(r8) :: rfrzm(pcols,pverp+1-top_lev)
    real(r8) :: radf(pcols,pverp+1-top_lev)
    real(r8) :: wprtp_forcing(pcols,pverp+1-top_lev)
@@ -2075,7 +2076,7 @@ end subroutine clubb_init_cnst
    real(r8) :: wm_zm(pcols,pverp+1-top_lev)			  ! w mean wind component on momentum levels  	[m/s]
    real(r8) :: wm_zt(pcols,pverp+1-top_lev)			  ! w mean wind component on thermo. levels   	[m/s]
    real(r8) :: p_in_Pa(pcols,pverp+1-top_lev)			  ! Air pressure (thermodynamic levels)       	[Pa]
-   real(r8) :: rho_zt(pcols,pverp+1-top_lev)                    ! Air density on thermo levels                [kt/m^3]
+   real(r8) :: rho_zt(pcols,pverp+1-top_lev)                    ! Air density on thermo levels                [kggg/m^3]
    real(r8) :: rho_zm(pcols,pverp+1-top_lev)                    ! Air density on momentum levels              [kg/m^3]
    real(r8) :: exner(pcols,pverp+1-top_lev)                     ! Exner function (thermodynamic levels)       [-]
    real(r8) :: wpthlp_sfc(pcols)                       ! w' theta_l' at surface                        [(m K)/s]
@@ -2136,7 +2137,7 @@ end subroutine clubb_init_cnst
    real(r8) :: sl_output(pcols,pver)            ! Liquid water static energy                    [J/kg]
    real(r8) :: ustar2(pcols)                    ! Surface stress for PBL height                 [m2/s2]
    real(r8) :: rho(pcols,pverp)     		! Midpoint density in CAM      			[kg/m^3]
-   real(r8) :: thv(pcols,pver)   		! virtual potential temperature			[K]
+   real(r8) :: thv(pcols,pverp)   		! virtual potential temperature			[K]
    real(r8) :: edsclr_out(pcols,pverp,edsclr_dim)     ! Scalars to be diffused through CLUBB		[units vary]
    real(r8) :: rcm_in_layer(pcols,pverp)	! CLUBB in-cloud liquid water mixing ratio	[kg/kg]
    real(r8) :: cloud_cover(pcols,pverp)		! CLUBB in-cloud cloud fraction			[fraction]
@@ -2679,14 +2680,6 @@ end subroutine clubb_init_cnst
       vp2(1:ncol,pverp)=vp2(1:ncol,pver)
    end if
 
-   !  Compute virtual potential temperature, which is needed for CLUBB  
-   do k=1,pver
-     do i=1,ncol
-       thv(i,k) = state1%t(i,k)*inv_exner_clubb(i,k)*(1._r8+zvir*state1%q(i,k,ixq)&
-                  -state1%q(i,k,ixcldliq))
-     enddo
-   enddo
-
    call physics_ptend_init(ptend_loc,state%psetcols, 'clubb', ls=.true., lu=.true., lv=.true., lq=lq)
 
    call tropopause_findChemTrop(state, troplev)
@@ -2757,12 +2750,21 @@ end subroutine clubb_init_cnst
     !  Inputs for the momentum levels are set below setup_clubb core
     do k=1,nlev
       do i=1, ncol
-        p_in_Pa(i,k+1)         = state1%pmid(i,pver-k+1)                              ! Pressure profile
+        ! base state (dry) variables
+        p_ds_zt(i,k+1)         = state1%pmid(i,pver-k+1) &
+                                   /(1._r8 + state1%q(i,pver-k+1,ixq)*rh2o/rairv(i,pver-k+1,lchnk))
+        exner_ds_zt(i,k+1)     = (p_ds_zt(i,k+1)/p0_clubb)**(rairv(i,pver-k+1,lchnk)/cpairv(i,pver-k+1,lchnk))
+        thv_ds_zt(i,k+1)       = state1%t(i,pver-k+1)/exner_ds_zt(i,k+1)
+        rho_ds_zt(i,k+1)       = (1._r8/gravit)*(state1%pdel(i,pver-k+1) &
+                                   /dz_g(pver-k+1)) * (1._r8-state1%q(i,pver-k+1,ixq))
+        invrs_rho_ds_zt(i,k+1) = 1._r8/(rho_ds_zt(i,k+1))
+
+        ! full state (moist) variables
+        p_in_Pa(i,k+1)         = state1%pmid(i,pver-k+1)                              
         exner(i,k+1)           = 1._r8/inv_exner_clubb(i,pver-k+1)
-        rho_ds_zt(i,k+1)       = (1._r8/gravit)*(state1%pdel(i,pver-k+1)/dz_g(i,pver-k+1))
-        invrs_rho_ds_zt(i,k+1) = 1._r8/(rho_ds_zt(i,k+1))                             ! Inverse ds rho at thermo
-        rho_in(i,k+1)          = rho_ds_zt(i,k+1)                                     ! rho on thermo 
-        thv_ds_zt(i,k+1)       = thv(i,pver-k+1)                                      ! thetav on thermo
+        thv(i,k+1)             = state1%t(i,pver-k+1)*inv_exner_clubb(i,pver-k+1)*(1._r8+zvir*state1%q(i,pver-k+1,ixq) &
+                                   -state1%q(i,pver-k+1,ixcldliq))
+        rho_zt(i,k+1)          = (1._r8/gravit)*(state1%pdel(i,pver-k+1)/dz_g(pver-k+1))
         rfrzm(i,k+1)           = state1%q(i,pver-k+1,ixcldice)   
         radf(i,k+1)            = radf_clubb(i,pver-k+1)
         qrl_clubb(i,k+1)       = qrl(i,pver-k+1)/(cpairv(i,k,lchnk)*state1%pdel(i,pver-k+1))
@@ -2772,24 +2774,27 @@ end subroutine clubb_init_cnst
     !  Compute mean w wind on thermo grid, convert from omega to w 
     do k=1,nlev
       do i=1,ncol
-        wm_zt(i,k+1) = -1._r8*state1%omega(i,pver-k+1)/(rho_in(i,k+1)*gravit)
+        wm_zt(i,k+1) = -1._r8*(state1%omega(i,pver-k+1)-state1%omega(i,pver))/(rho_in(k+1)*gravit)
       end do
     end do
 
     !  Below computes the same stuff for the ghost point.  May or may
     !  not be needed, just to be safe to avoid NaN's
     do i=1, ncol
+      p_ds_zt(i,1)         = p_ds_zt(i,2)
+      exner_ds_zt(i,1)     = exner_ds_zt(i,2)
+      thv_ds_zt(i,1)       = thv_ds_zt(i,2)
       rho_ds_zt(i,1)       = rho_ds_zt(i,2)
       invrs_rho_ds_zt(i,1) = invrs_rho_ds_zt(i,2)
-      rho_in(i,1)          = rho_ds_zt(i,2)
-      thv_ds_zt(i,1)       = thv_ds_zt(i,2)
-      rho_zt(i,:)          = rho_in(i,:)
+
       p_in_Pa(i,1)         = p_in_Pa(i,2)
       exner(i,1)           = exner(i,2)
+      thv(i,1)             = thv(i,2)
+      rho_zt(i,1)          = rho_zt(i,2)
       rfrzm(i,1)           = rfrzm(i,2)
       radf(i,1)            = radf(i,2)
       qrl_clubb(i,1)       = qrl_clubb(i,2)
-      wm_zt(i,1)           = 0._r8
+      wm_zt(i,1)           = wm_zt(i,2)
     end do
   
   
@@ -3154,7 +3159,7 @@ end subroutine clubb_init_cnst
         do i=1, ncol
           call integrate_mf( pverp, dzt(i,:), zi_g(i,:), p_in_Pa_zm(i,:), invrs_exner_zm(i,:), & ! input
                                                          p_in_Pa(i,:),    invrs_exner_zt(i,:), & ! input
-                            um_in(i,:), vm_in(i,:), thlm_in(i,:),    rtm_in(i,:), thv_ds_zt(i,:),     & ! input
+                            um_in(i,:), vm_in(i,:), thlm_in(i,:),    rtm_in(i,:), thv(i,:),    & ! input
                                                     thlm_zm_in(i,:), rtm_zm_in(i,:),                  & ! input
                                                     wpthlp_sfc(i), wprtp_sfc(i),  pblh(i),            & ! input
                             mf_dry_a(i,:),    mf_moist_a(i,:),                                          & ! output - plume diagnostics
@@ -3201,7 +3206,7 @@ end subroutine clubb_init_cnst
           wpthlp_sfc(:ncol), wprtp_sfc(:ncol), upwp_sfc(:ncol), vpwp_sfc(:ncol), &
           wpsclrp_sfc(:ncol,:), wpedsclrp_sfc(:ncol,:), &
           rtm_ref(:ncol,:), thlm_ref(:ncol,:), um_ref(:ncol,:), vm_ref(:ncol,:), ug(:ncol,:), vg(:ncol,:), &
-          p_in_Pa(:ncol,:), rho_zm(:ncol,:), rho_in(:ncol,:), exner(:ncol,:), &
+          p_in_Pa(:ncol,:), rho_zm(:ncol,:), rho_zt(:ncol,:), exner(:ncol,:), &
           rho_ds_zm(:ncol,:), rho_ds_zt(:ncol,:), invrs_rho_ds_zm(:ncol,:), &
           invrs_rho_ds_zt(:ncol,:), thv_ds_zm(:ncol,:), thv_ds_zt(:ncol,:), hydromet(:ncol,:,:), &
           rfrzm(:ncol,:), radf(:ncol,:), &
