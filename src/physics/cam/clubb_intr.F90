@@ -20,7 +20,7 @@ module clubb_intr
   use shr_kind_mod,  only: r8=>shr_kind_r8                                                                  
   use ppgrid,        only: pver, pverp, pcols, begchunk, endchunk
   use phys_control,  only: phys_getopts
-  use physconst,     only: rairv, cpairv, cpair, gravit, latvap, latice, zvir, rh2o, karman
+  use physconst,     only: rair, rairv, cpairv, cpair, gravit, latvap, latice, zvir, rh2o, karman
 
   use spmd_utils,    only: masterproc 
   use constituents,  only: pcnst, cnst_add
@@ -2126,6 +2126,7 @@ end subroutine clubb_init_cnst
    real(r8) :: se_dis(pcols), se_a(pcols), se_b(pcols), clubb_s(pcols,pver)
 
    real(r8) :: inv_exner_clubb(pcols,pverp)     ! Inverse exner function consistent with CLUBB  [-]
+   real(r8) :: inv_exner_clubb_surf(pcols)      ! Inverse exner function at the surface
    real(r8) :: wpthlp_output(pcols,pverp)       ! Heat flux output variable                     [W/m2]
    real(r8) :: wprtp_output(pcols,pverp)        ! Total water flux output variable              [W/m2]
    real(r8) :: wp3_output(pcols,pverp)          ! wp3 output                                    [m^3/s^3]
@@ -2614,6 +2615,7 @@ end subroutine clubb_init_cnst
      do i=1,ncol
        inv_exner_clubb(i,k) = 1._r8/((state1%pmid(i,k)/p0_clubb)**(rairv(i,k,lchnk)/cpairv(i,k,lchnk)))
      enddo
+     inv_exner_clubb_surf(i) = 1._r8/((state1%pint(i,pverp)/p0_clubb)**(rair/cpair))
    enddo
    
    !  At each CLUBB call, initialize mean momentum  and thermo CLUBB state 
@@ -2921,6 +2923,7 @@ end subroutine clubb_init_cnst
     !  Surface fluxes provided by host model
     do i=1,ncol                                                                  
       wpthlp_sfc(i) = cam_in%shf(i)/(cpair*rho_ds_zm(i,1))       ! Sensible heat flux
+      wpthlp_sfc(i) = wpthlp_sfc(i)*inv_exner_clubb_surf(i)      ! Convert to flux of potential temperature
       wprtp_sfc(i)  = cam_in%cflx(i,1)/rho_ds_zm(i,1)            ! Moisture flux  (check rho)
       upwp_sfc(i)   = cam_in%wsx(i)/rho_ds_zm(i,1)               ! Surface meridional momentum flux
       vpwp_sfc(i)   = cam_in%wsy(i)/rho_ds_zm(i,1)               ! Surface zonal momentum flux  
