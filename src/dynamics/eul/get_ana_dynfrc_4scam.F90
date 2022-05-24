@@ -938,7 +938,7 @@ subroutine get_ana_dynfrc_fv ( scmlon, scmlat ,  &
            integer,  intent(in)  :: nlon,nlat,nlev
             real(r8), intent(in)  :: t(nlon,nlat,nlev),q(nlon,nlat,nlev),ps(nlon,nlat),phis(nlon,nlat)
             real(r8), intent(out) :: pko(nlon,nlat,nlev),th(nlon,nlat,nlev),pke(nlon,nlat,nlev+1), phi(nlon,nlat,nlev+1)
-            real(r8) :: ple(nlon,nlat,nlev+1),plo(nlon,nlat,nlev+1),rv(nlon,nlat,nlev+1)
+            real(r8) :: ple(nlon,nlat,nlev+1),plo(nlon,nlat,nlev),rv(nlon,nlat,nlev)
             real(r8) :: kappa, p00
             integer :: L
            
