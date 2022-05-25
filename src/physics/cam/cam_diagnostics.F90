@@ -461,6 +461,10 @@ contains
     call addfld ('RHI',        (/ 'lev' /), 'A', 'percent','Relative humidity with respect to ice')
     call addfld ('RHCFMIP',    (/ 'lev' /), 'A', 'percent','Relative humidity with respect to water above 273 K, ice below 273 K')
 
+    call addfld ('IVT',        horiz_only,  'A', 'kg/m/s','Total (vertically integrated) vapor transport')
+    call addfld ('uIVT',       horiz_only,  'A', 'kg/m/s','u-component (vertically integrated) vapor transport')
+    call addfld ('vIVT',       horiz_only,  'A', 'kg/m/s','v-component (vertically integrated) vapor transport')
+
     call addfld ('THE8501000', horiz_only,  'A', 'K','ThetaE difference 850 mb - 1000 mb')
     call addfld ('THE9251000', horiz_only,  'A', 'K','ThetaE difference 925 mb - 1000 mb')
 
@@ -1290,6 +1294,8 @@ contains
     real(r8) :: ftem(pcols,pver) ! temporary workspace
     real(r8) :: ftem1(pcols,pver) ! another temporary workspace
     real(r8) :: ftem2(pcols,pver) ! another temporary workspace
+    real(r8) :: ftem4(pcols,pver) ! another temporary workspace
+    real(r8) :: ftem5(pcols,pver) ! another temporary workspace
     real(r8) :: z3(pcols,pver)   ! geo-potential height
     real(r8) :: p_surf(pcols)    ! data interpolated to a pressure surface
     real(r8) :: p_surf_q1(pcols)    ! data interpolated to a pressure surface
@@ -1344,8 +1350,32 @@ contains
       ftem(:ncol,1) = ftem(:ncol,1) + ftem(:ncol,k)
     end do
     call outfld ('TMQ     ',ftem, pcols   ,lchnk     )
+    !
+    ! Integrated vapor transport calculation
+    !
+    !compute uq*dp/g and vq*dp/g
+    ftem4(:ncol,:) = state%q(:ncol,:,1) * state%u(:ncol,:) *state%pdel(:ncol,:) * rga
+    ftem5(:ncol,:) = state%q(:ncol,:,1) * state%v(:ncol,:) *state%pdel(:ncol,:) * rga
 
+    do k=2,pver
+       ftem4(:ncol,1) = ftem4(:ncol,1) + ftem4(:ncol,k)
+       ftem5(:ncol,1) = ftem5(:ncol,1) + ftem5(:ncol,k)
+    end do
+    ! compute ivt
+    ftem(:ncol,1) = sqrt( ftem4(:ncol,1)**2 + ftem5(:ncol,1)**2)
+
+    call outfld ('IVT     ',ftem, pcols   ,lchnk     )
+
+    ! output uq*dp/g
+    ftem(:ncol,1) =  ftem4(:ncol,1)
+    call outfld ('uIVT     ',ftem, pcols   ,lchnk     )
+
+    ! output vq*dp/g
+    ftem(:ncol,1) = ftem5(:ncol,1)
+    call outfld ('vIVT     ',ftem, pcols   ,lchnk     )
+    !
     ! Relative humidity
+    !
     if (hist_fld_active('RELHUM')) then
        if (relhum_idx > 0) then
           call pbuf_get_field(pbuf, relhum_idx, ftem_ptr)

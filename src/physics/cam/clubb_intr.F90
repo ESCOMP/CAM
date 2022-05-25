@@ -1625,6 +1625,8 @@ end subroutine clubb_init_cnst
 
     call addfld ('QSATFAC',          (/ 'lev' /),  'A', '-', 'Subgrid cloud water saturation scaling factor')
     call addfld ('KVH_CLUBB',        (/ 'ilev' /), 'A', 'm2/s', 'CLUBB vertical diffusivity of heat/moisture on interface levels')
+    call addfld ('ELEAK_CLUBB',      horiz_only,   'A', 'W/m2', 'CLUBB energy leak')
+    call addfld ('TFIX_CLUBB',       horiz_only,   'A', 'K', 'Temperature increment to conserve energy')
 
     ! ---------------------------------------------------------------------------- !
     ! Below are for detailed analysis of EDMF Scheme                               !
@@ -2125,6 +2127,7 @@ end subroutine clubb_init_cnst
    real(r8) :: ke_a(pcols), ke_b(pcols), te_a(pcols), te_b(pcols)
    real(r8) :: wv_a(pcols), wv_b(pcols), wl_b(pcols), wl_a(pcols)
    real(r8) :: se_dis(pcols), se_a(pcols), se_b(pcols), clubb_s(pcols,pver)
+   real(r8) :: eleak(pcols)
 
    real(r8) :: inv_exner_clubb(pcols,pverp)     ! Inverse exner function consistent with CLUBB  [-]
    real(r8) :: inv_exner_clubb_surf(pcols)      ! Inverse exner function at the surface
@@ -3654,9 +3657,10 @@ end subroutine clubb_init_cnst
         do k=clubbtop(i)+1,pver
           clubb_s(i,k) = clubb_s(i,k) - se_dis(i)*gravit
         end do
+        ! convert to units of +ve [K]
+        se_dis(i) = -1._r8*se_dis(i)*gravit/cpairv(i,pver,lchnk)
       end do
     end if
-      
       
     !  Now compute the tendencies of CLUBB to CAM, note that pverp is the ghost point
     !  for all variables and therefore is never called in this loop
@@ -3752,6 +3756,10 @@ end subroutine clubb_init_cnst
     call t_stopf("clubb_tend_cam_i_loop")
 
     call outfld('KVH_CLUBB', khzm, pcols, lchnk)
+
+    eleak(:ncol) = (te_a(:ncol) - te_b(:ncol))/hdtime
+    call outfld('ELEAK_CLUBB', eleak, pcols, lchnk)
+    call outfld('TFIX_CLUBB', se_dis, pcols, lchnk)
 
     ! Add constant to ghost point so that output is not corrupted 
     if (clubb_do_adv) then

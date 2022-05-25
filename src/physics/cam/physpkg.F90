@@ -88,6 +88,8 @@ module physpkg
   integer ::  dlfzm_idx          = 0     ! detrained convective cloud water mixing ratio.
   integer ::  ducore_idx         = 0     ! ducore index in physics buffer
   integer ::  dvcore_idx         = 0     ! dvcore index in physics buffer
+  integer ::  dtcore_idx         = 0
+  integer ::  dqcore_idx         = 0
 
 !=======================================================================
 contains
@@ -1028,6 +1030,8 @@ contains
 
     ducore_idx = pbuf_get_index('DUCORE')
     dvcore_idx = pbuf_get_index('DVCORE')
+    dtcore_idx = pbuf_get_index('DTCORE')
+    dqcore_idx = pbuf_get_index('DQCORE')
 
   end subroutine phys_init
 
@@ -1428,6 +1432,7 @@ contains
     real(r8), pointer, dimension(:,:) :: cldliqini
     real(r8), pointer, dimension(:,:) :: cldiceini
     real(r8), pointer, dimension(:,:) :: dtcore
+    real(r8), pointer, dimension(:,:) :: dqcore
     real(r8), pointer, dimension(:,:) :: ducore
     real(r8), pointer, dimension(:,:) :: dvcore
     real(r8), pointer, dimension(:,:) :: ast     ! relative humidity cloud fraction
@@ -1451,9 +1456,8 @@ contains
     ! Associate pointers with physics buffer fields
     itim_old = pbuf_old_tim_idx()
 
-
-    ifld = pbuf_get_index('DTCORE')
-    call pbuf_get_field(pbuf, ifld, dtcore, start=(/1,1,itim_old/), kount=(/pcols,pver,1/) )
+    call pbuf_get_field(pbuf, dtcore_idx, dtcore, start=(/1,1,itim_old/), kount=(/pcols,pver,1/) )
+    call pbuf_get_field(pbuf, dqcore_idx, dqcore, start=(/1,1,itim_old/), kount=(/pcols,pver,1/) )
     call pbuf_get_field(pbuf, ducore_idx, ducore, start=(/1,1,itim_old/), kount=(/pcols,pver,1/) )
     call pbuf_get_field(pbuf, dvcore_idx, dvcore, start=(/1,1,itim_old/), kount=(/pcols,pver,1/) )
 
@@ -1912,6 +1916,7 @@ contains
     ! store T, U, and V in buffer for use in computing dynamics T-tendency in next timestep
     do k = 1,pver
        dtcore(:ncol,k) = state%t(:ncol,k)
+       dqcore(:ncol,k) = state%q(:ncol,k,1)
        ducore(:ncol,k) = state%u(:ncol,k)
        dvcore(:ncol,k) = state%v(:ncol,k)
     end do
@@ -2075,6 +2080,7 @@ contains
     real(r8), pointer, dimension(:,:) :: cldliqini
     real(r8), pointer, dimension(:,:) :: cldiceini
     real(r8), pointer, dimension(:,:) :: dtcore
+    real(r8), pointer, dimension(:,:) :: dqcore
     real(r8), pointer, dimension(:,:) :: ducore
     real(r8), pointer, dimension(:,:) :: dvcore
 
@@ -2149,8 +2155,8 @@ contains
     call pbuf_get_field(pbuf, cldliqini_idx, cldliqini)
     call pbuf_get_field(pbuf, cldiceini_idx, cldiceini)
 
-    ifld   =  pbuf_get_index('DTCORE')
-    call pbuf_get_field(pbuf, ifld, dtcore, start=(/1,1,itim_old/), kount=(/pcols,pver,1/) )
+    call pbuf_get_field(pbuf, dtcore_idx, dtcore, start=(/1,1,itim_old/), kount=(/pcols,pver,1/) )
+    call pbuf_get_field(pbuf, dqcore_idx, dqcore, start=(/1,1,itim_old/), kount=(/pcols,pver,1/) )
     call pbuf_get_field(pbuf, ducore_idx, ducore, start=(/1,1,itim_old/), kount=(/pcols,pver,1/) )
     call pbuf_get_field(pbuf, dvcore_idx, dvcore, start=(/1,1,itim_old/), kount=(/pcols,pver,1/) )
 
@@ -2220,9 +2226,11 @@ contains
     ! T, U, V tendency due to dynamics
     if( nstep > dyn_time_lvls-1 ) then
        dtcore(:ncol,:pver) = (state%t(:ncol,:pver) - dtcore(:ncol,:pver))/ztodt
+       dqcore(:ncol,:pver) = (state%q(:ncol,:pver,1) - dqcore(:ncol,:pver))/ztodt
        ducore(:ncol,:pver) = (state%u(:ncol,:pver) - ducore(:ncol,:pver))/ztodt
        dvcore(:ncol,:pver) = (state%v(:ncol,:pver) - dvcore(:ncol,:pver))/ztodt
        call outfld( 'DTCORE', dtcore, pcols, lchnk )
+       call outfld( 'DQCORE', dqcore, pcols, lchnk )
        call outfld( 'UTEND_CORE', ducore, pcols, lchnk )
        call outfld( 'VTEND_CORE', dvcore, pcols, lchnk )
     end if
