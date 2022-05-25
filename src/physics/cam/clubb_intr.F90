@@ -2046,7 +2046,7 @@ end subroutine clubb_init_cnst
    real(r8) :: wm_zm(pcols,pverp+1-top_lev)			  ! w mean wind component on momentum levels  	[m/s]
    real(r8) :: wm_zt(pcols,pverp+1-top_lev)			  ! w mean wind component on thermo. levels   	[m/s]
    real(r8) :: p_in_Pa(pcols,pverp+1-top_lev)			  ! Air pressure (thermodynamic levels)       	[Pa]
-   real(r8) :: rho_zt(pcols,pverp+1-top_lev)                    ! Air density on thermo levels                [kggg/m^3]
+   real(r8) :: rho_zt(pcols,pverp+1-top_lev)                    ! Air density on thermo levels                [kg/m^3]
    real(r8) :: rho_zm(pcols,pverp+1-top_lev)                    ! Air density on momentum levels              [kg/m^3]
    real(r8) :: exner(pcols,pverp+1-top_lev)                     ! Exner function (thermodynamic levels)       [-]
    real(r8) :: wpthlp_sfc(pcols)                       ! w' theta_l' at surface                        [(m K)/s]
