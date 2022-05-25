@@ -48,11 +48,13 @@ public :: &
    micro_pumas_cam_implements_cnst, &
    micro_pumas_cam_init,            &
    micro_pumas_cam_tend,            &
-   micro_mg_version,             &
+   micro_mg_version,                &
+   micro_mg_num_steps,              &
    massless_droplet_destroyer
 
 integer :: micro_mg_version     = 1      ! Version number for MG.
 integer :: micro_mg_sub_version = 0      ! Second part of version number.
+integer :: micro_mg_num_steps   = 1      ! Number of substepping iterations done by MG (versions 1.5 and later).
 
 real(r8) :: micro_mg_dcs = -1._r8
 

@@ -72,7 +72,8 @@ module clubb_intr
 #endif
             clubb_readnl, &
             clubb_init_cnst, &
-            clubb_implements_cnst
+            clubb_implements_cnst, &
+            clubb_timestep
 
 #ifdef CLUBB_SGS
   ! Both of these utilize CLUBB specific variables in their interface
@@ -2759,7 +2760,7 @@ end subroutine clubb_init_cnst
         exner_ds_zt(i,k+1)     = (p_ds_zt(i,k+1)/p0_clubb)**(rairv(i,pver-k+1,lchnk)/cpairv(i,pver-k+1,lchnk))
         thv_ds_zt(i,k+1)       = state1%t(i,pver-k+1)/exner_ds_zt(i,k+1)
         rho_ds_zt(i,k+1)       = (1._r8/gravit)*(state1%pdel(i,pver-k+1) &
-                                   /dz_g(pver-k+1)) * (1._r8-state1%q(i,pver-k+1,ixq))
+                                   /dz_g(i,pver-k+1)) * (1._r8-state1%q(i,pver-k+1,ixq))
         invrs_rho_ds_zt(i,k+1) = 1._r8/(rho_ds_zt(i,k+1))
 
         ! full state (moist) variables
@@ -2767,7 +2768,7 @@ end subroutine clubb_init_cnst
         exner(i,k+1)           = 1._r8/inv_exner_clubb(i,pver-k+1)
         thv(i,k+1)             = state1%t(i,pver-k+1)*inv_exner_clubb(i,pver-k+1)*(1._r8+zvir*state1%q(i,pver-k+1,ixq) &
                                    -state1%q(i,pver-k+1,ixcldliq))
-        rho_zt(i,k+1)          = (1._r8/gravit)*(state1%pdel(i,pver-k+1)/dz_g(pver-k+1))
+        rho_zt(i,k+1)          = (1._r8/gravit)*(state1%pdel(i,pver-k+1)/dz_g(i,pver-k+1))
         rfrzm(i,k+1)           = state1%q(i,pver-k+1,ixcldice)   
         radf(i,k+1)            = radf_clubb(i,pver-k+1)
         qrl_clubb(i,k+1)       = qrl(i,pver-k+1)/(cpairv(i,k,lchnk)*state1%pdel(i,pver-k+1))
@@ -2777,7 +2778,7 @@ end subroutine clubb_init_cnst
     !  Compute mean w wind on thermo grid, convert from omega to w 
     do k=1,nlev
       do i=1,ncol
-        wm_zt(i,k+1) = -1._r8*(state1%omega(i,pver-k+1)-state1%omega(i,pver))/(rho_in(k+1)*gravit)
+        wm_zt(i,k+1) = -1._r8*(state1%omega(i,pver-k+1)-state1%omega(i,pver))/(rho_zt(i,k+1)*gravit)
       end do
     end do
 
