@@ -433,13 +433,11 @@ contains
     if (ibin == 1) then
       if (ielem == I_ELEM_CRICE) then 
         where(mask)
-!        q(:, 1)        = 100e-9_r8    ! top
            q(:, plev/4)   = 100e-7_r8    ! 1/4
         end where
       end if
       if (ielem == I_ELEM_CRCORE) then 
         where(mask)
-!        q(:, 1)        = 100e-9_r8    ! top
            q(:, plev/4)   = 100e-9_r8    ! 1/4
         end where
       end if
