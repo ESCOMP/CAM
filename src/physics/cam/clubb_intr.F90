@@ -3986,8 +3986,13 @@ end subroutine clubb_init_cnst
    ! ------------------------------------------------- !
 
    !  density
-   rho(:ncol,1:pver) = state1%pmid(:ncol,1:pver)/(rairv(:ncol,1:pver,lchnk)*state1%t(:ncol,1:pver))
-   rho(:ncol,pverp)  = state1%ps(:ncol)/(rairv(:ncol,pver,lchnk)*state1%t(:ncol,pver))
+   ! REMOVE AFTER CODE REVIEW - this rho is for midpoints except the lowest level is the surface
+   !                          - BUT this is supposed to be rho at the interface levels
+   !                          - replace with rho at mid-points using mass def, to be consistent w/ earlier def's
+   !rho(:ncol,1:pver) = state1%pmid(:ncol,1:pver)/(rairv(:ncol,1:pver,lchnk)*state1%t(:ncol,1:pver))
+   !rho(:ncol,pverp)  = state1%ps(:ncol)/(rairv(:ncol,pver,lchnk)*state1%t(:ncol,pver))
+   rho(1:ncol,1:pver) = (1._r8/gravit)*state1%pdel(1:ncol,1:pver)/(state1%zi(1:ncol,1:pver)-state1%zi(1:ncol,2:pverp))
+   rho(1:ncol,pverp) = rho_zt(1:ncol,pver)
 
    wpthvp_diag(:,:) = 0.0_r8
    do k=1,pver
@@ -4154,13 +4159,19 @@ end subroutine clubb_init_cnst
     
    do i=1,ncol
       do k=1,pver
-         th(i,k) = state1%t(i,k)*state1%exner(i,k)
-         thv(i,k) = th(i,k)*(1.0_r8+zvir*state1%q(i,k,ixq))
+         !th(i,k) = state1%t(i,k)*state1%exner(i,k)
+         !thv(i,k) = th(i,k)*(1.0_r8+zvir*state1%q(i,k,ixq))
+         ! REMOVE AFTER CODE REVIEW - state%exner is not a proper exner
+         !                            thv should have condensate loading to be consistent with earlier def's
+         th(i,k) = state1%t(i,k)*exner(i,k)
+         thv(i,k) = th(i,k)*(1.0_r8+zvir*state1%q(i,k,ixq) - state1%q(i,k,ixcldliq))
       enddo
    enddo
  
    ! diagnose surface friction and obukhov length (inputs to diagnose PBL depth)
-   rrho(1:ncol) = (1._r8/gravit)*(state1%pdel(1:ncol,pver)/dz_g(1:ncol,pver)) 
+   ! REMOVE AFTER CODE REVIEW - dz_g is out of date, replace with state%
+   !rrho(1:ncol) = (1._r8/gravit)*(state1%pdel(1:ncol,pver)/dz_g(1:ncol,pver)) 
+   rrho(1:ncol) = (1._r8/gravit)*state1%pdel(1:ncol,pver)/(state1%zi(1:ncol,pver)-state1%zi(1:ncol,pverp))
    call calc_ustar( ncol, state1%t(1:ncol,pver), state1%pmid(1:ncol,pver), cam_in%wsx(1:ncol), cam_in%wsy(1:ncol), &
                     rrho(1:ncol), ustar2(1:ncol))
    ! use correct qflux from coupler
