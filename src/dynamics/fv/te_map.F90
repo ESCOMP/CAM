@@ -509,7 +509,7 @@ contains
               if (pe1(i,k)-pe1(i,k-1)<lagrangianlevcrit) then                
                 write(iulog,*) "Lagrangian levels are crossing", lagrangianlevcrit
                 write(iulog,*) "Run will ABORT!"
-                write(iulog,*) "Suggest to increase NSPLTVRM"
+                write(iulog,*) "Suggest to increase FV_NSPLTVRM"
                 do kk=1,km
                   write(iulog,'(A21,I5,A1,3f16.12)') "k,dp(unit=hPa),u,v: ",&
                        kk," ",(pe(i,kk,j)-pe(i,kk-1,j))/100.0_r8,u(i,j,kk),v(i,j,kk)
