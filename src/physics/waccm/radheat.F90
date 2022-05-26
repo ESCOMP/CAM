@@ -42,8 +42,8 @@ module radheat
   logical :: nlte_use_mo = .true. ! Determines which constituents are used from NLTE calculations
                                   !  = .true. uses prognostic constituents
                                   !  = .false. uses constituents from prescribed dataset waccm_forcing_file
-  logical :: nlte_limit_co2 = .false. ! if true apply upper limit to co2 in the Formichev scheme
-  logical :: nlte_use_aliarms = .false. ! If true, use ALI-ARMS instead of Formichev scheme
+  logical :: nlte_limit_co2 = .false. ! if true apply upper limit to co2 in the Fomichev scheme
+  logical :: nlte_use_aliarms = .false. ! If true, use ALI-ARMS for the cooling rate calculation
   integer :: nlte_aliarms_every_X = 1 ! Call aliarms every X times radiation is called
 
 ! Private variables for merging heating rates
@@ -136,7 +136,7 @@ contains
 
 !================================================================================================
 
-  subroutine radheat_init(pref_mid, pbuf2d)
+  subroutine radheat_init(pref_mid)
 
     use nlte_lw,          only: nlte_init
     use cam_history,      only: add_default, addfld
@@ -146,7 +146,6 @@ contains
     ! args
 
     real(r8),          intent(in) :: pref_mid(pver) ! mid point reference pressure
-    type(physics_buffer_desc), pointer :: pbuf2d(:,:)
 
     ! local vars
 

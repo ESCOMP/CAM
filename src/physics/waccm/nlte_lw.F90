@@ -5,7 +5,7 @@ module nlte_lw
 !
   use shr_kind_mod,       only: r8 => shr_kind_r8
   use spmd_utils,         only: masterproc
-  use ppgrid,             only: pcols, pver, begchunk, endchunk
+  use ppgrid,             only: pcols, pver
   use pmgrid,             only: plev
   use rad_constituents,   only: rad_cnst_get_gas, rad_cnst_get_info
 
@@ -42,25 +42,25 @@ module nlte_lw
   real(r8) :: o3_mw = -huge(1.0_r8)        ! O3 molecular weight
 
 ! indexes of required constituents in model constituent array
-  integer :: ico2                           ! CO2 index
-  integer :: io1                            ! O index
-  integer :: io2                            ! O2 index
-  integer :: io3                            ! O3 index
-  integer :: ih                             ! H index
-  integer :: ino                            ! NO index
+  integer :: ico2 = -1                      ! CO2 index
+  integer :: io1 = -1                       ! O index
+  integer :: io2 = -1                       ! O2 index
+  integer :: io3 = -1                       ! O3 index
+  integer :: ih = -1                        ! H index
+  integer :: ino = -1                       ! NO index
   integer :: qrlaliarms_idx = -1
 
 ! merge limits for data ozone
-  integer :: nbot_mlt                       ! bottom of pure tgcm range
-  integer :: ntop_cam                       ! bottom of merge range
-  real(r8):: wt_o3_mrg(pver)                ! merge weights for cam o3
+  integer :: nbot_mlt = huge(1)              ! bottom of pure tgcm range
+  integer :: ntop_cam = huge(1)              ! bottom of merge range
+  real(r8):: wt_o3_mrg(pver) = -huge(1.0_r8) ! merge weights for cam o3
 
 !================================================================================================
 contains
 !================================================================================================
 
   subroutine nlte_register()
-  use physics_buffer,   only: pbuf_add_field, dtype_r8, dtype_i4
+  use physics_buffer,   only: pbuf_add_field, dtype_r8
 
   call pbuf_add_field('qrlaliarms',  'global', dtype_r8, (/pcols,pver/),qrlaliarms_idx)
 
@@ -77,7 +77,6 @@ contains
     use cam_history,  only: add_default, addfld
     use mo_waccm_hrates,  only: has_hrates
     use phys_control, only: phys_getopts
-    use physics_buffer, only : physics_buffer_desc, pbuf_set_field
 
     real(r8),         intent(in) :: pref_mid(plev)
     real(r8),         intent(in) :: max_pressure_lw

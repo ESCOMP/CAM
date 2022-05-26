@@ -19,12 +19,12 @@ module nlte_aliarms
      nlte_aliarms_calc
 
 
-  integer(c_int) :: pver_c                     ! pver for the ALI_ARMS C code (limited by max_pressure_lw)
+  integer(c_int) :: pver_c = -1                ! pver for the ALI_ARMS C code (limited by max_pressure_lw)
 
-  real(r8) :: o1_mw_inv                        ! O molecular weight (inverse)
-  real(r8) :: o2_mw_inv                        ! O2 molecular weight (inverse)
-  real(r8) :: co2_mw_inv                       ! CO2 molecular weight (inverse)
-  real(r8) :: n2_mw_inv                        ! N2 molecular weight (inverse)
+  real(r8) :: o1_mw_inv  = -huge(1.0_r8)       ! O molecular weight (inverse)
+  real(r8) :: o2_mw_inv  = -huge(1.0_r8)       ! O2 molecular weight (inverse)
+  real(r8) :: co2_mw_inv = -huge(1.0_r8)       ! CO2 molecular weight (inverse)
+  real(r8) :: n2_mw_inv  = -huge(1.0_r8)       ! N2 molecular weight (inverse)
 contains
 
 !-----------------------------------------------------------------

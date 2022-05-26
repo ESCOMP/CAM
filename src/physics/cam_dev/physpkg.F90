@@ -87,7 +87,7 @@ module physpkg
   integer ::  dvcore_idx         = 0     ! dvcore index in physics buffer
   integer ::  dtcore_idx         = 0
   integer ::  cmfmczm_idx        = 0     ! Zhang-McFarlane convective mass fluxes
-  integer ::  rliqbc_idx         = 0     ! tphysbc reserve liquid 
+  integer ::  rliqbc_idx         = 0     ! tphysbc reserve liquid
 !=======================================================================
 contains
 !=======================================================================
@@ -139,6 +139,7 @@ contains
     use cloud_diagnostics,  only: cloud_diagnostics_register
     use cospsimulator_intr, only: cospsimulator_intr_register
     use rad_constituents,   only: rad_cnst_get_info ! Added to query if it is a modal aero sim or not
+    use radheat,            only: radheat_register
     use subcol,             only: subcol_register
     use subcol_utils,       only: is_subcol_on, subcol_get_scheme
     use dyn_comp,           only: dyn_register
@@ -287,6 +288,7 @@ contains
        ! radiation
        call radiation_register
        call cloud_diagnostics_register
+       call radheat_register
 
        ! COSP
        call cospsimulator_intr_register
@@ -2271,19 +2273,19 @@ contains
     !
     ! FV: convert dry-type mixing ratios to moist here because physics_dme_adjust
     !     assumes moist. This is done in p_d_coupling for other dynamics. Bundy, Feb 2004.
-    moist_mixing_ratio_dycore = dycore_is('LR').or. dycore_is('FV3')  
+    moist_mixing_ratio_dycore = dycore_is('LR').or. dycore_is('FV3')
 
     ! Scale dry mass and energy (does nothing if dycore is EUL or SLD)
     tmp_q     (:ncol,:pver) = state%q(:ncol,:pver,ixq)
     tmp_cldliq(:ncol,:pver) = state%q(:ncol,:pver,ixcldliq)
     tmp_cldice(:ncol,:pver) = state%q(:ncol,:pver,ixcldice)
 
-    ! for dry mixing ratio dycore, physics_dme_adjust is called for energy diagnostic purposes only.  
+    ! for dry mixing ratio dycore, physics_dme_adjust is called for energy diagnostic purposes only.
     ! So, save off tracers
     if (.not.moist_mixing_ratio_dycore.and.&
          (hist_fld_active('SE_phAM').or.hist_fld_active('KE_phAM').or.hist_fld_active('WV_phAM').or.&
           hist_fld_active('WL_phAM').or.hist_fld_active('WI_phAM').or.hist_fld_active('MR_phAM').or.&
-          hist_fld_active('MO_phAM'))) then 
+          hist_fld_active('MO_phAM'))) then
       tmp_trac(:ncol,:pver,:pcnst) = state%q(:ncol,:pver,:pcnst)
       tmp_pdel(:ncol,:pver)        = state%pdel(:ncol,:pver)
       tmp_ps(:ncol)                = state%ps(:ncol)
@@ -2648,7 +2650,7 @@ contains
          (trim(cam_take_snapshot_before) == trim(cam_take_snapshot_after))) then
             call cam_snapshot_ptend_outfld(ptend, lchnk)
     end if
-    
+
     if ( ptend%lu ) then
       call outfld( 'UTEND_DCONV', ptend%u, pcols, lchnk)
     end if
@@ -2745,7 +2747,7 @@ contains
 
       call radiation_tend( &
          state, ptend, pbuf, cam_out, cam_in, net_flx)
-  
+
     end if
 
     ! Save atmospheric fields to force surface models
