@@ -88,8 +88,8 @@ module physpkg
   integer ::  dlfzm_idx          = 0     ! detrained convective cloud water mixing ratio.
   integer ::  ducore_idx         = 0     ! ducore index in physics buffer
   integer ::  dvcore_idx         = 0     ! dvcore index in physics buffer
-  integer ::  dtcore_idx         = 0
-  integer ::  dqcore_idx         = 0
+  integer ::  dtcore_idx         = 0     ! dtcore index in physics buffer
+  integer ::  dqcore_idx         = 0     ! dqcore index in physics buffer
 
 !=======================================================================
 contains

@@ -2583,6 +2583,11 @@ end subroutine clubb_init_cnst
      do i=1,ncol
        inv_exner_clubb(i,k) = 1._r8/((state1%pmid(i,k)/p0_clubb)**(rairv(i,k,lchnk)/cpairv(i,k,lchnk)))
      enddo
+   enddo
+
+   !  Compute exner at the surface for converting the sensible heat fluxes
+   !  into a flux of potential temperature for use as clubb's boundary conditions
+   do i=1,ncol
      inv_exner_clubb_surf(i) = 1._r8/((state1%pint(i,pverp)/p0_clubb)**(rair/cpair))
    enddo
    

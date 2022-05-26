@@ -66,7 +66,7 @@ module check_energy
 
   integer  :: teout_idx  = 0       ! teout index in physics buffer
   integer  :: dtcore_idx = 0       ! dtcore index in physics buffer
-  integer  :: dqcore_idx = 0
+  integer  :: dqcore_idx = 0       ! dqcore index in physics buffer
   integer  :: ducore_idx = 0       ! ducore index in physics buffer
   integer  :: dvcore_idx = 0       ! dvcore index in physics buffer
 
