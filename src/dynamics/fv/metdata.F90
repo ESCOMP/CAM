@@ -662,7 +662,7 @@ contains
           if (met_srf_land_scale) then
             met_rlx_sfc(:ncol) = (1._r8 - cam_in(c)%landfrac(:ncol)) * met_rlx_sfc(:ncol) + cam_in(c)%landfrac(:ncol) * met_rlx(pver)
           else
-            where(cam_in(c)%landfrac(:ncol) .eq. 1._r8) met_rlx_sfc(:ncol) = 0._r8
+            where(cam_in(c)%landfrac(:ncol) == 1._r8) met_rlx_sfc(:ncol) = 0._r8
           end if
        end if
 
@@ -693,23 +693,35 @@ contains
           ! an area with no downwelling solar. Time interpolate around the terminator could cause
           ! problems, but the interpolation provides a non-fill value if either endpoint of the
           ! interpolation is not fill.
-          lcl_rlx(:ncol) = met_rlx_sfc(:ncol)
-          where(met_asdir(:ncol,c) .eq. srf_fill_value) lcl_rlx(:ncol) = 0._r8
-          cam_in(c)%asdir(:ncol)   = (1._r8-lcl_rlx(:ncol)) * cam_in(c)%asdir(:ncol)    + lcl_rlx(:ncol) * met_asdir(:ncol,c)
+          where(met_asdir(:ncol,c) == srf_fill_value)
+             lcl_rlx(:ncol) = 0._r8
+          elsewhere
+             lcl_rlx(:ncol) = met_rlx_sfc(:ncol)
+          end where
+          cam_in(c)%asdir(:ncol) = (1._r8-lcl_rlx(:ncol)) * cam_in(c)%asdir(:ncol) + lcl_rlx(:ncol) * met_asdir(:ncol,c)
 
-          lcl_rlx(:ncol) = met_rlx_sfc(:ncol)
-          where(met_asdif(:ncol,c) .eq. srf_fill_value) lcl_rlx(:ncol) = 0._r8
-          cam_in(c)%asdif(:ncol)   = (1._r8-lcl_rlx(:ncol)) * cam_in(c)%asdif(:ncol)    + lcl_rlx(:ncol) * met_asdif(:ncol,c)
+          where(met_asdif(:ncol,c) == srf_fill_value)
+             lcl_rlx(:ncol) = 0._r8
+          elsewhere
+             lcl_rlx(:ncol) = met_rlx_sfc(:ncol)
+          end where
+          cam_in(c)%asdif(:ncol) = (1._r8-lcl_rlx(:ncol)) * cam_in(c)%asdif(:ncol) + lcl_rlx(:ncol) * met_asdif(:ncol,c)
 
-          lcl_rlx(:ncol) = met_rlx_sfc(:ncol)
-          where(met_aldir(:ncol,c) .eq. srf_fill_value) lcl_rlx(:ncol) = 0._r8
-          cam_in(c)%aldir(:ncol)   = (1._r8-lcl_rlx(:ncol)) * cam_in(c)%aldir(:ncol)    + lcl_rlx(:ncol) * met_aldir(:ncol,c)
+          where(met_aldir(:ncol,c) == srf_fill_value)
+             lcl_rlx(:ncol) = 0._r8
+          elsewhere
+             lcl_rlx(:ncol) = met_rlx_sfc(:ncol)
+          end where
+          cam_in(c)%aldir(:ncol) = (1._r8-lcl_rlx(:ncol)) * cam_in(c)%aldir(:ncol) + lcl_rlx(:ncol) * met_aldir(:ncol,c)
 
-          lcl_rlx(:ncol) = met_rlx_sfc(:ncol)
-          where(met_aldif(:ncol,c) .eq. srf_fill_value) lcl_rlx(:ncol) = 0._r8
-          cam_in(c)%aldif(:ncol)   = (1._r8-lcl_rlx(:ncol)) * cam_in(c)%aldif(:ncol)    + lcl_rlx(:ncol) * met_aldif(:ncol,c)
+          where(met_aldif(:ncol,c) == srf_fill_value)
+             lcl_rlx(:ncol) = 0._r8
+          elsewhere
+             lcl_rlx(:ncol) = met_rlx_sfc(:ncol)
+          end where
+          cam_in(c)%aldif(:ncol) = (1._r8-lcl_rlx(:ncol)) * cam_in(c)%aldif(:ncol) + lcl_rlx(:ncol) * met_aldif(:ncol,c)
 
-          cam_in(c)%lwup(:ncol)    = (1._r8-met_rlx_sfc(:ncol)) * cam_in(c)%lwup(:ncol)     + met_rlx_sfc(:ncol) * met_lwup(:ncol,c)
+          cam_in(c)%lwup(:ncol) = (1._r8-met_rlx_sfc(:ncol)) * cam_in(c)%lwup(:ncol) + met_rlx_sfc(:ncol) * met_lwup(:ncol,c)
        end if
 
        if (met_srf_refs) then
@@ -722,13 +734,20 @@ contains
 
           ! Meteorological sst is 0 over 100% land, so use the cam_in value if the meteorology thinks
           ! it is land.
-          lcl_rlx(:ncol) = met_rlx_sfc(:ncol)
-          where(met_sst(:ncol,c) .eq. srf_fill_value) lcl_rlx(:ncol) = 0._r8
-          cam_in(c)%sst(:ncol)    = (1._r8-lcl_rlx(:ncol)) * cam_in(c)%sst(:ncol)    + lcl_rlx(:ncol) * met_sst(:ncol,c)
+          where(met_sst(:ncol,c) == srf_fill_value)
+             lcl_rlx(:ncol) = 0._r8
+          elsewhere
+             lcl_rlx(:ncol) = met_rlx_sfc(:ncol)
+          end where
+          cam_in(c)%sst(:ncol) = (1._r8-lcl_rlx(:ncol)) * cam_in(c)%sst(:ncol) + lcl_rlx(:ncol) * met_sst(:ncol,c)
 
-          lcl_rlx(:ncol) = met_rlx_sfc(:ncol)
-          where(met_icefrac(:ncol,c) .eq. srf_fill_value) lcl_rlx(:ncol) = 0._r8
-          cam_in(c)%icefrac(:ncol)    = (1._r8-lcl_rlx(:ncol)) * cam_in(c)%icefrac(:ncol)    + lcl_rlx(:ncol) * met_icefrac(:ncol,c)
+          where(met_icefrac(:ncol,c) == srf_fill_value)
+             lcl_rlx(:ncol) = 0._r8
+          elsewhere
+             lcl_rlx(:ncol) = met_rlx_sfc(:ncol)
+          end where
+          cam_in(c)%icefrac(:ncol) = (1._r8-lcl_rlx(:ncol)) * cam_in(c)%icefrac(:ncol) + lcl_rlx(:ncol) * met_icefrac(:ncol,c)
+
        end if
      end do                    ! Chunk loop
 
@@ -836,7 +855,7 @@ contains
 
         ! If configured for using SST, and ICEFRAC, then get icefrc
         ! directly from the meteorological data.
-        if (met_icefrac(i,lchnk) .eq. srf_fill_value) then
+        if (met_icefrac(i,lchnk) == srf_fill_value) then
           icefrc(i) = 0._r8
         else
           icefrc(i) = min(met_icefrac(i,lchnk), 1._r8 - lndfrc(i))
@@ -992,7 +1011,7 @@ contains
          minval(v(:,  max(1,jfirst-ng_s):min(jm,jlast+ng_d), kfirst:klast ))
     endif
 
-    if ( grid%twod_decomp .eq. 0 ) then
+    if ( grid%twod_decomp == 0 ) then
        do j = jfirst, jlast
           do k = kfirst, klast
              do i = 1, grid%im
@@ -1029,7 +1048,7 @@ contains
 
     ps(:,:) = met_ps_curr(:,:) + num1*(met_ps_next(:,:)-met_ps_curr(:,:))/num2
 
-    if ( grid%twod_decomp .eq. 0 ) then
+    if ( grid%twod_decomp == 0 ) then
        do j = grid%jfirst, grid%jlast
           call outfld('MET_PS',ps(:,j), grid%im   ,j   )
        enddo
@@ -1337,7 +1356,7 @@ contains
     character(len=5)   :: num
     integer :: ios,unitnumber
 
-    if ( len_trim(met_filenames_list) .eq. 0) then
+    if ( len_trim(met_filenames_list) == 0) then
        !-----------------------------------------------------------------------
        !	... ccm type filename
        !-----------------------------------------------------------------------
@@ -1514,7 +1533,7 @@ contains
     integer :: i,j,k
 
     if (grid%iam .lt. grid%npes_xy) then
-       if ( grid%twod_decomp .eq. 1 ) then
+       if ( grid%twod_decomp == 1 ) then
 
 #if defined( SPMD )
 !$omp parallel do private(i,j,k)
@@ -1551,7 +1570,7 @@ contains
     real(r8),               intent(out) :: yz_3d(1:grid%im, grid%jfirst:grid%jlast, grid%kfirst:grid%klast)
 
     if (grid%iam .lt. grid%npes_xy) then
-       if ( grid%twod_decomp .eq. 1 ) then
+       if ( grid%twod_decomp == 1 ) then
 #if defined( SPMD )
           call mp_sendirr( grid%commxy, grid%ijk_xy_to_yz%SendDesc, &
                grid%ijk_xy_to_yz%RecvDesc, xy_3d, yz_3d,            &
@@ -1871,33 +1890,33 @@ contains
              ! solar. However, this changes slowly, so for interpolation use either end-point
              ! if nothing is present. If there is no solar, then the albedo won't matter, so
              ! should not cause problems.
-             if (met_asdiri(nm)%data(i,c) .eq. srf_fill_value) then
+             if (met_asdiri(nm)%data(i,c) == srf_fill_value) then
                 met_asdir(i,c) = met_asdiri(np)%data(i,c)
-             else if (met_asdiri(np)%data(i,c) .eq. srf_fill_value) then
+             else if (met_asdiri(np)%data(i,c) == srf_fill_value) then
                 met_asdir(i,c) = met_asdiri(nm)%data(i,c)
              else
                 met_asdir(i,c) = fact1*met_asdiri(nm)%data(i,c) + fact2*met_asdiri(np)%data(i,c)
              endif
 
-             if (met_asdifi(nm)%data(i,c) .eq. srf_fill_value) then
+             if (met_asdifi(nm)%data(i,c) == srf_fill_value) then
                 met_asdif(i,c) = met_asdifi(np)%data(i,c)
-             else if (met_asdifi(np)%data(i,c) .eq. srf_fill_value) then
+             else if (met_asdifi(np)%data(i,c) == srf_fill_value) then
                 met_asdif(i,c) = met_asdifi(nm)%data(i,c)
              else
                 met_asdif(i,c) = fact1*met_asdifi(nm)%data(i,c) + fact2*met_asdifi(np)%data(i,c)
              endif
 
-             if (met_aldiri(nm)%data(i,c) .eq. srf_fill_value) then
+             if (met_aldiri(nm)%data(i,c) == srf_fill_value) then
                 met_aldir(i,c) = met_aldiri(np)%data(i,c)
-             else if (met_aldiri(np)%data(i,c) .eq. srf_fill_value) then
+             else if (met_aldiri(np)%data(i,c) == srf_fill_value) then
                 met_aldir(i,c) = met_aldiri(nm)%data(i,c)
              else
                 met_aldir(i,c) = fact1*met_aldiri(nm)%data(i,c) + fact2*met_aldiri(np)%data(i,c)
              endif
 
-             if (met_aldifi(nm)%data(i,c) .eq. srf_fill_value) then
+             if (met_aldifi(nm)%data(i,c) == srf_fill_value) then
                 met_aldif(i,c) = met_aldifi(np)%data(i,c)
-             else if (met_aldifi(np)%data(i,c) .eq. srf_fill_value) then
+             else if (met_aldifi(np)%data(i,c) == srf_fill_value) then
                 met_aldif(i,c) = met_aldifi(nm)%data(i,c)
              else
                 met_aldif(i,c) = fact1*met_aldifi(nm)%data(i,c) + fact2*met_aldifi(np)%data(i,c)
@@ -1923,17 +1942,17 @@ contains
           do i=1,ncol
              ! The sst is fill value over land, which should not change from timestep to
              ! timestep, but just in case use the sst value if only one is present.
-             if (met_ssti(nm)%data(i,c) .eq. srf_fill_value) then
+             if (met_ssti(nm)%data(i,c) == srf_fill_value) then
                 met_sst(i,c) = met_ssti(np)%data(i,c)
-             else if (met_ssti(np)%data(i,c) .eq. srf_fill_value) then
+             else if (met_ssti(np)%data(i,c) == srf_fill_value) then
                 met_sst(i,c) = met_ssti(nm)%data(i,c)
              else
                 met_sst(i,c) = fact1*met_ssti(nm)%data(i,c) + fact2*met_ssti(np)%data(i,c)
              endif
 
-             if (met_icefraci(nm)%data(i,c) .eq. srf_fill_value) then
+             if (met_icefraci(nm)%data(i,c) == srf_fill_value) then
                 met_icefrac(i,c) = met_icefraci(np)%data(i,c)
-             else if (met_ssti(np)%data(i,c) .eq. srf_fill_value) then
+             else if (met_ssti(np)%data(i,c) == srf_fill_value) then
                 met_icefrac(i,c) = met_icefraci(nm)%data(i,c)
              else
                 met_icefrac(i,c) = fact1*met_icefraci(nm)%data(i,c) + fact2*met_icefraci(np)%data(i,c)
