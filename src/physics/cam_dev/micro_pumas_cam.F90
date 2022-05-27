@@ -1157,6 +1157,10 @@ subroutine micro_pumas_cam_init(pbuf2d)
 
    call addfld ('AREFLZ',      (/ 'lev' /),  'A', 'mm^6/m^3', 'Average 94 GHz radar reflectivity'                                 )
 
+   ! 10cm (rain) radar reflectivity
+   call addfld ('REFL10CM',    (/ 'lev' /),  'A', 'DBz',      '10cm (Rain) radar reflectivity (Dbz)'                              )
+   call addfld ('REFLZ10CM',   (/ 'lev' /),  'A', 'mm^6/m^3', '10cm (Rain) radar reflectivity (Z units)'                          )
+
    ! Aerosol information
    call addfld ('NCAL',        (/ 'lev' /),  'A', '1/m3',     'Number Concentation Activated for Liquid'                          )
    call addfld ('NCAI',        (/ 'lev' /),  'A', '1/m3',     'Number Concentation Activated for Ice'                             )
@@ -1562,6 +1566,8 @@ subroutine micro_pumas_cam_tend(state, ptend, dtime, pbuf)
    real(r8)  :: csrfl(state%psetcols,pver)   ! cloudsat reflectivity
    real(r8)  :: acsrfl(state%psetcols,pver)  ! cloudsat average
    real(r8)  :: fcsrfl(state%psetcols,pver)
+   real(r8)  :: refl10cm(state%psetcols,pver)    ! analytic radar reflectivity      
+   real(r8)  :: reflz10cm(state%psetcols,pver)    ! analytic radar reflectivity Z 
    real(r8)  :: rercld(state%psetcols,pver)  ! effective radius calculation for rain + cloud
    real(r8)  :: ncai(state%psetcols,pver)    ! output number conc of ice nuclei available (1/m3)
    real(r8)  :: ncal(state%psetcols,pver)    ! output number conc of CCN (1/m3)
@@ -2328,6 +2334,8 @@ subroutine micro_pumas_cam_tend(state, ptend, dtime, pbuf)
    csrfl(:ncol,:top_lev-1)=0._r8
    acsrfl(:ncol,:top_lev-1)=0._r8
    fcsrfl(:ncol,:top_lev-1)=0._r8
+   refl10cm(:ncol,:top_lev-1)=-9999._r8      
+   reflz10cm(:ncol,:top_lev-1)=0._r8
    rercld(:ncol,:top_lev-1)=0._r8
    ncai(:ncol,:top_lev-1)=0._r8
    ncal(:ncol,:top_lev-1)=0._r8
@@ -2484,7 +2492,8 @@ subroutine micro_pumas_cam_tend(state, ptend, dtime, pbuf)
               nrout(:ncol,top_lev:),           nsout(:ncol,top_lev:),           &
               refl(:ncol,top_lev:),    arefl(:ncol,top_lev:),   areflz(:ncol,top_lev:),  &
               frefl(:ncol,top_lev:),   csrfl(:ncol,top_lev:),   acsrfl(:ncol,top_lev:),  &
-              fcsrfl(:ncol,top_lev:),          rercld(:ncol,top_lev:),          &
+              fcsrfl(:ncol,top_lev:),   &
+              refl10cm(:ncol,top_lev:), reflz10cm(:ncol,top_lev:),    rercld(:ncol,top_lev:),          &
               ncai(:ncol,top_lev:),            ncal(:ncol,top_lev:),            &
               qrout2(:ncol,top_lev:),          qsout2(:ncol,top_lev:),          &
               nrout2(:ncol,top_lev:),          nsout2(:ncol,top_lev:),          &
@@ -3410,6 +3419,8 @@ subroutine micro_pumas_cam_tend(state, ptend, dtime, pbuf)
    call outfld('CSRFL',       csrfl,       psetcols, lchnk, avg_subcol_field=use_subcol_microp)
    call outfld('ACSRFL',      acsrfl,      psetcols, lchnk, avg_subcol_field=use_subcol_microp)
    call outfld('FCSRFL',      fcsrfl,      psetcols, lchnk, avg_subcol_field=use_subcol_microp)
+   call outfld('REFL10CM',    refl10cm,    psetcols, lchnk, avg_subcol_field=use_subcol_microp)
+   call outfld('REFLZ10CM',   reflz10cm,   psetcols, lchnk, avg_subcol_field=use_subcol_microp)
    call outfld('RERCLD',      rercld,      psetcols, lchnk, avg_subcol_field=use_subcol_microp)
    call outfld('NCAL',        ncal,        psetcols, lchnk, avg_subcol_field=use_subcol_microp)
    call outfld('NCAI',        ncai,        psetcols, lchnk, avg_subcol_field=use_subcol_microp)
