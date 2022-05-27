@@ -4404,9 +4404,8 @@ sub check_input_files {
                         print $fh "$var = $pathname\n";
                     }
                     else {
-                        if (-e $pathname) {  # use -e rather than -f since the absolute pathname
-                                             # might be a directory
-                            print "OK -- found $var = $pathname\n";
+                        if (!($pathname =~ '%.*') {
+                            print $fh "$var = $pathname\n";
                         }
                         else {
                             print "NOT FOUND:  $var = $pathname\n";
