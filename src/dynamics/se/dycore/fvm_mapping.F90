@@ -450,7 +450,7 @@ contains
     do ie=nets,nete
       tmp = 1.0_r8
       inv_area  = 1.0_r8/dyn2phys(tmp,elem(ie)%metdet(:,:))
-      phis_phys(:,ie) = RESHAPE(fvm(ie)%phis_physgrid,SHAPE(phis_phys(:,ie)))
+      phis_phys(:,ie) = RESHAPE(dyn2phys(elem(ie)%state%phis(:,:),elem(ie)%metdet(:,:),inv_area),SHAPE(phis_phys(:,ie)))
       ps_phys(:,ie) = ptop      
       if (nc.ne.fv_nphys) then
         tmp = 1.0_r8

@@ -225,7 +225,7 @@ contains
     use mesh_mod,       only: MeshUseMeshFile
     use dimensions_mod, only: ksponge_end, kmvis_ref, kmcnd_ref,rho_ref
     use physconst,      only: cpair
-  
+    use std_atm_profile,only: std_atm_height  
     type(element_t)      , intent(inout) :: elem(:)
     integer              , intent(in) :: nets,nete
     type (hybrid_t)      , intent(in) :: hybrid
@@ -247,7 +247,7 @@ contains
     real (kind=r8) :: x, y, noreast, nw, se, sw
     real (kind=r8), dimension(np,np,nets:nete) :: zeta
     real (kind=r8) :: lambda_max, lambda_vis, min_gw, lambda,umax, ugw
-    real (kind=r8) :: scale1,scale2,scale3, max_laplace
+    real (kind=r8) :: scale1,scale2,scale3, max_laplace,z(nlev)
     integer :: ie,corner, i, j, rowind, colind, k
     type (quadrature_t)    :: gp
     character(LEN=256) :: rk_str
@@ -259,7 +259,7 @@ contains
     real(kind=r8) :: I_sphere, nu_max, nu_div_max
     real(kind=r8) :: h(np,np,nets:nete)
 
-    logical :: top_000_042km, top_042_090km, top_090_140km, top_140_600km ! model top location ranges
+    logical :: top_000_032km, top_032_042km, top_042_090km, top_090_140km, top_140_600km ! model top location ranges
     logical :: nu_set,div_set,lev_set
 
     ! Eigenvalues calculated by folks at UMich (Paul U & Jared W)
@@ -563,31 +563,37 @@ contains
     !
     ! sponge layer strength needed for stability depends on model top location
     !
-    top_000_042km = .false.
+    top_000_032km = .false.
+    top_032_042km = .false.
     top_042_090km = .false.
     top_090_140km = .false.
     top_140_600km = .false.
     nu_set = sponge_del4_nu_fac < 0
     div_set = sponge_del4_nu_div_fac < 0
     lev_set = sponge_del4_lev < 0
-    if (ptop>1.0_r8) then
+    if (ptop>1000.0_r8) then
       !
-      ! CAM6 top (~2.3 Pa)
+      ! low top (~1000 Pa)
       !
-      top_000_042km = .true.
-    else if (ptop>3e-3_r8) then
+      top_000_032km = .true.
+    else if (ptop>100.0_r8) then
       !
-      ! CAM7 top (~4.35e-3 Pa)
+      ! CAM6 top (~225 Pa)
+      !
+      top_032_042km = .true.
+    else if (ptop>1e-1_r8) then
+      !
+      ! CAM7 top (~4.35e-1 Pa)
       !
       top_042_090km = .true.
-    else if (ptop>3E-6_r8) then
+    else if (ptop>1E-4_r8) then
       !
-      ! WACCM top (~4.5e-6 Pa)
+      ! WACCM top (~4.5e-4 Pa)
       !
       top_090_140km = .true.
     else
       !
-      ! WACCM-x - geospace
+      ! WACCM-x - geospace (~4e-7 Pa)
       !
       top_140_600km = .true.
     end if
@@ -601,7 +607,13 @@ contains
     !
     ! if user or namelist is not specifying sponge del4 settings here are best guesses (empirically determined)
     !
-    if (top_000_042km) then
+    if (top_000_032km) then
+      if (sponge_del4_lev       <0) sponge_del4_lev        = 1
+      if (sponge_del4_nu_fac    <0) sponge_del4_nu_fac     = 1.0_r8
+      if (sponge_del4_nu_div_fac<0) sponge_del4_nu_div_fac = 1.0_r8
+    end if
+
+   if (top_032_042km) then
       if (sponge_del4_lev       <0) sponge_del4_lev        = 3
       if (sponge_del4_nu_fac    <0) sponge_del4_nu_fac     = 1.0_r8
       if (sponge_del4_nu_div_fac<0) sponge_del4_nu_div_fac = 4.5_r8
@@ -640,10 +652,15 @@ contains
         nu_lev(k)     = (1.0_r8-scale1)*nu    +scale1*nu_max
         nu_t_lev(k)   = (1.0_r8-scale1)*nu_p  +scale1*nu_max
       end if
-      
-      if (hybrid%masterthread) write(iulog,*) "nu_t_lev     =",k,nu_t_lev(k)
-      if (hybrid%masterthread) write(iulog,*) "nu,nu_div_lev=",k,nu_lev(k),nu_div_lev(k)
     end do
+    if (hybrid%masterthread)then
+      write(iulog,*) "z computed from barometric formula (using US std atmosphere)"
+      call std_atm_height(pmid(:),z(:))
+      write(iulog,*) "k,pmid_ref,z,nu_lev,nu_t_lev,nu_div_lev"
+      do k=1,nlev
+        write(iulog,'(i3,5e11.4)') k,pmid(k),z(k),nu_lev(k),nu_t_lev(k),nu_div_lev(k)
+      end do
+    end if
 
 
     !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!

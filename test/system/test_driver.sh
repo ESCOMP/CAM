@@ -117,7 +117,6 @@ fi
 
 # Initialize variables which may not be set
 submit_script_cime=''
-xml_driver=''
 
 while [ "${1:0:1}" == "-" ]; do
     case $1 in
@@ -252,7 +251,7 @@ case $hostname in
     mach_workspace="/glade/scratch"
 
     # Check for CESM baseline directory
-    if [ -n "{$BL_TESTDIR}" ] && [ ! -d "${BL_TESTDIR}" ]; then
+    if [ -n "${BL_TESTDIR}" ] && [ ! -d "${BL_TESTDIR}" ]; then
         echo "CESM_BASELINE ${BL_TESTDIR} not found.  Check BL_TESTDIR for correct tag name."
         exit
     fi
@@ -388,6 +387,58 @@ EOF
 ##^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ writing to batch script ^^^^^^^^^^^^^^^^^^^
     ;;
 
+    ##casper
+    casper* | crhtc* )
+    submit_script_cime="`pwd -P`/test_driver_casper_cime_${cur_time}.sh"
+
+    if [ -z "$CAM_ACCOUNT" ]; then
+        echo "ERROR: Must set the environment variable CAM_ACCOUNT"
+        exit 2
+    fi
+
+    if [ -z "$CAM_BATCHQ" ]; then
+        export CAM_BATCHQ="casper"
+    fi
+
+    # wallclock for run job
+    wallclock_limit="00:59:00"
+
+    if [ $gmake_j = 0 ]; then
+        gmake_j=36
+    fi
+
+    # run tests on 1 nodes using 18 tasks/node, 2 threads/task
+    CAM_TASKS=18
+    CAM_THREADS=2
+
+    # change parallel configuration on 1 nodes using 32 tasks, 1 threads/task
+    CAM_RESTART_TASKS=32
+    CAM_RESTART_THREADS=1
+
+    mach_workspace="/glade/scratch"
+
+    # Check for CESM baseline directory
+    if [ -n "${BL_TESTDIR}" ] && [ ! -d "${BL_TESTDIR}" ]; then
+        echo "CESM_BASELINE ${BL_TESTDIR} not found.  Check BL_TESTDIR for correct tag name."
+        exit
+    fi
+
+#-------------------------------------------
+
+cat > ${submit_script_cime} << EOF
+#!/bin/bash
+#
+#PBS -N cime-tests
+#PBS -q $CAM_BATCHQ
+#PBS -A $CAM_ACCOUNT
+#PBS -l walltime=2:00:00
+#PBS -l select=1:ncpus=36:mpiprocs=36:mem=300GB
+#PBS -j oe
+#PBS -V
+EOF
+
+##^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ writing to batch script ^^^^^^^^^^^^^^^^^^^
+    ;;
 
     * ) echo "ERROR: machine $hostname not currently supported"; exit 1 ;;
 esac
@@ -405,6 +456,9 @@ if [ "${hostname:0:6}" == "hobart" ]; then
 fi
 if [ "${hostname:0:5}" == "izumi" ]; then
   cesm_test_mach="izumi"
+fi
+if [ "${hostname:0:6}" == "casper" ] || [ "${hostname:0:5}" == "crhtc" ]; then
+  cesm_test_mach="casper"
 fi
 if [ -n "${CAM_FC}" ]; then
   comp="_${CAM_FC,,}"
@@ -466,7 +520,12 @@ if [ "${cesm_test_suite}" != "none" -a -n "${cesm_test_mach}" ]; then
     fi
 
     ## Setup CESM work directory
-    cesm_testdir=$mach_workspace/$LOGNAME/$test_id
+    if [ "${hostname:0:6}" == "casper" ] || [ "${hostname:0:5}" == "crhtc" ]; then
+       ## Would fail to compile on Casper with long folder name
+       cesm_testdir=$mach_workspace/$LOGNAME/$cesm_test
+    else
+       cesm_testdir=$mach_workspace/$LOGNAME/$test_id
+    fi
 
     if [ -e ${cesm_testdir} ]; then
       if [ -n "${use_existing}" ]; then
@@ -490,6 +549,10 @@ if [ "${cesm_test_suite}" != "none" -a -n "${cesm_test_mach}" ]; then
     case $hostname in
         # cheyenne
         chey* | r* )
+          testargs="${testargs} --queue ${CAM_BATCHQ} --test-root ${cesm_testdir} --output-root ${cesm_testdir}"
+          ;;
+        # casper
+        casper* | crhtc* )
           testargs="${testargs} --queue ${CAM_BATCHQ} --test-root ${cesm_testdir} --output-root ${cesm_testdir}"
           ;;
         *)
@@ -552,8 +615,8 @@ if [ "${cesm_test_suite}" != "none" -a -n "${cesm_test_mach}" ]; then
       fi
     fi
 
-    if [ -n "${xml_driver}" ] ; then
-        testargs="${testargs} --xml-driver ${xml_driver}"
+    if [ -n "${xml_driver}" ]; then
+      testargs="${testargs} --xml-driver ${xml_driver}"
     fi
 
     echo ""
@@ -584,6 +647,14 @@ if [ "${cesm_test_suite}" != "none" -a -n "${cesm_test_mach}" ]; then
         chmod u+x ${submit_script_cime}
         qsub ${submit_script_cime}
       fi
+    fi
+
+    if [ "${hostname:0:6}" == "casper" ] || [ "${hostname:0:5}" == "crhtc" ]; then
+      echo "cd ${script_dir}" >> ${submit_script_cime}
+      echo "module load python" >> ${submit_script_cime}
+      echo './create_test' ${testargs} >> ${submit_script_cime}
+      chmod u+x ${submit_script_cime}
+      qsub ${submit_script_cime}
     fi
 
   done
