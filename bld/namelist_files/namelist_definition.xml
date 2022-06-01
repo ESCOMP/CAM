@@ -5391,7 +5391,7 @@ Default: FALSE
 </entry>
 
 
-<entry id="scm_ana_frc_file_template" type="char*128" input_pathname="abs" category="scam"
+<entry id="scm_ana_frc_file_template" type="char*128" category="scam"
        group="scam_nl" valid_values="" >
 template for analysis forcing dataset.
 Default: set by build-namelist.
