@@ -673,7 +673,7 @@
     </options>
   </test>
 <!--              carma pmc               -->
-  <test compset="QPWmaC6" grid="f10_f10_mg37" name="ERC_D_Ln9_Vnuopc" testmods="cam/carma_pmc">
+  <test compset="QPWmaC6" grid="f10_f10_mg37" name="ERS_D_Ln9_Vnuopc" testmods="cam/carma_pmc">
     <machines>
       <machine name="izumi" compiler="nag" category="carma"/>
       <machine name="cheyenne" compiler="intel" category="carma"/>
