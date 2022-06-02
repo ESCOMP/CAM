@@ -2280,7 +2280,7 @@ end subroutine clubb_init_cnst
    type(pdf_parameter) :: pdf_params_single_col
                           
    type(grid) :: gr(pcols)
-   integer :: begin_height, end_height
+   integer :: begin_height(pcols), end_height(pcols)
    
    type(nu_vertical_res_dep) :: nu_vert_res_dep(pcols)   ! Vertical resolution dependent nu values
    real(r8) :: lmin(pcols)
@@ -2835,22 +2835,19 @@ end subroutine clubb_init_cnst
     !  Important note:  do not make any calls that use CLUBB grid-height
     !                   operators (such as zt2zm_api, etc.) until AFTER the
     !                   call to setup_grid_heights_api.
-    do i=1,ncol
-      call setup_grid_api( nlev+1, sfc_elevation(i), l_implemented,         & ! intent(in)
-                           grid_type, zi_g(i,2), zi_g(i,1), zi_g(i,nlev+1), & ! intent(in)
-                           zi_g(i,:), zt_g(i,:),                            & ! intent(in)
-                           gr(i), begin_height, end_height )                  ! intent(out)
-    end do
+    call setup_grid_api( nlev+1, ncol, sfc_elevation(1:ncol), l_implemented,  & ! intent(in)
+                         grid_type, zi_g(1:ncol,2), zi_g(1:ncol,1), zi_g(1:ncol,nlev+1),   & ! intent(in)
+                         zi_g(1:ncol,:), zt_g(1:ncol,:),                              & ! intent(in)
+                         gr(1:ncol), begin_height(1:ncol), end_height(1:ncol) )                    ! intent(out)
 
-    do i=1,ncol
-      call setup_parameters_api( zi_g(i,2), clubb_params, nlev+1, grid_type, &
-                                 zi_g(i,:), zt_g(i,:), &
-                                 clubb_config_flags%l_prescribed_avg_deltaz, &
-                                 lmin(i), nu_vert_res_dep(i), err_code )
+    call setup_parameters_api( zi_g(1:ncol,2), clubb_params, nlev+1, ncol, grid_type, &
+                               zi_g(1:ncol,:), zt_g(1:ncol,:), &
+                               clubb_config_flags%l_prescribed_avg_deltaz, &
+                               lmin(1:ncol), nu_vert_res_dep(1:ncol), err_code )
       if ( err_code == clubb_fatal_error ) then
          call endrun(subr//':  Fatal error in CLUBB setup_parameters')
       end if
-    end do
+
 
     !  Define forcings from CAM to CLUBB as zero for momentum and thermo,
     !  forcings already applied through CAM
@@ -3201,7 +3198,7 @@ end subroutine clubb_init_cnst
             wp2_in(:ncol,:), wp3_in(:ncol,:), rtp2_in(:ncol,:), rtp3_in(:ncol,:), thlp2_in(:ncol,:), thlp3_in(:ncol,:), rtpthlp_in(:ncol,:), &
             sclrm(:ncol,:,:), &
             sclrp2(:ncol,:,:), sclrp3(:ncol,:,:), sclrprtp(:ncol,:,:), sclrpthlp(:ncol,:,:), &
-            wpsclrp(:ncol,:,:), edsclr_in(:ncol,:,:), err_code(1), &
+            wpsclrp(:ncol,:,:), edsclr_in(:ncol,:,:), err_code, &
             rcm_inout(:ncol,:), cloud_frac_inout(:ncol,:), &
             wpthvp_in(:ncol,:), wp2thvp_in(:ncol,:), rtpthvp_in(:ncol,:), thlpthvp_in(:ncol,:), &
             sclrpthvp_inout(:ncol,:,:), &
