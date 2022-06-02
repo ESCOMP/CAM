@@ -1602,7 +1602,6 @@ subroutine micro_pumas_cam_tend(state, ptend, dtime, pbuf)
    real(r8)  :: nmelto(state%psetcols,pver)    
    real(r8)  :: nmeltso(state%psetcols,pver)   
    real(r8)  :: nmeltgo(state%psetcols,pver)   
-!--   ag
 
 !Hail/Graupel Output
    real(r8)  :: freqg(state%psetcols,pver)
