@@ -2283,7 +2283,7 @@ end subroutine clubb_init_cnst
    integer :: begin_height(pcols), end_height(pcols)
    
    type(nu_vertical_res_dep) :: nu_vert_res_dep(pcols)   ! Vertical resolution dependent nu values
-   real(r8) :: lmin(pcols)
+   real(r8) :: lmin
 
 #endif
    det_s(:)   = 0.0_r8
@@ -2843,11 +2843,10 @@ end subroutine clubb_init_cnst
     call setup_parameters_api( zi_g(1:ncol,2), clubb_params, nlev+1, ncol, grid_type, &
                                zi_g(1:ncol,:), zt_g(1:ncol,:), &
                                clubb_config_flags%l_prescribed_avg_deltaz, &
-                               lmin(1:ncol), nu_vert_res_dep(1:ncol), err_code )
+                               lmin, nu_vert_res_dep(1:ncol), err_code )
       if ( err_code == clubb_fatal_error ) then
          call endrun(subr//':  Fatal error in CLUBB setup_parameters')
       end if
-
 
     !  Define forcings from CAM to CLUBB as zero for momentum and thermo,
     !  forcings already applied through CAM
@@ -3190,7 +3189,7 @@ end subroutine clubb_init_cnst
             rfrzm(:ncol,:), radf(:ncol,:), &
             wphydrometp(:ncol,:,:), wp2hmp(:ncol,:,:), rtphmp_zt(:ncol,:,:), thlphmp_zt(:ncol,:,:), &
             grid_dx(:ncol), grid_dy(:ncol), &
-            clubb_params, nu_vert_res_dep(:ncol), lmin(:ncol), &
+            clubb_params, nu_vert_res_dep(:ncol), lmin, &
             clubb_config_flags, &
             stats_zt(:ncol), stats_zm(:ncol), stats_sfc(:ncol), &
             um_in(:ncol,:), vm_in(:ncol,:), upwp_in(:ncol,:), vpwp_in(:ncol,:), up2_in(:ncol,:), vp2_in(:ncol,:), up3_in(:ncol,:), vp3_in(:ncol,:), &
