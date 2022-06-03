@@ -4444,6 +4444,7 @@ end if ! Mixed parcel properties
 
    end if
    
+   call outfld('BUOY', buoy, pcols, lchnk)                                    
    call outfld('MWINCLD',wm_incld, pcols, lchnk)  ! In-cloud vertical velocity
    call outfld('WINCLD', w_incld, pcols, lchnk)     
    call outfld('LCL',real(lcl,r8),pcols, lchnk)
