@@ -85,6 +85,8 @@ contains
     logical :: use_time, adj_times, use_time_bnds
     integer :: i, yri, moni, dayi, hri, mini, seci
 
+    character(len=*), parameter :: prefix = 'time_coordinate%initialize: '
+
     if (present(fixed)) this%fixed = fixed
     if (present(fixed_ymd)) this%fixed_ymd = fixed_ymd
     if (present(fixed_tod)) this%fixed_tod = fixed_tod
@@ -149,7 +151,7 @@ contains
           adj_times = (to_upper(time_calendar(1:6)) .ne. to_upper(model_calendar(1:6)))
 
           if (adj_times .and. masterproc) then
-             write(iulog,*) 'time_coordinate%initialize: model calendar '//trim(model_calendar)// &
+             write(iulog,*) prefix//'model calendar '//trim(model_calendar)// &
                             ' does not match input data calendar '//trim(time_calendar)
              write(iulog,*) ' -- will try to use date and datesec in the input file to adjust the time coordinate.'
           end if
@@ -212,7 +214,7 @@ contains
        endif
 
        if (ierr.ne.PIO_NOERR) then
-          call endrun('time_coordinate%initialize: not able to read times')
+          call endrun(prefix//'not able to read times')
        endif
 
        times_file = times_file + ref_time
@@ -246,14 +248,14 @@ contains
        ! try using date and datesec
        allocate(dates(this%ntimes), stat=ierr )
        if( ierr /= 0 ) then
-          write(iulog,*) 'time_coordinate%initialize: failed to allocate dates; error = ',ierr
-          call endrun('time_coordinate%initialize: failed to allocate dates')
+          write(iulog,*) prefix//'failed to allocate dates; error = ',ierr
+          call endrun(prefix//'failed to allocate dates')
        end if
 
        allocate(datesecs(this%ntimes), stat=ierr )
        if( ierr /= 0 ) then
-          write(iulog,*) 'time_coordinate%initialize: failed to allocate datesecs; error = ',ierr
-          call endrun('time_coordinate%initialize: failed to allocate datesecs')
+          write(iulog,*) prefix//'failed to allocate datesecs; error = ',ierr
+          call endrun(prefix//'failed to allocate datesecs')
        end if
 
        ierr = pio_inq_varid( fileid, 'date', varid )
@@ -262,25 +264,48 @@ contains
        else
           ! try year, month, day
           allocate(year(this%ntimes), stat=ierr )
+          if (ierr/=0) then
+             call endrun(prefix//'issue with allocation of year array')
+          endif
           allocate(month(this%ntimes), stat=ierr )
+          if (ierr/=0) then
+             call endrun(prefix//'issue with allocation of month array')
+          endif
           allocate(day(this%ntimes), stat=ierr )
+          if (ierr/=0) then
+             call endrun(prefix//'issue with allocation of day array')
+          endif
 
           ierr = pio_inq_varid( fileid, 'year', varid )
+          if (ierr/=PIO_NOERR) then
+             call endrun(prefix//' error inquiring year var in '//trim(filepath))
+          endif
           ierr = pio_get_var( fileid, varid, year )
+          if (ierr/=PIO_NOERR) then
+             call endrun(prefix//' error reading year in '//trim(filepath))
+          endif
 
           ierr = pio_inq_varid( fileid, 'month', varid  )
+          if (ierr/=PIO_NOERR) then
+             call endrun(prefix//' error inquiring month var in '//trim(filepath))
+          endif
           ierr = pio_get_var( fileid, varid, month )
+          if (ierr/=PIO_NOERR) then
+             call endrun(prefix//' error reading month in '//trim(filepath))
+          endif
 
           ierr = pio_inq_varid( fileid, 'day', varid  )
+          if (ierr/=PIO_NOERR) then
+             call endrun(prefix//' error inquiring day var in '//trim(filepath))
+          endif
           ierr = pio_get_var( fileid, varid, day )
+          if (ierr/=PIO_NOERR) then
+             call endrun(prefix//' error reading day in '//trim(filepath))
+          endif
 
           dates(:) = year(:)*10000 + month(:)*100 + day(:)
 
           deallocate(year,month,day)
-
-          if (ierr/=PIO_NOERR) then
-             call endrun('time_coordinate%initialize: input file must contain time or date variables '//trim(filepath))
-          endif
        endif
        ierr = pio_inq_varid( fileid, 'datesec', varid )
        if (ierr==PIO_NOERR) then
