@@ -533,9 +533,9 @@ module clubb_intr
     call pbuf_add_field('VM',         'global', dtype_r8, (/pcols,pverp,dyn_time_lvls/), vm_idx)
 
     call pbuf_add_field('WPTHVP',     'global', dtype_r8, (/pcols,pverp/), wpthvp_idx)
-    call pbuf_add_field('WP2THVP',    'physpkg', dtype_r8, (/pcols,pverp/), wp2thvp_idx)
-    call pbuf_add_field('RTPTHVP',    'physpkg', dtype_r8, (/pcols,pverp/), rtpthvp_idx)
-    call pbuf_add_field('THLPTHVP',   'physpkg', dtype_r8, (/pcols,pverp/), thlpthvp_idx)
+    call pbuf_add_field('WP2THVP',    'global', dtype_r8, (/pcols,pverp/), wp2thvp_idx)
+    call pbuf_add_field('RTPTHVP',    'global', dtype_r8, (/pcols,pverp/), rtpthvp_idx)
+    call pbuf_add_field('THLPTHVP',   'global', dtype_r8, (/pcols,pverp/), thlpthvp_idx)
     call pbuf_add_field('CLOUD_FRAC', 'physpkg', dtype_r8, (/pcols,pverp/), cloud_frac_idx)
     call pbuf_add_field('ISS_FRAC',   'physpkg',  dtype_r8, (/pcols,pverp/), ice_supersat_idx)
     call pbuf_add_field('RCM',        'physpkg', dtype_r8, (/pcols,pverp/), rcm_idx)
@@ -2933,8 +2933,10 @@ end subroutine clubb_init_cnst
         wprtp_in(i,k)   = wprtp(i,pverp-k+1)
         wpthlp_in(i,k)  = wpthlp(i,pverp-k+1)
         rtpthlp_in(i,k) = rtpthlp(i,pverp-k+1)
-        rcm_inout(i,k)  = rcm(i,pverp-k+1)
         cloud_frac_inout(i,k) = cloud_frac(i,pverp-k+1)
+        if (k.gt.1) then
+          rcm_inout(i,k) = state1%q(i,pverp-k+1,ixcldliq)
+        end if
 
         ! We only need to copy pdf_params from pbuf if this is a restart and
         ! we're calling pdf_closure at the end of advance_clubb_core
@@ -2960,6 +2962,10 @@ end subroutine clubb_init_cnst
         wp2vp2_inout(i,k)  = wp2vp2(i,pverp-k+1)
         ice_supersat_frac_inout(i,k) = ice_supersat_frac(i,pverp-k+1)
       end do
+    end do
+
+    do i=1,ncol
+      rcm_inout(i,1) = rcm_inout(i,2)
     end do
         
     do k=2,nlev+1

@@ -1892,7 +1892,7 @@
 <clubb_detliq_rad                                 > 8.0D-6              </clubb_detliq_rad>
 <clubb_detice_rad                                 > 25.0D-6             </clubb_detice_rad>
 <clubb_detphase_lowtemp                           > 238.15D0            </clubb_detphase_lowtemp>
-<clubb_ipdf_call_placement                        > 1                   </clubb_ipdf_call_placement>
+<clubb_ipdf_call_placement                        > 2                   </clubb_ipdf_call_placement>
 
 <clubb_do_energyfix                               > .true.  </clubb_do_energyfix>
 <clubb_l_brunt_vaisala_freq_moist                 > .false. </clubb_l_brunt_vaisala_freq_moist>
