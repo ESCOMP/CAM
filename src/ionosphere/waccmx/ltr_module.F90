@@ -17,7 +17,7 @@ module ltr_module
   use utils_mod,      only: check_ncerr, check_alloc
   use edyn_mpi,       only: ntask, mytid
   use edyn_params,    only: pi, dtr, rtd
-  use input_data_utils, only : time_coordinate
+  use input_data_utils, only: time_coordinate
 
   implicit none
 

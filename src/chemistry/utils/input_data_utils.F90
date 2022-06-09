@@ -84,6 +84,7 @@ contains
     logical :: set_wghts
     logical :: use_time, adj_times, use_time_bnds
     integer :: i, yri, moni, dayi, hri, mini, seci
+    integer :: err_handling
 
     character(len=*), parameter :: prefix = 'time_coordinate%initialize: '
 
@@ -111,7 +112,7 @@ contains
     call getfil( filepath, filen, 0 )
     call cam_pio_openfile( fileid, filen, PIO_NOWRITE )
 
-    call pio_seterrorhandling( fileid, PIO_BCAST_ERROR)
+    call pio_seterrorhandling( fileid, PIO_BCAST_ERROR, oldmethod=err_handling )
 
     call get_dimension( fileid, 'time', this%ntimes )
     allocate ( times_file( this%ntimes ) )
@@ -261,6 +262,9 @@ contains
        ierr = pio_inq_varid( fileid, 'date', varid )
        if (ierr==PIO_NOERR) then
           ierr = pio_get_var( fileid, varid, dates )
+          if (ierr/=PIO_NOERR) then
+             call endrun(prefix//' error reading date in '//trim(filepath))
+          endif
        else
           ! try year, month, day
           allocate(year(this%ntimes), stat=ierr )
@@ -310,6 +314,9 @@ contains
        ierr = pio_inq_varid( fileid, 'datesec', varid )
        if (ierr==PIO_NOERR) then
           ierr = pio_get_var( fileid, varid, datesecs )
+          if (ierr/=PIO_NOERR) then
+             call endrun(prefix//' error reading datesec in '//trim(filepath))
+          endif
        else
           ! try ut
 
@@ -317,6 +324,9 @@ contains
           ierr = pio_inq_varid( fileid, 'ut', varid ) ! fractional hours
           if (ierr==PIO_NOERR) then
              ierr = pio_get_var( fileid, varid, ut )
+             if (ierr/=PIO_NOERR) then
+                call endrun(prefix//' error reading ut in '//trim(filepath))
+             endif
              datesecs = int(3600._r8*ut) ! hours -> secs
           else
              datesecs(:) = 0
@@ -351,7 +361,7 @@ contains
     deallocate( times_modl, times_file )
     if (use_time_bnds) deallocate(time_bnds_file)
 
-    call pio_seterrorhandling(fileid, PIO_INTERNAL_ERROR)
+    call pio_seterrorhandling( fileid, err_handling )
 
     call cam_pio_closefile(fileid)
 
