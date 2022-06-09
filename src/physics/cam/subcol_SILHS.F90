@@ -846,7 +846,7 @@ contains
       logical, parameter :: l_est_kessler_microphys = .false.
       logical, parameter :: l_outfld_subcol         = .false.
       
-      type(grid) :: gr(state%ngrdcol)
+      type(grid) :: gr
       
       type(precipitation_fractions) :: precip_fracs      
       
@@ -958,12 +958,10 @@ contains
       end do
       
       !  Heights need to be set at each timestep.
-      do i=1, ncol
-        call setup_grid_api( pverp - top_lev, sfc_elevation(i), l_implemented,         & ! intent(in)
-                             grid_type, zi_g(i,2), zi_g(i,1), zi_g(i,pverp - top_lev+1), & ! intent(in)
-                             zi_g(i,:), zt_g(i,:),                            & ! intent(in)
-                             gr(i), begin_height, end_height )                  ! intent(out)
-      end do
+      call setup_grid_api( pverp+1-top_lev, ncol, sfc_elevation(1:ncol), l_implemented,  & ! intent(in)
+                           grid_type, zi_g(1:ncol,2), zi_g(1:ncol,1), zi_g(1:ncol,pverp+1-top_lev),   & ! intent(in)
+                           zi_g(1:ncol,:), zt_g(1:ncol,:),                              & ! intent(in)
+                           gr, begin_height, end_height )        
          
       ! Calculate the distance between grid levels on the host model grid,
       ! using host model grid indices.

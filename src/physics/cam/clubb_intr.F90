@@ -2279,8 +2279,8 @@ end subroutine clubb_init_cnst
    
    type(pdf_parameter) :: pdf_params_single_col
                           
-   type(grid) :: gr(pcols)
-   integer :: begin_height(pcols), end_height(pcols)
+   type(grid) :: gr
+   integer :: begin_height, end_height
    
    type(nu_vertical_res_dep) :: nu_vert_res_dep   ! Vertical resolution dependent nu values
    real(r8) :: lmin
@@ -2838,7 +2838,7 @@ end subroutine clubb_init_cnst
     call setup_grid_api( nlev+1, ncol, sfc_elevation(1:ncol), l_implemented,  & ! intent(in)
                          grid_type, zi_g(1:ncol,2), zi_g(1:ncol,1), zi_g(1:ncol,nlev+1),   & ! intent(in)
                          zi_g(1:ncol,:), zt_g(1:ncol,:),                              & ! intent(in)
-                         gr(1:ncol), begin_height(1:ncol), end_height(1:ncol) )                    ! intent(out)
+                         gr, begin_height, end_height )                    ! intent(out)
 
     call setup_parameters_api( zi_g(1:ncol,2), clubb_params, nlev+1, ncol, grid_type, &
                                zi_g(1:ncol,:), zt_g(1:ncol,:), &
@@ -3173,7 +3173,7 @@ end subroutine clubb_init_cnst
       
       ! Arrays are allocated as if they have pcols grid columns, but there can be less.
         !  Advance CLUBB CORE one timestep in the future
-        call advance_clubb_core_api( gr(:ncol), pverp+1-top_lev, ncol, &
+        call advance_clubb_core_api( gr, pverp+1-top_lev, ncol, &
             l_implemented, dtime, fcor(:ncol), sfc_elevation(:ncol), hydromet_dim, &
             thlm_forcing(:ncol,:), rtm_forcing(:ncol,:), um_forcing(:ncol,:), vm_forcing(:ncol,:), &
             sclrm_forcing(:ncol,:,:), edsclrm_forcing(:ncol,:,:), wprtp_forcing(:ncol,:), &
@@ -3234,7 +3234,7 @@ end subroutine clubb_init_cnst
                                                 pdf_params_single_col)
           
           
-          call update_xp2_mc_api( gr(i), nlev+1, dtime, cloud_frac_inout(i,:), &
+          call update_xp2_mc_api( gr, nlev+1, dtime, cloud_frac_inout(i,:), &
             rcm_inout(i,:), rvm_in(i,:), thlm_in(i,:), wm_zt(i,:), exner(i,:), pre_in(i,:), pdf_params_single_col, &
             rtp2_mc_out(i,:), thlp2_mc_out(i,:), &
             wprtp_mc_out(i,:), wpthlp_mc_out(i,:), &
