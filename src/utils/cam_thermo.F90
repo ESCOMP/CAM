@@ -300,22 +300,45 @@ CONTAINS
       if (present(to_moist_factor)) then
          to_moist_fact(:ncol,:) = to_moist_factor(:ncol,:)
       else
-         to_moist_fact(:ncol,:) = 1._r8
+         to_moist_fact(:,:) = 1._r8
       end if
+      sponge_factor = 1.0_r8
 
+
+      if (present(to_moist_factor)) then
+         call get_R_dry(mmr(:ncol, :, :), thermodynamic_active_species_idx, &
+              rairv(:ncol, :, lchnk), fact=to_moist_fact(:ncol, :))
+         call get_cp_dry(mmr(:ncol,:,:), thermodynamic_active_species_idx, &
+              cpairv(:ncol,:,lchnk), fact=to_moist_fact(:ncol,:))
+         call get_mbarv(mmr(:ncol,:,:), thermodynamic_active_species_idx, &
+              mbarv(:ncol,:,lchnk), fact=to_moist_fact(:ncol,:))
+         call get_molecular_diff_coef(T(:ncol,:), 1, sponge_factor,kmvis(:ncol,:,lchnk), &
+              kmcnd(:ncol,:,lchnk), pcnst, tracer=mmr(:ncol,:,:), fact=to_moist_fact(:ncol,:),  &
+              active_species_idx_dycore=thermodynamic_active_species_idx)
+      else
+         call get_R_dry(mmr(:ncol, :, :), thermodynamic_active_species_idx, &
+              rairv(:ncol, :, lchnk))
+         call get_cp_dry(mmr(:ncol,:,:), thermodynamic_active_species_idx, &
+              cpairv(:ncol,:,lchnk))
+         call get_mbarv(mmr(:ncol,:,:), thermodynamic_active_species_idx, &
+              mbarv(:ncol,:,lchnk))
+         call get_molecular_diff_coef(T(:ncol,:), 1, sponge_factor,kmvis(:ncol,:,lchnk), &
+              kmcnd(:ncol,:,lchnk), pcnst, tracer=mmr(:ncol,:,:),  &
+              active_species_idx_dycore=thermodynamic_active_species_idx)
+      end if
       !--------------------------------------------
       ! update cpairv, rairv, mbarv, and cappav
       !--------------------------------------------
-      call get_R_dry(mmr(:ncol,:,:), thermodynamic_active_species_idx, &
-           rairv(:ncol,:,lchnk), fact=to_moist_fact(:ncol,:))
-      call get_cp_dry(mmr(:ncol,:,:), thermodynamic_active_species_idx, &
-           cpairv(:ncol,:,lchnk), fact=to_moist_fact(:ncol,:))
-      call get_mbarv(mmr(:ncol,:,:), thermodynamic_active_species_idx, &
-           mbarv(:ncol,:,lchnk), fact=to_moist_fact(:ncol,:))
-      sponge_factor = 1.0_r8
-      call get_molecular_diff_coef(T(:ncol,:), 1, sponge_factor,kmvis(:ncol,:,lchnk), &
-           kmcnd(:ncol,:,lchnk), pcnst, tracer=mmr(:ncol,:,:), fact=to_moist_fact(:ncol,:),                &
-           active_species_idx_dycore=thermodynamic_active_species_idx)
+      !call get_R_dry(mmr(:ncol,:,:), thermodynamic_active_species_idx, &
+      !     rairv(:ncol,:,lchnk), fact=to_moist_fact(:ncol,:))
+      !call get_cp_dry(mmr(:ncol,:,:), thermodynamic_active_species_idx, &
+      !     cpairv(:ncol,:,lchnk), fact=to_moist_fact(:ncol,:))
+     ! call get_mbarv(mmr(:ncol,:,:), thermodynamic_active_species_idx, &
+      !     mbarv(:ncol,:,lchnk), fact=to_moist_fact(:ncol,:))
+      !sponge_factor = 1.0_r8
+      !call get_molecular_diff_coef(T(:ncol,:), 1, sponge_factor,kmvis(:ncol,:,lchnk), &
+      !     kmcnd(:ncol,:,lchnk), pcnst, tracer=mmr(:ncol,:,:), fact=to_moist_fact(:ncol,:),                &
+      !     active_species_idx_dycore=thermodynamic_active_species_idx)
       cappav(:ncol,:,lchnk) = rairv(:ncol,:,lchnk) / cpairv(:ncol,:,lchnk)
 
    end subroutine cam_thermo_update

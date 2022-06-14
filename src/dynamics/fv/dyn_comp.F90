@@ -859,7 +859,7 @@ subroutine dyn_run(ptop, ndt, te0, dyn_state, dyn_in, dyn_out, rc)
                                                  ! Also the mapping time step in this setup
 
    real(r8),            intent(out) :: te0       ! Total energy before dynamics
-   type (T_FVDYCORE_STATE), target, intent(in) :: dyn_state ! Internal state
+   type (T_FVDYCORE_STATE), target  :: dyn_state ! Internal state
    type (dyn_import_t), intent(in)  :: dyn_in    ! Import container
    type (dyn_export_t), intent(in)  :: dyn_out   ! Export container
 

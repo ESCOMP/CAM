@@ -739,7 +739,6 @@ end subroutine hydrostatic_pressure
 
 subroutine tot_energy(nCells, nVertLevels, qsize, index_qv, zz, zgrid, rho_zz, theta_m, q, ux,uy,outfld_name_suffix)
   use physconst,         only: rair, cpair, gravit,cappa!=R/cp (dry air)
-  use air_composition,   only: thermodynamic_active_species_liq_num
   use mpas_constants,    only: p0,cv,rv,rgas,cp
   use cam_history,       only: outfld, hist_fld_active
   use mpas_constants,    only: Rv_over_Rd => rvord
