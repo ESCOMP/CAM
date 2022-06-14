@@ -773,7 +773,7 @@ contains
     end do
 
     !-------------------------------------------------------------------------------------------
-    ! Initialize any variables in physconst which are not temporally and/or spatially constant
+    ! Initialize any variables in cam_thermo which are not temporally and/or spatially constant
     !-------------------------------------------------------------------------------------------
     call cam_thermo_init()
 
@@ -1329,7 +1329,7 @@ contains
     use clubb_intr,         only: clubb_tend_cam
     use subcol,             only: subcol_gen, subcol_ptend_avg
     use subcol_utils,       only: subcol_ptend_copy, is_subcol_on
-    use subcol_SILHS,       only: subcol_SILHS_var_covar_driver
+    use subcol_SILHS,       only: subcol_SILHS_var_covar_driver, init_state_subcol
     use subcol_SILHS,       only: subcol_SILHS_fill_holes_conserv
     use subcol_SILHS,       only: subcol_SILHS_hydromet_conc_tend_lim
     use micro_pumas_cam,       only: massless_droplet_destroyer
@@ -1675,12 +1675,17 @@ contains
           ! Calculate cloud microphysics
           !===================================================
 
+          if (is_subcol_on() .neqv. use_subcol_microp ) then
+            call endrun("Error calculating cloud microphysics: is_subcol_on() != use_subcol_microp")
+          end if
+
           if (is_subcol_on()) then
              ! Allocate sub-column structures.
              call physics_state_alloc(state_sc, lchnk, psubcols*pcols)
              call physics_tend_alloc(tend_sc, psubcols*pcols)
 
              ! Generate sub-columns using the requested scheme
+             if (trim(subcol_scheme) == 'SILHS') call init_state_subcol(state, tend, state_sc, tend_sc)
              call subcol_gen(state, tend, state_sc, tend_sc, pbuf)
 
              !Initialize check energy for subcolumns
@@ -2273,6 +2278,7 @@ contains
     ! FV: convert dry-type mixing ratios to moist here because physics_dme_adjust
     !     assumes moist. This is done in p_d_coupling for other dynamics. Bundy, Feb 2004.
     moist_mixing_ratio_dycore = dycore_is('LR').or. dycore_is('FV3')  
+    if (moist_mixing_ratio_dycore) call set_dry_to_wet(state)    ! Physics had dry, dynamics wants moist
 
     ! Scale dry mass and energy (does nothing if dycore is EUL or SLD)
     tmp_q     (:ncol,:pver) = state%q(:ncol,:pver,ixq)
