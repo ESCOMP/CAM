@@ -235,15 +235,15 @@ CONTAINS
       end if
 
       isize = dry_air_species_num
-      allocate(thermodynamic_active_species_mwi(isize), stat=ierr)
+      allocate(thermodynamic_active_species_mwi(0:isize), stat=ierr)
       if (ierr /= 0) then
          call endrun(errstr//"thermodynamic_active_species_mwi")
       end if
-      allocate(thermodynamic_active_species_kv(isize), stat=ierr)
+      allocate(thermodynamic_active_species_kv(0:isize), stat=ierr)
       if (ierr /= 0) then
          call endrun(errstr//"thermodynamic_active_species_kv")
       end if
-      allocate(thermodynamic_active_species_kc(isize), stat=ierr)
+      allocate(thermodynamic_active_species_kc(0:isize), stat=ierr)
       if (ierr /= 0) then
          call endrun(errstr//"thermodynamic_active_species_kc")
       end if
