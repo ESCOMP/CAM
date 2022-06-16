@@ -305,40 +305,16 @@ CONTAINS
       sponge_factor = 1.0_r8
 
 
-      if (present(to_moist_factor)) then
-         call get_R_dry(mmr(:ncol, :, :), thermodynamic_active_species_idx, &
-              rairv(:ncol, :, lchnk), fact=to_moist_fact(:ncol, :))
-         call get_cp_dry(mmr(:ncol,:,:), thermodynamic_active_species_idx, &
-              cpairv(:ncol,:,lchnk), fact=to_moist_fact(:ncol,:))
-         call get_mbarv(mmr(:ncol,:,:), thermodynamic_active_species_idx, &
-              mbarv(:ncol,:,lchnk), fact=to_moist_fact(:ncol,:))
-         call get_molecular_diff_coef(T(:ncol,:), 1, sponge_factor,kmvis(:ncol,:,lchnk), &
-              kmcnd(:ncol,:,lchnk), pcnst, tracer=mmr(:ncol,:,:), fact=to_moist_fact(:ncol,:),  &
-              active_species_idx_dycore=thermodynamic_active_species_idx)
-      else
-         call get_R_dry(mmr(:ncol, :, :), thermodynamic_active_species_idx, &
-              rairv(:ncol, :, lchnk))
-         call get_cp_dry(mmr(:ncol,:,:), thermodynamic_active_species_idx, &
-              cpairv(:ncol,:,lchnk))
-         call get_mbarv(mmr(:ncol,:,:), thermodynamic_active_species_idx, &
-              mbarv(:ncol,:,lchnk))
-         call get_molecular_diff_coef(T(:ncol,:), 1, sponge_factor,kmvis(:ncol,:,lchnk), &
-              kmcnd(:ncol,:,lchnk), pcnst, tracer=mmr(:ncol,:,:),  &
-              active_species_idx_dycore=thermodynamic_active_species_idx)
-      end if
-      !--------------------------------------------
-      ! update cpairv, rairv, mbarv, and cappav
-      !--------------------------------------------
-      !call get_R_dry(mmr(:ncol,:,:), thermodynamic_active_species_idx, &
-      !     rairv(:ncol,:,lchnk), fact=to_moist_fact(:ncol,:))
-      !call get_cp_dry(mmr(:ncol,:,:), thermodynamic_active_species_idx, &
-      !     cpairv(:ncol,:,lchnk), fact=to_moist_fact(:ncol,:))
-     ! call get_mbarv(mmr(:ncol,:,:), thermodynamic_active_species_idx, &
-      !     mbarv(:ncol,:,lchnk), fact=to_moist_fact(:ncol,:))
-      !sponge_factor = 1.0_r8
-      !call get_molecular_diff_coef(T(:ncol,:), 1, sponge_factor,kmvis(:ncol,:,lchnk), &
-      !     kmcnd(:ncol,:,lchnk), pcnst, tracer=mmr(:ncol,:,:), fact=to_moist_fact(:ncol,:),                &
-      !     active_species_idx_dycore=thermodynamic_active_species_idx)
+      call get_R_dry(mmr(:ncol, :, :), thermodynamic_active_species_idx, &
+           rairv(:ncol, :, lchnk), fact=to_moist_fact(:ncol, :))
+      call get_cp_dry(mmr(:ncol,:,:), thermodynamic_active_species_idx, &
+           cpairv(:ncol,:,lchnk), fact=to_moist_fact(:ncol,:))
+      call get_mbarv(mmr(:ncol,:,:), thermodynamic_active_species_idx, &
+           mbarv(:ncol,:,lchnk), fact=to_moist_fact(:ncol,:))
+      call get_molecular_diff_coef(T(:ncol,:), 1, sponge_factor, kmvis(:ncol,:,lchnk), &
+           kmcnd(:ncol,:,lchnk), pcnst, tracer=mmr(:ncol,:,:), fact=to_moist_fact(:ncol,:),  &
+           active_species_idx_dycore=thermodynamic_active_species_idx)
+
       cappav(:ncol,:,lchnk) = rairv(:ncol,:,lchnk) / cpairv(:ncol,:,lchnk)
 
    end subroutine cam_thermo_update
@@ -498,7 +474,7 @@ CONTAINS
       end if
 
       sum_species = 1.0_r8 ! all dry air species sum to 1
-      do qdx = dry_air_species_num+1, thermodynamic_active_species_num
+      do qdx = dry_air_species_num + 1, thermodynamic_active_species_num
          itrac = idx_local(qdx)
          sum_species(:,:) = sum_species(:,:) +                            &
               (tracer(:,:,itrac) * factor(:,:))
@@ -509,7 +485,7 @@ CONTAINS
       else
          call get_cp_dry(tracer, idx_local, sum_cp, fact=factor)
       end if
-      do qdx = dry_air_species_num+1, thermodynamic_active_species_num
+      do qdx = dry_air_species_num + 1, thermodynamic_active_species_num
          itrac = idx_local(qdx)
          sum_cp(:,:) = sum_cp(:,:) +                                      &
               (thermodynamic_active_species_cp(qdx) * tracer(:,:,itrac) *   &
@@ -711,12 +687,12 @@ CONTAINS
       end if
       idx_local = active_species_idx
       sum_species = 1.0_r8 ! all dry air species sum to 1
-      do qdx = dry_air_species_num+1, thermodynamic_active_species_num
+      do qdx = dry_air_species_num + 1, thermodynamic_active_species_num
          itrac = idx_local(qdx)
          sum_species(:,:) = sum_species(:,:) +                            &
               (tracer(:,:,itrac) * factor(:,:))
       end do
-      do qdx = dry_air_species_num+1, thermodynamic_active_species_num
+      do qdx = dry_air_species_num + 1, thermodynamic_active_species_num
          itrac = idx_local(qdx)
          R(:,:) = R(:,:) +                                                &
               (thermodynamic_active_species_R(qdx) * tracer(:,:,itrac) *    &
@@ -811,7 +787,7 @@ CONTAINS
       !    m is the dry mixing ratio
       !    dp is the dry pressure level thickness
       !
-      do qdx = dry_air_species_num+1, thermodynamic_active_species_num
+      do qdx = dry_air_species_num + 1, thermodynamic_active_species_num
          if (present(active_species_idx_dycore)) then
             itrac = active_species_idx_dycore(qdx)
          else
@@ -930,7 +906,7 @@ CONTAINS
       end if
 
       sum_species = 1.0_r8 ! All dry air species sum to 1
-      do qdx = dry_air_species_num+1, thermodynamic_active_species_num
+      do qdx = dry_air_species_num + 1, thermodynamic_active_species_num
          itrac = idx_local(qdx)
          sum_species(:, :) = sum_species(:, :) +                              &
               (tracer(:, :, itrac) * factor(:, :))
@@ -938,7 +914,7 @@ CONTAINS
 
       call get_R_dry(tracer, idx_local, Rd, fact=factor)
       t_v(:, :) = Rd(:, :)
-      do qdx = dry_air_species_num+1, thermodynamic_active_species_num
+      do qdx = dry_air_species_num + 1, thermodynamic_active_species_num
          itrac = idx_local(qdx)
          t_v(:, :) = t_v(:, :) + (thermodynamic_active_species_R(qdx) *       &
               tracer(:, :, itrac) * factor(:, :))
@@ -1059,7 +1035,7 @@ CONTAINS
          factor = 1.0_r8
       end if
       sum_species = 1.0_r8 ! all dry air species sum to 1
-      do qdx = dry_air_species_num+1, thermodynamic_active_species_num
+      do qdx = dry_air_species_num + 1, thermodynamic_active_species_num
          itrac = active_species_idx(qdx)
          sum_species(:,:) = sum_species(:,:) + (tracer(:,:,itrac) * factor(:,:))
       end do
@@ -1121,14 +1097,14 @@ CONTAINS
                                                                  !                   must be present)
      real(r8), optional,intent(in)  :: ptop                      ! pressure at model top
 
-     integer :: idx, kdx, m_cnst, nq
+     integer :: idx, kdx, m_cnst, qdx
 
      character(len=*), parameter :: subname = 'get_dp_1hd: '
 
      dp = dp_dry
      if (mixing_ratio == 1) then
-       do nq = dry_air_species_num + 1, thermodynamic_active_species_num
-         m_cnst = active_species_idx(nq)
+       do qdx = dry_air_species_num + 1, thermodynamic_active_species_num
+         m_cnst = active_species_idx(qdx)
          do kdx = 1, SIZE(tracer, 2)
            do idx = 1, SIZE(tracer, 1)
              dp(idx, kdx) = dp(idx, kdx) + dp_dry(idx, kdx)*tracer(idx, kdx, m_cnst)
@@ -1136,8 +1112,8 @@ CONTAINS
          end do
        end do
      else
-       do nq = dry_air_species_num + 1, thermodynamic_active_species_num
-         m_cnst = active_species_idx(nq)
+       do qdx = dry_air_species_num + 1, thermodynamic_active_species_num
+         m_cnst = active_species_idx(qdx)
          do kdx = 1, SIZE(tracer, 2)
            do idx = 1, SIZE(tracer, 1)
              dp(idx, kdx) = dp(idx, kdx) + tracer(idx, kdx, m_cnst)
@@ -1508,12 +1484,12 @@ CONTAINS
      real(r8), intent(in)   :: ptop
      integer,  intent(in)   :: active_species_idx(:)
 
-     integer                    :: idx, kdx, m_cnst, nq
+     integer                    :: idx, kdx, m_cnst, qdx
      real(r8)                   :: dp(SIZE(tracer_mass, 1), SIZE(tracer_mass, 2))  ! dry pressure level thickness
 
      dp = dp_dry
-     do nq = dry_air_species_num + 1, thermodynamic_active_species_num
-       m_cnst = active_species_idx(nq)
+     do qdx = dry_air_species_num + 1, thermodynamic_active_species_num
+       m_cnst = active_species_idx(qdx)
        do kdx = 1, SIZE(tracer_mass, 2)
          do idx = 1, SIZE(tracer_mass, 1)
            dp(idx, kdx) = dp(idx, kdx) + tracer_mass(idx, kdx, m_cnst)
@@ -1560,7 +1536,7 @@ CONTAINS
      real(r8), intent(out) :: mbarv(:,:)                        !molecular weight of dry air
      real(r8), optional, intent(in) :: fact(:,:)                 !factor for converting tracer to dry mixing ratio
 
-     integer :: idx, kdx, m_cnst, nq
+     integer :: idx, kdx, m_cnst, qdx
      real(r8):: factor(SIZE(mbarv, 1), SIZE(mbarv, 2))
      real(r8):: residual(SIZE(tracer, 1), SIZE(mbarv, 2))
      real(r8):: mm
@@ -1578,20 +1554,20 @@ CONTAINS
 
        mbarv = 0.0_r8
        residual = 1.0_r8
-       do nq = 1, dry_air_species_num
-         m_cnst = active_species_idx(nq)
+       do qdx = 1, dry_air_species_num
+         m_cnst = active_species_idx(qdx)
          do kdx = 1, SIZE(mbarv, 2)
            do idx = 1, SIZE(mbarv, 1)
              mm = tracer(idx, kdx, m_cnst) * factor(idx, kdx)
-             mbarv(idx, kdx) = mbarv(idx, kdx) + thermodynamic_active_species_mwi(nq) * mm
+             mbarv(idx, kdx) = mbarv(idx, kdx) + thermodynamic_active_species_mwi(qdx) * mm
              residual(idx, kdx) = residual(idx, kdx) - mm
            end do
          end do
        end do
-       nq = 0 ! N2
+       qdx = 0 ! N2
        do kdx = 1, SIZE(mbarv, 2)
          do idx = 1, SIZE(mbarv, 1)
-           mbarv(idx, kdx) = mbarv(idx, kdx) + thermodynamic_active_species_mwi(nq) * residual(idx, kdx)
+           mbarv(idx, kdx) = mbarv(idx, kdx) + thermodynamic_active_species_mwi(qdx) * residual(idx, kdx)
          end do
        end do
        mbarv(:,:) = 1.0_r8 / mbarv(:,:)
@@ -1917,8 +1893,8 @@ CONTAINS
      integer :: idx, kdx, icnst, ispecies
      real(r8):: mbarvi, mm, residual             ! Mean mass at mid level
      real(r8):: cnst_vis, cnst_cnd, temp_local
-     real(r8), dimension(SIZE(tracer,1), SIZE(sponge_factor, 1))        :: factor, mbarv
-     integer,  dimension(thermodynamic_active_species_num)     :: idx_local
+     real(r8), dimension(SIZE(tracer,1), SIZE(sponge_factor, 1)) :: factor, mbarv
+     integer,  dimension(thermodynamic_active_species_num)       :: idx_local
      character(len=*), parameter :: subname = 'get_molecular_diff_coef_1hd: '
 
      !--------------------------------------------
@@ -2005,30 +1981,6 @@ CONTAINS
            kmcnd(idx, SIZE(sponge_factor, 1) + 1) = kmcnd(idx, SIZE(sponge_factor, 1))
          end do
        else if (get_at_interfaces == 0) then
-         do kdx = 1, SIZE(sponge_factor, 1)
-           do idx = 1, SIZE(tracer, 1)
-             kmvis(idx, kdx) = 0.0_r8
-             kmcnd(idx, kdx) = 0.0_r8
-             residual = 1.0_r8
-             do icnst = 1, dry_air_species_num - 1
-               ispecies = idx_local(icnst)
-               mm       = tracer(idx, kdx, ispecies) * factor(idx, kdx)
-               kmvis(idx, kdx) = kmvis(idx, kdx) + thermodynamic_active_species_kv(icnst) * &
-                              thermodynamic_active_species_mwi(icnst) * mm
-               kmcnd(idx, kdx) = kmcnd(idx, kdx) + thermodynamic_active_species_kc(icnst) * &
-                              thermodynamic_active_species_mwi(icnst) * mm
-               residual     = residual - mm
-             end do
-             icnst = dry_air_species_num
-             kmvis(idx, kdx) = kmvis(idx, kdx) + thermodynamic_active_species_kv(icnst) * &
-                            thermodynamic_active_species_mwi(icnst) * residual
-             kmcnd(idx, kdx) = kmcnd(idx,kdx) + thermodynamic_active_species_kc(icnst) * &
-                            thermodynamic_active_species_mwi(icnst) * residual
-
-             kmvis(idx, kdx) = kmvis(idx, kdx) * mbarv(idx, kdx) * temp(idx, kdx) ** kv4 * 1.e-7_r8
-             kmcnd(idx, kdx) = kmcnd(idx, kdx) * mbarv(idx, kdx) * temp(idx, kdx) ** kc4 * 1.e-5_r8
-           enddo
-         end do
        else
          call endrun(subname//'get_at_interfaces must be 0 or 1')
        end if

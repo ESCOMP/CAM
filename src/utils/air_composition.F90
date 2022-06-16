@@ -311,8 +311,8 @@ CONTAINS
             else
                mw = cnst_mw(ix)
                thermodynamic_active_species_idx(icnst) = ix
-               thermodynamic_active_species_cp (icnst) = 0.5_r8*r_universal*(2._r8+dof1) / mw
-               thermodynamic_active_species_cv (icnst) = 0.5_r8*r_universal*dof1 / mw
+               thermodynamic_active_species_cp (icnst) = cp1 / mw
+               thermodynamic_active_species_cv (icnst) = cv1 / mw
                thermodynamic_active_species_R  (icnst) = r_universal / mw
                thermodynamic_active_species_mwi(icnst) = 1.0_r8 / mw
                thermodynamic_active_species_kv(icnst)  = 3.9_r8
@@ -331,8 +331,8 @@ CONTAINS
             else
                mw = cnst_mw(ix)
                thermodynamic_active_species_idx(icnst) = ix
-               thermodynamic_active_species_cp (icnst) = 0.5_r8*r_universal*(2._r8+dof2) / mw
-               thermodynamic_active_species_cv (icnst) = 0.5_r8*r_universal*dof2 / mw
+               thermodynamic_active_species_cp (icnst) = cp2 / mw
+               thermodynamic_active_species_cv (icnst) = cv2 / mw
                thermodynamic_active_species_R  (icnst) = r_universal / mw
                thermodynamic_active_species_mwi(icnst) = 1.0_r8 / mw
                thermodynamic_active_species_kv(icnst)  = 4.03_r8
@@ -351,8 +351,8 @@ CONTAINS
             else
                mw = cnst_mw(ix)
                thermodynamic_active_species_idx(icnst) = ix
-               thermodynamic_active_species_cp (icnst) = 0.5_r8*r_universal*(2._r8+dof1) / mw
-               thermodynamic_active_species_cv (icnst) = 0.5_r8*r_universal*dof1 / mw
+               thermodynamic_active_species_cp (icnst) = cp1 / mw
+               thermodynamic_active_species_cv (icnst) = cv1 / mw
                thermodynamic_active_species_R  (icnst) = r_universal / mw
                thermodynamic_active_species_mwi(icnst) = 1.0_r8 / mw
                thermodynamic_active_species_kv(icnst)  = 0.0_r8
@@ -412,7 +412,7 @@ CONTAINS
                mw = cnst_mw(ix)
                thermodynamic_active_species_idx(icnst) = ix
                thermodynamic_active_species_cp (icnst) = cpwv
-               thermodynamic_active_species_cv (icnst) = 0.5_r8*r_universal*dof3 / mw
+               thermodynamic_active_species_cv (icnst) = cv3 / mw
                thermodynamic_active_species_R  (icnst) = rh2o
                icnst = icnst + 1
             end if
