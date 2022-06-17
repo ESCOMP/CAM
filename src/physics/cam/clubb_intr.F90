@@ -2276,8 +2276,6 @@ end subroutine clubb_init_cnst
    intrinsic :: max
 
    character(len=*), parameter :: subr='clubb_tend_cam'
-   
-   type(pdf_parameter) :: pdf_params_single_col
                           
    type(grid) :: gr
    integer :: begin_height, end_height
@@ -2433,9 +2431,6 @@ end subroutine clubb_init_cnst
    call pbuf_get_field(pbuf, wprtp_mc_zt_idx,   wprtp_mc_zt)
    call pbuf_get_field(pbuf, wpthlp_mc_zt_idx,  wpthlp_mc_zt)
    call pbuf_get_field(pbuf, rtpthlp_mc_zt_idx, rtpthlp_mc_zt)
-   
-   ! Allocate arrays in the single column versions of pdf_params
-   call init_pdf_params_api( pverp+1-top_lev, 1, pdf_params_single_col )
    
    ! Allocate pdf_params only if they aren't allocated already.
    if ( .not. allocated(pdf_params_chnk(lchnk)%mixt_frac) ) then
@@ -3224,33 +3219,29 @@ end subroutine clubb_init_cnst
       
       if (do_rainturb) then
         
-        do i=1, ncol  
-          rvm_in(i,:) = rtm_in(i,:) - rcm_inout(i,:) 
+        do k=1,nlev+1
+          do i=1,ncol
+            rvm_in(i,k) = rtm_in(i,k) - rcm_inout(i,k) 
+          end do
         end do
         
-        do i=1, ncol  
-          
-          call copy_multi_pdf_params_to_single( pdf_params_chnk(lchnk), i, &
-                                                pdf_params_single_col)
-          
-          
-          call update_xp2_mc_api( gr, nlev+1, dtime, cloud_frac_inout(i,:), &
-            rcm_inout(i,:), rvm_in(i,:), thlm_in(i,:), wm_zt(i,:), exner(i,:), pre_in(i,:), pdf_params_single_col, &
-            rtp2_mc_out(i,:), thlp2_mc_out(i,:), &
-            wprtp_mc_out(i,:), wpthlp_mc_out(i,:), &
-            rtpthlp_mc_out(i,:))
-        end do
-        
-        do i=1, ncol  
+        call update_xp2_mc_api( gr, nlev+1, ncol, dtime, cloud_frac_inout(1:ncol,:), &
+          rcm_inout(1:ncol,:), rvm_in(1:ncol,:), thlm_in(1:ncol,:), wm_zt(1:ncol,:), &
+          exner(1:ncol,:), pre_in(1:ncol,:), pdf_params_chnk(lchnk), &
+          rtp2_mc_out(1:ncol,:), thlp2_mc_out(1:ncol,:), &
+          wprtp_mc_out(1:ncol,:), wpthlp_mc_out(1:ncol,:), &
+          rtpthlp_mc_out(1:ncol,:))
 
-          dum1 = (1._r8 - cam_in%landfrac(i))
+        do k=1,nlev+1
+          do i=1,ncol
+            dum1 = (1._r8 - cam_in%landfrac(i))
 
-          ! update turbulent moments based on rain evaporation  
-          rtp2_in(i,:)   = rtp2_in(i,:)   + clubb_rnevap_effic * dum1 * rtp2_mc_out(i,:)   * dtime
-          thlp2_in(i,:)  = thlp2_in(i,:)  + clubb_rnevap_effic * dum1 * thlp2_mc_out(i,:)  * dtime  
-          wprtp_in(i,:)  = wprtp_in(i,:)  + clubb_rnevap_effic * dum1 * wprtp_mc_out(i,:)  * dtime
-          wpthlp_in(i,:) = wpthlp_in(i,:) + clubb_rnevap_effic * dum1 * wpthlp_mc_out(i,:) * dtime
-          
+            ! update turbulent moments based on rain evaporation  
+            rtp2_in(i,k)   = rtp2_in(i,k)   + clubb_rnevap_effic * dum1 * rtp2_mc_out(i,k)   * dtime
+            thlp2_in(i,k)  = thlp2_in(i,k)  + clubb_rnevap_effic * dum1 * thlp2_mc_out(i,k)  * dtime  
+            wprtp_in(i,k)  = wprtp_in(i,k)  + clubb_rnevap_effic * dum1 * wprtp_mc_out(i,k)  * dtime
+            wpthlp_in(i,k) = wpthlp_in(i,k) + clubb_rnevap_effic * dum1 * wpthlp_mc_out(i,k) * dtime
+          end do
         end do
         
       end if  
