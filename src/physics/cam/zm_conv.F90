@@ -4369,7 +4369,7 @@ end if ! Mixed parcel properties
       do n = 1,num_cin
          do k = msg + 1,pver
             do i = 1,ncol
-               if (plge600(i) .and. k <= mx(i) .and. k > lelten(i,n)) then
+               if (plge600(i) .and. k <= mx(i) .and. k > lelten(i,n) .and. buoy(i,k) > 0) then
                  capeten(i,n) = capeten(i,n) + rd*buoy(i,k)*log(pf(i,k+1)/pf(i,k))                                                                                                                                                       
                 end if
             end do
@@ -4396,14 +4396,14 @@ end if ! Mixed parcel properties
       end do
       
 !                                                                                                                                                                                                                                               
-! calculate convective available potential energy (cape).                                                                                                                                                                                                      
+! calculate convective available potential energy (cape).                                                                                                                                                                                                
 ! EXCLUDE -ve CAPE for dynamic parcel calculation. 
 !                                                                                                                                                                                                                   
       do n = 1,num_cin
          do k = msg + 1,pver
             do i = 1,ncol
                if (plge600(i) .and. k <= mx(i) .and. k > lelten(i,n) .and. buoy(i,k) > 0) then
-                  capeten(i,n) = capeten(i,n) + rd*buoy(i,k)*log(pf(i,k+1)/pf(i,k))                                                                                                                                                                                      
+                  capeten(i,n) = capeten(i,n) + rd*buoy(i,k)*log(pf(i,k+1)/pf(i,k))                                                                                                                                                                      
                end if
             end do
          end do
@@ -4452,6 +4452,7 @@ end if ! Mixed parcel properties
    call outfld('PLCL', pl, pcols, lchnk)            ! Pressure at the lifting condensation level.
    call outfld('TLCL', tl, pcols, lchnk)            ! Temp        "
    call outfld('HMAX', hmax, pcols, lchnk)     
+   call outfld('LEL', real(lel,r8), pcols, lchnk)
    call outfld('KEPAR', plev_ke, pcols, lchnk)    ! Parcel K.E.
    
 !
