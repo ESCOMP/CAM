@@ -57,9 +57,7 @@ public :: &
    radiation_write_restart,  &! write variables to restart
    radiation_read_restart,   &! read variables from restart
    radiation_tend,           &! compute heating rates and fluxes
-   rad_out_t,                &! type for diagnostic outputs
-   iradsw,                   &! shortwave radiation time-step parameter
-   iradlw                     ! longwave radiation time-step parameter
+   rad_out_t                  ! type for diagnostic outputs
 
 integer,public, allocatable :: cosp_cnt(:)       ! counter for cosp
 integer,public              :: cosp_cnt_init = 0 !initial value for cosp counter
