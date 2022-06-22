@@ -1367,12 +1367,10 @@ contains
     call outfld ('IVT     ',ftem, pcols   ,lchnk     )
 
     ! output uq*dp/g
-    ftem(:ncol,1) =  ftem4(:ncol,1)
-    call outfld ('uIVT     ',ftem, pcols   ,lchnk     )
+    call outfld ('uIVT     ',ftem4, pcols   ,lchnk     )
 
     ! output vq*dp/g
-    ftem(:ncol,1) = ftem5(:ncol,1)
-    call outfld ('vIVT     ',ftem, pcols   ,lchnk     )
+    call outfld ('vIVT     ',ftem5, pcols   ,lchnk     )
     !
     ! Relative humidity
     !

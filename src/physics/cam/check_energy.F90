@@ -140,6 +140,7 @@ end subroutine check_energy_readnl
 
     call pbuf_add_field('TEOUT', 'global',dtype_r8 , (/pcols,dyn_time_lvls/),      teout_idx)
     call pbuf_add_field('DTCORE','global',dtype_r8,  (/pcols,pver,dyn_time_lvls/),dtcore_idx)
+    ! DQCORE refers to dycore tendency of water vapor
     call pbuf_add_field('DQCORE','global',dtype_r8,  (/pcols,pver,dyn_time_lvls/),dqcore_idx)
     call pbuf_add_field('DUCORE','global',dtype_r8,  (/pcols,pver,dyn_time_lvls/),ducore_idx)
     call pbuf_add_field('DVCORE','global',dtype_r8,  (/pcols,pver,dyn_time_lvls/),dvcore_idx)
@@ -202,7 +203,7 @@ end subroutine check_energy_get_integrals
     call addfld('TEFIX',  horiz_only,  'A', 'J/m2', 'Total energy after fixer')
     call addfld('EFIX',   horiz_only,  'A', 'W/m2', 'Effective sensible heat flux due to energy fixer')
     call addfld('DTCORE', (/ 'lev' /), 'A', 'K/s' , 'T tendency due to dynamical core')
-    call addfld('DQCORE', (/ 'lev' /), 'A', 'kg/kg/s' , 'Q tendency due to dynamical core')
+    call addfld('DQCORE', (/ 'lev' /), 'A', 'kg/kg/s' , 'Water vapor tendency due to dynamical core')
 
     if ( history_budget ) then
        call add_default ('DTCORE', history_budget_histfile_num, ' ')

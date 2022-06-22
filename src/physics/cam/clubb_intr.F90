@@ -72,8 +72,7 @@ module clubb_intr
 #endif
             clubb_readnl, &
             clubb_init_cnst, &
-            clubb_implements_cnst, &
-            clubb_timestep
+            clubb_implements_cnst
 
 #ifdef CLUBB_SGS
   ! Both of these utilize CLUBB specific variables in their interface
@@ -2914,9 +2913,15 @@ end subroutine clubb_init_cnst
         upwp_in(i,k)    = upwp(i,pverp-k+1)
         vpwp_in(i,k)    = vpwp(i,pverp-k+1)
         wpthvp_in(i,k)  = wpthvp(i,pverp-k+1)
-        wp2thvp_in(i,k) = wp2thvp(i,pverp-k+1)
-        rtpthvp_in(i,k) = rtpthvp(i,pverp-k+1)
-        thlpthvp_in(i,k)= thlpthvp(i,pverp-k+1)
+!+++ARH
+        ! intialize this to zero since it's not used before the pdf closure?
+        !wp2thvp_in(i,k) = wp2thvp(i,pverp-k+1)
+        !rtpthvp_in(i,k) = rtpthvp(i,pverp-k+1)
+        !thlpthvp_in(i,k)= thlpthvp(i,pverp-k+1)
+        wp2thvp_in(i,k) = 0._r8
+        rtpthvp_in(i,k) = 0._r8
+        thlpthvp_in(i,k)= 0._r8
+!---ARH
         up2_in(i,k)     = up2(i,pverp-k+1)
         vp2_in(i,k)     = vp2(i,pverp-k+1)
         up3_in(i,k)     = up3(i,pverp-k+1)
@@ -2933,8 +2938,12 @@ end subroutine clubb_init_cnst
         wprtp_in(i,k)   = wprtp(i,pverp-k+1)
         wpthlp_in(i,k)  = wpthlp(i,pverp-k+1)
         rtpthlp_in(i,k) = rtpthlp(i,pverp-k+1)
-        cloud_frac_inout(i,k) = cloud_frac(i,pverp-k+1)
-        if (k.gt.1) then
+!+++ARH
+        ! intialize this to zero since it's not used before the pdf closure?
+        !cloud_frac_inout(i,k) = cloud_frac(i,pverp-k+1)
+        cloud_frac_inout(i,k) = 0._r8
+!---ARH
+        if (k>1) then
           rcm_inout(i,k) = state1%q(i,pverp-k+1,ixcldliq)
         end if
 
@@ -2960,7 +2969,11 @@ end subroutine clubb_init_cnst
         wpvp2_inout(i,k)   = wpvp2(i,pverp-k+1)
         wp2up2_inout(i,k)  = wp2up2(i,pverp-k+1)
         wp2vp2_inout(i,k)  = wp2vp2(i,pverp-k+1)
-        ice_supersat_frac_inout(i,k) = ice_supersat_frac(i,pverp-k+1)
+!+++ARH
+        ! intialize this to zero since it's not used before the pdf closure?
+        !ice_supersat_frac_inout(i,k) = ice_supersat_frac(i,pverp-k+1)
+        ice_supersat_frac_inout(i,k) = 0._r8
+!---ARH
       end do
     end do
 
@@ -4115,11 +4128,9 @@ end subroutine clubb_init_cnst
     
    do i=1,ncol
       do k=1,pver
-         !th(i,k) = state1%t(i,k)*state1%exner(i,k)
-         !thv(i,k) = th(i,k)*(1.0_r8+zvir*state1%q(i,k,ixq))
-         ! REMOVE AFTER CODE REVIEW - state%exner is not a proper exner
-         !                            thv should have condensate loading to be consistent with earlier def's
+         !use local exner since state%exner is not a proper exner
          th(i,k) = state1%t(i,k)*exner(i,k)
+         !thv should have condensate loading to be consistent with earlier def's in this module
          thv(i,k) = th(i,k)*(1.0_r8+zvir*state1%q(i,k,ixq) - state1%q(i,k,ixcldliq))
       enddo
    enddo
