@@ -1459,6 +1459,35 @@ contains
     nstep = get_nstep()
     rtdt = 1._r8/ztodt
 
+    ! Adjust the surface fluxes to reduce instabilities in near sfc layer
+    if (phys_do_flux_avg()) then
+       call flux_avg_run(state, cam_in,  pbuf, nstep, ztodt)
+    endif
+
+    ! Validate the physics state.
+    if (state_debug_checks) then
+       call physics_state_check(state, name="before tphysac")
+    end if
+
+    call t_startf('tphysac_init')
+    ! Associate pointers with physics buffer fields
+    itim_old = pbuf_old_tim_idx()
+
+    call pbuf_get_field(pbuf, dtcore_idx, dtcore, start=(/1,1,itim_old/), kount=(/pcols,pver,1/) )
+    call pbuf_get_field(pbuf, dqcore_idx, dqcore, start=(/1,1,itim_old/), kount=(/pcols,pver,1/) )
+    call pbuf_get_field(pbuf, ducore_idx, ducore, start=(/1,1,itim_old/), kount=(/pcols,pver,1/) )
+    call pbuf_get_field(pbuf, dvcore_idx, dvcore, start=(/1,1,itim_old/), kount=(/pcols,pver,1/) )
+
+    call pbuf_get_field(pbuf, qini_idx, qini)
+    call pbuf_get_field(pbuf, cldliqini_idx, cldliqini)
+    call pbuf_get_field(pbuf, cldiceini_idx, cldiceini)
+
+    ifld = pbuf_get_index('CLD')
+    call pbuf_get_field(pbuf, ifld, cld, start=(/1,1,itim_old/),kount=(/pcols,pver,1/))
+
+    ifld = pbuf_get_index('AST')
+    call pbuf_get_field(pbuf, ifld, ast, start=(/1,1,itim_old/), kount=(/pcols,pver,1/) )
+
     call cnst_get_ind('Q', ixq)
     call cnst_get_ind('CLDLIQ', ixcldliq)
     call cnst_get_ind('CLDICE', ixcldice)
@@ -1491,35 +1520,6 @@ contains
 
     call pbuf_get_field(pbuf, rliqbc_idx, rliqbc)
     rliq(:ncol) = rliqbc(:ncol)
-
-    ! Adjust the surface fluxes to reduce instabilities in near sfc layer
-    if (phys_do_flux_avg()) then
-       call flux_avg_run(state, cam_in,  pbuf, nstep, ztodt)
-    endif
-
-    ! Validate the physics state.
-    if (state_debug_checks) then
-       call physics_state_check(state, name="before tphysac")
-    end if
-
-    call t_startf('tphysac_init')
-    ! Associate pointers with physics buffer fields
-    itim_old = pbuf_old_tim_idx()
-
-    call pbuf_get_field(pbuf, dtcore_idx, dtcore, start=(/1,1,itim_old/), kount=(/pcols,pver,1/) )
-    call pbuf_get_field(pbuf, dqcore_idx, dqcore, start=(/1,1,itim_old/), kount=(/pcols,pver,1/) )
-    call pbuf_get_field(pbuf, ducore_idx, ducore, start=(/1,1,itim_old/), kount=(/pcols,pver,1/) )
-    call pbuf_get_field(pbuf, dvcore_idx, dvcore, start=(/1,1,itim_old/), kount=(/pcols,pver,1/) )
-
-    call pbuf_get_field(pbuf, qini_idx, qini)
-    call pbuf_get_field(pbuf, cldliqini_idx, cldliqini)
-    call pbuf_get_field(pbuf, cldiceini_idx, cldiceini)
-
-    ifld = pbuf_get_index('CLD')
-    call pbuf_get_field(pbuf, ifld, cld, start=(/1,1,itim_old/),kount=(/pcols,pver,1/))
-
-    ifld = pbuf_get_index('AST')
-    call pbuf_get_field(pbuf, ifld, ast, start=(/1,1,itim_old/), kount=(/pcols,pver,1/) )
 
     !
     ! accumulate fluxes into net flux array for spectral dycores
