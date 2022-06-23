@@ -535,8 +535,8 @@ module clubb_intr
     call pbuf_add_field('WP2THVP',    'global', dtype_r8, (/pcols,pverp/), wp2thvp_idx)
     call pbuf_add_field('RTPTHVP',    'global', dtype_r8, (/pcols,pverp/), rtpthvp_idx)
     call pbuf_add_field('THLPTHVP',   'global', dtype_r8, (/pcols,pverp/), thlpthvp_idx)
-    call pbuf_add_field('CLOUD_FRAC', 'physpkg', dtype_r8, (/pcols,pverp/), cloud_frac_idx)
-    call pbuf_add_field('ISS_FRAC',   'physpkg',  dtype_r8, (/pcols,pverp/), ice_supersat_idx)
+    call pbuf_add_field('CLOUD_FRAC', 'global', dtype_r8, (/pcols,pverp/), cloud_frac_idx)
+    call pbuf_add_field('ISS_FRAC',   'global',  dtype_r8, (/pcols,pverp/), ice_supersat_idx)
     call pbuf_add_field('RCM',        'physpkg', dtype_r8, (/pcols,pverp/), rcm_idx)
     call pbuf_add_field('ZTODT',      'physpkg', dtype_r8, (/pcols/),       ztodt_idx)
     call pbuf_add_field('WP2RTP',     'global', dtype_r8, (/pcols,pverp/), wp2rtp_idx)
@@ -2913,15 +2913,9 @@ end subroutine clubb_init_cnst
         upwp_in(i,k)    = upwp(i,pverp-k+1)
         vpwp_in(i,k)    = vpwp(i,pverp-k+1)
         wpthvp_in(i,k)  = wpthvp(i,pverp-k+1)
-!+++ARH
-        ! intialize this to zero since it's not used before the pdf closure?
-        !wp2thvp_in(i,k) = wp2thvp(i,pverp-k+1)
-        !rtpthvp_in(i,k) = rtpthvp(i,pverp-k+1)
-        !thlpthvp_in(i,k)= thlpthvp(i,pverp-k+1)
-        wp2thvp_in(i,k) = 0._r8
-        rtpthvp_in(i,k) = 0._r8
-        thlpthvp_in(i,k)= 0._r8
-!---ARH
+        wp2thvp_in(i,k) = wp2thvp(i,pverp-k+1)
+        rtpthvp_in(i,k) = rtpthvp(i,pverp-k+1)
+        thlpthvp_in(i,k)= thlpthvp(i,pverp-k+1)
         up2_in(i,k)     = up2(i,pverp-k+1)
         vp2_in(i,k)     = vp2(i,pverp-k+1)
         up3_in(i,k)     = up3(i,pverp-k+1)
@@ -2938,11 +2932,7 @@ end subroutine clubb_init_cnst
         wprtp_in(i,k)   = wprtp(i,pverp-k+1)
         wpthlp_in(i,k)  = wpthlp(i,pverp-k+1)
         rtpthlp_in(i,k) = rtpthlp(i,pverp-k+1)
-!+++ARH
-        ! intialize this to zero since it's not used before the pdf closure?
-        !cloud_frac_inout(i,k) = cloud_frac(i,pverp-k+1)
-        cloud_frac_inout(i,k) = 0._r8
-!---ARH
+        cloud_frac_inout(i,k) = cloud_frac(i,pverp-k+1)
         if (k>1) then
           rcm_inout(i,k) = state1%q(i,pverp-k+1,ixcldliq)
         end if
@@ -2969,11 +2959,7 @@ end subroutine clubb_init_cnst
         wpvp2_inout(i,k)   = wpvp2(i,pverp-k+1)
         wp2up2_inout(i,k)  = wp2up2(i,pverp-k+1)
         wp2vp2_inout(i,k)  = wp2vp2(i,pverp-k+1)
-!+++ARH
-        ! intialize this to zero since it's not used before the pdf closure?
-        !ice_supersat_frac_inout(i,k) = ice_supersat_frac(i,pverp-k+1)
-        ice_supersat_frac_inout(i,k) = 0._r8
-!---ARH
+        ice_supersat_frac_inout(i,k) = ice_supersat_frac(i,pverp-k+1)
       end do
     end do
 
