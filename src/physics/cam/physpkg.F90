@@ -1649,22 +1649,23 @@ contains
     !  aerosol dry deposition processes
     call t_startf('aero_drydep')
 
-    if (trim(cam_take_snapshot_before) == "aero_model_drydep") then
-       call cam_snapshot_all_outfld_tphysac(cam_snapshot_before_num, state, tend, cam_in, cam_out, pbuf,&
-                    fh2o, surfric, obklen, flx_heat)
-    end if
-
-    call aero_model_drydep( state, pbuf, obklen, surfric, cam_in, ztodt, cam_out, ptend )
-    if ( (trim(cam_take_snapshot_after) == "aero_model_drydep") .and.         &
-         (trim(cam_take_snapshot_before) == trim(cam_take_snapshot_after))) then
-       call cam_snapshot_ptend_outfld(ptend, lchnk)
-    end if
-    call physics_update(state, ptend, ztodt, tend)
-
-   if (trim(cam_take_snapshot_after) == "aero_model_drydep") then
-      call cam_snapshot_all_outfld_tphysac(cam_snapshot_after_num, state, tend, cam_in, cam_out, pbuf,&
-                    fh2o, surfric, obklen, flx_heat)
-   end if
+! ewl: turn off aerosol dry deposition
+!    if (trim(cam_take_snapshot_before) == "aero_model_drydep") then
+!       call cam_snapshot_all_outfld_tphysac(cam_snapshot_before_num, state, tend, cam_in, cam_out, pbuf,&
+!                    fh2o, surfric, obklen, flx_heat)
+!    end if
+!
+!    call aero_model_drydep( state, pbuf, obklen, surfric, cam_in, ztodt, cam_out, ptend )
+!    if ( (trim(cam_take_snapshot_after) == "aero_model_drydep") .and.         &
+!         (trim(cam_take_snapshot_before) == trim(cam_take_snapshot_after))) then
+!       call cam_snapshot_ptend_outfld(ptend, lchnk)
+!    end if
+!    call physics_update(state, ptend, ztodt, tend)
+!
+!   if (trim(cam_take_snapshot_after) == "aero_model_drydep") then
+!      call cam_snapshot_all_outfld_tphysac(cam_snapshot_after_num, state, tend, cam_in, cam_out, pbuf,&
+!                    fh2o, surfric, obklen, flx_heat)
+!   end if
 
     call t_stopf('aero_drydep')
 
