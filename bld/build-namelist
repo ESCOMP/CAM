@@ -4049,7 +4049,7 @@ my %nl_group = ();
 foreach my $name (@nl_groups) { $nl_group{$name} = ''; }
 
 # Dry deposition, MEGAN VOC emis and ozone namelists
-@comp_groups = qw(drydep_inparm megan_emis_nl fire_emis_nl carma_inparm ndep_inparm ozone_coupling_nl);
+@comp_groups = qw(drydep_inparm megan_emis_nl fire_emis_nl carma_inparm ndep_inparm ozone_coupling_nl lightning_coupling_nl);
 
 # nature of ozone data passed to surface models -- only if cmeps (nuopc) coupling is used
 if ($opts{'cmeps'}) {
@@ -4058,6 +4058,8 @@ if ($opts{'cmeps'}) {
   } else {
     add_default($nl, 'atm_ozone_frequency', 'val'=>'multiday_average');
   }
+  # for lightning flash freq to CTSM
+  add_default($nl, 'atm_lightning_flash_freq', 'val'=>'.true.');
 }
 $outfile = "$opts{'dir'}/drv_flds_in";
 $nl->write($outfile, 'groups'=>\@comp_groups);

@@ -1253,7 +1253,7 @@ contains
 #endif
     ! Set lightning production of NO
     call t_startf ('lightning_no_prod')
-    call lightning_no_prod( phys_state, pbuf2d,  cam_in )
+    call lightning_no_prod( phys_state, pbuf2d,  cam_in, cam_out )
     call t_stopf ('lightning_no_prod')
 
     call t_barrierf('sync_ac_physics', mpicom)

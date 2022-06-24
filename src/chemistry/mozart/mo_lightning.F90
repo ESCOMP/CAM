@@ -17,16 +17,13 @@ module mo_lightning
   public  :: lightning_no_prod
   public  :: prod_no
 
-  save
+  real(r8),protected, allocatable :: prod_no(:,:,:)
 
-  real(r8) :: factor = 0.1_r8              ! user-controlled scaling factor to achieve arbitrary no prod.
-  real(r8) :: geo_factor                   ! grid cell area factor
-  real(r8) :: vdist(16,3)                  ! vertical distribution of lightning
-  real(r8), allocatable :: prod_no(:,:,:)
-  real(r8), allocatable :: glob_prod_no_col(:,:)
-  real(r8), allocatable :: flash_freq(:,:)
-  integer :: no_ndx,xno_ndx
-  logical :: has_no_lightning_prod = .false.
+  real(r8) :: factor = -huge(1._r8)        ! user-controlled scaling factor to achieve arbitrary no prod.
+  real(r8) :: geo_factor = -huge(1._r8)    ! grid cell area factor
+  real(r8), allocatable :: vdist(:,:)      ! vertical distribution of lightning
+
+  logical :: calc_nox_prod = .false.
 
 contains
 
@@ -40,12 +37,10 @@ contains
     use cam_history,   only : addfld, add_default, horiz_only
     use phys_control,  only : phys_getopts
 
-    implicit none
-
     !----------------------------------------------------------------------
     !	... dummy args
     !----------------------------------------------------------------------
-    real(r8), intent(in) :: lght_no_prd_factor        ! lightning no production factor
+    real(r8),optional, intent(in) :: lght_no_prd_factor        ! lightning no production factor
 
     !----------------------------------------------------------------------
     !	... local variables
@@ -53,81 +48,68 @@ contains
     integer  :: astat
     logical :: history_cesm_forcing
 
-    call phys_getopts( history_cesm_forcing_out = history_cesm_forcing )
+    character(len=*),parameter :: prefix = 'lightning_inti: '
 
-    no_ndx = get_spc_ndx('NO')
-    xno_ndx = get_spc_ndx('XNO')
+    calc_nox_prod = present(lght_no_prd_factor)
 
-    has_no_lightning_prod = no_ndx>0 .or. xno_ndx>0
-    if (.not.has_no_lightning_prod) return
+    if (calc_nox_prod) then
+       factor = 0.1_r8*lght_no_prd_factor
 
+       if (masterproc) write(iulog,*) prefix,'lightning no production scaling factor = ',factor
 
-    if( lght_no_prd_factor /= 1._r8 ) then
-       factor = factor*lght_no_prd_factor
-    end if
+       !----------------------------------------------------------------------
+       !       ... vdist(kk,itype) = % of lightning nox between (kk-1) and (kk)
+       !           km for profile itype
+       !----------------------------------------------------------------------
+       allocate(vdist(16,3),stat=astat)
+       if( astat /= 0 ) then
+          write(iulog,*) prefix,'failed to allocate vdist; error = ',astat
+          call endrun(prefix//'failed to allocate vdist')
+       end if
+       vdist(:,1) = (/  3.0_r8, 3.0_r8, 3.0_r8, 3.0_r8, 3.4_r8, 3.5_r8, 3.6_r8, 4.0_r8, &       ! midlat cont
+            5.0_r8, 7.0_r8, 9.0_r8, 14.0_r8, 16.0_r8, 14.0_r8, 8.0_r8, 0.5_r8 /)
+       vdist(:,2) = (/  2.5_r8, 2.5_r8, 2.5_r8, 2.5_r8, 2.5_r8, 2.5_r8, 2.5_r8, 6.1_r8, &       ! trop marine
+            17.0_r8, 15.4_r8, 14.5_r8, 13.0_r8, 12.5_r8, 2.8_r8, 0.9_r8, 0.3_r8 /)
+       vdist(:,3) = (/  2.0_r8, 2.0_r8, 2.0_r8, 1.5_r8, 1.5_r8, 1.5_r8, 3.0_r8, 5.8_r8, &       ! trop cont
+            7.6_r8, 9.6_r8, 11.0_r8, 14.0_r8, 14.0_r8, 14.0_r8, 8.2_r8, 2.3_r8 /)
 
+       allocate( prod_no(pcols,pver,begchunk:endchunk),stat=astat )
+       if( astat /= 0 ) then
+          write(iulog,*) 'lght_inti: failed to allocate prod_no; error = ',astat
+          call endrun
+       end if
+       geo_factor = ngcols_p/(4._r8*pi)
 
-    if (masterproc) write(iulog,*) 'lght_inti: lightning no production scaling factor = ',factor
+       call addfld( 'LNO_COL_PROD', horiz_only,  'I', 'TG N/YR', 'lighting column NO source' )
+       call addfld( 'LNO_PROD',     (/ 'lev' /), 'I', '/cm3/s',  'lighting insitu NO source' )
+       call addfld( 'FLASHENGY',    horiz_only,  'I', '   ',     'lighting flash rate' )          ! flash frequency in grid box per minute (PPP)
 
-    !----------------------------------------------------------------------
-    !       ... vdist(kk,itype) = % of lightning nox between (kk-1) and (kk)
-    !           km for profile itype
-    !----------------------------------------------------------------------
-    vdist(:,1) = (/  3.0_r8, 3.0_r8, 3.0_r8, 3.0_r8, 3.4_r8, 3.5_r8, 3.6_r8, 4.0_r8, &       ! midlat cont
-                     5.0_r8, 7.0_r8, 9.0_r8, 14.0_r8, 16.0_r8, 14.0_r8, 8.0_r8, 0.5_r8 /)
-    vdist(:,2) = (/  2.5_r8, 2.5_r8, 2.5_r8, 2.5_r8, 2.5_r8, 2.5_r8, 2.5_r8, 6.1_r8, &       ! trop marine
-                     17.0_r8, 15.4_r8, 14.5_r8, 13.0_r8, 12.5_r8, 2.8_r8, 0.9_r8, 0.3_r8 /)
-    vdist(:,3) = (/  2.0_r8, 2.0_r8, 2.0_r8, 1.5_r8, 1.5_r8, 1.5_r8, 3.0_r8, 5.8_r8, &       ! trop cont
-                     7.6_r8, 9.6_r8, 11.0_r8, 14.0_r8, 14.0_r8, 14.0_r8, 8.2_r8, 2.3_r8 /)
+       call phys_getopts( history_cesm_forcing_out = history_cesm_forcing )
+       if ( history_cesm_forcing ) then
+          call add_default('LNO_COL_PROD',1,' ')
+       endif
 
-    allocate( prod_no(pcols,pver,begchunk:endchunk),stat=astat )
-    if( astat /= 0 ) then
-       write(iulog,*) 'lght_inti: failed to allocate prod_no; error = ',astat
-       call endrun
-    end if
-    allocate( flash_freq(pcols,begchunk:endchunk),stat=astat )
-    if( astat /= 0 ) then
-       write(iulog,*) 'lght_inti: failed to allocate flash_freq; error = ',astat
-       call endrun
-    end if
-    allocate( glob_prod_no_col(pcols,begchunk:endchunk),stat=astat )
-    if( astat /= 0 ) then
-       write(iulog,*) 'lght_inti: failed to allocate glob_prod_no_col; error = ',astat
-       call endrun
-    end if
-    prod_no(:,:,:)   = 0._r8
-    flash_freq(:,:)  = 0._r8
-    geo_factor = ngcols_p/(4._r8*pi)
+    endif
 
-
-    call addfld( 'LNO_COL_PROD', horiz_only,  'I', 'TG N/YR', 'lighting column NO source' )
-    call addfld( 'LNO_PROD',     (/ 'lev' /), 'I', '/cm3/s',  'lighting insitu NO source' )
     call addfld( 'FLASHFRQ',     horiz_only,  'I', '1/MIN',   'lighting flash rate' )        ! flash frequency in grid box per minute (PPP)
-    call addfld( 'FLASHENGY',    horiz_only,  'I', '   ',     'lighting flash rate' )          ! flash frequency in grid box per minute (PPP)
     call addfld( 'CLDHGT',       horiz_only,  'I', 'KM',      'cloud top height' )              ! cloud top height
     call addfld( 'DCHGZONE',     horiz_only,  'I', 'KM',      'depth of discharge zone' )       ! depth of discharge zone
     call addfld( 'CGIC',         horiz_only,  'I', 'RATIO',   'ratio of cloud-ground/intracloud discharges' ) ! ratio of cloud-ground/intracloud discharges
 
-    if ( history_cesm_forcing ) then
-       call add_default('LNO_COL_PROD',1,' ')
-    endif
-
   end subroutine lightning_inti
 
-  subroutine lightning_no_prod( state, pbuf2d,  cam_in )
+  subroutine lightning_no_prod( state, pbuf2d,  cam_in, cam_out )
     !----------------------------------------------------------------------
     !	... set no production from lightning
     !----------------------------------------------------------------------
     use physics_types,    only : physics_state
-
     use physics_buffer,   only : pbuf_get_index, physics_buffer_desc, pbuf_get_field, pbuf_get_chunk
     use physconst,        only : rga
     use phys_grid,        only : get_rlat_all_p, get_wght_all_p
     use cam_history,      only : outfld
-    use camsrfexch,       only : cam_in_t
+    use camsrfexch,       only : cam_in_t, cam_out_t
     use shr_reprosum_mod, only : shr_reprosum_calc
-    use mo_constants,  only : rearth, d2r
-    implicit none
+    use mo_constants,     only : rearth, d2r
 
     !----------------------------------------------------------------------
     !	... dummy args
@@ -136,6 +118,7 @@ contains
 
     type(physics_buffer_desc), pointer :: pbuf2d(:,:)
     type(cam_in_t), intent(in) :: cam_in(begchunk:endchunk) ! physics state
+    type(cam_out_t), intent(inout) :: cam_out(begchunk:endchunk) ! physics state
 
     !----------------------------------------------------------------------
     !	... local variables
@@ -172,6 +155,9 @@ contains
     real(r8) :: rlats(pcols,begchunk:endchunk)          ! column latitudes in chunks
     real(r8) :: wght(pcols)
 
+    real(r8) :: glob_prod_no_col(pcols,begchunk:endchunk)
+    real(r8) :: flash_freq(pcols,begchunk:endchunk)
+
     !----------------------------------------------------------------------
     ! 	... parameters to determine cg/ic ratio [price and rind, 1993]
     !----------------------------------------------------------------------
@@ -187,20 +173,21 @@ contains
     integer  :: cldtop_ndx, cldbot_ndx
     real(r8) :: flash_freq_land, flash_freq_ocn
 
-    if (.not.has_no_lightning_prod) return
-
     !----------------------------------------------------------------------
     !	... initialization
     !----------------------------------------------------------------------
 
     flash_freq(:,:)       = 0._r8
-    prod_no(:,:,:)        = 0._r8
-    prod_no_col(:,:)      = 0._r8
     cldhgt(:,:)           = 0._r8
     dchgzone(:,:)         = 0._r8
     cgic(:,:)             = 0._r8
     flash_energy(:,:)     = 0._r8
-    glob_prod_no_col(:,:) = 0._r8
+
+    if (calc_nox_prod) then
+       prod_no(:,:,:)     = 0._r8
+       prod_no_col(:,:)   = 0._r8
+       glob_prod_no_col(:,:) = 0._r8
+    end if
 
     cldtop_ndx = pbuf_get_index('CLDTOP')
     cldbot_ndx = pbuf_get_index('CLDBOT')
@@ -276,36 +263,51 @@ contains
              else if( dchgz > 14._r8 ) then
                 cgic(i,c) = .02_r8
              end if
-             !--------------------------------------------------------------------------------
-             !       ... compute flash energy (cg*6.7e9 + ic*6.7e8)
-             !           and convert to total energy per second
-             !           set ic = cg
-             !--------------------------------------------------------------------------------
-             flash_energy(i,c) = 6.7e9_r8 * flash_freq(i,c)/60._r8
-             !--------------------------------------------------------------------------------
-             !       ... LKE Aug 23, 2005: scale production to account for different grid
-             !           box sizes. This requires a reduction in the overall fudge factor
-             !           (e.g., from 1.2 to 0.5)
-             !--------------------------------------------------------------------------------
-             flash_energy(i,c) =  flash_energy(i,c) * wght(i) * geo_factor
-             !--------------------------------------------------------------------------------
-             ! 	... compute number of n atoms produced per second
-             !           and convert to n atoms per second per cm2 and apply fudge factor
-             !--------------------------------------------------------------------------------
-             prod_no_col(i,c) = 1.e17_r8*flash_energy(i,c)/(1.e4_r8*rearth*rearth*wght(i)) * factor
 
-             !--------------------------------------------------------------------------------
-             ! 	... compute global no production rate in tgn/yr:
-             !           tgn per second: * 14.00674 * 1.65979e-24 * 1.e-12
-             !             nb: 1.65979e-24 = 1/avo
-             !           tgn per year: * secpyr
-             !--------------------------------------------------------------------------------
-             glob_prod_no_col(i,c) = 1.e17_r8*flash_energy(i,c) &
-                  * 14.00674_r8 * 1.65979e-24_r8 * 1.e-12_r8 * secpyr * factor
+             cam_out(c)%lightning_flash_freq(i) = flash_freq(i,c)*cgic(i,c)
 
+             if (calc_nox_prod) then
+                !--------------------------------------------------------------------------------
+                !       ... compute flash energy (cg*6.7e9 + ic*6.7e8)
+                !           and convert to total energy per second
+                !           set ic = cg
+                !--------------------------------------------------------------------------------
+                flash_energy(i,c) = 6.7e9_r8 * flash_freq(i,c)/60._r8
+                !--------------------------------------------------------------------------------
+                !       ... LKE Aug 23, 2005: scale production to account for different grid
+                !           box sizes. This requires a reduction in the overall fudge factor
+                !           (e.g., from 1.2 to 0.5)
+                !--------------------------------------------------------------------------------
+                flash_energy(i,c) =  flash_energy(i,c) * wght(i) * geo_factor
+                !--------------------------------------------------------------------------------
+                ! 	... compute number of n atoms produced per second
+                !           and convert to n atoms per second per cm2 and apply fudge factor
+                !--------------------------------------------------------------------------------
+                prod_no_col(i,c) = 1.e17_r8*flash_energy(i,c)/(1.e4_r8*rearth*rearth*wght(i)) * factor
+
+                !--------------------------------------------------------------------------------
+                ! 	... compute global no production rate in tgn/yr:
+                !           tgn per second: * 14.00674 * 1.65979e-24 * 1.e-12
+                !             nb: 1.65979e-24 = 1/avo
+                !           tgn per year: * secpyr
+                !--------------------------------------------------------------------------------
+                glob_prod_no_col(i,c) = 1.e17_r8*flash_energy(i,c) &
+                     * 14.00674_r8 * 1.65979e-24_r8 * 1.e-12_r8 * secpyr * factor
+             end if
           end if cloud_layer
        end do Col_loop
     end do Chunk_loop
+
+    do c = begchunk,endchunk
+       lchnk = state(c)%lchnk
+       call outfld( 'FLASHFRQ',     flash_freq(:,c),       pcols, lchnk )
+       call outfld( 'CGIC',         cgic(:,c),             pcols, lchnk )
+       call outfld( 'CLDHGT',       cldhgt(:,c),           pcols, lchnk )
+       call outfld( 'DCHGZONE',     dchgzone(:,c),         pcols, lchnk )
+    enddo
+
+    if (.not.calc_nox_prod) return
+
     !--------------------------------------------------------------------------------
     ! 	... Accumulate global total, convert to flashes per second
     ! 	... Accumulate global NO production rate
@@ -374,11 +376,7 @@ contains
        lchnk = state(c)%lchnk
        call outfld( 'LNO_PROD',     prod_no(:,:,c),        pcols, lchnk )
        call outfld( 'LNO_COL_PROD', glob_prod_no_col(:,c), pcols, lchnk )
-       call outfld( 'FLASHFRQ',     flash_freq(:,c),       pcols, lchnk )
        call outfld( 'FLASHENGY',    flash_energy(:,c),     pcols, lchnk )
-       call outfld( 'CLDHGT',       cldhgt(:,c),           pcols, lchnk )
-       call outfld( 'DCHGZONE',     dchgzone(:,c),         pcols, lchnk )
-       call outfld( 'CGIC',         cgic(:,c),             pcols, lchnk )
     enddo
 
   end subroutine lightning_no_prod

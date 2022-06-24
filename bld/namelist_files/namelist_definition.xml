@@ -3545,7 +3545,7 @@ Include effects of precip evaporation on turbulent moments
 <entry id="clubb_do_adv" type="logical" category="pblrad"
        group="clubbpbl_diff_nl" valid_values="" >
 Switch for CLUBB_ADV parameter that turns on advection of CLUBB pdf moments by
-the dynamics core. Very experimental. 
+the dynamics core. Very experimental.
 </entry>
 
 <!-- Clubb timestep -->
@@ -3894,7 +3894,7 @@ xpyp only.
 
 <entry id="clubb_l_intr_sfc_flux_smooth" type="logical" category="pblrad"
        group="clubb_params_nl" valid_values="" >
-Flag to apply a locally calculated ustar to momentum surface fluxes in the 
+Flag to apply a locally calculated ustar to momentum surface fluxes in the
 clubb interface.
 </entry>
 
@@ -3960,8 +3960,8 @@ Flag to turn on the clubb monotonic flux limiter for vm (meridional momemtum).
 
 <entry id="clubb_l_partial_upwind_wp3" type="logical" category="pblrad"
        group="clubb_params_nl" valid_values="" >
-Flag to use an "upwind" discretization rather than a centered discretization 
-for the portion of the wp3 turbulent advection term for ADG1 that is linearized 
+Flag to use an "upwind" discretization rather than a centered discretization
+for the portion of the wp3 turbulent advection term for ADG1 that is linearized
 in terms of wp3(t+1). (Requires ADG1 PDF and l_standard_term_ta=true).
 </entry>
 
@@ -3988,7 +3988,7 @@ Flag to use smooth Heaviside 'Peskin' in computation of invrs_tau.
 
 <entry id="clubb_l_standard_term_ta" type="logical" category="pblrad"
        group="clubb_params_nl" valid_values="" >
-Use the standard discretization for the turbulent advection terms.  Setting to 
+Use the standard discretization for the turbulent advection terms.  Setting to
 .false. means that a_1 and a_3 are pulled outside of the derivative in
 advance_wp2_wp3_module.F90 and in advance_xp2_xpyp_module.F90.
 </entry>
@@ -4070,7 +4070,7 @@ production) term.
 
 <entry id="clubb_l_vary_convect_depth" type="logical" category="pblrad"
        group="clubb_params_nl" valid_values="" >
-Flag used to calculate convective velocity using a variable estimate of layer 
+Flag used to calculate convective velocity using a variable estimate of layer
 depth based on the depth over which wpthlp is positive near the ground when true
 </entry>
 
@@ -7267,6 +7267,13 @@ indicates whether the timestep-level values are interpolated from a
 coarser temporal resolution.
 Default: set by build-namelist.
 </entry>
+
+<entry id="atm_lightning_flash_freq" type="logical" category="lightning_coupling"
+       group="lightning_coupling_nl" valid_values="">
+If TRUE atmosphere model will provide prognosed lightning flash frequency.
+Default: FALSE
+</entry>
+
 
 <!-- WACCM_GHG Chemistry -->
 

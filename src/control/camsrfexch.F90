@@ -61,6 +61,7 @@ module camsrfexch
      real(r8) :: co2prog(pcols)      ! prognostic co2
      real(r8) :: co2diag(pcols)      ! diagnostic co2
      real(r8) :: ozone(pcols)        ! surface ozone concentration (mole/mole)
+     real(r8) :: lightning_flash_freq(pcols) ! scaled lightning flash frequency (/min??)
      real(r8) :: psl(pcols)
      real(r8) :: bcphiwet(pcols)     ! wet deposition of hydrophilic black carbon
      real(r8) :: bcphidry(pcols)     ! dry deposition of hydrophilic black carbon
@@ -302,6 +303,7 @@ CONTAINS
        cam_out(c)%co2prog(:)  = 0._r8
        cam_out(c)%co2diag(:)  = 0._r8
        cam_out(c)%ozone(:)    = 0._r8
+       cam_out(c)%lightning_flash_freq= 0._r8
        cam_out(c)%psl(:)      = 0._r8
        cam_out(c)%bcphidry(:) = 0._r8
        cam_out(c)%bcphodry(:) = 0._r8
