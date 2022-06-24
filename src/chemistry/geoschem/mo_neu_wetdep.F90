@@ -169,8 +169,10 @@ subroutine neu_wetdep_init
        end if
     end do
     if ( mapping_to_heff(m) == -99 ) then
-      if (masterproc) print *,'problem with mapping_to_heff of ',trim(test_name)
-!      call endrun()
+! ewl: kludge until I add new species to species table in seq_drydep_mod.F90
+!      if (masterproc) print *,'problem with mapping_to_heff of ',trim(test_name)
+!!      call endrun()
+        mapping_to_heff(m) = 1
     end if
 !
 ! special cases for NH3 and CO2
