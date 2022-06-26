@@ -2096,7 +2096,7 @@ end subroutine clubb_init_cnst
    real(r8) :: se_dis(pcols), se_a(pcols), se_b(pcols), clubb_s(pcols,pver)
    real(r8) :: eleak(pcols)
 
-   real(r8) :: inv_exner_clubb(pcols,pverp)     ! Inverse exner function consistent with CLUBB  [-]
+   real(r8) :: inv_exner_clubb(pcols,pver)     ! Inverse exner function consistent with CLUBB  [-]
    real(r8) :: inv_exner_clubb_surf(pcols)      ! Inverse exner function at the surface
    real(r8) :: wpthlp_output(pcols,pverp)       ! Heat flux output variable                     [W/m2]
    real(r8) :: wprtp_output(pcols,pverp)        ! Total water flux output variable              [W/m2]
@@ -4117,7 +4117,7 @@ end subroutine clubb_init_cnst
    do i=1,ncol
       do k=1,pver
          !use local exner since state%exner is not a proper exner
-         th(i,k) = state1%t(i,k)*exner(i,k)
+         th(i,k) = state1%t(i,k)*inv_exner_clubb(i,k)
          !thv should have condensate loading to be consistent with earlier def's in this module
          thv(i,k) = th(i,k)*(1.0_r8+zvir*state1%q(i,k,ixq) - state1%q(i,k,ixcldliq))
       enddo
