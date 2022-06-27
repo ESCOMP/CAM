@@ -49,7 +49,7 @@ module aerosol_state_mod
      !------------------------------------------------------------------------
      !------------------------------------------------------------------------
      subroutine aero_get_state_mmr(self, species_ndx, bin_ndx, mmr)
-       import
+       import :: aerosol_state, r8
        class(aerosol_state), intent(in) :: self
        integer, intent(in) :: species_ndx  ! species index
        integer, intent(in) :: bin_ndx      ! bin index
@@ -59,7 +59,7 @@ module aerosol_state_mod
      !------------------------------------------------------------------------
      !------------------------------------------------------------------------
      subroutine aero_get_state_num(self, bin_ndx, num)
-       import
+       import :: aerosol_state, r8
        class(aerosol_state), intent(in) :: self
        integer, intent(in) :: bin_ndx      ! bin index
        real(r8), pointer :: num(:,:)       ! number densities
@@ -68,7 +68,7 @@ module aerosol_state_mod
      !------------------------------------------------------------------------
      !------------------------------------------------------------------------
      subroutine aero_get_states( self, aero_props, raer, qqcw )
-       import
+       import :: aerosol_state, aerosol_properties, ptr2d_t
 
        class(aerosol_state), intent(in) :: self
        class(aerosol_properties), intent(in) :: aero_props ! properties of the aerosol model

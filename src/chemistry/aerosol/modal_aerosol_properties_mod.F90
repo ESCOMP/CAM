@@ -42,7 +42,6 @@ contains
     real(r8) :: dgnumlo
     real(r8) :: dgnumhi
     integer,allocatable :: nspecies(:)
-    integer,allocatable :: nmasses(:)
     real(r8),allocatable :: sigmag(:)
     real(r8),allocatable :: alogsig(:)
     real(r8),allocatable :: f1(:)
@@ -53,7 +52,6 @@ contains
     call rad_cnst_get_info(0, nmodes=nmodes)
 
     allocate(nspecies(nmodes))
-    allocate(nmasses(nmodes))
     allocate(alogsig(nmodes))
     allocate( f1(nmodes) )
     allocate( f2(nmodes) )
@@ -69,7 +67,6 @@ contains
        call rad_cnst_get_info(0, m, nspec=nspecies(m))
 
        ncnst_tot =  ncnst_tot + nspecies(m) + 1
-       nmasses(m) = nspecies(m)
 
        call rad_cnst_get_mode_props(0, m, sigmag=sigmag(m), &
                                     dgnumhi=dgnumhi, dgnumlo=dgnumlo )
@@ -88,9 +85,8 @@ contains
 
     end do
 
-    call newobj%initialize(nmodes,ncnst_tot,nspecies,nmasses,alogsig,f1,f2)
+    call newobj%initialize(nmodes,ncnst_tot,nspecies,nspecies,alogsig,f1,f2)
     deallocate(nspecies)
-    deallocate(nmasses)
     deallocate(alogsig)
     deallocate(sigmag)
     deallocate(f1)
@@ -103,9 +99,15 @@ contains
   subroutine destructor(self)
     type(modal_aerosol_properties), intent(inout) :: self
 
-    deallocate(self%exp45logsig_)
-    deallocate(self%voltonumblo_)
-    deallocate(self%voltonumbhi_)
+    if (allocated(self%exp45logsig_)) then
+       deallocate(self%exp45logsig_)
+    end if
+    if (allocated(self%voltonumblo_)) then
+       deallocate(self%voltonumblo_)
+    end if
+    if (allocated(self%voltonumbhi_)) then
+       deallocate(self%voltonumbhi_)
+    end if
 
     call self%final()
 

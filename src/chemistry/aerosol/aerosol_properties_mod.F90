@@ -57,7 +57,7 @@ module aerosol_properties_mod
      !  hygroscopicity
      !------------------------------------------------------------------------
      subroutine aero_props_get(self, bin_ndx, species_ndx, density,hygro)
-       import
+       import :: aerosol_properties, r8
        class(aerosol_properties), intent(in) :: self
        integer, intent(in) :: bin_ndx             ! bin index
        integer, intent(in) :: species_ndx         ! species index
@@ -69,7 +69,7 @@ module aerosol_properties_mod
      ! returns mass and number activation fractions
      !------------------------------------------------------------------------
      subroutine aero_actfracs(self, bin_ndx, smc, smax, fn, fm )
-       import
+       import :: aerosol_properties, r8
        class(aerosol_properties), intent(in) :: self
        integer, intent(in) :: bin_ndx   ! bin index
        real(r8),intent(in) :: smc       ! critical supersaturation for particles of bin radius
@@ -82,7 +82,7 @@ module aerosol_properties_mod
      !------------------------------------------------------------------------
      !------------------------------------------------------------------------
      subroutine aero_num_names(self, bin_ndx, name_a, name_c)
-       import
+       import :: aerosol_properties
        class(aerosol_properties), intent(in) :: self
        integer, intent(in) :: bin_ndx           ! bin number
        character(len=32), intent(out) :: name_a ! constituent name of ambient aerosol number dens
@@ -92,7 +92,7 @@ module aerosol_properties_mod
      !------------------------------------------------------------------------
      !------------------------------------------------------------------------
      subroutine aero_mmr_names(self, bin_ndx, species_ndx, name_a, name_c)
-       import
+       import :: aerosol_properties
        class(aerosol_properties), intent(in) :: self
        integer, intent(in) :: bin_ndx           ! bin number
        integer, intent(in) :: species_ndx       ! species number
@@ -104,7 +104,7 @@ module aerosol_properties_mod
      ! returns radius^3 (m3) of a given bin number
      !------------------------------------------------------------------------------
      pure elemental real(r8) function aero_amcube(self, bin_ndx, volconc, numconc)
-       import
+       import :: aerosol_properties, r8
 
        class(aerosol_properties), intent(in) :: self
        integer, intent(in) :: bin_ndx  ! bin number
@@ -118,7 +118,7 @@ module aerosol_properties_mod
 contains
 
   !------------------------------------------------------------------------------
-  ! ojbect initializer
+  ! object initializer
   !------------------------------------------------------------------------------
   subroutine aero_props_init(self, nbin, ncnst, nspec, nmasses, alogsig, f1,f2 )
     class(aerosol_properties), intent(inout) :: self
@@ -166,7 +166,7 @@ contains
   end subroutine aero_props_init
 
   !------------------------------------------------------------------------------
-  ! Ojbect clean
+  ! Object clean
   !------------------------------------------------------------------------------
   subroutine aero_props_final(self)
     class(aerosol_properties), intent(inout) :: self
