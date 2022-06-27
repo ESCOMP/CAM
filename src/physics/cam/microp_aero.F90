@@ -652,7 +652,7 @@ subroutine microp_aero_run ( &
       call outfld('LCLOUD', lcldn, pcols, lchnk)
 
       ! create the aerosol state object
-      aero_state_obj => modal_aerosol_state( state1, pbuf, aero_props_obj )
+      aero_state_obj => modal_aerosol_state( state1, pbuf )
 
       allocate(factnum(pcols,pver,aero_props_obj%nbins()))
 

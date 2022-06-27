@@ -47,6 +47,7 @@ module aerosol_state_mod
   interface
 
      !------------------------------------------------------------------------
+     ! returns aerosol mass mixing ratio for a given species index and bin index
      !------------------------------------------------------------------------
      subroutine aero_get_state_mmr(self, species_ndx, bin_ndx, mmr)
        import :: aerosol_state, r8
@@ -57,15 +58,17 @@ module aerosol_state_mod
      end subroutine aero_get_state_mmr
 
      !------------------------------------------------------------------------
+     ! returns aerosol number mixing ratio for a given species index and bin index
      !------------------------------------------------------------------------
      subroutine aero_get_state_num(self, bin_ndx, num)
        import :: aerosol_state, r8
        class(aerosol_state), intent(in) :: self
-       integer, intent(in) :: bin_ndx      ! bin index
-       real(r8), pointer :: num(:,:)       ! number densities
+       integer, intent(in) :: bin_ndx     ! bin index
+       real(r8), pointer   :: num(:,:)    ! number densities
      end subroutine aero_get_state_num
 
      !------------------------------------------------------------------------
+     ! returns interstitual and cloud-borne aerosol states
      !------------------------------------------------------------------------
      subroutine aero_get_states( self, aero_props, raer, qqcw )
        import :: aerosol_state, aerosol_properties, ptr2d_t

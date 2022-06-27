@@ -80,6 +80,7 @@ module aerosol_properties_mod
      end subroutine aero_actfracs
 
      !------------------------------------------------------------------------
+     ! returns constituents names of aersol number mixing ratios
      !------------------------------------------------------------------------
      subroutine aero_num_names(self, bin_ndx, name_a, name_c)
        import :: aerosol_properties
@@ -90,6 +91,7 @@ module aerosol_properties_mod
      end subroutine aero_num_names
 
      !------------------------------------------------------------------------
+     ! returns constituents names of aersol mass mixing ratios
      !------------------------------------------------------------------------
      subroutine aero_mmr_names(self, bin_ndx, species_ndx, name_a, name_c)
        import :: aerosol_properties

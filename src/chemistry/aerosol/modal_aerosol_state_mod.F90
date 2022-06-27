@@ -36,10 +36,9 @@ contains
 
   !------------------------------------------------------------------------------
   !------------------------------------------------------------------------------
-  function constructor(state,pbuf,props) result(newobj)
+  function constructor(state,pbuf) result(newobj)
     type(physics_state), target :: state
     type(physics_buffer_desc), pointer :: pbuf(:)
-    class(aerosol_properties), intent(in) :: props
 
     type(modal_aerosol_state), pointer :: newobj
 
@@ -61,6 +60,7 @@ contains
   end subroutine destructor
 
   !------------------------------------------------------------------------------
+  ! returns ambient aerosol mass mixing ratio for a given species index and bin index
   !------------------------------------------------------------------------------
   subroutine get_ambient_mmr(self, species_ndx, bin_ndx, mmr)
     class(modal_aerosol_state), intent(in) :: self
@@ -72,6 +72,7 @@ contains
   end subroutine get_ambient_mmr
 
   !------------------------------------------------------------------------------
+  ! returns cloud-borne aerosol number mixing ratio for a given species index and bin index
   !------------------------------------------------------------------------------
   subroutine get_cldbrne_mmr(self, species_ndx, bin_ndx, mmr)
     class(modal_aerosol_state), intent(in) :: self
@@ -83,16 +84,18 @@ contains
   end subroutine get_cldbrne_mmr
 
   !------------------------------------------------------------------------------
+  ! returns ambient aerosol number mixing ratio for a given species index and bin index
   !------------------------------------------------------------------------------
   subroutine get_ambient_num(self, bin_ndx, num)
     class(modal_aerosol_state), intent(in) :: self
-    integer, intent(in) :: bin_ndx             ! bin index
-    real(r8), pointer :: num(:,:)
+    integer, intent(in) :: bin_ndx     ! bin index
+    real(r8), pointer   :: num(:,:)    ! number densities
 
     call rad_cnst_get_mode_num(0, bin_ndx, 'a', self%state, self%pbuf, num)
   end subroutine get_ambient_num
 
   !------------------------------------------------------------------------------
+  ! returns cloud-borne aerosol number mixing ratio for a given species index and bin index
   !------------------------------------------------------------------------------
   subroutine get_cldbrne_num(self, bin_ndx, num)
     class(modal_aerosol_state), intent(in) :: self
@@ -103,6 +106,7 @@ contains
   end subroutine get_cldbrne_num
 
   !------------------------------------------------------------------------------
+  ! returns interstitual and cloud-borne aerosol states
   !------------------------------------------------------------------------------
   subroutine get_states( self, aero_props, raer, qqcw )
     class(modal_aerosol_state), intent(in) :: self

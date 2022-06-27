@@ -1221,7 +1221,7 @@ end subroutine crm_init_cnst
 
    end if
 
-   aero_state => modal_aerosol_state( state_loc, pbuf, aero_props )
+   aero_state => modal_aerosol_state( state_loc, pbuf )
 #endif
 
    !-------------------------

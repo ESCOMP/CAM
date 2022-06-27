@@ -158,14 +158,16 @@ contains
   end function amcube
 
   !------------------------------------------------------------------------------
+  ! returns mass and number activation fractions
   !------------------------------------------------------------------------------
   subroutine actfracs(self, bin_ndx, smc, smax, fn, fm )
     use shr_spfn_mod, only: erf => shr_spfn_erf
     class(modal_aerosol_properties), intent(in) :: self
-    integer, intent(in) :: bin_ndx
-    real(r8),intent(in) :: smc
-    real(r8),intent(in) :: smax
-    real(r8),intent(out) :: fn, fm
+    integer, intent(in) :: bin_ndx   ! bin index
+    real(r8),intent(in) :: smc       ! critical supersaturation for particles of bin radius
+    real(r8),intent(in) :: smax      ! maximum supersaturation for multiple competing aerosols
+    real(r8),intent(out) :: fn       ! activation fraction for aerosol number
+    real(r8),intent(out) :: fm       ! activation fraction for aerosol mass
 
     real(r8) :: x,y
     real(r8), parameter :: twothird = 2._r8/3._r8
@@ -180,22 +182,26 @@ contains
   end subroutine actfracs
 
   !------------------------------------------------------------------------
+  ! returns constituents names of aersol number mixing ratios
   !------------------------------------------------------------------------
   subroutine num_names(self, bin_ndx, name_a, name_c)
     class(modal_aerosol_properties), intent(in) :: self
     integer, intent(in) :: bin_ndx           ! bin number
-    character(len=32), intent(out) :: name_a, name_c
+    character(len=32), intent(out) :: name_a ! constituent name of ambient aerosol number dens
+    character(len=32), intent(out) :: name_c ! constituent name of cloud-borne aerosol number dens
 
     call rad_cnst_get_info(0,bin_ndx, num_name=name_a, num_name_cw=name_c)
   end subroutine num_names
 
   !------------------------------------------------------------------------
+  ! returns constituents names of aersol mass mixing ratios
   !------------------------------------------------------------------------
   subroutine mmr_names(self, bin_ndx, species_ndx, name_a, name_c)
     class(modal_aerosol_properties), intent(in) :: self
     integer, intent(in) :: bin_ndx           ! bin number
     integer, intent(in) :: species_ndx       ! species number
-    character(len=32), intent(out) :: name_a, name_c
+    character(len=32), intent(out) :: name_a ! constituent name of ambient aerosol MMR
+    character(len=32), intent(out) :: name_c ! constituent name of cloud-borne aerosol MMR
 
     call rad_cnst_get_info(0, bin_ndx, species_ndx, spec_name=name_a, spec_name_cw=name_c)
   end subroutine mmr_names
