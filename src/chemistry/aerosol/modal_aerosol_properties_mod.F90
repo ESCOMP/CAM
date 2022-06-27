@@ -23,6 +23,7 @@ module modal_aerosol_properties_mod
      procedure :: actfracs
      procedure :: num_names
      procedure :: mmr_names
+     procedure :: apply_number_limits
      final :: destructor
   end type modal_aerosol_properties
 
@@ -205,5 +206,26 @@ contains
 
     call rad_cnst_get_info(0, bin_ndx, species_ndx, spec_name=name_a, spec_name_cw=name_c)
   end subroutine mmr_names
+
+  !------------------------------------------------------------------------------
+  ! apply max / min to number concentration
+  !------------------------------------------------------------------------------
+  subroutine apply_number_limits( self, naerosol, vaerosol, istart, istop, m )
+    class(modal_aerosol_properties), intent(in) :: self
+    real(r8), intent(inout) :: naerosol(:)  ! number conc (1/m3)
+    real(r8), intent(in)    :: vaerosol(:)  ! volume conc (m3/m3)
+    integer,  intent(in) :: istart          ! start column index (1 <= istart <= istop <= pcols)
+    integer,  intent(in) :: istop           ! stop column index
+    integer,  intent(in) :: m               ! mode or bin index
+
+    integer :: i
+
+    ! adjust number so that dgnumlo < dgnum < dgnumhi
+    do i = istart, istop
+       naerosol(i) = max(naerosol(i), vaerosol(i)*self%voltonumbhi_(m))
+       naerosol(i) = min(naerosol(i), vaerosol(i)*self%voltonumblo_(m))
+    end do
+
+  end subroutine apply_number_limits
 
 end module modal_aerosol_properties_mod

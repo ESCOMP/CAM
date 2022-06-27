@@ -45,6 +45,7 @@ module aerosol_properties_mod
      procedure(aero_actfracs), deferred :: actfracs
      procedure(aero_num_names), deferred :: num_names
      procedure(aero_mmr_names), deferred :: mmr_names
+     procedure(aero_apply_num_limits), deferred :: apply_number_limits
 
      procedure :: final=>aero_props_final
   end type aerosol_properties
@@ -114,6 +115,20 @@ module aerosol_properties_mod
        real(r8), intent(in) :: numconc ! number conc (1/m3)
 
      end function aero_amcube
+
+     !------------------------------------------------------------------------------
+     ! apply max / min to number concentration
+     !------------------------------------------------------------------------------
+     subroutine aero_apply_num_limits( self, naerosol, vaerosol, istart, istop, m )
+       import :: aerosol_properties, r8
+       class(aerosol_properties), intent(in) :: self
+       real(r8), intent(inout) :: naerosol(:)  ! number conc (1/m3)
+       real(r8), intent(in)    :: vaerosol(:)  ! volume conc (m3/m3)
+       integer,  intent(in) :: istart          ! start column index (1 <= istart <= istop <= pcols)
+       integer,  intent(in) :: istop           ! stop column index
+       integer,  intent(in) :: m               ! mode or bin index
+
+     end subroutine aero_apply_num_limits
 
   end interface
 
