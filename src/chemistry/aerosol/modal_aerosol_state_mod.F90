@@ -114,16 +114,16 @@ contains
     type(ptr2d_t), intent(out) :: raer(:)
     type(ptr2d_t), intent(out) :: qqcw(:)
 
-    integer :: m,mm,l
+    integer :: ibin,ispc, indx
 
-    do m = 1, aero_props%nbins()
-       mm = aero_props%indexer(m, 0)
-       call self%get_ambient_num(m, raer(mm)%fld)
-       call self%get_cldbrne_num(m, qqcw(mm)%fld)
-       do l = 1, aero_props%nspecies(m)
-          mm = aero_props%indexer(m, l)
-          call self%get_ambient_mmr(l,m, raer(mm)%fld)
-          call self%get_cldbrne_mmr(l,m, qqcw(mm)%fld)
+    do ibin = 1, aero_props%nbins()
+       indx = aero_props%indexer(ibin, 0)
+       call self%get_ambient_num(ibin, raer(indx)%fld)
+       call self%get_cldbrne_num(ibin, qqcw(indx)%fld)
+       do ispc = 1, aero_props%nspecies(ibin)
+          indx = aero_props%indexer(ibin, ispc)
+          call self%get_ambient_mmr(ispc,ibin, raer(indx)%fld)
+          call self%get_cldbrne_mmr(ispc,ibin, qqcw(indx)%fld)
        end do
     end do
 

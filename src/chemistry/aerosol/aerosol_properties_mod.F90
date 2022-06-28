@@ -1,5 +1,6 @@
 module aerosol_properties_mod
   use shr_kind_mod, only: r8 => shr_kind_r8
+  use cam_abortutils, only: endrun
 
   implicit none
 
@@ -147,15 +148,35 @@ contains
     real(r8),intent(in) :: f1(nbin)           ! abdul-razzak functions of width
     real(r8),intent(in) :: f2(nbin)           ! abdul-razzak functions of width
 
-    integer :: l,m,mm
+    integer :: imas,ibin,indx
+    character(len=*),parameter :: prefix = 'aerosol_properties::aero_props_init: '
+    integer :: ierr
 
-    allocate(self%nspecies_(nbin))
-    allocate(self%nmasses_(nbin))
-    allocate(self%alogsig_(nbin))
-    allocate(self%f1_(nbin))
-    allocate(self%f2_(nbin))
+    allocate(self%nspecies_(nbin),stat=ierr)
+    if( ierr /= 0 ) then
+       call endrun(prefix//'error allocating self%nspecies_')
+    end if
+    allocate(self%nmasses_(nbin),stat=ierr)
+    if( ierr /= 0 ) then
+       call endrun(prefix//'error allocating self%nmasses_')
+    end if
+    allocate(self%alogsig_(nbin),stat=ierr)
+    if( ierr /= 0 ) then
+       call endrun(prefix//'error allocating self%alogsig_')
+    end if
+    allocate(self%f1_(nbin),stat=ierr)
+    if( ierr /= 0 ) then
+       call endrun(prefix//'error allocating self%f1_')
+    end if
+    allocate(self%f2_(nbin),stat=ierr)
+    if( ierr /= 0 ) then
+       call endrun(prefix//'error allocating self%f2_')
+    end if
 
     allocate( self%indexer_(nbin,0:maxval(nmasses)) )
+    if( ierr /= 0 ) then
+       call endrun(prefix//'error allocating self%indexer_')
+    end if
 
     ! Local indexing compresses the mode and number/mass indices into one index.
     ! This indexing is used by the pointer arrays used to reference state and pbuf
@@ -163,12 +184,12 @@ contains
     ! constituency into mm.
 
     self%indexer_ = -1
-    mm = 0
+    indx = 0
 
-    do m=1,nbin
-       do l = 0,nmasses(m)
-          mm = mm+1
-          self%indexer_(m,l) = mm
+    do ibin=1,nbin
+       do imas = 0,nmasses(ibin)
+          indx = indx+1
+          self%indexer_(ibin,imas) = indx
        end do
     end do
 
