@@ -118,7 +118,7 @@ integer :: istat
 
 logical, parameter :: debug=.false.
 
-type(modal_aerosol_properties), pointer :: aero_props_obj
+type(modal_aerosol_properties), pointer :: aero_props_obj => null()
 
 !=========================================================================================
 contains

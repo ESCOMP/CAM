@@ -1271,10 +1271,10 @@ subroutine activate_aerosol(wbar, sigw, wdiab, wminf, wmaxf, tair, rhoair,  &
       if(volume(m).gt.1.e-39_r8.and.na(m).gt.1.e-39_r8)then
          ! number mode radius (m)
          amcube(m)=aero_props%amcube(m, volume(m),na(m))
-         !           growth coefficent Abdul-Razzak & Ghan 1998 eqn 16
-         !           should depend on mean radius of mode to account for gas kinetic effects
-         !           see Fountoukis and Nenes, JGR2005 and Meskhidze et al., JGR2006
-         !           for approriate size to use for effective diffusivity.
+         ! growth coefficent Abdul-Razzak & Ghan 1998 eqn 16
+         ! should depend on mean radius of mode to account for gas kinetic effects
+         ! see Fountoukis and Nenes, JGR2005 and Meskhidze et al., JGR2006
+         ! for approriate size to use for effective diffusivity.
          etafactor2(m)=1._r8/(na(m)*beta*sqrtg)
          if(hygro(m).gt.1.e-10_r8)then
             smc(m)=2._r8*aten*sqrt(aten/(27._r8*hygro(m)*amcube(m))) ! only if variable size dist
@@ -1583,7 +1583,7 @@ subroutine ccncalc(aero_state, aero_props, state, cs, ccn)
             m, cs, phase, naerosol, vaerosol, &
             hygro)
 
-         where(naerosol(:ncol)>1.e-3_r8 .and. hygro(:ncol).gt.1.e-10_r8)
+         where(naerosol(:ncol)>1.e-3_r8 .and. hygro(:ncol)>1.e-10_r8)
             amcube(:ncol)=aero_props%amcube(m, vaerosol(:ncol), naerosol(:ncol) )
             sm(:ncol)=smcoef(:ncol)/sqrt(hygro(:ncol)*amcube(:ncol)) ! critical supersaturation
          elsewhere
@@ -1591,8 +1591,8 @@ subroutine ccncalc(aero_state, aero_props, state, cs, ccn)
          endwhere
          do l=1,psat
             do i=1,ncol
-               arg(i)=argfactor(m)*log(sm(i)/super(l))                      ! staturation factors are a little diff         <--| ???
-               ccn(i,k,l)=ccn(i,k,l)+naerosol(i)*0.5_r8*(1._r8-erf(arg(i))) ! looks like activation frac fn (arg is a little diff) ??
+               arg(i)=argfactor(m)*log(sm(i)/super(l))
+               ccn(i,k,l)=ccn(i,k,l)+naerosol(i)*0.5_r8*(1._r8-erf(arg(i)))
             enddo
          enddo
       enddo

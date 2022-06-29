@@ -22,14 +22,14 @@ module aerosol_properties_mod
   !! aerosol_properties class can be extended for a specific aerosol package.
   type, abstract :: aerosol_properties
      private
-     integer :: nbins_ = 0
-     integer :: ncnst_tot_ = 0
-     integer, allocatable :: nmasses_(:)
-     integer, allocatable :: nspecies_(:)
-     integer, allocatable :: indexer_(:,:)
-     real(r8), allocatable :: alogsig_(:)
-     real(r8), allocatable :: f1_(:)
-     real(r8), allocatable :: f2_(:)
+     integer :: nbins_ = 0  ! number of aerosol bins
+     integer :: ncnst_tot_ = 0 ! total number of constituents
+     integer, allocatable :: nmasses_(:) ! number of species masses
+     integer, allocatable :: nspecies_(:) ! number of species
+     integer, allocatable :: indexer_(:,:) ! unique indices of the aerosol elements
+     real(r8), allocatable :: alogsig_(:) ! natural log of geometric deviation of the number distribution for aerosol bin
+     real(r8), allocatable :: f1_(:) ! abdul-razzak functions of width
+     real(r8), allocatable :: f2_(:) ! abdul-razzak functions of width
    contains
      procedure :: initialize => aero_props_init
      procedure :: nbins

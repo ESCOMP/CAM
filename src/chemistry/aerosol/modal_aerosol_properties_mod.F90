@@ -18,8 +18,6 @@ module modal_aerosol_properties_mod
      real(r8), allocatable :: voltonumbhi_(:)
    contains
      procedure :: get
-     procedure :: voltonumblo
-     procedure :: voltonumbhi
      procedure :: amcube
      procedure :: actfracs
      procedure :: num_names
@@ -109,9 +107,9 @@ contains
        f1(m) = 0.5_r8*exp(2.5_r8*alogsig(m)*alogsig(m))
        f2(m) = 1._r8 + 0.25_r8*alogsig(m)
 
-       newobj%voltonumblo_(m) = 1._r8 / ( (pi/6._r8)*                          &
+       newobj%voltonumblo_(m) = 1._r8 / ( (pi/6._r8)* &
             (dgnumlo**3._r8)*exp(4.5_r8*alogsig(m)**2._r8) )
-       newobj%voltonumbhi_(m) = 1._r8 / ( (pi/6._r8)*                          &
+       newobj%voltonumbhi_(m) = 1._r8 / ( (pi/6._r8)* &
             (dgnumhi**3._r8)*exp(4.5_r8*alogsig(m)**2._r8) )
 
     end do
@@ -144,31 +142,18 @@ contains
 
   end subroutine destructor
 
-  !------------------------------------------------------------------------------
-  !------------------------------------------------------------------------------
-  pure real(r8) function voltonumblo(self,m)
-    class(modal_aerosol_properties), intent(in) :: self
-    integer,intent(in) :: m
-    voltonumblo = self%voltonumblo_(m)
-  end function voltonumblo
-
-  !------------------------------------------------------------------------------
-  !------------------------------------------------------------------------------
-  pure real(r8) function voltonumbhi(self,m)
-    class(modal_aerosol_properties), intent(in) :: self
-    integer,intent(in) :: m
-    voltonumbhi = self%voltonumbhi_(m)
-  end function voltonumbhi
-
-  !------------------------------------------------------------------------------
-  !------------------------------------------------------------------------------
+  !------------------------------------------------------------------------
+  ! returns aerosol properties:
+  !  density
+  !  hygroscopicity
+  !------------------------------------------------------------------------
   subroutine get(self, bin_ndx, species_ndx, density,hygro)
 
     class(modal_aerosol_properties), intent(in) :: self
     integer, intent(in) :: bin_ndx             ! bin index
     integer, intent(in) :: species_ndx         ! species index
-    real(r8), optional, intent(out) :: density
-    real(r8), optional, intent(out) :: hygro
+    real(r8), optional, intent(out) :: density ! density (kg/m3)
+    real(r8), optional, intent(out) :: hygro   ! hygroscopicity
 
     call rad_cnst_get_aer_props(0, bin_ndx, species_ndx, density_aer=density, hygro_aer=hygro)
 

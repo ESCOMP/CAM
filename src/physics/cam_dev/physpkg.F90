@@ -1242,7 +1242,7 @@ contains
     use chemistry,      only: chem_final
     use carma_intr,     only: carma_final
     use wv_saturation,  only: wv_sat_final
-    use microp_aero, only : microp_aero_final
+    use microp_aero,    only: microp_aero_final
 
     !-----------------------------------------------------------------------
     !

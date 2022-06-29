@@ -68,14 +68,14 @@ module aerosol_state_mod
      end subroutine aero_get_state_num
 
      !------------------------------------------------------------------------
-     ! returns interstitual and cloud-borne aerosol states
+     ! returns interstitial and cloud-borne aerosol states
      !------------------------------------------------------------------------
      subroutine aero_get_states( self, aero_props, raer, qqcw )
        import :: aerosol_state, aerosol_properties, ptr2d_t
 
        class(aerosol_state), intent(in) :: self
        class(aerosol_properties), intent(in) :: aero_props ! properties of the aerosol model
-       type(ptr2d_t), intent(out) :: raer(:) ! state of interstitual aerosols
+       type(ptr2d_t), intent(out) :: raer(:) ! state of interstitial aerosols
        type(ptr2d_t), intent(out) :: qqcw(:) ! state of cloud-borne aerosols
 
      end subroutine aero_get_states
@@ -169,7 +169,7 @@ contains
           end do
        else
           write(iulog,*)'phase = ',phase,' in loadaer not recognized'
-          call endrun('phase error in loadaer')
+          call endrun('phase error in aerosol_state::loadaer1')
        end if
 
        do i = istart, istop
@@ -180,7 +180,7 @@ contains
     end do
 
     do i = istart, istop
-       if (vaerosol(i) > 1.0e-30_r8) then   ! +++xl add 8/2/2007
+       if (vaerosol(i) > 1.0e-30_r8) then
           hygro(i)    = hygro(i)/(vaerosol(i))
           vaerosol(i) = vaerosol(i)*cs(i,k)
        else
@@ -189,12 +189,12 @@ contains
        end if
     end do
 
-    ! aerosol number
+    ! aerosol number mixing ratios (#/kg)
     call self%get_ambient_num(m, raer)
     call self%get_cldbrne_num(m, qqcw)
     if (phase == 3) then
        do i = istart, istop
-          naerosol(i) = (raer(i,k) + qqcw(i,k))*cs(i,k)
+          naerosol(i) = (raer(i,k) + qqcw(i,k))*cs(i,k) ! #/kg -> #/m3
        end do
     else if (phase == 2) then
        do i = istart, istop
