@@ -329,7 +329,6 @@ subroutine neu_wetdep_tend(lchnk,ncol,mmr,pmid,pdel,zint,tfld,delt, &
   end do
 !
 ! compute effective Henry's law coefficients
-! code taken from models/drv/shr/shr_drydep_mod.F90
 !
   heff = 0._r8
   do k=1,pver

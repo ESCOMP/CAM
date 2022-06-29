@@ -29,7 +29,7 @@ module atm_comp_nuopc
   use cam_logfile         , only : iulog
   use spmd_utils          , only : spmdinit, masterproc, iam, mpicom
   use time_manager        , only : get_curr_calday, advance_timestep, get_curr_date, get_nstep, get_step_size
-  use atm_import_export   , only : set_options, advertise_fields, realize_fields
+  use atm_import_export   , only : read_fields_namelists, advertise_fields, realize_fields
   use atm_import_export   , only : import_fields, export_fields
   use nuopc_shr_methods   , only : chkerr, state_setscalar, state_getscalar, state_diagnose, alarmInit
   use nuopc_shr_methods   , only : set_component_logging, get_component_instance, log_clock_advance
@@ -278,8 +278,8 @@ contains
        call shr_sys_abort(subname//'Need to set attribute ScalarFieldIdxNextSwCday')
     endif
 
-    ! read drv flds options
-    call set_options()
+    ! read drv flds namelists
+    call read_fields_namelists()
 
     call NUOPC_CompAttributeGet(gcomp, name="mediator_present", value=cvalue, isPresent=isPresent, isSet=isSet, rc=rc)
     if (ChkErr(rc,__LINE__,u_FILE_u)) return
