@@ -633,13 +633,21 @@ contains
     !
     ! Log sponge layer configuration
     !
-    if (hybrid%masterthread.and.nu_set) &
-         write(iulog, '(a,e9.2)')   '  sponge_del4_nu_fac     = ',sponge_del4_nu_fac
-    if (hybrid%masterthread.and.div_set) &
-         write(iulog, '(a,e9.2)')   '  sponge_del4_nu_div_fac = ',sponge_del4_nu_div_fac
-    if (hybrid%masterthread.and.lev_set) &
-         write(iulog, '(a,i0)')   '  sponge_del4_lev        = ',sponge_del4_lev
-    if ((hybrid%masterthread) write(iulog,* )""
+    if (hybrid%masterthread) then
+       if (nu_set) then
+          write(iulog, '(a,e9.2)')   '  sponge_del4_nu_fac     = ',sponge_del4_nu_fac
+       end if
+
+       if (div_set) then
+          write(iulog, '(a,e9.2)')   '  sponge_del4_nu_div_fac = ',sponge_del4_nu_div_fac
+       end if
+
+       if (lev_set) then
+          write(iulog, '(a,i0)')   '  sponge_del4_lev        = ',sponge_del4_lev
+       end if
+
+       write(iulog,* )""
+    end if
 
     if (hybrid%masterthread) write(iulog,*) ": sponge layer viscosity scaling factor"
     nu_max     =  sponge_del4_nu_fac*nu_p
