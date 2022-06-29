@@ -614,6 +614,8 @@ contains
          stop_ymd=stop_ymd, stop_tod=stop_tod, curr_ymd=curr_ymd, curr_tod=curr_tod, &
          cam_out=cam_out,  cam_in=cam_in)
 
+    if ( masterproc) print *, "ewl: in atm_comp_nuopc.F90: after cam_init"
+
     if (mediator_present) then
 
        if (single_column) then
@@ -735,6 +737,8 @@ contains
 
     end if ! end of mediator_present if-block
 
+    if ( masterproc) print *, "ewl: in atm_comp_nuopc.F90: after mediator_present block"
+
     call shr_file_setLogUnit (shrlogunit)
 
 #if (defined _MEMTRACE)
@@ -749,6 +753,8 @@ contains
     if (dbug_flag > 5) then
        call ESMF_LogWrite(subname//' done', ESMF_LOGMSG_INFO)
     end if
+
+    if ( masterproc) print *, "ewl: in atm_comp_nuopc.F90: end of InitializeRealize"
 
   end subroutine InitializeRealize
 
@@ -997,6 +1003,8 @@ contains
 
     rc = ESMF_SUCCESS
 
+    if ( masterproc) print *, "ewl: At start of ModelAdvance"
+
 !$  call omp_set_num_threads(nthrds)
 
     call shr_file_getLogUnit (shrlogunit)
@@ -1096,13 +1104,19 @@ contains
 
        ! Run CAM (run2, run3, run4)
 
+       if ( masterproc) print *, "ewl: In ModelAdvance: before cam_run2"
+
        call t_startf ('CAM_run2')
        call cam_run2( cam_out, cam_in )
        call t_stopf  ('CAM_run2')
 
+       if ( masterproc) print *, "ewl: In ModelAdvance: before cam_run3"
+
        call t_startf ('CAM_run3')
        call cam_run3( cam_out )
        call t_stopf  ('CAM_run3')
+
+       if ( masterproc) print *, "ewl: In ModelAdvance: before cam_run4"
 
        call t_startf ('CAM_run4')
        call cam_run4( cam_out, cam_in, rstwr, nlend, &
@@ -1111,11 +1125,15 @@ contains
 
        ! Advance cam time step
 
+       if ( masterproc) print *, "ewl: In ModelAdvance: advancing timestep"
+
        call t_startf ('CAM_adv_timestep')
        call advance_timestep()
        call t_stopf  ('CAM_adv_timestep')
 
        ! Run cam radiation/clouds (run1)
+
+      if ( masterproc) print *, "ewl: In ModelAdvance: before cam_run1"
 
        call t_startf ('CAM_run1')
        call cam_run1 ( cam_in, cam_out )

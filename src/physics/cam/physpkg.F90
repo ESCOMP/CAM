@@ -1557,14 +1557,19 @@ contains
     !===================================================
     if (chem_is_active()) then
 
+       if (masterproc) print *, "ewl: cam/physpkg.F90: before chemistry"
+
        if (trim(cam_take_snapshot_before) == "chem_timestep_tend") then
           call cam_snapshot_all_outfld_tphysac(cam_snapshot_before_num, state, tend, cam_in, cam_out, pbuf,&
                     fh2o, surfric, obklen, flx_heat)
        end if
 
+       if (masterproc) print *, "ewl: cam/physpkg.F90: before chem_timestep_tend"
+
        call chem_timestep_tend(state, ptend, cam_in, cam_out, ztodt, &
             pbuf,  fh2o=fh2o)
 
+       if (masterproc) print *, "ewl: cam/physpkg.F90: chem_timestep_tend complete"
 
        if ( (trim(cam_take_snapshot_after) == "chem_timestep_tend") .and.     &
             (trim(cam_take_snapshot_before) == trim(cam_take_snapshot_after))) then
@@ -1587,6 +1592,8 @@ contains
     ! Call vertical diffusion code (pbl, free atmosphere and molecular)
     !===================================================
 
+    if (masterproc) print *, "ewl: cam/physpkg.F90: before vertical diffusion"
+
     call t_startf('vertical_diffusion_tend')
 
     if (trim(cam_take_snapshot_before) == "vertical_diffusion_section") then
@@ -1600,6 +1607,9 @@ contains
    !------------------------------------------
    ! Call major diffusion for extended model
    !------------------------------------------
+
+    if (masterproc) print *, "ewl: cam/physpkg.F90: before major diffusion"
+
     if ( waccmx_is('ionosphere') .or. waccmx_is('neutral') ) then
        call waccmx_phys_mspd_tend (ztodt    ,state    ,ptend)
     endif
@@ -1626,6 +1636,9 @@ contains
     !===================================================
     ! Rayleigh friction calculation
     !===================================================
+
+    if (masterproc) print *, "ewl: cam/physpkg.F90: before rayleigh friction calculation"
+
     call t_startf('rayleigh_friction')
     call rayleigh_friction_tend( ztodt, state, ptend)
     if ( ptend%lu ) then
@@ -1648,6 +1661,8 @@ contains
 
     !  aerosol dry deposition processes
     call t_startf('aero_drydep')
+
+    if (masterproc) print *, "ewl: cam/physpkg.F90: before aerosol dry deposition processes...skipping!"
 
 ! ewl: turn off aerosol dry deposition
 !    if (trim(cam_take_snapshot_before) == "aero_model_drydep") then
@@ -1677,6 +1692,9 @@ contains
    ! that cam_out%xxxdryxxx fields have already been set for CAM aerosols and cam_out
    ! can be added to for CARMA aerosols.
    if (carma_do_aerosol) then
+
+     if (masterproc) print *, "ewl: cam/physpkg.F90: before carma microphysics"
+
      call t_startf('carma_timestep_tend')
      call carma_timestep_tend(state, cam_in, cam_out, ptend, ztodt, pbuf, obklen=obklen, ustar=surfric)
      call physics_update(state, ptend, ztodt, tend)
@@ -1689,12 +1707,16 @@ contains
     !---------------------------------------------------------------------------------
     !   ... enforce charge neutrality
     !---------------------------------------------------------------------------------
+    if (masterproc) print *, "ewl: cam/physpkg.F90: before enforcing charge neutrality"
+
     call charge_balance(state, pbuf)
 
     !===================================================
     ! Gravity wave drag
     !===================================================
     call t_startf('gw_tend')
+
+    if (masterproc) print *, "ewl: cam/physpkg.F90: before gravity wave drag"
 
     if (trim(cam_take_snapshot_before) == "gw_tend") then
        call cam_snapshot_all_outfld_tphysac(cam_snapshot_before_num, state, tend, cam_in, cam_out, pbuf,&
@@ -1781,6 +1803,9 @@ contains
     !----------------------------------------------------------------------------
     ! Call ionosphere routines for extended model if mode is set to ionosphere
     !----------------------------------------------------------------------------
+
+    if (masterproc) print *, "ewl: cam/physpkg.F90: before ionosphere routines"
+
     if( waccmx_is('ionosphere') ) then
        call waccmx_phys_ion_elec_temp_tend(state, ptend, pbuf, ztodt)
     endif
