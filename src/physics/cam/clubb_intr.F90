@@ -4161,36 +4161,24 @@ end subroutine clubb_init_cnst
    call outfld( 'VPWP_CLUBB',       vpwp,                  pcols, lchnk )
    call outfld( 'WPTHLP_CLUBB',     wpthlp_output,         pcols, lchnk )
    call outfld( 'WPRTP_CLUBB',      wprtp_output,          pcols, lchnk )
+   call outfld( 'RTP2_CLUBB',       rtp2(:ncol,:),         pcols, lchnk )
+   call outfld( 'RTPTHLP_CLUBB',    rtpthlp_output,        pcols, lchnk )
+   call outfld( 'RCM_CLUBB',        rcm(:ncol,1:pver),     pcols, lchnk )
+   call outfld( 'RTM_CLUBB',        rtm(1:ncol,1:pver),    pcols, lchnk )
+   call outfld( 'THLM_CLUBB',       thlm(:ncol,1:pver),    pcols, lchnk )
 
-     temp2dp(:ncol,:) =  rtp2(:ncol,:)
-     call outfld( 'RTP2_CLUBB',       temp2dp,                pcols, lchnk )
+   temp2dp(:ncol,:) = wprcp(:ncol,:) * latvap
+   call outfld( 'WPRCP_CLUBB',      temp2dp,                    pcols, lchnk )
 
-     rtpthlp_output(:ncol,:) = rtpthlp_output(:ncol,:)
-     call outfld( 'RTPTHLP_CLUBB',    rtpthlp_output,         pcols, lchnk )
-
-     temp2d(:ncol,:) = rcm(:ncol,1:pver)
-     call outfld( 'RCM_CLUBB',        temp2d,                 pcols, lchnk )
-
-     temp2d(:ncol,:) = rtm(1:ncol,1:pver)
-     call outfld( 'RTM_CLUBB',        temp2d,                 pcols, lchnk )
-
-     temp2d(:ncol,:) = thlm(:ncol,1:pver)
-     call outfld( 'THLM_CLUBB',       temp2d,                 pcols, lchnk )
-
-     temp2dp(:ncol,:) = wprcp(:ncol,:) * latvap
-     call outfld( 'WPRCP_CLUBB',      temp2dp,                pcols, lchnk )
-
-     temp2d(:ncol,:) = rcm_in_layer(:ncol,1:pver)
-     call outfld( 'RCMINLAYER_CLUBB', temp2d,                 pcols, lchnk )
-
-     temp2dp(:ncol,:) = wpthvp(:ncol,:) * cpair
-     call outfld( 'WPTHVP_CLUBB',     temp2dp,                pcols, lchnk )
+   temp2dp(:ncol,:) = wpthvp(:ncol,:) * cpair
+   call outfld( 'WPTHVP_CLUBB',     temp2dp,                    pcols, lchnk )
 
    call outfld( 'RTP2_ZT_CLUBB',    rtp2_zt_out(1:ncol,1:pver), pcols, lchnk )
    call outfld( 'THLP2_ZT_CLUBB',   thl2_zt_out(1:ncol,1:pver), pcols, lchnk )
    call outfld( 'WP2_ZT_CLUBB',     wp2_zt_out(1:ncol,1:pver),  pcols, lchnk )
    call outfld( 'PDFP_RTP2_CLUBB',  pdfp_rtp2,                  pcols, lchnk )
    call outfld( 'THLP2_CLUBB',      thlp2,                      pcols, lchnk )
+   call outfld( 'RCMINLAYER_CLUBB', rcm_in_layer(:ncol,1:pver), pcols, lchnk )
    call outfld( 'CLOUDFRAC_CLUBB',  alst,                       pcols, lchnk )
    call outfld( 'CLOUDCOVER_CLUBB', cloud_frac(1:ncol,1:pver),  pcols, lchnk )
    call outfld( 'ZT_CLUBB',         zt_out(1:ncol,1:pver),      pcols, lchnk )
@@ -4205,7 +4193,6 @@ end subroutine clubb_init_cnst
    call outfld( 'CLUBB_GRID_SIZE',  grid_dx,                    pcols, lchnk )
    call outfld( 'QSATFAC',          qsatfac,                    pcols, lchnk)
 
-   
    ! --------------------------------------------------------------- !
    ! Writing state variables after EDMF scheme for detailed analysis !
    ! --------------------------------------------------------------- !
