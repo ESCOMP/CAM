@@ -599,7 +599,7 @@ contains
         tmp_cldice(:ncol,:pver) = 0.0_r8
       end if
 
-      ! for dry mixing ratio dycore, physics_dme_adjust is called for energy diagnostic purposes only.  
+      ! for dry mixing ratio dycore, physics_dme_adjust is called for energy diagnostic purposes only.
       ! So, save off tracers
       if (.not.moist_mixing_ratio_dycore.and.&
          (hist_fld_active('SE_phAM').or.hist_fld_active('KE_phAM').or.hist_fld_active('WV_phAM').or.&
@@ -689,7 +689,7 @@ contains
     use held_suarez_cam,   only: held_suarez_tend
     use kessler_cam,       only: kessler_tend
     use tj2016_cam,        only: thatcher_jablonowski_precip_tend
-    use frierson_cam,      only: frierson_convection_tend, frierson_condensate_tend
+    use frierson_cam,      only: frierson_condensate_tend
     use frierson_cam,      only: frierson_radiative_tend
     use dycore,            only: dycore_is
     use cam_snapshot_common,only: cam_snapshot_all_outfld
@@ -870,21 +870,6 @@ contains
           call cam_snapshot_all_outfld(cam_snapshot_after_num, state, tend, cam_in, cam_out, pbuf)
        end if
     else if (frierson_phys) then
-       ! Compute the convective precipitation
-       !--------------------------------------
-       if (trim(cam_take_snapshot_before) == "frierson_convection_tend") then
-          call cam_snapshot_all_outfld(cam_snapshot_before_num, state, tend, cam_in, cam_out, pbuf)
-       end if
-       call frierson_convection_tend(state, ptend, ztodt, pbuf)
-       if ( (trim(cam_take_snapshot_after) == "frierson_convection_tend") .and. &
-            (trim(cam_take_snapshot_before) == trim(cam_take_snapshot_after))) then
-          call cam_snapshot_ptend_outfld(ptend, lchnk)
-       end if
-       call physics_update(state, ptend, ztodt, tend)
-       if (trim(cam_take_snapshot_after) == "frierson_convection_tend") then
-          call cam_snapshot_all_outfld(cam_snapshot_after_num, state, tend, cam_in, cam_out, pbuf)
-       end if
-
        ! Compute the large-scale precipitation
        !----------------------------------------
        if (trim(cam_take_snapshot_before) == "frierson_condensate_tend") then

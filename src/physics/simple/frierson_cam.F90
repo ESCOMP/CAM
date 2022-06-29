@@ -40,7 +40,6 @@ module frierson_cam
   public :: frierson_register
   public :: frierson_readnl
   public :: frierson_init
-  public :: frierson_convection_tend
   public :: frierson_condensate_tend
   public :: frierson_pbl_tend
   public :: frierson_radiative_tend
@@ -56,10 +55,6 @@ module frierson_cam
 
   ! Tags to identify optional model formulations
   !------------------------------------------------
-  integer,parameter:: CONVECTION_NONE       = 0  ! No convection, PRECC=0
-  integer,parameter:: CONVECTION_FRIERSON   = 1  ! PFC todo: **Betts-Miller convection here..
-  integer,parameter:: CONVECTION_USER       = 2  ! Optional user defined Convection scheme
-
   integer,parameter:: CONDENSATE_NONE       = 0  ! No Condensation, PRECL=0
   integer,parameter:: CONDENSATE_FRIERSON   = 1  ! Frierson condensation w/ re-evaporation
   integer,parameter:: CONDENSATE_TJ16       = 2  ! Consensation from TJ2016 model.
@@ -71,7 +66,6 @@ module frierson_cam
   ! Options selecting which PRECIP, PBL, RADIATION, etc.. formulations to use.
   !---------------------------------------------------------------------------------
   integer,parameter:: PBL_OPT          = PBL_FRIERSON
-  integer,parameter:: CONVECTION_OPT   = CONVECTION_NONE
   integer,parameter:: CONDENSATE_OPT   = CONDENSATE_FRIERSON
   integer,parameter:: RADIATION_OPT    = RADIATION_FRIERSON
 
@@ -430,97 +424,6 @@ contains
   !==============================================================================
 
 
-  !==============================================================================
-  subroutine frierson_convection_tend(state, ptend, ztodt, pbuf)
-    !
-    ! frierson_convection_tend: Run the selected process to compute precipitation
-    !                           due to convection.
-    !=====================================================================
-    use physics_types,only: physics_state, physics_ptend
-    use physics_types,only: physics_ptend_init
-    use physconst,    only: cpair
-    use frierson,     only: frierson_convection_NONE,frierson_convection
-    use frierson,     only: frierson_convection_USER
-    !
-    ! Passed Variables
-    !------------------
-    type(physics_state)      ,intent(in) :: state
-    real(r8)                 ,intent(in) :: ztodt
-    type(physics_ptend)      ,intent(out):: ptend
-    type(physics_buffer_desc),pointer    :: pbuf(:)
-    !
-    ! Local Values
-    !-----------------
-    real(r8),pointer:: prec_dp (:)          ! convective precip
-    real(r8),pointer:: relhum  (:,:)
-    real(r8)        :: T (state%ncol, pver) ! T temporary
-    real(r8)        :: qv(state%ncol, pver) ! Q temporary
-    logical         :: lq(pcnst)            ! Calc tendencies?
-    integer         :: lchnk                ! chunk identifier
-    integer         :: ncol                 ! number of atmospheric columns
-    integer         :: k
-
-    ! Set local copies of values
-    !---------------------------------
-    lchnk       = state%lchnk
-    ncol        = state%ncol
-    T (:ncol,:) = state%T(:ncol,:)
-    qv(:ncol,:) = state%Q(:ncol,:,1)
-
-    ! initialize individual parameterization tendencies
-    !---------------------------------------------------
-    lq    = .false.
-    lq(1) = .true.
-    call physics_ptend_init(ptend, state%psetcols, 'Frierson convection', &
-                                ls=.true., lu=.true., lv=.true., lq=lq)
-
-    ! Get values from the physics buffer
-    !------------------------------------
-    call pbuf_get_field(pbuf,prec_dp_idx ,prec_dp )
-    call pbuf_get_field(pbuf,  relhum_idx,relhum  )
-
-    ! Call the Selected convection routine
-    !--------------------------------------------------------
-    if(CONVECTION_OPT == CONVECTION_NONE) then
-      call frierson_convection_NONE(ncol,pver,ztodt,state%pmid(:ncol,:), &
-                                                    state%pdel(:ncol,:), &
-                                                             T(:ncol,:), &
-                                                            qv(:ncol,:), &
-                                                        relhum(:ncol,:), &
-                                                       prec_dp(:ncol)    )
-    elseif(CONVECTION_OPT == CONVECTION_FRIERSON) then
-      call frierson_convection(ncol,pver,ztodt,state%pmid(:ncol,:), &
-                                               state%pdel(:ncol,:), &
-                                                        T(:ncol,:), &
-                                                       qv(:ncol,:), &
-                                                   relhum(:ncol,:), &
-                                                  prec_dp(:ncol)    )
-    elseif(CONVECTION_OPT == CONVECTION_USER) then
-      call frierson_convection_USER(ncol,pver,ztodt,state%pmid(:ncol,:), &
-                                                    state%pdel(:ncol,:), &
-                                                             T(:ncol,:), &
-                                                            qv(:ncol,:), &
-                                                        relhum(:ncol,:), &
-                                                       prec_dp(:ncol)    )
-    else
-      ! ERROR: Unknown CONVECTION_OPT value
-      !-------------------------------------
-      write(iulog,*) 'ERROR: unknown CONVECTION_OPT=',CONVECTION_OPT
-      call endrun('frierson_convection_tend() CONVECTION_OPT ERROR')
-    endif
-
-    ! Back out temperature and specific humidity
-    ! tendencies from updated fields
-    !--------------------------------------------
-    do k = 1, pver
-      ptend%s(:ncol,k)   = (T (:,k)-state%T(:ncol,k)  )/ztodt*cpair
-      ptend%q(:ncol,k,1) = (qv(:,k)-state%q(:ncol,k,1))/ztodt
-    end do
-
-    ! End Routine
-    !--------------
-    return
-  end subroutine frierson_convection_tend
   !==============================================================================
 
 
