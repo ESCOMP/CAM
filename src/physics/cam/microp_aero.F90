@@ -472,7 +472,7 @@ subroutine microp_aero_run ( &
 
    real(r8) :: wght
 
-   integer :: lchnk, ncol
+   integer :: lchnk, ncol, astat
 
    real(r8), allocatable :: factnum(:,:,:) ! activation fraction for aerosol number
 
@@ -654,7 +654,10 @@ subroutine microp_aero_run ( &
       ! create the aerosol state object
       aero_state_obj => modal_aerosol_state( state1, pbuf )
 
-      allocate(factnum(pcols,pver,aero_props_obj%nbins()))
+      allocate(factnum(pcols,pver,aero_props_obj%nbins()),stat=astat)
+      if (astat/=0) then
+         call endrun('microp_aero_run: not able to allocate factnum')
+      endif
 
       ! If not using preexsiting ice, then only use cloudbourne aerosol for the
       ! liquid clouds. This is the same behavior as CAM5.

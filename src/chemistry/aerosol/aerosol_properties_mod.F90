@@ -173,7 +173,7 @@ contains
        call endrun(prefix//'error allocating self%f2_')
     end if
 
-    allocate( self%indexer_(nbin,0:maxval(nmasses)) )
+    allocate( self%indexer_(nbin,0:maxval(nmasses)),stat=ierr )
     if( ierr /= 0 ) then
        call endrun(prefix//'error allocating self%indexer_')
     end if
