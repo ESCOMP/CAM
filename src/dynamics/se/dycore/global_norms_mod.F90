@@ -649,7 +649,6 @@ contains
        write(iulog,* )""
     end if
 
-    if (hybrid%masterthread) write(iulog,*) ": sponge layer viscosity scaling factor"
     nu_max     =  sponge_del4_nu_fac*nu_p
     nu_div_max =  sponge_del4_nu_div_fac*nu_p
     do k=1,nlev
