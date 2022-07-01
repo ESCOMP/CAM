@@ -1544,7 +1544,7 @@ subroutine ccncalc(aero_state, aero_props, state, cs, ccn)
    real(r8) hygro(pcols)  ! aerosol hygroscopicity
    real(r8) sm(pcols)  ! critical supersaturation at mode radius
    real(r8) arg(pcols)
-   integer l,m,i,k
+   integer l,m,i,k, astat
    real(r8) smcoef(pcols)
    integer phase ! phase of aerosol
 
@@ -1558,7 +1558,10 @@ subroutine ccncalc(aero_state, aero_props, state, cs, ccn)
    ncol  = state%ncol
    tair  => state%t
 
-   allocate( argfactor(nbin) )
+   allocate( argfactor(nbin), stat=astat )
+   if (astat/=0) then
+      call endrun('ndrop::ccncalc : not able to allocate argfactor')
+   end if
 
    surften_coef=2._r8*mwh2o*surften/(r_universal*rhoh2o)
 

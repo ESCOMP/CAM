@@ -236,6 +236,8 @@ contains
     integer :: i
 
     ! adjust number so that dgnumlo < dgnum < dgnumhi
+    ! -- the diameter falls within the lower and upper limits which are
+    !    represented by voltonumhi and voltonumblo values, respectively
     do i = istart, istop
        naerosol(i) = max(naerosol(i), vaerosol(i)*self%voltonumbhi_(m))
        naerosol(i) = min(naerosol(i), vaerosol(i)*self%voltonumblo_(m))
