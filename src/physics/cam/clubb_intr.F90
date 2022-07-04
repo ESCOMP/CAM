@@ -2898,7 +2898,7 @@ end subroutine clubb_init_cnst
  
     !  Surface fluxes provided by host model
     do i=1,ncol                                                                  
-      wpthlp_sfc(i) = cam_in%shf(i)/(cpair*rho_zt(i,2))       ! Sensible heat flux
+      wpthlp_sfc(i) = cam_in%shf(i)/(cpairv(i,pver,lchnk)*rho_zt(i,2))       ! Sensible heat flux
       wpthlp_sfc(i) = wpthlp_sfc(i)*inv_exner_clubb_surf(i)
       wprtp_sfc(i)  = cam_in%cflx(i,1)/rho_zt(i,2)            ! Moisture flux  (check rho)
       upwp_sfc(i)   = cam_in%wsx(i)/rho_zt(i,2)               ! Surface meridional momentum flux
