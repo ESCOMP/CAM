@@ -20,7 +20,7 @@ module clubb_intr
   use shr_kind_mod,  only: r8=>shr_kind_r8                                                                  
   use ppgrid,        only: pver, pverp, pcols, begchunk, endchunk
   use phys_control,  only: phys_getopts
-  use physconst,     only: rair, rairv, cpairv, cpair, gravit, latvap, latice, zvir, rh2o, karman
+  use physconst,     only: rairv, cpairv, cpair, gravit, latvap, latice, zvir, rh2o, karman
 
   use spmd_utils,    only: masterproc 
   use constituents,  only: pcnst, cnst_add
@@ -2585,9 +2585,9 @@ end subroutine clubb_init_cnst
    enddo
 
    !  Compute exner at the surface for converting the sensible heat fluxes
-   !  into a flux of potential temperature for use as clubb's boundary conditions
+   !  to a flux of potential temperature for use as clubb's boundary conditions
    do i=1,ncol
-     inv_exner_clubb_surf(i) = 1._r8/((state1%pint(i,pverp)/p0_clubb)**(rair/cpair))
+     inv_exner_clubb_surf(i) = 1._r8/((state1%pmid(i,pver)/p0_clubb)**(rairv(i,pver,lchnk)/cpairv(i,pver,lchnk)))
    enddo
    
    !  At each CLUBB call, initialize mean momentum  and thermo CLUBB state 
@@ -2898,13 +2898,11 @@ end subroutine clubb_init_cnst
  
     !  Surface fluxes provided by host model
     do i=1,ncol                                                                  
-      wpthlp_sfc(i) = cam_in%shf(i)/(cpair*rho_ds_zm(i,1))       ! Sensible heat flux
-      !  Convert to flux of potential temperature
-      !  (sec 4.3.2 in Lauritzen et al. 2022, JAMES)
+      wpthlp_sfc(i) = cam_in%shf(i)/(cpair*rho_zt(i,2))       ! Sensible heat flux
       wpthlp_sfc(i) = wpthlp_sfc(i)*inv_exner_clubb_surf(i)
-      wprtp_sfc(i)  = cam_in%cflx(i,1)/rho_ds_zm(i,1)            ! Moisture flux  (check rho)
-      upwp_sfc(i)   = cam_in%wsx(i)/rho_ds_zm(i,1)               ! Surface meridional momentum flux
-      vpwp_sfc(i)   = cam_in%wsy(i)/rho_ds_zm(i,1)               ! Surface zonal momentum flux  
+      wprtp_sfc(i)  = cam_in%cflx(i,1)/rho_zt(i,2)            ! Moisture flux  (check rho)
+      upwp_sfc(i)   = cam_in%wsx(i)/rho_zt(i,2)               ! Surface meridional momentum flux
+      vpwp_sfc(i)   = cam_in%wsy(i)/rho_zt(i,2)               ! Surface zonal momentum flux  
     end do
     
     !  Need to flip arrays around for CLUBB core
