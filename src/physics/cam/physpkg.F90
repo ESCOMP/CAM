@@ -1407,6 +1407,7 @@ contains
     integer i,k,m                 ! Longitude, level indices
     integer :: yr, mon, day, tod       ! components of a date
     integer :: ixcldice, ixcldliq      ! constituent indices for cloud liquid and ice water.
+    integer :: ixq
 
     logical :: labort                            ! abort flag
 
@@ -1442,6 +1443,7 @@ contains
     ncol  = state%ncol
 
     nstep = get_nstep()
+    call cnst_get_ind('Q', ixq)
 
     ! Adjust the surface fluxes to reduce instabilities in near sfc layer
     if (phys_do_flux_avg()) then
@@ -1856,7 +1858,7 @@ contains
        call unicon_cam_org_diags(state, pbuf)
 
     end if
-    moist_mixing_ratio_dycore = dycore_is('LR').or. dycore_is('FV3')    
+    moist_mixing_ratio_dycore = dycore_is('LR').or. dycore_is('FV3')
     !
     ! FV: convert dry-type mixing ratios to moist here because physics_dme_adjust
     !     assumes moist. This is done in p_d_coupling for other dynamics. Bundy, Feb 2004.
@@ -1870,12 +1872,12 @@ contains
     tmp_cldliq(:ncol,:pver) = state%q(:ncol,:pver,ixcldliq)
     tmp_cldice(:ncol,:pver) = state%q(:ncol,:pver,ixcldice)
 
-    ! for dry mixing ratio dycore, physics_dme_adjust is called for energy diagnostic purposes only.  
-    ! So, save off tracers 
+    ! for dry mixing ratio dycore, physics_dme_adjust is called for energy diagnostic purposes only.
+    ! So, save off tracers
     if (.not.moist_mixing_ratio_dycore.and.&
          (hist_fld_active('SE_phAM').or.hist_fld_active('KE_phAM').or.hist_fld_active('WV_phAM').or.&
           hist_fld_active('WL_phAM').or.hist_fld_active('WI_phAM').or.hist_fld_active('MR_phAM').or.&
-          hist_fld_active('MO_phAM'))) then         
+          hist_fld_active('MO_phAM'))) then
       tmp_trac(:ncol,:pver,:pcnst) = state%q(:ncol,:pver,:pcnst)
       tmp_pdel(:ncol,:pver)        = state%pdel(:ncol,:pver)
       tmp_ps(:ncol)                = state%ps(:ncol)

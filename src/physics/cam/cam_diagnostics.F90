@@ -220,7 +220,7 @@ contains
     call addfld (cnst_name(1), (/ 'lev' /), 'A', 'kg/kg',    cnst_longname(1))
     call addfld ('NSTEP',      horiz_only,  'A', 'timestep', 'Model timestep')
     call addfld ('PHIS',       horiz_only,  'I', 'm2/s2',    'Surface geopotential')
-    
+
     call addfld ('PS',         horiz_only,  'A', 'Pa',       'Surface pressure')
     call addfld ('T',          (/ 'lev' /), 'A', 'K',        'Temperature')
     call addfld ('U',          (/ 'lev' /), 'A', 'm/s',      'Zonal wind')
@@ -1312,7 +1312,7 @@ contains
     lchnk = state%lchnk
     ncol  = state%ncol
 
-    ixq = pbuf_get_index('Q',  errcode=ierr)
+    call cnst_get_ind('Q', ixq)
 
     if (co2_transport()) then
       do m = 1,4
