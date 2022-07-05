@@ -20,7 +20,7 @@ module clubb_intr
   use shr_kind_mod,  only: r8=>shr_kind_r8                                                                  
   use ppgrid,        only: pver, pverp, pcols, begchunk, endchunk
   use phys_control,  only: phys_getopts
-  use physconst,     only: rairv, cpairv, cpair, gravit, latvap, latice, zvir, rh2o, karman
+  use physconst,     only: rairv, cpairv, cpair, gravit, rga, latvap, latice, zvir, rh2o, karman
 
   use spmd_utils,    only: masterproc 
   use constituents,  only: pcnst, cnst_add
@@ -2726,7 +2726,7 @@ end subroutine clubb_init_cnst
                                    /(1._r8 + state1%q(i,pver-k+1,ixq)*rh2o/rairv(i,pver-k+1,lchnk))
         exner_ds_zt(i,k+1)     = (p_ds_zt(i,k+1)/p0_clubb)**(rairv(i,pver-k+1,lchnk)/cpairv(i,pver-k+1,lchnk))
         thv_ds_zt(i,k+1)       = state1%t(i,pver-k+1)/exner_ds_zt(i,k+1)
-        rho_ds_zt(i,k+1)       = (1._r8/gravit)*(state1%pdel(i,pver-k+1) &
+        rho_ds_zt(i,k+1)       = rga*(state1%pdel(i,pver-k+1) &
                                    /dz_g(i,pver-k+1)) * (1._r8-state1%q(i,pver-k+1,ixq))
         invrs_rho_ds_zt(i,k+1) = 1._r8/(rho_ds_zt(i,k+1))
 
@@ -2735,7 +2735,7 @@ end subroutine clubb_init_cnst
         exner(i,k+1)           = 1._r8/inv_exner_clubb(i,pver-k+1)
         thv(i,k+1)             = state1%t(i,pver-k+1)*inv_exner_clubb(i,pver-k+1)*(1._r8+zvir*state1%q(i,pver-k+1,ixq) &
                                    -state1%q(i,pver-k+1,ixcldliq))
-        rho_zt(i,k+1)          = (1._r8/gravit)*(state1%pdel(i,pver-k+1)/dz_g(i,pver-k+1))
+        rho_zt(i,k+1)          = rga*state1%pdel(i,pver-k+1)/dz_g(i,pver-k+1)
         rfrzm(i,k+1)           = state1%q(i,pver-k+1,ixcldice)   
         radf(i,k+1)            = radf_clubb(i,pver-k+1)
         qrl_clubb(i,k+1)       = qrl(i,pver-k+1)/(cpairv(i,k,lchnk)*state1%pdel(i,pver-k+1))
@@ -2898,8 +2898,8 @@ end subroutine clubb_init_cnst
  
     !  Surface fluxes provided by host model
     do i=1,ncol                                                                  
-      wpthlp_sfc(i) = cam_in%shf(i)/(cpairv(i,pver,lchnk)*rho_zt(i,2))       ! Sensible heat flux
-      wpthlp_sfc(i) = wpthlp_sfc(i)*inv_exner_clubb_surf(i)
+      wpthlp_sfc(i) = cam_in%shf(i)/(cpairv(i,pver,lchnk)*rho_zt(i,2))! Sensible heat flux
+      wpthlp_sfc(i) = wpthlp_sfc(i)*inv_exner_clubb_surf(i)   ! Potential temperature flux
       wprtp_sfc(i)  = cam_in%cflx(i,1)/rho_zt(i,2)            ! Moisture flux  (check rho)
       upwp_sfc(i)   = cam_in%wsx(i)/rho_zt(i,2)               ! Surface meridional momentum flux
       vpwp_sfc(i)   = cam_in%wsy(i)/rho_zt(i,2)               ! Surface zonal momentum flux  
@@ -3964,7 +3964,7 @@ end subroutine clubb_init_cnst
    !                          - replace with rho at mid-points using mass def, to be consistent w/ earlier def's
    !rho(:ncol,1:pver) = state1%pmid(:ncol,1:pver)/(rairv(:ncol,1:pver,lchnk)*state1%t(:ncol,1:pver))
    !rho(:ncol,pverp)  = state1%ps(:ncol)/(rairv(:ncol,pver,lchnk)*state1%t(:ncol,pver))
-   rho(1:ncol,1:pver) = (1._r8/gravit)*state1%pdel(1:ncol,1:pver)/(state1%zi(1:ncol,1:pver)-state1%zi(1:ncol,2:pverp))
+   rho(1:ncol,1:pver) = rga*state1%pdel(1:ncol,1:pver)/(state1%zi(1:ncol,1:pver)-state1%zi(1:ncol,2:pverp))
    rho(1:ncol,pverp) = rho(1:ncol,pver)
 
    do k=1,pverp

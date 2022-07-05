@@ -1916,7 +1916,7 @@ contains
     ! store T, U, and V in buffer for use in computing dynamics T-tendency in next timestep
     do k = 1,pver
        dtcore(:ncol,k) = state%t(:ncol,k)
-       dqcore(:ncol,k) = state%q(:ncol,k,1)
+       dqcore(:ncol,k) = state%q(:ncol,k,ixq)
        ducore(:ncol,k) = state%u(:ncol,k)
        dvcore(:ncol,k) = state%v(:ncol,k)
     end do
@@ -2226,7 +2226,7 @@ contains
     ! T, U, V tendency due to dynamics
     if( nstep > dyn_time_lvls-1 ) then
        dtcore(:ncol,:pver) = (state%t(:ncol,:pver) - dtcore(:ncol,:pver))/ztodt
-       dqcore(:ncol,:pver) = (state%q(:ncol,:pver,1) - dqcore(:ncol,:pver))/ztodt
+       dqcore(:ncol,:pver) = (state%q(:ncol,:pver,ixq) - dqcore(:ncol,:pver))/ztodt
        ducore(:ncol,:pver) = (state%u(:ncol,:pver) - ducore(:ncol,:pver))/ztodt
        dvcore(:ncol,:pver) = (state%v(:ncol,:pver) - dvcore(:ncol,:pver))/ztodt
        call outfld( 'DTCORE', dtcore, pcols, lchnk )
