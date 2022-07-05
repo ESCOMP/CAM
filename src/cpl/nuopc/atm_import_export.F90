@@ -27,7 +27,7 @@ module atm_import_export
   implicit none
   private ! except
 
-  public  :: read_fields_namelists
+  public  :: read_surface_fields_namelists
   public  :: advertise_fields
   public  :: realize_fields
   public  :: import_fields
@@ -67,9 +67,9 @@ contains
 !===============================================================================
 
   !-----------------------------------------------------------
-  ! read coupler fields namelist files
+  ! read mediator fields namelist file
   !-----------------------------------------------------------
-  subroutine read_fields_namelists()
+  subroutine read_surface_fields_namelists()
 
     use shr_drydep_mod    , only : shr_drydep_readnl
     use shr_megan_mod     , only : shr_megan_readnl
@@ -79,14 +79,14 @@ contains
 
     character(len=*), parameter :: nl_file_name = 'drv_flds_in'
 
-    ! read drv flds options
+    ! read mediator fields options
     call shr_ndep_readnl(nl_file_name, ndep_nflds)
     call shr_drydep_readnl(nl_file_name, drydep_nflds)
     call shr_megan_readnl(nl_file_name, megan_nflds)
     call shr_fire_emis_readnl(nl_file_name, emis_nflds)
     call shr_carma_readnl(nl_file_name, carma_fields)
 
-  end subroutine read_fields_namelists
+  end subroutine read_surface_fields_namelists
 
   subroutine advertise_fields(gcomp, flds_scalar_name, rc)
 
