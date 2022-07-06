@@ -108,9 +108,9 @@ contains
        f2(m) = 1._r8 + 0.25_r8*alogsig(m)
 
        newobj%voltonumblo_(m) = 1._r8 / ( (pi/6._r8)* &
-            (dgnumlo**3._r8)*exp(4.5_r8*alogsig(m)**2._r8) )
+            (dgnumlo**3._r8)*newobj%exp45logsig_(m) )
        newobj%voltonumbhi_(m) = 1._r8 / ( (pi/6._r8)* &
-            (dgnumhi**3._r8)*exp(4.5_r8*alogsig(m)**2._r8) )
+            (dgnumhi**3._r8)*newobj%exp45logsig_(m) )
 
     end do
 

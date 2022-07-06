@@ -12,7 +12,7 @@ module ndrop
 use shr_kind_mod,     only: r8 => shr_kind_r8
 use ppgrid,           only: pcols, pver
 use physconst,        only: pi, rhoh2o, mwh2o, r_universal, rh2o, &
-                            gravit, latvap, cpair, rair
+                            gravit, latvap, cpair, rair, tmelt
 use constituents,     only: pcnst, cnst_get_ind, cnst_name, cnst_spec_class_gas, cnst_species_class
 use physics_types,    only: physics_state, physics_ptend, physics_ptend_init
 use physics_buffer,   only: physics_buffer_desc, pbuf_get_index, pbuf_get_field
@@ -43,7 +43,6 @@ real(r8), parameter :: sq2      = sqrt(2._r8)
 real(r8), parameter :: sq2pi    = sqrt(2._r8*pi)
 real(r8), parameter :: sqpi     = sqrt(pi)
 real(r8), parameter :: surften  = 0.076_r8
-real(r8), parameter :: t0       = 273._r8
 
 real(r8) :: aten
 
@@ -91,7 +90,7 @@ subroutine ndrop_init(aero_props)
 
    kvh_idx = pbuf_get_index('kvh')
 
-   aten = 2._r8*mwh2o*surften/(r_universal*t0*rhoh2o)
+   aten = 2._r8*mwh2o*surften/(r_universal*tmelt*rhoh2o)
 
    allocate( &
       aer_cnst_idx(aero_props%nbins(),0:maxval(aero_props%nmasses())), &
@@ -1253,8 +1252,8 @@ subroutine activate_aerosol(wbar, sigw, wdiab, wminf, wmaxf, tair, rhoair,  &
    end if
 
    pres=rair*rhoair*tair
-   diff0=0.211e-4_r8*(p0/pres)*(tair/t0)**1.94_r8
-   conduct0=(5.69_r8+0.017_r8*(tair-t0))*4.186e2_r8*1.e-5_r8 ! convert to J/m/s/deg
+   diff0=0.211e-4_r8*(p0/pres)*(tair/tmelt)**1.94_r8
+   conduct0=(5.69_r8+0.017_r8*(tair-tmelt))*4.186e2_r8*1.e-5_r8 ! convert to J/m/s/deg
    call qsat(tair, pres, es, qs)
    dqsdt=latvap/(rh2o*tair*tair)*qs
    alpha=gravit*(latvap/(cpair*rh2o*tair*tair)-1._r8/(rair*tair))

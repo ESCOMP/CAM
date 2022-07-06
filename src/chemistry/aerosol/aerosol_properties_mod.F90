@@ -28,8 +28,10 @@ module aerosol_properties_mod
      integer, allocatable :: nspecies_(:) ! number of species
      integer, allocatable :: indexer_(:,:) ! unique indices of the aerosol elements
      real(r8), allocatable :: alogsig_(:) ! natural log of geometric deviation of the number distribution for aerosol bin
-     real(r8), allocatable :: f1_(:) ! abdul-razzak functions of width
-     real(r8), allocatable :: f2_(:) ! abdul-razzak functions of width
+     real(r8), allocatable :: f1_(:) ! eq 28 Abdul-Razzak et al 1998
+     real(r8), allocatable :: f2_(:) ! eq 29 Abdul-Razzak et al 1998
+     ! Abdul-Razzak, H., S.J. Ghan, and C. Rivera-Carpio, A parameterization of aerosol activation,
+     ! 1, Singleaerosoltype. J. Geophys. Res., 103, 6123-6132, 1998.
    contains
      procedure :: initialize => aero_props_init
      procedure :: nbins
@@ -145,8 +147,8 @@ contains
     integer, intent(in) :: nspec(nbin)        ! number of species in each bin
     integer, intent(in) :: nmasses(nbin)      ! number of masses in each bin
     real(r8),intent(in) :: alogsig(nbin)      ! natural log of the standard deviation (sigma) of the aerosol bins
-    real(r8),intent(in) :: f1(nbin)           ! abdul-razzak functions of width
-    real(r8),intent(in) :: f2(nbin)           ! abdul-razzak functions of width
+    real(r8),intent(in) :: f1(nbin)           ! eq 28 Abdul-Razzak et al 1998
+    real(r8),intent(in) :: f2(nbin)           ! eq 29 Abdul-Razzak et al 1998
 
     integer :: imas,ibin,indx
     character(len=*),parameter :: prefix = 'aerosol_properties::aero_props_init: '
@@ -312,7 +314,7 @@ contains
     ! Calculates maximum supersaturation for multiple competing aerosols.
     !
     ! Abdul-Razzak and Ghan, A parameterization of aerosol activation.
-    ! 2. Multiple aerosol types. J. Geophys. Res., 105, 6837-6844.
+    ! 2. Multiple aerosol types. J. Geophys. Res., 105, 6837-6844., 2000
     !-------------------------------------------------------------------------
 
     class(aerosol_properties), intent(in) :: self
@@ -326,13 +328,16 @@ contains
     integer  :: nbins
     real(r8) :: sum, g1, g2, g1sqrt, g2sqrt
 
+    real(r8), parameter :: small_maxsat = 1.e-20_r8 ! for weak forcing
+    real(r8), parameter :: large_maxsat = 1.e20_r8  ! for small eta
+
     smax=0.0_r8
     nbins = self%nbins_
 
     check_loop: do m=1,nbins
        if((zeta(m) > 1.e5_r8*eta(m)) .or. (smc(m)*smc(m) > 1.e5_r8*eta(m))) then
           ! weak forcing -- essentially none activated
-          smax=1.e-20_r8
+          smax=small_maxsat
        else
           ! significant activation of this mode -- calc activation all modes
           exit check_loop
@@ -345,6 +350,7 @@ contains
 
     do m=1,nbins
        if(eta(m) > 1.e-20_r8)then
+          ! from Abdul-Razzak and Ghan 2000
           g1=zeta(m)/eta(m)
           g1sqrt=sqrt(g1)
           g1=g1sqrt*g1
@@ -353,7 +359,7 @@ contains
           g2=g2sqrt*g2
           sum=sum+(self%f1_(m)*g1+self%f2_(m)*g2)/(smc(m)*smc(m))
        else
-          sum=1.e20_r8
+          sum=large_maxsat
        endif
     enddo
 
