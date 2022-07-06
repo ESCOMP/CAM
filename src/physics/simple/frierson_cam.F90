@@ -733,7 +733,6 @@ contains
     T   (:ncol,:) = state%T(:ncol,:)
     qv  (:ncol,:) = state%Q(:ncol,:,1)
 
-    ! Set Tsfc() PFC?? Get rid of this!!!
     !--------------------------------------
     Tsfc(:ncol)   = Tsurf(:ncol,lchnk)
     Qsfc(:ncol)   = Qsurf(:ncol,lchnk)
