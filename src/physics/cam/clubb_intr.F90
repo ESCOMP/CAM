@@ -3959,11 +3959,6 @@ end subroutine clubb_init_cnst
    ! ------------------------------------------------- !
 
    !  density
-   ! REMOVE AFTER CODE REVIEW - this rho is for midpoints except the lowest level is the surface
-   !                          - BUT this is supposed to be rho at the interface levels
-   !                          - replace with rho at mid-points using mass def, to be consistent w/ earlier def's
-   !rho(:ncol,1:pver) = state1%pmid(:ncol,1:pver)/(rairv(:ncol,1:pver,lchnk)*state1%t(:ncol,1:pver))
-   !rho(:ncol,pverp)  = state1%ps(:ncol)/(rairv(:ncol,pver,lchnk)*state1%t(:ncol,pver))
    rho(1:ncol,1:pver) = rga*state1%pdel(1:ncol,1:pver)/(state1%zi(1:ncol,1:pver)-state1%zi(1:ncol,2:pverp))
    rho(1:ncol,pverp) = rho(1:ncol,pver)
 
@@ -4150,20 +4145,20 @@ end subroutine clubb_init_cnst
  
    !  Output calls of variables goes here
    call outfld( 'RELVAR',           relvar,                pcols, lchnk )
-   call outfld( 'RHO_CLUBB',        rho(1:ncol,1:pver),    pcols, lchnk )
+   call outfld( 'RHO_CLUBB',        rho(:,1:pver),         pcols, lchnk )
    call outfld( 'WP2_CLUBB',        wp2,                   pcols, lchnk )
    call outfld( 'UP2_CLUBB',        up2,                   pcols, lchnk )
    call outfld( 'VP2_CLUBB',        vp2,                   pcols, lchnk )
-   call outfld( 'WP3_CLUBB',        wp3_output(1:ncol,1:pver),            pcols, lchnk )
+   call outfld( 'WP3_CLUBB',        wp3_output(:,1:pver),  pcols, lchnk )
    call outfld( 'UPWP_CLUBB',       upwp,                  pcols, lchnk )
    call outfld( 'VPWP_CLUBB',       vpwp,                  pcols, lchnk )
    call outfld( 'WPTHLP_CLUBB',     wpthlp_output,         pcols, lchnk )
    call outfld( 'WPRTP_CLUBB',      wprtp_output,          pcols, lchnk )
-   call outfld( 'RTP2_CLUBB',       rtp2(:ncol,:),         pcols, lchnk )
+   call outfld( 'RTP2_CLUBB',       rtp2,                  pcols, lchnk )
    call outfld( 'RTPTHLP_CLUBB',    rtpthlp_output,        pcols, lchnk )
-   call outfld( 'RCM_CLUBB',        rcm(:ncol,1:pver),     pcols, lchnk )
-   call outfld( 'RTM_CLUBB',        rtm(1:ncol,1:pver),    pcols, lchnk )
-   call outfld( 'THLM_CLUBB',       thlm(:ncol,1:pver),    pcols, lchnk )
+   call outfld( 'RCM_CLUBB',        rcm(:,1:pver),         pcols, lchnk )
+   call outfld( 'RTM_CLUBB',        rtm(:,1:pver),         pcols, lchnk )
+   call outfld( 'THLM_CLUBB',       thlm(:,1:pver),        pcols, lchnk )
 
    temp2dp(:ncol,:) = wprcp(:ncol,:) * latvap
    call outfld( 'WPRCP_CLUBB',      temp2dp,                    pcols, lchnk )
@@ -4171,19 +4166,19 @@ end subroutine clubb_init_cnst
    temp2dp(:ncol,:) = wpthvp(:ncol,:) * cpair
    call outfld( 'WPTHVP_CLUBB',     temp2dp,                    pcols, lchnk )
 
-   call outfld( 'RTP2_ZT_CLUBB',    rtp2_zt_out(1:ncol,1:pver), pcols, lchnk )
-   call outfld( 'THLP2_ZT_CLUBB',   thl2_zt_out(1:ncol,1:pver), pcols, lchnk )
-   call outfld( 'WP2_ZT_CLUBB',     wp2_zt_out(1:ncol,1:pver),  pcols, lchnk )
+   call outfld( 'RTP2_ZT_CLUBB',    rtp2_zt_out(:,1:pver),      pcols, lchnk )
+   call outfld( 'THLP2_ZT_CLUBB',   thl2_zt_out(:,1:pver),      pcols, lchnk )
+   call outfld( 'WP2_ZT_CLUBB',     wp2_zt_out(:,1:pver),       pcols, lchnk )
    call outfld( 'PDFP_RTP2_CLUBB',  pdfp_rtp2,                  pcols, lchnk )
    call outfld( 'THLP2_CLUBB',      thlp2,                      pcols, lchnk )
-   call outfld( 'RCMINLAYER_CLUBB', rcm_in_layer(:ncol,1:pver), pcols, lchnk )
+   call outfld( 'RCMINLAYER_CLUBB', rcm_in_layer(:,1:pver),     pcols, lchnk )
    call outfld( 'CLOUDFRAC_CLUBB',  alst,                       pcols, lchnk )
-   call outfld( 'CLOUDCOVER_CLUBB', cloud_frac(1:ncol,1:pver),  pcols, lchnk )
-   call outfld( 'ZT_CLUBB',         zt_out(1:ncol,1:pver),      pcols, lchnk )
+   call outfld( 'CLOUDCOVER_CLUBB', cloud_frac(:,1:pver),       pcols, lchnk )
+   call outfld( 'ZT_CLUBB',         zt_out(:,1:pver),           pcols, lchnk )
    call outfld( 'ZM_CLUBB',         zi_out,                     pcols, lchnk )
-   call outfld( 'UM_CLUBB',         um(1:ncol,1:pver),          pcols, lchnk )
-   call outfld( 'VM_CLUBB',         vm(1:ncol,1:pver),          pcols, lchnk )
-   call outfld( 'WM_ZT_CLUBB',      wm_zt_out(1:ncol,1:pver),   pcols, lchnk )
+   call outfld( 'UM_CLUBB',         um(:,1:pver),               pcols, lchnk )
+   call outfld( 'VM_CLUBB',         vm(:,1:pver),               pcols, lchnk )
+   call outfld( 'WM_ZT_CLUBB',      wm_zt_out(:,1:pver),        pcols, lchnk )
    call outfld( 'CONCLD',           concld,                     pcols, lchnk )
    call outfld( 'DP_CLD',           deepcu,                     pcols, lchnk )
    call outfld( 'ZMDLF',            dlf_liq_out,                pcols, lchnk )
