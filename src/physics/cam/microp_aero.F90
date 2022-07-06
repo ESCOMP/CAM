@@ -123,7 +123,7 @@ integer :: npccn_idx, rndst_idx, nacon_idx
 
 logical  :: separate_dust = .false.
 
-class(aerosol_properties), pointer :: aero_props_obj =>null()
+class(aerosol_properties), pointer :: aero_props_obj=>null()
 
 !=========================================================================================
 contains
@@ -479,6 +479,8 @@ subroutine microp_aero_run ( &
    class(aerosol_state), pointer :: aero_state_obj
 
    !-------------------------------------------------------------------------------
+
+   nullify(aero_state_obj)
 
    call physics_state_copy(state,state1)
 
