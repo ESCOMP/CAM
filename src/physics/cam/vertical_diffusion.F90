@@ -652,6 +652,7 @@ subroutine vertical_diffusion_tend( &
   use physics_types,      only : physics_state, physics_ptend, physics_ptend_init
   use physics_types,      only : set_dry_to_wet, set_wet_to_dry
   use co2_cycle,          only : co2_cycle_set_cnst_type
+
   use camsrfexch,         only : cam_in_t
   use cam_history,        only : outfld
 
