@@ -1827,11 +1827,6 @@
 <clubb_rnevap_effic                               > 1.0D0   </clubb_rnevap_effic>
 
 <clubb_timestep                                   > 300.0D0 </clubb_timestep>
-<clubb_timestep  hgrid="ne120np4"                 > 150.0D0 </clubb_timestep>
-<clubb_timestep  hgrid="C384"                     > 150.0D0 </clubb_timestep>
-<clubb_timestep  hgrid="ne0np4CONUS.ne30x8"       > 75.0D0 </clubb_timestep>
-<clubb_timestep  hgrid="ne0np4.ARCTIC.ne30x4"     > 150.0D0 </clubb_timestep>
-<clubb_timestep  hgrid="ne0np4.ARCTICGRIS.ne30x8" > 75.0D0 </clubb_timestep>
 
 <!-- Lscale_from_tau set by clubb_opts config option -->
 <clubb_l_diag_Lscale_from_tau                     > .false. </clubb_l_diag_Lscale_from_tau>
@@ -1893,7 +1888,7 @@
 <clubb_detice_rad                                 > 25.0D-6             </clubb_detice_rad>
 <clubb_detice_rad   phys="cam_dev"                > 61.0D-6             </clubb_detice_rad>
 <clubb_detphase_lowtemp                           > 238.15D0            </clubb_detphase_lowtemp>
-<clubb_ipdf_call_placement                        > 1                   </clubb_ipdf_call_placement>
+<clubb_ipdf_call_placement                        > 2                   </clubb_ipdf_call_placement>
 
 <clubb_do_energyfix                               > .true.  </clubb_do_energyfix>
 <clubb_l_brunt_vaisala_freq_moist                 > .false. </clubb_l_brunt_vaisala_freq_moist>
