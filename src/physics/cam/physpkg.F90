@@ -154,12 +154,14 @@ contains
     use dyn_comp,           only: dyn_register
     use spcam_drivers,      only: spcam_register
     use offline_driver,     only: offline_driver_reg
+    use upper_bc,           only: ubc_fixed_conc
 
     !---------------------------Local variables-----------------------------
     !
     integer  :: m        ! loop index
     integer  :: mm       ! constituent index
     integer  :: nmodes
+    logical  :: has_fixed_ubc ! for upper bndy cond
     !-----------------------------------------------------------------------
 
     ! Get physics options
@@ -186,11 +188,12 @@ contains
     ! Register water vapor.
     ! ***** N.B. ***** This must be the first call to cnst_add so that
     !                  water vapor is constituent 1.
+    has_fixed_ubc = ubc_fixed_conc('Q') ! .false.
     if (moist_physics) then
-       call cnst_add('Q', mwh2o, cpwv, 1.E-12_r8, mm, &
+       call cnst_add('Q', mwh2o, cpwv, 1.E-12_r8, mm, fixed_ubc=has_fixed_ubc, &
             longname='Specific humidity', readiv=.true., is_convtran1=.true.)
     else
-       call cnst_add('Q', mwh2o, cpwv, 0.0_r8, mm, &
+       call cnst_add('Q', mwh2o, cpwv, 0.0_r8, mm, fixed_ubc=has_fixed_ubc, &
             longname='Specific humidity', readiv=.false., is_convtran1=.true.)
     end if
 

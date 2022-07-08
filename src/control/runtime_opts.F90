@@ -95,6 +95,7 @@ subroutine read_namelist(nlfilename, single_column, scmlat, scmlon)
    use ionosphere_interface,only: ionosphere_readnl
    use qneg_module,         only: qneg_readnl
    use lunar_tides,         only: lunar_tides_readnl
+   use upper_bc,            only: ubc_readnl
 
    !---------------------------Arguments-----------------------------------
 
@@ -129,6 +130,7 @@ subroutine read_namelist(nlfilename, single_column, scmlat, scmlon)
    call cnst_readnl(nlfilename)
    call history_readnl(nlfilename)
    call chem_surfvals_readnl(nlfilename)
+   call ubc_readnl(nlfilename)
    call phys_ctl_readnl(nlfilename)
    call wv_sat_readnl(nlfilename)
    call ref_pres_readnl(nlfilename)

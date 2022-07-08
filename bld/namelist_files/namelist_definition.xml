@@ -3295,7 +3295,7 @@ Enables the "new" SILHS importance sampling scheme with prescribed probabilities
 
 <entry id="subcol_silhs_l_rcm_in_cloud_k_lh_start" type="logical" category="conv"
        group="silhs_config_flags_nl" valid_values="" >
-Determine starting SILHS first sampling level (k_lh_start) based on maximum within-cloud rcm. If false, and if l_random_k_lh_start is also false, then the SILHS first sampling level is the column maximum of liquid cloud water. 
+Determine starting SILHS first sampling level (k_lh_start) based on maximum within-cloud rcm. If false, and if l_random_k_lh_start is also false, then the SILHS first sampling level is the column maximum of liquid cloud water.
 </entry>
 
 <entry id="subcol_silhs_l_random_k_lh_start" type="logical" category="conv"
@@ -3991,7 +3991,7 @@ of pressure and buoyancy in the wp3 predictive equation.
 <entry id="clubb_l_use_shear_Richardson" type="logical" category="pblrad"
        group="clubb_params_nl" valid_values="" >
 Flag to use shear in the calculation of Richardson number.
-Default: .false. 
+Default: .false.
 </entry>
 
 <entry id="clubb_l_use_cloud_cover" type="logical" category="pblrad"
@@ -4023,7 +4023,7 @@ Default: .false.
 
 <entry id="clubb_l_e3sm_config" type="logical" category="pblrad"
        group="clubb_params_nl" valid_values="" >
-Flag to run CLUBB with E3SM settings. 
+Flag to run CLUBB with E3SM settings.
 Default: .true.
 </entry>
 
@@ -4039,34 +4039,34 @@ Default: .false.
 <entry id="clubb_l_use_tke_in_wp2_wp3_K_dfsn" type="logical" category="pblrad"
        group="clubb_params_nl" valid_values="" >
 Flag to use Total Kenetic Energy (TKE) in eddy diffusion for wp2 and wp3.
-Default: .false. 
+Default: .false.
 </entry>
 
 <entry id="clubb_l_use_tke_in_wp3_pr_turb_term" type="logical" category="pblrad"
        group="clubb_params_nl" valid_values="" >
-Flag to use Total Kenetic Energy (TKE) formulation for wp3 pr_turb (turbulent 
+Flag to use Total Kenetic Energy (TKE) formulation for wp3 pr_turb (turbulent
 production) term.
-Default: .false. 
+Default: .false.
 </entry>
 
 <entry id="clubb_l_smooth_Heaviside_tau_wpxp" type="logical" category="pblrad"
        group="clubb_params_nl" valid_values="" >
 Flag to use smooth Heaviside 'Peskin' in computation of invrs_tau.
-Default: .false. 
+Default: .false.
 </entry>
 
 <entry id="clubb_l_godunov_upwind_wpxp_ta" type="logical" category="pblrad"
        group="clubb_params_nl" valid_values="" >
-This flag determines whether we want to use an upwind differencing approximation 
-rather than a centered differencing for turbulent advection terms. It affects  
+This flag determines whether we want to use an upwind differencing approximation
+rather than a centered differencing for turbulent advection terms. It affects
 wpxp only.
 Default: .false.
 </entry>
 
 <entry id="clubb_l_godunov_upwind_xpyp_ta" type="logical" category="pblrad"
        group="clubb_params_nl" valid_values="" >
-This flag determines whether we want to use an upwind differencing approximation 
-rather than a centered differencing for turbulent advection terms. It affects  
+This flag determines whether we want to use an upwind differencing approximation
+rather than a centered differencing for turbulent advection terms. It affects
 xpyp only.
 Default: .false.
 </entry>
@@ -6206,7 +6206,7 @@ Default: 1.0.
 </entry>
 
 <entry id="no_xfac_ubc" type="real" category="waccm"
-       group="chem_inparm" valid_values="" >
+       group="upper_bc_opts" valid_values="" >
 Multiplication factor applied to the upper boundary NO mass mixing ratio.
 Default: 1.0
 </entry>
@@ -6740,7 +6740,7 @@ Default: set by build-namelist.
 </entry>
 
 <entry id="snoe_ubc_file" type="char*256" input_pathname="abs" category="waccm"
-       group="chem_inparm" valid_values="" >
+       group="upper_bc_opts" valid_values="" >
 Full pathname of dataset for the coefficients of the NOEM nitric oxide model used
 to calculate its upper boundary concentration.
 Default: set by build-namelist.
@@ -6839,25 +6839,20 @@ if {{ hilight }}sulf_type{{ closehilight }} is 'FIXED'.
 Default: 0 seconds
 </entry>
 
-
-
-
-
-
 <entry id="tgcm_ubc_file" type="char*256" input_pathname="abs" category="waccm"
-       group="chem_inparm" valid_values="" >
+       group="upper_bc_opts" valid_values="" >
 Full pathname of dataset for TGCM upper boundary
 Default: set by build-namelist.
 </entry>
 <entry id="tgcm_ubc_data_type" type="char*32" category="waccm"
-       group="chem_inparm" valid_values="CYCLICAL,SERIAL,INTERP_MISSING_MONTHS,FIXED" >
+       group="upper_bc_opts" valid_values="CYCLICAL,SERIAL,INTERP_MISSING_MONTHS,FIXED" >
 Type of time interpolation for data in TGCM upper boundary file.
 Can be set to 'CYCLICAL', 'SERIAL', 'INTERP_MISSING_MONTHS', or 'FIXED'.
 Default: 'SERIAL'
 </entry>
 
 <entry id="tgcm_ubc_cycle_yr" type="integer" category="waccm"
-       group="chem_inparm" valid_values="" >
+       group="upper_bc_opts" valid_values="" >
 The cycle year of the TGCM upper boundary data
 if {{ hilight }}tgcm_ubc_type{{ closehilight }}  is 'CYCLICAL'.
 Format: YYYY
@@ -6865,7 +6860,7 @@ Default: 0
 </entry>
 
 <entry id="tgcm_ubc_fixed_ymd" type="integer" category="waccm"
-       group="chem_inparm" valid_values="" >
+       group="upper_bc_opts" valid_values="" >
 The date at which the TGCM upper boundary data is fixed
 if {{ hilight }}tgcm_ubc_type{{ closehilight }} is 'FIXED'.
 Format: YYYY
@@ -6873,7 +6868,7 @@ Default: 0
 </entry>
 
 <entry id="tgcm_ubc_fixed_tod" type="integer" category="waccm"
-       group="chem_inparm" valid_values="" >
+       group="upper_bc_opts" valid_values="" >
 The time of day (seconds) corresponding to {{ hilight }}tgcm_ubc_fixed_ymd{{ closehilight }}
 at which the TGCM upper boundary data is fixed
 if {{ hilight }}tgcm_ubc_type{{ closehilight }} is 'FIXED'.
@@ -6881,9 +6876,71 @@ Default: 0 seconds
 </entry>
 
 <entry id="t_pert_ubc" type="real" category="waccm"
-       group="chem_inparm" valid_values="" >
+       group="upper_bc_opts" valid_values="" >
 Perturbation applied to the upper boundary temperature.
 Default: 0.0
+</entry>
+
+<entry id="ubc_specifier" type="char*64(pcnst)"  category="upper_boundary"
+       group="upper_bc_opts" valid_values="" >
+
+List of fields that have fixed upper boundary conditions (temperature and mass mixing ratios)
+and corresponding data sources. Each entry in this list is of the form:
+  FLD->source
+where source may be of the following:
+  MSIS
+  TGCM
+  SNOE
+  UBC_FILE
+  value (mmr|vmr)
+
+These fields can be set to constant values with units of "mmr" (mass mixing ratio)
+or "vmr" (volume mixing ratio).  The upper boundary values of source UBC_FILE are prescribed
+in the UBC_FILE_path file. Fields of source UBC_FILE may may include a CAM constituent name
+and a file field name separated by ":".
+
+Example:
+  ubc_specifier = 'Q:H2O->UBC_FILE', 'CH4->2.D-10vmr', 'F->1.0D-15mmr', 'HF->1.0D-15mmr',
+		  'T->MSIS', 'H->MSIS', 'N->MSIS','O->MSIS', 'O2->MSIS', 'H2->TGCM', 'NO->SNOE'
+
+Default: set by build-namelist
+</entry>
+
+<entry id="ubc_file_path" type="char*512" input_pathname="abs" category="upper_boundary"
+       group="upper_bc_file_opts" valid_values="" >
+Full path of the file containing prescribed upper boundary conditions.
+Default: set by build-namelist
+</entry>
+
+<entry id="ubc_file_input_type" type="char*32" category="upper_boundary"
+       group="upper_bc_file_opts" valid_values="CYCLICAL,SERIAL,INTERP_MISSING_MONTHS,FIXED" >
+Type of time interpolation for data in {{ hilight }}ubc_file_path file{{ closehilight }}.
+Can be set to 'CYCLICAL', 'SERIAL', 'INTERP_MISSING_MONTHS', or 'FIXED'.
+Default: set by build-namelist
+</entry>
+
+<entry id="ubc_file_cycle_yr" type="integer" category="upper_boundary"
+       group="upper_bc_file_opts" valid_values="" >
+The cycle year of the prescribed upper boundary data
+if {{ hilight }}ubc_file_input_type{{ closehilight }} is 'CYCLICAL'.
+Format: YYYY
+Default: 0
+</entry>
+
+<entry id="ubc_file_fixed_ymd" type="integer" category="upper_boundary"
+       group="upper_bc_file_opts" valid_values="" >
+The date at which the upper boundary data is fixed
+if {{ hilight }}ubc_file_input_type{{ closehilight }} is 'FIXED'.
+Format: YYYYMMDD
+Default: 0
+</entry>
+
+<entry id="ubc_file_fixed_tod" type="integer" category="upper_boundary"
+       group="upper_bc_file_opts" valid_values="" >
+The time of day (seconds) corresponding to {{ hilight }}ubc_file_fixed_ymd{{ closehilight }}
+at which the upper boundary data is fixed
+if {{ hilight }}ubc_file_input_type{{ closehilight }} is 'FIXED'.
+Default: 0 seconds
 </entry>
 
 <entry id="chem_freq" type="integer" category="cam_chem"
