@@ -198,6 +198,7 @@
    do i = 1, ncol
       if( cnt2(i) < cnt(i)) cnt(i) = cnt2(i)
       if( cnb2(i) > cnb(i)) cnb(i) = cnb2(i)
+      if( cnb(i) == 1._r8 ) cnb(i) = cnt(i)
       pcnt(i) = state%pmid(i,int(cnt(i)))
       pcnb(i) = state%pmid(i,int(cnb(i)))     
    end do
