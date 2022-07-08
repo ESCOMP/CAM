@@ -6901,7 +6901,7 @@ and a file field name separated by ":".
 
 Example:
   ubc_specifier = 'Q:H2O->UBC_FILE', 'CH4->2.D-10vmr', 'F->1.0D-15mmr', 'HF->1.0D-15mmr',
-		  'T->MSIS', 'H->MSIS', 'N->MSIS','O->MSIS', 'O2->MSIS', 'H2->TGCM', 'NO->SNOE'
+                  'T->MSIS', 'H->MSIS', 'N->MSIS','O->MSIS', 'O2->MSIS', 'H2->TGCM', 'NO->SNOE'
 
 Default: set by build-namelist
 </entry>
