@@ -2256,7 +2256,7 @@ CONTAINS
                     cp_or_cv(idx, kdx) * pdel(idx, kdx) / gravit)
                ! z_mid is height above ground
                se_vint(idx) = se_vint(idx) + (z_mid(idx, kdx) +               &
-                    (phis(idx) / gravit) * pdel(idx, kdx))
+                    phis(idx) / gravit) * pdel(idx, kdx)
                wv_vint(idx) = wv_vint(idx) + (tracer(idx, kdx, wvidx) *       &
                     pdel(idx, kdx) / gravit)
             end do
