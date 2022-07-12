@@ -3,7 +3,7 @@ module stepon
 !----------------------------------------------------------------------
 ! stepon provides the interface layer that allows the different dynamical
 ! cores to be called from different locations in the time loop.  It also
-! provides a standard interface that is called from the higher level CAM   
+! provides a standard interface that is called from the higher level CAM
 ! component run methods while leaving non-standardized dycore interface
 ! methods to be called from this layer.  Ideally only the run methods
 ! which allow flexibility in the dynamics/physics calling sequence should
@@ -28,6 +28,11 @@ use cam_logfile,        only: iulog
 use cam_abortutils,     only: endrun
 use perf_mod,           only: t_startf, t_stopf, t_barrierf
 
+use aerosol_properties_mod, only: aerosol_properties
+use modal_aerosol_properties_mod, only: modal_aerosol_properties
+use aerosol_state_mod, only: aerosol_state
+use modal_aerosol_state_mod, only: modal_aerosol_state
+
 implicit none
 private
 save
@@ -49,6 +54,11 @@ logical, parameter :: fv_monitor=.true.  ! Monitor Mean/Max/Min fields
                                          ! set it to false for production runs
 real (r8) :: ptop
 
+logical :: clim_modal_aero = .false.
+
+class(aerosol_properties), pointer :: aero_props_obj => null()
+integer :: num_trans_aerosols=-1
+
 !=========================================================================================
 contains
 !=========================================================================================
@@ -60,6 +70,8 @@ subroutine stepon_init(dyn_in, dyn_out)
    use physconst,    only: physconst_calc_kappav, rair, cpair
    use inic_analytic,      only: analytic_ic_active
    use cam_initfiles,      only: scale_dry_air_mass
+   use rad_constituents,   only: rad_cnst_get_info
+
    type (dyn_import_t)   :: dyn_in             ! Dynamics import container
    type (dyn_export_t)   :: dyn_out            ! Dynamics export container
 
@@ -77,6 +89,9 @@ subroutine stepon_init(dyn_in, dyn_out)
 
    real(r8), allocatable :: delpdryxy(:,:,:)
    real(r8), allocatable :: cap3vi(:,:,:), cappa3v(:,:,:)
+
+   integer :: nmodes
+
    !----------------------------------------------------------------------------
 
    if (.not. initial_run) nlres=.true.
@@ -127,9 +142,9 @@ subroutine stepon_init(dyn_in, dyn_out)
         enddo
       enddo
    else
- 
+
       ! Initial run --> generate pe and delp from the surface pressure
- 
+
 !$omp parallel do private(i,j,k)
          do j = jfirstxy, jlastxy
             do k=1,km+1
@@ -213,7 +228,7 @@ subroutine stepon_init(dyn_in, dyn_out)
             do i = ifirstxy, ilastxy
                dyn_in%pt(i,j,k) =  dyn_in%t3(i,j,k)*            &
                 (1._r8 + zvir*dyn_in%tracer(i,j,k,1))    &
-                /dyn_in%pkz(i,j,k) 
+                /dyn_in%pkz(i,j,k)
             enddo
          enddo
       enddo
@@ -251,7 +266,16 @@ subroutine stepon_init(dyn_in, dyn_out)
          end if
       end do
       deallocate (delpdryxy)
-      
+
+   end if
+
+   call rad_cnst_get_info(0, nmodes=nmodes)
+   clim_modal_aero = (nmodes > 0)
+
+   if (clim_modal_aero) then
+      aero_props_obj => modal_aerosol_properties()
+      ! get number of transported aerosol contistuents
+      num_trans_aerosols = aero_props_obj%number_transported()
    end if
 
 end subroutine stepon_init
@@ -265,9 +289,11 @@ subroutine stepon_run1( dtime_out, phys_state, phys_tend, pbuf2d,        &
 
    use dp_coupling,       only: d_p_coupling
    use dyn_comp,          only: dyn_run
-   
+
    use physics_buffer,    only: physics_buffer_desc
    use advect_tend,       only: compute_adv_tends_xyz
+   use physics_buffer,   only: pbuf_get_chunk
+   use ppgrid,           only: pcols, pver
 
    ! arguments
    real(r8),            intent(out)   :: dtime_out   ! Time-step
@@ -279,10 +305,21 @@ subroutine stepon_run1( dtime_out, phys_state, phys_tend, pbuf2d,        &
 
    type(T_FVDYCORE_STATE), pointer :: dyn_state
 
-   integer  :: rc 
+   integer  :: rc
+
+   type(physics_buffer_desc), pointer :: pbuf(:)
+   integer :: c
+   real(r8), allocatable :: aero_constituents(:,:,:,:)
+   class(aerosol_state), pointer :: aero_state_obj
+   nullify(aero_state_obj)
+   nullify(pbuf)
 
    dtime_out = dtime
    dyn_state => get_dyn_state()
+
+   if (num_trans_aerosols>1) then
+      allocate(aero_constituents(pcols,pver,num_trans_aerosols,begchunk:endchunk))
+   end if
 
    ! Dump state variables to IC file
    call t_barrierf('sync_diag_dynvar_ic', mpicom)
@@ -296,9 +333,9 @@ subroutine stepon_run1( dtime_out, phys_state, phys_tend, pbuf2d,        &
    call t_stopf  ('comp_adv_tends1')
    !
    !--------------------------------------------------------------------------
-   ! Perform finite-volume dynamics -- this dynamical core contains some 
+   ! Perform finite-volume dynamics -- this dynamical core contains some
    ! yet to be published algorithms. Its use in the CAM is
-   ! for software development purposes only. 
+   ! for software development purposes only.
    ! Please contact S.-J. Lin (Shian-Jiann.Lin@noaa.gov)
    ! if you plan to use this mudule for scientific purposes. Contact S.-J. Lin
    ! or Will Sawyer (sawyer@gmao.gsfc.nasa.gov) if you plan to modify the
@@ -318,7 +355,7 @@ subroutine stepon_run1( dtime_out, phys_state, phys_tend, pbuf2d,        &
      write(iulog,*) "STEPON_RUN: dyn_run returned bad error code", rc
      write(iulog,*) "Quitting."
      call endrun
-   endif 
+   endif
    call t_stopf  ('dyn_run')
 
    call t_startf ('comp_adv_tends2')
@@ -333,28 +370,66 @@ subroutine stepon_run1( dtime_out, phys_state, phys_tend, pbuf2d,        &
    call d_p_coupling(dyn_state%grid, phys_state, phys_tend,  pbuf2d, dyn_out)
    call t_stopf('d_p_coupling')
 
+   if (num_trans_aerosols>1) then
+
+      do c = begchunk,endchunk
+         pbuf => pbuf_get_chunk(pbuf2d, c)
+         aero_state_obj => modal_aerosol_state( phys_state(c), pbuf )
+         ! pass number mass or number mixing ratios of aerosol constituents
+         ! to aerosol state object
+         call aero_state_obj%set_transported(aero_constituents(:,:,:,c))
+         deallocate(aero_state_obj)
+         nullify(aero_state_obj)
+      end do
+      deallocate(aero_constituents)
+
+   end if
+
 !EOC
 end subroutine stepon_run1
 
 !-----------------------------------------------------------------------
 
-!----------------------------------------------------------------------- 
+!-----------------------------------------------------------------------
 !BOP
 ! !ROUTINE:  stepon_run2 -- second phase run method
 !
 ! !INTERFACE:
-subroutine stepon_run2( phys_state, phys_tend, dyn_in, dyn_out )
+subroutine stepon_run2( phys_state, phys_tend, pbuf2d, dyn_in, dyn_out )
 ! !USES:
    use dp_coupling,      only: p_d_coupling
+   use physics_buffer,   only: physics_buffer_desc, pbuf_get_chunk
+   use ppgrid,           only: pcols, pver
 !
 ! !INPUT/OUTPUT PARAMETERS:
 !
    type(physics_state), intent(inout) :: phys_state(begchunk:endchunk)
    type(physics_tend),  intent(inout) :: phys_tend(begchunk:endchunk)
+   type(physics_buffer_desc), pointer :: pbuf2d(:,:)
    type (dyn_import_t), intent(inout) :: dyn_in  ! Dynamics import container
    type (dyn_export_t), intent(inout) :: dyn_out ! Dynamics export container
 
    type (T_FVDYCORE_GRID), pointer :: grid
+
+   type(physics_buffer_desc), pointer :: pbuf(:)
+   integer :: c
+   real(r8), allocatable :: aero_constituents(:,:,:,:)
+   class(aerosol_state), pointer :: aero_state_obj
+   nullify(aero_state_obj)
+   nullify(pbuf)
+
+   if (num_trans_aerosols>1) then
+      allocate(aero_constituents(pcols,pver,num_trans_aerosols,begchunk:endchunk))
+      do c = begchunk,endchunk
+         pbuf => pbuf_get_chunk(pbuf2d, c)
+         aero_state_obj => modal_aerosol_state( phys_state(c), pbuf )
+         ! get mass or number mixing ratios of aerosol constituents
+         call aero_state_obj%get_transported(aero_constituents(:,:,:,c))
+         deallocate(aero_state_obj)
+         nullify(aero_state_obj)
+      end do
+   end if
+
 !
 ! !DESCRIPTION:
 !
@@ -384,6 +459,10 @@ subroutine stepon_run2( phys_state, phys_tend, dyn_in, dyn_out )
                      dyn_in, dtime, zvir, cappa, ptop)
    call t_stopf  ('p_d_coupling')
 
+   if ( allocated(aero_constituents) ) then
+      deallocate(aero_constituents)
+   end if
+
 !EOC
 end subroutine stepon_run2
 
@@ -394,7 +473,7 @@ subroutine stepon_run3(dtime, cam_out, phys_state,             &
 ! !USES:
    use time_manager,     only: get_curr_date
    use fv_prints,        only: fv_out
-   use camsrfexch,       only: cam_out_t    
+   use camsrfexch,       only: cam_out_t
 !
 ! !INPUT PARAMETERS:
 !
@@ -434,7 +513,7 @@ subroutine stepon_run3(dtime, cam_out, phys_state,             &
    ! Monitor max/min/mean of selected fields
    !
    !  SEE BELOW  ****  SEE BELOW  ****  SEE BELOW
-   
+
    ! Beware that fv_out uses both dynamics and physics instantiations.
    ! However, I think that they are used independently, so that the
    ! answers are correct. Still, this violates the notion that the
@@ -464,7 +543,7 @@ end subroutine stepon_run3
 
 !-----------------------------------------------------------------------
 
-!----------------------------------------------------------------------- 
+!-----------------------------------------------------------------------
 !BOP
 ! !ROUTINE:  stepon_final --- Dynamics finalization
 !

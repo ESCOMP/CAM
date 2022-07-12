@@ -19,6 +19,8 @@ module modal_aerosol_state_mod
      type(physics_buffer_desc), pointer :: pbuf(:) => null()
    contains
 
+     procedure :: get_transported
+     procedure :: set_transported
      procedure :: get_ambient_mmr
      procedure :: get_cldbrne_mmr
      procedure :: get_ambient_num
@@ -65,6 +67,28 @@ contains
     nullify(self%pbuf)
 
   end subroutine destructor
+
+  !------------------------------------------------------------------------------
+  ! sets transported components
+  ! This aerosol model with the state of the transported aerosol constituents
+  ! (mass mixing ratios or number mixing ratios)
+  !------------------------------------------------------------------------------
+  subroutine set_transported( self, transported_array )
+    class(modal_aerosol_state), intent(inout) :: self
+    real(r8), intent(in) :: transported_array(:,:,:)
+    ! to be implemented later
+  end subroutine set_transported
+
+  !------------------------------------------------------------------------------
+  ! returns transported components
+  ! This returns to current state of the transported aerosol constituents
+  ! (mass mixing ratios or number mixing ratios)
+  !------------------------------------------------------------------------------
+  subroutine get_transported( self, transported_array )
+    class(modal_aerosol_state), intent(in) :: self
+    real(r8), intent(out) :: transported_array(:,:,:)
+    ! to be implemented later
+  end subroutine get_transported
 
   !------------------------------------------------------------------------------
   ! returns ambient aerosol mass mixing ratio for a given species index and bin index

@@ -17,6 +17,7 @@ module modal_aerosol_properties_mod
      real(r8), allocatable :: voltonumblo_(:)
      real(r8), allocatable :: voltonumbhi_(:)
    contains
+     procedure :: number_transported
      procedure :: get
      procedure :: amcube
      procedure :: actfracs
@@ -141,6 +142,15 @@ contains
     call self%final()
 
   end subroutine destructor
+
+  !------------------------------------------------------------------------------
+  ! returns number of transported aerosol constituents
+  !------------------------------------------------------------------------------
+  integer function number_transported(self)
+    class(modal_aerosol_properties), intent(in) :: self
+    ! to be implemented later
+    number_transported = -1
+  end function number_transported
 
   !------------------------------------------------------------------------
   ! returns aerosol properties:

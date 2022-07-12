@@ -300,7 +300,7 @@ subroutine cam_run2( cam_out, cam_in )
    !
    call t_barrierf ('sync_stepon_run2', mpicom)
    call t_startf ('stepon_run2')
-   call stepon_run2( phys_state, phys_tend, dyn_in, dyn_out )
+   call stepon_run2( phys_state, phys_tend, pbuf2d, dyn_in, dyn_out )
    call t_stopf  ('stepon_run2')
 
    !
