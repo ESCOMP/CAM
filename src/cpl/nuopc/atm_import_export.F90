@@ -1040,7 +1040,7 @@ contains
        g = 1
        do c = begchunk,endchunk
           do i = 1,get_ncols_p(c)
-             fldptr_lght(g) = cam_out(c)%lightning_flash_freq(i) ! lightninig flash frequency
+             fldptr_lght(g) = cam_out(c)%lightning_flash_freq(i) ! cloud-to-ground lightning flash frequency (/min)
              g = g + 1
           end do
        end do

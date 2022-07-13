@@ -254,8 +254,11 @@ contains
                                cam_in(c)%ocnfrac(i) *flash_freq_ocn
 
              !--------------------------------------------------------------------------------
-             !       ... compute cg/ic ratio
-             !           cgic = proportion of cg flashes (=pg from ppp paper)
+             !   cgic = proportion of cloud-to-ground flashes
+             ! NOx from lightning 1. Global distribution based on lightning physics, C Price et al
+             ! JOURNAL OF GEOPHYSICAL RESEARCH, VOL. 102, NO. D5, PAGES 5929-5941, MARCH 20, 1997
+             ! (https://agupubs.onlinelibrary.wiley.com/doi/epdf/10.1029/96JD03504)
+             ! eq 14
              !--------------------------------------------------------------------------------
              cgic(i,c) = 1._r8/((((ca*dchgz + cb)*dchgz + cc) *dchgz + cd)*dchgz + ce)
              if( dchgz < 5.5_r8 ) then
@@ -264,7 +267,7 @@ contains
                 cgic(i,c) = .02_r8
              end if
 
-             cam_out(c)%lightning_flash_freq(i) = flash_freq(i,c)*cgic(i,c)
+             cam_out(c)%lightning_flash_freq(i) = flash_freq(i,c)*cgic(i,c) ! cld-to-grnd flash frq (per min)
 
              if (calc_nox_prod) then
                 !--------------------------------------------------------------------------------

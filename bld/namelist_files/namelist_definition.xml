@@ -7268,12 +7268,11 @@ coarser temporal resolution.
 Default: set by build-namelist.
 </entry>
 
-<entry id="atm_lightning_flash_freq" type="logical" category="lightning_coupling"
+<entry id="atm_provides_lightning" type="logical" category="lightning_coupling"
        group="lightning_coupling_nl" valid_values="">
 If TRUE atmosphere model will provide prognosed lightning flash frequency.
 Default: FALSE
 </entry>
-
 
 <!-- WACCM_GHG Chemistry -->
 

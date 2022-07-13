@@ -123,7 +123,7 @@ contains
     !-----------------------------------------------------------------------
     use physics_buffer, only : physics_buffer_desc
     use aero_model,     only : aero_model_init
-    use mo_lightning, only : lightning_inti
+    use mo_lightning,   only : lightning_inti
 
     type(physics_state), intent(in):: phys_state(begchunk:endchunk)
     type(physics_buffer_desc), pointer :: pbuf2d(:,:)

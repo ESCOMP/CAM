@@ -4059,7 +4059,7 @@ if ($opts{'cmeps'}) {
     add_default($nl, 'atm_ozone_frequency', 'val'=>'multiday_average');
   }
   # for lightning flash freq to CTSM
-  add_default($nl, 'atm_lightning_flash_freq', 'val'=>'.true.');
+  add_default($nl, 'atm_provides_lightning', 'val'=>'.true.');
 }
 $outfile = "$opts{'dir'}/drv_flds_in";
 $nl->write($outfile, 'groups'=>\@comp_groups);
