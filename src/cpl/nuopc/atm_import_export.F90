@@ -76,6 +76,7 @@ contains
     use shr_fire_emis_mod , only : shr_fire_emis_readnl
     use shr_carma_mod     , only : shr_carma_readnl
     use shr_ndep_mod      , only : shr_ndep_readnl
+    use shr_lightning_coupling_mod, only : shr_lightning_coupling_readnl
 
     character(len=*), parameter :: nl_file_name = 'drv_flds_in'
 
@@ -105,6 +106,8 @@ contains
     logical                :: flds_co2a      ! use case
     logical                :: flds_co2b      ! use case
     logical                :: flds_co2c      ! use case
+    logical                :: atm_provides_lightning
+    integer                :: ndep_nflds, megan_nflds, emis_nflds
     character(len=128)     :: fldname
     character(len=*), parameter :: subname='(atm_import_export:advertise_fields)'
     !-------------------------------------------------------------------------------
@@ -151,7 +154,6 @@ contains
     call fldlist_add(fldsFrAtm_num, fldsFrAtm, 'Sa_dens'       )
     call fldlist_add(fldsFrAtm_num, fldsFrAtm, 'Sa_pslv'       )
     call fldlist_add(fldsFrAtm_num, fldsFrAtm, 'Sa_o3'         )
-    call fldlist_add(fldsFrAtm_num, fldsFrAtm, 'Sa_lght'       )
     call fldlist_add(fldsFrAtm_num, fldsFrAtm, 'Faxa_rainc'    )
     call fldlist_add(fldsFrAtm_num, fldsFrAtm, 'Faxa_rainl'    )
     call fldlist_add(fldsFrAtm_num, fldsFrAtm, 'Faxa_snowc'    )
@@ -192,6 +194,12 @@ contains
        call fldlist_add(fldsFrAtm_num, fldsFrAtm, 'Faxa_ndep', ungridded_lbound=1, ungridded_ubound=ndep_nflds)
        call set_active_Faxa_nhx(.true.)
        call set_active_Faxa_noy(.true.)
+    end if
+
+    ! lightning flash freq
+    call shr_lightning_coupling_readnl("drv_flds_in", atm_provides_lightning)
+    if (atm_provides_lightning) then
+       call fldlist_add(fldsFrAtm_num, fldsFrAtm, 'Sa_lght')
     end if
 
     ! Now advertise above export fields
