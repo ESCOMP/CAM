@@ -164,7 +164,7 @@ contains
     !-----------------------------------------------------------------------
     !	... initialize the lightning module
     !-----------------------------------------------------------------------
-    call lightning_inti(lght_no_prd_factor)
+    call lightning_inti(pbuf2d,lght_no_prd_factor)
     if (masterproc) write(iulog,*) 'chemini: after lightning_inti on node ',iam
 
     !-----------------------------------------------------------------------

@@ -320,6 +320,9 @@ end function chem_is
     ! add fields to pbuf needed by aerosol models
     call aero_model_register()
 
+    ! add prognostic lightning flash freq pbuf fld
+    call lightning_register()
+
   end subroutine chem_register
 
 !================================================================================================

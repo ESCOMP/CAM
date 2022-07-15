@@ -61,6 +61,7 @@ contains
 
   subroutine chem_register
     use aero_model, only : aero_model_register
+    use mo_lightning, only : lightning_register
     !-----------------------------------------------------------------------
     !
     ! Purpose: register advected constituents for parameterized greenhouse gas chemistry
@@ -69,6 +70,9 @@ contains
 
    ! for prescribed aerosols
     call aero_model_register()
+
+    ! add prognostic lightning flash freq pbuf fld
+    call lightning_register()
 
   end subroutine chem_register
 
@@ -131,7 +135,8 @@ contains
    ! for prescribed aerosols
     call aero_model_init(pbuf2d)
 
-    call lightning_inti()
+    ! prognostic lightning flashes
+    call lightning_inti(pbuf2d)
 
   end subroutine chem_init
 

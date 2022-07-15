@@ -10,9 +10,13 @@ module mo_lightning
   use cam_logfile,       only : iulog
   use spmd_utils,        only : masterproc, mpicom
 
+  use physics_buffer, only : pbuf_get_index, physics_buffer_desc, pbuf_get_field, pbuf_get_chunk
+  use physics_buffer, only : pbuf_add_field, pbuf_set_field, dtype_r8
+
   implicit none
 
   private
+  public  :: lightning_register
   public  :: lightning_inti
   public  :: lightning_no_prod
   public  :: prod_no
@@ -25,9 +29,22 @@ module mo_lightning
 
   logical :: calc_nox_prod = .false.
 
+  integer :: flsh_frq_ndx = -1
+
 contains
 
-  subroutine lightning_inti( lght_no_prd_factor )
+  !----------------------------------------------------------------------
+  ! register phys buffer field for cloud to ground lightning flash frequency
+  ! to pass to the mediator for land model
+  !----------------------------------------------------------------------
+  subroutine lightning_register()
+
+    call pbuf_add_field('LGHT_FLASH_FREQ','global',dtype_r8,(/pcols/),flsh_frq_ndx) ! per minute
+
+  end subroutine lightning_register
+
+
+  subroutine lightning_inti( pbuf2d, lght_no_prd_factor )
     !----------------------------------------------------------------------
     !       ... initialize the lightning module
     !----------------------------------------------------------------------
@@ -36,10 +53,12 @@ contains
 
     use cam_history,   only : addfld, add_default, horiz_only
     use phys_control,  only : phys_getopts
+    use time_manager,  only : is_first_step
 
     !----------------------------------------------------------------------
     !	... dummy args
     !----------------------------------------------------------------------
+    type(physics_buffer_desc), pointer :: pbuf2d(:,:)
     real(r8),optional, intent(in) :: lght_no_prd_factor        ! lightning no production factor
 
     !----------------------------------------------------------------------
@@ -96,18 +115,20 @@ contains
     call addfld( 'DCHGZONE',     horiz_only,  'I', 'KM',      'depth of discharge zone' )       ! depth of discharge zone
     call addfld( 'CGIC',         horiz_only,  'I', 'RATIO',   'ratio of cloud-ground/intracloud discharges' ) ! ratio of cloud-ground/intracloud discharges
 
+    if (is_first_step()) then
+       call pbuf_set_field(pbuf2d, flsh_frq_ndx, 0.0_r8)
+    endif
   end subroutine lightning_inti
 
-  subroutine lightning_no_prod( state, pbuf2d,  cam_in, cam_out )
+  subroutine lightning_no_prod( state, pbuf2d,  cam_in )
     !----------------------------------------------------------------------
     !	... set no production from lightning
     !----------------------------------------------------------------------
     use physics_types,    only : physics_state
-    use physics_buffer,   only : pbuf_get_index, physics_buffer_desc, pbuf_get_field, pbuf_get_chunk
     use physconst,        only : rga
     use phys_grid,        only : get_rlat_all_p, get_wght_all_p
     use cam_history,      only : outfld
-    use camsrfexch,       only : cam_in_t, cam_out_t
+    use camsrfexch,       only : cam_in_t
     use shr_reprosum_mod, only : shr_reprosum_calc
     use mo_constants,     only : rearth, d2r
 
@@ -118,7 +139,6 @@ contains
 
     type(physics_buffer_desc), pointer :: pbuf2d(:,:)
     type(cam_in_t), intent(in) :: cam_in(begchunk:endchunk) ! physics state
-    type(cam_out_t), intent(inout) :: cam_out(begchunk:endchunk) ! physics state
 
     !----------------------------------------------------------------------
     !	... local variables
@@ -172,6 +192,7 @@ contains
     real(r8), parameter  :: lat25 = 25._r8*d2r      ! 25 degrees latitude in radians
     integer  :: cldtop_ndx, cldbot_ndx
     real(r8) :: flash_freq_land, flash_freq_ocn
+    real(r8), pointer :: lightning_flash_freq(:)
 
     !----------------------------------------------------------------------
     !	... initialization
@@ -213,6 +234,7 @@ contains
     Chunk_loop : do c = begchunk,endchunk
        ncol  = state(c)%ncol
        lchnk = state(c)%lchnk
+       call pbuf_get_field(pbuf_get_chunk(pbuf2d,lchnk), flsh_frq_ndx, lightning_flash_freq )
        call pbuf_get_field(pbuf_get_chunk(pbuf2d,lchnk), cldtop_ndx, cldtop )
        call pbuf_get_field(pbuf_get_chunk(pbuf2d,lchnk), cldbot_ndx, cldbot )
        zsurf(:ncol) = state(c)%phis(:ncol)*rga
@@ -267,7 +289,7 @@ contains
                 cgic(i,c) = .02_r8
              end if
 
-             cam_out(c)%lightning_flash_freq(i) = flash_freq(i,c)*cgic(i,c) ! cld-to-grnd flash frq (per min)
+             lightning_flash_freq(i) = flash_freq(i,c)*cgic(i,c) ! cld-to-grnd flash frq (per min)
 
              if (calc_nox_prod) then
                 !--------------------------------------------------------------------------------
