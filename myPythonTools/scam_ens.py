@@ -241,6 +241,7 @@ class scam_ens:
 
         if (base.coupler=='nuopc'):
             fili= base.cime_output_root + "/" +  case_tag +"/run/nuopc.runconfig"
+            tx.nmled(fili,'case_name',case_tag)
             tx.nmled(fili,'start_ymd',case_date)
             tx.nmled(fili,'scol_lat',latstr)
             tx.nmled(fili,'scol_lon',lonstr)
