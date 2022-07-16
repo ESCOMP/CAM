@@ -28,8 +28,10 @@ module mo_lightning
   real(r8), allocatable :: vdist(:,:)      ! vertical distribution of lightning
 
   logical :: calc_nox_prod = .false.
+  logical :: calc_lightning = .false.
 
   integer :: flsh_frq_ndx = -1
+  integer :: cldtop_ndx = -1, cldbot_ndx = -1
 
 contains
 
@@ -42,7 +44,6 @@ contains
     call pbuf_add_field('LGHT_FLASH_FREQ','global',dtype_r8,(/pcols/),flsh_frq_ndx) ! per minute
 
   end subroutine lightning_register
-
 
   subroutine lightning_inti( pbuf2d, lght_no_prd_factor )
     !----------------------------------------------------------------------
@@ -64,10 +65,16 @@ contains
     !----------------------------------------------------------------------
     !	... local variables
     !----------------------------------------------------------------------
-    integer  :: astat
+    integer  :: astat, err
     logical :: history_cesm_forcing
-
     character(len=*),parameter :: prefix = 'lightning_inti: '
+
+
+    cldtop_ndx = pbuf_get_index('CLDTOP',errcode=err)
+    cldbot_ndx = pbuf_get_index('CLDBOT',errcode=err)
+    calc_lightning = cldtop_ndx>0 .and. cldbot_ndx>0
+
+    if (.not.calc_lightning) return
 
     calc_nox_prod = present(lght_no_prd_factor)
 
@@ -190,9 +197,13 @@ contains
     real(r8), parameter  :: m2km  = 1.e-3_r8
     real(r8), parameter  :: km2cm = 1.e5_r8
     real(r8), parameter  :: lat25 = 25._r8*d2r      ! 25 degrees latitude in radians
-    integer  :: cldtop_ndx, cldbot_ndx
+
     real(r8) :: flash_freq_land, flash_freq_ocn
     real(r8), pointer :: lightning_flash_freq(:)
+
+    if (.not.calc_lightning) return
+
+    nullify(lightning_flash_freq)
 
     !----------------------------------------------------------------------
     !	... initialization
@@ -209,9 +220,6 @@ contains
        prod_no_col(:,:)   = 0._r8
        glob_prod_no_col(:,:) = 0._r8
     end if
-
-    cldtop_ndx = pbuf_get_index('CLDTOP')
-    cldbot_ndx = pbuf_get_index('CLDBOT')
 
     !--------------------------------------------------------------------------------
     !	... estimate flash frequency and resulting no emissions

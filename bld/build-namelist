@@ -4059,7 +4059,7 @@ if ($opts{'cmeps'}) {
     add_default($nl, 'atm_ozone_frequency', 'val'=>'multiday_average');
   }
   # for lightning flash freq to CTSM
-  if ($phys =~ /cam/) {
+  if ($phys =~ /^cam/) {
     add_default($nl, 'atm_provides_lightning', 'val'=>'.true.');
   } else {
     add_default($nl, 'atm_provides_lightning', 'val'=>'.false.');
