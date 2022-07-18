@@ -1,4 +1,4 @@
-class scam_ens:
+class scam_case:
     #import sys
     #import getopt as go
     #import os
@@ -245,3 +245,10 @@ class scam_ens:
             tx.nmled(fili,'start_ymd',case_date)
             tx.nmled(fili,'scol_lat',latstr)
             tx.nmled(fili,'scol_lon',lonstr)
+
+        if (base.coupler=='mct'):
+            fili= base.cime_output_root + "/" +  case_tag +"/run/drv_in"
+            tx.nmled(fili,'case_name',case_tag)
+            tx.nmled(fili,'start_ymd',case_date)
+            tx.nmled(fili,'scmlat',latstr)
+            tx.nmled(fili,'scmlon',lonstr)

@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
 import getopt as go
-import scam_ens as scm
+import scam_case as scm
 import sys
 import os
 
