@@ -823,7 +823,7 @@ subroutine zm_convr(lchnk   ,ncol    , &
                   tp      ,qstp    ,tl      ,rl      ,cape     , &
                   pblt    ,lcl     ,lel     ,lon     ,maxi     , &
                   rgas    ,grav    ,cpres   ,msg     , &
-                  zi, tpert  , org2d  , landfrac, wm_incld)
+                  zi      ,zs      ,tpert  , org2d  , landfrac, wm_incld)
 
    end if
 
