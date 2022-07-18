@@ -823,7 +823,7 @@ subroutine zm_convr(lchnk   ,ncol    , &
                   tp      ,qstp    ,tl      ,rl      ,cape     , &
                   pblt    ,lcl     ,lel     ,lon     ,maxi     , &
                   rgas    ,grav    ,cpres   ,msg     , &
-                  zi      ,zs      ,tpert  , org2d  , landfrac, wm_incld)
+                  zi      ,zs      ,tpert  ,org2d  , landfrac, wm_incld)
 
    end if
 
@@ -4029,7 +4029,7 @@ subroutine buoyan_dilute(lchnk   ,ncol    , &
                   tp      ,qstp    ,tl      ,rl      ,cape    , &
                   pblt    ,lcl     ,lel     ,lon     ,mx      , &
                   rd      ,grav    ,cp      ,msg     , &
-                  zi      ,tpert   ,org     ,landfrac ,wm_incld)
+                  zi      ,zs      ,tpert   ,org     ,landfrac ,wm_incld)
 
 !----------------------------------------------------------------------- 
 ! 
@@ -4073,9 +4073,10 @@ subroutine buoyan_dilute(lchnk   ,ncol    , &
    real(r8), intent(in) :: pblt(pcols)          ! index of pbl depth
    real(r8), intent(in) :: tpert(pcols)         ! perturbation temperature by pbl processes
 
-! Use z interface for parcel calculations.
+! Use z interface/surface relative values for PBL parcel calculations.
    real(r8), intent(in) :: zi(pcols,pver+1)
-
+   real(r8), intent(in) :: zs(pcols)
+ 
 !
 ! output arguments
 !
@@ -4123,11 +4124,12 @@ subroutine buoyan_dilute(lchnk   ,ncol    , &
   real(r8)           :: hmn_zdp(pcols,pver)  ! Integrals of hmn_lev*dp_lev at each level
   real(r8)           :: q_zdp(pcols,pver)    ! Integrals of q*dp_lev at each level  
   real(r8)           :: dp_zfrac             ! Fraction of vertical grid box below mixing top (usually pblt)
-  real(r8)           :: parcel_ztop(pcols)   ! Depth of parcel mixing (usually pblt)
+  real(r8)           :: parcel_ztop(pcols)   ! Height of parcel mixing (usually pblt)
   real(r8)           :: parcel_dp(pcols)     ! Pressure integral over parcel mixing depth (usually pblt)
   real(r8)           :: parcel_hdp(pcols)    ! Pressure*MSE integral over parcel mixing depth (usually pblt)
   real(r8)           :: parcel_qdp(pcols)    ! Pressure*q integral over parcel mixing depth (usually pblt)  
   real(r8)           :: pbl_z(pcols)         ! Previously diagnosed PBL height
+  real(r8)           :: pbl_dz(pcols)        ! Previously diagnosed PBL depth
   real(r8)           :: hpar(pcols)          ! Initial MSE of the parcel 
   real(r8)           :: qpar(pcols)          ! Initial humidity of the parcel
   real(r8)           :: ql(pcols)          ! Initial parcel humidity (for ientropy routine)
@@ -4153,6 +4155,11 @@ subroutine buoyan_dilute(lchnk   ,ncol    , &
 
    real(r8) rd
    real(r8) rl
+
+! Scaling of PBL height to give parcel mixing length for lparcel_pbl=True 
+
+   real(r8), parameter :: parcel_hscale  = 0.5_r8
+
 !
 !-----------------------------------------------------------------------
 !
@@ -4171,7 +4178,9 @@ subroutine buoyan_dilute(lchnk   ,ncol    , &
       cape(i) = 0._r8
       hmax(i) = 0._r8
       pbl_z(i) = z(i,nint(pblt(i))) 
-      parcel_ztop(i) = 0.5_r8*pbl_z(i) ! 0.5*Boundary layer top by default
+      pbl_dz(i) = z(i,nint(pblt(i)))-zs(i) ! mid-point z (zm) reference to PBL depth
+      parcel_dz(i) = max(zi(i,pver),parcel_hscale*pbl_dz(i)) ! PBL mixing depth [parcel_hscale*Boundary, but no thinner than zi(i,pver)]
+      parcel_ztop(i) = parcel_dz(i)+zs(i) ! PBL mixing height ztop this is wrt zs=0
       parcel_hdp(i) = 0._r8
       parcel_dp(i) = 0._r8
       parcel_qdp(i) = 0._r8
@@ -4218,13 +4227,13 @@ if (lparcel_pbl) then
    do i = 1,ncol ! Loop columns
       do k = pver,msg + 1,-1
 
-         if (zi(i,k+1)<= parcel_ztop(i)) then ! Has to be relative to surface geo height.  
+         if (zi(i,k+1)<= parcel_dz(i)) then ! Has to be relative to surface geo height.  
             ipar = k
             if (k == pver) then ! Always at least the full depth of lowest model layer.
                dp_zfrac = 1._r8
             else
                ! Fraction of grid cell depth (mostly 1, except when parcel_ztop is in between levels.
-               dp_zfrac =  min(1._r8,(parcel_ztop(i)-zi(i,k+1))/(zi(i,k)-zi(i,k+1)))
+               dp_zfrac =  min(1._r8,(parcel_dz(i)-zi(i,k+1))/(zi(i,k)-zi(i,k+1)))
             end if
 
             parcel_hdp(i) = parcel_hdp(i)+hmn_zdp(i,k)*dp_zfrac ! Sum parcel profile up to a certain level.
