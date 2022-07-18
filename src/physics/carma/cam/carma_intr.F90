@@ -1105,13 +1105,13 @@ contains
 
       ! Assume resolution is 64x128.
       if (single_column) then
-        dx = 360._r8 / 128._r8
-        dy = 180._r8 / 64._r8
+!        dx = 360._r8 / 128._r8
+!        dy = 180._r8 / 64._r8
       else
       
         ! Calculate the x and y coordinates, in degrees latitude and longitude.
-        dx = 360._r8 / plon
-        dy = 180._r8 / (plat-1)
+!        dx = 360._r8 / plon
+!        dy = 180._r8 / (plat-1)
       end if
 
       call CARMASTATE_CreateFromReference(cstate, &
@@ -1148,30 +1148,30 @@ contains
       yc(:) = state_loc%lat(icol) /  DEG2RAD
 
       ! Assume resolution is 64x128.
-      if (single_column) then
-        dx = 360._r8 / 128._r8
-        dy = 180._r8 / 64._r8
-      else
+!      if (single_column) then
+!        dx = 360._r8 / 128._r8
+!        dy = 180._r8 / 64._r8
+!      else
       
         ! Caclulate the x and y coordinates, in degrees latitude and longitude.
-        dx(:) = 360._r8 / plon
+!        dx(:) = 360._r8 / plon
 
-        dlat = 180._r8 / (plat-1)
+!        dlat = 180._r8 / (plat-1)
 
         ! The pole points need special treatment, since the point is not the
         ! center of the grid box.
         !
         ! In single column mode there is just one latitude, so make it global.
-        if (abs(state_loc%lat(icol) /  DEG2RAD) >= (90._r8 - (90._r8 / (plat-1)))) then
+!        if (abs(state_loc%lat(icol) /  DEG2RAD) >= (90._r8 - (90._r8 / (plat-1)))) then
 
           ! Nudge yc toward the equator.
-          yc(:) = yc(:) - sign(0.25_r8,state_loc%lat(icol)) * dlat
+!          yc(:) = yc(:) - sign(0.25_r8,state_loc%lat(icol)) * dlat
           
-          dy(:) = dlat / 2._r8
-        else
-          dy(:) = dlat
-        endif
-      end if
+!          dy(:) = dlat / 2._r8
+!        else
+!          dy(:) = dlat
+!        endif
+!      end if
 
       if (is_first_step()) then
         t_ptr(icol,:) = state_loc%t(icol,:)
@@ -2054,10 +2054,6 @@ contains
 
     ncol = state%ncol
     lchnk = state%lchnk
-
-    call get_lat_all_p(lchnk, ncol, lat)
-    call get_lon_all_p(lchnk, ncol, lon)
-    call get_rlat_all_p(lchnk, ncol, clat)
 
     ! Associate pointers with physics buffer fields
     itim_old = pbuf_old_tim_idx()

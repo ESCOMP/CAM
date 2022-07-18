@@ -262,7 +262,6 @@ contains
     use shr_kind_mod,  only: r8 => shr_kind_r8
     use ppgrid,        only: pcols, pver
     use physics_types, only: physics_state
-    use phys_grid,     only: get_lon_all_p, get_lat_all_p
     use camsrfexch,    only: cam_in_t
     use cam_history,   only: outfld
     
@@ -298,17 +297,13 @@ contains
     real(r8)            :: wwd                                ! raw wind speed (m/s) 
     real(r8)            :: sp                                 ! mass fraction for soil factor
     integer             :: idustbin                           ! ibin to use for dust production, smallest silt bin for clay
-    real(r8)            :: soilfact(pcols)                    ! soil erosion factor (for debug)
-
+ 
     ! Default return code.
     rc = RC_OK
 
     ! Determine the latitude and longitude of each column.
     lchnk = state%lchnk
     ncol = state%ncol
-
-    call get_lat_all_p(lchnk, ncol, ilat)
-    call get_lon_all_p(lchnk, ncol, ilon)
 
     ! Add any surface flux here.
     surfaceFlux(:ncol) = 0.0_r8
@@ -346,23 +341,21 @@ contains
       ! Process each column.
       do icol = 1,ncol
       
-        call CARMA_SurfaceWind(carma, state, icol, ilat(icol), ilon(icol), ielem, igroup, idustbin, cam_in, uv10, wwd, uth, rc) 
+        call CARMA_SurfaceWind(carma, state, icol, ielem, igroup, idustbin, cam_in, uv10, wwd, uth, rc) 
 
         ! Is the wind above the threshold for dust production?
         if (uv10 > uth) then
-          surfaceFlux(icol) = ch * soil_factor(ilat(icol), ilon(icol)) * sp * &
+          surfaceFlux(icol) = ch * soil_factor(icol, lchnk) * sp * &
                               wwd * (uv10 - uth)           
         endif
         
         ! Scale the clay bins based upon the smallest silt bin.   
         surfaceFlux(icol) = clay_mf(ibin) * surfaceFlux(icol)
         
-        ! Save off the soil erosion factor so it can be output.
-        soilfact(icol) = soil_factor(ilat(icol), ilon(icol))
       end do
 
       ! For debug purposes, output the soil erosion factor.
-      call outfld('CRSLERFC', soilfact, pcols, lchnk)
+      call outfld('CRSLERFC', soil_factor(:ncol, lchnk), ncol, lchnk)
     end if        
     
     return
@@ -380,10 +373,10 @@ contains
 
     implicit none
 
-    type(carma_type), intent(in)       :: carma                 !! the carma object
-    logical, intent(inout)             :: lq_carma(pcnst)       !! flags to indicate whether the constituent
+    type(carma_type), intent(in)        :: carma                !! the carma object
+    logical, intent(inout)              :: lq_carma(pcnst)      !! flags to indicate whether the constituent
                                                                 !! could have a CARMA tendency
-    integer, intent(out)               :: rc                    !! return code, negative indicates failure
+    integer, intent(out)                :: rc                   !! return code, negative indicates failure
 
     ! -------- local variables ----------
     integer            :: ibin                                ! CARMA bin index
@@ -472,7 +465,7 @@ contains
   !! @version May-2009
   subroutine CARMA_InitializeParticle(carma, ielem, ibin, latvals, lonvals, mask, q, rc)
     use shr_kind_mod,   only: r8 => shr_kind_r8
-    use pmgrid,         only: plat, plev, plon
+    use pmgrid,         only: plev
 
     implicit none
 
@@ -627,7 +620,7 @@ contains
   !!
   !! @author  Lin Su, Pengfei Yu, Chuck Bardeen
   !! @version July-2012
-  subroutine CARMA_SurfaceWind(carma, state, icol, ilat, ilon, ielem, igroup, ibin, cam_in, uv10, wwd, uth, rc)
+  subroutine CARMA_SurfaceWind(carma, state, icol, ielem, igroup, ibin, cam_in, uv10, wwd, uth, rc)
     use ppgrid,           only: pcols, pver
     use physics_types,    only: physics_state
     use camsrfexch,       only: cam_in_t
@@ -638,8 +631,6 @@ contains
     type(carma_type), intent(in)        :: carma                 !! the carma object
     type(physics_state), intent(in)     :: state                 !! physics state   
     integer, intent(in)                 :: icol                  !! column index
-    integer, intent(in)                 :: ilat                  !! latitude index 
-    integer, intent(in)                 :: ilon                  !! longitude index
     integer, intent(in)                 :: ielem                 !! element index
     integer, intent(in)                 :: igroup                !! group index
     integer, intent(in)                 :: ibin                  !! bin index
@@ -702,10 +693,13 @@ contains
   !! @author  Pengfei Yu
   !! @version July-2012
   subroutine CARMA_ReadSoilErosionFactor(carma, rc)
-    use pmgrid,        only: plat, plon
-    use ioFileMod,     only: getfil
+!    use physics_types,      only: physics_state
+    use pmgrid,        	    only: plat, plon
+    use ppgrid,             only: begchunk, endchunk, pcols
+    use ioFileMod,     	    only: getfil
     use wrap_nf
-    use interpolate_data,  only : lininterp_init, lininterp, interp_type, lininterp_finish    
+    use interpolate_data,  	only: lininterp_init, lininterp, interp_type, lininterp_finish 
+    use phys_grid,          only: get_lon_all_p, get_lat_all_p, get_ncols_p
     
     implicit none
 
@@ -715,13 +709,16 @@ contains
     ! local variables
     integer                                   :: idvar, f_nlon, f_nlat, idlat, idlon
     integer                                   :: fid, fid_lon, fid_lat
-    real(r8), allocatable, dimension(:,:)     :: ero_factor, ero_factor1
+    real(r8), allocatable, dimension(:,:)     :: ero_factor
     character(len=256)                        :: ero_file
     real(r8), allocatable, dimension(:)       :: ero_lat               ! latitude dimension
     real(r8), allocatable, dimension(:)       :: ero_lon               ! latitude dimension
     type (interp_type)                        :: wgt1, wgt2
-    real(r8)                                  :: lat(plat), lon(plon)
-    integer                                   :: i
+    real(r8)                                  :: lat(pcols)            ! latitude index 
+    real(r8)                                  :: lon(pcols)            ! longitude index
+    integer                                   :: i, ii
+    integer                                   :: lchnk                 ! chunk identifier
+    integer                                   :: ncol                  ! number of columns in chunk
 
     rc = RC_OK
 
@@ -738,8 +735,8 @@ contains
     allocate(ero_lat(f_nlat))
     allocate(ero_lon(f_nlon))
     allocate(ero_factor (f_nlon, f_nlat))
-    allocate(ero_factor1(plon, plat))
-    allocate(soil_factor(plat, plon))
+    allocate(soil_factor(pcols, begchunk:endchunk))
+
     
     ! Read in the tables.
     call wrap_inq_varid(fid, 'new_source', idvar)
@@ -756,29 +753,25 @@ contains
     ! Close the file.
     call wrap_close(fid)
     
-    ! NOTE: Is there a better way to get all of the dimensions
-    ! needed for the model grid? Seems like it shouldn't be hard
-    ! coded here.
-    do i = 1, plat
-       lat(i) = 180._r8 / (plat-1) * (i-1) - 90._r8
-    end do
-    
-    do i = 1, plon
-       lon(i) = 360._r8 / plon * (i-1)
-    end do
-    
-    call lininterp_init(ero_lat, f_nlat, lat, plat, 1, wgt1)
-    call lininterp_init(ero_lon, f_nlon, lon, plon, 1, wgt2)
-    call lininterp(ero_factor, f_nlon, f_nlat, ero_factor1, plon, plat, wgt2, wgt1)
-    call lininterp_finish(wgt1)
-    call lininterp_finish(wgt2)
-    
-    soil_factor(:plat, :plon) = transpose(ero_factor1(:plon, :plat))
+	do lchnk=begchunk, endchunk
+		ncol = get_ncols_p(lchnk)
+        
+		call get_lat_all_p(lchnk, pcols, lat)
+		call get_lon_all_p(lchnk, pcols, lon)
+
+		call lininterp_init(ero_lon, f_nlon, lon, ncol, 1, wgt2)
+		call lininterp_init(ero_lat, f_nlat, lat, ncol, 1, wgt1)
+		
+		call lininterp(ero_factor, f_nlon, f_nlat, soil_factor(1:ncol,lchnk), ncol, wgt2, wgt1)
+			
+		call lininterp_finish(wgt1)
+		call lininterp_finish(wgt2)
+	end do
     
     deallocate(ero_lat)
     deallocate(ero_lon)
     deallocate(ero_factor)
-    deallocate(ero_factor1)
+
     
     return
   end subroutine CARMA_ReadSoilErosionFactor
