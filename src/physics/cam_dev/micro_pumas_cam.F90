@@ -947,14 +947,14 @@ subroutine micro_pumas_cam_init(pbuf2d)
    call addfld ('ICIMRST',    (/ 'lev' /), 'A', 'kg/kg',    'Prognostic in-stratus ice mixing ratio'                  )
 
    ! MG microphysics diagnostics
-   call addfld ('QCSEVAP',    (/ 'lev' /), 'A', 'kg/kg/s',  'Rate of evaporation of falling cloud water'              )
-   call addfld ('QISEVAP',    (/ 'lev' /), 'A', 'kg/kg/s',  'Rate of sublimation of falling cloud ice'                )
-   call addfld ('QVRES',      (/ 'lev' /), 'A', 'kg/kg/s',  'Rate of residual condensation term'                      )
-   call addfld ('CMEIOUT',    (/ 'lev' /), 'A', 'kg/kg/s',  'Rate of deposition/sublimation of cloud ice'             )
-   call addfld ('VTRMC',      (/ 'lev' /), 'A', 'm/s',      'Mass-weighted cloud water fallspeed'                     )
-   call addfld ('VTRMI',      (/ 'lev' /), 'A', 'm/s',      'Mass-weighted cloud ice fallspeed'                       )
-   call addfld ('QCSEDTEN',   (/ 'lev' /), 'A', 'kg/kg/s',  'Cloud water mixing ratio tendency from sedimentation'    )
-   call addfld ('QISEDTEN',   (/ 'lev' /), 'A', 'kg/kg/s',  'Cloud ice mixing ratio tendency from sedimentation'      )
+   call addfld ('QCSEVAP',    (/ 'trop_cld_lev' /), 'A', 'kg/kg/s',  'Rate of evaporation of falling cloud water'              )
+   call addfld ('QISEVAP',    (/ 'trop_cld_lev' /), 'A', 'kg/kg/s',  'Rate of sublimation of falling cloud ice'                )
+   call addfld ('QVRES',      (/ 'trop_cld_lev' /), 'A', 'kg/kg/s',  'Rate of residual condensation term'                      )
+   call addfld ('CMEIOUT',    (/ 'trop_cld_lev' /), 'A', 'kg/kg/s',  'Rate of deposition/sublimation of cloud ice'             )
+   call addfld ('VTRMC',      (/ 'trop_cld_lev' /), 'A', 'm/s',      'Mass-weighted cloud water fallspeed'                     )
+   call addfld ('VTRMI',      (/ 'trop_cld_lev' /), 'A', 'm/s',      'Mass-weighted cloud ice fallspeed'                       )
+   call addfld ('QCSEDTEN',   (/ 'trop_cld_lev' /), 'A', 'kg/kg/s',  'Cloud water mixing ratio tendency from sedimentation'    )
+   call addfld ('QISEDTEN',   (/ 'trop_cld_lev' /), 'A', 'kg/kg/s',  'Cloud ice mixing ratio tendency from sedimentation'      )
    call addfld ('PRAO',       (/ 'lev' /), 'A', 'kg/kg/s',  'Accretion of cloud water by rain'                        )
    call addfld ('PRCO',       (/ 'lev' /), 'A', 'kg/kg/s',  'Autoconversion of cloud water'                           )
    call addfld ('MNUCCCO',    (/ 'lev' /), 'A', 'kg/kg/s',  'Immersion freezing of cloud water'                       )
@@ -979,8 +979,8 @@ subroutine micro_pumas_cam_init(pbuf2d)
    call addfld ('VAPDEPSO',   (/ 'lev' /), 'A', 'kg/kg/s',  'Vapor deposition onto snow'                            )
    call addfld ('MELTSDT',    (/ 'lev' /), 'A', 'W/kg',     'Latent heating rate due to melting of snow'              )
    call addfld ('FRZRDT',     (/ 'lev' /), 'A', 'W/kg',     'Latent heating rate due to homogeneous freezing of rain' )
-   call addfld ('QRSEDTEN', (/ 'lev' /), 'A', 'kg/kg/s', 'Rain mixing ratio tendency from sedimentation'           )
-   call addfld ('QSSEDTEN', (/ 'lev' /), 'A', 'kg/kg/s', 'Snow mixing ratio tendency from sedimentation'           )
+   call addfld ('QRSEDTEN', (/ 'trop_cld_lev' /), 'A', 'kg/kg/s', 'Rain mixing ratio tendency from sedimentation'           )
+   call addfld ('QSSEDTEN', (/ 'trop_cld_lev' /), 'A', 'kg/kg/s', 'Snow mixing ratio tendency from sedimentation'           )
 
 
    if (micro_mg_version > 2) then
@@ -993,7 +993,7 @@ subroutine micro_pumas_cam_init(pbuf2d)
          call addfld ('PRDGO',     (/ 'lev' /), 'A', 'kg/kg/s',  'Deposition of graupel')
          call addfld ('QMULTGO',   (/ 'lev' /), 'A', 'kg/kg/s',  'Q change due to ice mult droplets/graupel')
          call addfld ('QMULTRGO',  (/ 'lev' /), 'A', 'kg/kg/s',  'Q change due to ice mult rain/graupel')
-         call addfld ('QGSEDTEN',  (/ 'lev' /), 'A', 'kg/kg/s',  'Graupel/Hail mixing ratio tendency from sedimentation')
+         call addfld ('QGSEDTEN',  (/ 'trop_cld_lev' /), 'A', 'kg/kg/s',  'Graupel/Hail mixing ratio tendency from sedimentation')
          call addfld ('NPRACGO',     (/ 'lev' /), 'A', 'kg/kg/s',  'Change N collection rain by graupel')
          call addfld ('NSCNGO', (/'lev'/),'A','kg/kg/s','Change N conversion to graupel due to collection droplets by snow')
          call addfld ('NGRACSO',(/'lev'/),'A','kg/kg/s','Change N conversion to graupel due to collection rain by snow')
@@ -1134,7 +1134,7 @@ subroutine micro_pumas_cam_init(pbuf2d)
    call addfld('UMS', (/ 'lev' /), 'A',   'm/s', 'Mass-weighted snow fallspeed'               )
 
    if (micro_mg_version > 2) then
-      call addfld('UMG',    (/ 'lev' /), 'A',   'm/s', 'Mass-weighted graupel/hail  fallspeed'                    )
+      call addfld('UMG',    (/ 'trop_cld_lev' /), 'A',   'm/s', 'Mass-weighted graupel/hail  fallspeed'                    )
       call addfld ('FREQG', (/ 'lev' /),  'A', 'fraction', 'Fractional occurrence of Graupel'                     )
       call addfld ('LS_REFFGRAU', (/ 'lev' /),  'A', 'micron',   'ls stratiform graupel/hail effective radius'    )
       call addfld ('AQGRAU',      (/ 'lev' /),  'A', 'kg/kg',    'Average graupel/hail mixing ratio'              )
@@ -1419,8 +1419,6 @@ subroutine micro_pumas_cam_tend(state, ptend, dtime, pbuf)
    real(r8)  :: prect(state%psetcols)
    real(r8)  :: preci(state%psetcols)
    real(r8)  :: am_evp_st(state%psetcols,pver)  ! Area over which precip evaporates
-!   real(r8)  :: evapsnow(state%psetcols,pver)   ! Local evaporation of snow
-!   real(r8)  :: prodsnow(state%psetcols,pver)   ! Local production of snow
    real(r8)  :: cmeice(state%psetcols,pver)     ! Rate of cond-evap of ice within the cloud
    real(r8)  :: qsout(state%psetcols,pver)      ! Snow mixing ratio
    real(r8)  :: cflx(state%psetcols,pverp)      ! grid-box avg liq condensate flux (kg m^-2 s^-1)
@@ -1429,20 +1427,6 @@ subroutine micro_pumas_cam_tend(state, ptend, dtime, pbuf)
    real(r8)  :: sflx(state%psetcols,pverp)      ! grid-box average snow flux (kg m^-2 s^-1)
    real(r8)  :: gflx(state%psetcols,pverp)      ! grid-box average snow flux (kg m^-2 s^-1)
    real(r8)  :: qrout(state%psetcols,pver)      ! Rain mixing ratio
-   real(r8)  :: qcsevap(state%psetcols,pver)    ! Evaporation of falling cloud water
-   real(r8)  :: qisevap(state%psetcols,pver)    ! Sublimation of falling cloud ice
-   real(r8)  :: qvres(state%psetcols,pver)      ! Residual condensation term to remove excess saturation
-   real(r8)  :: cmeiout(state%psetcols,pver)    ! Deposition/sublimation rate of cloud ice
-   real(r8)  :: vtrmc(state%psetcols,pver)      ! Mass-weighted cloud water fallspeed
-   real(r8)  :: vtrmi(state%psetcols,pver)      ! Mass-weighted cloud ice fallspeed
-   real(r8)  :: umr(state%psetcols,pver)        ! Mass-weighted rain fallspeed
-   real(r8)  :: ums(state%psetcols,pver)        ! Mass-weighted snow fallspeed
-   real(r8)  :: qcsedten(state%psetcols,pver)   ! Cloud water mixing ratio tendency from sedimentation
-   real(r8)  :: qisedten(state%psetcols,pver)   ! Cloud ice mixing ratio tendency from sedimentation
-   real(r8)  :: qrsedten(state%psetcols,pver)   ! Rain mixing ratio tendency from sedimentation
-   real(r8)  :: qssedten(state%psetcols,pver)   ! Snow mixing ratio tendency from sedimentation
-   real(r8)  :: qgsedten(state%psetcols,pver)   ! Graupel/Hail mixing ratio tendency from sedimentation
-   real(r8)  :: umg(state%psetcols,pver)        ! Mass-weighted Graupel/Hail fallspeed
 
    real(r8)  :: prao(state%psetcols,pver)
    real(r8)  :: prco(state%psetcols,pver)
@@ -1692,7 +1676,7 @@ subroutine micro_pumas_cam_tend(state, ptend, dtime, pbuf)
    real(r8) :: homoo_grid(pcols,pver)
    real(r8) :: msacwio_grid(pcols,pver)
    real(r8) :: psacwso_grid(pcols,pver)
-   real(r8) :: cmeiout_grid(pcols,pver)
+   real(r8) :: cmeitot_grid(pcols,pver)
    real(r8) :: qireso_grid(pcols,pver)
    real(r8) :: prcio_grid(pcols,pver)
    real(r8) :: praio_grid(pcols,pver)
@@ -2159,20 +2143,20 @@ subroutine micro_pumas_cam_tend(state, ptend, dtime, pbuf)
    reff_rain_dum(:ncol,:top_lev-1)=0._r8
    reff_snow_dum(:ncol,:top_lev-1)=0._r8
    reff_grau_dum(:ncol,:top_lev-1)=0._r8
-   qcsevap(:ncol,:top_lev-1)=0._r8
-   qisevap(:ncol,:top_lev-1)=0._r8
-   qvres(:ncol,:top_lev-1)=0._r8
-   cmeiout(:ncol,:top_lev-1)=0._r8
-   vtrmc(:ncol,:top_lev-1)=0._r8
-   vtrmi(:ncol,:top_lev-1)=0._r8
-   umr(:ncol,:top_lev-1)=0._r8
-   ums(:ncol,:top_lev-1)=0._r8
-   umg(:ncol,:top_lev-1)=0._r8
-   qgsedten(:ncol,:top_lev-1)=0._r8
-   qcsedten(:ncol,:top_lev-1)=0._r8
-   qisedten(:ncol,:top_lev-1)=0._r8
-   qrsedten(:ncol,:top_lev-1)=0._r8
-   qssedten(:ncol,:top_lev-1)=0._r8
+   proc_rates%qcsevap(:ncol,:top_lev-1)=0._r8
+   proc_rates%qisevap(:ncol,:top_lev-1)=0._r8
+   proc_rates%qvres(:ncol,:top_lev-1)=0._r8
+   proc_rates%cmeitot(:ncol,:top_lev-1)=0._r8
+   proc_rates%vtrmc(:ncol,:top_lev-1)=0._r8
+   proc_rates%vtrmi(:ncol,:top_lev-1)=0._r8
+   proc_rates%umr(:ncol,:top_lev-1)=0._r8
+   proc_rates%ums(:ncol,:top_lev-1)=0._r8
+   proc_rates%umg(:ncol,:top_lev-1)=0._r8
+   proc_rates%qgsedten(:ncol,:top_lev-1)=0._r8
+   proc_rates%qcsedten(:ncol,:top_lev-1)=0._r8
+   proc_rates%qisedten(:ncol,:top_lev-1)=0._r8
+   proc_rates%qrsedten(:ncol,:top_lev-1)=0._r8
+   proc_rates%qssedten(:ncol,:top_lev-1)=0._r8
    prao(:ncol,:top_lev-1)=0._r8
    prco(:ncol,:top_lev-1)=0._r8
    mnuccco(:ncol,:top_lev-1)=0._r8
@@ -2277,12 +2261,6 @@ subroutine micro_pumas_cam_tend(state, ptend, dtime, pbuf)
               gflx(:ncol,top_lev:),                                    &
               rflx(:ncol,top_lev:),    sflx(:ncol,top_lev:),    qrout(:ncol,top_lev:),   &
               reff_rain_dum(:ncol,top_lev:),          reff_snow_dum(:ncol,top_lev:),   reff_grau_dum(:ncol,top_lev:),       &
-              qcsevap(:ncol,top_lev:), qisevap(:ncol,top_lev:), qvres(:ncol,top_lev:),   &
-              cmeiout(:ncol,top_lev:),    vtrmc(:ncol,top_lev:),   vtrmi(:ncol,top_lev:),   &
-              umr(:ncol,top_lev:),             ums(:ncol,top_lev:),             &
-              umg(:ncol,top_lev:),             qgsedten(:ncol,top_lev:),        &
-              qcsedten(:ncol,top_lev:),        qisedten(:ncol,top_lev:),        &
-              qrsedten(:ncol,top_lev:),        qssedten(:ncol,top_lev:),        &
               prao(:ncol,top_lev:),             prco(:ncol,top_lev:),             &
               mnuccco(:ncol,top_lev:),  mnuccto(:ncol,top_lev:),  msacwio(:ncol,top_lev:),  &
               psacwso(:ncol,top_lev:),  bergso(:ncol,top_lev:),   vapdepso(:ncol,top_lev:), bergo(:ncol,top_lev:),    &
@@ -2413,7 +2391,7 @@ subroutine micro_pumas_cam_tend(state, ptend, dtime, pbuf)
    end if
 
    ! Sedimentation velocity for liquid stratus cloud droplet
-   wsedl(:ncol,top_lev:pver) = vtrmc(:ncol,top_lev:pver)
+   wsedl(:ncol,top_lev:pver) = proc_rates%vtrmc(:ncol,top_lev:pver)
 
    ! Microphysical tendencies for use in the macrophysics at the next time step
    CC_T(:ncol,top_lev:pver)    = tlat(:ncol,top_lev:pver)/cpair
@@ -2426,7 +2404,7 @@ subroutine micro_pumas_cam_tend(state, ptend, dtime, pbuf)
 
    ! Net micro_pumas_cam condensation rate
    qme(:ncol,:top_lev-1) = 0._r8
-   qme(:ncol,top_lev:pver) = cmeliq(:ncol,top_lev:pver) + cmeiout(:ncol,top_lev:pver)
+   qme(:ncol,top_lev:pver) = cmeliq(:ncol,top_lev:pver) + proc_rates%cmeitot(:ncol,top_lev:pver)
 
    bergso(:ncol,:top_lev-1) = 0._r8
 
@@ -2563,7 +2541,7 @@ subroutine micro_pumas_cam_tend(state, ptend, dtime, pbuf)
       call subcol_field_avg(homoo,     ngrdcol, lchnk, homoo_grid)
       call subcol_field_avg(msacwio,   ngrdcol, lchnk, msacwio_grid)
       call subcol_field_avg(psacwso,   ngrdcol, lchnk, psacwso_grid)
-      call subcol_field_avg(cmeiout,   ngrdcol, lchnk, cmeiout_grid)
+      call subcol_field_avg(proc_rates%cmeitot,   ngrdcol, lchnk, cmeitot_grid)
       call subcol_field_avg(qireso,    ngrdcol, lchnk, qireso_grid)
       call subcol_field_avg(prcio,     ngrdcol, lchnk, prcio_grid)
       call subcol_field_avg(praio,     ngrdcol, lchnk, praio_grid)
@@ -2580,12 +2558,12 @@ subroutine micro_pumas_cam_tend(state, ptend, dtime, pbuf)
       call subcol_field_avg(state_loc%q(:,:,ixnumliq), ngrdcol, lchnk, nc_grid)
       call subcol_field_avg(state_loc%q(:,:,ixnumice), ngrdcol, lchnk, ni_grid)
 
-      call subcol_field_avg(qcsedten,  ngrdcol, lchnk, qcsedtenout_grid)
-      call subcol_field_avg(qisedten,  ngrdcol, lchnk, qisedtenout_grid)
-      call subcol_field_avg(vtrmc,     ngrdcol, lchnk, vtrmcout_grid)
-      call subcol_field_avg(vtrmi,     ngrdcol, lchnk, vtrmiout_grid)
-      call subcol_field_avg(qcsevap,  ngrdcol, lchnk, qcsevapout_grid)
-      call subcol_field_avg(qisevap,  ngrdcol, lchnk, qisevapout_grid)
+      call subcol_field_avg(proc_rates%qcsedten,  ngrdcol, lchnk, qcsedtenout_grid)
+      call subcol_field_avg(proc_rates%qisedten,  ngrdcol, lchnk, qisedtenout_grid)
+      call subcol_field_avg(proc_rates%vtrmc,     ngrdcol, lchnk, vtrmcout_grid)
+      call subcol_field_avg(proc_rates%vtrmi,     ngrdcol, lchnk, vtrmiout_grid)
+      call subcol_field_avg(proc_rates%qcsevap,  ngrdcol, lchnk, qcsevapout_grid)
+      call subcol_field_avg(proc_rates%qisevap,  ngrdcol, lchnk, qisevapout_grid)
 
       call subcol_field_avg(cldmax,    ngrdcol, lchnk, cldmax_grid)
 
@@ -2593,10 +2571,10 @@ subroutine micro_pumas_cam_tend(state, ptend, dtime, pbuf)
       call subcol_field_avg(state_loc%q(:,:,ixnumrain), ngrdcol, lchnk, nr_grid)
       call subcol_field_avg(state_loc%q(:,:,ixsnow),    ngrdcol, lchnk, qs_grid)
       call subcol_field_avg(state_loc%q(:,:,ixnumsnow), ngrdcol, lchnk, ns_grid)
-      call subcol_field_avg(qrsedten,  ngrdcol, lchnk, qrsedtenout_grid)
-      call subcol_field_avg(qssedten,  ngrdcol, lchnk, qssedtenout_grid)
-      call subcol_field_avg(umr,       ngrdcol, lchnk, umrout_grid)
-      call subcol_field_avg(ums,       ngrdcol, lchnk, umsout_grid)
+      call subcol_field_avg(proc_rates%qrsedten,  ngrdcol, lchnk, qrsedtenout_grid)
+      call subcol_field_avg(proc_rates%qssedten,  ngrdcol, lchnk, qssedtenout_grid)
+      call subcol_field_avg(proc_rates%umr,       ngrdcol, lchnk, umrout_grid)
+      call subcol_field_avg(proc_rates%ums,       ngrdcol, lchnk, umsout_grid)
 
       if (micro_mg_version > 2) then
             call subcol_field_avg(state_loc%q(:,:,ixgraupel),    ngrdcol, lchnk, qg_grid)
@@ -2658,7 +2636,7 @@ subroutine micro_pumas_cam_tend(state, ptend, dtime, pbuf)
       homoo_grid      = homoo
       msacwio_grid    = msacwio
       psacwso_grid    = psacwso
-      cmeiout_grid    = cmeiout
+      cmeitot_grid(:,top_lev:)    = proc_rates%cmeitot
       qireso_grid     = qireso
       prcio_grid      = prcio
       praio_grid      = praio
@@ -2675,12 +2653,12 @@ subroutine micro_pumas_cam_tend(state, ptend, dtime, pbuf)
       nc_grid = state_loc%q(:,:,ixnumliq)
       ni_grid = state_loc%q(:,:,ixnumice)
 
-      qcsedtenout_grid = qcsedten
-      qisedtenout_grid = qisedten
-      vtrmcout_grid    = vtrmc
-      vtrmiout_grid    = vtrmi
-      qcsevapout_grid = qcsevap
-      qisevapout_grid = qisevap
+      qcsedtenout_grid(:,top_lev:) = proc_rates%qcsedten
+      qisedtenout_grid(:,top_lev:) = proc_rates%qisedten
+      vtrmcout_grid(:,top_lev:)    = proc_rates%vtrmc
+      vtrmiout_grid(:,top_lev:)    = proc_rates%vtrmi
+      qcsevapout_grid(:,top_lev:) = proc_rates%qcsevap
+      qisevapout_grid(:,top_lev:) = proc_rates%qisevap
 
       cldmax_grid = cldmax
 
@@ -2688,10 +2666,10 @@ subroutine micro_pumas_cam_tend(state, ptend, dtime, pbuf)
       nr_grid = state_loc%q(:,:,ixnumrain)
       qs_grid = state_loc%q(:,:,ixsnow)
       ns_grid = state_loc%q(:,:,ixnumsnow)
-      qrsedtenout_grid = qrsedten
-      qssedtenout_grid = qssedten
-      umrout_grid      = umr
-      umsout_grid      = ums
+      qrsedtenout_grid(:,top_lev:) = proc_rates%qrsedten
+      qssedtenout_grid(:,top_lev:) = proc_rates%qssedten
+      umrout_grid(:,top_lev:) = proc_rates%umr
+      umsout_grid(:,top_lev:) = proc_rates%ums
 
 ! Zero out terms for budgets if not mg3....
       psacwgo_grid = 0._r8
@@ -3159,7 +3137,7 @@ subroutine micro_pumas_cam_tend(state, ptend, dtime, pbuf)
 
    call outfld( 'MPDW2P', ftem_grid, pcols, lchnk)
 
-   ftem_grid(:ngrdcol,top_lev:pver) =  cmeiout_grid(:ngrdcol,top_lev:pver) + qireso_grid(:ngrdcol,top_lev:pver)
+   ftem_grid(:ngrdcol,top_lev:pver) =  cmeitot_grid(:ngrdcol,top_lev:pver) + qireso_grid(:ngrdcol,top_lev:pver)
    call outfld( 'MPDI2V', ftem_grid, pcols, lchnk)
 
    if (micro_mg_version > 2) then
@@ -3204,15 +3182,15 @@ subroutine micro_pumas_cam_tend(state, ptend, dtime, pbuf)
    call outfld('MPDNLIQ',     ncten,       psetcols, lchnk, avg_subcol_field=use_subcol_microp)
    call outfld('MPDNICE',     niten,       psetcols, lchnk, avg_subcol_field=use_subcol_microp)
    call outfld('EVAPSNOW',    proc_rates%evapsnow,    psetcols, lchnk, avg_subcol_field=use_subcol_microp)
-   call outfld('QCSEVAP',     qcsevap,     psetcols, lchnk, avg_subcol_field=use_subcol_microp)
-   call outfld('QISEVAP',     qisevap,     psetcols, lchnk, avg_subcol_field=use_subcol_microp)
-   call outfld('QVRES',       qvres,       psetcols, lchnk, avg_subcol_field=use_subcol_microp)
-   call outfld('VTRMC',       vtrmc,       psetcols, lchnk, avg_subcol_field=use_subcol_microp)
-   call outfld('VTRMI',       vtrmi,       psetcols, lchnk, avg_subcol_field=use_subcol_microp)
-   call outfld('QCSEDTEN',    qcsedten,    psetcols, lchnk, avg_subcol_field=use_subcol_microp)
-   call outfld('QISEDTEN',    qisedten,    psetcols, lchnk, avg_subcol_field=use_subcol_microp)
-   call outfld('QRSEDTEN',    qrsedten,    psetcols, lchnk, avg_subcol_field=use_subcol_microp)
-   call outfld('QSSEDTEN',    qssedten,    psetcols, lchnk, avg_subcol_field=use_subcol_microp)
+   call outfld('QCSEVAP',     proc_rates%qcsevap,     psetcols, lchnk, avg_subcol_field=use_subcol_microp)
+   call outfld('QISEVAP',     proc_rates%qisevap,     psetcols, lchnk, avg_subcol_field=use_subcol_microp)
+   call outfld('QVRES',       proc_rates%qvres,       psetcols, lchnk, avg_subcol_field=use_subcol_microp)
+   call outfld('VTRMC',       proc_rates%vtrmc,       psetcols, lchnk, avg_subcol_field=use_subcol_microp)
+   call outfld('VTRMI',       proc_rates%vtrmi,       psetcols, lchnk, avg_subcol_field=use_subcol_microp)
+   call outfld('QCSEDTEN',    proc_rates%qcsedten,    psetcols, lchnk, avg_subcol_field=use_subcol_microp)
+   call outfld('QISEDTEN',    proc_rates%qisedten,    psetcols, lchnk, avg_subcol_field=use_subcol_microp)
+   call outfld('QRSEDTEN',    proc_rates%qrsedten,    psetcols, lchnk, avg_subcol_field=use_subcol_microp)
+   call outfld('QSSEDTEN',    proc_rates%qssedten,    psetcols, lchnk, avg_subcol_field=use_subcol_microp)
    call outfld('MNUCCRIO',    mnuccrio,    psetcols, lchnk, avg_subcol_field=use_subcol_microp)
    call outfld('MNUDEPO',    mnudepo,    psetcols, lchnk, avg_subcol_field=use_subcol_microp)
    call outfld('MELTSTOT',    meltstot,    psetcols, lchnk, avg_subcol_field=use_subcol_microp)
@@ -3226,14 +3204,14 @@ subroutine micro_pumas_cam_tend(state, ptend, dtime, pbuf)
    call outfld('FICE',        nfice,       psetcols, lchnk, avg_subcol_field=use_subcol_microp)
    call outfld('CLDFSNOW',    cldfsnow,    psetcols, lchnk, avg_subcol_field=use_subcol_microp)
 
-   call outfld('UMR',      umr,         psetcols, lchnk, avg_subcol_field=use_subcol_microp)
-   call outfld('UMS',      ums,         psetcols, lchnk, avg_subcol_field=use_subcol_microp)
+   call outfld('UMR',      proc_rates%umr,         psetcols, lchnk, avg_subcol_field=use_subcol_microp)
+   call outfld('UMS',      proc_rates%ums,         psetcols, lchnk, avg_subcol_field=use_subcol_microp)
 
    call outfld('QCRAT',    qcrat,       psetcols, lchnk, avg_subcol_field=use_subcol_microp)
 
    if (micro_mg_version > 2) then
-      call outfld('UMG',        umg,         psetcols, lchnk, avg_subcol_field=use_subcol_microp)
-      call outfld('QGSEDTEN',   qgsedten,         psetcols, lchnk, avg_subcol_field=use_subcol_microp)
+      call outfld('UMG',        proc_rates%umg,         psetcols, lchnk, avg_subcol_field=use_subcol_microp)
+      call outfld('QGSEDTEN',   proc_rates%qgsedten,         psetcols, lchnk, avg_subcol_field=use_subcol_microp)
       call outfld('FREQG',       freqg,       psetcols, lchnk, avg_subcol_field=use_subcol_microp)
       call outfld('AQGRAU',      qgout2,      psetcols, lchnk, avg_subcol_field=use_subcol_microp)
       call outfld('ANGRAU',      ngout2,      psetcols, lchnk, avg_subcol_field=use_subcol_microp)
@@ -3295,7 +3273,7 @@ subroutine micro_pumas_cam_tend(state, ptend, dtime, pbuf)
    call outfld('MG_SADSNOW',  sadsnow_grid,     pcols, lchnk)
    call outfld('ICIMRST',     icimrst_grid_out, pcols, lchnk)
    call outfld('ICWMRST',     icwmrst_grid_out, pcols, lchnk)
-   call outfld('CMEIOUT',     cmeiout_grid,     pcols, lchnk)
+   call outfld('CMEIOUT',     cmeitot_grid,     pcols, lchnk)
    call outfld('PRAO',        prao_grid,        pcols, lchnk)
    call outfld('PRCO',        prco_grid,        pcols, lchnk)
    call outfld('MNUCCCO',     mnuccco_grid,     pcols, lchnk)
