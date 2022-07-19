@@ -46,7 +46,7 @@ contains
 
   integer function get_inv_ndx( invariant )
     !-----------------------------------------------------------------------
-    !     ... return overall external frcing index associated with spc_name
+    !     ... return overall invariant index associated with spc_name
     !-----------------------------------------------------------------------
 
     use chem_mods,  only : nfs, inv_lst

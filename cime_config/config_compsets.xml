@@ -557,6 +557,8 @@
  	<value  compset="_CAM.*%SDYN" grid="a%0.47x0.63">2010-01-01</value>
 	<value  compset="_CAM60%(WCCM|WCTS|WXIE).*%SDYN">1980-01-01</value>
  	<value  compset="_CAM40%WX.*%SDYN">2000-01-01</value>
+        <value  compset="2000_CAM60%GC">2000-01-01</value>
+        <value  compset="2010_CAM60%GC">2010-01-01</value>
 
 	<value  compset="C2R4_CAM">2004-01-01</value>
 	<value  compset="C2R[68]_CAM">1950-01-01</value>

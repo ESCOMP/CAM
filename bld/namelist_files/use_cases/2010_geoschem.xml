@@ -10,36 +10,6 @@
 
 <ncdata dyn="fv"  hgrid="1.9x2.5">/glade/p/univ/umit0034/Shared/GEOS-Chem/f.e20.FC2010.f19_f19.144.GC_vbsext.001.cam.i.0007-01-01-00000.nc</ncdata>
 
-<!-- for emssions -->
-<cam_physics_mesh hgrid="0.9x1.25">/glade/p/cesmdata/cseg/inputdata/atm/cam/coords/fv0.9x1.25_esmf_141008.nc'</cam_physics_mesh>
-
-<cam_physics_mesh hgrid="1.9x2.5">/glade/p/cesmdata/cseg/inputdata/atm/cam/coords/fv1.9x2.5_esmf_141008.nc'</cam_physics_mesh>
-
-<!-- turn on clm MEGAN VOC emis -->
-<megan_specifier>
-    'ISOP = isoprene',
-    'MOH = methanol', 
-    'EOH = ethanol',
-    'CH2O = formaldehyde',
-    'ALD2 = acetaldehyde', 
-    'ACTA = acetic_acid',
-    'ACET = acetone',
-    'HCOOH = formic_acid', 
-    'HCN = hydrogen_cyanide',
-    'CO = carbon_monoxide',
-    'C2H6 = ethane',
-    'C2H4 = ethene',
-    'C3H8 = propane',
-    'ALK4 = pentane + hexane + heptane + tricyclene', 
-    'PRPE = propene + butene',
-    'TOLU = toluene',
-    'LIMO = limonene',
-    'MTPA = pinene_a + pinene_b + sabinene + carene_3',
-    'MTPO = terpinene_g + terpinene_a + terpinolene + myrcene + ocimene_al + ocimene_t_b + ocimene_c_b + thujene_a + 2met_styrene + cymene_p + cymene_o + bornene + fenchene_a + camphene + phellandrene_a + phellandrene_b'
-</megan_specifier>
-
-<drydep_method>'xactive_lnd'</drydep_method>
-
 <!-- Settings mostly in common with 2010_trop_strat_vbs_cam6.xml -->
 
 <start_ymd>00010101</start_ymd>
@@ -62,16 +32,6 @@
 
 <!-- The below lines are not commented out in 2010_trop_strat_vbs_cam6.xml (*=many pointers) -->
 <!-- <prescribed_strataero_cycle_yr>2010</prescribed_strataero_cycle_yr> -->
-<!-- <ext_frc_type>CYCLICAL</ext_frc_type> -->
-<!-- <ext_frc_cycle_yr>2010</ext_frc_cycle_yr> -->
-<!-- <ext_frc_specifier> * </ext_frc_specifier -->
-<!-- <ext_frc_specifier hgrid="ne30np4"> * </ext_frc_specifier> -->
-<!-- <ext_frc_specifier hgrid="ne30np4" npg="3"> * </ext_frc_specifier> -->
-<!-- <srf_emis_type>CYCLICAL</srf_emis_type> -->
-<!-- <srf_emis_cycle_yr>2010</srf_emis_cycle_yr> -->
-<!-- <srf_emis_specifier> * </srf_emis_specifier> -->
-<!-- <srf_emis_specifier hgrid="ne30np4"> * </srf_emis_specifier> -->
-<!-- <srf_emis_specifier hgrid="ne30np4" npg="3"> * </srf_emis_specifier> -->
 <!-- <ndep_list>'noy', 'nhx'</ndep_list>-->
 
 <!-- History Files -->

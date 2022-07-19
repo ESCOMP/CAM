@@ -171,19 +171,19 @@ module chemistry
 !  character(len=shr_kind_cl) :: depvel_file     = ''
 !  character(len=shr_kind_cl) :: depvel_lnd_file = 'depvel_lnd_file'
 !  character(len=shr_kind_cl) :: season_wes_file = 'season_wes_file'
-
-  character(len=shr_kind_cl) :: srf_emis_specifier(pcnst) = ''
-  character(len=shr_kind_cl) :: ext_frc_specifier(pcnst) = ''
-
-  character(len=24)          :: srf_emis_type = 'CYCLICAL' ! 'CYCLICAL' | 'SERIAL' |  'INTERP_MISSING_MONTHS'
-  integer                    :: srf_emis_cycle_yr  = 0
-  integer                    :: srf_emis_fixed_ymd = 0
-  integer                    :: srf_emis_fixed_tod = 0
-
-  character(len=24)          :: ext_frc_type = 'CYCLICAL' ! 'CYCLICAL' | 'SERIAL' |  'INTERP_MISSING_MONTHS'
-  integer                    :: ext_frc_cycle_yr  = 0
-  integer                    :: ext_frc_fixed_ymd = 0
-  integer                    :: ext_frc_fixed_tod = 0
+!
+!  character(len=shr_kind_cl) :: srf_emis_specifier(pcnst) = ''
+!  character(len=shr_kind_cl) :: ext_frc_specifier(pcnst) = ''
+!
+!  character(len=24)          :: srf_emis_type = 'CYCLICAL' ! 'CYCLICAL' | 'SERIAL' |  'INTERP_MISSING_MONTHS'
+!  integer                    :: srf_emis_cycle_yr  = 0
+!  integer                    :: srf_emis_fixed_ymd = 0
+!  integer                    :: srf_emis_fixed_tod = 0
+!
+!  character(len=24)          :: ext_frc_type = 'CYCLICAL' ! 'CYCLICAL' | 'SERIAL' |  'INTERP_MISSING_MONTHS'
+!  integer                    :: ext_frc_cycle_yr  = 0
+!  integer                    :: ext_frc_fixed_ymd = 0
+!  integer                    :: ext_frc_fixed_tod = 0
 
 
 !================================================================================================
@@ -691,20 +691,21 @@ contains
     LOGICAL                      :: validSLS
 
 ! ewl: remove 4 entries from chem_inparm used for dry deposition:
-!      clim_soilw_file, depvel_file, depvel_lnd_file, season_wes_file
+!      clim_soilw_file, depvel_file, depvel_lnd_file, season_wes_file;
+!      remove ext_frc_ and srf_emis_ ones too.
     ! The following files are required to compute land maps, required to perform
     ! aerosol dry deposition
-    namelist /chem_inparm/ lght_no_prd_factor, &
-                           ext_frc_specifier,  &
-                           ext_frc_type,       &
-                           ext_frc_cycle_yr,   &
-                           ext_frc_fixed_ymd,  &
-                           ext_frc_fixed_tod,  &
-                           srf_emis_specifier, &
-                           srf_emis_cycle_yr,  &
-                           srf_emis_fixed_ymd, &
-                           srf_emis_fixed_tod, &
-                           srf_emis_type
+    namelist /chem_inparm/ lght_no_prd_factor
+!                           ext_frc_specifier,  &
+!                           ext_frc_type,       &
+!                           ext_frc_cycle_yr,   &
+!                           ext_frc_fixed_ymd,  &
+!                           ext_frc_fixed_tod,  &
+!                           srf_emis_specifier, &
+!                           srf_emis_cycle_yr,  &
+!                           srf_emis_fixed_ymd, &
+!                           srf_emis_fixed_tod, &
+!                           srf_emis_type
 
     ! ghg chem
 
@@ -867,7 +868,7 @@ contains
 
     ! Broadcast namelist variables
 
-! ewl: remove broadcast of 4 files used for dry deposition only
+! ewl: remove broadcast of 4 files used for dry deposition only; srf_emis and ext_frc too.
     ! The following files are required to compute land maps, required to perform
     ! aerosol dry deposition
 !    CALL MPIBCAST (depvel_lnd_file, LEN(depvel_lnd_file), MPICHAR, 0, MPICOM)
@@ -876,16 +877,16 @@ contains
 
     CALL MPIBCAST (lght_no_prd_factor, 1,                                MPIR8,   0, MPICOM)
 !    CALL MPIBCAST (depvel_file,        LEN(depvel_file),                 MPICHAR, 0, MPICOM)
-    CALL MPIBCAST (srf_emis_specifier, LEN(srf_emis_specifier(1))*pcnst, MPICHAR, 0, MPICOM)
-    CALL MPIBCAST (srf_emis_type,      LEN(srf_emis_type),               MPICHAR, 0, MPICOM)
-    CALL MPIBCAST (srf_emis_cycle_yr,  1,                                MPIINT,  0, MPICOM)
-    CALL MPIBCAST (srf_emis_fixed_ymd, 1,                                MPIINT,  0, MPICOM)
-    CALL MPIBCAST (srf_emis_fixed_tod, 1,                                MPIINT,  0, MPICOM)
-    CALL MPIBCAST (ext_frc_specifier,  LEN(ext_frc_specifier(1))*pcnst,  MPICHAR, 0, MPICOM)
-    CALL MPIBCAST (ext_frc_type,       LEN(ext_frc_type),                MPICHAR, 0, MPICOM)
-    CALL MPIBCAST (ext_frc_cycle_yr,   1,                                MPIINT,  0, MPICOM)
-    CALL MPIBCAST (ext_frc_fixed_ymd,  1,                                MPIINT,  0, MPICOM)
-    CALL MPIBCAST (ext_frc_fixed_tod,  1,                                MPIINT,  0, MPICOM)
+!    CALL MPIBCAST (srf_emis_specifier, LEN(srf_emis_specifier(1))*pcnst, MPICHAR, 0, MPICOM)
+!    CALL MPIBCAST (srf_emis_type,      LEN(srf_emis_type),               MPICHAR, 0, MPICOM)
+!    CALL MPIBCAST (srf_emis_cycle_yr,  1,                                MPIINT,  0, MPICOM)
+!    CALL MPIBCAST (srf_emis_fixed_ymd, 1,                                MPIINT,  0, MPICOM)
+!    CALL MPIBCAST (srf_emis_fixed_tod, 1,                                MPIINT,  0, MPICOM)
+!    CALL MPIBCAST (ext_frc_specifier,  LEN(ext_frc_specifier(1))*pcnst,  MPICHAR, 0, MPICOM)
+!    CALL MPIBCAST (ext_frc_type,       LEN(ext_frc_type),                MPICHAR, 0, MPICOM)
+!    CALL MPIBCAST (ext_frc_cycle_yr,   1,                                MPIINT,  0, MPICOM)
+!    CALL MPIBCAST (ext_frc_fixed_ymd,  1,                                MPIINT,  0, MPICOM)
+!    CALL MPIBCAST (ext_frc_fixed_tod,  1,                                MPIINT,  0, MPICOM)
 
     CALL MPIBCAST (ghg_chem,           1,                                MPILOG,  0, MPICOM)
     CALL MPIBCAST (bndtvg,             LEN(bndtvg),                      MPICHAR, 0, MPICOM)

@@ -12,36 +12,6 @@
 
 <ncdata dyn="fv"  hgrid="1.9x2.5">/glade/p/univ/umit0034/Shared/GEOS-Chem/f.e20.FC2010.f19_f19.144.GC_vbsext.001.cam.i.0007-01-01-00000.nc</ncdata>
 
-<!-- for emissions -->
-<cam_physics_mesh hgrid="0.9x1.25">/glade/p/cesmdata/cseg/inputdata/atm/cam/coords/fv0.9x1.25_esmf_141008.nc'</cam_physics_mesh>
-
-<cam_physics_mesh hgrid="1.9x2.5">/glade/p/cesmdata/cseg/inputdata/atm/cam/coords/fv1.9x2.5_esmf_141008.nc'</cam_physics_mesh>
-
-<!-- turn on clm MEGAN VOC emis -->
-<megan_specifier>
-    'ISOP = isoprene',
-    'MOH = methanol', 
-    'EOH = ethanol',
-    'CH2O = formaldehyde',
-    'ALD2 = acetaldehyde', 
-    'ACTA = acetic_acid',
-    'ACET = acetone',
-    'HCOOH = formic_acid', 
-    'HCN = hydrogen_cyanide',
-    'CO = carbon_monoxide',
-    'C2H6 = ethane',
-    'C2H4 = ethene',
-    'C3H8 = propane',
-    'ALK4 = pentane + hexane + heptane + tricyclene', 
-    'PRPE = propene + butene',
-    'TOLU = toluene',
-    'LIMO = limonene',
-    'MTPA = pinene_a + pinene_b + sabinene + carene_3',
-    'MTPO = terpinene_g + terpinene_a + terpinolene + myrcene + ocimene_al + ocimene_t_b + ocimene_c_b + thujene_a + 2met_styrene + cymene_p + cymene_o + bornene + fenchene_a + camphene + phellandrene_a + phellandrene_b'
-</megan_specifier>
-
-<drydep_method>'xactive_lnd'</drydep_method>
-
 <!-- Settings mostly in common with 2000_trop_strat_vbs_cam6.xml -->
 
 <start_ymd>00010101</start_ymd>
@@ -64,21 +34,6 @@
 
 <!-- The below line is not commented out in 2000_trop_strat_vbs_cam6.xml -->
 <!-- <prescribed_strataero_cycle_yr>2000</prescribed_strataero_cycle_yr> -->
-
-<!-- emissions -->
-
-<!-- The below lines are not commented out in 2000_trop_strat_vbs_cam6.xml -->
-<!-- <ext_frc_type>SERIAL</ext_frc_type> --> <!-- Is CYCLICAL in 2000_trop_strat -->
-<!-- <ext_frc_cycle_yr>2000</ext_frc_cycle_yr> -->
-
-<!-- The below line not empty in 2000_trop_strat_vbs_cam6.xml -->
-<ext_frc_specifier></ext_frc_specifier>
-
-<srf_emis_type>'CYCLICAL'</srf_emis_type>
-<srf_emis_cycle_yr>2000</srf_emis_cycle_yr>
-
-<!-- The below line is not commented out and has content in 2000_trop_strat_vbs_cam6.xml -->
-<!-- <srf_emis_specifier></srf_emis_specifier> -->
 
 <!-- The below line is not commented out in 2000_trop_strat_vbs_cam6.xml -->
 <!-- <ndep_list>'noy', 'nhx'</ndep_list> -->
