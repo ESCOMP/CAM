@@ -334,8 +334,10 @@ contains
  !  Call the optional ALI-ARMS.  Note that this does not replace the fomichev
  !  call as the other individual cooling rates from fomichev still need to be calculated
 
-    call t_startf('nlte_aliarms_calc')
     if (nlte_use_aliarms) then
+
+       call t_startf('nlte_aliarms_calc')
+
        call pbuf_get_field(pbuf, qrlaliarms_idx, qrlaliarms )
        ! Only run ALI-ARMS every nlte_aliarms_every_X timesteps
        nstep = get_nstep()
@@ -346,11 +348,12 @@ contains
        ! Apply the ALI-ARMS heating rate to the qrlf summation
        qrlf(:ncol,:) = o3cool(:ncol,:) + qrlaliarms(:ncol,:) * cpairv(:ncol,:,lchnk)
 
+       call t_stopf('nlte_aliarms_calc')
+
     else
        qrlf(:ncol,:) = qrlfomichev(:ncol,:)
     end if
 
-    call t_stopf('nlte_aliarms_calc')
 
 ! do NO cooling
     call nocooling (ncol, state%t, state%pmid, xnommr,xommr,xo2mmr,xo3mmr,xn2mmr,nocool)

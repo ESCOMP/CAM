@@ -14,9 +14,8 @@ module nlte_aliarms
   save
 
 ! Public interfaces
-  public &
-     nlte_aliarms_init, &
-     nlte_aliarms_calc
+  public :: nlte_aliarms_init
+  public :: nlte_aliarms_calc
 
 
   integer(c_int) :: pver_c = -1                ! pver for the ALI_ARMS C code (limited by max_pressure_lw)
@@ -77,6 +76,7 @@ contains
   use physconst,     only: mbarv
   use cam_history,   only: outfld
   use shr_infnan_mod, only: is_nan => shr_infnan_isnan
+  use shr_kind_mod,  only: SHR_KIND_CM
   use cam_abortutils,     only: endrun
 
 ! Input variables
@@ -103,9 +103,10 @@ contains
 
   integer :: icol, iver, i, j
 
-  character (len=160) :: errstring
+  character (len=SHR_KIND_CM) :: errstring
 
   ! Interface to ali C routine
+  ! Note that ali uses single precision C floats, so conversions from r8 to c_float are made before calling ali
   interface
      subroutine ali_(zkm, p, tn, co2_vmr, o_vmr, n2_vmr, o2_vmr, ali_cool, pver_c) bind(c,name='ali_')
         use iso_c_binding, only: c_float, c_int
@@ -148,7 +149,7 @@ contains
   do j=1,pver
      do i=1,ncol
         if (is_nan(cool(i,j))) then
-           write(errstring,*) 'nlte_aliarms_calc: Nan in qrlaliarms for chunk', lchnk
+           write(errstring,*) 'nlte_aliarms_calc: Nan in qrlaliarms for chunk', lchnk, ' column index=',i,' vertical index=',j
            call endrun (errstring)
         end if
      end do
