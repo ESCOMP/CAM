@@ -1,3 +1,4 @@
+#undef CLUBBTOP_OFF
 module clubb_intr
 
   !----------------------------------------------------------------------------------------------------- !
@@ -3506,7 +3507,7 @@ end subroutine clubb_init_cnst
       end do      
     end do 
     
-    
+#ifndef CLUBBTOP_OFF
     !  Compute integrals above layer where CLUBB is active
     se_upper_a(:) = 0._r8   ! energy in layers above where CLUBB is active AFTER CLUBB is called
     se_upper_b(:) = 0._r8   ! energy in layers above where CLUBB is active BEFORE CLUBB is called
@@ -3588,6 +3589,7 @@ end subroutine clubb_init_cnst
         rtm(i,k) = state1%q(i,k,ixq) + rcm(i,k)
       end do    
     end do
+#endif
     
     ! Compute integrals for static energy, kinetic energy, water vapor, and liquid water
     ! after CLUBB is called.  This is for energy conservation purposes.

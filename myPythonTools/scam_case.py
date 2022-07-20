@@ -94,7 +94,14 @@ class scam_case:
         cmd = ( "./case.setup" )
         sp.run(cd0 + cmd   ,    shell=True )
 
-        cmd = ( "cp ../../cime_config/usermods_dirs/scam_STUB/scripts/STUB_iop.nc ./")
+        #cmd = ( "cp ../../cime_config/usermods_dirs/scam_STUB/scripts/STUB_iop.nc ./")
+        #sp.run(cd0 + cmd   ,    shell=True )
+
+        cmd = ( "cp ../../myPythonTools/STUB_iop.nc ./")
+        sp.run(cd0 + cmd   ,    shell=True )
+        cmd = ( "cp ../../myPythonTools/user_nl_cam ./")
+        sp.run(cd0 + cmd   ,    shell=True )
+        cmd = ( "cp ../../myPythonTools/user_nl_cice ./")
         sp.run(cd0 + cmd   ,    shell=True )
 
         cmd = ( "./xmlchange DOUT_S_ROOT='/project/amp/"+user+"/scam/archive/"+case_tag+"'" + ";" +
@@ -140,8 +147,6 @@ class scam_case:
         fob.close()
 
 
-
-
     def spawn_case(self,basecase):
         #---------------------------------------
         #  This function is still under development
@@ -160,7 +165,7 @@ class scam_case:
 
         #---------------------------------
         # These sould be inherited from 
-        # base case
+        # base case or hardwried here
         #---------------------------------
         self.basecase   = base.name
         self.isbasecase = False
@@ -172,6 +177,7 @@ class scam_case:
 
         #-----------------------------------
         # These are specified in scam_drv.py
+        # or scam_ens.py
         #-----------------------------------
         y   = self.startdate[0]
         m   = self.startdate[1]
@@ -203,31 +209,33 @@ class scam_case:
         latstr = str(lat)
         levstr = str(lev)
 
-        case_tag = tag+'_'+case_lev+'_'+case_lon+'_'+case_lat+'_'+case_yr+'-'+case_mon+'-'+case_day
-
+        case_tag  = tag+'_'+case_lev+'_'+case_lon+'_'+case_lat+'_'+case_yr+'-'+case_mon+'-'+case_day
+        self.name = case_tag
         # --------------
         # Clean before making new directory
         #----------------
-        cmd = ("rm -rf "+ base.cime_output_root + "/"+case_tag)
+        cmd = ("rm -rf "+ self.cime_output_root + "/"+case_tag)
         sp.run( cmd , shell=True )
 
-        cmd = ("mkdir -p "+ base.cime_output_root + "/"+case_tag+"/bld")
+        cmd = ("mkdir -p "+ self.cime_output_root + "/"+case_tag+"/bld")
         sp.run( cmd , shell=True )
 
-        cmd = ("cp -r "+ base.cime_output_root + "/" +  base.name +"/run" + " "
-            + base.cime_output_root + "/"+case_tag+"/run")
+        cmd = ("cp -r "+ self.cime_output_root + "/" +  base.name +"/run" + " "
+            + self.cime_output_root + "/"+case_tag+"/run")
         sp.run( cmd , shell=True )
  
-        cmd = ("cp "+ base.cime_output_root + "/" +  base.name +"/bld/cesm.exe" + " "
-            + base.cime_output_root + "/"+case_tag+"/bld/")
+        cmd = ("cp "+ self.cime_output_root + "/" +  base.name +"/bld/cesm.exe" + " "
+            + self.cime_output_root + "/"+case_tag+"/bld/")
         sp.run( cmd , shell=True )
 
-        cmd = ( "cp ../../cime_config/usermods_dirs/scam_STUB/scripts/STUB_iop.nc"  + " "
-            + base.cime_output_root + "/"+case_tag+"/run/")
-
+        cmd = ( "cp ../../myPythonTools/STUB_iop.nc"  + " "
+            + self.cime_output_root + "/"+case_tag+"/run/")
+        sp.run(cmd   ,    shell=True )
+        cmd = ( "cp ../../myPythonTools/ens_run.sh"  + " "
+            + self.cime_output_root + "/"+case_tag+"/run/")
         sp.run(cmd   ,    shell=True )
 
-        cd0 ="cd "+ base.cime_output_root + "/" +  case_tag +"/run ;" 
+        cd0 ="cd "+ self.cime_output_root + "/" +  case_tag +"/run ;" 
 
         cmd = ( 
             "ncap2 --overwrite -s bdate="+case_date+" STUB_iop.nc STUB_iop.nc"+";"+
@@ -236,19 +244,63 @@ class scam_case:
         )
         sp.run(cd0 + cmd   ,    shell=True )
 
-        fili= base.cime_output_root + "/" +  case_tag +"/run/atm_in"
+        fili= self.cime_output_root + "/" +  case_tag +"/run/atm_in"
         tx.nmled(fili,'iopfile','"STUB_iop.nc"')
 
         if (base.coupler=='nuopc'):
-            fili= base.cime_output_root + "/" +  case_tag +"/run/nuopc.runconfig"
+            fili= self.cime_output_root + "/" +  case_tag +"/run/nuopc.runconfig"
             tx.nmled(fili,'case_name',case_tag)
             tx.nmled(fili,'start_ymd',case_date)
             tx.nmled(fili,'scol_lat',latstr)
             tx.nmled(fili,'scol_lon',lonstr)
 
         if (base.coupler=='mct'):
-            fili= base.cime_output_root + "/" +  case_tag +"/run/drv_in"
+            fili= self.cime_output_root + "/" +  case_tag +"/run/drv_in"
             tx.nmled(fili,'case_name',case_tag)
             tx.nmled(fili,'start_ymd',case_date)
             tx.nmled(fili,'scmlat',latstr)
             tx.nmled(fili,'scmlon',lonstr)
+
+    def ensemble_member_run(self):
+        import subprocess as sp
+        import os
+
+        cd0 ="cd "+ self.cime_output_root + "/" +  self.name +"/run ;" 
+        cmd ="/usr/local/torque/bin/qsub ens_run.sh"
+
+        sp.run(cd0 + cmd   ,    shell=True )
+
+    def unpickle_base(self,basecase):
+        #---------------------------------------
+        #  This function is still under development
+        #---------------------------------------
+        import pickle
+
+        fname = '../../cases/'+basecase+'/'+'BaseCaseSelf.pkL'
+        with open( fname, 'rb') as fob:
+            base=pickle.load( fob )
+        fob.close()
+
+        return base
+
+    def changeTag(self,newtag):
+        #---------------------------------------
+        #  This function is still under development
+        #---------------------------------------
+
+        self.tag = newtag
+
+    def changeLon(self,newlon):
+        #---------------------------------------
+        #  This function is still under development
+        #---------------------------------------
+
+        self.scmlon = newlon
+
+    def changeLat(self,newlat):
+        #---------------------------------------
+        #  This function is still under development
+        #---------------------------------------
+
+        self.scmlat = newlat
+

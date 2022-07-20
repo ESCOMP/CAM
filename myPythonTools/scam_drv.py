@@ -7,7 +7,7 @@ import os
 
 argv=sys.argv
 
-case=scm.scam_ens()
+case=scm.scam_case()
 user=os.environ['USER']
 spawncase=False
 
