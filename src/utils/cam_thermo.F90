@@ -279,7 +279,6 @@ CONTAINS
    !***************************************************************************
    !
    subroutine cam_thermo_update(mmr, T, lchnk, ncol, to_moist_factor)
-      use constituents,  only: pcnst
       !-----------------------------------------------------------------------
       ! Update the physics "constants" that vary
       !-------------------------------------------------------------------------
@@ -312,7 +311,7 @@ CONTAINS
       call get_mbarv(mmr(:ncol,:,:), thermodynamic_active_species_idx, &
            mbarv(:ncol,:,lchnk), fact=to_moist_fact(:ncol,:))
       call get_molecular_diff_coef(T(:ncol,:), 1, sponge_factor, kmvis(:ncol,:,lchnk), &
-           kmcnd(:ncol,:,lchnk), pcnst, tracer=mmr(:ncol,:,:), fact=to_moist_fact(:ncol,:),  &
+           kmcnd(:ncol,:,lchnk), tracer=mmr(:ncol,:,:), fact=to_moist_fact(:ncol,:),  &
            active_species_idx_dycore=thermodynamic_active_species_idx)
 
       cappav(:ncol,:,lchnk) = rairv(:ncol,:,lchnk) / cpairv(:ncol,:,lchnk)
@@ -1149,15 +1148,15 @@ CONTAINS
      integer :: jdx
 
      do jdx = 1, SIZE(tracer, 2)
-       if (present(ps)) then
+       if (present(ps) .and. present(ptop)) then
+         call get_dp(tracer(:, jdx, :, :), mixing_ratio, active_species_idx,  &
+                 dp_dry(:, jdx, :), dp(:, jdx, :), ps=ps, ptop=ptop)
+       else if (present(ps)) then
          call get_dp(tracer(:, jdx, :, :), mixing_ratio, active_species_idx,  &
                  dp_dry(:, jdx, :), dp(:, jdx, :), ps=ps)
        else if (present(ptop)) then
          call get_dp(tracer(:, jdx, :, :), mixing_ratio, active_species_idx,  &
                  dp_dry(:, jdx, :), dp(:, jdx, :), ptop=ptop)
-       else if (present(ps) .and. present(ptop)) then
-         call get_dp(tracer(:, jdx, :, :), mixing_ratio, active_species_idx,  &
-                 dp_dry(:, jdx, :), dp(:, jdx, :), ps=ps, ptop=ptop)
        else
          call get_dp(tracer(:, jdx, :, :), mixing_ratio, active_species_idx, &
                  dp_dry(:, jdx, :), dp(:, jdx, :))
@@ -1870,7 +1869,7 @@ CONTAINS
    !
    !*************************************************************************************************************************
    !
-   subroutine get_molecular_diff_coef_1hd(temp, get_at_interfaces, sponge_factor, kmvis, kmcnd, ntrac, &
+   subroutine get_molecular_diff_coef_1hd(temp, get_at_interfaces, sponge_factor, kmvis, kmcnd, &
         tracer, fact, active_species_idx_dycore, mbarv_in)
      use air_composition,  only: dry_air_species_num
 
@@ -1881,7 +1880,6 @@ CONTAINS
      real(r8), intent(in)           :: sponge_factor(:)              ! multiply kmvis and kmcnd with sponge_factor (for sponge layer)
      real(r8), intent(out)          :: kmvis(:,:)
      real(r8), intent(out)          :: kmcnd(:,:)
-     integer , intent(in)           :: ntrac
      real(r8), intent(in)           :: tracer(:,:,:)                 ! tracer array
      integer,  intent(in), optional :: active_species_idx_dycore(:)  ! index of active species in tracer
      real(r8), intent(in), optional :: fact(:,:)                     ! if tracer is in units of mass or moist
@@ -1981,13 +1979,37 @@ CONTAINS
            kmcnd(idx, SIZE(sponge_factor, 1) + 1) = kmcnd(idx, SIZE(sponge_factor, 1))
          end do
        else if (get_at_interfaces == 0) then
+         do kdx = 1, SIZE(sponge_factor, 1)
+           do idx = 1, SIZE(tracer, 1)
+             kmvis(idx, kdx) = 0.0_r8
+             kmcnd(idx, kdx) = 0.0_r8
+             residual = 1.0_r8
+             do icnst = 1, dry_air_species_num - 1
+               ispecies = idx_local(icnst)
+               mm = tracer(idx, kdx, ispecies) * factor(idx, kdx)
+               kmvis(idx, kdx) = kmcnd(idx, kdx) + thermodynamic_active_species_kv(icnst) * &
+                                 thermodynamic_active_species_mwi(icnst) * mm
+               kmcnd(idx, kdx) = kmcnd(idx, kdx) + thermodynamic_active_species_kc(icnst) * &
+                                 thermodynamic_active_species_mwi(icnst) * mm
+               residual        = residual - mm
+             end do
+             icnst = dry_air_species_num
+             kmvis(idx, kdx) = kmvis(idx, kdx) + thermodynamic_active_species_kv(icnst) * &
+                               thermodynamic_active_species_mwi(icnst) * residual
+             kmcnd(idx, kdx) = kmcnd(idx, kdx) + thermodynamic_active_species_kc(icnst) * &
+                               thermodynamic_active_species_mwi(icnst) * residual
+
+             kmvis(idx, kdx) = kmvis(idx, kdx) * mbarv(idx, kdx) * temp(idx, kdx) ** kv4 * 1.e-7_r8
+             kmcnd(idx, kdx) = kmcnd(idx, kdx) * mbarv(idx, kdx) * temp(idx, kdx) ** kc4 * 1.e-5_r8
+           end do
+         end do
        else
          call endrun(subname//'get_at_interfaces must be 0 or 1')
        end if
      end if
    end subroutine get_molecular_diff_coef_1hd
 
-   subroutine get_molecular_diff_coef_2hd(temp, get_at_interfaces, sponge_factor, kmvis, kmcnd, ntrac, &
+   subroutine get_molecular_diff_coef_2hd(temp, get_at_interfaces, sponge_factor, kmvis, kmcnd, &
         tracer, fact, active_species_idx_dycore, mbarv_in)
      ! Version of get_molecular_diff_coef for arrays that have a second horizontal index
      real(r8), intent(in)           :: temp(:,:,:)                     ! temperature
@@ -1996,7 +2018,6 @@ CONTAINS
      real(r8), intent(in)           :: sponge_factor(:)                ! multiply kmvis and kmcnd with sponge_factor (for sponge layer)
      real(r8), intent(out)          :: kmvis(:,:,:)
      real(r8), intent(out)          :: kmcnd(:,:,:)
-     integer , intent(in)           :: ntrac
      real(r8), intent(in)           :: tracer(:,:,:,:)                 ! tracer array
      integer,  intent(in), optional :: active_species_idx_dycore(:)    ! index of active species in tracer
      real(r8), intent(in), optional :: fact(:,:,:)                     ! if tracer is in units of mass or moist
@@ -2007,19 +2028,19 @@ CONTAINS
      do jdx = 1, SIZE(tracer, 2)
        if (present(fact) .and. present(mbarv_in)) then
          call get_molecular_diff_coef(temp(:, jdx, :), get_at_interfaces, sponge_factor, &
-              kmvis(:, jdx, :), kmcnd(:, jdx, :), ntrac, tracer(:, jdx, :, :), fact=fact(:, jdx, :), &
+              kmvis(:, jdx, :), kmcnd(:, jdx, :), tracer(:, jdx, :, :), fact=fact(:, jdx, :), &
               active_species_idx_dycore=active_species_idx_dycore, mbarv_in=mbarv_in(:, jdx, :))
        else if (present(fact)) then
          call get_molecular_diff_coef(temp(:, jdx, :), get_at_interfaces, sponge_factor, &
-              kmvis(:, jdx, :), kmcnd(:, jdx, :), ntrac, tracer(:, jdx, :, :), fact=fact(:, jdx, :), &
+              kmvis(:, jdx, :), kmcnd(:, jdx, :), tracer(:, jdx, :, :), fact=fact(:, jdx, :), &
               active_species_idx_dycore=active_species_idx_dycore)
        else if (present(mbarv_in)) then
          call get_molecular_diff_coef(temp(:, jdx, :), get_at_interfaces, sponge_factor, &
-              kmvis(:, jdx, :), kmcnd(:, jdx, :), ntrac, tracer(:, jdx, :, :), &
+              kmvis(:, jdx, :), kmcnd(:, jdx, :), tracer(:, jdx, :, :), &
               active_species_idx_dycore=active_species_idx_dycore, mbarv_in=mbarv_in(:, jdx, :))
        else
          call get_molecular_diff_coef(temp(:, jdx, :), get_at_interfaces, sponge_factor, &
-              kmvis(:, jdx, :), kmcnd(:, jdx, :), ntrac, tracer(:, jdx, :, :), &
+              kmvis(:, jdx, :), kmcnd(:, jdx, :), tracer(:, jdx, :, :), &
               active_species_idx_dycore=active_species_idx_dycore)
        end if
      end do

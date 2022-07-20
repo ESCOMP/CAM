@@ -723,7 +723,7 @@ contains
         ! compute molecular diffusion and thermal conductivity coefficients at mid-levels
         !
         call get_molecular_diff_coef(elem(ie)%state%T(:,:,:,nt), 0, km_sponge_factor(1:ksponge_end), kmvis(:,:,:,ie),&
-             kmcnd(:,:,:,ie), qsize, elem(ie)%state%Qdp(:,:,:,1:qsize,qn0), fact=1.0_r8/elem(ie)%state%dp3d(:,:,1:ksponge_end,nt),&
+             kmcnd(:,:,:,ie), elem(ie)%state%Qdp(:,:,:,1:qsize,qn0), fact=1.0_r8/elem(ie)%state%dp3d(:,:,1:ksponge_end,nt),&
              active_species_idx_dycore=thermodynamic_active_species_idx_dycore)
       end do
       !
