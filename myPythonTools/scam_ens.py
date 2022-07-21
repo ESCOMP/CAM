@@ -3,11 +3,13 @@
 import scam_case as scm
 import numpy as np
 
-basecase = 'nCTOP_L58_080.0E_32.0N_2010-07-01'
+basecase = 'nCTOPb3_L58_080.0E_30.0N_2010-07-01'
 base=scm.scam_case()
 base=base.unpickle_base(basecase)
 
+print(base.__dict__)
 
+#exit()
 
 lats = 32.+ np.arange(6)
 lons = 80.+ np.arange(2)

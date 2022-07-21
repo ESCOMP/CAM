@@ -11,6 +11,7 @@ class scam_case:
         self.tag="case_tag"
         self.startdate=[2010,4,1]
         self.atm_ncpl=192
+        self.mfilt=1
         self.nsteps=31*self.atm_ncpl
         self.coupler="nuopc"
         self.compiler="intel"
@@ -18,6 +19,7 @@ class scam_case:
         self.basecase="base_case"
         self.isbasecase=True
         self.cime_output_root="dir"
+        self.ensemble_root="none"
 
     def base_case(self):
         import subprocess as sp
@@ -172,6 +174,7 @@ class scam_case:
         self.nlev       = base.nlev
         self.coupler    = base.coupler
         self.compiler   = base.compiler
+        self.atm_ncpl   = base.atm_ncpl
         self.cime_output_root = base.cime_output_root
         lev = base.nlev
 
@@ -211,31 +214,36 @@ class scam_case:
 
         case_tag  = tag+'_'+case_lev+'_'+case_lon+'_'+case_lat+'_'+case_yr+'-'+case_mon+'-'+case_day
         self.name = case_tag
+
+        ensemble_root = self.cime_output_root + '/' + self.basecase +'_ENS'
+        self.ensemble_root = ensemble_root
+
+
         # --------------
         # Clean before making new directory
         #----------------
-        cmd = ("rm -rf "+ self.cime_output_root + "/"+case_tag)
+        cmd = ("rm -rf "+ ensemble_root + "/"+case_tag)
         sp.run( cmd , shell=True )
 
-        cmd = ("mkdir -p "+ self.cime_output_root + "/"+case_tag+"/bld")
+        cmd = ("mkdir -p "+ ensemble_root + "/"+case_tag+"/bld")
         sp.run( cmd , shell=True )
 
         cmd = ("cp -r "+ self.cime_output_root + "/" +  base.name +"/run" + " "
-            + self.cime_output_root + "/"+case_tag+"/run")
+            + ensemble_root + "/"+case_tag+"/run")
         sp.run( cmd , shell=True )
  
         cmd = ("cp "+ self.cime_output_root + "/" +  base.name +"/bld/cesm.exe" + " "
-            + self.cime_output_root + "/"+case_tag+"/bld/")
+            + ensemble_root + "/"+case_tag+"/bld/")
         sp.run( cmd , shell=True )
 
         cmd = ( "cp ../../myPythonTools/STUB_iop.nc"  + " "
-            + self.cime_output_root + "/"+case_tag+"/run/")
+            + ensemble_root + "/"+case_tag+"/run/")
         sp.run(cmd   ,    shell=True )
         cmd = ( "cp ../../myPythonTools/ens_run.sh"  + " "
-            + self.cime_output_root + "/"+case_tag+"/run/")
+            + ensemble_root + "/"+case_tag+"/run/")
         sp.run(cmd   ,    shell=True )
 
-        cd0 ="cd "+ self.cime_output_root + "/" +  case_tag +"/run ;" 
+        cd0 ="cd "+ ensemble_root + "/" +  case_tag +"/run ;" 
 
         cmd = ( 
             "ncap2 --overwrite -s bdate="+case_date+" STUB_iop.nc STUB_iop.nc"+";"+
@@ -244,18 +252,20 @@ class scam_case:
         )
         sp.run(cd0 + cmd   ,    shell=True )
 
-        fili= self.cime_output_root + "/" +  case_tag +"/run/atm_in"
+        fili= ensemble_root + "/" +  case_tag +"/run/atm_in"
         tx.nmled(fili,'iopfile','"STUB_iop.nc"')
+        # Set history to make one file per day
+        tx.nmled(fili,'mfilt',str(self.mfilt) )
 
         if (base.coupler=='nuopc'):
-            fili= self.cime_output_root + "/" +  case_tag +"/run/nuopc.runconfig"
+            fili= ensemble_root + "/" +  case_tag +"/run/nuopc.runconfig"
             tx.nmled(fili,'case_name',case_tag)
             tx.nmled(fili,'start_ymd',case_date)
             tx.nmled(fili,'scol_lat',latstr)
             tx.nmled(fili,'scol_lon',lonstr)
 
         if (base.coupler=='mct'):
-            fili= self.cime_output_root + "/" +  case_tag +"/run/drv_in"
+            fili= ensemble_root + "/" +  case_tag +"/run/drv_in"
             tx.nmled(fili,'case_name',case_tag)
             tx.nmled(fili,'start_ymd',case_date)
             tx.nmled(fili,'scmlat',latstr)
@@ -265,7 +275,7 @@ class scam_case:
         import subprocess as sp
         import os
 
-        cd0 ="cd "+ self.cime_output_root + "/" +  self.name +"/run ;" 
+        cd0 ="cd "+ self.ensemble_root + "/" +  self.name +"/run ;" 
         cmd ="/usr/local/torque/bin/qsub ens_run.sh"
 
         sp.run(cd0 + cmd   ,    shell=True )
