@@ -337,7 +337,6 @@ end function chem_is
     use dust_model,       only: dust_readnl
     use gas_wetdep_opts,  only: gas_wetdep_readnl
     use mo_drydep,        only: drydep_srf_file
-    use noy_ubc,          only: noy_ubc_readnl
     use mo_sulf,          only: sulf_readnl
     use species_sums_diags,only: species_sums_readnl
     use ocean_emis,       only: ocean_emis_readnl
@@ -554,7 +553,6 @@ end function chem_is
    call epp_ionization_readnl(nlfile)
    call mee_ion_readnl(nlfile)
    call mo_apex_readnl(nlfile)
-   call noy_ubc_readnl(nlfile)
    call sulf_readnl(nlfile)
    call species_sums_readnl(nlfile)
    call ocean_emis_readnl(nlfile)
@@ -646,7 +644,6 @@ end function chem_is_active
     use aero_model,            only : aero_model_init
     use mo_setsox,             only : sox_inti
     use constituents,          only : sflxnam
-    use noy_ubc,             only : noy_ubc_init
     use fire_emissions,      only : fire_emissions_init
     use short_lived_species, only : short_lived_species_initic
     use ocean_emis,          only : ocean_emis_init
@@ -804,8 +801,6 @@ end function chem_is_active
 
         enddo
      endif
-
-     call noy_ubc_init()
 
      ! Galatic Cosmic Rays ...
      call gcr_ionization_init()
@@ -997,7 +992,6 @@ end function chem_is_active
 
     use mo_aurora,         only : aurora_timestep_init
     use mo_photo,          only : photo_timestep_init
-    use noy_ubc,           only : noy_ubc_advance
 
     use cfc11star,         only : update_cfc11star
     use physics_buffer,    only : physics_buffer_desc
@@ -1044,11 +1038,6 @@ end function chem_is_active
     ! Set fixed lower boundary timing factors
     !-----------------------------------------------------------------------
     call flbc_chk
-
-    !-----------------------------------------------------------------------
-    ! NOy upper boundary conditions for low top model
-    !-----------------------------------------------------------------------
-    call noy_ubc_advance(pbuf2d, phys_state)
 
     !-----------------------------------------------------------------------
     ! Set fixed offline tracers
