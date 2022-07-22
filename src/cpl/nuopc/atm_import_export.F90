@@ -199,7 +199,7 @@ contains
     ! lightning flash freq
     call shr_lightning_coupling_readnl("drv_flds_in", atm_provides_lightning)
     if (atm_provides_lightning) then
-       call fldlist_add(fldsFrAtm_num, fldsFrAtm, 'Sa_lght')
+       call fldlist_add(fldsFrAtm_num, fldsFrAtm, 'Sa_lightning')
     end if
 
     ! Now advertise above export fields
@@ -1042,7 +1042,7 @@ contains
        end do
     end if
 
-    call state_getfldptr(exportState, 'Sa_lght', fldptr=fldptr_lght, exists=exists, rc=rc)
+    call state_getfldptr(exportState, 'Sa_lightning', fldptr=fldptr_lght, exists=exists, rc=rc)
     if (ChkErr(rc,__LINE__,u_FILE_u)) return
     if (exists) then
        g = 1

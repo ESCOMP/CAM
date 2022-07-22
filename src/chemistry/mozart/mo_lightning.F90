@@ -16,6 +16,8 @@ module mo_lightning
   implicit none
 
   private
+
+  public  :: lightning_readnl
   public  :: lightning_register
   public  :: lightning_inti
   public  :: lightning_no_prod
@@ -33,19 +35,68 @@ module mo_lightning
   integer :: flsh_frq_ndx = -1
   integer :: cldtop_ndx = -1, cldbot_ndx = -1
 
+  real(r8) :: lght_no_prd_factor = -huge(1._r8)
+
 contains
 
-  !----------------------------------------------------------------------
+  !-------------------------------------------------------------------------
+  ! Read namelist options
+  !-------------------------------------------------------------------------
+  subroutine lightning_readnl(nlfile)
+    use namelist_utils, only : find_group_name
+    use spmd_utils,     only : mpicom, masterprocid, mpi_real8
+
+    character(len=*), intent(in)  :: nlfile  ! filepath for file containing namelist input
+
+    integer                       :: unitn, ierr
+    character(len=*), parameter   :: subname = 'lightning_readnl'
+
+    ! ===================
+    ! Namelist definition
+    ! ===================
+    namelist /lightning_nl/ lght_no_prd_factor
+
+    ! =============
+    ! Read namelist
+    ! =============
+    if (masterproc) then
+       open( newunit=unitn, file=trim(nlfile), status='old' )
+       call find_group_name(unitn, 'lightning_nl', status=ierr)
+       if (ierr == 0) then
+          read(unitn, lightning_nl, iostat=ierr)
+          if (ierr /= 0) then
+             call endrun(subname // ':: ERROR reading namelist')
+          end if
+       end if
+       close(unitn)
+    end if
+
+    ! ============================
+    ! Broadcast namelist variables
+    ! ============================
+    call mpi_bcast(lght_no_prd_factor, 1, mpi_real8, masterprocid, mpicom, ierr)
+
+    if (masterproc) then
+       write(iulog,*) subname,' lght_no_prd_factor: ',lght_no_prd_factor
+    end if
+
+    factor = 0.1_r8*lght_no_prd_factor
+
+  end subroutine lightning_readnl
+
+  !-------------------------------------------------------------------------
   ! register phys buffer field for cloud to ground lightning flash frequency
   ! to pass to the mediator for land model
-  !----------------------------------------------------------------------
+  !-------------------------------------------------------------------------
   subroutine lightning_register()
 
     call pbuf_add_field('LGHT_FLASH_FREQ','global',dtype_r8,(/pcols/),flsh_frq_ndx) ! per minute
 
   end subroutine lightning_register
 
-  subroutine lightning_inti( pbuf2d, lght_no_prd_factor )
+  !-------------------------------------------------------------------------
+  !-------------------------------------------------------------------------
+  subroutine lightning_inti( pbuf2d, calc_nox_prod_rate )
     !----------------------------------------------------------------------
     !       ... initialize the lightning module
     !----------------------------------------------------------------------
@@ -60,7 +111,7 @@ contains
     !	... dummy args
     !----------------------------------------------------------------------
     type(physics_buffer_desc), pointer :: pbuf2d(:,:)
-    real(r8),optional, intent(in) :: lght_no_prd_factor        ! lightning no production factor
+    logical,optional, intent(in) :: calc_nox_prod_rate
 
     !----------------------------------------------------------------------
     !	... local variables
@@ -76,10 +127,11 @@ contains
 
     if (.not.calc_lightning) return
 
-    calc_nox_prod = present(lght_no_prd_factor)
+    if (present(calc_nox_prod_rate)) then
+       calc_nox_prod = calc_nox_prod_rate
+    end if
 
     if (calc_nox_prod) then
-       factor = 0.1_r8*lght_no_prd_factor
 
        if (masterproc) write(iulog,*) prefix,'lightning no production scaling factor = ',factor
 
@@ -127,6 +179,8 @@ contains
     endif
   end subroutine lightning_inti
 
+  !-------------------------------------------------------------------------
+  !-------------------------------------------------------------------------
   subroutine lightning_no_prod( state, pbuf2d,  cam_in )
     !----------------------------------------------------------------------
     !	... set no production from lightning
@@ -297,7 +351,7 @@ contains
                 cgic(i,c) = .02_r8
              end if
 
-             lightning_flash_freq(i) = flash_freq(i,c)*cgic(i,c) ! cld-to-grnd flash frq (per min)
+             lightning_flash_freq(i) = flash_freq(i,c)*cgic(i,c) * factor ! cld-to-grnd flash frq (per min)
 
              if (calc_nox_prod) then
                 !--------------------------------------------------------------------------------

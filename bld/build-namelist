@@ -3397,13 +3397,15 @@ if ( length($nl->get_value('soil_erod_file'))>0 ) {
     else {
         if ($chem =~ /trop_strat/ or $chem =~ /waccm_ma/ or $chem =~ /waccm_tsmlt/ or $chem =~ /trop_mozart/) {
             add_default($nl, 'dust_emis_fact', 'ver'=>'chem');
-            # set scaling of lightning NOx production
-	    add_default($nl, 'lght_no_prd_factor' );
         }
         else {
             add_default($nl, 'dust_emis_fact');
         }
     }
+}
+if ($phys =~ /^cam/) {
+  # Lightning scaling
+  add_default($nl, 'lght_no_prd_factor');
 }
 
 # Seasalt emissions tuning factor

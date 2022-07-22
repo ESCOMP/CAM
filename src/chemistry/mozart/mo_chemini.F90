@@ -36,7 +36,6 @@ contains
        , ext_frc_fixed_ymd &
        , ext_frc_fixed_tod &
        , exo_coldens_file &
-       , lght_no_prd_factor &
        , pbuf2d &
        )
 
@@ -94,7 +93,6 @@ contains
     character(len=*), dimension(:), intent(in) :: srf_emis_specifier
     character(len=*), dimension(:), intent(in) :: ext_frc_specifier
     character(len=*), intent(in) :: exo_coldens_file
-    real(r8),         intent(in) :: lght_no_prd_factor
     character(len=*), intent(in) :: ext_frc_type
     integer,          intent(in) :: ext_frc_cycle_yr
     integer,          intent(in) :: ext_frc_fixed_ymd
@@ -164,7 +162,7 @@ contains
     !-----------------------------------------------------------------------
     !	... initialize the lightning module
     !-----------------------------------------------------------------------
-    call lightning_inti(pbuf2d,lght_no_prd_factor)
+    call lightning_inti(pbuf2d, calc_nox_prod_rate=.true.)
     if (masterproc) write(iulog,*) 'chemini: after lightning_inti on node ',iam
 
     !-----------------------------------------------------------------------
