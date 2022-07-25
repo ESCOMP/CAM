@@ -5,7 +5,7 @@
 <!--              CAM scientifically supported COMPSETS                 -->
 <!--              @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@                -->
 
-  <test compset="F2000climo" grid="f09_f09_mg17" name="ERP_Ln9_Vmct" testmods="cam/outfrq9s">
+  <test compset="F2000climo" grid="f09_f09_mg17" name="ERP_Ln9_Vnuopc" testmods="cam/outfrq9s">
     <machines>
       <machine name="cheyenne" compiler="intel" category="aux_cime_baselines"/>
       <machine name="cheyenne" compiler="intel" category="prealpha"/>
@@ -17,7 +17,16 @@
       <option name="wallclock">00:10:00</option>
     </options>
   </test>
-  <test compset="F2000climo" grid="f09_f09_mg17" name="ERP_D_Ln9_Vmct" testmods="cam/outfrq9s">
+  <test compset="2000_CAM60_CLM50%SP_CICE5%PRES_DOCN%DOM_MOSART_SGLC_SWAV" grid="f09_f09_mg17" name="ERP_Ln9_Vmct" testmods="cam/outfrq9s">
+    <machines>
+      <machine name="cheyenne" compiler="intel" category="prealpha"/>
+      <machine name="cheyenne" compiler="intel" category="aux_cam"/>
+    </machines>
+    <options>
+      <option name="wallclock">00:10:00</option>
+    </options>
+  </test>
+  <test compset="F2000climo" grid="f09_f09_mg17" name="ERP_D_Ln9_Vnuopc" testmods="cam/outfrq9s">
     <machines>
       <machine name="izumi"    compiler="nag" category="aux_cam_one"/>
     </machines>
@@ -25,7 +34,7 @@
       <option name="wallclock">00:10:00</option>
     </options>
   </test>
-  <test compset="F2010climo" grid="f09_f09_mg17" name="ERP_Ln9_Vmct" testmods="cam/outfrq9s">
+  <test compset="F2010climo" grid="f09_f09_mg17" name="ERP_Ln9_Vnuopc" testmods="cam/outfrq9s">
     <machines>
       <machine name="cheyenne" compiler="intel" category="prealpha"/>
       <machine name="cheyenne" compiler="intel" category="aux_cam"/>
@@ -34,7 +43,7 @@
       <option name="wallclock">00:10:00</option>
     </options>
   </test>
-  <test compset="F2000climo" grid="f10_f10_mg37" name="SMS_Lm13_Vmct" testmods="cam/outfrq1m" supported="false">
+  <test compset="F2000climo" grid="f10_f10_mg37" name="SMS_Lm13_Vnuopc" testmods="cam/outfrq1m" supported="false">
     <machines>
       <machine name="cheyenne" compiler="intel" category="aux_cam"/>
     </machines>
@@ -42,26 +51,16 @@
        <option name="wallclock">03:00:00</option>
     </options>
   </test>
-  <test compset="F2000climo" grid="f09_f09_mg17" name="PFS_Vmct">
+  <test compset="F2000climo" grid="f09_f09_mg17" name="PFS_Vnuopc">
     <machines>
-      <machine name="cheyenne" compiler="pgi" category="prebeta"/>
+      <machine name="cheyenne" compiler="gnu" category="prebeta"/>
     </machines>
     <options>
       <option name="wallclock">00:10:00</option>
     </options>
   </test>
 
-  <test compset="FHIST" grid="f09_f09_mg17" name="ERP_Ln9_Vmct" testmods="cam/outfrq9s">
-    <machines>
-      <machine name="cheyenne" compiler="intel" category="aux_cime_baselines"/>
-      <machine name="cheyenne" compiler="intel" category="prealpha"/>
-    </machines>
-    <options>
-      <option name="wallclock">00:10:00</option>
-    </options>
-  </test>
-
-  <test compset="FHIST_BGC" grid="f09_f09_mg17" name="ERP_Ln9_Vmct" testmods="cam/outfrq9s">
+  <test compset="FHIST" grid="f09_f09_mg17" name="ERP_Ln9_Vnuopc" testmods="cam/outfrq9s">
     <machines>
       <machine name="cheyenne" compiler="intel" category="aux_cime_baselines"/>
       <machine name="cheyenne" compiler="intel" category="prealpha"/>
@@ -71,7 +70,17 @@
     </options>
   </test>
 
-  <test compset="FHIST_BDRD" grid="f09_f09_mg17" name="ERP_Ln9_Vmct" testmods="cam/outfrq9s">
+  <test compset="FHIST_BGC" grid="f09_f09_mg17" name="ERP_Ln9_Vnuopc" testmods="cam/outfrq9s">
+    <machines>
+      <machine name="cheyenne" compiler="intel" category="aux_cime_baselines"/>
+      <machine name="cheyenne" compiler="intel" category="prealpha"/>
+    </machines>
+    <options>
+      <option name="wallclock">00:10:00</option>
+    </options>
+  </test>
+
+  <test compset="FHIST_BDRD" grid="f09_f09_mg17" name="ERP_Ln9_Vnuopc" testmods="cam/outfrq9s">
     <machines>
       <machine name="cheyenne" compiler="intel" category="aux_cam"/>
       <machine name="cheyenne" compiler="intel" category="aux_cam_short"/>
@@ -81,7 +90,7 @@
     </options>
   </test>
 
-  <test compset="F1850" grid="f09_f09_mg17" name="ERP_Ln9_Vmct" testmods="cam/outfrq9s">
+  <test compset="F1850" grid="f09_f09_mg17" name="ERP_Ln9_Vnuopc" testmods="cam/outfrq9s">
     <machines>
       <machine name="cheyenne" compiler="intel" category="aux_cime_baselines"/>
       <machine name="cheyenne" compiler="intel" category="prealpha"/>
@@ -93,7 +102,7 @@
     </options>
   </test>
 
-  <test compset="FHIST" grid="f19_f19_mg17" name="SMS_Ln9_Vmct" testmods="cam/outfrq9s_nochem">
+  <test compset="FHIST" grid="f19_f19_mg17" name="SMS_Ln9_Vnuopc" testmods="cam/outfrq9s_nochem">
     <machines>
       <machine name="cheyenne" compiler="intel" category="aux_cam"/>
     </machines>
@@ -107,7 +116,7 @@
 <!--              @@@@@@@@@@@@@@@@@@@@@@@@@@@                 -->
 
 <!--              CAM Tests at non-scientific resolutions     -->
-  <test compset="F2000climo" grid="f19_f19_mg17" name="ERP_Ln9_Vmct" testmods="cam/cosp">
+  <test compset="F2000climo" grid="f19_f19_mg17" name="ERP_Ln9_Vnuopc" testmods="cam/cosp">
     <machines>
       <machine name="cheyenne" compiler="intel" category="prebeta"/>
     </machines>
@@ -115,7 +124,7 @@
       <option name="wallclock">00:10:00</option>
     </options>
   </test>
-  <test compset="F2000climo" grid="f19_f19_mg17" name="ERP_Ln9_Vmct" testmods="cam/outfrq9s">
+  <test compset="F2000climo" grid="f19_f19_mg17" name="ERP_Ln9_Vnuopc" testmods="cam/outfrq9s">
     <machines>
       <machine name="cheyenne" compiler="gnu" category="prealpha"/>
     </machines>
@@ -123,7 +132,7 @@
       <option name="wallclock">00:10:00</option>
     </options>
   </test>
-  <test compset="F2000climo" grid="ne30_ne30_mg17" name="ERP_Ln9_Vmct" testmods="cam/outfrq9s">
+  <test compset="F2000climo" grid="ne30_ne30_mg17" name="ERP_Ln9_Vnuopc" testmods="cam/outfrq9s">
     <machines>
       <machine name="cheyenne" compiler="intel" category="prebeta"/>
     </machines>
@@ -132,7 +141,7 @@
     </options>
   </test>
 
-  <test compset="F2010climo" grid="f09_f09_mg17" name="SMS_Ln9_Vmct" testmods="cam/nudging">
+  <test compset="F2010climo" grid="f09_f09_mg17" name="SMS_Ln9_Vnuopc" testmods="cam/nudging">
     <machines>
       <machine name="cheyenne" compiler="intel" category="aux_cam"/>
       <machine name="cheyenne" compiler="intel" category="cam_nudging"/>
@@ -142,7 +151,7 @@
     </options>
   </test>
 
-  <test compset="F2000climo" grid="f19_f19" name="SMS_Ln9_Vmct" testmods="cam/silhs">
+  <test compset="F2000climo" grid="f19_f19" name="SMS_Ln9_Vnuopc" testmods="cam/silhs">
     <machines>
       <machine name="cheyenne" compiler="intel" category="aux_cam"/>
       <machine name="cheyenne" compiler="intel" category="cam_silhs"/>
@@ -152,7 +161,7 @@
     </options>
   </test>
 
-  <test compset="F2000climo" grid="C96_C96_mg17" name="ERP_Ln9_Vmct" testmods="cam/outfrq9s_mg3">
+  <test compset="F2000climo" grid="C96_C96_mg17" name="ERP_Ln9_Vnuopc" testmods="cam/outfrq9s_mg3">
     <machines>
       <machine name="cheyenne" compiler="intel" category="prebeta"/>
       <machine name="cheyenne" compiler="intel" category="aux_cam"/>
@@ -163,17 +172,9 @@
     </options>
   </test>
 
-  <test compset="F2000dev" grid="ne30pg3_ne30pg3_mg17" name="ERP_D_Ln9_Vmct" testmods="cam/outfrq9s" supported="false">
-    <machines>
-      <machine name="cheyenne" compiler="intel" category="aux_cam"/>
-      <machine name="cheyenne" compiler="intel" category="prealpha"/>
-    </machines>
-  </test>
-
-
 <!--              CAM Aquaplanet COMPSETS                 -->
 
-  <test compset="QPC6" grid="f19_f19_mg17" name="ERP_D_Ln9_Vmct" testmods="cam/outfrq9s">
+  <test compset="QPC6" grid="f19_f19_mg17" name="ERP_D_Ln9_Vnuopc" testmods="cam/outfrq9s">
     <machines>
       <machine name="cheyenne" compiler="intel" category="aux_cime_baselines"/>
       <machine name="cheyenne" compiler="intel" category="prealpha"/>
@@ -183,7 +184,16 @@
       <option name="wallclock">00:10:00</option>
     </options>
   </test>
-  <test compset="QPC6" grid="f09_f09_mg17" name="ERP_D_Ln9_Vmct" testmods="cam/outfrq9s">
+  <test compset="QPC6" grid="f19_f19_mg17" name="ERP_D_Ln9_Vmct" testmods="cam/outfrq9s">
+    <machines>
+      <machine name="cheyenne" compiler="intel" category="prealpha"/>
+      <machine name="cheyenne" compiler="intel" category="aux_cam"/>
+    </machines>
+    <options>
+      <option name="wallclock">00:10:00</option>
+    </options>
+  </test>
+  <test compset="QPC6" grid="f09_f09_mg17" name="ERP_D_Ln9_Vnuopc" testmods="cam/outfrq9s">
     <machines>
       <machine name="cheyenne" compiler="intel" category="prebeta"/>
     </machines>
@@ -191,9 +201,17 @@
       <option name="wallclock">00:10:00</option>
     </options>
   </test>
-  <test compset="QPC6" grid="ne30_ne30_mg17" name="ERP_Ln9_Vmct" testmods="cam/outfrq9s">
+  <test compset="QPC6" grid="ne30_ne30_mg17" name="ERP_Ln9_Vnuopc" testmods="cam/outfrq9s">
     <machines>
       <machine name="cheyenne" compiler="intel" category="prebeta"/>
+    </machines>
+    <options>
+      <option name="wallclock">00:10:00</option>
+    </options>
+  </test>
+  <test compset="QPC6" grid="ne5pg3_ne5pg3_mg37" name="ERP_Ln9_Vnuopc" testmods="cam/outfrq9s_clubbmf">
+    <machines>
+      <machine name="izumi" compiler="nag" category="aux_cam"/>
     </machines>
     <options>
       <option name="wallclock">00:10:00</option>
@@ -207,7 +225,7 @@
       <option name="wallclock">00:10:00</option>
     </options>
   </test>
-  <test compset="QPRCEMIP" grid="ne30_ne30_mg17" name="ERP_Ln9_Vmct" testmods="cam/outfrq9s">
+  <test compset="QPRCEMIP" grid="ne30_ne30_mg17" name="ERP_Ln9_Vnuopc" testmods="cam/outfrq9s">
     <machines>
       <machine name="cheyenne" compiler="intel" category="prebeta"/>
     </machines>
@@ -215,7 +233,7 @@
       <option name="wallclock">00:10:00</option>
     </options>
   </test>
-  <test compset="QPC5" grid="f19_f19_mg17" name="ERP_D_Ln9_Vmct" testmods="cam/outfrq9s">
+  <test compset="QPC5" grid="f19_f19_mg17" name="ERP_D_Ln9_Vnuopc" testmods="cam/outfrq9s">
     <machines>
       <machine name="cheyenne" compiler="intel" category="prebeta"/>
     </machines>
@@ -223,7 +241,7 @@
       <option name="wallclock">00:10:00</option>
     </options>
   </test>
-  <test compset="QPC4" grid="f19_f19_mg17" name="ERP_D_Ln9_Vmct" testmods="cam/outfrq9s">
+  <test compset="QPC4" grid="f19_f19_mg17" name="ERP_D_Ln9_Vnuopc" testmods="cam/outfrq9s">
     <machines>
       <machine name="cheyenne" compiler="intel" category="prebeta"/>
     </machines>
@@ -231,13 +249,13 @@
       <option name="wallclock">00:10:00</option>
     </options>
   </test>
-  <test compset="QPC5" grid="ne5_ne5_mg37" name="ERP_Ln9_Vmct" testmods="cam/outfrq9s" supported="false">
+  <test compset="QPC5" grid="ne5_ne5_mg37" name="ERP_Ln9_Vnuopc" testmods="cam/outfrq9s" supported="false">
     <machines>
-      <machine name="izumi" compiler="pgi" category="aux_cam"/>
+      <machine name="izumi" compiler="gnu" category="aux_cam"/>
     </machines>
   </test>
 
-  <test compset="QSC6" grid="f19_f19_mg17" name="ERP_D_Ln9_Vmct" testmods="cam/outfrq9s">
+  <test compset="QSC6" grid="f19_f19_mg17" name="ERP_D_Ln9_Vnuopc" testmods="cam/outfrq9s">
     <machines>
       <machine name="cheyenne" compiler="intel" category="prebeta"/>
     </machines>
@@ -245,7 +263,7 @@
       <option name="wallclock">00:10:00</option>
     </options>
   </test>
-  <test compset="QSC6" grid="f09_f09_mg17" name="ERP_D_Ln9_Vmct" testmods="cam/outfrq9s">
+  <test compset="QSC6" grid="f09_f09_mg17" name="ERP_D_Ln9_Vnuopc" testmods="cam/outfrq9s">
     <machines>
       <machine name="cheyenne" compiler="intel" category="aux_cime_baselines"/>
       <machine name="cheyenne" compiler="intel" category="prealpha"/>
@@ -255,7 +273,16 @@
       <option name="wallclock">00:10:00</option>
     </options>
   </test>
-  <test compset="QPC6" grid="ne30_ne30_mg17" name="ERP_Ln9_Vmct" testmods="cam/outfrq9s">
+  <test compset="QSC6" grid="f09_f09_mg17" name="ERP_D_Ln9_Vmct" testmods="cam/outfrq9s">
+    <machines>
+      <machine name="cheyenne" compiler="intel" category="prealpha"/>
+      <machine name="cheyenne" compiler="intel" category="aux_cam"/>
+    </machines>
+    <options>
+      <option name="wallclock">00:10:00</option>
+    </options>
+  </test>
+  <test compset="QPC6" grid="ne30_ne30_mg17" name="ERP_Ln9_Vnuopc" testmods="cam/outfrq9s">
     <machines>
       <machine name="cheyenne" compiler="intel" category="prebeta"/>
     </machines>
@@ -263,7 +290,7 @@
       <option name="wallclock">00:10:00</option>
     </options>
   </test>
-  <test compset="QSC5" grid="f19_f19_mg17" name="ERP_D_Ln9_Vmct" testmods="cam/outfrq9s">
+  <test compset="QSC5" grid="f19_f19_mg17" name="ERP_D_Ln9_Vnuopc" testmods="cam/outfrq9s">
     <machines>
       <machine name="cheyenne" compiler="intel" category="prebeta"/>
     </machines>
@@ -271,7 +298,7 @@
       <option name="wallclock">00:10:00</option>
     </options>
   </test>
-  <test compset="QSC4" grid="f19_f19_mg17" name="ERP_D_Ln9_Vmct" testmods="cam/outfrq9s">
+  <test compset="QSC4" grid="f19_f19_mg17" name="ERP_D_Ln9_Vnuopc" testmods="cam/outfrq9s">
     <machines>
       <machine name="cheyenne" compiler="intel" category="prebeta"/>
     </machines>
@@ -280,7 +307,7 @@
     </options>
   </test>
 
-  <test compset="QPC6" grid="C48_C48_mg17" name="ERP_D_Ln9_Vmct" testmods="cam/outfrq9s">
+  <test compset="QPC6" grid="C48_C48_mg17" name="ERP_D_Ln9_Vnuopc" testmods="cam/outfrq9s">
     <machines>
       <machine name="cheyenne" compiler="intel" category="prealpha"/>
       <machine name="cheyenne" compiler="intel" category="fv3_cam"/>
@@ -289,7 +316,7 @@
       <option name="wallclock">00:10:00</option>
     </options>
   </test>
-  <test compset="QPC5" grid="C48_C48_mg17" name="ERP_D_Ln9_Vmct" testmods="cam/outfrq9s">
+  <test compset="QPC5" grid="C48_C48_mg17" name="ERP_D_Ln9_Vnuopc" testmods="cam/outfrq9s">
     <machines>
       <machine name="cheyenne" compiler="intel" category="fv3_cam"/>
     </machines>
@@ -297,7 +324,7 @@
       <option name="wallclock">00:10:00</option>
     </options>
   </test>
-  <test compset="QPC4" grid="C48_C48_mg17" name="ERP_D_Ln9_Vmct" testmods="cam/outfrq9s">
+  <test compset="QPC4" grid="C48_C48_mg17" name="ERP_D_Ln9_Vnuopc" testmods="cam/outfrq9s">
     <machines>
       <machine name="cheyenne" compiler="intel" category="fv3_cam"/>
     </machines>
@@ -308,7 +335,7 @@
 
 <!--              CAM Stand alone                          -->
 <!--     012        -->
-  <test compset="PC4" grid="f19_f19_mg17" name="SMS_D_Ld5_Vmct" testmods="cam/cam4_port5d">
+  <test compset="PC4" grid="f19_f19_mg17" name="SMS_D_Ld5_Vnuopc" testmods="cam/cam4_port5d">
     <machines>
       <machine name="cheyenne" compiler="intel" category="aux_cam"/>
     </machines>
@@ -318,7 +345,7 @@
     </options>
   </test>
 <!--              111 tsm, ter, tbr, tbl, changed to QPC6/f19      -->
-  <test compset="QPC6" grid="f19_f19_mg17" name="ERI_D_Ln18_Vmct" testmods="cam/ghgrmp_e8">
+  <test compset="QPC6" grid="f19_f19_mg17" name="ERI_D_Ln18_Vnuopc" testmods="cam/ghgrmp_e8">
     <machines>
       <machine name="izumi" compiler="nag" category="aux_cam"/>
     </machines>
@@ -328,7 +355,7 @@
     </options>
   </test>
 <!--              111 tmc                                             -->
-  <test compset="QPC5" grid="T5_T5_mg37" name="TMC_D_Vmct" testmods="cam/ghgrmp_e8">
+  <test compset="QPC5" grid="T5_T5_mg37" name="TMC_D_Vnuopc" testmods="cam/ghgrmp_e8">
     <machines>
       <machine name="izumi" compiler="nag" category="aux_cam"/>
     </machines>
@@ -338,9 +365,9 @@
     </options>
   </test>
 <!--              112 tsm, ter, tbl                              -->
-  <test compset="QPC3" grid="T5_T5_mg37" name="ERC_D_Ln9_Vmct" testmods="cam/outfrq3s_usecase">
+  <test compset="QPC3" grid="T5_T5_mg37" name="ERC_D_Ln9_Vnuopc" testmods="cam/outfrq3s_usecase">
     <machines>
-      <machine name="izumi" compiler="pgi" category="aux_cam"/>
+      <machine name="izumi" compiler="gnu" category="aux_cam"/>
     </machines>
     <options>
       <option name="comment" >112 tsm, ter</option>
@@ -348,7 +375,7 @@
     </options>
   </test>
 <!--              113 tsm, ter, T8                              -->
-  <test compset="QPC4" grid="T5_T5_mg37" name="ERC_D_Ln9_Vmct" testmods="cam/outfrq3s_usecase">
+  <test compset="QPC4" grid="T5_T5_mg37" name="ERC_D_Ln9_Vnuopc" testmods="cam/outfrq3s_usecase">
     <machines>
       <machine name="izumi" compiler="nag" category="aux_cam"/>
     </machines>
@@ -358,9 +385,9 @@
     </options>
   </test>
 <!--              114 tsm, ter, tbr, tbl                             -->
-  <test compset="QPC4" grid="T5_T5_mg37" name="ERI_D_Ln18_Vmct" testmods="cam/co2rmp">
+  <test compset="QPC4" grid="T5_T5_mg37" name="ERI_D_Ln18_Vnuopc" testmods="cam/co2rmp">
     <machines>
-      <machine name="izumi" compiler="pgi" category="aux_cam"/>
+      <machine name="izumi" compiler="gnu" category="aux_cam"/>
     </machines>
     <options>
       <option name="comment" >114 tsm, ter, tbr</option>
@@ -368,7 +395,7 @@
     </options>
   </test>
 <!--              221 tsm, ter                         -->
-  <test compset="QSPCAMS" grid="f10_f10_mg37" name="ERC_D_Ln9_Vmct" testmods="cam/outfrq3s">
+  <test compset="QSPCAMS" grid="f10_f10_mg37" name="ERC_D_Ln9_Vnuopc" testmods="cam/outfrq3s">
     <machines>
       <machine name="izumi" compiler="nag" category="aux_cam"/>
     </machines>
@@ -378,9 +405,9 @@
     </options>
   </test>
 <!--              222 tsm, ter                         -->
-  <test compset="QPSPCAMM" grid="f10_f10_mg37" name="ERC_D_Ln9_Vmct" testmods="cam/outfrq3s">
+  <test compset="QPSPCAMM" grid="f10_f10_mg37" name="ERC_D_Ln9_Vnuopc" testmods="cam/outfrq3s">
     <machines>
-      <machine name="izumi" compiler="pgi" category="aux_cam"/>
+      <machine name="izumi" compiler="gnu" category="aux_cam"/>
     </machines>
     <options>
       <option name="comment" >222 tsm, ter</option>
@@ -388,7 +415,7 @@
     </options>
   </test>
 <!--              311                         -->
-  <test compset="QPC5" grid="f10_f10_mg37" name="ERI_D_Ln18_Vmct" testmods="cam/outfrq3s_eoyttrac">
+  <test compset="QPC5" grid="f10_f10_mg37" name="ERI_D_Ln18_Vnuopc" testmods="cam/outfrq3s_eoyttrac">
     <machines>
       <machine name="izumi" compiler="nag" category="aux_cam"/>
     </machines>
@@ -398,7 +425,7 @@
     </options>
   </test>
 <!--              311 tmc                        -->
-  <test compset="QPC5" grid="f10_f10_mg37" name="TMC_D_Vmct" testmods="cam/outfrq3s_eoyttrac">
+  <test compset="QPC5" grid="f10_f10_mg37" name="TMC_D_Vnuopc" testmods="cam/outfrq3s_eoyttrac">
     <machines>
       <machine name="izumi" compiler="nag" category="aux_cam"/>
     </machines>
@@ -408,7 +435,7 @@
     </options>
   </test>
 <!--              301                         -->
-  <test compset="QPC5" grid="f10_f10_mg37" name="PLB_D_Ln9_Vmct" testmods="cam/ttrac_loadbal1">
+  <test compset="QPC5" grid="f10_f10_mg37" name="PLB_D_Ln9_Vnuopc" testmods="cam/ttrac_loadbal1">
     <machines>
       <machine name="izumi" compiler="nag" category="aux_cam"/>
     </machines>
@@ -418,7 +445,7 @@
     </options>
   </test>
 <!--              303                         -->
-  <test compset="QPC5" grid="f10_f10_mg37" name="PLB_D_Ln9_Vmct" testmods="cam/ttrac_loadbal3">
+  <test compset="QPC5" grid="f10_f10_mg37" name="PLB_D_Ln9_Vnuopc" testmods="cam/ttrac_loadbal3">
     <machines>
       <machine name="izumi" compiler="nag" category="aux_cam"/>
     </machines>
@@ -428,7 +455,7 @@
     </options>
   </test>
 <!--              304                         -->
-  <test compset="QPC5" grid="f10_f10_mg37" name="PLB_D_Ln9_Vmct" testmods="cam/ttrac_loadbal0">
+  <test compset="QPC5" grid="f10_f10_mg37" name="PLB_D_Ln9_Vnuopc" testmods="cam/ttrac_loadbal0">
     <machines>
       <machine name="izumi" compiler="nag" category="aux_cam"/>
     </machines>
@@ -438,9 +465,9 @@
     </options>
   </test>
 <!--              314 tsm ter tbl             -->
-  <test compset="QPC4" grid="f10_f10_mg37" name="ERC_D_Ln9_Vmct" testmods="cam/outfrq3s_diags">
+  <test compset="QPC4" grid="f10_f10_mg37" name="ERC_D_Ln9_Vnuopc" testmods="cam/outfrq3s_diags">
     <machines>
-      <machine name="izumi" compiler="pgi" category="aux_cam"/>
+      <machine name="izumi" compiler="gnu" category="aux_cam"/>
     </machines>
     <options>
       <option name="comment" >314 tsm ter</option>
@@ -448,7 +475,7 @@
     </options>
   </test>
 <!--              317                         -->
-  <test compset="QPC5" grid="f10_f10_mg37" name="ERC_D_Ln9_Vmct" testmods="cam/outfrq3s_cosp">
+  <test compset="QPC5" grid="f10_f10_mg37" name="ERC_D_Ln9_Vnuopc" testmods="cam/outfrq3s_cosp">
     <machines>
       <machine name="izumi" compiler="nag" category="aux_cam"/>
     </machines>
@@ -458,7 +485,7 @@
     </options>
   </test>
 <!--              318                         -->
-  <test compset="QPC6" grid="f10_f10_mg37" name="ERC_D_Ln9_Vmct" testmods="cam/outfrq3s_cospsathist">
+  <test compset="QPC6" grid="f10_f10_mg37" name="ERC_D_Ln9_Vnuopc" testmods="cam/outfrq3s_cospsathist">
     <machines>
       <machine name="izumi" compiler="nag" category="aux_cam"/>
     </machines>
@@ -468,9 +495,9 @@
     </options>
   </test>
 <!--              320 tsm ter tbl                        -->
-  <test compset="QPC5" grid="f10_f10_mg37" name="ERC_D_Ln9_Vmct" testmods="cam/rad_diag">
+  <test compset="QPC5" grid="f10_f10_mg37" name="ERC_D_Ln9_Vnuopc" testmods="cam/rad_diag">
     <machines>
-      <machine name="izumi" compiler="pgi" category="aux_cam"/>
+      <machine name="izumi" compiler="gnu" category="aux_cam"/>
     </machines>
     <options>
       <option name="comment" >320 tsm ter</option>
@@ -478,7 +505,7 @@
     </options>
   </test>
 <!--              325                         -->
-  <test compset="QPC5" grid="f10_f10_mg37" name="ERC_D_Ln9_Vmct" testmods="cam/outfrq3s_subcol">
+  <test compset="QPC5" grid="f10_f10_mg37" name="ERC_D_Ln9_Vnuopc" testmods="cam/outfrq3s_subcol">
     <machines>
       <machine name="izumi" compiler="nag" category="aux_cam"/>
     </machines>
@@ -488,7 +515,7 @@
     </options>
   </test>
 <!--              eq325                         -->
-  <test compset="QPC5" grid="f10_f10_mg37" name="SUB_D_Ln9_Vmct" testmods="cam/outfrq3s">
+  <test compset="QPC5" grid="f10_f10_mg37" name="SUB_D_Ln9_Vnuopc" testmods="cam/outfrq3s">
     <machines>
       <machine name="izumi" compiler="nag" category="aux_cam"/>
     </machines>
@@ -498,27 +525,17 @@
     </options>
   </test>
 <!--              334 tsm ter tbl                        -->
-  <test compset="QPC5" grid="f10_f10_mg37" name="ERC_D_Ln9_Vmct" testmods="cam/outfrq3s_unicon">
+  <test compset="QPC5" grid="f10_f10_mg37" name="ERC_D_Ln9_Vnuopc" testmods="cam/outfrq3s_unicon">
     <machines>
-      <machine name="izumi" compiler="pgi" category="aux_cam"/>
+      <machine name="izumi" compiler="gnu" category="aux_cam"/>
     </machines>
     <options>
       <option name="comment" >334 tsm, ter</option>
       <option name="wallclock">00:30:00</option>
     </options>
   </test>
-<!--              335                         -->
-  <test compset="FHS94" grid="f10_f10_mg37" name="ERC_D_Ln9_Vmct" testmods="cam/idphys">
-    <machines>
-      <machine name="izumi" compiler="nag" category="aux_cam"/>
-    </machines>
-    <options>
-      <option name="comment" >335 tsm, ter</option>
-      <option name="wallclock">00:30:00</option>
-    </options>
-  </test>
 <!--              338                         -->
-  <test compset="QPC5" grid="f10_f10_mg37" name="SMS_D_Ln9_Vmct" testmods="cam/rad_diag_mam">
+  <test compset="QPC5" grid="f10_f10_mg37" name="SMS_D_Ln9_Vnuopc" testmods="cam/rad_diag_mam">
     <machines>
       <machine name="izumi" compiler="nag" category="aux_cam"/>
     </machines>
@@ -528,9 +545,9 @@
     </options>
   </test>
 <!--              339 tsm ter tbl                        -->
-  <test compset="FADIAB" grid="f10_f10_mg37" name="ERC_D_Ln9_Vmct" testmods="cam/terminator">
+  <test compset="FADIAB" grid="f10_f10_mg37" name="ERC_D_Ln9_Vnuopc" testmods="cam/terminator">
     <machines>
-      <machine name="izumi" compiler="pgi" category="aux_cam"/>
+      <machine name="izumi" compiler="gnu" category="aux_cam"/>
     </machines>
     <options>
       <option name="comment" >339 tsm, ter</option>
@@ -538,7 +555,7 @@
     </options>
   </test>
 <!--              367                         -->
-  <test compset="QPC6" grid="f10_f10_mg37" name="ERC_D_Ln9_Vmct" testmods="cam/outfrq3s_convmic">
+  <test compset="QPC6" grid="f10_f10_mg37" name="ERC_D_Ln9_Vnuopc" testmods="cam/outfrq3s_convmic">
     <machines>
       <machine name="izumi" compiler="nag" category="aux_cam"/>
     </machines>
@@ -548,7 +565,7 @@
     </options>
   </test>
 <!--              368                         -->
-  <test compset="QPC6" grid="f10_f10_mg37" name="ERC_D_Ln9_Vmct" testmods="cam/outfrq3s">
+  <test compset="QPC6" grid="f10_f10_mg37" name="ERC_D_Ln9_Vnuopc" testmods="cam/outfrq3s">
     <machines>
       <machine name="izumi" compiler="nag" category="aux_cam"/>
     </machines>
@@ -558,7 +575,7 @@
     </options>
   </test>
 <!--              369                         -->
-  <test compset="QPC6" grid="f10_f10_mg37" name="ERC_D_Ln9_Vmct" testmods="cam/outfrq3s_am">
+  <test compset="QPC6" grid="f10_f10_mg37" name="ERC_D_Ln9_Vnuopc" testmods="cam/outfrq3s_am">
     <machines>
       <machine name="izumi" compiler="nag" category="aux_cam"/>
     </machines>
@@ -568,7 +585,7 @@
     </options>
   </test>
 <!--              381                         -->
-  <test compset="QPC6HIST" grid="f09_f09_mg17" name="SMS_P48x1_D_Ln3_Vmct" testmods="cam/outfrq3s_co2cycle_usecase">
+  <test compset="QPC6HIST" grid="f09_f09_mg17" name="SMS_P48x1_D_Ln3_Vnuopc" testmods="cam/outfrq3s_co2cycle_usecase">
     <machines>
       <machine name="izumi" compiler="nag" category="aux_cam"/>
     </machines>
@@ -577,24 +594,24 @@
       <option name="wallclock">00:30:00</option>
     </options>
   </test>
-  <test compset="QPC4X" grid="ne5_ne5_mg37" name="SMS_Ln9_Vmct" testmods="cam/outfrq9s">
+  <test compset="QPC4X" grid="ne5_ne5_mg37" name="SMS_Ln9_Vnuopc" testmods="cam/outfrq9s">
     <machines>
-      <machine name="izumi" compiler="pgi" category="waccmx"/>
+      <machine name="izumi" compiler="gnu" category="waccmx"/>
     </machines>
     <options>
       <option name="wallclock">00:30:00</option>
     </options>
   </test>
-  <test compset="QPX2000" grid="ne5pg3_ne5pg3_mg37" name="SMS_D_Ln3_Vmct" testmods="cam/outfrq3s">
+  <test compset="QPX2000" grid="ne5pg3_ne5pg3_mg37" name="SMS_D_Ln3_Vnuopc" testmods="cam/outfrq3s">
     <machines>
-      <machine name="izumi" compiler="nag" category="aux_cam"/>
+      <machine name="cheyenne" compiler="intel" category="aux_cam"/>
       <machine name="izumi" compiler="nag" category="waccmx"/>
     </machines>
     <options>
       <option name="wallclock">00:30:00</option>
     </options>
   </test>
-  <test compset="QPX2000" grid="ne5pg3_ne5pg3_mg37" name="SMS_D_Ln3_Vmct" testmods="cam/outfrq3s_edyngrid_160x193">
+  <test compset="QPX2000" grid="ne5pg3_ne5pg3_mg37" name="SMS_D_Ln3_Vnuopc" testmods="cam/outfrq3s_edyngrid_160x193">
     <machines>
       <machine name="izumi" compiler="nag" category="waccmx"/>
     </machines>
@@ -602,7 +619,7 @@
       <option name="wallclock">00:40:00</option>
     </options>
   </test>
-  <test compset="QPX2000" grid="ne5_ne5_mg37" name="SMS_D_Ln3_Vmct" testmods="cam/outfrq3s_edyngrid_320x385">
+  <test compset="QPX2000" grid="ne5_ne5_mg37" name="SMS_D_Ln3_Vnuopc" testmods="cam/outfrq3s_edyngrid_320x385">
     <machines>
       <machine name="izumi" compiler="nag" category="waccmx"/>
     </machines>
@@ -610,18 +627,152 @@
       <option name="wallclock">00:40:00</option>
     </options>
   </test>
-<!--              430                         -->
-  <test compset="QPC5" grid="f10_f10_mg37" name="ERC_D_Ln9_Vmct" testmods="cam/outfrq3s_carma">
+<!--              carma dust              -->
+  <test compset="F2000climo" grid="f10_f10_mg37" name="ERS_D_Ln9_Vnuopc" testmods="cam/carma_dust">
     <machines>
-      <machine name="izumi" compiler="nag" category="aux_cam"/>
+      <machine name="izumi" compiler="nag" category="carma"/>
+      <machine name="cheyenne" compiler="intel" category="carma"/>
     </machines>
     <options>
-      <option name="comment" >430 tsm, ter</option>
+      <option name="comment" >CARMA dust test</option>
+      <option name="wallclock">00:30:00</option>
+    </options>
+  </test>
+<!--              carma sea_salt          -->
+  <test compset="QPC5" grid="f10_f10_mg37" name="ERC_D_Ln9_Vnuopc" testmods="cam/carma_sea_salt">
+    <machines>
+      <machine name="izumi" compiler="nag" category="carma"/>
+      <machine name="izumi" compiler="nag" category="aux_cam"/>
+      <machine name="cheyenne" compiler="intel" category="carma"/>
+    </machines>
+    <options>
+      <option name="comment" >CARMA sea salt test</option>
+      <option name="wallclock">00:30:00</option>
+    </options>
+  </test>
+<!--              carma meteor_smoke      -->
+  <test compset="QPWmaC6" grid="f10_f10_mg37" name="ERS_D_Ln9_Vnuopc" testmods="cam/carma_meteor_smoke">
+    <machines>
+      <machine name="izumi" compiler="nag" category="carma"/>
+      <machine name="cheyenne" compiler="intel" category="carma"/>
+    </machines>
+    <options>
+      <option name="comment" >CARMA test of aerosol from meteor smoke</option>
+      <option name="wallclock">00:30:00</option>
+    </options>
+  </test>
+<!--              carma meteor_impact     -->
+  <test compset="QPWmaC6" grid="f10_f10_mg37" name="ERS_D_Ln9_Vnuopc" testmods="cam/carma_meteor_impact">
+    <machines>
+      <machine name="izumi" compiler="nag" category="carma"/>
+      <machine name="cheyenne" compiler="intel" category="carma"/>
+    </machines>
+    <options>
+      <option name="comment" >CARMA test of aerosols from meteor impact</option>
+      <option name="wallclock">00:30:00</option>
+    </options>
+  </test>
+<!--              carma pmc               -->
+  <test compset="QPWmaC6" grid="f10_f10_mg37" name="ERS_D_Ln9_Vnuopc" testmods="cam/carma_pmc">
+    <machines>
+      <machine name="izumi" compiler="nag" category="carma"/>
+      <machine name="cheyenne" compiler="intel" category="carma"/>
+    </machines>
+    <options>
+      <option name="comment" >CARMA Test of Polar Mesospheric Clouds (pmc)</option>
+      <option name="wallclock">00:30:00</option>
+    </options>
+  </test>
+<!--              carma test_radiative    -->
+  <test compset="QPC5" grid="f10_f10_mg37" name="ERS_D_Ln9_Vnuopc" testmods="cam/carma_test_radiative">
+    <machines>
+      <machine name="izumi" compiler="nag" category="carma"/>
+      <machine name="cheyenne" compiler="intel" category="carma"/>
+    </machines>
+    <options>
+      <option name="comment" >CARMA radiation test</option>
+      <option name="wallclock">00:30:00</option>
+    </options>
+  </test>
+<!--              carma test_tracers      -->
+  <test compset="QPC5" grid="f10_f10_mg37" name="ERS_D_Ln9_Vnuopc" testmods="cam/carma_test_tracers">
+    <machines>
+      <machine name="izumi" compiler="nag" category="carma"/>
+      <machine name="cheyenne" compiler="intel" category="carma"/>
+    </machines>
+    <options>
+      <option name="comment" >CARMA tracers test</option>
+      <option name="wallclock">00:30:00</option>
+    </options>
+  </test>
+<!--             carma test_tracers2      -->
+  <test compset="QPC5" grid="f10_f10_mg37" name="ERC_D_Ln9_Vnuopc" testmods="cam/carma_test_tracers2">
+    <machines>
+      <machine name="izumi" compiler="nag" category="carma"/>
+      <machine name="cheyenne" compiler="intel" category="carma"/>
+    </machines>
+    <options>
+      <option name="comment" >CARMA tracers2 test</option>
+      <option name="wallclock">00:30:00</option>
+    </options>
+  </test>
+<!--               carma test_passive      -->
+  <test compset="QPC5" grid="f10_f10_mg37" name="ERC_D_Ln9_Vnuopc" testmods="cam/carma_test_passive">
+    <machines>
+      <machine name="izumi" compiler="nag" category="carma"/>
+      <machine name="cheyenne" compiler="intel" category="carma"/>
+    </machines>
+    <options>
+      <option name="comment" >CARMA passive test</option>
+      <option name="wallclock">00:30:00</option>
+    </options>
+  </test>
+<!--              carma test_swelling     -->
+  <test compset="QPC5" grid="f10_f10_mg37" name="ERC_D_Ln9_Vnuopc" testmods="cam/carma_test_swelling">
+    <machines>
+      <machine name="izumi" compiler="nag" category="carma"/>
+      <machine name="cheyenne" compiler="intel" category="carma"/>
+    </machines>
+    <options>
+      <option name="comment" >CARMA particle swelling test</option>
+      <option name="wallclock">00:30:00</option>
+    </options>
+  </test>
+<!--              carma sulfate           -->
+  <test compset="FW4ma2000" grid="f10_f10_mg37" name="SMS_D_Ln9_Vnuopc" testmods="cam/carma_sulfate">
+    <machines>
+      <machine name="izumi" compiler="nag" category="carma"/>
+      <machine name="cheyenne" compiler="intel" category="carma"/>
+   </machines>
+    <options>
+      <option name="comment" >CARMA pure sulfate test</option>
+      <option name="wallclock">00:30:00</option>
+    </options>
+  </test>
+<!--              carma mixed sulfate           -->
+  <test compset="FW4ma2000" grid="f10_f10_mg37" name="ERS_D_Ln9_Vnuopc" testmods="cam/carma_mixed_sulfate">
+    <machines>
+      <machine name="izumi" compiler="nag" category="carma"/>
+      <machine name="cheyenne" compiler="intel" category="carma"/>
+   </machines>
+    <options>
+      <option name="comment" >CARMA mixed sulfate test</option>
+      <option name="wallclock">00:30:00</option>
+    </options>
+  </test>
+<!--              carma test_growth       -->
+  <test compset="QPC5" grid="f10_f10_mg37" name="ERC_D_Ln9_Vnuopc" testmods="cam/carma_test_growth">
+    <machines>
+      <machine name="izumi" compiler="nag" category="carma"/>
+      <machine name="cheyenne" compiler="intel" category="carma"/>
+    </machines>
+    <options>
+      <option name="comment" >CARMA particle growth test</option>
       <option name="wallclock">00:30:00</option>
     </options>
   </test>
 <!--              471                         -->
-  <test compset="QPWmaC6" grid="f10_f10_mg37" name="ERC_D_Ln9_Vmct" testmods="cam/outfrq3s" supported="false">
+  <test compset="QPWmaC6" grid="f10_f10_mg37" name="ERC_D_Ln9_Vnuopc" testmods="cam/outfrq3s" supported="false">
     <machines>
       <machine name="izumi" compiler="nag" category="aux_cam"/>
       <machine name="izumi" compiler="nag" category="waccm"/>
@@ -631,7 +782,16 @@
       <option name="wallclock">00:30:00</option>
     </options>
   </test>
-  <test compset="QPWmaC4" grid="f10_f10_mg37" name="SMS_D_Ln9_Vmct" testmods="cam/outfrq9s" supported="false">
+  <test compset="QPWmaC4" grid="f10_f10_mg37" name="SMS_D_Ln9_Vnuopc" testmods="cam/outfrq9s_apmee" supported="false">
+    <machines>
+      <machine name="izumi" compiler="gnu" category="aux_cam"/>
+      <machine name="izumi" compiler="nag" category="waccm"/>
+    </machines>
+    <options>
+      <option name="wallclock">00:30:00</option>
+    </options>
+  </test>
+  <test compset="QPWmaC6" grid="f10_f10_mg37" name="ERP_Ln9_Vnuopc" testmods="cam/outfrq9s_mee_fluxes" supported="false">
     <machines>
       <machine name="izumi" compiler="nag" category="waccm"/>
     </machines>
@@ -639,8 +799,25 @@
       <option name="wallclock">00:30:00</option>
     </options>
   </test>
+  <test compset="QPWmaC4" grid="f45_f45_mg37" name="SMS_D_Ln9_P24x3_Vnuopc" testmods="cam/outfrq9s_apmee" supported="false">
+    <machines>
+      <machine name="cheyenne" compiler="intel" category="waccm"/>
+    </machines>
+    <options>
+      <option name="wallclock">00:20:00</option>
+    </options>
+  </test>
+  <test compset="QPWmaC6" grid="f45_f45_mg37" name="ERP_Ln9_P24x3_Vnuopc" testmods="cam/outfrq9s_mee_fluxes" supported="false">
+    <machines>
+      <machine name="cheyenne" compiler="intel" category="aux_cam"/>
+      <machine name="cheyenne" compiler="intel" category="waccm"/>
+    </machines>
+    <options>
+      <option name="wallclock">00:20:00</option>
+    </options>
+  </test>
 <!--              700                         -->
-  <test compset="FADIAB" grid="ne5_ne5_mg37" name="ERI_D_Ln18_Vmct" testmods="cam/outfrq3s_bwic">
+  <test compset="FADIAB" grid="ne5_ne5_mg37" name="ERI_D_Ln18_Vnuopc" testmods="cam/outfrq3s_bwic">
     <machines>
       <machine name="izumi" compiler="nag" category="aux_cam"/>
     </machines>
@@ -650,7 +827,7 @@
     </options>
   </test>
 <!--              702                        -->
-  <test compset="FADIAB" grid="ne5pg3_ne5pg3_mg37" name="ERI_D_Ln18_Vmct" testmods="cam/outfrq3s_bwic">
+  <test compset="FADIAB" grid="ne5pg3_ne5pg3_mg37" name="ERI_D_Ln18_Vnuopc" testmods="cam/outfrq3s_bwic">
     <machines>
       <machine name="izumi" compiler="nag" category="aux_cam"/>
     </machines>
@@ -660,9 +837,9 @@
     </options>
   </test>
 <!--              704 tsm  ter tbl                       -->
-  <test compset="FADIAB" grid="ne5pg4_ne5pg4_mg37" name="ERC_D_Ln9_Vmct" testmods="cam/outfrq3s">
+  <test compset="FADIAB" grid="ne5pg4_ne5pg4_mg37" name="ERC_D_Ln9_Vnuopc" testmods="cam/outfrq3s">
     <machines>
-      <machine name="izumi" compiler="pgi" category="aux_cam"/>
+      <machine name="izumi" compiler="gnu" category="aux_cam"/>
     </machines>
     <options>
       <option name="comment" >704 tsm, ter</option>
@@ -670,7 +847,7 @@
     </options>
   </test>
 <!--              705 tsm                        -->
-  <test compset="FADIAB" grid="ne5_ne5_mg37" name="SMS_D_Ln9_P1x1_Vmct" testmods="cam/outfrq3s">
+  <test compset="FADIAB" grid="ne5_ne5_mg37" name="SMS_D_Ln9_P1x1_Vnuopc" testmods="cam/outfrq3s">
     <machines>
       <machine name="izumi" compiler="nag" category="aux_cam"/>
     </machines>
@@ -680,7 +857,7 @@
     </options>
   </test>
 <!--              705 teq                        -->
-  <test compset="FADIAB" grid="ne5_ne5_mg37" name="PEM_D_Ln9_Vmct" testmods="cam/outfrq3s">
+  <test compset="FADIAB" grid="ne5_ne5_mg37" name="PEM_D_Ln9_Vnuopc" testmods="cam/outfrq3s">
     <machines>
       <machine name="izumi" compiler="nag" category="aux_cam"/>
     </machines>
@@ -690,9 +867,9 @@
     </options>
   </test>
 <!--              706  tsm teq                      -->
-  <test compset="FADIAB" grid="ne5pg3_ne5pg3_mg37" name="PEM_D_Ln9_Vmct" testmods="cam/outfrq3s">
+  <test compset="FADIAB" grid="ne5pg3_ne5pg3_mg37" name="PEM_D_Ln9_Vnuopc" testmods="cam/outfrq3s">
     <machines>
-      <machine name="izumi" compiler="pgi" category="aux_cam"/>
+      <machine name="izumi" compiler="gnu" category="aux_cam"/>
     </machines>
     <options>
       <option name="comment" >706 tsm, teq</option>
@@ -700,9 +877,9 @@
     </options>
   </test>
 <!--              707  tsm teq                      -->
-  <test compset="FADIAB" grid="ne5pg2_ne5pg2_mg37" name="ERC_D_Ln9_Vmct" testmods="cam/outfrq3s">
+  <test compset="FADIAB" grid="ne5pg2_ne5pg2_mg37" name="ERC_D_Ln9_Vnuopc" testmods="cam/outfrq3s">
     <machines>
-      <machine name="izumi" compiler="pgi" category="aux_cam"/>
+      <machine name="izumi" compiler="gnu" category="aux_cam"/>
     </machines>
     <options>
       <option name="comment" >707 tsm, ter</option>
@@ -710,7 +887,7 @@
     </options>
   </test>
 <!--              711    ter                    -->
-  <test compset="QPC5" grid="ne5_ne5_mg37" name="ERC_D_Ln9_Vmct" testmods="cam/outfrq3s_ttrac">
+  <test compset="QPC5" grid="ne5_ne5_mg37" name="ERC_D_Ln9_Vnuopc" testmods="cam/outfrq3s_ttrac">
     <machines>
       <machine name="izumi" compiler="nag" category="aux_cam"/>
     </machines>
@@ -720,9 +897,9 @@
     </options>
   </test>
 <!--              714  sms                      -->
-  <test compset="QPC5" grid="ne5pg3_ne5pg3_mg37" name="SMS_D_Ln9_Vmct" testmods="cam/outfrq3s_ttrac">
+  <test compset="QPC5" grid="ne5pg3_ne5pg3_mg37" name="SMS_D_Ln9_Vnuopc" testmods="cam/outfrq3s_ttrac">
     <machines>
-      <machine name="izumi" compiler="pgi" category="aux_cam"/>
+      <machine name="izumi" compiler="gnu" category="aux_cam"/>
     </machines>
     <options>
       <option name="comment" >714 tsm, ter</option>
@@ -730,9 +907,9 @@
     </options>
   </test>
 <!--              712                        -->
-  <test compset="QPC5" grid="ne5_ne5_mg37" name="ERC_D_Ln9_Vmct" testmods="cam/outfrq3s_ba">
+  <test compset="QPC5" grid="ne5_ne5_mg37" name="ERC_D_Ln9_Vnuopc" testmods="cam/outfrq3s_ba">
     <machines>
-      <machine name="izumi" compiler="pgi" category="aux_cam"/>
+      <machine name="izumi" compiler="gnu" category="aux_cam"/>
     </machines>
     <options>
       <option name="comment" >712 tsm, ter</option>
@@ -740,7 +917,7 @@
     </options>
   </test>
 <!--              701                        -->
-  <test compset="QPC5" grid="ne5_ne5_mg37" name="PLB_D_Ln9_Vmct" testmods="cam/ttrac_loadbal0">
+  <test compset="QPC5" grid="ne5_ne5_mg37" name="PLB_D_Ln9_Vnuopc" testmods="cam/ttrac_loadbal0">
     <machines>
       <machine name="izumi" compiler="nag" category="aux_cam"/>
     </machines>
@@ -750,7 +927,7 @@
     </options>
   </test>
 <!--              702                        -->
-  <test compset="QPC5" grid="ne5_ne5_mg37" name="PLB_D_Ln9_Vmct" testmods="cam/ttrac_loadbal1">
+  <test compset="QPC5" grid="ne5_ne5_mg37" name="PLB_D_Ln9_Vnuopc" testmods="cam/ttrac_loadbal1">
     <machines>
       <machine name="izumi" compiler="nag" category="aux_cam"/>
     </machines>
@@ -760,7 +937,7 @@
     </options>
   </test>
 <!--              703                        -->
-  <test compset="QPC5" grid="ne5_ne5_mg37" name="PLB_D_Ln9_Vmct" testmods="cam/ttrac_loadbal3">
+  <test compset="QPC5" grid="ne5_ne5_mg37" name="PLB_D_Ln9_Vnuopc" testmods="cam/ttrac_loadbal3">
     <machines>
       <machine name="izumi" compiler="nag" category="aux_cam"/>
     </machines>
@@ -770,9 +947,9 @@
     </options>
   </test>
 <!--              711 teq                       -->
-  <test compset="QPC5" grid="ne5pg3_ne5pg3_mg37" name="PLB_D_Ln9_Vmct" testmods="cam/ttrac_loadbal0">
+  <test compset="QPC5" grid="ne5pg3_ne5pg3_mg37" name="PLB_D_Ln9_Vnuopc" testmods="cam/ttrac_loadbal0">
     <machines>
-      <machine name="izumi" compiler="pgi" category="aux_cam"/>
+      <machine name="izumi" compiler="gnu" category="aux_cam"/>
     </machines>
     <options>
       <option name="comment" >711 teq</option>
@@ -780,9 +957,9 @@
     </options>
   </test>
 <!--              712 teq                       -->
-  <test compset="QPC5" grid="ne5pg3_ne5pg3_mg37" name="PLB_D_Ln9_Vmct" testmods="cam/ttrac_loadbal1">
+  <test compset="QPC5" grid="ne5pg3_ne5pg3_mg37" name="PLB_D_Ln9_Vnuopc" testmods="cam/ttrac_loadbal1">
     <machines>
-      <machine name="izumi" compiler="pgi" category="aux_cam"/>
+      <machine name="izumi" compiler="gnu" category="aux_cam"/>
     </machines>
     <options>
       <option name="comment" >712 teq</option>
@@ -790,9 +967,9 @@
     </options>
   </test>
 <!--              713 teq                       -->
-  <test compset="QPC5" grid="ne5pg3_ne5pg3_mg37" name="PLB_D_Ln9_Vmct" testmods="cam/ttrac_loadbal3">
+  <test compset="QPC5" grid="ne5pg3_ne5pg3_mg37" name="PLB_D_Ln9_Vnuopc" testmods="cam/ttrac_loadbal3">
     <machines>
-      <machine name="izumi" compiler="pgi" category="aux_cam"/>
+      <machine name="izumi" compiler="gnu" category="aux_cam"/>
     </machines>
     <options>
       <option name="comment" >713 teq</option>
@@ -800,7 +977,7 @@
     </options>
   </test>
 <!--              720                        -->
-  <test compset="QPC4" grid="ne16_ne16_mg17" name="ERC_D_Ln9_Vmct" testmods="cam/outfrq3s_usecase">
+  <test compset="QPC4" grid="ne16_ne16_mg17" name="ERC_D_Ln9_Vnuopc" testmods="cam/outfrq3s_usecase">
     <machines>
       <machine name="izumi" compiler="nag" category="aux_cam"/>
     </machines>
@@ -810,7 +987,7 @@
     </options>
   </test>
 <!--              721     -->
-  <test compset="QPC4" grid="ne16pg3_ne16pg3_mg17" name="ERC_D_Ln9_Vmct" testmods="cam/outfrq3s_usecase">
+  <test compset="QPC4" grid="ne16pg3_ne16pg3_mg17" name="ERC_D_Ln9_Vnuopc" testmods="cam/outfrq3s_usecase">
     <machines>
       <machine name="izumi" compiler="nag" category="aux_cam"/>
     </machines>
@@ -820,7 +997,7 @@
     </options>
   </test>
 <!--              011                        -->
-  <test compset="PC5" grid="f45_f45_mg37" name="SMS_D_Ld2_Vmct" testmods="cam/outfrq24h_port">
+  <test compset="PC5" grid="f45_f45_mg37" name="SMS_D_Ld2_Vnuopc" testmods="cam/outfrq24h_port">
     <machines>
       <machine name="izumi" compiler="nag" category="aux_cam"/>
     </machines>
@@ -830,9 +1007,9 @@
     </options>
   </test>
 <!--              002 tsc                       -->
-  <test compset="QPC4" grid="T42_T42_mg17" name="SCT_D_Ln7_Vmct" testmods="cam/scm_prep">
+  <test compset="QPC4" grid="T42_T42_mg17" name="SCT_D_Ln7_Vnuopc" testmods="cam/scm_prep">
     <machines>
-      <machine name="izumi" compiler="pgi" category="aux_cam"/>
+      <machine name="izumi" compiler="gnu" category="aux_cam"/>
     </machines>
     <options>
       <option name="comment" >002 tsc</option>
@@ -840,16 +1017,16 @@
     </options>
   </test>
 <!--              sc004 tsc                       -->
-  <test compset="QPC6" grid="T42_T42_mg17" name="SCT_D_Ln7_Vmct" testmods="cam/scm_prep_c6">
+  <test compset="QPC6" grid="T42_T42_mg17" name="SCT_D_Ln7_Vnuopc" testmods="cam/scm_prep_c6">
     <machines>
-      <machine name="izumi" compiler="pgi" category="aux_cam"/>
+      <machine name="izumi" compiler="gnu" category="aux_cam"/>
     </machines>
     <options>
       <option name="comment" >004 tsc</option>
       <option name="wallclock">00:30:00</option>
     </options>
   </test>
-  <test compset="QPC6" grid="f10_f10_mg37" name="SMS_D_Ln9_Vmct" testmods="cam/outfrq3s_ba">
+  <test compset="QPC6" grid="f10_f10_mg37" name="SMS_D_Ln9_Vnuopc" testmods="cam/outfrq3s_ba">
     <machines>
       <machine name="izumi" compiler="nag" category="aux_cam"/>
     </machines>
@@ -859,7 +1036,7 @@
     </options>
   </test>
 <!--              003                        -->
-  <test compset="QPSCAMC5" grid="T42_T42_mg17" name="SMS_D_Ln7_Vmct" testmods="cam/scmarm">
+  <test compset="QPSCAMC5" grid="T42_T42_mg17" name="SMS_D_Ln7_Vnuopc" testmods="cam/scmarm">
     <machines>
       <machine name="izumi" compiler="nag" category="aux_cam"/>
     </machines>
@@ -869,6 +1046,15 @@
     </options>
   </test>
 <!--              150                        -->
+  <test compset="FDABIP04" grid="T42_T42_mg17" name="ERC_D_Ln9_Vnuopc" testmods="cam/outfrq3s_usecase">
+    <machines>
+      <machine name="cheyenne" compiler="intel" category="aux_cam"/>
+    </machines>
+    <options>
+      <option name="comment" >150 tsm, ter</option>
+      <option name="wallclock">00:30:00</option>
+    </options>
+  </test>
   <test compset="FDABIP04" grid="T42_T42_mg17" name="ERC_D_Ln9_Vmct" testmods="cam/outfrq3s_usecase">
     <machines>
       <machine name="cheyenne" compiler="intel" category="aux_cam"/>
@@ -879,6 +1065,15 @@
     </options>
   </test>
 <!--              151                        -->
+  <test compset="FHS94" grid="T42_T42_mg17" name="ERC_D_Ln9_Vnuopc" testmods="cam/outfrq3s_usecase">
+    <machines>
+      <machine name="cheyenne" compiler="intel" category="aux_cam"/>
+    </machines>
+    <options>
+      <option name="comment" >151 tsm, ter</option>
+      <option name="wallclock">00:30:00</option>
+    </options>
+  </test>
   <test compset="FHS94" grid="T42_T42_mg17" name="ERC_D_Ln9_Vmct" testmods="cam/outfrq3s_usecase">
     <machines>
       <machine name="cheyenne" compiler="intel" category="aux_cam"/>
@@ -889,7 +1084,7 @@
     </options>
   </test>
 <!--              331                        -->
-  <test compset="QPC41850" grid="f45_f45_mg37" name="ERI_D_Ln18_Vmct" testmods="cam/co2rmp_usecase">
+  <test compset="QPC41850" grid="f45_f45_mg37" name="ERI_D_Ln18_Vnuopc" testmods="cam/co2rmp_usecase">
     <machines>
       <machine name="cheyenne" compiler="intel" category="aux_cam"/>
     </machines>
@@ -899,7 +1094,18 @@
     </options>
   </test>
 
-  <test compset="QPMOZ" grid="f19_f19_mg17" name="ERC_D_Ln9_Vmct" testmods="cam/outfrq3s">
+  <test compset="QPMOZ" grid="f10_f10_mg37" name="SMS_D_Ln3_Vnuopc" testmods="cam/outfrq3s_chemproc">
+    <machines>
+      <machine name="izumi" compiler="gnu" category="aux_cam"/>
+      <machine name="izumi" compiler="gnu" category="camchem"/>
+      <machine name="cheyenne" compiler="intel" category="camchem"/>
+    </machines>
+    <options>
+      <option name="wallclock">00:10:00</option>
+    </options>
+  </test>
+
+  <test compset="QPMOZ" grid="f19_f19_mg17" name="ERC_D_Ln9_Vnuopc" testmods="cam/outfrq3s">
     <machines>
       <machine name="cheyenne" compiler="intel" category="aux_cam"/>
       <machine name="cheyenne" compiler="intel" category="camchem"/>
@@ -908,7 +1114,7 @@
       <option name="wallclock">00:20:00</option>
     </options>
   </test>
-  <test compset="QPC5M7" grid="f19_f19_mg17" name="SMS_D_Ln9_Vmct" testmods="cam/outfrq9s">
+  <test compset="QPC5M7" grid="f19_f19_mg17" name="SMS_D_Ln9_Vnuopc" testmods="cam/outfrq9s">
     <machines>
       <machine name="cheyenne" compiler="intel" category="aux_cam"/>
     </machines>
@@ -917,7 +1123,7 @@
     </options>
   </test>
 <!--              360                        -->
-  <test compset="QPC5HIST" grid="f19_f19_mg17" name="SMS_D_Ld2_Vmct" testmods="cam/volc_usecase">
+  <test compset="QPC5HIST" grid="f19_f19_mg17" name="SMS_D_Ld2_Vnuopc" testmods="cam/volc_usecase">
     <machines>
       <machine name="cheyenne" compiler="intel" category="aux_cam"/>
     </machines>
@@ -927,7 +1133,7 @@
     </options>
   </test>
 <!--              370                        -->
-  <test compset="QPC2000climo" grid="f19_f19_mg17" name="SMS_D_Ln9_Vmct" testmods="cam/outfrq3s_usecase">
+  <test compset="QPC2000climo" grid="f19_f19_mg17" name="SMS_D_Ln9_Vnuopc" testmods="cam/outfrq3s_usecase">
     <machines>
       <machine name="cheyenne" compiler="intel" category="aux_cam"/>
     </machines>
@@ -937,7 +1143,7 @@
     </options>
   </test>
 <!--              380                        -->
-  <test compset="QPC6" grid="f19_f19_mg17" name="ERC_D_Ln9_Vmct" testmods="cam/outfrq3s_cosp">
+  <test compset="QPC6" grid="f19_f19_mg17" name="ERC_D_Ln9_Vnuopc" testmods="cam/outfrq3s_cosp">
     <machines>
       <machine name="cheyenne" compiler="intel" category="aux_cam"/>
     </machines>
@@ -947,7 +1153,7 @@
     </options>
   </test>
 <!--              391                        -->
-  <test compset="QPX2000" grid="f19_f19_mg17" name="ERC_D_Ln9_Vmct" testmods="cam/outfrq3s">
+  <test compset="QPX2000" grid="f19_f19_mg17" name="ERC_D_Ln9_Vnuopc" testmods="cam/outfrq3s">
     <machines>
       <machine name="cheyenne" compiler="intel" category="aux_cam"/>
       <machine name="cheyenne" compiler="intel" category="waccmx"/>
@@ -957,7 +1163,7 @@
       <option name="wallclock">00:30:00</option>
     </options>
   </test>
-  <test compset="QPX2000" grid="ne16_ne16_mg17" name="SMS_D_Ln9_Vmct" testmods="cam/outfrq9s">
+  <test compset="QPX2000" grid="ne16_ne16_mg17" name="SMS_D_Ln9_Vnuopc" testmods="cam/outfrq9s">
     <machines>
       <machine name="cheyenne" compiler="intel" category="aux_cam"/>
       <machine name="cheyenne" compiler="intel" category="waccmx"/>
@@ -966,7 +1172,7 @@
       <option name="wallclock">00:30:00</option>
     </options>
   </test>
-  <test compset="FX2000" grid="ne30pg3_ne30pg3_mg17" name="SMS_D_Ln3_Vmct" testmods="cam/outfrq3s_edyngrid_320x385">
+  <test compset="FX2000" grid="ne30pg3_ne30pg3_mg17" name="SMS_D_Ln3_Vnuopc" testmods="cam/outfrq3s_edyngrid_320x385">
     <machines>
       <machine name="cheyenne" compiler="intel" category="waccmx"/>
     </machines>
@@ -974,7 +1180,7 @@
       <option name="wallclock">00:30:00</option>
     </options>
   </test>
-  <test compset="FX2000" grid="ne30pg3_ne30pg3_mg17" name="ERS_Ln3_Vmct" testmods="cam/outfrq3s_edyngrid_640x769">
+  <test compset="FX2000" grid="ne30pg3_ne30pg3_mg17" name="ERS_Ln3_Vnuopc" testmods="cam/outfrq3s_edyngrid_640x769">
     <machines>
       <machine name="cheyenne" compiler="intel" category="waccmx"/>
     </machines>
@@ -983,7 +1189,7 @@
     </options>
   </test>
 <!--              730                        -->
-  <test compset="FADIAB" grid="ne16_ne16_mg17" name="ERC_D_Ln9_Vmct" testmods="cam/terminator">
+  <test compset="FADIAB" grid="ne16_ne16_mg17" name="ERC_D_Ln9_Vnuopc" testmods="cam/terminator">
     <machines>
       <machine name="cheyenne" compiler="intel" category="aux_cam"/>
     </machines>
@@ -993,7 +1199,7 @@
     </options>
   </test>
 <!--              735                        -->
-  <test compset="QPC5HIST" grid="ne16_ne16_mg17" name="ERC_D_Ln9_Vmct" testmods="cam/outfrq3s_usecase">
+  <test compset="QPC5HIST" grid="ne16_ne16_mg17" name="ERC_D_Ln9_Vnuopc" testmods="cam/outfrq3s_usecase">
     <machines>
       <machine name="cheyenne" compiler="intel" category="aux_cam"/>
     </machines>
@@ -1003,7 +1209,7 @@
     </options>
   </test>
 <!--              742                        -->
-  <test compset="QPC6HIST" grid="ne16pg3_ne16pg3_mg17" name="ERC_D_Ln9_P144x1_Vmct" testmods="cam/outfrq3s_ttrac_usecase">
+  <test compset="QPC6HIST" grid="ne16pg3_ne16pg3_mg17" name="ERC_D_Ln9_P144x1_Vnuopc" testmods="cam/outfrq3s_ttrac_usecase">
     <machines>
       <machine name="cheyenne" compiler="intel" category="aux_cam"/>
     </machines>
@@ -1013,7 +1219,7 @@
     </options>
   </test>
 <!--              001                        -->
-  <test compset="QPC5" grid="T42_T42_mg17" name="SCT_D_Ln7_Vmct" testmods="cam/scm_prep">
+  <test compset="QPC5" grid="T42_T42_mg17" name="SCT_D_Ln7_Vnuopc" testmods="cam/scm_prep">
     <machines>
       <machine name="cheyenne" compiler="intel" category="aux_cam"/>
     </machines>
@@ -1034,14 +1240,14 @@
 
   <test compset="F2000climo" grid="mpasa480_mpasa480" name="ERS_Ln9_P36x1_Vnuopc" testmods="cam/outfrq9s_mpasa480">
     <machines>
-      <machine name="izumi" compiler="intel" category="aux_cam"/>
+      <machine name="cheyenne" compiler="intel" category="aux_cam"/>
     </machines>
     <options>
       <option name="wallclock">00:45:00</option>
     </options>
   </test>
 
-  <test compset="FHS94" grid="mpasa480z32_mpasa480" name="ERC_D_Ln9_Vmct" testmods="cam/outfrq3s_usecase">
+  <test compset="FHS94" grid="mpasa480z32_mpasa480" name="ERC_D_Ln9_Vnuopc" testmods="cam/outfrq3s_usecase">
     <machines>
       <machine name="cheyenne" compiler="intel" category="prealpha"/>
     </machines>
@@ -1061,43 +1267,43 @@
 
 <!--              CAM Simple Models                       -->
 
-  <test compset="FDABIP04" grid="T42z30_T42_mg17" name="ERP_D_Ln9_Vmct" testmods="cam/outfrq9s">
+  <test compset="FDABIP04" grid="T42z30_T42_mg17" name="ERP_D_Ln9_Vnuopc" testmods="cam/outfrq9s">
     <machines>
       <machine name="izumi" compiler="nag" category="prealpha"/>
     </machines>
   </test>
-  <test compset="FDABIP04" grid="T85z30_T85_mg17" name="ERP_D_Ln9_Vmct" testmods="cam/outfrq9s">
+  <test compset="FDABIP04" grid="T85z30_T85_mg17" name="ERP_D_Ln9_Vnuopc" testmods="cam/outfrq9s">
     <machines>
       <machine name="izumi" compiler="nag" category="prebeta"/>
     </machines>
   </test>
-  <test compset="FDABIP04" grid="T85z60_T85_mg17" name="ERP_D_Ln9_Vmct" testmods="cam/outfrq9s">
+  <test compset="FDABIP04" grid="T85z60_T85_mg17" name="ERP_D_Ln9_Vnuopc" testmods="cam/outfrq9s">
     <machines>
       <machine name="izumi" compiler="nag" category="prebeta"/>
     </machines>
   </test>
-  <test compset="FHS94" grid="T42_T42_mg17" name="ERP_D_Ln9_Vmct" testmods="cam/outfrq9s">
+  <test compset="FHS94" grid="T42_T42_mg17" name="ERP_D_Ln9_Vnuopc" testmods="cam/outfrq9s">
     <machines>
       <machine name="izumi" compiler="nag" category="prealpha"/>
     </machines>
   </test>
-  <test compset="FHS94" grid="T85z30_T85_mg17" name="ERP_D_Ln9_Vmct" testmods="cam/outfrq9s">
+  <test compset="FHS94" grid="T85z30_T85_mg17" name="ERP_D_Ln9_Vnuopc" testmods="cam/outfrq9s">
     <machines>
       <machine name="izumi" compiler="nag" category="prebeta"/>
     </machines>
   </test>
-  <test compset="FHS94" grid="T85z60_T85_mg17" name="ERP_D_Ln9_Vmct" testmods="cam/outfrq9s">
+  <test compset="FHS94" grid="T85z60_T85_mg17" name="ERP_D_Ln9_Vnuopc" testmods="cam/outfrq9s">
     <machines>
       <machine name="izumi" compiler="nag" category="prebeta"/>
     </machines>
   </test>
-  <test compset="FKESSLER" grid="f19_f19_mg17" name="ERP_D_Ln9_Vmct" testmods="cam/outfrq9s">
+  <test compset="FKESSLER" grid="f19_f19_mg17" name="ERP_D_Ln9_Vnuopc" testmods="cam/outfrq9s">
     <machines>
       <machine name="izumi" compiler="nag" category="prealpha"/>
     </machines>
   </test>
 
-  <test compset="FHIST_DARTC6" grid="f09_f09_mg17" name="SMS_C80_P108x1_Lh1_Vmct" testmods="cam/dartcambigens">
+  <test compset="FHIST_DARTC6" grid="f09_f09_mg17" name="SMS_C80_P108x1_Lh1_Vnuopc" testmods="cam/dartcambigens">
     <machines>
       <machine name="cheyenne" compiler="intel" category="prebeta"/>
     </machines>
@@ -1108,17 +1314,31 @@
   </test>
 
 <!--              CAM SCAM runs                      -->
-  <test compset="FSCAM" grid="T42_T42" name="SMS_D_Ln9_Vmct" testmods="cam/outfrq9s">
+  <test compset="FSCAM" grid="T42_T42" name="SMS_D_Ln9_Vnuopc" testmods="cam/outfrq9s">
     <machines>
       <machine name="cheyenne" compiler="intel" category="aux_cam"/>
       <machine name="cheyenne" compiler="intel" category="test_scam"/>
     </machines>
+    <options>
+      <option name="wallclock">00:10:00</option>
+    </options>
   </test>
-  <test compset="FSCAM" grid="T42_T42" name="SMS_D_Ln9_Vmct" testmods="cam/scam_mpace_outfrq9s">
+  <test compset="2000_CAM60%SCAM_CLM50%SP_CICE5%PRES_DOCN%DOM_SROF_SGLC_SWAV" grid="T42_T42" name="SMS_D_Ln9_Vmct" testmods="cam/outfrq9s">
+    <machines>
+      <machine name="cheyenne" compiler="intel" category="aux_cam"/>
+    </machines>
+    <options>
+      <option name="wallclock">00:10:00</option>
+    </options>
+  </test>
+  <test compset="FSCAM" grid="T42_T42" name="SMS_D_Ln9_Vnuopc" testmods="cam/scam_mpace_outfrq9s">
     <machines>
       <machine name="cheyenne" compiler="intel" category="prealpha"/>
       <machine name="cheyenne" compiler="intel" category="test_scam"/>
     </machines>
+    <options>
+      <option name="wallclock">00:10:00</option>
+    </options>
   </test>
 
 <!--              @@@@@@@@@@@@@@@@@@@@@@@@@@@                 -->
@@ -1126,38 +1346,90 @@
 <!--                    (unsupported)                         -->
 <!--              @@@@@@@@@@@@@@@@@@@@@@@@@@@                 -->
 
-  <test compset="F2000climo" grid="f09_f09_mg17" name="ERP_Ln9_Vmct" testmods="cam/outfrq9s_mg3">
+  <test compset="F2000dev" grid="ne30pg3_ne30pg3_mg17" name="ERP_D_Ln9_Vnuopc" testmods="cam/outfrq9s" supported="false">
     <machines>
-      <machine name="cheyenne" compiler="intel" category="prebeta"/>
       <machine name="cheyenne" compiler="intel" category="aux_cam"/>
+      <machine name="cheyenne" compiler="intel" category="prealpha"/>
     </machines>
     <options>
-      <option name="wallclock">00:10:00</option>
+      <option name="wallclock">01:00:00</option>
     </options>
   </test>
-  <test compset="F2000climo" grid="f09_f09_mg17" name="ERP_Ln9_Vmct" testmods="cam/outfrq9s_wetdep">
+  <test compset="F2000dev" grid="f09_f09_mg17" name="ERP_Ln9_Vnuopc" testmods="cam/outfrq9s_mg3" supported="false">
+    <machines>
+      <machine name="cheyenne" compiler="intel" category="aux_cam"/>
+      <machine name="cheyenne" compiler="intel" category="prealpha"/>
+    </machines>
+    <options>
+      <option name="wallclock">01:00:00</option>
+    </options>
+  </test>
+  <test compset="F2000dev" grid="f19_f19" name="SMS_Ld1_Vnuopc" testmods="cam/outfrq9s" supported="false">
+    <machines>
+      <machine name="cheyenne" compiler="intel" category="aux_cam"/>
+      <machine name="cheyenne" compiler="intel" category="prealpha"/>
+    </machines>
+    <options>
+      <option name="wallclock">01:00:00</option>
+    </options>
+  </test>
+
+  <test compset="F2000climo" grid="f09_f09_mg17" name="ERP_Ln9_Vnuopc" testmods="cam/outfrq9s_wetdep">
     <machines>
       <machine name="cheyenne" compiler="intel" category="camchem"/>
     </machines>
   </test>
-  <test compset="F2000climo" grid="f09_f09_mg17" name="SMS_D_Ln9_Vmct" testmods="cam/outfrq9s_wetdep">
+  <test compset="F2000climo" grid="f09_f09_mg17" name="SMS_D_Ln9_Vnuopc" testmods="cam/outfrq9s_wetdep">
     <machines>
       <machine name="cheyenne" compiler="intel" category="camchem"/>
     </machines>
   </test>
-  <test compset="F2000climo" grid="f09_f09_mg17" name="ERP_Ln9_Vmct" testmods="cam/outfrq9s_mg3_casper">
+  <test compset="F2000dev" grid="f09_f09_mg17" name="ERP_Ln9_Vnuopc" testmods="cam/outfrq9s_mg3_default">
     <machines>
       <machine name="casper" compiler="pgi-gpu"   category="casper_gpu"/>
       <machine name="casper" compiler="nvhpc-gpu" category="casper_gpu"/>
-      <machine name="casper" compiler="intel"     category="casper_cpu"/>
-      <machine name="casper" compiler="pgi"       category="casper_cpu"/>
-      <machine name="casper" compiler="nvhpc"     category="casper_cpu"/>
     </machines>
     <options>
-      <option name="wallclock">00:30:00</option>
+      <option name="wallclock">00:59:00</option>
     </options>
   </test>
-  <test compset="QPC4" grid="f19_f19_mg17" name="ERP_Ln9_Vmct" testmods="cam/outfrq9s">
+  <test compset="F2000dev" grid="f09_f09_mg17" name="ERP_Ln9_Vnuopc" testmods="cam/outfrq9s_mg2_default">
+    <machines>
+      <machine name="casper" compiler="pgi-gpu"   category="casper_gpu"/>
+      <machine name="casper" compiler="nvhpc-gpu" category="casper_gpu"/>
+    </machines>
+    <options>
+      <option name="wallclock">00:59:00</option>
+    </options>
+  </test>
+  <test compset="F2000dev" grid="f09_f09_mg17" name="ERP_Ln9_Vnuopc" testmods="cam/outfrq9s_mg3_nondefault">
+    <machines>
+      <machine name="casper" compiler="pgi-gpu"   category="casper_gpu"/>
+      <machine name="casper" compiler="nvhpc-gpu" category="casper_gpu"/>
+    </machines>
+    <options>
+      <option name="wallclock">00:59:00</option>
+    </options>
+  </test>
+  <test compset="F2000dev" grid="f09_f09_mg17" name="ERP_Ln9_Vnuopc" testmods="cam/outfrq9s_mg3_pcols1536">
+    <machines>
+      <machine name="casper" compiler="pgi-gpu"   category="casper_gpu"/>
+      <machine name="casper" compiler="nvhpc-gpu" category="casper_gpu"/>
+    </machines>
+    <options>
+      <option name="wallclock">00:59:00</option>
+    </options>
+  </test>
+  <test compset="F2000dev" grid="f09_f09_mg17" name="ERP_Ln9_Vnuopc_G4" testmods="cam/outfrq9s_mg3_default">
+    <machines>
+      <machine name="casper" compiler="pgi-gpu"   category="casper_gpu"/>
+      <machine name="casper" compiler="nvhpc-gpu" category="casper_gpu"/>
+    </machines>
+    <options>
+      <option name="wallclock">00:59:00</option>
+    </options>
+  </test>
+  <test compset="QPC4" grid="f19_f19_mg17" name="ERP_Ln9_Vnuopc" testmods="cam/outfrq9s">
     <machines>
       <machine name="cheyenne" compiler="intel" category="test_release"/>
     </machines>
@@ -1165,7 +1437,7 @@
       <option name="wallclock">00:10:00</option>
     </options>
   </test>
-  <test compset="QPC5" grid="f19_f19_mg17" name="ERP_D_Ln9_Vmct" testmods="cam/outfrq9s">
+  <test compset="QPC5" grid="f19_f19_mg17" name="ERP_D_Ln9_Vnuopc" testmods="cam/outfrq9s">
     <machines>
       <machine name="cheyenne" compiler="intel" category="test_release"/>
     </machines>
@@ -1173,7 +1445,7 @@
       <option name="wallclock">00:10:00</option>
     </options>
   </test>
-  <test compset="QSC4" grid="f19_f19_mg17" name="ERP_Ln9_Vmct" testmods="cam/outfrq9s">
+  <test compset="QSC4" grid="f19_f19_mg17" name="ERP_Ln9_Vnuopc" testmods="cam/outfrq9s">
     <machines>
       <machine name="cheyenne" compiler="intel" category="test_release"/>
     </machines>
@@ -1181,7 +1453,7 @@
       <option name="wallclock">00:10:00</option>
     </options>
   </test>
-  <test compset="QSC5" grid="f19_f19_mg17" name="ERP_D_Ln9_Vmct" testmods="cam/outfrq9s">
+  <test compset="QSC5" grid="f19_f19_mg17" name="ERP_D_Ln9_Vnuopc" testmods="cam/outfrq9s">
     <machines>
       <machine name="cheyenne" compiler="intel" category="test_release"/>
     </machines>
@@ -1189,7 +1461,7 @@
       <option name="wallclock">00:10:00</option>
     </options>
   </test>
-  <test compset="FSD" grid="f19_f19_mg17" name="ERP_D_Ln9_Vmct" testmods="cam/outfrq9s_sd">
+  <test compset="FSD" grid="f19_f19_mg17" name="ERP_D_Ln9_Vnuopc" testmods="cam/outfrq9s_sd">
     <machines>
       <machine name="cheyenne" compiler="intel" category="prealpha"/>
     </machines>
@@ -1197,7 +1469,7 @@
       <option name="wallclock">00:20:00</option>
     </options>
   </test>
-  <test compset="FSD" grid="f09_f09_mg17" name="ERP_D_Ln9_Vmct" testmods="cam/outfrq9s_contrail">
+  <test compset="F2000climo" grid="f09_f09_mg17" name="ERP_D_Ln9_Vnuopc" testmods="cam/outfrq9s_contrail">
     <machines>
       <machine name="cheyenne" compiler="intel" category="prealpha"/>
     </machines>
@@ -1205,7 +1477,7 @@
       <option name="wallclock">00:20:00</option>
     </options>
   </test>
-  <test compset="FSD" grid="f09_f09_mg17" name="SMS_D_Ln9_Vmct" testmods="cam/outfrq9s">
+  <test compset="FSD" grid="f09_f09_mg17" name="SMS_D_Ln9_Vnuopc" testmods="cam/outfrq9s">
     <machines>
       <machine name="cheyenne" compiler="intel" category="aux_cam"/>
     </machines>
@@ -1213,7 +1485,7 @@
       <option name="wallclock">00:20:00</option>
     </options>
   </test>
-  <test compset="FCSD" grid="f05_f05_mg17" name="ERP_Ln9_Vmct" testmods="cam/outfrq9s">
+  <test compset="FCSD" grid="f05_f05_mg17" name="ERP_Ln9_Vnuopc" testmods="cam/outfrq9s">
     <machines>
       <machine name="cheyenne" compiler="intel" category="camchem"/>
     </machines>
@@ -1221,12 +1493,12 @@
       <option name="wallclock">00:30:00</option>
     </options>
   </test>
-  <test compset="FCSD" grid="f05_f05_mg17" name="SMS_D_Ln9_Vmct" testmods="cam/outfrq9s">
+  <test compset="FCSD" grid="f05_f05_mg17" name="SMS_D_Ln9_Vnuopc" testmods="cam/outfrq9s">
     <machines>
       <machine name="cheyenne" compiler="intel" category="camchem"/>
     </machines>
   </test>
-  <test compset="FCSD" grid="f09_f09_mg17" name="ERP_Lh12_Vmct" testmods="cam/outfrq3h">
+  <test compset="FCSD" grid="f09_f09_mg17" name="ERP_Lh12_Vnuopc" testmods="cam/outfrq3h">
     <machines>
       <machine name="cheyenne" compiler="intel" category="camchem"/>
       <machine name="cheyenne" compiler="intel" category="prebeta"/>
@@ -1235,7 +1507,7 @@
       <option name="wallclock">00:20:00</option>
     </options>
   </test>
-  <test compset="FCnudged" grid="ne30_ne30_mg17" name="ERP_Ln9_Vmct" testmods="cam/outfrq9s">
+  <test compset="FCnudged" grid="ne30_ne30_mg17" name="ERP_Ln9_Vnuopc" testmods="cam/outfrq9s">
     <machines>
       <machine name="cheyenne" compiler="intel" category="aux_cam"/>
       <machine name="cheyenne" compiler="intel" category="camchem"/>
@@ -1244,7 +1516,7 @@
       <option name="wallclock">00:20:00</option>
     </options>
   </test>
-  <test compset="FCnudged" grid="ne0CONUSne30x8_ne0CONUSne30x8_mt12" name="SMS_D_Ln9_Vmct" testmods="cam/outfrq9s_refined_camchem">
+  <test compset="FCnudged" grid="ne0CONUSne30x8_ne0CONUSne30x8_mt12" name="SMS_D_Ln9_Vnuopc" testmods="cam/outfrq9s_refined_camchem">
     <machines>
       <machine name="cheyenne" compiler="intel" category="prealpha"/>
       <machine name="cheyenne" compiler="intel" category="camchem"/>
@@ -1253,7 +1525,7 @@
       <option name="wallclock">00:20:00</option>
     </options>
   </test>
-  <test compset="FCts2nudged" grid="f09_f09_mg17" name="SMS_D_Ln9_Vmct" testmods="cam/outfrq9s_leapday">
+  <test compset="FCts2nudged" grid="f09_f09_mg17" name="SMS_D_Ln9_Vnuopc" testmods="cam/outfrq9s_leapday">
     <machines>
       <machine name="cheyenne" compiler="intel" category="aux_cam"/>
       <machine name="cheyenne" compiler="intel" category="camchem"/>
@@ -1262,7 +1534,7 @@
       <option name="wallclock">00:20:00</option>
     </options>
   </test>
-  <test compset="FCts2SD" grid="f09_f09_mg17" name="SMS_D_Ln9_Vmct" testmods="cam/outfrq9s">
+  <test compset="FCts2SD" grid="f09_f09_mg17" name="SMS_D_Ln9_Vnuopc" testmods="cam/outfrq9s">
     <machines>
       <machine name="cheyenne" compiler="intel" category="camchem"/>
       <machine name="cheyenne" compiler="intel" category="prealpha"/>
@@ -1271,7 +1543,7 @@
       <option name="wallclock">00:20:00</option>
     </options>
   </test>
-  <test compset="FCts2SD" grid="f09_f09_mg17" name="ERP_Ln9_Vmct" testmods="cam/outfrq9s">
+  <test compset="FCts2SD" grid="f09_f09_mg17" name="ERP_Ln9_Vnuopc" testmods="cam/outfrq9s">
     <machines>
       <machine name="cheyenne" compiler="intel" category="camchem"/>
     </machines>
@@ -1279,7 +1551,7 @@
       <option name="wallclock">00:20:00</option>
     </options>
   </test>
-  <test compset="FC2010climo" grid="f09_f09_mg17" name="ERP_Ld3_Vmct" testmods="cam/outfrq1d">
+  <test compset="FC2010climo" grid="f09_f09_mg17" name="ERP_Ld3_Vnuopc" testmods="cam/outfrq1d">
     <machines>
       <machine name="cheyenne" compiler="intel" category="camchem"/>
       <machine name="cheyenne" compiler="intel" category="prebeta"/>
@@ -1288,7 +1560,7 @@
       <option name="wallclock">00:20:00</option>
     </options>
   </test>
-  <test compset="FC2010climo" grid="ne30_ne30_mg17" name="SMS_Ld1_Vmct" testmods="cam/outfrq1d">
+  <test compset="FC2010climo" grid="ne30_ne30_mg17" name="SMS_Ld1_Vnuopc" testmods="cam/outfrq1d">
     <machines>
       <machine name="cheyenne" compiler="intel" category="prealpha"/>
       <machine name="cheyenne" compiler="intel" category="camchem"/>
@@ -1297,7 +1569,7 @@
       <option name="wallclock">00:20:00</option>
     </options>
   </test>
-  <test compset="FC2010climo" grid="ne30pg3_ne30pg3_mg17" name="SMS_Ld1_Vmct" testmods="cam/outfrq1d">
+  <test compset="FC2010climo" grid="ne30pg3_ne30pg3_mg17" name="SMS_Ld1_Vnuopc" testmods="cam/outfrq1d">
     <machines>
       <machine name="cheyenne" compiler="intel" category="aux_cam"/>
       <machine name="cheyenne" compiler="intel" category="camchem"/>
@@ -1306,12 +1578,12 @@
       <option name="wallclock">00:20:00</option>
     </options>
   </test>
-  <test compset="FC2010climo" grid="f09_f09_mg17" name="SMS_D_Ln9_Vmct" testmods="cam/outfrq9s">
+  <test compset="FC2010climo" grid="f09_f09_mg17" name="SMS_D_Ln9_Vnuopc" testmods="cam/outfrq9s">
     <machines>
       <machine name="cheyenne" compiler="intel" category="camchem"/>
     </machines>
   </test>
-  <test compset="FC2000climo" grid="f09_f09_mg17" name="SMS_D_Ln9_Vmct" testmods="cam/outfrq9s_wetdep">
+  <test compset="FC2000climo" grid="f09_f09_mg17" name="SMS_D_Ln9_Vnuopc" testmods="cam/outfrq9s_wetdep">
     <machines>
       <machine name="cheyenne" compiler="intel" category="camchem"/>
       <machine name="cheyenne" compiler="intel" category="prebeta"/>
@@ -1320,23 +1592,23 @@
       <option name="wallclock">00:20:00</option>
     </options>
   </test>
-  <test compset="FC2000climo" grid="f09_f09_mg17" name="ERP_Ln9_Vmct" testmods="cam/outfrq9s_wetdep">
+  <test compset="FC2000climo" grid="f09_f09_mg17" name="ERP_Ln9_Vnuopc" testmods="cam/outfrq9s_wetdep">
     <machines>
       <machine name="cheyenne" compiler="intel" category="camchem"/>
     </machines>
   </test>
-  <test compset="FC2000climo" grid="f09_f09_mg17" name="ERP_Ld3_Vmct" testmods="cam/outfrq1d">
+  <test compset="FC2000climo" grid="f09_f09_mg17" name="ERP_Ld3_Vnuopc" testmods="cam/outfrq1d">
     <machines>
       <machine name="cheyenne" compiler="intel" category="camchem"/>
     </machines>
   </test>
-  <test compset="FCHIST" grid="ne30_ne30_mg17" name="SMS_Ld1_Vmct" testmods="cam/outfrq1d">
+  <test compset="FCHIST" grid="ne30_ne30_mg17" name="SMS_Ld1_Vnuopc" testmods="cam/outfrq1d">
     <machines>
       <machine name="cheyenne" compiler="intel" category="prebeta"/>
       <machine name="cheyenne" compiler="intel" category="camchem"/>
     </machines>
   </test>
-  <test compset="FCHIST" grid="f09_f09_mg17" name="SMS_D_Ln9_Vmct" testmods="cam/outfrq9s_ocnemis">
+  <test compset="FCHIST" grid="f09_f09_mg17" name="SMS_D_Ln9_Vnuopc" testmods="cam/outfrq9s_ocnemis">
     <machines>
       <machine name="cheyenne" compiler="intel" category="camchem"/>
       <machine name="cheyenne" compiler="intel" category="prealpha"/>
@@ -1345,12 +1617,12 @@
       <option name="wallclock">00:30:00</option>
     </options>
   </test>
-  <test compset="FCHIST" grid="f09_f09_mg17" name="ERP_Ln9_Vmct" testmods="cam/outfrq9s_ocnemis">
+  <test compset="FCHIST" grid="f09_f09_mg17" name="ERP_Ln9_Vnuopc" testmods="cam/outfrq9s_ocnemis">
     <machines>
       <machine name="cheyenne" compiler="intel" category="camchem"/>
     </machines>
   </test>
-  <test compset="FCHIST" grid="ne0CONUSne30x8_ne0CONUSne30x8_mt12" name="SMS_D_Ln9_Vmct" testmods="cam/outfrq9s_refined_camchem">
+  <test compset="FCHIST" grid="ne0CONUSne30x8_ne0CONUSne30x8_mt12" name="SMS_D_Ln9_Vnuopc" testmods="cam/outfrq9s_refined_camchem">
     <machines>
       <machine name="cheyenne" compiler="intel" category="aux_cam"/>
       <machine name="cheyenne" compiler="intel" category="camchem"/>
@@ -1359,7 +1631,7 @@
       <option name="wallclock">00:30:00</option>
     </options>
   </test>
-  <test compset="FCHIST" grid="ne0CONUSne30x8_ne0CONUSne30x8_mt12" name="ERS_Ld3_Vmct" testmods="cam/outfrq1d_refined_camchem">
+  <test compset="FCHIST" grid="ne0CONUSne30x8_ne0CONUSne30x8_mt12" name="ERS_Ld3_Vnuopc" testmods="cam/outfrq1d_refined_camchem">
     <machines>
       <machine name="cheyenne" compiler="intel" category="camchem"/>
     </machines>
@@ -1367,7 +1639,7 @@
       <option name="wallclock">02:00:00</option>
     </options>
   </test>
-  <test compset="FCvbsxHIST" grid="f09_f09_mg17" name="SMS_D_Ln9_Vmct" testmods="cam/outfrq9s">
+  <test compset="FCvbsxHIST" grid="f09_f09_mg17" name="SMS_D_Ln9_Vnuopc" testmods="cam/outfrq9s">
     <machines>
       <machine name="cheyenne" compiler="intel" category="camchem"/>
       <machine name="cheyenne" compiler="intel" category="aux_cam"/>
@@ -1376,17 +1648,17 @@
       <option name="wallclock">00:30:00</option>
     </options>
   </test>
-  <test compset="FCvbsxHIST" grid="f09_f09_mg17" name="ERP_Ld3_Vmct" testmods="cam/outfrq1d">
+  <test compset="FCvbsxHIST" grid="f09_f09_mg17" name="ERP_Ld3_Vnuopc" testmods="cam/outfrq1d">
     <machines>
       <machine name="cheyenne" compiler="intel" category="camchem"/>
     </machines>
   </test>
-  <test compset="FCfireHIST" grid="f09_f09_mg17" name="SMS_D_Ln9_Vmct" testmods="cam/outfrq9s">
+  <test compset="FCfireHIST" grid="f09_f09_mg17" name="SMS_D_Ln9_Vnuopc" testmods="cam/outfrq9s">
     <machines>
       <machine name="cheyenne" compiler="intel" category="camchem"/>
     </machines>
   </test>
-  <test compset="FCfireHIST" grid="f09_f09_mg17" name="ERP_Ld3_Vmct" testmods="cam/outfrq1d">
+  <test compset="FCfireHIST" grid="f09_f09_mg17" name="ERP_Ld3_Vnuopc" testmods="cam/outfrq1d">
     <machines>
       <machine name="cheyenne" compiler="intel" category="camchem"/>
       <machine name="cheyenne" compiler="intel" category="prealpha"/>
@@ -1397,13 +1669,13 @@
   </test>
 
   <!--  Test of finite volume CAM-SE grid with CSLAM tracer advection -->
-  <test compset="FKESSLER" grid="ne5pg3_ne5pg3_mg37" name="ERS_Ln27_Vmct" testmods="cam/outfrq9s" supported="false">
+  <test compset="FKESSLER" grid="ne5pg3_ne5pg3_mg37" name="ERS_Ln27_Vnuopc" testmods="cam/outfrq9s" supported="false">
     <machines>
       <machine name="izumi" compiler="nag" category="aux_cam"/>
     </machines>
   </test>
   <!--  DART -->
-  <test compset="FHS94" grid="f45_f45_mg37" name="DAE_Vmct" testmods="cam/dae">
+  <test compset="FHS94" grid="f45_f45_mg37" name="DAE_Vnuopc" testmods="cam/dae">
     <machines>
       <machine name="izumi" compiler="nag" category="aux_cam"/>
     </machines>
@@ -1412,7 +1684,7 @@
     </options>
   </test>
 <!-- SPCAM testing -->
-  <test compset="FSPCAMS" grid="C48_C48_mg17" name="ERS_Ln9_Vmct" testmods="cam/outfrq9s">
+  <test compset="FSPCAMS" grid="C48_C48_mg17" name="ERS_Ln9_Vnuopc" testmods="cam/outfrq9s">
     <machines>
       <machine name="cheyenne" compiler="intel" category="fv3_cam"/>
     </machines>
@@ -1420,7 +1692,7 @@
       <option name="wallclock">00:10:00</option>
     </options>
   </test>
-  <test compset="FSPCAMM" grid="C48_C48_mg17" name="ERS_Ln9_Vmct" testmods="cam/outfrq9s">
+  <test compset="FSPCAMM" grid="C48_C48_mg17" name="ERS_Ln9_Vnuopc" testmods="cam/outfrq9s">
     <machines>
       <machine name="cheyenne" compiler="intel" category="fv3_cam"/>
     </machines>
@@ -1428,24 +1700,26 @@
       <option name="wallclock">00:20:00</option>
     </options>
   </test>
-  <test compset="FSPCAMCLBM" grid="C48_C48_mg17" name="ERS_Ln9_Vmct" testmods="cam/outfrq9s">
+  <test compset="FSPCAMCLBM" grid="C48_C48_mg17" name="ERS_Ln9_Vnuopc" testmods="cam/outfrq9s">
     <machines>
       <machine name="cheyenne" compiler="intel" category="fv3_cam"/>
     </machines>
   </test>
-  <test compset="FSPCAMCLBS" grid="C48_C48_mg17" name="ERS_Ln9_Vmct" testmods="cam/outfrq9s">
+  <test compset="FSPCAMCLBS" grid="C48_C48_mg17" name="ERS_Ln9_Vnuopc" testmods="cam/outfrq9s">
     <machines>
       <machine name="cheyenne" compiler="intel" category="fv3_cam"/>
     </machines>
   </test>
-  <test compset="FSPCAMS" grid="f19_f19_mg17" name="ERS_Ln9_Vmct" testmods="cam/outfrq9s">
+  <test compset="FSPCAMS" grid="f19_f19_mg17" name="ERS_Ln9_Vnuopc" testmods="cam/outfrq9s">
     <machines>
       <machine name="izumi" compiler="nag" category="test_spcam"/>
-      <machine name="izumi" compiler="pgi" category="test_spcam"/>
       <machine name="cheyenne" compiler="intel" category="aux_cam"/>
     </machines>
+    <options>
+      <option name="wallclock">00:20:00</option>
+    </options>
   </test>
-  <test compset="FSPCAMS" grid="f19_f19_mg17" name="ERS_Ln9_Vmct" testmods="cam/outfrq9s">
+  <test compset="FSPCAMS" grid="f19_f19_mg17" name="ERS_Ln9_Vnuopc" testmods="cam/outfrq9s">
     <machines>
       <machine name="cheyenne" compiler="intel" category="test_spcam"/>
       <machine name="cheyenne" compiler="intel" category="prebeta"/>
@@ -1454,7 +1728,7 @@
       <option name="wallclock">00:10:00</option>
     </options>
   </test>
-  <test compset="FSPCAMM" grid="f19_f19_mg17" name="ERS_Ln9_Vmct" testmods="cam/outfrq9s">
+  <test compset="FSPCAMM" grid="f19_f19_mg17" name="ERS_Ln9_Vnuopc" testmods="cam/outfrq9s">
     <machines>
       <machine name="cheyenne" compiler="intel" category="prealpha"/>
       <machine name="cheyenne" compiler="intel" category="test_spcam"/>
@@ -1463,12 +1737,12 @@
       <option name="wallclock">00:20:00</option>
     </options>
   </test>
-  <test compset="FSPCAMCLBM" grid="f19_f19_mg17" name="ERS_Ln9_Vmct" testmods="cam/outfrq9s">
+  <test compset="FSPCAMCLBM" grid="f19_f19_mg17" name="ERS_Ln9_Vnuopc" testmods="cam/outfrq9s">
     <machines>
       <machine name="izumi" compiler="intel" category="test_spcam"/>
     </machines>
   </test>
-  <test compset="FSPCAMCLBS" grid="f19_f19_mg17" name="ERS_Ln9_Vmct" testmods="cam/outfrq9s">
+  <test compset="FSPCAMCLBS" grid="f19_f19_mg17" name="ERS_Ln9_Vnuopc" testmods="cam/outfrq9s">
     <machines>
       <machine name="izumi" compiler="intel" category="test_spcam"/>
     </machines>
@@ -1478,17 +1752,17 @@
 <!--                    (unsupported)                         -->
 <!--              @@@@@@@@@@@@@@@@@@@@@@@@@@@                 -->
 
-  <test compset="F2000climo" grid="C96_C96_mg17" name="ERP_Ln9_Vmct" testmods="cam/outfrq9s">
+  <test compset="F2000climo" grid="C96_C96_mg17" name="ERP_Ln9_Vnuopc" testmods="cam/outfrq9s">
     <machines>
       <machine name="cheyenne" compiler="intel" category="fv3_cam"/>
       <machine name="izumi" compiler="intel"   category="fv3_cam"/>
-      <machine name="izumi" compiler="pgi"     category="fv3_cam"/>
+      <machine name="izumi" compiler="gnu"     category="fv3_cam"/>
     </machines>
     <options>
       <option name="wallclock">00:10:00</option>
     </options>
   </test>
-  <test compset="F2010climo" grid="C96_C96_mg17" name="ERP_Ln9_Vmct" testmods="cam/outfrq9s">
+  <test compset="F2010climo" grid="C96_C96_mg17" name="ERP_Ln9_Vnuopc" testmods="cam/outfrq9s">
     <machines>
       <machine name="cheyenne" compiler="intel" category="fv3_cam"/>
     </machines>
@@ -1496,7 +1770,7 @@
       <option name="wallclock">00:10:00</option>
     </options>
   </test>
-  <test compset="F2000climo" grid="C96_C96_mg17" name="SMS_Lm13_Vmct" testmods="cam/outfrq1m" supported="false">
+  <test compset="F2000climo" grid="C96_C96_mg17" name="SMS_Lm13_Vnuopc" testmods="cam/outfrq1m" supported="false">
     <machines>
       <machine name="cheyenne" compiler="intel" category="fv3_cam_long"/>
     </machines>
@@ -1504,7 +1778,7 @@
        <option name="wallclock">03:00:00</option>
     </options>
   </test>
-  <test compset="F2000climo" grid="C96_C96_mg17" name="PFS_Vmct">
+  <test compset="F2000climo" grid="C96_C96_mg17" name="PFS_Vnuopc">
     <machines>
       <machine name="cheyenne" compiler="pgi" category="fv3_cam"/>
     </machines>
@@ -1513,7 +1787,7 @@
     </options>
   </test>
 
-  <test compset="FHIST" grid="C96_C96_mg17" name="ERP_Ln9_Vmct" testmods="cam/outfrq9s">
+  <test compset="FHIST" grid="C96_C96_mg17" name="ERP_Ln9_Vnuopc" testmods="cam/outfrq9s">
     <machines>
       <machine name="cheyenne" compiler="intel" category="fv3_cam"/>
     </machines>
@@ -1522,7 +1796,7 @@
     </options>
   </test>
 
-  <test compset="FHIST_BGC" grid="C96_C96_mg17" name="ERP_Ln9_Vmct" testmods="cam/outfrq9s">
+  <test compset="FHIST_BGC" grid="C96_C96_mg17" name="ERP_Ln9_Vnuopc" testmods="cam/outfrq9s">
     <machines>
       <machine name="cheyenne" compiler="intel" category="fv3_cam"/>
     </machines>
@@ -1531,7 +1805,7 @@
     </options>
   </test>
 
-  <test compset="F1850" grid="C96_C96_mg17" name="ERP_Ln9_Vmct" testmods="cam/outfrq9s">
+  <test compset="F1850" grid="C96_C96_mg17" name="ERP_Ln9_Vnuopc" testmods="cam/outfrq9s">
     <machines>
       <machine name="cheyenne" compiler="intel" category="fv3_cam"/>
     </machines>
@@ -1541,7 +1815,7 @@
   </test>
 
 <!--              CAM Tests at non-scientific resolutions     -->
-  <test compset="F2000climo" grid="C48_C48_mg17" name="ERP_Ln9_Vmct" testmods="cam/cosp">
+  <test compset="F2000climo" grid="C48_C48_mg17" name="ERP_Ln9_Vnuopc" testmods="cam/cosp">
     <machines>
       <machine name="cheyenne" compiler="intel" category="fv3_cam"/>
     </machines>
@@ -1549,7 +1823,7 @@
       <option name="wallclock">00:10:00</option>
     </options>
   </test>
-  <test compset="F2000climo" grid="C48_C48_mg17" name="ERS_Ln9_Vmct" testmods="cam/outfrq9s">
+  <test compset="F2000climo" grid="C48_C48_mg17" name="ERS_Ln9_Vnuopc" testmods="cam/outfrq9s">
     <machines>
       <machine name="cheyenne" compiler="intel" category="fv3_cam"/>
     </machines>
@@ -1558,7 +1832,7 @@
     </options>
   </test>
 
-  <test compset="F2000climo" grid="C48_C48_mg17" name="SMS_Ln9_Vmct" testmods="cam/silhs">
+  <test compset="F2000climo" grid="C48_C48_mg17" name="SMS_Ln9_Vnuopc" testmods="cam/silhs">
     <machines>
       <machine name="cheyenne" compiler="intel" category="fv3_cam"/>
     </machines>
@@ -1568,17 +1842,17 @@
   </test>
 <!--              CAM Simple Models                       -->
 
-  <test compset="FHS94" grid="C48_C48_mg17" name="ERP_D_Ln9_Vmct" testmods="cam/outfrq9s">
+  <test compset="FHS94" grid="C48_C48_mg17" name="ERP_D_Ln9_Vnuopc" testmods="cam/outfrq9s">
     <machines>
       <machine name="cheyenne" compiler="intel" category="fv3_cam"/>
     </machines>
   </test>
-  <test compset="FHS94" grid="C96_C96_mg17" name="ERP_D_Ln9_Vmct" testmods="cam/outfrq9s">
+  <test compset="FHS94" grid="C96_C96_mg17" name="ERP_D_Ln9_Vnuopc" testmods="cam/outfrq9s">
     <machines>
       <machine name="cheyenne" compiler="intel" category="fv3_cam"/>
     </machines>
   </test>
-  <test compset="FKESSLER" grid="C48_C48_mg17" name="ERP_D_Ln9_Vmct" testmods="cam/outfrq9s">
+  <test compset="FKESSLER" grid="C48_C48_mg17" name="ERP_D_Ln9_Vnuopc" testmods="cam/outfrq9s">
     <machines>
       <machine name="cheyenne" compiler="pgi" category="fv3_cam"/>
     </machines>
@@ -1587,7 +1861,7 @@
 <!--             WACCM COMPSETS                 -->
 <!--              @@@@@@@@@@@@@@@@@@@@@@                 -->
 
-  <test compset="FWSD" grid="f09_f09_mg17" name="ERP_Lh12_Vmct" testmods="cam/outfrq3h">
+  <test compset="FWSD" grid="f09_f09_mg17" name="ERP_Lh12_Vnuopc" testmods="cam/outfrq3h">
     <machines>
       <machine name="cheyenne" compiler="intel" category="prebeta"/>
       <machine name="cheyenne" compiler="intel" category="waccm"/>
@@ -1596,12 +1870,12 @@
       <option name="wallclock">00:40:00</option>
     </options>
   </test>
-  <test compset="FWSD" grid="f09_f09_mg17" name="SMS_D_Ln9_Vmct" testmods="cam/outfrq9s">
+  <test compset="FWSD" grid="f09_f09_mg17" name="SMS_D_Ln9_Vnuopc" testmods="cam/outfrq9s">
     <machines>
       <machine name="cheyenne" compiler="intel" category="waccm"/>
     </machines>
   </test>
-  <test compset="FMOZ" grid="f19_f19_mg17" name="SMS_D_Ln9_Vmct" testmods="cam/outfrq9s" supported="false">
+  <test compset="FMOZ" grid="f19_f19_mg17" name="SMS_D_Ln9_Vnuopc" testmods="cam/outfrq9s" supported="false">
     <machines>
       <machine name="cheyenne" compiler="intel" category="camchem"/>
       <machine name="cheyenne" compiler="intel" category="prebeta"/>
@@ -1610,7 +1884,7 @@
       <option name="wallclock">00:10:00</option>
     </options>
   </test>
-  <test compset="QPMAM5" grid="f10_f10_mg37" name="SMS_D_Ln9_Vmct" testmods="cam/outfrq3s">
+  <test compset="QPMAM5" grid="f10_f10_mg37" name="SMS_D_Ln9_Vnuopc" testmods="cam/outfrq3s">
     <machines>
       <machine name="izumi" compiler="nag" category="aux_cam"/>
     </machines>
@@ -1618,7 +1892,7 @@
       <option name="wallclock">00:20:00</option>
     </options>
   </test>
-  <test compset="F2000mam5" grid="f09_f09_mg17" name="ERP_Ld3_Vmct" testmods="cam/outfrq1d">
+  <test compset="F2000mam5" grid="f09_f09_mg17" name="ERP_Ld3_Vnuopc" testmods="cam/outfrq1d">
     <machines>
       <machine name="cheyenne" compiler="intel" category="prebeta"/>
     </machines>
@@ -1626,7 +1900,7 @@
       <option name="wallclock">00:20:00</option>
     </options>
   </test>
-  <test compset="FW2000mam5" grid="f09_f09_mg17" name="SMS_D_Ln9_Vmct" testmods="cam/outfrq9s">
+  <test compset="FW2000mam5" grid="f09_f09_mg17" name="SMS_D_Ln9_Vnuopc" testmods="cam/outfrq9s">
     <machines>
       <machine name="cheyenne" compiler="intel" category="waccm"/>
     </machines>
@@ -1634,7 +1908,7 @@
       <option name="wallclock">00:30:00</option>
     </options>
   </test>
-  <test compset="FW2000mam5" grid="f09_f09_mg17" name="ERP_Ln9_Vmct" testmods="cam/outfrq9s">
+  <test compset="FW2000mam5" grid="f09_f09_mg17" name="ERP_Ln9_Vnuopc" testmods="cam/outfrq9s">
     <machines>
       <machine name="cheyenne" compiler="intel" category="waccm"/>
     </machines>
@@ -1642,7 +1916,7 @@
       <option name="wallclock">00:30:00</option>
     </options>
   </test>
-  <test compset="FW2000climo" grid="f09_f09_mg17" name="SMS_Ld1_Vmct" testmods="cam/outfrq1d">
+  <test compset="FW2000climo" grid="f09_f09_mg17" name="SMS_Ld1_Vnuopc" testmods="cam/outfrq1d">
     <machines>
       <machine name="cheyenne" compiler="intel" category="aux_cam"/>
       <machine name="cheyenne" compiler="intel" category="waccm"/>
@@ -1652,7 +1926,7 @@
       <option name="wallclock">00:20:00</option>
     </options>
   </test>
-  <test compset="FW2000climo" grid="f19_f19_mg17" name="SMS_D_Ln9_Vmct" testmods="cam/outfrq9s">
+  <test compset="FW2000climo" grid="f19_f19_mg17" name="SMS_D_Ln9_Vnuopc" testmods="cam/outfrq9s">
     <machines>
       <machine name="cheyenne" compiler="intel" category="prebeta"/>
       <machine name="cheyenne" compiler="intel" category="waccm"/>
@@ -1661,7 +1935,7 @@
       <option name="wallclock">00:20:00</option>
     </options>
   </test>
-  <test compset="FWma2000climo" grid="f19_f19_mg17" name="SMS_D_Ln9_Vmct" testmods="cam/outfrq9s">
+  <test compset="FWma2000climo" grid="f19_f19_mg17" name="SMS_D_Ln9_Vnuopc" testmods="cam/outfrq9s">
     <machines>
       <machine name="cheyenne" compiler="intel" category="aux_cam"/>
       <machine name="cheyenne" compiler="intel" category="waccm"/>
@@ -1670,7 +1944,7 @@
       <option name="wallclock">00:20:00</option>
     </options>
   </test>
-  <test compset="FWma2000climo" grid="f09_f09_mg17" name="SMS_D_Ln9_Vmct" testmods="cam/outfrq9s">
+  <test compset="FWma2000climo" grid="f09_f09_mg17" name="SMS_D_Ln9_Vnuopc" testmods="cam/outfrq9s">
     <machines>
       <machine name="cheyenne" compiler="intel" category="prealpha"/>
       <machine name="cheyenne" compiler="intel" category="waccm"/>
@@ -1679,7 +1953,7 @@
       <option name="wallclock">00:20:00</option>
     </options>
   </test>
-  <test compset="FWma2000climo" grid="ne30pg3_ne30pg3_mg17" name="SMS_D_Ln9_Vmct" testmods="cam/outfrq9s">
+  <test compset="FWma2000climo" grid="ne30pg3_ne30pg3_mg17" name="SMS_D_Ln9_Vnuopc" testmods="cam/outfrq9s">
     <machines>
       <machine name="cheyenne" compiler="intel" category="prebeta"/>
       <machine name="cheyenne" compiler="intel" category="waccm"/>
@@ -1688,7 +1962,7 @@
       <option name="wallclock">00:20:00</option>
     </options>
   </test>
-  <test compset="FW2000climo" grid="f19_f19_mg17" name="ERP_Ln9_Vmct" testmods="cam/outfrq9s">
+  <test compset="FW2000climo" grid="f19_f19_mg17" name="ERP_Ln9_Vnuopc" testmods="cam/outfrq9s">
     <machines>
       <machine name="cheyenne" compiler="intel" category="waccm"/>
     </machines>
@@ -1696,7 +1970,7 @@
       <option name="wallclock">00:20:00</option>
     </options>
   </test>
-  <test compset="FWma2000climo" grid="f19_f19_mg17" name="ERP_Ln9_Vmct" testmods="cam/outfrq9s">
+  <test compset="FWma2000climo" grid="f19_f19_mg17" name="ERP_Ln9_Vnuopc" testmods="cam/outfrq9s">
     <machines>
       <machine name="cheyenne" compiler="intel" category="waccm"/>
     </machines>
@@ -1704,7 +1978,7 @@
       <option name="wallclock">00:20:00</option>
     </options>
   </test>
-  <test compset="FWma2000climo" grid="f09_f09_mg17" name="ERP_Ln9_Vmct" testmods="cam/outfrq9s">
+  <test compset="FWma2000climo" grid="f09_f09_mg17" name="ERP_Ln9_Vnuopc" testmods="cam/outfrq9s">
     <machines>
       <machine name="cheyenne" compiler="intel" category="waccm"/>
     </machines>
@@ -1712,7 +1986,7 @@
       <option name="wallclock">00:20:00</option>
     </options>
   </test>
-  <test compset="FWma2000climo" grid="ne30pg3_ne30pg3_mg17" name="ERP_Ln9_Vmct" testmods="cam/outfrq9s">
+  <test compset="FWma2000climo" grid="ne30pg3_ne30pg3_mg17" name="ERP_Ln9_Vnuopc" testmods="cam/outfrq9s">
     <machines>
       <machine name="cheyenne" compiler="intel" category="waccm"/>
     </machines>
@@ -1720,7 +1994,7 @@
       <option name="wallclock">00:20:00</option>
     </options>
   </test>
-  <test compset="FW2010climo" grid="f09_f09_mg17" name="SMS_Ld1_Vmct" testmods="cam/outfrq1d">
+  <test compset="FW2010climo" grid="f09_f09_mg17" name="SMS_Ld1_Vnuopc" testmods="cam/outfrq1d">
     <machines>
       <machine name="cheyenne" compiler="intel" category="prealpha"/>
       <machine name="cheyenne" compiler="intel" category="waccm"/>
@@ -1729,12 +2003,12 @@
       <option name="wallclock">00:30:00</option>
     </options>
   </test>
-  <test compset="FW1850" grid="f09_f09_mg17" name="SMS_Ld1_Vmct" testmods="cam/outfrq1d">
+  <test compset="FW1850" grid="f09_f09_mg17" name="SMS_Ld1_Vnuopc" testmods="cam/outfrq1d">
     <machines>
       <machine name="cheyenne" compiler="intel" category="waccm"/>
     </machines>
   </test>
-  <test compset="FW1850" grid="f09_f09_mg17" name="SMS_Ln9_Vmct" testmods="cam/reduced_hist3s">
+  <test compset="FW1850" grid="f09_f09_mg17" name="SMS_Ln9_Vnuopc" testmods="cam/reduced_hist3s">
     <machines>
       <machine name="cheyenne" compiler="intel" category="aux_cam"/>
       <machine name="cheyenne" compiler="intel" category="prealpha"/>
@@ -1743,7 +2017,16 @@
       <option name="wallclock">00:10:00</option>
     </options>
   </test>
-  <test compset="FWHIST_BGC" grid="f09_f09_mg17" name="ERP_Ld3_Vmct" testmods="cam/reduced_hist1d">
+  <test compset="1850_CAM60%WCTS_CLM50%SP_CICE5%PRES_DOCN%DOM_MOSART_SGLC_SWAV" grid="f09_f09_mg17" name="SMS_Ln9_Vmct" testmods="cam/reduced_hist3s">
+    <machines>
+      <machine name="cheyenne" compiler="intel" category="aux_cam"/>
+      <machine name="cheyenne" compiler="intel" category="prealpha"/>
+    </machines>
+    <options>
+      <option name="wallclock">00:10:00</option>
+    </options>
+  </test>
+  <test compset="FWHIST_BGC" grid="f09_f09_mg17" name="ERP_Ld3_Vnuopc" testmods="cam/reduced_hist1d">
     <machines>
       <machine name="cheyenne" compiler="intel" category="waccm"/>
       <machine name="cheyenne" compiler="intel" category="prebeta"/>
@@ -1752,7 +2035,7 @@
       <option name="wallclock">00:30:00</option>
     </options>
   </test>
-  <test compset="FWHIST" grid="f09_f09_mg17" name="ERP_Ld3_Vmct" testmods="cam/outfrq1d">
+  <test compset="FWHIST" grid="f09_f09_mg17" name="ERP_Ld3_Vnuopc" testmods="cam/outfrq1d">
     <machines>
       <machine name="cheyenne" compiler="intel" category="waccm"/>
     </machines>
@@ -1760,7 +2043,7 @@
       <option name="wallclock">00:30:00</option>
     </options>
   </test>
-  <test compset="FWHIST" grid="f09_f09_mg17" name="ERP_Ld3_Vmct" testmods="cam/reduced_hist1d">
+  <test compset="FWHIST" grid="f09_f09_mg17" name="ERP_Ld3_Vnuopc" testmods="cam/reduced_hist1d">
     <machines>
       <machine name="cheyenne" compiler="intel" category="aux_cam"/>
     </machines>
@@ -1768,7 +2051,15 @@
       <option name="wallclock">00:40:00</option>
     </options>
   </test>
-  <test compset="FWHIST" grid="f09_f09_mg17" name="SMS_D_Ln9_Vmct" testmods="cam/reduced_hist3s">
+  <test compset="HIST_CAM60%WCTS_CLM50%SP_CICE5%PRES_DOCN%DOM_MOSART_SGLC_SWAV" grid="f09_f09_mg17" name="ERP_Ld3_Vmct" testmods="cam/reduced_hist1d">
+    <machines>
+      <machine name="cheyenne" compiler="intel" category="aux_cam"/>
+    </machines>
+    <options>
+      <option name="wallclock">00:40:00</option>
+    </options>
+  </test>
+  <test compset="FWHIST" grid="f09_f09_mg17" name="SMS_D_Ln9_Vnuopc" testmods="cam/reduced_hist3s">
     <machines>
       <machine name="cheyenne" compiler="intel" category="waccm"/>
       <machine name="cheyenne" compiler="intel" category="prealpha"/>
@@ -1777,7 +2068,7 @@
       <option name="wallclock">00:20:00</option>
     </options>
   </test>
-  <test compset="FX2000" grid="f19_f19_mg17" name="SMS_D_Ln9_Vmct"   testmods="cam/outfrq9s">
+  <test compset="FX2000" grid="f19_f19_mg17" name="SMS_D_Ln9_Vnuopc"   testmods="cam/outfrq9s">
     <machines>
       <machine name="cheyenne" compiler="intel" category="waccmx"/>
     </machines>
@@ -1785,7 +2076,7 @@
       <option name="wallclock">00:10:00</option>
     </options>
   </test>
-  <test compset="FX2000" grid="ne16_ne16_mg17" name="SMS_D_Ln9_Vmct"   testmods="cam/outfrq9s">
+  <test compset="FX2000" grid="ne16_ne16_mg17" name="SMS_D_Ln9_Vnuopc"   testmods="cam/outfrq9s">
     <machines>
       <machine name="cheyenne" compiler="intel" category="waccmx"/>
       <machine name="cheyenne" compiler="intel" category="aux_cam"/>
@@ -1794,7 +2085,7 @@
       <option name="wallclock">00:20:00</option>
     </options>
   </test>
-  <test compset="FX2000" grid="f09_f09_mg17" name="ERS_Ln9_Vmct"   testmods="cam/outfrq9s">
+  <test compset="FX2000" grid="f09_f09_mg17" name="ERS_Ln9_Vnuopc"   testmods="cam/outfrq9s">
     <machines>
       <machine name="cheyenne" compiler="intel" category="waccmx"/>
       <machine name="cheyenne" compiler="intel" category="aux_cam"/>
@@ -1803,12 +2094,17 @@
       <option name="wallclock">00:30:00</option>
     </options>
   </test>
-  <test compset="FX2000" grid="f05_f05_mg17" name="ERS_Ln9_Vmct"   testmods="cam/outfrq9s_f05">
+  <test compset="FX2000" grid="f05_f05_mg17" name="ERS_Ln9_Vnuopc"   testmods="cam/outfrq9s_f05">
     <machines>
       <machine name="cheyenne" compiler="intel" category="waccmx"/>
     </machines>
   </test>
-  <test compset="FXHIST" grid="f19_f19_mg17" name="SMS_D_Ln9_Vmct" testmods="cam/outfrq9s_amie">
+  <test compset="FX2000" grid="f05_f05_mg17" name="SMS_D_Ln9_Vnuopc"   testmods="cam/outfrq9s_f05">
+    <machines>
+      <machine name="cheyenne" compiler="intel" category="waccmx"/>
+    </machines>
+  </test>
+  <test compset="FXHIST" grid="f19_f19_mg17" name="SMS_D_Ln9_Vnuopc" testmods="cam/outfrq9s_amie">
     <machines>
       <machine name="cheyenne" compiler="intel" category="waccmx"/>
       <machine name="cheyenne" compiler="intel" category="aux_cam"/>
@@ -1817,15 +2113,17 @@
       <option name="wallclock">00:10:00</option>
     </options>
   </test>
-  <test compset="FXHIST" grid="f19_f19_mg17" name="SMS_D_Ln9_Vmct" testmods="cam/outfrq9s_ltr">
+  <test compset="QPX2000" grid="f19_f19_mg17" name="SMS_D_Ln9_P240x3_Vmct" testmods="cam/outfrq9s_ltr">
     <machines>
       <machine name="cheyenne" compiler="intel" category="waccmx"/>
     </machines>
-    <options>
-      <option name="wallclock">00:10:00</option>
-    </options>
   </test>
-  <test compset="FXHIST" grid="f19_f19_mg17" name="SMS_C2_Ln9_Vmct" testmods="cam/outfrq9s">
+  <test compset="FXHIST" grid="f19_f19_mg17" name="ERS_Ld3_Vnuopc"   testmods="cam/outfrq1d_ltr">
+    <machines>
+      <machine name="cheyenne" compiler="intel" category="waccmx"/>
+    </machines>
+  </test>
+  <test compset="FXHIST" grid="f19_f19_mg17" name="SMS_C2_Ln9_Vnuopc" testmods="cam/outfrq9s">
     <machines>
       <machine name="cheyenne" compiler="intel" category="waccmx"/>
       <machine name="cheyenne" compiler="intel" category="prealpha"/>
@@ -1834,22 +2132,22 @@
       <option name="wallclock">00:30:00</option>
     </options>
   </test>
-  <test compset="FXHIST" grid="f19_f19_mg17" name="ERS_Ld3_Vmct"   testmods="cam/outfrq1d_amie">
+  <test compset="FXHIST" grid="f19_f19_mg17" name="ERS_Ld3_Vnuopc"   testmods="cam/outfrq1d_amie">
     <machines>
       <machine name="cheyenne" compiler="intel" category="waccmx"/>
     </machines>
   </test>
-  <test compset="FXHIST" grid="f09_f09_mg17" name="SMS_D_Ln9_Vmct"   testmods="cam/outfrq9s">
+  <test compset="FXHIST" grid="f09_f09_mg17" name="SMS_D_Ln9_Vnuopc"   testmods="cam/outfrq9s">
     <machines>
       <machine name="cheyenne" compiler="intel" category="waccmx"/>
     </machines>
   </test>
-  <test compset="FXHIST" grid="f19_f19_mg17" name="ERS_Ld3_Vmct"   testmods="cam/outfrq1d_newyear">
+  <test compset="FXHIST" grid="f19_f19_mg17" name="ERS_Ld3_Vnuopc"   testmods="cam/outfrq1d_newyear">
     <machines>
       <machine name="cheyenne" compiler="intel" category="waccmx"/>
     </machines>
   </test>
-  <test compset="FXHIST" grid="f19_f19_mg17" name="ERS_Ld3_Vmct"   testmods="cam/waccmx_weimer">
+  <test compset="FXHIST" grid="f19_f19_mg17" name="ERS_Ld3_Vnuopc"   testmods="cam/waccmx_weimer">
     <machines>
       <machine name="cheyenne" compiler="intel" category="waccmx"/>
       <machine name="cheyenne" compiler="intel" category="prealpha"/>
@@ -1858,20 +2156,12 @@
       <option name="wallclock">00:50:00</option>
     </options>
   </test>
-  <test compset="FXHIST" grid="f09_f09_mg17" name="SMS_D_Ln9_Vmct"   testmods="cam/waccmx_weimer">
+  <test compset="FXHIST" grid="f09_f09_mg17" name="SMS_D_Ln9_Vnuopc"   testmods="cam/waccmx_weimer">
     <machines>
       <machine name="cheyenne" compiler="intel" category="waccmx"/>
     </machines>
   </test>
-  <test compset="FXHIST" grid="f19_f19_mg17" name="ERS_Ln9_Vmct"   testmods="cam/outfrq9s">
-    <machines>
-      <machine name="cheyenne" compiler="intel" category="waccmx"/>
-    </machines>
-    <options>
-      <option name="wallclock">00:20:00</option>
-    </options>
-  </test>
-  <test compset="FXmadHIST" grid="f19_f19_mg17" name="ERS_Ln9_Vmct"   testmods="cam/outfrq9s" supported="false">
+  <test compset="FXHIST" grid="f19_f19_mg17" name="ERS_Ln9_Vnuopc"   testmods="cam/outfrq9s">
     <machines>
       <machine name="cheyenne" compiler="intel" category="waccmx"/>
     </machines>
@@ -1879,22 +2169,7 @@
       <option name="wallclock">00:20:00</option>
     </options>
   </test>
-  <test compset="FXmadHIST" grid="f19_f19_mg17" name="SMS_D_Ln9_Vmct"   testmods="cam/outfrq9s" supported="false">
-    <machines>
-      <machine name="cheyenne" compiler="intel" category="waccmx"/>
-    </machines>
-  </test>
-  <test compset="FXmadHIST" grid="f09_f09_mg17" name="SMS_D_Ln9_Vmct"   testmods="cam/outfrq9s" supported="false">
-    <machines>
-      <machine name="cheyenne" compiler="intel" category="waccmx"/>
-    </machines>
-  </test>
-  <test compset="FXmadSD" grid="f19_f19_mg17" name="ERS_Ln9_Vmct"   testmods="cam/outfrq9s" supported="false">
-    <machines>
-      <machine name="cheyenne" compiler="intel" category="waccmx"/>
-    </machines>
-  </test>
-  <test compset="FXmadSD" grid="f19_f19_mg17" name="SMS_D_Ln9_Vmct"   testmods="cam/outfrq9s" supported="false">
+  <test compset="FXmadHIST" grid="f19_f19_mg17" name="ERS_Ln9_Vnuopc"   testmods="cam/outfrq9s" supported="false">
     <machines>
       <machine name="cheyenne" compiler="intel" category="waccmx"/>
     </machines>
@@ -1902,7 +2177,22 @@
       <option name="wallclock">00:20:00</option>
     </options>
   </test>
-  <test compset="FXmadSD" grid="f09_f09_mg17" name="SMS_D_Ln9_Vmct"   testmods="cam/outfrq9s" supported="false">
+  <test compset="FXmadHIST" grid="f19_f19_mg17" name="SMS_D_Ln9_Vnuopc"   testmods="cam/outfrq9s" supported="false">
+    <machines>
+      <machine name="cheyenne" compiler="intel" category="waccmx"/>
+    </machines>
+  </test>
+  <test compset="FXmadHIST" grid="f09_f09_mg17" name="SMS_D_Ln9_Vnuopc"   testmods="cam/outfrq9s" supported="false">
+    <machines>
+      <machine name="cheyenne" compiler="intel" category="waccmx"/>
+    </machines>
+  </test>
+  <test compset="FXmadSD" grid="f19_f19_mg17" name="ERS_Ln9_Vnuopc"   testmods="cam/outfrq9s" supported="false">
+    <machines>
+      <machine name="cheyenne" compiler="intel" category="waccmx"/>
+    </machines>
+  </test>
+  <test compset="FXmadSD" grid="f19_f19_mg17" name="SMS_D_Ln9_Vnuopc"   testmods="cam/outfrq9s" supported="false">
     <machines>
       <machine name="cheyenne" compiler="intel" category="waccmx"/>
     </machines>
@@ -1910,7 +2200,7 @@
       <option name="wallclock">00:20:00</option>
     </options>
   </test>
-  <test compset="FXSD" grid="f19_f19_mg17" name="SMS_D_Ln9_Vmct"   testmods="cam/outfrq9s">
+  <test compset="FXmadSD" grid="f09_f09_mg17" name="SMS_D_Ln9_Vnuopc"   testmods="cam/outfrq9s" supported="false">
     <machines>
       <machine name="cheyenne" compiler="intel" category="waccmx"/>
     </machines>
@@ -1918,7 +2208,15 @@
       <option name="wallclock">00:20:00</option>
     </options>
   </test>
-  <test compset="FXSD" grid="f19_f19_mg17" name="ERS_Ln9_Vmct"   testmods="cam/outfrq9s">
+  <test compset="FXSD" grid="f19_f19_mg17" name="SMS_D_Ln9_Vnuopc"   testmods="cam/outfrq9s">
+    <machines>
+      <machine name="cheyenne" compiler="intel" category="waccmx"/>
+    </machines>
+    <options>
+      <option name="wallclock">00:20:00</option>
+    </options>
+  </test>
+  <test compset="FXSD" grid="f19_f19_mg17" name="ERS_Ln9_Vnuopc"   testmods="cam/outfrq9s">
     <machines>
       <machine name="cheyenne" compiler="intel" category="waccmx"/>
       <machine name="cheyenne" compiler="intel" category="aux_cam"/>
@@ -1927,7 +2225,7 @@
       <option name="wallclock">00:20:00</option>
     </options>
   </test>
-  <test compset="FXSD" grid="f09_f09_mg17" name="SMS_Lh3_Vmct"   testmods="cam/outfrq3h">
+  <test compset="FXSD" grid="f09_f09_mg17" name="SMS_Lh3_Vnuopc"   testmods="cam/outfrq3h">
     <machines>
       <machine name="cheyenne" compiler="intel" category="waccmx"/>
     </machines>
@@ -1935,7 +2233,7 @@
       <option name="wallclock">00:20:00</option>
     </options>
   </test>
-  <test compset="FXSD" grid="f19_f19_mg17" name="SMS_Lh3_Vmct"   testmods="cam/outfrq3h">
+  <test compset="FXSD" grid="f19_f19_mg17" name="SMS_Lh3_Vnuopc"   testmods="cam/outfrq3h">
     <machines>
       <machine name="cheyenne" compiler="intel" category="waccmx"/>
     </machines>
@@ -1943,32 +2241,32 @@
       <option name="wallclock">00:20:00</option>
     </options>
   </test>
-  <test compset="FWmaHIST" grid="f09_f09_mg17" name="SMS_D_Ln9_Vmct" testmods="cam/outfrq9s">
+  <test compset="FWmaHIST" grid="f09_f09_mg17" name="SMS_D_Ln9_Vnuopc" testmods="cam/outfrq9s">
     <machines>
       <machine name="cheyenne" compiler="intel" category="waccm"/>
     </machines>
   </test>
-  <test compset="FWmaHIST" grid="f09_f09_mg17" name="ERP_Ld3_Vmct" testmods="cam/outfrq3d">
+  <test compset="FWmaHIST" grid="f09_f09_mg17" name="ERP_Ld3_Vnuopc" testmods="cam/outfrq3d">
     <machines>
       <machine name="cheyenne" compiler="intel" category="waccm"/>
     </machines>
   </test>
-  <test compset="FWmadHIST" grid="f09_f09_mg17" name="ERP_Ld3_Vmct" testmods="cam/outfrq3d">
+  <test compset="FWmadHIST" grid="f09_f09_mg17" name="ERP_Ld3_Vnuopc" testmods="cam/outfrq3d">
     <machines>
       <machine name="cheyenne" compiler="intel" category="waccm"/>
     </machines>
   </test>
-  <test compset="FWmadHIST" grid="f19_f19_mg17" name="SMS_D_Ln9_Vmct" testmods="cam/outfrq9s">
+  <test compset="FWmadHIST" grid="f19_f19_mg17" name="SMS_D_Ln9_Vnuopc" testmods="cam/outfrq9s">
     <machines>
       <machine name="cheyenne" compiler="intel" category="waccm"/>
     </machines>
   </test>
-  <test compset="FW4madHIST" grid="f19_f19_mg17" name="ERP_Ld3_Vmct" testmods="cam/outfrq3d" supported="false">
+  <test compset="FW4madHIST" grid="f19_f19_mg17" name="ERP_Ld3_Vnuopc" testmods="cam/outfrq3d" supported="false">
     <machines>
       <machine name="cheyenne" compiler="intel" category="waccm"/>
     </machines>
   </test>
-  <test compset="QPWmadC4" grid="f10_f10_mg37" name="SMS_D_Ln9_Vmct" testmods="cam/outfrq9s" supported="false">
+  <test compset="QPWmadC4" grid="f10_f10_mg37" name="SMS_D_Ln9_Vnuopc" testmods="cam/outfrq9s" supported="false">
     <machines>
       <machine name="cheyenne" compiler="intel" category="waccm"/>
       <machine name="izumi" compiler="nag" category="waccm"/>
@@ -1978,7 +2276,7 @@
       <option name="wallclock">00:20:00</option>
     </options>
   </test>
-  <test compset="FW4madHIST" grid="f19_f19_mg17" name="SMS_D_Ln9_Vmct" testmods="cam/outfrq9s" supported="false">
+  <test compset="FW4madHIST" grid="f19_f19_mg17" name="SMS_D_Ln9_Vnuopc" testmods="cam/outfrq9s" supported="false">
     <machines>
       <machine name="izumi" compiler="nag" category="waccm"/>
     </machines>
@@ -1986,7 +2284,7 @@
       <option name="wallclock">00:20:00</option>
     </options>
   </test>
-  <test compset="FW4madSD" grid="f19_f19_mg17" name="ERP_Lh12_Vmct" testmods="cam/outfrq3h" supported="false">
+  <test compset="FW4madSD" grid="f19_f19_mg17" name="ERP_Lh12_Vnuopc" testmods="cam/outfrq3h" supported="false">
     <machines>
       <machine name="cheyenne" compiler="intel" category="waccm"/>
       <machine name="cheyenne" compiler="intel" category="aux_cam"/>
@@ -1995,7 +2293,7 @@
       <option name="wallclock">00:10:00</option>
     </options>
   </test>
-  <test compset="FW4madSD" grid="f19_f19_mg17" name="SMS_D_Ln9_Vmct" testmods="cam/outfrq9s" supported="false">
+  <test compset="FW4madSD" grid="f19_f19_mg17" name="SMS_D_Ln9_Vnuopc" testmods="cam/outfrq9s" supported="false">
     <machines>
       <machine name="cheyenne" compiler="intel" category="waccm"/>
     </machines>
@@ -2003,7 +2301,7 @@
       <option name="wallclock">00:10:00</option>
     </options>
   </test>
-  <test compset="FW4madSD" grid="f19_f19_mg17" name="SMS_P48x1_D_Ln9_Vmct" testmods="cam/outfrq9s" supported="false">
+  <test compset="FW4madSD" grid="f19_f19_mg17" name="SMS_P48x1_D_Ln9_Vnuopc" testmods="cam/outfrq9s" supported="false">
     <machines>
       <machine name="izumi" compiler="nag" category="waccm"/>
       <machine name="izumi" compiler="nag" category="aux_cam"/>
@@ -2012,7 +2310,7 @@
       <option name="wallclock">00:40:00</option>
     </options>
   </test>
-  <test compset="FW4madSD" grid="f19_f19_mg17" name="SMS_D_Ln9_Vmct" testmods="cam/outfrq9s" supported="false">
+  <test compset="FW4madSD" grid="f19_f19_mg17" name="SMS_D_Ln9_Vnuopc" testmods="cam/outfrq9s" supported="false">
     <machines>
       <machine name="cheyenne" compiler="intel" category="waccm"/>
     </machines>
@@ -2020,7 +2318,7 @@
       <option name="wallclock">00:40:00</option>
     </options>
   </test>
-  <test compset="FWmaSD" grid="f09_f09_mg17" name="ERP_Lh12_Vmct" testmods="cam/outfrq3h">
+  <test compset="FWmaSD" grid="f09_f09_mg17" name="ERP_Lh12_Vnuopc" testmods="cam/outfrq3h">
     <machines>
       <machine name="cheyenne" compiler="intel" category="waccm"/>
       <machine name="cheyenne" compiler="intel" category="prebeta"/>
@@ -2029,22 +2327,22 @@
       <option name="wallclock">00:40:00</option>
     </options>
   </test>
-  <test compset="FWmaSD" grid="f19_f19_mg17" name="SMS_D_Ln9_Vmct" testmods="cam/outfrq9s">
+  <test compset="FWmaSD" grid="f19_f19_mg17" name="SMS_D_Ln9_Vnuopc" testmods="cam/outfrq9s">
     <machines>
      <machine name="cheyenne" compiler="intel" category="waccm"/>
     </machines>
   </test>
-  <test compset="FWmadSD" grid="f19_f19_mg17" name="SMS_D_Ln9_Vmct" testmods="cam/outfrq9s">
+  <test compset="FWmadSD" grid="f19_f19_mg17" name="SMS_D_Ln9_Vnuopc" testmods="cam/outfrq9s">
     <machines>
      <machine name="cheyenne" compiler="intel" category="waccm"/>
     </machines>
   </test>
-  <test compset="FWmaSD" grid="f19_f19_mg17" name="ERP_Ln9_Vmct" testmods="cam/outfrq9s">
+  <test compset="FWmaSD" grid="f19_f19_mg17" name="ERP_Ln9_Vnuopc" testmods="cam/outfrq9s">
     <machines>
      <machine name="cheyenne" compiler="intel" category="waccm"/>
     </machines>
   </test>
-  <test compset="FWmadSD" grid="f09_f09_mg17" name="SMS_Lh3_Vmct" testmods="cam/outfrq3h">
+  <test compset="FWmadSD" grid="f09_f09_mg17" name="SMS_Lh3_Vnuopc" testmods="cam/outfrq3h">
     <machines>
       <machine name="cheyenne" compiler="intel" category="waccm"/>
       <machine name="cheyenne" compiler="intel" category="prebeta"/>
@@ -2053,26 +2351,17 @@
       <option name="wallclock">00:40:00</option>
     </options>
   </test>
-  <test compset="FWmaHIST" grid="f19_f19_mg17" name="ERP_Ld3_Vmct" testmods="cam/outfrq3d">
+  <test compset="FWmaHIST" grid="f19_f19_mg17" name="ERP_Ld3_Vnuopc" testmods="cam/outfrq3d">
     <machines>
       <machine name="cheyenne" compiler="intel" category="waccm"/>
     </machines>
   </test>
-  <test compset="FWmaHIST" grid="f19_f19_mg17" name="SMS_D_Ln9_Vmct" testmods="cam/outfrq9s">
+  <test compset="FWmaHIST" grid="f19_f19_mg17" name="SMS_D_Ln9_Vnuopc" testmods="cam/outfrq9s">
     <machines>
       <machine name="cheyenne" compiler="intel" category="waccm"/>
     </machines>
   </test>
-  <test compset="FWsc1850" grid="f09_f09_mg17" name="SMS_D_Ln9_Vmct" testmods="cam/outfrq9s">
-    <machines>
-      <machine name="cheyenne" compiler="intel" category="waccm"/>
-      <machine name="cheyenne" compiler="intel" category="prealpha"/>
-    </machines>
-    <options>
-      <option name="wallclock">00:10:00</option>
-    </options>
-  </test>
-  <test compset="FWscHIST" grid="f09_f09_mg17" name="SMS_D_Ln9_Vmct" testmods="cam/outfrq9s">
+  <test compset="FWsc1850" grid="f09_f09_mg17" name="SMS_D_Ln9_Vnuopc" testmods="cam/outfrq9s">
     <machines>
       <machine name="cheyenne" compiler="intel" category="waccm"/>
       <machine name="cheyenne" compiler="intel" category="prealpha"/>
@@ -2081,12 +2370,7 @@
       <option name="wallclock">00:10:00</option>
     </options>
   </test>
-  <test compset="FWscHIST" grid="f09_f09_mg17" name="ERP_Ld3_Vmct" testmods="cam/outfrq3d">
-    <machines>
-      <machine name="cheyenne" compiler="intel" category="waccm"/>
-    </machines>
-  </test>
-  <test compset="FWsc2010climo" grid="f19_f19_mg17" name="SMS_D_Ln9_Vmct" testmods="cam/outfrq9s">
+  <test compset="FWscHIST" grid="f09_f09_mg17" name="SMS_D_Ln9_Vnuopc" testmods="cam/outfrq9s">
     <machines>
       <machine name="cheyenne" compiler="intel" category="waccm"/>
       <machine name="cheyenne" compiler="intel" category="prealpha"/>
@@ -2095,13 +2379,27 @@
       <option name="wallclock">00:10:00</option>
     </options>
   </test>
-  <test compset="FWsc2010climo" grid="f19_f19_mg17" name="ERP_Ld3_Vmct" testmods="cam/outfrq3d">
+  <test compset="FWscHIST" grid="f09_f09_mg17" name="ERP_Ld3_Vnuopc" testmods="cam/outfrq3d">
+    <machines>
+      <machine name="cheyenne" compiler="intel" category="waccm"/>
+    </machines>
+  </test>
+  <test compset="FWsc2010climo" grid="f19_f19_mg17" name="SMS_D_Ln9_Vnuopc" testmods="cam/outfrq9s">
+    <machines>
+      <machine name="cheyenne" compiler="intel" category="waccm"/>
+      <machine name="cheyenne" compiler="intel" category="prealpha"/>
+    </machines>
+    <options>
+      <option name="wallclock">00:10:00</option>
+    </options>
+  </test>
+  <test compset="FWsc2010climo" grid="f19_f19_mg17" name="ERP_Ld3_Vnuopc" testmods="cam/outfrq3d">
     <machines>
       <machine name="cheyenne" compiler="intel" category="waccm"/>
       <machine name="cheyenne" compiler="intel" category="prebeta"/>
     </machines>
   </test>
-  <test compset="FWsc1850" grid="f19_f19_mg17" name="ERP_Ln9_Vmct" testmods="cam/outfrq9s">
+  <test compset="FWsc1850" grid="f19_f19_mg17" name="ERP_Ln9_Vnuopc" testmods="cam/outfrq9s">
     <machines>
       <machine name="cheyenne" compiler="intel" category="waccm"/>
       <machine name="cheyenne" compiler="intel" category="aux_cam"/>
@@ -2110,23 +2408,26 @@
       <option name="wallclock">00:10:00</option>
     </options>
   </test>
-  <test compset="FWscHIST" grid="f19_f19_mg17" name="ERP_Ld3_Vmct" testmods="cam/outfrq3d">
+  <test compset="FWscHIST" grid="f19_f19_mg17" name="ERP_Ld3_Vnuopc" testmods="cam/outfrq3d">
     <machines>
       <machine name="cheyenne" compiler="intel" category="waccm"/>
     </machines>
   </test>
-  <test compset="FWscHIST" grid="f19_f19_mg17" name="SMS_D_Ln9_Vmct" testmods="cam/outfrq9s">
+  <test compset="FWscHIST" grid="f19_f19_mg17" name="SMS_D_Ln9_Vnuopc" testmods="cam/outfrq9s">
     <machines>
       <machine name="cheyenne" compiler="intel" category="waccm"/>
     </machines>
   </test>
-  <test compset="FW2000climo" grid="ne30pg3_ne30pg3_mg17" name="ERP_Ln9_Vmct" testmods="cam/outfrq9s_wcm_ne30">
+  <test compset="FW2000climo" grid="ne30pg3_ne30pg3_mg17" name="ERP_Ln9_Vnuopc" testmods="cam/outfrq9s_wcm_ne30">
     <machines>
       <machine name="cheyenne" compiler="intel" category="waccm"/>
       <machine name="cheyenne" compiler="intel" category="aux_cam"/>
     </machines>
+    <options>
+      <option name="wallclock">00:40:00</option>
+    </options>
   </test>
-  <test compset="FW2000climo" grid="ne30pg3_ne30pg3_mg17" name="SMS_D_Ln9_Vmct" testmods="cam/outfrq9s_wcm_ne30">
+  <test compset="FW2000climo" grid="ne30pg3_ne30pg3_mg17" name="SMS_D_Ln9_Vnuopc" testmods="cam/outfrq9s_wcm_ne30">
     <machines>
       <machine name="cheyenne" compiler="intel" category="waccm"/>
     </machines>
@@ -2134,13 +2435,13 @@
       <option name="wallclock">00:30:00</option>
     </options>
   </test>
-  <test compset="FW2000climo" grid="ne30_ne30_mg17" name="SMS_Ln9_Vmct" testmods="cam/outfrq9s_wcm_ne30">
+  <test compset="FW2000climo" grid="ne30_ne30_mg17" name="SMS_Ln9_Vnuopc" testmods="cam/outfrq9s_wcm_ne30">
     <machines>
       <machine name="cheyenne" compiler="intel" category="waccm"/>
       <machine name="cheyenne" compiler="intel" category="prealpha"/>
     </machines>
   </test>
-  <test compset="PC4" grid="f19_f19_mg17" name="SMS_Vmct" testmods="cam/cam4_port">
+  <test compset="PC4" grid="f19_f19_mg17" name="SMS_Vnuopc" testmods="cam/cam4_port">
     <machines>
       <machine name="cheyenne" compiler="intel" category="prealpha"/>
       <machine name="cheyenne" compiler="intel" category="test_port"/>
@@ -2150,7 +2451,7 @@
       <option name="wallclock">00:10:00</option>
     </options>
   </test>
-  <test compset="PC4" grid="f19_f19_mg17" name="SMS_D_Vmct" testmods="cam/cam4_port">
+  <test compset="PC4" grid="f19_f19_mg17" name="SMS_D_Vnuopc" testmods="cam/cam4_port">
     <machines>
       <machine name="cheyenne" compiler="intel" category="prebeta"/>
       <machine name="cheyenne" compiler="intel" category="test_port"/>
@@ -2159,13 +2460,13 @@
       <option name="wallclock">00:10:00</option>
     </options>
   </test>
-  <test compset="PC5" grid="f45_f45_mg37" name="SMS_D_Vmct" testmods="cam/cam5_port_f45">
+  <test compset="PC5" grid="f45_f45_mg37" name="SMS_D_Vnuopc" testmods="cam/cam5_port_f45">
     <machines>
       <machine name="izumi" compiler="nag" category="prealpha"/>
       <machine name="izumi" compiler="nag" category="test_port"/>
     </machines>
   </test>
-  <test compset="PC5" grid="ne30_ne30_mg17" name="SMS_D_Vmct" testmods="cam/cam5_port_ne30">
+  <test compset="PC5" grid="ne30_ne30_mg17" name="SMS_D_Vnuopc" testmods="cam/cam5_port_ne30">
     <machines>
       <machine name="cheyenne" compiler="intel" category="prealpha"/>
       <machine name="cheyenne" compiler="intel" category="test_port"/>
@@ -2174,7 +2475,7 @@
       <option name="wallclock">00:10:00</option>
     </options>
   </test>
-  <test compset="PC6" grid="f09_f09_mg17" name="SMS_Ld5_Vmct" testmods="cam/cam6_port_f09">
+  <test compset="PC6" grid="f09_f09_mg17" name="SMS_Ld5_Vnuopc" testmods="cam/cam6_port_f09">
     <machines>
       <machine name="cheyenne" compiler="intel" category="aux_cam"/>
       <machine name="cheyenne" compiler="intel" category="prealpha"/>
@@ -2185,23 +2486,26 @@
     </options>
   </test>
 
-  <test compset="FHS94" grid="ne5_ne5_mg37" name="ERP_Ln9_Vmct" testmods="cam/outfrq9s">
+  <test compset="FHS94" grid="ne5_ne5_mg37" name="ERP_Ln9_Vnuopc" testmods="cam/outfrq9s">
     <machines>
-      <machine name="izumi" compiler="pgi" category="aux_cam"/>
+      <machine name="izumi" compiler="gnu" category="aux_cam"/>
     </machines>
   </test>
 
-  <test compset="FADIAB" grid="ne5_ne5_mg37" name="ERS_Ln9_Vmct" testmods="cam/outfrq9s">
+  <test compset="FADIAB" grid="ne5_ne5_mg37" name="ERS_Ln9_Vnuopc" testmods="cam/outfrq9s">
     <machines>
       <machine name="izumi" compiler="nag" category="aux_cam"/>
     </machines>
   </test>
 
 
-  <test compset="FADIAB" grid="ne0TESTONLYne5x4_ne0TESTONLYne5x4_mg37" name="ERS_Ln9_Vmct" testmods="cam/outfrq3s_refined" supported="false">
+  <test compset="FADIAB" grid="ne0TESTONLYne5x4_ne0TESTONLYne5x4_mg37" name="ERS_Ln9_Vnuopc" testmods="cam/outfrq3s_refined" supported="false">
     <machines>
       <machine name="cheyenne" compiler="intel" category="aux_cam"/>
     </machines>
+    <options>
+      <option name="wallclock">00:10:00</option>
+    </options>
   </test>
 
 <!--              @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@                -->
@@ -2209,7 +2513,7 @@
 <!--              @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@                -->
 
 
-  <test compset="FTJ16" grid="f09_f09_mg17" name="ERP_Ln9_Vmct" testmods="cam/outfrq9s">
+  <test compset="FTJ16" grid="f09_f09_mg17" name="ERP_Ln9_Vnuopc" testmods="cam/outfrq9s">
     <machines>
       <machine name="cheyenne" compiler="intel" category="prealpha"/>
     </machines>

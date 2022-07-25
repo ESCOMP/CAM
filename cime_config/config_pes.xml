@@ -850,17 +850,50 @@
   </grid>
   <grid name="a%1.9x2.5">
     <mach name="cheyenne">
-      <pes pesize="any" compset="_CAM\d0%WX">
+      <pes pesize="any" compset="_CAM\d0%WX.*_SLND.*_DOCN%AQP">
 	<comment>none</comment>
 	<ntasks>
-	  <ntasks_atm>576</ntasks_atm>
-	  <ntasks_lnd>576</ntasks_lnd>
-	  <ntasks_rof>576</ntasks_rof>
-	  <ntasks_ice>576</ntasks_ice>
-	  <ntasks_ocn>576</ntasks_ocn>
-	  <ntasks_glc>576</ntasks_glc>
-	  <ntasks_wav>576</ntasks_wav>
-	  <ntasks_cpl>576</ntasks_cpl>
+	  <ntasks_atm>48</ntasks_atm>
+	  <ntasks_lnd>48</ntasks_lnd>
+	  <ntasks_rof>48</ntasks_rof>
+	  <ntasks_ice>48</ntasks_ice>
+	  <ntasks_ocn>48</ntasks_ocn>
+	  <ntasks_glc>48</ntasks_glc>
+	  <ntasks_wav>48</ntasks_wav>
+	  <ntasks_cpl>48</ntasks_cpl>
+	</ntasks>
+	<nthrds>
+	  <nthrds_atm>3</nthrds_atm>
+	  <nthrds_lnd>3</nthrds_lnd>
+	  <nthrds_rof>3</nthrds_rof>
+	  <nthrds_ice>3</nthrds_ice>
+	  <nthrds_ocn>3</nthrds_ocn>
+	  <nthrds_glc>3</nthrds_glc>
+	  <nthrds_wav>3</nthrds_wav>
+	  <nthrds_cpl>3</nthrds_cpl>
+	</nthrds>
+	<rootpe>
+	  <rootpe_atm>0</rootpe_atm>
+	  <rootpe_lnd>0</rootpe_lnd>
+	  <rootpe_rof>0</rootpe_rof>
+	  <rootpe_ice>0</rootpe_ice>
+	  <rootpe_ocn>0</rootpe_ocn>
+	  <rootpe_glc>0</rootpe_glc>
+	  <rootpe_wav>0</rootpe_wav>
+	  <rootpe_cpl>0</rootpe_cpl>
+	</rootpe>
+      </pes>
+      <pes pesize="any" compset="_CAM\d0%WX.*_CLM.*_DOCN%DOM">
+	<comment>none</comment>
+	<ntasks>
+	  <ntasks_atm>144</ntasks_atm>
+	  <ntasks_lnd>144</ntasks_lnd>
+	  <ntasks_rof>144</ntasks_rof>
+	  <ntasks_ice>144</ntasks_ice>
+	  <ntasks_ocn>144</ntasks_ocn>
+	  <ntasks_glc>144</ntasks_glc>
+	  <ntasks_wav>144</ntasks_wav>
+	  <ntasks_cpl>144</ntasks_cpl>
 	</ntasks>
 	<nthrds>
 	  <nthrds_atm>3</nthrds_atm>
@@ -993,24 +1026,24 @@
       <pes pesize="any" compset="_CAM\d0%WX">
 	<comment>none</comment>
 	<ntasks>
-	  <ntasks_atm>864</ntasks_atm>
-	  <ntasks_lnd>864</ntasks_lnd>
-	  <ntasks_rof>864</ntasks_rof>
-	  <ntasks_ice>864</ntasks_ice>
-	  <ntasks_ocn>864</ntasks_ocn>
-	  <ntasks_glc>864</ntasks_glc>
-	  <ntasks_wav>864</ntasks_wav>
-	  <ntasks_cpl>864</ntasks_cpl>
+	  <ntasks_atm>720</ntasks_atm>
+	  <ntasks_lnd>720</ntasks_lnd>
+	  <ntasks_rof>720</ntasks_rof>
+	  <ntasks_ice>720</ntasks_ice>
+	  <ntasks_ocn>720</ntasks_ocn>
+	  <ntasks_glc>720</ntasks_glc>
+	  <ntasks_wav>720</ntasks_wav>
+	  <ntasks_cpl>720</ntasks_cpl>
 	</ntasks>
 	<nthrds>
-	  <nthrds_atm>3</nthrds_atm>
-	  <nthrds_lnd>3</nthrds_lnd>
-	  <nthrds_rof>3</nthrds_rof>
-	  <nthrds_ice>3</nthrds_ice>
-	  <nthrds_ocn>3</nthrds_ocn>
-	  <nthrds_glc>3</nthrds_glc>
-	  <nthrds_wav>3</nthrds_wav>
-	  <nthrds_cpl>3</nthrds_cpl>
+	  <nthrds_atm>1</nthrds_atm>
+	  <nthrds_lnd>1</nthrds_lnd>
+	  <nthrds_rof>1</nthrds_rof>
+	  <nthrds_ice>1</nthrds_ice>
+	  <nthrds_ocn>1</nthrds_ocn>
+	  <nthrds_glc>1</nthrds_glc>
+	  <nthrds_wav>1</nthrds_wav>
+	  <nthrds_cpl>1</nthrds_cpl>
 	</nthrds>
 	<rootpe>
 	  <rootpe_atm>0</rootpe_atm>
@@ -1210,24 +1243,24 @@
       <pes pesize="any" compset="_CAM\d0%WX">
 	<comment>none</comment>
 	<ntasks>
-	  <ntasks_atm>768</ntasks_atm>
-	  <ntasks_lnd>768</ntasks_lnd>
-	  <ntasks_rof>768</ntasks_rof>
-	  <ntasks_ice>768</ntasks_ice>
-	  <ntasks_ocn>768</ntasks_ocn>
-	  <ntasks_glc>768</ntasks_glc>
-	  <ntasks_wav>768</ntasks_wav>
-	  <ntasks_cpl>768</ntasks_cpl>
+	  <ntasks_atm>1800</ntasks_atm>
+	  <ntasks_lnd>1800</ntasks_lnd>
+	  <ntasks_rof>1800</ntasks_rof>
+	  <ntasks_ice>1800</ntasks_ice>
+	  <ntasks_ocn>1800</ntasks_ocn>
+	  <ntasks_glc>1800</ntasks_glc>
+	  <ntasks_wav>1800</ntasks_wav>
+	  <ntasks_cpl>1800</ntasks_cpl>
 	</ntasks>
 	<nthrds>
-	  <nthrds_atm>3</nthrds_atm>
-	  <nthrds_lnd>3</nthrds_lnd>
-	  <nthrds_rof>3</nthrds_rof>
-	  <nthrds_ice>3</nthrds_ice>
-	  <nthrds_ocn>3</nthrds_ocn>
-	  <nthrds_glc>3</nthrds_glc>
-	  <nthrds_wav>3</nthrds_wav>
-	  <nthrds_cpl>3</nthrds_cpl>
+	  <nthrds_atm>1</nthrds_atm>
+	  <nthrds_lnd>1</nthrds_lnd>
+	  <nthrds_rof>1</nthrds_rof>
+	  <nthrds_ice>1</nthrds_ice>
+	  <nthrds_ocn>1</nthrds_ocn>
+	  <nthrds_glc>1</nthrds_glc>
+	  <nthrds_wav>1</nthrds_wav>
+	  <nthrds_cpl>1</nthrds_cpl>
 	</nthrds>
 	<rootpe>
 	  <rootpe_atm>0</rootpe_atm>

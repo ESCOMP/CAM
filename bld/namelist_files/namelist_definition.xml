@@ -2738,6 +2738,19 @@ If .true., ensure non-zero precipitation fallspeed (rain,snow and graupel) if pr
 Default: .false.
 </entry>
 
+<entry id="micro_mg_implicit_fall" type="logical" category="microphys"
+       group="micro_mg_nl" valid_values="" >
+If .true., use implicit fall speed (sedimentation) routine for all hydrometeors. Improves numerical stability of precipitation
+Default: .true.
+</entry>
+
+<entry id="micro_mg_accre_sees_auto" type="logical" category="microphys"
+       group="micro_mg_nl" valid_values="" >
+If true, then the autoconverted liquid is added to rain and removed from cloud before accretion is estimated.
+Default: .true.
+</entry>
+
+
 <!-- Aerosol microphysics -->
 <entry id="microp_aero_bulk_scale" type="real" category="microphys"
        group="microp_aero_nl" valid_values="" >
@@ -3260,6 +3273,61 @@ Intercept of linear equation that calculates precribed in-cloud ice mixing ratio
 Intercept of linear equation that calculates precribed in-cloud ice concentration ratio [N_i'^2] / [N_i]^2   [-]
 </entry>
 
+<entry id="subcol_silhs_l_lh_importance_sampling" type="logical" category="conv"
+       group="silhs_config_flags_nl" valid_values="" >
+Enables importance sampling for SILHS subcolumns
+</entry>
+
+<entry id="subcol_silhs_l_Lscale_vert_avg" type="logical" category="conv"
+       group="silhs_config_flags_nl" valid_values="" >
+Enables calculation of Lscale_vert_avg, used to generate SILHS samples.
+</entry>
+
+<entry id="subcol_silhs_l_lh_straight_mc" type="logical" category="conv"
+       group="silhs_config_flags_nl" valid_values="" >
+Enables straight Monte Carlo sampling, this overrides l_lh_importance_sampling.
+</entry>
+
+<entry id="subcol_silhs_l_lh_clustered_sampling" type="logical" category="conv"
+       group="silhs_config_flags_nl" valid_values="" >
+Enables the "new" SILHS importance sampling scheme with prescribed probabilities. Requires l_lh_importance_sampling.
+</entry>
+
+<entry id="subcol_silhs_l_rcm_in_cloud_k_lh_start" type="logical" category="conv"
+       group="silhs_config_flags_nl" valid_values="" >
+Determine starting SILHS first sampling level (k_lh_start) based on maximum within-cloud rcm. If false, and if l_random_k_lh_start is also false, then the SILHS first sampling level is the column maximum of liquid cloud water. 
+</entry>
+
+<entry id="subcol_silhs_l_random_k_lh_start" type="logical" category="conv"
+       group="silhs_config_flags_nl" valid_values="" >
+Determine starting SILHS first sampling level (k_lh_start) based on random choice. Overrides l_rcm_in_cloud_k_lh_start if true.
+</entry>
+
+<entry id="subcol_silhs_l_max_overlap_in_cloud" type="logical" category="conv"
+       group="silhs_config_flags_nl" valid_values="" >
+Assumption of maximum vertical overlap when grid-box rcm exceeds cloud threshold.
+</entry>
+
+<entry id="subcol_silhs_l_lh_instant_var_covar_src" type="logical" category="conv"
+       group="silhs_config_flags_nl" valid_values="" >
+Produces "instantaneous" variance-covariance microphysical source terms, ignoring discretization effects.
+</entry>
+
+<entry id="subcol_silhs_l_lh_limit_weights" type="logical" category="conv"
+       group="silhs_config_flags_nl" valid_values="" >
+Limit SILHS sample point weights for stability.
+</entry>
+
+<entry id="subcol_silhs_l_lh_var_frac" type="logical" category="conv"
+       group="silhs_config_flags_nl" valid_values="" >
+Prescribe variance fractions.
+</entry>
+
+<entry id="subcol_silhs_l_lh_normalize_weights" type="logical" category="conv"
+       group="silhs_config_flags_nl" valid_values="" >
+Scale sample point weights to sum to num_samples (the "ratio estimate").
+</entry>
+
 <!-- VAMP Sub-Column Generator -->
 
 <entry id="subcol_vamp_ctyp" type="integer" category="conv"
@@ -3456,11 +3524,6 @@ Include effects of precip evaporation on turbulent moments
 Default: .false.
 </entry>
 
-<entry id="clubb_expldiff" type="logical"  category="pblrad"
-       group="clubbpbl_diff_nl" valid_values="" >
-Explicit diffusion on temperature and moisture when CLUBB is on
-Default: .false.
-</entry>
 
 <!-- Clubb timestep -->
 <entry id="clubb_timestep" type="real" category="pblrad"
@@ -3485,6 +3548,12 @@ Default: FALSE
 <entry id="clubb_beta" type="real" category="pblrad"
        group="clubb_params_nl" valid_values="" >
 Plume widths for theta_l and rt
+</entry>
+
+<entry id="clubb_ipdf_call_placement" type="integer" category="pblrad"
+       group="clubb_params_nl" valid_values="1,2,3" >
+Option for the placement of the call to CLUBB's PDF closure. The options include: ipdf_pre_advance_fields (1) calls the PDF closure before advancing prognostic fields. ipdf_post_advance_fields (2) calls after advancing prognostic fields, and ipdf_pre_post_advance_fields (3) calls both before and after advancing prognostic fields.
+Default: 1
 </entry>
 
 <entry id="clubb_c1" type="real" category="pblrad"
@@ -3570,6 +3639,16 @@ C4 coefficient in the wp2 return-to-isotropy term.  A higher value of C4
 tends wp2 more towards the value of subgrid TKE.
 </entry>
 
+<entry id="clubb_C_uu_shr" type="real" category="pblrad"
+       group="clubb_params_nl" valid_values="" >
+Coefficient in the wp2 (variance of vertical velocity) pressure terms opposing shear production.
+</entry>
+
+<entry id="clubb_C_uu_buoy" type="real" category="pblrad"
+       group="clubb_params_nl" valid_values="" >
+Coefficient in the wp2 (variance of vertical velocity) pressure terms opposing buoyancy production.
+</entry>
+
 <entry id="clubb_C7" type="real" category="pblrad"
        group="clubb_params_nl" valid_values="" >
 Low Skewness in C7 Skw. Function
@@ -3592,11 +3671,45 @@ the damping of CLUBB's wp3 when skewness of w (vertical velocity) is large in
 magnitude.
 </entry>
 
+<entry id="clubb_C_wp3_pr_turb" type="real" category="pblrad"
+       group="clubb_params_nl" valid_values="" >
+Coefficient in the pressure-turbulence term of CLUBB's wp3 predictive equation.
+</entry>
+
+<entry id="clubb_c_K1" type="real" category="pblrad"
+       group="clubb_params_nl" valid_values="" >
+Coefficient of Kh_zm (diffusivity on momentum grid levels) in the wp2 (variance
+of vertical velocity) predictive equation.
+Default: 0.75
+</entry>
+
+<entry id="clubb_c_K2" type="real" category="pblrad"
+       group="clubb_params_nl" valid_values="" >
+Coefficient of Kh_zm (diffusivity on momentum grid levels) in the scalar
+variance predictive equations (e.g. rtp2, variance of total water).
+Default: 0.125
+</entry>
+
+<entry id="clubb_nu2" type="real" category="pblrad"
+       group="clubb_params_nl" valid_values="" >
+Constant in the diffusivity term in the scalar variance predictive equations
+(e.g. rtp2, variance of total water).
+Default: 5.0
+</entry>
+
+<entry id="clubb_c_K8" type="real" category="pblrad"
+       group="clubb_params_nl" valid_values="" >
+Coefficient of Kh_zt (diffusivity on thermodynamic grid levels) in the wp3
+(third-order moment of vertical velocity) predictive equation.
+Default: 1.25
+</entry>
+
 <entry id="clubb_c_K9" type="real" category="pblrad"
        group="clubb_params_nl" valid_values="" >
 Coefficient of Kh_zm (diffusivity on momentum grid levels) in the up2 (variance
 of the west-east wind component) and vp2 (variance of the south-north wind
 component) predictive equations.
+Default: 0.25
 </entry>
 
 <entry id="clubb_nu9" type="real" category="pblrad"
@@ -3604,6 +3717,7 @@ component) predictive equations.
 Constant in the diffusivity term in the up2 (variance of the west-east wind
 component) and vp2 (variance of the south-north wind component) predictive
 equations.
+Default: 20.0
 </entry>
 
 <entry id="clubb_c_K10" type="real" category="pblrad"
@@ -3621,6 +3735,7 @@ Default: 0.3
 <entry id="clubb_wpxp_L_thresh" type="real" category="pblrad"
        group="clubb_params_nl" valid_values="" >
 CLUBB tunable parameter - Lscale threshold: damp C6 and C7 (units: m)
+Default: 60.0
 </entry>
 
 <entry id="clubb_do_liqsupersat" type="logical"  category="conv"
@@ -3629,9 +3744,58 @@ Apply liquid supersaturation adjustment code
 Default: false
 </entry>
 
+<entry id="clubb_C_invrs_tau_bkgnd" type="real" category="pblrad"
+       group="clubb_params_nl" valid_values="" >
+Coefficient of inverse tau term contributed by background constant value (units: none)
+Default: 1.0
+</entry>
+
+<entry id="clubb_C_invrs_tau_sfc" type="real" category="pblrad"
+       group="clubb_params_nl" valid_values="" >
+Coefficient of inverse tau term contributed by surface log law (units: none)
+Default: 0.1
+</entry>
+
+<entry id="clubb_C_invrs_tau_shear" type="real" category="pblrad"
+       group="clubb_params_nl" valid_values="" >
+Coefficient of inverse tau term contributed by vertical wind shear (units: none)
+Default: 0.02
+</entry>
+
+<entry id="clubb_C_invrs_tau_N2" type="real" category="pblrad"
+       group="clubb_params_nl" valid_values="" >
+Coefficient of inverse tau term contributed by Brunt Vaisala frequency (units: none)
+Default: 0.1
+</entry>
+
+<entry id="clubb_C_invrs_tau_N2_wp2" type="real" category="pblrad"
+       group="clubb_params_nl" valid_values="" >
+Coefficient of inverse tau term contributed by Brunt Vaisala frequency but for wp3_wp2 (units: none)
+Default: 0.2
+</entry>
+
+<entry id="clubb_C_invrs_tau_N2_xp2" type="real" category="pblrad"
+       group="clubb_params_nl" valid_values="" >
+Coefficient of inverse tau term contributed by Brunt Vaisala frequency but for xp2_wpxp (units: none)
+Default: 0.2
+</entry>
+
+<entry id="clubb_C_invrs_tau_N2_wpxp" type="real" category="pblrad"
+       group="clubb_params_nl" valid_values="" >
+Coefficient of inverse tau term contributed by Brunt Vaisala frequency but for xm_wpxp (units: none)
+Default: 0.0
+</entry>
+
+<entry id="clubb_C_invrs_tau_N2_clear_wp3" type="real" category="pblrad"
+      group="clubb_params_nl" valid_values="" >
+Coefficient of inverse tau term contributed by Brunt Vaisala frequency but for wp3 (units: none)
+Default: 0.0
+</entry>
+
 <entry id="clubb_gamma_coef" type="real" category="pblrad"
        group="clubb_params_nl" valid_values="" >
-Low Skw.: gamma coef. Skw. Fnct.
+Low Skewness in gamma coefficient Skewness Function (units: none)
+Default: Changes depending on grid and physics options
 </entry>
 
 <entry id="clubb_gamma_coefb" type="real" category="pblrad"
@@ -3672,16 +3836,18 @@ Default: 0.0
 Maximum magnitude of skewness allowed.
 </entry>
 
-<entry id="clubb_up2_vp2_factor" type="real" category="pblrad"
+<entry id="clubb_up2_sfc_coef" type="real" category="pblrad"
        group="clubb_params_nl" valid_values="" >
 Factor used in calculating the surface values of up2 (variance of the u wind
 component) and vp2 (variance of the v wind component).  Increasing
-clubb_up2_vp2_factor increases the values of up2 and vp2 at the surface.
+clubb_up2_sfc_coef increases the values of up2 and vp2 at the surface.
+Default: 2.0
 </entry>
 
 <entry id="clubb_C_wp2_splat" type="real" category="pblrad"
        group="clubb_params_nl" valid_values="" >
 Coefficient for gustiness near ground.
+Default: 0.0
 </entry>
 
 <entry id="clubb_detliq_rad" type="real" category="pblrad"
@@ -3715,6 +3881,7 @@ This equation calculates an in-cloud Brunt-Vaisala frequency.
 Flag to call CLUBB's PDF closure at both thermodynamic and momentum vertical
 grid levels.  When this flag is turned off, CLUBB's PDF closure is only called
 on thermodynamic grid levels.
+Default: .true.
 </entry>
 
 <entry id="clubb_l_damp_wp3_Skw_squared" type="logical" category="pblrad"
@@ -3760,6 +3927,7 @@ at the point in the code where xp2 is advanced one timestep.
 Flag to predict horizontal momentum fluxes upwp and vpwp along with mean
 horizontal winds um and vm.  When this flag is turned off, upwp and vpwp are
 calculated by down-gradient diffusion.
+Default: .true.
 </entry>
 
 <entry id="clubb_l_rcm_supersat_adj" type="logical" category="pblrad"
@@ -3784,6 +3952,7 @@ Flag that uses the trapezoidal rule to adjust fields calculated by CLUBB's PDF
 (e.g. cloud fraction) by taking into account the values of these fields from an
 adjacent vertical grid level.  The clubb_l_trapezoidal_rule_zm flag applies this
 adjustment to PDF fields calculated on momentum vertical grid levels.
+Default: .false.
 </entry>
 
 <entry id="clubb_l_trapezoidal_rule_zt" type="logical" category="pblrad"
@@ -3792,6 +3961,7 @@ Flag that uses the trapezoidal rule to adjust fields calculated by CLUBB's PDF
 (e.g. cloud fraction) by taking into account the values of these fields from an
 adjacent vertical grid level.  The clubb_l_trapezoidal_rule_zt flag applies this
 adjustment to PDF fields calculated on thermodynamic vertical grid levels.
+Default: .false.
 </entry>
 
 <entry id="clubb_l_upwind_xpyp_ta" type="logical" category="pblrad"
@@ -3818,28 +3988,43 @@ C11 is a coefficient in a wp3 pressure term and is used to balance the effects
 of pressure and buoyancy in the wp3 predictive equation.
 </entry>
 
+<entry id="clubb_l_use_shear_Richardson" type="logical" category="pblrad"
+       group="clubb_params_nl" valid_values="" >
+Flag to use shear in the calculation of Richardson number.
+Default: .false. 
+</entry>
+
 <entry id="clubb_l_use_cloud_cover" type="logical" category="pblrad"
        group="clubb_params_nl" valid_values="" >
 Flag to allow cloud fraction and mean cloud water at adjacent vertical grid
 levels influence the amount of cloudiness and amount of cloud water in a
 grid box.
-</entry>
-
-<entry id="clubb_l_use_ice_latent" type="logical" category="pblrad"
-       group="clubb_params_nl" valid_values="" >
-Include the effects of ice latent heating in turbulence terms
-Default: .false.
+Default: .true.
 </entry>
 
 <entry id="clubb_l_use_thvm_in_bv_freq" type="logical" category="pblrad"
        group="clubb_params_nl" valid_values="" >
 Flag to use mean theta-v in the calculation of Brunt-Vaisala frequency.
+Default: .false.
 </entry>
 
 <entry id="clubb_l_vert_avg_closure" type="logical" category="pblrad"
        group="clubb_params_nl" valid_values="" >
 Flag that, when it is enabled, automatically enables CLUBB's
 l_trapezoidal_rule_zt, l_trapezoidal_rule_zm, and l_call_pdf_closure_twice.
+Default: .true.
+</entry>
+
+<entry id="clubb_l_lmm_stepping" type="logical" category="pblrad"
+       group="clubb_params_nl" valid_values="" >
+Flag to apply Linear Multistep Method (LMM) stepping in CLUBB.
+Default: .false.
+</entry>
+
+<entry id="clubb_l_e3sm_config" type="logical" category="pblrad"
+       group="clubb_params_nl" valid_values="" >
+Flag to run CLUBB with E3SM settings. 
+Default: .true.
 </entry>
 
 <entry id="clubb_l_diag_Lscale_from_tau" type="logical" category="pblrad"
@@ -3851,10 +4036,53 @@ is calculated as tau = Lscale / sqrt(tke).
 Default: .false.
 </entry>
 
+<entry id="clubb_l_use_tke_in_wp2_wp3_K_dfsn" type="logical" category="pblrad"
+       group="clubb_params_nl" valid_values="" >
+Flag to use Total Kenetic Energy (TKE) in eddy diffusion for wp2 and wp3.
+Default: .false. 
+</entry>
+
+<entry id="clubb_l_use_tke_in_wp3_pr_turb_term" type="logical" category="pblrad"
+       group="clubb_params_nl" valid_values="" >
+Flag to use Total Kenetic Energy (TKE) formulation for wp3 pr_turb (turbulent 
+production) term.
+Default: .false. 
+</entry>
+
+<entry id="clubb_l_smooth_Heaviside_tau_wpxp" type="logical" category="pblrad"
+       group="clubb_params_nl" valid_values="" >
+Flag to use smooth Heaviside 'Peskin' in computation of invrs_tau.
+Default: .false. 
+</entry>
+
+<entry id="clubb_l_godunov_upwind_wpxp_ta" type="logical" category="pblrad"
+       group="clubb_params_nl" valid_values="" >
+This flag determines whether we want to use an upwind differencing approximation 
+rather than a centered differencing for turbulent advection terms. It affects  
+wpxp only.
+Default: .false.
+</entry>
+
+<entry id="clubb_l_godunov_upwind_xpyp_ta" type="logical" category="pblrad"
+       group="clubb_params_nl" valid_values="" >
+This flag determines whether we want to use an upwind differencing approximation 
+rather than a centered differencing for turbulent advection terms. It affects  
+xpyp only.
+Default: .false.
+</entry>
+
 <entry id="clubb_l_damp_wp2_using_em" type="logical" category="pblrad"
        group="clubb_params_nl" valid_values="" >
 Flag to use a dissipation formula of -(2/3)*em/tau_zm, as in Bougeault (1981),
 in the wp2 (variance of vertical velocity) predictive equation.
+Default: .false.
+</entry>
+
+<entry id="clubb_l_do_expldiff_rtm_thlm" type="logical"  category="pblrad"
+       group="clubb_params_nl" valid_values="" >
+Explicit diffusion on temperature and moisture by CLUBB, in addition to CLUBB's
+normal prognostic equations for rtm and thlm.
+Default: .false.
 </entry>
 
 <entry id="clubb_do_energyfix" type="logical"  category="conv"
@@ -4591,6 +4819,13 @@ Default: set by build-namelist
        group="ionosphere_nl" valid_values="heelis,weimer">
 Electric potential model used in the waccmx ionosphere.
 Default: set by build-namelist
+</entry>
+
+<entry id="ionos_debug_hist" type="logical"  category="waccmx"
+       group="ionosphere_nl" valid_values="">
+Switch to add history fields to master field list for the purpose
+of debugging ionospheric processes in WACCMX.
+Default: FALSE
 </entry>
 
 <entry id="epot_crit_colats" type="real*2"  category="waccmx"
@@ -5996,18 +6231,6 @@ Full pathname of dataset for the neutral species absorption cross sections.
 Default: set by build-namelist.
 </entry>
 
-<entry id="tuv_xsect_file" type="char*256" input_pathname="abs" category="cam_chem"
-       group="chem_inparm" valid_values="" >
-Full pathname of dataset for fast-tuv photolysis cross sections
-Default: set by build-namelist.
-</entry>
-
-<entry id="o2_xsect_file" type="char*256" input_pathname="abs" category="cam_chem"
-       group="chem_inparm" valid_values="" >
-Full pathname of dataset of O2 cross sections for fast-tuv photolysis
-Default: set by build-namelist.
-</entry>
-
 <entry id="exo_coldens_file" type="char*256" input_pathname="abs" category="cam_chem"
        group="chem_inparm" valid_values="" >
 Full pathname of dataset of O2 and 03 column densities above the model for look-up-table photolysis
@@ -6809,13 +7032,6 @@ if {{ hilight }}tracer_srcs_type{{ closehilight }} is 'FIXED'.
 Default: 0 seconds
 </entry>
 
-<entry id="xactive_prates" type="logical" category="cam_chem"
-       group="chem_inparm" valid_values="" >
-If TRUE then use the FTUV method to calculate the photolysis reactions rates,
-otherwise use the look up table method.
-Default: FALSE
-</entry>
-
 <entry id="xs_coef_file" type="char*256" input_pathname="abs" category="cam_chem"
        group="chem_inparm" valid_values="" >
 Full pathname of dataset for  Chebyshev polynomial Coeff data used for photolysis
@@ -7183,6 +7399,41 @@ ion pairs production rates.
 Default: None.
 </entry>
 
+<entry id="mee_ion_inline" type="logical" category="waccm"
+       group="mee_ion_nl" valid_values="" >
+Switch to turn on medium energy electron ionization chemical forcings
+computed inline using Ap geomagnetic activity index input data.
+Default: FALSE
+</entry>
+
+<entry id="mee_ion_blc" type="real" category="waccm"
+       group="mee_ion_nl" valid_values="" >
+Bounce cone loss angle (degrees) for medium energy electrons in radiation belts.
+Must range from 0 to 90 degrees.
+Default: 80 degrees
+</entry>
+
+<entry id="mee_ion_diagonly" type="logical" category="waccm"
+       group="mee_ion_nl" valid_values="" >
+If TRUE, compute medium energy electron ionization rates only for output to history stream.
+Otherwise,  apply the ionization rates as forcings to the chemistry.
+Default: FALSE
+</entry>
+
+<entry id="mee_fluxes_filepath" type="char*256" input_pathname="abs" category="waccm"
+       group="mee_fluxes_opts" valid_values="" >
+Filepath input dataset for radiation belt medium energy electrons fluxes incident
+on upper atmosphere.
+Default: None.
+</entry>
+
+<entry id="mee_fluxes_fillin" type="logical" category="waccm"
+       group="mee_fluxes_opts" valid_values="" >
+If TRUE, fill in missing fluxes with computed fluxes based in Ap index using van de Kamp
+method.
+Default: FALSE
+</entry>
+
 <entry id="apply_lunar_tides" type="logical" category="waccm_phys"
        group="lunar_tides_opts" valid_values="" >
 Switch to apply lunar tidal tendencies to neutral winds.
@@ -7395,19 +7646,6 @@ See se_sponge_del4_nu_fac and se_sponge_del4_nu_div_fac
 
 If &lt; 0, se_sponge_del4_lev is automatically set based on model top location.
 Default: Set by build-namelist.
-</entry>
-
-<entry id="se_hypervis_dynamic_ref_state" type="logical" category="se"
-       group="dyn_se_inparm" valid_values="" >
-Hyperscosity for T and dp is applied to (T-Tref) and (dp-dp_ref) where
-Xref are reference states where the effect of topography has been removed
-(Simmons and Jiabin, 1991, QJRMS, Section 2a).
-If TRUE dp_ref is dynamic smoothed reference state derived by Patrick Callaghan
-(Lauritzen et al., 2018, JAMES, Appendix A.2) and temperature reference state
-based on Simmons and Jiabin (1991) but using smoothed dp_ref.
-If FALSE Tref is static reference state (Simmons and Jiabin) and dp_ref state
-derived from hydrostatic balance.
-Default: FALSE
 </entry>
 
 <entry id="se_lcp_moist" type="logical" category="se"

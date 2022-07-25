@@ -19,6 +19,7 @@ module chemistry
   use tracer_data,      only : MAXTRCRS
   use gcr_ionization,   only : gcr_ionization_readnl, gcr_ionization_init, gcr_ionization_adv
   use epp_ionization,   only : epp_ionization_readnl, epp_ionization_adv
+  use mee_ionization,   only : mee_ion_readnl
   use mo_apex,          only : mo_apex_readnl
   use ref_pres,         only : ptop_ref
   use phys_control,     only : waccmx_is   ! WACCM-X switch query function
@@ -64,11 +65,8 @@ module chemistry
 
   ! photolysis
 
-  logical            :: xactive_prates = .false.
   character(len=shr_kind_cl) :: rsf_file = 'rsf_file'
   character(len=shr_kind_cl) :: exo_coldens_file = ''
-  character(len=shr_kind_cl) :: tuv_xsect_file = 'tuv_xsect_file'
-  character(len=shr_kind_cl) :: o2_xsect_file = 'o2_xsect_file'
   character(len=shr_kind_cl) :: xs_coef_file = 'xs_coef_file'
   character(len=shr_kind_cl) :: xs_short_file = 'xs_short_file'
   character(len=shr_kind_cl) :: xs_long_file = 'xs_long_file'
@@ -396,9 +394,9 @@ end function chem_is
     namelist /chem_inparm/ chem_freq, airpl_emis_file, &
          euvac_file, photon_file, electron_file, &
          xs_coef_file, xs_short_file, &
-         exo_coldens_file, tuv_xsect_file, o2_xsect_file, &
+         exo_coldens_file, &
          xs_long_file, rsf_file, photo_max_zen, &
-         lght_no_prd_factor, xactive_prates, &
+         lght_no_prd_factor, &
          depvel_lnd_file, drydep_srf_file, &
          srf_emis_type, srf_emis_cycle_yr, srf_emis_fixed_ymd, srf_emis_fixed_tod, srf_emis_specifier,  &
          fstrat_file, fstrat_list, &
@@ -498,13 +496,10 @@ end function chem_is
 
     call mpibcast (rsf_file,          len(rsf_file),                   mpichar, 0, mpicom)
     call mpibcast (exo_coldens_file,  len(exo_coldens_file),           mpichar, 0, mpicom)
-    call mpibcast (tuv_xsect_file,    len(tuv_xsect_file),             mpichar, 0, mpicom)
-    call mpibcast (o2_xsect_file,     len(o2_xsect_file),              mpichar, 0, mpicom)
     call mpibcast (xs_coef_file,      len(xs_coef_file),               mpichar, 0, mpicom)
     call mpibcast (xs_short_file,     len(xs_short_file),              mpichar, 0, mpicom)
     call mpibcast (xs_long_file,      len(xs_long_file),               mpichar, 0, mpicom)
     call mpibcast (photo_max_zen,     1,                               mpir8,   0, mpicom)
-    call mpibcast (xactive_prates,    1,                               mpilog,  0, mpicom)
     call mpibcast (electron_file,     len(electron_file),              mpichar, 0, mpicom)
     call mpibcast (euvac_file,        len(euvac_file),                 mpichar, 0, mpicom)
 
@@ -614,6 +609,7 @@ end function chem_is
    call gas_wetdep_readnl(nlfile)
    call gcr_ionization_readnl(nlfile)
    call epp_ionization_readnl(nlfile)
+   call mee_ion_readnl(nlfile)
    call mo_apex_readnl(nlfile)
    call noy_ubc_readnl(nlfile)
    call sulf_readnl(nlfile)
@@ -844,10 +840,7 @@ end function chem_is_active
        , ext_frc_cycle_yr &
        , ext_frc_fixed_ymd &
        , ext_frc_fixed_tod &
-       , xactive_prates &
        , exo_coldens_file &
-       , tuv_xsect_file &
-       , o2_xsect_file &
        , lght_no_prd_factor &
        , pbuf2d &
        )
@@ -1082,6 +1075,7 @@ end function chem_is_active
     use cfc11star,         only : update_cfc11star
     use physics_buffer,    only : physics_buffer_desc
     use ocean_emis,        only : ocean_emis_advance
+    use mee_fluxes,        only : mee_fluxes_adv
 
     implicit none
 
@@ -1158,6 +1152,9 @@ end function chem_is_active
     ! Galatic Cosmic Rays ...
     call gcr_ionization_adv( pbuf2d, phys_state )
     call epp_ionization_adv()
+
+    ! medium energy electron flux data ...
+    call mee_fluxes_adv()
 
     call ocean_emis_advance( pbuf2d, phys_state )
 
@@ -1299,7 +1296,7 @@ end function chem_is_active
                           state%phis, state%zm, state%zi, calday, &
                           state%t, state%pmid, state%pdel, state%pint, &
                           cldw, tropLev, tropLevChem, ncldwtr, state%u, state%v, &
-                          chem_dt, state%ps, xactive_prates, &
+                          chem_dt, state%ps, &
                           fsds, cam_in%ts, cam_in%asdir, cam_in%ocnfrac, cam_in%icefrac, &
                           cam_out%precc, cam_out%precl, cam_in%snowhland, ghg_chem, state%latmapback, &
                           drydepflx, wetdepflx, cam_in%cflx, cam_in%fireflx, cam_in%fireztop, &
@@ -1374,7 +1371,9 @@ end function chem_is_active
 
 !-------------------------------------------------------------------
 !-------------------------------------------------------------------
-  subroutine chem_final
+  subroutine chem_final()
+    use mee_ionization, only: mee_ion_final
+    call mee_ion_final()
   end subroutine chem_final
 
 !-------------------------------------------------------------------

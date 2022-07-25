@@ -269,7 +269,7 @@ subroutine gw_drag_prof(ncol, band, p, src_level, tend_level, dt, &
      piln, rhoi,    nm,   ni,  ubm,  ubi,  xv,    yv,   &
      effgw,      c, kvtt, q,   dse,  tau,  utgw,  vtgw, &
      ttgw, qtgw, egwdffi,   gwut, dttdf, dttke, ro_adjust, &
-     kwvrdg, satfac_in, lapply_effgw_in, lapply_vdiff )
+     kwvrdg, satfac_in, lapply_effgw_in, lapply_vdiff, tau_diag )
 
   !-----------------------------------------------------------------------
   ! Solve for the drag profile from the multiple gravity wave drag
@@ -363,6 +363,8 @@ subroutine gw_drag_prof(ncol, band, p, src_level, tend_level, dt, &
        satfac_in
 
   logical, intent(in), optional :: lapply_effgw_in, lapply_vdiff
+  ! Provisional Wave Reynolds stress.
+  real(r8), intent(out), optional :: tau_diag(ncol,pver+1)
 
   !---------------------------Local storage-------------------------------
 
@@ -547,6 +549,13 @@ subroutine gw_drag_prof(ncol, band, p, src_level, tend_level, dt, &
 
   ! Force tau at the top of the model to zero, if requested.
   if (tau_0_ubc) tau(:,:,ktop) = 0._r8
+
+  ! Write out pre-adjustment tau profile for diagnostc purposes.
+  ! Current implementation only makes sense for orographic waves.
+  ! Fix later. 
+  if (PRESENT(tau_diag)) then 
+     tau_diag(:,:) = tau(:,0,:)
+  end if
 
   ! Apply efficiency to completed stress profile.
   if (lapply_effgw) then

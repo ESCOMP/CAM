@@ -57,7 +57,7 @@
 
   <compset>
     <alias>F2000mam5</alias>
-    <lname>2000_CAM60%MAM5_CLM50%SP_CICE%PRES_DOCN%DOM_MOSART_CISM2%NOEVOLVE_SWAV</lname>
+    <lname>2000_CAM60%MAM5_CLM50%SP_CICE%PRES_DOCN%DOM_MOSART_SGLC_SWAV</lname>
   </compset>
 
   <compset>
@@ -433,7 +433,7 @@
   </compset>
   <compset>
     <alias>FW2000mam5</alias>
-    <lname>2000_CAM60%WCTS%MAM5_CLM50%SP_CICE%PRES_DOCN%DOM_MOSART_CISM2%NOEVOLVE_SWAV</lname>
+    <lname>2000_CAM60%WCTS%MAM5_CLM50%SP_CICE%PRES_DOCN%DOM_MOSART_SGLC_SWAV</lname>
   </compset>
 
   <compset>
@@ -446,6 +446,10 @@
     <lname>HIST_CAM60%WCTS%SDYN_CLM50%SP_CICE%PRES_DOCN%DOM_MOSART_SGLC_SWAV</lname>
   </compset>
 
+  <compset>
+    <alias>FW4ma2000</alias>
+    <lname>2000_CAM40%WCCM_CLM50%SP_CICE%PRES_DOCN%DOM_RTM_SGLC_SWAV</lname>
+  </compset>
 
   <!-- ****************************** -->
   <!-- WACCM untested compsets -->
