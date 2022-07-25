@@ -12,7 +12,7 @@ print(base.__dict__)
 #exit()
 
 lats = 32.+ np.arange(6)
-lons = 80.+ np.arange(2)
+lons = 85.+ np.arange(2)
 
 Lons,Lats = np.meshgrid(lons,lats)
 
