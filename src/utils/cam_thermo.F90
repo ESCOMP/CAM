@@ -26,7 +26,7 @@ module cam_thermo
 
    ! subroutines to compute thermodynamic quantities
    !
-   ! See Lauritzen et al. (2018) for formulaes
+   ! See Lauritzen et al. (2018) for formulae
    !     DOI: 10.1029/2017MS001257
    !     https://opensky.ucar.edu/islandora/object/articles:21929
 
@@ -40,6 +40,8 @@ module cam_thermo
    public :: get_cp
    ! get_R_dry: (generalized) dry air gas constant
    public :: get_R_dry
+   ! get_R: Compute generalized R
+   public :: get_R
    ! get_thermal_energy: thermal energy quantity = dp*cp*T
    public :: get_thermal_energy
    ! get_virtual_temp: virtual temperature
@@ -49,6 +51,7 @@ module cam_thermo
    public :: get_sum_species
    ! get_virtual_theta: virtual potential temperature
    public :: get_virtual_theta
+   ! cam_thermo_calc_kappav: update species dependent kappa for FV dycore
    public :: cam_thermo_calc_kappav
    ! get_dp: pressure level thickness from dry dp and dry mixing ratios
    public :: get_dp
@@ -643,6 +646,7 @@ CONTAINS
    !***************************************************************************
    !
    ! get_R: Compute generalized R
+   !        This code (both 1hd and 2hd) is currently unused and untested
    !
    !***************************************************************************
    !

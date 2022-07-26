@@ -92,7 +92,6 @@ CONTAINS
 
       banner = repeat('*', lsize)
       bline = "***"//repeat(' ', lsize - 6)//"***"
-2000  format("*** ",a,2("   ",E18.10),"  ***")
 
       ! Read variable components of dry air and water species in air
       dry_air_species = (/ (' ', indx = 1, num_names_max) /)
@@ -112,9 +111,11 @@ CONTAINS
 
       call mpi_bcast(dry_air_species, len(dry_air_species)*num_names_max,     &
            mpi_character, masterprocid, mpicom, ierr)
+      if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: dry_air_species")
       call mpi_bcast(water_species_in_air,                                    &
            len(water_species_in_air)*num_names_max, mpi_character,            &
            masterprocid, mpicom, ierr)
+      if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: water_species_in_air")
 
       dry_air_species_num = 0
       water_species_in_air_num = 0
