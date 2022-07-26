@@ -1,0 +1,92 @@
+!scmlon=$PTS_LON
+!scmlat=$PTS_LAT
+iopfile="$CASEROOT/STUB_iop.nc"
+ncdata="/glade/p/cgd/amp/juliob/scam/inputdata/SCAM_IC_288x192_L58_48_BL10.nc"
+
+bnd_topo='/glade/p/cesmdata/cseg/inputdata/atm/cam/topo/fv_0.9x1.25_nc3000_Nsw042_Nrs008_Co060_Fi001_ZR_sgh30_24km_GRNL_c170103.nc'
+
+mfilt=5760
+
+nhtfrq=1
+scm_use_obs_uv = .false.
+scm_relaxation         = .false.
+scm_relax_fincl = 'T', 'bc_a1', 'bc_a4', 'dst_a1', 'dst_a2', 'dst_a3', 'ncl_a1', 'ncl_a2',
+                   'ncl_a3', 'num_a1', 'num_a2', 'num_a3',
+                   'num_a4', 'pom_a1', 'pom_a4', 'so4_a1', 'so4_a2', 'so4_a3', 'soa_a1', 'soa_a2'
+scm_relax_bot_p              = 105000.
+scm_relax_top_p        = 200.
+scm_relax_linear             = .true.
+scm_relax_tau_bot_sec                = 864000.
+scm_relax_tau_top_sec                = 172800.
+
+use_scm_ana_frc        = .true.
+scm_ana_frc_path       = '/glade/p/cgd/amp/juliob/ERAI/f09_omega/L58/'
+scm_ana_frc_file_template = '%y/ERAI_fv09_L58.cam2.i.%y-%m-%d-%s.nc'
+
+scm_ana_x_plevels       = .true.
+scm_ana_direct_omega    = .true.
+scm_ana_direct_ttend    = .false.
+scm_ana_t_react         = .true.
+scm_ana_q_react         = .true.
+scm_ana_u_react         = .true.
+scm_ana_v_react         = .true.
+scm_ana_upwind          = .false.
+
+fincl1 = 'Target_U','Target_V','Target_T','Target_Q',
+         'Nudge_U','Nudge_V','Nudge_T','Nudge_Q',
+         'OMEGA_ANA','ETAD_ANA','T_ANA','Q_ANA','U_ANA','V_ANA',
+         'UTEND_PHYSTOT', 'VTEND_PHYSTOT', 'TTEN_PHYS',
+         'UTEND_DCONV','UTEND_SHCONV','UTEND_MACROP','UTEND_VDIFF','UTEND_RAYLEIGH', 
+         'UTEND_GWDTOT','UTEND_QBORLX','UTEND_LUNART','UTEND_IONDRG','UTEND_NDG',
+         'VTEND_DCONV','VTEND_SHCONV','VTEND_MACROP','VTEND_VDIFF','VTEND_RAYLEIGH', 
+         'VTEND_GWDTOT','VTEND_QBORLX','VTEND_LUNART','VTEND_IONDRG','VTEND_NDG',
+         'KVH_CLUBB','TAUARDGBETAX','TAUARDGBETAY','TAU1RDGBETAX','TAU1RDGBETAY',
+         'UBT1RDGBETA','TAU1RDGBETAM','RVMTEND_CLUBB'
+
+
+gw_drag_file		=   '/glade/p/cesmdata/cseg/inputdata/atm/waccm/gw/newmfspectra40_dc25.nc'
+use_gw_convect_dp		= .true.
+use_gw_convect_sh		= .false.
+use_gw_front		= .false.
+scm_use_ana_iop = .true.
+cld_macmic_num_steps=3
+do_clubb_mf = .false.
+do_clubb_mf_diag = .false.
+
+&nudging_nl
+Nudge_Model         = .true.
+Nudge_Path          = '/glade/p/cgd/amp/juliob/ERAI/f09_omega/L58/'
+Nudge_File_Template = '%y/ERAI_fv09_L58.cam2.i.%y-%m-%d-%s.nc'
+Nudge_Force_Opt     = 0
+Nudge_TimeScale_Opt = 0
+Nudge_Times_Per_Day = 4
+Model_Times_Per_Day = 192
+Nudge_Uprof         = 2
+Nudge_Ucoef         = 1.0
+Nudge_Vprof         = 2
+Nudge_Vcoef         = 1.0
+Nudge_Tprof         = 2
+Nudge_Tcoef         = 1.0
+Nudge_Qprof         = 2
+Nudge_Qcoef         = 0.0
+Nudge_PSprof        = 0
+Nudge_PScoef        = 0
+Nudge_Beg_Year      = 2009
+Nudge_Beg_Month     = 1
+Nudge_Beg_Day       = 1
+Nudge_End_Year      = 2018
+Nudge_End_Month     = 4
+Nudge_End_Day       = 5
+Nudge_Hwin_lat0     = 0.0
+Nudge_Hwin_lon0     = 180.
+Nudge_Hwin_latWidth = 9999.0
+Nudge_Hwin_lonWidth = 9999.0
+Nudge_Hwin_latDelta = 1.0
+Nudge_Hwin_lonDelta = 1.0
+Nudge_Hwin_Invert   = .false.
+Nudge_Vwin_Hindex   = 0.
+Nudge_Vwin_Lindex   = 0.
+Nudge_Vwin_Hdelta   = 0.001
+Nudge_Vwin_Ldelta   = 0.001
+Nudge_Vwin_Invert   = .true.
+/

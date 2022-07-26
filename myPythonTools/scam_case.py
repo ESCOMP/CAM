@@ -20,6 +20,7 @@ class scam_case:
         self.isbasecase=True
         self.cime_output_root="dir"
         self.ensemble_root="none"
+        self.project="P93300642"  # Only for Cheyenne
 
     def base_case(self):
         import subprocess as sp
@@ -64,6 +65,7 @@ class scam_case:
         CplStr    = str( self.coupler )
         CompilerStr = str( self.compiler )
         MachStr = str( self.machine )
+        ProjStr = str( self.project )
 
         case_tag = tag+'_'+case_lev+'_'+case_lon+'_'+case_lat+'_'+case_yr+'-'+case_mon+'-'+case_day
 
@@ -86,7 +88,10 @@ class scam_case:
         #-----------------------------------------------------
         cmd1="mkdir -p ../../cases/"+case_tag
 
-        cmd2="./create_newcase --case  ../../cases/"+case_tag+ " --compset "+ COMPSET + " --res T42_T42 --driver " + CplStr + " --user-mods-dir ../../cime_config/usermods_dirs/scam_STUB --walltime 01:00:00 --mach " + MachStr + " --pecount 1 --compiler "+ CompilerStr + " --run-unsupported"
+        if (MachStr == 'cheyenne'):
+            cmd2="./create_newcase --case  ../../cases/"+case_tag+ " --compset "+ COMPSET + " --res T42_T42 --driver " + CplStr + " --user-mods-dir ../../cime_config/usermods_dirs/scam_STUB --walltime 01:00:00 --mach " + MachStr + " --pecount 1 --compiler "+ CompilerStr + " --project "+ ProjStr + " --run-unsupported"
+        else:
+            cmd2="./create_newcase --case  ../../cases/"+case_tag+ " --compset "+ COMPSET + " --res T42_T42 --driver " + CplStr + " --user-mods-dir ../../cime_config/usermods_dirs/scam_STUB --walltime 01:00:00 --mach " + MachStr + " --pecount 1 --compiler "+ CompilerStr + " --run-unsupported" 
 
         cd0 = 'cd ../../cases/'+case_tag +';'
 
@@ -101,9 +106,16 @@ class scam_case:
 
         cmd = ( "cp ../../myPythonTools/STUB_iop.nc ./")
         sp.run(cd0 + cmd   ,    shell=True )
-        cmd = ( "cp ../../myPythonTools/user_nl_cam ./")
-        sp.run(cd0 + cmd   ,    shell=True )
         cmd = ( "cp ../../myPythonTools/user_nl_cice ./")
+        sp.run(cd0 + cmd   ,    shell=True )
+
+        if (self.nlev==58) and (self.machine=='cheyenne'):
+            cmd = ( "cp ../../myPythonTools/user_nl_cam_L58_cheyenne ./user_nl_cam")
+        elif (self.nlev==93) and (self.machine=='cheyenne')
+            cmd = ( "cp ../../myPythonTools/user_nl_cam_L93_cheyenne ./user_nl_cam")
+        else:
+            cmd = ( "cp ../../myPythonTools/user_nl_cam ./")
+
         sp.run(cd0 + cmd   ,    shell=True )
 
         cmd = ( "./xmlchange DOUT_S_ROOT='/project/amp/"+user+"/scam/archive/"+case_tag+"'" + ";" +
