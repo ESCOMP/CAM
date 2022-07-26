@@ -111,7 +111,7 @@ class scam_case:
 
         if (self.nlev==58) and (self.machine=='cheyenne'):
             cmd = ( "cp ../../myPythonTools/user_nl_cam_L58_cheyenne ./user_nl_cam")
-        elif (self.nlev==93) and (self.machine=='cheyenne')
+        elif (self.nlev==93) and (self.machine=='cheyenne'):
             cmd = ( "cp ../../myPythonTools/user_nl_cam_L93_cheyenne ./user_nl_cam")
         else:
             cmd = ( "cp ../../myPythonTools/user_nl_cam ./")
