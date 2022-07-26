@@ -14,8 +14,8 @@ spawncase=False
 print(case.scmlon)
 
 try:
-   opts, args = go.getopt( argv[1:], "i:j:y:m:d:t:l:x:n:q:c:S:", 
-                           ["lon=","lat=","year=","month=","day=","tag=","nlev=","coupler=","nsteps=","atm-ncpl=","compiler=","spawn="] )
+   opts, args = go.getopt( argv[1:], "i:j:y:m:d:t:l:x:n:q:c:S:M:", 
+                           ["lon=","lat=","year=","month=","day=","tag=","nlev=","coupler=","nsteps=","atm-ncpl=","compiler=","spawn=","machine="] )
 except:
     print( "something is wrong")
     exit()
@@ -46,6 +46,8 @@ for opt, arg in opts:
         case.atm_ncpl = int(arg)
     elif opt in ("-c","--compiler"):
         case.compiler = arg
+    elif opt in ("-M","--machine"):
+        case.machine = arg
     elif opt in ("-S","--spawn"):
         basecase = arg
         spawncase = True
