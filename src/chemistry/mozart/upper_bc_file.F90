@@ -68,10 +68,15 @@ contains
     end if
 
     call mpi_bcast(ubc_file_path, len(ubc_file_path), mpi_character, masterprocid, mpicom, ierr)
+    if (ierr /= 0) call endrun(prefix//'mpi_bcast error : ubc_file_path')
     call mpi_bcast(ubc_file_input_type, len(ubc_file_input_type), mpi_character, masterprocid, mpicom, ierr)
+    if (ierr /= 0) call endrun(prefix//'mpi_bcast error : ubc_file_input_type')
     call mpi_bcast(ubc_file_fixed_ymd, 1, mpi_integer, masterprocid, mpicom, ierr)
+    if (ierr /= 0) call endrun(prefix//'mpi_bcast error : ubc_file_fixed_ymd')
     call mpi_bcast(ubc_file_fixed_tod, 1, mpi_integer, masterprocid, mpicom, ierr)
+    if (ierr /= 0) call endrun(prefix//'mpi_bcast error : ubc_file_fixed_tod')
     call mpi_bcast(ubc_file_cycle_yr,  1, mpi_integer, masterprocid, mpicom, ierr)
+    if (ierr /= 0) call endrun(prefix//'mpi_bcast error : ubc_file_cycle_yr')
 
     upper_bc_file_specified = .not. ubc_file_path == 'NONE'
 
@@ -98,17 +103,20 @@ contains
 
     character(len=*), intent(in) :: flds_list(:) ! flds specifier list
 
-    integer :: m, ndx
+    integer :: m, ndx, ierr
+    character(len=*), parameter :: prefix = 'upper_bc_file_init: '
 
     num_ubc_flds = size(flds_list)
     upper_bc_file_specified = upper_bc_file_specified .and. (num_ubc_flds>0)
 
     if (.not.upper_bc_file_specified) return
 
-    allocate( ubc_fact(num_ubc_flds) )
+    allocate( ubc_fact(num_ubc_flds), stat=ierr )
+    if (ierr /= 0) call endrun(prefix//'allocate error : ubc_fact')
     ubc_fact(:) = -huge(1._r8)
 
-    allocate(file%in_pbuf(num_ubc_flds))
+    allocate(file%in_pbuf(num_ubc_flds), stat=ierr)
+    if (ierr /= 0) call endrun(prefix//'allocate error : file%in_pbuf')
     file%in_pbuf(:) = .false.
 
     call trcdata_init( flds_list, ubc_file_path, ' ', ' ', fields, file, .false., &
@@ -120,7 +128,8 @@ contains
        file%top_layer = .true.
     endif
 
-    allocate(hist_names(num_ubc_flds))
+    allocate(hist_names(num_ubc_flds), stat=ierr)
+    if (ierr /= 0) call endrun(prefix//'allocate error : hist_names')
     hist_names = ' '
 
     do m = 1,num_ubc_flds

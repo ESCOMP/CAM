@@ -18,7 +18,6 @@ module upper_bc
   use shr_kind_mod, only: cx=>SHR_KIND_CX
   use cam_abortutils,only: endrun
   use cam_history,   only: addfld, horiz_only, outfld, fieldname_len
-  !use cam_history,   only: add_default
 
   use upper_bc_file, only: upper_bc_file_readnl, upper_bc_file_specified, upper_bc_file_adv, upper_bc_file_get
     use infnan,       only : nan, assignment(=)
@@ -169,21 +168,37 @@ contains
 
     ! broadcast to all MPI tasks
     call mpi_bcast(num_fixed, 1, mpi_integer, masterprocid, mpicom, ierr)
+    if (ierr /= 0) call endrun(prefix//'mpi_bcast error : num_fixed')
     call mpi_bcast(num_infile, 1, mpi_integer, masterprocid, mpicom, ierr)
+    if (ierr /= 0) call endrun(prefix//'mpi_bcast error : num_infile')
     call mpi_bcast(n_fixed_mmr, 1, mpi_integer, masterprocid, mpicom, ierr)
+    if (ierr /= 0) call endrun(prefix//'mpi_bcast error : n_fixed_mmr')
     call mpi_bcast(n_fixed_vmr, 1, mpi_integer, masterprocid, mpicom, ierr)
+    if (ierr /= 0) call endrun(prefix//'mpi_bcast error : n_fixed_vmr')
     call mpi_bcast(tgcm_ubc_file, len(tgcm_ubc_file), mpi_character, masterprocid, mpicom, ierr)
+    if (ierr /= 0) call endrun(prefix//'mpi_bcast error : tgcm_ubc_file')
     call mpi_bcast(tgcm_ubc_data_type, len(tgcm_ubc_data_type),mpi_character, masterprocid, mpicom, ierr)
+    if (ierr /= 0) call endrun(prefix//'mpi_bcast error : tgcm_ubc_data_type')
     call mpi_bcast(tgcm_ubc_cycle_yr, 1, mpi_integer, masterprocid, mpicom, ierr)
+    if (ierr /= 0) call endrun(prefix//'mpi_bcast error : tgcm_ubc_cycle_yr')
     call mpi_bcast(tgcm_ubc_fixed_ymd, 1, mpi_integer, masterprocid, mpicom, ierr)
+    if (ierr /= 0) call endrun(prefix//'mpi_bcast error : tgcm_ubc_fixed_ymd')
     call mpi_bcast(tgcm_ubc_fixed_tod, 1, mpi_integer, masterprocid, mpicom, ierr)
+    if (ierr /= 0) call endrun(prefix//'mpi_bcast error : tgcm_ubc_fixed_tod')
     call mpi_bcast(snoe_ubc_file, len(snoe_ubc_file), mpi_character, masterprocid, mpicom, ierr)
+    if (ierr /= 0) call endrun(prefix//'mpi_bcast error : snoe_ubc_file')
     call mpi_bcast(t_pert_ubc, 1, mpi_real8, masterprocid, mpicom, ierr)
+    if (ierr /= 0) call endrun(prefix//'mpi_bcast error : t_pert_ubc')
     call mpi_bcast(no_xfac_ubc,1, mpi_real8, masterprocid, mpicom, ierr)
+    if (ierr /= 0) call endrun(prefix//'mpi_bcast error : no_xfac_ubc')
     call mpi_bcast(ubc_specifier, pcnst*len(ubc_specifier(1)), mpi_character,masterprocid, mpicom, ierr)
+    if (ierr /= 0) call endrun(prefix//'mpi_bcast error : ubc_specifier')
     call mpi_bcast(ubc_flds,      pcnst*len(ubc_flds(1)),      mpi_character,masterprocid, mpicom, ierr)
+    if (ierr /= 0) call endrun(prefix//'mpi_bcast error : ubc_flds')
     call mpi_bcast(ubc_file_spfr, pcnst*len(ubc_file_spfr(1)), mpi_character,masterprocid, mpicom, ierr)
+    if (ierr /= 0) call endrun(prefix//'mpi_bcast error : ubc_file_spfr')
     call mpi_bcast(ubc_source,    pcnst*len(ubc_source(1)),    mpi_character,masterprocid, mpicom, ierr)
+    if (ierr /= 0) call endrun(prefix//'mpi_bcast error : ubc_source')
 
     apply_upper_bc = num_fixed>0
 
@@ -208,7 +223,7 @@ contains
 
     !---------------------------Local workspace-----------------------------
     logical, parameter :: zonal_avg = .false.
-    integer :: m, mm
+    integer :: m, mm, ierr
     integer :: mmrndx, vmrndx, m_mmr, m_vmr
 
     real(r8) :: val
@@ -228,22 +243,29 @@ contains
 
     mm=1
 
-    allocate(hist_names(num_fixed))
-    allocate(spc_ndx(num_fixed))
+    allocate(hist_names(num_fixed), stat=ierr)
+    if (ierr /= 0) call endrun(prefix//'allocate error : hist_names')
+    allocate(spc_ndx(num_fixed), stat=ierr)
+    if (ierr /= 0) call endrun(prefix//'allocate error : spc_ndx')
     spc_ndx=-1
     if (num_infile>0) then
-       allocate(file_spc_ndx(num_infile))
+       allocate(file_spc_ndx(num_infile), stat=ierr)
+       if (ierr /= 0) call endrun(prefix//'allocate error : file_spc_ndx')
        file_spc_ndx=-1
     end if
     if (n_fixed_mmr>0) then
-       allocate(fixed_mmr_ndx(n_fixed_mmr))
-       allocate(fixed_mmr(n_fixed_mmr))
+       allocate(fixed_mmr_ndx(n_fixed_mmr), stat=ierr)
+       if (ierr /= 0) call endrun(prefix//'allocate error : fixed_mmr_ndx')
+       allocate(fixed_mmr(n_fixed_mmr), stat=ierr)
+       if (ierr /= 0) call endrun(prefix//'allocate error : fixed_mmr')
        fixed_mmr_ndx=-1
        fixed_mmr = nan
     end if
     if (n_fixed_vmr>0) then
-       allocate(fixed_vmr_ndx(n_fixed_vmr))
-       allocate(fixed_vmr(n_fixed_vmr))
+       allocate(fixed_vmr_ndx(n_fixed_vmr), stat=ierr)
+       if (ierr /= 0) call endrun(prefix//'allocate error : fixed_vmr_ndx')
+       allocate(fixed_vmr(n_fixed_vmr), stat=ierr)
+       if (ierr /= 0) call endrun(prefix//'allocate error : fixed_vmr')
        fixed_vmr_ndx=-1
        fixed_vmr = nan
     end if
@@ -261,7 +283,6 @@ contains
           call cnst_get_ind(ubc_flds(m), spc_ndx(m), abort=.true.)
           call addfld(hist_names(m), horiz_only, 'I', 'kg/kg', trim(ubc_flds(m))//' at upper boundary' )
        end if
-       !call add_default(hist_names(m), 2, ' ' )
 
        if (trim(ubc_source(m))=='msis') then
           if (do_molec_diff .and. any(msis_flds==ubc_flds(m))) then

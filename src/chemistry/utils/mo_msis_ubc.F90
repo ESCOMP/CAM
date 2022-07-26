@@ -66,7 +66,7 @@
       allocate( msis_ubc(pcols,6,begchunk:endchunk),stat=astat )
       if( astat /= 0 ) then
          write(iulog,*) 'msis_ubc_inti: failed to allocate msis_ubc; error = ',astat
-         call endrun
+         call endrun('msis_ubc_inti: failed to allocate msis_ubc')
       end if
 
       if( zonal_average ) then
