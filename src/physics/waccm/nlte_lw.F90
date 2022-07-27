@@ -219,11 +219,11 @@ contains
 !
 ! Driver for nlte calculations
 !-------------------------------------------------------------------------
-    use physconst,     only: mwdry
-    use cam_thermo,    only: cpairv
-    use physics_types, only: physics_state
-    use physics_buffer, only : physics_buffer_desc
-    use cam_history,   only: outfld
+    use physconst,       only: mwdry
+    use air_composition, only: cpairv
+    use physics_types,   only: physics_state
+    use physics_buffer,  only : physics_buffer_desc
+    use cam_history,     only: outfld
 
 ! Arguments
     type(physics_state), target, intent(in)  :: state   ! Physics state variables

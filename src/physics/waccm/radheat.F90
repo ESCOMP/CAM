@@ -16,14 +16,14 @@ module radheat
 ! Cubic polynomial is chosen so that derivative is zero at minimum and maximum pressures
 !   and is monotonically increasing from zero at minimum pressure to one at maximum pressure
 
-  use shr_kind_mod,  only: r8 => shr_kind_r8
-  use spmd_utils,    only: masterproc
-  use ppgrid,        only: pcols, pver
-  use physics_types, only: physics_state, physics_ptend, physics_ptend_init
-  use physconst,     only: gravit
-  use cam_thermo,    only: cpairv
+  use shr_kind_mod,    only: r8 => shr_kind_r8
+  use spmd_utils,      only: masterproc
+  use ppgrid,          only: pcols, pver
+  use physics_types,   only: physics_state, physics_ptend, physics_ptend_init
+  use physconst,       only: gravit
+  use air_composition, only: cpairv
   use perf_mod
-  use cam_logfile,   only: iulog
+  use cam_logfile,     only: iulog
 
   implicit none
   private

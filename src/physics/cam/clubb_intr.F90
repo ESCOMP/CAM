@@ -17,17 +17,17 @@ module clubb_intr
   !                                                                                                      ! 
   !----------------------------------------------------------------------------------------------------- !
 
-  use shr_kind_mod,  only: r8=>shr_kind_r8                                                                  
-  use ppgrid,        only: pver, pverp, pcols, begchunk, endchunk
-  use phys_control,  only: phys_getopts
-  use physconst,     only: cpair, gravit, rga, latvap, latice, zvir, rh2o, karman
-  use cam_thermo,    only: rairv, cpairv
+  use shr_kind_mod,     only: r8=>shr_kind_r8                                                                  
+  use ppgrid,           only: pver, pverp, pcols, begchunk, endchunk
+  use phys_control,     only: phys_getopts
+  use physconst,        only: cpair, gravit, rga, latvap, latice, zvir, rh2o, karman
+  use air_composition,  only: rairv, cpairv
 
-  use spmd_utils,    only: masterproc 
-  use constituents,  only: pcnst, cnst_add
-  use pbl_utils,     only: calc_ustar, calc_obklen
-  use ref_pres,      only: top_lev => trop_cloud_top_lev  
-  use zm_conv_intr,  only: zmconv_microp
+  use spmd_utils,       only: masterproc 
+  use constituents,     only: pcnst, cnst_add
+  use pbl_utils,        only: calc_ustar, calc_obklen
+  use ref_pres,         only: top_lev => trop_cloud_top_lev  
+  use zm_conv_intr,     only: zmconv_microp
 #ifdef CLUBB_SGS
   use clubb_api_module, only: pdf_parameter, implicit_coefs_terms
   use clubb_api_module, only: clubb_config_flags_type, grid, stats, nu_vertical_res_dep

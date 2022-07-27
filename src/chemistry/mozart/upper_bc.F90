@@ -230,7 +230,7 @@ end subroutine ubc_setopts
     use mo_tgcm_ubc,      only: set_tgcm_ubc
     use cam_abortutils,   only: endrun
     use physconst,        only: avogad, rga ! Avogadro, universal gas constant
-    use cam_thermo,       only: rairv, mbarv ! gas constant, mean mass
+    use air_composition,  only: rairv, mbarv ! gas constant, mean mass
     use phys_control,     only: waccmx_is
     use constituents,     only: cnst_get_ind, cnst_mw, cnst_fixed_ubc  ! Needed for ubc_flux
 

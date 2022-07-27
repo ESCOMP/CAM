@@ -9,7 +9,7 @@ use pmgrid,         only: plev
 use ppgrid,         only: begchunk, endchunk, pcols, pver, pverp
 use constituents,   only: pcnst, cnst_type
 use physconst,      only: gravit, cappa, rh2o, zvir
-use cam_thermo,     only: cpairv, rairv
+use air_composition,only: cpairv, rairv
 
 use spmd_dyn,       only: local_dp_map, block_buf_nrecs, chunk_buf_nrecs
 use spmd_utils,     only: mpicom, iam, masterproc
@@ -328,14 +328,15 @@ subroutine derived_phys(phys_state, phys_tend, pbuf2d)
    ! Compute fields in the physics state object which are diagnosed from the
    ! MPAS prognostic fields.
 
-   use geopotential,  only: geopotential_t
-   use check_energy,  only: check_energy_timestep_init
-   use shr_vmath_mod, only: shr_vmath_log
-   use phys_control,  only: waccmx_is
-   use cam_thermo,    only: rairv, cam_thermo_update
-   use qneg_module,   only: qneg3
-   use shr_const_mod, only: shr_const_rwv
-   use constituents,  only: qmin
+   use geopotential,    only: geopotential_t
+   use check_energy,    only: check_energy_timestep_init
+   use shr_vmath_mod,   only: shr_vmath_log
+   use phys_control,    only: waccmx_is
+   use cam_thermo,      only: cam_thermo_update
+   use air_composition, only: rairv
+   use qneg_module,     only: qneg3
+   use shr_const_mod,   only: shr_const_rwv
+   use constituents,    only: qmin
    ! Arguments
    type(physics_state),       intent(inout) :: phys_state(begchunk:endchunk)
    type(physics_tend ),       intent(inout) :: phys_tend(begchunk:endchunk)

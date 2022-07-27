@@ -10,7 +10,7 @@ module dp_coupling
    use physics_types,     only: physics_state, physics_tend, physics_cnst_limit
    use constituents,      only: pcnst
    use physconst,         only: gravit, zvir
-   use cam_thermo,        only: cpairv, rairv
+   use air_composition,   only: cpairv, rairv
    use geopotential,      only: geopotential_t
    use check_energy,      only: check_energy_timestep_init
    use dynamics_vars,     only: T_FVDYCORE_GRID, t_fvdycore_state

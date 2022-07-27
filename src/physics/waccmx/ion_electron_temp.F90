@@ -334,7 +334,7 @@ contains
 
   subroutine ion_electron_temp_tend(state, ptend, pbuf, ztodt)
 
-    use cam_thermo,         only : cpairv
+    use air_composition,     only : cpairv
     !-------------------------------------------------------------------------------------
     ! Calculate dry static energy and O+ tendency for extended ionosphere simulation
     !-------------------------------------------------------------------------------------
@@ -432,7 +432,7 @@ contains
     use mo_apex,          only : bnorth, beast, bdown             ! Magnetic field components
     use time_manager,     only : get_curr_calday                  ! Routine to get current calendar day
     use physconst,        only : rearth
-    use cam_thermo,       only : rairv, mbarv                     ! Constituent dependent rair and mbar
+    use air_composition,  only : rairv, mbarv                     ! Constituent dependent rair and mbar
     use ref_pres,         only : press_lim_idx
     use orbit,            only : zenith
 
@@ -859,9 +859,9 @@ contains
   ! Routine to compute the electron and ion temperature
   !-----------------------------------------------------------------------
 
-    use physconst,  only : gravit ! Gravity (m/s2)
-    use cam_thermo, only : rairv, mbarv  ! Constituent dependent rair and mbar
-    use mo_apex,    only: alatm
+    use physconst,       only : gravit ! Gravity (m/s2)
+    use air_composition, only : rairv, mbarv  ! Constituent dependent rair and mbar
+    use mo_apex,         only: alatm
 
 !------------------------------Arguments--------------------------------
 

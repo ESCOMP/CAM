@@ -56,9 +56,9 @@ contains
     use time_mod,          only: TimeLevel_t,  timelevel_qdp, tevolve
     use dimensions_mod,    only: lcp_moist
     use fvm_control_volume_mod, only: fvm_struct
-    use cam_thermo,        only: get_cp, get_kappa_dry
+    use cam_thermo,        only: get_kappa_dry
     use air_composition,   only: thermodynamic_active_species_num, dry_air_species_num
-    use air_composition,   only: thermodynamic_active_species_idx_dycore
+    use air_composition,   only: thermodynamic_active_species_idx_dycore, get_cp
     use physconst,         only: cpair, rair
     implicit none
 
@@ -993,9 +993,9 @@ contains
      use bndry_mod,       only: bndry_exchange
      use hybvcoord_mod,   only: hvcoord_t
      use physconst,       only: epsilo
-     use cam_thermo,      only: get_gz, get_virtual_temp, get_cp_dry, get_R_dry
+     use cam_thermo,      only: get_gz, get_virtual_temp
      use air_composition, only: thermodynamic_active_species_num, dry_air_species_num
-     use air_composition, only: thermodynamic_active_species_idx_dycore
+     use air_composition, only: thermodynamic_active_species_idx_dycore, get_cp_dry, get_R_dry
      use physconst,       only: tref,cpair,gravit,lapse_rate
      use time_mod, only : tevolve
 
@@ -1456,8 +1456,8 @@ contains
     use string_utils,           only: strlist_get_ind
     use hycoef,                 only: hyai, ps0
     use fvm_control_volume_mod, only: fvm_struct
-    use cam_thermo,             only: get_dp, get_cp
-    use air_composition,        only: thermodynamic_active_species_idx_dycore
+    use cam_thermo,             only: get_dp
+    use air_composition,        only: thermodynamic_active_species_idx_dycore, get_cp
     use dimensions_mod,         only: cnst_name_gll
     !------------------------------Arguments--------------------------------
 

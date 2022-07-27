@@ -537,16 +537,17 @@ subroutine derived_phys_dry(phys_state, phys_tend, pbuf2d)
    ! mixing ratios are converted to a wet basis.  Initialize geopotential heights.
    ! Finally compute energy and water column integrals of the physics input state.
 
-   use constituents,  only: qmin
-   use physconst,     only: gravit, zvir
-   use cam_thermo,    only: cpairv, rairv, cappav, cam_thermo_update
-   use shr_const_mod, only: shr_const_rwv
-   use phys_control,  only: waccmx_is
-   use geopotential,  only: geopotential_t
-   use check_energy,  only: check_energy_timestep_init
-   use hycoef,        only: hyai, ps0
-   use shr_vmath_mod, only: shr_vmath_log
-   use qneg_module,   only: qneg3
+   use constituents,    only: qmin
+   use physconst,       only: gravit, zvir
+   use cam_thermo,      only: cam_thermo_update
+   use air_composition, only: cpairv, rairv, cappav
+   use shr_const_mod,   only: shr_const_rwv
+   use phys_control,    only: waccmx_is
+   use geopotential,    only: geopotential_t
+   use check_energy,    only: check_energy_timestep_init
+   use hycoef,          only: hyai, ps0
+   use shr_vmath_mod,   only: shr_vmath_log
+   use qneg_module,     only: qneg3
 
    ! arguments
    type(physics_state), intent(inout), dimension(begchunk:endchunk) :: phys_state
@@ -714,9 +715,9 @@ subroutine thermodynamic_consistency(phys_state, phys_tend, ncols, pver, lchnk)
    ! Note: mixing ratios are assumed to be dry.
    !
    use dimensions_mod,    only: lcp_moist
-   use cam_thermo,        only: get_cp
+   use air_composition,   only: get_cp
    use control_mod,       only: phys_dyn_cp
-   use cam_thermo,        only: cpairv
+   use air_composition,   only: cpairv
 
    type(physics_state), intent(in)    :: phys_state
    type(physics_tend ), intent(inout) :: phys_tend

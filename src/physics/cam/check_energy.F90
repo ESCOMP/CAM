@@ -26,7 +26,7 @@ module check_energy
 
   use gmean_mod,       only: gmean
   use physconst,       only: gravit, latvap, latice, cpair, rair
-  use cam_thermo,      only: cpairv, rairv
+  use air_composition, only: cpairv, rairv
   use physics_types,   only: physics_state, physics_tend, physics_ptend, physics_ptend_init
   use constituents,    only: cnst_get_ind, pcnst, cnst_name, cnst_get_type_byind
   use time_manager,    only: is_first_step

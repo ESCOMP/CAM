@@ -164,23 +164,23 @@ CONTAINS
 
       ! Broadcast namelist variables
       call MPI_bcast(gravit, 1, mpi_real8, masterprocid, mpicom, ierr)
-      if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: gravit")
+      if (ierr /= 0) call endrun(subname//": FATAL: mpi_bcast: gravit")
       call MPI_bcast(sday,   1, mpi_real8, masterprocid, mpicom, ierr)
-      if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: sday")
+      if (ierr /= 0) call endrun(subname//": FATAL: mpi_bcast: sday")
       call MPI_bcast(mwh2o,  1, mpi_real8, masterprocid, mpicom, ierr)
-      if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: mwh20")
+      if (ierr /= 0) call endrun(subname//": FATAL: mpi_bcast: mwh20")
       call MPI_bcast(cpwv,   1, mpi_real8, masterprocid, mpicom, ierr)
-      if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: cpwv")
+      if (ierr /= 0) call endrun(subname//": FATAL: mpi_bcast: cpwv")
       call MPI_bcast(mwdry,  1, mpi_real8, masterprocid, mpicom, ierr)
-      if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: mwdry")
+      if (ierr /= 0) call endrun(subname//": FATAL: mpi_bcast: mwdry")
       call MPI_bcast(cpair,  1, mpi_real8, masterprocid, mpicom, ierr)
-      if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: cpair")
+      if (ierr /= 0) call endrun(subname//": FATAL: mpi_bcast: cpair")
       call MPI_bcast(rearth, 1, mpi_real8, masterprocid, mpicom, ierr)
-      if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: rearth")
+      if (ierr /= 0) call endrun(subname//": FATAL: mpi_bcast: rearth")
       call MPI_bcast(tmelt,  1, mpi_real8, masterprocid, mpicom, ierr)
-      if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: tmelt")
+      if (ierr /= 0) call endrun(subname//": FATAL: mpi_bcast: tmelt")
       call MPI_bcast(omega,  1, mpi_real8, masterprocid, mpicom, ierr)
-      if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: omega")
+      if (ierr /= 0) call endrun(subname//": FATAL: mpi_bcast: omega")
 
       newg     =  gravit /= shr_const_g
       newsday  =  sday   /= shr_const_sday

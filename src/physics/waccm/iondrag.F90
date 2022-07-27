@@ -1268,9 +1268,9 @@ contains
     ! This is called from sub iondrag_calc.
     !-------------------------------------------------------------------------------
 
-    use physconst,  only: pi
-    use cam_thermo, only: cpairv
-    use phys_grid,  only: get_rlon_p, get_rlat_p
+    use physconst,       only: pi
+    use air_composition, only: cpairv
+    use phys_grid,       only: get_rlon_p, get_rlat_p
 
     !-------------------------------------------------------------------------------
     ! dummy arguments

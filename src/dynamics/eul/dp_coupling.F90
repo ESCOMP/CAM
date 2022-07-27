@@ -12,7 +12,7 @@ module dp_coupling
    use physics_types,     only: physics_state, physics_tend
    use constituents,      only: pcnst
    use physconst,         only: cpair, gravit, rair, zvir
-   use cam_thermo,        only: rairv
+   use air_composition,   only: rairv
    use geopotential,      only: geopotential_t
    use check_energy,      only: check_energy_timestep_init
 #if (defined SPMD)

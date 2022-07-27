@@ -17,7 +17,7 @@ use hycoef,            only: hyam, hybm, hyai, hybi, ps0
 use mpp_domains_mod,   only: mpp_update_domains, domain2D, DGRID_NE
 use perf_mod,          only: t_startf, t_stopf, t_barrierf
 use physconst,         only: cpair, gravit, rair, zvir, cappa
-use cam_thermo,        only: rairv
+use air_composition,   only: rairv
 use phys_grid,         only: get_ncols_p, get_gcol_all_p, block_to_chunk_send_pters, &
                              transpose_block_to_chunk, block_to_chunk_recv_pters, &
                              chunk_to_block_send_pters, transpose_chunk_to_block, &
