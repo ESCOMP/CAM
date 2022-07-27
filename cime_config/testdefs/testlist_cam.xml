@@ -604,7 +604,7 @@
   </test>
   <test compset="QPX2000" grid="ne5pg3_ne5pg3_mg37" name="SMS_D_Ln3_Vnuopc" testmods="cam/outfrq3s">
     <machines>
-      <machine name="cheyenne" compiler="intel" category="aux_cam"/>
+      <machine name="izumi" compiler="nag" category="aux_cam"/>
       <machine name="izumi" compiler="nag" category="waccmx"/>
     </machines>
     <options>
@@ -2156,7 +2156,7 @@
       <option name="wallclock">00:50:00</option>
     </options>
   </test>
-  <test compset="FXHIST" grid="f09_f09_mg17" name="SMS_D_Ln9_Vnuopc"   testmods="cam/waccmx_weimer">
+  <test compset="FXHIST" grid="f09_f09_mg17" name="SMS_D_Ln9_Vnuopc_P384x3"   testmods="cam/waccmx_weimer">
     <machines>
       <machine name="cheyenne" compiler="intel" category="waccmx"/>
     </machines>
