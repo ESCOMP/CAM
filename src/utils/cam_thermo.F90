@@ -34,8 +34,8 @@ module cam_thermo
    public :: cam_thermo_init
    ! cam_thermo_update: Update constituent dependent properties
    public :: cam_thermo_update
-   ! get_thermal_energy: thermal energy quantity = dp*cp*T
-   public :: get_thermal_energy
+   ! get_enthalpy_energy: enthalpy quantity = dp*cp*T
+   public :: get_enthalpy_energy
    ! get_virtual_temp: virtual temperature
    public :: get_virtual_temp
    ! get_sum_species: sum of thermodynamically active species:
@@ -104,10 +104,10 @@ module cam_thermo
       module procedure get_gz_given_dp_Tv_Rdry_2hd
    end interface get_gz
 
-   interface get_thermal_energy
-      module procedure get_thermal_energy_1hd
-      module procedure get_thermal_energy_2hd
-   end interface get_thermal_energy
+   interface get_enthalpy_energy
+      module procedure get_enthalpy_energy_1hd
+      module procedure get_enthalpy_energy_2hd
+   end interface get_enthalpy_energy
 
    interface get_virtual_temp
       module procedure get_virtual_temp_1hd
@@ -257,15 +257,15 @@ CONTAINS
    !
    !***********************************************************************
    !
-   ! Compute thermal energy = cp*T*dp, where dp is pressure level thickness,
+   ! Compute enthalpy = cp*T*dp, where dp is pressure level thickness,
    !    cp is generalized cp and T temperature
    !
    ! Note: tracer is in units of m*dp_dry ("mass")
    !
    !***********************************************************************
    !
-   subroutine get_thermal_energy_1hd(tracer_mass, temp, dp_dry,               &
-        thermal_energy, active_species_idx_dycore)
+   subroutine get_enthalpy_energy_1hd(tracer_mass, temp, dp_dry,               &
+        enthalpy, active_species_idx_dycore)
       use air_composition, only: dry_air_species_num, get_cp_dry
       ! Dummy arguments
       ! tracer_mass: tracer array (mass weighted)
@@ -274,8 +274,8 @@ CONTAINS
       real(r8),          intent(in)  :: temp(:,:)
       ! dp_dry: dry presure level thickness
       real(r8),          intent(in)  :: dp_dry(:,:)
-      ! thermal_energy: thermal energy in each column: sum cp*T*dp
-      real(r8),          intent(out) :: thermal_energy(:,:)
+      ! enthalpy: enthalpy in each column: sum cp*T*dp
+      real(r8),          intent(out) :: enthalpy(:,:)
       !
       ! active_species_idx_dycore:
       !    array of indicies for index of thermodynamic active species in
@@ -285,23 +285,23 @@ CONTAINS
 
       ! Local vars
       integer                     :: qdx, itrac
-      character(len=*), parameter :: subname = 'get_thermal_energy: '
+      character(len=*), parameter :: subname = 'get_enthalpy_energy: '
 
       !
       ! "mass-weighted" cp (dp must be dry)
       !
       if (dry_air_species_num == 0) then
-         thermal_energy(:,:) = thermodynamic_active_species_cp(0) *         &
+         enthalpy(:,:) = thermodynamic_active_species_cp(0) *         &
               dp_dry(:,:)
       else
          if (present(active_species_idx_dycore)) then
             call get_cp_dry(tracer_mass, active_species_idx_dycore,           &
-                 thermal_energy, fact=1.0_r8/dp_dry(:,:))
+                 enthalpy, fact=1.0_r8/dp_dry(:,:))
          else
             call get_cp_dry(tracer_mass, thermodynamic_active_species_idx,    &
-                 thermal_energy, fact=1.0_r8/dp_dry(:,:))
+                 enthalpy, fact=1.0_r8/dp_dry(:,:))
          end if
-         thermal_energy(:,:) = thermal_energy(:,:) * dp_dry(:,:)
+         enthalpy(:,:) = enthalpy(:,:) * dp_dry(:,:)
       end if
       !
       ! tracer is in units of m*dp ("mass"), where:
@@ -314,17 +314,17 @@ CONTAINS
          else
             itrac = thermodynamic_active_species_idx(qdx)
          end if
-         thermal_energy(:,:) = thermal_energy(:,:) +                      &
+         enthalpy(:,:) = enthalpy(:,:) +                      &
               (thermodynamic_active_species_cp(qdx) * tracer_mass(:,:,itrac))
       end do
-      thermal_energy(:,:) = thermal_energy(:,:) * temp(:,:)
+      enthalpy(:,:) = enthalpy(:,:) * temp(:,:)
 
-   end subroutine get_thermal_energy_1hd
+   end subroutine get_enthalpy_energy_1hd
 
    !===========================================================================
 
-   subroutine get_thermal_energy_2hd(tracer_mass, temp, dp_dry,               &
-        thermal_energy, active_species_idx_dycore)
+   subroutine get_enthalpy_energy_2hd(tracer_mass, temp, dp_dry,               &
+        enthalpy, active_species_idx_dycore)
       ! Dummy arguments
       ! tracer_mass: tracer array (mass weighted)
       real(r8),          intent(in)  :: tracer_mass(:,:,:,:)
@@ -332,8 +332,8 @@ CONTAINS
       real(r8),          intent(in)  :: temp(:,:,:)
       ! dp_dry: dry presure level thickness
       real(r8),          intent(in)  :: dp_dry(:,:,:)
-      ! thermal_energy: thermal energy in each column: sum cp*T*dp
-      real(r8),          intent(out) :: thermal_energy(:,:,:)
+      ! enthalpy: enthalpy in each column: sum cp*T*dp
+      real(r8),          intent(out) :: enthalpy(:,:,:)
       !
       ! active_species_idx_dycore:
       !    array of indicies for index of thermodynamic active species in
@@ -343,15 +343,15 @@ CONTAINS
 
       ! Local variables
       integer                     :: jdx
-      character(len=*), parameter :: subname = 'get_thermal_energy_2hd: '
+      character(len=*), parameter :: subname = 'get_enthalpy_energy_2hd: '
 
       do jdx = 1, SIZE(tracer_mass, 2)
-         call get_thermal_energy(tracer_mass(:, jdx, :, :), temp(:, jdx, :),     &
-              dp_dry(:, jdx, :), thermal_energy(:, jdx, :),                   &
+         call get_enthalpy_energy(tracer_mass(:, jdx, :, :), temp(:, jdx, :),     &
+              dp_dry(:, jdx, :), enthalpy(:, jdx, :),                   &
               active_species_idx_dycore=active_species_idx_dycore)
       end do
 
-   end subroutine get_thermal_energy_2hd
+   end subroutine get_enthalpy_energy_2hd
 
    !===========================================================================
 
