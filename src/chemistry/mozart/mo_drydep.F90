@@ -18,7 +18,7 @@ module mo_drydep
   use dyn_grid,         only : get_dyn_grid_parm, get_horiz_grid_d
   use scamMod,          only : single_column
 
-  use seq_drydep_mod,   only : nddvels =>  n_drydep, drydep_list, mapping
+  use shr_drydep_mod,   only : nddvels =>  n_drydep, drydep_list, mapping
   use physconst,        only : karman
 
   use infnan,                only : nan, assignment(=)
@@ -251,7 +251,7 @@ contains
     !-------------------------------------------------------------------------------------
     !        ... assign CO tags to CO
     ! put this kludge in for now ...
-    !  -- should be able to set all these via the table mapping in seq_drydep_mod
+    !  -- should be able to set all these via the table mapping in shr_drydep_mod
     !-------------------------------------------------------------------------------------
     if( cohc_ndx>0 .and. co_ndx>0 ) then
        dvelocity(:ncol,cohc_ndx) = dvelocity(:ncol,co_ndx)
@@ -825,8 +825,8 @@ contains
     ! modified by JFL to be used in MOZART-2 (October 2002)
     !-------------------------------------------------------------------------------------
 
-    use seq_drydep_mod, only: z0, rgso, rgss, ri, rclo, rcls, rlu, rac
-    use seq_drydep_mod, only: seq_drydep_setHCoeff, foxd, drat
+    use shr_drydep_mod, only: z0, rgso, rgss, ri, rclo, rcls, rlu, rac
+    use shr_drydep_mod, only: shr_drydep_setHCoeff, foxd, drat
     use physconst,      only: tmelt
 
     !-------------------------------------------------------------------------------------
@@ -969,7 +969,7 @@ contains
     !-------------------------------------------------------------------------------------
     ! define species-dependent parameters (temperature dependent)
     !-------------------------------------------------------------------------------------
-    call seq_drydep_setHCoeff( ncol, sfc_temp, heff )
+    call shr_drydep_setHCoeff( ncol, sfc_temp, heff )
 
     do lt = 1,n_land_type
        dep_ra (:,lt,lchnk)   = 0._r8
