@@ -4,6 +4,8 @@ class scam_case:
     #import os
 
     def __init__(self):
+        import os
+
         self.scmlat=36.6
         self.scmlon=270.
         self.nlev=58
@@ -15,12 +17,18 @@ class scam_case:
         self.nsteps=31*self.atm_ncpl
         self.coupler="nuopc"
         self.compiler="intel"
-        self.machine="izumi"
         self.basecase="base_case"
         self.isbasecase=True
         self.cime_output_root="dir"
         self.ensemble_root="none"
-        self.project="P93300642"  # Only for Cheyenne
+        self.project="P93300642"  # Needed for Cheyenne
+
+        host=os.environ['HOST']
+ 
+        if ('izumi' in host):
+            self.machine="izumi"
+        elif ('cheyenne' in host):
+            self.machine="cheyenne"
 
     def base_case(self):
         import subprocess as sp
@@ -139,6 +147,8 @@ class scam_case:
         sp.run(cd0 + cmd   ,    shell=True )
 
 
+        print("Machine  = "+self.machine)
+        print("Compiler = "+self.compiler)
         print("created and setup case=")
         print("   ../../cases/"+case_tag )
         print("Should be ready to build and submit")
