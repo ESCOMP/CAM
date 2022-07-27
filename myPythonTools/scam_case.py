@@ -19,6 +19,7 @@ class scam_case:
         self.compiler="intel"
         self.basecase="base_case"
         self.isbasecase=True
+        self.NameByBuild=False
         self.cime_output_root="dir"
         self.ensemble_root="none"
         self.project="P93300642"  # Needed for Cheyenne
@@ -75,7 +76,10 @@ class scam_case:
         MachStr = str( self.machine )
         ProjStr = str( self.project )
 
-        case_tag = tag+'_'+case_lev+'_'+case_lon+'_'+case_lat+'_'+case_yr+'-'+case_mon+'-'+case_day
+        if (self.NameByBuild == True):
+            case_tag = tag+'_'+MachStr+'_'+CompilerStr+'_'+CplStr
+        else:
+            case_tag = tag+'_'+case_lev+'_'+case_lon+'_'+case_lat+'_'+case_yr+'-'+case_mon+'-'+case_day
 
         if ( self.coupler=="nuopc"):
             COMPSET="FSCAM"
