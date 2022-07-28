@@ -12,14 +12,13 @@ def nmled(fili,parm,valu):
     fex   = open( filo ,"w")
     linin = fin.readlines()
     for line in linin:
-        poo = line.split("=")
+        spl = line.split("=")
         #if (line.find("zmconv_ke") !=-1):
-        if (poo[0].strip() == parm):
-            print(poo)
-            poo[1] = "  "+ valu  +" \n"
-            #poo="\\".join( poopoo )
-            print(poo)
-            line="=".join(poo)
+        if (spl[0].strip() == parm):
+            print(spl)
+            spl[1] = "  "+ valu  +" \n"
+            print(spl)
+            line="=".join(spl)
 
         fex.write(line)
     
@@ -28,3 +27,17 @@ def nmled(fili,parm,valu):
 
     cmd = "mv "+filo+" "+fili
     sp.run( cmd, shell=True)
+
+def nmlread(fili,parm):
+
+    valu=-99999
+    fin   = open( fili ,"r")
+    linin = fin.readlines()
+    for line in linin:
+        spl = line.split("=")
+        if (spl[0].strip() == parm):
+            valu=spl[1]
+    
+    fin.close()
+
+    return valu
