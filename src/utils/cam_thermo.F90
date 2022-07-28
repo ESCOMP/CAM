@@ -34,8 +34,8 @@ module cam_thermo
    public :: cam_thermo_init
    ! cam_thermo_update: Update constituent dependent properties
    public :: cam_thermo_update
-   ! get_enthalpy_energy: enthalpy quantity = dp*cp*T
-   public :: get_enthalpy_energy
+   ! get_enthalpy: enthalpy quantity = dp*cp*T
+   public :: get_enthalpy
    ! get_virtual_temp: virtual temperature
    public :: get_virtual_temp
    ! get_sum_species: sum of thermodynamically active species:
@@ -104,10 +104,10 @@ module cam_thermo
       module procedure get_gz_given_dp_Tv_Rdry_2hd
    end interface get_gz
 
-   interface get_enthalpy_energy
-      module procedure get_enthalpy_energy_1hd
-      module procedure get_enthalpy_energy_2hd
-   end interface get_enthalpy_energy
+   interface get_enthalpy
+      module procedure get_enthalpy_1hd
+      module procedure get_enthalpy_2hd
+   end interface get_enthalpy
 
    interface get_virtual_temp
       module procedure get_virtual_temp_1hd
@@ -264,7 +264,7 @@ CONTAINS
    !
    !***********************************************************************
    !
-   subroutine get_enthalpy_energy_1hd(tracer_mass, temp, dp_dry,               &
+   subroutine get_enthalpy_1hd(tracer_mass, temp, dp_dry,               &
         enthalpy, active_species_idx_dycore)
       use air_composition, only: dry_air_species_num, get_cp_dry
       ! Dummy arguments
@@ -285,7 +285,7 @@ CONTAINS
 
       ! Local vars
       integer                     :: qdx, itrac
-      character(len=*), parameter :: subname = 'get_enthalpy_energy: '
+      character(len=*), parameter :: subname = 'get_enthalpy: '
 
       !
       ! "mass-weighted" cp (dp must be dry)
@@ -319,11 +319,11 @@ CONTAINS
       end do
       enthalpy(:,:) = enthalpy(:,:) * temp(:,:)
 
-   end subroutine get_enthalpy_energy_1hd
+   end subroutine get_enthalpy_1hd
 
    !===========================================================================
 
-   subroutine get_enthalpy_energy_2hd(tracer_mass, temp, dp_dry,               &
+   subroutine get_enthalpy_2hd(tracer_mass, temp, dp_dry,               &
         enthalpy, active_species_idx_dycore)
       ! Dummy arguments
       ! tracer_mass: tracer array (mass weighted)
@@ -343,15 +343,15 @@ CONTAINS
 
       ! Local variables
       integer                     :: jdx
-      character(len=*), parameter :: subname = 'get_enthalpy_energy_2hd: '
+      character(len=*), parameter :: subname = 'get_enthalpy_2hd: '
 
       do jdx = 1, SIZE(tracer_mass, 2)
-         call get_enthalpy_energy(tracer_mass(:, jdx, :, :), temp(:, jdx, :),     &
+         call get_enthalpy(tracer_mass(:, jdx, :, :), temp(:, jdx, :),     &
               dp_dry(:, jdx, :), enthalpy(:, jdx, :),                   &
               active_species_idx_dycore=active_species_idx_dycore)
       end do
 
-   end subroutine get_enthalpy_energy_2hd
+   end subroutine get_enthalpy_2hd
 
    !===========================================================================
 

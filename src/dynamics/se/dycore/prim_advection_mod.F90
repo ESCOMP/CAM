@@ -953,7 +953,7 @@ contains
     use cam_logfile,            only : iulog
     use physconst,              only : pi
     use air_composition,        only : thermodynamic_active_species_idx_dycore
-    use cam_thermo,             only : get_enthalpy_energy, get_virtual_temp, get_dp
+    use cam_thermo,             only : get_enthalpy, get_virtual_temp, get_dp
     use thread_mod,             only : omp_set_nested
     use control_mod,            only: vert_remap_uvTq_alg
     type (hybrid_t),  intent(in)    :: hybrid  ! distributed parallel structure (shared)
@@ -985,7 +985,7 @@ contains
           ! compute internal energy on Lagrangian levels
           ! (do it here since qdp is overwritten by remap1)
           !
-          call get_enthalpy_energy(elem(ie)%state%qdp(:,:,:,1:qsize,np1_qdp), &
+          call get_enthalpy(elem(ie)%state%qdp(:,:,:,1:qsize,np1_qdp), &
                elem(ie)%state%t(:,:,:,np1), elem(ie)%state%dp3d(:,:,:,np1), internal_energy_star,     &
                active_species_idx_dycore=thermodynamic_active_species_idx_dycore)
         end if
@@ -1056,7 +1056,7 @@ contains
           ! compute sum c^(l)_p*m^(l)*dp on arrival (Eulerian) grid
           !
           ttmp(:,:,:,1) = 1.0_r8
-          call get_enthalpy_energy(elem(ie)%state%qdp(:,:,:,1:qsize,np1_qdp),   &
+          call get_enthalpy(elem(ie)%state%qdp(:,:,:,1:qsize,np1_qdp),   &
                ttmp(:,:,:,1), dp_dry,ttmp(:,:,:,2), &
                active_species_idx_dycore=thermodynamic_active_species_idx_dycore)
           elem(ie)%state%t(:,:,:,np1)=internal_energy_star/ttmp(:,:,:,2)
