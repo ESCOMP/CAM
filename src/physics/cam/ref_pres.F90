@@ -13,6 +13,7 @@ module ref_pres
 
 use shr_kind_mod, only: r8=>shr_kind_r8
 use ppgrid,       only: pver, pverp
+use scamMod,      only: single_column
 
 implicit none
 public
@@ -131,7 +132,13 @@ subroutine ref_pres_init(pref_edge_in, pref_mid_in, num_pr_lev_in)
       top=.true.)
 
    ! Find level corresponding to the molecular diffusion bottom.
-   do_molec_diff = (ptop_ref < do_molec_press)
+!+++ARH/jtb
+   if (single_column) then
+      do_molec_diff = .false.
+   else
+      do_molec_diff = (ptop_ref < do_molec_press)
+   end if
+!---ARH/jtb
    if (do_molec_diff) then
       nbot_molec = press_lim_idx(molec_diff_bot_press, &
          top=.false.)

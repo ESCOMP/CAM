@@ -707,6 +707,7 @@ end function chem_is_active
     use fire_emissions,      only : fire_emissions_init
     use short_lived_species, only : short_lived_species_initic
     use ocean_emis,          only : ocean_emis_init
+    use scamMod,             only : single_column
 
     type(physics_buffer_desc), pointer :: pbuf2d(:,:)
     type(physics_state), intent(in):: phys_state(begchunk:endchunk)
@@ -809,7 +810,11 @@ end function chem_is_active
     if ( 1.e-2_r8 >= ptop_ref .and. ptop_ref > 1.e-5_r8 ) then ! around waccm top, below top of waccmx
        cnst_fixed_ubc(1) = .true.
     else if ( 1.e1_r8 > ptop_ref .and. ptop_ref > 1.e-2_r8 ) then ! well above top of cam and below top of waccm
-       call endrun('chem_init: do not know how to set water vapor upper boundary when model top is near mesopause')
+       if(.not.(single_column)) then
+         call endrun('chem_init: do not know how to set water vapor upper boundary when model top is near mesopause')
+       else
+          cnst_fixed_ubc(1) = .true.
+       endif
     endif
 
     if ( masterproc ) write(iulog,*) 'chem_init: addfld done'
