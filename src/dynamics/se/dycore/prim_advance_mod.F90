@@ -275,7 +275,7 @@ contains
     use control_mod,            only: ftype, ftype_conserve
     use fvm_control_volume_mod, only: fvm_struct
     use air_composition,        only: thermodynamic_active_species_idx_dycore
-    use cam_thermo,             only: get_dp
+    use cam_thermo,             only: get_dp, MASS_MIXING_RATIO
     type (element_t)     , intent(inout) :: elem(:)
     type(fvm_struct)     , intent(inout) :: fvm(:)
     real (kind=r8), intent(in) :: dt_dribble, dt_phys
@@ -400,7 +400,7 @@ contains
 
 
       if (ftype_conserve==1) then
-        call get_dp(elem(ie)%state%Qdp(:,:,:,1:qsize,np1_qdp), 2, &
+        call get_dp(elem(ie)%state%Qdp(:,:,:,1:qsize,np1_qdp), MASS_MIXING_RATIO, &
             thermodynamic_active_species_idx_dycore, elem(ie)%state%dp3d(:,:,:,np1), pdel)
         do k=1,nlev
           do j=1,np
@@ -447,7 +447,7 @@ contains
     !
     !
     use physconst,      only: gravit, cappa, cpair, tref, lapse_rate
-    use cam_thermo,     only: get_dp_ref, get_molecular_diff_coef, get_rho_dry
+    use cam_thermo,     only: get_molecular_diff_coef, get_rho_dry
     use dimensions_mod, only: np, nlev, nc, ntrac, npsq, qsize, ksponge_end
     use dimensions_mod, only: nu_scale_top,nu_lev,kmvis_ref,kmcnd_ref,rho_ref,km_sponge_factor
     use dimensions_mod, only: kmvisi_ref,kmcndi_ref,nu_t_lev
@@ -722,7 +722,7 @@ contains
         !
         ! compute molecular diffusion and thermal conductivity coefficients at mid-levels
         !
-        call get_molecular_diff_coef(elem(ie)%state%T(:,:,:,nt), 0, km_sponge_factor(1:ksponge_end), kmvis(:,:,:,ie),&
+        call get_molecular_diff_coef(elem(ie)%state%T(:,:,:,nt), .false., km_sponge_factor(1:ksponge_end), kmvis(:,:,:,ie),&
              kmcnd(:,:,:,ie), elem(ie)%state%Qdp(:,:,:,1:qsize,qn0), fact=1.0_r8/elem(ie)%state%dp3d(:,:,1:ksponge_end,nt),&
              active_species_idx_dycore=thermodynamic_active_species_idx_dycore)
       end do
@@ -1456,7 +1456,7 @@ contains
     use string_utils,           only: strlist_get_ind
     use hycoef,                 only: hyai, ps0
     use fvm_control_volume_mod, only: fvm_struct
-    use cam_thermo,             only: get_dp
+    use cam_thermo,             only: get_dp, MASS_MIXING_RATIO
     use air_composition,        only: thermodynamic_active_species_idx_dycore, get_cp
     use dimensions_mod,         only: cnst_name_gll
     !------------------------------Arguments--------------------------------
@@ -1522,7 +1522,7 @@ contains
       do ie=nets,nete
         se    = 0.0_r8
         ke    = 0.0_r8
-        call get_dp(elem(ie)%state%Qdp(:,:,:,1:qsize,tl_qdp), 2, thermodynamic_active_species_idx_dycore,&
+        call get_dp(elem(ie)%state%Qdp(:,:,:,1:qsize,tl_qdp), MASS_MIXING_RATIO, thermodynamic_active_species_idx_dycore,&
              elem(ie)%state%dp3d(:,:,:,tl), pdel, ps=ps, ptop=hyai(1)*ps0)
         call get_cp(elem(ie)%state%Qdp(:,:,:,1:qsize,tl_qdp),&
              .false., cp, dp_dry=elem(ie)%state%dp3d(:,:,:,tl),&
@@ -1610,7 +1610,7 @@ contains
       do ie=nets,nete
         mr    = 0.0_r8
         mo    = 0.0_r8
-        call get_dp(elem(ie)%state%Qdp(:,:,:,1:qsize,tl_qdp), 2, thermodynamic_active_species_idx_dycore,&
+        call get_dp(elem(ie)%state%Qdp(:,:,:,1:qsize,tl_qdp), MASS_MIXING_RATIO, thermodynamic_active_species_idx_dycore,&
              elem(ie)%state%dp3d(:,:,:,tl), pdel, ps=ps, ptop=hyai(1)*ps0)
         do k = 1, nlev
           do j=1,np
@@ -1698,16 +1698,16 @@ contains
   end subroutine util_function
 
    subroutine compute_omega(hybrid,n0,qn0,elem,deriv,nets,nete,dt,hvcoord)
-     use control_mod,    only : nu_p, hypervis_subcycle
-     use dimensions_mod, only : np, nlev, qsize
-     use hybrid_mod,     only : hybrid_t
-     use element_mod,    only : element_t
-     use derivative_mod, only : divergence_sphere, derivative_t,gradient_sphere
-     use hybvcoord_mod,  only : hvcoord_t
-     use edge_mod,       only : edgevpack, edgevunpack
-     use bndry_mod,      only : bndry_exchange
+     use control_mod,    only: nu_p, hypervis_subcycle
+     use dimensions_mod, only: np, nlev, qsize
+     use hybrid_mod,     only: hybrid_t
+     use element_mod,    only: element_t
+     use derivative_mod, only: divergence_sphere, derivative_t,gradient_sphere
+     use hybvcoord_mod,  only: hvcoord_t
+     use edge_mod,       only: edgevpack, edgevunpack
+     use bndry_mod,      only: bndry_exchange
      use viscosity_mod,  only: biharmonic_wk_omega
-     use cam_thermo,     only: get_dp
+     use cam_thermo,     only: get_dp, MASS_MIXING_RATIO
      use air_composition,only: thermodynamic_active_species_num
      use air_composition,only: thermodynamic_active_species_idx_dycore
      implicit none
@@ -1728,7 +1728,7 @@ contains
      logical, parameter  :: del4omega = .true.
 
      do ie=nets,nete
-        call get_dp(elem(ie)%state%Qdp(:,:,:,1:qsize,qn0), 2,&
+        call get_dp(elem(ie)%state%Qdp(:,:,:,1:qsize,qn0), MASS_MIXING_RATIO,&
            thermodynamic_active_species_idx_dycore, elem(ie)%state%dp3d(:,:,:,n0), dp_full)
         do k=1,nlev
            if (k==1) then

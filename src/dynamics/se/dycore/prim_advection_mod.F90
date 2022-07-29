@@ -63,8 +63,8 @@ contains
 
 
   subroutine Prim_Advec_Init1(par, elem)
-    use dimensions_mod, only : nlev, qsize, nelemd,ntrac
-    use parallel_mod,   only : parallel_t, boundaryCommMethod
+    use dimensions_mod, only: nlev, qsize, nelemd,ntrac
+    use parallel_mod,   only: parallel_t, boundaryCommMethod
     type(parallel_t)    :: par
     type (element_t)    :: elem(:)
     !
@@ -224,9 +224,9 @@ contains
 !-----------------------------------------------------------------------------
 !-----------------------------------------------------------------------------
   subroutine Prim_Advec_Tracers_remap_rk2( elem , deriv , hvcoord , hybrid , dt , tl , nets , nete )
-    use derivative_mod, only : divergence_sphere
-    use control_mod   , only : qsplit
-    use hybrid_mod    , only : get_loop_ranges!, PrintHybrid
+    use derivative_mod, only: divergence_sphere
+    use control_mod   , only: qsplit
+    use hybrid_mod    , only: get_loop_ranges!, PrintHybrid
 !    use thread_mod    , only : omp_set_num_threads, omp_get_thread_num
 
     type (element_t)     , intent(inout) :: elem(:)
@@ -355,14 +355,14 @@ contains
   ! DSSopt = DSSeta or DSSomega:   also DSS omega
   !
   ! ===================================
-  use dimensions_mod , only : np, nlev
-  use hybrid_mod     , only : hybrid_t!, PrintHybrid
-  use hybrid_mod     , only : get_loop_ranges, threadOwnsTracer
-  use element_mod    , only : element_t
-  use derivative_mod , only : derivative_t, divergence_sphere, limiter_optim_iter_full
-  use edge_mod       , only : edgevpack, edgevunpack
-  use bndry_mod      , only : bndry_exchange
-  use hybvcoord_mod  , only : hvcoord_t
+  use dimensions_mod , only: np, nlev
+  use hybrid_mod     , only: hybrid_t!, PrintHybrid
+  use hybrid_mod     , only: get_loop_ranges, threadOwnsTracer
+  use element_mod    , only: element_t
+  use derivative_mod , only: derivative_t, divergence_sphere, limiter_optim_iter_full
+  use edge_mod       , only: edgevpack, edgevunpack
+  use bndry_mod      , only: bndry_exchange
+  use hybvcoord_mod  , only: hvcoord_t
 
   integer              , intent(in   )         :: np1_qdp, n0_qdp
   real (kind=r8), intent(in   )         :: dt
@@ -798,14 +798,14 @@ contains
   !          Q(:,:,:,np) = Q(:,:,:,np) +  dt2*nu*laplacian**order ( Q )
   !
   !  For correct scaling, dt2 should be the same 'dt2' used in the leapfrog advace
-  use dimensions_mod , only : np, nlev
-  use hybrid_mod     , only : hybrid_t!, PrintHybrid
-  use hybrid_mod     , only : get_loop_ranges
-  use element_mod    , only : element_t
-  use derivative_mod , only : derivative_t
-  use edge_mod       , only : edgevpack, edgevunpack
-  use edgetype_mod   , only : EdgeBuffer_t
-  use bndry_mod      , only : bndry_exchange
+  use dimensions_mod , only: np, nlev
+  use hybrid_mod     , only: hybrid_t!, PrintHybrid
+  use hybrid_mod     , only: get_loop_ranges
+  use element_mod    , only: element_t
+  use derivative_mod , only: derivative_t
+  use edge_mod       , only: edgevpack, edgevunpack
+  use edgetype_mod   , only: EdgeBuffer_t
+  use bndry_mod      , only: bndry_exchange
 
   implicit none
   type (EdgeBuffer_t)  , intent(inout)         :: edgeAdv
@@ -944,17 +944,17 @@ contains
     ! map temperature (either by mapping enthalpy or virtual temperature over log(p)
     ! (controlled by vert_remap_uvTq_alg > -20 or <= -20)
     !
-    use hybvcoord_mod,          only : hvcoord_t
-    use vertremap_mod,          only : remap1
-    use hybrid_mod,             only : hybrid_t, config_thread_region,get_loop_ranges, PrintHybrid
-    use fvm_control_volume_mod, only : fvm_struct
-    use dimensions_mod,         only : ntrac
-    use dimensions_mod,         only : lcp_moist, kord_tr,kord_tr_cslam
-    use cam_logfile,            only : iulog
-    use physconst,              only : pi
-    use air_composition,        only : thermodynamic_active_species_idx_dycore
-    use cam_thermo,             only : get_enthalpy, get_virtual_temp, get_dp
-    use thread_mod,             only : omp_set_nested
+    use hybvcoord_mod,          only: hvcoord_t
+    use vertremap_mod,          only: remap1
+    use hybrid_mod,             only: hybrid_t, config_thread_region,get_loop_ranges, PrintHybrid
+    use fvm_control_volume_mod, only: fvm_struct
+    use dimensions_mod,         only: ntrac
+    use dimensions_mod,         only: lcp_moist, kord_tr,kord_tr_cslam
+    use cam_logfile,            only: iulog
+    use physconst,              only: pi
+    use air_composition,        only: thermodynamic_active_species_idx_dycore
+    use cam_thermo,             only: get_enthalpy, get_virtual_temp, get_dp, MASS_MIXING_RATIO
+    use thread_mod,             only: omp_set_nested
     use control_mod,            only: vert_remap_uvTq_alg
     type (hybrid_t),  intent(in)    :: hybrid  ! distributed parallel structure (shared)
     type(fvm_struct), intent(inout) :: fvm(:)
@@ -1012,7 +1012,7 @@ contains
         elem(ie)%state%dp3d(:,:,k,np1) = dp_dry(:,:,k)
       enddo
       !
-      call get_dp(elem(ie)%state%Qdp(:,:,:,1:qsize,np1_qdp), 2,&
+      call get_dp(elem(ie)%state%Qdp(:,:,:,1:qsize,np1_qdp), MASS_MIXING_RATIO,&
          thermodynamic_active_species_idx_dycore, dp_star_dry, dp_star_moist(:,:,:))
       !
       ! Check if Lagrangian leves have crossed
@@ -1040,7 +1040,7 @@ contains
       !
       ! compute moist reference pressure level thickness
       !
-      call get_dp(elem(ie)%state%Qdp(:,:,:,1:qsize,np1_qdp), 2,&
+      call get_dp(elem(ie)%state%Qdp(:,:,:,1:qsize,np1_qdp), MASS_MIXING_RATIO,&
            thermodynamic_active_species_idx_dycore, dp_dry, dp_moist(:,:,:))
 
       !

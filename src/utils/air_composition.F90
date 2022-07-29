@@ -21,7 +21,7 @@ module air_composition
    ! get_mbarv: molecular weight of dry air
    public :: get_mbarv
 
-   private :: dry_air_species_info
+   private :: air_species_info
 
    integer,  parameter :: unseti = -HUGE(1)
    real(r8), parameter :: unsetr = HUGE(1.0_r8)
@@ -338,8 +338,8 @@ CONTAINS
          !    others and constants associated with it are initialized here
          !
          if (TRIM(dry_air_species(dry_air_species_num + 1)) == 'N2') then
-            call dry_air_species_info('N', ix, mw)
-            mw = 2.0_r8 * cnst_mw(ix)
+            call air_species_info('N', ix, mw)
+            mw = 2.0_r8 * mw
             icnst = 0 ! index for the derived tracer N2
             thermodynamic_active_species_cp(icnst) = cp2 / mw
             thermodynamic_active_species_cv(icnst) = cv2 / mw !N2
@@ -378,62 +378,41 @@ CONTAINS
             ! O
             !
          case('O')
-            call cnst_get_ind('O' ,ix, abort=.false.)
-            if (ix < 1) then
-               write(iulog, *) subname, ' dry air component not found: ',     &
-                    dry_air_species(idx)
-               call endrun(subname//': dry air component not found')
-            else
-               mw = cnst_mw(ix)
-               thermodynamic_active_species_idx(icnst) = ix
-               thermodynamic_active_species_cp (icnst) = cp1 / mw
-               thermodynamic_active_species_cv (icnst) = cv1 / mw
-               thermodynamic_active_species_R  (icnst) = r_universal / mw
-               thermodynamic_active_species_mwi(icnst) = 1.0_r8 / mw
-               thermodynamic_active_species_kv(icnst)  = 3.9_r8
-               thermodynamic_active_species_kc(icnst)  = 75.9_r8
-               icnst = icnst + 1
-            end if
+            call air_species_info('O', ix, mw)
+            thermodynamic_active_species_idx(icnst) = ix
+            thermodynamic_active_species_cp (icnst) = cp1 / mw
+            thermodynamic_active_species_cv (icnst) = cv1 / mw
+            thermodynamic_active_species_R  (icnst) = r_universal / mw
+            thermodynamic_active_species_mwi(icnst) = 1.0_r8 / mw
+            thermodynamic_active_species_kv(icnst)  = 3.9_r8
+            thermodynamic_active_species_kc(icnst)  = 75.9_r8
+            icnst = icnst + 1
             !
             ! O2
             !
          case('O2')
-            call cnst_get_ind('O2' ,ix, abort=.false.)
-            if (ix < 1) then
-               write(iulog, *) subname, ' dry air component not found: ',     &
-                    dry_air_species(idx)
-               call endrun(subname//': dry air component not found')
-            else
-               mw = cnst_mw(ix)
-               thermodynamic_active_species_idx(icnst) = ix
-               thermodynamic_active_species_cp (icnst) = cp2 / mw
-               thermodynamic_active_species_cv (icnst) = cv2 / mw
-               thermodynamic_active_species_R  (icnst) = r_universal / mw
-               thermodynamic_active_species_mwi(icnst) = 1.0_r8 / mw
-               thermodynamic_active_species_kv(icnst)  = 4.03_r8
-               thermodynamic_active_species_kc(icnst)  = 56._r8
-               icnst = icnst + 1
-            end if
+            call air_species_info('O2', ix, mw)
+            thermodynamic_active_species_idx(icnst) = ix
+            thermodynamic_active_species_cp (icnst) = cp2 / mw
+            thermodynamic_active_species_cv (icnst) = cv2 / mw
+            thermodynamic_active_species_R  (icnst) = r_universal / mw
+            thermodynamic_active_species_mwi(icnst) = 1.0_r8 / mw
+            thermodynamic_active_species_kv(icnst)  = 4.03_r8
+            thermodynamic_active_species_kc(icnst)  = 56._r8
+            icnst = icnst + 1
             !
             ! H
             !
          case('H')
-            call cnst_get_ind('H' ,ix, abort=.false.)
-            if (ix < 1) then
-               write(iulog, *) subname, ' dry air component not found: ',     &
-                    dry_air_species(idx)
-               call endrun(subname//': dry air component not found')
-            else
-               mw = cnst_mw(ix)
-               thermodynamic_active_species_idx(icnst) = ix
-               thermodynamic_active_species_cp (icnst) = cp1 / mw
-               thermodynamic_active_species_cv (icnst) = cv1 / mw
-               thermodynamic_active_species_R  (icnst) = r_universal / mw
-               thermodynamic_active_species_mwi(icnst) = 1.0_r8 / mw
-               thermodynamic_active_species_kv(icnst)  = 0.0_r8
-               thermodynamic_active_species_kc(icnst)  = 0.0_r8
-               icnst = icnst + 1
-            end if
+            call air_species_info('H', ix, mw)
+            thermodynamic_active_species_idx(icnst) = ix
+            thermodynamic_active_species_cp (icnst) = cp1 / mw
+            thermodynamic_active_species_cv (icnst) = cv1 / mw
+            thermodynamic_active_species_R  (icnst) = r_universal / mw
+            thermodynamic_active_species_mwi(icnst) = 1.0_r8 / mw
+            thermodynamic_active_species_kv(icnst)  = 0.0_r8
+            thermodynamic_active_species_kc(icnst)  = 0.0_r8
+            icnst = icnst + 1
             !
             ! If support for more major species is to be included add code here
             !
@@ -477,111 +456,73 @@ CONTAINS
             ! Q
             !
          case('Q')
-            call cnst_get_ind('Q', ix, abort=.false.)
-            if (ix < 1) then
-               write(iulog, *) subname, ' moist air component not found: ',   &
-                    water_species_in_air(idx)
-               call endrun(subname//': moist air component not found')
-            else
-               wv_idx = ix
-               mw = cnst_mw(ix)
-               thermodynamic_active_species_idx(icnst) = ix
-               thermodynamic_active_species_cp (icnst) = cpwv
-               thermodynamic_active_species_cv (icnst) = cv3 / mw
-               thermodynamic_active_species_R  (icnst) = rh2o
-               icnst = icnst + 1
-            end if
+            call air_species_info('Q', ix, mw)
+            wv_idx = ix
+            thermodynamic_active_species_idx(icnst) = ix
+            thermodynamic_active_species_cp (icnst) = cpwv
+            thermodynamic_active_species_cv (icnst) = cv3 / mw
+            thermodynamic_active_species_R  (icnst) = rh2o
+            icnst = icnst + 1
             !
             ! CLDLIQ
             !
          case('CLDLIQ')
-            call cnst_get_ind('CLDLIQ' ,ix, abort=.false.)
-            if (ix < 1) then
-               write(iulog, *) subname, ' moist air component not found: ',   &
-                    water_species_in_air(idx)
-               call endrun(subname//': moist air component not found')
-            else
-               thermodynamic_active_species_idx(icnst) = ix
-               thermodynamic_active_species_cp (icnst) = cpliq
-               thermodynamic_active_species_cv (icnst) = cpliq
-               liq_num           = liq_num+1
-               liq_idx (liq_num) = ix
-               icnst = icnst + 1
-               has_liq = .true.
-            end if
+            call air_species_info('CLDLIQ', ix, mw)
+            thermodynamic_active_species_idx(icnst) = ix
+            thermodynamic_active_species_cp (icnst) = cpliq
+            thermodynamic_active_species_cv (icnst) = cpliq
+            liq_num           = liq_num+1
+            liq_idx (liq_num) = ix
+            icnst = icnst + 1
+            has_liq = .true.
             !
             ! CLDICE
             !
          case('CLDICE')
-            call cnst_get_ind('CLDICE' ,ix, abort=.false.)
-            if (ix < 1) then
-               write(iulog, *) subname, ' moist air component not found: ',   &
-                    water_species_in_air(idx)
-               call endrun(subname//': moist air component not found')
-            else
-               thermodynamic_active_species_idx(icnst) = ix
-               thermodynamic_active_species_cp (icnst) = cpice
-               thermodynamic_active_species_cv (icnst) = cpice
-               ice_num           = ice_num+1
-               ice_idx(ice_num)  = ix
-               icnst = icnst + 1
-               has_ice = .true.
-            end if
+            call air_species_info('CLDICE', ix, mw)
+            thermodynamic_active_species_idx(icnst) = ix
+            thermodynamic_active_species_cp (icnst) = cpice
+            thermodynamic_active_species_cv (icnst) = cpice
+            ice_num           = ice_num+1
+            ice_idx(ice_num)  = ix
+            icnst = icnst + 1
+            has_ice = .true.
             !
             ! RAINQM
             !
          case('RAINQM')
-            call cnst_get_ind('RAINQM' ,ix, abort=.false.)
-            if (ix < 1) then
-               write(iulog, *) subname, ' moist air component not found: ',   &
-                    water_species_in_air(idx)
-               call endrun(subname//': moist air component not found')
-            else
-               thermodynamic_active_species_idx(icnst) = ix
-               thermodynamic_active_species_cp (icnst) = cpliq
-               thermodynamic_active_species_cv (icnst) = cpliq
-               liq_num           = liq_num+1
-               liq_idx(liq_num)  = ix
-               icnst = icnst + 1
-               has_liq = .true.
-            end if
+            call air_species_info('RAINQM', ix, mw)
+            thermodynamic_active_species_idx(icnst) = ix
+            thermodynamic_active_species_cp (icnst) = cpliq
+            thermodynamic_active_species_cv (icnst) = cpliq
+            liq_num           = liq_num+1
+            liq_idx(liq_num)  = ix
+            icnst = icnst + 1
+            has_liq = .true.
             !
             ! SNOWQM
             !
          case('SNOWQM')
-            call cnst_get_ind('SNOWQM' ,ix, abort=.false.)
-            if (ix < 1) then
-               write(iulog, *) subname, ' moist air component not found: ',   &
-                    water_species_in_air(idx)
-               call endrun(subname//': moist air component not found')
-            else
-               thermodynamic_active_species_idx(icnst) = ix
-               thermodynamic_active_species_cp (icnst) = cpice
-               thermodynamic_active_species_cv (icnst) = cpice
-               ice_num           = ice_num+1
-               ice_idx(ice_num)  = ix
-               icnst = icnst + 1
-               has_ice = .true.
-            end if
+            call air_species_info('SNOWQM', ix, mw)
+            thermodynamic_active_species_idx(icnst) = ix
+            thermodynamic_active_species_cp (icnst) = cpice
+            thermodynamic_active_species_cv (icnst) = cpice
+            ice_num           = ice_num+1
+            ice_idx(ice_num)  = ix
+            icnst = icnst + 1
+            has_ice = .true.
             !
             ! GRAUQM
             !
          case('GRAUQM')
-            call cnst_get_ind('GRAUQM' ,ix, abort=.false.)
-            if (ix < 1) then
-               write(iulog, *) subname, ' moist air component not found: ',   &
-                    water_species_in_air(idx)
-               call endrun(subname//': moist air component not found')
-            else
-               mw = cnst_mw(ix)
-               thermodynamic_active_species_idx(icnst) = ix
-               thermodynamic_active_species_cp (icnst) = cpice
-               thermodynamic_active_species_cv (icnst) = cpice
-               ice_num           = ice_num+1
-               ice_idx(ice_num)  = ix
-               icnst = icnst + 1
-               has_ice = .true.
-            end if
+            call air_species_info('GRAUQM', ix, mw)
+            thermodynamic_active_species_idx(icnst) = ix
+            thermodynamic_active_species_cp (icnst) = cpice
+            thermodynamic_active_species_cv (icnst) = cpice
+            ice_num           = ice_num+1
+            ice_idx(ice_num)  = ix
+            icnst = icnst + 1
+            has_ice = .true.
             !
             ! If support for more major species is to be included add code here
             !
@@ -672,14 +613,14 @@ CONTAINS
       real(r8),           intent(in) :: mmr(:,:,:) ! constituents array
       integer,            intent(in) :: lchnk      ! Chunk number
       integer,            intent(in) :: ncol       ! number of columns
-      real(r8),           intent(in) :: to_moist_factor(:,:)
+      real(r8), optional, intent(in) :: to_moist_factor(:,:)
 
       call get_R_dry(mmr(:ncol, :, :), thermodynamic_active_species_idx, &
-           rairv(:ncol, :, lchnk), fact=to_moist_factor(:ncol, :))
+           rairv(:ncol, :, lchnk), fact=to_moist_factor)
       call get_cp_dry(mmr(:ncol,:,:), thermodynamic_active_species_idx, &
-           cpairv(:ncol,:,lchnk), fact=to_moist_factor(:ncol,:))
+           cpairv(:ncol,:,lchnk), fact=to_moist_factor)
       call get_mbarv(mmr(:ncol,:,:), thermodynamic_active_species_idx, &
-           mbarv(:ncol,:,lchnk), fact=to_moist_factor(:ncol,:))
+           mbarv(:ncol,:,lchnk), fact=to_moist_factor)
 
       cappav(:ncol,:,lchnk) = rairv(:ncol,:,lchnk) / cpairv(:ncol,:,lchnk)
 
@@ -804,7 +745,7 @@ CONTAINS
       ! inv_cp: output inverse cp instead of cp
       logical,            intent(in)  :: inv_cp
       real(r8),           intent(out) :: cp(:,:)
-      ! active_species_idx_dycore: array of indicies for index of
+      ! active_species_idx_dycore: array of indices for index of
       !    thermodynamic active species in dycore tracer array
       !    (if different from physics index)
       integer, optional,  intent(in)  :: active_species_idx_dycore(:)
@@ -868,7 +809,7 @@ CONTAINS
       use string_utils,   only: int2str
 
       ! Dummy arguments
-      ! tracedr: Tracer array
+      ! tracer: Tracer array
       real(r8),           intent(in)  :: tracer(:,:,:,:)
       real(r8), optional, intent(in)  :: dp_dry(:,:,:)
       ! inv_cp: output inverse cp instead of cp
@@ -884,24 +825,13 @@ CONTAINS
       integer  :: idx_local(thermodynamic_active_species_num)
       character(len=*), parameter :: subname = 'get_cp_2hd: '
 
-      if (present(active_species_idx_dycore)) then
-         if (SIZE(active_species_idx_dycore) /=                               &
-              thermodynamic_active_species_num) then
-            call endrun(subname//"SIZE mismatch "//                           &
-                 int2str(SIZE(active_species_idx_dycore))//' /= '//           &
-                 int2str(thermodynamic_active_species_num))
-        end if
-         idx_local = active_species_idx_dycore
-      else
-         idx_local = thermodynamic_active_species_idx
-      end if
       do jdx = 1, SIZE(cp, 2)
          if (present(dp_dry)) then
             call get_cp(tracer(:, jdx, :, :), inv_cp, cp(:, jdx, :),          &
-                 dp_dry=dp_dry(:, jdx, :), active_species_idx_dycore=idx_local)
+                 dp_dry=dp_dry(:, jdx, :), active_species_idx_dycore=active_species_idx_dycore)
          else
             call get_cp(tracer(:, jdx, :, :), inv_cp, cp(:, jdx, :),          &
-                 active_species_idx_dycore=idx_local)
+                 active_species_idx_dycore=active_species_idx_dycore)
          end if
       end do
 
@@ -1146,7 +1076,7 @@ CONTAINS
 
    !===========================================================================
 
-   subroutine dry_air_species_info(name, index, molec_weight, caller)
+   subroutine air_species_info(name, index, molec_weight, caller)
       use cam_abortutils, only: endrun
       use cam_logfile,    only: iulog
       use constituents,   only: cnst_get_ind, cnst_mw
@@ -1160,26 +1090,26 @@ CONTAINS
       real(r8),                   intent(out) :: molec_weight
       character(len=*), optional, intent(in)  :: caller
       ! Local parameter
-      character(len=*), parameter :: subname = 'dry_air_species_info: '
+      character(len=*), parameter :: subname = 'air_species_info: '
 
       call cnst_get_ind(trim(name), index, abort=.false.)
       if (index < 1) then
          if (present(caller)) then
-            write(iulog, *) trim(caller), ": dry air component not found, '", &
+            write(iulog, *) trim(caller), ": air component not found, '", &
                  trim(name), "'"
-            call endrun(trim(caller)//": dry air component not found, '"//    &
+            call endrun(trim(caller)//": air component not found, '"//    &
                  trim(name)//"'")
          else
-            write(iulog, *) subname, "dry air component not found, '",        &
+            write(iulog, *) subname, "air component not found, '",        &
                  trim(name), "'"
-            call endrun(subname//"dry air component not found, '"//           &
+            call endrun(subname//"air component not found, '"//           &
                  trim(name)//"'")
          end if
       else
          molec_weight = cnst_mw(index)
       end if
 
-   end subroutine dry_air_species_info
+   end subroutine air_species_info
 
 
 end module air_composition
