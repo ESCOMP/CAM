@@ -81,7 +81,7 @@ module aerosol_state_mod
 
      !------------------------------------------------------------------------------
      ! sets transported components
-     ! This aerosol model with the state of the transported aerosol constituents
+     ! This updates the aerosol model state from the host transported aerosol constituents array.
      ! (mass mixing ratios or number mixing ratios)
      !------------------------------------------------------------------------------
      subroutine aero_set_transported( self, transported_array )
@@ -92,7 +92,7 @@ module aerosol_state_mod
 
      !------------------------------------------------------------------------------
      ! returns transported components
-     ! This returns to current state of the transported aerosol constituents
+     ! This updates the transported aerosol constituent array to match the aerosol model state.
      ! (mass mixing ratios or number mixing ratios)
      !------------------------------------------------------------------------------
      subroutine aero_get_transported( self, transported_array )

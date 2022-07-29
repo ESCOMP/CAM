@@ -31,7 +31,7 @@ use perf_mod,           only: t_startf, t_stopf, t_barrierf
 use aerosol_properties_mod, only: aerosol_properties
 use modal_aerosol_properties_mod, only: modal_aerosol_properties
 use aerosol_state_mod, only: aerosol_state
-use modal_aerosol_state_mod, only: modal_aerosol_state
+use microp_aero,       only: aerosol_state_object
 
 implicit none
 private
@@ -292,8 +292,6 @@ subroutine stepon_run1( dtime_out, phys_state, phys_tend, pbuf2d,        &
 
    use physics_buffer,    only: physics_buffer_desc
    use advect_tend,       only: compute_adv_tends_xyz
-   use physics_buffer,   only: pbuf_get_chunk
-   use ppgrid,           only: pcols, pver
 
    ! arguments
    real(r8),            intent(out)   :: dtime_out   ! Time-step
@@ -307,19 +305,12 @@ subroutine stepon_run1( dtime_out, phys_state, phys_tend, pbuf2d,        &
 
    integer  :: rc
 
-   type(physics_buffer_desc), pointer :: pbuf(:)
    integer :: c
-   real(r8), allocatable :: aero_constituents(:,:,:,:)
    class(aerosol_state), pointer :: aero_state_obj
    nullify(aero_state_obj)
-   nullify(pbuf)
 
    dtime_out = dtime
    dyn_state => get_dyn_state()
-
-   if (num_trans_aerosols>1) then
-      allocate(aero_constituents(pcols,pver,num_trans_aerosols,begchunk:endchunk))
-   end if
 
    ! Dump state variables to IC file
    call t_barrierf('sync_diag_dynvar_ic', mpicom)
@@ -370,18 +361,17 @@ subroutine stepon_run1( dtime_out, phys_state, phys_tend, pbuf2d,        &
    call d_p_coupling(dyn_state%grid, phys_state, phys_tend,  pbuf2d, dyn_out)
    call t_stopf('d_p_coupling')
 
-   if (num_trans_aerosols>1) then
+   !----------------------------------------------------------
+   ! update aerosol state object from CAM physics state constituents
+   !----------------------------------------------------------
+   if (num_trans_aerosols>0) then
 
       do c = begchunk,endchunk
-         pbuf => pbuf_get_chunk(pbuf2d, c)
-         aero_state_obj => modal_aerosol_state( phys_state(c), pbuf )
+         aero_state_obj => aerosol_state_object(c)
          ! pass number mass or number mixing ratios of aerosol constituents
          ! to aerosol state object
-         call aero_state_obj%set_transported(aero_constituents(:,:,:,c))
-         deallocate(aero_state_obj)
-         nullify(aero_state_obj)
+         call aero_state_obj%set_transported(phys_state(c)%q)
       end do
-      deallocate(aero_constituents)
 
    end if
 
@@ -395,40 +385,21 @@ end subroutine stepon_run1
 ! !ROUTINE:  stepon_run2 -- second phase run method
 !
 ! !INTERFACE:
-subroutine stepon_run2( phys_state, phys_tend, pbuf2d, dyn_in, dyn_out )
+subroutine stepon_run2( phys_state, phys_tend, dyn_in, dyn_out )
 ! !USES:
    use dp_coupling,      only: p_d_coupling
-   use physics_buffer,   only: physics_buffer_desc, pbuf_get_chunk
-   use ppgrid,           only: pcols, pver
 !
 ! !INPUT/OUTPUT PARAMETERS:
 !
    type(physics_state), intent(inout) :: phys_state(begchunk:endchunk)
    type(physics_tend),  intent(inout) :: phys_tend(begchunk:endchunk)
-   type(physics_buffer_desc), pointer :: pbuf2d(:,:)
    type (dyn_import_t), intent(inout) :: dyn_in  ! Dynamics import container
    type (dyn_export_t), intent(inout) :: dyn_out ! Dynamics export container
 
    type (T_FVDYCORE_GRID), pointer :: grid
 
-   type(physics_buffer_desc), pointer :: pbuf(:)
    integer :: c
-   real(r8), allocatable :: aero_constituents(:,:,:,:)
    class(aerosol_state), pointer :: aero_state_obj
-   nullify(aero_state_obj)
-   nullify(pbuf)
-
-   if (num_trans_aerosols>1) then
-      allocate(aero_constituents(pcols,pver,num_trans_aerosols,begchunk:endchunk))
-      do c = begchunk,endchunk
-         pbuf => pbuf_get_chunk(pbuf2d, c)
-         aero_state_obj => modal_aerosol_state( phys_state(c), pbuf )
-         ! get mass or number mixing ratios of aerosol constituents
-         call aero_state_obj%get_transported(aero_constituents(:,:,:,c))
-         deallocate(aero_state_obj)
-         nullify(aero_state_obj)
-      end do
-   end if
 
 !
 ! !DESCRIPTION:
@@ -440,6 +411,19 @@ subroutine stepon_run2( phys_state, phys_tend, pbuf2d, dyn_in, dyn_out )
 !BOC
 
 !-----------------------------------------------------------------------
+
+   !----------------------------------------------------------
+   ! update physics state with aerosol constituents
+   !----------------------------------------------------------
+   nullify(aero_state_obj)
+
+   if (num_trans_aerosols>0) then
+      do c = begchunk,endchunk
+         aero_state_obj => aerosol_state_object(c)
+         ! get mass or number mixing ratios of aerosol constituents
+         call aero_state_obj%get_transported(phys_state(c)%q)
+      end do
+   end if
 
    !----------------------------------------------------------
    ! Update dynamics variables using phys_state & phys_tend.
@@ -458,10 +442,6 @@ subroutine stepon_run2( phys_state, phys_tend, pbuf2d, dyn_in, dyn_out )
    call p_d_coupling(grid, phys_state, phys_tend, &
                      dyn_in, dtime, zvir, cappa, ptop)
    call t_stopf  ('p_d_coupling')
-
-   if ( allocated(aero_constituents) ) then
-      deallocate(aero_constituents)
-   end if
 
 !EOC
 end subroutine stepon_run2

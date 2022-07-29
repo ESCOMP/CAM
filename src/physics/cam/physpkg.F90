@@ -898,7 +898,7 @@ contains
        call rk_stratiform_init()
     elseif( microp_scheme == 'MG' ) then
        if (.not. do_clubb_sgs) call macrop_driver_init(pbuf2d)
-       call microp_aero_init(pbuf2d)
+       call microp_aero_init(phys_state,pbuf2d)
        call microp_driver_init(pbuf2d)
        call conv_water_init
     elseif( microp_scheme == 'SPCAM_m2005') then
