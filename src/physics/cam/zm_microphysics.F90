@@ -189,7 +189,7 @@ real(r8), parameter :: dcon  = 25.e-6_r8
 real(r8), parameter :: mucon = 5.3_r8
 real(r8), parameter :: lambdadpcu = (mucon + 1._r8)/dcon
 
-type(modal_aerosol_properties), pointer :: aero_props_obj
+type(modal_aerosol_properties), pointer :: aero_props_obj => null()
 
 !===============================================================================
 contains

@@ -1,6 +1,6 @@
 module stepon
 
-    ! MODULE: stepon -- FV Dynamics specific time-stepping
+    ! MODULE: stepon -- FV3 Dynamics specific time-stepping
 
     use shr_kind_mod,  only: r8 => shr_kind_r8
     use physics_types, only: physics_state, physics_tend
@@ -12,6 +12,11 @@ module stepon
     use time_manager,  only: get_step_size
     use dimensions_mod, only: qsize_tracer_idx_cam2dyn
 
+    use aerosol_properties_mod, only: aerosol_properties
+    use modal_aerosol_properties_mod, only: modal_aerosol_properties
+    use aerosol_state_mod, only: aerosol_state
+    use microp_aero,       only: aerosol_state_object
+
     implicit none
     private
 
@@ -20,6 +25,10 @@ module stepon
     public stepon_run2   ! run method phase 2
     public stepon_run3   ! run method phase 3
     public stepon_final  ! Finalization
+
+    logical :: clim_modal_aero = .false.
+    class(aerosol_properties), pointer :: aero_props_obj => null()
+    integer :: num_trans_aerosols=-1
 
 !=======================================================================
 contains
@@ -31,12 +40,14 @@ subroutine stepon_init(dyn_in, dyn_out)
 
   use cam_history,    only: addfld, add_default, horiz_only
   use constituents,   only: pcnst, cnst_name, cnst_longname
-  
+  use rad_constituents, only: rad_cnst_get_info
+
   type (dyn_import_t), intent(inout)   :: dyn_in             ! Dynamics import container
   type (dyn_export_t), intent(inout)   :: dyn_out            ! Dynamics export container
-  
+
    ! local variables
    integer :: m_cnst,m_cnst_ffsl
+   integer :: nmodes
    !----------------------------------------------------------------------------
    ! These fields on dynamics grid are output before the call to d_p_coupling.
    do m_cnst = 1, pcnst
@@ -61,7 +72,7 @@ subroutine stepon_init(dyn_in, dyn_out)
    ! Don't need to register U&IC V&IC as vector components since we don't interpolate IC files
    call add_default('U&IC',0, 'I')
    call add_default('V&IC',0, 'I')
-    
+
    call addfld('PS&IC', horiz_only,  'I', 'Pa', 'Surface pressure',gridname='FFSLHIST')
    call addfld('PHIS&IC', horiz_only,  'I', 'Pa', 'PHIS on ffsl grid',gridname='FFSLHIST')
    call addfld('T&IC',  (/ 'lev' /), 'I', 'K',  'Temperature',            gridname='FFSLHIST')
@@ -75,7 +86,15 @@ subroutine stepon_init(dyn_in, dyn_out)
       call add_default(trim(cnst_name(m_cnst))//'&IC', 0, 'I')
    end do
 
-  
+   call rad_cnst_get_info(0, nmodes=nmodes)
+   clim_modal_aero = (nmodes > 0)
+
+   if (clim_modal_aero) then
+      aero_props_obj => modal_aerosol_properties()
+      ! get number of transported aerosol contistuents
+      num_trans_aerosols = aero_props_obj%number_transported()
+   end if
+
 end subroutine stepon_init
 
 !=======================================================================
@@ -94,6 +113,10 @@ subroutine stepon_run1(dtime_out, phys_state, phys_tend, pbuf2d, dyn_in, dyn_out
     type (dyn_import_t),  intent(inout) :: dyn_in  ! Dynamics import container
     type (dyn_export_t),  intent(inout) :: dyn_out ! Dynamics export container
 
+    integer :: c
+    class(aerosol_state), pointer :: aero_state_obj
+    nullify(aero_state_obj)
+
     dtime_out = get_step_size()
 
     call diag_dyn_out(dyn_out,'')
@@ -106,6 +129,20 @@ subroutine stepon_run1(dtime_out, phys_state, phys_tend, pbuf2d, dyn_in, dyn_out
     call t_startf('d_p_coupling')
     call d_p_coupling(phys_state, phys_tend, pbuf2d, dyn_out)
     call t_stopf('d_p_coupling')
+
+    !----------------------------------------------------------
+    ! update aerosol state object from CAM physics state constituents
+    !----------------------------------------------------------
+    if (num_trans_aerosols>0) then
+
+       do c = begchunk,endchunk
+          aero_state_obj => aerosol_state_object(c)
+          ! pass number mass or number mixing ratios of aerosol constituents
+          ! to aerosol state object
+          call aero_state_obj%set_transported(phys_state(c)%q)
+       end do
+
+    end if
 
 end subroutine stepon_run1
 
@@ -123,7 +160,23 @@ subroutine stepon_run2(phys_state, phys_tend, dyn_in, dyn_out)
     type (dyn_import_t),  intent(inout) :: dyn_in  ! Dynamics import container
     type (dyn_export_t),  intent(inout) :: dyn_out ! Dynamics export container
 
+    integer :: c
+    class(aerosol_state), pointer :: aero_state_obj
+
     ! copy from phys structures -> dynamics structures
+
+    !----------------------------------------------------------
+    ! update physics state with aerosol constituents
+    !----------------------------------------------------------
+    nullify(aero_state_obj)
+
+    if (num_trans_aerosols>0) then
+       do c = begchunk,endchunk
+          aero_state_obj => aerosol_state_object(c)
+          ! get mass or number mixing ratios of aerosol constituents
+          call aero_state_obj%get_transported(phys_state(c)%q)
+       end do
+    end if
 
     call t_barrierf('sync_p_d_coupling', mpicom)
 #if ( defined CALC_ENERGY )
@@ -184,22 +237,22 @@ subroutine diag_dyn_out(dyn_in,suffx)
   use dyn_grid,               only: mytile
   use fv_arrays_mod,          only: fv_atmos_type
   use dimensions_mod,         only: nlev
-  
+
   type (dyn_export_t),  intent(in) :: dyn_in
   character*(*)      ,  intent(in) :: suffx ! suffix for "outfld" names
-  
-  
+
+
   ! local variables
   integer              :: is,ie,js,je, j, m_cnst,m_cnst_ffsl
   integer              :: idim
   character(len=fieldname_len) :: tfname
 
   type (fv_atmos_type),  pointer :: Atm(:)
-  
+
   !----------------------------------------------------------------------------
-  
+
   Atm=>dyn_in%atm
-  
+
   is = Atm(mytile)%bd%is
   ie = Atm(mytile)%bd%ie
   js = Atm(mytile)%bd%js
@@ -227,7 +280,7 @@ subroutine diag_dyn_out(dyn_in,suffx)
         end do
      end if
   end do
-  
+
   if (hist_fld_active('U_ffsl'//trim(suffx)) .or. hist_fld_active('V_ffsl'//trim(suffx))) then
      do j = js, je
         call outfld('U_ffsl'//trim(suffx), RESHAPE(Atm(mytile)%ua(is:ie, j, :),(/idim,nlev/)), idim, j)
@@ -246,7 +299,7 @@ subroutine diag_dyn_out(dyn_in,suffx)
         call outfld('V_ffsl_ew'//trim(suffx), RESHAPE(Atm(mytile)%v(is:ie+1, j, :),(/idim+1,nlev/)), idim+1, j)
      end do
   end if
-  
+
   if (hist_fld_active('T_ffsl'//trim(suffx))) then
      do j = js, je
         call outfld('T_ffsl'//trim(suffx), RESHAPE(Atm(mytile)%pt(is:ie, j, :),(/idim,nlev/)), idim, j)
@@ -258,22 +311,22 @@ subroutine diag_dyn_out(dyn_in,suffx)
         call outfld('PS_ffsl'//trim(suffx), Atm(mytile)%ps(is:ie, j), idim, j)
      end do
   end if
-  
+
   if (hist_fld_active('PHIS_ffsl'//trim(suffx))) then
      do j = js, je
         call outfld('PHIS_ffsl'//trim(suffx), Atm(mytile)%phis(is:ie, j), idim, j)
      end do
   end if
-  
+
   if (write_inithist()) then
-     
+
      do j = js, je
         call outfld('T&IC', RESHAPE(Atm(mytile)%pt(is:ie, j, :),(/idim,nlev/)), idim, j)
         call outfld('U&IC', RESHAPE(Atm(mytile)%ua(is:ie, j, :),(/idim,nlev/)), idim, j)
         call outfld('V&IC', RESHAPE(Atm(mytile)%va(is:ie, j, :),(/idim,nlev/)), idim, j)
         call outfld('PS&IC', Atm(mytile)%ps(is:ie, j), idim, j)
         call outfld('PHIS&IC', Atm(mytile)%phis(is:ie, j), idim, j)
-        
+
         do m_cnst = 1, pcnst
            m_cnst_ffsl=qsize_tracer_idx_cam2dyn(m_cnst)
            call outfld(trim(cnst_name(m_cnst))//'&IC', RESHAPE(Atm(mytile)%q(is:ie, j, :, m_cnst_ffsl),(/idim,nlev/)), idim, j)

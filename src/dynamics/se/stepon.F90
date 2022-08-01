@@ -13,6 +13,11 @@ use cam_abortutils, only: endrun
 use parallel_mod,   only: par
 use dimensions_mod, only: nelemd
 
+use aerosol_properties_mod, only: aerosol_properties
+use modal_aerosol_properties_mod, only: modal_aerosol_properties
+use aerosol_state_mod, only: aerosol_state
+use microp_aero,       only: aerosol_state_object
+
 implicit none
 private
 save
@@ -23,6 +28,10 @@ public stepon_run2
 public stepon_run3
 public stepon_final
 
+logical :: clim_modal_aero = .false.
+class(aerosol_properties), pointer :: aero_props_obj => null()
+integer :: num_trans_aerosols=-1
+
 !=========================================================================================
 contains
 !=========================================================================================
@@ -32,6 +41,7 @@ subroutine stepon_init(dyn_in, dyn_out )
    use cam_history,    only: addfld, add_default, horiz_only
    use constituents,   only: pcnst, cnst_name, cnst_longname
    use dimensions_mod, only: fv_nphys, cnst_name_gll, cnst_longname_gll, qsize
+   use rad_constituents, only: rad_cnst_get_info
 
    ! arguments
    type (dyn_import_t), intent(inout) :: dyn_in  ! Dynamics import container
@@ -39,6 +49,7 @@ subroutine stepon_init(dyn_in, dyn_out )
 
    ! local variables
    integer :: m, m_cnst
+   integer :: nmodes
    !----------------------------------------------------------------------------
    ! These fields on dynamics grid are output before the call to d_p_coupling.
    do m_cnst = 1, qsize
@@ -73,6 +84,15 @@ subroutine stepon_init(dyn_in, dyn_out )
       call add_default(trim(cnst_name(m_cnst))//'&IC', 0, 'I')
    end do
 
+   call rad_cnst_get_info(0, nmodes=nmodes)
+   clim_modal_aero = (nmodes > 0)
+
+   if (clim_modal_aero) then
+      aero_props_obj => modal_aerosol_properties()
+      ! get number of transported aerosol contistuents
+      num_trans_aerosols = aero_props_obj%number_transported()
+   end if
+
 end subroutine stepon_init
 
 !=========================================================================================
@@ -94,6 +114,10 @@ subroutine stepon_run1( dtime_out, phys_state, phys_tend,               &
    type (physics_buffer_desc), pointer :: pbuf2d(:,:)
    !----------------------------------------------------------------------------
 
+   integer :: c
+   class(aerosol_state), pointer :: aero_state_obj
+   nullify(aero_state_obj)
+
    dtime_out = get_step_size()
 
    if (iam < par%nprocs) then
@@ -109,6 +133,20 @@ subroutine stepon_run1( dtime_out, phys_state, phys_tend,               &
    ! Move data into phys_state structure.
    call d_p_coupling(phys_state, phys_tend,  pbuf2d, dyn_out )
    call t_stopf('d_p_coupling')
+
+   !----------------------------------------------------------
+   ! update aerosol state object from CAM physics state constituents
+   !----------------------------------------------------------
+   if (num_trans_aerosols>0) then
+
+      do c = begchunk,endchunk
+         aero_state_obj => aerosol_state_object(c)
+         ! pass number mass or number mixing ratios of aerosol constituents
+         ! to aerosol state object
+         call aero_state_obj%set_transported(phys_state(c)%q)
+      end do
+
+   end if
 
 end subroutine stepon_run1
 
@@ -132,10 +170,27 @@ subroutine stepon_run2(phys_state, phys_tend, dyn_in, dyn_out)
 
    ! local variables
    integer :: tl_f, tl_fQdp
+
+   integer :: c
+   class(aerosol_state), pointer :: aero_state_obj
+
    !----------------------------------------------------------------------------
 
    tl_f = TimeLevel%n0   ! timelevel which was adjusted by physics
    call TimeLevel_Qdp(TimeLevel, qsplit, tl_fQdp)
+
+   !----------------------------------------------------------
+   ! update physics state with aerosol constituents
+   !----------------------------------------------------------
+   nullify(aero_state_obj)
+
+   if (num_trans_aerosols>0) then
+      do c = begchunk,endchunk
+         aero_state_obj => aerosol_state_object(c)
+         ! get mass or number mixing ratios of aerosol constituents
+         call aero_state_obj%get_transported(phys_state(c)%q)
+      end do
+   end if
 
    call t_barrierf('sync_p_d_coupling', mpicom)
    call t_startf('p_d_coupling')
@@ -158,7 +213,7 @@ subroutine stepon_run3(dtime, cam_out, phys_state, dyn_in, dyn_out)
    use advect_tend,    only: compute_adv_tends_xyz
    use dyn_grid,       only: TimeLevel
    use time_mod,       only: TimeLevel_Qdp
-   use control_mod,    only: qsplit   
+   use control_mod,    only: qsplit
    ! arguments
    real(r8),            intent(in)    :: dtime   ! Time-step
    type(cam_out_t),     intent(inout) :: cam_out(:) ! Output from CAM to surface
@@ -168,23 +223,23 @@ subroutine stepon_run3(dtime, cam_out, phys_state, dyn_in, dyn_out)
 
    integer :: tl_f, tl_fQdp
    !--------------------------------------------------------------------------------------
-   
+
    call t_startf('comp_adv_tends1')
-   tl_f = TimeLevel%n0 
-   call TimeLevel_Qdp(TimeLevel, qsplit, tl_fQdp)   
+   tl_f = TimeLevel%n0
+   call TimeLevel_Qdp(TimeLevel, qsplit, tl_fQdp)
    call compute_adv_tends_xyz(dyn_in%elem,dyn_in%fvm,1,nelemd,tl_fQdp,tl_f)
    call t_stopf('comp_adv_tends1')
-   
+
    call t_barrierf('sync_dyn_run', mpicom)
    call t_startf('dyn_run')
    call dyn_run(dyn_out)
    call t_stopf('dyn_run')
 
    call t_startf('comp_adv_tends2')
-   tl_f = TimeLevel%n0 
-   call TimeLevel_Qdp(TimeLevel, qsplit, tl_fQdp)   
+   tl_f = TimeLevel%n0
+   call TimeLevel_Qdp(TimeLevel, qsplit, tl_fQdp)
    call compute_adv_tends_xyz(dyn_in%elem,dyn_in%fvm,1,nelemd,tl_fQdp,tl_f)
-   call t_stopf('comp_adv_tends2')   
+   call t_stopf('comp_adv_tends2')
 
 end subroutine stepon_run3
 
@@ -298,7 +353,7 @@ subroutine diag_dynvar_ic(elem, fvm)
    end if
 
    if (hist_fld_active('dp_ref_gll')) then
-     do ie = 1, nelemd       
+     do ie = 1, nelemd
        call get_dp_ref(hyai,hybi,ps0,1,np,1,np,1,nlev,elem(ie)%state%phis(:,:),dp_ref(:,:,:),ps_ref(:,:))
          do j = 1, np
             do i = 1, np
@@ -342,16 +397,16 @@ subroutine diag_dynvar_ic(elem, fvm)
    end if
 
    if (write_inithist()) then
-     allocate(fld_2d(np,np))     
+     allocate(fld_2d(np,np))
      do ie = 1, nelemd
        call get_ps(1,np,1,np,1,nlev,qsize,elem(ie)%state%Qdp(:,:,:,:,tl_Qdp),&
-            thermodynamic_active_species_idx_dycore,elem(ie)%state%dp3d(:,:,:,tl_f),fld_2d,hyai(1)*ps0)       
+            thermodynamic_active_species_idx_dycore,elem(ie)%state%dp3d(:,:,:,tl_f),fld_2d,hyai(1)*ps0)
        do j = 1, np
          do i = 1, np
            ftmp(i+(j-1)*np,1,1) = fld_2d(i,j)
          end do
        end do
-       call outfld('PS&IC', ftmp(:,1,1), npsq, ie)       
+       call outfld('PS&IC', ftmp(:,1,1), npsq, ie)
      end do
      deallocate(fld_2d)
       if (fv_nphys < 1) allocate(factor_array(np,np,nlev))
