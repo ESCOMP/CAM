@@ -359,7 +359,7 @@ contains
    ! For Now: just hard code the option here to apply Zonal Mean 
    !          filtering and set the number of zonal basis functions to 12
    !---------------------------------------------------------------------
-   Nudge_ZonalFilter = .true.
+   Nudge_ZonalFilter = .false.
    Nudge_ZonalNbasis = 12
 
    ! Nudging is NOT initialized yet, For now
