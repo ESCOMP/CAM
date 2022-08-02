@@ -201,6 +201,7 @@ module nudging
   use spmd_utils,     only: masterproc, mstrid=>masterprocid, mpicom
   use spmd_utils,     only: mpi_integer, mpi_real8, mpi_logical, mpi_character
   use cam_logfile,    only: iulog
+  use Zonal_Mean,     only: ZonalMean_t
 
   ! Set all Global values and routines to private by default
   ! and then explicitly set their exposure.
@@ -213,10 +214,10 @@ module nudging
   public  :: nudging_init
   public  :: nudging_timestep_init
   public  :: nudging_timestep_tend
-  private ::nudging_update_analyses
-  private ::nudging_set_PSprofile
-  private ::nudging_set_profile
-  private ::calc_DryStaticEnergy
+  private :: nudging_update_analyses
+  private :: nudging_set_PSprofile
+  private :: nudging_set_profile
+  private :: calc_DryStaticEnergy
 
   ! Nudging Parameters
   !--------------------
@@ -270,16 +271,24 @@ module nudging
   real(r8)          :: Nudge_Hwin_lonWidthH
   real(r8)          :: Nudge_Hwin_max
   real(r8)          :: Nudge_Hwin_min
+  logical           :: Nudge_ZonalFilter =.false.
+  integer           :: Nudge_ZonalNbasis
+
+  ! Nudging Zonal Filter variables
+  !---------------------------------
+  type(ZonalMean_t)   :: ZM
+  real(r8),allocatable:: Zonal_Bamp2d(:)
+  real(r8),allocatable:: Zonal_Bamp3d(:,:)
 
   ! Nudging State Arrays
   !-----------------------
   integer :: Nudge_nlon,Nudge_nlat,Nudge_ncol,Nudge_nlev
-  real(r8),allocatable::Target_U     (:,:,:)  !(pcols,pver,begchunk:endchunk)
-  real(r8),allocatable::Target_V     (:,:,:)  !(pcols,pver,begchunk:endchunk)
-  real(r8),allocatable::Target_T     (:,:,:)  !(pcols,pver,begchunk:endchunk)
-  real(r8),allocatable::Target_S     (:,:,:)  !(pcols,pver,begchunk:endchunk)
-  real(r8),allocatable::Target_Q     (:,:,:)  !(pcols,pver,begchunk:endchunk)
-  real(r8),allocatable::Target_PS    (:,:)    !(pcols,begchunk:endchunk)
+  real(r8),allocatable:: Target_U    (:,:,:)  !(pcols,pver,begchunk:endchunk)
+  real(r8),allocatable:: Target_V    (:,:,:)  !(pcols,pver,begchunk:endchunk)
+  real(r8),allocatable:: Target_T    (:,:,:)  !(pcols,pver,begchunk:endchunk)
+  real(r8),allocatable:: Target_S    (:,:,:)  !(pcols,pver,begchunk:endchunk)
+  real(r8),allocatable:: Target_Q    (:,:,:)  !(pcols,pver,begchunk:endchunk)
+  real(r8),allocatable:: Target_PS   (:,:)    !(pcols,begchunk:endchunk)
   real(r8),allocatable:: Model_U     (:,:,:)  !(pcols,pver,begchunk:endchunk)
   real(r8),allocatable:: Model_V     (:,:,:)  !(pcols,pver,begchunk:endchunk)
   real(r8),allocatable:: Model_T     (:,:,:)  !(pcols,pver,begchunk:endchunk)
@@ -345,6 +354,13 @@ contains
                          Nudge_Vwin_Lindex, Nudge_Vwin_Hindex,                &
                          Nudge_Vwin_Ldelta, Nudge_Vwin_Hdelta,                &
                          Nudge_Vwin_Invert
+
+   ! ZonalMean Filtering is not set up for namelist use yet. 
+   ! For Now: just hard code the option here to apply Zonal Mean 
+   !          filtering and set the number of zonal basis functions to 12
+   !---------------------------------------------------------------------
+   Nudge_ZonalFilter = .true.
+   Nudge_ZonalNbasis = 12
 
    ! Nudging is NOT initialized yet, For now
    ! Nudging will always begin/end at midnight.
@@ -520,6 +536,8 @@ contains
    call MPI_bcast(Nudge_Vwin_Lindex  , 1, mpi_real8 ,  mstrid, mpicom, ierr)
    call MPI_bcast(Nudge_Vwin_Ldelta  , 1, mpi_real8 ,  mstrid, mpicom, ierr)
    call MPI_bcast(Nudge_Vwin_Invert,   1, mpi_logical, mstrid, mpicom, ierr)
+   call MPI_bcast(Nudge_ZonalFilter,   1, mpi_logical, mstrid, mpicom, ierr)
+   call MPI_bcast(Nudge_ZonalNbasis,   1, mpi_integer, mstrid, mpicom, ierr)
 
    ! End Routine
    !------------
@@ -781,6 +799,8 @@ contains
      write(iulog,*) 'NUDGING: Model_Times_Per_Day=',Model_Times_Per_Day
      write(iulog,*) 'NUDGING: Nudge_Step=',Nudge_Step
      write(iulog,*) 'NUDGING: Model_Step=',Model_Step
+     write(iulog,*) 'NUDGING: Nudge_ZonalFilter=',Nudge_ZonalFilter
+     write(iulog,*) 'NUDGING: Nudge_ZonalNbasis=',Nudge_ZonalNbasis
      write(iulog,*) 'NUDGING: Nudge_Ucoef  =',Nudge_Ucoef
      write(iulog,*) 'NUDGING: Nudge_Vcoef  =',Nudge_Vcoef
      write(iulog,*) 'NUDGING: Nudge_Qcoef  =',Nudge_Qcoef
@@ -893,6 +913,17 @@ contains
      write(iulog,*) 'NUDGING: nudging_init() Nudge_File_Present=',Nudge_File_Present
    endif
 !!DIAG
+
+   ! Initialize the Zonal Mean type if needed
+   !------------------------------------------
+   if(Nudge_ZonalFilter) then
+     call ZM%init(Nudge_ZonalNbasis)
+     allocate(Zonal_Bamp2d(Nudge_ZonalNbasis))
+     allocate(Zonal_Bamp3d(Nudge_ZonalNbasis,pver))
+     if(masterproc) then
+       write(iulog,*) 'NUDGING: ZonalMean_t initialized: Nbas=',Nudge_ZonalNbasis
+     endif
+   endif
 
    ! Initialize the analysis filename at the NEXT time for startup.
    !---------------------------------------------------------------
@@ -1097,6 +1128,28 @@ contains
                                                   Model_S(:,:,lchnk), ncol)
        end do
      endif
+
+     ! Optionally: Apply Zonal Filtering to Model state data
+     !-------------------------------------------------------
+     if(Nudge_ZonalFilter) then
+       call ZM%calc_amps(Model_U,Zonal_Bamp3d)
+       call ZM%eval_grid(Zonal_Bamp3d,Model_U)
+
+       call ZM%calc_amps(Model_V,Zonal_Bamp3d)
+       call ZM%eval_grid(Zonal_Bamp3d,Model_V)
+
+       call ZM%calc_amps(Model_T,Zonal_Bamp3d)
+       call ZM%eval_grid(Zonal_Bamp3d,Model_T)
+
+       call ZM%calc_amps(Model_S,Zonal_Bamp3d)
+       call ZM%eval_grid(Zonal_Bamp3d,Model_S)
+
+       call ZM%calc_amps(Model_Q,Zonal_Bamp3d)
+       call ZM%eval_grid(Zonal_Bamp3d,Model_Q)
+
+       call ZM%calc_amps(Model_PS,Zonal_Bamp2d)
+       call ZM%eval_grid(Zonal_Bamp2d,Model_PS)
+     endif
    endif ! ((Before_End) .and. (Update_Model)) then
 
    !----------------------------------------------------------------
@@ -1230,7 +1283,7 @@ contains
          ncol=phys_state(lchnk)%ncol
          Target_S(:ncol,:pver,lchnk)=cpair*Target_T(:ncol,:pver,lchnk)
        end do
-     elseif(Nudge_TSmode == 1) then
+     elseif(Nudge_TSmode == 1) then   !***** FOR ZONAL MEAN VALUES WILL THIS OPTION BE A PROBLEM?? *****
        ! Caluculate DSE tendencies from Temperature, Water Vapor, and Surface Pressure
        !------------------------------------------------------------------------------
        do lchnk=begchunk,endchunk
@@ -1425,6 +1478,10 @@ contains
               1,pcols,1,pver,begchunk,endchunk,Tmp3D, &
               VARflag,gridname='physgrid',timelevel=1 )
    if(VARflag) then
+     if(Nudge_ZonalFilter) then
+       call ZM%calc_amps(Tmp3D,Zonal_Bamp3d)
+       call ZM%eval_grid(Zonal_Bamp3d,Tmp3D)
+     endif
      Nobs_U(:,:,begchunk:endchunk,Nudge_ObsInd(1)) = Tmp3D(:,:,begchunk:endchunk)
    else
      call endrun('Varibale "U" is missing in '//trim(anal_file))
@@ -1434,6 +1491,10 @@ contains
               1,pcols,1,pver,begchunk,endchunk,Tmp3D, &
               VARflag,gridname='physgrid',timelevel=1 )
    if(VARflag) then
+     if(Nudge_ZonalFilter) then
+       call ZM%calc_amps(Tmp3D,Zonal_Bamp3d)
+       call ZM%eval_grid(Zonal_Bamp3d,Tmp3D)
+     endif
      Nobs_V(:,:,begchunk:endchunk,Nudge_ObsInd(1)) = Tmp3D(:,:,begchunk:endchunk)
    else
      call endrun('Varibale "V" is missing in '//trim(anal_file))
@@ -1443,6 +1504,10 @@ contains
               1,pcols,1,pver,begchunk,endchunk,Tmp3D, &
               VARflag,gridname='physgrid',timelevel=1 )
    if(VARflag) then
+     if(Nudge_ZonalFilter) then
+       call ZM%calc_amps(Tmp3D,Zonal_Bamp3d)
+       call ZM%eval_grid(Zonal_Bamp3d,Tmp3D)
+     endif
      Nobs_T(:,:,begchunk:endchunk,Nudge_ObsInd(1)) = Tmp3D(:,:,begchunk:endchunk)
    else
      call endrun('Varibale "T" is missing in '//trim(anal_file))
@@ -1452,6 +1517,10 @@ contains
               1,pcols,1,pver,begchunk,endchunk,Tmp3D, &
               VARflag,gridname='physgrid',timelevel=1 )
    if(VARflag) then
+     if(Nudge_ZonalFilter) then
+       call ZM%calc_amps(Tmp3D,Zonal_Bamp3d)
+       call ZM%eval_grid(Zonal_Bamp3d,Tmp3D)
+     endif
      Nobs_Q(:,:,begchunk:endchunk,Nudge_ObsInd(1)) = Tmp3D(:,:,begchunk:endchunk)
    else
      call endrun('Varibale "Q" is missing in '//trim(anal_file))
@@ -1461,6 +1530,10 @@ contains
               1,pcols,begchunk,endchunk,Tmp2D,        &
               VARflag,gridname='physgrid',timelevel=1 )
    if(VARflag) then
+     if(Nudge_ZonalFilter) then
+       call ZM%calc_amps(Tmp2D,Zonal_Bamp2d)
+       call ZM%eval_grid(Zonal_Bamp2d,Tmp2D)
+     endif
      Nobs_PS(:,begchunk:endchunk,Nudge_ObsInd(1)) = Tmp2D(:,begchunk:endchunk)
    else
      call endrun('Varibale "PS" is missing in '//trim(anal_file))

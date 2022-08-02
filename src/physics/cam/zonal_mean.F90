@@ -1,0 +1,2093 @@
+module Zonal_Mean
+!======================================================================
+!
+! Purpose: Compute and make use of Zonal Mean values on physgrid
+!
+!    This module implements 3 data structures for the spectral analysis
+!    and synthesis of zonal mean values based on m=0 spherical harmonics. 
+!
+!    ZonalMean_t:    For the analysis/synthsis of zonal mean values 
+!                    on a 2D grid of points distributed over the 
+!                    surface of a sphere.
+!    ZonalProfile_t: For the analysis/synthsis of zonal mean values 
+!                    on a meridional grid that spans the latitudes 
+!                    from SP to NP
+!    ZonalAverage_t: To calculate zonal mean values via a simple 
+!                    area weighted bin-averaging of 2D gridpoints 
+!                    assigned to each latitude band.
+!
+!   NOTE: The weighting of the Zonal Profiles values is scaled such 
+!         that ZonalMean_t amplitudes can be used to evaluate values
+!         the ZonalProfile_t grid and vise-versa.
+!
+!         The ZonalMean_t computes global integrals to compute basis
+!         amplitudes. For distributed environments the cost of these
+!         can be reduced using the The ZonalAverage_t data structures. 
+!
+! USAGE:
+!
+!    (1) Compute Zonal mean amplitudes and synthesize values on 2D/3D physgrid
+!
+!         Usage: type(ZonalMean_t):: ZM
+!         =========================================
+!           call ZM%init(nbas)
+!           ------------------
+!               - Initialize the data structure with 'nbas' basis functions 
+!                 for the given physgrid latitudes and areas.
+!
+!               Arguments: 
+!                 integer ,intent(in):: nbas     -Number of m=0 spherical harmonics
+!          
+!           call ZM%calc_amps(Gdata,Bamp)
+!           -----------------------------
+!               - For the initialized ZonalMean_t; Given Gdata() values on the physgrid,
+!                 compute the zonal mean basis amplitudes Bamp().
+!            
+!               Interface: 2D data on the physgrid
+!                 real(r8),intent(in ):: Gdata(pcols,begchunk:endchunk)  
+!                 real(r8),intent(out):: Bamp (nbas)
+!          
+!               Interface: 3D data on the physgrid
+!                 real(r8),intent(in ):: Gdata(pcols,pver,begchunk:endchunk)  
+!                 real(r8),intent(out):: Bamp (nbas,pver)
+!          
+!           call ZM%eval_grid(Bamp,Gdata)
+!           -----------------------------
+!               - For the initialized ZonalMean_t; Given Bamp() zonal mean basis 
+!                 amplitudes, compute the Gdata() values on the physgrid.
+!
+!               Interface: 2D data on the physgrid
+!                 real(r8),intent(in ):: Bamp (nbas)
+!                 real(r8),intent(out):: Gdata(pcols,begchunk:endchunk)
+!
+!               Interface: 3D data on the physgrid
+!                 real(r8),intent(in ):: Bamp (nbas,pver)
+!                 real(r8),intent(out):: Gdata(pcols,pver,begchunk:endchunk)
+!
+!          
+!    (2) Compute Zonal mean amplitudes and synthesize values on Zonal profile grid
+!
+!         Usage: type(ZonalProfile_t):: ZP
+!         =========================================
+!           call ZP%init(lats,area,nlat,nbas,GEN_GAUSSLATS=.true.)
+!           ------------------------------------------------------
+!               - Initialize the data structure for the given number of 
+!                 latitudes. Either use the given Latitudes and weights, 
+!                 or OPTIONALLY create a profile gridpoints and associated 
+!                 area weights from SP to NP. Then initialize 'nbas' basis
+!                 functions for the profile gridpoints.
+!                 If the user supplies the lats/area values, the area values must 
+!                 be correctly scaled such that the global area adds up to 4PI. 
+!                 Otherwise, the ampitudes between ZonalProfile_t and ZonalMean_t 
+!                 are not interchangable.
+!          
+!               Arguments: 
+!                 real(r8),intent(inout):: lats(:) - Latitudes of meridional grid.
+!                 real(r8),intent(inout):: area(:) - Area of each meridional gridpoint.
+!                 integer ,intent(in)   :: nlat    - Number of meridional gridpoints.
+!                 integer ,intent(in)   :: nbas    - Number of m=0 spherical harmonics
+!                 logical ,intent(in),optional:: GEN_GAUSLATS - Flag to generate 
+!                                                               lats/areas values.
+!
+!           call ZP%calc_amps(Zdata,Bamp)
+!           -----------------------------
+!               - Given Zdata() on the Zonal profile grid, compute the 
+!                 zonal basis amplitudes Bamp().
+!          
+!               Interface: 1D data on (nlat) grid
+!                 real(r8),intent(in ):: Zdata(nlat) - Meridional Profile data
+!                 real(r8),intent(out):: Bamp (nbas) - Zonal Basis Amplitudes
+!
+!               Interface: 2D data on (nlat,pver) grid
+!                 real(r8),intent(in ):: Zdata(nlat,pver) - Meridional Profile data
+!                 real(r8),intent(out):: Bamp (nbas,pver) - Zonal Basis Amplitudes
+!
+!           call ZP%eval_grid(Bamp,Zdata)
+!           -----------------------------
+!               - Given Bamp() zonal basis amplitudes, evaluate the Zdata()
+!                 values on the Zonal profile grid.
+!
+!               Interface: 1D data on (nlat) grid
+!                 real(r8),intent(in ):: Bamp (nbas) - Zonal Basis Amplitudes
+!                 real(r8),intent(out):: Zdata(nlat) - Meridional Profile data
+!          
+!               Interface: 2D data on (nlat,pver) grid
+!                 real(r8),intent(in ):: Bamp (nbas,pver) - Zonal Basis Amplitudes
+!                 real(r8),intent(out):: Zdata(nlat,pver) - Meridional Profile data
+!          
+!    (3) Compute Zonal mean averages (FASTER/NOT-ACCURATE) on Zonal profile grid
+!        (For the created zonal profile, just bin average area weighted 
+!         2D/3D physgrid grid values)
+!
+!         Usage: type(ZonalAverage_t):: ZA
+!         =========================================
+!           call ZA%init(lats,area,nlat,GEN_GAUSSLATS=.true.)
+!           --------------------------------------------------
+!               - Given the latitude/area for the nlat meridional gridpopints, initialize
+!                 the ZonalAverage datastruture for computing bin-averaging of physgrid 
+!                 values. It is assumed that the domain of these gridpoints of the 
+!                 profile span latitudes from SP to NP.
+!                 The optional GEN_GAUSSLATS flag allows for the generation of Gaussian 
+!                 latitude gridpoints. The generated grid over-writes the given values 
+!                 lats and area passed by the user.
+!
+!               Arguments: 
+!                 real(r8),intent(inout):: lats(nlat) - Latitudes of meridional grid.
+!                 real(r8),intent(inout):: area(nlat) - Area of meridional gridpoints.
+!                 integer    ,intent(in):: nlat       - Number of meridional gridpoints
+!                 logical,intent(in),optional:: GEN_GAUSLATS - Flag to generate 
+!                                                              lats/areas values.
+!
+!           call ZA%binAvg(Gdata,Zdata)
+!           ---------------------------
+!               - For the initialized ZonalAverage_t; Given Gdata() on the physgrid,
+!                 compute bin averages and return Zdata() on the Zonal profile grid.
+!
+!               Interface: 2D data on the physgrid
+!                 real(r8),intent(out):: Gdata(pcols,begchunk:endchunk)
+!                 real(r8),intent(out):: Zdata(nlat)
+!
+!               Interface: 3D data on the physgrid
+!                 real(r8),intent(out):: Gdata(pcols,pver,begchunk:endchunk)
+!                 real(r8),intent(out):: Zdata(nlat,pver)
+!
+!======================================================================
+  ! Useful modules
+  !-----------------
+  use shr_kind_mod,    only: r8=>SHR_KIND_R8
+  use phys_grid,       only: get_ncols_p, get_rlat_p, get_wght_all_p
+  use ppgrid,          only: begchunk, endchunk, pcols, pver
+  use shr_reprosum_mod,only: shr_reprosum_calc
+  use cam_abortutils,  only: endrun
+#if ( defined SPMD )
+  use mpishorthand,    only: mpicom
+#endif
+
+  ! Set all Global values and routines to private by default
+  ! and then explicitly set their exposure.
+  !----------------------------------------------------------
+  implicit none
+  private
+  save
+
+  public :: ZonalMean_t
+  public :: ZonalProfile_t
+  public :: ZonalAverage_t
+
+  private:: init_ZonalMean
+  private:: calc_ZonalMean_2Damps
+  private:: calc_ZonalMean_3Damps
+  private:: eval_ZonalMean_2Dgrid
+  private:: eval_ZonalMean_3Dgrid
+  private:: init_ZonalProfile
+  private:: calc_ZonalProfile_1Damps
+  private:: calc_ZonalProfile_2Damps
+  private:: eval_ZonalProfile_1Dgrid
+  private:: eval_ZonalProfile_2Dgrid
+  private:: init_ZonalAverage
+  private:: calc_ZonalAverage_2DbinAvg
+  private:: calc_ZonalAverage_3DbinAvg
+  private:: dalfk
+  private:: dlfpt
+  private:: Invert_Matrix
+  private:: dgaqd
+  private:: dcpdp
+  private:: dtpdp
+  private:: ddzeps
+
+  ! Type definitions
+  !-------------------
+  type ZonalMean_t
+     integer             :: nbas
+     real(r8),allocatable:: area (:,:)
+     real(r8),allocatable:: basis(:,:,:)
+     real(r8),allocatable:: map  (:,:)
+    contains
+     procedure,pass:: init      => init_ZonalMean
+     generic,public:: calc_amps => calc_ZonalMean_2Damps, &
+                                   calc_ZonalMean_3Damps
+     generic,public:: eval_grid => eval_ZonalMean_2Dgrid, &
+                                   eval_ZonalMean_3Dgrid
+     procedure,private,pass:: calc_ZonalMean_2Damps
+     procedure,private,pass:: calc_ZonalMean_3Damps
+     procedure,private,pass:: eval_ZonalMean_2Dgrid
+     procedure,private,pass:: eval_ZonalMean_3Dgrid
+  end type ZonalMean_t
+
+  type ZonalProfile_t
+     integer             :: nlat
+     integer             :: nbas
+     real(r8),allocatable:: area (:)
+     real(r8),allocatable:: basis(:,:)
+     real(r8),allocatable:: map  (:,:)
+    contains
+     procedure,pass:: init      => init_ZonalProfile
+     generic,public:: calc_amps => calc_ZonalProfile_1Damps, &
+                                   calc_ZonalProfile_2Damps
+     generic,public:: eval_grid => eval_ZonalProfile_1Dgrid, &
+                                   eval_ZonalProfile_2Dgrid
+     procedure,private,pass:: calc_ZonalProfile_1Damps 
+     procedure,private,pass:: calc_ZonalProfile_2Damps
+     procedure,private,pass:: eval_ZonalProfile_1Dgrid 
+     procedure,private,pass:: eval_ZonalProfile_2Dgrid 
+  end type ZonalProfile_t
+
+  type ZonalAverage_t
+     integer             :: nlat
+     real(r8),allocatable:: area   (:)
+     real(r8),allocatable:: a_norm (:)
+     real(r8),allocatable:: area_g (:,:)
+     integer ,allocatable:: idx_map(:,:)
+    contains
+     procedure,pass:: init   => init_ZonalAverage
+     generic,public:: binAvg => calc_ZonalAverage_2DbinAvg, &
+                                calc_ZonalAverage_3DbinAvg
+     procedure,private,pass:: calc_ZonalAverage_2DbinAvg
+     procedure,private,pass:: calc_ZonalAverage_3DbinAvg
+  end type ZonalAverage_t
+
+
+contains
+    !=======================================================================
+    subroutine init_ZonalMean(this,I_nbas)
+      !
+      ! init_ZonalMean: Initialize the ZonalMean datastruture for the 
+      !                 given physgrid gridpoints. It is assumed that the domain
+      !                 of these gridpoints spans the surface of the sphere.
+      !                 The representation of basis functions functions is
+      !                 normalized w.r.t integration over the sphere.
+      !=====================================================================
+      !
+      ! Passed Variables
+      !------------------
+      class(ZonalMean_t) :: this
+      integer ,intent(in):: I_nbas
+      !
+      ! Local Values
+      !--------------
+      real(r8),allocatable:: Clats(:,:)
+      real(r8),allocatable:: Bcoef(:)
+      real(r8),allocatable:: Csum (:,:)
+      real(r8),allocatable:: Cvec (:)
+      real(r8),allocatable:: Bsum (:,:)
+      real(r8),allocatable:: Bnorm(:)
+      real(r8),allocatable:: Bcov (:,:)
+      real(r8):: area(pcols),rlat
+      real(r8):: PI2
+      integer :: ii,nn,n2,nb,lchnk,ncols,cc
+      integer :: cnum,Cvec_len
+
+      PI2 = 2._r8*atan(1._r8)
+
+      ! Allocate space
+      !-----------------
+      if(allocated(this%area )) deallocate(this%area)
+      if(allocated(this%basis)) deallocate(this%basis)
+      if(allocated(this%map  )) deallocate(this%map)
+
+      this%nbas = I_nbas
+      allocate(this%area (pcols,begchunk:endchunk))
+      allocate(this%basis(pcols,begchunk:endchunk,I_nbas))
+      allocate(this%map  (I_nbas,I_nbas))
+      this%area (:,:)   = 0._r8
+      this%basis(:,:,:) = 0._r8
+      this%map  (:,:)   = 0._r8
+
+      Cvec_len = 0
+      do nn= 1,this%nbas
+      do n2=nn,this%nbas
+        Cvec_len = Cvec_len + 1
+      end do
+      end do
+
+      allocate(Clats(pcols,begchunk:endchunk))
+      allocate(Bcoef(I_nbas))
+      allocate(Csum (1,Cvec_len))
+      allocate(Cvec (Cvec_len))
+      allocate(Bsum (1,I_nbas))
+      allocate(Bnorm(I_nbas))
+      allocate(Bcov (I_nbas,I_nbas))
+
+      ! Save a copy the area weights for each ncol gridpoint 
+      ! and convert Latitudes to SP->NP colatitudes in radians
+      !-------------------------------------------------------
+      do lchnk=begchunk,endchunk
+        ncols = get_ncols_p(lchnk)
+        call get_wght_all_p(lchnk, ncols, area)
+        do cc = 1,ncols
+          rlat=get_rlat_p(lchnk,cc)
+          this%area(cc,lchnk) = area(cc)
+          Clats    (cc,lchnk) = rlat + PI2
+        end do
+      end do
+
+      ! Add first basis for the mean values.
+      !------------------------------------------
+      do lchnk=begchunk,endchunk
+        ncols = get_ncols_p(lchnk)
+        do cc = 1,ncols
+          this%basis(cc,lchnk,1) = 1._r8/sqrt(8._r8*PI2)
+        end do
+      end do
+
+      ! Loop over the remaining basis functions
+      !---------------------------------------
+      do nn=2,this%nbas
+        nb = nn-1
+
+        ! Generate coefs for the basis
+        !------------------------------
+        call dalfk(nb,0,Bcoef)
+
+        ! Create basis for the coefs at each ncol gridpoint
+        !---------------------------------------------------
+        do lchnk=begchunk,endchunk
+          ncols = get_ncols_p(lchnk)
+          do cc = 1,ncols
+            call dlfpt(nb,0,Clats(cc,lchnk),Bcoef,this%basis(cc,lchnk,nn))
+          end do
+        end do
+      end do ! nn=1,this%nbas
+
+      ! Numerically normalize the basis funnctions
+      !--------------------------------------------------------------
+      do nn=1,this%nbas
+        Bsum(1,nn) = 0._r8
+        do lchnk=begchunk,endchunk
+          ncols = get_ncols_p(lchnk)
+          do cc = 1,ncols
+            Bsum(1,nn) = Bsum(1,nn)                                                          &
+                       + (this%basis(cc,lchnk,nn)*this%basis(cc,lchnk,nn)*this%area(cc,lchnk))
+          end do
+        end do
+      end do ! nn=1,this%nbas
+
+      call shr_reprosum_calc(Bsum,Bnorm,1,1,this%nbas,gbl_max_nsummands=1,commid=mpicom)
+
+      do nn=1,this%nbas
+        do lchnk=begchunk,endchunk
+          ncols = get_ncols_p(lchnk)
+          do cc = 1,ncols
+            this%basis(cc,lchnk,nn) = this%basis(cc,lchnk,nn)/sqrt(Bnorm(nn))
+          end do
+        end do
+      end do ! nn=1,this%nbas
+
+      ! Compute covariance matrix for basis functions
+      ! (Yes, they are theoretically orthonormal, but lets make sure)
+      !---------------------------------------------------------------
+      cnum = 0
+      do nn= 1,this%nbas
+      do n2=nn,I_nbas
+        cnum = cnum + 1
+        Csum(1,cnum) = 0._r8
+        do lchnk=begchunk,endchunk
+          ncols = get_ncols_p(lchnk)
+          do cc = 1,ncols
+            Csum(1,cnum) = Csum(1,cnum)                                                        &
+                         + (this%basis(cc,lchnk,nn)*this%basis(cc,lchnk,n2)*this%area(cc,lchnk))
+          end do
+        end do
+      end do
+      end do
+
+      call shr_reprosum_calc(Csum,Cvec,1,1,Cvec_len,gbl_max_nsummands=1,commid=mpicom)
+
+      cnum = 0
+      do nn= 1,this%nbas
+      do n2=nn,this%nbas
+        cnum = cnum + 1
+        Bcov(nn,n2) = Cvec(cnum)
+        Bcov(n2,nn) = Cvec(cnum)
+      end do
+      end do
+
+      ! Invert to get the basis amplitude map
+      !--------------------------------------
+      call Invert_Matrix(Bcov,this%nbas,this%map)
+
+      ! End Routine
+      !------------
+      deallocate(Clats)
+      deallocate(Bcoef)
+      deallocate(Csum )
+      deallocate(Cvec )
+      deallocate(Bsum )
+      deallocate(Bnorm)
+      deallocate(Bcov )
+      return
+    end subroutine init_ZonalMean
+    !=======================================================================
+
+
+    !=======================================================================
+    subroutine calc_ZonalMean_2Damps(this,I_Gdata,O_Bamp)
+      !
+      ! calc_ZonalMean_2Damps: Given 2D data values for the ncol gridpoints, 
+      !                        compute the zonal mean basis amplitudes.
+      !=====================================================================
+      !
+      ! Passed Variables
+      !------------------
+      class(ZonalMean_t) :: this
+      real(r8),intent(in ):: I_Gdata(pcols,begchunk:endchunk)
+      real(r8),intent(out):: O_Bamp (:)
+      !
+      ! Local Values
+      !--------------
+      real(r8),allocatable:: Csum (:,:)
+      real(r8),allocatable:: Gcov (:)
+      integer:: ii,nn,n2,ncols,lchnk,cc
+
+      allocate(Gcov(this%nbas))
+      allocate(Csum(1,this%nbas))
+
+      ! Compute Covariance with input data and basis functions
+      !--------------------------------------------------------
+      do nn= 1,this%nbas
+        Csum(1,nn) = 0._r8
+        do lchnk=begchunk,endchunk
+          ncols = get_ncols_p(lchnk)
+          do cc = 1,ncols
+            Csum(1,nn) = Csum(1,nn)                                                    &
+                       + (I_Gdata(cc,lchnk)*this%basis(cc,lchnk,nn)*this%area(cc,lchnk))
+          end do
+        end do
+      end do
+
+      call shr_reprosum_calc(Csum,Gcov,1,1,this%nbas,commid=mpicom)
+
+      ! Multiply by map to get the amplitudes
+      !-------------------------------------------
+      do nn=1,this%nbas
+        O_Bamp(nn) = 0._r8
+        do n2=1,this%nbas
+          O_Bamp(nn) = O_Bamp(nn) + this%map(n2,nn)*Gcov(n2)
+        end do
+      end do
+
+      ! End Routine
+      !------------
+      deallocate(Csum)
+      deallocate(Gcov)
+      return
+    end subroutine calc_ZonalMean_2Damps
+    !=======================================================================
+
+
+    !=======================================================================
+    subroutine calc_ZonalMean_3Damps(this,I_Gdata,O_Bamp)
+      !
+      ! calc_ZonalMean_3Damps: Given 3D data values for the ncol,nlev gridpoints, 
+      !                        compute the zonal mean basis amplitudes.
+      !=====================================================================
+      !
+      ! Passed Variables
+      !------------------
+      class(ZonalMean_t) :: this
+      real(r8),intent(in ):: I_Gdata(pcols,pver,begchunk:endchunk)
+      real(r8),intent(out):: O_Bamp (:,:)
+      !
+      ! Local Values
+      !--------------
+      real(r8),allocatable:: Csum (:,:)
+      real(r8),allocatable:: Gcov (:)
+      integer:: ii,nn,n2,ncols,lchnk,cc
+      integer:: Nsum,ns,ll
+
+      Nsum = this%nbas*pver
+      allocate(Gcov(Nsum))
+      allocate(Csum(1,Nsum))
+
+      ! Compute Covariance with input data and basis functions
+      !--------------------------------------------------------
+      do ll= 1,pver
+      do nn= 1,this%nbas
+        ns = nn + (ll-1)*this%nbas
+        Csum(1,ns) = 0._r8
+        do lchnk=begchunk,endchunk
+          ncols = get_ncols_p(lchnk)
+          do cc = 1,ncols
+            Csum(1,ns) = Csum(1,ns)                                                    &
+                       + (I_Gdata(cc,ll,lchnk)*this%basis(cc,lchnk,nn)*this%area(cc,lchnk))
+          end do
+        end do
+      end do
+      end do
+
+      call shr_reprosum_calc(Csum,Gcov,1,1,Nsum,commid=mpicom)
+
+      ! Multiply by map to get the amplitudes
+      !-------------------------------------------
+      do nn=1,this%nbas
+      do ll=1,pver
+        O_Bamp(nn,ll) = 0._r8
+        do n2=1,this%nbas
+          ns = nn + (ll-1)*this%nbas
+          O_Bamp(nn,ll) = O_Bamp(nn,ll) + this%map(n2,nn)*Gcov(ns)
+        end do
+      end do
+      end do
+
+      ! End Routine
+      !------------
+      deallocate(Csum)
+      deallocate(Gcov)
+      return
+    end subroutine calc_ZonalMean_3Damps
+    !=======================================================================
+
+
+    !=======================================================================
+    subroutine eval_ZonalMean_2Dgrid(this,I_Bamp,O_Gdata)
+      !
+      ! eval_ZonalMean_2Dgrid: Given the zonal mean basis amplitudes,
+      !                        compute 2D data values for the ncol gridpoints.
+      !=====================================================================
+      !
+      ! Passed Variables
+      !------------------
+      class(ZonalMean_t) :: this
+      real(r8),intent(in ):: I_Bamp (:)
+      real(r8),intent(out):: O_Gdata(pcols,begchunk:endchunk)
+      !
+      ! Local Values
+      !--------------
+      integer:: ii,nn,ncols,lchnk,cc
+
+      ! Construct grid values from basis amplitudes.
+      !--------------------------------------------------
+      do lchnk=begchunk,endchunk
+        ncols = get_ncols_p(lchnk)
+        do cc = 1,ncols
+          O_Gdata(cc,lchnk) = 0._r8
+        end do
+      end do
+
+      do nn=1,this%nbas
+      do lchnk=begchunk,endchunk
+        ncols = get_ncols_p(lchnk)
+        do cc = 1,ncols
+          O_Gdata(cc,lchnk) = O_Gdata(cc,lchnk) + (I_Bamp(nn)*this%basis(cc,lchnk,nn))
+        end do
+      end do
+      end do
+
+      ! End Routine
+      !------------
+      return
+    end subroutine eval_ZonalMean_2Dgrid
+    !=======================================================================
+
+
+    !=======================================================================
+    subroutine eval_ZonalMean_3Dgrid(this,I_Bamp,O_Gdata)
+      !
+      ! eval_ZonalMean_3Dgrid: Given the zonal mean basis amplitudes,
+      !                      compute 3D data values for the ncol,nlev gridpoints.
+      !=====================================================================
+      !
+      ! Passed Variables
+      !------------------
+      class(ZonalMean_t) :: this
+      real(r8),intent(in ):: I_Bamp (:,:)
+      real(r8),intent(out):: O_Gdata(pcols,pver,begchunk:endchunk)
+      !
+      ! Local Values
+      !--------------
+      integer:: ii,nn,ncols,lchnk,cc
+      integer:: ll
+
+      ! Construct grid values from basis amplitudes.
+      !--------------------------------------------------
+      do lchnk=begchunk,endchunk
+        ncols = get_ncols_p(lchnk)
+        do ll = 1,pver
+        do cc = 1,ncols
+          O_Gdata(cc,ll,lchnk) = 0._r8
+        end do
+        end do
+      end do
+
+      do nn=1,this%nbas
+      do lchnk=begchunk,endchunk
+        ncols = get_ncols_p(lchnk)
+        do ll = 1,pver
+        do cc = 1,ncols
+          O_Gdata(cc,ll,lchnk) = O_Gdata(cc,ll,lchnk) + (I_Bamp(nn,ll)*this%basis(cc,lchnk,nn))
+        end do
+        end do
+      end do
+      end do
+
+      ! End Routine
+      !------------
+      return
+    end subroutine eval_ZonalMean_3Dgrid
+    !=======================================================================
+
+
+    !=======================================================================
+    subroutine init_ZonalProfile(this,IO_lats,IO_area,I_nlat,I_nbas,GEN_GAUSSLATS)
+      !
+      ! init_ZonalProfile: Initialize the ZonalProfile datastruture for the 
+      !                    given nlat gridpoints. It is assumed that the domain
+      !                    of these gridpoints of the profile span latitudes 
+      !                    from SP to NP.
+      !                    The representation of basis functions functions is
+      !                    normalized w.r.t integration over the sphere so that
+      !                    when configured for tha same number of basis functions, 
+      !                    the calculated amplitudes are interchangable with 
+      !                    those for the for the ZonalMean_t class.
+      !        
+      !                    The optional GEN_GAUSSLATS flag allows for the 
+      !                    generation of Gaussian latitudes. The generated grid
+      !                    over-writes the values of IO_lats/IO_area passed by 
+      !                    the user.
+      !=====================================================================
+      !
+      ! Passed Variables
+      !------------------
+      class(ZonalProfile_t) :: this
+      real(r8)     ,intent(inout):: IO_lats(:)
+      real(r8)     ,intent(inout):: IO_area(:)
+      integer         ,intent(in):: I_nlat
+      integer         ,intent(in):: I_nbas
+      logical,optional,intent(in):: GEN_GAUSSLATS
+      !
+      ! Local Values
+      !--------------
+      real(r8),allocatable:: Clats(:)
+      real(r8),allocatable:: Bcoef(:)
+      real(r8),allocatable:: Bcov (:,:)
+      real(r8):: Bnorm
+      integer :: ii,nn,n2,nb,ierr
+
+      ! Allocate space
+      !-----------------
+      if(allocated(this%area )) deallocate(this%area)
+      if(allocated(this%basis)) deallocate(this%basis)
+      if(allocated(this%map  )) deallocate(this%map)
+
+      this%nlat = I_nlat
+      this%nbas = I_nbas
+      allocate(this%area (I_nlat))
+      allocate(this%basis(I_nlat,I_nbas))
+      allocate(this%map  (I_nbas,I_nbas))
+
+      allocate(Clats(I_nlat))
+      allocate(Bcoef(I_nbas))
+      allocate(Bcov (I_nbas,I_nbas))
+
+      ! Optionally create the Latitude Gridpoints 
+      ! and their associated area weights. Otherwise it
+      ! is assumed that the user is supplying them.
+      !-----------------------------------------------
+      if(present(GEN_GAUSSLATS).and.(GEN_GAUSSLATS)) then
+
+        ! Create a Gaussin grid from SP to NP
+        !--------------------------------------
+        call dgaqd(I_nlat,Clats,IO_area,ierr)
+    
+        ! Convert generated colatitudes SP->NP to Lats and convert 
+        ! to degrees and scale the area for global 2D integrals
+        !-----------------------------------------------------------
+        do nn=1,I_nlat
+          IO_lats(nn) = (45._r8*Clats(nn)/atan(1._r8)) - 90._r8
+          IO_area(nn) = IO_area(nn)*(8._r8*atan(1._r8))
+        end do
+      else
+        ! Convert Latitudes to SP->NP colatitudes in radians
+        !----------------------------------------------------
+        do nn=1,I_nlat
+          Clats(nn) = (IO_lats(nn) + 90._r8)*atan(1._r8)/45._r8
+        end do
+      endif
+
+      ! Copy the area weights for each nlat 
+      ! gridpoint to the datastructure
+      !---------------------------------------
+      this%area(1:I_nlat) = IO_area(1:I_nlat)
+
+      ! Add first basis for the mean values.
+      !------------------------------------------
+      this%basis(:,1) = 1._r8/sqrt(16._r8*atan(1._r8))
+      Bnorm = 0._r8
+      do ii=1,I_nlat
+        Bnorm = Bnorm + (this%basis(ii,1)*this%basis(ii,1)*this%area(ii))
+      end do
+      this%basis(:,1) = this%basis(:,1)/sqrt(Bnorm)
+
+      ! Loop over the remaining basis functions
+      !---------------------------------------
+      do nn=2,I_nbas
+        nb = nn-1
+
+        ! Generate coefs for the basis
+        !------------------------------
+        call dalfk(nb,0,Bcoef)
+
+        ! Create an un-normalized basis for the 
+        ! coefs at each nlat gridpoint
+        !---------------------------------------
+        do ii=1,I_nlat
+          call dlfpt(nb,0,Clats(ii),Bcoef,this%basis(ii,nn))
+        end do
+
+        ! Numerically normalize the basis funnction
+        !--------------------------------------------------------------
+        Bnorm = 0._r8
+        do ii=1,I_nlat
+          Bnorm = Bnorm + (this%basis(ii,nn)*this%basis(ii,nn)*this%area(ii))
+        end do
+        this%basis(:,nn) = this%basis(:,nn)/sqrt(Bnorm)
+
+      end do ! nn=1,I_nbas
+
+      ! Compute covariance matrix for basis functions
+      ! (Yes, they are theoretically orthonormal, but lets make sure)
+      !--------------------------------------------------------------
+      do nn=1,I_nbas
+      do n2=1,I_nbas
+        Bcov(nn,n2) = 0._r8
+        do ii=1,I_nlat
+          Bcov(nn,n2) = Bcov(nn,n2) + (this%basis(ii,nn)*this%basis(ii,n2)*this%area(ii))
+        end do
+      end do
+      end do
+
+      ! Invert to get the basis amplitude map
+      !--------------------------------------
+      call Invert_Matrix(Bcov,I_nbas,this%map)
+
+      ! End Routine
+      !------------
+      deallocate(Clats)
+      deallocate(Bcoef)
+      deallocate(Bcov )
+      return
+    end subroutine init_ZonalProfile
+    !=======================================================================
+
+
+    !=======================================================================
+    subroutine calc_ZonalProfile_1Damps(this,I_Zdata,O_Bamp)
+      !
+      ! calc_ZonalProfile_1Damps: Given 1D data values for the nlat zonal 
+      !                           profiles gridpoints, compute the zonal 
+      !                           profile basis amplitudes.
+      !=====================================================================
+      !
+      ! Passed Variables
+      !------------------
+      class(ZonalProfile_t):: this
+      real(r8),intent(in ):: I_Zdata(:)
+      real(r8),intent(out):: O_Bamp (:)
+      !
+      ! Local Values
+      !--------------
+      real(r8),allocatable:: Gcov(:)
+      integer:: ii,nn,n2
+
+      ! Compute Covariance with input data and basis functions
+      !--------------------------------------------------------
+      allocate(Gcov(this%nbas))
+      do nn=1,this%nbas
+        Gcov(nn) = 0._r8
+        do ii=1,this%nlat
+          Gcov(nn) = Gcov(nn) + (I_Zdata(ii)*this%basis(ii,nn)*this%area(ii))
+        end do
+      end do
+
+      ! Multiply by map to get the amplitudes
+      !-------------------------------------------
+      do nn=1,this%nbas
+        O_Bamp(nn) = 0._r8
+        do n2=1,this%nbas
+          O_Bamp(nn) = O_Bamp(nn) + this%map(n2,nn)*Gcov(n2)
+        end do
+      end do
+
+      ! End Routine
+      !------------
+      deallocate(Gcov)
+      return
+    end subroutine calc_ZonalProfile_1Damps
+    !=======================================================================
+
+
+    !=======================================================================
+    subroutine calc_ZonalProfile_2Damps(this,I_Zdata,O_Bamp)
+      !
+      ! calc_ZonalProfile_2Damps: Given 2D data values for the nlat,nlev zonal 
+      !                           profiles gridpoints, compute the zonal 
+      !                           profile basis amplitudes.
+      !=====================================================================
+      !
+      ! Passed Variables
+      !------------------
+      class(ZonalProfile_t):: this
+      real(r8),intent(in ):: I_Zdata(:,:)
+      real(r8),intent(out):: O_Bamp (:,:)
+      !
+      ! Local Values
+      !--------------
+      real(r8),allocatable:: Gcov(:,:)
+      integer:: ii,nn,n2,ll
+
+      ! Compute Covariance with input data and basis functions
+      !--------------------------------------------------------
+      allocate(Gcov(this%nbas,pver))
+      do ll=1,pver
+      do nn=1,this%nbas
+        Gcov(nn,ll) = 0._r8
+        do ii=1,this%nlat
+          Gcov(nn,ll) = Gcov(nn,ll) + (I_Zdata(ii,ll)*this%basis(ii,nn)*this%area(ii))
+        end do
+      end do
+      end do
+
+      ! Multiply by map to get the amplitudes
+      !-------------------------------------------
+      do ll=1,pver
+      do nn=1,this%nbas
+        O_Bamp(nn,ll) = 0._r8
+        do n2=1,this%nbas
+          O_Bamp(nn,ll) = O_Bamp(nn,ll) + this%map(n2,nn)*Gcov(n2,ll)
+        end do
+      end do
+      end do
+
+      ! End Routine
+      !------------
+      deallocate(Gcov)
+      return
+    end subroutine calc_ZonalProfile_2Damps
+    !=======================================================================
+
+
+    !=======================================================================
+    subroutine eval_ZonalProfile_1Dgrid(this,I_Bamp,O_Zdata)
+      !
+      ! eval_ZonalProfile_1Dgrid: Given the zonal profile basis amplitudes,
+      !                           compute 1D data values for the nlat gridpoints.
+      !=====================================================================
+      !
+      ! Passed Variables
+      !------------------
+      class(ZonalProfile_t):: this
+      real(r8),intent(in ):: I_Bamp (:)
+      real(r8),intent(out):: O_Zdata(:)
+      !
+      ! Local Values
+      !--------------
+      integer:: ii,nn
+
+      ! Construct grid values from basis amplitudes.
+      !--------------------------------------------------
+      O_Zdata(1:this%nlat) = 0._r8
+      do nn=1,this%nbas
+      do ii=1,this%nlat
+        O_Zdata(ii) = O_Zdata(ii) + (I_Bamp(nn)*this%basis(ii,nn))
+      end do
+      end do
+
+      ! End Routine
+      !------------
+      return
+    end subroutine eval_ZonalProfile_1Dgrid
+    !=======================================================================
+
+
+    !=======================================================================
+    subroutine eval_ZonalProfile_2Dgrid(this,I_Bamp,O_Zdata)
+      !
+      ! eval_ZonalProfile_2Dgrid: Given the zonal profile basis amplitudes,
+      !                           compute 2D data values for the nlat,nlev gridpoints.
+      !=====================================================================
+      !
+      ! Passed Variables
+      !------------------
+      class(ZonalProfile_t):: this
+      real(r8),intent(in ):: I_Bamp (:,:)
+      real(r8),intent(out):: O_Zdata(:,:)
+      !
+      ! Local Values
+      !--------------
+      integer:: ii,nn,ll
+
+      ! Construct grid values from basis amplitudes.
+      !--------------------------------------------------
+      O_Zdata(1:this%nlat,1:pver) = 0._r8
+      do nn=1,this%nbas
+      do ll=1,pver
+      do ii=1,this%nlat
+        O_Zdata(ii,ll) = O_Zdata(ii,ll) + (I_Bamp(nn,ll)*this%basis(ii,nn))
+      end do
+      end do
+      end do
+
+      ! End Routine
+      !------------
+      return
+    end subroutine eval_ZonalProfile_2Dgrid
+    !=======================================================================
+
+
+    !=======================================================================
+    subroutine init_ZonalAverage(this,IO_lats,IO_area,I_nlat,GEN_GAUSSLATS)
+      !
+      ! init_ZonalAverage: Initialize the ZonalAverage datastruture for the 
+      !                    given nlat gridpoints. It is assumed that the domain
+      !                    of these gridpoints of the profile span latitudes 
+      !                    from SP to NP.
+      !
+      !                    The optional GEN_GAUSSLATS flag allows for the 
+      !                    generation of Gaussian latitudes. The generated grid
+      !                    over-writes the values of IO_lats/IO_area passed by 
+      !                    the user.
+      !=====================================================================
+      !
+      ! Passed Variables
+      !------------------
+      class(ZonalAverage_t) :: this
+      real(r8)     ,intent(inout):: IO_lats(:)
+      real(r8)     ,intent(inout):: IO_area(:)
+      integer         ,intent(in):: I_nlat
+      logical,optional,intent(in):: GEN_GAUSSLATS
+      !
+      ! Local Values
+      !--------------
+      real(r8),allocatable:: Clats (:)
+      real(r8),allocatable:: Glats (:,:)
+      real(r8),allocatable:: BinLat(:)
+      real(r8),allocatable:: Asum  (:,:)
+      real(r8),allocatable:: Anorm (:)
+      real(r8):: area(pcols),rlat,PI2
+      integer :: ii,nn,n2,jj,ierr
+      integer :: ncols,lchnk,cc,jlat,nc
+
+      PI2 = 2._r8*atan(1._r8)
+
+      ! Allocate space
+      !-----------------
+      if(allocated(this%area   )) deallocate(this%area)
+      if(allocated(this%a_norm )) deallocate(this%a_norm)
+      if(allocated(this%area_g )) deallocate(this%area_g)
+      if(allocated(this%idx_map)) deallocate(this%idx_map)
+
+      this%nlat = I_nlat
+      allocate(this%area   (I_nlat))
+      allocate(this%a_norm (I_nlat))
+      allocate(this%area_g (pcols,begchunk:endchunk))
+      allocate(this%idx_map(pcols,begchunk:endchunk))
+
+      allocate(Clats (I_nlat))
+      allocate(BinLat(I_nlat+1))
+      allocate(Glats (pcols,begchunk:endchunk))
+      allocate(Asum  (1,I_nlat))
+      allocate(Anorm (I_nlat))
+
+      ! Optionally create the Latitude Gridpoints 
+      ! and their associated area weights. Otherwise it
+      ! is assumed that the user is supplying them.
+      !-----------------------------------------------
+      if(present(GEN_GAUSSLATS).and.(GEN_GAUSSLATS)) then
+
+        ! Create a Gaussin grid from SP to NP
+        !--------------------------------------
+        call dgaqd(this%nlat,Clats,IO_area,ierr)
+    
+        ! Convert generated colatitudes SP->NP to Lats and convert 
+        ! to degrees and scale the area for global 2D integrals
+        !-----------------------------------------------------------
+        do nn=1,this%nlat
+          IO_lats(nn) = (45._r8*Clats(nn)/atan(1._r8)) - 90._r8
+          IO_area(nn) = IO_area(nn)*(8._r8*atan(1._r8))
+        end do
+      else
+        ! Convert Latitudes to SP->NP colatitudes in radians
+        !----------------------------------------------------
+        do nn=1,this%nlat
+          Clats(nn) = (IO_lats(nn) + 90._r8)*atan(1._r8)/45._r8
+        end do
+      endif
+
+      ! Copy the Lat grid area weights to the datastructure
+      !-----------------------------------------------------
+      this%area(1:this%nlat) = IO_area(1:this%nlat)
+
+      ! Save a copy the area weights for each 2D gridpoint 
+      ! and convert Latitudes to SP->NP colatitudes in radians
+      !-------------------------------------------------------
+      do lchnk=begchunk,endchunk
+        ncols = get_ncols_p(lchnk)
+        call get_wght_all_p(lchnk, ncols, area)
+        do cc = 1,ncols
+          rlat=get_rlat_p(lchnk,cc)
+          this%area_g(cc,lchnk) = area(cc)
+          Glats      (cc,lchnk) = rlat + PI2
+        end do
+      end do
+
+      ! Set boundaroes for Latitude bins
+      !-----------------------------------
+      BinLat(1)           = 0._r8
+      BinLat(this%nlat+1) = 4._r8*atan(1._r8)
+      do nn=2,this%nlat
+        BinLat(nn) = (Clats(nn-1)+Clats(nn))/2._r8
+      end do
+
+      ! Loop over 2D gridpoints and determine its lat bin index
+      !---------------------------------------------------------
+      do lchnk=begchunk,endchunk
+        ncols = get_ncols_p(lchnk)
+        do cc = 1,ncols
+          jlat = -1
+          if((Glats(cc,lchnk).le.BinLat(2)).and. &
+             (Glats(cc,lchnk).ge.BinLat(1))      ) then
+            jlat = 1
+          elseif((Glats(cc,lchnk).ge.BinLat(this%nlat)  ).and. &
+                 (Glats(cc,lchnk).le.BinLat(this%nlat+1))      ) then
+            jlat = this%nlat
+          else
+            do jj=2,(this%nlat-1)
+              if((Glats(cc,lchnk).gt.BinLat(jj  )).and. &
+                 (Glats(cc,lchnk).le.BinLat(jj+1))      ) then
+                jlat = jj
+                exit
+              endif
+            end do
+          endif
+          if((jlat.lt.1).or.(jlat.gt.this%nlat)) then
+            call endrun('ZonalAverage init ERROR: jlat not in range')
+          endif
+          this%idx_map(cc,lchnk) = jlat
+        end do
+      end do
+
+      ! Initialize 2D Area sums for each bin
+      !--------------------------------------
+      Asum(:,:) = 0._r8
+      do lchnk=begchunk,endchunk
+        ncols = get_ncols_p(lchnk)
+        do cc = 1,ncols
+          jlat = this%idx_map(cc,lchnk)
+          Asum(1,jlat) = Asum(1,jlat) + this%area_g(cc,lchnk)
+        end do
+      end do
+
+      call shr_reprosum_calc(Asum,Anorm,1,1,this%nlat,gbl_max_nsummands=1,commid=mpicom)
+
+      ! End Routine
+      !------------
+      deallocate(Clats)
+      deallocate(BinLat)
+      deallocate(Glats)
+      deallocate(Asum)
+      deallocate(Anorm)
+      return
+    end subroutine init_ZonalAverage
+    !=======================================================================
+
+
+    !=======================================================================
+    subroutine calc_ZonalAverage_2DbinAvg(this,I_Gdata,O_Zdata)
+      !
+      ! calc_ZonalProfile_2DbinAvg: Given 2D data values for ncol gridpoints, 
+      !                             compute the nlat area weighted binAvg profile
+      !=====================================================================
+      !
+      ! Passed Variables
+      !------------------
+      class(ZonalAverage_t):: this
+      real(r8),intent(in ):: I_Gdata(pcols,begchunk:endchunk)
+      real(r8),intent(out):: O_Zdata(:)
+      !
+      ! Local Values
+      !--------------
+      real(r8),allocatable:: Asum (:,:)
+      integer:: nn,ncols,lchnk,cc,jlat
+
+      ! Initialize Zonal profile
+      !---------------------------
+      allocate(Asum(1,this%nlat))
+      Asum(:,:) = 0._r8
+
+      O_Zdata(1:this%nlat) = 0._r8
+
+      ! Compute area-weighted sums
+      !-----------------------------
+      do lchnk=begchunk,endchunk
+        ncols = get_ncols_p(lchnk)
+        do cc = 1,ncols
+          jlat = this%idx_map(cc,lchnk)
+          Asum(1,jlat) = Asum(1,jlat) + I_Gdata(cc,lchnk)*this%area_g(cc,lchnk)
+        end do
+      end do
+
+      call shr_reprosum_calc(Asum,O_Zdata,1,1,this%nlat,commid=mpicom)
+
+      ! Divide by area norm to get the averages
+      !-----------------------------------------
+      do nn=1,this%nlat
+        O_Zdata(nn) = O_Zdata(nn)/this%a_norm(nn)
+      end do ! nn=1,this%ncol
+
+      ! End Routine
+      !------------
+      return
+    end subroutine calc_ZonalAverage_2DbinAvg
+    !=======================================================================
+
+
+    !=======================================================================
+    subroutine calc_ZonalAverage_3DbinAvg(this,I_Gdata,O_Zdata)
+      !
+      ! calc_ZonalProfile_3DbinAvg: Given 3D data values for ncol,nlev gridpoints, 
+      !                             compute the nlat,nlev area weighted binAvg profile
+      !=====================================================================
+      !
+      ! Passed Variables
+      !------------------
+      class(ZonalAverage_t):: this
+      real(r8),intent(in ):: I_Gdata(pcols,pver,begchunk:endchunk)
+      real(r8),intent(out):: O_Zdata(:,:)
+      !
+      ! Local Values
+      !--------------
+      real(r8),allocatable:: Gsum(:)
+      real(r8),allocatable:: Asum(:,:)
+      integer:: nn,ncols,lchnk,cc,jlat
+      integer:: Nsum,ll,ns
+
+      ! Initialize Zonal profile
+      !---------------------------
+      Nsum = this%nlat*pver
+      allocate(Gsum(Nsum))
+      allocate(Asum(1,Nsum))
+      Asum(:,:) = 0._r8
+
+      O_Zdata(1:this%nlat,1:pver) = 0._r8
+
+      ! Compute area-weighted sums
+      !-----------------------------
+      do lchnk=begchunk,endchunk
+        ncols = get_ncols_p(lchnk)
+        do ll = 1,pver
+        do cc = 1,ncols
+          jlat = this%idx_map(cc,lchnk)
+          ns = jlat + (ll-1)*this%nlat
+          Asum(1,ns) = Asum(1,ns) + I_Gdata(cc,ll,lchnk)*this%area_g(cc,lchnk)
+        end do
+        end do
+      end do
+
+      call shr_reprosum_calc(Asum,Gsum,1,1,Nsum,commid=mpicom)
+
+      ! Divide by area norm to get the averages
+      !-----------------------------------------
+      do ll = 1,pver
+      do nn = 1,this%nlat
+        ns = nn + (ll-1)*this%nlat
+        O_Zdata(nn,ll) = Gsum(ns)/this%a_norm(nn)
+      end do
+      end do
+
+      ! End Routine
+      !------------
+      return
+    end subroutine calc_ZonalAverage_3DbinAvg
+    !=======================================================================
+
+
+    !=======================================================================
+    subroutine dalfk(nn,mm,cp)
+      !
+      ! subroutine alfk (n,m,cp)
+      !
+      ! dimension of           real cp(n/2 + 1)
+      ! arguments
+      !
+      ! purpose                routine alfk computes single precision fourier
+      !                        coefficients in the trigonometric series
+      !                        representation of the normalized associated
+      !                        legendre function pbar(n,m,theta) for use by
+      !                        routines lfp and lfpt in calculating single
+      !                        precision pbar(n,m,theta).
+      !
+      !                        first define the normalized associated
+      !                        legendre functions
+      !
+      !                        pbar(m,n,theta) = sqrt((2*n+1)*factorial(n-m)
+      !                        /(2*factorial(n+m)))*sin(theta)**m/(2**n*
+      !                        factorial(n)) times the (n+m)th derivative of
+      !                        (x**2-1)**n with respect to x=cos(theta)
+      !
+      !                        where theta is colatitude.
+      !
+      !                        then subroutine alfk computes the coefficients
+      !                        cp(k) in the following trigonometric
+      !                        expansion of pbar(m,n,theta).
+      !
+      !                        1) for n even and m even, pbar(m,n,theta) =
+      !                           .5*cp(1) plus the sum from k=1 to k=n/2
+      !                           of cp(k+1)*cos(2*k*th)
+      !
+      !                        2) for n even and m odd, pbar(m,n,theta) =
+      !                           the sum from k=1 to k=n/2 of
+      !                           cp(k)*sin(2*k*th)
+      !
+      !                        3) for n odd and m even, pbar(m,n,theta) =
+      !                           the sum from k=1 to k=(n+1)/2 of
+      !                           cp(k)*cos((2*k-1)*th)
+      !
+      !                        4) for n odd and m odd,  pbar(m,n,theta) =
+      !                           the sum from k=1 to k=(n+1)/2 of
+      !                           cp(k)*sin((2*k-1)*th)
+      !
+      !
+      ! usage                  call alfk(n,m,cp)
+      !
+      ! arguments
+      !
+      ! on input               n
+      !                          nonnegative integer specifying the degree of
+      !                          pbar(n,m,theta)
+      !
+      !                        m
+      !                          is the order of pbar(n,m,theta). m can be
+      !                          any integer however cp is computed such that
+      !                          pbar(n,m,theta) = 0 if abs(m) is greater
+      !                          than n and pbar(n,m,theta) = (-1)**m*
+      !                          pbar(n,-m,theta) for negative m.
+      !
+      ! on output              cp
+      !                          single precision array of length (n/2)+1
+      !                          which contains the fourier coefficients in
+      !                          the trigonometric series representation of
+      !                          pbar(n,m,theta)
+      !
+      !
+      ! special conditions     none
+      !
+      ! precision              single
+      !
+      ! algorithm              the highest order coefficient is determined in
+      !                        closed form and the remainig coefficients are
+      !                        determined as the solution of a backward
+      !                        recurrence relation.
+      !
+      ! accuracy               comparison between routines alfk and double
+      !                        precision dalfk on the cray1 indicates
+      !                        greater accuracy for smaller values
+      !                        of input parameter n.  agreement to 14
+      !                        places was obtained for n=10 and to 13
+      !                        places for n=100.
+      !
+      !=====================================================================
+      !
+      ! Passed Variables 
+      !------------------
+      integer ,intent(in ):: nn
+      integer ,intent(in ):: mm
+      real(r8),intent(out):: cp(nn/2+1)
+      !
+      ! Local Values
+      !----------------
+      real(r8):: fnum,fnmh
+      real(r8):: pm1
+      real(r8):: t1,t2
+      real(r8):: fden
+      real(r8):: cp2
+      real(r8):: fnnp1
+      real(r8):: fnmsq
+      real(r8):: fk
+      real(r8):: a1,b1,C1
+      integer :: ma,nmms2,nex
+      integer :: ii,ll
+
+      real(r8),parameter:: SC10=1024.D0
+      real(r8),parameter:: SC20=SC10*SC10
+      real(r8),parameter:: SC40=SC20*SC20
+
+      cp(1) = 0.D0
+      ma = iabs(mm)
+      if(ma.gt.nn) return
+
+      if((nn-1).lt.0) then
+        cp(1) = sqrt(2.D0)
+        return
+      elseif((nn-1).eq.0) then
+        if(ma.ne.0) then
+          cp(1) = sqrt(.75D0)
+          if(mm.eq.-1) cp(1) = -cp(1)
+        else
+          cp(1) = sqrt(1.5D0)
+        endif
+        return
+      else
+        if(mod(nn+ma,2).ne.0) then
+          nmms2 = (nn-ma-1)/2
+          fnum  = nn + ma + 2
+          fnmh  = nn - ma + 2
+          pm1   = -1.D0
+        else
+          nmms2 = (nn-ma)/2
+          fnum  = nn + ma + 1
+          fnmh  = nn - ma + 1
+          pm1   = 1.D0
+        endif
+      endif
+   
+      t1   = 1.D0/SC20
+      nex  = 20
+      fden = 2.D0
+      if(nmms2.ge.1) then
+        do ii = 1,nmms2
+          t1 = fnum*t1/fden
+          if(t1.GT.SC20) THEN
+            t1  = t1/SC40
+            nex = nex + 40
+          endif
+          fnum = fnum + 2.D0
+          fden = fden + 2.D0
+        end do
+      endif
+
+      if(mod(ma/2,2).ne.0) then
+        t1 = -t1/2.D0**(nn-1-nex)
+      else
+        t1 =  t1/2.D0**(nn-1-nex)
+      endif
+      t2 = 1.D0
+      if(ma.ne.0) then
+        do ii = 1,ma
+          t2   = fnmh*t2/ (fnmh+pm1)
+          fnmh = fnmh + 2.D0
+        end do
+      endif
+
+      cp2   = t1*sqrt((nn+.5D0)*t2)
+      fnnp1 = nn*(nn+1)
+      fnmsq = fnnp1 - 2.D0*ma*ma
+
+      if((mod(nn,2).eq.0).and.(mod(ma,2).eq.0)) then
+        ll = 1+(nn+1)/2
+      else
+        ll = (nn+1)/2
+      endif
+
+      cp(ll) = cp2
+      if(mm.lt.0) then
+        if(mod(ma,2).ne.0) cp(ll) = -cp(ll)
+      endif
+      if(ll.le.1) return
+
+      fk = nn
+      a1 = (fk-2.D0)*(fk-1.D0) - fnnp1
+      b1 = 2.D0* (fk*fk-fnmsq)
+      cp(ll-1) = b1*cp(ll)/a1
+   30 continue
+        ll = ll - 1
+        if(ll.le.1) return
+        fk = fk - 2.D0
+        a1 = (fk-2.D0)*(fk-1.D0) - fnnp1
+        b1 = -2.D0*(fk*fk-fnmsq)
+        c1 = (fk+1.D0)*(fk+2.D0) - fnnp1
+        cp(ll-1) = -(b1*cp(ll)+c1*cp(ll+1))/a1
+      goto 30
+
+      ! End Routine
+      !-------------
+      return
+    end subroutine dalfk
+    !=======================================================================
+
+
+    !=======================================================================
+    subroutine dlfpt(nn,mm,theta,cp,pb)
+      !
+      ! subroutine lfpt (n,m,theta,cp,pb)
+      !
+      ! dimension of
+      ! arguments
+      !                        cp((n/2)+1)
+      !
+      ! purpose                routine lfpt uses coefficients computed by
+      !                        routine alfk to compute the single precision
+      !                        normalized associated legendre function pbar(n,
+      !                        m,theta) at colatitude theta.
+      !
+      ! usage                  call lfpt(n,m,theta,cp,pb)
+      !
+      ! arguments
+      !
+      ! on input               n
+      !                          nonnegative integer specifying the degree of
+      !                          pbar(n,m,theta)
+      !                        m
+      !                          is the order of pbar(n,m,theta). m can be
+      !                          any integer however pbar(n,m,theta) = 0
+      !                          if abs(m) is greater than n and
+      !                          pbar(n,m,theta) = (-1)**m*pbar(n,-m,theta)
+      !                          for negative m.
+      !
+      !                        theta
+      !                          single precision colatitude in radians
+      !
+      !                        cp
+      !                          single precision array of length (n/2)+1
+      !                          containing coefficients computed by routine
+      !                          alfk
+      !
+      ! on output              pb
+      !                          single precision variable containing
+      !                          pbar(n,m,theta)
+      !
+      ! special conditions     calls to routine lfpt must be preceded by an
+      !                        appropriate call to routine alfk.
+      !
+      ! precision              single
+      !
+      ! algorithm              the trigonometric series formula used by
+      !                        routine lfpt to calculate pbar(n,m,th) at
+      !                        colatitude th depends on m and n as follows:
+      !
+      !                           1) for n even and m even, the formula is
+      !                              .5*cp(1) plus the sum from k=1 to k=n/2
+      !                              of cp(k)*cos(2*k*th)
+      !                           2) for n even and m odd. the formula is
+      !                              the sum from k=1 to k=n/2 of
+      !                              cp(k)*sin(2*k*th)
+      !                           3) for n odd and m even, the formula is
+      !                              the sum from k=1 to k=(n+1)/2 of
+      !                              cp(k)*cos((2*k-1)*th)
+      !                           4) for n odd and m odd, the formula is
+      !                              the sum from k=1 to k=(n+1)/2 of
+      !                              cp(k)*sin((2*k-1)*th)
+      !
+      ! accuracy               comparison between routines lfpt and double
+      !                        precision dlfpt on the cray1 indicates greater
+      !                        accuracy for greater values on input parameter
+      !                        n.  agreement to 13 places was obtained for
+      !                        n=10 and to 12 places for n=100.
+      !
+      ! timing                 time per call to routine lfpt is dependent on
+      !                        the input parameter n.
+      !
+      !=====================================================================
+      integer:: nn,mm
+      real(r8):: theta
+      real(r8):: cp(:)
+      real(r8):: pb
+      real(r8):: cdt
+      real(r8):: sdt
+      real(r8):: ct
+      real(r8):: st
+      real(r8):: summ
+      real(r8):: cth
+
+      integer:: ma,np1,nmod,mmod,kdo
+      integer:: kp1,kk
+
+      pb = 0.D0
+      ma = iabs(mm)
+      if(ma.gt.nn) return
+
+      if(nn.le.0) then 
+        if(ma.le.0) then 
+          pb = sqrt(.5D0)
+          goto 140
+        endif
+      endif
+
+      np1  = nn + 1
+      nmod = mod(nn,2)
+      mmod = mod(ma,2)
+
+      if(nmod.le.0) then
+        if(mmod.le.0) then
+          kdo = nn/2 + 1
+          cdt = cos(theta+theta)
+          sdt = sin(theta+theta)
+          ct  = 1.D0
+          st  = 0.D0
+          summ = .5D0*cp(1)
+          do kp1 = 2,kdo
+            cth = cdt*ct - sdt*st
+            st  = sdt*ct + cdt*st
+            ct  = cth
+            summ = summ + cp(kp1)*ct
+          end do
+          pb = summ
+          goto 140
+        endif
+        kdo = nn/2
+        cdt = cos(theta+theta)
+        sdt = sin(theta+theta)
+        ct  = 1.D0
+        st  = 0.D0
+        summ = 0.D0
+        do kk = 1,kdo
+          cth = cdt*ct - sdt*st
+          st  = sdt*ct + cdt*st
+          ct  = cth
+          summ = summ + cp(kk)*st
+        end do
+        pb = summ
+        goto 140
+      endif
+
+      kdo = (nn+1)/2
+      if(mmod.le.0) then
+        cdt =  cos(theta+theta)
+        sdt =  sin(theta+theta)
+        ct  =  cos(theta)
+        st  = -sin(theta)
+        summ = 0.D0
+        do kk = 1,kdo
+          cth = cdt*ct - sdt*st
+          st  = sdt*ct + cdt*st
+          ct  = cth
+          summ = summ + cp(kk)*ct
+        end do
+        pb = summ
+        goto 140
+      endif
+
+      cdt =  cos(theta+theta)
+      sdt =  sin(theta+theta)
+      ct  =  cos(theta)
+      st  = -sin(theta)
+      summ = 0.D0
+      do kk = 1,kdo
+        cth = cdt*ct - sdt*st
+        st  = sdt*ct + cdt*st
+        ct  = cth
+        summ = summ + cp(kk)*st
+      end do
+      pb = summ
+
+      ! End Routine
+      !-------------
+  140 continue
+      return
+    end subroutine dlfpt
+    !=======================================================================
+
+
+    !=======================================================================
+    subroutine Invert_Matrix(I_Mat,Nbas,O_InvMat)
+      !
+      ! Invert_Matrix: Given the NbasxNbas matrix, calculate and return 
+      !                the inverse of the matrix.
+      !====================================================================
+      real(r8),parameter:: TINY = 1.d-20
+      !
+      ! Passed Variables
+      !------------------
+      real(r8),intent(in ):: I_Mat   (:,:)
+      integer ,intent(in ):: Nbas
+      real(r8),intent(out):: O_InvMat(:,:)
+      !
+      ! Local Values
+      !-------------
+      real(r8),allocatable:: Mwrk(:,:),Rscl(:)
+      integer ,allocatable:: Indx(:)
+      real(r8):: Psgn,Mmax,Mval,Sval
+      integer :: ii,jj,kk,ll,i2,ii_max
+
+      ! Allocate work space
+      !---------------------
+      allocate(Mwrk(Nbas,Nbas))
+      allocate(Rscl(Nbas))
+      allocate(Indx(Nbas))
+
+      ! Copy the Input matrix so it can be decomposed
+      !-------------------------------------------------
+      Mwrk(1:Nbas,1:Nbas) = I_Mat(1:Nbas,1:Nbas)
+
+      ! Initailize Row scales
+      !----------------------
+      Psgn = 1._r8
+      do ii=1,Nbas
+        Mmax = 0._r8
+        do jj=1,Nbas
+          if(abs(Mwrk(ii,jj)).gt.Mmax) Mmax = abs(Mwrk(ii,jj))
+        end do
+        if(Mmax.eq.0._r8) then
+          call endrun('Singular Matrix')
+        endif
+        Rscl(ii) = 1._r8/Mmax
+      end do
+
+      ! Decompose the matrix
+      !-----------------------
+      do jj=1,Nbas
+
+        if(jj.gt.1) then
+          do ii=1,(jj-1)
+            Sval = Mwrk(ii,jj)
+            if(ii.gt.1) then
+              do kk=1,(ii-1)
+                Sval = Sval - Mwrk(ii,kk)*Mwrk(kk,jj)
+              end do
+              Mwrk(ii,jj) = Sval
+            endif
+          end do
+        endif
+
+        Mmax = 0._r8
+        do ii=jj,Nbas
+          Sval = Mwrk(ii,jj)
+          if(jj.gt.1) then
+            do kk=1,(jj-1)
+              Sval = Sval - Mwrk(ii,kk)*Mwrk(kk,jj)
+            end do
+            Mwrk(ii,jj) = Sval
+          endif
+          Mval = Rscl(ii)*abs(Sval)
+          if(Mval.ge.Mmax) then
+            ii_max = ii
+            Mmax = Mval
+          endif
+        end do
+
+        if(jj.ne.ii_max) then
+          do kk=1,Nbas
+            Mval            = Mwrk(ii_max,kk)
+            Mwrk(ii_max,kk) = Mwrk(jj,kk)
+            Mwrk(jj,kk)     = Mval
+          end do
+          Psgn = -Psgn
+          Rscl(ii_max) = Rscl(jj)
+        endif
+  
+        Indx(jj) = ii_max
+        if(jj.ne.Nbas) then
+          if(Mwrk(jj,jj).eq.0._r8) Mwrk(jj,jj) = TINY
+          Mval = 1._r8/Mwrk(jj,jj)
+          do ii=(jj+1),Nbas
+            Mwrk(ii,jj) = Mwrk(ii,jj)*Mval
+          end do
+        endif
+
+      end do ! jj=1,Nbas
+
+      if(Mwrk(Nbas,Nbas).eq.0._r8) Mwrk(Nbas,Nbas) = TINY
+
+      ! Initialize the inverse array with the identity matrix
+      !-------------------------------------------------------
+      O_InvMat(:,:) = 0._r8
+      do ii=1,Nbas
+        O_InvMat(ii,ii) = 1._r8
+      end do
+
+      ! Back substitution to construct the inverse
+      !---------------------------------------------
+      do kk=1,Nbas
+
+        i2 = 0
+        do ii=11,Nbas
+          ll = Indx(ii)
+          Sval = O_InvMat(ll,kk)
+          O_InvMat(ll,kk) = O_InvMat(ii,kk)
+          if(i2.ne.0) then
+            do jj=i2,(ii-1)
+              Sval = Sval - Mwrk(ii,jj)*O_InvMat(jj,kk)
+            end do
+          elseif(Sval.ne.0._r8) then
+            i2 = ii
+          endif
+          O_InvMat(ii,kk) = Sval
+        end do
+
+        do ii=Nbas,1,-1
+          Sval = O_InvMat(ii,kk)
+          if(ii.lt.Nbas) then
+            do jj=(ii+1),Nbas
+              Sval = Sval - Mwrk(ii,jj)*O_InvMat(jj,kk)
+            end do
+          endif
+          O_InvMat(ii,kk) = Sval/Mwrk(ii,ii)
+        end do
+
+      end do ! kk=1,Nbas
+
+      ! Clean up this mess
+      !---------------------
+      deallocate(Mwrk)
+      deallocate(Rscl)
+      deallocate(Indx)
+
+      ! End Routine
+      !--------------
+      return
+    end subroutine Invert_Matrix
+    !=======================================================================
+
+
+    !=======================================================================
+    subroutine dgaqd(nlat,theta,wts,ierr)
+      !
+      !  . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .
+      !  .                                                             .
+      !  .                  copyright (c) 2001 by ucar                 .
+      !  .                                                             .
+      !  .       university corporation for atmospheric research       .
+      !  .                                                             .
+      !  .                      all rights reserved                    .
+      !  .                                                             .
+      !  . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .
+      !
+      !                             February 2002
+      !
+      !     gauss points and weights are computed using the fourier-newton
+      !     described in "on computing the points and weights for
+      !     gauss-legendre quadrature", paul n. swarztrauber, siam journal
+      !     on scientific computing that has been accepted for publication.
+      !     This routine is faster and more accurate than older program
+      !     with the same name.
+      !
+      !     subroutine gaqd computes the nlat gaussian colatitudes and weights
+      !     in double precision. the colatitudes are in radians and lie in the
+      !     in the interval (0,pi).
+      !
+      !     input parameters
+      !
+      !     nlat    the number of gaussian colatitudes in the interval (0,pi)
+      !             (between the two poles).  nlat must be greater than zero.
+      !
+      !     output parameters
+      !
+      !     theta   a double precision array with length nlat
+      !             containing the gaussian colatitudes in
+      !             increasing radians on the interval (0,pi).
+      !
+      !     wts     a double precision array with lenght nlat
+      !             containing the gaussian weights.
+      !
+      !     ierror = 0 no errors
+      !            = 1 if nlat.le.0
+      !
+      !===================================================================
+      !
+      ! Passed variables 
+      !-----------------
+      integer ,intent(in ):: nlat
+      real(r8),intent(out):: theta(nlat)
+      real(r8),intent(out):: wts(nlat)
+      integer ,intent(out):: ierr
+      !
+      ! Local Values
+      !-------------
+      real(r8):: eps
+      real(r8):: sgnd
+      real(r8):: xx,pi,pis2,dtheta,dthalf
+      real(r8):: cmax,zprev,zlast,zero,zhold,pb,dpb,dcor,summ,cz
+      integer :: mnlat,ns2,nhalf,idx,nix,it,ii
+!      real(r8):: DDZEPS  ??
+
+      ! check work space length
+      !------------------------
+      if(nlat.le.0) then
+        return
+        ierr = 1
+      endif
+      ierr = 0
+
+      ! compute weights and points analytically when nlat=1,2
+      !-------------------------------------------------------
+      if(nlat.eq.1) then
+        theta(1) = dacos(0._r8)
+        wts  (1) = 2._r8
+        return
+      elseif(nlat.eq.2) then
+        xx       = dsqrt(1._r8/3._r8)
+        theta(1) = dacos( xx)
+        theta(2) = dacos(-xx)
+        wts  (1) = 1._r8
+        wts  (2) = 1._r8
+        return
+      endif
+
+      ! Proceed for nlat > 2
+      !----------------------
+      eps   = sqrt(ddzeps(1._r8))
+      eps   = eps*sqrt(eps)
+      pis2  = 2._r8*datan(1._r8)
+      pi    = pis2 + pis2
+      mnlat = mod(nlat,2)
+      ns2   = nlat/2
+      nhalf = (nlat+1)/2
+      idx   = ns2 + 2
+
+      call dcpdp(nlat,cz,theta(ns2+1),wts(ns2+1))
+
+      dtheta = pis2/nhalf
+      dthalf = dtheta/2._r8
+      cmax   = .2_r8*dtheta
+
+      ! estimate first point next to theta = pi/2
+      !-------------------------------------------
+      if(mnlat.ne.0) then
+        zero  = pis2 - dtheta
+        zprev = pis2
+        nix   = nhalf - 1
+      else
+        zero = pis2 - dthalf
+        nix  = nhalf
+      endif
+
+   10 continue
+        it = 0
+   20   continue
+          it = it + 1
+          zlast = zero
+
+          ! newton iterations
+          !-----------------------
+          call dtpdp(nlat,zero,cz,theta(ns2+1),wts(ns2+1),pb,dpb)
+
+          dcor = pb/dpb
+          if(dcor.ne.0._r8) then
+            sgnd = dcor/dabs(dcor)
+          else
+            sgnd = 1._r8
+          endif
+          dcor = sgnd*min(dabs(dcor),cmax)
+          zero = zero - dcor
+        if(dabs(zero-zlast).gt.eps*dabs(zero)) goto 20
+
+        theta(nix) = zero
+        zhold      = zero
+
+        !   wts(nix) = (nlat+nlat+1)/(dpb*dpb)
+        ! yakimiw's formula permits using old pb and dpb
+        !--------------------------------------------------
+        wts(nix) = (nlat+nlat+1)/ (dpb+pb*dcos(zlast)/dsin(zlast))**2
+        nix      = nix - 1
+        if(nix.eq.0) goto 30
+        if(nix.eq.nhalf-1) zero = 3._r8*zero - pi
+        if(nix.lt.nhalf-1) zero = zero + zero - zprev
+        zprev = zhold
+      goto 10
+   30 continue
+
+      ! extend points and weights via symmetries
+      !-------------------------------------------
+      if(mnlat.ne.0) then
+        theta(nhalf) = pis2
+        call dtpdp(nlat,pis2,cz,theta(ns2+1),wts(ns2+1),pb,dpb)
+        wts(nhalf) = (nlat+nlat+1)/ (dpb*dpb)
+      endif
+
+      do ii = 1,ns2
+        wts  (nlat-ii+1) = wts(ii)
+        theta(nlat-ii+1) = pi - theta(ii)
+      end do
+
+      summ = 0._r8
+      do ii = 1,nlat
+        summ = summ + wts(ii)
+      end do
+      do ii = 1,nlat
+        wts(ii) = 2._r8*wts(ii)/summ
+      end do
+
+      ! End Routine
+      !------------
+      return
+    end subroutine dgaqd
+    !=======================================================================
+
+
+    !=======================================================================
+    subroutine dcpdp(nn,cz,cp,dcp)
+      !
+      !     computes the fourier coefficients of the legendre
+      !     polynomial p_n^0 and its derivative.
+      !     n is the degree and n/2 or (n+1)/2
+      !     coefficients are returned in cp depending on whether
+      !     n is even or odd. The same number of coefficients
+      !     are returned in dcp. For n even the constant
+      !     coefficient is returned in cz.
+      !=====================================================================
+      !
+      ! Passed variables
+      !-----------------
+      integer :: nn
+      real(r8):: cz
+      real(r8):: cp(nn/2+1)
+      real(r8):: dcp(nn/2+1)
+      !
+      ! Local Values
+      !--------------
+      real(r8):: t1,t2,t3,t4
+      integer :: ncp,jj
+
+      ncp = (nn+1)/2
+      t1  = -1._r8
+      t2  = nn + 1._r8
+      t3  = 0._r8
+      t4  = nn + nn + 1._r8
+      if(mod(nn,2).eq.0) then
+        cp(ncp) = 1._r8
+        do jj = ncp,2,-1
+          t1 = t1 + 2._r8
+          t2 = t2 - 1._r8
+          t3 = t3 + 1._r8
+          t4 = t4 - 2._r8
+          cp(jj-1) = (t1*t2)/ (t3*t4)*cp(jj)
+        end do
+        t1 = t1 + 2._r8
+        t2 = t2 - 1._r8
+        t3 = t3 + 1._r8
+        t4 = t4 - 2._r8
+        cz = (t1*t2)/ (t3*t4)*cp(1)
+        do jj = 1,ncp
+          dcp(jj) = (jj+jj)*cp(jj)
+        end do
+      else
+        cp(ncp) = 1._r8
+        do jj = ncp - 1,1,-1
+          t1 = t1 + 2._r8
+          t2 = t2 - 1._r8
+          t3 = t3 + 1._r8
+          t4 = t4 - 2._r8
+          cp(jj) = (t1*t2)/ (t3*t4)*cp(jj+1)
+        end do
+        do jj = 1,ncp
+          dcp(jj) = (jj+jj-1)*cp(jj)
+        end do
+      endif
+
+      ! End Routine
+      !-------------
+      return
+    end subroutine dcpdp
+    !=======================================================================
+
+
+    !=======================================================================
+    subroutine dtpdp(nn,theta,cz,cp,dcp,pb,dpb)
+      !
+      !     computes pn(theta) and its derivative dpb(theta) with
+      !     respect to theta
+      !=====================================================================
+      !
+      ! Passed variables
+      !------------------
+      integer :: nn
+      real(r8):: theta
+      real(r8):: cz
+      real(r8):: cp (nn/2+1)
+      real(r8):: dcp(nn/2+1)
+      real(r8):: pb
+      real(r8):: dpb
+      !
+      ! Local Values
+      !--------------
+      real(r8):: fn,cdt,sdt,cth,sth,chh
+      integer :: kdo,kk
+
+      fn = nn
+      cdt = dcos(theta+theta)
+      sdt = dsin(theta+theta)
+      if(mod(nn,2).eq.0) then
+        ! n even
+        !----------
+        kdo = nn/2
+        pb  = .5_r8*cz
+        dpb = 0._r8
+        if(nn.gt.0) then
+          cth = cdt
+          sth = sdt
+          do kk = 1,kdo
+!            pb = pb+cp(k)*cos(2*k*theta)
+!            dpb = dpb-(k+k)*cp(k)*sin(2*k*theta)
+            pb  = pb  +  cp(kk)*cth
+            dpb = dpb - dcp(kk)*sth
+            chh = cdt*cth - sdt*sth
+            sth = sdt*cth + cdt*sth
+            cth = chh
+          end do
+        endif
+      else
+        ! n odd
+        !-----------
+        kdo = (nn+1)/2
+        pb  = 0._r8
+        dpb = 0._r8
+        cth = dcos(theta)
+        sth = dsin(theta)
+        do kk = 1,kdo
+!          pb = pb+cp(k)*cos((2*k-1)*theta)
+!          dpb = dpb-(k+k-1)*cp(k)*sin((2*k-1)*theta)
+          pb  = pb  +  cp(kk)*cth
+          dpb = dpb - dcp(kk)*sth
+          chh = cdt*cth - sdt*sth
+          sth = sdt*cth + cdt*sth
+          cth = chh
+        end do
+      endif
+
+      ! End Routine
+      !-------------
+      return
+    end subroutine dtpdp
+    !=======================================================================
+
+
+    !=======================================================================
+    real(r8) function ddzeps(xx)
+      !
+      !     estimate unit roundoff in quantities of size x.
+      !
+      !     this program should function properly on all systems
+      !     satisfying the following two assumptions,
+      !        1.  the base used in representing floating point
+      !            numbers is not a power of three.
+      !        2.  the quantity  a  in statement 10 is represented to
+      !            the accuracy used in floating point variables
+      !            that are stored in memory.
+      !     the statement number 10 and the go to 10 are intended to
+      !     force optimizing compilers to generate code satisfying
+      !     assumption 2.
+      !     under these assumptions, it should be true that,
+      !            a  is not exactly equal to four-thirds,
+      !            b  has a zero for its last bit or digit,
+      !            c  is not exactly equal to one,
+      !            eps  measures the separation of 1.0 from
+      !                 the next larger floating point number.
+      !     the developers of eispack would appreciate being informed
+      !     about any systems where these assumptions do not hold.
+      !
+      !     this version dated 4/6/83.
+      !
+      !=====================================================================
+      !
+      ! Passed variables
+      !-----------------
+      real(r8):: xx
+      !
+      ! Local Values
+      !--------------
+      real(r8):: aa,bb,cc,eps
+
+      aa = 4._r8/3._r8
+   10 continue
+        bb  = aa - 1._r8
+        cc  = bb + bb + bb
+        eps = abs(cc-1._r8)
+      if(eps.eq.0._r8) goto 10
+      ddzeps = eps*dabs(xx)
+
+      ! End Function
+      !-------------
+      return
+    end function ddzeps
+    !=======================================================================
+
+end module Zonal_Mean
