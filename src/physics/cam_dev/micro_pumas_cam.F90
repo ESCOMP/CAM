@@ -770,7 +770,9 @@ subroutine micro_pumas_cam_register
       call pbuf_add_field('QSNOW',   'global',dtype_r8,(/pcols,pver/), qsnow_idx)
       call pbuf_add_field('NRAIN',   'global',dtype_r8,(/pcols,pver/), nrain_idx)
       call pbuf_add_field('NSNOW',   'global',dtype_r8,(/pcols,pver/), nsnow_idx)
+
       ! Fields for subcol_SILHS hole filling
+      ! Note -- hole filling is on the grid, so pbuf_register_setcols do not need to be called for these pbuf fields
       call pbuf_add_field('QCSEDTEN', 'physpkg', dtype_r8, (/pcols,pver/), qcsedten_idx)
       call pbuf_add_field('QRSEDTEN', 'physpkg', dtype_r8, (/pcols,pver/), qrsedten_idx)
       call pbuf_add_field('QISEDTEN', 'physpkg', dtype_r8, (/pcols,pver/), qisedten_idx)
