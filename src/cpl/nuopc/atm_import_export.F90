@@ -27,6 +27,7 @@ module atm_import_export
   implicit none
   private ! except
 
+  public  :: read_surface_fields_namelists
   public  :: advertise_fields
   public  :: realize_fields
   public  :: import_fields
@@ -52,27 +53,42 @@ module atm_import_export
   real(r8), allocatable :: mod2med_areacor(:)
   real(r8), allocatable :: med2mod_areacor(:)
 
-  character(len=cx)      :: carma_fields     ! list of CARMA fields from lnd->atm
-  integer                :: drydep_nflds     ! number of dry deposition velocity fields lnd-> atm
-  integer                :: megan_nflds      ! number of MEGAN voc fields from lnd-> atm
-  integer                :: emis_nflds       ! number of fire emission fields from lnd-> atm
-  integer, public        :: ndep_nflds       ! number  of nitrogen deposition fields from atm->lnd/ocn
+  character(len=cx)      :: carma_fields = ' '      ! list of CARMA fields from lnd->atm
+  integer                :: drydep_nflds = -huge(1) ! number of dry deposition velocity fields lnd-> atm
+  integer                :: megan_nflds = -huge(1)  ! number of MEGAN voc fields from lnd-> atm
+  integer                :: emis_nflds = -huge(1)   ! number of fire emission fields from lnd-> atm
+  integer, public        :: ndep_nflds = -huge(1)   ! number  of nitrogen deposition fields from atm->lnd/ocn
   character(*),parameter :: F01 = "('(cam_import_export) ',a,i8,2x,i8,2x,d21.14)"
   character(*),parameter :: F02 = "('(cam_import_export) ',a,i8,2x,i8,2x,i8,2x,d21.14)"
-  character(*),parameter :: u_FILE_u = &
-       __FILE__
+  character(*),parameter :: u_FILE_u = __FILE__
 
 !===============================================================================
 contains
 !===============================================================================
 
-  subroutine advertise_fields(gcomp, flds_scalar_name, rc)
+  !-----------------------------------------------------------
+  ! read mediator fields namelist file
+  !-----------------------------------------------------------
+  subroutine read_surface_fields_namelists()
 
-    use seq_drydep_mod    , only : seq_drydep_readnl
+    use shr_drydep_mod    , only : shr_drydep_readnl
     use shr_megan_mod     , only : shr_megan_readnl
     use shr_fire_emis_mod , only : shr_fire_emis_readnl
     use shr_carma_mod     , only : shr_carma_readnl
     use shr_ndep_mod      , only : shr_ndep_readnl
+
+    character(len=*), parameter :: nl_file_name = 'drv_flds_in'
+
+    ! read mediator fields options
+    call shr_ndep_readnl(nl_file_name, ndep_nflds)
+    call shr_drydep_readnl(nl_file_name, drydep_nflds)
+    call shr_megan_readnl(nl_file_name, megan_nflds)
+    call shr_fire_emis_readnl(nl_file_name, emis_nflds)
+    call shr_carma_readnl(nl_file_name, carma_fields)
+
+  end subroutine read_surface_fields_namelists
+
+  subroutine advertise_fields(gcomp, flds_scalar_name, rc)
 
     ! input/output variables
     type(ESMF_GridComp)            :: gcomp
@@ -89,7 +105,6 @@ contains
     logical                :: flds_co2a      ! use case
     logical                :: flds_co2b      ! use case
     logical                :: flds_co2c      ! use case
-    integer                :: ndep_nflds, megan_nflds, emis_nflds
     character(len=128)     :: fldname
     character(len=*), parameter :: subname='(atm_import_export:advertise_fields)'
     !-------------------------------------------------------------------------------
@@ -172,7 +187,6 @@ contains
     end if
 
     ! from atm - nitrogen deposition
-    call shr_ndep_readnl("drv_flds_in", ndep_nflds)
     if (ndep_nflds > 0) then
        call fldlist_add(fldsFrAtm_num, fldsFrAtm, 'Faxa_ndep', ungridded_lbound=1, ungridded_ubound=ndep_nflds)
        call set_active_Faxa_nhx(.true.)
@@ -234,20 +248,17 @@ contains
     end if
 
     ! dry deposition velocities from land - ALSO initialize drydep here
-    call seq_drydep_readnl("drv_flds_in", drydep_nflds)
     if (drydep_nflds > 0) then
        call fldlist_add(fldsToAtm_num, fldsToAtm, 'Sl_ddvel', ungridded_lbound=1, ungridded_ubound=drydep_nflds)
     end if
 
     ! MEGAN VOC emissions fluxes from land
-    call shr_megan_readnl('drv_flds_in', megan_nflds)
     if (megan_nflds > 0) then
        call fldlist_add(fldsToAtm_num, fldsToAtm, 'Fall_voc', ungridded_lbound=1, ungridded_ubound=megan_nflds)
        call set_active_Fall_flxvoc(.true.)
     end if
 
     ! fire emissions fluxes from land
-    call shr_fire_emis_readnl('drv_flds_in', emis_nflds)
     if (emis_nflds > 0) then
        call fldlist_add(fldsToAtm_num, fldsToAtm, 'Fall_fire', ungridded_lbound=1, ungridded_ubound=emis_nflds)
        call fldlist_add(fldsToAtm_num, fldsToAtm, 'Sl_fztop')
@@ -255,7 +266,6 @@ contains
     end if
 
     ! CARMA volumetric soil water from land
-    call shr_carma_readnl('drv_flds_in', carma_fields)
     if (carma_fields /= ' ') then
        call fldlist_add(fldsToAtm_num, fldsToAtm, 'Sl_soilw') ! optional for carma
        call set_active_Sl_soilw(.true.) ! check for carma

@@ -596,6 +596,7 @@ if ($chem) {
     if ($chem =~ /_mam/ and ($dyn =~ /se|fv3|mpas/)) {
         add_default($nl, 'drydep_srf_file');
     }
+    add_default($nl, 'dep_data_file');
 }
 
 # Initial conditions

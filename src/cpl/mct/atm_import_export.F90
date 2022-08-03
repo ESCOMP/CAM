@@ -21,7 +21,7 @@ contains
     use ppgrid            , only: begchunk, endchunk
     use shr_const_mod     , only: shr_const_stebol
     use shr_sys_mod       , only: shr_sys_abort 
-    use seq_drydep_mod    , only: n_drydep
+    use shr_drydep_mod    , only: n_drydep
     use shr_fire_emis_mod , only: shr_fire_emis_mechcomps_n
     use co2_cycle         , only: c_i, co2_readFlux_ocn, co2_readFlux_fuel
     use co2_cycle         , only: co2_transport, co2_time_interp_ocn, co2_time_interp_fuel
