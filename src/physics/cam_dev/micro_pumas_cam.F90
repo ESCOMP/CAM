@@ -1869,6 +1869,7 @@ subroutine micro_pumas_cam_tend(state, ptend, dtime, pbuf)
    call pbuf_get_field(pbuf, qme_idx,         qme,         col_type=col_type)
    call pbuf_get_field(pbuf, bergso_idx,      bergstot,    col_type=col_type)
 
+   ! Assign the pointer values to the non-pointer proc_rates element
    proc_rates%bergstot(:,:) = bergstot(:,:)
 
    if (degrau_idx > 0)   call pbuf_get_field(pbuf, degrau_idx,   degrau,   col_type=col_type)
@@ -2464,7 +2465,7 @@ subroutine micro_pumas_cam_tend(state, ptend, dtime, pbuf)
       end where
    end do
 
-   !Copy pbuf fields from proc_rates back to pbuf pointers
+   !Copy pbuf field from proc_rates back to pbuf pointer
    bergstot(:,:) = proc_rates%bergstot(:,:)
 
    ! ------------------------------------------------------ !
@@ -3289,7 +3290,7 @@ subroutine micro_pumas_cam_tend(state, ptend, dtime, pbuf)
       call outfld("TROPF_RHADJ", cp_rh,       pcols, lchnk)
    end if
 
-   ! deallocate the temporary pbuf grid variables which was allocated if subocolumns are not used
+   ! deallocate the temporary pbuf grid variable which was allocated if subcolumns are not used
    if (.not. use_subcol_microp) then
       deallocate (bergso_grid)
    end if
