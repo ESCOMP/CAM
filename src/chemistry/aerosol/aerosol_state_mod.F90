@@ -33,9 +33,7 @@ module aerosol_state_mod
      procedure(aero_get_state_num), deferred :: get_ambient_num
      procedure(aero_get_state_num), deferred :: get_cldbrne_num
      procedure(aero_get_states), deferred :: get_states
-     procedure, private :: loadaer1
-     procedure, private :: loadaer2
-     generic :: loadaer => loadaer1, loadaer2
+     procedure :: loadaer
   end type aerosol_state
 
   ! for state fields
@@ -108,7 +106,7 @@ contains
   !------------------------------------------------------------------------------
   ! returns aerosol number, volume concentrations, and bulk hygroscopicity
   !------------------------------------------------------------------------------
-  subroutine loadaer1( self, aero_props, istart, istop, k,  m, cs, phase, &
+  subroutine loadaer( self, aero_props, istart, istop, k,  m, cs, phase, &
                        naerosol, vaerosol, hygro)
 
     use aerosol_properties_mod, only: aerosol_properties
@@ -162,8 +160,8 @@ contains
              vol(i) = max(raer(i,k), 0._r8)/specdens
           end do
        else
-          write(iulog,*)'phase = ',phase,' in aerosol_state::loadaer1 not recognized'
-          call endrun('phase error in aerosol_state::loadaer1')
+          write(iulog,*)'phase = ',phase,' in aerosol_state::loadaer not recognized'
+          call endrun('phase error in aerosol_state::loadaer')
        end if
 
        do i = istart, istop
@@ -203,46 +201,6 @@ contains
     ! adjust number
     call aero_props%apply_number_limits( naerosol, vaerosol, istart, istop, m )
 
-  end subroutine loadaer1
-
-  !------------------------------------------------------------------------------
-  ! returns aerosol number, volume concentrations, and bulk hygroscopicity
-  ! for a single grid box
-  !------------------------------------------------------------------------------
-  subroutine loadaer2( self, aero_props, i, k, m, cs, phase, &
-                       naerosol, vaerosol, hygro )
-
-    use aerosol_properties_mod, only: aerosol_properties
-    use ppgrid, only: pcols, pver
-
-    ! input arguments
-    class(aerosol_state), intent(in) :: self
-    class(aerosol_properties), intent(in) :: aero_props
-
-    integer,  intent(in) :: i           ! column index
-    integer,  intent(in) :: k           ! level index
-    integer,  intent(in) :: m           ! mode or bin index
-    real(r8), intent(in) :: cs          ! air density (kg/m3)
-    integer,  intent(in) :: phase       ! phase of aerosol: 1 for interstitial, 2 for cloud-borne, 3 for sum
-
-    ! output arguments
-    real(r8), intent(out) :: naerosol  ! number conc (1/m3)
-    real(r8), intent(out) :: vaerosol  ! volume conc (m3/m3)
-    real(r8), intent(out) :: hygro     ! bulk hygroscopicity of mode
-
-    real(r8) :: cs_a(pcols,pver)          ! air density (kg/m3)
-    real(r8) :: naerosol_a(pcols)  ! number conc (1/m3)
-    real(r8) :: vaerosol_a(pcols)  ! volume conc (m3/m3)
-    real(r8) :: hygro_a(pcols)     ! bulk hygroscopicity of mode
-
-    cs_a(i,k) = cs
-
-    call self%loadaer(aero_props, i, i, k, m, cs_a, phase, naerosol_a, vaerosol_a, hygro_a)
-
-    naerosol = naerosol_a(i)
-    vaerosol = vaerosol_a(i)
-    hygro = hygro_a(i)
-
-  end subroutine loadaer2
+  end subroutine loadaer
 
 end module aerosol_state_mod
