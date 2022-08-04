@@ -98,6 +98,9 @@ module chemistry
   ! Location of chemistry input
   CHARACTER(LEN=256) :: gc_cheminputs
 
+  ! Debugging
+  LOGICAL :: debug = .TRUE.
+
   !-----------------------------
   ! Derived type objects
   !-----------------------------
