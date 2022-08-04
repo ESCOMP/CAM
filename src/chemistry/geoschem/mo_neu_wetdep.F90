@@ -73,15 +73,15 @@ subroutine neu_wetdep_init
 !
 ! find mapping to heff table
 !
-  if ( debug ) then
-    print '(a,i4)','gas_wetdep_cnt=',gas_wetdep_cnt
-    print '(a,i4)','n_species_table=',n_species_table
+  if ( debug .and. masterproc ) then
+    print '(a,i4)','neu_wetdep_init: gas_wetdep_cnt=',gas_wetdep_cnt
+    print '(a,i4)','neu_wetdep_init: n_species_table=',n_species_table
   end if
   mapping_to_heff = -99
   do m=1,gas_wetdep_cnt
 !
     test_name = gas_wetdep_list(m)
-    if ( debug ) print '(i4,a)',m,trim(test_name)
+    if ( debug .and. masterproc ) print '(a,i4,a)','neu_wetdep_init: gas_wetdep_list species ',m,trim(test_name)
 !
 ! ewl: this mapping can be replaced by including Henry's Law etc for all species, which makes usage of
 ! the parameters more transparent. I will comment out....
@@ -161,14 +161,12 @@ subroutine neu_wetdep_init
 !!!         test_name = 'TSOG'
 !!!    end select
 !
+    if ( debug .and. masterproc ) print '(a,i4,a)','neu_wetdep_init: using name for mapping: ',m,trim(test_name)
 !
     do l = 1,n_species_table
-!
-!      if ( debug ) print '(i4,a)',l,trim(species_name_table(l))
-!
        if( trim(test_name) == trim( species_name_table(l) ) ) then
           mapping_to_heff(m)  = l
-          if ( debug ) print '(a,a,i4)','mapping to heff of ',trim(species_name_table(l)),l
+          if ( debug .and. masterproc ) print '(a,a,i4)','neu_wetdep_init: found mapping to heff of ',trim(species_name_table(l)),l
           exit
        end if
     end do
@@ -193,18 +191,18 @@ subroutine neu_wetdep_init
    
    if (any ( mapping_to_heff(:) == -99 ))  call endrun('mo_neu_wet->depwetdep_init: unmapped species error' )
 !
-  if ( debug ) then
-    print '(a,i4)','co2_ndx',co2_ndx
-    print '(a,i4)','nh3_ndx',nh3_ndx
+  if ( debug .and. masterproc ) then
+    print '(a,i4)','neu_wetdep_init: co2_ndx',co2_ndx
+    print '(a,i4)','neu_wetdep_init: nh3_ndx',nh3_ndx
   end if
 !
 ! find mapping to species
 !
   mapping_to_mmr = -99
   do m=1,gas_wetdep_cnt
-    if ( debug ) print '(i4,a)',m,trim(gas_wetdep_list(m))
+    if ( debug .and. masterproc ) print '(a,i4,a)','neu_wetdep_init: ',m,trim(gas_wetdep_list(m))
     call cnst_get_ind(gas_wetdep_list(m), mapping_to_mmr(m), abort=.false. )
-    if ( debug ) print '(a,i4)','mapping_to_mmr ',mapping_to_mmr(m)
+    if ( debug .and. masterproc) print '(a,i4)','neu_wetdep_init: mapping_to_mmr ',mapping_to_mmr(m)
     if ( mapping_to_mmr(m) <= 0 ) then
       print *,'neu_wetdep_init: problem with mapping_to_mmr of ',gas_wetdep_list(m)
       call endrun('problem with mapping_to_mmr of '//trim(gas_wetdep_list(m)))
@@ -216,7 +214,7 @@ subroutine neu_wetdep_init
   do m=1,gas_wetdep_cnt
 !
     mol_weight(m) = cnst_mw(mapping_to_mmr(m))
-    if ( debug ) print '(i4,a,f8.4)',m,' mol_weight ',mol_weight(m)
+    if ( debug .and. masterproc ) print '(a,i4,a,f8.4)','neu_wetdep_init: ',m,' mol_weight ',mol_weight(m)
     ice_uptake(m) = .false.
     if ( trim(gas_wetdep_list(m)) == 'HNO3' ) then
       ice_uptake(m) = .true.
@@ -433,13 +431,24 @@ subroutine neu_wetdep_tend(lchnk,ncol,mmr,pmid,pdel,zint,tfld,delt, &
     end do
   end do
 !
-  if ( debug ) then
-    print '(a,50f8.2)','tckaqb     ',tckaqb
-    print '(a,50e12.4)','heff      ',heff(1,1,:)
-    print '(a,50i4)'  ,'ice_uptake ',ice_uptake
-    print '(a,50f8.2)','mol_weight ',mol_weight(:)
-    print '(a,50f8.2)','temp       ',temp(1,:)
-    print '(a,50f8.2)','p          ',p   (1,:)
+  if ( debug .and. masterproc ) then
+    print '(a)','neu_wetdep_tend: '
+    do m=1,gas_wetdep_cnt
+    print '(a,a)','wetdep species name: ',trim(gas_wetdep_list(m))
+    l    = mapping_to_heff(m)
+    print '(a,50e12.4)','dheff(1,l): ', dheff(1,l)
+    print '(a,50e12.4)','dheff(1,l): ', dheff(2,l)
+    print '(a,50e12.4)','dheff(1,l): ', dheff(3,l)
+    print '(a,50e12.4)','dheff(1,l): ', dheff(4,l)
+    print '(a,50e12.4)','dheff(1,l): ', dheff(5,l)
+    print '(a,50e12.4)','dheff(1,l): ', dheff(6,l)
+    print '(a,50f8.2)','tckaqb     ',tckaqb(m)
+    print '(a,50e12.4)','heff      ',heff(1,1,m)
+    print '(a,50i4)'  ,'ice_uptake ',ice_uptake(m)
+    print '(a,50f8.2)','mol_weight ',mol_weight(m)
+    print '(a,50f8.2)','temp       ',temp(1,m)
+    print '(a,50f8.2)','p          ',p   (1,m)
+    enddo
   end if
 !
 ! call J. Neu's subroutine
@@ -503,7 +512,7 @@ subroutine neu_wetdep_tend(lchnk,ncol,mmr,pmid,pdel,zint,tfld,delt, &
 !
 ! to be used in mo_chm_diags to compute wet_deposition_NOy_as_N and wet_deposition_NHx_as_N (units: kg/m2/s)
 !
-    if ( debug) print *,'mo_neu ',mapping_to_mmr(m),(wk_out(1:ncol))
+    if ( debug .and. masterproc ) print *,'neu_wetdep_tend:  ',mapping_to_mmr(m),(wk_out(1:ncol))
     wd_tend_int(1:ncol,mapping_to_mmr(m)) = wk_out(1:ncol)
 !
   end do
@@ -625,7 +634,7 @@ end subroutine neu_wetdep_tend
 !
       integer :: LWASHTYP,LICETYP
 !
-      if ( debug ) then
+      if ( debug .and. masterproc ) then
         print '(a,50f8.2)','tckaqb     ',tckaqb
         print '(a,50e12.4)','hstar     ',hstar(1,:)
         print '(a,50i4)'  ,'ice_uptake ',TCNION
@@ -767,7 +776,7 @@ has_rls : &
 !-----------------------------------------------------------------------
            FAX = max( zero,FAMA*(one - evaprate(l)) )
            RAX = RAMA								     !kg/m2/s
-           if ( debug ) then
+           if ( debug .and. masterproc ) then
              if( (l == 3 .or. l == 2) ) then
                write(*,*) 'washout: l,rls,fax = ',l,rls(l),fax
              endif
@@ -804,7 +813,7 @@ has_rls : &
            endif
            RNEW = RLSOG(L) - (RAX*FAX + RCA*FCA)     !GBA*CF
            rnew_wrk(l) = rnew_tst
-           if ( debug ) then
+           if ( debug .and. masterproc ) then
              if( is_hno3 .and. l == kdiag-1 ) then
                write(*,*) ' '
                write(*,*) 'washout: rls,rax,fax,rca,fca'
@@ -928,7 +937,7 @@ is_freezing : &
                  WEMP = (CLWX*QM(L))/(GAREA*CFXX(L)*DELZ(L)) !kg/m3
                  REMP = RPRECIP/((RHORAIN/1.e3_r8))             !mm/s local
                  DNEW = DEMPIRICAL( WEMP, REMP )
-                 if ( debug ) then
+                 if ( debug .and. masterproc ) then
                    if( is_hno3 .and. l >= 15 ) then
                      write(*,*) ' '
                      write(*,*) 'washout: wemp,remp.dnew @ l = ',l
@@ -959,7 +968,7 @@ is_freezing : &
                  DEMP = zero
                  DCXA = zero
                endif
-               if ( debug ) then
+               if ( debug .and. masterproc ) then
                  if( is_hno3 .and. l >= 15 ) then
                    write(*,*) ' '
                    write(*,*) 'washout: rca,rcxa,deltarime,dor,rprecip,dnew @ l = ',l
@@ -994,7 +1003,7 @@ is_freezing : &
                      QTRAINCXA = zero
                      QTRAINCXB = zero
                    endif
-                   if( debug .and. is_hno3 .and. l == kdiag ) then
+                   if( debug .and. masterproc .and. is_hno3 .and. l == kdiag ) then
                      write(*,*) ' '
                      write(*,*) 'washout: Ice Scavenging'
                      write(*,*) 'washout: qtraincxa, qtraincxb, fcxa, fcxb, qt_rain, cfxx(l), wrk @ level = ',l
@@ -1021,7 +1030,7 @@ is_freezing : &
                                   HSTAR(L,N), TEM(L), POFL(L),            &
                                   QM(L), QTCXA, QTDISRIME )       
                      QTDISSTAR = (QTDISRIME*QTCXA)/(QTDISRIME + QTCXA)
-                     if ( debug ) then
+                     if ( debug .and. masterproc ) then
                        if( is_hno3 .and. l >= 15 ) then
                          write(*,*) ' '
                          write(*,*) 'washout: fcxa,dca,rca,qtdisstar @ l = ',l
@@ -1099,7 +1108,7 @@ is_freezing : &
                    WRK       = QTRAIN/CFXX(L)
                    QTRAINCXA = FCXA*WRK
                    QTRAINCXB = FCXB*WRK
-                   if( debug .and. is_hno3 .and. l == kdiag ) then
+                   if( debug .and. masterproc .and. is_hno3 .and. l == kdiag ) then
                      write(*,*) ' '
                      write(*,*) 'washout: Rain Scavenging'
                      write(*,*) 'washout: qtraincxa, qtraincxb, fcxa, fcxb, qt_rain, cfxx(l), wrk @ level = ',l
@@ -1221,7 +1230,7 @@ is_freezing : &
              QTEVAPAXP = min( QTTOPAA,QTTOPAA - (RAMPCT*(QTTOPAA-QTEVAPAXP)) )
              FAX = FAXADJ
              RAX = RAXADJ
-             if ( debug ) then
+             if ( debug .and. masterproc ) then
                if( (l == 3 .or. l == 2) ) then
                  write(*,*) 'washout: l,fcxa,fax = ',l,fcxa,fax
                endif
@@ -1375,7 +1384,7 @@ upper_level : &
                else
                  CFXX(LM1) = CFR(LM1)
                endif
-               if( is_hno3 .and. lm1 == kdiag .and. debug ) then
+               if( is_hno3 .and. lm1 == kdiag .and. debug .and. masterproc ) then
                  write(*,*) ' '
                  write(*,*) 'washout: rls,garea,rcxa,fcxa,rcxb,fcxb,rax,fax'
                  write(*,'(1p,8g15.7)') rls(lm1),garea,rcxa,fcxa,rcxb,fcxb,rax,fax
@@ -1422,7 +1431,7 @@ upper_level : &
 !  Maintain cloud core by reducing NC and AM area going into cloud below
 !-----------------------------------------------------------------------
                RCA = (RCXA*FCXA*CLOLDPCT + RCXB*FCXB*CLNEWPCT + RAX*FAX*AMCLPCT)/FCA
-               if ( debug ) then
+               if ( debug .and. masterproc ) then
                  if( is_hno3 ) then
                    write(*,*) ' '
                    write(*,*) 'washout: rcxa,fcxa,cloldpctrca,rca,fca,dcxa @ l = ',l
@@ -1531,13 +1540,13 @@ upper_level : &
            frc(l,2) = qtnetlcxb
            frc(l,3) = qtnetlax
          endif
-         if( debug .and. is_hno3 .and. l == kdiag ) then
+         if( debug .and. masterproc .and. is_hno3 .and. l == kdiag ) then
            write(*,*) ' '
            write(*,*) 'washout: qtraincxa, qtraincxb, qtrimecxa @ level = ',l
            write(*,'(1p,3g15.7)') qtraincxa, qtraincxb, qtrimecxa
            write(*,*) ' '
          endif
-         if ( debug ) then
+         if ( debug .and. masterproc ) then
            if( (l == 3 .or. l == 2) ) then
              write(*,*) 'washout: hno3, hno3, qtnetlca,b, qtnetlax @ level = ',l
              write(*,'(1p,5g15.7)') qttnew(l), qtt(l), qtnetlcxa, qtnetlcxb, qtnetlax
@@ -1552,7 +1561,7 @@ upper_level : &
          QTTOPAA = QTTOPAAX
        end do level_loop
 
-       if ( debug ) then
+       if ( debug .and. masterproc) then
          if( is_hno3 ) then
            write(*,*) ' '
            write(*,*) 'washout: clwx_wrk'
