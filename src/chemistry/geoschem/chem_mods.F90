@@ -61,7 +61,7 @@
                             rxntot = 212, & ! number of total reactions
                             gascnt = 172, & ! number of gas phase reactions
                             nabscol = 2, & ! number of absorbing column densities
-                            gas_pcnst = 332, & ! number of "gas phase" species
+                            gas_pcnst = 346, & ! number of "gas phase" species
                             nfs = 6, & ! number of "fixed" species
                             relcnt = 0, & ! number of relationship species
                             grpcnt = 0, & ! number of group members

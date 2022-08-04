@@ -30,6 +30,7 @@ module chemistry
   USE GC_Environment_Mod                        ! Runtime GEOS-Chem environment
   USE ErrCode_Mod                               ! Error codes for success or failure
   USE Error_Mod                                 ! For error checking
+  USE Charpak_Mod,         ONLY : StrSplit      ! For config file parsing
 
   !-----------------------------------------------------------------
   ! Parameters to define floating-point variables
@@ -89,9 +90,9 @@ module chemistry
   public :: chem_emissions
   public :: chem_timestep_init
 
-  ! Location of valid input.geos and species_database.yml
+  ! Location of valid geoschem_config.yml and species_database.yml
   ! Use local files in run folder
-  CHARACTER(LEN=500) :: inputGeos = 'input.geos'
+  CHARACTER(LEN=500) :: gcConfig = 'geoschem_config.yml'
   CHARACTER(LEN=500) :: speciesDB = 'species_database.yml'
 
   ! Location of chemistry input
@@ -357,7 +358,8 @@ contains
           MWTmp       = REAL(ThisSpc%MW_g,r8)
           refvmr      = REAL(ThisSpc%BackgroundVV,r8)
           refmmr      = refvmr / (MWDry / MWTmp)
-          ! Make sure that solsym is following the list of tracers as listed in input.geos
+          ! Make sure that solsym is following the list of tracers as listed
+          ! geoschem_config.yml
           IF ( to_upper(TRIM(tracerNames(I))) /= to_upper(TRIM(solsym(I))) ) THEN
              Write(iulog,*) "tracerNames (", TRIM(tracerNames(I)), ") /= solsym (", &
                    TRIM(solsym(I)), ")"
@@ -461,7 +463,7 @@ contains
        ref_MMR(N) = refmmr
 
        ! Add to GC mapping. When starting a timestep, we will want to update the
-       ! concentration of State_Chm(x)%Species(1,iCol,iLev,m) with data from
+       ! concentration of State_Chm(x)%Species(m)%Conc(1,iCol,iLev) with data from
        ! constituent n
        M = Ind_(TRIM(trueName))
        IF ( M > 0 ) THEN
@@ -687,7 +689,7 @@ contains
     INTEGER                      :: I, N
     INTEGER                      :: UNITN, IERR
     CHARACTER(LEN=500)           :: line
-    LOGICAL                      :: menuFound
+    CHARACTER(LEN=63)            :: substrs(2)
     LOGICAL                      :: validSLS
 
 ! ewl: remove 4 entries from chem_inparm used for dry deposition:
@@ -774,41 +776,46 @@ contains
 
        unitn = getunit()
 
+
        !==============================================================
-       ! Opening input.geos and go to ADVECTED SPECIES MENU
+       ! Read list of GEOS-Chem tracers from geoschem_config.yml
        !==============================================================
 
-       OPEN( unitn, FILE=TRIM(inputGeos), STATUS='OLD', IOSTAT=IERR )
+       OPEN( unitn, FILE=TRIM(gcConfig), STATUS='OLD', IOSTAT=IERR )
        IF (IERR .NE. 0) THEN
-          CALL ENDRUN('chem_readnl: ERROR opening input.geos')
+          CALL ENDRUN('chem_readnl: ERROR opening geoschem_config.yml')
        ENDIF
 
-       ! Go to ADVECTED SPECIES MENU
-       menuFound = .False.
-       DO WHILE ( .NOT. menuFound )
+       ! Find the transported species section
+       DO
           READ( unitn, '(a)', IOSTAT=IERR ) line
-          IF ( IERR .NE. 0 ) THEN
-              CALL ENDRUN('chem_readnl: ERROR finding advected species menu')
-          ELSEIF ( INDEX(line, 'ADVECTED SPECIES MENU') > 0 ) THEN
-              menuFound = .True.
+          IF ( IERR .NE. 0 ) CALL ENDRUN('chem_readnl: error finding adv spc list')
+          LINE = ADJUSTL( ADJUSTR( LINE ) )
+          IF ( INDEX( LINE, 'transported_species' ) > 0 ) EXIT
+       ENDDO
+
+       ! Read in all advected species names and add them to tracer names list
+       DO WHILE ( LEN_TRIM( line ) > 0 )
+          READ(unitn,'(26x,a)', IOSTAT=IERR) line
+          IF ( IERR .NE. 0 ) CALL ENDRUN('chem_readnl: error calling adv spc list')
+          line = ADJUSTL( ADJUSTR( line ) )
+          IF ( INDEX( line, 'passive_species' ) > 0 ) EXIT
+          CALL StrSplit( line, '-', substrs, N )
+          IF ( INDEX( LINE, '-' ) > 0 ) THEN
+             substrs(1) = ADJUSTL( ADJUSTR( substrs(1) ) )
+       
+             ! Remove quotes (i.e. 'NO' -> NO)
+             I = INDEX( substrs(1), "'" )
+             IF ( I > 0 ) THEN
+                substrs(1) = substrs(1)(I+1:)
+                I = INDEX( substrs(1), "'" )
+                IF ( I > 0 ) substrs(1) = substrs(1)(1:I-1)
+             ENDIF
+
+             nTracers = nTracers + 1
+             tracerNames(nTracers) = TRIM(line)
           ENDIF
        ENDDO
-
-       !==============================================================
-       ! Read list of GEOS-Chem tracers
-       !==============================================================
-
-       ! Mimic GEOS-Chem's READ_ADVECTED_SPECIES_MENU
-       DO
-          ! Read line
-          READ(unitn,'(26x,a)', IOSTAT=IERR) line
-
-          IF ( INDEX( TRIM(line), '---' ) > 0 ) EXIT
-
-          nTracers = nTracers + 1
-          tracerNames(nTracers) = TRIM(line)
-       ENDDO
-
        CLOSE(unitn)
        CALL freeunit(unitn)
 
@@ -819,7 +826,7 @@ contains
 
        !==============================================================
        ! Now go through the KPP mechanism and add any species not
-       ! implemented by the tracer list in input.geos
+       ! implemented by the tracer list in geoschem_config.yml
        !==============================================================
 
        IF ( nSpec > nSlsMax ) THEN
@@ -966,7 +973,8 @@ contains
     use Phys_Grid,             only : get_Area_All_p
     use hycoef,                only : ps0, hyai, hybi, hyam
 
-    use seq_drydep_mod,        only : drydep_method, DD_XLND, DD_XATM
+!ewl: comment out below following fvitt updates
+!    use seq_drydep_mod,        only : drydep_method, DD_XLND, DD_XATM
     use gas_wetdep_opts,       only : gas_wetdep_method
     use mo_neu_wetdep,         only : neu_wetdep_init
 
@@ -1388,7 +1396,7 @@ contains
     prtDebug            = ( Input_Opt%LPRT .and. MasterProc )
 
     historyConfigFile = 'HISTORY.rc'
-    ! This requires input.geos and HISTORY.rc to be in the run directory
+    ! This requires geoschem_config.yml and HISTORY.rc to be in the run directory
     ! This is the current way chosen to diagnose photolysis rates!
     CALL Init_DiagList( MasterProc, historyConfigFile, Diag_List, RC )
 
@@ -2139,7 +2147,9 @@ contains
     ! Data was received in kg/kg dry
     State_Chm(LCHNK)%Spc_Units = 'kg/kg dry'
     ! Initialize ALL State_Chm species data to zero, not just tracers
-    State_Chm(LCHNK)%Species = 0.0e+0_fp
+    DO N = 1, State_Chm(LCHNK)%nSpecies
+       State_Chm(LCHNK)%Species(N)%Conc = 0.0e+0_fp
+    ENDDO
 
     lq(:) = .False.
 
@@ -2151,12 +2161,12 @@ contains
        M = map2GC(N)
        IF ( M <= 0 ) CYCLE
        MMR_Beg(:nY,:nZ,M) = state%q(:nY,nZ:1:-1,N)
-       State_Chm(LCHNK)%Species(1,:nY,:nZ,M) = REAL(MMR_Beg(:nY,:nZ,M),fp)
+       State_Chm(LCHNK)%Species(M)%Conc(1,:nY,:nZ) = REAL(MMR_Beg(:nY,:nZ,M),fp)
     ENDDO
 
     ! We need to let CAM know that 'H2O' and 'Q' are identical
     MMR_Beg(:nY,:nZ,iH2O) = state%q(:nY,nZ:1:-1,cQ)
-    State_Chm(LCHNK)%Species(1,:nY,:nZ,iH2O) = REAL(MMR_Beg(:nY,:nZ,iH2O),fp)
+    State_Chm(LCHNK)%Species(iH2O)%Conc(1,:nY,:nZ) = REAL(MMR_Beg(:nY,:nZ,iH2O),fp)
 
     ! Retrieve previous value of species data
     SlsData(:,:,:) = 0.0e+0_r8
@@ -2223,7 +2233,7 @@ contains
     DO N = 1, nSls
        M = map2GC_Sls(N)
        IF ( M <= 0 ) CYCLE
-       State_Chm(LCHNK)%Species(1,:nY,:nZ,M) = REAL(SlsData(:nY,nZ:1:-1,N),fp)
+       State_Chm(LCHNK)%Species(M)%Conc(1,:nY,:nZ) = REAL(SlsData(:nY,nZ:1:-1,N),fp)
     ENDDO
 
 #if defined( MODAL_AERO )
@@ -2232,7 +2242,7 @@ contains
        DO SM = 1, nspec_amode(M)
           P = map2MAM4(SM,M) ! Constituent index for GEOS-Chem
           IF ( P > 0 ) K = map2GC(P) ! Index in State_Chm
-          IF ( K > 0 ) State_Chm(LCHNK)%Species(1,:nY,:nZ,K) = 0.0e+00_fp
+          IF ( K > 0 ) State_Chm(LCHNK)%Species(K)%Conc(1,:nY,:nZ) = 0.0e+00_fp
        ENDDO
     ENDDO
 
@@ -2248,7 +2258,7 @@ contains
           ! State_Chm)
 
           ! Multiple MAM4 bins are mapped to same GEOS-Chem species
-          State_Chm(LCHNK)%Species(1,:nY,:nZ,K) = State_Chm(LCHNK)%Species(1,:nY,:nZ,K) &
+          State_Chm(LCHNK)%Species(K)%Conc(1,:nY,:nZ) = State_Chm(LCHNK)%Species(K)%Conc(1,:nY,:nZ) &
                                                 + REAL(state%q(:nY,nZ:1:-1,N),fp) *     &
                                                    adv_mass(mapCnst(P)) /               &
                                                    adv_mass(mapCnst(N))
@@ -2266,15 +2276,15 @@ contains
           IF ( N < 0 ) CYCLE
           DO J = 1, nY
           DO L = 1, nZ
-             IF ( State_Chm(LCHNK)%Species(1,J,nZ+1-L,K) > 0.0e+00_r8 ) THEN
+             IF ( State_Chm(LCHNK)%Species(K)%Conc(1,J,nZ+1-L) > 0.0e+00_r8 ) THEN
                 binRatio(SM,M,J,L) = state%q(J,L,N)              &
                    * adv_mass(mapCnst(P)) / adv_mass(mapCnst(N)) &
-                   / REAL(State_Chm(LCHNK)%Species(1,J,nZ+1-L,K), r8)
+                   / REAL(State_Chm(LCHNK)%Species(K)%Conc(1,J,nZ+1-L), r8)
              ENDIF
           ENDDO
           ENDDO
           ! Overwrite MMR_Beg with value from MAM
-          MMR_Beg(:nY,:nZ,K) = State_Chm(LCHNK)%Species(1,:nY,:nZ,K)
+          MMR_Beg(:nY,:nZ,K) = State_Chm(LCHNK)%Species(K)%Conc(1,:nY,:nZ)
        ENDDO
     ENDDO
 
@@ -2392,24 +2402,24 @@ contains
           DO J = 1, nY
           DO L = 1, nZ
              IF ( totMass(J,L) > 0.0e+00_r8 ) THEN
-                IF ( K1 > 0 ) State_Chm(LCHNK)%Species(1,J,L,K1) = state%q(J,nZ+1-L,speciesId_1) / totMass(J,nZ+1-L) * bulkMass(J,nZ+1-L) * adv_mass(mapCnst(speciesId_1)) / tmpMW_g
-                IF ( K2 > 0 ) State_Chm(LCHNK)%Species(1,J,L,K2) = state%q(J,nZ+1-L,speciesId_2) / totMass(J,nZ+1-L) * bulkMass(J,nZ+1-L) * adv_mass(mapCnst(speciesId_2)) / tmpMW_g
-                IF ( K3 > 0 ) State_Chm(LCHNK)%Species(1,J,L,K3) = state%q(J,nZ+1-L,speciesId_3) / totMass(J,nZ+1-L) * bulkMass(J,nZ+1-L) * adv_mass(mapCnst(speciesId_3)) / tmpMW_g
-                IF ( K4 > 0 ) State_Chm(LCHNK)%Species(1,J,L,K4) = state%q(J,nZ+1-L,speciesId_4) / totMass(J,nZ+1-L) * bulkMass(J,nZ+1-L) * adv_mass(mapCnst(speciesId_4)) / tmpMW_g
+                IF ( K1 > 0 ) State_Chm(LCHNK)%Species(K1)%Conc(1,J,L) = state%q(J,nZ+1-L,speciesId_1) / totMass(J,nZ+1-L) * bulkMass(J,nZ+1-L) * adv_mass(mapCnst(speciesId_1)) / tmpMW_g
+                IF ( K2 > 0 ) State_Chm(LCHNK)%Species(K1)%Conc(1,J,L) = state%q(J,nZ+1-L,speciesId_2) / totMass(J,nZ+1-L) * bulkMass(J,nZ+1-L) * adv_mass(mapCnst(speciesId_2)) / tmpMW_g
+                IF ( K3 > 0 ) State_Chm(LCHNK)%Species(K3)%Conc(1,J,L) = state%q(J,nZ+1-L,speciesId_3) / totMass(J,nZ+1-L) * bulkMass(J,nZ+1-L) * adv_mass(mapCnst(speciesId_3)) / tmpMW_g
+                IF ( K4 > 0 ) State_Chm(LCHNK)%Species(K4)%Conc(1,J,L) = state%q(J,nZ+1-L,speciesId_4) / totMass(J,nZ+1-L) * bulkMass(J,nZ+1-L) * adv_mass(mapCnst(speciesId_4)) / tmpMW_g
              ELSE
                 IF ( K1 == K2 ) THEN
-                   State_Chm(LCHNK)%Species(1,J,L,K1) = bulkMass(J,nZ+1-L) * adv_mass(mapCnst(speciesId_1)) / tmpMW_g
+                   State_Chm(LCHNK)%Species(K1)%Conc(1,J,L) = bulkMass(J,nZ+1-L) * adv_mass(mapCnst(speciesId_1)) / tmpMW_g
                 ELSE
-                   State_Chm(LCHNK)%Species(1,J,L,K1) = bulkMass(J,nZ+1-L) * adv_mass(mapCnst(speciesId_1)) / tmpMW_g / 2.0_r8
-                   State_Chm(LCHNK)%Species(1,J,L,K2) = bulkMass(J,nZ+1-L) * adv_mass(mapCnst(speciesId_1)) / tmpMW_g / 2.0_r8
+                   State_Chm(LCHNK)%Species(K1)%Conc(1,J,L) = bulkMass(J,nZ+1-L) * adv_mass(mapCnst(speciesId_1)) / tmpMW_g / 2.0_r8
+                   State_Chm(LCHNK)%Species(K1)%Conc(1,J,L) = bulkMass(J,nZ+1-L) * adv_mass(mapCnst(speciesId_1)) / tmpMW_g / 2.0_r8
                 ENDIF
              ENDIF
           ENDDO
           ENDDO
-          IF ( K1 > 0 ) MMR_Beg(:nY,:nZ,K1) = State_Chm(LCHNK)%Species(1,:nY,:nZ,K1)
-          IF ( K2 > 0 ) MMR_Beg(:nY,:nZ,K2) = State_Chm(LCHNK)%Species(1,:nY,:nZ,K2)
-          IF ( K3 > 0 ) MMR_Beg(:nY,:nZ,K4) = State_Chm(LCHNK)%Species(1,:nY,:nZ,K3)
-          IF ( K4 > 0 ) MMR_Beg(:nY,:nZ,K3) = State_Chm(LCHNK)%Species(1,:nY,:nZ,K4)
+          IF ( K1 > 0 ) MMR_Beg(:nY,:nZ,K1) = State_Chm(LCHNK)%Species(K1)%Conc(1,:nY,:nZ)
+          IF ( K2 > 0 ) MMR_Beg(:nY,:nZ,K2) = State_Chm(LCHNK)%Species(K2)%Conc(1,:nY,:nZ)
+          IF ( K3 > 0 ) MMR_Beg(:nY,:nZ,K4) = State_Chm(LCHNK)%Species(K3)%Conc(1,:nY,:nZ)
+          IF ( K4 > 0 ) MMR_Beg(:nY,:nZ,K3) = State_Chm(LCHNK)%Species(K4)%Conc(1,:nY,:nZ)
        ENDDO
     ENDIF
 
@@ -2417,14 +2427,15 @@ contains
     K = iSO4
     N = cH2SO4
     IF ( K > 0 .AND. N > 0 .AND. l_SO4 > 0 ) THEN
-       State_Chm(LCHNK)%Species(1,:nY,:nZ,K) = State_Chm(LCHNK)%Species(1,:nY,:nZ,K) &
-                                             + REAL(state%q(:nY,nZ:1:-1,N),fp) *     &
+       State_Chm(LCHNK)%Species(K)%Conc(1,:nY,:nZ) =                                     &
+                                             State_Chm(LCHNK)%Species(K)%Conc(1,:nY,:nZ) &
+                                             + REAL(state%q(:nY,nZ:1:-1,N),fp) *         &
                                                 adv_mass(l_SO4) / adv_mass(mapCnst(N))
        ! SO4_gasRatio is in mol/mol
        SO4_gasRatio(:nY,:nZ) = state%q(:nY,:nZ,N)                      &
                              * adv_mass(l_SO4) / adv_mass(mapCnst(N))  &
-                             / State_Chm(LCHNK)%Species(1,:nY,nZ:1:-1,K)
-       MMR_Beg(:nY,:nZ,K)    = State_Chm(LCHNK)%Species(1,:nY,:nZ,K)
+                             / State_Chm(LCHNK)%Species(K)%Conc(1,:nY,nZ:1:-1)
+       MMR_Beg(:nY,:nZ,K)    = State_Chm(LCHNK)%Species(K)%Conc(1,:nY,:nZ)
     ENDIF
 #endif
 
@@ -2432,10 +2443,10 @@ contains
        ! See definition of map2chm
        M = map2chm(N)
        IF ( M > 0 ) THEN
-          vmr0(:nY,:nZ,N) = State_Chm(LCHNK)%Species(1,:nY,nZ:1:-1,M) * &
+          vmr0(:nY,:nZ,N) = State_Chm(LCHNK)%Species(M)%Conc(1,:nY,nZ:1:-1) * &
                             MWDry / adv_mass(N)
           ! We'll substract concentrations after chemistry later
-          mmr_tend(:nY,:nZ,N) = REAL(State_Chm(LCHNK)%Species(1,:nY,nZ:1:-1,M),r8)
+          mmr_tend(:nY,:nZ,N) = REAL(State_Chm(LCHNK)%Species(M)%Conc(1,:nY,nZ:1:-1),r8)
        ELSEIF ( M < 0 ) THEN
           vmr0(:nY,:nZ,N) = state%q(:nY,:nZ,-M) * &
                             MWDry / adv_mass(N)
@@ -2505,7 +2516,7 @@ contains
     DO L = 1, nZ
        qH2O(J,L) = REAL(state%q(J,L,cQ),r8)
        ! Set GEOS-Chem's H2O mixing ratio to CAM's specific humidity 'q'
-       State_Chm(LCHNK)%Species(1,J,nZ+1-L,iH2O) = qH2O(J,L)
+       State_Chm(LCHNK)%Species(iH2O)%Conc(1,J,nZ+1-L) = qH2O(J,L)
        h2ovmr(J,L) = qH2O(J,L) * MWDry / 18.016e+0_fp
     ENDDO
     ENDDO
@@ -3247,7 +3258,7 @@ contains
        O3col(J) = 0.0e+0_fp
        DO L = 1, nZ
           O3col(J) = O3col(J) &
-                   + State_Chm(LCHNK)%Species(1,J,L,iO3) &
+                   + State_Chm(LCHNK)%Species(iO3)%Conc(1,J,L) &
                       * State_Met(LCHNK)%AIRDEN(1,J,L)   &
                       * State_Met(LCHNK)%BXHEIGHT(1,J,L)
        ENDDO
@@ -3688,7 +3699,7 @@ contains
        M = map2GC(N)
        IF ( M > 0 ) THEN
           ! Add to GEOS-Chem species
-          State_Chm(LCHNK)%Species(1,:nY,:nZ,M) = State_Chm(LCHNK)%Species(1,:nY,:nZ,M) &
+          State_Chm(LCHNK)%Species(M)%Conc(1,:nY,:nZ) = State_Chm(LCHNK)%Species(M)%Conc(1,:nY,:nZ) &
                                                 + eflx(:nY,nZ:1:-1,N) * dT
        ELSEIF ( M < 0 ) THEN
           ! Add to constituent (mostly for MAM4 aerosols)
@@ -3774,7 +3785,7 @@ contains
              DO L = 1, nZ
              DO J = 1, nY
                 IF ( State_Met(LCHNK)%F_UNDER_PBLTOP(1,J,L) > 0.0_fp ) THEN
-                   State_Chm(LCHNK)%Species(1,J,L,N) =     &
+                   State_Chm(LCHNK)%Species(N)%Conc(1,J,L) =     &
                        ( pbuf_i(J) * 1.0e-9_fp       )     &
                      / ( MWDry      / SpcInfo%MW_g   )
                 ENDIF  ! end selection of PBL boxes
@@ -3807,7 +3818,7 @@ contains
     ! internally. Right after the call to `Do_Chemistry`, State_Chm%Species(iCO2)
     ! corresponds to the chemically-produced CO2. The real CO2 concentration
     ! is thus the concentration before chemistry + the chemically-produced CO2.
-    State_Chm(LCHNK)%Species(1,:nY,:nZ,iCO2) = State_Chm(LCHNK)%Species(1,:nY,:nZ,iCO2) &
+    State_Chm(LCHNK)%Species(iCO2)%Conc(1,:nY,:nZ) = State_Chm(LCHNK)%Species(iCO2)%Conc(1,:nY,:nZ) &
                                              + MMR_Beg(:nY,:nZ,iCO2)
 
     ! Make sure State_Chm(LCHNK) is back in kg/kg dry!
@@ -3854,7 +3865,7 @@ contains
        ! See definition of map2chm
        M = map2chm(N)
        IF ( M > 0 ) THEN
-          vmr1(:nY,:nZ,N) = State_Chm(LCHNK)%Species(1,:nY,nZ:1:-1,M) * &
+          vmr1(:nY,:nZ,N) = State_Chm(LCHNK)%Species(M)%Conc(1,:nY,nZ:1:-1) * &
                             MWDry / adv_mass(N)
        ELSEIF ( M < 0 ) THEN
           vmr1(:nY,:nZ,N) = state%q(:nY,:nZ,-M) * &
@@ -4060,7 +4071,7 @@ contains
        ! See definition of map2chm
        M = map2chm(N)
        IF ( M <= 0 ) CYCLE
-       State_Chm(LCHNK)%Species(1,:nY,nZ:1:-1,M) = vmr1(:nY,:nZ,N) * &
+       State_Chm(LCHNK)%Species(M)%Conc(1,:nY,nZ:1:-1) = vmr1(:nY,:nZ,N) * &
                         adv_mass(N) / MWDry
     ENDDO
 
@@ -4072,14 +4083,14 @@ contains
     ENDIF
 
     ! Reset H2O MMR to the initial value (no chemistry tendency in H2O just yet)
-    State_Chm(LCHNK)%Species(1,:,:,iH2O) = MMR_Beg(:,:,iH2O)
+    State_Chm(LCHNK)%Species(iH2O)%Conc(1,:,:) = MMR_Beg(:,:,iH2O)
 
     ! Store unadvected species data
     SlsData = 0.0e+0_r8
     DO N = 1, nSls
        M = map2GC_Sls(N)
        IF ( M <= 0 ) CYCLE
-       SlsData(:nY,nZ:1:-1,N) = REAL(State_Chm(LCHNK)%Species(1,:nY,:nZ,M),r8)
+       SlsData(:nY,nZ:1:-1,N) = REAL(State_Chm(LCHNK)%Species(M)%Conc(1,:nY,:nZ),r8)
     ENDDO
     CALL set_short_lived_species( SlsData, LCHNK, nY, pbuf )
 
@@ -4090,7 +4101,7 @@ contains
        ! Add change in mass mixing ratio to tendencies.
        ! For NEU wet deposition, the wet removal rates are added to
        ! ptend.
-       MMR_End(:nY,:nZ,M)     = REAL(State_Chm(LCHNK)%Species(1,:nY,:nZ,M),r8)
+       MMR_End(:nY,:nZ,M)     = REAL(State_Chm(LCHNK)%Species(M)%Conc(1,:nY,:nZ),r8)
        ptend%q(:nY,nZ:1:-1,N) = ptend%q(:nY,nZ:1:-1,N) &
                               + (MMR_End(:nY,:nZ,M)-MMR_Beg(:nY,:nZ,M))/dT
     ENDDO
@@ -4119,7 +4130,7 @@ contains
           ! Apply MAM4 chemical tendencies owing to GEOS-Chem aerosol processing
           ptend%q(:nY,:nZ,N) = ptend%q(:nY,:nZ,N)                                  &
                              + (binRatio(SM,M,:nY,:nZ) *                           &
-                                REAL(State_Chm(LCHNK)%Species(1,:nY,nZ:1:-1,K),r8) &
+                                REAL(State_Chm(LCHNK)%Species(K)%Conc(1,:nY,nZ:1:-1),r8) &
                                   * adv_mass(mapCnst(N)) / adv_mass(mapCnst(P))    &
                                 - state%q(:nY,:nZ,N))/dT
        ENDDO
@@ -4152,7 +4163,7 @@ contains
        ! See definition of map2chm
        M = map2chm(N)
        IF ( M > 0 ) THEN
-          mmr_tend(:nY,:nZ,N) = ( REAL(State_Chm(LCHNK)%Species(1,:nY,nZ:1:-1,M),r8) - mmr_tend(:nY,:nZ,N) ) / dT
+          mmr_tend(:nY,:nZ,N) = ( REAL(State_Chm(LCHNK)%Species(M)%Conc(1,:nY,nZ:1:-1),r8) - mmr_tend(:nY,:nZ,N) ) / dT
        ELSEIF ( M < 0 ) THEN
           mmr_tend(:nY,:nZ,N) = ptend%q(:nY,:nZ,-M)
        ENDIF

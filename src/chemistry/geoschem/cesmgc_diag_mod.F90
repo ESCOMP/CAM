@@ -1059,7 +1059,7 @@ CONTAINS
             (hist_fld_active(TRIM(SpcName)) .OR. hist_fld_active(TRIM(SpcName)//'_SRF')) ) THEN
           IF ( M > 0 ) THEN
              ! mol/mol
-             outTmp(:nY,:) = REAL(State_Chm%Species(1,:nY,nZ:1:-1,M),r8) * MWDry / adv_mass(N)
+             outTmp(:nY,:) = REAL(State_Chm%Species(M)%Conc(1,:nY,nZ:1:-1),r8) * MWDry / adv_mass(N)
           ELSEIF ( ANY( aer_species == N ) ) THEN
              ! kg/kg
              outTmp(:nY,:) = state%q(:nY,:nZ,-M)
@@ -1085,7 +1085,7 @@ CONTAINS
           IF ( idx <= 0 .OR. MW <= 0.0e+00_r8 ) CYCLE
           wgt = 1.0E+00_r8
           outTmp(:nY,:) = outTmp(:nY,:) &
-                        + wgt * REAL(State_Chm%Species(1,:nY,nZ:1:-1,idx),r8) * MWDry / MW
+                        + wgt * REAL(State_Chm%Species(idx)%Conc(1,:nY,nZ:1:-1),r8) * MWDry / MW
        ENDDO
        CALL Outfld( TRIM(SpcName), outTmp(:nY,:), nY, LCHNK )
     ENDIF
@@ -1102,7 +1102,7 @@ CONTAINS
              wgt = 2.0E+00_r8
           ENDIF
           outTmp(:nY,:) = outTmp(:nY,:) &
-                        + wgt * REAL(State_Chm%Species(1,:nY,nZ:1:-1,idx),r8) * MWDry / MW
+                        + wgt * REAL(State_Chm%Species(idx)%Conc(1,:nY,nZ:1:-1),r8) * MWDry / MW
        ENDDO
        CALL Outfld( TRIM(SpcName), outTmp(:nY,:), nY, LCHNK )
     ENDIF
@@ -1120,7 +1120,7 @@ CONTAINS
           IF ( idx == i_N2O5 .OR. idx == i_IDN .OR. idx == i_IDNOO ) THEN
              wgt = 2.0E+00_r8
           ENDIF
-          outTmp(:nY,:) = outTmp(:nY,:) + wgt * REAL(State_Chm%Species(1,:nY,nZ:1:-1,idx),r8)
+          outTmp(:nY,:) = outTmp(:nY,:) + wgt * REAL(State_Chm%Species(idx)%Conc(1,:nY,nZ:1:-1),r8)
        ENDDO
        CALL Outfld( TRIM(SpcName), outTmp(:nY,:), nY, LCHNK )
     ENDIF
@@ -1137,7 +1137,7 @@ CONTAINS
              wgt = 2.0E+00_r8
           ENDIF
           outTmp(:nY,:) = outTmp(:nY,:) &
-                        + wgt * REAL(State_Chm%Species(1,:nY,nZ:1:-1,idx),r8) * MWDry / MW
+                        + wgt * REAL(State_Chm%Species(idx)%Conc(1,:nY,nZ:1:-1),r8) * MWDry / MW
        ENDDO
        CALL Outfld( TRIM(SpcName), outTmp(:nY,:), nY, LCHNK )
     ENDIF
@@ -1154,7 +1154,7 @@ CONTAINS
              wgt = 2.0E+00_r8
           ENDIF
           outTmp(:nY,:) = outTmp(:nY,:) &
-                        + wgt * REAL(State_Chm%Species(1,:nY,nZ:1:-1,idx),r8) * MWDry / MW
+                        + wgt * REAL(State_Chm%Species(idx)%Conc(1,:nY,nZ:1:-1),r8) * MWDry / MW
        ENDDO
        CALL Outfld( TRIM(SpcName), outTmp(:nY,:), nY, LCHNK )
     ENDIF
@@ -1171,7 +1171,7 @@ CONTAINS
              wgt = 2.0E+00_r8
           ENDIF
           outTmp(:nY,:) = outTmp(:nY,:) &
-                        + wgt * REAL(State_Chm%Species(1,:nY,nZ:1:-1,idx),r8) * MWDry / MW
+                        + wgt * REAL(State_Chm%Species(idx)%Conc(1,:nY,nZ:1:-1),r8) * MWDry / MW
        ENDDO
        CALL Outfld( TRIM(SpcName), outTmp(:nY,:), nY, LCHNK )
     ENDIF
@@ -1195,7 +1195,7 @@ CONTAINS
              wgt = 4.0E+00_r8
           ENDIF
           outTmp(:nY,:) = outTmp(:nY,:) &
-                        + wgt * REAL(State_Chm%Species(1,:nY,nZ:1:-1,idx),r8) * MWDry / MW
+                        + wgt * REAL(State_Chm%Species(idx)%Conc(1,:nY,nZ:1:-1),r8) * MWDry / MW
        ENDDO
        CALL Outfld( TRIM(SpcName), outTmp(:nY,:), nY, LCHNK )
     ENDIF
@@ -1209,7 +1209,7 @@ CONTAINS
           IF ( idx <= 0 .OR. MW <= 0.0e+00_r8 ) CYCLE
           wgt = 1.0E+00_r8
           outTmp(:nY,:) = outTmp(:nY,:) &
-                        + wgt * REAL(State_Chm%Species(1,:nY,nZ:1:-1,idx),r8) * MWDry / MW
+                        + wgt * REAL(State_Chm%Species(idx)%Conc(1,:nY,nZ:1:-1),r8) * MWDry / MW
        ENDDO
        CALL Outfld( TRIM(SpcName), outTmp(:nY,:), nY, LCHNK )
     ENDIF
@@ -1226,7 +1226,7 @@ CONTAINS
              wgt = 2.0E+00_r8
           ENDIF
           outTmp(:nY,:) = outTmp(:nY,:) &
-                        + wgt * REAL(State_Chm%Species(1,:nY,nZ:1:-1,idx),r8) * MWDry / MW
+                        + wgt * REAL(State_Chm%Species(idx)%Conc(1,:nY,nZ:1:-1),r8) * MWDry / MW
        ENDDO
        CALL Outfld( TRIM(SpcName), outTmp(:nY,:), nY, LCHNK )
     ENDIF
@@ -1243,7 +1243,7 @@ CONTAINS
              wgt = 2.0E+00_r8
           ENDIF
           outTmp(:nY,:) = outTmp(:nY,:) &
-                        + wgt * REAL(State_Chm%Species(1,:nY,nZ:1:-1,idx),r8) * MWDry / MW
+                        + wgt * REAL(State_Chm%Species(idx)%Conc(1,:nY,nZ:1:-1),r8) * MWDry / MW
        ENDDO
        CALL Outfld( TRIM(SpcName), outTmp(:nY,:), nY, LCHNK )
     ENDIF
@@ -1257,7 +1257,7 @@ CONTAINS
           IF ( idx <= 0 .OR. MW <= 0.0e+00_r8 ) CYCLE
           wgt = 1.0E+00_r8
           outTmp(:nY,:) = outTmp(:nY,:) &
-                        + wgt * REAL(State_Chm%Species(1,:nY,nZ:1:-1,idx),r8) * MWDry / MW
+                        + wgt * REAL(State_Chm%Species(idx)%Conc(1,:nY,nZ:1:-1),r8) * MWDry / MW
        ENDDO
        CALL Outfld( TRIM(SpcName), outTmp(:nY,:), nY, LCHNK )
     ENDIF
@@ -1270,7 +1270,7 @@ CONTAINS
           MW  = SOx_MWs(N)
           IF ( idx <= 0 .OR. MW <= 0.0e+00_r8 ) CYCLE
           wgt = 1.0E+00_r8
-          outTmp(:nY,:) = outTmp(:nY,:) + wgt * REAL(State_Chm%Species(1,:nY,nZ:1:-1,idx),r8)
+          outTmp(:nY,:) = outTmp(:nY,:) + wgt * REAL(State_Chm%Species(idx)%Conc(1,:nY,nZ:1:-1),r8)
        ENDDO
        CALL Outfld( TRIM(SpcName), outTmp(:nY,:), nY, LCHNK )
     ENDIF
@@ -1284,7 +1284,7 @@ CONTAINS
           IF ( idx <= 0 .OR. MW <= 0.0e+00_r8 ) CYCLE
           wgt = 1.0E+00_r8
           outTmp(:nY,:) = outTmp(:nY,:) &
-                        + wgt * REAL(State_Chm%Species(1,:nY,nZ:1:-1,idx),r8) * MWDry / MW
+                        + wgt * REAL(State_Chm%Species(idx)%Conc(1,:nY,nZ:1:-1),r8) * MWDry / MW
        ENDDO
        CALL Outfld( TRIM(SpcName), outTmp(:nY,:), nY, LCHNK )
     ENDIF
@@ -1297,7 +1297,7 @@ CONTAINS
           MW  = NHx_MWs(N)
           IF ( idx <= 0 .OR. MW <= 0.0e+00_r8 ) CYCLE
           wgt = 1.0E+00_r8
-          outTmp(:nY,:) = outTmp(:nY,:) + wgt * REAL(State_Chm%Species(1,:nY,nZ:1:-1,idx),r8)
+          outTmp(:nY,:) = outTmp(:nY,:) + wgt * REAL(State_Chm%Species(idx)%Conc(1,:nY,nZ:1:-1),r8)
        ENDDO
        CALL Outfld( TRIM(SpcName), outTmp(:nY,:), nY, LCHNK )
     ENDIF
@@ -1314,7 +1314,7 @@ CONTAINS
              wgt = 2.0E+00_r8
           ENDIF
           outTmp(:nY,:) = outTmp(:nY,:) &
-                        + wgt * REAL(State_Chm%Species(1,:nY,nZ:1:-1,idx),r8) * MWDry / MW
+                        + wgt * REAL(State_Chm%Species(idx)%Conc(1,:nY,nZ:1:-1),r8) * MWDry / MW
        ENDDO
        CALL Outfld( TRIM(SpcName), outTmp(:nY,:), nY, LCHNK )
     ENDIF
@@ -1380,7 +1380,7 @@ CONTAINS
     ! Diagnose stratospheric quantities
     ! ===============================================
 
-    outTmp(:nY,:) = State_Chm%Species(1,:nY,nZ:1:-1,i_HNO3) * MWDry / MW_HNO3
+    outTmp(:nY,:) = State_Chm%Species(i_HNO3)%Conc(1,:nY,nZ:1:-1) * MWDry / MW_HNO3
     CALL Outfld( 'HNO3_GAS', outTmp(:nY,:), nY, LCHNK )
 
     ! TMMF, this requires to have access to the AERFRAC variable in ucx_mod.
@@ -1391,20 +1391,20 @@ CONTAINS
     DO J = 1, nY
     DO L = 1, nZ
        IF ( State_Met%InTroposphere(1,J,nZ+1-L) ) CYCLE
-       outTmp(J,L) = State_Chm%Species(1,J,nZ+1-L,i_NIT) * MWDry / MW_NIT
+       outTmp(J,L) = State_Chm%Species(i_NIT)%Conc(1,J,nZ+1-L) * MWDry / MW_NIT
     ENDDO
     ENDDO
     CALL Outfld( 'HNO3_NAT', outTmp(:nY,:), nY, LCHNK )
 
     outTmp(:nY,:) = outTmp(:nY,:)            + &
     !                AERFRAC(1,:nY,nZ:1:-1,2) + &
-                    State_Chm%Species(1,:nY,nZ:1:-1,i_HNO3) * MWDry / MW_HNO3
+                    State_Chm%Species(i_HNO3)%Conc(1,:nY,nZ:1:-1) * MWDry / MW_HNO3
     CALL Outfld( 'HNO3_TOTAL', outTmp(:nY,:), nY, LCHNK )
 
-    outTmp(:nY,:) = State_Chm%Species(1,:nY,nZ:1:-1,i_H2O) * MWDry / MW_H2O
+    outTmp(:nY,:) = State_Chm%Species(i_H2O)%Conc(1,:nY,nZ:1:-1) * MWDry / MW_H2O
     CALL Outfld( 'H2O_GAS', outTmp(:nY,:), nY, LCHNK )
 
-    outTmp(:nY,:) = State_Chm%Species(1,:nY,nZ:1:-1,i_HCl) * MWDry / MW_HCl
+    outTmp(:nY,:) = State_Chm%Species(i_HCl)%Conc(1,:nY,nZ:1:-1) * MWDry / MW_HCl
     CALL Outfld( 'HCL_GAS', outTmp(:nY,:), nY, LCHNK )
 
     !outTmp(:nY,:) = AERFRAC(1,:nY,nZ:1:-1,3)
@@ -1413,7 +1413,7 @@ CONTAINS
     outTmp(:nY,:) = 0.0e+00_r8
     !outTmp(:nY,:) = AERFRAC(1,:nY,nZ:1:-1,3)
     outTmp(:nY,:) = outTmp(:nY,:)            + &
-                    State_Chm%Species(1,:nY,nZ:1:-1,i_HCl) * MWDry / MW_HCl
+                    State_Chm%Species(i_HCl)%Conc(1,:nY,nZ:1:-1) * MWDry / MW_HCl
     CALL Outfld( 'HCL_TOTAL', outTmp(:nY,:), nY, LCHNK )
 
     ! ===============================================
@@ -1603,7 +1603,7 @@ CONTAINS
 
     SpcName = 'Q_SRF'
     IF ( hist_fld_active(TRIM(SpcName)) ) THEN
-       outTmp(:nY,:) = State_Chm%Species(1,:nY,nZ:1:-1,i_H2O)
+       outTmp(:nY,:) = State_Chm%Species(i_H2O)%Conc(1,:nY,nZ:1:-1)
        CALL Outfld( TRIM(SpcName), outTmp(:nY,:) , nY, LCHNK )
     ENDIF
 

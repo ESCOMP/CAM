@@ -193,7 +193,7 @@ def buildnml(case, caseroot, compname):
             if not os.path.isdir(geoschem_src):
                 raise SystemExit("ERROR: Did not find path to GEOS-Chem source code at {:s}".format(geoschem_src))
             if os.path.isdir(rundir):
-                for fileName in ['species_database.yml', 'input.geos',
+                for fileName in ['species_database.yml', 'geoschem_config.yml',
                                  'HISTORY.rc', 'HEMCO_Config.rc', 'HEMCO_Diagn.rc']:
                     file1 = os.path.join(geoschem_src, "run/CESM", fileName)
                     file2 = os.path.join(camconf, fileName)
@@ -206,7 +206,7 @@ def buildnml(case, caseroot, compname):
         # -----------------------------------------------------
 
         if os.path.isdir(rundir):
-            for fileName in ['atm_in', 'species_database.yml', 'input.geos',
+            for fileName in ['atm_in', 'species_database.yml', 'geoschem_config.yml',
                              'HISTORY.rc', 'HEMCO_Config.rc', 'HEMCO_Diagn.rc']:
                 file1 = os.path.join(camconf, fileName)
                 file2 = os.path.join(rundir, fileName)
@@ -215,16 +215,6 @@ def buildnml(case, caseroot, compname):
                 if os.path.exists(file1) or fileName == 'atm_in':
                     logger.info("CAM namelist copy: file1 %s file2 %s ", file1, file2)
                     shutil.copy(file1,file2)
-
-                    if fileName == 'input.geos':
-                        # We need to replace the simulation name by "Standard" 
-                        # in input.geos
-                        # This should already be the case, but just making sure
-                        with open(file2, 'r') as file:
-                            inputGC = file.read()
-                        inputGC = inputGC.replace('{SIM}', 'Standard')
-                        with open(file2, 'w') as file:
-                            file.write(inputGC)
 
         # -----------------------------------------------------
         # copy drv_flds_in to rundir if it does not exist
