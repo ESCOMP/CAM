@@ -6,6 +6,7 @@ module upper_bc
 !---------------------------------------------------------------------------------
 
   use shr_kind_mod, only: r8 => shr_kind_r8
+  use shr_kind_mod, only: cl => shr_kind_cl
   use shr_const_mod,only: grav   => shr_const_g,     &   ! gravitational constant (m/s^2)
                           kboltz => shr_const_boltz, &   ! Boltzmann constant
                           pi => shr_const_pi,        &   ! pi
@@ -20,7 +21,7 @@ module upper_bc
   use cam_history,   only: addfld, horiz_only, outfld, fieldname_len
 
   use upper_bc_file, only: upper_bc_file_readnl, upper_bc_file_specified, upper_bc_file_adv, upper_bc_file_get
-    use infnan,       only : nan, assignment(=)
+  use infnan,        only: nan, assignment(=)
 
   implicit none
   private
@@ -65,18 +66,18 @@ module upper_bc
   logical :: snoe_active =.false.
 
 ! Namelist variables
-  character(len=256) :: snoe_ubc_file = 'NONE'
-  real(r8)           :: t_pert_ubc  = 0._r8
-  real(r8)           :: no_xfac_ubc = 1._r8
+  character(len=cl) :: snoe_ubc_file = 'NONE'
+  real(r8)          :: t_pert_ubc  = 0._r8
+  real(r8)          :: no_xfac_ubc = 1._r8
 
   integer :: h_ndx=-1
   integer :: h_msis_ndx=-1, n_msis_ndx=-1, o_msis_ndx=-1, o2_msis_ndx=-1
 
-  character(len=256) :: tgcm_ubc_file = 'NONE'
-  integer            :: tgcm_ubc_cycle_yr = 0
-  integer            :: tgcm_ubc_fixed_ymd = 0
-  integer            :: tgcm_ubc_fixed_tod = 0
-  character(len=32)  :: tgcm_ubc_data_type = 'CYCLICAL'
+  character(len=cl) :: tgcm_ubc_file = 'NONE'
+  integer           :: tgcm_ubc_cycle_yr = 0
+  integer           :: tgcm_ubc_fixed_ymd = 0
+  integer           :: tgcm_ubc_fixed_tod = 0
+  character(len=32) :: tgcm_ubc_data_type = 'CYCLICAL'
 
   logical :: apply_upper_bc = .false.
 
@@ -306,7 +307,6 @@ contains
           else
              call endrun(prefix//'SNOE is not allowed in this configuration')
           end if
-          continue
        else if (trim(ubc_source(m))=='ubc_file') then
           file_spc_ndx(mm) = spc_ndx(m)
           mm = mm+1
@@ -361,7 +361,7 @@ contains
 !===============================================================================
 !===============================================================================
 
-  logical function ubc_fixed_conc(name)
+  pure logical function ubc_fixed_conc(name)
 
     character(len=*), intent(in) :: name
 

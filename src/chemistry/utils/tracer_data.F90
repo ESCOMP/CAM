@@ -251,7 +251,7 @@ contains
     endif
 
     if (file%top_bndry .and. file%top_layer) then
-       call endrun('trcdata_init: Cannot both file%top_bndry and file%top_layer to TRUE.')
+       call endrun('trcdata_init: Cannot set both file%top_bndry and file%top_layer to TRUE.')
     end if
 
     if (masterproc) then
@@ -472,7 +472,7 @@ contains
        ierr = pio_inq_varid( file%curr_fileid, flds(f)%srcnam, flds(f)%var_id )
        if (ierr/=pio_noerr) then
           call endrun('trcdata_init: Cannot find var "'//trim(flds(f)%srcnam)// &
-                      '" in file '//trim(file%curr_filename))
+                      '" in file "'//trim(file%curr_filename)//'"')
        endif
 
        ! determine if the field has a vertical dimension
@@ -1974,9 +1974,9 @@ contains
                    datain(:ncol,:) = fact1*flds(f)%input(nm)%data(:ncol,:,c) + fact2*flds(f)%input(np)%data(:ncol,:,c)
                 end if
                 if ( file%top_bndry ) then
-                   call vert_interp_ub(ncol, file%nlev, file%levs,  datain(:ncol,:), data_out(:ncol,:) )
+                   call vert_interp_ub(ncol, file%nlev, file%levs,  datain(:ncol,:), data_out(:ncol,1) )
                 else if ( file%top_layer ) then
-                   call vert_interp_ub_var(ncol, file%nlev, file%levs, state(c)%pmid(:ncol,1), datain(:ncol,:), data_out(:ncol,:) )
+                   call vert_interp_ub_var(ncol, file%nlev, file%levs, state(c)%pmid(:ncol,1), datain(:ncol,:), data_out(:ncol,1) )
                 else if(file%conserve_column) then
                    call vert_interp_mixrat(ncol,file%nlev,pver,state(c)%pint, &
                         datain, data_out(:,:), &

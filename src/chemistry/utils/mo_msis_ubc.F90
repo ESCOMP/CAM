@@ -17,7 +17,7 @@
 
       save
 
-      integer                :: ndx_n, ndx_h, ndx_o, ndx_o2           ! n, h, o, o2 spc indicies
+      integer                :: ndx_n=-1, ndx_h=-1, ndx_o=-1, ndx_o2=-1 ! n, h, o, o2 spc indicies
       real(r8), allocatable  :: msis_ubc(:,:,:)                       ! module array for msis ub values (kg/kg)
 
       logical                :: zonal_average         = .false.       ! use zonal averaged tgcm values
@@ -30,8 +30,6 @@
 !------------------------------------------------------------------
 
       use ppgrid, only : pcols, begchunk, endchunk
-
-      implicit none
 
 !------------------------------------------------------------------
 !	... dummy args
@@ -101,8 +99,6 @@
       use physconst,    only : pi
       use cam_control_mod,only : lambm0, eccen, mvelpp, obliqr
       use shr_orb_mod,    only : shr_orb_decl
-
-      implicit none
 
 !--------------------------------------------------------------------
 !	... dummy args
@@ -222,8 +218,6 @@
 !--------------------------------------------------------------------
 
       use ppgrid,       only : pcols
-
-      implicit none
 
 !--------------------------------------------------------------------
 !	... dummy args

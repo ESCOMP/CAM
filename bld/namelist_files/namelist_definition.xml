@@ -6846,7 +6846,7 @@ where source may be of the following:
 
 These fields can be set to constant values with units of "mmr" (mass mixing ratio)
 or "vmr" (volume mixing ratio).  The upper boundary values of source UBC_FILE are prescribed
-in the UBC_FILE_path file. Fields of source UBC_FILE may may include a CAM constituent name
+in the UBC_FILE_path file. Fields of source UBC_FILE may include a CAM constituent name
 and a file field name separated by ":".
 
 Example:
@@ -6859,14 +6859,14 @@ Default: set by build-namelist
 <entry id="ubc_file_path" type="char*512" input_pathname="abs" category="upper_boundary"
        group="upper_bc_file_opts" valid_values="" >
 Full path of the file containing prescribed upper boundary conditions.
-Default: set by build-namelist
+Default: NONE
 </entry>
 
 <entry id="ubc_file_input_type" type="char*32" category="upper_boundary"
        group="upper_bc_file_opts" valid_values="CYCLICAL,SERIAL,INTERP_MISSING_MONTHS,FIXED" >
 Type of time interpolation for data in {{ hilight }}ubc_file_path file{{ closehilight }}.
 Can be set to 'CYCLICAL', 'SERIAL', 'INTERP_MISSING_MONTHS', or 'FIXED'.
-Default: set by build-namelist
+Default: NONE
 </entry>
 
 <entry id="ubc_file_cycle_yr" type="integer" category="upper_boundary"
