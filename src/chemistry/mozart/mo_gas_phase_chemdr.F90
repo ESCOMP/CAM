@@ -247,6 +247,18 @@ contains
     ! diagnostics for HEMCO ParaNOx extension
     hco_jno2_idx = pbuf_get_index('HCO_IN_JNO2')
     hco_joh_idx  = pbuf_get_index('HCO_IN_JOH' )
+
+    !-------------------------- HEMCO_CESM ---------------------------------
+    !  ... save photo rxn rates for HEMCO ParaNOx, chem_mech rxns:
+    !    jo3_b            (  8)   O3 + hv ->  O + O2
+    !    jno2             ( 16)   NO2 + hv ->  NO + O
+    ! (hplin, 5/17/21)
+    !
+    ! Note hplin 1/25/22: might have to check if this rxt_idx available for
+    ! all sub-mechanisms in CAM-chem
+    !-----------------------------------------------------------------------
+    rxt_jno2_idx  = get_rxt_ndx( 'jno2' )
+    rxt_joh_idx   = get_rxt_ndx( 'jo3_b' )
 #endif
 
   end subroutine gas_phase_chemdr_inti
@@ -873,13 +885,7 @@ contains
     !    jo3_b            (  8)   O3 + hv ->  O + O2
     !    jno2             ( 16)   NO2 + hv ->  NO + O
     ! (hplin, 5/17/21)
-    !
-    ! Note hplin 1/25/22: might have to check if this rxt_idx available for
-    ! all sub-mechanisms in CAM-chem
     !-----------------------------------------------------------------------
-    rxt_jno2_idx  = get_rxt_ndx( 'jno2' )
-    rxt_joh_idx   = get_rxt_ndx( 'jo3_b' )
-    
     ! get the rxn rate [1/s] and write to pbuf
     if(hco_jno2_idx > 0) then
       call pbuf_get_field(pbuf, hco_jno2_idx, hco_j_tmp_fld)
