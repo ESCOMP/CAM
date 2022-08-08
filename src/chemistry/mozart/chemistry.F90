@@ -334,6 +334,8 @@ end function chem_is
 
 #if defined ( HEMCO_CESM )
     ! add fields to pbuf needed by HEMCO-CESM hplin 5/17/21
+    ! these are used to pass NO2, OH J-values to the HEMCO ParaNOx ship plume extension
+    ! for computation of ship plume emissions per Vinken et al., 2011.
     call pbuf_add_field('HCO_IN_JNO2', 'global', dtype_r8, (/pcols/), hco_jno2_idx)
     call pbuf_add_field('HCO_IN_JOH',  'global', dtype_r8, (/pcols/), hco_joh_idx )
 #endif

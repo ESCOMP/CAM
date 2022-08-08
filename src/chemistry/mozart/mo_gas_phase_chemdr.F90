@@ -50,7 +50,9 @@ module mo_gas_phase_chemdr
   integer :: ele_temp_ndx, ion_temp_ndx
 
 #if defined ( HEMCO_CESM )
+  ! for HEMCO-CESM ... passing J-values to ParaNOx ship plume extension
   integer :: hco_jno2_idx, hco_joh_idx
+  integer :: rxt_jno2_idx, rxt_joh_idx
 #endif
 
 contains
@@ -452,7 +454,7 @@ contains
     real(r8) :: vmr0(ncol,pver,gas_pcnst)
 
 #if defined ( HEMCO_CESM )
-  ! for HEMCO-CESM ...
+  ! for HEMCO-CESM ... passing J-values to ParaNOx ship plume extension
     integer  :: jno2_idx, joh_idx
     real(r8), pointer :: hco_j_tmp_fld(:)    ! J-value pointer (sfc only) [1/s]
 #endif
@@ -875,20 +877,20 @@ contains
     ! Note hplin 1/25/22: might have to check if this rxt_idx available for
     ! all sub-mechanisms in CAM-chem
     !-----------------------------------------------------------------------
-    jno2_idx  = get_rxt_ndx( 'jno2' )
-    joh_idx   = get_rxt_ndx( 'jo3_b' )
+    rxt_jno2_idx  = get_rxt_ndx( 'jno2' )
+    rxt_joh_idx   = get_rxt_ndx( 'jo3_b' )
     
     ! get the rxn rate [1/s] and write to pbuf
     if(hco_jno2_idx > 0) then
       call pbuf_get_field(pbuf, hco_jno2_idx, hco_j_tmp_fld)
       ! this is already in chunk, write /pcols/ at surface
-      hco_j_tmp_fld(:ncol) = reaction_rates(:ncol,pver,jno2_idx)
+      hco_j_tmp_fld(:ncol) = reaction_rates(:ncol,pver,rxt_jno2_idx)
     endif
 
     if(hco_joh_idx > 0) then
       call pbuf_get_field(pbuf, hco_joh_idx, hco_j_tmp_fld)
       ! this is already in chunk, write /pcols, pver/
-      hco_j_tmp_fld(:ncol) = reaction_rates(:ncol,pver,joh_idx)
+      hco_j_tmp_fld(:ncol) = reaction_rates(:ncol,pver,rxt_joh_idx)
     endif
 #endif
 
