@@ -913,12 +913,15 @@ end function chem_is_active
 
 !================================================================================
 !================================================================================
-  subroutine chem_emissions( state, cam_in )
+  subroutine chem_emissions( state, cam_in, pbuf )
     use aero_model,       only: aero_model_emissions
     use camsrfexch,       only: cam_in_t
     use constituents,     only: sflxnam
     use cam_history,      only: outfld
     use mo_srf_emissions, only: set_srf_emissions
+#if defined( HEMCO_CESM )
+    use hco_cc_emisssions,only: hco_set_srf_emissions
+#endif
     use fire_emissions,   only: fire_emissions_srf
     use ocean_emis,       only: ocean_emis_getflux
 
@@ -926,6 +929,7 @@ end function chem_is_active
 
     type(physics_state),    intent(in)    :: state   ! Physics state variables
     type(cam_in_t),         intent(inout) :: cam_in  ! import state
+    type(physics_buffer_desc), pointer    :: pbuf    ! Physics buffer in chunk, for HEMCO
 
     ! local vars
 
@@ -964,12 +968,22 @@ end function chem_is_active
 
     endif
 
+#if !defined( HEMCO_CESM )
    ! prescribed emissions from file ...
 
     !-----------------------------------------------------------------------
     !        ... Set surface emissions
     !-----------------------------------------------------------------------
     call set_srf_emissions( lchnk, ncol, sflx(:,:) )
+#else
+   ! prescribed emissions from HEMCO ...
+
+    !-----------------------------------------------------------------------
+    !        ... Set surface emissions using HEMCO compatibility API
+    ! (hplin, 8/8/22)
+    !-----------------------------------------------------------------------
+    call hco_set_srf_emissions( lchnk, ncol, sflx(:,:), pbuf )
+#endif
 
     do m = 1,pcnst
        n = map2chm(m)

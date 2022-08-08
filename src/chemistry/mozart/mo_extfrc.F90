@@ -15,10 +15,6 @@ module mo_extfrc
   use mo_constants,  only : avogadro
   use ioFileMod,     only : getfil
 
-#if defined( HEMCO_CESM )
-  use physics_buffer,only : physics_buffer_desc
-#endif
-
   implicit none
 
   type :: forcing
@@ -45,11 +41,6 @@ module mo_extfrc
 
   type(forcing), allocatable  :: forcings(:)
   integer :: n_frc_files = 0
-
-#if defined( HEMCO_CESM )
-  ! keep a copy of pbuf descriptor
-  type(physics_buffer_desc), pointer :: hco_pbuf2d(:,:)  ! ptr to 2d pbuf
-#endif
 
 contains
 
@@ -365,9 +356,6 @@ contains
     do m = 1,n_frc_files
        call advance_trcdata( forcings(m)%fields, forcings(m)%file, state, pbuf2d  )
     end do
-#else
-    ! save pbuf for use later in set_srf_emissions
-    hco_pbuf2d => pbuf2d
 #endif
 
   end subroutine extfrc_timestep_init
@@ -378,16 +366,6 @@ contains
     !	... form the external forcing
     !--------------------------------------------------------
     use mo_chem_utls,  only : get_spc_ndx
-
-#if defined( HEMCO_CESM )
-    !--------------------------------------------------------
-    ! ... using the physics buffer for HEMCO_CESM
-    !--------------------------------------------------------
-    use physics_buffer, only : pbuf_get_chunk, pbuf_get_field, pbuf_get_index
-    use ppgrid,         only : pver ! for vertical
-    use mo_chem_utls,   only : get_extfrc_ndx
-    use mo_tracname,    only : solsym
-#endif
 
     implicit none
 
@@ -412,113 +390,6 @@ contains
     real(r8) :: molec_to_kg
     integer  :: spc_ndx
 
-#if defined( HEMCO_CESM )
-    !--------------------------------------------------------
-    ! ... using the physics buffer for HEMCO_CESM
-    !--------------------------------------------------------
-    type(physics_buffer_desc), pointer :: pbuf_chnk(:) ! slice of pbuf in chnk
-    real(r8), pointer     :: pbuf_ik(:,:)              ! ptr to pbuf data (/pcols,pver/)
-    integer               :: tmpIdx                    ! pbuf field id
-    character(len=255)    :: fldname_ns                ! field name HCO_NH3
-    integer               :: RC                        ! return code
-    real(r8) :: kg_to_molec
-#endif
-
-#if defined( HEMCO_CESM )
-    !   ... using HEMCO_CESM (hplin, 11/14/20)
-
-    ! for every species index retrieve the species name, compute the pbuf name,
-    ! and write it into frcing(col, lev, n)
-    ! where n is FRC_IDX --
-    !
-    ! WARNING: ONLY SPECIES THAT ARE EXTERNALLY FORCED AND SPECIFIED IN mo_sim_dat.F90
-    ! CAN HAVE 3-D EMISSIONS, OTHERWISE THEY WILL BE IGNORED!!!
-    !
-    !
-    !  the n = frc_idx comes from get_extfrc_ndx( spc_name ).
-    !  it is too computationally expensive to check all fields to see if they are 3-d emitted
-    !
-    !  so PLEASE verify that all your species are in mo_sim_dat.F90:: extfrc_lst before attempting
-    !  to have 3-D emissions for them.
-    !
-    ! I will still loop through all species, get its symbol and attempt to inject extfrc emissions
-    ! for it, but it may not be guaranteed to be done.
-
-    ! if the pbuf exists, set has_emis(1:gas_pcnst) to .true.
-    ! this process is supposed to be set by srf_emissions_inti but it is just
-    ! used below, so we shunt it here and decide later
-
-    ! ncol: # of columns in chunk
-    ! lchnk: chunk number
-
-    do n = 1, gas_pcnst
-      ! check if extfrc available?
-      m = get_extfrc_ndx(trim(solsym(n)))
-      if(m > 0) then
-        ! add extfrc 
-        ! "external insitu forcing" (1/cm^3/s) -- NOTE UNITS COMING OUT OF HEMCO are
-        ! kg/m2/s, so unit conversion must be done
-        !
-        ! using species factor...
-        ! (kg_to_g is actually kg/g...)
-        !
-        !     1 / (kg/molec cm2/m2) = molec/kg m2/cm2
-        !
-        ! kg/m2/s * molec/kg m2/cm2 = molec/cm2/s
-        ! now divide by z-interface height (in CM!) for each height to get the right answer!
-        ! (hplin, 11/14/20)
-        kg_to_molec = 1/(adv_mass(n) / avogadro * cm2_to_m2 * kg_to_g)
-
-        ! species name: solsym(n)
-        fldname_ns = 'HCO_' // trim(solsym(n))
-        ! if(masterproc) write(iulog,*) "mo_extfrc hemco: Adding extfrc for", fldname_ns
-
-        tmpIdx = pbuf_get_index(fldname_ns, RC)
-        if(tmpIdx < 0) then
-          if(masterproc) then
-            write(iulog,*) "mo_extfrc hemco: Field not found ", TRIM(fldname_ns)
-          endif
-        else
-          ! this is already in chunk, retrieve it
-          pbuf_chnk => pbuf_get_chunk(hco_pbuf2d, lchnk)
-          call pbuf_get_field(pbuf_chnk, tmpIdx, pbuf_ik)
-
-          if(.not. associated(pbuf_ik)) then ! sanity check
-            call endrun("mo_extfrc hemco: FATAL - tmpIdx > 0 but pbuf_ik unassoc")
-          endif
-
-          ! for each col retrieve data from pbuf_ik(I, K)
-          do k = 1, pver-1
-            frcing(:ncol,k,m) = pbuf_ik(1:ncol,k) * kg_to_molec / ((zint(:ncol,k)-zint(:ncol,k+1)) * km_to_cm)
-          enddo
-          ! remember vertical is inverted - REMOVE the top level as it is injected in mo_srf_emissions instead
-
-          if ( frc_from_dataset(m) ) then 
-             xfcname = trim(extfrc_lst(m))//'_XFRC'
-             call outfld( xfcname, frcing(:ncol,:,n), ncol, lchnk )
-             spc_ndx = get_spc_ndx( extfrc_lst(m) )
-             molec_to_kg = adv_mass( spc_ndx ) / avogadro *cm2_to_m2 * kg_to_g
-
-             frcing_col(:ncol) = 0._r8
-             frcing_col_kg(:ncol) = 0._r8
-             do k = 1, pver
-                frcing_col(:ncol) = frcing_col(:ncol) + frcing(:ncol,k,m)*(zint(:ncol,k)-zint(:ncol,k+1))*km_to_cm
-                frcing_col_kg(:ncol) = frcing_col_kg(:ncol) + frcing(:ncol,k,m)*(zint(:ncol,k)-zint(:ncol,k+1))*km_to_cm*molec_to_kg
-             enddo
-
-             xfcname = trim(extfrc_lst(m))//'_CLXF'
-             call outfld( xfcname, frcing_col(:ncol), ncol, lchnk )
-             xfcname = trim(extfrc_lst(m))//'_CMXF'
-             call outfld( xfcname, frcing_col_kg(:ncol), ncol, lchnk )
-             if ( masterproc ) then
-                 write(iulog,*) "mo_extfrc hemco: debug added 3D emiss for ", TRIM(solsym(n)), maxval(frcing(:ncol,:,m))
-             endif
-          endif
-        endif
-      endif
-    enddo
-
-#else
     if( n_frc_files < 1 .or. extcnt < 1 ) then
        return
     end if
@@ -560,8 +431,6 @@ contains
           call outfld( xfcname, frcing_col_kg(:ncol), ncol, lchnk )
        endif
     end do frc_loop
-
-#endif
 
   end subroutine extfrc_set
 
