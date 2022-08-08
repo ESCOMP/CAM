@@ -29,15 +29,19 @@ module hco_cc_emissions
 	use cam_logfile,      only: iulog
 
 	! Grid information
-	use ppgrid,           only: pver
+	use ppgrid,           only: pver, pverp
 
 	! Chemistry mechanism properties
     use chem_mods,        only: gas_pcnst
     use mo_tracname,      only: solsym
 
     ! Physics buffer operations
-	use physics_buffer, only: physics_buffer_desc
-    use physics_buffer, only : pbuf_get_field, pbuf_get_index
+	use physics_buffer,   only: physics_buffer_desc
+    use physics_buffer,   only: pbuf_get_field, pbuf_get_index
+
+    ! Compat with XFRC diagn
+    use cam_history,         only: outfld
+    use cam_history_support, only: max_fieldname_len
 
 	implicit none
 	private
@@ -81,7 +85,7 @@ contains
     integer,  intent(in)               :: ncol        ! columns in chunk
     integer,  intent(in)               :: lchnk       ! chunk index
     real(r8), intent(out)              :: sflx(:,:)   ! surface emissions ( kg/m^2/s )
-    type(physics_buffer_desc), pointer :: pbuf        ! pbuf in chunk
+    type(physics_buffer_desc), pointer :: pbuf(:)     ! pbuf in chunk
 !
 ! !REVISION HISTORY:
 !  08 Aug 2022 - H.P. Lin    - Initial version
@@ -91,6 +95,8 @@ contains
 !
 ! !LOCAL VARIABLES:
 !
+	integer               :: n
+
     real(r8), pointer     :: pbuf_ik(:,:)              ! ptr to pbuf data (/pcols,pver/)
     integer               :: tmpIdx                    ! pbuf field id
     character(len=255)    :: fldname_ns                ! field name HCO_NH3
@@ -133,7 +139,7 @@ contains
             ! for each col retrieve data from pbuf_ik(I, K)
             sflx(1:ncol,n) = pbuf_ik(1:ncol,pver) ! only surface emissions for now, remember vertical is inverted
 
-            has_emis(n) = .true.
+            ! has_emis(n) = .true.
 
             ! if(masterproc) write(iulog,*) "mo_srf_emissions hemco: debug added emiss for", solsym(n), maxval(sflx(1:ncol, n))
         endif
@@ -157,7 +163,6 @@ contains
 !
 ! !USES:
 !
-		implicit none
 		use mo_chem_utls,   only: get_spc_ndx
 	    use mo_chem_utls,   only: get_extfrc_ndx
 
@@ -167,6 +172,7 @@ contains
 	    use chem_mods,      only: extcnt, adv_mass
 
 	    use mo_constants,   only: avogadro
+		implicit none
 !
 ! !INPUT PARAMETERS:
 !
@@ -174,7 +180,7 @@ contains
 	    integer,  intent(in)               :: lchnk                      ! chunk index
 	    real(r8), intent(in)               :: zint(ncol, pverp)          ! interface geopot above surface (km)
 	    real(r8), intent(inout)            :: frcing(ncol,pver,extcnt)   ! insitu forcings (molec/cm^3/s)
-        type(physics_buffer_desc), pointer :: pbuf                       ! pbuf in chunk
+        type(physics_buffer_desc), pointer :: pbuf(:)                    ! pbuf in chunk
 !
 ! !REVISION HISTORY:
 !  08 Aug 2022 - H.P. Lin    - Initial version based on original from 14 Nov 2020
@@ -195,6 +201,7 @@ contains
     real(r8)              :: frcing_col(1:ncol), frcing_col_kg(1:ncol)
     character(len=max_fieldname_len) :: xfcname
     real(r8)              :: molec_to_kg
+    integer               :: spc_ndx
 
 
     real(r8), pointer     :: pbuf_ik(:,:)              ! ptr to pbuf data (/pcols,pver/)
@@ -235,7 +242,7 @@ contains
 
       if(m > 0) then
         ! confirm extfrc present
-        has_emis(m) = .true.
+        ! has_emis(m) = .true.
 
         ! add extfrc
         ! "external insitu forcing" (1/cm^3/s) -- NOTE UNITS COMING OUT OF HEMCO are

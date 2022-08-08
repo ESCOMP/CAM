@@ -914,13 +914,14 @@ end function chem_is_active
 !================================================================================
 !================================================================================
   subroutine chem_emissions( state, cam_in, pbuf )
+    use physics_buffer,   only: physics_buffer_desc
     use aero_model,       only: aero_model_emissions
     use camsrfexch,       only: cam_in_t
     use constituents,     only: sflxnam
     use cam_history,      only: outfld
     use mo_srf_emissions, only: set_srf_emissions
 #if defined( HEMCO_CESM )
-    use hco_cc_emisssions,only: hco_set_srf_emissions
+    use hco_cc_emissions, only: hco_set_srf_emissions
 #endif
     use fire_emissions,   only: fire_emissions_srf
     use ocean_emis,       only: ocean_emis_getflux
@@ -929,7 +930,7 @@ end function chem_is_active
 
     type(physics_state),    intent(in)    :: state   ! Physics state variables
     type(cam_in_t),         intent(inout) :: cam_in  ! import state
-    type(physics_buffer_desc), pointer    :: pbuf    ! Physics buffer in chunk, for HEMCO
+    type(physics_buffer_desc), pointer    :: pbuf(:) ! Physics buffer in chunk, for HEMCO
 
     ! local vars
 
