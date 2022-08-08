@@ -1132,8 +1132,8 @@ subroutine micro_pumas_cam_init(pbuf2d)
    call addfld('VPRAO' ,       horiz_only,   'A', 'kg/kg/s',  'Vertical average of accretion rate'                                )
    call addfld('RACAU' ,       horiz_only,   'A', 'kg/kg/s',  'Accretion/autoconversion ratio from vertical average'              )
 
-   call addfld('UMR', (/ 'lev' /), 'A',   'm/s', 'Mass-weighted rain  fallspeed'              )
-   call addfld('UMS', (/ 'lev' /), 'A',   'm/s', 'Mass-weighted snow fallspeed'               )
+   call addfld('UMR', (/ 'trop_cld_lev' /), 'A',   'm/s', 'Mass-weighted rain  fallspeed'              )
+   call addfld('UMS', (/ 'trop_cld_lev' /), 'A',   'm/s', 'Mass-weighted snow fallspeed'               )
 
    if (micro_mg_version > 2) then
       call addfld('UMG',    (/ 'trop_cld_lev' /), 'A',   'm/s', 'Mass-weighted graupel/hail  fallspeed'                    )
