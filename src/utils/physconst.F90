@@ -2017,8 +2017,8 @@ end subroutine physconst_init
 
                temp_local = .5_r8*(temp(i,j,k-1)+temp(i,j,k))
                mbarvi = 0.5_r8*(mbarv(i,j,k-1)+mbarv(i,j,k))
-               kmvis(i,j,k) = kmvis(i,j,k)*mbarvi*temp_local**kv4*1.e-7_r8
-               kmcnd(i,j,k) = kmcnd(i,j,k)*mbarvi*temp_local**kc4*1.e-5_r8
+               kmvis(i,j,k) = kmvis(i,j,k)*mbarvi*temp_local**kv4
+               kmcnd(i,j,k) = kmcnd(i,j,k)*mbarvi*temp_local**kc4
              enddo
            enddo
          end do
@@ -2052,8 +2052,8 @@ end subroutine physconst_init
                kmcnd(i,j,k) = kmcnd(i,j,k)+thermodynamic_active_species_kc(icnst)* &
                               thermodynamic_active_species_mwi(icnst)*residual
 
-               kmvis(i,j,k) = kmvis(i,j,k)*mbarv(i,j,k)*temp(i,j,k)**kv4*1.e-7_r8
-               kmcnd(i,j,k) = kmcnd(i,j,k)*mbarv(i,j,k)*temp(i,j,k)**kc4*1.e-5_r8
+               kmvis(i,j,k) = kmvis(i,j,k)*mbarv(i,j,k)*temp(i,j,k)**kv4
+               kmcnd(i,j,k) = kmcnd(i,j,k)*mbarv(i,j,k)*temp(i,j,k)**kc4
              enddo
            enddo
          end do
