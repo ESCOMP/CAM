@@ -453,7 +453,7 @@ end subroutine physconst_init
           thermodynamic_active_species_cv (icnst) = 0.5_r8*shr_const_rgas*dof2/mw !N2
           thermodynamic_active_species_R  (icnst) = shr_const_rgas/mw
           thermodynamic_active_species_mwi(icnst) = 1.0_r8/mw
-          thermodynamic_active_species_km(icnst)  = 3.42_r8 * 1.e-7_r8
+          thermodynamic_active_species_kv(icnst)  = 3.42_r8 * 1.e-7_r8
           thermodynamic_active_species_kc(icnst)  = 56._r8 * 1.e-5_r8
         end if
         !
