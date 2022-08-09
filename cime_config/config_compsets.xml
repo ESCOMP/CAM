@@ -584,30 +584,43 @@
  <!-- comment out RUN_REFCASE until refcases are reintroduced for the next release -->
  <!--   <entry id="RUN_REFCASE"> -->
  <!--     <values match="first"> -->
-    </entry>
+<!--	<value grid="a%0.9x1.25_l%0.9x1.25_oi%0.9x1.25_r%r05_g%gland4_w%null_m%gx1v7"	compset="2000_CAM60_CLM50%BGC-CROP_CICE%PRES_DOCN%DOM_MOSART_CISM2%NOEVOLVE_SWAV"	 >b.e20.BHIST.f09_g17.20thC.297_01_v2</value> -->
+<!--	<value grid="a%0.9x1.25_l%0.9x1.25_oi%0.9x1.25_r%r05_g%gland4_w%null_m%gx1v7"	compset="HIST_CAM60_CLM50%BGC-CROP_CICE%PRES_DOCN%DOM_MOSART_CISM2%NOEVOLVE_SWAV"	 >b.e20.BHIST.f09_g17.20thC.297_01_v2</value> -->
+<!--	<value grid="a%0.9x1.25_l%0.9x1.25_oi%0.9_1.25_r%r05_m%gx1v6"   compset="2000_CAM60_CLM50%BGC-CROP_CICE%PRES_DOCN%DOM_MOSART_CISM2%NOEVOLVE_SWAV">b.e20.B1850.f09_g16.pi_control.all.123</value> -->
 
-    <entry id="NTHRDS_LND">
+<!--	<value grid="a%0.9x1.25_l%0.9x1.25_oi%0.9_1.25_r%r05_m%gx1v7"   compset="2000_CAM60_CLM50%BGC-CROP_CICE%PRES_DOCN%DOM_MOSART_CISM2%NOEVOLVE_SWAV">b.e20.B1850.f09_g16.pi_control.all.123</value> -->
+<!--        <value grid="a%0.9x1.25_l%0.9x1.25_oi%0.9x1.25_r%r05_g%gland4_w%null_m%gx1v7" compset="HIST_CAM60%WC.*_CLM50%BGC-CROP_CICE%PRES_DOCN%DOM_MOSART_CISM2%NOEVOLVE_SWAV">b.e21.BWHIST.f09_g17.CMIP6-historical-WACCM.001</value> -->
+<!--      </values> -->
+<!--    </entry> -->
+
+ <!-- comment out RUN_REFDATE until refcases are reintroduced for the next release -->
+<!--    <entry id="RUN_REFDATE"> -->
+<!--      <values match="first"> -->
+<!--	<value grid="a%0.9x1.25_l%0.9x1.25_oi%0.9x1.25_r%r05_g%gland4_w%null_m%gx1v7"	compset="HIST_CAM60_CLM50%BGC-CROP_CICE%PRES_DOCN%DOM_MOSART_CISM2%NOEVOLVE_SWAV"   >1979-01-01</value> -->
+<!--	<value grid="a%0.9x1.25_l%0.9x1.25_oi%0.9x1.25_r%r05_g%gland4_w%null_m%gx1v7"	compset="2000_CAM60_CLM50%BGC-CROP_CICE%PRES_DOCN%DOM_MOSART_CISM2%NOEVOLVE_SWAV"   >2000-01-01</value> -->
+<!--	<value grid="a%0.9x1.25_l%0.9x1.25_oi%0.9_1.25_r%r05_m%gx1v6"   compset="2000_CAM60_CLM50%BGC-CROP_CICE%PRES_DOCN%DOM_MOSART_CISM2%NOEVOLVE_SWAV">0010-01-01</value> -->
+<!--	<value grid="a%0.9x1.25_l%0.9x1.25_oi%0.9_1.25_r%r05_m%gx1v7"   compset="2000_CAM60_CLM50%BGC-CROP_CICE%PRES_DOCN%DOM_MOSART_CISM2%NOEVOLVE_SWAV">0010-01-01</value> -->
+<!--        <value grid="a%0.9x1.25_l%0.9x1.25_oi%0.9x1.25_r%r05_g%gland4_w%null_m%gx1v7" compset="HIST_CAM60%WC.*_CLM50%BGC-CROP_CICE%PRES_DOCN%DOM_MOSART_CISM2%NOEVOLVE_SWAV">1950-01-01</value> -->
+<!--      </values> -->
+<!--    </entry> -->
+
+ <!-- comment out RUN_REFDIR until refcases are reintroduced for the next release -->
+ <!--   <entry id="RUN_REFDIR"> -->
+<!--      <values match="first"> -->
+<!--	<value grid="a%0.9x1.25_l%0.9x1.25_oi%0.9x1.25_r%r05_g%gland4_w%null_m%gx1v7"	compset="HIST_CAM60_CLM50%BGC-CROP_CICE%PRES_DOCN%DOM_MOSART_CISM2%NOEVOLVE_SWAV"   >cesm2_init</value> -->
+<!--	<value grid="a%0.9x1.25_l%0.9x1.25_oi%0.9x1.25_r%r05_g%gland4_w%null_m%gx1v7"	compset="2000_CAM60_CLM50%BGC-CROP_CICE%PRES_DOCN%DOM_MOSART_CISM2%NOEVOLVE_SWAV"   >cesm2_init</value> -->
+<!--	<value grid="a%0.9x1.25_l%0.9x1.25_oi%0.9x1.25_r%r05_g%gland4_w%null_m%gx1v7" compset="HIST_CAM60%WC.*_CLM50%BGC-CROP_CICE%PRES_DOCN%DOM_MOSART_CISM2%NOEVOLVE_SWAV">cesm2_init</value> -->
+<!--     </values> -->
+<!--    </entry> -->
+
+    <entry id="NTHRDS_ATM">
       <values match="first">
         <value compset="SPCAMS">1</value>
         <value compset="SPCAMM">1</value>
       </values>
     </entry>
 
-    <entry id="NTHRDS_OCN">
-      <values match="first">
-        <value compset="SPCAMS">1</value>
-        <value compset="SPCAMM">1</value>
-      </values>
-    </entry>
-
-    <entry id="NTHRDS_ROF">
-      <values match="first">
-        <value compset="SPCAMS">1</value>
-        <value compset="SPCAMM">1</value>
-      </values>
-    </entry>
-
-    <entry id="NTHRDS_WAV">
+    <entry id="NTHRDS_CPL">
       <values match="first">
         <value compset="SPCAMS">1</value>
         <value compset="SPCAMM">1</value>
@@ -621,29 +634,16 @@
       </values>
     </entry>
 
-  <!-- single column compset must have pts_mode set to true -->
-
-    <entry id="PTS_MODE">
+    <entry id="NTHRDS_GLC">
       <values match="first">
-	<value compset="(CAM[456]0%SCAM)">TRUE</value>
+        <value compset="SPCAMS">1</value>
+        <value compset="SPCAMM">1</value>
       </values>
     </entry>
 
-    <entry id="PTS_LAT">
+    <entry id="NTHRDS_ICE">
       <values match="first">
-	<value compset="(CAM[456]0%SCAM)">36.6</value>
-      </values>
-    </entry>
-
-    <entry id="PTS_LON">
-      <values match="first">
-	<value compset="(CAM[456]0%SCAM)">262.5</value>
-      </values>
-    </entry>
-
-  </entries>
-
-</compsets>
+        <value compset="SPCAMS">1</value>
         <value compset="SPCAMM">1</value>
       </values>
     </entry>
