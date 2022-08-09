@@ -535,12 +535,18 @@ contains
 !---------------------------Local storage-------------------------------
     integer :: iCol                                ! column loop counter
 
+    real(r8), parameter :: h_escape_flx_factor = 2.03e-13_r8 ! for hydrogen escape flux due to charge exchange
+    ! adopted from TIME-GCM (R. G. Roble, pp. 1-21, AGU Geophys. Monogr. Ser 87, 1995) following
+    ! Liu, S.C., and T. M. Donahue, Mesospheric hydrogen related to exospheric escape mechanisms, J. Atmos. Sci.,
+    ! 31, 1466-1470, 1974. (Equation 4 there). DOI: 10.1175/1520-0469(1974)031<1466:Mhrtee>2.0.Co;2
+    ! https://journals.ametsoc.org/view/journals/atsc/31/5/1520-0469_1974_031_1466_mhrtee_2_0_co_2.xml
+
     real(r8), parameter :: hfluxlimitfac = 0.72_r8 ! Hydrogen upper boundary flux limiting factor
 
     real(r8) :: nmbartop                           ! Top level density (rho)
     real(r8) :: zkt                                ! Factor for H Jean's escape flux calculation
 
-    real(r8), pointer :: qh_top(:)         ! Top level hydrogen mixing ratio (kg/kg)
+    real(r8), pointer :: qh_top(:)                 ! Top level hydrogen mixing ratio (kg/kg)
 
     ubc_flux(:,:) = nan
 
@@ -563,7 +569,7 @@ contains
             SQRT(t(iCol,1)) * (1._r8 + zkt) * EXP(-zkt)
 
        ubc_flux(iCol,h_ndx) = ubc_flux(iCol,h_ndx) * &
-            (2.03E-13_r8 * qh_top(iCol) * nmbartop / (cnst_mw(h_ndx) / avogad) * t(iCol,1))
+            (h_escape_flx_factor * qh_top(iCol) * nmbartop / (cnst_mw(h_ndx) / avogad) * t(iCol,1))
 
     enddo
 
