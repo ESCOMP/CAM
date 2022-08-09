@@ -42,8 +42,15 @@
 
       ! ewl notes: added HMS (for GEOS-Chem 13.3)
       !            added AONITA, AROMP4, AROMP5, BALD, BENZP, BZCO3H, 
-      !            BZPAN, C2H2, C2H4, CSL, ETHN, ETHP, MCT, NPHEN for 14.0
-      solsym(:346) = (/ 'ACET           ', &
+      !            BZPAN, C2H2, C2H4, CSL, ETHN, ETHP, MCT, NPHEN, PHEN for 14.0
+      !            Removed non-advected GEOS-Chem species (except CO2) for 14.0
+      !
+      ! Currently include GC advected species (233), MAM aerosols (33), and CO2 (1)
+      ! If changed, update to match solsym length:
+      !   1. cam/bld/configure variable $chem_adv
+      !   2. cam/src/chemistry/geoschem/chem_mods.F90 vars gas_pcnst and nTracersMax
+      ! Alse update adv_mass to store MWs for species in solsym (ewl, 8/8/22)
+      solsym(:267) = (/ 'ACET           ', &
                         'ACTA           ','AERI           ', &
                         'ALD2           ','ALK4           ','ASOA1          ', &
                         'ASOA2          ','ASOA3          ','ASOAN          ', &
@@ -112,6 +119,7 @@
                         'NPRNO3         ','O3             ','OCLO           ', &
                         'OCPI           ','OCPO           ','OCS            ', &
                         'OIO            ','PAN            ','PFE            ', &
+                        'PHEN           ',                                     &
                         'PIP            ','PP             ','PPN            ', &
                         'PROPNN         ','PRPE           ','PRPN           ', &
                         'PYAC           ','R4N2           ','R4P            ', &
@@ -135,34 +143,35 @@
                         'soa3_a2        ','soa4_a1        ','soa4_a2        ', &
                         'soa5_a1        ','soa5_a2        ','H2SO4          ', &
                         'SOAG0          ','SOAG1          ','SOAG2          ', &
-                        'SOAG3          ','SOAG4          ','CO2            ', &
-                        'LBRO2H         ','LBRO2N         ','LISOPOH        ', &
-                        'LISOPNO3       ','LTRO2H         ','LTRO2N         ', &
-                        'LXRO2H         ','LXRO2N         ','SO4H1          ', &
-                        'SO4H2          ','SO4H3          ','SO4H4          ', &
-                        'POX            ','LOX            ','PCO            ', &
-                        'LCO            ','PSO4           ','LCH4           ', &
-                        'PH2O2          ','BRO2           ','TRO2           ', &
-                        'N              ','XRO2           ','HPALD2OO       ', &
-                        'HPALD1OO       ','INA            ','C4HVP1         ', &
-                        'C4HVP2         ','IDNOO          ','ICNOO          ', &
-                        'ISOPNOO2       ','ROH            ','ISOPNOO1       ', &
-                        'IDHNDOO1       ','IDHNDOO2       ','H              ', &
-                        'IHPOO2         ','IHPOO1         ','IHPOO3         ', &
-                        'IHPNDOO        ','ICHOO          ','R4N1           ', &
-                        'PRN1           ','MVKOHOO        ','MCROHOO        ', &
-                        'MACR1OO        ','PO2            ','OLNN           ', &
-                        'OLND           ','ETO2           ','IHPNBOO        ', &
-                        'RCO3           ','LIMO2          ','KO2            ', &
-                        'IEPOXAOO       ','IEPOXBOO       ','CH3CHOO        ', &
-                        'PIO2           ','IDHNBOO        ','A3O2           ', &
-                        'IHOO4          ','IHOO1          ','INO2D          ', &
-                        'INO2B          ','MACRNO2        ','ATO2           ', &
-                        'OTHRO2         ','R4O2           ','B3O2           ', &
-                        'CH2OO          ','MCO3           ','MO2            ', &
-                        'O1D            ','OH             ','HO2            ', &
-                        'O              ','H2             ','N2             ', &
-                        'O2             ','RCOOH          ' /)
+                        'SOAG3          ','SOAG4          ','CO2            ' /)
+!non-advected GEOS-Chem species in 14.0:
+!                        'LBRO2H         ','LBRO2N         ','LISOPOH        ', &
+!                        'LISOPNO3       ','LTRO2H         ','LTRO2N         ', &
+!                        'LXRO2H         ','LXRO2N         ','SO4H1          ', &
+!                        'SO4H2          ','SO4H3          ','SO4H4          ', &
+!                        'POX            ','LOX            ','PCO            ', &
+!                        'LCO            ','PSO4           ','LCH4           ', &
+!                        'PH2O2          ','BRO2           ','TRO2           ', &
+!                        'N              ','XRO2           ','HPALD2OO       ', &
+!                        'HPALD1OO       ','INA            ','C4HVP1         ', &
+!                        'C4HVP2         ','IDNOO          ','ICNOO          ', &
+!                        'ISOPNOO2       ','ROH            ','ISOPNOO1       ', &
+!                        'IDHNDOO1       ','IDHNDOO2       ','H              ', &
+!                        'IHPOO2         ','IHPOO1         ','IHPOO3         ', &
+!                        'IHPNDOO        ','ICHOO          ','R4N1           ', &
+!                        'PRN1           ','MVKOHOO        ','MCROHOO        ', &
+!                        'MACR1OO        ','PO2            ','OLNN           ', &
+!                        'OLND           ','ETO2           ','IHPNBOO        ', &
+!                        'RCO3           ','LIMO2          ','KO2            ', &
+!                        'IEPOXAOO       ','IEPOXBOO       ','CH3CHOO        ', &
+!                        'PIO2           ','IDHNBOO        ','A3O2           ', &
+!                        'IHOO4          ','IHOO1          ','INO2D          ', &
+!                        'INO2B          ','MACRNO2        ','ATO2           ', &
+!                        'OTHRO2         ','R4O2           ','B3O2           ', &
+!                        'CH2OO          ','MCO3           ','MO2            ', &
+!                        'O1D            ','OH             ','HO2            ', &
+!                        'O              ','H2             ','N2             ', &
+!                        'O2             ','RCOOH          ' /)
 
       inv_lst(:  6)  = (/ 'M               ', 'N2              ', 'O2              ', &
                           'H2              ', 'MOH             ', 'RCOOH           ' /)
@@ -170,7 +179,7 @@
       fix_mass(:  6) = (/ 0.00000000_r8, 28.0134800_r8, 31.9988000_r8, 2.020000_r8,  32.050000_r8, &
                           74.090000_r8 /)
 
-      adv_mass(:346) = (/  58.090000_r8,  60.060000_r8, 126.900000_r8,  44.060000_r8,  58.120000_r8, &
+      adv_mass(:267) = (/  58.090000_r8,  60.060000_r8, 126.900000_r8,  44.060000_r8,  58.120000_r8, &
                           150.000000_r8, 150.000000_r8, 150.000000_r8, 150.000000_r8, 150.000000_r8, &
                           150.00000_r8,  150.000000_r8,  189.12_r8, 68.08_r8, 98.10_r8, &
                           90.0900000_r8, 106.12_r8, 12.010000_r8,  12.010000_r8, &
@@ -207,7 +216,7 @@
                           118.100000_r8,  44.020000_r8, 108.020000_r8,  17.040000_r8,  18.050000_r8, &
                            62.010000_r8,  31.400000_r8,  30.010000_r8,  46.010000_r8,  62.010000_r8, &
                            139.11_r8, 105.110000_r8,  48.000000_r8,  67.450000_r8,  12.010000_r8,  12.010000_r8, &
-                           60.070000_r8, 158.900000_r8, 121.060000_r8,  55.850000_r8, 186.280000_r8, &
+                           60.070000_r8, 158.900000_r8, 121.060000_r8,  55.850000_r8, 94.11_r8, 186.280000_r8, &
                            92.110000_r8, 135.080000_r8, 119.080000_r8,  42.090000_r8, 137.110000_r8, &
                            88.070000_r8, 119.100000_r8,  90.140000_r8,  76.110000_r8,  76.110000_r8, &
                            58.090000_r8, 118.150000_r8, 118.150000_r8, 118.150000_r8, 118.150000_r8, &
@@ -222,23 +231,7 @@
                           250.445000_r8, 250.445000_r8, 250.445000_r8, 250.445000_r8, 250.445000_r8, &
                           250.445000_r8, 250.445000_r8, 250.445000_r8, 250.445000_r8,  98.078400_r8, &
                           250.445000_r8, 250.445000_r8, 250.445000_r8, 250.445000_r8, 250.445000_r8, &
-                           44.010000_r8,  -1.000000_r8,  -1.000000_r8,  -1.000000_r8,  -1.000000_r8, &
-                           -1.000000_r8,  -1.000000_r8,  -1.000000_r8,  -1.000000_r8,  96.060000_r8, &
-                           96.060000_r8,  96.060000_r8,  96.060000_r8,  -1.000000_r8,  -1.000000_r8, &
-                           -1.000000_r8,  -1.000000_r8,  -1.000000_r8,  -1.000000_r8,  -1.000000_r8, &
-                          159.130000_r8, 173.160000_r8,  14.010000_r8, 187.190000_r8, 147.120000_r8, &
-                          147.120000_r8, 146.140000_r8, 103.110000_r8, 103.110000_r8, 241.140000_r8, &
-                          194.140000_r8, 196.160000_r8,  60.110000_r8, 196.160000_r8, 196.160000_r8, &
-                          196.160000_r8,   1.010000_r8, 167.160000_r8, 167.160000_r8, 167.160000_r8, &
-                          212.160000_r8, 149.140000_r8, 150.130000_r8, 136.090000_r8, 119.110000_r8, &
-                          119.110000_r8, 101.090000_r8,  91.100000_r8, 230.270000_r8, 230.270000_r8, &
-                           61.070000_r8, 212.160000_r8,  89.080000_r8, 185.270000_r8, 101.090000_r8, &
-                          149.140000_r8, 149.140000_r8,  60.060000_r8, 185.270000_r8, 196.160000_r8, &
-                           75.100000_r8, 117.140000_r8, 117.140000_r8, 162.140000_r8, 162.140000_r8, &
-                          180.100000_r8,  89.080000_r8,  61.070000_r8,  89.130000_r8,  75.100000_r8, &
-                           46.030000_r8,  75.050000_r8,  47.040000_r8,  16.000000_r8,  17.010000_r8, &
-                           33.010000_r8,  16.000000_r8,   2.020000_r8,  28.020000_r8,  32.000000_r8, &
-                           74.090000_r8 /)
+                           44.010000_r8 /)
 
       extfrc_lst(: 1) = (/ '                ' /)
 

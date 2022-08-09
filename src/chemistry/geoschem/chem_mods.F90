@@ -7,7 +7,7 @@
       implicit none
       save
 
-      INTEGER, PARAMETER   :: nTracersMax = 252    ! Must be equal to chem_nadv
+      INTEGER, PARAMETER   :: nTracersMax = 267    ! Must be equal to chem_nadv
       INTEGER              :: nTracers
       CHARACTER(LEN=255)   :: tracerNames(nTracersMax)
       CHARACTER(LEN=255)   :: tracerLongNames(nTracersMax)
@@ -61,7 +61,9 @@
                             rxntot = 212, & ! number of total reactions
                             gascnt = 172, & ! number of gas phase reactions
                             nabscol = 2, & ! number of absorbing column densities
-                            gas_pcnst = 346, & ! number of "gas phase" species
+                            gas_pcnst = 267, & ! number of "gas phase" species (same as solsym length)
+                                               ! Includes GC advected species (233), MAM aerosols (33),
+                                               ! and CO2 (1)
                             nfs = 6, & ! number of "fixed" species
                             relcnt = 0, & ! number of relationship species
                             grpcnt = 0, & ! number of group members

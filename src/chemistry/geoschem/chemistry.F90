@@ -30,12 +30,7 @@ module chemistry
   USE GC_Environment_Mod                        ! Runtime GEOS-Chem environment
   USE ErrCode_Mod                               ! Error codes for success or failure
   USE Error_Mod                                 ! For error checking
-  USE Charpak_Mod,         ONLY : StrSplit      ! For config file parsing
-
-  !-----------------------------------------------------------------
-  ! Parameters to define floating-point variables
-  !-----------------------------------------------------------------
-  USE PRECISION_MOD,       ONLY : fp, f4     ! Flexible precision
+  USE Precision_Mod,       ONLY : fp, f4        ! Flexible precision
 
   use chem_mods,           only : nSlvd, slvd_Lst, slvd_ref_MMR
 
@@ -351,6 +346,8 @@ contains
     map2chm    = -1
     ref_MMR(:) = 0.0e+0_r8
 
+    ! nTracersMax must be # advected species in geoschem_config.yml (nTracers) plus
+    ! # aerosols (nAer) plus 1 (for CO2). It is set in chem_mods.F90.
     DO I = 1, nTracersMax
        IF ( I .LE. nTracers ) THEN
           cnstName    = to_upper(TRIM(tracerNames(I)))
@@ -684,16 +681,20 @@ contains
 #endif
     use gckpp_Model,     only : nSpec, Spc_Names
     use chem_mods,       only : drySpc_ndx
+    use charpak_mod,     only : strsplit
 
     ! args
     CHARACTER(LEN=*), INTENT(IN) :: nlfile  ! filepath for file containing namelist input
 
     ! Local variables
     INTEGER                      :: I, N
-    INTEGER                      :: UNITN, IERR
+    INTEGER                      :: UNITN, IERR, RC
     CHARACTER(LEN=500)           :: line
     CHARACTER(LEN=63)            :: substrs(2)
-    LOGICAL                      :: validSLS
+    LOGICAL                      :: validSLS, v_bool
+
+    ! Assume a successful return until otherwise
+    RC                      = GC_SUCCESS
 
 ! ewl: remove 4 entries from chem_inparm used for dry deposition:
 !      clim_soilw_file, depvel_file, depvel_lnd_file, season_wes_file;
@@ -777,12 +778,12 @@ contains
 
        Write(iulog,'(/,a,/)') 'Now defining GEOS-Chem tracers and dry deposition mapping...'
 
+
+       !==============================================================
+       ! Read GEOS-Chem advected species from geoschem_config.yml
+       !==============================================================
+
        unitn = getunit()
-
-
-       !==============================================================
-       ! Read list of GEOS-Chem tracers from geoschem_config.yml
-       !==============================================================
 
        OPEN( unitn, FILE=TRIM(gcConfig), STATUS='OLD', IOSTAT=IERR )
        IF (IERR .NE. 0) THEN
@@ -798,10 +799,12 @@ contains
        ENDDO
 
        ! Read in all advected species names and add them to tracer names list
+       nTracers = 0
        DO WHILE ( LEN_TRIM( line ) > 0 )
-          READ(unitn,'(26x,a)', IOSTAT=IERR) line
-          IF ( IERR .NE. 0 ) CALL ENDRUN('chem_readnl: error calling adv spc list')
+          READ(unitn,'(a)', IOSTAT=IERR) line
+          IF ( IERR .NE. 0 ) CALL ENDRUN('chem_readnl: error setting adv spc list')
           line = ADJUSTL( ADJUSTR( line ) )
+
           IF ( INDEX( line, 'passive_species' ) > 0 ) EXIT
           CALL StrSplit( line, '-', substrs, N )
           IF ( INDEX( LINE, '-' ) > 0 ) THEN
@@ -816,7 +819,8 @@ contains
              ENDIF
 
              nTracers = nTracers + 1
-             tracerNames(nTracers) = TRIM(line)
+             tracerNames(nTracers) = TRIM(substrs(1))
+
           ENDIF
        ENDDO
        CLOSE(unitn)
