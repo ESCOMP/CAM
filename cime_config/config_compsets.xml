@@ -567,73 +567,6 @@
  	<value  compset="HIST_CAM\d0%WX">GREGORIAN</value>
      </values>
     </entry>
-    <entry id="SSTICE_DATA_FILENAME">
-      <values match ="last">
-        <value compset="DOCN%DOM" grid="a%T31.*_oi%T31"                      >$DIN_LOC_ROOT/atm/cam/sst/sst_HadOIBl_bc_48x96_clim_c050526.nc</value>
-        <value compset="DOCN%DOM" grid="a%1.9x2.5.*_oi%1.9x2.5"              >$DIN_LOC_ROOT/atm/cam/sst/sst_HadOIBl_bc_1.9x2.5_clim_c061031.nc</value>
-        <value compset="DOCN%DOM" grid="a%0.9x1.25.*_oi%0.9x1.25"            >$DIN_LOC_ROOT/atm/cam/sst/sst_HadOIBl_bc_0.9x1.25_clim_c040926.nc</value>
-        <value compset="DOCN%DOM" grid="a%0.47x0.63.*_oi%0.47x0.63"          >$DIN_LOC_ROOT/atm/cam/sst/sst_HadOIBl_bc_0.47x0.63_clim_c061106.nc</value>
-        <value compset="DOCN%DOM" grid="a%0.23x0.31.*_oi%0.23x0.31"          >$DIN_LOC_ROOT/atm/cam/sst/sst_HadOIBl_bc_0.23x0.31_clim_c110526.nc</value>
-
-        <value compset="(HIST_|20TR_|5505_|TSCH)" grid=".+"                             >$DIN_LOC_ROOT/atm/cam/sst/sst_HadOIBl_bc_1x1_1850_2017_c180507.nc</value>
-        <value compset="(HIST_|20TR_|5505_|TSCH)" grid="a%T31.*_oi%T31"                 >$DIN_LOC_ROOT/atm/cam/sst/"sst_HadOIBl_bc_48x96_1850_2017_c180507.nc</value>
-        <value compset="(HIST_|20TR_|5505_|TSCH)" grid="a%1.9x2.5.*_oi%1.9x2.5"         >$DIN_LOC_ROOT/atm/cam/sst/sst_HadOIBl_bc_1.9x2.5_1850_2017_c180507.nc</value>
-        <value compset="(HIST_|20TR_|5505_|TSCH)" grid="a%0.9x1.25.*_oi%0.9x1.25"       >$DIN_LOC_ROOT/atm/cam/sst/sst_HadOIBl_bc_0.9x1.25_1850_2017_c180507.nc</value>
-        <value compset="(HIST_|20TR_|5505_|TSCH)" grid="a%0.47x0.63.*_oi%0.47x0.63"     >$DIN_LOC_ROOT/atm/cam/sst/sst_HadOIBl_bc_0.47x0.63_1850_2017_c180507.nc</value>
-        <value compset="(HIST_|20TR_|5505_|TSCH)" grid="a%0.23x0.31.*_oi%0.23x0.31"     >$DIN_LOC_ROOT/atm/cam/sst/sst_HadOIBl_bc_0.23x0.31_1850_2017_c180507.nc</value>
-
-        <value compset="1850_" grid=".+"                                     >$DIN_LOC_ROOT/atm/cam/sst/sst_HadOIBl_bc_1x1_clim_pi_c101029.nc</value>
-        <value compset="1850_"         grid="a%T31.*_oi%T31"                 >$DIN_LOC_ROOT/atm/cam/sst/sst_HadOIBl_bc_48x96_clim_pi_c101028.nc</value>
-        <value compset="1850_"         grid="a%1.9x2.5.*_oi%1.9x2.5"         >$DIN_LOC_ROOT/atm/cam/sst/sst_HadOIBl_bc_1.9x2.5_clim_pi_c101028.nc</value>
-        <value compset="1850_"         grid="a%0.9x1.25.*_oi%0.9x1.25"       >$DIN_LOC_ROOT/atm/cam/sst/sst_HadOIBl_bc_0.9x1.25_clim_pi_c101028.nc</value>
-        <value compset="1850_"         grid="a%0.47x0.63.*_oi%0.47x0.63"     >$DIN_LOC_ROOT/atm/cam/sst/sst_HadOIBl_bc_0.47x0.63_clim_pi_c101028.nc</value>
-        <value compset="1850_"         grid="a%0.23x0.31.*_oi%0.23x0.31"     >$DIN_LOC_ROOT/atm/cam/sst/sst_HadOIBl_bc_0.23x0.31_clim_pi_c101028.nc</value>
-
-        <value compset="2000"          grid=".+"                             >$DIN_LOC_ROOT/atm/cam/sst/sst_HadOIBl_bc_1x1_2000climo_c180511.nc</value>
-        <value compset="2000"          grid="a%T31.*_oi%T31"                 >$DIN_LOC_ROOT/atm/cam/sst/sst_HadOIBl_bc_48x96_2000climo_c180511.nc</value>
-        <value compset="2000"          grid="a%1.9x2.5.*_oi%1.9x2.5"         >$DIN_LOC_ROOT/atm/cam/sst/sst_HadOIBl_bc_1.9x2.5_2000climo_c180511.nc</value>
-        <value compset="2000"          grid="a%0.9x1.25.*_oi%0.9x1.25"       >$DIN_LOC_ROOT/atm/cam/sst/sst_HadOIBl_bc_0.9x1.25_2000climo_c180511.nc</value>
-        <value compset="2000"          grid="a%0.47x0.63.*_oi%0.47x0.63"     >$DIN_LOC_ROOT/atm/cam/sst/sst_HadOIBl_bc_0.47x0.63_2000climo_c180511.nc</value>
-        <value compset="2000"          grid="a%0.23x0.31.*_oi%0.23x0.31"     >$DIN_LOC_ROOT/atm/cam/sst/sst_HadOIBl_bc_0.23x0.31_2000climo_c180511.nc</value>
-
-        <value compset="2010"          grid=".+"                             >$DIN_LOC_ROOT/atm/cam/sst/sst_HadOIBl_bc_1x1_2010climo_c180511.nc</value>
-        <value compset="2010"          grid="a%T31.*_oi%T31"                 >$DIN_LOC_ROOT/atm/cam/sst/sst_HadOIBl_bc_48x96_2010climo_c180511.nc</value>
-        <value compset="2010"          grid="a%1.9x2.5.*_oi%1.9x2.5"         >$DIN_LOC_ROOT/atm/cam/sst/sst_HadOIBl_bc_1.9x2.5_2010climo_c180511.nc</value>
-        <value compset="2010"          grid="a%0.9x1.25.*_oi%0.9x1.25"       >$DIN_LOC_ROOT/atm/cam/sst/sst_HadOIBl_bc_0.9x1.25_2010climo_c180511.nc</value>
-        <value compset="2010"          grid="a%0.47x0.63.*_oi%0.47x0.63"     >$DIN_LOC_ROOT/atm/cam/sst/sst_HadOIBl_bc_0.47x0.63_2010climo_c180511.nc</value>
-        <value compset="2010"          grid="a%0.23x0.31.*_oi%0.23x0.31"     >$DIN_LOC_ROOT/atm/cam/sst/sst_HadOIBl_bc_0.23x0.31_2010climo_c180511.nc</value>
-      </values>
-
-    </entry>
-    <entry id="SSTICE_GRID_FILENAME">
-      <values match="first">
-        <value compset="DOCN%DOM" grid="a%T31.*_oi%T31" >$DIN_LOC_ROOT/atm/cam/ocnfrac/domain.camocn.48x96_gx3v7_100114.nc</value>
-        <value compset="DOCN%DOM" grid="a%1.9x2.5.*_oi%1.9x2.5">$DIN_LOC_ROOT/atm/cam/ocnfrac/domain.camocn.1.9x2.5_gx1v6_090403.nc </value>
-        <value compset="DOCN%DOM" grid="a%0.9x1.25.*_oi%0.9x1.25.*_m%gx1v6">$DIN_LOC_ROOT/atm/cam/ocnfrac/domain.camocn.0.9x1.25_gx1v6_090403.nc</value>
-        <value compset="DOCN%DOM" grid="a%0.9x1.25.*_oi%0.9x1.25.*_m%gx1v7">$DIN_LOC_ROOT/share/domains/domain.ocn.fv0.9x1.25_gx1v7.151020.nc</value>
-        <value compset="DOCN%DOM" grid="a%0.47x0.63.*_oi%0.47x0.63">$DIN_LOC_ROOT/atm/cam/ocnfrac/domain.camocn.0.47x0.63_gx1v6_090408.nc</value>
-        <value compset="DOCN%DOM" grid="a%0.23x0.31.*_oi%0.23x0.31">$DIN_LOC_ROOT/atm/cam/ocnfrac/domain.camocn.0.23x0.31_gx1v6_101108.nc</value>
-        <value compset="(HIST_|20TR_|5505_|TSCH)" grid=".+">$DIN_LOC_ROOT/ocn/docn7/domain.ocn.1x1.111007.nc</value>
-        <value compset="(HIST_|20TR_|5505_|TSCH)" grid="a%T31.*_oi%T31">$DIN_LOC_ROOT/atm/cam/ocnfrac/domain.camocn.48x96_gx3v7_100114.nc</value>
-        <value compset="(HIST_|20TR_|5505_|TSCH)" grid="a%1.9x2.5.*_oi%1.9x2.5">$DIN_LOC_ROOT/atm/cam/ocnfrac/domain.camocn.1.9x2.5_gx1v6_090403.nc</value>
-        <value compset="(HIST_|20TR_|5505_|TSCH)" grid="a%0.9x1.25.*_oi%0.9x1.25.*_m%gx1v6">$DIN_LOC_ROOT/atm/cam/ocnfrac/domain.camocn.0.9x1.25_gx1v6_090403.nc</value>
-        <value compset="(HIST_|20TR_|5505_|TSCH)" grid="a%0.9x1.25.*_oi%0.9x1.25.*_m%gx1v7">$DIN_LOC_ROOT/share/domains/domain.ocn.fv0.9x1.25_gx1v7.151020.nc</value>
-        <value compset="(HIST_|20TR_|5505_|TSCH)" grid="a%0.47x0.63.*_oi%0.47x0.63">$DIN_LOC_ROOT/atm/cam/ocnfrac/domain.camocn.0.47x0.63_gx1v6_090408.nc</value>
-        <value compset="(HIST_|20TR_|5505_|TSCH)" grid="a%0.23x0.31.*_oi%0.23x0.31">$DIN_LOC_ROOT/atm/cam/ocnfrac/domain.camocn.0.23x0.31_gx1v6_101108.nc</value>
-        <value compset="1850" grid=".+">$DIN_LOC_ROOT/ocn/docn7/domain.ocn.1x1.111007.nc</value>
-        <value compset="1850" grid="a%T31.*_oi%T31">$DIN_LOC_ROOT/atm/cam/ocnfrac/domain.camocn.48x96_gx3v7_100114.nc</value>
-        <value compset="1850" grid="a%1.9x2.5.*_oi%1.9x2.5">$DIN_LOC_ROOT/atm/cam/ocnfrac/domain.camocn.1.9x2.5_gx1v6_090403.nc</value>
-        <value compset="1850" grid="a%0.9x1.25.*_oi%0.9x1.25.*_m%gx1v6">$DIN_LOC_ROOT/atm/cam/ocnfrac/domain.camocn.0.9x1.25_gx1v6_090403.nc</value>
-        <value compset="1850" grid="a%0.9x1.25.*_oi%0.9x1.25.*_m%gx1v7">$DIN_LOC_ROOT/share/domains/domain.ocn.fv0.9x1.25_gx1v7.151020.nc</value>
-        <value compset="1850" grid="a%0.47x0.63.*_oi%0.47x0.63">$DIN_LOC_ROOT/atm/cam/ocnfrac/domain.camocn.0.47x0.63_gx1v6_090408.nc</value>
-        <value compset="1850" grid="a%0.23x0.31.*_oi%0.23x0.31">$DIN_LOC_ROOT/atm/cam/ocnfrac/domain.camocn.0.23x0.31_gx1v6_101108.nc</value>
-      </values>
-    </entry>
-    <entry id="SSTICE_YEAR_END">
-      <values match="first">
-        <value compset="HIST_">2016</value>
-      </values>
-    </entry>
 
  <!-- comment out RUN_TYPE until refcases are reintroduced for the next release -->
 
@@ -651,43 +584,30 @@
  <!-- comment out RUN_REFCASE until refcases are reintroduced for the next release -->
  <!--   <entry id="RUN_REFCASE"> -->
  <!--     <values match="first"> -->
-<!--	<value grid="a%0.9x1.25_l%0.9x1.25_oi%0.9x1.25_r%r05_g%gland4_w%null_m%gx1v7"	compset="2000_CAM60_CLM50%BGC-CROP_CICE%PRES_DOCN%DOM_MOSART_CISM2%NOEVOLVE_SWAV"	 >b.e20.BHIST.f09_g17.20thC.297_01_v2</value> -->
-<!--	<value grid="a%0.9x1.25_l%0.9x1.25_oi%0.9x1.25_r%r05_g%gland4_w%null_m%gx1v7"	compset="HIST_CAM60_CLM50%BGC-CROP_CICE%PRES_DOCN%DOM_MOSART_CISM2%NOEVOLVE_SWAV"	 >b.e20.BHIST.f09_g17.20thC.297_01_v2</value> -->
-<!--	<value grid="a%0.9x1.25_l%0.9x1.25_oi%0.9_1.25_r%r05_m%gx1v6"   compset="2000_CAM60_CLM50%BGC-CROP_CICE%PRES_DOCN%DOM_MOSART_CISM2%NOEVOLVE_SWAV">b.e20.B1850.f09_g16.pi_control.all.123</value> -->
+    </entry>
 
-<!--	<value grid="a%0.9x1.25_l%0.9x1.25_oi%0.9_1.25_r%r05_m%gx1v7"   compset="2000_CAM60_CLM50%BGC-CROP_CICE%PRES_DOCN%DOM_MOSART_CISM2%NOEVOLVE_SWAV">b.e20.B1850.f09_g16.pi_control.all.123</value> -->
-<!--        <value grid="a%0.9x1.25_l%0.9x1.25_oi%0.9x1.25_r%r05_g%gland4_w%null_m%gx1v7" compset="HIST_CAM60%WC.*_CLM50%BGC-CROP_CICE%PRES_DOCN%DOM_MOSART_CISM2%NOEVOLVE_SWAV">b.e21.BWHIST.f09_g17.CMIP6-historical-WACCM.001</value> -->
-<!--      </values> -->
-<!--    </entry> -->
-
- <!-- comment out RUN_REFDATE until refcases are reintroduced for the next release -->
-<!--    <entry id="RUN_REFDATE"> -->
-<!--      <values match="first"> -->
-<!--	<value grid="a%0.9x1.25_l%0.9x1.25_oi%0.9x1.25_r%r05_g%gland4_w%null_m%gx1v7"	compset="HIST_CAM60_CLM50%BGC-CROP_CICE%PRES_DOCN%DOM_MOSART_CISM2%NOEVOLVE_SWAV"   >1979-01-01</value> -->
-<!--	<value grid="a%0.9x1.25_l%0.9x1.25_oi%0.9x1.25_r%r05_g%gland4_w%null_m%gx1v7"	compset="2000_CAM60_CLM50%BGC-CROP_CICE%PRES_DOCN%DOM_MOSART_CISM2%NOEVOLVE_SWAV"   >2000-01-01</value> -->
-<!--	<value grid="a%0.9x1.25_l%0.9x1.25_oi%0.9_1.25_r%r05_m%gx1v6"   compset="2000_CAM60_CLM50%BGC-CROP_CICE%PRES_DOCN%DOM_MOSART_CISM2%NOEVOLVE_SWAV">0010-01-01</value> -->
-<!--	<value grid="a%0.9x1.25_l%0.9x1.25_oi%0.9_1.25_r%r05_m%gx1v7"   compset="2000_CAM60_CLM50%BGC-CROP_CICE%PRES_DOCN%DOM_MOSART_CISM2%NOEVOLVE_SWAV">0010-01-01</value> -->
-<!--        <value grid="a%0.9x1.25_l%0.9x1.25_oi%0.9x1.25_r%r05_g%gland4_w%null_m%gx1v7" compset="HIST_CAM60%WC.*_CLM50%BGC-CROP_CICE%PRES_DOCN%DOM_MOSART_CISM2%NOEVOLVE_SWAV">1950-01-01</value> -->
-<!--      </values> -->
-<!--    </entry> -->
-
- <!-- comment out RUN_REFDIR until refcases are reintroduced for the next release -->
- <!--   <entry id="RUN_REFDIR"> -->
-<!--      <values match="first"> -->
-<!--	<value grid="a%0.9x1.25_l%0.9x1.25_oi%0.9x1.25_r%r05_g%gland4_w%null_m%gx1v7"	compset="HIST_CAM60_CLM50%BGC-CROP_CICE%PRES_DOCN%DOM_MOSART_CISM2%NOEVOLVE_SWAV"   >cesm2_init</value> -->
-<!--	<value grid="a%0.9x1.25_l%0.9x1.25_oi%0.9x1.25_r%r05_g%gland4_w%null_m%gx1v7"	compset="2000_CAM60_CLM50%BGC-CROP_CICE%PRES_DOCN%DOM_MOSART_CISM2%NOEVOLVE_SWAV"   >cesm2_init</value> -->
-<!--	<value grid="a%0.9x1.25_l%0.9x1.25_oi%0.9x1.25_r%r05_g%gland4_w%null_m%gx1v7" compset="HIST_CAM60%WC.*_CLM50%BGC-CROP_CICE%PRES_DOCN%DOM_MOSART_CISM2%NOEVOLVE_SWAV">cesm2_init</value> -->
-<!--     </values> -->
-<!--    </entry> -->
-
-    <entry id="NTHRDS_ATM">
+    <entry id="NTHRDS_LND">
       <values match="first">
         <value compset="SPCAMS">1</value>
         <value compset="SPCAMM">1</value>
       </values>
     </entry>
 
-    <entry id="NTHRDS_CPL">
+    <entry id="NTHRDS_OCN">
+      <values match="first">
+        <value compset="SPCAMS">1</value>
+        <value compset="SPCAMM">1</value>
+      </values>
+    </entry>
+
+    <entry id="NTHRDS_ROF">
+      <values match="first">
+        <value compset="SPCAMS">1</value>
+        <value compset="SPCAMM">1</value>
+      </values>
+    </entry>
+
+    <entry id="NTHRDS_WAV">
       <values match="first">
         <value compset="SPCAMS">1</value>
         <value compset="SPCAMM">1</value>
@@ -701,16 +621,29 @@
       </values>
     </entry>
 
-    <entry id="NTHRDS_GLC">
+  <!-- single column compset must have pts_mode set to true -->
+
+    <entry id="PTS_MODE">
       <values match="first">
-        <value compset="SPCAMS">1</value>
-        <value compset="SPCAMM">1</value>
+	<value compset="(CAM[456]0%SCAM)">TRUE</value>
       </values>
     </entry>
 
-    <entry id="NTHRDS_ICE">
+    <entry id="PTS_LAT">
       <values match="first">
-        <value compset="SPCAMS">1</value>
+	<value compset="(CAM[456]0%SCAM)">36.6</value>
+      </values>
+    </entry>
+
+    <entry id="PTS_LON">
+      <values match="first">
+	<value compset="(CAM[456]0%SCAM)">262.5</value>
+      </values>
+    </entry>
+
+  </entries>
+
+</compsets>
         <value compset="SPCAMM">1</value>
       </values>
     </entry>
