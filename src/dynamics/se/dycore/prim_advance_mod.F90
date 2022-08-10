@@ -529,7 +529,7 @@ contains
             do j=1,np
               do i=1,np
                 elem(ie)%derived%dpdiss_ave(i,j,k)=elem(ie)%derived%dpdiss_ave(i,j,k)+&
-                     rhypervis_subcycle*eta_ave_w*(elem(ie)%state%dp3d(i,j,k,nt)-elem(ie)%derived%dp_ref(i,j,k))
+                     rhypervis_subcycle*eta_ave_w*elem(ie)%state%dp3d(i,j,k,nt)
                 elem(ie)%derived%dpdiss_biharmonic(i,j,k)=elem(ie)%derived%dpdiss_biharmonic(i,j,k)+&
                      rhypervis_subcycle*eta_ave_w*dptens(i,j,k,ie)
               enddo
@@ -1231,7 +1231,7 @@ contains
          end if
 
 
-
+         
          do j=1,np
            do i=1,np
              glnps1 = grad_exner_term(i,j,1)
