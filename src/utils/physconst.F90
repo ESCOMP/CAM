@@ -1945,8 +1945,8 @@ end subroutine physconst_init
 
      if (dry_air_species_num==0) then
 
-       cnst_vis = (kv1*mmro2*o2_mwi + kv2*mmrn2*n2_mwi)*mbar*1.e-7_r8
-       cnst_cnd = (kc1*mmro2*o2_mwi + kc2*mmrn2*n2_mwi)*mbar*1.e-5_r8
+       cnst_vis = (kv1*mmro2*o2_mwi + kv2*mmrn2*n2_mwi)*mbar
+       cnst_cnd = (kc1*mmro2*o2_mwi + kc2*mmrn2*n2_mwi)*mbar
        if (get_at_interfaces==1) then
            do k=2,k1
              do j=j0,j1
@@ -2091,11 +2091,11 @@ end subroutine physconst_init
        kmvis_ref(k) = sponge_factor(k)* &
             (kv1*mmro2*o2_mwi +         &
              kv2*mmrn2*n2_mwi)*mbar*    &
-             tref**kv4 * 1.e-7_r8
+             tref**kv4
        kmcnd_ref(k) = sponge_factor(k)* &
             (kc1*mmro2*o2_mwi +         &
              kc2*mmrn2*n2_mwi)*mbar*    &
-             tref**kc4 * 1.e-5_r8
+             tref**kc4
      end do
    end subroutine get_molecular_diff_coef_reference
 
