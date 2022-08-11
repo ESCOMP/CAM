@@ -1759,6 +1759,7 @@
 
 <!-- effective Henry's coef data for wet and dry deposition -->
 <dep_data_file>atm/cam/chem/trop_mozart/dvel/dep_data_c201019.nc</dep_data_file>
+<dep_data_file chem="geoschem_mam4">/glade/u/home/elundgren/drydep_henrys_law_nc/dep_data_file_geoschem.nc</dep_data_file>
 
 <!-- photolysis inputs -->
 <xs_coef_file>atm/waccm/phot/effxstex.txt</xs_coef_file>
@@ -3233,13 +3234,13 @@
 
 <!-- gas dry deposition -->
 <drydep_list chem="geoschem_mam4">
-'ACET','ACTA','ALD2','AROMP4','AROMP5','ATOOH','BALD','BENZP','BR2','BRCL','BRNO3','BZCO3H','BZPAN','CH2O','CL2','CLNO2','CLNO3','CLO','CLOO','CSL','EOH','ETHLN','ETHN','ETHP','ETNO3','ETP','GLYC','GLYX','H2O2','HAC','HBR','HC5A','HCL','HCOOH','HI','HMHP','HMML','HMS','HNO3','HOBR','HOCL','HOI','HONIT','HPALD1','HPALD2','HPALD3','HPALD4','HPETHNL','I2','I2O2','I2O3','I2O4','IBR','ICHE','ICL','ICN','ICPDH','IDC','IDCHP','IDHDP','IDHPE','IDN','IEPOXA','IEPOXB','IEPOXD','IHN1','IHN2','IHN3','IHN4','INPB','INPD','IONO','IONO2','IPRNO3','ITCN','ITHN','LIMO','LVOC','LVOCOA','MACR','MACR1OOH','MAP','MCRDH','MCRENOL','MCRHN','MCRHNB','MCRHP','MCT','MENO3','MGLY','MOH','MONITS','MONITU','MPAN','MTPA','MTPO','MVK','MVKDH','MVKHC','MVKHCB','MVKHP','MVKN','MVKPC','N2O5','NH3','NO2','NPHEN','NPRNO3','O3','PAN','PHEN','PP','PPN','PROPNN','PRPN','PYAC','R4N2','R4P','RA3P','RB3P','RIPA','RIPB','RIPC','RIPD','RP','SO2'
+'ACET','ACTA','ALD2','AROMP4','AROMP5','ATOOH','BALD','BENZP','BR2','BRCL','BRNO3','BZCO3H','BZPAN','CH2O','CL2','CLNO2','CLNO3','CLO','CLOO','CSL','EOH','ETHLN','ETHN','ETHP','ETNO3','ETP','GLYC','GLYX','H2O2','HAC','HBR','HC5A','HCL','HCOOH','HI','HMHP','HMML','HNO3','HOBR','HOCL','HOI','HONIT','HPALD1','HPALD2','HPALD3','HPALD4','HPETHNL','I2','I2O2','I2O3','I2O4','IBR','ICHE','ICL','ICN','ICPDH','IDC','IDCHP','IDHDP','IDHPE','IDN','IEPOXA','IEPOXB','IEPOXD','IHN1','IHN2','IHN3','IHN4','INPB','INPD','IONO','IONO2','IPRNO3','ITCN','ITHN','LIMO','LVOC','MACR','MACR1OOH','MAP','MCRDH','MCRENOL','MCRHN','MCRHNB','MCRHP','MCT','MENO3','MGLY','MOH','MONITS','MONITU','MPAN','MTPA','MTPO','MVK','MVKDH','MVKHC','MVKHCB','MVKHP','MVKN','MVKPC','N2O5','NH3','NO2','NPHEN','NPRNO3','O3','PAN','PHEN','PP','PPN','PROPNN','PRPN','PYAC','R4N2','R4P','RA3P','RB3P','RIPA','RIPB','RIPC','RIPD','RP','SO2'
 </drydep_list>
 
 <!-- gas wet deposition list -->
 <!-- species in wetdep but not drydep: MEK, MP, MPN, PRPE 
 <gas_wetdep_list chem="geoschem_mam4">
-'ACTA','ALD2','AROMP4','AROMP5','ATOOH','BALD','BENZP','BR2','BRCL','BZCO3H','BZPAN','CH2O','CSL','EOH','ETHLN','ETHN','ETHP','ETP','GLYC','GLYX','H2O2','HAC','HBR','HC5A','HCL','HCOOH','HI','HMHP','HMML','HMS','HNO3','HOBR','HOCL','HOI','HONIT','HPETHNL','I2','I2O2','I2O3','I2O4','IBR','ICHE','ICL','ICN','ICPDH','IDCHP','IDHDP','IDHPE','IDN','IEPOXA','IEPOXB','IEPOXD','IHN1','IHN2','IHN3','IHN4','INPB','INPD','IONO','IONO2','ITCN','ITHN','LIMO','LVOC','LVOCOA','MACR1OOH','MAP','MCRDH','MCRENOL','MCRHN','MCRHNB','MCRHP','MCT','MEK','MGLY','MOH','MONITS','MONITU','MP','MPAN','MPN','MTPA','MTPO','MVK','MVKDH','MVKHC','MVKHCB','MVKHP','MVKN','MVKPC','NH3','NPHEN','PAN','PHEN','PP','PPN','PROPNN','PRPE','PRPN','PYAC','R4N2','R4P','RA3P','RB3P','RIPA','RIPB','RIPC','RIPD','RP','SO2'
+'ACTA','ALD2','AROMP4','AROMP5','ATOOH','BALD','BENZP','BR2','BRCL','BZCO3H','BZPAN','CH2O','CSL','EOH','ETHLN','ETHN','ETHP','ETP','GLYC','GLYX','H2O2','HAC','HBR','HC5A','HCL','HCOOH','HI','HMHP','HMML','HNO3','HOBR','HOCL','HOI','HONIT','HPETHNL','I2','I2O2','I2O3','I2O4','IBR','ICHE','ICL','ICN','ICPDH','IDCHP','IDHDP','IDHPE','IDN','IEPOXA','IEPOXB','IEPOXD','IHN1','IHN2','IHN3','IHN4','INPB','INPD','IONO','IONO2','ITCN','ITHN','LIMO','LVOC','LVOCOA','MACR1OOH','MAP','MCRDH','MCRENOL','MCRHN','MCRHNB','MCRHP','MCT','MEK','MGLY','MOH','MONITS','MONITU','MP','MPAN','MPN','MTPA','MTPO','MVK','MVKDH','MVKHC','MVKHCB','MVKHP','MVKN','MVKPC','NH3','NPHEN','PAN','PHEN','PP','PPN','PROPNN','PRPE','PRPN','PYAC','R4N2','R4P','RA3P','RB3P','RIPA','RIPB','RIPC','RIPD','RP','SO2'
 </gas_wetdep_list>
 
 <!-- aerosol dry deposition list -->

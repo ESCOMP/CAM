@@ -11,7 +11,7 @@ module chemistry
   use constituents,        only : pcnst, cnst_add, cnst_get_ind
   use constituents,        only : cnst_name
   use shr_const_mod,       only : molw_dryair=>SHR_CONST_MWDAIR
-  use seq_drydep_mod,      only : nddvels => n_drydep, drydep_list
+  use shr_drydep_mod,      only : nddvels => n_drydep, drydep_list
   use spmd_utils,          only : MasterProc, myCPU=>Iam, nCPUs=>npes
   use cam_logfile,         only : iulog
   use string_utils,        only : to_upper
@@ -164,11 +164,11 @@ module chemistry
   CHARACTER(LEN=255)         :: ThisLoc
   CHARACTER(LEN=255)         :: ErrMsg
 
-! ewl: comment out defining files used only for dry deposition
+! ewl: comment out certain files used only for dry deposition
 !  ! Filenames to compute dry deposition velocities similarly to MOZART
 !  character(len=shr_kind_cl) :: clim_soilw_file = 'clim_soilw_file'
 !  character(len=shr_kind_cl) :: depvel_file     = ''
-!  character(len=shr_kind_cl) :: depvel_lnd_file = 'depvel_lnd_file'
+  character(len=shr_kind_cl) :: depvel_lnd_file = 'depvel_lnd_file'
 !  character(len=shr_kind_cl) :: season_wes_file = 'season_wes_file'
 !
 !  character(len=shr_kind_cl) :: srf_emis_specifier(pcnst) = ''
@@ -696,12 +696,14 @@ contains
     ! Assume a successful return until otherwise
     RC                      = GC_SUCCESS
 
-! ewl: remove 4 entries from chem_inparm used for dry deposition:
-!      clim_soilw_file, depvel_file, depvel_lnd_file, season_wes_file;
-!      remove ext_frc_ and srf_emis_ ones too.
+! ewl: remove several entries from chem_inparm used for dry deposition:
+!      clim_soilw_file, depvel_file, season_wes_file;
     ! The following files are required to compute land maps, required to perform
     ! aerosol dry deposition
-    namelist /chem_inparm/ lght_no_prd_factor
+!ewl: need to play around with need to include these (ext_* and srf_*) for drydep
+    namelist /chem_inparm/ lght_no_prd_factor,  &
+                           depvel_lnd_file
+!, &
 !                           ext_frc_specifier,  &
 !                           ext_frc_type,       &
 !                           ext_frc_cycle_yr,   &
@@ -885,7 +887,7 @@ contains
 ! ewl: remove broadcast of 4 files used for dry deposition only; srf_emis and ext_frc too.
     ! The following files are required to compute land maps, required to perform
     ! aerosol dry deposition
-!    CALL MPIBCAST (depvel_lnd_file, LEN(depvel_lnd_file), MPICHAR, 0, MPICOM)
+    CALL MPIBCAST (depvel_lnd_file, LEN(depvel_lnd_file), MPICHAR, 0, MPICOM)
 !    CALL MPIBCAST (clim_soilw_file, LEN(clim_soilw_file), MPICHAR, 0, MPICOM)
 !    CALL MPIBCAST (season_wes_file, LEN(season_wes_file), MPICHAR, 0, MPICOM)
 
@@ -980,8 +982,6 @@ contains
     use Phys_Grid,             only : get_Area_All_p
     use hycoef,                only : ps0, hyai, hybi, hyam
 
-!ewl: comment out below following fvitt updates
-!    use seq_drydep_mod,        only : drydep_method, DD_XLND, DD_XATM
     use gas_wetdep_opts,       only : gas_wetdep_method
     use mo_neu_wetdep,         only : neu_wetdep_init
 
@@ -1513,17 +1513,8 @@ contains
     ! Initialize aerosols
     CALL aero_model_init( pbuf2d )
 
-! ewl: Comment out initializing land maps for aerosol dry deposition.
-!    ! Initialize land maps for aerosol dry deposition
-!    IF ( drydep_method == DD_XATM .OR. drydep_method == DD_XLND ) THEN
-!       CALL drydep_inti( depvel_lnd_file, &
-!                         clim_soilw_file, &
-!                         season_wes_file )
-!    ELSE
-!       IF ( masterProc ) Write(iulog,'(a,a)') ' drydep_method is set to: ', TRIM(drydep_method)
-!       CALL ENDRUN('drydep_method must be DD_XLND or DD_XATM to compute land '// &
-!               'maps for aerosol dry deposition!')
-!    ENDIF
+    ! Initialize drydep
+    CALL drydep_inti( depvel_lnd_file)
 #endif
 
     IF ( gas_wetdep_method == 'NEU' ) THEN
