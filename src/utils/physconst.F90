@@ -165,17 +165,19 @@ real(r8) :: o2_mwi, n2_mwi         ! Inverse molecular weights
 real(r8) :: mbar                   ! Mean mass at mid level
 
 ! coefficients in expressions for molecular diffusion coefficients
-! kv1,..,kv4 are coefficients for kmvis calculation
-! kc1,..,kc4 are coefficients for kmcnd calculation
+! kv1,..,kv3 are coefficients for kmvis calculation
+! kc1,..,kc3 are coefficients for kmcnd calculation
 real(r8), parameter :: &
    kv1 = 4.03_r8 * 1.e-7_r8, &
    kv2 = 3.42_r8 * 1.e-7_r8, &
    kv3 = 3.9_r8 * 1.e-7_r8,  &
-   kv4 = 0.69_r8,            &
    kc1 = 56._r8 * 1.e-5_r8,  &
    kc2 = 56._r8 * 1.e-5_r8,  &
-   kc3 = 75.9_r8 * 1.e-5_r8, &
-   kc4 = 0.69_r8
+   kc3 = 75.9_r8 * 1.e-5_r8
+
+real(r8), parameter :: &
+   kv_temp_exp = 0.69_r8,            &
+   kc_temp_exp = 0.69_r8
 
 !================================================================================================
 contains
@@ -453,8 +455,8 @@ end subroutine physconst_init
           thermodynamic_active_species_cv (icnst) = 0.5_r8*shr_const_rgas*dof2/mw !N2
           thermodynamic_active_species_R  (icnst) = shr_const_rgas/mw
           thermodynamic_active_species_mwi(icnst) = 1.0_r8/mw
-          thermodynamic_active_species_kv(icnst)  = kv2
-          thermodynamic_active_species_kc(icnst)  = kc2
+          thermodynamic_active_species_kv(icnst)  = 3.42_r8
+          thermodynamic_active_species_kc(icnst)  = 56._r8
         end if
         !
         ! if last major species is not N2 then add code here
@@ -497,8 +499,8 @@ end subroutine physconst_init
           thermodynamic_active_species_cv (icnst) = 0.5_r8*shr_const_rgas*dof1/mw
           thermodynamic_active_species_R  (icnst) = shr_const_rgas/mw
           thermodynamic_active_species_mwi(icnst) = 1.0_r8/mw
-          thermodynamic_active_species_kv(icnst)  = kv3
-          thermodynamic_active_species_kc(icnst)  = kc3
+          thermodynamic_active_species_kv(icnst)  = 3.9_r8
+          thermodynamic_active_species_kc(icnst)  = 75.9_r8
           icnst = icnst+1
         end if
         !
@@ -516,8 +518,8 @@ end subroutine physconst_init
           thermodynamic_active_species_cv (icnst) = 0.5_r8*shr_const_rgas*dof2/mw
           thermodynamic_active_species_R  (icnst) = shr_const_rgas/mw
           thermodynamic_active_species_mwi(icnst) = 1.0_r8/mw
-          thermodynamic_active_species_kv(icnst)  = kv1
-          thermodynamic_active_species_kc(icnst)  = kc1
+          thermodynamic_active_species_kv(icnst)  = 4.03_r8
+          thermodynamic_active_species_kc(icnst)  = 56._r8
           icnst = icnst+1
         end if
         !
@@ -1952,8 +1954,8 @@ end subroutine physconst_init
              do j=j0,j1
                do i=i0,i1
                  temp_local   = 0.5_r8*(temp(i,j,k)+temp(i,j,k-1))
-                 kmvis(i,j,k) = sponge_factor(k)*cnst_vis*temp_local**kv4
-                 kmcnd(i,j,k) = sponge_factor(k)*cnst_cnd*temp_local**kc4
+                 kmvis(i,j,k) = sponge_factor(k)*cnst_vis*temp_local**kv_temp_exp
+                 kmcnd(i,j,k) = sponge_factor(k)*cnst_cnd*temp_local**kc_temp_exp
                end do
              end do
            end do
@@ -1966,8 +1968,8 @@ end subroutine physconst_init
          do k=1,k1
            do j=j0,j1
              do i=i0,i1
-               kmvis(i,j,k) = sponge_factor(k)*cnst_vis*temp(i,j,k)**kv4
-               kmcnd(i,j,k) = sponge_factor(k)*cnst_cnd*temp(i,j,k)**kc4
+               kmvis(i,j,k) = sponge_factor(k)*cnst_vis*temp(i,j,k)**kv_temp_exp
+               kmcnd(i,j,k) = sponge_factor(k)*cnst_cnd*temp(i,j,k)**kc_temp_exp
              end do
            end do
          end do
@@ -2017,8 +2019,8 @@ end subroutine physconst_init
 
                temp_local = .5_r8*(temp(i,j,k-1)+temp(i,j,k))
                mbarvi = 0.5_r8*(mbarv(i,j,k-1)+mbarv(i,j,k))
-               kmvis(i,j,k) = kmvis(i,j,k)*mbarvi*temp_local**kv4
-               kmcnd(i,j,k) = kmcnd(i,j,k)*mbarvi*temp_local**kc4
+               kmvis(i,j,k) = kmvis(i,j,k)*mbarvi*temp_local**kv_temp_exp * 1.e-7_r8
+               kmcnd(i,j,k) = kmcnd(i,j,k)*mbarvi*temp_local**kc_temp_exp * 1.e-5_r8
              enddo
            enddo
          end do
@@ -2052,8 +2054,8 @@ end subroutine physconst_init
                kmcnd(i,j,k) = kmcnd(i,j,k)+thermodynamic_active_species_kc(icnst)* &
                               thermodynamic_active_species_mwi(icnst)*residual
 
-               kmvis(i,j,k) = kmvis(i,j,k)*mbarv(i,j,k)*temp(i,j,k)**kv4
-               kmcnd(i,j,k) = kmcnd(i,j,k)*mbarv(i,j,k)*temp(i,j,k)**kc4
+               kmvis(i,j,k) = kmvis(i,j,k)*mbarv(i,j,k)*temp(i,j,k)**kv_temp_exp * 1.e-7_r8
+               kmcnd(i,j,k) = kmcnd(i,j,k)*mbarv(i,j,k)*temp(i,j,k)**kc_temp_exp * 1.e-5_r8
              enddo
            enddo
          end do
@@ -2091,11 +2093,11 @@ end subroutine physconst_init
        kmvis_ref(k) = sponge_factor(k)* &
             (kv1*mmro2*o2_mwi +         &
              kv2*mmrn2*n2_mwi)*mbar*    &
-             tref**kv4
+             tref**kv_temp_exp * 1.e-7_r8
        kmcnd_ref(k) = sponge_factor(k)* &
             (kc1*mmro2*o2_mwi +         &
              kc2*mmrn2*n2_mwi)*mbar*    &
-             tref**kc4
+             tref**kc_temp_exp * 1.e-5_r8
      end do
    end subroutine get_molecular_diff_coef_reference
 
