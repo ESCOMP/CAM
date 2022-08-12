@@ -45,7 +45,10 @@ CONTAINS
       call addfld ('UDIFF',    (/ 'lev' /), 'A', 'K','difference from observed u wind',                  gridname='gauss_grid')
       call addfld ('VDIFF',    (/ 'lev' /), 'A', 'K','difference from observed v wind',                  gridname='gauss_grid')
 
-      call addfld ('TOBS',     (/ 'lev' /), 'A', 'K','observed temp')
+      call addfld ('TOBS',     (/ 'lev' /), 'A', 'K','observed temp',                                    gridname='gauss_grid')
+      call addfld ('UOBS',     (/ 'lev' /), 'A', 'm/s','observed zonal wind',                            gridname='gauss_grid')
+      call addfld ('VOBS',     (/ 'lev' /), 'A', 'm/s','observed meridional wind',                       gridname='gauss_grid')
+
       call addfld ('QDIFF',    (/ 'lev' /), 'A', 'kg/kg','difference from observed water',               gridname='gauss_grid')
 
       call addfld ('QOBS',     (/ 'lev' /), 'A', 'kg/kg','observed water',                               gridname='physgrid')
@@ -99,6 +102,59 @@ CONTAINS
       call addfld ('QITEN_PHYS',   (/ 'lev' /), 'I','kg/kg/s','QI vertical   advective forcing',            gridname='gauss_grid' )
       call addfld ('NLTEN_PHYS',   (/ 'lev' /), 'I','#/kg/s', 'NL vertical   advective forcing',            gridname='gauss_grid' )
       call addfld ('NITEN_PHYS',   (/ 'lev' /), 'I','#/kg/s', 'NI vertical   advective forcing',            gridname='gauss_grid' )
+
+!++jtb
+      call addfld ('U_IOP',      (/ 'lev' /), 'I', 'm/s',        'Zonal Wind from IOP  ',                  gridname='gauss_grid' )
+      call addfld ('V_IOP',      (/ 'lev' /), 'I', 'm/s',        'Mer. Wind from IOP ',                  gridname='gauss_grid' )
+      call addfld ('OMEGA_IOP',   (/ 'lev' /), 'I', 'Pa/s',    'Vertical velocity (from IOP)  ',            gridname='gauss_grid' )
+      call addfld ('OMEGA_ANA',   (/ 'lev' /), 'I', 'Pa/s',    'Vertical velocity (analysis)  ',            gridname='gauss_grid' )
+      call addfld ('ETAD_ANA',   (/ 'lev' /), 'I', 'Pa/s',     'Eta_dot (analysis)  ',                      gridname='gauss_grid' )
+      call addfld ('ZETA_ANA',   (/ 'lev' /), 'I', '1/s',      'Rel. Vorticity  (analysis)  ',              gridname='gauss_grid' )
+      call addfld ('T_ANA',      (/ 'lev' /), 'I', 'K',        'Temperature (analysis)  ',                  gridname='gauss_grid' )
+      call addfld ('Q_ANA',      (/ 'lev' /), 'I', 'g/g',        'Spec. humidity (analysis)  ',             gridname='gauss_grid' )
+      call addfld ('U_ANA',      (/ 'lev' /), 'I', 'm/s',        'Zonal wind (analysis)  ',                 gridname='gauss_grid' )
+      call addfld ('V_ANA',      (/ 'lev' /), 'I', 'm/s',        'Mer. Wind (analysis)  ',                  gridname='gauss_grid' )
+      call addfld ('TV_ANA',      (/ 'lev' /), 'I', 'K',        'Temperature (analysis)  ',                 gridname='gauss_grid' )
+      call addfld ('TTEN_TOTDYN_ANA',   (/ 'lev' /), 'I', 'K/s', 'Temperature tendency (analysis)',         gridname='gauss_grid' )
+      call addfld ('UTEN_TOTDYN_ANA',   (/ 'lev' /), 'I', 'm/s/s', 'Zonal wind tendency (analysis)',        gridname='gauss_grid' )
+      call addfld ('VTEN_TOTDYN_ANA',   (/ 'lev' /), 'I', 'm/s/s', 'Meridional wind tendency (analysis)',   gridname='gauss_grid' )
+      call addfld ('QTEN_TOTDYN_ANA',   (/ 'lev' /), 'I', 'kg/kg/s', 'tracer tendency (analysis)',          gridname='gauss_grid' )
+
+      call addfld ('UTEN_TOTDYN_ANAR',   (/ 'lev' /), 'I', 'm/s/s', 'Zonal wind tendency (analysis)',        gridname='gauss_grid' )
+      call addfld ('VTEN_TOTDYN_ANAR',   (/ 'lev' /), 'I', 'm/s/s', 'Meridional wind tendency (analysis)',   gridname='gauss_grid' )
+
+      call addfld ('UTEN_DYCORE_ANA',   (/ 'lev' /), 'I', 'm/s/s', 'Zonal wind tendency (analysis)',        gridname='gauss_grid' )
+      call addfld ('VTEN_DYCORE_ANA',   (/ 'lev' /), 'I', 'm/s/s', 'Meridional wind tendency (analysis)',   gridname='gauss_grid' )
+      call addfld ('TTEN_DYCORE_ANA',   (/ 'lev' /), 'I', 'K/s', 'Temperature tendency (analysis)',         gridname='gauss_grid' )
+      call addfld ('OMEGA_DYCORE_ANA',  (/ 'lev' /), 'I', 'Pa/s','Pressure tendency/velocity (analysis)',  gridname='gauss_grid' )
+      call addfld ('OMEGA_RECALC_ANA',  (/ 'lev' /), 'I', 'Pa/s','Pressure tendency/velocity (analysis)',  gridname='gauss_grid' )
+  
+      call addfld ('UTEN_PRG_ANA',   (/ 'lev' /), 'I', 'm/s/s', 'Zonal wind tendency (analysis)',        gridname='gauss_grid' )
+      call addfld ('UTEN_PHIG_ANA',   (/ 'lev' /), 'I', 'm/s/s', 'Zonal wind tendency (analysis)',        gridname='gauss_grid' )
+      call addfld ('UTEN_KEG_ANA',   (/ 'lev' /), 'I', 'm/s/s', 'Zonal wind tendency (analysis)',        gridname='gauss_grid' )
+      call addfld ('UTEN_VORT_ANA',   (/ 'lev' /), 'I', 'm/s/s', 'Zonal wind tendency (analysis)',        gridname='gauss_grid' )
+      call addfld ('UTEN_PFRC_ANA',   (/ 'lev' /), 'I', 'm/s/s', 'Zonal wind tendency (analysis)',        gridname='gauss_grid' )
+      call addfld ('UTEN_VADV_ANA',   (/ 'lev' /), 'I', 'm/s/s', 'Zonal wind tendency (analysis)',        gridname='gauss_grid' )
+      call addfld ('UTEN_HADV_ANA',   (/ 'lev' /), 'I', 'm/s/s', 'Zonal wind tendency (analysis)',        gridname='gauss_grid' )
+      call addfld ('UTEN_CORIOL',   (/ 'lev' /), 'I', 'm/s/s', 'Zonal wind tendency (analysis)',        gridname='gauss_grid' )
+
+
+      call addfld ('VTEN_VORT_ANA',   (/ 'lev' /), 'I', 'm/s/s', 'Meridional wind tendency (analysis)',   gridname='gauss_grid' )
+      call addfld ('VTEN_PFRC_ANA',   (/ 'lev' /), 'I', 'm/s/s', 'Meridional wind tendency (analysis)',   gridname='gauss_grid' )
+      call addfld ('VTEN_VADV_ANA',   (/ 'lev' /), 'I', 'm/s/s', 'Meridional wind tendency (analysis)',   gridname='gauss_grid' )
+      call addfld ('VTEN_HADV_ANA',   (/ 'lev' /), 'I', 'm/s/s', 'Meridional wind tendency (analysis)',   gridname='gauss_grid' )
+      call addfld ('VTEN_CORIOL',   (/ 'lev' /), 'I', 'm/s/s', 'Meridional wind tendency (analysis)',   gridname='gauss_grid' )
+
+      call addfld ('TTEN_VADV_ANA',   (/ 'lev' /), 'I', 'K/s', 'Temperature tendency (analysis)',        gridname='gauss_grid' )
+      call addfld ('TTEN_HADV_ANA',   (/ 'lev' /), 'I', 'K/s', 'Temperature tendency (analysis)',        gridname='gauss_grid' )
+      call addfld ('TTEN_COMP_ANA',   (/ 'lev' /), 'I', 'K/s', 'Temperature tendency (analysis)',        gridname='gauss_grid' )
+      call addfld ('TTEN_COMP_IOP',   (/ 'lev' /), 'I', 'K/s', 'Temperature tendency (analysis)',        gridname='gauss_grid' )
+
+      call addfld ('QTEN_VADV_ANA',   (/ 'lev' /), 'I', '1/s', 'Temperature tendency (analysis)',        gridname='gauss_grid' )
+      call addfld ('QTEN_HADV_ANA',   (/ 'lev' /), 'I', '1/s', 'Temperature tendency (analysis)',        gridname='gauss_grid' )
+
+!--jtb
+
 
    end subroutine scm_intht
 

@@ -76,6 +76,24 @@ character*(max_path_len), public ::  timeinvfile
 character*(max_path_len), public ::  lsmsurffile
 character*(max_path_len), public ::  lsminifile
 
+!++jtb
+logical,                  public ::  use_scm_ana_frc = .false.
+character*(max_path_len), public ::  scm_ana_frc_file_template
+character*(max_path_len), public ::  scm_ana_frc_path
+
+logical, public :: scm_ana_x_plevels       = .true.
+logical, public :: scm_ana_direct_omega    = .false.
+logical, public :: scm_ana_direct_ttend    = .false.
+logical, public :: scm_ana_t_react         = .false.
+logical, public :: scm_ana_q_react         = .false.
+logical, public :: scm_ana_u_react         = .false.
+logical, public :: scm_ana_v_react         = .false.
+logical, public :: scm_ana_upwind          = .false.
+!+++ARH
+logical, public :: scm_use_ana_iop         = .false.
+!---ARH
+!--jtb
+
 ! note that scm_zadv_q is set to slt to be consistent with CAM BFB testing
 
 
@@ -250,7 +268,13 @@ subroutine scam_readnl(nlfile,single_column_in,scmlat_in,scmlon_in)
        scm_cambfb_mode,scm_crm_mode,scm_zadv_uv,scm_zadv_T,scm_zadv_q,&
        scm_use_obs_T, scm_use_obs_uv, scm_use_obs_qv, &
        scm_relax_linear, scm_relax_tau_top_sec, &
-       scm_relax_tau_bot_sec, scm_force_latlon, scm_relax_fincl, scm_backfill_iop_w_init
+       scm_relax_tau_bot_sec, scm_force_latlon, scm_relax_fincl, scm_backfill_iop_w_init, &
+!+jtb
+       use_scm_ana_frc, scm_ana_frc_path, scm_ana_frc_file_template, &
+       scm_ana_x_plevels, scm_ana_direct_omega, & 
+       scm_ana_t_react, scm_ana_q_react, scm_ana_u_react, scm_ana_v_react, &
+       scm_ana_upwind, scm_ana_direct_ttend, scm_use_ana_iop
+!--jtb
 
   single_column=single_column_in
 
@@ -306,6 +330,9 @@ subroutine scam_readnl(nlfile,single_column_in,scmlat_in,scmlon_in)
         use_camiop = .false.
      endif
      
+write(*,*) "!!!!!!!!!!   ScamMod !!!!!!!! "
+write(*,*) scm_force_latlon , scmlon, scmlat
+
      ! If we are not forcing the lat and lon from the namelist use the closest lat and lon that is found in the IOP file.
      if (.not.scm_force_latlon) then
         call shr_scam_GetCloseLatLon( ncid, scmlat, scmlon, ioplat, ioplon, latidx, lonidx )
@@ -316,7 +343,9 @@ subroutine scam_readnl(nlfile,single_column_in,scmlat_in,scmlon_in)
         scmlat = ioplat
         scmlon = ioplon
      end if
-     
+write(*,*) " after " , scmlon, scmlat
+
+
      if (masterproc) then
         write (iulog,*) 'Single Column Model Options: '
         write (iulog,*) '============================='
