@@ -2738,6 +2738,19 @@ If .true., ensure non-zero precipitation fallspeed (rain,snow and graupel) if pr
 Default: .false.
 </entry>
 
+<entry id="micro_mg_implicit_fall" type="logical" category="microphys"
+       group="micro_mg_nl" valid_values="" >
+If .true., use implicit fall speed (sedimentation) routine for all hydrometeors. Improves numerical stability of precipitation
+Default: .true.
+</entry>
+
+<entry id="micro_mg_accre_sees_auto" type="logical" category="microphys"
+       group="micro_mg_nl" valid_values="" >
+If true, then the autoconverted liquid is added to rain and removed from cloud before accretion is estimated.
+Default: .true.
+</entry>
+
+
 <!-- Aerosol microphysics -->
 <entry id="microp_aero_bulk_scale" type="real" category="microphys"
        group="microp_aero_nl" valid_values="" >
