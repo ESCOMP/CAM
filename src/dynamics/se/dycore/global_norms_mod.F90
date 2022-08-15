@@ -259,7 +259,7 @@ contains
     real(kind=r8) :: I_sphere, nu_max, nu_div_max
     real(kind=r8) :: h(np,np,nets:nete)
 
-    logical :: top_000_042km, top_042_090km, top_090_140km, top_140_600km ! model top location ranges
+    logical :: top_000_032km, top_032_042km, top_042_090km, top_090_140km, top_140_600km ! model top location ranges
     logical :: nu_set,div_set,lev_set
 
     ! Eigenvalues calculated by folks at UMich (Paul U & Jared W)
@@ -567,31 +567,37 @@ contains
     !
     ! sponge layer strength needed for stability depends on model top location
     !
-    top_000_042km = .false.
+    top_000_032km = .false.
+    top_032_042km = .false.
     top_042_090km = .false.
     top_090_140km = .false.
     top_140_600km = .false.
     nu_set = sponge_del4_nu_fac < 0
     div_set = sponge_del4_nu_div_fac < 0
     lev_set = sponge_del4_lev < 0
-    if (ptop>1.0_r8) then
+    if (ptop>1000.0_r8) then
       !
-      ! CAM6 top (~2.3 Pa)
+      ! low top (~1000 Pa)
       !
-      top_000_042km = .true.
-    else if (ptop>3e-3_r8) then
+      top_000_032km = .true.
+    else if (ptop>100.0_r8) then
       !
-      ! CAM7 top (~4.35e-3 Pa)
+      ! CAM6 top (~225 Pa)
+      !
+      top_032_042km = .true.
+    else if (ptop>1e-1_r8) then
+      !
+      ! CAM7 top (~4.35e-1 Pa)
       !
       top_042_090km = .true.
-    else if (ptop>3E-6_r8) then
+    else if (ptop>1E-4_r8) then
       !
-      ! WACCM top (~4.5e-6 Pa)
+      ! WACCM top (~4.5e-4 Pa)
       !
       top_090_140km = .true.
     else
       !
-      ! WACCM-x - geospace
+      ! WACCM-x - geospace (~4e-7 Pa)
       !
       top_140_600km = .true.
     end if
@@ -605,7 +611,13 @@ contains
     !
     ! if user or namelist is not specifying sponge del4 settings here are best guesses (empirically determined)
     !
-    if (top_000_042km) then
+    if (top_000_032km) then
+      if (sponge_del4_lev       <0) sponge_del4_lev        = 1
+      if (sponge_del4_nu_fac    <0) sponge_del4_nu_fac     = 1.0_r8
+      if (sponge_del4_nu_div_fac<0) sponge_del4_nu_div_fac = 1.0_r8
+    end if
+
+   if (top_032_042km) then
       if (sponge_del4_lev       <0) sponge_del4_lev        = 3
       if (sponge_del4_nu_fac    <0) sponge_del4_nu_fac     = 1.0_r8
       if (sponge_del4_nu_div_fac<0) sponge_del4_nu_div_fac = 4.5_r8

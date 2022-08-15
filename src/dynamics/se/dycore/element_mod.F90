@@ -77,6 +77,7 @@ module element_mod
     ! reference profiles
     real (kind=r8) :: T_ref(np,np,nlev)                        ! reference temperature
     real (kind=r8) :: dp_ref(np,np,nlev)                       ! reference pressure level thickness
+
     ! budgets
     real (kind=r8) :: budget(np,np,9,budget_array_max)         ! budgets
     integer        :: budget_cnt(budget_array_max)             ! budget count for averaging

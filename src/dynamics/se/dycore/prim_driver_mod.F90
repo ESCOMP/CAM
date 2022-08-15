@@ -123,7 +123,7 @@ contains
     ! so only now does HOMME learn the timstep.  print them out:
     call print_cfl(elem,hybrid,nets,nete,dtnu,&
          !p top and p mid levels
-          hvcoord%hyai(1)*hvcoord%ps0,hvcoord%hyam(:)*hvcoord%ps0+hvcoord%hybm(:)*pstd,&
+         hvcoord%hyai(1)*hvcoord%ps0,hvcoord%hyam(:)*hvcoord%ps0+hvcoord%hybm(:)*pstd,&
          !dt_remap,dt_tracer_fvm,dt_tracer_se
          tstep*qsplit*rsplit,tstep*qsplit*fvm_supercycling,tstep*qsplit,&
          !dt_dyn,dt_dyn_visco,dt_tracer_visco, dt_phys
@@ -149,7 +149,8 @@ contains
             elem(ie)%state%phis(:,:),elem(ie)%derived%dp_ref(:,:,:),ps_ref(:,:,ie))
      end do
      !
-     ! pre-compute reference temperature profile (Simmons and Jiabin, 1991, QJRMS, Section 2a)
+     ! pre-compute reference temperature profile (Simmons and Jiabin, 1991, QJRMS, Section 2a
+     !                                            doi: https://doi.org/10.1002/qj.49711749703c)
      !
      !  Tref = T0+T1*Exner
      !  T1 = .0065*Tref*Cp/g ! = ~191

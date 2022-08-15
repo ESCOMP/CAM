@@ -2274,6 +2274,7 @@ contains
     ! FV: convert dry-type mixing ratios to moist here because physics_dme_adjust
     !     assumes moist. This is done in p_d_coupling for other dynamics. Bundy, Feb 2004.
     moist_mixing_ratio_dycore = dycore_is('LR').or. dycore_is('FV3')  
+    if (moist_mixing_ratio_dycore) call set_dry_to_wet(state)    ! Physics had dry, dynamics wants moist
 
     ! for dry mixing ratio dycore, physics_dme_adjust is called for energy diagnostic purposes only.  
     ! So, save off tracers

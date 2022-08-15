@@ -823,28 +823,39 @@ subroutine dyn_init(dyn_in, dyn_out)
    !
    nu_scale_top(:) = 0.0_r8
    if (nu_top>0) then
-     if (masterproc) write(iulog,*) sub//": sponge layer viscosity scaling factor"
-     do k=1,nlev
-       press = (hvcoord%hyam(k)+hvcoord%hybm(k))*hvcoord%ps0
-       ptop  = hvcoord%hyai(1)*hvcoord%ps0
-       nu_scale_top(k) = 8.0_r8*(1.0_r8+tanh(1.0_r8*log(ptop/press(1)))) ! tau will be maximum 8 at model top
-       if (nu_scale_top(k).ge.0.15_r8) then
-         ksponge_end = k
-       else
-         nu_scale_top(k) = 0.0_r8
-       end if
-     end do
+     ptop  = hvcoord%hyai(1)*hvcoord%ps0
+     if (ptop>300.0_r8) then
+       !
+       ! for low tops the tanh formulae below makes the sponge excessively deep
+       !
+       nu_scale_top(1) = 4.0_r8
+       nu_scale_top(2) = 2.0_r8
+       nu_scale_top(3) = 1.0_r8
+       ksponge_end = 3
+     else
+       do k=1,nlev
+         press = hvcoord%hyam(k)*hvcoord%ps0+hvcoord%hybm(k)*pstd
+         nu_scale_top(k) = 8.0_r8*(1.0_r8+tanh(1.0_r8*log(ptop/press(1)))) ! tau will be maximum 8 at model top
+         if (nu_scale_top(k).ge.0.15_r8) then
+           ksponge_end = k
+         else
+           nu_scale_top(k) = 0.0_r8
+         end if
+       end do
+     end if
    else
      ksponge_end = 0
    end if
    ksponge_end = MAX(MAX(ksponge_end,1),kmol_end)
    if (masterproc) then
      write(iulog,*) sub//": ksponge_end = ",ksponge_end
+     write(iulog,*) sub//": sponge layer Laplacian damping"
+     write(iulog,*) "k, p, z, nu_scale_top, nu (actual Laplacian damping coefficient)"
      if (nu_top>0) then
        do k=1,ksponge_end+1
          press = (hvcoord%hyam(k)+hvcoord%hybm(k))*hvcoord%ps0
          call std_atm_height(press,z)
-         write(iulog,'(a,i3,4e11.4)') sub//": k, p, z, nu_scale_top, nu ",k,press,z,&
+         write(iulog,'(i3,4e11.4)') k,press,z,&
               nu_scale_top(k),nu_scale_top(k)*nu_top
        end do
      end if
