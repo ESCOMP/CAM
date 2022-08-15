@@ -282,7 +282,7 @@ contains
       if (r.ne.1) call TimeLevel_update(tl,"leapfrog")
       call prim_step(elem, fvm, hybrid,nets,nete, dt, tl, hvcoord,r)
     enddo
-   
+
     
     ! defer final timelevel update until after remap and diagnostics
     call TimeLevel_Qdp( tl, qsplit, n0_qdp, np1_qdp)

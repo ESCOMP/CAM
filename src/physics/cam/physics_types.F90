@@ -8,8 +8,7 @@ module physics_types
   use constituents,     only: pcnst, qmin, cnst_name, cnst_get_ind
   use geopotential,     only: geopotential_dse, geopotential_t
   use physconst,        only: zvir, gravit, cpair, rair, cpairv, rairv
-  use phys_grid,        only: get_ncols_p, get_rlon_all_p, get_rlat_all_p, get_gcol_all_p, &
-                              get_area_all_p
+  use phys_grid,        only: get_ncols_p, get_rlon_all_p, get_rlat_all_p, get_gcol_all_p
   use cam_logfile,      only: iulog
   use cam_abortutils,   only: endrun
   use phys_control,     only: waccmx_is
@@ -142,6 +141,7 @@ module physics_types
      integer   ::   psetcols=0 ! max number of columns set- if subcols = pcols*psubcols, else = pcols
 
      character*24 :: name    ! name of parameterization which produced tendencies.
+
      logical ::             &
           ls = .false.,               &! true if dsdt is returned
           lu = .false.,               &! true if dudt is returned
@@ -439,6 +439,7 @@ contains
     end if
 
     if (state_debug_checks) call physics_state_check(state, ptend%name)
+
     deallocate(cpairv_loc, rairv_loc)
 
     ! Deallocate ptend
@@ -1071,7 +1072,6 @@ end subroutine physics_ptend_copy
 !-----------------------------------------------------------------------
 ! Set the grid components of the physics_state object
 !-----------------------------------------------------------------------
-    use physconst,        only: pi
 
     integer,             intent(in)    :: lchnk
     type(physics_state), intent(inout) :: phys_state
@@ -1080,7 +1080,6 @@ end subroutine physics_ptend_copy
     integer  :: i, ncol
     real(r8) :: rlon(pcols)
     real(r8) :: rlat(pcols)
-    real(r8) :: area(pcols)
 
     !-----------------------------------------------------------------------
     ! get_ncols_p requires a state which does not have sub-columns
@@ -1097,13 +1096,11 @@ end subroutine physics_ptend_copy
 
     call get_rlon_all_p(lchnk, ncol, rlon)
     call get_rlat_all_p(lchnk, ncol, rlat)
-    call get_area_all_p(lchnk, ncol, area)
     phys_state%ncol  = ncol
     phys_state%lchnk = lchnk
     do i=1,ncol
        phys_state%lat(i) = rlat(i)
        phys_state%lon(i) = rlon(i)
-!!jt       phys_state%area_scale(i,:) = area(i)/4.0_r8*pi
     end do
     call init_geo_unique(phys_state,ncol)
 
@@ -1245,7 +1242,7 @@ end subroutine physics_ptend_copy
     !
     type(physics_state), intent(inout) :: state
     type(physics_tend ), intent(inout) :: tend
-    real(r8),            intent(in   ) :: fdq3d(pcols,pver)   ! water increment
+    real(r8),            intent(in   ) :: qini(pcols,pver)    ! initial specific humidity
     real(r8),            intent(in   ) :: dt                  ! model physics timestep
     !
     !---------------------------Local workspace-----------------------------
@@ -1258,7 +1255,7 @@ end subroutine physics_ptend_copy
     real(r8) :: utmp(pcols)   ! temp variable for recalculating the initial u values
     real(r8) :: vtmp(pcols)   ! temp variable for recalculating the initial v values
 
-    real(r8) :: zvirv(pcols,pver)                                     ! Local zvir array pointer
+    real(r8) :: zvirv(pcols,pver)    ! Local zvir array pointer
 
     real(r8),allocatable :: cpairv_loc(:,:)
     !
@@ -1278,8 +1275,10 @@ end subroutine physics_ptend_copy
     ! constituents, momentum, and total energy
     state%ps(:ncol) = state%pint(:ncol,1)
     do k = 1, pver
-       ! adjusment factor is change in thermodynamically active water species
-       fdq(:ncol) = 1._r8 + fdq3d(:ncol,k)
+
+       ! adjusment factor is just change in water vapor
+       fdq(:ncol) = 1._r8 + state%q(:ncol,k,1) - qini(:ncol,k)
+
        ! adjust constituents to conserve mass in each layer
        do m = 1, pcnst
           state%q(:ncol,k,m) = state%q(:ncol,k,m) / fdq(:ncol)

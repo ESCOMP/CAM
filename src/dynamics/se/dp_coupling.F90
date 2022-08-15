@@ -546,9 +546,6 @@ subroutine derived_phys_dry(phys_state, phys_tend, pbuf2d)
    use hycoef,        only: hyai, ps0
    use shr_vmath_mod, only: shr_vmath_log
    use qneg_module,   only: qneg3
-   use physconst,     only: thermodynamic_active_species_num
-   use physconst,     only: thermodynamic_active_species_idx_dycore
-   use physconst,     only: thermodynamic_active_species_idx
 
    ! arguments
    type(physics_state), intent(inout), dimension(begchunk:endchunk) :: phys_state
@@ -561,7 +558,7 @@ subroutine derived_phys_dry(phys_state, phys_tend, pbuf2d)
    real(r8) :: zvirv(pcols,pver)    ! Local zvir array pointer
    real(r8) :: factor_array(pcols,nlev)
 
-   integer :: m, i, k, ncol, m_cnst
+   integer :: m, i, k, ncol
    type(physics_buffer_desc), pointer :: pbuf_chnk(:)
    !----------------------------------------------------------------------------
 
@@ -603,18 +600,7 @@ subroutine derived_phys_dry(phys_state, phys_tend, pbuf2d)
       end do
 
       ! wet pressure variables (should be removed from physics!)
-#ifdef ALL_WATER_IN_DP
-      factor_array(:,:) = 1.0_r8
-      do m_cnst=1,thermodynamic_active_species_num
-        m = thermodynamic_active_species_idx(m_cnst)
-        do k=1,nlev
-          do i=1,ncol
-            ! at this point all q's are dry
-            factor_array(i,k) = factor_array(i,k)+phys_state(lchnk)%q(i,k,m)
-          end do
-        end do
-      end do
-#else
+
       do k=1,nlev
          do i=1,ncol
             ! to be consistent with total energy formula in physic's check_energy module only
@@ -622,7 +608,7 @@ subroutine derived_phys_dry(phys_state, phys_tend, pbuf2d)
             factor_array(i,k) = 1+phys_state(lchnk)%q(i,k,1)
          end do
       end do
-#endif
+
       do k=1,nlev
          do i=1,ncol
             phys_state(lchnk)%pdel (i,k) = phys_state(lchnk)%pdeldry(i,k)*factor_array(i,k)

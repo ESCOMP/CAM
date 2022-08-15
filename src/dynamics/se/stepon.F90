@@ -122,7 +122,6 @@ subroutine stepon_run2(phys_state, phys_tend, dyn_in, dyn_out)
    use time_mod,               only: TimeLevel_Qdp
    use control_mod,            only: qsplit
    use prim_advance_mod,       only: calc_tot_energy_dynamics
-   use cam_logfile,            only: iulog
 
 
    ! arguments

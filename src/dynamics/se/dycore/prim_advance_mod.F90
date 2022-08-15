@@ -64,7 +64,7 @@ contains
     implicit none
 
     type (element_t), intent(inout), target   :: elem(:)
-    type(fvm_struct)     , intent(in) :: fvm(:)
+    type(fvm_struct)     , intent(inout) :: fvm(:)
     type (derivative_t)  , intent(in) :: deriv
     type (hvcoord_t)                  :: hvcoord
     type (hybrid_t)      , intent(in) :: hybrid
@@ -468,7 +468,7 @@ contains
 
     type (hybrid_t)    , intent(in)   :: hybrid
     type (element_t)   , intent(inout), target :: elem(:)
-    type(fvm_struct)   , intent(in)   :: fvm(:)
+    type(fvm_struct)   , intent(inout)   :: fvm(:)
     type (EdgeBuffer_t), intent(inout):: edge3
     type (derivative_t), intent(in  ) :: deriv
     integer            , intent(in)   :: nets,nete, nt, qn0
@@ -1456,6 +1456,7 @@ contains
     use element_mod,            only: element_t
     use cam_history,            only: outfld, hist_fld_active
     use constituents,           only: cnst_get_ind
+    use string_utils,           only: strlist_get_ind
     use hycoef,                 only: hyai, ps0
     use fvm_control_volume_mod, only: fvm_struct
     use physconst,              only: get_dp, get_cp
@@ -1471,7 +1472,7 @@ contains
     !------------------------------Arguments--------------------------------
 
     type (element_t) , intent(inout) :: elem(:)
-    type(fvm_struct) , intent(in) :: fvm(:)
+    type(fvm_struct) , intent(inout) :: fvm(:)
     integer          , intent(in) :: tl, tl_qdp,nets,nete
     character*(*)    , intent(in) :: outfld_name_suffix ! suffix for "outfld" names
     logical, optional, intent(in) :: subcycle ! true if called inside subcycle loop
@@ -1482,12 +1483,10 @@ contains
     real(kind=r8) :: ke(npsq)                          ! kinetic energy    (J/m2)
 
     real(kind=r8) :: cdp_fvm(nc,nc,nlev)
-    real(kind=r8) :: cdp(np,np,nlev)
     real(kind=r8) :: se_tmp
     real(kind=r8) :: ke_tmp
     real(kind=r8) :: ps(np,np)
     real(kind=r8) :: pdel(np,np,nlev)
-   
     !
     ! global axial angular momentum (AAM) can be separated into one part (mr) associatedwith the relative motion
     ! of the atmosphere with respect to the planets surface (also known as wind AAM) and another part (mo)
@@ -1499,10 +1498,12 @@ contains
     real(kind=r8) :: mr_cnst, mo_cnst, cos_lat, mr_tmp, mo_tmp
     real(kind=r8) :: cp(np,np,nlev)
 
-    integer :: ie,i,j,k,idx,ixtt,budget_ind,state_ind,iwv
+    integer :: ie,i,j,k,budget_ind,state_ind
+    integer :: ixwv,ixcldice, ixcldliq, ixtt ! CLDICE, CLDLIQ and test tracer indices
     character(len=16) :: name_out1,name_out2,name_out3,name_out4,name_out5,name_out6
 
     !-----------------------------------------------------------------------
+
     name_out1 = 'SE_'   //trim(outfld_name_suffix)
     name_out2 = 'KE_'   //trim(outfld_name_suffix)
     name_out3 = 'WV_'   //trim(outfld_name_suffix)
@@ -1512,7 +1513,20 @@ contains
 
     if ( hist_fld_active(name_out1).or.hist_fld_active(name_out2).or.hist_fld_active(name_out3).or.&
          hist_fld_active(name_out4).or.hist_fld_active(name_out5).or.hist_fld_active(name_out6)) then
-      call cnst_get_ind('TT_UN' , ixtt    , abort=.false.)
+
+      if (ntrac>0) then
+        ixwv = 1
+        call cnst_get_ind('CLDLIQ' , ixcldliq, abort=.false.)
+        call cnst_get_ind('CLDICE' , ixcldice, abort=.false.)
+      else
+        !
+        ! when using CSLAM the condensates on the GLL grid may be located in a different index than in physics
+        !
+        ixwv = -1
+        call strlist_get_ind(cnst_name_gll, 'CLDLIQ' , ixcldliq, abort=.false.)
+        call strlist_get_ind(cnst_name_gll, 'CLDICE' , ixcldice, abort=.false.)
+      end if
+      call cnst_get_ind('TT_LW' , ixtt    , abort=.false.)
       !
       ! Compute frozen static energy in 3 parts:  KE, SE, and energy associated with vapor and liquid
       !
@@ -1589,123 +1603,92 @@ contains
         ! mass variables are output on CSLAM grid if using CSLAM else GLL grid
         !
         if (ntrac>0) then
-          iwv = 0;if (ntrac>0) iwv=1
-          cdp_fvm = fvm(ie)%c(1:nc,1:nc,:,iwv)*fvm(ie)%dp_fvm(1:nc,1:nc,:)
-          call util_function(cdp_fvm,nc,nlev,name_out3,ie)
-          do j = 1, nc
-             do i = 1, nc
-                elem(ie)%derived%budget(i,j,4,state_ind) = elem(ie)%derived%budget(i,j,4,state_ind) + sum(cdp_fvm(i,j,:))
-             end do
-          end do
-          elem(ie)%derived%budget(1:nc,1:nc,4,state_ind)=elem(ie)%derived%budget(1:nc,1:nc,4,state_ind)/gravit
-          !
-          ! sum over liquid water
-          !
-          if (thermodynamic_active_species_liq_num>0) then
-            cdp_fvm = 0.0_r8
-            do idx = 1,thermodynamic_active_species_liq_num
-              cdp_fvm = cdp_fvm + fvm(ie)%c(1:nc,1:nc,:,thermodynamic_active_species_liq_idx(idx))&
-                   *fvm(ie)%dp_fvm(1:nc,1:nc,:)
-            end do
-            call util_function(cdp_fvm,nc,nlev,name_out4,ie)
-            do j = 1, nc
-               do i = 1, nc
-                  elem(ie)%derived%budget(i,j,5,state_ind) = elem(ie)%derived%budget(i,j,5,state_ind) + sum(cdp_fvm(i,j,:))
-               end do
-            end do
-            elem(ie)%derived%budget(1:nc,1:nc,5,state_ind)=elem(ie)%derived%budget(1:nc,1:nc,5,state_ind)/gravit
-          end if
-          !
-          ! sum over ice water
-          !
-          if (thermodynamic_active_species_ice_num>0) then
-            cdp_fvm = 0.0_r8
-            do idx = 1,thermodynamic_active_species_ice_num
-              cdp_fvm = cdp_fvm + fvm(ie)%c(1:nc,1:nc,:,thermodynamic_active_species_ice_idx(idx))&
-                   *fvm(ie)%dp_fvm(1:nc,1:nc,:)
-            end do
-            call util_function(cdp_fvm,nc,nlev,name_out4,ie)
-            do j = 1, nc
-               do i = 1, nc
-                  elem(ie)%derived%budget(i,j,6,state_ind) = elem(ie)%derived%budget(i,j,6,state_ind) + sum(cdp_fvm(i,j,:))
-               end do
-            end do
-            elem(ie)%derived%budget(1:nc,1:nc,6,state_ind)=elem(ie)%derived%budget(1:nc,1:nc,6,state_ind)/gravit
-          end if
-          !
-          ! dry test tracer
-          !
-          if (ixtt>0) then
-            cdp_fvm = fvm(ie)%c(1:nc,1:nc,:,ixtt)*fvm(ie)%dp_fvm(1:nc,1:nc,:)
-            call util_function(cdp_fvm,nc,nlev,name_out6,ie)
-            do j = 1, nc
-               do i = 1, nc
-                  elem(ie)%derived%budget(i,j,7,state_ind) = elem(ie)%derived%budget(i,j,7,state_ind) + sum(cdp_fvm(i,j,:))
-               end do
-            end do
-            elem(ie)%derived%budget(1:nc,1:nc,7,state_ind)=elem(ie)%derived%budget(1:nc,1:nc,7,state_ind)/gravit
-          end if
+           if (ixwv>0) then
+              cdp_fvm = fvm(ie)%c(1:nc,1:nc,:,ixwv)*fvm(ie)%dp_fvm(1:nc,1:nc,:)
+              call util_function(cdp_fvm,nc,nlev,name_out3,ie)
+              do j = 1, nc
+                 do i = 1, nc
+                    fvm(ie)%budget(i,j,4,state_ind) = fvm(ie)%budget(i,j,4,state_ind) + sum(cdp_fvm(i,j,:))
+                 end do
+              end do
+              fvm(ie)%budget(1:nc,1:nc,4,state_ind)=fvm(ie)%budget(1:nc,1:nc,4,state_ind)/gravit
+           end if
+           if (ixcldliq>0) then
+              cdp_fvm = 0.0_r8
+              cdp_fvm = fvm(ie)%c(1:nc,1:nc,:,ixcldliq)*fvm(ie)%dp_fvm(1:nc,1:nc,:)
+              call util_function(cdp_fvm,nc,nlev,name_out4,ie)
+              do j = 1, nc
+                 do i = 1, nc
+                    fvm(ie)%budget(i,j,5,state_ind) = fvm(ie)%budget(i,j,5,state_ind) + sum(cdp_fvm(i,j,:))
+                 end do
+              end do
+              fvm(ie)%budget(1:nc,1:nc,5,state_ind)=fvm(ie)%budget(1:nc,1:nc,5,state_ind)/gravit
+           end if
+           if (ixcldice>0) then
+              cdp_fvm = fvm(ie)%c(1:nc,1:nc,:,ixcldice)*fvm(ie)%dp_fvm(1:nc,1:nc,:)
+              call util_function(cdp_fvm,nc,nlev,name_out5,ie)
+              
+              do j = 1, nc
+                 do i = 1, nc
+                    fvm(ie)%budget(i,j,6,state_ind) = fvm(ie)%budget(i,j,6,state_ind) + sum(cdp_fvm(i,j,:))
+                 end do
+              end do
+              fvm(ie)%budget(1:nc,1:nc,6,state_ind)=fvm(ie)%budget(1:nc,1:nc,6,state_ind)/gravit
+           end if
+           if (ixtt>0) then
+              cdp_fvm = fvm(ie)%c(1:nc,1:nc,:,ixtt)*fvm(ie)%dp_fvm(1:nc,1:nc,:)
+              call util_function(cdp_fvm,nc,nlev,name_out6,ie)
+              do j = 1, nc
+                 do i = 1, nc
+                    fvm(ie)%budget(i,j,7,state_ind) = fvm(ie)%budget(i,j,7,state_ind) + sum(cdp_fvm(i,j,:))
+                 end do
+              end do
+              fvm(ie)%budget(1:nc,1:nc,7,state_ind)=fvm(ie)%budget(1:nc,1:nc,7,state_ind)/gravit
+           end if
         else
-          call util_function(elem(ie)%state%qdp(:,:,:,1,tl_qdp),np,nlev,name_out3,ie)
-          do j = 1, np
-             do i = 1, np
-                elem(ie)%derived%budget(i,j,4,state_ind) = elem(ie)%derived%budget(i,j,4,state_ind) + sum(elem(ie)%state%qdp(i,j,:,1,tl_qdp))
-             end do
-          end do
-          elem(ie)%derived%budget(1:np,1:np,4,state_ind)=elem(ie)%derived%budget(1:np,1:np,4,state_ind)/gravit
-          !
-          ! sum over liquid water
-          !
-          if (thermodynamic_active_species_liq_num>0) then
-            cdp = 0.0_r8
-            do idx = 1,thermodynamic_active_species_liq_num
-              cdp = cdp + elem(ie)%state%qdp(:,:,:,thermodynamic_active_species_liq_idx(idx),tl_qdp)
-            end do
-            call util_function(cdp,np,nlev,name_out4,ie)
-            do j = 1, np
-               do i = 1, np
-                  elem(ie)%derived%budget(i,j,5,state_ind) = elem(ie)%derived%budget(i,j,5,state_ind) + sum(cdp(i,j,:))
-               end do
-            end do
-            elem(ie)%derived%budget(1:np,1:np,5,state_ind)=elem(ie)%derived%budget(1:np,1:np,5,state_ind)/gravit
-          end if
-          !
-          ! sum over ice water
-          !
-          if (thermodynamic_active_species_ice_num>0) then
-            cdp = 0.0_r8
-            do idx = 1,thermodynamic_active_species_ice_num
-              cdp = cdp + elem(ie)%state%qdp(:,:,:,thermodynamic_active_species_ice_idx(idx),tl_qdp)
-            end do
-            call util_function(cdp,np,nlev,name_out5,ie)
-            do j = 1, np
-               do i = 1, np
-                  elem(ie)%derived%budget(i,j,6,state_ind) = elem(ie)%derived%budget(i,j,6,state_ind) + sum(cdp(i,j,:))
-               end do
-            end do
-            elem(ie)%derived%budget(1:np,1:np,6,state_ind)=elem(ie)%derived%budget(1:np,1:np,6,state_ind)/gravit
-          end if
-          !
-          ! dry test tracer
-          !
-          if (ixtt>0) then
-             call util_function(elem(ie)%state%qdp(:,:,:,ixtt,tl_qdp),np,nlev,name_out6,ie)
-             do j = 1, np
-                do i = 1, np
-                   elem(ie)%derived%budget(i,j,7,state_ind) = elem(ie)%derived%budget(i,j,7,state_ind) + sum(elem(ie)%state%qdp(i,j,:,ixtt,tl_qdp))
-                end do
-             end do
-             elem(ie)%derived%budget(1:np,1:np,7,state_ind)=elem(ie)%derived%budget(1:np,1:np,7,state_ind)/gravit
-          end if
-       end if
-      end do
-    end if
-    !
-    ! Axial angular momentum diagnostics
-    !
-    ! Code follows
-    !
-    ! Lauritzen et al., (2014): Held-Suarez simulations with the Community Atmosphere Model
+           call util_function(elem(ie)%state%qdp(:,:,:,1,tl_qdp),np,nlev,name_out3,ie)
+           do j = 1, np
+              do i = 1, np
+                 elem(ie)%derived%budget(i,j,4,state_ind) = elem(ie)%derived%budget(i,j,4,state_ind) + sum(elem(ie)%state%qdp(i,j,:,1,tl_qdp))
+              end do
+           end do
+           elem(ie)%derived%budget(1:np,1:np,4,state_ind)=elem(ie)%derived%budget(1:np,1:np,4,state_ind)/gravit
+           if (ixcldliq>0) then
+              call util_function(elem(ie)%state%qdp(:,:,:,ixcldliq,tl_qdp),np,nlev,name_out4,ie)
+              do j = 1, np
+                 do i = 1, np
+                    elem(ie)%derived%budget(i,j,4,state_ind) = elem(ie)%derived%budget(i,j,4,state_ind) + sum(elem(ie)%state%qdp(i,j,:,1,tl_qdp))
+                 end do
+              end do
+              elem(ie)%derived%budget(1:np,1:np,4,state_ind)=elem(ie)%derived%budget(1:np,1:np,4,state_ind)/gravit
+           end if
+           if (ixcldice>0) then
+              call util_function(elem(ie)%state%qdp(:,:,:,ixcldice,tl_qdp),np,nlev,name_out5,ie)
+              do j = 1, np
+                 do i = 1, np
+                    elem(ie)%derived%budget(i,j,6,state_ind) = elem(ie)%derived%budget(i,j,6,state_ind) + sum(elem(ie)%state%qdp(i,j,:,ixcldice,tl_qdp))
+                 end do
+              end do
+              elem(ie)%derived%budget(1:np,1:np,6,state_ind)=elem(ie)%derived%budget(1:np,1:np,6,state_ind)/gravit
+           end if
+           if (ixtt>0) then
+              call util_function(elem(ie)%state%qdp(:,:,:,ixtt    ,tl_qdp),np,nlev,name_out6,ie)
+              do j = 1, np
+                 do i = 1, np
+                    elem(ie)%derived%budget(i,j,7,state_ind) = elem(ie)%derived%budget(i,j,7,state_ind) + sum(elem(ie)%state%qdp(i,j,:,ixtt,tl_qdp))
+                 end do
+              end do
+              elem(ie)%derived%budget(1:np,1:np,7,state_ind)=elem(ie)%derived%budget(1:np,1:np,7,state_ind)/gravit
+           end if
+        end if
+     end do
+  end if
+  !
+  ! Axial angular momentum diagnostics
+  !
+  ! Code follows
+  !
+  ! Lauritzen et al., (2014): Held-Suarez simulations with the Community Atmosphere Model
     ! Spectral Element (CAM-SE) dynamical core: A global axial angularmomentum analysis using Eulerian
     ! and floating Lagrangian vertical coordinates. J. Adv. Model. Earth Syst. 6,129-140,
     ! doi:10.1002/2013MS000268
@@ -1717,6 +1700,8 @@ contains
     name_out2 = 'MO_'   //trim(outfld_name_suffix)
 
     if ( hist_fld_active(name_out1).or.hist_fld_active(name_out2)) then
+      call strlist_get_ind(cnst_name_gll, 'CLDLIQ', ixcldliq, abort=.false.)
+      call strlist_get_ind(cnst_name_gll, 'CLDICE', ixcldice, abort=.false.)
       mr_cnst = rearth**3/gravit
       mo_cnst = omega*rearth**4/gravit
       do ie=nets,nete
@@ -1933,7 +1918,7 @@ contains
 
       call cnst_get_ind('CLDLIQ', ixcldliq, abort=.false.)
       call cnst_get_ind('CLDICE', ixcldice, abort=.false.)
-      call cnst_get_ind('TT_MD' , ixtt    , abort=.false.)
+      call cnst_get_ind('TT_LW' , ixtt    , abort=.false.)
 
       do ie=nets,nete
         call util_function(qdp(:,:,:,1,ie),nx,nlev,name_out1,ie)
