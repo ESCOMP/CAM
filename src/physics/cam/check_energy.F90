@@ -183,7 +183,7 @@ end subroutine check_energy_get_integrals
 !-----------------------------------------------------------------------
     use cam_history,       only: addfld, add_default, horiz_only
     use phys_control,      only: phys_getopts
-    use budgets,           only: budget_num, budget_outfld, budget_info_byind
+    use budgets,           only: budget_num, budget_outfld, budget_info
 
     implicit none
 
@@ -191,6 +191,7 @@ end subroutine check_energy_get_integrals
     integer          :: history_budget_histfile_num ! output history file number for budget fields
     integer          :: m                           ! budget array index into te_budgets
     character(len=16):: budget_name     ! budget names
+    character(len=3) :: budget_pkgtype     ! budget type phy or dyn
     character(len=128):: budget_longname ! long name of budgets
 !-----------------------------------------------------------------------
 
@@ -215,8 +216,12 @@ end subroutine check_energy_get_integrals
 ! register history budget variables
     do m=1,budget_num
        if (budget_outfld(m)) then
-          call budget_info_byind(m,name=budget_name,longname=budget_longname)
-          call addfld(trim(budget_name),  horiz_only,  'A', 'W/m2', trim(budget_longname))
+          call budget_info(m,name=budget_name,longname=budget_longname,pkgtype=budget_pkgtype)
+!jt          write(iulog,*)'looking at field:',trim(budget_name),' index=',m,' tot=',budget_num,' pkgtype=',budget_pkgtype
+          if (trim(budget_pkgtype)=='phy') then
+!jt             write(iulog,*)'adding field:',trim(budget_name),' index=',m,' tot=',budget_num
+             call addfld(trim(budget_name),  horiz_only,  'A', 'W/m2', trim(budget_longname))
+          endif
        end if
     end do
 !!$    call addfld('BP_phy_params',  horiz_only,  'A', 'W/m2', 'dE/dt CAM physics parameterizations (phAP-phBP)')
@@ -582,8 +587,10 @@ end subroutine check_energy_get_integrals
     use physics_buffer,  only: physics_buffer_desc, pbuf_get_field, pbuf_get_chunk
     use dyn_tests_utils, only: vc_dycore, vc_height
     use physics_types,   only: phys_te_idx, dyn_te_idx
-    use budgets,         only: budget_cnt,budget_num, budget_get_ind, budget_info_byind, &
-                               budget_type_byind, budget_outfld
+    use budgets,         only: budget_num, budget_info, &
+                               budget_type_byind, budget_outfld, budget_num_phy, &
+                               budget_cnt_adjust
+    use cam_abortutils,  only: endrun
 !-----------------------------------------------------------------------
 ! Compute global mean total energy of physics input and output states
 ! computed consistently with dynamical core vertical coordinate
@@ -591,7 +598,7 @@ end subroutine check_energy_get_integrals
 !-----------------------------------------------------------------------
 !------------------------------Arguments--------------------------------
 
-    type(physics_state), intent(in   ), dimension(begchunk:endchunk) :: state
+    type(physics_state), intent(inout   ), dimension(begchunk:endchunk) :: state
 
     real(r8), intent(in) :: dtime        ! physics time step
     integer , intent(in) :: nstep        ! current timestep number
@@ -600,53 +607,100 @@ end subroutine check_energy_get_integrals
     integer :: ncol                      ! number of active columns
     integer :: lchnk                     ! chunk index
 
-    real(r8) :: te(pcols,begchunk:endchunk,budget_num)
-                                         ! total energy of input/output states (copy)
-    real(r8) :: te_glob(budget_num)               ! global means of total energy
+!jt    real(r8),allocatable :: te(pcols,begchunk:endchunk,budget_num_phy)
+    real(r8),allocatable :: te(:,:,:)                    ! total energy of input/output states (copy)
+!jt    real(r8),allocatable :: te_glob(budget_num_phy)      ! global means of total energy
+    real(r8),allocatable :: te_glob(:)                   ! global means of total energy
     real(r8) :: phparam,dyparam,phpwork,dypwork,phefix,dyefix,phphys,dyphys
-    integer  :: i,ind,is1,is2
+    integer  :: i,ii,ind,is1,is2,is1b,is2b
     character*16 :: budget_name               ! parameterization name for fluxes
+    character*3 :: budget_pkgtype             ! parameterization type phy or dyn
+    character*3 :: budget_optype              ! dif or stg
 !-----------------------------------------------------------------------
+    if (.not.allocated (te)) then
+       allocate( te(pcols,begchunk:endchunk,budget_num_phy))
+!jt       write(iulog,*)'shape te=',shape(te),budget_num_phy
+    end if
+    if (.not.allocated (te_glob)) then
+       allocate( te_glob(budget_num_phy))
+!jt       write(iulog,*)'shape te_glob=',shape(te_glob)
+    else
+       write(iulog,*)'no alloc call shape te_glob=',shape(te_glob)
+    end if
+    te=0.0_r8
+    te_glob=0.0_r8
+
     ! calculate energy budget differences
     do lchnk = begchunk, endchunk
        ncol = state(lchnk)%ncol
-       do i=1,budget_num
-          if (budget_type_byind(i)=='dif') then
-             call budget_info_byind(i,name=budget_name, istage1=is1, istage2=is2)
-             if (budget_cnt(is1)==0.or.budget_cnt(is2)==0) then
-                te(:,lchnk,i)=0._r8
-             else          
-                te(:,lchnk,i) = (state(lchnk)%te_budgets(:,1,is1)-state(lchnk)%te_budgets(:,1,is2))/budget_cnt(is1)/dtime
+       do ii=1,budget_num
+          call budget_info(ii,name=budget_name,pkgtype=budget_pkgtype,optype=budget_optype,state_ind=i)
+          if (budget_pkgtype=='phy') then
+             if (budget_optype=='dif') then
+                call budget_info(ii,stg1stateidx=is1, stg2stateidx=is2,stg1index=is1b,stg2index=is2b)
+                if (state(lchnk)%budget_cnt(is1b).ne.state(lchnk)%budget_cnt(is2b)) then
+                   write(iulog,*)'budget_cnt mismatch stage1=',state(lchnk)%budget_cnt(is1b),'stage2=',state(lchnk)%budget_cnt(is2b)
+                   call endrun()
+                end if
+                if (state(lchnk)%budget_cnt(is1b)==0.or.state(lchnk)%budget_cnt(is2b)==0) then
+                   te(:,lchnk,i)=0._r8
+                else          
+                   write(iulog,*)'calculating budget differences for ',budget_name,' ',budget_pkgtype,' ',budget_optype,' te i=',i,' of ',budget_num_phy,' state_ind=',i,' budget_cnt(is1b)=',state(lchnk)%budget_cnt(is1b),' dtime=',dtime,' is1b/is2b=',is1b,'/',is2b
+                   te(:,lchnk,i) = (state(lchnk)%te_budgets(:,1,is1)-state(lchnk)%te_budgets(:,1,is2))/state(lchnk)%budget_cnt(is1b)/dtime
+                end if
+             else if (budget_optype=='sum') then
+                call budget_info(ii,stg1stateidx=is1, stg2stateidx=is2,stg1index=is1b,stg2index=is2b)
+                if (state(lchnk)%budget_cnt(is1b).ne.state(lchnk)%budget_cnt(is2b)) then
+                   write(iulog,*)'budget_cnt mismatch stage1=',state(lchnk)%budget_cnt(is1b),'stage2=',state(lchnk)%budget_cnt(is2b)
+                   call endrun()
+                end if
+                if (state(lchnk)%budget_cnt(is1b)==0.or.state(lchnk)%budget_cnt(is2b)==0) then
+                   te(:,lchnk,i)=0._r8
+                else          
+                   write(iulog,*)'calculating budget sums for ',budget_name,' ',budget_pkgtype,' ',budget_optype,' te i=',i,' of ',budget_num_phy,' state_ind=',i,' budget_cnt(is1b)=',state(lchnk)%budget_cnt(is1b),' dtime=',dtime,' is1b/is2b=',is1b,'/',is2b
+                   te(:,lchnk,i) = (state(lchnk)%te_budgets(:,1,is1)+state(lchnk)%te_budgets(:,1,is2))/state(lchnk)%budget_cnt(is1b)/dtime
+                end if
+             else
+                   write(iulog,*)'setting te for stage ',budget_name,' ',budget_pkgtype,' ',budget_optype,' te i=',i,' of ',budget_num_phy,' state_ind=',i,' dtime=',dtime
+                te(:,lchnk,i)=state(lchnk)%te_budgets(:,1,i)
              end if
-          else
-             call budget_info_byind(i,name=budget_name)
-             te(:,lchnk,i)=0._r8
+!jt             if (lchnk==begchunk) write(iulog,*)'calling outfld for lchnk,name,pkgtype,budget_idx,tot=',lchnk,budget_name,budget_pkgtype,budget_optype,i,budget_num
+             if (budget_outfld(i).and.budget_pkgtype=='phy') call outfld(trim(budget_name), te(:ncol,lchnk,i), pcols, lchnk)
           end if
-          if (budget_outfld(i)) call outfld(trim(budget_name), te(:ncol,lchnk,i), pcols, lchnk)
        end do
     end do
-    write(iulog,*)'done with te loop, next looking at te array values for 1,2,9,10,15,16'
-       
-       ! Compute global means of input and output energies and of
+    ! Compute global means of input and output energies and of
     ! surface pressure for heating rate (assume uniform ptop)
-    call gmean(te, te_glob, budget_num)
+    call gmean(te, te_glob, budget_num_phy)
+
+    do ii=1,budget_num
+       call budget_info(ii,name=budget_name,pkgtype=budget_pkgtype,optype=budget_optype,state_ind=i)
+       if (budget_pkgtype=='phy') then
+          write(iulog,*)'global tot for ',budget_name,':',te_glob(i),'b4budget_cnt_incr',state(begchunk)%budget_cnt(ii)
+!jt          call budget_cnt_adjust(ii,reset=.true.)
+          do lchnk = begchunk, endchunk
+             state(lchnk)%budget_cnt(ii)=0
+          end do
+          write(iulog,*)'afbudget_cnt_incr',state(begchunk)%budget_cnt(ii)
+       end if
+    end do
 
     if (begchunk .le. endchunk) then
-       call budget_get_ind('BD_phy_params',ind, .true.)
+       call budget_info('BD_phy_params',state_ind=ind)
        dyparam = te_glob(ind)
-       call budget_get_ind('BP_phy_params',ind, .true.)
+       call budget_info('BP_phy_params',state_ind=ind)
        phparam = te_glob(ind)
-       call budget_get_ind('BD_pwork',ind, .true.)
+       call budget_info('BD_pwork',state_ind=ind)
        dypwork = te_glob(ind)
-       call budget_get_ind('BP_pwork',ind, .true.)
+       call budget_info('BP_pwork',state_ind=ind)
        phpwork = te_glob(ind)
-       call budget_get_ind('BD_efix',ind, .true.)
+       call budget_info('BD_efix',state_ind=ind)
        dyefix = te_glob(ind)
-       call budget_get_ind('BP_efix',ind, .true.)
+       call budget_info('BP_efix',state_ind=ind)
        phefix = te_glob(ind)
-       call budget_get_ind('BD_phys_tot',ind, .true.)
+       call budget_info('BD_phys_tot',state_ind=ind)
        dyphys = te_glob(ind)
-       call budget_get_ind('BP_phys_tot',ind, .true.)
+       call budget_info('BP_phys_tot',state_ind=ind)
        phphys = te_glob(ind)
        if (masterproc) then
           write(iulog,'(1x,a,1x,4(1x,e25.17))') "nstep, phys param,pwork,efix,phys", phparam, phpwork, phefix, phphys
@@ -911,7 +965,7 @@ end subroutine check_energy_get_integrals
     use cam_history,     only: hist_fld_active, outfld
     use dyn_tests_utils, only: vc_physics, vc_height
     use cam_abortutils,  only: endrun
-    use budgets,         only: budget_cnt, budget_get_ind
+    use budgets,         only: budget_cnt_adjust, budget_info
 !------------------------------Arguments--------------------------------
 
     type(physics_state), intent(inout) :: state
@@ -937,7 +991,7 @@ end subroutine check_energy_get_integrals
     integer :: ncol                                ! number of atmospheric columns
     integer :: i,k                                 ! column, level indices
     integer :: vc_loc                              ! local vertical coordinate variable
-    integer :: ind                                 ! budget array index
+    integer :: ind,budget_ind                      ! budget array index
     integer :: ixtt                                ! test tracer index
     character(len=16) :: name_out1,name_out2,name_out3,name_out4,name_out5,name_out6
 !-----------------------------------------------------------------------
@@ -955,7 +1009,7 @@ end subroutine check_energy_get_integrals
       lchnk = state%lchnk
       ncol  = state%ncol
 
-      call budget_get_ind(trim(outfld_name_suffix),ind)
+      call budget_info(trim(outfld_name_suffix),budget_ind=budget_ind,state_ind=ind)
 
       if (present(vc)) then
         vc_loc = vc
@@ -990,11 +1044,11 @@ end subroutine check_energy_get_integrals
            vc_loc, ps = state%ps(1:ncol), phis = state%phis(1:ncol),                   &
            z = state%z_ini(1:ncol,:), se = se, ke = ke, wv = wv, liq = liq, ice = ice)
 
-      call cnst_get_ind('TT_LW' , ixtt    , abort=.false.)
+      call cnst_get_ind('TT_UN' , ixtt    , abort=.false.)
 
       tt    = 0._r8
       if (ixtt > 1) then
-        if (name_out6 == 'TT_pAM'.or.name_out6 == 'TT_zAM') then
+        if (name_out6 == 'TT_phAM'.or.name_out6 == 'TT_dyAM') then
           !
           ! after dme_adjust mixing ratios are all wet
           !
@@ -1021,8 +1075,9 @@ end subroutine check_energy_get_integrals
       state%te_budgets(1:ncol,5,ind)=liq(1:ncol)
       state%te_budgets(1:ncol,6,ind)=ice(1:ncol)
       state%te_budgets(1:ncol,7,ind)=tt(1:ncol)
-      budget_cnt(ind) = 1
-
+      state%budget_cnt(ind)=state%budget_cnt(ind)+1
+!jt      call budget_cnt_adjust(budget_ind)
+      write(iulog,*)'incr count for ',outfld_name_suffix,' count=',state%budget_cnt(ind)
       ! Output energy diagnostics
 
       call outfld(name_out1  ,se      , pcols   ,lchnk   )

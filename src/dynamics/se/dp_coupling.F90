@@ -13,7 +13,8 @@ use spmd_utils,     only: iam
 use dyn_grid,       only: TimeLevel, edgebuf
 use dyn_comp,       only: dyn_export_t, dyn_import_t
 
-use physics_types,  only: physics_state, physics_tend
+!short term hack use physics_types,  only: physics_state, physics_tend, physics_cnst_limit
+use physics_types,  only: physics_state, physics_tend!short term hack
 use phys_grid,      only: get_ncols_p
 use phys_grid,      only: get_dyn_col_p, columns_on_task, get_chunk_info_p
 use physics_buffer, only: physics_buffer_desc, pbuf_get_chunk, pbuf_get_field
@@ -546,7 +547,9 @@ subroutine derived_phys_dry(phys_state, phys_tend, pbuf2d)
    use hycoef,        only: hyai, ps0
    use shr_vmath_mod, only: shr_vmath_log
    use qneg_module,   only: qneg3
-   use dyn_comp,      only: ixo, ixo2, ixh, ixh2
+   use physconst,     only: thermodynamic_active_species_num
+   use physconst,     only: thermodynamic_active_species_idx_dycore
+   use physconst,     only: thermodynamic_active_species_idx
 
    ! arguments
    type(physics_state), intent(inout), dimension(begchunk:endchunk) :: phys_state
@@ -559,15 +562,7 @@ subroutine derived_phys_dry(phys_state, phys_tend, pbuf2d)
    real(r8) :: zvirv(pcols,pver)    ! Local zvir array pointer
    real(r8) :: factor_array(pcols,nlev)
 
-   integer :: m, i, k, ncol
-
-   !--------------------------------------------
-   !  Variables needed for WACCM-X
-   !--------------------------------------------
-    real(r8) :: mmrSum_O_O2_H                ! Sum of mass mixing ratios for O, O2, and H
-    real(r8), parameter :: mmrMin=1.e-20_r8  ! lower limit of o2, o, and h mixing ratios
-    real(r8), parameter :: N2mmrMin=1.e-6_r8 ! lower limit of o2, o, and h mixing ratios
-
+   integer :: m, i, k, ncol, m_cnst
    type(physics_buffer_desc), pointer :: pbuf_chnk(:)
    !----------------------------------------------------------------------------
 
@@ -609,7 +604,18 @@ subroutine derived_phys_dry(phys_state, phys_tend, pbuf2d)
       end do
 
       ! wet pressure variables (should be removed from physics!)
-
+#ifdef ALL_WATER_IN_DP
+      factor_array(:,:) = 1.0_r8
+      do m_cnst=1,thermodynamic_active_species_num
+        m = thermodynamic_active_species_idx(m_cnst)
+        do k=1,nlev
+          do i=1,ncol
+            ! at this point all q's are dry
+            factor_array(i,k) = factor_array(i,k)+phys_state(lchnk)%q(i,k,m)
+          end do
+        end do
+      end do
+#else
       do k=1,nlev
          do i=1,ncol
             ! to be consistent with total energy formula in physic's check_energy module only
@@ -617,7 +623,7 @@ subroutine derived_phys_dry(phys_state, phys_tend, pbuf2d)
             factor_array(i,k) = 1+phys_state(lchnk)%q(i,k,1)
          end do
       end do
-
+#endif
       do k=1,nlev
          do i=1,ncol
             phys_state(lchnk)%pdel (i,k) = phys_state(lchnk)%pdeldry(i,k)*factor_array(i,k)
@@ -660,45 +666,18 @@ subroutine derived_phys_dry(phys_state, phys_tend, pbuf2d)
             end do
          end if
       end do
-      !------------------------------------------------------------
-      ! Ensure O2 + O + H (N2) mmr greater than one.
-      ! Check for unusually large H2 values and set to lower value.
-      !------------------------------------------------------------
-       if ( waccmx_is('ionosphere') .or. waccmx_is('neutral') ) then
 
-          do i=1,ncol
-             do k=1,pver
-
-                if (phys_state(lchnk)%q(i,k,ixo) < mmrMin) phys_state(lchnk)%q(i,k,ixo) = mmrMin
-                if (phys_state(lchnk)%q(i,k,ixo2) < mmrMin) phys_state(lchnk)%q(i,k,ixo2) = mmrMin
-
-                mmrSum_O_O2_H = phys_state(lchnk)%q(i,k,ixo)+phys_state(lchnk)%q(i,k,ixo2)+phys_state(lchnk)%q(i,k,ixh)
-
-                if ((1._r8-mmrMin-mmrSum_O_O2_H) < 0._r8) then
-
-                   phys_state(lchnk)%q(i,k,ixo) = phys_state(lchnk)%q(i,k,ixo) * (1._r8 - N2mmrMin) / mmrSum_O_O2_H
-
-                   phys_state(lchnk)%q(i,k,ixo2) = phys_state(lchnk)%q(i,k,ixo2) * (1._r8 - N2mmrMin) / mmrSum_O_O2_H
-
-                   phys_state(lchnk)%q(i,k,ixh) = phys_state(lchnk)%q(i,k,ixh) * (1._r8 - N2mmrMin) / mmrSum_O_O2_H
-
-                endif
-
-                if(phys_state(lchnk)%q(i,k,ixh2) .gt. 6.e-5_r8) then
-                   phys_state(lchnk)%q(i,k,ixh2) = 6.e-5_r8
-                endif
-
-             end do
-          end do
-       endif
-
-      !-----------------------------------------------------------------------------
-      ! Call physconst_update to compute cpairv, rairv, mbarv, and cappav as
-      ! constituent dependent variables.
-      ! Compute molecular viscosity(kmvis) and conductivity(kmcnd).
-      ! Fill local zvirv variable; calculated for WACCM-X.
-      !-----------------------------------------------------------------------------
       if ( waccmx_is('ionosphere') .or. waccmx_is('neutral') ) then
+        !------------------------------------------------------------
+        ! Apply limiters to mixing ratios of major species
+        !------------------------------------------------------------
+!short term hack        call physics_cnst_limit( phys_state(lchnk) )
+        !-----------------------------------------------------------------------------
+        ! Call physconst_update to compute cpairv, rairv, mbarv, and cappav as
+        ! constituent dependent variables.
+        ! Compute molecular viscosity(kmvis) and conductivity(kmcnd).
+        ! Fill local zvirv variable; calculated for WACCM-X.
+        !-----------------------------------------------------------------------------
         call physconst_update(phys_state(lchnk)%q, phys_state(lchnk)%t, lchnk, ncol,&
              to_moist_factor=phys_state(lchnk)%pdeldry(:ncol,:)/phys_state(lchnk)%pdel(:ncol,:) )
         zvirv(:,:) = shr_const_rwv / rairv(:,:,lchnk) -1._r8
@@ -707,7 +686,7 @@ subroutine derived_phys_dry(phys_state, phys_tend, pbuf2d)
       endif
 
       do k = 1, nlev
-         do i = 1, ncol           
+         do i = 1, ncol
             phys_state(lchnk)%exner(i,k) = (phys_state(lchnk)%pint(i,pver+1) &
                                             / phys_state(lchnk)%pmid(i,k))**cappav(i,k,lchnk)
          end do

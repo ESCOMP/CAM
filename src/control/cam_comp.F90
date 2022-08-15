@@ -163,12 +163,16 @@ subroutine cam_init(                                             &
    call cam_initfiles_open()
 
    ! Initialize grids and dynamics grid decomposition
+   
+   write(iulog,*)'calling dyn_grid_init'
    call dyn_grid_init()
 
    ! Initialize physics grid decomposition
+   write(iulog,*)'calling phys_grid_init'
    call phys_grid_init()
 
    ! Register advected tracers and physics buffer fields
+   write(iulog,*)'calling phys_register'
    call phys_register ()
 
    ! Initialize ghg surface values before default initial distributions
@@ -181,6 +185,7 @@ subroutine cam_init(                                             &
 
    if (initial_run_in) then
 
+      write(iulog,*)'calling dyn_init'
       call dyn_init(dyn_in, dyn_out)
 
       ! Allocate and setup surface exchange data
@@ -196,10 +201,13 @@ subroutine cam_init(                                             &
 #endif
    end if
 
+   write(iulog,*)'calling phys_init'
    call phys_init( phys_state, phys_tend, pbuf2d, cam_in, cam_out )
 
+   write(iulog,*)'calling bldfld'
    call bldfld ()       ! master field list (if branch, only does hash tables)
 
+   write(iulog,*)'calling stepon_init'
    call stepon_init(dyn_in, dyn_out)
 
    call offline_driver_init()

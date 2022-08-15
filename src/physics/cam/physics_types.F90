@@ -111,6 +111,7 @@ module physics_types
           z_ini            ! Height of initial state (used for energy computations)
      real(r8), dimension(:,:,:),allocatable      :: &
           te_budgets       ! te budget array
+     integer, allocatable :: budget_cnt(:) ! budget counter
      integer :: count ! count of values with significant energy or water imbalances
      integer, dimension(:),allocatable           :: &
           latmapback, &! map from column to unique lat for that column
@@ -601,6 +602,11 @@ contains
     do m = 1,budget_array_max
        call shr_assert_in_domain(state%te_budgets(:ncol,:,m),       is_nan=.false., &
             varname="state%te_budgets ("//trim(budget_name(m))//")", msg=msg)
+    end do
+
+    do m = 1,budget_array_max
+       call shr_assert_in_domain(state%budget_cnt(m),       is_nan=.false., &
+            varname="state%budget_cnt ("//trim(budget_name(m))//")", msg=msg)
     end do
 
     ! Now run other checks (i.e. values are finite and within a range that
@@ -1155,7 +1161,7 @@ end subroutine physics_ptend_copy
   end subroutine init_geo_unique
 
 !===============================================================================
-  subroutine physics_dme_adjust(state, tend, qini, dt)
+  subroutine physics_dme_adjust(state, tend, fdq3d,dt)
     !-----------------------------------------------------------------------
     !
     ! Purpose: Adjust the dry mass in each layer back to the value of physics input state
@@ -1186,7 +1192,7 @@ end subroutine physics_ptend_copy
     !
     type(physics_state), intent(inout) :: state
     type(physics_tend ), intent(inout) :: tend
-    real(r8),            intent(in   ) :: qini(pcols,pver)    ! initial specific humidity
+    real(r8),            intent(in   ) :: fdq3d(pcols,pver)   ! water increment
     real(r8),            intent(in   ) :: dt                  ! model physics timestep
     !
     !---------------------------Local workspace-----------------------------
@@ -1199,7 +1205,7 @@ end subroutine physics_ptend_copy
     real(r8) :: utmp(pcols)   ! temp variable for recalculating the initial u values
     real(r8) :: vtmp(pcols)   ! temp variable for recalculating the initial v values
 
-    real(r8) :: zvirv(pcols,pver)    ! Local zvir array pointer
+    real(r8) :: zvirv(pcols,pver)                                     ! Local zvir array pointer
 
     real(r8),allocatable :: cpairv_loc(:,:)
     !
@@ -1219,10 +1225,8 @@ end subroutine physics_ptend_copy
     ! constituents, momentum, and total energy
     state%ps(:ncol) = state%pint(:ncol,1)
     do k = 1, pver
-
-       ! adjusment factor is just change in water vapor
-       fdq(:ncol) = 1._r8 + state%q(:ncol,k,1) - qini(:ncol,k)
-
+       ! adjusment factor is change in thermodynamically active water species
+       fdq(:ncol) = 1._r8 + fdq3d(:ncol,k)
        ! adjust constituents to conserve mass in each layer
        do m = 1, pcnst
           state%q(:ncol,k,m) = state%q(:ncol,k,m) / fdq(:ncol)
@@ -1390,6 +1394,10 @@ end subroutine physics_ptend_copy
              state_out%te_budgets(i,k,m) = state_in%te_budgets(i,k,m)
           end do
        end do
+    end do
+
+    do m = 1, budget_array_max
+       state_out%budget_cnt(m) = state_in%budget_cnt(m)
     end do
 
   end subroutine physics_state_copy
@@ -1602,6 +1610,9 @@ subroutine physics_state_alloc(state,lchnk,psetcols)
   allocate(state%te_budgets(psetcols,7,budget_array_max), stat=ierr)
   if ( ierr /= 0 ) call endrun('physics_state_alloc error: allocation error for state%te_budgets')
 
+  allocate(state%budget_cnt(budget_array_max), stat=ierr)
+  if ( ierr /= 0 ) call endrun('physics_state_alloc error: allocation error for state%budget_cnt')
+
   allocate(state%pint(psetcols,pver+1), stat=ierr)
   if ( ierr /= 0 ) call endrun('physics_state_alloc error: allocation error for state%pint')
 
@@ -1668,6 +1679,7 @@ subroutine physics_state_alloc(state,lchnk,psetcols)
   state%zm(:,:) = inf
   state%q(:,:,:) = inf
   state%te_budgets(:,:,:) = inf
+  state%budget_cnt(:) = 0
 
   state%pint(:,:) = inf
   state%pintdry(:,:) = inf
@@ -1794,6 +1806,12 @@ subroutine physics_state_dealloc(state)
 
   deallocate(state%z_ini, stat=ierr)
   if ( ierr /= 0 ) call endrun('physics_state_dealloc error: deallocation error for state%z_ini')
+
+  deallocate(state%te_budgets, stat=ierr)
+  if ( ierr /= 0 ) call endrun('physics_state_dealloc error: deallocation error for state%te_budgets')
+
+  deallocate(state%budget_cnt, stat=ierr)
+  if ( ierr /= 0 ) call endrun('physics_state_dealloc error: deallocation error for state%budget_cnt')
 
   deallocate(state%latmapback, stat=ierr)
   if ( ierr /= 0 ) call endrun('physics_state_dealloc error: deallocation error for state%latmapback')

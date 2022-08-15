@@ -10,7 +10,7 @@ use constituents,           only: pcnst, cnst_get_ind, cnst_name, cnst_longname,
                                   cnst_is_a_water_species
 use cam_control_mod,        only: initial_run
 use cam_initfiles,          only: initial_file_get_id, topo_file_get_id, pertlim
-use phys_control,           only: use_gw_front, use_gw_front_igw, waccmx_is
+use phys_control,           only: use_gw_front, use_gw_front_igw
 use dyn_grid,               only: ini_grid_name, timelevel, hvcoord, edgebuf, &
                                   ini_grid_hdim_name
 
@@ -46,6 +46,7 @@ use time_mod,               only: nsplit
 use edge_mod,               only: initEdgeBuffer, edgeVpack, edgeVunpack, FreeEdgeBuffer
 use edgetype_mod,           only: EdgeBuffer_t
 use bndry_mod,              only: bndry_exchange
+use budgets,                only: budget_add
 
 implicit none
 private
@@ -76,13 +77,6 @@ logical, public, protected :: write_restart_unstruct
 ! Frontogenesis indices
 integer, public    :: frontgf_idx      = -1
 integer, public    :: frontga_idx      = -1
-
-! constituent indices for waccm-x dry air properties
-integer, public, protected :: &
-   ixo  = -1, &
-   ixo2 = -1, &
-   ixh  = -1, &
-   ixh2 = -1
 
 interface read_dyn_var
   module procedure read_dyn_field_2d
@@ -120,7 +114,7 @@ subroutine dyn_readnl(NLFileName)
    use control_mod,    only: sponge_del4_nu_div_fac, sponge_del4_nu_fac, sponge_del4_lev
    use dimensions_mod, only: ne, npart
    use dimensions_mod, only: lcp_moist
-   use dimensions_mod, only: hypervis_dynamic_ref_state,large_Courant_incr
+   use dimensions_mod, only: large_Courant_incr
    use dimensions_mod, only: fvm_supercycling, fvm_supercycling_jet
    use dimensions_mod, only: kmin_jet, kmax_jet
    use params_mod,     only: SFCURVE
@@ -169,7 +163,6 @@ subroutine dyn_readnl(NLFileName)
    integer                      :: se_horz_num_threads
    integer                      :: se_vert_num_threads
    integer                      :: se_tracer_num_threads
-   logical                      :: se_hypervis_dynamic_ref_state
    logical                      :: se_lcp_moist
    logical                      :: se_write_restart_unstruct
    logical                      :: se_large_Courant_incr
@@ -217,7 +210,6 @@ subroutine dyn_readnl(NLFileName)
       se_horz_num_threads,         &
       se_vert_num_threads,         &
       se_tracer_num_threads,       &
-      se_hypervis_dynamic_ref_state,&
       se_lcp_moist,                &
       se_write_restart_unstruct,   &
       se_large_Courant_incr,       &
@@ -293,7 +285,6 @@ subroutine dyn_readnl(NLFileName)
    call MPI_bcast(se_horz_num_threads, 1, MPI_integer, masterprocid, mpicom,ierr)
    call MPI_bcast(se_vert_num_threads, 1, MPI_integer, masterprocid, mpicom,ierr)
    call MPI_bcast(se_tracer_num_threads, 1, MPI_integer, masterprocid, mpicom,ierr)
-   call MPI_bcast(se_hypervis_dynamic_ref_state, 1, mpi_logical, masterprocid, mpicom, ierr)
    call MPI_bcast(se_lcp_moist, 1, mpi_logical, masterprocid, mpicom, ierr)
    call MPI_bcast(se_write_restart_unstruct, 1, mpi_logical, masterprocid, mpicom, ierr)
    call MPI_bcast(se_large_Courant_incr, 1, mpi_logical, masterprocid, mpicom, ierr)
@@ -363,7 +354,6 @@ subroutine dyn_readnl(NLFileName)
    vert_remap_uvTq_alg      = set_vert_remap(se_vert_remap_T, se_vert_remap_uvTq_alg)
    vert_remap_tracer_alg    = set_vert_remap(se_vert_remap_T, se_vert_remap_tracer_alg)
    fv_nphys                 = se_fv_nphys
-   hypervis_dynamic_ref_state = se_hypervis_dynamic_ref_state
    lcp_moist                = se_lcp_moist
    large_Courant_incr       = se_large_Courant_incr
    fvm_supercycling         = se_fvm_supercycling
@@ -462,7 +452,6 @@ subroutine dyn_readnl(NLFileName)
       write(iulog, '(a,a)')    'dyn_readnl: se_vert_remap_T               = ',trim(se_vert_remap_T)
       write(iulog, '(a,a)')    'dyn_readnl: se_vert_remap_uvTq_alg        = ',trim(se_vert_remap_uvTq_alg)
       write(iulog, '(a,a)')    'dyn_readnl: se_vert_remap_tracer_alg      = ',trim(se_vert_remap_tracer_alg)
-      write(iulog, '(a,l4)')   'dyn_readnl: se_hypervis_dynamic_ref_state = ',hypervis_dynamic_ref_state
       write(iulog, '(a,l4)')   'dyn_readnl: lcp_moist                     = ',lcp_moist
       write(iulog, '(a,i0)')   'dyn_readnl: se_fvm_supercycling           = ',fvm_supercycling
       write(iulog, '(a,i0)')   'dyn_readnl: se_fvm_supercycling_jet       = ',fvm_supercycling_jet
@@ -597,7 +586,7 @@ subroutine dyn_init(dyn_in, dyn_out)
    use dyn_grid,           only: elem, fvm
    use cam_pio_utils,      only: clean_iodesc_list
    use physconst,          only: thermodynamic_active_species_num, thermodynamic_active_species_idx
-   use physconst,          only: thermodynamic_active_species_idx_dycore, rair, cpair
+   use physconst,          only: thermodynamic_active_species_idx_dycore, rair, cpair, pstd
    use physconst,          only: thermodynamic_active_species_liq_idx,thermodynamic_active_species_ice_idx
    use physconst,          only: thermodynamic_active_species_liq_idx_dycore,thermodynamic_active_species_ice_idx_dycore
    use physconst,          only: thermodynamic_active_species_liq_num, thermodynamic_active_species_ice_num
@@ -619,6 +608,7 @@ subroutine dyn_init(dyn_in, dyn_out)
    use control_mod,        only: vert_remap_uvTq_alg, vert_remap_tracer_alg
    use std_atm_profile,    only: std_atm_height
    use dyn_tests_utils,    only: vc_dycore, vc_dry_pressure, string_vc, vc_str_lgth
+   use budgets,            only: budget_num, budget_outfld, budget_info
    ! Dummy arguments:
    type(dyn_import_t), intent(out) :: dyn_in
    type(dyn_export_t), intent(out) :: dyn_out
@@ -677,6 +667,9 @@ subroutine dyn_init(dyn_in, dyn_out)
    character(len=*), parameter :: sub = 'dyn_init'
 
    real(r8) :: km_sponge_factor_local(nlev+1)
+   character(len=64)  :: budget_name     ! budget names
+   character(len=3)   :: budget_pkgtype  ! budget type phy or dyn
+   character(len=128) :: budget_longname ! long name of budgets
    !----------------------------------------------------------------------------
    vc_dycore = vc_dry_pressure
    if (masterproc) then
@@ -800,16 +793,15 @@ subroutine dyn_init(dyn_in, dyn_out)
           (hvcoord%hyam(:)+hvcoord%hybm(:))*hvcoord%ps0,km_sponge_factor,&
           kmvis_ref,kmcnd_ref,rho_ref)
 
+     write(iulog,*) "Molecular viscoity and thermal conductivity reference profile"
+     write(iulog,*) "k, p, z, km_sponge_factor, kmvis_ref/rho_ref, kmcnd_ref/(cp*rho_ref):"
      do k=1,nlev
        ! only apply molecular viscosity where viscosity is > 1000 m/s^2
        if (MIN(kmvis_ref(k)/rho_ref(k),kmcnd_ref(k)/(cpair*rho_ref(k)))>1000.0_r8) then
          if (masterproc) then
-           press = (hvcoord%hyam(k)+hvcoord%hybm(k))*hvcoord%ps0
+           press = hvcoord%hyam(k)*hvcoord%ps0+hvcoord%hybm(k)*pstd
            call std_atm_height(press,z)
-           write(iulog,'(a,i3,3e11.4)') "k, p, z, km_sponge_factor                   :",k, &
-                press, z,km_sponge_factor(k)
-            write(iulog,'(a,2e11.4)') "kmvis_ref/rho_ref, kmcnd_ref/(cp*rho_ref): ", &
-               kmvis_ref(k)/rho_ref(k),kmcnd_ref(k)/(cpair*rho_ref(k))
+           write(iulog,'(i3,5e11.4)') k,press, z,km_sponge_factor(k),kmvis_ref(k)/rho_ref(k),kmcnd_ref(k)/(cpair*rho_ref(k))
          end if
          kmol_end = k
        else
@@ -931,7 +923,73 @@ subroutine dyn_init(dyn_in, dyn_out)
          end if
       end do
     end do
-   !
+
+    ! Register stages for budgets
+    istage=1
+    call budget_add('dED', pkgtype='dyn', longname=TRIM(ADJUSTL(stage_txt(istage))), outfld=.true.)
+    istage=istage+1
+    call budget_add('dAF', pkgtype='dyn', longname=TRIM(ADJUSTL(stage_txt(istage))), outfld=.true.)
+    istage=istage+1
+    call budget_add('dBD', pkgtype='dyn', longname=TRIM(ADJUSTL(stage_txt(istage))), outfld=.true.)
+    istage=istage+1
+    call budget_add('dAD', pkgtype='dyn', longname=TRIM(ADJUSTL(stage_txt(istage))), outfld=.true.)
+    istage=istage+1
+    call budget_add('dAR', pkgtype='dyn', longname=TRIM(ADJUSTL(stage_txt(istage))), outfld=.true.)
+    istage=istage+1
+    call budget_add('dBF', pkgtype='dyn', longname=TRIM(ADJUSTL(stage_txt(istage))), outfld=.true.)
+    istage=istage+1
+    call budget_add('dBH', pkgtype='dyn', longname=TRIM(ADJUSTL(stage_txt(istage))), outfld=.true.)
+    istage=istage+1
+    call budget_add('dCH', pkgtype='dyn', longname=TRIM(ADJUSTL(stage_txt(istage))), outfld=.true.)
+    istage=istage+1
+    call budget_add('dAH', pkgtype='dyn', longname=TRIM(ADJUSTL(stage_txt(istage))), outfld=.true.)
+    istage=istage+1
+    call budget_add('dBS', pkgtype='dyn', longname=TRIM(ADJUSTL(stage_txt(istage))), outfld=.true.)
+    istage=istage+1
+    call budget_add('dAS', pkgtype='dyn', longname=TRIM(ADJUSTL(stage_txt(istage))), outfld=.true.)
+    !
+    ! Register budgets.
+    !
+    call budget_add('BD_dyn_total','dBF','dED',pkgtype='dyn',optype='dif',longname="dE/dt dyn total (dycore+phys tendency (dBF-dED)",outfld=.true.)
+
+    call budget_add('rate_2d_dyn','dAD','dBD',pkgtype='dyn',optype='dif',longname="rate_of_change_2d_dyn (dAD-dBD)",outfld=.false.)
+
+    call budget_add('rate_vert_remap','dAR','dAD',pkgtype='dyn',optype='dif',longname="rate_of_change_2d_dyn (dAR-dAD)",outfld=.false.)
+
+    call budget_add('BD_dyn_adai','rate_2d_dyn','rate_vert_remap',pkgtype='dyn',optype='sum',longname="dE/dt total adiabatic dynamics (adiab=rate2ddyn+vremap) ",outfld=.true.)
+
+    call budget_add('BD_dyn_2D','dAD','dBD',pkgtype='dyn',optype='dif',longname="dE/dt 2D dynamics (dAD-dBD)",outfld=.true.)
+
+    call budget_add('BD_dyn_remap','dAR','dAD',pkgtype='dyn',optype='dif',longname="dE/dt vertical remapping (dAR-dAD)",outfld=.true.)
+
+    call budget_add('BD_dyn_ptend','dBD','dAF',pkgtype='dyn',optype='dif',longname="dE/dt physics tendency in dynamics (dBD-dAF)",outfld=.true.)
+
+    call budget_add('BD_dyn_hvis','dCH','dBH',pkgtype='dyn',optype='dif',longname="dE/dt hypervis del4 (dCH-dBH)",outfld=.true.)
+
+    call budget_add('BD_dyn_fric','dAH','dCH',pkgtype='dyn',optype='dif',longname="dE/dt hypervis frictional heating del4 (dAH-dCH)",outfld=.true.)
+
+    call budget_add('BD_dyn_difdel4tot','dAH','dBH',pkgtype='dyn',optype='dif',longname="dE/dt hypervis del4 total (dAH-dBH)",outfld=.true.)
+
+    call budget_add('BD_dyn_sponge','dAS','dBS',pkgtype='dyn',optype='dif',longname="dE/dt hypervis sponge total (dAS-dBS)",outfld=.true.)
+
+    call budget_add('BD_dyn_difftot','BD_dyn_difdel4tot','BD_dyn_sponge',pkgtype='dyn',optype='sum',longname="dE/dt explicit diffusion total (hvisdel4tot+hvisspngtot)",outfld=.true.)
+
+    call budget_add('BD_dyn_res','BD_dyn_2D','BD_dyn_difftot',pkgtype='dyn',optype='dif',longname="dE/dt residual (2ddyn-expdifftot)",outfld=.true.)
+
+    call budget_add('hrate','dAH','dCH',pkgtype='dyn',optype='dif',longname="rate of change heating term put back in (dAH-dCH)",outfld=.false.)
+
+! register history budget variables
+    do m=1,budget_num
+       if (budget_outfld(m)) then
+          call budget_info(m,name=budget_name,longname=budget_longname,pkgtype=budget_pkgtype)
+
+          if (trim(budget_pkgtype)=='dyn') then
+             write(iulog,*)'adding field:',trim(budget_name),' index=',m,' tot=',budget_num
+             call addfld(trim(budget_name),  horiz_only,  'A', 'W/m2', trim(budget_longname))
+          endif
+       end if
+    end do
+
    ! add dynamical core tracer tendency output
    !
    if (ntrac>0) then
@@ -954,14 +1012,6 @@ subroutine dyn_init(dyn_in, dyn_out)
       call add_default(tottnam(ixcldice), budget_hfile_num, ' ')
    end if
 
-   ! constituent indices for waccm-x
-   if ( waccmx_is('ionosphere') .or. waccmx_is('neutral') ) then
-      call cnst_get_ind('O',  ixo)
-      call cnst_get_ind('O2', ixo2)
-      call cnst_get_ind('H',  ixh)
-      call cnst_get_ind('H2', ixh2)
-   end if
-
    call test_mapping_addfld
 end subroutine dyn_init
 
@@ -970,7 +1020,7 @@ end subroutine dyn_init
 subroutine dyn_run(dyn_state)
    use physconst,        only: thermodynamic_active_species_num, dry_air_species_num
    use physconst,        only: thermodynamic_active_species_idx_dycore
-   use prim_advance_mod, only: calc_tot_energy_dynamics
+   use prim_advance_mod, only: calc_tot_energy_dynamics,calc_tot_energy_dynamics_diff
    use prim_driver_mod,  only: prim_run_subcycle
    use dimensions_mod,   only: cnst_name_gll
    use time_mod,         only: tstep, nsplit, timelevel_qdp
@@ -978,6 +1028,10 @@ subroutine dyn_run(dyn_state)
    use control_mod,      only: qsplit, rsplit, ftype_conserve
    use thread_mod,       only: horz_num_threads
    use time_mod,         only: tevolve
+   use budgets,          only: budget_cnt,budget_num, budget_info, &
+                               budget_outfld,budget_count
+   use global_norms_mod, only: global_integral, wrap_repro_sum
+   use parallel_mod,     only: global_shared_buf, global_shared_sum
 
    type(dyn_export_t), intent(inout) :: dyn_state
 
@@ -991,11 +1045,18 @@ subroutine dyn_run(dyn_state)
 
    real(r8) :: ftmp(npsq,nlev,3)
    real(r8) :: dtime
+   real(r8) :: global_ave
    real(r8) :: rec2dt, pdel
 
+   real(r8), allocatable, dimension(:,:,:) :: tmp,tmptot,tmpse,tmpke,tmp1,tmp2
    real(r8), allocatable, dimension(:,:,:) :: ps_before
    real(r8), allocatable, dimension(:,:,:) :: abs_ps_tend
+
    real (kind=r8)                          :: omega_cn(2,nelemd) !min and max of vertical Courant number
+   integer  :: is1,is2,is1b,is2b,budget_state_ind
+   character(len=64)  :: budget_name     ! budget names
+   character(len=3)   :: budget_pkgtype  ! budget type phy or dyn
+   character(len=3)   :: budget_optype  ! budget type phy or dyn
    !----------------------------------------------------------------------------
 
 #ifdef debug_coupling
@@ -1145,6 +1206,131 @@ subroutine dyn_run(dyn_state)
    ! output vars on CSLAM fvm grid
    call write_dyn_vars(dyn_state)
 
+   ! update energy budget differences
+
+   do i=1,budget_num
+      call budget_info(i,name=budget_name,pkgtype=budget_pkgtype,optype=budget_optype,state_ind=budget_state_ind)
+      if (budget_pkgtype=='dyn'.and.(budget_optype=='dif'.or.budget_optype=='sum')) &
+           call calc_tot_energy_dynamics_diff(dyn_state%elem,dyn_state%fvm, nets, nete, TimeLevel%n0, n0_qdp,trim(budget_name))
+   end do
+
+!!$
+   allocate(tmp(np,np,nets:nete))
+   allocate(tmptot(np,np,nets:nete))
+   allocate(tmpse(np,np,nets:nete))
+   allocate(tmpke(np,np,nets:nete))
+   allocate(tmp1(np,np,nets:nete))
+   allocate(tmp2(np,np,nets:nete))
+   tmp=0._r8
+   tmp1=0._r8
+   tmp2=0._r8
+   tmptot=0._r8
+   tmpse=0._r8
+   tmpke=0._r8
+!!$   do i=1,budget_num
+!!$      call budget_info(i,name=budget_name,pkgtype=budget_pkgtype,optype=budget_optype,state_ind=budget_state_ind)
+!!$      if (budget_pkgtype=='dyn') then
+!!$         do ie=nets,nete
+!!$            if (budget_optype=='stg') then
+!!$               write(iulog,*)'outfld stage (already set in state) for ',budget_name
+!!$               tmp(:,:,ie)=dyn_state%elem(ie)%derived%budget(:,:,1,budget_state_ind)
+!!$            else
+!!$               call budget_info(i,istage1=is1, istage2=is2,istage1b=is1b,istage2b=is2b)
+!!$               write(iulog,*)'calc budgets name:',budget_name,' optype:',budget_optype,' pkgtype:',budget_pkgtype,' cnt:',dyn_state%elem(ie)%derived%budget_cnt(budget_state_ind),'is1/is2/is1b/is2b:',is1,is2,is1b,is2b
+!!$               if (dyn_state%elem(ie)%derived%budget_cnt(is1)==0.or.dyn_state%elem(ie)%derived%budget_cnt(is2)==0) then
+!!$                  write(iulog,*)'budget_cnt is 0 set tmp to zero, cnt(is1b),cnt(is2b) ',budget_name,dyn_state%elem(ie)%derived%budget_cnt(is1),dyn_state%elem(ie)%derived%budget_cnt(is2)
+!!$                  tmp(:,:,ie)=0._r8
+!!$               else          
+!!$                  write(iulog,*)'preincrement cnt for: ',budget_name,' cnt:',dyn_state%elem(ie)%derived%budget_cnt(budget_state_ind),' i:',i
+!!$                  dyn_state%elem(ie)%derived%budget_cnt(budget_state_ind)=dyn_state%elem(ie)%derived%budget_cnt(budget_state_ind)+1
+!!$                  write(iulog,*)'incrementing cnt for: ',budget_name,' cnt:',budget_cnt(i),' i:',i
+!!$                  !               tmp(:,:,ie)=(elem(ie)%derived%budget(:,:,1,is1)-elem(ie)%derived%budget(:,:,1,is2))/budget_cnt(is1)/dtime
+!!$!                  tmp1(:,:,ie)=dyn_state%elem(ie)%derived%budget(:,:,1,is1)/budget_count(is1b)
+!!$!                  tmp2(:,:,ie)=dyn_state%elem(ie)%derived%budget(:,:,1,is2)/budget_count(is2b)
+!!$                  tmp1(:,:,ie)=dyn_state%elem(ie)%derived%budget(:,:,1,is1)
+!!$                  tmp2(:,:,ie)=dyn_state%elem(ie)%derived%budget(:,:,1,is2)
+!!$                  if (budget_optype=='dif') then
+!!$                     write(iulog,*)'set difference for is1,is2,dyn_state_ind',is1,is2,budget_state_ind
+!!$                     tmp(:,:,ie)=(tmp1(:,:,ie)-tmp2(:,:,ie))
+!!$!jt                     tmp(:,:,ie)=(dyn_state%elem(ie)%derived%budget(:,:,1,is1)-dyn_state%elem(ie)%derived%budget(:,:,1,is2))/1/dtime
+!!$                  else if (budget_optype=='sum') then
+!!$                     write(iulog,*)'set sum for is1,is2,dyn_state_ind',is1,is2,budget_state_ind
+!!$!jt                     tmp(:,:,ie)=(dyn_state%elem(ie)%derived%budget(:,:,1,is1)+dyn_state%elem(ie)%derived%budget(:,:,1,is2))/1/dtime
+!!$                     tmp(:,:,ie)=(tmp1(:,:,ie)+tmp2(:,:,ie))
+!!$                  else
+!!$                     call endrun('dyn_readnl: ERROR: budget_optype unknown:'//budget_optype)
+!!$                  end if
+!!$                  dyn_state%elem(ie)%derived%budget(:,:,1,budget_state_ind)=tmp(:,:,ie)
+!!$               end if
+!!$            end if
+!!$
+!!$!jt            if (ie==nets) write(iulog,*)'calling outfld for name,pkgtype,budget_idx,tot=',budget_name,budget_pkgtype,budget_optype,i,budget_num
+!!$!jt            if (budget_outfld(i)) call outfld(trim(budget_name),RESHAPE(tmp(:,:,ie),(/npsq/)),npsq,ie)
+!!$         end do
+!!$      end if
+!!$   end do
+
+   ! output budget globals
+
+   if (.true.) then
+      do i=1,budget_num
+         call budget_info(i,name=budget_name,pkgtype=budget_pkgtype,optype=budget_optype,state_ind=budget_state_ind)
+         if (budget_pkgtype=='dyn') then
+            ! Normalize energy sums and convert to W/s
+            write(iulog,*)budget_name,'norm cnt=',dyn_state%elem(nets)%derived%budget_cnt(budget_state_ind),'sub=',dyn_state%elem(nets)%derived%budget_subcycle(budget_state_ind)
+            do ie=nets,nete
+               tmp(:,:,ie)=dyn_state%elem(ie)%derived%budget(:,:,1,budget_state_ind)/dyn_state%elem(ie)%derived%budget_cnt(budget_state_ind)/dtime
+               if (dyn_state%elem(nets)%derived%budget_subcycle(budget_state_ind).ne.0) then
+!               tmptot(:,:,ie)=dyn_state%elem(ie)%derived%budget(:,:,1,budget_state_ind)/dyn_state%elem(ie)%derived%budget_subcycle(budget_state_ind)
+!               tmpse(:,:,ie)=dyn_state%elem(ie)%derived%budget(:,:,2,budget_state_ind)/dyn_state%elem(ie)%derived%budget_subcycle(budget_state_ind)
+!               tmpke(:,:,ie)=dyn_state%elem(ie)%derived%budget(:,:,3,budget_state_ind)/dyn_state%elem(ie)%derived%budget_subcycle(budget_state_ind)
+               tmptot(:,:,ie)=dyn_state%elem(ie)%derived%budget(:,:,1,budget_state_ind)
+               tmpse(:,:,ie)=dyn_state%elem(ie)%derived%budget(:,:,2,budget_state_ind)
+               tmpke(:,:,ie)=dyn_state%elem(ie)%derived%budget(:,:,3,budget_state_ind)
+               end if
+               tmp1(:,:,ie)=dyn_state%elem(ie)%derived%budget(:,:,2,budget_state_ind)/dyn_state%elem(ie)%derived%budget_cnt(budget_state_ind)/dtime
+               tmp2(:,:,ie)=dyn_state%elem(ie)%derived%budget(:,:,3,budget_state_ind)/dyn_state%elem(ie)%derived%budget_cnt(budget_state_ind)/dtime
+            enddo
+
+            global_ave = global_integral(dyn_state%elem, tmp(:,:,nets:nete),hybrid,np,nets,nete)
+            write(iulog,*)budget_name,' global average normalized cnt dtime=',global_ave,'cnt=',dyn_state%elem(nets)%derived%budget_cnt(budget_state_ind),'sub=',dyn_state%elem(nets)%derived%budget_subcycle(budget_state_ind)
+            global_ave = global_integral(dyn_state%elem, tmp1(:,:,nets:nete),hybrid,np,nets,nete)
+            write(iulog,*)budget_name,' global average se normalized cnt dtime=',global_ave,'state_ind=',budget_state_ind,'tot budget num=',i
+            global_ave = global_integral(dyn_state%elem, tmp2(:,:,nets:nete),hybrid,np,nets,nete)
+            write(iulog,*)budget_name,' global average ke normalized cnt dtime=',global_ave,'state_ind=',budget_state_ind,'tot budget num=',i
+            if (dyn_state%elem(nets)%derived%budget_subcycle(budget_state_ind).ne.0) then
+               global_ave = global_integral(dyn_state%elem, tmptot(:,:,nets:nete),hybrid,np,nets,nete)
+               write(iulog,*)budget_name,' global average se+ke sums=',global_ave
+               global_ave = global_integral(dyn_state%elem, tmpse(:,:,nets:nete),hybrid,np,nets,nete)
+               write(iulog,*)budget_name,' global average se sums=',global_ave
+               global_ave = global_integral(dyn_state%elem, tmpke(:,:,nets:nete),hybrid,np,nets,nete)
+               write(iulog,*)budget_name,' global average ke sums=',global_ave
+            end if
+            ! reset dyn budget states
+            ! reset budget counts - stage or diff budget will just be i. If difference must reset components of diff
+            do ie=nets,nete
+               dyn_state%elem(ie)%derived%budget(:,:,:,budget_state_ind)=0._r8
+               dyn_state%elem(ie)%derived%budget_cnt(budget_state_ind)=0
+            end do
+!!$            if (budget_optype=='dif' .or. budget_optype=='sum') then
+!!$               call budget_info(i,istage1=is1, istage2=is2)
+!!$               do ie=nets,nete
+!!$                  if (ie==nets) write(iulog,*)'count for is1=',is1,' =',dyn_state%elem(ie)%derived%budget_cnt(is1),' is2=',is2,' =',dyn_state%elem(ie)%derived%budget_cnt(is2)
+!!$                  dyn_state%elem(ie)%derived%budget_cnt(is1)=0
+!!$                  dyn_state%elem(ie)%derived%budget_cnt(is2)=0
+!!$                  if (ie==nets) write(iulog,*)'reset count for is1=',is1,' =',dyn_state%elem(ie)%derived%budget_cnt(is1),' is2=',is2,' =',dyn_state%elem(ie)%derived%budget_cnt(is2)
+!!$               end do
+!!$            end if
+         end if
+      end do
+   end if
+   deallocate(tmp)
+   deallocate(tmptot)
+   deallocate(tmpse)
+   deallocate(tmpke)
+   deallocate(tmp1)
+   deallocate(tmp2)
+      
 end subroutine dyn_run
 
 !===============================================================================

@@ -10,6 +10,7 @@ use shr_kind_mod,     only: r8=>shr_kind_r8, cs=>shr_kind_cs, cl=>shr_kind_cl
 use spmd_utils,       only: masterproc
 use cam_logfile,      only: iulog
 use cam_abortutils,   only: endrun
+use budgets,          only: budget_init
 
 implicit none
 public

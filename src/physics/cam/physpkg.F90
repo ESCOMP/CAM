@@ -72,8 +72,8 @@ module physpkg
   integer ::  sgh30_idx          = 0
 
   integer ::  qini_idx           = 0
-  integer ::  cldliqini_idx      = 0
-  integer ::  cldiceini_idx      = 0
+  integer ::  liqini_idx         = 0
+  integer ::  iceini_idx         = 0
 
   integer ::  prec_str_idx       = 0
   integer ::  snow_str_idx       = 0
@@ -88,16 +88,6 @@ module physpkg
   integer ::  dlfzm_idx          = 0     ! detrained convective cloud water mixing ratio.
   integer ::  ducore_idx         = 0     ! ducore index in physics buffer
   integer ::  dvcore_idx         = 0     ! dvcore index in physics buffer
-
-! Budget indexes
-  integer ::  iphap         = 0     ! budget index in budget meta data structure
-  integer ::  idyap         = 0     ! budget index in budget meta data structure
-  integer ::  iphbp         = 0     ! budget index in budget meta data structure
-  integer ::  idybp         = 0     ! budget index in budget meta data structure
-  integer ::  iphbf         = 0     ! budget index in budget meta data structure
-  integer ::  idybf         = 0     ! budget index in budget meta data structure
-  integer ::  ipham         = 0     ! budget index in budget meta data structure
-  integer ::  idyam         = 0     ! budget index in budget meta data structure
 
 !=======================================================================
 contains
@@ -162,7 +152,7 @@ contains
     use dyn_comp,           only: dyn_register
     use spcam_drivers,      only: spcam_register
     use offline_driver,     only: offline_driver_reg
-    use budgets,            only: budget_stage_add, budget_diff_add
+    use budgets,            only: budget_add
 
     !---------------------------Local variables-----------------------------
     !
@@ -193,24 +183,34 @@ contains
     call subcol_register()
 
     ! Register stages for budgets.
-    call budget_stage_add('phAP',iphap,'vertically integrated phys energy after physics',.true.)
-    call budget_stage_add('dyAP',idyap,'vertically integrated dyn energy after physics',.true.) 
-    call budget_stage_add('phBP',iphbp,'vertically integrated phys energy before physics',.true.)
-    call budget_stage_add('dyBP',idybp,'vertically integrated dyn energy before physics',.true.) 
-    call budget_stage_add('phBF',iphbf,'vertically integrated phys energy before fixer',.true.)  
-    call budget_stage_add('dyBF',idybf,'vertically integrated dyn energy before fixer',.true.)   
-    call budget_stage_add('phAM',ipham,'vertically integrated phys energy after dry mass adj',.true.)
-    call budget_stage_add('dyAM',idyam,'vertically integrated dyn energy after dry mass adj',.true.) 
+    call budget_add('phAP','phy',longname='vertically integrated phys energy after physics',outfld=.true.)
+    call budget_add('dyAP','phy',longname='vertically integrated dyn energy after physics',outfld=.true.)
+    call budget_add('phBP','phy',longname='vertically integrated phys energy before physics',outfld=.true.)
+    call budget_add('dyBP','phy',longname='vertically integrated dyn energy before physics',outfld=.true.)
+    call budget_add('phBF','phy',longname='vertically integrated phys energy before fixer',outfld=.true.)
+    call budget_add('dyBF','phy',longname='vertically integrated dyn energy before fixer',outfld=.true.)
+    call budget_add('phAM','phy',longname='vertically integrated phys energy after dry mass adj',outfld=.true.)
+    call budget_add('dyAM','phy',longname='vertically integrated dyn energy after dry mass adj',outfld=.true.)
 
     ! Register budgets.
-    call budget_diff_add('BP_phy_params', iphAP,iphBP,'dE/dt CAM physics parameterizations (phAP-phBP)',.true.)
-    call budget_diff_add('BD_phy_params', idyAP,idyBP,'dE/dt CAM physics parameterizations using dycore E (dyAP-dyBP)',.true.)
-    call budget_diff_add('BP_pwork',iphAM,iphAP,'dE/dt dry mass adjustment (phAM-phAP)',.true.)
-    call budget_diff_add('BD_pwork', idyAM,idyAP,'dE/dt dry mass adjustment using dycore E (dyAM-dyAP)',.true.)
-    call budget_diff_add('BP_efix', iphBP,iphBF,'dE/dt energy fixer (phBP-phBF)',.true.)
-    call budget_diff_add('BD_efix', idyBP,idyBF, 'dE/dt energy fixer using dycore E (dyBP-dyBF)',.true.)
-    call budget_diff_add('BP_phys_tot', iphAM,iphBF, 'dE/dt physics total (phAM-phBF)',.true.)
-    call budget_diff_add('BD_phys_tot', idyAM,idyBF,'dE/dt physics total using dycore E (dyAM-dyBF)',.true.)
+!!$    call budget_add('BP_phy_params',iphAP,iphBP,'phy','dif',longname='dE/dt CAM physics parameterizations (phAP-phBP)',outfld=.true.)
+!!$    call budget_add('BD_phy_params',idyAP,idyBP,'phy','dif',longname='dE/dt CAM physics parameterizations using dycore E (dyAP-dyBP)',outfld=.true.)
+!!$    call budget_add('BP_pwork',iphAM,iphAP,'phy','dif',longname='dE/dt dry mass adjustment (phAM-phAP)',outfld=.true.)
+!!$    call budget_add('BD_pwork',idyAM,idyAP,'phy','dif',longname='dE/dt dry mass adjustment using dycore E (dyAM-dyAP)',outfld=.true.)
+!!$    call budget_add('BP_efix',iphBP,iphBF,'phy','dif',longname='dE/dt energy fixer (phBP-phBF)',outfld=.true.)
+!!$    call budget_add('BD_efix',idyBP,idyBF,'phy','dif',longname='dE/dt energy fixer using dycore E (dyBP-dyBF)',outfld=.true.)
+!!$    call budget_add('BP_phys_tot',iphAM,iphBF,'phy','dif',longname='dE/dt physics total (phAM-phBF)',outfld=.true.)
+!!$    call budget_add('BD_phys_tot',idyAM,idyBF,'phy','dif',longname='dE/dt physics total using dycore E (dyAM-dyBF)',outfld=.true.)
+
+    ! Register budgets.
+    call budget_add('BP_phy_params','phAP','phBP','phy','dif',longname='dE/dt CAM physics parameterizations (phAP-phBP)',outfld=.true.)
+    call budget_add('BD_phy_params','dyAP','dyBP','phy','dif',longname='dE/dt CAM physics parameterizations using dycore E (dyAP-dyBP)',outfld=.true.)
+    call budget_add('BP_pwork','phAM','phAP','phy','dif',longname='dE/dt dry mass adjustment (phAM-phAP)',outfld=.true.)
+    call budget_add('BD_pwork','dyAM','dyAP','phy','dif',longname='dE/dt dry mass adjustment using dycore E (dyAM-dyAP)',outfld=.true.)
+    call budget_add('BP_efix','phBP','phBF','phy','dif',longname='dE/dt energy fixer (phBP-phBF)',outfld=.true.)
+    call budget_add('BD_efix','dyBP','dyBF','phy','dif',longname='dE/dt energy fixer using dycore E (dyBP-dyBF)',outfld=.true.)
+    call budget_add('BP_phys_tot','phAM','phBF','phy','dif',longname='dE/dt physics total (phAM-phBF)',outfld=.true.)
+    call budget_add('BD_phys_tot','dyAM','dyBF','phy','dif',longname='dE/dt physics total using dycore E (dyAM-dyBF)',outfld=.true.)
 
     ! Register water vapor.
     ! ***** N.B. ***** This must be the first call to cnst_add so that
@@ -230,8 +230,8 @@ contains
 
     ! Fields for physics package diagnostics
     call pbuf_add_field('QINI',      'physpkg', dtype_r8, (/pcols,pver/), qini_idx)
-    call pbuf_add_field('CLDLIQINI', 'physpkg', dtype_r8, (/pcols,pver/), cldliqini_idx)
-    call pbuf_add_field('CLDICEINI', 'physpkg', dtype_r8, (/pcols,pver/), cldiceini_idx)
+    call pbuf_add_field('LIQINI', 'physpkg', dtype_r8, (/pcols,pver/), liqini_idx)
+    call pbuf_add_field('ICEINI', 'physpkg', dtype_r8, (/pcols,pver/), iceini_idx)
 
     ! check energy package
     call check_energy_register
@@ -795,7 +795,7 @@ contains
     use cam_snapshot,       only: cam_snapshot_init
     use cam_history,        only: addfld, register_vector_field, add_default, horiz_only
     use phys_control,       only: phys_getopts
-    use budgets,            only: budget_num, budget_info_byind, budget_outfld
+    use budgets,            only: budget_num, budget_info, budget_outfld, budget_init
     use check_energy,       only: check_energy_budget_init
 
     ! Input/output arguments
@@ -820,6 +820,9 @@ contains
     !-----------------------------------------------------------------------
 
     call physics_type_alloc(phys_state, phys_tend, begchunk, endchunk, pcols)
+
+    ! Initialize budget variables
+!jt    call budget_init()
 
     do lchnk = begchunk, endchunk
        call physics_state_set_grid(lchnk, phys_state(lchnk))
@@ -1067,7 +1070,7 @@ contains
 
 !!$    ! addfld calls for budget stages and diffs
 !!$    do i=1,budget_num
-!!$       call budget_info_byind(i, name=budget_name, longname=budget_longname)
+!!$       call budget_info(i, name=budget_name, longname=budget_longname)
 !!$       write(iulog,*)'addfld i,budget_name=',i,budget_name,budget_num
 !!$       if (budget_outfld(i)) call addfld(trim(budget_name),  horiz_only,  'A', 'W/m2', trim(budget_longname))
 !!$    end do
@@ -1393,6 +1396,8 @@ contains
     use waccmx_phys_intr,   only: waccmx_phys_ion_elec_temp_tend ! WACCM-X
     use aoa_tracers,        only: aoa_tracers_timestep_tend
     use physconst,          only: rhoh2o, latvap,latice
+    use physconst,          only: dry_air_species_num,thermodynamic_active_species_num
+    use physconst,          only: thermodynamic_active_species_idx
     use dyn_tests_utils,    only: vc_dycore
     use aero_model,         only: aero_model_drydep
     use carma_intr,         only: carma_emission_tend, carma_timestep_tend
@@ -1444,8 +1449,8 @@ contains
     integer :: lchnk                                ! chunk identifier
     integer :: ncol                                 ! number of atmospheric columns
     integer i,k,m                 ! Longitude, level indices
+    integer :: m_cnst                  ! tracer index
     integer :: yr, mon, day, tod       ! components of a date
-    integer :: ixcldice, ixcldliq      ! constituent indices for cloud liquid and ice water.
 
     logical :: labort                            ! abort flag
 
@@ -1455,12 +1460,11 @@ contains
     real(r8) obklen(pcols)             ! Obukhov length
     real(r8) :: fh2o(pcols)            ! h2o flux to balance source from methane chemistry
     real(r8) :: flx_heat(pcols)        ! Heat flux for check_energy_chng.
-    real(r8) :: tmp_q     (pcols,pver) ! tmp space
-    real(r8) :: tmp_cldliq(pcols,pver) ! tmp space
-    real(r8) :: tmp_cldice(pcols,pver) ! tmp space
     real(r8) :: tmp_trac  (pcols,pver,pcnst) ! tmp space
     real(r8) :: tmp_pdel  (pcols,pver) ! tmp space
     real(r8) :: tmp_ps    (pcols)      ! tmp space
+    real(r8) :: tot_water (pcols,pver,2)  ! total water (initial, present)
+    real(r8) :: tot_water_chg(pcols,pver) ! total water change
     logical  :: moist_mixing_ratio_dycore
 
     ! physics buffer fields for total energy and mass adjustment
@@ -1468,8 +1472,8 @@ contains
 
     real(r8), pointer, dimension(:,:) :: cld
     real(r8), pointer, dimension(:,:) :: qini
-    real(r8), pointer, dimension(:,:) :: cldliqini
-    real(r8), pointer, dimension(:,:) :: cldiceini
+    real(r8), pointer, dimension(:,:) :: liqini
+    real(r8), pointer, dimension(:,:) :: iceini
     real(r8), pointer, dimension(:,:) :: dtcore
     real(r8), pointer, dimension(:,:) :: ducore
     real(r8), pointer, dimension(:,:) :: dvcore
@@ -1501,8 +1505,8 @@ contains
     call pbuf_get_field(pbuf, dvcore_idx, dvcore, start=(/1,1,itim_old/), kount=(/pcols,pver,1/) )
 
     call pbuf_get_field(pbuf, qini_idx, qini)
-    call pbuf_get_field(pbuf, cldliqini_idx, cldliqini)
-    call pbuf_get_field(pbuf, cldiceini_idx, cldiceini)
+    call pbuf_get_field(pbuf, liqini_idx, liqini)
+    call pbuf_get_field(pbuf, iceini_idx, iceini)
 
     ifld = pbuf_get_index('CLD')
     call pbuf_get_field(pbuf, ifld, cld, start=(/1,1,itim_old/),kount=(/pcols,pver,1/))
@@ -1901,14 +1905,6 @@ contains
     !     assumes moist. This is done in p_d_coupling for other dynamics. Bundy, Feb 2004.
     if (moist_mixing_ratio_dycore) call set_dry_to_wet(state)    ! Physics had dry, dynamics wants moist
 
-    ! Scale dry mass and energy (does nothing if dycore is EUL or SLD)
-    call cnst_get_ind('CLDLIQ', ixcldliq)
-    call cnst_get_ind('CLDICE', ixcldice)
-
-    tmp_q     (:ncol,:pver) = state%q(:ncol,:pver,1)
-    tmp_cldliq(:ncol,:pver) = state%q(:ncol,:pver,ixcldliq)
-    tmp_cldice(:ncol,:pver) = state%q(:ncol,:pver,ixcldice)
-
     ! for dry mixing ratio dycore, physics_dme_adjust is called for energy diagnostic purposes only.  
     ! So, save off tracers 
     if (.not.moist_mixing_ratio_dycore.and.&
@@ -1921,7 +1917,26 @@ contains
 
       call set_dry_to_wet(state)
 
-      call physics_dme_adjust(state, tend, qini, ztodt)
+#ifdef ALL_WATER_IN_DP
+      !
+      ! initial total water
+      !
+      tot_water(:ncol,:pver,1) = qini(:ncol,:pver)+liqini(:ncol,:pver)+iceini(:ncol,:pver)
+      !
+      ! total water "now"
+      !
+      tot_water(:ncol,:pver,2) = 0.0_r8
+      do m_cnst=dry_air_species_num+1,thermodynamic_active_species_num
+        m = thermodynamic_active_species_idx(m_cnst)
+        tot_water(:ncol,:pver,2) = tot_water(:ncol,:pver,2)+state%q(:ncol,:pver,m)
+      end do
+      tot_water_chg(:ncol,:pver) = tot_water(:ncol,:pver,2) - tot_water(:ncol,:pver,1)
+#else
+      tot_water(:ncol,:pver,1)   = qini(:ncol,:pver)
+      tot_water(:ncol,:pver,2)   = state%q(:ncol,:pver,1)
+      tot_water_chg(:ncol,:pver) = tot_water(:ncol,:pver,2) - tot_water(:ncol,:pver,1)
+#endif
+      call physics_dme_adjust(state, tend, tot_water_chg, ztodt)
 
       call calc_te_and_aam_budgets(state, 'phAM')
       call calc_te_and_aam_budgets(state, 'dyAM', vc=vc_dycore)
@@ -1937,8 +1952,26 @@ contains
          call cam_snapshot_all_outfld_tphysac(cam_snapshot_before_num, state, tend, cam_in, cam_out, pbuf,&
                     fh2o, surfric, obklen, flx_heat)
       end if
-
-      call physics_dme_adjust(state, tend, qini, ztodt)
+#ifdef ALL_WATER_IN_DP
+      !
+      ! initial total water
+      !
+      tot_water(:ncol,:pver,1) = qini(:ncol,:pver)+liqini(:ncol,:pver)+iceini(:ncol,:pver)
+      !
+      ! total water "now"
+      !
+      tot_water(:ncol,:pver,2) = 0.0_r8
+      do m_cnst=dry_air_species_num+1,thermodynamic_active_species_num
+        m = thermodynamic_active_species_idx(m_cnst)
+        tot_water(:ncol,:pver,2) = tot_water(:ncol,:pver,2)+state%q(:ncol,:pver,m)
+      end do
+      tot_water_chg(:ncol,:pver) = tot_water(:ncol,:pver,2) - tot_water(:ncol,:pver,1)
+#else
+      tot_water(:ncol,:pver,1)   = qini(:ncol,:pver)
+      tot_water(:ncol,:pver,2)   = state%q(:ncol,:pver,1)
+      tot_water_chg(:ncol,:pver) = tot_water(:ncol,:pver,2) - tot_water(:ncol,:pver,1)
+#endif
+      call physics_dme_adjust(state, tend, tot_water_chg, ztodt)
 
       if (trim(cam_take_snapshot_after) == "physics_dme_adjust") then
          call cam_snapshot_all_outfld_tphysac(cam_snapshot_after_num, state, tend, cam_in, cam_out, pbuf,&
@@ -1975,8 +2008,7 @@ contains
        endif
     endif
 
-    call diag_phys_tend_writeout (state, pbuf,  tend, ztodt, tmp_q, tmp_cldliq, tmp_cldice, &
-         qini, cldliqini, cldiceini)
+    call diag_phys_tend_writeout (state, pbuf,  tend, ztodt, qini, liqini, iceini)
 
     call clybry_fam_set( ncol, lchnk, map2chm, state%q, pbuf )
 
@@ -2030,6 +2062,8 @@ contains
     use cam_diagnostics, only: diag_clip_tend_writeout
     use cam_history,     only: outfld
     use physconst,       only: cpair, latvap
+    use physconst,       only: thermodynamic_active_species_liq_num,thermodynamic_active_species_liq_idx
+    use physconst,       only: thermodynamic_active_species_ice_num,thermodynamic_active_species_ice_idx
     use constituents,    only: pcnst, qmin, cnst_get_ind
     use convect_deep,    only: convect_deep_tend, convect_deep_tend_2, deep_scheme_does_scav_trans
     use time_manager,    only: is_first_step, get_nstep
@@ -2105,6 +2139,7 @@ contains
 
     integer :: i                               ! column indicex
     integer :: ixcldice, ixcldliq, ixq         ! constituent indices for cloud liquid and ice water.
+    integer :: m, m_cnst
     ! for macro/micro co-substepping
     integer :: macmic_it                       ! iteration variables
     real(r8) :: cld_macmic_ztodt               ! modified timestep
@@ -2116,8 +2151,8 @@ contains
     ! physics buffer fields for total energy and mass adjustment
     real(r8), pointer, dimension(:  ) :: teout
     real(r8), pointer, dimension(:,:) :: qini
-    real(r8), pointer, dimension(:,:) :: cldliqini
-    real(r8), pointer, dimension(:,:) :: cldiceini
+    real(r8), pointer, dimension(:,:) :: liqini
+    real(r8), pointer, dimension(:,:) :: iceini
     real(r8), pointer, dimension(:,:) :: dtcore
     real(r8), pointer, dimension(:,:) :: ducore
     real(r8), pointer, dimension(:,:) :: dvcore
@@ -2190,8 +2225,8 @@ contains
     call pbuf_get_field(pbuf, teout_idx, teout, (/1,itim_old/), (/pcols,1/))
 
     call pbuf_get_field(pbuf, qini_idx, qini)
-    call pbuf_get_field(pbuf, cldliqini_idx, cldliqini)
-    call pbuf_get_field(pbuf, cldiceini_idx, cldiceini)
+    call pbuf_get_field(pbuf, liqini_idx, liqini)
+    call pbuf_get_field(pbuf, iceini_idx, iceini)
 
     ifld   =  pbuf_get_index('DTCORE')
     call pbuf_get_field(pbuf, ifld, dtcore, start=(/1,1,itim_old/), kount=(/pcols,pver,1/) )
@@ -2252,13 +2287,29 @@ contains
     ! Save state for convective tendency calculations.
     call diag_conv_tend_ini(state, pbuf)
 
+#ifdef ALL_WATER_IN_DP
     call cnst_get_ind('Q', ixq)
     call cnst_get_ind('CLDLIQ', ixcldliq)
     call cnst_get_ind('CLDICE', ixcldice)
     qini     (:ncol,:pver) = state%q(:ncol,:pver,       1)
-    cldliqini(:ncol,:pver) = state%q(:ncol,:pver,ixcldliq)
-    cldiceini(:ncol,:pver) = state%q(:ncol,:pver,ixcldice)
-
+    liqini(:ncol,:pver) = 0.0_r8
+    do m_cnst=1,thermodynamic_active_species_liq_num
+      m = thermodynamic_active_species_liq_idx(m_cnst)
+      liqini(:ncol,:pver) = liqini(:ncol,:pver)+state%q(:ncol,:pver,m)
+    end do
+    iceini(:ncol,:pver) = 0.0_r8
+    do m_cnst=1,thermodynamic_active_species_ice_num
+      m = thermodynamic_active_species_ice_idx(m_cnst)
+      iceini(:ncol,:pver) = iceini(:ncol,:pver)+state%q(:ncol,:pver,m)
+    end do
+#else
+    call cnst_get_ind('Q', ixq)
+    call cnst_get_ind('CLDLIQ', ixcldliq)
+    call cnst_get_ind('CLDICE', ixcldice)
+    qini     (:ncol,:pver) = state%q(:ncol,:pver,       1)
+    liqini(:ncol,:pver) = state%q(:ncol,:pver,ixcldliq)
+    iceini(:ncol,:pver) = state%q(:ncol,:pver,ixcldice)
+#endif
     call outfld('TEOUT', teout       , pcols, lchnk   )
     call outfld('TEINP', state%te_ini(:,dyn_te_idx), pcols, lchnk   )
     call outfld('TEFIX', state%te_cur(:,dyn_te_idx), pcols, lchnk   )

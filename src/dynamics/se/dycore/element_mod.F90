@@ -5,7 +5,7 @@ module element_mod
   use dimensions_mod,         only: np, nc, npsq, nlev, nlevp, qsize_d, max_neigh_edges,ntrac_d
   use edgetype_mod,           only: edgedescriptor_t
   use gridgraph_mod,          only: gridvertex_t
-
+  use budgets,                only: budget_array_max
   implicit none
   private
   integer, public, parameter :: timelevels = 3
@@ -73,6 +73,14 @@ module element_mod
     real (kind=r8) :: Ttnd(npsq,nlev)                          ! accumulated T tendency due to nudging towards prescribed met
 
     real (kind=r8) :: pecnd(np,np,nlev)                        ! pressure perturbation from condensate
+
+    ! reference profiles
+    real (kind=r8) :: T_ref(np,np,nlev)                        ! reference temperature
+    real (kind=r8) :: dp_ref(np,np,nlev)                       ! reference pressure level thickness
+    ! budgets
+    real (kind=r8) :: budget(np,np,9,budget_array_max)         ! budgets
+    integer        :: budget_cnt(budget_array_max)             ! budget count for averaging
+    integer        :: budget_subcycle(budget_array_max)        ! budget subcycle count
 
   end type derived_state_t
 

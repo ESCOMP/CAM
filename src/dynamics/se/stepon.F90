@@ -122,6 +122,7 @@ subroutine stepon_run2(phys_state, phys_tend, dyn_in, dyn_out)
    use time_mod,               only: TimeLevel_Qdp
    use control_mod,            only: qsplit
    use prim_advance_mod,       only: calc_tot_energy_dynamics
+   use cam_logfile,            only: iulog
 
 
    ! arguments
@@ -144,6 +145,7 @@ subroutine stepon_run2(phys_state, phys_tend, dyn_in, dyn_out)
    call t_stopf('p_d_coupling')
 
    if (iam < par%nprocs) then
+!jt      write(iulog,*)'calling calc with name dED'
       call calc_tot_energy_dynamics(dyn_in%elem,dyn_in%fvm, 1, nelemd, tl_f, tl_fQdp,'dED')
    end if
 

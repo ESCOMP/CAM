@@ -7372,19 +7372,6 @@ If &lt; 0, se_sponge_del4_lev is automatically set based on model top location.
 Default: Set by build-namelist.
 </entry>
 
-<entry id="se_hypervis_dynamic_ref_state" type="logical" category="se"
-       group="dyn_se_inparm" valid_values="" >
-Hyperscosity for T and dp is applied to (T-Tref) and (dp-dp_ref) where
-Xref are reference states where the effect of topography has been removed
-(Simmons and Jiabin, 1991, QJRMS, Section 2a).
-If TRUE dp_ref is dynamic smoothed reference state derived by Patrick Callaghan
-(Lauritzen et al., 2018, JAMES, Appendix A.2) and temperature reference state
-based on Simmons and Jiabin (1991) but using smoothed dp_ref.
-If FALSE Tref is static reference state (Simmons and Jiabin) and dp_ref state
-derived from hydrostatic balance.
-Default: FALSE
-</entry>
-
 <entry id="se_lcp_moist" type="logical" category="se"
        group="dyn_se_inparm" valid_values="" >
 If TRUE the continous equations the dynamical core is based on will conserve a

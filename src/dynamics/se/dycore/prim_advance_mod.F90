@@ -10,7 +10,8 @@ module prim_advance_mod
   private
   save
 
-  public :: prim_advance_exp, prim_advance_init, applyCAMforcing, calc_tot_energy_dynamics, compute_omega
+  public :: prim_advance_exp, prim_advance_init, applyCAMforcing, calc_tot_energy_dynamics, compute_omega, &
+       calc_tot_energy_dynamics_diff
 
   type (EdgeBuffer_t) :: edge3,edgeOmega,edgeSponge
   real (kind=r8), allocatable :: ur_weights(:)
@@ -446,8 +447,7 @@ contains
     !
     !
     use physconst,      only: gravit, cappa, cpair, tref, lapse_rate, get_dp_ref
-    use dimensions_mod, only: np, nlev, nc, ntrac, npsq, qsize
-    use dimensions_mod, only: hypervis_dynamic_ref_state,ksponge_end
+    use dimensions_mod, only: np, nlev, nc, ntrac, npsq, qsize, ksponge_end
     use dimensions_mod, only: nu_scale_top,nu_lev,kmvis_ref,kmcnd_ref,rho_ref,km_sponge_factor
     use dimensions_mod, only: kmvisi_ref,kmcndi_ref,nu_t_lev
     use control_mod,    only: nu, nu_t, hypervis_subcycle,hypervis_subcycle_sponge, nu_p, nu_top
@@ -481,8 +481,6 @@ contains
     integer :: kbeg, kend, kblk
     real (kind=r8), dimension(np,np,2,nlev,nets:nete)      :: vtens
     real (kind=r8), dimension(np,np,nlev,nets:nete)        :: ttens, dptens
-    real (kind=r8), dimension(np,np,nlev,nets:nete)        :: dp3d_ref, T_ref, pmid_ref
-    real (kind=r8), dimension(np,np,nets:nete)             :: ps_ref
     real (kind=r8), dimension(0:np+1,0:np+1,nlev)          :: corners
     real (kind=r8), dimension(2,2,2)                       :: cflux
     real (kind=r8)                                         :: temp      (np,np,nlev)
@@ -507,46 +505,6 @@ contains
 
     ptop = hvcoord%hyai(1)*hvcoord%ps0
 
-    if (hypervis_dynamic_ref_state) then
-      !
-      ! use dynamic reference pressure (P. Callaghan)
-      !
-      call calc_dp3d_reference(elem,edge3,hybrid,nets,nete,nt,hvcoord,dp3d_ref)
-      do ie=nets,nete
-        ps_ref(:,:,ie) = ptop + sum(elem(ie)%state%dp3d(:,:,:,nt),3)
-      end do
-    else
-      !
-      ! use static reference pressure (hydrostatic balance incl. effect of topography)
-      !
-      do ie=nets,nete
-        call get_dp_ref(hvcoord%hyai, hvcoord%hybi, hvcoord%ps0,1,np,1,np,1,nlev,&
-             elem(ie)%state%phis(:,:),dp3d_ref(:,:,:,ie),ps_ref(:,:,ie))
-      end do
-    endif
-    !
-    ! reference temperature profile (Simmons and Jiabin, 1991, QJRMS, Section 2a)
-    !
-    !  Tref = T0+T1*Exner
-    !  T1 = .0065*Tref*Cp/g ! = ~191
-    !  T0 = Tref-T1         ! = ~97
-    !
-    T1 = lapse_rate*Tref*cpair/gravit
-    T0 = Tref-T1
-    do ie=nets,nete
-      do k=1,nlev
-        pmid_ref(:,:,k,ie) =hvcoord%hyam(k)*hvcoord%ps0 + hvcoord%hybm(k)*ps_ref(:,:,ie)
-        dp3d_ref(:,:,k,ie) = ((hvcoord%hyai(k+1)-hvcoord%hyai(k))*hvcoord%ps0 + &
-                              (hvcoord%hybi(k+1)-hvcoord%hybi(k))*ps_ref(:,:,ie))
-        if (hvcoord%hybm(k)>0) then
-          tmp2               = (pmid_ref(:,:,k,ie)/hvcoord%ps0)**cappa
-          T_ref(:,:,k,ie)    = (T0+T1*tmp2)
-        else
-          T_ref(:,:,k,ie)    = 0.0_r8
-        end if
-      end do
-    end do
-
     kbeg=1; kend=nlev
 
     kblk = kend - kbeg + 1
@@ -558,11 +516,10 @@ contains
      !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
     do ic=1,hypervis_subcycle
-      call calc_tot_energy_dynamics(elem,fvm,nets,nete,nt,qn0,'dBH')
+      call calc_tot_energy_dynamics(elem,fvm,nets,nete,nt,qn0,'dBH',subcycle=.true.)
 
       rhypervis_subcycle=1.0_r8/real(hypervis_subcycle,kind=r8)
-      call biharmonic_wk_dp3d(elem,dptens,dpflux,ttens,vtens,deriv,edge3,hybrid,nt,nets,nete,kbeg,kend,hvcoord,&
-           dp3d_ref=dp3d_ref,pmid_ref=pmid_ref)
+      call biharmonic_wk_dp3d(elem,dptens,dpflux,ttens,vtens,deriv,edge3,hybrid,nt,nets,nete,kbeg,kend,hvcoord)
 
       do ie=nets,nete
         ! compute mean flux
@@ -719,7 +676,7 @@ contains
         enddo
       end do
 
-      call calc_tot_energy_dynamics(elem,fvm,nets,nete,nt,qn0,'dCH')
+      call calc_tot_energy_dynamics(elem,fvm,nets,nete,nt,qn0,'dCH',subcycle=.true.)
       do ie=nets,nete
         !$omp parallel do num_threads(vert_num_threads), private(k,i,j,v1,v2,heating)
         do k=kbeg,kend
@@ -739,7 +696,7 @@ contains
           enddo
         enddo
       enddo
-      call calc_tot_energy_dynamics(elem,fvm,nets,nete,nt,qn0,'dAH')
+      call calc_tot_energy_dynamics(elem,fvm,nets,nete,nt,qn0,'dAH',subcycle=.true.)
     end do
 
     !
@@ -815,7 +772,7 @@ contains
     ! Horizontal Laplacian diffusion
     !
     dt=dt2/hypervis_subcycle_sponge
-    call calc_tot_energy_dynamics(elem,fvm,nets,nete,nt,qn0,'dBS')
+    call calc_tot_energy_dynamics(elem,fvm,nets,nete,nt,qn0,'dBS',subcycle=.true.)
     kblk = ksponge_end
     do ic=1,hypervis_subcycle_sponge
       rhypervis_subcycle=1.0_r8/real(hypervis_subcycle_sponge,kind=r8)
@@ -1001,7 +958,7 @@ contains
       end do
     end do
     call t_stopf('sponge_diff')
-    call calc_tot_energy_dynamics(elem,fvm,nets,nete,nt,qn0,'dAS')
+    call calc_tot_energy_dynamics(elem,fvm,nets,nete,nt,qn0,'dAS',subcycle=.true.)
   end subroutine advance_hypervis_dp
 
 
@@ -1493,24 +1450,31 @@ contains
      endif
    end subroutine distribute_flux_at_corners
 
-  subroutine calc_tot_energy_dynamics(elem,fvm,nets,nete,tl,tl_qdp,outfld_name_suffix)
+  subroutine calc_tot_energy_dynamics(elem,fvm,nets,nete,tl,tl_qdp,outfld_name_suffix, subcycle)
     use dimensions_mod,         only: npsq,nlev,np,lcp_moist,nc,ntrac,qsize
     use physconst,              only: gravit, cpair, rearth,omega
     use element_mod,            only: element_t
     use cam_history,            only: outfld, hist_fld_active
     use constituents,           only: cnst_get_ind
-    use string_utils,           only: strlist_get_ind
     use hycoef,                 only: hyai, ps0
     use fvm_control_volume_mod, only: fvm_struct
     use physconst,              only: get_dp, get_cp
     use physconst,              only: thermodynamic_active_species_idx_dycore
+    use physconst,              only: thermodynamic_active_species_ice_num
+    use physconst,              only: thermodynamic_active_species_liq_num
+    use physconst,              only: thermodynamic_active_species_liq_idx
+    use physconst,              only: thermodynamic_active_species_ice_idx
+
     use dimensions_mod,         only: cnst_name_gll
+    use budgets,                only: budget_info
+    use cam_logfile,            only: iulog
     !------------------------------Arguments--------------------------------
 
-    type (element_t) , intent(in) :: elem(:)
+    type (element_t) , intent(inout) :: elem(:)
     type(fvm_struct) , intent(in) :: fvm(:)
     integer          , intent(in) :: tl, tl_qdp,nets,nete
     character*(*)    , intent(in) :: outfld_name_suffix ! suffix for "outfld" names
+    logical, optional, intent(in) :: subcycle ! true if called inside subcycle loop
 
     !---------------------------Local storage-------------------------------
 
@@ -1518,10 +1482,12 @@ contains
     real(kind=r8) :: ke(npsq)                          ! kinetic energy    (J/m2)
 
     real(kind=r8) :: cdp_fvm(nc,nc,nlev)
+    real(kind=r8) :: cdp(np,np,nlev)
     real(kind=r8) :: se_tmp
     real(kind=r8) :: ke_tmp
     real(kind=r8) :: ps(np,np)
     real(kind=r8) :: pdel(np,np,nlev)
+   
     !
     ! global axial angular momentum (AAM) can be separated into one part (mr) associatedwith the relative motion
     ! of the atmosphere with respect to the planets surface (also known as wind AAM) and another part (mo)
@@ -1533,12 +1499,11 @@ contains
     real(kind=r8) :: mr_cnst, mo_cnst, cos_lat, mr_tmp, mo_tmp
     real(kind=r8) :: cp(np,np,nlev)
 
-    integer :: ie,i,j,k
-    integer :: ixwv,ixcldice, ixcldliq, ixtt ! CLDICE, CLDLIQ and test tracer indices
+    integer :: ie,i,j,k,idx,ixtt,budget_ind,state_ind,iwv
     character(len=16) :: name_out1,name_out2,name_out3,name_out4,name_out5,name_out6
 
     !-----------------------------------------------------------------------
-
+    write(iulog,*)'calc_tot outfld_name_suffix=',trim(outfld_name_suffix)
     name_out1 = 'SE_'   //trim(outfld_name_suffix)
     name_out2 = 'KE_'   //trim(outfld_name_suffix)
     name_out3 = 'WV_'   //trim(outfld_name_suffix)
@@ -1548,20 +1513,7 @@ contains
 
     if ( hist_fld_active(name_out1).or.hist_fld_active(name_out2).or.hist_fld_active(name_out3).or.&
          hist_fld_active(name_out4).or.hist_fld_active(name_out5).or.hist_fld_active(name_out6)) then
-
-      if (ntrac>0) then
-        ixwv = 1
-        call cnst_get_ind('CLDLIQ' , ixcldliq, abort=.false.)
-        call cnst_get_ind('CLDICE' , ixcldice, abort=.false.)
-      else
-        !
-        ! when using CSLAM the condensates on the GLL grid may be located in a different index than in physics
-        !
-        ixwv = -1
-        call strlist_get_ind(cnst_name_gll, 'CLDLIQ' , ixcldliq, abort=.false.)
-        call strlist_get_ind(cnst_name_gll, 'CLDICE' , ixcldice, abort=.false.)
-      end if
-      call cnst_get_ind('TT_LW' , ixtt    , abort=.false.)
+      call cnst_get_ind('TT_UN' , ixtt    , abort=.false.)
       !
       ! Compute frozen static energy in 3 parts:  KE, SE, and energy associated with vapor and liquid
       !
@@ -1599,6 +1551,41 @@ contains
             se(i+(j-1)*np) = se(i+(j-1)*np) + elem(ie)%state%phis(i,j)*ps(i,j)/gravit
           end do
         end do
+
+! could store pointer to dyn/phys state index inside of budget and call budget_state_update pass in se,ke etc.
+        call budget_info(trim(outfld_name_suffix),budget_ind=budget_ind,state_ind=state_ind)
+        ! reset all when cnt is 0
+        if (elem(ie)%derived%budget_cnt(state_ind) == 0) then
+!jt           write(iulog,*)'zeroing out derived budget for ',trim(outfld_name_suffix)
+           elem(ie)%derived%budget_subcycle(state_ind) = 0
+           elem(ie)%derived%budget(:,:,:,state_ind)=0.0_r8
+        end if
+        if (present(subcycle)) then
+           if (subcycle) then
+              elem(ie)%derived%budget_subcycle(state_ind) = elem(ie)%derived%budget_subcycle(state_ind) + 1
+              if (elem(ie)%derived%budget_subcycle(state_ind) == 1) then
+                 elem(ie)%derived%budget_cnt(state_ind) = elem(ie)%derived%budget_cnt(state_ind) + 1
+              end if
+!jt              if (ie==nets) write(iulog,*)'cnt and new subcycle after adding 1 ',elem(ie)%derived%budget_cnt(state_ind),elem(ie)%derived%budget_subcycle(state_ind),' for ',trim(outfld_name_suffix),' iam=',iam
+           else
+              elem(ie)%derived%budget_cnt(state_ind) = elem(ie)%derived%budget_cnt(state_ind) + 1
+              elem(ie)%derived%budget_subcycle(state_ind) = 1
+!jt              if (ie==nets) write(iulog,*)'subcycle false new cnt after adding 1 ',elem(ie)%derived%budget_cnt(state_ind),elem(ie)%derived%budget_subcycle(state_ind),' for ',trim(outfld_name_suffix),' iam=',iam
+           end if
+        else
+           elem(ie)%derived%budget_cnt(state_ind) = elem(ie)%derived%budget_cnt(state_ind) + 1
+           elem(ie)%derived%budget_subcycle(state_ind) = 1
+!jt              if (ie==nets) write(iulog,*)'no subcycle new cnt after adding 1 ',elem(ie)%derived%budget_cnt(state_ind),elem(ie)%derived%budget_subcycle(state_ind),' for ',trim(outfld_name_suffix),' iam=',iam
+        end if
+!jt        if (ie==nets) write(iulog,*)'adding se ke to derived budget for ',trim(outfld_name_suffix),' iam=',iam
+        do j=1,np
+          do i = 1, np
+            elem(ie)%derived%budget(i,j,1,state_ind) = elem(ie)%derived%budget(i,j,1,state_ind) + (se(i+(j-1)*np) + ke(i+(j-1)*np))
+            elem(ie)%derived%budget(i,j,2,state_ind) = elem(ie)%derived%budget(i,j,2,state_ind) + se(i+(j-1)*np)
+            elem(ie)%derived%budget(i,j,3,state_ind) = elem(ie)%derived%budget(i,j,3,state_ind) + ke(i+(j-1)*np)
+          end do
+        end do
+
         !
         ! Output energy diagnostics on GLL grid
         !
@@ -1608,28 +1595,115 @@ contains
         ! mass variables are output on CSLAM grid if using CSLAM else GLL grid
         !
         if (ntrac>0) then
-          if (ixwv>0) then
-            cdp_fvm = fvm(ie)%c(1:nc,1:nc,:,ixwv)*fvm(ie)%dp_fvm(1:nc,1:nc,:)
-            call util_function(cdp_fvm,nc,nlev,name_out3,ie)
-          end if
-          if (ixcldliq>0) then
-            cdp_fvm = fvm(ie)%c(1:nc,1:nc,:,ixcldliq)*fvm(ie)%dp_fvm(1:nc,1:nc,:)
+          iwv = 0;if (ntrac>0) iwv=1
+          cdp_fvm = fvm(ie)%c(1:nc,1:nc,:,iwv)*fvm(ie)%dp_fvm(1:nc,1:nc,:)
+          call util_function(cdp_fvm,nc,nlev,name_out3,ie)
+          do j = 1, nc
+             do i = 1, nc
+                elem(ie)%derived%budget(i,j,4,state_ind) = elem(ie)%derived%budget(i,j,4,state_ind) + sum(cdp_fvm(i,j,:))
+             end do
+          end do
+          elem(ie)%derived%budget(1:nc,1:nc,4,state_ind)=elem(ie)%derived%budget(1:nc,1:nc,4,state_ind)/gravit
+          !
+          ! sum over liquid water
+          !
+          if (thermodynamic_active_species_liq_num>0) then
+            cdp_fvm = 0.0_r8
+            do idx = 1,thermodynamic_active_species_liq_num
+              cdp_fvm = cdp_fvm + fvm(ie)%c(1:nc,1:nc,:,thermodynamic_active_species_liq_idx(idx))&
+                   *fvm(ie)%dp_fvm(1:nc,1:nc,:)
+            end do
             call util_function(cdp_fvm,nc,nlev,name_out4,ie)
+            do j = 1, nc
+               do i = 1, nc
+                  elem(ie)%derived%budget(i,j,5,state_ind) = elem(ie)%derived%budget(i,j,5,state_ind) + sum(cdp_fvm(i,j,:))
+               end do
+            end do
+            elem(ie)%derived%budget(1:nc,1:nc,5,state_ind)=elem(ie)%derived%budget(1:nc,1:nc,5,state_ind)/gravit
           end if
-          if (ixcldice>0) then
-            cdp_fvm = fvm(ie)%c(1:nc,1:nc,:,ixcldice)*fvm(ie)%dp_fvm(1:nc,1:nc,:)
-            call util_function(cdp_fvm,nc,nlev,name_out5,ie)
+          !
+          ! sum over ice water
+          !
+          if (thermodynamic_active_species_ice_num>0) then
+            cdp_fvm = 0.0_r8
+            do idx = 1,thermodynamic_active_species_ice_num
+              cdp_fvm = cdp_fvm + fvm(ie)%c(1:nc,1:nc,:,thermodynamic_active_species_ice_idx(idx))&
+                   *fvm(ie)%dp_fvm(1:nc,1:nc,:)
+            end do
+            call util_function(cdp_fvm,nc,nlev,name_out4,ie)
+            do j = 1, nc
+               do i = 1, nc
+                  elem(ie)%derived%budget(i,j,6,state_ind) = elem(ie)%derived%budget(i,j,6,state_ind) + sum(cdp_fvm(i,j,:))
+               end do
+            end do
+            elem(ie)%derived%budget(1:nc,1:nc,6,state_ind)=elem(ie)%derived%budget(1:nc,1:nc,6,state_ind)/gravit
           end if
+          !
+          ! dry test tracer
+          !
           if (ixtt>0) then
             cdp_fvm = fvm(ie)%c(1:nc,1:nc,:,ixtt)*fvm(ie)%dp_fvm(1:nc,1:nc,:)
             call util_function(cdp_fvm,nc,nlev,name_out6,ie)
+            do j = 1, nc
+               do i = 1, nc
+                  elem(ie)%derived%budget(i,j,7,state_ind) = elem(ie)%derived%budget(i,j,7,state_ind) + sum(cdp_fvm(i,j,:))
+               end do
+            end do
+            elem(ie)%derived%budget(1:nc,1:nc,7,state_ind)=elem(ie)%derived%budget(1:nc,1:nc,7,state_ind)/gravit
           end if
         else
-          call util_function(elem(ie)%state%qdp(:,:,:,1       ,tl_qdp),np,nlev,name_out3,ie)
-          if (ixcldliq>0) call util_function(elem(ie)%state%qdp(:,:,:,ixcldliq,tl_qdp),np,nlev,name_out4,ie)
-          if (ixcldice>0) call util_function(elem(ie)%state%qdp(:,:,:,ixcldice,tl_qdp),np,nlev,name_out5,ie)
-          if (ixtt>0    ) call util_function(elem(ie)%state%qdp(:,:,:,ixtt    ,tl_qdp),np,nlev,name_out6,ie)
-        end if
+          call util_function(elem(ie)%state%qdp(:,:,:,1,tl_qdp),np,nlev,name_out3,ie)
+          do j = 1, np
+             do i = 1, np
+                elem(ie)%derived%budget(i,j,4,state_ind) = elem(ie)%derived%budget(i,j,4,state_ind) + sum(elem(ie)%state%qdp(i,j,:,1,tl_qdp))
+             end do
+          end do
+          elem(ie)%derived%budget(1:np,1:np,4,state_ind)=elem(ie)%derived%budget(1:np,1:np,4,state_ind)/gravit
+          !
+          ! sum over liquid water
+          !
+          if (thermodynamic_active_species_liq_num>0) then
+            cdp = 0.0_r8
+            do idx = 1,thermodynamic_active_species_liq_num
+              cdp = cdp + elem(ie)%state%qdp(:,:,:,thermodynamic_active_species_liq_idx(idx),tl_qdp)
+            end do
+            call util_function(cdp,np,nlev,name_out4,ie)
+            do j = 1, np
+               do i = 1, np
+                  elem(ie)%derived%budget(i,j,5,state_ind) = elem(ie)%derived%budget(i,j,5,state_ind) + sum(cdp(i,j,:))
+               end do
+            end do
+            elem(ie)%derived%budget(1:np,1:np,5,state_ind)=elem(ie)%derived%budget(1:np,1:np,5,state_ind)/gravit
+          end if
+          !
+          ! sum over ice water
+          !
+          if (thermodynamic_active_species_ice_num>0) then
+            cdp = 0.0_r8
+            do idx = 1,thermodynamic_active_species_ice_num
+              cdp = cdp + elem(ie)%state%qdp(:,:,:,thermodynamic_active_species_ice_idx(idx),tl_qdp)
+            end do
+            call util_function(cdp,np,nlev,name_out5,ie)
+            do j = 1, np
+               do i = 1, np
+                  elem(ie)%derived%budget(i,j,6,state_ind) = elem(ie)%derived%budget(i,j,6,state_ind) + sum(cdp(i,j,:))
+               end do
+            end do
+            elem(ie)%derived%budget(1:np,1:np,6,state_ind)=elem(ie)%derived%budget(1:np,1:np,6,state_ind)/gravit
+          end if
+          !
+          ! dry test tracer
+          !
+          if (ixtt>0) then
+             call util_function(elem(ie)%state%qdp(:,:,:,ixtt,tl_qdp),np,nlev,name_out6,ie)
+             do j = 1, np
+                do i = 1, np
+                   elem(ie)%derived%budget(i,j,7,state_ind) = elem(ie)%derived%budget(i,j,7,state_ind) + sum(elem(ie)%state%qdp(i,j,:,ixtt,tl_qdp))
+                end do
+             end do
+             elem(ie)%derived%budget(1:np,1:np,7,state_ind)=elem(ie)%derived%budget(1:np,1:np,7,state_ind)/gravit
+          end if
+       end if
       end do
     end if
     !
@@ -1649,8 +1723,6 @@ contains
     name_out2 = 'MO_'   //trim(outfld_name_suffix)
 
     if ( hist_fld_active(name_out1).or.hist_fld_active(name_out2)) then
-      call strlist_get_ind(cnst_name_gll, 'CLDLIQ', ixcldliq, abort=.false.)
-      call strlist_get_ind(cnst_name_gll, 'CLDICE', ixcldice, abort=.false.)
       mr_cnst = rearth**3/gravit
       mo_cnst = omega*rearth**4/gravit
       do ie=nets,nete
@@ -1672,12 +1744,179 @@ contains
         end do
         call outfld(name_out1  ,mr       ,npsq,ie)
         call outfld(name_out2  ,mo       ,npsq,ie)
+        do j=1,np
+           do i = 1, np
+              elem(ie)%derived%budget(i,j,8,state_ind) = elem(ie)%derived%budget(i,j,8,state_ind) + mr(i+(j-1)*np)
+              elem(ie)%derived%budget(i,j,9,state_ind) = elem(ie)%derived%budget(i,j,9,state_ind) + mo(i+(j-1)*np)
+           end do
+        end do
       end do
     end if
 
 
   end subroutine calc_tot_energy_dynamics
 
+
+  subroutine calc_tot_energy_dynamics_diff(elem,fvm,nets,nete,tl,tl_qdp,outfld_name_suffix, subcycle)
+    use dimensions_mod,         only: np,nc,ntrac,npsq
+    use element_mod,            only: element_t
+    use cam_history,            only: hist_fld_active,outfld
+    use constituents,           only: cnst_get_ind
+    use fvm_control_volume_mod, only: fvm_struct
+    use physconst,              only: thermodynamic_active_species_idx_dycore
+    use physconst,              only: thermodynamic_active_species_ice_num
+    use physconst,              only: thermodynamic_active_species_liq_num
+    use physconst,              only: thermodynamic_active_species_liq_idx
+    use physconst,              only: thermodynamic_active_species_ice_idx
+
+    use budgets,                only: budget_info,budget_ind_byname
+    use cam_logfile,            only: iulog
+    !------------------------------Arguments--------------------------------
+
+    type (element_t) , intent(inout) :: elem(:)
+    type(fvm_struct) , intent(in) :: fvm(:)
+    integer          , intent(in) :: tl, tl_qdp,nets,nete
+    character*(*)    , intent(in) :: outfld_name_suffix ! suffix for "outfld" names
+    logical, optional, intent(in) :: subcycle ! true if called inside subcycle loop
+
+    !---------------------------Local storage-------------------------------
+
+    integer :: ie,ixtt,b_ind,s_ind,is1,is2
+    character(len=16) :: name_out1,name_out2,name_out3,name_out4,name_out5,name_out6
+    real(r8), allocatable, dimension(:,:,:,:) :: tmp,tmp1,tmp2
+   character(len=3)   :: budget_pkgtype,budget_optype  ! budget type phy or dyn
+    !-----------------------------------------------------------------------
+    write(iulog,*)'calc_tot diff outfld_name_suffix=',trim(outfld_name_suffix)
+    name_out1 = 'SE_'   //trim(outfld_name_suffix)
+    name_out2 = 'KE_'   //trim(outfld_name_suffix)
+    name_out3 = 'WV_'   //trim(outfld_name_suffix)
+    name_out4 = 'WL_'   //trim(outfld_name_suffix)
+    name_out5 = 'WI_'   //trim(outfld_name_suffix)
+    name_out6 = 'TT_'   //trim(outfld_name_suffix)
+
+!jt    if ( hist_fld_active(name_out1).or.hist_fld_active(name_out2).or.hist_fld_active(name_out3).or.&
+!jt         hist_fld_active(name_out4).or.hist_fld_active(name_out5).or.hist_fld_active(name_out6)) then
+       call cnst_get_ind('TT_UN' , ixtt    , abort=.false.)
+       !
+       ! Compute frozen static energy in 3 parts:  KE, SE, and energy associated with vapor and liquid
+       !
+       allocate(tmp(np,np,9,nets:nete))
+       allocate(tmp1(np,np,9,nets:nete))
+       allocate(tmp2(np,np,9,nets:nete))
+       b_ind=budget_ind_byname(trim(outfld_name_suffix))
+       call budget_info(b_ind,stg1stateidx=is1, stg2stateidx=is2, optype=budget_optype, pkgtype=budget_pkgtype,state_ind=s_ind)
+       do ie=nets,nete
+!jt          write(iulog,*)'calc budgets name:',trim(outfld_name_suffix),' optype:',budget_optype,' pkgtype:',budget_pkgtype,' cnt:',elem(ie)%derived%budget_cnt(s_ind),'is1/is2:',is1,is2
+          ! advance budget_cnt 
+          if (present(subcycle)) then
+             if (subcycle) then
+                ! reset subcycle when cnt is 0
+                if (elem(ie)%derived%budget_cnt(s_ind) == 0) then
+                   elem(ie)%derived%budget_subcycle(s_ind) = 0
+                   elem(ie)%derived%budget(:,:,:,s_ind)=0.0_r8
+                end if
+                elem(ie)%derived%budget_subcycle(s_ind) = elem(ie)%derived%budget_subcycle(s_ind) + 1
+                if (elem(ie)%derived%budget_subcycle(s_ind) == 1) then
+                   elem(ie)%derived%budget_cnt(s_ind) = elem(ie)%derived%budget_cnt(s_ind) + 1
+                end if
+             else
+                elem(ie)%derived%budget_cnt(s_ind) = elem(ie)%derived%budget_cnt(s_ind) + 1
+                elem(ie)%derived%budget_subcycle(s_ind) = 1
+             end if
+          else
+             elem(ie)%derived%budget_cnt(s_ind) = elem(ie)%derived%budget_cnt(s_ind) + 1
+             elem(ie)%derived%budget_subcycle(s_ind) = 1
+          end if
+          if (elem(ie)%derived%budget_cnt(is1)==0.or.elem(ie)%derived%budget_cnt(is2)==0) then
+!jt             write(iulog,*)'budget_cnt is 0 set tmp to zero, cnt(is1b),cnt(is2b) ',trim(outfld_name_suffix),elem(ie)%derived%budget_cnt(is1),elem(ie)%derived%budget_cnt(is2)
+             tmp(:,:,:,ie)=0._r8
+          else          
+             tmp1(:,:,:,ie)=elem(ie)%derived%budget(:,:,:,is1)
+             tmp2(:,:,:,ie)=elem(ie)%derived%budget(:,:,:,is2)
+          end if
+          if (budget_optype=='dif') then
+!jt             write(iulog,*)'set difference for is1,is2,dyn_state_ind',is1,is2,s_ind
+             tmp(:,:,:,ie)=(tmp1(:,:,:,ie)-tmp2(:,:,:,ie))
+          else if (budget_optype=='sum') then
+!jt             write(iulog,*)'set sum for is1,is2,dyn_state_ind',is1,is2,s_ind
+             tmp(:,:,:,ie)=(tmp1(:,:,:,ie)+tmp2(:,:,:,ie))
+          else
+             call endrun('dyn_readnl: ERROR: budget_optype unknown:'//budget_optype)
+          end if
+          elem(ie)%derived%budget(:,:,:,s_ind)=tmp(:,:,:,ie)
+          !
+          ! Output energy diagnostics on GLL grid
+          !
+!          call outfld(name_out1,elem(ie)%derived%budget(:,:,2,s_ind),npsq,ie)
+!          call outfld(name_out2,elem(ie)%derived%budget(:,:,3,s_ind),npsq,ie)
+          !
+          ! mass variables are output on CSLAM grid if using CSLAM else GLL grid
+          !
+!          if (ntrac>0) then
+!             call outfld(name_out3,elem(ie)%derived%budget(:,:,4,s_ind),nc*nc,ie)
+             !
+             ! sum over liquid water
+             !
+!             if (thermodynamic_active_species_liq_num>0) &
+!                  call outfld(name_out4,elem(ie)%derived%budget(:,:,5,s_ind),nc*nc,ie)
+             !
+             ! sum over ice water
+             !
+!             if (thermodynamic_active_species_ice_num>0) &
+!                  call outfld(name_out5,elem(ie)%derived%budget(:,:,6,s_ind),nc*nc,ie)
+             !
+             ! dry test tracer
+             !
+!             if (ixtt>0) &
+!                  call outfld(name_out6,elem(ie)%derived%budget(:,:,7,s_ind),nc*nc,ie)
+!          else
+!             call outfld(name_out3,elem(ie)%derived%budget(:,:,4,s_ind),npsq,ie)
+             !
+             ! sum over liquid water
+             !
+!             if (thermodynamic_active_species_liq_num>0) &
+!                  call outfld(name_out4,elem(ie)%derived%budget(:,:,5,s_ind),npsq,ie)
+             !
+             ! sum over ice water
+             !
+!             if (thermodynamic_active_species_ice_num>0) &
+!                  call outfld(name_out5,elem(ie)%derived%budget(:,:,6,s_ind),npsq,ie)
+             !
+             ! dry test tracer
+             !
+!             if (ixtt>0) &
+!                  call outfld(name_out6,elem(ie)%derived%budget(:,:,7,s_ind),npsq,ie)
+!          end if
+       end do
+!jt    end if
+    deallocate(tmp)
+    deallocate(tmp1)
+    deallocate(tmp2)
+    !
+    ! Axial angular momentum diagnostics
+    !
+    ! Code follows
+    !
+    ! Lauritzen et al., (2014): Held-Suarez simulations with the Community Atmosphere Model
+    ! Spectral Element (CAM-SE) dynamical core: A global axial angularmomentum analysis using Eulerian
+    ! and floating Lagrangian vertical coordinates. J. Adv. Model. Earth Syst. 6,129-140,
+    ! doi:10.1002/2013MS000268
+    !
+    ! MR is equation (6) without \Delta A and sum over areas (areas are in units of radians**2)
+    ! MO is equation (7) without \Delta A and sum over areas (areas are in units of radians**2)
+    !
+    name_out1 = 'MR_'   //trim(outfld_name_suffix)
+    name_out2 = 'MO_'   //trim(outfld_name_suffix)
+
+!!$    if ( hist_fld_active(name_out1).or.hist_fld_active(name_out2)) then
+!!$      do ie=nets,nete
+!!$         call outfld(name_out1  ,elem(ie)%derived%budget(:,:,8,s_ind)      ,npsq,ie)
+!!$         call outfld(name_out2  ,elem(ie)%derived%budget(:,:,9,s_ind)      ,npsq,ie)
+!!$      end do
+!!$    end if
+
+  end subroutine calc_tot_energy_dynamics_diff
+  
   subroutine output_qdp_var_dynamics(qdp,nx,num_trac,nets,nete,outfld_name)
     use dimensions_mod, only: nlev,ntrac
     use cam_history   , only: outfld, hist_fld_active
@@ -1705,7 +1944,7 @@ contains
 
       call cnst_get_ind('CLDLIQ', ixcldliq, abort=.false.)
       call cnst_get_ind('CLDICE', ixcldice, abort=.false.)
-      call cnst_get_ind('TT_LW' , ixtt    , abort=.false.)
+      call cnst_get_ind('TT_MD' , ixtt    , abort=.false.)
 
       do ie=nets,nete
         call util_function(qdp(:,:,:,1,ie),nx,nlev,name_out1,ie)
@@ -1855,293 +2094,4 @@ contains
      end if
      !call FreeEdgeBuffer(edgeOmega)
    end subroutine compute_omega
-
-
-  subroutine calc_dp3d_reference(elem,edge3,hybrid,nets,nete,nt,hvcoord,dp3d_ref)
-    !
-    ! calc_dp3d_reference: When the del^4 horizontal damping is applied to dp3d
-    !                      the values are implicitly affected by natural variations
-    !                      due to surface topography.
-    !
-    !                    To account for these physicaly correct variations, use
-    !                    the current state values to compute appropriate
-    !                    reference values for the current (lagrangian) ETA-surfaces.
-    !                    Damping should then be applied to values relative to
-    !                    this reference.
-    !=======================================================================
-    use hybvcoord_mod  ,only: hvcoord_t
-    use physconst      ,only: rair,cappa
-    use element_mod,    only: element_t
-    use dimensions_mod, only: np,nlev
-    use hybrid_mod,     only: hybrid_t
-    use edge_mod,       only: edgevpack, edgevunpack
-    use bndry_mod,      only: bndry_exchange
-    !
-    ! Passed variables
-    !-------------------
-    type(element_t   ),target,intent(inout):: elem(:)
-    type(EdgeBuffer_t)       ,intent(inout):: edge3
-    type(hybrid_t    )       ,intent(in   ):: hybrid
-    integer                  ,intent(in   ):: nets,nete
-    integer                  ,intent(in   ):: nt
-    type(hvcoord_t   )       ,intent(in   ):: hvcoord
-    real(kind=r8)            ,intent(out  ):: dp3d_ref(np,np,nlev,nets:nete)
-    !
-    ! Local Values
-    !--------------
-    real(kind=r8):: Phis_avg(np,np,     nets:nete)
-    real(kind=r8):: Phi_avg (np,np,nlev,nets:nete)
-    real(kind=r8):: RT_avg  (np,np,nlev,nets:nete)
-    real(kind=r8):: P_val   (np,np,nlev)
-    real(kind=r8):: Ps_val  (np,np)
-    real(kind=r8):: Phi_val (np,np,nlev)
-    real(kind=r8):: Phi_ival(np,np)
-    real(kind=r8):: I_Phi   (np,np,nlev+1)
-    real(kind=r8):: Alpha   (np,np,nlev  )
-    real(kind=r8):: I_P     (np,np,nlev+1)
-    real(kind=r8):: DP_avg  (np,np,nlev)
-    real(kind=r8):: P_avg   (np,np,nlev)
-    real(kind=r8):: Ps_avg  (np,np)
-    real(kind=r8):: Ps_ref  (np,np)
-    real(kind=r8):: RT_lapse(np,np)
-    real(kind=r8):: dlt_Ps  (np,np)
-    real(kind=r8):: dPhi    (np,np,nlev)
-    real(kind=r8):: dPhis   (np,np)
-    real(kind=r8):: E_Awgt,E_phis,E_phi(nlev),E_T(nlev),Lapse0,Expon0
-    integer      :: ie,ii,jj,kk,kptr
-
-    ! Loop over elements
-    !--------------------
-    do ie=nets,nete
-
-      ! Calculate Pressure values from dp3dp
-      !--------------------------------------
-      P_val(:,:,1) = hvcoord%hyai(1)*hvcoord%ps0 + elem(ie)%state%dp3d(:,:,1,nt)*0.5_r8
-      do kk=2,nlev
-        P_val(:,:,kk) =               P_val(:,:,kk-1)           &
-                      + elem(ie)%state%dp3d(:,:,kk-1,nt)*0.5_r8 &
-                      + elem(ie)%state%dp3d(:,:,kk  ,nt)*0.5_r8
-      end do
-      Ps_val(:,:) = P_val(:,:,nlev) + elem(ie)%state%dp3d(:,:,nlev,nt)*0.5_r8
-
-      ! Calculate (dry) geopotential values
-      !--------------------------------------
-      dPhi    (:,:,:)    = 0.5_r8*(rair*elem(ie)%state%T   (:,:,:,nt) &
-                                      *elem(ie)%state%dp3d(:,:,:,nt) &
-                                                    /P_val(:,:,:)    )
-      Phi_val (:,:,nlev) = elem(ie)%state%phis(:,:) + dPhi(:,:,nlev)
-      Phi_ival(:,:)      = elem(ie)%state%phis(:,:) + dPhi(:,:,nlev)*2._r8
-      do kk=(nlev-1),1,-1
-        Phi_val (:,:,kk) = Phi_ival(:,:)    + dPhi(:,:,kk)
-        Phi_ival(:,:)    = Phi_val (:,:,kk) + dPhi(:,:,kk)
-      end do
-
-      ! Calculate Element averages
-      !----------------------------
-      E_Awgt   = 0.0_r8
-      E_phis   = 0.0_r8
-      E_phi(:) = 0._r8
-      E_T  (:) = 0._r8
-      do jj=1,np
-      do ii=1,np
-        E_Awgt    = E_Awgt    + elem(ie)%spheremp(ii,jj)
-        E_phis    = E_phis    + elem(ie)%spheremp(ii,jj)*elem(ie)%state%phis(ii,jj)
-        E_phi (:) = E_phi (:) + elem(ie)%spheremp(ii,jj)*Phi_val(ii,jj,:)
-        E_T   (:) = E_T   (:) + elem(ie)%spheremp(ii,jj)*elem(ie)%state%T(ii,jj,:,nt)
-      end do
-      end do
-
-      Phis_avg(:,:,ie) = E_phis/E_Awgt
-      do kk=1,nlev
-        Phi_avg(:,:,kk,ie) = E_phi(kk)     /E_Awgt
-        RT_avg (:,:,kk,ie) = E_T  (kk)*rair/E_Awgt
-      end do
-    end do ! ie=nets,nete
-
-    ! Boundary Exchange of average values
-    !-------------------------------------
-    do ie=nets,nete
-      Phis_avg(:,:,ie) = elem(ie)%spheremp(:,:)*Phis_avg(:,:,ie)
-      do kk=1,nlev
-        Phi_avg(:,:,kk,ie) = elem(ie)%spheremp(:,:)*Phi_avg(:,:,kk,ie)
-        RT_avg (:,:,kk,ie) = elem(ie)%spheremp(:,:)*RT_avg (:,:,kk,ie)
-      end do
-      kptr = 0
-      call edgeVpack(edge3,Phi_avg(:,:,:,ie),nlev,kptr,ie)
-      kptr = nlev
-      call edgeVpack(edge3,RT_avg (:,:,:,ie),nlev,kptr,ie)
-      kptr = 2*nlev
-      call edgeVpack(edge3,Phis_avg (:,:,ie),1   ,kptr,ie)
-    end do ! ie=nets,nete
-
-    call bndry_exchange(hybrid,edge3,location='calc_dp3d_reference')
-
-    do ie=nets,nete
-      kptr = 0
-      call edgeVunpack(edge3,Phi_avg(:,:,:,ie),nlev,kptr,ie)
-      kptr = nlev
-      call edgeVunpack(edge3,RT_avg (:,:,:,ie),nlev,kptr,ie)
-      kptr = 2*nlev
-      call edgeVunpack(edge3,Phis_avg (:,:,ie),1   ,kptr,ie)
-      Phis_avg(:,:,ie) = elem(ie)%rspheremp(:,:)*Phis_avg(:,:,ie)
-      do kk=1,nlev
-        Phi_avg(:,:,kk,ie) = elem(ie)%rspheremp(:,:)*Phi_avg(:,:,kk,ie)
-        RT_avg (:,:,kk,ie) = elem(ie)%rspheremp(:,:)*RT_avg (:,:,kk,ie)
-      end do
-    end do ! ie=nets,nete
-
-    ! Loop over elements
-    !--------------------
-    do ie=nets,nete
-
-      ! Fill elements with uniformly varying average values
-      !-----------------------------------------------------
-      call fill_element(Phis_avg(1,1,ie))
-      do kk=1,nlev
-        call fill_element(Phi_avg(1,1,kk,ie))
-        call fill_element(RT_avg (1,1,kk,ie))
-      end do
-
-      ! Integrate upward to compute Alpha == (dp3d/P)
-      !----------------------------------------------
-      I_Phi(:,:,nlev+1) = Phis_avg(:,:,ie)
-      do kk=nlev,1,-1
-        I_Phi(:,:,kk) = 2._r8* Phi_avg(:,:,kk,ie) - I_Phi(:,:,kk+1)
-        Alpha(:,:,kk) = 2._r8*(Phi_avg(:,:,kk,ie) - I_Phi(:,:,kk+1))/RT_avg(:,:,kk,ie)
-      end do
-
-      ! Integrate downward to compute corresponding average pressure values
-      !---------------------------------------------------------------------
-      I_P(:,:,1) = hvcoord%hyai(1)*hvcoord%ps0
-      do kk=1,nlev
-        DP_avg(:,:,kk  ) = I_P(:,:,kk)*(2._r8 * Alpha(:,:,kk))/(2._r8 - Alpha(:,:,kk))
-        P_avg (:,:,kk  ) = I_P(:,:,kk)*(2._r8                )/(2._r8 - Alpha(:,:,kk))
-        I_P   (:,:,kk+1) = I_P(:,:,kk)*(2._r8 + Alpha(:,:,kk))/(2._r8 - Alpha(:,:,kk))
-      end do
-      Ps_avg(:,:) = I_P(:,:,nlev+1)
-
-      ! Determine an appropriate d<T>/d<PHI> lapse rate near the surface
-      ! OPTIONALLY: Use dry adiabatic lapse rate or environmental lapse rate.
-      !-----------------------------------------------------------------------
-      if(.FALSE.) then
-        ! DRY ADIABATIC laspe rate
-        !------------------------------
-        RT_lapse(:,:) = -cappa
-      else
-        ! ENVIRONMENTAL (empirical) laspe rate
-        !--------------------------------------
-        RT_lapse(:,:) =  (RT_avg (:,:,nlev-1,ie)-RT_avg (:,:,nlev,ie)) &
-                        /(Phi_avg(:,:,nlev-1,ie)-Phi_avg(:,:,nlev,ie))
-      endif
-
-      ! Calcualte reference surface pressure
-      !--------------------------------------
-      dPhis(:,:) = elem(ie)%state%phis(:,:)-Phis_avg(:,:,ie)
-      do jj=1,np
-      do ii=1,np
-        if (abs(RT_lapse(ii,jj)) .gt. 1.e-3_r8) then
-          Lapse0 = RT_lapse(ii,jj)/RT_avg(ii,jj,nlev,ie)
-          Expon0 = (-1._r8/RT_lapse(ii,jj))
-          Ps_ref(ii,jj) = Ps_avg(ii,jj)*((1._r8 + Lapse0*dPhis(ii,jj))**Expon0)
-        else
-          Ps_ref(ii,jj) = Ps_avg(ii,jj)*exp(-dPhis(ii,jj)/RT_avg(ii,jj,nlev,ie))
-        endif
-      end do
-      end do
-
-      ! Calculate reference dp3d values
-      !---------------------------------
-      dlt_Ps(:,:) = Ps_ref(:,:) - Ps_avg(:,:)
-      do kk=1,nlev
-        dp3d_ref(:,:,kk,ie) = DP_avg(:,:,kk) + (hvcoord%hybi(kk+1)            &
-                                               -hvcoord%hybi(kk  ))*dlt_Ps(:,:)
-      end do
-
-    end do ! ie=nets,nete
-
-    ! End Routine
-    !------------
-    return
-  end subroutine calc_dp3d_reference
-  !=============================================================================
-
-
-  !=============================================================================
-  subroutine fill_element(Eval)
-    !
-    ! fill_element_bilin: Fill in element gridpoints using local bi-linear
-    !                     interpolation of nearby average values.
-    !
-    !                     NOTE: This routine is hard coded for NP=4, if a
-    !                           different value of NP is used... bad things
-    !                           will happen.
-    !=======================================================================
-    use dimensions_mod,only: np
-    !
-    ! Passed variables
-    !-------------------
-    real(kind=r8),intent(inout):: Eval(np,np)
-    !
-    ! Local Values
-    !--------------
-    real(kind=r8):: X0
-    real(kind=r8):: S1,S2,S3,S4
-    real(kind=r8):: C1,C2,C3,C4
-    real(kind=r8):: E1,E2,E3,E4,E0
-
-    X0 = sqrt(1._r8/5._r8)
-
-    ! Set the "known" values Eval
-    !----------------------------
-    S1 = (Eval(1 ,2 )+Eval(1 ,3 ))/2._r8
-    S2 = (Eval(2 ,np)+Eval(3 ,np))/2._r8
-    S3 = (Eval(np,2 )+Eval(np,3 ))/2._r8
-    S4 = (Eval(2 ,1 )+Eval(3 ,1 ))/2._r8
-    C1 = Eval(1 ,1 )
-    C2 = Eval(1 ,np)
-    C3 = Eval(np,np)
-    C4 = Eval(np,1 )
-
-    ! E0 OPTION: Element Center value:
-    !---------------------------------
-    IF(.FALSE.) THEN
-      ! Use ELEMENT AVERAGE value contained in (2,2)
-      !----------------------------------------------
-      E0 = Eval(2,2)
-    ELSE
-      ! Use AVG OF SIDE VALUES after boundary exchange of E0 (smooting option)
-      !-----------------------------------------------------------------------
-      E0 = (S1 + S2 + S3 + S4)/4._r8
-    ENDIF
-
-    ! Calc interior values along center axes
-    !----------------------------------------
-    E1 = E0 + X0*(S1-E0)
-    E2 = E0 + X0*(S2-E0)
-    E3 = E0 + X0*(S3-E0)
-    E4 = E0 + X0*(S4-E0)
-
-    ! Calculate Side Gridpoint Values for Eval
-    !------------------------------------------
-    Eval(1 ,2 ) = S1 + X0*(C1-S1)
-    Eval(1 ,3 ) = S1 + X0*(C2-S1)
-    Eval(2 ,np) = S2 + X0*(C2-S2)
-    Eval(3 ,np) = S2 + X0*(C3-S2)
-    Eval(np,2 ) = S3 + X0*(C4-S3)
-    Eval(np,3 ) = S3 + X0*(C3-S3)
-    Eval(2 ,1 ) = S4 + X0*(C1-S4)
-    Eval(3 ,1 ) = S4 + X0*(C4-S4)
-
-    ! Calculate interior values
-    !---------------------------
-    Eval(2 ,2 ) = E1 + X0*(Eval(2 ,1 )-E1)
-    Eval(2 ,3 ) = E1 + X0*(Eval(2 ,np)-E1)
-    Eval(3 ,2 ) = E3 + X0*(Eval(3 ,1 )-E3)
-    Eval(3 ,3 ) = E3 + X0*(Eval(3 ,np)-E3)
-
-    ! End Routine
-    !------------
-    return
-  end subroutine fill_element
-
 end module prim_advance_mod

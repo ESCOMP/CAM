@@ -69,8 +69,8 @@ module physpkg
   integer ::  sgh30_idx          = 0
 
   integer ::  qini_idx           = 0
-  integer ::  cldliqini_idx      = 0
-  integer ::  cldiceini_idx      = 0
+  integer ::  liqini_idx         = 0
+  integer ::  iceini_idx         = 0
 
   integer ::  prec_str_idx       = 0
   integer ::  snow_str_idx       = 0
@@ -190,8 +190,8 @@ contains
 
     ! Fields for physics package diagnostics
     call pbuf_add_field('QINI',      'physpkg', dtype_r8, (/pcols,pver/), qini_idx)
-    call pbuf_add_field('CLDLIQINI', 'physpkg', dtype_r8, (/pcols,pver/), cldliqini_idx)
-    call pbuf_add_field('CLDICEINI', 'physpkg', dtype_r8, (/pcols,pver/), cldiceini_idx)
+    call pbuf_add_field('LIQINI', 'physpkg', dtype_r8, (/pcols,pver/), liqini_idx)
+    call pbuf_add_field('ICEINI', 'physpkg', dtype_r8, (/pcols,pver/), iceini_idx)
 
     ! check energy package
     call check_energy_register
@@ -1300,6 +1300,9 @@ contains
     use waccmx_phys_intr,   only: waccmx_phys_ion_elec_temp_tend ! WACCM-X
     use aoa_tracers,        only: aoa_tracers_timestep_tend
     use physconst,          only: rhoh2o
+    use physconst,          only: dry_air_species_num,thermodynamic_active_species_num
+    use physconst,          only: thermodynamic_active_species_liq_num,thermodynamic_active_species_liq_idx
+    use physconst,          only: thermodynamic_active_species_ice_num,thermodynamic_active_species_ice_idx
     use aero_model,         only: aero_model_drydep
     use check_energy,       only: check_energy_chng, calc_te_and_aam_budgets
     use check_energy,       only: check_tracers_data, check_tracers_init, check_tracers_chng
@@ -1429,12 +1432,11 @@ contains
     real(r8) obklen(pcols)             ! Obukhov length
     real(r8) :: fh2o(pcols)            ! h2o flux to balance source from methane chemistry
     real(r8) :: flx_heat(pcols)        ! Heat flux for check_energy_chng.
-    real(r8) :: tmp_q     (pcols,pver) ! tmp space
-    real(r8) :: tmp_cldliq(pcols,pver) ! tmp space
-    real(r8) :: tmp_cldice(pcols,pver) ! tmp space
     real(r8) :: tmp_trac  (pcols,pver,pcnst) ! tmp space
     real(r8) :: tmp_pdel  (pcols,pver) ! tmp space
     real(r8) :: tmp_ps    (pcols)      ! tmp space
+    real(r8) :: tot_water (pcols,pver,2)  ! total water (initial, present)
+    real(r8) :: tot_water_chg(pcols,pver) ! total water change
     logical  :: moist_mixing_ratio_dycore
 
     ! physics buffer fields for total energy and mass adjustment
@@ -1442,8 +1444,8 @@ contains
 
     real(r8), pointer, dimension(:,:) :: cld
     real(r8), pointer, dimension(:,:) :: qini
-    real(r8), pointer, dimension(:,:) :: cldliqini
-    real(r8), pointer, dimension(:,:) :: cldiceini
+    real(r8), pointer, dimension(:,:) :: liqini
+    real(r8), pointer, dimension(:,:) :: iceini
     real(r8), pointer, dimension(:,:) :: dtcore
     real(r8), pointer, dimension(:,:) :: ducore
     real(r8), pointer, dimension(:,:) :: dvcore
@@ -1508,8 +1510,8 @@ contains
     call pbuf_get_field(pbuf, dvcore_idx, dvcore, start=(/1,1,itim_old/), kount=(/pcols,pver,1/) )
 
     call pbuf_get_field(pbuf, qini_idx, qini)
-    call pbuf_get_field(pbuf, cldliqini_idx, cldliqini)
-    call pbuf_get_field(pbuf, cldiceini_idx, cldiceini)
+    call pbuf_get_field(pbuf, liqini_idx, liqini)
+    call pbuf_get_field(pbuf, iceini_idx, iceini)
 
     ifld = pbuf_get_index('CLD')
     call pbuf_get_field(pbuf, ifld, cld, start=(/1,1,itim_old/),kount=(/pcols,pver,1/))
@@ -2272,12 +2274,6 @@ contains
     ! FV: convert dry-type mixing ratios to moist here because physics_dme_adjust
     !     assumes moist. This is done in p_d_coupling for other dynamics. Bundy, Feb 2004.
     moist_mixing_ratio_dycore = dycore_is('LR').or. dycore_is('FV3')  
-    if (moist_mixing_ratio_dycore) call set_dry_to_wet(state)    ! Physics had dry, dynamics wants moist
-
-    ! Scale dry mass and energy (does nothing if dycore is EUL or SLD)
-    tmp_q     (:ncol,:pver) = state%q(:ncol,:pver,ixq)
-    tmp_cldliq(:ncol,:pver) = state%q(:ncol,:pver,ixcldliq)
-    tmp_cldice(:ncol,:pver) = state%q(:ncol,:pver,ixcldice)
 
     ! for dry mixing ratio dycore, physics_dme_adjust is called for energy diagnostic purposes only.  
     ! So, save off tracers
@@ -2291,8 +2287,26 @@ contains
 
       call set_dry_to_wet(state)
 
-
-      call physics_dme_adjust(state, tend, qini, ztodt)
+#ifdef ALL_WATER_IN_DP
+      !
+      ! initial total water
+      !
+      tot_water(:ncol,:pver,1) = qini(:ncol,:pver)+liqini(:ncol,:pver)+iceini(:ncol,:pver)
+      !
+      ! total water "now"
+      !
+      tot_water(:ncol,:pver,2) = 0.0_r8
+      do m_cnst=dry_air_species_num+1,thermodynamic_active_species_num
+        m = thermodynamic_active_species_idx(m_cnst)
+        tot_water(:ncol,:pver,2) = tot_water(:ncol,:pver,2)+state%q(:ncol,:pver,m)
+      end do
+      tot_water_chg(:ncol,:pver) = tot_water(:ncol,:pver,2) - tot_water(:ncol,:pver,1)
+#else
+      tot_water(:ncol,:pver,1)   = qini(:ncol,:pver)
+      tot_water(:ncol,:pver,2)   = state%q(:ncol,:pver,1)
+      tot_water_chg(:ncol,:pver) = tot_water(:ncol,:pver,2) - tot_water(:ncol,:pver,1)
+#endif
+      call physics_dme_adjust(state, tend, tot_water_chg, ztodt)
 
       call calc_te_and_aam_budgets(state, 'phAM')
       call calc_te_and_aam_budgets(state, 'dyAM',vc=vc_dycore)
@@ -2308,8 +2322,26 @@ contains
          call cam_snapshot_all_outfld_tphysac(cam_snapshot_before_num, state, tend, cam_in, cam_out, pbuf,&
                     fh2o, surfric, obklen, flx_heat, cmfmc, dlf, det_s, det_ice, net_flx)
       end if
-
-      call physics_dme_adjust(state, tend, qini, ztodt)
+#ifdef ALL_WATER_IN_DP
+      !
+      ! initial total water
+      !
+      tot_water(:ncol,:pver,1) = qini(:ncol,:pver)+liqini(:ncol,:pver)+iceini(:ncol,:pver)
+      !
+      ! total water "now"
+      !
+      tot_water(:ncol,:pver,2) = 0.0_r8
+      do m_cnst=dry_air_species_num+1,thermodynamic_active_species_num
+        m = thermodynamic_active_species_idx(m_cnst)
+        tot_water(:ncol,:pver,2) = tot_water(:ncol,:pver,2)+state%q(:ncol,:pver,m)
+      end do
+      tot_water_chg(:ncol,:pver) = tot_water(:ncol,:pver,2) - tot_water(:ncol,:pver,1)
+#else
+      tot_water(:ncol,:pver,1)   = qini(:ncol,:pver)
+      tot_water(:ncol,:pver,2)   = state%q(:ncol,:pver,1)
+      tot_water_chg(:ncol,:pver) = tot_water(:ncol,:pver,2) - tot_water(:ncol,:pver,1)
+#endif
+      call physics_dme_adjust(state, tend, tot_water_chg, ztodt)
 
       if (trim(cam_take_snapshot_after) == "physics_dme_adjust") then
          call cam_snapshot_all_outfld_tphysac(cam_snapshot_after_num, state, tend, cam_in, cam_out, pbuf,&
@@ -2345,8 +2377,7 @@ contains
        endif
     endif
 
-    call diag_phys_tend_writeout (state, pbuf,  tend, ztodt, tmp_q, tmp_cldliq, tmp_cldice, &
-         qini, cldliqini, cldiceini)
+    call diag_phys_tend_writeout (state, pbuf,  tend, ztodt, qini, liqini, iceini)
 
     call clybry_fam_set( ncol, lchnk, map2chm, state%q, pbuf )
 
@@ -2453,8 +2484,8 @@ contains
     ! physics buffer fields for total energy and mass adjustment
     real(r8), pointer, dimension(:  ) :: teout
     real(r8), pointer, dimension(:,:) :: qini
-    real(r8), pointer, dimension(:,:) :: cldliqini
-    real(r8), pointer, dimension(:,:) :: cldiceini
+    real(r8), pointer, dimension(:,:) :: liqini
+    real(r8), pointer, dimension(:,:) :: iceini
     real(r8), pointer, dimension(:,:) :: dtcore
     real(r8), pointer, dimension(:,:) :: ducore
     real(r8), pointer, dimension(:,:) :: dvcore
@@ -2516,8 +2547,8 @@ contains
     call pbuf_get_field(pbuf, teout_idx, teout, (/1,itim_old/), (/pcols,1/))
 
     call pbuf_get_field(pbuf, qini_idx, qini)
-    call pbuf_get_field(pbuf, cldliqini_idx, cldliqini)
-    call pbuf_get_field(pbuf, cldiceini_idx, cldiceini)
+    call pbuf_get_field(pbuf, liqini_idx, liqini)
+    call pbuf_get_field(pbuf, iceini_idx, iceini)
 
     call pbuf_get_field(pbuf, dtcore_idx, dtcore, start=(/1,1,itim_old/), kount=(/pcols,pver,1/) )
     call pbuf_get_field(pbuf, ducore_idx, ducore, start=(/1,1,itim_old/), kount=(/pcols,pver,1/) )
@@ -2578,12 +2609,29 @@ contains
     ! Save state for convective tendency calculations.
     call diag_conv_tend_ini(state, pbuf)
 
+#ifdef ALL_WATER_IN_DP
     call cnst_get_ind('Q', ixq)
     call cnst_get_ind('CLDLIQ', ixcldliq)
     call cnst_get_ind('CLDICE', ixcldice)
-    qini     (:ncol,:pver) = state%q(:ncol,:pver,     ixq)
-    cldliqini(:ncol,:pver) = state%q(:ncol,:pver,ixcldliq)
-    cldiceini(:ncol,:pver) = state%q(:ncol,:pver,ixcldice)
+    qini     (:ncol,:pver) = state%q(:ncol,:pver,       1)
+    liqini(:ncol,:pver) = 0.0_r8
+    do m_cnst=1,thermodynamic_active_species_liq_num
+      m = thermodynamic_active_species_liq_idx(m_cnst)
+      liqini(:ncol,:pver) = liqini(:ncol,:pver)+state%q(:ncol,:pver,m)
+    end do
+    iceini(:ncol,:pver) = 0.0_r8
+    do m_cnst=1,thermodynamic_active_species_ice_num
+      m = thermodynamic_active_species_ice_idx(m_cnst)
+      iceini(:ncol,:pver) = iceini(:ncol,:pver)+state%q(:ncol,:pver,m)
+    end do
+#else
+    call cnst_get_ind('Q', ixq)
+    call cnst_get_ind('CLDLIQ', ixcldliq)
+    call cnst_get_ind('CLDICE', ixcldice)
+    qini     (:ncol,:pver) = state%q(:ncol,:pver,       1)
+    liqini(:ncol,:pver) = state%q(:ncol,:pver,ixcldliq)
+    iceini(:ncol,:pver) = state%q(:ncol,:pver,ixcldice)
+#endif
 
     call outfld('TEOUT', teout       , pcols, lchnk   )
     call outfld('TEINP', state%te_ini(:,dyn_te_idx), pcols, lchnk   )
