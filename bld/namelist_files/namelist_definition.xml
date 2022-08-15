@@ -4606,6 +4606,13 @@ Electric potential model used in the waccmx ionosphere.
 Default: set by build-namelist
 </entry>
 
+<entry id="ionos_debug_hist" type="logical"  category="waccmx"
+       group="ionosphere_nl" valid_values="">
+Switch to add history fields to master field list for the purpose
+of debugging ionospheric processes in WACCMX.
+Default: FALSE
+</entry>
+
 <entry id="epot_crit_colats" type="real*2"  category="waccmx"
        group="ionosphere_nl" valid_values="">
 Co-latitudes (degrees) of the critical angles where the ionosphere
