@@ -984,7 +984,6 @@ subroutine dyn_init(dyn_in, dyn_out)
           call budget_info(m,name=budget_name,longname=budget_longname,pkgtype=budget_pkgtype)
 
           if (trim(budget_pkgtype)=='dyn') then
-             write(iulog,*)'adding field:',trim(budget_name),' index=',m,' tot=',budget_num
              call addfld(trim(budget_name),  horiz_only,  'A', 'W/m2', trim(budget_longname))
           endif
        end if
@@ -1227,48 +1226,6 @@ subroutine dyn_run(dyn_state)
    tmptot=0._r8
    tmpse=0._r8
    tmpke=0._r8
-!!$   do i=1,budget_num
-!!$      call budget_info(i,name=budget_name,pkgtype=budget_pkgtype,optype=budget_optype,state_ind=budget_state_ind)
-!!$      if (budget_pkgtype=='dyn') then
-!!$         do ie=nets,nete
-!!$            if (budget_optype=='stg') then
-!!$               write(iulog,*)'outfld stage (already set in state) for ',budget_name
-!!$               tmp(:,:,ie)=dyn_state%elem(ie)%derived%budget(:,:,1,budget_state_ind)
-!!$            else
-!!$               call budget_info(i,istage1=is1, istage2=is2,istage1b=is1b,istage2b=is2b)
-!!$               write(iulog,*)'calc budgets name:',budget_name,' optype:',budget_optype,' pkgtype:',budget_pkgtype,' cnt:',dyn_state%elem(ie)%derived%budget_cnt(budget_state_ind),'is1/is2/is1b/is2b:',is1,is2,is1b,is2b
-!!$               if (dyn_state%elem(ie)%derived%budget_cnt(is1)==0.or.dyn_state%elem(ie)%derived%budget_cnt(is2)==0) then
-!!$                  write(iulog,*)'budget_cnt is 0 set tmp to zero, cnt(is1b),cnt(is2b) ',budget_name,dyn_state%elem(ie)%derived%budget_cnt(is1),dyn_state%elem(ie)%derived%budget_cnt(is2)
-!!$                  tmp(:,:,ie)=0._r8
-!!$               else          
-!!$                  write(iulog,*)'preincrement cnt for: ',budget_name,' cnt:',dyn_state%elem(ie)%derived%budget_cnt(budget_state_ind),' i:',i
-!!$                  dyn_state%elem(ie)%derived%budget_cnt(budget_state_ind)=dyn_state%elem(ie)%derived%budget_cnt(budget_state_ind)+1
-!!$                  write(iulog,*)'incrementing cnt for: ',budget_name,' cnt:',budget_cnt(i),' i:',i
-!!$                  !               tmp(:,:,ie)=(elem(ie)%derived%budget(:,:,1,is1)-elem(ie)%derived%budget(:,:,1,is2))/budget_cnt(is1)/dtime
-!!$!                  tmp1(:,:,ie)=dyn_state%elem(ie)%derived%budget(:,:,1,is1)/budget_count(is1b)
-!!$!                  tmp2(:,:,ie)=dyn_state%elem(ie)%derived%budget(:,:,1,is2)/budget_count(is2b)
-!!$                  tmp1(:,:,ie)=dyn_state%elem(ie)%derived%budget(:,:,1,is1)
-!!$                  tmp2(:,:,ie)=dyn_state%elem(ie)%derived%budget(:,:,1,is2)
-!!$                  if (budget_optype=='dif') then
-!!$                     write(iulog,*)'set difference for is1,is2,dyn_state_ind',is1,is2,budget_state_ind
-!!$                     tmp(:,:,ie)=(tmp1(:,:,ie)-tmp2(:,:,ie))
-!!$!jt                     tmp(:,:,ie)=(dyn_state%elem(ie)%derived%budget(:,:,1,is1)-dyn_state%elem(ie)%derived%budget(:,:,1,is2))/1/dtime
-!!$                  else if (budget_optype=='sum') then
-!!$                     write(iulog,*)'set sum for is1,is2,dyn_state_ind',is1,is2,budget_state_ind
-!!$!jt                     tmp(:,:,ie)=(dyn_state%elem(ie)%derived%budget(:,:,1,is1)+dyn_state%elem(ie)%derived%budget(:,:,1,is2))/1/dtime
-!!$                     tmp(:,:,ie)=(tmp1(:,:,ie)+tmp2(:,:,ie))
-!!$                  else
-!!$                     call endrun('dyn_readnl: ERROR: budget_optype unknown:'//budget_optype)
-!!$                  end if
-!!$                  dyn_state%elem(ie)%derived%budget(:,:,1,budget_state_ind)=tmp(:,:,ie)
-!!$               end if
-!!$            end if
-!!$
-!!$!jt            if (ie==nets) write(iulog,*)'calling outfld for name,pkgtype,budget_idx,tot=',budget_name,budget_pkgtype,budget_optype,i,budget_num
-!!$!jt            if (budget_outfld(i)) call outfld(trim(budget_name),RESHAPE(tmp(:,:,ie),(/npsq/)),npsq,ie)
-!!$         end do
-!!$      end if
-!!$   end do
 
    ! output budget globals
 
@@ -1277,7 +1234,6 @@ subroutine dyn_run(dyn_state)
          call budget_info(i,name=budget_name,pkgtype=budget_pkgtype,optype=budget_optype,state_ind=budget_state_ind)
          if (budget_pkgtype=='dyn') then
             ! Normalize energy sums and convert to W/s
-            write(iulog,*)budget_name,'norm cnt=',dyn_state%elem(nets)%derived%budget_cnt(budget_state_ind),'sub=',dyn_state%elem(nets)%derived%budget_subcycle(budget_state_ind)
             do ie=nets,nete
                tmp(:,:,ie)=dyn_state%elem(ie)%derived%budget(:,:,1,budget_state_ind)/dyn_state%elem(ie)%derived%budget_cnt(budget_state_ind)/dtime
                if (dyn_state%elem(nets)%derived%budget_subcycle(budget_state_ind).ne.0) then
@@ -1295,16 +1251,11 @@ subroutine dyn_run(dyn_state)
             global_ave = global_integral(dyn_state%elem, tmp(:,:,nets:nete),hybrid,np,nets,nete)
             write(iulog,*)budget_name,' global average normalized cnt dtime=',global_ave,'cnt=',dyn_state%elem(nets)%derived%budget_cnt(budget_state_ind),'sub=',dyn_state%elem(nets)%derived%budget_subcycle(budget_state_ind)
             global_ave = global_integral(dyn_state%elem, tmp1(:,:,nets:nete),hybrid,np,nets,nete)
-            write(iulog,*)budget_name,' global average se normalized cnt dtime=',global_ave,'state_ind=',budget_state_ind,'tot budget num=',i
             global_ave = global_integral(dyn_state%elem, tmp2(:,:,nets:nete),hybrid,np,nets,nete)
-            write(iulog,*)budget_name,' global average ke normalized cnt dtime=',global_ave,'state_ind=',budget_state_ind,'tot budget num=',i
             if (dyn_state%elem(nets)%derived%budget_subcycle(budget_state_ind).ne.0) then
                global_ave = global_integral(dyn_state%elem, tmptot(:,:,nets:nete),hybrid,np,nets,nete)
-               write(iulog,*)budget_name,' global average se+ke sums=',global_ave
                global_ave = global_integral(dyn_state%elem, tmpse(:,:,nets:nete),hybrid,np,nets,nete)
-               write(iulog,*)budget_name,' global average se sums=',global_ave
                global_ave = global_integral(dyn_state%elem, tmpke(:,:,nets:nete),hybrid,np,nets,nete)
-               write(iulog,*)budget_name,' global average ke sums=',global_ave
             end if
             ! reset dyn budget states
             ! reset budget counts - stage or diff budget will just be i. If difference must reset components of diff
@@ -1312,15 +1263,6 @@ subroutine dyn_run(dyn_state)
                dyn_state%elem(ie)%derived%budget(:,:,:,budget_state_ind)=0._r8
                dyn_state%elem(ie)%derived%budget_cnt(budget_state_ind)=0
             end do
-!!$            if (budget_optype=='dif' .or. budget_optype=='sum') then
-!!$               call budget_info(i,istage1=is1, istage2=is2)
-!!$               do ie=nets,nete
-!!$                  if (ie==nets) write(iulog,*)'count for is1=',is1,' =',dyn_state%elem(ie)%derived%budget_cnt(is1),' is2=',is2,' =',dyn_state%elem(ie)%derived%budget_cnt(is2)
-!!$                  dyn_state%elem(ie)%derived%budget_cnt(is1)=0
-!!$                  dyn_state%elem(ie)%derived%budget_cnt(is2)=0
-!!$                  if (ie==nets) write(iulog,*)'reset count for is1=',is1,' =',dyn_state%elem(ie)%derived%budget_cnt(is1),' is2=',is2,' =',dyn_state%elem(ie)%derived%budget_cnt(is2)
-!!$               end do
-!!$            end if
          end if
       end do
    end if

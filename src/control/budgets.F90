@@ -158,86 +158,10 @@ subroutine budget_stage_add (name, pkgtype, longname, outfld)
    budget_optype(budget_num)='stg'
    budget_pkgtype(budget_num)=pkgtype
    budget_state_ind(budget_num)=state_idx
-   write(iulog,*)'inside budget_stage_add/name/type/op/state_idx/phyidx/dynidx/tot',trim(name),pkgtype,budget_optype(budget_num),budget_state_ind(budget_num),budget_num_phy,budget_num_dyn,budget_num
 end subroutine budget_stage_add
 
 !!$!==============================================================================
-!!$subroutine budget_diff_add (name, istage1, istage2, pkgtype, optype, longname, outfld, state_ind)
-!!$
-!!$   ! Register a budget.
-!!$
-!!$   character(len=*), intent(in) :: &
-!!$      name      ! budget name used as variable name in history file output (8 char max)
-!!$
-!!$   integer, intent(in)   :: istage1,istage2    ! global budget stage index (in te_budgets array)
-!!$
-!!$   character(len=*), intent(in) :: &
-!!$      pkgtype    ! budget type either phy or dyn
-!!$
-!!$   character(len=*), intent(in) :: &
-!!$      optype    !  dif (difference) or sum or stg (stage)
-!!$
-!!$   character(len=*), intent(in), optional :: &
-!!$      longname    ! value for long_name attribute in netcdf output (128 char max, defaults to name)
-!!$
-!!$   logical,          intent(in), optional :: &
-!!$      outfld  ! true => default CAM output of budget in kg/kg
-!!$
-!!$   integer,          intent(out), optional :: &
-!!$      state_ind     ! pass back dynamics/physics index for this budget
-!!$
-!!$   character(len=*), parameter :: sub='budget_diff_add'
-!!$   character(len=128) :: errmsg
-!!$   integer            :: state_idx
-!!$   !-----------------------------------------------------------------------
-!!$   ! set budget index and check validity
-!!$   if (pkgtype=='phy') then
-!!$      budget_num_phy=budget_num_phy+1
-!!$      state_idx = budget_num_phy
-!!$!jt      write(iulog,*)'adding physics budget idx',name,' ',budget_num_phy
-!!$   else if (pkgtype=='dyn') then
-!!$      budget_num_dyn=budget_num_dyn+1
-!!$      state_idx = budget_num_dyn
-!!$!jt      write(iulog,*)'adding dynamics budget idx',name,' ',budget_num_dyn
-!!$   else
-!!$      call endrun('bad budget pkgtype')
-!!$   end if
-!!$   budget_num= budget_num+1
-!!$   budget_pkgtype(budget_num)=pkgtype
-!!$   if (budget_num > budget_array_max) then
-!!$      write(errmsg, *) sub//': FATAL: budget diff index:',budget_num,' greater than budget_array_max=', budget_array_max
-!!$      call endrun(errmsg)
-!!$   end if
-!!$
-!!$   ! set budget name and constants
-!!$   budget_name(budget_num) = name
-!!$   if (present(longname)) then
-!!$      budget_longname(budget_num) = longname
-!!$   else
-!!$      budget_longname(budget_num) = name
-!!$   end if
-!!$
-!!$   budget_stg1index(budget_num) = istage1
-!!$   budget_stg2index(budget_num) = istage2
-!!$   budget_stg1name(budget_num) = budget_name_byind(istage1)
-!!$   budget_stg2name(budget_num) = budget_name_byind(istage2)
-!!$
-!!$   ! set outfld type 
-!!$   ! (false: the module declaring the budget is responsible for outfld calls)
-!!$   if (present(outfld)) then
-!!$      budget_out(budget_num) = outfld
-!!$   else
-!!$      budget_out(budget_num) = .false.
-!!$   end if
-!!$
-!!$   budget_optype(budget_num)=optype
-!!$
-!!$   budget_state_ind(budget_num)=state_idx
-!!$   if (present(state_ind)) state_ind=state_idx
-!!$
-!!$!jt   write(iulog,*)'inside budget_diff_add/name/type/op/is1/is2/phyidx/dynidx/tot',trim(name),pkgtype,budget_optype(budget_num),istage1,istage2,budget_num_phy,budget_num_dyn,budget_num
-!!$ end subroutine budget_diff_add
-!!$!==============================================================================
+
 subroutine budget_diff_add (name, stg1name, stg2name, pkgtype, optype, longname, outfld)
 
    ! Register a budget.
@@ -265,11 +189,9 @@ subroutine budget_diff_add (name, stg1name, stg2name, pkgtype, optype, longname,
    if (pkgtype=='phy') then
       budget_num_phy=budget_num_phy+1
       state_idx = budget_num_phy
-!jt      write(iulog,*)'adding physics budget idx',name,' ',budget_num_phy
    else if (pkgtype=='dyn') then
       budget_num_dyn=budget_num_dyn+1
       state_idx = budget_num_dyn
-!jt      write(iulog,*)'adding dynamics budget idx',name,' ',budget_num_dyn
    else
       call endrun('bad budget pkgtype')
    end if
@@ -306,7 +228,6 @@ subroutine budget_diff_add (name, stg1name, stg2name, pkgtype, optype, longname,
    budget_optype(budget_num)=optype
    budget_state_ind(budget_num)=state_idx
 
-   write(iulog,*)'inside budget_diff_add/name/type/op/is1/is2/is1b/is2b/phyidx/dynidx/tot',trim(name),pkgtype,budget_optype(budget_num),budget_stg1stateidx(budget_num),budget_stg2stateidx(budget_num),budget_stg1index(budget_num),budget_stg2index(budget_num),budget_num_phy,budget_num_dyn,budget_num
  end subroutine budget_diff_add
 !==============================================================================
 
@@ -371,7 +292,6 @@ subroutine budget_info_byname(name, budget_ind, longname, stg1name, stg1stateidx
    character(len=128) :: errmsg
    integer :: b_ind
    !-----------------------------------------------------------------------
-!jt   write(6,*)'calling budget_get_ind with name',trim(name)
    b_ind=budget_ind_byname(trim(name))
    if (b_ind > 0 .and. b_ind <= budget_array_max) then
       if (present(budget_ind)) budget_ind=b_ind
@@ -423,7 +343,6 @@ subroutine budget_info_byname(name, budget_ind, longname, stg1name, stg1stateidx
    character(len=*), parameter :: sub='budget_info_byind'
    character(len=128) :: errmsg
    !-----------------------------------------------------------------------
-   write(iulog,*)'budget_info_byind b_ind,name,pkg,opt,state_ind,s1n,s1s,s1b,s2n,s2s,s2b=',budget_ind,trim(budget_name(budget_ind)),budget_pkgtype(budget_ind),budget_optype(budget_ind),budget_state_ind(budget_ind),trim(budget_stg1name(budget_ind)),trim(budget_stg2name(budget_ind))
    if (budget_ind > 0 .and. budget_ind <= budget_array_max) then
       if (present(name)) name=budget_name(budget_ind)
       if (present(longname)) longname=budget_longname(budget_ind)
@@ -628,12 +547,6 @@ subroutine budget_chk_dim
    character(len=*), parameter :: sub='budget_chk_dim'
    character(len=128) :: errmsg
    !-----------------------------------------------------------------------
-
-   ! if (budget_num /= budget_array_max) then
-   !    write(errmsg, *) sub//': FATAL: number of added budgets (',budget_num, &
-   !                     ') not equal to budget_array_max (', budget_array_max, ')'
-   !    call endrun (errmsg)
-   ! endif
 
    if (masterproc) then
       write(iulog,*) 'Budgets  list:'

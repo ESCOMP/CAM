@@ -1503,7 +1503,6 @@ contains
     character(len=16) :: name_out1,name_out2,name_out3,name_out4,name_out5,name_out6
 
     !-----------------------------------------------------------------------
-    write(iulog,*)'calc_tot outfld_name_suffix=',trim(outfld_name_suffix)
     name_out1 = 'SE_'   //trim(outfld_name_suffix)
     name_out2 = 'KE_'   //trim(outfld_name_suffix)
     name_out3 = 'WV_'   //trim(outfld_name_suffix)
@@ -1556,7 +1555,6 @@ contains
         call budget_info(trim(outfld_name_suffix),budget_ind=budget_ind,state_ind=state_ind)
         ! reset all when cnt is 0
         if (elem(ie)%derived%budget_cnt(state_ind) == 0) then
-!jt           write(iulog,*)'zeroing out derived budget for ',trim(outfld_name_suffix)
            elem(ie)%derived%budget_subcycle(state_ind) = 0
            elem(ie)%derived%budget(:,:,:,state_ind)=0.0_r8
         end if
@@ -1566,18 +1564,14 @@ contains
               if (elem(ie)%derived%budget_subcycle(state_ind) == 1) then
                  elem(ie)%derived%budget_cnt(state_ind) = elem(ie)%derived%budget_cnt(state_ind) + 1
               end if
-!jt              if (ie==nets) write(iulog,*)'cnt and new subcycle after adding 1 ',elem(ie)%derived%budget_cnt(state_ind),elem(ie)%derived%budget_subcycle(state_ind),' for ',trim(outfld_name_suffix),' iam=',iam
            else
               elem(ie)%derived%budget_cnt(state_ind) = elem(ie)%derived%budget_cnt(state_ind) + 1
               elem(ie)%derived%budget_subcycle(state_ind) = 1
-!jt              if (ie==nets) write(iulog,*)'subcycle false new cnt after adding 1 ',elem(ie)%derived%budget_cnt(state_ind),elem(ie)%derived%budget_subcycle(state_ind),' for ',trim(outfld_name_suffix),' iam=',iam
            end if
         else
            elem(ie)%derived%budget_cnt(state_ind) = elem(ie)%derived%budget_cnt(state_ind) + 1
            elem(ie)%derived%budget_subcycle(state_ind) = 1
-!jt              if (ie==nets) write(iulog,*)'no subcycle new cnt after adding 1 ',elem(ie)%derived%budget_cnt(state_ind),elem(ie)%derived%budget_subcycle(state_ind),' for ',trim(outfld_name_suffix),' iam=',iam
         end if
-!jt        if (ie==nets) write(iulog,*)'adding se ke to derived budget for ',trim(outfld_name_suffix),' iam=',iam
         do j=1,np
           do i = 1, np
             elem(ie)%derived%budget(i,j,1,state_ind) = elem(ie)%derived%budget(i,j,1,state_ind) + (se(i+(j-1)*np) + ke(i+(j-1)*np))
@@ -1786,7 +1780,6 @@ contains
     real(r8), allocatable, dimension(:,:,:,:) :: tmp,tmp1,tmp2
    character(len=3)   :: budget_pkgtype,budget_optype  ! budget type phy or dyn
     !-----------------------------------------------------------------------
-    write(iulog,*)'calc_tot diff outfld_name_suffix=',trim(outfld_name_suffix)
     name_out1 = 'SE_'   //trim(outfld_name_suffix)
     name_out2 = 'KE_'   //trim(outfld_name_suffix)
     name_out3 = 'WV_'   //trim(outfld_name_suffix)
@@ -1806,7 +1799,6 @@ contains
        b_ind=budget_ind_byname(trim(outfld_name_suffix))
        call budget_info(b_ind,stg1stateidx=is1, stg2stateidx=is2, optype=budget_optype, pkgtype=budget_pkgtype,state_ind=s_ind)
        do ie=nets,nete
-!jt          write(iulog,*)'calc budgets name:',trim(outfld_name_suffix),' optype:',budget_optype,' pkgtype:',budget_pkgtype,' cnt:',elem(ie)%derived%budget_cnt(s_ind),'is1/is2:',is1,is2
           ! advance budget_cnt 
           if (present(subcycle)) then
              if (subcycle) then
@@ -1828,17 +1820,14 @@ contains
              elem(ie)%derived%budget_subcycle(s_ind) = 1
           end if
           if (elem(ie)%derived%budget_cnt(is1)==0.or.elem(ie)%derived%budget_cnt(is2)==0) then
-!jt             write(iulog,*)'budget_cnt is 0 set tmp to zero, cnt(is1b),cnt(is2b) ',trim(outfld_name_suffix),elem(ie)%derived%budget_cnt(is1),elem(ie)%derived%budget_cnt(is2)
              tmp(:,:,:,ie)=0._r8
           else          
              tmp1(:,:,:,ie)=elem(ie)%derived%budget(:,:,:,is1)
              tmp2(:,:,:,ie)=elem(ie)%derived%budget(:,:,:,is2)
           end if
           if (budget_optype=='dif') then
-!jt             write(iulog,*)'set difference for is1,is2,dyn_state_ind',is1,is2,s_ind
              tmp(:,:,:,ie)=(tmp1(:,:,:,ie)-tmp2(:,:,:,ie))
           else if (budget_optype=='sum') then
-!jt             write(iulog,*)'set sum for is1,is2,dyn_state_ind',is1,is2,s_ind
              tmp(:,:,:,ie)=(tmp1(:,:,:,ie)+tmp2(:,:,:,ie))
           else
              call endrun('dyn_readnl: ERROR: budget_optype unknown:'//budget_optype)

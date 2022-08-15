@@ -217,9 +217,7 @@ end subroutine check_energy_get_integrals
     do m=1,budget_num
        if (budget_outfld(m)) then
           call budget_info(m,name=budget_name,longname=budget_longname,pkgtype=budget_pkgtype)
-!jt          write(iulog,*)'looking at field:',trim(budget_name),' index=',m,' tot=',budget_num,' pkgtype=',budget_pkgtype
           if (trim(budget_pkgtype)=='phy') then
-!jt             write(iulog,*)'adding field:',trim(budget_name),' index=',m,' tot=',budget_num
              call addfld(trim(budget_name),  horiz_only,  'A', 'W/m2', trim(budget_longname))
           endif
        end if
@@ -619,11 +617,9 @@ end subroutine check_energy_get_integrals
 !-----------------------------------------------------------------------
     if (.not.allocated (te)) then
        allocate( te(pcols,begchunk:endchunk,budget_num_phy))
-!jt       write(iulog,*)'shape te=',shape(te),budget_num_phy
     end if
     if (.not.allocated (te_glob)) then
        allocate( te_glob(budget_num_phy))
-!jt       write(iulog,*)'shape te_glob=',shape(te_glob)
     else
        write(iulog,*)'no alloc call shape te_glob=',shape(te_glob)
     end if
@@ -645,7 +641,6 @@ end subroutine check_energy_get_integrals
                 if (state(lchnk)%budget_cnt(is1b)==0.or.state(lchnk)%budget_cnt(is2b)==0) then
                    te(:,lchnk,i)=0._r8
                 else          
-                   write(iulog,*)'calculating budget differences for ',budget_name,' ',budget_pkgtype,' ',budget_optype,' te i=',i,' of ',budget_num_phy,' state_ind=',i,' budget_cnt(is1b)=',state(lchnk)%budget_cnt(is1b),' dtime=',dtime,' is1b/is2b=',is1b,'/',is2b
                    te(:,lchnk,i) = (state(lchnk)%te_budgets(:,1,is1)-state(lchnk)%te_budgets(:,1,is2))/state(lchnk)%budget_cnt(is1b)/dtime
                 end if
              else if (budget_optype=='sum') then
@@ -657,14 +652,11 @@ end subroutine check_energy_get_integrals
                 if (state(lchnk)%budget_cnt(is1b)==0.or.state(lchnk)%budget_cnt(is2b)==0) then
                    te(:,lchnk,i)=0._r8
                 else          
-                   write(iulog,*)'calculating budget sums for ',budget_name,' ',budget_pkgtype,' ',budget_optype,' te i=',i,' of ',budget_num_phy,' state_ind=',i,' budget_cnt(is1b)=',state(lchnk)%budget_cnt(is1b),' dtime=',dtime,' is1b/is2b=',is1b,'/',is2b
                    te(:,lchnk,i) = (state(lchnk)%te_budgets(:,1,is1)+state(lchnk)%te_budgets(:,1,is2))/state(lchnk)%budget_cnt(is1b)/dtime
                 end if
              else
-                   write(iulog,*)'setting te for stage ',budget_name,' ',budget_pkgtype,' ',budget_optype,' te i=',i,' of ',budget_num_phy,' state_ind=',i,' dtime=',dtime
                 te(:,lchnk,i)=state(lchnk)%te_budgets(:,1,i)
              end if
-!jt             if (lchnk==begchunk) write(iulog,*)'calling outfld for lchnk,name,pkgtype,budget_idx,tot=',lchnk,budget_name,budget_pkgtype,budget_optype,i,budget_num
              if (budget_outfld(i).and.budget_pkgtype=='phy') call outfld(trim(budget_name), te(:ncol,lchnk,i), pcols, lchnk)
           end if
        end do
@@ -676,12 +668,9 @@ end subroutine check_energy_get_integrals
     do ii=1,budget_num
        call budget_info(ii,name=budget_name,pkgtype=budget_pkgtype,optype=budget_optype,state_ind=i)
        if (budget_pkgtype=='phy') then
-          write(iulog,*)'global tot for ',budget_name,':',te_glob(i),'b4budget_cnt_incr',state(begchunk)%budget_cnt(ii)
-!jt          call budget_cnt_adjust(ii,reset=.true.)
           do lchnk = begchunk, endchunk
              state(lchnk)%budget_cnt(ii)=0
           end do
-          write(iulog,*)'afbudget_cnt_incr',state(begchunk)%budget_cnt(ii)
        end if
     end do
 
@@ -1076,8 +1065,6 @@ end subroutine check_energy_get_integrals
       state%te_budgets(1:ncol,6,ind)=ice(1:ncol)
       state%te_budgets(1:ncol,7,ind)=tt(1:ncol)
       state%budget_cnt(ind)=state%budget_cnt(ind)+1
-!jt      call budget_cnt_adjust(budget_ind)
-      write(iulog,*)'incr count for ',outfld_name_suffix,' count=',state%budget_cnt(ind)
       ! Output energy diagnostics
 
       call outfld(name_out1  ,se      , pcols   ,lchnk   )
