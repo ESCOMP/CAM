@@ -13,8 +13,7 @@ use spmd_utils,     only: iam
 use dyn_grid,       only: TimeLevel, edgebuf
 use dyn_comp,       only: dyn_export_t, dyn_import_t
 
-!short term hack use physics_types,  only: physics_state, physics_tend, physics_cnst_limit
-use physics_types,  only: physics_state, physics_tend!short term hack
+use physics_types,  only: physics_state, physics_tend, physics_cnst_limit
 use phys_grid,      only: get_ncols_p
 use phys_grid,      only: get_dyn_col_p, columns_on_task, get_chunk_info_p
 use physics_buffer, only: physics_buffer_desc, pbuf_get_chunk, pbuf_get_field
@@ -671,7 +670,7 @@ subroutine derived_phys_dry(phys_state, phys_tend, pbuf2d)
         !------------------------------------------------------------
         ! Apply limiters to mixing ratios of major species
         !------------------------------------------------------------
-!short term hack        call physics_cnst_limit( phys_state(lchnk) )
+        call physics_cnst_limit( phys_state(lchnk) )
         !-----------------------------------------------------------------------------
         ! Call physconst_update to compute cpairv, rairv, mbarv, and cappav as
         ! constituent dependent variables.
