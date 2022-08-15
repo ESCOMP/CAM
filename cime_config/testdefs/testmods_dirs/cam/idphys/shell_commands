@@ -2,4 +2,4 @@
 ./xmlchange GLC_NCPL=\$ATM_NCPL
 ./xmlchange MAX_MPITASKS_PER_NODE="24"
 ./xmlchange CAM_NML_USE_CASE=UNSET
-./xmlchange RUN_STARTDATE="00000101"
+./xmlchange RUN_STARTDATE="00010101"
