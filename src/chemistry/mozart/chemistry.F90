@@ -19,6 +19,7 @@ module chemistry
   use tracer_data,      only : MAXTRCRS
   use gcr_ionization,   only : gcr_ionization_readnl, gcr_ionization_init, gcr_ionization_adv
   use epp_ionization,   only : epp_ionization_readnl, epp_ionization_adv
+  use mee_ionization,   only : mee_ion_readnl
   use mo_apex,          only : mo_apex_readnl
   use ref_pres,         only : ptop_ref
   use phys_control,     only : waccmx_is   ! WACCM-X switch query function
@@ -614,6 +615,7 @@ end function chem_is
    call gas_wetdep_readnl(nlfile)
    call gcr_ionization_readnl(nlfile)
    call epp_ionization_readnl(nlfile)
+   call mee_ion_readnl(nlfile)
    call mo_apex_readnl(nlfile)
    call noy_ubc_readnl(nlfile)
    call sulf_readnl(nlfile)
@@ -1082,6 +1084,7 @@ end function chem_is_active
     use cfc11star,         only : update_cfc11star
     use physics_buffer,    only : physics_buffer_desc
     use ocean_emis,        only : ocean_emis_advance
+    use mee_fluxes,        only : mee_fluxes_adv
 
     implicit none
 
@@ -1158,6 +1161,9 @@ end function chem_is_active
     ! Galatic Cosmic Rays ...
     call gcr_ionization_adv( pbuf2d, phys_state )
     call epp_ionization_adv()
+
+    ! medium energy electron flux data ...
+    call mee_fluxes_adv()
 
     call ocean_emis_advance( pbuf2d, phys_state )
 
@@ -1374,7 +1380,9 @@ end function chem_is_active
 
 !-------------------------------------------------------------------
 !-------------------------------------------------------------------
-  subroutine chem_final
+  subroutine chem_final()
+    use mee_ionization, only: mee_ion_final
+    call mee_ion_final()
   end subroutine chem_final
 
 !-------------------------------------------------------------------

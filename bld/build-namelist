@@ -2856,6 +2856,15 @@ $epp_gcr_file =~ s/['"]//g; # strip quotes "'
 $epp_mee_file =~ s/['"]//g; # strip quotes "'
 $gcr_ion_file =~ s/['"]//g; # strip quotes "'
 
+if ($nl->get_value('mee_ion_inline') =~ m/$TRUE/io) {
+  if ((defined $epp_mee_file) and ($epp_mee_file ne 'NONE') and
+      ($nl->get_value('mee_ion_diagonly') !~ m/$TRUE/io)) {
+    die "Cannot specify both epp_mee_filepath and mee_ion_inline without mee_ion_diagonly set to .true.\n";
+  }
+  # Set default bounce cone loss angle.
+  add_default($nl, 'mee_ion_blc');
+}
+
 if ($gcr_ion_file and $gcr_ion_file ne 'NONE') {
     if (($epp_all_file and $epp_all_file ne 'NONE') or ($epp_gcr_file and $epp_gcr_file ne 'NONE')) {
         die "CAM Namelist ERROR: Conflicting GCR inputs specified.  Variable gcr_ionization_filename".
