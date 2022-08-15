@@ -88,6 +88,8 @@ module physpkg
   integer ::  dlfzm_idx          = 0     ! detrained convective cloud water mixing ratio.
   integer ::  ducore_idx         = 0     ! ducore index in physics buffer
   integer ::  dvcore_idx         = 0     ! dvcore index in physics buffer
+  integer ::  dtcore_idx         = 0     ! dtcore index in physics buffer
+  integer ::  dqcore_idx         = 0     ! dqcore index in physics buffer
 
 !=======================================================================
 contains
@@ -1067,6 +1069,8 @@ contains
 
     ducore_idx = pbuf_get_index('DUCORE')
     dvcore_idx = pbuf_get_index('DVCORE')
+    dtcore_idx = pbuf_get_index('DTCORE')
+    dqcore_idx = pbuf_get_index('DQCORE')
 
 !!$    ! addfld calls for budget stages and diffs
 !!$    do i=1,budget_num
@@ -1451,6 +1455,8 @@ contains
     integer i,k,m                 ! Longitude, level indices
     integer :: m_cnst                  ! tracer index
     integer :: yr, mon, day, tod       ! components of a date
+    integer :: ixcldice, ixcldliq      ! constituent indices for cloud liquid and ice water.
+    integer :: ixq
 
     logical :: labort                            ! abort flag
 
@@ -1475,6 +1481,7 @@ contains
     real(r8), pointer, dimension(:,:) :: liqini
     real(r8), pointer, dimension(:,:) :: iceini
     real(r8), pointer, dimension(:,:) :: dtcore
+    real(r8), pointer, dimension(:,:) :: dqcore
     real(r8), pointer, dimension(:,:) :: ducore
     real(r8), pointer, dimension(:,:) :: dvcore
     real(r8), pointer, dimension(:,:) :: ast     ! relative humidity cloud fraction
@@ -1484,6 +1491,7 @@ contains
     ncol  = state%ncol
 
     nstep = get_nstep()
+    call cnst_get_ind('Q', ixq)
 
     ! Adjust the surface fluxes to reduce instabilities in near sfc layer
     if (phys_do_flux_avg()) then
@@ -1498,9 +1506,8 @@ contains
     ! Associate pointers with physics buffer fields
     itim_old = pbuf_old_tim_idx()
 
-
-    ifld = pbuf_get_index('DTCORE')
-    call pbuf_get_field(pbuf, ifld, dtcore, start=(/1,1,itim_old/), kount=(/pcols,pver,1/) )
+    call pbuf_get_field(pbuf, dtcore_idx, dtcore, start=(/1,1,itim_old/), kount=(/pcols,pver,1/) )
+    call pbuf_get_field(pbuf, dqcore_idx, dqcore, start=(/1,1,itim_old/), kount=(/pcols,pver,1/) )
     call pbuf_get_field(pbuf, ducore_idx, ducore, start=(/1,1,itim_old/), kount=(/pcols,pver,1/) )
     call pbuf_get_field(pbuf, dvcore_idx, dvcore, start=(/1,1,itim_old/), kount=(/pcols,pver,1/) )
 
@@ -1899,18 +1906,26 @@ contains
        call unicon_cam_org_diags(state, pbuf)
 
     end if
-    moist_mixing_ratio_dycore = dycore_is('LR').or. dycore_is('FV3')    
+    moist_mixing_ratio_dycore = dycore_is('LR').or. dycore_is('FV3')
     !
     ! FV: convert dry-type mixing ratios to moist here because physics_dme_adjust
     !     assumes moist. This is done in p_d_coupling for other dynamics. Bundy, Feb 2004.
     if (moist_mixing_ratio_dycore) call set_dry_to_wet(state)    ! Physics had dry, dynamics wants moist
 
-    ! for dry mixing ratio dycore, physics_dme_adjust is called for energy diagnostic purposes only.  
-    ! So, save off tracers 
+    ! Scale dry mass and energy (does nothing if dycore is EUL or SLD)
+    call cnst_get_ind('CLDLIQ', ixcldliq)
+    call cnst_get_ind('CLDICE', ixcldice)
+
+    tmp_q     (:ncol,:pver) = state%q(:ncol,:pver,1)
+    tmp_cldliq(:ncol,:pver) = state%q(:ncol,:pver,ixcldliq)
+    tmp_cldice(:ncol,:pver) = state%q(:ncol,:pver,ixcldice)
+
+    ! for dry mixing ratio dycore, physics_dme_adjust is called for energy diagnostic purposes only.
+    ! So, save off tracers
     if (.not.moist_mixing_ratio_dycore.and.&
          (hist_fld_active('SE_phAM').or.hist_fld_active('KE_phAM').or.hist_fld_active('WV_phAM').or.&
           hist_fld_active('WL_phAM').or.hist_fld_active('WI_phAM').or.hist_fld_active('MR_phAM').or.&
-          hist_fld_active('MO_phAM'))) then         
+          hist_fld_active('MO_phAM'))) then
       tmp_trac(:ncol,:pver,:pcnst) = state%q(:ncol,:pver,:pcnst)
       tmp_pdel(:ncol,:pver)        = state%pdel(:ncol,:pver)
       tmp_ps(:ncol)                = state%ps(:ncol)
@@ -1989,6 +2004,7 @@ contains
     ! store T, U, and V in buffer for use in computing dynamics T-tendency in next timestep
     do k = 1,pver
        dtcore(:ncol,k) = state%t(:ncol,k)
+       dqcore(:ncol,k) = state%q(:ncol,k,ixq)
        ducore(:ncol,k) = state%u(:ncol,k)
        dvcore(:ncol,k) = state%v(:ncol,k)
     end do
@@ -2154,6 +2170,7 @@ contains
     real(r8), pointer, dimension(:,:) :: liqini
     real(r8), pointer, dimension(:,:) :: iceini
     real(r8), pointer, dimension(:,:) :: dtcore
+    real(r8), pointer, dimension(:,:) :: dqcore
     real(r8), pointer, dimension(:,:) :: ducore
     real(r8), pointer, dimension(:,:) :: dvcore
 
@@ -2228,8 +2245,8 @@ contains
     call pbuf_get_field(pbuf, liqini_idx, liqini)
     call pbuf_get_field(pbuf, iceini_idx, iceini)
 
-    ifld   =  pbuf_get_index('DTCORE')
-    call pbuf_get_field(pbuf, ifld, dtcore, start=(/1,1,itim_old/), kount=(/pcols,pver,1/) )
+    call pbuf_get_field(pbuf, dtcore_idx, dtcore, start=(/1,1,itim_old/), kount=(/pcols,pver,1/) )
+    call pbuf_get_field(pbuf, dqcore_idx, dqcore, start=(/1,1,itim_old/), kount=(/pcols,pver,1/) )
     call pbuf_get_field(pbuf, ducore_idx, ducore, start=(/1,1,itim_old/), kount=(/pcols,pver,1/) )
     call pbuf_get_field(pbuf, dvcore_idx, dvcore, start=(/1,1,itim_old/), kount=(/pcols,pver,1/) )
 
@@ -2317,9 +2334,11 @@ contains
     ! T, U, V tendency due to dynamics
     if( nstep > dyn_time_lvls-1 ) then
        dtcore(:ncol,:pver) = (state%t(:ncol,:pver) - dtcore(:ncol,:pver))/ztodt
+       dqcore(:ncol,:pver) = (state%q(:ncol,:pver,ixq) - dqcore(:ncol,:pver))/ztodt
        ducore(:ncol,:pver) = (state%u(:ncol,:pver) - ducore(:ncol,:pver))/ztodt
        dvcore(:ncol,:pver) = (state%v(:ncol,:pver) - dvcore(:ncol,:pver))/ztodt
        call outfld( 'DTCORE', dtcore, pcols, lchnk )
+       call outfld( 'DQCORE', dqcore, pcols, lchnk )
        call outfld( 'UTEND_CORE', ducore, pcols, lchnk )
        call outfld( 'VTEND_CORE', dvcore, pcols, lchnk )
     end if

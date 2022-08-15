@@ -505,9 +505,9 @@ contains
 
       call addfld('NR_IN_LH', (/ 'lev' /), 'I', 'm^-3', &
                   'Num Rain Conc as input to SILHS')
-     call addfld('RTM_CLUBB', (/ 'ilev' /), 'I', 'kg/kg', &
+     call addfld('SILHS_RTM', (/ 'ilev' /), 'I', 'kg/kg', &
                   'Input total water mixing ratio')
-     call addfld('THLM_CLUBB', (/ 'ilev' /), 'I', 'K', &
+     call addfld('SILHS_THLM', (/ 'ilev' /), 'I', 'K', &
                   'Input liquid water potential temperature')
      call addfld('SILHS_QC_IN', (/ 'lev' /), 'I', 'kg/kg', &
                   'Input cloud water mixing ratio')
@@ -1644,8 +1644,8 @@ contains
         call outfld( 'SILHS_NRAIN_SCOL', NRAIN_lh_out, pcols*psubcols, lchnk )
         call outfld( 'SILHS_WEIGHT_SCOL', weights, pcols*psubcols, lchnk )
         call outfld( 'NR_IN_LH', nrain, pcols, lchnk )
-        call outfld( 'RTM_CLUBB', rtm, pcols, lchnk )
-        call outfld( 'THLM_CLUBB', thlm, pcols, lchnk )
+        call outfld( 'SILHS_RTM', rtm, pcols, lchnk )
+        call outfld( 'SILHS_THLM', thlm, pcols, lchnk )
         call outfld( 'SILHS_QC_IN', state%q(:,:,ixcldliq), pcols, lchnk )
         call outfld( 'SILHS_QI_IN', state%q(:,:,ixcldice), pcols, lchnk )
         call outfld( 'SILHS_NC_IN', state%q(:,:,ixnumliq), pcols, lchnk )
