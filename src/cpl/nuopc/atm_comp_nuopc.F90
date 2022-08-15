@@ -620,6 +620,8 @@ contains
 
           call cam_set_mesh_for_single_column(scol_lon, scol_lat, mesh, rc)
           if (ChkErr(rc,__LINE__,u_FILE_u)) return
+          allocate(dof(1))
+          dof(1) = 1
 
        else
 
