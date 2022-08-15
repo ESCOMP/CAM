@@ -6,7 +6,6 @@ module mo_gas_phase_chemdr
   use cam_history,      only : fieldname_len
   use chem_mods,        only : phtcnt, rxntot, gas_pcnst
   use chem_mods,        only : rxt_tag_cnt, rxt_tag_lst, rxt_tag_map, extcnt, num_rnts
-  use dust_model,       only : dust_names, ndust => dust_nbin
   use ppgrid,           only : pcols, pver
   use phys_control,     only : phys_getopts
   use carma_flags_mod,  only : carma_hetchem_feedback
@@ -21,7 +20,7 @@ module mo_gas_phase_chemdr
 
   integer :: map2chm(pcnst) = 0           ! index map to/from chemistry/constituents list
 
-  integer :: so4_ndx, h2o_ndx, o2_ndx, o_ndx, hno3_ndx, hcl_ndx, dst_ndx, cldice_ndx, snow_ndx
+  integer :: so4_ndx, h2o_ndx, o2_ndx, o_ndx, hno3_ndx, hcl_ndx, cldice_ndx, snow_ndx
   integer :: o3_ndx, o3s_ndx, o3_inv_ndx, srf_ozone_pbf_ndx=-1
   integer :: het1_ndx
   integer :: ndx_cldfr, ndx_cmfdqr, ndx_nevapr, ndx_cldtop, ndx_prain
@@ -124,7 +123,6 @@ contains
     h2o_ndx = get_spc_ndx('H2O')
     hno3_ndx = get_spc_ndx('HNO3')
     hcl_ndx  = get_spc_ndx('HCL')
-    dst_ndx = get_spc_ndx( dust_names(1) )
     call cnst_get_ind( 'CLDICE', cldice_ndx )
     call cnst_get_ind( 'SNOWQM', snow_ndx, abort=.false. )
 
@@ -163,16 +161,6 @@ contains
           end select
        endif
     enddo
-
-    call addfld( 'DTCBS',   horiz_only, 'I', ' ','photolysis diagnostic black carbon OD' )
-    call addfld( 'DTOCS',   horiz_only, 'I', ' ','photolysis diagnostic organic carbon OD' )
-    call addfld( 'DTSO4',   horiz_only, 'I', ' ','photolysis diagnostic SO4 OD' )
-    call addfld( 'DTSOA',   horiz_only, 'I', ' ','photolysis diagnostic SOA OD' )
-    call addfld( 'DTANT',   horiz_only, 'I', ' ','photolysis diagnostic NH4SO4 OD' )
-    call addfld( 'DTSAL',   horiz_only, 'I', ' ','photolysis diagnostic salt OD' )
-    call addfld( 'DTDUST',  horiz_only, 'I', ' ','photolysis diagnostic dust OD' )
-    call addfld( 'DTTOTAL', horiz_only, 'I', ' ','photolysis diagnostic total aerosol OD' )
-    call addfld( 'FRACDAY', horiz_only, 'I', ' ','photolysis diagnostic fraction of day' )
 
     call addfld( 'QDSAD',      (/ 'lev' /), 'I', '/s',      'water vapor sad delta' )
     call addfld( 'SAD_STRAT',  (/ 'lev' /), 'I', 'cm2/cm3', 'stratospheric aerosol SAD' )
@@ -247,7 +235,7 @@ contains
                               tfld, pmid, pdel, pint,  &
                               cldw, troplev, troplevchem, &
                               ncldwtr, ufld, vfld,  &
-                              delt, ps, xactive_prates, &
+                              delt, ps, &
                               fsds, ts, asdir, ocnfrac, icefrac, &
                               precc, precl, snowhland, ghg_chem, latmapback, &
                               drydepflx, wetdepflx, cflx, fire_sflx, fire_ztop, nhx_nitrogen_flx, noy_nitrogen_flx, qtend, pbuf)
@@ -260,7 +248,7 @@ contains
 
     use chem_mods,         only : nabscol, nfs, indexm, clscnt4
     use physconst,         only : rga
-    use mo_photo,          only : set_ub_col, setcol, table_photo, xactive_photo
+    use mo_photo,          only : set_ub_col, setcol, table_photo
     use mo_exp_sol,        only : exp_sol
     use mo_imp_sol,        only : imp_sol
     use mo_setrxt,         only : setrxt
@@ -329,7 +317,6 @@ contains
     real(r8),       intent(in)    :: q(pcols,pver,pcnst)            ! species concentrations (kg/kg)
     real(r8),pointer, intent(in)  :: fire_sflx(:,:)                 ! fire emssions surface flux (kg/m^2/s)
     real(r8),pointer, intent(in)  :: fire_ztop(:)                   ! top of vertical distribution of fire emssions (m)
-    logical,        intent(in)    :: xactive_prates
     real(r8),       intent(in)    :: fsds(pcols)                    ! longwave down at sfc
     real(r8),       intent(in)    :: icefrac(pcols)                 ! sea-ice areal fraction
     real(r8),       intent(in)    :: ocnfrac(pcols)                 ! ocean areal fraction
@@ -379,7 +366,6 @@ contains
          h2ovmr, &                                         ! water vapor volume mixing ratio
          mbar, &                                           ! mean wet atmospheric mass ( amu )
          zmid, &                                           ! midpoint geopotential in km
-         zmidr, &                                          ! midpoint geopotential in km realitive to surf
          sulfate, &                                        ! trop sulfate aerosols
          pmb                                               ! pressure at midpoints ( hPa )
     real(r8), dimension(ncol,pver) :: &
@@ -412,9 +398,6 @@ contains
     real(r8) :: prect(pcols)
     real(r8) :: sflx(pcols,gas_pcnst)
     real(r8) :: wetdepflx_diag(pcols,gas_pcnst)
-    real(r8) :: dust_vmr(ncol,pver,ndust)
-    real(r8) :: dt_diag(pcols,8)               ! od diagnostics
-    real(r8) :: fracday(pcols)                 ! fraction of day
     real(r8) :: o2mmr(ncol,pver)               ! o2 concentration (kg/kg)
     real(r8) :: ommr(ncol,pver)                ! o concentration (kg/kg)
     real(r8) :: mmr(pcols,pver,gas_pcnst)      ! chem working concentrations (kg/kg)
@@ -506,7 +489,6 @@ contains
     zsurf(:ncol) = rga * phis(:ncol)
     do k = 1,pver
        zintr(:ncol,k) = m2km * zi(:ncol,k)
-       zmidr(:ncol,k) = m2km * zm(:ncol,k)
        zmid(:ncol,k) = m2km * (zm(:ncol,k) + zsurf(:ncol))
        zint(:ncol,k) = m2km * (zi(:ncol,k) + zsurf(:ncol))
        pmb(:ncol,k)  = Pa2mb * pmid(:ncol,k)
@@ -790,7 +772,7 @@ contains
     !-----------------------------------------------------------------------
     !     	... Set the column densities
     !-----------------------------------------------------------------------
-    call setcol( col_delta, col_dens, vmr, pdel,  ncol )
+    call setcol( col_delta, col_dens )
 
     !-----------------------------------------------------------------------
     !     	... Calculate the photodissociation rates
@@ -800,40 +782,12 @@ contains
     call shr_orb_decl( calday, eccen, mvelpp, lambm0, obliqr  , &
          delta, esfact )
 
-
-    if ( xactive_prates ) then
-       if ( dst_ndx > 0 ) then
-          dust_vmr(:ncol,:,1:ndust) = vmr(:ncol,:,dst_ndx:dst_ndx+ndust-1)
-       else
-          dust_vmr(:ncol,:,:) = 0._r8
-       endif
-
-       !-----------------------------------------------------------------
-       !	... compute the photolysis rates
-       !-----------------------------------------------------------------
-       call xactive_photo( reaction_rates, vmr, tfld, cwat, cldfr, &
-            pmid, zmidr, col_dens, zen_angle, asdir, &
-            invariants(1,1,indexm), ps, ts, &
-            esfact, relhum, dust_vmr, dt_diag, fracday, ncol, lchnk )
-
-       call outfld('DTCBS',   dt_diag(:ncol,1), ncol, lchnk )
-       call outfld('DTOCS',   dt_diag(:ncol,2), ncol, lchnk )
-       call outfld('DTSO4',   dt_diag(:ncol,3), ncol, lchnk )
-       call outfld('DTANT',   dt_diag(:ncol,4), ncol, lchnk )
-       call outfld('DTSAL',   dt_diag(:ncol,5), ncol, lchnk )
-       call outfld('DTDUST',  dt_diag(:ncol,6), ncol, lchnk )
-       call outfld('DTSOA',   dt_diag(:ncol,7), ncol, lchnk )
-       call outfld('DTTOTAL', dt_diag(:ncol,8), ncol, lchnk )
-       call outfld('FRACDAY', fracday(:ncol), ncol, lchnk )
-
-    else
-       !-----------------------------------------------------------------
-       !	... lookup the photolysis rates from table
-       !-----------------------------------------------------------------
-       call table_photo( reaction_rates, pmid, pdel, tfld, zmid, zint, &
-                         col_dens, zen_angle, asdir, cwat, cldfr, &
-                         esfact, vmr, invariants, ncol, lchnk, pbuf )
-    endif
+    !-----------------------------------------------------------------
+    !	... lookup the photolysis rates from table
+    !-----------------------------------------------------------------
+    call table_photo( reaction_rates, pmid, pdel, tfld, zmid, zint, &
+                      col_dens, zen_angle, asdir, cwat, cldfr, &
+                      esfact, vmr, invariants, ncol, lchnk, pbuf )
 
     do i = 1,phtcnt
        call outfld( tag_names(i), reaction_rates(:ncol,:,rxt_tag_map(i)), ncol, lchnk )

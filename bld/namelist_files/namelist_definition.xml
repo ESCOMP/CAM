@@ -6002,18 +6002,6 @@ Full pathname of dataset for the neutral species absorption cross sections.
 Default: set by build-namelist.
 </entry>
 
-<entry id="tuv_xsect_file" type="char*256" input_pathname="abs" category="cam_chem"
-       group="chem_inparm" valid_values="" >
-Full pathname of dataset for fast-tuv photolysis cross sections
-Default: set by build-namelist.
-</entry>
-
-<entry id="o2_xsect_file" type="char*256" input_pathname="abs" category="cam_chem"
-       group="chem_inparm" valid_values="" >
-Full pathname of dataset of O2 cross sections for fast-tuv photolysis
-Default: set by build-namelist.
-</entry>
-
 <entry id="exo_coldens_file" type="char*256" input_pathname="abs" category="cam_chem"
        group="chem_inparm" valid_values="" >
 Full pathname of dataset of O2 and 03 column densities above the model for look-up-table photolysis
@@ -6813,13 +6801,6 @@ The time of day (seconds) corresponding to {{ hilight }}tracer_srcs_fixed_ymd{{ 
 at which the chemical sources data is fixed
 if {{ hilight }}tracer_srcs_type{{ closehilight }} is 'FIXED'.
 Default: 0 seconds
-</entry>
-
-<entry id="xactive_prates" type="logical" category="cam_chem"
-       group="chem_inparm" valid_values="" >
-If TRUE then use the FTUV method to calculate the photolysis reactions rates,
-otherwise use the look up table method.
-Default: FALSE
 </entry>
 
 <entry id="xs_coef_file" type="char*256" input_pathname="abs" category="cam_chem"
