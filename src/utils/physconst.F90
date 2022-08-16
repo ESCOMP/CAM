@@ -455,8 +455,8 @@ end subroutine physconst_init
           thermodynamic_active_species_cv (icnst) = 0.5_r8*shr_const_rgas*dof2/mw !N2
           thermodynamic_active_species_R  (icnst) = shr_const_rgas/mw
           thermodynamic_active_species_mwi(icnst) = 1.0_r8/mw
-          thermodynamic_active_species_kv(icnst)  = 3.42_r8
-          thermodynamic_active_species_kc(icnst)  = 56._r8
+          thermodynamic_active_species_kv(icnst)  = kv2
+          thermodynamic_active_species_kc(icnst)  = kc2
         end if
         !
         ! if last major species is not N2 then add code here
@@ -499,8 +499,8 @@ end subroutine physconst_init
           thermodynamic_active_species_cv (icnst) = 0.5_r8*shr_const_rgas*dof1/mw
           thermodynamic_active_species_R  (icnst) = shr_const_rgas/mw
           thermodynamic_active_species_mwi(icnst) = 1.0_r8/mw
-          thermodynamic_active_species_kv(icnst)  = 3.9_r8
-          thermodynamic_active_species_kc(icnst)  = 75.9_r8
+          thermodynamic_active_species_kv(icnst)  = kv3
+          thermodynamic_active_species_kc(icnst)  = kc3
           icnst = icnst+1
         end if
         !
@@ -518,8 +518,8 @@ end subroutine physconst_init
           thermodynamic_active_species_cv (icnst) = 0.5_r8*shr_const_rgas*dof2/mw
           thermodynamic_active_species_R  (icnst) = shr_const_rgas/mw
           thermodynamic_active_species_mwi(icnst) = 1.0_r8/mw
-          thermodynamic_active_species_kv(icnst)  = 4.03_r8
-          thermodynamic_active_species_kc(icnst)  = 56._r8
+          thermodynamic_active_species_kv(icnst)  = kv1
+          thermodynamic_active_species_kc(icnst)  = kc1
           icnst = icnst+1
         end if
         !
@@ -2019,8 +2019,8 @@ end subroutine physconst_init
 
                temp_local = .5_r8*(temp(i,j,k-1)+temp(i,j,k))
                mbarvi = 0.5_r8*(mbarv(i,j,k-1)+mbarv(i,j,k))
-               kmvis(i,j,k) = kmvis(i,j,k)*mbarvi*temp_local**kv_temp_exp*1.e-7_r8
-               kmcnd(i,j,k) = kmcnd(i,j,k)*mbarvi*temp_local**kc_temp_exp*1.e-5_r8
+               kmvis(i,j,k) = kmvis(i,j,k)*mbarvi*temp_local**kv_temp_exp
+               kmcnd(i,j,k) = kmcnd(i,j,k)*mbarvi*temp_local**kc_temp_exp
              enddo
            enddo
          end do
@@ -2054,8 +2054,8 @@ end subroutine physconst_init
                kmcnd(i,j,k) = kmcnd(i,j,k)+thermodynamic_active_species_kc(icnst)* &
                               thermodynamic_active_species_mwi(icnst)*residual
 
-               kmvis(i,j,k) = kmvis(i,j,k)*mbarv(i,j,k)*temp(i,j,k)**kv_temp_exp*1.e-7_r8
-               kmcnd(i,j,k) = kmcnd(i,j,k)*mbarv(i,j,k)*temp(i,j,k)**kc_temp_exp*1.e-5_r8
+               kmvis(i,j,k) = kmvis(i,j,k)*mbarv(i,j,k)*temp(i,j,k)**kv_temp_exp
+               kmcnd(i,j,k) = kmcnd(i,j,k)*mbarv(i,j,k)*temp(i,j,k)**kc_temp_exp
              enddo
            enddo
          end do
