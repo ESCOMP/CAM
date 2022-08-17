@@ -74,7 +74,7 @@ subroutine d_p_coupling(phys_state, phys_tend, pbuf2d, dyn_out)
    real(r8), pointer :: tracers(:,:,:)
 
    !
-   ! mesh information and coefficients needed for 
+   ! mesh information and coefficients needed for
    ! frontogenesis function calculation
    !
    real(r8), dimension(:,:),   pointer :: defc_a
@@ -825,11 +825,11 @@ subroutine hydrostatic_pressure(nCells, nVertLevels, zz, zgrid, rho_zz, theta_m,
       end do
 
       do k = nVertLevels, 1, -1
-        !hydrostatic mid-level pressure - MPAS full pressure is (rhok*rgas*thetavk*kap1)**kap2 
-        pmid   (k,iCell) = 0.5_r8*(pint(k+1)+pint(k))       
-        !hydrostatic dry mid-level dry pressure - 
+        !hydrostatic mid-level pressure - MPAS full pressure is (rhok*rgas*thetavk*kap1)**kap2
+        pmid   (k,iCell) = 0.5_r8*(pint(k+1)+pint(k))
+        !hydrostatic dry mid-level dry pressure -
         !MPAS non-hydrostatic dry pressure is pmiddry(k,iCell) = (rhodryk*rgas*theta*kap1)**kap2
-        pmiddry(k,iCell) = 0.5_r8*(pintdry(k+1,iCell)+pintdry(k,iCell))  
+        pmiddry(k,iCell) = 0.5_r8*(pintdry(k+1,iCell)+pintdry(k,iCell))
       end do
     end do
 end subroutine hydrostatic_pressure
@@ -936,14 +936,12 @@ subroutine tot_energy(nCells, nVertLevels, qsize, index_qv, zz, zgrid, rho_zz, t
   end if
  end subroutine tot_energy
 
-   subroutine calc_frontogenesis( frontogenesisFunction, frontogenesisAngle,             &
-           theta_m, qv, u,v, defc_a, defc_b, cell_gradient_coef_x, cell_gradient_coef_y, &
-           areaCell, dvEdge, cellsOnEdge, edgesOnCell, nEdgesOnCell, edgesOnCell_sign,   &
-           nVertLevels, nCellsSolve )
+ subroutine calc_frontogenesis( frontogenesisFunction, frontogenesisAngle,             &
+      theta_m, qv, u,v, defc_a, defc_b, cell_gradient_coef_x, cell_gradient_coef_y, &
+      areaCell, dvEdge, cellsOnEdge, edgesOnCell, nEdgesOnCell, edgesOnCell_sign,   &
+      nVertLevels, nCellsSolve )
 
    use mpas_constants, only : rvord
-
-   implicit none
 
    ! inputs
 
@@ -959,10 +957,10 @@ subroutine tot_energy(nCells, nVertLevels, qsize, index_qv, zz, zgrid, rho_zz, t
    real(r8), dimension(:), intent(in) :: areaCell
    integer, dimension(:,:), intent(in) :: cellsOnEdge
    integer, dimension(:,:), intent(in) :: edgesOnCell
-   integer, dimension(:), intent(in) :: nEdgesOnCell  
+   integer, dimension(:), intent(in) :: nEdgesOnCell
 
    ! outputs
-   
+
    real(r8), dimension(:,:), intent(out) :: frontogenesisFunction
    real(r8), dimension(:,:), intent(out) :: frontogenesisAngle
 
@@ -1005,9 +1003,9 @@ subroutine tot_energy(nCells, nVertLevels, qsize, index_qv, zz, zgrid, rho_zz, t
          do k=1,nVertLevels
 
             d_diag(k)     = d_diag(k)     + defc_a(iEdge,iCell)*u(k,EdgesOnCell(iEdge,iCell))  &
-                 - defc_b(iEdge,iCell)*v(k,EdgesOnCell(iEdge,iCell))
+                                          - defc_b(iEdge,iCell)*v(k,EdgesOnCell(iEdge,iCell))
             d_off_diag(k) = d_off_diag(k) + defc_b(iEdge,iCell)*u(k,EdgesOnCell(iEdge,iCell))  &
-                 + defc_a(iEdge,iCell)*v(k,EdgesOnCell(iEdge,iCell))
+                                          + defc_a(iEdge,iCell)*v(k,EdgesOnCell(iEdge,iCell))
             divh(k) = divh(k) + edge_sign * u(k,EdgesOnCell(iEdge,iCell))
             thetaEdge = 0.5*( theta_m(k,cell1)/(1.0_r8 + rvord*qv(k,cell1))  &
                              +theta_m(k,cell2)/(1.0_r8 + rvord*qv(k,cell2)) )
@@ -1044,6 +1042,6 @@ subroutine tot_energy(nCells, nVertLevels, qsize, index_qv, zz, zgrid, rho_zz, t
 
    end do
 
-end subroutine calc_frontogenesis
+ end subroutine calc_frontogenesis
 
 end module dp_coupling
