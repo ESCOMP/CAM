@@ -12,6 +12,7 @@ module cam_mpas_subdriver
 
     use cam_abortutils, only: endrun
     use mpas_derived_types, only : core_type, dm_info, domain_type, MPAS_Clock_type
+    use phys_control,   only: use_gw_front, use_gw_front_igw
 
     implicit none
 
@@ -382,7 +383,7 @@ contains
        if ( ierr /= 0 ) then
           call endrun(subname//': failed to get MPAS_START_TIME')
        end if
-       call mpas_get_time(startTime, dateTimeString=startTimeStamp) 
+       call mpas_get_time(startTime, dateTimeString=startTimeStamp)
 
 
        call mpas_pool_get_subpool(domain_ptr % blocklist % structs, 'state', state)
@@ -438,7 +439,7 @@ contains
     !>  to reorder the constituents; to allow for mapping of indices between CAM
     !>  physics and the MPAS-A dycore, this routine returns index mapping arrays
     !>  mpas_from_cam_cnst and cam_from_mpas_cnst.
-    !>  
+    !>
     !
     !-----------------------------------------------------------------------
     subroutine cam_mpas_define_scalars(block, mpas_from_cam_cnst, cam_from_mpas_cnst, ierr)
@@ -770,7 +771,7 @@ contains
 
        allocate(temp(nCellsGlobal), stat=ierr)
        if( ierr /= 0 ) call endrun(subname//':failed to allocate temp array')
-       
+
        !
        ! latCellGlobal
        !
@@ -1047,8 +1048,10 @@ contains
        call mpas_pool_get_field(meshPool, 'localVerticalUnitVectors', localVerticalUnitVectors)
        call mpas_pool_get_field(meshPool, 'defc_a', defc_a)
        call mpas_pool_get_field(meshPool, 'defc_b', defc_b)
-       call mpas_pool_get_field(meshPool, 'cell_gradient_coef_x', cell_gradient_coef_x)
-       call mpas_pool_get_field(meshPool, 'cell_gradient_coef_y', cell_gradient_coef_y)
+       if (use_gw_front .or. use_gw_front_igw) then
+          call mpas_pool_get_field(meshPool, 'cell_gradient_coef_x', cell_gradient_coef_x)
+          call mpas_pool_get_field(meshPool, 'cell_gradient_coef_y', cell_gradient_coef_y)
+       endif
 
        ierr_total = 0
 
@@ -1181,10 +1184,12 @@ contains
        if (ierr /= MPAS_STREAM_NOERR) ierr_total = ierr_total + 1
        call MPAS_streamAddField(mesh_stream, defc_b, ierr=ierr)
        if (ierr /= MPAS_STREAM_NOERR) ierr_total = ierr_total + 1
-       call MPAS_streamAddField(mesh_stream, cell_gradient_coef_x, ierr=ierr)
-       if (ierr /= MPAS_STREAM_NOERR) ierr_total = ierr_total + 1
-       call MPAS_streamAddField(mesh_stream, cell_gradient_coef_y, ierr=ierr)
-       if (ierr /= MPAS_STREAM_NOERR) ierr_total = ierr_total + 1
+       if (use_gw_front .or. use_gw_front_igw) then
+          call MPAS_streamAddField(mesh_stream, cell_gradient_coef_x, ierr=ierr)
+          if (ierr /= MPAS_STREAM_NOERR) ierr_total = ierr_total + 1
+          call MPAS_streamAddField(mesh_stream, cell_gradient_coef_y, ierr=ierr)
+          if (ierr /= MPAS_STREAM_NOERR) ierr_total = ierr_total + 1
+       endif
 
        if (ierr_total > 0) then
            write(errString, '(a,i0,a)') subname//': FATAL: Failed to add ', ierr_total, ' fields to static input stream.'
@@ -1266,9 +1271,10 @@ contains
        call MPAS_dmpar_exch_halo_field(localVerticalUnitVectors)
        call MPAS_dmpar_exch_halo_field(defc_a)
        call MPAS_dmpar_exch_halo_field(defc_b)
-       call MPAS_dmpar_exch_halo_field(cell_gradient_coef_x)
-       call MPAS_dmpar_exch_halo_field(cell_gradient_coef_y)
-
+       if (use_gw_front .or. use_gw_front_igw) then
+          call MPAS_dmpar_exch_halo_field(cell_gradient_coef_x)
+          call MPAS_dmpar_exch_halo_field(cell_gradient_coef_y)
+       endif
        !
        ! Re-index from global index space to local index space
        !
@@ -1471,9 +1477,10 @@ contains
        call mpas_pool_get_field(allFields, 'localVerticalUnitVectors', localVerticalUnitVectors)
        call mpas_pool_get_field(allFields, 'defc_a', defc_a)
        call mpas_pool_get_field(allFields, 'defc_b', defc_b)
-       call mpas_pool_get_field(allFields, 'cell_gradient_coef_x', cell_gradient_coef_x)
-       call mpas_pool_get_field(allFields, 'cell_gradient_coef_y', cell_gradient_coef_y)
-
+       if (use_gw_front .or. use_gw_front_igw) then
+          call mpas_pool_get_field(allFields, 'cell_gradient_coef_x', cell_gradient_coef_x)
+          call mpas_pool_get_field(allFields, 'cell_gradient_coef_y', cell_gradient_coef_y)
+       endif
        call mpas_pool_get_field(allFields, 'initial_time', initial_time, timeLevel=1)
        call mpas_pool_get_field(allFields, 'xtime', xtime, timeLevel=1)
        call mpas_pool_get_field(allFields, 'u', u, timeLevel=1)
@@ -1643,11 +1650,12 @@ contains
        if (ierr /= MPAS_STREAM_NOERR) ierr_total = ierr_total + 1
        call MPAS_streamAddField(restart_stream, defc_b, ierr=ierr)
        if (ierr /= MPAS_STREAM_NOERR) ierr_total = ierr_total + 1
-       call MPAS_streamAddField(restart_stream, cell_gradient_coef_x, ierr=ierr)
-       if (ierr /= MPAS_STREAM_NOERR) ierr_total = ierr_total + 1
-       call MPAS_streamAddField(restart_stream, cell_gradient_coef_y, ierr=ierr)
-       if (ierr /= MPAS_STREAM_NOERR) ierr_total = ierr_total + 1
-
+       if (use_gw_front .or. use_gw_front_igw) then
+          call MPAS_streamAddField(restart_stream, cell_gradient_coef_x, ierr=ierr)
+          if (ierr /= MPAS_STREAM_NOERR) ierr_total = ierr_total + 1
+          call MPAS_streamAddField(restart_stream, cell_gradient_coef_y, ierr=ierr)
+          if (ierr /= MPAS_STREAM_NOERR) ierr_total = ierr_total + 1
+       endif
        call MPAS_streamAddField(restart_stream, initial_time, ierr=ierr)
        if (ierr /= MPAS_STREAM_NOERR) ierr_total = ierr_total + 1
        call MPAS_streamAddField(restart_stream, xtime, ierr=ierr)
@@ -1857,9 +1865,10 @@ contains
        call cam_mpas_update_halo('localVerticalUnitVectors', endrun)
        call cam_mpas_update_halo('defc_a', endrun)
        call cam_mpas_update_halo('defc_b', endrun)
-       call cam_mpas_update_halo('cell_gradient_coef_x', endrun)
-       call cam_mpas_update_halo('cell_gradient_coef_y', endrun)
-
+       if (use_gw_front .or. use_gw_front_igw) then
+          call cam_mpas_update_halo('cell_gradient_coef_x', endrun)
+          call cam_mpas_update_halo('cell_gradient_coef_y', endrun)
+       endif
        call cam_mpas_update_halo('u', endrun)
        call cam_mpas_update_halo('w', endrun)
        call cam_mpas_update_halo('rho_zz', endrun)
@@ -2273,17 +2282,17 @@ contains
        runUntilTime = currTime + integrationLength
 
        do while (currTime < runUntilTime)
-          call mpas_get_time(curr_time=currTime, dateTimeString=timeStamp, ierr=ierr)         
+          call mpas_get_time(curr_time=currTime, dateTimeString=timeStamp, ierr=ierr)
           call mpas_log_write('Dynamics timestep beginning at '//trim(timeStamp))
 
           call mpas_timer_start('time integration')
           call atm_do_timestep(domain_ptr, dt, itimestep)
-          call mpas_timer_stop('time integration')   
+          call mpas_timer_stop('time integration')
 
           ! Move time level 2 fields back into time level 1 for next time step
           call mpas_pool_get_subpool(domain_ptr % blocklist % structs, 'state', state)
           call mpas_pool_shift_time_levels(state)
-         
+
           ! Advance clock before writing output
           itimestep = itimestep + 1
           call mpas_advance_clock(clock)
