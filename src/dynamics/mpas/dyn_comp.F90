@@ -42,6 +42,8 @@ use mpas_timekeeping,   only : MPAS_TimeInterval_type
 
 use cam_mpas_subdriver, only: cam_mpas_global_sum_real
 
+use phys_control,       only: use_gw_front, use_gw_front_igw
+
 implicit none
 private
 save
@@ -322,7 +324,6 @@ subroutine dyn_register()
 
    use physics_buffer,  only: pbuf_add_field, dtype_r8
    use ppgrid,          only: pcols, pver
-   use phys_control,    only: use_gw_front, use_gw_front_igw
 
    ! These fields are computed by the dycore and passed to the physics via the
    ! physics buffer.
@@ -524,8 +525,10 @@ subroutine dyn_init(dyn_in, dyn_out)
 
    call mpas_pool_get_array(mesh_pool,  'defc_a',                dyn_out % defc_a)
    call mpas_pool_get_array(mesh_pool,  'defc_b',                dyn_out % defc_b)
-   call mpas_pool_get_array(mesh_pool,  'cell_gradient_coef_x',  dyn_out % cell_gradient_coef_x)
-   call mpas_pool_get_array(mesh_pool,  'cell_gradient_coef_y',  dyn_out % cell_gradient_coef_y)
+   if (use_gw_front .or. use_gw_front_igw) then
+      call mpas_pool_get_array(mesh_pool,  'cell_gradient_coef_x',  dyn_out % cell_gradient_coef_x)
+      call mpas_pool_get_array(mesh_pool,  'cell_gradient_coef_y',  dyn_out % cell_gradient_coef_y)
+   endif
    call mpas_pool_get_array(mesh_pool,  'edgesOnCell_sign',      dyn_out % edgesOnCell_sign)
    call mpas_pool_get_array(mesh_pool,  'dvEdge',                dyn_out % dvEdge)
    call mpas_pool_get_array(mesh_pool,  'edgesOnCell',           dyn_out % edgesOnCell)
