@@ -215,6 +215,7 @@ CONTAINS
       use physconst,    only: r_universal, cpair, rair, cpwv, rh2o, cpliq, cpice, mwdry
       use constituents, only: cnst_get_ind, cnst_mw
       use ppgrid,       only: pcols, pver, begchunk, endchunk
+      use cam_themro,   only: kv1, kc1, kv2, kc2, kv3, kc3
 
       integer  :: icnst, ix, isize, ierr, idx
       integer  :: liq_num, ice_num
@@ -345,8 +346,8 @@ CONTAINS
             thermodynamic_active_species_cv(icnst) = cv2 / mw !N2
             thermodynamic_active_species_R  (icnst) = r_universal / mw
             thermodynamic_active_species_mwi(icnst) = 1.0_r8 / mw
-            thermodynamic_active_species_kv(icnst)  = 3.42_r8
-            thermodynamic_active_species_kc(icnst)  = 56._r8
+            thermodynamic_active_species_kv(icnst)  = kv2
+            thermodynamic_active_species_kc(icnst)  = kc2
             !
             ! if last major species is not N2 then add code here
             !
@@ -384,8 +385,8 @@ CONTAINS
             thermodynamic_active_species_cv (icnst) = cv1 / mw
             thermodynamic_active_species_R  (icnst) = r_universal / mw
             thermodynamic_active_species_mwi(icnst) = 1.0_r8 / mw
-            thermodynamic_active_species_kv(icnst)  = 3.9_r8
-            thermodynamic_active_species_kc(icnst)  = 75.9_r8
+            thermodynamic_active_species_kv(icnst)  = kv3
+            thermodynamic_active_species_kc(icnst)  = kc3
             icnst = icnst + 1
             !
             ! O2
@@ -397,8 +398,8 @@ CONTAINS
             thermodynamic_active_species_cv (icnst) = cv2 / mw
             thermodynamic_active_species_R  (icnst) = r_universal / mw
             thermodynamic_active_species_mwi(icnst) = 1.0_r8 / mw
-            thermodynamic_active_species_kv(icnst)  = 4.03_r8
-            thermodynamic_active_species_kc(icnst)  = 56._r8
+            thermodynamic_active_species_kv(icnst)  = kv1
+            thermodynamic_active_species_kc(icnst)  = kc1
             icnst = icnst + 1
             !
             ! H

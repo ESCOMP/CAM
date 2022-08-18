@@ -86,16 +86,17 @@ module cam_thermo
    !
 
    ! coefficients in expressions for molecular diffusion coefficients
-   ! kv1,..,kv4 are coefficients for kmvis calculation
-   ! kc1,..,kc4 are coefficients for kmcnd calculation
-   real(r8), parameter :: kv1 = 4.03_r8
-   real(r8), parameter :: kv2 = 3.42_r8
-   real(r8), parameter :: kv3 = 3.9_r8
-   real(r8), parameter :: kv4 = 0.69_r8
-   real(r8), parameter :: kc1 = 56._r8
-   real(r8), parameter :: kc2 = 56._r8
-   real(r8), parameter :: kc3 = 75.9_r8
-   real(r8), parameter :: kc4 = 0.69_r8
+   ! kv1,..,kv3 are coefficients for kmvis calculation
+   ! kc1,..,kc3 are coefficients for kmcnd calculation
+   real(r8), public, parameter :: kv1 = 4.03_r8 * 1.e-7_r8
+   real(r8), public, parameter :: kv2 = 3.42_r8 * 1.e-7_r8
+   real(r8), public, parameter :: kv3 = 3.9_r8 * 1.e-7_r8
+   real(r8), public, parameter :: kc1 = 56._r8 * 1.e-5_r8
+   real(r8), public, parameter :: kc2 = 56._r8 * 1.e-5_r8
+   real(r8), public, parameter :: kc3 = 75.9_r8 * 1.e-5_r8
+
+   real(r8), public, parameter :: kv_temp_exp = 0.69_r8
+   real(r8), public, parameter :: kc_temp_exp = 0.69_r8
 
    !
    ! Interfaces for public routines
@@ -963,7 +964,7 @@ CONTAINS
      call get_virtual_theta(tracer, mixing_ratio, active_species_idx, dp_dry, ptop, p00, temp, theta_v)
      Richardson_number(:, 1)                   = 0.0_r8
      Richardson_number(:, SIZE(tracer, 2) + 1) = 0.0_r8
-     do kdx = SIZE(tracer, 2) - 1, 2, -1
+     do kdx = SIZE(tracer, 2), 2, -1
        kdxm1 = kdx - 1
        pt1(:) = theta_v(:, kdxm1)
        pt2(:) = theta_v(:, kdx)
@@ -1348,14 +1349,14 @@ CONTAINS
 
      if (dry_air_species_num==0) then
 
-       cnst_vis = (kv1 * mmro2 * o2_mwi + kv2 * mmrn2 * n2_mwi) * mbar * 1.e-7_r8
-       cnst_cnd = (kc1 * mmro2 * o2_mwi + kc2 * mmrn2 * n2_mwi) * mbar * 1.e-5_r8
+       cnst_vis = (kv1 * mmro2 * o2_mwi + kv2 * mmrn2 * n2_mwi) * mbar
+       cnst_cnd = (kc1 * mmro2 * o2_mwi + kc2 * mmrn2 * n2_mwi) * mbar
        if (get_at_interfaces) then
            do kdx = 2, SIZE(sponge_factor, 1)
              do idx = 1, SIZE(tracer, 1)
                temp_local   = 0.5_r8 * (temp(idx, kdx) + temp(idx, kdx - 1))
-               kmvis(idx, kdx) = sponge_factor(kdx) * cnst_vis * temp_local ** kv4
-               kmcnd(idx, kdx) = sponge_factor(kdx) * cnst_cnd * temp_local ** kc4
+               kmvis(idx, kdx) = sponge_factor(kdx) * cnst_vis * temp_local ** kv_temp_exp
+               kmcnd(idx, kdx) = sponge_factor(kdx) * cnst_cnd * temp_local ** kc_temp_exp
              end do
            end do
            !
@@ -1366,8 +1367,8 @@ CONTAINS
        else if (.not. get_at_interfaces) then
          do kdx = 1, SIZE(sponge_factor, 1)
            do idx = 1, SIZE(tracer, 1)
-             kmvis(idx, kdx) = sponge_factor(kdx) * cnst_vis * temp(idx, kdx) ** kv4
-             kmcnd(idx, kdx) = sponge_factor(kdx) * cnst_cnd * temp(idx, kdx) ** kc4
+             kmvis(idx, kdx) = sponge_factor(kdx) * cnst_vis * temp(idx, kdx) ** kv_temp_exp
+             kmcnd(idx, kdx) = sponge_factor(kdx) * cnst_cnd * temp(idx, kdx) ** kc_temp_exp
            end do
          end do
        else
@@ -1415,8 +1416,8 @@ CONTAINS
 
              temp_local = 0.5_r8 * (temp(idx, kdx - 1) + temp(idx, kdx))
              mbarvi = 0.5_r8 * (mbarv(idx, kdx - 1) + mbarv(idx, kdx))
-             kmvis(idx, kdx) = kmvis(idx, kdx) * mbarvi * temp_local ** kv4 * 1.e-7_r8
-             kmcnd(idx, kdx) = kmcnd(idx, kdx) * mbarvi * temp_local ** kc4 * 1.e-5_r8
+             kmvis(idx, kdx) = kmvis(idx, kdx) * mbarvi * temp_local ** kv_temp_exp
+             kmcnd(idx, kdx) = kmcnd(idx, kdx) * mbarvi * temp_local ** kc_temp_exp
            enddo
          end do
          do idx = 1, SIZE(tracer, 1)
@@ -1446,8 +1447,8 @@ CONTAINS
              kmcnd(idx, kdx) = kmcnd(idx, kdx) + thermodynamic_active_species_kc(icnst) * &
                                thermodynamic_active_species_mwi(icnst) * residual
 
-             kmvis(idx, kdx) = kmvis(idx, kdx) * mbarv(idx, kdx) * temp(idx, kdx) ** kv4 * 1.e-7_r8
-             kmcnd(idx, kdx) = kmcnd(idx, kdx) * mbarv(idx, kdx) * temp(idx, kdx) ** kc4 * 1.e-5_r8
+             kmvis(idx, kdx) = kmvis(idx, kdx) * mbarv(idx, kdx) * temp(idx, kdx) ** kv_temp_exp
+             kmcnd(idx, kdx) = kmcnd(idx, kdx) * mbarv(idx, kdx) * temp(idx, kdx) ** kc_temp_exp
            end do
          end do
        else
@@ -1523,11 +1524,11 @@ CONTAINS
        kmvis_ref(kdx) = sponge_factor(kdx) * &
             (kv1 * mmro2 * o2_mwi +         &
              kv2 * mmrn2 * n2_mwi) * mbar *    &
-             tref ** kv4 * 1.e-7_r8
+             tref ** kv_temp_exp
        kmcnd_ref(kdx) = sponge_factor(kdx) * &
             (kc1 * mmro2 * o2_mwi +         &
              kc2 * mmrn2 * n2_mwi) * mbar *    &
-             tref ** kc4 * 1.e-5_r8
+             tref ** kc_temp_exp
      end do
    end subroutine get_molecular_diff_coef_reference
 
