@@ -968,6 +968,9 @@ contains
 
        type (MPAS_Stream_type) :: mesh_stream
 
+       nullify(cell_gradient_coef_x)
+       nullify(cell_gradient_coef_y)
+
 
        call MPAS_createStream(mesh_stream, domain_ptr % ioContext, 'not_used', MPAS_IO_NETCDF, MPAS_IO_READ, &
                               pio_file_desc=fh_ini, ierr=ierr)
@@ -1046,8 +1049,10 @@ contains
 
        call mpas_pool_get_field(meshPool, 'edgeNormalVectors', edgeNormalVectors)
        call mpas_pool_get_field(meshPool, 'localVerticalUnitVectors', localVerticalUnitVectors)
+
        call mpas_pool_get_field(meshPool, 'defc_a', defc_a)
        call mpas_pool_get_field(meshPool, 'defc_b', defc_b)
+
        if (use_gw_front .or. use_gw_front_igw) then
           call mpas_pool_get_field(meshPool, 'cell_gradient_coef_x', cell_gradient_coef_x)
           call mpas_pool_get_field(meshPool, 'cell_gradient_coef_y', cell_gradient_coef_y)
