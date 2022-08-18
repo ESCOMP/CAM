@@ -2,14 +2,13 @@
   !
   ! NOTE: This needs to be in its own file to avoid circular references.
   subroutine carma_getH2O(h2o)
-    use shr_kind_mod,     only: r8 => shr_kind_r8
-    use cam_initfiles,    only: initial_file_get_id
-    use pio,              only: file_desc_t
-    use ppgrid,           only: pcols, pver, begchunk, endchunk
-    use cam_abortutils,   only: endrun
-    use cam_grid_support, only: cam_grid_check, cam_grid_id, cam_grid_get_dim_names
-    use ncdio_atm,        only: infld
-    use gmean_mod,        only: gmean
+    use shr_kind_mod,   only: r8 => shr_kind_r8
+    use cam_initfiles,  only: initial_file_get_id
+    use pio,            only: file_desc_t
+    use cam_pio_utils,  only: cam_pio_get_var
+    use pmgrid,         only: plat, plev, plevp, plon
+    use ppgrid,         only: pcols, pver, pverp
+    use cam_abortutils, only: endrun
 
     real(r8), intent(out)   :: h2o(pver)      ! midpoint h2o mmr (kg/kg)
 
@@ -17,32 +16,25 @@
     type(file_desc_t), pointer :: ncid_ini
     logical                    :: found
     real(r8), pointer          :: init_h2o(:,:,:)
-    integer  :: grid_id
-    character(len=4) :: dim1name, dim2name
-    character(len=*), parameter :: subname = 'carma_getH2O'
 
     ! For an initial run, if the file is missing, then create one using the
     ! average concentration from the initial condition file.
     ncid_ini  => initial_file_get_id()
+    nullify(init_h2o)
 
-    allocate(init_h2o(pcols,pver,begchunk:endchunk))
-
-    grid_id = cam_grid_id('physgrid')
-    if (.not. cam_grid_check(grid_id)) then
-      call endrun(subname//': Internal error, no "physgrid" grid')
-    end if
-    call cam_grid_get_dim_names(grid_id, dim1name, dim2name)
-    call infld('Q', ncid_ini, dim1name, 'lev', dim2name, 1, pcols, 1, pver, begchunk, endchunk, init_h2o, found, gridname='physgrid')
-
+    allocate(init_h2o(plon,pver,plat))
+    call cam_pio_get_var('Q', ncid_ini, init_h2o, found=found)
+            
     if (.not. found) then
-      call endrun(subname//': failed to find field Q in IC file.')
+      call endrun('carma_init::cam_pio_get_var failed to find field Q.')
     end if
 
     ! Just do a simple average. Could get gw and do a weighted average.
     do iz = 1, pver
-      call gmean(init_h2o(:, iz, :), h2o(iz))
+      h2o(iz) = sum(init_h2o(:, iz, :)) / plat / plon
     end do
 
     deallocate(init_h2o)
-
-  end subroutine carma_getH2O
+    
+    return
+  end
