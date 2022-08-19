@@ -35,7 +35,7 @@ module upper_bc
   public :: ubc_get_vals       ! get ubc values for this step
   public :: ubc_get_flxs       ! get ub fluxes for this step
   public :: ubc_fixed_conc     ! returns true for constituents that have fixed UBC
-  public :: ubc_fixed_temp     ! true if temperature at upper bounary is fixed
+  public :: ubc_fixed_temp     ! true if temperature at upper boundary is fixed
 
   character(len=64) :: ubc_specifier(pcnst) = 'NOTSET'
 
