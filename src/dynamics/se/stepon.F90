@@ -14,9 +14,8 @@ use parallel_mod,   only: par
 use dimensions_mod, only: nelemd
 
 use aerosol_properties_mod, only: aerosol_properties
-use modal_aerosol_properties_mod, only: modal_aerosol_properties
-use aerosol_state_mod, only: aerosol_state
-use microp_aero,       only: aerosol_state_object
+use aerosol_state_mod,      only: aerosol_state
+use microp_aero,            only: aerosol_state_object, aerosol_properties_object
 
 implicit none
 private
@@ -28,9 +27,8 @@ public stepon_run2
 public stepon_run3
 public stepon_final
 
-logical :: clim_modal_aero = .false.
 class(aerosol_properties), pointer :: aero_props_obj => null()
-integer :: num_trans_aerosols=-1
+logical :: aerosols_transported = .false.
 
 !=========================================================================================
 contains
@@ -41,7 +39,6 @@ subroutine stepon_init(dyn_in, dyn_out )
    use cam_history,    only: addfld, add_default, horiz_only
    use constituents,   only: pcnst, cnst_name, cnst_longname
    use dimensions_mod, only: fv_nphys, cnst_name_gll, cnst_longname_gll, qsize
-   use rad_constituents, only: rad_cnst_get_info
 
    ! arguments
    type (dyn_import_t), intent(inout) :: dyn_in  ! Dynamics import container
@@ -49,7 +46,6 @@ subroutine stepon_init(dyn_in, dyn_out )
 
    ! local variables
    integer :: m, m_cnst
-   integer :: nmodes
    !----------------------------------------------------------------------------
    ! These fields on dynamics grid are output before the call to d_p_coupling.
    do m_cnst = 1, qsize
@@ -84,13 +80,12 @@ subroutine stepon_init(dyn_in, dyn_out )
       call add_default(trim(cnst_name(m_cnst))//'&IC', 0, 'I')
    end do
 
-   call rad_cnst_get_info(0, nmodes=nmodes)
-   clim_modal_aero = (nmodes > 0)
+   ! get aerosol properties
+   aero_props_obj => aerosol_properties_object()
 
-   if (clim_modal_aero) then
-      aero_props_obj => modal_aerosol_properties()
-      ! get number of transported aerosol contistuents
-      num_trans_aerosols = aero_props_obj%number_transported()
+   if (associated(aero_props_obj)) then
+      ! determine if there are transported aerosol contistuents
+      aerosols_transported = aero_props_obj%number_transported()>0
    end if
 
 end subroutine stepon_init
@@ -137,7 +132,7 @@ subroutine stepon_run1( dtime_out, phys_state, phys_tend,               &
    !----------------------------------------------------------
    ! update aerosol state object from CAM physics state constituents
    !----------------------------------------------------------
-   if (num_trans_aerosols>0) then
+   if (aerosols_transported) then
 
       do c = begchunk,endchunk
          aero_state_obj => aerosol_state_object(c)
@@ -184,7 +179,7 @@ subroutine stepon_run2(phys_state, phys_tend, dyn_in, dyn_out)
    !----------------------------------------------------------
    nullify(aero_state_obj)
 
-   if (num_trans_aerosols>0) then
+   if (aerosols_transported) then
       do c = begchunk,endchunk
          aero_state_obj => aerosol_state_object(c)
          ! get mass or number mixing ratios of aerosol constituents

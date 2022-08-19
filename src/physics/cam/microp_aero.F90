@@ -61,6 +61,7 @@ save
 public :: microp_aero_init, microp_aero_run, microp_aero_readnl, microp_aero_register
 public :: microp_aero_final
 public :: aerosol_state_object
+public :: aerosol_properties_object
 
 ! Private module data
 character(len=16)   :: eddy_scheme
@@ -348,6 +349,16 @@ function aerosol_state_object(lchnk) result(obj)
   obj => aero_state(lchnk)%obj
 
 end function aerosol_state_object
+
+!=========================================================================================
+! returns a pointer to an aerosol properties object
+function aerosol_properties_object() result(obj)
+
+  class(aerosol_properties), pointer :: obj ! aerosol properties object pointer
+
+  obj => aero_props_obj
+
+end function aerosol_properties_object
 
 !=========================================================================================
 
