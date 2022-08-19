@@ -165,17 +165,19 @@ real(r8) :: o2_mwi, n2_mwi         ! Inverse molecular weights
 real(r8) :: mbar                   ! Mean mass at mid level
 
 ! coefficients in expressions for molecular diffusion coefficients
-! kv1,..,kv4 are coefficients for kmvis calculation
-! kc1,..,kc4 are coefficients for kmcnd calculation
+! kv1,..,kv3 are coefficients for kmvis calculation
+! kc1,..,kc3 are coefficients for kmcnd calculation
 real(r8), parameter :: &
-   kv1 = 4.03_r8, &
-   kv2 = 3.42_r8, &
-   kv3 = 3.9_r8,  &
-   kv4 = 0.69_r8, &
-   kc1 = 56._r8,  &
-   kc2 = 56._r8,  &
-   kc3 = 75.9_r8, &
-   kc4 = 0.69_r8
+   kv1 = 4.03_r8 * 1.e-7_r8, &
+   kv2 = 3.42_r8 * 1.e-7_r8, &
+   kv3 = 3.9_r8 * 1.e-7_r8,  &
+   kc1 = 56._r8 * 1.e-5_r8,  &
+   kc2 = 56._r8 * 1.e-5_r8,  &
+   kc3 = 75.9_r8 * 1.e-5_r8
+
+real(r8), parameter :: &
+   kv_temp_exp = 0.69_r8,            &
+   kc_temp_exp = 0.69_r8
 
 !================================================================================================
 contains
@@ -453,8 +455,8 @@ end subroutine physconst_init
           thermodynamic_active_species_cv (icnst) = 0.5_r8*shr_const_rgas*dof2/mw !N2
           thermodynamic_active_species_R  (icnst) = shr_const_rgas/mw
           thermodynamic_active_species_mwi(icnst) = 1.0_r8/mw
-          thermodynamic_active_species_kv(icnst)  = 3.42_r8
-          thermodynamic_active_species_kc(icnst)  = 56._r8
+          thermodynamic_active_species_kv(icnst)  = kv2
+          thermodynamic_active_species_kc(icnst)  = kc2
         end if
         !
         ! if last major species is not N2 then add code here
@@ -497,8 +499,8 @@ end subroutine physconst_init
           thermodynamic_active_species_cv (icnst) = 0.5_r8*shr_const_rgas*dof1/mw
           thermodynamic_active_species_R  (icnst) = shr_const_rgas/mw
           thermodynamic_active_species_mwi(icnst) = 1.0_r8/mw
-          thermodynamic_active_species_kv(icnst)  = 3.9_r8
-          thermodynamic_active_species_kc(icnst)  = 75.9_r8
+          thermodynamic_active_species_kv(icnst)  = kv3
+          thermodynamic_active_species_kc(icnst)  = kc3
           icnst = icnst+1
         end if
         !
@@ -516,8 +518,8 @@ end subroutine physconst_init
           thermodynamic_active_species_cv (icnst) = 0.5_r8*shr_const_rgas*dof2/mw
           thermodynamic_active_species_R  (icnst) = shr_const_rgas/mw
           thermodynamic_active_species_mwi(icnst) = 1.0_r8/mw
-          thermodynamic_active_species_kv(icnst)  = 4.03_r8
-          thermodynamic_active_species_kc(icnst)  = 56._r8
+          thermodynamic_active_species_kv(icnst)  = kv1
+          thermodynamic_active_species_kc(icnst)  = kc1
           icnst = icnst+1
         end if
         !
@@ -1153,7 +1155,7 @@ end subroutine physconst_init
                             dp_dry,ptop,p00,temp,theta_v)
      Richardson_number(:,:,1)      = 0.0_r8
      Richardson_number(:,:,nlev+1) = 0.0_r8
-     do k=nlev-1,2,-1
+     do k=nlev,2,-1
        km1=k-1
        pt1(:,:) = theta_v(:,:,km1)
        pt2(:,:) = theta_v(:,:,k)
@@ -1164,10 +1166,10 @@ end subroutine physconst_init
    !
    !****************************************************************************************************************
    !
-   ! compute column integrated total energy consistent with vertical coordinate as well as vertical integrals 
+   ! compute column integrated total energy consistent with vertical coordinate as well as vertical integrals
    ! of water mass (H2O,wv,liq,ice)
    !
-   ! if subroutine is asked to compute "te" then the latent heat terms are added to the kinetic (ke), internal + 
+   ! if subroutine is asked to compute "te" then the latent heat terms are added to the kinetic (ke), internal +
    ! geopotential (se)  energy terms
    !
    ! subroutine assumes that enthalpy term (rho*cp*T) uses dry air heat capacity
@@ -1228,9 +1230,9 @@ end subroutine physconst_init
         species_liq_idx(:) = thermodynamic_active_species_liq_idx(:)
         species_ice_idx(:) = thermodynamic_active_species_ice_idx(:)
      end if
-   
-     select case (vcoord)  
-     case(vc_moist_pressure,vc_dry_pressure)          
+
+     select case (vcoord)
+     case(vc_moist_pressure,vc_dry_pressure)
        if (.not. present(ps) .or. .not. present(phis)) then
          write(iulog, *) subname//' ps and phis must be present for moist/dry pressure vertical coordinate'
          call endrun(subname // '::  ps and phis must be present for moist/dry pressure vertical coordinate')
@@ -1275,14 +1277,14 @@ end subroutine physconst_init
        write(iulog, *) subname//' vertical coordinate not supported: ',vcoord
        call endrun(subname // ':: vertical coordinate not supported')
      end select
-     if (present(te)) te  = se_loc + ke_loc       
+     if (present(te)) te  = se_loc + ke_loc
      if (present(se)) se = se_loc
      if (present(ke)) ke = ke_loc
      if (present(wv)) wv = wv_loc
      !
      ! vertical integral of total liquid water
      !
-     liq_loc = 0._r8     
+     liq_loc = 0._r8
      do idx = 1,thermodynamic_active_species_liq_num
        do k = 1, nlev
          do j = j0,j1
@@ -1293,7 +1295,7 @@ end subroutine physconst_init
        end do
      end do
      if (present(liq)) liq = liq_loc
-          
+
      !
      ! vertical integral of total frozen (ice) water
      !
@@ -1306,7 +1308,7 @@ end subroutine physconst_init
            end do
          end do
        end do
-     end do     
+     end do
      if (present(ice)) ice = ice_loc
      ! Compute vertical integrals of total water.
      if (present(H2O)) H2O = wv_loc + liq_loc + ice_loc
@@ -1322,7 +1324,7 @@ end subroutine physconst_init
      case('wv')
        if (present(te)) te = te - latvap*liq_loc - latsub*ice_loc
      case default
-       write(iulog, *) subname//' enthalpy reference state not supported: ',TRIM(enthalpy_reference_state) 
+       write(iulog, *) subname//' enthalpy reference state not supported: ',TRIM(enthalpy_reference_state)
        call endrun(subname // ':: enthalpy reference state not supported')
      end select
      deallocate(species_idx,species_liq_idx,species_ice_idx)
@@ -1945,15 +1947,15 @@ end subroutine physconst_init
 
      if (dry_air_species_num==0) then
 
-       cnst_vis = (kv1*mmro2*o2_mwi + kv2*mmrn2*n2_mwi)*mbar*1.e-7_r8
-       cnst_cnd = (kc1*mmro2*o2_mwi + kc2*mmrn2*n2_mwi)*mbar*1.e-5_r8
+       cnst_vis = (kv1*mmro2*o2_mwi + kv2*mmrn2*n2_mwi)*mbar
+       cnst_cnd = (kc1*mmro2*o2_mwi + kc2*mmrn2*n2_mwi)*mbar
        if (get_at_interfaces==1) then
            do k=2,k1
              do j=j0,j1
                do i=i0,i1
                  temp_local   = 0.5_r8*(temp(i,j,k)+temp(i,j,k-1))
-                 kmvis(i,j,k) = sponge_factor(k)*cnst_vis*temp_local**kv4
-                 kmcnd(i,j,k) = sponge_factor(k)*cnst_cnd*temp_local**kc4
+                 kmvis(i,j,k) = sponge_factor(k)*cnst_vis*temp_local**kv_temp_exp
+                 kmcnd(i,j,k) = sponge_factor(k)*cnst_cnd*temp_local**kc_temp_exp
                end do
              end do
            end do
@@ -1966,8 +1968,8 @@ end subroutine physconst_init
          do k=1,k1
            do j=j0,j1
              do i=i0,i1
-               kmvis(i,j,k) = sponge_factor(k)*cnst_vis*temp(i,j,k)**kv4
-               kmcnd(i,j,k) = sponge_factor(k)*cnst_cnd*temp(i,j,k)**kc4
+               kmvis(i,j,k) = sponge_factor(k)*cnst_vis*temp(i,j,k)**kv_temp_exp
+               kmcnd(i,j,k) = sponge_factor(k)*cnst_cnd*temp(i,j,k)**kc_temp_exp
              end do
            end do
          end do
@@ -2017,8 +2019,8 @@ end subroutine physconst_init
 
                temp_local = .5_r8*(temp(i,j,k-1)+temp(i,j,k))
                mbarvi = 0.5_r8*(mbarv(i,j,k-1)+mbarv(i,j,k))
-               kmvis(i,j,k) = kmvis(i,j,k)*mbarvi*temp_local**kv4*1.e-7_r8
-               kmcnd(i,j,k) = kmcnd(i,j,k)*mbarvi*temp_local**kc4*1.e-5_r8
+               kmvis(i,j,k) = kmvis(i,j,k)*mbarvi*temp_local**kv_temp_exp
+               kmcnd(i,j,k) = kmcnd(i,j,k)*mbarvi*temp_local**kc_temp_exp
              enddo
            enddo
          end do
@@ -2052,8 +2054,8 @@ end subroutine physconst_init
                kmcnd(i,j,k) = kmcnd(i,j,k)+thermodynamic_active_species_kc(icnst)* &
                               thermodynamic_active_species_mwi(icnst)*residual
 
-               kmvis(i,j,k) = kmvis(i,j,k)*mbarv(i,j,k)*temp(i,j,k)**kv4*1.e-7_r8
-               kmcnd(i,j,k) = kmcnd(i,j,k)*mbarv(i,j,k)*temp(i,j,k)**kc4*1.e-5_r8
+               kmvis(i,j,k) = kmvis(i,j,k)*mbarv(i,j,k)*temp(i,j,k)**kv_temp_exp
+               kmcnd(i,j,k) = kmcnd(i,j,k)*mbarv(i,j,k)*temp(i,j,k)**kc_temp_exp
              enddo
            enddo
          end do
@@ -2091,11 +2093,11 @@ end subroutine physconst_init
        kmvis_ref(k) = sponge_factor(k)* &
             (kv1*mmro2*o2_mwi +         &
              kv2*mmrn2*n2_mwi)*mbar*    &
-             tref**kv4 * 1.e-7_r8
+             tref**kv_temp_exp
        kmcnd_ref(k) = sponge_factor(k)* &
             (kc1*mmro2*o2_mwi +         &
              kc2*mmrn2*n2_mwi)*mbar*    &
-             tref**kc4 * 1.e-5_r8
+             tref**kc_temp_exp
      end do
    end subroutine get_molecular_diff_coef_reference
 

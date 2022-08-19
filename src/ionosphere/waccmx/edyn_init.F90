@@ -181,14 +181,22 @@ contains
       end do
 
       allocate(coord_map(mlat1 - mlat0 + 1))
-      coord_map = (/ (i, i = mlat0, mlat1) /)
+      if (mlon0==1) then
+         coord_map = (/ (i, i = mlat0, mlat1) /)
+      else
+         coord_map = 0
+      end if
       lat_coord => horiz_coord_create('mlat', '', nmlat, 'latitude',           &
            'degrees_north', mlat0, mlat1, gmlat(mlat0:mlat1),                  &
            map=coord_map)
       nullify(coord_map)
 
       allocate(coord_map(omlon1 - mlon0 + 1))
-      coord_map = (/ (i, i = mlon0, omlon1) /)
+      if (mlat0==1) then
+         coord_map = (/ (i, i = mlon0, omlon1) /)
+      else
+         coord_map = 0
+      end if
       lon_coord => horiz_coord_create('mlon', '', nmlon, 'longitude',          &
            'degrees_east', mlon0, omlon1, gmlon(mlon0:omlon1),                 &
            map=coord_map)
@@ -214,14 +222,23 @@ contains
       end do
 
       allocate(coord_map(lat1 - lat0 + 1))
-      coord_map = (/ (i, i = lat0, lat1) /)
+      if (lon0==1) then
+         coord_map = (/ (i, i = lat0, lat1) /)
+      else
+         coord_map = 0
+      end if
       lat_coord => horiz_coord_create('glat', '', nlat, 'latitude',           &
            'degrees_north', lat0, lat1, glat(lat0:lat1),                  &
            map=coord_map)
       nullify(coord_map)
 
       allocate(coord_map(lon1 - lon0 + 1))
-      coord_map = (/ (i, i = lon0, lon1) /)
+      if (lat0==1) then
+         coord_map = (/ (i, i = lon0, lon1) /)
+      else
+         coord_map = 0
+      end if
+
       lon_coord => horiz_coord_create('glon', '', nlon, 'longitude',          &
            'degrees_east', lon0, lon1, glon(lon0:lon1),                 &
            map=coord_map)

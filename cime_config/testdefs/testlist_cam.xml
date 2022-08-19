@@ -1094,6 +1094,17 @@
     </options>
   </test>
 
+  <test compset="QPMOZ" grid="f10_f10_mg37" name="SMS_D_Ln3_Vnuopc" testmods="cam/outfrq3s_chemproc">
+    <machines>
+      <machine name="izumi" compiler="gnu" category="aux_cam"/>
+      <machine name="izumi" compiler="gnu" category="camchem"/>
+      <machine name="cheyenne" compiler="intel" category="camchem"/>
+    </machines>
+    <options>
+      <option name="wallclock">00:10:00</option>
+    </options>
+  </test>
+
   <test compset="QPMOZ" grid="f19_f19_mg17" name="ERC_D_Ln9_Vnuopc" testmods="cam/outfrq3s">
     <machines>
       <machine name="cheyenne" compiler="intel" category="aux_cam"/>
@@ -2145,7 +2156,7 @@
       <option name="wallclock">00:50:00</option>
     </options>
   </test>
-  <test compset="FXHIST" grid="f09_f09_mg17" name="SMS_D_Ln9_Vnuopc"   testmods="cam/waccmx_weimer">
+  <test compset="FXHIST" grid="f09_f09_mg17" name="SMS_D_Ln9_Vnuopc_P384x3"   testmods="cam/waccmx_weimer">
     <machines>
       <machine name="cheyenne" compiler="intel" category="waccmx"/>
     </machines>
@@ -2293,7 +2304,7 @@
   <test compset="FW4madSD" grid="f19_f19_mg17" name="SMS_P48x1_D_Ln9_Vnuopc" testmods="cam/outfrq9s" supported="false">
     <machines>
       <machine name="izumi" compiler="nag" category="waccm"/>
-      <machine name="izumi" compiler="nag" category="aux_cam"/>
+      <machine name="izumi" compiler="gnu" category="aux_cam"/>
     </machines>
     <options>
       <option name="wallclock">00:40:00</option>
