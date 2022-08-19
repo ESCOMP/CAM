@@ -303,6 +303,9 @@ subroutine ma_convproc_init
    end if
 
    aero_props_obj => modal_aerosol_properties()
+   if (.not.associated(aero_props_obj)) then
+      call endrun('ma_convproc_init: modal_aerosol_properties constructor failed')
+   end if
 
 end subroutine ma_convproc_init
 

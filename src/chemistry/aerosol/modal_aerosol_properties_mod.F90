@@ -3,7 +3,6 @@ module modal_aerosol_properties_mod
   use physconst, only: pi
   use aerosol_properties_mod, only: aerosol_properties
   use rad_constituents, only: rad_cnst_get_info, rad_cnst_get_mode_props, rad_cnst_get_aer_props
-  use cam_abortutils, only: endrun
 
   implicit none
 
@@ -47,48 +46,56 @@ contains
     real(r8),allocatable :: alogsig(:)
     real(r8),allocatable :: f1(:)
     real(r8),allocatable :: f2(:)
-    character(len=*),parameter :: prefix = 'modal_aerosol_properties::constructor: '
     integer :: ierr
 
     allocate(newobj,stat=ierr)
     if( ierr /= 0 ) then
-       call endrun(prefix//'error allocating newobj')
+       nullify(newobj)
+       return
     end if
 
     call rad_cnst_get_info(0, nmodes=nmodes)
 
     allocate(nspecies(nmodes),stat=ierr)
     if( ierr /= 0 ) then
-       call endrun(prefix//'error allocating nspecies')
+       nullify(newobj)
+       return
     end if
     allocate(alogsig(nmodes),stat=ierr)
     if( ierr /= 0 ) then
-       call endrun(prefix//'error allocating alogsig')
+       nullify(newobj)
+       return
     end if
     allocate( f1(nmodes),stat=ierr )
     if( ierr /= 0 ) then
-       call endrun(prefix//'error allocating f1')
+       nullify(newobj)
+       return
     end if
     allocate( f2(nmodes),stat=ierr )
     if( ierr /= 0 ) then
-       call endrun(prefix//'error allocating f2')
+       nullify(newobj)
+       return
     end if
 
     allocate(sigmag(nmodes),stat=ierr)
     if( ierr /= 0 ) then
-       call endrun(prefix//'error allocating sigmag')
+       nullify(newobj)
+       return
     end if
     allocate(newobj%exp45logsig_(nmodes),stat=ierr)
     if( ierr /= 0 ) then
-       call endrun(prefix//'error allocating newobj%exp45logsig_')
+       nullify(newobj)
+       return
     end if
     allocate(newobj%voltonumblo_(nmodes),stat=ierr)
     if( ierr /= 0 ) then
-       call endrun(prefix//'error allocating newobj%voltonumblo_')
+       nullify(newobj)
+       return
     end if
     allocate(newobj%voltonumbhi_(nmodes),stat=ierr)
     if( ierr /= 0 ) then
-       call endrun(prefix//'error allocating newobj%voltonumbhi_')
+       nullify(newobj)
+       return
     end if
 
     ncnst_tot = 0
@@ -115,7 +122,11 @@ contains
 
     end do
 
-    call newobj%initialize(nmodes,ncnst_tot,nspecies,nspecies,alogsig,f1,f2)
+    call newobj%initialize(nmodes,ncnst_tot,nspecies,nspecies,alogsig,f1,f2,ierr)
+    if( ierr /= 0 ) then
+       nullify(newobj)
+       return
+    end if
     deallocate(nspecies)
     deallocate(alogsig)
     deallocate(sigmag)

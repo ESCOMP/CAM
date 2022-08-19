@@ -1,6 +1,5 @@
 module aerosol_properties_mod
   use shr_kind_mod, only: r8 => shr_kind_r8
-  use cam_abortutils, only: endrun
 
   implicit none
 
@@ -149,7 +148,7 @@ contains
   !------------------------------------------------------------------------------
   ! object initializer
   !------------------------------------------------------------------------------
-  subroutine aero_props_init(self, nbin, ncnst, nspec, nmasses, alogsig, f1,f2 )
+  subroutine aero_props_init(self, nbin, ncnst, nspec, nmasses, alogsig, f1,f2, ierr )
     class(aerosol_properties), intent(inout) :: self
     integer, intent(in) :: nbin               ! number of bins
     integer, intent(in) :: ncnst              ! total number of constituents
@@ -158,35 +157,37 @@ contains
     real(r8),intent(in) :: alogsig(nbin)      ! natural log of the standard deviation (sigma) of the aerosol bins
     real(r8),intent(in) :: f1(nbin)           ! eq 28 Abdul-Razzak et al 1998
     real(r8),intent(in) :: f2(nbin)           ! eq 29 Abdul-Razzak et al 1998
+    integer,intent(out) :: ierr
 
     integer :: imas,ibin,indx
     character(len=*),parameter :: prefix = 'aerosol_properties::aero_props_init: '
-    integer :: ierr
+
+    ierr = 0
 
     allocate(self%nspecies_(nbin),stat=ierr)
     if( ierr /= 0 ) then
-       call endrun(prefix//'error allocating self%nspecies_')
+       return
     end if
     allocate(self%nmasses_(nbin),stat=ierr)
     if( ierr /= 0 ) then
-       call endrun(prefix//'error allocating self%nmasses_')
+       return
     end if
     allocate(self%alogsig_(nbin),stat=ierr)
     if( ierr /= 0 ) then
-       call endrun(prefix//'error allocating self%alogsig_')
+       return
     end if
     allocate(self%f1_(nbin),stat=ierr)
     if( ierr /= 0 ) then
-       call endrun(prefix//'error allocating self%f1_')
+       return
     end if
     allocate(self%f2_(nbin),stat=ierr)
     if( ierr /= 0 ) then
-       call endrun(prefix//'error allocating self%f2_')
+       return
     end if
 
     allocate( self%indexer_(nbin,0:maxval(nmasses)),stat=ierr )
     if( ierr /= 0 ) then
-       call endrun(prefix//'error allocating self%indexer_')
+       return
     end if
 
     ! Local indexing compresses the mode and number/mass indices into one index.

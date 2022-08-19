@@ -222,12 +222,18 @@ subroutine microp_aero_init(phys_state,pbuf2d)
       dgnumwet_idx = pbuf_get_index('DGNUMWET')
 
       aero_props_obj => modal_aerosol_properties()
+      if (.not.associated(aero_props_obj)) then
+         call endrun('ma_convproc_init: construction of modal_aerosol_properties object failed')
+      end if
       call ndrop_init(aero_props_obj)
 
       allocate(aero_state(begchunk:endchunk))
       do c = begchunk,endchunk
          pbuf => pbuf_get_chunk(pbuf2d, c)
          aero_state(c)%obj => modal_aerosol_state( phys_state(c), pbuf )
+         if (.not.associated(aero_state(c)%obj)) then
+            call endrun('microp_aero_init: construction of modal_aerosol_state object failed')
+         end if
       end do
 
       ! Init indices for specific modes/species
@@ -704,6 +710,9 @@ subroutine microp_aero_run ( &
 
       ! create an aerosol state object specifically for cam state1
       aero_state1_obj => modal_aerosol_state( state1, pbuf )
+      if (.not.associated(aero_state1_obj)) then
+         call endrun('microp_aero_run: construction of aero_state1_obj modal_aerosol_state object failed')
+      end if
 
       allocate(factnum(pcols,pver,aero_props_obj%nbins()),stat=astat)
       if (astat/=0) then

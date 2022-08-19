@@ -11,7 +11,7 @@ module crm_physics
 !
 !---------------------------------------------------------------------------
 
-   use shr_kind_mod,    only: r8 => shr_kind_r8
+   use shr_kind_mod,    only: r8 => shr_kind_r8, shr_kind_cs
    use ppgrid,          only: pcols, pver, pverp
 #ifdef CRM
    use cam_abortutils,  only: endrun
@@ -585,6 +585,9 @@ subroutine crm_physics_init(pbuf2d)
   if (prog_modal_aero) then
 
     aero_props => modal_aerosol_properties()
+    if (.not.associated(aero_props)) then
+       call endrun('crm_physics_init: modal_aerosol_properties constructor failed')
+    end if
     call ndrop_init(aero_props)
 
     do m=1, pcnst
@@ -1057,6 +1060,9 @@ end subroutine crm_init_cnst
 
    type(modal_aerosol_state), pointer :: aero_state
 
+   integer :: errnum
+   character(len=shr_kind_cs) :: errstr
+
    zero = 0.0_r8
 !========================================================
 !========================================================
@@ -1222,6 +1228,9 @@ end subroutine crm_init_cnst
    end if
 
    aero_state => modal_aerosol_state( state_loc, pbuf )
+   if (.not.associated(aero_state)) then
+      call endrun('crm_physics_tend : modal_aerosol_state constructor failed')
+   end if
 #endif
 
    !-------------------------
@@ -1555,10 +1564,13 @@ end subroutine crm_init_cnst
                call aero_state%loadaer( aero_props, &
                      i, i, k, &
                      m, cs, phase, na, va, &
-                     hy)
+                     hy, errnum, errstr )
                 naermod(k, m)  = na(i)
                 vaerosol(k, m) = va(i)
                 hygro(k, m)    = hy(i)
+                if (errnum/=0) then
+                   call endrun('crm_physics_tend : '//trim(errstr))
+                end if
               end do
             end do
          endif
