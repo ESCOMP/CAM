@@ -30,7 +30,7 @@ module upper_bc_file
   integer :: ubc_file_fixed_ymd = -huge(1)
   integer :: ubc_file_fixed_tod = -huge(1)
 
-  type(trfld), pointer :: fields(:)
+  type(trfld), pointer :: fields(:) => null()
   type(trfile)         :: file
 
   integer :: num_ubc_flds = 0
@@ -78,15 +78,15 @@ contains
     call mpi_bcast(ubc_file_cycle_yr,  1, mpi_integer, masterprocid, mpicom, ierr)
     if (ierr /= 0) call endrun(prefix//'mpi_bcast error : ubc_file_cycle_yr')
 
-    upper_bc_file_specified = .not. ubc_file_path == 'NONE'
+    upper_bc_file_specified = ubc_file_path /= 'NONE'
 
     if (masterproc) then
-       write(iulog,*) prefix//'upper_bc_file_specified: ',upper_bc_file_specified
-       write(iulog,*) prefix//'ubc_file_path = '//trim(ubc_file_path)
-       write(iulog,*) prefix//'ubc_file_input_type = '//trim(ubc_file_input_type)
-       write(iulog,*) prefix//'ubc_file_cycle_yr = ',ubc_file_cycle_yr
-       write(iulog,*) prefix//'ubc_file_fixed_ymd = ',ubc_file_fixed_ymd
-       write(iulog,*) prefix//'ubc_file_fixed_tod = ',ubc_file_fixed_tod
+       write(iulog,*) prefix,'upper_bc_file_specified: ',upper_bc_file_specified
+       write(iulog,*) prefix,'ubc_file_path = '//trim(ubc_file_path)
+       write(iulog,*) prefix,'ubc_file_input_type = '//trim(ubc_file_input_type)
+       write(iulog,*) prefix,'ubc_file_cycle_yr = ',ubc_file_cycle_yr
+       write(iulog,*) prefix,'ubc_file_fixed_ymd = ',ubc_file_fixed_ymd
+       write(iulog,*) prefix,'ubc_file_fixed_tod = ',ubc_file_fixed_tod
     end if
 
   end subroutine upper_bc_file_readnl
@@ -137,9 +137,9 @@ contains
        call cnst_get_ind(trim(fields(m)%fldnam), ndx, abort=.true.)
 
        select case ( to_lower(trim(fields(m)%units)) )
-       case ('k','kg/kg','mmr')
+       case ('k','kg/kg','kg kg-1','mmr')
           ubc_fact(m) = 1._r8
-       case ('mol/mol','mole/mole','vmr')
+       case ('mol/mol','mole/mole','mol mol-1','vmr')
           ubc_fact(m) = cnst_mw(ndx)/mwdry
        case default
           call endrun('upper_bc_file_get: units are not recognized')

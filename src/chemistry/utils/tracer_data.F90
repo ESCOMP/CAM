@@ -205,6 +205,7 @@ contains
     integer :: lchnk, ncol, icol, i,j
     logical :: found
     integer :: aircraft_cnt
+    integer :: err_handling
 
     call specify_fields( specifier, flds )
 
@@ -300,14 +301,14 @@ contains
        file%curr_data_times = file%curr_data_times - file%offset_time
     endif
 
-    call pio_seterrorhandling(File%curr_fileid, PIO_BCAST_ERROR)
+    call pio_seterrorhandling(File%curr_fileid, PIO_BCAST_ERROR, oldmethod=err_handling)
     ierr = pio_inq_dimid( file%curr_fileid, 'ncol', idx )
     file%unstructured = (ierr==PIO_NOERR)
     if (.not.file%unstructured) then
        ierr = pio_inq_dimid( file%curr_fileid, 'lon', idx )
        file%zonal_ave = (ierr/=PIO_NOERR)
     endif
-    call pio_seterrorhandling(File%curr_fileid, PIO_INTERNAL_ERROR)
+    call pio_seterrorhandling(File%curr_fileid, err_handling)
 
     plon = get_dyn_grid_parm('plon')
     plat = get_dyn_grid_parm('plat')
@@ -345,13 +346,13 @@ contains
        call endrun('trcdata_init: failed to allocate x array')
     end if
 
-    call pio_seterrorhandling(File%curr_fileid, PIO_BCAST_ERROR)
+    call pio_seterrorhandling(File%curr_fileid, PIO_BCAST_ERROR, oldmethod=err_handling)
     ierr = pio_inq_varid( file%curr_fileid, 'PS', file%ps_id )
     file%has_ps = (ierr==PIO_NOERR)
     ierr = pio_inq_dimid( file%curr_fileid, 'altitude', idx )
     file%alt_data = (ierr==PIO_NOERR)
 
-    call pio_seterrorhandling(File%curr_fileid, PIO_INTERNAL_ERROR)
+    call pio_seterrorhandling(File%curr_fileid, err_handling)
 
     if ( file%has_ps .and. .not.file%unstructured ) then
        if ( file%zonal_ave ) then
@@ -414,9 +415,9 @@ contains
           call endrun('trcdata_init: failed to allocate file%hyai and file%hybi arrays')
        end if
 
-       call pio_seterrorhandling(File%curr_fileid, PIO_BCAST_ERROR)
+       call pio_seterrorhandling(File%curr_fileid, PIO_BCAST_ERROR, oldmethod=err_handling)
        ierr = pio_inq_varid( file%curr_fileid, 'P0', varid)
-       call pio_seterrorhandling(File%curr_fileid, PIO_INTERNAL_ERROR)
+       call pio_seterrorhandling(File%curr_fileid, err_handling)
 
        if ( ierr == PIO_NOERR ) then
           ierr = pio_get_var( file%curr_fileid, varid, file%p0 )
@@ -464,7 +465,7 @@ contains
     endif
 
 
-    call pio_seterrorhandling(File%curr_fileid, PIO_BCAST_ERROR)
+    call pio_seterrorhandling(File%curr_fileid, PIO_BCAST_ERROR, oldmethod=err_handling)
 
     flds_loop: do f = 1,mxnflds
 
@@ -593,7 +594,7 @@ contains
 
     enddo flds_loop
 
-    call pio_seterrorhandling(File%curr_fileid, PIO_INTERNAL_ERROR)
+    call pio_seterrorhandling(File%curr_fileid, err_handling)
 
 ! if weighting by latitude, compute weighting for horizontal interpolation
     if( file%weight_by_lat ) then
@@ -2005,10 +2006,11 @@ contains
     real(r8), optional, pointer, dimension(:) :: data
 
     integer :: vid, ierr, id
+    integer :: err_handling
 
-    call pio_seterrorhandling( fid, PIO_BCAST_ERROR)
+    call pio_seterrorhandling( fid, PIO_BCAST_ERROR, oldmethod=err_handling)
     ierr = pio_inq_dimid( fid, dname, id )
-    call pio_seterrorhandling( fid, PIO_INTERNAL_ERROR)
+    call pio_seterrorhandling( fid, err_handling)
 
     if ( ierr==PIO_NOERR ) then
 
@@ -2115,6 +2117,7 @@ contains
     integer, allocatable , dimension(:) :: dates, datesecs
     integer :: astat, ierr
     logical :: need_first_ndx
+    integer :: err_handling
 
     if (len_trim(path) == 0) then
        filepath = trim(fname)
@@ -2155,9 +2158,9 @@ contains
     end if
 
     ierr =  pio_inq_varid( piofile, 'date',    dateid  )
-    call pio_seterrorhandling( piofile, PIO_BCAST_ERROR)
+    call pio_seterrorhandling( piofile, PIO_BCAST_ERROR, oldmethod=err_handling)
     ierr = pio_inq_varid( piofile, 'datesec', secid  )
-    call pio_seterrorhandling( piofile, PIO_INTERNAL_ERROR)
+    call pio_seterrorhandling( piofile, err_handling)
 
     if(ierr==PIO_NOERR) then
        ierr = pio_get_var( piofile, secid,  datesecs  )
@@ -2287,12 +2290,12 @@ contains
 
     character(len=32) :: name
     integer :: ioerr, mcdimid, maxlen
-
+    integer :: err_handling
 
     ! Dimension should already be defined in restart file
-    call pio_seterrorhandling(pioFile, PIO_BCAST_ERROR)
+    call pio_seterrorhandling(pioFile, PIO_BCAST_ERROR, oldmethod=err_handling)
     ioerr = pio_inq_dimid(pioFile,'max_chars', mcdimid)
-    call pio_seterrorhandling(pioFile, PIO_INTERNAL_ERROR)
+    call pio_seterrorhandling(pioFile, err_handling)
     ! but define it if nessasary
     if(ioerr/= PIO_NOERR) then
        ioerr = pio_def_dim(pioFile, 'max_chars', SHR_KIND_CL, mcdimid)
@@ -2356,8 +2359,9 @@ contains
     character(len=64) :: name
     integer :: ioerr   ! error status
     integer :: slen
+    integer :: err_handling
 
-    call PIO_SetErrorHandling(piofile, PIO_BCAST_ERROR)
+    call PIO_SetErrorHandling(piofile, PIO_BCAST_ERROR, oldmethod=err_handling)
     name = trim(whence)//'_curr_fname'
     ioerr = pio_inq_varid(piofile, name, vdesc)
     if(ioerr==PIO_NOERR) then
@@ -2376,7 +2380,7 @@ contains
        ioerr = pio_get_var(piofile, vdesc, tr_file%next_filename)
        if(slen<SHR_KIND_CL) tr_file%next_filename(slen+1:)=' '
     end if
-    call PIO_SetErrorHandling(piofile, PIO_INTERNAL_ERROR)
+    call PIO_SetErrorHandling(piofile, err_handling)
 
 
 

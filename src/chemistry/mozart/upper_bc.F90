@@ -147,8 +147,7 @@ contains
           endif
           if (index(ubc_source(n),'mmr')>0) then
              n_fixed_mmr=n_fixed_mmr+1
-          end if
-          if (index(ubc_source(n),'vmr')>0) then
+          else if (index(ubc_source(n),'vmr')>0) then
              n_fixed_vmr=n_fixed_vmr+1
           end if
 
@@ -313,6 +312,9 @@ contains
        else
           mmrndx = index(trim(ubc_source(m)),'mmr')
           vmrndx = index(trim(ubc_source(m)),'vmr')
+          if (mmrndx>0 .and. vmrndx>0) then
+             call endrun(prefix//'incorrect units in UBC source: '//trim(ubc_source(m)))
+          end if
           if (mmrndx>0) then
              str = ubc_source(m)(:mmrndx-1)
              read(str,*) val
