@@ -41,6 +41,7 @@ contains
 !=========================================================================================
 
 subroutine d_p_coupling(phys_state, phys_tend, pbuf2d, dyn_out)
+   use cam_mpas_subdriver, only : cam_mpas_update_halo
 
    ! Convert the dynamics output state into the physics input state.
    ! Note that all pressures and tracer mixing ratios coming from the dycore are based on
@@ -163,6 +164,7 @@ subroutine d_p_coupling(phys_state, phys_tend, pbuf2d, dyn_out)
         pmiddry, pintdry, pmid)
 
    if (use_gw_front .or. use_gw_front_igw) then
+      call cam_mpas_update_halo('scalars', endrun)   ! scalars is the name of tracers in the MPAS state pool
       nullify(pbuf_chnk)
       nullify(pbuf_frontgf)
       nullify(pbuf_frontga)
@@ -979,11 +981,11 @@ subroutine tot_energy(nCells, nVertLevels, qsize, index_qv, zz, zgrid, rho_zz, t
 
    do iCell = cellStart,cellEnd
 
-      d_diag(1:nVertLevels) = 0.0
-      d_off_diag(1:nVertLevels) = 0.0
-      divh(1:nVertLevels) = 0.0
-      theta_x(1:nVertLevels) = 0.0
-      theta_y(1:nVertLevels) = 0.0
+      d_diag(1:nVertLevels) = 0.0_r8
+      d_off_diag(1:nVertLevels) = 0.0_r8
+      divh(1:nVertLevels) = 0.0_r8
+      theta_x(1:nVertLevels) = 0.0_r8
+      theta_y(1:nVertLevels) = 0.0_r8
 
       !
       ! Integrate over edges to compute cell-averaged divergence, deformation,
@@ -1007,8 +1009,8 @@ subroutine tot_energy(nCells, nVertLevels, qsize, index_qv, zz, zgrid, rho_zz, t
             d_off_diag(k) = d_off_diag(k) + defc_b(iEdge,iCell)*u(k,EdgesOnCell(iEdge,iCell))  &
                                           + defc_a(iEdge,iCell)*v(k,EdgesOnCell(iEdge,iCell))
             divh(k) = divh(k) + edge_sign * u(k,EdgesOnCell(iEdge,iCell))
-            thetaEdge = 0.5*( theta_m(k,cell1)/(1.0_r8 + rvord*qv(k,cell1))  &
-                             +theta_m(k,cell2)/(1.0_r8 + rvord*qv(k,cell2)) )
+            thetaEdge = 0.5_r8*( theta_m(k,cell1)/(1.0_r8 + rvord*qv(k,cell1))  &
+                                +theta_m(k,cell2)/(1.0_r8 + rvord*qv(k,cell2)) )
             theta_x(k) = theta_x(k) + cell_gradient_coef_x(iEdge,iCell)*thetaEdge
             theta_y(k) = theta_y(k) + cell_gradient_coef_y(iEdge,iCell)*thetaEdge
 
@@ -1031,10 +1033,10 @@ subroutine tot_energy(nCells, nVertLevels, qsize, index_qv, zz, zgrid, rho_zz, t
       !DIR$ IVDEP
       do k=1, nVertLevels
 
-         frontogenesisFunction(k,iCell) = 0.5*(         &
+         frontogenesisFunction(k,iCell) = 0.5_r8*(         &
               -divh(k)*(theta_x(k)**2 + theta_y(k)**2)  &
               -d_diag(k)*theta_x(k)**2                  &
-              -2.0*d_off_diag(k)*theta_x(k)*theta_y(k)  &
+              -2.0_r8*d_off_diag(k)*theta_x(k)*theta_y(k)  &
               +d_diag(k)*theta_y(k)**2                )
          frontogenesisAngle(k,iCell) = atan2(theta_y(k),theta_x(k))
 
