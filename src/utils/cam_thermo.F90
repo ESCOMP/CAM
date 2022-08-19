@@ -85,19 +85,6 @@ module cam_thermo
    !------------- Variables for consistent themodynamics --------------------
    !
 
-   ! coefficients in expressions for molecular diffusion coefficients
-   ! kv1,..,kv3 are coefficients for kmvis calculation
-   ! kc1,..,kc3 are coefficients for kmcnd calculation
-   real(r8), public, parameter :: kv1 = 4.03_r8 * 1.e-7_r8
-   real(r8), public, parameter :: kv2 = 3.42_r8 * 1.e-7_r8
-   real(r8), public, parameter :: kv3 = 3.9_r8 * 1.e-7_r8
-   real(r8), public, parameter :: kc1 = 56._r8 * 1.e-5_r8
-   real(r8), public, parameter :: kc2 = 56._r8 * 1.e-5_r8
-   real(r8), public, parameter :: kc3 = 75.9_r8 * 1.e-5_r8
-
-   real(r8), public, parameter :: kv_temp_exp = 0.69_r8
-   real(r8), public, parameter :: kc_temp_exp = 0.69_r8
-
    !
    ! Interfaces for public routines
    interface get_gz
@@ -1136,7 +1123,7 @@ CONTAINS
    !*************************************************************************************************************************
    !
    subroutine get_rho_dry_1hd(tracer, temp, ptop, dp_dry, tracer_mass, rho_dry, rhoi_dry, &
-              active_species_idx_dycore, pint_out, pmid_out)
+              active_species_idx_dycore)
      use air_composition, only: get_R_dry
      ! args
      real(r8), intent(in)           :: tracer(:,:,:)      ! Tracer array
@@ -1151,8 +1138,6 @@ CONTAINS
      ! (if different from physics index)
      !
      integer, optional, intent(in)   :: active_species_idx_dycore(:)
-     real(r8),optional,intent(out)   :: pint_out(:,:)
-     real(r8),optional,intent(out)   :: pmid_out(:,:)
 
      ! local vars
      integer :: idx, kdx
@@ -1173,8 +1158,6 @@ CONTAINS
      ! we assume that air is dry where molecular viscosity may be significant
      !
      call get_pmid_from_dp(dp_dry, ptop, pmid, pint=pint)
-     if (present(pint_out)) pint_out=pint
-     if (present(pint_out)) pmid_out=pmid
      if (present(rhoi_dry)) then
        allocate(R_dry(SIZE(tracer, 1), SIZE(tracer, 2) + 1), stat=ierr)
        if (ierr /= 0) then
@@ -1217,7 +1200,7 @@ CONTAINS
    end subroutine get_rho_dry_1hd
 
    subroutine get_rho_dry_2hd(tracer, temp, ptop, dp_dry, tracer_mass, rho_dry, rhoi_dry, &
-              active_species_idx_dycore, pint_out, pmid_out)
+              active_species_idx_dycore)
      ! Version of get_rho_dry for arrays that have a second horizontal index
      real(r8), intent(in)           :: tracer(:,:,:,:)      ! Tracer array
      real(r8), intent(in)           :: temp(:,:,:)          ! Temperature
@@ -1231,77 +1214,20 @@ CONTAINS
      ! (if different from physics index)
      !
      integer, optional, intent(in)   :: active_species_idx_dycore(:)
-     real(r8),optional,intent(out)   :: pint_out(:,:,:)
-     real(r8),optional,intent(out)   :: pmid_out(:,:,:)
 
      integer :: jdx
 
      do jdx = 1, SIZE(tracer, 2)
-       if (present(rho_dry) .and. present(rhoi_dry) .and. present(pint_out) .and. present(pmid_out)) then
-          call get_rho_dry(tracer(:, jdx, :, :), temp(:, jdx, :), ptop, dp_dry(:, jdx, :), &
-              tracer_mass, rho_dry=rho_dry(:, jdx, :), rhoi_dry=rhoi_dry(:, jdx, :), &
-              active_species_idx_dycore=active_species_idx_dycore,&
-              pint_out=pint_out(:, jdx, :), pmid_out=pmid_out(:, jdx, :))
-       else if (present(rho_dry) .and. present(rhoi_dry) .and. present(pint_out)) then
-          call get_rho_dry(tracer(:, jdx, :, :), temp(:, jdx, :), ptop, dp_dry(:, jdx, :), &
-              tracer_mass, rho_dry=rho_dry(:, jdx, :), rhoi_dry=rhoi_dry(:, jdx, :), &
-              active_species_idx_dycore=active_species_idx_dycore,&
-              pint_out=pint_out(:, jdx, :))
-       else if (present(rho_dry) .and. present(rhoi_dry) .and. present(pmid_out)) then
-          call get_rho_dry(tracer(:, jdx, :, :), temp(:, jdx, :), ptop, dp_dry(:, jdx, :), &
-              tracer_mass, rho_dry=rho_dry(:, jdx, :), rhoi_dry=rhoi_dry(:, jdx, :), &
-              active_species_idx_dycore=active_species_idx_dycore,&
-              pmid_out=pmid_out(:, jdx, :))
-       else if (present(rhoi_dry) .and. present(pint_out) .and. present(pmid_out)) then
-          call get_rho_dry(tracer(:, jdx, :, :), temp(:, jdx, :), ptop, dp_dry(:, jdx, :), &
-              tracer_mass, rhoi_dry=rhoi_dry(:, jdx, :), &
-              active_species_idx_dycore=active_species_idx_dycore,&
-              pint_out=pint_out(:, jdx, :), pmid_out=pmid_out(:, jdx, :))
-       else if (present(rho_dry) .and.  present(pint_out) .and. present(pmid_out)) then
-          call get_rho_dry(tracer(:, jdx, :, :), temp(:, jdx, :), ptop, dp_dry(:, jdx, :), &
-              tracer_mass, rho_dry=rho_dry(:, jdx, :), &
-              active_species_idx_dycore=active_species_idx_dycore,&
-              pint_out=pint_out(:, jdx, :), pmid_out=pmid_out(:, jdx, :))
-       else if (present(rho_dry) .and. present(rhoi_dry)) then
+       if (present(rho_dry) .and. present(rhoi_dry)) then
           call get_rho_dry(tracer(:, jdx, :, :), temp(:, jdx, :), ptop, dp_dry(:, jdx, :), &
               tracer_mass, rho_dry=rho_dry(:, jdx, :), rhoi_dry=rhoi_dry(:, jdx, :), &
               active_species_idx_dycore=active_species_idx_dycore)
-       else if (present(rho_dry) .and. present(pint_out)) then
-          call get_rho_dry(tracer(:, jdx, :, :), temp(:, jdx, :), ptop, dp_dry(:, jdx, :), &
-              tracer_mass, rho_dry=rho_dry(:, jdx, :), &
-              active_species_idx_dycore=active_species_idx_dycore,&
-              pint_out=pint_out(:, jdx, :))
-       else if (present(rho_dry) .and. present(pmid_out)) then
-          call get_rho_dry(tracer(:, jdx, :, :), temp(:, jdx, :), ptop, dp_dry(:, jdx, :), &
-              tracer_mass, rho_dry=rho_dry(:, jdx, :), &
-              active_species_idx_dycore=active_species_idx_dycore,&
-              pmid_out=pmid_out(:, jdx, :))
-       else if (present(rhoi_dry) .and. present(pint_out) ) then
-          call get_rho_dry(tracer(:, jdx, :, :), temp(:, jdx, :), ptop, dp_dry(:, jdx, :), &
-              tracer_mass, rhoi_dry=rhoi_dry(:, jdx, :), &
-              active_species_idx_dycore=active_species_idx_dycore,&
-              pint_out=pint_out(:, jdx, :))
-       else if (present(rhoi_dry) .and. present(pmid_out) ) then
-          call get_rho_dry(tracer(:, jdx, :, :), temp(:, jdx, :), ptop, dp_dry(:, jdx, :), &
-              tracer_mass, rhoi_dry=rhoi_dry(:, jdx, :), &
-              active_species_idx_dycore=active_species_idx_dycore,&
-              pmid_out=pmid_out(:, jdx, :))
-       else if (present(pint_out) .and. present(pmid_out)) then
-          call get_rho_dry(tracer(:, jdx, :, :), temp(:, jdx, :), ptop, dp_dry(:, jdx, :), &
-              tracer_mass, active_species_idx_dycore=active_species_idx_dycore,&
-              pint_out=pint_out(:, jdx, :), pmid_out=pmid_out(:, jdx, :))
        else if (present(rho_dry)) then
           call get_rho_dry(tracer(:, jdx, :, :), temp(:, jdx, :), ptop, dp_dry(:, jdx, :), &
               tracer_mass, rho_dry=rho_dry(:, jdx, :), active_species_idx_dycore=active_species_idx_dycore)
        else if (present(rhoi_dry)) then
           call get_rho_dry(tracer(:, jdx, :, :), temp(:, jdx, :), ptop, dp_dry(:, jdx, :), &
               tracer_mass, rhoi_dry=rhoi_dry(:, jdx, :), active_species_idx_dycore=active_species_idx_dycore)
-       else if (present(pint_out)) then
-          call get_rho_dry(tracer(:, jdx, :, :), temp(:, jdx, :), ptop, dp_dry(:, jdx, :), &
-              tracer_mass, active_species_idx_dycore=active_species_idx_dycore, pint_out=pint_out(:, jdx, :))
-       else if (present(pmid_out)) then
-          call get_rho_dry(tracer(:, jdx, :, :), temp(:, jdx, :), ptop, dp_dry(:, jdx, :), &
-              tracer_mass, active_species_idx_dycore=active_species_idx_dycore, pmid_out=pmid_out(:, jdx, :))
        else
           call get_rho_dry(tracer(:, jdx, :, :), temp(:, jdx, :), ptop, dp_dry(:, jdx, :), tracer_mass, &
               active_species_idx_dycore=active_species_idx_dycore)
@@ -1320,6 +1246,7 @@ CONTAINS
    subroutine get_molecular_diff_coef_1hd(temp, get_at_interfaces, sponge_factor, kmvis, kmcnd, &
         tracer, fact, active_species_idx_dycore, mbarv_in)
      use air_composition,  only: dry_air_species_num, get_mbarv
+     use air_composition,  only: kv1, kc1, kv_temp_exp, kc_temp_exp
 
      ! args
      real(r8), intent(in)           :: temp(:,:)                     ! temperature
@@ -1503,7 +1430,8 @@ CONTAINS
    !***************************************************************************
    !
    subroutine get_molecular_diff_coef_reference(tref,press,sponge_factor,kmvis_ref,kmcnd_ref,rho_ref)
-     use physconst,  only: rair
+     use physconst,       only: rair
+     use air_composition, only: kv1, kv2, kc1, kc2, kv_temp_exp, kc_temp_exp
      ! args
      real(r8), intent(in)           :: tref                 !reference temperature
      real(r8), intent(in)           :: press(:)             !pressure

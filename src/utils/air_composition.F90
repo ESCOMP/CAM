@@ -78,6 +78,21 @@ module air_composition
    real(r8), public, protected :: n2_mwi = unsetr ! Inverse mol. weight of N2
    real(r8), public, protected :: mbar = unsetr   ! Mean mass at mid level
 
+   ! coefficients in expressions for molecular diffusion coefficients
+   ! kv1,..,kv3 are coefficients for kmvis calculation
+   ! kc1,..,kc3 are coefficients for kmcnd calculation
+   ! Liu, H.-L., et al. (2010), Thermosphere extension of the Whole Atmosphere Community Climate Model,
+   !    J. Geophys. Res., 115, A12302, doi:10.1029/2010JA015586.
+   real(r8), public, parameter :: kv1 = 4.03_r8 * 1.e-7_r8
+   real(r8), public, parameter :: kv2 = 3.42_r8 * 1.e-7_r8
+   real(r8), public, parameter :: kv3 = 3.9_r8 * 1.e-7_r8
+   real(r8), public, parameter :: kc1 = 56._r8 * 1.e-5_r8
+   real(r8), public, parameter :: kc2 = 56._r8 * 1.e-5_r8
+   real(r8), public, parameter :: kc3 = 75.9_r8 * 1.e-5_r8
+
+   real(r8), public, parameter :: kv_temp_exp = 0.69_r8
+   real(r8), public, parameter :: kc_temp_exp = 0.69_r8
+
    !---------------  Variables below here are for WACCM-X ---------------------
    ! cpairv:  composition dependent specific heat at constant pressure
    real(r8), public, protected, allocatable :: cpairv(:,:,:)
@@ -215,7 +230,6 @@ CONTAINS
       use physconst,    only: r_universal, cpair, rair, cpwv, rh2o, cpliq, cpice, mwdry
       use constituents, only: cnst_get_ind, cnst_mw
       use ppgrid,       only: pcols, pver, begchunk, endchunk
-      use cam_themro,   only: kv1, kc1, kv2, kc2, kv3, kc3
 
       integer  :: icnst, ix, isize, ierr, idx
       integer  :: liq_num, ice_num
@@ -411,6 +425,7 @@ CONTAINS
             thermodynamic_active_species_cv (icnst) = cv1 / mw
             thermodynamic_active_species_R  (icnst) = r_universal / mw
             thermodynamic_active_species_mwi(icnst) = 1.0_r8 / mw
+            ! Hydrogen not included in calculation of diffusivity and conductivity
             thermodynamic_active_species_kv(icnst)  = 0.0_r8
             thermodynamic_active_species_kc(icnst)  = 0.0_r8
             icnst = icnst + 1
