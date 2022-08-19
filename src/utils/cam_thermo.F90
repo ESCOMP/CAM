@@ -1246,7 +1246,7 @@ CONTAINS
    subroutine get_molecular_diff_coef_1hd(temp, get_at_interfaces, sponge_factor, kmvis, kmcnd, &
         tracer, fact, active_species_idx_dycore, mbarv_in)
      use air_composition,  only: dry_air_species_num, get_mbarv
-     use air_composition,  only: kv1, kc1, kv_temp_exp, kc_temp_exp
+     use air_composition,  only: kv1, kc1, kv2, kc2, kv_temp_exp, kc_temp_exp
 
      ! args
      real(r8), intent(in)           :: temp(:,:)                     ! temperature
