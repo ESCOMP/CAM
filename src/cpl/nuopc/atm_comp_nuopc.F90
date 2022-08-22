@@ -29,7 +29,7 @@ module atm_comp_nuopc
   use cam_logfile         , only : iulog
   use spmd_utils          , only : spmdinit, masterproc, iam, mpicom
   use time_manager        , only : get_curr_calday, advance_timestep, get_curr_date, get_nstep, get_step_size
-  use atm_import_export   , only : advertise_fields, realize_fields
+  use atm_import_export   , only : read_surface_fields_namelists, advertise_fields, realize_fields
   use atm_import_export   , only : import_fields, export_fields
   use nuopc_shr_methods   , only : chkerr, state_setscalar, state_getscalar, state_diagnose, alarmInit
   use nuopc_shr_methods   , only : set_component_logging, get_component_instance, log_clock_advance
@@ -278,6 +278,9 @@ contains
        call shr_sys_abort(subname//'Need to set attribute ScalarFieldIdxNextSwCday')
     endif
 
+    ! read mediator fields namelists
+    call read_surface_fields_namelists()
+
     call NUOPC_CompAttributeGet(gcomp, name="mediator_present", value=cvalue, isPresent=isPresent, isSet=isSet, rc=rc)
     if (ChkErr(rc,__LINE__,u_FILE_u)) return
     if (isPresent .and. isSet) then
@@ -494,6 +497,8 @@ contains
     call NUOPC_CompAttributeGet(gcomp, name='scol_spval', value=cvalue, rc=rc)
     if (ChkErr(rc,__LINE__,u_FILE_u)) return
     read(cvalue,*) scol_spval
+
+    ! For single column mode in cam need to have a valid single_column_lnd_domainfile for the mask
     call NUOPC_CompAttributeGet(gcomp, name='single_column_lnd_domainfile', value=single_column_lnd_domainfile, rc=rc)
     if (ChkErr(rc,__LINE__,u_FILE_u)) return
     if (scol_lon > scol_spval .and. scol_lat > scol_spval) then
@@ -620,6 +625,8 @@ contains
 
           call cam_set_mesh_for_single_column(scol_lon, scol_lat, mesh, rc)
           if (ChkErr(rc,__LINE__,u_FILE_u)) return
+          allocate(dof(1))
+          dof(1) = 1
 
        else
 

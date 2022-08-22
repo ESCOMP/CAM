@@ -564,9 +564,9 @@ subroutine gw_rdg_belowpeak(ncol, band, rdg_cd_llb, &
   ! Wave Reynolds stress.
   real(r8), intent(inout) :: tau(ncol,-band%ngwv:band%ngwv,pver+1)
   ! Top of low-level flow layer.
-  real(r8), intent(inout) :: tlb(ncol)
+  real(r8), intent(in)    :: tlb(ncol)
   ! Bottom of linear wave region.
-  real(r8), intent(inout) :: bwv(ncol)
+  real(r8), intent(in)    :: bwv(ncol)
   ! surface stress from linear waves.
   real(r8), intent(out) :: tauoro(ncol)
   ! surface stress for downslope wind regime.
@@ -824,7 +824,8 @@ subroutine gw_rdg_break_trap(ncol, band, &
   ! Wave Reynolds stress.
   real(r8), intent(inout) :: tau(ncol,-band%ngwv:band%ngwv,pver+1)
   ! Wave Reynolds stresses at source.
-  real(r8), intent(inout) :: taudsw(ncol),tauoro(ncol)
+  real(r8), intent(in)    :: taudsw(ncol)
+  real(r8), intent(inout) :: tauoro(ncol)
   ! Projection of wind at midpoints and interfaces.
   real(r8), intent(in) :: ubm(ncol,pver)
   real(r8), intent(in) :: ubi(ncol,pver+1)
