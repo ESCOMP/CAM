@@ -1,11 +1,11 @@
 module history_scam
-!----------------------------------------------------------------------- 
-! 
+!-----------------------------------------------------------------------
+!
 ! Purpose: SCAM specific history code.
 !
 ! Public functions/subroutines:
 !   bldfld, h_default
-! 
+!
 ! Author: anonymous from code in cam_history.F90
 !-----------------------------------------------------------------------
    use shr_kind_mod, only: r8 => shr_kind_r8
@@ -19,16 +19,16 @@ PRIVATE
 !#######################################################################
 CONTAINS
    subroutine scm_intht()
-!----------------------------------------------------------------------- 
-! 
-! Purpose: 
+!-----------------------------------------------------------------------
+!
+! Purpose:
 !
 ! add master list fields to scm
-! 
+!
 ! Method: Call a subroutine to add each field
-! 
+!
 ! Author: CCM Core Group
-! 
+!
 !-----------------------------------------------------------------------
       use cam_history, only: addfld, add_default, horiz_only
 !-----------------------------------------------------------------------
@@ -103,7 +103,6 @@ CONTAINS
       call addfld ('NLTEN_PHYS',   (/ 'lev' /), 'I','#/kg/s', 'NL vertical   advective forcing',            gridname='gauss_grid' )
       call addfld ('NITEN_PHYS',   (/ 'lev' /), 'I','#/kg/s', 'NI vertical   advective forcing',            gridname='gauss_grid' )
 
-!++jtb
       call addfld ('U_IOP',      (/ 'lev' /), 'I', 'm/s',        'Zonal Wind from IOP  ',                  gridname='gauss_grid' )
       call addfld ('V_IOP',      (/ 'lev' /), 'I', 'm/s',        'Mer. Wind from IOP ',                  gridname='gauss_grid' )
       call addfld ('OMEGA_IOP',   (/ 'lev' /), 'I', 'Pa/s',    'Vertical velocity (from IOP)  ',            gridname='gauss_grid' )
@@ -128,7 +127,7 @@ CONTAINS
       call addfld ('TTEN_DYCORE_ANA',   (/ 'lev' /), 'I', 'K/s', 'Temperature tendency (analysis)',         gridname='gauss_grid' )
       call addfld ('OMEGA_DYCORE_ANA',  (/ 'lev' /), 'I', 'Pa/s','Pressure tendency/velocity (analysis)',  gridname='gauss_grid' )
       call addfld ('OMEGA_RECALC_ANA',  (/ 'lev' /), 'I', 'Pa/s','Pressure tendency/velocity (analysis)',  gridname='gauss_grid' )
-  
+
       call addfld ('UTEN_PRG_ANA',   (/ 'lev' /), 'I', 'm/s/s', 'Zonal wind tendency (analysis)',        gridname='gauss_grid' )
       call addfld ('UTEN_PHIG_ANA',   (/ 'lev' /), 'I', 'm/s/s', 'Zonal wind tendency (analysis)',        gridname='gauss_grid' )
       call addfld ('UTEN_KEG_ANA',   (/ 'lev' /), 'I', 'm/s/s', 'Zonal wind tendency (analysis)',        gridname='gauss_grid' )
@@ -152,9 +151,6 @@ CONTAINS
 
       call addfld ('QTEN_VADV_ANA',   (/ 'lev' /), 'I', '1/s', 'Temperature tendency (analysis)',        gridname='gauss_grid' )
       call addfld ('QTEN_HADV_ANA',   (/ 'lev' /), 'I', '1/s', 'Temperature tendency (analysis)',        gridname='gauss_grid' )
-
-!--jtb
-
 
    end subroutine scm_intht
 
