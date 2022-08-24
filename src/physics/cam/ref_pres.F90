@@ -1,14 +1,14 @@
 module ref_pres
 !--------------------------------------------------------------------------
-! 
+!
 ! Provides access to reference pressures for use by the physics
 ! parameterizations.  The pressures are provided by the dynamical core
 ! since it determines the grid used by the physics.
-! 
+!
 ! Note that the init method for this module is called before the init
 ! method in physpkg; therefore, most physics modules can use these
 ! reference pressures during their init phases.
-! 
+!
 !--------------------------------------------------------------------------
 
 use shr_kind_mod, only: r8=>shr_kind_r8
@@ -132,13 +132,11 @@ subroutine ref_pres_init(pref_edge_in, pref_mid_in, num_pr_lev_in)
       top=.true.)
 
    ! Find level corresponding to the molecular diffusion bottom.
-!+++ARH/jtb
    if (single_column) then
       do_molec_diff = .false.
    else
       do_molec_diff = (ptop_ref < do_molec_press)
    end if
-!---ARH/jtb
    if (do_molec_diff) then
       nbot_molec = press_lim_idx(molec_diff_bot_press, &
          top=.false.)

@@ -14,7 +14,7 @@ module scamMod
   ! this module provide flexibility to affect the forecast by overriding
   ! parameterization prognosed tendencies with observed tendencies
   ! of a particular field program recorded on the IOP file.
-  ! 
+  !
   ! Public functions/subroutines:
   !   scam_readnl
   !-----------------------------------------------------------------------
@@ -32,7 +32,7 @@ private
 
 ! PUBLIC INTERFACES:
 
-public scam_readnl   ! read SCAM namelist options 
+public scam_readnl   ! read SCAM namelist options
 
 ! PUBLIC MODULE DATA:
 
@@ -47,11 +47,11 @@ integer, parameter :: max_path_len = 128
 logical, public ::  single_column         ! Using IOP file or not
 logical, public ::  use_iop               ! Using IOP file or not
 logical, public ::  use_pert_init         ! perturb initial values
-logical, public ::  use_pert_frc          ! perturb forcing 
+logical, public ::  use_pert_frc          ! perturb forcing
 logical, public ::  switch(num_switches)  ! Logical flag settings from GUI
 logical, public ::  l_uvphys              ! If true, update u/v after TPHYS
 logical, public ::  l_uvadvect            ! If true, T, U & V will be passed to SLT
-logical, public ::  l_conv                ! use flux divergence terms for T and q?     
+logical, public ::  l_conv                ! use flux divergence terms for T and q?
 logical, public ::  l_divtr               ! use flux divergence terms for constituents?
 logical, public ::  l_diag                ! do we want available diagnostics?
 
@@ -76,7 +76,6 @@ character*(max_path_len), public ::  timeinvfile
 character*(max_path_len), public ::  lsmsurffile
 character*(max_path_len), public ::  lsminifile
 
-!++jtb
 logical,                  public ::  use_scm_ana_frc = .false.
 character*(max_path_len), public ::  scm_ana_frc_file_template
 character*(max_path_len), public ::  scm_ana_frc_path
@@ -89,10 +88,7 @@ logical, public :: scm_ana_q_react         = .false.
 logical, public :: scm_ana_u_react         = .false.
 logical, public :: scm_ana_v_react         = .false.
 logical, public :: scm_ana_upwind          = .false.
-!+++ARH
 logical, public :: scm_use_ana_iop         = .false.
-!---ARH
-!--jtb
 
 ! note that scm_zadv_q is set to slt to be consistent with CAM BFB testing
 
@@ -120,14 +116,14 @@ real(r8), public ::      qobs(plev)          ! actual W.V. Mixing ratio
 real(r8), public ::      qinitobs(plev,pcnst)! initial tracer field
 real(r8), public ::      cldliqobs(plev)     ! actual W.V. Mixing ratio
 real(r8), public ::      cldiceobs(plev)     ! actual W.V. Mixing ratio
-real(r8), public ::      numliqobs(plev)     ! actual 
-real(r8), public ::      numiceobs(plev)     ! actual 
-real(r8), public ::      precobs(1)          ! observed precipitation 
-real(r8), public ::      lhflxobs(1)         ! observed surface latent heat flux 
+real(r8), public ::      numliqobs(plev)     ! actual
+real(r8), public ::      numiceobs(plev)     ! actual
+real(r8), public ::      precobs(1)          ! observed precipitation
+real(r8), public ::      lhflxobs(1)         ! observed surface latent heat flux
 real(r8), public ::      shflxobs(1)         ! observed surface sensible heat flux
 real(r8), public ::      q1obs(plev)         ! observed apparent heat source
 real(r8), public ::      q2obs(plev)         ! observed apparent heat sink
-real(r8), public ::      tdiff(plev)         ! model minus observed temp 
+real(r8), public ::      tdiff(plev)         ! model minus observed temp
 real(r8), public ::      tground(1)          ! ground temperature
 real(r8), public ::      tobs(plev)          ! actual temperature
 real(r8), public ::      tsair(1)            ! air temperature at the surface
@@ -160,22 +156,22 @@ integer, public ::     base_secs             ! Time of day of start time (sec)
 ! SCAM public data defaults
 
 logical, public ::  doiopupdate            = .false. ! do we need to read next iop timepoint
-logical, public ::  have_lhflx             = .false. ! dataset contains lhflx 
+logical, public ::  have_lhflx             = .false. ! dataset contains lhflx
 logical, public ::  have_shflx             = .false. ! dataset contains shflx
 logical, public ::  have_tg                = .false. ! dataset contains tg
 logical, public ::  have_tsair             = .false. ! dataset contains tsair
-logical, public ::  have_divq              = .false. ! dataset contains divq 
+logical, public ::  have_divq              = .false. ! dataset contains divq
 logical, public ::  have_divt              = .false. ! dataset contains divt
-logical, public ::  have_divq3d            = .false. ! dataset contains divq3d 
+logical, public ::  have_divq3d            = .false. ! dataset contains divq3d
 logical, public ::  have_vertdivu          = .false. ! dataset contains vertdivu
 logical, public ::  have_vertdivv          = .false. ! dataset contains vertdivv
 logical, public ::  have_vertdivt          = .false. ! dataset contains vertdivt
-logical, public ::  have_vertdivq          = .false. ! dataset contains vertdivq 
+logical, public ::  have_vertdivq          = .false. ! dataset contains vertdivq
 logical, public ::  have_divt3d            = .false. ! dataset contains divt3d
 logical, public ::  have_divu3d            = .false. ! dataset contains divu3d
 logical, public ::  have_divv3d            = .false. ! dataset contains divv3d
 logical, public ::  have_divu              = .false. ! dataset contains divu
-logical, public ::  have_divv              = .false. ! dataset contains divv 
+logical, public ::  have_divv              = .false. ! dataset contains divv
 logical, public ::  have_omega             = .false. ! dataset contains omega
 logical, public ::  have_phis              = .false. ! dataset contains phis
 logical, public ::  have_ptend             = .false. ! dataset contains ptend
@@ -183,10 +179,10 @@ logical, public ::  have_ps                = .false. ! dataset contains ps
 logical, public ::  have_q                 = .false. ! dataset contains q
 logical, public ::  have_q1                = .false. ! dataset contains Q1
 logical, public ::  have_q2                = .false. ! dataset contains Q2
-logical, public ::  have_prec              = .false. ! dataset contains prec 
+logical, public ::  have_prec              = .false. ! dataset contains prec
 logical, public ::  have_t                 = .false. ! dataset contains t
-logical, public ::  have_u                 = .false. ! dataset contains u 
-logical, public ::  have_v                 = .false. ! dataset contains v 
+logical, public ::  have_u                 = .false. ! dataset contains u
+logical, public ::  have_v                 = .false. ! dataset contains v
 logical, public ::  have_cld               = .false. ! dataset contains cld
 logical, public ::  have_cldliq            = .false. ! dataset contains cldliq
 logical, public ::  have_cldice            = .false. ! dataset contains cldice
@@ -197,10 +193,10 @@ logical, public ::  have_aldir             = .false. ! dataset contains aldir
 logical, public ::  have_aldif             = .false. ! dataset contains aldif
 logical, public ::  have_asdir             = .false. ! dataset contains asdir
 logical, public ::  have_asdif             = .false. ! dataset contains asdif
-logical, public ::  use_camiop             = .false. ! use cam generated forcing 
+logical, public ::  use_camiop             = .false. ! use cam generated forcing
 logical, public ::  use_3dfrc              = .false. ! use 3d forcing
 logical, public ::  isrestart              = .false. ! If this is a restart step or not
-  
+
 ! SCAM namelist defaults
 
 logical, public ::  scm_backfill_iop_w_init = .false. ! Backfill missing IOP data from initial file
@@ -269,35 +265,33 @@ subroutine scam_readnl(nlfile,single_column_in,scmlat_in,scmlon_in)
        scm_use_obs_T, scm_use_obs_uv, scm_use_obs_qv, &
        scm_relax_linear, scm_relax_tau_top_sec, &
        scm_relax_tau_bot_sec, scm_force_latlon, scm_relax_fincl, scm_backfill_iop_w_init, &
-!+jtb
        use_scm_ana_frc, scm_ana_frc_path, scm_ana_frc_file_template, &
-       scm_ana_x_plevels, scm_ana_direct_omega, & 
+       scm_ana_x_plevels, scm_ana_direct_omega, &
        scm_ana_t_react, scm_ana_q_react, scm_ana_u_react, scm_ana_v_react, &
        scm_ana_upwind, scm_ana_direct_ttend, scm_use_ana_iop
-!--jtb
 
   single_column=single_column_in
 
   iopfile            = ' '
   scm_clubb_iop_name = ' '
   scm_relax_fincl(:) = ' '
-  
+
   if( single_column ) then
      if( npes.gt.1) call endrun('SCAM_READNL: SCAM doesnt support using more than 1 pe.')
 
-     if (.not. dycore_is('EUL') .or. plon /= 1 .or. plat /=1 ) then 
+     if (.not. dycore_is('EUL') .or. plon /= 1 .or. plat /=1 ) then
         call endrun('SCAM_SETOPTS: must compile model for SCAM mode when namelist parameter single_column is .true.')
      endif
 
      scmlat=scmlat_in
      scmlon=scmlon_in
-     
+
      if( scmlat .lt. -90._r8 .or. scmlat .gt. 90._r8 ) then
         call endrun('SCAM_READNL: SCMLAT must be between -90. and 90. degrees.')
      elseif( scmlon .lt. 0._r8 .or. scmlon .gt. 360._r8 ) then
         call endrun('SCAM_READNL: SCMLON must be between 0. and 360. degrees.')
      end if
-     
+
      ! Read namelist
      if (masterproc) then
         unitn = getunit()
@@ -312,11 +306,11 @@ subroutine scam_readnl(nlfile,single_column_in,scmlat_in,scmlon_in)
         close(unitn)
         call freeunit(unitn)
      end if
-     
+
      ! Error checking:
-     
+
      iopfile = trim(iopfile)
-     if( iopfile .ne. "" ) then 
+     if( iopfile .ne. "" ) then
         use_iop = .true.
      else
         call endrun('SCAM_READNL: must specify IOP file for single column mode')
@@ -329,7 +323,7 @@ subroutine scam_readnl(nlfile,single_column_in,scmlat_in,scmlon_in)
      else
         use_camiop = .false.
      endif
-     
+
 write(*,*) "!!!!!!!!!!   ScamMod !!!!!!!! "
 write(*,*) scm_force_latlon , scmlon, scmlat
 
@@ -339,7 +333,7 @@ write(*,*) scm_force_latlon , scmlon, scmlat
         write(iulog,*) 'SCAM_READNL: using closest IOP column to lat/lon specified in drv_in'
         write(iulog,*) '   requested lat,lon    =',scmlat,', ',scmlon
         write(iulog,*) '   closest IOP lat,lon  =',ioplat,', ',ioplon
-     
+
         scmlat = ioplat
         scmlon = ioplon
      end if
@@ -386,7 +380,7 @@ write(*,*) " after " , scmlon, scmlat
         print *
      end if
   end if
-     
+
 end subroutine scam_readnl
 
 !===============================================================================
