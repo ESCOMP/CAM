@@ -446,15 +446,9 @@ subroutine get_ana_dynfrc_fv ( scmlon, scmlat ,  &
 
 
 
-#if 0
-     call dynfrc_timewgts(      &
-                         (/ Ana_Year1, Ana_Month1, Ana_day1, Ana_sec1 /) , &
-                         (/ Ana_Year2, Ana_Month2, Ana_day2, Ana_sec2 /) , &
-                         ana_wgt1 , ana_wgt2   )
-#else
      ana_wgt1 = 0._r8  ! 0=all weight on t+1
      ana_wgt2 = 1._r8 - ana_wgt1
-#endif
+
      if (masterproc) write(iulog,*) subname//" Ana forcing time wgts ",ana_wgt1,ana_wgt2
 
           iac=2
@@ -1124,7 +1118,6 @@ subroutine get_ana_dynfrc_fv ( scmlon, scmlat ,  &
   dy=( rlats(2)-rlats(1) ) * Rearth
   omega = 0._r8
 
-#if 1
   do L=1,nlev
     do j=2,nlat-1
       do i=2,nlon-1
@@ -1134,15 +1127,6 @@ subroutine get_ana_dynfrc_fv ( scmlon, scmlat ,  &
      end do
    end do
   end do
-#else
-  do L=1,nlev
-    do j=2,nlat-1
-      do i=2,nlon-1
-      omega(i,j,L)  = etadot(i,j,L)*mass(i,j,L)
-     end do
-   end do
-  end do
-#endif
 
 
 end subroutine etadot_fv
