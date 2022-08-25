@@ -3295,7 +3295,7 @@ Enables the "new" SILHS importance sampling scheme with prescribed probabilities
 
 <entry id="subcol_silhs_l_rcm_in_cloud_k_lh_start" type="logical" category="conv"
        group="silhs_config_flags_nl" valid_values="" >
-Determine starting SILHS first sampling level (k_lh_start) based on maximum within-cloud rcm. If false, and if l_random_k_lh_start is also false, then the SILHS first sampling level is the column maximum of liquid cloud water. 
+Determine starting SILHS first sampling level (k_lh_start) based on maximum within-cloud rcm. If false, and if l_random_k_lh_start is also false, then the SILHS first sampling level is the column maximum of liquid cloud water.
 </entry>
 
 <entry id="subcol_silhs_l_random_k_lh_start" type="logical" category="conv"
@@ -3991,7 +3991,7 @@ of pressure and buoyancy in the wp3 predictive equation.
 <entry id="clubb_l_use_shear_Richardson" type="logical" category="pblrad"
        group="clubb_params_nl" valid_values="" >
 Flag to use shear in the calculation of Richardson number.
-Default: .false. 
+Default: .false.
 </entry>
 
 <entry id="clubb_l_use_cloud_cover" type="logical" category="pblrad"
@@ -4023,7 +4023,7 @@ Default: .false.
 
 <entry id="clubb_l_e3sm_config" type="logical" category="pblrad"
        group="clubb_params_nl" valid_values="" >
-Flag to run CLUBB with E3SM settings. 
+Flag to run CLUBB with E3SM settings.
 Default: .true.
 </entry>
 
@@ -4039,34 +4039,34 @@ Default: .false.
 <entry id="clubb_l_use_tke_in_wp2_wp3_K_dfsn" type="logical" category="pblrad"
        group="clubb_params_nl" valid_values="" >
 Flag to use Total Kenetic Energy (TKE) in eddy diffusion for wp2 and wp3.
-Default: .false. 
+Default: .false.
 </entry>
 
 <entry id="clubb_l_use_tke_in_wp3_pr_turb_term" type="logical" category="pblrad"
        group="clubb_params_nl" valid_values="" >
-Flag to use Total Kenetic Energy (TKE) formulation for wp3 pr_turb (turbulent 
+Flag to use Total Kenetic Energy (TKE) formulation for wp3 pr_turb (turbulent
 production) term.
-Default: .false. 
+Default: .false.
 </entry>
 
 <entry id="clubb_l_smooth_Heaviside_tau_wpxp" type="logical" category="pblrad"
        group="clubb_params_nl" valid_values="" >
 Flag to use smooth Heaviside 'Peskin' in computation of invrs_tau.
-Default: .false. 
+Default: .false.
 </entry>
 
 <entry id="clubb_l_godunov_upwind_wpxp_ta" type="logical" category="pblrad"
        group="clubb_params_nl" valid_values="" >
-This flag determines whether we want to use an upwind differencing approximation 
-rather than a centered differencing for turbulent advection terms. It affects  
+This flag determines whether we want to use an upwind differencing approximation
+rather than a centered differencing for turbulent advection terms. It affects
 wpxp only.
 Default: .false.
 </entry>
 
 <entry id="clubb_l_godunov_upwind_xpyp_ta" type="logical" category="pblrad"
        group="clubb_params_nl" valid_values="" >
-This flag determines whether we want to use an upwind differencing approximation 
-rather than a centered differencing for turbulent advection terms. It affects  
+This flag determines whether we want to use an upwind differencing approximation
+rather than a centered differencing for turbulent advection terms. It affects
 xpyp only.
 Default: .false.
 </entry>
@@ -5553,55 +5553,55 @@ Default: FALSE
 
 <entry id="use_scm_ana_frc" type="logical" category="scam"
        group="scam_nl" valid_values="">
-SCAM to calculate or read tendencies from a global ana/dycore
+SCAM to calculate or read tendencies from a global analysis/dycore
 Default: FALSE
 </entry>
 
 <entry id="scm_ana_upwind" type="logical" category="scam"
        group="scam_nl" valid_values="">
-Use 1st order upwind for ana tendencies (instead of 2nd order space centered)
+Use 1st order upwind for analysis tendencies (instead of 2nd order space centered)
 Default: FALSE
 </entry>
 
 <entry id="scm_ana_t_react" type="logical" category="scam"
        group="scam_nl" valid_values="">
-Use scam state as center column in stencil for ana adv tendencies
+Use scam state as center column in stencil for analysis advective tendencies
 Default: FALSE
 </entry>
 
 <entry id="scm_ana_q_react" type="logical" category="scam"
        group="scam_nl" valid_values="">
-Use scam state as center column in stencil for ana adv tendencies
+Use scam state as center column in stencil for analysis advective tendencies
 Default: FALSE
 </entry>
 
 <entry id="scm_ana_u_react" type="logical" category="scam"
        group="scam_nl" valid_values="">
-Use scam state as center column in stencil for ana adv tendencies
+Use scam state as center column in stencil for analysis advective tendencies
 Default: FALSE
 </entry>
 
 <entry id="scm_ana_v_react" type="logical" category="scam"
        group="scam_nl" valid_values="">
-Use scam state as center column in stencil for ana adv tendencies
+Use scam state as center column in stencil for analysis advective tendencies
 Default: FALSE
 </entry>
 
 <entry id="scm_ana_direct_ttend" type="logical" category="scam"
        group="scam_nl" valid_values="">
-Force scam to use tendencies directly from dycore or ana (not recalculated)
+Force scam to use tendencies directly from dycore or analysis (not recalculated)
 Default: FALSE
 </entry>
 
 <entry id="scm_ana_direct_omega" type="logical" category="scam"
        group="scam_nl" valid_values="">
-Force scam to use omega directly from dycore or ana (not recalculated)
+Force scam to use omega directly from dycore or analysis (not recalculated)
 Default: FALSE
 </entry>
 
 <entry id="scm_ana_x_plevels" type="logical" category="scam"
        group="scam_nl" valid_values="">
-Interpolate ana fields to constant pressure surfaces
+Interpolate analysis fields to constant pressure surfaces
 Default: FALSE
 </entry>
 

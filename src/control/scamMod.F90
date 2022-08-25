@@ -80,7 +80,7 @@ logical,                  public ::  use_scm_ana_frc = .false.
 character*(max_path_len), public ::  scm_ana_frc_file_template
 character*(max_path_len), public ::  scm_ana_frc_path
 
-logical, public :: scm_ana_x_plevels       = .true.
+logical, public :: scm_ana_x_plevels       = .false.
 logical, public :: scm_ana_direct_omega    = .false.
 logical, public :: scm_ana_direct_ttend    = .false.
 logical, public :: scm_ana_t_react         = .false.
@@ -324,8 +324,6 @@ subroutine scam_readnl(nlfile,single_column_in,scmlat_in,scmlon_in)
         use_camiop = .false.
      endif
 
-write(*,*) "!!!!!!!!!!   ScamMod !!!!!!!! "
-write(*,*) scm_force_latlon , scmlon, scmlat
 
      ! If we are not forcing the lat and lon from the namelist use the closest lat and lon that is found in the IOP file.
      if (.not.scm_force_latlon) then
@@ -337,7 +335,6 @@ write(*,*) scm_force_latlon , scmlon, scmlat
         scmlat = ioplat
         scmlon = ioplon
      end if
-write(*,*) " after " , scmlon, scmlat
 
 
      if (masterproc) then

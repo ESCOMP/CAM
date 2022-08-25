@@ -225,7 +225,9 @@ subroutine get_ana_dynfrc_fv ( scmlon, scmlat ,  &
 
     logical :: l_Read_next_Ana, Alarm_Read_ana, Alarm_Bump_ana, initialize
 
-    write(iulog,*) " version 07 of get_ana_dynfrc_4scam ... "
+    character(len=19) :: subname='get_ana_dynfrc_fv: '
+
+    write(iulog,*) subname//" version 07 of get_ana_dynfrc_4scam ... "
 
 
     Alarm_Read_Ana = .FALSE.
@@ -241,11 +243,11 @@ subroutine get_ana_dynfrc_fv ( scmlon, scmlat ,  &
     analysis_step = 6 * 3600
 
 
-   Ana_path = trim(scm_ana_frc_path)
-   Ana_File_Template = trim(Ana_path)//trim(scm_ana_frc_file_template)
+    Ana_path = trim(scm_ana_frc_path)
+    Ana_File_Template = trim(Ana_path)//trim(scm_ana_frc_file_template)
 
 
-     call get_curr_date(Year,Month,Day,Sec)
+    call get_curr_date(Year,Month,Day,Sec)
 
     curr_ymd = (Year*10000) + (Month*100) + Day
     curr_sec = Sec
@@ -281,7 +283,7 @@ subroutine get_ana_dynfrc_fv ( scmlon, scmlat ,  &
        l_Read_next_Ana = .FALSE.
        ! On first time step, read in 2 analysis files
        if (is_first_step().and.masterproc) then
-              write(iulog,*) " It's now (First time step):" , curr_YMD, curr_sec
+              write(iulog,*) subname//" It's now (First time step):" , curr_YMD, curr_sec
               write(iulog,*) "Read Initial ana files "
               write(iulog,*) Ana_file1
               write(iulog,*) Ana_file2
@@ -355,8 +357,6 @@ subroutine get_ana_dynfrc_fv ( scmlon, scmlat ,  &
                                    lon_ana, lat_ana, lev_ana &
                                ,   utcore_1, vtcore_1, ttcore_1, ogcore_1 &
                                                 )
-                   write(*,*) " checks ... "
-                   write(*,*)  iax, jax
 
            call read_netcdf_ana_fv ( Ana_File2, nlon_ana, nlat_ana, nlev_ana, &
                                    U_2, V_2, &
@@ -455,7 +455,7 @@ subroutine get_ana_dynfrc_fv ( scmlon, scmlat ,  &
      ana_wgt1 = 0._r8  ! 0=all weight on t+1
      ana_wgt2 = 1._r8 - ana_wgt1
 #endif
-     if (masterproc) write(iulog,*) " Ana forcing time wgts ",ana_wgt1,ana_wgt2
+     if (masterproc) write(iulog,*) subname//" Ana forcing time wgts ",ana_wgt1,ana_wgt2
 
           iac=2
           jac=2
@@ -477,8 +477,8 @@ subroutine get_ana_dynfrc_fv ( scmlon, scmlat ,  &
           lon_alc = lon_ana(iax-1:iax+1)
           lat_alc = lat_ana(jax-1:jax+1)
 
-          if(masterproc) write(iulog,*) "         SCM lon lat: ",scmlonx,scmlat
-          if(masterproc) write(iulog,*) " Closest Ana lon lat: ",lon_ana( iax ) , lat_ana( jax )
+          if(masterproc) write(iulog,*) subname//"         SCM lon lat: ",scmlonx,scmlat
+          if(masterproc) write(iulog,*) subname//" Closest Ana lon lat: ",lon_ana( iax ) , lat_ana( jax )
 
 
           ! Save off analysis fields for diagnostics and
@@ -514,30 +514,30 @@ subroutine get_ana_dynfrc_fv ( scmlon, scmlat ,  &
           if (scm_ana_t_react) then
               To_X( iac, jac, :) = alpha_react(:) * T_scm(:)   &
                                 + ( 1._r8-alpha_react(:) ) * To_X( iac, jac, :)
-              if(masterproc) write(iulog,*) " REACTING to SCM T-state ..... "
+              if(masterproc) write(iulog,*) subname//" REACTING to SCM T-state ..... "
           else
-              if(masterproc) write(iulog,*) " No reaction to SCM T-state ..... "
+              if(masterproc) write(iulog,*) subname//" No reaction to SCM T-state ..... "
           endif
           if (scm_ana_q_react) then
               Qo_X( iac, jac, :) = alpha_react(:) * Q_scm(:) &
                                 + ( 1._r8-alpha_react(:) ) * Qo_X( iac, jac, :)
-              if(masterproc) write(iulog,*) " REACTING to SCM Q-state ..... "
+              if(masterproc) write(iulog,*) subname//" REACTING to SCM Q-state ..... "
           else
-              if(masterproc) write(iulog,*) " No reaction to SCM Q-state ..... "
+              if(masterproc) write(iulog,*) subname//" No reaction to SCM Q-state ..... "
           endif
           if (scm_ana_u_react) then
               Uo_X( iac, jac, :) = alpha_react(:) * U_scm(:) &
                                 + ( 1._r8-alpha_react(:) ) * Uo_X( iac, jac, :)
-              if(masterproc) write(iulog,*) " REACTING to SCM U-state ..... "
+              if(masterproc) write(iulog,*) subname//" REACTING to SCM U-state ..... "
           else
-              if(masterproc) write(iulog,*) " No reaction to SCM U-state ..... "
+              if(masterproc) write(iulog,*) subname//" No reaction to SCM U-state ..... "
           endif
           if (scm_ana_v_react) then
               Vo_X( iac, jac, :) = alpha_react(:) * V_scm(:) &
                                 + ( 1._r8-alpha_react(:) ) * Vo_X( iac, jac, :)
-              if(masterproc) write(iulog,*) " REACTING to SCM V-state ..... "
+              if(masterproc) write(iulog,*) subname//" REACTING to SCM V-state ..... "
           else
-              if(masterproc) write(iulog,*) " No reaction to SCM V-state ..... "
+              if(masterproc) write(iulog,*) subname//" No reaction to SCM V-state ..... "
           endif
 
 
@@ -580,9 +580,9 @@ subroutine get_ana_dynfrc_fv ( scmlon, scmlat ,  &
              !Retain p-frc calculation on eta???
              !call patch_eta_x_plv (  nlon_alc , nlat_alc ,  nlev_alc+1, &
              !                     iac, jac, phi_X , ple_X )
-             if(masterproc) write(iulog,*) " calcs on PRESSURE levels "
+             if(masterproc) write(iulog,*) subname//" calcs on PRESSURE levels "
           else
-             if(masterproc) write(iulog,*) " calcs on ETA levels "
+             if(masterproc) write(iulog,*) subname//" calcs on ETA levels "
           end if
 
 
@@ -611,7 +611,6 @@ subroutine get_ana_dynfrc_fv ( scmlon, scmlat ,  &
             kehg_X = grad_fv( nlon_alc,nlat_alc,nlev_alc,iac,jac,lon_alc,lat_alc, KEh_X )
 
                  ! T_x, T_y  should be straight T (not virtual)
-            !!teg_X  =  grad_fv( nlon_alc,nlat_alc,nlev_alc,iac,jac,lon_alc,lat_alc, To_X )
             teg_X  =  grad_fv( nlon_alc,nlat_alc,nlev_alc,iac,jac,lon_alc,lat_alc, Tv_X ) !test 05-31-21
 
             qg_X  =  grad_fv( nlon_alc,nlat_alc,nlev_alc,iac,jac,lon_alc,lat_alc, Qo_X )
@@ -621,25 +620,12 @@ subroutine get_ana_dynfrc_fv ( scmlon, scmlat ,  &
             vg_X  =  grad_fv( nlon_alc,nlat_alc,nlev_alc,iac,jac,lon_alc,lat_alc, Vo_X )
 
             aalc   =  0.5*( PHI_X( :, :, 2:nlev_alc+1) +  PHI_X(: , : ,1:nlev_alc) )
-            !!aalc   = PHI_X( :, :, 2:nlev_alc+1)
-            !!aalc   =  PHI_X(: , : ,1:nlev_alc)
             phig_X = grad_fv( nlon_alc,nlat_alc,nlev_alc,iac,jac,lon_alc,lat_alc, aalc )
 
-            !Retain p-frc calculation on eta???
-            !if (scm_ana_x_plevels) then  ! No horz. p-gradient in p-coords
-            !    plog_X(:,1:2) = 0._r8
-            !else
-                plog_X = grad_fv( nlon_alc,nlat_alc,nlev_alc,iac,jac,lon_alc,lat_alc, plo_X(:,:,1:nlev_alc) )
-                !plog_X = grad_fv( nlon_alc,nlat_alc,nlev_alc,iac,jac,lon_alc,lat_alc, ple_X(:,:,1:nlev_alc) )
-            !end if
+            plog_X = grad_fv( nlon_alc,nlat_alc,nlev_alc,iac,jac,lon_alc,lat_alc, plo_X(:,:,1:nlev_alc) )
 
 
-
-#if 1
-           lin_pfc_X = lin_pfc_fv( nlon_alc,nlat_alc,nlev_alc,iac,jac,lon_alc,lat_alc, ple_X, phi_X )
-#else
-            lin_pfc_X = in_pfc_fv( nlon_alc,nlat_alc,nlev_alc,iac,jac,lon_alc,lat_alc, pke_X, phik_X )
-#endif
+            lin_pfc_X = lin_pfc_fv( nlon_alc,nlat_alc,nlev_alc,iac,jac,lon_alc,lat_alc, ple_X, phi_X )
 
             kehg_ana  = kehg_X
             plog_ana  = plog_X
@@ -675,20 +661,13 @@ subroutine get_ana_dynfrc_fv ( scmlon, scmlat ,  &
             !  -----  Diags for VI form (0-out)
             uten_keg_ana  =    0._r8 ! fill with 0
 
-            !!if (scm_ana_x_plevels) then  ! No horz. p-gradient in p-coords
-            if (.FALSE.) then  ! No horz. p-gradient in p-coords
+          if (.FALSE.) then  ! No horz. p-gradient in p-coords
                uten_pfrc_ana  = - phig_ana(:,1)
                vten_pfrc_ana  = - phig_ana(:,2)
-            else
-#if 1
+          else
               !put together pieces for Pressure and Phi gradient tencency terms
               uten_pfrc_ana  = -(1._r8/rho_ana) * plog_ana(:,1) - phig_ana(:,1)
               vten_pfrc_ana  = -(1._r8/rho_ana) * plog_ana(:,2) - phig_ana(:,2)
-#else
-             !Lin(1997) QJRMS pfrc tendency terms
-             uten_pfrc_ana  = lin_pfc_ana(:,1)
-             vten_pfrc_ana  = lin_pfc_ana(:,2)
-#endif
           end if
 
 
@@ -705,10 +684,10 @@ subroutine get_ana_dynfrc_fv ( scmlon, scmlat ,  &
 
          if (.not.(scm_ana_direct_omega)) then
             omega_ana = omega_recalc_ana ! use reconstructed omega
-            if(masterproc) write(iulog,*) " Omega recalc from ana U,V etc."
+            if(masterproc) write(iulog,*) subname//" Omega recalc from ana U,V etc."
           else
             omega_ana = omega_dycore_ana ! use direct omega from dycore/ana
-            if(masterproc) write(iulog,*) " Omega direct from ana"
+            if(masterproc) write(iulog,*) subname//" Omega direct from ana"
           end if
 
 
@@ -756,7 +735,7 @@ subroutine get_ana_dynfrc_fv ( scmlon, scmlat ,  &
             L=nlev
                tend(L) = etad(L)* ( aa(L) - aa(L-1) ) / ( eta(L) - eta(L-1) )
 
-            tend = -1.r8*tend ! for RHS consistency
+            tend = -1._r8*tend ! for RHS consistency
 
          end function vadv_fv
 !---------------------------
@@ -775,7 +754,7 @@ subroutine get_ana_dynfrc_fv ( scmlon, scmlat ,  &
             L=nlev
                tend(L) = omega(L)* ( aa(L) - aa(L-1) ) / ( plo(L) - plo(L-1) )
 
-            tend = -1.r8*tend ! for RHS consistency
+            tend = -1._r8*tend ! for RHS consistency
 
          end function vadv_fv_press
 !---------------------------
@@ -934,7 +913,6 @@ subroutine get_ana_dynfrc_fv ( scmlon, scmlat ,  &
 !=========================================
       subroutine makepk_fv( nlon,nlat,nlev, t, q, ps, phis, pko, pke, phi, th )
            use hycoef,           only: hyai, hybi, ps0, hyam, hybm
-           !!use shr_const_mod,    only: rdair => shr_const_rdair, cpair => shr_const_cpdair,
            integer,  intent(in)  :: nlon,nlat,nlev
             real(r8), intent(in)  :: t(nlon,nlat,nlev),q(nlon,nlat,nlev),ps(nlon,nlat),phis(nlon,nlat)
             real(r8), intent(out) :: pko(nlon,nlat,nlev),th(nlon,nlat,nlev),pke(nlon,nlat,nlev+1), phi(nlon,nlat,nlev+1)
@@ -1021,8 +999,6 @@ subroutine get_ana_dynfrc_fv ( scmlon, scmlat ,  &
             integer,  intent(in)  :: nlon,nlat,nlev
             real(r8), intent(in)  :: u(nlon,nlat,nlev),v(nlon,nlat,nlev)
             real(r8), intent(out) :: zeta(nlev)
-            !real(r8), intent(in) :: u(iax-1:iax+1,jax-1:jax+1,nlev)
-            !real(r8), intent(in) :: v(iax-1:iax+1,jax-1:jax+1,nlev)
             real(r8), intent(in) :: lats(nlat),lons(nlon)
             real(r8) :: rlats(nlat),rlons(nlon)
             real(r8) :: dy,dx0,dx,darea,voo,voo2
@@ -1031,8 +1007,6 @@ subroutine get_ana_dynfrc_fv ( scmlon, scmlat ,  &
 
             iax=2
             jax=2
-            write(*,*) " we're in subr. zeta_fv Lon Lat: "
-            write(*,*) lons(iax),lats(jax)
 
             rlons(:) = lons(:) * PI/180._r8
             rlats(:) = lats(:) * PI/180._r8
@@ -1042,7 +1016,6 @@ subroutine get_ana_dynfrc_fv ( scmlon, scmlat ,  &
 
             darea = dy*dx0*cos( rlats(jax) )
 
-                  write(*,*) dx0,dy,cos( rlats(jax) )
 
              do L =1,nlev
                zeta(L) =                                                &
@@ -1050,7 +1023,6 @@ subroutine get_ana_dynfrc_fv ( scmlon, scmlat ,  &
                          - ( U(iax,jax+1, L)   - U(iax,jax-1,L) ) / ( 2._r8*dy )
             end do
 
-                            write(*,*) " vorticity est. ",zeta(nlev)
 
   end subroutine zeta_fv
 !================================================================
@@ -1211,8 +1183,10 @@ end subroutine etadot_fv
 
    logical :: l_have_us , l_have_vs
 
-    l_have_us = .FALSE.
-    l_have_vs = .FALSE.
+   character(len=24) :: subname='read_netcdf_ana_fv_ini: '
+
+   l_have_us = .FALSE.
+   l_have_vs = .FALSE.
 
    ! masterporc does all of the work here
    !-----------------------------------------
@@ -1222,7 +1196,7 @@ end subroutine etadot_fv
      !-----------------------
      istat=nf90_open(trim(anal_file),NF90_NOWRITE,ncid)
      if(istat /= NF90_NOERR) then
-       write(iulog,*)'NF90_OPEN: failed for file ',trim(anal_file)
+       write(iulog,*) subname//'NF90_OPEN: failed for file ',trim(anal_file)
        write(iulog,*) nf90_strerror(istat)
        call endrun ('UPDATE_ANALYSES_FV')
      endif
@@ -1231,34 +1205,34 @@ end subroutine etadot_fv
      !--------------------
      istat=nf90_inq_dimid(ncid,'lon',varid)
      if(istat /= NF90_NOERR) then
-       write(iulog,*) nf90_strerror(istat)
+       write(iulog,*) subname//nf90_strerror(istat)
        call endrun ('UPDATE_ANALYSES_FV')
      endif
      istat=nf90_inquire_dimension(ncid,varid,len=nlon)
      if(istat /= NF90_NOERR) then
-       write(iulog,*) nf90_strerror(istat)
+       write(iulog,*) subname//nf90_strerror(istat)
        call endrun ('UPDATE_ANALYSES_FV')
      endif
 
      istat=nf90_inq_dimid(ncid,'lat',varid)
      if(istat /= NF90_NOERR) then
-       write(iulog,*) nf90_strerror(istat)
+       write(iulog,*) subname//nf90_strerror(istat)
        call endrun ('UPDATE_ANALYSES_FV')
      endif
      istat=nf90_inquire_dimension(ncid,varid,len=nlat)
      if(istat /= NF90_NOERR) then
-       write(iulog,*) nf90_strerror(istat)
+       write(iulog,*) subname//nf90_strerror(istat)
        call endrun ('UPDATE_ANALYSES_FV')
      endif
 
      istat=nf90_inq_dimid(ncid,'lev',varid)
      if(istat /= NF90_NOERR) then
-       write(iulog,*) nf90_strerror(istat)
+       write(iulog,*) subname//nf90_strerror(istat)
        call endrun ('UPDATE_ANALYSES_FV')
      endif
      istat=nf90_inquire_dimension(ncid,varid,len=nlev)
      if(istat /= NF90_NOERR) then
-       write(iulog,*) nf90_strerror(istat)
+       write(iulog,*) subname//nf90_strerror(istat)
        call endrun ('UPDATE_ANALYSES_FV')
      endif
 
@@ -1268,7 +1242,7 @@ end subroutine etadot_fv
      !-----------------------
      istat=nf90_close(ncid)
      if(istat /= NF90_NOERR) then
-       write(iulog,*) nf90_strerror(istat)
+       write(iulog,*) subname//nf90_strerror(istat)
        call endrun ('UPDATE_ANALYSES_EUL')
      endif
 
@@ -1316,6 +1290,8 @@ end subroutine etadot_fv
 
    logical :: l_have_us , l_have_vs
 
+   character(len=20) :: subname='read_netcdf_ana_fv: '
+
    l_have_us = .FALSE.
    l_have_vs = .FALSE.
 
@@ -1327,7 +1303,7 @@ end subroutine etadot_fv
      !-----------------------
      istat=nf90_open(trim(anal_file),NF90_NOWRITE,ncid)
      if(istat.ne.NF90_NOERR) then
-       write(iulog,*)'NF90_OPEN: failed for file ',trim(anal_file)
+       write(iulog,*) subname//'NF90_OPEN: failed for file ',trim(anal_file)
        write(iulog,*) nf90_strerror(istat)
        call endrun ('UPDATE_ANALYSES_FV')
     end if
@@ -1339,40 +1315,38 @@ end subroutine etadot_fv
 
      istat=nf90_inq_varid(ncid,'lon',varid)
      if(istat /= NF90_NOERR) then
-       write(iulog,*) nf90_strerror(istat)
+       write(iulog,*)  subname//nf90_strerror(istat)
        call endrun ('UPDATE_ANALYSES_FV')
      endif
      istat=nf90_get_var(ncid,varid,Lons)
      if(istat /= NF90_NOERR) then
-       write(iulog,*) nf90_strerror(istat)
+       write(iulog,*)  subname//nf90_strerror(istat)
        call endrun ('UPDATE_ANALYSES_FV')
      endif
 
      istat=nf90_inq_varid(ncid,'lat',varid)
      if(istat /= NF90_NOERR) then
-       write(iulog,*) nf90_strerror(istat)
+       write(iulog,*)  subname//nf90_strerror(istat)
        call endrun ('UPDATE_ANALYSES_FV')
      endif
      istat=nf90_get_var(ncid,varid,Lats)
      if(istat /= NF90_NOERR) then
-       write(iulog,*) nf90_strerror(istat)
+       write(iulog,*)  subname//nf90_strerror(istat)
        call endrun ('UPDATE_ANALYSES_FV')
      endif
 
      istat=nf90_inq_varid(ncid,'lev',varid)
      if(istat /= NF90_NOERR) then
-       write(iulog,*) nf90_strerror(istat)
+       write(iulog,*)  subname//nf90_strerror(istat)
        call endrun ('UPDATE_ANALYSES_FV')
      endif
      istat=nf90_get_var(ncid,varid,Levs)
      if(istat /= NF90_NOERR) then
-       write(iulog,*) nf90_strerror(istat)
+       write(iulog,*)  subname//nf90_strerror(istat)
        call endrun ('UPDATE_ANALYSES_FV')
      endif
-   endif ! (masterproc) then
 
 
-   if(masterproc) then
      ! Read in, transpose lat/lev indices,
      ! and scatter data arrays
      !----------------------------------
@@ -1380,180 +1354,133 @@ end subroutine etadot_fv
      !----------------------------------
      istat=nf90_inq_varid(ncid,'U',varid)
      if(istat /= NF90_NOERR) then
-       write(iulog,*) nf90_strerror(istat)
+       write(iulog,*)  subname//nf90_strerror(istat)
        call endrun ('UPDATE_ANALYSES_FV')
      endif
      istat=nf90_get_var(ncid,varid, U )
      if(istat /= NF90_NOERR) then
-       write(iulog,*) nf90_strerror(istat)
+       write(iulog,*)  subname//nf90_strerror(istat)
        call endrun ('UPDATE_ANALYSES_FV')
      endif
-   endif ! (masterproc) then
 
-   if(masterproc) then
      istat=nf90_inq_varid(ncid,'V',varid)
      if(istat /= NF90_NOERR) then
-       write(iulog,*) nf90_strerror(istat)
+       write(iulog,*)  subname//nf90_strerror(istat)
        call endrun ('UPDATE_ANALYSES_FV')
      endif
      istat=nf90_get_var(ncid,varid, V )
      if(istat /= NF90_NOERR) then
-       write(iulog,*) nf90_strerror(istat)
+       write(iulog,*)  subname//nf90_strerror(istat)
        call endrun ('UPDATE_ANALYSES_FV')
      endif
-   endif ! (masterproc) then
 
-
-
-
-!!!!!!!!!!!!!!
-   if(masterproc) then
      istat=nf90_inq_varid(ncid,'T',varid)
      if(istat /= NF90_NOERR) then
-       write(iulog,*) nf90_strerror(istat)
+       write(iulog,*)  subname//nf90_strerror(istat)
        call endrun ('UPDATE_ANALYSES_FV')
      endif
      istat=nf90_get_var(ncid,varid, T )
      if(istat /= NF90_NOERR) then
-       write(iulog,*) nf90_strerror(istat)
+       write(iulog,*)  subname//nf90_strerror(istat)
        call endrun ('UPDATE_ANALYSES_FV')
      endif
-   endif ! (masterproc) then
 
-   if(masterproc) then
      istat=nf90_inq_varid(ncid,'Q',varid)
      if(istat /= NF90_NOERR) then
-       write(iulog,*) nf90_strerror(istat)
+       write(iulog,*)  subname//nf90_strerror(istat)
        call endrun ('UPDATE_ANALYSES_FV')
      endif
      istat=nf90_get_var(ncid,varid, Q )
      if(istat /= NF90_NOERR) then
-       write(iulog,*) nf90_strerror(istat)
+       write(iulog,*)  subname//nf90_strerror(istat)
        call endrun ('UPDATE_ANALYSES_FV')
      endif
-   endif ! (masterproc) then
 
-   if(masterproc) then
     istat=nf90_inq_varid(ncid,'PS',varid)
     if(istat /= NF90_NOERR) then
-      write(iulog,*) nf90_strerror(istat)
+      write(iulog,*)  subname//nf90_strerror(istat)
       call endrun ('UPDATE_ANALYSES_FV')
     endif
     istat=nf90_get_var(ncid,varid,PS )
     if(istat /= NF90_NOERR) then
-      write(iulog,*) nf90_strerror(istat)
+      write(iulog,*)  subname//nf90_strerror(istat)
       call endrun ('UPDATE_ANALYSES_FV')
     endif
-   endif ! (masterproc) then
 
-   if(masterproc) then
     istat=nf90_inq_varid(ncid,'PHIS',varid)
     if(istat /= NF90_NOERR) then
-      write(iulog,*) nf90_strerror(istat)
+      write(iulog,*)  subname//nf90_strerror(istat)
       call endrun ('UPDATE_ANALYSES_SE')
     endif
     istat=nf90_get_var(ncid,varid,PHIS )
     if(istat /= NF90_NOERR) then
-      write(iulog,*) nf90_strerror(istat)
+      write(iulog,*)  subname//nf90_strerror(istat)
       call endrun ('UPDATE_ANALYSES_FV')
     endif
-   endif ! (masterproc) then
 
-   if(masterproc) then
     istat=nf90_inq_varid(ncid,'UTEND_CORE',varid)
     if(istat /= NF90_NOERR) then
-      write(iulog,*) "No UTEND_CORE on file: "
+      write(iulog,*)  subname//"No UTEND_CORE on file: "
       write(iulog,*) trim(anal_file)
       utcore(:,:,:)=-9999._r8
     else
       istat=nf90_get_var(ncid,varid,utcore )
         if(istat /= NF90_NOERR) then
-          write(iulog,*) nf90_strerror(istat)
+          write(iulog,*)  subname//nf90_strerror(istat)
           call endrun ('UPDATE_ANALYSES_FV')
        end if
     end if
-   end if ! (masterproc) then
 
-   if(masterproc) then
     istat=nf90_inq_varid(ncid,'VTEND_CORE',varid)
     if(istat /= NF90_NOERR) then
-      write(iulog,*) "No VTEND_CORE on file: "
+      write(iulog,*)  subname//"No VTEND_CORE on file: "
       write(iulog,*) trim(anal_file)
       vtcore(:,:,:)=-9999._r8
     else
       istat=nf90_get_var(ncid,varid,vtcore )
         if(istat /= NF90_NOERR) then
-          write(iulog,*) nf90_strerror(istat)
+          write(iulog,*)  subname//nf90_strerror(istat)
           call endrun ('UPDATE_ANALYSES_FV')
         end if
     end if
-   end if ! (masterproc) then
 
-   if(masterproc) then
     istat=nf90_inq_varid(ncid,'DTCORE',varid)
     if(istat /= NF90_NOERR) then
-      write(iulog,*) "No TTEND_CORE on file: "
+      write(iulog,*)  subname//"No TTEND_CORE on file: "
       write(iulog,*) trim(anal_file)
       ttcore(:,:,:)=-9999._r8
     else
       istat=nf90_get_var(ncid,varid,ttcore )
         if(istat /= NF90_NOERR) then
-          write(iulog,*) nf90_strerror(istat)
+          write(iulog,*)  subname//nf90_strerror(istat)
           call endrun ('UPDATE_ANALYSES_FV')
         end if
     end if
-   end if ! (masterproc) then
 
-   if(masterproc) then
     istat=nf90_inq_varid(ncid,'OMEGA',varid)
     if(istat /= NF90_NOERR) then
-      write(iulog,*) "No OMEGA (core) on file: "
+      write(iulog,*)  subname//"No OMEGA (core) on file: "
       write(iulog,*) trim(anal_file)
       ogcore(:,:,:)=-9999._r8
     else
       istat=nf90_get_var(ncid,varid,ogcore )
         if(istat /= NF90_NOERR) then
-          write(iulog,*) nf90_strerror(istat)
+          write(iulog,*)  subname//nf90_strerror(istat)
           call endrun ('UPDATE_ANALYSES_FV')
         end if
     end if
-   end if ! (masterproc) then
 
 
-   if(masterproc) then
      ! Close the analysis file
      !-----------------------
      istat=nf90_close(ncid)
      if(istat /= NF90_NOERR) then
-       write(iulog,*) nf90_strerror(istat)
+       write(iulog,*)  subname//nf90_strerror(istat)
        call endrun ('UPDATE_ANALYSES_EUL')
      endif
-   end if
+
+   end if ! (masterproc) then
    !------------
-#if 0
-!   Block winds at 45 m/s for increased stability. Kluge if Jets nt important
-                where(U > 45._r8)
-                      U = 45._r8
-                end where
-                where(V > 45._r8)
-                      V = 45._r8
-                end where
-                where(U < -45._r8)
-                      U = -45._r8
-                end where
-                where(V < -45._r8)
-                      V = -45._r8
-                end where
-#endif
-
-
-      write(*,*) "In read_netcdf_anal "
-      write(*,*) "Reading: ",anal_file
-      write(*,*) "Lons ..."
-      write(*,*) "Shape:  ",shape(Lons)
-      write(*,*) "MinMax: ",minval(Lons),maxval(Lons)
-      write(*,*) "US and VS are presnt on file: ",l_have_us, l_have_vs
-
 
    return
   end subroutine read_netcdf_ana_fv
@@ -1615,8 +1542,6 @@ end subroutine dynfrc_timewgts
    do i=1,nx
       plq(:) =  plo(i,j,:)
       aaq(:) =  aa(i,j,:)
-      !if (plq(1)  <= MINVAL(plx) ) aax(1)  = aaq(1)
-      !if (plq(nl) >  MAXVAL(plx) ) aax(nl) = aaq(nl)
       do L=1,nl
       do k=2,nl
          if ( ( plx(L) <= plq(k) ).AND.(plx(L) > plq(k-1) ) ) then
@@ -1637,12 +1562,6 @@ end subroutine dynfrc_timewgts
    end do
 
    aa=aat
-
-!write(*,*) " mod "
-!write(411) nx,ny,nL
-!write(411) plo,aa,aat
-!PAUSE
-
 
   end subroutine patch_eta_x_plv
 

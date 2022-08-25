@@ -1,4 +1,3 @@
-#define SCAMNUDGERUN
 module scmforecast
    ! --------------------------------------------------------------------------- !
    !                                                                             !
@@ -10,9 +9,7 @@ module scmforecast
   use spmd_utils,       only: masterproc
   use cam_logfile,      only: iulog
   use cam_control_mod,  only: adiabatic
-#ifdef SCAMNUDGERUN
   use get_ana_dynfrc_4scam,    only: get_ana_dynfrc_fv
-#endif
   implicit none
   private
   save
@@ -340,14 +337,9 @@ contains
    !            = .false. : Use User-generated SCAM IOP file !
    ! ------------------------------------------------------- !
 
-#ifdef SCAMNUDGERUN
-    !!! use_ana_iop needs to get into namelist!!  !!!!
-      !use_ana_iop=.TRUE.
-      !!use_ana_iop=.FALSE.
-      l_vectinv =.FALSE.
+   l_vectinv =.FALSE.
 
-      !if (use_ana_iop) then
-      if (scm_use_ana_iop) then
+   if (scm_use_ana_iop) then
       call get_ana_dynfrc_fv ( scmlon, scmlat ,  &
                                omega_ana, etad_ana, zeta_ana, &
                                t_ana ,  tv_ana , &
@@ -437,15 +429,7 @@ contains
 
           tten_totdyn_ana = tten_hadv_ana + tten_vadv_ana + tten_comp_ana
           qten_totdyn_ana = qten_hadv_ana + qten_vadv_ana
-#else
-      !use_ana_iop=.FALSE.
-#endif
 
-   ! Need 3rd option 'use_ana_iop'
-   !    - suboption: use {u,v,t,q}ten_vadv_ana OR recalculate with etad_ana
-   !    - what about other species in q?
-   !    - we might want to calculate fu,fv using evolving (local) u's and v's
-   !      to allow geostrophic adjustment.
 
 if( use_camiop ) then
        do k = 1, plev
@@ -463,7 +447,6 @@ if( use_camiop ) then
        enddo
 
 else  ! when use_camiop =.FALSE.
-     !if( .NOT.(use_ana_iop) ) then
      if( .NOT.(scm_use_ana_iop) ) then
      ! ---------------------------------------------------------------------------- !
      ! Compute 'omega'( wfldint ) at the interface from the value at the mid-point. !
@@ -669,30 +652,10 @@ else  ! when use_camiop =.FALSE.
            ufcor_0 = ufcst
            vfcor_0 = vfcst
 
-#if 0
-           !  Implicit formulation of Coriolis terms
-           nsubdyn = 1
-           ztodtn = ztodt/nsubdyn
-           AA = 1._r8/(1._r8 + (ztodtn*fcoriol)**2 )
-           do nt= 1, nsubdyn
-           do k = 1, plev
-              ufcst(k) = dynfrcp(k) * AA * ( ufcstm2(k) + ztodtn*fcoriol*vfcstm2(k) ) &
-                            + (1._r8 - dynfrcp(k) )*ufcst(k)
-              vfcst(k) = dynfrcp(k) * AA * ( vfcstm2(k) - ztodtn*fcoriol*ufcstm2(k) ) &
-                            + (1._r8 - dynfrcp(k) )*vfcst(k)
-           end do
-           ufcstm2 = ufcst
-           vfcstm2 = vfcst
-           end do
-
-           uten_vort_ana   = (ufcst - ufcor_0 )/ztodt
-           vten_vort_ana   = (vfcst - vfcor_0 )/ztodt
-#endif
 
            uten_totdyn_ana = uten_hadv_ana + uten_vort_ana + uten_pfrc_ana + uten_vadv_ana
            vten_totdyn_ana = vten_hadv_ana + vten_vort_ana + vten_pfrc_ana + vten_vadv_ana
 
-#if 1
            !----------------------------
            ! Calculate "usual" T-tendencies from complete IOP-file anyway
            !----------------------------
@@ -725,13 +688,7 @@ else  ! when use_camiop =.FALSE.
               k = plev
               fac = 1._r8 / ( 2.0_r8 * pdelm1(k) )
               tten_zadv_EULc(k) = -fac * ( wfldint(k) * ( t3m1(k) - t3m1(k-1) ) )
-              !----------------------------------------
-              ! Replace ERA-derived T-tendencies with
-              ! IOP-file derived T-tendencies
-              !----------------------------------------
-              !!tten_vadv_ana(:) = tten_zadv_EULc(:)
-              !!tten_comp_ana(:) = tten_comp_EUL(:)
-              !!tten_hadv_ana(:) = divt(:)
+
               !-------------------
               ! For output
               !--------------------
@@ -739,8 +696,6 @@ else  ! when use_camiop =.FALSE.
            !----------------------------
            ! End of Calculate "usual" T-tendencies from complete IOP-file anyway
            !----------------------------
-#endif
-
 
 
            if (l_use_reconst_ttend) then
@@ -770,14 +725,6 @@ else  ! when use_camiop =.FALSE.
 
             ps = ps_ana
 
-            write(*,*) " Nstep "  ,nstep_curr
-            if (mod( nstep_curr,10)==0) then
-               !ufcst = 0.5*(ufcst+u3m1)
-               !vfcst = 0.5*(vfcst+v3m1)
-            endif
-
-            ! Zero-out NON ana_iop diagnostics
-            !    ????
 
       end if  ! END use_ana_iop IF block
 
@@ -810,8 +757,6 @@ else  ! when use_camiop =.FALSE.
        call outfld( 'UTEN_ZADV'  , uten_zadv,             plon, dummy_dyndecomp )
        call outfld( 'VTEN_ZADV'  , vten_zadv,             plon, dummy_dyndecomp )
        call outfld( 'QVTEN_ZADV' , qten_zadv(:,1),        plon, dummy_dyndecomp )
-       !call outfld( 'TTEN_ZADV'  , vertdivt,             plon, dummy_dyndecomp )
-       !call outfld( 'QVTEN_ZADV' , vertdivq(:,1),        plon, dummy_dyndecomp )
 
        call outfld( 'TTEN_COMP_IOP', tten_comp_eul,      plon, dummy_dyndecomp )
 
@@ -822,8 +767,6 @@ else  ! when use_camiop =.FALSE.
 
     end if  ! END of use_camiop IF BLOCK
 
-!!!!#if 0
-  !if( .NOT.(use_ana_iop) ) then
   if( .NOT.(scm_use_ana_iop) ) then
   ! ---------------------------------------------------------------- !
   ! Used the SCAM-IOP-specified state instead of forecasted state    !
@@ -916,7 +859,7 @@ else  ! when use_camiop =.FALSE.
   call outfld( 'TRELAX'   , relax_T           , plon, dummy )
   call outfld( 'QRELAX'   , relax_q(1:plev,1) , plon, dummy )
   call outfld( 'TAURELAX' , rtau              , plon, dummy )
-!!!#endif
+
   end if ! END of 2nd use_ana_iop BLOCK (exec for use_ana_iop=.F.)
 
   ! --------------------------------------------------------- !
@@ -941,7 +884,6 @@ else  ! when use_camiop =.FALSE.
   call outfld( 'QDIFF'  , qdiff,             plon, dummy_dyndecomp )
   call outfld( 'TDIFF'  , tdiff,             plon, dummy_dyndecomp )
 
-#ifdef SCAMNUDGERUN
   call outfld( 'OMEGA_IOP' , wfld,           plon, dummy_dyndecomp )
   call outfld( 'OMEGA_ANA' , omega_ana,      plon, dummy_dyndecomp )
   call outfld( 'ETAD_ANA'  ,  etad_ana,      plon, dummy_dyndecomp )
@@ -992,7 +934,6 @@ else  ! when use_camiop =.FALSE.
   if (have_u) call outfld( 'U_IOP' ,  uobs,  plon, dummy_dyndecomp )
   if (have_u) call outfld( 'V_IOP' ,  vobs,  plon, dummy_dyndecomp )
 
-#endif
 
    return
 
