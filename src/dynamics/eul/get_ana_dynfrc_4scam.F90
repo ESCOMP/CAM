@@ -649,9 +649,6 @@ subroutine get_ana_dynfrc_fv ( scmlon, scmlat ,  &
             !Allow Coriolis to react to SCM winds
             uten_vort_ana  =   absvo * v_ana
             vten_vort_ana  =  -absvo * u_ana
-            ! Force Coriolis to ALWAYS be calc w/ analysis winds
-            !!uten_vort_ana  =   absvo * v_ana_diag
-            !!vten_vort_ana  =  -absvo * u_ana_diag
             !  -----  Diags for VI form (0-out)
             uten_keg_ana  =    0._r8 ! fill with 0
 
@@ -753,10 +750,6 @@ subroutine get_ana_dynfrc_fv ( scmlon, scmlat ,  &
          end function vadv_fv_press
 !---------------------------
       function lin_pfc_fv( nlon,nlat,nlev,iax,jax,lons,lats, pre, phi ) result( pfc )
-         !use shr_kind_mod,  only:  r8 => shr_kind_r8
-         !use shr_const_mod, only:  rearth => shr_const_rearth , &  !  =6.37122e6_R8 meters
-         !                          pi => shr_const_pi         , &
-         !                          omega => shr_const_omega
 
             integer,  intent(in)  :: nlon,nlat,nlev,iax,jax
             real(r8), intent(in)  :: pre(nlon,nlat,nlev+1),phi(nlon,nlat,nlev+1)
@@ -837,10 +830,6 @@ subroutine get_ana_dynfrc_fv ( scmlon, scmlat ,  &
          end function lin_pfc_fv
    !-------------------------
        function grad_fv( nlon,nlat,nlev,iax,jax,lons,lats, aa ) result( ga )
-         !use shr_kind_mod,  only:  r8 => shr_kind_r8
-         !use shr_const_mod, only:  rearth => shr_const_rearth , &  !  =6.37122e6_R8 meters
-         !                          pi => shr_const_pi         , &
-         !                          omega => shr_const_omega
 
             integer,  intent(in)  :: nlon,nlat,nlev,iax,jax
             real(r8), intent(in)  :: aa(nlon,nlat,nlev)
