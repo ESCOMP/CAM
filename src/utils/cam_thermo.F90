@@ -997,7 +997,7 @@ CONTAINS
    end subroutine get_ps_1hd
 
    subroutine get_ps_2hd(tracer_mass, active_species_idx, dp_dry, ps, ptop)
-     ! Version of get_gz_give_dp_Tv_Rdry for arrays that have a second horizontal index
+     ! Version of get_ps for arrays that have a second horizontal index
      real(r8), intent(in)   :: tracer_mass(:,:,:,:)                      ! Tracer array (q*dp)
      real(r8), intent(in)   :: dp_dry(:,:,:)                             ! dry pressure level thickness
      real(r8), intent(out)  :: ps(:,:)                                   ! surface pressure
@@ -1362,7 +1362,7 @@ CONTAINS
              do icnst = 1, dry_air_species_num - 1
                ispecies = idx_local(icnst)
                mm = tracer(idx, kdx, ispecies) * factor(idx, kdx)
-               kmvis(idx, kdx) = kmcnd(idx, kdx) + thermodynamic_active_species_kv(icnst) * &
+               kmvis(idx, kdx) = kmvis(idx, kdx) + thermodynamic_active_species_kv(icnst) * &
                                  thermodynamic_active_species_mwi(icnst) * mm
                kmcnd(idx, kdx) = kmcnd(idx, kdx) + thermodynamic_active_species_kc(icnst) * &
                                  thermodynamic_active_species_mwi(icnst) * mm
