@@ -39,7 +39,7 @@ module aerosol_state_mod
      real(r8), pointer :: fld(:,:)
   end type ptr2d_t
 
-  interface
+  abstract interface
 
      !------------------------------------------------------------------------
      ! returns aerosol mass mixing ratio for a given species index and bin index

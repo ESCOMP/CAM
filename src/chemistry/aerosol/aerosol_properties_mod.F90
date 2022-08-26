@@ -53,7 +53,7 @@ module aerosol_properties_mod
      procedure :: final=>aero_props_final
   end type aerosol_properties
 
-  interface
+  abstract interface
 
      !------------------------------------------------------------------------------
      ! returns number of transported aerosol constituents
