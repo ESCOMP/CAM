@@ -12,7 +12,7 @@ module ndrop
 use shr_kind_mod,     only: r8 => shr_kind_r8, shr_kind_cs
 use ppgrid,           only: pcols, pver
 use physconst,        only: pi, rhoh2o, mwh2o, r_universal, rh2o, &
-                            gravit, latvap, cpair, rair, tmelt
+                            gravit, latvap, cpair, rair
 use constituents,     only: pcnst, cnst_get_ind, cnst_name, cnst_spec_class_gas, cnst_species_class
 use physics_types,    only: physics_state, physics_ptend, physics_ptend_init
 use physics_buffer,   only: physics_buffer_desc, pbuf_get_index, pbuf_get_field
@@ -43,6 +43,7 @@ real(r8), parameter :: sq2      = sqrt(2._r8)
 real(r8), parameter :: sq2pi    = sqrt(2._r8*pi)
 real(r8), parameter :: sqpi     = sqrt(pi)
 real(r8), parameter :: surften  = 0.076_r8
+real(r8), parameter :: tmelt    = 273._r8
 
 real(r8) :: aten
 
