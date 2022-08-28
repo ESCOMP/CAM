@@ -521,8 +521,9 @@ contains
 
   subroutine ubc_get_flxs (lchnk, ncol, pint, zi, t, q, phis, ubc_flux)
 
-    use physconst, only: avogad, rairv, rga
-    use constituents, only: cnst_mw
+    use physconst,       only: avogad, rga
+    use air_composition, only: rairv
+    use constituents,    only: cnst_mw
 !------------------------------Arguments--------------------------------
     integer,  intent(in)  :: lchnk                 ! chunk identifier
     integer,  intent(in)  :: ncol                  ! number of atmospheric columns

@@ -1,3 +1,4 @@
+! air_composition module defines major species of the atmosphere and manages the physical properties that are dependent on the composition of air
 module air_composition
 
    use shr_kind_mod,   only: r8 => shr_kind_r8
@@ -93,7 +94,6 @@ module air_composition
    real(r8), public, parameter :: kv_temp_exp = 0.69_r8
    real(r8), public, parameter :: kc_temp_exp = 0.69_r8
 
-   !---------------  Variables below here are for WACCM-X ---------------------
    ! cpairv:  composition dependent specific heat at constant pressure
    real(r8), public, protected, allocatable :: cpairv(:,:,:)
    ! rairv: composition dependent gas "constant"
