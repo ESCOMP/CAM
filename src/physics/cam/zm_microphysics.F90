@@ -24,8 +24,8 @@ use cam_abortutils,        only: endrun
 use micro_pumas_utils, only:ice_autoconversion, snow_self_aggregation, accrete_cloud_water_snow, &
                          secondary_ice_production, accrete_rain_snow, heterogeneous_rain_freezing, &
                          accrete_cloud_water_rain, self_collection_rain, accrete_cloud_ice_snow
-use microp_aero, only: aerosol_properties_object
-use aerosol_properties_mod, only: aerosol_properties
+
+use modal_aerosol_properties_mod, only: modal_aerosol_properties
 
 implicit none
 private
@@ -189,7 +189,7 @@ real(r8), parameter :: dcon  = 25.e-6_r8
 real(r8), parameter :: mucon = 5.3_r8
 real(r8), parameter :: lambdadpcu = (mucon + 1._r8)/dcon
 
-class(aerosol_properties), pointer :: aero_props_obj => null()
+type(modal_aerosol_properties), pointer :: aero_props_obj => null()
 
 !===============================================================================
 contains
@@ -291,8 +291,8 @@ subroutine zm_mphyi
 
         rin = 0.1e-6_r8
 
-! Aerosol properties
-   aero_props_obj => aerosol_properties_object()
+! MAM aerosol properties
+   aero_props_obj => modal_aerosol_properties()
 
 end subroutine zm_mphyi
 
