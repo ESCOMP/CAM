@@ -40,7 +40,8 @@ contains
     use hybvcoord_mod,          only: hvcoord_t
     use prim_advection_mod,     only: prim_advec_init2,deriv
     use prim_advance_mod,       only: compute_omega
-    use physconst,              only: gravit, cappa, cpair, tref, lapse_rate, get_dp_ref
+    use physconst,              only: gravit, cappa, cpair, tref, lapse_rate
+    use cam_thermo,             only: get_dp_ref
     use physconst,              only: pstd
 
     type (element_t), intent(inout) :: elem(:)
@@ -145,8 +146,8 @@ contains
      ! pre-compute pressure-level thickness reference profile
      !
      do ie=nets,nete
-       call get_dp_ref(hvcoord%hyai, hvcoord%hybi, hvcoord%ps0,1,np,1,np,1,nlev,&
-            elem(ie)%state%phis(:,:),elem(ie)%derived%dp_ref(:,:,:),ps_ref(:,:,ie))
+       call get_dp_ref(hvcoord%hyai, hvcoord%hybi, hvcoord%ps0, elem(ie)%state%phis(:,:), &
+            elem(ie)%derived%dp_ref(:,:,:), ps_ref(:,:,ie))
      end do
      !
      ! pre-compute reference temperature profile (Simmons and Jiabin, 1991, QJRMS, Section 2a

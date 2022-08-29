@@ -33,7 +33,7 @@ contains
    use mod_comm,      only : mp_send3d, mp_recv3d
 #endif
    use phys_control,  only: waccmx_is !WACCM-X runtime switch
-   use physconst,     only: physconst_calc_kappav
+   use cam_thermo,    only: cam_thermo_calc_kappav
    use par_vecsum_mod,only: par_vecsum
 
    implicit none
@@ -334,7 +334,7 @@ contains
 #endif
 
        if (high_alt) then
-          call physconst_calc_kappav( ifirst,ilast,jfirst,jlast,1,km, grid%ntotq, tracer, cap3v, cpv=cp3v)
+          call cam_thermo_calc_kappav( tracer, cap3v, cpv=cp3v )
        endif
 
 !$omp  parallel do        &
@@ -857,7 +857,7 @@ contains
 2000  continue
 
        if (high_alt) then
-          call physconst_calc_kappav( ifirst,ilast,jfirst,jlast,1,km,grid%ntotq, tracer, cap3v, cpv=cp3v)
+          call cam_thermo_calc_kappav( tracer, cap3v, cpv=cp3v )
           !$omp parallel do private(i,j,k)
           do k=2,km
              do j=jfirst,jlast

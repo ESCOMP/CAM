@@ -663,7 +663,7 @@ subroutine vertical_diffusion_tend( &
   use molec_diff,         only : compute_molec_diff, vd_lu_qdecomp
   use constituents,       only : qmincg, qmin, cnst_type
   use diffusion_solver,   only : compute_vdiff, any, operator(.not.)
-  use physconst,          only : cpairv, rairv !Needed for calculation of upward H flux
+  use air_composition,    only : cpairv, rairv !Needed for calculation of upward H flux
   use time_manager,       only : get_nstep
   use constituents,       only : cnst_get_type_byind, cnst_name, &
        cnst_mw, cnst_fixed_ubc, cnst_fixed_ubflx

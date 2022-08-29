@@ -134,9 +134,9 @@ contains
 !-------------------------------------------------------------------------------
 ! interface routine. output tendency.
 !-------------------------------------------------------------------------------
-    use physics_types,  only: physics_state, physics_ptend
-    use upper_bc,       only: ubc_get_vals
-    use physconst,      only: rairv, mbarv
+    use physics_types,   only: physics_state, physics_ptend
+    use upper_bc,        only: ubc_get_vals
+    use air_composition, only: rairv, mbarv
 
 !------------------------------Arguments--------------------------------
     real(r8), intent(in) :: ztodt                  ! 2 delta-t

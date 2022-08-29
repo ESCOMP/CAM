@@ -214,8 +214,9 @@ subroutine diag_dynvar_ic(elem, fvm)
    use element_mod,            only: element_t
    use fvm_control_volume_mod, only: fvm_struct
    use fvm_mapping,            only: fvm2dyn
-   use physconst,              only: get_sum_species, get_ps,thermodynamic_active_species_idx
-   use physconst,              only: thermodynamic_active_species_idx_dycore,get_dp_ref
+   use cam_thermo,             only: get_sum_species, get_dp_ref, get_ps
+   use air_composition,        only: thermodynamic_active_species_idx
+   use air_composition,        only: thermodynamic_active_species_idx_dycore
    use hycoef,                 only: hyai, hybi, ps0
    ! arguments
    type(element_t) , intent(in)    :: elem(1:nelemd)
@@ -299,7 +300,7 @@ subroutine diag_dynvar_ic(elem, fvm)
 
    if (hist_fld_active('dp_ref_gll')) then
      do ie = 1, nelemd       
-       call get_dp_ref(hyai,hybi,ps0,1,np,1,np,1,nlev,elem(ie)%state%phis(:,:),dp_ref(:,:,:),ps_ref(:,:))
+       call get_dp_ref(hyai, hybi, ps0, elem(ie)%state%phis(:,:), dp_ref(:,:,:), ps_ref(:,:))
          do j = 1, np
             do i = 1, np
                ftmp(i+(j-1)*np,:,1) = elem(ie)%state%dp3d(i,j,:,tl_f)/dp_ref(i,j,:)
@@ -323,8 +324,8 @@ subroutine diag_dynvar_ic(elem, fvm)
    if (hist_fld_active('PS_gll')) then
      allocate(fld_2d(np,np))
      do ie = 1, nelemd
-       call get_ps(1,np,1,np,1,nlev,qsize,elem(ie)%state%Qdp(:,:,:,:,tl_Qdp),&
-            thermodynamic_active_species_idx_dycore,elem(ie)%state%dp3d(:,:,:,tl_f),fld_2d,hyai(1)*ps0)
+       call get_ps(elem(ie)%state%Qdp(:,:,:,:,tl_Qdp), thermodynamic_active_species_idx_dycore,&
+            elem(ie)%state%dp3d(:,:,:,tl_f),fld_2d,hyai(1)*ps0)
          do j = 1, np
             do i = 1, np
               ftmp(i+(j-1)*np,1,1) = fld_2d(i,j)
@@ -344,8 +345,8 @@ subroutine diag_dynvar_ic(elem, fvm)
    if (write_inithist()) then
      allocate(fld_2d(np,np))     
      do ie = 1, nelemd
-       call get_ps(1,np,1,np,1,nlev,qsize,elem(ie)%state%Qdp(:,:,:,:,tl_Qdp),&
-            thermodynamic_active_species_idx_dycore,elem(ie)%state%dp3d(:,:,:,tl_f),fld_2d,hyai(1)*ps0)       
+       call get_ps(elem(ie)%state%Qdp(:,:,:,:,tl_Qdp), thermodynamic_active_species_idx_dycore,&
+            elem(ie)%state%dp3d(:,:,:,tl_f),fld_2d,hyai(1)*ps0)       
        do j = 1, np
          do i = 1, np
            ftmp(i+(j-1)*np,1,1) = fld_2d(i,j)
@@ -362,7 +363,7 @@ subroutine diag_dynvar_ic(elem, fvm)
          call outfld('V&IC', RESHAPE(elem(ie)%state%v(:,:,2,:,tl_f), (/npsq,nlev/)), npsq, ie)
 
          if (fv_nphys < 1) then
-            call get_sum_species(1,np,1,np,1,nlev,qsize,elem(ie)%state%Qdp(:,:,:,:,tl_qdp), &
+            call get_sum_species(elem(ie)%state%Qdp(:,:,:,:,tl_qdp), &
                thermodynamic_active_species_idx_dycore, factor_array,dp_dry=elem(ie)%state%dp3d(:,:,:,tl_f))
             factor_array(:,:,:) = 1.0_r8/factor_array(:,:,:)
             do m_cnst = 1, qsize
@@ -391,7 +392,7 @@ subroutine diag_dynvar_ic(elem, fvm)
          allocate(factor_array(nc,nc,nlev))
          llimiter = .true.
          do ie = nets, nete
-           call get_sum_species(1,nc,1,nc,1,nlev,ntrac,fvm(ie)%c(1:nc,1:nc,:,:),thermodynamic_active_species_idx,factor_array)
+           call get_sum_species(fvm(ie)%c(1:nc,1:nc,:,:),thermodynamic_active_species_idx,factor_array)
            factor_array(:,:,:) = 1.0_r8/factor_array(:,:,:)
            do m_cnst = 1, ntrac
              if (cnst_type(m_cnst) == 'wet') then
