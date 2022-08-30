@@ -51,7 +51,7 @@
 
 
         ! local vars
-        integer :: vid, i,ii
+        integer :: vid, i,ii, ierr
 
         character(len=256), parameter :: filelist = ' '
         character(len=256), parameter :: datapath = ' '
@@ -59,6 +59,8 @@
         integer,            parameter :: nubc = 1
         character(len=4),   parameter :: species(nubc) = (/'H2  '/)
         character(len=4)              :: specifier(nubc) = ' '
+
+        character(len=*), parameter :: prefix = 'tgcm_ubc_inti: '
 
         ii = 0
 
@@ -82,7 +84,8 @@
 
         if (ub_nspecies > 0) then
            file%top_bndry = .true.
-           allocate(file%in_pbuf(size(specifier)))
+           allocate(file%in_pbuf(size(specifier)), stat=ierr)
+           if (ierr /= 0) call endrun(prefix//'allocate error : file%in_pbuf')
            file%in_pbuf(:) = .false.
            call trcdata_init( specifier, tgcm_ubc_file, filelist, datapath, fields, file, &
                               rmv_file, tgcm_ubc_cycle_yr, tgcm_ubc_fixed_ymd, tgcm_ubc_fixed_tod, tgcm_ubc_data_type)

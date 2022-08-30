@@ -1,3 +1,6 @@
+!-------------------------------------------------------------------------------
+! Manages reading Upper Boundary Conditions (UBCs) from file
+!-------------------------------------------------------------------------------
 module upper_bc_file
 
   use shr_kind_mod,  only: r8 => shr_kind_r8
@@ -6,29 +9,28 @@ module upper_bc_file
   use spmd_utils,    only: masterproc
   use cam_abortutils,only: endrun
   use cam_history,   only: addfld, horiz_only, outfld, fieldname_len
-  !use cam_history,   only: add_default
 
   use tracer_data,   only: trfld,trfile,MAXTRCRS
 
   implicit none
   private
 
-  public :: upper_bc_file_readnl
-  public :: upper_bc_file_init
-  public :: upper_bc_file_adv
-  public :: upper_bc_file_get
-  public :: upper_bc_file_specified
+  public :: upper_bc_file_readnl ! read namelist options
+  public :: upper_bc_file_init   ! initialize
+  public :: upper_bc_file_adv    ! advance data reader
+  public :: upper_bc_file_get    ! returns UBC values
+  public :: upper_bc_file_specified ! TRUE if UBC file is specified
 
   logical, protected :: upper_bc_file_specified = .false.
 
+  ! private data members
   character(len=cx) :: ubc_file_path = 'NONE'
   character(len=32) :: ubc_file_input_type = 'NONE'
   integer :: ubc_file_cycle_yr  = -huge(1)
   integer :: ubc_file_fixed_ymd = -huge(1)
   integer :: ubc_file_fixed_tod = -huge(1)
 
-
-  type(trfld), pointer :: fields(:)
+  type(trfld), pointer :: fields(:) => null()
   type(trfile)         :: file
 
   integer :: num_ubc_flds = 0
@@ -38,6 +40,7 @@ module upper_bc_file
 contains
 
   !---------------------------------------------------------------------------
+  ! read namelist options
   !---------------------------------------------------------------------------
   subroutine upper_bc_file_readnl(nlfile)
     use namelist_utils, only : find_group_name
@@ -65,25 +68,31 @@ contains
     end if
 
     call mpi_bcast(ubc_file_path, len(ubc_file_path), mpi_character, masterprocid, mpicom, ierr)
+    if (ierr /= 0) call endrun(prefix//'mpi_bcast error : ubc_file_path')
     call mpi_bcast(ubc_file_input_type, len(ubc_file_input_type), mpi_character, masterprocid, mpicom, ierr)
+    if (ierr /= 0) call endrun(prefix//'mpi_bcast error : ubc_file_input_type')
     call mpi_bcast(ubc_file_fixed_ymd, 1, mpi_integer, masterprocid, mpicom, ierr)
+    if (ierr /= 0) call endrun(prefix//'mpi_bcast error : ubc_file_fixed_ymd')
     call mpi_bcast(ubc_file_fixed_tod, 1, mpi_integer, masterprocid, mpicom, ierr)
+    if (ierr /= 0) call endrun(prefix//'mpi_bcast error : ubc_file_fixed_tod')
     call mpi_bcast(ubc_file_cycle_yr,  1, mpi_integer, masterprocid, mpicom, ierr)
+    if (ierr /= 0) call endrun(prefix//'mpi_bcast error : ubc_file_cycle_yr')
 
-    upper_bc_file_specified = .not. ubc_file_path == 'NONE'
+    upper_bc_file_specified = ubc_file_path /= 'NONE'
 
     if (masterproc) then
-       write(iulog,*) prefix//'upper_bc_file_specified: ',upper_bc_file_specified
-       write(iulog,*) prefix//'ubc_file_path = '//trim(ubc_file_path)
-       write(iulog,*) prefix//'ubc_file_input_type = '//trim(ubc_file_input_type)
-       write(iulog,*) prefix//'ubc_file_cycle_yr = ',ubc_file_cycle_yr
-       write(iulog,*) prefix//'ubc_file_fixed_ymd = ',ubc_file_fixed_ymd
-       write(iulog,*) prefix//'ubc_file_fixed_tod = ',ubc_file_fixed_tod
+       write(iulog,*) prefix,'upper_bc_file_specified: ',upper_bc_file_specified
+       write(iulog,*) prefix,'ubc_file_path = '//trim(ubc_file_path)
+       write(iulog,*) prefix,'ubc_file_input_type = '//trim(ubc_file_input_type)
+       write(iulog,*) prefix,'ubc_file_cycle_yr = ',ubc_file_cycle_yr
+       write(iulog,*) prefix,'ubc_file_fixed_ymd = ',ubc_file_fixed_ymd
+       write(iulog,*) prefix,'ubc_file_fixed_tod = ',ubc_file_fixed_tod
     end if
 
   end subroutine upper_bc_file_readnl
 
   !---------------------------------------------------------------------------
+  ! initialize
   !---------------------------------------------------------------------------
   subroutine upper_bc_file_init( flds_list )
     use tracer_data, only: trcdata_init
@@ -92,19 +101,22 @@ contains
     use string_utils,only: to_lower
     use ref_pres,    only: do_molec_diff
 
-    character(len=*) :: flds_list(:)
+    character(len=*), intent(in) :: flds_list(:) ! flds specifier list
 
-    integer :: m, ndx
+    integer :: m, ndx, ierr
+    character(len=*), parameter :: prefix = 'upper_bc_file_init: '
 
     num_ubc_flds = size(flds_list)
     upper_bc_file_specified = upper_bc_file_specified .and. (num_ubc_flds>0)
 
     if (.not.upper_bc_file_specified) return
 
-    allocate( ubc_fact(num_ubc_flds) )
+    allocate( ubc_fact(num_ubc_flds), stat=ierr )
+    if (ierr /= 0) call endrun(prefix//'allocate error : ubc_fact')
     ubc_fact(:) = -huge(1._r8)
 
-    allocate(file%in_pbuf(num_ubc_flds))
+    allocate(file%in_pbuf(num_ubc_flds), stat=ierr)
+    if (ierr /= 0) call endrun(prefix//'allocate error : file%in_pbuf')
     file%in_pbuf(:) = .false.
 
     call trcdata_init( flds_list, ubc_file_path, ' ', ' ', fields, file, .false., &
@@ -116,7 +128,8 @@ contains
        file%top_layer = .true.
     endif
 
-    allocate(hist_names(num_ubc_flds))
+    allocate(hist_names(num_ubc_flds), stat=ierr)
+    if (ierr /= 0) call endrun(prefix//'allocate error : hist_names')
     hist_names = ' '
 
     do m = 1,num_ubc_flds
@@ -124,9 +137,9 @@ contains
        call cnst_get_ind(trim(fields(m)%fldnam), ndx, abort=.true.)
 
        select case ( to_lower(trim(fields(m)%units)) )
-       case ('k','kg/kg','mmr')
+       case ('k','kg/kg','kg kg-1','mmr')
           ubc_fact(m) = 1._r8
-       case ('mol/mol','mole/mole','vmr')
+       case ('mol/mol','mole/mole','mol mol-1','vmr')
           ubc_fact(m) = cnst_mw(ndx)/mwdry
        case default
           call endrun('upper_bc_file_get: units are not recognized')
@@ -138,13 +151,13 @@ contains
        else
           call addfld(hist_names(m), horiz_only, 'I', 'kg/kg', trim(fields(m)%fldnam)//' at upper boundary' )
        end if
-       !call add_default(hist_names(m), 2, ' ' )
 
     end do
 
   end subroutine upper_bc_file_init
 
   !---------------------------------------------------------------------------
+  ! advance data reader
   !---------------------------------------------------------------------------
   subroutine upper_bc_file_adv(pbuf2d, state)
     use tracer_data,    only : advance_trcdata
@@ -162,6 +175,7 @@ contains
   end subroutine upper_bc_file_adv
 
   !---------------------------------------------------------------------------
+  ! returns UBC values
   !---------------------------------------------------------------------------
   subroutine upper_bc_file_get(lchnk, ncol, val)
 

@@ -6,6 +6,7 @@ module upper_bc
 !---------------------------------------------------------------------------------
 
   use shr_kind_mod, only: r8 => shr_kind_r8
+  use shr_kind_mod, only: cl => shr_kind_cl
   use shr_const_mod,only: grav   => shr_const_g,     &   ! gravitational constant (m/s^2)
                           kboltz => shr_const_boltz, &   ! Boltzmann constant
                           pi => shr_const_pi,        &   ! pi
@@ -18,10 +19,9 @@ module upper_bc
   use shr_kind_mod, only: cx=>SHR_KIND_CX
   use cam_abortutils,only: endrun
   use cam_history,   only: addfld, horiz_only, outfld, fieldname_len
-  !use cam_history,   only: add_default
 
   use upper_bc_file, only: upper_bc_file_readnl, upper_bc_file_specified, upper_bc_file_adv, upper_bc_file_get
-    use infnan,       only : nan, assignment(=)
+  use infnan,        only: nan, assignment(=)
 
   implicit none
   private
@@ -35,7 +35,7 @@ module upper_bc
   public :: ubc_get_vals       ! get ubc values for this step
   public :: ubc_get_flxs       ! get ub fluxes for this step
   public :: ubc_fixed_conc     ! returns true for constituents that have fixed UBC
-  public :: ubc_fixed_temp     ! true if temperature at upper bounary is fixed
+  public :: ubc_fixed_temp     ! true if temperature at upper boundary is fixed
 
   character(len=64) :: ubc_specifier(pcnst) = 'NOTSET'
 
@@ -66,18 +66,18 @@ module upper_bc
   logical :: snoe_active =.false.
 
 ! Namelist variables
-  character(len=256) :: snoe_ubc_file = 'NONE'
-  real(r8)           :: t_pert_ubc  = 0._r8
-  real(r8)           :: no_xfac_ubc = 1._r8
+  character(len=cl) :: snoe_ubc_file = 'NONE'
+  real(r8)          :: t_pert_ubc  = 0._r8
+  real(r8)          :: no_xfac_ubc = 1._r8
 
   integer :: h_ndx=-1
   integer :: h_msis_ndx=-1, n_msis_ndx=-1, o_msis_ndx=-1, o2_msis_ndx=-1
 
-  character(len=256) :: tgcm_ubc_file = 'NONE'
-  integer            :: tgcm_ubc_cycle_yr = 0
-  integer            :: tgcm_ubc_fixed_ymd = 0
-  integer            :: tgcm_ubc_fixed_tod = 0
-  character(len=32)  :: tgcm_ubc_data_type = 'CYCLICAL'
+  character(len=cl) :: tgcm_ubc_file = 'NONE'
+  integer           :: tgcm_ubc_cycle_yr = 0
+  integer           :: tgcm_ubc_fixed_ymd = 0
+  integer           :: tgcm_ubc_fixed_tod = 0
+  character(len=32) :: tgcm_ubc_data_type = 'CYCLICAL'
 
   logical :: apply_upper_bc = .false.
 
@@ -147,8 +147,7 @@ contains
           endif
           if (index(ubc_source(n),'mmr')>0) then
              n_fixed_mmr=n_fixed_mmr+1
-          end if
-          if (index(ubc_source(n),'vmr')>0) then
+          else if (index(ubc_source(n),'vmr')>0) then
              n_fixed_vmr=n_fixed_vmr+1
           end if
 
@@ -169,21 +168,37 @@ contains
 
     ! broadcast to all MPI tasks
     call mpi_bcast(num_fixed, 1, mpi_integer, masterprocid, mpicom, ierr)
+    if (ierr /= 0) call endrun(prefix//'mpi_bcast error : num_fixed')
     call mpi_bcast(num_infile, 1, mpi_integer, masterprocid, mpicom, ierr)
+    if (ierr /= 0) call endrun(prefix//'mpi_bcast error : num_infile')
     call mpi_bcast(n_fixed_mmr, 1, mpi_integer, masterprocid, mpicom, ierr)
+    if (ierr /= 0) call endrun(prefix//'mpi_bcast error : n_fixed_mmr')
     call mpi_bcast(n_fixed_vmr, 1, mpi_integer, masterprocid, mpicom, ierr)
+    if (ierr /= 0) call endrun(prefix//'mpi_bcast error : n_fixed_vmr')
     call mpi_bcast(tgcm_ubc_file, len(tgcm_ubc_file), mpi_character, masterprocid, mpicom, ierr)
+    if (ierr /= 0) call endrun(prefix//'mpi_bcast error : tgcm_ubc_file')
     call mpi_bcast(tgcm_ubc_data_type, len(tgcm_ubc_data_type),mpi_character, masterprocid, mpicom, ierr)
+    if (ierr /= 0) call endrun(prefix//'mpi_bcast error : tgcm_ubc_data_type')
     call mpi_bcast(tgcm_ubc_cycle_yr, 1, mpi_integer, masterprocid, mpicom, ierr)
+    if (ierr /= 0) call endrun(prefix//'mpi_bcast error : tgcm_ubc_cycle_yr')
     call mpi_bcast(tgcm_ubc_fixed_ymd, 1, mpi_integer, masterprocid, mpicom, ierr)
+    if (ierr /= 0) call endrun(prefix//'mpi_bcast error : tgcm_ubc_fixed_ymd')
     call mpi_bcast(tgcm_ubc_fixed_tod, 1, mpi_integer, masterprocid, mpicom, ierr)
+    if (ierr /= 0) call endrun(prefix//'mpi_bcast error : tgcm_ubc_fixed_tod')
     call mpi_bcast(snoe_ubc_file, len(snoe_ubc_file), mpi_character, masterprocid, mpicom, ierr)
+    if (ierr /= 0) call endrun(prefix//'mpi_bcast error : snoe_ubc_file')
     call mpi_bcast(t_pert_ubc, 1, mpi_real8, masterprocid, mpicom, ierr)
+    if (ierr /= 0) call endrun(prefix//'mpi_bcast error : t_pert_ubc')
     call mpi_bcast(no_xfac_ubc,1, mpi_real8, masterprocid, mpicom, ierr)
+    if (ierr /= 0) call endrun(prefix//'mpi_bcast error : no_xfac_ubc')
     call mpi_bcast(ubc_specifier, pcnst*len(ubc_specifier(1)), mpi_character,masterprocid, mpicom, ierr)
+    if (ierr /= 0) call endrun(prefix//'mpi_bcast error : ubc_specifier')
     call mpi_bcast(ubc_flds,      pcnst*len(ubc_flds(1)),      mpi_character,masterprocid, mpicom, ierr)
+    if (ierr /= 0) call endrun(prefix//'mpi_bcast error : ubc_flds')
     call mpi_bcast(ubc_file_spfr, pcnst*len(ubc_file_spfr(1)), mpi_character,masterprocid, mpicom, ierr)
+    if (ierr /= 0) call endrun(prefix//'mpi_bcast error : ubc_file_spfr')
     call mpi_bcast(ubc_source,    pcnst*len(ubc_source(1)),    mpi_character,masterprocid, mpicom, ierr)
+    if (ierr /= 0) call endrun(prefix//'mpi_bcast error : ubc_source')
 
     apply_upper_bc = num_fixed>0
 
@@ -208,7 +223,7 @@ contains
 
     !---------------------------Local workspace-----------------------------
     logical, parameter :: zonal_avg = .false.
-    integer :: m, mm
+    integer :: m, mm, ierr
     integer :: mmrndx, vmrndx, m_mmr, m_vmr
 
     real(r8) :: val
@@ -228,22 +243,29 @@ contains
 
     mm=1
 
-    allocate(hist_names(num_fixed))
-    allocate(spc_ndx(num_fixed))
+    allocate(hist_names(num_fixed), stat=ierr)
+    if (ierr /= 0) call endrun(prefix//'allocate error : hist_names')
+    allocate(spc_ndx(num_fixed), stat=ierr)
+    if (ierr /= 0) call endrun(prefix//'allocate error : spc_ndx')
     spc_ndx=-1
     if (num_infile>0) then
-       allocate(file_spc_ndx(num_infile))
+       allocate(file_spc_ndx(num_infile), stat=ierr)
+       if (ierr /= 0) call endrun(prefix//'allocate error : file_spc_ndx')
        file_spc_ndx=-1
     end if
     if (n_fixed_mmr>0) then
-       allocate(fixed_mmr_ndx(n_fixed_mmr))
-       allocate(fixed_mmr(n_fixed_mmr))
+       allocate(fixed_mmr_ndx(n_fixed_mmr), stat=ierr)
+       if (ierr /= 0) call endrun(prefix//'allocate error : fixed_mmr_ndx')
+       allocate(fixed_mmr(n_fixed_mmr), stat=ierr)
+       if (ierr /= 0) call endrun(prefix//'allocate error : fixed_mmr')
        fixed_mmr_ndx=-1
        fixed_mmr = nan
     end if
     if (n_fixed_vmr>0) then
-       allocate(fixed_vmr_ndx(n_fixed_vmr))
-       allocate(fixed_vmr(n_fixed_vmr))
+       allocate(fixed_vmr_ndx(n_fixed_vmr), stat=ierr)
+       if (ierr /= 0) call endrun(prefix//'allocate error : fixed_vmr_ndx')
+       allocate(fixed_vmr(n_fixed_vmr), stat=ierr)
+       if (ierr /= 0) call endrun(prefix//'allocate error : fixed_vmr')
        fixed_vmr_ndx=-1
        fixed_vmr = nan
     end if
@@ -261,7 +283,6 @@ contains
           call cnst_get_ind(ubc_flds(m), spc_ndx(m), abort=.true.)
           call addfld(hist_names(m), horiz_only, 'I', 'kg/kg', trim(ubc_flds(m))//' at upper boundary' )
        end if
-       !call add_default(hist_names(m), 2, ' ' )
 
        if (trim(ubc_source(m))=='msis') then
           if (do_molec_diff .and. any(msis_flds==ubc_flds(m))) then
@@ -285,13 +306,15 @@ contains
           else
              call endrun(prefix//'SNOE is not allowed in this configuration')
           end if
-          continue
        else if (trim(ubc_source(m))=='ubc_file') then
           file_spc_ndx(mm) = spc_ndx(m)
           mm = mm+1
        else
           mmrndx = index(trim(ubc_source(m)),'mmr')
           vmrndx = index(trim(ubc_source(m)),'vmr')
+          if (mmrndx>0 .and. vmrndx>0) then
+             call endrun(prefix//'incorrect units in UBC source: '//trim(ubc_source(m)))
+          end if
           if (mmrndx>0) then
              str = ubc_source(m)(:mmrndx-1)
              read(str,*) val
@@ -340,7 +363,7 @@ contains
 !===============================================================================
 !===============================================================================
 
-  logical function ubc_fixed_conc(name)
+  pure logical function ubc_fixed_conc(name)
 
     character(len=*), intent(in) :: name
 
@@ -514,12 +537,18 @@ contains
 !---------------------------Local storage-------------------------------
     integer :: iCol                                ! column loop counter
 
+    real(r8), parameter :: h_escape_flx_factor = 2.03e-13_r8 ! for hydrogen escape flux due to charge exchange
+    ! adopted from TIME-GCM (R. G. Roble, pp. 1-21, AGU Geophys. Monogr. Ser 87, 1995) following
+    ! Liu, S.C., and T. M. Donahue, Mesospheric hydrogen related to exospheric escape mechanisms, J. Atmos. Sci.,
+    ! 31, 1466-1470, 1974. (Equation 4 there). DOI: 10.1175/1520-0469(1974)031<1466:Mhrtee>2.0.Co;2
+    ! https://journals.ametsoc.org/view/journals/atsc/31/5/1520-0469_1974_031_1466_mhrtee_2_0_co_2.xml
+
     real(r8), parameter :: hfluxlimitfac = 0.72_r8 ! Hydrogen upper boundary flux limiting factor
 
     real(r8) :: nmbartop                           ! Top level density (rho)
     real(r8) :: zkt                                ! Factor for H Jean's escape flux calculation
 
-    real(r8), pointer :: qh_top(:)         ! Top level hydrogen mixing ratio (kg/kg)
+    real(r8), pointer :: qh_top(:)                 ! Top level hydrogen mixing ratio (kg/kg)
 
     ubc_flux(:,:) = nan
 
@@ -542,7 +571,7 @@ contains
             SQRT(t(iCol,1)) * (1._r8 + zkt) * EXP(-zkt)
 
        ubc_flux(iCol,h_ndx) = ubc_flux(iCol,h_ndx) * &
-            (2.03E-13_r8 * qh_top(iCol) * nmbartop / (cnst_mw(h_ndx) / avogad) * t(iCol,1))
+            (h_escape_flx_factor * qh_top(iCol) * nmbartop / (cnst_mw(h_ndx) / avogad) * t(iCol,1))
 
     enddo
 
