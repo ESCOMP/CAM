@@ -3,7 +3,7 @@ module dyn_comp
 ! CAM component interfaces to the MPAS Dynamical Core
 
 use shr_kind_mod,       only: r8=>shr_kind_r8
-use spmd_utils,         only: iam, masterproc, mpicom, npes
+use spmd_utils,         only: masterproc, mpicom, npes
 use physconst,          only: pi, gravit, rair, cpair
 
 use pmgrid,             only: plev, plevp
@@ -13,23 +13,18 @@ use const_init,         only: cnst_init_default
 use cam_control_mod,    only: initial_run
 use cam_initfiles,      only: initial_file_get_id, topo_file_get_id
 
-use cam_grid_support,   only: cam_grid_id, cam_grid_get_gcid, &
-                              cam_grid_dimensions, cam_grid_get_dim_names, &
-                              cam_grid_get_latvals, cam_grid_get_lonvals,  &
-                              max_hcoordname_len
+use cam_grid_support,   only: cam_grid_id, &
+                              cam_grid_get_latvals, cam_grid_get_lonvals
 use cam_map_utils,      only: iMap
 
 use inic_analytic,      only: analytic_ic_active, dyn_set_inic_col
 use dyn_tests_utils,    only: vcoord=>vc_height
 
-use cam_history,        only: addfld, add_default, horiz_only, register_vector_field, &
-                              outfld, hist_fld_active
-use cam_history_support, only: max_fieldname_len
+use cam_history,        only: addfld, horiz_only
 use string_utils,       only: date2yyyymmdd, sec2hms, int2str
 
 use ncdio_atm,          only: infld
-use pio,                only: file_desc_t, pio_seterrorhandling, PIO_BCAST_ERROR, &
-                              pio_inq_dimid, pio_inq_dimlen, PIO_NOERR
+use pio,                only: file_desc_t
 use cam_pio_utils,      only: clean_iodesc_list
 
 use time_manager,       only: get_start_date, get_stop_date, get_run_duration, &
@@ -271,11 +266,8 @@ subroutine dyn_readnl(NLFileName)
    character(len=*), intent(in) :: NLFileName
 
    ! Local variables
-   integer :: ierr
    integer, dimension(2) :: logUnits   ! stdout and stderr for MPAS logging
    integer :: yr, mon, day, tod, ndate, nday, nsec
-   character(len=10) :: date_str
-   character(len=8)  :: tod_str
    character(len=*), parameter :: subname = 'dyn_comp:dyn_readnl'
    !----------------------------------------------------------------------------
 
@@ -347,7 +339,7 @@ subroutine dyn_init(dyn_in, dyn_out)
    use mpas_derived_types, only : mpas_pool_type
    use mpas_constants,     only : mpas_constants_compute_derived
    use dyn_tests_utils,    only : vc_dycore, vc_height, string_vc, vc_str_lgth
-   use constituents,       only : cnst_get_ind
+
    ! arguments:
    type(dyn_import_t), intent(inout)  :: dyn_in
    type(dyn_export_t), intent(inout)  :: dyn_out
@@ -756,7 +748,7 @@ subroutine read_inidat(dyn_in)
 
    use cam_mpas_subdriver, only : domain_ptr, cam_mpas_update_halo, cam_mpas_cell_to_edge_winds
    use cam_initfiles, only : scale_dry_air_mass
-   use mpas_pool_routines, only : mpas_pool_get_subpool, mpas_pool_get_array, mpas_pool_get_config
+   use mpas_pool_routines, only : mpas_pool_get_subpool, mpas_pool_get_array
    use mpas_derived_types, only : mpas_pool_type
    use mpas_vector_reconstruction, only : mpas_reconstruct
    use mpas_constants, only : Rv_over_Rd => rvord
@@ -814,7 +806,6 @@ subroutine read_inidat(dyn_in)
 
    real(r8), allocatable :: qv(:), tm(:)
 
-   real(r8) :: dz, h
    logical  :: readvar
 
    character(len=shr_kind_cx) :: str
@@ -1308,7 +1299,7 @@ subroutine cam_mpas_namelist_read(namelistFilename, configPool)
    ! if no errors were encountered, all MPI ranks have valid namelists in their configPool.
 
    use spmd_utils,         only: mpicom, masterproc, masterprocid, &
-                                 mpi_integer, mpi_real8,  mpi_logical, mpi_character, mpi_success
+                                 mpi_integer, mpi_real8, mpi_logical, mpi_character
    use namelist_utils,     only: find_group_name
 
    use mpas_derived_types, only: mpas_pool_type
@@ -1757,7 +1748,6 @@ subroutine set_dry_mass(dyn_in, target_avg_dry_surface_pressure)
    real(r8) :: preliminary_avg_dry_surface_pressure, scaled_avg_dry_surface_pressure
    real(r8) :: scaling_ratio
    real(r8) :: sphere_surface_area
-   real(r8) :: surface_integral, test_value
 
    integer :: ixqv,ierr
 

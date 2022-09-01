@@ -11,7 +11,7 @@ module cam_mpas_subdriver
 !-------------------------------------------------------------------------------
 
     use cam_abortutils, only: endrun
-    use mpas_derived_types, only : core_type, dm_info, domain_type, MPAS_Clock_type
+    use mpas_derived_types, only : core_type, domain_type, MPAS_Clock_type
     use phys_control,   only: use_gw_front, use_gw_front_igw
 
     implicit none
@@ -76,7 +76,6 @@ contains
        use mpas_domain_routines, only : mpas_allocate_domain
        use mpas_framework, only : mpas_framework_init_phase1
        use atm_core_interface, only : atm_setup_core, atm_setup_domain
-       use mpas_pool_routines, only : mpas_pool_add_config
        use mpas_kind_types, only : RKIND
 
        ! Dummy argument
@@ -148,7 +147,6 @@ contains
     !-----------------------------------------------------------------------
     subroutine cam_mpas_init_phase2(pio_subsystem, endrun, cam_calendar)
 
-       use mpas_log, only : mpas_log_write
        use mpas_kind_types, only : ShortStrKIND
        use pio_types, only : iosystem_desc_t
 
@@ -160,7 +158,6 @@ contains
        character(len=*), intent(in) :: cam_calendar
 
        integer :: ierr
-       logical :: streamsExists
 
        character(len=ShortStrKIND) :: mpas_calendar
 
@@ -222,52 +219,19 @@ contains
     !>  the number of constituents.
     !
     !-----------------------------------------------------------------------
-    subroutine cam_mpas_init_phase3(fh_ini, num_scalars, endrun)
+    subroutine cam_mpas_init_phase3(fh_ini, num_scalars)
 
-       use mpas_log, only : mpas_log_write
        use pio, only : file_desc_t
-       use iso_c_binding, only : c_int, c_char, c_ptr, c_loc
-
-       use mpas_derived_types, only : MPAS_Time_type, MPAS_TimeInterval_type
-       use mpas_derived_types, only : MPAS_IO_PNETCDF, MPAS_IO_PNETCDF5, MPAS_IO_NETCDF, MPAS_IO_NETCDF4
-       use mpas_derived_types, only : MPAS_START_TIME
-       use mpas_derived_types, only : MPAS_STREAM_MGR_NOERR
-       use mpas_timekeeping, only : mpas_get_clock_time, mpas_get_time, mpas_expand_string, mpas_set_time, &
-                                    mpas_set_timeInterval
-       use mpas_stream_manager, only : MPAS_stream_mgr_init, mpas_build_stream_filename, MPAS_stream_mgr_validate_streams
-       use mpas_kind_types, only : StrKIND
-       use mpas_c_interfacing, only : mpas_c_to_f_string, mpas_f_to_c_string
+       use mpas_derived_types, only : MPAS_IO_NETCDF
+       use mpas_kind_types,    only : StrKIND
        use mpas_bootstrapping, only : mpas_bootstrap_framework_phase1, mpas_bootstrap_framework_phase2
        use mpas_pool_routines, only : mpas_pool_add_config
 
        type (file_desc_t), intent(inout) :: fh_ini
        integer, intent(in) :: num_scalars
-       procedure(halt_model) :: endrun
 
-       integer :: ierr
-       character(kind=c_char), dimension(StrKIND+1) :: c_filename       ! StrKIND+1 for C null-termination character
-       integer(kind=c_int) :: c_comm
-       integer(kind=c_int) :: c_ierr
-       type (c_ptr) :: mgr_p
-       character(len=StrKIND) :: mesh_stream
        character(len=StrKIND) :: mesh_filename
-       character(len=StrKIND) :: mesh_filename_temp
-       character(len=StrKIND) :: ref_time_temp
-       character(len=StrKIND) :: filename_interval_temp
-       character(kind=c_char), dimension(StrKIND+1) :: c_mesh_stream
-       character(kind=c_char), dimension(StrKIND+1) :: c_mesh_filename_temp
-       character(kind=c_char), dimension(StrKIND+1) :: c_ref_time_temp
-       character(kind=c_char), dimension(StrKIND+1) :: c_filename_interval_temp
-       character(kind=c_char), dimension(StrKIND+1) :: c_iotype
-       type (MPAS_Time_type) :: start_time
-       type (MPAS_Time_type) :: ref_time
-       type (MPAS_TimeInterval_type) :: filename_interval
-       character(len=StrKIND) :: start_timestamp
-       character(len=StrKIND) :: iotype
-       logical :: streamsExists
        integer :: mesh_iotype
-       integer :: blockID
-       character(len=StrKIND) :: timeStamp
 
        character(len=*), parameter :: subname = 'cam_mpas_subdriver::cam_mpas_init_phase3'
 
@@ -321,8 +285,6 @@ contains
 
        real (kind=RKIND), pointer :: dt
 
-       character(len=StrKIND) :: timeStamp
-       integer :: i
        logical, pointer :: config_do_restart
 
        type (mpas_pool_type), pointer :: state
@@ -736,7 +698,7 @@ contains
        use mpas_pool_routines, only : mpas_pool_get_subpool, mpas_pool_get_dimension, mpas_pool_get_array
        use mpas_derived_types, only : mpas_pool_type
        use mpas_kind_types, only : RKIND
-       use mpas_dmpar, only : mpas_dmpar_sum_int, mpas_dmpar_max_int, mpas_dmpar_max_real_array
+       use mpas_dmpar, only : mpas_dmpar_sum_int, mpas_dmpar_max_real_array
 
        real (kind=RKIND), dimension(:), intent(out) :: latCellGlobal
        real (kind=RKIND), dimension(:), intent(out) :: lonCellGlobal
@@ -1778,8 +1740,6 @@ contains
     !-----------------------------------------------------------------------
     subroutine cam_mpas_read_restart(restart_stream, endrun)
 
-       use pio, only : file_desc_t
-
        use mpas_io_streams, only : MPAS_readStream, MPAS_closeStream
        use mpas_derived_types, only : MPAS_Stream_type, MPAS_pool_type, MPAS_STREAM_NOERR
        use mpas_pool_routines, only : MPAS_pool_create_pool, MPAS_pool_destroy_pool, MPAS_pool_add_config
@@ -1942,8 +1902,6 @@ contains
     !
     !-----------------------------------------------------------------------
     subroutine cam_mpas_write_restart(restart_stream, endrun)
-
-       use pio, only : file_desc_t
 
        use mpas_io_streams, only : MPAS_writeStream, MPAS_closeStream
        use mpas_derived_types, only : MPAS_Stream_type, MPAS_pool_type, MPAS_STREAM_NOERR
@@ -2389,11 +2347,10 @@ contains
        use mpas_derived_types, only : MPAS_IO_WRITE, MPAS_IO_NETCDF, MPAS_STREAM_NOERR, MPAS_Stream_type, MPAS_pool_type, &
                                       field0DReal, field1DReal, field2DReal, field3DReal, field4DReal, field5DReal, &
                                       field1DInteger, field2DInteger, field3DInteger
-       use mpas_pool_routines, only : MPAS_pool_get_subpool, MPAS_pool_get_field, MPAS_pool_create_pool, MPAS_pool_destroy_pool, &
-                                      MPAS_pool_add_config
+       use mpas_pool_routines, only : MPAS_pool_get_field
 
        use mpas_derived_types, only : MPAS_Pool_iterator_type, MPAS_POOL_FIELD, MPAS_POOL_REAL, MPAS_POOL_INTEGER
-       use mpas_pool_routines, only : mpas_pool_begin_iteration, mpas_pool_get_next_member, mpas_pool_get_config
+       use mpas_pool_routines, only : mpas_pool_begin_iteration, mpas_pool_get_next_member
 
        type (domain_type), intent(inout) :: domain
        character(len=*), intent(in) :: filename

@@ -8,24 +8,20 @@ use shr_kind_mod,   only: r8=>shr_kind_r8
 use pmgrid,         only: plev
 use ppgrid,         only: begchunk, endchunk, pcols, pver, pverp
 use constituents,   only: pcnst, cnst_type
-use physconst,      only: gravit, cappa, rh2o, zvir
-use air_composition,only: cpairv, rairv
-
-use spmd_dyn,       only: local_dp_map, block_buf_nrecs, chunk_buf_nrecs
-use spmd_utils,     only: mpicom, iam, masterproc
-
+use physconst,      only: gravit, cappa, zvir
+use air_composition,only: cpairv
 use dyn_comp,       only: dyn_export_t, dyn_import_t
-
 use physics_types,  only: physics_state, physics_tend, physics_cnst_limit
-use phys_grid,      only: get_dyn_col_p, get_chunk_info_p, get_ncols_p, get_gcol_all_p
+use phys_grid,      only: get_dyn_col_p, get_chunk_info_p, get_ncols_p
 use phys_grid,      only: columns_on_task
 
 use physics_buffer, only: physics_buffer_desc, pbuf_get_chunk, pbuf_get_field
 
-use cam_logfile,    only: iulog
-use perf_mod,       only: t_startf, t_stopf, t_barrierf
+use perf_mod,       only: t_startf, t_stopf
 use cam_abortutils, only: endrun
-use air_composition,only: thermodynamic_active_species_num,thermodynamic_active_species_idx,thermodynamic_active_species_idx_dycore
+use air_composition,only: thermodynamic_active_species_num,thermodynamic_active_species_idx, &
+                          thermodynamic_active_species_idx_dycore
+
 implicit none
 private
 save
@@ -106,14 +102,9 @@ subroutine d_p_coupling(phys_state, phys_tend, pbuf2d, dyn_out)
    type(physics_buffer_desc), pointer :: pbuf_chnk(:)
 
    integer :: lchnk, icol, icol_p, k, kk      ! indices over chunks, columns, physics columns and layers
-   integer :: i, m, ncols, blockid
+   integer :: i, m, ncols
    integer :: block_index
    integer, dimension(:), pointer :: block_offset
-
-   integer :: pgcols(pcols)
-   integer :: tsize                    ! amount of data per grid point passed to physics
-   integer, allocatable :: bpter(:,:)  ! offsets into block buffer for packing data
-   integer, allocatable :: cpter(:,:)  ! offsets into chunk buffer for unpacking data
 
    real(r8), allocatable:: pmid(:,:)      !mid-level hydrostatic pressure consistent with MPAS discrete state
    real(r8), allocatable:: pintdry(:,:)   !interface hydrostatic pressure consistent with MPAS discrete state
@@ -301,7 +292,7 @@ subroutine p_d_coupling(phys_state, phys_tend, dyn_in)
 
    ! Local variables
    integer :: lchnk, icol, icol_p, k, kk      ! indices over chunks, columns, layers
-   integer :: i, m, ncols, blockid
+   integer :: i, m, ncols
    integer :: block_index
    integer, dimension(:), pointer :: block_offset
 
@@ -311,7 +302,6 @@ subroutine p_d_coupling(phys_state, phys_tend, dyn_in)
    ! Variables from dynamics import container
    integer :: nCellsSolve
    integer :: nCells
-   integer :: nEdgesSolve
    integer :: index_qv
    integer, dimension(:), pointer :: mpas_from_cam_cnst
 
@@ -324,11 +314,6 @@ subroutine p_d_coupling(phys_state, phys_tend, dyn_in)
    real(r8), pointer :: v_tend(:,:)
 
    integer :: idx_phys, idx_dycore
-
-   integer :: pgcols(pcols)
-   integer :: tsize                    ! amount of data per grid point passed to dynamics
-   integer, allocatable :: bpter(:,:)  ! offsets into block buffer for unpacking data
-   integer, allocatable :: cpter(:,:)  ! offsets into chunk buffer for packing data
 
    type (mpas_pool_type), pointer :: tend_physics
    type (field2DReal), pointer :: tend_uzonal, tend_umerid
@@ -443,7 +428,7 @@ subroutine derived_phys(phys_state, phys_tend, pbuf2d)
 
    ! Local variables
 
-   integer :: i, k, lchnk, m, ncol
+   integer :: k, lchnk, m, ncol
 
    real(r8) :: factor(pcols,pver)
    real(r8) :: zvirv(pcols,pver)
@@ -607,13 +592,11 @@ subroutine derived_tend(nCellsSolve, nCells, t_tend, u_tend, v_tend, q_tend, dyn
    real(r8), pointer :: north(:,:)
    integer, pointer :: cellsOnEdge(:,:)
 
-   real(r8), pointer :: theta(:,:)
-   real(r8), pointer :: exner(:,:)
    real(r8), pointer :: rho_zz(:,:)
    real(r8), pointer :: tracers(:,:,:)
 
    integer :: index_qv,m,idx_dycore
-   real(r8) :: rhok,thetavk,thetak,pk,exnerk,tempk,tempk_new,exnerk_new,thetak_new,thetak_m_new,rhodk,tknew,thetaknew
+   real(r8) :: thetak,exnerk,rhodk,tknew,thetaknew
    !
    ! variables for energy diagnostics
    !
@@ -627,7 +610,6 @@ subroutine derived_tend(nCellsSolve, nCells, t_tend, u_tend, v_tend, q_tend, dyn
    real(r8)          :: qk (thermodynamic_active_species_num,pver,nCellsSolve) !water species before physics (diagnostics)
    real(r8)          :: qwv(pver,nCellsSolve)                                  !water vapor before physics
    real(r8)          :: facnew, facold
-   real(r8), allocatable :: tracers_old(:,:,:)
 
    integer  :: iCell,k
 
@@ -644,8 +626,6 @@ subroutine derived_tend(nCellsSolve, nCells, t_tend, u_tend, v_tend, q_tend, dyn
    normal      => dyn_in % normal
    cellsOnEdge => dyn_in % cellsOnEdge
 
-   theta       => dyn_in % theta
-   exner       => dyn_in % exner
    rho_zz      => dyn_in % rho_zz
    tracers     => dyn_in % tracers
    index_qv    =  dyn_in % index_qv
@@ -773,8 +753,7 @@ subroutine hydrostatic_pressure(nCells, nVertLevels, zz, zgrid, rho_zz, theta_m,
    ! The vertical dimension for 3-d arrays is innermost, and k=1 represents
    ! the lowest layer or level in the fields.
    !
-  use mpas_constants, only : cp, rgas, cv, gravity, p0, Rv_over_Rd => rvord
-  use physconst,      only:  rair, cpair
+  use mpas_constants, only : cp, rgas, cv, gravity, p0
 
    ! Arguments
    integer, intent(in) :: nCells
@@ -792,8 +771,7 @@ subroutine hydrostatic_pressure(nCells, nVertLevels, zz, zgrid, rho_zz, theta_m,
    integer :: iCell, k
    real(r8), dimension(nVertLevels)   :: dz    ! Geometric layer thickness in column
    real(r8), dimension(nVertLevels+1) :: pint  ! hydrostatic pressure at interface
-   real(r8) :: pi, t
-   real(r8) :: pk,rhok,rhodryk,theta,thetavk,kap1,kap2
+   real(r8) :: pk,rhok,rhodryk,thetavk,kap1,kap2
 
    !
    ! For each column, integrate downward from model top to compute dry hydrostatic pressure at layer
@@ -838,12 +816,12 @@ end subroutine hydrostatic_pressure
 
 
 subroutine tot_energy(nCells, nVertLevels, qsize, index_qv, zz, zgrid, rho_zz, theta_m, q, ux,uy,outfld_name_suffix)
-  use physconst,         only: rair, cpair, gravit,cappa!=R/cp (dry air)
   use mpas_constants,    only: p0,cv,rv,rgas,cp
   use cam_history,       only: outfld, hist_fld_active
   use mpas_constants,    only: Rv_over_Rd => rvord
   use air_composition,   only: thermodynamic_active_species_ice_idx_dycore,thermodynamic_active_species_liq_idx_dycore
   use air_composition,   only: thermodynamic_active_species_ice_num,thermodynamic_active_species_liq_num
+
   ! Arguments
   integer, intent(in) :: nCells
   integer, intent(in) :: nVertLevels
@@ -860,9 +838,9 @@ subroutine tot_energy(nCells, nVertLevels, qsize, index_qv, zz, zgrid, rho_zz, t
 
   ! Local variables
   integer :: iCell, k, idx
-  real(r8) :: rho_dz,zcell,temperature,theta,pk,ptop,exner
+  real(r8) :: rho_dz,zcell,temperature,theta,exner
   real(r8), dimension(nVertLevels, nCells) :: rhod, dz
-  real(r8), dimension(nCells)              :: kinetic_energy,potential_energy,internal_energy,water_vapor,water_liq,water_ice
+  real(r8), dimension(nCells)              :: kinetic_energy,potential_energy,internal_energy,water_vapor
 
   real(r8), dimension(nCells) :: liq !total column integrated liquid
   real(r8), dimension(nCells) :: ice !total column integrated ice
