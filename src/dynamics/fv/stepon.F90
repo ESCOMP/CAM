@@ -64,7 +64,8 @@ subroutine stepon_init(dyn_in, dyn_out)
 
    use constituents, only: pcnst
    use time_manager, only: get_step_size
-   use physconst,    only: physconst_calc_kappav, rair, cpair
+   use physconst,    only: rair, cpair
+   use cam_thermo,   only: cam_thermo_calc_kappav
    use inic_analytic,      only: analytic_ic_active
    use cam_initfiles,      only: scale_dry_air_mass
 
@@ -173,7 +174,7 @@ subroutine stepon_init(dyn_in, dyn_out)
       allocate( cappa3v(ifirstxy:ilastxy,jfirstxy:jlastxy,km) )
       allocate( cap3vi(ifirstxy:ilastxy,jfirstxy:jlastxy,km+1) )
       if (grid%high_alt) then
-         call physconst_calc_kappav( ifirstxy,ilastxy,jfirstxy,jlastxy,1,km, grid%ntotq, dyn_in%tracer, cappa3v )
+         call cam_thermo_calc_kappav( dyn_in%tracer, cappa3v )
 
 !$omp parallel do private(i,j,k)
          do k=2,km

@@ -57,7 +57,7 @@ contains
  end subroutine held_suarez_init
 
   subroutine held_suarez_tend(state, ptend, ztodt)
-    use physconst,          only: cpairv
+    use air_composition,    only: cpairv
     use phys_grid,          only: get_rlat_all_p
     use physics_types,      only: physics_state, physics_ptend
     use physics_types,      only: physics_ptend_init
