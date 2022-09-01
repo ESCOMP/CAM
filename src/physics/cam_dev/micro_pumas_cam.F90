@@ -69,6 +69,8 @@ character(len=16) :: micro_mg_precip_frac_method = 'max_overlap' ! type of preci
 
 real(r8), parameter :: unset_r8 = huge(1.0_r8)
 
+integer,target, allocatable :: lev_number(:)
+
 ! Tunable namelist parameters (set in atm_in)
 real(r8) :: micro_mg_berg_eff_factor   = unset_r8        ! berg efficiency factor
 real(r8) :: micro_mg_accre_enhan_fact  = unset_r8        ! accretion enhancment factor
@@ -554,8 +556,13 @@ subroutine micro_pumas_cam_register
    logical :: prog_modal_aero
    logical :: use_subcol_microp  ! If true, then are using subcolumns in microphysics
 
-   integer :: lev_number(pver-top_lev+1)
-   integer :: i
+   integer :: i, ierr
+
+   allocate(lev_number(pver-top_lev+1), stat=ierr)
+
+   if (ierr /= 0) then
+         call endrun( "micro_pumas_cam_register: error allocating lev_number")
+   end if
 
    do i=1,pver-top_lev+1
      lev_number(i) = i
@@ -901,7 +908,7 @@ subroutine micro_pumas_cam_init(pbuf2d)
            micro_mg_ninst, micro_mg_ngcons, micro_mg_ngnst, &
            micro_mg_nrcons,  micro_mg_nrnst, micro_mg_nscons, micro_mg_nsnst, errstring)
 
-   call handle_errmsg(errstring, subname="micro_mg_init")
+   call handle_errmsg(errstring, subname="micro_pumas_cam_init")
 
    ! Retrieve the index for water vapor
    call cnst_get_ind('Q', ixq)
@@ -981,32 +988,32 @@ subroutine micro_pumas_cam_init(pbuf2d)
    call addfld ('VAPDEPSO',   (/ 'lev' /), 'A', 'kg/kg/s',  'Vapor deposition onto snow'                            )
    call addfld ('MELTSDT',    (/ 'lev' /), 'A', 'W/kg',     'Latent heating rate due to melting of snow'              )
    call addfld ('FRZRDT',     (/ 'lev' /), 'A', 'W/kg',     'Latent heating rate due to homogeneous freezing of rain' )
-   call addfld ('QRSEDTEN', (/ 'trop_cld_lev' /), 'A', 'kg/kg/s', 'Rain mixing ratio tendency from sedimentation'           )
-   call addfld ('QSSEDTEN', (/ 'trop_cld_lev' /), 'A', 'kg/kg/s', 'Snow mixing ratio tendency from sedimentation'           )
-   call addfld ('NNUCCCO',    (/ 'lev' /), 'A', '#/kg/s',  'Number Tendency due to Immersion freezing of cloud water')
-   call addfld ('NNUCCTO',    (/ 'lev' /), 'A', '#/kg/s',  'Number Tendency due to Contact freezing of cloud water')
-   call addfld ('NNUCCDO',    (/ 'lev' /), 'A', '#/kg/s',  'Number Tendency due to Ice nucleation')
-   call addfld ('NNUDEPO',    (/ 'lev' /), 'A', '#/kg/s',  'Number Tendency due to Deposition Nucleation')
-   call addfld ('NHOMO',      (/ 'lev' /), 'A', '#/kg/s',  'Number Tendency due to Homogeneous freezing of cloud water')
-   call addfld ('NNUCCRO',    (/ 'lev' /), 'A', '#/kg/s',  'Number Tendency due to heterogeneous freezing of rain to snow')
-   call addfld ('NNUCCRIO',   (/ 'lev' /), 'A', '#/kg/s',  'Number Tendency due to Heterogeneous freezing of rain to ice')
-   call addfld ('NSACWIO',    (/ 'lev' /), 'A', '#/kg/s',  'Number Tendency due to Ice Multiplication- Rime-splintering')
-   call addfld ('NPRAO',      (/ 'lev' /), 'A', '#/kg/s',  'Number Tendency due to Accretion of cloud water by rain')
-   call addfld ('NPSACWSO',   (/ 'lev' /), 'A', '#/kg/s',  'Number Tendency due to Accretion of cloud water by snow')
-   call addfld ('NPRAIO',     (/ 'lev' /), 'A', '#/kg/s',  'Number Tendency due to Accretion of cloud ice to snow')
-   call addfld ('NPRACSO',    (/ 'lev' /), 'A', '#/kg/s',  'Number Tendency due to Accretion of rain by snow')
-   call addfld ('NPRCO',      (/ 'lev' /), 'A', '#/kg/s',  'Number Tendency due to Autoconversion of cloud water [to rain]')
-   call addfld ('NPRCIO',     (/ 'lev' /), 'A', '#/kg/s',  'Number Tendency due to Autoconversion of cloud ice to snow')
-   call addfld ('NCSEDTEN',   (/ 'lev' /), 'A', '#/kg/s',  'Number Tendency due to cloud liquid sedimentation')
-   call addfld ('NISEDTEN',   (/ 'lev' /), 'A', '#/kg/s',  'Number Tendency due to cloud ice sedimentation')
-   call addfld ('NRSEDTEN',   (/ 'lev' /), 'A', '#/kg/s',  'Number Tendency due to rain sedimentation')
-   call addfld ('NSSEDTEN',   (/ 'lev' /), 'A', '#/kg/s',  'Number Tendency due to snow sedimentation')
-   call addfld ('NMELTO',     (/ 'lev' /), 'A', '#/kg/s',  'Number Tendency due to Melting of cloud ice ')
-   call addfld ('NMELTS',     (/ 'lev' /), 'A', '#/kg/s',  'Number Tendency due to Melting of snow')
+   call addfld ('QRSEDTEN',   (/ 'trop_cld_lev' /), 'A', 'kg/kg/s', 'Rain mixing ratio tendency from sedimentation'           )
+   call addfld ('QSSEDTEN',   (/ 'trop_cld_lev' /), 'A', 'kg/kg/s', 'Snow mixing ratio tendency from sedimentation'           )
+   call addfld ('NNUCCCO',    (/ 'trop_cld_lev' /), 'A', '#/kg/s',  'Number Tendency due to Immersion freezing of cloud water')
+   call addfld ('NNUCCTO',    (/ 'trop_cld_lev' /), 'A', '#/kg/s',  'Number Tendency due to Contact freezing of cloud water')
+   call addfld ('NNUCCDO',    (/ 'trop_cld_lev' /), 'A', '#/kg/s',  'Number Tendency due to Ice nucleation')
+   call addfld ('NNUDEPO',    (/ 'trop_cld_lev' /), 'A', '#/kg/s',  'Number Tendency due to Deposition Nucleation')
+   call addfld ('NHOMO',      (/ 'trop_cld_lev' /), 'A', '#/kg/s',  'Number Tendency due to Homogeneous freezing of cloud water')
+   call addfld ('NNUCCRO',    (/ 'trop_cld_lev' /), 'A', '#/kg/s',  'Number Tendency due to heterogeneous freezing of rain to snow')
+   call addfld ('NNUCCRIO',   (/ 'trop_cld_lev' /), 'A', '#/kg/s',  'Number Tendency due to Heterogeneous freezing of rain to ice')
+   call addfld ('NSACWIO',    (/ 'trop_cld_lev' /), 'A', '#/kg/s',  'Number Tendency due to Ice Multiplication- Rime-splintering')
+   call addfld ('NPRAO',      (/ 'trop_cld_lev' /), 'A', '#/kg/s',  'Number Tendency due to Accretion of cloud water by rain')
+   call addfld ('NPSACWSO',   (/ 'trop_cld_lev' /), 'A', '#/kg/s',  'Number Tendency due to Accretion of cloud water by snow')
+   call addfld ('NPRAIO',     (/ 'trop_cld_lev' /), 'A', '#/kg/s',  'Number Tendency due to Accretion of cloud ice to snow')
+   call addfld ('NPRACSO',    (/ 'trop_cld_lev' /), 'A', '#/kg/s',  'Number Tendency due to Accretion of rain by snow')
+   call addfld ('NPRCO',      (/ 'trop_cld_lev' /), 'A', '#/kg/s', 'Number Tendency due to Autoconversion of cloud water [to rain]')
+   call addfld ('NPRCIO',     (/ 'trop_cld_lev' /), 'A', '#/kg/s',  'Number Tendency due to Autoconversion of cloud ice to snow')
+   call addfld ('NCSEDTEN',   (/ 'trop_cld_lev' /), 'A', '#/kg/s',  'Number Tendency due to cloud liquid sedimentation')
+   call addfld ('NISEDTEN',   (/ 'trop_cld_lev' /), 'A', '#/kg/s',  'Number Tendency due to cloud ice sedimentation')
+   call addfld ('NRSEDTEN',   (/ 'trop_cld_lev' /), 'A', '#/kg/s',  'Number Tendency due to rain sedimentation')
+   call addfld ('NSSEDTEN',   (/ 'trop_cld_lev' /), 'A', '#/kg/s',  'Number Tendency due to snow sedimentation')
+   call addfld ('NMELTO',     (/ 'trop_cld_lev' /), 'A', '#/kg/s',  'Number Tendency due to Melting of cloud ice ')
+   call addfld ('NMELTS',     (/ 'trop_cld_lev' /), 'A', '#/kg/s',  'Number Tendency due to Melting of snow')
 
    if (micro_mg_version > 2) then
-         call addfld ('NMELTG',     (/ 'lev' /), 'A', '#/kg/s',  'Number Tendency due to Melting of graupel')
-         call addfld ('NGSEDTEN',   (/ 'lev' /), 'A', '#/kg/s',  'Number Tendency due to graupel sedimentation')
+         call addfld ('NMELTG',     (/ 'trop_cld_lev' /), 'A', '#/kg/s',  'Number Tendency due to Melting of graupel')
+         call addfld ('NGSEDTEN',   (/ 'trop_cld_lev' /), 'A', '#/kg/s',  'Number Tendency due to graupel sedimentation')
          call addfld ('PSACRO',    (/ 'lev' /), 'A', 'kg/kg/s', 'Collisions between rain & snow (Graupel collecting snow)')
          call addfld ('PRACGO',    (/ 'lev' /), 'A', 'kg/kg/s',  'Change in q collection rain by graupel'             )
          call addfld ('PSACWGO',   (/ 'lev' /), 'A', 'kg/kg/s',  'Change in q collection droplets by graupel'         )
@@ -1505,29 +1512,6 @@ subroutine micro_pumas_cam_tend(state, ptend, dtime, pbuf)
    real(r8)  :: freqr(state%psetcols,pver)
    real(r8)  :: nfice(state%psetcols,pver)
    real(r8)  :: qcrat(state%psetcols,pver)   ! qc limiter ratio (1=no limit)
-!Number Tendencies
-   real(r8)  :: nnuccco(state%psetcols,pver)
-   real(r8)  :: nnuccto(state%psetcols,pver)
-   real(r8)  :: nnuccdo(state%psetcols,pver)
-   real(r8)  :: nnudepo(state%psetcols,pver)
-   real(r8)  :: nhomoo(state%psetcols,pver)
-   real(r8)  :: nnuccro(state%psetcols,pver)
-   real(r8)  :: nnuccrio(state%psetcols,pver)
-   real(r8)  :: nsacwio(state%psetcols,pver)
-   real(r8)  :: nprao(state%psetcols,pver)
-   real(r8)  :: npsacwso(state%psetcols,pver)
-   real(r8)  :: npraio(state%psetcols,pver)
-   real(r8)  :: npracso(state%psetcols,pver)
-   real(r8)  :: nprco(state%psetcols,pver)
-   real(r8)  :: nprcio(state%psetcols,pver)
-   real(r8)  :: ncsedten(state%psetcols,pver)
-   real(r8)  :: nisedten(state%psetcols,pver)
-   real(r8)  :: nrsedten(state%psetcols,pver)
-   real(r8)  :: nssedten(state%psetcols,pver)
-   real(r8)  :: ngsedten(state%psetcols,pver)
-   real(r8)  :: nmelto(state%psetcols,pver)
-   real(r8)  :: nmeltso(state%psetcols,pver)
-   real(r8)  :: nmeltgo(state%psetcols,pver)
 
 !Hail/Graupel Output
    real(r8)  :: freqg(state%psetcols,pver)
@@ -1847,7 +1831,10 @@ subroutine micro_pumas_cam_tend(state, ptend, dtime, pbuf)
    nan_array = nan
 
    ! Allocate the proc_rates DDT
-   call proc_rates%allocate(psetcols,nlev)
+   call proc_rates%allocate(psetcols,nlev, errstring)
+
+   call handle_errmsg(errstring, subname="micro_pumas_cam_tend")
+
 
    call phys_getopts(use_subcol_microp_out=use_subcol_microp)
 
@@ -2278,28 +2265,28 @@ subroutine micro_pumas_cam_tend(state, ptend, dtime, pbuf)
    frzimm(:ncol,:top_lev-1)=0._r8
    frzcnt(:ncol,:top_lev-1)=0._r8
    frzdep(:ncol,:top_lev-1)=0._r8
-   nnuccco(:ncol,:top_lev-1)=0._r8
-   nnuccto(:ncol,:top_lev-1)=0._r8
-   nnuccdo(:ncol,:top_lev-1)=0._r8
-   nnudepo(:ncol,:top_lev-1)=0._r8
-   nhomoo(:ncol,:top_lev-1)=0._r8
-   nnuccro(:ncol,:top_lev-1)=0._r8
-   nnuccrio(:ncol,:top_lev-1)=0._r8
-   nsacwio(:ncol,:top_lev-1)=0._r8
-   nprao(:ncol,:top_lev-1)=0._r8
-   npsacwso(:ncol,:top_lev-1)=0._r8
-   npraio(:ncol,:top_lev-1)=0._r8
-   npracso(:ncol,:top_lev-1)=0._r8
-   nprco(:ncol,:top_lev-1)=0._r8
-   nprcio(:ncol,:top_lev-1)=0._r8
-   ncsedten(:ncol,:top_lev-1)=0._r8
-   nisedten(:ncol,:top_lev-1)=0._r8
-   nrsedten(:ncol,:top_lev-1)=0._r8
-   nssedten(:ncol,:top_lev-1)=0._r8
-   ngsedten(:ncol,:top_lev-1)=0._r8
-   nmelto(:ncol,:top_lev-1)=0._r8
-   nmeltso(:ncol,:top_lev-1)=0._r8
-   nmeltgo(:ncol,:top_lev-1)=0._r8
+   proc_rates%nnuccctot(:ncol,:top_lev-1)=0._r8
+   proc_rates%nnuccttot(:ncol,:top_lev-1)=0._r8
+   proc_rates%nnuccdtot(:ncol,:top_lev-1)=0._r8
+   proc_rates%nnudeptot(:ncol,:top_lev-1)=0._r8
+   proc_rates%nhomotot(:ncol,:top_lev-1)=0._r8
+   proc_rates%nnuccrtot(:ncol,:top_lev-1)=0._r8
+   proc_rates%nnuccritot(:ncol,:top_lev-1)=0._r8
+   proc_rates%nsacwitot(:ncol,:top_lev-1)=0._r8
+   proc_rates%npratot(:ncol,:top_lev-1)=0._r8
+   proc_rates%npsacwstot(:ncol,:top_lev-1)=0._r8
+   proc_rates%npraitot(:ncol,:top_lev-1)=0._r8
+   proc_rates%npracstot(:ncol,:top_lev-1)=0._r8
+   proc_rates%nprctot(:ncol,:top_lev-1)=0._r8
+   proc_rates%nprcitot(:ncol,:top_lev-1)=0._r8
+   proc_rates%ncsedten(:ncol,:top_lev-1)=0._r8
+   proc_rates%nisedten(:ncol,:top_lev-1)=0._r8
+   proc_rates%nrsedten(:ncol,:top_lev-1)=0._r8
+   proc_rates%nssedten(:ncol,:top_lev-1)=0._r8
+   proc_rates%ngsedten(:ncol,:top_lev-1)=0._r8
+   proc_rates%nmelttot(:ncol,:top_lev-1)=0._r8
+   proc_rates%nmeltstot(:ncol,:top_lev-1)=0._r8
+   proc_rates%nmeltgtot(:ncol,:top_lev-1)=0._r8
 
    do it = 1, num_steps
 
@@ -2337,14 +2324,6 @@ subroutine micro_pumas_cam_tend(state, ptend, dtime, pbuf)
               gflx(:ncol,top_lev:),                                    &
               rflx(:ncol,top_lev:),    sflx(:ncol,top_lev:),    qrout(:ncol,top_lev:),   &
               reff_rain_dum(:ncol,top_lev:),          reff_snow_dum(:ncol,top_lev:),   reff_grau_dum(:ncol,top_lev:),       &
-              nnuccco(:ncol,top_lev:),          nnuccto(:ncol,top_lev:),          nnuccdo(:ncol,top_lev:),  &
-              nnudepo(:ncol,top_lev:),          nhomoo(:ncol,top_lev:),           nnuccro(:ncol,top_lev:),  &
-              nnuccrio(:ncol,top_lev:),         nsacwio(:ncol,top_lev:),          nprao(:ncol,top_lev:), &
-              npsacwso(:ncol,top_lev:),         npraio(:ncol,top_lev:),           npracso(:ncol,top_lev:), &
-              nprco(:ncol,top_lev:),            nprcio(:ncol,top_lev:),           ncsedten(:ncol,top_lev:), &
-              nisedten(:ncol,top_lev:),         nrsedten(:ncol,top_lev:),         nssedten(:ncol,top_lev:), &
-              ngsedten(:ncol,top_lev:),         nmelto(:ncol,top_lev:),           nmeltso(:ncol,top_lev:), &
-              nmeltgo(:ncol,top_lev:), &
               nrout(:ncol,top_lev:),           nsout(:ncol,top_lev:),           &
               refl(:ncol,top_lev:),    arefl(:ncol,top_lev:),   areflz(:ncol,top_lev:),  &
               frefl(:ncol,top_lev:),   csrfl(:ncol,top_lev:),   acsrfl(:ncol,top_lev:),  &
@@ -2362,7 +2341,7 @@ subroutine micro_pumas_cam_tend(state, ptend, dtime, pbuf)
               prer_evap(:ncol,top_lev:),                                     &
               frzimm(:ncol,top_lev:),  frzcnt(:ncol,top_lev:),  frzdep(:ncol,top_lev:)   )
 
-      call handle_errmsg(errstring, subname="micro_pumas_tend")
+      call handle_errmsg(errstring, subname="micro_pumas_cam_tend")
 
       call physics_ptend_init(ptend_loc, psetcols, "micro_pumas", &
                               ls=.true., lq=lq)
@@ -3280,26 +3259,26 @@ subroutine micro_pumas_cam_tend(state, ptend, dtime, pbuf)
    call outfld('FRZRDT',      proc_rates%frzrdttot ,     psetcols, lchnk, avg_subcol_field=use_subcol_microp)
    call outfld('FICE',        nfice,       psetcols, lchnk, avg_subcol_field=use_subcol_microp)
    call outfld('CLDFSNOW',    cldfsnow,    psetcols, lchnk, avg_subcol_field=use_subcol_microp)
-   call outfld ('NNUCCCO',  nnuccco  , psetcols, lchnk, avg_subcol_field=use_subcol_microp)
-   call outfld ('NNUCCTO',  nnuccto  , psetcols, lchnk, avg_subcol_field=use_subcol_microp)
-   call outfld ('NNUCCDO',  nnuccdo  , psetcols, lchnk, avg_subcol_field=use_subcol_microp)
-   call outfld ('NNUDEPO',  nnudepo  , psetcols, lchnk, avg_subcol_field=use_subcol_microp)
-   call outfld ('NHOMO',    nhomoo   , psetcols, lchnk, avg_subcol_field=use_subcol_microp)
-   call outfld ('NNUCCRO',  nnuccro  , psetcols, lchnk, avg_subcol_field=use_subcol_microp)
-   call outfld ('NNUCCRIO', nnuccrio , psetcols, lchnk, avg_subcol_field=use_subcol_microp)
-   call outfld ('NSACWIO',  nsacwio  , psetcols, lchnk, avg_subcol_field=use_subcol_microp)
-   call outfld ('NPRAO',    nprao    , psetcols, lchnk, avg_subcol_field=use_subcol_microp)
-   call outfld ('NPSACWSO', npsacwso , psetcols, lchnk, avg_subcol_field=use_subcol_microp)
-   call outfld ('NPRAIO',   npraio   , psetcols, lchnk, avg_subcol_field=use_subcol_microp)
-   call outfld ('NPRACSO',  npracso  , psetcols, lchnk, avg_subcol_field=use_subcol_microp)
-   call outfld ('NPRCO',    nprco    , psetcols, lchnk, avg_subcol_field=use_subcol_microp)
-   call outfld ('NPRCIO',   nprcio   , psetcols, lchnk, avg_subcol_field=use_subcol_microp)
-   call outfld ('NCSEDTEN', ncsedten , psetcols, lchnk, avg_subcol_field=use_subcol_microp)
-   call outfld ('NISEDTEN', nisedten , psetcols, lchnk, avg_subcol_field=use_subcol_microp)
-   call outfld ('NRSEDTEN', nrsedten , psetcols, lchnk, avg_subcol_field=use_subcol_microp)
-   call outfld ('NSSEDTEN', nssedten , psetcols, lchnk, avg_subcol_field=use_subcol_microp)
-   call outfld ('NMELTO',   nmelto   , psetcols, lchnk, avg_subcol_field=use_subcol_microp)
-   call outfld ('NMELTS',   nmeltso  , psetcols, lchnk, avg_subcol_field=use_subcol_microp)
+   call outfld ('NNUCCCO',  proc_rates%nnuccctot  , psetcols, lchnk, avg_subcol_field=use_subcol_microp)
+   call outfld ('NNUCCTO',  proc_rates%nnuccttot  , psetcols, lchnk, avg_subcol_field=use_subcol_microp)
+   call outfld ('NNUCCDO',  proc_rates%nnuccdtot  , psetcols, lchnk, avg_subcol_field=use_subcol_microp)
+   call outfld ('NNUDEPO',  proc_rates%nnudeptot  , psetcols, lchnk, avg_subcol_field=use_subcol_microp)
+   call outfld ('NHOMO',    proc_rates%nhomotot   , psetcols, lchnk, avg_subcol_field=use_subcol_microp)
+   call outfld ('NNUCCRO',  proc_rates%nnuccrtot  , psetcols, lchnk, avg_subcol_field=use_subcol_microp)
+   call outfld ('NNUCCRIO', proc_rates%nnuccritot , psetcols, lchnk, avg_subcol_field=use_subcol_microp)
+   call outfld ('NSACWIO',  proc_rates%nsacwitot  , psetcols, lchnk, avg_subcol_field=use_subcol_microp)
+   call outfld ('NPRAO',    proc_rates%npratot    , psetcols, lchnk, avg_subcol_field=use_subcol_microp)
+   call outfld ('NPSACWSO', proc_rates%npsacwstot , psetcols, lchnk, avg_subcol_field=use_subcol_microp)
+   call outfld ('NPRAIO',   proc_rates%npraitot   , psetcols, lchnk, avg_subcol_field=use_subcol_microp)
+   call outfld ('NPRACSO',  proc_rates%npracstot  , psetcols, lchnk, avg_subcol_field=use_subcol_microp)
+   call outfld ('NPRCO',    proc_rates%nprctot    , psetcols, lchnk, avg_subcol_field=use_subcol_microp)
+   call outfld ('NPRCIO',   proc_rates%nprcitot   , psetcols, lchnk, avg_subcol_field=use_subcol_microp)
+   call outfld ('NCSEDTEN', proc_rates%ncsedten , psetcols, lchnk, avg_subcol_field=use_subcol_microp)
+   call outfld ('NISEDTEN', proc_rates%nisedten , psetcols, lchnk, avg_subcol_field=use_subcol_microp)
+   call outfld ('NRSEDTEN', proc_rates%nrsedten , psetcols, lchnk, avg_subcol_field=use_subcol_microp)
+   call outfld ('NSSEDTEN', proc_rates%nssedten , psetcols, lchnk, avg_subcol_field=use_subcol_microp)
+   call outfld ('NMELTO',   proc_rates%nmelttot   , psetcols, lchnk, avg_subcol_field=use_subcol_microp)
+   call outfld ('NMELTS',   proc_rates%nmeltstot  , psetcols, lchnk, avg_subcol_field=use_subcol_microp)
 
    call outfld('UMR',      proc_rates%umr,         psetcols, lchnk, avg_subcol_field=use_subcol_microp)
    call outfld('UMS',      proc_rates%ums,         psetcols, lchnk, avg_subcol_field=use_subcol_microp)
@@ -3314,8 +3293,8 @@ subroutine micro_pumas_cam_tend(state, ptend, dtime, pbuf)
       call outfld('ANGRAU',      ngout2,      psetcols, lchnk, avg_subcol_field=use_subcol_microp)
       call outfld('CLDFGRAU',    cldfgrau,    psetcols, lchnk, avg_subcol_field=use_subcol_microp)
       call outfld('MELTGTOT',    proc_rates%meltgtot,    psetcols, lchnk, avg_subcol_field=use_subcol_microp)
-      call outfld('NMELTG',      nmeltgo,     psetcols, lchnk, avg_subcol_field=use_subcol_microp)
-      call outfld('NGSEDTEN',    ngsedten ,   psetcols, lchnk, avg_subcol_field=use_subcol_microp)
+      call outfld('NMELTG',      proc_rates%nmeltgtot,     psetcols, lchnk, avg_subcol_field=use_subcol_microp)
+      call outfld('NGSEDTEN',    proc_rates%ngsedten ,   psetcols, lchnk, avg_subcol_field=use_subcol_microp)
 
    end if
 
