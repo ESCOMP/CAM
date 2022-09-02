@@ -88,7 +88,7 @@ module physpkg
   integer ::  dtcore_idx         = 0     ! dtcore index in physics buffer
   integer ::  dqcore_idx         = 0     ! dqcore index in physics buffer
   integer ::  cmfmczm_idx        = 0     ! Zhang-McFarlane convective mass fluxes
-  integer ::  rliqbc_idx         = 0     ! tphysbc reserve liquid 
+  integer ::  rliqbc_idx         = 0     ! tphysbc reserve liquid
 !=======================================================================
 contains
 !=======================================================================
@@ -872,7 +872,7 @@ contains
     call convect_deep_init(pref_edge)
 
     if (.not. do_clubb_sgs) call macrop_driver_init(pbuf2d)
-    call microp_aero_init(pbuf2d)
+    call microp_aero_init(phys_state,pbuf2d)
     call microp_driver_init(pbuf2d)
     call conv_water_init
 
@@ -1245,6 +1245,8 @@ contains
     use chemistry,      only: chem_final
     use carma_intr,     only: carma_final
     use wv_saturation,  only: wv_sat_final
+    use microp_aero,    only: microp_aero_final
+
     !-----------------------------------------------------------------------
     !
     ! Purpose:
@@ -1265,6 +1267,7 @@ contains
     call chem_final
     call carma_final
     call wv_sat_final
+    call microp_aero_final()
 
   end subroutine phys_final
 
@@ -2281,7 +2284,7 @@ contains
     !
     ! FV: convert dry-type mixing ratios to moist here because physics_dme_adjust
     !     assumes moist. This is done in p_d_coupling for other dynamics. Bundy, Feb 2004.
-    moist_mixing_ratio_dycore = dycore_is('LR').or. dycore_is('FV3')  
+    moist_mixing_ratio_dycore = dycore_is('LR').or. dycore_is('FV3')
     if (moist_mixing_ratio_dycore) call set_dry_to_wet(state)    ! Physics had dry, dynamics wants moist
 
     ! Scale dry mass and energy (does nothing if dycore is EUL or SLD)
@@ -2289,12 +2292,12 @@ contains
     tmp_cldliq(:ncol,:pver) = state%q(:ncol,:pver,ixcldliq)
     tmp_cldice(:ncol,:pver) = state%q(:ncol,:pver,ixcldice)
 
-    ! for dry mixing ratio dycore, physics_dme_adjust is called for energy diagnostic purposes only.  
+    ! for dry mixing ratio dycore, physics_dme_adjust is called for energy diagnostic purposes only.
     ! So, save off tracers
     if (.not.moist_mixing_ratio_dycore.and.&
          (hist_fld_active('SE_phAM').or.hist_fld_active('KE_phAM').or.hist_fld_active('WV_phAM').or.&
           hist_fld_active('WL_phAM').or.hist_fld_active('WI_phAM').or.hist_fld_active('MR_phAM').or.&
-          hist_fld_active('MO_phAM'))) then 
+          hist_fld_active('MO_phAM'))) then
       tmp_trac(:ncol,:pver,:pcnst) = state%q(:ncol,:pver,:pcnst)
       tmp_pdel(:ncol,:pver)        = state%pdel(:ncol,:pver)
       tmp_ps(:ncol)                = state%ps(:ncol)
@@ -2664,7 +2667,7 @@ contains
          (trim(cam_take_snapshot_before) == trim(cam_take_snapshot_after))) then
             call cam_snapshot_ptend_outfld(ptend, lchnk)
     end if
-    
+
     if ( ptend%lu ) then
       call outfld( 'UTEND_DCONV', ptend%u, pcols, lchnk)
     end if
@@ -2761,7 +2764,7 @@ contains
 
       call radiation_tend( &
          state, ptend, pbuf, cam_out, cam_in, net_flx)
-  
+
     end if
 
     ! Save atmospheric fields to force surface models

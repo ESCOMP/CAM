@@ -904,7 +904,7 @@ contains
        call rk_stratiform_init()
     elseif( microp_scheme == 'MG' ) then
        if (.not. do_clubb_sgs) call macrop_driver_init(pbuf2d)
-       call microp_aero_init(pbuf2d)
+       call microp_aero_init(phys_state,pbuf2d)
        call microp_driver_init(pbuf2d)
        call conv_water_init
     elseif( microp_scheme == 'SPCAM_m2005') then
@@ -1300,6 +1300,8 @@ contains
     use chemistry, only : chem_final
     use carma_intr, only : carma_final
     use wv_saturation, only : wv_sat_final
+    use microp_aero, only : microp_aero_final
+
     !-----------------------------------------------------------------------
     !
     ! Purpose:
@@ -1320,6 +1322,7 @@ contains
     call chem_final
     call carma_final
     call wv_sat_final
+    call microp_aero_final()
 
   end subroutine phys_final
 
