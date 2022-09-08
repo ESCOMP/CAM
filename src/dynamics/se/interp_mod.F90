@@ -1,5 +1,5 @@
 module interp_mod
-  use shr_kind_mod,        only: r8 => shr_kind_r8
+  use shr_kind_mod,        only: r8 => shr_kind_r8, r4 => shr_kind_r4
   use dimensions_mod,      only: nelemd, np, ne
   use interpolate_mod,     only: interpdata_t
   use interpolate_mod,     only: interp_lat => lat, interp_lon => lon
@@ -191,6 +191,7 @@ CONTAINS
     use pio,              only: iosystem_desc_t
     use pio,              only: pio_initdecomp, pio_freedecomp
     use pio,              only: io_desc_t, pio_write_darray
+    use pio,              only: pio_real
     use interpolate_mod,  only: interpolate_scalar
     use cam_instance,     only: atm_id
     use spmd_dyn,         only: local_dp_map
@@ -382,7 +383,12 @@ CONTAINS
     else
        call pio_initdecomp(pio_subsystem, data_type, (/nlon,nlat,numlev/), idof, iodesc)
     end if
-    call pio_write_darray(File, varid, iodesc, fldout, ierr)
+
+    if(data_type == pio_real) then
+      call pio_write_darray(File, varid, iodesc, real(fldout, r4), ierr)
+    else
+      call pio_write_darray(File, varid, iodesc, fldout, ierr)
+    end if
 
     deallocate(dest)
 
@@ -397,6 +403,7 @@ CONTAINS
     use pio,              only: iosystem_desc_t
     use pio,              only: pio_initdecomp, pio_freedecomp
     use pio,              only: io_desc_t, pio_write_darray
+    use pio,              only: pio_real
     use cam_instance,     only: atm_id
     use interpolate_mod,  only: interpolate_scalar, vec_latlon_to_contra,get_interp_parameter
     use spmd_dyn,         only: local_dp_map
@@ -629,8 +636,13 @@ CONTAINS
        call pio_initdecomp(pio_subsystem, data_type, (/nlon,nlat,numlev/), idof, iodesc)
     end if
 
-    call pio_write_darray(File, varidu, iodesc, fldout(:,:,1), ierr)
-    call pio_write_darray(File, varidv, iodesc, fldout(:,:,2), ierr)
+    if(data_type == pio_real) then
+      call pio_write_darray(File, varidu, iodesc, real(fldout(:,:,1), r4), ierr)
+      call pio_write_darray(File, varidv, iodesc, real(fldout(:,:,2), r4), ierr)
+    else
+      call pio_write_darray(File, varidu, iodesc, fldout(:,:,1), ierr)
+      call pio_write_darray(File, varidv, iodesc, fldout(:,:,2), ierr)
+    end if
 
 
     deallocate(fldout)
