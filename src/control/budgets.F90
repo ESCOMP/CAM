@@ -57,6 +57,7 @@ character(len=64), public, protected :: budget_stg1name(budget_array_max)
 character(len=32), public, protected :: budget_stg2name(budget_array_max)
 integer,           public, protected :: budget_stg1stateidx(budget_array_max)
 integer,           public, protected :: budget_stg2stateidx(budget_array_max)
+real(r8),          public, protected :: budget_globals(budget_array_max)
 
 !
 ! Constants for each budget
@@ -105,7 +106,7 @@ subroutine budget_readnl(nlfile)
 end subroutine budget_readnl
 
 
-subroutine budget_stage_add (name, pkgtype, longname, outfld)
+subroutine budget_stage_add (name, pkgtype, longname, outfld, subcycle)
 
    ! Register a budget.
 
@@ -118,6 +119,8 @@ subroutine budget_stage_add (name, pkgtype, longname, outfld)
       longname    ! value for long_name attribute in netcdf output (128 char max, defaults to name)
    logical,          intent(in), optional :: &
       outfld  ! true => default CAM output of budget in kg/kg
+   logical,          intent(in), optional :: &
+      subcycle  ! true => This budget is subcycled
    integer  :: state_idx    ! dyn/phy state budget index (in q array)
    character(len=*), parameter :: sub='budget_stage_add'
    character(len=128) :: errmsg
@@ -158,11 +161,16 @@ subroutine budget_stage_add (name, pkgtype, longname, outfld)
    budget_optype(budget_num)='stg'
    budget_pkgtype(budget_num)=pkgtype
    budget_state_ind(budget_num)=state_idx
+   if (present(subcycle)) then
+      budget_subcycle(budget_num)=subcycle
+   else
+      budget_subcycle(budget_num)=.false.
+   end if
 end subroutine budget_stage_add
 
 !!$!==============================================================================
 
-subroutine budget_diff_add (name, stg1name, stg2name, pkgtype, optype, longname, outfld)
+subroutine budget_diff_add (name, stg1name, stg2name, pkgtype, optype, longname, outfld, subcycle)
 
    ! Register a budget.
 
@@ -180,6 +188,9 @@ subroutine budget_diff_add (name, stg1name, stg2name, pkgtype, optype, longname,
 
    logical,          intent(in), optional :: &
       outfld  ! true => default CAM output of budget in kg/kg
+
+   logical,          intent(in), optional :: &
+      subcycle  ! true => if this budget is subcycled
 
    character(len=*), parameter :: sub='budget_diff_add'
    character(len=128) :: errmsg
@@ -216,7 +227,6 @@ subroutine budget_diff_add (name, stg1name, stg2name, pkgtype, optype, longname,
    budget_stg2index(budget_num) = budget_ind_byname(trim(stg2name))
    budget_stg1stateidx(budget_num) = budget_state_ind(budget_stg1index(budget_num))
    budget_stg2stateidx(budget_num) = budget_state_ind(budget_stg2index(budget_num))
-
    ! set outfld type 
    ! (false: the module declaring the budget is responsible for outfld calls)
    if (present(outfld)) then
@@ -227,6 +237,11 @@ subroutine budget_diff_add (name, stg1name, stg2name, pkgtype, optype, longname,
 
    budget_optype(budget_num)=optype
    budget_state_ind(budget_num)=state_idx
+   if (present(subcycle)) then
+      budget_subcycle(budget_num)=subcycle
+   else
+      budget_subcycle(budget_num)=.false.
+   end if
 
  end subroutine budget_diff_add
 !==============================================================================
@@ -266,7 +281,7 @@ end function budget_type_byind
 
 !==============================================================================================
 
-subroutine budget_info_byname(name, budget_ind, longname, stg1name, stg1stateidx, stg1index, stg2name, stg2stateidx, stg2index, optype, pkgtype,state_ind)
+subroutine budget_info_byname(name, budget_ind, longname, stg1name, stg1stateidx, stg1index, stg2name, stg2stateidx, stg2index, optype, pkgtype,state_ind,subcycle,outfld)
 
    ! Return the mixing ratio name of a budget 
 
@@ -286,6 +301,9 @@ subroutine budget_info_byname(name, budget_ind, longname, stg1name, stg1stateidx
    character(len=3), intent(out), optional :: &
       optype,      &! budget type difference or stage
       pkgtype     ! physics or dynamics budget
+   logical, intent(out), optional :: &
+      subcycle,    &!
+      outfld
 
    !---------------------------Local workspace-----------------------------
    character(len=*), parameter :: sub='budget_info_byname'
@@ -299,6 +317,8 @@ subroutine budget_info_byname(name, budget_ind, longname, stg1name, stg1stateidx
       if (present(optype)) optype=budget_optype(b_ind)
       if (present(pkgtype)) pkgtype=budget_pkgtype(b_ind)
       if (present(state_ind)) state_ind=budget_state_ind(b_ind)
+      if (present(subcycle)) subcycle=budget_subcycle(b_ind)
+      if (present(outfld)) outfld=budget_out(b_ind)
       if (budget_optype(b_ind)=='dif' .or. budget_optype(b_ind)=='sum') then
          if (present(stg1name))stg1name=budget_stg1name(b_ind)
          if (present(stg2name))stg2name=budget_stg2name(b_ind)
@@ -318,7 +338,7 @@ subroutine budget_info_byname(name, budget_ind, longname, stg1name, stg1stateidx
    end if
  end subroutine budget_info_byname
 
- subroutine budget_info_byind(budget_ind, name, longname, stg1name, stg1stateidx, stg1index, stg2name, stg2stateidx, stg2index, optype, pkgtype,state_ind)
+ subroutine budget_info_byind(budget_ind, name, longname, stg1name, stg1stateidx, stg1index, stg2name, stg2stateidx, stg2index, optype, pkgtype,state_ind,subcycle,outfld)
 
    ! Return the mixing ratio name of a budget 
 
@@ -338,17 +358,22 @@ subroutine budget_info_byname(name, budget_ind, longname, stg1name, stg1stateidx
    character(len=3), intent(out), optional :: &
       optype,      &! budget type difference or stage
       pkgtype       ! physics or dynamics budget
+   logical, intent(out), optional :: &
+      subcycle,    &!
+      outfld
 
    !---------------------------Local workspace-----------------------------
    character(len=*), parameter :: sub='budget_info_byind'
    character(len=128) :: errmsg
    !-----------------------------------------------------------------------
    if (budget_ind > 0 .and. budget_ind <= budget_array_max) then
+      if (present(outfld)) outfld=budget_out(budget_ind)
       if (present(name)) name=budget_name(budget_ind)
       if (present(longname)) longname=budget_longname(budget_ind)
       if (present(optype)) optype=budget_optype(budget_ind)
       if (present(pkgtype)) pkgtype=budget_pkgtype(budget_ind)
       if (present(state_ind)) state_ind=budget_state_ind(budget_ind)
+      if (present(subcycle)) subcycle=budget_subcycle(budget_ind)
       if (budget_optype(budget_ind)=='dif' .or. budget_optype(budget_ind)=='sum') then
          if (present(stg1name))stg1name=budget_stg1name(budget_ind)
          if (present(stg2name))stg2name=budget_stg2name(budget_ind)
@@ -415,6 +440,7 @@ subroutine budget_init()
   budget_stg2index(:) = 0
   budget_stg1name(:)= 'UNSET'
   budget_stg2name(:)= 'UNSET'
+  budget_subcycle(:)= .false.
   
 end subroutine budget_init
 !==============================================================================================

@@ -69,8 +69,9 @@ subroutine d_p_coupling(phys_state, phys_tend, pbuf2d, dyn_out)
    real(r8), pointer :: w(:,:)
    real(r8), pointer :: theta_m(:,:)
    real(r8), pointer :: tracers(:,:,:)
-
-
+   real(r8), pointer :: budgets(:,:,:)! energy/mass budgets se,ke,wv,liq,ice
+   integer, pointer :: budgets_cnt(:)! energy/mass budgets se,ke,wv,liq,ice
+   integer, pointer :: budgets_subcycle_cnt(:)! energy/mass budgets se,ke,wv,liq,ice
    integer :: lchnk, icol, icol_p, k, kk      ! indices over chunks, columns, physics columns and layers
    integer :: i, m, ncols, blockid
    integer :: block_index
@@ -107,11 +108,15 @@ subroutine d_p_coupling(phys_state, phys_tend, pbuf2d, dyn_out)
    theta_m  => dyn_out % theta_m
    exner    => dyn_out % exner
    tracers  => dyn_out % tracers
+   budgets  => dyn_out % te_budgets
+   budgets_cnt  => dyn_out % budgets_cnt
+   budgets_subcycle_cnt  => dyn_out % budgets_subcycle_cnt
 
    if (compute_energy_diags) then
      call tot_energy(nCellsSolve, plev,size(tracers, 1), index_qv, zz(:,1:nCellsSolve), zint(:,1:nCellsSolve), &
           rho_zz(:,1:nCellsSolve), theta_m(:,1:nCellsSolve), tracers(:,:,1:nCellsSolve),&
-          ux(:,1:nCellsSolve),uy(:,1:nCellsSolve),'dBF')
+          ux(:,1:nCellsSolve),uy(:,1:nCellsSolve),'dBF', &
+          budgets,budgets_cnt,budgets_subcycle_cnt)
    end if
    !
    ! diagnose pintdry, pmiddry, pmid
@@ -531,6 +536,9 @@ subroutine derived_tend(nCellsSolve, nCells, t_tend, u_tend, v_tend, q_tend, dyn
    integer  :: iCell,k
 
    character(len=*), parameter :: subname = 'dp_coupling:derived_tend'
+   real(r8), pointer :: budgets(:,:,:)! energy/mass budgets se,ke,wv,liq,ice
+   integer, pointer :: budgets_cnt(:)! energy/mass budgets se,ke,wv,liq,ice
+   integer, pointer :: budgets_subcycle_cnt(:)! energy/mass budgets se,ke,wv,liq,ice
    !----------------------------------------------------------------------------
 
    nEdges = dyn_in % nEdges
@@ -548,6 +556,9 @@ subroutine derived_tend(nCellsSolve, nCells, t_tend, u_tend, v_tend, q_tend, dyn
    rho_zz      => dyn_in % rho_zz
    tracers     => dyn_in % tracers
    index_qv    =  dyn_in % index_qv
+   budgets     => dyn_in % te_budgets
+   budgets_cnt => dyn_in % budgets_cnt
+   budgets_subcycle_cnt  => dyn_in % budgets_subcycle_cnt
 
    !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
    ! Momentum tendency
@@ -633,7 +644,8 @@ subroutine derived_tend(nCellsSolve, nCells, t_tend, u_tend, v_tend, q_tend, dyn
           nCellsSolve, plev, size(tracers, 1), index_qv, zz(:,1:nCellsSolve), zint(:,1:nCellsSolve), rho_zz(:,1:nCellsSolve), &
           theta_m_new,  tracers(:,:,1:nCellsSolve),   &
           ux(:,1:nCellsSolve)+dtime*u_tend(:,1:nCellsSolve)/rho_zz(:,1:nCellsSolve),       &
-          uy(:,1:nCellsSolve)+dtime*v_tend(:,1:nCellsSolve)/rho_zz(:,1:nCellsSolve),'dAP')
+          uy(:,1:nCellsSolve)+dtime*v_tend(:,1:nCellsSolve)/rho_zz(:,1:nCellsSolve),'dAP', &
+          budgets,budgets_cnt,budgets_subcycle_cnt)
      ! revert
      do m=1,thermodynamic_active_species_num
        idx_dycore                         = thermodynamic_active_species_idx_dycore(m)
@@ -647,7 +659,8 @@ subroutine derived_tend(nCellsSolve, nCells, t_tend, u_tend, v_tend, q_tend, dyn
           nCellsSolve, plev, size(tracers, 1), index_qv, zz(:,1:nCellsSolve), zint(:,1:nCellsSolve), &
           rho_zz(:,1:nCellsSolve), theta_m_new, tracers(:,:,1:nCellsSolve),    &
           ux(:,1:nCellsSolve)+dtime*u_tend(:,1:nCellsSolve)/rho_zz(:,1:nCellsSolve),       &
-          uy(:,1:nCellsSolve)+dtime*v_tend(:,1:nCellsSolve)/rho_zz(:,1:nCellsSolve),'dAM')
+          uy(:,1:nCellsSolve)+dtime*v_tend(:,1:nCellsSolve)/rho_zz(:,1:nCellsSolve),'dAM', &
+          budgets,budgets_cnt,budgets_subcycle_cnt)
    end if
    !
    ! Update halo for rtheta_m tendency
@@ -736,7 +749,7 @@ subroutine hydrostatic_pressure(nCells, nVertLevels, zz, zgrid, rho_zz, theta_m,
 end subroutine hydrostatic_pressure
 
 
-subroutine tot_energy(nCells, nVertLevels, qsize, index_qv, zz, zgrid, rho_zz, theta_m, q, ux,uy,outfld_name_suffix)
+subroutine tot_energy(nCells, nVertLevels, qsize, index_qv, zz, zgrid, rho_zz, theta_m, q, ux,uy,outfld_name_suffix,te_budgets,budgets_cnt,budgets_subcycle_cnt)
   use physconst,      only: rair, cpair, gravit,cappa!=R/cp (dry air)
   use physconst,      only: thermodynamic_active_species_liq_num
   use mpas_constants, only: p0,cv,rv,rgas,cp
@@ -744,6 +757,7 @@ subroutine tot_energy(nCells, nVertLevels, qsize, index_qv, zz, zgrid, rho_zz, t
   use mpas_constants, only: Rv_over_Rd => rvord
   use physconst,      only: thermodynamic_active_species_ice_idx_dycore,thermodynamic_active_species_liq_idx_dycore
   use physconst,      only: thermodynamic_active_species_ice_num,thermodynamic_active_species_liq_num
+  use budgets,        only: budget_array_max,budget_info
   ! Arguments
   integer, intent(in) :: nCells
   integer, intent(in) :: nVertLevels
@@ -756,10 +770,15 @@ subroutine tot_energy(nCells, nVertLevels, qsize, index_qv, zz, zgrid, rho_zz, t
   real(r8), dimension(qsize,nVertLevels, nCells), intent(in) :: q       ! tracer array
   real(r8), dimension(nVertLevels, nCells),       intent(in) :: ux      ! A-grid zonal velocity component
   real(r8), dimension(nVertLevels, nCells),       intent(in) :: uy      ! A-grid meridional velocity component
+  real(r8), dimension(budget_array_max, 9, nCells), intent(inout) :: te_budgets ! energy/mass budget arrays
+  integer, dimension(budget_array_max),    intent(inout) :: budgets_cnt ! budget counts for normalization
+  integer, dimension(budget_array_max),    intent(inout) :: budgets_subcycle_cnt ! budget counts for normalization
   character*(*),                                  intent(in) :: outfld_name_suffix ! suffix for "outfld" names
 
   ! Local variables
   integer :: iCell, k, idx
+  integer :: s_ind,b_ind
+  logical :: b_subcycle
   real(r8) :: rho_dz,zcell,temperature,theta,pk,ptop,exner
   real(r8), dimension(nVertLevels, nCells) :: rhod, dz
   real(r8), dimension(nCells)              :: kinetic_energy,potential_energy,internal_energy,water_vapor,water_liq,water_ice
@@ -805,6 +824,34 @@ subroutine tot_energy(nCells, nVertLevels, qsize, index_qv, zz, zgrid, rho_zz, t
     call outfld(name_out1,internal_energy,ncells,1)
     call outfld(name_out2,kinetic_energy ,ncells,1)
     call outfld(name_out3,water_vapor    ,ncells,1)
+
+    call budget_info(trim(outfld_name_suffix),budget_ind=b_ind,state_ind=s_ind,subcycle=b_subcycle)
+    ! reset all when cnt is 0
+    write(iulog,*)'dpc calc se,ke ',s_ind,',1:3,1 is ',internal_energy(1),' ',kinetic_energy(1)
+    write(iulog,*)'dpc budgets initial ',s_ind,',1:3,1 is ',te_budgets(s_ind,1,1),' ',te_budgets(s_ind,2,1),' ',te_budgets(s_ind,3,1)
+    if (budgets_cnt(s_ind) == 0) then
+       budgets_subcycle_cnt(s_ind) = 0
+       te_budgets(s_ind,:,:)=0.0_r8
+    end if
+    if (b_subcycle) then
+       budgets_subcycle_cnt(s_ind) = budgets_subcycle_cnt(s_ind) + 1
+       if (budgets_subcycle_cnt(s_ind) == 1) then
+          budgets_cnt(s_ind) = budgets_cnt(s_ind) + 1
+       end if
+    else
+       budgets_cnt(s_ind) = budgets_cnt(s_ind) + 1
+       budgets_subcycle_cnt(s_ind) = 1
+       !not subcycling so don't sum just replace previous budget values
+       te_budgets(s_ind,:,:)=0._r8
+    end if
+       
+    te_budgets(s_ind,1,:)=te_budgets(s_ind,1,:)+(internal_energy+kinetic_energy)
+    te_budgets(s_ind,2,:)=te_budgets(s_ind,2,:)+internal_energy
+    te_budgets(s_ind,3,:)=te_budgets(s_ind,3,:)+kinetic_energy
+    write(iulog,*)'tot_e te_budget for this proc ',s_ind,',1:3,1 is ',te_budgets(s_ind,1,1),' ',te_budgets(s_ind,2,1),' ',te_budgets(s_ind,3,1)
+
+    te_budgets(s_ind,4,:)=te_budgets(s_ind,4,:)+water_vapor
+
     !
     ! vertical integral of total liquid water
     !
@@ -819,6 +866,7 @@ subroutine tot_energy(nCells, nVertLevels, qsize, index_qv, zz, zgrid, rho_zz, t
         end do
       end do
       call outfld(name_out4,liq,ncells,1)
+      te_budgets(s_ind,5,:)=te_budgets(s_ind,5,:)+liq
     end if
     !
     ! vertical integral of total frozen (ice) water
@@ -834,6 +882,7 @@ subroutine tot_energy(nCells, nVertLevels, qsize, index_qv, zz, zgrid, rho_zz, t
         end do
       end do
       call outfld(name_out5,ice,ncells,1)
+      te_budgets(s_ind,6,:)=te_budgets(s_ind,6,:)+ice
     end if
   end if
  end subroutine tot_energy

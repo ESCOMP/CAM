@@ -150,6 +150,14 @@ type dyn_import_t
                                                       ! from physics [kg K/m^3/s]    (nver,ncol)
    real(r8), dimension(:,:),   pointer :: rho_tend ! Dry air density tendency
                                                    ! from physics [kg/m^3/s]         (nver,ncol)
+   !
+   ! Energy Budgets
+   !
+   real(r8), dimension(:,:),  pointer :: budgets_global       ! global averages     (budget_array_max,9)
+   real(r8), dimension(:,:,:),pointer :: te_budgets           ! Energy budgets      (budget_array_max,9,ncells)
+   integer, dimension(:),     pointer :: budgets_cnt          ! budget counts       (budget_array_max)
+   integer, dimension(:),     pointer :: budgets_subcycle_cnt ! subcycle count      (budget_array_max)
+
 end type dyn_import_t
 
 type dyn_export_t
@@ -196,6 +204,8 @@ type dyn_export_t
    real(r8), dimension(:),     pointer :: fzm     ! Interp weight from k layer midpoint to k layer
                                                   ! interface [dimensionless]             (nver)
    real(r8), dimension(:),     pointer :: fzp     ! Interp weight from k-1 layer midpoint to k
+
+   real(r8), dimension(:),     pointer :: areaCell ! cell area (m^2)
                                                   ! layer interface [dimensionless]       (nver)
 
    !
@@ -214,6 +224,14 @@ type dyn_export_t
                                                       !                              (nver,nvtx)
    real(r8), dimension(:,:),   pointer :: divergence  ! Horizontal velocity divergence [s^-1]
                                                       !                              (nver,ncol)
+   !
+   ! Energy Budgets
+   !
+   real(r8), dimension(:,:),  pointer :: budgets_global       ! global averages     (budget_array_max,9)
+   real(r8), dimension(:,:,:),pointer :: te_budgets           ! Energy budgets      (budget_array_max,9,ncells)
+   integer, dimension(:),     pointer :: budgets_cnt          ! budget counts       (budget_array_max)
+   integer, dimension(:),     pointer :: budgets_subcycle_cnt ! subcycle count      (budget_array_max)
+
 end type dyn_export_t
 
 real(r8), parameter :: rad2deg = 180.0_r8 / pi
@@ -316,6 +334,7 @@ subroutine dyn_init(dyn_in, dyn_out)
    use mpas_constants,     only : mpas_constants_compute_derived
    use dyn_tests_utils,    only : vc_dycore, vc_height, string_vc, vc_str_lgth
    use constituents,       only : cnst_get_ind
+   use budgets,            only : budget_array_max, budget_info, budget_add, budget_num
    ! arguments:
    type(dyn_import_t), intent(inout)  :: dyn_in
    type(dyn_export_t), intent(inout)  :: dyn_out
@@ -347,13 +366,19 @@ subroutine dyn_init(dyn_in, dyn_out)
    character(len=*), parameter :: subname = 'dyn_comp::dyn_init'
 
    ! variables for initializing energy and axial angular momentum diagnostics
-   integer, parameter                         :: num_stages = 3, num_vars = 5
-   character (len = 3), dimension(num_stages) :: stage = (/"dBF","dAP","dAM"/)
+   integer, parameter                         :: num_stages = 6, num_vars = 5
+   character (len = 16), dimension(num_stages) :: stage = (/"dBF","dAP","dAM","BD_dparm","BD_DMEA","BD_phys"/)
    character (len = 55),dimension(num_stages) :: stage_txt = (/&
       " dynamics state before physics (d_p_coupling)       ",&
       " dynamics state with T,u,V increment but not q      ",&
-      " dynamics state with full physics increment (incl.q)" &
+      " dynamics state with full physics increment (incl.q)",&
+      "dE/dt params+efix in dycore (dparam)(dAP-dBF)       ",&
+      "dE/dt dry mass adjustment in dycore        (dAM-dAP)",&
+      "dE/dt physics total in dycore (phys)       (dAM-dBF)" &
       /)
+
+
+
 
    character (len = 2)  , dimension(num_vars) :: vars  = (/"WV"  ,"WL"  ,"WI"  ,"SE"   ,"KE"/)
    character (len = 45) , dimension(num_vars) :: vars_descriptor = (/&
@@ -370,6 +395,12 @@ subroutine dyn_init(dyn_in, dyn_out)
    integer :: istage, ivars, m
    character (len=108)         :: str1, str2, str3
    character (len=vc_str_lgth) :: vc_str
+   character(len=64)    :: budget_name
+   character(len=128)   :: budget_longname
+   character(len=3)     :: budget_pkgtype,budget_optype  ! budget type phy or dyn
+   logical              :: budget_outfld
+
+   !-------------------------------------------------------
 
    vc_dycore = vc_height
    if (masterproc) then
@@ -479,12 +510,30 @@ subroutine dyn_init(dyn_in, dyn_out)
    dyn_out % rho   => dyn_in % rho
    dyn_out % ux    => dyn_in % ux
    dyn_out % uy    => dyn_in % uy
+   dyn_out % areaCell => dyn_in % areaCell
 
    allocate(dyn_out % pmiddry(nVertLevels,   nCells), stat=ierr)
    if( ierr /= 0 ) call endrun(subname//': failed to allocate dyn_out%pmiddry array')
 
    allocate(dyn_out % pintdry(nVertLevels+1, nCells), stat=ierr)
    if( ierr /= 0 ) call endrun(subname//': failed to allocate dyn_out%pintdry array')
+
+   allocate(dyn_out % te_budgets(budget_array_max, 9, nCellsSolve), stat=ierr)
+   if( ierr /= 0 ) call endrun(subname//': failed to allocate dyn_out%budgets')
+
+   allocate(dyn_out % budgets_cnt(budget_array_max), stat=ierr)
+   if( ierr /= 0 ) call endrun(subname//': failed to allocate dyn_out%budgets')
+
+   allocate(dyn_out % budgets_subcycle_cnt(budget_array_max), stat=ierr)
+   if( ierr /= 0 ) call endrun(subname//': failed to allocate dyn_out%budgets')
+
+   allocate(dyn_out % budgets_global(budget_array_max,9), stat=ierr)
+   if( ierr /= 0 ) call endrun(subname//': failed to allocate dyn_out%budgets')
+
+   dyn_in % te_budgets              => dyn_out % te_budgets
+   dyn_in % budgets_global       => dyn_out % budgets_global
+   dyn_in % budgets_cnt          => dyn_out % budgets_cnt
+   dyn_in % budgets_subcycle_cnt => dyn_out % budgets_subcycle_cnt
 
    call mpas_pool_get_array(diag_pool, 'vorticity',  dyn_out % vorticity)
    call mpas_pool_get_array(diag_pool, 'divergence', dyn_out % divergence)
@@ -568,7 +617,37 @@ subroutine dyn_init(dyn_in, dyn_out)
      end if
    end do
 
-end subroutine dyn_init
+   !
+   ! initialize MPAS energy budgets
+   !
+   ! add budget snapshots (stages)
+   istage=1
+   call budget_add('dBF', pkgtype='dyn', longname=TRIM(ADJUSTL(stage_txt(istage))), outfld=.true., subcycle=.false.)
+   istage=istage+1
+   call budget_add('dAP', pkgtype='dyn', longname=TRIM(ADJUSTL(stage_txt(istage))), outfld=.true., subcycle=.false.)
+   istage=istage+1
+   call budget_add('dAM', pkgtype='dyn', longname=TRIM(ADJUSTL(stage_txt(istage))), outfld=.true., subcycle=.false.)
+   !
+   ! add budgets that are derived from stages
+   !
+
+   call budget_add('BD_dparm','dAP','dBF',pkgtype='dyn',optype='dif',longname="dE/dt parameterizations+efix in dycore (dparam)(dAP-dBF)",outfld=.true.)
+   call budget_add('BD_DMEA' ,'dAM','dAP',pkgtype='dyn',optype='dif',longname="dE/dt dry mass adjustment in dycore            (dAM-dAP)",outfld=.true.)
+   call budget_add('BD_phys' ,'dAM','dBF',pkgtype='dyn',optype='dif',longname="dE/dt physics total in dycore (phys)           (dAM-dBF)",outfld=.true.)
+
+!!$   ! add all dynamic budget outfld calls
+!!$   do m=1,budget_num
+!!$      call budget_info(m,name=budget_name,longname=budget_longname,pkgtype=budget_pkgtype,outfld=budget_outfld)
+!!$      write(iulog,*)'budget_info for ',budget_name,' pkg:',budget_pkgtype,' outfld:',budget_outfld
+!!$      if (budget_outfld) then
+!!$         if (trim(budget_pkgtype)=='dyn') then
+!!$            write(iulog,*)'calling addfld for ',trim(budget_name)
+!!$            call addfld(trim(budget_name),  horiz_only,  'A', 'W/m2', trim(budget_longname))
+!!$         endif
+!!$      end if
+!!$   end do
+   
+ end subroutine dyn_init
 
 !=========================================================================================
 
@@ -607,8 +686,134 @@ subroutine dyn_run(dyn_in, dyn_out)
    dyn_out % rho_zz  => dyn_in % rho_zz
    dyn_out % tracers => dyn_in % tracers
 
+   ! update energy budgets calculated from snapshots (stages)
+
+   call budget_update(dyn_in%nCellsSolve,dyn_out)
+   call budget_globals(dyn_in%nCellsSolve,dyn_out)
+
 end subroutine dyn_run
 
+subroutine budget_globals(nCells,dyn_out)
+
+  use budgets,                only : budget_num, budget_info, budget_ind_byname
+  
+  ! arguments
+  integer,                                          intent(in) :: nCells             ! Number of cells, including halo cells
+  type (dyn_export_t), intent(inout)                           :: dyn_out
+  
+  ! Local variables
+  integer :: b_ind,s_ind,is1,is2
+  logical :: budget_outfld
+  character(len=64)    :: name_out1,name_out2,name_out3,name_out4,name_out5,budget_name
+  character(len=3)     :: budget_pkgtype,budget_optype  ! budget type phy or dyn
+  real(r8),allocatable :: tmp(:,:)
+  real(r8) :: dtime
+  real(r8), pointer :: te_budgets(:,:,:)! energy/mass budgets se,ke,wv,liq,ice
+  real(r8), pointer :: budgets_global(:,:)
+  integer, pointer :: budgets_cnt(:) ! budget counts for normalizating sum
+  integer          :: i
+  real(r8) :: sphere_surface_area
+  real(r8), dimension(:) :: glob(nCells,9)
+  real(r8), pointer :: areaCell(:)  ! cell area (m^2)
+  character(len=*), parameter :: subname = 'dyn_comp:budget_globals'
+
+  !--------------------------------------------------------------------------------------
+  areaCell        => dyn_out % areaCell
+  te_budgets      => dyn_out % te_budgets
+  budgets_cnt     => dyn_out % budgets_cnt
+  budgets_global  => dyn_out % budgets_global
+
+  ! Get CAM time step
+  dtime = get_step_size()
+
+  do b_ind=1,budget_num
+     call budget_info(b_ind,name=budget_name,pkgtype=budget_pkgtype,optype=budget_optype,state_ind=s_ind)
+     if (budget_pkgtype=='dyn') then
+        name_out1 = 'SE_'   //trim(budget_name)
+        name_out2 = 'KE_'   //trim(budget_name)
+        name_out3 = 'WV_'   //trim(budget_name)
+        name_out4 = 'WL_'   //trim(budget_name)
+        name_out5 = 'WI_'   //trim(budget_name)
+        ! Normalize energy sums and convert to W/s
+        ! (3) compute average global integrals of budgets
+        sphere_surface_area   = cam_mpas_global_sum_real(areaCell(1:nCells))
+        do i=1,6
+           glob(1:nCells,i)   = te_budgets(s_ind,i,1:nCells)*areaCell(1:nCells)/sphere_surface_area
+           budgets_global(s_ind,i) = cam_mpas_global_sum_real(glob(1:nCells,i))/budgets_cnt(s_ind)/dtime
+        end do
+        write(iulog,*)trim(budget_name),' total energy:',budgets_global(s_ind,1)
+        if (.true.) budgets_cnt(s_ind)=0
+     end if
+  end do
+
+end subroutine budget_globals
+
+subroutine budget_update(nCells,dyn_out)
+
+  use budgets,               only : budget_num, budget_info
+  use physconst,             only : thermodynamic_active_species_liq_num, thermodynamic_active_species_ice_num
+  
+  ! arguments
+  integer,                                           intent(in) :: nCells             ! Number of cells, including halo cells
+  type (dyn_export_t), intent(in)                               :: dyn_out
+  
+  ! Local variables
+  real(r8), pointer :: te_budgets(:,:,:) ! energy/mass budgets se,ke,wv,liq,ice
+  integer, pointer  :: budgets_cnt(:) ! budget counts for normalizating sum
+  integer :: b_ind,s_ind,is1,is2
+  logical :: budget_outfld
+  character(len=64)    :: name_out1,name_out2,name_out3,name_out4,name_out5,budget_name
+  character(len=3)     :: budget_pkgtype,budget_optype  ! budget type phy or dyn
+  real(r8)             :: tmp(9,nCells)
+  
+  !--------------------------------------------------------------------------------------
+
+  te_budgets         => dyn_out % te_budgets
+  budgets_cnt     => dyn_out % budgets_cnt
+
+
+  do b_ind=1,budget_num
+     call budget_info(b_ind,optype=budget_optype, pkgtype=budget_pkgtype,state_ind=s_ind,outfld=budget_outfld,name=budget_name)
+     if (budget_pkgtype=='dyn') then
+        if (budget_optype=='stg') then
+           tmp(:,:)=te_budgets(s_ind,:,:)
+        else 
+           call budget_info(b_ind,stg1stateidx=is1, stg2stateidx=is2)
+           if (budget_optype=='dif') then
+              tmp(:,:)=(te_budgets(is1,:,:)-te_budgets(is2,:,:))
+           else if (budget_optype=='sum') then
+              tmp(:,:)=(te_budgets(is1,:,:)+te_budgets(is2,:,:))
+           end if
+           budgets_cnt(s_ind)=budgets_cnt(s_ind)+1
+           te_budgets(s_ind,:,:)=tmp(:,:)
+           !
+           ! Output energy diagnostics
+           !
+           if (budget_outfld) then
+              name_out1 = 'SE_'   //trim(budget_name)
+              name_out2 = 'KE_'   //trim(budget_name)
+              name_out3 = 'WV_'   //trim(budget_name)
+              name_out4 = 'WL_'   //trim(budget_name)
+              name_out5 = 'WI_'   //trim(budget_name)
+              call outfld(name_out1, te_budgets(s_ind,2,:), nCells, 1)
+              call outfld(name_out2, te_budgets(s_ind,3,:), nCells, 1)
+              !
+              ! sum over vapor
+              call outfld(name_out3, te_budgets(s_ind,4,:), nCells, 1)
+              !
+              ! sum over liquid water
+              if (thermodynamic_active_species_liq_num>0) &
+                   call outfld(name_out4, te_budgets(s_ind,5,:), nCells, 1)
+              !
+              ! sum over ice water
+              if (thermodynamic_active_species_ice_num>0) &
+                   call outfld(name_out5, te_budgets(s_ind,6,:), nCells, 1)
+           end if
+        end if
+     end if
+  end do
+
+end subroutine budget_update
 !=========================================================================================
 
 subroutine dyn_final(dyn_in, dyn_out)
@@ -687,6 +892,7 @@ subroutine dyn_final(dyn_in, dyn_out)
    nullify(dyn_out % uy)
    deallocate(dyn_out % pmiddry)
    deallocate(dyn_out % pintdry)
+   deallocate(dyn_out % te_budgets)
    nullify(dyn_out % vorticity)
    nullify(dyn_out % divergence)
 
