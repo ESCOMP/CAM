@@ -1,5 +1,3 @@
-
-
       module mo_msis_ubc
 !---------------------------------------------------------------
 !	... msis upper bndy values
@@ -19,30 +17,25 @@
 
       save
 
-      integer                :: ndx_n, ndx_h, ndx_o, ndx_o2           ! n, h, o, o2 spc indicies
-      integer                :: msis_cnt = 0                          ! count of msis species in simulation
-      integer                :: ndx(pcnst) = -1
+      integer                :: ndx_n=-1, ndx_h=-1, ndx_o=-1, ndx_o2=-1 ! n, h, o, o2 spc indicies
       real(r8), allocatable  :: msis_ubc(:,:,:)                       ! module array for msis ub values (kg/kg)
 
       logical                :: zonal_average         = .false.       ! use zonal averaged tgcm values
 
       contains
 
-      subroutine msis_ubc_inti( zonal_avg )
+      subroutine msis_ubc_inti( zonal_avg_in, n_ndx_in,h_ndx_in,o_ndx_in,o2_ndx_in )
 !------------------------------------------------------------------
 !	... initialize upper boundary values
 !------------------------------------------------------------------
 
-      use ppgrid,        only : pcols, begchunk, endchunk
-      use constituents,  only : cnst_get_ind, cnst_fixed_ubc
-
-      implicit none
+      use ppgrid, only : pcols, begchunk, endchunk
 
 !------------------------------------------------------------------
 !	... dummy args
 !------------------------------------------------------------------
-      logical, intent(in) :: &
-        zonal_avg            ! zonal averaging switch        
+      logical, intent(in) :: zonal_avg_in  ! zonal averaging switch
+      integer, intent(in) :: n_ndx_in,h_ndx_in,o_ndx_in,o2_ndx_in
 
 !------------------------------------------------------------------
 !	... local variables
@@ -50,43 +43,28 @@
       integer  :: astat
       real(r8) :: msis_switches(25) = 1._r8
 
-      zonal_average = zonal_avg
-!------------------------------------------------------------------
-!	... check for msis species in simuation
-!------------------------------------------------------------------
-      call cnst_get_ind( 'H', ndx_h, abort=.false. )
-      if( ndx_h > 0 ) then
-         if( cnst_fixed_ubc(ndx_h) ) then
-            ndx(ndx_h) = ndx_h
-         end if
-      end if
-      call cnst_get_ind( 'N', ndx_n, abort=.false. )
-      if( ndx_n > 0 ) then
-         if( cnst_fixed_ubc(ndx_n) ) then
-            ndx(ndx_n) = ndx_n
-         end if
-      end if
-      call cnst_get_ind( 'O', ndx_o, abort=.false. )
-      if( ndx_o > 0 ) then
-         if( cnst_fixed_ubc(ndx_o) ) then
-            ndx(ndx_o) = ndx_o
-         end if
-      end if
-      call cnst_get_ind( 'O2', ndx_o2, abort=.false. )
-      if( ndx_o2 > 0 ) then
-         if( cnst_fixed_ubc(ndx_o2) ) then
-            ndx(ndx_o2) = ndx_o2
-         end if
-      end if
+      zonal_average = zonal_avg_in
+
+      if (h_ndx_in>0) then
+         ndx_h = h_ndx_in
+      endif
+      if (n_ndx_in>0) then
+         ndx_n = n_ndx_in
+      endif
+      if (o_ndx_in>0) then
+         ndx_o = o_ndx_in
+      endif
+      if (o2_ndx_in>0) then
+         ndx_o2 = o2_ndx_in
+      endif
 
 !------------------------------------------------------------------
 !	... allocate msis ubc array
 !------------------------------------------------------------------
-      msis_cnt = count( ndx(:) /= -1 )
       allocate( msis_ubc(pcols,6,begchunk:endchunk),stat=astat )
       if( astat /= 0 ) then
          write(iulog,*) 'msis_ubc_inti: failed to allocate msis_ubc; error = ',astat
-         call endrun
+         call endrun('msis_ubc_inti: failed to allocate msis_ubc')
       end if
 
       if( zonal_average ) then
@@ -101,6 +79,7 @@
 
       call addfld( 'MSIS_T', horiz_only, 'A', 'K',     'T upper boundary condition from MSIS')
       call addfld( 'MSIS_H', horiz_only, 'A', 'kg/kg', 'H upper boundary condition from MSIS')
+      call addfld( 'MSIS_N', horiz_only, 'A', 'kg/kg', 'N upper boundary condition from MSIS')
       call addfld( 'MSIS_O', horiz_only, 'A', 'kg/kg', 'O upper boundary condition from MSIS')
       call addfld( 'MSIS_O2',horiz_only, 'A', 'kg/kg', 'O2 upper boundary condition from MSIS')
 
@@ -120,8 +99,6 @@
       use physconst,    only : pi
       use cam_control_mod,only : lambm0, eccen, mvelpp, obliqr
       use shr_orb_mod,    only : shr_orb_decl
-      
-      implicit none
 
 !--------------------------------------------------------------------
 !	... dummy args
@@ -152,7 +129,7 @@
       real(r8) ::  pint(pcols)       ! top interface pressure (Pa)
       real(r8) ::  calday, delta, esfact
       real(r8) ::  f107p, f107a
-      
+
       !--------------------------------------------------------------------
       !	... get values from msis
       !--------------------------------------------------------------------
@@ -166,7 +143,7 @@
       msis_ap(:) = 0._r8
       msis_ap(1) = ap
       pint(:)    = ptop_ref
-      
+
       calday = get_curr_calday()
 
       esfact = 1._r8
@@ -174,7 +151,7 @@
 
       f107p = esfact*f107p_in
       f107a = esfact*f107a_in
-      
+
 #ifdef MSIS_DIAGS
       if( masterproc ) then
          write(iulog,*) '===================================='
@@ -203,35 +180,33 @@
             write(iulog,*) 'yrday, rtod, alt,press = ',yrday,rtod,alt,msis_press
             write(iulog,*) 'msis_temp = ',msis_temp(2)
 #endif
-            if( msis_cnt > 0 ) then
-               msis_ubc(i,2,c) = msis_conc(7)           ! h (molec/cm^3)
-               msis_ubc(i,3,c) = msis_conc(8)           ! n (molec/cm^3)
-               msis_ubc(i,4,c) = msis_conc(2)           ! o (molec/cm^3)
-               msis_ubc(i,5,c) = msis_conc(4)           ! o2 (molec/cm^3)
-               msis_ubc(i,6,c) = msis_conc(6)           ! total atm dens (g/cm^3)
-            end if
+            msis_ubc(i,2,c) = msis_conc(7)           ! h (molec/cm^3)
+            msis_ubc(i,3,c) = msis_conc(8)           ! n (molec/cm^3)
+            msis_ubc(i,4,c) = msis_conc(2)           ! o (molec/cm^3)
+            msis_ubc(i,5,c) = msis_conc(4)           ! o2 (molec/cm^3)
+            msis_ubc(i,6,c) = msis_conc(6)           ! total atm dens (g/cm^3)
+
 #ifdef MSIS_DIAGS
             write(iulog,*) 'msis h,n,o,o2,m = ',msis_ubc(i,2:6,c)
             write(iulog,*) '===================================='
 #endif
          end do column_loop
+
          !--------------------------------------------------------------------
          !	... transform from molecular density to mass mixing ratio
          !--------------------------------------------------------------------
-         if( msis_cnt > 0 ) then
-            dnom(:ncol) = amu_fac/msis_ubc(:ncol,6,c)
-            if( ndx(ndx_h) > 0 ) then
-               msis_ubc(:ncol,2,c) = cnst_mw(ndx_h)*msis_ubc(:ncol,2,c)*dnom(:ncol)
-            end if
-            if( ndx(ndx_n) > 0 ) then
-               msis_ubc(:ncol,3,c) = cnst_mw(ndx_n)*msis_ubc(:ncol,3,c)*dnom(:ncol)
-            end if
-            if( ndx(ndx_o) > 0 ) then
-               msis_ubc(:ncol,4,c) = cnst_mw(ndx_o)*msis_ubc(:ncol,4,c)*dnom(:ncol)
-            end if
-            if( ndx(ndx_o2) > 0 ) then
-               msis_ubc(:ncol,5,c) = cnst_mw(ndx_o2)*msis_ubc(:ncol,5,c)*dnom(:ncol)
-            end if
+         dnom(:ncol) = amu_fac/msis_ubc(:ncol,6,c)
+         if( ndx_h > 0 ) then
+            msis_ubc(:ncol,2,c) = cnst_mw(ndx_h)*msis_ubc(:ncol,2,c)*dnom(:ncol)
+         end if
+         if( ndx_n > 0 ) then
+            msis_ubc(:ncol,3,c) = cnst_mw(ndx_n)*msis_ubc(:ncol,3,c)*dnom(:ncol)
+         end if
+         if( ndx_o > 0 ) then
+            msis_ubc(:ncol,4,c) = cnst_mw(ndx_o)*msis_ubc(:ncol,4,c)*dnom(:ncol)
+         end if
+         if( ndx_o2 > 0 ) then
+            msis_ubc(:ncol,5,c) = cnst_mw(ndx_o2)*msis_ubc(:ncol,5,c)*dnom(:ncol)
          end if
       end do chunk_loop
 
@@ -244,14 +219,12 @@
 
       use ppgrid,       only : pcols
 
-      implicit none
-
 !--------------------------------------------------------------------
 !	... dummy args
 !--------------------------------------------------------------------
       integer, intent(in)     :: lchunk            ! chunk id
       integer, intent(in)     :: ncol              ! columns in chunk
-      real(r8), intent(inout) :: temp(pcols)       ! msis temperature at top interface (K)
+      real(r8), intent(out)   :: temp(pcols)       ! msis temperature at top interface (K)
       real(r8), intent(inout) :: mmr(pcols,pcnst)  ! msis concentrations at top interface (kg/kg)
 
 !--------------------------------------------------------------------
@@ -261,22 +234,21 @@
 
       call outfld( 'MSIS_T', msis_ubc(:ncol,1,lchunk), ncol, lchunk)
       call outfld( 'MSIS_H', msis_ubc(:ncol,2,lchunk), ncol, lchunk)
-      call outfld( 'MSIS_O', msis_ubc(:ncol,3,lchunk), ncol, lchunk)
-      call outfld( 'MSIS_O2',msis_ubc(:ncol,4,lchunk), ncol, lchunk)
+      call outfld( 'MSIS_N', msis_ubc(:ncol,3,lchunk), ncol, lchunk)
+      call outfld( 'MSIS_O', msis_ubc(:ncol,4,lchunk), ncol, lchunk)
+      call outfld( 'MSIS_O2',msis_ubc(:ncol,5,lchunk), ncol, lchunk)
 
-      if( msis_cnt > 0 ) then
-         if( ndx(ndx_h) > 0 ) then
-            mmr(:ncol,ndx_h) = msis_ubc(:ncol,2,lchunk)
-         end if
-         if( ndx(ndx_n) > 0 ) then
-            mmr(:ncol,ndx_n) = msis_ubc(:ncol,3,lchunk)
-         end if
-         if( ndx(ndx_o) > 0 ) then
-            mmr(:ncol,ndx_o) = msis_ubc(:ncol,4,lchunk)
-         end if
-         if( ndx(ndx_o2) > 0 ) then
-            mmr(:ncol,ndx_o2) = msis_ubc(:ncol,5,lchunk)
-         end if
+      if( ndx_h > 0 ) then
+         mmr(:ncol,ndx_h) = msis_ubc(:ncol,2,lchunk)
+      end if
+      if( ndx_n > 0 ) then
+         mmr(:ncol,ndx_n) = msis_ubc(:ncol,3,lchunk)
+      end if
+      if( ndx_o > 0 ) then
+         mmr(:ncol,ndx_o) = msis_ubc(:ncol,4,lchunk)
+      end if
+      if( ndx_o2 > 0 ) then
+         mmr(:ncol,ndx_o2) = msis_ubc(:ncol,5,lchunk)
       end if
 
       end subroutine get_msis_ubc

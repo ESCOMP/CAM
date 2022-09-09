@@ -184,7 +184,7 @@ contains
     !-----------------------------------------------------------------------
 
     use physics_buffer,     only: physics_buffer_desc, pbuf_initialize, pbuf_get_index
-    use physconst,          only: physconst_init
+    use cam_thermo,         only: cam_thermo_init
 
     use cam_control_mod,    only: initial_run
     use check_energy,       only: check_energy_init
@@ -221,7 +221,7 @@ contains
     ! Initialize any variables in physconst which are not temporally and/or
     !   spatially constant
     !---------------------------------------------------------------------------
-    call physconst_init()
+    call cam_thermo_init()
 
     ! Initialize debugging a physics column
     call phys_debug_init()
