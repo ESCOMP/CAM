@@ -127,7 +127,7 @@ contains
         fldname_ns = 'HCO_' // trim(solsym(n))
         tmpIdx = pbuf_get_index(fldname_ns, RC)
         if ( tmpIdx < 0 ) then
-            if ( masterproc ) write(iulog,*) "mo_srf_emissions hemco: Field not found ", TRIM(fldname_ns)
+            ! if ( masterproc ) write(iulog,*) "mo_srf_emissions hemco: Field not found ", TRIM(fldname_ns)
         else
             ! this is already in chunk, retrieve it
             call pbuf_get_field(pbuf, tmpIdx, pbuf_ik)
@@ -265,7 +265,7 @@ contains
         tmpIdx = pbuf_get_index(fldname_ns, RC)
         if(tmpIdx < 0) then
           if(masterproc) then
-            write(iulog,*) "mo_extfrc hemco: Field not found ", TRIM(fldname_ns)
+            ! write(iulog,*) "mo_extfrc hemco: Field not found ", TRIM(fldname_ns)
           endif
         else
           ! this is already in chunk, retrieve it
@@ -299,7 +299,7 @@ contains
              xfcname = trim(extfrc_lst(m))//'_CMXF'
              call outfld( xfcname, frcing_col_kg(:ncol), ncol, lchnk )
              if ( masterproc ) then
-                 write(iulog,*) "mo_extfrc hemco: debug added 3D emiss for ", TRIM(solsym(n)), maxval(frcing(:ncol,:,m))
+                 ! write(iulog,*) "mo_extfrc hemco: debug added 3D emiss for ", TRIM(solsym(n)), maxval(frcing(:ncol,:,m))
              endif
           endif
         endif
