@@ -893,10 +893,12 @@
 
            else
 
-              ! explicitly set mmr in top layer for cases where molecular diffusion is not active
-              if (cnst_fixed_ubc(m)) then
-                 q(:ncol,1,m) = ubc_mmr(:ncol,m)
-              endif
+              if (present(cnst_fixed_ubc)) then
+                 ! explicitly set mmr in top layer for cases where molecular diffusion is not active
+                 if (cnst_fixed_ubc(m)) then
+                    q(:ncol,1,m) = ubc_mmr(:ncol,m)
+                 endif
+              end if
 
               if (.not. use_spcam) then
                  call no_molec_decomp%left_div(q(:ncol,:,m))
