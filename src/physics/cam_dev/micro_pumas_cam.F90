@@ -1831,7 +1831,7 @@ subroutine micro_pumas_cam_tend(state, ptend, dtime, pbuf)
    nan_array = nan
 
    ! Allocate the proc_rates DDT
-   call proc_rates%allocate(psetcols,nlev, errstring)
+   call proc_rates%allocate(ncol,nlev, errstring)
 
    call handle_errmsg(errstring, subname="micro_pumas_cam_tend")
 
@@ -1936,7 +1936,7 @@ subroutine micro_pumas_cam_tend(state, ptend, dtime, pbuf)
    call pbuf_get_field(pbuf, bergso_idx,      bergstot,    col_type=col_type)
 
    ! Assign the pointer values to the non-pointer proc_rates element
-   proc_rates%bergstot(:,:) = bergstot(:,:)
+   proc_rates%bergstot(:ncol,:) = bergstot(:ncol,:)
 
    if (degrau_idx > 0)   call pbuf_get_field(pbuf, degrau_idx,   degrau,   col_type=col_type)
    if (icgrauwp_idx > 0) call pbuf_get_field(pbuf, icgrauwp_idx, icgrauwp, col_type=col_type)
@@ -2313,8 +2313,7 @@ subroutine micro_pumas_cam_tend(state, ptend, dtime, pbuf)
               rel(:ncol,top_lev:),     rel_fn_dum(:ncol,top_lev:),     rei(:ncol,top_lev:),     &
               sadice(:ncol,top_lev:),          sadsnow(:ncol,top_lev:),         &
               prect(:ncol),           preci(:ncol),           &
-              nevapr(:ncol,top_lev:),          proc_rates,        &
-              am_evp_st(:ncol,top_lev:),                               &
+              nevapr(:ncol,top_lev:),          am_evp_st(:ncol,top_lev:),       &
               prain(:ncol,top_lev:),                   &
               cmeice(:ncol,top_lev:),          dei(:ncol,top_lev:),             &
               mu(:ncol,top_lev:),              lambdac(:ncol,top_lev:),         &
@@ -2336,6 +2335,7 @@ subroutine micro_pumas_cam_tend(state, ptend, dtime, pbuf)
               qgout2(:ncol,top_lev:), ngout2(:ncol,top_lev:), dgout2(:ncol,top_lev:), freqg(:ncol,top_lev:),   &
               freqs(:ncol,top_lev:),           freqr(:ncol,top_lev:),           &
               nfice(:ncol,top_lev:),           qcrat(:ncol,top_lev:),           &
+              proc_rates,                                                       &
               errstring, &
               tnd_qsnow(:ncol,top_lev:),tnd_nsnow(:ncol,top_lev:),re_ice(:ncol,top_lev:),&
               prer_evap(:ncol,top_lev:),                                     &
@@ -2557,7 +2557,7 @@ subroutine micro_pumas_cam_tend(state, ptend, dtime, pbuf)
    end do
 
    !Copy pbuf field from proc_rates back to pbuf pointer
-   bergstot(:,:) = proc_rates%bergstot(:,:)
+   bergstot(:ncol,:) = proc_rates%bergstot(:ncol,:)
 
    ! ------------------------------------------------------ !
    ! ------------------------------------------------------ !
@@ -2673,27 +2673,27 @@ subroutine micro_pumas_cam_tend(state, ptend, dtime, pbuf)
       nevapr_grid     => nevapr
       prain_grid      => prain
 
-      bergso_grid     =  proc_rates%bergstot
+      bergso_grid(:ncol,top_lev:)    =  proc_rates%bergstot
       am_evp_st_grid  = am_evp_st
 
-      evpsnow_st_grid(:,top_lev:) = proc_rates%evapsnow
+      evpsnow_st_grid(:ncol,top_lev:) = proc_rates%evapsnow
       qrout_grid      = qrout
       qsout_grid      = qsout
       nsout_grid      = nsout
       nrout_grid      = nrout
       cld_grid        = cld
-      qcreso_grid(:,top_lev:)     = proc_rates%qcrestot
-      melto_grid(:,top_lev:)      = proc_rates%melttot
-      mnuccco_grid(:,top_lev:)    = proc_rates%mnuccctot
-      mnuccto_grid(:,top_lev:)    = proc_rates%mnuccttot
-      bergo_grid(:,top_lev:)      = proc_rates%bergtot
-      homoo_grid(:,top_lev:)      = proc_rates%homotot
-      msacwio_grid(:,top_lev:)    = proc_rates%msacwitot
-      psacwso_grid(:,top_lev:)    = proc_rates%psacwstot
-      cmeitot_grid(:,top_lev:)    = proc_rates%cmeitot
-      qireso_grid(:,top_lev:)     = proc_rates%qirestot
-      prcio_grid(:,top_lev:)      = proc_rates%prcitot
-      praio_grid(:,top_lev:)      = proc_rates%praitot
+      qcreso_grid(:ncol,top_lev:)     = proc_rates%qcrestot
+      melto_grid(:ncol,top_lev:)      = proc_rates%melttot
+      mnuccco_grid(:ncol,top_lev:)    = proc_rates%mnuccctot
+      mnuccto_grid(:ncol,top_lev:)    = proc_rates%mnuccttot
+      bergo_grid(:ncol,top_lev:)      = proc_rates%bergtot
+      homoo_grid(:ncol,top_lev:)      = proc_rates%homotot
+      msacwio_grid(:ncol,top_lev:)    = proc_rates%msacwitot
+      psacwso_grid(:ncol,top_lev:)    = proc_rates%psacwstot
+      cmeitot_grid(:ncol,top_lev:)    = proc_rates%cmeitot
+      qireso_grid(:ncol,top_lev:)     = proc_rates%qirestot
+      prcio_grid(:ncol,top_lev:)      = proc_rates%prcitot
+      praio_grid(:ncol,top_lev:)      = proc_rates%praitot
       icwmrst_grid    = icwmrst
       icimrst_grid    = icimrst
       liqcldf_grid    = liqcldf
@@ -2701,18 +2701,18 @@ subroutine micro_pumas_cam_tend(state, ptend, dtime, pbuf)
       icwnc_grid      = icwnc
       icinc_grid      = icinc
       pdel_grid       = state_loc%pdel
-      prao_grid       = proc_rates%pratot
-      prco_grid       = proc_rates%prctot
+      prao_grid(:ncol,top_lev:)       = proc_rates%pratot
+      prco_grid(:ncol,top_lev:)       = proc_rates%prctot
 
       nc_grid = state_loc%q(:,:,ixnumliq)
       ni_grid = state_loc%q(:,:,ixnumice)
 
-      qcsedtenout_grid(:,top_lev:) = proc_rates%qcsedten
-      qisedtenout_grid(:,top_lev:) = proc_rates%qisedten
-      vtrmcout_grid(:,top_lev:)    = proc_rates%vtrmc
-      vtrmiout_grid(:,top_lev:)    = proc_rates%vtrmi
-      qcsevapout_grid(:,top_lev:) = proc_rates%qcsevap
-      qisevapout_grid(:,top_lev:) = proc_rates%qisevap
+      qcsedtenout_grid(:ncol,top_lev:) = proc_rates%qcsedten
+      qisedtenout_grid(:ncol,top_lev:) = proc_rates%qisedten
+      vtrmcout_grid(:ncol,top_lev:)    = proc_rates%vtrmc
+      vtrmiout_grid(:ncol,top_lev:)    = proc_rates%vtrmi
+      qcsevapout_grid(:ncol,top_lev:) = proc_rates%qcsevap
+      qisevapout_grid(:ncol,top_lev:) = proc_rates%qisevap
 
       cldmax_grid = cldmax
 
@@ -2720,10 +2720,10 @@ subroutine micro_pumas_cam_tend(state, ptend, dtime, pbuf)
       nr_grid = state_loc%q(:,:,ixnumrain)
       qs_grid = state_loc%q(:,:,ixsnow)
       ns_grid = state_loc%q(:,:,ixnumsnow)
-      qrsedtenout_grid(:,top_lev:) = proc_rates%qrsedten
-      qssedtenout_grid(:,top_lev:) = proc_rates%qssedten
-      umrout_grid(:,top_lev:) = proc_rates%umr
-      umsout_grid(:,top_lev:) = proc_rates%ums
+      qrsedtenout_grid(:ncol,top_lev:) = proc_rates%qrsedten
+      qssedtenout_grid(:ncol,top_lev:) = proc_rates%qssedten
+      umrout_grid(:ncol,top_lev:) = proc_rates%umr
+      umsout_grid(:ncol,top_lev:) = proc_rates%ums
 
 ! Zero out terms for budgets if not mg3....
       psacwgo_grid = 0._r8
@@ -2733,20 +2733,20 @@ subroutine micro_pumas_cam_tend(state, ptend, dtime, pbuf)
       if (micro_mg_version > 2) then
             qg_grid = state_loc%q(:,:,ixgraupel)
             ng_grid = state_loc%q(:,:,ixnumgraupel)
-            psacro_grid(:,top_lev:) =     proc_rates%psacrtot
-            pracgo_grid(:,top_lev:) =     proc_rates%pracgtot
-            psacwgo_grid(:,top_lev:) =    proc_rates%psacwgtot
-            pgsacwo_grid(:,top_lev:) =    proc_rates%pgsacwtot
-            pgracso_grid(:,top_lev:) =    proc_rates%pgracstot
-            prdgo_grid(:,top_lev:) =      proc_rates%prdgtot
-            qmultgo_grid(:,top_lev:) =    proc_rates%qmultgtot
-            qmultrgo_grid(:,top_lev:) =   proc_rates%qmultrgtot
-            npracgo_grid(:,top_lev:) =   proc_rates%npracgtot
-            nscngo_grid(:,top_lev:) =   proc_rates%nscngtot
-            ngracso_grid(:,top_lev:) =   proc_rates%ngracstot
-            nmultgo_grid(:,top_lev:) =   proc_rates%nmultgtot
-            nmultrgo_grid(:,top_lev:) =   proc_rates%nmultrgtot
-            npsacwgo_grid(:,top_lev:) =   proc_rates%npsacwgtot
+            psacro_grid(:ncol,top_lev:) =     proc_rates%psacrtot
+            pracgo_grid(:ncol,top_lev:) =     proc_rates%pracgtot
+            psacwgo_grid(:ncol,top_lev:) =    proc_rates%psacwgtot
+            pgsacwo_grid(:ncol,top_lev:) =    proc_rates%pgsacwtot
+            pgracso_grid(:ncol,top_lev:) =    proc_rates%pgracstot
+            prdgo_grid(:ncol,top_lev:) =      proc_rates%prdgtot
+            qmultgo_grid(:ncol,top_lev:) =    proc_rates%qmultgtot
+            qmultrgo_grid(:ncol,top_lev:) =   proc_rates%qmultrgtot
+            npracgo_grid(:ncol,top_lev:) =   proc_rates%npracgtot
+            nscngo_grid(:ncol,top_lev:) =   proc_rates%nscngtot
+            ngracso_grid(:ncol,top_lev:) =   proc_rates%ngracstot
+            nmultgo_grid(:ncol,top_lev:) =   proc_rates%nmultgtot
+            nmultrgo_grid(:ncol,top_lev:) =   proc_rates%nmultrgtot
+            npsacwgo_grid(:ncol,top_lev:) =   proc_rates%npsacwgtot
       end if
 
 
@@ -3237,64 +3237,64 @@ subroutine micro_pumas_cam_tend(state, ptend, dtime, pbuf)
    call outfld('MPDICE',      qiten,       psetcols, lchnk, avg_subcol_field=use_subcol_microp)
    call outfld('MPDNLIQ',     ncten,       psetcols, lchnk, avg_subcol_field=use_subcol_microp)
    call outfld('MPDNICE',     niten,       psetcols, lchnk, avg_subcol_field=use_subcol_microp)
-   call outfld('EVAPSNOW',    proc_rates%evapsnow,    psetcols, lchnk, avg_subcol_field=use_subcol_microp)
-   call outfld('QCSEVAP',     proc_rates%qcsevap,     psetcols, lchnk, avg_subcol_field=use_subcol_microp)
-   call outfld('QISEVAP',     proc_rates%qisevap,     psetcols, lchnk, avg_subcol_field=use_subcol_microp)
-   call outfld('QVRES',       proc_rates%qvres,       psetcols, lchnk, avg_subcol_field=use_subcol_microp)
-   call outfld('VTRMC',       proc_rates%vtrmc,       psetcols, lchnk, avg_subcol_field=use_subcol_microp)
-   call outfld('VTRMI',       proc_rates%vtrmi,       psetcols, lchnk, avg_subcol_field=use_subcol_microp)
-   call outfld('QCSEDTEN',    proc_rates%qcsedten,    psetcols, lchnk, avg_subcol_field=use_subcol_microp)
-   call outfld('QISEDTEN',    proc_rates%qisedten,    psetcols, lchnk, avg_subcol_field=use_subcol_microp)
-   call outfld('QRSEDTEN',    proc_rates%qrsedten,    psetcols, lchnk, avg_subcol_field=use_subcol_microp)
-   call outfld('QSSEDTEN',    proc_rates%qssedten,    psetcols, lchnk, avg_subcol_field=use_subcol_microp)
-   call outfld('MNUCCRIO',    proc_rates%mnuccritot,    psetcols, lchnk, avg_subcol_field=use_subcol_microp)
-   call outfld('MNUDEPO',     proc_rates%mnudeptot,    psetcols, lchnk, avg_subcol_field=use_subcol_microp)
-   call outfld('MELTSTOT',    proc_rates%meltstot,    psetcols, lchnk, avg_subcol_field=use_subcol_microp)
-   call outfld('MNUCCDO',     proc_rates%mnuccdtot,     psetcols, lchnk, avg_subcol_field=use_subcol_microp)
+   call outfld('EVAPSNOW',    proc_rates%evapsnow,    ncol, lchnk, avg_subcol_field=use_subcol_microp)
+   call outfld('QCSEVAP',     proc_rates%qcsevap,     ncol, lchnk, avg_subcol_field=use_subcol_microp)
+   call outfld('QISEVAP',     proc_rates%qisevap,     ncol, lchnk, avg_subcol_field=use_subcol_microp)
+   call outfld('QVRES',       proc_rates%qvres,       ncol, lchnk, avg_subcol_field=use_subcol_microp)
+   call outfld('VTRMC',       proc_rates%vtrmc,       ncol, lchnk, avg_subcol_field=use_subcol_microp)
+   call outfld('VTRMI',       proc_rates%vtrmi,       ncol, lchnk, avg_subcol_field=use_subcol_microp)
+   call outfld('QCSEDTEN',    proc_rates%qcsedten,    ncol, lchnk, avg_subcol_field=use_subcol_microp)
+   call outfld('QISEDTEN',    proc_rates%qisedten,    ncol, lchnk, avg_subcol_field=use_subcol_microp)
+   call outfld('QRSEDTEN',    proc_rates%qrsedten,    ncol, lchnk, avg_subcol_field=use_subcol_microp)
+   call outfld('QSSEDTEN',    proc_rates%qssedten,    ncol, lchnk, avg_subcol_field=use_subcol_microp)
+   call outfld('MNUCCRIO',    proc_rates%mnuccritot,    ncol, lchnk, avg_subcol_field=use_subcol_microp)
+   call outfld('MNUDEPO',     proc_rates%mnudeptot,    ncol, lchnk, avg_subcol_field=use_subcol_microp)
+   call outfld('MELTSTOT',    proc_rates%meltstot,    ncol, lchnk, avg_subcol_field=use_subcol_microp)
+   call outfld('MNUCCDO',     proc_rates%mnuccdtot,     ncol, lchnk, avg_subcol_field=use_subcol_microp)
    call outfld('MNUCCDOhet',  mnuccdohet,  psetcols, lchnk, avg_subcol_field=use_subcol_microp)
-   call outfld('MNUCCRO',     proc_rates%mnuccrtot,     psetcols, lchnk, avg_subcol_field=use_subcol_microp)
-   call outfld('PRACSO',      proc_rates%pracstot ,     psetcols, lchnk, avg_subcol_field=use_subcol_microp)
-   call outfld('VAPDEPSO',    proc_rates%vapdepstot,    psetcols, lchnk, avg_subcol_field=use_subcol_microp)
-   call outfld('MELTSDT',     proc_rates%meltsdttot,     psetcols, lchnk, avg_subcol_field=use_subcol_microp)
-   call outfld('FRZRDT',      proc_rates%frzrdttot ,     psetcols, lchnk, avg_subcol_field=use_subcol_microp)
+   call outfld('MNUCCRO',     proc_rates%mnuccrtot,     ncol, lchnk, avg_subcol_field=use_subcol_microp)
+   call outfld('PRACSO',      proc_rates%pracstot ,     ncol, lchnk, avg_subcol_field=use_subcol_microp)
+   call outfld('VAPDEPSO',    proc_rates%vapdepstot,    ncol, lchnk, avg_subcol_field=use_subcol_microp)
+   call outfld('MELTSDT',     proc_rates%meltsdttot,     ncol, lchnk, avg_subcol_field=use_subcol_microp)
+   call outfld('FRZRDT',      proc_rates%frzrdttot ,     ncol, lchnk, avg_subcol_field=use_subcol_microp)
    call outfld('FICE',        nfice,       psetcols, lchnk, avg_subcol_field=use_subcol_microp)
    call outfld('CLDFSNOW',    cldfsnow,    psetcols, lchnk, avg_subcol_field=use_subcol_microp)
-   call outfld ('NNUCCCO',  proc_rates%nnuccctot  , psetcols, lchnk, avg_subcol_field=use_subcol_microp)
-   call outfld ('NNUCCTO',  proc_rates%nnuccttot  , psetcols, lchnk, avg_subcol_field=use_subcol_microp)
-   call outfld ('NNUCCDO',  proc_rates%nnuccdtot  , psetcols, lchnk, avg_subcol_field=use_subcol_microp)
-   call outfld ('NNUDEPO',  proc_rates%nnudeptot  , psetcols, lchnk, avg_subcol_field=use_subcol_microp)
-   call outfld ('NHOMO',    proc_rates%nhomotot   , psetcols, lchnk, avg_subcol_field=use_subcol_microp)
-   call outfld ('NNUCCRO',  proc_rates%nnuccrtot  , psetcols, lchnk, avg_subcol_field=use_subcol_microp)
-   call outfld ('NNUCCRIO', proc_rates%nnuccritot , psetcols, lchnk, avg_subcol_field=use_subcol_microp)
-   call outfld ('NSACWIO',  proc_rates%nsacwitot  , psetcols, lchnk, avg_subcol_field=use_subcol_microp)
-   call outfld ('NPRAO',    proc_rates%npratot    , psetcols, lchnk, avg_subcol_field=use_subcol_microp)
-   call outfld ('NPSACWSO', proc_rates%npsacwstot , psetcols, lchnk, avg_subcol_field=use_subcol_microp)
-   call outfld ('NPRAIO',   proc_rates%npraitot   , psetcols, lchnk, avg_subcol_field=use_subcol_microp)
-   call outfld ('NPRACSO',  proc_rates%npracstot  , psetcols, lchnk, avg_subcol_field=use_subcol_microp)
-   call outfld ('NPRCO',    proc_rates%nprctot    , psetcols, lchnk, avg_subcol_field=use_subcol_microp)
-   call outfld ('NPRCIO',   proc_rates%nprcitot   , psetcols, lchnk, avg_subcol_field=use_subcol_microp)
-   call outfld ('NCSEDTEN', proc_rates%ncsedten , psetcols, lchnk, avg_subcol_field=use_subcol_microp)
-   call outfld ('NISEDTEN', proc_rates%nisedten , psetcols, lchnk, avg_subcol_field=use_subcol_microp)
-   call outfld ('NRSEDTEN', proc_rates%nrsedten , psetcols, lchnk, avg_subcol_field=use_subcol_microp)
-   call outfld ('NSSEDTEN', proc_rates%nssedten , psetcols, lchnk, avg_subcol_field=use_subcol_microp)
-   call outfld ('NMELTO',   proc_rates%nmelttot   , psetcols, lchnk, avg_subcol_field=use_subcol_microp)
-   call outfld ('NMELTS',   proc_rates%nmeltstot  , psetcols, lchnk, avg_subcol_field=use_subcol_microp)
+   call outfld ('NNUCCCO',  proc_rates%nnuccctot  , ncol, lchnk, avg_subcol_field=use_subcol_microp)
+   call outfld ('NNUCCTO',  proc_rates%nnuccttot  , ncol, lchnk, avg_subcol_field=use_subcol_microp)
+   call outfld ('NNUCCDO',  proc_rates%nnuccdtot  , ncol, lchnk, avg_subcol_field=use_subcol_microp)
+   call outfld ('NNUDEPO',  proc_rates%nnudeptot  , ncol, lchnk, avg_subcol_field=use_subcol_microp)
+   call outfld ('NHOMO',    proc_rates%nhomotot   , ncol, lchnk, avg_subcol_field=use_subcol_microp)
+   call outfld ('NNUCCRO',  proc_rates%nnuccrtot  , ncol, lchnk, avg_subcol_field=use_subcol_microp)
+   call outfld ('NNUCCRIO', proc_rates%nnuccritot , ncol, lchnk, avg_subcol_field=use_subcol_microp)
+   call outfld ('NSACWIO',  proc_rates%nsacwitot  , ncol, lchnk, avg_subcol_field=use_subcol_microp)
+   call outfld ('NPRAO',    proc_rates%npratot    , ncol, lchnk, avg_subcol_field=use_subcol_microp)
+   call outfld ('NPSACWSO', proc_rates%npsacwstot , ncol, lchnk, avg_subcol_field=use_subcol_microp)
+   call outfld ('NPRAIO',   proc_rates%npraitot   , ncol, lchnk, avg_subcol_field=use_subcol_microp)
+   call outfld ('NPRACSO',  proc_rates%npracstot  , ncol, lchnk, avg_subcol_field=use_subcol_microp)
+   call outfld ('NPRCO',    proc_rates%nprctot    , ncol, lchnk, avg_subcol_field=use_subcol_microp)
+   call outfld ('NPRCIO',   proc_rates%nprcitot   , ncol, lchnk, avg_subcol_field=use_subcol_microp)
+   call outfld ('NCSEDTEN', proc_rates%ncsedten , ncol, lchnk, avg_subcol_field=use_subcol_microp)
+   call outfld ('NISEDTEN', proc_rates%nisedten , ncol, lchnk, avg_subcol_field=use_subcol_microp)
+   call outfld ('NRSEDTEN', proc_rates%nrsedten , ncol, lchnk, avg_subcol_field=use_subcol_microp)
+   call outfld ('NSSEDTEN', proc_rates%nssedten , ncol, lchnk, avg_subcol_field=use_subcol_microp)
+   call outfld ('NMELTO',   proc_rates%nmelttot   , ncol, lchnk, avg_subcol_field=use_subcol_microp)
+   call outfld ('NMELTS',   proc_rates%nmeltstot  , ncol, lchnk, avg_subcol_field=use_subcol_microp)
 
-   call outfld('UMR',      proc_rates%umr,         psetcols, lchnk, avg_subcol_field=use_subcol_microp)
-   call outfld('UMS',      proc_rates%ums,         psetcols, lchnk, avg_subcol_field=use_subcol_microp)
+   call outfld('UMR',      proc_rates%umr,         ncol, lchnk, avg_subcol_field=use_subcol_microp)
+   call outfld('UMS',      proc_rates%ums,         ncol, lchnk, avg_subcol_field=use_subcol_microp)
 
    call outfld('QCRAT',    qcrat,       psetcols, lchnk, avg_subcol_field=use_subcol_microp)
 
    if (micro_mg_version > 2) then
-      call outfld('UMG',        proc_rates%umg,         psetcols, lchnk, avg_subcol_field=use_subcol_microp)
-      call outfld('QGSEDTEN',   proc_rates%qgsedten,    psetcols, lchnk, avg_subcol_field=use_subcol_microp)
+      call outfld('UMG',        proc_rates%umg,         ncol, lchnk, avg_subcol_field=use_subcol_microp)
+      call outfld('QGSEDTEN',   proc_rates%qgsedten,    ncol, lchnk, avg_subcol_field=use_subcol_microp)
       call outfld('FREQG',       freqg,       psetcols, lchnk, avg_subcol_field=use_subcol_microp)
       call outfld('AQGRAU',      qgout2,      psetcols, lchnk, avg_subcol_field=use_subcol_microp)
       call outfld('ANGRAU',      ngout2,      psetcols, lchnk, avg_subcol_field=use_subcol_microp)
       call outfld('CLDFGRAU',    cldfgrau,    psetcols, lchnk, avg_subcol_field=use_subcol_microp)
-      call outfld('MELTGTOT',    proc_rates%meltgtot,    psetcols, lchnk, avg_subcol_field=use_subcol_microp)
-      call outfld('NMELTG',      proc_rates%nmeltgtot,     psetcols, lchnk, avg_subcol_field=use_subcol_microp)
-      call outfld('NGSEDTEN',    proc_rates%ngsedten ,   psetcols, lchnk, avg_subcol_field=use_subcol_microp)
+      call outfld('MELTGTOT',    proc_rates%meltgtot,    ncol, lchnk, avg_subcol_field=use_subcol_microp)
+      call outfld('NMELTG',      proc_rates%nmeltgtot,     ncol, lchnk, avg_subcol_field=use_subcol_microp)
+      call outfld('NGSEDTEN',    proc_rates%ngsedten ,   ncol, lchnk, avg_subcol_field=use_subcol_microp)
 
    end if
 
