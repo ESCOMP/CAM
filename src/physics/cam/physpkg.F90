@@ -1410,6 +1410,7 @@ contains
     integer :: ixq
 
     logical :: labort                            ! abort flag
+    logical :: debug                   ! enable status prints
 
     real(r8) tvm(pcols,pver)           ! virtual temperature
     real(r8) prect(pcols)              ! total precipitation
@@ -1444,6 +1445,8 @@ contains
 
     nstep = get_nstep()
     call cnst_get_ind('Q', ixq)
+
+    debug = .false.
 
     ! Adjust the surface fluxes to reduce instabilities in near sfc layer
     if (phys_do_flux_avg()) then
@@ -1563,19 +1566,15 @@ contains
     !===================================================
     if (chem_is_active()) then
 
-       if (masterproc) print *, "ewl: cam/physpkg.F90: before chemistry"
-
        if (trim(cam_take_snapshot_before) == "chem_timestep_tend") then
           call cam_snapshot_all_outfld_tphysac(cam_snapshot_before_num, state, tend, cam_in, cam_out, pbuf,&
                     fh2o, surfric, obklen, flx_heat)
        end if
 
-       if (masterproc) print *, "ewl: cam/physpkg.F90: before chem_timestep_tend"
-
+       if (debug .and. masterproc) print *, "cam/physpkg.F90: calling chem_timestep_tend"
        call chem_timestep_tend(state, ptend, cam_in, cam_out, ztodt, &
             pbuf,  fh2o=fh2o)
-
-       if (masterproc) print *, "ewl: cam/physpkg.F90: chem_timestep_tend complete"
+       if (debug .and. masterproc) print *, "cam/physpkg.F90: chem_timestep_tend complete"
 
        if ( (trim(cam_take_snapshot_after) == "chem_timestep_tend") .and.     &
             (trim(cam_take_snapshot_before) == trim(cam_take_snapshot_after))) then
@@ -1598,8 +1597,6 @@ contains
     ! Call vertical diffusion code (pbl, free atmosphere and molecular)
     !===================================================
 
-    if (masterproc) print *, "ewl: cam/physpkg.F90: before vertical diffusion"
-
     call t_startf('vertical_diffusion_tend')
 
     if (trim(cam_take_snapshot_before) == "vertical_diffusion_section") then
@@ -1613,8 +1610,6 @@ contains
    !------------------------------------------
    ! Call major diffusion for extended model
    !------------------------------------------
-
-    if (masterproc) print *, "ewl: cam/physpkg.F90: before major diffusion"
 
     if ( waccmx_is('ionosphere') .or. waccmx_is('neutral') ) then
        call waccmx_phys_mspd_tend (ztodt    ,state    ,ptend)
@@ -1643,8 +1638,6 @@ contains
     ! Rayleigh friction calculation
     !===================================================
 
-    if (masterproc) print *, "ewl: cam/physpkg.F90: before rayleigh friction calculation"
-
     call t_startf('rayleigh_friction')
     call rayleigh_friction_tend( ztodt, state, ptend)
     if ( ptend%lu ) then
@@ -1668,25 +1661,26 @@ contains
     !  aerosol dry deposition processes
     call t_startf('aero_drydep')
 
-    if (masterproc) print *, "ewl: cam/physpkg.F90: before aerosol dry deposition processes...skipping!"
+    if (trim(cam_take_snapshot_before) == "aero_model_drydep") then
+       call cam_snapshot_all_outfld_tphysac(cam_snapshot_before_num, state, tend, cam_in, cam_out, pbuf,&
+                    fh2o, surfric, obklen, flx_heat)
+    end if
 
-! ewl: turn off aerosol dry deposition
-!    if (trim(cam_take_snapshot_before) == "aero_model_drydep") then
-!       call cam_snapshot_all_outfld_tphysac(cam_snapshot_before_num, state, tend, cam_in, cam_out, pbuf,&
-!                    fh2o, surfric, obklen, flx_heat)
-!    end if
-!
-!    call aero_model_drydep( state, pbuf, obklen, surfric, cam_in, ztodt, cam_out, ptend )
-!    if ( (trim(cam_take_snapshot_after) == "aero_model_drydep") .and.         &
-!         (trim(cam_take_snapshot_before) == trim(cam_take_snapshot_after))) then
-!       call cam_snapshot_ptend_outfld(ptend, lchnk)
-!    end if
-!    call physics_update(state, ptend, ztodt, tend)
-!
-!   if (trim(cam_take_snapshot_after) == "aero_model_drydep") then
-!      call cam_snapshot_all_outfld_tphysac(cam_snapshot_after_num, state, tend, cam_in, cam_out, pbuf,&
-!                    fh2o, surfric, obklen, flx_heat)
-!   end if
+    if (debug .and. masterproc) print *, "cam/physpkg.F90: calling aero_model_drydep"
+
+    call aero_model_drydep( state, pbuf, obklen, surfric, cam_in, ztodt, cam_out, ptend )
+    if ( (trim(cam_take_snapshot_after) == "aero_model_drydep") .and.         &
+         (trim(cam_take_snapshot_before) == trim(cam_take_snapshot_after))) then
+       call cam_snapshot_ptend_outfld(ptend, lchnk)
+    end if
+    call physics_update(state, ptend, ztodt, tend)
+
+    if (debug .and. masterproc) print *, "cam/physpkg.F90: aero_model_drydep complete"
+
+   if (trim(cam_take_snapshot_after) == "aero_model_drydep") then
+      call cam_snapshot_all_outfld_tphysac(cam_snapshot_after_num, state, tend, cam_in, cam_out, pbuf,&
+                    fh2o, surfric, obklen, flx_heat)
+   end if
 
     call t_stopf('aero_drydep')
 
@@ -1698,8 +1692,6 @@ contains
    ! that cam_out%xxxdryxxx fields have already been set for CAM aerosols and cam_out
    ! can be added to for CARMA aerosols.
    if (carma_do_aerosol) then
-
-     if (masterproc) print *, "ewl: cam/physpkg.F90: before carma microphysics"
 
      call t_startf('carma_timestep_tend')
      call carma_timestep_tend(state, cam_in, cam_out, ptend, ztodt, pbuf, obklen=obklen, ustar=surfric)
@@ -1713,7 +1705,6 @@ contains
     !---------------------------------------------------------------------------------
     !   ... enforce charge neutrality
     !---------------------------------------------------------------------------------
-    if (masterproc) print *, "ewl: cam/physpkg.F90: before enforcing charge neutrality"
 
     call charge_balance(state, pbuf)
 
@@ -1721,8 +1712,6 @@ contains
     ! Gravity wave drag
     !===================================================
     call t_startf('gw_tend')
-
-    if (masterproc) print *, "ewl: cam/physpkg.F90: before gravity wave drag"
 
     if (trim(cam_take_snapshot_before) == "gw_tend") then
        call cam_snapshot_all_outfld_tphysac(cam_snapshot_before_num, state, tend, cam_in, cam_out, pbuf,&
@@ -1809,8 +1798,6 @@ contains
     !----------------------------------------------------------------------------
     ! Call ionosphere routines for extended model if mode is set to ionosphere
     !----------------------------------------------------------------------------
-
-    if (masterproc) print *, "ewl: cam/physpkg.F90: before ionosphere routines"
 
     if( waccmx_is('ionosphere') ) then
        call waccmx_phys_ion_elec_temp_tend(state, ptend, pbuf, ztodt)
