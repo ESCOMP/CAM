@@ -174,7 +174,7 @@ subroutine cnst_add (name, mwc, cpc, qminc, &
    padv = padv+1
    ind  = padv
    if (padv > pcnst) then
-      write(errmsg, *) sub//': FATAL: advected tracer index greater than pcnst=', pcnst
+      write(errmsg, *) sub//': FATAL: advected tracer (', trim(name), ') index for greater than pcnst=', pcnst
       call endrun(errmsg)
    end if
 
@@ -380,7 +380,7 @@ subroutine cnst_get_ind (name, ind, abort)
    if (present(abort)) abort_on_error = abort
 
    if (abort_on_error) then
-      write(iulog, *) sub//': FATAL: name:', name,  ' not found in list:', cnst_name(:)
+      write(iulog, *) sub//': FATAL: name:', name,  ' not found in constituent list: ', cnst_name(:)
       call endrun(sub//': FATAL: name not found')
    end if
 
