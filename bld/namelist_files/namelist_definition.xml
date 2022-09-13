@@ -65,41 +65,41 @@
         Nudging tendencies are applied as a relaxation force between the current
         model state values and target state values derived from the avalilable
         analyses. The form of the target values is selected by the 'Nudge_Force_Opt'
-        option, the timescale of the forcing is determined from the given 
-        'Nudge_TimeScale_Opt', and the nudging strength Alpha=[0.,1.] for each 
+        option, the timescale of the forcing is determined from the given
+        'Nudge_TimeScale_Opt', and the nudging strength Alpha=[0.,1.] for each
         variable is specified by the 'Nudge_Xcoef' values. Where X={U,V,T,Q,PS}
- 
+
                F_nudge = Alpha*((Target-Model(t_curr))/TimeScale
- 
+
         WINDOWING:
         ----------
-        The region of applied nudging can be limited using Horizontal/Vertical 
-        window functions that are constructed using a parameterization of the 
-        Heaviside step function. 
-    
-        The Heaviside window function is the product of separate horizonal and vertical 
+        The region of applied nudging can be limited using Horizontal/Vertical
+        window functions that are constructed using a parameterization of the
+        Heaviside step function.
+
+        The Heaviside window function is the product of separate horizonal and vertical
         windows that are controled via 12 parameters:
-    
-            Nudge_Hwin_lat0:     Specify the horizontal center of the window in degrees. 
-            Nudge_Hwin_lon0:     The longitude must be in the range [0,360] and the 
+
+            Nudge_Hwin_lat0:     Specify the horizontal center of the window in degrees.
+            Nudge_Hwin_lon0:     The longitude must be in the range [0,360] and the
                                  latitude should be [-90,+90].
-            Nudge_Hwin_latWidth: Specify the lat and lon widths of the window as positive 
-            Nudge_Hwin_lonWidth: values in degrees.Setting a width to a large value (e.g. 999) 
+            Nudge_Hwin_latWidth: Specify the lat and lon widths of the window as positive
+            Nudge_Hwin_lonWidth: values in degrees.Setting a width to a large value (e.g. 999)
                                  renders the window a constant in that direction.
-            Nudge_Hwin_latDelta: Controls the sharpness of the window transition with a 
-            Nudge_Hwin_lonDelta: length in degrees. Small non-zero values yeild a step 
+            Nudge_Hwin_latDelta: Controls the sharpness of the window transition with a
+            Nudge_Hwin_lonDelta: length in degrees. Small non-zero values yeild a step
                                  function while a large value yeilds a smoother transition.
-            Nudge_Hwin_Invert  : A logical flag used to invert the horizontal window function 
+            Nudge_Hwin_Invert  : A logical flag used to invert the horizontal window function
                                  to get its compliment.(e.g. to nudge outside a given window).
-    
-            Nudge_Vwin_Lindex:   In the vertical, the window is specified in terms of model 
-            Nudge_Vwin_Ldelta:   level indcies. The High and Low transition levels should 
-            Nudge_Vwin_Hindex:   range from [0,(NLEV+1)]. The transition lengths are also 
-            Nudge_Vwin_Hdelta:   specified in terms of model indices. For a window function 
+
+            Nudge_Vwin_Lindex:   In the vertical, the window is specified in terms of model
+            Nudge_Vwin_Ldelta:   level indcies. The High and Low transition levels should
+            Nudge_Vwin_Hindex:   range from [0,(NLEV+1)]. The transition lengths are also
+            Nudge_Vwin_Hdelta:   specified in terms of model indices. For a window function
                                  constant in the vertical, the Low index should be set to 0,
-                                 the High index should be set to (NLEV+1), and the transition 
-                                 lengths should be set to 0.001 
-            Nudge_Vwin_Invert  : A logical flag used to invert the vertical window function 
+                                 the High index should be set to (NLEV+1), and the transition
+                                 lengths should be set to 0.001
+            Nudge_Vwin_Invert  : A logical flag used to invert the vertical window function
                                  to get its compliment.
        Default: FALSE
        </entry>
@@ -171,7 +171,7 @@
 <entry id="Nudge_Force_Opt" type="integer" category="nudging"
        group="nudging_nl" valid_values="" >
        Select the form of nudging forcing, where (t'==Analysis times ; t==Model Times)
-         0 -> NEXT-OBS: Target=Anal(t'_next)                 
+         0 -> NEXT-OBS: Target=Anal(t'_next)
          1 -> LINEAR:   Target=(F*Anal(t'_curr) +(1-F)*Anal(t'_next))
                             F =(t'_next - t_curr )/Tdlt_Anal
        Default: 0
@@ -179,8 +179,8 @@
 
 <entry id="Nudge_TimeScale_Opt" type="integer" category="nudging"
        group="nudging_nl" valid_values="" >
-       Select the timescale of nudging force, where (t'==Analysis times ; t==Model Times) 
-         0 -->  TimeScale = 1/Tdlt_Anal                     
+       Select the timescale of nudging force, where (t'==Analysis times ; t==Model Times)
+         0 -->  TimeScale = 1/Tdlt_Anal
          1 -->  TimeScale = 1/(t'_next - t_curr )
        Default: 0
        </entry>
@@ -5221,7 +5221,7 @@ Default: 1.0.
 </entry>
 
 <entry id="no_xfac_ubc" type="real" category="waccm"
-       group="chem_inparm" valid_values="" >
+       group="upper_bc_opts" valid_values="" >
 Multiplication factor applied to the upper boundary NO mass mixing ratio.
 Default: 1.0
 </entry>
@@ -5767,7 +5767,7 @@ Default: set by build-namelist.
 </entry>
 
 <entry id="snoe_ubc_file" type="char*256" input_pathname="abs" category="waccm"
-       group="chem_inparm" valid_values="" >
+       group="upper_bc_opts" valid_values="" >
 Full pathname of dataset for the coefficients of the NOEM nitric oxide model used
 to calculate its upper boundary concentration.
 Default: set by build-namelist.
@@ -5866,25 +5866,20 @@ if {{ hilight }}sulf_type{{ closehilight }} is 'FIXED'.
 Default: 0 seconds
 </entry>
 
-
-
-
-
-
 <entry id="tgcm_ubc_file" type="char*256" input_pathname="abs" category="waccm"
-       group="chem_inparm" valid_values="" >
+       group="upper_bc_opts" valid_values="" >
 Full pathname of dataset for TGCM upper boundary
 Default: set by build-namelist.
 </entry>
 <entry id="tgcm_ubc_data_type" type="char*32" category="waccm"
-       group="chem_inparm" valid_values="CYCLICAL,SERIAL,INTERP_MISSING_MONTHS,FIXED" >
+       group="upper_bc_opts" valid_values="CYCLICAL,SERIAL,INTERP_MISSING_MONTHS,FIXED" >
 Type of time interpolation for data in TGCM upper boundary file.
 Can be set to 'CYCLICAL', 'SERIAL', 'INTERP_MISSING_MONTHS', or 'FIXED'.
 Default: 'SERIAL'
 </entry>
 
 <entry id="tgcm_ubc_cycle_yr" type="integer" category="waccm"
-       group="chem_inparm" valid_values="" >
+       group="upper_bc_opts" valid_values="" >
 The cycle year of the TGCM upper boundary data
 if {{ hilight }}tgcm_ubc_type{{ closehilight }}  is 'CYCLICAL'.
 Format: YYYY
@@ -5892,7 +5887,7 @@ Default: 0
 </entry>
 
 <entry id="tgcm_ubc_fixed_ymd" type="integer" category="waccm"
-       group="chem_inparm" valid_values="" >
+       group="upper_bc_opts" valid_values="" >
 The date at which the TGCM upper boundary data is fixed
 if {{ hilight }}tgcm_ubc_type{{ closehilight }} is 'FIXED'.
 Format: YYYY
@@ -5900,7 +5895,7 @@ Default: 0
 </entry>
 
 <entry id="tgcm_ubc_fixed_tod" type="integer" category="waccm"
-       group="chem_inparm" valid_values="" >
+       group="upper_bc_opts" valid_values="" >
 The time of day (seconds) corresponding to {{ hilight }}tgcm_ubc_fixed_ymd{{ closehilight }}
 at which the TGCM upper boundary data is fixed
 if {{ hilight }}tgcm_ubc_type{{ closehilight }} is 'FIXED'.
@@ -5908,10 +5903,76 @@ Default: 0 seconds
 </entry>
 
 <entry id="t_pert_ubc" type="real" category="waccm"
-       group="chem_inparm" valid_values="" >
+       group="upper_bc_opts" valid_values="" >
 Perturbation applied to the upper boundary temperature.
 Default: 0.0
 </entry>
+
+<entry id="ubc_specifier" type="char*64(pcnst)"  category="upper_boundary"
+       group="upper_bc_opts" valid_values="" >
+List of fields that have fixed upper boundary conditions (temperature and mass mixing ratios)
+and corresponding data sources. Each entry in this list is of the form:
+  FLD->source
+where source may be of the following:
+  MSIS - NRL neutral atmosphere empirical model (Mass Spectrometer Incoherent Scatter radar)
+  TGCM - Input file generated by Thermospheric General Circulation Model
+  SNOE - Input file generated from Student Nitric Oxide Explorer satellite observations
+  UBC_FILE - Generalized input file which spans the upper boundary altitude
+  value (mmr|vmr) - Set to a constant value (e.g., 1.2e-6 mmr)
+
+These fields can be set to constant values with units of "mmr" (mass mixing ratio)
+or "vmr" (volume mixing ratio).  The upper boundary values of source UBC_FILE are prescribed
+in the UBC_FILE_path file. Fields of source UBC_FILE may include a CAM constituent name
+and a file field name separated by ":".
+
+Note: Constituents not included in ubc_specifier default to zero flux through the upper boundary.
+
+Example:
+  ubc_specifier = 'Q:H2O->UBC_FILE', 'CH4->2.D-10vmr', 'F->1.0D-15mmr', 'HF->1.0D-15mmr',
+                  'T->MSIS', 'H->MSIS', 'N->MSIS','O->MSIS', 'O2->MSIS', 'H2->TGCM', 'NO->SNOE'
+
+Default: set by build-namelist
+</entry>
+
+<entry id="ubc_file_path" type="char*512" input_pathname="abs" category="upper_boundary"
+       group="upper_bc_file_opts" valid_values="" >
+Full path of the file containing prescribed upper boundary conditions.
+Default: set by build-namelist
+</entry>
+
+<entry id="ubc_file_input_type" type="char*32" category="upper_boundary"
+       group="upper_bc_file_opts" valid_values="CYCLICAL,SERIAL,INTERP_MISSING_MONTHS,FIXED" >
+Type of time interpolation for data in {{ hilight }}ubc_file_path file{{ closehilight }}.
+Can be set to 'CYCLICAL', 'SERIAL', 'INTERP_MISSING_MONTHS', or 'FIXED'.
+Default: set by build-namelist
+</entry>
+
+<entry id="ubc_file_cycle_yr" type="integer" category="upper_boundary"
+       group="upper_bc_file_opts" valid_values="" >
+The cycle year of the prescribed upper boundary data
+if {{ hilight }}ubc_file_input_type{{ closehilight }} is 'CYCLICAL'.
+Format: YYYY
+Default: 0
+</entry>
+
+<entry id="ubc_file_fixed_ymd" type="integer" category="upper_boundary"
+       group="upper_bc_file_opts" valid_values="" >
+The date at which the upper boundary data is fixed
+if {{ hilight }}ubc_file_input_type{{ closehilight }} is 'FIXED'.
+Format: YYYYMMDD
+Default: 0
+</entry>
+
+<entry id="ubc_file_fixed_tod" type="integer" category="upper_boundary"
+       group="upper_bc_file_opts" valid_values="" >
+The time of day (seconds) corresponding to {{ hilight }}ubc_file_fixed_ymd{{ closehilight }}
+at which the upper boundary data is fixed
+if {{ hilight }}ubc_file_input_type{{ closehilight }} is 'FIXED'.
+Default: 0 seconds
+</entry>
+
+
+
 
 <entry id="chem_freq" type="integer" category="cam_chem"
        group="chem_inparm" valid_values="" >
