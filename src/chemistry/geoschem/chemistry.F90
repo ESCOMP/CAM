@@ -1181,16 +1181,6 @@ contains
        !                 -> False (read monthly-mean albedo from HEMCO)
        Input_Opt%onlineAlbedo           = .False.
 
-! ewl: Change using online land types from true to false
-       ! onlineLandTypes -> True  (use CLM landtypes)
-       !                 -> False (read landtypes from HEMCO)
-       Input_Opt%onlineLandTypes        = .False.
-
-! ewl: Change using CLM dry dep velocities from false to true
-       ! ddVel_CLM       -> True  (use CLM dry deposition velocities)
-       !                 -> False (let GEOS-Chem compute dry deposition velocities)
-       Input_Opt%ddVel_CLM              = .True.
-
        ! applyQtend: apply tendencies of water vapor to specific humidity
        Input_Opt%applyQtend             = .False.
 
@@ -2638,78 +2628,55 @@ contains
     State_Met(LCHNK)%EFLUX     (1,:nY) = cam_in%Lhf(:nY)
     State_Met(LCHNK)%HFLUX     (1,:nY) = cam_in%Shf(:nY)
 
-! ewl: Comment out setting State_Met fields LandTypeFrac and XLAI_NATIVE. Note
-!      that onlineLandTypes is now false.
-!    ! Field      : LandTypeFrac
-!    ! Description: Olson fraction per type
-!    ! Unit       : - (between 0 and 1)
-!    ! Dimensions : nX, nY, NSURFTYPE
-!    ! Note       : Index 1 is water
-!    IF ( Input_Opt%onlineLandTypes ) THEN
-!       ! Fill in water
-!       State_Met(LCHNK)%LandTypeFrac(1,:nY,1) = cam_in%ocnFrac(:nY)     &
-!                                              + cam_in%iceFrac(:nY)
-!       IF ( .NOT. Input_Opt%ddVel_CLM ) THEN
-!          CALL getLandTypes( cam_in,         &
-!                             nY,             &
-!                             State_Met(LCHNK) )
-!       ENDIF
-!    ELSE
-!       DO N = 1, NSURFTYPE
-!          Write(FieldName, '(a,i2.2)') 'HCO_LANDTYPE', N-1
-!          tmpIdx = pbuf_get_index(FieldName, rc)
-!          IF ( tmpIdx < 0 .or. ( iStep == 1 ) ) THEN
-!             IF ( rootChunk ) Write(iulog,*) "chem_timestep_tend: Field not found ", TRIM(FieldName)
-!          ELSE
-!             CALL pbuf_get_field(pbuf, tmpIdx, pbuf_i)
-!             DO J = 1, nY
-!                State_Met(LCHNK)%LandTypeFrac(1,J,N) = pbuf_i(J)
-!             ENDDO
-!             pbuf_i   => NULL()
-!          ENDIF
-!
-!          Write(FieldName, '(a,i2.2)') 'HCO_XLAI', N-1
-!          tmpIdx = pbuf_get_index(FieldName, rc)
-!          IF ( tmpIdx < 0 .or. ( iStep == 1 ) ) THEN
-!             IF ( rootChunk ) Write(iulog,*) "chem_timestep_tend: Field not found ", TRIM(FieldName)
-!          ELSE
-!             CALL pbuf_get_field(pbuf, tmpIdx, pbuf_i)
-!             DO J = 1, nY
-!                State_Met(LCHNK)%XLAI_NATIVE(1,J,N) = pbuf_i(J)
-!             ENDDO
-!             pbuf_i   => NULL()
-!          ENDIF
-!       ENDDO
-!    ENDIF
+    ! Field      : LandTypeFrac
+    ! Description: Olson fraction per type
+    ! Unit       : - (between 0 and 1)
+    ! Dimensions : nX, nY, NSURFTYPE
+    ! Note       : Index 1 is water
+    DO N = 1, NSURFTYPE
+       Write(FieldName, '(a,i2.2)') 'HCO_LANDTYPE', N-1
+       tmpIdx = pbuf_get_index(FieldName, rc)
+       IF ( tmpIdx < 0 .or. ( iStep == 1 ) ) THEN
+          IF ( rootChunk ) Write(iulog,*) "chem_timestep_tend: Field not found ", TRIM(FieldName)
+       ELSE
+          CALL pbuf_get_field(pbuf, tmpIdx, pbuf_i)
+          DO J = 1, nY
+             State_Met(LCHNK)%LandTypeFrac(1,J,N) = pbuf_i(J)
+          ENDDO
+          pbuf_i   => NULL()
+       ENDIF
 
-! ewl: Comment out setting State_Met fields FR* for CLND, LAND, OCEAN,
-!      SEAICE, LAKE, and LANDIC. If not getting land type from CLM need to
-!      figure out how to set these.
-!    ! Field      : FRCLND, FRLAND, FROCEAN, FRSEAICE, FRLAKE, FRLANDIC
-!    ! Description: Olson land fraction
-!    !              Fraction of land
-!    !              Fraction of ocean
-!    !              Fraction of sea ice
-!    !              Fraction of lake
-!    !              Fraction of land ice
-!    !              Fraction of snow
-!    ! Unit       : -
-!    ! Dimensions : nX, nY
-!    State_Met(LCHNK)%FRCLND    (1,:ny) = 1.e+0_fp - &
-!                    State_Met(LCHNK)%LandTypeFrac(1,:nY,1) ! Olson Land Fraction
-!    State_Met(LCHNK)%FRLAND    (1,:nY) = cam_in%landFrac(:nY)
-!    State_Met(LCHNK)%FROCEAN   (1,:nY) = cam_in%ocnFrac(:nY) + cam_in%iceFrac(:nY)
-!    State_Met(LCHNK)%FRSEAICE  (1,:nY) = cam_in%iceFrac(:nY)
-!    IF ( Input_Opt%onlineLandTypes ) THEN
-!       State_Met(LCHNK)%FRLAKE    (1,:nY) = cam_in%lwtgcell(:,3) + &
-!                                          cam_in%lwtgcell(:,4)
-!       State_Met(LCHNK)%FRLANDIC  (1,:nY) = cam_in%lwtgcell(:,2)
-!       State_Met(LCHNK)%FRSNO     (1,:nY) = 0.0e+0_fp
-!    ELSE
-!       State_Met(LCHNK)%FRLAKE    (1,:nY) = 0.0e+0_fp
-!       State_Met(LCHNK)%FRLANDIC  (1,:nY) = 0.0e+0_fp
-!       State_Met(LCHNK)%FRSNO     (1,:nY) = 0.0e+0_fp
-!    ENDIF
+       Write(FieldName, '(a,i2.2)') 'HCO_XLAI', N-1
+       tmpIdx = pbuf_get_index(FieldName, rc)
+       IF ( tmpIdx < 0 .or. ( iStep == 1 ) ) THEN
+          IF ( rootChunk ) Write(iulog,*) "chem_timestep_tend: Field not found ", TRIM(FieldName)
+       ELSE
+          CALL pbuf_get_field(pbuf, tmpIdx, pbuf_i)
+          DO J = 1, nY
+             State_Met(LCHNK)%XLAI_NATIVE(1,J,N) = pbuf_i(J)
+          ENDDO
+          pbuf_i   => NULL()
+       ENDIF
+    ENDDO
+
+    ! Field      : FRCLND, FRLAND, FROCEAN, FRSEAICE, FRLAKE, FRLANDIC
+    ! Description: Olson land fraction
+    !              Fraction of land
+    !              Fraction of ocean
+    !              Fraction of sea ice
+    !              Fraction of lake
+    !              Fraction of land ice
+    !              Fraction of snow
+    ! Unit       : -
+    ! Dimensions : nX, nY
+    State_Met(LCHNK)%FRCLND    (1,:ny) = 1.e+0_fp - &
+                    State_Met(LCHNK)%LandTypeFrac(1,:nY,1) ! Olson Land Fraction
+    State_Met(LCHNK)%FRLAND    (1,:nY) = cam_in%landFrac(:nY)
+    State_Met(LCHNK)%FROCEAN   (1,:nY) = cam_in%ocnFrac(:nY) + cam_in%iceFrac(:nY)
+    State_Met(LCHNK)%FRSEAICE  (1,:nY) = cam_in%iceFrac(:nY)
+    State_Met(LCHNK)%FRLAKE    (1,:nY) = 0.0e+0_fp
+    State_Met(LCHNK)%FRLANDIC  (1,:nY) = 0.0e+0_fp
+    State_Met(LCHNK)%FRSNO     (1,:nY) = 0.0e+0_fp
 
     ! Field      : GWETROOT, GWETTOP
     ! Description: Root and top soil moisture
@@ -3206,48 +3173,46 @@ contains
        IF (Input_Opt%LSETH2O) Input_Opt%LSETH2O = .FALSE.
     ENDIF
 
-! ewl: Turn off over-writing isLand, isWater, and isIce with CLM land imports,
-!      and set isSnow to if SNODP > 0.01 (removes dependency on CLM land)
     ! Do this after AirQnt, such that we overwrite GEOS-Chem isLand, isWater and
     ! isIce, which are based on albedo. Rather, we use CLM landFranc, ocnFrac
     ! and iceFrac. We also compute isSnow
     DO J = 1, nY
-!       iMaxLoc = MAXLOC( (/ State_Met(LCHNK)%FRLAND(1,J)   + &
-!                            State_Met(LCHNK)%FRLANDIC(1,J) + &
-!                            State_Met(LCHNK)%FRLAKE(1,J),    &
-!                            State_Met(LCHNK)%FRSEAICE(1,J),  &
-!                            State_Met(LCHNK)%FROCEAN(1,J)  - &
-!                            State_Met(LCHNK)%FRSEAICE(1,J) /) )
-!       IF ( iMaxLoc(1) == 3 ) iMaxLoc(1) = 0
-!       ! reset ocean to 0
-!
-!       ! Field      : LWI
-!       ! Description: Land/water indices
-!       ! Unit       : -
-!       ! Dimensions : nX, nY
-!       State_Met(LCHNK)%LWI(1,J) = FLOAT( iMaxLoc(1) )
-!
-!       IF ( iMaxLoc(1) == 0 ) THEN
-!          State_Met(LCHNK)%isLand(1,J)  = .False.
-!          State_Met(LCHNK)%isWater(1,J) = .True.
-!          State_Met(LCHNK)%isIce(1,J)   = .False.
-!       ELSEIF ( iMaxLoc(1) == 1 ) THEN
-!          State_Met(LCHNK)%isLand(1,J)  = .True.
-!          State_Met(LCHNK)%isWater(1,J) = .False.
-!          State_Met(LCHNK)%isIce(1,J)   = .False.
-!       ELSEIF ( iMaxLoc(1) == 2 ) THEN
-!          State_Met(LCHNK)%isLand(1,J)  = .False.
-!          State_Met(LCHNK)%isWater(1,J) = .False.
-!          State_Met(LCHNK)%isIce(1,J)   = .True.
-!       ELSE
-!          Write(iulog,*) " iMaxLoc gets value: ", iMaxLoc
-!          ErrMsg = 'Failed to figure out land/water'
-!          CALL Error_Stop( ErrMsg, ThisLoc )
-!       ENDIF
-!
-!       State_Met(LCHNK)%isSnow(1,J) = ( State_Met(LCHNK)%FRSEAICE(1,J) > 0.0e+0_fp &
-!                                   .or. State_Met(LCHNK)%SNODP(1,J) > 0.01 )
-        State_Met(LCHNK)%isSnow(1,J) = ( State_Met(LCHNK)%SNODP(1,J) > 0.01 )
+       iMaxLoc = MAXLOC( (/ State_Met(LCHNK)%FRLAND(1,J)   + &
+                            State_Met(LCHNK)%FRLANDIC(1,J) + &
+                            State_Met(LCHNK)%FRLAKE(1,J),    &
+                            State_Met(LCHNK)%FRSEAICE(1,J),  &
+                            State_Met(LCHNK)%FROCEAN(1,J)  - &
+                            State_Met(LCHNK)%FRSEAICE(1,J) /) )
+       IF ( iMaxLoc(1) == 3 ) iMaxLoc(1) = 0
+       ! reset ocean to 0
+
+       ! Field      : LWI
+       ! Description: Land/water indices
+       ! Unit       : -
+       ! Dimensions : nX, nY
+       State_Met(LCHNK)%LWI(1,J) = FLOAT( iMaxLoc(1) )
+
+       IF ( iMaxLoc(1) == 0 ) THEN
+          State_Met(LCHNK)%isLand(1,J)  = .False.
+          State_Met(LCHNK)%isWater(1,J) = .True.
+          State_Met(LCHNK)%isIce(1,J)   = .False.
+       ELSEIF ( iMaxLoc(1) == 1 ) THEN
+          State_Met(LCHNK)%isLand(1,J)  = .True.
+          State_Met(LCHNK)%isWater(1,J) = .False.
+          State_Met(LCHNK)%isIce(1,J)   = .False.
+       ELSEIF ( iMaxLoc(1) == 2 ) THEN
+          State_Met(LCHNK)%isLand(1,J)  = .False.
+          State_Met(LCHNK)%isWater(1,J) = .False.
+          State_Met(LCHNK)%isIce(1,J)   = .True.
+       ELSE
+          Write(iulog,*) " iMaxLoc gets value: ", iMaxLoc
+          ErrMsg = 'Failed to figure out land/water'
+          CALL Error_Stop( ErrMsg, ThisLoc )
+       ENDIF
+
+       State_Met(LCHNK)%isSnow(1,J) = &
+                               ( State_Met(LCHNK)%FRSEAICE(1,J) > 0.0e+0_fp &
+                                 .or. State_Met(LCHNK)%SNODP(1,J) > 0.01 )
 
     ENDDO
 
@@ -3492,22 +3457,15 @@ contains
     !==================================================================
     ! Compute dry deposition velocities
     !
-    ! CLM computes dry deposition velocities over land.
-    ! We need to merge the land component passed through cam_in and
-    ! the ocn/ice dry deposition velocities.
-    !
-    ! If using the CLM velocities, then use GEOS-Chem's dry deposition
-    ! module to compute velocities and then scale them with the ocean
-    ! fraction (Input_Opt%ddVel_CLM)
-    !
-    ! A second option would be to let GEOS-Chem compute dry deposition
-    ! velocity, thus overwriting the input from CLM
+    ! CLM computes dry deposition velocities but only for gas-phase
+    ! species and only over land. We therefore need to both pass the
+    ! the CLM dry deposition velocities as well as compute them using
+    ! the GEOS-Chem dry deposition module. If using the CLM velocities,
+    ! then scale them with the ocean fraction; otherwise use GEOS-Chem
+    ! computed velocities.
     !
     ! drydep_method must be set to DD_XLND.
     !
-    ! The GEOS-Chem option (.not. Input_Opt%ddVel_CLM) option coupled
-    ! with Input_Opt%onlineLandTypes requires that CLM passes land
-    ! type information (land type and leaf area index).
     !==================================================================
     !
     ! State_Chm expects dry deposition velocities in m/s, whereas
@@ -3515,7 +3473,7 @@ contains
     !
     ! For now, dry deposition velocities are only computed for gases
     ! (which is what CLM deals with). Dry deposition for aerosols is
-    ! work in progress.
+    ! work in progress. <-- ewl...is this still true???
     !
     ! Thibaud M. Fritz - 27 Feb 2020
     !==================================================================
@@ -3561,53 +3519,51 @@ contains
           CALL Error_Stop( ErrMsg, ThisLoc )
        ENDIF
 
-       IF ( Input_Opt%ddVel_CLM ) THEN
-          DO N = 1, nddvels
+       DO N = 1, nddvels
 
-             !! Print debug
-             !IF ( rootChunk ) THEN
-             !    IF ( N == 1 ) THEN
-             !    Write(iulog,*) "Number of GC dry deposition species = ", &
-             !        SIZE(State_Chm(LCHNK)%DryDepVel(:,:,:),3)
-             !    Write(iulog,*) "Number of CESM dry deposition species = ", &
-             !        nddvels
-             !    ENDIF
-             !    Write(iulog,*) "N          = ", N
-             !    Write(iulog,*) "drySpc_ndx = ", drySpc_ndx(N)
-             !    Write(iulog,*) "GC index   = ", map2GC_dryDep(N)
-             !    IF ( map2GC_dryDep(N) > 0 ) THEN
-             !        Write(iulog,*) "GC name    = ", TRIM(DEPNAME(map2GC_dryDep(N)))
-             !    ENDIF
-             !    Write(iulog,*) "dry Species= ", TRIM(drydep_list(N))
-             !    IF ( drySpc_ndx(N) > 0 ) THEN
-             !        Write(iulog,*) "tracerName = ", TRIM(tracerNames(drySpc_ndx(N)))
-             !    ENDIF
-             !    Write(iulog,*) "CLM-depVel = ", &
-             !  MAXVAL(cam_in%depvel(:nY,N)) * 1.0e-02_fp, " [m/s]"
-             !    IF ( map2GC_dryDep(N) > 0 ) THEN
-             !        Write(iulog,*) "GC-depVel  = ", &
-             !  MAXVAL(State_Chm(LCHNK)%DryDepVel(1,:nY,map2GC_dryDep(N))), " [m/s]"
-             !    ENDIF
-             !ENDIF
+          !! Print debug
+          !IF ( rootChunk ) THEN
+          !    IF ( N == 1 ) THEN
+          !    Write(iulog,*) "Number of GC dry deposition species = ", &
+          !        SIZE(State_Chm(LCHNK)%DryDepVel(:,:,:),3)
+          !    Write(iulog,*) "Number of CESM dry deposition species = ", &
+          !        nddvels
+          !    ENDIF
+          !    Write(iulog,*) "N          = ", N
+          !    Write(iulog,*) "drySpc_ndx = ", drySpc_ndx(N)
+          !    Write(iulog,*) "GC index   = ", map2GC_dryDep(N)
+          !    IF ( map2GC_dryDep(N) > 0 ) THEN
+          !        Write(iulog,*) "GC name    = ", TRIM(DEPNAME(map2GC_dryDep(N)))
+          !    ENDIF
+          !    Write(iulog,*) "dry Species= ", TRIM(drydep_list(N))
+          !    IF ( drySpc_ndx(N) > 0 ) THEN
+          !        Write(iulog,*) "tracerName = ", TRIM(tracerNames(drySpc_ndx(N)))
+          !    ENDIF
+          !    Write(iulog,*) "CLM-depVel = ", &
+          !  MAXVAL(cam_in%depvel(:nY,N)) * 1.0e-02_fp, " [m/s]"
+          !    IF ( map2GC_dryDep(N) > 0 ) THEN
+          !        Write(iulog,*) "GC-depVel  = ", &
+          !  MAXVAL(State_Chm(LCHNK)%DryDepVel(1,:nY,map2GC_dryDep(N))), " [m/s]"
+          !    ENDIF
+          !ENDIF
 
-             IF ( map2GC_dryDep(N) > 0 ) THEN
-                ! State_Chm%DryDepVel is in m/s
-                State_Chm(LCHNK)%DryDepVel(1,:nY,map2GC_dryDep(N)) = &
-                   ! This first bit corresponds to the dry deposition
-                   ! velocities over land as computed from CLM and
-                   ! converted to m/s. This is scaled by the fraction
-                   ! of land.
-                     cam_in%depVel(:nY,N) * 1.0e-02_fp &
-                      * MAX(0._fp, 1.0_fp - State_Met(LCHNK)%FROCEAN(1,:nY)) &
-                   ! This second bit corresponds to the dry deposition
-                   ! velocities over ocean and sea ice as computed from
-                   ! GEOS-Chem. This is scaled by the fraction of ocean
-                   ! and sea ice.
-                   + State_Chm(LCHNK)%DryDepVel(1,:nY,map2GC_dryDep(N)) &
-                     * State_Met(LCHNK)%FROCEAN(1,:nY)
-             ENDIF
-          ENDDO
-       ENDIF
+          IF ( map2GC_dryDep(N) > 0 ) THEN
+             ! State_Chm%DryDepVel is in m/s
+             State_Chm(LCHNK)%DryDepVel(1,:nY,map2GC_dryDep(N)) = &
+                ! This first bit corresponds to the dry deposition
+                ! velocities over land as computed from CLM and
+                ! converted to m/s. This is scaled by the fraction
+                ! of land.
+                  cam_in%depVel(:nY,N) * 1.0e-02_fp &
+                   * MAX(0._fp, 1.0_fp - State_Met(LCHNK)%FROCEAN(1,:nY)) &
+                ! This second bit corresponds to the dry deposition
+                ! velocities over ocean and sea ice as computed from
+                ! GEOS-Chem. This is scaled by the fraction of ocean
+                ! and sea ice.
+                + State_Chm(LCHNK)%DryDepVel(1,:nY,map2GC_dryDep(N)) &
+                  * State_Met(LCHNK)%FROCEAN(1,:nY)
+          ENDIF
+       ENDDO
 
        CALL Update_DryDepFreq( Input_Opt  = Input_Opt,         &
                                State_Chm  = State_Chm(LCHNK),  &
