@@ -35,7 +35,9 @@ module aerosol_properties_mod
      procedure :: initialize => aero_props_init
      procedure :: nbins
      procedure :: ncnst_tot
-     procedure :: nspecies
+     procedure,private :: nspecies_per_bin
+     procedure,private :: nspecies_all_bins
+     generic :: nspecies => nspecies_all_bins,nspecies_per_bin
      procedure,private :: n_masses_all_bins
      procedure,private :: n_masses_per_bin
      generic :: nmasses => n_masses_all_bins,n_masses_per_bin
@@ -48,6 +50,11 @@ module aerosol_properties_mod
      procedure(aero_actfracs), deferred :: actfracs
      procedure(aero_num_names), deferred :: num_names
      procedure(aero_mmr_names), deferred :: mmr_names
+     procedure(aero_amb_num_name), deferred :: amb_num_name
+     procedure(aero_amb_mmr_name), deferred :: amb_mmr_name
+     procedure(aero_species_type), deferred :: species_type
+     procedure(aero_icenuc_updates_num), deferred :: icenuc_updates_num
+     procedure(aero_icenuc_updates_mmr), deferred :: icenuc_updates_mmr
      procedure(aero_apply_num_limits), deferred :: apply_number_limits
 
      procedure :: final=>aero_props_final
@@ -76,6 +83,30 @@ module aerosol_properties_mod
        real(r8), optional, intent(out) :: density ! density (kg/m3)
        real(r8), optional, intent(out) :: hygro   ! hygroscopicity
      end subroutine aero_props_get
+
+     !------------------------------------------------------------------------
+     ! returns species name
+     !------------------------------------------------------------------------
+     subroutine aero_species_name(self, bin_ndx, species_ndx, specname)
+       import :: aerosol_properties
+       class(aerosol_properties), intent(in) :: self
+       integer, intent(in) :: bin_ndx           ! bin number
+       integer, intent(in) :: species_ndx       ! species number
+       character(len=32), intent(out) :: specname ! species name
+
+     end subroutine aero_species_name
+
+     !------------------------------------------------------------------------
+     ! returns species type
+     !------------------------------------------------------------------------
+     subroutine aero_species_type(self, bin_ndx, species_ndx, spectype)
+       import :: aerosol_properties
+       class(aerosol_properties), intent(in) :: self
+       integer, intent(in) :: bin_ndx           ! bin number
+       integer, intent(in) :: species_ndx       ! species number
+       character(len=32), intent(out) :: spectype ! species type
+
+     end subroutine aero_species_type
 
      !------------------------------------------------------------------------
      ! returns mass and number activation fractions
@@ -114,6 +145,29 @@ module aerosol_properties_mod
        character(len=32), intent(out) :: name_c ! constituent name of cloud-borne aerosol MMR
      end subroutine aero_mmr_names
 
+     !------------------------------------------------------------------------
+     ! returns constituent name of ambient aersol number mixing ratios
+     !------------------------------------------------------------------------
+     subroutine aero_amb_num_name(self, bin_ndx, name)
+       import :: aerosol_properties
+       class(aerosol_properties), intent(in) :: self
+       integer, intent(in) :: bin_ndx          ! bin number
+       character(len=32), intent(out) :: name  ! constituent name of ambient aerosol number dens
+
+     end subroutine aero_amb_num_name
+
+     !------------------------------------------------------------------------
+     ! returns constituent name of ambient aersol mass mixing ratios
+     !------------------------------------------------------------------------
+     subroutine aero_amb_mmr_name(self, bin_ndx, species_ndx, name)
+       import :: aerosol_properties
+       class(aerosol_properties), intent(in) :: self
+       integer, intent(in) :: bin_ndx           ! bin number
+       integer, intent(in) :: species_ndx       ! species number
+       character(len=32), intent(out) :: name   ! constituent name of ambient aerosol MMR
+
+     end subroutine aero_amb_mmr_name
+
      !------------------------------------------------------------------------------
      ! returns radius^3 (m3) of a given bin number
      !------------------------------------------------------------------------------
@@ -126,6 +180,31 @@ module aerosol_properties_mod
        real(r8), intent(in) :: numconc ! number conc (1/m3)
 
      end function aero_amcube
+
+     !------------------------------------------------------------------------------
+     ! returns TRUE if Ice Nucleation tendencies are applied to given aerosol bin number
+     !------------------------------------------------------------------------------
+     function aero_icenuc_updates_num(self, bin_ndx) result(res)
+       import :: aerosol_properties
+       class(aerosol_properties), intent(in) :: self
+       integer, intent(in) :: bin_ndx  ! bin number
+
+       logical :: res
+
+     end function aero_icenuc_updates_num
+
+     !------------------------------------------------------------------------------
+     ! returns TRUE if Ice Nucleation tendencies are applied to a given species within a bin
+     !------------------------------------------------------------------------------
+     function aero_icenuc_updates_mmr(self, bin_ndx, species_ndx) result(res)
+       import :: aerosol_properties
+       class(aerosol_properties), intent(in) :: self
+       integer, intent(in) :: bin_ndx     ! bin number
+       integer, intent(in) :: species_ndx ! species number
+
+       logical :: res
+
+     end function aero_icenuc_updates_mmr
 
      !------------------------------------------------------------------------------
      ! apply max / min to number concentration
@@ -248,12 +327,24 @@ contains
   !------------------------------------------------------------------------------
   ! returns number of species in a bin
   !------------------------------------------------------------------------------
-  pure integer function nspecies(self,bin_ndx)
+  pure function nspecies_per_bin(self,bin_ndx) result(val)
     class(aerosol_properties), intent(in) :: self
     integer, intent(in) :: bin_ndx           ! bin number
+    integer :: val
 
-    nspecies = self%nspecies_(bin_ndx)
-  end function nspecies
+    val = self%nspecies_(bin_ndx)
+  end function nspecies_per_bin
+
+  !------------------------------------------------------------------------------
+  ! returns number of species for all bins
+  !------------------------------------------------------------------------------
+  pure function nspecies_all_bins(self) result(arr)
+    class(aerosol_properties), intent(in) :: self
+    integer :: arr(self%nbins_)
+
+    arr(:) = self%nspecies_(:)
+
+  end function nspecies_all_bins
 
   !------------------------------------------------------------------------------
   ! returns number of species masses in a given bin number

@@ -22,6 +22,11 @@ module modal_aerosol_properties_mod
      procedure :: actfracs
      procedure :: num_names
      procedure :: mmr_names
+     procedure :: amb_num_name
+     procedure :: amb_mmr_name
+     procedure :: species_type
+     procedure :: icenuc_updates_num
+     procedure :: icenuc_updates_mmr
      procedure :: apply_number_limits
      final :: destructor
   end type modal_aerosol_properties
@@ -242,6 +247,99 @@ contains
 
     call rad_cnst_get_info(0, bin_ndx, species_ndx, spec_name=name_a, spec_name_cw=name_c)
   end subroutine mmr_names
+
+  !------------------------------------------------------------------------
+  ! returns constituent name of ambient aersol number mixing ratios
+  !------------------------------------------------------------------------
+  subroutine amb_num_name(self, bin_ndx, name)
+    class(modal_aerosol_properties), intent(in) :: self
+    integer, intent(in) :: bin_ndx           ! bin number
+    character(len=32), intent(out) :: name   ! constituent name of ambient aerosol number dens
+
+    call rad_cnst_get_info(0,bin_ndx, num_name=name)
+
+  end subroutine amb_num_name
+
+  !------------------------------------------------------------------------
+  ! returns constituent name of ambient aersol mass mixing ratios
+  !------------------------------------------------------------------------
+  subroutine amb_mmr_name(self, bin_ndx, species_ndx, name)
+    class(modal_aerosol_properties), intent(in) :: self
+    integer, intent(in) :: bin_ndx           ! bin number
+    integer, intent(in) :: species_ndx       ! species number
+    character(len=32), intent(out) :: name   ! constituent name of ambient aerosol MMR
+
+    call rad_cnst_get_info(0, bin_ndx, species_ndx, spec_name=name)
+
+  end subroutine amb_mmr_name
+
+  !------------------------------------------------------------------------
+  ! returns species type
+  !------------------------------------------------------------------------
+  subroutine species_type(self, bin_ndx, species_ndx, spectype)
+    class(modal_aerosol_properties), intent(in) :: self
+    integer, intent(in) :: bin_ndx           ! bin number
+    integer, intent(in) :: species_ndx       ! species number
+    character(len=32), intent(out) :: spectype ! species type
+
+    call rad_cnst_get_info(0, bin_ndx, species_ndx, spec_type=spectype)
+
+  end subroutine species_type
+
+  !------------------------------------------------------------------------------
+  ! returns TRUE if Ice Nucleation tendencies are applied to given aerosol bin number
+  !------------------------------------------------------------------------------
+  function icenuc_updates_num(self, bin_ndx) result(res)
+    class(modal_aerosol_properties), intent(in) :: self
+    integer, intent(in) :: bin_ndx           ! bin number
+
+    logical :: res
+
+    character(len=32) :: spectype
+    character(len=32) :: modetype
+    integer :: spc_ndx
+
+    res = .false.
+
+    call rad_cnst_get_info(0, bin_ndx, mode_type=modetype)
+    if (.not.(modetype=='coarse' .or. modetype=='coarse_dust')) then
+       return
+    end if
+
+    do spc_ndx = 1, self%nspecies(bin_ndx)
+       call self%species_type( bin_ndx, spc_ndx, spectype)
+       if (spectype=='dust') res = .true.
+    end do
+
+  end function icenuc_updates_num
+
+  !------------------------------------------------------------------------------
+  ! returns TRUE if Ice Nucleation tendencies are applied to a given species within a bin
+  !------------------------------------------------------------------------------
+  function icenuc_updates_mmr(self, bin_ndx, species_ndx) result(res)
+    class(modal_aerosol_properties), intent(in) :: self
+    integer, intent(in) :: bin_ndx           ! bin number
+    integer, intent(in) :: species_ndx       ! species number
+
+    logical :: res
+
+    character(len=32) :: spectype
+    character(len=32) :: modetype
+
+    res = .false.
+
+    if (species_ndx>0) then
+
+       call rad_cnst_get_info(0, bin_ndx, mode_type=modetype)
+       if (.not.(modetype=='coarse' .or. modetype=='coarse_dust')) then
+          return
+       end if
+
+       call self%species_type( bin_ndx, species_ndx, spectype)
+       if (spectype=='dust') res = .true.
+    end if
+
+  end function icenuc_updates_mmr
 
   !------------------------------------------------------------------------------
   ! apply max / min to number concentration
