@@ -430,9 +430,7 @@ subroutine nucleate_ice_cam_calc( aero_props, aero_state, &
    real(r8) :: soot_num_col(pcols,pver)
    real(r8) :: sulf_num_tot_col(pcols,pver)
 
-   real(r8), parameter :: tolerance = 1.e-12
-
-   integer :: idxtmp !, num_bin_masses=-huge(1)
+   integer :: idxtmp
    real(r8), pointer :: amb_num(:,:)
    real(r8), pointer :: amb_mmr(:,:)
    real(r8), pointer :: cld_num(:,:)
