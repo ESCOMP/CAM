@@ -213,6 +213,8 @@ contains
     call budget_add('BD_efix','dyBP','dyBF','phy','dif',longname='dE/dt energy fixer using dycore E (dyBP-dyBF)',outfld=.true.)
     call budget_add('BP_phys_tot','phAM','phBF','phy','dif',longname='dE/dt physics total (phAM-phBF)',outfld=.true.)
     call budget_add('BD_phys_tot','dyAM','dyBF','phy','dif',longname='dE/dt physics total using dycore E (dyAM-dyBF)',outfld=.true.)
+    call budget_add('BP_param_and_efix','phAP','phBF','phy','dif',longname='dE/dt parameterizations + efix (phAP-phBF)',outfld=.true.)
+    call budget_add('BD_param_and_efix','dyAP','dyBF','phy','dif',longname='dE/dt parameterizations + efix dycore E  (dyAP-dyBF)',outfld=.true.)
 
     ! Register water vapor.
     ! ***** N.B. ***** This must be the first call to cnst_add so that
@@ -816,7 +818,7 @@ contains
                                            ! temperature, water vapor, cloud
                                            ! ice, cloud liquid, U, V
     integer :: history_budget_histfile_num ! output history file number for budget fields
-    character*16  :: budget_name           ! parameterization name for fluxes
+    character*32  :: budget_name           ! parameterization name for fluxes
     character*128 :: budget_longname       ! parameterization name for fluxes
 
     !-----------------------------------------------------------------------

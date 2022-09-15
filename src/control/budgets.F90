@@ -36,11 +36,14 @@ public :: &
    budget_info,           &! return budget info by ind
    budget_cnt_adjust,     &! advance or reset budget count
    budget_count,          &! return budget count 
+   budget_get_global,     &! return budget count 
+   budget_put_global,     &! return budget count 
    budget_outfld           ! Returns true if default CAM output was specified in the budget_stage_add calls.
 
 ! Public data
 
 integer, parameter, public :: budget_array_max  = 60     ! number of budget diffs
+integer, parameter, public :: budget_me_varnum  =  7     ! tot,se,ke,wv,wl,wi
 
 integer,           public            :: budget_cnt(budget_array_max)      ! budget counts for normalization
 integer,           public            :: budget_subcycle(budget_array_max) ! budget_subcycle counts
@@ -51,13 +54,15 @@ integer,           public            :: budget_state_ind(budget_array_max)      
 logical,           public, protected :: budget_out(budget_array_max)      ! outfld this stage
 character(len=64), public, protected :: budget_name(budget_array_max)     ! budget names
 character(len=128),public, protected :: budget_longname(budget_array_max) ! long name of budgets
+character(len=128),public, protected :: budget_stagename(budget_array_max) ! long name of budgets
 integer,           public, protected :: budget_stg1index(budget_array_max)
 integer,           public, protected :: budget_stg2index(budget_array_max)
 character(len=64), public, protected :: budget_stg1name(budget_array_max)
-character(len=32), public, protected :: budget_stg2name(budget_array_max)
+character(len=64), public, protected :: budget_stg2name(budget_array_max)
+character(len=64), public, protected :: budget_me_names(budget_me_varnum)
 integer,           public, protected :: budget_stg1stateidx(budget_array_max)
 integer,           public, protected :: budget_stg2stateidx(budget_array_max)
-real(r8),          public, protected :: budget_globals(budget_array_max)
+real(r8),          public, protected :: budget_globals(budget_array_max,budget_me_varnum)
 
 !
 ! Constants for each budget
@@ -166,6 +171,8 @@ subroutine budget_stage_add (name, pkgtype, longname, outfld, subcycle)
    else
       budget_subcycle(budget_num)=.false.
    end if
+   budget_stagename(budget_num)= trim(name)
+
 end subroutine budget_stage_add
 
 !!$!==============================================================================
@@ -194,6 +201,7 @@ subroutine budget_diff_add (name, stg1name, stg2name, pkgtype, optype, longname,
 
    character(len=*), parameter :: sub='budget_diff_add'
    character(len=128) :: errmsg
+   character(len=1)   :: opchar
    integer            :: state_idx
    !-----------------------------------------------------------------------
    ! set budget index and check validity
@@ -220,9 +228,15 @@ subroutine budget_diff_add (name, stg1name, stg2name, pkgtype, optype, longname,
    else
       budget_longname(budget_num) = name
    end if
-
-   budget_stg1name(budget_num) = stg1name
-   budget_stg2name(budget_num) = stg2name
+   if (optype=='dif') opchar='-'
+   if (optype=='sum') opchar='+'
+   if (optype=='stg') then
+      write(errmsg,*) sub//': FATAL: bad value optype should be sum of dif:', optype
+      call endrun(errmsg)
+   end if
+   budget_stg1name(budget_num) = trim(stg1name)
+   budget_stg2name(budget_num) = trim(stg2name)
+   budget_stagename(budget_num)= trim(stg1name)//opchar//trim(stg2name)
    budget_stg1index(budget_num) = budget_ind_byname(trim(stg1name))
    budget_stg2index(budget_num) = budget_ind_byname(trim(stg2name))
    budget_stg1stateidx(budget_num) = budget_state_ind(budget_stg1index(budget_num))
@@ -493,6 +507,86 @@ end function budget_longname_byind
 
 !==============================================================================
 
+subroutine budget_get_global (name, me_idx, global, abort)
+
+   ! Get the global integral of a budget.  Optional abort argument allows returning
+   ! control to caller when budget name is not found.  Default behavior is
+   ! to call endrun when name is not found.
+
+   !-----------------------------Arguments---------------------------------
+   character(len=*),  intent(in)  :: name    ! budget name
+   integer,           intent(in)  :: me_idx  ! mass energy variable index
+   real(r8),          intent(out) :: global  ! global budget index (in q array)
+   logical, optional, intent(in)  :: abort   ! optional flag controlling abort
+
+   !---------------------------Local workspace-----------------------------
+   integer :: m                                   ! budget index
+   logical :: abort_on_error
+   character(len=*), parameter :: sub='budget_get_global'
+   !-----------------------------------------------------------------------
+
+   ! Find budget name in list
+   do m = 1, budget_array_max
+      if (trim(name) == trim(budget_stagename(m)).or.trim(name)==trim(budget_name(m))) then
+         global  = budget_globals(m,me_idx)
+         if (me_idx==1) write(iulog,*)'found global for ',trim(name),'=',global
+         return
+      end if
+   end do
+
+   ! Unrecognized name
+   abort_on_error = .true.
+   if (present(abort)) abort_on_error = abort
+   
+   if (abort_on_error) then
+      write(iulog, *) sub//': FATAL: name:', name,  ' not found in list:', budget_name(:)
+      write(iulog, *) sub//': FATAL: name:', name,  ' not found in list:', budget_stagename(:)
+      call endrun(sub//': FATAL: name not found')
+   end if
+
+ end subroutine budget_get_global
+!==============================================================================
+!==============================================================================
+subroutine budget_put_global (name, me_idx, global, abort)
+
+   ! store the global integral of a budget.  Optional abort argument allows returning
+   ! control to caller when budget name is not found.  Default behavior is
+   ! to call endrun when name is not found.
+
+   !-----------------------------Arguments---------------------------------
+   character(len=*),  intent(in)  :: name  ! budget name
+   integer,           intent(in)  :: me_idx! mass energy variable index
+   real(r8),          intent(out) :: global   ! global budget index (in q array)
+   logical, optional, intent(in)  :: abort ! optional flag controlling abort
+
+   !---------------------------Local workspace-----------------------------
+   integer :: m                                   ! budget index
+   logical :: abort_on_error
+   character(len=*), parameter :: sub='budget_put_ind'
+   !-----------------------------------------------------------------------
+
+   ! Find budget name in list
+   do m = 1, budget_array_max
+      if (trim(name) == trim(budget_stagename(m)).or.trim(name)==trim(budget_name(m))) then
+         budget_globals(m,me_idx) = global
+         if (me_idx==1) write(iulog,*)'putting global for ',trim(name),'=',global
+         return
+      end if
+   end do
+
+   ! Unrecognized name
+   abort_on_error = .true.
+   if (present(abort)) abort_on_error = abort
+   
+   if (abort_on_error) then
+      write(iulog, *) sub//': FATAL: name:', name,  ' not found in list:', budget_name(:)
+      write(iulog, *) sub//': FATAL: name:', name,  ' not found in list:', budget_stagename(:)
+      call endrun(sub//': FATAL: name not found')
+   end if
+
+ end subroutine budget_put_global
+!==============================================================================
+
 subroutine budget_get_ind (name, budget_ind, abort)
 
    ! Get the index of a budget.  Optional abort argument allows returning
@@ -512,7 +606,7 @@ subroutine budget_get_ind (name, budget_ind, abort)
 
    ! Find budget name in list
    do m = 1, budget_array_max
-      if (name == budget_name(m)) then
+      if (trim(name) == trim(budget_name(m)).or.trim(name)==trim(budget_stagename(m))) then
          budget_ind  = m
          return
       end if
@@ -524,6 +618,7 @@ subroutine budget_get_ind (name, budget_ind, abort)
    
    if (abort_on_error) then
       write(iulog, *) sub//': FATAL: name:', name,  ' not found in list:', budget_name(:)
+      write(iulog, *) sub//': FATAL: name:', name,  ' not found in list:', budget_stagename(:)
       call endrun(sub//': FATAL: name not found')
    end if
 
@@ -549,7 +644,7 @@ function budget_ind_byname (name)
 
    budget_ind_byname  = -1
    do m = 1, budget_array_max
-      if (trim(name) == trim(budget_name(m))) then
+      if (trim(name) == trim(budget_name(m)).or.trim(name) == trim(budget_stagename(m))) then
          budget_ind_byname  = m
          return
       end if
@@ -557,7 +652,7 @@ function budget_ind_byname (name)
    if (budget_ind_byname  == -1) then
       write(iulog,*)'ind_byname failed, name=',trim(name),'budget_name='
       do m = 1, budget_array_max
-         write(iulog,*)'budget_name(',m,')=',budget_name(m)
+         write(iulog,*)'budget_name(',m,')=',trim(budget_name(m))
       end do
    end if
          
@@ -577,7 +672,7 @@ subroutine budget_chk_dim
    if (masterproc) then
       write(iulog,*) 'Budgets  list:'
       do i = 1, budget_num
-         write(iulog,'(2x,i4,2x,a8,2x,a128)') i, budget_name(i), budget_longname(i)
+         write(iulog,'(2x,i4,2x,a8,2x,a128)') i, trim(budget_name(i)), trim(budget_longname(i))
       end do
    end if
 

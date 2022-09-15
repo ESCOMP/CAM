@@ -13,7 +13,7 @@ module physics_types
   use cam_abortutils,   only: endrun
   use phys_control,     only: waccmx_is
   use shr_const_mod,    only: shr_const_rwv
-  use budgets,          only: budget_array_max,budget_name
+  use budgets,          only: budget_array_max,budget_name,budget_me_varnum
 
   implicit none
   private          ! Make default type private to the module
@@ -1441,7 +1441,7 @@ end subroutine physics_ptend_copy
     end do
 
     do m = 1, budget_array_max
-       do k = 1, 7
+       do k = 1, budget_me_varnum
           do i = 1, ncol
              state_out%te_budgets(i,k,m) = state_in%te_budgets(i,k,m)
           end do
