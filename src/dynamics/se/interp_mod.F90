@@ -303,6 +303,8 @@ CONTAINS
         do ie = 1, nelemd
           fld_tmp(1:nsize,1:nsize,:,1,ie) = RESHAPE(fld_dyn(:,:,ie),(/nsize,nsize,numlev/))
         end do
+        !check if fill values are present:
+        usefillvalues = any(fld_tmp == fillvalue)
       else
         call initEdgeBuffer(par, edgebuf, elem, numlev,nthreads=1)
 
@@ -318,6 +320,7 @@ CONTAINS
           call edgeVunpack(edgebuf, fld_tmp(:,:,1:numlev,1,ie), numlev, 0, ie)
         end do
         call freeEdgeBuffer(edgebuf)
+        !check if fill values are present:
         usefillvalues = any(fld_tmp == fillvalue)
       end if
       deallocate(fld_dyn)
@@ -328,6 +331,8 @@ CONTAINS
       do ie = 1, nelemd
         fld_tmp(1:nsize,1:nsize,1:numlev,1,ie) = RESHAPE(fld(1:nsize*nsize,1:numlev,ie),(/nsize,nsize,numlev/))
       end do
+      !check if fillvalues are present:
+      usefillvalues = any(fld_tmp == fillvalue)
     end if
     !
     ! code for non-GLL grids: need to fill halo and interpolate (if on panel edge/corner) for bilinear interpolation
@@ -513,6 +518,8 @@ CONTAINS
         do ie = 1, nelemd
           fld_tmp(1:nsize,1:nsize,:,:,ie) = RESHAPE(fld_dyn(:,:,:,ie),(/nsize,nsize,2,numlev/))
         end do
+        !check if fill values are present:
+        usefillvalues = any(fld_tmp==fillvalue)
       else
         call initEdgeBuffer(par, edgebuf, elem, 2*numlev,nthreads=1)
 
@@ -529,6 +536,7 @@ CONTAINS
           call edgeVunpack(edgebuf, fld_tmp(:,:,:,:,ie), 2*numlev, 0, ie)
         end do
         call freeEdgeBuffer(edgebuf)
+        !check if fill values are present:
         usefillvalues = any(fld_tmp==fillvalue)
       end if
       deallocate(fld_dyn)
@@ -536,6 +544,7 @@ CONTAINS
       !
       ! not physics decomposition
       !
+      !check if fill values are present:
       usefillvalues = (any(fldu(1:nsize:1,nsize,:)==fillvalue) .or. any(fldv(1:nsize:1,nsize,:)==fillvalue))
       do ie = 1, nelemd
         fld_tmp(1:nsize,1:nsize,1,1:numlev,ie) = RESHAPE(fldu(1:nsize*nsize,1:numlev,ie),(/nsize,nsize,numlev/))
