@@ -90,23 +90,6 @@ subroutine budget_readnl(nlfile)
 
    !-----------------------------------------------------------------------------
 
-!!$   if (masterproc) then
-!!$      unitn = getunit()
-!!$      open( unitn, file=trim(nlfile), status='old' )
-!!$      call find_group_name(unitn, 'budgets_nl', status=ierr)
-!!$      if (ierr == 0) then
-!!$         read(unitn, budgets_nl, iostat=ierr)
-!!$         if (ierr /= 0) then
-!!$            call endrun(sub//': FATAL: reading namelist')
-!!$         end if
-!!$      end if
-!!$      close(unitn)
-!!$      call freeunit(unitn)
-!!$   end if
-
-!!$   if (masterproc) then
-!!$      write(iulog,*)'Summary of budget module options:'
-!!$   end if
 
 end subroutine budget_readnl
 
@@ -529,7 +512,6 @@ subroutine budget_get_global (name, me_idx, global, abort)
    do m = 1, budget_array_max
       if (trim(name) == trim(budget_stagename(m)).or.trim(name)==trim(budget_name(m))) then
          global  = budget_globals(m,me_idx)
-         if (me_idx==1) write(iulog,*)'found global for ',trim(name),'=',global
          return
       end if
    end do
@@ -539,8 +521,6 @@ subroutine budget_get_global (name, me_idx, global, abort)
    if (present(abort)) abort_on_error = abort
    
    if (abort_on_error) then
-      write(iulog, *) sub//': FATAL: name:', name,  ' not found in list:', budget_name(:)
-      write(iulog, *) sub//': FATAL: name:', name,  ' not found in list:', budget_stagename(:)
       call endrun(sub//': FATAL: name not found')
    end if
 
@@ -569,7 +549,6 @@ subroutine budget_put_global (name, me_idx, global, abort)
    do m = 1, budget_array_max
       if (trim(name) == trim(budget_stagename(m)).or.trim(name)==trim(budget_name(m))) then
          budget_globals(m,me_idx) = global
-         if (me_idx==1) write(iulog,*)'putting global for ',trim(name),'=',global
          return
       end if
    end do
@@ -579,8 +558,6 @@ subroutine budget_put_global (name, me_idx, global, abort)
    if (present(abort)) abort_on_error = abort
    
    if (abort_on_error) then
-      write(iulog, *) sub//': FATAL: name:', name,  ' not found in list:', budget_name(:)
-      write(iulog, *) sub//': FATAL: name:', name,  ' not found in list:', budget_stagename(:)
       call endrun(sub//': FATAL: name not found')
    end if
 
@@ -617,8 +594,6 @@ subroutine budget_get_ind (name, budget_ind, abort)
    if (present(abort)) abort_on_error = abort
    
    if (abort_on_error) then
-      write(iulog, *) sub//': FATAL: name:', name,  ' not found in list:', budget_name(:)
-      write(iulog, *) sub//': FATAL: name:', name,  ' not found in list:', budget_stagename(:)
       call endrun(sub//': FATAL: name not found')
    end if
 
@@ -651,9 +626,7 @@ function budget_ind_byname (name)
    end do
    if (budget_ind_byname  == -1) then
       write(iulog,*)'ind_byname failed, name=',trim(name),'budget_name='
-      do m = 1, budget_array_max
-         write(iulog,*)'budget_name(',m,')=',trim(budget_name(m))
-      end do
+      call endrun()
    end if
          
 !==============================================================================

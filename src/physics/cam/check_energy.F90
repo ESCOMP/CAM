@@ -644,11 +644,8 @@ end subroutine check_energy_get_integrals
                    call endrun()
                 end if
                 if (state(lchnk)%budget_cnt(is1b)==0.or.state(lchnk)%budget_cnt(is2b)==0) then
-                   write(iulog,*)'zeroing because one of counts is zero ',trim(budget_name),state(lchnk)%budget_cnt(is1b),state(lchnk)%budget_cnt(is2b)
-!jt                   te(:,lchnk,i,:)=0._r8
-                   te(:,lchnk,i,:) = (state(lchnk)%te_budgets(:,:,is1)-state(lchnk)%te_budgets(:,:,is2))
+                   te(:,lchnk,i,:)=0._r8
                 else          
-                   write(iulog,*)'calculating diff for ',trim(budget_name),' cnt=',state(lchnk)%budget_cnt(is1b)
                    te(:,lchnk,i,:) = (state(lchnk)%te_budgets(:,:,is1)-state(lchnk)%te_budgets(:,:,is2))/state(lchnk)%budget_cnt(is1b)
                 end if
              else if (budget_optype=='sum') then
@@ -658,8 +655,7 @@ end subroutine check_energy_get_integrals
                    call endrun()
                 end if
                 if (state(lchnk)%budget_cnt(is1b)==0.or.state(lchnk)%budget_cnt(is2b)==0) then
-!jt                   te(:,lchnk,i,:)=0._r8
-                   te(:,lchnk,i,:) = (state(lchnk)%te_budgets(:,:,is1)+state(lchnk)%te_budgets(:,:,is2))
+                   te(:,lchnk,i,:)=0._r8
                 else          
                    te(:,lchnk,i,:) = (state(lchnk)%te_budgets(:,:,is1)+state(lchnk)%te_budgets(:,:,is2))/state(lchnk)%budget_cnt(is1b)
                 end if
@@ -688,7 +684,6 @@ end subroutine check_energy_get_integrals
     if (masterproc) then
        do ii=1,budget_num
           call budget_info(ii,name=budget_name,pkgtype=budget_pkgtype,optype=budget_optype,state_ind=ind)
-!jt          if (budget_pkgtype=='phy'.and.budget_optype=='dif') then
           if (budget_pkgtype=='phy') then
              do i=1,budget_me_varnum
                 call budget_put_global(trim(budget_name),i,te_glob(ind,i))
@@ -704,47 +699,6 @@ end subroutine check_energy_get_integrals
 !!$       call budget_get_global('BD_phys_tot',1,dyphys)
 !!$       call budget_get_global('BP_efix',1,phphys)
 
-!!$       call budget_info('BD_phy_params',state_ind=ind)
-!!$       do i=1,budget_me_varnum
-!!$          call budget_put_global('BD_phy_params',i,te_glob(ind,i))
-!!$       end do
-!!$       dyparam = te_glob(ind,1)
-!!$       call budget_info('BP_phy_params',state_ind=ind)
-!!$       do i=1,budget_me_varnum
-!!$          call budget_put_global('BP_phy_params',i,te_glob(ind,i))
-!!$       end do
-!!$       phparam = te_glob(ind,1)
-!!$       call budget_info('BD_pwork',state_ind=ind)
-!!$       do i=1,budget_me_varnum
-!!$          call budget_put_global('BD_pwork',i,te_glob(ind,i))
-!!$       end do
-!!$       dypwork = te_glob(ind,1)
-!!$       call budget_info('BP_pwork',state_ind=ind)
-!!$       do i=1,budget_me_varnum
-!!$          call budget_put_global('BP_pwork',i,te_glob(ind,i))
-!!$       end do
-!!$       phpwork = te_glob(ind,1)
-!!$       call budget_info('BD_efix',state_ind=ind)
-!!$       do i=1,budget_me_varnum
-!!$          call budget_put_global('BD_efix',i,te_glob(ind,i))
-!!$       end do
-!!$       dyefix = te_glob(ind,1)
-!!$       call budget_info('BP_efix',state_ind=ind)
-!!$       do i=1,budget_me_varnum
-!!$          call budget_put_global('BP_efix',i,te_glob(ind,i))
-!!$       end do
-!!$       phefix = te_glob(ind,1)
-!!$       call budget_info('BD_phys_tot',state_ind=ind)
-!!$       do i=1,budget_me_varnum
-!!$          call budget_put_global('BD_phys_tot',i,te_glob(ind,i))
-!!$       end do
-!!$       dyphys = te_glob(ind,1)
-!!$       call budget_info('BP_phys_tot',state_ind=ind)
-!!$       do i=1,budget_me_varnum
-!!$          call budget_put_global('BP_phys_tot',i,te_glob(ind,i))
-!!$       end do
-!!$       phphys = te_glob(ind,1)
-!!$       !jt       if (masterproc) then
 !!$       write(iulog,'(1x,a,1x,4(1x,e25.17))') "nstep, phys param,pwork,efix,phys", phparam, phpwork, phefix, phphys
 !!$       write(iulog,'(1x,a,1x,4(1x,e25.17))') "nstep, dyn param,pwork,efix,phys", dyparam, dypwork, dyefix, dyphys
     end if
@@ -779,13 +733,11 @@ end subroutine check_energy_get_integrals
 #endif
 ! add (-) global mean total energy difference as heating
     ptend%s(:ncol,:pver) = heat_glob
-!!$    write(iulog,*) "chk_fix: heat", state%lchnk, ncol, heat_glob
 
 ! compute effective sensible heat flux
     do i = 1, ncol
        eshflx(i) = heat_glob * (state%pint(i,pver+1) - state%pint(i,1)) / gravit
     end do
-!!!    if (nstep > 0) write(iulog,*) "heat", heat_glob, eshflx(1)
 
     return
   end subroutine check_energy_fix
