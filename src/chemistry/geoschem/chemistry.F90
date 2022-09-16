@@ -34,6 +34,9 @@ module chemistry
 
   use chem_mods,           only : nSlvd, slvd_Lst, slvd_ref_MMR
 
+  !--------------------------------------------------------------------
+  ! CAM modules
+  !--------------------------------------------------------------------
   ! Exit routine in CAM
   use cam_abortutils,      only : endrun
 
@@ -262,6 +265,8 @@ contains
 
     ! Initialize pointer
     ThisSpc => NULL()
+
+    if (debug .and. masterproc) write(iulog,'(a)') 'chem_register: registering advected constituents for GEOS-Chem chemistry'
 
     ! SDE 2018-05-02: This seems to get called before anything else
     ! that includes CHEM_INIT
@@ -501,16 +506,21 @@ contains
     ! More information:
     ! http://www.cesm.ucar.edu/models/atm-cam/docs/phys-interface/node5.html
 
+    if (debug .and. masterproc) write(iulog,'(a,i4,a)') 'chem_register: looping over gas_pcnst (length', gas_pcnst, ') to map solsym onto GEOS-Chem species'
+
     DO N = 1, gas_pcnst
        ! Map solsym onto GEOS-Chem species
        map2chm(N) = Ind_(TRIM(solsym(N)))
        IF ( map2chm(N) < 0 ) THEN
-          ! This is not a GEOS-Chem species and we thus map on constituents
+          ! This is not a GEOS-Chem species and we thus map to constituents list.
           ! Most likely, these will be MAM aerosols
           ! We store the index as the opposite to not confuse with GEOS-Chem
           ! indices.
           CALL cnst_get_ind(TRIM(solsym(N)), I, abort=.True.)
           map2chm(N) = -I
+          if (debug .and. masterproc) write(iulog,'(a,a,a,I4,a,I4)') ' -> solsym species ', trim(solsym(N)), ' (index ', N, ') is not a GEOS-Chem species. Mapping to negative constituent index: ', map2chm(N)
+       ELSE
+          if (debug .and. masterproc) write(iulog,'(a,a,a,I4,a,I4)') ' -> solsym species ', trim(solsym(N)), ' (index ', N, ') mapped to GEOS-Chem species ', map2chm(N)
        ENDIF
     ENDDO
     ! Get constituent index of specific humidity
@@ -524,13 +534,17 @@ contains
 
     nIgnored = 0
 
+    if (debug .and. masterproc) write(iulog,'(a,i4,a)') 'chem_register: looping over gas dry deposition list with ', nddvels, ' species'
+
     DO N = 1, nddvels
 
        ! The species names need to be convert to upper case as,
        ! for instance, BR2 != Br2
        drySpc_ndx(N) = get_spc_ndx( to_upper(drydep_list(N)) )
 
-       IF ( MasterProc .AND. ( drySpc_ndx(N) < 0 ) ) THEN
+       if (debug .and. masterproc) write(iulog,'(a,a,a,i4,a,i4)') ' -> species ', trim(drydep_list(N)), ' in dry deposition list at index ', N, ' maps to species in solsym at index ', drySpc_ndx(N)
+
+       IF ( MasterProc .and. ( drySpc_ndx(N) < 0 ) ) THEN
           Write(iulog,'(a,a)') ' ## Ignoring dry deposition of ', &
                                TRIM(drydep_list(N))
           nIgnored = nIgnored + 1
@@ -626,7 +640,7 @@ contains
     !==============================================================
 
     IF ( MasterProc ) THEN
-       Write(iulog,'(/, a)') '### Summary of GEOS-Chem species: '
+       Write(iulog,'(/, a)') '### Summary of GEOS-Chem species (end of chem_register): '
        Write(iulog,'( a)') REPEAT( '-', 50 )
        Write(iulog,'( a)') '+ List of advected species: '
        Write(iulog,100) 'ID', 'Tracer', ''!'Dry deposition (T/F)'
@@ -661,6 +675,7 @@ contains
     call pbuf_add_field('HCO_IN_JNO2', 'global', dtype_r8, (/pcols/), tmpIdx)
     call pbuf_add_field('HCO_IN_JOH', 'global',  dtype_r8, (/pcols/), tmpIdx)
 
+    if (debug .and. masterproc) write(iulog,'(a)') 'chem_register: advected constituent registration for GEOS-Chem chemistry complete '
 
   end subroutine chem_register
 
@@ -718,6 +733,8 @@ contains
     ! ghg chem
 
     namelist /chem_inparm/ bndtvg, h2orates, ghg_chem
+
+    if (debug .and. masterproc) write(iulog,'(a)') 'chem_readnl: reading namelists for GEOS-Chem chemistry'
 
     ALLOCATE(drySpc_ndx(nddvels), STAT=IERR)
     IF ( IERR .NE. 0 ) CALL ENDRUN('Failed to allocate drySpc_ndx')
@@ -800,6 +817,8 @@ contains
           IF ( INDEX( LINE, 'transported_species' ) > 0 ) EXIT
        ENDDO
 
+       if (debug .and. masterproc) write(iulog,'(a)') 'chem_readnl: reading advected species list from geoschem_config.yml'
+
        ! Read in all advected species names and add them to tracer names list
        nTracers = 0
        DO WHILE ( LEN_TRIM( line ) > 0 )
@@ -823,6 +842,7 @@ contains
              nTracers = nTracers + 1
              tracerNames(nTracers) = TRIM(substrs(1))
 
+             write(iulog,'(a,i4,a,a)') ' ', nTracers, ' ', TRIM(substrs(1))
           ENDIF
        ENDDO
        CLOSE(unitn)
@@ -842,6 +862,9 @@ contains
           CALL ENDRUN('chem_readnl: too many species - increase nSlsmax')
        ENDIF
 
+       if (debug .and. masterproc) write(iulog,'(a)') 'chem_readnl: getting non-advected (short-lived) species list from KPP'
+       if (debug .and. masterproc) write(iulog,'(a)') 'NOTE: does not include CO2 even if CO2 is not advected'
+
        nSls = 0
        DO I = 1, nSpec
           ! Get the name of the species from KPP
@@ -853,6 +876,7 @@ contains
              ! Genuine new short-lived species
              nSls = nSls + 1
              slsNames(nSls) = TRIM(line)
+             write(iulog,'(a,i4,a,a)') ' ', nSls, ' ', TRIM(slsNames(nSls))
           ENDIF
        ENDDO
 
@@ -918,6 +942,8 @@ contains
     DO I = 1, nSls
        slvd_Lst(I) = TRIM(slsNames(I))
     ENDDO
+
+    if (debug .and. masterproc) write(iulog,'(a)') 'chem_readnl: reading GEOS-Chem chemistry namelists complete'
 
   end subroutine chem_readnl
 
@@ -1082,6 +1108,8 @@ contains
 
     ! Initialize pointers
     SpcInfo   => NULL()
+
+    if (debug .and. masterproc) write(iulog,'(a)') 'chem_init: initializing GEOS-Chem chemistry'
 
     ! LCHNK: which chunks we have on this process
     LCHNK = phys_state%LCHNK
@@ -1688,6 +1716,8 @@ contains
 
     ! Cleanup
     Call Cleanup_State_Grid( maxGrid, RC )
+
+    if (debug .and. masterproc) write(iulog,'(a)') 'chem_init: GEOS-Chem chemistry initialization complete'
 
   end subroutine chem_init
 
@@ -4313,7 +4343,7 @@ contains
 
     TYPE(file_desc_t) :: File
 
-    IF (MasterProc) WRITE(iulog,'(a)') 'GCCALL CHEM_INIT_RESTART'
+    WRITE(iulog,'(a)') 'chem_init_restart: init restarts for tracer sources and offline fields'
 
     !
     ! data for offline tracers
@@ -4336,7 +4366,7 @@ contains
 
     TYPE(file_desc_t) :: File
 
-    IF ( MasterProc ) WRITE(iulog,'(a)') 'GCCALL CHEM_WRITE_RESTART'
+    WRITE(iulog,'(a)') 'chem_write_restart: writing restarts for tracer sources and offline fields'
     !
     ! data for offline tracers
     !
@@ -4357,7 +4387,7 @@ contains
 
     TYPE(file_desc_t) :: File
 
-    IF ( MasterProc ) WRITE(iulog,'(a)') 'GCCALL CHEM_READ_RESTART'
+    WRITE(iulog,'(a)') 'GCCALL CHEM_READ_RESTART'
     !
     ! data for offline tracers
     !
