@@ -167,26 +167,8 @@ module chemistry
   CHARACTER(LEN=255)         :: ThisLoc
   CHARACTER(LEN=255)         :: ErrMsg
 
-! ewl: comment out certain files used only for dry deposition
-!  ! Filenames to compute dry deposition velocities similarly to MOZART
-!  character(len=shr_kind_cl) :: clim_soilw_file = 'clim_soilw_file'
-!  character(len=shr_kind_cl) :: depvel_file     = ''
+  ! For dry deposition
   character(len=shr_kind_cl) :: depvel_lnd_file = 'depvel_lnd_file'
-!  character(len=shr_kind_cl) :: season_wes_file = 'season_wes_file'
-!
-!  character(len=shr_kind_cl) :: srf_emis_specifier(pcnst) = ''
-!  character(len=shr_kind_cl) :: ext_frc_specifier(pcnst) = ''
-!
-!  character(len=24)          :: srf_emis_type = 'CYCLICAL' ! 'CYCLICAL' | 'SERIAL' |  'INTERP_MISSING_MONTHS'
-!  integer                    :: srf_emis_cycle_yr  = 0
-!  integer                    :: srf_emis_fixed_ymd = 0
-!  integer                    :: srf_emis_fixed_tod = 0
-!
-!  character(len=24)          :: ext_frc_type = 'CYCLICAL' ! 'CYCLICAL' | 'SERIAL' |  'INTERP_MISSING_MONTHS'
-!  integer                    :: ext_frc_cycle_yr  = 0
-!  integer                    :: ext_frc_fixed_ymd = 0
-!  integer                    :: ext_frc_fixed_tod = 0
-
 
 !================================================================================================
 contains
@@ -711,24 +693,8 @@ contains
     ! Assume a successful return until otherwise
     RC                      = GC_SUCCESS
 
-! ewl: remove several entries from chem_inparm used for dry deposition:
-!      clim_soilw_file, depvel_file, season_wes_file;
-    ! The following files are required to compute land maps, required to perform
-    ! aerosol dry deposition
-!ewl: need to play around with need to include these (ext_* and srf_*) for drydep
     namelist /chem_inparm/ lght_no_prd_factor,  &
                            depvel_lnd_file
-!, &
-!                           ext_frc_specifier,  &
-!                           ext_frc_type,       &
-!                           ext_frc_cycle_yr,   &
-!                           ext_frc_fixed_ymd,  &
-!                           ext_frc_fixed_tod,  &
-!                           srf_emis_specifier, &
-!                           srf_emis_cycle_yr,  &
-!                           srf_emis_fixed_ymd, &
-!                           srf_emis_fixed_tod, &
-!                           srf_emis_type
 
     ! ghg chem
 
@@ -907,27 +873,8 @@ contains
     CALL MPIBCAST ( slsNames,    LEN(slsNames(1))*nSlsMax,        MPICHAR, 0, MPICOM )
 
     ! Broadcast namelist variables
-
-! ewl: remove broadcast of 4 files used for dry deposition only; srf_emis and ext_frc too.
-    ! The following files are required to compute land maps, required to perform
-    ! aerosol dry deposition
     CALL MPIBCAST (depvel_lnd_file, LEN(depvel_lnd_file), MPICHAR, 0, MPICOM)
-!    CALL MPIBCAST (clim_soilw_file, LEN(clim_soilw_file), MPICHAR, 0, MPICOM)
-!    CALL MPIBCAST (season_wes_file, LEN(season_wes_file), MPICHAR, 0, MPICOM)
-
     CALL MPIBCAST (lght_no_prd_factor, 1,                                MPIR8,   0, MPICOM)
-!    CALL MPIBCAST (depvel_file,        LEN(depvel_file),                 MPICHAR, 0, MPICOM)
-!    CALL MPIBCAST (srf_emis_specifier, LEN(srf_emis_specifier(1))*pcnst, MPICHAR, 0, MPICOM)
-!    CALL MPIBCAST (srf_emis_type,      LEN(srf_emis_type),               MPICHAR, 0, MPICOM)
-!    CALL MPIBCAST (srf_emis_cycle_yr,  1,                                MPIINT,  0, MPICOM)
-!    CALL MPIBCAST (srf_emis_fixed_ymd, 1,                                MPIINT,  0, MPICOM)
-!    CALL MPIBCAST (srf_emis_fixed_tod, 1,                                MPIINT,  0, MPICOM)
-!    CALL MPIBCAST (ext_frc_specifier,  LEN(ext_frc_specifier(1))*pcnst,  MPICHAR, 0, MPICOM)
-!    CALL MPIBCAST (ext_frc_type,       LEN(ext_frc_type),                MPICHAR, 0, MPICOM)
-!    CALL MPIBCAST (ext_frc_cycle_yr,   1,                                MPIINT,  0, MPICOM)
-!    CALL MPIBCAST (ext_frc_fixed_ymd,  1,                                MPIINT,  0, MPICOM)
-!    CALL MPIBCAST (ext_frc_fixed_tod,  1,                                MPIINT,  0, MPICOM)
-
     CALL MPIBCAST (ghg_chem,           1,                                MPILOG,  0, MPICOM)
     CALL MPIBCAST (bndtvg,             LEN(bndtvg),                      MPICHAR, 0, MPICOM)
     CALL MPIBCAST (h2orates,           LEN(h2orates),                    MPICHAR, 0, MPICOM)
@@ -3503,7 +3450,7 @@ contains
     !
     ! For now, dry deposition velocities are only computed for gases
     ! (which is what CLM deals with). Dry deposition for aerosols is
-    ! work in progress. <-- ewl...is this still true???
+    ! work in progress.
     !
     ! Thibaud M. Fritz - 27 Feb 2020
     !==================================================================
