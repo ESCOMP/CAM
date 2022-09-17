@@ -40,7 +40,8 @@ module aerosol_state_mod
      generic :: icenuc_size_wght => icenuc_size_wght1,icenuc_size_wght2
      procedure :: icenuc_type_wght_base
      procedure :: icenuc_type_wght => icenuc_type_wght_base
- end type aerosol_state
+     procedure :: nuclice_get_numdens
+  end type aerosol_state
 
   ! for state fields
   type ptr2d_t
@@ -272,7 +273,7 @@ contains
   !------------------------------------------------------------------------------
   ! returns aerosol type weights for a given aerosol type and bin
   !------------------------------------------------------------------------------
-  subroutine icenuc_type_wght_base(self, bin_ndx, ncol, nlev, species_type, aero_props, wght)
+  subroutine icenuc_type_wght_base(self, bin_ndx, ncol, nlev, species_type, aero_props, rho, wght)
 
     use aerosol_properties_mod, only: aerosol_properties
 
@@ -282,18 +283,19 @@ contains
     integer, intent(in) :: nlev                   ! number of vertical levels
     character(len=*), intent(in) :: species_type  ! species type
     class(aerosol_properties), intent(in) :: aero_props ! aerosol properties object
-    real(r8), intent(out) :: wght(:,:)            ! type weights
+    real(r8), intent(in) :: rho(ncol,nlev)        ! air density (kg m-3)
+    real(r8), intent(out) :: wght(ncol,nlev)            ! type weights
 
-    real(r8) :: mmr(ncol,nlev)
-    real(r8) :: totalmmr(ncol,nlev)
+    real(r8) :: mass(ncol,nlev)
+    real(r8) :: totalmass(ncol,nlev)
     real(r8), pointer :: aer_bin(:,:)
 
     character(len=32) :: spectype, sptype
     integer :: l
 
     wght(:,:) = 0._r8
-    totalmmr(:,:) = 0._r8
-    mmr(:,:)   = 0._r8
+    totalmass(:,:) = 0._r8
+    mass(:,:)   = 0._r8
 
     if (species_type=='sulfate_strat') then
        sptype = 'sulfate'
@@ -306,18 +308,77 @@ contains
        call self%get_ambient_mmr(l, bin_ndx, aer_bin)
        call aero_props%species_type(bin_ndx, l, spectype=spectype)
 
-       totalmmr(:ncol,:) = totalmmr(:ncol,:) + aer_bin(:ncol,:)
+       totalmass(:ncol,:) = totalmass(:ncol,:) + aer_bin(:ncol,:)*rho(:ncol,:)
 
        if (trim(spectype) == trim(sptype)) then
-          mmr(:ncol,:) = mmr(:ncol,:) + aer_bin(:ncol,:)
+          mass(:ncol,:) = mass(:ncol,:) + aer_bin(:ncol,:)*rho(:ncol,:)
        end if
 
     end do
 
-    where (totalmmr(:ncol,:) > 0._r8)
-       wght(:ncol,:) = mmr(:ncol,:)/totalmmr(:ncol,:)
+    where (totalmass(:ncol,:) > 0._r8)
+       wght(:ncol,:) = mass(:ncol,:)/totalmass(:ncol,:)
     end where
 
   end subroutine icenuc_type_wght_base
+
+  !------------------------------------------------------------------------------
+  subroutine nuclice_get_numdens(self, aero_props, use_preexisting_ice, ncol, nlev, rho, dust_num_col, sulf_num_col, soot_num_col, sulf_num_tot_col )
+
+    class(aerosol_state), intent(in) :: self
+    class(aerosol_properties), intent(in) :: aero_props ! aerosol properties object
+
+    logical, intent(in) :: use_preexisting_ice
+    integer, intent(in) :: ncol                   ! number of columns
+    integer, intent(in) :: nlev                   ! number of vertical levels
+    real(r8), intent(in) :: rho(ncol,nlev) ! air density (kg m-3)
+    real(r8), intent(out) :: dust_num_col(ncol,nlev) ! dust number densities (#/cm^3)
+    real(r8), intent(out) :: sulf_num_col(ncol,nlev) ! sulfate number densities (#/cm^3)
+    real(r8), intent(out) :: soot_num_col(ncol,nlev) ! soot number densities (#/cm^3)
+    real(r8), intent(out) :: sulf_num_tot_col(ncol,nlev) ! stratopsheric sulfate number densities (#/cm^3)
+
+    integer :: m,l
+    character(len=32) :: spectype
+    real(r8) :: size_wghts(ncol,nlev)
+    real(r8) :: type_wghts(ncol,nlev)
+
+    real(r8), pointer :: num_col(:,:)
+
+    ! collect number densities (#/cm^3) for dust, sulfate, and soot
+    do m = 1,aero_props%nbins()
+
+       call self%get_ambient_num(m, num_col)
+
+       do l = 1,aero_props%nspecies(m)
+
+          call aero_props%species_type(m, l, spectype)
+
+          call self%icenuc_size_wght(m, ncol, nlev, spectype, use_preexisting_ice, size_wghts)
+
+          call self%icenuc_type_wght(m, ncol, nlev, spectype, aero_props, rho, type_wghts)
+
+          select case ( trim(spectype) )
+          case('dust')
+             dust_num_col(:ncol,:) = dust_num_col(:ncol,:) &
+                  + size_wghts(:ncol,:)*type_wghts(:ncol,:)*num_col(:ncol,:)*rho(:ncol,:)*1.0e-6_r8
+          case('sulfate')
+             sulf_num_col(:ncol,:) = sulf_num_col(:ncol,:) &
+                  + size_wghts(:ncol,:)*type_wghts(:ncol,:)*num_col(:ncol,:)*rho(:ncol,:)*1.0e-6_r8
+          case('black-c')
+             soot_num_col(:ncol,:) = soot_num_col(:ncol,:) &
+                  + size_wghts(:ncol,:)*type_wghts(:ncol,:)*num_col(:ncol,:)*rho(:ncol,:)*1.0e-6_r8
+          end select
+
+       enddo
+
+       ! stratospheric sulfates
+       call self%icenuc_size_wght(m, ncol, nlev, 'sulfate_strat', use_preexisting_ice, size_wghts)
+       call self%icenuc_type_wght(m, ncol, nlev, 'sulfate_strat', aero_props, rho, type_wghts)
+       sulf_num_tot_col(:ncol,:) = sulf_num_tot_col(:ncol,:) &
+            + size_wghts(:ncol,:)*type_wghts(:ncol,:)*num_col(:ncol,:)*rho(:ncol,:)*1.0e-6_r8
+
+    enddo
+
+  end subroutine nuclice_get_numdens
 
 end module aerosol_state_mod

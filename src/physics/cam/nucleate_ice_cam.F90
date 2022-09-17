@@ -588,39 +588,9 @@ subroutine nucleate_ice_cam_calc( aero_props, aero_state, &
    if (clim_modal_aero) then
 
       ! collect number densities (#/cm^3) for dust, sulfate, and soot
-      do m = 1,aero_props%nbins()
+      call aero_state%nuclice_get_numdens( aero_props, use_preexisting_ice, pcols, pver, rho, &
+                                           dust_num_col, sulf_num_col, soot_num_col, sulf_num_tot_col )
 
-         call aero_state%get_ambient_num(m, num_col)
-
-         do l = 1,aero_props%nspecies(m)
-
-            call aero_props%species_type(m, l, spectype)
-
-            call aero_state%icenuc_size_wght(m, ncol, pver, spectype, use_preexisting_ice, size_wghts)
-
-            call aero_state%icenuc_type_wght(m, ncol, pver, spectype, aero_props, type_wghts)
-
-            select case ( trim(spectype) )
-            case('dust')
-               dust_num_col(:ncol,:) = dust_num_col(:ncol,:) &
-                    + size_wghts(:ncol,:)*type_wghts(:ncol,:)*num_col(:ncol,:)*rho(:ncol,:)*1.0e-6_r8
-            case('sulfate')
-               sulf_num_col(:ncol,:) = sulf_num_col(:ncol,:) &
-                    + size_wghts(:ncol,:)*type_wghts(:ncol,:)*num_col(:ncol,:)*rho(:ncol,:)*1.0e-6_r8
-            case('black-c')
-               soot_num_col(:ncol,:) = soot_num_col(:ncol,:) &
-                    + size_wghts(:ncol,:)*type_wghts(:ncol,:)*num_col(:ncol,:)*rho(:ncol,:)*1.0e-6_r8
-            end select
-
-         enddo
-
-         ! stratospheric sulfates
-         call aero_state%icenuc_size_wght(m, ncol, pver, 'sulfate_strat', use_preexisting_ice, size_wghts)
-         call aero_state%icenuc_type_wght(m, ncol, pver, 'sulfate_strat', aero_props, type_wghts)
-         sulf_num_tot_col(:ncol,:) = sulf_num_tot_col(:ncol,:) &
-              + size_wghts(:ncol,:)*type_wghts(:ncol,:)*num_col(:ncol,:)*rho(:ncol,:)*1.0e-6_r8
-
-      enddo
    else
       ! for bulk model
       dust_num_col(:ncol,:) = naer2(:ncol,:,idxdst1)/25._r8 *1.0e-6_r8 &
