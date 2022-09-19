@@ -460,7 +460,8 @@ subroutine nucleate_ice_cam_calc( aero_props, aero_state, &
    real(r8), pointer :: cld_num(:,:)
    real(r8), pointer :: cld_mmr(:,:)
 
-   real(r8) :: delmmr, delmmr_sum, bin_mmr_change
+   real(r8) :: delmmr, delmmr_sum
+   real(r8) :: delnum, delnum_sum
 
    !-------------------------------------------------------------------------------
 
@@ -660,6 +661,7 @@ subroutine nucleate_ice_cam_calc( aero_props, aero_state, &
 
                      if (amb_num(i,k)>0._r8) then
                         delmmr_sum = 0._r8
+                        delnum_sum = 0._r8
 
                         ! iterate over the species within the bin
                         do l = 1, aero_props%nspecies(m)
@@ -679,13 +681,16 @@ subroutine nucleate_ice_cam_calc( aero_props, aero_state, &
 
                                  ! determine change in aerosol mass
                                  delmmr = 0._r8
+                                 delnum = 0._r8
                                  if (trim(spectype)=='dust') then
                                     if (dst_num>0._r8) then
                                        delmmr = (odst_num / dst_num) * icldm(i,k) * amb_mmr(i,k) * wght
+                                       delnum = (odst_num * icldm(i,k)) /rho(i,k)/1e-6_r8
                                     endif
                                  elseif (trim(spectype)=='sulfate') then
                                     if (so4_num>0._r8) then
                                        delmmr = (oso4_num / so4_num) * icldm(i,k) * amb_mmr(i,k) * wght
+                                       delnum = (oso4_num * icldm(i,k)) /rho(i,k)/1e-6_r8
                                     endif
                                  endif
 
@@ -699,14 +704,12 @@ subroutine nucleate_ice_cam_calc( aero_props, aero_state, &
                                  cld_mmr(i,k) = cld_mmr(i,k) + delmmr
 
                                  delmmr_sum = delmmr_sum + delmmr
+                                 delnum_sum = delnum_sum + delnum
                               end if
                            end if
                         end do
 
                         idxtmp = aer_cnst_idx(m,0)
-
-                        ! total fractional change in bin mass
-                        bin_mmr_change = delmmr_sum/aero_state%ambient_total_bin_mmr(aero_props, m, i,k)
 
                         ! determine if there is a bin mass
                         if (aero_props%icenuc_updates_mmr(m,0)) then
@@ -720,20 +723,20 @@ subroutine nucleate_ice_cam_calc( aero_props, aero_state, &
                            end if
                            cld_mmr(i,k) = cld_mmr(i,k) + delmmr_sum
 
-                           ! apply the fractional change to bin number
-                           amb_num(i,k) = amb_num(i,k) - bin_mmr_change*amb_num(i,k)
+                           ! apply the total number change to bin number
+                           amb_num(i,k) = amb_num(i,k) - delnum_sum
                         else
                            ! if there is no bin mass compute updates/tendencies for bin number
-                           ! -- apply the fractional change to bin number
+                           ! -- apply the total number change to bin number
                            if (idxtmp>0) then
-                              ptend%q(i,k,idxtmp) = -bin_mmr_change*amb_num(i,k)/dtime
+                              ptend%q(i,k,idxtmp) = -delnum_sum/dtime
                            else
-                              amb_num(i,k) = amb_num(i,k) - bin_mmr_change*amb_num(i,k)
+                              amb_num(i,k) = amb_num(i,k) - delnum_sum
                            end if
                         endif
 
-                        ! apply the fractional change to bin number
-                        cld_num(i,k) = cld_num(i,k) + bin_mmr_change*amb_num(i,k)
+                        ! apply the total number change to bin number
+                        cld_num(i,k) = cld_num(i,k) + delnum_sum
 
                     end if
 
