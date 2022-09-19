@@ -283,8 +283,8 @@ contains
     integer, intent(in) :: nlev                   ! number of vertical levels
     character(len=*), intent(in) :: species_type  ! species type
     class(aerosol_properties), intent(in) :: aero_props ! aerosol properties object
-    real(r8), intent(in) :: rho(ncol,nlev)        ! air density (kg m-3)
-    real(r8), intent(out) :: wght(ncol,nlev)            ! type weights
+    real(r8), intent(in) :: rho(:,:)        ! air density (kg m-3)
+    real(r8), intent(out) :: wght(:,:)            ! type weights
 
     real(r8) :: mass(ncol,nlev)
     real(r8) :: totalmass(ncol,nlev)
@@ -331,11 +331,11 @@ contains
     logical, intent(in) :: use_preexisting_ice
     integer, intent(in) :: ncol                   ! number of columns
     integer, intent(in) :: nlev                   ! number of vertical levels
-    real(r8), intent(in) :: rho(ncol,nlev) ! air density (kg m-3)
-    real(r8), intent(out) :: dust_num_col(ncol,nlev) ! dust number densities (#/cm^3)
-    real(r8), intent(out) :: sulf_num_col(ncol,nlev) ! sulfate number densities (#/cm^3)
-    real(r8), intent(out) :: soot_num_col(ncol,nlev) ! soot number densities (#/cm^3)
-    real(r8), intent(out) :: sulf_num_tot_col(ncol,nlev) ! stratopsheric sulfate number densities (#/cm^3)
+    real(r8), intent(in) :: rho(:,:) ! air density (kg m-3)
+    real(r8), intent(out) :: dust_num_col(:,:) ! dust number densities (#/cm^3)
+    real(r8), intent(out) :: sulf_num_col(:,:) ! sulfate number densities (#/cm^3)
+    real(r8), intent(out) :: soot_num_col(:,:) ! soot number densities (#/cm^3)
+    real(r8), intent(out) :: sulf_num_tot_col(:,:) ! stratopsheric sulfate number densities (#/cm^3)
 
     integer :: m,l
     character(len=32) :: spectype
@@ -344,6 +344,11 @@ contains
 
     real(r8), pointer :: num_col(:,:)
 
+    dust_num_col(:,:) = 0._r8
+    sulf_num_col(:,:) = 0._r8
+    soot_num_col(:,:) = 0._r8
+    sulf_num_tot_col(:,:) = 0._r8
+    
     ! collect number densities (#/cm^3) for dust, sulfate, and soot
     do m = 1,aero_props%nbins()
 

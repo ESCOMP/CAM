@@ -333,8 +333,8 @@ contains
     integer, intent(in) :: nlev                   ! number of vertical levels
     character(len=*), intent(in) :: species_type  ! species type
     class(aerosol_properties), intent(in) :: aero_props ! aerosol properties object
-    real(r8), intent(in) :: rho(ncol,nlev)        ! air density (kg m-3)
-    real(r8), intent(out) :: wght(ncol,nlev)           ! type weights
+    real(r8), intent(in) :: rho(:,:)        ! air density (kg m-3)
+    real(r8), intent(out) :: wght(:,:)           ! type weights
 
     character(len=32) :: modetype
 

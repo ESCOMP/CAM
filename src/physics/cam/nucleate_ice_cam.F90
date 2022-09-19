@@ -588,7 +588,7 @@ subroutine nucleate_ice_cam_calc( aero_props, aero_state, &
    if (clim_modal_aero) then
 
       ! collect number densities (#/cm^3) for dust, sulfate, and soot
-      call aero_state%nuclice_get_numdens( aero_props, use_preexisting_ice, pcols, pver, rho, &
+      call aero_state%nuclice_get_numdens( aero_props, use_preexisting_ice, ncol, pver, rho, &
                                            dust_num_col, sulf_num_col, soot_num_col, sulf_num_tot_col )
 
    else
