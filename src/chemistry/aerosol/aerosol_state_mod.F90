@@ -348,7 +348,7 @@ contains
     sulf_num_col(:,:) = 0._r8
     soot_num_col(:,:) = 0._r8
     sulf_num_tot_col(:,:) = 0._r8
-    
+
     ! collect number densities (#/cm^3) for dust, sulfate, and soot
     do m = 1,aero_props%nbins()
 
@@ -367,8 +367,9 @@ contains
              dust_num_col(:ncol,:) = dust_num_col(:ncol,:) &
                   + size_wghts(:ncol,:)*type_wghts(:ncol,:)*num_col(:ncol,:)*rho(:ncol,:)*1.0e-6_r8
           case('sulfate')
+             ! This order of ops gives bit-for-bit results for cam5 phys ( use_preexisting_ice = .false. )
              sulf_num_col(:ncol,:) = sulf_num_col(:ncol,:) &
-                  + size_wghts(:ncol,:)*type_wghts(:ncol,:)*num_col(:ncol,:)*rho(:ncol,:)*1.0e-6_r8
+                  + num_col(:ncol,:)*rho(:ncol,:)*1.0e-6_r8 * size_wghts(:ncol,:)*type_wghts(:ncol,:)
           case('black-c')
              soot_num_col(:ncol,:) = soot_num_col(:ncol,:) &
                   + size_wghts(:ncol,:)*type_wghts(:ncol,:)*num_col(:ncol,:)*rho(:ncol,:)*1.0e-6_r8
