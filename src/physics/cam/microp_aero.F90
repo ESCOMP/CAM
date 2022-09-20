@@ -340,7 +340,11 @@ subroutine microp_aero_init(phys_state,pbuf2d)
       call add_default ('WSUB     ', 1, ' ')
    end if
 
-   call nucleate_ice_cam_init(aero_props_obj, mincld, bulk_scale, pbuf2d)
+   if (associated(aero_props_obj)) then
+      call nucleate_ice_cam_init(mincld, bulk_scale, pbuf2d, aero_props=aero_props_obj)
+   else
+      call nucleate_ice_cam_init(mincld, bulk_scale, pbuf2d)
+   end if
    call hetfrz_classnuc_cam_init(mincld)
 
 end subroutine microp_aero_init
@@ -678,7 +682,11 @@ subroutine microp_aero_run ( &
       end if
    endif
 
-   call nucleate_ice_cam_calc(aero_props_obj, aero_state1_obj, state1, wsubi, pbuf, deltatin, ptend_loc)
+   if (associated(aero_props_obj).and.associated(aero_state1_obj)) then
+      call nucleate_ice_cam_calc(state1, wsubi, pbuf, deltatin, ptend_loc, aero_props_obj, aero_state1_obj)
+   else
+      call nucleate_ice_cam_calc(state1, wsubi, pbuf, deltatin, ptend_loc)
+   end if
 
    call physics_ptend_sum(ptend_loc, ptend_all, ncol)
    call physics_update(state1, ptend_loc, deltatin)

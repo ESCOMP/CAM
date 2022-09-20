@@ -157,13 +157,13 @@ end subroutine nucleate_ice_cam_register
 
 !================================================================================================
 
-subroutine nucleate_ice_cam_init(aero_props, mincld_in, bulk_scale_in, pbuf2d)
+subroutine nucleate_ice_cam_init(mincld_in, bulk_scale_in, pbuf2d, aero_props)
    use phys_control, only: phys_getopts
    use time_manager, only: is_first_step
 
-   class(aerosol_properties), intent(in) :: aero_props
    real(r8), intent(in) :: mincld_in
    real(r8), intent(in) :: bulk_scale_in
+   class(aerosol_properties), optional, intent(in) :: aero_props
 
    type(physics_buffer_desc), pointer :: pbuf2d(:,:)
 
@@ -187,6 +187,10 @@ subroutine nucleate_ice_cam_init(aero_props, mincld_in, bulk_scale_in, pbuf2d)
    lq(:) = .false.
 
    if (prog_modal_aero.and.use_preexisting_ice) then
+
+      if (.not. present(aero_props)) then
+         call endrun(routine//' :  aero_props must be present')
+      end if
 
       ! constituent tendencies are calculated only if use_preexisting_ice is TRUE
       ! set lq for constituent tendencies --
@@ -360,19 +364,19 @@ end subroutine nucleate_ice_cam_init
 
 !================================================================================================
 
-subroutine nucleate_ice_cam_calc( aero_props, aero_state, &
-   state, wsubi, pbuf, dtime, ptend)
+subroutine nucleate_ice_cam_calc( &
+   state, wsubi, pbuf, dtime, ptend, aero_props, aero_state )
 
    use tropopause,     only: tropopause_findChemTrop
 
    ! arguments
-   class(aerosol_properties), intent(in) :: aero_props
-   class(aerosol_state), intent(in) :: aero_state
    type(physics_state), target, intent(in)    :: state
    real(r8),                    intent(in)    :: wsubi(:,:)
    type(physics_buffer_desc),   pointer       :: pbuf(:)
    real(r8),                    intent(in)    :: dtime
    type(physics_ptend),         intent(out)   :: ptend
+   class(aerosol_properties),optional, intent(in) :: aero_props
+   class(aerosol_state),optional, intent(in) :: aero_state
 
    ! local workspace
 
@@ -588,6 +592,10 @@ subroutine nucleate_ice_cam_calc( aero_props, aero_state, &
 
    if (clim_modal_aero) then
 
+      if (.not.(present(aero_props).and.present(aero_state))) then
+         call endrun('nucleate_ice_cam_calc: aero_props and aero_state must be present')
+      end if
+      
       ! collect number densities (#/cm^3) for dust, sulfate, and soot
       call aero_state%nuclice_get_numdens( aero_props, use_preexisting_ice, ncol, pver, rho, &
                                            dust_num_col, sulf_num_col, soot_num_col, sulf_num_tot_col )
