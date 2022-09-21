@@ -81,7 +81,7 @@ subroutine neu_wetdep_init
   do m=1,gas_wetdep_cnt
 !
     test_name = gas_wetdep_list(m)
-    if ( debug .and. masterproc ) print '(a,i4,a)','neu_wetdep_init: gas_wetdep_list species ',m,trim(test_name)
+    if ( debug .and. masterproc ) print '(a,i4,a,a)','neu_wetdep_init: gas_wetdep_list species ',m,' ',trim(test_name)
 !
 ! ewl: this mapping can be replaced by including Henry's Law etc for all species, which makes usage of
 ! the parameters more transparent. I will comment out....
