@@ -557,6 +557,11 @@ subroutine microp_aero_run ( &
    call physics_ptend_init(ptend_all, state%psetcols, 'microp_aero')
 
    if (clim_modal_aero) then
+      ! create an aerosol state object specifically for cam state1
+      aero_state1_obj => modal_aerosol_state( state1, pbuf )
+      if (.not.associated(aero_state1_obj)) then
+         call endrun('microp_aero_run: construction of aero_state1_obj modal_aerosol_state object failed')
+      end if
 
       itim_old = pbuf_old_tim_idx()
 
@@ -673,14 +678,6 @@ subroutine microp_aero_run ( &
 
    !cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
    !ICE Nucleation
-
-   if (clim_modal_aero) then
-      ! create an aerosol state object specifically for cam state1
-      aero_state1_obj => modal_aerosol_state( state1, pbuf )
-      if (.not.associated(aero_state1_obj)) then
-         call endrun('microp_aero_run: construction of aero_state1_obj modal_aerosol_state object failed')
-      end if
-   endif
 
    if (associated(aero_props_obj).and.associated(aero_state1_obj)) then
       call nucleate_ice_cam_calc(state1, wsubi, pbuf, deltatin, ptend_loc, aero_props_obj, aero_state1_obj)

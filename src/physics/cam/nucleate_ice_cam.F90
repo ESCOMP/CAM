@@ -45,7 +45,6 @@ public :: &
    nucleate_ice_cam_init,     &
    nucleate_ice_cam_calc
 
-
 ! Namelist variables
 logical, public, protected :: use_preexisting_ice = .false.
 logical                    :: hist_preexisting_ice = .false.
@@ -66,20 +65,20 @@ integer :: &
    numice_idx = -1
 
 integer :: &
-   naai_idx,     &
-   naai_hom_idx
+   naai_idx = -1,     &
+   naai_hom_idx = -1
 
 integer :: &
    ast_idx   = -1
 
 integer :: &
-    qsatfac_idx
+    qsatfac_idx = -1
 
 ! Bulk aerosols
 character(len=20), allocatable :: aername(:)
 real(r8), allocatable :: num_to_mass_aer(:)
 
-integer :: naer_all      ! number of aerosols affecting climate
+integer :: naer_all = -1 ! number of aerosols affecting climate
 integer :: idxsul   = -1 ! index in aerosol list for sulfate
 integer :: idxdst1  = -1 ! index in aerosol list for dust1
 integer :: idxdst2  = -1 ! index in aerosol list for dust2
@@ -88,10 +87,8 @@ integer :: idxdst4  = -1 ! index in aerosol list for dust4
 integer :: idxbcphi = -1 ! index in aerosol list for Soot (BCPHIL)
 
 ! modal aerosols
-logical :: clim_modal_aero
-logical :: prog_modal_aero
-
-integer :: nmodes = -1
+logical :: clim_modal_aero = .false.
+logical :: prog_modal_aero = .false.
 
 logical :: lq(pcnst) = .false. ! set flags true for constituents with non-zero tendencies
 
@@ -171,7 +168,8 @@ subroutine nucleate_ice_cam_init(mincld_in, bulk_scale_in, pbuf2d, aero_props)
    integer :: iaer
    integer :: ierr
    integer :: l, m
-   integer :: idxtmp = -1
+   integer :: idxtmp
+   integer :: nmodes
 
    character(len=*), parameter :: routine = 'nucleate_ice_cam_init'
    logical :: history_cesm_forcing
@@ -328,6 +326,7 @@ subroutine nucleate_ice_cam_init(mincld_in, bulk_scale_in, pbuf2d, aero_props)
    ! clim_modal_aero determines whether modal aerosols are used in the climate calculation.
    ! The modal aerosols can be either prognostic or prescribed.
    call rad_cnst_get_info(0, nmodes=nmodes)
+
    clim_modal_aero = (nmodes > 0)
 
    if (.not. clim_modal_aero) then
@@ -485,7 +484,9 @@ subroutine nucleate_ice_cam_calc( &
    end do
 
    if (clim_modal_aero) then
+
       call physics_ptend_init(ptend, state%psetcols, 'nucleatei', lq=lq)
+
    else
       ! init number/mass arrays for bulk aerosols
       allocate( &
@@ -595,7 +596,7 @@ subroutine nucleate_ice_cam_calc( &
       if (.not.(present(aero_props).and.present(aero_state))) then
          call endrun('nucleate_ice_cam_calc: aero_props and aero_state must be present')
       end if
-      
+
       ! collect number densities (#/cm^3) for dust, sulfate, and soot
       call aero_state%nuclice_get_numdens( aero_props, use_preexisting_ice, ncol, pver, rho, &
                                            dust_num_col, sulf_num_col, soot_num_col, sulf_num_tot_col )
@@ -746,7 +747,7 @@ subroutine nucleate_ice_cam_calc( &
                         ! apply the total number change to bin number
                         cld_num(i,k) = cld_num(i,k) + delnum_sum
 
-                    end if
+                     end if
 
                   end if
                end do
@@ -778,7 +779,6 @@ subroutine nucleate_ice_cam_calc( &
                   nihf(i,k) = nihf(i,k) + dso4_num
                endif
             else
-
                ! This maintains backwards compatibility with the previous version.
                if (pmid(i,k) <= 12500._r8 .and. pmid(i,k) > 100._r8 .and. abs(state%lat(i)) >= 60._r8 * pi / 180._r8) then
                   ramp = 1._r8 - min(1._r8, max(0._r8, (pmid(i,k) - 10000._r8) / 2500._r8))
