@@ -1,5 +1,6 @@
 module modal_aerosol_state_mod
   use shr_kind_mod, only: r8 => shr_kind_r8
+  use shr_spfn_mod, only: erf => shr_spfn_erf
   use aerosol_state_mod, only: aerosol_state, ptr2d_t
   use rad_constituents, only: rad_cnst_get_aer_mmr, rad_cnst_get_mode_num, rad_cnst_get_info
   use rad_constituents, only: rad_cnst_get_mode_props
