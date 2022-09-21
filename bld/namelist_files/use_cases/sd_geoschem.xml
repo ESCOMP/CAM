@@ -14,6 +14,8 @@
 <ncdata dyn="fv"  hgrid="0.9x1.25">/glade/p/univ/umit0034/Shared/GEOS-Chem/f.e20.FCSD.f09_f09_mg17.cesm2.1-exp002.001.cam.i.2005-01-01-00000_c180801.nc</ncdata>
 <bnd_topo hgrid="0.9x1.25">atm/cam/met/MERRA2/0.9x1.25/fv_0.9x1.25_nc3000_Nsw042_Nrs008_Co060_Fi001_ZR_sgh30_24km_GRNL_MERRA2_c171218.nc</bnd_topo>
 
+<dep_data_file>/glade/u/home/elundgren/drydep_henrys_law_nc/dep_data_file_geoschem.nc</dep_data_file>
+
 <!-- Settings in mostly common with sd_trop_strat_vbs_cam6.xml -->
 
 <start_ymd>20050101</start_ymd>
