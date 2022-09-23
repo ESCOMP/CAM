@@ -968,26 +968,26 @@ subroutine micro_pumas_cam_init(pbuf2d)
    call addfld ('PRCO',       (/ 'lev' /), 'A', 'kg/kg/s',  'Autoconversion of cloud water'                           )
    call addfld ('MNUCCCO',    (/ 'lev' /), 'A', 'kg/kg/s',  'Immersion freezing of cloud water'                       )
    call addfld ('MNUCCTO',    (/ 'lev' /), 'A', 'kg/kg/s',  'Contact freezing of cloud water'                         )
-   call addfld ('MNUCCDO',    (/ 'lev' /), 'A', 'kg/kg/s',  'Homogeneous and heterogeneous nucleation from vapor'     )
+   call addfld ('MNUCCDO',    (/ 'trop_cld_lev' /), 'A', 'kg/kg/s',  'Homogeneous and heterogeneous nucleation from vapor'     )
    call addfld ('MNUCCDOhet', (/ 'lev' /), 'A', 'kg/kg/s',  'Heterogeneous nucleation from vapor'                     )
    call addfld ('MSACWIO',    (/ 'lev' /), 'A', 'kg/kg/s',  'Conversion of cloud water from rime-splintering'         )
    call addfld ('PSACWSO',    (/ 'lev' /), 'A', 'kg/kg/s',  'Accretion of cloud water by snow'                        )
    call addfld ('BERGSO',     (/ 'lev' /), 'A', 'kg/kg/s',  'Conversion of cloud water to snow from bergeron'         )
    call addfld ('BERGO',      (/ 'lev' /), 'A', 'kg/kg/s',  'Conversion of cloud water to cloud ice from bergeron'    )
    call addfld ('MELTO',      (/ 'lev' /), 'A', 'kg/kg/s',  'Melting of cloud ice'                                    )
-   call addfld ('MELTSTOT',   (/ 'lev' /), 'A', 'kg/kg/s',  'Melting of snow'                                    )
-   call addfld ('MNUDEPO',   (/ 'lev' /), 'A', 'kg/kg/s',  'Deposition Nucleation'                                    )
+   call addfld ('MELTSTOT',   (/ 'trop_cld_lev' /), 'A', 'kg/kg/s',  'Melting of snow'                                    )
+   call addfld ('MNUDEPO',    (/ 'trop_cld_lev' /), 'A', 'kg/kg/s',  'Deposition Nucleation'                                    )
    call addfld ('HOMOO',      (/ 'lev' /), 'A', 'kg/kg/s',  'Homogeneous freezing of cloud water'                     )
    call addfld ('QCRESO',     (/ 'lev' /), 'A', 'kg/kg/s',  'Residual condensation term for cloud water'              )
    call addfld ('PRCIO',      (/ 'lev' /), 'A', 'kg/kg/s',  'Autoconversion of cloud ice to snow'                     )
    call addfld ('PRAIO',      (/ 'lev' /), 'A', 'kg/kg/s',  'Accretion of cloud ice to snow'                          )
    call addfld ('QIRESO',     (/ 'lev' /), 'A', 'kg/kg/s',  'Residual deposition term for cloud ice'                  )
-   call addfld ('MNUCCRO',    (/ 'lev' /), 'A', 'kg/kg/s',  'Heterogeneous freezing of rain to snow'                  )
-   call addfld ('MNUCCRIO',   (/ 'lev' /), 'A', 'kg/kg/s',  'Heterogeneous freezing of rain to ice'                  )
-   call addfld ('PRACSO',     (/ 'lev' /), 'A', 'kg/kg/s',  'Accretion of rain by snow'                               )
-   call addfld ('VAPDEPSO',   (/ 'lev' /), 'A', 'kg/kg/s',  'Vapor deposition onto snow'                            )
-   call addfld ('MELTSDT',    (/ 'lev' /), 'A', 'W/kg',     'Latent heating rate due to melting of snow'              )
-   call addfld ('FRZRDT',     (/ 'lev' /), 'A', 'W/kg',     'Latent heating rate due to homogeneous freezing of rain' )
+   call addfld ('MNUCCRO',    (/ 'trop_cld_lev' /), 'A', 'kg/kg/s',  'Heterogeneous freezing of rain to snow'                  )
+   call addfld ('MNUCCRIO',   (/ 'trop_cld_lev' /), 'A', 'kg/kg/s',  'Heterogeneous freezing of rain to ice'                  )
+   call addfld ('PRACSO',     (/ 'trop_cld_lev' /), 'A', 'kg/kg/s',  'Accretion of rain by snow'                               )
+   call addfld ('VAPDEPSO',   (/ 'trop_cld_lev' /), 'A', 'kg/kg/s',  'Vapor deposition onto snow'                            )
+   call addfld ('MELTSDT',    (/ 'trop_cld_lev' /), 'A', 'W/kg',     'Latent heating rate due to melting of snow'              )
+   call addfld ('FRZRDT',     (/ 'trop_cld_lev' /), 'A', 'W/kg',     'Latent heating rate due to homogeneous freezing of rain' )
    call addfld ('QRSEDTEN',   (/ 'trop_cld_lev' /), 'A', 'kg/kg/s', 'Rain mixing ratio tendency from sedimentation'           )
    call addfld ('QSSEDTEN',   (/ 'trop_cld_lev' /), 'A', 'kg/kg/s', 'Snow mixing ratio tendency from sedimentation'           )
    call addfld ('NNUCCCO',    (/ 'trop_cld_lev' /), 'A', '#/kg/s',  'Number Tendency due to Immersion freezing of cloud water')
@@ -1030,7 +1030,7 @@ subroutine micro_pumas_cam_init(pbuf2d)
          call addfld ('NMULTRGO',  (/ 'lev' /), 'A', '#/kg/s',  'Ice mult due to acc rain by graupel')
          call addfld ('NPSACWGO',  (/ 'lev' /), 'A', '#/kg/s',   'Change N collection droplets by graupel')
          call addfld ('CLDFGRAU',  (/ 'lev' /), 'A', '1',        'Cloud fraction adjusted for graupel'                        )
-         call addfld ('MELTGTOT',  (/ 'lev' /), 'A', 'kg/kg/s',  'Melting of graupel'                                    )
+         call addfld ('MELTGTOT',  (/ 'trop_cld_lev' /), 'A', 'kg/kg/s',  'Melting of graupel'                                    )
 
    end if
 
@@ -1831,6 +1831,10 @@ subroutine micro_pumas_cam_tend(state, ptend, dtime, pbuf)
    nan_array = nan
 
    ! Allocate the proc_rates DDT
+   ! IMPORTANT NOTE -- elements in proc_rates are dimensioned to the nlev dimension while
+   !     all the other arrays in this routine are dimensioned pver.  This is required because
+   !     PUMAS only gets the top_lev:pver array subsection, and the proc_rates arrays
+   !     need to be the same levels.
    call proc_rates%allocate(ncol,nlev, errstring)
 
    call handle_errmsg(errstring, subname="micro_pumas_cam_tend")
@@ -1932,11 +1936,11 @@ subroutine micro_pumas_cam_tend(state, ptend, dtime, pbuf)
    call pbuf_get_field(pbuf, sadice_idx,      sadice,      col_type=col_type)
    call pbuf_get_field(pbuf, sadsnow_idx,     sadsnow,     col_type=col_type)
    call pbuf_get_field(pbuf, wsedl_idx,       wsedl,       col_type=col_type)
-   call pbuf_get_field(pbuf, qme_idx,         qme,         col_type=col_type)
-   call pbuf_get_field(pbuf, bergso_idx,      bergstot,    col_type=col_type)
+   call pbuf_get_field(pbuf, qme_idx,         qme,         col_type=col_type) 
+   call pbuf_get_field(pbuf, bergso_idx,      bergstot,    col_type=col_type) 
 
    ! Assign the pointer values to the non-pointer proc_rates element
-   proc_rates%bergstot(:ncol,:) = bergstot(:ncol,:)
+   proc_rates%bergstot(:ncol,1:nlev) = bergstot(:ncol,top_lev:pver)
 
    if (degrau_idx > 0)   call pbuf_get_field(pbuf, degrau_idx,   degrau,   col_type=col_type)
    if (icgrauwp_idx > 0) call pbuf_get_field(pbuf, icgrauwp_idx, icgrauwp, col_type=col_type)
@@ -2023,10 +2027,11 @@ subroutine micro_pumas_cam_tend(state, ptend, dtime, pbuf)
       end if
 
    else
-      allocate (bergso_grid(psetcols,pver), stat=ierr)
+      allocate (bergso_grid(pcols,pver), stat=ierr)
       if (ierr /= 0) then
         call endrun(' micro_pumas_cam_tend: error allocating bergso_grid')
       end if
+      bergso_grid(:,:) = 0._r8
    end if
 
    !-----------------------
@@ -2140,6 +2145,7 @@ subroutine micro_pumas_cam_tend(state, ptend, dtime, pbuf)
    qsatfac(:ncol,:top_lev-1) = 1._r8
 
    ! Zero out values above top_lev for all output variables
+   ! Note that elements in proc_rates do not have the extra levels as they are dimensioned to be nlev instead of pver
    tlat(:ncol,:top_lev-1)=0._r8
    qvlat(:ncol,:top_lev-1)=0._r8
    qcten(:ncol,:top_lev-1)=0._r8
@@ -2160,10 +2166,8 @@ subroutine micro_pumas_cam_tend(state, ptend, dtime, pbuf)
    prect(:ncol)=0._r8
    preci(:ncol)=0._r8
    nevapr(:ncol,:top_lev-1)=0._r8
-   proc_rates%evapsnow(:ncol,:top_lev-1)=0._r8
    am_evp_st(:ncol,:top_lev-1)=0._r8
    prain(:ncol,:top_lev-1)=0._r8
-   proc_rates%prodsnow(:ncol,:top_lev-1)=0._r8
    cmeice(:ncol,:top_lev-1)=0._r8
    dei(:ncol,:top_lev-1)=0._r8
    mu(:ncol,:top_lev-1)=0._r8
@@ -2182,56 +2186,6 @@ subroutine micro_pumas_cam_tend(state, ptend, dtime, pbuf)
    reff_rain_dum(:ncol,:top_lev-1)=0._r8
    reff_snow_dum(:ncol,:top_lev-1)=0._r8
    reff_grau_dum(:ncol,:top_lev-1)=0._r8
-   proc_rates%qcsevap(:ncol,:top_lev-1)=0._r8
-   proc_rates%qisevap(:ncol,:top_lev-1)=0._r8
-   proc_rates%qvres(:ncol,:top_lev-1)=0._r8
-   proc_rates%cmeitot(:ncol,:top_lev-1)=0._r8
-   proc_rates%vtrmc(:ncol,:top_lev-1)=0._r8
-   proc_rates%vtrmi(:ncol,:top_lev-1)=0._r8
-   proc_rates%umr(:ncol,:top_lev-1)=0._r8
-   proc_rates%ums(:ncol,:top_lev-1)=0._r8
-   proc_rates%umg(:ncol,:top_lev-1)=0._r8
-   proc_rates%qgsedten(:ncol,:top_lev-1)=0._r8
-   proc_rates%qcsedten(:ncol,:top_lev-1)=0._r8
-   proc_rates%qisedten(:ncol,:top_lev-1)=0._r8
-   proc_rates%qrsedten(:ncol,:top_lev-1)=0._r8
-   proc_rates%qssedten(:ncol,:top_lev-1)=0._r8
-   proc_rates%pratot(:ncol,:top_lev-1)=0._r8
-   proc_rates%prctot(:ncol,:top_lev-1)=0._r8
-   proc_rates%mnuccctot(:ncol,:top_lev-1)=0._r8
-   proc_rates%mnuccttot(:ncol,:top_lev-1)=0._r8
-   proc_rates%msacwitot(:ncol,:top_lev-1)=0._r8
-   proc_rates%psacwstot(:ncol,:top_lev-1)=0._r8
-   proc_rates%bergstot(:ncol,:top_lev-1)=0._r8
-   proc_rates%bergtot(:ncol,:top_lev-1)=0._r8
-   proc_rates%melttot(:ncol,:top_lev-1)=0._r8
-   proc_rates%meltstot(:ncol,:top_lev-1)=0._r8
-   proc_rates%meltgtot(:ncol,:top_lev-1)=0._r8
-   proc_rates%homotot(:ncol,:top_lev-1)=0._r8
-   proc_rates%qcrestot(:ncol,:top_lev-1)=0._r8
-   proc_rates%prcitot(:ncol,:top_lev-1)=0._r8
-   proc_rates%praitot(:ncol,:top_lev-1)=0._r8
-   proc_rates%qirestot(:ncol,:top_lev-1)=0._r8
-   proc_rates%mnuccrtot(:ncol,:top_lev-1)=0._r8
-   proc_rates%mnudeptot(:ncol,:top_lev-1)=0._r8
-   proc_rates%mnuccritot(:ncol,:top_lev-1)=0._r8
-   proc_rates%pracstot(:ncol,:top_lev-1)=0._r8
-   proc_rates%meltsdttot(:ncol,:top_lev-1)=0._r8
-   proc_rates%frzrdttot(:ncol,:top_lev-1)=0._r8
-   proc_rates%mnuccdtot(:ncol,:top_lev-1)=0._r8
-   proc_rates%pracgtot(:ncol,:top_lev-1)=0._r8
-   proc_rates%psacwgtot(:ncol,:top_lev-1)=0._r8
-   proc_rates%pgracstot(:ncol,:top_lev-1)=0._r8
-   proc_rates%prdgtot(:ncol,:top_lev-1)=0._r8
-   proc_rates%qmultgtot(:ncol,:top_lev-1)=0._r8
-   proc_rates%qmultrgtot(:ncol,:top_lev-1)=0._r8
-   proc_rates%psacrtot(:ncol,:top_lev-1)=0._r8
-   proc_rates%npracgtot(:ncol,:top_lev-1)=0._r8
-   proc_rates%nscngtot(:ncol,:top_lev-1)=0._r8
-   proc_rates%ngracstot(:ncol,:top_lev-1)=0._r8
-   proc_rates%nmultgtot(:ncol,:top_lev-1)=0._r8
-   proc_rates%nmultrgtot(:ncol,:top_lev-1)=0._r8
-   proc_rates%npsacwgtot(:ncol,:top_lev-1)=0._r8
    nrout(:ncol,:top_lev-1)=0._r8
    nsout(:ncol,:top_lev-1)=0._r8
    refl(:ncol,:top_lev-1)=0._r8
@@ -2265,28 +2219,6 @@ subroutine micro_pumas_cam_tend(state, ptend, dtime, pbuf)
    frzimm(:ncol,:top_lev-1)=0._r8
    frzcnt(:ncol,:top_lev-1)=0._r8
    frzdep(:ncol,:top_lev-1)=0._r8
-   proc_rates%nnuccctot(:ncol,:top_lev-1)=0._r8
-   proc_rates%nnuccttot(:ncol,:top_lev-1)=0._r8
-   proc_rates%nnuccdtot(:ncol,:top_lev-1)=0._r8
-   proc_rates%nnudeptot(:ncol,:top_lev-1)=0._r8
-   proc_rates%nhomotot(:ncol,:top_lev-1)=0._r8
-   proc_rates%nnuccrtot(:ncol,:top_lev-1)=0._r8
-   proc_rates%nnuccritot(:ncol,:top_lev-1)=0._r8
-   proc_rates%nsacwitot(:ncol,:top_lev-1)=0._r8
-   proc_rates%npratot(:ncol,:top_lev-1)=0._r8
-   proc_rates%npsacwstot(:ncol,:top_lev-1)=0._r8
-   proc_rates%npraitot(:ncol,:top_lev-1)=0._r8
-   proc_rates%npracstot(:ncol,:top_lev-1)=0._r8
-   proc_rates%nprctot(:ncol,:top_lev-1)=0._r8
-   proc_rates%nprcitot(:ncol,:top_lev-1)=0._r8
-   proc_rates%ncsedten(:ncol,:top_lev-1)=0._r8
-   proc_rates%nisedten(:ncol,:top_lev-1)=0._r8
-   proc_rates%nrsedten(:ncol,:top_lev-1)=0._r8
-   proc_rates%nssedten(:ncol,:top_lev-1)=0._r8
-   proc_rates%ngsedten(:ncol,:top_lev-1)=0._r8
-   proc_rates%nmelttot(:ncol,:top_lev-1)=0._r8
-   proc_rates%nmeltstot(:ncol,:top_lev-1)=0._r8
-   proc_rates%nmeltgtot(:ncol,:top_lev-1)=0._r8
 
    do it = 1, num_steps
 
@@ -2408,7 +2340,7 @@ subroutine micro_pumas_cam_tend(state, ptend, dtime, pbuf)
    do k=top_lev,pver
       do i=1,ncol
          if (naai(i,k) > 0._r8) then
-            mnuccdohet(i,k) = proc_rates%mnuccdtot(i,k) - (naai_hom(i,k)/naai(i,k))*proc_rates%mnuccdtot(i,k)
+            mnuccdohet(i,k) = proc_rates%mnuccdtot(i,k-top_lev+1) - (naai_hom(i,k)/naai(i,k))*proc_rates%mnuccdtot(i,k-top_lev+1)
          end if
       end do
    end do
@@ -2442,7 +2374,7 @@ subroutine micro_pumas_cam_tend(state, ptend, dtime, pbuf)
    end if
 
    ! Sedimentation velocity for liquid stratus cloud droplet
-   wsedl(:ncol,top_lev:pver) = proc_rates%vtrmc(:ncol,top_lev:pver)
+   wsedl(:ncol,top_lev:pver) = proc_rates%vtrmc(:ncol,1:nlev)
 
    ! Microphysical tendencies for use in the macrophysics at the next time step
    CC_T(:ncol,top_lev:pver)    = tlat(:ncol,top_lev:pver)/cpair
@@ -2455,9 +2387,7 @@ subroutine micro_pumas_cam_tend(state, ptend, dtime, pbuf)
 
    ! Net micro_pumas_cam condensation rate
    qme(:ncol,:top_lev-1) = 0._r8
-   qme(:ncol,top_lev:pver) = cmeliq(:ncol,top_lev:pver) + proc_rates%cmeitot(:ncol,top_lev:pver)
-
-   proc_rates%bergstot(:ncol,:top_lev-1) = 0._r8
+   qme(:ncol,top_lev:pver) = cmeliq(:ncol,top_lev:pver) + proc_rates%cmeitot(:ncol,1:nlev)
 
    ! For precip, accumulate only total precip in prec_pcw and snow_pcw variables.
    ! Other precip output variables are set to 0
@@ -2557,7 +2487,7 @@ subroutine micro_pumas_cam_tend(state, ptend, dtime, pbuf)
    end do
 
    !Copy pbuf field from proc_rates back to pbuf pointer
-   bergstot(:ncol,:) = proc_rates%bergstot(:ncol,:)
+   bergstot(:ncol,top_lev:) = proc_rates%bergstot(:ncol,1:nlev)
 
    ! ------------------------------------------------------ !
    ! ------------------------------------------------------ !
@@ -2576,8 +2506,8 @@ subroutine micro_pumas_cam_tend(state, ptend, dtime, pbuf)
       call subcol_field_avg(qme,       ngrdcol, lchnk, qme_grid)
       call subcol_field_avg(nevapr,    ngrdcol, lchnk, nevapr_grid)
       call subcol_field_avg(prain,     ngrdcol, lchnk, prain_grid)
-      call subcol_field_avg(proc_rates%evapsnow,  ngrdcol, lchnk, evpsnow_st_grid)
-      call subcol_field_avg(proc_rates%bergstot,    ngrdcol, lchnk, bergso_grid)
+      call subcol_field_avg(proc_rates%evapsnow,  ngrdcol, lchnk, evpsnow_st_grid(:,top_lev:))
+      call subcol_field_avg(proc_rates%bergstot,    ngrdcol, lchnk, bergso_grid(:,top_lev:))
 
       call subcol_field_avg(am_evp_st, ngrdcol, lchnk, am_evp_st_grid)
 
@@ -2587,18 +2517,18 @@ subroutine micro_pumas_cam_tend(state, ptend, dtime, pbuf)
       call subcol_field_avg(nsout,     ngrdcol, lchnk, nsout_grid)
       call subcol_field_avg(nrout,     ngrdcol, lchnk, nrout_grid)
       call subcol_field_avg(cld,       ngrdcol, lchnk, cld_grid)
-      call subcol_field_avg(proc_rates%qcrestot,    ngrdcol, lchnk, qcreso_grid)
-      call subcol_field_avg(proc_rates%melttot,     ngrdcol, lchnk, melto_grid)
-      call subcol_field_avg(proc_rates%mnuccctot,   ngrdcol, lchnk, mnuccco_grid)
-      call subcol_field_avg(proc_rates%mnuccttot,   ngrdcol, lchnk, mnuccto_grid)
-      call subcol_field_avg(proc_rates%bergtot,     ngrdcol, lchnk, bergo_grid)
-      call subcol_field_avg(proc_rates%homotot,     ngrdcol, lchnk, homoo_grid)
-      call subcol_field_avg(proc_rates%msacwitot,   ngrdcol, lchnk, msacwio_grid)
-      call subcol_field_avg(proc_rates%psacwstot,   ngrdcol, lchnk, psacwso_grid)
-      call subcol_field_avg(proc_rates%cmeitot,   ngrdcol, lchnk, cmeitot_grid)
-      call subcol_field_avg(proc_rates%qirestot,    ngrdcol, lchnk, qireso_grid)
-      call subcol_field_avg(proc_rates%prcitot,     ngrdcol, lchnk, prcio_grid)
-      call subcol_field_avg(proc_rates%praitot,     ngrdcol, lchnk, praio_grid)
+      call subcol_field_avg(proc_rates%qcrestot,    ngrdcol, lchnk, qcreso_grid(:,top_lev:))
+      call subcol_field_avg(proc_rates%melttot,     ngrdcol, lchnk, melto_grid(:,top_lev:))
+      call subcol_field_avg(proc_rates%mnuccctot,   ngrdcol, lchnk, mnuccco_grid(:,top_lev:))
+      call subcol_field_avg(proc_rates%mnuccttot,   ngrdcol, lchnk, mnuccto_grid(:,top_lev:))
+      call subcol_field_avg(proc_rates%bergtot,     ngrdcol, lchnk, bergo_grid(:,top_lev:))
+      call subcol_field_avg(proc_rates%homotot,     ngrdcol, lchnk, homoo_grid(:,top_lev:))
+      call subcol_field_avg(proc_rates%msacwitot,   ngrdcol, lchnk, msacwio_grid(:,top_lev:))
+      call subcol_field_avg(proc_rates%psacwstot,   ngrdcol, lchnk, psacwso_grid(:,top_lev:))
+      call subcol_field_avg(proc_rates%cmeitot,   ngrdcol, lchnk, cmeitot_grid(:,top_lev:))
+      call subcol_field_avg(proc_rates%qirestot,    ngrdcol, lchnk, qireso_grid(:,top_lev:))
+      call subcol_field_avg(proc_rates%prcitot,     ngrdcol, lchnk, prcio_grid(:,top_lev:))
+      call subcol_field_avg(proc_rates%praitot,     ngrdcol, lchnk, praio_grid(:,top_lev:))
       call subcol_field_avg(icwmrst,   ngrdcol, lchnk, icwmrst_grid)
       call subcol_field_avg(icimrst,   ngrdcol, lchnk, icimrst_grid)
       call subcol_field_avg(liqcldf,   ngrdcol, lchnk, liqcldf_grid)
@@ -2606,18 +2536,18 @@ subroutine micro_pumas_cam_tend(state, ptend, dtime, pbuf)
       call subcol_field_avg(icwnc,     ngrdcol, lchnk, icwnc_grid)
       call subcol_field_avg(icinc,     ngrdcol, lchnk, icinc_grid)
       call subcol_field_avg(state_loc%pdel,            ngrdcol, lchnk, pdel_grid)
-      call subcol_field_avg(proc_rates%pratot,      ngrdcol, lchnk, prao_grid)
-      call subcol_field_avg(proc_rates%prctot,      ngrdcol, lchnk, prco_grid)
+      call subcol_field_avg(proc_rates%pratot,      ngrdcol, lchnk, prao_grid(:,top_lev:))
+      call subcol_field_avg(proc_rates%prctot,      ngrdcol, lchnk, prco_grid(:,top_lev:))
 
-      call subcol_field_avg(state_loc%q(:,:,ixnumliq), ngrdcol, lchnk, nc_grid)
-      call subcol_field_avg(state_loc%q(:,:,ixnumice), ngrdcol, lchnk, ni_grid)
+      call subcol_field_avg(state_loc%q(:,:,ixnumliq), ngrdcol, lchnk, nc_grid(:,top_lev:))
+      call subcol_field_avg(state_loc%q(:,:,ixnumice), ngrdcol, lchnk, ni_grid(:,top_lev:))
 
-      call subcol_field_avg(proc_rates%qcsedten,  ngrdcol, lchnk, qcsedtenout_grid)
-      call subcol_field_avg(proc_rates%qisedten,  ngrdcol, lchnk, qisedtenout_grid)
-      call subcol_field_avg(proc_rates%vtrmc,     ngrdcol, lchnk, vtrmcout_grid)
-      call subcol_field_avg(proc_rates%vtrmi,     ngrdcol, lchnk, vtrmiout_grid)
-      call subcol_field_avg(proc_rates%qcsevap,  ngrdcol, lchnk, qcsevapout_grid)
-      call subcol_field_avg(proc_rates%qisevap,  ngrdcol, lchnk, qisevapout_grid)
+      call subcol_field_avg(proc_rates%qcsedten,  ngrdcol, lchnk, qcsedtenout_grid(:,top_lev:))
+      call subcol_field_avg(proc_rates%qisedten,  ngrdcol, lchnk, qisedtenout_grid(:,top_lev:))
+      call subcol_field_avg(proc_rates%vtrmc,     ngrdcol, lchnk, vtrmcout_grid(:,top_lev:))
+      call subcol_field_avg(proc_rates%vtrmi,     ngrdcol, lchnk, vtrmiout_grid(:,top_lev:))
+      call subcol_field_avg(proc_rates%qcsevap,  ngrdcol, lchnk, qcsevapout_grid(:,top_lev:))
+      call subcol_field_avg(proc_rates%qisevap,  ngrdcol, lchnk, qisevapout_grid(:,top_lev:))
 
       call subcol_field_avg(cldmax,    ngrdcol, lchnk, cldmax_grid)
 
@@ -2625,28 +2555,28 @@ subroutine micro_pumas_cam_tend(state, ptend, dtime, pbuf)
       call subcol_field_avg(state_loc%q(:,:,ixnumrain), ngrdcol, lchnk, nr_grid)
       call subcol_field_avg(state_loc%q(:,:,ixsnow),    ngrdcol, lchnk, qs_grid)
       call subcol_field_avg(state_loc%q(:,:,ixnumsnow), ngrdcol, lchnk, ns_grid)
-      call subcol_field_avg(proc_rates%qrsedten,  ngrdcol, lchnk, qrsedtenout_grid)
-      call subcol_field_avg(proc_rates%qssedten,  ngrdcol, lchnk, qssedtenout_grid)
-      call subcol_field_avg(proc_rates%umr,       ngrdcol, lchnk, umrout_grid)
-      call subcol_field_avg(proc_rates%ums,       ngrdcol, lchnk, umsout_grid)
+      call subcol_field_avg(proc_rates%qrsedten,  ngrdcol, lchnk, qrsedtenout_grid(:,top_lev:))
+      call subcol_field_avg(proc_rates%qssedten,  ngrdcol, lchnk, qssedtenout_grid(:,top_lev:))
+      call subcol_field_avg(proc_rates%umr,       ngrdcol, lchnk, umrout_grid(:,top_lev:))
+      call subcol_field_avg(proc_rates%ums,       ngrdcol, lchnk, umsout_grid(:,top_lev:))
 
       if (micro_mg_version > 2) then
             call subcol_field_avg(state_loc%q(:,:,ixgraupel),    ngrdcol, lchnk, qg_grid)
             call subcol_field_avg(state_loc%q(:,:,ixnumgraupel), ngrdcol, lchnk, ng_grid)
-            call subcol_field_avg(proc_rates%psacrtot,       ngrdcol, lchnk, psacro_grid)
-            call subcol_field_avg(proc_rates%pracgtot,       ngrdcol, lchnk, pracgo_grid)
-            call subcol_field_avg(proc_rates%psacwgtot,      ngrdcol, lchnk, psacwgo_grid)
-            call subcol_field_avg(proc_rates%pgsacwtot,      ngrdcol, lchnk, pgsacwo_grid)
-            call subcol_field_avg(proc_rates%pgracstot,      ngrdcol, lchnk, pgracso_grid)
-            call subcol_field_avg(proc_rates%prdgtot,        ngrdcol, lchnk, prdgo_grid)
-            call subcol_field_avg(proc_rates%qmultgtot,      ngrdcol, lchnk, qmultgo_grid)
-            call subcol_field_avg(proc_rates%qmultrgtot,     ngrdcol, lchnk, qmultrgo_grid)
-            call subcol_field_avg(proc_rates%npracgtot,      ngrdcol, lchnk, npracgo_grid)
-            call subcol_field_avg(proc_rates%nscngtot,       ngrdcol, lchnk, nscngo_grid)
-            call subcol_field_avg(proc_rates%ngracstot,      ngrdcol, lchnk, ngracso_grid)
-            call subcol_field_avg(proc_rates%nmultgtot,      ngrdcol, lchnk, nmultgo_grid)
-            call subcol_field_avg(proc_rates%nmultrgtot,     ngrdcol, lchnk, nmultrgo_grid)
-            call subcol_field_avg(proc_rates%npsacwgtot,     ngrdcol, lchnk, npsacwgo_grid)
+            call subcol_field_avg(proc_rates%psacrtot,       ngrdcol, lchnk, psacro_grid(:,top_lev:))
+            call subcol_field_avg(proc_rates%pracgtot,       ngrdcol, lchnk, pracgo_grid(:,top_lev:))
+            call subcol_field_avg(proc_rates%psacwgtot,      ngrdcol, lchnk, psacwgo_grid(:,top_lev:))
+            call subcol_field_avg(proc_rates%pgsacwtot,      ngrdcol, lchnk, pgsacwo_grid(:,top_lev:))
+            call subcol_field_avg(proc_rates%pgracstot,      ngrdcol, lchnk, pgracso_grid(:,top_lev:))
+            call subcol_field_avg(proc_rates%prdgtot,        ngrdcol, lchnk, prdgo_grid(:,top_lev:))
+            call subcol_field_avg(proc_rates%qmultgtot,      ngrdcol, lchnk, qmultgo_grid(:,top_lev:))
+            call subcol_field_avg(proc_rates%qmultrgtot,     ngrdcol, lchnk, qmultrgo_grid(:,top_lev:))
+            call subcol_field_avg(proc_rates%npracgtot,      ngrdcol, lchnk, npracgo_grid(:,top_lev:))
+            call subcol_field_avg(proc_rates%nscngtot,       ngrdcol, lchnk, nscngo_grid(:,top_lev:))
+            call subcol_field_avg(proc_rates%ngracstot,      ngrdcol, lchnk, ngracso_grid(:,top_lev:))
+            call subcol_field_avg(proc_rates%nmultgtot,      ngrdcol, lchnk, nmultgo_grid(:,top_lev:))
+            call subcol_field_avg(proc_rates%nmultrgtot,     ngrdcol, lchnk, nmultrgo_grid(:,top_lev:))
+            call subcol_field_avg(proc_rates%npsacwgtot,     ngrdcol, lchnk, npsacwgo_grid(:,top_lev:))
       end if
 
    else
