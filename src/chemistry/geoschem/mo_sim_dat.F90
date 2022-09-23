@@ -43,14 +43,17 @@
       ! ewl notes: added HMS (for GEOS-Chem 13.3)
       !            added AONITA, AROMP4, AROMP5, BALD, BENZP, BZCO3H, 
       !            BZPAN, C2H2, C2H4, CSL, ETHN, ETHP, MCT, NPHEN, PHEN for 14.0
-      !            Removed non-advected GEOS-Chem species (except CO2) for 14.0
+      !            Removed non-advected GEOS-Chem species for 14.0, except CO2
+      !            which is a constituent, as well as OH and HO2 for diagnostic
+      !            output.
       !
-      ! Currently include GC advected species (233), MAM aerosols (33), and CO2 (1)
+      ! Currently include GC advected species (233), MAM aerosols (33), CO2 (1),
+      ! and OH and HO2 (2).
       ! If changed, update to match solsym length:
-      !   1. cam/bld/configure variable $chem_adv
+      !   1. cam/bld/configure variable $chem_nadv
       !   2. cam/src/chemistry/geoschem/chem_mods.F90 vars gas_pcnst and nTracersMax
-      ! Alse update adv_mass to store MWs for species in solsym (ewl, 8/8/22)
-      solsym(:267) = (/ 'ACET           ', &
+      ! Also update adv_mass to store MWs for species in solsym (ewl, 8/8/22)
+      solsym(:269) = (/ 'ACET           ', &
                         'ACTA           ','AERI           ', &
                         'ALD2           ','ALK4           ','ASOA1          ', &
                         'ASOA2          ','ASOA3          ','ASOAN          ', &
@@ -143,8 +146,9 @@
                         'soa3_a2        ','soa4_a1        ','soa4_a2        ', &
                         'soa5_a1        ','soa5_a2        ','H2SO4          ', &
                         'SOAG0          ','SOAG1          ','SOAG2          ', &
-                        'SOAG3          ','SOAG4          ','CO2            ' /)
-!non-advected GEOS-Chem species in 14.0:
+                        'SOAG3          ','SOAG4          ','CO2            ', &
+                        'HO2            ','OH             '                     /)
+!non-advected GEOS-Chem species in 14.0 (beware this includes OH and HO2 already listed above)
 !                        'LBRO2H         ','LBRO2N         ','LISOPOH        ', &
 !                        'LISOPNO3       ','LTRO2H         ','LTRO2N         ', &
 !                        'LXRO2H         ','LXRO2N         ','SO4H1          ', &
@@ -179,7 +183,7 @@
       fix_mass(:  6) = (/ 0.00000000_r8, 28.0134800_r8, 31.9988000_r8, 2.020000_r8,  32.050000_r8, &
                           74.090000_r8 /)
 
-      adv_mass(:267) = (/  58.090000_r8,  60.060000_r8, 126.900000_r8,  44.060000_r8,  58.120000_r8, &
+      adv_mass(:269) = (/  58.090000_r8,  60.060000_r8, 126.900000_r8,  44.060000_r8,  58.120000_r8, &
                           150.000000_r8, 150.000000_r8, 150.000000_r8, 150.000000_r8, 150.000000_r8, &
                           150.00000_r8,  150.000000_r8,  189.12_r8, 68.08_r8, 98.10_r8, &
                           90.0900000_r8, 106.12_r8, 12.010000_r8,  12.010000_r8, &
@@ -231,7 +235,7 @@
                           250.445000_r8, 250.445000_r8, 250.445000_r8, 250.445000_r8, 250.445000_r8, &
                           250.445000_r8, 250.445000_r8, 250.445000_r8, 250.445000_r8,  98.078400_r8, &
                           250.445000_r8, 250.445000_r8, 250.445000_r8, 250.445000_r8, 250.445000_r8, &
-                           44.010000_r8 /)
+                           44.010000_r8, 33.0100000_r8, 17.0100000_r8  /)
 
       extfrc_lst(: 1) = (/ '                ' /)
 
