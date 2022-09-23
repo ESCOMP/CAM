@@ -303,8 +303,6 @@ CONTAINS
         do ie = 1, nelemd
           fld_tmp(1:nsize,1:nsize,:,1,ie) = RESHAPE(fld_dyn(:,:,ie),(/nsize,nsize,numlev/))
         end do
-        !check if fill values are present:
-        usefillvalues = any(fld_tmp == fillvalue)
       else
         call initEdgeBuffer(par, edgebuf, elem, numlev,nthreads=1)
 
@@ -344,6 +342,9 @@ CONTAINS
       call get_loop_ranges(hybrid,ibeg=nets,iend=nete)
       call fill_halo_and_extend_panel(elem(nets:nete),fvm(nets:nete),&
            fld_tmp(:,:,:,:,nets:nete),hybrid,nets,nete,nsize,nhcc,nhalo,numlev,1,.true.,.true.)
+
+      !check if fill values are present:
+      usefillvalues = any(fld_tmp(:,:,:,:,nets:nete) == fillvalue)
     end if
     !
     ! WARNING - 1:nelemd and nets:nete
@@ -518,8 +519,6 @@ CONTAINS
         do ie = 1, nelemd
           fld_tmp(1:nsize,1:nsize,:,:,ie) = RESHAPE(fld_dyn(:,:,:,ie),(/nsize,nsize,2,numlev/))
         end do
-        !check if fill values are present:
-        usefillvalues = any(fld_tmp==fillvalue)
       else
         call initEdgeBuffer(par, edgebuf, elem, 2*numlev,nthreads=1)
 
@@ -579,6 +578,9 @@ CONTAINS
       end do
       call fill_halo_and_extend_panel(elem(nets:nete),fvm(nets:nete),&
            fld_tmp(:,:,:,:,nets:nete),hybrid,nets,nete,nsize,nhcc,nhalo,2,numlev,.false.,.true.)
+
+      !check if fill values are present:
+      usefillvalues = any(fld_tmp(:,:,:,:,nets:nete) == fillvalue)
     else
       do ie=1,nelemd
         call vec_latlon_to_contra(elem(ie),nsize,nhcc,numlev,fld_tmp(:,:,:,:,ie))
