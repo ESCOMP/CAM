@@ -201,7 +201,7 @@ module nudging
   use spmd_utils,     only: masterproc, mstrid=>masterprocid, mpicom
   use spmd_utils,     only: mpi_integer, mpi_real8, mpi_logical, mpi_character
   use cam_logfile,    only: iulog
-  use Zonal_Mean,     only: ZonalMean_t
+  use zonal_mean_mod, only: ZonalMean_t
 
   ! Set all Global values and routines to private by default
   ! and then explicitly set their exposure.
@@ -271,11 +271,11 @@ module nudging
   real(r8)          :: Nudge_Hwin_lonWidthH
   real(r8)          :: Nudge_Hwin_max
   real(r8)          :: Nudge_Hwin_min
-  logical           :: Nudge_ZonalFilter =.false.
-  integer           :: Nudge_ZonalNbasis
 
   ! Nudging Zonal Filter variables
   !---------------------------------
+  logical             :: Nudge_ZonalFilter =.false.
+  integer             :: Nudge_ZonalNbasis = -1
   type(ZonalMean_t)   :: ZM
   real(r8),allocatable:: Zonal_Bamp2d(:)
   real(r8),allocatable:: Zonal_Bamp3d(:,:)
@@ -355,12 +355,8 @@ contains
                          Nudge_Vwin_Ldelta, Nudge_Vwin_Hdelta,                &
                          Nudge_Vwin_Invert
 
-   ! ZonalMean Filtering is not set up for namelist use yet. 
-   ! For Now: just hard code the option here to apply Zonal Mean 
-   !          filtering and set the number of zonal basis functions to 12
-   !---------------------------------------------------------------------
-   Nudge_ZonalFilter = .false.
-   Nudge_ZonalNbasis = 12
+   ! For Zonal Mean Filtering
+   namelist /nudging_nl/ Nudge_ZonalFilter, Nudge_ZonalNbasis
 
    ! Nudging is NOT initialized yet, For now
    ! Nudging will always begin/end at midnight.
