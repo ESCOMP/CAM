@@ -582,7 +582,7 @@ subroutine radiation_define_restart(file)
 
    call pio_seterrorhandling(File, PIO_BCAST_ERROR)
 
-   ierr = pio_def_var(File, 'nextsw_cday', pio_int, nextsw_cday_desc)
+   ierr = pio_def_var(File, 'nextsw_cday', pio_double, nextsw_cday_desc)
    ierr = pio_put_att(File, nextsw_cday_desc, 'long_name', 'future radiation calday for surface models')
 
    if (radiation_do('aeres')) then
