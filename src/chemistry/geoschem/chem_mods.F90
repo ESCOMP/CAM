@@ -63,7 +63,8 @@
                             nabscol = 2, & ! number of absorbing column densities
                             gas_pcnst = 269, & ! number of "gas phase" species (same as solsym length)
                                                ! Includes GC advected species (233), MAM aerosols (33),
-                                               ! and CO2 (1)
+                                               ! and CO2 (1), as well as any non-advected species added
+                                               ! to solsym and mo_sim_dat.F90.
                             nfs = 6, & ! number of "fixed" species
                             relcnt = 0, & ! number of relationship species
                             grpcnt = 0, & ! number of group members

@@ -552,7 +552,7 @@
 	<value  compset="HIST_CAM60%WCMD%SDYN" grid="a%1.9x2.5">1980-01-01</value>
 	<value  compset="HIST_CAM60%WCSC">1850-01-01</value>
 	<value  compset="HIST_CAM60%CCTS[12]">2010-01-01</value>
-	<value  compset="HIST_CAM60%GC">2010-01-01</value>
+	<value  compset="HIST_CAM60%GC">2015-01-01</value>
 	<value  compset="HIST_CAM60%CCTS[12]" grid="a%ne0np4CONUS">2013-01-01</value>
 	<value  compset="HIST_CAM60%CVBSX">1995-01-01</value>
 	<value  compset="HIST_CAM60%CFIRE">1995-01-01</value>
