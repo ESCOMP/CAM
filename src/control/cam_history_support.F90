@@ -1975,7 +1975,7 @@ contains
 
      ! Dummy arguments
      character(len=*),  intent(in)  :: name
-     real(r8),          intent(out) :: rvalues
+     real(r8),          intent(out) :: rvalues(:)
      integer, optional, intent(in)  :: istart
      integer, optional, intent(in)  :: istop
      logical, optional, intent(out) :: found
@@ -1988,7 +1988,6 @@ contains
      dim_ok = .false.
      do indx = 1, registeredmdims
         if(trim(name) == trim(hist_coords(indx)%name)) then
-           hist_dimension_name = hist_coords(i)%name
            dim_ok = associated(hist_coords(indx)%real_values)
            if (dim_ok) then
               if (present(istart)) then
@@ -2022,7 +2021,7 @@ contains
   !#######################################################################
 
   subroutine hist_dimension_values_i(name, ivalues, istart, istop, found)
-     ! Given the name of a dimension, return its (integer) values in <rvalues>
+     ! Given the name of a dimension, return its (integer) values in <ivalues>
      ! If <istart> and <istop> are present, they are the beginning and ending
      ! indices of the dimension values to return in <ivalues>. By default,
      ! the entire array is copied.
@@ -2031,7 +2030,7 @@ contains
 
      ! Dummy arguments
      character(len=*),  intent(in)  :: name
-     integer,           intent(out) :: ivalues
+     integer,           intent(out) :: ivalues(:)
      integer, optional, intent(in)  :: istart
      integer, optional, intent(in)  :: istop
      logical, optional, intent(out) :: found
@@ -2044,7 +2043,6 @@ contains
      dim_ok = .false.
      do indx = 1, registeredmdims
         if(trim(name) == trim(hist_coords(indx)%name)) then
-           hist_dimension_name = hist_coords(i)%name
            dim_ok = associated(hist_coords(indx)%integer_values)
            if (dim_ok) then
               if (present(istart)) then
@@ -2057,12 +2055,12 @@ contains
               else
                  iend = UBOUND(hist_coords(indx)%integer_values, 1)
               end if
-              if (SIZE(rvalues) < (iend - ibeg + 1)) then
-                 call endrun("rvalues too small in hist_dimension_values_i")
+              if (SIZE(ivalues) < (iend - ibeg + 1)) then
+                 call endrun("ivalues too small in hist_dimension_values_i")
               end if
               rndx = 1
               do jndx = ibeg, iend
-                 rvalues(rndx) = hist_coords(indx)%integer_values(jndx)
+                 ivalues(rndx) = hist_coords(indx)%integer_values(jndx)
                  rndx = rndx + 1
               end do
            end if

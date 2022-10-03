@@ -59,6 +59,7 @@ integer :: micro_mg_version     = 1      ! Version number for MG.
 integer :: micro_mg_sub_version = 0      ! Second part of version number.
 
 real(r8) :: micro_mg_dcs = -1._r8
+real(r8), target, allocatable :: trop_levs(:)
 
 logical :: microp_uniform       = .false.
 logical :: micro_mg_adjust_cpt  = .false.
@@ -68,8 +69,6 @@ logical :: micro_do_massless_droplet_destroyer ! turn on/off destruction of mass
 character(len=16) :: micro_mg_precip_frac_method = 'max_overlap' ! type of precipitation fraction method
 
 real(r8), parameter :: unset_r8 = huge(1.0_r8)
-
-integer,target, allocatable :: lev_number(:)
 
 ! Tunable namelist parameters (set in atm_in)
 real(r8) :: micro_mg_berg_eff_factor   = unset_r8        ! berg efficiency factor
@@ -548,25 +547,23 @@ end subroutine micro_pumas_cam_readnl
 
 subroutine micro_pumas_cam_register
 
-   use cam_history_support, only: add_hist_coord
+   use cam_history_support, only: add_vert_coord, hist_dimension_values
 
    ! Register microphysics constituents and fields in the physics buffer.
    !-----------------------------------------------------------------------
 
    logical :: prog_modal_aero
    logical :: use_subcol_microp  ! If true, then are using subcolumns in microphysics
+   logical :: found
 
    integer :: i, ierr
+   real(r8) :: all_levs(pver)
 
-   allocate(lev_number(pver-top_lev+1), stat=ierr)
+   allocate(trop_levs(pver-top_lev+1), stat=ierr)
 
    if (ierr /= 0) then
-         call endrun( "micro_pumas_cam_register: error allocating lev_number")
+         call endrun( "micro_pumas_cam_register: error allocating trop_levs")
    end if
-
-   do i=1,pver-top_lev+1
-     lev_number(i) = i
-   end do
 
    call phys_getopts(use_subcol_microp_out    = use_subcol_microp, &
                      prog_modal_aero_out      = prog_modal_aero)
@@ -584,8 +581,17 @@ subroutine micro_pumas_cam_register
       longname='Grid box averaged cloud ice number', is_convtran1=.true.)
 
    ! Add history coordinate for DDT nlev
-   call add_hist_coord('trop_cld_lev',  pver-top_lev+1, 'model level number',  &
-       '1', lev_number)
+   call hist_dimension_values('lev',all_levs, 1, pver, found)
+   trop_levs(1:pver-top_lev+1) = all_levs(top_lev:pver)
+
+   if (found) then 
+      call add_vert_coord('trop_cld_lev', pver-top_lev+1,                          &
+            'tropopshere hybrid level at midpoints (1000*(A+B))', 'hPa', trop_levs,  &
+            positive='down' )
+   else
+      call endrun( "micro_pumas_cam_register: unable to find dimension field 'lev'")
+   end if
+
 
 ! ---- Note is_convtran1 is set to .true.
    call cnst_add(cnst_names(5), mwh2o, cpair, 0._r8, ixrain, &
@@ -2580,6 +2586,45 @@ subroutine micro_pumas_cam_tend(state, ptend, dtime, pbuf)
       end if
 
    else
+      qcreso_grid(:ncol,:top_lev-1)     = 0._r8
+      melto_grid(:ncol,:top_lev-1)      = 0._r8
+      mnuccco_grid(:ncol,:top_lev-1)    = 0._r8
+      mnuccto_grid(:ncol,:top_lev-1)    = 0._r8
+      bergo_grid(:ncol,:top_lev-1)      = 0._r8
+      homoo_grid(:ncol,:top_lev-1)      = 0._r8
+      msacwio_grid(:ncol,:top_lev-1)    = 0._r8
+      psacwso_grid(:ncol,:top_lev-1)    = 0._r8
+      cmeitot_grid(:ncol,:top_lev-1)    = 0._r8
+      qireso_grid(:ncol,:top_lev-1)     = 0._r8
+      prcio_grid(:ncol,:top_lev-1)      = 0._r8
+      praio_grid(:ncol,:top_lev-1)      = 0._r8
+      prao_grid(:ncol,:top_lev-1)       = 0._r8
+      prco_grid(:ncol,:top_lev-1)       = 0._r8
+      qcsedtenout_grid(:ncol,:top_lev-1) = 0._r8
+      qisedtenout_grid(:ncol,:top_lev-1) = 0._r8
+      vtrmcout_grid(:ncol,:top_lev-1)    = 0._r8
+      vtrmiout_grid(:ncol,:top_lev-1)    = 0._r8
+      qcsevapout_grid(:ncol,:top_lev-1) = 0._r8
+      qisevapout_grid(:ncol,:top_lev-1) = 0._r8
+      qrsedtenout_grid(:ncol,:top_lev-1) = 0._r8
+      qssedtenout_grid(:ncol,:top_lev-1) = 0._r8
+      umrout_grid(:ncol,:top_lev-1) = 0._r8
+      umsout_grid(:ncol,:top_lev-1) = 0._r8
+      psacro_grid(:ncol,:top_lev-1) = 0._r8
+      pracgo_grid(:ncol,:top_lev-1) = 0._r8
+      psacwgo_grid(:ncol,:top_lev-1) = 0._r8
+      pgsacwo_grid(:ncol,:top_lev-1) = 0._r8
+      pgracso_grid(:ncol,:top_lev-1) = 0._r8
+      prdgo_grid(:ncol,:top_lev-1) = 0._r8
+      qmultgo_grid(:ncol,:top_lev-1) = 0._r8
+      qmultrgo_grid(:ncol,:top_lev-1) = 0._r8
+      npracgo_grid(:ncol,:top_lev-1) = 0._r8
+      nscngo_grid(:ncol,:top_lev-1) = 0._r8
+      ngracso_grid(:ncol,:top_lev-1) = 0._r8
+      nmultgo_grid(:ncol,:top_lev-1) = 0._r8
+      nmultrgo_grid(:ncol,:top_lev-1) = 0._r8
+      npsacwgo_grid(:ncol,:top_lev-1) = 0._r8
+
       ! These pbuf fields need to be assigned.  There is no corresponding subcol_field_avg
       ! as they are reset before being used, so it would be a needless calculation
       lambdac_grid    => lambdac
