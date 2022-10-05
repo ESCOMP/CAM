@@ -2,16 +2,16 @@ module get_ana_dynfrc_4scam
 
   use spmd_utils,       only: masterproc
   use cam_logfile,      only: iulog
-  use shr_kind_mod,     only: r8 => shr_kind_r8, i8 => shr_kind_i8, &
+  use shr_kind_mod,     only: r8 => shr_kind_r8, i8 => shr_kind_i8, & 
                           cs=>SHR_KIND_CS,cl=>SHR_KIND_CL
   use shr_const_mod,    only:  rearth => shr_const_rearth , &  !  =6.37122e6_R8 meters
-                               pi => shr_const_pi         , &
+                               pi => shr_const_pi         , & 
                                OOmega => shr_const_omega   , &
                                rdair => shr_const_rdair   , &
                                cpair => shr_const_cpdair
 
-  use scamMod,          only:  use_scm_ana_frc, &
-                               scm_ana_frc_path, &
+  use scamMod,          only:  use_scm_ana_frc, & 
+                               scm_ana_frc_path, & 
                                scm_ana_frc_file_template, &
                                scm_ana_x_plevels, &
                                scm_ana_direct_omega, &
@@ -24,7 +24,7 @@ module get_ana_dynfrc_4scam
 
 
 
-  !    shr_const_mod is in ${CESMROOT}/cime/src/share/util/
+  !    shr_const_mod is in ${CESMROOT}/cime/src/share/util/                     
 
   implicit none
   private
@@ -43,7 +43,7 @@ module get_ana_dynfrc_4scam
     real(r8) , save , allocatable :: OGCORE_1(:,:,:) , OGCORE_2(:,:,:)
     real(r8) , save , allocatable :: lat_ana(:),lon_ana(:),lev_ana(:)
     integer  , save               :: nlev_ana, nlon_ana, nlat_ana
-
+ 
     real(r8) , save , allocatable :: To_1(:,:,:) , Uo_1(:,:,:), Vo_1(:,:,:), Qo_1(:,:,:),PSo_1(:,:),PHISo_1(:,:)
     real(r8) , save , allocatable :: To_2(:,:,:) , Uo_2(:,:,:), Vo_2(:,:,:), Qo_2(:,:,:),PSo_2(:,:),PHISo_2(:,:)
     real(r8) , save , allocatable :: UTCOREo_1(:,:,:) , UTCOREo_2(:,:,:), UTCOREo_X(:,:,:)
@@ -64,9 +64,9 @@ module get_ana_dynfrc_4scam
     real(r8) , save , allocatable :: To_X(:,:,:) , Uo_X(:,:,:), Vo_X(:,:,:), Qo_X(:,:,:),PSo_X(:,:),PHISo_X(:,:)
 
 
-!=======================================================================
+!======================================================================= 
 contains
-!=======================================================================
+!======================================================================= 
 
 subroutine get_ana_dynfrc_fv ( scmlon, scmlat ,  &
                                omega_ana, etad_ana, zeta_ana, &
@@ -75,6 +75,7 @@ subroutine get_ana_dynfrc_fv ( scmlon, scmlat ,  &
                                u_ana ,           &
                                v_ana ,           &
                                ps_ana ,          &
+                               phis_ana ,        &
                                uten_hadv_ana ,   &
                                vten_hadv_ana ,   &
                                uten_pfrc_ana ,   &
@@ -82,15 +83,15 @@ subroutine get_ana_dynfrc_fv ( scmlon, scmlat ,  &
                                uten_vort_ana ,   &
                                vten_vort_ana ,   &
                                qten_hadv_ana ,   &
-                               tten_hadv_ana ,   &
+                               tten_hadv_ana ,   &   
                                uten_vadv_ana ,   &
                                vten_vadv_ana ,   &
                                tten_vadv_ana ,   &
-                               qten_vadv_ana ,   &
+                               qten_vadv_ana ,   & 
                                tten_comp_ana ,   &
-                               uten_keg_ana  ,   &
-                               uten_phig_ana ,   &
-                               uten_prg_ana  ,   &
+                               uten_keg_ana  ,   & 
+                               uten_phig_ana ,   & 
+                               uten_prg_ana  ,   & 
                                uten_dycore_ana , &
                                vten_dycore_ana , &
                                tten_dycore_ana , &
@@ -112,15 +113,15 @@ subroutine get_ana_dynfrc_fv ( scmlon, scmlat ,  &
 !    J=NY
 !                   ...
 !
-!     ub,vb(I,J)           us(I,J),vc(I,J+1)
+!     ub,vb(I,J)           us(I,J),vc(I,J+1)        
 !
-!
-!     vs(I,J),uc(I,J)      ua,va,T,p(I,J)       vs(I+1,J),uc(I+1,J)
+!  
+!     vs(I,J),uc(I,J)      ua,va,T,p(I,J)       vs(I+1,J),uc(I+1,J)  
 !
 !
 !                          vc(I,J)
 !
-!
+!                          
 !                          ua,va,T,p(I,J-1)
 !
 !                    ...
@@ -134,7 +135,7 @@ subroutine get_ana_dynfrc_fv ( scmlon, scmlat ,  &
      use netcdf
      use cam_abortutils, only: endrun
      use ref_pres,       only: pref_mid  ! In Pascal
-
+ 
     real(r8), intent(in)   :: scmlon, scmlat
     real(r8), intent(out)  :: omega_ana( plev )
     real(r8), intent(out)  :: etad_ana(plev)
@@ -143,7 +144,7 @@ subroutine get_ana_dynfrc_fv ( scmlon, scmlat ,  &
     real(r8), intent(out)  :: u_ana(plev)
     real(r8), intent(out)  :: v_ana(plev)
     real(r8), intent(out)  :: q_ana(plev)
-    real(r8), intent(out)  :: ps_ana
+    real(r8), intent(out)  :: ps_ana, phis_ana
     real(r8), intent(out)  :: uten_hadv_ana( plev )
     real(r8), intent(out)  :: vten_hadv_ana( plev )
     real(r8), intent(out)  :: uten_pfrc_ana( plev )
@@ -191,9 +192,10 @@ subroutine get_ana_dynfrc_fv ( scmlon, scmlat ,  &
     real(r8) :: scmlonx
 
     real(r8) :: ana_wgt1 , ana_wgt2 , dx0, dy, darea
-
+    real(r8) :: tend_wgt1 , tend_wgt2
+   
     integer :: nx, ny,i,j,k,L,LM, iav(1),jav(1),iac,jac
-
+ 
     real(r8) , allocatable :: rlats(:),rlons(:)
     real(r8) :: zeta(plev),absvo(plev)
     ! Horz. gradient profiles (1=X, 2=Y)
@@ -204,21 +206,21 @@ subroutine get_ana_dynfrc_fv ( scmlon, scmlat ,  &
     real(r8) :: qg_ana(plev,2),  qg_X(plev,2)
     real(r8) :: ug_ana(plev,2),  ug_X(plev,2)
     real(r8) :: vg_ana(plev,2),  vg_X(plev,2)
-    real(r8) :: lin_pfc_ana(plev,2) , lin_pfc_X(plev,2)
+    real(r8) :: lin_pfc_ana(plev,2) , lin_pfc_X(plev,2) 
 
     real(r8) :: omega_ana_x(plev)
     real(r8) :: alpha_react(plev)
 
     real(r8) :: lat_alc(3) , lon_alc(3)
-    real(r8) :: aalc(3,3,plev)
+    real(r8) :: aalc(3,3,plev) 
 
 
     character(len=CL):: Ana_File_Template,Ana_file1,Ana_file2,Ana_Path
-
+   
 
     integer :: dyn_year,dyn_month,dyn_day,dyn_sec,year,month,day,sec
     integer :: dyn_step,ymd1,ymd2,curr_sec,next_sec,curr_year,curr_month,curr_day,curr_ymd
-
+ 
     integer :: analysis_step
     integer :: ana_year1, ana_month1, ana_day1, ana_sec1
     integer :: ana_year2, ana_month2, ana_day2, ana_sec2
@@ -243,11 +245,11 @@ subroutine get_ana_dynfrc_fv ( scmlon, scmlat ,  &
     analysis_step = 6 * 3600
 
 
-    Ana_path = trim(scm_ana_frc_path)
-    Ana_File_Template = trim(Ana_path)//trim(scm_ana_frc_file_template)
+   Ana_path = trim(scm_ana_frc_path)
+   Ana_File_Template = trim(Ana_path)//trim(scm_ana_frc_file_template)
 
 
-    call get_curr_date(Year,Month,Day,Sec)
+     call get_curr_date(Year,Month,Day,Sec)
 
     curr_ymd = (Year*10000) + (Month*100) + Day
     curr_sec = Sec
@@ -255,18 +257,18 @@ subroutine get_ana_dynfrc_fv ( scmlon, scmlat ,  &
     ana_sec1   = ( Sec / analysis_step ) * analysis_step
     ana_day1   = Day
     ana_month1 = Month
-    ana_year1  = Year
+    ana_year1  = Year  
 
      YMD1=(Ana_Year1*10000) + (Ana_Month1*100) + Ana_Day1
 
 
      call timemgr_time_inc(YMD1,Ana_Sec1,              &
                            YMD2,Ana_Sec2,Analysis_Step,0,0)
-
+  
      Ana_Year2   = YMD2 / 10000
      Ana_Month2  = (YMD2 - Ana_Year2*10000)/100
-     Ana_Day2    = YMD2 - Ana_Year2*10000 - Ana_Month2*100
-
+     Ana_Day2    = YMD2 - Ana_Year2*10000 - Ana_Month2*100 
+ 
      Ana_File1   = interpret_filename_spec(Ana_File_Template      , &
                                        yr_spec=Ana_Year1 , &
                                       mon_spec=Ana_Month1, &
@@ -282,34 +284,34 @@ subroutine get_ana_dynfrc_fv ( scmlon, scmlat ,  &
 
        l_Read_next_Ana = .FALSE.
        ! On first time step, read in 2 analysis files
-       if (is_first_step().and.masterproc) then
+       if (is_first_step().and.masterproc) then 
               write(iulog,*) subname//" It's now (First time step):" , curr_YMD, curr_sec
               write(iulog,*) "Read Initial ana files "
               write(iulog,*) Ana_file1
-              write(iulog,*) Ana_file2
+              write(iulog,*) Ana_file2   
               Alarm_Read_Ana = .TRUE.
               Alarm_Bump_Ana = .FALSE.
        else
        ! On subsequent steps test to see if "Curr" date is later or same as "Read".
-       ! If it is, then l_read_next_ana=.TRUE.
+       ! If it is, then l_read_next_ana=.TRUE. 
              call timemgr_time_ge(Read_ymd2, Read_Sec2, curr_YMD, curr_Sec, l_Read_next_ana )
-       endif
+       endif       
 
-       if (l_Read_next_Ana) then
+       if (l_Read_next_Ana) then 
               Alarm_Read_Ana = .TRUE.
               Alarm_Bump_Ana = .TRUE.
        endif
 
-       ! Aloocate space for analysis fields.
+       ! Aloocate space for analysis fields. 
        ! Read in both Initial Analysis files. Nothing to bump yet
        if (  (Alarm_Read_Ana ) .AND. .NOT.(Alarm_Bump_Ana) ) then
            initialize=.TRUE.
            call read_netcdf_ana_fv_ini ( Ana_File1, nlon_ana, nlat_ana, nlev_ana ,iax, jax   )
-
+    
               if ( plev /= nlev_ana) then
                  call endrun ("SCAM plev NE nlev_ana")
               end if
-
+              
               ! Full global fields
               allocate( lat_ana(nlat_ana) , lon_ana(nlon_ana), lev_ana(nlev_ana) )
               allocate( U_1(nlon_ana, nlat_ana, nlev_ana), V_1(nlon_ana, nlat_ana, nlev_ana), T_1(nlon_ana, nlat_ana, nlev_ana), &
@@ -321,10 +323,10 @@ subroutine get_ana_dynfrc_fv ( scmlon, scmlat ,  &
               allocate( VTCORE_1(nlon_ana, nlat_ana, nlev_ana), VTCORE_2(nlon_ana, nlat_ana, nlev_ana) )
               allocate( TTCORE_1(nlon_ana, nlat_ana, nlev_ana), TTCORE_2(nlon_ana, nlat_ana, nlev_ana) )
               allocate( OGCORE_1(nlon_ana, nlat_ana, nlev_ana), OGCORE_2(nlon_ana, nlat_ana, nlev_ana) )
-
+ 
               ! SCM "patches"
-              nlon_alc=3
-              nlat_alc=3
+              nlon_alc=3 
+              nlat_alc=3 
               nlev_alc=nlev_ana
 
 
@@ -342,29 +344,29 @@ subroutine get_ana_dynfrc_fv ( scmlon, scmlat ,  &
 
               allocate( Uo_X(nlon_alc, nlat_alc, nlev_alc), Vo_X(nlon_alc, nlat_alc, nlev_alc), To_X(nlon_alc, nlat_alc, nlev_alc), &
                         Qo_X(nlon_alc, nlat_alc, nlev_alc), PSo_X (nlon_alc, nlat_alc ), PHISo_X (nlon_alc, nlat_alc ) )
-              allocate( ETAD_X(nlon_alc,nlat_alc,nlev_alc) )
-              allocate( OMG_X(nlon_alc,nlat_alc,nlev_alc)  )
+              allocate( ETAD_X(nlon_alc,nlat_alc,nlev_alc) )              
+              allocate( OMG_X(nlon_alc,nlat_alc,nlev_alc)  )              
               allocate( ple_X(nlon_alc, nlat_alc, nlev_alc+1), plo_X(nlon_alc, nlat_alc, nlev_alc), phi_X(nlon_alc, nlat_alc, nlev_alc+1) )
               allocate( pke_X(nlon_alc, nlat_alc, nlev_alc+1), pko_X(nlon_alc, nlat_alc, nlev_alc), phik_X(nlon_alc, nlat_alc, nlev_alc+1) )
-              allocate( THv_X(nlon_alc, nlat_alc, nlev_alc ) )
+              allocate( THv_X(nlon_alc, nlat_alc, nlev_alc ) )              
               allocate( zeta_X(nlev_alc) )
-              allocate( KEh_X(nlon_alc, nlat_alc, nlev_alc ) )
-              allocate( Tv_X(nlon_alc, nlat_alc, nlev_alc ) )
+              allocate( KEh_X(nlon_alc, nlat_alc, nlev_alc ) )              
+              allocate( Tv_X(nlon_alc, nlat_alc, nlev_alc ) )              
 
-           call read_netcdf_ana_fv ( Ana_File1, nlon_ana, nlat_ana, nlev_ana, &
-                                   U_1, V_1, &
-                                   T_1, Q_1, PS_1, PHIS_1, &
-                                   lon_ana, lat_ana, lev_ana &
-                               ,   utcore_1, vtcore_1, ttcore_1, ogcore_1 &
+           call read_netcdf_ana_fv ( Ana_File1, nlon_ana, nlat_ana, nlev_ana, & 
+                                   U_1, V_1, & 
+                                   T_1, Q_1, PS_1, PHIS_1, & 
+                                   lon_ana, lat_ana, lev_ana & 
+                               ,   utcore_1, vtcore_1, ttcore_1, ogcore_1 & 
                                                 )
 
-           call read_netcdf_ana_fv ( Ana_File2, nlon_ana, nlat_ana, nlev_ana, &
-                                   U_2, V_2, &
-                                   T_2, Q_2, PS_2, PHIS_2, &
-                                   lon_ana, lat_ana, lev_ana &
-                                ,  utcore_2, vtcore_2, ttcore_2, ogcore_2 &
+           call read_netcdf_ana_fv ( Ana_File2, nlon_ana, nlat_ana, nlev_ana, & 
+                                   U_2, V_2, & 
+                                   T_2, Q_2, PS_2, PHIS_2, & 
+                                   lon_ana, lat_ana, lev_ana & 
+                                ,  utcore_2, vtcore_2, ttcore_2, ogcore_2 & 
                                                 )
-
+  
            ! Make patches
            Uo_1      = U_1(iax-1:iax+1,jax-1:jax+1,:)
            Vo_1      = V_1(iax-1:iax+1,jax-1:jax+1,:)
@@ -395,14 +397,14 @@ subroutine get_ana_dynfrc_fv ( scmlon, scmlat ,  &
            Read_day2     = Ana_day2
            Read_sec2     = Ana_sec2
            Read_YMD2     =(Ana_Year2*10000) + (Ana_Month2*100) + Ana_Day2
-
+ 
        end if
 
        ! Bump second analysis to first postion, and read in next analysis
        if (  (Alarm_Read_Ana ) .AND. (Alarm_Bump_Ana) ) then
-
-           Uo_1      = Uo_2
-           Vo_1      = Vo_2
+ 
+           Uo_1      = Uo_2 
+           Vo_1      = Vo_2 
            To_1      = To_2
            Qo_1      = Qo_2
            PSo_1     = PSo_2
@@ -411,11 +413,11 @@ subroutine get_ana_dynfrc_fv ( scmlon, scmlat ,  &
            VTCOREo_1 = VTCOREo_2
            TTCOREo_1 = TTCOREo_2
 
-           call read_netcdf_ana_fv ( Ana_File2, nlon_ana, nlat_ana, nlev_ana, &
-                                   U_2, V_2, &
-                                   T_2, Q_2, PS_2, PHIS_2, &
+           call read_netcdf_ana_fv ( Ana_File2, nlon_ana, nlat_ana, nlev_ana, & 
+                                   U_2, V_2, & 
+                                   T_2, Q_2, PS_2, PHIS_2, & 
                                    lon_ana, lat_ana, lev_ana &
-                                ,  utcore_2, vtcore_2, ttcore_2, ogcore_2 &
+                                ,  utcore_2, vtcore_2, ttcore_2, ogcore_2 & 
                                    )
 
 
@@ -430,7 +432,7 @@ subroutine get_ana_dynfrc_fv ( scmlon, scmlat ,  &
            VTCOREo_2 = VTCORE_2(iax-1:iax+1,jax-1:jax+1,:)
            TTCOREo_2 = TTCORE_2(iax-1:iax+1,jax-1:jax+1,:)
            OGCOREo_2 = OGCORE_2(iax-1:iax+1,jax-1:jax+1,:)
-
+ 
 
            ! Mark Ana date as read
            Read_year2    = Ana_year2
@@ -445,9 +447,20 @@ subroutine get_ana_dynfrc_fv ( scmlon, scmlat ,  &
 
 
 
-
+   
+#if 1 
+     call dynfrc_timewgts(      & 
+                         (/ Ana_Year1, Ana_Month1, Ana_day1, Ana_sec1 /) , & 
+                         (/ Ana_Year2, Ana_Month2, Ana_day2, Ana_sec2 /) , & 
+                         ana_wgt1 , ana_wgt2   )
+#else
      ana_wgt1 = 0._r8  ! 0=all weight on t+1
      ana_wgt2 = 1._r8 - ana_wgt1
+#endif
+     ! This seems correct if time-tendencies are averaged over interval
+     tend_wgt1 = 0._r8
+     tend_wgt2 = 1._r8 - tend_wgt1
+
 
      if (masterproc) write(iulog,*) subname//" Ana forcing time wgts ",ana_wgt1,ana_wgt2
 
@@ -462,11 +475,11 @@ subroutine get_ana_dynfrc_fv ( scmlon, scmlat ,  &
           Qo_X      = ana_wgt1 * Qo_1      +   ana_wgt2 * Qo_2
           PSo_X     = ana_wgt1 * PSo_1     +   ana_wgt2 * PSo_2
           PHISo_X   = ana_wgt1 * PHISo_1   +   ana_wgt2 * PHISo_2
-
-          UTCOREo_X = ana_wgt1 * UTCOREo_1 +   ana_wgt2 * UTCOREo_2
-          VTCOREo_X = ana_wgt1 * VTCOREo_1 +   ana_wgt2 * VTCOREo_2
-          TTCOREo_X = ana_wgt1 * TTCOREo_1 +   ana_wgt2 * TTCOREo_2
           OGCOREo_X = ana_wgt1 * OGCOREo_1 +   ana_wgt2 * OGCOREo_2
+
+          UTCOREo_X = tend_wgt1 * UTCOREo_1 +   tend_wgt2 * UTCOREo_2
+          VTCOREo_X = tend_wgt1 * VTCOREo_1 +   tend_wgt2 * VTCOREo_2
+          TTCOREo_X = tend_wgt1 * TTCOREo_1 +   tend_wgt2 * TTCOREo_2
 
           lon_alc = lon_ana(iax-1:iax+1)
           lat_alc = lat_ana(jax-1:jax+1)
@@ -475,28 +488,28 @@ subroutine get_ana_dynfrc_fv ( scmlon, scmlat ,  &
           if(masterproc) write(iulog,*) subname//" Closest Ana lon lat: ",lon_ana( iax ) , lat_ana( jax )
 
 
-          ! Save off analysis fields for diagnostics and
+          ! Save off analysis fields for diagnostics and 
           ! other purposes
           T_ana_diag(:) = To_X( iac, jac, :)
           Q_ana_diag(:) = Qo_X( iac, jac, :)
           U_ana_diag(:) = Uo_X( iac, jac, :)
           V_ana_diag(:) = Vo_X( iac, jac, :)
-
+    
           !================================================
           ! Patch in SCM profiles here if wanted.
-          ! This acts as "dynamical nudging", since
+          ! This acts as "dynamical nudging", since 
           ! horizontal advective tendencies will become
           ! stronger if SCM state drifts away from re-ana.
-          ! Note, this will only be effective w/ upwind
+          ! Note, this will only be effective w/ upwind 
           ! scheme, since 2nd order cntrd skips over central
           ! point in stencil.
           !----
           ! For stability it turns out may be good to scale
-          ! with pressure so that high-velocity strato winds
+          ! with pressure so that high-velocity strato winds 
           ! don't lead to CFL violations. So, as a bad, dirty,
           ! dirty short term solution, weight "reaction" by
-          ! pref_mid.  Clearly, better soln would be to
-          ! sub-step this part of the dynamics as is done
+          ! pref_mid.  Clearly, better soln would be to 
+          ! sub-step this part of the dynamics as is done 
           ! for the other "dycores".
           !=================================================
           ! Calculate "reaction coefficient"
@@ -506,28 +519,28 @@ subroutine get_ana_dynfrc_fv ( scmlon, scmlat ,  &
           ! Adjust central profiles in stencils
           !------------------------------------
           if (scm_ana_t_react) then
-              To_X( iac, jac, :) = alpha_react(:) * T_scm(:)   &
+              To_X( iac, jac, :) = alpha_react(:) * T_scm(:)   & 
                                 + ( 1._r8-alpha_react(:) ) * To_X( iac, jac, :)
               if(masterproc) write(iulog,*) subname//" REACTING to SCM T-state ..... "
           else
               if(masterproc) write(iulog,*) subname//" No reaction to SCM T-state ..... "
           endif
           if (scm_ana_q_react) then
-              Qo_X( iac, jac, :) = alpha_react(:) * Q_scm(:) &
+              Qo_X( iac, jac, :) = alpha_react(:) * Q_scm(:) & 
                                 + ( 1._r8-alpha_react(:) ) * Qo_X( iac, jac, :)
               if(masterproc) write(iulog,*) subname//" REACTING to SCM Q-state ..... "
           else
               if(masterproc) write(iulog,*) subname//" No reaction to SCM Q-state ..... "
           endif
           if (scm_ana_u_react) then
-              Uo_X( iac, jac, :) = alpha_react(:) * U_scm(:) &
+              Uo_X( iac, jac, :) = alpha_react(:) * U_scm(:) & 
                                 + ( 1._r8-alpha_react(:) ) * Uo_X( iac, jac, :)
               if(masterproc) write(iulog,*) subname//" REACTING to SCM U-state ..... "
           else
               if(masterproc) write(iulog,*) subname//" No reaction to SCM U-state ..... "
           endif
           if (scm_ana_v_react) then
-              Vo_X( iac, jac, :) = alpha_react(:) * V_scm(:) &
+              Vo_X( iac, jac, :) = alpha_react(:) * V_scm(:) & 
                                 + ( 1._r8-alpha_react(:) ) * Vo_X( iac, jac, :)
               if(masterproc) write(iulog,*) subname//" REACTING to SCM V-state ..... "
           else
@@ -538,23 +551,23 @@ subroutine get_ana_dynfrc_fv ( scmlon, scmlat ,  &
 
           !=========================================
 
-           call virtual_t(  nlon_alc,nlat_alc,nlev_alc, &
+           call virtual_t(  nlon_alc,nlat_alc,nlev_alc, & 
                              To_X , Qo_X , Tv_X )
 
-           call makepr_fv(  nlon_alc,nlat_alc,nlev_alc, &
-                            tv_X , pso_X , phiso_X , &
+           call makepr_fv(  nlon_alc,nlat_alc,nlev_alc, & 
+                            tv_X , pso_X , phiso_X , & 
                             plo_X, ple_X, phi_X )
-           call etadot_fv ( nlon_alc , nlat_alc , nlev_alc , lon_alc , lat_alc , &
-                            uo_X ,  &
-                            vo_X , &
+           call etadot_fv ( nlon_alc , nlat_alc , nlev_alc , lon_alc , lat_alc , & 
+                            uo_X ,  & 
+                            vo_X , & 
                             plo_X, ple_X , etad_X , omg_X )
            call zeta_fv( nlon_alc,nlat_alc,nlev_alc, &
-                       lon_alc ,lat_alc , &
+                       lon_alc ,lat_alc , & 
                        uo_X , vo_X , zeta_X )
 
-           call makepk_fv( nlon_alc,nlat_alc,nlev_alc, &
-                         To_X , Qo_X ,  &
-                           pso_X , phiso_X , &
+           call makepk_fv( nlon_alc,nlat_alc,nlev_alc, &  
+                         To_X , Qo_X ,  & 
+                           pso_X , phiso_X , & 
                             pko_X, pke_X, phik_X, thv_X )
 
            KEh_X  = 0.5 * ( Uo_X**2 + Vo_X**2 )
@@ -580,14 +593,15 @@ subroutine get_ana_dynfrc_fv ( scmlon, scmlat ,  &
           end if
 
 
-          zeta_ana         = zeta_X
-          omega_recalc_ana = omg_X( iac,jac,:)
+          zeta_ana         = zeta_X  
+          omega_recalc_ana = omg_X( iac,jac,:) 
           etad_ana         = etad_X( iac,jac,:)
-          plo_ana   = plo_X( iac,jac,:)
+          plo_ana   = plo_X( iac,jac,:) 
           t_ana     = To_X( iac,jac,:)
-          tv_ana    = Tv_X( iac,jac,:)
+          tv_ana    = Tv_X( iac,jac,:) 
           q_ana     = Qo_X( iac,jac,:)
-          ps_ana    = PSo_X( iac,jac )
+          ps_ana    = PSo_X( iac,jac ) 
+          phis_ana  = PHISo_X( iac,jac ) 
 
           u_ana     = Uo_X( iac,jac,:)
           v_ana     = Vo_X( iac,jac,:)
@@ -599,7 +613,7 @@ subroutine get_ana_dynfrc_fv ( scmlon, scmlat ,  &
           tten_dycore_ana     = TTCOREo_X( iac,jac,:)
           omega_dycore_ana    = OGCOREo_X( iac,jac,:)
 
-
+           
           ! Horz. gradient calcs
 
             kehg_X = grad_fv( nlon_alc,nlat_alc,nlev_alc,iac,jac,lon_alc,lat_alc, KEh_X )
@@ -616,21 +630,21 @@ subroutine get_ana_dynfrc_fv ( scmlon, scmlat ,  &
             aalc   =  0.5*( PHI_X( :, :, 2:nlev_alc+1) +  PHI_X(: , : ,1:nlev_alc) )
             phig_X = grad_fv( nlon_alc,nlat_alc,nlev_alc,iac,jac,lon_alc,lat_alc, aalc )
 
-            plog_X = grad_fv( nlon_alc,nlat_alc,nlev_alc,iac,jac,lon_alc,lat_alc, plo_X(:,:,1:nlev_alc) )
+                plog_X = grad_fv( nlon_alc,nlat_alc,nlev_alc,iac,jac,lon_alc,lat_alc, plo_X(:,:,1:nlev_alc) )
 
 
-            lin_pfc_X = lin_pfc_fv( nlon_alc,nlat_alc,nlev_alc,iac,jac,lon_alc,lat_alc, ple_X, phi_X )
+           lin_pfc_X = lin_pfc_fv( nlon_alc,nlat_alc,nlev_alc,iac,jac,lon_alc,lat_alc, ple_X, phi_X )
 
-            kehg_ana  = kehg_X
+            kehg_ana  = kehg_X 
             plog_ana  = plog_X
-            phig_ana  = phig_X
-            teg_ana   = teg_X
-            qg_ana    = qg_X
-            ug_ana    = ug_X
-            vg_ana    = vg_X
+            phig_ana  = phig_X      
+            teg_ana   = teg_X     
+            qg_ana    = qg_X    
+            ug_ana    = ug_X        
+            vg_ana    = vg_X   
             lin_pfc_ana  = lin_pfc_X
 
-            !put together pieces for u*grad(u) form of U and V adv tendencies
+            !put together pieces for u*grad(u) form of U and V adv tendencies 
 
             if ( scm_ana_upwind .OR. scm_ana_u_react ) then
               uten_hadv_ana =  upwind_hadv(nlon_alc,nlat_alc,nlev_alc,iac,jac,lon_alc,lat_alc, u_ana, v_ana, Uo_X )
@@ -647,15 +661,15 @@ subroutine get_ana_dynfrc_fv ( scmlon, scmlat ,  &
             !======================================
             absvo     = 2._r8 * OOmega * sin( lat_ana(jax) * PI/180._r8 )
             !Allow Coriolis to react to SCM winds
-            uten_vort_ana  =   absvo * v_ana
-            vten_vort_ana  =  -absvo * u_ana
+            uten_vort_ana  =   absvo * v_ana 
+            vten_vort_ana  =  -absvo * u_ana 
             !  -----  Diags for VI form (0-out)
             uten_keg_ana  =    0._r8 ! fill with 0
 
-          if (.FALSE.) then  ! No horz. p-gradient in p-coords
+            if (.FALSE.) then  ! No horz. p-gradient in p-coords
                uten_pfrc_ana  = - phig_ana(:,1)
                vten_pfrc_ana  = - phig_ana(:,2)
-          else
+            else
               !put together pieces for Pressure and Phi gradient tencency terms
               uten_pfrc_ana  = -(1._r8/rho_ana) * plog_ana(:,1) - phig_ana(:,1)
               vten_pfrc_ana  = -(1._r8/rho_ana) * plog_ana(:,2) - phig_ana(:,2)
@@ -681,12 +695,12 @@ subroutine get_ana_dynfrc_fv ( scmlon, scmlat ,  &
             if(masterproc) write(iulog,*) subname//" Omega direct from ana"
           end if
 
-
+        
           if (.not.(scm_ana_x_plevels)) then
           !Tendencies due to vertical advection (etadot * D_eta ... )
             uten_vadv_ana = vadv_fv( nlev_alc, etad_ana, u_ana )
             vten_vadv_ana = vadv_fv( nlev_alc, etad_ana, v_ana )
-            tten_vadv_ana = vadv_fv( nlev_alc, etad_ana, tv_ana ) ! should be straight T (not virtual)
+            tten_vadv_ana = vadv_fv( nlev_alc, etad_ana, tv_ana ) ! should be straight T (not virtual) 
             qten_vadv_ana = vadv_fv( nlev_alc, etad_ana, q_ana )
           else
           !Tendencies due to vertical advection (Omega * D_p ... )
@@ -698,14 +712,14 @@ subroutine get_ana_dynfrc_fv ( scmlon, scmlat ,  &
 
             tten_comp_ana = (1./cpair)*( omega_ana / rho_ana )
 
-          !DIags for pressure/geop grad forces
+          !DIags for pressure/geop grad forces   
             uten_phig_ana =  - phig_ana(:,1)
             uten_prg_ana  =  - (1._r8/rho_ana) * plog_ana(:,1)
-
+ 
     end subroutine get_ana_dynfrc_fv
 
 !-----------------------------------------------------
-!    Stuff ... useful ojala
+!    Stuff ... useful ojala  
 !-----------------------------------------------------
     !-------------------------
        function vadv_fv( nlev, etad, aa ) result( tend )
@@ -714,7 +728,7 @@ subroutine get_ana_dynfrc_fv ( scmlon, scmlat ,  &
             real(r8), intent(in)  :: etad(nlev) , aa(nlev)
             real(r8)              :: tend(nlev)
             real(r8)              :: eta(nlev)
-            integer               :: L
+            integer               :: L 
 
             eta = hybm+hyam
 
@@ -727,7 +741,7 @@ subroutine get_ana_dynfrc_fv ( scmlon, scmlat ,  &
                tend(L) = etad(L)* ( aa(L) - aa(L-1) ) / ( eta(L) - eta(L-1) )
 
             tend = -1._r8*tend ! for RHS consistency
-
+ 
          end function vadv_fv
 !---------------------------
     !-------------------------
@@ -735,7 +749,7 @@ subroutine get_ana_dynfrc_fv ( scmlon, scmlat ,  &
             integer,  intent(in)  :: nlev
             real(r8), intent(in)  :: omega(nlev) , aa(nlev),plo(nlev)
             real(r8)              :: tend(nlev)
-            integer               :: L
+            integer               :: L 
 
             do L=2,nlev-1
                tend(L) = omega(L)* ( aa(L+1) - aa(L-1) ) / ( plo(L+1) - plo(L-1) )
@@ -746,7 +760,7 @@ subroutine get_ana_dynfrc_fv ( scmlon, scmlat ,  &
                tend(L) = omega(L)* ( aa(L) - aa(L-1) ) / ( plo(L) - plo(L-1) )
 
             tend = -1._r8*tend ! for RHS consistency
-
+ 
          end function vadv_fv_press
 !---------------------------
       function lin_pfc_fv( nlon,nlat,nlev,iax,jax,lons,lats, pre, phi ) result( pfc )
@@ -759,7 +773,7 @@ subroutine get_ana_dynfrc_fv ( scmlon, scmlat ,  &
             real(r8)              :: pfyS(nlev) , pfyN(nlev)
             real(r8)              :: rlats(nlat),rlons(nlon),dx,dy,ds
             real(r8)              :: pr1,pr2,pr3,pr4, ph1,ph2,ph3,ph4
-            integer               :: L , igg
+            integer               :: L , igg 
 
          ! Begin
             rlons(:) = lons(:) * PI/180._r8
@@ -769,7 +783,7 @@ subroutine get_ana_dynfrc_fv ( scmlon, scmlat ,  &
             dy=( rlats(2)-rlats(1) ) * Rearth
 
             ds  = MAX( dx*cos(rlats(jax)) , .1_r8 )
-            igg = iax
+            igg = iax 
             do L=1,nlev
                pr1 = pre(igg-1,jax,L+1)
                pr2 = pre(igg  ,jax,L+1)
@@ -794,7 +808,7 @@ subroutine get_ana_dynfrc_fv ( scmlon, scmlat ,  &
                pfxE(L) = ( (pr2-pr4)*(ph1-ph3) + (pr1-pr3)*(ph4-ph2) ) /( ds * ( (pr2-pr4) + (pr1-pr3) ) )
             end do
             ds  = dy
-            igg = jax
+            igg = jax 
             do L=1,nlev
                pr1 = pre(iax,igg-1,L+1)
                pr2 = pre(iax,igg  ,L+1)
@@ -819,12 +833,12 @@ subroutine get_ana_dynfrc_fv ( scmlon, scmlat ,  &
                pfyN(L) = ( (pr2-pr4)*(ph1-ph3) + (pr1-pr3)*(ph4-ph2) ) /( ds * ( (pr2-pr4) + (pr1-pr3) ) )
             end do
 
-
+      
             do L=1,nlev
               pfc(L,1)  = 0.5_r8*( pfxW(L) + pfxE(L) )
               pfc(L,2)  = 0.5_r8*( pfyS(L) + pfyN(L) )
             end do
-
+ 
 
 
          end function lin_pfc_fv
@@ -836,7 +850,7 @@ subroutine get_ana_dynfrc_fv ( scmlon, scmlat ,  &
             real(r8), intent(in)  :: lats(nlat),lons(nlon)
             real(r8)              :: ga(nlev,2)
             real(r8)              :: rlats(nlat),rlons(nlon),dx,dy
-            integer               :: L
+            integer               :: L 
 
          ! Begin
             rlons(:) = lons(:) * PI/180._r8
@@ -849,7 +863,7 @@ subroutine get_ana_dynfrc_fv ( scmlon, scmlat ,  &
               ga(L,1)  = (aa(iax+1,jax,L) - aa(iax-1,jax,L))/( 2._r8*dx*cos(rlats(jax)) + 0.1_r8 )
               ga(L,2)  = (aa(iax,jax+1,L) - aa(iax,jax-1,L))/( 2._r8*dy )
             end do
-
+ 
 
 
          end function grad_fv
@@ -857,15 +871,15 @@ subroutine get_ana_dynfrc_fv ( scmlon, scmlat ,  &
        function upwind_hadv( nlon,nlat,nlev,iax,jax,lons,lats,u,v, aa ) result( hadv_tend )
          !use shr_kind_mod,  only:  r8 => shr_kind_r8
          !use shr_const_mod, only:  rearth => shr_const_rearth , &  !  =6.37122e6_R8 meters
-         !                          pi => shr_const_pi         , &
-         !                          omega => shr_const_omega
+         !                          pi => shr_const_pi         , & 
+         !                          omega => shr_const_omega  
 
             integer,  intent(in)  :: nlon,nlat,nlev,iax,jax
             real(r8), intent(in)  :: aa(nlon,nlat,nlev)
             real(r8), intent(in)  :: lats(nlat),lons(nlon),u(nlev),v(nlev)
             real(r8)              :: hadv_tend(nlev)
             real(r8)              :: rlats(nlat),rlons(nlon),dx,dy,xten(nlev),yten(nlev)
-            integer               :: L
+            integer               :: L 
 
          ! Begin
             rlons(:) = lons(:) * PI/180._r8
@@ -888,7 +902,7 @@ subroutine get_ana_dynfrc_fv ( scmlon, scmlat ,  &
                  yten(L)  = v(L) * ( aa(iax,jax+1,L) - aa(iax,jax,L))/( dy )
               end if
             end do
-
+ 
             hadv_tend(:) = -1._r8 * ( xten(:) + yten(:) )
 
 
@@ -902,22 +916,22 @@ subroutine get_ana_dynfrc_fv ( scmlon, scmlat ,  &
             real(r8) :: ple(nlon,nlat,nlev+1),plo(nlon,nlat,nlev),rv(nlon,nlat,nlev)
             real(r8) :: kappa, p00
             integer :: L
-
-           do L=1,nlev+1
-              ple(:,:,L) = hyai(L)*ps0 + hybi(L)*ps(:,:)
+           
+           do L=1,nlev+1 
+              ple(:,:,L) = hyai(L)*ps0 + hybi(L)*ps(:,:) 
            end do
            do L=1,nlev
-              plo(:,:,L) = hyam(L)*ps0 + hybm(L)*ps(:,:)
+              plo(:,:,L) = hyam(L)*ps0 + hybm(L)*ps(:,:) 
            end do
 
            kappa=rdair/cpair
-
+    
            pko = plo**kappa
            pke = ple**kappa
 
            p00 =    100000._r8
            th  = ( ( p00 / plo)**kappa ) * t
-
+       
            rv = 1._r8/(1._r8 - q) - 1._r8
            th = th*(1._r8  + 0.61_r8 * rv )
 
@@ -938,12 +952,12 @@ subroutine get_ana_dynfrc_fv ( scmlon, scmlat ,  &
             real(r8), intent(out) :: plo(nlon,nlat,nlev), ple(nlon,nlat,nlev+1), phi(nlon,nlat,nlev+1)
             real(r8) :: lnple(nlon,nlat,nlev+1)
             integer :: L
-
-           do L=1,nlev+1
-              ple(:,:,L) = hyai(L)*ps0 + hybi(L)*ps(:,:)
+           
+           do L=1,nlev+1 
+              ple(:,:,L) = hyai(L)*ps0 + hybi(L)*ps(:,:) 
            end do
            do L=1,nlev
-              plo(:,:,L) = hyam(L)*ps0 + hybm(L)*ps(:,:)
+              plo(:,:,L) = hyam(L)*ps0 + hybm(L)*ps(:,:) 
            end do
 
            lnple  = log( ple )
@@ -964,7 +978,7 @@ subroutine get_ana_dynfrc_fv ( scmlon, scmlat ,  &
             real(r8), intent(out) :: tv(nlon,nlat,nlev)
             real(r8)              :: rv(nlon,nlat,nlev)
             integer :: L
-
+           
 
             rv = 1._r8/(1._r8 - q) - 1._r8
             tv = t*(1._r8  + 0.61_r8 * rv )
@@ -976,8 +990,8 @@ subroutine get_ana_dynfrc_fv ( scmlon, scmlat ,  &
        subroutine zeta_fv( nlon,nlat,nlev,lons,lats, u,v, zeta )
          !use shr_kind_mod,  only:  r8 => shr_kind_r8
          !use shr_const_mod, only:  rearth => shr_const_rearth , &  !  =6.37122e6_R8 meters
-         !                          pi => shr_const_pi         , &
-         !                          omega => shr_const_omega
+         !                          pi => shr_const_pi         , & 
+         !                          omega => shr_const_omega  
 
             integer,  intent(in)  :: nlon,nlat,nlev
             real(r8), intent(in)  :: u(nlon,nlat,nlev),v(nlon,nlat,nlev)
@@ -990,21 +1004,21 @@ subroutine get_ana_dynfrc_fv ( scmlon, scmlat ,  &
 
             iax=2
             jax=2
-
+ 
             rlons(:) = lons(:) * PI/180._r8
             rlats(:) = lats(:) * PI/180._r8
-
+  
             dx0 = rearth* ( rlons(2)-rlons(1) )
             dy  = rearth* ( rlats(2)-rlats(1) )
 
             darea = dy*dx0*cos( rlats(jax) )
 
 
-             do L =1,nlev
-               zeta(L) =                                                &
+             do L =1,nlev  
+               zeta(L) =                                                & 
                            ( V(iax+1,jax, L)   - V(iax-1,jax,L) ) / ( 2._r8*dx0*cos( rlats(jax) ) )  &
                          - ( U(iax,jax+1, L)   - U(iax,jax-1,L) ) / ( 2._r8*dy )
-            end do
+            end do     
 
 
   end subroutine zeta_fv
@@ -1076,7 +1090,7 @@ subroutine get_ana_dynfrc_fv ( scmlon, scmlat ,  &
    end do
 
 
-  ! now calculate HORZ divergence of (FUC,FVC). Note coslat term already
+  ! now calculate HORZ divergence of (FUC,FVC). Note coslat term already 
   ! incorporated in FVC.
   do L=1,nlev
       do j=1,nlat-1
@@ -1085,7 +1099,7 @@ subroutine get_ana_dynfrc_fv ( scmlon, scmlat ,  &
             jp1=j+1
             rcos1 = 1._r8 /( Rearth*cos( rlats(j) ) )
             div(i,j,L) = rcos1 * ( FUC(ip1,j,L)-FUC(i,j,L) ) / (rlons(ip1)-rlons(i) )  &
-                      + rcos1 * ( FVC(i,jp1,L)-FVC(i,j,L) ) / (rlats(jp1)-rlats(j) )
+                      + rcos1 * ( FVC(i,jp1,L)-FVC(i,j,L) ) / (rlats(jp1)-rlats(j) ) 
          end do
       end do
    end do
@@ -1128,8 +1142,8 @@ end subroutine etadot_fv
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !================================================================
   subroutine read_netcdf_ana_fv_ini( anal_file , nlon, nlat, nlev,lonidx,latidx )
-   !
-   ! READ_NETCDF_ANAL_INI:
+   ! 
+   ! READ_NETCDF_ANAL_INI: 
    !                 Open the given analyses data file. Query dimesnisons.
    !                 Close.
    !===============================================================
@@ -1155,16 +1169,16 @@ end subroutine etadot_fv
    real(r8) :: closelon,closelat
 
    logical :: l_have_us , l_have_vs
-
+ 
    character(len=24) :: subname='read_netcdf_ana_fv_ini: '
 
-   l_have_us = .FALSE.
-   l_have_vs = .FALSE.
+    l_have_us = .FALSE.
+    l_have_vs = .FALSE.
 
    ! masterporc does all of the work here
    !-----------------------------------------
    if(masterproc) then
-
+   
      ! Open the given file
      !-----------------------
      istat=nf90_open(trim(anal_file),NF90_NOWRITE,ncid)
@@ -1208,7 +1222,7 @@ end subroutine etadot_fv
        write(iulog,*) subname//nf90_strerror(istat)
        call endrun ('UPDATE_ANALYSES_FV')
      endif
-
+          
      call shr_scam_getCloseLatLon(ncid ,scmlat,scmlon,closelat,closelon,latidx,lonidx)
 
      ! Close the analyses file and exit
@@ -1227,13 +1241,13 @@ end subroutine etadot_fv
 !================================================================
   subroutine read_netcdf_ana_fv( anal_file , nlon, nlat, nlev, &
                                  u, v, &
-                                 t, q, ps, phis, &
+                                 t, q, ps, phis, & 
                                  lons, lats, levs &
-                               , utcore, vtcore, ttcore, ogcore &
+                               , utcore, vtcore, ttcore, ogcore & 
                                     )
-   !
-   ! READ_NETCDF_ANAL :
-   !                 Open the given analyses data file, read in
+   ! 
+   ! READ_NETCDF_ANAL : 
+   !                 Open the given analyses data file, read in 
    !                 U,V,T,Q, and PS values as well as Lons, Lats.
    !===============================================================
    use cam_abortutils,   only : endrun
@@ -1271,7 +1285,7 @@ end subroutine etadot_fv
    ! masterporc does all of the work here
    !-----------------------------------------
    if(masterproc) then
-
+   
      ! Open the given file
      !-----------------------
      istat=nf90_open(trim(anal_file),NF90_NOWRITE,ncid)
@@ -1282,7 +1296,7 @@ end subroutine etadot_fv
     end if
    end if
 
-
+ 
 
    if(masterproc) then
 
@@ -1320,7 +1334,7 @@ end subroutine etadot_fv
      endif
 
 
-     ! Read in, transpose lat/lev indices,
+     ! Read in, transpose lat/lev indices, 
      ! and scatter data arrays
      !----------------------------------
      !  First block reads U
@@ -1395,7 +1409,7 @@ end subroutine etadot_fv
     if(istat /= NF90_NOERR) then
       write(iulog,*)  subname//"No UTEND_CORE on file: "
       write(iulog,*) trim(anal_file)
-      utcore(:,:,:)=-9999._r8
+      utcore(:,:,:)=-9999._r8 
     else
       istat=nf90_get_var(ncid,varid,utcore )
         if(istat /= NF90_NOERR) then
@@ -1408,7 +1422,7 @@ end subroutine etadot_fv
     if(istat /= NF90_NOERR) then
       write(iulog,*)  subname//"No VTEND_CORE on file: "
       write(iulog,*) trim(anal_file)
-      vtcore(:,:,:)=-9999._r8
+      vtcore(:,:,:)=-9999._r8 
     else
       istat=nf90_get_var(ncid,varid,vtcore )
         if(istat /= NF90_NOERR) then
@@ -1421,7 +1435,7 @@ end subroutine etadot_fv
     if(istat /= NF90_NOERR) then
       write(iulog,*)  subname//"No TTEND_CORE on file: "
       write(iulog,*) trim(anal_file)
-      ttcore(:,:,:)=-9999._r8
+      ttcore(:,:,:)= -9999._r8 
     else
       istat=nf90_get_var(ncid,varid,ttcore )
         if(istat /= NF90_NOERR) then
@@ -1434,7 +1448,7 @@ end subroutine etadot_fv
     if(istat /= NF90_NOERR) then
       write(iulog,*)  subname//"No OMEGA (core) on file: "
       write(iulog,*) trim(anal_file)
-      ogcore(:,:,:)=-9999._r8
+      ogcore(:,:,:)=-9999._r8 
     else
       istat=nf90_get_var(ncid,varid,ogcore )
         if(istat /= NF90_NOERR) then
@@ -1459,9 +1473,9 @@ end subroutine etadot_fv
   end subroutine read_netcdf_ana_fv
 !================================================================
 !================================================================
-  subroutine dynfrc_timewgts (  &
-                                ana_prev_date, ana_next_date, &
-                                wgt1 , wgt2 )
+  subroutine dynfrc_timewgts (  & 
+                                ana_prev_date, ana_next_date, & 
+                                wgt1 , wgt2 ) 
 
 
   use shr_kind_mod,     only: r8 => shr_kind_r8, i8 => shr_kind_i8
@@ -1486,7 +1500,7 @@ end subroutine etadot_fv
                                DD= Ana_next_date(3)  , S= Ana_next_date(4)  )
        AnaDiff =Date2-Date0
        call ESMF_TimeIntervalGet(AnaDiff,S=Ana_interval ,rc=rc)
-
+ 
        DateDiff2 =Date2-Date1
        call ESMF_TimeIntervalGet(DateDiff2,S=DeltaT2,rc=rc)
        DateDiff0 =Date1-Date0
@@ -1494,15 +1508,15 @@ end subroutine etadot_fv
 
             wgt1 = 1._r8 - ( 1._r8 * DeltaT0 ) / Ana_interval
             wgt2 = 1._r8 - ( 1._r8 * DeltaT2 ) / Ana_interval
-
+  
 end subroutine dynfrc_timewgts
 
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!
   subroutine patch_eta_x_plv (  nx , ny, nL,ix, jx, aa, plo )
    integer, intent(in)     :: nx,ny,nl,ix,jx
-   real(r8), intent(in)    :: plo(nx,ny,nL)
-   real(r8), intent(inout) :: aa(nx,ny,nL)
+   real(r8), intent(in)    :: plo(nx,ny,nL)  
+   real(r8), intent(inout) :: aa(nx,ny,nL)  
 
    real(r8) :: plx(nL),plq(nL),aax(nL),aaq(nL),aat(nx,ny,nL)
    real(r8) :: dp,dpk,dpk1,wtk,wtk1
@@ -1516,7 +1530,7 @@ end subroutine dynfrc_timewgts
       plq(:) =  plo(i,j,:)
       aaq(:) =  aa(i,j,:)
       do L=1,nl
-      do k=2,nl
+      do k=2,nl 
          if ( ( plx(L) <= plq(k) ).AND.(plx(L) > plq(k-1) ) ) then
             dp  = plq(k)-plq(k-1)
             dpk1 = plx(L)-plq(k-1)
@@ -1524,7 +1538,7 @@ end subroutine dynfrc_timewgts
             wtk1 = 1._r8 - dpk1 / dp
             wtk  = 1._r8 - dpk  / dp
             aax(L) = wtk * aaq(k) + wtk1 * aaq(k-1)
-         end if
+         end if 
       end do
       if (  plx(L) <= plq(1)  ) aax(L)=aaq(1)
       if (  plx(L) >  plq(NL) ) aax(L)=aaq(NL)
