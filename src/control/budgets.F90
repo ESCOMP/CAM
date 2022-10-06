@@ -36,6 +36,7 @@ public :: &
    budget_info,           &! return budget info by ind
    budget_cnt_adjust,     &! advance or reset budget count
    budget_count,          &! return budget count 
+   is_budget,             &! return budget count 
    budget_get_global,     &! return budget count 
    budget_put_global,     &! return budget count 
    budget_outfld           ! Returns true if default CAM output was specified in the budget_stage_add calls.
@@ -506,6 +507,7 @@ subroutine budget_get_global (name, me_idx, global, abort)
    integer :: m                                   ! budget index
    logical :: abort_on_error
    character(len=*), parameter :: sub='budget_get_global'
+   character(len=128) :: errmsg
    !-----------------------------------------------------------------------
 
    ! Find budget name in list
@@ -521,7 +523,8 @@ subroutine budget_get_global (name, me_idx, global, abort)
    if (present(abort)) abort_on_error = abort
    
    if (abort_on_error) then
-      call endrun(sub//': FATAL: name not found')
+      write(errmsg,*) sub//': FATAL: name not found: ', trim(name)
+      call endrun(errmsg)
    end if
 
  end subroutine budget_get_global
@@ -674,6 +677,32 @@ function budget_outfld(m)
 
  end function budget_outfld
 
+function is_budget(name)
+
+   ! Get the index of a budget.  Optional abort argument allows returning
+   ! control to caller when budget name is not found.  Default behavior is
+   ! to call endrun when name is not found.
+
+   !-----------------------------Arguments---------------------------------
+   character(len=*),  intent(in)  :: name  ! budget name
+
+   !---------------------------Local workspace-----------------------------
+   logical                        :: is_budget           ! function return
+   integer                        :: m                   ! budget index
+   character(len=*), parameter :: sub='is_budget'
+   !-----------------------------------------------------------------------
+
+   ! Find budget name in list of defined budgets
+
+   is_budget = .false.
+   do m = 1, budget_array_max
+      if (trim(name) == trim(budget_name(m)).or.trim(name) == trim(budget_stagename(m))) then
+         is_budget = .true.
+         return
+      end if
+   end do
+ end function is_budget
+!==============================================================================
 function budget_count(ind)
 
    ! Query whether default CAM outfld calls should be made.

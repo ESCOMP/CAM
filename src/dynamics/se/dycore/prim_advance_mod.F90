@@ -1649,36 +1649,32 @@ contains
            call util_function(elem(ie)%state%qdp(:,:,:,1,tl_qdp),np,nlev,name_out3,ie)
            do j = 1, np
               do i = 1, np
-                 elem(ie)%derived%budget(i,j,4,state_ind) = elem(ie)%derived%budget(i,j,4,state_ind) + sum(elem(ie)%state%qdp(i,j,:,1,tl_qdp))
+                 elem(ie)%derived%budget(i,j,4,state_ind) = elem(ie)%derived%budget(i,j,4,state_ind) + sum(elem(ie)%state%qdp(i,j,:,1,tl_qdp)/gravit)
               end do
            end do
-           elem(ie)%derived%budget(1:np,1:np,4,state_ind)=elem(ie)%derived%budget(1:np,1:np,4,state_ind)/gravit
            if (ixcldliq>0) then
               call util_function(elem(ie)%state%qdp(:,:,:,ixcldliq,tl_qdp),np,nlev,name_out4,ie)
               do j = 1, np
                  do i = 1, np
-                    elem(ie)%derived%budget(i,j,4,state_ind) = elem(ie)%derived%budget(i,j,4,state_ind) + sum(elem(ie)%state%qdp(i,j,:,1,tl_qdp))
+                    elem(ie)%derived%budget(i,j,5,state_ind) = elem(ie)%derived%budget(i,j,5,state_ind) + sum(elem(ie)%state%qdp(i,j,:,ixcldliq,tl_qdp)/gravit)
                  end do
               end do
-              elem(ie)%derived%budget(1:np,1:np,4,state_ind)=elem(ie)%derived%budget(1:np,1:np,4,state_ind)/gravit
            end if
            if (ixcldice>0) then
               call util_function(elem(ie)%state%qdp(:,:,:,ixcldice,tl_qdp),np,nlev,name_out5,ie)
               do j = 1, np
                  do i = 1, np
-                    elem(ie)%derived%budget(i,j,6,state_ind) = elem(ie)%derived%budget(i,j,6,state_ind) + sum(elem(ie)%state%qdp(i,j,:,ixcldice,tl_qdp))
+                    elem(ie)%derived%budget(i,j,6,state_ind) = elem(ie)%derived%budget(i,j,6,state_ind) + sum(elem(ie)%state%qdp(i,j,:,ixcldice,tl_qdp)/gravit)
                  end do
               end do
-              elem(ie)%derived%budget(1:np,1:np,6,state_ind)=elem(ie)%derived%budget(1:np,1:np,6,state_ind)/gravit
            end if
            if (ixtt>0) then
               call util_function(elem(ie)%state%qdp(:,:,:,ixtt    ,tl_qdp),np,nlev,name_out6,ie)
               do j = 1, np
                  do i = 1, np
-                    elem(ie)%derived%budget(i,j,7,state_ind) = elem(ie)%derived%budget(i,j,7,state_ind) + sum(elem(ie)%state%qdp(i,j,:,ixtt,tl_qdp))
+                    elem(ie)%derived%budget(i,j,7,state_ind) = elem(ie)%derived%budget(i,j,7,state_ind) + sum(elem(ie)%state%qdp(i,j,:,ixtt,tl_qdp)/gravit)
                  end do
               end do
-              elem(ie)%derived%budget(1:np,1:np,7,state_ind)=elem(ie)%derived%budget(1:np,1:np,7,state_ind)/gravit
            end if
         end if
      end do
@@ -1749,7 +1745,6 @@ contains
     use physconst,              only: thermodynamic_active_species_ice_idx
 
     use budgets,                only: budget_info,budget_ind_byname
-    use cam_logfile,            only: iulog
     !------------------------------Arguments--------------------------------
 
     type (element_t) , intent(inout) :: elem(:)

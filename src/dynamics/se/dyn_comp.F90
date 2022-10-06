@@ -1206,7 +1206,6 @@ subroutine dyn_run(dyn_state)
       end do
    end if
 
-
    call calc_tot_energy_dynamics(dyn_state%elem,dyn_state%fvm, nets, nete, TimeLevel%n0, n0_qdp,'dBF')
    !$OMP END PARALLEL
 
@@ -1216,74 +1215,8 @@ subroutine dyn_run(dyn_state)
    ! output vars on CSLAM fvm grid
    call write_dyn_vars(dyn_state)
 
-   ! update energy budget differences
+   call budget_update(dyn_state%elem,dyn_state%fvm, nets, nete, TimeLevel%n0, n0_qdp, hybrid)
 
-   do i=1,budget_num
-      call budget_info(i,name=budget_name,pkgtype=budget_pkgtype,optype=budget_optype,state_ind=budget_state_ind)
-      if (budget_pkgtype=='dyn'.and.(budget_optype=='dif'.or.budget_optype=='sum')) &
-           call calc_tot_energy_dynamics_diff(dyn_state%elem,dyn_state%fvm, nets, nete, TimeLevel%n0, n0_qdp,trim(budget_name))
-   end do
-
-!!$
-   allocate(tmp(np,np,nets:nete))
-   allocate(tmptot(np,np,nets:nete))
-   allocate(tmpse(np,np,nets:nete))
-   allocate(tmpke(np,np,nets:nete))
-   allocate(tmp1(np,np,nets:nete))
-   allocate(tmp2(np,np,nets:nete))
-   tmp=0._r8
-   tmp1=0._r8
-   tmp2=0._r8
-   tmptot=0._r8
-   tmpse=0._r8
-   tmpke=0._r8
-
-   ! output budget globals
-
-   if (.true.) then
-      do i=1,budget_num
-         call budget_info(i,name=budget_name,pkgtype=budget_pkgtype,optype=budget_optype,state_ind=budget_state_ind)
-         if (budget_pkgtype=='dyn') then
-            ! Normalize energy sums and convert to W/s
-            do ie=nets,nete
-               tmp(:,:,ie)=dyn_state%elem(ie)%derived%budget(:,:,1,budget_state_ind)/dyn_state%elem(ie)%derived%budget_cnt(budget_state_ind)/dtime
-               if (dyn_state%elem(nets)%derived%budget_subcycle(budget_state_ind).ne.0) then
-!               tmptot(:,:,ie)=dyn_state%elem(ie)%derived%budget(:,:,1,budget_state_ind)/dyn_state%elem(ie)%derived%budget_subcycle(budget_state_ind)
-!               tmpse(:,:,ie)=dyn_state%elem(ie)%derived%budget(:,:,2,budget_state_ind)/dyn_state%elem(ie)%derived%budget_subcycle(budget_state_ind)
-!               tmpke(:,:,ie)=dyn_state%elem(ie)%derived%budget(:,:,3,budget_state_ind)/dyn_state%elem(ie)%derived%budget_subcycle(budget_state_ind)
-               tmptot(:,:,ie)=dyn_state%elem(ie)%derived%budget(:,:,1,budget_state_ind)
-               tmpse(:,:,ie)=dyn_state%elem(ie)%derived%budget(:,:,2,budget_state_ind)
-               tmpke(:,:,ie)=dyn_state%elem(ie)%derived%budget(:,:,3,budget_state_ind)
-               end if
-               tmp1(:,:,ie)=dyn_state%elem(ie)%derived%budget(:,:,2,budget_state_ind)/dyn_state%elem(ie)%derived%budget_cnt(budget_state_ind)/dtime
-               tmp2(:,:,ie)=dyn_state%elem(ie)%derived%budget(:,:,3,budget_state_ind)/dyn_state%elem(ie)%derived%budget_cnt(budget_state_ind)/dtime
-            enddo
-
-            global_ave = global_integral(dyn_state%elem, tmp(:,:,nets:nete),hybrid,np,nets,nete)
-            write(iulog,*)budget_name,' global average normalized cnt dtime=',global_ave,'cnt=',dyn_state%elem(nets)%derived%budget_cnt(budget_state_ind),'sub=',dyn_state%elem(nets)%derived%budget_subcycle(budget_state_ind)
-            global_ave = global_integral(dyn_state%elem, tmp1(:,:,nets:nete),hybrid,np,nets,nete)
-            global_ave = global_integral(dyn_state%elem, tmp2(:,:,nets:nete),hybrid,np,nets,nete)
-            if (dyn_state%elem(nets)%derived%budget_subcycle(budget_state_ind).ne.0) then
-               global_ave = global_integral(dyn_state%elem, tmptot(:,:,nets:nete),hybrid,np,nets,nete)
-               global_ave = global_integral(dyn_state%elem, tmpse(:,:,nets:nete),hybrid,np,nets,nete)
-               global_ave = global_integral(dyn_state%elem, tmpke(:,:,nets:nete),hybrid,np,nets,nete)
-            end if
-            ! reset dyn budget states
-            ! reset budget counts - stage or diff budget will just be i. If difference must reset components of diff
-            do ie=nets,nete
-               dyn_state%elem(ie)%derived%budget(:,:,:,budget_state_ind)=0._r8
-               dyn_state%elem(ie)%derived%budget_cnt(budget_state_ind)=0
-            end do
-         end if
-      end do
-   end if
-   deallocate(tmp)
-   deallocate(tmptot)
-   deallocate(tmpse)
-   deallocate(tmpke)
-   deallocate(tmp1)
-   deallocate(tmp2)
-      
 end subroutine dyn_run
 
 !===============================================================================
@@ -2468,5 +2401,103 @@ subroutine write_dyn_vars(dyn_out)
 
 end subroutine write_dyn_vars
 
+!=========================================================================================
+subroutine budget_update(elem,fvm,nets,nete,n0,n0_qdp,hybrid)
+  
+  use budgets,                only: budget_num, budget_info, budget_me_varnum,budget_put_global
+  use element_mod,            only: element_t
+  use fvm_control_volume_mod, only: fvm_struct
+  use global_norms_mod,       only: global_integral
+  use physconst,              only: thermodynamic_active_species_liq_num, thermodynamic_active_species_ice_num
+  use prim_advance_mod,       only: calc_tot_energy_dynamics_diff
+  use time_manager,           only: get_step_size
+  
+  ! arguments
+  type (element_t) , intent(inout) :: elem(:)
+  type(fvm_struct) , intent(in)    :: fvm(:)
+  type(hybrid_t)   , intent(in)    :: hybrid
+  integer          , intent(in)    :: n0, n0_qdp,nets,nete
+  
+  ! Local variables
+  character(len=3)   :: budget_pkgtype,budget_optype  ! budget type phy or dyn
+  character(len=64)  :: name_out1,name_out2,name_out3,name_out4,name_out5,budget_name
+  integer            :: budget_state_ind,s_ind,b_ind,i,n,ie
+  logical            :: budget_outfld
+
+  real(r8)           :: budgets_global(budget_num,budget_me_varnum)
+  real(r8), allocatable, dimension(:,:,:) :: tmp
+  real(r8) :: dtime
+  
+  !--------------------------------------------------------------------------------------
+  
+  
+  ! update energy budget differences and outfld 
+
+  dtime = get_step_size()
+
+  do b_ind = 1,budget_num
+     call budget_info(b_ind,name=budget_name,pkgtype=budget_pkgtype,optype=budget_optype,state_ind=s_ind,outfld=budget_outfld)
+     if (budget_pkgtype=='dyn'.and.(budget_optype=='dif'.or.budget_optype=='sum')) &
+          call calc_tot_energy_dynamics_diff(elem,fvm, nets, nete, n0, n0_qdp,trim(budget_name))
+     !
+     ! Output energy diagnostics
+     !
+     if (budget_outfld) then
+        name_out1 = 'SE_'   //trim(budget_name)
+        name_out2 = 'KE_'   //trim(budget_name)
+        name_out3 = 'WV_'   //trim(budget_name)
+        name_out4 = 'WL_'   //trim(budget_name)
+        name_out5 = 'WI_'   //trim(budget_name)
+!!$        do ie=nets,nete
+!!$           call outfld(name_out1, elem(ie)%derived%budget(:,:,2,s_ind), nc*nc, ie)
+!!$           call outfld(name_out2, elem(ie)%derived%budget(:,:,3,s_ind), nc*nc, ie)
+!!$           !
+!!$           ! sum over vapor  
+!!$           call outfld(name_out3, elem(ie)%derived%budget(:,:,4,s_ind), nc*nc, ie)
+!!$           !
+!!$           ! sum over liquid water
+!!$           if (thermodynamic_active_species_liq_num>0) &
+!!$                call outfld(name_out4, elem(ie)%derived%budget(:,:,5,s_ind), nc*nc, ie)
+!!$           !
+!!$           ! sum over ice water
+!!$           if (thermodynamic_active_species_ice_num>0) &
+!!$                call outfld(name_out5, elem(ie)%derived%budget(:,:,6,s_ind), nc*nc, ie)
+!!$        end do
+     end if
+  end do
+  
+  ! update energy budget globals
+  
+  allocate(tmp(np,np,nets:nete))
+  tmp=0._r8
+  
+  do b_ind=1,budget_num
+     call budget_info(b_ind,name=budget_name,pkgtype=budget_pkgtype,optype=budget_optype,state_ind=s_ind)
+     If (budget_pkgtype=='dyn') then
+        do n=1,budget_me_varnum
+           ! Normalize energy sums and convert to W/s
+           do ie=nets,nete
+              tmp(:,:,ie)=elem(ie)%derived%budget(:,:,n,s_ind)/elem(ie)%derived%budget_cnt(s_ind)
+           enddo
+           budgets_global(b_ind,n) = global_integral(elem, tmp(:,:,nets:nete),hybrid,np,nets,nete)
+!jt           if (masterproc) write(iulog,*)budget_name,' global average normalized by cnt=',budgets_global(b_ind,n),'cnt=',elem(nets)%derived%budget_cnt(s_ind),'sub=',elem(nets)%derived%budget_subcycle(s_ind)
+           
+           ! divide by time for proper units if not a mass budget.
+           if (n.le.3) &
+              budgets_global(b_ind,n)=budgets_global(b_ind,n)/dtime
+           if (masterproc) &
+                call budget_put_global(trim(budget_name),n,budgets_global(b_ind,n))
+        end do
+        
+        ! reset dyn budget states
+        ! reset budget counts - stage or diff budget will just be i. If difference must reset components of diff
+        do ie=nets,nete
+           elem(ie)%derived%budget(:,:,:,s_ind)=0._r8
+           elem(ie)%derived%budget_cnt(s_ind)=0
+        end do
+     end if
+  end do
+  
+end subroutine budget_update
 !=========================================================================================
 end module dyn_comp

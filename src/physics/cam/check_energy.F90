@@ -687,20 +687,10 @@ end subroutine check_energy_get_integrals
           if (budget_pkgtype=='phy') then
              do i=1,budget_me_varnum
                 call budget_put_global(trim(budget_name),i,te_glob(ind,i))
+!jt                write(iulog,*)"putting global ",trim(budget_name)," m_cnst=",i," ",te_glob(ind,i)
              end do
           end if
        end do
-!!$       call budget_get_global('BD_phy_params',1,dyparam)
-!!$       call budget_get_global('BP_phy_params',1,phparam)
-!!$       call budget_get_global('BD_pwork',1,dypwork)
-!!$       call budget_get_global('BP_pwork',1,phpwork)
-!!$       call budget_get_global('BD_efix',1,dyefix)
-!!$       call budget_get_global('BP_efix',1,phefix)
-!!$       call budget_get_global('BD_phys_tot',1,dyphys)
-!!$       call budget_get_global('BP_efix',1,phphys)
-
-!!$       write(iulog,'(1x,a,1x,4(1x,e25.17))') "nstep, phys param,pwork,efix,phys", phparam, phpwork, phefix, phphys
-!!$       write(iulog,'(1x,a,1x,4(1x,e25.17))') "nstep, dyn param,pwork,efix,phys", dyparam, dypwork, dyefix, dyphys
     end if
     call print_budget()
   end subroutine check_energy_budget
