@@ -34,8 +34,8 @@ contains
   subroutine mee_ion_readnl(nlfile)
 
     use namelist_utils, only: find_group_name
-    use spmd_utils, only: mpicom, mpi_logical, mpi_real8, masterprocid
-    use mee_fluxes, only: mee_fluxes_readnl
+    use spmd_utils,     only: mpicom, mpi_logical, mpi_real8, masterprocid
+    use mee_fluxes,     only: mee_fluxes_readnl
 
     character(len=*), intent(in) :: nlfile  ! filepath for file containing namelist input
 
@@ -99,7 +99,7 @@ contains
   !-----------------------------------------------------------------------------
   !-----------------------------------------------------------------------------
   subroutine mee_ion_final()
-    use mee_fluxes, only : mee_fluxes_final
+    use mee_fluxes,      only: mee_fluxes_final
     use mee_ap_util_mod, only: mee_ap_final
 
     if (.not.mee_ion_inline) return
@@ -113,13 +113,13 @@ contains
   !-----------------------------------------------------------------------------
   subroutine mee_ionpairs(ncol, lchnk, pmid, alt, temp, ionpairs)
 
-    use physconst, only: mbarv  ! kg/kmole
-    use physconst, only: gravit
-    use physconst, only: rairv  ! composition dependent gas constant (J/K/kg)
-    use physconst, only: boltz  ! Boltzman's constant (J/K/molecule)
-    use physconst, only: avogad ! Avogadro's number (molecules/kmole)
-    use physconst, only: rearth ! radius of earth (m)
-    use cam_history, only : outfld
+    use air_composition, only: mbarv  ! kg/kmole
+    use physconst,       only: gravit
+    use air_composition, only: rairv  ! composition dependent gas constant (J/K/kg)
+    use physconst,       only: boltz  ! Boltzman's constant (J/K/molecule)
+    use physconst,       only: avogad ! Avogadro's number (molecules/kmole)
+    use physconst,       only: rearth ! radius of earth (m)
+    use cam_history,     only: outfld
 
     integer,  intent(in) :: ncol,lchnk
     real(r8), intent(in) :: pmid(:,:)

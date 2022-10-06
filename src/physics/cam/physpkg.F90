@@ -154,12 +154,14 @@ contains
     use dyn_comp,           only: dyn_register
     use spcam_drivers,      only: spcam_register
     use offline_driver,     only: offline_driver_reg
+    use upper_bc,           only: ubc_fixed_conc
 
     !---------------------------Local variables-----------------------------
     !
     integer  :: m        ! loop index
     integer  :: mm       ! constituent index
     integer  :: nmodes
+    logical  :: has_fixed_ubc ! for upper bndy cond
     !-----------------------------------------------------------------------
 
     ! Get physics options
@@ -186,11 +188,12 @@ contains
     ! Register water vapor.
     ! ***** N.B. ***** This must be the first call to cnst_add so that
     !                  water vapor is constituent 1.
+    has_fixed_ubc = ubc_fixed_conc('Q') ! .false.
     if (moist_physics) then
-       call cnst_add('Q', mwh2o, cpwv, 1.E-12_r8, mm, &
+       call cnst_add('Q', mwh2o, cpwv, 1.E-12_r8, mm, fixed_ubc=has_fixed_ubc, &
             longname='Specific humidity', readiv=.true., is_convtran1=.true.)
     else
-       call cnst_add('Q', mwh2o, cpwv, 0.0_r8, mm, &
+       call cnst_add('Q', mwh2o, cpwv, 0.0_r8, mm, fixed_ubc=has_fixed_ubc, &
             longname='Specific humidity', readiv=.false., is_convtran1=.true.)
     end if
 
@@ -703,7 +706,8 @@ contains
     use physics_buffer,     only: physics_buffer_desc, pbuf_initialize, pbuf_get_index
     use physconst,          only: rair, cpair, gravit, stebol, tmelt, &
                                   latvap, latice, rh2o, rhoh2o, pstd, zvir, &
-                                  karman, rhodair, physconst_init
+                                  karman, rhodair
+    use cam_thermo,         only: cam_thermo_init
     use ref_pres,           only: pref_edge, pref_mid
 
     use carma_intr,         only: carma_init
@@ -793,9 +797,9 @@ contains
     end do
 
     !-------------------------------------------------------------------------------------------
-    ! Initialize any variables in physconst which are not temporally and/or spatially constant
+    ! Initialize any variables in cam_thermo which are not temporally and/or spatially constant
     !-------------------------------------------------------------------------------------------
-    call physconst_init()
+    call cam_thermo_init()
 
     ! Initialize debugging a physics column
     call phys_debug_init()
@@ -900,7 +904,7 @@ contains
        call rk_stratiform_init()
     elseif( microp_scheme == 'MG' ) then
        if (.not. do_clubb_sgs) call macrop_driver_init(pbuf2d)
-       call microp_aero_init(pbuf2d)
+       call microp_aero_init(phys_state,pbuf2d)
        call microp_driver_init(pbuf2d)
        call conv_water_init
     elseif( microp_scheme == 'SPCAM_m2005') then
@@ -1296,6 +1300,8 @@ contains
     use chemistry, only : chem_final
     use carma_intr, only : carma_final
     use wv_saturation, only : wv_sat_final
+    use microp_aero, only : microp_aero_final
+
     !-----------------------------------------------------------------------
     !
     ! Purpose:
@@ -1316,6 +1322,7 @@ contains
     call chem_final
     call carma_final
     call wv_sat_final
+    call microp_aero_final()
 
   end subroutine phys_final
 

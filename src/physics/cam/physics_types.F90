@@ -7,7 +7,8 @@ module physics_types
   use ppgrid,           only: pcols, pver
   use constituents,     only: pcnst, qmin, cnst_name, cnst_get_ind
   use geopotential,     only: geopotential_dse, geopotential_t
-  use physconst,        only: zvir, gravit, cpair, rair, cpairv, rairv
+  use physconst,        only: zvir, gravit, cpair, rair
+  use air_composition,  only: cpairv, rairv
   use phys_grid,        only: get_ncols_p, get_rlon_all_p, get_rlat_all_p, get_gcol_all_p
   use cam_logfile,      only: iulog
   use cam_abortutils,   only: endrun
@@ -211,7 +212,7 @@ contains
 !-----------------------------------------------------------------------
     use scamMod,      only: scm_crm_mode, single_column
     use phys_control, only: phys_getopts
-    use physconst,    only: physconst_update ! Routine which updates physconst variables (WACCM-X)
+    use cam_thermo,   only: cam_thermo_update ! Routine which updates physconst variables (WACCM-X)
     use qneg_module,  only: qneg3
 
 !------------------------------Arguments--------------------------------
@@ -374,10 +375,10 @@ contains
     end if
 
     !------------------------------------------------------------------------
-    ! Get indices for molecular weights and call WACCM-X physconst_update
+    ! Get indices for molecular weights and call WACCM-X cam_thermo_update
     !------------------------------------------------------------------------
     if ( waccmx_is('ionosphere') .or. waccmx_is('neutral') ) then
-       call physconst_update(state%q, state%t, state%lchnk, state%ncol, &
+       call cam_thermo_update(state%q, state%t, state%lchnk, state%ncol, &
                              to_moist_factor=state%pdeldry(:ncol,:)/state%pdel(:ncol,:) )
     endif
 

@@ -2602,6 +2602,17 @@ if ($maxzen>0.0) {
     add_default($nl, 'photo_max_zen', 'val'=>"${maxzen}D0");
 }
 
+# upper boundary specifier
+my $ubc_ver;
+if (($chem =~ /waccm_ma/ or $chem =~ /waccm_tsmlt/ ) and !$waccmx) {
+    $ubc_ver = 'waccmchem';
+} elsif ($chem =~ /waccm_sc/) {
+    $ubc_ver = 'waccmsc';
+}
+if (defined $ubc_ver) {
+    add_default($nl, 'ubc_specifier', 'ver'=>$ubc_ver);
+}
+
 # WACCM options.
 if ($chem =~ /waccm_ma/ or $chem =~ /waccm_tsmlt/) {
 
