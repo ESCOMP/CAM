@@ -155,7 +155,7 @@ module zonal_mean_mod
 
   use shr_kind_mod,    only: r8=>SHR_KIND_R8
   use phys_grid,       only: get_ncols_p, get_rlat_p, get_wght_all_p, get_nlcols_p
-  use ppgrid,          only: begchunk, endchunk, pcols, pver
+  use ppgrid,          only: begchunk, endchunk, pcols
   use shr_reprosum_mod,only: shr_reprosum_calc
   use cam_abortutils,  only: endrun
   use spmd_utils,      only: mpicom
@@ -478,7 +478,7 @@ contains
       ! Passed Variables
       !------------------
       class(ZonalMean_t) :: this
-      real(r8),intent(in ):: I_Gdata(pcols,pver,begchunk:endchunk)
+      real(r8),intent(in ):: I_Gdata(:,:,:)
       real(r8),intent(out):: O_Bamp (:,:)
       !
       ! Local Values
@@ -489,6 +489,10 @@ contains
       integer:: Nsum,ns,ll
       integer :: nlcols, count
 
+      integer :: nlev
+
+      nlev = size(I_Gdata,dim=2)
+
       nlcols = get_nlcols_p()
       allocate(Gcov(this%nbas))
       allocate(Csum(nlcols, this%nbas))
@@ -498,7 +502,7 @@ contains
 
       ! Compute Covariance with input data and basis functions
       !--------------------------------------------------------
-      do ll= 1,pver
+      do ll= 1,nlev
 
          Csum(:,:) = 0._r8
          Gcov(:) = 0._r8
@@ -509,7 +513,7 @@ contains
                ncols = get_ncols_p(lchnk)
                do cc = 1,ncols
                   count=count+1
-                  Csum(count,nn) = I_Gdata(cc,ll,lchnk)*this%basis(cc,lchnk,nn)*this%area(cc,lchnk)
+                  Csum(count,nn) = I_Gdata(cc,ll,lchnk-begchunk+1)*this%basis(cc,lchnk,nn)*this%area(cc,lchnk)
                end do
             end do
          end do
@@ -582,24 +586,27 @@ contains
       !------------------
       class(ZonalMean_t) :: this
       real(r8),intent(in ):: I_Bamp (:,:)
-      real(r8),intent(out):: O_Gdata(pcols,pver,begchunk:endchunk)
+      real(r8),intent(out):: O_Gdata(:,:,:)
       !
       ! Local Values
       !--------------
       integer:: nn,ncols,lchnk,cc
       integer:: ll
 
+      integer :: nlev
+      nlev = size(O_Gdata,dim=2)
+
       O_Gdata(:,:,:) = 0._r8
 
       ! Construct grid values from basis amplitudes.
       !--------------------------------------------------
 
-      do ll = 1,pver
+      do ll = 1,nlev
          do nn=1,this%nbas
             do lchnk=begchunk,endchunk
                ncols = get_ncols_p(lchnk)
                do cc = 1,ncols
-                  O_Gdata(cc,ll,lchnk) = O_Gdata(cc,ll,lchnk) + (I_Bamp(nn,ll)*this%basis(cc,lchnk,nn))
+                  O_Gdata(cc,ll,lchnk-begchunk+1) = O_Gdata(cc,ll,lchnk-begchunk+1) + (I_Bamp(nn,ll)*this%basis(cc,lchnk,nn))
                end do
             end do
          end do
@@ -667,9 +674,12 @@ contains
       !-----------------------------------------------
       if(present(GEN_GAUSSLATS).and.(GEN_GAUSSLATS)) then
 
-        ! Create a Gaussin grid from SP to NP
+        ! Create a Gaussian grid from SP to NP
         !--------------------------------------
         call dgaqd(I_nlat,Clats,IO_area,ierr)
+        if (ierr/=0) then
+           call endrun('init_ZonalProfile: Error creating Gaussian grid')
+        end if
 
         ! Convert generated colatitudes SP->NP to Lats and convert
         ! to degrees and scale the area for global 2D integrals
@@ -815,10 +825,14 @@ contains
       real(r8),allocatable:: Gcov(:,:)
       integer:: ii,nn,n2,ll
 
+      integer :: nlev
+
+      nlev = size(I_Zdata,dim=2)
+
       ! Compute Covariance with input data and basis functions
       !--------------------------------------------------------
-      allocate(Gcov(this%nbas,pver))
-      do ll=1,pver
+      allocate(Gcov(this%nbas,nlev))
+      do ll=1,nlev
          do nn=1,this%nbas
             Gcov(nn,ll) = 0._r8
             do ii=1,this%nlat
@@ -829,7 +843,7 @@ contains
 
       ! Multiply by map to get the amplitudes
       !-------------------------------------------
-      do ll=1,pver
+      do ll=1,nlev
          do nn=1,this%nbas
             O_Bamp(nn,ll) = 0._r8
             do n2=1,this%nbas
@@ -890,11 +904,15 @@ contains
       !--------------
       integer:: ii,nn,ll
 
+      integer :: nlev
+
+      nlev = size(I_Bamp,dim=2)
+
       ! Construct grid values from basis amplitudes.
       !--------------------------------------------------
-      O_Zdata(1:this%nlat,1:pver) = 0._r8
+      O_Zdata(1:this%nlat,1:nlev) = 0._r8
       do nn=1,this%nbas
-         do ll=1,pver
+         do ll=1,nlev
             do ii=1,this%nlat
                O_Zdata(ii,ll) = O_Zdata(ii,ll) + (I_Bamp(nn,ll)*this%basis(ii,nn))
             end do
@@ -969,6 +987,9 @@ contains
         ! Create a Gaussin grid from SP to NP
         !--------------------------------------
         call dgaqd(this%nlat,Clats,IO_area,ierr)
+        if (ierr/=0) then
+           call endrun('init_ZonalAverage: Error creating Gaussian grid')
+        end if
 
         ! Convert generated colatitudes SP->NP to Lats and convert
         ! to degrees and scale the area for global 2D integrals
@@ -1136,7 +1157,7 @@ contains
       ! Passed Variables
       !------------------
       class(ZonalAverage_t):: this
-      real(r8),intent(in ):: I_Gdata(pcols,pver,begchunk:endchunk)
+      real(r8),intent(in ):: I_Gdata(:,:,:)
       real(r8),intent(out):: O_Zdata(:,:)
       !
       ! Local Values
@@ -1146,22 +1167,24 @@ contains
       integer:: nn,ncols,lchnk,cc,jlat
       integer:: Nsum,ll,ns
 
+      integer :: nlev
       integer :: nlcols, count
 
+      nlev = size(I_Gdata,dim=2)
       nlcols = get_nlcols_p()
 
       ! Initialize Zonal profile
       !---------------------------
-      Nsum = this%nlat*pver
+      Nsum = this%nlat*nlev
       allocate(Gsum(Nsum))
       allocate(Asum(nlcols,Nsum))
       Asum(:,:) = 0._r8
 
-      O_Zdata(1:this%nlat,1:pver) = 0._r8
+      O_Zdata(1:this%nlat,1:nlev) = 0._r8
 
       ! Compute area-weighted sums
       !-----------------------------
-      do ll = 1,pver
+      do ll = 1,nlev
          count = 0
          do lchnk=begchunk,endchunk
             ncols = get_ncols_p(lchnk)
@@ -1169,7 +1192,7 @@ contains
                jlat = this%idx_map(cc,lchnk)
                ns = jlat + (ll-1)*this%nlat
                count=count+1
-               Asum(count,ns) = I_Gdata(cc,ll,lchnk)*this%area_g(cc,lchnk)
+               Asum(count,ns) = I_Gdata(cc,ll,lchnk-begchunk+1)*this%area_g(cc,lchnk)
             end do
          end do
       end do
@@ -1178,7 +1201,7 @@ contains
 
       ! Divide by area norm to get the averages
       !-----------------------------------------
-      do ll = 1,pver
+      do ll = 1,nlev
          do nn = 1,this%nlat
             ns = nn + (ll-1)*this%nlat
             O_Zdata(nn,ll) = Gsum(ns)/this%a_norm(nn)
@@ -1300,7 +1323,7 @@ contains
       real(r8),parameter:: SC40=SC20*SC20
 
       cp(1) = 0._r8
-      ma = iabs(mm)
+      ma = abs(mm)
       if(ma.gt.nn) return
 
       if((nn-1).lt.0) then
@@ -1462,22 +1485,23 @@ contains
       !                        the input parameter n.
       !
       !=====================================================================
-      integer:: nn,mm
-      real(r8):: theta
-      real(r8):: cp(:)
-      real(r8):: pb
-      real(r8):: cdt
-      real(r8):: sdt
-      real(r8):: ct
-      real(r8):: st
-      real(r8):: summ
-      real(r8):: cth
+      integer, intent(in) :: nn,mm
+      real(r8), intent(in) :: theta
+      real(r8), intent(in) :: cp(:)
+      real(r8), intent(out) :: pb
+
+      real(r8) :: cdt
+      real(r8) :: sdt
+      real(r8) :: ct
+      real(r8) :: st
+      real(r8) :: summ
+      real(r8) :: cth
 
       integer:: ma,nmod,mmod,kdo
       integer:: kp1,kk
 
       pb = 0._r8
-      ma = iabs(mm)
+      ma = abs(mm)
       if(ma.gt.nn) return
 
       if(nn.le.0) then
@@ -1754,10 +1778,10 @@ contains
       !
       ! Passed variables
       !-----------------
-      integer ,intent(in ):: nlat
-      real(r8),intent(out):: theta(nlat)
-      real(r8),intent(out):: wts(nlat)
-      integer ,intent(out):: ierr
+      integer ,intent(in ) :: nlat
+      real(r8),intent(out) :: theta(nlat)
+      real(r8),intent(out) :: wts(nlat)
+      integer ,intent(out) :: ierr
       !
       ! Local Values
       !-------------
@@ -1778,13 +1802,13 @@ contains
       ! compute weights and points analytically when nlat=1,2
       !-------------------------------------------------------
       if(nlat.eq.1) then
-        theta(1) = dacos(0._r8)
+        theta(1) = acos(0._r8)
         wts  (1) = 2._r8
         return
       elseif(nlat.eq.2) then
-        xx       = dsqrt(1._r8/3._r8)
-        theta(1) = dacos( xx)
-        theta(2) = dacos(-xx)
+        xx       = sqrt(1._r8/3._r8)
+        theta(1) = acos( xx)
+        theta(2) = acos(-xx)
         wts  (1) = 1._r8
         wts  (2) = 1._r8
         return
@@ -1794,7 +1818,7 @@ contains
       !----------------------
       eps   = sqrt(ddzeps(1._r8))
       eps   = eps*sqrt(eps)
-      pis2  = 2._r8*datan(1._r8)
+      pis2  = 2._r8*atan(1._r8)
       pi    = pis2 + pis2
       mnlat = mod(nlat,2)
       ns2   = nlat/2
@@ -1891,10 +1915,10 @@ contains
       !
       ! Passed variables
       !-----------------
-      integer :: nn
-      real(r8):: cz
-      real(r8):: cp(nn/2+1)
-      real(r8):: dcp(nn/2+1)
+      integer, intent(in) :: nn
+      real(r8), intent(out) :: cz
+      real(r8), intent(out) :: cp(nn/2+1)
+      real(r8), intent(out) :: dcp(nn/2+1)
       !
       ! Local Values
       !--------------
@@ -1950,13 +1974,13 @@ contains
       !
       ! Passed variables
       !------------------
-      integer :: nn
-      real(r8):: theta
-      real(r8):: cz
-      real(r8):: cp (nn/2+1)
-      real(r8):: dcp(nn/2+1)
-      real(r8):: pb
-      real(r8):: dpb
+      integer, intent(in) :: nn
+      real(r8), intent(in) :: theta
+      real(r8), intent(in) :: cz
+      real(r8), intent(in) :: cp (nn/2+1)
+      real(r8), intent(in) :: dcp(nn/2+1)
+      real(r8), intent(out) :: pb
+      real(r8), intent(out) :: dpb
       !
       ! Local Values
       !--------------
