@@ -2017,15 +2017,6 @@
       <option name="wallclock">00:10:00</option>
     </options>
   </test>
-  <test compset="1850_CAM60%WCTS_CLM50%SP_CICE5%PRES_DOCN%DOM_MOSART_SGLC_SWAV" grid="f09_f09_mg17" name="SMS_Ln9_Vmct" testmods="cam/reduced_hist3s">
-    <machines>
-      <machine name="cheyenne" compiler="intel" category="aux_cam"/>
-      <machine name="cheyenne" compiler="intel" category="prealpha"/>
-    </machines>
-    <options>
-      <option name="wallclock">00:10:00</option>
-    </options>
-  </test>
   <test compset="FWHIST_BGC" grid="f09_f09_mg17" name="ERP_Ld3_Vnuopc" testmods="cam/reduced_hist1d">
     <machines>
       <machine name="cheyenne" compiler="intel" category="waccm"/>
@@ -2044,14 +2035,6 @@
     </options>
   </test>
   <test compset="FWHIST" grid="f09_f09_mg17" name="ERP_Ld3_Vnuopc" testmods="cam/reduced_hist1d">
-    <machines>
-      <machine name="cheyenne" compiler="intel" category="aux_cam"/>
-    </machines>
-    <options>
-      <option name="wallclock">00:40:00</option>
-    </options>
-  </test>
-  <test compset="HIST_CAM60%WCTS_CLM50%SP_CICE5%PRES_DOCN%DOM_MOSART_SGLC_SWAV" grid="f09_f09_mg17" name="ERP_Ld3_Vmct" testmods="cam/reduced_hist1d">
     <machines>
       <machine name="cheyenne" compiler="intel" category="aux_cam"/>
     </machines>
