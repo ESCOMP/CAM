@@ -2393,10 +2393,17 @@
       <option name="wallclock">00:10:00</option>
     </options>
   </test>
+  <test compset="F1850" grid="f10_f10_mg37" name="ERS_Ld3_Vnuopc" testmods="cam/outfrq1d_14dec_L32wsc">
+    <machines>
+      <machine name="cheyenne" compiler="intel" category="aux_cam"/>
+    </machines>
+    <options>
+      <option name="wallclock">00:10:00</option>
+    </options>
+  </test>
   <test compset="FWsc2000climo" grid="f10_f10_mg37" name="ERP_Ld3_Vnuopc" testmods="cam/outfrq1d_14dec">
     <machines>
       <machine name="cheyenne" compiler="intel" category="waccm"/>
-      <machine name="cheyenne" compiler="intel" category="aux_cam"/>
     </machines>
     <options>
       <option name="wallclock">00:10:00</option>
