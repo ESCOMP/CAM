@@ -694,7 +694,6 @@ contains
   !! @author  Pengfei Yu
   !! @version July-2012
   subroutine CARMA_ReadSoilErosionFactor(carma, rc)
-    use pmgrid,        	    only: plat, plon
     use ppgrid,             only: begchunk, endchunk, pcols
     use ioFileMod,     	    only: getfil
     use wrap_nf
