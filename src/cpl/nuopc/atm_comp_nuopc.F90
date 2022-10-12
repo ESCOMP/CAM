@@ -370,7 +370,7 @@ contains
     integer                 :: inst_index
     character(CS)           :: inst_suffix
     integer                 :: lmpicom
-    logical                 :: isPresent
+    logical                 :: isPresent, isSet
     character(len=512)      :: diro
     character(len=512)      :: logfile
     integer                 :: compid                            ! component id
@@ -550,9 +550,12 @@ contains
     end if
 
     ! DART always starts up as an initial run.
-    call NUOPC_CompAttributeGet(gcomp, name='data_assimilation_atm', value=cvalue, rc=rc)
+    call NUOPC_CompAttributeGet(gcomp, name='data_assimilation_atm', value=cvalue, &
+         isPresent=isPresent, isSet=isSet, rc=rc)
     if (ChkErr(rc,__LINE__,u_FILE_u)) return
-    read(cvalue,*) dart_mode
+    if (isPresent and isSet) then
+       read(cvalue,*) dart_mode
+    end if
     if (dart_mode) then
        initial_run = .true.
        restart_run = .false.
