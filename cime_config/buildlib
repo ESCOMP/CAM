@@ -20,6 +20,7 @@ from CIME.case import Case
 from CIME.utils import run_cmd, expect
 from CIME.buildlib import parse_input
 from CIME.build import get_standard_makefile_args
+from CIME.XML.env_build import EnvBuild
 
 logger = logging.getLogger(__name__)
 
@@ -109,9 +110,97 @@ def _build_cam(caseroot, libroot, bldroot):
         expect(rc == 0, "Command %s failed with rc=%s" % (cmd, rc))
 
 ###############################################################################
+def _run_cmd(command, working_dir):
+###############################################################################
+
+    rc, out, err = run_cmd(command, from_dir=working_dir, verbose=True)
+    expect(rc == 0, "Command {} failed with rc={}".format(command, rc))
+
+###############################################################################
+def _cmake_default_args(caseroot):
+###############################################################################
+# Returns a dictionary of CMake variables based on the Macros.cmake file for
+# the build.
+
+    build = EnvBuild(case_root=caseroot)
+    with Case(caseroot) as case:
+        macro_path = os.path.abspath(os.path.join(caseroot, "cmake_macros", ""))
+        args = "-DCONVERT_TO_MAKE=ON "
+        args += "-DCASEROOT={} ".format(caseroot)
+        args += "-DCOMPILER={} ".format(build.get_value("COMPILER"))
+        args += "-DOS={} ".format(build.get_value("OS"))
+        args += "-DMACH={} ".format(case.get_value("MACH"))
+        cmd = "cmake {} .".format(args)
+        rc, out, err = run_cmd(cmd, combine_output=True, from_dir=macro_path)
+        expect(rc == 0, "Command {} failed with rc={}".format(cmd, rc))
+
+        arg_dict = {}
+        for line in out.splitlines():
+            if ":=" in line:
+                key, val = line.split(":=")
+                arg_dict[key.replace('CIME_SET_MAKEFILE_VAR','').strip()] = val.strip()
+
+        return arg_dict
+
+###############################################################################
+def _build_json_fortran(caseroot, libroot, bldroot):
+###############################################################################
+
+    with Case(caseroot) as case:
+        bldpath = os.path.join(bldroot, "json-fortran")
+        if not os.path.exists(bldpath):
+            os.makedirs(bldpath)
+        srcpath = os.path.abspath(os.path.join(case.get_value("COMP_ROOT_DIR_ATM"), \
+                                               "libraries", "json-fortran", ""))
+        logger.info("Building json-fortran {} from source in {}\n".format(bldpath, srcpath))
+
+        arg_dict = _cmake_default_args(caseroot)
+        cmake_args = "-DCMAKE_Fortran_COMPILER={} ".format(arg_dict["SFC"])
+        cmake_args += "-DCMAKE_BUILD_TYPE=Release "
+        cmake_args += "-DSKIP_DOC_GEN:BOOL=TRUE "
+        cmake_args += srcpath
+
+        _run_cmd("cmake {}".format(cmake_args), bldpath)
+        _run_cmd(case.get_value("GMAKE"), bldpath)
+
+###############################################################################
+def _build_tuvx(caseroot, libroot, bldroot):
+###############################################################################
+
+    with Case(caseroot) as case:
+        bldpath = os.path.join(bldroot, "tuv-x")
+        if not os.path.exists(bldpath):
+            os.makedirs(bldpath)
+        jsoninc = os.path.join(bldroot, "json-fortran", "include", "")
+        expect(os.path.exists(jsoninc), \
+               "JSON-Fortran include folder for TUV-x build not found at {}".format(jsoninc))
+        jsonlib = os.path.join(bldroot, "json-fortran", "lib", "libjsonfortran.a")
+        expect(os.path.exists(jsonlib), \
+               "JSON-Fortran library for TUV-x build not found at {}".format(jsonlib))
+        srcpath = os.path.abspath(os.path.join(case.get_value("COMP_ROOT_DIR_ATM"), \
+                                               "libraries", "tuv-x", ""))
+        logger.info("Building TUV-x in {} from source in {}\n".format(bldpath, srcpath))
+
+        arg_dict = _cmake_default_args(caseroot)
+        cmake_args = "-DCMAKE_Fortran_COMPILER={} ".format(arg_dict["MPIFC"])
+        cmake_args += "-DCMAKE_BUILD_TYPE=Release "
+        cmake_args += "-DENABLE_COVERAGE=OFF "
+        cmake_args += "-DJSON_INCLUDE_DIR={} ".format(jsoninc)
+        cmake_args += "-DJSON_LIB={} ".format(jsonlib)
+        # Is MPI always enabled? If not, how to know if it is being used?
+        cmake_args += "-DENABLE_MPI:BOOL=TRUE "
+        cmake_args += "-DCMAKE_Fortran_FLAGS='{}' ".format(arg_dict["FFLAGS"])
+        cmake_args += srcpath
+
+        _run_cmd("cmake {}".format(cmake_args), bldpath)
+        _run_cmd(case.get_value("GMAKE"), bldpath)
+
+###############################################################################
 
 def _main_func():
     caseroot, libroot, bldroot = parse_input(sys.argv)
+    _build_json_fortran(caseroot, libroot, bldroot)
+    _build_tuvx(caseroot, libroot, bldroot)
     _build_fms(caseroot, libroot, bldroot)
     _build_cam(caseroot, libroot, bldroot)
 
