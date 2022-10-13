@@ -167,6 +167,7 @@ def _build_json_fortran(caseroot, libroot, bldroot):
 def _build_tuvx(caseroot, libroot, bldroot):
 ###############################################################################
 
+    build = EnvBuild(case_root=caseroot)
     with Case(caseroot) as case:
         bldpath = os.path.join(bldroot, "tuv-x")
         if not os.path.exists(bldpath):
@@ -182,13 +183,15 @@ def _build_tuvx(caseroot, libroot, bldroot):
         logger.info("Building TUV-x in {} from source in {}\n".format(bldpath, srcpath))
 
         arg_dict = _cmake_default_args(caseroot)
-        cmake_args = "-DCMAKE_Fortran_COMPILER={} ".format(arg_dict["MPIFC"])
+        if build.get_value("MPILIB") == "mpi-serial":
+            cmake_args = "-DCMAKE_Fortran_COMPILER={} ".format(arg_dict["SFC"])
+        else:
+            cmake_args = "-DCMAKE_Fortran_COMPILER={} ".format(arg_dict["MPIFC"])
+            cmake_args += "-DENABLE_MPI:BOOL=TRUE "
         cmake_args += "-DCMAKE_BUILD_TYPE=Release "
         cmake_args += "-DENABLE_COVERAGE=OFF "
         cmake_args += "-DJSON_INCLUDE_DIR={} ".format(jsoninc)
         cmake_args += "-DJSON_LIB={} ".format(jsonlib)
-        # Is MPI always enabled? If not, how to know if it is being used?
-        cmake_args += "-DENABLE_MPI:BOOL=TRUE "
         cmake_args += "-DCMAKE_Fortran_FLAGS='{}' ".format(arg_dict["FFLAGS"])
         cmake_args += srcpath
 
