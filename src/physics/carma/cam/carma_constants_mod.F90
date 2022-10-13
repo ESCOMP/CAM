@@ -104,9 +104,7 @@ module carma_constants_mod
   !!
   !! For degree/degree/hybrid coordinates, the metric is on the
   !! order of 1e20.
-! real(kind=f), parameter :: SMALL_PC = 1e-50_f
-! real(kind=f), parameter :: SMALL_PC = FEW_PC * 1e20 * 1e-30 ! with xmet,ymet=1 this needs to change
-  real(kind=f), parameter :: SMALL_PC = FEW_PC * 1.e-30_f ! ??
+  real(kind=f), parameter :: SMALL_PC = FEW_PC * 1.e-30_f
 
   !!  Define core fraction (for core mass and second moment) used
   !!  when particle number concentrations are limited to SMALL_PC

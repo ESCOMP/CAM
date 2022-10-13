@@ -645,9 +645,8 @@ contains
       ! Per bin stats ..
       if (do_drydep) then
         do ibin = 1, NBIN
-          !!! WHAT is icnst here ??????
           call addfld(trim(btndname(igroup, ibin))//'VD', horiz_only,    'A', 'm/s', &
-               trim(cnst_name(icnst)) // ' dry deposition velocity')
+                      trim(btndname(igroup, ibin))//' dry deposition velocity')
         end do
       end if
 
