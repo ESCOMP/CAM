@@ -8,7 +8,8 @@ use shr_kind_mod,   only: r8=>shr_kind_r8
 use pmgrid,         only: plev
 use ppgrid,         only: begchunk, endchunk, pcols, pver, pverp
 use constituents,   only: pcnst, cnst_type
-use physconst,      only: gravit, cpairv, cappa, rairv, rh2o, zvir
+use physconst,      only: gravit, cappa, rh2o, zvir
+use air_composition,only: cpairv, rairv
 
 use spmd_dyn,       only: local_dp_map, block_buf_nrecs, chunk_buf_nrecs
 use spmd_utils,     only: mpicom, iam, masterproc
@@ -24,7 +25,7 @@ use physics_buffer, only: physics_buffer_desc, pbuf_get_chunk, pbuf_get_field
 use cam_logfile,    only: iulog
 use perf_mod,       only: t_startf, t_stopf, t_barrierf
 use cam_abortutils, only: endrun
-use physconst,      only: thermodynamic_active_species_num,thermodynamic_active_species_idx,thermodynamic_active_species_idx_dycore
+use air_composition,only: thermodynamic_active_species_num,thermodynamic_active_species_idx,thermodynamic_active_species_idx_dycore
 implicit none
 private
 save
@@ -327,14 +328,15 @@ subroutine derived_phys(phys_state, phys_tend, pbuf2d)
    ! Compute fields in the physics state object which are diagnosed from the
    ! MPAS prognostic fields.
 
-   use geopotential,  only: geopotential_t
-   use check_energy,  only: check_energy_timestep_init
-   use shr_vmath_mod, only: shr_vmath_log
-   use phys_control,  only: waccmx_is
-   use physconst,     only: rairv, physconst_update
-   use qneg_module,   only: qneg3
-   use shr_const_mod, only: shr_const_rwv
-   use constituents,  only: qmin
+   use geopotential,    only: geopotential_t
+   use check_energy,    only: check_energy_timestep_init
+   use shr_vmath_mod,   only: shr_vmath_log
+   use phys_control,    only: waccmx_is
+   use cam_thermo,      only: cam_thermo_update
+   use air_composition, only: rairv
+   use qneg_module,     only: qneg3
+   use shr_const_mod,   only: shr_const_rwv
+   use constituents,    only: qmin
    ! Arguments
    type(physics_state),       intent(inout) :: phys_state(begchunk:endchunk)
    type(physics_tend ),       intent(inout) :: phys_tend(begchunk:endchunk)
@@ -433,12 +435,12 @@ subroutine derived_phys(phys_state, phys_tend, pbuf2d)
         !------------------------------------------------------------
         call physics_cnst_limit( phys_state(lchnk) )
         !-----------------------------------------------------------------------------
-        ! Call physconst_update to compute cpairv, rairv, mbarv, and cappav as
+        ! Call cam_thermo_update to compute cpairv, rairv, mbarv, and cappav as
         ! constituent dependent variables.
         ! Compute molecular viscosity(kmvis) and conductivity(kmcnd).
         ! Fill local zvirv variable; calculated for WACCM-X.
         !-----------------------------------------------------------------------------
-        call physconst_update(phys_state(lchnk)%q, phys_state(lchnk)%t, lchnk, ncol)
+        call cam_thermo_update(phys_state(lchnk)%q, phys_state(lchnk)%t, lchnk, ncol)
         zvirv(:,:) = shr_const_rwv / rairv(:,:,lchnk) -1._r8
       else
         zvirv(:,:) = zvir
@@ -737,13 +739,12 @@ end subroutine hydrostatic_pressure
 
 
 subroutine tot_energy(nCells, nVertLevels, qsize, index_qv, zz, zgrid, rho_zz, theta_m, q, ux,uy,outfld_name_suffix)
-  use physconst,      only: rair, cpair, gravit,cappa!=R/cp (dry air)
-  use physconst,      only: thermodynamic_active_species_liq_num
-  use mpas_constants, only: p0,cv,rv,rgas,cp
-  use cam_history,    only: outfld, hist_fld_active
-  use mpas_constants, only: Rv_over_Rd => rvord
-  use physconst,      only: thermodynamic_active_species_ice_idx_dycore,thermodynamic_active_species_liq_idx_dycore
-  use physconst,      only: thermodynamic_active_species_ice_num,thermodynamic_active_species_liq_num
+  use physconst,         only: rair, cpair, gravit,cappa!=R/cp (dry air)
+  use mpas_constants,    only: p0,cv,rv,rgas,cp
+  use cam_history,       only: outfld, hist_fld_active
+  use mpas_constants,    only: Rv_over_Rd => rvord
+  use air_composition,   only: thermodynamic_active_species_ice_idx_dycore,thermodynamic_active_species_liq_idx_dycore
+  use air_composition,   only: thermodynamic_active_species_ice_num,thermodynamic_active_species_liq_num
   ! Arguments
   integer, intent(in) :: nCells
   integer, intent(in) :: nVertLevels

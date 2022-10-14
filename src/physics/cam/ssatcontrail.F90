@@ -146,64 +146,68 @@ contains
  
         G = (ei*cpair*p)/(epsi*Q*(1.0_r8-eta))   ! eq 7, Ponater JGR 2002
 
-        T_contr = -46.46_r8+9.43_r8*log(G-0.053_r8)+0.72_r8*log(G-0.053_r8)*log(G-0.053_r8) ! eq 8, Ponater JGR 2002
-        T_contr = T_contr + tmelt  ! convert to Kelvin
+        if( G > 0.053_r8 ) then
+            T_contr = -46.46_r8+9.43_r8*log(G-0.053_r8)+0.72_r8*log(G-0.053_r8)*log(G-0.053_r8) ! eq 6, Ponater JGR 2002
+            T_contr = T_contr + tmelt  ! convert to Kelvin
  
-        ! compute saturation pressure
-        call qsat_water(T_contr, p, eslTc, qslTc)
-        call qsat_water(state1%t(i,k), p, eslT, qslT)
+            ! compute saturation pressure
+            call qsat_water(T_contr, p, eslTc, qslTc)
+            call qsat_water(state1%t(i,k), p, eslT, qslT)
 
-        RH_contr = (G*(state1%t(i,k)-T_contr)+eslTc)/eslT
-        ! RH_contr ranges between 0 and 1
-        if(RH_contr>1.0_r8) RH_contr = 1.0_r8
-        if(RH_contr<0.0_r8) RH_contr = 0.0_r8
+            RH_contr = (G*(state1%t(i,k)-T_contr)+eslTc)/eslT
+            ! RH_contr ranges between 0 and 1
+            if(RH_contr>1.0_r8) RH_contr = 1.0_r8
+            if(RH_contr<0.0_r8) RH_contr = 0.0_r8
  
-        w = state1%q(i,k,1)/(1.0_r8-state1%q(i,k,1))  ! mixing ratio from specific humidity
-        call qsat_ice(state1%t(i,k), p, esiT, qsiT)
-        ws = epsi*esiT/(p-esiT)  ! saturation mixing ration with respect to ice
-        qs = ws/(1.0_r8+ws)
+            w = state1%q(i,k,1)/(1.0_r8-state1%q(i,k,1))  ! mixing ratio from specific humidity
+            call qsat_ice(state1%t(i,k), p, esiT, qsiT)
+            ws = epsi*esiT/(p-esiT)  ! saturation mixing ration with respect to ice
+            qs = ws/(1.0_r8+ws)
 
-        RH = w/ws  ! relative humidity with respect to ice
-        if( RH>=1.0_r8 ) RHcts(i,k) = 1.0_r8
+            RH = w/ws  ! relative humidity with respect to ice
+            if( RH>=1.0_r8 ) RHcts(i,k) = 1.0_r8
 
 ! Schumann, U. “Contrail Cirrus.” In Cirrus, edited by D. K. Lynch and others, 231–55. Oxford University Press, 2002
 !                 IWC(g/m3) = exp(6.97+0.103*T(C))*1e-3
 !                 IWC(kg/m3) = exp(6.97+0.103*T(C))*1e-6
 
-        ICIWC0(i,k) = exp(6.97_r8+0.103_r8*(state1%t(i,k)-tmelt)) ! in mg/m3
-        rho = p/(rair*state1%t(i,k))
-        ICIWC = ICIWC0(i,k)/rho*1.0e-6_r8
+            ICIWC0(i,k) = exp(6.97_r8+0.103_r8*(state1%t(i,k)-tmelt)) ! in mg/m3
+            rho = p/(rair*state1%t(i,k))
+            ICIWC = ICIWC0(i,k)/rho*1.0e-6_r8
 
 
 ! persistent contrail condition
-        if( (state1%t(i,k)<T_contr).and.(RH>RH_contr).and.(RH>1.0_r8).and.(ac_H2O(i,k)>0.0_r8) ) then
+            if( (state1%t(i,k)<T_contr).and.(RH>RH_contr).and.(RH>1.0_r8).and.(ac_H2O(i,k)>0.0_r8) ) then
 
 ! if persistent contrail, H2O emitted from aircraft turns into cloud ice
-          dz = state1%zi(i,k)-state1%zi(i,k+1)
-          ratio(i,k) = (ac_SLANT_DIST(i,k)*dtime*1.e4_r8)/(dz*rearth*rearth*wght(i))
+                 dz = state1%zi(i,k)-state1%zi(i,k+1)
+                 ratio(i,k) = (ac_SLANT_DIST(i,k)*dtime*1.e4_r8)/(dz*rearth*rearth*wght(i))
 
-          ac_Q = min(ac_H2O(i,k)*dtime + (state1%q(i,k,1)-qs)*ratio(i,k),ratio(i,k)*ICIWC)
-          ptend_loc%q(i,k,ixcldice) = ac_Q/dtime
+                 ac_Q = min(ac_H2O(i,k)*dtime + (state1%q(i,k,1)-qs)*ratio(i,k),ratio(i,k)*ICIWC)
+                 ptend_loc%q(i,k,ixcldice) = ac_Q/dtime
 
 ! take out water vapor from q
-          ptend_loc%q(i,k,1) = -(ac_Q-ac_H2O(i,k)*dtime)/dtime
+                 ptend_loc%q(i,k,1) = -(ac_Q-ac_H2O(i,k)*dtime)/dtime
 
 ! modify cloud fraction
 ! by a prescribed ICIWC, we may deduce the new cloud fraction
  
-         cld(i,k) = min(1._r8, cld(i,k)+ac_Q/ICIWC)
+                 cld(i,k) = min(1._r8, cld(i,k)+ac_Q/ICIWC)
  
 ! modify cloud ice number concentration,
 ! by assuming the particle size, the number of ice particles may be obtained
-          ptend_loc%q(i,k,ixnumice) = ac_Q/particle_mass/dtime
+                 ptend_loc%q(i,k,ixnumice) = ac_Q/particle_mass/dtime
 
-        else
+           else
 ! if not persistent contrail, just add ac_H2O to state1%q(1) (vapor phase)
 
-          ptend_loc%q(i,k,1) = ac_H2O(i,k)
+                 ptend_loc%q(i,k,1) = ac_H2O(i,k)
  
-        endif
-
+           endif
+       
+       else
+           ptend_loc%q(i,k,1) = ac_H2O(i,k)
+       end if
 
       enddo
 

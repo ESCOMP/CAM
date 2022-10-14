@@ -216,9 +216,9 @@ contains
 !=======================================================================
 
   subroutine nlte_timestep_init(state, pbuf2d)
-    use physics_types,only : physics_state
-    use ppgrid,       only : begchunk, endchunk
-    use physics_buffer, only : physics_buffer_desc
+    use physics_types,  only: physics_state
+    use ppgrid,         only: begchunk, endchunk
+    use physics_buffer, only: physics_buffer_desc
 
 !
 ! Time interpolation of waccm forcing fields to the current time
@@ -241,11 +241,12 @@ contains
 !================================================================================================
 !================================================================================================
 
-  subroutine nlte_tend(state, pbuf,  qrlf)
+  subroutine nlte_tend(state, pbuf, qrlf)
 !
 ! Driver for nlte calculations
 !-------------------------------------------------------------------------
-    use physconst,     only: mwdry, cpairv
+    use physconst,       only: mwdry
+    use air_composition, only: cpairv
     use physics_types, only: physics_state
     use physics_buffer, only : physics_buffer_desc
     use perf_mod,      only: t_startf, t_stopf

@@ -85,7 +85,8 @@ module physpkg
   integer ::  dlfzm_idx          = 0     ! detrained convective cloud water mixing ratio.
   integer ::  ducore_idx         = 0     ! ducore index in physics buffer
   integer ::  dvcore_idx         = 0     ! dvcore index in physics buffer
-  integer ::  dtcore_idx         = 0
+  integer ::  dtcore_idx         = 0     ! dtcore index in physics buffer
+  integer ::  dqcore_idx         = 0     ! dqcore index in physics buffer
   integer ::  cmfmczm_idx        = 0     ! Zhang-McFarlane convective mass fluxes
   integer ::  rliqbc_idx         = 0     ! tphysbc reserve liquid
 !=======================================================================
@@ -690,7 +691,8 @@ contains
 
     use physics_buffer,     only: physics_buffer_desc, pbuf_initialize, pbuf_get_index
     use physconst,          only: rair, cpair, gravit, zvir, &
-                                  karman, physconst_init
+                                  karman
+    use cam_thermo,         only: cam_thermo_init
     use ref_pres,           only: pref_edge, pref_mid
 
     use carma_intr,         only: carma_init
@@ -774,9 +776,9 @@ contains
     end do
 
     !-------------------------------------------------------------------------------------------
-    ! Initialize any variables in physconst which are not temporally and/or spatially constant
+    ! Initialize any variables in cam_thermo which are not temporally and/or spatially constant
     !-------------------------------------------------------------------------------------------
-    call physconst_init()
+    call cam_thermo_init()
 
     ! Initialize debugging a physics column
     call phys_debug_init()
@@ -872,7 +874,7 @@ contains
     call convect_deep_init(pref_edge)
 
     if (.not. do_clubb_sgs) call macrop_driver_init(pbuf2d)
-    call microp_aero_init(pbuf2d)
+    call microp_aero_init(phys_state,pbuf2d)
     call microp_driver_init(pbuf2d)
     call conv_water_init
 
@@ -997,6 +999,7 @@ contains
     ducore_idx = pbuf_get_index('DUCORE')
     dvcore_idx = pbuf_get_index('DVCORE')
     dtcore_idx = pbuf_get_index('DTCORE')
+    dqcore_idx = pbuf_get_index('DQCORE')
 
   end subroutine phys_init
 
@@ -1244,6 +1247,8 @@ contains
     use chemistry,      only: chem_final
     use carma_intr,     only: carma_final
     use wv_saturation,  only: wv_sat_final
+    use microp_aero,    only: microp_aero_final
+
     !-----------------------------------------------------------------------
     !
     ! Purpose:
@@ -1264,6 +1269,7 @@ contains
     call chem_final
     call carma_final
     call wv_sat_final
+    call microp_aero_final()
 
   end subroutine phys_final
 
@@ -1447,6 +1453,7 @@ contains
     real(r8), pointer, dimension(:,:) :: cldliqini
     real(r8), pointer, dimension(:,:) :: cldiceini
     real(r8), pointer, dimension(:,:) :: dtcore
+    real(r8), pointer, dimension(:,:) :: dqcore
     real(r8), pointer, dimension(:,:) :: ducore
     real(r8), pointer, dimension(:,:) :: dvcore
     real(r8), pointer, dimension(:,:) :: ast     ! relative humidity cloud fraction
@@ -1457,6 +1464,35 @@ contains
 
     nstep = get_nstep()
     rtdt = 1._r8/ztodt
+
+    ! Adjust the surface fluxes to reduce instabilities in near sfc layer
+    if (phys_do_flux_avg()) then
+       call flux_avg_run(state, cam_in,  pbuf, nstep, ztodt)
+    endif
+
+    ! Validate the physics state.
+    if (state_debug_checks) then
+       call physics_state_check(state, name="before tphysac")
+    end if
+
+    call t_startf('tphysac_init')
+    ! Associate pointers with physics buffer fields
+    itim_old = pbuf_old_tim_idx()
+
+    call pbuf_get_field(pbuf, dtcore_idx, dtcore, start=(/1,1,itim_old/), kount=(/pcols,pver,1/) )
+    call pbuf_get_field(pbuf, dqcore_idx, dqcore, start=(/1,1,itim_old/), kount=(/pcols,pver,1/) )
+    call pbuf_get_field(pbuf, ducore_idx, ducore, start=(/1,1,itim_old/), kount=(/pcols,pver,1/) )
+    call pbuf_get_field(pbuf, dvcore_idx, dvcore, start=(/1,1,itim_old/), kount=(/pcols,pver,1/) )
+
+    call pbuf_get_field(pbuf, qini_idx, qini)
+    call pbuf_get_field(pbuf, cldliqini_idx, cldliqini)
+    call pbuf_get_field(pbuf, cldiceini_idx, cldiceini)
+
+    ifld = pbuf_get_index('CLD')
+    call pbuf_get_field(pbuf, ifld, cld, start=(/1,1,itim_old/),kount=(/pcols,pver,1/))
+
+    ifld = pbuf_get_index('AST')
+    call pbuf_get_field(pbuf, ifld, ast, start=(/1,1,itim_old/), kount=(/pcols,pver,1/) )
 
     call cnst_get_ind('Q', ixq)
     call cnst_get_ind('CLDLIQ', ixcldliq)
@@ -1490,34 +1526,6 @@ contains
 
     call pbuf_get_field(pbuf, rliqbc_idx, rliqbc)
     rliq(:ncol) = rliqbc(:ncol)
-
-    ! Adjust the surface fluxes to reduce instabilities in near sfc layer
-    if (phys_do_flux_avg()) then
-       call flux_avg_run(state, cam_in,  pbuf, nstep, ztodt)
-    endif
-
-    ! Validate the physics state.
-    if (state_debug_checks) then
-       call physics_state_check(state, name="before tphysac")
-    end if
-
-    call t_startf('tphysac_init')
-    ! Associate pointers with physics buffer fields
-    itim_old = pbuf_old_tim_idx()
-
-    call pbuf_get_field(pbuf, dtcore_idx, dtcore, start=(/1,1,itim_old/), kount=(/pcols,pver,1/) )
-    call pbuf_get_field(pbuf, ducore_idx, ducore, start=(/1,1,itim_old/), kount=(/pcols,pver,1/) )
-    call pbuf_get_field(pbuf, dvcore_idx, dvcore, start=(/1,1,itim_old/), kount=(/pcols,pver,1/) )
-
-    call pbuf_get_field(pbuf, qini_idx, qini)
-    call pbuf_get_field(pbuf, cldliqini_idx, cldliqini)
-    call pbuf_get_field(pbuf, cldiceini_idx, cldiceini)
-
-    ifld = pbuf_get_index('CLD')
-    call pbuf_get_field(pbuf, ifld, cld, start=(/1,1,itim_old/),kount=(/pcols,pver,1/))
-
-    ifld = pbuf_get_index('AST')
-    call pbuf_get_field(pbuf, ifld, ast, start=(/1,1,itim_old/), kount=(/pcols,pver,1/) )
 
     !
     ! accumulate fluxes into net flux array for spectral dycores
@@ -2333,6 +2341,7 @@ contains
     ! store T, U, and V in buffer for use in computing dynamics T-tendency in next timestep
     do k = 1,pver
        dtcore(:ncol,k) = state%t(:ncol,k)
+       dqcore(:ncol,k) = state%q(:ncol,k,ixq)
        ducore(:ncol,k) = state%u(:ncol,k)
        dvcore(:ncol,k) = state%v(:ncol,k)
     end do
@@ -2463,6 +2472,7 @@ contains
     real(r8), pointer, dimension(:,:) :: cldliqini
     real(r8), pointer, dimension(:,:) :: cldiceini
     real(r8), pointer, dimension(:,:) :: dtcore
+    real(r8), pointer, dimension(:,:) :: dqcore
     real(r8), pointer, dimension(:,:) :: ducore
     real(r8), pointer, dimension(:,:) :: dvcore
 
@@ -2527,6 +2537,7 @@ contains
     call pbuf_get_field(pbuf, cldiceini_idx, cldiceini)
 
     call pbuf_get_field(pbuf, dtcore_idx, dtcore, start=(/1,1,itim_old/), kount=(/pcols,pver,1/) )
+    call pbuf_get_field(pbuf, dqcore_idx, dqcore, start=(/1,1,itim_old/), kount=(/pcols,pver,1/) )
     call pbuf_get_field(pbuf, ducore_idx, ducore, start=(/1,1,itim_old/), kount=(/pcols,pver,1/) )
     call pbuf_get_field(pbuf, dvcore_idx, dvcore, start=(/1,1,itim_old/), kount=(/pcols,pver,1/) )
 
@@ -2599,9 +2610,11 @@ contains
     ! T, U, V tendency due to dynamics
     if ( nstep > dyn_time_lvls-1 ) then
        dtcore(:ncol,:pver) = (state%t(:ncol,:pver) - dtcore(:ncol,:pver))/ztodt
+       dqcore(:ncol,:pver) = (state%q(:ncol,:pver,ixq) - dqcore(:ncol,:pver))/ztodt
        ducore(:ncol,:pver) = (state%u(:ncol,:pver) - ducore(:ncol,:pver))/ztodt
        dvcore(:ncol,:pver) = (state%v(:ncol,:pver) - dvcore(:ncol,:pver))/ztodt
        call outfld( 'DTCORE', dtcore, pcols, lchnk )
+       call outfld( 'DQCORE', dqcore, pcols, lchnk )
        call outfld( 'UTEND_CORE', ducore, pcols, lchnk )
        call outfld( 'VTEND_CORE', dvcore, pcols, lchnk )
     end if
