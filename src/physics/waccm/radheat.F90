@@ -59,16 +59,12 @@ module radheat
   real(r8) :: min_pressure_sw= 5._r8
   ! lowest  altitude (lowest  pressure) of merge region (Pa)
   real(r8) :: max_pressure_sw=50._r8
-  real(r8) :: delta_merge_sw           ! range of merge region
-  real(r8) :: midpoint_sw              ! midpoint of merge region
 
   ! lw merge region
   ! highest altitude (lowest  pressure) of merge region (Pa)
   real(r8) :: min_pressure_lw= 5._r8
   ! lowest  altitude (highest pressure) of merge region (Pa)
   real(r8) :: max_pressure_lw=50._r8
-  real(r8) :: delta_merge_lw           ! range of merge region
-  real(r8) :: midpoint_lw              ! midpoint of merge region
 
   integer :: ntop_qrs_cam             ! top level for pure cam solar heating
 
@@ -150,6 +146,10 @@ contains
 
     ! local vars
 
+    real(r8) :: delta_merge_sw      ! range of merge region
+    real(r8) :: midpoint_sw         ! midpoint of merge region
+    real(r8) :: delta_merge_lw      ! range of merge region
+    real(r8) :: midpoint_lw         ! midpoint of merge region
     real(r8) :: psh(pver)           ! pressure scale height
     integer  :: k
     logical :: camrt

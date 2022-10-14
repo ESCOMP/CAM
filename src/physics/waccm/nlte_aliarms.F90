@@ -73,7 +73,7 @@ contains
 !
 !-----------------------------------------------------------------
 
-  use physconst,     only: mbarv
+  use air_composition,     only: mbarv
   use cam_history,   only: outfld
   use shr_infnan_mod, only: is_nan => shr_infnan_isnan
   use shr_kind_mod,  only: SHR_KIND_CM
@@ -149,7 +149,7 @@ contains
   do j=1,pver
      do i=1,ncol
         if (is_nan(cool(i,j))) then
-           write(errstring,*) 'nlte_aliarms_calc: Nan in qrlaliarms for chunk', lchnk, ' column index=',i,' vertical index=',j
+           write(errstring,*) 'nlte_aliarms_calc: Nan in qrlaliarms for chunk=', lchnk, ' column index=',i,' vertical index=',j
            call endrun (errstring)
         end if
      end do
