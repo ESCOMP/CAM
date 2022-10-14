@@ -168,7 +168,7 @@
       <machine name="cheyenne" compiler="intel" category="fv3_cam"/>
     </machines>
     <options>
-      <option name="wallclock">00:10:00</option>
+      <option name="wallclock">00:30:00</option>
     </options>
   </test>
 
