@@ -295,8 +295,14 @@ module clubb_intr
                                           ! rtpthlp
     clubb_l_damp_wp3_Skw_squared,       & ! Set damping on wp3 to use Skw^2 rather than Skw^4
     clubb_l_prescribed_avg_deltaz,      & ! used in adj_low_res_nu. If .true., avg_deltaz = deltaz
-    clubb_l_update_pressure               ! Flag for having CLUBB update pressure and exner
-  
+    clubb_l_update_pressure,            & ! Flag for having CLUBB update pressure and exner
+    clubb_l_mono_flux_lim_thlm,         & ! Flag to turn on monotonic flux limiter for thlm
+    clubb_l_mono_flux_lim_rtm,          & ! Flag to turn on monotonic flux limiter for rtm
+    clubb_l_mono_flux_lim_um,           & ! Flag to turn on monotonic flux limiter for um
+    clubb_l_mono_flux_lim_vm,           & ! Flag to turn on monotonic flux limiter for vm
+    clubb_l_mono_flux_lim_spikefix        ! Flag to implement monotonic flux limiter code that
+                                          ! eliminates spurious drying tendencies at model top  
+
 !  Constant parameters
   logical, parameter, private :: &
     l_implemented    = .true.,        &  ! Implemented in a host model (always true)
@@ -728,7 +734,9 @@ end subroutine clubb_init_cnst
                                clubb_l_lmm_stepping, & 
                                clubb_l_e3sm_config, & 
                                clubb_l_use_tke_in_wp3_pr_turb_term, clubb_l_use_tke_in_wp2_wp3_K_dfsn, &
-                               clubb_l_smooth_Heaviside_tau_wpxp
+                               clubb_l_smooth_Heaviside_tau_wpxp, clubb_l_mono_flux_lim_thlm, &
+                               clubb_l_mono_flux_lim_rtm, clubb_l_mono_flux_lim_um, &
+                               clubb_l_mono_flux_lim_vm, clubb_l_mono_flux_lim_spikefix
 
     !----- Begin Code -----
 
@@ -788,7 +796,12 @@ end subroutine clubb_init_cnst
                                              clubb_l_use_tke_in_wp2_wp3_K_dfsn, & ! Out
                                              clubb_l_smooth_Heaviside_tau_wpxp, & ! Out
                                              clubb_l_enable_relaxed_clipping, & ! Out
-                                             clubb_l_linearize_pbl_winds ) ! Out
+                                             clubb_l_linearize_pbl_winds, & ! Out
+                                             clubb_l_mono_flux_lim_thlm, & ! Out
+                                             clubb_l_mono_flux_lim_rtm, & ! Out
+                                             clubb_l_mono_flux_lim_um, & ! Out
+                                             clubb_l_mono_flux_lim_vm, & ! Out
+                                             clubb_l_mono_flux_lim_spikefix ) ! Out
 
     !  Call CLUBB+MF namelist
     call clubb_mf_readnl(nlfile)
@@ -1013,6 +1026,16 @@ end subroutine clubb_init_cnst
     if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: clubb_l_smooth_Heaviside_tau_wpxp")
     call mpi_bcast(clubb_ipdf_call_placement,    1, mpi_integer, mstrid, mpicom, ierr)
     if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: clubb_ipdf_call_placement")
+    call mpi_bcast(clubb_l_mono_flux_lim_thlm,   1, mpi_logical, mstrid, mpicom, ierr)
+    if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: clubb_l_mono_flux_lim_thlm")
+    call mpi_bcast(clubb_l_mono_flux_lim_rtm,   1, mpi_logical, mstrid, mpicom, ierr)
+    if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: clubb_l_mono_flux_lim_rtm")
+    call mpi_bcast(clubb_l_mono_flux_lim_um,   1, mpi_logical, mstrid, mpicom, ierr)
+    if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: clubb_l_mono_flux_lim_um")
+    call mpi_bcast(clubb_l_mono_flux_lim_vm,   1, mpi_logical, mstrid, mpicom, ierr)
+    if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: clubb_l_mono_flux_lim_vm")
+    call mpi_bcast(clubb_l_mono_flux_lim_spikefix,   1, mpi_logical, mstrid, mpicom, ierr)
+    if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: clubb_l_mono_flux_lim_spikefix")
 
     !  Overwrite defaults if they are true
     if (clubb_history) l_stats = .true.
@@ -1129,6 +1152,11 @@ end subroutine clubb_init_cnst
                                                  clubb_l_smooth_Heaviside_tau_wpxp, & ! In
                                                  clubb_l_enable_relaxed_clipping, & ! In
                                                  clubb_l_linearize_pbl_winds, & ! In
+                                                 clubb_l_mono_flux_lim_thlm, & ! In
+                                                 clubb_l_mono_flux_lim_rtm, & ! In
+                                                 clubb_l_mono_flux_lim_um, & ! In
+                                                 clubb_l_mono_flux_lim_vm, & ! In
+                                                 clubb_l_mono_flux_lim_spikefix, & ! In
                                                  clubb_config_flags ) ! Out
 
 #endif
