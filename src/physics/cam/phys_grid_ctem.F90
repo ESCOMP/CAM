@@ -15,6 +15,7 @@ module phys_grid_ctem
   use cam_abortutils,only: endrun
   use namelist_utils,only: find_group_name
   use spmd_utils,    only: masterproc, mpi_integer, masterprocid, mpicom
+  use time_manager,  only: get_step_size, get_nstep
 
   implicit none
 
@@ -29,6 +30,11 @@ module phys_grid_ctem
 
   integer :: nzalat = -huge(1)
   integer :: nzmbas = -huge(1)
+
+  integer, parameter :: nhours = 6 ! number of hours bewteen TEM calculations
+  integer :: ntimesteps = -huge(1) ! number of time steps bewteen TEM calculations
+
+  logical :: do_tem_diags = .false.
 
 contains
 
@@ -61,9 +67,12 @@ contains
     call MPI_bcast(phys_grid_ctem_zm_nbas, 1, mpi_integer, masterprocid, mpicom, ierr)
     call MPI_bcast(phys_grid_ctem_za_nlat, 1, mpi_integer, masterprocid, mpicom, ierr)
 
+    do_tem_diags = phys_grid_ctem_zm_nbas>0 .and. phys_grid_ctem_za_nlat>0
+
     if (masterproc) then
        write(iulog,*) 'phys_grid_ctem_readnl... phys_grid_ctem_zm_nbas: ',phys_grid_ctem_zm_nbas
        write(iulog,*) 'phys_grid_ctem_readnl... phys_grid_ctem_za_nlat: ',phys_grid_ctem_za_nlat
+       write(iulog,*) 'phys_grid_ctem_readnl... do_tem_diags: ', do_tem_diags
     endif
 
     nzalat = phys_grid_ctem_za_nlat
@@ -94,6 +103,8 @@ contains
     real(r8), parameter :: fourpi = pi*4._r8
 
     integer, parameter :: ctem_zavg_phys_decomp = 201 ! Must be unique within CAM
+
+    if (.not.do_tem_diags) return
 
     nullify(zalat_coord)
     nullify(zalon_coord)
@@ -154,6 +165,10 @@ contains
   !-----------------------------------------------------------------------------
   subroutine phys_grid_ctem_init
 
+    real(r8) :: dtime
+
+    if (.not.do_tem_diags) return
+
     call addfld ('VTHzaphys',(/'ilev'/), 'A', 'MK/S', 'Meridional Heat Flux:', gridname='ctem_zavg_phys')
     call addfld ('WTHzaphys',(/'ilev'/), 'A', 'MK/S', 'Vertical Heat Flux:', gridname='ctem_zavg_phys')
     call addfld ('UVzaphys', (/'ilev'/), 'A', 'M2/S2','Meridional Flux of Zonal Momentum', gridname='ctem_zavg_phys')
@@ -169,6 +184,9 @@ contains
     call addfld ('Wzm3d',  (/'ilev' /), 'A','M/S',  'Zonal-Mean vertical wind - defined on ilev', gridname='physgrid' )
     call addfld ('THzm3d', (/'ilev' /), 'A',  'K',  'Zonal-Mean potential temp - defined on ilev', gridname='physgrid' )
     call addfld ('THphys', (/'ilev' /), 'A',  'K',  'Zonal-Mean potential temp - defined on ilev', gridname='physgrid' )
+
+    dtime = get_step_size()
+    ntimesteps = nint( nhours*3600._r8/dtime ) ! number of steps per nhours
 
   end subroutine phys_grid_ctem_init
 
@@ -215,6 +233,8 @@ contains
     real(r8) :: wthza(nzalat,pverp)
 
     real(r8), parameter :: hscale = 7000._r8          ! pressure scale height
+
+    if (.not.do_calc()) return
 
     ui(:,:,:) = 0._r8
     vi(:,:,:) = 0._r8
@@ -335,6 +355,17 @@ contains
       call ZMobj%eval_grid(Zonal_Bamp3d,fldzm)
 
     end function zmean_fld
+
+    !------------------------------------------------------------------------------
+    ! utility function returns TRUE when time to update TEM diags
+    !------------------------------------------------------------------------------
+    logical function do_calc()
+
+      integer :: nstep
+      nstep = get_nstep()
+      do_calc = do_tem_diags .and. mod(nstep,ntimesteps) == 0
+
+    end function do_calc
 
   end subroutine phys_grid_ctem_diags
 
