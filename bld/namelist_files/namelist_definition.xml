@@ -422,6 +422,17 @@ Default: .false.,  unless it is overridden (WACCM with interactive chemistry and
           configurations do this)
 </entry>
 
+<entry id="phys_grid_ctem_zm_nbas" type="integer"  category="diagnostics"
+       group="phys_grid_ctem_opts" valid_values="" >
+Number of zonal mean basis functions (number of m=0 spherical harmonics) used in
+Transformed Eulerian Mean (TEM) diagnostics
+</entry>
+
+<entry id="phys_grid_ctem_za_nlat" type="integer"  category="diagnostics"
+       group="phys_grid_ctem_opts" valid_values="" >
+Number of latitude grid points for zonal average TEM diagnostics history fields
+</entry>
+
 <entry id="print_energy_errors" type="logical"  category="diagnostics"
        group="check_energy_nl" valid_values="" >
 Turn on verbose output identifying columns that fail energy/water
