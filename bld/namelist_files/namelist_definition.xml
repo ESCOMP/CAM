@@ -347,13 +347,16 @@
 
 <entry id="Nudge_ZonalFilter" type="logical" category="nudging"
        group="nudging_nl" valid_values="" >
-       Zonal Mean filtering ...
+       Switch to turn on zonal mean filtering nudging.  If TRUE, the target meteorology
+       is zonally averaged before applied.
        Default: FALSE
        </entry>
 
 <entry id="Nudge_ZonalNbasis" type="integer" category="nudging"
        group="nudging_nl" valid_values="" >
-       Number of basis functions used in Zonal Mean filtering ...
+       Number of zonal mean basis functions (number of m=0 spherical harmonics) used in
+       zonal mean filtering nudging.
+       Default: none
        </entry>
 
 <!-- Aerosols: Data (CAM version) -->

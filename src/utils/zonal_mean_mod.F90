@@ -651,6 +651,13 @@ contains
       real(r8),allocatable:: Bcov (:,:)
       real(r8):: Bnorm
       integer :: ii,nn,n2,nb,ierr
+      logical :: generate_lats
+
+      generate_lats = .false.
+
+      if (present(GEN_GAUSSLATS)) then
+         generate_lats = GEN_GAUSSLATS
+      end if
 
       ! Allocate space
       !-----------------
@@ -672,7 +679,7 @@ contains
       ! and their associated area weights. Otherwise it
       ! is assumed that the user is supplying them.
       !-----------------------------------------------
-      if(present(GEN_GAUSSLATS).and.(GEN_GAUSSLATS)) then
+      if(generate_lats) then
 
         ! Create a Gaussian grid from SP to NP
         !--------------------------------------
@@ -956,6 +963,13 @@ contains
       integer :: nn,jj,ierr
       integer :: ncols,lchnk,cc,jlat
       integer :: nlcols, count
+      logical :: generate_lats
+
+      generate_lats = .false.
+
+      if (present(GEN_GAUSSLATS)) then
+         generate_lats = GEN_GAUSSLATS
+      end if
 
       nlcols = get_nlcols_p()
 
@@ -982,7 +996,7 @@ contains
       ! and their associated area weights. Otherwise it
       ! is assumed that the user is supplying them.
       !-----------------------------------------------
-      if(present(GEN_GAUSSLATS).and.(GEN_GAUSSLATS)) then
+      if(generate_lats) then
 
         ! Create a Gaussin grid from SP to NP
         !--------------------------------------
