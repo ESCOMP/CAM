@@ -226,6 +226,7 @@ subroutine microp_aero_init(phys_state,pbuf2d)
          call endrun('ma_convproc_init: construction of modal_aerosol_properties object failed')
       end if
       call ndrop_init(aero_props_obj)
+      call nucleate_ice_cam_init(mincld, bulk_scale, pbuf2d, aero_props=aero_props_obj)
 
       allocate(aero_state(begchunk:endchunk))
       do c = begchunk,endchunk
@@ -328,6 +329,7 @@ subroutine microp_aero_init(phys_state,pbuf2d)
       end do
 
       call ndrop_bam_init()
+      call nucleate_ice_cam_init(mincld, bulk_scale, pbuf2d)
 
    end if
 
@@ -340,11 +342,6 @@ subroutine microp_aero_init(phys_state,pbuf2d)
       call add_default ('WSUB     ', 1, ' ')
    end if
 
-   if (associated(aero_props_obj)) then
-      call nucleate_ice_cam_init(mincld, bulk_scale, pbuf2d, aero_props=aero_props_obj)
-   else
-      call nucleate_ice_cam_init(mincld, bulk_scale, pbuf2d)
-   end if
    call hetfrz_classnuc_cam_init(mincld)
 
 end subroutine microp_aero_init
