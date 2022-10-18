@@ -27,13 +27,12 @@ module aerosol_state_mod
      procedure(aero_get_transported), deferred :: get_transported
      procedure(aero_set_transported), deferred :: set_transported
      procedure(aero_get_amb_total_bin_mmr), deferred :: ambient_total_bin_mmr
-     procedure(aero_get_state_total_mmr), deferred :: get_ambient_total_mmr
-     procedure(aero_get_state_total_mmr), deferred :: get_cldbrne_total_mmr
      procedure(aero_get_state_mmr), deferred :: get_ambient_mmr
      procedure(aero_get_state_mmr), deferred :: get_cldbrne_mmr
      procedure(aero_get_state_num), deferred :: get_ambient_num
      procedure(aero_get_state_num), deferred :: get_cldbrne_num
      procedure(aero_get_states), deferred :: get_states
+     procedure(aero_update_bin), deferred :: update_bin
      procedure :: loadaer
      procedure(aero_icenuc_size_wght1), deferred :: icenuc_size_wght1
      procedure(aero_icenuc_size_wght2), deferred :: icenuc_size_wght2
@@ -54,7 +53,7 @@ module aerosol_state_mod
      ! Total aerosol mass mixing ratio for a bin in a given grid box location (column and layer)
      !------------------------------------------------------------------------
      function aero_get_amb_total_bin_mmr(self, aero_props, bin_ndx, col_ndx, lyr_ndx) result(mmr_tot)
-       import
+       import :: aerosol_state, aerosol_properties, r8
        class(aerosol_state), intent(in) :: self
        class(aerosol_properties), intent(in) :: aero_props ! aerosol properties object
        integer, intent(in) :: bin_ndx      ! bin index
@@ -75,16 +74,6 @@ module aerosol_state_mod
        integer, intent(in) :: bin_ndx      ! bin index
        real(r8), pointer :: mmr(:,:)       ! mass mixing ratios
      end subroutine aero_get_state_mmr
-
-     !------------------------------------------------------------------------
-     ! returns total aerosol mass mixing ratio for a given bin index
-     !------------------------------------------------------------------------
-     subroutine aero_get_state_total_mmr(self, bin_ndx, mmr)
-       import :: aerosol_state, r8
-       class(aerosol_state), intent(in) :: self
-       integer, intent(in) :: bin_ndx      ! bin index
-       real(r8), pointer :: mmr(:,:)       ! mass mixing ratios
-     end subroutine aero_get_state_total_mmr
 
      !------------------------------------------------------------------------
      ! returns aerosol number mixing ratio for a given species index and bin index
@@ -147,7 +136,7 @@ module aerosol_state_mod
      end subroutine aero_icenuc_size_wght1
 
      !------------------------------------------------------------------------------
-     ! return aerosol bin size weights for a given bin, column and verical layer
+     ! return aerosol bin size weights for a given bin, column and vertical layer
      !------------------------------------------------------------------------------
      subroutine aero_icenuc_size_wght2(self, bin_ndx, col_ndx, lyr_ndx, species_type, use_preexisting_ice, wght)
        import :: aerosol_state, r8
@@ -160,6 +149,23 @@ module aerosol_state_mod
        real(r8), intent(out) :: wght
 
      end subroutine aero_icenuc_size_wght2
+
+     !------------------------------------------------------------------------------
+     ! updates state and tendency
+     !------------------------------------------------------------------------------
+     subroutine aero_update_bin( self, bin_ndx, col_ndx, lyr_ndx, delmmr_sum, delnum_sum, tnd_ndx, dtime, tend )
+       import :: aerosol_state, r8
+       class(aerosol_state), intent(in) :: self
+       integer, intent(in) :: bin_ndx                ! bin number
+       integer, intent(in) :: col_ndx                ! column index
+       integer, intent(in) :: lyr_ndx                ! vertical layer index
+       real(r8),intent(in) :: delmmr_sum             ! mass mixing ratio change summed over all species in bin
+       real(r8),intent(in) :: delnum_sum             ! number mixing ratio change summed over all species in bin
+       integer, intent(in) :: tnd_ndx                ! tendency index
+       real(r8),intent(in) :: dtime                  ! time step size (sec)
+       real(r8),intent(inout) :: tend(:,:,:)         ! tendency
+
+     end subroutine aero_update_bin
 
   end interface
 

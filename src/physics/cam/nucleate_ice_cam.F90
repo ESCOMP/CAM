@@ -720,32 +720,8 @@ subroutine nucleate_ice_cam_calc( &
 
                         idxtmp = aer_cnst_idx(m,0)
 
-                        ! determine if there is a bin mass
-                        if (aero_props%icenuc_updates_mmr(m,0)) then
-                           call aero_state%get_ambient_total_mmr(m,amb_mmr)
-                           call aero_state%get_cldbrne_total_mmr(m,cld_mmr)
-
-                           if (idxtmp>0) then
-                              ptend%q(i,k,idxtmp) = -delmmr_sum/dtime
-                           else
-                              amb_mmr(i,k) = amb_mmr(i,k) - delmmr_sum
-                           end if
-                           cld_mmr(i,k) = cld_mmr(i,k) + delmmr_sum
-
-                           ! apply the total number change to bin number
-                           amb_num(i,k) = amb_num(i,k) - delnum_sum
-                        else
-                           ! if there is no bin mass compute updates/tendencies for bin number
-                           ! -- apply the total number change to bin number
-                           if (idxtmp>0) then
-                              ptend%q(i,k,idxtmp) = -delnum_sum/dtime
-                           else
-                              amb_num(i,k) = amb_num(i,k) - delnum_sum
-                           end if
-                        endif
-
-                        ! apply the total number change to bin number
-                        cld_num(i,k) = cld_num(i,k) + delnum_sum
+                        ! update aerosol state bin and tendency for grid box i,k
+                        call aero_state%update_bin( m,i,k, delmmr_sum, delnum_sum, idxtmp, dtime, ptend%q )
 
                      end if
 
