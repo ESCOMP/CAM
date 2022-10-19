@@ -1,11 +1,8 @@
 module mo_tuvx
-  !----------------------------------------------------------------------
-  !     ... wrapper for TUV-x photolysis rate constant calculator
-  !----------------------------------------------------------------------
+!----------------------------------------------------------------------
+!     ... wrapper for TUV-x photolysis rate constant calculator
+!----------------------------------------------------------------------
 
-#ifdef _MPI
-  use mpi
-#endif
   use tuvx_core,        only : core_t
 
   implicit none
@@ -21,14 +18,9 @@ module mo_tuvx
   end type tuvx_ptr
   type(tuvx_ptr), allocatable :: tuvx_ptrs(:)
 
-  ! TODO where should this path be stored?
+  ! TODO where should this file and other TUV-x data be stored?
+  ! TODO how should this path be set and communicated to this wrapper?
   character(len=*), parameter :: tuvx_config_path = "tuvx_config.json"
-  ! TODO how to know what MPI communicator to use?
-#ifdef _MPI
-  integer, parameter :: tuvx_comm = MPI_COMM_WORLD
-#else
-  integer, parameter :: tuvx_comm = 0
-#endif
 
 !================================================================================================
 contains
@@ -41,10 +33,14 @@ contains
 !
 !-----------------------------------------------------------------------
 
-    use cam_logfile,    only : iulog
+#ifdef HAVE_MPI
+    use mpi
+#endif
+    use musica_assert,  only : assert_msg
     use musica_string,  only : string_t, to_char
     use spmd_utils,     only : main_task => masterprocid, &
-                               is_main_task => masterproc
+                               is_main_task => masterproc, &
+                               mpicom
 
 !-----------------------------------------------------------------------
 ! Local variables
@@ -53,34 +49,30 @@ contains
     character, allocatable :: buffer(:)
     type(string_t) :: config_path
     integer :: pack_size, pos, i_core, i_err
-    character(len=255) :: cwd
 
-    call getcwd(cwd)
     config_path = tuvx_config_path
-    if( is_main_task ) then
-      write(iulog,*) "Initializing TUV-x on MPI Task "//trim( to_char( main_task ) ) &
-                     //" and OpenMP thread "//trim( to_char( thread_id( ) ) ) &
-                     //" for "//trim( to_char( max_threads( ) ) )//" threads."
-      write(iulog,*) "TUV-x working dir: '"//trim(cwd) &
-                      //"' config path: '"//config_path//"'"
-    end if
+    if( is_main_task ) call log_initialization( )
 
-#if 0
+#ifndef HAVE_MPI
+    call assert_msg( 113937299, is_main_task, "Multiple tasks present without " &
+                     //"MPI support enabled for TUV-x")
+#endif
+
     ! construct a core on the primary process and pack it onto an MPI buffer
     if( is_main_task ) then
       core => core_t( config_path )
-      pack_size = core%pack_size( tuvx_comm )
+      pack_size = core%pack_size( mpicom )
       allocate( buffer( pack_size ) )
       pos = 0
-      call core%mpi_pack( buffer, pos, tuvx_comm )
+      call core%mpi_pack( buffer, pos, mpicom )
       deallocate( core )
     end if
 
     ! broadcast the core data to all MPI processes
-#ifdef _MPI
-    call mpi_bcast( pack_size, 1, MPI_INTEGER, main_task, tuvx_comm, i_err )
+#ifdef HAVE_MPI
+    call mpi_bcast( pack_size, 1, MPI_INTEGER, main_task, mpicom, i_err )
     if( .not. is_main_task ) allocate( buffer( pack_size ) )
-    call mpi_bcast( buffer, pack_size, MPI_CHARACTER, main_task, tuvx_comm, i_err )
+    call mpi_bcast( buffer, pack_size, MPI_CHARACTER, main_task, mpicom, i_err )
 #endif
 
     ! unpack the core for each OMP thread on every MPI process
@@ -89,10 +81,9 @@ contains
     associate( tuvx => tuvx_ptrs( i_core ) )
       allocate( tuvx%core_ )
       pos = 0
-      call tuvx%core_%mpi_unpack( buffer, pos, tuvx_comm )
+      call tuvx%core_%mpi_unpack( buffer, pos, mpicom )
     end associate
     end do
-#endif
 
   end subroutine tuvx_init
 
@@ -162,6 +153,38 @@ contains
 
   end function max_threads
 
+!================================================================================================
+
+  subroutine log_initialization( )
+!-----------------------------------------------------------------------
+!
+! Purpose: prints initialization conditions to the log file
+!
+!-----------------------------------------------------------------------
+
+    use cam_logfile,    only : iulog
+    use musica_string,  only : to_char
+    use spmd_utils,     only : main_task => masterprocid, &
+                               is_main_task => masterproc
+
+    if( is_main_task ) then
+      write(iulog,*) "Initializing TUV-x"
+#ifdef HAVE_MPI
+      write(iulog,*) "  - with MPI support on task "//trim( to_char( main_task ) )
+#else
+      write(iulog,*) "  - without MPI support"
+#endif
+#ifdef _OPENMP
+      write(iulog,*) "  - with OpenMP support for "// &
+                     trim( to_char( max_threads( ) ) )//" threads, on thread" &
+                     //trim( to_char( thread_id( ) ) )
+#else
+      write(iulog,*) "  - without OpenMP support"
+#endif
+      write(iulog,*) "  - with configuration file: '"//tuvx_config_path//"'"
+    end if
+
+  end subroutine log_initialization
 !================================================================================================
 
 end module mo_tuvx
