@@ -11,7 +11,7 @@ contains
 
 subroutine print_budget()
 
-  use budgets,            only: budget_num, budget_info, budget_ind_byname, budget_get_global
+  use budgets,            only: budget_get_global
   use shr_kind_mod,       only: r8=>shr_kind_r8  
   use spmd_utils,         only: masterproc
   use cam_logfile,        only: iulog

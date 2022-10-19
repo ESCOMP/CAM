@@ -948,7 +948,7 @@ end subroutine check_energy_get_integrals
     use cam_history,     only: hist_fld_active, outfld
     use dyn_tests_utils, only: vc_physics, vc_height
     use cam_abortutils,  only: endrun
-    use budgets,         only: budget_cnt_adjust, budget_info
+    use budgets,         only: budget_cnt_adjust, budget_info_byname
 !------------------------------Arguments--------------------------------
 
     type(physics_state), intent(inout) :: state
@@ -992,7 +992,7 @@ end subroutine check_energy_get_integrals
       lchnk = state%lchnk
       ncol  = state%ncol
 
-      call budget_info(trim(outfld_name_suffix),budget_ind=budget_ind,state_ind=ind)
+      call budget_info_byname(trim(outfld_name_suffix),budget_ind=budget_ind,state_ind=ind)
 
       if (present(vc)) then
         vc_loc = vc

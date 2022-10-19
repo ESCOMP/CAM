@@ -1038,7 +1038,7 @@ subroutine dyn_run(dyn_state)
    use control_mod,      only: qsplit, rsplit, ftype_conserve
    use thread_mod,       only: horz_num_threads
    use time_mod,         only: tevolve
-   use budgets,          only: budget_cnt,budget_num, budget_info, &
+   use budgets,          only: budget_cnt,budget_num,&
                                budget_outfld,budget_count
    use global_norms_mod, only: global_integral, wrap_repro_sum
    use parallel_mod,     only: global_shared_buf, global_shared_sum
@@ -2473,15 +2473,17 @@ subroutine budget_update(elem,fvm,nets,nete,n0,n0_qdp,hybrid)
   
   do b_ind=1,budget_num
      call budget_info(b_ind,name=budget_name,pkgtype=budget_pkgtype,optype=budget_optype,state_ind=s_ind)
-     If (budget_pkgtype=='dyn') then
+     if (budget_pkgtype=='dyn') then
         do n=1,budget_me_varnum
            ! Normalize energy sums and convert to W/s
-           do ie=nets,nete
-              tmp(:,:,ie)=elem(ie)%derived%budget(:,:,n,s_ind)/elem(ie)%derived%budget_cnt(s_ind)
-           enddo
-           budgets_global(b_ind,n) = global_integral(elem, tmp(:,:,nets:nete),hybrid,np,nets,nete)
-!jt           if (masterproc) write(iulog,*)budget_name,' global average normalized by cnt=',budgets_global(b_ind,n),'cnt=',elem(nets)%derived%budget_cnt(s_ind),'sub=',elem(nets)%derived%budget_subcycle(s_ind)
-           
+           if (elem(nets)%derived%budget_cnt(s_ind).gt.0.) then
+              do ie=nets,nete
+                 tmp(:,:,ie)=elem(ie)%derived%budget(:,:,n,s_ind)/elem(ie)%derived%budget_cnt(s_ind)
+              enddo
+           else
+              tmp=0._r8
+           end if
+           budgets_global(b_ind,n) = global_integral(elem, tmp(:,:,nets:nete),hybrid,np,nets,nete)           
            ! divide by time for proper units if not a mass budget.
            if (n.le.3) &
               budgets_global(b_ind,n)=budgets_global(b_ind,n)/dtime

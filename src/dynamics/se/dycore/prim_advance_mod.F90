@@ -1467,8 +1467,9 @@ contains
     use physconst,              only: thermodynamic_active_species_ice_idx
 
     use dimensions_mod,         only: cnst_name_gll
-    use budgets,                only: budget_info
+    use budgets,                only: budget_info_byname
     use cam_logfile,            only: iulog
+    use spmd_utils,             only: masterproc
     !------------------------------Arguments--------------------------------
 
     type (element_t) , intent(inout) :: elem(:)
@@ -1566,8 +1567,9 @@ contains
         end do
 
 ! could store pointer to dyn/phys state index inside of budget and call budget_state_update pass in se,ke etc.
-        call budget_info(trim(outfld_name_suffix),budget_ind=budget_ind,state_ind=state_ind)
+        call budget_info_byname(trim(outfld_name_suffix),budget_ind=budget_ind,state_ind=state_ind)
         ! reset all when cnt is 0
+!jt        if (ie.eq.nets) write(iulog,*)'calc_tot before:',trim(outfld_name_suffix),' cnt/sub=',elem(nets)%derived%budget_cnt(state_ind),'/',elem(nets)%derived%budget_subcycle(state_ind)
         if (elem(ie)%derived%budget_cnt(state_ind) == 0) then
            elem(ie)%derived%budget_subcycle(state_ind) = 0
            elem(ie)%derived%budget(:,:,:,state_ind)=0.0_r8
@@ -1593,7 +1595,7 @@ contains
             elem(ie)%derived%budget(i,j,3,state_ind) = elem(ie)%derived%budget(i,j,3,state_ind) + ke(i+(j-1)*np)
           end do
         end do
-
+!jt        if (ie.eq.nets) write(iulog,*)'calc_tot after:',trim(outfld_name_suffix),' cnt/sub=',elem(nets)%derived%budget_cnt(state_ind),'/',elem(nets)%derived%budget_subcycle(state_ind)
         !
         ! Output energy diagnostics on GLL grid
         !
@@ -1804,13 +1806,13 @@ contains
           else          
              tmp1(:,:,:,ie)=elem(ie)%derived%budget(:,:,:,is1)
              tmp2(:,:,:,ie)=elem(ie)%derived%budget(:,:,:,is2)
-          end if
-          if (budget_optype=='dif') then
-             tmp(:,:,:,ie)=(tmp1(:,:,:,ie)-tmp2(:,:,:,ie))
-          else if (budget_optype=='sum') then
-             tmp(:,:,:,ie)=(tmp1(:,:,:,ie)+tmp2(:,:,:,ie))
-          else
-             call endrun('dyn_readnl: ERROR: budget_optype unknown:'//budget_optype)
+             if (budget_optype=='dif') then
+                tmp(:,:,:,ie)=(tmp1(:,:,:,ie)-tmp2(:,:,:,ie))
+             else if (budget_optype=='sum') then
+                tmp(:,:,:,ie)=(tmp1(:,:,:,ie)+tmp2(:,:,:,ie))
+             else
+                call endrun('dyn_readnl: ERROR: budget_optype unknown:'//budget_optype)
+             end if
           end if
           elem(ie)%derived%budget(:,:,:,s_ind)=tmp(:,:,:,ie)
           !

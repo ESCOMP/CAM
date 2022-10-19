@@ -1,4 +1,3 @@
-
 module budgets
 
 ! Metadata manager for the budgets.
@@ -18,10 +17,10 @@ interface budget_add
   module procedure budget_diff_add
 end interface budget_add
 
-interface budget_info
-  module procedure budget_info_byind
-  module procedure budget_info_byname
-end interface budget_info
+!interface budget_info
+! module procedure abudget_info_byind
+!  module procedure budget_info_byname
+!end interface budget_info
 
 ! Public interfaces
 public :: &
@@ -34,6 +33,7 @@ public :: &
    budget_longname_byind, &! return longnamee of a budget
    budget_type_byind,     &! return stage or difference type of a budget
    budget_info,           &! return budget info by ind
+   budget_info_byname,    &! return budget info by name
    budget_cnt_adjust,     &! advance or reset budget count
    budget_count,          &! return budget count 
    is_budget,             &! return budget count 
@@ -41,13 +41,14 @@ public :: &
    budget_put_global,     &! return budget count 
    budget_outfld           ! Returns true if default CAM output was specified in the budget_stage_add calls.
 
+
 ! Public data
 
 integer, parameter, public :: budget_array_max  = 60     ! number of budget diffs
 integer, parameter, public :: budget_me_varnum  =  7     ! tot,se,ke,wv,wl,wi
 
 integer,           public            :: budget_cnt(budget_array_max)      ! budget counts for normalization
-integer,           public            :: budget_subcycle(budget_array_max) ! budget_subcycle counts
+logical,           public            :: budget_subcycle(budget_array_max) ! budget_subcycle counts
 integer,           public            :: budget_num_dyn = 0 ! 
 integer,           public            :: budget_num_phy = 0 ! 
 integer,           public            :: budget_num     = 0 ! 
@@ -336,7 +337,8 @@ subroutine budget_info_byname(name, budget_ind, longname, stg1name, stg1stateidx
    end if
  end subroutine budget_info_byname
 
- subroutine budget_info_byind(budget_ind, name, longname, stg1name, stg1stateidx, stg1index, stg2name, stg2stateidx, stg2index, optype, pkgtype,state_ind,subcycle,outfld)
+!jt subroutine budget_info_byind(budget_ind, name, longname, stg1name, stg1stateidx, stg1index, stg2name, stg2stateidx, stg2index, optype, pkgtype,state_ind,subcycle,outfld)
+ subroutine budget_info(budget_ind, name, longname, stg1name, stg1stateidx, stg1index, stg2name, stg2stateidx, stg2index, optype, pkgtype,state_ind,subcycle,outfld)
 
    ! Return the mixing ratio name of a budget 
 
@@ -390,7 +392,8 @@ subroutine budget_info_byname(name, budget_ind, longname, stg1name, stg1stateidx
       call endrun(errmsg)
    end if
 
- end subroutine budget_info_byind
+!jt end subroutine abudget_info_byind
+ end subroutine budget_info
 
 !==============================================================================================
 
@@ -426,7 +429,7 @@ subroutine budget_init()
    ! Initial budget module variables.
   
   budget_cnt(:) = 0._r8
-  budget_subcycle(:) = 0._r8
+  budget_subcycle(:) = .false.
   budget_num_dyn = 0
   budget_num_phy = 0
   budget_num = 0

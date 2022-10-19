@@ -757,7 +757,7 @@ subroutine tot_energy(nCells, nVertLevels, qsize, index_qv, zz, zgrid, rho_zz, t
   use mpas_constants, only: Rv_over_Rd => rvord
   use physconst,      only: thermodynamic_active_species_ice_idx_dycore,thermodynamic_active_species_liq_idx_dycore
   use physconst,      only: thermodynamic_active_species_ice_num,thermodynamic_active_species_liq_num
-  use budgets,        only: budget_array_max,budget_info
+  use budgets,        only: budget_array_max,budget_info_byname
   ! Arguments
   integer, intent(in) :: nCells
   integer, intent(in) :: nVertLevels

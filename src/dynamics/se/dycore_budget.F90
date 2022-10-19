@@ -14,7 +14,7 @@ subroutine print_budget()
   use spmd_utils,             only: masterproc
   use cam_logfile,            only: iulog
   use shr_kind_mod,           only: r8=>shr_kind_r8
-  use budgets,                only: budget_num, budget_info, budget_ind_byname, budget_get_global, is_budget
+  use budgets,                only: budget_get_global, is_budget
   use dimensions_mod,         only: lcp_moist,qsize,ntrac
   use control_mod,            only: ftype
   ! Local variables
@@ -50,8 +50,8 @@ subroutine print_budget()
 
   qsize_condensate_loading=qsize
   te_consistent_version=.false.
-  if (qsize_condensate_loading.eq."1") then
-    if (lcp_moist.eq..false.) then
+  if (qsize_condensate_loading.eq.1) then
+    if (lcp_moist.eqv..false.) then
       write(iulog,*)"Using total energy consistent version: qsize_condensate_loading=1 and cp=cpdry"
       te_consistent_version=.true.
     else
@@ -190,7 +190,7 @@ subroutine print_budget()
       write(iulog,*)"================================================================================="
       write(iulog,*)""
       value_pdc = ph_phys_total-rate_of_change_physics
-      if (te_consistent_version.eq..true.) then
+      if (te_consistent_version.eqv..true.) then
         write(iulog,*)"Your model is energy consistent (qsize_condensate_loading=1 and cpdry)"
         if (ftype .eq. 1) then
           write(iulog,*)""
