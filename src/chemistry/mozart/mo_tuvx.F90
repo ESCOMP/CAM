@@ -117,7 +117,7 @@ contains
 !-----------------------------------------------------------------------
 !
 ! Purpose: returns the id of the current OpenMP thread, or 1 if not
-!          using OpenMP
+!          using OpenMP (1 <= id <= max_threads())
 !
 !-----------------------------------------------------------------------
 #ifdef _OPENMP
@@ -125,7 +125,7 @@ contains
 #endif
 
 #ifdef _OPENMP
-    thread_id = omp_get_thread_num( )
+    thread_id = 1 + omp_get_thread_num( )
 #else
     thread_id = 1
 #endif
