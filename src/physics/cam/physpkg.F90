@@ -2957,6 +2957,7 @@ subroutine phys_timestep_init(phys_state, cam_in, cam_out, pbuf2d)
   !----------------------------------
   if(Nudge_Model) call nudging_timestep_init(phys_state)
 
+  ! Update TEM diagnostics
   call phys_grid_ctem_diags(phys_state)
 
 end subroutine phys_timestep_init

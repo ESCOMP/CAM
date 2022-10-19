@@ -17,6 +17,10 @@ module phys_grid_ctem
   use spmd_utils,    only: masterproc, mpi_integer, masterprocid, mpicom
   use time_manager,  only: get_step_size, get_nstep
 
+  use shr_const_mod, only: rgas => shr_const_rgas ! J/K/kmole
+  use shr_const_mod, only: grav => shr_const_g ! m/s2
+  use air_composition, only: mbarv ! g/mole
+
   implicit none
 
   private
@@ -117,6 +121,7 @@ contains
     total_area = 0._r8
     total_wght = 0._r8
 
+    ! calculate latitudes and areas of zonal average grid boxes
     do j = 1,nzalat
        zalats(j) = latdeg0 + (real(j,kind=r8)-0.5_r8)*dlatdeg
        lat1 = latrad0 + real(j-1,kind=r8)*dlatrad
@@ -126,19 +131,19 @@ contains
        total_wght = total_wght + 0.5_r8*(sin(lat2)-sin(lat1))
     end do
 
+    ! sanity check
     if ( abs(1._r8-total_wght)>1.e-12_r8 .or. abs(fourpi-total_area)>1.e-12_r8 ) then
        call endrun('zmean_phys_fields_reg: problem with area/wght calc')
     end if
 
+    ! initialize zonal-average and zonal-mean utility objects
     call ZAobj%init(zalats,area,nzalat,GEN_GAUSSLATS=.false.)
     call ZMobj%init(nzmbas)
 
-    ! Zonal average grid
+    ! Zonal average grid for history fields
 
-    zalat_coord => horiz_coord_create('zalat', '', nzalat, 'latitude',                &
-         'degrees_north', 1, nzalat, zalats)
-    zalon_coord => horiz_coord_create('zalon', '', 1, 'longitude',                &
-         'degrees_east', 1, 1, zalons)
+    zalat_coord => horiz_coord_create('zalat', '', nzalat, 'latitude', 'degrees_north', 1, nzalat, zalats)
+    zalon_coord => horiz_coord_create('zalon', '', 1, 'longitude', 'degrees_east', 1, 1, zalons)
 
     ! grid decomposition map
     allocate(grid_map(4,nzalat))
@@ -156,8 +161,8 @@ contains
     end do
 
     ! register the zonal average grid
-    call cam_grid_register('ctem_zavg_phys', ctem_zavg_phys_decomp, zalat_coord, &
-         zalon_coord, grid_map, unstruct=.false., zonal_grid=.true.)
+    call cam_grid_register('ctem_zavg_phys', ctem_zavg_phys_decomp, zalat_coord, zalon_coord, grid_map, &
+                           unstruct=.false., zonal_grid=.true.)
 
   end subroutine phys_grid_ctem_reg
 
@@ -232,7 +237,7 @@ contains
     real(r8) :: vthza(nzalat,pverp)
     real(r8) :: wthza(nzalat,pverp)
 
-    real(r8), parameter :: hscale = 7000._r8          ! pressure scale height
+    real(r8) :: sheight(pcols,pver) ! pressure scale height (m)
 
     if (.not.do_calc()) return
 
@@ -254,9 +259,16 @@ contains
 
        ncol = phys_state(lchnk)%ncol
 
-       theta(:ncol,:,lchnk) = phys_state(lchnk)%t(:ncol,:) * phys_state(lchnk)%exner(:ncol,:)
-       w(:ncol,:,lchnk)  = - hscale *  phys_state(lchnk)%omega(:ncol,:) / phys_state(lchnk)%pmid(:ncol,:)
+       ! scale height
+       sheight(:ncol,:) = phys_state(lchnk)%t(:ncol,:) * rgas / ( mbarv(:ncol,:,lchnk) * grav ) ! meters
 
+       ! potential temperature
+       theta(:ncol,:,lchnk) = phys_state(lchnk)%t(:ncol,:) * phys_state(lchnk)%exner(:ncol,:)
+
+       ! vertical velocity
+       w(:ncol,:,lchnk)  = -sheight(:ncol,:) *  phys_state(lchnk)%omega(:ncol,:) / phys_state(lchnk)%pmid(:ncol,:)
+
+      ! interpolate to layer interfaces
        do k = 1,pverp
           call vertinterp( ncol, pcols, pver, phys_state(lchnk)%pmid(:,:), pref_edge(k), phys_state(lchnk)%u(:,:), ui(:,k,lchnk) )
           call vertinterp( ncol, pcols, pver, phys_state(lchnk)%pmid(:,:), pref_edge(k), phys_state(lchnk)%v(:,:), vi(:,k,lchnk) )
@@ -266,13 +278,13 @@ contains
 
     end do
 
-    ! these need to be evaluated on the physics grid (3D)
-    ! to be used in the deviations calculation below
+    ! zonal means evaluated on the physics grid (3D) to be used in the deviations calculation below
     uzm(:,:,:) = zmean_fld(ui(:,:,:))
     vzm(:,:,:) = zmean_fld(vi(:,:,:))
     wzm(:,:,:) = zmean_fld(wi(:,:,:))
     thzm(:,:,:) = zmean_fld(thi(:,:,:))
 
+    ! diagnostic output
     do lchnk = begchunk, endchunk
        ncol = phys_state(lchnk)%ncol
 
@@ -290,7 +302,6 @@ contains
        call outfld( 'Wzm3d', fld_tmp(:ncol,:), ncol, lchnk)
     end do
 
-
     do lchnk = begchunk,endchunk
        ncol = phys_state(lchnk)%ncol
        do k = 1,pverp
@@ -307,12 +318,13 @@ contains
        end do
     end do
 
-    ! evaluate and output these on the zonal-average grid
+    ! evaluate and output fluxes on the zonal-average grid
     call ZAobj%binAvg(uvp, uvza)
     call ZAobj%binAvg(uwp, uwza)
     call ZAobj%binAvg(vthp, vthza)
     call ZAobj%binAvg(wthp, wthza)
 
+    ! diagnostic output
     do j = 1,nzalat
        call outfld('UVzaphys',uvza(j,:),1,j)
        call outfld('UWzaphys',uwza(j,:),1,j)
@@ -320,7 +332,7 @@ contains
        call outfld('WTHzaphys',wthza(j,:),1,j)
     end do
 
-    ! not needed --- only for sanity checks
+    ! the following is not needed --- only for sanity checks
     uv(:,:,:) = zmean_fld(uvp(:,:,:))
     uw(:,:,:) = zmean_fld(uwp(:,:,:))
     vth(:,:,:) = zmean_fld(vthp(:,:,:))
