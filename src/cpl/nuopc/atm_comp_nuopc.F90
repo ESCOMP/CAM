@@ -553,7 +553,7 @@ contains
     call NUOPC_CompAttributeGet(gcomp, name='data_assimilation_atm', value=cvalue, &
          isPresent=isPresent, isSet=isSet, rc=rc)
     if (ChkErr(rc,__LINE__,u_FILE_u)) return
-    if (isPresent and isSet) then
+    if (isPresent .and. isSet) then
        read(cvalue,*) dart_mode
     end if
     if (dart_mode) then
