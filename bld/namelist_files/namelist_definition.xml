@@ -347,8 +347,9 @@
 
 <entry id="Nudge_ZonalFilter" type="logical" category="nudging"
        group="nudging_nl" valid_values="" >
-       Switch to turn on zonal mean filtering nudging.  If TRUE, the target meteorology
-       is zonally averaged before applied.
+       Switch to turn on zonal mean filtering nudging.  If TRUE, the nudging scheme
+       filters 3D model and the 3D input target data to zonal mean values, and then
+       applies nudging to the differences.
        Default: FALSE
        </entry>
 
