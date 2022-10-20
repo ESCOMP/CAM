@@ -5,4 +5,7 @@ inithist='ENDOFRUN'
 
 mee_ion_inline=.true.
 mee_ion_diagonly=.true.
-fincl2 = 'EPP_ionpairs', 'APMEEionprs','N2D_EPP','N4S_EPP'
+fincl2 = 'EPP_ionpairs', 'APMEEionprs','N2D_EPP','N4S_EPP','QRLNLTE','QCO2','QO3','QHC2S','ALIARMS_Q'
+inithist='ENDOFRUN'
+nlte_use_aliarms = .true.
+nlte_aliarms_every_X=3

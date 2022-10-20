@@ -13,6 +13,10 @@ use cam_abortutils, only: endrun
 use parallel_mod,   only: par
 use dimensions_mod, only: nelemd
 
+use aerosol_properties_mod, only: aerosol_properties
+use aerosol_state_mod,      only: aerosol_state
+use microp_aero,            only: aerosol_state_object, aerosol_properties_object
+
 implicit none
 private
 save
@@ -22,6 +26,9 @@ public stepon_run1
 public stepon_run2
 public stepon_run3
 public stepon_final
+
+class(aerosol_properties), pointer :: aero_props_obj => null()
+logical :: aerosols_transported = .false.
 
 !=========================================================================================
 contains
@@ -73,6 +80,14 @@ subroutine stepon_init(dyn_in, dyn_out )
       call add_default(trim(cnst_name(m_cnst))//'&IC', 0, 'I')
    end do
 
+   ! get aerosol properties
+   aero_props_obj => aerosol_properties_object()
+
+   if (associated(aero_props_obj)) then
+      ! determine if there are transported aerosol contistuents
+      aerosols_transported = aero_props_obj%number_transported()>0
+   end if
+
 end subroutine stepon_init
 
 !=========================================================================================
@@ -94,6 +109,10 @@ subroutine stepon_run1( dtime_out, phys_state, phys_tend,               &
    type (physics_buffer_desc), pointer :: pbuf2d(:,:)
    !----------------------------------------------------------------------------
 
+   integer :: c
+   class(aerosol_state), pointer :: aero_state_obj
+   nullify(aero_state_obj)
+
    dtime_out = get_step_size()
 
    if (iam < par%nprocs) then
@@ -109,6 +128,20 @@ subroutine stepon_run1( dtime_out, phys_state, phys_tend,               &
    ! Move data into phys_state structure.
    call d_p_coupling(phys_state, phys_tend,  pbuf2d, dyn_out )
    call t_stopf('d_p_coupling')
+
+   !----------------------------------------------------------
+   ! update aerosol state object from CAM physics state constituents
+   !----------------------------------------------------------
+   if (aerosols_transported) then
+
+      do c = begchunk,endchunk
+         aero_state_obj => aerosol_state_object(c)
+         ! pass number mass or number mixing ratios of aerosol constituents
+         ! to aerosol state object
+         call aero_state_obj%set_transported(phys_state(c)%q)
+      end do
+
+   end if
 
 end subroutine stepon_run1
 
@@ -132,10 +165,27 @@ subroutine stepon_run2(phys_state, phys_tend, dyn_in, dyn_out)
 
    ! local variables
    integer :: tl_f, tl_fQdp
+
+   integer :: c
+   class(aerosol_state), pointer :: aero_state_obj
+
    !----------------------------------------------------------------------------
 
    tl_f = TimeLevel%n0   ! timelevel which was adjusted by physics
    call TimeLevel_Qdp(TimeLevel, qsplit, tl_fQdp)
+
+   !----------------------------------------------------------
+   ! update physics state with aerosol constituents
+   !----------------------------------------------------------
+   nullify(aero_state_obj)
+
+   if (aerosols_transported) then
+      do c = begchunk,endchunk
+         aero_state_obj => aerosol_state_object(c)
+         ! get mass or number mixing ratios of aerosol constituents
+         call aero_state_obj%get_transported(phys_state(c)%q)
+      end do
+   end if
 
    call t_barrierf('sync_p_d_coupling', mpicom)
    call t_startf('p_d_coupling')
@@ -158,7 +208,7 @@ subroutine stepon_run3(dtime, cam_out, phys_state, dyn_in, dyn_out)
    use advect_tend,    only: compute_adv_tends_xyz
    use dyn_grid,       only: TimeLevel
    use time_mod,       only: TimeLevel_Qdp
-   use control_mod,    only: qsplit   
+   use control_mod,    only: qsplit
    ! arguments
    real(r8),            intent(in)    :: dtime   ! Time-step
    type(cam_out_t),     intent(inout) :: cam_out(:) ! Output from CAM to surface
@@ -168,23 +218,23 @@ subroutine stepon_run3(dtime, cam_out, phys_state, dyn_in, dyn_out)
 
    integer :: tl_f, tl_fQdp
    !--------------------------------------------------------------------------------------
-   
+
    call t_startf('comp_adv_tends1')
-   tl_f = TimeLevel%n0 
-   call TimeLevel_Qdp(TimeLevel, qsplit, tl_fQdp)   
+   tl_f = TimeLevel%n0
+   call TimeLevel_Qdp(TimeLevel, qsplit, tl_fQdp)
    call compute_adv_tends_xyz(dyn_in%elem,dyn_in%fvm,1,nelemd,tl_fQdp,tl_f)
    call t_stopf('comp_adv_tends1')
-   
+
    call t_barrierf('sync_dyn_run', mpicom)
    call t_startf('dyn_run')
    call dyn_run(dyn_out)
    call t_stopf('dyn_run')
 
    call t_startf('comp_adv_tends2')
-   tl_f = TimeLevel%n0 
-   call TimeLevel_Qdp(TimeLevel, qsplit, tl_fQdp)   
+   tl_f = TimeLevel%n0
+   call TimeLevel_Qdp(TimeLevel, qsplit, tl_fQdp)
    call compute_adv_tends_xyz(dyn_in%elem,dyn_in%fvm,1,nelemd,tl_fQdp,tl_f)
-   call t_stopf('comp_adv_tends2')   
+   call t_stopf('comp_adv_tends2')
 
 end subroutine stepon_run3
 
@@ -214,8 +264,9 @@ subroutine diag_dynvar_ic(elem, fvm)
    use element_mod,            only: element_t
    use fvm_control_volume_mod, only: fvm_struct
    use fvm_mapping,            only: fvm2dyn
-   use physconst,              only: get_sum_species, get_ps,thermodynamic_active_species_idx
-   use physconst,              only: thermodynamic_active_species_idx_dycore,get_dp_ref
+   use cam_thermo,             only: get_sum_species, get_dp_ref, get_ps
+   use air_composition,        only: thermodynamic_active_species_idx
+   use air_composition,        only: thermodynamic_active_species_idx_dycore
    use hycoef,                 only: hyai, hybi, ps0
    ! arguments
    type(element_t) , intent(in)    :: elem(1:nelemd)
@@ -298,8 +349,8 @@ subroutine diag_dynvar_ic(elem, fvm)
    end if
 
    if (hist_fld_active('dp_ref_gll')) then
-     do ie = 1, nelemd       
-       call get_dp_ref(hyai,hybi,ps0,1,np,1,np,1,nlev,elem(ie)%state%phis(:,:),dp_ref(:,:,:),ps_ref(:,:))
+     do ie = 1, nelemd
+       call get_dp_ref(hyai, hybi, ps0, elem(ie)%state%phis(:,:), dp_ref(:,:,:), ps_ref(:,:))
          do j = 1, np
             do i = 1, np
                ftmp(i+(j-1)*np,:,1) = elem(ie)%state%dp3d(i,j,:,tl_f)/dp_ref(i,j,:)
@@ -323,8 +374,8 @@ subroutine diag_dynvar_ic(elem, fvm)
    if (hist_fld_active('PS_gll')) then
      allocate(fld_2d(np,np))
      do ie = 1, nelemd
-       call get_ps(1,np,1,np,1,nlev,qsize,elem(ie)%state%Qdp(:,:,:,:,tl_Qdp),&
-            thermodynamic_active_species_idx_dycore,elem(ie)%state%dp3d(:,:,:,tl_f),fld_2d,hyai(1)*ps0)
+       call get_ps(elem(ie)%state%Qdp(:,:,:,:,tl_Qdp), thermodynamic_active_species_idx_dycore,&
+            elem(ie)%state%dp3d(:,:,:,tl_f),fld_2d,hyai(1)*ps0)
          do j = 1, np
             do i = 1, np
               ftmp(i+(j-1)*np,1,1) = fld_2d(i,j)
@@ -342,16 +393,16 @@ subroutine diag_dynvar_ic(elem, fvm)
    end if
 
    if (write_inithist()) then
-     allocate(fld_2d(np,np))     
+     allocate(fld_2d(np,np))
      do ie = 1, nelemd
-       call get_ps(1,np,1,np,1,nlev,qsize,elem(ie)%state%Qdp(:,:,:,:,tl_Qdp),&
-            thermodynamic_active_species_idx_dycore,elem(ie)%state%dp3d(:,:,:,tl_f),fld_2d,hyai(1)*ps0)       
+       call get_ps(elem(ie)%state%Qdp(:,:,:,:,tl_Qdp), thermodynamic_active_species_idx_dycore,&
+            elem(ie)%state%dp3d(:,:,:,tl_f),fld_2d,hyai(1)*ps0)
        do j = 1, np
          do i = 1, np
            ftmp(i+(j-1)*np,1,1) = fld_2d(i,j)
          end do
        end do
-       call outfld('PS&IC', ftmp(:,1,1), npsq, ie)       
+       call outfld('PS&IC', ftmp(:,1,1), npsq, ie)
      end do
      deallocate(fld_2d)
       if (fv_nphys < 1) allocate(factor_array(np,np,nlev))
@@ -362,7 +413,7 @@ subroutine diag_dynvar_ic(elem, fvm)
          call outfld('V&IC', RESHAPE(elem(ie)%state%v(:,:,2,:,tl_f), (/npsq,nlev/)), npsq, ie)
 
          if (fv_nphys < 1) then
-            call get_sum_species(1,np,1,np,1,nlev,qsize,elem(ie)%state%Qdp(:,:,:,:,tl_qdp), &
+            call get_sum_species(elem(ie)%state%Qdp(:,:,:,:,tl_qdp), &
                thermodynamic_active_species_idx_dycore, factor_array,dp_dry=elem(ie)%state%dp3d(:,:,:,tl_f))
             factor_array(:,:,:) = 1.0_r8/factor_array(:,:,:)
             do m_cnst = 1, qsize
@@ -391,7 +442,7 @@ subroutine diag_dynvar_ic(elem, fvm)
          allocate(factor_array(nc,nc,nlev))
          llimiter = .true.
          do ie = nets, nete
-           call get_sum_species(1,nc,1,nc,1,nlev,ntrac,fvm(ie)%c(1:nc,1:nc,:,:),thermodynamic_active_species_idx,factor_array)
+           call get_sum_species(fvm(ie)%c(1:nc,1:nc,:,:),thermodynamic_active_species_idx,factor_array)
            factor_array(:,:,:) = 1.0_r8/factor_array(:,:,:)
            do m_cnst = 1, ntrac
              if (cnst_type(m_cnst) == 'wet') then

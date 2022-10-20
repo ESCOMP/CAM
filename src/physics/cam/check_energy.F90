@@ -24,7 +24,8 @@ module check_energy
   use spmd_utils,      only: masterproc
 
   use gmean_mod,       only: gmean
-  use physconst,       only: gravit, latvap, latice, cpair, cpairv, rair, rairv
+  use physconst,       only: gravit, latvap, latice, cpair, rair
+  use air_composition, only: cpairv, rairv
   use physics_types,   only: physics_state, physics_tend, physics_ptend, physics_ptend_init
   use constituents,    only: cnst_get_ind, pcnst, cnst_name, cnst_get_type_byind
   use time_manager,    only: is_first_step
@@ -240,7 +241,7 @@ end subroutine check_energy_get_integrals
 !===============================================================================
 
   subroutine check_energy_timestep_init(state, tend, pbuf, col_type)
-    use physconst,       only: get_hydrostatic_energy
+    use cam_thermo,      only: get_hydrostatic_energy
     use physics_buffer,  only: physics_buffer_desc, pbuf_set_field
     use cam_abortutils,  only: endrun
     use dyn_tests_utils, only: vc_physics, vc_dycore, vc_height
@@ -279,7 +280,7 @@ end subroutine check_energy_get_integrals
     !
     ! CAM physics total energy
     !
-    call get_hydrostatic_energy(1,ncol,1,1,pver,pcnst,state%q(1:ncol,1:pver,1:pcnst),&
+    call get_hydrostatic_energy(state%q(1:ncol,1:pver,1:pcnst),&
          state%pdel(1:ncol,1:pver), cp_or_cv(1:ncol,1:pver),                         &
          state%u(1:ncol,1:pver), state%v(1:ncol,1:pver), state%T(1:ncol,1:pver),     &
          vc_physics, ps = state%ps(1:ncol), phis = state%phis(1:ncol),               &
@@ -299,11 +300,11 @@ end subroutine check_energy_get_integrals
         cp_or_cv(:,:) = cpair-rair
       endif
 
-      call get_hydrostatic_energy(1,ncol,1,1,pver,pcnst,state%q(1:ncol,1:pver,1:pcnst),&
+      call get_hydrostatic_energy(state%q(1:ncol,1:pver,1:pcnst),&
            state%pdel(1:ncol,1:pver), cp_or_cv(1:ncol,1:pver),                         &
            state%u(1:ncol,1:pver), state%v(1:ncol,1:pver), state%T(1:ncol,1:pver),     &
            vc_dycore, ps = state%ps(1:ncol), phis = state%phis(1:ncol),                &
-           z = state%z_ini(1:ncol,:),                                                  &
+           z_mid = state%z_ini(1:ncol,:),                                                  &
            te = state%te_ini(1:ncol,dyn_te_idx), H2O = state%tw_ini(1:ncol,dyn_te_idx))
     else
       state%te_ini(1:ncol,dyn_te_idx) = state%te_ini(1:ncol,phys_te_idx)
@@ -350,7 +351,7 @@ end subroutine check_energy_get_integrals
 
   subroutine check_energy_chng(state, tend, name, nstep, ztodt,        &
        flx_vap, flx_cnd, flx_ice, flx_sen)
-    use physconst,       only: get_hydrostatic_energy
+    use cam_thermo,      only: get_hydrostatic_energy
     use dyn_tests_utils, only: vc_physics, vc_dycore, vc_height
     use cam_abortutils,  only: endrun
     use physics_types,   only: phys_te_idx, dyn_te_idx
@@ -419,7 +420,7 @@ end subroutine check_energy_get_integrals
        call endrun('check_energy_chng: cpairv is not allowed to vary when subcolumns are turned on')
     end if
 
-    call get_hydrostatic_energy(1,ncol,1,1,pver,pcnst,state%q(1:ncol,1:pver,1:pcnst),&
+    call get_hydrostatic_energy(state%q(1:ncol,1:pver,1:pcnst),&
          state%pdel(1:ncol,1:pver), cp_or_cv(1:ncol,1:pver),                         &
          state%u(1:ncol,1:pver), state%v(1:ncol,1:pver), state%T(1:ncol,1:pver),     &
          vc_physics, ps = state%ps(1:ncol), phis = state%phis(1:ncol),               &
@@ -501,13 +502,12 @@ end subroutine check_energy_get_integrals
       scaling(:,:) = cpairv(:,:,lchnk)/cp_or_cv(:,:) !cp/cv scaling
 
       temp(1:ncol,:) = state%temp_ini(1:ncol,:)+scaling(1:ncol,:)*(state%T(1:ncol,:)-state%temp_ini(1:ncol,:))
-      call get_hydrostatic_energy(1,ncol,1,1,pver,pcnst,state%q(1:ncol,1:pver,1:pcnst),&
-           state%pdel(1:ncol,1:pver),cp_or_cv(1:ncol,1:pver),                          &
+      call get_hydrostatic_energy(state%q(1:ncol,1:pver,1:pcnst),&
+           state%pdel(1:ncol,1:pver), cp_or_cv(1:ncol,1:pver),                         &
            state%u(1:ncol,1:pver), state%v(1:ncol,1:pver), temp(1:ncol,1:pver),        &
            vc_dycore, ps = state%ps(1:ncol), phis = state%phis(1:ncol),                &
-           z = state%z_ini(1:ncol,:),                                                  &
-           te = state%te_cur(1:ncol,dyn_te_idx), H2O = state%tw_cur(1:ncol,dyn_te_idx), &
-           se=se, ke=ke, wv=wv, liq=liq, ice=ice)
+           z_mid = state%z_ini(1:ncol,:),                                                  &
+           te = state%te_cur(1:ncol,dyn_te_idx), H2O = state%tw_cur(1:ncol,dyn_te_idx))
     else
       state%te_cur(1:ncol,dyn_te_idx) = te(1:ncol)
       state%tw_cur(1:ncol,dyn_te_idx) = tw(1:ncol)
@@ -940,8 +940,9 @@ end subroutine check_energy_get_integrals
 
 !#######################################################################
 
-  subroutine calc_te_and_aam_budgets(state, outfld_name_suffix, vc)
-    use physconst,       only: gravit,cpair,rearth,omega,get_hydrostatic_energy
+  subroutine calc_te_and_aam_budgets(state, outfld_name_suffix,vc)
+    use physconst,       only: gravit,cpair,pi,rearth,omega
+    use cam_thermo,      only: get_hydrostatic_energy
     use cam_history,     only: hist_fld_active, outfld
     use dyn_tests_utils, only: vc_physics, vc_height
     use cam_abortutils,  only: endrun
@@ -1018,11 +1019,11 @@ end subroutine check_energy_get_integrals
       ! scale accumulated temperature increment for constant volume (otherwise effectively do nothing)
       temp(1:ncol,:) = state%temp_ini(1:ncol,:)+scaling(1:ncol,:)*(state%T(1:ncol,:)- state%temp_ini(1:ncol,:))
 
-      call get_hydrostatic_energy(1,ncol,1,1,pver,pcnst,state%q(1:ncol,1:pver,1:pcnst),&
+      call get_hydrostatic_energy(state%q(1:ncol,1:pver,1:pcnst),&
            state%pdel(1:ncol,1:pver), cp_or_cv,                                        &
            state%u(1:ncol,1:pver), state%v(1:ncol,1:pver), temp(1:ncol,1:pver),        &
            vc_loc, ps = state%ps(1:ncol), phis = state%phis(1:ncol),                   &
-           z = state%z_ini(1:ncol,:), se = se, ke = ke, wv = wv, liq = liq, ice = ice)
+           z_mid = state%z_ini(1:ncol,:), se = se, ke = ke, wv = wv, liq = liq, ice = ice)
 
       call cnst_get_ind('TT_LW' , ixtt    , abort=.false.)
 
