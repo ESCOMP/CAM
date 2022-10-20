@@ -799,7 +799,6 @@ contains
     use cam_snapshot,       only: cam_snapshot_init
     use cam_history,        only: addfld, register_vector_field, add_default, horiz_only
     use phys_control,       only: phys_getopts
-    use budgets,            only: budget_num, budget_info, budget_outfld, budget_init
     use check_energy,       only: check_energy_budget_init
 
     ! Input/output arguments

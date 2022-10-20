@@ -3,7 +3,6 @@ module budgets
 ! Metadata manager for the budgets.
 
 use shr_kind_mod,     only: r8 => shr_kind_r8
-use shr_const_mod,    only: shr_const_rgas
 use spmd_utils,       only: masterproc
 use cam_abortutils,   only: endrun
 use cam_logfile,      only: iulog
@@ -79,15 +78,10 @@ CONTAINS
 
 subroutine budget_readnl(nlfile)
 
-   use namelist_utils,  only: find_group_name
-   use units,           only: getunit, freeunit
-   use spmd_utils,      only: mpicom, mstrid=>masterprocid, mpi_logical
-
-
    character(len=*), intent(in) :: nlfile  ! filepath for file containing namelist input
 
    ! Local variables
-   integer :: unitn, ierr
+   integer :: unitn
    character(len=*), parameter :: sub = 'budget_readnl'
 
    !-----------------------------------------------------------------------------
