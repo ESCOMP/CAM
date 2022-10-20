@@ -224,7 +224,7 @@ contains
   end subroutine actfracs
 
   !------------------------------------------------------------------------
-  ! returns constituents names of aersol number mixing ratios
+  ! returns constituents names of aerosol number mixing ratios
   !------------------------------------------------------------------------
   subroutine num_names(self, bin_ndx, name_a, name_c)
     class(modal_aerosol_properties), intent(in) :: self
@@ -236,7 +236,7 @@ contains
   end subroutine num_names
 
   !------------------------------------------------------------------------
-  ! returns constituents names of aersol mass mixing ratios
+  ! returns constituents names of aerosol mass mixing ratios
   !------------------------------------------------------------------------
   subroutine mmr_names(self, bin_ndx, species_ndx, name_a, name_c)
     class(modal_aerosol_properties), intent(in) :: self
@@ -249,7 +249,7 @@ contains
   end subroutine mmr_names
 
   !------------------------------------------------------------------------
-  ! returns constituent name of ambient aersol number mixing ratios
+  ! returns constituent name of ambient aerosol number mixing ratios
   !------------------------------------------------------------------------
   subroutine amb_num_name(self, bin_ndx, name)
     class(modal_aerosol_properties), intent(in) :: self
@@ -261,7 +261,7 @@ contains
   end subroutine amb_num_name
 
   !------------------------------------------------------------------------
-  ! returns constituent name of ambient aersol mass mixing ratios
+  ! returns constituent name of ambient aerosol mass mixing ratios
   !------------------------------------------------------------------------
   subroutine amb_mmr_name(self, bin_ndx, species_ndx, name)
     class(modal_aerosol_properties), intent(in) :: self

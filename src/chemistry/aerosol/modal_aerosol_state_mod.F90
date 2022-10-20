@@ -28,8 +28,8 @@ module modal_aerosol_state_mod
      procedure :: get_ambient_num
      procedure :: get_cldbrne_num
      procedure :: get_states
-     procedure :: icenuc_size_wght1
-     procedure :: icenuc_size_wght2
+     procedure :: icenuc_size_wght_arr
+     procedure :: icenuc_size_wght_val
      procedure :: icenuc_type_wght
      procedure :: update_bin
 
@@ -192,7 +192,7 @@ contains
   !------------------------------------------------------------------------------
   ! return aerosol bin size weights for a given bin
   !------------------------------------------------------------------------------
-  subroutine icenuc_size_wght1(self, bin_ndx, ncol, nlev, species_type, use_preexisting_ice, wght)
+  subroutine icenuc_size_wght_arr(self, bin_ndx, ncol, nlev, species_type, use_preexisting_ice, wght)
     class(modal_aerosol_state), intent(in) :: self
     integer, intent(in) :: bin_ndx                ! bin number
     integer, intent(in) :: ncol                ! number of columns
@@ -244,12 +244,12 @@ contains
        endif
     end select
 
-  end subroutine icenuc_size_wght1
+  end subroutine icenuc_size_wght_arr
 
   !------------------------------------------------------------------------------
   ! return aerosol bin size weights for a given bin, column and vertical layer
   !------------------------------------------------------------------------------
-  subroutine icenuc_size_wght2(self, bin_ndx, col_ndx, lyr_ndx, species_type, use_preexisting_ice, wght)
+  subroutine icenuc_size_wght_val(self, bin_ndx, col_ndx, lyr_ndx, species_type, use_preexisting_ice, wght)
     class(modal_aerosol_state), intent(in) :: self
     integer, intent(in) :: bin_ndx                ! bin number
     integer, intent(in) :: col_ndx                ! column index
@@ -298,7 +298,7 @@ contains
        endif
     end select
 
-  end subroutine icenuc_size_wght2
+  end subroutine icenuc_size_wght_val
 
   !------------------------------------------------------------------------------
   ! returns aerosol type weights for a given aerosol type and bin

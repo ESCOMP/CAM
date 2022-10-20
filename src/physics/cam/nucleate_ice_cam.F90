@@ -193,7 +193,10 @@ subroutine nucleate_ice_cam_init(mincld_in, bulk_scale_in, pbuf2d, aero_props)
       ! constituent tendencies are calculated only if use_preexisting_ice is TRUE
       ! set lq for constituent tendencies --
 
-      allocate(aer_cnst_idx(aero_props%nbins(),0:maxval(aero_props%nspecies())))
+      allocate(aer_cnst_idx(aero_props%nbins(),0:maxval(aero_props%nspecies())), stat=ierr)
+      if( ierr /= 0 ) then
+         call endrun(routine//': aer_cnst_idx allocation failed')
+      end if
       aer_cnst_idx = -1
 
       do m = 1, aero_props%nbins()
@@ -216,7 +219,7 @@ subroutine nucleate_ice_cam_init(mincld_in, bulk_scale_in, pbuf2d, aero_props)
             ! iterate over the species within the bin
             do l = 1, aero_props%nspecies(m)
                if (aero_props%icenuc_updates_mmr(m,l)) then
-                  ! this aerosol constituent will need to updated
+                  ! this aerosol constituent will be updated
                   call aero_props%amb_mmr_name( m, l, tmpname)
                   call cnst_get_ind(tmpname, idxtmp, abort=.false.)
                   aer_cnst_idx(m,l) = idxtmp
@@ -466,6 +469,8 @@ subroutine nucleate_ice_cam_calc( &
    real(r8) :: delmmr, delmmr_sum
    real(r8) :: delnum, delnum_sum
 
+   real(r8), parameter :: per_cm3 = 1.e-6_r8
+
    !-------------------------------------------------------------------------------
 
    lchnk = state%lchnk
@@ -603,12 +608,12 @@ subroutine nucleate_ice_cam_calc( &
 
    else
       ! for bulk model
-      dust_num_col(:ncol,:) = naer2(:ncol,:,idxdst1)/25._r8 *1.0e-6_r8 &
-                            + naer2(:ncol,:,idxdst2)/25._r8 *1.0e-6_r8 &
-                            + naer2(:ncol,:,idxdst3)/25._r8 *1.0e-6_r8 &
-                            + naer2(:ncol,:,idxdst4)/25._r8 *1.0e-6_r8
-      sulf_num_col(:ncol,:) = naer2(:ncol,:,idxsul)/25._r8 *1.0e-6_r8
-      soot_num_col(:ncol,:) = naer2(:ncol,:,idxbcphi)/25._r8 *1.0e-6_r8
+      dust_num_col(:ncol,:) = naer2(:ncol,:,idxdst1)/25._r8 * per_cm3 & ! #/cm3
+                            + naer2(:ncol,:,idxdst2)/25._r8 * per_cm3 &
+                            + naer2(:ncol,:,idxdst3)/25._r8 * per_cm3 &
+                            + naer2(:ncol,:,idxdst4)/25._r8 * per_cm3
+      sulf_num_col(:ncol,:) = naer2(:ncol,:,idxsul)/25._r8 * per_cm3
+      soot_num_col(:ncol,:) = naer2(:ncol,:,idxbcphi)/25._r8 * per_cm3
    endif
 
    kloop: do k = top_lev, pver
@@ -681,7 +686,7 @@ subroutine nucleate_ice_cam_calc( &
 
                               if (wght>0._r8) then
 
-                                 ! this aerosol constituent will need to updated
+                                 ! this aerosol constituent will be updated
 
                                  idxtmp = aer_cnst_idx(m,l)
 
@@ -694,12 +699,12 @@ subroutine nucleate_ice_cam_calc( &
                                  if (trim(spectype)=='dust') then
                                     if (dst_num>0._r8) then
                                        delmmr = (odst_num / dst_num) * icldm(i,k) * amb_mmr(i,k) * wght
-                                       delnum = (odst_num * icldm(i,k)) /rho(i,k)/1e-6_r8
+                                       delnum = (odst_num * icldm(i,k)) /rho(i,k)/per_cm3
                                     endif
                                  elseif (trim(spectype)=='sulfate') then
                                     if (so4_num>0._r8) then
                                        delmmr = (oso4_num / so4_num) * icldm(i,k) * amb_mmr(i,k) * wght
-                                       delnum = (oso4_num * icldm(i,k)) /rho(i,k)/1e-6_r8
+                                       delnum = (oso4_num * icldm(i,k)) /rho(i,k)/per_cm3
                                     endif
                                  endif
 

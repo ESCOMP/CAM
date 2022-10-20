@@ -85,18 +85,6 @@ module aerosol_properties_mod
      end subroutine aero_props_get
 
      !------------------------------------------------------------------------
-     ! returns species name
-     !------------------------------------------------------------------------
-     subroutine aero_species_name(self, bin_ndx, species_ndx, specname)
-       import :: aerosol_properties
-       class(aerosol_properties), intent(in) :: self
-       integer, intent(in) :: bin_ndx           ! bin number
-       integer, intent(in) :: species_ndx       ! species number
-       character(len=32), intent(out) :: specname ! species name
-
-     end subroutine aero_species_name
-
-     !------------------------------------------------------------------------
      ! returns species type
      !------------------------------------------------------------------------
      subroutine aero_species_type(self, bin_ndx, species_ndx, spectype)
@@ -123,7 +111,7 @@ module aerosol_properties_mod
      end subroutine aero_actfracs
 
      !------------------------------------------------------------------------
-     ! returns constituents names of aersol number mixing ratios
+     ! returns constituents names of aerosol number mixing ratios
      !------------------------------------------------------------------------
      subroutine aero_num_names(self, bin_ndx, name_a, name_c)
        import :: aerosol_properties
@@ -134,7 +122,7 @@ module aerosol_properties_mod
      end subroutine aero_num_names
 
      !------------------------------------------------------------------------
-     ! returns constituents names of aersol mass mixing ratios
+     ! returns constituents names of aerosol mass mixing ratios
      !------------------------------------------------------------------------
      subroutine aero_mmr_names(self, bin_ndx, species_ndx, name_a, name_c)
        import :: aerosol_properties
@@ -146,7 +134,7 @@ module aerosol_properties_mod
      end subroutine aero_mmr_names
 
      !------------------------------------------------------------------------
-     ! returns constituent name of ambient aersol number mixing ratios
+     ! returns constituent name of ambient aerosol number mixing ratios
      !------------------------------------------------------------------------
      subroutine aero_amb_num_name(self, bin_ndx, name)
        import :: aerosol_properties
@@ -157,7 +145,7 @@ module aerosol_properties_mod
      end subroutine aero_amb_num_name
 
      !------------------------------------------------------------------------
-     ! returns constituent name of ambient aersol mass mixing ratios
+     ! returns constituent name of ambient aerosol mass mixing ratios
      !------------------------------------------------------------------------
      subroutine aero_amb_mmr_name(self, bin_ndx, species_ndx, name)
        import :: aerosol_properties

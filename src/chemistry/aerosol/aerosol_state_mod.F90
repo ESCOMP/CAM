@@ -34,9 +34,9 @@ module aerosol_state_mod
      procedure(aero_get_states), deferred :: get_states
      procedure(aero_update_bin), deferred :: update_bin
      procedure :: loadaer
-     procedure(aero_icenuc_size_wght1), deferred :: icenuc_size_wght1
-     procedure(aero_icenuc_size_wght2), deferred :: icenuc_size_wght2
-     generic :: icenuc_size_wght => icenuc_size_wght1,icenuc_size_wght2
+     procedure(aero_icenuc_size_wght_arr), deferred :: icenuc_size_wght_arr
+     procedure(aero_icenuc_size_wght_val), deferred :: icenuc_size_wght_val
+     generic :: icenuc_size_wght => icenuc_size_wght_arr,icenuc_size_wght_val
      procedure :: icenuc_type_wght_base
      procedure :: icenuc_type_wght => icenuc_type_wght_base
      procedure :: nuclice_get_numdens
@@ -123,7 +123,7 @@ module aerosol_state_mod
      !------------------------------------------------------------------------------
      ! return aerosol bin size weights for a given bin
      !------------------------------------------------------------------------------
-     subroutine aero_icenuc_size_wght1(self, bin_ndx, ncol, nlev, species_type, use_preexisting_ice, wght)
+     subroutine aero_icenuc_size_wght_arr(self, bin_ndx, ncol, nlev, species_type, use_preexisting_ice, wght)
        import :: aerosol_state, r8
        class(aerosol_state), intent(in) :: self
        integer, intent(in) :: bin_ndx             ! bin number
@@ -133,12 +133,12 @@ module aerosol_state_mod
        logical, intent(in) :: use_preexisting_ice ! pre-existing ice flag
        real(r8), intent(out) :: wght(:,:)
 
-     end subroutine aero_icenuc_size_wght1
+     end subroutine aero_icenuc_size_wght_arr
 
      !------------------------------------------------------------------------------
      ! return aerosol bin size weights for a given bin, column and vertical layer
      !------------------------------------------------------------------------------
-     subroutine aero_icenuc_size_wght2(self, bin_ndx, col_ndx, lyr_ndx, species_type, use_preexisting_ice, wght)
+     subroutine aero_icenuc_size_wght_val(self, bin_ndx, col_ndx, lyr_ndx, species_type, use_preexisting_ice, wght)
        import :: aerosol_state, r8
        class(aerosol_state), intent(in) :: self
        integer, intent(in) :: bin_ndx                ! bin number
@@ -148,7 +148,7 @@ module aerosol_state_mod
        logical, intent(in) :: use_preexisting_ice    ! pre-existing ice flag
        real(r8), intent(out) :: wght
 
-     end subroutine aero_icenuc_size_wght2
+     end subroutine aero_icenuc_size_wght_val
 
      !------------------------------------------------------------------------------
      ! updates state and tendency
