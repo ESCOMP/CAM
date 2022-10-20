@@ -367,7 +367,7 @@ subroutine dyn_init(dyn_in, dyn_out)
 
    ! variables for initializing energy and axial angular momentum diagnostics
    integer, parameter                         :: num_stages = 6, num_vars = 5
-   character (len = 16), dimension(num_stages) :: stage = (/"dBF","dAP","dAM","BD_dparm","BD_DMEA","BD_phys"/)
+   character (len = 8), dimension(num_stages) :: stage = (/"dBF     ","dAP     ","dAM     ","BD_dparm","BD_DMEA ","BD_phys "/)
    character (len = 55),dimension(num_stages) :: stage_txt = (/&
       " dynamics state before physics (d_p_coupling)       ",&
       " dynamics state with T,u,V increment but not q      ",&
