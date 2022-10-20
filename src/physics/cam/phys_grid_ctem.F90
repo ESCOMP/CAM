@@ -54,6 +54,9 @@ contains
 
     namelist /phys_grid_ctem_opts/ phys_grid_ctem_zm_nbas, phys_grid_ctem_za_nlat
 
+    phys_grid_ctem_zm_nbas = -1
+    phys_grid_ctem_za_nlat = -1
+
     ! Read in namelist values
     !------------------------
     if(masterproc) then
@@ -79,8 +82,10 @@ contains
        write(iulog,*) 'phys_grid_ctem_readnl... do_tem_diags: ', do_tem_diags
     endif
 
-    nzalat = phys_grid_ctem_za_nlat
-    nzmbas = phys_grid_ctem_zm_nbas
+    if (do_tem_diags) then
+       nzalat = phys_grid_ctem_za_nlat
+       nzmbas = phys_grid_ctem_zm_nbas
+    end if
 
   end subroutine phys_grid_ctem_readnl
 
