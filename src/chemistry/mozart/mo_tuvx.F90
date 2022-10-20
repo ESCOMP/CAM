@@ -3,6 +3,8 @@ module mo_tuvx
 !     ... wrapper for TUV-x photolysis rate constant calculator
 !----------------------------------------------------------------------
 
+  use musica_string,    only : string_t
+  use shr_kind_mod,     only : r8 => shr_kind_r8
   use tuvx_core,        only : core_t
 
   implicit none
@@ -10,15 +12,18 @@ module mo_tuvx
   private
 
   public :: tuvx_init
+  public :: tuvx_get_photo_rates
   public :: tuvx_finalize
 
   ! TUV-x calculator for each OMP thread
   type :: tuvx_ptr
-    type(core_t), pointer :: core_ => null( )
+    type(core_t), pointer :: core_ => null( )  ! TUV-x calculator
+    integer               :: n_photo_rates_    ! number of photo reactions in TUV-x
+    real(r8), allocatable :: photo_rates_(:,:) ! photolysis rate constants
+                                               !   (vertical level, reaction) [s-1]
   end type tuvx_ptr
   type(tuvx_ptr), allocatable :: tuvx_ptrs(:)
 
-  ! TODO where should this file and other TUV-x data be stored?
   ! TODO how should this path be set and communicated to this wrapper?
   character(len=*), parameter :: tuvx_config_path = "tuvx_config.json"
 
@@ -36,8 +41,11 @@ contains
 #ifdef HAVE_MPI
     use mpi
 #endif
+    use cam_logfile,    only : iulog
     use musica_assert,  only : assert_msg
+    use musica_mpi,     only : musica_mpi_rank
     use musica_string,  only : string_t, to_char
+    use tuvx_grid,      only : grid_t
     use spmd_utils,     only : main_task => masterprocid, &
                                is_main_task => masterproc, &
                                mpicom
@@ -48,7 +56,8 @@ contains
     class(core_t), pointer :: core
     character, allocatable :: buffer(:)
     type(string_t) :: config_path
-    integer :: pack_size, pos, i_core, i_err
+    class(grid_t), pointer :: height
+    integer :: pack_size, pos, i_core, i_err, i_thread
 
     config_path = tuvx_config_path
     if( is_main_task ) call log_initialization( )
@@ -71,8 +80,16 @@ contains
     ! broadcast the core data to all MPI processes
 #ifdef HAVE_MPI
     call mpi_bcast( pack_size, 1, MPI_INTEGER, main_task, mpicom, i_err )
+    if( i_err /= MPI_SUCCESS ) then
+      write(iulog,*) "TUV-x MPI int bcast error"
+      call mpi_abort( mpicom, 1, i_err )
+    end if
     if( .not. is_main_task ) allocate( buffer( pack_size ) )
     call mpi_bcast( buffer, pack_size, MPI_CHARACTER, main_task, mpicom, i_err )
+    if( i_err /= MPI_SUCCESS ) then
+      write(iulog,*) "TUV-x MPI char array bcast error"
+      call mpi_abort( mpicom, 1, i_err )
+    end if
 #endif
 
     ! unpack the core for each OMP thread on every MPI process
@@ -85,7 +102,50 @@ contains
     end associate
     end do
 
+    ! Set up map between CAM and TUV-x photolysis reactions for each thread
+    do i_thread = 1, max_threads( )
+    associate( tuvx => tuvx_ptrs( i_thread ) )
+      tuvx%n_photo_rates_ = tuvx%core_%number_of_photolysis_reactions( )
+      height => tuvx%core_%get_grid( "height", "km" )
+      ! Temporary for development
+      allocate( tuvx%photo_rates_( height%ncells_ + 1, tuvx%n_photo_rates_ ) )
+    end associate
+    end do
+
   end subroutine tuvx_init
+
+!================================================================================================
+
+  subroutine tuvx_get_photo_rates( ncol )
+!-----------------------------------------------------------------------
+!
+! Purpose: calculate and return photolysis rate constants
+!
+!-----------------------------------------------------------------------
+
+    use cam_logfile,    only : iulog
+    use spmd_utils,     only : main_task => masterprocid, &
+                               is_main_task => masterproc, &
+                               mpicom
+!-----------------------------------------------------------------------
+! Dummy arguments
+!-----------------------------------------------------------------------
+
+    integer, intent(in) :: ncol ! Number of colums to calculated photolysis for
+
+!-----------------------------------------------------------------------
+! Local variables
+!-----------------------------------------------------------------------
+    integer :: i_col                                ! column index
+
+    associate( tuvx => tuvx_ptrs( thread_id( ) ) )
+      do i_col = 1, ncol
+        ! Temporary fix SZA for development
+        call tuvx%core_%run( 45.0_r8, photolysis_rate_constants = tuvx%photo_rates_ )
+      end do
+    end associate
+
+  end subroutine tuvx_get_photo_rates
 
 !================================================================================================
 
