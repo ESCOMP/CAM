@@ -15,29 +15,21 @@ subroutine print_budget()
   use cam_logfile,            only: iulog
   use shr_kind_mod,           only: r8=>shr_kind_r8
   use budgets,                only: budget_get_global, is_budget
-  use dimensions_mod,         only: lcp_moist,qsize,ntrac
+  use dimensions_mod,         only: lcp_moist,qsize
   use control_mod,            only: ftype
   ! Local variables
-  integer :: b_ind,s_ind,is1,is2
-  logical :: budget_outfld
-  character(len=64)    :: name_out1,name_out2,name_out3,name_out4,name_out5,budget_name,name_out(9)
-  character(len=3)     :: budget_pkgtype,budget_optype  ! budget type phy or dyn
-!jt  character(len=8)     :: discr
-  real(r8),allocatable :: tmp(:,:)
-  real(r8), pointer :: te_budgets(:,:,:)! energy/mass budgets se,ke,wv,liq,ice
-  integer, pointer :: budgets_cnt(:) ! budget counts for normalizating sum
   integer          :: i
   character(len=*), parameter :: subname = 'check_energy:print_budgets'
 
   real(r8)          :: ph_param,ph_EFIX,ph_DMEA,ph_param_and_efix,ph_phys_total
   real(r8)          :: dy_param,dy_EFIX,dy_DMEA,dy_param_and_efix,dy_phys_total
   real(r8)          :: se_param,se_dmea,se_phys_total, dycore, err, param, pefix, &
-                       pdmea, phys_total, param_se, dyn_total, dyn_phys_total, &
-                       rate_of_change_2D_dyn, rate_of_change_vertical_remapping, dADAI, &
+                       pdmea, phys_total, dyn_total, dyn_phys_total, &
+                       rate_of_change_2D_dyn, rate_of_change_vertical_remapping, &
                        diffusion_del4, diffusion_fric, diffusion_del4_tot, diffusion_sponge, &
                        diffusion_total, twoDresidual, rate_of_change_physics, &
                        rate_of_change_heating_term_put_back_in, rate_of_change_hvis_sponge, &
-                       value_pdc, dADIA, pADIA, ttt, fff, &
+                       value_pdc, dADIA, ttt, fff, &
                        mass_change__2D_dyn,mass_change__vertical_remapping, &
                        mass_change__heating_term_put_back_in,mass_change__hypervis_total, &
                        error, mass_change__physics, dbd, daf, dar, dad, qneg, val,phbf,ded
