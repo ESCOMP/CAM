@@ -203,7 +203,6 @@ contains
     call budget_add('BD_efix','dyBP','dyBF','phy','dif',longname='dE/dt energy fixer using dycore E (dyBP-dyBF)',outfld=.true.)
     call budget_add('BP_phys_tot','phAM','phBF','phy','dif',longname='dE/dt physics total (phAM-phBF)',outfld=.true.)
     call budget_add('BD_phys_tot','dyAM','dyBF','phy','dif',longname='dE/dt physics total using dycore E (dyAM-dyBF)',outfld=.true.)
-    call budget_add('BP_param_and_efix','phAP','phBF','phy','dif',longname='dE/dt parameterizations + efix (phAP-phBF)',outfld=.true.)
     call budget_add('BD_param_and_efix','dyAP','dyBF','phy','dif',longname='dE/dt parameterizations + efix dycore E  (dyAP-dyBF)',outfld=.true.)
 
     ! Register water vapor.
