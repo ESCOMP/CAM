@@ -825,7 +825,7 @@ subroutine tot_energy(nCells, nVertLevels, qsize, index_qv, zz, zgrid, rho_zz, t
     call outfld(name_out2,kinetic_energy ,ncells,1)
     call outfld(name_out3,water_vapor    ,ncells,1)
 
-    call budget_info(trim(outfld_name_suffix),budget_ind=b_ind,state_ind=s_ind,subcycle=b_subcycle)
+    call budget_info_byname(trim(outfld_name_suffix),budget_ind=b_ind,state_ind=s_ind,subcycle=b_subcycle)
     ! reset all when cnt is 0
     write(iulog,*)'dpc calc se,ke ',s_ind,',1:3,1 is ',internal_energy(1),' ',kinetic_energy(1)
     write(iulog,*)'dpc budgets initial ',s_ind,',1:3,1 is ',te_budgets(s_ind,1,1),' ',te_budgets(s_ind,2,1),' ',te_budgets(s_ind,3,1)

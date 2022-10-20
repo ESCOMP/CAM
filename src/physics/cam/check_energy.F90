@@ -186,7 +186,7 @@ end subroutine check_energy_get_integrals
 !-----------------------------------------------------------------------
     use cam_history,       only: addfld, add_default, horiz_only
     use phys_control,      only: phys_getopts
-    use budgets,           only: budget_num, budget_outfld, budget_info, budget_me_varnum
+    use budgets,           only: budget_num, budget_outfld, budget_info
 
     implicit none
 
@@ -259,7 +259,7 @@ end subroutine check_energy_get_integrals
     real(r8)              :: cp_or_cv(state%psetcols,pver)
     integer lchnk                                  ! chunk identifier
     integer ncol                                   ! number of atmospheric columns
-    integer  i,k                                   ! column, level indices
+!jt    integer  i,k                                   ! column, level indices
 !-----------------------------------------------------------------------
 
     lchnk = state%lchnk
@@ -333,7 +333,7 @@ end subroutine check_energy_get_integrals
 ! Compute initial values of energy and water integrals,
 ! zero cumulative tendencies
 !-----------------------------------------------------------------------
-    use cam_history,       only: addfld, add_default, horiz_only
+
 !------------------------------Arguments--------------------------------
 
     type(physics_state),   intent(inout)    :: state
@@ -341,7 +341,7 @@ end subroutine check_energy_get_integrals
     integer ncol                                   ! number of atmospheric columns
 !-----------------------------------------------------------------------
 
-    ncol  = state%ncol
+!jt    ncol  = state%ncol
 ! zero cummulative boundary fluxes
     state%te_budgets(:,:,:) = 0._r8
   end subroutine check_energy_budget_init
@@ -401,10 +401,8 @@ end subroutine check_energy_get_integrals
 
     integer lchnk                                  ! chunk identifier
     integer ncol                                   ! number of atmospheric columns
-    integer  i,k                                   ! column, level indices
-    integer :: ixcldice, ixcldliq                  ! CLDICE and CLDLIQ indices
-    integer :: ixrain, ixsnow                      ! RAINQM and SNOWQM indices
-    integer :: ixgrau                              ! GRAUQM index
+    !jt    integer  i,k                                   ! column, level indices
+    integer  i                                   ! column
 !-----------------------------------------------------------------------
 
     lchnk = state%lchnk
@@ -520,7 +518,7 @@ end subroutine check_energy_get_integrals
   subroutine check_energy_gmean(state, pbuf2d, dtime, nstep)
 
     use physics_buffer, only : physics_buffer_desc, pbuf_get_field, pbuf_get_chunk
-    use dyn_tests_utils, only: vc_dycore, vc_height
+!jt    use dyn_tests_utils, only: vc_dycore, vc_height
     use physics_types,   only: dyn_te_idx
 !-----------------------------------------------------------------------
 ! Compute global mean total energy of physics input and output states
@@ -586,12 +584,12 @@ end subroutine check_energy_get_integrals
   subroutine check_energy_budget(state, dtime, nstep)
 
     use cam_history,     only: outfld
-    use physics_buffer,  only: physics_buffer_desc, pbuf_get_field, pbuf_get_chunk
-    use dyn_tests_utils, only: vc_dycore, vc_height
-    use physics_types,   only: phys_te_idx, dyn_te_idx
+!jt    use physics_buffer,  only: physics_buffer_desc, pbuf_get_field, pbuf_get_chunk
+!jt    use dyn_tests_utils, only: vc_dycore, vc_height
+!jt    use physics_types,   only: phys_te_idx, dyn_te_idx
     use budgets,         only: budget_num, budget_info, &
-                               budget_type_byind, budget_outfld, budget_num_phy, &
-                               budget_cnt_adjust, budget_me_varnum, budget_put_global, budget_get_global
+                               budget_outfld, budget_num_phy, &
+                               budget_me_varnum, budget_put_global
     use cam_abortutils,  only: endrun
     use dycore_budget,   only: print_budget
 !-----------------------------------------------------------------------
@@ -614,7 +612,6 @@ end subroutine check_energy_get_integrals
     real(r8),allocatable :: te(:,:,:,:) ! total energy of input/output states (copy)
 !jt    real(r8),allocatable :: te_glob(budget_num_phy)      ! global means of total energy
     real(r8),allocatable :: te_glob(:,:) ! global means of total energy
-    real(r8) :: phparam,dyparam,phpwork,dypwork,phefix,dyefix,phphys,dyphys
     integer  :: i,ii,ind,is1,is2,is1b,is2b
     character*32 :: budget_name               ! parameterization name for fluxes
     character*3 :: budget_pkgtype             ! parameterization type phy or dyn
@@ -944,11 +941,11 @@ end subroutine check_energy_get_integrals
 !#######################################################################
 
   subroutine calc_te_and_aam_budgets(state, outfld_name_suffix, vc)
-    use physconst,       only: gravit,cpair,pi,rearth,omega,get_hydrostatic_energy
+    use physconst,       only: gravit,cpair,rearth,omega,get_hydrostatic_energy
     use cam_history,     only: hist_fld_active, outfld
     use dyn_tests_utils, only: vc_physics, vc_height
     use cam_abortutils,  only: endrun
-    use budgets,         only: budget_cnt_adjust, budget_info_byname
+    use budgets,         only: budget_info_byname
 !------------------------------Arguments--------------------------------
 
     type(physics_state), intent(inout) :: state
