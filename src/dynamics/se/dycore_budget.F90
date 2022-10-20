@@ -100,13 +100,15 @@ subroutine print_budget()
      rate_of_change_hvis_sponge = diffusion_sponge
      
      write(iulog,*)" "
+     write(iulog,*)" Total energy diagnostics introduced in Lauritzen and Williamson (2019)"     
+     write(iulog,*)" (DOI:10.1029/2018MS001549)"
      write(iulog,*)" "
-
+     
      write(iulog,*)"suffix (parameterization side)"
-     write(iulog,*)"pBF: state passed to parameterizations, before energy fixer"
-     write(iulog,*)"pBP: after energy fixer, before parameterizations"
-     write(iulog,*)"pAP: after last phys_update in parameterizations and state saved for energy fixer"
-     write(iulog,*)"pAM: after dry mass correction calculate but not used in SE"
+     write(iulog,*)"phBF: state passed to parameterizations, before energy fixer"
+     write(iulog,*)"phBP: after energy fixer, before parameterizations"
+     write(iulog,*)"phAP: after last phys_update in parameterizations and state saved for energy fixer"
+     write(iulog,*)"phAM: after dry mass correction"
      write(iulog,*)" "
      write(iulog,*)"history files saved off here"
      
@@ -146,8 +148,8 @@ subroutine print_budget()
      write(iulog,*)" CAM physics energy increments (in pressure coordinate)"
      write(iulog,*)"-------------------------------------------------------"
      write(iulog,*)" "
-     write(iulog,*)"dE/dt parameterizations no efix (param) (pAP-pBP) ",ph_param," W/M^2"
-     write(iulog,*)"dE/dt energy fixer (efix)               (pBP-pBF) ",ph_EFIX," W/M^2"
+     write(iulog,*)"dE/dt parameterizations                 (phAP-pBP) ",ph_param," W/M^2"
+     write(iulog,*)"dE/dt energy fixer (efix)               (phBP-pBF) ",ph_EFIX," W/M^2"
      write(iulog,*)"NOTE: energy fixer uses energy formula consistent with dycore (so this is not p-based for SE) "
      write(iulog,*)"dE/dt parameterizations + efix          (pAP-pBF) ",ph_param_and_efix," W/M^2"
      write(iulog,*)" "
