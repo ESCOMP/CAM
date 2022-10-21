@@ -1,0 +1,156 @@
+{
+   "__description": "This example configuration includes photolysis and dose rate calculations",
+   "O2 absorption" : {
+     "cross section parameters file": "data/cross_sections/O2_parameters.txt"
+   },
+   "grids": {
+      "height": {
+         "type": "equal interval",
+         "units": "km",
+         "begins at" : 0.0,
+         "ends at" : 120.0,
+         "cell delta" : 1.0
+      },
+      "wavelength": {
+         "type": "from csv file",
+         "units": "nm",
+         "file path": "data/grids/wavelength/combined.grid"
+      },
+      "time": {
+         "type": "from config file",
+         "units": "hours",
+         "values": [ 14.0 ]
+      }
+   },
+   "profiles": {
+      "O3": {
+         "type": "O3",
+         "units": "molecule cm-3",
+         "file path": "data/profiles/atmosphere/ussa.ozone"
+      },
+      "air": {
+         "type": "air",
+         "units": "molecule cm-3",
+         "file path": "data/profiles/atmosphere/ussa.dens"
+      },
+      "O2": {
+         "type": "O2",
+         "units": "molecule cm-3",
+         "file path": "data/profiles/atmosphere/ussa.dens"
+      },
+      "temperature": {
+         "type": "from csv file",
+         "units": "K",
+         "file path": "data/profiles/atmosphere/ussa.temp",
+         "grid": {
+           "name": "height",
+           "units": "km"
+         }
+      },
+      "solar zenith angle": {
+         "type": "solar zenith angle",
+         "units": "degrees",
+         "year" : 2002,
+         "month": 3,
+         "day": 21,
+         "longitude": 0.0,
+         "latitude": 0.0
+      },
+      "Earth-Sun distance": {
+         "type": "Earth-Sun distance",
+         "units": "AU",
+         "year" : 2002,
+         "month": 3,
+         "day": 21
+      },
+      "surface albedo": {
+         "type": "from config file",
+         "units": "none",
+         "uniform value": 0.10,
+         "grid": {
+           "name": "wavelength",
+           "units": "nm"
+         }
+      },
+      "extraterrestrial flux": {
+         "type": "extraterrestrial flux",
+         "units": "photon cm-2 s-1",
+         "file path": ["data/profiles/solar/susim_hi.flx",
+                      "data/profiles/solar/atlas3_1994_317_a.dat",
+                      "data/profiles/solar/sao2010.solref.converted",
+                      "data/profiles/solar/neckel.flx"],
+         "interpolator": ["","","","fractional target"]
+      }
+   },
+   "radiative transfer": {
+      "cross sections": [
+         {
+            "name": "air",
+            "type": "air"
+         },
+         {
+            "name": "O3",
+            "netcdf files": ["data/cross_sections/O3_1.nc","data/cross_sections/O3_2.nc","data/cross_sections/O3_3.nc","data/cross_sections/O3_4.nc"],
+            "type": "O3"
+         },
+         {
+            "name": "O2",
+            "netcdf files": ["data/cross_sections/O2_1.nc"],
+            "type": "base",
+            "lower extrapolation": { "type": "boundary" }
+         }
+      ],
+      "radiators": [
+         {
+            "name": "air",
+            "type": "base",
+            "cross section": "air",
+            "vertical profile": "air",
+            "vertical profile units": "molecule cm-3"
+         },
+         {
+            "name": "O2",
+            "type": "base",
+            "cross section": "O2",
+            "vertical profile": "O2",
+            "vertical profile units": "molecule cm-3"
+         },
+         {
+            "name": "O3",
+            "type": "base",
+            "cross section": "O3",
+            "vertical profile": "O3",
+            "vertical profile units": "molecule cm-3"
+         },
+         {
+            "name": "aerosols",
+            "type": "aerosol",
+            "optical depths": [2.40e-01, 1.06e-01, 4.56e-02, 1.91e-02, 1.01e-02, 7.63e-03,
+                               5.38e-03, 5.00e-03, 5.15e-03, 4.94e-03, 4.82e-03, 4.51e-03,
+                               4.74e-03, 4.37e-03, 4.28e-03, 4.03e-03, 3.83e-03, 3.78e-03,
+                               3.88e-03, 3.08e-03, 2.26e-03, 1.64e-03, 1.23e-03, 9.45e-04,
+                               7.49e-04, 6.30e-04, 5.50e-04, 4.21e-04, 3.22e-04, 2.48e-04,
+                               1.90e-04, 1.45e-04, 1.11e-04, 8.51e-05, 6.52e-05, 5.00e-05,
+                               3.83e-05, 2.93e-05, 2.25e-05, 1.72e-05, 1.32e-05, 1.01e-05,
+                               7.72e-06, 5.91e-06, 4.53e-06, 3.46e-06, 2.66e-06, 2.04e-06,
+                               1.56e-06, 1.19e-06, 9.14e-07],
+            "single scattering albedo": 0.99,
+            "asymmetry factor": 0.61,
+            "550 nm optical depth": 0.235
+         }
+      ]
+   },
+   "photolysis reactions": {
+      "O2+hv->O+O": {
+         "cross section": {
+            "netcdf files": ["data/cross_sections/O2_1.nc"],
+            "type": "base",
+            "lower extrapolation": { "type": "boundary" }
+         },
+         "quantum yield": {
+            "type": "base",
+            "constant value": 1.0
+         }
+      },
+   }
+}
