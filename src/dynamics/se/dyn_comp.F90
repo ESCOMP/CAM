@@ -2409,7 +2409,7 @@ subroutine budget_update(elem,fvm,nets,nete,n0,n0_qdp,hybrid)
   use element_mod,            only: element_t
   use fvm_control_volume_mod, only: fvm_struct
   use global_norms_mod,       only: global_integral
-  use physconst,              only: thermodynamic_active_species_liq_num, thermodynamic_active_species_ice_num
+  use air_composition,        only: thermodynamic_active_species_liq_num, thermodynamic_active_species_ice_num
   use prim_advance_mod,       only: calc_tot_energy_dynamics_diff
   use time_manager,           only: get_step_size
   

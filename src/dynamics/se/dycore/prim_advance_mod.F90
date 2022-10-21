@@ -1733,11 +1733,11 @@ contains
     use cam_history,            only: hist_fld_active,outfld
     use constituents,           only: cnst_get_ind
     use fvm_control_volume_mod, only: fvm_struct
-    use physconst,              only: thermodynamic_active_species_idx_dycore
-    use physconst,              only: thermodynamic_active_species_ice_num
-    use physconst,              only: thermodynamic_active_species_liq_num
-    use physconst,              only: thermodynamic_active_species_liq_idx
-    use physconst,              only: thermodynamic_active_species_ice_idx
+    use air_composition,        only: thermodynamic_active_species_idx_dycore
+    use air_composition,        only: thermodynamic_active_species_ice_num
+    use air_composition,        only: thermodynamic_active_species_liq_num
+    use air_composition,        only: thermodynamic_active_species_liq_idx
+    use air_composition,        only: thermodynamic_active_species_ice_idx
 
     use budgets,                only: budget_info,budget_ind_byname
     !------------------------------Arguments--------------------------------

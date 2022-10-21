@@ -750,7 +750,7 @@ subroutine hydrostatic_pressure(nCells, nVertLevels, zz, zgrid, rho_zz, theta_m,
     end do
 end subroutine hydrostatic_pressure
 
-subroutine tot_energy(nCells, nVertLevels, qsize, index_qv, zz, zgrid, rho_zz, theta_m, q, ux,uy,outfld_name_suffix)
+subroutine tot_energy(nCells, nVertLevels, qsize, index_qv, zz, zgrid, rho_zz, theta_m, q, ux,uy,outfld_name_suffix,te_budgets,budgets_cnt,budgets_subcycle_cnt)
   use physconst,         only: rair, cpair, gravit,cappa!=R/cp (dry air)
   use mpas_constants,    only: p0,cv,rv,rgas,cp
   use cam_history,       only: outfld, hist_fld_active
@@ -771,8 +771,8 @@ subroutine tot_energy(nCells, nVertLevels, qsize, index_qv, zz, zgrid, rho_zz, t
   real(r8), dimension(nVertLevels, nCells),       intent(in) :: ux      ! A-grid zonal velocity component
   real(r8), dimension(nVertLevels, nCells),       intent(in) :: uy      ! A-grid meridional velocity component
   real(r8), dimension(budget_array_max, 9, nCells), intent(inout) :: te_budgets ! energy/mass budget arrays
-  integer, dimension(budget_array_max),    intent(inout) :: budgets_cnt ! budget counts for normalization
-  integer, dimension(budget_array_max),    intent(inout) :: budgets_subcycle_cnt ! budget counts for normalization
+  integer, dimension(budget_array_max),           intent(inout) :: budgets_cnt ! budget counts for normalization
+  integer, dimension(budget_array_max),           intent(inout) :: budgets_subcycle_cnt ! budget counts for normalization
   character*(*),                                  intent(in) :: outfld_name_suffix ! suffix for "outfld" names
 
   ! Local variables
