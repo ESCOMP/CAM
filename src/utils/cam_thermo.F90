@@ -656,8 +656,13 @@ CONTAINS
      integer :: jdx
 
      do jdx = 1, SIZE(tracer, 2)
-       call get_dp(tracer(:, jdx, :, :), mixing_ratio, active_species_idx,  &
+       if (present(ps).and.present(ptop)) then
+          call get_dp(tracer(:, jdx, :, :), mixing_ratio, active_species_idx,  &
                dp_dry(:, jdx, :), dp(:, jdx, :), ps=ps(:,jdx), ptop=ptop)
+       else
+          call get_dp(tracer(:, jdx, :, :), mixing_ratio, active_species_idx,  &
+               dp_dry(:, jdx, :), dp(:, jdx, :))
+       end if
      end do
 
    end subroutine get_dp_2hd
