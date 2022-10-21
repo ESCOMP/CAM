@@ -695,7 +695,7 @@ end subroutine dyn_run
 subroutine budget_update(nCells,dyn_out)
   
   use budgets,               only : budget_num, budget_info, budget_me_varnum,budget_put_global
-  use physconst,             only : thermodynamic_active_species_liq_num, thermodynamic_active_species_ice_num
+  use air_composition,       only : thermodynamic_active_species_liq_num, thermodynamic_active_species_ice_num
   
   ! arguments
   integer,                                           intent(in) :: nCells             ! Number of cells, including halo cells
