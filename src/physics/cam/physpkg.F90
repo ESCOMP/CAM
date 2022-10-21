@@ -208,6 +208,7 @@ contains
 !!$    call budget_add('BD_phys_tot',idyAM,idyBF,'phy','dif',longname='dE/dt physics total using dycore E (dyAM-dyBF)',outfld=.true.)
 
     ! Register budgets.
+    call budget_add('BP_param_and_efix','phAP','phBF','phy','dif',longname='dE/dt CAM physics parameterizations + efix dycore E (phAP-phBF)',outfld=.true.)
     call budget_add('BP_phy_params','phAP','phBP','phy','dif',longname='dE/dt CAM physics parameterizations (phAP-phBP)',outfld=.true.)
     call budget_add('BD_phy_params','dyAP','dyBP','phy','dif',longname='dE/dt CAM physics parameterizations using dycore E (dyAP-dyBP)',outfld=.true.)
     call budget_add('BP_pwork','phAM','phAP','phy','dif',longname='dE/dt dry mass adjustment (phAM-phAP)',outfld=.true.)
