@@ -7,7 +7,7 @@
 !
 ! !DESCRIPTION: Module hco\_cc\_emissions provides emissions to CAM-chem in CESM.
 !               This module replaces mo\_extfrc and mo\_srf\_emissions in CAM-chem
-!               when HEMCO is enabled, and are otherwise stubs if HEMCO-CESM is not
+!               when HEMCO is enabled, otherwise they are not called if HEMCO-CESM is not
 !               enabled at runtime.
 !
 !               These subroutines emulate the behavior of extfrc\_set (3-D emissions)
@@ -20,35 +20,35 @@ module hco_cc_emissions
 !
 ! !USES:
 !
-	! CESM types
-	use shr_kind_mod,     only: r8 => shr_kind_r8
+    ! CESM types
+    use shr_kind_mod,     only: r8 => shr_kind_r8
 
-	! Run control
-	use spmd_utils,       only: masterproc
-	use cam_abortutils,   only: endrun
-	use cam_logfile,      only: iulog
+    ! Run control
+    use spmd_utils,       only: masterproc
+    use cam_abortutils,   only: endrun
+    use cam_logfile,      only: iulog
 
-	! Grid information
-	use ppgrid,           only: pver, pverp
+    ! Grid information
+    use ppgrid,           only: pver, pverp
 
-	! Chemistry mechanism properties
+    ! Chemistry mechanism properties
     use chem_mods,        only: gas_pcnst
     use mo_tracname,      only: solsym
 
     ! Physics buffer operations
-	use physics_buffer,   only: physics_buffer_desc
+    use physics_buffer,   only: physics_buffer_desc
     use physics_buffer,   only: pbuf_get_field, pbuf_get_index
 
     ! Compat with XFRC diagn
     use cam_history,         only: outfld
     use cam_history_support, only: max_fieldname_len
 
-	implicit none
-	private
+    implicit none
+    private
 !
 ! !PUBLIC MEMBER FUNCTIONS:
 !
-	public :: hco_set_srf_emissions, hco_set_extfrc
+    public :: hco_set_srf_emissions, hco_set_extfrc
 !
 ! !REMARKS:
 !  None
@@ -95,14 +95,14 @@ contains
 !
 ! !LOCAL VARIABLES:
 !
-	integer               :: n
+    integer               :: n
 
-    real(r8), pointer     :: pbuf_ik(:,:)              ! ptr to pbuf data (/pcols,pver/)
+    real(r8), pointer     :: pbuf_ptr(:,:)             ! ptr to pbuf data (/pcols,pver/)
     integer               :: tmpIdx                    ! pbuf field id
     character(len=255)    :: fldname_ns                ! field name HCO_NH3
     integer               :: RC                        ! return code (dummy)
 
- 	!--------------------------------------------------------
+    !--------------------------------------------------------
     ! ... set HEMCO_CESM emissions
     ! hplin 7/19/20
     !--------------------------------------------------------
@@ -126,26 +126,20 @@ contains
         ! species name: solsym(n)
         fldname_ns = 'HCO_' // trim(solsym(n))
         tmpIdx = pbuf_get_index(fldname_ns, RC)
-        if ( tmpIdx < 0 ) then
-            ! if ( masterproc ) write(iulog,*) "mo_srf_emissions hemco: Field not found ", TRIM(fldname_ns)
-        else
+        if ( tmpIdx > 0 ) then
             ! this is already in chunk, retrieve it
-            call pbuf_get_field(pbuf, tmpIdx, pbuf_ik)
+            call pbuf_get_field(pbuf, tmpIdx, pbuf_ptr)
 
-            if(.not. associated(pbuf_ik)) then ! sanity check
-              call endrun("mo_srf_emissions hemco: FATAL - tmpIdx > 0 but pbuf_ik unassoc")
+            if(.not. associated(pbuf_ptr)) then ! sanity check
+              call endrun("mo_srf_emissions hemco: FATAL - tmpIdx > 0 but pbuf_ptr unassoc")
             endif
 
-            ! for each col retrieve data from pbuf_ik(I, K)
-            sflx(1:ncol,n) = pbuf_ik(1:ncol,pver) ! only surface emissions for now, remember vertical is inverted
-
-            ! has_emis(n) = .true.
-
-            ! if(masterproc) write(iulog,*) "mo_srf_emissions hemco: debug added emiss for", solsym(n), maxval(sflx(1:ncol, n))
+            ! for each col retrieve data from pbuf_ptr(I, K)
+            sflx(1:ncol,n) = pbuf_ptr(1:ncol,pver) ! only surface emissions for now, remember vertical is inverted
         endif
     enddo
 
-	end subroutine hco_set_srf_emissions
+    end subroutine hco_set_srf_emissions
 !EOC
 !------------------------------------------------------------------------------
 !                    Harmonized Emissions Component (HEMCO)                   !
@@ -163,23 +157,23 @@ contains
 !
 ! !USES:
 !
-		use mo_chem_utls,   only: get_spc_ndx
-	    use mo_chem_utls,   only: get_extfrc_ndx
+        use mo_chem_utls,   only: get_spc_ndx
+        use mo_chem_utls,   only: get_extfrc_ndx
 
-	    ! Check list whether this species has external forcing from dataset - this is a CAM-chem flag
-	    ! and this is CAM-chem specific.
-	    use chem_mods,      only: frc_from_dataset, extfrc_lst
-	    use chem_mods,      only: extcnt, adv_mass
+        ! Check list whether this species has external forcing from dataset - this is a CAM-chem flag
+        ! and this is CAM-chem specific.
+        use chem_mods,      only: frc_from_dataset, extfrc_lst
+        use chem_mods,      only: extcnt, adv_mass
 
-	    use mo_constants,   only: avogadro
-		implicit none
+        use mo_constants,   only: avogadro
+        implicit none
 !
 ! !INPUT PARAMETERS:
 !
-	    integer,  intent(in)               :: ncol                       ! columns in chunk
-	    integer,  intent(in)               :: lchnk                      ! chunk index
-	    real(r8), intent(in)               :: zint(ncol, pverp)          ! interface geopot above surface (km)
-	    real(r8), intent(inout)            :: frcing(ncol,pver,extcnt)   ! insitu forcings (molec/cm^3/s)
+        integer,  intent(in)               :: ncol                       ! columns in chunk
+        integer,  intent(in)               :: lchnk                      ! chunk index
+        real(r8), intent(in)               :: zint(ncol, pverp)          ! interface geopot above surface (km)
+        real(r8), intent(inout)            :: frcing(ncol,pver,extcnt)   ! insitu forcings (molec/cm^3/s)
         type(physics_buffer_desc), pointer :: pbuf(:)                    ! pbuf in chunk
 !
 ! !REVISION HISTORY:
@@ -263,11 +257,7 @@ contains
         ! if(masterproc) write(iulog,*) "mo_extfrc hemco: Adding extfrc for", fldname_ns
 
         tmpIdx = pbuf_get_index(fldname_ns, RC)
-        if(tmpIdx < 0) then
-          if(masterproc) then
-            ! write(iulog,*) "mo_extfrc hemco: Field not found ", TRIM(fldname_ns)
-          endif
-        else
+        if(tmpIdx > 0) then
           ! this is already in chunk, retrieve it
           call pbuf_get_field(pbuf, tmpIdx, pbuf_ik)
 
@@ -306,6 +296,6 @@ contains
       endif
     enddo
 
-	end subroutine hco_set_extfrc
+    end subroutine hco_set_extfrc
 !EOC
 end module hco_cc_emissions

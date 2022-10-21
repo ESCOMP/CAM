@@ -106,7 +106,6 @@ contains
     nn = 0
     indx(:) = 0
 
-#if !defined ( HEMCO_CESM )
     count_emis: do n=1,gas_pcnst
        if ( len_trim(srf_emis_specifier(n) ) == 0 ) then
           exit count_emis
@@ -283,7 +282,6 @@ contains
 
     c10h16_ndx = get_spc_ndx('C10H16')
     isop_ndx = get_spc_ndx('ISOP')
-#endif
 
   end subroutine srf_emissions_inti
 

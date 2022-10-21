@@ -262,9 +262,9 @@ subroutine cam_run1(cam_in, cam_out)
 
 #if (defined HEMCO_CESM)
    !----------------------------------------------------------
-   ! run hemco (first phase?)
+   ! run hemco (first phase)
    !----------------------------------------------------------
-   call HCOI_Chunk_Run(cam_in, phys_state, pbuf2d, 1)
+   call HCOI_Chunk_Run(cam_in, phys_state, pbuf2d, phase=1)
 #endif
 
    !
@@ -314,7 +314,7 @@ subroutine cam_run2( cam_out, cam_in )
    !----------------------------------------------------------
    ! run hemco (phase 2 before chemistry)
    !----------------------------------------------------------
-   call HCOI_Chunk_Run(cam_in, phys_state, pbuf2d, 2)
+   call HCOI_Chunk_Run(cam_in, phys_state, pbuf2d, phase=2)
 #endif
 
    !

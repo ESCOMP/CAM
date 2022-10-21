@@ -163,16 +163,16 @@ contains
 
     no_lgt(:,:) = 0._r8
 
-#if !defined( HEMCO_CESM )
-    !--------------------------------------------------------
-    !     ... set frcing from datasets
-    !--------------------------------------------------------
-    call extfrc_set( lchnk, zint_rel, extfrc, ncol )
-#else
+#if defined( HEMCO_CESM )
     !--------------------------------------------------------
     !     ... set frcing from datasets (HEMCO)
     !--------------------------------------------------------
     call hco_set_extfrc( lchnk, zint_rel, extfrc, ncol, pbuf )
+#else
+    !--------------------------------------------------------
+    !     ... set frcing from datasets
+    !--------------------------------------------------------
+    call extfrc_set( lchnk, zint_rel, extfrc, ncol )
 #endif
 
     !--------------------------------------------------------

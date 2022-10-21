@@ -969,14 +969,7 @@ end function chem_is_active
 
     endif
 
-#if !defined( HEMCO_CESM )
-   ! prescribed emissions from file ...
-
-    !-----------------------------------------------------------------------
-    !        ... Set surface emissions
-    !-----------------------------------------------------------------------
-    call set_srf_emissions( lchnk, ncol, sflx(:,:) )
-#else
+#if defined( HEMCO_CESM )
    ! prescribed emissions from HEMCO ...
 
     !-----------------------------------------------------------------------
@@ -984,6 +977,13 @@ end function chem_is_active
     ! (hplin, 8/8/22)
     !-----------------------------------------------------------------------
     call hco_set_srf_emissions( lchnk, ncol, sflx(:,:), pbuf )
+#else
+   ! prescribed emissions from file ...
+
+    !-----------------------------------------------------------------------
+    !        ... Set surface emissions
+    !-----------------------------------------------------------------------
+    call set_srf_emissions( lchnk, ncol, sflx(:,:) )
 #endif
 
     do m = 1,pcnst
