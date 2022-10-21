@@ -48,6 +48,7 @@ contains
     use mo_srf_emissions,  only : srf_emissions_inti
     use mo_sulf,           only : sulf_inti
     use mo_photo,          only : photo_inti
+    use mo_tuvx,           only : tuvx_init
     use mo_lightning,      only : lightning_inti
     use mo_drydep,         only : drydep_inti
     use mo_imp_sol,        only : imp_slv_inti
@@ -199,6 +200,13 @@ contains
          exo_coldens_file, photo_max_zen )
 
     if (masterproc) write(iulog,*) 'chemini: after photo_inti on node ',iam
+
+    !-----------------------------------------------------------------------
+    ! 	... initialize the TUV-x photolysis rate constant calculator
+    !-----------------------------------------------------------------------
+
+    call tuvx_init( )
+    if (masterproc) write(iulog,*) 'chemini: after tuvx_init on node ',iam
 
     !-----------------------------------------------------------------------
     !	... initialize ion production
