@@ -887,13 +887,13 @@ contains
     ! (hplin, 5/17/21)
     !-----------------------------------------------------------------------
     ! get the rxn rate [1/s] and write to pbuf
-    if(hco_jno2_idx > 0) then
+    if(rxt_jno2_idx > 0 .and. hco_jno2_idx > 0) then
       call pbuf_get_field(pbuf, hco_jno2_idx, hco_j_tmp_fld)
       ! this is already in chunk, write /pcols/ at surface
       hco_j_tmp_fld(:ncol) = reaction_rates(:ncol,pver,rxt_jno2_idx)
     endif
 
-    if(hco_joh_idx > 0) then
+    if(rxt_joh_idx > 0 .and. hco_joh_idx > 0) then
       call pbuf_get_field(pbuf, hco_joh_idx, hco_j_tmp_fld)
       ! this is already in chunk, write /pcols, pver/
       hco_j_tmp_fld(:ncol) = reaction_rates(:ncol,pver,rxt_joh_idx)

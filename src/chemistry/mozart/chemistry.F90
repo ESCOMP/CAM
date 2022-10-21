@@ -168,6 +168,10 @@ end function chem_is
     use aero_model,          only : aero_model_register
     use physics_buffer,      only : pbuf_add_field, dtype_r8
 
+#if defined ( HEMCO_CESM )
+    use mo_chem_utls,        only : get_rxt_ndx
+#endif
+
     implicit none
 
 !-----------------------------------------------------------------------
@@ -192,6 +196,7 @@ end function chem_is
 
 #if defined ( HEMCO_CESM )
     integer  :: hco_jno2_idx, hco_joh_idx
+    integer  :: rxt_jno2_idx, rxt_joh_idx
 #endif
 
 !-----------------------------------------------------------------------
@@ -336,8 +341,13 @@ end function chem_is
     ! add fields to pbuf needed by HEMCO-CESM hplin 5/17/21
     ! these are used to pass NO2, OH J-values to the HEMCO ParaNOx ship plume extension
     ! for computation of ship plume emissions per Vinken et al., 2011.
-    call pbuf_add_field('HCO_IN_JNO2', 'global', dtype_r8, (/pcols/), hco_jno2_idx)
-    call pbuf_add_field('HCO_IN_JOH',  'global', dtype_r8, (/pcols/), hco_joh_idx )
+    rxt_jno2_idx  = get_rxt_ndx( 'jno2' )
+    rxt_joh_idx   = get_rxt_ndx( 'jo3_b' )
+
+    if(rxt_jno2_idx > 0 .and. rxt_joh_idx > 0) then
+       call pbuf_add_field('HCO_IN_JNO2', 'global', dtype_r8, (/pcols/), hco_jno2_idx)
+       call pbuf_add_field('HCO_IN_JOH',  'global', dtype_r8, (/pcols/), hco_joh_idx )
+    endif
 #endif
 
   end subroutine chem_register
