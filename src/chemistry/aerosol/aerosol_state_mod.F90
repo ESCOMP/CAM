@@ -378,15 +378,18 @@ contains
              ! This order of ops gives bit-for-bit results for cam5 phys ( use_preexisting_ice = .false. )
              sulf_num_col(:ncol,:) = sulf_num_col(:ncol,:) &
                   + num_col(:ncol,:)*rho(:ncol,:)*per_cm3  * size_wghts(:ncol,:)*type_wghts(:ncol,:)
-          case('sulfate_strat')
-             sulf_num_tot_col(:ncol,:) = sulf_num_tot_col(:ncol,:) &
-                  + size_wghts(:ncol,:)*type_wghts(:ncol,:)*num_col(:ncol,:)*rho(:ncol,:)*per_cm3
           case('black-c')
              soot_num_col(:ncol,:) = soot_num_col(:ncol,:) &
                   + size_wghts(:ncol,:)*type_wghts(:ncol,:)*num_col(:ncol,:)*rho(:ncol,:)*per_cm3
           end select
 
        enddo
+
+       ! stratospheric sulfates -- special case not included in the species loop above
+       call self%icenuc_size_wght(m, ncol, nlev, 'sulfate_strat', use_preexisting_ice, size_wghts)
+       call self%icenuc_type_wght(m, ncol, nlev, 'sulfate_strat', aero_props, rho, type_wghts)
+       sulf_num_tot_col(:ncol,:) = sulf_num_tot_col(:ncol,:) &
+            + size_wghts(:ncol,:)*type_wghts(:ncol,:)*num_col(:ncol,:)*rho(:ncol,:)*per_cm3
 
     enddo
 
