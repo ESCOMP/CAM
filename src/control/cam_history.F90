@@ -4261,7 +4261,6 @@ end subroutine print_active_fldlst
 
       !! Collect some field properties
       call AvgflagToString(tape(t)%hlist(f)%avgflag, tape(t)%hlist(f)%time_op)
-
       if ((tape(t)%hlist(f)%hwrt_prec == 8) .or. restart) then
         ncreal = pio_double
       else
@@ -4719,6 +4718,7 @@ end subroutine print_active_fldlst
     integer                          :: num_patches
     integer                          :: mdimsize   ! Total # on-node elements
     integer                          :: bdim3, edim3
+    integer                          :: ncreal     ! Real output kind (double or single)
     logical                          :: interpolate
     logical                          :: patch_output
     type(history_patch_t), pointer   :: patchptr
@@ -4773,6 +4773,14 @@ end subroutine print_active_fldlst
       else
         ! We are doing output via the field's grid
         if (interpolate) then
+
+          !Determine what the output field kind should be:
+          if (tape(t)%hlist(f)%hwrt_prec == 8) then
+            ncreal = pio_double
+          else
+            ncreal = pio_real
+          end if
+
           mdimsize = tape(t)%hlist(f)%field%enddim2 - tape(t)%hlist(f)%field%begdim2 + 1
           if (mdimsize == 0) then
             mdimsize = tape(t)%hlist(f)%field%numlev
@@ -4784,7 +4792,7 @@ end subroutine print_active_fldlst
             call pio_setframe(tape(t)%File, compid, int(max(1,nfils(t)),kind=PIO_OFFSET_KIND))
             call write_interpolated(tape(t)%File, varid, compid,              &
                  tape(t)%hlist(f)%hbuf, tape(t)%hlist(compind)%hbuf,          &
-                 mdimsize, PIO_DOUBLE, fdecomp)
+                 mdimsize, ncreal, fdecomp)
           else if (tape(t)%hlist(f)%field%zonal_complement > 0) then
             ! We don't want to double write so do nothing here
 !            compind = tape(t)%hlist(f)%field%zonal_complement
@@ -4795,7 +4803,7 @@ end subroutine print_active_fldlst
           else
             ! Scalar field
             call write_interpolated(tape(t)%File, varid,                      &
-                 tape(t)%hlist(f)%hbuf, mdimsize, PIO_DOUBLE, fdecomp)
+                 tape(t)%hlist(f)%hbuf, mdimsize, ncreal, fdecomp)
           end if
         else if (nadims == 2) then
           ! Special case for 2D field (no levels) due to hbuf structure
