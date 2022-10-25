@@ -350,6 +350,8 @@ contains
 
     real(r8), pointer :: num_col(:,:)
 
+    real(r8), parameter :: per_cm3 = 1.e-6_r8 ! factor for m-3 to cm-3 conversions
+
     dust_num_col(:,:) = 0._r8
     sulf_num_col(:,:) = 0._r8
     soot_num_col(:,:) = 0._r8
@@ -371,23 +373,20 @@ contains
           select case ( trim(spectype) )
           case('dust')
              dust_num_col(:ncol,:) = dust_num_col(:ncol,:) &
-                  + size_wghts(:ncol,:)*type_wghts(:ncol,:)*num_col(:ncol,:)*rho(:ncol,:)*1.0e-6_r8
+                  + size_wghts(:ncol,:)*type_wghts(:ncol,:)*num_col(:ncol,:)*rho(:ncol,:)*per_cm3
           case('sulfate')
              ! This order of ops gives bit-for-bit results for cam5 phys ( use_preexisting_ice = .false. )
              sulf_num_col(:ncol,:) = sulf_num_col(:ncol,:) &
-                  + num_col(:ncol,:)*rho(:ncol,:)*1.0e-6_r8 * size_wghts(:ncol,:)*type_wghts(:ncol,:)
+                  + num_col(:ncol,:)*rho(:ncol,:)*per_cm3  * size_wghts(:ncol,:)*type_wghts(:ncol,:)
+          case('sulfate_strat')
+             sulf_num_tot_col(:ncol,:) = sulf_num_tot_col(:ncol,:) &
+                  + size_wghts(:ncol,:)*type_wghts(:ncol,:)*num_col(:ncol,:)*rho(:ncol,:)*per_cm3
           case('black-c')
              soot_num_col(:ncol,:) = soot_num_col(:ncol,:) &
-                  + size_wghts(:ncol,:)*type_wghts(:ncol,:)*num_col(:ncol,:)*rho(:ncol,:)*1.0e-6_r8
+                  + size_wghts(:ncol,:)*type_wghts(:ncol,:)*num_col(:ncol,:)*rho(:ncol,:)*per_cm3
           end select
 
        enddo
-
-       ! stratospheric sulfates
-       call self%icenuc_size_wght(m, ncol, nlev, 'sulfate_strat', use_preexisting_ice, size_wghts)
-       call self%icenuc_type_wght(m, ncol, nlev, 'sulfate_strat', aero_props, rho, type_wghts)
-       sulf_num_tot_col(:ncol,:) = sulf_num_tot_col(:ncol,:) &
-            + size_wghts(:ncol,:)*type_wghts(:ncol,:)*num_col(:ncol,:)*rho(:ncol,:)*1.0e-6_r8
 
     enddo
 

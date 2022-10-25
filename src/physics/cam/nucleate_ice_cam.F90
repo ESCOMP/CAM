@@ -469,7 +469,7 @@ subroutine nucleate_ice_cam_calc( &
    real(r8) :: delmmr, delmmr_sum
    real(r8) :: delnum, delnum_sum
 
-   real(r8), parameter :: per_cm3 = 1.e-6_r8
+   real(r8), parameter :: per_cm3 = 1.e-6_r8 ! factor for m-3 to cm-3 conversions
 
    !-------------------------------------------------------------------------------
 
