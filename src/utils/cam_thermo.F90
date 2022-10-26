@@ -632,7 +632,6 @@ CONTAINS
          ps = ptop
          do kdx = 1, SIZE(tracer, 2)
            do idx = 1, SIZE(tracer, 1)
-!jt             ps(idx, kdx) = ps(idx, kdx) + dp(idx, kdx)
              ps(idx) = ps(idx) + dp(idx, kdx)
            end do
          end do
