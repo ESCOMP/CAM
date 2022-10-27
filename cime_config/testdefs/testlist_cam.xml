@@ -2376,6 +2376,24 @@
       <option name="wallclock">00:10:00</option>
     </options>
   </test>
+  <test compset="F1850" grid="f10_f10_mg37" name="ERS_Ld3_Vnuopc" testmods="cam/outfrq1d_14dec_L32wsc">
+    <machines>
+      <machine name="cheyenne" compiler="intel" category="aux_cam"/>
+    </machines>
+    <options>
+      <option name="wallclock">00:10:00</option>
+      <option name="comment">Checks that exact restarts occur when crossing the December 16th date boundary with WACCM-SC chemistry in low top configuration</option>
+    </options>
+  </test>
+  <test compset="FWsc2000climo" grid="f10_f10_mg37" name="ERP_Ld3_Vnuopc" testmods="cam/outfrq1d_14dec">
+    <machines>
+      <machine name="cheyenne" compiler="intel" category="waccm"/>
+    </machines>
+    <options>
+      <option name="wallclock">00:10:00</option>
+      <option name="comment">Checks that exact restarts occur when crossing the December 16th date boundary in WACCM-SC</option>
+    </options>
+  </test>
   <test compset="FWsc2010climo" grid="f19_f19_mg17" name="ERP_Ld3_Vnuopc" testmods="cam/outfrq3d">
     <machines>
       <machine name="cheyenne" compiler="intel" category="waccm"/>
