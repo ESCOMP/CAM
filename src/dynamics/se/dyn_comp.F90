@@ -1207,7 +1207,6 @@ subroutine dyn_run(dyn_state)
       end do
    end if
 
-   call calc_tot_energy_dynamics(dyn_state%elem,dyn_state%fvm, nets, nete, TimeLevel%n0, n0_qdp,'dBF')
    !$OMP END PARALLEL
 
    if (ldiag) then
