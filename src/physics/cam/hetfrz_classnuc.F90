@@ -28,7 +28,6 @@ use physconst,     only:  pi
 
 implicit none
 private
-save
 
 public :: hetfrz_classnuc_init, hetfrz_classnuc_calc
 
@@ -66,7 +65,7 @@ real(r8) :: dim_f_imm(pdf_n_theta) = 0.0_r8
 integer  :: iulog
 
 real(r8), parameter :: n1 = 1.e19_r8           ! number of water molecules in contact with unit area of substrate [m-2]
-real(r8), parameter :: kboltz = 1.38e-23_r8
+real(r8), parameter :: kboltz = 1.38e-23_r8    ! Boltzmann constant [J K-1]
 real(r8), parameter :: hplanck = 6.63e-34_r8
 real(r8), parameter :: rhplanck = 1._r8/hplanck
 real(r8), parameter :: amu = 1.66053886e-27_r8
@@ -207,8 +206,8 @@ subroutine hetfrz_classnuc_calc( &
 
    real(r8) :: f_dep, f_cnt, f_imm
    real(r8) :: dga_dep, dga_imm
-   real(r8) :: ktherm, kcoll
-   real(r8) :: limfac, mradius
+   real(r8) :: ktherm(3), kcoll(3)
+   real(r8) :: limfac
    real(r8) :: frzimm, frzcnt, frzdep
 
    logical :: pdf_imm
@@ -255,6 +254,12 @@ subroutine hetfrz_classnuc_calc( &
    ! attention: division of small numbers
    Acnt = rhwincloud*eswtr*4*pi/(nus*SQRT(2*pi*mwh2o*amu*kboltz*T))
 
+   Ktherm(1) = 4.2_r8  ! black carbon
+   Ktherm(2) = 0.72_r8 ! clay
+   Ktherm(3) = 0.72_r8 !
+
+   call collkernel(t, p, eswtr, rhwincloud, r3lx, hetraer, Ktherm, Kcoll)
+
    do i=1,3
       if (i==1) then
          f_dep = f_depcnt_bc
@@ -263,7 +268,6 @@ subroutine hetfrz_classnuc_calc( &
          dga_dep = dga_dep_bc
          dga_imm = dga_imm_bc
          pdf_imm = .false.
-         Ktherm = 4.2_r8
          limfac = 0.01_r8
      else if (i==2 .or. i==3) then
          f_dep = f_depcnt_dust
@@ -272,15 +276,11 @@ subroutine hetfrz_classnuc_calc( &
          dga_dep = dga_dep_dust
          dga_imm = dga_imm_dust
          pdf_imm = .true.
-         Ktherm = 0.72_r8
          limfac = 1._r8
       end if
 
-      mradius = hetraer(i)
-      Kcoll = collkernel(t, p, eswtr, rhwincloud, r3lx, mradius, Ktherm)
-
       call hetfrz_classnuc_calc_rates( f_dep, f_cnt, f_imm, dga_dep, dga_imm, pdf_imm, limfac, &
-           kcoll, mradius, icnlx, r3lx, t, supersatice, sigma_iw, sigma_iv, &
+           kcoll(i), hetraer(i), icnlx, r3lx, t, supersatice, sigma_iw, sigma_iv, &
            rgimm, rgdep, dg0dep, Adep, dg0cnt, Acnt, vwice, eswtr, deltat, &
            fn(i), awcam(i), awfacm(i), dstcoat(i), &
            total_aer_num(i), total_interstitial_aer_num(i), total_cloudborne_aer_num(i), uncoated_aer_num(i), &
@@ -497,17 +497,16 @@ end subroutine  hetfrz_classnuc_calc_rates
 ! Modifications: Yong Wang and Xiaohong Liu, UWyo, 12/2012
 !-----------------------------------------------------------------------
 
-function collkernel( t, pres, eswtr, rhwincloud, r3lx,  rad, Ktherm ) result( Kcoll )
+subroutine collkernel( temp, pres, eswtr, rhwincloud, r3lx,  rad, Ktherm, Kcoll )
 
-   real(r8), intent(in) :: t                ! temperature [K]
-   real(r8), intent(in) :: pres             ! pressure [Pa]
-   real(r8), intent(in) :: eswtr            ! saturation vapor pressure of water [Pa]
-   real(r8), intent(in) :: r3lx             ! volume mean drop radius [m]
-   real(r8), intent(in) :: rhwincloud       ! in-cloud relative humidity over water [ ]
-   real(r8), intent(in) :: rad              ! aerosol radius [m]
-   real(r8), intent(in) :: Ktherm           ! thermal conductivity of aerosol [J/(m s K)]
-
-   real(r8) :: Kcoll       ! collision kernel [cm3 s-1]
+   real(r8), intent(in) :: temp       ! temperature [K]
+   real(r8), intent(in) :: pres       ! pressure [Pa]
+   real(r8), intent(in) :: eswtr      ! saturation vapor pressure of water [Pa]
+   real(r8), intent(in) :: r3lx       ! volume mean drop radius [m]
+   real(r8), intent(in) :: rhwincloud ! in-cloud relative humidity over water [ ]
+   real(r8), intent(in) :: rad(:)     ! aerosol radius [m]
+   real(r8), intent(in) :: Ktherm(:)  ! thermal conductivity of aerosol [J/(m s K)]
+   real(r8), intent(out) :: Kcoll(:)  ! collision kernel [cm3 s-1]
 
    ! local variables
    real(r8) :: a, b, c, a_f, b_f, c_f, f
@@ -531,19 +530,23 @@ function collkernel( t, pres, eswtr, rhwincloud, r3lx,  rad, Ktherm ) result( Kc
    real(r8) :: Tdiff_cotton ! temperature difference between droplet and environment [K]
    real(r8) :: K_brownian,K_thermo_cotton,K_diffusio_cotton   ! collision kernels [m3 s-1]
 
+   integer :: ntot, idx
+
    !------------------------------------------------------------------------------------------------
 
-   Kcoll = 0._r8
+   ntot = size(ktherm)
 
-   tc     = t - tmelt
+   Kcoll(:) = 0._r8
+
+   tc = temp - tmelt
    kboltz = 1.38065e-23_r8
 
    ! air viscosity for tc<0, from depvel_part.F90
    viscos_air = (1.718_r8+0.0049_r8*tc-1.2e-5_r8*tc*tc)*1.e-5_r8
    ! air density
-   rho_air = pres/(rair*t)
+   rho_air = pres/(rair*temp)
    ! mean free path: Seinfeld & Pandis 8.6
-   lambda = 2*viscos_air/(pres*SQRT(8/(pi*rair*t)))
+   lambda = 2*viscos_air/(pres*SQRT(8/(pi*rair*temp)))
    ! latent heat of vaporization, varies with T
    latvap = 1000*(-0.0000614342_r8*tc**3 + 0.00158927_r8*tc**2 - 2.36418_r8*tc + 2500.79_r8)
    ! droplet terminal velocity after Chen & Liu, QJRMS 2004
@@ -559,42 +562,45 @@ function collkernel( t, pres, eswtr, rhwincloud, r3lx,  rad, Ktherm ) result( Kc
    ! Reynolds number
    Re = 2*vterm*r3lx*rho_air/viscos_air
    ! thermal conductivity of air: Seinfeld & Pandis eq. 15.75
-   Ktherm_air = 1.e-3_r8*(4.39_r8+0.071_r8*t)  !J/(m s K)
+   Ktherm_air = 1.e-3_r8*(4.39_r8+0.071_r8*temp)  !J/(m s K)
    ! Prandtl number
    Pr = viscos_air*cpair/Ktherm_air
    ! water vapor diffusivity: Pruppacher & Klett 13-3
-   Dvap = 0.211e-4_r8*(t/273.15_r8)*(101325._r8/pres)
+   Dvap = 0.211e-4_r8*(temp/273.15_r8)*(101325._r8/pres)
    ! G-factor = rhoh2o*Xi in Rogers & Yau, p. 104
-   G = rhoh2o/((latvap/(rh2o*t) - 1)*latvap*rhoh2o/(Ktherm_air*t) &
-       + rhoh2o*rh2o*t/(Dvap*eswtr))
+   G = rhoh2o/((latvap/(rh2o*temp) - 1)*latvap*rhoh2o/(Ktherm_air*temp) &
+       + rhoh2o*rh2o*temp/(Dvap*eswtr))
 
-   ! Knudsen number (Seinfeld & Pandis 8.1)
-   Kn = lambda/rad
-   ! aerosol diffusivity
-   Daer = kboltz*t*(1 + Kn)/(6*pi*rad*viscos_air)
-   ! Schmidt number
-   Sc = viscos_air/(Daer*rho_air)
+   do idx = 1,ntot
+      ! Knudsen number (Seinfeld & Pandis 8.1)
+      Kn = lambda/rad(idx)
+      ! aerosol diffusivity
+      Daer = kboltz*temp*(1 + Kn)/(6*pi*rad(idx)*viscos_air)
 
-   ! Young (1974) first equ. on page 771
-   K_brownian = 4*pi*r3lx*Daer*(1 + 0.3_r8*Re**0.5_r8*Sc**0.33_r8)
+      ! Schmidt number
+      Sc = viscos_air/(Daer*rho_air)
 
-   ! thermal conductivities from Seinfeld & Pandis, Table 8.6
-   ! form factor
-   f_t = 0.4_r8*(1._r8 + 1.45_r8*Kn + 0.4_r8*Kn*EXP(-1._r8/Kn))      &
-        *(Ktherm_air + 2.5_r8*Kn*Ktherm)                      &
-        /((1._r8 + 3._r8*Kn)*(2._r8*Ktherm_air + 5._r8*Kn*Ktherm+Ktherm))
+      ! Young (1974) first equ. on page 771
+      K_brownian = 4*pi*r3lx*Daer*(1 + 0.3_r8*Re**0.5_r8*Sc**0.33_r8)
 
-   ! calculate T-Tc as in Cotton et al.
-   Tdiff_cotton = -G*(rhwincloud - 1._r8)*latvap/Ktherm_air
-   Q_heat = Ktherm_air/r3lx*(1._r8 + 0.3_r8*Re**0.5_r8*Pr**0.33_r8)*Tdiff_cotton
-   K_thermo_cotton = 4._r8*pi*r3lx*r3lx*f_t*Q_heat/pres
-   K_diffusio_cotton = -(1._r8/f_t)*(rh2o*t/latvap)*K_thermo_cotton
-   Kcoll = 1.e6_r8*(K_brownian + K_thermo_cotton + K_diffusio_cotton)  ! convert m3/s -> cm3/s
+      ! thermal conductivities from Seinfeld & Pandis, Table 8.6
+      ! form factor
+      f_t = 0.4_r8*(1._r8 + 1.45_r8*Kn + 0.4_r8*Kn*EXP(-1._r8/Kn))      &
+           *(Ktherm_air + 2.5_r8*Kn*Ktherm(idx))                      &
+           /((1._r8 + 3._r8*Kn)*(2._r8*Ktherm_air + 5._r8*Kn*Ktherm(idx)+Ktherm(idx)))
 
-   ! set K to 0 if negative
-   if (Kcoll < 0._r8) Kcoll = 0._r8
+      ! calculate T-Tc as in Cotton et al.
+      Tdiff_cotton = -G*(rhwincloud - 1._r8)*latvap/Ktherm_air
+      Q_heat = Ktherm_air/r3lx*(1._r8 + 0.3_r8*Re**0.5_r8*Pr**0.33_r8)*Tdiff_cotton
+      K_thermo_cotton = 4._r8*pi*r3lx*r3lx*f_t*Q_heat/pres
+      K_diffusio_cotton = -(1._r8/f_t)*(rh2o*temp/latvap)*K_thermo_cotton
+      Kcoll(idx) = 1.e6_r8*(K_brownian + K_thermo_cotton + K_diffusio_cotton)  ! convert m3/s -> cm3/s
 
-end function collkernel
+      ! set K to 0 if negative
+      if (Kcoll(idx) < 0._r8) Kcoll(idx) = 0._r8
+   end do
+
+end subroutine collkernel
 
 !===================================================================================================
 
