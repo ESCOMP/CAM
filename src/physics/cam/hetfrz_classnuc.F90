@@ -163,7 +163,6 @@ subroutine hetfrz_classnuc_calc( &
    real(r8) :: dg0cnt
    real(r8) :: Adep     ! prefactors
    real(r8) :: Acnt
-   real(r8) :: Jcnt
 
    !********************************************************
    ! Hoose et al., 2010 fitting parameters
@@ -256,9 +255,6 @@ subroutine hetfrz_classnuc_calc( &
    ! attention: division of small numbers
    Acnt = rhwincloud*eswtr*4*pi/(nus*SQRT(2*pi*mwh2o*amu*kboltz*T))
 
-   ! nucleation rate per particle
-   Jcnt = Acnt*mradius**2*EXP((-dga_dep-f_cnt*dg0cnt)/(kboltz*T))*Kcoll*icnlx
-
    do i=1,3
       if (i==1) then
          f_dep = f_depcnt_bc
@@ -285,7 +281,7 @@ subroutine hetfrz_classnuc_calc( &
 
       call hetfrz_classnuc_calc_rates( f_dep, f_cnt, f_imm, dga_dep, dga_imm, pdf_imm, limfac, &
            kcoll, mradius, icnlx, r3lx, t, supersatice, sigma_iw, sigma_iv, &
-           rgimm, rgdep, dg0dep, Adep, dg0cnt, Acnt, Jcnt, vwice, eswtr, deltat, &
+           rgimm, rgdep, dg0dep, Adep, dg0cnt, Acnt, vwice, eswtr, deltat, &
            fn(i), awcam(i), awfacm(i), dstcoat(i), &
            total_aer_num(i), total_interstitial_aer_num(i), total_cloudborne_aer_num(i), uncoated_aer_num(i), &
            frzimm, frzcnt, frzdep, errstring )
@@ -307,7 +303,7 @@ subroutine hetfrz_classnuc_calc( &
 
  subroutine  hetfrz_classnuc_calc_rates( f_dep, f_cnt, f_imm, dga_dep, dga_imm, pdf_imm, limfac, &
       kcoll, mradius, icnlx, r3lx, t, supersatice, sigma_iw, sigma_iv, &
-      rgimm, rgdep, dg0dep, Adep, dg0cnt, Acnt, Jcnt, vwice, eswtr, deltat, &
+      rgimm, rgdep, dg0dep, Adep, dg0cnt, Acnt, vwice, eswtr, deltat, &
       fn, awcam, awfacm, dstcoat, &
       total_aer_num, total_interstitial_aer_num, total_cloudborne_aer_num, uncoated_aer_num, &
       frzimm, frzcnt, frzdep, errstring )
@@ -334,7 +330,6 @@ subroutine hetfrz_classnuc_calc( &
    real(r8), intent(in) :: Adep                       ! prefactor
    real(r8), intent(in) :: dg0cnt                     ! homogeneous energy of germ formation
    real(r8), intent(in) :: Acnt                       ! prefactor
-   real(r8), intent(in) :: Jcnt                       ! prefactor
 
    real(r8), intent(in) :: vwice
    real(r8), intent(in) :: eswtr
@@ -361,6 +356,7 @@ subroutine hetfrz_classnuc_calc( &
    real(r8) :: Aimm
    real(r8) :: Jdep
    real(r8) :: Jimm
+   real(r8) :: Jcnt
    real(r8) :: dg0imm
    real(r8) :: rgimm_aer
    real(r8) :: sum_imm
@@ -461,6 +457,9 @@ subroutine hetfrz_classnuc_calc( &
    !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
    ! contact nucleation
    !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+   ! nucleation rate per particle
+   Jcnt = Acnt*mradius**2*EXP((-dga_dep-f_cnt*dg0cnt)/(kboltz*T))*Kcoll*icnlx
 
    ! Limit to 1% of available potential IN (for BC), no limit for dust
    if (tot_in) then
