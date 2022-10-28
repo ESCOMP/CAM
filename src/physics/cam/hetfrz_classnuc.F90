@@ -157,6 +157,13 @@ subroutine hetfrz_classnuc_calc( &
    real(r8) :: esice                           ! [Pa]
    real(r8) :: eswtr                           ! [Pa]
    integer :: i
+   real(r8) :: rgimm    ! critical germ size
+   real(r8) :: rgdep
+   real(r8) :: dg0dep   ! homogeneous energy of germ formation
+   real(r8) :: dg0cnt
+   real(r8) :: Adep     ! prefactors
+   real(r8) :: Acnt
+   real(r8) :: Jcnt
 
    !********************************************************
    ! Hoose et al., 2010 fitting parameters
@@ -187,24 +194,17 @@ subroutine hetfrz_classnuc_calc( &
 
    ! form factor
    ! only consider flat surfaces due to uncertainty of curved surfaces
-   real(r8),parameter :: m_dep_bc = COS(theta_dep_bc*pi/180._r8)
-   real(r8),parameter :: f_dep_bc = (2+m_dep_bc)*(1-m_dep_bc)**2/4._r8
-   real(r8),parameter :: f_cnt_bc = f_dep_bc
+   real(r8),parameter :: m_depcnt_bc = COS(theta_dep_bc*pi/180._r8)
+   real(r8),parameter :: f_depcnt_bc = (2+m_depcnt_bc)*(1-m_depcnt_bc)**2/4._r8
 
-   real(r8),parameter :: m_dep_dst = COS(theta_dep_dust*pi/180._r8)
-   real(r8),parameter :: f_dep_dust_a1 = (2+m_dep_dst)*(1-m_dep_dst)**2/4._r8
-   real(r8),parameter :: f_cnt_dust_a1 = f_dep_dust_a1
-
-   real(r8),parameter :: f_dep_dust_a3 = f_dep_dust_a1
-   real(r8),parameter :: f_cnt_dust_a3 = f_dep_dust_a3
+   real(r8),parameter :: m_depcnt_dst = COS(theta_dep_dust*pi/180._r8)
+   real(r8),parameter :: f_depcnt_dust = (2+m_depcnt_dst)*(1-m_depcnt_dst)**2/4._r8
 
    real(r8),parameter :: m_imm_bc = COS(theta_imm_bc*pi/180._r8)
    real(r8),parameter :: f_imm_bc = (2+m_imm_bc)*(1-m_imm_bc)**2/4._r8
 
    real(r8),parameter :: m_imm_dust = COS(theta_imm_dust*pi/180._r8)
-   real(r8),parameter :: f_imm_dust_a1 = (2+m_imm_dust)*(1-m_imm_dust)**2/4._r8
-
-   real(r8),parameter :: f_imm_dust_a3 =f_imm_dust_a1
+   real(r8),parameter :: f_imm_dust = (2+m_imm_dust)*(1-m_imm_dust)**2/4._r8
 
    real(r8) :: f_dep, f_cnt, f_imm
    real(r8) :: dga_dep, dga_imm
@@ -227,7 +227,7 @@ subroutine hetfrz_classnuc_calc( &
 
    ! get saturation vapor pressures
    eswtr = svp_water(t)  ! 0 for liquid
-   esice = svp_ice(t)  ! 1 for ice
+   esice = svp_ice(t)    ! 1 for ice
 
    tc = t - tmelt
    rhoice = 916.7_r8-0.175_r8*tc-5.e-4_r8*tc**2
@@ -235,10 +235,34 @@ subroutine hetfrz_classnuc_calc( &
    sigma_iw = (28.5_r8+0.25_r8*tc)*1E-3_r8
    sigma_iv = (76.1_r8-0.155_r8*tc + 28.5_r8+0.25_r8*tc)*1E-3_r8
 
+   ! critical germ size
+   rgimm = 2*vwice*sigma_iw/(kboltz*t*LOG(supersatice))
+
+   ! critical germ size
+   ! assume 98% RH in mixed-phase clouds (Korolev & Isaac, JAS 2006)
+   rgdep=2*vwice*sigma_iv/(kboltz*t*LOG(rhwincloud*supersatice))
+
+   ! homogeneous energy of germ formation
+   dg0dep = 4*pi/3._r8*sigma_iv*rgdep**2
+
+   ! prefactor
+   ! attention: division of small numbers
+   Adep = (rhwincloud*eswtr)**2*(vwice/(mwh2o*amu))/(kboltz*T*nus)*SQRT(sigma_iv/(kboltz*T))
+
+   ! homogeneous energy of germ formation
+   dg0cnt = 4*pi/3._r8*sigma_iv*rgimm**2
+
+   ! prefactor
+   ! attention: division of small numbers
+   Acnt = rhwincloud*eswtr*4*pi/(nus*SQRT(2*pi*mwh2o*amu*kboltz*T))
+
+   ! nucleation rate per particle
+   Jcnt = Acnt*mradius**2*EXP((-dga_dep-f_cnt*dg0cnt)/(kboltz*T))*Kcoll*icnlx
+
    do i=1,3
       if (i==1) then
-         f_dep = f_dep_bc
-         f_cnt = f_cnt_bc
+         f_dep = f_depcnt_bc
+         f_cnt = f_depcnt_bc
          f_imm = f_imm_bc
          dga_dep = dga_dep_bc
          dga_imm = dga_imm_bc
@@ -246,9 +270,9 @@ subroutine hetfrz_classnuc_calc( &
          Ktherm = 4.2_r8
          limfac = 0.01_r8
      else if (i==2 .or. i==3) then
-         f_dep = f_dep_dust_a1
-         f_cnt = f_cnt_dust_a1
-         f_imm = f_imm_dust_a1
+         f_dep = f_depcnt_dust
+         f_cnt = f_depcnt_dust
+         f_imm = f_imm_dust
          dga_dep = dga_dep_dust
          dga_imm = dga_imm_dust
          pdf_imm = .true.
@@ -260,7 +284,8 @@ subroutine hetfrz_classnuc_calc( &
       Kcoll = collkernel(t, p, eswtr, rhwincloud, r3lx, mradius, Ktherm)
 
       call hetfrz_classnuc_calc_rates( f_dep, f_cnt, f_imm, dga_dep, dga_imm, pdf_imm, limfac, &
-           kcoll, mradius, icnlx, r3lx, t, supersatice, sigma_iw, sigma_iv, vwice, eswtr, deltat, &
+           kcoll, mradius, icnlx, r3lx, t, supersatice, sigma_iw, sigma_iv, &
+           rgimm, rgdep, dg0dep, Adep, dg0cnt, Acnt, Jcnt, vwice, eswtr, deltat, &
            fn(i), awcam(i), awfacm(i), dstcoat(i), &
            total_aer_num(i), total_interstitial_aer_num(i), total_cloudborne_aer_num(i), uncoated_aer_num(i), &
            frzimm, frzcnt, frzdep, errstring )
@@ -281,7 +306,8 @@ subroutine hetfrz_classnuc_calc( &
  end subroutine  hetfrz_classnuc_calc
 
  subroutine  hetfrz_classnuc_calc_rates( f_dep, f_cnt, f_imm, dga_dep, dga_imm, pdf_imm, limfac, &
-      kcoll, mradius, icnlx, r3lx, t, supersatice, sigma_iw, sigma_iv, vwice, eswtr, deltat, &
+      kcoll, mradius, icnlx, r3lx, t, supersatice, sigma_iw, sigma_iv, &
+      rgimm, rgdep, dg0dep, Adep, dg0cnt, Acnt, Jcnt, vwice, eswtr, deltat, &
       fn, awcam, awfacm, dstcoat, &
       total_aer_num, total_interstitial_aer_num, total_cloudborne_aer_num, uncoated_aer_num, &
       frzimm, frzcnt, frzdep, errstring )
@@ -302,6 +328,14 @@ subroutine hetfrz_classnuc_calc( &
    real(r8), intent(in) :: supersatice                ! supersaturation ratio wrt ice at 100%rh over water [ ]
    real(r8), intent(in) :: sigma_iw                   ! [J/m2]
    real(r8), intent(in) :: sigma_iv                   ! [J/m2]
+   real(r8), intent(in) :: rgimm                      ! critical germ size
+   real(r8), intent(in) :: rgdep                      ! critical germ size
+   real(r8), intent(in) :: dg0dep                     ! homogeneous energy of germ formation
+   real(r8), intent(in) :: Adep                       ! prefactor
+   real(r8), intent(in) :: dg0cnt                     ! homogeneous energy of germ formation
+   real(r8), intent(in) :: Acnt                       ! prefactor
+   real(r8), intent(in) :: Jcnt                       ! prefactor
+
    real(r8), intent(in) :: vwice
    real(r8), intent(in) :: eswtr
    real(r8), intent(in) :: deltat                     ! timestep [s]
@@ -324,18 +358,11 @@ subroutine hetfrz_classnuc_calc( &
    real(r8) :: aw                          ! water activity [ ]
    real(r8) :: molal                       ! molality [moles/kg]
 
-   real(r8) :: Acnt
-   real(r8) :: Adep
    real(r8) :: Aimm
    real(r8) :: Jdep
    real(r8) :: Jimm
-   real(r8) :: Jcnt
-   real(r8) :: dg0cnt
-   real(r8) :: dg0dep
    real(r8) :: dg0imm
    real(r8) :: rgimm_aer
-   real(r8) :: rgimm
-   real(r8) :: rgdep
    real(r8) :: sum_imm
    real(r8) :: dim_Jimm(pdf_n_theta)
 
@@ -375,8 +402,6 @@ subroutine hetfrz_classnuc_calc( &
    frzcnt = 0._r8
    frzdep = 0._r8
 
-   ! critical germ size
-   rgimm = 2*vwice*sigma_iw/(kboltz*t*LOG(supersatice))
    ! take solute effect into account
    rgimm_aer = rgimm
 
@@ -391,49 +416,40 @@ subroutine hetfrz_classnuc_calc( &
 
    do_imm = t <= 263.15_r8
 
-   ! homogeneous energy of germ formation
-   dg0imm = 4*pi/3._r8*sigma_iw*rgimm_aer**2
+   if (do_imm) then
+      ! homogeneous energy of germ formation
+      dg0imm = 4*pi/3._r8*sigma_iw*rgimm_aer**2
 
-   ! prefactor
-   Aimm = n1*((vwice*rhplanck)/(rgimm_aer**3)*SQRT(3._r8/pi*kboltz*T*dg0imm))
+      ! prefactor
+      Aimm = n1*((vwice*rhplanck)/(rgimm_aer**3)*SQRT(3._r8/pi*kboltz*T*dg0imm))
 
-   ! nucleation rate per particle
+      ! nucleation rate per particle
 
-   if (pdf_imm) then
-      dim_Jimm(:) = 0._r8
-      do i = i1,i2
-         ! 1/sqrt(f)
-         dim_Jimm(i) = Aimm*mradius**2/SQRT(dim_f_imm(i))*EXP((-dga_imm-dim_f_imm(i)*dg0imm)/(kboltz*T))
-         dim_Jimm(i) = max(dim_Jimm(i), 0._r8)
-      end do
+      if (pdf_imm) then
+         dim_Jimm(:) = 0._r8
+         do i = i1,i2
+            ! 1/sqrt(f)
+            dim_Jimm(i) = Aimm*mradius**2/SQRT(dim_f_imm(i))*EXP((-dga_imm-dim_f_imm(i)*dg0imm)/(kboltz*T))
+            dim_Jimm(i) = max(dim_Jimm(i), 0._r8)
+         end do
 
-      sum_imm  = 0._r8
-      do i = i1,i2-1
-         sum_imm = sum_imm + 0.5_r8*((pdf_imm_theta(i  )*exp(-dim_Jimm(i  )*deltat)+ &
-                                      pdf_imm_theta(i+1)*exp(-dim_Jimm(i+1)*deltat)))*pdf_d_theta
-      end do
-      if (sum_imm > 0.99_r8) then
-         sum_imm = 1.0_r8
+         sum_imm  = 0._r8
+         do i = i1,i2-1
+            sum_imm = sum_imm + 0.5_r8*((pdf_imm_theta(i  )*exp(-dim_Jimm(i  )*deltat)+ &
+                 pdf_imm_theta(i+1)*exp(-dim_Jimm(i+1)*deltat)))*pdf_d_theta
+         end do
+         if (sum_imm > 0.99_r8) then
+            sum_imm = 1.0_r8
+         end if
+      else
+         Jimm = Aimm*mradius**2/SQRT(f_imm)*EXP(( -dga_imm - f_imm*dg0imm )/(kboltz*T))
+         sum_imm = exp(-Jimm*deltat)
       end if
-   else
-     Jimm = Aimm*mradius**2/SQRT(f_imm)*EXP(( -dga_imm - f_imm*dg0imm )/(kboltz*T))
-     sum_imm = exp(-Jimm*deltat) ! pdf_imm_in == false for BC
    end if
-
 
    !!! !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
    !   Deposition nucleation
    !!! !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-   ! critical germ size
-   ! assume 98% RH in mixed-phase clouds (Korolev & Isaac, JAS 2006)
-   rgdep=2*vwice*sigma_iv/(kboltz*t*LOG(rhwincloud*supersatice))
-
-   ! homogeneous energy of germ formation
-   dg0dep = 4*pi/3._r8*sigma_iv*rgdep**2
-
-   ! prefactor
-   ! attention: division of small numbers
-   Adep = (rhwincloud*eswtr)**2*(vwice/(mwh2o*amu))/(kboltz*T*nus)*SQRT(sigma_iv/(kboltz*T))
 
    ! nucleation rate per particle
    if (rgdep > 0) then
@@ -446,24 +462,8 @@ subroutine hetfrz_classnuc_calc( &
    ! contact nucleation
    !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
-   ! homogeneous energy of germ formation
-   dg0cnt = 4*pi/3._r8*sigma_iv*rgimm**2
-
-   ! prefactor
-   ! attention: division of small numbers
-   Acnt = rhwincloud*eswtr*4*pi/(nus*SQRT(2*pi*mwh2o*amu*kboltz*T))
-
-   ! nucleation rate per particle
-   Jcnt = Acnt*mradius**2  *EXP((-dga_dep-f_cnt*dg0cnt)/(kboltz*T))*Kcoll        *icnlx
-
    ! Limit to 1% of available potential IN (for BC), no limit for dust
-   if (.not.tot_in) then
-      if (do_imm) then
-         frzimm = MIN(limfac*total_cloudborne_aer_num /deltat, total_cloudborne_aer_num/deltat*(1._r8-sum_imm))
-      end if
-      frzdep = MIN(limfac*uncoated_aer_num/deltat, uncoated_aer_num/deltat*(1._r8-exp(-Jdep*deltat)))
-      frzcnt = MIN(limfac*uncoated_aer_num/deltat, uncoated_aer_num/deltat*(1._r8-exp(-Jcnt*deltat)))
-   else
+   if (tot_in) then
       if (do_imm) then
          frzimm = MIN(limfac*fn*total_aer_num/deltat, fn*total_aer_num/deltat*(1._r8-sum_imm))
       end if
@@ -471,6 +471,12 @@ subroutine hetfrz_classnuc_calc( &
                    (1._r8-fn)*(1._r8-dstcoat)*total_aer_num/deltat*(1._r8-exp(-Jdep*deltat)))
       frzcnt = MIN(limfac*(1._r8-fn)*(1._r8-dstcoat)*total_aer_num/deltat, &
                    (1._r8-fn)*(1._r8-dstcoat)*total_aer_num/deltat*(1._r8-exp(-Jcnt*deltat)))
+   else
+      if (do_imm) then
+         frzimm = MIN(limfac*total_cloudborne_aer_num /deltat, total_cloudborne_aer_num/deltat*(1._r8-sum_imm))
+      end if
+      frzdep = MIN(limfac*uncoated_aer_num/deltat, uncoated_aer_num/deltat*(1._r8-exp(-Jdep*deltat)))
+      frzcnt = MIN(limfac*uncoated_aer_num/deltat, uncoated_aer_num/deltat*(1._r8-exp(-Jcnt*deltat)))
    end if
 
    if (frzcnt <= -1._r8) then
