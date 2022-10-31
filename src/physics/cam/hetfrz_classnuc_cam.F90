@@ -634,7 +634,13 @@ subroutine hetfrz_classnuc_cam_calc( &
    real(r8) :: tot_na500(pcols,pver)
 
    character(128) :: errstring   ! Error status
+   integer, parameter :: ntypes = 3
+   character(len=32) :: types(ntypes)
+
    !-------------------------------------------------------------------------------
+
+   types(1) = 'black-c'
+   types(2:3) = 'dust'
 
    associate( &
       lchnk => state%lchnk,             &
@@ -799,7 +805,7 @@ subroutine hetfrz_classnuc_cam_calc( &
                 fn(3) = factnum(i,k,mode_coardust_idx)
             end if
 
-            call hetfrz_classnuc_calc( &
+            call hetfrz_classnuc_calc( ntypes, types, &
                deltatin,  t(i,k),  pmid(i,k),  supersatice,   &
                fn,  r3lx,  ncic*rho(i,k)*1.0e-6_r8,  frzbcimm(i,k),  frzduimm(i,k),   &
                frzbccnt(i,k),  frzducnt(i,k),  frzbcdep(i,k),  frzdudep(i,k),  hetraer(i,k,:), &
