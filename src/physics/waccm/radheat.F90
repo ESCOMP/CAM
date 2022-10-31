@@ -7,7 +7,7 @@ module radheat
 !
 !           This module provides a hook to allow incorporating additional
 !           radiative terms (eUV heating and nonLTE longwave cooling).
-! 
+!
 ! Original version: B.A. Boville
 ! Change weighting function for RRTMG: A J Conley
 !-----------------------------------------------------------------------
@@ -32,6 +32,7 @@ module radheat
 ! Public interfaces
   public  &
        radheat_readnl,        &!
+       radheat_register,      &!
        radheat_init,          &!
        radheat_timestep_init, &!
        radheat_tend            ! return net radiative heating
@@ -42,8 +43,10 @@ module radheat
   logical :: nlte_use_mo = .true. ! Determines which constituents are used from NLTE calculations
                                   !  = .true. uses prognostic constituents
                                   !  = .false. uses constituents from prescribed dataset waccm_forcing_file
-  logical :: nlte_limit_co2 = .false. ! if true apply upper limit to co2 in the Formichev scheme 
-  
+  logical :: nlte_limit_co2 = .false. ! if true apply upper limit to co2 in the Fomichev scheme
+  logical :: nlte_use_aliarms = .false. ! If true, use ALI-ARMS for the cooling rate calculation
+  integer :: nlte_aliarms_every_X = 1 ! Call aliarms every X times radiation is called
+
 ! Private variables for merging heating rates
   real(r8):: qrs_wt(pver)             ! merge weight for cam solar heating
   real(r8):: qrl_wt(pver)             ! merge weight for cam long wave heating
@@ -53,19 +56,15 @@ module radheat
 
   ! sw merge region
   ! highest altitude (lowest  pressure) of merge region (Pa)
-  real(r8) :: min_pressure_sw= 5._r8   
+  real(r8) :: min_pressure_sw= 5._r8
   ! lowest  altitude (lowest  pressure) of merge region (Pa)
-  real(r8) :: max_pressure_sw=50._r8   
-  real(r8) :: delta_merge_sw           ! range of merge region
-  real(r8) :: midpoint_sw              ! midpoint of merge region
+  real(r8) :: max_pressure_sw=50._r8
 
   ! lw merge region
   ! highest altitude (lowest  pressure) of merge region (Pa)
-  real(r8) :: min_pressure_lw= 5._r8   
+  real(r8) :: min_pressure_lw= 5._r8
   ! lowest  altitude (highest pressure) of merge region (Pa)
-  real(r8) :: max_pressure_lw=50._r8   
-  real(r8) :: delta_merge_lw           ! range of merge region
-  real(r8) :: midpoint_lw              ! midpoint of merge region
+  real(r8) :: max_pressure_lw=50._r8
 
   integer :: ntop_qrs_cam             ! top level for pure cam solar heating
 
@@ -78,7 +77,7 @@ contains
     use namelist_utils,  only: find_group_name
     use units,           only: getunit, freeunit
     use cam_abortutils,  only: endrun
-    use spmd_utils,     only : mpicom, masterprocid, mpi_logical
+    use spmd_utils,     only : mpicom, masterprocid, mpi_logical, mpi_integer
 
     use waccm_forcing,   only: waccm_forcing_readnl
 
@@ -88,7 +87,7 @@ contains
     integer :: unitn, ierr
     character(len=*), parameter :: subname = 'radheat_readnl'
 
-    namelist /radheat_nl/ nlte_use_mo, nlte_limit_co2
+    namelist /radheat_nl/ nlte_use_mo, nlte_limit_co2, nlte_use_aliarms,nlte_aliarms_every_X
 
     if (masterproc) then
        unitn = getunit()
@@ -105,8 +104,14 @@ contains
 
     end if
 
-    call mpi_bcast (nlte_use_mo,    1, mpi_logical, masterprocid, mpicom, ierr)
-    call mpi_bcast (nlte_limit_co2, 1, mpi_logical, masterprocid, mpicom, ierr)
+    call mpi_bcast (nlte_use_mo,      1, mpi_logical, masterprocid, mpicom, ierr)
+    if (ierr /= 0) call endrun("radheat_readnl: FATAL: mpi_bcast: nlte_use_mo")
+    call mpi_bcast (nlte_limit_co2,   1, mpi_logical, masterprocid, mpicom, ierr)
+    if (ierr /= 0) call endrun("radheat_readnl: FATAL: mpi_bcast: nlte_limit_co2")
+    call mpi_bcast (nlte_use_aliarms, 1, mpi_logical, masterprocid, mpicom, ierr)
+    if (ierr /= 0) call endrun("radheat_readnl: FATAL: mpi_bcast: nlte_use_aliarms")
+    call mpi_bcast (nlte_aliarms_every_X, 1, mpi_integer, masterprocid, mpicom, ierr)
+    if (ierr /= 0) call endrun("radheat_readnl: FATAL: mpi_bcast: nlte_aliarms_every_X")
 
     ! Have waccm_forcing read its namelist as well.
     call waccm_forcing_readnl(nlfile)
@@ -115,11 +120,25 @@ contains
 
 !================================================================================================
 
+  subroutine radheat_register
+
+    use nlte_lw, only : nlte_register
+
+    ! only ALI-ARMS has pbuf fields to register
+    if (nlte_use_aliarms) then
+       call nlte_register()
+    end if
+
+  end subroutine radheat_register
+
+!================================================================================================
+
   subroutine radheat_init(pref_mid)
 
     use nlte_lw,          only: nlte_init
     use cam_history,      only: add_default, addfld
     use phys_control,     only: phys_getopts
+    use physics_buffer, only : physics_buffer_desc
 
     ! args
 
@@ -127,6 +146,10 @@ contains
 
     ! local vars
 
+    real(r8) :: delta_merge_sw      ! range of merge region
+    real(r8) :: midpoint_sw         ! midpoint of merge region
+    real(r8) :: delta_merge_lw      ! range of merge region
+    real(r8) :: midpoint_lw         ! midpoint of merge region
     real(r8) :: psh(pver)           ! pressure scale height
     integer  :: k
     logical :: camrt
@@ -151,10 +174,10 @@ contains
        min_pressure_lw = 1e5_r8*exp(-10._r8)
        max_pressure_lw = 1e5_r8*exp(-8.57_r8)
     else
-       min_pressure_sw =  5._r8  
-       max_pressure_sw = 50._r8   
-       min_pressure_lw =  5._r8   
-       max_pressure_lw = 50._r8 
+       min_pressure_sw =  5._r8
+       max_pressure_sw = 50._r8
+       min_pressure_lw =  5._r8
+       max_pressure_lw = 50._r8
     endif
 
     delta_merge_sw = max_pressure_sw - min_pressure_sw
@@ -168,7 +191,7 @@ contains
        ! pressure scale heights for camrt merging (waccm4)
        psh(k)=log(1e5_r8/pref_mid(k))
 
-       if ( pref_mid(k) .le. min_pressure_sw  ) then 
+       if ( pref_mid(k) .le. min_pressure_sw  ) then
           qrs_wt(k) = 0._r8
        else if( pref_mid(k) .ge. max_pressure_sw) then
           qrs_wt(k) = 1._r8
@@ -183,13 +206,13 @@ contains
           endif
        endif
 
-       if ( pref_mid(k) .le. min_pressure_lw  ) then 
+       if ( pref_mid(k) .le. min_pressure_lw  ) then
           qrl_wt(k)= 0._r8
        else if( pref_mid(k) .ge. max_pressure_lw) then
           qrl_wt(k)= 1._r8
        else
           if (camrt) then
-             ! camrt         
+             ! camrt
              qrl_wt(k) = 1._r8 - tanh( (psh(k) - 8.57_r8) / 0.71_r8 )
           else
              ! rrtmg
@@ -199,7 +222,7 @@ contains
        endif
 
     end do
-    
+
     ! determine upppermost level that is purely solar heating (no MLT chem heationg)
     ntop_qrs_cam = 0
     do k=pver,1,-1
@@ -220,7 +243,7 @@ contains
     end if
 
     if (waccm_heating) then
-       call nlte_init(pref_mid, nlte_use_mo, nlte_limit_co2)
+       call nlte_init(pref_mid, max_pressure_lw, nlte_use_mo, nlte_limit_co2, nlte_use_aliarms,nlte_aliarms_every_X)
     endif
 
 ! Add history variables to master field list
@@ -254,7 +277,7 @@ contains
     use ppgrid,       only : begchunk, endchunk
     use physics_buffer, only : physics_buffer_desc
 
-    type(physics_state), intent(in):: state(begchunk:endchunk)                 
+    type(physics_state), intent(in):: state(begchunk:endchunk)
     type(physics_buffer_desc), pointer :: pbuf2d(:,:)
 
 
@@ -272,21 +295,21 @@ contains
 ! Compute net radiative heating from qrs and qrl, and the associated net
 ! boundary flux.
 !
-! This routine provides the waccm hook for computing nonLTE cooling and 
-! eUV heating. 
+! This routine provides the waccm hook for computing nonLTE cooling and
+! eUV heating.
 !-----------------------------------------------------------------------
 
     use cam_history,       only: outfld
     use nlte_lw,           only: nlte_tend
     use mo_waccm_hrates,   only: waccm_hrates, has_hrates
     use waccm_forcing,     only: get_solar
-    
+
     use physics_buffer, only : physics_buffer_desc
     use tidal_diag,        only: get_tidal_coeffs
 
 ! Arguments
     type(physics_state), intent(in)  :: state             ! Physics state variables
-    
+
     type(physics_buffer_desc), pointer :: pbuf(:)
     type(physics_ptend), intent(out) :: ptend             ! indivdual parameterization tendencie
     real(r8),            intent(in)  :: qrl(pcols,pver)   ! longwave heating
@@ -296,7 +319,7 @@ contains
     real(r8),            intent(in)  :: flns(pcols)       ! Srf longwave cooling (up-down) flux
     real(r8),            intent(in)  :: flnt(pcols)       ! Net outgoing lw flux at model top
     real(r8),            intent(in)  :: asdir(pcols)      ! shortwave, direct albedo
-    real(r8),            intent(out) :: net_flx(pcols)  
+    real(r8),            intent(out) :: net_flx(pcols)
 
 ! Local variables
     integer  :: i, k
@@ -392,7 +415,7 @@ contains
     integer k
 
     do k = 1, pver
-       hmrg(:ncol,k) = qrs_wt(k)*hcam(:ncol,k) + (1._r8 - qrs_wt(k))*cpair(:ncol,k)*hmlt(:ncol,k) 
+       hmrg(:ncol,k) = qrs_wt(k)*hcam(:ncol,k) + (1._r8 - qrs_wt(k))*cpair(:ncol,k)*hmlt(:ncol,k)
     end do
 
   end subroutine merge_qrs
@@ -417,7 +440,7 @@ contains
 !--------------------------------------------------------------------
 
     do k = 1, pver
-       hmrg(:ncol,k) = qrl_wt(k) * hcam(:ncol,k) + (1._r8-qrl_wt(k)) * hmlt(:ncol,k) 
+       hmrg(:ncol,k) = qrl_wt(k) * hcam(:ncol,k) + (1._r8-qrl_wt(k)) * hmlt(:ncol,k)
     end do
 
   end subroutine merge_qrl
