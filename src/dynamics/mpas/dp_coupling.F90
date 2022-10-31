@@ -132,7 +132,7 @@ subroutine d_p_coupling(phys_state, phys_tend, pbuf2d, dyn_out)
    if( ierr /= 0 ) call endrun(subname//':failed to allocate pintdry array')
 
    call hydrostatic_pressure( &
-        nCellsSolve, plev, zz, zint, rho_zz, theta_m, tracers(index_qv,:,:),&
+        nCellsSolve, plev, zz, zint, rho_zz, theta_m, exner, tracers(index_qv,:,:),&
         pmiddry, pintdry, pmid)
 
    call t_startf('dpcopy')
@@ -678,7 +678,8 @@ subroutine derived_tend(nCellsSolve, nCells, t_tend, u_tend, v_tend, q_tend, dyn
 end subroutine derived_tend
 
 !=========================================================================================
-subroutine hydrostatic_pressure(nCells, nVertLevels, zz, zgrid, rho_zz, theta_m, q, pmiddry, pintdry,pmid)
+subroutine hydrostatic_pressure(nCells, nVertLevels, zz, zgrid, rho_zz, theta_m, &
+     exner, q, pmiddry, pintdry,pmid)
 
    ! Compute dry hydrostatic pressure at layer interfaces and midpoints
    !
@@ -697,6 +698,7 @@ subroutine hydrostatic_pressure(nCells, nVertLevels, zz, zgrid, rho_zz, theta_m,
    real(r8), dimension(nVertLevels+1, nCells), intent(in) :: zgrid   ! geometric heights of layer interfaces [m]
    real(r8), dimension(nVertLevels, nCells),   intent(in) :: rho_zz  ! dry density / zz [kg m^-3]
    real(r8), dimension(nVertLevels, nCells),   intent(in) :: theta_m ! modified potential temperature
+   real(r8), dimension(nVertLevels, nCells),   intent(in) :: exner   ! Exner function
    real(r8), dimension(nVertLevels, nCells),   intent(in) :: q       ! water vapor dry mixing ratio
    real(r8), dimension(nVertLevels, nCells),   intent(out):: pmiddry ! layer midpoint dry hydrostatic pressure [Pa]
    real(r8), dimension(nVertLevels+1, nCells), intent(out):: pintdry ! layer interface dry hydrostatic pressure [Pa]
@@ -704,16 +706,21 @@ subroutine hydrostatic_pressure(nCells, nVertLevels, zz, zgrid, rho_zz, theta_m,
 
    ! Local variables
    integer :: iCell, k
-   real(r8), dimension(nVertLevels)   :: dz    ! Geometric layer thickness in column
+   real(r8), dimension(nVertLevels)          :: dz       ! Geometric layer thickness in column
+   real(r8), dimension(nVertLevels)          :: dp,dpdry ! Pressure thickness
+#ifdef phl_cam_development
    real(r8), dimension(nVertLevels+1) :: pint  ! hydrostatic pressure at interface
+#else
+   real(r8), dimension(nVertLevels+1,nCells) :: pint  ! hydrostatic pressure at interface
+#endif
    real(r8) :: pi, t
-   real(r8) :: pk,rhok,rhodryk,theta,thetavk,kap1,kap2
-
+   real(r8) :: pk,rhok,rhodryk,theta,thetavk,kap1,kap2,tvk,tk
    !
    ! For each column, integrate downward from model top to compute dry hydrostatic pressure at layer
    ! midpoints and interfaces. The pressure averaged to layer midpoints should be consistent with
    ! the ideal gas law using the rho_zz and theta values prognosed by MPAS at layer midpoints.
    !
+#ifdef phl_cam_development
    kap1 = p0**(-rgas/cp)           ! pre-compute constants
    kap2 = cp/cv                    ! pre-compute constants
    do iCell = 1, nCells
@@ -748,6 +755,44 @@ subroutine hydrostatic_pressure(nCells, nVertLevels, zz, zgrid, rho_zz, theta_m,
         pmiddry(k,iCell) = 0.5_r8*(pintdry(k+1,iCell)+pintdry(k,iCell))  
       end do
     end do
+#else
+   kap1 = p0**(-rgas/cp)           ! pre-compute constants
+   kap2 = cp/cv                    ! pre-compute constants
+   do iCell = 1, nCells
+      dz(:) = zgrid(2:nVertLevels+1,iCell) - zgrid(1:nVertLevels,iCell)
+      do k = nVertLevels, 1, -1
+        rhodryk  = zz(k,iCell)* rho_zz(k,iCell) !full CAM physics density
+        rhok     = (1.0_r8+q(k,iCell))*rhodryk  !not used                    !dry  CAM physics density
+        dp(k)    = gravit*dz(k)*rhok
+        dpdry(k) = gravit*dz(k)*rhodryk!phl not used
+      end do
+
+      k = nVertLevels
+      rhok    = (1.0_r8+q(k,iCell))*zz(k,iCell) * rho_zz(k,iCell) !full CAM physics density
+      thetavk = theta_m(k,iCell)/ (1.0_r8 + q(k,iCell))           !convert modified theta to virtual theta
+      tvk     = thetavk*exner(k,iCell)
+      pk      = (rhok*rgas*thetavk*kap1)**kap2                    !mid-level top pressure
+      !
+      ! model top pressure consistently diagnosed using the assumption that the mid level
+      ! is at height z(nVertLevels-1)+0.5*dz
+      !  
+      pintdry(nVertLevels+1,iCell) = pk-0.5_r8*dz(nVertLevels)*rhok*gravity  !hydrostatic
+      pint   (nVertLevels+1,iCell) = pintdry(nVertLevels+1,iCell)
+      do k = nVertLevels, 1, -1
+        !
+        ! compute hydrostatic dry interface pressure so that (pintdry(k+1)-pintdry(k))/g is pseudo density
+        !
+        thetavk = theta_m(k,iCell)/ (1.0_r8 + q(k,iCell))           !convert modified theta to virtual theta
+        tvk     = thetavk*exner(k,iCell)
+        tk      = tvk*(1.0_r8+q(k,iCell))/(1.0_r8+Rv_over_Rd*q(k,iCell))
+        pint   (k,iCell) = pint   (k+1,iCell)+dp(k)
+        pintdry(k,iCell) = pintdry(k+1,iCell)+dpdry(k)
+        pmid(k,iCell)    = dp(k)   *rgas*tvk/(gravit*dz(k))
+        pmiddry(k,iCell) = dpdry(k)*rgas*tk /(gravit*dz(k))
+      end do
+    end do
+#endif
+
 end subroutine hydrostatic_pressure
 
 subroutine tot_energy(nCells, nVertLevels, qsize, index_qv, zz, zgrid, rho_zz, theta_m, q, ux,uy,outfld_name_suffix,te_budgets,budgets_cnt,budgets_subcycle_cnt)
