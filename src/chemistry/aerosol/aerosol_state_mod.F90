@@ -1,6 +1,6 @@
 module aerosol_state_mod
   use shr_kind_mod, only: r8 => shr_kind_r8
-  use aerosol_properties_mod, only: aerosol_properties
+  use aerosol_properties_mod, only: aerosol_properties, aero_name_len
 
   implicit none
 
@@ -296,8 +296,8 @@ contains
     real(r8) :: totalmass(ncol,nlev)
     real(r8), pointer :: aer_bin(:,:)
 
-    character(len=32) :: spectype, sptype
-    integer :: l
+    character(len=aero_name_len) :: spectype, sptype
+    integer :: ispc
 
     wght(:,:) = 0._r8
     totalmass(:,:) = 0._r8
@@ -309,10 +309,10 @@ contains
        sptype = species_type
     end if
 
-    do l = 1, aero_props%nspecies(bin_ndx)
+    do ispc = 1, aero_props%nspecies(bin_ndx)
 
-       call self%get_ambient_mmr(l, bin_ndx, aer_bin)
-       call aero_props%species_type(bin_ndx, l, spectype=spectype)
+       call self%get_ambient_mmr(ispc, bin_ndx, aer_bin)
+       call aero_props%species_type(bin_ndx, ispc, spectype=spectype)
 
        totalmass(:ncol,:) = totalmass(:ncol,:) + aer_bin(:ncol,:)*rho(:ncol,:)
 
@@ -344,7 +344,7 @@ contains
     real(r8), intent(out) :: sulf_num_tot_col(:,:) ! stratopsheric sulfate number densities (#/cm^3)
 
     integer :: m,l
-    character(len=32) :: spectype
+    character(len=aero_name_len) :: spectype
     real(r8) :: size_wghts(ncol,nlev)
     real(r8) :: type_wghts(ncol,nlev)
 

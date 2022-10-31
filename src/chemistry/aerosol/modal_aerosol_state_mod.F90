@@ -6,7 +6,7 @@ module modal_aerosol_state_mod
   use rad_constituents, only: rad_cnst_get_mode_props
   use physics_buffer, only: physics_buffer_desc, pbuf_get_field, pbuf_get_index
   use physics_types, only: physics_state
-  use aerosol_properties_mod, only: aerosol_properties
+  use aerosol_properties_mod, only: aerosol_properties, aero_name_len
 
   implicit none
 
@@ -201,7 +201,7 @@ contains
     logical, intent(in) :: use_preexisting_ice ! pre-existing ice flag
     real(r8), intent(out) :: wght(:,:)
 
-    character(len=32) :: modetype
+    character(len=aero_name_len) :: modetype
     real(r8), pointer :: dgnum(:,:,:)    ! mode dry radius
     real(r8) :: sigmag_aitken
     integer :: i,k
@@ -258,7 +258,7 @@ contains
     logical, intent(in) :: use_preexisting_ice    ! pre-existing ice flag
     real(r8), intent(out) :: wght
 
-    character(len=32) :: modetype
+    character(len=aero_name_len) :: modetype
     real(r8), pointer :: dgnum(:,:,:)    ! mode dry radius
     real(r8) :: sigmag_aitken
 
@@ -316,7 +316,7 @@ contains
     real(r8), intent(in) :: rho(:,:)        ! air density (kg m-3)
     real(r8), intent(out) :: wght(:,:)           ! type weights
 
-    character(len=32) :: modetype
+    character(len=aero_name_len) :: modetype
 
     call rad_cnst_get_info(0, bin_ndx, mode_type=modetype)
 

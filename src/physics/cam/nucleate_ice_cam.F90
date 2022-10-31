@@ -167,7 +167,7 @@ subroutine nucleate_ice_cam_init(mincld_in, bulk_scale_in, pbuf2d, aero_props)
    ! local variables
    integer :: iaer
    integer :: ierr
-   integer :: l, m
+   integer :: ispc, ibin
    integer :: idxtmp
    integer :: nmodes
 
@@ -199,30 +199,30 @@ subroutine nucleate_ice_cam_init(mincld_in, bulk_scale_in, pbuf2d, aero_props)
       end if
       aer_cnst_idx = -1
 
-      do m = 1, aero_props%nbins()
-         if (aero_props%icenuc_updates_num(m)) then
+      do ibin = 1, aero_props%nbins()
+         if (aero_props%icenuc_updates_num(ibin)) then
 
             ! constituents of this bin will need to be updated
 
-            if (aero_props%icenuc_updates_mmr(m,0)) then ! species 0 indicates bin MMR
-               call aero_props%amb_mmr_name( m, 0, tmpname)
+            if (aero_props%icenuc_updates_mmr(ibin,0)) then ! species 0 indicates bin MMR
+               call aero_props%amb_mmr_name( ibin, 0, tmpname)
             else
-               call aero_props%amb_num_name( m, tmpname)
+               call aero_props%amb_num_name( ibin, tmpname)
             end if
 
             call cnst_get_ind(tmpname, idxtmp, abort=.false.)
-            aer_cnst_idx(m,0) = idxtmp
+            aer_cnst_idx(ibin,0) = idxtmp
             if (idxtmp>0) then
                lq(idxtmp) = .true.
             end if
 
             ! iterate over the species within the bin
-            do l = 1, aero_props%nspecies(m)
-               if (aero_props%icenuc_updates_mmr(m,l)) then
+            do ispc = 1, aero_props%nspecies(ibin)
+               if (aero_props%icenuc_updates_mmr(ibin,ispc)) then
                   ! this aerosol constituent will be updated
-                  call aero_props%amb_mmr_name( m, l, tmpname)
+                  call aero_props%amb_mmr_name( ibin, ispc, tmpname)
                   call cnst_get_ind(tmpname, idxtmp, abort=.false.)
-                  aer_cnst_idx(m,l) = idxtmp
+                  aer_cnst_idx(ibin,ispc) = idxtmp
                   if (idxtmp>0) then
                      lq(idxtmp) = .true.
                   end if

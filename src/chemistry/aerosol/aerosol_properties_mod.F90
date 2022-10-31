@@ -60,6 +60,8 @@ module aerosol_properties_mod
      procedure :: final=>aero_props_final
   end type aerosol_properties
 
+  integer,public, parameter :: aero_name_len = 32 ! common length of aersols names, species, etc
+
   abstract interface
 
      !------------------------------------------------------------------------------
@@ -92,7 +94,7 @@ module aerosol_properties_mod
        class(aerosol_properties), intent(in) :: self
        integer, intent(in) :: bin_ndx           ! bin number
        integer, intent(in) :: species_ndx       ! species number
-       character(len=32), intent(out) :: spectype ! species type
+       character(len=*), intent(out) :: spectype ! species type
 
      end subroutine aero_species_type
 
@@ -117,8 +119,8 @@ module aerosol_properties_mod
        import :: aerosol_properties
        class(aerosol_properties), intent(in) :: self
        integer, intent(in) :: bin_ndx           ! bin number
-       character(len=32), intent(out) :: name_a ! constituent name of ambient aerosol number dens
-       character(len=32), intent(out) :: name_c ! constituent name of cloud-borne aerosol number dens
+       character(len=*), intent(out) :: name_a ! constituent name of ambient aerosol number dens
+       character(len=*), intent(out) :: name_c ! constituent name of cloud-borne aerosol number dens
      end subroutine aero_num_names
 
      !------------------------------------------------------------------------
@@ -129,8 +131,8 @@ module aerosol_properties_mod
        class(aerosol_properties), intent(in) :: self
        integer, intent(in) :: bin_ndx           ! bin number
        integer, intent(in) :: species_ndx       ! species number
-       character(len=32), intent(out) :: name_a ! constituent name of ambient aerosol MMR
-       character(len=32), intent(out) :: name_c ! constituent name of cloud-borne aerosol MMR
+       character(len=*), intent(out) :: name_a ! constituent name of ambient aerosol MMR
+       character(len=*), intent(out) :: name_c ! constituent name of cloud-borne aerosol MMR
      end subroutine aero_mmr_names
 
      !------------------------------------------------------------------------
@@ -140,7 +142,7 @@ module aerosol_properties_mod
        import :: aerosol_properties
        class(aerosol_properties), intent(in) :: self
        integer, intent(in) :: bin_ndx          ! bin number
-       character(len=32), intent(out) :: name  ! constituent name of ambient aerosol number dens
+       character(len=*), intent(out) :: name  ! constituent name of ambient aerosol number dens
 
      end subroutine aero_amb_num_name
 
@@ -152,7 +154,7 @@ module aerosol_properties_mod
        class(aerosol_properties), intent(in) :: self
        integer, intent(in) :: bin_ndx           ! bin number
        integer, intent(in) :: species_ndx       ! species number
-       character(len=32), intent(out) :: name   ! constituent name of ambient aerosol MMR
+       character(len=*), intent(out) :: name   ! constituent name of ambient aerosol MMR
 
      end subroutine aero_amb_mmr_name
 
