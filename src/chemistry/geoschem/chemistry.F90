@@ -35,6 +35,11 @@ module chemistry
   use chem_mods,           only : nSlvd, slvd_Lst, slvd_ref_MMR
 
   !--------------------------------------------------------------------
+  ! GEOS-Chem History exports module
+  !--------------------------------------------------------------------
+  use CESMGC_History_Mod
+
+  !--------------------------------------------------------------------
   ! CAM modules
   !--------------------------------------------------------------------
   ! Exit routine in CAM
@@ -109,6 +114,8 @@ module chemistry
   TYPE(MetState),ALLOCATABLE :: State_Met(:)    ! Meteorology State object
   TYPE(DgnList )             :: Diag_List       ! Diagnostics list object
   TYPE(TaggedDgnList )       :: TaggedDiag_List ! Tagged diagnostics list object
+
+  TYPE(HistoryConfigObj), POINTER :: HistoryConfig         ! HistoryConfig object for History diagn.
 
   type(physics_buffer_desc), pointer :: hco_pbuf2d(:,:)    ! Pointer to 2D pbuf
 
@@ -1391,6 +1398,21 @@ contains
        CALL Print_TaggedDiagList( Input_Opt%amIRoot, TaggedDiag_List, RC )
     ENDIF
 
+    ! There are actually two copies of the history configuration, one is contained
+    ! within HistoryConfig to mimic the properties of GCHP.
+    !
+    ! The above original implementation is similar to GC-Classic and WRF-GC
+    ! (hplin, 10/31/22)
+    CALL HistoryExports_SetServices(am_I_Root     = masterproc,        &
+                                    config_file   = historyConfigFile, &
+                                    HistoryConfig = HistoryConfig,     &
+                                    RC            = RC                )
+
+    IF ( RC /= GC_SUCCESS ) THEN
+       ErrMsg = 'Error encountered in "HistoryExports_SetServices"!'
+       CALL Error_Stop( ErrMsg, ThisLoc )
+    ENDIF
+
     DO I = BEGCHUNK, ENDCHUNK
        Input_Opt%amIRoot = (MasterProc .AND. (I == BEGCHUNK))
 
@@ -2020,6 +2042,7 @@ contains
     INTEGER                :: IERR
 
     INTEGER, SAVE          :: iStep = 0
+    LOGICAL, SAVE          :: FIRST = .TRUE.
     LOGICAL                :: rootChunk
     LOGICAL                :: lastChunk
     INTEGER                :: RC
@@ -4116,6 +4139,23 @@ contains
                            mmr_tend   = mmr_tend,          &
                            LCHNK      = LCHNK             )
 
+    ! Compute new GEOS-Chem diagnostics into CESM History (hplin, 10/31/22)
+    IF ( FIRST ) THEN
+        CALL HistoryExports_SetDataPointers(rootChunk,            &
+                                            HistoryConfig, State_Chm(LCHNK),        &
+                                            State_Grid(LCHNK),                      &
+                                            State_Diag(LCHNK),    State_Met(LCHNK), &
+                                            RC)
+        FIRST = .false.
+    ENDIF
+
+    CALL CopyGCStates2Exports( am_I_Root     = rootChunk,         &
+                               Input_Opt     = Input_Opt,         &
+                               State_Grid    = State_Grid(LCHNK), &
+                               HistoryConfig = HistoryConfig,     &
+                               LCHNK         = LCHNK,             &
+                               RC            = RC             )
+
     IF ( ghg_chem ) THEN
        ptend%lq(1) = .True.
        CALL outfld( 'CT_H2O_GHG', ptend%q(:,:,1), PCOLS, LCHNK )
@@ -4216,6 +4256,9 @@ contains
 
     ! Local variables
     INTEGER  :: I, RC
+
+    ! Destroy the history interface between GC States and CAM exports
+    CALL Destroy_HistoryConfig(masterproc, HistoryConfig, RC)
 
     ! Finalize GEOS-Chem
 
