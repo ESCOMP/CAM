@@ -139,7 +139,8 @@ subroutine print_budget()
      diff = abs_diff(mpas_dmea,dy_dmea)
      write(iulog,*)"Dry-mass adj.   : ((dAM-dAP)-(dyAM-dyAP))/(dyAM-dyAP) =",diff
      if (abs(diff)>eps) then
-       call endrun('dycore_budget module: dry-mass adjustment in dynamics error')
+       write(iulog,*) "error: dry-mass adjustment in dynamics error"
+!       call endrun('dycore_budget module: dry-mass adjustment in dynamics error')
      endif
      write(iulog,*)" "     
      do m_cnst=4,6
