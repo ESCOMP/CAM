@@ -108,7 +108,7 @@ end subroutine hetfrz_classnuc_init
 
 !===================================================================================================
 
-subroutine hetfrz_classnuc_calc( &
+subroutine hetfrz_classnuc_calc(ntypes, types,&
    deltat, t, p, supersatice,                 &
    fn,                                        &
    r3lx, icnlx,                               &
@@ -119,6 +119,8 @@ subroutine hetfrz_classnuc_calc( &
    total_aer_num, uncoated_aer_num,  &
    total_interstitial_aer_num, total_cloudborne_aer_num, errstring)
 
+   integer, intent(in) :: ntypes
+   character(len=*), intent(in) :: types(ntypes)
    real(r8), intent(in) :: deltat            ! timestep [s]
    real(r8), intent(in) :: t                 ! temperature [K]
    real(r8), intent(in) :: p                 ! pressure [Pa]
@@ -126,23 +128,23 @@ subroutine hetfrz_classnuc_calc( &
    real(r8), intent(in) :: r3lx              ! volume mean drop radius [m]
    real(r8), intent(in) :: icnlx             ! in-cloud droplet concentration [cm-3]
 
-   real(r8), intent(in) :: fn(3)               ! fraction activated [ ] for cloud borne aerosol number
-                                               ! index values are 1:bc, 2:dust_a1, 3:dust_a3
-   real(r8), intent(in) :: hetraer(3)          ! bc and dust mass mean radius [m]
-   real(r8), intent(in) :: awcam(3)            ! modal added mass [mug m-3]
-   real(r8), intent(in) :: awfacm(3)           ! (OC+BC)/(OC+BC+SO4)
-   real(r8), intent(in) :: dstcoat(3)          ! coated fraction
-   real(r8), intent(in) :: total_aer_num(3)    ! total bc and dust number concentration(interstitial+cloudborne) [#/cm^3]
-   real(r8), intent(in) :: uncoated_aer_num(3) ! uncoated bc and dust number concentration(interstitial)
-   real(r8), intent(in) :: total_interstitial_aer_num(3) ! total bc and dust concentration(interstitial)
-   real(r8), intent(in) :: total_cloudborne_aer_num(3)   ! total bc and dust concentration(cloudborne)
+   real(r8), intent(in) :: fn(ntypes)               ! fraction activated [ ] for cloud borne aerosol number
+                                                    ! index values are 1:bc, 2:dust_a1, 3:dust_a3
+   real(r8), intent(in) :: hetraer(ntypes)          ! bc and dust mass mean radius [m]
+   real(r8), intent(in) :: awcam(ntypes)            ! modal added mass [mug m-3]
+   real(r8), intent(in) :: awfacm(ntypes)           ! (OC+BC)/(OC+BC+SO4)
+   real(r8), intent(in) :: dstcoat(ntypes)          ! coated fraction
+   real(r8), intent(in) :: total_aer_num(ntypes)    ! total bc and dust number concentration(interstitial+cloudborne) [#/cm^3]
+   real(r8), intent(in) :: uncoated_aer_num(ntypes) ! uncoated bc and dust number concentration(interstitial)
+   real(r8), intent(in) :: total_interstitial_aer_num(ntypes) ! total bc and dust concentration(interstitial)
+   real(r8), intent(in) :: total_cloudborne_aer_num(ntypes)   ! total bc and dust concentration(cloudborne)
 
-   real(r8), intent(out) :: frzbcimm           ! het. frz by BC immersion nucleation [cm-3 s-1]
-   real(r8), intent(out) :: frzduimm           ! het. frz by dust immersion nucleation [cm-3 s-1]
-   real(r8), intent(out) :: frzbccnt           ! het. frz by BC contact nucleation [cm-3 s-1]
-   real(r8), intent(out) :: frzducnt           ! het. frz by dust contact nucleation [cm-3 s-1]
-   real(r8), intent(out) :: frzbcdep           ! het. frz by BC deposition nucleation [cm-3 s-1]
-   real(r8), intent(out) :: frzdudep           ! het. frz by dust deposition nucleation [cm-3 s-1]
+   real(r8), target, intent(out) :: frzbcimm           ! het. frz by BC immersion nucleation [cm-3 s-1]
+   real(r8), target, intent(out) :: frzduimm           ! het. frz by dust immersion nucleation [cm-3 s-1]
+   real(r8), target, intent(out) :: frzbccnt           ! het. frz by BC contact nucleation [cm-3 s-1]
+   real(r8), target, intent(out) :: frzducnt           ! het. frz by dust contact nucleation [cm-3 s-1]
+   real(r8), target, intent(out) :: frzbcdep           ! het. frz by BC deposition nucleation [cm-3 s-1]
+   real(r8), target, intent(out) :: frzdudep           ! het. frz by dust deposition nucleation [cm-3 s-1]
 
    character(len=*), intent(out) :: errstring
 
@@ -155,7 +157,7 @@ subroutine hetfrz_classnuc_calc( &
    real(r8) :: sigma_iv                        ! [J/m2]
    real(r8) :: esice                           ! [Pa]
    real(r8) :: eswtr                           ! [Pa]
-   integer :: i
+
    real(r8) :: rgimm    ! critical germ size
    real(r8) :: rgdep
    real(r8) :: dg0dep   ! homogeneous energy of germ formation
@@ -206,15 +208,26 @@ subroutine hetfrz_classnuc_calc( &
 
    real(r8) :: f_dep, f_cnt, f_imm
    real(r8) :: dga_dep, dga_imm
-   real(r8) :: ktherm(3), kcoll(3)
    real(r8) :: limfac
    real(r8) :: frzimm, frzcnt, frzdep
+   real(r8), pointer :: frzimm_ptr, frzcnt_ptr, frzdep_ptr
 
    logical :: pdf_imm
+
+   integer :: ispc
+
+   real(r8) :: ktherm(ntypes), kcoll(ntypes)
+
+   real(r8), parameter :: Ktherm_bc = 4.2_r8   ! black carbon
+   real(r8), parameter :: Ktherm_dst = 0.72_r8 ! clay
 
    !------------------------------------------------------------------------------------------------
 
    errstring = ' '
+
+   nullify(frzimm_ptr)
+   nullify(frzcnt_ptr)
+   nullify(frzdep_ptr)
 
    frzbcimm = 0._r8
    frzbccnt= 0._r8
@@ -254,22 +267,36 @@ subroutine hetfrz_classnuc_calc( &
    ! attention: division of small numbers
    Acnt = rhwincloud*eswtr*4*pi/(nus*SQRT(2*pi*mwh2o*amu*kboltz*T))
 
-   Ktherm(1) = 4.2_r8  ! black carbon
-   Ktherm(2) = 0.72_r8 ! clay
-   Ktherm(3) = 0.72_r8 !
+   do ispc = 1, ntypes
+
+      select case (trim(types(ispc)))
+      case ('black-c')
+         ktherm(ispc) = ktherm_bc
+      case ('dust')
+         ktherm(ispc) = ktherm_dst
+      case default
+         errstring = 'hetfrz_classnuc_calc ERROR: unrecognized aerosol type: '//trim(types(ispc))
+         return
+      end select
+   end do
 
    call collkernel(t, p, eswtr, rhwincloud, r3lx, hetraer, Ktherm, Kcoll)
 
-   do i=1,3
-      if (i==1) then
+   do ispc = 1, ntypes
+
+      select case (trim(types(ispc)))
+      case ('black-c')
          f_dep = f_depcnt_bc
          f_cnt = f_depcnt_bc
          f_imm = f_imm_bc
          dga_dep = dga_dep_bc
          dga_imm = dga_imm_bc
          pdf_imm = .false.
-         limfac = 0.01_r8
-     else if (i==2 .or. i==3) then
+         limfac = 0.01_r8 ! Limit to 1% of available potential IN (for BC), no limit for dust
+         frzimm_ptr => frzbcimm
+         frzcnt_ptr => frzbccnt
+         frzdep_ptr => frzbcdep
+      case ('dust')
          f_dep = f_depcnt_dust
          f_cnt = f_depcnt_dust
          f_imm = f_imm_dust
@@ -277,25 +304,22 @@ subroutine hetfrz_classnuc_calc( &
          dga_imm = dga_imm_dust
          pdf_imm = .true.
          limfac = 1._r8
-      end if
+      case default
+         errstring = 'hetfrz_classnuc_calc ERROR: unrecognized aerosol type: '//trim(types(ispc))
+         return
+      end select
 
       call hetfrz_classnuc_calc_rates( f_dep, f_cnt, f_imm, dga_dep, dga_imm, pdf_imm, limfac, &
-           kcoll(i), hetraer(i), icnlx, r3lx, t, supersatice, sigma_iw, sigma_iv, &
+           kcoll(ispc), hetraer(ispc), icnlx, r3lx, t, supersatice, sigma_iw, sigma_iv, &
            rgimm, rgdep, dg0dep, Adep, dg0cnt, Acnt, vwice, eswtr, deltat, &
-           fn(i), awcam(i), awfacm(i), dstcoat(i), &
-           total_aer_num(i), total_interstitial_aer_num(i), total_cloudborne_aer_num(i), uncoated_aer_num(i), &
+           fn(ispc), awcam(ispc), awfacm(ispc), dstcoat(ispc), &
+           total_aer_num(ispc), total_interstitial_aer_num(ispc), total_cloudborne_aer_num(ispc), uncoated_aer_num(ispc), &
            frzimm, frzcnt, frzdep, errstring )
 
       ! accumulate dust and bc frz rates
-      if (i==1) then
-         frzbcimm = frzbcimm + frzimm
-         frzbccnt = frzbccnt + frzcnt
-         frzbcdep = frzbcdep + frzdep
-      else if (i==2 .or. i==3) then
-         frzduimm = frzduimm + frzimm
-         frzducnt = frzducnt + frzcnt
-         frzdudep = frzdudep + frzdep
-      end if
+      frzimm_ptr = frzimm_ptr + frzimm
+      frzcnt_ptr = frzcnt_ptr + frzcnt
+      frzdep_ptr = frzdep_ptr + frzdep
 
    end do
 
