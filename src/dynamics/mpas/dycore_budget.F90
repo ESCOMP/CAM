@@ -1,9 +1,9 @@
 module dycore_budget
-
+use shr_kind_mod, only: r8=>shr_kind_r8  
 implicit none
 
 public :: print_budget
-
+real(r8), parameter :: eps = 1.0E-9_r8
 
 !=========================================================================================
 contains
@@ -12,10 +12,9 @@ contains
 subroutine print_budget()
 
   use budgets,            only: budget_get_global
-  use shr_kind_mod,       only: r8=>shr_kind_r8  
   use spmd_utils,         only: masterproc
   use cam_logfile,        only: iulog
-
+  use cam_abortutils,     only: endrun
   ! Local variables
   integer :: b_ind,s_ind,is1,is2
   logical :: budget_outfld
@@ -27,130 +26,157 @@ subroutine print_budget()
   integer          :: i
   character(len=*), parameter :: subname = 'check_energy:print_budgets'
 
-  real(r8)          :: ph_param,ph_EFIX,ph_DMEA,ph_param_and_efix,ph_phys_total
-  real(r8)          :: dy_param,dy_EFIX,dy_DMEA,dy_param_and_efix,dy_phys_total
+  real(r8)          :: ph_param,ph_EFIX,ph_dmea,ph_param_and_efix,ph_phys_total
+  real(r8)          :: dy_param,dy_EFIX,dy_dmea,dy_param_and_efix,dy_phys_total
   real(r8)          :: mpas_param,mpas_dmea,mpas_phys_total, dycore, err, param, pefix, pdmea, param_mpas, phys_total
+  real(r8)          :: diff
   integer           :: m_cnst  
   !--------------------------------------------------------------------------------------
 
   if (masterproc) then
      call budget_get_global('phAP-phBP',1,ph_param)
      call budget_get_global('phBP-phBF',1,ph_EFIX)
-     call budget_get_global('phAM-phAP',1,ph_DMEA)
+     call budget_get_global('phAM-phAP',1,ph_dmea)
      call budget_get_global('phAP-phBF',1,ph_param_and_efix)
      call budget_get_global('phAM-phBF',1,ph_phys_total)
      
      call budget_get_global('dyAP-dyBP',1,dy_param)
      call budget_get_global('dyBP-dyBF',1,dy_EFIX)
-     call budget_get_global('dyAM-dyAP',1,dy_DMEA)
+     call budget_get_global('dyAM-dyAP',1,dy_dmea)
      call budget_get_global('dyAP-dyBF',1,dy_param_and_efix)
      call budget_get_global('dyAM-dyBF',1,dy_phys_total)
      
      call budget_get_global('dAP-dBF',1,mpas_param)
      call budget_get_global('dAM-dAP',1,mpas_dmea)
      call budget_get_global('dAM-dBF',1,mpas_phys_total)
-     
-     
+
      write(iulog,*)" "
-     write(iulog,*)"======================================================="
-     write(iulog,*)"|                                                     |"
-     write(iulog,*)"| ANALYSIS OF ENERGY DIAGNOSTICS IN PHYSICS           |"
-     write(iulog,*)"|                                                     |"
-     write(iulog,*)"======================================================="
+     write(iulog,*)" Total energy diagnostics introduced in Lauritzen and Williamson (2019)"     
+     write(iulog,*)" (DOI:10.1029/2018MS001549)"
+     write(iulog,*)" "    
+     write(iulog,*)"------------------------------------------------------------"     
+     write(iulog,*)"Physics time loop"
+     write(iulog,*)"------------------------------------------------------------"     
      write(iulog,*)" "
-     write(iulog,*)"-------------------------------------------------------"
-     write(iulog,*)" CAM physics energy increments (in pressure coordinate)"
-     write(iulog,*)"-------------------------------------------------------"
+     write(iulog,*)"phBF: state passed to parameterizations, before energy fixer"
+     write(iulog,*)"phBP: after energy fixer, before parameterizations"
+     write(iulog,*)"phAP: after last phys_update in parameterizations and state "
+     write(iulog,*)"      saved for energy fixer"
+     write(iulog,*)"phAM: after dry mass correction"
+     write(iulog,*)"history files saved off here"     
      write(iulog,*)" "
-     write(iulog,*)"dE/dt params no efix (param)  (pAP-pBP) ",ph_param," W/M^2"
-     write(iulog,*)"dE/dt energy fixer (efix)     (pBP-pBF) ",ph_EFIX," W/M^2"
-     write(iulog,*)"NOTE: energy fixer uses energy formula consistent with dycore (so this is not p-based for MPAS) "
-     write(iulog,*)"dE/dt params + efix           (pAP-pBF) ",ph_param_and_efix," W/M^2"
+     write(iulog,*)"------------------------------------------------------------"
+     write(iulog,*)" CAM physics energy tendencies (using pressure coordinate)  "
+     write(iulog,*)"------------------------------------------------------------"
+     write(iulog,*)" "     
+     write(iulog,'(a40,F6.2,a6)')"dE/dt energy fixer          (phBP-phBF) ",ph_EFIX," W/M^2"     
+     write(iulog,'(a40,F6.2,a6)')"dE/dt all parameterizations (phAP-phBP) ",ph_param," W/M^2"
+     write(iulog,'(a40,F6.2,a6)')"dE/dt dry mass adjustment   (phAM-phAP) ",ph_dmea," W/M^2"
+     write(iulog,'(a40,F6.2,a6)')"dE/dt physics total         (phAM-phBF) ",ph_phys_total," W/M^2"
+     write(iulog,*)" "   
      write(iulog,*)" "
-     write(iulog,*)"dE/dt dry mass adj  (pwork)   (pAM-pAP) ",ph_DMEA," W/M^2"
-     write(iulog,*)"dE/dt physics total (phys)    (pAM-pBF) ",ph_phys_total," W/M^2"
-     write(iulog,*)" "
-     dycore = -ph_EFIX-ph_DMEA
-     write(iulog,*)"Dycore TE dissipation estimated from physics in pressure coordinate ",dycore," W/M^2"
-     write(iulog,*)"(assuming no physics-dynamics coupling errors)    "
-     write(iulog,*)" "
-     write(iulog,*)"---------------------------------------------------------------------------"
-     write(iulog,*)" CAM physics dycore consistent energy increments (for MPAS in z coordinate)"
-     write(iulog,*)"---------------------------------------------------------------------------"
-     write(iulog,*)" "
-     write(iulog,*)"dE/dt params no efix (param)       (dyAP-dyBP) ",dy_param," W/M^2"
-     write(iulog,*)"dE/dt energy fixer (efix)          (dyBP-dyBF) ",dy_EFIX," W/M^2"
-     write(iulog,*)"dE/dt parameterizations + efix     (dyAP-dyBF) ",dy_param_and_efix," W/M^2"
-     write(iulog,*)" "
-     write(iulog,*)"dE/dt dry mass adjustment (pwork)  (dyAM-dyAP) ",dy_DMEA," W/M^2"
-     write(iulog,*)"dE/dt physics total (phys)         (dyAM-dyBF) ",dy_phys_total," W/M^2"
-     write(iulog,*)" "
-     dycore = -dy_EFIX-dy_DMEA
+     write(iulog,*)"------------------------------------------------------------"
+     write(iulog,*)" CAM physics energy tendencies (using z coordinate)         "
+     write(iulog,*)"------------------------------------------------------------"
+     write(iulog,*)" "     
+     write(iulog,'(a40,F6.2,a6)')"dE/dt energy fixer          (dyBP-dyBF) ",dy_EFIX," W/M^2"     
+     write(iulog,'(a40,F6.2,a6)')"dE/dt all parameterizations (dyAP-dyBP) ",dy_param," W/M^2"
+     write(iulog,'(a40,F6.2,a6)')"dE/dt dry mass adjustment   (dyAM-dyAP) ",dy_dmea," W/M^2"
+     write(iulog,'(a40,F6.2,a6)')"dE/dt physics total         (dyAM-dyBF) ",dy_phys_total," W/M^2"
+     write(iulog,*)" "   
+     dycore = -dy_EFIX-dy_dmea
      write(iulog,*)"Dycore TE dissipation estimated from physics with dycore energy ",dycore," W/M^2"
      write(iulog,*)"(assuming no physics-dynamics coupling errors; -efix-dme_adjust)    "
      write(iulog,*)" "
-     
-     
-     write(iulog,*)"=========================================================================="
-     write(iulog,*)"|                                                                        |"
-     write(iulog,*)"| ANALYSIS OF ENERGY DIAGNOSTICS IN PHYSICS dp_coupling (MPAS)           |"
-     write(iulog,*)"|                                                                        |"
-     write(iulog,*)"=========================================================================="
-     write(iulog,*)" "
-     write(iulog,*)"  "
-     write(iulog,*)"dE/dt parameterizations + efix (total physics increment) in MPAS   "
-     write(iulog,*)"when adding as one increment - no dribbling (dAP-dBF) ",mpas_param," W/M^2"
-     err = ph_param_and_efix-mpas_param
-     write(iulog,*)"compare to same tendency in physics (MUST BE SMALL!)  ",err," W/M^2"
-     write(iulog,*)" "
-     write(iulog,*)"dE/dt dry mass adjustment in MPAS           (dAM-dAP) ",mpas_dmea," W/M^2"
-     err = dy_DMEA-mpas_dmea
-     write(iulog,*)"compare to same tendency in physics (MUST BE SMALL!)  ",err," W/M^2"
-     
-     write(iulog,*)"=========================================================================="
-     write(iulog,*)"|                                                                        |"
-     write(iulog,*)"| ANALYSIS OF MASS diagnostics in (MPAS)                                 |"
-     write(iulog,*)"|                                                                        |"
-     write(iulog,*)"=========================================================================="
 
+     write(iulog,*) " "     
+     write(iulog,*) "-dE/dt energy fixer = dE/dt dry mass adjustment              +"
+     write(iulog,*) "                      dE/dt dycore                           +"
+     write(iulog,*) "                      dE/dt physics-dynamics coupling errors +"
+     write(iulog,*) "                      dE/dt energy formula differences        "
+     write(iulog,*) " "
+     write(iulog,*) "(equation 23 in Lauritzen and Williamson (2019))"
+     write(iulog,*) " "  
+!     dycore = -ph_EFIX-ph_dmea
+!     dycore = -ph_EFIX-previous_dEdt_dry_mass_adjust
+!     write(iulog,*) ""
+!     write(iulog,*) "Dycore TE dissipation estimated from physics in pressure coordinate:"
+!     write(iulog,*) "(note to avoid sampling error we need dE/dt from previous time-step)"
+!     write(iulog,*) ""
+!     write(iulog,*) "dE/dt adiabatic dycore estimated from physics (t=n-1) = "
+!     write(iulog,'(a58,F6.2,a6)') "-dE/dt energy fixer(t=n)-dE/dt dry-mass adjust(t=n-1) = ",dycore," W/M^2"
+!     write(iulog,*) ""
+!     write(iulog,'(a58,F6.2,a6)') "dE/dt adiabatic dycore computed in dycore (t=n-1)     = ",&
+!          previous_dEdt_adiabatic_dycore," W/M^2"
+!     write(iulog,'(a58,F6.2,a6)') "dE/dt dry-mass adjust  (t=n-1)                        = ",&
+!          previous_dEdt_dry_mass_adjust," W/M^2"
+!     write(iulog,*) ""
+!     if (abs(previous_dEdt_adiabatic_dycore)>eps) then
+!       diff = abs((dycore-previous_dEdt_adiabatic_dycore)/previous_dEdt_adiabatic_dycore)
+!       if (diff>eps) then
+!         write(iulog,*) "energy budget not closed: previous_dEdt_adiabatic_dycore <> dycore"
+!         write(iulog,*) "normalized difference is:",diff         
+!         call endrun('dycore_budget module: physics energy budget consistency error 2')
+!       end if
+!     end if
+
+     write(iulog,*)" "
+     write(iulog,*)"------------------------------------------------------------"
+     write(iulog,*)" MPAS energy tendencies                                     "
+     write(iulog,*)"------------------------------------------------------------"
+     write(iulog,*)" "
+     write(iulog,*)              "dE/dt all parameterizations+ "
+     write(iulog,'(a42,F6.2,a6)')"dE/dt energy fixer            (dAP-dBF) ",mpas_param," W/M^2"
+     write(iulog,'(a42,F6.2,a6)')"dE/dt dry mass adjustment     (dAM-dAP) ",mpas_dmea," W/M^2"
+     write(iulog,*)" "   
+     write(iulog,*)"Are these values consistent with CAM physics dE/dt's?"
+     write(iulog,*)" "
+     diff = abs_diff(mpas_param,dy_param+dy_EFIX)
+     write(iulog,*)"Physics tendency: ((dAP-dBF)-(dyAP-dyBF))/(dyAP-dyBF) =",diff
+     if (abs(diff)>eps) then
+       call endrun('dycore_budget module: physics tendency in dynamics error')
+     endif
+     diff = abs_diff(mpas_dmea,dy_dmea)
+     write(iulog,*)"Dry-mass adj.   : ((dAM-dAP)-(dyAM-dyAP))/(dyAM-dyAP) =",diff
+     if (abs(diff)>eps) then
+       call endrun('dycore_budget module: dry-mass adjustment in dynamics error')
+     endif
+     write(iulog,*)" "     
      do m_cnst=4,6
-        
-        if (m_cnst.eq.4) then 
-           
-           write(iulog,*)"Water vapor budget"
-           write(iulog,*)"------------------"
-        end if
-        if (m_cnst.eq.5) then
-           write(iulog,*)"Cloud liquid budget"
-           write(iulog,*)"------------------"
-        end if
-        if (m_cnst.eq.6) then 
-           write(iulog,*)"Cloud ice budget"
-           write(iulog,*)"------------------"
-        end if
-        write(iulog,*)""
-        
-        call budget_get_global('phAP-phBP',m_cnst,param)
-        call budget_get_global('phBP-phBF',m_cnst,pEFIX)
-        call budget_get_global('phAM-phAP',m_cnst,pDMEA)
-        
-        call budget_get_global('dAM-dBF',m_cnst,param_mpas)
-        call budget_get_global('phAM-phBF',m_cnst,phys_total)
-        
-        write(iulog,*)"dMASS/dt energy fixer               (pBP-pBF) ",pEFIX," Pa"
-        write(iulog,*)"dMASS/dt parameterizations          (pAP-pBP) ",param," Pa"
-        write(iulog,*)"dMASS/dt dry mass adjustment        (pAM-pAP) ",pDMEA," Pa"
-        write(iulog,*)""
-        write(iulog,*)""
-        write(iulog,*)"dMass/dt physics total in MPAS      (dAM-dBF) ",param_mpas," Pa"
-        err = (param_mpas-param)
-        write(iulog,*)"Is mass budget closed?    (pAP-pBP)-(dAM-dBF) ",err
-        write(iulog,*)"---------------------------------------------------------------------------------------------------"
-        write(iulog,*)" "
+       write(iulog,*)"------------------------------------------------------------"
+       if (m_cnst.eq.4) write(iulog,*)"Water vapor mass budget"
+       if (m_cnst.eq.5) write(iulog,*)"Cloud liquid mass budget"
+       if (m_cnst.eq.6) write(iulog,*)"Cloud ice mass budget"
+       write(iulog,*)"------------------------------------------------------------"        
+       call budget_get_global('phAP-phBP',m_cnst,param)
+       call budget_get_global('phBP-phBF',m_cnst,pEFIX)
+       call budget_get_global('phAM-phAP',m_cnst,pdmea)
+       
+       call budget_get_global('dAM-dBF',m_cnst,param_mpas)
+       call budget_get_global('phAM-phBF',m_cnst,phys_total)
+       
+       write(iulog,*)"dMASS/dt energy fixer               (pBP-pBF) ",pEFIX," Pa"
+       write(iulog,*)"dMASS/dt parameterizations          (pAP-pBP) ",param," Pa"
+       write(iulog,*)"dMASS/dt dry mass adjustment        (pAM-pAP) ",pdmea," Pa"
+       write(iulog,*)""
+       write(iulog,*)""
+       write(iulog,*)"dMass/dt physics total in MPAS      (dAM-dBF) ",param_mpas," Pa"
+       err = (param_mpas-param)
+       write(iulog,*)"Is mass budget closed?    (pAP-pBP)-(dAM-dBF) ",err
+       write(iulog,*)"---------------------------------------------------------------------------------------------------"
+       write(iulog,*)" "
      end do
+   end if
+ end subroutine print_budget
+ !=========================================================================================
+ function abs_diff(a,b)
+   real(r8), intent(in)  :: a,b
+  real(r8)              :: abs_diff
+  if (abs(b)>eps) then
+    abs_diff = abs((b-a)/b)
+  else
+    abs_diff = abs(b-a)
   end if
-end subroutine print_budget
-!=========================================================================================
-
+end function abs_diff
 end module dycore_budget
 
