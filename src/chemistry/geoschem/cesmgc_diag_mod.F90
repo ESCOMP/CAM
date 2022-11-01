@@ -452,33 +452,34 @@ CONTAINS
        CALL Error_Stop( ErrMsg, ThisLoc )
     ENDIF
 
-    DO M = 1, nPhotol
-       CALL get_TagInfo( Input_Opt = Input_Opt,  &
-                         tagID     = 'PHO',      &
-                         State_Chm = State_Chm,  &
-                         Found     = Found,      &
-                         RC        = RC,         &
-                         N         = M,          &
-                         tagName   = tagName    )
+    ! Remove as superceded
+    ! DO M = 1, nPhotol
+    !    CALL get_TagInfo( Input_Opt = Input_Opt,  &
+    !                      tagID     = 'PHO',      &
+    !                      State_Chm = State_Chm,  &
+    !                      Found     = Found,      &
+    !                      RC        = RC,         &
+    !                      N         = M,          &
+    !                      tagName   = tagName    )
 
-       ! Trap potential errors
-       IF ( RC /= GC_SUCCESS ) THEN
-          ErrMsg = 'Abnormal exit from routine "Get_TagInfo"!'
-          CALL Error_Stop( ErrMsg, ThisLoc )
-       ENDIF
+    !    ! Trap potential errors
+    !    IF ( RC /= GC_SUCCESS ) THEN
+    !       ErrMsg = 'Abnormal exit from routine "Get_TagInfo"!'
+    !       CALL Error_Stop( ErrMsg, ThisLoc )
+    !    ENDIF
 
-       SpcName = 'Jval_' // TRIM( tagName )
-       CALL Addfld( TRIM(SpcName), (/ 'lev' /), 'A', '1/s', &
-          TRIM(tagName) // ' photolysis rate' )
-    ENDDO
-    ! Add JvalO3O1D and JvalO3O3P
-    SpcName = 'JvalO3O1D'
-    CALL Addfld( TRIM(SpcName), (/ 'lev' /), 'A', '1/s', &
-       'O3 -> O1D photolysis rate' )
+    !    SpcName = 'Jval_' // TRIM( tagName )
+    !    CALL Addfld( TRIM(SpcName), (/ 'lev' /), 'A', '1/s', &
+    !       TRIM(tagName) // ' photolysis rate' )
+    ! ENDDO
+    ! ! Add JvalO3O1D and JvalO3O3P
+    ! SpcName = 'JvalO3O1D'
+    ! CALL Addfld( TRIM(SpcName), (/ 'lev' /), 'A', '1/s', &
+    !    'O3 -> O1D photolysis rate' )
 
-    SpcName = 'JvalO3O3P'
-    CALL Addfld( TRIM(SpcName), (/ 'lev' /), 'A', '1/s', &
-       'O3 -> O3P photolysis rate' )
+    ! SpcName = 'JvalO3O3P'
+    ! CALL Addfld( TRIM(SpcName), (/ 'lev' /), 'A', '1/s', &
+    !    'O3 -> O3P photolysis rate' )
 
     ! ==========================================
     ! Now add fields corresponding to State_Met
@@ -1482,42 +1483,44 @@ CONTAINS
     ! Diagnose photolysis rates
     ! ===============================================
 
-    IF ( ASSOCIATED(State_Diag%Jval) ) THEN
-       DO M = 1, nPhotol
-          CALL get_TagInfo( Input_Opt = Input_Opt,  &
-                            tagID     = 'PHO',      &
-                            State_Chm = State_Chm,  &
-                            Found     = Found,      &
-                            RC        = RC,         &
-                            N         = M,          &
-                            tagName   = tagName    )
+    ! Disable as superceded by cesmgc_history_mod.F90 (hplin, 10/31/22)
 
-          ! Trap potential errors
-          IF ( RC /= GC_SUCCESS ) THEN
-             ErrMsg = 'Abnormal exit from routine "Get_TagInfo"!'
-             CALL Error_Stop( ErrMsg, ThisLoc )
-          ENDIF
+    ! IF ( ASSOCIATED(State_Diag%Jval) ) THEN
+    !    DO M = 1, nPhotol
+    !       CALL get_TagInfo( Input_Opt = Input_Opt,  &
+    !                         tagID     = 'PHO',      &
+    !                         State_Chm = State_Chm,  &
+    !                         Found     = Found,      &
+    !                         RC        = RC,         &
+    !                         N         = M,          &
+    !                         tagName   = tagName    )
 
-          SpcName = 'Jval_' // TRIM( tagName )
-          IF ( .NOT. hist_fld_active(TRIM(SpcName)) ) CYCLE
-          outTmp(:nY,:nZ) = REAL(State_Diag%Jval(1,:nY,nZ:1:-1,M),r8)
-          CALL OutFld( TRIM(SpcName), outTmp(:nY,:), nY, LCHNK )
-       ENDDO
-    ENDIF
-    IF ( ASSOCIATED(State_Diag%JvalO3O1D) ) THEN
-       SpcName = 'JvalO3O1D'
-       IF ( hist_fld_active(TRIM(SpcName)) ) THEN
-          outTmp(:nY,:nZ) = REAL(State_Diag%JvalO3O1D(1,:nY,nZ:1:-1),r8)
-          CALL OutFld( TRIM(SpcName), outTmp(:nY,:), nY, LCHNK )
-       ENDIF
-    ENDIF
-    IF ( ASSOCIATED(State_Diag%JvalO3O3P) ) THEN
-       SpcName = 'JvalO3O3P'
-       IF ( hist_fld_active(TRIM(SpcName)) ) THEN
-          outTmp(:nY,:nZ) = REAL(State_Diag%JvalO3O3P(1,:nY,nZ:1:-1),r8)
-          CALL OutFld( TRIM(SpcName), outTmp(:nY,:), nY, LCHNK )
-       ENDIF
-    ENDIF
+    !       ! Trap potential errors
+    !       IF ( RC /= GC_SUCCESS ) THEN
+    !          ErrMsg = 'Abnormal exit from routine "Get_TagInfo"!'
+    !          CALL Error_Stop( ErrMsg, ThisLoc )
+    !       ENDIF
+
+    !       SpcName = 'Jval_' // TRIM( tagName )
+    !       IF ( .NOT. hist_fld_active(TRIM(SpcName)) ) CYCLE
+    !       outTmp(:nY,:nZ) = REAL(State_Diag%Jval(1,:nY,nZ:1:-1,M),r8)
+    !       CALL OutFld( TRIM(SpcName), outTmp(:nY,:), nY, LCHNK )
+    !    ENDDO
+    ! ENDIF
+    ! IF ( ASSOCIATED(State_Diag%JvalO3O1D) ) THEN
+    !    SpcName = 'JvalO3O1D'
+    !    IF ( hist_fld_active(TRIM(SpcName)) ) THEN
+    !       outTmp(:nY,:nZ) = REAL(State_Diag%JvalO3O1D(1,:nY,nZ:1:-1),r8)
+    !       CALL OutFld( TRIM(SpcName), outTmp(:nY,:), nY, LCHNK )
+    !    ENDIF
+    ! ENDIF
+    ! IF ( ASSOCIATED(State_Diag%JvalO3O3P) ) THEN
+    !    SpcName = 'JvalO3O3P'
+    !    IF ( hist_fld_active(TRIM(SpcName)) ) THEN
+    !       outTmp(:nY,:nZ) = REAL(State_Diag%JvalO3O3P(1,:nY,nZ:1:-1),r8)
+    !       CALL OutFld( TRIM(SpcName), outTmp(:nY,:), nY, LCHNK )
+    !    ENDIF
+    ! ENDIF
 
     ! ===============================================
     ! Diagnose fields corresponding to State_Met

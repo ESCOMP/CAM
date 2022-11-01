@@ -1,4 +1,4 @@
-#define ASSERT_(cond,msg) if(.not.cond) then; print *, "assertion error: ", Iam, __LINE__; call endrun("assertion error - look above - in cesmgc_history_mod.F90"); endif
+#define _ASSERT(cond,msg) if(.not.cond) then; print *, "assertion error: ", Iam, __LINE__; call endrun("assertion error - look above - in cesmgc_history_mod.F90"); endif
 #define _Iam_(name) character(len=255) :: Iam=name
 #define __Iam__(name) integer :: STATUS; _Iam_(name)
 ! Above are compatibility shorthands to avoid excessive divergence from
@@ -90,8 +90,8 @@ MODULE CESMGC_History_Mod
 
      ! Pointers to ESMF Export and GEOS-Chem State
      ! TODO: for now, include all possible data types in the registry.
-     REAL,     POINTER :: ExportData2d(:,:)
-     REAL,     POINTER :: ExportData3d(:,:,:)
+     REAL(f8), POINTER :: ExportData2d(:,:)
+     REAL(f8), POINTER :: ExportData3d(:,:,:)
      REAL(fp), POINTER :: GCStateData0d
      REAL(fp), POINTER :: GCStateData1d(:)
      REAL(fp), POINTER :: GCStateData2d(:,:)
@@ -185,7 +185,7 @@ CONTAINS
     ENDIF
 
     ! Optional debugging
-    CALL Print_HistoryExportsList( am_I_Root, HistoryConfig, RC )
+    ! CALL Print_HistoryExportsList( am_I_Root, HistoryConfig, RC )
 
   END SUBROUTINE Init_HistoryConfig
 !EOC
@@ -779,6 +779,8 @@ CONTAINS
   USE HCO_Interface_GC_Mod, ONLY : HCOI_GC_WriteDiagn
   USE Input_Opt_Mod,    ONLY : OptInput
   USE State_Grid_Mod,   ONLY : GrdState
+
+  USE cam_history,      ONLY : outfld
 !
 ! !INPUT PARAMETERS:
 !
@@ -819,6 +821,8 @@ CONTAINS
     ! Loop over the History Exports list
     current => HistoryConfig%HistoryExportsList%head
     DO WHILE ( ASSOCIATED( current ) )
+
+       write(6,*) "copying", current%name, current%rank
 
        ! if (MAPL_Am_I_Root()) THEN
        !    print *, '  Copying ' // TRIM(current%name)
@@ -952,10 +956,10 @@ CONTAINS
           PRINT *, " isMet:      ",   current%isMet
           PRINT *, " isChem:     ",   current%isChem
           PRINT *, " isDiag:     ",   current%isDiag
-          IF ( ASSOCIATED( current%ExportData2d ))
+          IF ( ASSOCIATED( current%ExportData2d )) THEN
             PRINT *, " E2D dim'l:  ",   size(current%ExportData2d)
           ENDIF
-          IF ( ASSOCIATED( current%ExportData3d ))
+          IF ( ASSOCIATED( current%ExportData3d )) THEN
             PRINT *, " E3D dim'l:  ",   size(current%ExportData3d)
           ENDIF
           PRINT *, " "
@@ -992,6 +996,7 @@ CONTAINS
     USE State_Chm_Mod,  ONLY : ChmState
     USE State_Diag_Mod, ONLY : DgnState
     USE State_Met_Mod,  ONLY : MetState
+    USE Registry_Params_Mod
 !
 ! !INPUT PARAMETERS:
 !
@@ -1107,10 +1112,11 @@ CONTAINS
        ELSEIF ( current%rank == 3 ) THEN
           IF ( .not. ASSOCIATED(current%ExportData3d) ) THEN
              IF ( current%vloc == VLocationCenter ) THEN
-               ALLOCATE(current%ExportData2d(State_Grid%NX, State_Grid%NY+1, State_Grid%NZ  ), stat=RC)
+               ALLOCATE(current%ExportData3d(State_Grid%NX, State_Grid%NY+1, State_Grid%NZ  ), stat=RC)
              ELSEIF ( current%vloc == VLocationEdge ) THEN
-               ALLOCATE(current%ExportData2d(State_Grid%NX, State_Grid%NY+1, State_Grid%NZ+1), stat=RC)
+               ALLOCATE(current%ExportData3d(State_Grid%NX, State_Grid%NY+1, State_Grid%NZ+1), stat=RC)
              ENDIF
+          ENDIF
        ENDIF
 
        !! debugging
@@ -1121,6 +1127,10 @@ CONTAINS
        current => current%next
     ENDDO
     current => NULL()
+
+    ! Optional debugging
+    WRITE(6,*) "hplin debug: after HistoryExports_SetDataPointers"
+    CALL Print_HistoryExportsList( am_I_Root, HistoryConfig, RC )
 
     IF ( RC == GC_FAILURE ) THEN
        CALL GC_ERROR( ErrMsg, RC, Iam )
