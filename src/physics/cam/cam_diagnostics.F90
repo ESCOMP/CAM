@@ -14,7 +14,7 @@ use physics_buffer,  only: dyn_time_lvls, pbuf_get_field, pbuf_get_index, pbuf_o
 
 use cam_history,     only: outfld, write_inithist, hist_fld_active, inithist_all
 use constituents,    only: pcnst, cnst_name, cnst_longname, cnst_cam_outfld
-use constituents,    only: ptendnam, dmetendnam, apcnst, bpcnst, cnst_get_ind
+use constituents,    only: ptendnam, apcnst, bpcnst, cnst_get_ind
 use dycore,          only: dycore_is
 use phys_control,    only: phys_getopts
 use wv_saturation,   only: qsat, qsat_water, svp_ice_vect
@@ -547,18 +547,6 @@ contains
     if (ixcldice > 0) then
       call addfld (ptendnam(ixcldice),(/ 'lev' /), 'A', 'kg/kg/s',trim(cnst_name(ixcldice))//' total physics tendency ')
     end if
-    if ( dycore_is('LR') .or. dycore_is('FV3')  )then
-      call addfld (dmetendnam(       1),(/ 'lev' /), 'A','kg/kg/s', &
-           trim(cnst_name(       1))//' dme adjustment tendency (FV) ')
-      if (ixcldliq > 0) then
-         call addfld (dmetendnam(ixcldliq),(/ 'lev' /), 'A','kg/kg/s', &
-            trim(cnst_name(ixcldliq))//' dme adjustment tendency (FV) ')
-      end if
-      if (ixcldice > 0) then
-        call addfld (dmetendnam(ixcldice),(/ 'lev' /), 'A','kg/kg/s', &
-             trim(cnst_name(ixcldice))//' dme adjustment tendency (FV) ')
-      end if
-    end if
 
     ! outfld calls in diag_physvar_ic
 
@@ -648,15 +636,6 @@ contains
       end if
       if (ixcldice > 0) then
         call add_default (ptendnam(ixcldice), history_budget_histfile_num, ' ')
-      end if
-      if ( dycore_is('LR') .or. dycore_is('FV3')  )then
-        call add_default(dmetendnam(1)       , history_budget_histfile_num, ' ')
-        if (ixcldliq > 0) then
-           call add_default(dmetendnam(ixcldliq), history_budget_histfile_num, ' ')
-        end if
-        if (ixcldice > 0) then
-          call add_default(dmetendnam(ixcldice), history_budget_histfile_num, ' ')
-        end if
       end if
       if( history_budget_histfile_num > 1 ) then
         call add_default ('DTCOND  '         , history_budget_histfile_num, ' ')
@@ -2144,7 +2123,7 @@ contains
 !#######################################################################
 
   subroutine diag_phys_tend_writeout_moist(state, pbuf,  tend, ztodt,         &
-       tmp_q, tmp_cldliq, tmp_cldice, qini, cldliqini, cldiceini)
+       qini, cldliqini, cldiceini)
 
     !---------------------------------------------------------------
     !
@@ -2159,9 +2138,6 @@ contains
     type(physics_buffer_desc), pointer :: pbuf(:)
     type(physics_tend ), intent(in)    :: tend
     real(r8),            intent(in)    :: ztodt                  ! physics timestep
-    real(r8),            intent(inout) :: tmp_q     (pcols,pver) ! As input, holds pre-adjusted tracers (FV)
-    real(r8),            intent(inout) :: tmp_cldliq(pcols,pver) ! As input, holds pre-adjusted tracers (FV)
-    real(r8),            intent(inout) :: tmp_cldice(pcols,pver) ! As input, holds pre-adjusted tracers (FV)
     real(r8),            intent(in)    :: qini      (pcols,pver) ! tracer fields at beginning of physics
     real(r8),            intent(in)    :: cldliqini (pcols,pver) ! tracer fields at beginning of physics
     real(r8),            intent(in)    :: cldiceini (pcols,pver) ! tracer fields at beginning of physics
@@ -2194,35 +2170,6 @@ contains
       end if
     end if
 
-    ! Tendency for dry mass adjustment of q (FV only)
-
-    if (dycore_is('LR') .or. dycore_is('FV3') ) then
-      tmp_q     (:ncol,:pver) = (state%q(:ncol,:pver,       1) - tmp_q     (:ncol,:pver))*rtdt
-      if (ixcldliq > 0) then
-        tmp_cldliq(:ncol,:pver) = (state%q(:ncol,:pver,ixcldliq) - tmp_cldliq(:ncol,:pver))*rtdt
-      else
-        tmp_cldliq(:ncol,:pver) = 0.0_r8
-      end if
-      if (ixcldice > 0) then
-        tmp_cldice(:ncol,:pver) = (state%q(:ncol,:pver,ixcldice) - tmp_cldice(:ncol,:pver))*rtdt
-      else
-        tmp_cldice(:ncol,:pver) = 0.0_r8
-      end if
-      if ( cnst_cam_outfld(       1) ) then
-        call outfld (dmetendnam(       1), tmp_q     , pcols, lchnk)
-      end if
-      if (ixcldliq > 0) then
-        if ( cnst_cam_outfld(ixcldliq) ) then
-          call outfld (dmetendnam(ixcldliq), tmp_cldliq, pcols, lchnk)
-        end if
-      end if
-      if (ixcldice > 0) then
-        if ( cnst_cam_outfld(ixcldice) ) then
-          call outfld (dmetendnam(ixcldice), tmp_cldice, pcols, lchnk)
-        end if
-      end if
-    end if
-
     ! Total physics tendency for moisture and other tracers
 
     if ( cnst_cam_outfld(       1) ) then
@@ -2247,7 +2194,7 @@ contains
 !#######################################################################
 
   subroutine diag_phys_tend_writeout(state, pbuf,  tend, ztodt,               &
-       tmp_q, tmp_cldliq, tmp_cldice, qini, cldliqini, cldiceini)
+       qini, cldliqini, cldiceini)
 
     !---------------------------------------------------------------
     !
@@ -2262,9 +2209,6 @@ contains
     type(physics_buffer_desc), pointer :: pbuf(:)
     type(physics_tend ), intent(in)    :: tend
     real(r8),            intent(in)    :: ztodt                  ! physics timestep
-    real(r8)           , intent(inout) :: tmp_q     (pcols,pver) ! As input, holds pre-adjusted tracers (FV)
-    real(r8),            intent(inout) :: tmp_cldliq(pcols,pver) ! As input, holds pre-adjusted tracers (FV)
-    real(r8),            intent(inout) :: tmp_cldice(pcols,pver) ! As input, holds pre-adjusted tracers (FV)
     real(r8),            intent(in)    :: qini      (pcols,pver) ! tracer fields at beginning of physics
     real(r8),            intent(in)    :: cldliqini (pcols,pver) ! tracer fields at beginning of physics
     real(r8),            intent(in)    :: cldiceini (pcols,pver) ! tracer fields at beginning of physics
@@ -2274,7 +2218,7 @@ contains
     call diag_phys_tend_writeout_dry(state, pbuf, tend, ztodt)
     if (moist_physics) then
       call diag_phys_tend_writeout_moist(state, pbuf,  tend, ztodt,           &
-           tmp_q, tmp_cldliq, tmp_cldice, qini, cldliqini, cldiceini)
+           qini, cldliqini, cldiceini)
     end if
 
   end subroutine diag_phys_tend_writeout
