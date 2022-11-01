@@ -478,7 +478,7 @@ contains
       ! Passed Variables
       !------------------
       class(ZonalMean_t) :: this
-      real(r8),intent(in ):: I_Gdata(:,:,:)
+      real(r8),intent(in ):: I_Gdata(:,:,begchunk:)
       real(r8),intent(out):: O_Bamp (:,:)
       !
       ! Local Values
@@ -513,7 +513,7 @@ contains
                ncols = get_ncols_p(lchnk)
                do cc = 1,ncols
                   count=count+1
-                  Csum(count,nn) = I_Gdata(cc,ll,lchnk-begchunk+1)*this%basis(cc,lchnk,nn)*this%area(cc,lchnk)
+                  Csum(count,nn) = I_Gdata(cc,ll,lchnk)*this%basis(cc,lchnk,nn)*this%area(cc,lchnk)
                end do
             end do
          end do
@@ -586,7 +586,7 @@ contains
       !------------------
       class(ZonalMean_t) :: this
       real(r8),intent(in ):: I_Bamp (:,:)
-      real(r8),intent(out):: O_Gdata(:,:,:)
+      real(r8),intent(out):: O_Gdata(:,:,begchunk:)
       !
       ! Local Values
       !--------------
@@ -606,7 +606,7 @@ contains
             do lchnk=begchunk,endchunk
                ncols = get_ncols_p(lchnk)
                do cc = 1,ncols
-                  O_Gdata(cc,ll,lchnk-begchunk+1) = O_Gdata(cc,ll,lchnk-begchunk+1) + (I_Bamp(nn,ll)*this%basis(cc,lchnk,nn))
+                  O_Gdata(cc,ll,lchnk) = O_Gdata(cc,ll,lchnk) + (I_Bamp(nn,ll)*this%basis(cc,lchnk,nn))
                end do
             end do
          end do
@@ -1171,7 +1171,7 @@ contains
       ! Passed Variables
       !------------------
       class(ZonalAverage_t):: this
-      real(r8),intent(in ):: I_Gdata(:,:,:)
+      real(r8),intent(in ):: I_Gdata(:,:,begchunk:)
       real(r8),intent(out):: O_Zdata(:,:)
       !
       ! Local Values
@@ -1206,7 +1206,7 @@ contains
                jlat = this%idx_map(cc,lchnk)
                ns = jlat + (ll-1)*this%nlat
                count=count+1
-               Asum(count,ns) = I_Gdata(cc,ll,lchnk-begchunk+1)*this%area_g(cc,lchnk)
+               Asum(count,ns) = I_Gdata(cc,ll,lchnk)*this%area_g(cc,lchnk)
             end do
          end do
       end do
