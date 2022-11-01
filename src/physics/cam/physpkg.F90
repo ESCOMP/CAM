@@ -72,8 +72,8 @@ module physpkg
   integer ::  sgh30_idx          = 0
 
   integer ::  qini_idx           = 0
-  integer ::  cldliqini_idx      = 0
-  integer ::  cldiceini_idx      = 0
+  integer ::  liqini_idx         = 0
+  integer ::  iceini_idx         = 0
 
   integer ::  prec_str_idx       = 0
   integer ::  snow_str_idx       = 0
@@ -238,8 +238,8 @@ contains
 
     ! Fields for physics package diagnostics
     call pbuf_add_field('QINI',      'physpkg', dtype_r8, (/pcols,pver/), qini_idx)
-    call pbuf_add_field('CLDLIQINI', 'physpkg', dtype_r8, (/pcols,pver/), cldliqini_idx)
-    call pbuf_add_field('CLDICEINI', 'physpkg', dtype_r8, (/pcols,pver/), cldiceini_idx)
+    call pbuf_add_field('LIQINI', 'physpkg', dtype_r8, (/pcols,pver/), liqini_idx)
+    call pbuf_add_field('ICEINI', 'physpkg', dtype_r8, (/pcols,pver/), iceini_idx)
 
     ! check energy package
     call check_energy_register
@@ -1474,8 +1474,8 @@ contains
 
     real(r8), pointer, dimension(:,:) :: cld
     real(r8), pointer, dimension(:,:) :: qini
-    real(r8), pointer, dimension(:,:) :: cldliqini
-    real(r8), pointer, dimension(:,:) :: cldiceini
+    real(r8), pointer, dimension(:,:) :: liqini
+    real(r8), pointer, dimension(:,:) :: iceini
     real(r8), pointer, dimension(:,:) :: dtcore
     real(r8), pointer, dimension(:,:) :: dqcore
     real(r8), pointer, dimension(:,:) :: ducore
@@ -1508,8 +1508,8 @@ contains
     call pbuf_get_field(pbuf, dvcore_idx, dvcore, start=(/1,1,itim_old/), kount=(/pcols,pver,1/) )
 
     call pbuf_get_field(pbuf, qini_idx, qini)
-    call pbuf_get_field(pbuf, cldliqini_idx, cldliqini)
-    call pbuf_get_field(pbuf, cldiceini_idx, cldiceini)
+    call pbuf_get_field(pbuf, liqini_idx, liqini)
+    call pbuf_get_field(pbuf, iceini_idx, iceini)
 
     ifld = pbuf_get_index('CLD')
     call pbuf_get_field(pbuf, ifld, cld, start=(/1,1,itim_old/),kount=(/pcols,pver,1/))
@@ -1975,7 +1975,7 @@ contains
        endif
     endif
 
-    call diag_phys_tend_writeout (state, pbuf,  tend, ztodt, qini, cldliqini, cldiceini)
+    call diag_phys_tend_writeout (state, pbuf,  tend, ztodt, qini, liqini, iceini)
 
     call clybry_fam_set( ncol, lchnk, map2chm, state%q, pbuf )
 
@@ -2115,8 +2115,8 @@ contains
     ! physics buffer fields for total energy and mass adjustment
     real(r8), pointer, dimension(:  ) :: teout
     real(r8), pointer, dimension(:,:) :: qini
-    real(r8), pointer, dimension(:,:) :: cldliqini
-    real(r8), pointer, dimension(:,:) :: cldiceini
+    real(r8), pointer, dimension(:,:) :: liqini
+    real(r8), pointer, dimension(:,:) :: iceini
     real(r8), pointer, dimension(:,:) :: dtcore
     real(r8), pointer, dimension(:,:) :: dqcore
     real(r8), pointer, dimension(:,:) :: ducore
@@ -2190,8 +2190,8 @@ contains
     call pbuf_get_field(pbuf, teout_idx, teout, (/1,itim_old/), (/pcols,1/))
 
     call pbuf_get_field(pbuf, qini_idx, qini)
-    call pbuf_get_field(pbuf, cldliqini_idx, cldliqini)
-    call pbuf_get_field(pbuf, cldiceini_idx, cldiceini)
+    call pbuf_get_field(pbuf, liqini_idx, liqini)
+    call pbuf_get_field(pbuf, iceini_idx, iceini)
 
     call pbuf_get_field(pbuf, dtcore_idx, dtcore, start=(/1,1,itim_old/), kount=(/pcols,pver,1/) )
     call pbuf_get_field(pbuf, dqcore_idx, dqcore, start=(/1,1,itim_old/), kount=(/pcols,pver,1/) )
@@ -2254,8 +2254,8 @@ contains
     call cnst_get_ind('CLDLIQ', ixcldliq)
     call cnst_get_ind('CLDICE', ixcldice)
     qini     (:ncol,:pver) = state%q(:ncol,:pver,       1)
-    cldliqini(:ncol,:pver) = state%q(:ncol,:pver,ixcldliq)
-    cldiceini(:ncol,:pver) = state%q(:ncol,:pver,ixcldice)
+    liqini(:ncol,:pver)    = state%q(:ncol,:pver,ixcldliq)
+    iceini(:ncol,:pver)    = state%q(:ncol,:pver,ixcldice)
 
     call outfld('TEOUT', teout       , pcols, lchnk   )
     call outfld('TEINP', state%te_ini(:,dyn_te_idx), pcols, lchnk   )
