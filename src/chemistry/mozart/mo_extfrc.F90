@@ -162,12 +162,10 @@ contains
 
     n_frc_files = mm
 
-#if !defined ( HEMCO_CESM )
     if( n_frc_files < 1 ) then
        if (masterproc) write(iulog,*) 'There are no species with insitu forcings'
        return
     end if
-#endif
 
     if (masterproc) write(iulog,*) ' '
 
