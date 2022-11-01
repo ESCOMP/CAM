@@ -4140,14 +4140,16 @@ contains
                            LCHNK      = LCHNK             )
 
     ! Compute new GEOS-Chem diagnostics into CESM History (hplin, 10/31/22)
-    IF ( FIRST ) THEN
-        CALL HistoryExports_SetDataPointers(rootChunk,            &
-                                            HistoryConfig, State_Chm(LCHNK),        &
-                                            State_Grid(LCHNK),                      &
-                                            State_Diag(LCHNK),    State_Met(LCHNK), &
-                                            RC)
-        FIRST = .false.
-    ENDIF
+    ! Note that the containers (data pointers) actually need to be updated every time step,
+    ! because the State_Chm(LCHNK) target changes. There is some registry lookup overhead
+    ! but mitigated by a check to the history field activeness. (hplin, 11/1/22)
+    !
+    ! An alternative is to have multiple HistoryConfig... will make alternative implementation
+    CALL HistoryExports_SetDataPointers(rootChunk,            &
+                                        HistoryConfig,        State_Chm(LCHNK), &
+                                        State_Grid(LCHNK),                      &
+                                        State_Diag(LCHNK),    State_Met(LCHNK), &
+                                        RC)
 
     CALL CopyGCStates2Exports( am_I_Root     = rootChunk,         &
                                Input_Opt     = Input_Opt,         &
@@ -4188,6 +4190,9 @@ contains
 
     IF ( rootChunk ) WRITE(iulog,*) ' GEOS-Chem Chemistry step ', iStep, ' completed'
     IF ( lastChunk ) WRITE(iulog,*) ' Chemistry completed on all chunks completed of MasterProc'
+    IF ( FIRST ) THEN
+        FIRST = .false.
+    ENDIF
 
   end subroutine chem_timestep_tend
 

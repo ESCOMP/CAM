@@ -780,7 +780,7 @@ CONTAINS
   USE Input_Opt_Mod,    ONLY : OptInput
   USE State_Grid_Mod,   ONLY : GrdState
 
-  USE cam_history,      ONLY : outfld
+  USE cam_history,      ONLY : hist_fld_active, outfld
 !
 ! !INPUT PARAMETERS:
 !
@@ -821,10 +821,13 @@ CONTAINS
     ! Loop over the History Exports list
     current => HistoryConfig%HistoryExportsList%head
     DO WHILE ( ASSOCIATED( current ) )
+       ! Skip if not active
+       if(.not. hist_fld_active(trim(current%name))) then
+          current => current%next
+          cycle
+       endif
 
-       write(6,*) "copying", current%name, current%rank
-
-       ! if (MAPL_Am_I_Root()) THEN
+       ! if (am_I_Root) THEN
        !    print *, '  Copying ' // TRIM(current%name)
        ! endif
        IF ( current%rank == 2 ) THEN
@@ -997,6 +1000,8 @@ CONTAINS
     USE State_Diag_Mod, ONLY : DgnState
     USE State_Met_Mod,  ONLY : MetState
     USE Registry_Params_Mod
+
+    use cam_history, only: hist_fld_active
 !
 ! !INPUT PARAMETERS:
 !
@@ -1042,6 +1047,11 @@ CONTAINS
     ! Loop over the History Exports list
     current => HistoryConfig%HistoryExportsList%head
     DO WHILE ( ASSOCIATED( current ) )
+       ! Skip if not active
+       if(.not. hist_fld_active(trim(current%name))) then
+          current => current%next
+          cycle
+       endif
 
        ! Get pointer to GC state data
        !IF ( am_I_Root ) WRITE(6,*) current%name
