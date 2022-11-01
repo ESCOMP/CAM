@@ -343,7 +343,7 @@ contains
     real(r8), intent(out) :: soot_num_col(:,:) ! soot number densities (#/cm^3)
     real(r8), intent(out) :: sulf_num_tot_col(:,:) ! stratopsheric sulfate number densities (#/cm^3)
 
-    integer :: m,l
+    integer :: ibin,ispc
     character(len=aero_name_len) :: spectype
     real(r8) :: size_wghts(ncol,nlev)
     real(r8) :: type_wghts(ncol,nlev)
@@ -358,17 +358,17 @@ contains
     sulf_num_tot_col(:,:) = 0._r8
 
     ! collect number densities (#/cm^3) for dust, sulfate, and soot
-    do m = 1,aero_props%nbins()
+    do ibin = 1,aero_props%nbins()
 
-       call self%get_ambient_num(m, num_col)
+       call self%get_ambient_num(ibin, num_col)
 
-       do l = 1,aero_props%nspecies(m)
+       do ispc = 1,aero_props%nspecies(ibin)
 
-          call aero_props%species_type(m, l, spectype)
+          call aero_props%species_type(ibin, ispc, spectype)
 
-          call self%icenuc_size_wght(m, ncol, nlev, spectype, use_preexisting_ice, size_wghts)
+          call self%icenuc_size_wght(ibin, ncol, nlev, spectype, use_preexisting_ice, size_wghts)
 
-          call self%icenuc_type_wght(m, ncol, nlev, spectype, aero_props, rho, type_wghts)
+          call self%icenuc_type_wght(ibin, ncol, nlev, spectype, aero_props, rho, type_wghts)
 
           select case ( trim(spectype) )
           case('dust')
@@ -386,8 +386,8 @@ contains
        enddo
 
        ! stratospheric sulfates -- special case not included in the species loop above
-       call self%icenuc_size_wght(m, ncol, nlev, 'sulfate_strat', use_preexisting_ice, size_wghts)
-       call self%icenuc_type_wght(m, ncol, nlev, 'sulfate_strat', aero_props, rho, type_wghts)
+       call self%icenuc_size_wght(ibin, ncol, nlev, 'sulfate_strat', use_preexisting_ice, size_wghts)
+       call self%icenuc_type_wght(ibin, ncol, nlev, 'sulfate_strat', aero_props, rho, type_wghts)
        sulf_num_tot_col(:ncol,:) = sulf_num_tot_col(:ncol,:) &
             + size_wghts(:ncol,:)*type_wghts(:ncol,:)*num_col(:ncol,:)*rho(:ncol,:)*per_cm3
 
