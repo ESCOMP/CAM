@@ -3,9 +3,11 @@ module mo_tuvx
 !     ... wrapper for TUV-x photolysis rate constant calculator
 !----------------------------------------------------------------------
 
-  use musica_string,    only : string_t
-  use shr_kind_mod,     only : r8 => shr_kind_r8
-  use tuvx_core,        only : core_t
+  use musica_string,          only : string_t
+  use shr_kind_mod,           only : r8 => shr_kind_r8
+  use tuvx_core,              only : core_t
+  use tuvx_grid_from_host,    only : grid_updater_t
+  use tuvx_profile_from_host, only : profile_updater_t
 
   implicit none
 
@@ -15,17 +17,29 @@ module mo_tuvx
   public :: tuvx_get_photo_rates
   public :: tuvx_finalize
 
-  ! TUV-x calculator for each OMP thread
-  type :: tuvx_ptr
-    type(core_t), pointer :: core_ => null( )  ! TUV-x calculator
-    integer               :: n_photo_rates_    ! number of photo reactions in TUV-x
-    real(r8), allocatable :: photo_rates_(:,:) ! photolysis rate constants
-                                               !   (vertical level, reaction) [s-1]
-  end type tuvx_ptr
-  type(tuvx_ptr), allocatable :: tuvx_ptrs(:)
+  ! Inidices for grid updaters
+  integer, parameter :: NUM_GRIDS = 1         ! number of grids that CAM will update at runtime
+  integer, parameter :: GRID_INDEX_HEIGHT = 1 ! Height grid index
+
+  ! Indices for profile updaters
+  integer, parameter :: NUM_PROFILES = 1              ! number of profiles that CAM will update at runtime
+  integer, parameter :: PROFILE_INDEX_TEMPERATURE = 1 ! Temperature profile index
 
   ! TODO how should this path be set and communicated to this wrapper?
   character(len=*), parameter :: tuvx_config_path = "tuvx_config.json"
+
+  ! TUV-x calculator for each OMP thread
+  type :: tuvx_ptr
+    type(core_t), pointer   :: core_ => null( )        ! TUV-x calculator
+    integer                 :: n_photo_rates_          ! number of photo reactions in TUV-x
+    real(r8), allocatable   :: photo_rates_(:,:)       ! photolysis rate constants
+                                                       !   (vertical level, reaction) [s-1]
+    type(grid_updater_t)    :: grids_(NUM_GRIDS)       ! grid updaters
+    type(profile_updater_t) :: profiles_(NUM_PROFILES) ! profile updaters
+    real(r8), allocatable   :: heights_(:)             ! TEMPORARY FOR DEVELOPMENT
+    real(r8), allocatable   :: temperatures_(:)        ! TEMPORARY FOR DEVELOPMENT
+  end type tuvx_ptr
+  type(tuvx_ptr), allocatable :: tuvx_ptrs(:)
 
 !================================================================================================
 contains
@@ -41,14 +55,16 @@ contains
 #ifdef HAVE_MPI
     use mpi
 #endif
-    use cam_logfile,    only : iulog
-    use musica_assert,  only : assert_msg
-    use musica_mpi,     only : musica_mpi_rank
-    use musica_string,  only : string_t, to_char
-    use tuvx_grid,      only : grid_t
-    use spmd_utils,     only : main_task => masterprocid, &
-                               is_main_task => masterproc, &
-                               mpicom
+    use cam_logfile,            only : iulog
+    use musica_assert,          only : assert_msg
+    use musica_mpi,             only : musica_mpi_rank
+    use musica_string,          only : string_t, to_char
+    use tuvx_grid,              only : grid_t
+    use tuvx_grid_warehouse,    only : grid_warehouse_t
+    use tuvx_profile_warehouse, only : profile_warehouse_t
+    use spmd_utils,             only : main_task => masterprocid, &
+                                       is_main_task => masterproc, &
+                                       mpicom
 
 !-----------------------------------------------------------------------
 ! Local variables
@@ -57,7 +73,9 @@ contains
     character, allocatable :: buffer(:)
     type(string_t) :: config_path
     class(grid_t), pointer :: height
-    integer :: pack_size, pos, i_core, i_err, i_thread
+    class(grid_warehouse_t), pointer :: cam_grids
+    class(profile_warehouse_t), pointer :: cam_profiles
+    integer :: pack_size, pos, i_core, i_err
 
     config_path = tuvx_config_path
     if( is_main_task ) call log_initialization( )
@@ -67,9 +85,13 @@ contains
                      //"MPI support enabled for TUV-x")
 #endif
 
+    ! Create the set of TUV-x grids and profiles that CAM will update at runtime
+    cam_grids => get_cam_grids( )
+    cam_profiles => get_cam_profiles( cam_grids )
+
     ! construct a core on the primary process and pack it onto an MPI buffer
     if( is_main_task ) then
-      core => core_t( config_path )
+      core => core_t( config_path, cam_grids, cam_profiles )
       pack_size = core%pack_size( mpicom )
       allocate( buffer( pack_size ) )
       pos = 0
@@ -99,18 +121,21 @@ contains
       allocate( tuvx%core_ )
       pos = 0
       call tuvx%core_%mpi_unpack( buffer, pos, mpicom )
+
+      ! Set up map between CAM and TUV-x photolysis reactions for each thread
+      call create_updaters( tuvx, cam_grids, cam_profiles )
+
+      ! TEMPORARY FOR DEVELOPMENT
+      tuvx%n_photo_rates_ = tuvx%core_%number_of_photolysis_reactions( )
+      height => tuvx%core_%get_grid( "height", "km" )
+      allocate( tuvx%photo_rates_( height%ncells_ + 1, tuvx%n_photo_rates_ ) )
+      deallocate( height )
+
     end associate
     end do
 
-    ! Set up map between CAM and TUV-x photolysis reactions for each thread
-    do i_thread = 1, max_threads( )
-    associate( tuvx => tuvx_ptrs( i_thread ) )
-      tuvx%n_photo_rates_ = tuvx%core_%number_of_photolysis_reactions( )
-      height => tuvx%core_%get_grid( "height", "km" )
-      ! Temporary for development
-      allocate( tuvx%photo_rates_( height%ncells_ + 1, tuvx%n_photo_rates_ ) )
-    end associate
-    end do
+    deallocate( cam_grids    )
+    deallocate( cam_profiles )
 
   end subroutine tuvx_init
 
@@ -140,8 +165,16 @@ contains
 
     associate( tuvx => tuvx_ptrs( thread_id( ) ) )
       do i_col = 1, ncol
-        ! Temporary fix SZA for development
+
+        ! set conditions for this column in TUV-x
+        call set_heights( tuvx, i_col )
+        call set_temperatures( tuvx, i_col )
+        ! TODO Add remaining input conditions
+
+        ! Calculate photolysis rate constants for this column
+        ! TEMPORARY FOR DEVELOPMENT - fix SZA
         call tuvx%core_%run( 45.0_r8, photolysis_rate_constants = tuvx%photo_rates_ )
+
       end do
     end associate
 
@@ -163,14 +196,20 @@ contains
 
     if( allocated( tuvx_ptrs ) ) then
       do i_core = 1, size( tuvx_ptrs )
-        if( associated( tuvx_ptrs( i_core )%core_ ) ) then
-          deallocate( tuvx_ptrs( i_core )%core_ )
-        end if
+      associate( tuvx => tuvx_ptrs( i_core ) )
+        if( associated( tuvx%core_ ) ) deallocate( tuvx%core_ )
+      end associate
       end do
     end if
 
   end subroutine tuvx_finalize
 
+!================================================================================================
+!================================================================================================
+!
+! Support functions
+!
+!================================================================================================
 !================================================================================================
 
   integer function thread_id( )
@@ -236,7 +275,7 @@ contains
 #endif
 #ifdef _OPENMP
       write(iulog,*) "  - with OpenMP support for "// &
-                     trim( to_char( max_threads( ) ) )//" threads, on thread" &
+                     trim( to_char( max_threads( ) ) )//" threads, on thread " &
                      //trim( to_char( thread_id( ) ) )
 #else
       write(iulog,*) "  - without OpenMP support"
@@ -245,6 +284,169 @@ contains
     end if
 
   end subroutine log_initialization
+
+!================================================================================================
+
+  function get_cam_grids( ) result( grids )
+!-----------------------------------------------------------------------
+!
+! Purpose: creates and loads a grid warehouse with grids that CAM will
+!          update at runtime
+!
+!-----------------------------------------------------------------------
+
+    use ppgrid,              only : pver ! number of vertical levels
+    use tuvx_grid_from_host, only : grid_from_host_t
+    use tuvx_grid_warehouse, only : grid_warehouse_t
+
+    class(grid_warehouse_t), pointer :: grids ! collection of grids to be updated by CAM
+
+!-----------------------------------------------------------------------
+! Local variables
+!-----------------------------------------------------------------------
+    class(grid_from_host_t), pointer :: host_grid
+
+    grids => grid_warehouse_t( )
+
+    ! Height grid will be ... \todo figure out how height grid should translate
+    ! to CAM vertical grid
+    host_grid => grid_from_host_t( "height", "km", pver )
+    call grids%add( host_grid )
+    deallocate( host_grid )
+
+  end function get_cam_grids
+
+!================================================================================================
+
+  function get_cam_profiles( grids ) result( profiles )
+!-----------------------------------------------------------------------
+!
+! Purpose: creates and loads a profile warehouse with profiles that CAM
+!          will update at runtime
+!
+!-----------------------------------------------------------------------
+
+    use tuvx_grid,              only : grid_t
+    use tuvx_grid_warehouse,    only : grid_warehouse_t
+    use tuvx_profile_from_host, only : profile_from_host_t
+    use tuvx_profile_warehouse, only : profile_warehouse_t
+
+    class(profile_warehouse_t), pointer :: profiles ! collection of profiles to be updated by CAM
+    class(grid_warehouse_t), intent(in) :: grids    ! collection of grids to be updated by CAM
+
+!-----------------------------------------------------------------------
+! Local variables
+!-----------------------------------------------------------------------
+    class(profile_from_host_t), pointer :: host_profile
+    class(grid_t),              pointer :: height
+
+    height => grids%get_grid( "height", "km" )
+    profiles => profile_warehouse_t( )
+
+    ! Temperature profile on height grid
+    host_profile => profile_from_host_t( "temperature", "K", height%size( ) )
+    call profiles%add( host_profile )
+    deallocate( host_profile )
+
+    deallocate( height )
+
+  end function get_cam_profiles
+
+!================================================================================================
+
+  subroutine create_updaters( this, grids, profiles )
+!-----------------------------------------------------------------------
+!
+! Purpose: creates updaters for each grid and profile that CAM will use
+!          to update TUV-x at each timestep
+!
+!-----------------------------------------------------------------------
+
+    use musica_assert,          only : assert
+    use tuvx_grid_from_host,    only : grid_updater_t
+    use tuvx_grid,              only : grid_t
+    use tuvx_grid_warehouse,    only : grid_warehouse_t
+    use tuvx_profile,           only : profile_t
+    use tuvx_profile_from_host, only : profile_updater_t
+    use tuvx_profile_warehouse, only : profile_warehouse_t
+
+    class(tuvx_ptr),            intent(inout) :: this
+    class(grid_warehouse_t),    intent(in)    :: grids
+    class(profile_warehouse_t), intent(in)    :: profiles
+
+!-----------------------------------------------------------------------
+! Local variables
+!-----------------------------------------------------------------------
+    class(grid_t),    pointer :: host_grid
+    class(profile_t), pointer :: host_profile
+    logical                   :: found
+
+    host_grid => grids%get_grid( "height", "km" )
+    this%grids_( GRID_INDEX_HEIGHT ) = this%core_%get_updater( host_grid, found )
+    call assert( 213798815, found )
+    write(*,*) "allocating height array to ", host_grid%size( ) + 1, " values", &
+               " on thread ", thread_id( )
+    allocate( this%heights_( host_grid%size( ) + 1 ) ) ! TEMPORARY FOR DEVELOPMENT
+    deallocate( host_grid )
+
+    host_profile => profiles%get_profile( "temperature", "K" )
+    this%profiles_( PROFILE_INDEX_TEMPERATURE ) = &
+        this%core_%get_updater( host_profile, found )
+    call assert( 418735162, found )
+    write(*,*) "allocating temperature array to ", host_profile%size( ) + 1, " values", &
+               " on thread ", thread_id( )
+    allocate( this%temperatures_( host_profile%size( ) + 1 ) ) ! TEMPORARY FOR DEVELOPMENT
+    deallocate( host_profile )
+
+  end subroutine create_updaters
+
+!================================================================================================
+
+  subroutine set_heights( this, i_col )
+!-----------------------------------------------------------------------
+!
+! Purpose: sets the height values in TUV-x for the given column
+!
+! TODO: Describe how CAM vertical profile is mapped to TUV-x heights
+!
+!-----------------------------------------------------------------------
+
+    class(tuvx_ptr), intent(inout) :: this  ! TUV-x calculator
+    integer,         intent(in)    :: i_col ! Column to set conditions for
+
+    ! TEMPORARY FOR DEVELOPMENT
+    integer :: i_level
+    do i_level = 1, size( this%heights_ )
+      this%heights_( i_level ) = i_level * 1.0_r8 - 1.0_r8
+    end do
+    call this%grids_( GRID_INDEX_HEIGHT )%update( &
+        mid_points = this%heights_(1:size(this%heights_)-1), &
+        edges = this%heights_(:) )
+
+  end subroutine set_heights
+
+!================================================================================================
+
+  subroutine set_temperatures( this, i_col )
+!-----------------------------------------------------------------------
+!
+! Purpose: sets the temperatures in TUV-x for the given column
+!
+! TODO: Describe how CAM temperature profile is mapped to TUV-x heights
+!
+!-----------------------------------------------------------------------
+
+    class(tuvx_ptr), intent(inout) :: this  ! TUV-x calculator
+    integer,         intent(in)    :: i_col ! Column to set conditions for
+
+    ! TEMPORARY FOR DEVELOPMENT
+    this%temperatures_(:) = 298.15_r8
+    call this%profiles_( PROFILE_INDEX_TEMPERATURE )%update( &
+        mid_point_values = this%temperatures_(1:size(this%temperatures_)-1), &
+        edge_values = this%temperatures_(:) )
+
+  end subroutine set_temperatures
+
 !================================================================================================
 
 end module mo_tuvx
