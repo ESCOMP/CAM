@@ -74,6 +74,8 @@ module physpkg
   integer ::  qini_idx           = 0
   integer ::  cldliqini_idx      = 0
   integer ::  cldiceini_idx      = 0
+  integer ::  totliqini_idx      = 0
+  integer ::  toticeini_idx      = 0
 
   integer ::  prec_str_idx       = 0
   integer ::  snow_str_idx       = 0
@@ -240,6 +242,8 @@ contains
     call pbuf_add_field('QINI',      'physpkg', dtype_r8, (/pcols,pver/), qini_idx)
     call pbuf_add_field('CLDLIQINI', 'physpkg', dtype_r8, (/pcols,pver/), cldliqini_idx)
     call pbuf_add_field('CLDICEINI', 'physpkg', dtype_r8, (/pcols,pver/), cldiceini_idx)
+    call pbuf_add_field('TOTLIQINI', 'physpkg', dtype_r8, (/pcols,pver/), totliqini_idx)
+    call pbuf_add_field('TOTICEINI', 'physpkg', dtype_r8, (/pcols,pver/), toticeini_idx)
 
     ! check energy package
     call check_energy_register
@@ -1476,6 +1480,8 @@ contains
     real(r8), pointer, dimension(:,:) :: qini
     real(r8), pointer, dimension(:,:) :: cldliqini
     real(r8), pointer, dimension(:,:) :: cldiceini
+    real(r8), pointer, dimension(:,:) :: totliqini
+    real(r8), pointer, dimension(:,:) :: toticeini
     real(r8), pointer, dimension(:,:) :: dtcore
     real(r8), pointer, dimension(:,:) :: dqcore
     real(r8), pointer, dimension(:,:) :: ducore
@@ -1510,6 +1516,8 @@ contains
     call pbuf_get_field(pbuf, qini_idx, qini)
     call pbuf_get_field(pbuf, cldliqini_idx, cldliqini)
     call pbuf_get_field(pbuf, cldiceini_idx, cldiceini)
+    call pbuf_get_field(pbuf, totliqini_idx, totliqini)
+    call pbuf_get_field(pbuf, toticeini_idx, toticeini)
 
     ifld = pbuf_get_index('CLD')
     call pbuf_get_field(pbuf, ifld, cld, start=(/1,1,itim_old/),kount=(/pcols,pver,1/))
@@ -1920,7 +1928,7 @@ contains
 
       call set_dry_to_wet(state)
 
-      call physics_dme_adjust(state, tend, qini, ztodt)
+      call physics_dme_adjust(state, tend, qini, totliqini, toticeini, ztodt)
 
       call calc_te_and_aam_budgets(state, 'phAM')
       call calc_te_and_aam_budgets(state, 'dyAM', vc=vc_dycore)
@@ -1937,7 +1945,7 @@ contains
                     fh2o, surfric, obklen, flx_heat)
       end if
 
-      call physics_dme_adjust(state, tend, qini, ztodt)
+      call physics_dme_adjust(state, tend, qini, totliqini, toticeini, ztodt)
 
       if (trim(cam_take_snapshot_after) == "physics_dme_adjust") then
          call cam_snapshot_all_outfld_tphysac(cam_snapshot_after_num, state, tend, cam_in, cam_out, pbuf,&
@@ -2030,6 +2038,8 @@ contains
     use cam_history,     only: outfld
     use physconst,       only: cpair, latvap
     use constituents,    only: pcnst, qmin, cnst_get_ind
+    use air_composition, only: thermodynamic_active_species_liq_num,thermodynamic_active_species_liq_idx
+    use air_composition, only: thermodynamic_active_species_ice_num,thermodynamic_active_species_ice_idx
     use convect_deep,    only: convect_deep_tend, convect_deep_tend_2, deep_scheme_does_scav_trans
     use time_manager,    only: is_first_step, get_nstep
     use convect_shallow, only: convect_shallow_tend
@@ -2104,6 +2114,7 @@ contains
 
     integer :: i                               ! column indicex
     integer :: ixcldice, ixcldliq, ixq         ! constituent indices for cloud liquid and ice water.
+    integer :: m, m_cnst
     ! for macro/micro co-substepping
     integer :: macmic_it                       ! iteration variables
     real(r8) :: cld_macmic_ztodt               ! modified timestep
@@ -2117,6 +2128,8 @@ contains
     real(r8), pointer, dimension(:,:) :: qini
     real(r8), pointer, dimension(:,:) :: cldliqini
     real(r8), pointer, dimension(:,:) :: cldiceini
+    real(r8), pointer, dimension(:,:) :: totliqini
+    real(r8), pointer, dimension(:,:) :: toticeini
     real(r8), pointer, dimension(:,:) :: dtcore
     real(r8), pointer, dimension(:,:) :: dqcore
     real(r8), pointer, dimension(:,:) :: ducore
@@ -2192,6 +2205,8 @@ contains
     call pbuf_get_field(pbuf, qini_idx, qini)
     call pbuf_get_field(pbuf, cldliqini_idx, cldliqini)
     call pbuf_get_field(pbuf, cldiceini_idx, cldiceini)
+    call pbuf_get_field(pbuf, totliqini_idx, totliqini)
+    call pbuf_get_field(pbuf, toticeini_idx, toticeini)
 
     call pbuf_get_field(pbuf, dtcore_idx, dtcore, start=(/1,1,itim_old/), kount=(/pcols,pver,1/) )
     call pbuf_get_field(pbuf, dqcore_idx, dqcore, start=(/1,1,itim_old/), kount=(/pcols,pver,1/) )
@@ -2256,6 +2271,18 @@ contains
     qini     (:ncol,:pver) = state%q(:ncol,:pver,       1)
     cldliqini(:ncol,:pver) = state%q(:ncol,:pver,ixcldliq)
     cldiceini(:ncol,:pver) = state%q(:ncol,:pver,ixcldice)
+
+    totliqini(:ncol,:pver) = 0.0_r8
+    do m_cnst=1,thermodynamic_active_species_liq_num
+      m = thermodynamic_active_species_liq_idx(m_cnst)
+      totliqini(:ncol,:pver) = totliqini(:ncol,:pver)+state%q(:ncol,:pver,m)
+    end do
+    toticeini(:ncol,:pver) = 0.0_r8
+    do m_cnst=1,thermodynamic_active_species_ice_num
+      m = thermodynamic_active_species_ice_idx(m_cnst)
+      toticeini(:ncol,:pver) = toticeini(:ncol,:pver)+state%q(:ncol,:pver,m)
+    end do
+
 
     call outfld('TEOUT', teout       , pcols, lchnk   )
     call outfld('TEINP', state%te_ini(:,dyn_te_idx), pcols, lchnk   )

@@ -1459,10 +1459,13 @@ contains
     use fvm_control_volume_mod, only: fvm_struct
     use cam_thermo,             only: get_dp, MASS_MIXING_RATIO
     use air_composition,        only: thermodynamic_active_species_idx_dycore, get_cp
+    use air_composition,        only: thermodynamic_active_species_liq_num,thermodynamic_active_species_liq_idx
+    use air_composition,        only: thermodynamic_active_species_ice_num,thermodynamic_active_species_ice_idx
     use dimensions_mod,         only: cnst_name_gll
     use budgets,                only: budget_info_byname
     use cam_logfile,            only: iulog
     use spmd_utils,             only: masterproc
+
     !------------------------------Arguments--------------------------------
 
     type (element_t) , intent(inout) :: elem(:)
@@ -1477,6 +1480,7 @@ contains
     real(kind=r8) :: ke(npsq)                          ! kinetic energy    (J/m2)
 
     real(kind=r8) :: cdp_fvm(nc,nc,nlev)
+    real(kind=r8) :: cdp(np,np,nlev)
     real(kind=r8) :: se_tmp
     real(kind=r8) :: ke_tmp
     real(kind=r8) :: ps(np,np)
@@ -1492,7 +1496,7 @@ contains
     real(kind=r8) :: mr_cnst, mo_cnst, cos_lat, mr_tmp, mo_tmp
     real(kind=r8) :: cp(np,np,nlev)
 
-    integer :: ie,i,j,k,budget_ind,state_ind
+    integer :: ie,i,j,k,budget_ind,state_ind,idx
     integer :: ixwv,ixcldice, ixcldliq, ixtt ! CLDICE, CLDLIQ and test tracer indices
     character(len=16) :: name_out1,name_out2,name_out3,name_out4,name_out5,name_out6
 
@@ -1608,9 +1612,15 @@ contains
               end do
               fvm(ie)%budget(1:nc,1:nc,4,state_ind)=fvm(ie)%budget(1:nc,1:nc,4,state_ind)/gravit
            end if
-           if (ixcldliq>0) then
+           !
+           ! sum over liquid water
+           !
+           if (thermodynamic_active_species_liq_num>0) then
               cdp_fvm = 0.0_r8
-              cdp_fvm = fvm(ie)%c(1:nc,1:nc,:,ixcldliq)*fvm(ie)%dp_fvm(1:nc,1:nc,:)
+              do idx = 1,thermodynamic_active_species_liq_num
+                cdp_fvm = cdp_fvm + fvm(ie)%c(1:nc,1:nc,:,thermodynamic_active_species_liq_idx(idx))&
+                     *fvm(ie)%dp_fvm(1:nc,1:nc,:)
+              end do
               call util_function(cdp_fvm,nc,nlev,name_out4,ie)
               do j = 1, nc
                  do i = 1, nc
@@ -1619,9 +1629,16 @@ contains
               end do
               fvm(ie)%budget(1:nc,1:nc,5,state_ind)=fvm(ie)%budget(1:nc,1:nc,5,state_ind)/gravit
            end if
-           if (ixcldice>0) then
-              cdp_fvm = fvm(ie)%c(1:nc,1:nc,:,ixcldice)*fvm(ie)%dp_fvm(1:nc,1:nc,:)
-              call util_function(cdp_fvm,nc,nlev,name_out5,ie)
+           !
+           ! sum over ice water
+           !
+           if (thermodynamic_active_species_ice_num>0) then
+             cdp_fvm = 0.0_r8
+             do idx = 1,thermodynamic_active_species_ice_num
+               cdp_fvm = cdp_fvm + fvm(ie)%c(1:nc,1:nc,:,thermodynamic_active_species_ice_idx(idx))&
+                   *fvm(ie)%dp_fvm(1:nc,1:nc,:)
+             end do
+             call util_function(cdp_fvm,nc,nlev,name_out5,ie)
               
               do j = 1, nc
                  do i = 1, nc
@@ -1644,34 +1661,48 @@ contains
            call util_function(elem(ie)%state%qdp(:,:,:,1,tl_qdp),np,nlev,name_out3,ie)
            do j = 1, np
               do i = 1, np
-                 elem(ie)%derived%budget(i,j,4,state_ind) = elem(ie)%derived%budget(i,j,4,state_ind) + sum(elem(ie)%state%qdp(i,j,:,1,tl_qdp)/gravit)
+                 elem(ie)%derived%budget(i,j,4,state_ind) = elem(ie)%derived%budget(i,j,4,state_ind) + sum(cdp(i,j,:)/gravit)
               end do
            end do
-           if (ixcldliq>0) then
-              call util_function(elem(ie)%state%qdp(:,:,:,ixcldliq,tl_qdp),np,nlev,name_out4,ie)
-              do j = 1, np
-                 do i = 1, np
-                    elem(ie)%derived%budget(i,j,5,state_ind) = elem(ie)%derived%budget(i,j,5,state_ind) + sum(elem(ie)%state%qdp(i,j,:,ixcldliq,tl_qdp)/gravit)
-                 end do
-              end do
+           !
+           ! sum over liquid water
+           !
+           if (thermodynamic_active_species_liq_num>0) then
+             cdp = 0.0_r8
+             do idx = 1,thermodynamic_active_species_liq_num
+               cdp = cdp + elem(ie)%state%qdp(:,:,:,thermodynamic_active_species_liq_idx(idx),tl_qdp)
+             end do
+             call util_function(elem(ie)%state%qdp(:,:,:,ixcldliq,tl_qdp),np,nlev,name_out4,ie)
+             do j = 1, np
+               do i = 1, np
+                 elem(ie)%derived%budget(i,j,5,state_ind) = elem(ie)%derived%budget(i,j,5,state_ind) + sum(cdp(i,j,:)/gravit)
+               end do
+             end do
            end if
-           if (ixcldice>0) then
-              call util_function(elem(ie)%state%qdp(:,:,:,ixcldice,tl_qdp),np,nlev,name_out5,ie)
-              do j = 1, np
-                 do i = 1, np
-                    elem(ie)%derived%budget(i,j,6,state_ind) = elem(ie)%derived%budget(i,j,6,state_ind) + sum(elem(ie)%state%qdp(i,j,:,ixcldice,tl_qdp)/gravit)
-                 end do
-              end do
+           !
+           ! sum over ice water
+           !
+           if (thermodynamic_active_species_ice_num>0) then
+             cdp = 0.0_r8
+             do idx = 1,thermodynamic_active_species_ice_num
+               cdp = cdp + elem(ie)%state%qdp(:,:,:,thermodynamic_active_species_ice_idx(idx),tl_qdp)
+             end do
+             call util_function(elem(ie)%state%qdp(:,:,:,ixcldice,tl_qdp),np,nlev,name_out5,ie)
+             do j = 1, np
+               do i = 1, np
+                 elem(ie)%derived%budget(i,j,6,state_ind) = elem(ie)%derived%budget(i,j,6,state_ind) + sum(cdp(i,j,:)/gravit)
+               end do
+             end do
            end if
            if (ixtt>0) then
-              call util_function(elem(ie)%state%qdp(:,:,:,ixtt    ,tl_qdp),np,nlev,name_out6,ie)
-              do j = 1, np
-                 do i = 1, np
-                    elem(ie)%derived%budget(i,j,7,state_ind) = elem(ie)%derived%budget(i,j,7,state_ind) + sum(elem(ie)%state%qdp(i,j,:,ixtt,tl_qdp)/gravit)
-                 end do
-              end do
+             call util_function(elem(ie)%state%qdp(:,:,:,ixtt    ,tl_qdp),np,nlev,name_out6,ie)
+             do j = 1, np
+               do i = 1, np
+                 elem(ie)%derived%budget(i,j,7,state_ind) = elem(ie)%derived%budget(i,j,7,state_ind) + sum(cdp(i,j,:)/gravit)
+               end do
+             end do
            end if
-        end if
+         end if
      end do
   end if
   !

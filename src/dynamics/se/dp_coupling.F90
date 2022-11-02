@@ -542,6 +542,10 @@ subroutine derived_phys_dry(phys_state, phys_tend, pbuf2d)
    use constituents,    only: qmin
    use physconst,       only: gravit, zvir
    use cam_thermo,      only: cam_thermo_update
+#ifndef phl_cam_development
+   use air_composition, only: thermodynamic_active_species_num
+   use air_composition, only: thermodynamic_active_species_idx
+#endif
    use air_composition, only: cpairv, rairv, cappav
    use shr_const_mod,   only: shr_const_rwv
    use phys_control,    only: waccmx_is
@@ -562,7 +566,7 @@ subroutine derived_phys_dry(phys_state, phys_tend, pbuf2d)
    real(r8) :: zvirv(pcols,pver)    ! Local zvir array pointer
    real(r8) :: factor_array(pcols,nlev)
 
-   integer :: m, i, k, ncol
+   integer :: m, i, k, ncol, m_cnst
    type(physics_buffer_desc), pointer :: pbuf_chnk(:)
    !----------------------------------------------------------------------------
 
@@ -604,7 +608,8 @@ subroutine derived_phys_dry(phys_state, phys_tend, pbuf2d)
       end do
 
       ! wet pressure variables (should be removed from physics!)
-
+!#define phl_cam_development
+#ifdef phl_cam_development
       do k=1,nlev
          do i=1,ncol
             ! to be consistent with total energy formula in physic's check_energy module only
@@ -612,7 +617,18 @@ subroutine derived_phys_dry(phys_state, phys_tend, pbuf2d)
             factor_array(i,k) = 1+phys_state(lchnk)%q(i,k,1)
          end do
       end do
-
+#else
+      factor_array(:,:) = 1.0_r8
+      do m_cnst=1,thermodynamic_active_species_num
+        m = thermodynamic_active_species_idx(m_cnst)
+        do k=1,nlev
+          do i=1,ncol
+            ! at this point all q's are dry
+            factor_array(i,k) = factor_array(i,k)+phys_state(lchnk)%q(i,k,m)
+          end do
+        end do
+      end do
+#endif
       do k=1,nlev
          do i=1,ncol
             phys_state(lchnk)%pdel (i,k) = phys_state(lchnk)%pdeldry(i,k)*factor_array(i,k)

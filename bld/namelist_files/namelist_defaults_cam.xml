@@ -2719,7 +2719,7 @@
 <water_species_in_air phys="spcam_m2005"      >'Q','CLDLIQ','CLDICE'                  </water_species_in_air>
 <water_species_in_air phys="spcam_sam1mom"    >'Q','CLDLIQ','CLDICE'                  </water_species_in_air>
 <water_species_in_air phys="cam6"             >'Q','CLDLIQ','CLDICE','RAINQM','SNOWQM'</water_species_in_air>
-<water_species_in_air phys="cam_dev"          >'Q','CLDLIQ','CLDICE','RAINQM','SNOWQM'</water_species_in_air>
+<water_species_in_air phys="cam_dev"          >'Q','CLDLIQ','CLDICE','RAINQM','SNOWQM','GRAUQM'</water_species_in_air>
 
 <!-- ================================================================== -->
 <!-- Defaults for FV3                                                   -->

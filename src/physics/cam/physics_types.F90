@@ -1212,7 +1212,9 @@ end subroutine physics_ptend_copy
   end subroutine physics_cnst_limit
 
 !===============================================================================
-  subroutine physics_dme_adjust(state, tend, qini, dt)
+  subroutine physics_dme_adjust(state, tend, qini, liqini, iceini, dt)
+    use air_composition, only: dry_air_species_num,thermodynamic_active_species_num
+    use air_composition, only: thermodynamic_active_species_idx
     !-----------------------------------------------------------------------
     !
     ! Purpose: Adjust the dry mass in each layer back to the value of physics input state
@@ -1244,6 +1246,8 @@ end subroutine physics_ptend_copy
     type(physics_state), intent(inout) :: state
     type(physics_tend ), intent(inout) :: tend
     real(r8),            intent(in   ) :: qini(pcols,pver)    ! initial specific humidity
+    real(r8),            intent(in   ) :: liqini(pcols,pver)  ! initial total liquid
+    real(r8),            intent(in   ) :: iceini(pcols,pver)  ! initial total ice
     real(r8),            intent(in   ) :: dt                  ! model physics timestep
     !
     !---------------------------Local workspace-----------------------------
@@ -1258,7 +1262,12 @@ end subroutine physics_ptend_copy
 
     real(r8) :: zvirv(pcols,pver)    ! Local zvir array pointer
 
+    real(r8) :: tot_water (pcols,2)  ! total water (initial, present)
+    real(r8) :: tot_water_chg(pcols) ! total water change
+
+
     real(r8),allocatable :: cpairv_loc(:,:)
+    integer :: m_cnst
     !
     !-----------------------------------------------------------------------
 
@@ -1276,10 +1285,18 @@ end subroutine physics_ptend_copy
     ! constituents, momentum, and total energy
     state%ps(:ncol) = state%pint(:ncol,1)
     do k = 1, pver
-
-       ! adjusment factor is just change in water vapor
-       fdq(:ncol) = 1._r8 + state%q(:ncol,k,1) - qini(:ncol,k)
-
+!#define phl_cam_development
+#ifndef phl_cam_development
+      tot_water(:ncol,1) = qini(:ncol,k)+liqini(:ncol,k)+iceini(:ncol,k) !initial total H2O
+      tot_water(:ncol,2) = 0.0_r8
+      do m_cnst=dry_air_species_num+1,thermodynamic_active_species_num
+        m = thermodynamic_active_species_idx(m_cnst)
+        tot_water(:ncol,2) = tot_water(:ncol,2)+state%q(:ncol,k,m)
+      end do
+      fdq(:ncol) = 1._r8 + tot_water(:ncol,2) - tot_water(:ncol,1)
+#else
+      fdq(:ncol) = 1._r8 + state%q(:ncol,k,1) - qini(:ncol,k)
+#endif
        ! adjust constituents to conserve mass in each layer
        do m = 1, pcnst
           state%q(:ncol,k,m) = state%q(:ncol,k,m) / fdq(:ncol)
@@ -1310,6 +1327,7 @@ end subroutine physics_ptend_copy
        state%pint  (:ncol,k+1) = state%pint(:ncol,k  ) + state%pdel(:ncol,k)
        state%lnpint(:ncol,k+1) = log(state%pint(:ncol,k+1))
        state%rpdel (:ncol,k  ) = 1._r8/ state%pdel(:ncol,k  )
+       !note that mid-level variables (e.g. pmid) are not recomputed
     end do
 
     if ( waccmx_is('ionosphere') .or. waccmx_is('neutral') ) then
