@@ -599,21 +599,21 @@ subroutine dyn_init(dyn_in, dyn_out)
    ! initialize CAM thermodynamic infrastructure
    !
    do m=1,thermodynamic_active_species_num
-     thermodynamic_active_species_idx_dycore(m) = dyn_in % mpas_from_cam_cnst(thermodynamic_active_species_idx(m))
+     thermodynamic_active_species_idx_dycore(m) = dyn_out % cam_from_mpas_cnst(thermodynamic_active_species_idx(m))
      if (masterproc) then
-       write(iulog,*) subname//": m,thermodynamic_active_species_idx_dycore: ",m,thermodynamic_active_species_idx_dycore(m)
+       write(iulog,'(a,2I4)') subname//": m,thermodynamic_active_species_idx_dycore: ",m,thermodynamic_active_species_idx_dycore(m)
      end if
    end do
    do m=1,thermodynamic_active_species_liq_num
-     thermodynamic_active_species_liq_idx_dycore(m) = dyn_in % mpas_from_cam_cnst(thermodynamic_active_species_liq_idx(m))
+     thermodynamic_active_species_liq_idx_dycore(m) = dyn_out % cam_from_mpas_cnst(thermodynamic_active_species_liq_idx(m))
      if (masterproc) then
-       write(iulog,*) subname//": m,thermodynamic_active_species_idx_liq_dycore: ",m,thermodynamic_active_species_liq_idx_dycore(m)
+       write(iulog,'(a,2I4)') subname//": m,thermodynamic_active_species_idx_liq_dycore: ",m,thermodynamic_active_species_liq_idx_dycore(m)
      end if
    end do
    do m=1,thermodynamic_active_species_ice_num
-     thermodynamic_active_species_ice_idx_dycore(m) = dyn_in % mpas_from_cam_cnst(thermodynamic_active_species_ice_idx(m))
+     thermodynamic_active_species_ice_idx_dycore(m) = dyn_out % cam_from_mpas_cnst(thermodynamic_active_species_ice_idx(m))
      if (masterproc) then
-       write(iulog,*) subname//": m,thermodynamic_active_species_idx_ice_dycore: ",m,thermodynamic_active_species_ice_idx_dycore(m)
+       write(iulog,'(a,2I4)') subname//": m,thermodynamic_active_species_idx_ice_dycore: ",m,thermodynamic_active_species_ice_idx_dycore(m)
      end if
    end do
 
