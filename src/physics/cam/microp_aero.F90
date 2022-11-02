@@ -578,7 +578,7 @@ subroutine microp_aero_run ( &
    rndst(1:ncol,1:pver,3) = rn_dst3
    rndst(1:ncol,1:pver,4) = rn_dst4
 
-   ! save copy of cloud borne aerosols for use in heterogeneous freezing
+   ! save copy of cloud borne aerosols for use in heterogeneous freezing -- before modification by droplet nucleation
    if (use_hetfrz_classnuc) then
       call hetfrz_classnuc_cam_save_cbaero(state1, pbuf)
    end if

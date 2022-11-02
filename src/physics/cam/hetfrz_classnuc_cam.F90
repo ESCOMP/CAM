@@ -129,7 +129,7 @@ integer, allocatable :: spec_idx(:)
 
 ! Copy of cloud borne aerosols before modification by droplet nucleation
 ! The basis is converted from mass to volume.
-real(r8), allocatable :: aer_cld(:,:,:,:)
+real(r8), allocatable :: aer_cld_saved(:,:,:,:)
 
 !===============================================================================
 contains
@@ -470,8 +470,8 @@ subroutine hetfrz_classnuc_cam_init(mincld_in)
    spec_idx = -1
 
    ! Allocate space for copy of cloud borne aerosols before modification by droplet nucleation.
-   allocate(aer_cld(pcols,pver,ncnst,begchunk:endchunk), stat=istat)
-   call alloc_err(istat, routine, 'aer_cld', pcols*pver*ncnst*(endchunk-begchunk+1))
+   allocate(aer_cld_saved(pcols,pver,ncnst,begchunk:endchunk), stat=istat)
+   call alloc_err(istat, routine, 'aer_cld_saved', pcols*pver*ncnst*(endchunk-begchunk+1))
 
    ! The following code sets the species and mode indices for each constituent
    ! in the list.  The indices are identical in the interstitial and the cloud
@@ -629,8 +629,9 @@ subroutine hetfrz_classnuc_cam_calc( &
    integer, parameter :: ntypes = 3
    character(len=32) :: types(ntypes)
 
-   ! Copy of interstitial aerosols with basis converted from mass to volume.
+   ! interstitial and cloud-borne aerosols with basis converted from mass to volume.
    real(r8) :: aer_amb(pcols,pver,ncnst)
+   real(r8) :: aer_cld(pcols,pver,ncnst)
 
   !-------------------------------------------------------------------------------
 
@@ -665,7 +666,7 @@ subroutine hetfrz_classnuc_cam_calc( &
    ! Convert interstitial and cloud borne aerosols from a mass to a volume basis before
    ! being used in get_aer_num
    do i = 1, ncnst
-      aer_cld(:ncol,:,i,lchnk) = aer_cld(:ncol,:,i,lchnk) * rho(:ncol,:)
+      aer_cld(:ncol,:,i) = aer_cld_saved(:ncol,:,i,lchnk) * rho(:ncol,:)
 
       ! Check whether constituent is a mass or number mixing ratio
       if (spec_idx(i) == 0) then
@@ -692,7 +693,7 @@ subroutine hetfrz_classnuc_cam_calc( &
    ! output aerosols as reference information for heterogeneous freezing
    do i = 1, ncol
       do k = top_lev, pver
-         call get_aer_num(i, k, ncnst, aer_amb(:,:,:), aer_cld(:,:,:,lchnk), rho(i,k), &
+         call get_aer_num(i, k, ncnst, aer_amb(:,:,:), aer_cld(:,:,:), rho(i,k), &
             total_aer_num(i,k,:), coated_aer_num(i,k,:), uncoated_aer_num(i,k,:),       &
             total_interstitial_aer_num(i,k,:), total_cloudborne_aer_num(i,k,:),         &
             hetraer(i,k,:), awcam(i,k,:), awfacm(i,k,:), dstcoat(i,k,:),                &
@@ -905,7 +906,7 @@ subroutine hetfrz_classnuc_cam_save_cbaero(state, pbuf)
       else
          call rad_cnst_get_aer_mmr(0, mode_idx(i), spec_idx(i), 'c', state, pbuf, ptr2d)
       end if
-      aer_cld(:,:,i,lchnk) = ptr2d
+      aer_cld_saved(:,:,i,lchnk) = ptr2d
    end do
 
 end subroutine hetfrz_classnuc_cam_save_cbaero
