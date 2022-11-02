@@ -826,7 +826,7 @@ subroutine tot_energy(nCells, nVertLevels, qsize, index_qv, zz, zgrid, rho_zz, t
   logical :: b_subcycle
   real(r8) :: rho_dz,zcell,temperature,theta,pk,ptop,exner
   real(r8), dimension(nVertLevels, nCells) :: rhod, dz
-  real(r8), dimension(nCells)              :: kinetic_energy,potential_energy,internal_energy,water_vapor,water_liq,water_ice
+  real(r8), dimension(nCells)              :: kinetic_energy,potential_energy,internal_energy,water_vapor
 
   real(r8), dimension(nCells) :: liq !total column integrated liquid
   real(r8), dimension(nCells) :: ice !total column integrated ice
