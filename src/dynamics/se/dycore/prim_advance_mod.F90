@@ -503,7 +503,7 @@ contains
     real (kind=r8), dimension(np,np,ksponge_end  ):: pmid
     real (kind=r8), dimension(np,np,nlev)       :: tmp_kmvis,tmp_kmcnd
     real (kind=r8), dimension(np,np,2)          :: lap_v
-    real (kind=r8)                              :: v1,v2,v1new,v2new,dt,heating,T0,T1
+    real (kind=r8)                              :: v1,v2,v1new,v2new,dt,heating,T0,T1,dp0
     real (kind=r8)                              :: laplace_fluxes(nc,nc,4)
     real (kind=r8)                              :: rhypervis_subcycle
     real (kind=r8)                              :: nu_ratio1, ptop, inv_rho
@@ -544,6 +544,12 @@ contains
       do k=1,nlev
         dp3d_ref(:,:,k,ie) = ((hvcoord%hyai(k+1)-hvcoord%hyai(k))*hvcoord%ps0 + &
                               (hvcoord%hybi(k+1)-hvcoord%hybi(k))*ps_ref(:,:,ie))
+        dp0                = ( hvcoord%hyai(k+1) - hvcoord%hyai(k) )*hvcoord%ps0 + &
+                             ( hvcoord%hybi(k+1) - hvcoord%hybi(k) )*hvcoord%ps0
+        !
+        ! pel@ucar.edu: resolved noise issue over Antarctica
+        !
+        dp3d_ref(:,:,k)    = dp3d_ref(:,:,:) - dp0
         tmp                = hvcoord%hyam(k)*hvcoord%ps0+hvcoord%hybm(k)*ps_ref(:,:,ie)
         tmp2               = (tmp/hvcoord%ps0)**cappa
         T_ref(:,:,k,ie)    = (T0+T1*tmp2)
