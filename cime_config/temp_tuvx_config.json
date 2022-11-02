@@ -8,54 +8,9 @@
          "type": "from csv file",
          "units": "nm",
          "file path": "data/grids/wavelength/combined.grid"
-      },
-      "time": {
-         "type": "from config file",
-         "units": "hours",
-         "values": [ 14.0 ]
       }
    },
    "profiles": {
-      "O3": {
-         "type": "O3",
-         "units": "molecule cm-3",
-         "file path": "data/profiles/atmosphere/ussa.ozone"
-      },
-      "air": {
-         "type": "air",
-         "units": "molecule cm-3",
-         "file path": "data/profiles/atmosphere/ussa.dens"
-      },
-      "O2": {
-         "type": "O2",
-         "units": "molecule cm-3",
-         "file path": "data/profiles/atmosphere/ussa.dens"
-      },
-      "Earth-Sun distance": {
-         "type": "Earth-Sun distance",
-         "units": "AU",
-         "year" : 2002,
-         "month": 3,
-         "day": 21
-      },
-      "surface albedo": {
-         "type": "from config file",
-         "units": "none",
-         "uniform value": 0.10,
-         "grid": {
-           "name": "wavelength",
-           "units": "nm"
-         }
-      },
-      "extraterrestrial flux": {
-         "type": "extraterrestrial flux",
-         "units": "photon cm-2 s-1",
-         "file path": ["data/profiles/solar/susim_hi.flx",
-                      "data/profiles/solar/atlas3_1994_317_a.dat",
-                      "data/profiles/solar/sao2010.solref.converted",
-                      "data/profiles/solar/neckel.flx"],
-         "interpolator": ["","","","fractional target"]
-      }
    },
    "radiative transfer": {
       "solver": {

@@ -17,13 +17,22 @@ module mo_tuvx
   public :: tuvx_get_photo_rates
   public :: tuvx_finalize
 
+  integer, parameter :: NUM_WAVELENGTHS = 157 ! TEMPORARY FOR DEVELOPMENT
+
   ! Inidices for grid updaters
-  integer, parameter :: NUM_GRIDS = 1         ! number of grids that CAM will update at runtime
-  integer, parameter :: GRID_INDEX_HEIGHT = 1 ! Height grid index
+  integer, parameter :: NUM_GRIDS = 1             ! number of grids that CAM will update at runtime
+  integer, parameter :: GRID_INDEX_HEIGHT     = 1 ! Height grid index
 
   ! Indices for profile updaters
-  integer, parameter :: NUM_PROFILES = 1              ! number of profiles that CAM will update at runtime
-  integer, parameter :: PROFILE_INDEX_TEMPERATURE = 1 ! Temperature profile index
+  integer, parameter :: NUM_PROFILES = 8               ! number of profiles that CAM will update at runtime
+  integer, parameter :: PROFILE_INDEX_TEMPERATURE  = 1 ! Temperature profile index
+  integer, parameter :: PROFILE_INDEX_ALBEDO       = 2 ! Surface albedo profile index
+  integer, parameter :: PROFILE_INDEX_ET_FLUX      = 3 ! Extraterrestrial flux profile index
+  integer, parameter :: PROFILE_INDEX_AIR          = 4 ! Air density profile index
+  integer, parameter :: PROFILE_INDEX_O3           = 5 ! Ozone profile index
+  integer, parameter :: PROFILE_INDEX_O2           = 6 ! Molecular oxygen profile index
+  integer, parameter :: PROFILE_INDEX_SO2          = 7 ! Sulfur dioxide profile index
+  integer, parameter :: PROFILE_INDEX_NO2          = 8 ! Nitrogen dioxide profile index
 
   ! TODO how should this path be set and communicated to this wrapper?
   character(len=*), parameter :: tuvx_config_path = "tuvx_config.json"
@@ -37,7 +46,9 @@ module mo_tuvx
     type(grid_updater_t)    :: grids_(NUM_GRIDS)       ! grid updaters
     type(profile_updater_t) :: profiles_(NUM_PROFILES) ! profile updaters
     real(r8), allocatable   :: heights_(:)             ! TEMPORARY FOR DEVELOPMENT
-    real(r8), allocatable   :: temperatures_(:)        ! TEMPORARY FOR DEVELOPMENT
+    real(r8), allocatable   :: height_values_(:)       ! TEMPORARY FOR DEVELOPMENT
+    real(r8), allocatable   :: height_mid_values_(:)   ! TEMPORARY FOR DEVELOPMENT
+    real(r8), allocatable   :: wavelength_values_(:)   ! TEMPORARY FOR DEVELOPMENT
   end type tuvx_ptr
   type(tuvx_ptr), allocatable :: tuvx_ptrs(:)
 
@@ -87,7 +98,7 @@ contains
 
     ! Create the set of TUV-x grids and profiles that CAM will update at runtime
     cam_grids => get_cam_grids( )
-    cam_profiles => get_cam_profiles( cam_grids )
+    cam_profiles => get_cam_profiles( )
 
     ! construct a core on the primary process and pack it onto an MPI buffer
     if( is_main_task ) then
@@ -169,11 +180,14 @@ contains
         ! set conditions for this column in TUV-x
         call set_heights( tuvx, i_col )
         call set_temperatures( tuvx, i_col )
-        ! TODO Add remaining input conditions
+        call set_surface_albedo( tuvx, i_col )
+        call set_et_flux( tuvx, i_col )
+        call set_radiator_profiles( tuvx, i_col )
 
         ! Calculate photolysis rate constants for this column
         ! TEMPORARY FOR DEVELOPMENT - fix SZA
-        call tuvx%core_%run( 45.0_r8, photolysis_rate_constants = tuvx%photo_rates_ )
+        call tuvx%core_%run( solar_zenith_angle = 45.0_r8, &
+                             photolysis_rate_constants = tuvx%photo_rates_ )
 
       end do
     end associate
@@ -318,7 +332,7 @@ contains
 
 !================================================================================================
 
-  function get_cam_profiles( grids ) result( profiles )
+  function get_cam_profiles( ) result( profiles )
 !-----------------------------------------------------------------------
 !
 ! Purpose: creates and loads a profile warehouse with profiles that CAM
@@ -326,29 +340,50 @@ contains
 !
 !-----------------------------------------------------------------------
 
-    use tuvx_grid,              only : grid_t
-    use tuvx_grid_warehouse,    only : grid_warehouse_t
+    use ppgrid,                 only : pver ! number of vertical levels
     use tuvx_profile_from_host, only : profile_from_host_t
     use tuvx_profile_warehouse, only : profile_warehouse_t
 
     class(profile_warehouse_t), pointer :: profiles ! collection of profiles to be updated by CAM
-    class(grid_warehouse_t), intent(in) :: grids    ! collection of grids to be updated by CAM
 
 !-----------------------------------------------------------------------
 ! Local variables
 !-----------------------------------------------------------------------
     class(profile_from_host_t), pointer :: host_profile
-    class(grid_t),              pointer :: height
 
-    height => grids%get_grid( "height", "km" )
     profiles => profile_warehouse_t( )
 
     ! Temperature profile on height grid
-    host_profile => profile_from_host_t( "temperature", "K", height%size( ) )
+    host_profile => profile_from_host_t( "temperature", "K", pver )
     call profiles%add( host_profile )
     deallocate( host_profile )
 
-    deallocate( height )
+    ! Surface albedo on wavelength grid
+    host_profile => profile_from_host_t( "surface albedo", "none", NUM_WAVELENGTHS )
+    call profiles%add( host_profile )
+    deallocate( host_profile )
+
+    ! Extraterrestrial flux on wavelength grid
+    host_profile => profile_from_host_t( "extraterrestrial flux", "photon cm-2 s-1", &
+                                         NUM_WAVELENGTHS )
+    call profiles%add( host_profile )
+    deallocate( host_profile )
+
+    ! Air profile
+    host_profile => profile_from_host_t( "air", "molecule cm-3", pver )
+    call profiles%add( host_profile )
+    deallocate( host_profile )
+
+    ! O3 profile
+    ! TODO optionally include if available
+    host_profile => profile_from_host_t( "O3", "molecule cm-3", pver )
+    call profiles%add( host_profile )
+    deallocate( host_profile )
+
+    ! O2 profile
+    host_profile => profile_from_host_t( "O2", "molecule cm-3", pver )
+    call profiles%add( host_profile )
+    deallocate( host_profile )
 
   end function get_cam_profiles
 
@@ -381,21 +416,48 @@ contains
     class(profile_t), pointer :: host_profile
     logical                   :: found
 
+    ! Grid updaters
+
     host_grid => grids%get_grid( "height", "km" )
     this%grids_( GRID_INDEX_HEIGHT ) = this%core_%get_updater( host_grid, found )
     call assert( 213798815, found )
-    write(*,*) "allocating height array to ", host_grid%size( ) + 1, " values", &
-               " on thread ", thread_id( )
-    allocate( this%heights_( host_grid%size( ) + 1 ) ) ! TEMPORARY FOR DEVELOPMENT
+    allocate( this%heights_(           host_grid%size( ) + 1 ) ) ! TEMPORARY FOR DEVELOPMENT
+    allocate( this%height_values_(     host_grid%size( ) + 1 ) ) ! TEMPORARY FOR DEVELOPMENT
+    allocate( this%height_mid_values_( host_grid%size( )     ) ) ! TEMPORARY FOR DEVELOPMENT
     deallocate( host_grid )
 
+    allocate( this%wavelength_values_( NUM_WAVELENGTHS + 1 ) ) ! TEMPORARY FOR DEVELOPMENT
+
+    ! Profile updaters
+
     host_profile => profiles%get_profile( "temperature", "K" )
-    this%profiles_( PROFILE_INDEX_TEMPERATURE ) = &
-        this%core_%get_updater( host_profile, found )
+    this%profiles_( PROFILE_INDEX_TEMPERATURE ) = this%core_%get_updater( host_profile, found )
     call assert( 418735162, found )
-    write(*,*) "allocating temperature array to ", host_profile%size( ) + 1, " values", &
-               " on thread ", thread_id( )
-    allocate( this%temperatures_( host_profile%size( ) + 1 ) ) ! TEMPORARY FOR DEVELOPMENT
+    deallocate( host_profile )
+
+    host_profile => profiles%get_profile( "surface albedo", "none" )
+    this%profiles_( PROFILE_INDEX_ALBEDO ) = this%core_%get_updater( host_profile, found )
+    call assert( 720785186, found )
+    deallocate( host_profile )
+
+    host_profile => profiles%get_profile( "extraterrestrial flux", "photon cm-2 s-1" )
+    this%profiles_( PROFILE_INDEX_ET_FLUX ) = this%core_%get_updater( host_profile, found )
+    call assert( 550628282, found )
+    deallocate( host_profile )
+
+    host_profile => profiles%get_profile( "air", "molecule cm-3" )
+    this%profiles_( PROFILE_INDEX_AIR ) = this%core_%get_updater( host_profile, found )
+    call assert( 380471378, found )
+    deallocate( host_profile )
+
+    host_profile => profiles%get_profile( "O3", "molecule cm-3" )
+    this%profiles_( PROFILE_INDEX_O3 ) = this%core_%get_updater( host_profile, found )
+    call assert( 210314474, found )
+    deallocate( host_profile )
+
+    host_profile => profiles%get_profile( "O2", "molecule cm-3" )
+    this%profiles_( PROFILE_INDEX_O2 ) = this%core_%get_updater( host_profile, found )
+    call assert( 105165970, found )
     deallocate( host_profile )
 
   end subroutine create_updaters
@@ -420,7 +482,6 @@ contains
       this%heights_( i_level ) = i_level * 1.0_r8 - 1.0_r8
     end do
     call this%grids_( GRID_INDEX_HEIGHT )%update( &
-        mid_points = this%heights_(1:size(this%heights_)-1), &
         edges = this%heights_(:) )
 
   end subroutine set_heights
@@ -440,12 +501,94 @@ contains
     integer,         intent(in)    :: i_col ! Column to set conditions for
 
     ! TEMPORARY FOR DEVELOPMENT
-    this%temperatures_(:) = 298.15_r8
+    this%height_values_(:) = 298.15_r8
     call this%profiles_( PROFILE_INDEX_TEMPERATURE )%update( &
-        mid_point_values = this%temperatures_(1:size(this%temperatures_)-1), &
-        edge_values = this%temperatures_(:) )
+        edge_values = this%height_values_(:) )
 
   end subroutine set_temperatures
+
+!================================================================================================
+
+  subroutine set_surface_albedo( this, i_col )
+!-----------------------------------------------------------------------
+!
+! Purpose: sets the surface albedo in TUV-x for the given column
+!
+! TODO: Describe how CAM surface albedo profile is mapped to TUV-x wavelengths
+!
+!-----------------------------------------------------------------------
+
+    class(tuvx_ptr), intent(inout) :: this  ! TUV-x calculator
+    integer,         intent(in)    :: i_col ! Column to set conditions for
+
+    ! TEMPORARY FOR DEVELOPMENT
+    this%wavelength_values_(:) = 0.1_r8
+    call this%profiles_( PROFILE_INDEX_ALBEDO )%update( &
+        edge_values = this%wavelength_values_(:) )
+
+  end subroutine set_surface_albedo
+
+!================================================================================================
+
+  subroutine set_et_flux( this, i_col )
+!-----------------------------------------------------------------------
+!
+! Purpose: sets the extraterrestrial flux in TUV-x for the given column
+!
+! TODO: Describe how CAM extraterrestrial flux profile is mapped to TUV-x wavelengths
+!
+!-----------------------------------------------------------------------
+
+    class(tuvx_ptr), intent(inout) :: this  ! TUV-x calculator
+    integer,         intent(in)    :: i_col ! Column to set conditions for
+
+    ! TEMPORARY FOR DEVELOPMENT
+    this%wavelength_values_(:) = 1000.0_r8
+    call this%profiles_( PROFILE_INDEX_ET_FLUX )%update( &
+        edge_values = this%wavelength_values_(:) )
+
+  end subroutine set_et_flux
+
+!================================================================================================
+
+  subroutine set_radiator_profiles( this, i_col )
+!-----------------------------------------------------------------------
+!
+! Purpose: sets the profiles of optically active atmospheric constituents
+!          in TUV-x for the given column
+!
+! TODO: Describe how CAM profiles are mapped to TUV-x heights
+!
+!-----------------------------------------------------------------------
+
+    class(tuvx_ptr), intent(inout) :: this  ! TUV-x calculator
+    integer,         intent(in)    :: i_col ! Column to set conditions for
+
+    ! TEMPORARY FOR DEVELOPMENT - air
+    this%height_values_(:) = 2.54e19_r8
+    this%height_mid_values_(:) = 2.54e21_r8
+    call this%profiles_( PROFILE_INDEX_AIR )%update( &
+        mid_point_values = this%height_values_(1:size(this%height_values_)-1), &
+        edge_values = this%height_values_(:), &
+        layer_densities = this%height_mid_values_(:) )
+
+    ! TEMPORARY FOR DEVELOPMENT - O2
+    this%height_values_(:) = 1.0e17_r8
+    this%height_mid_values_(:) = 1.0e19_r8
+    call this%profiles_( PROFILE_INDEX_O2 )%update( &
+        mid_point_values = this%height_values_(1:size(this%height_values_)-1), &
+        edge_values = this%height_values_(:), &
+        layer_densities = this%height_mid_values_(:) )
+
+    ! TEMPORARY FOR DEVELOPMENT - O3
+    this%height_values_(:) = 1.0e13_r8
+    this%height_mid_values_(:) = 1.0e15_r8
+    call this%profiles_( PROFILE_INDEX_O3 )%update( &
+        mid_point_values = this%height_values_(1:size(this%height_values_)-1), &
+        edge_values = this%height_values_(:), &
+        layer_densities = this%height_mid_values_(:) )
+
+  end subroutine set_radiator_profiles
 
 !================================================================================================
 
