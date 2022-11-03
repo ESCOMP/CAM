@@ -3227,4 +3227,16 @@
 
 <focndomain hgrid="1.9x2.5" ocn="som">atm/cam/ocnfrac/domain.aqua.fv1.9x2.5.nc</focndomain>
 
+<!-- HEMCO -->
+<hemco_config_file>HEMCO_Config.rc</hemco_config_file>
+
+<hemco_grid_xdim hgrid="ne30np4">288</hemco_grid_xdim>
+<hemco_grid_ydim hgrid="ne30np4">201</hemco_grid_ydim>
+
+<hemco_grid_xdim hgrid="0.9x1.25">288</hemco_grid_xdim>
+<hemco_grid_ydim hgrid="0.9x1.25">201</hemco_grid_ydim>
+
+<hemco_grid_xdim hgrid="1.9x2.5">144</hemco_grid_xdim>
+<hemco_grid_ydim hgrid="1.9x2.5">91</hemco_grid_ydim>
+
 </namelist_defaults>

@@ -4887,6 +4887,18 @@ Full pathname to HEMCO_Config.rc, which prescribes emission inventories
 Default: set by build-namelist.
 </entry>
 
+<entry id="hemco_grid_xdim" type="integer" category="hemco"
+       group="hemco_nl" valid_values="">
+Number of x-dimensions in HEMCO internal grid.
+Default: set by build-namelist.
+</entry>
+
+<entry id="hemco_grid_ydim" type="integer" category="hemco"
+       group="hemco_nl" valid_values="">
+Number of y-dimensions in HEMCO internal grid.
+Default: set by build-namelist.
+</entry>
+
 <!-- Reference Pressures -->
 
 <entry id="trop_cloud_top_press" type="real" category="press_lim"
