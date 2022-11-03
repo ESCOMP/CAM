@@ -1,4 +1,3 @@
-user_nl_cam
 use_topo_file = .true.
 analytic_ic_type = 'us_standard_atmosphere'
 se_statefreq = 256
