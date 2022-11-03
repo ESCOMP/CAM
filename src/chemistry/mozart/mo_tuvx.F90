@@ -20,8 +20,9 @@ module mo_tuvx
   integer, parameter :: NUM_WAVELENGTHS = 157 ! TEMPORARY FOR DEVELOPMENT
 
   ! Inidices for grid updaters
-  integer, parameter :: NUM_GRIDS = 1             ! number of grids that CAM will update at runtime
+  integer, parameter :: NUM_GRIDS = 2             ! number of grids that CAM will update at runtime
   integer, parameter :: GRID_INDEX_HEIGHT     = 1 ! Height grid index
+  integer, parameter :: GRID_INDEX_WAVELENGTH = 2 ! Wavelength grid index
 
   ! Indices for profile updaters
   integer, parameter :: NUM_PROFILES = 8               ! number of profiles that CAM will update at runtime
@@ -319,12 +320,26 @@ contains
 ! Local variables
 !-----------------------------------------------------------------------
     class(grid_from_host_t), pointer :: host_grid
+    type(grid_updater_t)             :: updater
+    real(r8) :: wavelengths(121) ! TEMPORARY FOR DEVELOPMENT
+    integer :: i_wavelength
 
     grids => grid_warehouse_t( )
 
     ! Height grid will be ... \todo figure out how height grid should translate
     ! to CAM vertical grid
     host_grid => grid_from_host_t( "height", "km", pver )
+    call grids%add( host_grid )
+    deallocate( host_grid )
+
+    ! Wavelength grid wil be ... /todo figure out where to get wavelength grid
+    ! from (wavelengths must be set prior to construction of the TUV-x core)
+    do i_wavelength = 1, size( wavelengths )
+      wavelengths( i_wavelength ) = 199.0_r8 + i_wavelength
+    end do
+    host_grid => grid_from_host_t( "wavelength", "nm", 120 )
+    updater = grid_updater_t( host_grid )
+    call updater%update( edges = wavelengths )
     call grids%add( host_grid )
     deallocate( host_grid )
 
@@ -426,6 +441,7 @@ contains
     allocate( this%height_mid_values_( host_grid%size( )     ) ) ! TEMPORARY FOR DEVELOPMENT
     deallocate( host_grid )
 
+    ! wavelength grid cannot be updated at runtime
     allocate( this%wavelength_values_( NUM_WAVELENGTHS + 1 ) ) ! TEMPORARY FOR DEVELOPMENT
 
     ! Profile updaters

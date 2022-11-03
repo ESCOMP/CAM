@@ -4,11 +4,6 @@
      "cross section parameters file": "data/cross_sections/O2_parameters.txt"
    },
    "grids": {
-      "wavelength": {
-         "type": "from csv file",
-         "units": "nm",
-         "file path": "data/grids/wavelength/combined.grid"
-      }
    },
    "profiles": {
    },
