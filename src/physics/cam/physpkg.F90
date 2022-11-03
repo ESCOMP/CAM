@@ -754,6 +754,9 @@ contains
     use epp_ionization,     only: epp_ionization_init, epp_ionization_active
     use waccmx_phys_intr,   only: waccmx_phys_ion_elec_temp_init  ! Initialization of ionosphere module (WACCM-X)
     use waccmx_phys_intr,   only: waccmx_phys_mspd_init   ! Initialization of major species diffusion module (WACCM-X)
+#if (defined HEMCO_CESM)
+   use hemco_interface,  only: HCOI_Chunk_Init
+#endif
     use clubb_intr,         only: clubb_ini_cam
     use sslt_rebin,         only: sslt_rebin_init
     use tropopause,         only: tropopause_init
@@ -797,6 +800,12 @@ contains
 
     ! Initialize debugging a physics column
     call phys_debug_init()
+
+#if (defined HEMCO_CESM)
+    ! initialize harmonized emissions component (HEMCO). this will add
+    ! pbuf fields so must go before pbuf_initialize
+    call hcoi_chunk_init()
+#endif
 
     call pbuf_initialize(pbuf2d)
 
@@ -1056,6 +1065,9 @@ contains
 #if ( defined OFFLINE_DYN )
      use metdata,       only: get_met_srf1
 #endif
+#if (defined HEMCO_CESM)
+   use hemco_interface, only: HCOI_Chunk_Run
+#endif
     !
     ! Input arguments
     !
@@ -1118,6 +1130,12 @@ contains
     call gmean_mass ('before tphysbc DRY', phys_state)
 #endif
 
+#if (defined HEMCO_CESM)
+    !----------------------------------------------------------
+    ! run hemco (first phase)
+    !----------------------------------------------------------
+    call HCOI_Chunk_Run(cam_in, phys_state, pbuf2d, phase=1)
+#endif
 
     !-----------------------------------------------------------------------
     ! Tendency physics before flux coupler invocation
@@ -1193,6 +1211,9 @@ contains
 #if ( defined OFFLINE_DYN )
     use metdata,         only: get_met_srf2
 #endif
+#if (defined HEMCO_CESM)
+   use hemco_interface,  only: HCOI_Chunk_Run
+#endif
     !
     ! Input arguments
     !
@@ -1225,6 +1246,14 @@ contains
     ! if using IOP values for surface fluxes overwrite here after surface components run
     !-----------------------------------------------------------------------
     if (single_column) call scam_use_iop_srf(cam_in)
+
+
+#if (defined HEMCO_CESM)
+    !----------------------------------------------------------
+    ! run hemco (phase 2 before chemistry)
+    !----------------------------------------------------------
+    call HCOI_Chunk_Run(cam_in, phys_state, pbuf2d, phase=2)
+#endif
 
     !-----------------------------------------------------------------------
     ! Tendency physics after coupler
@@ -1292,6 +1321,10 @@ contains
     use chemistry, only : chem_final
     use carma_intr, only : carma_final
     use wv_saturation, only : wv_sat_final
+
+#if (defined HEMCO_CESM)
+   use hemco_interface,  only: HCOI_Chunk_Final
+#endif
     !-----------------------------------------------------------------------
     !
     ! Purpose:
@@ -1312,6 +1345,13 @@ contains
     call chem_final
     call carma_final
     call wv_sat_final
+
+#if (defined HEMCO_CESM)
+    !----------------------------------------------------------
+    ! cleanup hemco
+    !----------------------------------------------------------
+    call HCOI_Chunk_Final()
+#endif
 
   end subroutine phys_final
 

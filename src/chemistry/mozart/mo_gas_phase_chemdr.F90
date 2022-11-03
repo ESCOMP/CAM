@@ -467,7 +467,6 @@ contains
 
 #if defined ( HEMCO_CESM )
   ! for HEMCO-CESM ... passing J-values to ParaNOx ship plume extension
-    integer  :: jno2_idx, joh_idx
     real(r8), pointer :: hco_j_tmp_fld(:)    ! J-value pointer (sfc only) [1/s]
 #endif
 
