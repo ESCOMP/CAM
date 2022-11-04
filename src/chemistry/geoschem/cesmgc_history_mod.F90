@@ -1139,8 +1139,8 @@ CONTAINS
     current => NULL()
 
     ! Optional debugging
-    WRITE(6,*) "hplin debug: after HistoryExports_SetDataPointers"
-    CALL Print_HistoryExportsList( am_I_Root, HistoryConfig, RC )
+    !WRITE(6,*) "hplin debug: after HistoryExports_SetDataPointers"
+    !CALL Print_HistoryExportsList( am_I_Root, HistoryConfig, RC )
 
     IF ( RC == GC_FAILURE ) THEN
        CALL GC_ERROR( ErrMsg, RC, Iam )
