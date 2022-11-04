@@ -162,22 +162,27 @@ contains
 
 !================================================================================================
 
-  subroutine tuvx_get_photo_rates( ncol )
+  subroutine tuvx_get_photo_rates( ncol, zmid, zint, tfld, ts )
 !-----------------------------------------------------------------------
 !
 ! Purpose: calculate and return photolysis rate constants
 !
 !-----------------------------------------------------------------------
 
-    use cam_logfile,    only : iulog
+    use cam_logfile,    only : iulog    ! log info output unit
+    use ppgrid,         only : pcols, & ! maximum number of columns
+                               pver     ! number of vertical levels
     use spmd_utils,     only : main_task => masterprocid, &
                                is_main_task => masterproc, &
                                mpicom
 !-----------------------------------------------------------------------
 ! Dummy arguments
 !-----------------------------------------------------------------------
-
-    integer, intent(in) :: ncol ! Number of colums to calculated photolysis for
+    integer,  intent(in) :: ncol             ! Number of colums to calculated photolysis for
+    real(r8), intent(in) :: zmid(ncol,pver)  ! height at mid-points (km)
+    real(r8), intent(in) :: zint(ncol,pver)  ! height at interfaces (km)
+    real(r8), intent(in) :: tfld(pcols,pver) ! midpoint temperature (K)
+    real(r8), intent(in) :: ts(pcols)        ! surface temperature (K)
 
 !-----------------------------------------------------------------------
 ! Local variables
@@ -188,8 +193,8 @@ contains
       do i_col = 1, ncol
 
         ! set conditions for this column in TUV-x
-        call set_heights( tuvx, i_col )
-        call set_temperatures( tuvx, i_col )
+        call set_heights( tuvx, i_col, ncol, zmid, zint )
+        call set_temperatures( tuvx, i_col, tfld, ts )
         call set_surface_albedo( tuvx, i_col )
         call set_et_flux( tuvx, i_col )
         call set_radiator_profiles( tuvx, i_col )
@@ -285,7 +290,7 @@ contains
 !
 !-----------------------------------------------------------------------
 
-    use cam_logfile,    only : iulog
+    use cam_logfile,    only : iulog ! log info output unit
     use musica_string,  only : to_char
     use spmd_utils,     only : main_task => masterprocid, &
                                is_main_task => masterproc
@@ -323,6 +328,9 @@ contains
     use tuvx_grid_from_host, only : grid_from_host_t
     use tuvx_grid_warehouse, only : grid_warehouse_t
 
+!-----------------------------------------------------------------------
+! Dummy arguments
+!-----------------------------------------------------------------------
     class(grid_warehouse_t), pointer :: grids ! collection of grids to be updated by CAM
 
 !-----------------------------------------------------------------------
@@ -369,6 +377,9 @@ contains
     use tuvx_profile_from_host, only : profile_from_host_t
     use tuvx_profile_warehouse, only : profile_warehouse_t
 
+!-----------------------------------------------------------------------
+! Dummy arguments
+!-----------------------------------------------------------------------
     class(grid_warehouse_t),    intent(in) :: grids    ! CAM grids used in TUV-x
     class(profile_warehouse_t), pointer    :: profiles ! collection of profiles to be updated by CAM
 
@@ -434,6 +445,9 @@ contains
     use tuvx_radiator_from_host, only : radiator_from_host_t
     use tuvx_radiator_warehouse, only : radiator_warehouse_t
 
+!-----------------------------------------------------------------------
+! Dummy arguments
+!-----------------------------------------------------------------------
     type(grid_warehouse_t),      intent(in) :: grids     ! CAM grids used in TUV-x
     class(radiator_warehouse_t), pointer    :: radiators ! collection of radiators to be updated by CAM
 
@@ -478,6 +492,9 @@ contains
     use tuvx_radiator_from_host, only : radiator_updater_t
     use tuvx_radiator_warehouse, only : radiator_warehouse_t
 
+!-----------------------------------------------------------------------
+! Dummy arguments
+!-----------------------------------------------------------------------
     class(tuvx_ptr),             intent(inout) :: this
     class(grid_warehouse_t),     intent(in)    :: grids
     class(profile_warehouse_t),  intent(in)    :: profiles
@@ -553,46 +570,93 @@ contains
 
 !================================================================================================
 
-  subroutine set_heights( this, i_col )
+  subroutine set_heights( this, i_col, ncol, zmid, zint )
 !-----------------------------------------------------------------------
 !
 ! Purpose: sets the height values in TUV-x for the given column
 !
-! TODO: Describe how CAM vertical profile is mapped to TUV-x heights
+!  CAM to TUV-x height grid mapping
+!
+!  TUV-x heights are "bottom-up" and require atmospheric constituent
+!  concentrations at interfaces. Therefore, CAM mid-points are used as
+!  TUV-x grid interfaces, with an additional layer introduced between
+!  the surface and the lowest CAM mid-point.
+!
+!  ---- (interface)  ===== (mid-point)
+!
+!        CAM                                  TUV-x
+! ------(top)------ i_int = 1                              (exo values)
+! ================= i_mid = 1           -------(top)------ i_int = pver + 1
+! ----------------- i_int = 2           ================== i_mid = pver
+!                                       ------------------ i_int = pver
+!        ||
+!        ||                                     ||
+!                                               ||
+! ----------------- i_int = pver
+! ================= i_imd = pver        ------------------ i_int = 2
+!                                       ================== i_mid = 1
+! -----(ground)---- i_int = pver+1      -----(ground)----- i_int = 1
 !
 !-----------------------------------------------------------------------
 
-    class(tuvx_ptr), intent(inout) :: this  ! TUV-x calculator
-    integer,         intent(in)    :: i_col ! Column to set conditions for
+    use ppgrid,         only : pver   ! number of vertical levels
 
-    ! TEMPORARY FOR DEVELOPMENT
+!-----------------------------------------------------------------------
+! Dummy arguments
+!-----------------------------------------------------------------------
+    class(tuvx_ptr), intent(inout) :: this             ! TUV-x calculator
+    integer,         intent(in)    :: i_col            ! column to set conditions for
+    integer,         intent(in)    :: ncol             ! number of colums to calculated photolysis for
+    real(r8),        intent(in)    :: zmid(ncol,pver)  ! height at mid-points (km)
+    real(r8),        intent(in)    :: zint(ncol,pver)  ! height at interfaces (km)
+
+!-----------------------------------------------------------------------
+! Local variables
+!-----------------------------------------------------------------------
     integer :: i_level
-    do i_level = 1, size( this%heights_ )
-      this%heights_( i_level ) = i_level * 1.0_r8 - 1.0_r8
-    end do
-    call this%grids_( GRID_INDEX_HEIGHT )%update( &
-        edges = this%heights_(:) )
+    real(r8) :: edges(pver+1)
+    real(r8) :: mid_points(pver)
+
+    edges(1) = 0.0_r8
+    edges(2:pver+1) = zmid(i_col,pver:1:-1)
+    mid_points(1) = zmid(i_col,pver) * 0.5_r8
+    mid_points(2:pver) = zint(i_col,pver:2:-1)
+    call this%grids_( GRID_INDEX_HEIGHT )%update( edges = edges, mid_points = mid_points )
 
   end subroutine set_heights
 
 !================================================================================================
 
-  subroutine set_temperatures( this, i_col )
+  subroutine set_temperatures( this, i_col, tfld, ts )
 !-----------------------------------------------------------------------
 !
 ! Purpose: sets the temperatures in TUV-x for the given column
 !
-! TODO: Describe how CAM temperature profile is mapped to TUV-x heights
+! See description of `set_heights` for CAM <-> TUV-x vertical grid
+! mapping.
 !
 !-----------------------------------------------------------------------
 
-    class(tuvx_ptr), intent(inout) :: this  ! TUV-x calculator
-    integer,         intent(in)    :: i_col ! Column to set conditions for
+    use ppgrid,         only : pcols, & ! maximum number of columns
+                               pver     ! number of vertical levels
 
-    ! TEMPORARY FOR DEVELOPMENT
-    this%height_values_(:) = 298.15_r8
-    call this%profiles_( PROFILE_INDEX_TEMPERATURE )%update( &
-        edge_values = this%height_values_(:) )
+!-----------------------------------------------------------------------
+! Dummy arguments
+!-----------------------------------------------------------------------
+    class(tuvx_ptr), intent(inout) :: this             ! TUV-x calculator
+    integer,         intent(in)    :: i_col            ! column to set conditions for
+    real(r8),        intent(in)    :: tfld(pcols,pver) ! midpoint temperature (K)
+    real(r8),        intent(in)    :: ts(pcols)        ! surface temperature (K)
+
+!-----------------------------------------------------------------------
+! Local variables
+!-----------------------------------------------------------------------
+    integer :: i_level
+    real(r8) :: edges(pver+1)
+
+    edges(1) = ts(i_col)
+    edges(2:pver+1) = tfld(i_col,pver:1:-1)
+    call this%profiles_( PROFILE_INDEX_TEMPERATURE )%update( edge_values = edges )
 
   end subroutine set_temperatures
 
@@ -607,6 +671,9 @@ contains
 !
 !-----------------------------------------------------------------------
 
+!-----------------------------------------------------------------------
+! Dummy arguments
+!-----------------------------------------------------------------------
     class(tuvx_ptr), intent(inout) :: this  ! TUV-x calculator
     integer,         intent(in)    :: i_col ! Column to set conditions for
 
@@ -628,6 +695,9 @@ contains
 !
 !-----------------------------------------------------------------------
 
+!-----------------------------------------------------------------------
+! Dummy arguments
+!-----------------------------------------------------------------------
     class(tuvx_ptr), intent(inout) :: this  ! TUV-x calculator
     integer,         intent(in)    :: i_col ! Column to set conditions for
 
@@ -650,6 +720,9 @@ contains
 !
 !-----------------------------------------------------------------------
 
+!-----------------------------------------------------------------------
+! Dummy arguments
+!-----------------------------------------------------------------------
     class(tuvx_ptr), intent(inout) :: this  ! TUV-x calculator
     integer,         intent(in)    :: i_col ! Column to set conditions for
 
