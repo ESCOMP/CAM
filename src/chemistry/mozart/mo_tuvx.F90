@@ -3,11 +3,12 @@ module mo_tuvx
 !     ... wrapper for TUV-x photolysis rate constant calculator
 !----------------------------------------------------------------------
 
-  use musica_string,          only : string_t
-  use shr_kind_mod,           only : r8 => shr_kind_r8
-  use tuvx_core,              only : core_t
-  use tuvx_grid_from_host,    only : grid_updater_t
-  use tuvx_profile_from_host, only : profile_updater_t
+  use musica_string,           only : string_t
+  use shr_kind_mod,            only : r8 => shr_kind_r8
+  use tuvx_core,               only : core_t
+  use tuvx_grid_from_host,     only : grid_updater_t
+  use tuvx_profile_from_host,  only : profile_updater_t
+  use tuvx_radiator_from_host, only : radiator_updater_t
 
   implicit none
 
@@ -16,8 +17,6 @@ module mo_tuvx
   public :: tuvx_init
   public :: tuvx_get_photo_rates
   public :: tuvx_finalize
-
-  integer, parameter :: NUM_WAVELENGTHS = 157 ! TEMPORARY FOR DEVELOPMENT
 
   ! Inidices for grid updaters
   integer, parameter :: NUM_GRIDS = 2             ! number of grids that CAM will update at runtime
@@ -35,21 +34,27 @@ module mo_tuvx
   integer, parameter :: PROFILE_INDEX_SO2          = 7 ! Sulfur dioxide profile index
   integer, parameter :: PROFILE_INDEX_NO2          = 8 ! Nitrogen dioxide profile index
 
+  ! Indices for radiator updaters
+  integer, parameter :: NUM_RADIATORS = 1          ! number of radiators that CAM will update at runtime
+  integer, parameter :: RADIATOR_INDEX_AEROSOL = 1 ! Aerosol radiator index
+
   ! TODO how should this path be set and communicated to this wrapper?
   character(len=*), parameter :: tuvx_config_path = "tuvx_config.json"
 
   ! TUV-x calculator for each OMP thread
   type :: tuvx_ptr
-    type(core_t), pointer   :: core_ => null( )        ! TUV-x calculator
-    integer                 :: n_photo_rates_          ! number of photo reactions in TUV-x
-    real(r8), allocatable   :: photo_rates_(:,:)       ! photolysis rate constants
-                                                       !   (vertical level, reaction) [s-1]
-    type(grid_updater_t)    :: grids_(NUM_GRIDS)       ! grid updaters
-    type(profile_updater_t) :: profiles_(NUM_PROFILES) ! profile updaters
-    real(r8), allocatable   :: heights_(:)             ! TEMPORARY FOR DEVELOPMENT
-    real(r8), allocatable   :: height_values_(:)       ! TEMPORARY FOR DEVELOPMENT
-    real(r8), allocatable   :: height_mid_values_(:)   ! TEMPORARY FOR DEVELOPMENT
-    real(r8), allocatable   :: wavelength_values_(:)   ! TEMPORARY FOR DEVELOPMENT
+    type(core_t), pointer    :: core_ => null( )          ! TUV-x calculator
+    integer                  :: n_photo_rates_            ! number of photo reactions in TUV-x
+    real(r8), allocatable    :: photo_rates_(:,:)         ! photolysis rate constants
+                                                          !   (vertical level, reaction) [s-1]
+    type(grid_updater_t)     :: grids_(NUM_GRIDS)         ! grid updaters
+    type(profile_updater_t)  :: profiles_(NUM_PROFILES)   ! profile updaters
+    type(radiator_updater_t) :: radiators_(NUM_RADIATORS) ! radiator updaters
+    real(r8), allocatable    :: heights_(:)               ! TEMPORARY FOR DEVELOPMENT
+    real(r8), allocatable    :: height_values_(:)         ! TEMPORARY FOR DEVELOPMENT
+    real(r8), allocatable    :: height_mid_values_(:)     ! TEMPORARY FOR DEVELOPMENT
+    real(r8), allocatable    :: wavelength_values_(:)     ! TEMPORARY FOR DEVELOPMENT
+    real(r8), allocatable    :: optics_values_(:,:)       ! TEMPORARY FOR DEVELOPMENT
   end type tuvx_ptr
   type(tuvx_ptr), allocatable :: tuvx_ptrs(:)
 
@@ -67,16 +72,17 @@ contains
 #ifdef HAVE_MPI
     use mpi
 #endif
-    use cam_logfile,            only : iulog
-    use musica_assert,          only : assert_msg
-    use musica_mpi,             only : musica_mpi_rank
-    use musica_string,          only : string_t, to_char
-    use tuvx_grid,              only : grid_t
-    use tuvx_grid_warehouse,    only : grid_warehouse_t
-    use tuvx_profile_warehouse, only : profile_warehouse_t
-    use spmd_utils,             only : main_task => masterprocid, &
-                                       is_main_task => masterproc, &
-                                       mpicom
+    use cam_logfile,             only : iulog
+    use musica_assert,           only : assert_msg
+    use musica_mpi,              only : musica_mpi_rank
+    use musica_string,           only : string_t, to_char
+    use tuvx_grid,               only : grid_t
+    use tuvx_grid_warehouse,     only : grid_warehouse_t
+    use tuvx_profile_warehouse,  only : profile_warehouse_t
+    use tuvx_radiator_warehouse, only : radiator_warehouse_t
+    use spmd_utils,              only : main_task => masterprocid, &
+                                        is_main_task => masterproc, &
+                                        mpicom
 
 !-----------------------------------------------------------------------
 ! Local variables
@@ -87,6 +93,7 @@ contains
     class(grid_t), pointer :: height
     class(grid_warehouse_t), pointer :: cam_grids
     class(profile_warehouse_t), pointer :: cam_profiles
+    class(radiator_warehouse_t), pointer :: cam_radiators
     integer :: pack_size, pos, i_core, i_err
 
     config_path = tuvx_config_path
@@ -99,11 +106,12 @@ contains
 
     ! Create the set of TUV-x grids and profiles that CAM will update at runtime
     cam_grids => get_cam_grids( )
-    cam_profiles => get_cam_profiles( )
+    cam_profiles => get_cam_profiles( cam_grids )
+    cam_radiators => get_cam_radiators( cam_grids )
 
     ! construct a core on the primary process and pack it onto an MPI buffer
     if( is_main_task ) then
-      core => core_t( config_path, cam_grids, cam_profiles )
+      core => core_t( config_path, cam_grids, cam_profiles, cam_radiators )
       pack_size = core%pack_size( mpicom )
       allocate( buffer( pack_size ) )
       pos = 0
@@ -135,7 +143,7 @@ contains
       call tuvx%core_%mpi_unpack( buffer, pos, mpicom )
 
       ! Set up map between CAM and TUV-x photolysis reactions for each thread
-      call create_updaters( tuvx, cam_grids, cam_profiles )
+      call create_updaters( tuvx, cam_grids, cam_profiles, cam_radiators )
 
       ! TEMPORARY FOR DEVELOPMENT
       tuvx%n_photo_rates_ = tuvx%core_%number_of_photolysis_reactions( )
@@ -146,8 +154,9 @@ contains
     end associate
     end do
 
-    deallocate( cam_grids    )
-    deallocate( cam_profiles )
+    deallocate( cam_grids     )
+    deallocate( cam_profiles  )
+    deallocate( cam_radiators )
 
   end subroutine tuvx_init
 
@@ -347,7 +356,7 @@ contains
 
 !================================================================================================
 
-  function get_cam_profiles( ) result( profiles )
+  function get_cam_profiles( grids ) result( profiles )
 !-----------------------------------------------------------------------
 !
 ! Purpose: creates and loads a profile warehouse with profiles that CAM
@@ -355,56 +364,102 @@ contains
 !
 !-----------------------------------------------------------------------
 
-    use ppgrid,                 only : pver ! number of vertical levels
+    use tuvx_grid,              only : grid_t
+    use tuvx_grid_warehouse,    only : grid_warehouse_t
     use tuvx_profile_from_host, only : profile_from_host_t
     use tuvx_profile_warehouse, only : profile_warehouse_t
 
-    class(profile_warehouse_t), pointer :: profiles ! collection of profiles to be updated by CAM
+    class(grid_warehouse_t),    intent(in) :: grids    ! CAM grids used in TUV-x
+    class(profile_warehouse_t), pointer    :: profiles ! collection of profiles to be updated by CAM
 
 !-----------------------------------------------------------------------
 ! Local variables
 !-----------------------------------------------------------------------
     class(profile_from_host_t), pointer :: host_profile
+    class(grid_t),              pointer :: height, wavelength
 
-    profiles => profile_warehouse_t( )
+    profiles   => profile_warehouse_t( )
+    height     => grids%get_grid(     "height", "km" )
+    wavelength => grids%get_grid( "wavelength", "nm" )
 
     ! Temperature profile on height grid
-    host_profile => profile_from_host_t( "temperature", "K", pver )
+    host_profile => profile_from_host_t( "temperature", "K", height%size( ) )
     call profiles%add( host_profile )
     deallocate( host_profile )
 
     ! Surface albedo on wavelength grid
-    host_profile => profile_from_host_t( "surface albedo", "none", NUM_WAVELENGTHS )
+    host_profile => profile_from_host_t( "surface albedo", "none", wavelength%size( ) )
     call profiles%add( host_profile )
     deallocate( host_profile )
 
     ! Extraterrestrial flux on wavelength grid
     host_profile => profile_from_host_t( "extraterrestrial flux", "photon cm-2 s-1", &
-                                         NUM_WAVELENGTHS )
+                                         wavelength%size( ) )
     call profiles%add( host_profile )
     deallocate( host_profile )
 
     ! Air profile
-    host_profile => profile_from_host_t( "air", "molecule cm-3", pver )
+    host_profile => profile_from_host_t( "air", "molecule cm-3", height%size( ) )
     call profiles%add( host_profile )
     deallocate( host_profile )
 
     ! O3 profile
     ! TODO optionally include if available
-    host_profile => profile_from_host_t( "O3", "molecule cm-3", pver )
+    host_profile => profile_from_host_t( "O3", "molecule cm-3", height%size( ) )
     call profiles%add( host_profile )
     deallocate( host_profile )
 
     ! O2 profile
-    host_profile => profile_from_host_t( "O2", "molecule cm-3", pver )
+    host_profile => profile_from_host_t( "O2", "molecule cm-3", height%size( ) )
     call profiles%add( host_profile )
     deallocate( host_profile )
+
+    deallocate( height )
+    deallocate( wavelength )
 
   end function get_cam_profiles
 
 !================================================================================================
 
-  subroutine create_updaters( this, grids, profiles )
+  function get_cam_radiators( grids ) result( radiators )
+!-----------------------------------------------------------------------
+!
+! Purpose: creates and loads a radiator warehouse with radiators that CAM
+!          will update at runtime
+!
+!-----------------------------------------------------------------------
+
+    use tuvx_grid,               only : grid_t
+    use tuvx_grid_warehouse,     only : grid_warehouse_t
+    use tuvx_radiator_from_host, only : radiator_from_host_t
+    use tuvx_radiator_warehouse, only : radiator_warehouse_t
+
+    type(grid_warehouse_t),      intent(in) :: grids     ! CAM grids used in TUV-x
+    class(radiator_warehouse_t), pointer    :: radiators ! collection of radiators to be updated by CAM
+
+!-----------------------------------------------------------------------
+! Local variables
+!-----------------------------------------------------------------------
+    class(radiator_from_host_t), pointer :: host_radiator
+    class(grid_t), pointer :: height, wavelength
+
+    radiators  => radiator_warehouse_t( )
+    height     => grids%get_grid(     "height", "km" )
+    wavelength => grids%get_grid( "wavelength", "nm" )
+
+    ! Aerosol radiator
+    host_radiator => radiator_from_host_t( "aerosol", height, wavelength )
+    call radiators%add( host_radiator )
+    deallocate( host_radiator )
+
+    deallocate( height )
+    deallocate( wavelength )
+
+  end function get_cam_radiators
+
+!================================================================================================
+
+  subroutine create_updaters( this, grids, profiles, radiators )
 !-----------------------------------------------------------------------
 !
 ! Purpose: creates updaters for each grid and profile that CAM will use
@@ -412,37 +467,48 @@ contains
 !
 !-----------------------------------------------------------------------
 
-    use musica_assert,          only : assert
-    use tuvx_grid_from_host,    only : grid_updater_t
-    use tuvx_grid,              only : grid_t
-    use tuvx_grid_warehouse,    only : grid_warehouse_t
-    use tuvx_profile,           only : profile_t
-    use tuvx_profile_from_host, only : profile_updater_t
-    use tuvx_profile_warehouse, only : profile_warehouse_t
+    use musica_assert,           only : assert
+    use tuvx_grid,               only : grid_t
+    use tuvx_grid_from_host,     only : grid_updater_t
+    use tuvx_grid_warehouse,     only : grid_warehouse_t
+    use tuvx_profile,            only : profile_t
+    use tuvx_profile_from_host,  only : profile_updater_t
+    use tuvx_profile_warehouse,  only : profile_warehouse_t
+    use tuvx_radiator,           only : radiator_t
+    use tuvx_radiator_from_host, only : radiator_updater_t
+    use tuvx_radiator_warehouse, only : radiator_warehouse_t
 
-    class(tuvx_ptr),            intent(inout) :: this
-    class(grid_warehouse_t),    intent(in)    :: grids
-    class(profile_warehouse_t), intent(in)    :: profiles
+    class(tuvx_ptr),             intent(inout) :: this
+    class(grid_warehouse_t),     intent(in)    :: grids
+    class(profile_warehouse_t),  intent(in)    :: profiles
+    class(radiator_warehouse_t), intent(in)    :: radiators
 
 !-----------------------------------------------------------------------
 ! Local variables
 !-----------------------------------------------------------------------
-    class(grid_t),    pointer :: host_grid
-    class(profile_t), pointer :: host_profile
-    logical                   :: found
+    class(grid_t),     pointer :: height, wavelength
+    class(profile_t),  pointer :: host_profile
+    class(radiator_t), pointer :: host_radiator
+    logical                    :: found
 
     ! Grid updaters
 
-    host_grid => grids%get_grid( "height", "km" )
-    this%grids_( GRID_INDEX_HEIGHT ) = this%core_%get_updater( host_grid, found )
+    height => grids%get_grid( "height", "km" )
+    this%grids_( GRID_INDEX_HEIGHT ) = this%core_%get_updater( height, found )
     call assert( 213798815, found )
-    allocate( this%heights_(           host_grid%size( ) + 1 ) ) ! TEMPORARY FOR DEVELOPMENT
-    allocate( this%height_values_(     host_grid%size( ) + 1 ) ) ! TEMPORARY FOR DEVELOPMENT
-    allocate( this%height_mid_values_( host_grid%size( )     ) ) ! TEMPORARY FOR DEVELOPMENT
-    deallocate( host_grid )
+    allocate( this%heights_(           height%size( ) + 1 ) ) ! TEMPORARY FOR DEVELOPMENT
+    allocate( this%height_values_(     height%size( ) + 1 ) ) ! TEMPORARY FOR DEVELOPMENT
+    allocate( this%height_mid_values_( height%size( )     ) ) ! TEMPORARY FOR DEVELOPMENT
 
     ! wavelength grid cannot be updated at runtime
-    allocate( this%wavelength_values_( NUM_WAVELENGTHS + 1 ) ) ! TEMPORARY FOR DEVELOPMENT
+    wavelength => grids%get_grid( "wavelength", "nm" )
+    allocate( this%wavelength_values_( wavelength%size( ) + 1 ) ) ! TEMPORARY FOR DEVELOPMENT
+
+    ! optical property working array
+    allocate( this%optics_values_( height%size( ), wavelength%size( ) ) )
+
+    deallocate( height )
+    deallocate( wavelength )
 
     ! Profile updaters
 
@@ -475,6 +541,13 @@ contains
     this%profiles_( PROFILE_INDEX_O2 ) = this%core_%get_updater( host_profile, found )
     call assert( 105165970, found )
     deallocate( host_profile )
+
+    ! radiator updaters
+
+    host_radiator => radiators%get_radiator( "aerosol" )
+    this%radiators_( RADIATOR_INDEX_AEROSOL ) = this%core_%get_updater( host_radiator, found )
+    call assert( 675200430, found )
+    nullify( host_radiator )
 
   end subroutine create_updaters
 
@@ -603,6 +676,11 @@ contains
         mid_point_values = this%height_values_(1:size(this%height_values_)-1), &
         edge_values = this%height_values_(:), &
         layer_densities = this%height_mid_values_(:) )
+
+    ! TEMPORARY FOR DEVELOPMENT - aerosols
+    this%optics_values_(:,:) = 0.01_r8
+    call this%radiators_( RADIATOR_INDEX_AEROSOL )%update( &
+        optical_depths = this%optics_values_ )
 
   end subroutine set_radiator_profiles
 
