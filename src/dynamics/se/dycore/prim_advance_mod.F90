@@ -549,7 +549,7 @@ contains
         !
         ! pel@ucar.edu: resolved noise issue over Antarctica
         !
-        dp3d_ref(:,:,k)    = dp3d_ref(:,:,:) - dp0
+        dp3d_ref(:,:,k,ie) = dp3d_ref(:,:,k,ie) - dp0
         tmp                = hvcoord%hyam(k)*hvcoord%ps0+hvcoord%hybm(k)*ps_ref(:,:,ie)
         tmp2               = (tmp/hvcoord%ps0)**cappa
         T_ref(:,:,k,ie)    = (T0+T1*tmp2)
