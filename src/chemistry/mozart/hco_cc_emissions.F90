@@ -48,6 +48,7 @@ module hco_cc_emissions
 !
 ! !PUBLIC MEMBER FUNCTIONS:
 !
+    public :: hco_extfrc_inti
     public :: hco_set_srf_emissions, hco_set_extfrc
 !
 ! !REMARKS:
@@ -55,6 +56,7 @@ module hco_cc_emissions
 !
 ! !REVISION HISTORY:
 !  08 Aug 2022 - H.P. Lin    - Initial version
+!  04 Nov 2022 - H.P. Lin    - Now initialize extfrc fields in here
 !EOP
 !------------------------------------------------------------------------------
 !BOC
@@ -297,5 +299,74 @@ contains
     enddo
 
     end subroutine hco_set_extfrc
+!EOC
+!------------------------------------------------------------------------------
+!                    Harmonized Emissions Component (HEMCO)                   !
+!------------------------------------------------------------------------------
+!BOP
+!
+! !IROUTINE: hco_extfrc_inti
+!
+! !DESCRIPTION: Initialize external forcing related diagnostic fields
+!\\
+!\\
+! !INTERFACE:
+!
+    subroutine hco_extfrc_inti( )
+!
+! !USES:
+!
+        use chem_mods,    only: frc_from_dataset, extcnt, extfrc_lst
+        use cam_history,  only: addfld, add_default, horiz_only
+        use phys_control, only: phys_getopts
+        implicit none
+!
+! !INPUT PARAMETERS:
+!
+        integer,  intent(in)               :: ncol                       ! columns in chunk
+        integer,  intent(in)               :: lchnk                      ! chunk index
+        real(r8), intent(in)               :: zint(ncol, pverp)          ! interface geopot above surface (km)
+        real(r8), intent(inout)            :: frcing(ncol,pver,extcnt)   ! insitu forcings (molec/cm^3/s)
+        type(physics_buffer_desc), pointer :: pbuf(:)                    ! pbuf in chunk
+!
+! !REVISION HISTORY:
+!  04 Nov 2022 - H.P. Lin    - Initial version based on extfrc_inti
+!EOP
+!------------------------------------------------------------------------------
+!BOC
+!
+! !LOCAL VARIABLES:
+!
+    logical  :: history_aerosol
+    logical  :: history_chemistry
+    logical  :: history_cesm_forcing
+    character(len=16)  :: spc_name
+
+    call phys_getopts( &
+         history_aerosol_out = history_aerosol, &
+         history_chemistry_out = history_chemistry, &
+         history_cesm_forcing_out = history_cesm_forcing )
+
+    do n= 1,extcnt
+       if (frc_from_dataset(n)) then
+          spc_name = extfrc_lst(n)
+          call addfld( trim(spc_name)//'_XFRC', (/ 'lev' /), 'A',  'molec/cm3/s', &
+               'external forcing for '//trim(spc_name) )
+          call addfld( trim(spc_name)//'_CLXF', horiz_only,  'A',  'molec/cm2/s', &
+               'vertically intergrated external forcing for '//trim(spc_name) )
+          call addfld( trim(spc_name)//'_CMXF', horiz_only,  'A',  'kg/m2/s', &
+               'vertically intergrated external forcing for '//trim(spc_name) )
+          if ( history_aerosol .or. history_chemistry ) then
+             call add_default( trim(spc_name)//'_CLXF', 1, ' ' )
+             call add_default( trim(spc_name)//'_CMXF', 1, ' ' )
+          endif
+          if ( history_cesm_forcing .and. spc_name == 'NO2' ) then
+             call add_default( trim(spc_name)//'_CLXF', 1, ' ' )
+             call add_default( trim(spc_name)//'_CMXF', 1, ' ' )
+          endif
+       endif
+    enddo
+
+    end subroutine hco_extfrc_inti
 !EOC
 end module hco_cc_emissions

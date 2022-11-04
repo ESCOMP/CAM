@@ -216,7 +216,6 @@ contains
        endif
     enddo
 
-#if !defined ( HEMCO_CESM )
     if (masterproc) then
        !-----------------------------------------------------------------------
        ! 	... diagnostics
@@ -326,7 +325,6 @@ contains
                           rmv_file, extfrc_cycle_yr, extfrc_fixed_ymd, extfrc_fixed_tod, trim(extfrc_type) )
 
     enddo frcing_loop
-#endif
 
   end subroutine extfrc_inti
 
