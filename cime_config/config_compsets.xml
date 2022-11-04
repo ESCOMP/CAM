@@ -324,7 +324,7 @@
     <lname>2010_CAM60%CCTS1_CLM50%SP_CICE%PRES_DOCN%DOM_MOSART_SGLC_SWAV</lname>
   </compset>
   <compset>
-    <alias>FC2010climo</alias>
+    <alias>FC2010climo_HCO</alias>
     <lname>2010_CAM60%CCTS1%HEMCO_CLM50%SP_CICE%PRES_DOCN%DOM_MOSART_SGLC_SWAV</lname>
   </compset>
 
