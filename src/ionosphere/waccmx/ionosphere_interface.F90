@@ -740,7 +740,7 @@ module ionosphere_interface
                   ! Might need geometric height on midpoints for output
                   !------------------------------------------------------------
                   if (hist_fld_active('Z3GM')) then
-                     r8tmp = phys_state(lchnk)%zm(i, k)
+                     r8tmp = phys_state(lchnk)%zm(i, k) + phis(i)/gravit
                      tempm(i, k) = r8tmp * (1._r8 + (r8tmp * rearth_inv))
                   end if
                   ! physics state fields on interfaces (but only to pver)
