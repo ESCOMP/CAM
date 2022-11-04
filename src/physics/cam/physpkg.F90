@@ -152,6 +152,9 @@ contains
     use dyn_comp,           only: dyn_register
     use spcam_drivers,      only: spcam_register
     use offline_driver,     only: offline_driver_reg
+#if (defined HEMCO_CESM)
+    use hemco_interface,    only: HCOI_Chunk_Init
+#endif
 
     !---------------------------Local variables-----------------------------
     !
@@ -337,6 +340,14 @@ contains
     ! ***NOTE*** No registering constituents after the call to cnst_chk_dim.
 
     call offline_driver_reg()
+
+#if (defined HEMCO_CESM)
+    ! initialize harmonized emissions component (HEMCO). this will add
+    ! pbuf fields so must go before pbuf_initialize. also, it must go
+    ! before pbuf_cam_snapshot_register as pbuf fields are registered within
+    ! hcoi_chunk_init here.
+    call hcoi_chunk_init()
+#endif
 
     ! This needs to be last as it requires all pbuf fields to be added
     if (cam_snapshot_before_num > 0 .or. cam_snapshot_after_num > 0) then
@@ -754,9 +765,6 @@ contains
     use epp_ionization,     only: epp_ionization_init, epp_ionization_active
     use waccmx_phys_intr,   only: waccmx_phys_ion_elec_temp_init  ! Initialization of ionosphere module (WACCM-X)
     use waccmx_phys_intr,   only: waccmx_phys_mspd_init   ! Initialization of major species diffusion module (WACCM-X)
-#if (defined HEMCO_CESM)
-   use hemco_interface,  only: HCOI_Chunk_Init
-#endif
     use clubb_intr,         only: clubb_ini_cam
     use sslt_rebin,         only: sslt_rebin_init
     use tropopause,         only: tropopause_init
@@ -800,12 +808,6 @@ contains
 
     ! Initialize debugging a physics column
     call phys_debug_init()
-
-#if (defined HEMCO_CESM)
-    ! initialize harmonized emissions component (HEMCO). this will add
-    ! pbuf fields so must go before pbuf_initialize
-    call hcoi_chunk_init()
-#endif
 
     call pbuf_initialize(pbuf2d)
 
