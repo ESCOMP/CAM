@@ -321,14 +321,6 @@ contains
         use phys_control, only: phys_getopts
         implicit none
 !
-! !INPUT PARAMETERS:
-!
-        integer,  intent(in)               :: ncol                       ! columns in chunk
-        integer,  intent(in)               :: lchnk                      ! chunk index
-        real(r8), intent(in)               :: zint(ncol, pverp)          ! interface geopot above surface (km)
-        real(r8), intent(inout)            :: frcing(ncol,pver,extcnt)   ! insitu forcings (molec/cm^3/s)
-        type(physics_buffer_desc), pointer :: pbuf(:)                    ! pbuf in chunk
-!
 ! !REVISION HISTORY:
 !  04 Nov 2022 - H.P. Lin    - Initial version based on extfrc_inti
 !EOP
@@ -341,6 +333,7 @@ contains
     logical  :: history_chemistry
     logical  :: history_cesm_forcing
     character(len=16)  :: spc_name
+    integer  :: n
 
     call phys_getopts( &
          history_aerosol_out = history_aerosol, &

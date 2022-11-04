@@ -348,11 +348,9 @@ contains
     !-----------------------------------------------------------------------
     integer :: m
 
-#if !defined ( HEMCO_CESM )
     do m = 1,n_frc_files
        call advance_trcdata( forcings(m)%fields, forcings(m)%file, state, pbuf2d  )
     end do
-#endif
 
   end subroutine extfrc_timestep_init
 
