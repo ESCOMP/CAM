@@ -4,6 +4,7 @@ module mo_tuvx
 !----------------------------------------------------------------------
 
   use musica_string,           only : string_t
+  use ppgrid,                  only : pver                ! number of vertical layers
   use shr_kind_mod,            only : r8 => shr_kind_r8
   use tuvx_core,               only : core_t
   use tuvx_grid_from_host,     only : grid_updater_t
@@ -50,6 +51,8 @@ module mo_tuvx
     type(grid_updater_t)     :: grids_(NUM_GRIDS)         ! grid updaters
     type(profile_updater_t)  :: profiles_(NUM_PROFILES)   ! profile updaters
     type(radiator_updater_t) :: radiators_(NUM_RADIATORS) ! radiator updaters
+    real(r8)                 :: height_delta_(pver)       ! change in height in each
+                                                          !   vertical layer (km)
     real(r8), allocatable    :: heights_(:)               ! TEMPORARY FOR DEVELOPMENT
     real(r8), allocatable    :: height_values_(:)         ! TEMPORARY FOR DEVELOPMENT
     real(r8), allocatable    :: height_mid_values_(:)     ! TEMPORARY FOR DEVELOPMENT
@@ -163,16 +166,17 @@ contains
 !================================================================================================
 
   subroutine tuvx_get_photo_rates( ncol, height_mid, height_int, temperature_mid, &
-      surface_temperature, surface_albedo )
+      surface_temperature, fixed_species_conc, species_vmr, surface_albedo )
 !-----------------------------------------------------------------------
 !
 ! Purpose: calculate and return photolysis rate constants
 !
 !-----------------------------------------------------------------------
 
-    use cam_logfile,    only : iulog    ! log info output unit
-    use ppgrid,         only : pcols, & ! maximum number of columns
-                               pver     ! number of vertical levels
+    use cam_logfile,    only : iulog        ! log info output unit
+    use chem_mods,      only : gas_pcnst, & ! number of non-fixed species
+                               nfs          ! number of fixed species
+    use ppgrid,         only : pcols        ! maximum number of columns
     use spmd_utils,     only : main_task => masterprocid, &
                                is_main_task => masterproc, &
                                mpicom
@@ -181,9 +185,13 @@ contains
 !-----------------------------------------------------------------------
     integer,  intent(in) :: ncol                        ! Number of colums to calculated photolysis for
     real(r8), intent(in) :: height_mid(pcols,pver)      ! height at mid-points (km)
-    real(r8), intent(in) :: height_int(pcols,pver)      ! height at interfaces (km)
+    real(r8), intent(in) :: height_int(pcols,pver+1)    ! height at interfaces (km)
     real(r8), intent(in) :: temperature_mid(pcols,pver) ! midpoint temperature (K)
     real(r8), intent(in) :: surface_temperature(pcols)  ! surface temperature (K)
+    real(r8), intent(in) :: fixed_species_conc(ncol,pver,max(1,nfs)) ! fixed species densities
+                                                                     !   (molecule cm-3)
+    real(r8), intent(in) :: species_vmr(ncol,pver,max(1,gas_pcnst))  ! species volume mixing
+                                                                     !   ratios (mol mol-1)
     real(r8), intent(in) :: surface_albedo(pcols)       ! surface albedo (unitless)
 
 !-----------------------------------------------------------------------
@@ -194,12 +202,14 @@ contains
     associate( tuvx => tuvx_ptrs( thread_id( ) ) )
       do i_col = 1, ncol
 
-        ! set conditions for this column in TUV-x
+        ! update grid heights
         call set_heights( tuvx, i_col, ncol, height_mid, height_int )
+
+        ! set conditions for this column in TUV-x
         call set_temperatures( tuvx, i_col, temperature_mid, surface_temperature )
         call set_surface_albedo( tuvx, i_col, surface_albedo )
         call set_et_flux( tuvx, i_col )
-        call set_radiator_profiles( tuvx, i_col )
+        call set_radiator_profiles( tuvx, i_col, ncol, fixed_species_conc, species_vmr )
 
         ! Calculate photolysis rate constants for this column
         ! TEMPORARY FOR DEVELOPMENT - fix SZA
@@ -326,7 +336,6 @@ contains
 !
 !-----------------------------------------------------------------------
 
-    use ppgrid,              only : pver ! number of vertical levels
     use tuvx_grid_from_host, only : grid_from_host_t
     use tuvx_grid_warehouse, only : grid_warehouse_t
 
@@ -577,6 +586,8 @@ contains
 !
 ! Purpose: sets the height values in TUV-x for the given column
 !
+! NOTE: This function must be called before updating any profile data.
+!
 !  CAM to TUV-x height grid mapping
 !
 !  TUV-x heights are "bottom-up" and require atmospheric constituent
@@ -601,17 +612,16 @@ contains
 !
 !-----------------------------------------------------------------------
 
-    use ppgrid,         only : pcols, & ! maximum number of columns
-                               pver     ! number of vertical levels
+    use ppgrid,         only : pcols ! maximum number of columns
 
 !-----------------------------------------------------------------------
 ! Dummy arguments
 !-----------------------------------------------------------------------
-    class(tuvx_ptr), intent(inout) :: this                    ! TUV-x calculator
-    integer,         intent(in)    :: i_col                   ! column to set conditions for
-    integer,         intent(in)    :: ncol                    ! number of colums to calculated photolysis for
-    real(r8),        intent(in)    :: height_mid(pcols,pver)  ! height above the surface at mid-points (km)
-    real(r8),        intent(in)    :: height_int(pcols,pver)  ! height above the surface at interfaces (km)
+    class(tuvx_ptr), intent(inout) :: this                     ! TUV-x calculator
+    integer,         intent(in)    :: i_col                    ! column to set conditions for
+    integer,         intent(in)    :: ncol                     ! number of colums to calculated photolysis for
+    real(r8),        intent(in)    :: height_mid(pcols,pver)   ! height above the surface at mid-points (km)
+    real(r8),        intent(in)    :: height_int(pcols,pver+1) ! height above the surface at interfaces (km)
 
 !-----------------------------------------------------------------------
 ! Local variables
@@ -625,6 +635,7 @@ contains
     mid_points(1) = height_mid(i_col,pver) * 0.5_r8
     mid_points(2:pver) = height_int(i_col,pver:2:-1)
     call this%grids_( GRID_INDEX_HEIGHT )%update( edges = edges, mid_points = mid_points )
+    this%height_delta_(1:pver) = edges(2:pver+1) - edges(1:pver)
 
   end subroutine set_heights
 
@@ -640,8 +651,7 @@ contains
 !
 !-----------------------------------------------------------------------
 
-    use ppgrid,         only : pcols, & ! maximum number of columns
-                               pver     ! number of vertical levels
+    use ppgrid,         only : pcols ! maximum number of columns
 
 !-----------------------------------------------------------------------
 ! Dummy arguments
@@ -654,7 +664,6 @@ contains
 !-----------------------------------------------------------------------
 ! Local variables
 !-----------------------------------------------------------------------
-    integer :: i_level
     real(r8) :: edges(pver+1)
 
     edges(1) = surface_temperature(i_col)
@@ -715,7 +724,7 @@ contains
 
 !================================================================================================
 
-  subroutine set_radiator_profiles( this, i_col )
+  subroutine set_radiator_profiles( this, i_col, ncol, fixed_species_conc, species_vmr )
 !-----------------------------------------------------------------------
 !
 ! Purpose: sets the profiles of optically active atmospheric constituents
@@ -725,19 +734,34 @@ contains
 !
 !-----------------------------------------------------------------------
 
+    use chem_mods, only : gas_pcnst, & ! number of non-fixed species
+                          nfs,       & ! number of fixed species
+                          indexm       ! index for air density in fixed species array
+
 !-----------------------------------------------------------------------
 ! Dummy arguments
 !-----------------------------------------------------------------------
     class(tuvx_ptr), intent(inout) :: this  ! TUV-x calculator
-    integer,         intent(in)    :: i_col ! Column to set conditions for
+    integer,         intent(in)    :: i_col ! column to set conditions for
+    integer,         intent(in)    :: ncol  ! number of columns
+    real(r8),        intent(in)    :: fixed_species_conc(ncol,pver,max(1,nfs)) ! fixed species densities
+                                                                               !   (molecule cm-3)
+    real(r8),        intent(in)    :: species_vmr(ncol,pver,max(1,gas_pcnst))  ! species volume mixing
+                                                                               !   ratios (mol mol-1)
 
-    ! TEMPORARY FOR DEVELOPMENT - air
-    this%height_values_(:) = 2.54e19_r8
-    this%height_mid_values_(:) = 2.54e21_r8
+!-----------------------------------------------------------------------
+! Local variables
+!-----------------------------------------------------------------------
+    real(r8) :: edges(pver+1), densities(pver)
+    real(r8) :: km2cm = 1.0e5 ! conversion from km to cm
+
+    ! air
+    edges(1) = fixed_species_conc(i_col,pver,indexm)
+    edges(2:pver+1) = fixed_species_conc(i_col,pver:1:-1,indexm)
+    densities(1:pver) = this%height_delta_(1:pver) * km2cm * &
+                        sqrt(edges(1:pver)) + sqrt(edges(2:pver+1))
     call this%profiles_( PROFILE_INDEX_AIR )%update( &
-        mid_point_values = this%height_values_(1:size(this%height_values_)-1), &
-        edge_values = this%height_values_(:), &
-        layer_densities = this%height_mid_values_(:) )
+        edge_values = edges, layer_densities = densities )
 
     ! TEMPORARY FOR DEVELOPMENT - O2
     this%height_values_(:) = 1.0e17_r8
