@@ -39,6 +39,12 @@ module mo_tuvx
   integer, parameter :: NUM_RADIATORS = 1          ! number of radiators that CAM will update at runtime
   integer, parameter :: RADIATOR_INDEX_AEROSOL = 1 ! Aerosol radiator index
 
+  ! Information needed to access CAM species state data
+  logical :: is_fixed_O2 = .false. ! indicates whether O2 concentrations are fixed
+  logical :: is_fixed_O3 = .false. ! indicates whether O3 concentrations are fixed
+  integer :: index_O2 = 0 ! index for O2 in concentration array
+  integer :: index_O3 = 0 ! index for O3 in concentration array
+
   ! TODO how should this path be set and communicated to this wrapper?
   character(len=*), parameter :: tuvx_config_path = "tuvx_config.json"
 
@@ -76,6 +82,7 @@ contains
     use mpi
 #endif
     use cam_logfile,             only : iulog
+    use mo_chem_utls,            only : get_spc_ndx, get_inv_ndx
     use musica_assert,           only : assert_msg
     use musica_mpi,              only : musica_mpi_rank
     use musica_string,           only : string_t, to_char
@@ -160,6 +167,15 @@ contains
     deallocate( cam_grids     )
     deallocate( cam_profiles  )
     deallocate( cam_radiators )
+
+    ! Get index info for CAM species concentrations
+    index_O2 = get_inv_ndx( 'O2' )
+    is_fixed_O2 = index_O2 > 0
+    if( .not. is_fixed_O2 ) index_O2 = get_spc_ndx( 'O2' )
+    index_O3 = get_inv_ndx( 'O3' )
+    is_fixed_O3 = index_O3 > 0
+    if( .not. is_fixed_O3 ) index_O3 = get_spc_ndx( 'O3' )
+
 
   end subroutine tuvx_init
 
@@ -763,21 +779,39 @@ contains
     call this%profiles_( PROFILE_INDEX_AIR )%update( &
         edge_values = edges, layer_densities = densities )
 
-    ! TEMPORARY FOR DEVELOPMENT - O2
-    this%height_values_(:) = 1.0e17_r8
-    this%height_mid_values_(:) = 1.0e19_r8
+    ! O2
+    if( is_fixed_O2 ) then
+      edges(1) = fixed_species_conc(i_col,pver,index_O2)
+      edges(2:pver+1) = fixed_species_conc(i_col,pver:1:-1,index_O2)
+    else if( index_O2 > 0 ) then
+      edges(1) = species_vmr(i_col,pver,index_O2) * &
+                 fixed_species_conc(i_col,pver,indexm)
+      edges(2:pver+1) = species_vmr(i_col,pver:1:-1,index_O2) * &
+                        fixed_species_conc(i_col,pver:1:-1,indexm)
+    else
+      edges(:) = 0.0_r8
+    end if
+    densities(1:pver) = this%height_delta_(1:pver) * km2cm * &
+                        sqrt(edges(1:pver)) + sqrt(edges(2:pver+1))
     call this%profiles_( PROFILE_INDEX_O2 )%update( &
-        mid_point_values = this%height_values_(1:size(this%height_values_)-1), &
-        edge_values = this%height_values_(:), &
-        layer_densities = this%height_mid_values_(:) )
+        edge_values = edges, layer_densities = densities )
 
-    ! TEMPORARY FOR DEVELOPMENT - O3
-    this%height_values_(:) = 1.0e13_r8
-    this%height_mid_values_(:) = 1.0e15_r8
+    ! O3
+    if( is_fixed_O3 ) then
+      edges(1) = fixed_species_conc(i_col,pver,index_O3)
+      edges(2:pver+1) = fixed_species_conc(i_col,pver:1:-1,index_O3)
+    else if( index_O3 > 0 ) then
+      edges(1) = species_vmr(i_col,pver,index_O3) * &
+                 fixed_species_conc(i_col,pver,indexm)
+      edges(2:pver+1) = species_vmr(i_col,pver:1:-1,index_O3) * &
+                        fixed_species_conc(i_col,pver:1:-1,indexm)
+    else
+      edges(:) = 0.0_r8
+    end if
+    densities(1:pver) = this%height_delta_(1:pver) * km2cm * &
+                        sqrt(edges(1:pver)) + sqrt(edges(2:pver+1))
     call this%profiles_( PROFILE_INDEX_O3 )%update( &
-        mid_point_values = this%height_values_(1:size(this%height_values_)-1), &
-        edge_values = this%height_values_(:), &
-        layer_densities = this%height_mid_values_(:) )
+        edge_values = edges, layer_densities = densities )
 
     ! TEMPORARY FOR DEVELOPMENT - aerosols
     this%optics_values_(:,:) = 0.01_r8
