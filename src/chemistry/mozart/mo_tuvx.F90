@@ -162,7 +162,7 @@ contains
 
 !================================================================================================
 
-  subroutine tuvx_get_photo_rates( ncol, zmid, zint, tfld, ts )
+  subroutine tuvx_get_photo_rates( ncol, zm, zi, tfld, ts )
 !-----------------------------------------------------------------------
 !
 ! Purpose: calculate and return photolysis rate constants
@@ -179,8 +179,8 @@ contains
 ! Dummy arguments
 !-----------------------------------------------------------------------
     integer,  intent(in) :: ncol             ! Number of colums to calculated photolysis for
-    real(r8), intent(in) :: zmid(ncol,pver)  ! height at mid-points (km)
-    real(r8), intent(in) :: zint(ncol,pver)  ! height at interfaces (km)
+    real(r8), intent(in) :: zm(pcols,pver)   ! height at mid-points (km)
+    real(r8), intent(in) :: zi(pcols,pver)   ! height at interfaces (km)
     real(r8), intent(in) :: tfld(pcols,pver) ! midpoint temperature (K)
     real(r8), intent(in) :: ts(pcols)        ! surface temperature (K)
 
@@ -193,7 +193,7 @@ contains
       do i_col = 1, ncol
 
         ! set conditions for this column in TUV-x
-        call set_heights( tuvx, i_col, ncol, zmid, zint )
+        call set_heights( tuvx, i_col, ncol, zm, zi )
         call set_temperatures( tuvx, i_col, tfld, ts )
         call set_surface_albedo( tuvx, i_col )
         call set_et_flux( tuvx, i_col )
@@ -570,7 +570,7 @@ contains
 
 !================================================================================================
 
-  subroutine set_heights( this, i_col, ncol, zmid, zint )
+  subroutine set_heights( this, i_col, ncol, zm, zi)
 !-----------------------------------------------------------------------
 !
 ! Purpose: sets the height values in TUV-x for the given column
@@ -599,16 +599,17 @@ contains
 !
 !-----------------------------------------------------------------------
 
-    use ppgrid,         only : pver   ! number of vertical levels
+    use ppgrid,         only : pcols, & ! maximum number of columns
+                               pver     ! number of vertical levels
 
 !-----------------------------------------------------------------------
 ! Dummy arguments
 !-----------------------------------------------------------------------
-    class(tuvx_ptr), intent(inout) :: this             ! TUV-x calculator
-    integer,         intent(in)    :: i_col            ! column to set conditions for
-    integer,         intent(in)    :: ncol             ! number of colums to calculated photolysis for
-    real(r8),        intent(in)    :: zmid(ncol,pver)  ! height at mid-points (km)
-    real(r8),        intent(in)    :: zint(ncol,pver)  ! height at interfaces (km)
+    class(tuvx_ptr), intent(inout) :: this            ! TUV-x calculator
+    integer,         intent(in)    :: i_col           ! column to set conditions for
+    integer,         intent(in)    :: ncol            ! number of colums to calculated photolysis for
+    real(r8),        intent(in)    :: zm(pcols,pver)  ! height at mid-points (km)
+    real(r8),        intent(in)    :: zi(pcols,pver)  ! height at interfaces (km)
 
 !-----------------------------------------------------------------------
 ! Local variables
@@ -618,9 +619,9 @@ contains
     real(r8) :: mid_points(pver)
 
     edges(1) = 0.0_r8
-    edges(2:pver+1) = zmid(i_col,pver:1:-1)
-    mid_points(1) = zmid(i_col,pver) * 0.5_r8
-    mid_points(2:pver) = zint(i_col,pver:2:-1)
+    edges(2:pver+1) = zm(i_col,pver:1:-1)
+    mid_points(1) = zm(i_col,pver) * 0.5_r8
+    mid_points(2:pver) = zi(i_col,pver:2:-1)
     call this%grids_( GRID_INDEX_HEIGHT )%update( edges = edges, mid_points = mid_points )
 
   end subroutine set_heights
