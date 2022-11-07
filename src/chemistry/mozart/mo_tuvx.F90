@@ -162,7 +162,8 @@ contains
 
 !================================================================================================
 
-  subroutine tuvx_get_photo_rates( ncol, zm, zi, tfld, ts )
+  subroutine tuvx_get_photo_rates( ncol, height_mid, height_int, temperature_mid, &
+      surface_temperature, surface_albedo )
 !-----------------------------------------------------------------------
 !
 ! Purpose: calculate and return photolysis rate constants
@@ -178,11 +179,12 @@ contains
 !-----------------------------------------------------------------------
 ! Dummy arguments
 !-----------------------------------------------------------------------
-    integer,  intent(in) :: ncol             ! Number of colums to calculated photolysis for
-    real(r8), intent(in) :: zm(pcols,pver)   ! height at mid-points (km)
-    real(r8), intent(in) :: zi(pcols,pver)   ! height at interfaces (km)
-    real(r8), intent(in) :: tfld(pcols,pver) ! midpoint temperature (K)
-    real(r8), intent(in) :: ts(pcols)        ! surface temperature (K)
+    integer,  intent(in) :: ncol                        ! Number of colums to calculated photolysis for
+    real(r8), intent(in) :: height_mid(pcols,pver)      ! height at mid-points (km)
+    real(r8), intent(in) :: height_int(pcols,pver)      ! height at interfaces (km)
+    real(r8), intent(in) :: temperature_mid(pcols,pver) ! midpoint temperature (K)
+    real(r8), intent(in) :: surface_temperature(pcols)  ! surface temperature (K)
+    real(r8), intent(in) :: surface_albedo(pcols)       ! surface albedo (unitless)
 
 !-----------------------------------------------------------------------
 ! Local variables
@@ -193,9 +195,9 @@ contains
       do i_col = 1, ncol
 
         ! set conditions for this column in TUV-x
-        call set_heights( tuvx, i_col, ncol, zm, zi )
-        call set_temperatures( tuvx, i_col, tfld, ts )
-        call set_surface_albedo( tuvx, i_col )
+        call set_heights( tuvx, i_col, ncol, height_mid, height_int )
+        call set_temperatures( tuvx, i_col, temperature_mid, surface_temperature )
+        call set_surface_albedo( tuvx, i_col, surface_albedo )
         call set_et_flux( tuvx, i_col )
         call set_radiator_profiles( tuvx, i_col )
 
@@ -570,7 +572,7 @@ contains
 
 !================================================================================================
 
-  subroutine set_heights( this, i_col, ncol, zm, zi)
+  subroutine set_heights( this, i_col, ncol, height_mid, height_int)
 !-----------------------------------------------------------------------
 !
 ! Purpose: sets the height values in TUV-x for the given column
@@ -605,11 +607,11 @@ contains
 !-----------------------------------------------------------------------
 ! Dummy arguments
 !-----------------------------------------------------------------------
-    class(tuvx_ptr), intent(inout) :: this            ! TUV-x calculator
-    integer,         intent(in)    :: i_col           ! column to set conditions for
-    integer,         intent(in)    :: ncol            ! number of colums to calculated photolysis for
-    real(r8),        intent(in)    :: zm(pcols,pver)  ! height at mid-points (km)
-    real(r8),        intent(in)    :: zi(pcols,pver)  ! height at interfaces (km)
+    class(tuvx_ptr), intent(inout) :: this                    ! TUV-x calculator
+    integer,         intent(in)    :: i_col                   ! column to set conditions for
+    integer,         intent(in)    :: ncol                    ! number of colums to calculated photolysis for
+    real(r8),        intent(in)    :: height_mid(pcols,pver)  ! height above the surface at mid-points (km)
+    real(r8),        intent(in)    :: height_int(pcols,pver)  ! height above the surface at interfaces (km)
 
 !-----------------------------------------------------------------------
 ! Local variables
@@ -619,16 +621,16 @@ contains
     real(r8) :: mid_points(pver)
 
     edges(1) = 0.0_r8
-    edges(2:pver+1) = zm(i_col,pver:1:-1)
-    mid_points(1) = zm(i_col,pver) * 0.5_r8
-    mid_points(2:pver) = zi(i_col,pver:2:-1)
+    edges(2:pver+1) = height_mid(i_col,pver:1:-1)
+    mid_points(1) = height_mid(i_col,pver) * 0.5_r8
+    mid_points(2:pver) = height_int(i_col,pver:2:-1)
     call this%grids_( GRID_INDEX_HEIGHT )%update( edges = edges, mid_points = mid_points )
 
   end subroutine set_heights
 
 !================================================================================================
 
-  subroutine set_temperatures( this, i_col, tfld, ts )
+  subroutine set_temperatures( this, i_col, temperature_mid, surface_temperature )
 !-----------------------------------------------------------------------
 !
 ! Purpose: sets the temperatures in TUV-x for the given column
@@ -644,10 +646,10 @@ contains
 !-----------------------------------------------------------------------
 ! Dummy arguments
 !-----------------------------------------------------------------------
-    class(tuvx_ptr), intent(inout) :: this             ! TUV-x calculator
-    integer,         intent(in)    :: i_col            ! column to set conditions for
-    real(r8),        intent(in)    :: tfld(pcols,pver) ! midpoint temperature (K)
-    real(r8),        intent(in)    :: ts(pcols)        ! surface temperature (K)
+    class(tuvx_ptr), intent(inout) :: this                        ! TUV-x calculator
+    integer,         intent(in)    :: i_col                       ! column to set conditions for
+    real(r8),        intent(in)    :: temperature_mid(pcols,pver) ! midpoint temperature (K)
+    real(r8),        intent(in)    :: surface_temperature(pcols)  ! surface temperature (K)
 
 !-----------------------------------------------------------------------
 ! Local variables
@@ -655,31 +657,33 @@ contains
     integer :: i_level
     real(r8) :: edges(pver+1)
 
-    edges(1) = ts(i_col)
-    edges(2:pver+1) = tfld(i_col,pver:1:-1)
+    edges(1) = surface_temperature(i_col)
+    edges(2:pver+1) = temperature_mid(i_col,pver:1:-1)
     call this%profiles_( PROFILE_INDEX_TEMPERATURE )%update( edge_values = edges )
 
   end subroutine set_temperatures
 
 !================================================================================================
 
-  subroutine set_surface_albedo( this, i_col )
+  subroutine set_surface_albedo( this, i_col, surface_albedo )
 !-----------------------------------------------------------------------
 !
 ! Purpose: sets the surface albedo in TUV-x for the given column
 !
-! TODO: Describe how CAM surface albedo profile is mapped to TUV-x wavelengths
+! CAM uses a single value for surface albedo at all wavelengths
 !
 !-----------------------------------------------------------------------
+
+    use ppgrid,         only : pcols ! maximum number of columns
 
 !-----------------------------------------------------------------------
 ! Dummy arguments
 !-----------------------------------------------------------------------
-    class(tuvx_ptr), intent(inout) :: this  ! TUV-x calculator
-    integer,         intent(in)    :: i_col ! Column to set conditions for
+    class(tuvx_ptr), intent(inout) :: this                  ! TUV-x calculator
+    integer,         intent(in)    :: i_col                 ! column to set conditions for
+    real(r8),        intent(in)    :: surface_albedo(pcols) ! surface albedo (unitless)
 
-    ! TEMPORARY FOR DEVELOPMENT
-    this%wavelength_values_(:) = 0.1_r8
+    this%wavelength_values_(:) = surface_albedo(i_col)
     call this%profiles_( PROFILE_INDEX_ALBEDO )%update( &
         edge_values = this%wavelength_values_(:) )
 
