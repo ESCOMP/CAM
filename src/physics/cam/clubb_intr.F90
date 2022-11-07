@@ -2027,7 +2027,7 @@ end subroutine clubb_init_cnst
       vg,                       & ! V geostrophic wind                          [m/s]
       p_in_Pa,                  & ! Air pressure (thermodynamic levels)       	[Pa]
       rho_zm,                   & ! Air density on momentum levels              [kg/m^3]
-      rho_zt,                   & ! Air density on thermo levels                [kt/m^3]
+      rho_zt,                   & ! Air density on thermo levels                [kggg/m^3]
       rho_in,                   & ! mid-point density				[kg/m^3]
       exner,                    & ! Exner function (thermodynamic levels)       [-]
       rho_ds_zm,                & ! Dry, static density on momentum levels      	[kg/m^3]
@@ -2036,6 +2036,8 @@ end subroutine clubb_init_cnst
       invrs_rho_ds_zt,          & ! Inv. dry, static density on thermo. levels  	[m^3/kg]
       thv_ds_zm,                & ! Dry, base-state theta_v on momentum levels  	[K]
       thv_ds_zt,                & ! Dry, base-state theta_v on thermo. levels   	[K]
+      p_ds_zt,                  & ! Dry, base-state pressure on thermo. levels          [Pa]
+      exner_ds_zt,              & ! Dry, base-state exner on thermo. levels             [-]
       rfrzm,                    &
       radf,                     &
       um_in,                    & ! meridional wind				[m/s]
@@ -2133,8 +2135,10 @@ end subroutine clubb_init_cnst
     real(r8) :: ke_a(pcols), ke_b(pcols), te_a(pcols), te_b(pcols)
     real(r8) :: wv_a(pcols), wv_b(pcols), wl_b(pcols), wl_a(pcols)
     real(r8) :: se_dis(pcols), se_a(pcols), se_b(pcols), clubb_s(pcols,pver)
+    real(r8) :: eleak(pcols)
 
     real(r8) :: inv_exner_clubb(pcols,pverp)     ! Inverse exner function consistent with CLUBB  [-]
+    real(r8) :: inv_exner_clubb_surf(pcols)      ! Inverse exner function at the surface
     real(r8) :: wpthlp_output(pcols,pverp)       ! Heat flux output variable                     [W/m2]
     real(r8) :: wprtp_output(pcols,pverp)        ! Total water flux output variable              [W/m2]
     real(r8) :: wp3_output(pcols,pverp)          ! wp3 output                                    [m^3/s^3]
@@ -2144,7 +2148,7 @@ end subroutine clubb_init_cnst
     real(r8) :: sl_output(pcols,pver)            ! Liquid water static energy                    [J/kg]
     real(r8) :: ustar2(pcols)                    ! Surface stress for PBL height                 [m2/s2]
     real(r8) :: rho(pcols,pverp)     		! Midpoint density in CAM      			[kg/m^3]
-    real(r8) :: thv(pcols,pver)   		! virtual potential temperature			[K]
+    real(r8) :: thv(pcols,pverp)   		! virtual potential temperature			[K]
     real(r8) :: edsclr_out(pcols,pverp,edsclr_dim)     ! Scalars to be diffused through CLUBB		[units vary]
     real(r8) :: rcm_in_layer(pcols,pverp)	! CLUBB in-cloud liquid water mixing ratio	[kg/kg]
     real(r8) :: cloud_cover(pcols,pverp)		! CLUBB in-cloud cloud fraction			[fraction]
@@ -2607,7 +2611,13 @@ end subroutine clubb_init_cnst
         inv_exner_clubb(i,k) = 1._r8/((state1%pmid(i,k)/p0_clubb)**(rairv(i,k,lchnk)/cpairv(i,k,lchnk)))
       enddo
     enddo
-   
+
+    !  Compute exner at the surface for converting the sensible heat fluxes
+    !  to a flux of potential temperature for use as clubb's boundary conditions
+    do i=1,ncol
+       inv_exner_clubb_surf(i) = 1._r8/((state1%pmid(i,pver)/p0_clubb)**(rairv(i,pver,lchnk)/cpairv(i,pver,lchnk)))
+    enddo
+
     !  At each CLUBB call, initialize mean momentum  and thermo CLUBB state 
     !  from the CAM state 
     do k=1,pver   ! loop over levels
@@ -4223,17 +4233,6 @@ end subroutine clubb_init_cnst
     call outfld( 'UM_CLUBB',         um,                    pcols, lchnk )
     call outfld( 'VM_CLUBB',         vm,                    pcols, lchnk )
     call outfld( 'WM_ZT_CLUBB',      wm_zt_out,             pcols, lchnk )
-    call outfld( 'THETAL',           thetal_output,         pcols, lchnk )
-    call outfld( 'QT',               qt_output,             pcols, lchnk )
-    call outfld( 'SL',               sl_output,             pcols, lchnk )
-    call outfld( 'CLOUDCOVER_CLUBB', cloud_frac,            pcols, lchnk )
-    call outfld( 'ZT_CLUBB',         zt_out,                pcols, lchnk )
-    call outfld( 'ZM_CLUBB',         zi_out,                pcols, lchnk )
-    call outfld( 'UM_CLUBB',         um,                    pcols, lchnk )
-    call outfld( 'VM_CLUBB',         vm,                    pcols, lchnk )
-    call outfld( 'THETAL',           thetal_output,         pcols, lchnk )
-    call outfld( 'QT',               qt_output,             pcols, lchnk )
-    call outfld( 'SL',               sl_output,             pcols, lchnk )
     call outfld( 'CONCLD',           concld,                pcols, lchnk )
     call outfld( 'DP_CLD',           deepcu,                pcols, lchnk )
     call outfld( 'ZMDLF',            dlf_liq_out,           pcols, lchnk )
