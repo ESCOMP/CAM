@@ -45,6 +45,11 @@ module mo_tuvx
   integer :: index_O2 = 0 ! index for O2 in concentration array
   integer :: index_O3 = 0 ! index for O3 in concentration array
 
+  ! Information needed to translate the CAM wavelength grid to TUV-x
+  integer :: n_wavelength_bins           = 0 ! number of ET Flux wavelength bins to use
+  integer :: wavelength_grid_start_index = 0 ! starting index in ET Flux wavelength grid to use
+  integer :: wavelength_grid_end_index   = 0 ! ending index in ET Flux wavelength grid to use
+
   ! TODO how should this path be set and communicated to this wrapper?
   character(len=*), parameter :: tuvx_config_path = "tuvx_config.json"
 
@@ -190,14 +195,14 @@ contains
 !
 !-----------------------------------------------------------------------
 
-    use cam_logfile,    only : iulog        ! log info output unit
-    use chem_mods,      only : gas_pcnst, & ! number of non-fixed species
-                               nfs          ! number of fixed species
-    use ppgrid,         only : pcols        ! maximum number of columns
-    use shr_const_mod,  only : pi => shr_const_pi
-    use spmd_utils,     only : main_task => masterprocid, &
-                               is_main_task => masterproc, &
-                               mpicom
+    use cam_logfile,      only : iulog        ! log info output unit
+    use chem_mods,        only : gas_pcnst, & ! number of non-fixed species
+                                 nfs          ! number of fixed species
+    use ppgrid,           only : pcols        ! maximum number of columns
+    use shr_const_mod,    only : pi => shr_const_pi
+    use spmd_utils,       only : main_task => masterprocid, &
+                                 is_main_task => masterproc, &
+                                 mpicom
 !-----------------------------------------------------------------------
 ! Dummy arguments
 !-----------------------------------------------------------------------
@@ -354,8 +359,15 @@ contains
 ! Purpose: creates and loads a grid warehouse with grids that CAM will
 !          update at runtime
 !
+! NOTE: The wavelength grid is restricted to bins >= 200 nm to avoid
+!       the Lyman-alpha and Shumann-Runge bands. Photolysis rate
+!       constant contributions from < 200 nm are calculated separately.
+!
 !-----------------------------------------------------------------------
 
+    use musica_assert,       only : assert_msg
+    use solar_irrad_data,    only : nbins, & ! number of wavelength bins
+                                    we       ! wavelength bin edges (nm)
     use tuvx_grid_from_host, only : grid_from_host_t
     use tuvx_grid_warehouse, only : grid_warehouse_t
 
@@ -367,27 +379,32 @@ contains
 !-----------------------------------------------------------------------
 ! Local variables
 !-----------------------------------------------------------------------
+    integer :: i_bin
     class(grid_from_host_t), pointer :: host_grid
     type(grid_updater_t)             :: updater
-    real(r8) :: wavelengths(121) ! TEMPORARY FOR DEVELOPMENT
-    integer :: i_wavelength
 
     grids => grid_warehouse_t( )
 
-    ! Height grid will be ... \todo figure out how height grid should translate
-    ! to CAM vertical grid
+    ! heights above the surface
     host_grid => grid_from_host_t( "height", "km", pver )
     call grids%add( host_grid )
     deallocate( host_grid )
 
-    ! Wavelength grid wil be ... /todo figure out where to get wavelength grid
-    ! from (wavelengths must be set prior to construction of the TUV-x core)
-    do i_wavelength = 1, size( wavelengths )
-      wavelengths( i_wavelength ) = 199.0_r8 + i_wavelength
+    ! wavelength bins
+    do i_bin = 1, nbins
+      if( we( i_bin ) >= 200.0_r8 ) then
+        wavelength_grid_start_index = i_bin
+        exit
+      end if
     end do
-    host_grid => grid_from_host_t( "wavelength", "nm", 120 )
+    call assert_msg( 830083933, wavelength_grid_start_index > 0, &
+                     "No wavelength bins available for TUV-x calculations" )
+    wavelength_grid_end_index = nbins
+    n_wavelength_bins = wavelength_grid_end_index - wavelength_grid_start_index + 1
+    host_grid => grid_from_host_t( "wavelength", "nm", n_wavelength_bins )
     updater = grid_updater_t( host_grid )
-    call updater%update( edges = wavelengths )
+    call updater%update(edges = &
+                        we(wavelength_grid_start_index:wavelength_grid_end_index+1))
     call grids%add( host_grid )
     deallocate( host_grid )
 
@@ -725,9 +742,12 @@ contains
 !
 ! Purpose: sets the extraterrestrial flux in TUV-x for the given column
 !
-! TODO: Describe how CAM extraterrestrial flux profile is mapped to TUV-x wavelengths
+! Extraterrestrial flux is read from data files and copied to TUV-x
 !
 !-----------------------------------------------------------------------
+
+    ! TODO are these units correct? if so, they don't match expected (photo cm-2 s-1)
+    use solar_irrad_data, only : sol_etf ! extraterrestrial flux (photon cm-2 s-1 nm-1)
 
 !-----------------------------------------------------------------------
 ! Dummy arguments
@@ -735,10 +755,8 @@ contains
     class(tuvx_ptr), intent(inout) :: this  ! TUV-x calculator
     integer,         intent(in)    :: i_col ! Column to set conditions for
 
-    ! TEMPORARY FOR DEVELOPMENT
-    this%wavelength_values_(:) = 1000.0_r8
-    call this%profiles_( PROFILE_INDEX_ET_FLUX )%update( &
-        edge_values = this%wavelength_values_(:) )
+    call this%profiles_( PROFILE_INDEX_ET_FLUX )%update( edge_values = &
+              sol_etf(wavelength_grid_start_index:wavelength_grid_end_index+1) )
 
   end subroutine set_et_flux
 
@@ -750,7 +768,11 @@ contains
 ! Purpose: sets the profiles of optically active atmospheric constituents
 !          in TUV-x for the given column
 !
-! TODO: Describe how CAM profiles are mapped to TUV-x heights
+! See `set_height` for a description of the CAM <-> TUV-x vertical grid
+! mapping.
+!
+! Above layer densities are calculated using a scale height for air
+! and ... TODO fill in description for O2, O3
 !
 !-----------------------------------------------------------------------
 
@@ -798,7 +820,8 @@ contains
     densities(1:pver) = this%height_delta_(1:pver) * km2cm * &
                         sqrt(edges(1:pver)) + sqrt(edges(2:pver+1))
     call this%profiles_( PROFILE_INDEX_O2 )%update( &
-        edge_values = edges, layer_densities = densities )
+        edge_values = edges, layer_densities = densities, &
+        exo_density = 0.0_r8 ) ! TODO how should this be calculated?
 
     ! O3
     if( is_fixed_O3 ) then
@@ -815,7 +838,8 @@ contains
     densities(1:pver) = this%height_delta_(1:pver) * km2cm * &
                         sqrt(edges(1:pver)) + sqrt(edges(2:pver+1))
     call this%profiles_( PROFILE_INDEX_O3 )%update( &
-        edge_values = edges, layer_densities = densities )
+        edge_values = edges, layer_densities = densities, &
+        exo_density = 0.0_r8 ) ! TODO how should this be calculated?
 
     ! TEMPORARY FOR DEVELOPMENT - aerosols
     this%optics_values_(:,:) = 0.01_r8

@@ -130,6 +130,9 @@ def _cmake_default_args(caseroot):
         args += "-DCOMPILER={} ".format(build.get_value("COMPILER"))
         args += "-DOS={} ".format(build.get_value("OS"))
         args += "-DMACH={} ".format(case.get_value("MACH"))
+        args += "-DCMAKE_C_COMPILER_WORKS=1 "
+        args += "-DCMAKE_Fortran_COMPILER_WORKS=1 "
+        args += "-DCMAKE_CXX_COMPILER_WORKS=1 "
         cmd = "cmake {} .".format(args)
         rc, out, err = run_cmd(cmd, combine_output=True, from_dir=macro_path)
         expect(rc == 0, "Command {} failed with rc={} out={} err={}".format(cmd, rc, out, err))
@@ -139,6 +142,7 @@ def _cmake_default_args(caseroot):
             if ":=" in line:
                 key, val = line.split(":=")
                 arg_dict[key.replace('CIME_SET_MAKEFILE_VAR','').strip()] = val.strip()
+                logger.info("{}: {}".format(key.replace('CIME_SET_MAKEFILE_VAR','').strip(), val.strip()))
 
         return arg_dict
 
@@ -158,6 +162,8 @@ def _build_json_fortran(caseroot, libroot, bldroot):
 
         arg_dict = _cmake_default_args(caseroot)
         cmake_args = "-DCMAKE_Fortran_COMPILER={} ".format(arg_dict["SFC"])
+        cmake_args += "-DCMAKE_C_COMPILER_WORKS=1 "
+        cmake_args += "-DCMAKE_CXX_COMPILER_WORKS=1 "
         cmake_args += "-DCMAKE_BUILD_TYPE=Release "
         cmake_args += "-DSKIP_DOC_GEN:BOOL=TRUE "
         cmake_args += srcpath
@@ -208,6 +214,8 @@ def _build_tuvx(caseroot, libroot, bldroot):
             cmake_args += "-DCMAKE_BUILD_TYPE=Debug "
         else:
             cmake_args += "-DCMAKE_BUILD_TYPE=Release "
+        cmake_args += "-DCMAKE_C_COMPILER_WORKS=1 "
+        cmake_args += "-DCMAKE_CXX_COMPILER_WORKS=1 "
         cmake_args += "-DENABLE_COVERAGE=OFF "
         cmake_args += "-DENABLE_TESTS=OFF "
         cmake_args += "-DJSON_INCLUDE_DIR={} ".format(jsoninc)
