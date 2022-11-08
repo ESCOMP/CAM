@@ -132,7 +132,7 @@ def _cmake_default_args(caseroot):
         args += "-DMACH={} ".format(case.get_value("MACH"))
         cmd = "cmake {} .".format(args)
         rc, out, err = run_cmd(cmd, combine_output=True, from_dir=macro_path)
-        expect(rc == 0, "Command {} failed with rc={}".format(cmd, rc))
+        expect(rc == 0, "Command {} failed with rc={} out={} err={}".format(cmd, rc, out, err))
 
         arg_dict = {}
         for line in out.splitlines():

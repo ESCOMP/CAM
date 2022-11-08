@@ -182,7 +182,8 @@ contains
 !================================================================================================
 
   subroutine tuvx_get_photo_rates( ncol, height_mid, height_int, temperature_mid, &
-      surface_temperature, fixed_species_conc, species_vmr, surface_albedo )
+      surface_temperature, fixed_species_conc, species_vmr, surface_albedo, &
+      solar_zenith_angle )
 !-----------------------------------------------------------------------
 !
 ! Purpose: calculate and return photolysis rate constants
@@ -193,6 +194,7 @@ contains
     use chem_mods,      only : gas_pcnst, & ! number of non-fixed species
                                nfs          ! number of fixed species
     use ppgrid,         only : pcols        ! maximum number of columns
+    use shr_const_mod,  only : pi => shr_const_pi
     use spmd_utils,     only : main_task => masterprocid, &
                                is_main_task => masterproc, &
                                mpicom
@@ -209,6 +211,7 @@ contains
     real(r8), intent(in) :: species_vmr(ncol,pver,max(1,gas_pcnst))  ! species volume mixing
                                                                      !   ratios (mol mol-1)
     real(r8), intent(in) :: surface_albedo(pcols)       ! surface albedo (unitless)
+    real(r8), intent(in) :: solar_zenith_angle(ncol)    ! solar zenith angle (radians)
 
 !-----------------------------------------------------------------------
 ! Local variables
@@ -229,7 +232,8 @@ contains
 
         ! Calculate photolysis rate constants for this column
         ! TEMPORARY FOR DEVELOPMENT - fix SZA
-        call tuvx%core_%run( solar_zenith_angle = 45.0_r8, &
+        call tuvx%core_%run( solar_zenith_angle = &
+                               solar_zenith_angle(i_col) * 180.0_r8 / pi, &
                              photolysis_rate_constants = tuvx%photo_rates_ )
 
       end do
