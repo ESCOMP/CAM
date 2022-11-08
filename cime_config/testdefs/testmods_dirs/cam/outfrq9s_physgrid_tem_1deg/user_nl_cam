@@ -4,6 +4,4 @@ nhtfrq=9,9,9,9,9,9,9,9,9
 inithist='ENDOFRUN'
 phys_grid_ctem_zm_nbas=120
 phys_grid_ctem_za_nlat=90
-fincl2 = 'VTHzm3d','WTHzm3d','UVzm3d','UWzm3d',
-         'Uzm3d', 'Vzm3d', 'Wzm3d', 'THzm3d','THphys',
 fincl3 = 'VTHzaphys','WTHzaphys','UVzaphys','UWzaphys'

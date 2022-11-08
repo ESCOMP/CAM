@@ -184,15 +184,6 @@ contains
     call addfld ('UVzaphys', (/'ilev'/), 'A', 'M2/S2','Meridional Flux of Zonal Momentum', gridname='ctem_zavg_phys')
     call addfld ('UWzaphys', (/'ilev'/), 'A', 'M2/S2','Vertical Flux of Zonal Momentum', gridname='ctem_zavg_phys')
 
-    call addfld ('VTHzm3d',(/'ilev' /), 'A','MK/S', 'Meridional Heat Flux: 3D zon. mean', gridname='physgrid' )
-    call addfld ('WTHzm3d',(/'ilev' /), 'A','MK/S', 'Vertical Heat Flux: 3D zon. mean', gridname='physgrid' )
-    call addfld ('UVzm3d', (/'ilev' /), 'A','M2/S2','Meridional Flux of Zonal Momentum: 3D zon. mean', gridname='physgrid' )
-    call addfld ('UWzm3d', (/'ilev' /), 'A','M2/S2','Vertical Flux of Zonal Momentum: 3D zon. mean', gridname='physgrid' )
-
-    call addfld ('Uzm3d',  (/'ilev' /), 'A','M/S',  'Zonal-Mean zonal wind - defined on ilev', gridname='physgrid')
-    call addfld ('Vzm3d',  (/'ilev' /), 'A','M/S',  'Zonal-Mean meridional wind - defined on ilev', gridname='physgrid' )
-    call addfld ('Wzm3d',  (/'ilev' /), 'A','M/S',  'Zonal-Mean vertical wind - defined on ilev', gridname='physgrid' )
-    call addfld ('THzm3d', (/'ilev' /), 'A',  'K',  'Zonal-Mean potential temp - defined on ilev', gridname='physgrid' )
     call addfld ('THphys', (/'ilev' /), 'A',  'K',  'Zonal-Mean potential temp - defined on ilev', gridname='physgrid' )
 
     dtime = get_step_size()
@@ -222,11 +213,6 @@ contains
     real(r8) :: uwp(pcols,pverp,begchunk:endchunk)
     real(r8) :: vthp(pcols,pverp,begchunk:endchunk)
     real(r8) :: wthp(pcols,pverp,begchunk:endchunk)
-
-    real(r8) :: uv(pcols,pverp,begchunk:endchunk)
-    real(r8) :: uw(pcols,pverp,begchunk:endchunk)
-    real(r8) :: vth(pcols,pverp,begchunk:endchunk)
-    real(r8) :: wth(pcols,pverp,begchunk:endchunk)
 
     integer  :: lchnk, ncol, j, k
     real(r8) :: fld_tmp(pcols,pverp)
@@ -296,15 +282,6 @@ contains
        fld_tmp(:ncol,:) = thi(:ncol,:,lchnk)
        call outfld( 'THphys', fld_tmp(:ncol,:), ncol, lchnk)
 
-       fld_tmp(:ncol,:) = thzm(:ncol,:,lchnk)
-       call outfld( 'THzm3d', fld_tmp(:ncol,:), ncol, lchnk)
-
-       fld_tmp(:ncol,:) = uzm(:ncol,:,lchnk)
-       call outfld( 'Uzm3d', fld_tmp(:ncol,:), ncol, lchnk)
-       fld_tmp(:ncol,:) = vzm(:ncol,:,lchnk)
-       call outfld( 'Vzm3d', fld_tmp(:ncol,:), ncol, lchnk)
-       fld_tmp(:ncol,:) = wzm(:ncol,:,lchnk)
-       call outfld( 'Wzm3d', fld_tmp(:ncol,:), ncol, lchnk)
     end do
 
     do lchnk = begchunk,endchunk
@@ -335,24 +312,6 @@ contains
        call outfld('UWzaphys',uwza(j,:),1,j)
        call outfld('VTHzaphys',vthza(j,:),1,j)
        call outfld('WTHzaphys',wthza(j,:),1,j)
-    end do
-
-    ! the following is not needed --- only for sanity checks
-    uv(:,:,:) = zmean_fld(uvp(:,:,:))
-    uw(:,:,:) = zmean_fld(uwp(:,:,:))
-    vth(:,:,:) = zmean_fld(vthp(:,:,:))
-    wth(:,:,:) = zmean_fld(wthp(:,:,:))
-
-    do lchnk = begchunk, endchunk
-       ncol = phys_state(lchnk)%ncol
-       fld_tmp(:ncol,:) = uv(:ncol,:,lchnk)
-       call outfld( 'UVzm3d', fld_tmp(:ncol,:), ncol, lchnk)
-       fld_tmp(:ncol,:) = uw(:ncol,:,lchnk)
-       call outfld( 'UWzm3d', fld_tmp(:ncol,:), ncol, lchnk)
-       fld_tmp(:ncol,:) = vth(:ncol,:,lchnk)
-       call outfld( 'VTHzm3d', fld_tmp(:ncol,:), ncol, lchnk)
-       fld_tmp(:ncol,:) = wth(:ncol,:,lchnk)
-       call outfld( 'WTHzm3d', fld_tmp(:ncol,:), ncol, lchnk)
     end do
 
   contains
