@@ -1386,31 +1386,31 @@
   </test>
   <test compset="F2000dev" grid="f19_f19_mg17" name="SMS_Ln9_Vnuopc_G8-v100-OpenACC" testmods="cam/outfrq9s_mg3_default">
     <machines>
-      <machine name="casper" compiler="nvhpc" category="casper_gpu"/>
+      <machine name="casper" compiler="nvhpc" category="gputests"/>
     </machines>
     <options>
       <option name="wallclock">00:59:00</option>
     </options>
   </test>
-  <test compset="F2000dev" grid="f19_f19_mg17" name="ERS_Ln9_Vnuopc_G4-v100-OpenACC" testmods="cam/outfrq9s_mg2_default">
+  <test compset="F2000dev" grid="f19_f19_mg17" name="ERS_Ln9_Vnuopc_G8-v100-OpenACC" testmods="cam/outfrq9s_mg2_default">
     <machines>
-      <machine name="casper" compiler="nvhpc" category="casper_gpu"/>
+      <machine name="casper" compiler="nvhpc" category="gputests"/>
     </machines>
     <options>
       <option name="wallclock">00:59:00</option>
     </options>
   </test>
-  <test compset="F2000dev" grid="f19_f19_mg17" name="ERS_Ln9_Vnuopc" testmods="cam/outfrq9s_mg3_nondefault">
+  <test compset="F2000dev" grid="f19_f19_mg17" name="ERS_Ln9_Vnuopc_G8-v100-OpenACC" testmods="cam/outfrq9s_mg3_nondefault">
     <machines>
-      <machine name="casper" compiler="nvhpc" category="casper_gpu"/>
+      <machine name="casper" compiler="nvhpc" category="gputests"/>
     </machines>
     <options>
       <option name="wallclock">00:59:00</option>
     </options>
   </test>
-  <test compset="F2000dev" grid="f19_f19_mg17" name="SMS_Ln9_Vnuopc_G3-v100-OpenACC" testmods="cam/outfrq9s_mg3_pcols1536">
+  <test compset="F2000dev" grid="f19_f19_mg17" name="SMS_Ln9_D_Vnuopc_G4-v100-OpenACC" testmods="cam/outfrq9s_mg3_pcols1536">
     <machines>
-      <machine name="casper" compiler="nvhpc" category="casper_gpu"/>
+      <machine name="casper" compiler="nvhpc" category="gputests"/>
     </machines>
     <options>
       <option name="wallclock">00:59:00</option>
@@ -1418,7 +1418,7 @@
   </test>
   <test compset="F2000dev" grid="ne16_ne16_mg17" name="ERP_Ln9_Vnuopc_G4-v100-OpenACC" testmods="cam/outfrq9s_mg3_default">
     <machines>
-      <machine name="casper" compiler="nvhpc" category="casper_gpu"/>
+      <machine name="casper" compiler="nvhpc" category="gputests"/>
     </machines>
     <options>
       <option name="wallclock">00:59:00</option>
