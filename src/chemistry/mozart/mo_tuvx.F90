@@ -16,6 +16,7 @@ module mo_tuvx
   private
 
   public :: tuvx_init
+  public :: tuvx_timestep_init
   public :: tuvx_get_photo_rates
   public :: tuvx_finalize
 
@@ -45,14 +46,10 @@ module mo_tuvx
   integer :: index_O2 = 0 ! index for O2 in concentration array
   integer :: index_O3 = 0 ! index for O3 in concentration array
 
-  ! Information needed to translate the CAM wavelength grid to TUV-x
-  integer :: n_wavelength_bins           = 0 ! number of ET Flux wavelength bins to use
-  integer :: wavelength_grid_start_index = 0 ! starting index in ET Flux wavelength grid to use
-  integer :: wavelength_grid_end_index   = 0 ! ending index in ET Flux wavelength grid to use
-
-  ! TODO how should this path be set and communicated to this wrapper?
+  ! TODO how should these paths be set and communicated to this wrapper?
   character(len=*), parameter :: tuvx_config_path = "tuvx_config.json"
-
+  character(len=*), parameter :: wavelength_config_path = &
+                                                    "data/grids/wavelength/combined.grid"
   ! TUV-x calculator for each OMP thread
   type :: tuvx_ptr
     type(core_t), pointer    :: core_ => null( )          ! TUV-x calculator
@@ -64,10 +61,11 @@ module mo_tuvx
     type(radiator_updater_t) :: radiators_(NUM_RADIATORS) ! radiator updaters
     real(r8)                 :: height_delta_(pver)       ! change in height in each
                                                           !   vertical layer (km)
-    real(r8), allocatable    :: heights_(:)               ! TEMPORARY FOR DEVELOPMENT
-    real(r8), allocatable    :: height_values_(:)         ! TEMPORARY FOR DEVELOPMENT
-    real(r8), allocatable    :: height_mid_values_(:)     ! TEMPORARY FOR DEVELOPMENT
-    real(r8), allocatable    :: wavelength_values_(:)     ! TEMPORARY FOR DEVELOPMENT
+    real(r8), allocatable    :: wavelength_edges_(:)      ! TUV-x wavelength bin edges (nm)
+    real(r8), allocatable    :: wavelength_values_(:)     ! Working array for interface values
+                                                          !   on the TUV-x wavelength grid
+    real(r8), allocatable    :: wavelength_mid_values_(:) ! Working array for mid-point values
+                                                          !   on the TUV-x wavelength grid
     real(r8), allocatable    :: optics_values_(:,:)       ! TEMPORARY FOR DEVELOPMENT
   end type tuvx_ptr
   type(tuvx_ptr), allocatable :: tuvx_ptrs(:)
@@ -120,7 +118,7 @@ contains
 #endif
 
     ! Create the set of TUV-x grids and profiles that CAM will update at runtime
-    cam_grids => get_cam_grids( )
+    cam_grids => get_cam_grids( wavelength_config_path )
     cam_profiles => get_cam_profiles( cam_grids )
     cam_radiators => get_cam_radiators( cam_grids )
 
@@ -186,6 +184,28 @@ contains
 
 !================================================================================================
 
+  subroutine tuvx_timestep_init( )
+!-----------------------------------------------------------------------
+!
+! Purpose: updates TUV-x profiles that depend on time but not space
+!
+!-----------------------------------------------------------------------
+
+!-----------------------------------------------------------------------
+! Local variables
+!-----------------------------------------------------------------------
+    integer :: i_thread
+
+    do i_thread = 1, size( tuvx_ptrs )
+    associate( tuvx => tuvx_ptrs( i_thread ) )
+      call set_et_flux( tuvx )
+    end associate
+    end do
+
+  end subroutine tuvx_timestep_init
+
+!================================================================================================
+
   subroutine tuvx_get_photo_rates( ncol, height_mid, height_int, temperature_mid, &
       surface_temperature, fixed_species_conc, species_vmr, surface_albedo, &
       solar_zenith_angle )
@@ -232,11 +252,9 @@ contains
         ! set conditions for this column in TUV-x
         call set_temperatures( tuvx, i_col, temperature_mid, surface_temperature )
         call set_surface_albedo( tuvx, i_col, surface_albedo )
-        call set_et_flux( tuvx, i_col )
         call set_radiator_profiles( tuvx, i_col, ncol, fixed_species_conc, species_vmr )
 
         ! Calculate photolysis rate constants for this column
-        ! TEMPORARY FOR DEVELOPMENT - fix SZA
         call tuvx%core_%run( solar_zenith_angle = &
                                solar_zenith_angle(i_col) * 180.0_r8 / pi, &
                              photolysis_rate_constants = tuvx%photo_rates_ )
@@ -353,35 +371,33 @@ contains
 
 !================================================================================================
 
-  function get_cam_grids( ) result( grids )
+  function get_cam_grids( wavelength_path ) result( grids )
 !-----------------------------------------------------------------------
 !
 ! Purpose: creates and loads a grid warehouse with grids that CAM will
 !          update at runtime
 !
-! NOTE: The wavelength grid is restricted to bins >= 200 nm to avoid
-!       the Lyman-alpha and Shumann-Runge bands. Photolysis rate
-!       constant contributions from < 200 nm are calculated separately.
-!
 !-----------------------------------------------------------------------
 
     use musica_assert,       only : assert_msg
-    use solar_irrad_data,    only : nbins, & ! number of wavelength bins
-                                    we       ! wavelength bin edges (nm)
+    use musica_config,       only : config_t
+    use tuvx_grid,           only : grid_t
+    use tuvx_grid_factory,   only : grid_builder
     use tuvx_grid_from_host, only : grid_from_host_t
     use tuvx_grid_warehouse, only : grid_warehouse_t
 
 !-----------------------------------------------------------------------
 ! Dummy arguments
 !-----------------------------------------------------------------------
-    class(grid_warehouse_t), pointer :: grids ! collection of grids to be updated by CAM
+    character(len=*),        intent(in) :: wavelength_path ! path to the wavelength data file
+    class(grid_warehouse_t), pointer    :: grids ! collection of grids to be updated by CAM
 
 !-----------------------------------------------------------------------
 ! Local variables
 !-----------------------------------------------------------------------
-    integer :: i_bin
-    class(grid_from_host_t), pointer :: host_grid
-    type(grid_updater_t)             :: updater
+    character(len=*), parameter :: my_name = "CAM grid creator"
+    class(grid_t),    pointer   :: host_grid
+    type(config_t)              :: config
 
     grids => grid_warehouse_t( )
 
@@ -390,21 +406,13 @@ contains
     call grids%add( host_grid )
     deallocate( host_grid )
 
-    ! wavelength bins
-    do i_bin = 1, nbins
-      if( we( i_bin ) >= 200.0_r8 ) then
-        wavelength_grid_start_index = i_bin
-        exit
-      end if
-    end do
-    call assert_msg( 830083933, wavelength_grid_start_index > 0, &
-                     "No wavelength bins available for TUV-x calculations" )
-    wavelength_grid_end_index = nbins
-    n_wavelength_bins = wavelength_grid_end_index - wavelength_grid_start_index + 1
-    host_grid => grid_from_host_t( "wavelength", "nm", n_wavelength_bins )
-    updater = grid_updater_t( host_grid )
-    call updater%update(edges = &
-                        we(wavelength_grid_start_index:wavelength_grid_end_index+1))
+    ! wavelengths (will not be updated at runtime)
+    call config%empty( )
+    call config%add( "type", "from csv file", my_name )
+    call config%add( "name", "wavelength", my_name )
+    call config%add( "units", "nm", my_name )
+    call config%add( "file path", wavelength_path, my_name )
+    host_grid => grid_builder( config )
     call grids%add( host_grid )
     deallocate( host_grid )
 
@@ -428,8 +436,8 @@ contains
 !-----------------------------------------------------------------------
 ! Dummy arguments
 !-----------------------------------------------------------------------
-    class(grid_warehouse_t),    intent(in) :: grids    ! CAM grids used in TUV-x
-    class(profile_warehouse_t), pointer    :: profiles ! collection of profiles to be updated by CAM
+    class(grid_warehouse_t),    intent(in) :: grids       ! CAM grids used in TUV-x
+    class(profile_warehouse_t), pointer    :: profiles    ! collection of profiles to be updated by CAM
 
 !-----------------------------------------------------------------------
 ! Local variables
@@ -463,7 +471,6 @@ contains
     deallocate( host_profile )
 
     ! O3 profile
-    ! TODO optionally include if available
     host_profile => profile_from_host_t( "O3", "molecule cm-3", height%size( ) )
     call profiles%add( host_profile )
     deallocate( host_profile )
@@ -561,13 +568,12 @@ contains
     height => grids%get_grid( "height", "km" )
     this%grids_( GRID_INDEX_HEIGHT ) = this%core_%get_updater( height, found )
     call assert( 213798815, found )
-    allocate( this%heights_(           height%size( ) + 1 ) ) ! TEMPORARY FOR DEVELOPMENT
-    allocate( this%height_values_(     height%size( ) + 1 ) ) ! TEMPORARY FOR DEVELOPMENT
-    allocate( this%height_mid_values_( height%size( )     ) ) ! TEMPORARY FOR DEVELOPMENT
 
     ! wavelength grid cannot be updated at runtime
     wavelength => grids%get_grid( "wavelength", "nm" )
-    allocate( this%wavelength_values_( wavelength%size( ) + 1 ) ) ! TEMPORARY FOR DEVELOPMENT
+    allocate( this%wavelength_edges_(      wavelength%size( ) + 1 ) )
+    allocate( this%wavelength_values_(     wavelength%size( ) + 1 ) )
+    allocate( this%wavelength_mid_values_( wavelength%size( )     ) )
 
     ! optical property working array
     allocate( this%optics_values_( height%size( ), wavelength%size( ) ) )
@@ -737,26 +743,38 @@ contains
 
 !================================================================================================
 
-  subroutine set_et_flux( this, i_col )
+  subroutine set_et_flux( this )
 !-----------------------------------------------------------------------
 !
 ! Purpose: sets the extraterrestrial flux in TUV-x for the given column
 !
-! Extraterrestrial flux is read from data files and copied to TUV-x
+! Extraterrestrial flux is read from data files and interpolated to the
+! TUV-x wavelength grid.
+!
+! NOTE: TUV-x only uses mid-point values for ET Flux
 !
 !-----------------------------------------------------------------------
 
-    ! TODO are these units correct? if so, they don't match expected (photo cm-2 s-1)
-    use solar_irrad_data, only : sol_etf ! extraterrestrial flux (photon cm-2 s-1 nm-1)
+    use mo_util,          only : rebin
+    use solar_irrad_data, only : nbins,   & ! number of wavelength bins
+                                 we,      & ! wavelength bin edges
+    ! TODO are these units correct? if so, they don't match expected (photon cm-2 s-1)
+                                 sol_etf    ! solar extraterrestrial flux (photon cm-2 nm-1 s-1)
 
 !-----------------------------------------------------------------------
 ! Dummy arguments
 !-----------------------------------------------------------------------
     class(tuvx_ptr), intent(inout) :: this  ! TUV-x calculator
-    integer,         intent(in)    :: i_col ! Column to set conditions for
+    integer :: n_tuvx_bins
 
-    call this%profiles_( PROFILE_INDEX_ET_FLUX )%update( edge_values = &
-              sol_etf(wavelength_grid_start_index:wavelength_grid_end_index+1) )
+    n_tuvx_bins = size( this%wavelength_mid_values_ )
+    call rebin( nbins, n_tuvx_bins, we, this%wavelength_edges_, sol_etf, &
+                this%wavelength_mid_values_ )
+    this%wavelength_values_(1)  = this%wavelength_mid_values_(1)
+    this%wavelength_values_(2:n_tuvx_bins+1) = this%wavelength_mid_values_(1:n_tuvx_bins)
+    call this%profiles_( PROFILE_INDEX_ET_FLUX )%update( &
+            mid_point_values = this%wavelength_mid_values_, &
+            edge_values      = this%wavelength_values_ )
 
   end subroutine set_et_flux
 

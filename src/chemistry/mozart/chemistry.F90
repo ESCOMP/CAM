@@ -992,6 +992,7 @@ end function chem_is_active
 
     use mo_aurora,         only : aurora_timestep_init
     use mo_photo,          only : photo_timestep_init
+    use mo_tuvx,           only : tuvx_timestep_init
 
     use cfc11star,         only : update_cfc11star
     use physics_buffer,    only : physics_buffer_desc
@@ -1062,6 +1063,11 @@ end function chem_is_active
     !   ... setup the time interpolation for mo_photo
     !-----------------------------------------------------------------------------
     call photo_timestep_init( calday )
+
+    !-----------------------------------------------------------------------------
+    !   ... setup the TUV-x profiles for this timestep
+    !-----------------------------------------------------------------------------
+    call tuvx_timestep_init( )
 
     call update_cfc11star( pbuf2d, phys_state )
 
