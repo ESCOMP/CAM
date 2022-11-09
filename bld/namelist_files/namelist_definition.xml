@@ -433,6 +433,13 @@ Transformed Eulerian Mean (TEM) diagnostics
 Number of latitude grid points for zonal average TEM diagnostics history fields
 </entry>
 
+<entry id="phys_grid_ctem_nfreq" type="integer"  category="diagnostics"
+       group="phys_grid_ctem_opts" valid_values="" >
+  Frequency of TEM diagnostics calucation.
+  If &gt; 0, frequency is specified as number of timesteps.
+  If &lt; 0, frequency is specified as number of hours.
+</entry>
+
 <entry id="print_energy_errors" type="logical"  category="diagnostics"
        group="check_energy_nl" valid_values="" >
 Turn on verbose output identifying columns that fail energy/water

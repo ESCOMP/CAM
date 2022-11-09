@@ -35,7 +35,6 @@ module phys_grid_ctem
   integer :: nzalat = -huge(1)
   integer :: nzmbas = -huge(1)
 
-  integer, parameter :: nhours = 6 ! number of hours bewteen TEM calculations
   integer :: ntimesteps = -huge(1) ! number of time steps bewteen TEM calculations
 
   logical :: do_tem_diags = .false.
@@ -49,13 +48,17 @@ contains
     integer :: ierr, unitn
 
     character(len=*), parameter :: prefix = 'phys_grid_ctem_readnl: '
+    real(r8) :: dtime
+
     integer :: phys_grid_ctem_zm_nbas
     integer :: phys_grid_ctem_za_nlat
+    integer :: phys_grid_ctem_nfreq
 
-    namelist /phys_grid_ctem_opts/ phys_grid_ctem_zm_nbas, phys_grid_ctem_za_nlat
+    namelist /phys_grid_ctem_opts/ phys_grid_ctem_zm_nbas, phys_grid_ctem_za_nlat, phys_grid_ctem_nfreq
 
-    phys_grid_ctem_zm_nbas = -1
-    phys_grid_ctem_za_nlat = -1
+    phys_grid_ctem_zm_nbas = 0
+    phys_grid_ctem_za_nlat = 0
+    phys_grid_ctem_nfreq = 0
 
     ! Read in namelist values
     !------------------------
@@ -73,13 +76,34 @@ contains
 
     call MPI_bcast(phys_grid_ctem_zm_nbas, 1, mpi_integer, masterprocid, mpicom, ierr)
     call MPI_bcast(phys_grid_ctem_za_nlat, 1, mpi_integer, masterprocid, mpicom, ierr)
+    call MPI_bcast(phys_grid_ctem_nfreq,   1, mpi_integer, masterprocid, mpicom, ierr)
 
-    do_tem_diags = phys_grid_ctem_zm_nbas>0 .and. phys_grid_ctem_za_nlat>0
+    do_tem_diags = .false.
+    if (phys_grid_ctem_nfreq/=0) then
+       if (.not.(phys_grid_ctem_zm_nbas>0 .and. phys_grid_ctem_za_nlat>0)) then
+          call endrun(prefix//'inconsistent phys_grid_ctem namelist settings')
+       end if
+       if (phys_grid_ctem_nfreq>0) then
+          ntimesteps = phys_grid_ctem_nfreq
+       else
+          dtime = get_step_size()
+          ntimesteps = nint( -phys_grid_ctem_nfreq*3600._r8/dtime )
+       end if
+       if (ntimesteps<1) then
+          call endrun(prefix//'invalid ntimesteps')
+       end if
+       do_tem_diags = .true.
+    end if
 
     if (masterproc) then
-       write(iulog,*) 'phys_grid_ctem_readnl... phys_grid_ctem_zm_nbas: ',phys_grid_ctem_zm_nbas
-       write(iulog,*) 'phys_grid_ctem_readnl... phys_grid_ctem_za_nlat: ',phys_grid_ctem_za_nlat
-       write(iulog,*) 'phys_grid_ctem_readnl... do_tem_diags: ', do_tem_diags
+       if (do_tem_diags) then
+          write(iulog,*) 'TEM diagnostics will be calculated every ',ntimesteps,' time steps'
+          write(iulog,*) ' phys_grid_ctem_zm_nbas = ', phys_grid_ctem_zm_nbas
+          write(iulog,*) ' phys_grid_ctem_za_nlat = ', phys_grid_ctem_za_nlat
+          write(iulog,*) ' phys_grid_ctem_nfreq = ', phys_grid_ctem_nfreq
+       else
+          write(iulog,*) 'TEM diagnostics will not be performed'
+       end if
     endif
 
     if (do_tem_diags) then
@@ -175,19 +199,13 @@ contains
   !-----------------------------------------------------------------------------
   subroutine phys_grid_ctem_init
 
-    real(r8) :: dtime
-
     if (.not.do_tem_diags) return
 
     call addfld ('VTHzaphys',(/'ilev'/), 'A', 'MK/S', 'Meridional Heat Flux:', gridname='ctem_zavg_phys')
     call addfld ('WTHzaphys',(/'ilev'/), 'A', 'MK/S', 'Vertical Heat Flux:', gridname='ctem_zavg_phys')
     call addfld ('UVzaphys', (/'ilev'/), 'A', 'M2/S2','Meridional Flux of Zonal Momentum', gridname='ctem_zavg_phys')
     call addfld ('UWzaphys', (/'ilev'/), 'A', 'M2/S2','Vertical Flux of Zonal Momentum', gridname='ctem_zavg_phys')
-
     call addfld ('THphys', (/'ilev' /), 'A',  'K',  'Zonal-Mean potential temp - defined on ilev', gridname='physgrid' )
-
-    dtime = get_step_size()
-    ntimesteps = nint( nhours*3600._r8/dtime ) ! number of steps per nhours
 
   end subroutine phys_grid_ctem_init
 
@@ -217,7 +235,8 @@ contains
     integer  :: lchnk, ncol, j, k
     real(r8) :: fld_tmp(pcols,pverp)
 
-    real(r8) :: theta(pcols,pver,begchunk:endchunk) ! potential temperature
+    ! potential temperature
+    real(r8) :: theta(pcols,pver,begchunk:endchunk)
     real(r8) :: thi(pcols,pverp,begchunk:endchunk)
     real(r8) :: thzm(pcols,pverp,begchunk:endchunk)
 

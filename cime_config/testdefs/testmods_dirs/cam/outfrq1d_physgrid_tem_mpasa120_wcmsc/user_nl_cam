@@ -10,6 +10,7 @@ mpas_epssm = 0.5D0
 
 use_gw_front = .false.
 
+phys_grid_ctem_nfreq = -12
 phys_grid_ctem_zm_nbas = 120
 phys_grid_ctem_za_nlat = 90
 
