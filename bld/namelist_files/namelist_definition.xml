@@ -4881,7 +4881,7 @@ Default: set by build-namelist.
 </entry>
 
 <!-- HEMCO -->
-<entry id="hemco_config_file" type="char*256" input_pathname="abs" category="hemco"
+<entry id="hemco_config_file" type="char*256" category="hemco"
        group="hemco_nl" valid_values="" >
 Full pathname to HEMCO_Config.rc, which prescribes emission inventories     
 Default: set by build-namelist.

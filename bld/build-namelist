@@ -2844,6 +2844,9 @@ else {
 my $hco = $cfg->get('hemco');
 if ( $hco eq '1' ) {
     add_default($nl, 'cam_physics_mesh');
+    add_default($nl, 'hemco_config_file');
+    add_default($nl, 'hemco_grid_xdim');
+    add_default($nl, 'hemco_grid_ydim');
 }
 
 # Physics options
