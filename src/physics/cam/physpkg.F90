@@ -149,6 +149,7 @@ contains
     use cloud_diagnostics,  only: cloud_diagnostics_register
     use cospsimulator_intr, only: cospsimulator_intr_register
     use rad_constituents,   only: rad_cnst_get_info ! Added to query if it is a modal aero sim or not
+    use radheat,            only: radheat_register
     use subcol,             only: subcol_register
     use subcol_utils,       only: is_subcol_on, subcol_get_scheme
     use dyn_comp,           only: dyn_register
@@ -314,6 +315,7 @@ contains
        ! radiation
        call radiation_register
        call cloud_diagnostics_register
+       call radheat_register
 
        ! COSP
        call cospsimulator_intr_register
