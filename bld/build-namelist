@@ -2841,7 +2841,6 @@ else {
 }
 
 # HEMCO
-$nl->set_variable_value('hemco_nl', 'hemco_config_File', "'HEMCO_Config.rc'");
 my $hco = $cfg->get('hemco');
 if ( $hco eq '1' ) {
     add_default($nl, 'cam_physics_mesh');
