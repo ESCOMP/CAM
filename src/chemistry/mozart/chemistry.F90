@@ -1222,7 +1222,7 @@ end function chem_is_active
                           fsds, cam_in%ts, cam_in%asdir, cam_in%ocnfrac, cam_in%icefrac, &
                           cam_out%precc, cam_out%precl, cam_in%snowhland, ghg_chem, state%latmapback, &
                           drydepflx, wetdepflx, cam_in%cflx, cam_in%fireflx, cam_in%fireztop, &
-                          nhx_nitrogen_flx, noy_nitrogen_flx, ptend%q, pbuf )
+                          nhx_nitrogen_flx, noy_nitrogen_flx, ptend%q, pbuf, state )
     if (associated(cam_out%nhx_nitrogen_flx)) then
        cam_out%nhx_nitrogen_flx(:ncol) = nhx_nitrogen_flx(:ncol)
     endif

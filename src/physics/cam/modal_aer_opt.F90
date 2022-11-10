@@ -128,7 +128,13 @@ subroutine modal_aer_opt_init()
    character(len=10) :: fldname
    character(len=128) :: lngname
 
+   logical, save :: is_initialized = .false.
+
    !----------------------------------------------------------------------------
+
+   ! Check if module has already been initialized
+   if (is_initialized) return
+   is_initialized = .true.
 
    rmmin = 0.01e-6_r8
    rmmax = 25.e-6_r8

@@ -46,6 +46,9 @@ module mo_tuvx
   integer :: index_O2 = 0 ! index for O2 in concentration array
   integer :: index_O3 = 0 ! index for O3 in concentration array
 
+  ! Information needed to access aerosol optical properties
+  logical :: aerosol_exists = .false. ! indicates whether aerosol optical properties are available
+
   ! TODO how should these paths be set and communicated to this wrapper?
   character(len=*), parameter :: tuvx_config_path = "tuvx_config.json"
   character(len=*), parameter :: wavelength_config_path = &
@@ -66,7 +69,9 @@ module mo_tuvx
                                                           !   on the TUV-x wavelength grid
     real(r8), allocatable    :: wavelength_mid_values_(:) ! Working array for mid-point values
                                                           !   on the TUV-x wavelength grid
-    real(r8), allocatable    :: optics_values_(:,:)       ! TEMPORARY FOR DEVELOPMENT
+    real(r8), allocatable    :: optical_depth_(:,:,:)            ! (column, vertical level, wavelength) [unitless]
+    real(r8), allocatable    :: single_scattering_albedo_(:,:,:) ! (column, vertical level, wavelength) [unitless]
+    real(r8), allocatable    :: asymmetry_factor_(:,:,:)         ! (column, vertical level, wavelength) [unitless]
   end type tuvx_ptr
   type(tuvx_ptr), allocatable :: tuvx_ptrs(:)
 
@@ -179,7 +184,6 @@ contains
     is_fixed_O3 = index_O3 > 0
     if( .not. is_fixed_O3 ) index_O3 = get_spc_ndx( 'O3' )
 
-
   end subroutine tuvx_init
 
 !================================================================================================
@@ -206,9 +210,9 @@ contains
 
 !================================================================================================
 
-  subroutine tuvx_get_photo_rates( ncol, height_mid, height_int, temperature_mid, &
-      surface_temperature, fixed_species_conc, species_vmr, surface_albedo, &
-      solar_zenith_angle )
+  subroutine tuvx_get_photo_rates( state, pbuf, ncol, height_mid, height_int, &
+      temperature_mid, surface_temperature, fixed_species_conc, species_vmr, &
+      surface_albedo, solar_zenith_angle )
 !-----------------------------------------------------------------------
 !
 ! Purpose: calculate and return photolysis rate constants
@@ -218,6 +222,8 @@ contains
     use cam_logfile,      only : iulog        ! log info output unit
     use chem_mods,        only : gas_pcnst, & ! number of non-fixed species
                                  nfs          ! number of fixed species
+    use physics_types,    only : physics_state
+    use physics_buffer,   only : physics_buffer_desc
     use ppgrid,           only : pcols        ! maximum number of columns
     use shr_const_mod,    only : pi => shr_const_pi
     use spmd_utils,       only : main_task => masterprocid, &
@@ -226,6 +232,8 @@ contains
 !-----------------------------------------------------------------------
 ! Dummy arguments
 !-----------------------------------------------------------------------
+    type(physics_state),       target,  intent(in)    :: state
+    type(physics_buffer_desc), pointer, intent(inout) :: pbuf(:)
     integer,  intent(in) :: ncol                        ! Number of colums to calculated photolysis for
     real(r8), intent(in) :: height_mid(pcols,pver)      ! height at mid-points (km)
     real(r8), intent(in) :: height_int(pcols,pver+1)    ! height at interfaces (km)
@@ -244,6 +252,10 @@ contains
     integer :: i_col                                ! column index
 
     associate( tuvx => tuvx_ptrs( thread_id( ) ) )
+
+      ! get aerosol optical properties for all columns
+      call get_aerosol_optical_properties( tuvx, state, pbuf )
+
       do i_col = 1, ncol
 
         ! update grid heights
@@ -531,11 +543,20 @@ contains
   subroutine create_updaters( this, grids, profiles, radiators )
 !-----------------------------------------------------------------------
 !
-! Purpose: creates updaters for each grid and profile that CAM will use
-!          to update TUV-x at each timestep
+! Purpose: forms connections between CAM and TUV-x data structures
+!
+! - creates updaters for each grid and profile that CAM will use
+!   to update TUV-x at each timestep.
+! - allocates working arrays when needed for interpolation between
+!   grids
+! - initializes CAM modules if necessary and sets parameters needed
+!   for runtime access of CAM data
 !
 !-----------------------------------------------------------------------
 
+    use modal_aer_opt,           only : modal_aer_opt_init
+    use ppgrid,                  only : pcols ! maximum number of columns
+    use rad_constituents,        only : rad_cnst_get_info
     use musica_assert,           only : assert
     use tuvx_grid,               only : grid_t
     use tuvx_grid_from_host,     only : grid_updater_t
@@ -561,6 +582,7 @@ contains
     class(grid_t),     pointer :: height, wavelength
     class(profile_t),  pointer :: host_profile
     class(radiator_t), pointer :: host_radiator
+    integer                    :: n_modes
     logical                    :: found
 
     ! Grid updaters
@@ -576,7 +598,9 @@ contains
     allocate( this%wavelength_mid_values_( wavelength%size( )     ) )
 
     ! optical property working array
-    allocate( this%optics_values_( height%size( ), wavelength%size( ) ) )
+    allocate( this%optical_depth_(            pcols, height%size( ), wavelength%size( ) ) )
+    allocate( this%single_scattering_albedo_( pcols, height%size( ), wavelength%size( ) ) )
+    allocate( this%asymmetry_factor_(         pcols, height%size( ), wavelength%size( ) ) )
 
     deallocate( height )
     deallocate( wavelength )
@@ -615,16 +639,29 @@ contains
 
     ! radiator updaters
 
+    ! determine if aerosol optical properties will be available, and if so
+    ! intialize the aerosol optics module
+    call rad_cnst_get_info(0, nmodes=n_modes)
+    if (n_modes > 0) then
+      aerosol_exists = .true.
+      call modal_aer_opt_init()
+    else
+      ! TODO are there default aerosol optical properties that should be used
+      !      when an aerosol module is not available?
+      this%optical_depth_(:,:,:)            = 0.0_r8
+      this%single_scattering_albedo_(:,:,:) = 0.0_r8
+      this%asymmetry_factor_(:,:,:)         = 0.0_r8
+    end if
     host_radiator => radiators%get_radiator( "aerosol" )
-    this%radiators_( RADIATOR_INDEX_AEROSOL ) = this%core_%get_updater( host_radiator, found )
-    call assert( 675200430, found )
-    nullify( host_radiator )
+    this%radiators_(RADIATOR_INDEX_AEROSOL) = this%core_%get_updater(host_radiator, found)
+    call assert(675200430, found)
+    nullify(host_radiator)
 
   end subroutine create_updaters
 
 !================================================================================================
 
-  subroutine set_heights( this, i_col, ncol, height_mid, height_int)
+  subroutine set_heights(this, i_col, ncol, height_mid, height_int)
 !-----------------------------------------------------------------------
 !
 ! Purpose: sets the height values in TUV-x for the given column
@@ -711,7 +748,7 @@ contains
 
     edges(1) = surface_temperature(i_col)
     edges(2:pver+1) = temperature_mid(i_col,pver:1:-1)
-    call this%profiles_( PROFILE_INDEX_TEMPERATURE )%update( edge_values = edges )
+    call this%profiles_(PROFILE_INDEX_TEMPERATURE)%update(edge_values = edges)
 
   end subroutine set_temperatures
 
@@ -736,8 +773,8 @@ contains
     real(r8),        intent(in)    :: surface_albedo(pcols) ! surface albedo (unitless)
 
     this%wavelength_values_(:) = surface_albedo(i_col)
-    call this%profiles_( PROFILE_INDEX_ALBEDO )%update( &
-        edge_values = this%wavelength_values_(:) )
+    call this%profiles_(PROFILE_INDEX_ALBEDO)%update( &
+        edge_values = this%wavelength_values_(:))
 
   end subroutine set_surface_albedo
 
@@ -767,14 +804,14 @@ contains
     class(tuvx_ptr), intent(inout) :: this  ! TUV-x calculator
     integer :: n_tuvx_bins
 
-    n_tuvx_bins = size( this%wavelength_mid_values_ )
+    n_tuvx_bins = size(this%wavelength_mid_values_)
     call rebin( nbins, n_tuvx_bins, we, this%wavelength_edges_, sol_etf, &
                 this%wavelength_mid_values_ )
     this%wavelength_values_(1)  = this%wavelength_mid_values_(1)
     this%wavelength_values_(2:n_tuvx_bins+1) = this%wavelength_mid_values_(1:n_tuvx_bins)
-    call this%profiles_( PROFILE_INDEX_ET_FLUX )%update( &
+    call this%profiles_(PROFILE_INDEX_ET_FLUX)%update( &
             mid_point_values = this%wavelength_mid_values_, &
-            edge_values      = this%wavelength_values_ )
+            edge_values      = this%wavelength_values_)
 
   end subroutine set_et_flux
 
@@ -820,8 +857,8 @@ contains
     edges(2:pver+1) = fixed_species_conc(i_col,pver:1:-1,indexm)
     densities(1:pver) = this%height_delta_(1:pver) * km2cm * &
                         sqrt(edges(1:pver)) + sqrt(edges(2:pver+1))
-    call this%profiles_( PROFILE_INDEX_AIR )%update( &
-        edge_values = edges, layer_densities = densities )
+    call this%profiles_(PROFILE_INDEX_AIR)%update( &
+        edge_values = edges, layer_densities = densities)
 
     ! O2
     if( is_fixed_O2 ) then
@@ -837,9 +874,9 @@ contains
     end if
     densities(1:pver) = this%height_delta_(1:pver) * km2cm * &
                         sqrt(edges(1:pver)) + sqrt(edges(2:pver+1))
-    call this%profiles_( PROFILE_INDEX_O2 )%update( &
+    call this%profiles_(PROFILE_INDEX_O2)%update( &
         edge_values = edges, layer_densities = densities, &
-        exo_density = 0.0_r8 ) ! TODO how should this be calculated?
+        exo_density = 0.0_r8) ! TODO how should this be calculated?
 
     ! O3
     if( is_fixed_O3 ) then
@@ -855,16 +892,140 @@ contains
     end if
     densities(1:pver) = this%height_delta_(1:pver) * km2cm * &
                         sqrt(edges(1:pver)) + sqrt(edges(2:pver+1))
-    call this%profiles_( PROFILE_INDEX_O3 )%update( &
+    call this%profiles_(PROFILE_INDEX_O3)%update( &
         edge_values = edges, layer_densities = densities, &
-        exo_density = 0.0_r8 ) ! TODO how should this be calculated?
+        exo_density = 0.0_r8) ! TODO how should this be calculated?
 
-    ! TEMPORARY FOR DEVELOPMENT - aerosols
-    this%optics_values_(:,:) = 0.01_r8
-    call this%radiators_( RADIATOR_INDEX_AEROSOL )%update( &
-        optical_depths = this%optics_values_ )
+    ! aerosols
+    call this%radiators_(RADIATOR_INDEX_AEROSOL)%update( &
+        optical_depths            = this%optical_depth_(i_col,:,:), &
+        single_scattering_albedos = this%single_scattering_albedo_(i_col,:,:), &
+        asymmetry_factors         = this%asymmetry_factor_(i_col,:,:))
 
   end subroutine set_radiator_profiles
+
+!================================================================================================
+
+  subroutine get_aerosol_optical_properties( this, state, pbuf )
+!-----------------------------------------------------------------------
+!
+! Purpose: updates working arrays of aerosol optical properties for all
+!          columns from the aerosol package
+!
+!-----------------------------------------------------------------------
+
+    use aer_rad_props,    only : aer_rad_props_sw
+    use mo_util,          only : rebin
+    use physics_types,    only : physics_state
+    use physics_buffer,   only : physics_buffer_desc
+    use ppgrid,           only : pcols          ! maximum number of columns
+    use radconstants,     only : nswbands, &    ! Number of CAM shortwave radiation bands
+                                 get_sw_spectral_boundaries
+!-----------------------------------------------------------------------
+! Dummy arguments
+!-----------------------------------------------------------------------
+    class(tuvx_ptr),                    intent(inout) :: this  ! TUV-x calculator
+    type(physics_state),       target,  intent(in)    :: state
+    type(physics_buffer_desc), pointer, intent(inout) :: pbuf(:)
+!-----------------------------------------------------------------------
+! Local variables
+!-----------------------------------------------------------------------
+    real(r8) :: wavelength_edges(nswbands+1)       ! CAM radiation wavelength grid edges [nm]
+    real(r8) :: aer_tau    (pcols,0:pver,nswbands) ! aerosol extinction optical depth
+    real(r8) :: aer_tau_w  (pcols,0:pver,nswbands) ! aerosol single scattering albedo * tau
+    real(r8) :: aer_tau_w_g(pcols,0:pver,nswbands) ! aerosol assymetry parameter * w * tau
+    real(r8) :: aer_tau_w_f(pcols,0:pver,nswbands) ! aerosol forward scattered fraction * w * tau
+    real(r8) :: low_bound(nswbands)  ! lower bound of CAM wavenumber bins
+    real(r8) :: high_bound(nswbands) ! upper bound of CAM wavenumber bins
+    integer  :: n_night              ! number of night columns
+    integer  :: idx_night(pcols)     ! indices of night columns
+    integer  :: n_tuvx_bins          ! number of TUV-x wavelength bins
+    integer  :: i_col, i_level       ! column and level indices
+
+    ! do nothing if no aerosol module is available
+    if( .not. aerosol_exists ) return
+
+    ! TODO just assume all daylight columns for now
+    !      can adjust later if necessary
+    n_night = 0
+    idx_night(:) = 0
+
+    ! get aerosol optical properties on native CAM radiation grid
+    call aer_rad_props_sw(0, state, pbuf, n_night, idx_night, &
+                          aer_tau, aer_tau_w, aer_tau_w_g, aer_tau_w_f)
+
+    ! Convert CAM wavenumber grid to wavelength grid and re-order optics arrays
+    ! NOTE: CAM wavenumber grid is continuous and increasing, except that the
+    !       last bin should be moved to the just before the first bin (!?!)
+    call get_sw_spectral_boundaries(low_bound, high_bound, 'nm')
+    wavelength_edges(1:nswbands-1) = high_bound(nswbands-1:1:-1)
+    wavelength_edges(nswbands    ) = high_bound(nswbands       )
+    wavelength_edges(nswbands+1  ) = low_bound( nswbands       )
+    call reorder_optics_array(    aer_tau)
+    call reorder_optics_array(  aer_tau_w)
+    call reorder_optics_array(aer_tau_w_g)
+
+    ! regrid optical properties to TUV-x wavelength and height grid
+    ! TODO is this the correct regridding scheme to use?
+    ! TODO is this the correct mapping to the TUV-x vertical grid?
+    n_tuvx_bins = size(this%wavelength_mid_values_)
+    do i_col = 1, pcols
+      do i_level = 1, pver
+        call rebin(nswbands, n_tuvx_bins, wavelength_edges, this%wavelength_edges_, &
+                   aer_tau(i_col,pver-i_level,:), this%optical_depth_(i_col,i_level,:))
+        call rebin(nswbands, n_tuvx_bins, wavelength_edges, this%wavelength_edges_, &
+                   aer_tau_w(i_col,pver-i_level,:), this%single_scattering_albedo_(i_col,i_level,:))
+        call rebin(nswbands, n_tuvx_bins, wavelength_edges, this%wavelength_edges_, &
+                   aer_tau_w_g(i_col,pver-i_level,:), this%asymmetry_factor_(i_col,i_level,:))
+      end do
+    end do
+
+    ! back-calculate the single scattering albedo and asymmetry factor
+    associate(tau   => this%optical_depth_, &
+              omega => this%single_scattering_albedo_, &
+              g     => this%asymmetry_factor_)
+      where(omega > 0.0_r8)
+        g = g / omega
+      elsewhere
+        g = 0.0_r8
+      end where
+      where(tau > 0.0_r8)
+        omega = omega / tau
+      elsewhere
+        omega = 0.0_r8
+      end where
+    end associate
+
+  end subroutine get_aerosol_optical_properties
+
+!================================================================================================
+
+  subroutine reorder_optics_array(optics_array)
+!-----------------------------------------------------------------------
+!
+! Purpose: Reorders elements of an optical property array for conversion
+!          from wavenumber to wavelength grid and out-of-order final
+!          element in CAM wavenumber grid
+!
+!-----------------------------------------------------------------------
+
+    use ppgrid,           only : pcols    ! maximum number of columns
+    use radconstants,     only : nswbands ! Number of CAM shortwave radiation bands
+
+!-----------------------------------------------------------------------
+! Dummy arguments
+!-----------------------------------------------------------------------
+    real(r8), intent(inout) :: optics_array(pcols,0:pver,nswbands) ! optics array to reorder
+
+!-----------------------------------------------------------------------
+! Local variables
+!-----------------------------------------------------------------------
+    real(r8) :: working(pcols,0:pver,nswbands) ! working array
+
+    working(:,:,:) = optics_array(:,:,:)
+    optics_array(:,:,1:nswbands-1) = working(:,:,nswbands-1:1:-1)
+
+  end subroutine reorder_optics_array
 
 !================================================================================================
 

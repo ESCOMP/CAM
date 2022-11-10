@@ -142,7 +142,6 @@ def _cmake_default_args(caseroot):
             if ":=" in line:
                 key, val = line.split(":=")
                 arg_dict[key.replace('CIME_SET_MAKEFILE_VAR','').strip()] = val.strip()
-                logger.info("{}: {}".format(key.replace('CIME_SET_MAKEFILE_VAR','').strip(), val.strip()))
 
         return arg_dict
 
