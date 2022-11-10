@@ -213,7 +213,7 @@ contains
 
   subroutine tuvx_get_photo_rates( state, pbuf, ncol, height_mid, height_int, &
       temperature_mid, surface_temperature, fixed_species_conc, species_vmr, &
-      surface_albedo, solar_zenith_angle )
+      exo_column_conc, surface_albedo, solar_zenith_angle )
 !-----------------------------------------------------------------------
 !
 ! Purpose: calculate and return photolysis rate constants
@@ -222,7 +222,8 @@ contains
 
     use cam_logfile,      only : iulog        ! log info output unit
     use chem_mods,        only : gas_pcnst, & ! number of non-fixed species
-                                 nfs          ! number of fixed species
+                                 nfs,       & ! number of fixed species
+                                 nabscol      ! number of absorbing species (radiators)
     use physics_types,    only : physics_state
     use physics_buffer,   only : physics_buffer_desc
     use ppgrid,           only : pcols        ! maximum number of columns
@@ -240,10 +241,12 @@ contains
     real(r8), intent(in) :: height_int(pcols,pver+1)    ! height at interfaces (km)
     real(r8), intent(in) :: temperature_mid(pcols,pver) ! midpoint temperature (K)
     real(r8), intent(in) :: surface_temperature(pcols)  ! surface temperature (K)
-    real(r8), intent(in) :: fixed_species_conc(ncol,pver,max(1,nfs)) ! fixed species densities
-                                                                     !   (molecule cm-3)
-    real(r8), intent(in) :: species_vmr(ncol,pver,max(1,gas_pcnst))  ! species volume mixing
-                                                                     !   ratios (mol mol-1)
+    real(r8), intent(in) :: fixed_species_conc(ncol,pver,max(1,nfs))    ! fixed species densities
+                                                                        !   (molecule cm-3)
+    real(r8), intent(in) :: species_vmr(ncol,pver,max(1,gas_pcnst))     ! species volume mixing
+                                                                        !   ratios (mol mol-1)
+    real(r8), intent(in) :: exo_column_conc(ncol,0:pver,max(1,nabscol)) ! above column densities
+                                                                        !   (molecule cm-3)
     real(r8), intent(in) :: surface_albedo(pcols)       ! surface albedo (unitless)
     real(r8), intent(in) :: solar_zenith_angle(ncol)    ! solar zenith angle (radians)
 
@@ -265,7 +268,8 @@ contains
         ! set conditions for this column in TUV-x
         call set_temperatures( tuvx, i_col, temperature_mid, surface_temperature )
         call set_surface_albedo( tuvx, i_col, surface_albedo )
-        call set_radiator_profiles( tuvx, i_col, ncol, fixed_species_conc, species_vmr )
+        call set_radiator_profiles( tuvx, i_col, ncol, fixed_species_conc, &
+                                    species_vmr, exo_column_conc )
 
         ! Calculate photolysis rate constants for this column
         call tuvx%core_%run( solar_zenith_angle = &
@@ -823,7 +827,8 @@ contains
 
 !================================================================================================
 
-  subroutine set_radiator_profiles( this, i_col, ncol, fixed_species_conc, species_vmr )
+  subroutine set_radiator_profiles( this, i_col, ncol, fixed_species_conc, species_vmr, &
+                                    exo_column_conc )
 !-----------------------------------------------------------------------
 !
 ! Purpose: sets the profiles of optically active atmospheric constituents
@@ -833,12 +838,13 @@ contains
 ! mapping.
 !
 ! Above layer densities are calculated using a scale height for air
-! and ... TODO fill in description for O2, O3
+! and pre-calculated values for O2 and O3
 !
 !-----------------------------------------------------------------------
 
     use chem_mods, only : gas_pcnst, & ! number of non-fixed species
                           nfs,       & ! number of fixed species
+                          nabscol,   & ! number of absorbing species (radiators)
                           indexm       ! index for air density in fixed species array
 
 !-----------------------------------------------------------------------
@@ -851,12 +857,15 @@ contains
                                                                                !   (molecule cm-3)
     real(r8),        intent(in)    :: species_vmr(ncol,pver,max(1,gas_pcnst))  ! species volume mixing
                                                                                !   ratios (mol mol-1)
+    real(r8),        intent(in) :: exo_column_conc(ncol,0:pver,max(1,nabscol)) ! above column densities
+                                                                               !   (molecule cm-3)
 
 !-----------------------------------------------------------------------
 ! Local variables
 !-----------------------------------------------------------------------
     real(r8) :: edges(pver+1), densities(pver)
-    real(r8) :: km2cm = 1.0e5 ! conversion from km to cm
+    real(r8) :: exo_val
+    real(r8), parameter :: km2cm = 1.0e5 ! conversion from km to cm
 
     ! air
     edges(1) = fixed_species_conc(i_col,pver,indexm)
@@ -879,11 +888,12 @@ contains
     else
       edges(:) = 0.0_r8
     end if
+    exo_val = exo_column_conc(i_col,0,1)
     densities(1:pver) = this%height_delta_(1:pver) * km2cm * &
                         sqrt(edges(1:pver)) + sqrt(edges(2:pver+1))
     call this%profiles_(PROFILE_INDEX_O2)%update( &
         edge_values = edges, layer_densities = densities, &
-        exo_density = 0.0_r8) ! TODO how should this be calculated?
+        exo_density = exo_val)
 
     ! O3
     if( is_fixed_O3 ) then
@@ -897,11 +907,16 @@ contains
     else
       edges(:) = 0.0_r8
     end if
+    if( nabscol >= 2 ) then
+      exo_val = exo_column_conc(i_col,0,2)
+    else
+      exo_val = 0.0_r8
+    end if
     densities(1:pver) = this%height_delta_(1:pver) * km2cm * &
                         sqrt(edges(1:pver)) + sqrt(edges(2:pver+1))
     call this%profiles_(PROFILE_INDEX_O3)%update( &
         edge_values = edges, layer_densities = densities, &
-        exo_density = 0.0_r8) ! TODO how should this be calculated?
+        exo_density = exo_val)
 
     ! aerosols
     call this%radiators_(RADIATOR_INDEX_AEROSOL)%update( &
