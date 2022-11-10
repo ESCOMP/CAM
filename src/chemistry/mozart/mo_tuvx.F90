@@ -115,7 +115,6 @@ contains
     integer :: pack_size, pos, i_core, i_err
 
     config_path = tuvx_config_path
-    if( is_main_task ) call log_initialization( )
 
 #ifndef HAVE_MPI
     call assert_msg( 113937299, is_main_task, "Multiple tasks present without " &
@@ -183,6 +182,8 @@ contains
     index_O3 = get_inv_ndx( 'O3' )
     is_fixed_O3 = index_O3 > 0
     if( .not. is_fixed_O3 ) index_O3 = get_spc_ndx( 'O3' )
+
+    if( is_main_task ) call log_initialization( )
 
   end subroutine tuvx_init
 
@@ -377,6 +378,11 @@ contains
       write(iulog,*) "  - without OpenMP support"
 #endif
       write(iulog,*) "  - with configuration file: '"//tuvx_config_path//"'"
+      if( aerosol_exists ) then
+        write(iulog,*) "  - with on-line aerosols"
+      else
+        write(iulog,*) "  - without on-line aerosols"
+      end if
     end if
 
   end subroutine log_initialization
@@ -642,7 +648,7 @@ contains
     ! determine if aerosol optical properties will be available, and if so
     ! intialize the aerosol optics module
     call rad_cnst_get_info(0, nmodes=n_modes)
-    if (n_modes > 0) then
+    if (n_modes > 0 .and. .not. aerosol_exists) then
       aerosol_exists = .true.
       call modal_aer_opt_init()
     else
@@ -858,7 +864,8 @@ contains
     densities(1:pver) = this%height_delta_(1:pver) * km2cm * &
                         sqrt(edges(1:pver)) + sqrt(edges(2:pver+1))
     call this%profiles_(PROFILE_INDEX_AIR)%update( &
-        edge_values = edges, layer_densities = densities)
+        edge_values = edges, layer_densities = densities, &
+        scale_height = 8.01_r8 ) ! scale height in [km]
 
     ! O2
     if( is_fixed_O2 ) then
