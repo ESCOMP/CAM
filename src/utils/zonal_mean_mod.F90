@@ -6,14 +6,14 @@ module zonal_mean_mod
 !    This module implements 3 data structures for the spectral analysis
 !    and synthesis of zonal mean values based on m=0 spherical harmonics.
 !
-!    ZonalMean_t:    For the analysis/synthsis of zonal mean values
+!    ZonalMean_t:    For the analysis/synthesis of zonal mean values
 !                    on a 2D grid of points distributed over the
 !                    surface of a sphere.
-!    ZonalProfile_t: For the analysis/synthsis of zonal mean values
+!    ZonalProfile_t: For the analysis/synthesis of zonal mean values
 !                    on a meridional grid that spans the latitudes
 !                    from SP to NP
 !    ZonalAverage_t: To calculate zonal mean values via a simple
-!                    area weighted bin-averaging of 2D gridpoints
+!                    area weighted bin-averaging of 2D grid points
 !                    assigned to each latitude band.
 !
 !   NOTE: The weighting of the Zonal Profiles values is scaled such
@@ -747,12 +747,12 @@ contains
       ! (Yes, they are theoretically orthonormal, but lets make sure)
       !--------------------------------------------------------------
       do nn=1,I_nbas
-      do n2=1,I_nbas
-        Bcov(nn,n2) = 0._r8
-        do ii=1,I_nlat
-          Bcov(nn,n2) = Bcov(nn,n2) + (this%basis(ii,nn)*this%basis(ii,n2)*this%area(ii))
+        do n2=1,I_nbas
+          Bcov(nn,n2) = 0._r8
+          do ii=1,I_nlat
+            Bcov(nn,n2) = Bcov(nn,n2) + (this%basis(ii,nn)*this%basis(ii,n2)*this%area(ii))
+          end do
         end do
-      end do
       end do
 
       ! Invert to get the basis amplitude map
@@ -830,7 +830,7 @@ contains
       ! Local Values
       !--------------
       real(r8),allocatable:: Gcov(:,:)
-      integer:: ii,nn,n2,ll
+      integer:: ii,nn,n2,ilev
 
       integer :: nlev
 
@@ -839,22 +839,22 @@ contains
       ! Compute Covariance with input data and basis functions
       !--------------------------------------------------------
       allocate(Gcov(this%nbas,nlev))
-      do ll=1,nlev
+      do ilev=1,nlev
          do nn=1,this%nbas
-            Gcov(nn,ll) = 0._r8
+            Gcov(nn,ilev) = 0._r8
             do ii=1,this%nlat
-               Gcov(nn,ll) = Gcov(nn,ll) + (I_Zdata(ii,ll)*this%basis(ii,nn)*this%area(ii))
+               Gcov(nn,ilev) = Gcov(nn,ilev) + (I_Zdata(ii,ilev)*this%basis(ii,nn)*this%area(ii))
             end do
          end do
       end do
 
       ! Multiply by map to get the amplitudes
       !-------------------------------------------
-      do ll=1,nlev
+      do ilev=1,nlev
          do nn=1,this%nbas
-            O_Bamp(nn,ll) = 0._r8
+            O_Bamp(nn,ilev) = 0._r8
             do n2=1,this%nbas
-               O_Bamp(nn,ll) = O_Bamp(nn,ll) + this%map(n2,nn)*Gcov(n2,ll)
+               O_Bamp(nn,ilev) = O_Bamp(nn,ilev) + this%map(n2,nn)*Gcov(n2,ilev)
             end do
          end do
       end do
@@ -885,9 +885,9 @@ contains
       !--------------------------------------------------
       O_Zdata(1:this%nlat) = 0._r8
       do nn=1,this%nbas
-      do ii=1,this%nlat
-        O_Zdata(ii) = O_Zdata(ii) + (I_Bamp(nn)*this%basis(ii,nn))
-      end do
+        do ii=1,this%nlat
+          O_Zdata(ii) = O_Zdata(ii) + (I_Bamp(nn)*this%basis(ii,nn))
+        end do
       end do
 
     end subroutine eval_ZonalProfile_1Dgrid
@@ -909,7 +909,7 @@ contains
       !
       ! Local Values
       !--------------
-      integer:: ii,nn,ll
+      integer:: ii,nn,ilev
 
       integer :: nlev
 
@@ -919,11 +919,11 @@ contains
       !--------------------------------------------------
       O_Zdata(1:this%nlat,1:nlev) = 0._r8
       do nn=1,this%nbas
-         do ll=1,nlev
-            do ii=1,this%nlat
-               O_Zdata(ii,ll) = O_Zdata(ii,ll) + (I_Bamp(nn,ll)*this%basis(ii,nn))
-            end do
-         end do
+        do ilev=1,nlev
+          do ii=1,this%nlat
+            O_Zdata(ii,ilev) = O_Zdata(ii,ilev) + (I_Bamp(nn,ilev)*this%basis(ii,nn))
+          end do
+        end do
       end do
 
     end subroutine eval_ZonalProfile_2Dgrid
@@ -1037,7 +1037,7 @@ contains
         end do
       end do
 
-      ! Set boundaroes for Latitude bins
+      ! Set boundaries for Latitude bins
       !-----------------------------------
       BinLat(1)           = 0._r8
       BinLat(this%nlat+1) = 4._r8*atan(1._r8)
@@ -1179,7 +1179,7 @@ contains
       real(r8),allocatable:: Gsum(:)
       real(r8),allocatable:: Asum(:,:)
       integer:: nn,ncols,lchnk,cc,jlat
-      integer:: Nsum,ll,ns
+      integer:: Nsum,ilev,ns
 
       integer :: nlev
       integer :: nlcols, count
@@ -1198,15 +1198,15 @@ contains
 
       ! Compute area-weighted sums
       !-----------------------------
-      do ll = 1,nlev
+      do ilev = 1,nlev
          count = 0
          do lchnk=begchunk,endchunk
             ncols = get_ncols_p(lchnk)
             do cc = 1,ncols
                jlat = this%idx_map(cc,lchnk)
-               ns = jlat + (ll-1)*this%nlat
+               ns = jlat + (ilev-1)*this%nlat
                count=count+1
-               Asum(count,ns) = I_Gdata(cc,ll,lchnk)*this%area_g(cc,lchnk)
+               Asum(count,ns) = I_Gdata(cc,ilev,lchnk)*this%area_g(cc,lchnk)
             end do
          end do
       end do
@@ -1215,10 +1215,10 @@ contains
 
       ! Divide by area norm to get the averages
       !-----------------------------------------
-      do ll = 1,nlev
+      do ilev = 1,nlev
          do nn = 1,this%nlat
-            ns = nn + (ll-1)*this%nlat
-            O_Zdata(nn,ll) = Gsum(ns)/this%a_norm(nn)
+            ns = nn + (ilev-1)*this%nlat
+            O_Zdata(nn,ilev) = Gsum(ns)/this%a_norm(nn)
          end do
       end do
 
@@ -1330,7 +1330,7 @@ contains
       real(r8):: fk
       real(r8):: a1,b1,C1
       integer :: ma,nmms2,nex
-      integer :: ii,ll
+      integer :: ii,jj
 
       real(r8),parameter:: SC10=1024._r8
       real(r8),parameter:: SC20=SC10*SC10
@@ -1398,29 +1398,29 @@ contains
       fnmsq = fnnp1 - 2._r8*ma*ma
 
       if((mod(nn,2).eq.0).and.(mod(ma,2).eq.0)) then
-        ll = 1+(nn+1)/2
+        jj = 1+(nn+1)/2
       else
-        ll = (nn+1)/2
+        jj = (nn+1)/2
       endif
 
-      cp(ll) = cp2
+      cp(jj) = cp2
       if(mm.lt.0) then
-        if(mod(ma,2).ne.0) cp(ll) = -cp(ll)
+        if(mod(ma,2).ne.0) cp(jj) = -cp(jj)
       endif
-      if(ll.le.1) return
+      if(jj.le.1) return
 
       fk = nn
       a1 = (fk-2._r8)*(fk-1._r8) - fnnp1
       b1 = 2._r8* (fk*fk-fnmsq)
-      cp(ll-1) = b1*cp(ll)/a1
+      cp(jj-1) = b1*cp(jj)/a1
    30 continue
-        ll = ll - 1
-        if(ll.le.1) return
+        jj = jj - 1
+        if(jj.le.1) return
         fk = fk - 2._r8
         a1 = (fk-2._r8)*(fk-1._r8) - fnnp1
         b1 = -2._r8*(fk*fk-fnmsq)
         c1 = (fk+1._r8)*(fk+2._r8) - fnnp1
-        cp(ll-1) = -(b1*cp(ll)+c1*cp(ll+1))/a1
+        cp(jj-1) = -(b1*cp(jj)+c1*cp(jj+1))/a1
       goto 30
 
     end subroutine dalfk
@@ -1616,7 +1616,7 @@ contains
       real(r8),allocatable:: Mwrk(:,:),Rscl(:)
       integer ,allocatable:: Indx(:)
       real(r8):: Psgn,Mmax,Mval,Sval
-      integer :: ii,jj,kk,ll,i2,ii_max
+      integer :: ii,jj,kk,ndx,i2,ii_max
 
       ! Allocate work space
       !---------------------
@@ -1710,9 +1710,9 @@ contains
 
         i2 = 0
         do ii=11,Nbas
-          ll = Indx(ii)
-          Sval = O_InvMat(ll,kk)
-          O_InvMat(ll,kk) = O_InvMat(ii,kk)
+          ndx = Indx(ii)
+          Sval = O_InvMat(ndx,kk)
+          O_InvMat(ndx,kk) = O_InvMat(ii,kk)
           if(i2.ne.0) then
             do jj=i2,(ii-1)
               Sval = Sval - Mwrk(ii,jj)*O_InvMat(jj,kk)
@@ -2048,22 +2048,22 @@ contains
     !=======================================================================
     real(r8) function ddzeps(xx)
       !
-      !     estimate unit roundoff in quantities of size x.
+      !     estimate unit roundoff in quantities of size xx.
       !
       !     this program should function properly on all systems
       !     satisfying the following two assumptions,
       !        1.  the base used in representing floating point
       !            numbers is not a power of three.
-      !        2.  the quantity  a  in statement 10 is represented to
+      !        2.  the quantity aa in statement 10 is represented to
       !            the accuracy used in floating point variables
       !            that are stored in memory.
       !     the statement number 10 and the go to 10 are intended to
       !     force optimizing compilers to generate code satisfying
       !     assumption 2.
       !     under these assumptions, it should be true that,
-      !            a  is not exactly equal to four-thirds,
-      !            b  has a zero for its last bit or digit,
-      !            c  is not exactly equal to one,
+      !            aa is not exactly equal to four-thirds,
+      !            bb has a zero for its last bit or digit,
+      !            cc is not exactly equal to one,
       !            eps  measures the separation of 1.0 from
       !                 the next larger floating point number.
       !     the developers of eispack would appreciate being informed
