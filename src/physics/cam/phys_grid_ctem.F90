@@ -28,6 +28,7 @@ module phys_grid_ctem
   public :: phys_grid_ctem_reg
   public :: phys_grid_ctem_init
   public :: phys_grid_ctem_diags
+  public :: phys_grid_ctem_final
 
   type(ZonalMean_t) :: ZMobj
   type(ZonalAverage_t) :: ZAobj
@@ -363,5 +364,12 @@ contains
     end function do_calc
 
   end subroutine phys_grid_ctem_diags
+
+  !-----------------------------------------------------------------------------
+  !-----------------------------------------------------------------------------
+  subroutine phys_grid_ctem_final
+    call ZAobj%final()
+    call ZMobj%final()
+  end subroutine phys_grid_ctem_final
 
 end module phys_grid_ctem

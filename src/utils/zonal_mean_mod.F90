@@ -187,7 +187,8 @@ module zonal_mean_mod
      procedure,private,pass:: calc_ZonalMean_3Damps
      procedure,private,pass:: eval_ZonalMean_2Dgrid
      procedure,private,pass:: eval_ZonalMean_3Dgrid
-  end type ZonalMean_t
+     procedure, pass :: final => final_ZonalMean
+ end type ZonalMean_t
 
   type ZonalProfile_t
      private
@@ -206,6 +207,7 @@ module zonal_mean_mod
      procedure,private,pass:: calc_ZonalProfile_2Damps
      procedure,private,pass:: eval_ZonalProfile_1Dgrid
      procedure,private,pass:: eval_ZonalProfile_2Dgrid
+     procedure, pass :: final => final_ZonalProfile
   end type ZonalProfile_t
 
   type ZonalAverage_t
@@ -221,6 +223,7 @@ module zonal_mean_mod
                                 calc_ZonalAverage_3DbinAvg
      procedure,private,pass:: calc_ZonalAverage_2DbinAvg
      procedure,private,pass:: calc_ZonalAverage_3DbinAvg
+     procedure, pass :: final => final_ZonalAverage
   end type ZonalAverage_t
 
   real(r8), parameter :: PI2 = 2._r8*atan(1._r8) ! pi/2
@@ -615,6 +618,16 @@ contains
     end subroutine eval_ZonalMean_3Dgrid
     !=======================================================================
 
+    !=======================================================================
+    subroutine final_ZonalMean(this)
+      class(ZonalMean_t) :: this
+
+      if(allocated(this%area )) deallocate(this%area)
+      if(allocated(this%basis)) deallocate(this%basis)
+      if(allocated(this%map  )) deallocate(this%map)
+
+    end subroutine final_ZonalMean
+    !=======================================================================
 
     !=======================================================================
     subroutine init_ZonalProfile(this,IO_lats,IO_area,I_nlat,I_nbas,GEN_GAUSSLATS)
@@ -929,6 +942,16 @@ contains
     end subroutine eval_ZonalProfile_2Dgrid
     !=======================================================================
 
+    !=======================================================================
+    subroutine final_ZonalProfile(this)
+      class(ZonalProfile_t) :: this
+
+      if(allocated(this%area )) deallocate(this%area)
+      if(allocated(this%basis)) deallocate(this%basis)
+      if(allocated(this%map  )) deallocate(this%map)
+
+    end subroutine final_ZonalProfile
+    !=======================================================================
 
     !=======================================================================
     subroutine init_ZonalAverage(this,IO_lats,IO_area,I_nlat,GEN_GAUSSLATS)
@@ -1111,7 +1134,7 @@ contains
     !=======================================================================
     subroutine calc_ZonalAverage_2DbinAvg(this,I_Gdata,O_Zdata)
       !
-      ! calc_ZonalProfile_2DbinAvg: Given 2D data values for ncol gridpoints,
+      ! calc_ZonalAverage_2DbinAvg: Given 2D data values for ncol gridpoints,
       !                             compute the nlat area weighted binAvg profile
       !=====================================================================
       !
@@ -1157,6 +1180,8 @@ contains
         O_Zdata(nn) = O_Zdata(nn)/this%a_norm(nn)
       end do
 
+      deallocate(Asum)
+
     end subroutine calc_ZonalAverage_2DbinAvg
     !=======================================================================
 
@@ -1164,7 +1189,7 @@ contains
     !=======================================================================
     subroutine calc_ZonalAverage_3DbinAvg(this,I_Gdata,O_Zdata)
       !
-      ! calc_ZonalProfile_3DbinAvg: Given 3D data values for ncol,nlev gridpoints,
+      ! calc_ZonalAverage_3DbinAvg: Given 3D data values for ncol,nlev gridpoints,
       !                             compute the nlat,nlev area weighted binAvg profile
       !=====================================================================
       !
@@ -1222,9 +1247,23 @@ contains
          end do
       end do
 
+      deallocate(Gsum)
+      deallocate(Asum)
+
     end subroutine calc_ZonalAverage_3DbinAvg
     !=======================================================================
 
+    !=======================================================================
+    subroutine final_ZonalAverage(this)
+      class(ZonalAverage_t) :: this
+
+      if(allocated(this%area   )) deallocate(this%area)
+      if(allocated(this%a_norm )) deallocate(this%a_norm)
+      if(allocated(this%area_g )) deallocate(this%area_g)
+      if(allocated(this%idx_map)) deallocate(this%idx_map)
+
+    end subroutine final_ZonalAverage
+    !=======================================================================
 
     !=======================================================================
     subroutine dalfk(nn,mm,cp)
@@ -2013,8 +2052,6 @@ contains
           cth = cdt
           sth = sdt
           do kk = 1,kdo
-!            pb = pb+cp(k)*cos(2*k*theta)
-!            dpb = dpb-(k+k)*cp(k)*sin(2*k*theta)
             pb  = pb  +  cp(kk)*cth
             dpb = dpb - dcp(kk)*sth
             chh = cdt*cth - sdt*sth
@@ -2031,8 +2068,6 @@ contains
         cth = dcos(theta)
         sth = dsin(theta)
         do kk = 1,kdo
-!          pb = pb+cp(k)*cos((2*k-1)*theta)
-!          dpb = dpb-(k+k-1)*cp(k)*sin((2*k-1)*theta)
           pb  = pb  +  cp(kk)*cth
           dpb = dpb - dcp(kk)*sth
           chh = cdt*cth - sdt*sth
@@ -2057,9 +2092,6 @@ contains
       !        2.  the quantity aa in statement 10 is represented to
       !            the accuracy used in floating point variables
       !            that are stored in memory.
-      !     the statement number 10 and the go to 10 are intended to
-      !     force optimizing compilers to generate code satisfying
-      !     assumption 2.
       !     under these assumptions, it should be true that,
       !            aa is not exactly equal to four-thirds,
       !            bb has a zero for its last bit or digit,
@@ -2068,8 +2100,6 @@ contains
       !                 the next larger floating point number.
       !     the developers of eispack would appreciate being informed
       !     about any systems where these assumptions do not hold.
-      !
-      !     this version dated 4/6/83.
       !
       !=====================================================================
       !
