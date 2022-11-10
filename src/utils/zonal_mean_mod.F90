@@ -232,8 +232,8 @@ contains
     !=======================================================================
     subroutine init_ZonalMean(this,I_nbas)
       !
-      ! init_ZonalMean: Initialize the ZonalMean datastruture for the
-      !                 given physgrid gridpoints. It is assumed that the domain
+      ! init_ZonalMean: Initialize the ZonalMean datastrutures for the
+      !                 physics grid. It is assumed that the domain
       !                 of these gridpoints spans the surface of the sphere.
       !                 The representation of basis functions functions is
       !                 normalized w.r.t integration over the sphere.
@@ -689,8 +689,8 @@ contains
       allocate(Bcov (I_nbas,I_nbas))
 
       ! Optionally create the Latitude Gridpoints
-      ! and their associated area weights. Otherwise it
-      ! is assumed that the user is supplying them.
+      ! and their associated area weights. Otherwise
+      ! they need to be supplied by the user.
       !-----------------------------------------------
       if(generate_lats) then
 
@@ -1016,8 +1016,8 @@ contains
       allocate(Anorm (I_nlat))
 
       ! Optionally create the Latitude Gridpoints
-      ! and their associated area weights. Otherwise it
-      ! is assumed that the user is supplying them.
+      ! and their associated area weights. Otherwise
+      ! they need to be supplied by the user.
       !-----------------------------------------------
       if(generate_lats) then
 
