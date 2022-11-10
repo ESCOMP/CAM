@@ -218,6 +218,7 @@ module nudging
   private :: nudging_set_PSprofile
   private :: nudging_set_profile
   private :: calc_DryStaticEnergy
+  public  :: nudging_final
 
   ! Nudging Parameters
   !--------------------
@@ -1655,6 +1656,43 @@ contains
   end subroutine nudging_set_profile
   !================================================================
 
+  !================================================================
+  subroutine nudging_final
+
+    if (allocated(Target_U)) deallocate(Target_U)
+    if (allocated(Target_V)) deallocate(Target_V)
+    if (allocated(Target_T)) deallocate(Target_T)
+    if (allocated(Target_S)) deallocate(Target_S)
+    if (allocated(Target_Q)) deallocate(Target_Q)
+    if (allocated(Target_PS)) deallocate(Target_PS)
+    if (allocated(Model_U)) deallocate(Model_U)
+    if (allocated(Model_V)) deallocate(Model_V)
+    if (allocated(Model_T)) deallocate(Model_T)
+    if (allocated(Model_S)) deallocate(Model_S)
+    if (allocated(Model_Q)) deallocate(Model_Q)
+    if (allocated(Model_PS)) deallocate(Model_PS)
+    if (allocated(Nudge_Utau)) deallocate(Nudge_Utau)
+    if (allocated(Nudge_Vtau)) deallocate(Nudge_Vtau)
+    if (allocated(Nudge_Stau)) deallocate(Nudge_Stau)
+    if (allocated(Nudge_Qtau)) deallocate(Nudge_Qtau)
+    if (allocated(Nudge_PStau)) deallocate(Nudge_PStau)
+    if (allocated(Nudge_Ustep)) deallocate(Nudge_Ustep)
+    if (allocated(Nudge_Vstep)) deallocate(Nudge_Vstep)
+    if (allocated(Nudge_Sstep)) deallocate(Nudge_Sstep)
+    if (allocated(Nudge_Qstep)) deallocate(Nudge_Qstep)
+    if (allocated(Nudge_PSstep)) deallocate(Nudge_PSstep)
+    if (allocated(Nudge_ObsInd)) deallocate(Nudge_ObsInd)
+    if (allocated(Nudge_File_Present)) deallocate(Nudge_File_Present)
+    if (allocated(Nobs_U)) deallocate(Nobs_U)
+    if (allocated(Nobs_V)) deallocate(Nobs_V)
+    if (allocated(Nobs_T)) deallocate(Nobs_T)
+    if (allocated(Nobs_Q)) deallocate(Nobs_Q)
+    if (allocated(Nobs_PS)) deallocate(Nobs_PS)
+
+    call ZM%final()
+
+  end subroutine nudging_final
+  !================================================================
 
   !================================================================
   real(r8) function nudging_set_PSprofile(rlat,rlon,Nudge_PSprof)
@@ -1691,7 +1729,7 @@ contains
    ! End Routine
    !------------
 
-  end function ! nudging_set_PSprofile
+  end function nudging_set_PSprofile
   !================================================================
 
 
