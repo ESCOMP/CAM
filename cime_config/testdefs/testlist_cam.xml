@@ -1910,9 +1910,18 @@
       <option name="wallclock">00:20:00</option>
     </options>
   </test>
-  <test compset="FCHISTmam5" grid="ne30z58_ne30_mg17" name="SMS_D_Ln9_Vnuopc" testmods="cam/outfrq9s">
+  <test compset="FCLTHIST" grid="ne30pg3_ne30pg3_mg17" name="SMS_D_Ln9_Vnuopc" testmods="cam/outfrq9s">
     <machines>
       <machine name="cheyenne" compiler="intel" category="aux_cam"/>
+      <machine name="cheyenne" compiler="intel" category="camchem"/>
+    </machines>
+    <options>
+      <option name="wallclock">00:40:00</option>
+    </options>
+  </test>
+  <test compset="FCMTHIST" grid="ne30pg3_ne30pg3_mg17" name="SMS_D_Ln9_Vnuopc" testmods="cam/outfrq9s">
+    <machines>
+      <machine name="cheyenne" compiler="intel" category="camchem"/>
     </machines>
     <options>
       <option name="wallclock">00:40:00</option>
