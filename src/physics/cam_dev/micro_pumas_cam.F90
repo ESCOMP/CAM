@@ -582,9 +582,9 @@ subroutine micro_pumas_cam_register
 
    ! Add history coordinate for DDT nlev
    call hist_dimension_values('lev',all_levs, 1, pver, found)
-   trop_levs(1:pver-top_lev+1) = all_levs(top_lev:pver)
 
    if (found) then 
+      trop_levs(1:pver-top_lev+1) = all_levs(top_lev:pver)
       call add_vert_coord('trop_cld_lev', pver-top_lev+1,                          &
             'tropopshere hybrid level at midpoints (1000*(A+B))', 'hPa', trop_levs,  &
             positive='down' )
@@ -1413,7 +1413,7 @@ subroutine micro_pumas_cam_tend(state, ptend, dtime, pbuf)
    use micro_pumas_utils, only: mg_liq_props, mg_ice_props, avg_diameter
    use micro_pumas_utils, only: rhoi, rhosn, rhow, rhows, rhog, qsmall, mincld
 
-   use micro_pumas_v1,    only: micro_pumas_tend => micro_pumas_tend
+   use micro_pumas_v1,    only: micro_pumas_tend
 
    use physics_buffer,  only: pbuf_col_type_index
    use subcol,          only: subcol_field_avg
@@ -1463,7 +1463,7 @@ subroutine micro_pumas_cam_tend(state, ptend, dtime, pbuf)
    real(r8), pointer :: lambdac(:,:)      ! Size distribution slope parameter for radiation
    real(r8), pointer :: des(:,:)          ! Snow effective diameter (m)
    real(r8), pointer :: degrau(:,:)       ! Graupel effective diameter (m)
-   real(r8), pointer :: bergstot(:,:)       ! Conversion of cloud water to snow from bergeron
+   real(r8), pointer :: bergstot(:,:)     ! Conversion of cloud water to snow from bergeron
 
    real(r8) :: rho(state%psetcols,pver)
    real(r8) :: cldmax(state%psetcols,pver)
@@ -2033,7 +2033,7 @@ subroutine micro_pumas_cam_tend(state, ptend, dtime, pbuf)
       end if
 
    else
-      allocate (bergso_grid(pcols,pver), stat=ierr)
+      allocate(bergso_grid(pcols,pver), stat=ierr)
       if (ierr /= 0) then
         call endrun(' micro_pumas_cam_tend: error allocating bergso_grid')
       end if
@@ -3382,7 +3382,7 @@ subroutine micro_pumas_cam_tend(state, ptend, dtime, pbuf)
 
    ! deallocate the temporary pbuf grid variable which was allocated if subcolumns are not used
    if (.not. use_subcol_microp) then
-      deallocate (bergso_grid)
+      deallocate(bergso_grid)
    end if
 
    ! deallocate the proc_rates DDT

@@ -1984,19 +1984,28 @@ contains
      integer :: ibeg
      integer :: iend
      logical :: dim_ok
+     real(r8), parameter :: unset_r8 = huge(1.0_r8)
 
      dim_ok = .false.
+     rvalues(:) = unset_r8
+
      do indx = 1, registeredmdims
         if(trim(name) == trim(hist_coords(indx)%name)) then
            dim_ok = associated(hist_coords(indx)%real_values)
            if (dim_ok) then
               if (present(istart)) then
                  ibeg = istart
+                 if (ibeg < LBOUND(hist_coords(indx)%real_values, 1)) then
+                    call endrun("istart is outside the bounds in hist_dimension_values_r8")
+                 end if
               else
                  ibeg = LBOUND(hist_coords(indx)%real_values, 1)
               end if
               if (present(istop)) then
                  iend = istop
+                 if (iend > UBOUND(hist_coords(indx)%real_values, 1)) then
+                    call endrun("istop is outside the bounds in hist_dimension_values_r8")
+                 end if
               else
                  iend = UBOUND(hist_coords(indx)%real_values, 1)
               end if
@@ -2026,7 +2035,7 @@ contains
      ! indices of the dimension values to return in <ivalues>. By default,
      ! the entire array is copied.
      ! If <found> is passed, return .true. if <name> is a defined dimension
-     !       with real values.
+     !       with integer values.
 
      ! Dummy arguments
      character(len=*),  intent(in)  :: name
@@ -2039,19 +2048,28 @@ contains
      integer :: ibeg
      integer :: iend
      logical :: dim_ok
+     integer, parameter  :: unset_i = huge(1)
 
      dim_ok = .false.
+     ivalues(:) = unset_i
+
      do indx = 1, registeredmdims
         if(trim(name) == trim(hist_coords(indx)%name)) then
            dim_ok = associated(hist_coords(indx)%integer_values)
            if (dim_ok) then
               if (present(istart)) then
                  ibeg = istart
+                 if (ibeg < LBOUND(hist_coords(indx)%integer_values, 1)) then
+                    call endrun("istart is outside the bounds in hist_dimension_values_i")
+                 end if
               else
                  ibeg = LBOUND(hist_coords(indx)%integer_values, 1)
               end if
               if (present(istop)) then
                  iend = istop
+                 if (iend > UBOUND(hist_coords(indx)%integer_values, 1)) then
+                    call endrun("istop is outside the bounds in hist_dimension_values_i")
+                 end if
               else
                  iend = UBOUND(hist_coords(indx)%integer_values, 1)
               end if
