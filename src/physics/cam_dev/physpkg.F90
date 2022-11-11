@@ -1575,9 +1575,11 @@ contains
     ! Apply tracer surface fluxes to lowest model layer
     !===================================================
     call t_startf('clubb_emissions_tend')
-    call clubb_emissions_cam( state, cam_in, ptend )
+
+    call clubb_emissions_cam(state, cam_in, ptend)
     call physics_update(state, ptend, ztodt, tend)
-    call t_startf('clubb_emissions_tend')
+
+    call t_stopf('clubb_emissions_tend')
 
     !===================================================
     ! Calculate tendencies from CARMA bin microphysics.

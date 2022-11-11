@@ -4264,8 +4264,8 @@ end subroutine clubb_init_cnst
   subroutine clubb_emissions_cam (state, cam_in, ptend)
 
   !-------------------------------------------------------------------------------
-  ! Description: Surface fluxes applied to all constituents except vapor,
-  !              which is applied in clubb_tend_cam.     
+  ! Description: Apply surface fluxes of constituents to lowest model level
+  !              except vapor (applied in clubb_tend_cam)
   !
   ! Author: Adam Herrington, November 2022
   ! Origin: Based on E3SM's clubb_surface subroutine
@@ -4291,8 +4291,7 @@ end subroutine clubb_init_cnst
   ! --------------- !
   ! Local Variables !
   ! --------------- !
-  integer  :: m, ncol                                            ! column, level, constituent indices
-  real(r8) :: tmp1(pcols)                                        ! Temporary storage
+  integer  :: m, ncol                                 
   logical  :: lq(pcnst)
   real(r8) :: q_tmp(pcols,pver,pcnst)
 
@@ -4305,11 +4304,9 @@ end subroutine clubb_init_cnst
   lq(:) = .true.
   call physics_ptend_init(ptend,state%psetcols, "clubb emissions", lq=lq)
 
-  tmp1(:ncol) = gravit * state%rpdel(:ncol,pver)
-
   ! Apply tracer fluxes to lowest model level (except vapor)
   do m = 2,pcnst
-    ptend%q(:ncol,pver,m) = tmp1(:ncol) * cam_in%cflx(:ncol,m)
+    ptend%q(:ncol,pver,m) = cam_in%cflx(:ncol,m)*state%rpdel(:ncol,pver)*gravit
   end do
 
   ! Convert tendencies of dry constituents to dry basis.
