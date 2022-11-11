@@ -53,12 +53,14 @@ module mo_tuvx
   character(len=*), parameter :: tuvx_config_path = "tuvx_config.json"
   character(len=*), parameter :: wavelength_config_path = &
                                                     "data/grids/wavelength/combined.grid"
+  logical, parameter :: enable_diagnostics = .true.
+
   ! TUV-x calculator for each OMP thread
   type :: tuvx_ptr
     type(core_t), pointer    :: core_ => null( )          ! TUV-x calculator
     integer                  :: n_photo_rates_            ! number of photo reactions in TUV-x
-    real(r8), allocatable    :: photo_rates_(:,:)         ! photolysis rate constants
-                                                          !   (vertical level, reaction) [s-1]
+    real(r8), allocatable    :: photo_rates_(:,:,:)       ! photolysis rate constants
+                                                          !   (column, vertical level, reaction) [s-1]
     type(grid_updater_t)     :: grids_(NUM_GRIDS)         ! grid updaters
     type(profile_updater_t)  :: profiles_(NUM_PROFILES)   ! profile updaters
     type(radiator_updater_t) :: radiators_(NUM_RADIATORS) ! radiator updaters
@@ -75,6 +77,13 @@ module mo_tuvx
   end type tuvx_ptr
   type(tuvx_ptr), allocatable :: tuvx_ptrs(:)
 
+  ! Diagnostic photolysis rate constant output
+  type :: diagnostic_t
+    character(len=:), allocatable :: name_ ! Name of the output field
+    integer :: index_                      ! index of the photolysis rate constant from TUV-x
+  end type diagnostic_t
+  type(diagnostic_t), allocatable :: diagnostics(:)
+
 !================================================================================================
 contains
 !================================================================================================
@@ -89,18 +98,20 @@ contains
 #ifdef HAVE_MPI
     use mpi
 #endif
-    use cam_logfile,             only : iulog
+    use cam_logfile,             only : iulog ! log file output unit
     use mo_chem_utls,            only : get_spc_ndx, get_inv_ndx
     use musica_assert,           only : assert_msg
     use musica_mpi,              only : musica_mpi_rank
     use musica_string,           only : string_t, to_char
+    use ppgrid,                  only : pcols ! maximum number of columns
+    use solar_irrad_data,        only : has_spectrum
+    use spmd_utils,              only : main_task => masterprocid, &
+                                        is_main_task => masterproc, &
+                                        mpicom
     use tuvx_grid,               only : grid_t
     use tuvx_grid_warehouse,     only : grid_warehouse_t
     use tuvx_profile_warehouse,  only : profile_warehouse_t
     use tuvx_radiator_warehouse, only : radiator_warehouse_t
-    use spmd_utils,              only : main_task => masterprocid, &
-                                        is_main_task => masterproc, &
-                                        mpicom
 
 !-----------------------------------------------------------------------
 ! Local variables
@@ -165,7 +176,7 @@ contains
       ! TEMPORARY FOR DEVELOPMENT
       tuvx%n_photo_rates_ = tuvx%core_%number_of_photolysis_reactions( )
       height => tuvx%core_%get_grid( "height", "km" )
-      allocate( tuvx%photo_rates_( height%ncells_ + 1, tuvx%n_photo_rates_ ) )
+      allocate( tuvx%photo_rates_( pcols, height%ncells_ + 1, tuvx%n_photo_rates_ ) )
       deallocate( height )
 
     end associate
@@ -182,6 +193,13 @@ contains
     index_O3 = get_inv_ndx( 'O3' )
     is_fixed_O3 = index_O3 > 0
     if( .not. is_fixed_O3 ) index_O3 = get_spc_ndx( 'O3' )
+
+    ! make sure extraterrestrial flux values are available
+    call assert_msg( 170693514, has_spectrum, &
+                     "Solar irradiance spectrum needed for TUV-x" )
+
+    ! set up diagnostic output of photolysis rates
+    call initialize_diagnostics( tuvx_ptrs( 1 ) )
 
     if( is_main_task ) call log_initialization( )
 
@@ -211,9 +229,9 @@ contains
 
 !================================================================================================
 
-  subroutine tuvx_get_photo_rates( state, pbuf, ncol, height_mid, height_int, &
-      temperature_mid, surface_temperature, fixed_species_conc, species_vmr, &
-      exo_column_conc, surface_albedo, solar_zenith_angle )
+  subroutine tuvx_get_photo_rates( state, pbuf, ncol, lchnk, height_mid, &
+      height_int, temperature_mid, surface_temperature, fixed_species_conc, &
+      species_vmr, exo_column_conc, surface_albedo, solar_zenith_angle )
 !-----------------------------------------------------------------------
 !
 ! Purpose: calculate and return photolysis rate constants
@@ -236,7 +254,8 @@ contains
 !-----------------------------------------------------------------------
     type(physics_state),       target,  intent(in)    :: state
     type(physics_buffer_desc), pointer, intent(inout) :: pbuf(:)
-    integer,  intent(in) :: ncol                        ! Number of colums to calculated photolysis for
+    integer,  intent(in) :: ncol                        ! number of active columns on this thread
+    integer,  intent(in) :: lchnk                       ! identifier for this thread
     real(r8), intent(in) :: height_mid(pcols,pver)      ! height at mid-points (km)
     real(r8), intent(in) :: height_int(pcols,pver+1)    ! height at interfaces (km)
     real(r8), intent(in) :: temperature_mid(pcols,pver) ! midpoint temperature (K)
@@ -274,9 +293,13 @@ contains
         ! Calculate photolysis rate constants for this column
         call tuvx%core_%run( solar_zenith_angle = &
                                solar_zenith_angle(i_col) * 180.0_r8 / pi, &
-                             photolysis_rate_constants = tuvx%photo_rates_ )
+                             photolysis_rate_constants = &
+                               tuvx%photo_rates_(i_col,:,:) )
 
       end do
+
+      call output_diagnostics( tuvx, ncol, lchnk )
+
     end associate
 
   end subroutine tuvx_get_photo_rates
@@ -390,6 +413,80 @@ contains
     end if
 
   end subroutine log_initialization
+
+!================================================================================================
+
+  subroutine initialize_diagnostics( this )
+!-----------------------------------------------------------------------
+!
+! Purpose: registers fields for diagnostic output
+!
+!-----------------------------------------------------------------------
+
+    use cam_history,   only : addfld
+    use musica_string, only : string_t
+
+!-----------------------------------------------------------------------
+! Dummy arguments
+!-----------------------------------------------------------------------
+    type(tuvx_ptr), intent(in) :: this
+
+!-----------------------------------------------------------------------
+! Local variables
+!-----------------------------------------------------------------------
+    type(string_t), allocatable :: labels(:)
+    integer :: i_label
+
+    if( .not. enable_diagnostics ) then
+      allocate( diagnostics( 0 ) )
+      return
+    end if
+
+    ! add output for specific photolysis reaction rate constants
+    labels = this%core_%photolysis_reaction_labels( )
+    allocate( diagnostics( size( labels ) ) )
+    do i_label = 1, size( labels )
+      diagnostics( i_label )%name_  = trim( labels( i_label )%to_char( ) )
+      diagnostics( i_label )%index_ = i_label
+      call addfld( "tuvx_"//diagnostics( i_label )%name_, (/ 'lev' /), 'A', 'sec-1', &
+                   'photolysis rate constant' )
+    end do
+
+  end subroutine initialize_diagnostics
+
+!================================================================================================
+
+  subroutine output_diagnostics( this, ncol, lchnk )
+!-----------------------------------------------------------------------
+!
+! Purpose: outputs diagnostic information for the current time step
+!
+!-----------------------------------------------------------------------
+
+    use cam_history, only : outfld
+
+!-----------------------------------------------------------------------
+! Dummy arguments
+!-----------------------------------------------------------------------
+    type(tuvx_ptr), intent(in) :: this
+    integer,        intent(in) :: ncol  ! number of active columns on this thread
+    integer,        intent(in) :: lchnk ! identifier for this thread
+
+!-----------------------------------------------------------------------
+! Local variables
+!-----------------------------------------------------------------------
+    integer :: i_diag
+
+    if( .not. enable_diagnostics ) return
+
+    do i_diag = 1, size( diagnostics )
+    associate( diag => diagnostics( i_diag ) )
+      call outfld( "tuvx_"//diag%name_, this%photo_rates_(:ncol,:,diag%index_), &
+                   ncol, lchnk )
+    end associate
+    end do
+
+  end subroutine output_diagnostics
 
 !================================================================================================
 
@@ -606,6 +703,7 @@ contains
     allocate( this%wavelength_edges_(      wavelength%size( ) + 1 ) )
     allocate( this%wavelength_values_(     wavelength%size( ) + 1 ) )
     allocate( this%wavelength_mid_values_( wavelength%size( )     ) )
+    this%wavelength_edges_(:) = wavelength%edge_(:)
 
     ! optical property working array
     allocate( this%optical_depth_(            pcols, height%size( ), wavelength%size( ) ) )
@@ -796,7 +894,8 @@ contains
 ! Purpose: sets the extraterrestrial flux in TUV-x for the given column
 !
 ! Extraterrestrial flux is read from data files and interpolated to the
-! TUV-x wavelength grid.
+! TUV-x wavelength grid. ET flux values are multiplied by wavelength
+! bin widths to get units used in TUV-x (photon cm-2 s-1)
 !
 ! NOTE: TUV-x only uses mid-point values for ET Flux
 !
@@ -805,17 +904,18 @@ contains
     use mo_util,          only : rebin
     use solar_irrad_data, only : nbins,   & ! number of wavelength bins
                                  we,      & ! wavelength bin edges
-    ! TODO are these units correct? if so, they don't match expected (photon cm-2 s-1)
                                  sol_etf    ! solar extraterrestrial flux (photon cm-2 nm-1 s-1)
 
 !-----------------------------------------------------------------------
 ! Dummy arguments
 !-----------------------------------------------------------------------
     class(tuvx_ptr), intent(inout) :: this  ! TUV-x calculator
-    integer :: n_tuvx_bins
+    real(r8) :: et_flux_orig(nbins)
+    integer  :: n_tuvx_bins
 
+    et_flux_orig(:) = sol_etf(:) * ( we(2:nbins+1) - we(1:nbins) )
     n_tuvx_bins = size(this%wavelength_mid_values_)
-    call rebin( nbins, n_tuvx_bins, we, this%wavelength_edges_, sol_etf, &
+    call rebin( nbins, n_tuvx_bins, we, this%wavelength_edges_, et_flux_orig, &
                 this%wavelength_mid_values_ )
     this%wavelength_values_(1)  = this%wavelength_mid_values_(1)
     this%wavelength_values_(2:n_tuvx_bins+1) = this%wavelength_mid_values_(1:n_tuvx_bins)

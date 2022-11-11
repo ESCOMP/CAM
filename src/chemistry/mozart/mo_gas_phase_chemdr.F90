@@ -795,9 +795,9 @@ contains
     !-----------------------------------------------------------------
     !	... get calculated photolysis rates from TUV-x
     !-----------------------------------------------------------------
-    call tuvx_get_photo_rates( state, pbuf, ncol, zm, zi, tfld, ts, &
-                               invariants, vmr, col_delta, asdir,   &
-                               zen_angle )
+    call tuvx_get_photo_rates( state, pbuf, ncol, lchnk, zm, zi, &
+                               tfld, ts, invariants, vmr, col_delta, &
+                               asdir, zen_angle )
 
     do i = 1,phtcnt
        call outfld( tag_names(i), reaction_rates(:ncol,:,rxt_tag_map(i)), ncol, lchnk )

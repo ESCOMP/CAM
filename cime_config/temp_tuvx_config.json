@@ -53,7 +53,28 @@
       ]
    },
    "photolysis reactions": {
-      "O2+hv->O+O": {
+      "jo3_a": {
+         "__reaction": "O3+hv->O2+O(1D)",
+         "cross section": {
+            "netcdf files": ["data/cross_sections/O3_1.nc","data/cross_sections/O3_2.nc","data/cross_sections/O3_3.nc","data/cross_sections/O3_4.nc"],
+            "type": "O3"
+         },
+         "quantum yield": {
+            "type": "O3+hv->O2+O(1D)"
+         }
+      },
+      "jo3_b": {
+         "__reaction": "O3+hv->O2+O(3P)",
+         "cross section": {
+            "netcdf files": ["data/cross_sections/O3_1.nc","data/cross_sections/O3_2.nc","data/cross_sections/O3_3.nc","data/cross_sections/O3_4.nc"],
+            "type": "O3"
+         },
+         "quantum yield": {
+            "type": "O3+hv->O2+O(3P)"
+         }
+      },
+      "jo2_b": {
+         "__reaction": "O2+hv->O+O",
          "cross section": {
             "netcdf files": ["data/cross_sections/O2_1.nc"],
             "type": "base",
@@ -64,5 +85,60 @@
             "constant value": 1.0
          }
       },
+      "jno2": {
+         "__reaction": "NO2+hv->NO+O(3P)",
+         "cross section": {
+            "netcdf files": ["data/cross_sections/NO2_1.nc"],
+            "type": "NO2 tint"
+         },
+         "quantum yield": {
+            "netcdf files": ["data/quantum_yields/NO2_1.nc"],
+            "type": "NO2 tint",
+            "lower extrapolation": { "type": "boundary" }
+         }
+      },
+      "jacet": {
+         "__reaction": "CH3COCH3+hv->CH3CO+CH3",
+         "cross section": {
+            "netcdf files": ["data/cross_sections/CH3COCH3_1.nc"],
+            "type": "CH3COCH3+hv->CH3CO+CH3"
+         },
+         "quantum yield": {
+            "type": "CH3COCH3+hv->CH3CO+CH3"
+         }
+      },
+      "jcfcl3": {
+         "__reaction": "CCl3F+hv->Products",
+         "cross section": {
+            "netcdf files": ["data/cross_sections/CFC-11_1.nc"],
+            "type": "CCl3F+hv->Products"
+         },
+         "quantum yield": {
+            "type": "base",
+            "constant value": 1.0
+         }
+      },
+      "jpan1": {
+         "__reaction": "PAN+hv->CH3CO(OO)+NO2",
+         "cross section": {
+            "netcdf files": ["data/cross_sections/PAN_1.nc"],
+            "type": "CH3ONO2+hv->CH3O+NO2"
+         },
+         "quantum yield": {
+            "type": "base",
+            "constant value": 0.7
+         }
+      },
+      "jpan2": {
+         "__reaction": "PAN+hv->CH3CO(O)+NO3",
+         "cross section": {
+            "netcdf files": ["data/cross_sections/PAN_1.nc"],
+            "type": "CH3ONO2+hv->CH3O+NO2"
+         },
+         "quantum yield": {
+            "type": "base",
+            "constant value": 0.3
+         }
+      }
    }
 }
