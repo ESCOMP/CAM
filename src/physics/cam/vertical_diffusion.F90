@@ -672,6 +672,8 @@ subroutine vertical_diffusion_tend( &
   use upper_bc,           only : ubc_get_vals, ubc_fixed_temp
   use upper_bc,           only : ubc_get_flxs
   use coords_1d,          only : Coords1D
+!+++ARH
+  use phys_control,       only : cam_physpkg_is
 
   ! --------------- !
   ! Input Arguments !
@@ -1096,7 +1098,12 @@ subroutine vertical_diffusion_tend( &
      tauy = 0._r8
      shflux = 0._r8
      cflux(:,1) = 0._r8
-     cflux(:,2:) = cam_in%cflx(:,2:)
+     if (cam_physpkg_is("cam_dev")) then
+       ! surface fluxes applied in clubb emissions module
+       cflux(:,2:) = 0._r8
+     else
+       cflux(:,2:) = cam_in%cflx(:,2:)
+     end if
   case default
      taux = cam_in%wsx
      tauy = cam_in%wsy
@@ -1174,7 +1181,7 @@ subroutine vertical_diffusion_tend( &
      tmp1(:ncol) = ztodt * gravit * state%rpdel(:ncol,pver)
      do m = 1, pmam_ncnst
         l = pmam_cnst_idx(m)
-        q_tmp(:ncol,pver,l) = q_tmp(:ncol,pver,l) + tmp1(:ncol) * cam_in%cflx(:ncol,l)
+        q_tmp(:ncol,pver,l) = q_tmp(:ncol,pver,l) + tmp1(:ncol) * cflux(:ncol,l)
      enddo
   end if
 

@@ -63,7 +63,7 @@ module clubb_intr
   ! Public interfaces !
   ! ----------------- !
 
-  public :: clubb_ini_cam, clubb_register_cam, clubb_tend_cam, &
+  public :: clubb_ini_cam, clubb_register_cam, clubb_tend_cam, clubb_emissions_cam, &
 #ifdef CLUBB_SGS
             ! This utilizes CLUBB specific variables in its interface
             stats_init_clubb, &
@@ -4256,7 +4256,71 @@ end subroutine clubb_init_cnst
    return
 #endif
   end subroutine clubb_tend_cam
-    
+
+  ! =============================================================================== !
+  !                                                                                 !
+  ! =============================================================================== !
+
+  subroutine clubb_emissions_cam (state, cam_in, ptend)
+
+  !-------------------------------------------------------------------------------
+  ! Description: Surface fluxes applied to all constituents except vapor,
+  !              which is applied in clubb_tend_cam.     
+  !
+  ! Author: Adam Herrington, November 2022
+  ! Origin: Based on E3SM's clubb_surface subroutine
+  ! References:
+  !   None
+  !-------------------------------------------------------------------------------
+
+  use physics_types,      only : physics_ptend, physics_ptend_init, physics_state
+  use constituents,       only : cnst_type
+  use camsrfexch,         only : cam_in_t
+
+  ! --------------- !
+  ! Input Arguments !
+  ! --------------- !
+  type(physics_state), intent(in)  :: state                     ! Physics state variables
+  type(cam_in_t),      intent(in)  :: cam_in                    ! Surface inputs
+
+  ! ---------------------- !
+  ! Output Arguments       !
+  ! ---------------------- !
+  type(physics_ptend), intent(out) :: ptend                      ! Individual parameterization tendencies
+
+  ! --------------- !
+  ! Local Variables !
+  ! --------------- !
+  integer  :: m, ncol                                            ! column, level, constituent indices
+  real(r8) :: tmp1(pcols)                                        ! Temporary storage
+  logical  :: lq(pcnst)
+  real(r8) :: q_tmp(pcols,pver,pcnst)
+
+  ! ----------------------- !
+  ! Main Computation Begins !
+  ! ----------------------- !
+
+  ncol = state%ncol
+
+  lq(:) = .true.
+  call physics_ptend_init(ptend,state%psetcols, "clubb emissions", lq=lq)
+
+  tmp1(:ncol) = gravit * state%rpdel(:ncol,pver)
+
+  ! Apply tracer fluxes to lowest model level (except vapor)
+  do m = 2,pcnst
+    ptend%q(:ncol,pver,m) = tmp1(:ncol) * cam_in%cflx(:ncol,m)
+  end do
+
+  ! Convert tendencies of dry constituents to dry basis.
+  do m = 1,pcnst
+     if (cnst_type(m).eq.'dry') then
+        ptend%q(:ncol,:pver,m) = ptend%q(:ncol,:pver,m)*state%pdel(:ncol,:pver)/state%pdeldry(:ncol,:pver)
+     endif
+  end do
+
+  end subroutine clubb_emissions_cam  
+
   ! =============================================================================== !
   !                                                                                 !
   ! =============================================================================== !

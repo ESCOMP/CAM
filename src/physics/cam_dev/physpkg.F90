@@ -1333,7 +1333,7 @@ contains
     use physics_types,      only: physics_ptend_init, physics_ptend_sum, physics_ptend_scale
     use microp_driver,      only: microp_driver_tend
     use microp_aero,        only: microp_aero_run
-    use clubb_intr,         only: clubb_tend_cam
+    use clubb_intr,         only: clubb_tend_cam, clubb_emissions_cam
     use subcol,             only: subcol_gen, subcol_ptend_avg
     use subcol_utils,       only: subcol_ptend_copy, is_subcol_on
     use subcol_SILHS,       only: subcol_SILHS_var_covar_driver, init_state_subcol
@@ -1553,7 +1553,7 @@ contains
        ! carma emissions
        call carma_emission_tend (state, ptend, cam_in, ztodt)
        call physics_update(state, ptend, ztodt, tend)
-    end if
+    endif
 
     ! get nstep and zero array for energy checker
     zero = 0._r8
@@ -1570,6 +1570,14 @@ contains
          cam_in%shf, cam_in%lhf, cam_in%cflx)
 
     call t_stopf('tphysac_init')
+
+    !===================================================
+    ! Apply tracer surface fluxes to lowest model layer
+    !===================================================
+    call t_startf('clubb_emissions_tend')
+    call clubb_emissions_cam( state, cam_in, ptend )
+    call physics_update(state, ptend, ztodt, tend)
+    call t_startf('clubb_emissions_tend')
 
     !===================================================
     ! Calculate tendencies from CARMA bin microphysics.
