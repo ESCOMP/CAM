@@ -1553,7 +1553,7 @@ contains
        ! carma emissions
        call carma_emission_tend (state, ptend, cam_in, ztodt)
        call physics_update(state, ptend, ztodt, tend)
-    endif
+    end if
 
     ! get nstep and zero array for energy checker
     zero = 0._r8

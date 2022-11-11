@@ -672,7 +672,6 @@ subroutine vertical_diffusion_tend( &
   use upper_bc,           only : ubc_get_vals, ubc_fixed_temp
   use upper_bc,           only : ubc_get_flxs
   use coords_1d,          only : Coords1D
-!+++ARH
   use phys_control,       only : cam_physpkg_is
 
   ! --------------- !
