@@ -4297,6 +4297,7 @@ end subroutine clubb_init_cnst
 
   ncol = state%ncol
 
+  lq(1) = .false.
   lq(2:) = .true.
   call physics_ptend_init(ptend,state%psetcols, "clubb emissions", lq=lq)
 
