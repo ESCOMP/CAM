@@ -134,6 +134,8 @@ module chemistry
 
   logical :: chem_use_chemtrop = .false.
 
+  integer :: srf_ozone_pbf_ndx = -1
+
 !================================================================================================
 contains
 !================================================================================================
@@ -223,7 +225,7 @@ end function chem_is
     hf_ndx    = get_spc_ndx('HF')
 
     if (o3_ndx>0 .or. o3_inv_ndx>0) then
-       call pbuf_add_field('SRFOZONE','global',dtype_r8,(/pcols/),ndx)
+       call pbuf_add_field('SRFOZONE','global',dtype_r8,(/pcols/),srf_ozone_pbf_ndx)
     endif
 
     !-----------------------------------------------------------------------
@@ -627,23 +629,23 @@ end function chem_is_active
 ! Author: NCAR CMS
 !
 !-----------------------------------------------------------------------
-    use physics_buffer,      only : physics_buffer_desc, pbuf_get_index
-
+    use physics_buffer,      only : physics_buffer_desc, pbuf_get_index, pbuf_set_field
+    use time_manager,        only : is_first_step
     use constituents,        only : cnst_get_ind
     use cam_history,         only : addfld, add_default, horiz_only, fieldname_len
     use chem_mods,           only : gas_pcnst
     use mo_chemini,          only : chemini
     use mo_ghg_chem,         only : ghg_chem_init
     use mo_tracname,         only : solsym
-    use cfc11star,             only : init_cfc11star
-    use phys_control,          only : phys_getopts
-    use chem_mods,             only : adv_mass
-    use infnan,                only : nan, assignment(=)
-    use mo_chem_utls,          only : get_spc_ndx
-    use cam_abortutils,        only : endrun
-    use aero_model,            only : aero_model_init
-    use mo_setsox,             only : sox_inti
-    use constituents,          only : sflxnam
+    use cfc11star,           only : init_cfc11star
+    use phys_control,        only : phys_getopts
+    use chem_mods,           only : adv_mass
+    use infnan,              only : nan, assignment(=)
+    use mo_chem_utls,        only : get_spc_ndx
+    use cam_abortutils,      only : endrun
+    use aero_model,          only : aero_model_init
+    use mo_setsox,           only : sox_inti
+    use constituents,        only : sflxnam
     use fire_emissions,      only : fire_emissions_init
     use short_lived_species, only : short_lived_species_initic
     use ocean_emis,          only : ocean_emis_init
@@ -811,6 +813,11 @@ end function chem_is_active
      call short_lived_species_initic()
 
      call ocean_emis_init()
+
+     ! initialize srf ozone to zero
+     if (is_first_step()) then
+        call pbuf_set_field(pbuf2d, srf_ozone_pbf_ndx, 0._r8)
+     end if
 
   end subroutine chem_init
 
