@@ -4297,7 +4297,7 @@ end subroutine clubb_init_cnst
 
   ncol = state%ncol
 
-  lq(:) = .true.
+  lq(2:) = .true.
   call physics_ptend_init(ptend,state%psetcols, "clubb emissions", lq=lq)
 
   ! Apply tracer fluxes to lowest model level (except vapor)
