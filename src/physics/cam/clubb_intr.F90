@@ -4261,14 +4261,13 @@ end subroutine clubb_init_cnst
 
   !-------------------------------------------------------------------------------
   ! Description: Apply surface fluxes of constituents to lowest model level
-  !              except vapor (applied in clubb_tend_cam)
+  !              except water vapor (applied in clubb_tend_cam)
   !
   ! Author: Adam Herrington, November 2022
   ! Origin: Based on E3SM's clubb_surface subroutine
   ! References:
   !   None
   !-------------------------------------------------------------------------------
-
   use physics_types,      only : physics_ptend, physics_ptend_init, physics_state
   use constituents,       only : cnst_type
   use camsrfexch,         only : cam_in_t
@@ -4289,19 +4288,17 @@ end subroutine clubb_init_cnst
   ! --------------- !
   integer  :: m, ncol                                 
   logical  :: lq(pcnst)
-  real(r8) :: q_tmp(pcols,pver,pcnst)
 
   ! ----------------------- !
   ! Main Computation Begins !
   ! ----------------------- !
-
   ncol = state%ncol
 
   lq(1) = .false.
   lq(2:) = .true.
   call physics_ptend_init(ptend,state%psetcols, "clubb emissions", lq=lq)
 
-  ! Apply tracer fluxes to lowest model level (except vapor)
+  ! Apply tracer fluxes to lowest model level (except water vapor)
   do m = 2,pcnst
     ptend%q(:ncol,pver,m) = cam_in%cflx(:ncol,m)*state%rpdel(:ncol,pver)*gravit
   end do
