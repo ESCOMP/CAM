@@ -815,7 +815,7 @@ end function chem_is_active
      call ocean_emis_init()
 
      ! initialize srf ozone to zero
-     if (is_first_step()) then
+     if (is_first_step() .and. srf_ozone_pbf_ndx>0) then
         call pbuf_set_field(pbuf2d, srf_ozone_pbf_ndx, 0._r8)
      end if
 
