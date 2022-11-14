@@ -4306,7 +4306,7 @@ end subroutine clubb_init_cnst
   ! Convert tendencies of dry constituents to dry basis.
   do m = 2,pcnst
      if (cnst_type(m).eq.'dry') then
-        ptend%q(:ncol,:pver,m) = ptend%q(:ncol,:pver,m)*state%pdel(:ncol,:pver)/state%pdeldry(:ncol,:pver)
+        ptend%q(:ncol,pver,m) = ptend%q(:ncol,pver,m)*state%pdel(:ncol,pver)*state%rpdeldry(:ncol,pver)
      endif
   end do
 
