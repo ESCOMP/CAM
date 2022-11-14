@@ -357,6 +357,10 @@
     <alias>FCnudged_HCO</alias>
     <lname>HIST_CAM60%CCTS1%NUDG%HEMCO_CLM50%SP_CICE%PRES_DOCN%DOM_MOSART_SGLC_SWAV</lname>
   </compset>
+  <compset>
+    <alias>FCts2nudged_HCO</alias>
+    <lname>HIST_CAM60%CCTS2%NUDG%HEMCO_CLM50%SP_CICE%PRES_DOCN%DOM_MOSART_SGLC_SWAV</lname>
+  </compset>
 
   <compset>
     <alias>FCSD</alias>
