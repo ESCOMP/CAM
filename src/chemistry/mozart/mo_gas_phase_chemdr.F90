@@ -797,7 +797,7 @@ contains
     !-----------------------------------------------------------------
     call tuvx_get_photo_rates( state, pbuf, ncol, lchnk, zm, zi, &
                                tfld, ts, invariants, vmr, col_delta, &
-                               asdir, zen_angle )
+                               asdir, zen_angle, esfact )
 
     do i = 1,phtcnt
        call outfld( tag_names(i), reaction_rates(:ncol,:,rxt_tag_map(i)), ncol, lchnk )

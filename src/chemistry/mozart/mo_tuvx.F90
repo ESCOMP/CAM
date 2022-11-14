@@ -231,7 +231,8 @@ contains
 
   subroutine tuvx_get_photo_rates( state, pbuf, ncol, lchnk, height_mid, &
       height_int, temperature_mid, surface_temperature, fixed_species_conc, &
-      species_vmr, exo_column_conc, surface_albedo, solar_zenith_angle )
+      species_vmr, exo_column_conc, surface_albedo, solar_zenith_angle, &
+      earth_sun_distance )
 !-----------------------------------------------------------------------
 !
 ! Purpose: calculate and return photolysis rate constants
@@ -268,7 +269,7 @@ contains
                                                                         !   (molecule cm-3)
     real(r8), intent(in) :: surface_albedo(pcols)       ! surface albedo (unitless)
     real(r8), intent(in) :: solar_zenith_angle(ncol)    ! solar zenith angle (radians)
-
+    real(r8), intent(in) :: earth_sun_distance          ! Earth-Sun distance (AU)
 !-----------------------------------------------------------------------
 ! Local variables
 !-----------------------------------------------------------------------
@@ -293,6 +294,7 @@ contains
         ! Calculate photolysis rate constants for this column
         call tuvx%core_%run( solar_zenith_angle = &
                                solar_zenith_angle(i_col) * 180.0_r8 / pi, &
+                             earth_sun_distance = earth_sun_distance, &
                              photolysis_rate_constants = &
                                tuvx%photo_rates_(i_col,:,:) )
 
@@ -894,8 +896,8 @@ contains
 ! Purpose: sets the extraterrestrial flux in TUV-x for the given column
 !
 ! Extraterrestrial flux is read from data files and interpolated to the
-! TUV-x wavelength grid. ET flux values are multiplied by wavelength
-! bin widths to get units used in TUV-x (photon cm-2 s-1)
+! TUV-x wavelength grid. CAM ET Flux values are multiplied by the
+! width of the wavelength bins to get the TUV-x units of photon cm-2 s-1
 !
 ! NOTE: TUV-x only uses mid-point values for ET Flux
 !
@@ -904,7 +906,8 @@ contains
     use mo_util,          only : rebin
     use solar_irrad_data, only : nbins,   & ! number of wavelength bins
                                  we,      & ! wavelength bin edges
-                                 sol_etf    ! solar extraterrestrial flux (photon cm-2 nm-1 s-1)
+                                 sol_etf    ! extraterrestrial flux
+                                            !   (photon cm-2 nm-1 s-1)
 
 !-----------------------------------------------------------------------
 ! Dummy arguments
@@ -953,12 +956,12 @@ contains
     class(tuvx_ptr), intent(inout) :: this  ! TUV-x calculator
     integer,         intent(in)    :: i_col ! column to set conditions for
     integer,         intent(in)    :: ncol  ! number of columns
-    real(r8),        intent(in)    :: fixed_species_conc(ncol,pver,max(1,nfs)) ! fixed species densities
-                                                                               !   (molecule cm-3)
-    real(r8),        intent(in)    :: species_vmr(ncol,pver,max(1,gas_pcnst))  ! species volume mixing
-                                                                               !   ratios (mol mol-1)
-    real(r8),        intent(in) :: exo_column_conc(ncol,0:pver,max(1,nabscol)) ! above column densities
-                                                                               !   (molecule cm-3)
+    real(r8),        intent(in)    :: fixed_species_conc(ncol,pver,max(1,nfs))    ! fixed species densities
+                                                                                  !   (molecule cm-3)
+    real(r8),        intent(in)    :: species_vmr(ncol,pver,max(1,gas_pcnst))     ! species volume mixing
+                                                                                  !   ratios (mol mol-1)
+    real(r8),        intent(in)    :: exo_column_conc(ncol,0:pver,max(1,nabscol)) ! above column densities
+                                                                                  !   (molecule cm-3)
 
 !-----------------------------------------------------------------------
 ! Local variables
