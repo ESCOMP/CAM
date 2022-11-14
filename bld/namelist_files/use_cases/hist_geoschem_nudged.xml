@@ -2,7 +2,7 @@
 
 <namelist_defaults>
 
-<!-- Settings in this file were adapted from hist_trop_strat_vbs_cam6.xml -->
+<!-- Settings in this file were adapted from hist_trop_strat_vbs_cam6.xml and hist_trop_strat_nudged_cam6.xml -->
 
 <!-- Settings for using GEOS-Chem -->
 
@@ -14,7 +14,7 @@
 
 <dep_data_file>/glade/u/home/elundgren/drydep_henrys_law_nc/dep_data_file_geoschem.nc</dep_data_file>
 
-<!-- Settings mostly in common with hist_trop_strat_vbs_cam6.xml -->
+<!-- Settings mostly in common with hist_trop_strat_vbs_cam6.xml and hist_trop_strat_nudged_cam6 -->
 
 <start_ymd>00010101</start_ymd>
 
