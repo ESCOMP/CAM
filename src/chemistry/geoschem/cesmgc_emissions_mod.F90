@@ -531,7 +531,7 @@ CONTAINS
     ! MEGAN emissions ...
     !-----------------------------------------------------------------------
 
-    IF ( active_Fall_flxvoc > 0 .AND. shr_megan_mechcomps_n > 0 ) THEN
+    IF ( active_Fall_flxvoc .AND. shr_megan_mechcomps_n > 0 ) THEN
        ! set MEGAN fluxes 
        DO N = 1, shr_megan_mechcomps_n
           DO J = 1, nY
