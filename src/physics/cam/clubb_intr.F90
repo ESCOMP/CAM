@@ -4268,9 +4268,9 @@ end subroutine clubb_init_cnst
   ! References:
   !   None
   !-------------------------------------------------------------------------------
-  use physics_types,      only : physics_ptend, physics_ptend_init, physics_state
-  use constituents,       only : cnst_type
-  use camsrfexch,         only : cam_in_t
+  use physics_types,      only: physics_ptend, physics_ptend_init, physics_state
+  use constituents,       only: cnst_type
+  use camsrfexch,         only: cam_in_t
 
   ! --------------- !
   ! Input Arguments !
