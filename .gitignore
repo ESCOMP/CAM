@@ -15,6 +15,7 @@ libraries/FMS
 libraries/mct
 libraries/parallelio
 libraries/tuv-x
+libraries/musica-core
 libraries/json-fortran
 src/atmos_phys
 src/dynamics/mpas/dycore
