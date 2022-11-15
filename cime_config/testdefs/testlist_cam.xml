@@ -2493,16 +2493,6 @@
     </machines>
   </test>
 
-  <test compset="FHS94" grid="ne30_ne30_mg17" name="SMS_Lm2_Vnuopc" testmods="cam/se_advection">
-    <machines>
-      <machine name="cheyenne" compiler="intel" category="aux_cam"/>
-    </machines>
-    <options>
-      <option name="comment">Test for SE advection noise</option>
-      <option name="wallclock">01:00:00</option>
-    </option>
-  </test>
-
   <test compset="FADIAB" grid="ne5_ne5_mg37" name="ERS_Ln9_Vnuopc" testmods="cam/outfrq9s">
     <machines>
       <machine name="izumi" compiler="nag" category="aux_cam"/>
