@@ -340,6 +340,7 @@ end function chem_is
     use mo_sulf,          only: sulf_readnl
     use species_sums_diags,only: species_sums_readnl
     use ocean_emis,       only: ocean_emis_readnl
+    use mo_tuvx,          only: tuvx_readnl
 
     ! args
 
@@ -556,6 +557,7 @@ end function chem_is
    call sulf_readnl(nlfile)
    call species_sums_readnl(nlfile)
    call ocean_emis_readnl(nlfile)
+   call tuvx_readnl(nlfile)
 
  end subroutine chem_readnl
 
@@ -1289,7 +1291,11 @@ end function chem_is_active
 !-------------------------------------------------------------------
   subroutine chem_final()
     use mee_ionization, only: mee_ion_final
+    use mo_tuvx,        only: tuvx_finalize
+
     call mee_ion_final()
+    call tuvx_finalize()
+
   end subroutine chem_final
 
 !-------------------------------------------------------------------

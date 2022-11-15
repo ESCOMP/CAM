@@ -83,6 +83,9 @@
       }
    },
    "radiative transfer": {
+      "solver": {
+        "type": "delta eddington"
+      },
       "cross sections": [
          {
             "name": "air",
@@ -140,17 +143,21 @@
          }
       ]
    },
-   "photolysis reactions": {
-      "O2+hv->O+O": {
-         "cross section": {
-            "netcdf files": ["data/cross_sections/O2_1.nc"],
-            "type": "base",
-            "lower extrapolation": { "type": "boundary" }
-         },
-         "quantum yield": {
-            "type": "base",
-            "constant value": 1.0
+   "photolysis": {
+      "enable diagnostics": false,
+      "reactions": [
+         {
+           "name": "O2+hv->O+O",
+           "cross section": {
+              "netcdf files": ["data/cross_sections/O2_1.nc"],
+              "type": "base",
+              "lower extrapolation": { "type": "boundary" }
+           },
+           "quantum yield": {
+              "type": "base",
+              "constant value": 1.0
+           }
          }
-      },
+      ]
    }
 }

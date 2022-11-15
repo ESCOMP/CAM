@@ -42,7 +42,7 @@ def _build_fms(caseroot, libroot, bldroot):
                 expect(os.path.exists(fmsbuildlib), "FMS external not found")
                 stat, _, err = run_cmd("{} {} {} {}".format(fmsbuildlib, case.get_value("EXEROOT"), fmsbuilddir, caseroot), verbose=True)
                 expect(stat==0, "FMS build Failed {}".format(err))
-                
+
                 libfms = os.path.join(bldroot,"FMS","libfms.a")
                 if os.path.exists(libfms):
                     shutil.copy(libfms, libroot)
@@ -130,9 +130,12 @@ def _cmake_default_args(caseroot):
         args += "-DCOMPILER={} ".format(build.get_value("COMPILER"))
         args += "-DOS={} ".format(build.get_value("OS"))
         args += "-DMACH={} ".format(case.get_value("MACH"))
+        args += "-DCMAKE_C_COMPILER_WORKS=1 "
+        args += "-DCMAKE_Fortran_COMPILER_WORKS=1 "
+        args += "-DCMAKE_CXX_COMPILER_WORKS=1 "
         cmd = "cmake {} .".format(args)
         rc, out, err = run_cmd(cmd, combine_output=True, from_dir=macro_path)
-        expect(rc == 0, "Command {} failed with rc={}".format(cmd, rc))
+        expect(rc == 0, "Command {} failed with rc={} out={} err={}".format(cmd, rc, out, err))
 
         arg_dict = {}
         for line in out.splitlines():
@@ -158,6 +161,8 @@ def _build_json_fortran(caseroot, libroot, bldroot):
 
         arg_dict = _cmake_default_args(caseroot)
         cmake_args = "-DCMAKE_Fortran_COMPILER={} ".format(arg_dict["SFC"])
+        cmake_args += "-DCMAKE_C_COMPILER_WORKS=1 "
+        cmake_args += "-DCMAKE_CXX_COMPILER_WORKS=1 "
         cmake_args += "-DCMAKE_BUILD_TYPE=Release "
         cmake_args += "-DSKIP_DOC_GEN:BOOL=TRUE "
         cmake_args += srcpath
@@ -201,9 +206,13 @@ def _build_tuvx(caseroot, libroot, bldroot):
         arg_dict = _cmake_default_args(caseroot)
         if build.get_value("MPILIB") == "mpi-serial":
             cmake_args = "-DCMAKE_Fortran_COMPILER={} ".format(arg_dict["SFC"])
+            cmake_args += "-DCMAKE_C_COMPILER={} ".format(arg_dict["SCC"])
         else:
             cmake_args = "-DCMAKE_Fortran_COMPILER={} ".format(arg_dict["MPIFC"])
+            cmake_args += "-DCMAKE_C_COMPILER={} ".format(arg_dict["MPICC"])
             cmake_args += "-DENABLE_MPI:BOOL=TRUE "
+        cmake_args += "-DCMAKE_C_COMPILER_WORKS=1 "
+        cmake_args += "-DCMAKE_CXX_COMPILER_WORKS=1 "
         cmake_args += "-DCMAKE_BUILD_TYPE=Release "
         cmake_args += "-DENABLE_COVERAGE=OFF "
         cmake_args += "-DENABLE_TESTS=OFF "

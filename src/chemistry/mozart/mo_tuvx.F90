@@ -4,16 +4,21 @@ module mo_tuvx
 !----------------------------------------------------------------------
 
   use musica_string,    only : string_t
-  use shr_kind_mod,     only : r8 => shr_kind_r8
+  use shr_kind_mod,     only : r8 => shr_kind_r8, cl=>shr_kind_cl
   use tuvx_core,        only : core_t
+  use cam_logfile,      only : iulog
+  use spmd_utils,       only : masterproc
+  use cam_abortutils,   only : endrun
 
   implicit none
 
   private
 
+  public :: tuvx_readnl
   public :: tuvx_init
   public :: tuvx_get_photo_rates
   public :: tuvx_finalize
+  public :: tuvx_active
 
   ! TUV-x calculator for each OMP thread
   type :: tuvx_ptr
@@ -24,12 +29,64 @@ module mo_tuvx
   end type tuvx_ptr
   type(tuvx_ptr), allocatable :: tuvx_ptrs(:)
 
-  ! TODO how should this path be set and communicated to this wrapper?
-  character(len=*), parameter :: tuvx_config_path = "tuvx_config.json"
+  ! namelist options
+  character(len=cl) :: tuvx_config_path = 'NONE'  ! absolute path to TUVX configuration file
+  logical, protected :: tuvx_active = .false.
 
 !================================================================================================
 contains
 !================================================================================================
+
+  !-----------------------------------------------------------------------
+  ! read namelist options
+  !-----------------------------------------------------------------------
+  subroutine tuvx_readnl(nlfile)
+    use namelist_utils, only : find_group_name
+    use spmd_utils,     only : mpicom, masterprocid, mpi_character, mpi_logical
+
+    character(len=*), intent(in)  :: nlfile  ! filepath for file containing namelist input
+
+    integer                       :: unitn, ierr
+    character(len=*), parameter   :: subname = 'tuvx_readnl'
+
+    ! ===================
+    ! Namelist definition
+    ! ===================
+    namelist /tuvx_opts/ tuvx_active, tuvx_config_path
+
+    ! =============
+    ! Read namelist
+    ! =============
+    if (masterproc) then
+       open( newunit=unitn, file=trim(nlfile), status='old' )
+       call find_group_name(unitn, 'tuvx_opts', status=ierr)
+       if (ierr == 0) then
+          read(unitn, tuvx_opts, iostat=ierr)
+          if (ierr /= 0) then
+             call endrun(subname // ':: ERROR reading namelist')
+          end if
+       end if
+       close(unitn)
+    end if
+
+    ! ============================
+    ! Broadcast namelist variables
+    ! ============================
+    call mpi_bcast(tuvx_config_path, len(tuvx_config_path), mpi_character, masterprocid, mpicom, ierr)
+    call mpi_bcast(tuvx_active,      1,                     mpi_logical,   masterprocid, mpicom, ierr)
+
+    if (tuvx_active .and. tuvx_config_path == 'NONE') then
+       call endrun(subname // ' : must set tuvx_config_path when TUV-X is active')
+    end if
+
+    if (masterproc) then
+       write(iulog,*) 'tuvx_readnl: tuvx_config_path = ', trim(tuvx_config_path)
+       write(iulog,*) 'tuvx_readnl: tuvx_active = ', tuvx_active
+    end if
+
+  end subroutine tuvx_readnl
+!-----------------------------------------------------------------------
+!-----------------------------------------------------------------------
 
   subroutine tuvx_init( )
 !-----------------------------------------------------------------------
@@ -38,9 +95,6 @@ contains
 !
 !-----------------------------------------------------------------------
 
-#ifdef HAVE_MPI
-    use mpi
-#endif
     use cam_logfile,    only : iulog
     use musica_assert,  only : assert_msg
     use musica_mpi,     only : musica_mpi_rank
@@ -48,7 +102,7 @@ contains
     use tuvx_grid,      only : grid_t
     use spmd_utils,     only : main_task => masterprocid, &
                                is_main_task => masterproc, &
-                               mpicom
+                               mpicom, mpi_character, mpi_integer, mpi_success
 
 !-----------------------------------------------------------------------
 ! Local variables
@@ -59,7 +113,10 @@ contains
     class(grid_t), pointer :: height
     integer :: pack_size, pos, i_core, i_err, i_thread
 
-    config_path = tuvx_config_path
+    if (.not.tuvx_active) return
+
+    config_path = trim(tuvx_config_path)
+
     if( is_main_task ) call log_initialization( )
 
 #ifndef HAVE_MPI
@@ -78,7 +135,6 @@ contains
     end if
 
     ! broadcast the core data to all MPI processes
-#ifdef HAVE_MPI
     call mpi_bcast( pack_size, 1, MPI_INTEGER, main_task, mpicom, i_err )
     if( i_err /= MPI_SUCCESS ) then
       write(iulog,*) "TUV-x MPI int bcast error"
@@ -90,7 +146,6 @@ contains
       write(iulog,*) "TUV-x MPI char array bcast error"
       call mpi_abort( mpicom, 1, i_err )
     end if
-#endif
 
     ! unpack the core for each OMP thread on every MPI process
     allocate( tuvx_ptrs( max_threads( ) ) )
@@ -123,7 +178,6 @@ contains
 !
 !-----------------------------------------------------------------------
 
-    use cam_logfile,    only : iulog
     use spmd_utils,     only : main_task => masterprocid, &
                                is_main_task => masterproc, &
                                mpicom
@@ -137,6 +191,8 @@ contains
 ! Local variables
 !-----------------------------------------------------------------------
     integer :: i_col                                ! column index
+
+    if (.not.tuvx_active) return
 
     associate( tuvx => tuvx_ptrs( thread_id( ) ) )
       do i_col = 1, ncol
@@ -163,9 +219,9 @@ contains
 
     if( allocated( tuvx_ptrs ) ) then
       do i_core = 1, size( tuvx_ptrs )
-        if( associated( tuvx_ptrs( i_core )%core_ ) ) then
-          deallocate( tuvx_ptrs( i_core )%core_ )
-        end if
+      associate( tuvx => tuvx_ptrs( i_core ) )
+        if( associated( tuvx%core_ ) ) deallocate( tuvx%core_ )
+      end associate
       end do
     end if
 
