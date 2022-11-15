@@ -7052,6 +7052,17 @@ Maximum zenith angle (degrees) used for photolysis.
 Default: set by build-namelist.
 </entry>
 
+<entry id="tuvx_config_path" type="char*256" input_pathname="abs" category="chemistry"
+       group="tuvx_opts" valid_values="" >
+Filepath of TUV-X configuration specification.
+Default: NONE
+</entry>
+
+<entry id="tuvx_active" type="logical" category="chemistry"
+       group="tuvx_opts" valid_values="" >
+Switch to turn on TUV-X photolysis.
+Default: FALSE
+</entry>
 
 <!-- Namelist read by seq_drydep_mod and shared by CAM and CLM -->
 

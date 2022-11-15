@@ -250,7 +250,7 @@ contains
     use chem_mods,         only : nabscol, nfs, indexm, clscnt4
     use physconst,         only : rga
     use mo_photo,          only : set_ub_col, setcol, table_photo
-    use mo_tuvx,           only : tuvx_get_photo_rates
+    use mo_tuvx,           only : tuvx_get_photo_rates, tuvx_active
     use mo_exp_sol,        only : exp_sol
     use mo_imp_sol,        only : imp_sol
     use mo_setrxt,         only : setrxt
@@ -785,19 +785,22 @@ contains
     call shr_orb_decl( calday, eccen, mvelpp, lambm0, obliqr  , &
          delta, esfact )
 
-    !-----------------------------------------------------------------
-    !	... lookup the photolysis rates from table
-    !-----------------------------------------------------------------
-    call table_photo( reaction_rates, pmid, pdel, tfld, zmid, zint, &
-                      col_dens, zen_angle, asdir, cwat, cldfr, &
-                      esfact, vmr, invariants, ncol, lchnk, pbuf )
+    !if (tuvx_active) then
+      !-----------------------------------------------------------------
+      !	... lookup the photolysis rates from table
+      !-----------------------------------------------------------------
+      call table_photo( reaction_rates, pmid, pdel, tfld, zmid, zint, &
+                        col_dens, zen_angle, asdir, cwat, cldfr, &
+                        esfact, vmr, invariants, ncol, lchnk, pbuf )
 
-    !-----------------------------------------------------------------
-    !	... get calculated photolysis rates from TUV-x
-    !-----------------------------------------------------------------
-    call tuvx_get_photo_rates( state, pbuf, ncol, lchnk, zm, zi, &
-                               tfld, ts, invariants, vmr, col_delta, &
-                               asdir, zen_angle, esfact )
+    !else
+      !-----------------------------------------------------------------
+      !	... get calculated photolysis rates from TUV-x
+      !-----------------------------------------------------------------
+      call tuvx_get_photo_rates( state, pbuf, ncol, lchnk, zm, zi, &
+                                 tfld, ts, invariants, vmr, col_delta, &
+                                 asdir, zen_angle, esfact )
+    !endif
 
     do i = 1,phtcnt
        call outfld( tag_names(i), reaction_rates(:ncol,:,rxt_tag_map(i)), ncol, lchnk )

@@ -42,7 +42,7 @@ def _build_fms(caseroot, libroot, bldroot):
                 expect(os.path.exists(fmsbuildlib), "FMS external not found")
                 stat, _, err = run_cmd("{} {} {} {}".format(fmsbuildlib, case.get_value("EXEROOT"), fmsbuilddir, caseroot), verbose=True)
                 expect(stat==0, "FMS build Failed {}".format(err))
-                
+
                 libfms = os.path.join(bldroot,"FMS","libfms.a")
                 if os.path.exists(libfms):
                     shutil.copy(libfms, libroot)
@@ -267,8 +267,10 @@ def _build_tuvx(caseroot, libroot, bldroot):
         arg_dict = _cmake_default_args(caseroot)
         if build.get_value("MPILIB") == "mpi-serial":
             cmake_args = "-DCMAKE_Fortran_COMPILER={} ".format(arg_dict["SFC"])
+            cmake_args += "-DCMAKE_C_COMPILER={} ".format(arg_dict["SCC"])
         else:
             cmake_args = "-DCMAKE_Fortran_COMPILER={} ".format(arg_dict["MPIFC"])
+            cmake_args += "-DCMAKE_C_COMPILER={} ".format(arg_dict["MPICC"])
             cmake_args += "-DENABLE_MPI:BOOL=TRUE "
         if case.get_value("DEBUG"):
             cmake_args += "-DCMAKE_BUILD_TYPE=Debug "
