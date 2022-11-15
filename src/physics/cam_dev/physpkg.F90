@@ -1577,7 +1577,10 @@ contains
     call t_startf('clubb_emissions_tend')
 
     call clubb_emissions_cam(state, cam_in, ptend)
+
     call physics_update(state, ptend, ztodt, tend)
+
+    call check_energy_chng(state, tend, "clubb_emissions_tend", nstep, ztodt, zero, zero, zero, zero)
 
     call t_stopf('clubb_emissions_tend')
 
