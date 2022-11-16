@@ -238,7 +238,8 @@ contains
                               delt, ps, &
                               fsds, ts, asdir, ocnfrac, icefrac, &
                               precc, precl, snowhland, ghg_chem, latmapback, &
-                              drydepflx, wetdepflx, cflx, fire_sflx, fire_ztop, nhx_nitrogen_flx, noy_nitrogen_flx, qtend, pbuf)
+                              drydepflx, wetdepflx, cflx, fire_sflx, fire_ztop, &
+                              nhx_nitrogen_flx, noy_nitrogen_flx, qtend, pbuf, state)
 
     !-----------------------------------------------------------------------
     !     ... Chem_solver advances the volumetric mixing ratio
@@ -282,6 +283,7 @@ contains
     use mo_chm_diags,      only : chm_diags, het_diags
     use perf_mod,          only : t_startf, t_stopf
     use gas_wetdep_opts,   only : gas_wetdep_method
+    use physics_types,     only : physics_state
     use physics_buffer,    only : physics_buffer_desc, pbuf_get_field, pbuf_old_tim_idx
     use infnan,            only : nan, assignment(=)
     use rate_diags,        only : rate_diags_calc, rate_diags_o3s_loss
@@ -337,6 +339,7 @@ contains
     real(r8), intent(out) :: noy_nitrogen_flx(pcols)
 
     type(physics_buffer_desc), pointer :: pbuf(:)
+    type(physics_state), target, intent(in) :: state
 
     !-----------------------------------------------------------------------
     !     	... Local variables
@@ -779,20 +782,24 @@ contains
     !-----------------------------------------------------------------------
 
     esfact = 1._r8
-    call shr_orb_decl( calday, eccen, mvelpp, lambm0, obliqr, delta, esfact )
+    call shr_orb_decl( calday, eccen, mvelpp, lambm0, obliqr  , &
+         delta, esfact )
 
     !if (tuvx_active) then
-       !-----------------------------------------------------------------
-       !	... get calculated photolysis rates from TUV-x
-       !-----------------------------------------------------------------
-       call tuvx_get_photo_rates( ncol )
+      !-----------------------------------------------------------------
+      !	... lookup the photolysis rates from table
+      !-----------------------------------------------------------------
+      call table_photo( reaction_rates, pmid, pdel, tfld, zmid, zint, &
+                        col_dens, zen_angle, asdir, cwat, cldfr, &
+                        esfact, vmr, invariants, ncol, lchnk, pbuf )
+
     !else
-       !-----------------------------------------------------------------
-       !	... lookup the photolysis rates from table
-       !-----------------------------------------------------------------
-       call table_photo( reaction_rates, pmid, pdel, tfld, zmid, zint, &
-            col_dens, zen_angle, asdir, cwat, cldfr, &
-            esfact, vmr, invariants, ncol, lchnk, pbuf )
+      !-----------------------------------------------------------------
+      !	... get calculated photolysis rates from TUV-x
+      !-----------------------------------------------------------------
+      call tuvx_get_photo_rates( state, pbuf, ncol, lchnk, zm, zi, &
+                                 tfld, ts, invariants, vmr, col_delta, &
+                                 asdir, zen_angle, esfact )
     !endif
 
     do i = 1,phtcnt

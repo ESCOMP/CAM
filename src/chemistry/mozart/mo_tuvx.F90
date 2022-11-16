@@ -1,14 +1,15 @@
+!----------------------------------------------------------------------
+! Wrapper for TUV-x photolysis rate constant calculator
+!----------------------------------------------------------------------
 module mo_tuvx
-!----------------------------------------------------------------------
-!     ... wrapper for TUV-x photolysis rate constant calculator
-!----------------------------------------------------------------------
 
-  use musica_string,    only : string_t
-  use shr_kind_mod,     only : r8 => shr_kind_r8, cl=>shr_kind_cl
-  use tuvx_core,        only : core_t
-  use cam_logfile,      only : iulog
-  use spmd_utils,       only : masterproc
-  use cam_abortutils,   only : endrun
+  use musica_string,           only : string_t
+  use ppgrid,                  only : pver                ! number of vertical layers
+  use shr_kind_mod,            only : r8 => shr_kind_r8, cl=>shr_kind_cl
+  use tuvx_core,               only : core_t
+  use tuvx_grid_from_host,     only : grid_updater_t
+  use tuvx_profile_from_host,  only : profile_updater_t
+  use tuvx_radiator_from_host, only : radiator_updater_t
 
   implicit none
 
@@ -16,18 +17,73 @@ module mo_tuvx
 
   public :: tuvx_readnl
   public :: tuvx_init
+  public :: tuvx_timestep_init
   public :: tuvx_get_photo_rates
   public :: tuvx_finalize
   public :: tuvx_active
 
+  ! Inidices for grid updaters
+  integer, parameter :: NUM_GRIDS = 2             ! number of grids that CAM will update at runtime
+  integer, parameter :: GRID_INDEX_HEIGHT     = 1 ! Height grid index
+  integer, parameter :: GRID_INDEX_WAVELENGTH = 2 ! Wavelength grid index
+
+  ! Indices for profile updaters
+  integer, parameter :: NUM_PROFILES = 8               ! number of profiles that CAM will update at runtime
+  integer, parameter :: PROFILE_INDEX_TEMPERATURE  = 1 ! Temperature profile index
+  integer, parameter :: PROFILE_INDEX_ALBEDO       = 2 ! Surface albedo profile index
+  integer, parameter :: PROFILE_INDEX_ET_FLUX      = 3 ! Extraterrestrial flux profile index
+  integer, parameter :: PROFILE_INDEX_AIR          = 4 ! Air density profile index
+  integer, parameter :: PROFILE_INDEX_O3           = 5 ! Ozone profile index
+  integer, parameter :: PROFILE_INDEX_O2           = 6 ! Molecular oxygen profile index
+  integer, parameter :: PROFILE_INDEX_SO2          = 7 ! Sulfur dioxide profile index
+  integer, parameter :: PROFILE_INDEX_NO2          = 8 ! Nitrogen dioxide profile index
+
+  ! Indices for radiator updaters
+  integer, parameter :: NUM_RADIATORS = 1          ! number of radiators that CAM will update at runtime
+  integer, parameter :: RADIATOR_INDEX_AEROSOL = 1 ! Aerosol radiator index
+
+  ! Information needed to access CAM species state data
+  logical :: is_fixed_O2 = .false. ! indicates whether O2 concentrations are fixed
+  logical :: is_fixed_O3 = .false. ! indicates whether O3 concentrations are fixed
+  integer :: index_O2 = 0 ! index for O2 in concentration array
+  integer :: index_O3 = 0 ! index for O3 in concentration array
+
+  ! Information needed to access aerosol optical properties
+  logical :: aerosol_exists = .false. ! indicates whether aerosol optical properties are available
+
+  ! TODO how should these paths be set and communicated to this wrapper?
+  character(len=*), parameter :: wavelength_config_path = &
+                                                    "data/grids/wavelength/combined.grid"
+  logical, parameter :: enable_diagnostics = .true.
+
   ! TUV-x calculator for each OMP thread
   type :: tuvx_ptr
-    type(core_t), pointer :: core_ => null( )  ! TUV-x calculator
-    integer               :: n_photo_rates_    ! number of photo reactions in TUV-x
-    real(r8), allocatable :: photo_rates_(:,:) ! photolysis rate constants
-                                               !   (vertical level, reaction) [s-1]
+    type(core_t), pointer    :: core_ => null( )          ! TUV-x calculator
+    integer                  :: n_photo_rates_            ! number of photo reactions in TUV-x
+    real(r8), allocatable    :: photo_rates_(:,:,:)       ! photolysis rate constants
+                                                          !   (column, vertical level, reaction) [s-1]
+    type(grid_updater_t)     :: grids_(NUM_GRIDS)         ! grid updaters
+    type(profile_updater_t)  :: profiles_(NUM_PROFILES)   ! profile updaters
+    type(radiator_updater_t) :: radiators_(NUM_RADIATORS) ! radiator updaters
+    real(r8)                 :: height_delta_(pver)       ! change in height in each
+                                                          !   vertical layer (km)
+    real(r8), allocatable    :: wavelength_edges_(:)      ! TUV-x wavelength bin edges (nm)
+    real(r8), allocatable    :: wavelength_values_(:)     ! Working array for interface values
+                                                          !   on the TUV-x wavelength grid
+    real(r8), allocatable    :: wavelength_mid_values_(:) ! Working array for mid-point values
+                                                          !   on the TUV-x wavelength grid
+    real(r8), allocatable    :: optical_depth_(:,:,:)            ! (column, vertical level, wavelength) [unitless]
+    real(r8), allocatable    :: single_scattering_albedo_(:,:,:) ! (column, vertical level, wavelength) [unitless]
+    real(r8), allocatable    :: asymmetry_factor_(:,:,:)         ! (column, vertical level, wavelength) [unitless]
   end type tuvx_ptr
   type(tuvx_ptr), allocatable :: tuvx_ptrs(:)
+
+  ! Diagnostic photolysis rate constant output
+  type :: diagnostic_t
+    character(len=:), allocatable :: name_ ! Name of the output field
+    integer :: index_                      ! index of the photolysis rate constant from TUV-x
+  end type diagnostic_t
+  type(diagnostic_t), allocatable :: diagnostics(:)
 
   ! namelist options
   character(len=cl) :: tuvx_config_path = 'NONE'  ! absolute path to TUVX configuration file
@@ -41,8 +97,15 @@ contains
   ! read namelist options
   !-----------------------------------------------------------------------
   subroutine tuvx_readnl(nlfile)
+
+#ifdef HAVE_MPI
+    use mpi
+#endif
+    use cam_abortutils, only : endrun
+    use cam_logfile,    only : iulog ! log file output unit
     use namelist_utils, only : find_group_name
-    use spmd_utils,     only : mpicom, masterprocid, mpi_character, mpi_logical
+    use spmd_utils,     only : mpicom, is_main_task => masterproc, &
+                               main_task => masterprocid
 
     character(len=*), intent(in)  :: nlfile  ! filepath for file containing namelist input
 
@@ -57,7 +120,7 @@ contains
     ! =============
     ! Read namelist
     ! =============
-    if (masterproc) then
+    if (is_main_task) then
        open( newunit=unitn, file=trim(nlfile), status='old' )
        call find_group_name(unitn, 'tuvx_opts', status=ierr)
        if (ierr == 0) then
@@ -72,46 +135,55 @@ contains
     ! ============================
     ! Broadcast namelist variables
     ! ============================
-    call mpi_bcast(tuvx_config_path, len(tuvx_config_path), mpi_character, masterprocid, mpicom, ierr)
-    call mpi_bcast(tuvx_active,      1,                     mpi_logical,   masterprocid, mpicom, ierr)
+#ifdef HAVE_MPI
+    call mpi_bcast(tuvx_config_path, len(tuvx_config_path), mpi_character, main_task, mpicom, ierr)
+    call mpi_bcast(tuvx_active,      1,                     mpi_logical,   main_task, mpicom, ierr)
+#endif
 
     if (tuvx_active .and. tuvx_config_path == 'NONE') then
        call endrun(subname // ' : must set tuvx_config_path when TUV-X is active')
     end if
 
-    if (masterproc) then
+    if (is_main_task) then
        write(iulog,*) 'tuvx_readnl: tuvx_config_path = ', trim(tuvx_config_path)
        write(iulog,*) 'tuvx_readnl: tuvx_active = ', tuvx_active
     end if
 
   end subroutine tuvx_readnl
-!-----------------------------------------------------------------------
-!-----------------------------------------------------------------------
 
+!================================================================================================
+
+  !-----------------------------------------------------------------------
+  ! Initializes TUV-x for photolysis calculations
+  !-----------------------------------------------------------------------
   subroutine tuvx_init( )
-!-----------------------------------------------------------------------
-!
-! Purpose: initialize TUV-x for photolysis calculations
-!
-!-----------------------------------------------------------------------
 
-    use cam_logfile,    only : iulog
-    use musica_assert,  only : assert_msg
-    use musica_mpi,     only : musica_mpi_rank
-    use musica_string,  only : string_t, to_char
-    use tuvx_grid,      only : grid_t
-    use spmd_utils,     only : main_task => masterprocid, &
-                               is_main_task => masterproc, &
-                               mpicom, mpi_character, mpi_integer, mpi_success
+#ifdef HAVE_MPI
+    use mpi
+#endif
+    use cam_logfile,             only : iulog ! log file output unit
+    use mo_chem_utls,            only : get_spc_ndx, get_inv_ndx
+    use musica_assert,           only : assert_msg
+    use musica_mpi,              only : musica_mpi_rank
+    use musica_string,           only : string_t, to_char
+    use ppgrid,                  only : pcols ! maximum number of columns
+    use solar_irrad_data,        only : has_spectrum
+    use spmd_utils,              only : main_task => masterprocid, &
+                                        is_main_task => masterproc, &
+                                        mpicom
+    use tuvx_grid,               only : grid_t
+    use tuvx_grid_warehouse,     only : grid_warehouse_t
+    use tuvx_profile_warehouse,  only : profile_warehouse_t
+    use tuvx_radiator_warehouse, only : radiator_warehouse_t
 
-!-----------------------------------------------------------------------
-! Local variables
-!-----------------------------------------------------------------------
     class(core_t), pointer :: core
     character, allocatable :: buffer(:)
     type(string_t) :: config_path
     class(grid_t), pointer :: height
-    integer :: pack_size, pos, i_core, i_err, i_thread
+    class(grid_warehouse_t), pointer :: cam_grids
+    class(profile_warehouse_t), pointer :: cam_profiles
+    class(radiator_warehouse_t), pointer :: cam_radiators
+    integer :: pack_size, pos, i_core, i_err
 
     if (.not.tuvx_active) return
 
@@ -121,12 +193,21 @@ contains
 
 #ifndef HAVE_MPI
     call assert_msg( 113937299, is_main_task, "Multiple tasks present without " &
-                     //"MPI support enabled for TUV-x")
+                     //"MPI support enabled for TUV-x" )
 #endif
 
+    ! ==========================================================================
+    ! Create the set of TUV-x grids and profiles that CAM will update at runtime
+    ! ==========================================================================
+    cam_grids => get_cam_grids( wavelength_config_path )
+    cam_profiles => get_cam_profiles( cam_grids )
+    cam_radiators => get_cam_radiators( cam_grids )
+
+    ! ======================================================================
     ! construct a core on the primary process and pack it onto an MPI buffer
+    ! ======================================================================
     if( is_main_task ) then
-      core => core_t( config_path )
+      core => core_t( config_path, cam_grids, cam_profiles, cam_radiators )
       pack_size = core%pack_size( mpicom )
       allocate( buffer( pack_size ) )
       pos = 0
@@ -134,7 +215,10 @@ contains
       deallocate( core )
     end if
 
+#ifdef HAVE_MPI
+    ! ============================================
     ! broadcast the core data to all MPI processes
+    ! ============================================
     call mpi_bcast( pack_size, 1, MPI_INTEGER, main_task, mpicom, i_err )
     if( i_err /= MPI_SUCCESS ) then
       write(iulog,*) "TUV-x MPI int bcast error"
@@ -146,75 +230,166 @@ contains
       write(iulog,*) "TUV-x MPI char array bcast error"
       call mpi_abort( mpicom, 1, i_err )
     end if
+#endif
 
+    ! ========================================================
     ! unpack the core for each OMP thread on every MPI process
+    ! ========================================================
     allocate( tuvx_ptrs( max_threads( ) ) )
     do i_core = 1, size( tuvx_ptrs )
     associate( tuvx => tuvx_ptrs( i_core ) )
       allocate( tuvx%core_ )
       pos = 0
       call tuvx%core_%mpi_unpack( buffer, pos, mpicom )
+
+      ! =====================================================================
+      ! Set up map between CAM and TUV-x photolysis reactions for each thread
+      ! =====================================================================
+      call create_updaters( tuvx, cam_grids, cam_profiles, cam_radiators )
+
+      ! TEMPORARY FOR DEVELOPMENT
+      tuvx%n_photo_rates_ = tuvx%core_%number_of_photolysis_reactions( )
+      height => tuvx%core_%get_grid( "height", "km" )
+      allocate( tuvx%photo_rates_( pcols, height%ncells_ + 1, tuvx%n_photo_rates_ ) )
+      deallocate( height )
+
     end associate
     end do
 
-    ! Set up map between CAM and TUV-x photolysis reactions for each thread
-    do i_thread = 1, max_threads( )
-    associate( tuvx => tuvx_ptrs( i_thread ) )
-      tuvx%n_photo_rates_ = tuvx%core_%number_of_photolysis_reactions( )
-      height => tuvx%core_%get_grid( "height", "km" )
-      ! Temporary for development
-      allocate( tuvx%photo_rates_( height%ncells_ + 1, tuvx%n_photo_rates_ ) )
-    end associate
-    end do
+    deallocate( cam_grids     )
+    deallocate( cam_profiles  )
+    deallocate( cam_radiators )
+
+    ! =============================================
+    ! Get index info for CAM species concentrations
+    ! =============================================
+    index_O2 = get_inv_ndx( 'O2' )
+    is_fixed_O2 = index_O2 > 0
+    if( .not. is_fixed_O2 ) index_O2 = get_spc_ndx( 'O2' )
+    index_O3 = get_inv_ndx( 'O3' )
+    is_fixed_O3 = index_O3 > 0
+    if( .not. is_fixed_O3 ) index_O3 = get_spc_ndx( 'O3' )
+
+    ! ====================================================
+    ! make sure extraterrestrial flux values are available
+    ! ====================================================
+    call assert_msg( 170693514, has_spectrum, &
+                     "Solar irradiance spectrum needed for TUV-x" )
+
+    ! ============================================
+    ! set up diagnostic output of photolysis rates
+    ! ============================================
+    call initialize_diagnostics( tuvx_ptrs( 1 ) )
 
   end subroutine tuvx_init
 
 !================================================================================================
 
-  subroutine tuvx_get_photo_rates( ncol )
-!-----------------------------------------------------------------------
-!
-! Purpose: calculate and return photolysis rate constants
-!
-!-----------------------------------------------------------------------
+  !-----------------------------------------------------------------------
+  ! Updates TUV-x profiles that depend on time but not space
+  !-----------------------------------------------------------------------
+  subroutine tuvx_timestep_init( )
 
-    use spmd_utils,     only : main_task => masterprocid, &
-                               is_main_task => masterproc, &
-                               mpicom
-!-----------------------------------------------------------------------
-! Dummy arguments
-!-----------------------------------------------------------------------
+    integer :: i_thread
 
-    integer, intent(in) :: ncol ! Number of colums to calculated photolysis for
+    do i_thread = 1, size( tuvx_ptrs )
+    associate( tuvx => tuvx_ptrs( i_thread ) )
+      call set_et_flux( tuvx )
+    end associate
+    end do
 
-!-----------------------------------------------------------------------
-! Local variables
-!-----------------------------------------------------------------------
+  end subroutine tuvx_timestep_init
+
+!================================================================================================
+
+  !-----------------------------------------------------------------------
+  ! Calculates and returns photolysis rate constants
+  !-----------------------------------------------------------------------
+  subroutine tuvx_get_photo_rates( state, pbuf, ncol, lchnk, height_mid, &
+      height_int, temperature_mid, surface_temperature, fixed_species_conc, &
+      species_vmr, exo_column_conc, surface_albedo, solar_zenith_angle, &
+      earth_sun_distance )
+
+    use cam_logfile,      only : iulog        ! log info output unit
+    use chem_mods,        only : gas_pcnst, & ! number of non-fixed species
+                                 nfs,       & ! number of fixed species
+                                 nabscol      ! number of absorbing species (radiators)
+    use physics_types,    only : physics_state
+    use physics_buffer,   only : physics_buffer_desc
+    use ppgrid,           only : pcols        ! maximum number of columns
+    use shr_const_mod,    only : pi => shr_const_pi
+    use spmd_utils,       only : main_task => masterprocid, &
+                                 is_main_task => masterproc, &
+                                 mpicom
+
+    type(physics_state),       target,  intent(in)    :: state
+    type(physics_buffer_desc), pointer, intent(inout) :: pbuf(:)
+    integer,  intent(in) :: ncol                        ! number of active columns on this thread
+    integer,  intent(in) :: lchnk                       ! identifier for this thread
+    real(r8), intent(in) :: height_mid(pcols,pver)      ! height at mid-points (km)
+    real(r8), intent(in) :: height_int(pcols,pver+1)    ! height at interfaces (km)
+    real(r8), intent(in) :: temperature_mid(pcols,pver) ! midpoint temperature (K)
+    real(r8), intent(in) :: surface_temperature(pcols)  ! surface temperature (K)
+    real(r8), intent(in) :: fixed_species_conc(ncol,pver,max(1,nfs))    ! fixed species densities
+                                                                        !   (molecule cm-3)
+    real(r8), intent(in) :: species_vmr(ncol,pver,max(1,gas_pcnst))     ! species volume mixing
+                                                                        !   ratios (mol mol-1)
+    real(r8), intent(in) :: exo_column_conc(ncol,0:pver,max(1,nabscol)) ! above column densities
+                                                                        !   (molecule cm-3)
+    real(r8), intent(in) :: surface_albedo(pcols)       ! surface albedo (unitless)
+    real(r8), intent(in) :: solar_zenith_angle(ncol)    ! solar zenith angle (radians)
+    real(r8), intent(in) :: earth_sun_distance          ! Earth-Sun distance (AU)
+
     integer :: i_col                                ! column index
 
     if (.not.tuvx_active) return
 
     associate( tuvx => tuvx_ptrs( thread_id( ) ) )
+
+      ! ==============================================
+      ! get aerosol optical properties for all columns
+      ! ==============================================
+      call get_aerosol_optical_properties( tuvx, state, pbuf )
+
       do i_col = 1, ncol
-        ! Temporary fix SZA for development
-        call tuvx%core_%run( 45.0_r8, photolysis_rate_constants = tuvx%photo_rates_ )
+
+        ! ===================
+        ! update grid heights
+        ! ===================
+        call set_heights( tuvx, i_col, ncol, height_mid, height_int )
+
+        ! =======================================
+        ! set conditions for this column in TUV-x
+        ! =======================================
+        call set_temperatures( tuvx, i_col, temperature_mid, surface_temperature )
+        call set_surface_albedo( tuvx, i_col, surface_albedo )
+        call set_radiator_profiles( tuvx, i_col, ncol, fixed_species_conc, &
+                                    species_vmr, exo_column_conc )
+
+        ! ===================================================
+        ! Calculate photolysis rate constants for this column
+        ! ===================================================
+        call tuvx%core_%run( solar_zenith_angle = &
+                               solar_zenith_angle(i_col) * 180.0_r8 / pi, &
+                             earth_sun_distance = earth_sun_distance, &
+                             photolysis_rate_constants = &
+                               tuvx%photo_rates_(i_col,:,:) )
+
       end do
+
+      call output_diagnostics( tuvx, ncol, lchnk )
+
     end associate
 
   end subroutine tuvx_get_photo_rates
 
 !================================================================================================
 
+  !-----------------------------------------------------------------------
+  ! Cleans up memory associated with TUV-x calculators
+  !-----------------------------------------------------------------------
   subroutine tuvx_finalize( )
-!-----------------------------------------------------------------------
-!
-! Purpose: clean up memory associated with TUV-x calculators
-!
-!-----------------------------------------------------------------------
 
-!-----------------------------------------------------------------------
-! Local variables
-!-----------------------------------------------------------------------
     integer :: i_core
 
     if( allocated( tuvx_ptrs ) ) then
@@ -228,14 +403,18 @@ contains
   end subroutine tuvx_finalize
 
 !================================================================================================
+!================================================================================================
+!
+! Support functions
+!
+!================================================================================================
+!================================================================================================
 
+  !-----------------------------------------------------------------------
+  ! Returns the id of the current OpenMP thread, or 1 if not
+  !   using OpenMP (1 <= id <= max_threads())
+  !-----------------------------------------------------------------------
   integer function thread_id( )
-!-----------------------------------------------------------------------
-!
-! Purpose: returns the id of the current OpenMP thread, or 1 if not
-!          using OpenMP (1 <= id <= max_threads())
-!
-!-----------------------------------------------------------------------
 #ifdef _OPENMP
     use omp_lib,        only : omp_get_thread_num
 #endif
@@ -250,13 +429,11 @@ contains
 
 !================================================================================================
 
+  !-----------------------------------------------------------------------
+  ! Returns the number of threads available for calculations at
+  !   runtime
+  !-----------------------------------------------------------------------
   integer function max_threads( )
-!-----------------------------------------------------------------------
-!
-! Purpose: returns the number of threads available for calculations at
-!          runtime
-!
-!-----------------------------------------------------------------------
 #ifdef _OPENMP
     use omp_lib,        only : omp_get_max_threads
 #endif
@@ -271,14 +448,12 @@ contains
 
 !================================================================================================
 
+  !-----------------------------------------------------------------------
+  ! Prints initialization conditions to the log file
+  !-----------------------------------------------------------------------
   subroutine log_initialization( )
-!-----------------------------------------------------------------------
-!
-! Purpose: prints initialization conditions to the log file
-!
-!-----------------------------------------------------------------------
 
-    use cam_logfile,    only : iulog
+    use cam_logfile,    only : iulog ! log info output unit
     use musica_string,  only : to_char
     use spmd_utils,     only : main_task => masterprocid, &
                                is_main_task => masterproc
@@ -292,15 +467,713 @@ contains
 #endif
 #ifdef _OPENMP
       write(iulog,*) "  - with OpenMP support for "// &
-                     trim( to_char( max_threads( ) ) )//" threads, on thread" &
+                     trim( to_char( max_threads( ) ) )//" threads, on thread " &
                      //trim( to_char( thread_id( ) ) )
 #else
       write(iulog,*) "  - without OpenMP support"
 #endif
-      write(iulog,*) "  - with configuration file: '"//tuvx_config_path//"'"
+      write(iulog,*) "  - with configuration file: '"//trim( tuvx_config_path )//"'"
+      if( aerosol_exists ) then
+        write(iulog,*) "  - with on-line aerosols"
+      else
+        write(iulog,*) "  - without on-line aerosols"
+      end if
     end if
 
   end subroutine log_initialization
+
+!================================================================================================
+
+  !-----------------------------------------------------------------------
+  ! Registers fields for diagnostic output
+  !-----------------------------------------------------------------------
+  subroutine initialize_diagnostics( this )
+
+    use cam_history,   only : addfld
+    use musica_string, only : string_t
+
+    type(tuvx_ptr), intent(in) :: this
+
+    type(string_t), allocatable :: labels(:)
+    integer :: i_label
+
+    if( .not. enable_diagnostics ) then
+      allocate( diagnostics( 0 ) )
+      return
+    end if
+
+    ! ==========================================================
+    ! add output for specific photolysis reaction rate constants
+    ! ==========================================================
+    labels = this%core_%photolysis_reaction_labels( )
+    allocate( diagnostics( size( labels ) ) )
+    do i_label = 1, size( labels )
+      diagnostics( i_label )%name_  = trim( labels( i_label )%to_char( ) )
+      diagnostics( i_label )%index_ = i_label
+      call addfld( "tuvx_"//diagnostics( i_label )%name_, (/ 'lev' /), 'A', 'sec-1', &
+                   'photolysis rate constant' )
+    end do
+
+  end subroutine initialize_diagnostics
+
+!================================================================================================
+
+  !-----------------------------------------------------------------------
+  ! Outputs diagnostic information for the current time step
+  !-----------------------------------------------------------------------
+  subroutine output_diagnostics( this, ncol, lchnk )
+
+    use cam_history, only : outfld
+
+    type(tuvx_ptr), intent(in) :: this
+    integer,        intent(in) :: ncol  ! number of active columns on this thread
+    integer,        intent(in) :: lchnk ! identifier for this thread
+
+    integer :: i_diag
+
+    if( .not. enable_diagnostics ) return
+
+    do i_diag = 1, size( diagnostics )
+    associate( diag => diagnostics( i_diag ) )
+      call outfld( "tuvx_"//diag%name_, this%photo_rates_(:ncol,:,diag%index_), &
+                   ncol, lchnk )
+    end associate
+    end do
+
+  end subroutine output_diagnostics
+
+!================================================================================================
+
+  !-----------------------------------------------------------------------
+  ! Creates and loads a grid warehouse with grids that CAM will
+  !   update at runtime
+  !-----------------------------------------------------------------------
+  function get_cam_grids( wavelength_path ) result( grids )
+
+    use musica_assert,       only : assert_msg
+    use musica_config,       only : config_t
+    use tuvx_grid,           only : grid_t
+    use tuvx_grid_factory,   only : grid_builder
+    use tuvx_grid_from_host, only : grid_from_host_t
+    use tuvx_grid_warehouse, only : grid_warehouse_t
+
+    character(len=*),        intent(in) :: wavelength_path ! path to the wavelength data file
+    class(grid_warehouse_t), pointer    :: grids ! collection of grids to be updated by CAM
+
+    character(len=*), parameter :: my_name = "CAM grid creator"
+    class(grid_t),    pointer   :: host_grid
+    type(config_t)              :: config
+
+    grids => grid_warehouse_t( )
+
+    ! =========================
+    ! heights above the surface
+    ! =========================
+    host_grid => grid_from_host_t( "height", "km", pver )
+    call grids%add( host_grid )
+    deallocate( host_grid )
+
+    ! ============================================
+    ! wavelengths (will not be updated at runtime)
+    ! ============================================
+    call config%empty( )
+    call config%add( "type", "from csv file", my_name )
+    call config%add( "name", "wavelength", my_name )
+    call config%add( "units", "nm", my_name )
+    call config%add( "file path", wavelength_path, my_name )
+    host_grid => grid_builder( config )
+    call grids%add( host_grid )
+    deallocate( host_grid )
+
+  end function get_cam_grids
+
+!================================================================================================
+
+  !-----------------------------------------------------------------------
+  ! Creates and loads a profile warehouse with profiles that CAM
+  !   will update at runtime
+  !-----------------------------------------------------------------------
+  function get_cam_profiles( grids ) result( profiles )
+
+    use tuvx_grid,              only : grid_t
+    use tuvx_grid_warehouse,    only : grid_warehouse_t
+    use tuvx_profile_from_host, only : profile_from_host_t
+    use tuvx_profile_warehouse, only : profile_warehouse_t
+
+    class(grid_warehouse_t),    intent(in) :: grids       ! CAM grids used in TUV-x
+    class(profile_warehouse_t), pointer    :: profiles    ! collection of profiles to be updated by CAM
+
+    class(profile_from_host_t), pointer :: host_profile
+    class(grid_t),              pointer :: height, wavelength
+
+    profiles   => profile_warehouse_t( )
+    height     => grids%get_grid(     "height", "km" )
+    wavelength => grids%get_grid( "wavelength", "nm" )
+
+    ! ==================================
+    ! Temperature profile on height grid
+    ! ==================================
+    host_profile => profile_from_host_t( "temperature", "K", height%size( ) )
+    call profiles%add( host_profile )
+    deallocate( host_profile )
+
+    ! =================================
+    ! Surface albedo on wavelength grid
+    ! =================================
+    host_profile => profile_from_host_t( "surface albedo", "none", wavelength%size( ) )
+    call profiles%add( host_profile )
+    deallocate( host_profile )
+
+    ! ========================================
+    ! Extraterrestrial flux on wavelength grid
+    ! ========================================
+    host_profile => profile_from_host_t( "extraterrestrial flux", "photon cm-2 s-1", &
+                                         wavelength%size( ) )
+    call profiles%add( host_profile )
+    deallocate( host_profile )
+
+    ! ===========
+    ! Air profile
+    ! ===========
+    host_profile => profile_from_host_t( "air", "molecule cm-3", height%size( ) )
+    call profiles%add( host_profile )
+    deallocate( host_profile )
+
+    ! ==========
+    ! O3 profile
+    ! ==========
+    host_profile => profile_from_host_t( "O3", "molecule cm-3", height%size( ) )
+    call profiles%add( host_profile )
+    deallocate( host_profile )
+
+    ! ==========
+    ! O2 profile
+    ! ==========
+    host_profile => profile_from_host_t( "O2", "molecule cm-3", height%size( ) )
+    call profiles%add( host_profile )
+    deallocate( host_profile )
+
+    deallocate( height )
+    deallocate( wavelength )
+
+  end function get_cam_profiles
+
+!================================================================================================
+
+  !-----------------------------------------------------------------------
+  ! Creates and loads a radiator warehouse with radiators that CAM
+  !    update at runtime
+  !-----------------------------------------------------------------------
+  function get_cam_radiators( grids ) result( radiators )
+
+    use tuvx_grid,               only : grid_t
+    use tuvx_grid_warehouse,     only : grid_warehouse_t
+    use tuvx_radiator_from_host, only : radiator_from_host_t
+    use tuvx_radiator_warehouse, only : radiator_warehouse_t
+
+    type(grid_warehouse_t),      intent(in) :: grids     ! CAM grids used in TUV-x
+    class(radiator_warehouse_t), pointer    :: radiators ! collection of radiators to be updated by CAM
+
+    class(radiator_from_host_t), pointer :: host_radiator
+    class(grid_t), pointer :: height, wavelength
+
+    radiators  => radiator_warehouse_t( )
+    height     => grids%get_grid(     "height", "km" )
+    wavelength => grids%get_grid( "wavelength", "nm" )
+
+    ! ================
+    ! Aerosol radiator
+    ! ================
+    host_radiator => radiator_from_host_t( "aerosol", height, wavelength )
+    call radiators%add( host_radiator )
+    deallocate( host_radiator )
+
+    deallocate( height )
+    deallocate( wavelength )
+
+  end function get_cam_radiators
+
+!================================================================================================
+
+  !-----------------------------------------------------------------------
+  ! Forms connections between CAM and TUV-x data structures
+  !
+  ! - creates updaters for each grid and profile that CAM will use
+  !   to update TUV-x at each timestep.
+  ! - allocates working arrays when needed for interpolation between
+  !   grids
+  ! - initializes CAM modules if necessary and sets parameters needed
+  !   for runtime access of CAM data
+  !
+  !-----------------------------------------------------------------------
+  subroutine create_updaters( this, grids, profiles, radiators )
+
+    use modal_aer_opt,           only : modal_aer_opt_init
+    use ppgrid,                  only : pcols ! maximum number of columns
+    use rad_constituents,        only : rad_cnst_get_info
+    use musica_assert,           only : assert
+    use tuvx_grid,               only : grid_t
+    use tuvx_grid_from_host,     only : grid_updater_t
+    use tuvx_grid_warehouse,     only : grid_warehouse_t
+    use tuvx_profile,            only : profile_t
+    use tuvx_profile_from_host,  only : profile_updater_t
+    use tuvx_profile_warehouse,  only : profile_warehouse_t
+    use tuvx_radiator,           only : radiator_t
+    use tuvx_radiator_from_host, only : radiator_updater_t
+    use tuvx_radiator_warehouse, only : radiator_warehouse_t
+
+    class(tuvx_ptr),             intent(inout) :: this
+    class(grid_warehouse_t),     intent(in)    :: grids
+    class(profile_warehouse_t),  intent(in)    :: profiles
+    class(radiator_warehouse_t), intent(in)    :: radiators
+
+    class(grid_t),     pointer :: height, wavelength
+    class(profile_t),  pointer :: host_profile
+    class(radiator_t), pointer :: host_radiator
+    integer                    :: n_modes
+    logical                    :: found
+
+    ! =============
+    ! Grid updaters
+    ! =============
+
+    height => grids%get_grid( "height", "km" )
+    this%grids_( GRID_INDEX_HEIGHT ) = this%core_%get_updater( height, found )
+    call assert( 213798815, found )
+
+    ! ============================================
+    ! wavelength grid cannot be updated at runtime
+    ! ============================================
+    wavelength => grids%get_grid( "wavelength", "nm" )
+    allocate( this%wavelength_edges_(      wavelength%size( ) + 1 ) )
+    allocate( this%wavelength_values_(     wavelength%size( ) + 1 ) )
+    allocate( this%wavelength_mid_values_( wavelength%size( )     ) )
+    this%wavelength_edges_(:) = wavelength%edge_(:)
+
+    ! ==============================
+    ! optical property working array
+    ! ==============================
+    allocate( this%optical_depth_(            pcols, height%size( ), wavelength%size( ) ) )
+    allocate( this%single_scattering_albedo_( pcols, height%size( ), wavelength%size( ) ) )
+    allocate( this%asymmetry_factor_(         pcols, height%size( ), wavelength%size( ) ) )
+
+    deallocate( height )
+    deallocate( wavelength )
+
+    ! ================
+    ! Profile updaters
+    ! ================
+
+    host_profile => profiles%get_profile( "temperature", "K" )
+    this%profiles_( PROFILE_INDEX_TEMPERATURE ) = this%core_%get_updater( host_profile, found )
+    call assert( 418735162, found )
+    deallocate( host_profile )
+
+    host_profile => profiles%get_profile( "surface albedo", "none" )
+    this%profiles_( PROFILE_INDEX_ALBEDO ) = this%core_%get_updater( host_profile, found )
+    call assert( 720785186, found )
+    deallocate( host_profile )
+
+    host_profile => profiles%get_profile( "extraterrestrial flux", "photon cm-2 s-1" )
+    this%profiles_( PROFILE_INDEX_ET_FLUX ) = this%core_%get_updater( host_profile, found )
+    call assert( 550628282, found )
+    deallocate( host_profile )
+
+    host_profile => profiles%get_profile( "air", "molecule cm-3" )
+    this%profiles_( PROFILE_INDEX_AIR ) = this%core_%get_updater( host_profile, found )
+    call assert( 380471378, found )
+    deallocate( host_profile )
+
+    host_profile => profiles%get_profile( "O3", "molecule cm-3" )
+    this%profiles_( PROFILE_INDEX_O3 ) = this%core_%get_updater( host_profile, found )
+    call assert( 210314474, found )
+    deallocate( host_profile )
+
+    host_profile => profiles%get_profile( "O2", "molecule cm-3" )
+    this%profiles_( PROFILE_INDEX_O2 ) = this%core_%get_updater( host_profile, found )
+    call assert( 105165970, found )
+    deallocate( host_profile )
+
+    ! =================
+    ! radiator updaters
+    ! =================
+
+    ! ====================================================================
+    ! determine if aerosol optical properties will be available, and if so
+    ! intialize the aerosol optics module
+    ! ====================================================================
+    call rad_cnst_get_info( 0, nmodes = n_modes )
+    if( n_modes > 0 .and. .not. aerosol_exists ) then
+      aerosol_exists = .true.
+      call modal_aer_opt_init( )
+    else
+      ! TODO are there default aerosol optical properties that should be used
+      !      when an aerosol module is not available?
+      this%optical_depth_(:,:,:)            = 0.0_r8
+      this%single_scattering_albedo_(:,:,:) = 0.0_r8
+      this%asymmetry_factor_(:,:,:)         = 0.0_r8
+    end if
+    host_radiator => radiators%get_radiator( "aerosol" )
+    this%radiators_( RADIATOR_INDEX_AEROSOL ) = &
+        this%core_%get_updater( host_radiator, found )
+    call assert( 675200430, found )
+    nullify( host_radiator )
+
+  end subroutine create_updaters
+
+!================================================================================================
+
+  !-----------------------------------------------------------------------
+  ! Sets the height values in TUV-x for the given column
+  !
+  ! NOTE: This function must be called before updating any profile data.
+  !
+  !  CAM to TUV-x height grid mapping
+  !
+  !  TUV-x heights are "bottom-up" and require atmospheric constituent
+  !  concentrations at interfaces. Therefore, CAM mid-points are used as
+  !  TUV-x grid interfaces, with an additional layer introduced between
+  !  the surface and the lowest CAM mid-point.
+  !
+  !  ---- (interface)  ===== (mid-point)
+  !
+  !        CAM                                  TUV-x
+  ! ------(top)------ i_int = 1                              (exo values)
+  ! ================= i_mid = 1           -------(top)------ i_int = pver + 1
+  ! ----------------- i_int = 2           ================== i_mid = pver
+  !                                       ------------------ i_int = pver
+  !        ||
+  !        ||                                     ||
+  !                                               ||
+  ! ----------------- i_int = pver
+  ! ================= i_imd = pver        ------------------ i_int = 2
+  !                                       ================== i_mid = 1
+  ! -----(ground)---- i_int = pver+1      -----(ground)----- i_int = 1
+  !
+  !-----------------------------------------------------------------------
+  subroutine set_heights( this, i_col, ncol, height_mid, height_int )
+
+    use ppgrid,         only : pcols ! maximum number of columns
+
+    class(tuvx_ptr), intent(inout) :: this                     ! TUV-x calculator
+    integer,         intent(in)    :: i_col                    ! column to set conditions for
+    integer,         intent(in)    :: ncol                     ! number of colums to calculated photolysis for
+    real(r8),        intent(in)    :: height_mid(pcols,pver)   ! height above the surface at mid-points (km)
+    real(r8),        intent(in)    :: height_int(pcols,pver+1) ! height above the surface at interfaces (km)
+
+    integer :: i_level
+    real(r8) :: edges(pver+1)
+    real(r8) :: mid_points(pver)
+
+    edges(1) = 0.0_r8
+    edges(2:pver+1) = height_mid(i_col,pver:1:-1)
+    mid_points(1) = height_mid(i_col,pver) * 0.5_r8
+    mid_points(2:pver) = height_int(i_col,pver:2:-1)
+    call this%grids_( GRID_INDEX_HEIGHT )%update( edges = edges, mid_points = mid_points )
+    this%height_delta_(1:pver) = edges(2:pver+1) - edges(1:pver)
+
+  end subroutine set_heights
+
+!================================================================================================
+
+  !-----------------------------------------------------------------------
+  ! Sets the temperatures in TUV-x for the given column
+  !
+  ! See description of `set_heights` for CAM <-> TUV-x vertical grid
+  ! mapping.
+  !-----------------------------------------------------------------------
+  subroutine set_temperatures( this, i_col, temperature_mid, surface_temperature )
+
+    use ppgrid,         only : pcols ! maximum number of columns
+
+    class(tuvx_ptr), intent(inout) :: this                        ! TUV-x calculator
+    integer,         intent(in)    :: i_col                       ! column to set conditions for
+    real(r8),        intent(in)    :: temperature_mid(pcols,pver) ! midpoint temperature (K)
+    real(r8),        intent(in)    :: surface_temperature(pcols)  ! surface temperature (K)
+
+    real(r8) :: edges(pver+1)
+
+    edges(1) = surface_temperature(i_col)
+    edges(2:pver+1) = temperature_mid(i_col,pver:1:-1)
+    call this%profiles_( PROFILE_INDEX_TEMPERATURE )%update( edge_values = edges )
+
+  end subroutine set_temperatures
+
+!================================================================================================
+
+  !-----------------------------------------------------------------------
+  ! Sets the surface albedo in TUV-x for the given column
+  !
+  ! CAM uses a single value for surface albedo at all wavelengths
+  !-----------------------------------------------------------------------
+  subroutine set_surface_albedo( this, i_col, surface_albedo )
+
+    use ppgrid,         only : pcols ! maximum number of columns
+
+    class(tuvx_ptr), intent(inout) :: this                  ! TUV-x calculator
+    integer,         intent(in)    :: i_col                 ! column to set conditions for
+    real(r8),        intent(in)    :: surface_albedo(pcols) ! surface albedo (unitless)
+
+    this%wavelength_values_(:) = surface_albedo( i_col )
+    call this%profiles_( PROFILE_INDEX_ALBEDO )%update( &
+        edge_values = this%wavelength_values_(:) )
+
+  end subroutine set_surface_albedo
+
+!================================================================================================
+
+  !-----------------------------------------------------------------------
+  ! Sets the extraterrestrial flux in TUV-x for the given column
+  !
+  ! Extraterrestrial flux is read from data files and interpolated to the
+  ! TUV-x wavelength grid. CAM ET Flux values are multiplied by the
+  ! width of the wavelength bins to get the TUV-x units of photon cm-2 s-1
+  !
+  ! NOTE: TUV-x only uses mid-point values for ET Flux
+  !-----------------------------------------------------------------------
+  subroutine set_et_flux( this )
+
+    use mo_util,          only : rebin
+    use solar_irrad_data, only : nbins,   & ! number of wavelength bins
+                                 we,      & ! wavelength bin edges
+                                 sol_etf    ! extraterrestrial flux
+                                            !   (photon cm-2 nm-1 s-1)
+
+    class(tuvx_ptr), intent(inout) :: this  ! TUV-x calculator
+    real(r8) :: et_flux_orig(nbins)
+    integer  :: n_tuvx_bins
+
+    et_flux_orig(:) = sol_etf(:) * ( we(2:nbins+1) - we(1:nbins) )
+    n_tuvx_bins = size(this%wavelength_mid_values_)
+    call rebin( nbins, n_tuvx_bins, we, this%wavelength_edges_, et_flux_orig, &
+                this%wavelength_mid_values_ )
+    this%wavelength_values_(1)  = this%wavelength_mid_values_(1)
+    this%wavelength_values_(2:n_tuvx_bins+1) = this%wavelength_mid_values_(1:n_tuvx_bins)
+    call this%profiles_( PROFILE_INDEX_ET_FLUX )%update( &
+            mid_point_values = this%wavelength_mid_values_, &
+            edge_values      = this%wavelength_values_)
+
+  end subroutine set_et_flux
+
+!================================================================================================
+
+  !-----------------------------------------------------------------------
+  ! Sets the profiles of optically active atmospheric constituents
+  !   in TUV-x for the given column
+  !
+  ! See `set_height` for a description of the CAM <-> TUV-x vertical grid
+  ! mapping.
+  !
+  ! Above layer densities are calculated using a scale height for air
+  ! and pre-calculated values for O2 and O3
+  !-----------------------------------------------------------------------
+  subroutine set_radiator_profiles( this, i_col, ncol, fixed_species_conc, species_vmr, &
+                                    exo_column_conc )
+
+    use chem_mods, only : gas_pcnst, & ! number of non-fixed species
+                          nfs,       & ! number of fixed species
+                          nabscol,   & ! number of absorbing species (radiators)
+                          indexm       ! index for air density in fixed species array
+
+    class(tuvx_ptr), intent(inout) :: this  ! TUV-x calculator
+    integer,         intent(in)    :: i_col ! column to set conditions for
+    integer,         intent(in)    :: ncol  ! number of columns
+    real(r8),        intent(in)    :: fixed_species_conc(ncol,pver,max(1,nfs))    ! fixed species densities
+                                                                                  !   (molecule cm-3)
+    real(r8),        intent(in)    :: species_vmr(ncol,pver,max(1,gas_pcnst))     ! species volume mixing
+                                                                                  !   ratios (mol mol-1)
+    real(r8),        intent(in)    :: exo_column_conc(ncol,0:pver,max(1,nabscol)) ! above column densities
+                                                                                  !   (molecule cm-3)
+
+    real(r8) :: edges(pver+1), densities(pver)
+    real(r8) :: exo_val
+    real(r8), parameter :: km2cm = 1.0e5 ! conversion from km to cm
+
+    ! ===========
+    ! air profile
+    ! ===========
+    edges(1) = fixed_species_conc(i_col,pver,indexm)
+    edges(2:pver+1) = fixed_species_conc(i_col,pver:1:-1,indexm)
+    densities(1:pver) = this%height_delta_(1:pver) * km2cm * &
+                        sqrt(edges(1:pver)) + sqrt(edges(2:pver+1))
+    call this%profiles_( PROFILE_INDEX_AIR )%update( &
+        edge_values = edges, layer_densities = densities, &
+        scale_height = 8.01_r8 ) ! scale height in [km]
+
+    ! ==========
+    ! O2 profile
+    ! ==========
+    if( is_fixed_O2 ) then
+      edges(1) = fixed_species_conc(i_col,pver,index_O2)
+      edges(2:pver+1) = fixed_species_conc(i_col,pver:1:-1,index_O2)
+    else if( index_O2 > 0 ) then
+      edges(1) = species_vmr(i_col,pver,index_O2) * &
+                 fixed_species_conc(i_col,pver,indexm)
+      edges(2:pver+1) = species_vmr(i_col,pver:1:-1,index_O2) * &
+                        fixed_species_conc(i_col,pver:1:-1,indexm)
+    else
+      edges(:) = 0.0_r8
+    end if
+    exo_val = exo_column_conc(i_col,0,1)
+    densities(1:pver) = this%height_delta_(1:pver) * km2cm * &
+                        sqrt(edges(1:pver)) + sqrt(edges(2:pver+1))
+    call this%profiles_( PROFILE_INDEX_O2 )%update( &
+        edge_values = edges, layer_densities = densities, &
+        exo_density = exo_val )
+
+    ! ==========
+    ! O3 profile
+    ! ==========
+    if( is_fixed_O3 ) then
+      edges(1) = fixed_species_conc(i_col,pver,index_O3)
+      edges(2:pver+1) = fixed_species_conc(i_col,pver:1:-1,index_O3)
+    else if( index_O3 > 0 ) then
+      edges(1) = species_vmr(i_col,pver,index_O3) * &
+                 fixed_species_conc(i_col,pver,indexm)
+      edges(2:pver+1) = species_vmr(i_col,pver:1:-1,index_O3) * &
+                        fixed_species_conc(i_col,pver:1:-1,indexm)
+    else
+      edges(:) = 0.0_r8
+    end if
+    if( nabscol >= 2 ) then
+      exo_val = exo_column_conc(i_col,0,2)
+    else
+      exo_val = 0.0_r8
+    end if
+    densities(1:pver) = this%height_delta_(1:pver) * km2cm * &
+                        sqrt(edges(1:pver)) + sqrt(edges(2:pver+1))
+    call this%profiles_( PROFILE_INDEX_O3 )%update( &
+        edge_values = edges, layer_densities = densities, &
+        exo_density = exo_val )
+
+    ! ===============
+    ! aerosol profile
+    ! ===============
+    call this%radiators_( RADIATOR_INDEX_AEROSOL )%update( &
+        optical_depths            = this%optical_depth_(i_col,:,:), &
+        single_scattering_albedos = this%single_scattering_albedo_(i_col,:,:), &
+        asymmetry_factors         = this%asymmetry_factor_(i_col,:,:) )
+
+  end subroutine set_radiator_profiles
+
+!================================================================================================
+
+  !-----------------------------------------------------------------------
+  ! Updates working arrays of aerosol optical properties for all
+  !   columns from the aerosol package
+  !-----------------------------------------------------------------------
+  subroutine get_aerosol_optical_properties( this, state, pbuf )
+
+    use aer_rad_props,    only : aer_rad_props_sw
+    use mo_util,          only : rebin
+    use physics_types,    only : physics_state
+    use physics_buffer,   only : physics_buffer_desc
+    use ppgrid,           only : pcols          ! maximum number of columns
+    use radconstants,     only : nswbands, &    ! Number of CAM shortwave radiation bands
+                                 get_sw_spectral_boundaries
+
+    class(tuvx_ptr),                    intent(inout) :: this  ! TUV-x calculator
+    type(physics_state),       target,  intent(in)    :: state
+    type(physics_buffer_desc), pointer, intent(inout) :: pbuf(:)
+
+    real(r8) :: wavelength_edges(nswbands+1)       ! CAM radiation wavelength grid edges [nm]
+    real(r8) :: aer_tau    (pcols,0:pver,nswbands) ! aerosol extinction optical depth
+    real(r8) :: aer_tau_w  (pcols,0:pver,nswbands) ! aerosol single scattering albedo * tau
+    real(r8) :: aer_tau_w_g(pcols,0:pver,nswbands) ! aerosol assymetry parameter * w * tau
+    real(r8) :: aer_tau_w_f(pcols,0:pver,nswbands) ! aerosol forward scattered fraction * w * tau
+    real(r8) :: low_bound(nswbands)  ! lower bound of CAM wavenumber bins
+    real(r8) :: high_bound(nswbands) ! upper bound of CAM wavenumber bins
+    integer  :: n_night              ! number of night columns
+    integer  :: idx_night(pcols)     ! indices of night columns
+    integer  :: n_tuvx_bins          ! number of TUV-x wavelength bins
+    integer  :: i_col, i_level       ! column and level indices
+
+    ! ============================================
+    ! do nothing if no aerosol module is available
+    ! ============================================
+    if( .not. aerosol_exists ) return
+
+    ! TODO just assume all daylight columns for now
+    !      can adjust later if necessary
+    n_night = 0
+    idx_night(:) = 0
+
+    ! ===========================================================
+    ! get aerosol optical properties on native CAM radiation grid
+    ! ===========================================================
+    call aer_rad_props_sw( 0, state, pbuf, n_night, idx_night, &
+                           aer_tau, aer_tau_w, aer_tau_w_g, aer_tau_w_f )
+
+    ! =========================================================================
+    ! Convert CAM wavenumber grid to wavelength grid and re-order optics arrays
+    ! NOTE: CAM wavenumber grid is continuous and increasing, except that the
+    !       last bin should be moved to the just before the first bin (!?!)
+    ! =========================================================================
+    call get_sw_spectral_boundaries( low_bound, high_bound, 'nm' )
+    wavelength_edges(1:nswbands-1) = high_bound(nswbands-1:1:-1)
+    wavelength_edges(nswbands    ) = high_bound(nswbands       )
+    wavelength_edges(nswbands+1  ) = low_bound( nswbands       )
+    call reorder_optics_array(     aer_tau )
+    call reorder_optics_array(   aer_tau_w )
+    call reorder_optics_array( aer_tau_w_g )
+
+    ! =============================================================
+    ! regrid optical properties to TUV-x wavelength and height grid
+    ! =============================================================
+    ! TODO is this the correct regridding scheme to use?
+    n_tuvx_bins = size(this%wavelength_mid_values_)
+    do i_col = 1, pcols
+      do i_level = 1, pver
+        call rebin(nswbands, n_tuvx_bins, wavelength_edges, this%wavelength_edges_, &
+                   aer_tau(i_col,pver-i_level,:), this%optical_depth_(i_col,i_level,:))
+        call rebin(nswbands, n_tuvx_bins, wavelength_edges, this%wavelength_edges_, &
+                   aer_tau_w(i_col,pver-i_level,:), this%single_scattering_albedo_(i_col,i_level,:))
+        call rebin(nswbands, n_tuvx_bins, wavelength_edges, this%wavelength_edges_, &
+                   aer_tau_w_g(i_col,pver-i_level,:), this%asymmetry_factor_(i_col,i_level,:))
+      end do
+    end do
+
+    ! ================================================================
+    ! back-calculate the single scattering albedo and asymmetry factor
+    ! ================================================================
+    associate( tau   => this%optical_depth_, &
+               omega => this%single_scattering_albedo_, &
+               g     => this%asymmetry_factor_ )
+      where(omega > 0.0_r8)
+        g = g / omega
+      elsewhere
+        g = 0.0_r8
+      end where
+      where(tau > 0.0_r8)
+        omega = omega / tau
+      elsewhere
+        omega = 0.0_r8
+      end where
+    end associate
+
+  end subroutine get_aerosol_optical_properties
+
+!================================================================================================
+
+  !-----------------------------------------------------------------------
+  ! Reorders elements of an optical property array for conversion
+  !   from wavenumber to wavelength grid and out-of-order final
+  !   element in CAM wavenumber grid
+  !-----------------------------------------------------------------------
+  subroutine reorder_optics_array( optics_array )
+
+    use ppgrid,           only : pcols    ! maximum number of columns
+    use radconstants,     only : nswbands ! Number of CAM shortwave radiation bands
+
+    real(r8), intent(inout) :: optics_array(pcols,0:pver,nswbands) ! optics array to reorder
+
+    real(r8) :: working(pcols,0:pver,nswbands) ! working array
+
+    working(:,:,:) = optics_array(:,:,:)
+    optics_array(:,:,1:nswbands-1) = working(:,:,nswbands-1:1:-1)
+
+  end subroutine reorder_optics_array
+
 !================================================================================================
 
 end module mo_tuvx
