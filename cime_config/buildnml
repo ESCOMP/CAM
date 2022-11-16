@@ -208,6 +208,8 @@ def buildnml(case, caseroot, compname):
                      os.path.join(rundir, "tuvx_BASIC.json"))
         shutil.copy2(os.path.join(srcroot, "cime_config", "tuvx_MOZART.json"), \
                      os.path.join(rundir, "tuvx_MOZART.json"))
+        shutil.copy2(os.path.join(srcroot, "cime_config", "tuvx_MOZART_TS1.json"), \
+                     os.path.join(rundir, "tuvx_MOZART_TS1.json"))
 
 ###############################################################################
 def _main_func():

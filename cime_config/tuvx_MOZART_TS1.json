@@ -1,0 +1,1193 @@
+{
+   "__description": "TUV-x configuration for the MOZART-TS1 chemical mechanism",
+   "O2 absorption" : {
+     "cross section parameters file": "data/cross_sections/O2_parameters.txt"
+   },
+   "grids": {
+   },
+   "profiles": {
+   },
+   "radiative transfer": {
+      "solver": {
+         "type": "delta eddington"
+      },
+      "cross sections": [
+         {
+            "name": "air",
+            "type": "air"
+         },
+         {
+            "name": "O3",
+            "netcdf files": ["data/cross_sections/O3_1.nc","data/cross_sections/O3_2.nc","data/cross_sections/O3_3.nc","data/cross_sections/O3_4.nc"],
+            "type": "O3"
+         },
+         {
+            "name": "O2",
+            "netcdf files": ["data/cross_sections/O2_1.nc"],
+            "type": "base",
+            "lower extrapolation": { "type": "boundary" }
+         }
+      ],
+      "radiators": [
+         {
+            "name": "air",
+            "type": "base",
+            "cross section": "air",
+            "vertical profile": "air",
+            "vertical profile units": "molecule cm-3"
+         },
+         {
+            "name": "O2",
+            "type": "base",
+            "cross section": "O2",
+            "vertical profile": "O2",
+            "vertical profile units": "molecule cm-3"
+         },
+         {
+            "name": "O3",
+            "type": "base",
+            "cross section": "O3",
+            "vertical profile": "O3",
+            "vertical profile units": "molecule cm-3"
+         }
+      ]
+   },
+   "photolysis": {
+      "reactions": [
+         {
+            "name": "jo2_b",
+            "__reaction": "O2 + hv -> O + O",
+            "cross section": {
+               "netcdf files": ["data/cross_sections/O2_1.nc"],
+               "type": "base",
+               "lower extrapolation": { "type": "boundary" }
+            },
+            "quantum yield": {
+               "type": "base",
+               "constant value": 1.0
+            }
+         },
+         {
+            "name": "jo3_a",
+            "__reaction": "O3 + hv -> O2 + O(1D)",
+            "cross section": {
+               "netcdf files": ["data/cross_sections/O3_1.nc","data/cross_sections/O3_2.nc","data/cross_sections/O3_3.nc","data/cross_sections/O3_4.nc"],
+               "type": "O3"
+            },
+            "quantum yield": {
+               "type": "O3+hv->O2+O(1D)"
+            }
+         },
+         {
+            "name": "jo3_b",
+            "__reaction": "O3 + hv -> O2 + O(3P)",
+            "cross section": {
+               "netcdf files": ["data/cross_sections/O3_1.nc","data/cross_sections/O3_2.nc","data/cross_sections/O3_3.nc","data/cross_sections/O3_4.nc"],
+               "type": "O3"
+            },
+            "quantum yield": {
+               "type": "O3+hv->O2+O(3P)"
+            }
+         },
+         {
+            "name": "jn2o",
+            "__reaction": "N2O + hv -> N2 + O(1D)",
+            "cross section": {
+               "type": "N2O+hv->N2+O(1D)"
+            },
+            "quantum yield": {
+               "type": "base",
+               "constant value": 1.0
+            }
+         },
+         {
+            "name": "jno2",
+            "__reaction": "NO2 + hv -> NO + O(3P)",
+            "cross section": {
+               "netcdf files": ["data/cross_sections/NO2_1.nc"],
+               "type": "NO2 tint"
+            },
+            "quantum yield": {
+               "netcdf files": ["data/quantum_yields/NO2_1.nc"],
+               "type": "NO2 tint",
+               "lower extrapolation": { "type": "boundary" }
+            }
+         },
+         {
+            "name": "jn2o5_a",
+            "__reaction": "N2O5 + hv -> NO2 + NO3",
+            "cross section": {
+               "netcdf files": [
+                  "data/cross_sections/N2O5_1.nc",
+                  "data/cross_sections/N2O5_2.nc"
+               ],
+               "type": "N2O5+hv->NO2+NO3"
+            },
+            "quantum yield": {
+               "type": "base",
+               "constant value": 1.0
+            }
+         },
+         {
+            "name": "jhno3",
+            "__reaction": "HNO3 + hv -> OH + NO2",
+            "cross section": {
+               "netcdf files": [
+                  "data/cross_sections/HNO3_1.nc"
+               ],
+               "type": "HNO3+hv->OH+NO2"
+            },
+            "quantum yield": {
+               "type": "base",
+               "constant value": 1.0
+            }
+         },
+         {
+            "name": "jno3_a",
+            "__reaction": "NO3 + hv -> NO2 + O(3P)",
+            "cross section": {
+               "netcdf files": [
+                  "data/cross_sections/NO3_1.nc"
+               ],
+               "type": "base"
+            },
+            "quantum yield": {
+               "netcdf files": [
+                  "data/quantum_yields/NO3-NO2+O(3P)_1.nc"
+               ],
+               "type": "tint",
+               "lower extrapolation": {
+                  "type": "constant",
+                  "value": 1.0
+               }
+            }
+         },
+         {
+            "name": "jno3_b",
+            "__reaction": "NO3 + hv -> NO + O2",
+            "cross section": {
+               "netcdf files": [
+                  "data/cross_sections/NO3_1.nc"
+               ],
+               "type": "base"
+            },
+            "quantum yield": {
+               "netcdf files": [
+                  "data/quantum_yields/NO3-NO+O2_1.nc"
+               ],
+               "type": "tint"
+            }
+         },
+         {
+            "name": "jch3ooh",
+            "__reaction": "CH3OOH + hv -> CH3O + OH",
+            "cross section": {
+               "netcdf files": [
+                  "data/cross_sections/CH3OOH_1.nc"
+               ],
+               "type": "base"
+            },
+            "quantum yield": {
+               "type": "base",
+               "constant value": 1.0
+            }
+         },
+         {
+            "name": "jch2o_a",
+            "__reaction": "CH2O + hv -> H + HCO",
+            "cross section": {
+               "netcdf files": [
+                  "data/cross_sections/CH2O_1.nc"
+               ],
+               "type": "CH2O"
+            },
+            "quantum yield": {
+               "netcdf files": [
+                  "data/quantum_yields/CH2O_1.nc"
+               ],
+               "type": "base",
+               "lower extrapolation": {
+                  "type": "boundary"
+               }
+            }
+         },
+         {
+            "name": "jch2o_b",
+            "__reaction": "CH2O + hv -> H2 + CO",
+            "cross section": {
+               "netcdf files": [
+                  "data/cross_sections/CH2O_1.nc"
+               ],
+               "type": "CH2O"
+            },
+            "quantum yield": {
+               "netcdf files": [
+                  "data/quantum_yields/CH2O_1.nc"
+               ],
+               "type": "CH2O",
+               "lower extrapolation": {
+                  "type": "boundary"
+               }
+            }
+         },
+         {
+            "name": "jh2o2",
+            "__reaction": "H2O2 + hv -> OH + OH",
+            "cross section": {
+               "netcdf files": [
+                  "data/cross_sections/H2O2_1.nc"
+               ],
+               "type": "H2O2+hv->OH+OH"
+            },
+            "quantum yield": {
+               "type": "base",
+               "constant value": 1.0
+            }
+         },
+         {
+            "name": "jch3cho",
+            "__reaction": "CH3CHO + hv -> CH3 + HCO",
+            "cross section": {
+               "netcdf files": [
+                  "data/cross_sections/CH3CHO_1.nc"
+               ],
+               "type": "base"
+            },
+            "quantum yield": {
+               "netcdf files": [
+                  "data/quantum_yields/CH3CHO_1.nc"
+               ],
+               "type": "CH3CHO+hv->CH3+HCO"
+            }
+         },
+         {
+            "name": "jpan",
+            "__reaction": "PAN + hv -> 0.6*CH3CO3 + 0.6*NO2 + 0.4*CH3O2 + 0.4*NO3 + 0.4*CO2",
+            "cross section": {
+               "netcdf files": [
+                  "data/cross_sections/PAN_1.nc"
+               ],
+               "type": "CH3ONO2+hv->CH3O+NO2"
+            },
+            "quantum yield": {
+               "type": "base",
+               "constant value": 1.0
+            }
+         },
+         {
+            "name": "jmvk",
+            "__reaction": "MVK + hv -> 0.7*C3H6 + 0.7*CO + 0.3*CH3O2 + 0.3*CH3CO3",
+            "cross section": {
+               "netcdf files": [
+                  "data/cross_sections/MVK_1.nc"
+               ],
+               "type": "base"
+            },
+            "quantum yield": {
+               "type": "MVK+hv->Products"
+            }
+         },
+         {
+            "name": "jacet",
+            "__reaction": "CH3COCH3 + hv -> CH3CO + CH3",
+            "cross section": {
+               "netcdf files": ["data/cross_sections/CH3COCH3_1.nc"],
+               "type": "CH3COCH3+hv->CH3CO+CH3"
+            },
+            "quantum yield": {
+               "type": "CH3COCH3+hv->CH3CO+CH3"
+            }
+         },
+         {
+            "name": "jmgly",
+            "__reaction": "CH3COCHO + hv -> CH3CO3 + CO + HO2",
+            "cross section": {
+               "netcdf files": [
+                  "data/cross_sections/CH3COCHO_1.nc"
+               ],
+               "type": "base"
+            },
+            "quantum yield": {
+               "type": "CH3COCHO+hv->CH3CO+HCO"
+            }
+         },
+         {
+            "name": "jglyald",
+            "__reaction": "GLYALD + hv -> 2*HO2 + CO + CH2O",
+            "cross section": {
+               "netcdf files": [
+                  "data/cross_sections/HOCH2CHO_1.nc"
+               ],
+               "type": "base"
+            },
+            "quantum yield": {
+               "type": "base",
+               "constant value": 1.0
+            }
+         },
+         {
+            "name": "jglyoxal",
+            "__reaction": "GLYOXAL + hv -> 2*CO + 2*HO2",
+            "__comments": "NOTE the products of this reaction don't exactly match",
+            "cross section": {
+               "netcdf files": [
+                  "data/cross_sections/CHOCHO_1.nc"
+               ],
+               "type": "base"
+            },
+            "quantum yield": {
+               "netcdf files": [
+                  "data/quantum_yields/CHOCHO-H2_CO_CO_1.nc"
+               ],
+               "type": "base",
+               "lower extrapolation": {
+                  "type": "boundary"
+               }
+            }
+         },
+         {
+            "name": "jbrcl",
+            "__reaction": "BrCl + hv -> Br + Cl",
+            "cross section": {
+               "netcdf files": [
+                  "data/cross_sections/BrCl_1.nc"
+               ],
+               "type": "base"
+            },
+            "quantum yield": {
+               "type": "base",
+               "constant value": 1.0
+            }
+         },
+         {
+            "name": "jbro",
+            "__reaction": "BrO + hv -> Br + O",
+            "cross section": {
+               "netcdf files": [
+                  "data/cross_sections/BrO_1.nc"
+               ],
+               "type": "BrO+hv->Br+O"
+            },
+            "quantum yield": {
+               "type": "base",
+               "constant value": 1.0
+            }
+         },
+         {
+            "name": "jbrono2_a",
+            "__reaction": "BrONO2 + hv -> Br + NO3",
+            "cross section": {
+               "netcdf files": [
+                  "data/cross_sections/BrONO2_1.nc"
+               ],
+               "type": "base"
+            },
+            "quantum yield": {
+               "type": "base",
+               "constant value": 0.85
+            }
+         },
+         {
+            "name": "jbrono2_b",
+            "__reaction": "BrONO2 + hv -> BrO + NO2",
+            "cross section": {
+               "netcdf files": [
+                  "data/cross_sections/BrONO2_1.nc"
+               ],
+               "type": "base"
+            },
+            "quantum yield": {
+               "type": "base",
+               "constant value": 0.15
+            }
+         },
+         {
+            "name": "jccl4",
+            "__reaction": "CCl4 + hv -> Products",
+            "cross section": {
+               "netcdf files": [
+                  "data/cross_sections/CCl4_1.nc"
+               ],
+               "type": "CCl4+hv->Products"
+            },
+            "quantum yield": {
+               "type": "base",
+               "constant value": 1.0
+            }
+         },
+         {
+            "name": "jcf2clbr",
+            "__reaction": "CF2BrCl + hv -> Products",
+            "cross section": {
+               "netcdf files": [
+                  "data/cross_sections/CF2BrCl_1.nc"
+               ],
+               "type": "base"
+            },
+            "quantum yield": {
+               "type": "base",
+               "constant value": 1.0
+            }
+         },
+         {
+            "name": "jcf3br",
+            "__reaction": "CF3Br + hv -> Products",
+            "cross section": {
+               "netcdf files": [
+                  "data/cross_sections/CF3Br_1.nc"
+               ],
+               "type": "base"
+            },
+            "quantum yield": {
+               "type": "base",
+               "constant value": 1.0
+            }
+         },
+         {
+            "name": "jcfcl3",
+            "__reaction": "CCl3F + hv -> Products",
+            "cross section": {
+               "netcdf files": [
+                  "data/cross_sections/CFC-11_1.nc"
+               ],
+               "type": "CCl3F+hv->Products"
+            },
+            "quantum yield": {
+               "type": "base",
+               "constant value": 1.0
+            }
+         },
+         {
+            "name": "jcfc113",
+            "__reaction": "CFC-113 + hv -> Products",
+            "cross section": {
+               "netcdf files": [
+                  "data/cross_sections/CFC-113_1.nc"
+               ],
+               "type": "tint"
+            },
+            "quantum yield": {
+               "type": "base",
+               "constant value": 1.0
+            }
+         },
+         {
+            "name": "jcfc114",
+            "__reaction": "CFC-114 + hv -> Products",
+            "cross section": {
+               "netcdf files": [
+                  "data/cross_sections/CFC-114_1.nc"
+               ],
+               "type": "tint"
+            },
+            "quantum yield": {
+               "type": "base",
+               "constant value": 1.0
+            }
+         },
+         {
+            "name": "jcfc115",
+            "__reaction": "CFC-115 + hv -> Products",
+            "cross section": {
+               "netcdf files": [
+                  "data/cross_sections/CFC-115_1.nc"
+               ],
+               "type": "base"
+            },
+            "quantum yield": {
+               "type": "base",
+               "constant value": 1.0
+            }
+         },
+         {
+            "name": "jcf2cl2",
+            "__reaction": "CCl2F2 + hv -> Products",
+            "cross section": {
+               "netcdf files": [
+                  "data/cross_sections/CFC-12_1.nc"
+               ],
+               "type": "CCl3F+hv->Products"
+            },
+            "quantum yield": {
+               "type": "base",
+               "constant value": 1.0
+            }
+         },
+         {
+            "name": "jch3br",
+            "__reaction": "CH3Br + hv -> Products",
+            "cross section": {
+               "netcdf files": [
+                  "data/cross_sections/CH3Br_1.nc"
+               ],
+               "type": "base"
+            },
+            "quantum yield": {
+               "type": "base",
+               "constant value": 1.0
+            }
+         },
+         {
+            "name": "jch3ccl3",
+            "__reaction": "CH3CCl3+hv->Products",
+            "cross section": {
+               "netcdf files": [
+                  "data/cross_sections/CH3CCl3_1.nc"
+               ],
+               "type": "tint"
+            },
+            "quantum yield": {
+               "type": "base",
+               "constant value": 1.0
+            }
+         },
+         {
+            "name": "jch3cl",
+            "__reaction": "CH3Cl + hv -> Products",
+            "cross section": {
+               "netcdf files": [
+                  "data/cross_sections/CH3Cl_1.nc"
+               ],
+               "type": "tint"
+            },
+            "quantum yield": {
+               "type": "base",
+               "constant value": 1.0
+            }
+         },
+         {
+            "name": "jchbr3",
+            "__reaction": "CHBr3 + hv -> Products",
+            "cross section": {
+               "netcdf files": [
+                  "data/cross_sections/CHBr3_1.nc"
+               ],
+               "type": "CHBr3+hv->Products",
+               "lower extrapolation": {
+                  "type": "boundary"
+               }
+            },
+            "quantum yield": {
+               "type": "base",
+               "constant value": 1.0
+            }
+         },
+         {
+            "name": "jcl2",
+            "__reaction": "Cl2 + hv -> Cl + Cl",
+            "cross section": {
+               "type": "Cl2+hv->Cl+Cl"
+            },
+            "quantum yield": {
+               "type": "base",
+               "constant value": 1.0
+            }
+         },
+         {
+            "name": "jclo",
+            "__reaction": "ClO + hv -> Cl + O(1D)",
+            "cross section": {
+               "netcdf files": [
+                  "data/cross_sections/ClO_1.nc"
+               ],
+               "type": "tint"
+            },
+            "quantum yield": {
+               "type": "ClO+hv->Cl+O(1D)"
+            }
+         },
+         {
+            "name": "jclono2_a",
+            "__reaction": "ClONO2 + hv -> Cl + NO3",
+            "cross section": {
+               "netcdf files": [
+                  "data/cross_sections/ClONO2_1.nc"
+               ],
+               "type": "ClONO2"
+            },
+            "quantum yield": {
+               "type": "ClONO2+hv->Cl+NO3"
+            }
+         },
+         {
+            "name": "jclono2_b",
+            "__reaction": "ClONO2 + hv -> ClO + NO2",
+            "cross section": {
+               "netcdf files": [
+                  "data/cross_sections/ClONO2_1.nc"
+               ],
+               "type": "ClONO2"
+            },
+            "quantum yield": {
+               "type": "ClONO2+hv->ClO+NO2"
+            }
+         },
+         {
+            "name": "jcof2",
+            "__reaction": "CF2O + hv -> Products",
+            "cross section": {
+               "netcdf files": [
+                  "data/cross_sections/CF2O_1.nc"
+               ],
+               "type": "base"
+            },
+            "quantum yield": {
+               "type": "base",
+               "constant value": 1.0
+            }
+         },
+         {
+            "name": "jcofcl",
+            "__reaction": "CClFO + hv -> Products",
+            "cross section": {
+               "netcdf files": [
+                  "data/cross_sections/CClFO_1.nc"
+               ],
+               "type": "base"
+            },
+            "quantum yield": {
+               "type": "base",
+               "constant value": 1.0
+            }
+         },
+         {
+            "name": "jhcfc141b",
+            "__reaction": "HCFC-141b + hv -> Products",
+            "cross section": {
+               "netcdf files": [
+                  "data/cross_sections/CH3CFCl2_1.nc"
+               ],
+               "type": "base"
+            },
+            "quantum yield": {
+               "type": "base",
+               "constant value": 1.0
+            }
+         },
+         {
+            "name": "jhcfc142b",
+            "__reaction": "HCFC-142b + hv -> Products",
+            "cross section": {
+               "netcdf files": [
+                  "data/cross_sections/CH3CF2Cl_1.nc"
+               ],
+               "type": "HCFC+hv->Products"
+            },
+            "quantum yield": {
+               "type": "base",
+               "constant value": 1.0
+            }
+         },
+         {
+            "name": "jhcfc22",
+            "__reaction": "HCFC-22 + hv -> Products",
+            "cross section": {
+               "netcdf files": [
+                  "data/cross_sections/CHClF2_1.nc"
+               ],
+               "type": "tint"
+            },
+            "quantum yield": {
+               "type": "base",
+               "constant value": 1.0
+            }
+         },
+         {
+            "name": "jhcl",
+            "__reaction": "HCl + hv -> H + Cl",
+            "cross section": {
+               "netcdf files": [
+                  "data/cross_sections/HCl_1.nc"
+               ],
+               "type": "base"
+            },
+            "quantum yield": {
+               "type": "base",
+               "constant value": 1.0
+            }
+         },
+         {
+            "name": "jhobr",
+            "__reaction": "HOBr + hv -> OH + Br",
+            "cross section": {
+               "type": "HOBr+hv->OH+Br"
+            },
+            "quantum yield": {
+               "type": "base",
+               "constant value": 1.0
+            }
+         },
+         {
+            "name": "jhocl",
+            "__reaction": "HOCl + hv -> HO + Cl",
+            "cross section": {
+               "netcdf files": [
+                  "data/cross_sections/HOCl_1.nc"
+               ],
+               "type": "base"
+            },
+            "quantum yield": {
+               "type": "base",
+               "constant value": 1.0
+            }
+         },
+         {
+            "name": "joclo",
+            "__reaction": "OClO + hv -> Products",
+            "cross section": {
+               "netcdf files": [
+                  "data/cross_sections/OClO_1.nc",
+                  "data/cross_sections/OClO_2.nc",
+                  "data/cross_sections/OClO_3.nc"
+               ],
+               "type": "OClO+hv->Products"
+            },
+            "quantum yield": {
+               "type": "base",
+               "constant value": 1.0
+            }
+         }
+      ]
+   },
+   "__CAM aliasing": [
+      {
+         "for": "jh2o_a",
+         "reaction": "H2O + hv -> OH + H",
+         "comments": "TODO find this rate",
+         "use": "jo2_b",
+         "scale by": 0.0
+      },
+      {
+         "for": "jh2o_b",
+         "reaction": "H2O + hv -> H2 + O1D",
+         "comments": "TODO find this rate",
+         "use": "jo2_b",
+         "scale by": 0.0
+      },
+      {
+         "for": "jh2o_c",
+         "reaction": "H2O + hv -> 2*H + O",
+         "comments": "TODO find this rate",
+         "use": "jo2_b",
+         "scale by": 0.0
+      },
+      {
+         "for": "jo2_a",
+         "reaction": "O2 + hv -> O + O1D",
+         "comments": "TODO find this rate",
+         "use": "jo2_b",
+         "scale by": 0.0
+      },
+      {
+         "for": "jho2no2_a",
+         "reaction": "HO2NO2 + hv -> OH + NO3",
+         "comments": "TODO find this rate",
+         "use": "jo2_b",
+         "scale by": 0.0
+      },
+      {
+         "for": "jho2no2_b",
+         "reaction": "HO2NO2 + hv -> NO2 + HO2",
+         "comments": "TODO find this rate",
+         "use": "jo2_b",
+         "scale by": 0.0
+      },
+      {
+         "for": "jn2o5_b",
+         "reaction": "N2O5 + hv -> NO + O + NO3",
+         "comments": "TODO find this rate",
+         "use": "jo2_b",
+         "scale by": 0.0
+      },
+      {
+         "for": "jno",
+         "reaction": "NO + hv -> N + O",
+         "comments": "TODO find this rate",
+         "use": "jo2_b",
+         "scale by": 0.0
+      },
+      {
+         "for": "jalknit",
+         "reaction": "ALKNIT + hv -> NO2 + 0.4*CH3CHO + 0.1*CH2O + 0.25*CH3COCH3 + HO2 + 0.8*MEK",
+         "use": "jch3ooh"
+      },
+      {
+         "for": "jpooh",
+         "reaction": "POOH (C3H6OHOOH) + hv -> CH3CHO + CH2O + HO2 + OH",
+         "use": "jch3ooh"
+      },
+      {
+         "for": "jch3co3h",
+         "reaction": "CH3COOOH + hv -> CH3O2 + OH + CO2",
+         "use": "jh2o2",
+         "scale by": 0.28
+      },
+      {
+         "for": "jmpan",
+         "reaction": "MPAN + hv -> MCO3 + NO2",
+         "use": "jpan"
+      },
+      {
+         "for": "jmacr_a",
+         "reaction": "MACR + hv -> 1.34*HO2 + 0.66*MCO3 + 1.34*CH2O + 1.34*CH3CO3",
+         "comments": "TODO - find this rate",
+         "use": "jo2_b",
+         "scale by": 0.0
+      },
+      {
+         "for": "jmacr_b",
+         "reaction": "MACR + hv -> 0.66*HO2 + 1.34*CO",
+         "comments": "TODO - find this rate",
+         "use": "jo2_b",
+         "scale by": 0.0
+      },
+      {
+         "for": "jc2h5ooh",
+         "reaction": "C2H5OOH + hv -> CH3CHO + HO2 + OH",
+         "use": "jch3ooh"
+      },
+      {
+         "for": "jc3h7ooh",
+         "reaction": "C3H7OOH + hv -> 0.82*CH3COCH3 + OH + HO2",
+         "use": "jch3ooh"
+      },
+      {
+         "for": "jc6h5ooh",
+         "reaction": "C6H5OOH + hv -> PHENO + OH",
+         "use": "jch3ooh"
+      },
+      {
+         "for": "jch4_a",
+         "reaction": "CH4 + hv -> H + CH3O2",
+         "comments": "TODO find this rate",
+         "use": "jo2_b",
+         "scale by": 0.0
+      },
+      {
+         "for": "jch4_b",
+         "reaction": "CH4 + hv -> 1.44*H2 + 0.18*CH2O + 0.18*O + 0.33*OH + 0.33*H + 0.44*CO2 + 0.38*CO + 0.05*H2O",
+         "comments": "TODO find this rate",
+         "use": "jo2_b",
+         "scale by": 0.0
+      },
+      {
+         "for": "jco2",
+         "reaction": "CO2 + hv -> CO + O",
+         "comments": "TODO find this rate",
+         "use": "jo2_b",
+         "scale by": 0.0
+      },
+      {
+         "for": "jeooh",
+         "reaction": "EOOH + hv -> EO + OH",
+         "use": "jch3ooh"
+      },
+      {
+         "for": "jrooh",
+         "reaction": "ROOH + hv -> CH3CO3 + CH2O + OH",
+         "use": "jch3ooh"
+      },
+      {
+         "for": "jxooh",
+         "reaction": "XOOH + hv -> OH",
+         "use": "jch3ooh"
+      },
+      {
+         "for": "jonitr",
+         "reaction": "ONITR + hv -> NO2",
+         "use": "jch3cho"
+      },
+      {
+         "for": "jisopooh",
+         "reaction": "ISOPOOH + hv -> 0.402*MVK + 0.288*MACR + 0.69*CH2O + HO2",
+         "use": "jch3ooh"
+      },
+      {
+         "for": "jhyac",
+         "reaction": "HYAC (CH3COCH2OH) + hv -> CH3CO3 + HO2 + CH2O",
+         "comments": "TODO - find this rate",
+         "use": "jo2_b",
+         "scale by": 0.0
+      },
+      {
+         "for": "jmek",
+         "reaction": "MEK + hv -> CH3CO3 + C2H5O2",
+         "use": "jacet"
+      },
+      {
+         "for": "jalkooh",
+         "reaction": "ALKOOH + hv  -> .4*CH3CHO + .1*CH2O + .25*CH3COCH3 + .9*HO2 + .8*MEK + OH",
+         "use": "jch3ooh"
+      },
+      {
+         "for": "jbenzooh",
+         "reaction": "BENZOOH + hv -> OH + GLYOXAL + 0.5*BIGALD1 + HO2",
+         "use": "jch3ooh"
+      },
+      {
+         "for": "jbepomuc",
+         "reaction": "BEPOMUC + hv -> BIGALD1 + 1.5*HO2 + 1.5*CO",
+         "use": "jno2",
+         "scale by": 0.1
+      },
+      {
+         "for": "jbigald",
+         "reaction": "BIGALD + hv -> 0.45*CO + 0.13*GLYOXAL + 0.56*HO2 + 0.13*CH3CO3 + 0.18*CH3COCHO",
+         "use": "jno2",
+         "scale by": 0.2
+      },
+      {
+         "for": "jbigald1",
+         "reaction": "BIGALD1 + hv -> 0.6*MALO2 + HO2",
+         "use": "jno2",
+         "scale by": 0.14
+      },
+      {
+         "for": "jbigald2",
+         "reaction": "BIGALD2 + hv -> 0.6*HO2 + 0.6*DICARBO2",
+         "use": "jno2",
+         "scale by": 0.2
+      },
+      {
+         "for": "jbigald3",
+         "reaction": "BIGALD3 + hv -> 0.6*HO2 + 0.6*CO + 0.6*MDIALO2",
+         "use": "jno2",
+         "scale by": 0.2
+      },
+      {
+         "for": "jbigald4",
+         "reaction": "BIGALD4 + hv -> HO2 + CO + CH3COCHO + CH3CO3",
+         "use": "jno2",
+         "scale by": 0.006
+      },
+      {
+         "for": "jbzooh",
+         "reaction": "BZOOH + hv -> BZALD + OH + HO2",
+         "use": "jch3ooh"
+      },
+      {
+         "for": "jmekooh",
+         "reaction": "MEKOOH + hv  -> OH + CH3CO3 + CH3CHO",
+         "use": "jch3ooh"
+      },
+      {
+         "for": "jtolooh",
+         "reaction": "TOLOOH + hv  -> OH + .45*GLYOXAL + .45*CH3COCHO + .9*BIGALD",
+         "use": "jch3ooh"
+      },
+      {
+         "for": "jterpooh",
+         "reaction": "TERPOOH + hv  -> OH + .1*CH3COCH3 + HO2 + MVK + MACR",
+         "use": "jch3ooh"
+      },
+      {
+         "for": "jhonitr",
+         "reaction": "HONITR + hv -> NO2 + 0.67*HO2 + 0.33*CH3CHO + 0.33*CH2O + 0.33*CO + 0.33*GLYALD + 0.33*CH3CO3 + 0.17*HYAC + 0.17*CH3COCH3",
+         "use": "jch2o_a"
+      },
+      {
+         "for": "jhpald",
+         "reaction": "HPALD + hv -> BIGALD3 + OH + HO2",
+         "use": "jno2",
+         "scale by": 0.006
+      },
+      {
+         "for": "jisopnooh",
+         "reaction": "ISOPNOOH + hv -> NO2 + HO2 + ISOPOOH",
+         "use": "jch3ooh"
+      },
+      {
+         "for": "jnc4cho",
+         "reaction": "NC4CHO + hv -> BIGALD3 + NO2 + HO2",
+         "use": "jch2o_a"
+      },
+      {
+         "for": "jnoa",
+         "reaction": "NOA + hv -> NO2 + CH2O + CH3CO3",
+         "use": "jch2o_a"
+      },
+      {
+         "for": "jnterpooh",
+         "reaction": "NTERPOOH + hv -> TERPROD1 + NO2 + OH",
+         "use": "jch3ooh"
+      },
+      {
+         "for": "jphenooh",
+         "reaction": "PHENOOH + hv -> OH + HO2 + 0.7*GLYOXAL",
+         "use": "jch3ooh"
+      },
+      {
+         "for": "jtepomuc",
+         "reaction": "TEPOMUC + hv -> 0.5*CH3CO3 + HO2 + 1.5*CO",
+         "use": "jno2",
+         "scale by": 0.1
+      },
+      {
+         "for": "jterp2ooh",
+         "reaction": "TERP2OOH + hv -> OH + 0.375*CH2O + 0.3*CH3COCH3 + 0.25*CO + CO2 + TERPROD2 + HO2 + 0.25*GLYALD",
+         "use": "jch3ooh"
+      },
+      {
+         "for": "jterpnit",
+         "reaction": "TERPNIT + hv -> TERPROD1 + NO2 + HO2",
+         "use": "jch3ooh"
+      },
+      {
+         "for": "jterprd1",
+         "reaction": "TERPROD1 + hv -> HO2 + CO + TERPROD2",
+         "use": "jch3cho"
+      },
+      {
+         "for": "jterprd2",
+         "reaction": "TERPROD2 + hv -> 0.15*RO2 + 0.68*CH2O + 0.8*CO2 + 0.5*CH3COCH3 + 0.65*CH3CO3 + 1.2*HO2 + 1.7*CO",
+         "use": "jch3cho"
+      },
+      {
+         "for": "jxylenooh",
+         "reaction": "XYLENOOH + hv -> OH + HO2 + 0.34*GLYOXAL + 0.54*CH3COCHO + 0.06*BIGALD1 + 0.2*BIGALD2 + 0.15*BIGALD3 + 0.21*BIGALD4",
+         "use": "jch3ooh"
+      },
+      {
+         "for": "jxylolooh",
+         "reaction": "XYLOLOOH + hv -> OH + 0.17*GLYOXAL + 0.51*CH3COCHO + HO2",
+         "use": "jch3ooh"
+      },
+      {
+         "for": "jch2br2",
+         "reaction": "CH2BR2 + hv -> 2*BR",
+         "comments": "TODO - find this rate",
+         "use": "jo2_a",
+         "scale by": 0.0
+      },
+      {
+         "for": "jcl2o2",
+         "reaction": "CL2O2 + hv -> 2*CL",
+         "comments": "TODO - find this rate",
+         "use": "jo2_a",
+         "scale by": 0.0
+      },
+      {
+         "for": "jh2402",
+         "reaction": "H2402 + hv -> 2*BR + 2*COF2",
+         "comments": "TODO - find this rate",
+         "use": "jo2_a",
+         "scale by": 0.0
+      },
+      {
+         "for": "jhbr",
+         "reaction": "HBR + hv -> BR + H",
+         "comments": "TODO - find this rate",
+         "use": "jo2_a",
+         "scale by": 0.0
+      },
+      {
+         "for": "jhf",
+         "reaction": "HF + hv -> H + F",
+         "comments": "TODO - find this rate",
+         "use": "jo2_a",
+         "scale by": 0.0
+      },
+      {
+         "for": "jsf6",
+         "reaction": "SF6 + hv -> sink",
+         "comments": "TODO - find this rate",
+         "use": "jo2_a",
+         "scale by": 0.0
+      },
+      {
+         "for": "jh2so4",
+         "reaction": "H2SO4 + hv -> SO3 + H2O",
+         "comments": "TODO - find this rate",
+         "use": "jo2_a",
+         "scale by": 0.0
+      },
+      {
+         "for": "jocs",
+         "reaction": "OCS + hv -> S + CO",
+         "comments": "TODO - find this rate",
+         "use": "jo2_a",
+         "scale by": 0.0
+      },
+      {
+         "for": "jso",
+         "reaction": "SO + hv -> S + O",
+         "comments": "TODO - find this rate",
+         "use": "jo2_a",
+         "scale by": 0.0
+      },
+      {
+         "for": "jso2",
+         "reaction": "SO2 + hv -> SO + O",
+         "comments": "TODO - find this rate",
+         "use": "jo2_a",
+         "scale by": 0.0
+      },
+      {
+         "for": "jso3",
+         "reaction": "SO3 + hv -> SO2 + O",
+         "comments": "TODO - find this rate",
+         "use": "jo2_a",
+         "scale by": 0.0
+      },
+      {
+         "for": "jsoa1_a1",
+         "reaction": "soa1_a1 + hv -> Products",
+         "use": "jno2",
+         "scale by": 0.0004
+      },
+      {
+         "for": "jsoa1_a2",
+         "reaction": "soa1_a2 + hv -> Products",
+         "use": "jno2",
+         "scale by": 0.0004
+      },
+      {
+         "for": "jsoa2_a1",
+         "reaction": "soa2_a1 + hv -> Products",
+         "use": "jno2",
+         "scale by": 0.0004
+      },
+      {
+         "for": "jsoa2_a2",
+         "reaction": "soa2_a2 + hv -> Products",
+         "use": "jno2",
+         "scale by": 0.0004
+      },
+      {
+         "for": "jsoa3_a1",
+         "reaction": "soa3_a1 + hv -> Products",
+         "use": "jno2",
+         "scale by": 0.0004
+      },
+      {
+         "for": "jsoa3_a2",
+         "reaction": "soa3_a2 + hv -> Products",
+         "use": "jno2",
+         "scale by": 0.0004
+      },
+      {
+         "for": "jsoa4_a1",
+         "reaction": "soa4_a1 + hv -> Products",
+         "use": "jno2",
+         "scale by": 0.0004
+      },
+      {
+         "for": "jsoa4_a2",
+         "reaction": "soa4_a2 + hv -> Products",
+         "use": "jno2",
+         "scale by": 0.0004
+      },
+      {
+         "for": "jsoa5_a1",
+         "reaction": "soa5_a1 + hv -> Products",
+         "use": "jno2",
+         "scale by": 0.0004
+      },
+      {
+         "for": "jsoa5_a2",
+         "reaction": "soa5_a2 + hv -> Products",
+         "use": "jno2",
+         "scale by": 0.0004
+      }
+   ]
+}
