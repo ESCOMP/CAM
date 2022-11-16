@@ -88,7 +88,7 @@ MODULE CESMGC_History_Mod
      LOGICAL                         :: isDiag
      TYPE(HistoryExportObj), POINTER :: next
 
-     ! Pointers to ESMF Export and GEOS-Chem State
+     ! Pointers to temporaries for CAM Export and GEOS-Chem State
      ! TODO: for now, include all possible data types in the registry.
      REAL(f8), POINTER :: ExportData2d(:,:)
      REAL(f8), POINTER :: ExportData3d(:,:,:)
@@ -166,7 +166,7 @@ CONTAINS
        RETURN
     ENDIF
     ! Optional debugging
-    CALL Print_DiagList( am_I_Root, HistoryConfig%DiagList, RC )
+    ! CALL Print_DiagList( am_I_Root, HistoryConfig%DiagList, RC )
 
     CALL Init_TaggedDiagList( am_I_Root, HistoryConfig%DiagList,  &
                               HistoryConfig%TaggedDiagList, RC   )
@@ -175,7 +175,7 @@ CONTAINS
        RETURN
     ENDIF
     ! Optional debugging
-    CALL Print_TaggedDiagList( am_I_Root, HistoryConfig%TaggedDiagList, RC )
+    ! CALL Print_TaggedDiagList( am_I_Root, HistoryConfig%TaggedDiagList, RC )
 
 
     CALL Init_HistoryExportsList( am_I_Root, HistoryConfig, RC )
