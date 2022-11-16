@@ -688,6 +688,7 @@ subroutine radiation_read_restart(file)
 
    integer :: err_handling
    integer :: ierr
+   real(r8) :: temp_var
 
    type(var_desc_t) :: vardesc
    !----------------------------------------------------------------------------
@@ -704,7 +705,8 @@ subroutine radiation_read_restart(file)
    end if
 
    ierr = pio_inq_varid(File, 'nextsw_cday', vardesc)
-   ierr = pio_get_var(File, vardesc, nextsw_cday)
+   ierr = pio_get_var(File, vardesc, temp_var)
+   nextsw_cday = temp_var
 
 end subroutine radiation_read_restart
   

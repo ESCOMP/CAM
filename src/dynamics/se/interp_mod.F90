@@ -1,5 +1,5 @@
 module interp_mod
-  use shr_kind_mod,        only: r8 => shr_kind_r8
+  use shr_kind_mod,        only: r8 => shr_kind_r8, r4 => shr_kind_r4
   use dimensions_mod,      only: nelemd, np, ne
   use interpolate_mod,     only: interpdata_t
   use interpolate_mod,     only: interp_lat => lat, interp_lon => lon
@@ -191,6 +191,7 @@ CONTAINS
     use pio,              only: iosystem_desc_t
     use pio,              only: pio_initdecomp, pio_freedecomp
     use pio,              only: io_desc_t, pio_write_darray
+    use pio,              only: pio_real
     use interpolate_mod,  only: interpolate_scalar
     use cam_instance,     only: atm_id
     use spmd_dyn,         only: local_dp_map
@@ -317,6 +318,7 @@ CONTAINS
           call edgeVunpack(edgebuf, fld_tmp(:,:,1:numlev,1,ie), numlev, 0, ie)
         end do
         call freeEdgeBuffer(edgebuf)
+        !check if fill values are present:
         usefillvalues = any(fld_tmp == fillvalue)
       end if
       deallocate(fld_dyn)
@@ -327,6 +329,8 @@ CONTAINS
       do ie = 1, nelemd
         fld_tmp(1:nsize,1:nsize,1:numlev,1,ie) = RESHAPE(fld(1:nsize*nsize,1:numlev,ie),(/nsize,nsize,numlev/))
       end do
+      !check if fillvalues are present:
+      usefillvalues = any(fld_tmp == fillvalue)
     end if
     !
     ! code for non-GLL grids: need to fill halo and interpolate (if on panel edge/corner) for bilinear interpolation
@@ -338,6 +342,9 @@ CONTAINS
       call get_loop_ranges(hybrid,ibeg=nets,iend=nete)
       call fill_halo_and_extend_panel(elem(nets:nete),fvm(nets:nete),&
            fld_tmp(:,:,:,:,nets:nete),hybrid,nets,nete,nsize,nhcc,nhalo,numlev,1,.true.,.true.)
+
+      !check if fill values are present:
+      usefillvalues = any(fld_tmp(:,:,:,:,nets:nete) == fillvalue)
     end if
     !
     ! WARNING - 1:nelemd and nets:nete
@@ -382,7 +389,12 @@ CONTAINS
     else
        call pio_initdecomp(pio_subsystem, data_type, (/nlon,nlat,numlev/), idof, iodesc)
     end if
-    call pio_write_darray(File, varid, iodesc, fldout, ierr)
+
+    if(data_type == pio_real) then
+      call pio_write_darray(File, varid, iodesc, real(fldout, r4), ierr)
+    else
+      call pio_write_darray(File, varid, iodesc, fldout, ierr)
+    end if
 
     deallocate(dest)
 
@@ -397,6 +409,7 @@ CONTAINS
     use pio,              only: iosystem_desc_t
     use pio,              only: pio_initdecomp, pio_freedecomp
     use pio,              only: io_desc_t, pio_write_darray
+    use pio,              only: pio_real
     use cam_instance,     only: atm_id
     use interpolate_mod,  only: interpolate_scalar, vec_latlon_to_contra,get_interp_parameter
     use spmd_dyn,         only: local_dp_map
@@ -522,6 +535,7 @@ CONTAINS
           call edgeVunpack(edgebuf, fld_tmp(:,:,:,:,ie), 2*numlev, 0, ie)
         end do
         call freeEdgeBuffer(edgebuf)
+        !check if fill values are present:
         usefillvalues = any(fld_tmp==fillvalue)
       end if
       deallocate(fld_dyn)
@@ -529,6 +543,7 @@ CONTAINS
       !
       ! not physics decomposition
       !
+      !check if fill values are present:
       usefillvalues = (any(fldu(1:nsize:1,nsize,:)==fillvalue) .or. any(fldv(1:nsize:1,nsize,:)==fillvalue))
       do ie = 1, nelemd
         fld_tmp(1:nsize,1:nsize,1,1:numlev,ie) = RESHAPE(fldu(1:nsize*nsize,1:numlev,ie),(/nsize,nsize,numlev/))
@@ -563,6 +578,9 @@ CONTAINS
       end do
       call fill_halo_and_extend_panel(elem(nets:nete),fvm(nets:nete),&
            fld_tmp(:,:,:,:,nets:nete),hybrid,nets,nete,nsize,nhcc,nhalo,2,numlev,.false.,.true.)
+
+      !check if fill values are present:
+      usefillvalues = any(fld_tmp(:,:,:,:,nets:nete) == fillvalue)
     else
       do ie=1,nelemd
         call vec_latlon_to_contra(elem(ie),nsize,nhcc,numlev,fld_tmp(:,:,:,:,ie))
@@ -629,8 +647,13 @@ CONTAINS
        call pio_initdecomp(pio_subsystem, data_type, (/nlon,nlat,numlev/), idof, iodesc)
     end if
 
-    call pio_write_darray(File, varidu, iodesc, fldout(:,:,1), ierr)
-    call pio_write_darray(File, varidv, iodesc, fldout(:,:,2), ierr)
+    if(data_type == pio_real) then
+      call pio_write_darray(File, varidu, iodesc, real(fldout(:,:,1), r4), ierr)
+      call pio_write_darray(File, varidv, iodesc, real(fldout(:,:,2), r4), ierr)
+    else
+      call pio_write_darray(File, varidu, iodesc, fldout(:,:,1), ierr)
+      call pio_write_darray(File, varidv, iodesc, fldout(:,:,2), ierr)
+    end if
 
 
     deallocate(fldout)
