@@ -90,8 +90,6 @@ MODULE CESMGC_History_Mod
 
      ! Pointers to temporaries for CAM Export and GEOS-Chem State
      ! TODO: for now, include all possible data types in the registry.
-     REAL(f8), POINTER :: ExportData2d(:,:)
-     REAL(f8), POINTER :: ExportData3d(:,:,:)
      REAL(fp), POINTER :: GCStateData0d
      REAL(fp), POINTER :: GCStateData1d(:)
      REAL(fp), POINTER :: GCStateData2d(:,:)
@@ -500,8 +498,6 @@ CONTAINS
     ENDIF
 
     NewHistExp%next            => NULL()
-    NewHistExp%ExportData2d    => NULL()
-    NewHistExp%ExportData3d    => NULL()
     NewHistExp%GCStateData0d   => NULL()
     NewHistExp%GCStateData1d   => NULL()
     NewHistExp%GCStateData2d   => NULL()
@@ -781,6 +777,7 @@ CONTAINS
   USE State_Grid_Mod,   ONLY : GrdState
 
   USE cam_history,      ONLY : hist_fld_active, outfld
+  USE SHR_KIND_MOD,     ONLY : shr_kind_r8
 !
 ! !INPUT PARAMETERS:
 !
@@ -812,6 +809,11 @@ CONTAINS
     CHARACTER(LEN=255)              :: ErrMsg
     TYPE(HistoryExportObj), POINTER :: current
 
+    ! Temporaries for CAM exports.
+    ! Note that in CESM, State_Grid%NX is always length 1. (hplin, 11/16/22)
+    REAL(shr_kind_r8)               :: outTmp_3D(State_Grid%NY, State_Grid%NZ)
+    REAL(shr_kind_r8)               :: outTmp_2D(State_Grid%NY)
+
     ! ================================================================
     ! CopyGCStates2Exports begins here
     ! ================================================================
@@ -832,14 +834,14 @@ CONTAINS
        ! endif
        IF ( current%rank == 2 ) THEN
           IF ( ASSOCIATED( current%GCStateData2d ) ) THEN
-             current%ExportData2d(:,1:State_Grid%NY) = current%GCStateData2d(:,1:State_Grid%NY)
+             outTmp_2D(1:State_Grid%NY) = current%GCStateData2d(1,1:State_Grid%NY)
           ELSE IF ( ASSOCIATED( current%GCStateData2d_4 ) ) THEN
-             current%ExportData2d(:,1:State_Grid%NY) = current%GCStateData2d_4(:,1:State_Grid%NY)
+             outTmp_2D(1:State_Grid%NY) = current%GCStateData2d_4(1,1:State_Grid%NY)
           ELSE IF ( ASSOCIATED( current%GCStateData2d_8 ) ) THEN
-             current%ExportData2d(:,1:State_Grid%NY) = current%GCStateData2d_8(:,1:State_Grid%NY)
+             outTmp_2D(1:State_Grid%NY) = current%GCStateData2d_8(1,1:State_Grid%NY)
           ELSE IF ( ASSOCIATED( current%GCStateData2d_I ) ) THEN
              ! Convert integer to float (integers not allowed in MAPL exports)
-             current%ExportData2d(:,1:State_Grid%NY) = FLOAT(current%GCStateData2d_I(:,1:State_Grid%NY))
+             outTmp_2D(1:State_Grid%NY) = FLOAT(current%GCStateData2d_I(1,1:State_Grid%NY))
           ELSE
              RC = GC_FAILURE
              ErrMsg = "No GC 2D pointer found for " // TRIM(current%name)
@@ -848,18 +850,18 @@ CONTAINS
 
           ! Now call outfld to output for this chunk
           call outfld(trim(current%name),                              &
-                      current%ExportData2d(1, 1:State_Grid%NY),        &   ! Chunk width always 1
+                      outTmp_2D,                                       &   ! Chunk width always 1
                       State_Grid%NY,                                   &
                       LCHNK                                           )
        ELSEIF ( current%rank == 3 ) THEN
           IF ( ASSOCIATED( current%GCStateData3d ) ) THEN
-             current%ExportData3d(:,1:State_Grid%NY,:) = current%GCStateData3d(:,1:State_Grid%NY,:)
+             outTmp_3D(1:State_Grid%NY, :) = current%GCStateData3d(1,1:State_Grid%NY,:)
           ELSE IF ( ASSOCIATED( current%GCStateData3d_4 ) ) THEN
-             current%ExportData3d(:,1:State_Grid%NY,:) = current%GCStateData3d_4(:,1:State_Grid%NY,:)
+             outTmp_3D(1:State_Grid%NY, :) = current%GCStateData3d_4(1,1:State_Grid%NY,:)
           ELSE IF ( ASSOCIATED( current%GCStateData3d_8 ) ) THEN
-             current%ExportData3d(:,1:State_Grid%NY,:) = current%GCStateData3d_8(:,1:State_Grid%NY,:)
+             outTmp_3D(1:State_Grid%NY, :) = current%GCStateData3d_8(1,1:State_Grid%NY,:)
           ELSE IF ( ASSOCIATED( current%GCStateData3d_I ) ) THEN
-             current%ExportData3d(:,1:State_Grid%NY,:) = FLOAT(current%GCStateData3d_I(:,1:State_Grid%NY,:))
+             outTmp_3D(1:State_Grid%NY, :) = FLOAT(current%GCStateData3d_I(1,1:State_Grid%NY,:))
           ELSE
              RC = GC_FAILURE
              ErrMsg = "No GC 3D pointer found for " // TRIM(current%name)
@@ -869,14 +871,13 @@ CONTAINS
           ! If using GEOS-5, flip the data vertically to match model
           ! convention
           ! Also do this in CESM. (hplin, 10/31/22)
-          LMAX = SIZE(current%ExportData3d, 3)
-          current%ExportData3d(:,:,1:LMAX) =  &
-                              current%ExportData3d(:,:,LMAX:1:-1)
+          LMAX = SIZE(outTmp_3D, 2)
+          outTmp_3D(:,1:LMAX) = outTmp_3D(:,LMAX:1:-1)
 #endif
 
           ! Now call outfld to output for this chunk
           call outfld(trim(current%name),                              &
-                      current%ExportData3d(1, 1:State_Grid%NY, :),     &   ! Chunk width always 1. TOA is 1
+                      outTmp_3D,                                       &   ! Chunk width always 1. TOA is 1
                       State_Grid%NY,                                   &
                       LCHNK                                           )
        ENDIF
@@ -959,12 +960,6 @@ CONTAINS
           PRINT *, " isMet:      ",   current%isMet
           PRINT *, " isChem:     ",   current%isChem
           PRINT *, " isDiag:     ",   current%isDiag
-          IF ( ASSOCIATED( current%ExportData2d )) THEN
-            PRINT *, " E2D dim'l:  ",   size(current%ExportData2d)
-          ENDIF
-          IF ( ASSOCIATED( current%ExportData3d )) THEN
-            PRINT *, " E3D dim'l:  ",   size(current%ExportData3d)
-          ENDIF
           PRINT *, " "
        ENDIF
        current => current%next
@@ -1102,33 +1097,6 @@ CONTAINS
           EXIT
        ENDIF
 
-       ! For CESM export, outfld accepts the data pointer directly but it
-       ! has to be in r8. Thus, allocate a r8 data type in exportData2d or
-       ! ExportData3d so that the rest of the code can be reused, then
-       ! update pointer data can just call outfld additionally. There is,
-       ! however, a memory hit from this. Revisit later. (hplin, 10/31/22)
-       !
-       ! As a side note, in CESM-GC, State_Grid%NX is always 1 since the data
-       ! is chunkized. Only the State_Grid%NY matters here.
-       !
-       ! Because NY could vary across chunk sizes, allocate one extra column
-       ! but only read up to the actual :State_Grid%NY. This allows for different
-       ! instances of GEOS-Chem to share the same ExportData allocation in separate
-       ! calls to the pointer update subroutine.
-       IF ( current%rank == 2 ) THEN
-          IF ( .not. ASSOCIATED(current%ExportData2d) ) THEN
-            ALLOCATE(current%ExportData2d(State_Grid%NX, State_Grid%NY+1), stat=RC)
-          ENDIF
-       ELSEIF ( current%rank == 3 ) THEN
-          IF ( .not. ASSOCIATED(current%ExportData3d) ) THEN
-             IF ( current%vloc == VLocationCenter ) THEN
-               ALLOCATE(current%ExportData3d(State_Grid%NX, State_Grid%NY+1, State_Grid%NZ  ), stat=RC)
-             ELSEIF ( current%vloc == VLocationEdge ) THEN
-               ALLOCATE(current%ExportData3d(State_Grid%NX, State_Grid%NY+1, State_Grid%NZ+1), stat=RC)
-             ENDIF
-          ENDIF
-       ENDIF
-
        !! debugging
        !IF ( Am_I_Root) THEN
        !   WRITE(6,*) TRIM(current%name)
@@ -1199,15 +1167,6 @@ CONTAINS
     current => HistoryConfig%HistoryExportsList%head
     IF ( ASSOCIATED( current ) ) next => current%next
     DO WHILE ( ASSOCIATED( current ) )
-       ! Clean up the temporary array used for exports as well
-       IF ( ASSOCIATED( current%ExportData2d ) ) THEN
-         DEALLOCATE ( current%ExportData2d, stat=RC )
-       ENDIF
-
-       IF ( ASSOCIATED( current%ExportData3d ) ) THEN
-         DEALLOCATE ( current%ExportData3d, stat=RC )
-       ENDIF
-
        DEALLOCATE( current, STAT=RC )
        _ASSERT( RC == GC_SUCCESS, 'informative message here' )
        IF ( .NOT. ASSOCIATED ( next ) ) EXIT
