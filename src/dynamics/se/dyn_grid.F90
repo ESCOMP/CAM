@@ -138,7 +138,7 @@ subroutine dyn_grid_init()
    use fvm_mod,             only: fvm_init2, fvm_init3, fvm_pg_init
    use dimensions_mod,      only: irecons_tracer
    use comp_gll_ctr_vol,    only: gll_grid_write
-   use physconst,           only: thermodynamic_active_species_num
+   use air_composition,     only: thermodynamic_active_species_num
 
    ! Local variables
 

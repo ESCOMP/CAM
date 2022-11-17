@@ -1771,6 +1771,12 @@
 <!-- WACCM Upper boundary conditions -->
 <tgcm_ubc_file>atm/waccm/ub/tgcm_ubc_1993_c100204.nc</tgcm_ubc_file>
 <snoe_ubc_file>atm/waccm/ub/snoe_eof.nc</snoe_ubc_file>
+<ubc_specifier ver="waccmchem">
+  'T->MSIS','Q->2.d-8vmr','CH4->2.d-10vmr','F->1.0D-15mmr','HF->1.0D-15mmr','H->MSIS','N->MSIS','O->MSIS','O2->MSIS','H2->TGCM','NO->SNOE'
+</ubc_specifier>
+<ubc_specifier ver="waccmsc">
+  'T->MSIS','Q->2.d-8vmr','CH4->2.d-10vmr'
+</ubc_specifier>
 
 <!-- Boundary data for Tropopheric Chemistry -->
 <fstrat_file    >atm/cam/chem/trop_mozart/ub/ubvals_b40.20th.track1_1996-2005_c110315.nc</fstrat_file>

@@ -21,8 +21,8 @@ CONTAINS
   subroutine prim_printstate(elem, tl,hybrid,nets,nete, fvm, omega_cn)
     use dimensions_mod,         only: ntrac
     use constituents,           only: cnst_name
-    use physconst,              only: thermodynamic_active_species_idx_dycore, dry_air_species_num
-    use physconst,              only: thermodynamic_active_species_num,thermodynamic_active_species_idx
+    use air_composition,        only: thermodynamic_active_species_idx_dycore, dry_air_species_num
+    use air_composition,        only: thermodynamic_active_species_num,thermodynamic_active_species_idx
     use cam_control_mod,        only: initial_run
     use time_mod,               only: tstep
     use control_mod,            only: rsplit, qsplit
@@ -31,7 +31,7 @@ CONTAINS
     type (TimeLevel_t), target,   intent(in)    :: tl
     type (hybrid_t),              intent(in)    :: hybrid
     integer,                      intent(in)    :: nets,nete
-    type(fvm_struct),             intent(inout) :: fvm(:)        
+    type(fvm_struct),             intent(inout) :: fvm(:)
     real (kind=r8), optional,     intent(in)    :: omega_cn(2,nets:nete)
     ! Local variables...
     integer            :: k,ie,m_cnst
@@ -117,7 +117,7 @@ CONTAINS
       nm2 = nm+statediag_numtrac!number of vars after tracers
     end if
 
-    do ie=nets,nete      
+    do ie=nets,nete
       min_local(ie,1)  = MINVAL(elem(ie)%state%v(:,:,1,:,n0))
       max_local(ie,1)  = MAXVAL(elem(ie)%state%v(:,:,1,:,n0))
       min_local(ie,2)  = MINVAL(elem(ie)%state%v(:,:,2,:,n0))
@@ -141,7 +141,7 @@ CONTAINS
         min_local(ie,8)  = MINVAL(elem(ie)%state%psdry(:,:))
         max_local(ie,8)  = MAXVAL(elem(ie)%state%psdry(:,:))
         min_local(ie,9)  = MINVAL(moist_ps(:,:,ie))
-        max_local(ie,9)  = MAXVAL(moist_ps(:,:,ie))      
+        max_local(ie,9)  = MAXVAL(moist_ps(:,:,ie))
         do q=1,statediag_numtrac
           varname(nm+q)         = TRIM(cnst_name(q))
           min_local(ie,nm+q) = MINVAL(fvm(ie)%c(1:nc,1:nc,:,q))
@@ -151,7 +151,7 @@ CONTAINS
         min_local(ie,6)  = MINVAL(elem(ie)%state%psdry(:,:))
         max_local(ie,6)  = MAXVAL(elem(ie)%state%psdry(:,:))
         min_local(ie,7)  = MINVAL(moist_ps(:,:,ie))
-        max_local(ie,7)  = MAXVAL(moist_ps(:,:,ie))        
+        max_local(ie,7)  = MAXVAL(moist_ps(:,:,ie))
         do q=1,statediag_numtrac
           varname(nm+q)         = TRIM(cnst_name(q))
           tmp_q = elem(ie)%state%Qdp(:,:,:,q,n0_qdp)/elem(ie)%state%dp3d(:,:,:,n0)
@@ -286,14 +286,14 @@ CONTAINS
         write(iulog,100) varname(k),min_p(k),max_p(k)
       end do
     end if
-    
+
 100 format (A12,4(E23.15))
 101 format (A12,A23,A23,A23,A23)
 
 #ifdef waccm_debug
     call prim_printstate_cslam_gamma(elem, tl,hybrid,nets,nete, fvm)
 #endif
-    call prim_printstate_U(elem, tl,hybrid,nets,nete, fvm) 
+    call prim_printstate_U(elem, tl,hybrid,nets,nete, fvm)
   end subroutine prim_printstate
 
 
@@ -354,11 +354,11 @@ CONTAINS
     use cam_abortutils,         only: endrun
     use control_mod,    only: nu_top
     !
-    type (element_t),             intent(inout) :: elem(:)    
+    type (element_t),             intent(inout) :: elem(:)
     type (TimeLevel_t), target,   intent(in)    :: tl
     type (hybrid_t),              intent(in)    :: hybrid
     integer,                      intent(in)    :: nets,nete
-    type(fvm_struct),             intent(inout) :: fvm(:)        
+    type(fvm_struct),             intent(inout) :: fvm(:)
     real (kind=r8),               intent(in)    :: omega_cn(2,nets:nete)
     ! Local variables...
     integer            :: k,ie
@@ -393,7 +393,7 @@ CONTAINS
        nsplit=2*nsplit_baseline
        fvm_supercycling     = rsplit
        fvm_supercycling_jet = rsplit
-       nu_top=2.0_r8*nu_top       
+       nu_top=2.0_r8*nu_top
       !
       ! write diagnostics to log file
       !
@@ -406,7 +406,7 @@ CONTAINS
        end if
        dtime = get_step_size()
        tstep = dtime / real(nsplit*qsplit*rsplit, r8)
-       
+
     else if (nsplit.ne.nsplit_baseline.and.max_o(1)<0.4_r8*threshold) then
       !
       ! should nsplit be reduced again?
@@ -416,9 +416,9 @@ CONTAINS
        fvm_supercycling     = rsplit
        fvm_supercycling_jet = rsplit
        nu_top=nu_top/2.0_r8
-       
+
 !       nu_div_scale_top(:) = 1.0_r8
-       
+
        dtime = get_step_size()
        tstep = dtime / real(nsplit*qsplit*rsplit, r8)
        if(hybrid%masterthread) then
@@ -438,7 +438,7 @@ CONTAINS
     integer            :: k,ie
 
     real (kind=r8), dimension(nets:nete,nlev) :: max_local
-    real (kind=r8), dimension(nets:nete,nlev) :: min_local    
+    real (kind=r8), dimension(nets:nete,nlev) :: min_local
     real (kind=r8), dimension(nlev)           :: max_p
     real (kind=r8), dimension(nlev)           :: min_p
     integer        :: n0, n0_qdp, q, nm, nm2
@@ -462,7 +462,7 @@ CONTAINS
     !JMD This is a Thread Safe Reduction
     do k = 1, nlev
       max_p(k) = Parallelmax(max_local(:,k),hybrid)
-      min_p(k) = Parallelmin(min_local(:,k),hybrid)      
+      min_p(k) = Parallelmin(min_local(:,k),hybrid)
     end do
     if (hybrid%masterthread) then
        write(iulog,*)   '  '

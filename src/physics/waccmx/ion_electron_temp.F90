@@ -77,7 +77,7 @@ contains
 
     use namelist_utils,  only: find_group_name
     use units,           only: getunit, freeunit
-    use spmd_utils, only: mpicom, masterprocid, mpicom, mpi_logical
+    use spmd_utils,      only: mpicom, masterprocid, mpicom, mpi_logical
 
     character(len=*), intent(in) :: nlfile  ! filepath for file containing namelist input
 
@@ -119,7 +119,7 @@ contains
 ! Time independent initialization for ionosphere simulation.
 !-----------------------------------------------------------------------
 
-    use phys_control,     only : phys_getopts !Method used to get flag for waccmx ionosphere output variables
+    use phys_control,     only: phys_getopts !Method used to get flag for waccmx ionosphere output variables
 
     type(physics_buffer_desc), pointer :: pbuf2d(:,:)
 
@@ -192,7 +192,7 @@ contains
 
 !==============================================================================
   subroutine ion_electron_temp_timestep_init(phys_state,pbuf2d)
-    use time_manager,only : is_first_step
+    use time_manager, only: is_first_step
 
     type(physics_state), intent(in) :: phys_state(begchunk:endchunk)
     type(physics_buffer_desc), pointer :: pbuf2d(:,:)
@@ -246,13 +246,13 @@ contains
     ! Grab fields from initial condition file and put in physics buffer
     !-----------------------------------------------------------------------
 
-    use pio,              only : file_desc_t
-    use cam_grid_support, only : cam_grid_check, cam_grid_id
-    use cam_grid_support, only : cam_grid_get_dim_names
-    use cam_abortutils,   only : endrun
-    use ncdio_atm,        only : infld
-    use ppgrid,           only : pcols, pver, begchunk, endchunk
-    use infnan,   only: nan, assignment(=)
+    use pio,              only: file_desc_t
+    use cam_grid_support, only: cam_grid_check, cam_grid_id
+    use cam_grid_support, only: cam_grid_get_dim_names
+    use cam_abortutils,   only: endrun
+    use ncdio_atm,        only: infld
+    use ppgrid,           only: pcols, pver, begchunk, endchunk
+    use infnan,           only: nan, assignment(=)
 
     type(file_desc_t), intent(inout)   :: ncid_ini    ! Initial condition file id
     type(physics_buffer_desc), pointer :: pbuf2d(:,:) ! Physics buffer
@@ -334,14 +334,14 @@ contains
 
   subroutine ion_electron_temp_tend(state, ptend, pbuf, ztodt)
 
-    use physconst,        only : cpairv
+    use air_composition,     only: cpairv
     !-------------------------------------------------------------------------------------
     ! Calculate dry static energy and O+ tendency for extended ionosphere simulation
     !-------------------------------------------------------------------------------------
 
 !------------------------------Arguments--------------------------------
 
-    use physics_types,       only : physics_ptend_sum
+    use physics_types,       only: physics_ptend_sum
 
     type(physics_state), intent(in)    :: state               ! physics state structure
     type(physics_ptend), intent(inout) :: ptend               ! parameterization tendency structure
@@ -429,13 +429,14 @@ contains
     ! Time independent initialization for extended ionosphere simulation called in phys_init
     ! of physpkg module which is called in cam_comp module
     !---------------------------------------------------------------------------------------
-    use mo_apex,          only : bnorth, beast, bdown             ! Magnetic field components
-    use time_manager,     only : get_curr_calday                  ! Routine to get current calendar day
-    use physconst,        only : rairv, mbarv, rearth             ! Constituent dependent rair and mbar
-    use ref_pres,         only : press_lim_idx
-    use orbit,            only : zenith
+    use mo_apex,          only: bnorth, beast, bdown             ! Magnetic field components
+    use time_manager,     only: get_curr_calday                  ! Routine to get current calendar day
+    use physconst,        only: rearth
+    use air_composition,  only: rairv, mbarv                     ! Constituent dependent rair and mbar
+    use ref_pres,         only: press_lim_idx
+    use orbit,            only: zenith
 
-    use short_lived_species, only : slvd_index,slvd_pbf_ndx => pbf_idx ! Routines to access short lived species
+    use short_lived_species, only: slvd_index,slvd_pbf_ndx => pbf_idx ! Routines to access short lived species
 
     type(physics_buffer_desc), pointer  :: pbuf(:)             ! physics buffer
     type(physics_state), intent(in),    target :: state        ! physics state structure
@@ -858,9 +859,9 @@ contains
   ! Routine to compute the electron and ion temperature
   !-----------------------------------------------------------------------
 
-    use physconst, only : gravit ! Gravity (m/s2)
-    use physconst, only : rairv, mbarv  ! Constituent dependent rair and mbar
-    use mo_apex, only: alatm
+    use physconst,       only: gravit ! Gravity (m/s2)
+    use air_composition, only: rairv, mbarv  ! Constituent dependent rair and mbar
+    use mo_apex,         only: alatm
 
 !------------------------------Arguments--------------------------------
 

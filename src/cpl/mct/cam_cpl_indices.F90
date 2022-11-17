@@ -2,11 +2,6 @@ module cam_cpl_indices
 
   use seq_flds_mod
   use mct_mod
-  !ewl: comment out what was needed initial implementation of drydep for GEOS-Chem 
-  !use seq_drydep_mod,    only: drydep_fields_token, lnd_drydep
-  !use seq_drydep_mod,    only: luse_fields_token, patch_fields_token
-  !use seq_drydep_mod,    only: lai_fields_token
-  ! ewl: new with fvitt updates:
   use shr_drydep_mod,    only: drydep_fields_token, n_drydep
   use shr_megan_mod,     only: shr_megan_fields_token, shr_megan_mechcomps_n
   use shr_fire_emis_mod, only: shr_fire_emis_fields_token, shr_fire_emis_ztop_token, &
@@ -171,13 +166,6 @@ contains
        index_x2a_Sl_ztopfire = 0
     endif
 
-    ! ewl: comment out previous way for GEOS-Chem dry dep
-    !if ( lnd_drydep )then
-    !   index_x2a_Sl_ddvel    = mct_avect_indexra(x2a, trim(drydep_fields_token))
-    !   index_x2a_Sl_lwtgcell = mct_avect_indexra(x2a, trim(luse_fields_token))
-    !   index_x2a_Sl_pwtgcell = mct_avect_indexra(x2a, trim(patch_fields_token))
-    !   index_x2a_Sl_lai      = mct_avect_indexra(x2a, trim(lai_fields_token))
-    ! ewl: new with fvitt updates (next 2 lines)
     if ( n_drydep>0 )then
        index_x2a_Sl_ddvel   = mct_avect_indexra(x2a, trim(drydep_fields_token))
     else

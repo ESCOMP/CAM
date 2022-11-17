@@ -134,6 +134,8 @@ module chemistry
 
   logical :: chem_use_chemtrop = .false.
 
+  integer :: srf_ozone_pbf_ndx = -1
+
 !================================================================================================
 contains
 !================================================================================================
@@ -165,6 +167,7 @@ end function chem_is
     use mo_aurora,           only : aurora_register
     use aero_model,          only : aero_model_register
     use physics_buffer,      only : pbuf_add_field, dtype_r8
+    use upper_bc,            only : ubc_fixed_conc
 
     implicit none
 
@@ -222,7 +225,7 @@ end function chem_is
     hf_ndx    = get_spc_ndx('HF')
 
     if (o3_ndx>0 .or. o3_inv_ndx>0) then
-       call pbuf_add_field('SRFOZONE','global',dtype_r8,(/pcols/),ndx)
+       call pbuf_add_field('SRFOZONE','global',dtype_r8,(/pcols/),srf_ozone_pbf_ndx)
     endif
 
     !-----------------------------------------------------------------------
@@ -235,7 +238,7 @@ end function chem_is
      do m = 1,gas_pcnst
      ! setting of these variables is for registration of transported species
        ic_from_cam2  = .true.
-       has_fixed_ubc = .false.
+       has_fixed_ubc = ubc_fixed_conc(solsym(m))
        has_fixed_ubflx = .false.
        lng_name      = trim( solsym(m) )
        molectype = 'minor'
@@ -248,11 +251,6 @@ end function chem_is
           qmin = 1.e-12_r8
        else if ( m == ch4_ndx ) then
           qmin = 1.e-12_r8
-          if ( waccmx_is('ionosphere') .or. waccmx_is('neutral') ) then
-            has_fixed_ubc = .false.   ! diffusive equilibrium at UB
-          else
-            has_fixed_ubc = .true.
-          endif
        else if ( m == n2o_ndx ) then
           qmin = 1.e-15_r8
        else if( m == cfc11_ndx .or. m == cfc12_ndx ) then
@@ -264,14 +262,10 @@ end function chem_is
           else
              lng_name = 'O2(1-sigma)'
           end if
-       else if ( m==o2_ndx .or. m==n_ndx .or. m==no_ndx .or. m==h_ndx .or. m==h2_ndx .or. m==o_ndx .or. m==hf_ndx &
-               .or. m==f_ndx ) then
+       else if ( m==o2_ndx .or. m==o_ndx .or. m==h_ndx ) then
          if ( waccmx_is('ionosphere') .or. waccmx_is('neutral') ) then
-           has_fixed_ubc = .false.   ! diffusive equilibrium at UB
            if ( m == h_ndx ) has_fixed_ubflx = .true. ! fixed flux value for H at UB
            if ( m == o2_ndx .or. m == o_ndx ) molectype = 'major'
-         else
-           has_fixed_ubc = .true.
          endif
        else if( m == e_ndx ) then
           lng_name = 'electron concentration'
@@ -344,9 +338,7 @@ end function chem_is
     use aero_model,       only: aero_model_readnl
     use dust_model,       only: dust_readnl
     use gas_wetdep_opts,  only: gas_wetdep_readnl
-    use upper_bc,         only: ubc_defaultopts, ubc_setopts
     use mo_drydep,        only: drydep_srf_file
-    use noy_ubc,          only: noy_ubc_readnl
     use mo_sulf,          only: sulf_readnl
     use species_sums_diags,only: species_sums_readnl
     use ocean_emis,       only: ocean_emis_readnl
@@ -380,17 +372,6 @@ end function chem_is
     integer            :: tracer_srcs_fixed_ymd
     integer            :: tracer_srcs_fixed_tod
 
-    ! Upper boundary conditions
-    character(len=shr_kind_cl) :: tgcm_ubc_file
-    integer            :: tgcm_ubc_cycle_yr
-    integer            :: tgcm_ubc_fixed_ymd
-    integer            :: tgcm_ubc_fixed_tod
-    character(len=32)  :: tgcm_ubc_data_type
-    character(len=shr_kind_cl) :: snoe_ubc_file
-    ! Upper boundary conditions
-    real(r8)           :: t_pert_ubc   ! temperature perturbation at ubc
-    real(r8)           :: no_xfac_ubc  ! no multiplicative factor at ubc
-
     namelist /chem_inparm/ chem_freq, airpl_emis_file, &
          euvac_file, photon_file, electron_file, &
          xs_coef_file, xs_short_file, &
@@ -418,10 +399,6 @@ end function chem_is
          tracer_cnst_rmfile, tracer_cnst_cycle_yr, tracer_cnst_fixed_ymd, tracer_cnst_fixed_tod, &
          tracer_srcs_rmfile, tracer_srcs_cycle_yr, tracer_srcs_fixed_ymd, tracer_srcs_fixed_tod
 
-    ! upper boundary conditions
-    namelist /chem_inparm/ tgcm_ubc_file, tgcm_ubc_data_type, tgcm_ubc_cycle_yr, tgcm_ubc_fixed_ymd, tgcm_ubc_fixed_tod, &
-                           snoe_ubc_file, t_pert_ubc, no_xfac_ubc
-
     ! tropopause level control
     namelist /chem_inparm/ chem_use_chemtrop
 
@@ -447,17 +424,6 @@ end function chem_is
          tracer_srcs_cycle_yr_out  = tracer_srcs_cycle_yr,  &
          tracer_srcs_fixed_ymd_out = tracer_srcs_fixed_ymd, &
          tracer_srcs_fixed_tod_out = tracer_srcs_fixed_tod  )
-
-    ! Upper boundary conditions
-    call ubc_defaultopts( &
-         snoe_ubc_file_out =snoe_ubc_file, &
-         t_pert_ubc_out    =t_pert_ubc, &
-         no_xfac_ubc_out   =no_xfac_ubc, &
-         tgcm_ubc_file_out      = tgcm_ubc_file, &
-         tgcm_ubc_data_type_out = tgcm_ubc_data_type, &
-         tgcm_ubc_cycle_yr_out  = tgcm_ubc_cycle_yr, &
-         tgcm_ubc_fixed_ymd_out = tgcm_ubc_fixed_ymd, &
-         tgcm_ubc_fixed_tod_out = tgcm_ubc_fixed_tod )
 
     if (masterproc) then
        unitn = getunit()
@@ -532,17 +498,6 @@ end function chem_is
     call mpibcast (fstrat_file,       len(fstrat_file),                mpichar, 0, mpicom)
     call mpibcast (fstrat_list,       len(fstrat_list(1))*pcnst,       mpichar, 0, mpicom)
 
-    ! upper boundary
-    call mpibcast (tgcm_ubc_file,      len(tgcm_ubc_file),     mpichar, 0, mpicom)
-    call mpibcast (tgcm_ubc_data_type, len(tgcm_ubc_data_type),mpichar, 0, mpicom)
-    call mpibcast (tgcm_ubc_cycle_yr,  1,                      mpiint,  0, mpicom)
-    call mpibcast (tgcm_ubc_fixed_ymd, 1,                      mpiint,  0, mpicom)
-    call mpibcast (tgcm_ubc_fixed_tod, 1,                      mpiint,  0, mpicom)
-
-    call mpibcast (snoe_ubc_file, len(snoe_ubc_file), mpichar, 0, mpicom)
-    call mpibcast (t_pert_ubc,    1,                  mpir8,   0, mpicom)
-    call mpibcast (no_xfac_ubc,   1,                  mpir8,   0, mpicom)
-
     ! prescribed chemical tracers
 
     call mpibcast (tracer_cnst_specifier, len(tracer_cnst_specifier(1))*MAXTRCRS, mpichar, 0, mpicom)
@@ -592,17 +547,6 @@ end function chem_is
         tracer_srcs_fixed_ymd_in = tracer_srcs_fixed_ymd, &
         tracer_srcs_fixed_tod_in = tracer_srcs_fixed_tod )
 
-   ! Upper boundary conditions
-   call ubc_setopts( &
-        snoe_ubc_file_in =snoe_ubc_file, &
-        t_pert_ubc_in    =t_pert_ubc, &
-        no_xfac_ubc_in   =no_xfac_ubc, &
-        tgcm_ubc_file_in =tgcm_ubc_file, &
-        tgcm_ubc_data_type_in = tgcm_ubc_data_type, &
-        tgcm_ubc_cycle_yr_in = tgcm_ubc_cycle_yr, &
-        tgcm_ubc_fixed_ymd_in = tgcm_ubc_fixed_ymd, &
-        tgcm_ubc_fixed_tod_in = tgcm_ubc_fixed_tod )
-
    call aero_model_readnl(nlfile)
    call dust_readnl(nlfile)
 !
@@ -611,7 +555,6 @@ end function chem_is
    call epp_ionization_readnl(nlfile)
    call mee_ion_readnl(nlfile)
    call mo_apex_readnl(nlfile)
-   call noy_ubc_readnl(nlfile)
    call sulf_readnl(nlfile)
    call species_sums_readnl(nlfile)
    call ocean_emis_readnl(nlfile)
@@ -686,24 +629,23 @@ end function chem_is_active
 ! Author: NCAR CMS
 !
 !-----------------------------------------------------------------------
-    use physics_buffer,      only : physics_buffer_desc, pbuf_get_index
-
+    use physics_buffer,      only : physics_buffer_desc, pbuf_get_index, pbuf_set_field
+    use time_manager,        only : is_first_step
     use constituents,        only : cnst_get_ind
     use cam_history,         only : addfld, add_default, horiz_only, fieldname_len
     use chem_mods,           only : gas_pcnst
     use mo_chemini,          only : chemini
     use mo_ghg_chem,         only : ghg_chem_init
     use mo_tracname,         only : solsym
-    use cfc11star,             only : init_cfc11star
-    use phys_control,          only : phys_getopts
-    use chem_mods,             only : adv_mass
-    use infnan,                only : nan, assignment(=)
-    use mo_chem_utls,          only : get_spc_ndx
-    use cam_abortutils,        only : endrun
-    use aero_model,            only : aero_model_init
-    use mo_setsox,             only : sox_inti
-    use constituents,          only : sflxnam
-    use noy_ubc,             only : noy_ubc_init
+    use cfc11star,           only : init_cfc11star
+    use phys_control,        only : phys_getopts
+    use chem_mods,           only : adv_mass
+    use infnan,              only : nan, assignment(=)
+    use mo_chem_utls,        only : get_spc_ndx
+    use cam_abortutils,      only : endrun
+    use aero_model,          only : aero_model_init
+    use mo_setsox,           only : sox_inti
+    use constituents,        only : sflxnam
     use fire_emissions,      only : fire_emissions_init
     use short_lived_species, only : short_lived_species_initic
     use ocean_emis,          only : ocean_emis_init
@@ -798,22 +740,6 @@ end function chem_is_active
       call add_default ('CT_H2O'  , history_budget_histfile_num, ' ')
     endif
 
-    !-----------------------------------------------------------------------
-    ! BAB: 2004-09-01 kludge to define a fixed ubc for water vapor
-    !      required because water vapor is not declared by chemistry but
-    !      has a fixed ubc only if WACCM chemistry is running.
-    !-----------------------------------------------------------------------
-    ! this is moved out of chem_register because we need to know where (what pressure)
-    ! the upper boundary is to determine if this is a high top configuration -- after
-    ! initialization of ref_pres ...
-    if ( 1.e-2_r8 >= ptop_ref .and. ptop_ref > 1.e-5_r8 ) then ! around waccm top, below top of waccmx
-       cnst_fixed_ubc(1) = .true.
-    else if ( 1.e1_r8 > ptop_ref .and. ptop_ref > 1.e-2_r8 ) then ! well above top of cam and below top of waccm
-       call endrun('chem_init: do not know how to set water vapor upper boundary when model top is near mesopause')
-    endif
-
-    if ( masterproc ) write(iulog,*) 'chem_init: addfld done'
-
 !-----------------------------------------------------------------------
 ! Initialize chemistry modules
 !-----------------------------------------------------------------------
@@ -878,8 +804,6 @@ end function chem_is_active
         enddo
      endif
 
-     call noy_ubc_init()
-
      ! Galatic Cosmic Rays ...
      call gcr_ionization_init()
 
@@ -889,6 +813,11 @@ end function chem_is_active
      call short_lived_species_initic()
 
      call ocean_emis_init()
+
+     ! initialize srf ozone to zero
+     if (is_first_step() .and. srf_ozone_pbf_ndx>0) then
+        call pbuf_set_field(pbuf2d, srf_ozone_pbf_ndx, 0._r8)
+     end if
 
   end subroutine chem_init
 
@@ -1070,7 +999,6 @@ end function chem_is_active
 
     use mo_aurora,         only : aurora_timestep_init
     use mo_photo,          only : photo_timestep_init
-    use noy_ubc,           only : noy_ubc_advance
 
     use cfc11star,         only : update_cfc11star
     use physics_buffer,    only : physics_buffer_desc
@@ -1117,11 +1045,6 @@ end function chem_is_active
     ! Set fixed lower boundary timing factors
     !-----------------------------------------------------------------------
     call flbc_chk
-
-    !-----------------------------------------------------------------------
-    ! NOy upper boundary conditions for low top model
-    !-----------------------------------------------------------------------
-    call noy_ubc_advance(pbuf2d, phys_state)
 
     !-----------------------------------------------------------------------
     ! Set fixed offline tracers

@@ -48,7 +48,7 @@ module restart_physics
 
   CONTAINS
     subroutine init_restart_physics ( File, pbuf2d)
-      
+
     use physics_buffer,      only: pbuf_init_restart, physics_buffer_desc
     use ppgrid,              only: pver, pverp
     use chemistry,           only: chem_init_restart
@@ -127,7 +127,7 @@ module restart_physics
     ierr = pio_def_var(File, 'wsx',  pio_double, hdimids, wsx_desc)
     ierr = pio_def_var(File, 'wsy',  pio_double, hdimids, wsy_desc)
     ierr = pio_def_var(File, 'shf',  pio_double, hdimids, shf_desc)
- 
+
     call radiation_define_restart(file)
 
     if (is_subcol_on()) then
@@ -141,7 +141,7 @@ module restart_physics
       !-----------------------------------------------------------------------
       use physics_buffer,      only: physics_buffer_desc, pbuf_write_restart
       use phys_grid,           only: phys_decomp
-      
+
       use ppgrid,              only: begchunk, endchunk, pcols, pverp
       use chemistry,           only: chem_write_restart
       use prescribed_ozone,    only: write_prescribed_ozone_restart
@@ -329,7 +329,7 @@ module restart_physics
       call pio_write_darray(File, shf_desc, iodesc, tmpfield, ierr)
 
       call radiation_write_restart(file)
-      
+
     end subroutine write_restart_physics
 
 !#######################################################################
@@ -338,7 +338,7 @@ module restart_physics
 
      !-----------------------------------------------------------------------
      use physics_buffer,      only: physics_buffer_desc, pbuf_read_restart
-     
+
      use ppgrid,              only: begchunk, endchunk, pcols, pver, pverp
      use chemistry,           only: chem_read_restart
      use cam_grid_support,    only: cam_grid_read_dist_array, cam_grid_id
@@ -396,7 +396,7 @@ module restart_physics
      end if
      call cam_grid_get_decomp(physgrid, dims(1:2), gdims(1:nhdims), pio_double, &
           iodesc)
-     
+
      ! data for chemistry
      call chem_read_restart(File)
 

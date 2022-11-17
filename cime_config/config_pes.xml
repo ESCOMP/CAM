@@ -1026,14 +1026,14 @@
       <pes pesize="any" compset="_CAM\d0%WX">
 	<comment>none</comment>
 	<ntasks>
-	  <ntasks_atm>720</ntasks_atm>
-	  <ntasks_lnd>720</ntasks_lnd>
-	  <ntasks_rof>720</ntasks_rof>
-	  <ntasks_ice>720</ntasks_ice>
-	  <ntasks_ocn>720</ntasks_ocn>
-	  <ntasks_glc>720</ntasks_glc>
-	  <ntasks_wav>720</ntasks_wav>
-	  <ntasks_cpl>720</ntasks_cpl>
+	  <ntasks_atm>864</ntasks_atm>
+	  <ntasks_lnd>864</ntasks_lnd>
+	  <ntasks_rof>864</ntasks_rof>
+	  <ntasks_ice>864</ntasks_ice>
+	  <ntasks_ocn>864</ntasks_ocn>
+	  <ntasks_glc>864</ntasks_glc>
+	  <ntasks_wav>864</ntasks_wav>
+	  <ntasks_cpl>864</ntasks_cpl>
 	</ntasks>
 	<nthrds>
 	  <nthrds_atm>1</nthrds_atm>

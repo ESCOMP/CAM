@@ -168,7 +168,7 @@
       <machine name="cheyenne" compiler="intel" category="fv3_cam"/>
     </machines>
     <options>
-      <option name="wallclock">00:10:00</option>
+      <option name="wallclock">00:30:00</option>
     </options>
   </test>
 
@@ -604,7 +604,7 @@
   </test>
   <test compset="QPX2000" grid="ne5pg3_ne5pg3_mg37" name="SMS_D_Ln3_Vnuopc" testmods="cam/outfrq3s">
     <machines>
-      <machine name="cheyenne" compiler="intel" category="aux_cam"/>
+      <machine name="izumi" compiler="nag" category="aux_cam"/>
       <machine name="izumi" compiler="nag" category="waccmx"/>
     </machines>
     <options>
@@ -2017,15 +2017,6 @@
       <option name="wallclock">00:10:00</option>
     </options>
   </test>
-  <test compset="1850_CAM60%WCTS_CLM50%SP_CICE5%PRES_DOCN%DOM_MOSART_SGLC_SWAV" grid="f09_f09_mg17" name="SMS_Ln9_Vmct" testmods="cam/reduced_hist3s">
-    <machines>
-      <machine name="cheyenne" compiler="intel" category="aux_cam"/>
-      <machine name="cheyenne" compiler="intel" category="prealpha"/>
-    </machines>
-    <options>
-      <option name="wallclock">00:10:00</option>
-    </options>
-  </test>
   <test compset="FWHIST_BGC" grid="f09_f09_mg17" name="ERP_Ld3_Vnuopc" testmods="cam/reduced_hist1d">
     <machines>
       <machine name="cheyenne" compiler="intel" category="waccm"/>
@@ -2044,14 +2035,6 @@
     </options>
   </test>
   <test compset="FWHIST" grid="f09_f09_mg17" name="ERP_Ld3_Vnuopc" testmods="cam/reduced_hist1d">
-    <machines>
-      <machine name="cheyenne" compiler="intel" category="aux_cam"/>
-    </machines>
-    <options>
-      <option name="wallclock">00:40:00</option>
-    </options>
-  </test>
-  <test compset="HIST_CAM60%WCTS_CLM50%SP_CICE5%PRES_DOCN%DOM_MOSART_SGLC_SWAV" grid="f09_f09_mg17" name="ERP_Ld3_Vmct" testmods="cam/reduced_hist1d">
     <machines>
       <machine name="cheyenne" compiler="intel" category="aux_cam"/>
     </machines>
@@ -2156,7 +2139,7 @@
       <option name="wallclock">00:50:00</option>
     </options>
   </test>
-  <test compset="FXHIST" grid="f09_f09_mg17" name="SMS_D_Ln9_Vnuopc"   testmods="cam/waccmx_weimer">
+  <test compset="FXHIST" grid="f09_f09_mg17" name="SMS_D_Ln9_Vnuopc_P384x3"   testmods="cam/waccmx_weimer">
     <machines>
       <machine name="cheyenne" compiler="intel" category="waccmx"/>
     </machines>
@@ -2304,7 +2287,7 @@
   <test compset="FW4madSD" grid="f19_f19_mg17" name="SMS_P48x1_D_Ln9_Vnuopc" testmods="cam/outfrq9s" supported="false">
     <machines>
       <machine name="izumi" compiler="nag" category="waccm"/>
-      <machine name="izumi" compiler="nag" category="aux_cam"/>
+      <machine name="izumi" compiler="gnu" category="aux_cam"/>
     </machines>
     <options>
       <option name="wallclock">00:40:00</option>
@@ -2391,6 +2374,24 @@
     </machines>
     <options>
       <option name="wallclock">00:10:00</option>
+    </options>
+  </test>
+  <test compset="F1850" grid="f10_f10_mg37" name="ERS_Ld3_Vnuopc" testmods="cam/outfrq1d_14dec_L32wsc">
+    <machines>
+      <machine name="cheyenne" compiler="intel" category="aux_cam"/>
+    </machines>
+    <options>
+      <option name="wallclock">00:10:00</option>
+      <option name="comment">Checks that exact restarts occur when crossing the December 16th date boundary with WACCM-SC chemistry in low top configuration</option>
+    </options>
+  </test>
+  <test compset="FWsc2000climo" grid="f10_f10_mg37" name="ERP_Ld3_Vnuopc" testmods="cam/outfrq1d_14dec">
+    <machines>
+      <machine name="cheyenne" compiler="intel" category="waccm"/>
+    </machines>
+    <options>
+      <option name="wallclock">00:10:00</option>
+      <option name="comment">Checks that exact restarts occur when crossing the December 16th date boundary in WACCM-SC</option>
     </options>
   </test>
   <test compset="FWsc2010climo" grid="f19_f19_mg17" name="ERP_Ld3_Vnuopc" testmods="cam/outfrq3d">
