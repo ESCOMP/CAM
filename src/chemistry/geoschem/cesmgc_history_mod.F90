@@ -110,7 +110,7 @@ MODULE CESMGC_History_Mod
   END TYPE HistoryExportObj
 !
 ! !REVISION HISTORY:
-!  01 Sep 2017 - E. Lundgren - Initial version
+!  01 Sep 2017 - E. Lundgren - Initial version for GCHP/GEOS
 !  19 Oct 2022 - H.P. Lin    - Adapted for CESM
 !  See https://github.com/geoschem/geos-chem for history
 !EOP
@@ -353,7 +353,6 @@ CONTAINS
                                 isDiag=isDiag,                 &
                                 RC=RC )
        IF ( RC == GC_FAILURE ) THEN
-          RC = GC_FAILURE
           ErrMsg = "History export init fail for " // TRIM(current%name)
           EXIT
        ENDIF
@@ -362,7 +361,6 @@ CONTAINS
        CALL Append_HistoryExportsList( am_I_Root,     NewHistExp, &
                                        HistoryConfig, RC       )
        IF ( RC == GC_FAILURE ) THEN
-          RC = GC_FAILURE
           ErrMsg = "History export append fail for " // TRIM(current%name)
           EXIT
        ENDIF
@@ -667,7 +665,8 @@ CONTAINS
 ! !REMARKS:
 !  !
 ! !REVISION HISTORY:
-!  01 Sep 2017 - E. Lundgren - Initial version
+!  01 Sep 2017 - E. Lundgren - Initial version for GCHP/GEOS
+!  19 Oct 2022 - H.P. Lin    - Adapted for CESM
 !  See https://github.com/geoschem/geos-chem for history
 !EOP
 !------------------------------------------------------------------------------
@@ -682,7 +681,7 @@ CONTAINS
     ! HistoryExports_SetServices begins here
     ! ================================================================
 
-    ! For MAPL/ESMF error handling (defines Iam and STATUS)
+    ! For error handling (defines Iam and STATUS)
     __Iam__('HistoryExports_SetServices (cesmgc_history_mod.F90)')
     RC = GC_SUCCESS
 
@@ -797,7 +796,8 @@ CONTAINS
 ! !REMARKS:
 !  !
 ! !REVISION HISTORY:
-!  01 Sep 2017 - E. Lundgren - Initial version
+!  01 Sep 2017 - E. Lundgren - Initial version for GCHP/GEOS
+!  19 Oct 2022 - H.P. Lin    - Adapted for CESM
 !  See https://github.com/geoschem/geos-chem for history
 !EOP
 !------------------------------------------------------------------------------
@@ -867,7 +867,7 @@ CONTAINS
              ErrMsg = "No GC 3D pointer found for " // TRIM(current%name)
              EXIT
           ENDIF
-#if defined( MODEL_GEOS ) || defined( MODEL_CESM )
+#if defined( MODEL_CESM )
           ! If using GEOS-5, flip the data vertically to match model
           ! convention
           ! Also do this in CESM. (hplin, 10/31/22)

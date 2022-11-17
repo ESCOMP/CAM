@@ -1401,7 +1401,9 @@ contains
     ! There are actually two copies of the history configuration, one is contained
     ! within HistoryConfig to mimic the properties of GCHP.
     !
-    ! The above original implementation is similar to GC-Classic and WRF-GC
+    ! The above original implementation is similar to GC-Classic and WRF-GC,
+    ! and is used by cesmgc_diag_mod for lookups for certain diagnostic
+    ! fields for compatibility with CAM-chem outputs.
     ! (hplin, 10/31/22)
     CALL HistoryExports_SetServices(am_I_Root     = masterproc,        &
                                     config_file   = historyConfigFile, &
@@ -4143,8 +4145,6 @@ contains
     ! Note that the containers (data pointers) actually need to be updated every time step,
     ! because the State_Chm(LCHNK) target changes. There is some registry lookup overhead
     ! but mitigated by a check to the history field activeness. (hplin, 11/1/22)
-    !
-    ! An alternative is to have multiple HistoryConfig... will make alternative implementation
     CALL HistoryExports_SetDataPointers(rootChunk,            &
                                         HistoryConfig,        State_Chm(LCHNK), &
                                         State_Grid(LCHNK),                      &
