@@ -548,6 +548,7 @@ end subroutine micro_pumas_cam_readnl
 subroutine micro_pumas_cam_register
 
    use cam_history_support, only: add_vert_coord, hist_dimension_values
+   use cam_abortutils,      only: handle_allocate_error
 
    ! Register microphysics constituents and fields in the physics buffer.
    !-----------------------------------------------------------------------
@@ -560,10 +561,7 @@ subroutine micro_pumas_cam_register
    real(r8) :: all_levs(pver)
 
    allocate(trop_levs(pver-top_lev+1), stat=ierr)
-
-   if (ierr /= 0) then
-         call endrun( "micro_pumas_cam_register: error allocating trop_levs")
-   end if
+   call handle_allocate_error(ierr, 'micro_pumas_cam_register', 'trop_levs')
 
    call phys_getopts(use_subcol_microp_out    = use_subcol_microp, &
                      prog_modal_aero_out      = prog_modal_aero)
@@ -583,7 +581,7 @@ subroutine micro_pumas_cam_register
    ! Add history coordinate for DDT nlev
    call hist_dimension_values('lev',all_levs, 1, pver, found)
 
-   if (found) then 
+   if (found) then
       trop_levs(1:pver-top_lev+1) = all_levs(top_lev:pver)
       call add_vert_coord('trop_cld_lev', pver-top_lev+1,                          &
             'tropopshere hybrid level at midpoints (1000*(A+B))', 'hPa', trop_levs,  &
@@ -1420,6 +1418,7 @@ subroutine micro_pumas_cam_tend(state, ptend, dtime, pbuf)
    use tropopause,      only: tropopause_find, TROP_ALG_CPP, TROP_ALG_NONE, NOTFOUND
    use wv_saturation,   only: qsat
    use infnan,          only: nan, assignment(=)
+   use cam_abortutils,  only: handle_allocate_error
 
    type(physics_state),         intent(in)    :: state
    type(physics_ptend),         intent(out)   :: ptend
@@ -1900,9 +1899,7 @@ subroutine micro_pumas_cam_tend(state, ptend, dtime, pbuf)
       call pbuf_get_field(pbuf, qsatfac_idx, qsatfac, col_type=col_type, copy_if_needed=use_subcol_microp)
    else
       allocate(qsatfac(ncol,pver),stat=ierr)
-      if (ierr /= 0) then
-        call endrun(' micro_pumas_cam_tend: error allocating qsatfac')
-      end if
+      call handle_allocate_error(ierr, 'micro_pumas_cam_tend', 'qsatfac')
       qsatfac = 1._r8
    end if
 
@@ -1942,8 +1939,8 @@ subroutine micro_pumas_cam_tend(state, ptend, dtime, pbuf)
    call pbuf_get_field(pbuf, sadice_idx,      sadice,      col_type=col_type)
    call pbuf_get_field(pbuf, sadsnow_idx,     sadsnow,     col_type=col_type)
    call pbuf_get_field(pbuf, wsedl_idx,       wsedl,       col_type=col_type)
-   call pbuf_get_field(pbuf, qme_idx,         qme,         col_type=col_type) 
-   call pbuf_get_field(pbuf, bergso_idx,      bergstot,    col_type=col_type) 
+   call pbuf_get_field(pbuf, qme_idx,         qme,         col_type=col_type)
+   call pbuf_get_field(pbuf, bergso_idx,      bergstot,    col_type=col_type)
 
    ! Assign the pointer values to the non-pointer proc_rates element
    proc_rates%bergstot(:ncol,1:nlev) = bergstot(:ncol,top_lev:pver)
@@ -2034,9 +2031,7 @@ subroutine micro_pumas_cam_tend(state, ptend, dtime, pbuf)
 
    else
       allocate(bergso_grid(pcols,pver), stat=ierr)
-      if (ierr /= 0) then
-        call endrun(' micro_pumas_cam_tend: error allocating bergso_grid')
-      end if
+      call handle_allocate_error(ierr, 'micro_pumas_cam_tend', 'bergso_grid')
       bergso_grid(:,:) = 0._r8
    end if
 
