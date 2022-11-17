@@ -40,7 +40,6 @@ MODULE CESMGC_Diag_Mod
   PUBLIC :: CESMGC_Diag_Calc
   PUBLIC :: wetdep_name, wtrate_name
 
-  INTEGER                      :: nPhotol                ! Number of diagnosed photolytic reactions
   CHARACTER(LEN=fieldname_len) :: srcnam(gas_pcnst)      ! Names of source/sink tendencies
   CHARACTER(LEN=fieldname_len) :: wetdep_name(gas_pcnst) ! Wet deposition tendencies
   CHARACTER(LEN=fieldname_len) :: wtrate_name(gas_pcnst) ! Column tendencies for wet dep
@@ -437,84 +436,6 @@ CONTAINS
     IF ( history_budget ) THEN 
       CALL Add_Default ('CT_H2O' , history_budget_histfile_num, ' ')
     ENDIF
-
-    CALL get_TagInfo( Input_Opt = Input_Opt,  &
-                      tagID     = 'PHO',      &
-                      State_Chm = State_Chm,  &
-                      Found     = Found,      &
-                      RC        = RC,         &
-                      nTags     = nPhotol    )
-
-    ! Trap potential errors
-    IF ( RC /= GC_SUCCESS ) THEN
-       ErrMsg = 'Abnormal exit from routine "Get_TagInfo", could not '  // &
-             ' get nTags!'
-       CALL Error_Stop( ErrMsg, ThisLoc )
-    ENDIF
-
-    DO M = 1, nPhotol
-       CALL get_TagInfo( Input_Opt = Input_Opt,  &
-                         tagID     = 'PHO',      &
-                         State_Chm = State_Chm,  &
-                         Found     = Found,      &
-                         RC        = RC,         &
-                         N         = M,          &
-                         tagName   = tagName    )
-
-       ! Trap potential errors
-       IF ( RC /= GC_SUCCESS ) THEN
-          ErrMsg = 'Abnormal exit from routine "Get_TagInfo"!'
-          CALL Error_Stop( ErrMsg, ThisLoc )
-       ENDIF
-
-       SpcName = 'Jval_' // TRIM( tagName )
-       CALL Addfld( TRIM(SpcName), (/ 'lev' /), 'A', '1/s', &
-          TRIM(tagName) // ' photolysis rate' )
-    ENDDO
-    ! Add JvalO3O1D and JvalO3O3P
-    SpcName = 'JvalO3O1D'
-    CALL Addfld( TRIM(SpcName), (/ 'lev' /), 'A', '1/s', &
-       'O3 -> O1D photolysis rate' )
-
-    SpcName = 'JvalO3O3P'
-    CALL Addfld( TRIM(SpcName), (/ 'lev' /), 'A', '1/s', &
-       'O3 -> O3P photolysis rate' )
-
-    ! ==========================================
-    ! Now add fields corresponding to State_Met
-    ! ==========================================
-
-    ! Copied from Headers/registry_mod.F90
-    ! Point to the head node of the Registry
-    Current => State_Met%Registry
-
-    ! As long as the current node isn't NULL
-    DO WHILE( ASSOCIATED( Current ) )
-
-       ! Get the REGISTRY ITEM belonging to this node of the Registry
-       Item => Current%Item
-
-       ! Only print on the root CPU
-       IF ( ASSOCIATED( Item ) ) THEN
-
-          !IF (( TRIM(Item%FullName(1:8)) /= 'MET_XLAI' ) .AND. &
-          !    ( TRIM(Item%FullName(1:8)) /= 'MET_IUSE' ) .AND. &
-          !    ( TRIM(Item%FullName(1:9)) /= 'MET_ILAND' )) THEN
-          !   IF ( TRIM(Item%DimNames) == 'xy' ) THEN
-          !      CALL Addfld( TRIM( Item%FullName ), horiz_only, 'A', &
-          !         TRIM( Item%Units ), TRIM( Item%Description ) )
-          !   ELSE
-          !      CALL Addfld( TRIM( Item%FullName ), (/ 'lev' /), 'A', &
-          !         TRIM( Item%Units ), TRIM( Item%Description ) )
-          !   ENDIF
-          !ENDIF
-
-       ENDIF
-
-       ! Point to next node of the Registry
-       Current => Current%Next
-
-    ENDDO
 
     ! Chemical tendencies
     DO N = 1, gas_pcnst
@@ -986,8 +907,6 @@ CONTAINS
     INTEGER                :: I, J, L, M, N, ND, SM
     INTEGER                :: idx
     INTEGER                :: RC
-    INTEGER                :: Source_KindVal    ! KIND value of data
-    INTEGER                :: Output_KindVal    ! KIND value for output
     INTEGER                :: Rank              ! Size of data
 
     INTEGER                :: nY, nZ
@@ -1479,109 +1398,8 @@ CONTAINS
     ENDDO
 
     ! ===============================================
-    ! Diagnose photolysis rates
-    ! ===============================================
-
-    IF ( ASSOCIATED(State_Diag%Jval) ) THEN
-       DO M = 1, nPhotol
-          CALL get_TagInfo( Input_Opt = Input_Opt,  &
-                            tagID     = 'PHO',      &
-                            State_Chm = State_Chm,  &
-                            Found     = Found,      &
-                            RC        = RC,         &
-                            N         = M,          &
-                            tagName   = tagName    )
-
-          ! Trap potential errors
-          IF ( RC /= GC_SUCCESS ) THEN
-             ErrMsg = 'Abnormal exit from routine "Get_TagInfo"!'
-             CALL Error_Stop( ErrMsg, ThisLoc )
-          ENDIF
-
-          SpcName = 'Jval_' // TRIM( tagName )
-          IF ( .NOT. hist_fld_active(TRIM(SpcName)) ) CYCLE
-          outTmp(:nY,:nZ) = REAL(State_Diag%Jval(1,:nY,nZ:1:-1,M),r8)
-          CALL OutFld( TRIM(SpcName), outTmp(:nY,:), nY, LCHNK )
-       ENDDO
-    ENDIF
-    IF ( ASSOCIATED(State_Diag%JvalO3O1D) ) THEN
-       SpcName = 'JvalO3O1D'
-       IF ( hist_fld_active(TRIM(SpcName)) ) THEN
-          outTmp(:nY,:nZ) = REAL(State_Diag%JvalO3O1D(1,:nY,nZ:1:-1),r8)
-          CALL OutFld( TRIM(SpcName), outTmp(:nY,:), nY, LCHNK )
-       ENDIF
-    ENDIF
-    IF ( ASSOCIATED(State_Diag%JvalO3O3P) ) THEN
-       SpcName = 'JvalO3O3P'
-       IF ( hist_fld_active(TRIM(SpcName)) ) THEN
-          outTmp(:nY,:nZ) = REAL(State_Diag%JvalO3O3P(1,:nY,nZ:1:-1),r8)
-          CALL OutFld( TRIM(SpcName), outTmp(:nY,:), nY, LCHNK )
-       ENDIF
-    ENDIF
-
-    ! ===============================================
     ! Diagnose fields corresponding to State_Met
     ! ===============================================
-
-    ! Copied from Headers/registry_mod.F90
-    ! Point to the head node of the Registry
-    Current => State_Met%Registry
-
-    Source_KindVal = KINDVAL_F8
-    Output_KindVal = KINDVAL_F8
-
-    ! As long as the current node isn't NULL
-    DO WHILE( ASSOCIATED( Current ) )
-
-       ! Get the REGISTRY ITEM belonging to this node of the Registry
-       Item => Current%Item
-
-       ! Only print on the root CPU
-       IF ( ASSOCIATED( Item ) ) THEN
-
-          SpcName = TRIM(Item%FullName)
-          IF (( TRIM(Item%FullName(1:8)) /= 'MET_XLAI' ) .AND. &
-              ( TRIM(Item%FullName(1:8)) /= 'MET_IUSE' ) .AND. &
-              ( TRIM(Item%FullName(1:9)) /= 'MET_ILAND' )) THEN
-             CALL Registry_Lookup( am_I_Root      = Input_Opt%amIRoot,   &
-                                   Registry       = State_Met%Registry,  &
-                                   RegDict        = State_Met%RegDict,   &
-                                   State          = State_Met%State,     &
-                                   Variable       = Item%FullName,       &
-                                   Source_KindVal = Source_KindVal,      &
-                                   Output_KindVal = Output_KindVal,      &
-                                   Rank           = Rank,                &
-                                   OnLevelEdges   = OnLevelEdges,        &
-                                   Ptr0d_8        = Ptr0d_8,             &
-                                   Ptr1d_8        = Ptr1d_8,             &
-                                   Ptr2d_8        = Ptr2d_8,             &
-                                   Ptr3d_8        = Ptr3d_8,             &
-                                   RC             = RC                  )
-
-             !IF ( hist_fld_active(TRIM(SpcName)) ) THEN
-             !   IF ( Source_KindVal /= KINDVAL_I4 ) THEN
-             !      IF ( Rank == 2 ) THEN
-             !         outTmp(:nY,nZ) = REAL(Ptr2d_8(1,:nY),r8)
-             !         CALL Outfld( TRIM( Item%FullName ), outTmp(:nY,nZ), nY, LCHNK )
-             !      ELSEIF ( Rank == 3 ) THEN
-             !         ! For now, treat variables defined on level edges by ignoring top
-             !         ! most layer
-             !         outTmp(:nY,:nZ) = REAL(Ptr3d_8(1,:nY,nZ:1:-1),r8)
-             !         CALL Outfld( TRIM( Item%FullName ), outTmp(:nY,:), nY, LCHNK )
-             !      ELSE
-             !         IF ( rootChunk ) Write(iulog,*) " Item ", TRIM(Item%FullName), &
-             !            " is of rank ", Rank, " and will not be diagnosed!"
-             !      ENDIF
-             !   ENDIF
-             !ENDIF
-          ENDIF
-
-       ENDIF
-
-       ! Point to next node of the Registry
-       Current => Current%Next
-
-    ENDDO
 
     SpcName = 'SZA'
     IF ( hist_fld_active(TRIM(SpcName)) ) THEN
