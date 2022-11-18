@@ -12,7 +12,7 @@ module phys_grid_ctem
   use zonal_mean_mod,only: ZonalAverage_t, ZonalMean_t
   use physconst,     only: pi
   use cam_logfile,   only: iulog
-  use cam_abortutils,only: endrun
+  use cam_abortutils,only: endrun, handle_allocate_error
   use namelist_utils,only: find_group_name
   use spmd_utils,    only: masterproc, mpi_integer, masterprocid, mpicom
   use time_manager,  only: get_step_size, get_nstep
@@ -76,8 +76,11 @@ contains
     end if
 
     call MPI_bcast(phys_grid_ctem_zm_nbas, 1, mpi_integer, masterprocid, mpicom, ierr)
+    if (ierr /= 0) call endrun(prefix//'FATAL: mpi_bcast: phys_grid_ctem_zm_nbas')
     call MPI_bcast(phys_grid_ctem_za_nlat, 1, mpi_integer, masterprocid, mpicom, ierr)
+    if (ierr /= 0) call endrun(prefix//'FATAL: mpi_bcast: phys_grid_ctem_za_nlat')
     call MPI_bcast(phys_grid_ctem_nfreq,   1, mpi_integer, masterprocid, mpicom, ierr)
+    if (ierr /= 0) call endrun(prefix//'FATAL: mpi_bcast: phys_grid_ctem_nfreq')
 
     do_tem_diags = .false.
     if (phys_grid_ctem_nfreq/=0) then
@@ -130,7 +133,7 @@ contains
     real(r8) :: dlatrad, dlatdeg, lat1, lat2
     real(r8) :: total_area
     real(r8) :: total_wght
-    integer :: j
+    integer :: j, astat
 
     real(r8), parameter :: latdeg0 = -90._r8
     real(r8), parameter :: latrad0 = -pi*0.5_r8
@@ -176,7 +179,8 @@ contains
     zalon_coord => horiz_coord_create('zalon', '', 1, 'longitude', 'degrees_east', 1, 1, zalons)
 
     ! grid decomposition map
-    allocate(grid_map(4,nzalat))
+    allocate(grid_map(4,nzalat), stat=astat)
+    call handle_allocate_error(astat, 'phys_grid_ctem_reg', 'grid_map')
 
     do j = 1,nzalat
        grid_map(1,j) = 1

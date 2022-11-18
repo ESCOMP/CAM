@@ -157,7 +157,7 @@ module zonal_mean_mod
   use phys_grid,       only: get_ncols_p, get_rlat_p, get_wght_all_p, get_nlcols_p
   use ppgrid,          only: begchunk, endchunk, pcols
   use shr_reprosum_mod,only: shr_reprosum_calc
-  use cam_abortutils,  only: endrun
+  use cam_abortutils,  only: endrun, handle_allocate_error
   use spmd_utils,      only: mpicom
 
   use phys_grid,  only: ngcols_p => num_global_phys_cols
@@ -258,7 +258,8 @@ contains
       integer :: nn,n2,nb,lchnk,ncols,cc
       integer :: cnum,Cvec_len
 
-      integer :: nlcols, count
+      integer :: nlcols, count, astat
+      character(len=*), parameter :: subname = 'init_ZonalMean'
 
       if (I_nbas<1) then
          call endrun('ZonalMean%init: ERROR I_nbas must be greater than 0')
@@ -271,29 +272,39 @@ contains
       if(allocated(this%map  )) deallocate(this%map)
 
       this%nbas = I_nbas
-      allocate(this%area (pcols,begchunk:endchunk))
-      allocate(this%basis(pcols,begchunk:endchunk,I_nbas))
-      allocate(this%map  (I_nbas,I_nbas))
+      allocate(this%area (pcols,begchunk:endchunk), stat=astat)
+      call handle_allocate_error(astat, subname, 'this%area')
+      allocate(this%basis(pcols,begchunk:endchunk,I_nbas), stat=astat)
+      call handle_allocate_error(astat, subname, 'this%basis')
+      allocate(this%map  (I_nbas,I_nbas), stat=astat)
+      call handle_allocate_error(astat, subname, 'this%map')
       this%area (:,:)   = 0._r8
       this%basis(:,:,:) = 0._r8
       this%map  (:,:)   = 0._r8
 
       Cvec_len = 0
       do nn= 1,this%nbas
-      do n2=nn,this%nbas
-        Cvec_len = Cvec_len + 1
-      end do
+         do n2=nn,this%nbas
+            Cvec_len = Cvec_len + 1
+         end do
       end do
 
       nlcols = get_nlcols_p()
 
-      allocate(Clats(pcols,begchunk:endchunk))
-      allocate(Bcoef(I_nbas))
-      allocate(Csum (nlcols, Cvec_len))
-      allocate(Cvec (Cvec_len))
-      allocate(Bsum (nlcols, I_nbas))
-      allocate(Bnorm(I_nbas))
-      allocate(Bcov (I_nbas,I_nbas))
+      allocate(Clats(pcols,begchunk:endchunk), stat=astat)
+      call handle_allocate_error(astat, subname, 'Clats')
+      allocate(Bcoef(I_nbas), stat=astat)
+      call handle_allocate_error(astat, subname, 'Bcoef')
+      allocate(Csum (nlcols, Cvec_len), stat=astat)
+      call handle_allocate_error(astat, subname, 'Csum')
+      allocate(Cvec (Cvec_len), stat=astat)
+      call handle_allocate_error(astat, subname, 'Cvec')
+      allocate(Bsum (nlcols, I_nbas), stat=astat)
+      call handle_allocate_error(astat, subname, 'Bsum')
+      allocate(Bnorm(I_nbas), stat=astat)
+      call handle_allocate_error(astat, subname, 'Bnorm')
+      allocate(Bcov (I_nbas,I_nbas), stat=astat)
+      call handle_allocate_error(astat, subname, 'Bcov')
 
       Bsum(:,:) = 0._r8
       Csum(:,:) = 0._r8
@@ -302,54 +313,54 @@ contains
       ! and convert Latitudes to SP->NP colatitudes in radians
       !-------------------------------------------------------
       do lchnk=begchunk,endchunk
-        ncols = get_ncols_p(lchnk)
-        call get_wght_all_p(lchnk, ncols, area)
-        do cc = 1,ncols
-          rlat=get_rlat_p(lchnk,cc)
-          this%area(cc,lchnk) = area(cc)
-          Clats    (cc,lchnk) = rlat + PI2
-        end do
+         ncols = get_ncols_p(lchnk)
+         call get_wght_all_p(lchnk, ncols, area)
+         do cc = 1,ncols
+            rlat=get_rlat_p(lchnk,cc)
+            this%area(cc,lchnk) = area(cc)
+            Clats    (cc,lchnk) = rlat + PI2
+         end do
       end do
 
       ! Add first basis for the mean values.
       !------------------------------------------
       do lchnk=begchunk,endchunk
-        ncols = get_ncols_p(lchnk)
-        do cc = 1,ncols
-          this%basis(cc,lchnk,1) = 1._r8/sqrt(8._r8*PI2)
-        end do
+         ncols = get_ncols_p(lchnk)
+         do cc = 1,ncols
+            this%basis(cc,lchnk,1) = 1._r8/sqrt(8._r8*PI2)
+         end do
       end do
 
       ! Loop over the remaining basis functions
       !---------------------------------------
       do nn=2,this%nbas
-        nb = nn-1
+         nb = nn-1
 
-        ! Generate coefs for the basis
-        !------------------------------
-        call dalfk(nb,0,Bcoef)
+         ! Generate coefs for the basis
+         !------------------------------
+         call dalfk(nb,0,Bcoef)
 
-        ! Create basis for the coefs at each ncol gridpoint
-        !---------------------------------------------------
-        do lchnk=begchunk,endchunk
-          ncols = get_ncols_p(lchnk)
-          do cc = 1,ncols
-            call dlfpt(nb,0,Clats(cc,lchnk),Bcoef,this%basis(cc,lchnk,nn))
-          end do
-        end do
-      end do ! nn=1,this%nbas
+         ! Create basis for the coefs at each ncol gridpoint
+         !---------------------------------------------------
+         do lchnk=begchunk,endchunk
+            ncols = get_ncols_p(lchnk)
+            do cc = 1,ncols
+               call dlfpt(nb,0,Clats(cc,lchnk),Bcoef,this%basis(cc,lchnk,nn))
+            end do
+         end do
+      end do ! nn=2,this%nbas
 
       ! Numerically normalize the basis funnctions
       !--------------------------------------------------------------
       do nn=1,this%nbas
-        count = 0
-        do lchnk=begchunk,endchunk
-          ncols = get_ncols_p(lchnk)
-          do cc = 1,ncols
-            count=count+1
-            Bsum(count,nn) = this%basis(cc,lchnk,nn)*this%basis(cc,lchnk,nn)*this%area(cc,lchnk)
-          end do
-        end do
+         count = 0
+         do lchnk=begchunk,endchunk
+            ncols = get_ncols_p(lchnk)
+            do cc = 1,ncols
+               count=count+1
+               Bsum(count,nn) = this%basis(cc,lchnk,nn)*this%basis(cc,lchnk,nn)*this%area(cc,lchnk)
+            end do
+         end do
       end do ! nn=1,this%nbas
 
       call shr_reprosum_calc(Bsum, Bnorm, count, nlcols, this%nbas, gbl_count=ngcols_p, commid=mpicom)
@@ -387,11 +398,11 @@ contains
 
       cnum = 0
       do nn= 1,this%nbas
-      do n2=nn,this%nbas
-        cnum = cnum + 1
-        Bcov(nn,n2) = Cvec(cnum)
-        Bcov(n2,nn) = Cvec(cnum)
-      end do
+         do n2=nn,this%nbas
+            cnum = cnum + 1
+            Bcov(nn,n2) = Cvec(cnum)
+            Bcov(n2,nn) = Cvec(cnum)
+         end do
       end do
 
       ! Invert to get the basis amplitude map
@@ -430,12 +441,16 @@ contains
       real(r8),allocatable :: Csum(:,:)
       real(r8),allocatable :: Gcov(:)
       integer :: nn,n2,ncols,lchnk,cc
-      integer :: nlcols, count
+      integer :: nlcols, count, astat
+
+      character(len=*), parameter :: subname = 'calc_ZonalMean_2Damps'
 
       nlcols = get_nlcols_p()
 
-      allocate(Gcov(this%nbas))
-      allocate(Csum(nlcols, this%nbas))
+      allocate(Gcov(this%nbas), stat=astat)
+      call handle_allocate_error(astat, subname, 'Gcov')
+      allocate(Csum(nlcols, this%nbas), stat=astat)
+      call handle_allocate_error(astat, subname, 'Csum')
       Csum(:,:) = 0._r8
 
       ! Compute Covariance with input data and basis functions
@@ -490,15 +505,18 @@ contains
       real(r8),allocatable:: Gcov (:)
       integer:: nn,n2,ncols,lchnk,cc
       integer:: Nsum,ns,ll
-      integer :: nlcols, count
+      integer :: nlcols, count, astat
 
       integer :: nlev
+      character(len=*), parameter :: subname = 'calc_ZonalMean_3Damps'
 
       nlev = size(I_Gdata,dim=2)
 
       nlcols = get_nlcols_p()
-      allocate(Gcov(this%nbas))
-      allocate(Csum(nlcols, this%nbas))
+      allocate(Gcov(this%nbas), stat=astat)
+      call handle_allocate_error(astat, subname, 'Gcov')
+      allocate(Csum(nlcols, this%nbas), stat=astat)
+      call handle_allocate_error(astat, subname, 'Csum')
 
       Csum(:,:) = 0._r8
       O_Bamp(:,:) = 0._r8
@@ -663,8 +681,10 @@ contains
       real(r8),allocatable:: Bcoef(:)
       real(r8),allocatable:: Bcov (:,:)
       real(r8):: Bnorm
-      integer :: ii,nn,n2,nb,ierr
+      integer :: ii,nn,n2,nb,ierr, astat
       logical :: generate_lats
+
+      character(len=*), parameter :: subname = 'init_ZonalProfile'
 
       generate_lats = .false.
 
@@ -680,13 +700,19 @@ contains
 
       this%nlat = I_nlat
       this%nbas = I_nbas
-      allocate(this%area (I_nlat))
-      allocate(this%basis(I_nlat,I_nbas))
-      allocate(this%map  (I_nbas,I_nbas))
+      allocate(this%area (I_nlat), stat=astat)
+      call handle_allocate_error(astat, subname, 'this%area')
+      allocate(this%basis(I_nlat,I_nbas), stat=astat)
+      call handle_allocate_error(astat, subname, 'this%basis')
+      allocate(this%map  (I_nbas,I_nbas), stat=astat)
+      call handle_allocate_error(astat, subname, 'this%map')
 
-      allocate(Clats(I_nlat))
-      allocate(Bcoef(I_nbas))
-      allocate(Bcov (I_nbas,I_nbas))
+      allocate(Clats(I_nlat), stat=astat)
+      call handle_allocate_error(astat, subname, 'Clats')
+      allocate(Bcoef(I_nbas), stat=astat)
+      call handle_allocate_error(astat, subname, 'Bcoef')
+      allocate(Bcov (I_nbas,I_nbas), stat=astat)
+      call handle_allocate_error(astat, subname, 'Bcov')
 
       ! Optionally create the Latitude Gridpoints
       ! and their associated area weights. Otherwise
@@ -799,11 +825,13 @@ contains
       ! Local Values
       !--------------
       real(r8),allocatable:: Gcov(:)
-      integer:: ii,nn,n2
+      integer:: ii,nn,n2, astat
+      character(len=*), parameter :: subname = 'calc_ZonalProfile_1Damps'
 
       ! Compute Covariance with input data and basis functions
       !--------------------------------------------------------
-      allocate(Gcov(this%nbas))
+      allocate(Gcov(this%nbas), stat=astat)
+      call handle_allocate_error(astat, subname, 'Gcov')
       do nn=1,this%nbas
         Gcov(nn) = 0._r8
         do ii=1,this%nlat
@@ -845,13 +873,15 @@ contains
       real(r8),allocatable:: Gcov(:,:)
       integer:: ii,nn,n2,ilev
 
-      integer :: nlev
+      integer :: nlev, astat
+      character(len=*), parameter :: subname = 'calc_ZonalProfile_2Damps'
 
       nlev = size(I_Zdata,dim=2)
 
       ! Compute Covariance with input data and basis functions
       !--------------------------------------------------------
-      allocate(Gcov(this%nbas,nlev))
+      allocate(Gcov(this%nbas,nlev), stat=astat)
+      call handle_allocate_error(astat, subname, 'Gcov')
       do ilev=1,nlev
          do nn=1,this%nbas
             Gcov(nn,ilev) = 0._r8
@@ -983,10 +1013,11 @@ contains
       real(r8),allocatable:: Asum  (:,:)
       real(r8),allocatable:: Anorm (:)
       real(r8):: area(pcols),rlat
-      integer :: nn,jj,ierr
+      integer :: nn,jj,ierr, astat
       integer :: ncols,lchnk,cc,jlat
       integer :: nlcols, count
       logical :: generate_lats
+      character(len=*), parameter :: subname = 'init_ZonalAverage'
 
       generate_lats = .false.
 
@@ -1004,16 +1035,25 @@ contains
       if(allocated(this%idx_map)) deallocate(this%idx_map)
 
       this%nlat = I_nlat
-      allocate(this%area   (I_nlat))
-      allocate(this%a_norm (I_nlat))
-      allocate(this%area_g (pcols,begchunk:endchunk))
-      allocate(this%idx_map(pcols,begchunk:endchunk))
+      allocate(this%area   (I_nlat), stat=astat)
+      call handle_allocate_error(astat, subname, 'this%area')
+      allocate(this%a_norm (I_nlat), stat=astat)
+      call handle_allocate_error(astat, subname, 'this%a_norm')
+      allocate(this%area_g (pcols,begchunk:endchunk), stat=astat)
+      call handle_allocate_error(astat, subname, 'this%area_g')
+      allocate(this%idx_map(pcols,begchunk:endchunk), stat=astat)
+      call handle_allocate_error(astat, subname, 'this%idx_map')
 
-      allocate(Clats (I_nlat))
-      allocate(BinLat(I_nlat+1))
-      allocate(Glats (pcols,begchunk:endchunk))
-      allocate(Asum  (nlcols,I_nlat))
-      allocate(Anorm (I_nlat))
+      allocate(Clats (I_nlat), stat=astat)
+      call handle_allocate_error(astat, subname, 'Clats')
+      allocate(BinLat(I_nlat+1), stat=astat)
+      call handle_allocate_error(astat, subname, 'BinLat')
+      allocate(Glats (pcols,begchunk:endchunk), stat=astat)
+      call handle_allocate_error(astat, subname, 'Glats')
+      allocate(Asum  (nlcols,I_nlat), stat=astat)
+      call handle_allocate_error(astat, subname, 'Asum')
+      allocate(Anorm (I_nlat), stat=astat)
+      call handle_allocate_error(astat, subname, 'Anorm')
 
       ! Optionally create the Latitude Gridpoints
       ! and their associated area weights. Otherwise
@@ -1148,14 +1188,16 @@ contains
       !--------------
       real(r8),allocatable:: Asum (:,:)
       integer:: nn,ncols,lchnk,cc,jlat
-      integer :: nlcols, count
+      integer :: nlcols, count, astat
+      character(len=*), parameter :: subname = 'calc_ZonalAverage_2DbinAvg'
 
       nlcols = get_nlcols_p()
 
 
       ! Initialize Zonal profile
       !---------------------------
-      allocate(Asum(nlcols,this%nlat))
+      allocate(Asum(nlcols,this%nlat), stat=astat)
+      call handle_allocate_error(astat, subname, 'Asum')
       Asum(:,:) = 0._r8
 
       O_Zdata(1:this%nlat) = 0._r8
@@ -1207,7 +1249,8 @@ contains
       integer:: Nsum,ilev,ns
 
       integer :: nlev
-      integer :: nlcols, count
+      integer :: nlcols, count, astat
+      character(len=*), parameter :: subname = 'calc_ZonalAverage_3DbinAvg'
 
       nlev = size(I_Gdata,dim=2)
       nlcols = get_nlcols_p()
@@ -1215,8 +1258,10 @@ contains
       ! Initialize Zonal profile
       !---------------------------
       Nsum = this%nlat*nlev
-      allocate(Gsum(Nsum))
-      allocate(Asum(nlcols,Nsum))
+      allocate(Gsum(Nsum), stat=astat)
+      call handle_allocate_error(astat, subname, 'Gsum')
+      allocate(Asum(nlcols,Nsum), stat=astat)
+      call handle_allocate_error(astat, subname, 'Asum')
       Asum(:,:) = 0._r8
 
       O_Zdata(1:this%nlat,1:nlev) = 0._r8
@@ -1655,13 +1700,17 @@ contains
       real(r8),allocatable:: Mwrk(:,:),Rscl(:)
       integer ,allocatable:: Indx(:)
       real(r8):: Psgn,Mmax,Mval,Sval
-      integer :: ii,jj,kk,ndx,i2,ii_max
+      integer :: ii,jj,kk,ndx,i2,ii_max, astat
+      character(len=*), parameter :: subname = 'Invert_Matrix'
 
       ! Allocate work space
       !---------------------
-      allocate(Mwrk(Nbas,Nbas))
-      allocate(Rscl(Nbas))
-      allocate(Indx(Nbas))
+      allocate(Mwrk(Nbas,Nbas), stat=astat)
+      call handle_allocate_error(astat, subname, 'Mwrk')
+      allocate(Rscl(Nbas), stat=astat)
+      call handle_allocate_error(astat, subname, 'Rscl')
+      allocate(Indx(Nbas), stat=astat)
+      call handle_allocate_error(astat, subname, 'Indx')
 
       ! Copy the Input matrix so it can be decomposed
       !-------------------------------------------------
