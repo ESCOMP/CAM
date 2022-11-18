@@ -3,6 +3,7 @@
 !----------------------------------------------------------------------
 module mo_tuvx
 
+  use musica_map,              only : map_t
   use musica_string,           only : string_t
   use ppgrid,                  only : pver                ! number of vertical layers
   use shr_kind_mod,            only : r8 => shr_kind_r8, cl=>shr_kind_cl
@@ -62,6 +63,8 @@ module mo_tuvx
     integer                  :: n_photo_rates_            ! number of photo reactions in TUV-x
     real(r8), allocatable    :: photo_rates_(:,:,:)       ! photolysis rate constants
                                                           !   (column, vertical level, reaction) [s-1]
+    type(map_t)              :: photo_rate_map_           ! map between TUV-x and CAM
+                                                          !   photo rate constant arrays
     type(grid_updater_t)     :: grids_(NUM_GRIDS)         ! grid updaters
     type(profile_updater_t)  :: profiles_(NUM_PROFILES)   ! profile updaters
     type(radiator_updater_t) :: radiators_(NUM_RADIATORS) ! radiator updaters
@@ -164,6 +167,7 @@ contains
     use cam_logfile,             only : iulog ! log file output unit
     use mo_chem_utls,            only : get_spc_ndx, get_inv_ndx
     use musica_assert,           only : assert_msg
+    use musica_config,           only : config_t
     use musica_mpi,              only : musica_mpi_rank
     use musica_string,           only : string_t, to_char
     use ppgrid,                  only : pcols ! maximum number of columns
@@ -176,9 +180,12 @@ contains
     use tuvx_profile_warehouse,  only : profile_warehouse_t
     use tuvx_radiator_warehouse, only : radiator_warehouse_t
 
+    character(len=*), parameter :: my_name = "TUV-x wrapper initialization"
     class(core_t), pointer :: core
     character, allocatable :: buffer(:)
     type(string_t) :: config_path
+    type(config_t) :: tuvx_config, map_config
+    type(map_t) :: map
     class(grid_t), pointer :: height
     class(grid_warehouse_t), pointer :: cam_grids
     class(profile_warehouse_t), pointer :: cam_profiles
@@ -203,12 +210,17 @@ contains
     cam_profiles => get_cam_profiles( cam_grids )
     cam_radiators => get_cam_radiators( cam_grids )
 
-    ! ======================================================================
-    ! construct a core on the primary process and pack it onto an MPI buffer
-    ! ======================================================================
+    ! ==================================================================
+    ! construct a core and a map between TUV-x and CAM photolysis arrays
+    ! on the primary process and pack them onto an MPI buffer
+    ! ==================================================================
     if( is_main_task ) then
+      call tuvx_config%from_file( config_path%to_char( ) )
+      call tuvx_config%get( "__CAM aliasing", map_config, my_name )
       core => core_t( config_path, cam_grids, cam_profiles, cam_radiators )
-      pack_size = core%pack_size( mpicom )
+      call set_photo_rate_map( core, map_config, map )
+      pack_size = core%pack_size( mpicom ) + &
+                  map%pack_size( mpicom )
       allocate( buffer( pack_size ) )
       pos = 0
       call core%mpi_pack( buffer, pos, mpicom )
@@ -216,9 +228,9 @@ contains
     end if
 
 #ifdef HAVE_MPI
-    ! ============================================
-    ! broadcast the core data to all MPI processes
-    ! ============================================
+    ! ====================================================
+    ! broadcast the core and map data to all MPI processes
+    ! ====================================================
     call mpi_bcast( pack_size, 1, MPI_INTEGER, main_task, mpicom, i_err )
     if( i_err /= MPI_SUCCESS ) then
       write(iulog,*) "TUV-x MPI int bcast error"
@@ -232,22 +244,25 @@ contains
     end if
 #endif
 
-    ! ========================================================
-    ! unpack the core for each OMP thread on every MPI process
-    ! ========================================================
+    ! ================================================================
+    ! unpack the core and map for each OMP thread on every MPI process
+    ! ================================================================
     allocate( tuvx_ptrs( max_threads( ) ) )
     do i_core = 1, size( tuvx_ptrs )
     associate( tuvx => tuvx_ptrs( i_core ) )
       allocate( tuvx%core_ )
       pos = 0
       call tuvx%core_%mpi_unpack( buffer, pos, mpicom )
+      call tuvx%photo_rate_map_%mpi_unpack( buffer, pos, mpicom )
 
-      ! =====================================================================
-      ! Set up map between CAM and TUV-x photolysis reactions for each thread
-      ! =====================================================================
+      ! ===================================================================
+      ! Set up connections between CAM and TUV-x input data for each thread
+      ! ===================================================================
       call create_updaters( tuvx, cam_grids, cam_profiles, cam_radiators )
 
-      ! TEMPORARY FOR DEVELOPMENT
+      ! ===============================================================
+      ! Create a working array for calculated photolysis rate constants
+      ! ===============================================================
       tuvx%n_photo_rates_ = tuvx%core_%number_of_photolysis_reactions( )
       height => tuvx%core_%get_grid( "height", "km" )
       allocate( tuvx%photo_rates_( pcols, height%ncells_ + 1, tuvx%n_photo_rates_ ) )
@@ -308,10 +323,11 @@ contains
   subroutine tuvx_get_photo_rates( state, pbuf, ncol, lchnk, height_mid, &
       height_int, temperature_mid, surface_temperature, fixed_species_conc, &
       species_vmr, exo_column_conc, surface_albedo, solar_zenith_angle, &
-      earth_sun_distance )
+      earth_sun_distance, photolysis_rates )
 
     use cam_logfile,      only : iulog        ! log info output unit
-    use chem_mods,        only : gas_pcnst, & ! number of non-fixed species
+    use chem_mods,        only : phtcnt,    & ! number of photolysis reactions
+                                 gas_pcnst, & ! number of non-fixed species
                                  nfs,       & ! number of fixed species
                                  nabscol      ! number of absorbing species (radiators)
     use physics_types,    only : physics_state
@@ -324,23 +340,26 @@ contains
 
     type(physics_state),       target,  intent(in)    :: state
     type(physics_buffer_desc), pointer, intent(inout) :: pbuf(:)
-    integer,  intent(in) :: ncol                        ! number of active columns on this thread
-    integer,  intent(in) :: lchnk                       ! identifier for this thread
-    real(r8), intent(in) :: height_mid(pcols,pver)      ! height at mid-points (km)
-    real(r8), intent(in) :: height_int(pcols,pver+1)    ! height at interfaces (km)
-    real(r8), intent(in) :: temperature_mid(pcols,pver) ! midpoint temperature (K)
-    real(r8), intent(in) :: surface_temperature(pcols)  ! surface temperature (K)
-    real(r8), intent(in) :: fixed_species_conc(ncol,pver,max(1,nfs))    ! fixed species densities
-                                                                        !   (molecule cm-3)
-    real(r8), intent(in) :: species_vmr(ncol,pver,max(1,gas_pcnst))     ! species volume mixing
-                                                                        !   ratios (mol mol-1)
-    real(r8), intent(in) :: exo_column_conc(ncol,0:pver,max(1,nabscol)) ! above column densities
-                                                                        !   (molecule cm-3)
-    real(r8), intent(in) :: surface_albedo(pcols)       ! surface albedo (unitless)
-    real(r8), intent(in) :: solar_zenith_angle(ncol)    ! solar zenith angle (radians)
-    real(r8), intent(in) :: earth_sun_distance          ! Earth-Sun distance (AU)
+    integer,  intent(in)    :: ncol                        ! number of active columns on this thread
+    integer,  intent(in)    :: lchnk                       ! identifier for this thread
+    real(r8), intent(in)    :: height_mid(pcols,pver)      ! height at mid-points (km)
+    real(r8), intent(in)    :: height_int(pcols,pver+1)    ! height at interfaces (km)
+    real(r8), intent(in)    :: temperature_mid(pcols,pver) ! midpoint temperature (K)
+    real(r8), intent(in)    :: surface_temperature(pcols)  ! surface temperature (K)
+    real(r8), intent(in)    :: fixed_species_conc(ncol,pver,max(1,nfs))    ! fixed species densities
+                                                                           !   (molecule cm-3)
+    real(r8), intent(in)    :: species_vmr(ncol,pver,max(1,gas_pcnst))     ! species volume mixing
+                                                                           !   ratios (mol mol-1)
+    real(r8), intent(in)    :: exo_column_conc(ncol,0:pver,max(1,nabscol)) ! above column densities
+                                                                           !   (molecule cm-3)
+    real(r8), intent(in)    :: surface_albedo(pcols)       ! surface albedo (unitless)
+    real(r8), intent(in)    :: solar_zenith_angle(ncol)    ! solar zenith angle (radians)
+    real(r8), intent(in)    :: earth_sun_distance          ! Earth-Sun distance (AU)
+    real(r8), intent(inout) :: photolysis_rates(ncol,pver,phtcnt) ! photolysis rate
+                                                                  !   constants (1/s)
 
-    integer :: i_col                                ! column index
+    integer :: i_col   ! column index
+    integer :: i_level ! vertical level index
 
     if (.not.tuvx_active) return
 
@@ -375,6 +394,13 @@ contains
                              photolysis_rate_constants = &
                                tuvx%photo_rates_(i_col,:,:) )
 
+        ! ============================================
+        ! Return the photolysis rates on the CAM grids
+        ! ============================================
+        do i_level = 1, pver
+          call tuvx%photo_rate_map_%apply( tuvx%photo_rates_(i_col,pver-i_level+1,:), &
+                                           photolysis_rates(i_col,i_level,:) )
+        end do
       end do
 
       call output_diagnostics( tuvx, ncol, lchnk )
@@ -515,6 +541,40 @@ contains
     end do
 
   end subroutine initialize_diagnostics
+
+!================================================================================================
+
+  !-----------------------------------------------------------------------
+  ! Sets up a map between the TUV-x and CAM photolysis rate arrays
+  !-----------------------------------------------------------------------
+  subroutine set_photo_rate_map( core, config, map )
+
+    use cam_logfile,   only : iulog       ! log info output unit
+    use chem_mods,     only : phtcnt, &   ! number of photolysis reactions
+                              rxt_tag_lst ! labels for all chemical reactions
+                                          ! NOTE photolysis reactions are
+                                          ! expected to appear first
+    use musica_config, only : config_t
+    use musica_string, only : string_t
+
+    type(core_t),   intent(in)    :: core ! TUV-x core
+    type(config_t), intent(inout) :: config ! CAM<->TUV-x map configuration
+    type(map_t),    intent(out)   :: map
+
+    integer :: i_label
+    type(string_t), allocatable :: tuvx_labels(:), cam_labels(:)
+
+    allocate( cam_labels( phtcnt ) )
+    do i_label = 1, phtcnt
+      cam_labels( i_label ) = trim( rxt_tag_lst( i_label ) )
+    end do
+    tuvx_labels = core%photolysis_reaction_labels( )
+    map = map_t( config, tuvx_labels, cam_labels )
+    write(iulog,*)
+    write(iulog,*) "TUV-x <-> CAM-Chem photolysis rate constant map"
+    call map%print( tuvx_labels, cam_labels, iulog )
+
+  end subroutine set_photo_rate_map
 
 !================================================================================================
 

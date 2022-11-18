@@ -347,118 +347,121 @@
          }
       ]
    },
-   "__CAM aliasing": [
-      {
-         "for": "jho2no2_a",
-         "reaction": "HO2NO2 + hv -> OH + NO3",
-         "comments": "TODO find this rate",
-         "use": "jo2",
-         "scale by": 0.0
-      },
-      {
-         "for": "jho2no2_b",
-         "reaction": "HO2NO2 + hv -> NO2 + HO2",
-         "comments": "TODO find this rate",
-         "use": "jo2",
-         "scale by": 0.0
-      },
-      {
-         "for": "jpooh",
-         "reaction": "POOH (C3H6OHOOH) + hv -> CH3CHO + CH2O + HO2 + OH",
-         "use": "jch3ooh"
-      },
-      {
-         "for": "jch3co3h",
-         "reaction": "CH3COOOH + hv -> CH3O2 + OH + CO2",
-         "use": "jh2o2",
-         "scale by": 0.28
-      },
-      {
-         "for": "jmpan",
-         "reaction": "MPAN + hv -> MCO3 + NO2",
-         "use": "jpan"
-      },
-      {
-         "for": "jmacr_a",
-         "reaction": "MACR + hv -> 1.34*HO2 + 0.66*MCO3 + 1.34*CH2O + 1.34*CH3CO3",
-         "comments": "TODO - find this rate",
-         "use": "jo2",
-         "scale by": 0.0
-      },
-      {
-         "for": "jmacr_b",
-         "reaction": "MACR + hv -> 0.66*HO2 + 1.34*CO",
-         "comments": "TODO - find this rate",
-         "use": "jo2",
-         "scale by": 0.0
-      },
-      {
-         "for": "jc2h5ooh",
-         "reaction": "C2H5OOH + hv -> CH3CHO + HO2 + OH",
-         "use": "jch3ooh"
-      },
-      {
-         "for": "jc3h7ooh",
-         "reaction": "C3H7OOH + hv -> 0.82*CH3COCH3 + OH + HO2",
-         "use": "jch3ooh"
-      },
-      {
-         "for": "jrooh",
-         "reaction": "ROOH + hv -> CH3CO3 + CH2O + OH",
-         "use": "jch3ooh"
-      },
-      {
-         "for": "jxooh",
-         "reaction": "XOOH + hv -> OH",
-         "use": "jch3ooh"
-      },
-      {
-         "for": "jonitr",
-         "reaction": "ONITR + hv -> NO2",
-         "use": "jch3cho"
-      },
-      {
-         "for": "jisopooh",
-         "reaction": "ISOPOOH + hv -> 0.402*MVK + 0.288*MACR + 0.69*CH2O + HO2",
-         "use": "jch3ooh"
-      },
-      {
-         "for": "jhyac",
-         "reaction": "HYAC (CH3COCH2OH) + hv -> CH3CO3 + HO2 + CH2O",
-         "comments": "TODO - find this rate",
-         "use": "jo2",
-         "scale by": 0.0
-      },
-      {
-         "for": "jmek",
-         "reaction": "MEK + hv -> CH3CO3 + C2H5O2",
-         "use": "jacet"
-      },
-      {
-         "for": "jbigald",
-         "reaction": "BIGALD + hv -> .45*CO + .13*GLYOXAL + .56*HO2 + .13*CH3CO3 + .18*CH3COCHO",
-         "use": "jno2",
-         "scale by": 0.2
-      },
-      {
-         "for": "jalkooh",
-         "reaction": "ALKOOH + hv  -> .4*CH3CHO + .1*CH2O + .25*CH3COCH3 + .9*HO2 + .8*MEK + OH",
-         "use": "jch3ooh"
-      },
-      {
-         "for": "jmekooh",
-         "reaction": "MEKOOH + hv  -> OH + CH3CO3 + CH3CHO",
-         "use": "jch3ooh"
-      },
-      {
-         "for": "jtolooh",
-         "reaction": "TOLOOH + hv  -> OH + .45*GLYOXAL + .45*CH3COCHO + .9*BIGALD",
-         "use": "jch3ooh"
-      },
-      {
-         "for": "jterpooh",
-         "reaction": "TERPOOH + hv  -> OH + .1*CH3COCH3 + HO2 + MVK + MACR",
-         "use": "jch3ooh"
-      }
-   ]
+   "__CAM aliasing": {
+      "default matching": "backup",
+      "pairs": [
+         {
+            "to": "jho2no2_a",
+            "__reaction": "HO2NO2 + hv -> OH + NO3",
+            "__comments": "TODO find this rate",
+            "from": "jo2",
+            "scale by": 0.0
+         },
+         {
+            "to": "jho2no2_b",
+            "__reaction": "HO2NO2 + hv -> NO2 + HO2",
+            "__comments": "TODO find this rate",
+            "from": "jo2",
+            "scale by": 0.0
+         },
+         {
+            "to": "jpooh",
+            "__reaction": "POOH (C3H6OHOOH) + hv -> CH3CHO + CH2O + HO2 + OH",
+            "from": "jch3ooh"
+         },
+         {
+            "to": "jch3co3h",
+            "__reaction": "CH3COOOH + hv -> CH3O2 + OH + CO2",
+            "from": "jh2o2",
+            "scale by": 0.28
+         },
+         {
+            "to": "jmpan",
+            "__reaction": "MPAN + hv -> MCO3 + NO2",
+            "from": "jpan"
+         },
+         {
+            "to": "jmacr_a",
+            "__reaction": "MACR + hv -> 1.34*HO2 + 0.66*MCO3 + 1.34*CH2O + 1.34*CH3CO3",
+            "__comments": "TODO - find this rate",
+            "from": "jo2",
+            "scale by": 0.0
+         },
+         {
+            "to": "jmacr_b",
+            "__reaction": "MACR + hv -> 0.66*HO2 + 1.34*CO",
+            "__comments": "TODO - find this rate",
+            "from": "jo2",
+            "scale by": 0.0
+         },
+         {
+            "to": "jc2h5ooh",
+            "__reaction": "C2H5OOH + hv -> CH3CHO + HO2 + OH",
+            "from": "jch3ooh"
+         },
+         {
+            "to": "jc3h7ooh",
+            "__reaction": "C3H7OOH + hv -> 0.82*CH3COCH3 + OH + HO2",
+            "from": "jch3ooh"
+         },
+         {
+            "to": "jrooh",
+            "__reaction": "ROOH + hv -> CH3CO3 + CH2O + OH",
+            "from": "jch3ooh"
+         },
+         {
+            "to": "jxooh",
+            "__reaction": "XOOH + hv -> OH",
+            "from": "jch3ooh"
+         },
+         {
+            "to": "jonitr",
+            "__reaction": "ONITR + hv -> NO2",
+            "from": "jch3cho"
+         },
+         {
+            "to": "jisopooh",
+            "__reaction": "ISOPOOH + hv -> 0.402*MVK + 0.288*MACR + 0.69*CH2O + HO2",
+            "from": "jch3ooh"
+         },
+         {
+            "to": "jhyac",
+            "__reaction": "HYAC (CH3COCH2OH) + hv -> CH3CO3 + HO2 + CH2O",
+            "__comments": "TODO - find this rate",
+            "from": "jo2",
+            "scale by": 0.0
+         },
+         {
+            "to": "jmek",
+            "__reaction": "MEK + hv -> CH3CO3 + C2H5O2",
+            "from": "jacet"
+         },
+         {
+            "to": "jbigald",
+            "__reaction": "BIGALD + hv -> .45*CO + .13*GLYOXAL + .56*HO2 + .13*CH3CO3 + .18*CH3COCHO",
+            "from": "jno2",
+            "scale by": 0.2
+         },
+         {
+            "to": "jalkooh",
+            "__reaction": "ALKOOH + hv  -> .4*CH3CHO + .1*CH2O + .25*CH3COCH3 + .9*HO2 + .8*MEK + OH",
+            "from": "jch3ooh"
+         },
+         {
+            "to": "jmekooh",
+            "__reaction": "MEKOOH + hv  -> OH + CH3CO3 + CH3CHO",
+            "from": "jch3ooh"
+         },
+         {
+            "to": "jtolooh",
+            "__reaction": "TOLOOH + hv  -> OH + .45*GLYOXAL + .45*CH3COCHO + .9*BIGALD",
+            "from": "jch3ooh"
+         },
+         {
+            "to": "jterpooh",
+            "__reaction": "TERPOOH + hv  -> OH + .1*CH3COCH3 + HO2 + MVK + MACR",
+            "from": "jch3ooh"
+         }
+      ]
+   }
 }
