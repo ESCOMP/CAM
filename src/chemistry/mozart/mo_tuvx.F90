@@ -224,6 +224,7 @@ contains
       allocate( buffer( pack_size ) )
       pos = 0
       call core%mpi_pack( buffer, pos, mpicom )
+      call map%mpi_pack(  buffer, pos, mpicom )
       deallocate( core )
     end if
 
