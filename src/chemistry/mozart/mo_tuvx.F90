@@ -308,6 +308,8 @@ contains
 
     integer :: i_thread
 
+    if( .not. tuvx_active ) return
+
     do i_thread = 1, size( tuvx_ptrs )
     associate( tuvx => tuvx_ptrs( i_thread ) )
       call set_et_flux( tuvx )
