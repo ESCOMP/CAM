@@ -12,14 +12,11 @@ use ppgrid,         only: pcols, pver, pverp, psubcols
 use physconst,      only: gravit, rair, tmelt, cpair, rh2o, rhoh2o, &
                           latvap, latice, mwh2o
 use phys_control,   only: phys_getopts, use_hetfrz_classnuc
-
-!++ag
 use shr_const_mod,  only: pi => shr_const_pi
 use time_manager,   only: get_curr_date, get_curr_calday
 use phys_grid,      only: get_rlat_all_p, get_rlon_all_p
 use orbit,          only: zenith
 use cam_logfile,    only: iulog      
-!--ag
       
 use physics_types,  only: physics_state, physics_ptend, &
                           physics_ptend_init, physics_state_copy, &
@@ -204,10 +201,8 @@ integer :: &
    ast_idx = -1,            &
    cld_idx = -1,            &
    concld_idx = -1,         &
-!++ag
    prec_dp_idx = -1,        &
    prec_sh_idx = -1,        &
-!--ag
    qsatfac_idx = -1
 
 ! Pbuf fields needed for subcol_SILHS
@@ -1030,11 +1025,9 @@ subroutine micro_pumas_cam_init(pbuf2d)
 
    end if
 
-!++ag
    call addfld ('RBFRAC',  horiz_only, 'A', 'Fraction',  'Fraction of sky covered by a potential rainbow' )
    call addfld ('RBFREQ',  horiz_only, 'A', 'Frequency',  'Potential rainbow frequency' )
    call addfld( 'rbSZA', horiz_only, 'I', 'degrees', 'solar zenith angle' )
-!--   ag
       
    ! History variables for CAM5 microphysics
    call addfld ('MPDT',       (/ 'lev' /), 'A', 'W/kg',     'Heating tendency - Morrison microphysics'                )
@@ -1291,10 +1284,8 @@ subroutine micro_pumas_cam_init(pbuf2d)
    ast_idx      = pbuf_get_index('AST')
    cld_idx      = pbuf_get_index('CLD')
    concld_idx   = pbuf_get_index('CONCLD')
-!++ag
    prec_dp_idx  = pbuf_get_index('PREC_DP')
    prec_sh_idx  = pbuf_get_index('PREC_SH')
-!--ag
 
    naai_idx     = pbuf_get_index('NAAI')
    naai_hom_idx = pbuf_get_index('NAAI_HOM')
@@ -1618,10 +1609,9 @@ subroutine micro_pumas_cam_tend(state, ptend, dtime, pbuf)
 
    real(r8), pointer :: cld(:,:)          ! Total cloud fraction
    real(r8), pointer :: concld(:,:)       ! Convective cloud fraction
-!++ag
    real(r8), pointer :: prec_dp(:)      ! Deep Convective precip
    real(r8), pointer :: prec_sh(:)      ! Shallow Convective precip    
-!--ag
+
    real(r8), pointer :: iciwpst(:,:) ! Stratiform in-cloud ice water path for radiation
    real(r8), pointer :: iclwpst(:,:)      ! Stratiform in-cloud liquid water path for radiation
    real(r8), pointer :: cldfsnow(:,:)     ! Cloud fraction for liquid+snow
@@ -1853,8 +1843,7 @@ subroutine micro_pumas_cam_tend(state, ptend, dtime, pbuf)
    real(r8), parameter :: mucon  = 5.3_r8            ! Convective size distribution shape parameter
    real(r8), parameter :: deicon = 50._r8            ! Convective ice effective diameter (meters)
 
-!++ag
-! Rainbows: SZA
+   ! Rainbows: solar zenit angle (SZA)
    real(r8), dimension(state%psetcols)  :: &
          zen_angle, &                                      ! solar zenith angles
          rlats, rlons                                      ! chunk latitudes and longitudes (radians)
@@ -1882,7 +1871,6 @@ subroutine micro_pumas_cam_tend(state, ptend, dtime, pbuf)
    real(r8) :: cldtot
    real(r8) :: rmax
    real(r8) :: rval
-!--ag
       
    !-------------------------------------------------------------------------------
 
@@ -1921,9 +1909,7 @@ subroutine micro_pumas_cam_tend(state, ptend, dtime, pbuf)
    call pbuf_get_field(pbuf, ast_idx,         ast,     start=(/1,1,itim_old/), kount=(/psetcols,pver,1/), &
         col_type=col_type, copy_if_needed=use_subcol_microp)
 
-!++ag
-! Get convective precip    
-
+   ! Get convective precip
    if (prec_dp_idx > 0) then
       call pbuf_get_field(pbuf, prec_dp_idx, prec_dp, col_type=col_type, copy_if_needed=use_subcol_microp)
    else
@@ -1945,8 +1931,6 @@ subroutine micro_pumas_cam_tend(state, ptend, dtime, pbuf)
    else
       precc(:ncol) = 0._r8
    end if
-
-!--ag
         
    if (.not. do_cldice) then
       ! If we are NOT prognosing ice and snow tendencies, then get them from the Pbuf
@@ -2120,23 +2104,27 @@ subroutine micro_pumas_cam_tend(state, ptend, dtime, pbuf)
    call pbuf_get_field(pbuf, evpsnow_st_idx,  evpsnow_st_grid)
    call pbuf_get_field(pbuf, am_evp_st_idx,   am_evp_st_grid)
 
-!++ag
-    !-----------------------------------------------------------------------    
-    !        ... Calculate cosine of zenith angle
-    !            then cast back to angle (radians)
-    !-----------------------------------------------------------------------    
-
+   !-----------------------------------------------------------------------    
+   !        ... Calculate cosine of zenith angle
+   !            then cast back to angle (radians)
+   !-----------------------------------------------------------------------    
+   zen_angle(:) = 0.0_r8
+   rlats(:) = 0.0_r8
+   rlons(:) = 0.0_r8
    calday = get_curr_calday()
    call get_rlat_all_p( lchnk, ncol, rlats )
    call get_rlon_all_p( lchnk, ncol, rlons )
    call zenith( calday, rlats, rlons, zen_angle, ncol )
-   zen_angle(:) = acos( zen_angle(:) )
+   where (zen_angle(:) <= 1.0_r8 .and. zen_angle(:) >= -1.0_r8)
+      zen_angle(:) = acos( zen_angle(:) )
+   elsewhere
+      zen_angle(:) = 0.0_r8
+   end where
 
    sza(:) = zen_angle(:) * rad2deg
    call outfld( 'rbSZA',   sza,    ncol, lchnk )
-!--ag
       
-!-------------------------------------------------------------------------------------
+   !-------------------------------------------------------------------------------------
    ! Microphysics assumes 'liquid stratus frac = ice stratus frac
    !                      = max( liquid stratus frac, ice stratus frac )'.
    alst_mic => ast
@@ -2227,7 +2215,7 @@ subroutine micro_pumas_cam_tend(state, ptend, dtime, pbuf)
       state_loc_numgraup(:ncol,:) = 0._r8
    end if
 
-! Zero out diagnostic  out arrays
+   ! Zero out diagnostic  out arrays
    rbfreq = 0._r8
    rbfrac = 0._r8   
 
@@ -3220,7 +3208,6 @@ subroutine micro_pumas_cam_tend(state, ptend, dtime, pbuf)
 
    racau_grid = min(racau_grid, 1.e10_r8)
 
-!++ag
 !-----------------------------------------------------------------------
 ! Diagnostic Rainbow Calculation. Seriously.
 !-----------------------------------------------------------------------
@@ -3282,8 +3269,6 @@ subroutine micro_pumas_cam_tend(state, ptend, dtime, pbuf)
 
    call outfld('RBFRAC',   rbfrac,      psetcols, lchnk, avg_subcol_field=use_subcol_microp)
    call outfld('RBFREQ',   rbfreq,      psetcols, lchnk, avg_subcol_field=use_subcol_microp)   
-
-!--ag
 
    ! --------------------- !
    ! History Output Fields !
