@@ -54,8 +54,15 @@ real(r8), allocatable :: abs_lw_ice(:,:)
 !
 ! indexes into pbuf for optical parameters of MG clouds
 !
-   integer :: i_dei, i_mu, i_lambda, i_iciwp, i_iclwp, i_des, i_icswp
-   integer :: i_degrau, i_icgrauwp
+   integer :: i_dei=0
+   integer :: i_mu=0
+   integer :: i_lambda=0
+   integer :: i_iciwp=0
+   integer :: i_iclwp=0
+   integer :: i_des=0
+   integer :: i_icswp=0
+   integer :: i_degrau=0
+   integer :: i_icgrauwp=0
 
 ! indexes into constituents for old optics
    integer :: &
