@@ -159,8 +159,8 @@ module zonal_mean_mod
   use shr_reprosum_mod,only: shr_reprosum_calc
   use cam_abortutils,  only: endrun, handle_allocate_error
   use spmd_utils,      only: mpicom
-
-  use phys_grid,  only: ngcols_p => num_global_phys_cols
+  use physconst,       only: pi
+  use phys_grid,       only: ngcols_p => num_global_phys_cols
 
   implicit none
   private
@@ -226,7 +226,7 @@ module zonal_mean_mod
      procedure, pass :: final => final_ZonalAverage
   end type ZonalAverage_t
 
-  real(r8), parameter :: PI2 = 2._r8*atan(1._r8) ! pi/2
+  real(r8), parameter :: PI2 = 0.5_r8*pi
 
 contains
     !=======================================================================
