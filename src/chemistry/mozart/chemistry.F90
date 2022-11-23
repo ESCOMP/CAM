@@ -162,6 +162,7 @@ end function chem_is
     use short_lived_species, only : slvd_index, short_lived_map=>map, register_short_lived_species
     use cfc11star,           only : register_cfc11star
     use mo_photo,            only : photo_register
+    use mo_tuvx,             only : tuvx_register, tuvx_active
     use mo_aurora,           only : aurora_register
     use aero_model,          only : aero_model_register
     use physics_buffer,      only : pbuf_add_field, dtype_r8
@@ -311,7 +312,11 @@ end function chem_is
     call register_cfc11star()
 
     if ( waccmx_is('ionosphere') ) then
-       call photo_register()
+       if( tuvx_active ) then
+         call tuvx_register( )
+       else
+         call photo_register( )
+       end if
        call aurora_register()
     endif
 

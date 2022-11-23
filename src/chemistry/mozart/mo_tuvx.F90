@@ -17,6 +17,7 @@ module mo_tuvx
   private
 
   public :: tuvx_readnl
+  public :: tuvx_register
   public :: tuvx_init
   public :: tuvx_timestep_init
   public :: tuvx_get_photo_rates
@@ -44,13 +45,23 @@ module mo_tuvx
   integer, parameter :: RADIATOR_INDEX_AEROSOL = 1 ! Aerosol radiator index
 
   ! Information needed to access CAM species state data
+  logical :: is_fixed_N2 = .false. ! indicates whether N2 concentrations are fixed
+  logical :: is_fixed_O  = .false. ! indicates whether O concentrations are fixed
   logical :: is_fixed_O2 = .false. ! indicates whether O2 concentrations are fixed
   logical :: is_fixed_O3 = .false. ! indicates whether O3 concentrations are fixed
+  integer :: index_N2 = 0 ! index for N2 in concentration array
+  integer :: index_O  = 0 ! index for O in concentration array
   integer :: index_O2 = 0 ! index for O2 in concentration array
   integer :: index_O3 = 0 ! index for O3 in concentration array
 
   ! Information needed to access aerosol optical properties
   logical :: aerosol_exists = .false. ! indicates whether aerosol optical properties are available
+
+  ! Information needed to set extended-UV photo rates
+  logical :: do_euv = .false.              ! Indicates whether to calculate
+                                           !   extended-UV photo rates
+  integer :: ion_rates_pbuf_index = 0      ! Index in physics buffer for
+                                           !   ionization rates
 
   ! TODO how should these paths be set and communicated to this wrapper?
   character(len=*), parameter :: wavelength_config_path = &
@@ -60,7 +71,8 @@ module mo_tuvx
   ! TUV-x calculator for each OMP thread
   type :: tuvx_ptr
     type(core_t), pointer    :: core_ => null( )          ! TUV-x calculator
-    integer                  :: n_photo_rates_            ! number of photo reactions in TUV-x
+    integer                  :: n_photo_rates_ = 0        ! number of photo reactions in TUV-x
+    integer                  :: n_euv_rates_ = 0          ! number of extreme-UV rates
     real(r8), allocatable    :: photo_rates_(:,:,:)       ! photolysis rate constants
                                                           !   (column, vertical level, reaction) [s-1]
     type(map_t)              :: photo_rate_map_           ! map between TUV-x and CAM
@@ -94,6 +106,23 @@ module mo_tuvx
 
 !================================================================================================
 contains
+!================================================================================================
+
+  !-----------------------------------------------------------------------
+  ! registers fields in the physics buffer
+  !-----------------------------------------------------------------------
+  subroutine tuvx_register( )
+
+    use mo_jeuv,        only : nIonRates
+    use physics_buffer, only : pbuf_add_field, dtype_r8
+    use ppgrid,         only : pcols ! maximum number of columns
+
+    ! add photo-ionization rates to physics buffer for WACCMX Ionosphere module
+    call pbuf_add_field( 'IonRates', 'physpkg', dtype_r8, (/ pcols, pver, nIonRates /), &
+                         ion_rates_pbuf_index ) ! Ionization rates for O+, O2+, N+, N2+, NO+
+
+  end subroutine tuvx_register
+
 !================================================================================================
 
   !-----------------------------------------------------------------------
@@ -159,13 +188,14 @@ contains
   !-----------------------------------------------------------------------
   ! Initializes TUV-x for photolysis calculations
   !-----------------------------------------------------------------------
-  subroutine tuvx_init( )
+  subroutine tuvx_init( photon_file, electron_file )
 
 #ifdef HAVE_MPI
     use mpi
 #endif
     use cam_logfile,             only : iulog ! log file output unit
     use mo_chem_utls,            only : get_spc_ndx, get_inv_ndx
+    use mo_jeuv,                 only : neuv ! number of extreme-UV rates
     use musica_assert,           only : assert_msg
     use musica_config,           only : config_t
     use musica_mpi,              only : musica_mpi_rank
@@ -180,6 +210,9 @@ contains
     use tuvx_profile_warehouse,  only : profile_warehouse_t
     use tuvx_radiator_warehouse, only : radiator_warehouse_t
 
+    character(len=*), intent(in) :: photon_file   ! photon file used in extended-UV module setup
+    character(len=*), intent(in) :: electron_file ! electron file used in extended-UV module setup
+
     character(len=*), parameter :: my_name = "TUV-x wrapper initialization"
     class(core_t), pointer :: core
     character, allocatable :: buffer(:)
@@ -191,8 +224,11 @@ contains
     class(profile_warehouse_t), pointer :: cam_profiles
     class(radiator_warehouse_t), pointer :: cam_radiators
     integer :: pack_size, pos, i_core, i_err
+    logical, save :: is_initialized = .false.
 
-    if (.not.tuvx_active) return
+    if( .not. tuvx_active ) return
+    if( is_initialized ) return
+    is_initialized = .true.
 
     config_path = trim(tuvx_config_path)
 
@@ -202,6 +238,11 @@ contains
     call assert_msg( 113937299, is_main_task, "Multiple tasks present without " &
                      //"MPI support enabled for TUV-x" )
 #endif
+
+    ! =================================
+    ! initialize the extended-UV module
+    ! =================================
+    call initialize_euv( photon_file, electron_file, do_euv )
 
     ! ==========================================================================
     ! Create the set of TUV-x grids and profiles that CAM will update at runtime
@@ -218,7 +259,7 @@ contains
       call tuvx_config%from_file( config_path%to_char( ) )
       call tuvx_config%get( "__CAM aliasing", map_config, my_name )
       core => core_t( config_path, cam_grids, cam_profiles, cam_radiators )
-      call set_photo_rate_map( core, map_config, map )
+      call set_photo_rate_map( core, map_config, do_euv, map )
       pack_size = core%pack_size( mpicom ) + &
                   map%pack_size( mpicom )
       allocate( buffer( pack_size ) )
@@ -265,8 +306,10 @@ contains
       ! Create a working array for calculated photolysis rate constants
       ! ===============================================================
       tuvx%n_photo_rates_ = tuvx%core_%number_of_photolysis_reactions( )
+      if( do_euv ) tuvx%n_euv_rates_ = neuv
       height => tuvx%core_%get_grid( "height", "km" )
-      allocate( tuvx%photo_rates_( pcols, height%ncells_ + 1, tuvx%n_photo_rates_ ) )
+      allocate( tuvx%photo_rates_( pcols, height%ncells_ + 1, &
+                                   tuvx%n_photo_rates_ + tuvx%n_euv_rates_ ) )
       deallocate( height )
 
     end associate
@@ -279,6 +322,12 @@ contains
     ! =============================================
     ! Get index info for CAM species concentrations
     ! =============================================
+    index_N2  = get_inv_ndx( 'N2' )
+    is_fixed_N2 = index_N2 > 0
+    if( .not. is_fixed_N2 ) index_N2 = get_spc_ndx( 'N2' )
+    index_O  = get_inv_ndx( 'O' )
+    is_fixed_O = index_O > 0
+    if( .not. is_fixed_O ) index_O = get_spc_ndx( 'O' )
     index_O2 = get_inv_ndx( 'O2' )
     is_fixed_O2 = index_O2 > 0
     if( .not. is_fixed_O2 ) index_O2 = get_spc_ndx( 'O2' )
@@ -364,7 +413,7 @@ contains
     integer :: i_col   ! column index
     integer :: i_level ! vertical level index
 
-    if (.not.tuvx_active) return
+    if( .not. tuvx_active ) return
 
     associate( tuvx => tuvx_ptrs( thread_id( ) ) )
 
@@ -395,7 +444,22 @@ contains
                                solar_zenith_angle(i_col) * 180.0_r8 / pi, &
                              earth_sun_distance = earth_sun_distance, &
                              photolysis_rate_constants = &
-                               tuvx%photo_rates_(i_col,:,:) )
+                               tuvx%photo_rates_(i_col,:,1:tuvx%n_photo_rates_) )
+
+        ! ==============================
+        ! Calculate the extreme-UV rates
+        ! ==============================
+        if( do_euv ) then
+        associate( euv_begin => tuvx%n_photo_rates_ + 1, &
+                   euv_end   => tuvx%n_photo_rates_ + tuvx%n_euv_rates_ )
+          call calculate_euv_rates( solar_zenith_angle(i_col) * 180.0_r8 / pi, &
+                                    fixed_species_conc(i_col,:,:), &
+                                    species_vmr(i_col,:,:), &
+                                    height_mid(i_col,:), &
+                                    height_int(i_col,:), &
+                                    tuvx%photo_rates_(i_col,:,euv_begin:euv_end) )
+        end associate
+        end if
 
         ! ============================================
         ! Return the photolysis rates on the CAM grids
@@ -514,6 +578,32 @@ contains
 !================================================================================================
 
   !-----------------------------------------------------------------------
+  ! initializes the external extreme-UV module
+  !-----------------------------------------------------------------------
+  subroutine initialize_euv( photon_file, electron_file, do_euv )
+
+    use chem_mods,    only : phtcnt    ! number of CAM-Chem photolysis reactions
+    use mo_jeuv,      only : jeuv_init ! extreme-UV initialization
+
+    character(len=*),     intent(in)  :: photon_file   ! photon file used in extended-UV module
+                                                       !   setup
+    character(len=*),     intent(in)  :: electron_file ! electron file used in extended-UV
+                                                       !   module setup
+    logical,              intent(out) :: do_euv        ! indicates whether extreme-UV
+                                                       !   calculations are needed
+
+    integer, allocatable :: euv_index_map(:)
+
+    allocate( euv_index_map( phtcnt ) )
+    euv_index_map(:) = 0
+    call jeuv_init( photon_file, electron_file, euv_index_map )
+    do_euv = any( euv_index_map(:) > 0 )
+
+  end subroutine initialize_euv
+
+!================================================================================================
+
+  !-----------------------------------------------------------------------
   ! Registers fields for diagnostic output
   !-----------------------------------------------------------------------
   subroutine initialize_diagnostics( this )
@@ -550,32 +640,46 @@ contains
   !-----------------------------------------------------------------------
   ! Sets up a map between the TUV-x and CAM photolysis rate arrays
   !-----------------------------------------------------------------------
-  subroutine set_photo_rate_map( core, config, map )
+  subroutine set_photo_rate_map( core, config, do_euv, map )
 
     use cam_logfile,   only : iulog       ! log info output unit
     use chem_mods,     only : phtcnt, &   ! number of photolysis reactions
                               rxt_tag_lst ! labels for all chemical reactions
                                           ! NOTE photolysis reactions are
                                           ! expected to appear first
+    use mo_jeuv,       only : neuv        ! number of extreme-UV rates
     use musica_config, only : config_t
     use musica_string, only : string_t
 
     type(core_t),   intent(in)    :: core ! TUV-x core
     type(config_t), intent(inout) :: config ! CAM<->TUV-x map configuration
+    logical,        intent(in)    :: do_euv ! indicates whether to include
+                                            !   extreme-UV rates in the mapping
     type(map_t),    intent(out)   :: map
 
     integer :: i_label
-    type(string_t), allocatable :: tuvx_labels(:), cam_labels(:)
+    type(string_t) :: str_label
+    type(string_t), allocatable :: tuvx_labels(:), all_labels(:), cam_labels(:)
 
     allocate( cam_labels( phtcnt ) )
     do i_label = 1, phtcnt
       cam_labels( i_label ) = trim( rxt_tag_lst( i_label ) )
     end do
     tuvx_labels = core%photolysis_reaction_labels( )
-    map = map_t( config, tuvx_labels, cam_labels )
+    if( do_euv ) then
+      allocate( all_labels( size( tuvx_labels ) + neuv ) )
+      all_labels( 1 : size( tuvx_labels ) ) = tuvx_labels(:)
+      do i_label = 1, neuv
+        str_label = i_label
+        all_labels( size( tuvx_labels ) + i_label ) = "jeuv_"//str_label
+      end do
+    else
+      all_labels = tuvx_labels
+    end if
+    map = map_t( config, all_labels, cam_labels )
     write(iulog,*)
     write(iulog,*) "TUV-x <-> CAM-Chem photolysis rate constant map"
-    call map%print( tuvx_labels, cam_labels, iulog )
+    call map%print( all_labels, cam_labels, iulog )
 
   end subroutine set_photo_rate_map
 
@@ -1236,6 +1340,76 @@ contains
     optics_array(:,:,1:nswbands-1) = working(:,:,nswbands-1:1:-1)
 
   end subroutine reorder_optics_array
+
+!================================================================================================
+
+  !-----------------------------------------------------------------------
+  ! Calculates extreme-UV ionization rates
+  !-----------------------------------------------------------------------
+  subroutine calculate_euv_rates( solar_zenith_angle, fixed_species_conc, &
+      species_vmr, height_mid, height_int, euv_rates )
+
+    use chem_mods, only : gas_pcnst, & ! number of non-fixed species
+                          nfs, &       ! number of fixed species
+                          indexm       ! index for air density in fixed species array
+    use mo_jeuv,   only : jeuv, neuv   ! number of extreme-UV rates
+    use ref_pres,  only : ptop_ref     ! pressure at the top of the column (Pa)
+
+    real(r8), intent(in)  :: solar_zenith_angle ! degrees
+    real(r8), intent(in)  :: fixed_species_conc(pver,max(1,nfs))    ! fixed species densities
+                                                                   !   (molecule cm-3)
+    real(r8), intent(in)  :: species_vmr(pver,max(1,gas_pcnst))     ! species volume mixing
+                                                                    !   ratios (mol mol-1)
+    real(r8), intent(in)  :: height_mid(pver)     ! height at mid-points (km)
+    real(r8), intent(in)  :: height_int(pver+1)   ! height at interfaces (km)
+    real(r8), intent(out) :: euv_rates(pver,neuv) ! calculated extreme-UV rates
+
+    real(r8) :: o_dens(pver+1), o2_dens(pver+1), n2_dens(pver+1), height_arg(pver+1)
+
+    ! ==========
+    ! N2 density
+    ! ==========
+    if( is_fixed_N2 ) then
+      n2_dens(2:) = fixed_species_conc(:pver,index_N2)
+    else
+      n2_dens(2:) = species_vmr(:pver,index_N2) * fixed_species_conc(:pver,indexm)
+    end if
+    n2_dens(1) = 0.0_r8
+    if( ptop_ref > 10.0_r8 ) n2_dens(1) = n2_dens(2) * 0.9_r8
+
+    ! =========
+    ! O density
+    ! =========
+    if( is_fixed_O ) then
+      o_dens(2:) = fixed_species_conc(:pver,index_O)
+    else
+      o_dens(2:) = species_vmr(:pver,index_O) * fixed_species_conc(:pver,indexm)
+    end if
+    o_dens(1) = 0.0_r8
+
+    ! ==========
+    ! O2 density
+    ! ==========
+    if( is_fixed_O2 ) then
+      o2_dens(2:) = fixed_species_conc(:pver,index_O2)
+    else
+      o2_dens(2:) = species_vmr(:pver,index_O2) * fixed_species_conc(:pver,indexm)
+    end if
+    o2_dens(1) = 0.0_r8
+    if( ptop_ref > 10.0_r8 ) then
+      o2_dens(1) = o2_dens(2) * 7.0_r8 / ( height_int(1) - height_int(2) )
+    end if
+
+    ! =======================
+    ! special height argument
+    ! =======================
+    height_arg(2:) = height_mid(:)
+    height_arg(1) = height_arg(2) + ( height_int(1) - height_int(2) )
+
+    call jeuv( pver, solar_zenith_angle, o_dens, o2_dens, n2_dens, height_arg, &
+               euv_rates )
+
+  end subroutine calculate_euv_rates
 
 !================================================================================================
 
