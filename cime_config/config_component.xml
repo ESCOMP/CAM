@@ -13,7 +13,7 @@
     <desc atm="CAM40[%PORT][%RCO2][%SCAM][%SDYN][%TMOZ][%WX][%WXIE][%WXIED][%WCCM][%WCMD]"                                                         >CAM cam4 physics:</desc>
     <desc atm="CAM30"                                                                                                                              >CAM cam3 physics:</desc>
     <desc atm="CAM[%ADIAB][%DABIP04][%TJ16][%HS94][%KESSLER][%RCO2][%SPCAMS][%SPCAMCLBS][%SPCAMM][%SPCAMCLBM]"                                     >CAM simplified and non-versioned physics :</desc>
-    <desc atm="CAM%DEV[%L58][%L93][%CCTS1][%MAM5]">CAM7 development physics:</desc>
+    <desc atm="CAM%DEV[%L58][%L93][%CCTS1][%MAM5]"                                                                                                 >CAM7 development physics:</desc>
 
   <!--
     ===============
