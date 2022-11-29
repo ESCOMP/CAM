@@ -203,7 +203,7 @@ contains
     ! 	... initialize the TUV-x photolysis rate constant calculator
     !-----------------------------------------------------------------------
     if( tuvx_active ) then
-      call tuvx_init( photon_file, electron_file )
+      call tuvx_init( photon_file, electron_file, photo_max_zen )
       if (masterproc) write(iulog,*) 'chemini: after tuvx_init on node ',iam
     end if
 

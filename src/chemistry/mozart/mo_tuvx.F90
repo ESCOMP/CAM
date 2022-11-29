@@ -63,6 +63,9 @@ module mo_tuvx
   integer :: ion_rates_pbuf_index = 0      ! Index in physics buffer for
                                            !   ionization rates
 
+  ! Cutoff solar zenith angle for doing photolysis rate calculations [degrees]
+  integer :: max_sza = 0.0_r8
+
   ! TODO how should these paths be set and communicated to this wrapper?
   character(len=*), parameter :: wavelength_config_path = &
                                                     "data/grids/wavelength/combined.grid"
@@ -188,11 +191,12 @@ contains
   !-----------------------------------------------------------------------
   ! Initializes TUV-x for photolysis calculations
   !-----------------------------------------------------------------------
-  subroutine tuvx_init( photon_file, electron_file )
+  subroutine tuvx_init( photon_file, electron_file, max_solar_zenith_angle )
 
 #ifdef HAVE_MPI
     use mpi
 #endif
+    use cam_abortutils,          only : endrun
     use cam_logfile,             only : iulog ! log file output unit
     use mo_chem_utls,            only : get_spc_ndx, get_inv_ndx
     use mo_jeuv,                 only : neuv ! number of extreme-UV rates
@@ -201,6 +205,7 @@ contains
     use musica_mpi,              only : musica_mpi_rank
     use musica_string,           only : string_t, to_char
     use ppgrid,                  only : pcols ! maximum number of columns
+    use shr_const_mod,           only : pi => shr_const_pi
     use solar_irrad_data,        only : has_spectrum
     use spmd_utils,              only : main_task => masterprocid, &
                                         is_main_task => masterproc, &
@@ -212,6 +217,8 @@ contains
 
     character(len=*), intent(in) :: photon_file   ! photon file used in extended-UV module setup
     character(len=*), intent(in) :: electron_file ! electron file used in extended-UV module setup
+    real(r8),         intent(in) :: max_solar_zenith_angle ! cutoff solar zenith angle for
+                                                           !    photo rate calculations [degrees]
 
     character(len=*), parameter :: my_name = "TUV-x wrapper initialization"
     class(core_t), pointer :: core
@@ -239,13 +246,22 @@ contains
                      //"MPI support enabled for TUV-x" )
 #endif
 
+    ! ===============================================================
+    ! set the maximum solar zenith angle to calculate photo rates for
+    ! ===============================================================
+    max_sza = max_solar_zenith_angle
+    if( is_main_task ) write(iulog,*) "TUV-x max solar zenith angle [degrees]:", max_sza
+    if( max_sza <= 0.0_r8 .or. max_sza > 180.0_r8 ) then
+      call endrun( "TUV-x: max solar zenith angle must be between 0 and 180 degress" )
+    end if
+
     ! =================================
     ! initialize the extended-UV module
     ! =================================
     call initialize_euv( photon_file, electron_file, do_euv )
 
     ! ==========================================================================
-    ! Create the set of TUV-x grids and profiles that CAM will update at runtime
+    ! create the set of TUV-x grids and profiles that CAM will update at runtime
     ! ==========================================================================
     cam_grids => get_cam_grids( wavelength_config_path )
     cam_profiles => get_cam_profiles( cam_grids )
@@ -410,19 +426,28 @@ contains
     real(r8), intent(inout) :: photolysis_rates(ncol,pver,phtcnt) ! photolysis rate
                                                                   !   constants (1/s)
 
-    integer :: i_col   ! column index
-    integer :: i_level ! vertical level index
+    integer  :: i_col   ! column index
+    integer  :: i_level ! vertical level index
+    real(r8) :: sza     ! solar zenith angle [degrees]
 
     if( .not. tuvx_active ) return
 
     associate( tuvx => tuvx_ptrs( thread_id( ) ) )
 
+      tuvx%photo_rates_(:,:,:) = 0.0_r8
+
       ! ==============================================
-      ! get aerosol optical properties for all columns
+      ! set aerosol optical properties for all columns
       ! ==============================================
       call get_aerosol_optical_properties( tuvx, state, pbuf )
 
       do i_col = 1, ncol
+
+        ! ===================================
+        ! skip columns in near total darkness
+        ! ===================================
+        sza = solar_zenith_angle(i_col) * 180.0_r8 / pi
+        if( sza < 0.0_r8 .or. sza > max_sza ) cycle
 
         ! ===================
         ! update grid heights
@@ -440,8 +465,7 @@ contains
         ! ===================================================
         ! Calculate photolysis rate constants for this column
         ! ===================================================
-        call tuvx%core_%run( solar_zenith_angle = &
-                               solar_zenith_angle(i_col) * 180.0_r8 / pi, &
+        call tuvx%core_%run( solar_zenith_angle = sza, &
                              earth_sun_distance = earth_sun_distance, &
                              photolysis_rate_constants = &
                                tuvx%photo_rates_(i_col,:,1:tuvx%n_photo_rates_) )
@@ -460,10 +484,12 @@ contains
                                     tuvx%photo_rates_(i_col,:,euv_begin:euv_end) )
         end associate
         end if
+      end do
 
-        ! ============================================
-        ! Return the photolysis rates on the CAM grids
-        ! ============================================
+      ! ============================================
+      ! Return the photolysis rates on the CAM grids
+      ! ============================================
+      do i_col = 1, ncol
         do i_level = 1, pver
           call tuvx%photo_rate_map_%apply( tuvx%photo_rates_(i_col,pver-i_level+1,:), &
                                            photolysis_rates(i_col,i_level,:) )
