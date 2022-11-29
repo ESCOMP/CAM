@@ -1900,6 +1900,7 @@
     </machines>
     <options>
       <option name="wallclock">00:20:00</option>
+      <option name="comment" >CAM-Chem with MAM5 aerosols and cam6 physics</option>
     </options>
   </test>
   <test compset="FC2000mam5" grid="f19_f19_mg17" name="ERP_Ln9_Vnuopc" testmods="cam/outfrq9s">
@@ -1908,6 +1909,7 @@
     </machines>
     <options>
       <option name="wallclock">00:20:00</option>
+      <option name="comment" >CAM-Chem with MAM5 aerosols and cam6 physics</option>
     </options>
   </test>
   <test compset="FCLTHIST" grid="ne30pg3_ne30pg3_mg17" name="SMS_D_Ln9_Vnuopc" testmods="cam/outfrq9s">
@@ -1917,6 +1919,7 @@
     </machines>
     <options>
       <option name="wallclock">00:40:00</option>
+      <option name="comment" >Low-top CAM-Chem with MAM5 aerosols and cam_dev physics</option>
     </options>
   </test>
   <test compset="FCMTHIST" grid="ne30pg3_ne30pg3_mg17" name="SMS_D_Ln9_Vnuopc" testmods="cam/outfrq9s">
@@ -1925,6 +1928,7 @@
     </machines>
     <options>
       <option name="wallclock">00:40:00</option>
+      <option name="comment" >Medium-top CAM-Chem with MAM5 aerosols and cam_dev physics</option>
     </options>
   </test>
   <test compset="F2000mam5" grid="f09_f09_mg17" name="ERP_Ld3_Vnuopc" testmods="cam/outfrq1d">
