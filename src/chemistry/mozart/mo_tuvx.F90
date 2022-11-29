@@ -394,16 +394,16 @@ contains
     type(physics_buffer_desc), pointer, intent(inout) :: pbuf(:)
     integer,  intent(in)    :: ncol                        ! number of active columns on this thread
     integer,  intent(in)    :: lchnk                       ! identifier for this thread
-    real(r8), intent(in)    :: height_mid(pcols,pver)      ! height at mid-points (km)
-    real(r8), intent(in)    :: height_int(pcols,pver+1)    ! height at interfaces (km)
+    real(r8), intent(in)    :: height_mid(ncol,pver)       ! height at mid-points (km)
+    real(r8), intent(in)    :: height_int(ncol,pver+1)     ! height at interfaces (km)
     real(r8), intent(in)    :: temperature_mid(pcols,pver) ! midpoint temperature (K)
     real(r8), intent(in)    :: surface_temperature(pcols)  ! surface temperature (K)
     real(r8), intent(in)    :: fixed_species_conc(ncol,pver,max(1,nfs))    ! fixed species densities
                                                                            !   (molecule cm-3)
     real(r8), intent(in)    :: species_vmr(ncol,pver,max(1,gas_pcnst))     ! species volume mixing
                                                                            !   ratios (mol mol-1)
-    real(r8), intent(in)    :: exo_column_conc(ncol,0:pver,max(1,nabscol)) ! above column densities
-                                                                           !   (molecule cm-3)
+    real(r8), intent(in)    :: exo_column_conc(ncol,0:pver,max(1,nabscol)) ! layer column densities
+                                                                           !   (molecule cm-2)
     real(r8), intent(in)    :: surface_albedo(pcols)       ! surface albedo (unitless)
     real(r8), intent(in)    :: solar_zenith_angle(ncol)    ! solar zenith angle (radians)
     real(r8), intent(in)    :: earth_sun_distance          ! Earth-Sun distance (AU)
@@ -1025,16 +1025,17 @@ contains
     class(tuvx_ptr), intent(inout) :: this                     ! TUV-x calculator
     integer,         intent(in)    :: i_col                    ! column to set conditions for
     integer,         intent(in)    :: ncol                     ! number of colums to calculated photolysis for
-    real(r8),        intent(in)    :: height_mid(pcols,pver)   ! height above the surface at mid-points (km)
-    real(r8),        intent(in)    :: height_int(pcols,pver+1) ! height above the surface at interfaces (km)
+    real(r8),        intent(in)    :: height_mid(ncol,pver)    ! height above the surface at mid-points (km)
+    real(r8),        intent(in)    :: height_int(ncol,pver+1)  ! height above the surface at interfaces (km)
 
     integer :: i_level
     real(r8) :: edges(pver+1)
     real(r8) :: mid_points(pver)
 
-    edges(1) = 0.0_r8
+    edges(1) = height_int(i_col,pver+1)
     edges(2:pver+1) = height_mid(i_col,pver:1:-1)
-    mid_points(1) = height_mid(i_col,pver) * 0.5_r8
+    mid_points(1) = ( height_mid(i_col,pver) - height_int(i_col,pver+1) ) * 0.5_r8 &
+                    + height_int(i_col,pver+1)
     mid_points(2:pver) = height_int(i_col,pver:2:-1)
     call this%grids_( GRID_INDEX_HEIGHT )%update( edges = edges, mid_points = mid_points )
     this%height_delta_(1:pver) = edges(2:pver+1) - edges(1:pver)
@@ -1107,6 +1108,7 @@ contains
                                             !   (photon cm-2 nm-1 s-1)
 
     class(tuvx_ptr), intent(inout) :: this  ! TUV-x calculator
+
     real(r8) :: et_flux_orig(nbins)
     integer  :: n_tuvx_bins
 
