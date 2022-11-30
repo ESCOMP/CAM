@@ -1524,7 +1524,7 @@ CONTAINS
    !***************************************************************************
    !
    subroutine get_hydrostatic_energy_1hd(tracer, pdel, cp_or_cv, U, V, T,     &
-        vcoord, ps, phis, z_mid, dycore_idx, qidx, te, se, ke,                &
+        vcoord, ps, phis, z_mid, dycore_idx, qidx, te, se, po, ke,            &
         wv, H2O, liq, ice)
 
       use cam_logfile,     only: iulog
@@ -1557,8 +1557,12 @@ CONTAINS
       real(r8), intent(out), optional :: te (:)
       ! KE: vertically integrated kinetic energy
       real(r8), intent(out), optional :: ke (:)
-      ! SE: vertically integrated internal+geopotential energy
+      ! SE: vertically integrated enthalpy (pressure coordinate) 
+      !     or internal energy (z coordinate)
       real(r8), intent(out), optional :: se (:)
+      ! PO: vertically integrated PHIS term (pressure coordinate)
+      !     or potential enerhy (z coordinate)
+      real(r8), intent(out), optional :: po (:)
       ! WV: vertically integrated water vapor
       real(r8), intent(out), optional :: wv (:)
       ! liq: vertically integrated liquid
@@ -1568,7 +1572,8 @@ CONTAINS
 
       ! Local variables
       real(r8) :: ke_vint(SIZE(tracer, 1))  ! Vertical integral of KE
-      real(r8) :: se_vint(SIZE(tracer, 1))  ! Vertical integral of SE
+      real(r8) :: se_vint(SIZE(tracer, 1))  ! Vertical integral of enthalpy or internal energy
+      real(r8) :: po_vint(SIZE(tracer, 1))  ! Vertical integral of PHIS or potential energy
       real(r8) :: wv_vint(SIZE(tracer, 1))  ! Vertical integral of wv
       real(r8) :: liq_vint(SIZE(tracer, 1)) ! Vertical integral of liq
       real(r8) :: ice_vint(SIZE(tracer, 1)) ! Vertical integral of ice
@@ -1640,7 +1645,7 @@ CONTAINS
             end do
          end do
          do idx = 1, SIZE(tracer, 1)
-            se_vint(idx) = se_vint(idx) + (phis(idx) * ps(idx) / gravit)
+            po_vint(idx) =  (phis(idx) * ps(idx) / gravit)
          end do
       case(vc_height)
          if (.not. present(z_mid)) then
@@ -1651,6 +1656,7 @@ CONTAINS
          end if
          ke_vint = 0._r8
          se_vint = 0._r8
+         po_vint = 0._r8
          wv_vint = 0._r8
          do kdx = 1, SIZE(tracer, 2)
             do idx = 1, SIZE(tracer, 1)
@@ -1659,7 +1665,7 @@ CONTAINS
                se_vint(idx) = se_vint(idx) + (T(idx, kdx) *                   &
                     cp_or_cv(idx, kdx) * pdel(idx, kdx) / gravit)
                ! z_mid is height above ground
-               se_vint(idx) = se_vint(idx) + (z_mid(idx, kdx) +               &
+               po_vint(idx) = po_vint(idx) + (z_mid(idx, kdx) +               &
                     phis(idx) / gravit) * pdel(idx, kdx)
                wv_vint(idx) = wv_vint(idx) + (tracer(idx, kdx, wvidx) *       &
                     pdel(idx, kdx) / gravit)
@@ -1670,10 +1676,13 @@ CONTAINS
          call endrun(subname//': vertical coordinate not supported')
       end select
       if (present(te)) then
-         te  = se_vint + ke_vint
+         te  = se_vint + po_vint+ ke_vint
       end if
       if (present(se)) then
          se = se_vint
+      end if
+      if (present(po)) then
+         po = po_vint
       end if
       if (present(ke)) then
          ke = ke_vint

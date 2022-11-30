@@ -394,7 +394,8 @@ end subroutine check_energy_get_integrals
     real(r8) :: scaling(state%psetcols,pver)       ! scaling for conversion of temperature increment
     real(r8) :: temp(state%ncol,pver)              ! temperature
 
-    real(r8) :: se(pcols)                          ! Dry Static energy (J/m2)
+    real(r8) :: se(pcols)                          ! enthalpy or internal energy (J/m2)
+    real(r8) :: po(pcols)                          ! surface potential or potential energy (J/m2)
     real(r8) :: ke(pcols)                          ! kinetic energy    (J/m2)
     real(r8) :: wv(pcols)                          ! column integrated vapor       (kg/m2)
     real(r8) :: liq(pcols)                         ! column integrated liquid      (kg/m2)
@@ -424,7 +425,7 @@ end subroutine check_energy_get_integrals
          state%pdel(1:ncol,1:pver), cp_or_cv(1:ncol,1:pver),                         &
          state%u(1:ncol,1:pver), state%v(1:ncol,1:pver), state%T(1:ncol,1:pver),     &
          vc_physics, ps = state%ps(1:ncol), phis = state%phis(1:ncol),               &
-         te = te, H2O = tw, se=se,ke=ke,wv=wv,liq=liq,ice=ice)
+         te = te, H2O = tw, se=se,po=po,ke=ke,wv=wv,liq=liq,ice=ice)
     ! compute expected values and tendencies
     do i = 1, ncol
        ! change in static energy and total water
@@ -955,6 +956,7 @@ end subroutine check_energy_get_integrals
 
 !---------------------------Local storage-------------------------------
     real(r8) :: se(pcols)                          ! Dry Static energy (J/m2)
+    real(r8) :: po(pcols)                          ! Dry Static energy (J/m2)
     real(r8) :: ke(pcols)                          ! kinetic energy    (J/m2)
     real(r8) :: wv(pcols)                          ! column integrated vapor       (kg/m2)
     real(r8) :: liq(pcols)                         ! column integrated liquid      (kg/m2)
@@ -1023,7 +1025,7 @@ end subroutine check_energy_get_integrals
            state%pdel(1:ncol,1:pver), cp_or_cv,                                        &
            state%u(1:ncol,1:pver), state%v(1:ncol,1:pver), temp(1:ncol,1:pver),        &
            vc_loc, ps = state%ps(1:ncol), phis = state%phis(1:ncol),                   &
-           z_mid = state%z_ini(1:ncol,:), se = se, ke = ke, wv = wv, liq = liq, ice = ice)
+           z_mid = state%z_ini(1:ncol,:), se = se, po = po, ke = ke, wv = wv, liq = liq, ice = ice)
 
       call cnst_get_ind('TT_LW' , ixtt    , abort=.false.)
 
@@ -1049,7 +1051,7 @@ end subroutine check_energy_get_integrals
         end if
       end if
 
-      state%te_budgets(1:ncol,1,ind)=(se(1:ncol)+ke(1:ncol))
+      state%te_budgets(1:ncol,1,ind)=(se(1:ncol)+ke(1:ncol)+po(1:ncol))
       state%te_budgets(1:ncol,2,ind)=se(1:ncol)
       state%te_budgets(1:ncol,3,ind)=ke(1:ncol)
       state%te_budgets(1:ncol,4,ind)=wv(1:ncol)

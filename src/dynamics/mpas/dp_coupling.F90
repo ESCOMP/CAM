@@ -914,7 +914,7 @@ subroutine tot_energy(nCells, nVertLevels, qsize, index_qv, zz, zgrid, rho_zz, t
        te_budgets(s_ind,:,:)=0._r8
     end if
        
-    te_budgets(s_ind,1,:)= te_budgets(s_ind,1,:)+potential_energy+internal_energy+kinetic_energy
+    te_budgets(s_ind,1,:)=te_budgets(s_ind,1,:)+potential_energy+internal_energy+kinetic_energy
     te_budgets(s_ind,2,:)=te_budgets(s_ind,2,:)+internal_energy
     te_budgets(s_ind,3,:)=te_budgets(s_ind,3,:)+kinetic_energy
     write(iulog,*)'tot_e te_budget for this proc ',s_ind,',1:3,1 is ',te_budgets(s_ind,1,1),' ',te_budgets(s_ind,2,1),' ',te_budgets(s_ind,3,1)

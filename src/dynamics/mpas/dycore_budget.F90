@@ -120,7 +120,10 @@ subroutine print_budget()
 !         call endrun('dycore_budget module: physics energy budget consistency error 2')
 !       end if
 !     end if
-
+     write(iulog,*) ""
+     write(iulog,*) "Is globally integrated total energy of state at the end of dynamics (dBF)"
+     write(iulog,*) "and beginning of physics (phBF) the same?"
+     write(iulog,*) ""     
      call budget_get_global('dBF',1,E_dBF)  !state passed to physics
      call budget_get_global('dyBF',1,E_dyBF)!state beginning physics
      if (abs(E_dyBF)>eps) then
@@ -132,7 +135,7 @@ subroutine print_budget()
          write(iulog,*)"no. (dBF-dyBF)/dyBF =",diff
          write(iulog,*)"E_dBF=",E_dBF,"; E_dyBF=",E_dyBF
          write(iulog,*)"Error in physics dynamics coupling!"
-!         call endrun('dycore_budget module: Error in physics dynamics coupling')
+         call endrun('dycore_budget module: Error in physics dynamics coupling')
        end if
      end if
      write(iulog,*)" "
