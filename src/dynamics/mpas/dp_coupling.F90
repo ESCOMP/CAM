@@ -132,7 +132,7 @@ subroutine d_p_coupling(phys_state, phys_tend, pbuf2d, dyn_out)
    if( ierr /= 0 ) call endrun(subname//':failed to allocate pintdry array')
 
    call hydrostatic_pressure( &
-        nCellsSolve, plev, zz, zint, rho_zz, theta_m, exner, tracers(index_qv,:,:),&
+        nCellsSolve, plev, size(tracers, 1), index_qv, zz, zint, rho_zz, theta_m, exner, tracers,&
         pmiddry, pintdry, pmid)
 
    call t_startf('dpcopy')
@@ -329,7 +329,6 @@ end subroutine p_d_coupling
 !=========================================================================================
 
 subroutine derived_phys(phys_state, phys_tend, pbuf2d)
-
    ! Compute fields in the physics state object which are diagnosed from the
    ! MPAS prognostic fields.
 
@@ -349,7 +348,7 @@ subroutine derived_phys(phys_state, phys_tend, pbuf2d)
 
    ! Local variables
 
-   integer :: i, k, lchnk, m, ncol
+   integer :: i, k, lchnk, m, ncol, m_cnst
 
    real(r8) :: factor(pcols,pver)
    real(r8) :: zvirv(pcols,pver)
@@ -396,7 +395,16 @@ subroutine derived_phys(phys_state, phys_tend, pbuf2d)
       do k = 1, pver
          ! To be consistent with total energy formula in physic's check_energy module only
          ! include water vapor in moist pdel.
+#ifdef phl_cam_development
          factor(:ncol,k) = 1._r8 + phys_state(lchnk)%q(:ncol,k,1)
+#else
+         factor(:ncol,k) = 1.0_r8
+         do m_cnst=1,thermodynamic_active_species_num
+           m = thermodynamic_active_species_idx(m_cnst)
+           ! at this point all q's are dry
+           factor(:ncol,k) = factor(:ncol,k)+phys_state(lchnk)%q(:ncol,k,m)
+         end do
+#endif
          phys_state(lchnk)%pdel(:ncol,k)  = phys_state(lchnk)%pdeldry(:ncol,k)*factor(:ncol,k)
          phys_state(lchnk)%rpdel(:ncol,k) = 1._r8 / phys_state(lchnk)%pdel(:ncol,k)
       end do
@@ -678,9 +686,8 @@ subroutine derived_tend(nCellsSolve, nCells, t_tend, u_tend, v_tend, q_tend, dyn
 end subroutine derived_tend
 
 !=========================================================================================
-subroutine hydrostatic_pressure(nCells, nVertLevels, zz, zgrid, rho_zz, theta_m, &
+subroutine hydrostatic_pressure(nCells, nVertLevels, qsize, index_qv, zz, zgrid, rho_zz, theta_m, &
      exner, q, pmiddry, pintdry,pmid)
-
    ! Compute dry hydrostatic pressure at layer interfaces and midpoints
    !
    ! Given arrays of zz, zgrid, rho_zz, and theta_m from the MPAS-A prognostic
@@ -694,18 +701,20 @@ subroutine hydrostatic_pressure(nCells, nVertLevels, zz, zgrid, rho_zz, theta_m,
    ! Arguments
    integer, intent(in) :: nCells
    integer, intent(in) :: nVertLevels
-   real(r8), dimension(nVertLevels, nCells),   intent(in) :: zz      ! d(zeta)/dz [-]
-   real(r8), dimension(nVertLevels+1, nCells), intent(in) :: zgrid   ! geometric heights of layer interfaces [m]
-   real(r8), dimension(nVertLevels, nCells),   intent(in) :: rho_zz  ! dry density / zz [kg m^-3]
-   real(r8), dimension(nVertLevels, nCells),   intent(in) :: theta_m ! modified potential temperature
-   real(r8), dimension(nVertLevels, nCells),   intent(in) :: exner   ! Exner function
-   real(r8), dimension(nVertLevels, nCells),   intent(in) :: q       ! water vapor dry mixing ratio
-   real(r8), dimension(nVertLevels, nCells),   intent(out):: pmiddry ! layer midpoint dry hydrostatic pressure [Pa]
-   real(r8), dimension(nVertLevels+1, nCells), intent(out):: pintdry ! layer interface dry hydrostatic pressure [Pa]
-   real(r8), dimension(nVertLevels, nCells),   intent(out):: pmid    ! layer midpoint hydrostatic pressure [Pa]
+   integer, intent(in) :: qsize
+   integer, intent(in) :: index_qv
+   real(r8), dimension(nVertLevels, nCells),       intent(in) :: zz      ! d(zeta)/dz [-]
+   real(r8), dimension(nVertLevels+1, nCells),     intent(in) :: zgrid   ! geometric heights of layer interfaces [m]
+   real(r8), dimension(nVertLevels, nCells),       intent(in) :: rho_zz  ! dry density / zz [kg m^-3]
+   real(r8), dimension(nVertLevels, nCells),       intent(in) :: theta_m ! modified potential temperature
+   real(r8), dimension(nVertLevels, nCells),       intent(in) :: exner   ! Exner function
+   real(r8), dimension(qsize,nVertLevels, nCells), intent(in) :: q       ! water vapor dry mixing ratio
+   real(r8), dimension(nVertLevels, nCells),       intent(out):: pmiddry ! layer midpoint dry hydrostatic pressure [Pa]
+   real(r8), dimension(nVertLevels+1, nCells),     intent(out):: pintdry ! layer interface dry hydrostatic pressure [Pa]
+   real(r8), dimension(nVertLevels, nCells),       intent(out):: pmid    ! layer midpoint hydrostatic pressure [Pa]
 
    ! Local variables
-   integer :: iCell, k
+   integer :: iCell, k, idx
    real(r8), dimension(nVertLevels)          :: dz       ! Geometric layer thickness in column
    real(r8), dimension(nVertLevels)          :: dp,dpdry ! Pressure thickness
 #ifdef phl_cam_development
@@ -728,9 +737,9 @@ subroutine hydrostatic_pressure(nCells, nVertLevels, zz, zgrid, rho_zz, theta_m,
       dz(:) = zgrid(2:nVertLevels+1,iCell) - zgrid(1:nVertLevels,iCell)
 
       k = nVertLevels
-      rhok    = (1.0_r8+q(k,iCell))*zz(k,iCell) * rho_zz(k,iCell) !full CAM physics density
-      thetavk = theta_m(k,iCell)/ (1.0_r8 + q(k,iCell))           !convert modified theta to virtual theta
-      pk      = (rhok*rgas*thetavk*kap1)**kap2                    !mid-level top pressure
+      rhok    = (1.0_r8+q(index_qv,k,iCell))*zz(k,iCell) * rho_zz(k,iCell) !full CAM physics density
+      thetavk = theta_m(k,iCell)/ (1.0_r8 + q(index_qv,k,iCell))           !convert modified theta to virtual theta
+      pk      = (rhok*rgas*thetavk*kap1)**kap2                             !mid-level top pressure
       !
       ! model top pressure consistently diagnosed using the assumption that the mid level
       ! is at height z(nVertLevels-1)+0.5*dz
@@ -742,7 +751,7 @@ subroutine hydrostatic_pressure(nCells, nVertLevels, zz, zgrid, rho_zz, theta_m,
         ! compute hydrostatic dry interface pressure so that (pintdry(k+1)-pintdry(k))/g is pseudo density
         !
         rhodryk = zz(k,iCell) * rho_zz(k,iCell)
-        rhok    = (1.0_r8+q(k,iCell))*rhodryk
+        rhok    = (1.0_r8+q(index_qv,k,iCell))*rhodryk
         pintdry(k,iCell) = pintdry(k+1,iCell) + gravity * rhodryk * dz(k)
         pint   (k)       = pint   (k+1)       + gravity * rhok    * dz(k)
       end do
@@ -762,14 +771,22 @@ subroutine hydrostatic_pressure(nCells, nVertLevels, zz, zgrid, rho_zz, theta_m,
       dz(:) = zgrid(2:nVertLevels+1,iCell) - zgrid(1:nVertLevels,iCell)
       do k = nVertLevels, 1, -1
         rhodryk  = zz(k,iCell)* rho_zz(k,iCell) !full CAM physics density
-        rhok     = (1.0_r8+q(k,iCell))*rhodryk  !not used                    !dry  CAM physics density
+        rhok = 1.0_r8
+        do idx=1,thermodynamic_active_species_num
+          rhok = rhok+q(thermodynamic_active_species_idx_dycore(idx),k,iCell)
+        end do
+        rhok     = rhok*rhodryk  
         dp(k)    = gravit*dz(k)*rhok
-        dpdry(k) = gravit*dz(k)*rhodryk!phl not used
+        dpdry(k) = gravit*dz(k)*rhodryk
       end do
 
       k = nVertLevels
-      rhok    = (1.0_r8+q(k,iCell))*zz(k,iCell) * rho_zz(k,iCell) !full CAM physics density
-      thetavk = theta_m(k,iCell)/ (1.0_r8 + q(k,iCell))           !convert modified theta to virtual theta
+      rhok = 1.0_r8
+      do idx=1,thermodynamic_active_species_num
+        rhok = rhok+q(thermodynamic_active_species_idx_dycore(idx),k,iCell)
+      end do
+      rhok     = rhok*zz(k,iCell) * rho_zz(k,iCell)
+      thetavk = theta_m(k,iCell)/ (1.0_r8 + q(index_qv,k,iCell))           !convert modified theta to virtual theta
       tvk     = thetavk*exner(k,iCell)
       pk      = (rhok*rgas*thetavk*kap1)**kap2                    !mid-level top pressure
       !
@@ -782,9 +799,9 @@ subroutine hydrostatic_pressure(nCells, nVertLevels, zz, zgrid, rho_zz, theta_m,
         !
         ! compute hydrostatic dry interface pressure so that (pintdry(k+1)-pintdry(k))/g is pseudo density
         !
-        thetavk = theta_m(k,iCell)/ (1.0_r8 + q(k,iCell))           !convert modified theta to virtual theta
+        thetavk = theta_m(k,iCell)/ (1.0_r8 + q(index_qv,k,iCell))  !convert modified theta to virtual theta
         tvk     = thetavk*exner(k,iCell)
-        tk      = tvk*(1.0_r8+q(k,iCell))/(1.0_r8+Rv_over_Rd*q(k,iCell))
+        tk      = tvk*(1.0_r8+q(index_qv,k,iCell))/(1.0_r8+Rv_over_Rd*q(index_qv,k,iCell))
         pint   (k,iCell) = pint   (k+1,iCell)+dp(k)
         pintdry(k,iCell) = pintdry(k+1,iCell)+dpdry(k)
         pmid(k,iCell)    = dp(k)   *rgas*tvk/(gravit*dz(k))
@@ -852,7 +869,15 @@ subroutine tot_energy(nCells, nVertLevels, qsize, index_qv, zz, zgrid, rho_zz, t
         dz(k,iCell)   = zgrid(k+1,iCell) - zgrid(k,iCell)
         zcell         = 0.5_r8*(zgrid(k,iCell)+zgrid(k+1,iCell))
         rhod(k,iCell) = zz(k,iCell) * rho_zz(k,iCell)
+#ifdef phl_cam_development
         rho_dz        = (1.0_r8+q(index_qv,k,iCell))*rhod(k,iCell)*dz(k,iCell)
+#else
+        rho_dz        = 1.0_r8
+        do idx=1,thermodynamic_active_species_num
+          rho_dz     = rho_dz+q(thermodynamic_active_species_idx_dycore(idx),k,iCell)
+        end do
+        rho_dz = rho_dz*rhod(k,iCell)*dz(k,iCell)
+#endif
         theta         = theta_m(k,iCell)/(1.0_r8 + Rv_over_Rd *q(index_qv,k,iCell))!convert theta_m to theta
 
         exner         = (rgas*rhod(k,iCell)*theta_m(k,iCell)/p0)**(rgas/cv)
@@ -864,7 +889,6 @@ subroutine tot_energy(nCells, nVertLevels, qsize, index_qv, zz, zgrid, rho_zz, t
         potential_energy(iCell) = potential_energy(iCell)+ rho_dz*gravit*zcell
         internal_energy(iCell)  = internal_energy(iCell) + rho_dz*cv*temperature
       end do
-      internal_energy(iCell)  = internal_energy(iCell) + potential_energy(iCell) !static energy
     end do
     call outfld(name_out1,internal_energy,ncells,1)
     call outfld(name_out2,kinetic_energy ,ncells,1)
@@ -890,7 +914,7 @@ subroutine tot_energy(nCells, nVertLevels, qsize, index_qv, zz, zgrid, rho_zz, t
        te_budgets(s_ind,:,:)=0._r8
     end if
        
-    te_budgets(s_ind,1,:)=te_budgets(s_ind,1,:)+(internal_energy+kinetic_energy)
+    te_budgets(s_ind,1,:)= te_budgets(s_ind,1,:)+potential_energy+internal_energy+kinetic_energy
     te_budgets(s_ind,2,:)=te_budgets(s_ind,2,:)+internal_energy
     te_budgets(s_ind,3,:)=te_budgets(s_ind,3,:)+kinetic_energy
     write(iulog,*)'tot_e te_budget for this proc ',s_ind,',1:3,1 is ',te_budgets(s_ind,1,1),' ',te_budgets(s_ind,2,1),' ',te_budgets(s_ind,3,1)

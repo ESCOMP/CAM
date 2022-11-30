@@ -4,7 +4,7 @@ implicit none
 
 public :: print_budget
 real(r8), parameter :: eps = 1.0E-9_r8
-
+real(r8), save :: previous_dEdt_adiabatic_dycore = 0.0_r8
 !=========================================================================================
 contains
 !=========================================================================================
@@ -29,6 +29,7 @@ subroutine print_budget()
   real(r8)          :: ph_param,ph_EFIX,ph_dmea,ph_param_and_efix,ph_phys_total
   real(r8)          :: dy_param,dy_EFIX,dy_dmea,dy_param_and_efix,dy_phys_total
   real(r8)          :: mpas_param,mpas_dmea,mpas_phys_total, dycore, err, param, pefix, pdmea, param_mpas, phys_total
+  real(r8)          :: E_dBF, E_dyBF
   real(r8)          :: diff
   integer           :: m_cnst  
   !--------------------------------------------------------------------------------------
@@ -120,6 +121,20 @@ subroutine print_budget()
 !       end if
 !     end if
 
+     call budget_get_global('dBF',1,E_dBF)  !state passed to physics
+     call budget_get_global('dyBF',1,E_dyBF)!state beginning physics
+     if (abs(E_dyBF)>eps) then
+       diff = abs_diff(E_dBF,E_dyBF)
+       if (abs(diff)<eps) then
+         write(iulog,*)"yes. (dBF-dyBF)/dyBF =",diff
+         write(iulog,*)"E_dBF=",E_dBF,"; E_dyBF=",E_dyBF
+       else
+         write(iulog,*)"no. (dBF-dyBF)/dyBF =",diff
+         write(iulog,*)"E_dBF=",E_dBF,"; E_dyBF=",E_dyBF
+         write(iulog,*)"Error in physics dynamics coupling!"
+!         call endrun('dycore_budget module: Error in physics dynamics coupling')
+       end if
+     end if
      write(iulog,*)" "
      write(iulog,*)"------------------------------------------------------------"
      write(iulog,*)" MPAS energy tendencies                                     "
@@ -134,7 +149,7 @@ subroutine print_budget()
      diff = abs_diff(mpas_param,dy_param+dy_EFIX)
      write(iulog,*)"Physics tendency: ((dAP-dBF)-(dyAP-dyBF))/(dyAP-dyBF) =",diff
      if (abs(diff)>eps) then
-       call endrun('dycore_budget module: physics tendency in dynamics error')
+!       call endrun('dycore_budget module: physics tendency in dynamics error')
      endif
      diff = abs_diff(mpas_dmea,dy_dmea)
      write(iulog,*)"Dry-mass adj.   : ((dAM-dAP)-(dyAM-dyAP))/(dyAM-dyAP) =",diff
@@ -146,8 +161,8 @@ subroutine print_budget()
      do m_cnst=4,6
        write(iulog,*)"------------------------------------------------------------"
        if (m_cnst.eq.4) write(iulog,*)"Water vapor mass budget"
-       if (m_cnst.eq.5) write(iulog,*)"Cloud liquid mass budget"
-       if (m_cnst.eq.6) write(iulog,*)"Cloud ice mass budget"
+       if (m_cnst.eq.5) write(iulog,*)"Liquid water mass budget"
+       if (m_cnst.eq.6) write(iulog,*)"Ice water mass budget"
        write(iulog,*)"------------------------------------------------------------"        
        call budget_get_global('phAP-phBP',m_cnst,param)
        call budget_get_global('phBP-phBF',m_cnst,pEFIX)
