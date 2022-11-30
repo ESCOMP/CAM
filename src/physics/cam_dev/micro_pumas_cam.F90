@@ -584,7 +584,7 @@ subroutine micro_pumas_cam_register
    if (found) then
       trop_levs(1:pver-top_lev+1) = all_levs(top_lev:pver)
       call add_vert_coord('trop_cld_lev', pver-top_lev+1,                          &
-            'tropopshere hybrid level at midpoints (1000*(A+B))', 'hPa', trop_levs,  &
+            'troposphere hybrid level at midpoints (1000*(A+B))', 'hPa', trop_levs,  &
             positive='down' )
    else
       call endrun( "micro_pumas_cam_register: unable to find dimension field 'lev'")

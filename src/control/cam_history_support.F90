@@ -323,7 +323,7 @@ module cam_history_support
 
  interface hist_dimension_values
     module procedure hist_dimension_values_r8
-    module procedure hist_dimension_values_i
+    module procedure hist_dimension_values_int
  end interface hist_dimension_values
 
   interface assignment(=)
@@ -1985,6 +1985,7 @@ contains
      integer :: iend
      logical :: dim_ok
      real(r8), parameter :: unset_r8 = huge(1.0_r8)
+     character(len=*), parameter  :: subname = ': hist_dimension_values_r8'
 
      dim_ok = .false.
      rvalues(:) = unset_r8
@@ -1996,7 +1997,7 @@ contains
               if (present(istart)) then
                  ibeg = istart
                  if (ibeg < LBOUND(hist_coords(indx)%real_values, 1)) then
-                    call endrun("istart is outside the bounds in hist_dimension_values_r8")
+                    call endrun(subname//": istart is outside the bounds")
                  end if
               else
                  ibeg = LBOUND(hist_coords(indx)%real_values, 1)
@@ -2004,13 +2005,13 @@ contains
               if (present(istop)) then
                  iend = istop
                  if (iend > UBOUND(hist_coords(indx)%real_values, 1)) then
-                    call endrun("istop is outside the bounds in hist_dimension_values_r8")
+                    call endrun(subname//": istop is outside the bounds")
                  end if
               else
                  iend = UBOUND(hist_coords(indx)%real_values, 1)
               end if
               if (SIZE(rvalues) < (iend - ibeg + 1)) then
-                 call endrun("rvalues too small in hist_dimension_values_r8")
+                 call endrun(subname//": rvalues too small")
               end if
               rndx = 1
               do jndx = ibeg, iend
@@ -2029,7 +2030,7 @@ contains
 
   !#######################################################################
 
-  subroutine hist_dimension_values_i(name, ivalues, istart, istop, found)
+  subroutine hist_dimension_values_int(name, ivalues, istart, istop, found)
      ! Given the name of a dimension, return its (integer) values in <ivalues>
      ! If <istart> and <istop> are present, they are the beginning and ending
      ! indices of the dimension values to return in <ivalues>. By default,
@@ -2049,6 +2050,7 @@ contains
      integer :: iend
      logical :: dim_ok
      integer, parameter  :: unset_i = huge(1)
+     character(len=*), parameter  :: subname = 'hist_dimension_values_int'
 
      dim_ok = .false.
      ivalues(:) = unset_i
@@ -2060,7 +2062,7 @@ contains
               if (present(istart)) then
                  ibeg = istart
                  if (ibeg < LBOUND(hist_coords(indx)%integer_values, 1)) then
-                    call endrun("istart is outside the bounds in hist_dimension_values_i")
+                    call endrun(subname//": istart is outside the bounds")
                  end if
               else
                  ibeg = LBOUND(hist_coords(indx)%integer_values, 1)
@@ -2068,13 +2070,13 @@ contains
               if (present(istop)) then
                  iend = istop
                  if (iend > UBOUND(hist_coords(indx)%integer_values, 1)) then
-                    call endrun("istop is outside the bounds in hist_dimension_values_i")
+                    call endrun(subname//": istop is outside the bounds")
                  end if
               else
                  iend = UBOUND(hist_coords(indx)%integer_values, 1)
               end if
               if (SIZE(ivalues) < (iend - ibeg + 1)) then
-                 call endrun("ivalues too small in hist_dimension_values_i")
+                 call endrun(subname//": ivalues too small")
               end if
               rndx = 1
               do jndx = ibeg, iend
@@ -2089,7 +2091,7 @@ contains
         found = dim_ok
      end if
 
-  end subroutine hist_dimension_values_i
+  end subroutine hist_dimension_values_int
 
   !#######################################################################
 
