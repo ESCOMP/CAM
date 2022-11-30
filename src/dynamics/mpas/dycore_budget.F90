@@ -122,7 +122,7 @@ subroutine print_budget()
 !     end if
      write(iulog,*) ""
      write(iulog,*) "Is globally integrated total energy of state at the end of dynamics (dBF)"
-     write(iulog,*) "and beginning of physics (phBF) the same?"
+     write(iulog,*) "and beginning of physics (dyBF) the same?"
      write(iulog,*) ""     
      call budget_get_global('dBF',1,E_dBF)  !state passed to physics
      call budget_get_global('dyBF',1,E_dyBF)!state beginning physics
