@@ -3,7 +3,7 @@ use shr_kind_mod, only: r8=>shr_kind_r8
 implicit none
 
 public :: print_budget
-real(r8), parameter :: eps = 1.0E-9_r8
+real(r8), parameter :: eps = 1.0E-10_r8
 real(r8), save :: previous_dEdt_adiabatic_dycore = 0.0_r8
 !=========================================================================================
 contains
@@ -135,7 +135,7 @@ subroutine print_budget()
          write(iulog,*)"no. (dBF-dyBF)/dyBF =",diff
          write(iulog,*)"E_dBF=",E_dBF,"; E_dyBF=",E_dyBF
          write(iulog,*)"Error in physics dynamics coupling!"
-         call endrun('dycore_budget module: Error in physics dynamics coupling')
+!         call endrun('dycore_budget module: Error in physics dynamics coupling')
        end if
      end if
      write(iulog,*)" "
@@ -177,13 +177,15 @@ subroutine print_budget()
        write(iulog,*)"dMASS/dt energy fixer               (pBP-pBF) ",pEFIX," Pa"
        write(iulog,*)"dMASS/dt parameterizations          (pAP-pBP) ",param," Pa"
        write(iulog,*)"dMASS/dt dry mass adjustment        (pAM-pAP) ",pdmea," Pa"
-       write(iulog,*)""
-       write(iulog,*)""
        write(iulog,*)"dMass/dt physics total in MPAS      (dAM-dBF) ",param_mpas," Pa"
        err = (param_mpas-param)
+       write(iulog,*)""
        write(iulog,*)"Is mass budget closed?    (pAP-pBP)-(dAM-dBF) ",err
        write(iulog,*)"---------------------------------------------------------------------------------------------------"
        write(iulog,*)" "
+       if (err>eps) then
+         call endrun('dycore_budget module: Error in mass budget')
+       end if
      end do
    end if
  end subroutine print_budget
