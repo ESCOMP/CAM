@@ -328,7 +328,7 @@
          {
             "name": "jglyoxal",
             "__reaction": "GLYOXAL + hv -> 2*CO + 2*HO2",
-            "__comments": "NOTE the products of this reaction don't exactly match",
+            "__comments": "TODO the products of this reaction don't exactly match",
             "cross section": {
                "netcdf files": [
                   "data/cross_sections/CHOCHO_1.nc"
@@ -344,26 +344,77 @@
                   "type": "boundary"
                }
             }
+         },
+         {
+            "name": "jho2no2_a",
+            "__reaction": "HNO4 + hv -> OH + NO3",
+            "__comments": "TODO Doug's data sets have special temperature dependence - need new type?",
+            "cross section": {
+               "netcdf files": ["data/cross_sections/HNO4_1.nc"],
+               "type": "base"
+            },
+            "quantum yield": {
+               "type": "base",
+               "constant value": 0.2
+            }
+         },
+         {
+            "name": "jho2no2_b",
+            "__reaction": "HNO4 + hv -> HO2 + NO2",
+            "__comments": "TODO Doug's data sets have special temperature dependence - need new type?",
+            "cross section": {
+               "netcdf files": ["data/cross_sections/HNO4_1.nc"],
+               "type": "base"
+            },
+            "quantum yield": {
+               "type": "base",
+               "constant value": 0.8
+            }
+         },
+         {
+            "name": "jmacr_a",
+            "__reaction": "CH2=C(CH3)CHO->1.34HO2+0.66MCO3+1.34CH2O+CH3CO3",
+            "__comments": "Methacrolein photolysis channel 1",
+            "cross section": {
+               "netcdf files": ["data/cross_sections/MACR_JPL2006.nc"],
+               "type": "base"
+            },
+            "quantum yield": {
+               "type": "base",
+               "constant value": 0.005
+            }
+         },
+         {
+            "name": "jmacr_b",
+            "__reaction": "CH2=C(CH3)CHO->0.66OH+1.34CO",
+            "__comments": "Methacrolein photolysis channel 2",
+            "cross section": {
+               "netcdf files": ["data/cross_sections/MACR_JPL2006.nc"],
+               "type": "base"
+            },
+            "quantum yield": {
+               "type": "base",
+               "constant value": 0.005
+            }
+         },
+         {
+            "name": "jhyac",
+            "__reaction": "CH2(OH)COCH3->CH3CO3+HO2+CH2O",
+            "__comments": "hydroxy acetone",
+            "cross section": {
+               "netcdf files": ["data/cross_sections/HYAC.nc"],
+               "type": "base"
+            },
+            "quantum yield": {
+               "type": "base",
+               "constant value": 0.65
+            }
          }
       ]
    },
    "__CAM aliasing": {
       "default matching": "backup",
       "pairs": [
-         {
-            "to": "jho2no2_a",
-            "__reaction": "HO2NO2 + hv -> OH + NO3",
-            "__comments": "TODO find this rate",
-            "from": "jo2",
-            "scale by": 0.0
-         },
-         {
-            "to": "jho2no2_b",
-            "__reaction": "HO2NO2 + hv -> NO2 + HO2",
-            "__comments": "TODO find this rate",
-            "from": "jo2",
-            "scale by": 0.0
-         },
          {
             "to": "jpooh",
             "__reaction": "POOH (C3H6OHOOH) + hv -> CH3CHO + CH2O + HO2 + OH",
@@ -379,20 +430,6 @@
             "to": "jmpan",
             "__reaction": "MPAN + hv -> MCO3 + NO2",
             "from": "jpan"
-         },
-         {
-            "to": "jmacr_a",
-            "__reaction": "MACR + hv -> 1.34*HO2 + 0.66*MCO3 + 1.34*CH2O + 1.34*CH3CO3",
-            "__comments": "TODO - find this rate",
-            "from": "jo2",
-            "scale by": 0.0
-         },
-         {
-            "to": "jmacr_b",
-            "__reaction": "MACR + hv -> 0.66*HO2 + 1.34*CO",
-            "__comments": "TODO - find this rate",
-            "from": "jo2",
-            "scale by": 0.0
          },
          {
             "to": "jc2h5ooh",
@@ -423,13 +460,6 @@
             "to": "jisopooh",
             "__reaction": "ISOPOOH + hv -> 0.402*MVK + 0.288*MACR + 0.69*CH2O + HO2",
             "from": "jch3ooh"
-         },
-         {
-            "to": "jhyac",
-            "__reaction": "HYAC (CH3COCH2OH) + hv -> CH3CO3 + HO2 + CH2O",
-            "__comments": "TODO - find this rate",
-            "from": "jo2",
-            "scale by": 0.0
          },
          {
             "to": "jmek",
