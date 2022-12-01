@@ -1431,6 +1431,9 @@ subroutine micro_pumas_cam_tend(state, ptend, dtime, pbuf)
 
    integer :: i, k, itim_old, it
 
+   real(r8), parameter :: micron2meter = 1.e6_r8
+   real(r8), parameter :: shapeparam = 1.e5_r8
+
    real(r8), pointer :: naai(:,:)      ! ice nucleation number
    real(r8), pointer :: naai_hom(:,:)  ! ice nucleation number (homogeneous)
    real(r8), pointer :: npccn(:,:)     ! liquid activation number tendency
@@ -2843,7 +2846,7 @@ subroutine micro_pumas_cam_tend(state, ptend, dtime, pbuf)
            rho_grid(:ngrdcol,top_lev:), rhow)
 
       reff_rain_grid(:ngrdcol,top_lev:) = drout2_grid(:ngrdcol,top_lev:) * &
-           1.5_r8 * 1.e6_r8
+           shapeparam * micron2meter
    end where
 
    where (qs_grid(:ngrdcol,top_lev:) >= 1.e-7_r8)
@@ -2856,7 +2859,7 @@ subroutine micro_pumas_cam_tend(state, ptend, dtime, pbuf)
            3._r8 * rhosn/rhows
 
       reff_snow_grid(:ngrdcol,top_lev:) = dsout2_grid(:ngrdcol,top_lev:) * &
-           1.5_r8 * 1.e6_r8
+           shapeparam * micron2meter
    end where
 
 
