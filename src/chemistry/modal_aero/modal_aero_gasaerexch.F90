@@ -98,6 +98,8 @@ use modal_aero_data,   only:  alnsg_amode,lmassptr_amode,cnst_name_cw
 use modal_aero_data,   only:  lptr_so4_a_amode,lptr_nh4_a_amode
 use modal_aero_data,   only:  modeptr_pcarbon,nspec_amode,specmw_amode,specdens_amode
 use modal_aero_rename, only:  modal_aero_rename_sub
+use rad_constituents,  only: rad_cnst_get_info
+use constituents,      only: pcnst, cnst_mw
 
 use cam_history,       only:  outfld, fieldname_len
 use chem_mods,         only:  adv_mass
@@ -165,6 +167,7 @@ implicit none
    integer, parameter :: jsrflx_rename = 2
    integer, parameter :: ldiag1=-1, ldiag2=-1, ldiag3=-1, ldiag4=-1
    integer, parameter :: method_soa = 2
+   character(len=32) :: spec_type
 !     method_soa=0 is no uptake
 !     method_soa=1 is irreversible uptake done like h2so4 uptake
 !     method_soa=2 is reversible uptake using subr modal_aero_soaexch
@@ -588,8 +591,25 @@ implicit none
             do jsoa = 1, nsoa
                qold_soag(jsoa) = q(i,k,l_soag(jsoa))
             end do
-            mw_poa_host = 12.0_r8
-            mw_soa_host = 250.0_r8
+! get molecular weight from the host model
+            do n = 1, ntot_amode
+              do l = 1, nspec_amode(n)
+                  call rad_cnst_get_info(0, n, l, spec_type=spec_type )
+                  select case( spec_type )
+                   case('s-organic')
+                     mw_soa_host(:) = specmw_amode(l,n)
+                   case('p-organic')
+                     mw_poa_host(:) = specmw_amode(l,n) 
+                   end select
+               end do
+            end do
+!st     write(*,*) 'mw_soa_host=', mw_soa_host
+!st     write(*,*) 'mw_poa_host=', mw_poa_host 
+
+
+!st            mw_poa_host = 12.0_r8
+! st            mw_soa_host = 250.0_r8 
+!st            mw_soa_host = 12.0_r8   !12 for CAM (without VBS)
 
             call modal_aero_soaexch( deltat, t(i,k), pmid(i,k), &
                  niter, niter_max, ntot_amode, ntot_soamode, npoa, nsoa, &
@@ -1257,6 +1277,7 @@ implicit none
          end do
       end do
 
+      ! tmpf fraction currently not needed, only if poa will be photochemically producded in the future
       tmpf = mw_poa_host(1)/mw_poa(1)
       do m = 1, ntot_soamode
          if ( skip_soamode(m) ) cycle
@@ -1276,10 +1297,12 @@ implicit none
       end do
       ! IF mw of soa EQ 12 (as in the MAM3 default case), this has to be in
       ! should actully talk the mw from the chemistry mechanism and substitute with 12.0
-      if (.not.soa_multi_species) then
-         g0_soa = g0_soa*(150.0_r8/12.0_r8)
-      else
-      end if
+      !st should not be applied g0_soa
+      !st if (.not.soa_multi_species) then
+      !st    g0_soa = g0_soa*(mw_soa/mw_soa_host)
+         !st g0_soa = g0_soa*(150.0_r8/12.0_r8)
+      !st else
+      !st end if
 
       niter = 0
       tcur = 0.0_r8

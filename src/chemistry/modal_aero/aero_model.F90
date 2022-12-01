@@ -624,6 +624,7 @@ contains
              index_tot_mass(n,l) = get_spc_ndx(spec_name)
              if ( trim(spec_type) == 'sulfate'   .or. &
                   trim(spec_type) == 's-organic' .or. &
+                  trim(spec_type) == 'p-organic' .or. &
                   trim(spec_type) == 'black-c'   .or. &
                   trim(spec_type) == 'ammonium') then
                 index_chm_mass(n,l) = get_spc_ndx(spec_name)

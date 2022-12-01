@@ -493,30 +493,30 @@
                   density_aer=specdens_amode(l,m), &
                   hygro_aer=spechygro(l,m)         )
 
-             if ( soa_multi_species ) then
-                ! Molecular weight for the species
-                specmw_amode(l,m) = cnst_mw(qArrIndex)
-             else ! the follow preserves the molecular weights historically used in MAM
-                call rad_cnst_get_info(0, m, l, spec_type=spec_type )
-                select case( spec_type )
-                case('sulfate')
-                   if (ntot_amode==7) then
-                      specmw_amode(l,m) = 96._r8
-                   else
-                      specmw_amode(l,m) = 115._r8
-                   endif
-                case('ammonium')
-                   specmw_amode(l,m) = 18._r8
-                case('p-organic','s-organic','black-c')
-                   specmw_amode(l,m) = 12._r8
-                case('seasalt')
-                   specmw_amode(l,m) = 58.5_r8
-                case('dust')
-                   specmw_amode(l,m) = 135._r8
-                case default
-                   call endrun('modal_aero_data_init: species type not recognized: '//trim(spec_type))
-                end select
-             endif
+                 specmw_amode(l,m) = cnst_mw(qArrIndex)
+             !st if ( soa_multi_species ) then
+             !st    ! Molecular weight for the species
+             !st else ! the follow preserves the molecular weights historically used in MAM
+             !st    call rad_cnst_get_info(0, m, l, spec_type=spec_type )
+             !st    select case( spec_type )
+             !st    case('sulfate')
+             !st       if (ntot_amode==7) then
+             !st          specmw_amode(l,m) = 96._r8
+             !st       else
+             !st          specmw_amode(l,m) = 115._r8
+             !st       endif
+             !st    case('ammonium')
+             !st       specmw_amode(l,m) = 18._r8
+             !st    case('p-organic','s-organic','black-c')
+             !st       specmw_amode(l,m) = 12._r8
+             !st    case('seasalt')
+             !st       specmw_amode(l,m) = 58.5_r8
+             !st    case('dust')
+             !st      specmw_amode(l,m) = 135._r8
+             !st   case default
+             !st      call endrun('modal_aero_data_init: species type not recognized: '//trim(spec_type))
+             !st   end select
+             !stendif
  
              if(masterproc) then
                 write(iulog,9212) '        name : ', cnst_name(qArrIndex)
