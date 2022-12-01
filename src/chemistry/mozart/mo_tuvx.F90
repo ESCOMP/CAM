@@ -476,7 +476,7 @@ contains
         if( do_euv ) then
         associate( euv_begin => tuvx%n_photo_rates_ + 1, &
                    euv_end   => tuvx%n_photo_rates_ + tuvx%n_euv_rates_ )
-          call calculate_euv_rates( solar_zenith_angle(i_col) * 180.0_r8 / pi, &
+          call calculate_euv_rates( sza, &
                                     fixed_species_conc(i_col,:,:), &
                                     species_vmr(i_col,:,:), &
                                     height_mid(i_col,:), &
@@ -1138,12 +1138,30 @@ contains
     real(r8) :: et_flux_orig(nbins)
     integer  :: n_tuvx_bins
 
-    et_flux_orig(:) = sol_etf(:) * ( we(2:nbins+1) - we(1:nbins) )
+    ! ===============================================
+    ! regrid normalized flux to TUV-x wavelength grid
+    !================================================
+    et_flux_orig(:) = sol_etf(:)
     n_tuvx_bins = size(this%wavelength_mid_values_)
     call rebin( nbins, n_tuvx_bins, we, this%wavelength_edges_, et_flux_orig, &
                 this%wavelength_mid_values_ )
+
+    ! ========================================================
+    ! convert normalized flux to flux on TUV-x wavelength grid
+    ! ========================================================
+    this%wavelength_mid_values_(:) = this%wavelength_mid_values_(:) * &
+                                     ( this%wavelength_edges_(2:n_tuvx_bins+1) - &
+                                       this%wavelength_edges_(1:n_tuvx_bins) )
+
+    ! ====================================
+    ! estimate unused edge values for flux
+    ! ====================================
     this%wavelength_values_(1)  = this%wavelength_mid_values_(1)
     this%wavelength_values_(2:n_tuvx_bins+1) = this%wavelength_mid_values_(1:n_tuvx_bins)
+
+    ! ============================
+    ! update TUV-x ET flux profile
+    ! ============================
     call this%profiles_( PROFILE_INDEX_ET_FLUX )%update( &
             mid_point_values = this%wavelength_mid_values_, &
             edge_values      = this%wavelength_values_)
@@ -1190,7 +1208,7 @@ contains
     edges(1) = fixed_species_conc(i_col,pver,indexm)
     edges(2:pver+1) = fixed_species_conc(i_col,pver:1:-1,indexm)
     densities(1:pver) = this%height_delta_(1:pver) * km2cm * &
-                        sqrt(edges(1:pver)) + sqrt(edges(2:pver+1))
+                        sqrt(edges(1:pver)) * sqrt(edges(2:pver+1))
     call this%profiles_( PROFILE_INDEX_AIR )%update( &
         edge_values = edges, layer_densities = densities, &
         scale_height = 8.01_r8 ) ! scale height in [km]
@@ -1209,9 +1227,13 @@ contains
     else
       edges(:) = 0.0_r8
     end if
-    exo_val = exo_column_conc(i_col,0,1)
+    if( nabscol >= 2 ) then
+      exo_val = exo_column_conc(i_col,0,2)
+    else
+      exo_val = 0.0_r8
+    end if
     densities(1:pver) = this%height_delta_(1:pver) * km2cm * &
-                        sqrt(edges(1:pver)) + sqrt(edges(2:pver+1))
+                        sqrt(edges(1:pver)) * sqrt(edges(2:pver+1))
     call this%profiles_( PROFILE_INDEX_O2 )%update( &
         edge_values = edges, layer_densities = densities, &
         exo_density = exo_val )
@@ -1230,13 +1252,13 @@ contains
     else
       edges(:) = 0.0_r8
     end if
-    if( nabscol >= 2 ) then
-      exo_val = exo_column_conc(i_col,0,2)
+    if( nabscol >= 1 ) then
+      exo_val = exo_column_conc(i_col,0,1)
     else
       exo_val = 0.0_r8
     end if
     densities(1:pver) = this%height_delta_(1:pver) * km2cm * &
-                        sqrt(edges(1:pver)) + sqrt(edges(2:pver+1))
+                        sqrt(edges(1:pver)) * sqrt(edges(2:pver+1))
     call this%profiles_( PROFILE_INDEX_O3 )%update( &
         edge_values = edges, layer_densities = densities, &
         exo_density = exo_val )
