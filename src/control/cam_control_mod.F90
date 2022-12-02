@@ -157,7 +157,7 @@ subroutine cam_ctrl_set_physics_type(phys_package)
     else if (tj2016_phys) then
       write(iulog,*) 'Run model with Thatcher-Jablonowski (2016) physics forcing (moist Held-Suarez)'
     else if (frierson_phys) then
-      write(iulog,*) 'Run model with Frierson(2006) physics'
+      write(iulog,*) 'Run model with Frierson (2006) physics'
     end if
   end if
 

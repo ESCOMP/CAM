@@ -5,6 +5,7 @@ module frierson_cam
 !          Frierson, et al. (2006), " A Gray-Radiation Aquaplanet
 !          Moist GCM, Part I. Static Stability and Eddy Scale"
 !          J. Atmos. Sci, Vol 63, 2548-2566.
+!          doi: 10.1175/JAS3753.1
 !
 !============================================================================
   ! Useful modules
@@ -12,7 +13,7 @@ module frierson_cam
   use shr_kind_mod,   only: r8 => shr_kind_r8
   use shr_const_mod,  only: pi => shr_const_pi
   use physconst,      only: gravit, cappa, rair, cpair, latvap, rh2o, epsilo, rhoh2o, zvir
-  use ppgrid,         only: pcols, pver, begchunk, endchunk
+  use ppgrid,         only: pcols, pver, pverp, begchunk, endchunk
   use constituents,   only: pcnst
   use physics_buffer, only: dtype_r8, pbuf_add_field, physics_buffer_desc, &
                             pbuf_set_field, pbuf_get_field
@@ -43,84 +44,85 @@ module frierson_cam
   public :: frierson_condensate_tend
   public :: frierson_pbl_tend
   public :: frierson_radiative_tend
-  private:: frierson_surface_init
   public :: frierson_restart_init
   public :: frierson_restart_write
   public :: frierson_restart_read
 
+  private :: frierson_surface_init
+
   ! PBL Configuatons
   !------------------
-  integer,parameter:: PBL_FRIERSON = 0           ! Implementation of Frierson PBL
-  integer,parameter:: PBL_USER     = 1           ! Optional call for user defined PBL
+  integer,parameter :: PBL_FRIERSON = 0           ! Implementation of Frierson PBL
+  integer,parameter :: PBL_USER     = 1           ! Optional call for user defined PBL
 
   ! Tags to identify optional model formulations
   !------------------------------------------------
-  integer,parameter:: CONDENSATE_NONE       = 0  ! No Condensation, PRECL=0
-  integer,parameter:: CONDENSATE_FRIERSON   = 1  ! Frierson condensation w/ re-evaporation
-  integer,parameter:: CONDENSATE_TJ16       = 2  ! Consensation from TJ2016 model.
-  integer,parameter:: CONDENSATE_USER       = 3  ! Optional user defined Consensation scheme
+  integer,parameter :: CONDENSATE_NONE       = 0  ! No Condensation, PRECL=0
+  integer,parameter :: CONDENSATE_FRIERSON   = 1  ! Frierson condensation w/ re-evaporation
+  integer,parameter :: CONDENSATE_TJ16       = 2  ! Condensation from TJ2016 model.
+  integer,parameter :: CONDENSATE_USER       = 3  ! Optional user defined Consensation scheme
 
-  integer,parameter:: RADIATION_FRIERSON    = 0  ! Frierson Gray radiation.
-  integer,parameter:: RADIATION_USER        = 1  ! Optional user defined Radiation scheme
+  integer,parameter :: RADIATION_FRIERSON    = 0  ! Frierson Gray radiation.
+  integer,parameter :: RADIATION_USER        = 1  ! Optional user defined Radiation scheme
 
   ! Options selecting which PRECIP, PBL, RADIATION, etc.. formulations to use.
   !---------------------------------------------------------------------------------
-  integer,parameter:: PBL_OPT          = PBL_FRIERSON
-  integer,parameter:: CONDENSATE_OPT   = CONDENSATE_FRIERSON
-  integer,parameter:: RADIATION_OPT    = RADIATION_FRIERSON
+  integer,parameter :: PBL_OPT          = PBL_FRIERSON
+  integer,parameter :: CONDENSATE_OPT   = CONDENSATE_FRIERSON
+  integer,parameter :: RADIATION_OPT    = RADIATION_FRIERSON
 
   ! Global Constants
   !---------------------
-  real(r8),parameter:: frierson_T0     = 273.16_r8     ! Reference Temperature for E0
-  real(r8),parameter:: frierson_E0     = 610.78_r8     ! Saturation Vapor pressure @ T0
-  real(r8),parameter:: frierson_Rs0    = 1360.0_r8     ! Solar Constant
-  real(r8),parameter:: frierson_Erad   = SHR_CONST_REARTH  ! Earth Radius
-  real(r8),parameter:: frierson_Karman = SHR_CONST_KARMAN  ! Von Karman constant
-  real(r8),parameter:: frierson_Boltz  = SHR_CONST_STEBOL  ! Stefan-Boltzmann constant
+  real(r8),parameter :: frierson_T0     = 273.16_r8     ! Reference Temperature for E0
+  real(r8),parameter :: frierson_E0     = 610.78_r8     ! Saturation Vapor pressure @ T0
+  real(r8),parameter :: frierson_Rs0    = 1360.0_r8     ! Solar Constant
+  real(r8),parameter :: frierson_Erad   = SHR_CONST_REARTH  ! Earth Radius
+  real(r8),parameter :: frierson_Karman = SHR_CONST_KARMAN  ! Von Karman constant
+  real(r8),parameter :: frierson_Boltz  = SHR_CONST_STEBOL  ! Stefan-Boltzmann constant
 
   ! Some Physics buffer indicies
   !-------------------------------
-  integer:: prec_pcw_idx = 0
-  integer:: prec_dp_idx  = 0
-  integer:: relhum_idx   = 0
+  integer :: prec_pcw_idx = 0
+  integer :: prec_dp_idx  = 0
+  integer :: relhum_idx   = 0
 
   ! Global values for Surface Temp, surface fluxes, and radiative heating
   !----------------------------------------------------------------------
   type(var_desc_t)    :: Tsurf_desc      ! Vardesc for restarts
   type(var_desc_t)    :: Qsurf_desc      ! Vardesc for restarts
-  real(r8),allocatable:: Tsurf (:,:)     ! Surface Temp
-  real(r8),allocatable:: Qsurf (:,:)     ! Surface Q
-  real(r8),allocatable:: Fsolar(:,:)     ! Net Solar Heating
-  real(r8),allocatable:: Fup   (:,:)     ! Upward Longwave heating
-  real(r8),allocatable:: Fdown (:,:)     ! Downward Longwave heating
-  real(r8),allocatable:: SHflux(:,:)     ! Sensible Heat flux
-  real(r8),allocatable:: LHflux(:,:)     ! Latent Heat Flux
-  real(r8),allocatable:: SWflux(:,:)     ! Surface Water flux
-  real(r8),allocatable:: TUflux(:,:)     ! U momentum flux
-  real(r8),allocatable:: TVflux(:,:)     ! V momentum flux
-  real(r8),allocatable:: Evap  (:,:)     ! U momentum flux
-  real(r8),allocatable:: Cd    (:,:)     ! V momentum flux
-  real(r8),allocatable:: clat  (:,:)     ! latitudes(radians) for columns
-  real(r8),allocatable:: Fnet  (:,:)     ! Net Radiative Surface Heating
+  real(r8),allocatable :: Tsurf (:,:)     ! Surface Temp
+  real(r8),allocatable :: Qsurf (:,:)     ! Surface Q
+  real(r8),allocatable :: Fsolar(:,:)     ! Net Solar Heating
+  real(r8),allocatable :: Fup   (:,:)     ! Upward Longwave heating
+  real(r8),allocatable :: Fdown (:,:)     ! Downward Longwave heating
+  real(r8),allocatable :: SHflux(:,:)     ! Sensible Heat flux
+  real(r8),allocatable :: LHflux(:,:)     ! Latent Heat Flux
+  real(r8),allocatable :: SWflux(:,:)     ! Surface Water flux
+  real(r8),allocatable :: TUflux(:,:)     ! U momentum flux
+  real(r8),allocatable :: TVflux(:,:)     ! V momentum flux
+  real(r8),allocatable :: Evap  (:,:)     ! U momentum flux
+  real(r8),allocatable :: Cd    (:,:)     ! V momentum flux
+  real(r8),allocatable :: clat  (:,:)     ! latitudes(radians) for columns
+  real(r8),allocatable :: Fnet  (:,:)     ! Net Radiative Surface Heating
 
   real(r8), parameter :: unset_r8 = huge(1.0_r8)
 
   ! Global Tuning values
   !------------------------
-  real(r8):: frierson_Wind_min   = unset_r8      ! Minimum wind threshold
-  real(r8):: frierson_Z0         = unset_r8      ! Roughness Length
-  real(r8):: frierson_Ri_c       = unset_r8      ! Crit. Richardson # for stable mixing
-  real(r8):: frierson_Fb         = unset_r8      ! Surface layer Fraction
-  real(r8):: frierson_Albedo     = unset_r8      ! Frierson Albeo
-  real(r8):: frierson_DeltaS     = unset_r8      ! Lat variation of shortwave radiation
-  real(r8):: frierson_Tau_eqtr   = unset_r8      ! Longwave optical depth at Equator
-  real(r8):: frierson_Tau_pole   = unset_r8      ! Longwave optical depth at poles.
-  real(r8):: frierson_LinFrac    = unset_r8      ! Stratosphere Linear optical depth param
-  real(r8):: frierson_C0         = unset_r8      ! Ocean mixed layer heat capacity
-  real(r8):: frierson_WetDryCoef = unset_r8      ! E0 Scale factor to control moisture
-  real(r8):: frierson_Tmin       = unset_r8      ! IC: Minimum sst (K)
-  real(r8):: frierson_Tdlt       = unset_r8      ! IC: eq-polar difference sst (K)
-  real(r8):: frierson_Twidth     = unset_r8      ! IC: width parameter for sst (C)
+  real(r8) :: frierson_Wind_min   = unset_r8      ! Minimum wind threshold
+  real(r8) :: frierson_Z0         = unset_r8      ! Roughness Length
+  real(r8) :: frierson_Ri_c       = unset_r8      ! Crit. Richardson # for stable mixing
+  real(r8) :: frierson_Fb         = unset_r8      ! Surface layer Fraction
+  real(r8) :: frierson_Albedo     = unset_r8      ! Frierson Albedo
+  real(r8) :: frierson_DeltaS     = unset_r8      ! Lat variation of shortwave radiation
+  real(r8) :: frierson_Tau_eqtr   = unset_r8      ! Longwave optical depth at Equator
+  real(r8) :: frierson_Tau_pole   = unset_r8      ! Longwave optical depth at poles.
+  real(r8) :: frierson_LinFrac    = unset_r8      ! Stratosphere Linear optical depth param
+  real(r8) :: frierson_C0         = unset_r8      ! Ocean mixed layer heat capacity
+  real(r8) :: frierson_WetDryCoef = unset_r8      ! E0 Scale factor to control moisture
+  real(r8) :: frierson_Tmin       = unset_r8      ! IC: Minimum sst (K)
+  real(r8) :: frierson_Tdlt       = unset_r8      ! IC: eq-polar difference sst (K)
+  real(r8) :: frierson_Twidth     = unset_r8      ! IC: width parameter for sst (C)
 
 contains
   !==============================================================================
@@ -133,9 +135,6 @@ contains
     call pbuf_add_field('PREC_DP' ,'physpkg',dtype_r8, (/pcols/),     prec_dp_idx )
     call pbuf_add_field('RELHUM'  ,'physpkg',dtype_r8, (/pcols,pver/),relhum_idx  )
 
-    ! End Routine
-    !-------------
-    return
   end subroutine frierson_register
   !==============================================================================
 
@@ -173,7 +172,7 @@ contains
       if(ierr == 0) then
         read(unitn,frierson_nl,iostat=ierr)
         if(ierr /= 0) then
-          call endrun('frierson_readnl:: ERROR reading namelist')
+          call endrun(sub//': ERROR reading namelist')
         endif
       endif
       close(unitn)
@@ -263,9 +262,9 @@ contains
     call addfld('DUV' ,(/'lev' /),'A','m/s2'   ,'U vertical diffusion'                            )
     call addfld('DVV' ,(/'lev' /),'A','m/s2'   ,'V vertical diffusion'                            )
     call addfld('VD01',(/'lev' /),'A','kg/kg/s','Q tendency (vertical diffusion)'                 )
-    call addfld('Cdrag',horiz_only,'A','n/a'    ,'Surface Drag'                                   )
+    call addfld('Cdrag',horiz_only,'A','1'    ,'Surface Drag'                                   )
     call addfld('Z_pbl',horiz_only,'I','m'      ,'PBL Height'                                     )
-    call addfld('Rf'  ,(/'lev' /),'I','n/a'     ,'Another Richardson number / Ri_c'               )
+    call addfld('Rf'  ,(/'lev' /),'I','1'     ,'Another Richardson number / Ri_c'               )
 
     call addfld('R_Fsolar', horiz_only, 'I','W/m2', 'SW Solar Flux'             )
     call addfld('R_Fup'   , horiz_only, 'I','W/m2', 'LW Upward Radiative Flux'  )
@@ -275,7 +274,7 @@ contains
     call addfld('R_Fnet  ', horiz_only, 'I','W/m2', 'Net Radiative Flux'        )
     call addfld('R_Tsurf ', horiz_only, 'I','K'   , 'Surface Temperature'       )
     call addfld('R_Qsurf ', horiz_only, 'I','kg/kg', 'Surface Water Vapor'      )
-    call addfld('R_Cdrag' , horiz_only, 'I','n/a'  , 'Surface Drag'             )
+    call addfld('R_Cdrag' , horiz_only, 'I','1'  , 'Surface Drag'             )
 
     call add_default('QRS'  ,1,' ')
     call add_default('KVH'  ,1,' ')
@@ -347,7 +346,6 @@ contains
       do lchnk = begchunk,endchunk
         ncol = get_ncols_p(lchnk)
 
-        ! phys_state PS values are Inf at this point.... HUH???
         ! Set to reference values for initialization
         !------------------------------------------------------------
         phys_state(lchnk)%ps(:ncol) = ps0
@@ -359,7 +357,7 @@ contains
       end do
     endif
 
-    ! Initialize radition and flux values to 0.0  (Add Init from restart file???)
+    ! Initialize radiation and flux values to 0.0  (Add Init from restart file???)
     !---------------------------------------------------------------------------
     do lchnk = begchunk,endchunk
       Fsolar(:,lchnk) = 0._r8
@@ -556,8 +554,8 @@ contains
     real(r8) :: dtdt_vdiff(state%ncol,pver)   ! PBL T vertical diffusion tend  K/s
     real(r8) :: dudt_vdiff(state%ncol,pver)   ! PBL U vertical diffusion tend  m/s/s
     real(r8) :: dvdt_vdiff(state%ncol,pver)   ! PBL V vertical diffusion tend  m/s/s
-    real(r8) :: Km        (state%ncol,pver+1) ! Eddy diffusivity at layer interfaces (m2/s)
-    real(r8) :: Ke        (state%ncol,pver+1) ! Eddy diffusivity at layer interfaces (m2/s)
+    real(r8) :: Km        (state%ncol,pverp)  ! Eddy diffusivity at layer interfaces (m2/s)
+    real(r8) :: Ke        (state%ncol,pverp)  ! Eddy diffusivity at layer interfaces (m2/s)
     real(r8) :: VSE       (state%ncol,pver)   ! Dry Static Energy divided by Cp (K)
     real(r8) :: Zm        (state%ncol,pver)   !
     real(r8) :: Zi        (state%ncol,pver)   !

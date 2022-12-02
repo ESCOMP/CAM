@@ -565,7 +565,7 @@ contains
 
     ! Update Nudging values, if needed
     !----------------------------------
-    if((Nudge_Model).and.(Nudge_ON)) then
+    if(Nudge_Model.and.Nudge_ON) then
       call nudging_timestep_tend(state,ptend)
       call physics_update(state, ptend, ztodt, tend)
       call check_energy_chng(state, tend, "nudging", nstep, ztodt, zero, zero, zero, zero)
