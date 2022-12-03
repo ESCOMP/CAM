@@ -184,8 +184,11 @@ module clubb_intr
                                  ! (double Gaussian) PDF type to use for the w, rt,
                                  ! and theta-l (or w, chi, and eta) portion of
                                  ! CLUBB's multivariate, two-component PDF.
-    clubb_ipdf_call_placement = unset_i    ! Selected option for the placement of the call to
+    clubb_ipdf_call_placement = unset_i, & ! Selected option for the placement of the call to
                                            ! CLUBB's PDF.
+    clubb_penta_solve_method = unset_i,  & ! Specifier for method to solve then penta-diagonal system
+    clubb_tridiag_solve_method = unset_i   ! Specifier for method to solve tri-diagonal systems
+
 
    
   logical :: &
@@ -540,7 +543,7 @@ module clubb_intr
     call pbuf_add_field('THLPTHVP',   'global', dtype_r8, (/pcols,pverp/), thlpthvp_idx)
     call pbuf_add_field('CLOUD_FRAC', 'global', dtype_r8, (/pcols,pverp/), cloud_frac_idx)
     call pbuf_add_field('ISS_FRAC',   'global',  dtype_r8, (/pcols,pverp/), ice_supersat_idx)
-    call pbuf_add_field('RCM',        'physpkg', dtype_r8, (/pcols,pverp/), rcm_idx)
+    call pbuf_add_field('RCM',        'global', dtype_r8, (/pcols,pverp/), rcm_idx)
     call pbuf_add_field('ZTODT',      'physpkg', dtype_r8, (/pcols/),       ztodt_idx)
     call pbuf_add_field('WP2RTP',     'global', dtype_r8, (/pcols,pverp/), wp2rtp_idx)
     call pbuf_add_field('WP2THLP',    'global', dtype_r8, (/pcols,pverp/), wp2thlp_idx)
@@ -701,43 +704,102 @@ end subroutine clubb_init_cnst
     logical :: clubb_cloudtop_cooling = .false., clubb_rainevap_turb = .false.
 
     integer :: iunit, read_status, ierr
-    namelist /clubb_his_nl/ clubb_history, clubb_rad_history
-    namelist /clubbpbl_diff_nl/ clubb_cloudtop_cooling, clubb_rainevap_turb, clubb_do_adv, clubb_timestep, &
-                                clubb_rnevap_effic, clubb_do_icesuper
-    namelist /clubb_params_nl/ clubb_c1, clubb_c1b, clubb_c11, clubb_c11b, clubb_c14, &
-                               clubb_C_wp3_pr_turb, clubb_mult_coef, clubb_gamma_coef, &
-                               clubb_c_K10, clubb_c_K10h, clubb_beta, clubb_C2rt, clubb_C2thl, &
-                               clubb_C2rtthl, clubb_C8, clubb_C8b, clubb_C7, clubb_C7b, clubb_Skw_denom_coef, &
-                               clubb_c6rt, clubb_c6rtb, clubb_c6rtc, clubb_c6thl, clubb_c6thlb, clubb_c6thlc, &
-                               clubb_C4, clubb_C_uu_shr, clubb_C_uu_buoy, &
-                               clubb_c_K1, clubb_c_K2, clubb_nu2, clubb_c_K8, &
-                               clubb_c_K9, clubb_nu9, clubb_C_wp2_splat, clubb_wpxp_L_thresh, &
-                               clubb_lambda0_stability_coef, clubb_l_lscale_plume_centered, &
-                               clubb_do_liqsupersat, clubb_do_energyfix,&
-                               clubb_lmin_coef,clubb_skw_max_mag, clubb_l_stability_correct_tau_zm, &
-                               clubb_gamma_coefb, clubb_up2_sfc_coef, clubb_detliq_rad, clubb_detice_rad, &
-                               clubb_detphase_lowtemp, clubb_l_do_expldiff_rtm_thlm, &
-                               clubb_C_invrs_tau_bkgnd, clubb_C_invrs_tau_sfc, clubb_C_invrs_tau_shear, &
-                               clubb_C_invrs_tau_N2, clubb_C_invrs_tau_N2_wp2, clubb_C_invrs_tau_N2_xp2, &
-                               clubb_C_invrs_tau_N2_wpxp, clubb_C_invrs_tau_N2_clear_wp3, &
-                               clubb_ipdf_call_placement, clubb_l_predict_upwp_vpwp, &
-                               clubb_l_min_wp2_from_corr_wx, clubb_l_min_xp2_from_corr_wx, &
-                               clubb_l_upwind_xpyp_ta, clubb_l_vert_avg_closure, &
-                               clubb_l_trapezoidal_rule_zt, clubb_l_trapezoidal_rule_zm, &
-                               clubb_l_call_pdf_closure_twice, clubb_l_godunov_upwind_wpxp_ta, &
-                               clubb_l_godunov_upwind_xpyp_ta, clubb_l_use_cloud_cover, &
-                               clubb_l_damp_wp2_using_em, &
-                               clubb_l_diag_Lscale_from_tau, clubb_l_use_C7_Richardson, &
-                               clubb_l_use_C11_Richardson, clubb_l_use_shear_Richardson, &
-                               clubb_l_brunt_vaisala_freq_moist, clubb_l_use_thvm_in_bv_freq, &
-                               clubb_l_rcm_supersat_adj, clubb_l_damp_wp3_Skw_squared, &
-                               clubb_l_lmm_stepping, & 
-                               clubb_l_e3sm_config, & 
-                               clubb_l_use_tke_in_wp3_pr_turb_term, clubb_l_use_tke_in_wp2_wp3_K_dfsn, &
-                               clubb_l_smooth_Heaviside_tau_wpxp, clubb_l_mono_flux_lim_thlm, &
-                               clubb_l_mono_flux_lim_rtm, clubb_l_mono_flux_lim_um, &
-                               clubb_l_mono_flux_lim_vm, clubb_l_mono_flux_lim_spikefix
 
+    namelist /clubb_his_nl/ clubb_history, clubb_rad_history
+    namelist /clubbpbl_diff_nl/ clubb_cloudtop_cooling, clubb_rainevap_turb, &
+                                clubb_do_adv, clubb_timestep,  &
+                                clubb_rnevap_effic,clubb_do_icesuper
+    namelist /clubb_params_nl/ clubb_beta, &
+         clubb_c1, &
+         clubb_c1b, &
+         clubb_c11, &
+         clubb_c11b, &
+         clubb_c14, &
+         clubb_C2rt, &
+         clubb_C2rtthl, &
+         clubb_C2thl, &
+         clubb_C4, &
+         clubb_c6rt, &
+         clubb_c6rtb, &
+         clubb_c6rtc, &
+         clubb_c6thl, &
+         clubb_c6thlb, &
+         clubb_c6thlc, &
+         clubb_C7, &
+         clubb_C7b, &
+         clubb_C8, &
+         clubb_C8b, &
+         clubb_C_invrs_tau_bkgnd, &
+         clubb_C_invrs_tau_sfc, &
+         clubb_C_invrs_tau_shear, &
+         clubb_C_invrs_tau_N2, &
+         clubb_C_invrs_tau_N2_clear_wp3, &
+         clubb_C_invrs_tau_N2_wp2, &
+         clubb_C_invrs_tau_N2_wpxp, &
+         clubb_C_invrs_tau_N2_xp2, &
+         clubb_c_K1, &
+         clubb_c_K10, & 
+         clubb_c_K10h, &
+         clubb_c_K2, &
+         clubb_c_K8, &
+         clubb_c_K9, &
+         clubb_C_uu_shr, &
+         clubb_C_uu_buoy, &
+         clubb_C_wp2_splat, &
+         clubb_C_wp3_pr_turb, &
+         clubb_detice_rad, &
+         clubb_detliq_rad, &
+         clubb_detphase_lowtemp, &
+         clubb_do_energyfix, &
+         clubb_do_liqsupersat, &
+         clubb_gamma_coef, &
+         clubb_gamma_coefb, &
+         clubb_ipdf_call_placement, &
+         clubb_lambda0_stability_coef, &
+         clubb_lmin_coef, &
+         clubb_l_brunt_vaisala_freq_moist, &
+         clubb_l_call_pdf_closure_twice, &
+         clubb_l_damp_wp2_using_em, &
+         clubb_l_damp_wp3_Skw_squared, &
+         clubb_l_diag_Lscale_from_tau, &
+         clubb_l_do_expldiff_rtm_thlm, &
+         clubb_l_e3sm_config, &
+         clubb_l_godunov_upwind_wpxp_ta, &
+         clubb_l_godunov_upwind_xpyp_ta, &
+         clubb_l_lmm_stepping, &
+         clubb_l_lscale_plume_centered, &
+         clubb_l_min_wp2_from_corr_wx, &
+         clubb_l_min_xp2_from_corr_wx, &
+         clubb_l_mono_flux_lim_rtm, &
+         clubb_l_mono_flux_lim_spikefix, &
+         clubb_l_mono_flux_lim_thlm, &
+         clubb_l_mono_flux_lim_um, &
+         clubb_l_mono_flux_lim_vm, &
+         clubb_l_predict_upwp_vpwp, &
+         clubb_l_rcm_supersat_adj, &
+         clubb_l_smooth_Heaviside_tau_wpxp, &
+         clubb_l_stability_correct_tau_zm, &
+         clubb_l_trapezoidal_rule_zm, &
+         clubb_l_trapezoidal_rule_zt, &
+         clubb_l_upwind_xpyp_ta, &
+         clubb_l_use_C11_Richardson, &
+         clubb_l_use_C7_Richardson, &
+         clubb_l_use_cloud_cover, &
+         clubb_l_use_shear_Richardson, &
+         clubb_l_use_thvm_in_bv_freq, &
+         clubb_l_use_tke_in_wp2_wp3_K_dfsn, &
+         clubb_l_use_tke_in_wp3_pr_turb_term, &
+         clubb_l_vert_avg_closure, &
+         clubb_mult_coef, &
+         clubb_nu2, &
+         clubb_nu9, &
+         clubb_penta_solve_method, &
+         clubb_Skw_denom_coef, &
+         clubb_skw_max_mag, &
+         clubb_tridiag_solve_method, &
+         clubb_up2_sfc_coef, &
+         clubb_wpxp_L_thresh
+                               
     !----- Begin Code -----
 
     !  Determine if we want clubb_history to be output  
@@ -750,6 +812,8 @@ end subroutine clubb_init_cnst
     ! Initialize namelist variables to clubb defaults
     call set_default_clubb_config_flags_api( clubb_iiPDF_type, & ! Out
                                              clubb_ipdf_call_placement, & ! Out
+                                             clubb_penta_solve_method, & ! Out
+                                             clubb_tridiag_solve_method, & ! Out
                                              clubb_l_use_precip_frac, & ! Out
                                              clubb_l_predict_upwp_vpwp, & ! Out
                                              clubb_l_min_wp2_from_corr_wx, & ! Out
@@ -1024,6 +1088,8 @@ end subroutine clubb_init_cnst
     if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: clubb_l_use_tke_in_wp2_wp3_K_dfsn")
     call mpi_bcast(clubb_l_smooth_Heaviside_tau_wpxp,   1, mpi_logical, mstrid, mpicom, ierr)
     if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: clubb_l_smooth_Heaviside_tau_wpxp")
+    call mpi_bcast(clubb_l_enable_relaxed_clipping,   1, mpi_logical, mstrid, mpicom, ierr)
+    if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: clubb_l_enable_relaxed_clipping")
     call mpi_bcast(clubb_ipdf_call_placement,    1, mpi_integer, mstrid, mpicom, ierr)
     if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: clubb_ipdf_call_placement")
     call mpi_bcast(clubb_l_mono_flux_lim_thlm,   1, mpi_logical, mstrid, mpicom, ierr)
@@ -1036,6 +1102,10 @@ end subroutine clubb_init_cnst
     if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: clubb_l_mono_flux_lim_vm")
     call mpi_bcast(clubb_l_mono_flux_lim_spikefix,   1, mpi_logical, mstrid, mpicom, ierr)
     if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: clubb_l_mono_flux_lim_spikefix")
+    call mpi_bcast(clubb_penta_solve_method,    1, mpi_integer, mstrid, mpicom, ierr)
+    if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: clubb_penta_solve_method")
+    call mpi_bcast(clubb_tridiag_solve_method,    1, mpi_integer, mstrid, mpicom, ierr)
+    if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: clubb_tridiag_solve_method")
 
     !  Overwrite defaults if they are true
     if (clubb_history) l_stats = .true.
@@ -1100,11 +1170,15 @@ end subroutine clubb_init_cnst
     if(clubb_detice_rad == unset_r8) call endrun(sub//": FATAL: clubb_detice_rad not set")
     if(clubb_ipdf_call_placement == unset_i) call endrun(sub//": FATAL: clubb_ipdf_call_placement not set")
     if(clubb_detphase_lowtemp == unset_r8) call endrun(sub//": FATAL: clubb_detphase_lowtemp not set")
+    if(clubb_penta_solve_method == unset_i) call endrun(sub//": FATAL: clubb_penta_solve_method not set")
+    if(clubb_tridiag_solve_method == unset_i) call endrun(sub//": FATAL: clubb_tridiag_solve_method not set")
     if(clubb_detphase_lowtemp >= meltpt_temp) & 
     call endrun(sub//": ERROR: clubb_detphase_lowtemp must be less than 268.15 K")
 
     call initialize_clubb_config_flags_type_api( clubb_iiPDF_type, & ! In
                                                  clubb_ipdf_call_placement, & ! In
+                                                 clubb_penta_solve_method, & ! In
+                                                 clubb_tridiag_solve_method, & ! In
                                                  clubb_l_use_precip_frac, & ! In
                                                  clubb_l_predict_upwp_vpwp, & ! In
                                                  clubb_l_min_wp2_from_corr_wx, & ! In
@@ -1342,7 +1416,7 @@ end subroutine clubb_init_cnst
        !  tendencies to avoid double counted.  Else, we apply tendencies.
        lq(ixnumliq) = .false.
        edsclr_dim = edsclr_dim-1
-    end if
+    endif
 
     ! ----------------------------------------------------------------- !
     ! Set the debug level.  Level 2 has additional computational expense since
@@ -1405,7 +1479,7 @@ end subroutine clubb_init_cnst
     if (clubb_l_do_expldiff_rtm_thlm) then
        offset = 2 ! diffuse temperature and moisture explicitly
        edsclr_dim = edsclr_dim + offset 
-    end if
+    endif
     
     ! ----------------------------------------------------------------- !
     ! Setup CLUBB core
@@ -1548,7 +1622,7 @@ end subroutine clubb_init_cnst
        do j = 1, nparams, 1
           write(iulog,*) params_list(j), " = ", clubb_params(j)
        enddo
-    end if
+    endif
 
     ! Print configurable CLUBB flags
     if ( masterproc ) then
@@ -1685,7 +1759,7 @@ end subroutine clubb_init_cnst
        allocate(out_radzt(pcols,pverp,stats_rad_zt(1)%num_output_fields))
        allocate(out_radzm(pcols,pverp,stats_rad_zm(1)%num_output_fields))
 
-    end if
+    endif
   
     ! ----------------------------------------------------------------- !
     ! Make all of this output default, this is not CLUBB history
@@ -1730,7 +1804,7 @@ end subroutine clubb_init_cnst
        call add_default('WM_ZT_CLUBB',      1, ' ')
        call add_default('PBLH',             1, ' ')
        call add_default('CONCLD',           1, ' ')
-    end if
+    endif
       
     if (history_amwg) then
        call add_default('PBLH',             1, ' ')
@@ -1770,7 +1844,7 @@ end subroutine clubb_init_cnst
        call add_default('RVMTEND_CLUBB',    history_budget_histfile_num, ' ')
        call add_default('UTEND_CLUBB',      history_budget_histfile_num, ' ')
        call add_default('VTEND_CLUBB',      history_budget_histfile_num, ' ')
-    end if
+    endif
      
 
     ! --------------- !
@@ -1832,7 +1906,7 @@ end subroutine clubb_init_cnst
        call pbuf_set_field(pbuf2d, pdf_zm_varnce_w_2_idx, 0.0_r8)
        call pbuf_set_field(pbuf2d, pdf_zm_mixt_frac_idx, 0.0_r8)
 
-    end if
+    endif
   
     ! The following is physpkg, so it needs to be initialized every time
     call pbuf_set_field(pbuf2d, fice_idx,    0.0_r8)
@@ -1969,7 +2043,7 @@ end subroutine clubb_init_cnst
     integer :: icnt  
     logical :: lq2(pcnst)
 
-    integer :: iter, ierr
+    integer :: iter
    
     integer :: clubbtop(pcols)
    
