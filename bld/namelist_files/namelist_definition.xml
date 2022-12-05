@@ -3899,6 +3899,13 @@ xpyp only.
 Default: .false.
 </entry>
 
+<entry id="clubb_l_intr_sfc_flux_smooth" type="logical" category="pblrad"
+       group="clubb_params_nl" valid_values="" >
+Flag to apply a locally calculated ustar to momentum surface fluxes in the 
+clubb interface.
+Default: .false.
+</entry>
+
 <entry id="clubb_l_lmm_stepping" type="logical" category="pblrad"
        group="clubb_params_nl" valid_values="" >
 Flag to apply Linear Multistep Method (LMM) stepping in CLUBB.

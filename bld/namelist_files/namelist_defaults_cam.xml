@@ -1903,6 +1903,7 @@
 <clubb_l_e3sm_config                              > .false.  </clubb_l_e3sm_config>
 <clubb_l_godunov_upwind_wpxp_ta                   > .false. </clubb_l_godunov_upwind_wpxp_ta>
 <clubb_l_godunov_upwind_xpyp_ta                   > .false. </clubb_l_godunov_upwind_xpyp_ta>
+<clubb_l_intr_sfc_flux_smooth                     > .false. </clubb_l_intr_sfc_flux_smooth>
 <clubb_l_lmm_stepping                             > .false. </clubb_l_lmm_stepping>
 <clubb_l_lscale_plume_centered                    > .false. </clubb_l_lscale_plume_centered>
 <clubb_l_min_wp2_from_corr_wx                     > .true.  </clubb_l_min_wp2_from_corr_wx>

@@ -34,6 +34,7 @@ module clubb_intr
   use clubb_api_module, only: nparams
   use clubb_mf,         only: do_clubb_mf, do_clubb_mf_diag
   use cloud_fraction,   only: dp1, dp2
+  use phys_control,     only: cam_physpkg_is
 #endif
 
   implicit none
@@ -303,8 +304,9 @@ module clubb_intr
     clubb_l_mono_flux_lim_rtm,          & ! Flag to turn on monotonic flux limiter for rtm
     clubb_l_mono_flux_lim_um,           & ! Flag to turn on monotonic flux limiter for um
     clubb_l_mono_flux_lim_vm,           & ! Flag to turn on monotonic flux limiter for vm
-    clubb_l_mono_flux_lim_spikefix        ! Flag to implement monotonic flux limiter code that
+    clubb_l_mono_flux_lim_spikefix,     & ! Flag to implement monotonic flux limiter code that
                                           ! eliminates spurious drying tendencies at model top  
+    clubb_l_intr_sfc_flux_smooth = .false.  ! Add a locally calculated roughness to upwp and vpwp sfc fluxes
 
 !  Constant parameters
   logical, parameter, private :: &
@@ -766,6 +768,7 @@ end subroutine clubb_init_cnst
          clubb_l_e3sm_config, &
          clubb_l_godunov_upwind_wpxp_ta, &
          clubb_l_godunov_upwind_xpyp_ta, &
+         clubb_l_intr_sfc_flux_smooth, &
          clubb_l_lmm_stepping, &
          clubb_l_lscale_plume_centered, &
          clubb_l_min_wp2_from_corr_wx, &
@@ -1106,6 +1109,8 @@ end subroutine clubb_init_cnst
     if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: clubb_penta_solve_method")
     call mpi_bcast(clubb_tridiag_solve_method,    1, mpi_integer, mstrid, mpicom, ierr)
     if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: clubb_tridiag_solve_method")
+    call mpi_bcast(clubb_l_intr_sfc_flux_smooth,    1, mpi_logical, mstrid, mpicom, ierr)
+    if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: clubb_l_intr_sfc_flux_smooth")
 
     !  Overwrite defaults if they are true
     if (clubb_history) l_stats = .true.
@@ -3010,9 +3015,26 @@ end subroutine clubb_init_cnst
       wpthlp_sfc(i) = cam_in%shf(i)/(cpairv(i,pver,lchnk)*rho_zt(i,2))! Sensible heat flux
       wpthlp_sfc(i) = wpthlp_sfc(i)*inv_exner_clubb_surf(i)   ! Potential temperature flux
       wprtp_sfc(i)  = cam_in%cflx(i,1)/rho_zt(i,2)            ! Moisture flux  (check rho)
-      upwp_sfc(i)   = cam_in%wsx(i)/rho_zt(i,2)               ! Surface meridional momentum flux
-      vpwp_sfc(i)   = cam_in%wsy(i)/rho_zt(i,2)               ! Surface zonal momentum flux  
     end do
+
+    !  Other Surface fluxes provided by host model
+    if((cld_macmic_num_steps .gt. 1) .and. (clubb_l_intr_sfc_flux_smooth) .and. (cam_physpkg_is("cam_dev"))) then
+       do i=1,ncol
+          ubar = sqrt(state1%u(i,pver)**2+state1%v(i,pver)**2)
+          if (ubar <  0.25_r8) ubar = 0.25_r8
+
+          call calc_ustar( state1%t(i,pver), state1%pmid(i,pver), cam_in%wsx(i), cam_in%wsy(i), &
+               rrho(i), ustar )
+          
+          upwp_sfc(i) = -state1%u(i,pver)*ustar**2/ubar
+          vpwp_sfc(i) = -state1%v(i,pver)*ustar**2/ubar
+       end do
+    else
+       do i=1,ncol
+          upwp_sfc(i)   = cam_in%wsx(i)/rho_zt(i,2)               ! Surface meridional momentum flux
+          vpwp_sfc(i)   = cam_in%wsy(i)/rho_zt(i,2)               ! Surface zonal momentum flux
+       end do
+    endif
 
     ! Perturbed winds are not used in CAM
     upwp_sfc_pert = 0.0_r8
