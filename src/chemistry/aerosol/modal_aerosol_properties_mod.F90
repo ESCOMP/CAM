@@ -28,6 +28,7 @@ module modal_aerosol_properties_mod
      procedure :: icenuc_updates_num
      procedure :: icenuc_updates_mmr
      procedure :: apply_number_limits
+     procedure :: hetfrz_bin
      final :: destructor
   end type modal_aerosol_properties
 
@@ -363,5 +364,32 @@ contains
     end do
 
   end subroutine apply_number_limits
+
+  !------------------------------------------------------------------------------
+  ! returns TRUE if bin provides heterogeneous freezing nuclei
+  !------------------------------------------------------------------------------
+  function hetfrz_bin(self, bin_ndx) result(res)
+    class(modal_aerosol_properties), intent(in) :: self
+    integer, intent(in) :: bin_ndx  ! bin number
+
+    logical :: res
+
+    integer :: ispc
+    character(len=aero_name_len) :: mode_name, species_type
+
+    res = .false.
+
+    do ispc = 1, self%nspecies(bin_ndx)
+       call self%species_type(bin_ndx, ispc, species_type)
+       if ( trim(species_type)=='black-c' .or. trim(species_type)=='dust' ) then
+          res = .true.
+       end if
+    end do
+
+    call rad_cnst_get_info(0, bin_ndx, mode_type=mode_name)
+
+    res = res .and. trim(mode_name) /= 'aitken'
+
+  end function hetfrz_bin
 
 end module modal_aerosol_properties_mod

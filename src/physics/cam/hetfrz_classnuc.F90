@@ -21,7 +21,7 @@ module hetfrz_classnuc
 !-----------------------------------------------------------------------
 
 use shr_kind_mod,  only: r8 => shr_kind_r8
-use wv_saturation, only: svp_water, svp_ice
+use wv_saturation, only: svp_water
 use shr_spfn_mod,  only: erf => shr_spfn_erf
 
 use physconst,     only:  pi
@@ -155,7 +155,6 @@ subroutine hetfrz_classnuc_calc(ntypes, types,&
    real(r8) :: rhoice
    real(r8) :: sigma_iw                        ! [J/m2]
    real(r8) :: sigma_iv                        ! [J/m2]
-   real(r8) :: esice                           ! [Pa]
    real(r8) :: eswtr                           ! [Pa]
 
    real(r8) :: rgimm    ! critical germ size
@@ -236,9 +235,8 @@ subroutine hetfrz_classnuc_calc(ntypes, types,&
    frzducnt= 0._r8
    frzdudep = 0._r8
 
-   ! get saturation vapor pressures
+   ! get saturation vapor pressure
    eswtr = svp_water(t)  ! 0 for liquid
-   esice = svp_ice(t)    ! 1 for ice
 
    tc = t - tmelt
    rhoice = 916.7_r8-0.175_r8*tc-5.e-4_r8*tc**2
@@ -310,8 +308,8 @@ subroutine hetfrz_classnuc_calc(ntypes, types,&
       end select
 
       call hetfrz_classnuc_calc_rates( f_dep, f_cnt, f_imm, dga_dep, dga_imm, pdf_imm, limfac, &
-           kcoll(ispc), hetraer(ispc), icnlx, r3lx, t, supersatice, sigma_iw, sigma_iv, &
-           rgimm, rgdep, dg0dep, Adep, dg0cnt, Acnt, vwice, eswtr, deltat, &
+           kcoll(ispc), hetraer(ispc), icnlx, r3lx, t, supersatice, sigma_iw, &
+           rgimm, rgdep, dg0dep, Adep, dg0cnt, Acnt, vwice, deltat, &
            fn(ispc), awcam(ispc), awfacm(ispc), dstcoat(ispc), &
            total_aer_num(ispc), total_interstitial_aer_num(ispc), total_cloudborne_aer_num(ispc), uncoated_aer_num(ispc), &
            frzimm, frzcnt, frzdep, errstring )
@@ -326,8 +324,8 @@ subroutine hetfrz_classnuc_calc(ntypes, types,&
  end subroutine  hetfrz_classnuc_calc
 
  subroutine  hetfrz_classnuc_calc_rates( f_dep, f_cnt, f_imm, dga_dep, dga_imm, pdf_imm, limfac, &
-      kcoll, mradius, icnlx, r3lx, t, supersatice, sigma_iw, sigma_iv, &
-      rgimm, rgdep, dg0dep, Adep, dg0cnt, Acnt, vwice, eswtr, deltat, &
+      kcoll, mradius, icnlx, r3lx, t, supersatice, sigma_iw, &
+      rgimm, rgdep, dg0dep, Adep, dg0cnt, Acnt, vwice, deltat, &
       fn, awcam, awfacm, dstcoat, &
       total_aer_num, total_interstitial_aer_num, total_cloudborne_aer_num, uncoated_aer_num, &
       frzimm, frzcnt, frzdep, errstring )
@@ -347,7 +345,6 @@ subroutine hetfrz_classnuc_calc(ntypes, types,&
    real(r8), intent(in) :: t                          ! temperature [K]
    real(r8), intent(in) :: supersatice                ! supersaturation ratio wrt ice at 100%rh over water [ ]
    real(r8), intent(in) :: sigma_iw                   ! [J/m2]
-   real(r8), intent(in) :: sigma_iv                   ! [J/m2]
    real(r8), intent(in) :: rgimm                      ! critical germ size
    real(r8), intent(in) :: rgdep                      ! critical germ size
    real(r8), intent(in) :: dg0dep                     ! homogeneous energy of germ formation
@@ -356,7 +353,6 @@ subroutine hetfrz_classnuc_calc(ntypes, types,&
    real(r8), intent(in) :: Acnt                       ! prefactor
 
    real(r8), intent(in) :: vwice
-   real(r8), intent(in) :: eswtr
    real(r8), intent(in) :: deltat                     ! timestep [s]
    real(r8), intent(in) :: fn                         ! fraction activated [ ] for cloud borne aerosol number
    real(r8), intent(in) :: awcam                      ! modal added mass [mug m-3]
@@ -596,32 +592,36 @@ subroutine collkernel( temp, pres, eswtr, rhwincloud, r3lx,  rad, Ktherm, Kcoll 
        + rhoh2o*rh2o*temp/(Dvap*eswtr))
 
    do idx = 1,ntot
-      ! Knudsen number (Seinfeld & Pandis 8.1)
-      Kn = lambda/rad(idx)
-      ! aerosol diffusivity
-      Daer = kboltz*temp*(1 + Kn)/(6*pi*rad(idx)*viscos_air)
+      if (rad(idx)>0._r8) then
+         ! Knudsen number (Seinfeld & Pandis 8.1)
+         Kn = lambda/rad(idx)
+         ! aerosol diffusivity
+         Daer = kboltz*temp*(1 + Kn)/(6*pi*rad(idx)*viscos_air)
 
-      ! Schmidt number
-      Sc = viscos_air/(Daer*rho_air)
+         ! Schmidt number
+         Sc = viscos_air/(Daer*rho_air)
 
-      ! Young (1974) first equ. on page 771
-      K_brownian = 4*pi*r3lx*Daer*(1 + 0.3_r8*Re**0.5_r8*Sc**0.33_r8)
+         ! Young (1974) first equ. on page 771
+         K_brownian = 4*pi*r3lx*Daer*(1 + 0.3_r8*Re**0.5_r8*Sc**0.33_r8)
 
-      ! thermal conductivities from Seinfeld & Pandis, Table 8.6
-      ! form factor
-      f_t = 0.4_r8*(1._r8 + 1.45_r8*Kn + 0.4_r8*Kn*EXP(-1._r8/Kn))      &
-           *(Ktherm_air + 2.5_r8*Kn*Ktherm(idx))                      &
-           /((1._r8 + 3._r8*Kn)*(2._r8*Ktherm_air + 5._r8*Kn*Ktherm(idx)+Ktherm(idx)))
+         ! thermal conductivities from Seinfeld & Pandis, Table 8.6
+         ! form factor
+         f_t = 0.4_r8*(1._r8 + 1.45_r8*Kn + 0.4_r8*Kn*EXP(-1._r8/Kn))      &
+              *(Ktherm_air + 2.5_r8*Kn*Ktherm(idx))                      &
+              /((1._r8 + 3._r8*Kn)*(2._r8*Ktherm_air + 5._r8*Kn*Ktherm(idx)+Ktherm(idx)))
 
-      ! calculate T-Tc as in Cotton et al.
-      Tdiff_cotton = -G*(rhwincloud - 1._r8)*latvap/Ktherm_air
-      Q_heat = Ktherm_air/r3lx*(1._r8 + 0.3_r8*Re**0.5_r8*Pr**0.33_r8)*Tdiff_cotton
-      K_thermo_cotton = 4._r8*pi*r3lx*r3lx*f_t*Q_heat/pres
-      K_diffusio_cotton = -(1._r8/f_t)*(rh2o*temp/latvap)*K_thermo_cotton
-      Kcoll(idx) = 1.e6_r8*(K_brownian + K_thermo_cotton + K_diffusio_cotton)  ! convert m3/s -> cm3/s
+         ! calculate T-Tc as in Cotton et al.
+         Tdiff_cotton = -G*(rhwincloud - 1._r8)*latvap/Ktherm_air
+         Q_heat = Ktherm_air/r3lx*(1._r8 + 0.3_r8*Re**0.5_r8*Pr**0.33_r8)*Tdiff_cotton
+         K_thermo_cotton = 4._r8*pi*r3lx*r3lx*f_t*Q_heat/pres
+         K_diffusio_cotton = -(1._r8/f_t)*(rh2o*temp/latvap)*K_thermo_cotton
+         Kcoll(idx) = 1.e6_r8*(K_brownian + K_thermo_cotton + K_diffusio_cotton)  ! convert m3/s -> cm3/s
 
-      ! set K to 0 if negative
-      if (Kcoll(idx) < 0._r8) Kcoll(idx) = 0._r8
+         ! set K to 0 if negative
+         if (Kcoll(idx) < 0._r8) Kcoll(idx) = 0._r8
+      else
+         Kcoll(idx) = 0._r8
+      endif
    end do
 
 end subroutine collkernel

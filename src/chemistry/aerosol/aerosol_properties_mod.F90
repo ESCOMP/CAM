@@ -56,6 +56,7 @@ module aerosol_properties_mod
      procedure(aero_icenuc_updates_num), deferred :: icenuc_updates_num
      procedure(aero_icenuc_updates_mmr), deferred :: icenuc_updates_mmr
      procedure(aero_apply_num_limits), deferred :: apply_number_limits
+     procedure(aero_hetfrz_bin), deferred :: hetfrz_bin
 
      procedure :: final=>aero_props_final
   end type aerosol_properties
@@ -77,7 +78,7 @@ module aerosol_properties_mod
      !  density
      !  hygroscopicity
      !------------------------------------------------------------------------
-     subroutine aero_props_get(self, bin_ndx, species_ndx, density,hygro)
+     subroutine aero_props_get(self, bin_ndx, species_ndx, density, hygro)
        import :: aerosol_properties, r8
        class(aerosol_properties), intent(in) :: self
        integer, intent(in) :: bin_ndx             ! bin index
@@ -210,7 +211,19 @@ module aerosol_properties_mod
 
      end subroutine aero_apply_num_limits
 
-  end interface
+     !------------------------------------------------------------------------------
+     ! returns TRUE if bin provides heterogeneous freezing nuclei
+     !------------------------------------------------------------------------------
+     function aero_hetfrz_bin(self, bin_ndx) result(res)
+       import :: aerosol_properties
+       class(aerosol_properties), intent(in) :: self
+       integer, intent(in) :: bin_ndx  ! bin number
+
+       logical :: res
+
+     end function aero_hetfrz_bin
+
+   end interface
 
 contains
 

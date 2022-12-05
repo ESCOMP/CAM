@@ -342,7 +342,13 @@ subroutine microp_aero_init(phys_state,pbuf2d)
       call add_default ('WSUB     ', 1, ' ')
    end if
 
-   call hetfrz_classnuc_cam_init(mincld)
+   if (use_hetfrz_classnuc) then
+      if (associated(aero_props_obj)) then
+         call hetfrz_classnuc_cam_init(mincld, aero_props_obj)
+      else
+         call endrun(routine//': cannot use hetfrz_classnuc without prognostic aerosols')
+      endif
+   endif
 
 end subroutine microp_aero_init
 
@@ -580,7 +586,7 @@ subroutine microp_aero_run ( &
 
    ! save copy of cloud borne aerosols for use in heterogeneous freezing -- before modification by droplet nucleation
    if (use_hetfrz_classnuc) then
-      call hetfrz_classnuc_cam_save_cbaero(state1, pbuf)
+      call hetfrz_classnuc_cam_save_cbaero(state1, aero_props_obj, aero_state1_obj)
    end if
 
    ! initialize time-varying parameters
@@ -736,10 +742,6 @@ subroutine microp_aero_run ( &
               lcldn, lcldo, cldliqf, nctend_mixnuc, factnum)
       end if
 
-      ! destroy the aerosol state object
-      deallocate(aero_state1_obj)
-      nullify(aero_state1_obj)
-
       npccn(:ncol,:) = nctend_mixnuc(:ncol,:)
 
       npccn(:ncol,:) = npccn(:ncol,:) * npccn_scale
@@ -853,7 +855,7 @@ subroutine microp_aero_run ( &
    ! heterogeneous freezing
    if (use_hetfrz_classnuc) then
 
-      call hetfrz_classnuc_cam_calc(state1, deltatin, factnum, pbuf)
+      call hetfrz_classnuc_cam_calc(aero_props_obj, aero_state1_obj, state1, deltatin, factnum, pbuf)
 
    end if
 
@@ -861,7 +863,11 @@ subroutine microp_aero_run ( &
       deallocate(factnum)
    end if
 
-end subroutine microp_aero_run
+   ! destroy the aerosol state object
+   deallocate(aero_state1_obj)
+   nullify(aero_state1_obj)
+
+ end subroutine microp_aero_run
 
 !=========================================================================================
 

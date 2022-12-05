@@ -303,7 +303,7 @@ contains
   !------------------------------------------------------------------------------
   ! returns aerosol type weights for a given aerosol type and bin
   !------------------------------------------------------------------------------
-  subroutine icenuc_type_wght(self, bin_ndx, ncol, nlev, species_type, aero_props, rho, wght)
+  subroutine icenuc_type_wght(self, bin_ndx, ncol, nlev, species_type, aero_props, rho, wght, cloud_borne)
 
     use aerosol_properties_mod, only: aerosol_properties
 
@@ -313,8 +313,10 @@ contains
     integer, intent(in) :: nlev                   ! number of vertical levels
     character(len=*), intent(in) :: species_type  ! species type
     class(aerosol_properties), intent(in) :: aero_props ! aerosol properties object
-    real(r8), intent(in) :: rho(:,:)        ! air density (kg m-3)
-    real(r8), intent(out) :: wght(:,:)           ! type weights
+    real(r8), intent(in) :: rho(:,:)              ! air density (kg m-3)
+    real(r8), intent(out) :: wght(:,:)            ! type weights
+    logical, optional, intent(in) :: cloud_borne  ! if TRUE cloud-borne aerosols are used
+                                                  ! otherwise ambient aerosols are used
 
     character(len=aero_name_len) :: modetype
 
@@ -326,13 +328,13 @@ contains
        if (modetype=='coarse_dust') then
           wght(:ncol,:) = 1._r8
        else
-          call self%icenuc_type_wght_base(bin_ndx, ncol, nlev, species_type, aero_props, rho, wght)
+          call self%icenuc_type_wght_base(bin_ndx, ncol, nlev, species_type, aero_props, rho, wght, cloud_borne)
        end if
     else if (species_type == 'sulfate_strat') then
        if (modetype=='accum') then
           wght(:ncol,:) = 1._r8
        elseif ( modetype=='coarse' .or. modetype=='coarse_strat') then
-          call self%icenuc_type_wght_base(bin_ndx, ncol, nlev, species_type, aero_props, rho, wght)
+          call self%icenuc_type_wght_base(bin_ndx, ncol, nlev, species_type, aero_props, rho, wght, cloud_borne)
        endif
     else
        wght(:ncol,:) = 1._r8

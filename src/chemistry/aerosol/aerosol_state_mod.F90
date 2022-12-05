@@ -1,6 +1,7 @@
 module aerosol_state_mod
   use shr_kind_mod, only: r8 => shr_kind_r8
   use aerosol_properties_mod, only: aerosol_properties, aero_name_len
+  use physconst, only: pi
 
   implicit none
 
@@ -40,12 +41,19 @@ module aerosol_state_mod
      procedure :: icenuc_type_wght_base
      procedure :: icenuc_type_wght => icenuc_type_wght_base
      procedure :: nuclice_get_numdens
+     procedure :: get_amb_species_numdens
+     procedure :: get_cld_species_numdens
+     procedure :: coated_frac
+     procedure :: mass_mean_radius
+     procedure :: mass_factors
   end type aerosol_state
 
   ! for state fields
   type ptr2d_t
      real(r8), pointer :: fld(:,:)
   end type ptr2d_t
+
+  real(r8), parameter :: per_cm3 = 1.e-6_r8 ! factor for m-3 to cm-3 conversions
 
   abstract interface
 
@@ -277,9 +285,59 @@ contains
   end subroutine loadaer
 
   !------------------------------------------------------------------------------
+  ! returns ambient aerosol number density for a given bin number and species type
+  !------------------------------------------------------------------------------
+  subroutine get_amb_species_numdens(self, bin_ndx, ncol, nlev, species_type, aero_props, rho, numdens)
+    use aerosol_properties_mod, only: aerosol_properties
+    class(aerosol_state), intent(in) :: self
+    integer, intent(in) :: bin_ndx                ! bin number
+    integer, intent(in) :: ncol                   ! number of columns
+    integer, intent(in) :: nlev                   ! number of vertical levels
+    character(len=*), intent(in) :: species_type  ! species type
+    class(aerosol_properties), intent(in) :: aero_props ! aerosol properties object
+    real(r8), intent(in) :: rho(:,:)              ! air density (kg m-3)
+    real(r8), intent(out) :: numdens(:,:)         ! dust number densities (#/cm^3)
+
+    real(r8), pointer :: num(:,:)
+    real(r8) :: type_wghts(ncol,nlev)
+
+    call self%icenuc_type_wght_base(bin_ndx, ncol, nlev, species_type, aero_props, rho, type_wghts)
+
+    call self%get_ambient_num(bin_ndx, num)
+
+    numdens(:ncol,:) = num(:ncol,:)*rho(:ncol,:)*type_wghts(:ncol,:)*per_cm3
+
+  end subroutine get_amb_species_numdens
+
+  !------------------------------------------------------------------------------
+  ! returns cloud-borne aerosol number density for a given bin number and species type
+  !------------------------------------------------------------------------------
+  subroutine get_cld_species_numdens(self, bin_ndx, ncol, nlev, species_type, aero_props, rho, numdens)
+    use aerosol_properties_mod, only: aerosol_properties
+    class(aerosol_state), intent(in) :: self
+    integer, intent(in) :: bin_ndx                ! bin number
+    integer, intent(in) :: ncol                   ! number of columns
+    integer, intent(in) :: nlev                   ! number of vertical levels
+    character(len=*), intent(in) :: species_type  ! species type
+    class(aerosol_properties), intent(in) :: aero_props ! aerosol properties object
+    real(r8), intent(in) :: rho(:,:)              ! air density (kg m-3)
+    real(r8), intent(out) :: numdens(:,:)         ! number densities (#/cm^3)
+
+    real(r8), pointer :: num(:,:)
+    real(r8) :: type_wghts(ncol,nlev)
+
+    call self%icenuc_type_wght_base(bin_ndx, ncol, nlev, species_type, aero_props, rho, type_wghts, cloud_borne=.true.)
+
+    call self%get_cldbrne_num(bin_ndx, num)
+
+    numdens(:ncol,:) = num(:ncol,:)*rho(:ncol,:)*type_wghts(:ncol,:)*per_cm3
+
+  end subroutine get_cld_species_numdens
+
+  !------------------------------------------------------------------------------
   ! returns aerosol type weights for a given aerosol type and bin
   !------------------------------------------------------------------------------
-  subroutine icenuc_type_wght_base(self, bin_ndx, ncol, nlev, species_type, aero_props, rho, wght)
+  subroutine icenuc_type_wght_base(self, bin_ndx, ncol, nlev, species_type, aero_props, rho, wght, cloud_borne)
 
     use aerosol_properties_mod, only: aerosol_properties
 
@@ -289,8 +347,10 @@ contains
     integer, intent(in) :: nlev                   ! number of vertical levels
     character(len=*), intent(in) :: species_type  ! species type
     class(aerosol_properties), intent(in) :: aero_props ! aerosol properties object
-    real(r8), intent(in) :: rho(:,:)        ! air density (kg m-3)
+    real(r8), intent(in) :: rho(:,:)              ! air density (kg m-3)
     real(r8), intent(out) :: wght(:,:)            ! type weights
+    logical, optional, intent(in) :: cloud_borne  ! if TRUE cloud-borne aerosols are used
+                                                  ! otherwise ambient aerosols are used
 
     real(r8) :: mass(ncol,nlev)
     real(r8) :: totalmass(ncol,nlev)
@@ -298,6 +358,13 @@ contains
 
     character(len=aero_name_len) :: spectype, sptype
     integer :: ispc
+    logical :: cldbrne
+
+    if (present(cloud_borne)) then
+       cldbrne = cloud_borne
+    else
+       cldbrne = .false.
+    end if
 
     wght(:,:) = 0._r8
     totalmass(:,:) = 0._r8
@@ -311,7 +378,11 @@ contains
 
     do ispc = 1, aero_props%nspecies(bin_ndx)
 
-       call self%get_ambient_mmr(ispc, bin_ndx, aer_bin)
+       if (cldbrne) then
+          call self%get_cldbrne_mmr(ispc, bin_ndx, aer_bin)
+       else
+          call self%get_ambient_mmr(ispc, bin_ndx, aer_bin)
+       end if
        call aero_props%species_type(bin_ndx, ispc, spectype=spectype)
 
        totalmass(:ncol,:) = totalmass(:ncol,:) + aer_bin(:ncol,:)*rho(:ncol,:)
@@ -343,14 +414,12 @@ contains
     real(r8), intent(out) :: soot_num_col(:,:) ! soot number densities (#/cm^3)
     real(r8), intent(out) :: sulf_num_tot_col(:,:) ! stratopsheric sulfate number densities (#/cm^3)
 
-    integer :: ibin,ispc
+    integer :: m,l
     character(len=aero_name_len) :: spectype
     real(r8) :: size_wghts(ncol,nlev)
     real(r8) :: type_wghts(ncol,nlev)
 
     real(r8), pointer :: num_col(:,:)
-
-    real(r8), parameter :: per_cm3 = 1.e-6_r8 ! factor for m-3 to cm-3 conversions
 
     dust_num_col(:,:) = 0._r8
     sulf_num_col(:,:) = 0._r8
@@ -358,17 +427,17 @@ contains
     sulf_num_tot_col(:,:) = 0._r8
 
     ! collect number densities (#/cm^3) for dust, sulfate, and soot
-    do ibin = 1,aero_props%nbins()
+    do m = 1,aero_props%nbins()
 
-       call self%get_ambient_num(ibin, num_col)
+       call self%get_ambient_num(m, num_col)
 
-       do ispc = 1,aero_props%nspecies(ibin)
+       do l = 1,aero_props%nspecies(m)
 
-          call aero_props%species_type(ibin, ispc, spectype)
+          call aero_props%species_type(m, l, spectype)
 
-          call self%icenuc_size_wght(ibin, ncol, nlev, spectype, use_preexisting_ice, size_wghts)
+          call self%icenuc_size_wght(m, ncol, nlev, spectype, use_preexisting_ice, size_wghts)
 
-          call self%icenuc_type_wght(ibin, ncol, nlev, spectype, aero_props, rho, type_wghts)
+          call self%icenuc_type_wght(m, ncol, nlev, spectype, aero_props, rho, type_wghts)
 
           select case ( trim(spectype) )
           case('dust')
@@ -386,13 +455,214 @@ contains
        enddo
 
        ! stratospheric sulfates -- special case not included in the species loop above
-       call self%icenuc_size_wght(ibin, ncol, nlev, 'sulfate_strat', use_preexisting_ice, size_wghts)
-       call self%icenuc_type_wght(ibin, ncol, nlev, 'sulfate_strat', aero_props, rho, type_wghts)
+       call self%icenuc_size_wght(m, ncol, nlev, 'sulfate_strat', use_preexisting_ice, size_wghts)
+       call self%icenuc_type_wght(m, ncol, nlev, 'sulfate_strat', aero_props, rho, type_wghts)
        sulf_num_tot_col(:ncol,:) = sulf_num_tot_col(:ncol,:) &
             + size_wghts(:ncol,:)*type_wghts(:ncol,:)*num_col(:ncol,:)*rho(:ncol,:)*per_cm3
 
     enddo
 
   end subroutine nuclice_get_numdens
+
+  !------------------------------------------------------------------------------
+  ! coated fraction
+  !------------------------------------------------------------------------------
+  function coated_frac(self, bin_ndx,  species_type, ncol, nlev, aero_props, rho, radius) result(frac)
+
+    class(aerosol_state), intent(in) :: self
+    integer, intent(in) :: bin_ndx                ! bin number
+    character(len=*), intent(in) :: species_type  ! species type
+    integer, intent(in) :: ncol                   ! number of columns
+    integer, intent(in) :: nlev                   ! number of vertical levels
+    class(aerosol_properties), intent(in) :: aero_props ! aerosol properties object
+    real(r8), intent(in) :: rho(:,:)              ! air density (kg m-3)
+    real(r8), intent(in) :: radius(:,:)
+
+    real(r8) :: frac(ncol,nlev)                              ! coated fraction
+
+    !------------coated variables--------------------
+    real(r8), parameter :: n_so4_monolayers_dust = 1.0_r8 ! number of so4(+nh4) monolayers needed to coat a dust particle
+    real(r8), parameter :: dr_so4_monolayers_dust = n_so4_monolayers_dust * 4.76e-10_r8
+    real(r8), parameter :: spechygro_so4 = 0.507_r8          ! Sulfate hygroscopicity
+    real(r8), parameter :: spechygro_soa = 0.14_r8           ! SOA hygroscopicity
+    real(r8), parameter :: spechygro_pom = 0.1_r8            ! POM hygroscopicity
+    real(r8), parameter :: soa_equivso4_factor = spechygro_soa/spechygro_so4
+    real(r8), parameter :: pom_equivso4_factor = spechygro_pom/spechygro_so4
+    real(r8) :: vol_shell(ncol,nlev)
+    real(r8) :: vol_core(ncol,nlev)
+    real(r8) :: alnsg, fac_volsfc
+    real(r8) :: tmp1(ncol,nlev), tmp2(ncol,nlev)
+    real(r8),pointer :: sulf_mmr(:,:)
+    real(r8),pointer :: soa_mmr(:,:)
+    real(r8),pointer :: pom_mmr(:,:)
+    real(r8),pointer :: aer_mmr(:,:)
+
+    integer :: sulf_ndx
+    integer :: soa_ndx
+    integer :: pom_ndx
+    integer :: species_ndx
+
+    real(r8) :: specdens_so4
+    real(r8) :: specdens_pom
+    real(r8) :: specdens_soa
+    real(r8) :: specdens
+
+    character(len=aero_name_len) :: spectype
+    integer :: ispc
+
+    frac = -huge(1._r8)
+
+    sulf_ndx = -1
+    pom_ndx = -1
+    soa_ndx = -1
+    species_ndx = -1
+
+    do ispc = 1, aero_props%nspecies(bin_ndx)
+       call aero_props%species_type(bin_ndx, ispc, spectype)
+
+       select case ( trim(spectype) )
+       case('sulfate')
+          sulf_ndx = ispc
+       case('p-organic')
+          pom_ndx = ispc
+       case('s-organic')
+          soa_ndx = ispc
+       end select
+       if (spectype==species_type) then
+          species_ndx = ispc
+       end if
+    end do
+
+    vol_shell(:ncol,:) = 0._r8
+
+    if (sulf_ndx>0) then
+       call aero_props%get(bin_ndx, sulf_ndx, density=specdens_so4)
+       call self%get_ambient_mmr(sulf_ndx, bin_ndx, sulf_mmr)
+       vol_shell(:ncol,:) = vol_shell(:ncol,:) + sulf_mmr(:ncol,:)*rho(:ncol,:)/specdens_so4
+    end if
+    if (pom_ndx>0) then
+       call aero_props%get(bin_ndx, pom_ndx, density=specdens_pom)
+       call self%get_ambient_mmr(pom_ndx, bin_ndx, pom_mmr)
+       vol_shell(:ncol,:) = vol_shell(:ncol,:) + pom_mmr(:ncol,:)*rho(:ncol,:)*pom_equivso4_factor/specdens_pom
+    end if
+    if (soa_ndx>0) then
+       call aero_props%get(bin_ndx, soa_ndx, density=specdens_soa)
+       call self%get_ambient_mmr(soa_ndx, bin_ndx, soa_mmr)
+       vol_shell(:ncol,:) = vol_shell(:ncol,:) + soa_mmr(:ncol,:)*rho(:ncol,:)*soa_equivso4_factor/specdens_soa
+    end if
+
+    call aero_props%get(bin_ndx, species_ndx, density=specdens)
+    call self%get_ambient_mmr(species_ndx, bin_ndx, aer_mmr)
+    vol_core(:ncol,:) = aer_mmr(:ncol,:)*rho(:ncol,:)/specdens
+
+    alnsg = aero_props%alogsig(bin_ndx)
+    fac_volsfc = exp(2.5_r8*alnsg**2)
+
+    tmp1(:ncol,:) = vol_shell(:ncol,:)*(radius(:ncol,:)*2._r8)*fac_volsfc
+    tmp2(:ncol,:) = max(6.0_r8*dr_so4_monolayers_dust*vol_core(:ncol,:), 0.0_r8)
+    where(tmp1(:ncol,:)>0._r8 .and. tmp2(:ncol,:)>0._r8)
+       frac(:ncol,:) = tmp1(:ncol,:)/tmp2(:ncol,:)
+    elsewhere
+       frac(:ncol,:) = 0._r8
+    end where
+
+  end function coated_frac
+
+  !------------------------------------------------------------------------------
+  ! mass mean radius
+  !------------------------------------------------------------------------------
+  function mass_mean_radius(self, bin_ndx, species_ndx, ncol, nlev, aero_props, rho) result(radius)
+
+    class(aerosol_state), intent(in) :: self
+    integer, intent(in) :: bin_ndx                ! bin number
+    integer, intent(in) :: species_ndx            ! species number
+    integer, intent(in) :: ncol                   ! number of columns
+    integer, intent(in) :: nlev                   ! number of vertical levels
+    class(aerosol_properties), intent(in) :: aero_props ! aerosol properties object
+    real(r8), intent(in) :: rho(:,:)              ! air density (kg m-3)
+
+    real(r8) :: radius(ncol,nlev) ! cm
+
+
+    character(len=aero_name_len) :: species_type
+    real(r8) :: aer_numdens(ncol,nlev)
+    real(r8) :: aer_massdens(ncol,nlev)
+    real(r8),pointer :: aer_mmr(:,:)
+
+    real(r8) :: specdens
+
+    call aero_props%species_type(bin_ndx, species_ndx, spectype=species_type)
+
+    call aero_props%get(bin_ndx, species_ndx, density=specdens)
+    call self%get_ambient_mmr(species_ndx, bin_ndx, aer_mmr)
+    call self%get_amb_species_numdens(bin_ndx, ncol, nlev, species_type, aero_props, rho, aer_numdens)
+
+    aer_massdens(:ncol,:) = aer_mmr(:ncol,:)*rho(:ncol,:)
+
+    where(aer_massdens(:ncol,:)>0._r8 .and. aer_numdens(:ncol,:)>0._r8)
+       radius(:ncol,:) = (3._r8/(4*pi*specdens)*aer_massdens(:ncol,:)/(aer_numdens(:ncol,:)*1.0e6_r8))**(1._r8/3._r8) ! cm
+    elsewhere
+       radius(:ncol,:) = 0._r8
+    end where
+
+  end function mass_mean_radius
+
+  !------------------------------------------------------------------------------
+  ! mass_factors
+  !------------------------------------------------------------------------------
+  subroutine mass_factors(self, bin_ndx,  species_type, ncol, nlev, aero_props, rho, awcam, awfacm)
+
+    class(aerosol_state), intent(in) :: self
+    integer, intent(in) :: bin_ndx                ! bin number
+    character(len=*), intent(in) :: species_type  ! species type
+    integer, intent(in) :: ncol                   ! number of columns
+    integer, intent(in) :: nlev                   ! number of vertical levels
+    class(aerosol_properties), intent(in) :: aero_props ! aerosol properties object
+    real(r8), intent(in) :: rho(:,:)              ! air density (kg m-3)
+    real(r8), intent(out) :: awcam(:,:)           ! mass density [mug m-3]
+    real(r8), intent(out) :: awfacm(:,:)          ! mass factor ! (OC+BC)/(OC+BC+SO4)
+
+    real(r8), pointer :: aer_mmr(:,:)
+    real(r8), pointer :: bin_num(:,:)
+    real(r8) :: tot2_mmr(ncol,nlev)
+    real(r8) :: tot1_mmr(ncol,nlev)
+    real(r8) :: aer_numdens(ncol,nlev)
+    integer :: ispc
+    character(len=aero_name_len) :: spectype
+
+    tot2_mmr = 0.0_r8
+    tot1_mmr = 0.0_r8
+
+    do ispc = 1, aero_props%nspecies(bin_ndx)
+       call aero_props%species_type(bin_ndx, ispc, spectype)
+
+       if (trim(spectype)=='black-c' .or. trim(spectype)=='p-organic' .or. trim(spectype)=='s-organic') then
+          call self%get_ambient_mmr(ispc, bin_ndx, aer_mmr)
+          tot2_mmr(:ncol,:) = tot2_mmr(:ncol,:) + aer_mmr(:ncol,:)
+          tot1_mmr(:ncol,:) = tot1_mmr(:ncol,:) + aer_mmr(:ncol,:)
+       end if
+       if (trim(spectype)=='sulfate') then
+          call self%get_ambient_mmr(ispc, bin_ndx, aer_mmr)
+          tot1_mmr(:ncol,:) = tot1_mmr(:ncol,:) + aer_mmr(:ncol,:)
+       end if
+
+    end do
+
+    call self%get_amb_species_numdens(bin_ndx, ncol, nlev, species_type, aero_props, rho, aer_numdens)
+    call self%get_ambient_num(bin_ndx, bin_num)
+
+    where(bin_num(:ncol,:)>0._r8)
+       awcam(:ncol,:) = (aer_numdens(:ncol,:)*1.e6_r8)/bin_num(:ncol,:) * (tot1_mmr(:ncol,:)) *1.0e9_r8 ! [mug m-3]
+    elsewhere
+       awcam(:ncol,:) = 0._r8
+    end where
+
+    where(tot1_mmr(:ncol,:)>0)
+       awfacm(:ncol,:) = tot2_mmr(:ncol,:) / tot1_mmr(:ncol,:)
+    elsewhere
+       awcam(:ncol,:) = 0._r8
+    end where
+
+  end subroutine mass_factors
 
 end module aerosol_state_mod
