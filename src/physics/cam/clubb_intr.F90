@@ -3223,7 +3223,7 @@ end subroutine clubb_init_cnst
         edsclr_in(i,1,icnt+2) = edsclr_in(i,2,icnt+2)  
       end do
       
-    end if
+    endif
 
 
     do t=1,nadv    ! do needed number of "sub" timesteps for each CAM step
@@ -3231,7 +3231,7 @@ end subroutine clubb_init_cnst
       !  Increment the statistics then being stats timestep
       if (l_stats) then
         call stats_begin_timestep_api(t, stats_nsamp, stats_nout)
-      end if
+      endif
 
       !#######################################################################
       !###################### CALL MF DIAGNOSTIC PLUMES ######################
@@ -3749,7 +3749,8 @@ end subroutine clubb_init_cnst
         ! convert to units of +ve [K]
         se_dis(i) = -1._r8*se_dis(i)*gravit/cpairv(i,pver,lchnk)
       end do
-    end if
+    endif
+
       
     !  Now compute the tendencies of CLUBB to CAM, note that pverp is the ghost point
     !  for all variables and therefore is never called in this loop
@@ -4506,7 +4507,7 @@ if (abs(bflx) > 1.e-6_r8) then
             ustar = wnd*vonk/(lnz - psi1)
          end if
 
-      end if
+      endif
 
    end do
 end if
@@ -4720,7 +4721,7 @@ end function diag_ustar
                         'model.in file.'
        write(fstderr,*) 'stats_tsamp = ', stats_tsamp
        write(fstderr,*) 'delt = ', delt
-    end if
+    endif
 
     !  Initialize zt (mass points)
 
@@ -4738,7 +4739,7 @@ end function diag_ustar
                         "in the stats namelist, or change nvarmax_zt."
        write(fstderr,*) "nvarmax_zt = ", nvarmax_zt
        call endrun ("stats_init_clubb:  number of zt statistical variables exceeds limit")
-    end if
+    endif
 
     stats_zt%num_output_fields = ntot
     stats_zt%kk = nnzp
@@ -4748,7 +4749,6 @@ end function diag_ustar
     allocate( stats_zt%accum_field_values( 1, 1, stats_zt%kk, stats_zt%num_output_fields ) )
     allocate( stats_zt%accum_num_samples( 1, 1, stats_zt%kk, stats_zt%num_output_fields ) )
     allocate( stats_zt%l_in_update( 1, 1, stats_zt%kk, stats_zt%num_output_fields ) )
-      
     call stats_zero( stats_zt%kk, stats_zt%num_output_fields, stats_zt%accum_field_values, &
                      stats_zt%accum_num_samples, stats_zt%l_in_update )
 
@@ -4824,7 +4824,7 @@ end function diag_ustar
                         "in the stats namelist, or change nvarmax_zm."
        write(fstderr,*) "nvarmax_zm = ", nvarmax_zm
        call endrun ("stats_init_clubb:  number of zm statistical variables exceeds limit")
-    end if
+    endif
 
     stats_zm%num_output_fields = ntot
     stats_zm%kk = nnzp
@@ -4834,7 +4834,6 @@ end function diag_ustar
     allocate( stats_zm%accum_field_values( 1, 1, stats_zm%kk, stats_zm%num_output_fields ) )
     allocate( stats_zm%accum_num_samples( 1, 1, stats_zm%kk, stats_zm%num_output_fields ) )
     allocate( stats_zm%l_in_update( 1, 1, stats_zm%kk, stats_zm%num_output_fields ) )
-
     call stats_zero( stats_zm%kk, stats_zm%num_output_fields, stats_zm%accum_field_values, &
                      stats_zm%accum_num_samples, stats_zm%l_in_update )
 
@@ -4902,7 +4901,7 @@ end function diag_ustar
                            "in the stats namelist, or change nvarmax_rad_zt."
           write(fstderr,*) "nvarmax_rad_zt = ", nvarmax_rad_zt
           call endrun ("stats_init_clubb:  number of rad_zt statistical variables exceeds limit")
-       end if
+       endif
 
       stats_rad_zt%num_output_fields = ntot
       stats_rad_zt%kk = nnrad_zt
@@ -4938,7 +4937,7 @@ end function diag_ustar
                            "in the stats namelist, or change nvarmax_rad_zm."
           write(fstderr,*) "nvarmax_rad_zm = ", nvarmax_rad_zm
           call endrun ("stats_init_clubb:  number of rad_zm statistical variables exceeds limit")
-       end if
+       endif
 
        stats_rad_zm%num_output_fields = ntot
        stats_rad_zm%kk = nnrad_zm
@@ -4976,7 +4975,7 @@ end function diag_ustar
                         "in the stats namelist, or change nvarmax_sfc."
        write(fstderr,*) "nvarmax_sfc = ", nvarmax_sfc
        call endrun ("stats_init_clubb:  number of sfc statistical variables exceeds limit")
-    end if
+    endif
 
     stats_sfc%num_output_fields = ntot
     stats_sfc%kk = 1
@@ -5002,7 +5001,7 @@ end function diag_ustar
 
     if ( l_error ) then
        call endrun ('stats_init:  errors found')
-    end if
+    endif
 
 !   Now call add fields
     if (first_call) then
@@ -5038,7 +5037,7 @@ end function diag_ustar
             call addfld(trim(stats_rad_zm%file%grid_avg_var(i)%name),(/ 'ilev' /),&
                'A',trim(stats_rad_zm%file%grid_avg_var(i)%units),trim(stats_rad_zm%file%grid_avg_var(i)%description))
          enddo
-      end if
+      endif
       
       do i = 1, stats_sfc%num_output_fields
          call addfld(trim(stats_sfc%file%grid_avg_var(i)%name),horiz_only,&
@@ -5159,7 +5158,7 @@ end function diag_ustar
       out_radzt(thecol,:top_lev-1,:) = 0.0_r8
       out_radzm(thecol,:top_lev-1,:) = 0.0_r8
 
-    end if ! l_output_rad_files
+    endif ! l_output_rad_files
     
     do i = 1, stats_sfc%num_output_fields
       out_sfc(thecol,1,i) = stats_sfc%accum_field_values(1,1,1,i)   
