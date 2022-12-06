@@ -40,7 +40,7 @@ contains
     type (hybrid_t)      , intent(in) :: hybrid
 
     real (kind=r8) :: I_sphere(num_flds)
-    
+
     real (kind=r8) :: I_priv
     real (kind=r8) :: I_shared
     common /gblintcom/I_shared
@@ -89,7 +89,7 @@ contains
     real (kind=r8),  intent(in) :: da(npts,npts,nets:nete)
 
     real (kind=r8) :: I_sphere(num_flds)
-    
+
     real (kind=r8) :: I_priv
     real (kind=r8) :: I_shared
     common /gblintcom/I_shared
@@ -211,7 +211,7 @@ contains
     use dimensions_mod, only: nu_scale_top,nu_div_lev,nu_lev,nu_t_lev
 
     use quadrature_mod, only: gausslobatto, quadrature_t
-    
+
     use reduction_mod,  only: ParallelMin,ParallelMax
     use physconst,      only: ra, rearth, pi
     use control_mod,    only: nu, nu_div, nu_q, nu_p, nu_t, nu_top, fine_ne, rk_stage_user, max_hypervis_courant
@@ -225,7 +225,7 @@ contains
     use mesh_mod,       only: MeshUseMeshFile
     use dimensions_mod, only: ksponge_end, kmvis_ref, kmcnd_ref,rho_ref
     use physconst,      only: cpair
-  
+    use std_atm_profile,only: std_atm_height
     type(element_t)      , intent(inout) :: elem(:)
     integer              , intent(in) :: nets,nete
     type (hybrid_t)      , intent(in) :: hybrid
@@ -236,7 +236,7 @@ contains
     real (kind=r8), intent(in) :: dt_remap_actual,dt_tracer_fvm_actual,dt_tracer_se_actual,&
                            dt_dyn_actual,dt_dyn_visco_actual,dt_dyn_del2_actual,           &
                            dt_tracer_visco_actual, dt_phys
-    
+
     ! Element statisics
     real (kind=r8) :: max_min_dx,min_min_dx,min_max_dx,max_unif_dx   ! used for normalizing scalar HV
     real (kind=r8) :: max_normDinv, min_normDinv  ! used for CFL
@@ -247,7 +247,7 @@ contains
     real (kind=r8) :: x, y, noreast, nw, se, sw
     real (kind=r8), dimension(np,np,nets:nete) :: zeta
     real (kind=r8) :: lambda_max, lambda_vis, min_gw, lambda,umax, ugw
-    real (kind=r8) :: scale1,scale2,scale3, max_laplace
+    real (kind=r8) :: scale1,scale2,scale3, max_laplace,z(nlev)
     integer :: ie,corner, i, j, rowind, colind, k
     type (quadrature_t)    :: gp
     character(LEN=256) :: rk_str
@@ -259,7 +259,7 @@ contains
     real(kind=r8) :: I_sphere, nu_max, nu_div_max
     real(kind=r8) :: h(np,np,nets:nete)
 
-    logical :: top_000_042km, top_042_090km, top_090_140km, top_140_600km ! model top location ranges
+    logical :: top_000_032km, top_032_042km, top_042_090km, top_090_140km, top_140_600km ! model top location ranges
     logical :: nu_set,div_set,lev_set
 
     ! Eigenvalues calculated by folks at UMich (Paul U & Jared W)
@@ -289,7 +289,7 @@ contains
       lambda_max = 0.0_r8
       lambda_vis = 0.0_r8
     end select
-    
+
     if ((lambda_max.eq.0_r8).and.(hybrid%masterthread)) then
       print*, "lambda_max not calculated for NP = ",np
       print*, "Estimate of gravity wave timestep will be incorrect"
@@ -298,11 +298,11 @@ contains
       print*, "lambda_vis not calculated for NP = ",np
       print*, "Estimate of viscous CFLs will be incorrect"
     end if
-    
+
     do ie=nets,nete
       elem(ie)%variable_hyperviscosity = 1.0_r8
     end do
-    
+
     gp=gausslobatto(np)
     min_gw = minval(gp%weights)
     !
@@ -315,8 +315,8 @@ contains
     h(:,:,nets:nete)=1.0_r8
     ! Calculate surface area by integrating 1.0_r8 over sphere and dividing by 4*PI (Should be 1)
     I_sphere = global_integral(elem, h(:,:,nets:nete),hybrid,np,nets,nete)
-    
-    min_normDinv = 1E99_r8  
+
+    min_normDinv = 1E99_r8
     max_normDinv = 0
     min_max_dx   = 1E99_r8
     min_min_dx   = 1E99_r8
@@ -328,33 +328,33 @@ contains
       max_normDinv  = max(max_normDinv,elem(ie)%normDinv)
       min_normDinv  = min(min_normDinv,elem(ie)%normDinv)
       min_min_dx    = min(min_min_dx,elem(ie)%dx_short)
-      max_min_dx    = max(max_min_dx,elem(ie)%dx_short)      
+      max_min_dx    = max(max_min_dx,elem(ie)%dx_short)
       min_max_dx    = min(min_max_dx,elem(ie)%dx_long)
-      
+
       elem(ie)%area = sum(elem(ie)%spheremp(:,:))
       min_area      = min(min_area,elem(ie)%area)
       max_area      = max(max_area,elem(ie)%area)
       max_ratio     = max(max_ratio,elem(ie)%dx_long/elem(ie)%dx_short)
 
       global_shared_buf(ie,1) = elem(ie)%area
-      global_shared_buf(ie,2) = elem(ie)%dx_short      
+      global_shared_buf(ie,2) = elem(ie)%dx_short
     enddo
     call wrap_repro_sum(nvars=2, comm=hybrid%par%comm)
     avg_area     = global_shared_sum(1)/dble(nelem)
     avg_min_dx   = global_shared_sum(2)/dble(nelem)
-    
+
     min_area     = ParallelMin(min_area,hybrid)
     max_area     = ParallelMax(max_area,hybrid)
-    min_normDinv = ParallelMin(min_normDinv,hybrid)    
+    min_normDinv = ParallelMin(min_normDinv,hybrid)
     max_normDinv = ParallelMax(max_normDinv,hybrid)
-    min_min_dx   = ParallelMin(min_min_dx,hybrid)    
+    min_min_dx   = ParallelMin(min_min_dx,hybrid)
     max_min_dx   = ParallelMax(max_min_dx,hybrid)
-    min_max_dx   = ParallelMin(min_max_dx,hybrid)    
+    min_max_dx   = ParallelMin(min_max_dx,hybrid)
     max_ratio    = ParallelMax(max_ratio,hybrid)
     ! Physical units for area
     min_area = min_area*rearth*rearth/1000000._r8
     max_area = max_area*rearth*rearth/1000000._r8
-    avg_area = avg_area*rearth*rearth/1000000._r8          
+    avg_area = avg_area*rearth*rearth/1000000._r8
     if (hybrid%masterthread) then
        write(iulog,* )""
        write(iulog,* )"Running Global Integral Diagnostic..."
@@ -371,8 +371,8 @@ contains
        write(iulog,'(a,3f8.2)') "dx based on sqrt element area: ave,min,max = ", &
                 sqrt(avg_area)/(np-1),sqrt(min_area)/(np-1),sqrt(max_area)/(np-1)
     end if
-    
-      
+
+
     !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
     !  SCALAR, RESOLUTION-AWARE HYPERVISCOSITY
     !  this block of code initializes the variable_hyperviscsoity() array
@@ -383,12 +383,12 @@ contains
     !  Mike Levy
     !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
     if (hypervis_power /= 0) then
-      
+
       min_hypervis = 1d99
       max_hypervis = 0
       avg_hypervis = 0
-      
-      
+
+
       max_unif_dx = min_max_dx  ! use this for average resolution, unless:
       !       viscosity in namelist specified for smallest element:
       if (fine_ne>0) then
@@ -397,7 +397,7 @@ contains
         if (np /= 4 ) call endrun('ERROR: setting fine_ne only supported with NP=4')
         max_unif_dx = (111.28_r8*30)/dble(fine_ne)   ! in km
       endif
-      
+
       !
       ! note: if L = eigenvalue of metinv, then associated length scale (km) is
       ! dx = 1.0_r8/( sqrt(L)*0.5_r8*dble(np-1)*ra*1000.0_r8)
@@ -415,17 +415,17 @@ contains
       normDinv_hypervis = 0
       do ie=nets,nete
         ! variable viscosity based on map from ulatlon -> ucontra
-        
+
         ! dx_long
         elem(ie)%variable_hyperviscosity = sqrt((elem(ie)%dx_long/max_unif_dx) ** hypervis_power)
         elem(ie)%hv_courant = dtnu*(elem(ie)%variable_hyperviscosity(1,1)**2) * &
              (lambda_vis**2) * ((ra*elem(ie)%normDinv)**4)
-        
+
         ! Check to see if this is stable
         if (elem(ie)%hv_courant.gt.max_hypervis_courant) then
           stable_hv = sqrt( max_hypervis_courant / &
                (  dtnu * (lambda_vis)**2 * (ra*elem(ie)%normDinv)**4 ) )
-          
+
 #if 0
           ! Useful print statements for debugging the adjustments to hypervis
           print*, "Adjusting hypervis on elem ", elem(ie)%GlobalId
@@ -439,19 +439,19 @@ contains
           elem(ie)%hv_courant = dtnu*(stable_hv**2) * (lambda_vis)**2 * (ra*elem(ie)%normDinv)**4
         end if
         normDinv_hypervis = max(normDinv_hypervis, elem(ie)%hv_courant/dtnu)
-        
+
         min_hypervis = min(min_hypervis, elem(ie)%variable_hyperviscosity(1,1))
         max_hypervis = max(max_hypervis, elem(ie)%variable_hyperviscosity(1,1))
         global_shared_buf(ie,1) = elem(ie)%variable_hyperviscosity(1,1)
       end do
-      
+
       min_hypervis = ParallelMin(min_hypervis, hybrid)
       max_hypervis = ParallelMax(max_hypervis, hybrid)
       call wrap_repro_sum(nvars=1, comm=hybrid%par%comm)
       avg_hypervis = global_shared_sum(1)/dble(nelem)
-      
+
       normDinv_hypervis = ParallelMax(normDinv_hypervis, hybrid)
-      
+
       ! apply DSS (aka assembly procedure) to variable_hyperviscosity (makes continuous)
       call initEdgeBuffer(hybrid%par,edgebuf,elem,1)
       do ie=nets,nete
@@ -464,7 +464,7 @@ contains
         elem(ie)%variable_hyperviscosity(:,:) = zeta(:,:,ie)*elem(ie)%rspheremp(:,:)
       end do
       call FreeEdgeBuffer(edgebuf)
-      
+
       ! replace hypervis w/ bilinear based on continuous corner values
       do ie=nets,nete
         noreast = elem(ie)%variable_hyperviscosity(np,np)
@@ -494,7 +494,7 @@ contains
       ! constant coefficient formula:
       normDinv_hypervis = (lambda_vis**2) * (ra*max_normDinv)**4
     endif
-    
+
     !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
     !  TENSOR, RESOLUTION-AWARE HYPERVISCOSITY
     !  The tensorVisc() array is computed in cube_mod.F90
@@ -503,7 +503,7 @@ contains
     !  Oksana Guba
     !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
     if (hypervis_scaling /= 0) then
-      
+
       call initEdgeBuffer(hybrid%par,edgebuf,elem,1)
       do rowind=1,2
         do colind=1,2
@@ -511,7 +511,7 @@ contains
             zeta(:,:,ie) = elem(ie)%tensorVisc(:,:,rowind,colind)*elem(ie)%spheremp(:,:)
             call edgeVpack(edgebuf,zeta(1,1,ie),1,0,ie)
           end do
-          
+
           call bndry_exchange(hybrid,edgebuf)
           do ie=nets,nete
             call edgeVunpack(edgebuf,zeta(1,1,ie),1,0,ie)
@@ -520,9 +520,9 @@ contains
         enddo !rowind
       enddo !colind
       call FreeEdgeBuffer(edgebuf)
-      
+
       !IF BILINEAR MAP OF V NEEDED
-      
+
       do rowind=1,2
         do colind=1,2
           ! replace hypervis w/ bilinear based on continuous corner values
@@ -544,14 +544,14 @@ contains
             end do
           end do
         enddo !rowind
-      enddo !colind      
+      enddo !colind
     endif
     deallocate(gp%points)
     deallocate(gp%weights)
 
     call automatically_set_viscosity_coefficients(hybrid,ne,max_min_dx,min_min_dx,nu_p  ,1.0_r8 ,'_p  ')
-    call automatically_set_viscosity_coefficients(hybrid,ne,max_min_dx,min_min_dx,nu    ,0.5_r8,'    ') 
-    call automatically_set_viscosity_coefficients(hybrid,ne,max_min_dx,min_min_dx,nu_div,2.5_r8 ,'_div')     
+    call automatically_set_viscosity_coefficients(hybrid,ne,max_min_dx,min_min_dx,nu    ,0.5_r8,'    ')
+    call automatically_set_viscosity_coefficients(hybrid,ne,max_min_dx,min_min_dx,nu_div,2.5_r8 ,'_div')
 
     if (nu_q<0) nu_q = nu_p ! necessary for consistency
     if (nu_t<0) nu_t = nu_p ! temperature damping is always equal to nu_p
@@ -563,45 +563,57 @@ contains
     !
     ! sponge layer strength needed for stability depends on model top location
     !
-    top_000_042km = .false.
+    top_000_032km = .false.
+    top_032_042km = .false.
     top_042_090km = .false.
     top_090_140km = .false.
     top_140_600km = .false.
     nu_set = sponge_del4_nu_fac < 0
     div_set = sponge_del4_nu_div_fac < 0
     lev_set = sponge_del4_lev < 0
-    if (ptop>1.0_r8) then
+    if (ptop>1000.0_r8) then
       !
-      ! CAM6 top (~2.3 Pa)
+      ! low top (~1000 Pa)
       !
-      top_000_042km = .true.
-    else if (ptop>3e-3_r8) then
+      top_000_032km = .true.
+    else if (ptop>100.0_r8) then
       !
-      ! CAM7 top (~4.35e-3 Pa)
+      ! CAM6 top (~225 Pa)
+      !
+      top_032_042km = .true.
+    else if (ptop>1e-1_r8) then
+      !
+      ! CAM7 top (~4.35e-1 Pa)
       !
       top_042_090km = .true.
-    else if (ptop>3E-6_r8) then
+    else if (ptop>1E-4_r8) then
       !
-      ! WACCM top (~4.5e-6 Pa)
+      ! WACCM top (~4.5e-4 Pa)
       !
       top_090_140km = .true.
     else
       !
-      ! WACCM-x - geospace
+      ! WACCM-x - geospace (~4e-7 Pa)
       !
       top_140_600km = .true.
     end if
     !
     ! Logging text for sponge layer configuration
     !
-    if (hybrid%masterthread .and. nu_set .or. div_set .or. lev_set) then
+    if (hybrid%masterthread .and. (nu_set .or. div_set .or. lev_set)) then
        write(iulog,* )""
        write(iulog,* )"Sponge layer del4 coefficient defaults based on model top location:"
     end if
     !
     ! if user or namelist is not specifying sponge del4 settings here are best guesses (empirically determined)
     !
-    if (top_000_042km) then
+    if (top_000_032km) then
+      if (sponge_del4_lev       <0) sponge_del4_lev        = 1
+      if (sponge_del4_nu_fac    <0) sponge_del4_nu_fac     = 1.0_r8
+      if (sponge_del4_nu_div_fac<0) sponge_del4_nu_div_fac = 1.0_r8
+    end if
+
+   if (top_032_042km) then
       if (sponge_del4_lev       <0) sponge_del4_lev        = 3
       if (sponge_del4_nu_fac    <0) sponge_del4_nu_fac     = 1.0_r8
       if (sponge_del4_nu_div_fac<0) sponge_del4_nu_div_fac = 4.5_r8
@@ -621,15 +633,22 @@ contains
     !
     ! Log sponge layer configuration
     !
-    if (hybrid%masterthread.and.nu_set) &
-         write(iulog, '(a,e9.2)')   '  sponge_del4_nu_fac     = ',sponge_del4_nu_fac
-    if (hybrid%masterthread.and.div_set) &
-         write(iulog, '(a,e9.2)')   '  sponge_del4_nu_div_fac = ',sponge_del4_nu_div_fac
-    if (hybrid%masterthread.and.lev_set) &
-         write(iulog, '(a,i0)')   '  sponge_del4_lev        = ',sponge_del4_lev
-    write(iulog,* )""
+    if (hybrid%masterthread) then
+       if (nu_set) then
+          write(iulog, '(a,e9.2)')   '  sponge_del4_nu_fac     = ',sponge_del4_nu_fac
+       end if
 
-    if (hybrid%masterthread) write(iulog,*) ": sponge layer viscosity scaling factor"
+       if (div_set) then
+          write(iulog, '(a,e9.2)')   '  sponge_del4_nu_div_fac = ',sponge_del4_nu_div_fac
+       end if
+
+       if (lev_set) then
+          write(iulog, '(a,i0)')   '  sponge_del4_lev        = ',sponge_del4_lev
+       end if
+
+       write(iulog,* )""
+    end if
+
     nu_max     =  sponge_del4_nu_fac*nu_p
     nu_div_max =  sponge_del4_nu_div_fac*nu_p
     do k=1,nlev
@@ -640,10 +659,15 @@ contains
         nu_lev(k)     = (1.0_r8-scale1)*nu    +scale1*nu_max
         nu_t_lev(k)   = (1.0_r8-scale1)*nu_p  +scale1*nu_max
       end if
-      
-      if (hybrid%masterthread) write(iulog,*) "nu_t_lev     =",k,nu_t_lev(k)
-      if (hybrid%masterthread) write(iulog,*) "nu,nu_div_lev=",k,nu_lev(k),nu_div_lev(k)
     end do
+    if (hybrid%masterthread)then
+      write(iulog,*) "z computed from barometric formula (using US std atmosphere)"
+      call std_atm_height(pmid(:),z(:))
+      write(iulog,*) "k,pmid_ref,z,nu_lev,nu_t_lev,nu_div_lev"
+      do k=1,nlev
+        write(iulog,'(i3,5e11.4)') k,pmid(k),z(k),nu_lev(k),nu_t_lev(k),nu_div_lev(k)
+      end do
+    end if
 
 
     !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -657,7 +681,7 @@ contains
     if (tstep_type==1) then
       S_rk   = 2.0_r8
       rk_str = '  * RK2-SSP 3 stage (same as tracers)'
-    elseif (tstep_type==2) then         
+    elseif (tstep_type==2) then
       S_rk   = 2.0_r8
       rk_str = '  * classic RK3'
     elseif (tstep_type==3) then
@@ -667,11 +691,11 @@ contains
       S_rk   = 3.0_r8
       rk_str = '  * Kinnmark&Gray RK3 5 stage (3rd order)'
     end if
-    if (hybrid%masterthread) then        
+    if (hybrid%masterthread) then
       write(iulog,'(a,f12.8,a)') 'Model top is ',ptop,'Pa'
       write(iulog,'(a)') ' '
       write(iulog,'(a)') 'Timestepping methods used in dynamical core:'
-      write(iulog,'(a)') 
+      write(iulog,'(a)')
       write(iulog,*) rk_str
       write(iulog,'(a)') '   * Spectral-element advection uses SSP preservation RK3'
       write(iulog,'(a)') '   * Viscosity operators use forward Euler'
@@ -688,7 +712,7 @@ contains
       umax = 400.0_r8
     end if
     ugw = 342.0_r8 !max gravity wave speed
-    
+
     dt_max_adv             = S_rk/(umax*max_normDinv*lambda_max*ra)
     dt_max_gw              = S_rk/(ugw*max_normDinv*lambda_max*ra)
     dt_max_tracer_se       = S_rk_tracer*min_gw/(umax*max_normDinv*ra)
@@ -708,8 +732,8 @@ contains
     max_laplace = MAX(MAXVAL(nu_scale_top(:))*nu_top,MAXVAL(kmvis_ref(:)/rho_ref(:)))
     max_laplace = MAX(max_laplace,MAXVAL(kmcnd_ref(:)/(cpair*rho_ref(:))))
     dt_max_laplacian_top   = 1.0_r8/(max_laplace*((ra*max_normDinv)**2)*lambda_vis)
-    
-    if (hybrid%masterthread) then        
+
+    if (hybrid%masterthread) then
       write(iulog,'(a,f10.2,a)') ' '
       write(iulog,'(a,f10.2,a)') 'Estimates for maximum stable and actual time-steps for different aspects of algorithm:'
       write(iulog,'(a,f12.8,a)') '(assume max wind is ',umax,'m/s)'
@@ -718,7 +742,7 @@ contains
       write(iulog,'(a,f10.2,a,f10.2,a)') '* dt_dyn        (time-stepping dycore  ; u,v,T,dM) < ',&
            MIN(dt_max_adv,dt_max_gw),'s ',dt_dyn_actual,'s'
       if (dt_dyn_actual>MIN(dt_max_adv,dt_max_gw)) write(iulog,*) 'WARNING: dt_dyn theoretically unstable'
-      
+
       write(iulog,'(a,f10.2,a,f10.2,a)') '* dt_dyn_vis    (hyperviscosity)       ; u,v,T,dM) < ',dt_max_hypervis,&
            's ',dt_dyn_visco_actual,'s'
       if (dt_dyn_visco_actual>dt_max_hypervis) write(iulog,*) 'WARNING: dt_dyn_vis theoretically unstable'
@@ -728,7 +752,7 @@ contains
       write(iulog,'(a,f10.2,a,f10.2,a)') '* dt_tracer_vis (hyperviscosity tracers; q       ) < ',dt_max_hypervis_tracer,'s',&
            dt_tracer_visco_actual,'s'
       if (dt_tracer_visco_actual>dt_max_hypervis_tracer) write(iulog,*) 'WARNING: dt_tracer_hypervis theoretically unstable'
-      
+
       if (ntrac>0) then
         write(iulog,'(a,f10.2,a,f10.2,a)') '* dt_tracer_fvm (time-stepping tracers ; q       ) < ',dt_max_tracer_fvm,&
              's ',dt_tracer_fvm_actual
@@ -759,8 +783,8 @@ contains
       write(iulog,*) 'tstep_type = ',tstep_type
     end if
   end subroutine print_cfl
-  
-  ! 
+
+  !
   ! ============================
   ! global_maximum:
   !
@@ -1138,7 +1162,7 @@ contains
 
 !$OMP END MASTER
 !$OMP BARRIER
-    
+
   end subroutine wrap_repro_sum
 
   subroutine automatically_set_viscosity_coefficients(hybrid,ne,max_min_dx,min_min_dx,nu,factor,str)
@@ -1152,7 +1176,7 @@ contains
     real (kind=r8),  intent(in)    :: max_min_dx,min_min_dx,factor
     real (kind=r8),  intent(inout) :: nu
     character(len=4), intent(in)   :: str
-    
+
     real(r8)      :: uniform_res_hypervis_scaling,nu_fac
     real(kind=r8) :: nu_min, nu_max
     !
@@ -1166,7 +1190,7 @@ contains
     ! - Boville, B. A., 1991: Sensitivity of simulated climate to
     !   model resolution. J. Climate, 4, 469-485.
     !
-    ! - TAKAHASHI ET AL., 2006: GLOBAL SIMULATION OF MESOSCALE SPECTRUM 
+    ! - TAKAHASHI ET AL., 2006: GLOBAL SIMULATION OF MESOSCALE SPECTRUM
     !
     uniform_res_hypervis_scaling = 1.0_r8/log10(2.0_r8)
     !
@@ -1184,7 +1208,7 @@ contains
         else if (hypervis_scaling/=0) then
           nu_min = factor*nu_fac*(max_min_dx*1000.0_r8)**uniform_res_hypervis_scaling
           nu_max = factor*nu_fac*(min_min_dx*1000.0_r8)**uniform_res_hypervis_scaling
-          nu     = factor*nu_min        
+          nu     = factor*nu_min
           if (hybrid%masterthread) then
             write(iulog,'(a,a)')             "Automatically setting nu",TRIM(str)
             write(iulog,'(a,2e9.2,a,2f9.2)') "Value at min/max grid spacing: ",nu_min,nu_max,&
@@ -1195,7 +1219,7 @@ contains
                write(iulog,'(a,a,a,e9.3)') "Nu_tensor",TRIM(str)," = ",nu
         end if
       else
-        nu     = factor*nu_fac*((30.0_r8/ne)*110000.0_r8)**uniform_res_hypervis_scaling        
+        nu     = factor*nu_fac*((30.0_r8/ne)*110000.0_r8)**uniform_res_hypervis_scaling
         if (hybrid%masterthread) then
           write(iulog,'(a,a,a,e9.2)') "Automatically setting nu",TRIM(str)," =",nu
         end if

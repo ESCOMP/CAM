@@ -90,7 +90,7 @@ contains
 !===============================================================================
 
 subroutine dyn_readnl(NLFileName)
-   use physconst,      only: thermodynamic_active_species_num
+   use air_composition,only: thermodynamic_active_species_num
    use namelist_utils, only: find_group_name
    use namelist_mod,   only: homme_set_defaults, homme_postprocess_namelist
    use units,          only: getunit, freeunit
@@ -113,7 +113,7 @@ subroutine dyn_readnl(NLFileName)
    use control_mod,    only: sponge_del4_nu_div_fac, sponge_del4_nu_fac, sponge_del4_lev
    use dimensions_mod, only: ne, npart
    use dimensions_mod, only: lcp_moist
-   use dimensions_mod, only: hypervis_dynamic_ref_state,large_Courant_incr
+   use dimensions_mod, only: large_Courant_incr
    use dimensions_mod, only: fvm_supercycling, fvm_supercycling_jet
    use dimensions_mod, only: kmin_jet, kmax_jet
    use params_mod,     only: SFCURVE
@@ -162,7 +162,6 @@ subroutine dyn_readnl(NLFileName)
    integer                      :: se_horz_num_threads
    integer                      :: se_vert_num_threads
    integer                      :: se_tracer_num_threads
-   logical                      :: se_hypervis_dynamic_ref_state
    logical                      :: se_lcp_moist
    logical                      :: se_write_restart_unstruct
    logical                      :: se_large_Courant_incr
@@ -210,7 +209,6 @@ subroutine dyn_readnl(NLFileName)
       se_horz_num_threads,         &
       se_vert_num_threads,         &
       se_tracer_num_threads,       &
-      se_hypervis_dynamic_ref_state,&
       se_lcp_moist,                &
       se_write_restart_unstruct,   &
       se_large_Courant_incr,       &
@@ -286,7 +284,6 @@ subroutine dyn_readnl(NLFileName)
    call MPI_bcast(se_horz_num_threads, 1, MPI_integer, masterprocid, mpicom,ierr)
    call MPI_bcast(se_vert_num_threads, 1, MPI_integer, masterprocid, mpicom,ierr)
    call MPI_bcast(se_tracer_num_threads, 1, MPI_integer, masterprocid, mpicom,ierr)
-   call MPI_bcast(se_hypervis_dynamic_ref_state, 1, mpi_logical, masterprocid, mpicom, ierr)
    call MPI_bcast(se_lcp_moist, 1, mpi_logical, masterprocid, mpicom, ierr)
    call MPI_bcast(se_write_restart_unstruct, 1, mpi_logical, masterprocid, mpicom, ierr)
    call MPI_bcast(se_large_Courant_incr, 1, mpi_logical, masterprocid, mpicom, ierr)
@@ -356,7 +353,6 @@ subroutine dyn_readnl(NLFileName)
    vert_remap_uvTq_alg      = set_vert_remap(se_vert_remap_T, se_vert_remap_uvTq_alg)
    vert_remap_tracer_alg    = set_vert_remap(se_vert_remap_T, se_vert_remap_tracer_alg)
    fv_nphys                 = se_fv_nphys
-   hypervis_dynamic_ref_state = se_hypervis_dynamic_ref_state
    lcp_moist                = se_lcp_moist
    large_Courant_incr       = se_large_Courant_incr
    fvm_supercycling         = se_fvm_supercycling
@@ -455,7 +451,6 @@ subroutine dyn_readnl(NLFileName)
       write(iulog, '(a,a)')    'dyn_readnl: se_vert_remap_T               = ',trim(se_vert_remap_T)
       write(iulog, '(a,a)')    'dyn_readnl: se_vert_remap_uvTq_alg        = ',trim(se_vert_remap_uvTq_alg)
       write(iulog, '(a,a)')    'dyn_readnl: se_vert_remap_tracer_alg      = ',trim(se_vert_remap_tracer_alg)
-      write(iulog, '(a,l4)')   'dyn_readnl: se_hypervis_dynamic_ref_state = ',hypervis_dynamic_ref_state
       write(iulog, '(a,l4)')   'dyn_readnl: lcp_moist                     = ',lcp_moist
       write(iulog, '(a,i0)')   'dyn_readnl: se_fvm_supercycling           = ',fvm_supercycling
       write(iulog, '(a,i0)')   'dyn_readnl: se_fvm_supercycling_jet       = ',fvm_supercycling_jet
@@ -589,11 +584,12 @@ subroutine dyn_init(dyn_in, dyn_out)
    use prim_advance_mod,   only: prim_advance_init
    use dyn_grid,           only: elem, fvm
    use cam_pio_utils,      only: clean_iodesc_list
-   use physconst,          only: thermodynamic_active_species_num, thermodynamic_active_species_idx
-   use physconst,          only: thermodynamic_active_species_idx_dycore, rair, cpair
-   use physconst,          only: thermodynamic_active_species_liq_idx,thermodynamic_active_species_ice_idx
-   use physconst,          only: thermodynamic_active_species_liq_idx_dycore,thermodynamic_active_species_ice_idx_dycore
-   use physconst,          only: thermodynamic_active_species_liq_num, thermodynamic_active_species_ice_num
+   use physconst,          only: rair, cpair, pstd
+   use air_composition,    only: thermodynamic_active_species_num, thermodynamic_active_species_idx
+   use air_composition,    only: thermodynamic_active_species_idx_dycore
+   use air_composition,    only: thermodynamic_active_species_liq_idx,thermodynamic_active_species_ice_idx
+   use air_composition,    only: thermodynamic_active_species_liq_idx_dycore,thermodynamic_active_species_ice_idx_dycore
+   use air_composition,    only: thermodynamic_active_species_liq_num, thermodynamic_active_species_ice_num
    use cam_history,        only: addfld, add_default, horiz_only, register_vector_field
    use gravity_waves_sources, only: gws_init
 
@@ -608,7 +604,7 @@ subroutine dyn_init(dyn_in, dyn_out)
    use control_mod,        only: runtype, molecular_diff, nu_top
    use test_fvm_mapping,   only: test_mapping_addfld
    use phys_control,       only: phys_getopts
-   use physconst,          only: get_molecular_diff_coef_reference
+   use cam_thermo,         only: get_molecular_diff_coef_reference
    use control_mod,        only: vert_remap_uvTq_alg, vert_remap_tracer_alg
    use std_atm_profile,    only: std_atm_height
    use dyn_tests_utils,    only: vc_dycore, vc_dry_pressure, string_vc, vc_str_lgth
@@ -789,20 +785,19 @@ subroutine dyn_init(dyn_in, dyn_out)
      !
      ! get rho, kmvis and kmcnd at mid-levels
      !
-     call get_molecular_diff_coef_reference(1,nlev,tref,&
+     call get_molecular_diff_coef_reference(tref,&
           (hvcoord%hyam(:)+hvcoord%hybm(:))*hvcoord%ps0,km_sponge_factor,&
           kmvis_ref,kmcnd_ref,rho_ref)
 
+     write(iulog,*) "Molecular viscoity and thermal conductivity reference profile"
+     write(iulog,*) "k, p, z, km_sponge_factor, kmvis_ref/rho_ref, kmcnd_ref/(cp*rho_ref):"
      do k=1,nlev
        ! only apply molecular viscosity where viscosity is > 1000 m/s^2
        if (MIN(kmvis_ref(k)/rho_ref(k),kmcnd_ref(k)/(cpair*rho_ref(k)))>1000.0_r8) then
          if (masterproc) then
-           press = (hvcoord%hyam(k)+hvcoord%hybm(k))*hvcoord%ps0
+           press = hvcoord%hyam(k)*hvcoord%ps0+hvcoord%hybm(k)*pstd
            call std_atm_height(press,z)
-           write(iulog,'(a,i3,3e11.4)') "k, p, z, km_sponge_factor                   :",k, &
-                press, z,km_sponge_factor(k)
-            write(iulog,'(a,2e11.4)') "kmvis_ref/rho_ref, kmcnd_ref/(cp*rho_ref): ", &
-               kmvis_ref(k)/rho_ref(k),kmcnd_ref(k)/(cpair*rho_ref(k))
+           write(iulog,'(i3,5e11.4)') k,press, z,km_sponge_factor(k),kmvis_ref(k)/rho_ref(k),kmcnd_ref(k)/(cpair*rho_ref(k))
          end if
          kmol_end = k
        else
@@ -824,28 +819,39 @@ subroutine dyn_init(dyn_in, dyn_out)
    !
    nu_scale_top(:) = 0.0_r8
    if (nu_top>0) then
-     if (masterproc) write(iulog,*) sub//": sponge layer viscosity scaling factor"
-     do k=1,nlev
-       press = (hvcoord%hyam(k)+hvcoord%hybm(k))*hvcoord%ps0
-       ptop  = hvcoord%hyai(1)*hvcoord%ps0
-       nu_scale_top(k) = 8.0_r8*(1.0_r8+tanh(1.0_r8*log(ptop/press(1)))) ! tau will be maximum 8 at model top
-       if (nu_scale_top(k).ge.0.15_r8) then
-         ksponge_end = k
-       else
-         nu_scale_top(k) = 0.0_r8
-       end if
-     end do
+     ptop  = hvcoord%hyai(1)*hvcoord%ps0
+     if (ptop>300.0_r8) then
+       !
+       ! for low tops the tanh formulae below makes the sponge excessively deep
+       !
+       nu_scale_top(1) = 4.0_r8
+       nu_scale_top(2) = 2.0_r8
+       nu_scale_top(3) = 1.0_r8
+       ksponge_end = 3
+     else
+       do k=1,nlev
+         press = hvcoord%hyam(k)*hvcoord%ps0+hvcoord%hybm(k)*pstd
+         nu_scale_top(k) = 8.0_r8*(1.0_r8+tanh(1.0_r8*log(ptop/press(1)))) ! tau will be maximum 8 at model top
+         if (nu_scale_top(k).ge.0.15_r8) then
+           ksponge_end = k
+         else
+           nu_scale_top(k) = 0.0_r8
+         end if
+       end do
+     end if
    else
      ksponge_end = 0
    end if
    ksponge_end = MAX(MAX(ksponge_end,1),kmol_end)
    if (masterproc) then
      write(iulog,*) sub//": ksponge_end = ",ksponge_end
+     write(iulog,*) sub//": sponge layer Laplacian damping"
+     write(iulog,*) "k, p, z, nu_scale_top, nu (actual Laplacian damping coefficient)"
      if (nu_top>0) then
        do k=1,ksponge_end+1
          press = (hvcoord%hyam(k)+hvcoord%hybm(k))*hvcoord%ps0
          call std_atm_height(press,z)
-         write(iulog,'(a,i3,4e11.4)') sub//": k, p, z, nu_scale_top, nu ",k,press,z,&
+         write(iulog,'(i3,4e11.4)') k,press,z,&
               nu_scale_top(k),nu_scale_top(k)*nu_top
        end do
      end if
@@ -953,8 +959,8 @@ end subroutine dyn_init
 !=========================================================================================
 
 subroutine dyn_run(dyn_state)
-   use physconst,        only: thermodynamic_active_species_num, dry_air_species_num
-   use physconst,        only: thermodynamic_active_species_idx_dycore
+   use air_composition,  only: thermodynamic_active_species_num, dry_air_species_num
+   use air_composition,  only: thermodynamic_active_species_idx_dycore
    use prim_advance_mod, only: calc_tot_energy_dynamics
    use prim_driver_mod,  only: prim_run_subcycle
    use dimensions_mod,   only: cnst_name_gll
@@ -1144,7 +1150,7 @@ end subroutine dyn_final
 !===============================================================================
 
 subroutine read_inidat(dyn_in)
-   use physconst,           only: thermodynamic_active_species_num, dry_air_species_num
+   use air_composition,     only: thermodynamic_active_species_num, dry_air_species_num
    use shr_sys_mod,         only: shr_sys_flush
    use hycoef,              only: hyai, hybi, ps0
    use const_init,          only: cnst_init_default
@@ -1153,7 +1159,7 @@ subroutine read_inidat(dyn_in)
    use fvm_mapping,         only: dyn2fvm_mass_vars
    use control_mod,         only: runtype,initial_global_ave_dry_ps
    use prim_driver_mod,     only: prim_set_dry_mass
-   use physconst,           only: thermodynamic_active_species_idx
+   use air_composition,     only: thermodynamic_active_species_idx
    use cam_initfiles,       only: scale_dry_air_mass
    ! Arguments
    type (dyn_import_t), target, intent(inout) :: dyn_in   ! dynamics import

@@ -220,7 +220,7 @@ contains
     call addfld (cnst_name(1), (/ 'lev' /), 'A', 'kg/kg',    cnst_longname(1))
     call addfld ('NSTEP',      horiz_only,  'A', 'timestep', 'Model timestep')
     call addfld ('PHIS',       horiz_only,  'I', 'm2/s2',    'Surface geopotential')
-    
+
     call addfld ('PS',         horiz_only,  'A', 'Pa',       'Surface pressure')
     call addfld ('T',          (/ 'lev' /), 'A', 'K',        'Temperature')
     call addfld ('U',          (/ 'lev' /), 'A', 'm/s',      'Zonal wind')
@@ -460,6 +460,10 @@ contains
     call addfld ('RHW',        (/ 'lev' /), 'A', 'percent','Relative humidity with respect to liquid')
     call addfld ('RHI',        (/ 'lev' /), 'A', 'percent','Relative humidity with respect to ice')
     call addfld ('RHCFMIP',    (/ 'lev' /), 'A', 'percent','Relative humidity with respect to water above 273 K, ice below 273 K')
+
+    call addfld ('IVT',        horiz_only,  'A', 'kg/m/s','Total (vertically integrated) vapor transport')
+    call addfld ('uIVT',       horiz_only,  'A', 'kg/m/s','u-component (vertically integrated) vapor transport')
+    call addfld ('vIVT',       horiz_only,  'A', 'kg/m/s','v-component (vertically integrated) vapor transport')
 
     call addfld ('THE8501000', horiz_only,  'A', 'K','ThetaE difference 850 mb - 1000 mb')
     call addfld ('THE9251000', horiz_only,  'A', 'K','ThetaE difference 925 mb - 1000 mb')
@@ -937,7 +941,7 @@ contains
     use co2_cycle,          only: c_i, co2_transport
 
     use tidal_diag,         only: tidal_diag_write
-    use physconst,          only: cpairv,rairv
+    use air_composition,    only: cpairv, rairv
 
     !-----------------------------------------------------------------------
     !
@@ -1301,11 +1305,14 @@ contains
     real(r8), pointer :: ftem_ptr(:,:)
 
     integer :: i, k, m, lchnk, ncol
+    integer :: ixq, ierr
     !
     !-----------------------------------------------------------------------
     !
     lchnk = state%lchnk
     ncol  = state%ncol
+
+    call cnst_get_ind('Q', ixq)
 
     if (co2_transport()) then
       do m = 1,4
@@ -1325,27 +1332,49 @@ contains
     !
     ! Meridional advection fields
     !
-    ftem(:ncol,:) = state%v(:ncol,:)*state%q(:ncol,:,1)
+    ftem(:ncol,:) = state%v(:ncol,:)*state%q(:ncol,:,ixq)
     call outfld ('VQ      ',ftem    ,pcols   ,lchnk     )
 
-    ftem(:ncol,:) = state%q(:ncol,:,1)*state%q(:ncol,:,1)
+    ftem(:ncol,:) = state%q(:ncol,:,1)*state%q(:ncol,:,ixq)
     call outfld ('QQ      ',ftem    ,pcols   ,lchnk     )
 
     ! Vertical velocity and advection
-    ftem(:ncol,:) = state%omega(:ncol,:)*state%q(:ncol,:,1)
+    ftem(:ncol,:) = state%omega(:ncol,:)*state%q(:ncol,:,ixq)
     call outfld('OMEGAQ  ',ftem,    pcols,   lchnk     )
     !
     ! Mass of q, by layer and vertically integrated
     !
-    ftem(:ncol,:) = state%q(:ncol,:,1) * state%pdel(:ncol,:) * rga
+    ftem(:ncol,:) = state%q(:ncol,:,ixq) * state%pdel(:ncol,:) * rga
     call outfld ('MQ      ',ftem    ,pcols   ,lchnk     )
 
     do k=2,pver
       ftem(:ncol,1) = ftem(:ncol,1) + ftem(:ncol,k)
     end do
     call outfld ('TMQ     ',ftem, pcols   ,lchnk     )
+    !
+    ! Integrated vapor transport calculation
+    !
+    !compute uq*dp/g and vq*dp/g
+    ftem1(:ncol,:) = state%q(:ncol,:,ixq) * state%u(:ncol,:) *state%pdel(:ncol,:) * rga
+    ftem2(:ncol,:) = state%q(:ncol,:,ixq) * state%v(:ncol,:) *state%pdel(:ncol,:) * rga
 
+    do k=2,pver
+       ftem1(:ncol,1) = ftem1(:ncol,1) + ftem1(:ncol,k)
+       ftem2(:ncol,1) = ftem2(:ncol,1) + ftem2(:ncol,k)
+    end do
+    ! compute ivt
+    ftem(:ncol,1) = sqrt( ftem1(:ncol,1)**2 + ftem2(:ncol,1)**2)
+
+    call outfld ('IVT     ',ftem, pcols   ,lchnk     )
+
+    ! output uq*dp/g
+    call outfld ('uIVT     ',ftem1, pcols   ,lchnk     )
+
+    ! output vq*dp/g
+    call outfld ('vIVT     ',ftem2, pcols   ,lchnk     )
+    !
     ! Relative humidity
+    !
     if (hist_fld_active('RELHUM')) then
        if (relhum_idx > 0) then
           call pbuf_get_field(pbuf, relhum_idx, ftem_ptr)
@@ -1354,7 +1383,7 @@ contains
           do k = 1, pver
              call qsat(state%t(1:ncol,k), state%pmid(1:ncol,k), tem2(1:ncol,k), ftem(1:ncol,k), ncol)
           end do
-          ftem(:ncol,:) = state%q(:ncol,:,1)/ftem(:ncol,:)*100._r8
+          ftem(:ncol,:) = state%q(:ncol,:,ixq)/ftem(:ncol,:)*100._r8
        end if
        call outfld ('RELHUM  ',ftem    ,pcols   ,lchnk     )
     end if
@@ -1365,7 +1394,7 @@ contains
       do k = 1, pver
          call qsat_water (state%t(1:ncol,k), state%pmid(1:ncol,k), esl(1:ncol,k), ftem(1:ncol,k), ncol)
       end do
-      ftem(:ncol,:) = state%q(:ncol,:,1)/ftem(:ncol,:)*100._r8
+      ftem(:ncol,:) = state%q(:ncol,:,ixq)/ftem(:ncol,:)*100._r8
       call outfld ('RHW  ',ftem    ,pcols   ,lchnk     )
 
       ! Convert to RHI (ice)
@@ -1398,17 +1427,17 @@ contains
     ! Output q field on pressure surfaces
     !
     if (hist_fld_active('Q850')) then
-      call vertinterp(ncol, pcols, pver, state%pmid, 85000._r8, state%q(1,1,1), p_surf)
+      call vertinterp(ncol, pcols, pver, state%pmid, 85000._r8, state%q(1,1,ixq), p_surf)
       call outfld('Q850    ', p_surf, pcols, lchnk )
     end if
     if (hist_fld_active('Q200')) then
-      call vertinterp(ncol, pcols, pver, state%pmid, 20000._r8, state%q(1,1,1), p_surf)
+      call vertinterp(ncol, pcols, pver, state%pmid, 20000._r8, state%q(1,1,ixq), p_surf)
       call outfld('Q200    ', p_surf, pcols, lchnk )
     end if
     !
     ! Output Q at bottom level
     !
-    call outfld ('QBOT    ', state%q(1,pver,1),  pcols, lchnk)
+    call outfld ('QBOT    ', state%q(1,pver,ixq),  pcols, lchnk)
 
     ! Total energy of the atmospheric column for atmospheric heat storage calculations
 
@@ -1419,7 +1448,7 @@ contains
 
     !! calculate sum of sensible, kinetic, latent, and surface geopotential energy
     !! E=CpT+PHIS+Lv*q+(0.5)*(u^2+v^2)
-    ftem(:ncol,:) = (cpair*state%t(:ncol,:) +  ftem1(:ncol,:) + latvap*state%q(:ncol,:,1) + &
+    ftem(:ncol,:) = (cpair*state%t(:ncol,:) +  ftem1(:ncol,:) + latvap*state%q(:ncol,:,ixq) + &
          0.5_r8*(state%u(:ncol,:)**2+state%v(:ncol,:)**2))*(state%pdel(:ncol,:)/gravit)
     !! vertically integrate
     do k=2,pver
@@ -1448,12 +1477,12 @@ contains
          hist_fld_active('THE9251000') .or. &
          hist_fld_active('THE8501000') .or. &
          hist_fld_active('THE7001000')) then
-      call vertinterp(ncol, pcols, pver, state%pmid, 100000._r8, state%q(1,1,1), p_surf_q1)
+      call vertinterp(ncol, pcols, pver, state%pmid, 100000._r8, state%q(1,1,ixq), p_surf_q1)
     end if
 
     if (hist_fld_active('THE9251000') .or. &
         hist_fld_active('Q925')) then
-      call vertinterp(ncol, pcols, pver, state%pmid, 92500._r8, state%q(1,1,1), p_surf_q2)
+      call vertinterp(ncol, pcols, pver, state%pmid, 92500._r8, state%q(1,1,ixq), p_surf_q2)
     end if
 
 !!! at 1000 mb and 925 mb
@@ -1480,7 +1509,7 @@ contains
 
 !!! at 1000 mb and 850 mb
     if (hist_fld_active('THE8501000')) then
-      call vertinterp(ncol, pcols, pver, state%pmid, 85000._r8, state%q(1,1,1), p_surf_q2)
+      call vertinterp(ncol, pcols, pver, state%pmid, 85000._r8, state%q(1,1,ixq), p_surf_q2)
       p_surf = ((p_surf_t(:, surf_085000)*(1000.0_r8/850.0_r8)**cappa) *              &
                 exp((2500000.0_r8*p_surf_q2)/(1004.0_r8*p_surf_t(:, surf_085000)))) - &
                 (p_surf_t(:,surf_100000)*(1.0_r8)**cappa)*exp((2500000.0_r8*p_surf_q1)/(1004.0_r8*p_surf_t(:,surf_100000)))
@@ -1495,7 +1524,7 @@ contains
 
 !!! at 1000 mb and 700 mb
     if (hist_fld_active('THE7001000')) then
-      call vertinterp(ncol, pcols, pver, state%pmid, 70000._r8, state%q(1,1,1), p_surf_q2)
+      call vertinterp(ncol, pcols, pver, state%pmid, 70000._r8, state%q(1,1,ixq), p_surf_q2)
       p_surf = ((p_surf_t(:, surf_070000)*(1000.0_r8/700.0_r8)**cappa) *              &
                 exp((2500000.0_r8*p_surf_q2)/(1004.0_r8*p_surf_t(:, surf_070000)))) - &
                 (p_surf_t(:,surf_100000)*(1.0_r8)**cappa)*exp((2500000.0_r8*p_surf_q1)/(1004.0_r8*p_surf_t(:,surf_100000)))

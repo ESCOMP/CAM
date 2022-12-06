@@ -56,9 +56,9 @@ contains
     use time_mod,          only: TimeLevel_t,  timelevel_qdp, tevolve
     use dimensions_mod,    only: lcp_moist
     use fvm_control_volume_mod, only: fvm_struct
-    use physconst,         only: get_cp, thermodynamic_active_species_num
-    use physconst,         only: get_kappa_dry, dry_air_species_num
-    use physconst,         only: thermodynamic_active_species_idx_dycore
+    use cam_thermo,        only: get_kappa_dry
+    use air_composition,   only: thermodynamic_active_species_num, dry_air_species_num
+    use air_composition,   only: thermodynamic_active_species_idx_dycore, get_cp
     use physconst,         only: cpair, rair
     implicit none
 
@@ -131,8 +131,8 @@ contains
     !
     if (lcp_moist) then
       do ie=nets,nete
-        call get_cp(1,np,1,np,1,nlev,thermodynamic_active_species_num,qwater(:,:,:,:,ie),&
-             .true.,inv_cp_full(:,:,:,ie),active_species_idx_dycore=qidx)
+        call get_cp(qwater(:,:,:,:,ie),&
+             .true., inv_cp_full(:,:,:,ie), active_species_idx_dycore=qidx)
       end do
     else
       do ie=nets,nete
@@ -140,7 +140,7 @@ contains
       end do
     end if
     do ie=nets,nete
-      call get_kappa_dry(1,np,1,np,1,nlev,nlev,thermodynamic_active_species_num,qwater(:,:,:,:,ie),qidx,kappa(:,:,:,ie))
+      call get_kappa_dry(qwater(:,:,:,:,ie), qidx, kappa(:,:,:,ie))
     end do
 
 
@@ -274,7 +274,8 @@ contains
     use element_mod,            only: element_t
     use control_mod,            only: ftype, ftype_conserve
     use fvm_control_volume_mod, only: fvm_struct
-    use physconst,              only: get_dp, thermodynamic_active_species_idx_dycore
+    use air_composition,        only: thermodynamic_active_species_idx_dycore
+    use cam_thermo,             only: get_dp, MASS_MIXING_RATIO
     type (element_t)     , intent(inout) :: elem(:)
     type(fvm_struct)     , intent(inout) :: fvm(:)
     real (kind=r8), intent(in) :: dt_dribble, dt_phys
@@ -399,8 +400,8 @@ contains
 
 
       if (ftype_conserve==1) then
-        call get_dp(1,np,1,np,1,nlev,qsize,elem(ie)%state%Qdp(:,:,:,1:qsize,np1_qdp),2, &
-            thermodynamic_active_species_idx_dycore,elem(ie)%state%dp3d(:,:,:,np1),pdel)
+        call get_dp(elem(ie)%state%Qdp(:,:,:,1:qsize,np1_qdp), MASS_MIXING_RATIO, &
+            thermodynamic_active_species_idx_dycore, elem(ie)%state%dp3d(:,:,:,np1), pdel)
         do k=1,nlev
           do j=1,np
             do i = 1,np
@@ -445,9 +446,9 @@ contains
     !  For correct scaling, dt2 should be the same 'dt2' used in the leapfrog advace
     !
     !
-    use physconst,      only: gravit, cappa, cpair, tref, lapse_rate, get_dp_ref
-    use dimensions_mod, only: np, nlev, nc, ntrac, npsq, qsize
-    use dimensions_mod, only: hypervis_dynamic_ref_state,ksponge_end
+    use physconst,      only: gravit, cappa, cpair, tref, lapse_rate
+    use cam_thermo,     only: get_molecular_diff_coef, get_rho_dry
+    use dimensions_mod, only: np, nlev, nc, ntrac, npsq, qsize, ksponge_end
     use dimensions_mod, only: nu_scale_top,nu_lev,kmvis_ref,kmcnd_ref,rho_ref,km_sponge_factor
     use dimensions_mod, only: kmvisi_ref,kmcndi_ref,nu_t_lev
     use control_mod,    only: nu, nu_t, hypervis_subcycle,hypervis_subcycle_sponge, nu_p, nu_top
@@ -462,8 +463,7 @@ contains
     use viscosity_mod,  only: biharmonic_wk_dp3d
     use hybvcoord_mod,  only: hvcoord_t
     use fvm_control_volume_mod, only: fvm_struct
-    use physconst,       only: thermodynamic_active_species_idx_dycore
-    use physconst,       only: get_molecular_diff_coef,get_rho_dry
+    use air_composition, only: thermodynamic_active_species_idx_dycore
     use cam_history,     only: outfld, hist_fld_active
 
     type (hybrid_t)    , intent(in)   :: hybrid
@@ -481,8 +481,6 @@ contains
     integer :: kbeg, kend, kblk
     real (kind=r8), dimension(np,np,2,nlev,nets:nete)      :: vtens
     real (kind=r8), dimension(np,np,nlev,nets:nete)        :: ttens, dptens
-    real (kind=r8), dimension(np,np,nlev,nets:nete)        :: dp3d_ref, T_ref, pmid_ref
-    real (kind=r8), dimension(np,np,nets:nete)             :: ps_ref
     real (kind=r8), dimension(0:np+1,0:np+1,nlev)          :: corners
     real (kind=r8), dimension(2,2,2)                       :: cflux
     real (kind=r8)                                         :: temp      (np,np,nlev)
@@ -507,46 +505,6 @@ contains
 
     ptop = hvcoord%hyai(1)*hvcoord%ps0
 
-    if (hypervis_dynamic_ref_state) then
-      !
-      ! use dynamic reference pressure (P. Callaghan)
-      !
-      call calc_dp3d_reference(elem,edge3,hybrid,nets,nete,nt,hvcoord,dp3d_ref)
-      do ie=nets,nete
-        ps_ref(:,:,ie) = ptop + sum(elem(ie)%state%dp3d(:,:,:,nt),3)
-      end do
-    else
-      !
-      ! use static reference pressure (hydrostatic balance incl. effect of topography)
-      !
-      do ie=nets,nete
-        call get_dp_ref(hvcoord%hyai, hvcoord%hybi, hvcoord%ps0,1,np,1,np,1,nlev,&
-             elem(ie)%state%phis(:,:),dp3d_ref(:,:,:,ie),ps_ref(:,:,ie))
-      end do
-    endif
-    !
-    ! reference temperature profile (Simmons and Jiabin, 1991, QJRMS, Section 2a)
-    !
-    !  Tref = T0+T1*Exner
-    !  T1 = .0065*Tref*Cp/g ! = ~191
-    !  T0 = Tref-T1         ! = ~97
-    !
-    T1 = lapse_rate*Tref*cpair/gravit
-    T0 = Tref-T1
-    do ie=nets,nete
-      do k=1,nlev
-        pmid_ref(:,:,k,ie) =hvcoord%hyam(k)*hvcoord%ps0 + hvcoord%hybm(k)*ps_ref(:,:,ie)
-        dp3d_ref(:,:,k,ie) = ((hvcoord%hyai(k+1)-hvcoord%hyai(k))*hvcoord%ps0 + &
-                              (hvcoord%hybi(k+1)-hvcoord%hybi(k))*ps_ref(:,:,ie))
-        if (hvcoord%hybm(k)>0) then
-          tmp2               = (pmid_ref(:,:,k,ie)/hvcoord%ps0)**cappa
-          T_ref(:,:,k,ie)    = (T0+T1*tmp2)
-        else
-          T_ref(:,:,k,ie)    = 0.0_r8
-        end if
-      end do
-    end do
-
     kbeg=1; kend=nlev
 
     kblk = kend - kbeg + 1
@@ -561,8 +519,7 @@ contains
       call calc_tot_energy_dynamics(elem,fvm,nets,nete,nt,qn0,'dBH')
 
       rhypervis_subcycle=1.0_r8/real(hypervis_subcycle,kind=r8)
-      call biharmonic_wk_dp3d(elem,dptens,dpflux,ttens,vtens,deriv,edge3,hybrid,nt,nets,nete,kbeg,kend,hvcoord,&
-           dp3d_ref=dp3d_ref,pmid_ref=pmid_ref)
+      call biharmonic_wk_dp3d(elem,dptens,dpflux,ttens,vtens,deriv,edge3,hybrid,nt,nets,nete,kbeg,kend,hvcoord)
 
       do ie=nets,nete
         ! compute mean flux
@@ -573,7 +530,7 @@ contains
             do j=1,np
               do i=1,np
                 elem(ie)%derived%dpdiss_ave(i,j,k)=elem(ie)%derived%dpdiss_ave(i,j,k)+&
-                     rhypervis_subcycle*eta_ave_w*elem(ie)%state%dp3d(i,j,k,nt)
+                     rhypervis_subcycle*eta_ave_w*(elem(ie)%state%dp3d(i,j,k,nt)-elem(ie)%derived%dp_ref(i,j,k))
                 elem(ie)%derived%dpdiss_biharmonic(i,j,k)=elem(ie)%derived%dpdiss_biharmonic(i,j,k)+&
                      rhypervis_subcycle*eta_ave_w*dptens(i,j,k,ie)
               enddo
@@ -755,9 +712,9 @@ contains
     !
     if (molecular_diff==1) then
       do ie=nets,nete
-        call get_rho_dry(1,np,1,np,ksponge_end,nlev,qsize,elem(ie)%state%Qdp(:,:,:,1:qsize,qn0),  &
-             elem(ie)%state%T(:,:,:,nt),ptop,elem(ie)%state%dp3d(:,:,:,nt),&
-             .true.,rho_dry=rho_dry(:,:,:,ie),                                              &
+        call get_rho_dry(elem(ie)%state%Qdp(:,:,:,1:qsize,qn0),  &
+             elem(ie)%state%T(:,:,:,nt), ptop, elem(ie)%state%dp3d(:,:,:,nt),&
+             .true., rho_dry=rho_dry(:,:,:,ie),                                              &
              active_species_idx_dycore=thermodynamic_active_species_idx_dycore)
       end do
 
@@ -765,9 +722,8 @@ contains
         !
         ! compute molecular diffusion and thermal conductivity coefficients at mid-levels
         !
-        call get_molecular_diff_coef(1,np,1,np,ksponge_end,nlev,&
-             elem(ie)%state%T(:,:,:,nt),0,km_sponge_factor(1:ksponge_end),kmvis(:,:,:,ie),kmcnd(:,:,:,ie),qsize,&
-             elem(ie)%state%Qdp(:,:,:,1:qsize,qn0),fact=1.0_r8/elem(ie)%state%dp3d(:,:,1:ksponge_end,nt),&
+        call get_molecular_diff_coef(elem(ie)%state%T(:,:,:,nt), .false., km_sponge_factor(1:ksponge_end), kmvis(:,:,:,ie),&
+             kmcnd(:,:,:,ie), elem(ie)%state%Qdp(:,:,:,1:qsize,qn0), fact=1.0_r8/elem(ie)%state%dp3d(:,:,1:ksponge_end,nt),&
              active_species_idx_dycore=thermodynamic_active_species_idx_dycore)
       end do
       !
@@ -1036,10 +992,11 @@ contains
      use edgetype_mod,    only: edgedescriptor_t
      use bndry_mod,       only: bndry_exchange
      use hybvcoord_mod,   only: hvcoord_t
-     use physconst,       only: epsilo, get_gz_given_dp_Tv_Rdry
-     use physconst,       only: thermodynamic_active_species_num, get_virtual_temp, get_cp_dry
-     use physconst,       only: thermodynamic_active_species_idx_dycore,get_R_dry
-     use physconst,       only: dry_air_species_num,get_exner,tref,cpair,gravit,lapse_rate
+     use physconst,       only: epsilo
+     use cam_thermo,      only: get_gz, get_virtual_temp
+     use air_composition, only: thermodynamic_active_species_num, dry_air_species_num
+     use air_composition, only: thermodynamic_active_species_idx_dycore, get_cp_dry, get_R_dry
+     use physconst,       only: tref,cpair,gravit,lapse_rate
      use time_mod, only : tevolve
 
      implicit none
@@ -1106,19 +1063,16 @@ contains
        !
        ! compute virtual temperature and sum_water
        !
-       call get_virtual_temp(1,np,1,np,1,nlev,thermodynamic_active_species_num,qwater(:,:,:,:,ie),&
-            t_v(:,:,:),temp=elem(ie)%state%T(:,:,:,n0),sum_q =sum_water(:,:,:),&
-            active_species_idx_dycore=qidx)
-       call get_R_dry(1,np,1,np,1,nlev,1,nlev,thermodynamic_active_species_num,&
-            qwater(:,:,:,:,ie),qidx,R_dry)
-       call get_cp_dry(1,np,1,np,1,nlev,1,nlev,thermodynamic_active_species_num,&
-            qwater(:,:,:,:,ie),qidx,cp_dry)
+       call get_virtual_temp(qwater(:,:,:,:,ie), t_v(:,:,:),temp=elem(ie)%state%T(:,:,:,n0),&
+            sum_q =sum_water(:,:,:), active_species_idx_dycore=qidx)
+       call get_R_dry(qwater(:,:,:,:,ie), qidx, R_dry)
+       call get_cp_dry(qwater(:,:,:,:,ie), qidx, cp_dry)
 
        do k=1,nlev
          dp_dry(:,:,k)  = elem(ie)%state%dp3d(:,:,k,n0)
          dp_full(:,:,k) = sum_water(:,:,k)*dp_dry(:,:,k)
        end do
-       call get_gz_given_dp_Tv_Rdry(1,np,1,np,nlev,dp_full,T_v,R_dry,elem(ie)%state%phis,ptop,phi,pmid=p_full)
+       call get_gz(dp_full, T_v, R_dry, elem(ie)%state%phis, ptop, phi, pmid=p_full)
        do k=1,nlev
          ! vertically lagrangian code: we advect dp3d instead of ps
          ! we also need grad(p) at all levels (not just grad(ps))
@@ -1275,7 +1229,7 @@ contains
          end if
 
 
-         
+
          do j=1,np
            do i=1,np
              glnps1 = grad_exner_term(i,j,1)
@@ -1495,15 +1449,15 @@ contains
 
   subroutine calc_tot_energy_dynamics(elem,fvm,nets,nete,tl,tl_qdp,outfld_name_suffix)
     use dimensions_mod,         only: npsq,nlev,np,lcp_moist,nc,ntrac,qsize
-    use physconst,              only: gravit, cpair, rearth,omega
+    use physconst,              only: gravit, cpair, rearth, omega
     use element_mod,            only: element_t
     use cam_history,            only: outfld, hist_fld_active
     use constituents,           only: cnst_get_ind
     use string_utils,           only: strlist_get_ind
     use hycoef,                 only: hyai, ps0
     use fvm_control_volume_mod, only: fvm_struct
-    use physconst,              only: get_dp, get_cp
-    use physconst,              only: thermodynamic_active_species_idx_dycore
+    use cam_thermo,             only: get_dp, MASS_MIXING_RATIO
+    use air_composition,        only: thermodynamic_active_species_idx_dycore, get_cp
     use dimensions_mod,         only: cnst_name_gll
     !------------------------------Arguments--------------------------------
 
@@ -1568,10 +1522,10 @@ contains
       do ie=nets,nete
         se    = 0.0_r8
         ke    = 0.0_r8
-        call get_dp(1,np,1,np,1,nlev,qsize,elem(ie)%state%Qdp(:,:,:,1:qsize,tl_qdp),2,thermodynamic_active_species_idx_dycore,&
-             elem(ie)%state%dp3d(:,:,:,tl),pdel,ps=ps,ptop=hyai(1)*ps0)
-        call get_cp(1,np,1,np,1,nlev,qsize,elem(ie)%state%Qdp(:,:,:,1:qsize,tl_qdp),&
-             .false.,cp,dp_dry=elem(ie)%state%dp3d(:,:,:,tl),&
+        call get_dp(elem(ie)%state%Qdp(:,:,:,1:qsize,tl_qdp), MASS_MIXING_RATIO, thermodynamic_active_species_idx_dycore,&
+             elem(ie)%state%dp3d(:,:,:,tl), pdel, ps=ps, ptop=hyai(1)*ps0)
+        call get_cp(elem(ie)%state%Qdp(:,:,:,1:qsize,tl_qdp),&
+             .false., cp, dp_dry=elem(ie)%state%dp3d(:,:,:,tl),&
              active_species_idx_dycore=thermodynamic_active_species_idx_dycore)
         do k = 1, nlev
           do j=1,np
@@ -1656,8 +1610,8 @@ contains
       do ie=nets,nete
         mr    = 0.0_r8
         mo    = 0.0_r8
-        call get_dp(1,np,1,np,1,nlev,qsize,elem(ie)%state%Qdp(:,:,:,1:qsize,tl_qdp),2,thermodynamic_active_species_idx_dycore,&
-             elem(ie)%state%dp3d(:,:,:,tl),pdel,ps=ps,ptop=hyai(1)*ps0)
+        call get_dp(elem(ie)%state%Qdp(:,:,:,1:qsize,tl_qdp), MASS_MIXING_RATIO, thermodynamic_active_species_idx_dycore,&
+             elem(ie)%state%dp3d(:,:,:,tl), pdel, ps=ps, ptop=hyai(1)*ps0)
         do k = 1, nlev
           do j=1,np
             do i = 1, np
@@ -1744,17 +1698,18 @@ contains
   end subroutine util_function
 
    subroutine compute_omega(hybrid,n0,qn0,elem,deriv,nets,nete,dt,hvcoord)
-     use control_mod,    only : nu_p, hypervis_subcycle
-     use dimensions_mod, only : np, nlev, qsize
-     use hybrid_mod,     only : hybrid_t
-     use element_mod,    only : element_t
-     use derivative_mod, only : divergence_sphere, derivative_t,gradient_sphere
-     use hybvcoord_mod,  only : hvcoord_t
-     use edge_mod,       only : edgevpack, edgevunpack
-     use bndry_mod,      only : bndry_exchange
+     use control_mod,    only: nu_p, hypervis_subcycle
+     use dimensions_mod, only: np, nlev, qsize
+     use hybrid_mod,     only: hybrid_t
+     use element_mod,    only: element_t
+     use derivative_mod, only: divergence_sphere, derivative_t,gradient_sphere
+     use hybvcoord_mod,  only: hvcoord_t
+     use edge_mod,       only: edgevpack, edgevunpack
+     use bndry_mod,      only: bndry_exchange
      use viscosity_mod,  only: biharmonic_wk_omega
-     use physconst,      only: thermodynamic_active_species_num, get_dp
-     use physconst,      only: thermodynamic_active_species_idx_dycore
+     use cam_thermo,     only: get_dp, MASS_MIXING_RATIO
+     use air_composition,only: thermodynamic_active_species_num
+     use air_composition,only: thermodynamic_active_species_idx_dycore
      implicit none
      type (hybrid_t)      , intent(in)            :: hybrid
      type (element_t)     , intent(inout), target :: elem(:)
@@ -1773,8 +1728,8 @@ contains
      logical, parameter  :: del4omega = .true.
 
      do ie=nets,nete
-        call get_dp(1,np,1,np,1,nlev,qsize,elem(ie)%state%Qdp(:,:,:,1:qsize,qn0),2,&
-           thermodynamic_active_species_idx_dycore,elem(ie)%state%dp3d(:,:,:,n0),dp_full)
+        call get_dp(elem(ie)%state%Qdp(:,:,:,1:qsize,qn0), MASS_MIXING_RATIO,&
+           thermodynamic_active_species_idx_dycore, elem(ie)%state%dp3d(:,:,:,n0), dp_full)
         do k=1,nlev
            if (k==1) then
               p_full(:,:,k) = hvcoord%hyai(k)*hvcoord%ps0 + dp_full(:,:,k)/2
@@ -1855,293 +1810,4 @@ contains
      end if
      !call FreeEdgeBuffer(edgeOmega)
    end subroutine compute_omega
-
-
-  subroutine calc_dp3d_reference(elem,edge3,hybrid,nets,nete,nt,hvcoord,dp3d_ref)
-    !
-    ! calc_dp3d_reference: When the del^4 horizontal damping is applied to dp3d
-    !                      the values are implicitly affected by natural variations
-    !                      due to surface topography.
-    !
-    !                    To account for these physicaly correct variations, use
-    !                    the current state values to compute appropriate
-    !                    reference values for the current (lagrangian) ETA-surfaces.
-    !                    Damping should then be applied to values relative to
-    !                    this reference.
-    !=======================================================================
-    use hybvcoord_mod  ,only: hvcoord_t
-    use physconst      ,only: rair,cappa
-    use element_mod,    only: element_t
-    use dimensions_mod, only: np,nlev
-    use hybrid_mod,     only: hybrid_t
-    use edge_mod,       only: edgevpack, edgevunpack
-    use bndry_mod,      only: bndry_exchange
-    !
-    ! Passed variables
-    !-------------------
-    type(element_t   ),target,intent(inout):: elem(:)
-    type(EdgeBuffer_t)       ,intent(inout):: edge3
-    type(hybrid_t    )       ,intent(in   ):: hybrid
-    integer                  ,intent(in   ):: nets,nete
-    integer                  ,intent(in   ):: nt
-    type(hvcoord_t   )       ,intent(in   ):: hvcoord
-    real(kind=r8)            ,intent(out  ):: dp3d_ref(np,np,nlev,nets:nete)
-    !
-    ! Local Values
-    !--------------
-    real(kind=r8):: Phis_avg(np,np,     nets:nete)
-    real(kind=r8):: Phi_avg (np,np,nlev,nets:nete)
-    real(kind=r8):: RT_avg  (np,np,nlev,nets:nete)
-    real(kind=r8):: P_val   (np,np,nlev)
-    real(kind=r8):: Ps_val  (np,np)
-    real(kind=r8):: Phi_val (np,np,nlev)
-    real(kind=r8):: Phi_ival(np,np)
-    real(kind=r8):: I_Phi   (np,np,nlev+1)
-    real(kind=r8):: Alpha   (np,np,nlev  )
-    real(kind=r8):: I_P     (np,np,nlev+1)
-    real(kind=r8):: DP_avg  (np,np,nlev)
-    real(kind=r8):: P_avg   (np,np,nlev)
-    real(kind=r8):: Ps_avg  (np,np)
-    real(kind=r8):: Ps_ref  (np,np)
-    real(kind=r8):: RT_lapse(np,np)
-    real(kind=r8):: dlt_Ps  (np,np)
-    real(kind=r8):: dPhi    (np,np,nlev)
-    real(kind=r8):: dPhis   (np,np)
-    real(kind=r8):: E_Awgt,E_phis,E_phi(nlev),E_T(nlev),Lapse0,Expon0
-    integer      :: ie,ii,jj,kk,kptr
-
-    ! Loop over elements
-    !--------------------
-    do ie=nets,nete
-
-      ! Calculate Pressure values from dp3dp
-      !--------------------------------------
-      P_val(:,:,1) = hvcoord%hyai(1)*hvcoord%ps0 + elem(ie)%state%dp3d(:,:,1,nt)*0.5_r8
-      do kk=2,nlev
-        P_val(:,:,kk) =               P_val(:,:,kk-1)           &
-                      + elem(ie)%state%dp3d(:,:,kk-1,nt)*0.5_r8 &
-                      + elem(ie)%state%dp3d(:,:,kk  ,nt)*0.5_r8
-      end do
-      Ps_val(:,:) = P_val(:,:,nlev) + elem(ie)%state%dp3d(:,:,nlev,nt)*0.5_r8
-
-      ! Calculate (dry) geopotential values
-      !--------------------------------------
-      dPhi    (:,:,:)    = 0.5_r8*(rair*elem(ie)%state%T   (:,:,:,nt) &
-                                      *elem(ie)%state%dp3d(:,:,:,nt) &
-                                                    /P_val(:,:,:)    )
-      Phi_val (:,:,nlev) = elem(ie)%state%phis(:,:) + dPhi(:,:,nlev)
-      Phi_ival(:,:)      = elem(ie)%state%phis(:,:) + dPhi(:,:,nlev)*2._r8
-      do kk=(nlev-1),1,-1
-        Phi_val (:,:,kk) = Phi_ival(:,:)    + dPhi(:,:,kk)
-        Phi_ival(:,:)    = Phi_val (:,:,kk) + dPhi(:,:,kk)
-      end do
-
-      ! Calculate Element averages
-      !----------------------------
-      E_Awgt   = 0.0_r8
-      E_phis   = 0.0_r8
-      E_phi(:) = 0._r8
-      E_T  (:) = 0._r8
-      do jj=1,np
-      do ii=1,np
-        E_Awgt    = E_Awgt    + elem(ie)%spheremp(ii,jj)
-        E_phis    = E_phis    + elem(ie)%spheremp(ii,jj)*elem(ie)%state%phis(ii,jj)
-        E_phi (:) = E_phi (:) + elem(ie)%spheremp(ii,jj)*Phi_val(ii,jj,:)
-        E_T   (:) = E_T   (:) + elem(ie)%spheremp(ii,jj)*elem(ie)%state%T(ii,jj,:,nt)
-      end do
-      end do
-
-      Phis_avg(:,:,ie) = E_phis/E_Awgt
-      do kk=1,nlev
-        Phi_avg(:,:,kk,ie) = E_phi(kk)     /E_Awgt
-        RT_avg (:,:,kk,ie) = E_T  (kk)*rair/E_Awgt
-      end do
-    end do ! ie=nets,nete
-
-    ! Boundary Exchange of average values
-    !-------------------------------------
-    do ie=nets,nete
-      Phis_avg(:,:,ie) = elem(ie)%spheremp(:,:)*Phis_avg(:,:,ie)
-      do kk=1,nlev
-        Phi_avg(:,:,kk,ie) = elem(ie)%spheremp(:,:)*Phi_avg(:,:,kk,ie)
-        RT_avg (:,:,kk,ie) = elem(ie)%spheremp(:,:)*RT_avg (:,:,kk,ie)
-      end do
-      kptr = 0
-      call edgeVpack(edge3,Phi_avg(:,:,:,ie),nlev,kptr,ie)
-      kptr = nlev
-      call edgeVpack(edge3,RT_avg (:,:,:,ie),nlev,kptr,ie)
-      kptr = 2*nlev
-      call edgeVpack(edge3,Phis_avg (:,:,ie),1   ,kptr,ie)
-    end do ! ie=nets,nete
-
-    call bndry_exchange(hybrid,edge3,location='calc_dp3d_reference')
-
-    do ie=nets,nete
-      kptr = 0
-      call edgeVunpack(edge3,Phi_avg(:,:,:,ie),nlev,kptr,ie)
-      kptr = nlev
-      call edgeVunpack(edge3,RT_avg (:,:,:,ie),nlev,kptr,ie)
-      kptr = 2*nlev
-      call edgeVunpack(edge3,Phis_avg (:,:,ie),1   ,kptr,ie)
-      Phis_avg(:,:,ie) = elem(ie)%rspheremp(:,:)*Phis_avg(:,:,ie)
-      do kk=1,nlev
-        Phi_avg(:,:,kk,ie) = elem(ie)%rspheremp(:,:)*Phi_avg(:,:,kk,ie)
-        RT_avg (:,:,kk,ie) = elem(ie)%rspheremp(:,:)*RT_avg (:,:,kk,ie)
-      end do
-    end do ! ie=nets,nete
-
-    ! Loop over elements
-    !--------------------
-    do ie=nets,nete
-
-      ! Fill elements with uniformly varying average values
-      !-----------------------------------------------------
-      call fill_element(Phis_avg(1,1,ie))
-      do kk=1,nlev
-        call fill_element(Phi_avg(1,1,kk,ie))
-        call fill_element(RT_avg (1,1,kk,ie))
-      end do
-
-      ! Integrate upward to compute Alpha == (dp3d/P)
-      !----------------------------------------------
-      I_Phi(:,:,nlev+1) = Phis_avg(:,:,ie)
-      do kk=nlev,1,-1
-        I_Phi(:,:,kk) = 2._r8* Phi_avg(:,:,kk,ie) - I_Phi(:,:,kk+1)
-        Alpha(:,:,kk) = 2._r8*(Phi_avg(:,:,kk,ie) - I_Phi(:,:,kk+1))/RT_avg(:,:,kk,ie)
-      end do
-
-      ! Integrate downward to compute corresponding average pressure values
-      !---------------------------------------------------------------------
-      I_P(:,:,1) = hvcoord%hyai(1)*hvcoord%ps0
-      do kk=1,nlev
-        DP_avg(:,:,kk  ) = I_P(:,:,kk)*(2._r8 * Alpha(:,:,kk))/(2._r8 - Alpha(:,:,kk))
-        P_avg (:,:,kk  ) = I_P(:,:,kk)*(2._r8                )/(2._r8 - Alpha(:,:,kk))
-        I_P   (:,:,kk+1) = I_P(:,:,kk)*(2._r8 + Alpha(:,:,kk))/(2._r8 - Alpha(:,:,kk))
-      end do
-      Ps_avg(:,:) = I_P(:,:,nlev+1)
-
-      ! Determine an appropriate d<T>/d<PHI> lapse rate near the surface
-      ! OPTIONALLY: Use dry adiabatic lapse rate or environmental lapse rate.
-      !-----------------------------------------------------------------------
-      if(.FALSE.) then
-        ! DRY ADIABATIC laspe rate
-        !------------------------------
-        RT_lapse(:,:) = -cappa
-      else
-        ! ENVIRONMENTAL (empirical) laspe rate
-        !--------------------------------------
-        RT_lapse(:,:) =  (RT_avg (:,:,nlev-1,ie)-RT_avg (:,:,nlev,ie)) &
-                        /(Phi_avg(:,:,nlev-1,ie)-Phi_avg(:,:,nlev,ie))
-      endif
-
-      ! Calcualte reference surface pressure
-      !--------------------------------------
-      dPhis(:,:) = elem(ie)%state%phis(:,:)-Phis_avg(:,:,ie)
-      do jj=1,np
-      do ii=1,np
-        if (abs(RT_lapse(ii,jj)) .gt. 1.e-3_r8) then
-          Lapse0 = RT_lapse(ii,jj)/RT_avg(ii,jj,nlev,ie)
-          Expon0 = (-1._r8/RT_lapse(ii,jj))
-          Ps_ref(ii,jj) = Ps_avg(ii,jj)*((1._r8 + Lapse0*dPhis(ii,jj))**Expon0)
-        else
-          Ps_ref(ii,jj) = Ps_avg(ii,jj)*exp(-dPhis(ii,jj)/RT_avg(ii,jj,nlev,ie))
-        endif
-      end do
-      end do
-
-      ! Calculate reference dp3d values
-      !---------------------------------
-      dlt_Ps(:,:) = Ps_ref(:,:) - Ps_avg(:,:)
-      do kk=1,nlev
-        dp3d_ref(:,:,kk,ie) = DP_avg(:,:,kk) + (hvcoord%hybi(kk+1)            &
-                                               -hvcoord%hybi(kk  ))*dlt_Ps(:,:)
-      end do
-
-    end do ! ie=nets,nete
-
-    ! End Routine
-    !------------
-    return
-  end subroutine calc_dp3d_reference
-  !=============================================================================
-
-
-  !=============================================================================
-  subroutine fill_element(Eval)
-    !
-    ! fill_element_bilin: Fill in element gridpoints using local bi-linear
-    !                     interpolation of nearby average values.
-    !
-    !                     NOTE: This routine is hard coded for NP=4, if a
-    !                           different value of NP is used... bad things
-    !                           will happen.
-    !=======================================================================
-    use dimensions_mod,only: np
-    !
-    ! Passed variables
-    !-------------------
-    real(kind=r8),intent(inout):: Eval(np,np)
-    !
-    ! Local Values
-    !--------------
-    real(kind=r8):: X0
-    real(kind=r8):: S1,S2,S3,S4
-    real(kind=r8):: C1,C2,C3,C4
-    real(kind=r8):: E1,E2,E3,E4,E0
-
-    X0 = sqrt(1._r8/5._r8)
-
-    ! Set the "known" values Eval
-    !----------------------------
-    S1 = (Eval(1 ,2 )+Eval(1 ,3 ))/2._r8
-    S2 = (Eval(2 ,np)+Eval(3 ,np))/2._r8
-    S3 = (Eval(np,2 )+Eval(np,3 ))/2._r8
-    S4 = (Eval(2 ,1 )+Eval(3 ,1 ))/2._r8
-    C1 = Eval(1 ,1 )
-    C2 = Eval(1 ,np)
-    C3 = Eval(np,np)
-    C4 = Eval(np,1 )
-
-    ! E0 OPTION: Element Center value:
-    !---------------------------------
-    IF(.FALSE.) THEN
-      ! Use ELEMENT AVERAGE value contained in (2,2)
-      !----------------------------------------------
-      E0 = Eval(2,2)
-    ELSE
-      ! Use AVG OF SIDE VALUES after boundary exchange of E0 (smooting option)
-      !-----------------------------------------------------------------------
-      E0 = (S1 + S2 + S3 + S4)/4._r8
-    ENDIF
-
-    ! Calc interior values along center axes
-    !----------------------------------------
-    E1 = E0 + X0*(S1-E0)
-    E2 = E0 + X0*(S2-E0)
-    E3 = E0 + X0*(S3-E0)
-    E4 = E0 + X0*(S4-E0)
-
-    ! Calculate Side Gridpoint Values for Eval
-    !------------------------------------------
-    Eval(1 ,2 ) = S1 + X0*(C1-S1)
-    Eval(1 ,3 ) = S1 + X0*(C2-S1)
-    Eval(2 ,np) = S2 + X0*(C2-S2)
-    Eval(3 ,np) = S2 + X0*(C3-S2)
-    Eval(np,2 ) = S3 + X0*(C4-S3)
-    Eval(np,3 ) = S3 + X0*(C3-S3)
-    Eval(2 ,1 ) = S4 + X0*(C1-S4)
-    Eval(3 ,1 ) = S4 + X0*(C4-S4)
-
-    ! Calculate interior values
-    !---------------------------
-    Eval(2 ,2 ) = E1 + X0*(Eval(2 ,1 )-E1)
-    Eval(2 ,3 ) = E1 + X0*(Eval(2 ,np)-E1)
-    Eval(3 ,2 ) = E3 + X0*(Eval(3 ,1 )-E3)
-    Eval(3 ,3 ) = E3 + X0*(Eval(3 ,np)-E3)
-
-    ! End Routine
-    !------------
-    return
-  end subroutine fill_element
-
 end module prim_advance_mod

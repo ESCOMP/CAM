@@ -19,8 +19,8 @@ module molec_diff
   !------------------------------------------------------------------------------------------------- !
 
   use perf_mod
-  use physconst,    only : mbarv
-  use phys_control, only : waccmx_is             !WACCM-X runtime switch
+  use air_composition, only: mbarv
+  use phys_control,    only: waccmx_is             !WACCM-X runtime switch
 
   implicit none
   private
@@ -59,7 +59,7 @@ contains
   subroutine init_molec_diff( kind, ncnst, mw_dry_in, n_avog_in, &
                               errstring)
 
-    use constituents,     only : cnst_mw, cnst_get_ind
+    use constituents,     only: cnst_mw, cnst_get_ind
 
     integer,  intent(in)  :: kind           ! Kind of reals being passed in
     integer,  intent(in)  :: ncnst          ! Number of constituents
@@ -122,7 +122,8 @@ contains
        kvm, kvt, tint, rhoi, kq_scal, cnst_mw, &
        mw_fac_out, nbot_molec)
 
-    use physconst,       only : cpairv, kmvis, kmcnd
+    use cam_thermo,       only: kmvis, kmcnd
+    use air_composition,  only: cpairv
 
     ! --------------------- !
     ! Input-Output Argument !
@@ -219,9 +220,9 @@ contains
        tint  , ztodt  , nbot_molec , &
        lchnk , t          , m      , no_molec_decomp)      result(decomp)
 
-    use coords_1d, only: Coords1D
+    use coords_1d,           only: Coords1D
     use linear_1d_operators, only: BoundaryType, TriDiagDecomp
-    use vdiff_lu_solver, only: fin_vol_lu_decomp
+    use vdiff_lu_solver,     only: fin_vol_lu_decomp
 
     !------------------------------------------------------------------------------ !
     ! Add the molecular diffusivity to the turbulent diffusivity for a consitutent. !

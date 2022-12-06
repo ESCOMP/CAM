@@ -537,15 +537,17 @@ subroutine derived_phys_dry(phys_state, phys_tend, pbuf2d)
    ! mixing ratios are converted to a wet basis.  Initialize geopotential heights.
    ! Finally compute energy and water column integrals of the physics input state.
 
-   use constituents,  only: qmin
-   use physconst,     only: cpairv, gravit, zvir, cappav, rairv, physconst_update
-   use shr_const_mod, only: shr_const_rwv
-   use phys_control,  only: waccmx_is
-   use geopotential,  only: geopotential_t
-   use check_energy,  only: check_energy_timestep_init
-   use hycoef,        only: hyai, ps0
-   use shr_vmath_mod, only: shr_vmath_log
-   use qneg_module,   only: qneg3
+   use constituents,    only: qmin
+   use physconst,       only: gravit, zvir
+   use cam_thermo,      only: cam_thermo_update
+   use air_composition, only: cpairv, rairv, cappav
+   use shr_const_mod,   only: shr_const_rwv
+   use phys_control,    only: waccmx_is
+   use geopotential,    only: geopotential_t
+   use check_energy,    only: check_energy_timestep_init
+   use hycoef,          only: hyai, ps0
+   use shr_vmath_mod,   only: shr_vmath_log
+   use qneg_module,     only: qneg3
 
    ! arguments
    type(physics_state), intent(inout), dimension(begchunk:endchunk) :: phys_state
@@ -658,12 +660,12 @@ subroutine derived_phys_dry(phys_state, phys_tend, pbuf2d)
         !------------------------------------------------------------
         call physics_cnst_limit( phys_state(lchnk) )
         !-----------------------------------------------------------------------------
-        ! Call physconst_update to compute cpairv, rairv, mbarv, and cappav as
+        ! Call cam_thermo_update to compute cpairv, rairv, mbarv, and cappav as
         ! constituent dependent variables.
         ! Compute molecular viscosity(kmvis) and conductivity(kmcnd).
         ! Fill local zvirv variable; calculated for WACCM-X.
         !-----------------------------------------------------------------------------
-        call physconst_update(phys_state(lchnk)%q, phys_state(lchnk)%t, lchnk, ncol,&
+        call cam_thermo_update(phys_state(lchnk)%q, phys_state(lchnk)%t, lchnk, ncol,&
              to_moist_factor=phys_state(lchnk)%pdeldry(:ncol,:)/phys_state(lchnk)%pdel(:ncol,:) )
         zvirv(:,:) = shr_const_rwv / rairv(:,:,lchnk) -1._r8
       else
@@ -713,9 +715,9 @@ subroutine thermodynamic_consistency(phys_state, phys_tend, ncols, pver, lchnk)
    ! Note: mixing ratios are assumed to be dry.
    !
    use dimensions_mod,    only: lcp_moist
-   use physconst,         only: get_cp
+   use air_composition,   only: get_cp
    use control_mod,       only: phys_dyn_cp
-   use physconst,         only: cpairv
+   use air_composition,   only: cpairv
 
    type(physics_state), intent(in)    :: phys_state
    type(physics_tend ), intent(inout) :: phys_tend
@@ -732,8 +734,8 @@ subroutine thermodynamic_consistency(phys_state, phys_tend, ncols, pver, lchnk)
      ! note that if lcp_moist=.false. then there is thermal energy increment
      ! consistency (not taking into account dme adjust)
      !
-     call get_cp(1,ncols,1,pver,1,1,pcnst,phys_state%q(1:ncols,1:pver,:),.true.,inv_cp)
-     phys_tend%dtdt(1:ncols,1:pver) = phys_tend%dtdt(1:ncols,1:pver)*cpairv(1:ncols,1:pver,lchnk)*inv_cp
+     call get_cp(phys_state%q(1:ncols,1:pver,:), .true., inv_cp)
+     phys_tend%dtdt(1:ncols,1:pver) = phys_tend%dtdt(1:ncols,1:pver) * cpairv(1:ncols,1:pver,lchnk) * inv_cp
    end if
 end subroutine thermodynamic_consistency
 
