@@ -54,6 +54,8 @@ module aerosol_state_mod
   end type ptr2d_t
 
   real(r8), parameter :: per_cm3 = 1.e-6_r8 ! factor for m-3 to cm-3 conversions
+  real(r8), parameter :: per_m3 = 1.e6_r8   ! factor for cm-3 to m-3 conversions
+  real(r8), parameter :: kg2mug = 1.e9_r8   ! factor for kg to micrograms (mug) conversions
 
   abstract interface
 
@@ -569,7 +571,7 @@ contains
   end function coated_frac
 
   !------------------------------------------------------------------------------
-  ! mass mean radius
+  ! mass mean radius (meters)
   !------------------------------------------------------------------------------
   function mass_mean_radius(self, bin_ndx, species_ndx, ncol, nlev, aero_props, rho) result(radius)
 
@@ -581,26 +583,25 @@ contains
     class(aerosol_properties), intent(in) :: aero_props ! aerosol properties object
     real(r8), intent(in) :: rho(:,:)              ! air density (kg m-3)
 
-    real(r8) :: radius(ncol,nlev) ! cm
-
+    real(r8) :: radius(ncol,nlev) ! m
 
     character(len=aero_name_len) :: species_type
-    real(r8) :: aer_numdens(ncol,nlev)
-    real(r8) :: aer_massdens(ncol,nlev)
-    real(r8),pointer :: aer_mmr(:,:)
+    real(r8) :: aer_numdens(ncol,nlev) ! kg/m3
+    real(r8) :: aer_massdens(ncol,nlev) ! kg/m3
+    real(r8),pointer :: aer_mmr(:,:) ! kg/kg
 
     real(r8) :: specdens
 
     call aero_props%species_type(bin_ndx, species_ndx, spectype=species_type)
 
-    call aero_props%get(bin_ndx, species_ndx, density=specdens)
-    call self%get_ambient_mmr(species_ndx, bin_ndx, aer_mmr)
-    call self%get_amb_species_numdens(bin_ndx, ncol, nlev, species_type, aero_props, rho, aer_numdens)
+    call aero_props%get(bin_ndx, species_ndx, density=specdens) ! kg/m3
+    call self%get_ambient_mmr(species_ndx, bin_ndx, aer_mmr) ! kg/kg
+    call self%get_amb_species_numdens(bin_ndx, ncol, nlev, species_type, aero_props, rho, aer_numdens) ! #/cm3
 
-    aer_massdens(:ncol,:) = aer_mmr(:ncol,:)*rho(:ncol,:)
+    aer_massdens(:ncol,:) = aer_mmr(:ncol,:)*rho(:ncol,:) ! kg/m3
 
     where(aer_massdens(:ncol,:)>0._r8 .and. aer_numdens(:ncol,:)>0._r8)
-       radius(:ncol,:) = (3._r8/(4*pi*specdens)*aer_massdens(:ncol,:)/(aer_numdens(:ncol,:)*1.0e6_r8))**(1._r8/3._r8) ! cm
+       radius(:ncol,:) = (3._r8/(4*pi*specdens)*aer_massdens(:ncol,:)/(aer_numdens(:ncol,:)*per_m3))**(1._r8/3._r8) ! m
     elsewhere
        radius(:ncol,:) = 0._r8
     end where
@@ -648,11 +649,11 @@ contains
 
     end do
 
-    call self%get_amb_species_numdens(bin_ndx, ncol, nlev, species_type, aero_props, rho, aer_numdens)
-    call self%get_ambient_num(bin_ndx, bin_num)
+    call self%get_amb_species_numdens(bin_ndx, ncol, nlev, species_type, aero_props, rho, aer_numdens) ! #/cm3
+    call self%get_ambient_num(bin_ndx, bin_num) ! #/kg
 
     where(bin_num(:ncol,:)>0._r8)
-       awcam(:ncol,:) = (aer_numdens(:ncol,:)*1.e6_r8)/bin_num(:ncol,:) * (tot1_mmr(:ncol,:)) *1.0e9_r8 ! [mug m-3]
+       awcam(:ncol,:) = ((aer_numdens(:ncol,:)*per_m3/bin_num(:ncol,:)) * tot1_mmr(:ncol,:)) * kg2mug  ! [mug m-3]
     elsewhere
        awcam(:ncol,:) = 0._r8
     end where

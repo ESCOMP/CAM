@@ -250,7 +250,7 @@ subroutine hetfrz_classnuc_cam_init(mincld_in, aero_props)
                     'uncoated '//trim(str32)//' number density' )
                call addfld(coated_frac_hnames(cnt),(/ 'lev' /), 'A', '#/cm3', &
                     'coated '//trim(str32)//' fraction' )
-               call addfld(radius_hnames(cnt),(/ 'lev' /), 'A', 'cm', &
+               call addfld(radius_hnames(cnt),(/ 'lev' /), 'A', 'm', &
                     'ambient '//trim(str32)//' radius' )
                call addfld(amass_hnames(cnt),(/ 'lev' /), 'A', ' ', &
                     trim(str32)//' added mass' )
@@ -476,7 +476,7 @@ subroutine hetfrz_classnuc_cam_calc( aero_props, aero_state, &
       call aero_state%mass_factors(indices(i)%bin_ndx, types(i), ncol, pver, aero_props, rho, aer_awcam(:,:,i), aer_awfacm(:,:,i))
       call outfld(amass_hnames(i), aer_awcam(:,:,i), pcols, lchnk)
       call outfld(awfacm_hnames(i), aer_awfacm(:,:,i), pcols, lchnk)
-      
+
       fn_cld_aer_num(:ncol,:) = tot_aer_num(:ncol,:,i)*factnum(:ncol,:,indices(i)%bin_ndx)
       call outfld(cldfn_dens_hnames(i), fn_cld_aer_num(:ncol,:), pcols, lchnk)
 
