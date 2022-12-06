@@ -3621,9 +3621,6 @@ end subroutine clubb_init_cnst
         clubbtop(i) = clubbtop(i) + 1
       end do    
     end do
-!+++ARH
-write(iulog,*) 'ARH clubbtop=',clubbtop(i)
-!---ARH
       
     ! Compute integrals for static energy, kinetic energy, water vapor, and liquid water
     ! after CLUBB is called.  This is for energy conservation purposes.
