@@ -3193,6 +3193,7 @@ if ($clubb_sgs  =~ /$TRUE/io) {
    add_default($nl, 'clubb_l_e3sm_config');
    add_default($nl, 'clubb_l_godunov_upwind_wpxp_ta');
    add_default($nl, 'clubb_l_godunov_upwind_xpyp_ta');
+   add_default($nl, 'clubb_l_intr_sfc_flux_smooth');
    add_default($nl, 'clubb_l_lmm_stepping');
    add_default($nl, 'clubb_l_lscale_plume_centered');
    add_default($nl, 'clubb_l_min_wp2_from_corr_wx');

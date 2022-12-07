@@ -3943,31 +3943,31 @@ realizable until the correlation becomes realizable.  This correction is applied
 at the point in the code where xp2 is advanced one timestep.
 </entry>
 
-<entry id="clubb_l_mono_flux_lim_rtm" type="real" category="pblrad"
+<entry id="clubb_l_mono_flux_lim_rtm" type="logical" category="pblrad"
        group="clubb_params_nl" valid_values="" >
 Flag to turn on the clubb monotonic flux limiter for rtm.
 Default: .false.
 </entry>
 
-<entry id="clubb_l_mono_flux_lim_spikefix" type="real" category="pblrad"
+<entry id="clubb_l_mono_flux_lim_spikefix" type="logical" category="pblrad"
        group="clubb_params_nl" valid_values="" >
 Flag to turn on the smoothing code options for the monotonic flux limiter.
 Default: .false.
 </entry>
 
-<entry id="clubb_l_mono_flux_lim_thlm" type="real" category="pblrad"
+<entry id="clubb_l_mono_flux_lim_thlm" type="logical" category="pblrad"
        group="clubb_params_nl" valid_values="" >
 Flag to turn on the clubb monotonic flux limiter for thlm.
 Default: .false.
 </entry>
 
-<entry id="clubb_l_mono_flux_lim_um" type="real" category="pblrad"
+<entry id="clubb_l_mono_flux_lim_um" type="logical" category="pblrad"
        group="clubb_params_nl" valid_values="" >
 Flag to turn on the clubb monotonic flux limiter for um (zonal momemtum).
 Default: .false.
 </entry>
 
-<entry id="clubb_l_mono_flux_lim_vm" type="real" category="pblrad"
+<entry id="clubb_l_mono_flux_lim_vm" type="logical" category="pblrad"
        group="clubb_params_nl" valid_values="" >
 Flag to turn on the clubb monotonic flux limiter for vm (meridional momemtum).
 Default: .false.
