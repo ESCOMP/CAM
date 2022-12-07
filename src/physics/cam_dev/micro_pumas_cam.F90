@@ -1717,7 +1717,7 @@ subroutine micro_pumas_cam_tend(state, ptend, dtime, pbuf)
    real(r8) :: homoo_grid(pcols,pver)
    real(r8) :: msacwio_grid(pcols,pver)
    real(r8) :: psacwso_grid(pcols,pver)
-   real(r8) :: cmeitot_grid(pcols,pver)
+   real(r8) :: cmeiout_grid(pcols,pver)
    real(r8) :: qireso_grid(pcols,pver)
    real(r8) :: prcio_grid(pcols,pver)
    real(r8) :: praio_grid(pcols,pver)
@@ -2535,7 +2535,7 @@ subroutine micro_pumas_cam_tend(state, ptend, dtime, pbuf)
       call subcol_field_avg(proc_rates%homotot,     ngrdcol, lchnk, homoo_grid(:,top_lev:))
       call subcol_field_avg(proc_rates%msacwitot,   ngrdcol, lchnk, msacwio_grid(:,top_lev:))
       call subcol_field_avg(proc_rates%psacwstot,   ngrdcol, lchnk, psacwso_grid(:,top_lev:))
-      call subcol_field_avg(proc_rates%cmeitot,   ngrdcol, lchnk, cmeitot_grid(:,top_lev:))
+      call subcol_field_avg(proc_rates%cmeitot,   ngrdcol, lchnk, cmeiout_grid(:,top_lev:))
       call subcol_field_avg(proc_rates%qirestot,    ngrdcol, lchnk, qireso_grid(:,top_lev:))
       call subcol_field_avg(proc_rates%prcitot,     ngrdcol, lchnk, prcio_grid(:,top_lev:))
       call subcol_field_avg(proc_rates%praitot,     ngrdcol, lchnk, praio_grid(:,top_lev:))
@@ -2598,7 +2598,7 @@ subroutine micro_pumas_cam_tend(state, ptend, dtime, pbuf)
       homoo_grid(:ncol,:top_lev-1)      = 0._r8
       msacwio_grid(:ncol,:top_lev-1)    = 0._r8
       psacwso_grid(:ncol,:top_lev-1)    = 0._r8
-      cmeitot_grid(:ncol,:top_lev-1)    = 0._r8
+      cmeiout_grid(:ncol,:top_lev-1)    = 0._r8
       qireso_grid(:ncol,:top_lev-1)     = 0._r8
       prcio_grid(:ncol,:top_lev-1)      = 0._r8
       praio_grid(:ncol,:top_lev-1)      = 0._r8
@@ -2669,7 +2669,7 @@ subroutine micro_pumas_cam_tend(state, ptend, dtime, pbuf)
       homoo_grid(:ncol,top_lev:)      = proc_rates%homotot
       msacwio_grid(:ncol,top_lev:)    = proc_rates%msacwitot
       psacwso_grid(:ncol,top_lev:)    = proc_rates%psacwstot
-      cmeitot_grid(:ncol,top_lev:)    = proc_rates%cmeitot
+      cmeiout_grid(:ncol,top_lev:)    = proc_rates%cmeitot
       qireso_grid(:ncol,top_lev:)     = proc_rates%qirestot
       prcio_grid(:ncol,top_lev:)      = proc_rates%prcitot
       praio_grid(:ncol,top_lev:)      = proc_rates%praitot
@@ -3170,7 +3170,7 @@ subroutine micro_pumas_cam_tend(state, ptend, dtime, pbuf)
 
    call outfld( 'MPDW2P', ftem_grid, pcols, lchnk)
 
-   ftem_grid(:ngrdcol,top_lev:pver) =  cmeitot_grid(:ngrdcol,top_lev:pver) + qireso_grid(:ngrdcol,top_lev:pver)
+   ftem_grid(:ngrdcol,top_lev:pver) =  cmeiout_grid(:ngrdcol,top_lev:pver) + qireso_grid(:ngrdcol,top_lev:pver)
    call outfld( 'MPDI2V', ftem_grid, pcols, lchnk)
 
    if (micro_mg_version > 2) then
@@ -3330,7 +3330,7 @@ subroutine micro_pumas_cam_tend(state, ptend, dtime, pbuf)
    call outfld('MG_SADSNOW',  sadsnow_grid,     pcols, lchnk)
    call outfld('ICIMRST',     icimrst_grid_out, pcols, lchnk)
    call outfld('ICWMRST',     icwmrst_grid_out, pcols, lchnk)
-   call outfld('CMEIOUT',     cmeitot_grid,     pcols, lchnk)
+   call outfld('CMEIOUT',     cmeiout_grid,     pcols, lchnk)
    call outfld('PRAO',        prao_grid,        pcols, lchnk)
    call outfld('PRCO',        prco_grid,        pcols, lchnk)
    call outfld('MNUCCCO',     mnuccco_grid,     pcols, lchnk)
