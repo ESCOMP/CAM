@@ -53,8 +53,6 @@ public :: &
    micro_mg_version,             &
    massless_droplet_destroyer
 
-type(proc_rates_type) :: proc_rates
-
 integer :: micro_mg_version     = 1      ! Version number for MG.
 integer :: micro_mg_sub_version = 0      ! Second part of version number.
 
@@ -1432,6 +1430,8 @@ subroutine micro_pumas_cam_tend(state, ptend, dtime, pbuf)
    type(physics_buffer_desc),   pointer       :: pbuf(:)
 
    ! Local variables
+
+   type(proc_rates_type) :: proc_rates
 
    integer :: lchnk, ncol, psetcols, ngrdcol
 
