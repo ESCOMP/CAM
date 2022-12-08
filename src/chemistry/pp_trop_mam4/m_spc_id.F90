@@ -22,7 +22,8 @@
       integer, parameter :: id_so4_a2 = 20
       integer, parameter :: id_so4_a3 = 21
       integer, parameter :: id_SOAG = 22
-      integer, parameter :: id_soa_a1 = 23
-      integer, parameter :: id_soa_a2 = 24
-      integer, parameter :: id_H2O = 25
+      integer, parameter :: id_SOAE = 23
+      integer, parameter :: id_soa_a1 = 24
+      integer, parameter :: id_soa_a2 = 25
+      integer, parameter :: id_H2O = 26
       end module m_spc_id

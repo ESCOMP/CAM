@@ -33,11 +33,12 @@
       real(r8)  ::  itemp(ncol,pver)
       real(r8)  ::  exp_fac(ncol,pver)
 
-      rate(:,:,2) = 1.8e-12_r8
+      rate(:,:,4) = 1.8e-12_r8
+      rate(:,:,10) = 1.157e-5_r8
       itemp(:ncol,:) = 1._r8 / temp(:ncol,:)
       n = ncol*pver
-      rate(:,:,4) = 1.9e-13_r8 * exp( 520._r8 * itemp(:,:) )
-      rate(:,:,5) = 9.6e-12_r8 * exp( -234._r8 * itemp(:,:) )
+      rate(:,:,6) = 1.9e-13_r8 * exp( 520._r8 * itemp(:,:) )
+      rate(:,:,7) = 9.6e-12_r8 * exp( -234._r8 * itemp(:,:) )
 
       end subroutine setrxt
 
