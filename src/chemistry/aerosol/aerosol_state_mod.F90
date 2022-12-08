@@ -46,6 +46,7 @@ module aerosol_state_mod
      procedure :: coated_frac
      procedure :: mass_mean_radius
      procedure :: mass_factors
+     procedure(aero_hetfrz_size_wght), deferred :: hetfrz_size_wght
   end type aerosol_state
 
   ! for state fields
@@ -177,6 +178,20 @@ module aerosol_state_mod
 
      end subroutine aero_update_bin
 
+     !------------------------------------------------------------------------------
+     ! return aerosol bin size weights for het freezing
+     !------------------------------------------------------------------------------
+     function aero_hetfrz_size_wght(self, bin_ndx, ncol, nlev) result(wght)
+       import :: aerosol_state, r8
+       class(aerosol_state), intent(in) :: self
+       integer, intent(in) :: bin_ndx             ! bin number
+       integer, intent(in) :: ncol                ! number of columns
+       integer, intent(in) :: nlev                ! number of vertical levels
+
+       real(r8) :: wght(ncol,nlev)
+
+     end function aero_hetfrz_size_wght
+
   end interface
 
 contains
@@ -301,13 +316,16 @@ contains
     real(r8), intent(out) :: numdens(:,:)         ! dust number densities (#/cm^3)
 
     real(r8), pointer :: num(:,:)
-    real(r8) :: type_wghts(ncol,nlev)
+    real(r8) :: type_wght(ncol,nlev)
+    real(r8) :: size_wght(ncol,nlev)
 
-    call self%icenuc_type_wght_base(bin_ndx, ncol, nlev, species_type, aero_props, rho, type_wghts)
+    size_wght = self%hetfrz_size_wght(bin_ndx, ncol, nlev)
+
+    call self%icenuc_type_wght_base(bin_ndx, ncol, nlev, species_type, aero_props, rho, type_wght)
 
     call self%get_ambient_num(bin_ndx, num)
 
-    numdens(:ncol,:) = num(:ncol,:)*rho(:ncol,:)*type_wghts(:ncol,:)*per_cm3
+    numdens(:ncol,:) = num(:ncol,:)*rho(:ncol,:)*type_wght(:ncol,:)*size_wght(:ncol,:)*per_cm3
 
   end subroutine get_amb_species_numdens
 
@@ -326,13 +344,16 @@ contains
     real(r8), intent(out) :: numdens(:,:)         ! number densities (#/cm^3)
 
     real(r8), pointer :: num(:,:)
-    real(r8) :: type_wghts(ncol,nlev)
+    real(r8) :: type_wght(ncol,nlev)
+    real(r8) :: size_wght(ncol,nlev)
 
-    call self%icenuc_type_wght_base(bin_ndx, ncol, nlev, species_type, aero_props, rho, type_wghts, cloud_borne=.true.)
+    size_wght = self%hetfrz_size_wght(bin_ndx, ncol, nlev)
+
+    call self%icenuc_type_wght_base(bin_ndx, ncol, nlev, species_type, aero_props, rho, type_wght, cloud_borne=.true.)
 
     call self%get_cldbrne_num(bin_ndx, num)
 
-    numdens(:ncol,:) = num(:ncol,:)*rho(:ncol,:)*type_wghts(:ncol,:)*per_cm3
+    numdens(:ncol,:) = num(:ncol,:)*rho(:ncol,:)*type_wght(:ncol,:)*size_wght(:ncol,:)*per_cm3
 
   end subroutine get_cld_species_numdens
 
@@ -592,13 +613,17 @@ contains
 
     real(r8) :: specdens
 
+    real(r8) :: wght(ncol,nlev)
+
+    wght = self%hetfrz_size_wght(bin_ndx, ncol, nlev)
+
     call aero_props%species_type(bin_ndx, species_ndx, spectype=species_type)
 
     call aero_props%get(bin_ndx, species_ndx, density=specdens) ! kg/m3
     call self%get_ambient_mmr(species_ndx, bin_ndx, aer_mmr) ! kg/kg
     call self%get_amb_species_numdens(bin_ndx, ncol, nlev, species_type, aero_props, rho, aer_numdens) ! #/cm3
 
-    aer_massdens(:ncol,:) = aer_mmr(:ncol,:)*rho(:ncol,:) ! kg/m3
+    aer_massdens(:ncol,:) = aer_mmr(:ncol,:)*rho(:ncol,:)*wght(:ncol,:) ! kg/m3
 
     where(aer_massdens(:ncol,:)>0._r8 .and. aer_numdens(:ncol,:)>0._r8)
        radius(:ncol,:) = (3._r8/(4*pi*specdens)*aer_massdens(:ncol,:)/(aer_numdens(:ncol,:)*per_m3))**(1._r8/3._r8) ! m

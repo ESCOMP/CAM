@@ -56,7 +56,7 @@ module aerosol_properties_mod
      procedure(aero_icenuc_updates_num), deferred :: icenuc_updates_num
      procedure(aero_icenuc_updates_mmr), deferred :: icenuc_updates_mmr
      procedure(aero_apply_num_limits), deferred :: apply_number_limits
-     procedure(aero_hetfrz_bin), deferred :: hetfrz_bin
+     procedure(aero_hetfrz_species), deferred :: hetfrz_species
 
      procedure :: final=>aero_props_final
   end type aerosol_properties
@@ -212,16 +212,17 @@ module aerosol_properties_mod
      end subroutine aero_apply_num_limits
 
      !------------------------------------------------------------------------------
-     ! returns TRUE if bin provides heterogeneous freezing nuclei
+     ! returns TRUE if bin spc provides heterogeneous freezing nuclei
      !------------------------------------------------------------------------------
-     function aero_hetfrz_bin(self, bin_ndx) result(res)
+     function aero_hetfrz_species(self, bin_ndx, spc_ndx) result(res)
        import :: aerosol_properties
        class(aerosol_properties), intent(in) :: self
        integer, intent(in) :: bin_ndx  ! bin number
+       integer, intent(in) :: spc_ndx  ! species number
 
        logical :: res
 
-     end function aero_hetfrz_bin
+     end function aero_hetfrz_species
 
    end interface
 

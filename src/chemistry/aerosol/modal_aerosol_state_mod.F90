@@ -32,6 +32,7 @@ module modal_aerosol_state_mod
      procedure :: icenuc_size_wght_val
      procedure :: icenuc_type_wght
      procedure :: update_bin
+     procedure :: hetfrz_size_wght
 
      final :: destructor
 
@@ -373,5 +374,28 @@ contains
     cld_num(col_ndx,lyr_ndx) = cld_num(col_ndx,lyr_ndx) + delnum_sum
 
   end subroutine update_bin
+
+  !------------------------------------------------------------------------------
+  ! return aerosol bin size weights for het freezing
+  !------------------------------------------------------------------------------
+  function hetfrz_size_wght(self, bin_ndx, ncol, nlev) result(wght)
+    class(modal_aerosol_state), intent(in) :: self
+    integer, intent(in) :: bin_ndx             ! bin number
+    integer, intent(in) :: ncol                ! number of columns
+    integer, intent(in) :: nlev                ! number of vertical levels
+
+    real(r8) :: wght(ncol,nlev)
+
+    character(len=aero_name_len) :: modetype
+
+    wght(:,:) = 1._r8
+
+    call rad_cnst_get_info(0, bin_ndx, mode_type=modetype)
+
+    if (trim(modetype) == 'aitken') then
+       wght(:,:) = 0._r8
+    end if
+
+  end function hetfrz_size_wght
 
 end module modal_aerosol_state_mod
