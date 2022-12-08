@@ -1750,7 +1750,7 @@
 <depvel_lnd_file   aquaplanet="1" >atm/cam/chem/trop_mozart/dvel/regrid_vegetation_all_zero_aquaplanet_1deg_regularGrid_c20170421.nc</depvel_lnd_file>
 
 <!-- effective Henry's coef data for wet and dry deposition -->
-<dep_data_file>atm/cam/chem/trop_mozart/dvel/dep_data_c201019.nc</dep_data_file>
+<dep_data_file>atm/cam/chem/trop_mozart/dvel/dep_data_c20221208.nc</dep_data_file>
 
 <!-- photolysis inputs -->
 <xs_coef_file>atm/waccm/phot/effxstex.txt</xs_coef_file>

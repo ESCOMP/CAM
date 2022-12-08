@@ -6,6 +6,8 @@
 * Tag created on : 2021-05-03 18:08:30.812686-06
 * Comments for this tag follow:
 *     lke : 2021-05-03 : specified oxidants mechanism for CAM
+*     lke: 2022-02-22: add intermediate SOAG 
+*           (SOAGem is emitted, converted to SOAG, which becomes SOA)
 
       SPECIES
 
@@ -32,6 +34,7 @@
  so4_a2 -> NH4HSO4,
  so4_a3 -> NH4HSO4,
  SOAG -> C,
+ SOAE -> C,
  soa_a1 -> C,
  soa_a2 -> C,
  H2O
@@ -83,6 +86,7 @@
  so4_a2
  so4_a3
  SOAG
+ SOAE
  soa_a1
  soa_a2
  H2O
@@ -97,6 +101,8 @@
 *** odd-oxygen
 *********************************
 [jh2o2]                       H2O2 + hv -> 2*OH 
+[jsoa_a1->,.0004*jno2]       soa_a1 + hv ->
+[jsoa_a2->,.0004*jno2]       soa_a2 + hv ->
       End Photolysis
 
       Reactions
@@ -112,6 +118,10 @@
 [DMS_OHa]              DMS + OH  -> SO2                                         ; 9.6e-12, -234 
 [usr_DMS_OH]           DMS + OH  -> 0.5*SO2 + 0.5*HO2                            
 [usr_SO2_OH]           SO2 + OH  -> H2SO4                                        
+**************
+*** new SOAG intermediate (1-day lifetime: k=1.157e-5; 2-days: k=5.787e-06)
+**************
+[SOAE_tau]           SOAE -> SOAG                ;1.157e-5
       End Reactions
 
       Ext Forcing
