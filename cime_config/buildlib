@@ -12,7 +12,7 @@ _CIMEROOT = os.environ.get("CIMEROOT")
 if _CIMEROOT is None:
     raise SystemExit("ERROR: must set CIMEROOT environment variable")
 
-_LIBDIR = os.path.join(_CIMEROOT, "scripts", "Tools")
+_LIBDIR = os.path.join(_CIMEROOT, "CIME", "Tools")
 sys.path.append(_LIBDIR)
 
 from standard_script_setup import *
@@ -99,7 +99,7 @@ def _build_cam(caseroot, libroot, bldroot):
         complib  = os.path.join(libroot, "libatm.a")
         makefile = os.path.join(casetools, "Makefile")
 
-        cmd = "{} complib -j {} MODEL=cam COMPLIB={} -f {} {} " \
+        cmd = "{} complib -j {} COMP_NAME=cam COMPLIB={} -f {} {} " \
             .format(gmake, gmake_j, complib, makefile, get_standard_makefile_args(case))
         if cam_cppdefs:
             cmd += " USER_CPPDEFS='{}'".format(cam_cppdefs)

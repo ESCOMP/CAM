@@ -57,7 +57,7 @@ module clubb_intr
   ! Public interfaces !
   ! ----------------- !
 
-  public :: clubb_ini_cam, clubb_register_cam, clubb_tend_cam, &
+  public :: clubb_ini_cam, clubb_register_cam, clubb_tend_cam, clubb_emissions_cam, &
 #ifdef CLUBB_SGS
             ! This utilizes CLUBB specific variables in its interface
             stats_init_clubb, &
@@ -4318,7 +4318,62 @@ end subroutine clubb_init_cnst
     return
 #endif
   end subroutine clubb_tend_cam
-    
+
+  subroutine clubb_emissions_cam (state, cam_in, ptend)
+
+  !-------------------------------------------------------------------------------
+  ! Description: Apply surface fluxes of constituents to lowest model level
+  !              except water vapor (applied in clubb_tend_cam)
+  !
+  ! Author: Adam Herrington, November 2022
+  ! Origin: Based on E3SM's clubb_surface subroutine
+  ! References:
+  !   None
+  !-------------------------------------------------------------------------------
+  use physics_types,      only: physics_ptend, physics_ptend_init, physics_state
+  use constituents,       only: cnst_type
+  use camsrfexch,         only: cam_in_t
+
+  ! --------------- !
+  ! Input Arguments !
+  ! --------------- !
+  type(physics_state), intent(in)  :: state                     ! Physics state variables
+  type(cam_in_t),      intent(in)  :: cam_in                    ! Surface inputs
+
+  ! ---------------------- !
+  ! Output Arguments       !
+  ! ---------------------- !
+  type(physics_ptend), intent(out) :: ptend                      ! Individual parameterization tendencies
+
+  ! --------------- !
+  ! Local Variables !
+  ! --------------- !
+  integer  :: m, ncol                                 
+  logical  :: lq(pcnst)
+
+  ! ----------------------- !
+  ! Main Computation Begins !
+  ! ----------------------- !
+  ncol = state%ncol
+
+  lq(1) = .false.
+  lq(2:) = .true.
+  call physics_ptend_init(ptend,state%psetcols, "clubb emissions", lq=lq)
+
+  ! Apply tracer fluxes to lowest model level (except water vapor)
+  do m = 2,pcnst
+    ptend%q(:ncol,pver,m) = cam_in%cflx(:ncol,m)*state%rpdel(:ncol,pver)*gravit
+  end do
+
+  ! Convert tendencies of dry constituents to dry basis.
+  do m = 2,pcnst
+     if (cnst_type(m).eq.'dry') then
+        ptend%q(:ncol,pver,m) = ptend%q(:ncol,pver,m)*state%pdel(:ncol,pver)*state%rpdeldry(:ncol,pver)
+     endif
+  end do
+
+  end subroutine clubb_emissions_cam  
+
   ! =============================================================================== !
   !                                                                                 !
   ! =============================================================================== !

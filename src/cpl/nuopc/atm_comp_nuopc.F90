@@ -364,14 +364,13 @@ contains
     real(r8)                :: obliqr
     real(r8)                :: lambm0
     real(r8)                :: mvelpp
-    logical                 :: dart_mode_in
     !character(len=cl)      :: atm_resume_all_inst(num_inst_atm) ! atm resume file
     integer                 :: lbnum
     character(CS)           :: inst_name
     integer                 :: inst_index
     character(CS)           :: inst_suffix
     integer                 :: lmpicom
-    logical                 :: isPresent
+    logical                 :: isPresent, isSet
     character(len=512)      :: diro
     character(len=512)      :: logfile
     integer                 :: compid                            ! component id
@@ -529,14 +528,6 @@ contains
     ! TODO: must obtain model_doi_url from gcomp - for now hardwire to 'not_set'
     model_doi_url = 'not_set'
 
-    ! TODO: obtain dart_mode as a attribute variable
-    ! DART always starts up as an initial run.
-    if (dart_mode) then
-       initial_run = .true.
-       restart_run = .false.
-       branch_run  = .false.
-    end if
-
     ! Initialize CAM, allocate cam_in and cam_out and determine
     ! atm decomposition (needed to initialize gsmap)
     ! for an initial run, cam_in and cam_out are allocated in cam_init
@@ -556,6 +547,19 @@ contains
        branch_run = .true.
     else
        call shr_sys_abort( subname//' ERROR: unknown start_type' )
+    end if
+
+    ! DART always starts up as an initial run.
+    call NUOPC_CompAttributeGet(gcomp, name='data_assimilation_atm', value=cvalue, &
+         isPresent=isPresent, isSet=isSet, rc=rc)
+    if (ChkErr(rc,__LINE__,u_FILE_u)) return
+    if (isPresent .and. isSet) then
+       read(cvalue,*) dart_mode
+    end if
+    if (dart_mode) then
+       initial_run = .true.
+       restart_run = .false.
+       branch_run  = .false.
     end if
 
     ! Get properties from clock
@@ -595,7 +599,6 @@ contains
     end if
 
     ! Initialize module orbital values and update orbital
-
     call cam_orbital_init(gcomp, iulog, masterproc, rc)
     if (ChkErr(rc,__LINE__,u_FILE_u)) return
     call cam_orbital_update(clock, iulog, masterproc, eccen, obliqr, lambm0, mvelpp, rc)
@@ -1482,6 +1485,7 @@ contains
     integer           :: year     ! model year at current time
     integer           :: orb_year ! orbital year for current orbital computation
     character(len=CL) :: msgstr   ! temporary
+    logical, save     :: logprint = .true.
     character(len=*) , parameter :: subname = "(cam_orbital_update)"
     !-------------------------------------------
 
@@ -1496,10 +1500,14 @@ contains
     else
        orb_year = orb_iyear
     end if
-
+    if(.not. (logprint .and. mastertask)) then
+       logprint = .false.
+    endif
+    
     eccen = orb_eccen
-    call shr_orb_params(orb_year, eccen, orb_obliq, orb_mvelp, obliqr, lambm0, mvelpp, mastertask)
 
+    call shr_orb_params(orb_year, eccen, orb_obliq, orb_mvelp, obliqr, lambm0, mvelpp, logprint)
+    logprint = .false.
     if ( eccen  == SHR_ORB_UNDEF_REAL .or. obliqr == SHR_ORB_UNDEF_REAL .or. &
          mvelpp == SHR_ORB_UNDEF_REAL .or. lambm0 == SHR_ORB_UNDEF_REAL) then
        write (msgstr, *) subname//' ERROR: orb params incorrect'
