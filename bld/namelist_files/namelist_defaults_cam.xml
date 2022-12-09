@@ -785,6 +785,8 @@
 
 <!-- For MEGAN VOCs -->
 <megan_factors_file>atm/cam/chem/trop_mozart/emis/megan21_emis_factors_78pft_c20161108.nc</megan_factors_file>
+<!-- For ocean emissions -->
+<ocean_salinity_file>atm/cam/chem/ocnexch/SSS_recooked_0-360_c171120.nc</ocean_salinity_file>
 
 <!-- Airplane emissions -->
 <airpl_emis_file>atm/cam/chem/trop_mozart/emis/emissions.aircraft.T42LR.nc</airpl_emis_file>
