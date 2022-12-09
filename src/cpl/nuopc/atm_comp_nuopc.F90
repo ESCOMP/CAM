@@ -18,7 +18,7 @@ module atm_comp_nuopc
   use NUOPC_Model         , only : NUOPC_ModelGet
   use shr_kind_mod        , only : r8=>shr_kind_r8, i8=>shr_kind_i8, cl=>shr_kind_cl, cs=>shr_kind_cs
   use shr_sys_mod         , only : shr_sys_abort
-  use shr_file_mod        , only : shr_file_getlogunit, shr_file_setlogunit
+  use shr_log_mod        , only : shr_log_getlogunit, shr_log_setlogunit
   use shr_cal_mod         , only : shr_cal_noleap, shr_cal_gregorian, shr_cal_ymd2date
   use shr_const_mod       , only : shr_const_pi
   use shr_orb_mod         , only : shr_orb_decl, shr_orb_params, SHR_ORB_UNDEF_REAL, SHR_ORB_UNDEF_INT
@@ -218,7 +218,7 @@ contains
     call set_component_logging(gcomp, localpet==0, iulog, shrlogunit, rc)
     if (ChkErr(rc,__LINE__,u_FILE_u)) return
 
-    call shr_file_setLogUnit (shrlogunit)
+    call shr_log_setLogUnit (iulog)
 
     !----------------------------------------------------------------------------
     ! advertise import/export fields
@@ -391,7 +391,7 @@ contains
        call ESMF_LogWrite(subname//' called', ESMF_LOGMSG_INFO)
     end if
 
-    call shr_file_setLogUnit (iulog)
+    call shr_log_setLogUnit (iulog)
 
     !----------------------------------------------------------------------------
     ! generate local mpi comm
@@ -745,7 +745,7 @@ contains
 
     end if ! end of mediator_present if-block
 
-    call shr_file_setLogUnit (shrlogunit)
+    call shr_log_setLogUnit (shrlogunit)
 
 #if (defined _MEMTRACE)
     if(masterproc) then
@@ -791,8 +791,8 @@ contains
        call ESMF_LogWrite(subname//' called', ESMF_LOGMSG_INFO)
     end if
 
-    call shr_file_getLogUnit (shrlogunit)
-    call shr_file_setLogUnit (iulog)
+    call shr_log_getLogUnit (shrlogunit)
+    call shr_log_setLogUnit (iulog)
 
 #if (defined _MEMTRACE)
     if (masterproc) then
@@ -943,7 +943,7 @@ contains
     end if
 
     ! End redirection of share output to cam log
-    call shr_file_setLogUnit (shrlogunit)
+    call shr_log_setLogUnit (shrlogunit)
 
 #if (defined _MEMTRACE)
     if(masterproc) then
@@ -1009,8 +1009,8 @@ contains
 
 !$  call omp_set_num_threads(nthrds)
 
-    call shr_file_getLogUnit (shrlogunit)
-    call shr_file_setLogUnit (iulog)
+    call shr_log_getLogUnit (shrlogunit)
+    call shr_log_setLogUnit (iulog)
 
 #if (defined _MEMTRACE)
     if(masterproc) then
@@ -1205,7 +1205,7 @@ contains
     ! Reset shr logging to my original values
     !--------------------------------
 
-    call shr_file_setLogUnit (shrlogunit)
+    call shr_log_setLogUnit (shrlogunit)
 
   end subroutine ModelAdvance
 
@@ -1349,10 +1349,10 @@ contains
 
     rc = ESMF_SUCCESS
 
-    call cam_final( cam_out, cam_in )
+    call shr_log_getLogUnit (shrlogunit)
+    call shr_log_setLogUnit (iulog)
 
-    call shr_file_getLogUnit (shrlogunit)
-    call shr_file_setLogUnit (iulog)
+    call cam_final( cam_out, cam_in )
 
     if (masterproc) then
        write(iulog,F91)
@@ -1360,7 +1360,7 @@ contains
        write(iulog,F91)
     end if
 
-    call shr_file_setLogUnit (shrlogunit)
+    call shr_log_setLogUnit (shrlogunit)
 
   end subroutine ModelFinalize
 
