@@ -2150,7 +2150,7 @@ if (($chem =~ /_mam4/ or $chem =~ /_mam5/) and ($phys =~ /cam6/ or $phys =~ /cam
                 'num_a4_oc_srf_file'  => 'num_a4',
                 'num_a4_bb_srf_file'  => 'num_a4',
                 'num_pom_bb_srf_file' => 'num_a4' );
-    if ($chem ne 'trop_mam4') {
+    if ($chem ne 'trop_mam4' or $aqua_mode or $scam) {
        %species = (%species,
 		'dms_ot_srf_file'     => 'DMS' );
     }
@@ -2381,7 +2381,7 @@ if (($chem =~ /_mam4/ or $chem =~ /_mam5/) and ($phys =~ /cam6/ or $phys =~ /cam
     }
 
     # MEGAN emissions
-    if ($chem eq 'trop_mam4' ){
+    if ($chem eq 'trop_mam4' and !$aqua_mode and !$scam){
         my $val = "'SOAE = 1.2021*isoprene + 6.6625*carene_3 + 6.6625*pinene_a + 6.6625*thujene_a + 6.6625*bornene "
                 . "+ 6.6625*terpineol_4 + 6.6625*terpineol_a + 6.6625*terpinyl_ACT_a + 6.6625*myrtenal + 6.6625*sabinene "
                 . "+ 6.6625*pinene_b + 6.6625*camphene + 6.6625*fenchene_a + 6.6625*limonene + 6.6625*phellandrene_a "
