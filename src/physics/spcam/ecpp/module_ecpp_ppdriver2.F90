@@ -711,7 +711,7 @@ end type ptr2d_t
         idiagaa_ecpp(131:135) = 1
         idiagaa_ecpp(141:143) = 1
 
-	idiagaa_ecpp(155) = 1
+	idiagaa_ecpp(155) = -1
 	idiagaa_ecpp(161) = 1 ; idiagaa_ecpp(162) = 1 ; idiagaa_ecpp(164) = 1
 
         idiagaa_ecpp(131:135) = -1  ! not output in the MMF model
