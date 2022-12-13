@@ -20,7 +20,7 @@ jobs:
     # acquire specific version of python
     - name: Set up Python 3.10
       if: github.repository == 'ESCOMP/CAM' #Only run on main repo
-      uses: actions/setup-python@v1
+      uses: actions/setup-python@v4
       with:
         python-version: '3.10' # Semantic version range syntax or exact version of a Python version
     # install required python packages
