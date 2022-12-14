@@ -3665,7 +3665,11 @@ end subroutine clubb_init_cnst
       te_b(i) = te_b(i) + (cam_in%shf(i)+cam_in%cflx(i,1)*(latvap+latice)) * hdtime      
 
       ! Compute the disbalance of total energy, over depth where CLUBB is active
-      se_dis(i) = (te_a(i) - te_b(i))/(state1%pint(i,pverp)-state1%pint(i,clubbtop(i)))
+      if(clubbtop(i) .ne. pverp) then
+         se_dis(i) = (te_a(i) - te_b(i))/(state1%pint(i,pverp)-state1%pint(i,clubbtop(i)))
+      else
+         se_dis(i) = 0._r8
+      endif
     end do
 
     ! Fix the total energy coming out of CLUBB so it achieves energy conservation.
