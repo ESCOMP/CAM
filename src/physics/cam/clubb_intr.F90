@@ -544,7 +544,7 @@ module clubb_intr
     call pbuf_add_field('THLPTHVP',   'global', dtype_r8, (/pcols,pverp/), thlpthvp_idx)
     call pbuf_add_field('CLOUD_FRAC', 'global', dtype_r8, (/pcols,pverp/), cloud_frac_idx)
     call pbuf_add_field('ISS_FRAC',   'global',  dtype_r8, (/pcols,pverp/), ice_supersat_idx)
-    call pbuf_add_field('RCM',        'global', dtype_r8, (/pcols,pverp/), rcm_idx)
+    call pbuf_add_field('RCM',        'physpkg', dtype_r8, (/pcols,pverp/), rcm_idx)
     call pbuf_add_field('ZTODT',      'physpkg', dtype_r8, (/pcols/),       ztodt_idx)
     call pbuf_add_field('WP2RTP',     'global', dtype_r8, (/pcols,pverp/), wp2rtp_idx)
     call pbuf_add_field('WP2THLP',    'global', dtype_r8, (/pcols,pverp/), wp2thlp_idx)
@@ -3016,6 +3016,7 @@ end subroutine clubb_init_cnst
 
     !  Other Surface fluxes provided by host model
     if( (cld_macmic_num_steps > 1) .and. (clubb_l_intr_sfc_flux_smooth) ) then
+       ! Adjust surface stresses using winds from the prior macmic iteration
        do i=1,ncol
           ubar = sqrt(state1%u(i,pver)**2+state1%v(i,pver)**2)
           if (ubar <  0.25_r8) ubar = 0.25_r8
@@ -4201,52 +4202,46 @@ end subroutine clubb_init_cnst
  
     !  Output calls of variables goes here
     call outfld( 'RELVAR',           relvar,                pcols, lchnk )
-    call outfld( 'RHO_CLUBB',        rho,                   pcols, lchnk )
+    call outfld( 'RHO_CLUBB',        rho(:,1:pver),         pcols, lchnk )
     call outfld( 'WP2_CLUBB',        wp2,                   pcols, lchnk )
     call outfld( 'UP2_CLUBB',        up2,                   pcols, lchnk )
     call outfld( 'VP2_CLUBB',        vp2,                   pcols, lchnk )
-    call outfld( 'WP3_CLUBB',        wp3_output,            pcols, lchnk )
+    call outfld( 'WP3_CLUBB',        wp3_output(:,1:pver),  pcols, lchnk )
     call outfld( 'UPWP_CLUBB',       upwp,                  pcols, lchnk )
     call outfld( 'VPWP_CLUBB',       vpwp,                  pcols, lchnk )
     call outfld( 'WPTHLP_CLUBB',     wpthlp_output,         pcols, lchnk )
     call outfld( 'WPRTP_CLUBB',      wprtp_output,          pcols, lchnk )
-
-    temp2dp(:ncol,:) =  rtp2(:ncol,:)*1.0e6_r8
-    call outfld( 'RTP2_CLUBB',       temp2dp,                 pcols, lchnk )
-
-    rtpthlp_output(:ncol,:) = rtpthlp_output(:ncol,:) * 1000._r8
-    call outfld( 'RTPTHLP_CLUBB',    rtpthlp_output,          pcols, lchnk )
-
-    temp2dp(:ncol,:) = rcm(:ncol,:) * 1000._r8
-    call outfld( 'RCM_CLUBB',        temp2dp,                 pcols, lchnk )
+    call outfld( 'RTP2_CLUBB',       rtp2,                  pcols, lchnk )
+    call outfld( 'RTPTHLP_CLUBB',    rtpthlp_output,        pcols, lchnk )
+    call outfld( 'RCM_CLUBB',        rcm(:,1:pver),         pcols, lchnk )
+    call outfld( 'RTM_CLUBB',        rtm(:,1:pver),         pcols, lchnk )
+    call outfld( 'THLM_CLUBB',       thlm(:,1:pver),        pvols, lchnk )
 
     temp2dp(:ncol,:) = wprcp(:ncol,:) * latvap
     call outfld( 'WPRCP_CLUBB',      temp2dp,                 pcols, lchnk )
 
-    temp2dp(:ncol,:) = rcm_in_layer(:ncol,:) * 1000._r8
-    call outfld( 'RCMINLAYER_CLUBB', temp2dp,                 pcols, lchnk )
-
     temp2dp(:ncol,:) = wpthvp(:ncol,:) * cpair
     call outfld( 'WPTHVP_CLUBB',     temp2dp,                 pcols, lchnk )
 
-    call outfld( 'RTP2_ZT_CLUBB',    rtp2_zt_out,           pcols, lchnk )
-    call outfld( 'THLP2_ZT_CLUBB',   thl2_zt_out,           pcols, lchnk )
-    call outfld( 'WP2_ZT_CLUBB',     wp2_zt_out,            pcols, lchnk )
-    call outfld( 'PDFP_RTP2_CLUBB',  pdfp_rtp2,             pcols, lchnk )
-    call outfld( 'THLP2_CLUBB',      thlp2,                 pcols, lchnk )
-    call outfld( 'CLOUDFRAC_CLUBB',  alst,                  pcols, lchnk )
-    call outfld( 'CLOUDCOVER_CLUBB', cloud_frac,            pcols, lchnk )
-    call outfld( 'ZT_CLUBB',         zt_out,                pcols, lchnk )
-    call outfld( 'ZM_CLUBB',         zi_out,                pcols, lchnk )
-    call outfld( 'UM_CLUBB',         um,                    pcols, lchnk )
-    call outfld( 'VM_CLUBB',         vm,                    pcols, lchnk )
-    call outfld( 'WM_ZT_CLUBB',      wm_zt_out,             pcols, lchnk )
-    call outfld( 'CONCLD',           concld,                pcols, lchnk )
-    call outfld( 'DP_CLD',           deepcu,                pcols, lchnk )
-    call outfld( 'ZMDLF',            dlf_liq_out,           pcols, lchnk )
-    call outfld( 'ZMDLFI',           dlf_ice_out,           pcols, lchnk )
-    call outfld( 'CLUBB_GRID_SIZE',  grid_dx,               pcols, lchnk )
-    call outfld( 'QSATFAC',          qsatfac,               pcols, lchnk)
+    call outfld( 'RTP2_ZT_CLUBB',    rtp2_zt_out(:,1:pver),   pcols, lchnk )
+    call outfld( 'THLP2_ZT_CLUBB',   thl2_zt_out(:,1:pver),   pcols, lchnk )
+    call outfld( 'WP2_ZT_CLUBB',     wp2_zt_out(:,1:pver),    pcols, lchnk )
+    call outfld( 'PDFP_RTP2_CLUBB',  pdfp_rtp2,               pcols, lchnk )
+    call outfld( 'THLP2_CLUBB',      thlp2,                   pcols, lchnk )
+    call outfld( 'RCMINLAYER_CLUBB', rcm_in_layer(:,1:pver),  pcols, lchnk )
+    call outfld( 'CLOUDFRAC_CLUBB',  alst,                    pcols, lchnk )
+    call outfld( 'CLOUDCOVER_CLUBB', cloud_frac(:,1:pver),    pcols, lchnk )
+    call outfld( 'ZT_CLUBB',         zt_out(:,1:pver),        pcols, lchnk )
+    call outfld( 'ZM_CLUBB',         zi_out,                  pcols, lchnk )
+    call outfld( 'UM_CLUBB',         um(:,1:pver),            pcols, lchnk )
+    call outfld( 'VM_CLUBB',         vm(:,1:pver),            pcols, lchnk )
+    call outfld( 'WM_ZT_CLUBB',      wm_zt_out(:,1:pver),     pcols, lchnk )
+    call outfld( 'CONCLD',           concld,                  pcols, lchnk )
+    call outfld( 'DP_CLD',           deepcu,                  pcols, lchnk )
+    call outfld( 'ZMDLF',            dlf_liq_out,             pcols, lchnk )
+    call outfld( 'ZMDLFI',           dlf_ice_out,             pcols, lchnk )
+    call outfld( 'CLUBB_GRID_SIZE',  grid_dx,                 pcols, lchnk )
+    call outfld( 'QSATFAC',          qsatfac,                 pcols, lchnk)
 
    
     ! --------------------------------------------------------------- !
