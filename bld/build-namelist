@@ -1646,7 +1646,8 @@ if ($chem =~ /waccm_sc/) {
         add_default($nl, 'waccm_forcing_type', 'val'=>'CYCLICAL');
         add_default($nl, 'waccm_forcing_cycle_yr');
     }
-    add_default($nl, 'nlte_use_mo', 'val'=>".false.");
+    add_default($nl, 'nlte_use_mo',      'val'=>".false.");
+    add_default($nl, 'nlte_use_aliarms', 'val'=>".false.");
     add_default($nl, 'h2orates');
     add_default($nl, 'solar_parms_data_file');
 }
