@@ -1658,7 +1658,8 @@ contains
               fvm(ie)%budget(1:nc,1:nc,7,state_ind)=fvm(ie)%budget(1:nc,1:nc,7,state_ind)/gravit
            end if
         else
-           call util_function(elem(ie)%state%qdp(:,:,:,1,tl_qdp),np,nlev,name_out3,ie)
+          cdp = elem(ie)%state%qdp(:,:,:,1,tl_qdp)
+           call util_function(cdp,np,nlev,name_out3,ie)
            do j = 1, np
               do i = 1, np
                  elem(ie)%derived%budget(i,j,4,state_ind) = elem(ie)%derived%budget(i,j,4,state_ind) + sum(cdp(i,j,:)/gravit)
@@ -1672,7 +1673,7 @@ contains
              do idx = 1,thermodynamic_active_species_liq_num
                cdp = cdp + elem(ie)%state%qdp(:,:,:,thermodynamic_active_species_liq_idx(idx),tl_qdp)
              end do
-             call util_function(elem(ie)%state%qdp(:,:,:,ixcldliq,tl_qdp),np,nlev,name_out4,ie)
+             call util_function(cdp,np,nlev,name_out4,ie)
              do j = 1, np
                do i = 1, np
                  elem(ie)%derived%budget(i,j,5,state_ind) = elem(ie)%derived%budget(i,j,5,state_ind) + sum(cdp(i,j,:)/gravit)
@@ -1687,7 +1688,7 @@ contains
              do idx = 1,thermodynamic_active_species_ice_num
                cdp = cdp + elem(ie)%state%qdp(:,:,:,thermodynamic_active_species_ice_idx(idx),tl_qdp)
              end do
-             call util_function(elem(ie)%state%qdp(:,:,:,ixcldice,tl_qdp),np,nlev,name_out5,ie)
+             call util_function(cdp,np,nlev,name_out5,ie)
              do j = 1, np
                do i = 1, np
                  elem(ie)%derived%budget(i,j,6,state_ind) = elem(ie)%derived%budget(i,j,6,state_ind) + sum(cdp(i,j,:)/gravit)
@@ -1695,7 +1696,8 @@ contains
              end do
            end if
            if (ixtt>0) then
-             call util_function(elem(ie)%state%qdp(:,:,:,ixtt    ,tl_qdp),np,nlev,name_out6,ie)
+             cdp = elem(ie)%state%qdp(:,:,:,ixtt    ,tl_qdp)
+             call util_function(cdp,np,nlev,name_out6,ie)
              do j = 1, np
                do i = 1, np
                  elem(ie)%derived%budget(i,j,7,state_ind) = elem(ie)%derived%budget(i,j,7,state_ind) + sum(cdp(i,j,:)/gravit)
