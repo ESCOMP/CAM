@@ -4063,7 +4063,7 @@ Maximum magnitude of skewness allowed.
 <entry id="clubb_tridiag_solve_method" type="integer" category="pblrad"
        group="clubb_params_nl" valid_values="" >
 Specifier for method to solve tri-diagonal systems that are common in CLUBB.
-Valid values: 0 (lapack), 1 (penta_lu), 2 (penta_bicgstab)
+Experimental option and currently the only valid value is 1: lapack
 </entry>
 
 <entry id="clubb_up2_sfc_coef" type="real" category="pblrad"
