@@ -18,14 +18,23 @@
          },
          {
             "name": "O3",
-            "netcdf files": ["data/cross_sections/O3_1.nc","data/cross_sections/O3_2.nc","data/cross_sections/O3_3.nc","data/cross_sections/O3_4.nc"],
+            "netcdf files": [
+              { "file path": "data/cross_sections/O3_1.nc" },
+              { "file path": "data/cross_sections/O3_2.nc" },
+              { "file path": "data/cross_sections/O3_3.nc" },
+              { "file path": "data/cross_sections/O3_4.nc" }
+            ],
             "type": "O3"
          },
          {
             "name": "O2",
-            "netcdf files": ["data/cross_sections/O2_1.nc"],
-            "type": "base",
-            "lower extrapolation": { "type": "boundary" }
+            "netcdf files": [
+              {
+                "file path": "data/cross_sections/O2_1.nc",
+                "lower extrapolation": { "type": "boundary" }
+              }
+            ],
+            "type": "base"
          }
       ],
       "radiators": [
@@ -58,9 +67,13 @@
             "name": "jo2",
             "__reaction": "O2 + hv -> O + O",
             "cross section": {
-               "netcdf files": ["data/cross_sections/O2_1.nc"],
-               "type": "base",
-               "lower extrapolation": { "type": "boundary" }
+               "netcdf files": [
+                 {
+                   "file path": "data/cross_sections/O2_1.nc",
+                   "lower extrapolation": { "type": "boundary" }
+                 }
+               ],
+               "type": "base"
             },
             "quantum yield": {
                "type": "base",
@@ -71,7 +84,12 @@
             "name": "jo1d",
             "__reaction": "O3 + hv -> O2 + O(1D)",
             "cross section": {
-               "netcdf files": ["data/cross_sections/O3_1.nc","data/cross_sections/O3_2.nc","data/cross_sections/O3_3.nc","data/cross_sections/O3_4.nc"],
+               "netcdf files": [
+                 { "file path": "data/cross_sections/O3_1.nc" },
+                 { "file path": "data/cross_sections/O3_2.nc" },
+                 { "file path": "data/cross_sections/O3_3.nc" },
+                 { "file path": "data/cross_sections/O3_4.nc" }
+               ],
                "type": "O3"
             },
             "quantum yield": {
@@ -82,7 +100,12 @@
             "name": "jo3p",
             "__reaction": "O3 + hv -> O2 + O(3P)",
             "cross section": {
-               "netcdf files": ["data/cross_sections/O3_1.nc","data/cross_sections/O3_2.nc","data/cross_sections/O3_3.nc","data/cross_sections/O3_4.nc"],
+               "netcdf files": [
+                 { "file path": "data/cross_sections/O3_1.nc" },
+                 { "file path": "data/cross_sections/O3_2.nc" },
+                 { "file path": "data/cross_sections/O3_3.nc" },
+                 { "file path": "data/cross_sections/O3_4.nc" }
+               ],
                "type": "O3"
             },
             "quantum yield": {
@@ -104,7 +127,9 @@
             "name": "jno2",
             "__reaction": "NO2 + hv -> NO + O(3P)",
             "cross section": {
-               "netcdf files": ["data/cross_sections/NO2_1.nc"],
+               "netcdf files": [
+                 { "file path": "data/cross_sections/NO2_1.nc" }
+               ],
                "type": "NO2 tint"
             },
             "quantum yield": {
@@ -118,8 +143,8 @@
             "__reaction": "N2O5 + hv -> NO2 + NO3",
             "cross section": {
                "netcdf files": [
-                  "data/cross_sections/N2O5_1.nc",
-                  "data/cross_sections/N2O5_2.nc"
+                 { "file path": "data/cross_sections/N2O5_1.nc" },
+                 { "file path": "data/cross_sections/N2O5_2.nc" }
                ],
                "type": "N2O5+hv->NO2+NO3"
             },
@@ -133,7 +158,7 @@
             "__reaction": "HNO3 + hv -> OH + NO2",
             "cross section": {
                "netcdf files": [
-                  "data/cross_sections/HNO3_1.nc"
+                 { "file path": "data/cross_sections/HNO3_1.nc" }
                ],
                "type": "HNO3+hv->OH+NO2"
             },
@@ -147,13 +172,13 @@
             "__reaction": "NO3 + hv -> NO2 + O(3P)",
             "cross section": {
                "netcdf files": [
-                  "data/cross_sections/NO3_1.nc"
+                 { "file path": "data/cross_sections/NO3_1.nc" }
                ],
                "type": "base"
             },
             "quantum yield": {
                "netcdf files": [
-                  "data/quantum_yields/NO3-NO2+O(3P)_1.nc"
+                 "data/quantum_yields/NO3-NO2+O(3P)_1.nc"
                ],
                "type": "tint",
                "lower extrapolation": {
@@ -167,7 +192,7 @@
             "__reaction": "NO3 + hv -> NO + O2",
             "cross section": {
                "netcdf files": [
-                  "data/cross_sections/NO3_1.nc"
+                 { "file path": "data/cross_sections/NO3_1.nc" }
                ],
                "type": "base"
             },
@@ -183,7 +208,7 @@
             "__reaction": "CH3OOH + hv -> CH3O + OH",
             "cross section": {
                "netcdf files": [
-                  "data/cross_sections/CH3OOH_1.nc"
+                 { "file path": "data/cross_sections/CH3OOH_1.nc" }
                ],
                "type": "base"
             },
@@ -197,7 +222,7 @@
             "__reaction": "CH2O + hv -> H + HCO",
             "cross section": {
                "netcdf files": [
-                  "data/cross_sections/CH2O_1.nc"
+                 { "file path": "data/cross_sections/CH2O_1.nc" }
                ],
                "type": "CH2O"
             },
@@ -216,7 +241,7 @@
             "__reaction": "CH2O + hv -> H2 + CO",
             "cross section": {
                "netcdf files": [
-                  "data/cross_sections/CH2O_1.nc"
+                 { "file path": "data/cross_sections/CH2O_1.nc" }
                ],
                "type": "CH2O"
             },
@@ -235,7 +260,7 @@
             "__reaction": "H2O2 + hv -> OH + OH",
             "cross section": {
                "netcdf files": [
-                  "data/cross_sections/H2O2_1.nc"
+                 { "file path": "data/cross_sections/H2O2_1.nc" }
                ],
                "type": "H2O2+hv->OH+OH"
             },
@@ -249,7 +274,7 @@
             "__reaction": "CH3CHO + hv -> CH3 + HCO",
             "cross section": {
                "netcdf files": [
-                  "data/cross_sections/CH3CHO_1.nc"
+                 { "file path": "data/cross_sections/CH3CHO_1.nc" }
                ],
                "type": "base"
             },
@@ -265,7 +290,7 @@
             "__reaction": "PAN + hv -> 0.6*CH3CO3 + 0.6*NO2 + 0.4*CH3O2 + 0.4*NO3 + 0.4*CO2",
             "cross section": {
                "netcdf files": [
-                  "data/cross_sections/PAN_1.nc"
+                 { "file path": "data/cross_sections/PAN_1.nc" }
                ],
                "type": "CH3ONO2+hv->CH3O+NO2"
             },
@@ -279,7 +304,7 @@
             "__reaction": "MVK + hv -> 0.7*C3H6 + 0.7*CO + 0.3*CH3O2 + 0.3*CH3CO3",
             "cross section": {
                "netcdf files": [
-                  "data/cross_sections/MVK_1.nc"
+                 { "file path": "data/cross_sections/MVK_1.nc" }
                ],
                "type": "base"
             },
@@ -291,7 +316,9 @@
             "name": "jacet",
             "__reaction": "CH3COCH3 + hv -> CH3CO + CH3",
             "cross section": {
-               "netcdf files": ["data/cross_sections/CH3COCH3_1.nc"],
+               "netcdf files": [
+                 { "file path": "data/cross_sections/CH3COCH3_1.nc" }
+               ],
                "type": "CH3COCH3+hv->CH3CO+CH3"
             },
             "quantum yield": {
@@ -303,7 +330,7 @@
             "__reaction": "CH3COCHO + hv -> CH3CO3 + CO + HO2",
             "cross section": {
                "netcdf files": [
-                  "data/cross_sections/CH3COCHO_1.nc"
+                 { "file path": "data/cross_sections/CH3COCHO_1.nc" }
                ],
                "type": "base"
             },
@@ -316,7 +343,7 @@
             "__reaction": "GLYALD + hv -> 2*HO2 + CO + CH2O",
             "cross section": {
                "netcdf files": [
-                  "data/cross_sections/HOCH2CHO_1.nc"
+                 { "file path": "data/cross_sections/HOCH2CHO_1.nc" }
                ],
                "type": "base"
             },
@@ -331,7 +358,7 @@
             "__comments": "TODO the products of this reaction don't exactly match",
             "cross section": {
                "netcdf files": [
-                  "data/cross_sections/CHOCHO_1.nc"
+                 { "file path": "data/cross_sections/CHOCHO_1.nc" }
                ],
                "type": "base"
             },
@@ -350,7 +377,9 @@
             "__reaction": "HNO4 + hv -> OH + NO3",
             "__comments": "TODO Doug's data sets have special temperature dependence - need new type?",
             "cross section": {
-               "netcdf files": ["data/cross_sections/HNO4_1.nc"],
+               "netcdf files": [
+                 { "file path": "data/cross_sections/HNO4_1.nc" }
+               ],
                "type": "base"
             },
             "quantum yield": {
@@ -363,7 +392,9 @@
             "__reaction": "HNO4 + hv -> HO2 + NO2",
             "__comments": "TODO Doug's data sets have special temperature dependence - need new type?",
             "cross section": {
-               "netcdf files": ["data/cross_sections/HNO4_1.nc"],
+               "netcdf files": [
+                 { "file path": "data/cross_sections/HNO4_1.nc" }
+               ],
                "type": "base"
             },
             "quantum yield": {
@@ -376,7 +407,9 @@
             "__reaction": "CH2=C(CH3)CHO->1.34HO2+0.66MCO3+1.34CH2O+CH3CO3",
             "__comments": "Methacrolein photolysis channel 1",
             "cross section": {
-               "netcdf files": ["data/cross_sections/MACR_JPL2006.nc"],
+               "netcdf files": [
+                 { "file path": "data/cross_sections/Methacrolein_1.nc" }
+               ],
                "type": "base"
             },
             "quantum yield": {
@@ -389,7 +422,9 @@
             "__reaction": "CH2=C(CH3)CHO->0.66OH+1.34CO",
             "__comments": "Methacrolein photolysis channel 2",
             "cross section": {
-               "netcdf files": ["data/cross_sections/MACR_JPL2006.nc"],
+               "netcdf files": [
+                 { "file path": "data/cross_sections/Methacrolein_1.nc" }
+               ],
                "type": "base"
             },
             "quantum yield": {
@@ -402,7 +437,9 @@
             "__reaction": "CH2(OH)COCH3->CH3CO3+HO2+CH2O",
             "__comments": "hydroxy acetone",
             "cross section": {
-               "netcdf files": ["data/cross_sections/HYAC.nc"],
+               "netcdf files": [
+                 { "file path": "data/cross_sections/Hydroxyacetone_1.nc" }
+               ],
                "type": "base"
             },
             "quantum yield": {
