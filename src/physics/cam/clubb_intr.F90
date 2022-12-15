@@ -2064,7 +2064,9 @@ end subroutine clubb_init_cnst
     real(r8) :: zo(pcols)                               ! roughness height                              [m]
     real(r8) :: dz_g(pcols,pver)                       ! thickness of layer                            [m]
     real(r8) :: relvarmax
-   
+
+    ! Local CLUBB variables dimensioned as NCOL (only useful columns) to be sent into the clubb run api
+    ! NOTE: THESE VARIABLS SHOULD NOT BE USED IN PBUF OR OUTFLD (HISTORY) SUBROUTINES
     real(r8), dimension(state%ncol) :: &
       fcor, &                  ! Coriolis forcing 			      	[s^-1]
       sfc_elevation, &    		          ! Elevation of ground			      	[m AMSL]			      	[m]
@@ -2083,6 +2085,8 @@ end subroutine clubb_init_cnst
     real(r8), dimension(state%ncol,edsclr_dim) :: &
       wpedsclrp_sfc        ! Eddy-scalar flux at surface                   [{units vary} m/s]
 
+    ! Local CLUBB variables dimensioned as NCOL (only useful columns) to be sent into the clubb run api
+    ! NOTE: THESE VARIABLS SHOULD NOT BE USED IN PBUF OR OUTFLD (HISTORY) SUBROUTINES
     real(r8), dimension(state%ncol,pverp+1-top_lev) :: &
       thlm_forcing,             & ! theta_l forcing (thermodynamic levels)      [K/s]
       rtm_forcing,              & ! r_t forcing (thermodynamic levels)          [(kg/kg)/s]	
@@ -2184,6 +2188,8 @@ end subroutine clubb_init_cnst
       zt_g,                     & ! Thermodynamic grid of CLUBB		      	[m]
       zi_g			                 ! Momentum grid of CLUBB		      	[m]
 
+    ! Local CLUBB variables dimensioned as NCOL (only useful columns) to be sent into the clubb run api
+    ! NOTE: THESE VARIABLS SHOULD NOT BE USED IN PBUF OR OUTFLD (HISTORY) SUBROUTINES
     real(r8), dimension(state%ncol,pverp+1-top_lev,sclr_dim) :: &
       sclrm_forcing,  & ! Passive scalar forcing              [{units vary}/s]
       sclrm,          & ! Passive scalar mean (thermo. levels)          [units vary]
@@ -2200,6 +2206,8 @@ end subroutine clubb_init_cnst
       edsclrm_forcing,  & ! Eddy passive scalar forcing         [{units vary}/s]
       edsclr_in           ! Scalars to be diffused through CLUBB 		[units vary]
 
+    ! Local CLUBB variables dimensioned as NCOL (only useful columns) to be sent into the clubb run api
+    ! NOTE: THESE VARIABLS SHOULD NOT BE USED IN PBUF OR OUTFLD (HISTORY) SUBROUTINES
     real(r8), dimension(state%ncol,pverp+1-top_lev,hydromet_dim) :: &
       hydromet,     &
       wphydrometp,  &
@@ -2208,6 +2216,7 @@ end subroutine clubb_init_cnst
       thlphmp_zt
 
     ! Variables below are needed to compute energy integrals for conservation
+    ! NOTE: Arrays of size PCOLS (all possible columns) can be used to access State, PBuf and History Subroutines
     real(r8) :: ke_a(pcols), ke_b(pcols), te_a(pcols), te_b(pcols)
     real(r8) :: wv_a(pcols), wv_b(pcols), wl_b(pcols), wl_a(pcols)
     real(r8) :: se_dis(pcols), se_a(pcols), se_b(pcols), clubb_s(pcols,pver)
@@ -2363,6 +2372,7 @@ end subroutine clubb_init_cnst
     logical                           :: apply_to_surface(pcols)
 
     ! MF outputs to outfld
+    ! NOTE: Arrays of size PCOLS (all possible columns) can be used to access State, PBuf and History Subroutines
     real(r8), dimension(pcols,pverp)     :: mf_dry_a_output,   mf_moist_a_output,   &
                                             mf_dry_w_output,   mf_moist_w_output,   &
                                             mf_dry_qt_output,  mf_moist_qt_output,  &
@@ -2376,6 +2386,7 @@ end subroutine clubb_init_cnst
                                             s_awu_output,      s_awv_output,        &
                                             mf_thlflx_output,  mf_qtflx_output
     ! MF Plume
+    ! NOTE: Arrays of size PCOLS (all possible columns) can be used to access State, PBuf and History Subroutines
     real(r8), dimension(pcols,pverp)     :: mf_dry_a,   mf_moist_a,    &
                                             mf_dry_w,   mf_moist_w,    &
                                             mf_dry_qt,  mf_moist_qt,   &
