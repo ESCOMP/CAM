@@ -3618,7 +3618,7 @@ end subroutine clubb_init_cnst
     !  active for informing where to apply the energy fixer.
     do i=1, ncol
       clubbtop(i) = top_lev
-      do while ((rtp2(i,clubbtop(i)) <= 1.e-15_r8 .and. rcm(i,clubbtop(i))  ==  0._r8))
+      do while ((rtp2(i,clubbtop(i)) <= 1.e-15_r8 .and. rcm(i,clubbtop(i))  ==  0._r8) .and. clubbtop(i) <  pver)
         clubbtop(i) = clubbtop(i) + 1
       end do    
     end do
@@ -3665,11 +3665,7 @@ end subroutine clubb_init_cnst
       te_b(i) = te_b(i) + (cam_in%shf(i)+cam_in%cflx(i,1)*(latvap+latice)) * hdtime      
 
       ! Compute the disbalance of total energy, over depth where CLUBB is active
-      if(clubbtop(i) .ne. pverp) then
-         se_dis(i) = (te_a(i) - te_b(i))/(state1%pint(i,pverp)-state1%pint(i,clubbtop(i)))
-      else
-         se_dis(i) = 0._r8
-      endif
+      se_dis(i) = (te_a(i) - te_b(i))/(state1%pint(i,pverp)-state1%pint(i,clubbtop(i)))
     end do
 
     ! Fix the total energy coming out of CLUBB so it achieves energy conservation.
