@@ -1833,7 +1833,6 @@
 <clubb_cloudtop_cooling                           > .false. </clubb_cloudtop_cooling>
 <clubb_rainevap_turb                              > .false. </clubb_rainevap_turb>
 <clubb_do_adv                                     > .false. </clubb_do_adv>
-<clubb_do_adv                           silhs="1" > .false. </clubb_do_adv>
 <clubb_timestep                                   > 300.0D0 </clubb_timestep>
 <clubb_rnevap_effic                               > 1.0D0   </clubb_rnevap_effic>
 <clubb_do_icesuper                                > .false. </clubb_do_icesuper>
