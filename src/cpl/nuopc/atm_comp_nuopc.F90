@@ -1503,6 +1503,7 @@ contains
     integer           :: year     ! model year at current time
     integer           :: orb_year ! orbital year for current orbital computation
     character(len=CL) :: msgstr   ! temporary
+    logical, save     :: logprint = .true.
     character(len=*) , parameter :: subname = "(cam_orbital_update)"
     !-------------------------------------------
 
@@ -1517,10 +1518,14 @@ contains
     else
        orb_year = orb_iyear
     end if
-
+    if(.not. (logprint .and. mastertask)) then
+       logprint = .false.
+    endif
+    
     eccen = orb_eccen
-    call shr_orb_params(orb_year, eccen, orb_obliq, orb_mvelp, obliqr, lambm0, mvelpp, mastertask)
 
+    call shr_orb_params(orb_year, eccen, orb_obliq, orb_mvelp, obliqr, lambm0, mvelpp, logprint)
+    logprint = .false.
     if ( eccen  == SHR_ORB_UNDEF_REAL .or. obliqr == SHR_ORB_UNDEF_REAL .or. &
          mvelpp == SHR_ORB_UNDEF_REAL .or. lambm0 == SHR_ORB_UNDEF_REAL) then
        write (msgstr, *) subname//' ERROR: orb params incorrect'
