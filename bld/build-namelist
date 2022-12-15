@@ -74,6 +74,11 @@ OPTIONS
      -use_case             Specify a use case.  Default: present day climatology
      -verbose [or -v]      Turn on verbose echoing of informational messages.
      -version              Echo the CVS tag name used to check out this CAM distribution.
+     -stream_ndep_year_first <n>             Only set from input options(no precedence)
+     -stream_ndep_year_last  <n>             Only set from input options(no precedence)
+     -stream_ndep_year_align <n>             Only set from input options(no precedence)
+     -stream_ndep_data_filename "filename"   Only set from input options(no precedence)
+     -stream_ndep_mesh_filename "filename"   Only set from input options(no precedence)
 
 Note: The precedence for setting the values of namelist variables is (highest to lowest):
       1. namelist values set by specific command-line options, i.e., -case,
@@ -125,6 +130,12 @@ my %opts = ( config         => $cfg_cache,
              dir            => $outdirname,
              silent         => 0,
              test           => 0,
+             #
+             stream_ndep_year_first    => 0,
+             stream_ndep_year_last     => 0,
+             stream_ndep_year_align    => 0,
+             stream_ndep_data_filename => "default",
+             stream_ndep_mesh_filename => "default",
             );
 
 GetOptions(
@@ -147,7 +158,13 @@ GetOptions(
     "v|verbose"                 => \$opts{'verbose'},
     "version"                   => \$opts{'version'},
     "cmeps"                     => \$opts{'cmeps'},
-)  or usage();
+    #
+    "stream_ndep_year_first=i"    => \$opts{'stream_ndep_year_first'},
+    "stream_ndep_year_last=i"     => \$opts{'stream_ndep_year_last'},
+    "stream_ndep_year_align=i"    => \$opts{'stream_ndep_year_align'},
+    "stream_ndep_data_filename=s" => \$opts{'stream_ndep_data_filename'},
+    "stream_ndep_mesh_filename=s" => \$opts{'stream_ndep_mesh_filename'},
+    )  or usage();
 
 # Give usage message.
 usage() if $opts{'help'};
@@ -4023,14 +4040,30 @@ add_default($nl, 'cam_snapshot_before_num');
 add_default($nl, 'cam_snapshot_after_num');
 check_snapshot_settings();
 
-# Ndep stream forching 
-# TODO: mah the cam_pres_ndep an input argument to the namelist
-my %valhash = ('cam_pres_ndep'=>'clim_1850');
-add_default($nl, 'stream_datafile_ndep'  , %valhash );
-add_default($nl, 'stream_meshfile_ndep'  , %valhash );
-add_default($nl, 'stream_year_first_ndep', %valhash );
-add_default($nl, 'stream_year_last_ndep' , %valhash );
-add_default($nl, 'model_year_align_ndep' , %valhash );
+# ndep stream forching
+add_stream_default($nl, 'stream_ndep_year_first'    , $opts{'stream_ndep_year_first'}   , 0);
+add_stream_default($nl, 'stream_ndep_year_last'     , $opts{'stream_ndep_year_last'}    , 0);
+add_stream_default($nl, 'stream_ndep_year_align'    , $opts{'stream_ndep_year_align'}   , 0);
+add_stream_default($nl, 'stream_ndep_data_filename' , $opts{'stream_ndep_data_filename'}, 1);
+add_stream_default($nl, 'stream_ndep_mesh_filename' , $opts{'stream_ndep_mesh_filename'}, 1);
+
+sub add_stream_default {
+  my ($nl, $var_nml, $val_opts, $check_char) = @_;
+  add_default($nl, $var_nml, 'val'=>$val_opts);
+  my $val_nml = $nl->get_value($var_nml);
+  my $var_xml = uc($var_nml);
+  my $var_xml = "CAM_${var_nml}";
+  if ($check_char) {
+      if ($val_nml ne "'$val_opts'"){
+          die "$ProgName - ERROR: \n $var_nml with value $val_nml can only be set via the xml variable $var_xml, it CANNOT be set in user_nl_cam \n";
+      }
+  } else {
+      if ($val_nml ne $val_opts) {
+          die "$ProgName - ERROR: \n $var_nml with value $val_nml can only be set via the xml variable $var_xml, it CANNOT be set in user_nl_clm \n";
+      }
+  }
+}
+
 
 #-----------------------------------------------------------------------------------------------
 # Write output files

@@ -6,14 +6,16 @@ module atm_stream_ndep
   ! interpolation.
   !-----------------------------------------------------------------------
   !
-  use ESMF
-  use dshr_strdata_mod , only : shr_strdata_type
-  use shr_kind_mod     , only : r8 => shr_kind_r8, CL => shr_kind_cl, CS => shr_kind_cs
-  use shr_sys_mod      , only : shr_sys_abort
-  use shr_log_mod      , only : errMsg => shr_log_errMsg
-  use spmdMod          , only : mpicom, masterproc, iam
-  use cam_logfile      , only : iulog
-  use cam_abortutils   , only : endrun
+  use ESMF              , only : ESMF_Clock, ESMF_Mesh
+  use ESMF              , only : ESMF_SUCCESS, ESMF_LOGERR_PASSTHRU, ESMF_END_ABORT
+  use ESMF              , only : ESMF_Finalize, ESMF_LogFoundError
+  use nuopc_shr_methods , only : chkerr
+  use dshr_strdata_mod  , only : shr_strdata_type
+  use shr_kind_mod      , only : r8 => shr_kind_r8, CL => shr_kind_cl, CS => shr_kind_cs
+  use shr_log_mod       , only : errMsg => shr_log_errMsg
+  use spmdMod           , only : mpicom, masterproc, iam
+  use cam_logfile       , only : iulog
+  use cam_abortutils    , only : endrun
 
   implicit none
   private
@@ -24,9 +26,14 @@ module atm_stream_ndep
   private :: stream_ndep_check_units   ! Check the units and make sure they can be used
 
   type(shr_strdata_type) :: sdat_ndep                      ! input data stream
+  logical, public        :: stream_ndep_is_initialized = .false.
   character(len=CS)      :: stream_varlist_ndep(2)
+  type(ESMF_Clock)       :: model_clock
 
-  character(len=*), parameter, private :: sourcefile = &
+  character(len=*), parameter :: sourcefile = &
+       __FILE__
+
+  character(*)    ,parameter   :: u_FILE_u = &
        __FILE__
 
 !==============================================================================
@@ -43,97 +50,96 @@ contains
     use dshr_strdata_mod , only : shr_strdata_init_from_inline
 
     ! input/output variables
-    type(ESMF_Mesh)  , intent(in)  :: model_mesh
-    type(ESMF_Clock) , intent(in)  :: model_clock
-    integer          , intent(out) :: rc
+    type(ESMF_CLock), intent(in)  :: model_clock
+    type(ESMF_Mesh) , intent(in)  :: model_mesh
+    integer         , intent(out) :: rc
 
     ! local variables
     integer                 :: nu_nml                 ! unit for namelist file
     integer                 :: nml_error              ! namelist i/o error flag
-    character(len=CL)       :: stream_datafile_ndep
-    character(len=CL)       :: stream_meshfile_ndep
-    integer                 :: stream_year_first_ndep ! first year in stream to use
-    integer                 :: stream_year_last_ndep  ! last year in stream to use
-    integer                 :: model_year_align_ndep  ! align stream_year_firstndep with
-    integer                 :: stream_nflds
+    character(len=CL)       :: stream_ndep_data_filename
+    character(len=CL)       :: stream_ndep_mesh_filename
+    integer                 :: stream_ndep_year_first ! first year in stream to use
+    integer                 :: stream_ndep_year_last  ! last year in stream to use
+    integer                 :: stream_ndep_year_align  ! align stream_year_firstndep with
     character(*), parameter :: subName = "('stream_ndep_init')"
     !-----------------------------------------------------------------------
 
     rc = ESMF_SUCCESS
 
-    namelist /ndep_stream_nml/    &
-         stream_datafile_ndep,    &
-         stream_meshfile_ndep,    &
-         stream_year_first_ndep,  &
-         stream_year_last_ndep,   &
-         model_year_align_ndep
+    namelist /ndep_stream_nl/      &
+         stream_ndep_data_filename, &
+         stream_ndep_mesh_filename, &
+         stream_ndep_year_first,    &
+         stream_ndep_year_last,     &
+         stream_ndep_year_align
 
     ! Default values for namelist
-    stream_datafile_ndep   = ' '
-    stream_meshfile_ndep   = ' '
-    stream_year_first_ndep = 1                ! first year in stream to use
-    stream_year_last_ndep  = 1                ! last  year in stream to use
-    model_year_align_ndep  = 1                ! align stream_year_first_ndep with this model year
+    stream_ndep_data_filename = ' '
+    stream_ndep_mesh_filename = ' '
+    stream_ndep_year_first    = 1 ! first year in stream to use
+    stream_ndep_year_last     = 1 ! last  year in stream to use
+    stream_ndep_year_align    = 1 ! align stream_ndep_year_first with this model year
 
     ! For now variable list in stream data file is hard-wired
-    stream_varlist_ndep = (/'NDEP_Nhx', 'NDEP_Noy'/)
+    stream_varlist_ndep = (/'NDEP_NHx_month', 'NDEP_NOy_month'/)
 
-    ! Read ndepdyn_nml namelist
+    ! Read ndep_stream namelist
     if (masterproc) then
        open( newunit=nu_nml, file='atm_in', status='old', iostat=nml_error )
-       call shr_nl_find_group_name(nu_nml, 'ndepdyn_nml', status=nml_error)
+       call shr_nl_find_group_name(nu_nml, 'ndep_stream_nl', status=nml_error)
        if (nml_error == 0) then
-          read(nu_nml, nml=ndep_stream_nml, iostat=nml_error)
+          read(nu_nml, nml=ndep_stream_nl, iostat=nml_error)
           if (nml_error /= 0) then
-             call endrun(' ERROR reading ndepdyn_nml namelist'//errMsg(sourcefile, __LINE__))
+             call endrun(' ERROR reading ndep_stream_nl namelist'//errMsg(sourcefile, __LINE__))
           end if
        else
-          call endrun(' ERROR finding ndepdyn_nml namelist'//errMsg(sourcefile, __LINE__))
+          call endrun(' ERROR finding ndep_stream_nl namelist'//errMsg(sourcefile, __LINE__))
        end if
        close(nu_nml)
     endif
-    call shr_mpi_bcast(stream_meshfile_ndep   , mpicom)
-    call shr_mpi_bcast(stream_datafile_ndep   , mpicom)
-    call shr_mpi_bcast(stream_year_first_ndep , mpicom)
-    call shr_mpi_bcast(stream_year_last_ndep  , mpicom)
-    call shr_mpi_bcast(model_year_align_ndep  , mpicom)
+    call shr_mpi_bcast(stream_ndep_mesh_filename , mpicom)
+    call shr_mpi_bcast(stream_ndep_data_filename , mpicom)
+    call shr_mpi_bcast(stream_ndep_year_first    , mpicom)
+    call shr_mpi_bcast(stream_ndep_year_last     , mpicom)
+    call shr_mpi_bcast(stream_ndep_year_align    , mpicom)
 
     if (masterproc) then
        write(iulog,'(a)'   ) ' '
-       write(iulog,'(a,i8)') 'stream ndep settings:'
-       write(iulog,'(a,a)' ) '  stream_datafile_ndep    = ',trim(stream_datafile_ndep)
-       write(iulog,'(a,a)' ) '  stream_meshfile_ndep    = ',trim(stream_meshfile_ndep)
-       write(iulog,'(a,a)' ) '  stream_varlist_ndep     = ',trim(stream_varlist_ndep(1))
-       write(iulog,'(a,i8)') '  stream_year_first_ndep  = ',stream_year_first_ndep
-       write(iulog,'(a,i8)') '  stream_year_last_ndep   = ',stream_year_last_ndep
-       write(iulog,'(a,i8)') '  model_year_align_ndep   = ',model_year_align_ndep
-       write(iulog,'(a)'   ) ' '
+       write(iulog,'(a,i8)')  'stream ndep settings:'
+       write(iulog,'(a,a)' )  '  stream_ndep_data_filename = ',trim(stream_ndep_data_filename)
+       write(iulog,'(a,a)' )  '  stream_ndep_mesh_filename = ',trim(stream_ndep_mesh_filename)
+       write(iulog,'(a,a,a)') '  stream_varlist_ndep       = ',trim(stream_varlist_ndep(1)), trim(stream_varlist_ndep(2))
+       write(iulog,'(a,i8)')  '  stream_ndep_year_first    = ',stream_ndep_year_first
+       write(iulog,'(a,i8)')  '  stream_ndep_year_last     = ',stream_ndep_year_last
+       write(iulog,'(a,i8)')  '  stream_ndep_year_align    = ',stream_ndep_year_align
+       write(iulog,'(a)'   )  ' '
     endif
 
     ! Read in units
-    call stream_ndep_check_units(stream_datafile_ndep)
+    call stream_ndep_check_units(stream_ndep_data_filename)
 
     ! Initialize the cdeps data type sdat_ndep
-    call shr_strdata_init_from_inline(sdat_ndep,               &
-         my_task             = iam,                            &
-         logunit             = iulog,                          &
-         compname            = 'ATM',                          &
-         model_clock         = model_clock,                    &
-         model_mesh          = model_mesh,                     &
-         stream_meshfile     = trim(stream_meshfile_ndep),     &
-         stream_filenames    = (/trim(stream_datafile_ndep)/), &
-         stream_yearFirst    = stream_year_first_ndep,         &
-         stream_yearLast     = stream_year_last_ndep,          &
-         stream_yearAlign    = model_year_align_ndep,          &
-         stream_fldlistFile  = stream_varlist_ndep,            &
-         stream_fldListModel = stream_varlist_ndep,            &
-         stream_lev_dimname  = 'null',                         &
-         stream_mapalgo      = 'bilinear',                     &
-         stream_offset       = 0,                              &
-         stream_taxmode      = 'cycle',                        &
-         stream_dtlimit      = 1.5_r8,                         &
-         stream_tintalgo     = 'linear',                       &
-         stream_name         = 'Nitrogen deposition data ',    &
+    call shr_strdata_init_from_inline(sdat_ndep,                    &
+         my_task             = iam,                                 &
+         logunit             = iulog,                               &
+         compname            = 'ATM',                               &
+         model_clock         = model_clock,                         &
+         model_mesh          = model_mesh,                          &
+         stream_meshfile     = trim(stream_ndep_mesh_filename),     &
+         stream_filenames    = (/trim(stream_ndep_data_filename)/), &
+         stream_yearFirst    = stream_ndep_year_first,              &
+         stream_yearLast     = stream_ndep_year_last,               &
+         stream_yearAlign    = stream_ndep_year_align,              &
+         stream_fldlistFile  = stream_varlist_ndep,                 &
+         stream_fldListModel = stream_varlist_ndep,                 &
+         stream_lev_dimname  = 'null',                              &
+         stream_mapalgo      = 'bilinear',                          &
+         stream_offset       = 0,                                   &
+         stream_taxmode      = 'cycle',                             &
+         stream_dtlimit      = 1.0e30_r8,                           &
+         stream_tintalgo     = 'linear',                            &
+         stream_name         = 'Nitrogen deposition data ',         &
          rc                  = rc)
     if (ESMF_LogFoundError(rcToCheck=rc, msg=ESMF_LOGERR_PASSTHRU, line=__LINE__, file=__FILE__)) then
        call ESMF_Finalize(endflag=ESMF_END_ABORT)
