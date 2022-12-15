@@ -355,7 +355,7 @@
          {
             "name": "jglyoxal",
             "__reaction": "GLYOXAL + hv -> 2*CO + 2*HO2",
-            "__comments": "NOTE the products of this reaction don't exactly match",
+            "__comments": "TODO the products of this reaction don't exactly match",
             "cross section": {
                "netcdf files": [
                  { "file path": "data/cross_sections/CHOCHO_1.nc" }
@@ -843,7 +843,7 @@
          {
             "name": "jhyac",
             "__reaction": "CH2(OH)COCH3->CH3CO3+HO2+CH2O",
-            "__comments": "hydroxy acetone NOTE: the products of this reaction differ from standalone TUV-x",
+            "__comments": "hydroxy acetone TODO: the products of this reaction differ from standalone TUV-x",
             "cross section": {
                "netcdf files": [
                  { "file path": "data/cross_sections/Hydroxyacetone_1.nc" }
@@ -935,6 +935,160 @@
                "type": "base",
                "netcdf files": [ "data/quantum_yields/H2O_2H_O3P.nc" ]
             }
+         },
+         {
+            "name": "jch4_a",
+            "__reaction": "CH4 + hv -> H + CH3O2",
+            "cross section": {
+               "type": "base",
+               "netcdf files": [
+                  { "file path": "data/cross_sections/CH4_1.nc" }
+               ]
+            },
+            "quantum yield": {
+               "type": "base",
+               "constant value": 0.55
+            }
+         },
+         {
+            "name": "jch4_b",
+            "__reaction": "CH4 + hv -> 1.44*H2 + 0.18*CH2O + 0.18*O + 0.33*OH + 0.33*H + 0.44*CO2 + 0.38*CO + 0.05*H2O",
+            "cross section": {
+               "type": "base",
+               "netcdf files": [
+                  { "file path": "data/cross_sections/CH4_1.nc" }
+               ]
+            },
+            "quantum yield": {
+               "type": "base",
+               "constant value": 0.45
+            }
+         },
+         {
+            "name": "jco2",
+            "__reaction": "CO2 + hv -> CO + O",
+            "cross section": {
+               "type": "base",
+               "netcdf files": [
+                  { "file path": "data/cross_sections/CO2_1.nc" }
+               ]
+            },
+            "quantum yield": {
+               "type": "base",
+               "constant value": 1.0
+            }
+         },
+         {
+            "name": "jhbr",
+            "__reaction": "HBR + hv -> BR + H",
+            "cross section": {
+               "type": "base",
+               "netcdf files": [
+                  { "file path": "data/cross_sections/HBr_1.nc" }
+               ]
+            },
+            "quantum yield": {
+               "type": "base",
+               "constant value": 1.0
+            }
+         },
+         {
+            "name": "jhf",
+            "__reaction": "HF + hv -> H + F",
+            "cross section": {
+               "type": "base",
+               "netcdf files": [
+                  { "file path": "data/cross_sections/HF_1.nc" }
+               ]
+            },
+            "quantum yield": {
+               "type": "base",
+               "constant value": 1.0
+            }
+         },
+         {
+            "name": "jsf6",
+            "__reaction": "SF6 + hv -> sink",
+            "cross section": {
+               "type": "base",
+               "netcdf files": [
+                  { "file path": "data/cross_sections/SF6_1.nc" }
+               ]
+            },
+            "quantum yield": {
+               "type": "base",
+               "constant value": 1.0
+            }
+         },
+         {
+            "name": "jh2so4",
+            "__reaction": "H2SO4 + hv -> SO3 + H2O",
+            "cross section": {
+               "type": "base",
+               "netcdf files": [
+                  { "file path": "data/cross_sections/H2SO4_1.nc" }
+               ]
+            },
+            "quantum yield": {
+               "type": "base",
+               "constant value": 1.0
+            }
+         },
+         {
+            "name": "jocs",
+            "__reaction": "OCS + hv -> S + CO",
+            "cross section": {
+               "type": "base",
+               "netcdf files": [
+                  { "file path": "data/cross_sections/OCS_1.nc" }
+               ]
+            },
+            "quantum yield": {
+               "type": "base",
+               "constant value": 1.0
+            }
+         },
+         {
+            "name": "jso",
+            "__reaction": "SO + hv -> S + O",
+            "cross section": {
+               "type": "base",
+               "netcdf files": [
+                  { "file path": "data/cross_sections/SO_1.nc" }
+               ]
+            },
+            "quantum yield": {
+               "type": "base",
+               "constant value": 1.0
+            }
+         },
+         {
+            "name": "jso2",
+            "__reaction": "SO2 + hv -> SO + O",
+            "cross section": {
+               "type": "base",
+               "netcdf files": [
+                  { "file path": "data/cross_sections/SO2_1.nc" }
+               ]
+            },
+            "quantum yield": {
+               "type": "base",
+               "constant value": 1.0
+            }
+         },
+         {
+            "name": "jso3",
+            "__reaction": "SO3 + hv -> SO2 + O",
+            "cross section": {
+               "type": "base",
+               "netcdf files": [
+                  { "file path": "data/cross_sections/SO3_1.nc" }
+               ]
+            },
+            "quantum yield": {
+               "type": "base",
+               "constant value": 1.0
+            }
          }
       ]
    },
@@ -997,27 +1151,6 @@
             "to": "jc6h5ooh",
             "__reaction": "C6H5OOH + hv -> PHENO + OH",
             "from": "jch3ooh"
-         },
-         {
-            "to": "jch4_a",
-            "__reaction": "CH4 + hv -> H + CH3O2",
-            "__comments": "TODO find this rate",
-            "from": "jo2_b",
-            "scale by": 0.0
-         },
-         {
-            "to": "jch4_b",
-            "__reaction": "CH4 + hv -> 1.44*H2 + 0.18*CH2O + 0.18*O + 0.33*OH + 0.33*H + 0.44*CO2 + 0.38*CO + 0.05*H2O",
-            "__comments": "TODO find this rate",
-            "from": "jo2_b",
-            "scale by": 0.0
-         },
-         {
-            "to": "jco2",
-            "__reaction": "CO2 + hv -> CO + O",
-            "__comments": "TODO find this rate",
-            "from": "jo2_b",
-            "scale by": 0.0
          },
          {
             "to": "jeooh",
@@ -1204,62 +1337,6 @@
          {
             "to": "jh2402",
             "__reaction": "H2402 + hv -> 2*BR + 2*COF2",
-            "__comments": "TODO - find this rate",
-            "from": "jo2_b",
-            "scale by": 0.0
-         },
-         {
-            "to": "jhbr",
-            "__reaction": "HBR + hv -> BR + H",
-            "__comments": "TODO - find this rate",
-            "from": "jo2_b",
-            "scale by": 0.0
-         },
-         {
-            "to": "jhf",
-            "__reaction": "HF + hv -> H + F",
-            "__comments": "TODO - find this rate",
-            "from": "jo2_b",
-            "scale by": 0.0
-         },
-         {
-            "to": "jsf6",
-            "__reaction": "SF6 + hv -> sink",
-            "__comments": "TODO - find this rate",
-            "from": "jo2_b",
-            "scale by": 0.0
-         },
-         {
-            "to": "jh2so4",
-            "__reaction": "H2SO4 + hv -> SO3 + H2O",
-            "__comments": "TODO - find this rate",
-            "from": "jo2_b",
-            "scale by": 0.0
-         },
-         {
-            "to": "jocs",
-            "__reaction": "OCS + hv -> S + CO",
-            "__comments": "TODO - find this rate",
-            "from": "jo2_b",
-            "scale by": 0.0
-         },
-         {
-            "to": "jso",
-            "__reaction": "SO + hv -> S + O",
-            "__comments": "TODO - find this rate",
-            "from": "jo2_b",
-            "scale by": 0.0
-         },
-         {
-            "to": "jso2",
-            "__reaction": "SO2 + hv -> SO + O",
-            "__comments": "TODO - find this rate",
-            "from": "jo2_b",
-            "scale by": 0.0
-         },
-         {
-            "to": "jso3",
-            "__reaction": "SO3 + hv -> SO2 + O",
             "__comments": "TODO - find this rate",
             "from": "jo2_b",
             "scale by": 0.0
