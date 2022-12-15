@@ -3,10 +3,10 @@
    "O2 absorption" : {
      "cross section parameters file": "data/cross_sections/O2_parameters.txt"
    },
-   "grids": {
-   },
-   "profiles": {
-   },
+   "grids": [
+   ],
+   "profiles": [
+   ],
    "radiative transfer": {
       "solver": {
          "type": "delta eddington"
