@@ -8265,30 +8265,6 @@ us_standard_atmosphere: static atmospheric state (u,v)=0, standard lapse rate fo
 Default: 'none'
 </entry>
 
-<!-- Specify ocean data and domain files in a component independent way. -->
-<!-- build-namelist associates this information with the component       -->
-<!-- dependend variables.                                                -->
-
-<entry id="bndtvs" type="char*256" input_pathname="abs" category="ocn"
-       group="camexp" valid_values="" >
-Full pathname of time-variant sea-surface temperature and sea-ice
-concentration boundary dataset.
-Default: set by build-namelist.
-</entry>
-
-<entry id="focndomain" type="char*256" input_pathname="abs" category="ocn"
-       group="camexp" valid_values="" >
-Full pathname of
-Default: set by build-namelist.
-</entry>
-
-<entry id="bndtvs_domain" type="char*256" input_pathname="abs" category="ocn"
-       group="camexp" valid_values="" >
-Full pathname of grid file for time-variant sea-surface temperature and sea-ice
-concentration boundary dataset.
-Default: set by build-namelist.
-</entry>
-
 <!-- ========================================================================================  -->
 <!-- Rename component log files.  shr_file_mod::shr_file_setIO reads
      namelist /modelio/.  These variables in group camexp are treated
