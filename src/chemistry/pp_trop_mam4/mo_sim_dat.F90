@@ -39,7 +39,7 @@
                         'dst_a3          ','H2O2            ','H2SO4           ','ncl_a1          ','ncl_a2          ', &
                         'ncl_a3          ','num_a1          ','num_a2          ','num_a3          ','num_a4          ', &
                         'pom_a1          ','pom_a4          ','SO2             ','so4_a1          ','so4_a2          ', &
-                        'so4_a3          ','SOAG            ','SOAE            ','soa_a1          ','soa_a2          ', &
+                        'so4_a3          ','soa_a1          ','soa_a2          ','SOAE            ','SOAG            ', &
                         'H2O             ' /)
 
       adv_mass(: 26) = (/    12.011000_r8,    12.011000_r8,    62.132400_r8,   135.064039_r8,   135.064039_r8, &
@@ -69,7 +69,7 @@
 
       diag_map(: 26) = (/    1,   2,   3,   5,   6,   7,   8,  10,  11,  12, &
                             13,  14,  15,  16,  17,  18,  19,  21,  22,  23, &
-                            24,  25,  27,  28,  29,  30 /)
+                            24,  25,  26,  27,  29,  30 /)
 
       extfrc_lst(:  9) = (/ 'SO2             ','so4_a1          ','so4_a2          ','pom_a4          ','bc_a4           ', &
                             'H2O             ','num_a1          ','num_a2          ','num_a4          ' /)
@@ -99,8 +99,8 @@
       rxt_tag_lst(     1:    10) = (/ 'jh2o2                           ', 'jsoa_a1                         ', &
                                       'jsoa_a2                         ', 'OH_H2O2                         ', &
                                       'usr_HO2_HO2                     ', 'DMS_NO3                         ', &
-                                      'DMS_OHa                         ', 'usr_DMS_OH                      ', &
-                                      'usr_SO2_OH                      ', 'SOAE_tau                        ' /)
+                                      'DMS_OHa                         ', 'SO2_OH_M                        ', &
+                                      'usr_DMS_OH                      ', 'SOAE_tau                        ' /)
       rxt_tag_map(:rxt_tag_cnt) = (/    1,   2,   3,   4,   5,   6,   7,   8,   9,  10 /)
       if( allocated( pht_alias_lst ) ) then
          deallocate( pht_alias_lst )
@@ -127,7 +127,7 @@
          write(iulog,*) 'set_sim_dat: failed to allocate num_rnts; error = ',ios
          call endrun
       end if
-      num_rnts(:) = (/      2,     2,     2,     2,     2,     2,     1 /)
+      num_rnts(:) = (/      2,     2,     2,     2,     3,     2,     1 /)
 
       end subroutine set_sim_dat
 

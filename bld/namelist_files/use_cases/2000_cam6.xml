@@ -25,7 +25,10 @@
 <solar_data_ymd      >    20000101                                             </solar_data_ymd>
 <solar_data_type     >    FIXED                                                </solar_data_type>
 
-  <ext_frc_specifier>
+<!-- External forcing -->
+<ext_frc_type>CYCLICAL</ext_frc_type>
+<ext_frc_cycle_yr>2000</ext_frc_cycle_yr>
+<ext_frc_specifier>
      'H2O -> $INPUTDATA_ROOT/atm/cam/chem/emis/elev/H2O_emission_CH4_oxidationx2_elev_3Dmonthly_L70_2000climo_c180511.nc',
      'num_a1 -> $INPUTDATA_ROOT/atm/cam/chem/emis/CMIP6_emissions_2000climo/emissions-cmip6_num_so4_a1_anthro-ene_vertical_2000climo_0.9x1.25_c20170616.nc',
      'num_a1 -> $INPUTDATA_ROOT/atm/cam/chem/emis/CMIP6_emissions_2000climo/emissions-cmip6_num_a1_so4_contvolcano_vertical_2000climo_0.9x1.25_c20170724.nc',
@@ -34,9 +37,12 @@
      'so4_a1 -> $INPUTDATA_ROOT/atm/cam/chem/emis/CMIP6_emissions_2000climo/emissions-cmip6_so4_a1_anthro-ene_vertical_2000climo_0.9x1.25_c20170616.nc',
      'so4_a1 -> $INPUTDATA_ROOT/atm/cam/chem/emis/CMIP6_emissions_2000climo/emissions-cmip6_so4_a1_contvolcano_vertical_2000climo_0.9x1.25_c20170724.nc',
      'so4_a2 -> $INPUTDATA_ROOT/atm/cam/chem/emis/CMIP6_emissions_2000climo/emissions-cmip6_so4_a2_contvolcano_vertical_2000climo_0.9x1.25_c20170724.nc'
-  </ext_frc_specifier>
+</ext_frc_specifier>
 
-  <srf_emis_specifier>
+<!-- Surface emissions -->
+<srf_emis_type>CYCLICAL</srf_emis_type>
+<srf_emis_cycle_yr>2000</srf_emis_cycle_yr>
+<srf_emis_specifier>
     'bc_a4 -> $INPUTDATA_ROOT/atm/cam/chem/emis/CMIP6_emissions_2000climo/emissions-cmip6_bc_a4_anthro_surface_2000climo_0.9x1.25_c20170608.nc',
     'bc_a4 -> $INPUTDATA_ROOT/atm/cam/chem/emis/CMIP6_emissions_2000climo/emissions-cmip6_bc_a4_bb_surface_2000climo_0.9x1.25_c20170322.nc',
     'DMS -> $INPUTDATA_ROOT/atm/cam/chem/emis/CMIP6_emissions_2000climo/emissions-cmip6_DMS_bb_surface_2000climo_0.9x1.25_c20170322.nc',
@@ -67,7 +73,7 @@
     'SOAE -> 8.6865D0*$INPUTDATA_ROOT/atm/cam/chem/emis/CMIP6_emissions_2000climo/emissions-cmip6_IVOC_bb_surface_2000climo_0.9x1.25_c20170322.nc',
     'SOAE -> 16.8188D0*$INPUTDATA_ROOT/atm/cam/chem/emis/CMIP6_emissions_2000climo/emissions-cmip6_SVOC_anthro_surface_2000climo_0.9x1.25_c20170608.nc',
     'SOAE -> 16.8188D0*$INPUTDATA_ROOT/atm/cam/chem/emis/CMIP6_emissions_2000climo/emissions-cmip6_SVOC_bb_surface_2000climo_0.9x1.25_c20170322.nc'
-  </srf_emis_specifier>
+</srf_emis_specifier>
 
 <flbc_file>      'atm/waccm/lb/LBC_2000climo_CMIP6_0p5degLat_c180227.nc' </flbc_file>
 <flbc_list>      'CO2','CH4','N2O','CFC11eq','CFC12' </flbc_list>

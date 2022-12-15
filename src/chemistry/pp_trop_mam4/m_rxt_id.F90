@@ -7,7 +7,7 @@
       integer, parameter :: rid_usr_HO2_HO2 = 5
       integer, parameter :: rid_DMS_NO3 = 6
       integer, parameter :: rid_DMS_OHa = 7
-      integer, parameter :: rid_usr_DMS_OH = 8
-      integer, parameter :: rid_usr_SO2_OH = 9
+      integer, parameter :: rid_SO2_OH_M = 8
+      integer, parameter :: rid_usr_DMS_OH = 9
       integer, parameter :: rid_SOAE_tau = 10
       end module m_rxt_id

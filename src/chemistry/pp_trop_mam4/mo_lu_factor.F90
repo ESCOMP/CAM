@@ -33,8 +33,9 @@
          lu(23) = 1._r8 / lu(23)
          lu(24) = 1._r8 / lu(24)
          lu(25) = 1._r8 / lu(25)
+         lu(26) = 1._r8 / lu(26)
          lu(27) = 1._r8 / lu(27)
-         lu(28) = 1._r8 / lu(28)
+         lu(28) = lu(28) * lu(27)
          lu(29) = 1._r8 / lu(29)
          lu(30) = 1._r8 / lu(30)
       end subroutine lu_fac01

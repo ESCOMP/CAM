@@ -83,8 +83,8 @@
          mat( 23) = mat( 23) - dti
          mat( 24) = mat( 24) - dti
          mat( 25) = mat( 25) - dti
+         mat( 26) = mat( 26) - dti
          mat( 27) = mat( 27) - dti
-         mat( 28) = mat( 28) - dti
          mat( 29) = mat( 29) - dti
          mat( 30) = mat( 30) - dti
       end subroutine nlnmat_finit
