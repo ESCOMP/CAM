@@ -854,33 +854,93 @@
                "type": "base",
                "constant value": 0.65
             }
+         },
+         {
+            "name": "jh2o_a",
+            "__reaction": "H2O + hv -> OH + H",
+            "cross section": {
+               "type": "base",
+               "merge data": true,
+               "netcdf files": [
+                  {
+                     "file path": "data/cross_sections/H2O_1.nc",
+                     "zero above": 183.0
+                  },
+                  {
+                     "file path": "data/cross_sections/H2O_2.nc",
+                     "zero below": 183.00000000001,
+                     "zero above": 190.0
+                  },
+                  {
+                     "file path": "data/cross_sections/H2O_3.nc",
+                     "zero below": 190.00000000001
+                  }
+               ]
+            },
+            "quantum yield" : {
+               "type": "base",
+               "netcdf files": [ "data/quantum_yields/H2O_H_OH.nc" ]
+            }
+         },
+         {
+            "name": "jh2o_b",
+            "__reaction": "H2O + hv -> H2 + O1D",
+            "cross section": {
+               "type": "base",
+               "merge data": true,
+               "netcdf files": [
+                  {
+                     "file path": "data/cross_sections/H2O_1.nc",
+                     "zero above": 183.0
+                  },
+                  {
+                     "file path": "data/cross_sections/H2O_2.nc",
+                     "zero below": 183.00000000001,
+                     "zero above": 190.0
+                  },
+                  {
+                     "file path": "data/cross_sections/H2O_3.nc",
+                     "zero below": 190.00000000001
+                  }
+               ]
+            },
+            "quantum yield" : {
+               "type": "base",
+               "netcdf files": [ "data/quantum_yields/H2O_H2_O1D.nc" ]
+            }
+         },
+         {
+            "name": "jh2o_c",
+            "__reaction": "H2O + hv -> 2*H + O",
+            "cross section": {
+               "type": "base",
+               "merge data": true,
+               "netcdf files": [
+                  {
+                     "file path": "data/cross_sections/H2O_1.nc",
+                     "zero above": 183.0
+                  },
+                  {
+                     "file path": "data/cross_sections/H2O_2.nc",
+                     "zero below": 183.00000000001,
+                     "zero above": 190.0
+                  },
+                  {
+                     "file path": "data/cross_sections/H2O_3.nc",
+                     "zero below": 190.00000000001
+                  }
+               ]
+            },
+            "quantum yield" : {
+               "type": "base",
+               "netcdf files": [ "data/quantum_yields/H2O_2H_O3P.nc" ]
+            }
          }
       ]
    },
    "__CAM aliasing": {
      "default matching": "backup",
      "pairs": [
-         {
-            "to": "jh2o_a",
-            "__reaction": "H2O + hv -> OH + H",
-            "__comments": "TODO find this rate",
-            "from": "jo2_b",
-            "scale by": 0.0
-         },
-         {
-            "to": "jh2o_b",
-            "__reaction": "H2O + hv -> H2 + O1D",
-            "__comments": "TODO find this rate",
-            "from": "jo2_b",
-            "scale by": 0.0
-         },
-         {
-            "to": "jh2o_c",
-            "__reaction": "H2O + hv -> 2*H + O",
-            "__comments": "TODO find this rate",
-            "from": "jo2_b",
-            "scale by": 0.0
-         },
          {
             "to": "jo2_a",
             "__reaction": "O2 + hv -> O + O1D",
