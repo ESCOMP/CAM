@@ -1059,6 +1059,7 @@ end subroutine check_energy_get_integrals
       state%te_budgets(1:ncol,6,s_ind)=ice(1:ncol)
       state%te_budgets(1:ncol,7,s_ind)=tt(1:ncol)
       state%budget_cnt(b_ind)=state%budget_cnt(b_ind)+1
+
       ! Output energy diagnostics
 
       call outfld(name_out1  ,se      , pcols   ,lchnk   )

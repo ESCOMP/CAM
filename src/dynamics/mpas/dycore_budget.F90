@@ -3,7 +3,7 @@ use shr_kind_mod, only: r8=>shr_kind_r8
 implicit none
 
 public :: print_budget
-real(r8), parameter :: eps = 1.0E-10_r8
+real(r8), parameter :: eps = 1.0E-11_r8
 real(r8), save :: previous_dEdt_adiabatic_dycore = 0.0_r8
 !=========================================================================================
 contains
@@ -120,7 +120,11 @@ subroutine print_budget()
 !         call endrun('dycore_budget module: physics energy budget consistency error 2')
 !       end if
 !     end if
-     write(iulog,*) ""
+     write(iulog,*) " "     
+     write(iulog,*) "------------------------------------------------------------"
+     write(iulog,*) " Consistency checks"
+     write(iulog,*) "------------------------------------------------------------"
+     write(iulog,*) " "     
      write(iulog,*) "Is globally integrated total energy of state at the end of dynamics (dBF)"
      write(iulog,*) "and beginning of physics (dyBF) the same?"
      write(iulog,*) ""     
@@ -184,7 +188,8 @@ subroutine print_budget()
        write(iulog,*)"---------------------------------------------------------------------------------------------------"
        write(iulog,*)" "
        if (err>eps) then
-         call endrun('dycore_budget module: Error in mass budget')
+       write(iulog,*)" MASS BUDGET ERROR"
+!xxx         call endrun('dycore_budget module: Error in mass budget')
        end if
      end do
    end if
