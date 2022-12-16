@@ -548,6 +548,8 @@ contains
                              ( hvcoord%hybi(k+1) - hvcoord%hybi(k) )*hvcoord%ps0
         !
         ! pel@ucar.edu: resolved noise issue over Antarctica
+        ! dp3d_ref is the reference-level thickness that includes topography
+        ! dp0 is the reference thickness without topography
         !
         dp3d_ref(:,:,k,ie) = dp3d_ref(:,:,k,ie) - dp0
         tmp                = hvcoord%hyam(k)*hvcoord%ps0+hvcoord%hybm(k)*ps_ref(:,:,ie)
