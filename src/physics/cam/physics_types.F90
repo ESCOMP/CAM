@@ -6,7 +6,7 @@ module physics_types
   use shr_kind_mod,     only: r8 => shr_kind_r8
   use ppgrid,           only: pcols, pver
   use constituents,     only: pcnst, qmin, cnst_name, cnst_get_ind
-  use geopotential,     only: geopotential_dse, geopotential_t
+  use geopotential,     only: geopotential_t
   use physconst,        only: zvir, gravit, cpair, rair
   use air_composition,  only: cpairv, rairv
   use phys_grid,        only: get_ncols_p, get_rlon_all_p, get_rlat_all_p, get_gcol_all_p
@@ -18,8 +18,6 @@ module physics_types
 
   implicit none
   private          ! Make default type private to the module
-
-  logical, parameter :: adjust_te = .FALSE.
 
 ! Public types:
 
@@ -1274,9 +1272,6 @@ end subroutine physics_ptend_copy
     if (state%psetcols .ne. pcols) then
        call endrun('physics_dme_adjust: cannot pass in a state which has sub-columns')
     end if
-    if (adjust_te) then
-       call endrun('physics_dme_adjust: must update code based on the "correct" energy before turning on "adjust_te"')
-    end if
 
     lchnk = state%lchnk
     ncol  = state%ncol
@@ -1302,25 +1297,6 @@ end subroutine physics_ptend_copy
           state%q(:ncol,k,m) = state%q(:ncol,k,m) / fdq(:ncol)
        end do
 
-       if (adjust_te) then
-          ! compute specific total energy of unadjusted state (J/kg)
-          te(:ncol) = state%s(:ncol,k) + 0.5_r8*(state%u(:ncol,k)**2 + state%v(:ncol,k)**2)
-
-          ! recompute initial u,v from the new values and the tendencies
-          utmp(:ncol) = state%u(:ncol,k) - dt * tend%dudt(:ncol,k)
-          vtmp(:ncol) = state%v(:ncol,k) - dt * tend%dvdt(:ncol,k)
-          ! adjust specific total energy and specific momentum (velocity) to conserve each
-          te     (:ncol)   = te     (:ncol)     / fdq(:ncol)
-          state%u(:ncol,k) = state%u(:ncol,k  ) / fdq(:ncol)
-          state%v(:ncol,k) = state%v(:ncol,k  ) / fdq(:ncol)
-          ! compute adjusted u,v tendencies
-          tend%dudt(:ncol,k) = (state%u(:ncol,k) - utmp(:ncol)) / dt
-          tend%dvdt(:ncol,k) = (state%v(:ncol,k) - vtmp(:ncol)) / dt
-
-          ! compute adjusted static energy
-          state%s(:ncol,k) = te(:ncol) - 0.5_r8*(state%u(:ncol,k)**2 + state%v(:ncol,k)**2)
-       end if
-
 ! compute new total pressure variables
        state%pdel  (:ncol,k  ) = state%pdel(:ncol,k  ) * fdq(:ncol)
        state%ps(:ncol)         = state%ps(:ncol)       + state%pdel(:ncol,k)
@@ -1335,32 +1311,6 @@ end subroutine physics_ptend_copy
     else
       zvirv(:,:) = zvir
     endif
-
-! compute new T,z from new s,q,dp
-    if (adjust_te) then
-
-! cpairv_loc needs to be allocated to a size which matches state and ptend
-! If psetcols == pcols, cpairv is the correct size and just copy into cpairv_loc
-! If psetcols > pcols and all cpairv match cpair, then assign the constant cpair
-
-       allocate(cpairv_loc(state%psetcols,pver))
-       if (state%psetcols == pcols) then
-          cpairv_loc(:,:) = cpairv(:,:,state%lchnk)
-       else if (state%psetcols > pcols .and. all(cpairv(:,:,:) == cpair)) then
-          cpairv_loc(:,:) = cpair
-       else
-          call endrun('physics_dme_adjust: cpairv is not allowed to vary when subcolumns are turned on')
-       end if
-
-       call geopotential_dse(state%lnpint, state%lnpmid, state%pint,  &
-            state%pmid  , state%pdel    , state%rpdel,  &
-            state%s     , state%q(:,:,1), state%phis , rairv(:,:,state%lchnk), &
-            gravit, cpairv_loc(:,:), zvirv, &
-            state%t     , state%zi      , state%zm   , ncol)
-
-       deallocate(cpairv_loc)
-
-    end if
 
   end subroutine physics_dme_adjust
 !-----------------------------------------------------------------------
