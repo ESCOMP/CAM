@@ -1051,7 +1051,7 @@ end subroutine check_energy_get_integrals
         end if
       end if
 
-      state%te_budgets(1:ncol,1,ind)=(se(1:ncol)+ke(1:ncol)+po(1:ncol))
+      state%te_budgets(1:ncol,1,ind)=se(1:ncol)+ke(1:ncol)+po(1:ncol)
       state%te_budgets(1:ncol,2,ind)=se(1:ncol)
       state%te_budgets(1:ncol,3,ind)=ke(1:ncol)
       state%te_budgets(1:ncol,4,ind)=wv(1:ncol)

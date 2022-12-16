@@ -430,7 +430,7 @@ contains
     if (ptend%ls .or. ptend%lq(1)) then
        call geopotential_t  (                                                                    &
             state%lnpint, state%lnpmid, state%pint  , state%pmid  , state%pdel  , state%rpdel  , &
-            state%t     , state%q(:,:,1), rairv_loc(:,:), gravit  , zvirv              , &
+            state%t     , state%q(:,:,:), rairv_loc(:,:), gravit  , zvirv              , &
             state%zi    , state%zm      , ncol         )
        ! update dry static energy for use in next process
        do k = ptend%top_level, ptend%bot_level

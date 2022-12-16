@@ -465,7 +465,7 @@ subroutine derived_phys(phys_state, phys_tend, pbuf2d)
       call geopotential_t( &
          phys_state(lchnk)%lnpint, phys_state(lchnk)%lnpmid,   phys_state(lchnk)%pint,          &
          phys_state(lchnk)%pmid,   phys_state(lchnk)%pdel,     phys_state(lchnk)%rpdel,         &
-         phys_state(lchnk)%t,      phys_state(lchnk)%q(:,:,1), rairv(:,:,lchnk), gravit, zvirv, &
+         phys_state(lchnk)%t,      phys_state(lchnk)%q(:,:,:), rairv(:,:,lchnk), gravit, zvirv, &
          phys_state(lchnk)%zi,     phys_state(lchnk)%zm,       ncol)
 
       ! Compute initial dry static energy, include surface geopotential
@@ -722,7 +722,7 @@ subroutine hydrostatic_pressure(nCells, nVertLevels, qsize, index_qv, zz, zgrid,
 #else
    real(r8), dimension(nVertLevels+1,nCells) :: pint  ! hydrostatic pressure at interface
 #endif
-   real(r8) :: pi, t
+   real(r8) :: pi, t, sum_water
    real(r8) :: pk,rhok,rhodryk,theta,thetavk,kap1,kap2,tvk,tk
    !
    ! For each column, integrate downward from model top to compute dry hydrostatic pressure at layer
@@ -765,8 +765,6 @@ subroutine hydrostatic_pressure(nCells, nVertLevels, qsize, index_qv, zz, zgrid,
       end do
     end do
 #else
-   kap1 = p0**(-rgas/cp)           ! pre-compute constants
-   kap2 = cp/cv                    ! pre-compute constants
    do iCell = 1, nCells
       dz(:) = zgrid(2:nVertLevels+1,iCell) - zgrid(1:nVertLevels,iCell)
       do k = nVertLevels, 1, -1
@@ -786,9 +784,13 @@ subroutine hydrostatic_pressure(nCells, nVertLevels, qsize, index_qv, zz, zgrid,
         rhok = rhok+q(thermodynamic_active_species_idx_dycore(idx),k,iCell)
       end do
       rhok     = rhok*zz(k,iCell) * rho_zz(k,iCell)
-      thetavk = theta_m(k,iCell)/ (1.0_r8 + q(index_qv,k,iCell))           !convert modified theta to virtual theta
+      sum_water = 1.0_r8
+      do idx=1,thermodynamic_active_species_num
+        sum_water = sum_water+q(thermodynamic_active_species_idx_dycore(idx),k,iCell)
+      end do
+      thetavk = theta_m(k,iCell)/sum_water
       tvk     = thetavk*exner(k,iCell)
-      pk      = (rhok*rgas*thetavk*kap1)**kap2                    !mid-level top pressure
+      pk = dp(k)*rgas*tvk/(gravit*dz(k))
       !
       ! model top pressure consistently diagnosed using the assumption that the mid level
       ! is at height z(nVertLevels-1)+0.5*dz
@@ -799,9 +801,13 @@ subroutine hydrostatic_pressure(nCells, nVertLevels, qsize, index_qv, zz, zgrid,
         !
         ! compute hydrostatic dry interface pressure so that (pintdry(k+1)-pintdry(k))/g is pseudo density
         !
-        thetavk = theta_m(k,iCell)/ (1.0_r8 + q(index_qv,k,iCell))  !convert modified theta to virtual theta
+        sum_water = 1.0_r8
+        do idx=1,thermodynamic_active_species_num
+          sum_water = sum_water+q(thermodynamic_active_species_idx_dycore(idx),k,iCell)
+        end do
+        thetavk = theta_m(k,iCell)/sum_water! (1.0_r8 + q(index_qv,k,iCell))  !convert modified theta to virtual theta
         tvk     = thetavk*exner(k,iCell)
-        tk      = tvk*(1.0_r8+q(index_qv,k,iCell))/(1.0_r8+Rv_over_Rd*q(index_qv,k,iCell))
+        tk      = tvk*sum_water/(1.0_r8+Rv_over_Rd*q(index_qv,k,iCell))
         pint   (k,iCell) = pint   (k+1,iCell)+dp(k)
         pintdry(k,iCell) = pintdry(k+1,iCell)+dpdry(k)
         pmid(k,iCell)    = dp(k)   *rgas*tvk/(gravit*dz(k))
