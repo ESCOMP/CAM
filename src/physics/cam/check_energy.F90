@@ -974,7 +974,7 @@ end subroutine check_energy_get_integrals
     integer :: ncol                                ! number of atmospheric columns
     integer :: i,k                                 ! column, level indices
     integer :: vc_loc                              ! local vertical coordinate variable
-    integer :: ind,budget_ind                      ! budget array index
+    integer :: s_ind,b_ind                         ! budget array index
     integer :: ixtt                                ! test tracer index
     character(len=32) :: name_out1,name_out2,name_out3,name_out4,name_out5,name_out6
 !-----------------------------------------------------------------------
@@ -992,7 +992,7 @@ end subroutine check_energy_get_integrals
       lchnk = state%lchnk
       ncol  = state%ncol
 
-      call budget_info_byname(trim(outfld_name_suffix),budget_ind=budget_ind,state_ind=ind)
+      call budget_info_byname(trim(outfld_name_suffix),budget_ind=b_ind,state_ind=s_ind)
 
       if (present(vc)) then
         vc_loc = vc
@@ -1051,14 +1051,14 @@ end subroutine check_energy_get_integrals
         end if
       end if
 
-      state%te_budgets(1:ncol,1,ind)=(se(1:ncol)+ke(1:ncol)+po(1:ncol))
-      state%te_budgets(1:ncol,2,ind)=se(1:ncol)
-      state%te_budgets(1:ncol,3,ind)=ke(1:ncol)
-      state%te_budgets(1:ncol,4,ind)=wv(1:ncol)
-      state%te_budgets(1:ncol,5,ind)=liq(1:ncol)
-      state%te_budgets(1:ncol,6,ind)=ice(1:ncol)
-      state%te_budgets(1:ncol,7,ind)=tt(1:ncol)
-      state%budget_cnt(ind)=state%budget_cnt(ind)+1
+      state%te_budgets(1:ncol,1,s_ind)=(se(1:ncol)+ke(1:ncol)+po(1:ncol))
+      state%te_budgets(1:ncol,2,s_ind)=se(1:ncol)
+      state%te_budgets(1:ncol,3,s_ind)=ke(1:ncol)
+      state%te_budgets(1:ncol,4,s_ind)=wv(1:ncol)
+      state%te_budgets(1:ncol,5,s_ind)=liq(1:ncol)
+      state%te_budgets(1:ncol,6,s_ind)=ice(1:ncol)
+      state%te_budgets(1:ncol,7,s_ind)=tt(1:ncol)
+      state%budget_cnt(b_ind)=state%budget_cnt(b_ind)+1
       ! Output energy diagnostics
 
       call outfld(name_out1  ,se      , pcols   ,lchnk   )

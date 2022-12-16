@@ -1566,24 +1566,25 @@ contains
 ! could store pointer to dyn/phys state index inside of budget and call budget_state_update pass in se,ke etc.
         call budget_info_byname(trim(outfld_name_suffix),budget_ind=budget_ind,state_ind=state_ind)
         ! reset all when cnt is 0
-!jt        if (ie.eq.nets) write(iulog,*)'calc_tot before:',trim(outfld_name_suffix),' cnt/sub=',elem(nets)%derived%budget_cnt(state_ind),'/',elem(nets)%derived%budget_subcycle(state_ind)
-        if (elem(ie)%derived%budget_cnt(state_ind) == 0) then
-           elem(ie)%derived%budget_subcycle(state_ind) = 0
+
+        if (elem(ie)%derived%budget_cnt(budget_ind) == 0) then
+           if (ie.eq.nets) write(iulog,*)'cnt = 0;resetting :',trim(outfld_name_suffix)
+           elem(ie)%derived%budget_subcycle(budget_ind) = 0
            elem(ie)%derived%budget(:,:,:,state_ind)=0.0_r8
         end if
         if (present(subcycle)) then
            if (subcycle) then
-              elem(ie)%derived%budget_subcycle(state_ind) = elem(ie)%derived%budget_subcycle(state_ind) + 1
-              if (elem(ie)%derived%budget_subcycle(state_ind) == 1) then
-                 elem(ie)%derived%budget_cnt(state_ind) = elem(ie)%derived%budget_cnt(state_ind) + 1
+              elem(ie)%derived%budget_subcycle(budget_ind) = elem(ie)%derived%budget_subcycle(budget_ind) + 1
+              if (elem(ie)%derived%budget_subcycle(budget_ind) == 1) then
+                 elem(ie)%derived%budget_cnt(budget_ind) = elem(ie)%derived%budget_cnt(budget_ind) + 1
               end if
            else
-              elem(ie)%derived%budget_cnt(state_ind) = elem(ie)%derived%budget_cnt(state_ind) + 1
-              elem(ie)%derived%budget_subcycle(state_ind) = 1
+              elem(ie)%derived%budget_cnt(budget_ind) = elem(ie)%derived%budget_cnt(budget_ind) + 1
+              elem(ie)%derived%budget_subcycle(budget_ind) = 1
            end if
         else
-           elem(ie)%derived%budget_cnt(state_ind) = elem(ie)%derived%budget_cnt(state_ind) + 1
-           elem(ie)%derived%budget_subcycle(state_ind) = 1
+           elem(ie)%derived%budget_cnt(budget_ind) = elem(ie)%derived%budget_cnt(budget_ind) + 1
+           elem(ie)%derived%budget_subcycle(budget_ind) = 1
         end if
         do j=1,np
           do i = 1, np
@@ -1592,7 +1593,6 @@ contains
             elem(ie)%derived%budget(i,j,3,state_ind) = elem(ie)%derived%budget(i,j,3,state_ind) + ke(i+(j-1)*np)
           end do
         end do
-!jt        if (ie.eq.nets) write(iulog,*)'calc_tot after:',trim(outfld_name_suffix),' cnt/sub=',elem(nets)%derived%budget_cnt(state_ind),'/',elem(nets)%derived%budget_subcycle(state_ind)
         !
         ! Output energy diagnostics on GLL grid
         !
@@ -1783,7 +1783,7 @@ contains
 
     !---------------------------Local storage-------------------------------
 
-    integer :: ie,ixtt,b_ind,s_ind,is1,is2
+    integer :: ie,ixtt,b_ind,s_ind,is1,is2,isb1,isb2
     character(len=16) :: name_out1,name_out2,name_out3,name_out4,name_out5,name_out6
     real(r8), allocatable, dimension(:,:,:,:) :: tmp,tmp1,tmp2
    character(len=3)   :: budget_pkgtype,budget_optype  ! budget type phy or dyn
@@ -1805,29 +1805,29 @@ contains
        allocate(tmp1(np,np,9,nets:nete))
        allocate(tmp2(np,np,9,nets:nete))
        b_ind=budget_ind_byname(trim(outfld_name_suffix))
-       call budget_info(b_ind,stg1stateidx=is1, stg2stateidx=is2, optype=budget_optype, pkgtype=budget_pkgtype,state_ind=s_ind)
+       call budget_info(b_ind,stg1stateidx=is1, stg2stateidx=is2,stg1index=isb1, stg2index=isb2, optype=budget_optype, pkgtype=budget_pkgtype,state_ind=s_ind)
        do ie=nets,nete
           ! advance budget_cnt 
           if (present(subcycle)) then
              if (subcycle) then
                 ! reset subcycle when cnt is 0
-                if (elem(ie)%derived%budget_cnt(s_ind) == 0) then
-                   elem(ie)%derived%budget_subcycle(s_ind) = 0
+                if (elem(ie)%derived%budget_cnt(b_ind) == 0) then
+                   elem(ie)%derived%budget_subcycle(b_ind) = 0
                    elem(ie)%derived%budget(:,:,:,s_ind)=0.0_r8
                 end if
-                elem(ie)%derived%budget_subcycle(s_ind) = elem(ie)%derived%budget_subcycle(s_ind) + 1
-                if (elem(ie)%derived%budget_subcycle(s_ind) == 1) then
-                   elem(ie)%derived%budget_cnt(s_ind) = elem(ie)%derived%budget_cnt(s_ind) + 1
+                elem(ie)%derived%budget_subcycle(b_ind) = elem(ie)%derived%budget_subcycle(b_ind) + 1
+                if (elem(ie)%derived%budget_subcycle(b_ind) == 1) then
+                   elem(ie)%derived%budget_cnt(b_ind) = elem(ie)%derived%budget_cnt(b_ind) + 1
                 end if
              else
-                elem(ie)%derived%budget_cnt(s_ind) = elem(ie)%derived%budget_cnt(s_ind) + 1
-                elem(ie)%derived%budget_subcycle(s_ind) = 1
+                elem(ie)%derived%budget_cnt(b_ind) = elem(ie)%derived%budget_cnt(b_ind) + 1
+                elem(ie)%derived%budget_subcycle(b_ind) = 1
              end if
           else
-             elem(ie)%derived%budget_cnt(s_ind) = elem(ie)%derived%budget_cnt(s_ind) + 1
-             elem(ie)%derived%budget_subcycle(s_ind) = 1
+             elem(ie)%derived%budget_cnt(b_ind) = elem(ie)%derived%budget_cnt(b_ind) + 1
+             elem(ie)%derived%budget_subcycle(b_ind) = 1
           end if
-          if (elem(ie)%derived%budget_cnt(is1)==0.or.elem(ie)%derived%budget_cnt(is2)==0) then
+          if (elem(ie)%derived%budget_cnt(isb1)==0.or.elem(ie)%derived%budget_cnt(isb2)==0) then
              tmp(:,:,:,ie)=0._r8
           else          
              tmp1(:,:,:,ie)=elem(ie)%derived%budget(:,:,:,is1)

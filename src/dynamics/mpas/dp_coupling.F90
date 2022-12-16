@@ -898,18 +898,18 @@ subroutine tot_energy(nCells, nVertLevels, qsize, index_qv, zz, zgrid, rho_zz, t
     ! reset all when cnt is 0
     write(iulog,*)'dpc calc se,ke ',s_ind,',1:3,1 is ',internal_energy(1),' ',kinetic_energy(1)
     write(iulog,*)'dpc budgets initial ',s_ind,',1:3,1 is ',te_budgets(s_ind,1,1),' ',te_budgets(s_ind,2,1),' ',te_budgets(s_ind,3,1)
-    if (budgets_cnt(s_ind) == 0) then
-       budgets_subcycle_cnt(s_ind) = 0
+    if (budgets_cnt(b_ind) == 0) then
+       budgets_subcycle_cnt(b_ind) = 0
        te_budgets(s_ind,:,:)=0.0_r8
     end if
     if (b_subcycle) then
-       budgets_subcycle_cnt(s_ind) = budgets_subcycle_cnt(s_ind) + 1
-       if (budgets_subcycle_cnt(s_ind) == 1) then
-          budgets_cnt(s_ind) = budgets_cnt(s_ind) + 1
+       budgets_subcycle_cnt(b_ind) = budgets_subcycle_cnt(b_ind) + 1
+       if (budgets_subcycle_cnt(b_ind) == 1) then
+          budgets_cnt(b_ind) = budgets_cnt(b_ind) + 1
        end if
     else
-       budgets_cnt(s_ind) = budgets_cnt(s_ind) + 1
-       budgets_subcycle_cnt(s_ind) = 1
+       budgets_cnt(b_ind) = budgets_cnt(b_ind) + 1
+       budgets_subcycle_cnt(b_ind) = 1
        !not subcycling so don't sum just replace previous budget values
        te_budgets(s_ind,:,:)=0._r8
     end if
