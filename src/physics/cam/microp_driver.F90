@@ -19,6 +19,10 @@ use micro_pumas_cam,   only: micro_pumas_cam_readnl, micro_pumas_cam_register, &
 use cam_logfile,    only: iulog
 use cam_abortutils, only: endrun
 use perf_mod,       only: t_startf, t_stopf
+! ++ TAU
+use stochastic_collect_tau_cam, only: stochastic_kernel_init
+use tau_neural_net_batch, only:  initialize_tau_emulators
+! -- TAU
 
 implicit none
 private
@@ -147,6 +151,11 @@ subroutine microp_driver_init(pbuf2d)
    select case (microp_scheme)
    case ('MG')
       call micro_pumas_cam_init(pbuf2d)
+!CACNOTE - Should this only be called when machine learning is on?
+! ++ TAU
+      call stochastic_kernel_init
+      call initialize_tau_emulators
+! -- TAU
    case ('RK')
       ! microp_driver doesn't handle this one
       continue

@@ -544,7 +544,10 @@ end subroutine micro_pumas_cam_readnl
 !================================================================================================
 
 subroutine micro_pumas_cam_register
-
+!++ TAU
+!use stochastic_collect_tau_cam,  only: ncd, diammean, diamedge
+!use cam_history_support, only: add_hist_coord
+!-- TAU
    use cam_history_support, only: add_vert_coord, hist_dimension_values
    use cam_abortutils,      only: handle_allocate_error
 
@@ -560,6 +563,12 @@ subroutine micro_pumas_cam_register
 
    allocate(trop_levs(pver-top_lev+1), stat=ierr)
    call handle_allocate_error(ierr, 'micro_pumas_cam_register', 'trop_levs')
+
+!++ TAU
+!   call add_hist_coord('bins_ncd', ncd, 'bins for TAU microphysics')
+!   call add_hist_coord('bins_ncd', ncd, 'bins for TAU microphysics', 'cm', &
+!                        diammean, bounds_name = 'bins_ncd_bnds', bounds = diamedge )
+!-- TAU
 
    call phys_getopts(use_subcol_microp_out    = use_subcol_microp, &
                      prog_modal_aero_out      = prog_modal_aero)
@@ -1423,6 +1432,9 @@ subroutine micro_pumas_cam_tend(state, ptend, dtime, pbuf)
    use wv_saturation,   only: qsat
    use infnan,          only: nan, assignment(=)
    use cam_abortutils,  only: handle_allocate_error
+!++ TAU
+   use stochastic_collect_tau_cam, only: ncd
+!-- TAU
 
    type(physics_state),         intent(in)    :: state
    type(physics_ptend),         intent(out)   :: ptend
@@ -2322,6 +2334,18 @@ subroutine micro_pumas_cam_tend(state, ptend, dtime, pbuf)
       ! Update local state
       call physics_update(state_loc, ptend_loc, dtime/num_steps)
 
+!CACNOTE - Don't know if this still needs summing or not - if so need the init to zero that will be above
+!++ TAU
+!CACCOMMENT      proc_rates%amk_c = proc_rates%amk_c + packed_amk_c/num_steps
+!CACCOMMENT      proc_rates%ank_c = proc_rates%ank_c + packed_ank_c/num_steps
+!CACCOMMENT      proc_rates%amk_r = proc_rates%amk_r + packed_amk_r/num_steps
+!CACCOMMENT      proc_rates%ank_r = proc_rates%ank_r + packed_ank_r/num_steps
+!CACCOMMENT      proc_rates%amk = proc_rates%amk + packed_amk/num_steps
+!CACCOMMENT      proc_rates%ank = proc_rates%ank + packed_ank/num_steps
+!CACCOMMENT      proc_rates%amk_out = proc_rates%amk_out + packed_amk_out/num_steps
+!CACCOMMENT      proc_rates%ank_out = proc_rates%ank_out + packed_ank_out/num_steps
+!-- TAU
+
    end do
 
    ! Divide ptend by substeps.
@@ -3190,6 +3214,42 @@ subroutine micro_pumas_cam_tend(state, ptend, dtime, pbuf)
    call outfld( 'MPDI2P', ftem_grid, pcols, lchnk)
 
    ! Output fields which have not been averaged already, averaging if use_subcol_microp is true
+!++ TAU
+   call outfld('scale_qc',    proc_rates%scale_qc,    psetcols, lchnk, avg_subcol_field=use_subcol_microp)
+   call outfld('scale_nc',    proc_rates%scale_nc,    psetcols, lchnk, avg_subcol_field=use_subcol_microp)
+   call outfld('scale_qr',    proc_rates%scale_qr,    psetcols, lchnk, avg_subcol_field=use_subcol_microp)
+   call outfld('scale_nr',    proc_rates%scale_nr,    psetcols, lchnk, avg_subcol_field=use_subcol_microp)
+   call outfld('amk_c',       proc_rates%amk_c,       psetcols, lchnk, avg_subcol_field=use_subcol_microp)
+   call outfld('ank_c',       proc_rates%ank_c,       psetcols, lchnk, avg_subcol_field=use_subcol_microp)
+   call outfld('amk_r',       proc_rates%amk_r,       psetcols, lchnk, avg_subcol_field=use_subcol_microp)
+   call outfld('ank_r',       proc_rates%ank_r,       psetcols, lchnk, avg_subcol_field=use_subcol_microp)
+   call outfld('amk',         proc_rates%amk,         psetcols, lchnk, avg_subcol_field=use_subcol_microp)
+   call outfld('ank',         proc_rates%ank,         psetcols, lchnk, avg_subcol_field=use_subcol_microp)
+   call outfld('amk_out',     proc_rates%amk_out,     psetcols, lchnk, avg_subcol_field=use_subcol_microp)
+   call outfld('ank_out',     proc_rates%ank_out,     psetcols, lchnk, avg_subcol_field=use_subcol_microp)
+   call outfld('QC_TAU_out',  proc_rates%qc_out,      psetcols, lchnk, avg_subcol_field=use_subcol_microp)
+   call outfld('NC_TAU_out',  proc_rates%nc_out,      psetcols, lchnk, avg_subcol_field=use_subcol_microp)
+   call outfld('QR_TAU_out',  proc_rates%qr_out,      psetcols, lchnk, avg_subcol_field=use_subcol_microp)
+   call outfld('NR_TAU_out',  proc_rates%nr_out,      psetcols, lchnk, avg_subcol_field=use_subcol_microp)
+   call outfld('qctend_MG2',  proc_rates%qctend_MG2,  psetcols, lchnk, avg_subcol_field=use_subcol_microp)
+   call outfld('nctend_MG2',  proc_rates%nctend_MG2,  psetcols, lchnk, avg_subcol_field=use_subcol_microp)
+   call outfld('qrtend_MG2',  proc_rates%qrtend_MG2,  psetcols, lchnk, avg_subcol_field=use_subcol_microp)
+   call outfld('nrtend_MG2',  proc_rates%nrtend_MG2,  psetcols, lchnk, avg_subcol_field=use_subcol_microp)
+   call outfld('qctend_TAU',  proc_rates%qctend_TAU,  psetcols, lchnk, avg_subcol_field=use_subcol_microp)
+   call outfld('nctend_TAU',  proc_rates%nctend_TAU,  psetcols, lchnk, avg_subcol_field=use_subcol_microp)
+   call outfld('qrtend_TAU',  proc_rates%qrtend_TAU,  psetcols, lchnk, avg_subcol_field=use_subcol_microp)
+   call outfld('nrtend_TAU',  proc_rates%nrtend_TAU,  psetcols, lchnk, avg_subcol_field=use_subcol_microp)
+   call outfld('qctend_TAU_diag',  proc_rates%qctend_TAU_diag,  psetcols, lchnk, avg_subcol_field=use_subcol_microp)
+   call outfld('nctend_TAU_diag',  proc_rates%nctend_TAU_diag,  psetcols, lchnk, avg_subcol_field=use_subcol_microp)
+   call outfld('qrtend_TAU_diag',  proc_rates%qrtend_TAU_diag,  psetcols, lchnk, avg_subcol_field=use_subcol_microp)
+   call outfld('nrtend_TAU_diag',  proc_rates%nrtend_TAU_diag,  psetcols, lchnk, avg_subcol_field=use_subcol_microp)
+   call outfld('gmnnn_lmnnn_TAU',  proc_rates%gmnnn_lmnnn_TAU,  psetcols, lchnk, avg_subcol_field=use_subcol_microp)
+   call outfld('ML_fixer',     proc_rates%ML_fixer,     psetcols, lchnk, avg_subcol_field=use_subcol_microp)
+   call outfld('qc_fixer',     proc_rates%qc_fixer,     psetcols, lchnk, avg_subcol_field=use_subcol_microp)
+   call outfld('nc_fixer',     proc_rates%nc_fixer,     psetcols, lchnk, avg_subcol_field=use_subcol_microp)
+   call outfld('qr_fixer',     proc_rates%qr_fixer,     psetcols, lchnk, avg_subcol_field=use_subcol_microp)
+   call outfld('nr_fixer',     proc_rates%nr_fixer,     psetcols, lchnk, avg_subcol_field=use_subcol_microp)
+!-- TAU
    call outfld('MPICLWPI',    iclwpi,      psetcols, lchnk, avg_subcol_field=use_subcol_microp)
    call outfld('MPICIWPI',    iciwpi,      psetcols, lchnk, avg_subcol_field=use_subcol_microp)
    call outfld('REFL',        refl,        psetcols, lchnk, avg_subcol_field=use_subcol_microp)
@@ -3285,6 +3345,12 @@ subroutine micro_pumas_cam_tend(state, ptend, dtime, pbuf)
    end if
 
    ! Output fields which are already on the grid
+!++ TAU
+   call outfld('QC_TAU_in',  state%q(1,1,ixcldliq), pcols, lchnk)
+   call outfld('NC_TAU_in',  state%q(1,1,ixnumliq), pcols, lchnk)
+   call outfld('QR_TAU_in',  state%q(1,1,ixrain),   pcols, lchnk)
+   call outfld('NR_TAU_in',  state%q(1,1,ixnumrain),pcols, lchnk)
+!-- TAU
    call outfld('QRAIN',       qrout_grid,       pcols, lchnk)
    call outfld('QSNOW',       qsout_grid,       pcols, lchnk)
    call outfld('NRAIN',       nrout_grid,       pcols, lchnk)
