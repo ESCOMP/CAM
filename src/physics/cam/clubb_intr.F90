@@ -2440,6 +2440,9 @@ end subroutine clubb_init_cnst
     pdfp_rtp2   = 0._r8
     wm_zt_out   = 0._r8
 
+    temp2d      = 0._r8 
+    temp2dp     = 0._r8
+
     dl_rad = clubb_detliq_rad
     di_rad = clubb_detice_rad
     dt_low = clubb_detphase_lowtemp
@@ -4226,7 +4229,7 @@ end subroutine clubb_init_cnst
     call outfld( 'RTPTHLP_CLUBB',    rtpthlp_output,        pcols, lchnk )
     call outfld( 'RCM_CLUBB',        rcm(:,1:pver),         pcols, lchnk )
     call outfld( 'RTM_CLUBB',        rtm(:,1:pver),         pcols, lchnk )
-    call outfld( 'THLM_CLUBB',       thlm(:,1:pver),        pvols, lchnk )
+    call outfld( 'THLM_CLUBB',       thlm(:,1:pver),        pcols, lchnk )
 
     temp2dp(:ncol,:) = wprcp(:ncol,:) * latvap
     call outfld( 'WPRCP_CLUBB',      temp2dp,                 pcols, lchnk )
