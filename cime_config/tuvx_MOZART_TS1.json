@@ -64,6 +64,33 @@
    "photolysis": {
       "reactions": [
          {
+            "name": "jo2_a",
+            "__reaction": "O2 + hv -> O + O1D",
+            "cross section": {
+              "netcdf files": [
+                {
+                   "file path": "data/cross_sections/O2_1.nc",
+                   "lower extrapolation": { "type": "boundary" }
+                 }
+               ],
+               "type": "base"
+            },
+            "quantum yield": {
+              "type": "base",
+              "constant value": 0,
+              "override bands": [
+                {
+                  "band": "lyman-alpha",
+                  "value": 0.47
+                },
+                {
+                  "band": "schumann-runge",
+                  "value": 1.0
+                }
+              ]
+            }
+         },
+         {
             "name": "jo2_b",
             "__reaction": "O2 + hv -> O + O",
             "cross section": {
@@ -77,7 +104,17 @@
             },
             "quantum yield": {
                "type": "base",
-               "constant value": 1.0
+               "constant value": 1.0,
+               "override bands": [
+                 {
+                   "band": "lyman-alpha",
+                   "value": 0.53
+                 },
+                 {
+                   "band": "schumann-runge continuum",
+                   "value": 1.0
+                 }
+               ]
             }
          },
          {
@@ -150,7 +187,22 @@
             },
             "quantum yield": {
                "type": "base",
-               "constant value": 1.0
+               "netcdf files": [ "data/quantum_yields/N2O5_NO3_NO2.nc" ]
+            }
+         },
+         {
+            "name": "jn2o5_b",
+            "__reaction": "N2O5 + hv -> NO + O + NO3",
+            "cross section": {
+               "netcdf files": [
+                 { "file path": "data/cross_sections/N2O5_1.nc" },
+                 { "file path": "data/cross_sections/N2O5_2.nc" }
+               ],
+               "type": "N2O5+hv->NO2+NO3"
+            },
+            "quantum yield": {
+               "type": "base",
+               "netcdf files": [ "data/quantum_yields/N2O5_NO3_NO_O.nc" ]
             }
          },
          {
@@ -547,6 +599,39 @@
             }
          },
          {
+            "name": "jch2br2",
+            "__reaction": "CH2BR2 + hv -> 2*BR",
+            "cross section": {
+               "type": "temperature based",
+               "netcdf file": "data/cross_sections/CH2BR2_1.nc",
+               "parameterization": {
+                  "AA": [ -70.211776,  1.940326e-1, 2.726152e-3, -1.695472e-5, 2.500066e-8  ],
+                  "BB": [   2.899280, -4.327724e-2, 2.391599e-4, -5.807506e-7, 5.244883e-10 ],
+                  "lp": [        0.0,          1.0,          2.0,         3.0,          4.0 ],
+                  "minimum wavelength": 210.0,
+                  "maximum wavelength": 290.0,
+                  "temperature ranges": [
+                     {
+                        "maximum": 209.999999999999,
+                        "fixed value": 210.0
+                     },
+                     {
+                        "minimum": 210,
+                        "maximum": 300
+                     },
+                     {
+                        "minimum": 300.00000000001,
+                        "fixed value": 300.0
+                     }
+                  ]
+               }
+            },
+            "quantum yield": {
+               "type": "base",
+               "constant value": 1.0
+            }
+         },
+         {
             "name": "jch3br",
             "__reaction": "CH3Br + hv -> Products",
             "cross section": {
@@ -617,6 +702,21 @@
             }
          },
          {
+            "name": "jcl2o2",
+            "__reaction": "ClOOCl + hv -> Cl + ClOO",
+            "__comments": "TODO - this doesn't exactly match the products in TS1",
+            "cross section": {
+               "netcdf files": [
+                  { "file path": "data/cross_sections/ClOOCl_1.nc" }
+               ],
+               "type": "base"
+            },
+            "quantum yield": {
+               "type": "base",
+               "constant value": 1.0
+            }
+         },
+         {
             "name": "jclo",
             "__reaction": "ClO + hv -> Cl + O(1D)",
             "cross section": {
@@ -675,6 +775,21 @@
             "cross section": {
                "netcdf files": [
                  { "file path": "data/cross_sections/CClFO_1.nc" }
+               ],
+               "type": "base"
+            },
+            "quantum yield": {
+               "type": "base",
+               "constant value": 1.0
+            }
+         },
+         {
+            "name": "jh2402",
+            "__reaction": "H2402 + hv -> 2*BR + 2*COF2",
+            "__comments": "TUV data set name CF2BrCF2Br",
+            "cross section": {
+               "netcdf files": [
+                  { "file path": "data/cross_sections/CF2BrCF2Br_1.nc" }
                ],
                "type": "base"
             },
@@ -1096,20 +1211,6 @@
      "default matching": "backup",
      "pairs": [
          {
-            "to": "jo2_a",
-            "__reaction": "O2 + hv -> O + O1D",
-            "__comments": "TODO find this rate",
-            "from": "jo2_b",
-            "scale by": 0.0
-         },
-         {
-            "to": "jn2o5_b",
-            "__reaction": "N2O5 + hv -> NO + O + NO3",
-            "__comments": "TODO find this rate",
-            "from": "jo2_b",
-            "scale by": 0.0
-         },
-         {
             "to": "jno",
             "__reaction": "NO + hv -> N + O",
             "__comments": "TODO find this rate",
@@ -1319,27 +1420,6 @@
             "to": "jxylolooh",
             "__reaction": "XYLOLOOH + hv -> OH + 0.17*GLYOXAL + 0.51*CH3COCHO + HO2",
             "from": "jch3ooh"
-         },
-         {
-            "to": "jch2br2",
-            "__reaction": "CH2BR2 + hv -> 2*BR",
-            "__comments": "TODO - find this rate",
-            "from": "jo2_b",
-            "scale by": 0.0
-         },
-         {
-            "to": "jcl2o2",
-            "__reaction": "CL2O2 + hv -> 2*CL",
-            "__comments": "TODO - find this rate",
-            "from": "jo2_b",
-            "scale by": 0.0
-         },
-         {
-            "to": "jh2402",
-            "__reaction": "H2402 + hv -> 2*BR + 2*COF2",
-            "__comments": "TODO - find this rate",
-            "from": "jo2_b",
-            "scale by": 0.0
          },
          {
             "to": "jsoa1_a1",
