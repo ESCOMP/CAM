@@ -2466,7 +2466,7 @@ if (($chem =~ /_mam4/ or $chem =~ /_mam5/) and ($phys =~ /cam6/ or $phys =~ /cam
     }
 }
 
-if ($chem eq 'trop_mam4' or $chem eq 'waccm_sc_mam4' or $chem eq 'trop_mam5') {
+if ($chem eq 'trop_mam4' or $chem eq 'waccm_sc_mam4') {
 
     # Prescribed species
     if ($chem eq 'waccm_sc_mam4') {

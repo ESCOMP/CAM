@@ -152,7 +152,6 @@
       <value compset="_(CAM50|CAM60)%WCTS(_|%SDYN)">-chem waccm_tsmlt_mam4</value>
       <value compset="_CAM60%WCTS%MAM5_">-chem waccm_tsmlt_mam5</value>
       <value compset="_CAM.*%CCTS1%MAM5_">-chem trop_strat_mam5_vbs</value>
-      <value compset="_CAM60%MAM5_">-chem trop_mam5</value>
       <value compset="_CAM40%WCMD">-chem waccm_mad</value>
       <value compset="_CAM\d0%WXIE">-waccmx -ionosphere wxie</value>
       <value compset="_CAM\d0%WX_" >-waccmx -ionosphere none -chem waccm_ma</value>
