@@ -165,6 +165,7 @@
  num_a2 -> H,
  num_a3 -> H,
  num_a4 -> H,
+ num_a5 -> H,
  O,
  O3,
  O3S -> O3,
@@ -188,6 +189,7 @@
  so4_a1 -> NH4HSO4,
  so4_a2 -> NH4HSO4,
  so4_a3 -> NH4HSO4,
+ so4_a5 -> NH4HSO4,
  soa1_a1 -> C15H38O2,
  soa1_a2 -> C15H38O2,
  soa2_a1 -> C15H38O2,
@@ -592,6 +594,7 @@
  num_a2
  num_a3
  num_a4
+ num_a5
  O
  O3
  O3S
@@ -615,6 +618,7 @@
  so4_a1
  so4_a2
  so4_a3
+ so4_a5
  soa1_a1
  soa1_a2
  soa2_a1
@@ -1752,9 +1756,11 @@
  NO2 <- dataset 
  so4_a1 <- dataset 
  so4_a2 <- dataset 
+ so4_a5 <- dataset
  CO <- dataset 
  num_a1 <- dataset 
  num_a2 <- dataset 
+ num_a5 <- dataset
  NO 
  N 
  OH 

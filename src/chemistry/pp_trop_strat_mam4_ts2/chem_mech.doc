@@ -1883,11 +1883,10 @@ Class List
   het7             (731)   N2O5 ->  2*HNO3                                                      rate = ** User defined **         (898)
   het8             (732)   CLONO2 ->  HOCL + HNO3                                               rate = ** User defined **         (899)
   het9             (733)   CLONO2 + HCL ->  CL2 + HNO3                                          rate = ** User defined **         (900)
-  AOA_NH           (734)   AOA_NH ->  AOA_NH                                                    rate = 1.00E+00                   (901)
-  E90_tau          (735)   E90 ->  {sink}                                                       rate = 1.29E-07                   (902)
-  NH_50_tau        (736)   NH_50 -> (No products)                                               rate = 2.31E-07                   (903)
-  NH_5_tau         (737)   NH_5 -> (No products)                                                rate = 2.31E-06                   (904)
-  ST80_25_tau      (738)   ST80_25 -> (No products)                                             rate = 4.63E-07                   (905)
+  E90_tau          (734)   E90 ->  {sink}                                                       rate = 1.29E-07                   (901)
+  NH_50_tau        (735)   NH_50 -> (No products)                                               rate = 2.31E-07                   (902)
+  NH_5_tau         (736)   NH_5 -> (No products)                                                rate = 2.31E-06                   (903)
+  ST80_25_tau      (737)   ST80_25 -> (No products)                                             rate = 4.63E-07                   (904)
   
 Extraneous prod/loss species
  ( 1)   num_a4   (dataset)
@@ -2187,7 +2186,7 @@ Extraneous prod/loss species
     d(dst_a1)/dt = 0                                                                                                    
     d(dst_a2)/dt = 0                                                                                                    
     d(dst_a3)/dt = 0                                                                                                    
-    d(E90)/dt =  - r735*E90                                                                                             
+    d(E90)/dt =  - r734*E90                                                                                             
     d(EOOH)/dt = r174*EO2*HO2                                                                                           
                   - j42*EOOH                                                                                            
     d(F)/dt = j124*CF3BR  + j128*CFC115  + 2*j140*COF2  + j141*COFCL  + j148*HF  + r81*O1D*CFC115  + r103*O1D*CF3BR     
@@ -2390,8 +2389,8 @@ Extraneous prod/loss species
     d(ncl_a3)/dt = 0                                                                                                    
     d(NH3)/dt =  - r643*OH*NH3                                                                                          
     d(NH4)/dt =  - r662*NH4                                                                                             
-    d(NH_5)/dt =  - r737*NH_5                                                                                           
-    d(NH_50)/dt =  - r736*NH_50                                                                                         
+    d(NH_5)/dt =  - r736*NH_5                                                                                           
+    d(NH_50)/dt =  - r735*NH_50                                                                                         
     d(NO)/dt = j14*N2O5  + j16*NO2  + j17*NO3  + r31*O2*N  + .5*r663*NO2  + 2*r29*N*NO2  + r32*NO2*O  + r39*N*OH        
                 + 2*r43*O1D*N2O  + r636*SO*NO2                                                                          
                 - j15*NO  - r27*N*NO  - r36*NO3*NO  - r40*HO2*NO  - r41*O3*NO  - r42*M*O*NO  - r63*CLO*NO               
@@ -2603,7 +2602,7 @@ Extraneous prod/loss species
     d(SQTN)/dt = .36*r438*BCARYNO3*BCARYNO3  + .18*r440*BCARYNO3*CH3O2  + .5*r441*BCARYNO3*HO2  + .07*r442*BCARYNO3*NO  
                   + .3*r450*BCARYO2*NO                                                                                  
                   - r666*SQTN                                                                                           
-    d(ST80_25)/dt =  - r738*ST80_25                                                                                     
+    d(ST80_25)/dt =  - r737*ST80_25                                                                                     
     d(SVOC)/dt =  - r710*OH*SVOC                                                                                        
     d(TEPOMUC)/dt = .1*r407*TOLUENE*OH  + .23*r409*XYLENES*OH                                                           
                      - j90*TEPOMUC                                                                                      

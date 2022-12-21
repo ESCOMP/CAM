@@ -276,7 +276,7 @@
          mat(k,6) = -( het_rates(k,70) )
          mat(k,7) = -( het_rates(k,71) )
          mat(k,8) = -( het_rates(k,72) )
-         mat(k,9) = -( rxt(k,902) + het_rates(k,73) )
+         mat(k,9) = -( rxt(k,901) + het_rates(k,73) )
          mat(k,148) = -( rxt(k,42) + het_rates(k,74) )
          mat(k,1278) = -( het_rates(k,75) )
          mat(k,164) = rxt(k,124)
@@ -453,8 +453,8 @@
          mat(k,12) = -( het_rates(k,142) )
          mat(k,115) = -( het_rates(k,143) )
          mat(k,13) = -( rxt(k,829) + het_rates(k,144) )
-         mat(k,14) = -( rxt(k,904) + het_rates(k,145) )
-         mat(k,15) = -( rxt(k,903) + het_rates(k,146) )
+         mat(k,14) = -( rxt(k,903) + het_rates(k,145) )
+         mat(k,15) = -( rxt(k,902) + het_rates(k,146) )
       end do
       end subroutine linmat02
       subroutine linmat03( avec_len, mat, y, rxt, het_rates )
@@ -604,7 +604,7 @@
          mat(k,40) = -( het_rates(k,192) )
          mat(k,41) = -( het_rates(k,193) )
          mat(k,42) = -( rxt(k,833) + het_rates(k,194) )
-         mat(k,43) = -( rxt(k,905) + het_rates(k,195) )
+         mat(k,43) = -( rxt(k,904) + het_rates(k,195) )
          mat(k,49) = -( het_rates(k,196) )
          mat(k,221) = -( rxt(k,90) + het_rates(k,197) )
          mat(k,2437) = -( rxt(k,91) + het_rates(k,198) )

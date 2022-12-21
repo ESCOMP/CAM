@@ -900,9 +900,8 @@
       integer, parameter :: rid_het7 = 898
       integer, parameter :: rid_het8 = 899
       integer, parameter :: rid_het9 = 900
-      integer, parameter :: rid_AOA_NH = 901
-      integer, parameter :: rid_E90_tau = 902
-      integer, parameter :: rid_NH_50_tau = 903
-      integer, parameter :: rid_NH_5_tau = 904
-      integer, parameter :: rid_ST80_25_tau = 905
+      integer, parameter :: rid_E90_tau = 901
+      integer, parameter :: rid_NH_50_tau = 902
+      integer, parameter :: rid_NH_5_tau = 903
+      integer, parameter :: rid_ST80_25_tau = 904
       end module m_rxt_id

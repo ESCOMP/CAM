@@ -231,11 +231,10 @@
       rate(:,876) = 2.1e-10_r8
       rate(:,877) = 1.34e-11_r8
       rate(:,881) = 1.7e-11_r8
-      rate(:,901) = 1._r8
-      rate(:,902) = 1.29e-07_r8
-      rate(:,903) = 2.31e-07_r8
-      rate(:,904) = 2.31e-06_r8
-      rate(:,905) = 4.63e-07_r8
+      rate(:,901) = 1.29e-07_r8
+      rate(:,902) = 2.31e-07_r8
+      rate(:,903) = 2.31e-06_r8
+      rate(:,904) = 4.63e-07_r8
  
       do n = 1,pver
         offset = (n-1)*ncol
@@ -530,11 +529,10 @@
       rate(:,876) = 2.1e-10_r8 * exp_fac(:)
       rate(:,877) = 1.34e-11_r8 * exp_fac(:)
       rate(:,881) = 1.7e-11_r8 * exp_fac(:)
-      rate(:,901) = 1._r8 * exp_fac(:)
-      rate(:,902) = 1.29e-07_r8 * exp_fac(:)
-      rate(:,903) = 2.31e-07_r8 * exp_fac(:)
-      rate(:,904) = 2.31e-06_r8 * exp_fac(:)
-      rate(:,905) = 4.63e-07_r8 * exp_fac(:)
+      rate(:,901) = 1.29e-07_r8 * exp_fac(:)
+      rate(:,902) = 2.31e-07_r8 * exp_fac(:)
+      rate(:,903) = 2.31e-06_r8 * exp_fac(:)
+      rate(:,904) = 4.63e-07_r8 * exp_fac(:)
       rate(:,278) = 6e-12_r8 * exp( 400._r8 * itemp(:) )
       rate(:,283) = 1.46e-11_r8 * exp( -1040._r8 * itemp(:) )
       rate(:,284) = 1.42e-12_r8 * exp( -1150._r8 * itemp(:) )

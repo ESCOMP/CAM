@@ -562,7 +562,7 @@
          prod(k,7) = 0._r8
          loss(k,8) = ( + het_rates(k,72))* y(k,72)
          prod(k,8) = 0._r8
-         loss(k,9) = ( + rxt(k,902) + het_rates(k,73))* y(k,73)
+         loss(k,9) = ( + rxt(k,901) + het_rates(k,73))* y(k,73)
          prod(k,9) = 0._r8
          loss(k,66) = ( + rxt(k,42) + het_rates(k,74))* y(k,74)
          prod(k,66) =rxt(k,341)*y(k,256)*y(k,255)
@@ -935,9 +935,9 @@
          prod(k,57) = 0._r8
          loss(k,13) = ( + rxt(k,829) + het_rates(k,144))* y(k,144)
          prod(k,13) = 0._r8
-         loss(k,14) = ( + rxt(k,904) + het_rates(k,145))* y(k,145)
+         loss(k,14) = ( + rxt(k,903) + het_rates(k,145))* y(k,145)
          prod(k,14) = 0._r8
-         loss(k,15) = ( + rxt(k,903) + het_rates(k,146))* y(k,146)
+         loss(k,15) = ( + rxt(k,902) + het_rates(k,146))* y(k,146)
          prod(k,15) = 0._r8
          loss(k,305) = (rxt(k,262)* y(k,20) +rxt(k,230)* y(k,60) +rxt(k,194)* y(k,136) &
                   +rxt(k,203)* y(k,149) +rxt(k,209)* y(k,156) +rxt(k,208)* y(k,157) &
@@ -1324,7 +1324,7 @@
          prod(k,42) = (.360_r8*rxt(k,605)*y(k,238) +.180_r8*rxt(k,607)*y(k,251) + &
                  .500_r8*rxt(k,608)*y(k,256) +.070_r8*rxt(k,609)*y(k,147))*y(k,238) &
                   +.300_r8*rxt(k,617)*y(k,239)*y(k,147)
-         loss(k,43) = ( + rxt(k,905) + het_rates(k,195))* y(k,195)
+         loss(k,43) = ( + rxt(k,904) + het_rates(k,195))* y(k,195)
          prod(k,43) = 0._r8
          loss(k,44) = (rxt(k,877)* y(k,293) + het_rates(k,196))* y(k,196)
          prod(k,44) = 0._r8

@@ -908,10 +908,9 @@ contains
       rxt_rates(:ncol,:,   898) = rxt_rates(:ncol,:,   898)*sol(:ncol,:,   138)                                                ! rate_const*N2O5
       rxt_rates(:ncol,:,   899) = rxt_rates(:ncol,:,   899)*sol(:ncol,:,    61)                                                ! rate_const*CLONO2
       rxt_rates(:ncol,:,   900) = rxt_rates(:ncol,:,   900)*sol(:ncol,:,    61)*sol(:ncol,:,    87)                            ! rate_const*CLONO2*HCL
-                                                                                                                               ! 
-      rxt_rates(:ncol,:,   902) = rxt_rates(:ncol,:,   902)*sol(:ncol,:,    73)                                                ! rate_const*E90
-      rxt_rates(:ncol,:,   903) = rxt_rates(:ncol,:,   903)*sol(:ncol,:,   146)                                                ! rate_const*NH_50
-      rxt_rates(:ncol,:,   904) = rxt_rates(:ncol,:,   904)*sol(:ncol,:,   145)                                                ! rate_const*NH_5
-      rxt_rates(:ncol,:,   905) = rxt_rates(:ncol,:,   905)*sol(:ncol,:,   195)                                                ! rate_const*ST80_25
+      rxt_rates(:ncol,:,   901) = rxt_rates(:ncol,:,   901)*sol(:ncol,:,    73)                                                ! rate_const*E90
+      rxt_rates(:ncol,:,   902) = rxt_rates(:ncol,:,   902)*sol(:ncol,:,   146)                                                ! rate_const*NH_50
+      rxt_rates(:ncol,:,   903) = rxt_rates(:ncol,:,   903)*sol(:ncol,:,   145)                                                ! rate_const*NH_5
+      rxt_rates(:ncol,:,   904) = rxt_rates(:ncol,:,   904)*sol(:ncol,:,   195)                                                ! rate_const*ST80_25
   end subroutine set_rates
 end module mo_rxt_rates_conv
