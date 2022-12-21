@@ -4,9 +4,7 @@
 !----------------------------------------------------------------------------------
 module phys_grid_ctem
   use shr_kind_mod,  only: r8 => shr_kind_r8
-  use ppgrid,        only: begchunk, endchunk, pcols, pver, pverp
-  use ref_pres,      only: pref_edge
-  use interpolate_data, only: vertinterp
+  use ppgrid,        only: begchunk, endchunk, pcols, pver
   use physics_types, only: physics_state
   use cam_history,   only: addfld, outfld
   use zonal_mean_mod,only: ZonalAverage_t, ZonalMean_t
@@ -206,11 +204,11 @@ contains
 
     if (.not.do_tem_diags) return
 
-    call addfld ('VTHzaphys',(/'ilev'/), 'A', 'MK/S', 'Meridional Heat Flux:', gridname='ctem_zavg_phys')
-    call addfld ('WTHzaphys',(/'ilev'/), 'A', 'MK/S', 'Vertical Heat Flux:', gridname='ctem_zavg_phys')
-    call addfld ('UVzaphys', (/'ilev'/), 'A', 'M2/S2','Meridional Flux of Zonal Momentum', gridname='ctem_zavg_phys')
-    call addfld ('UWzaphys', (/'ilev'/), 'A', 'M2/S2','Vertical Flux of Zonal Momentum', gridname='ctem_zavg_phys')
-    call addfld ('THphys', (/'ilev' /), 'A',  'K',  'Zonal-Mean potential temp - defined on ilev', gridname='physgrid' )
+    call addfld ('VTHzaphys',(/'lev'/), 'A', 'MK/S', 'Meridional Heat Flux:', gridname='ctem_zavg_phys')
+    call addfld ('WTHzaphys',(/'lev'/), 'A', 'MK/S', 'Vertical Heat Flux:', gridname='ctem_zavg_phys')
+    call addfld ('UVzaphys', (/'lev'/), 'A', 'M2/S2','Meridional Flux of Zonal Momentum', gridname='ctem_zavg_phys')
+    call addfld ('UWzaphys', (/'lev'/), 'A', 'M2/S2','Vertical Flux of Zonal Momentum', gridname='ctem_zavg_phys')
+    call addfld ('THphys', (/'lev' /), 'A',  'K',  'Zonal-Mean potential temp - defined on ilev', gridname='physgrid' )
 
   end subroutine phys_grid_ctem_init
 
@@ -219,56 +217,40 @@ contains
   subroutine phys_grid_ctem_diags(phys_state)
     type(physics_state), intent(in) :: phys_state(begchunk:endchunk)
 
-    real(r8) :: ui(pcols,pverp,begchunk:endchunk)
-    real(r8) :: vi(pcols,pverp,begchunk:endchunk)
-    real(r8) :: wi(pcols,pverp,begchunk:endchunk)
+    character(len=*), parameter :: prefix = 'phys_grid_ctem_diags: '
 
-    real(r8) :: uzm(pcols,pverp,begchunk:endchunk)
-    real(r8) :: vzm(pcols,pverp,begchunk:endchunk)
-    real(r8) :: wzm(pcols,pverp,begchunk:endchunk)
+    real(r8) :: u(pcols,pver,begchunk:endchunk)
+    real(r8) :: v(pcols,pver,begchunk:endchunk)
+    real(r8) :: w(pcols,pver,begchunk:endchunk)
 
-    real(r8) :: ud(pcols,pverp,begchunk:endchunk)
-    real(r8) :: vd(pcols,pverp,begchunk:endchunk)
-    real(r8) :: wd(pcols,pverp,begchunk:endchunk)
-    real(r8) :: thd(pcols,pverp,begchunk:endchunk)
+    real(r8) :: uzm(pcols,pver,begchunk:endchunk)
+    real(r8) :: vzm(pcols,pver,begchunk:endchunk)
+    real(r8) :: wzm(pcols,pver,begchunk:endchunk)
 
-    real(r8) :: uvp(pcols,pverp,begchunk:endchunk)
-    real(r8) :: uwp(pcols,pverp,begchunk:endchunk)
-    real(r8) :: vthp(pcols,pverp,begchunk:endchunk)
-    real(r8) :: wthp(pcols,pverp,begchunk:endchunk)
+    real(r8) :: ud(pcols,pver,begchunk:endchunk)
+    real(r8) :: vd(pcols,pver,begchunk:endchunk)
+    real(r8) :: wd(pcols,pver,begchunk:endchunk)
+    real(r8) :: thd(pcols,pver,begchunk:endchunk)
+
+    real(r8) :: uvp(pcols,pver,begchunk:endchunk)
+    real(r8) :: uwp(pcols,pver,begchunk:endchunk)
+    real(r8) :: vthp(pcols,pver,begchunk:endchunk)
+    real(r8) :: wthp(pcols,pver,begchunk:endchunk)
 
     integer  :: lchnk, ncol, j, k
-    real(r8) :: fld_tmp(pcols,pverp)
 
     ! potential temperature
     real(r8) :: theta(pcols,pver,begchunk:endchunk)
-    real(r8) :: thi(pcols,pverp,begchunk:endchunk)
-    real(r8) :: thzm(pcols,pverp,begchunk:endchunk)
+    real(r8) :: thzm(pcols,pver,begchunk:endchunk)
 
-    real(r8) :: w(pcols,pver,begchunk:endchunk)
-
-    real(r8) :: uvza(nzalat,pverp)
-    real(r8) :: uwza(nzalat,pverp)
-    real(r8) :: vthza(nzalat,pverp)
-    real(r8) :: wthza(nzalat,pverp)
+    real(r8) :: uvza(nzalat,pver)
+    real(r8) :: uwza(nzalat,pver)
+    real(r8) :: vthza(nzalat,pver)
+    real(r8) :: wthza(nzalat,pver)
 
     real(r8) :: sheight(pcols,pver) ! pressure scale height (m)
 
     if (.not.do_calc()) return
-
-    ui(:,:,:) = 0._r8
-    vi(:,:,:) = 0._r8
-    wi(:,:,:) = 0._r8
-    thi(:,:,:) = 0._r8
-
-    uzm(:,:,:) = 0._r8
-    vzm(:,:,:) = 0._r8
-    wzm(:,:,:) = 0._r8
-    thzm(:,:,:) = 0._r8
-
-    ud(:,:,:) = 0._r8
-    vd(:,:,:) = 0._r8
-    uvp(:,:,:) = 0._r8
 
     do lchnk = begchunk,endchunk
 
@@ -281,41 +263,32 @@ contains
        theta(:ncol,:,lchnk) = phys_state(lchnk)%t(:ncol,:) * phys_state(lchnk)%exner(:ncol,:)
 
        ! vertical velocity
-       w(:ncol,:,lchnk)  = -sheight(:ncol,:) *  phys_state(lchnk)%omega(:ncol,:) / phys_state(lchnk)%pmid(:ncol,:)
+       w(:ncol,:,lchnk) = -sheight(:ncol,:) *  phys_state(lchnk)%omega(:ncol,:) / phys_state(lchnk)%pmid(:ncol,:)
 
-      ! interpolate to layer interfaces
-       do k = 1,pverp
-          call vertinterp( ncol, pcols, pver, phys_state(lchnk)%pmid(:,:), pref_edge(k), phys_state(lchnk)%u(:,:), ui(:,k,lchnk) )
-          call vertinterp( ncol, pcols, pver, phys_state(lchnk)%pmid(:,:), pref_edge(k), phys_state(lchnk)%v(:,:), vi(:,k,lchnk) )
-          call vertinterp( ncol, pcols, pver, phys_state(lchnk)%pmid(:,:), pref_edge(k), theta(:,:,lchnk), thi(:,k,lchnk) )
-          call vertinterp( ncol, pcols, pver, phys_state(lchnk)%pmid(:,:), pref_edge(k), w(:,:,lchnk), wi(:,k,lchnk) )
-       end do
+       u(:ncol,:,lchnk) =  phys_state(lchnk)%u(:,:)
+       v(:ncol,:,lchnk) =  phys_state(lchnk)%v(:,:)
 
     end do
 
     ! zonal means evaluated on the physics grid (3D) to be used in the deviations calculation below
-    uzm(:,:,:) = zmean_fld(ui(:,:,:))
-    vzm(:,:,:) = zmean_fld(vi(:,:,:))
-    wzm(:,:,:) = zmean_fld(wi(:,:,:))
-    thzm(:,:,:) = zmean_fld(thi(:,:,:))
+    uzm(:,:,:) = zmean_fld(u(:,:,:))
+    vzm(:,:,:) = zmean_fld(v(:,:,:))
+    wzm(:,:,:) = zmean_fld(w(:,:,:))
+    thzm(:,:,:) = zmean_fld(theta(:,:,:))
 
     ! diagnostic output
     do lchnk = begchunk, endchunk
-       ncol = phys_state(lchnk)%ncol
-
-       fld_tmp(:ncol,:) = thi(:ncol,:,lchnk)
-       call outfld( 'THphys', fld_tmp(:ncol,:), ncol, lchnk)
-
+       call outfld( 'THphys', theta(:,:,lchnk), pcols, lchnk)
     end do
 
     do lchnk = begchunk,endchunk
        ncol = phys_state(lchnk)%ncol
-       do k = 1,pverp
+       do k = 1,pver
           ! zonal deviations
-          thd(:ncol,k,lchnk) = thi(:ncol,k,lchnk) - thzm(:ncol,k,lchnk)
-          ud(:ncol,k,lchnk) = ui(:ncol,k,lchnk) - uzm(:ncol,k,lchnk)
-          vd(:ncol,k,lchnk) = vi(:ncol,k,lchnk) - vzm(:ncol,k,lchnk)
-          wd(:ncol,k,lchnk) = wi(:ncol,k,lchnk) - wzm(:ncol,k,lchnk)
+          thd(:ncol,k,lchnk) = theta(:ncol,k,lchnk) - thzm(:ncol,k,lchnk)
+          ud(:ncol,k,lchnk) = u(:ncol,k,lchnk) - uzm(:ncol,k,lchnk)
+          vd(:ncol,k,lchnk) = v(:ncol,k,lchnk) - vzm(:ncol,k,lchnk)
+          wd(:ncol,k,lchnk) = w(:ncol,k,lchnk) - wzm(:ncol,k,lchnk)
           ! fluxes
           uvp(:ncol,k,lchnk) = ud(:ncol,k,lchnk) * vd(:ncol,k,lchnk)
           uwp(:ncol,k,lchnk) = ud(:ncol,k,lchnk) * wd(:ncol,k,lchnk)
@@ -329,6 +302,11 @@ contains
     call ZAobj%binAvg(uwp, uwza)
     call ZAobj%binAvg(vthp, vthza)
     call ZAobj%binAvg(wthp, wthza)
+
+    if (any(abs(uvza)>1.e20_r8)) call endrun(prefix//'bad values in uvza')
+    if (any(abs(uwza)>1.e20_r8)) call endrun(prefix//'bad values in uwza')
+    if (any(abs(vthza)>1.e20_r8)) call endrun(prefix//'bad values in vthza')
+    if (any(abs(wthza)>1.e20_r8)) call endrun(prefix//'bad values in wthza')
 
     ! diagnostic output
     do j = 1,nzalat
@@ -345,11 +323,11 @@ contains
     !------------------------------------------------------------------------------
     function zmean_fld( fld ) result(fldzm)
 
-      real(r8), intent(in) :: fld(pcols,pverp,begchunk:endchunk)
+      real(r8), intent(in) :: fld(pcols,pver,begchunk:endchunk)
 
-      real(r8) :: fldzm(pcols,pverp,begchunk:endchunk)
+      real(r8) :: fldzm(pcols,pver,begchunk:endchunk)
 
-      real(r8) :: Zonal_Bamp3d(nzmbas,pverp)
+      real(r8) :: Zonal_Bamp3d(nzmbas,pver)
 
       call ZMobj%calc_amps(fld,Zonal_Bamp3d)
       call ZMobj%eval_grid(Zonal_Bamp3d,fldzm)
