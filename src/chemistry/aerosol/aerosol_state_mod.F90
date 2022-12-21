@@ -179,7 +179,8 @@ module aerosol_state_mod
      end subroutine aero_update_bin
 
      !------------------------------------------------------------------------------
-     ! return aerosol bin size weights for het freezing
+     ! returns the volume-weighted fractions of aerosol subset `bin_ndx` that can act
+     ! as heterogeneous freezing nuclei
      !------------------------------------------------------------------------------
      function aero_hetfrz_size_wght(self, bin_ndx, ncol, nlev) result(wght)
        import :: aerosol_state, r8
@@ -313,7 +314,7 @@ contains
     character(len=*), intent(in) :: species_type  ! species type
     class(aerosol_properties), intent(in) :: aero_props ! aerosol properties object
     real(r8), intent(in) :: rho(:,:)              ! air density (kg m-3)
-    real(r8), intent(out) :: numdens(:,:)         ! dust number densities (#/cm^3)
+    real(r8), intent(out) :: numdens(:,:)         ! species number densities (#/cm^3)
 
     real(r8), pointer :: num(:,:)
     real(r8) :: type_wght(ncol,nlev)
@@ -488,7 +489,8 @@ contains
   end subroutine nuclice_get_numdens
 
   !------------------------------------------------------------------------------
-  ! coated fraction
+  ! returns the fraction of particle surface area of aerosol subset `bin_ndx` covered
+  ! by at least a monolayer of species `species_type` [0-1]
   !------------------------------------------------------------------------------
   function coated_frac(self, bin_ndx,  species_type, ncol, nlev, aero_props, rho, radius) result(frac)
 
@@ -589,10 +591,18 @@ contains
        frac(:ncol,:) = 0._r8
     end where
 
+    where(frac(:ncol,:)>1._r8)
+       frac(:ncol,:) = 1._r8
+    end where
+    where(frac(:ncol,:) < 0.001_r8)
+       frac(:ncol,:) = 0.001_r8
+    end where
+
   end function coated_frac
 
   !------------------------------------------------------------------------------
-  ! mass mean radius (meters)
+  ! returns the radius [m] of particles in aerosol subset `bin_ndx` assuming all particles are
+  ! the same size and only species `species_ndx` contributes to the particle volume
   !------------------------------------------------------------------------------
   function mass_mean_radius(self, bin_ndx, species_ndx, ncol, nlev, aero_props, rho) result(radius)
 
@@ -634,7 +644,8 @@ contains
   end function mass_mean_radius
 
   !------------------------------------------------------------------------------
-  ! mass_factors
+  ! returns mass density [mug m-3] and mass factor (OC+BC)/(OC+BC+SO4) of species
+  ! `species_type` in subset `bin_ndx`
   !------------------------------------------------------------------------------
   subroutine mass_factors(self, bin_ndx,  species_type, ncol, nlev, aero_props, rho, awcam, awfacm)
 
@@ -686,7 +697,7 @@ contains
     where(tot1_mmr(:ncol,:)>0)
        awfacm(:ncol,:) = tot2_mmr(:ncol,:) / tot1_mmr(:ncol,:)
     elsewhere
-       awcam(:ncol,:) = 0._r8
+       awfacm(:ncol,:) = 0._r8
     end where
 
   end subroutine mass_factors

@@ -449,13 +449,6 @@ subroutine hetfrz_classnuc_cam_calc( aero_props, aero_state, &
 
       call outfld(coated_frac_hnames(i), coated(:,:,i), pcols, lchnk)
 
-      where(coated(:ncol,:,i)>1._r8)
-         coated(:ncol,:,i) = 1._r8
-      end where
-      where(coated(:ncol,:,i) < 0.001_r8)
-         coated(:ncol,:,i) = 0.001_r8
-      end where
-
       coated_amb_aer_num(:ncol,:,i) = amb_aer_num(:ncol,:,i)*coated(:ncol,:,i)
       uncoated_amb_aer_num(:ncol,:,i) = amb_aer_num(:ncol,:,i)*(1._r8-coated(:ncol,:,i))
 

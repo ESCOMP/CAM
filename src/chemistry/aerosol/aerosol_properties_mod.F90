@@ -212,7 +212,8 @@ module aerosol_properties_mod
      end subroutine aero_apply_num_limits
 
      !------------------------------------------------------------------------------
-     ! returns TRUE if bin spc provides heterogeneous freezing nuclei
+     ! returns TRUE if species `spc_ndx` in aerosol subset `bin_ndx` contributes to
+     ! the particles' ability to act as heterogeneous freezing nuclei
      !------------------------------------------------------------------------------
      function aero_hetfrz_species(self, bin_ndx, spc_ndx) result(res)
        import :: aerosol_properties

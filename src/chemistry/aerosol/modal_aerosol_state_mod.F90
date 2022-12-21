@@ -376,7 +376,8 @@ contains
   end subroutine update_bin
 
   !------------------------------------------------------------------------------
-  ! return aerosol bin size weights for het freezing
+  ! returns the volume-weighted fractions of aerosol subset `bin_ndx` that can act
+  ! as heterogeneous freezing nuclei
   !------------------------------------------------------------------------------
   function hetfrz_size_wght(self, bin_ndx, ncol, nlev) result(wght)
     class(modal_aerosol_state), intent(in) :: self
