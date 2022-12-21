@@ -88,6 +88,8 @@
 !    14 April     2011; updated EQUIL logic
 !    19 December  2012; updated using Wegner et al., JGR, 2013a,b.
 !    25 April     2013; Removed volcanic heating logic.
+!     6 April     2022; update nat_part_dens from 1e-01 to 5.0e-4 
+!                       (Wilka et al., ACP, 2021)
 !
 ! DESCRIPTION
 !
@@ -961,7 +963,7 @@ sts_nat_sad : &
 !----------------------------------------------------------------------
       real(r8), parameter :: avo_num          = 6.02214e23_r8, &
                              nat_mass_dens    = 1.6_r8, &
-                             nat_part_dens    = 1.0e-2_r8, &
+                             nat_part_dens    = 5.0e-4_r8, &
                              mwnat            = 117._r8, &
                              sigma_nat        = 1.6_r8, &
                              nat_dens_aer     = nat_mass_dens / (mwnat/avo_num), &

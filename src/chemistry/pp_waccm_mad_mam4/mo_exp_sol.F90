@@ -6,7 +6,6 @@ contains
   subroutine exp_sol_inti
     use mo_tracname, only : solsym
     use chem_mods, only : clscnt1, clsmap
-    use ppgrid, only : pver
     use cam_history, only : addfld
     implicit none
     integer :: i,j
@@ -46,20 +45,23 @@ contains
     ! ... Local variables
     !-----------------------------------------------------------------------
     integer :: i, k, l, m
-    real(r8), dimension(ncol,pver,clscnt1) :: &
+    integer :: chnkpnts
+    real(r8), dimension(ncol,pver,max(1,clscnt1)) :: &
          prod, &
-         loss, &
-         ind_prd
+         loss
+    real(r8), dimension(ncol,pver,clscnt1) :: ind_prd
     real(r8), dimension(ncol,pver) :: wrk
+    chnkpnts = ncol*pver
     !-----------------------------------------------------------------------
     ! ... Put "independent" production in the forcing
     !-----------------------------------------------------------------------
     call indprd( 1, ind_prd, clscnt1, base_sol, extfrc, &
-         reaction_rates, ncol )
+                 reaction_rates, chnkpnts )
     !-----------------------------------------------------------------------
     ! ... Form F(y)
     !-----------------------------------------------------------------------
-    call exp_prod_loss( prod, loss, base_sol, reaction_rates, het_rates )
+    call exp_prod_loss( 1, chnkpnts, prod, loss, base_sol, reaction_rates, &
+                        het_rates, chnkpnts )
     !-----------------------------------------------------------------------
     ! ... Solve for the mixing ratio at t(n+1)
     !-----------------------------------------------------------------------
