@@ -108,8 +108,7 @@ use mo_tracname,       only:  solsym
 use physconst,         only:  gravit, mwdry, rair
 use cam_abortutils,    only:  endrun
 use spmd_utils,        only:  iam, masterproc
-use mo_chem_utls,      only:  utls_chem_is
-
+use phys_control,      only:  cam_chempkg_is
 
 implicit none
 
@@ -264,7 +263,7 @@ implicit none
 ! set gas species indices
    call cnst_get_ind( 'H2SO4', l_so4g, .false. )
    call cnst_get_ind( 'NH3',   l_nh4g, .false. )
-   if ( .not. utls_chem_is('GEOS-Chem') ) then
+   if ( .not. cam_chempkg_is('geoschem_mam4') ) then
       call cnst_get_ind( 'MSA',   l_msag, .false. )
    else
       l_msag = 0

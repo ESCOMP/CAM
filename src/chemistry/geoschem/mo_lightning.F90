@@ -1,1 +1,0 @@
-../mozart/mo_lightning.F90

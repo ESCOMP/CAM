@@ -181,13 +181,16 @@ module chemistry
 contains
 !================================================================================================
 
-  logical function chem_is (name)
+  function chem_is (name) result (chem_name_is)
 
-    use mo_chem_utls, only : utls_chem_is
+    use string_utils, only : to_lower
 
     character(len=*), intent(in) :: name
 
-    chem_is = utls_chem_is(name)
+    logical :: chem_name_is
+
+    chem_name_is = (( to_lower(name) == 'geoschem'  ) .or. &
+                    ( to_lower(name) == 'geos-chem' ))
 
   end function chem_is
 
@@ -467,7 +470,7 @@ contains
           map2GCinv(M) = N
        ENDIF
        ! Map constituent onto chemically-active species (aka as indexed in solsym)
-       M = get_spc_ndx(TRIM(trueName))
+       M = get_spc_ndx(TRIM(trueName), compare_uppercase=.true.)
        IF ( M > 0 ) THEN
           mapCnst(N) = M
        ENDIF
@@ -529,7 +532,7 @@ contains
 
        ! The species names need to be convert to upper case as,
        ! for instance, BR2 != Br2
-       drySpc_ndx(N) = get_spc_ndx( to_upper(drydep_list(N)) )
+       drySpc_ndx(N) = get_spc_ndx( to_upper(drydep_list(N)), compare_uppercase=.true. )
 
        if (debug .and. masterproc) write(iulog,'(a,a,a,i4,a,i4)') ' -> species ', trim(drydep_list(N)), ' in dry deposition list at index ', N, ' maps to species in solsym at index ', drySpc_ndx(N)
 
@@ -1643,8 +1646,8 @@ contains
     ! Free pointer
     SpcInfo => NULL()
 
-    l_H2SO4 = get_spc_ndx('H2SO4')
-    l_SO4   = get_spc_ndx('SO4')
+    l_H2SO4 = get_spc_ndx('H2SO4', compare_uppercase=.true.)
+    l_SO4   = get_spc_ndx('SO4', compare_uppercase=.true.)
 
     ! Get indices for physical fields in physics buffer
     NDX_PBLH     = pbuf_get_index('pblh'     )
@@ -3893,10 +3896,10 @@ contains
     speciesName_2 = 'ASOAN'
     speciesName_2 = 'SOAIE'
     speciesName_2 = 'SOAGX'
-    K1 = get_spc_ndx(TRIM(speciesName_1))
-    K2 = get_spc_ndx(TRIM(speciesName_2))
-    K3 = get_spc_ndx(TRIM(speciesName_3))
-    K4 = get_spc_ndx(TRIM(speciesName_4))
+    K1 = get_spc_ndx(TRIM(speciesName_1), compare_uppercase=.true.)
+    K2 = get_spc_ndx(TRIM(speciesName_2), compare_uppercase=.true.)
+    K3 = get_spc_ndx(TRIM(speciesName_3), compare_uppercase=.true.)
+    K4 = get_spc_ndx(TRIM(speciesName_4), compare_uppercase=.true.)
     bulkMass(:nY,:nZ) = 0.0e+00_r8
     DO iBin = 1, 2
        DO M = 1, ntot_amode
@@ -3930,8 +3933,8 @@ contains
           speciesName_1 = 'TSOA3'
           speciesName_2 = 'ASOA3'
        ENDIF
-       K1 = get_spc_ndx(TRIM(speciesName_1))
-       K2 = get_spc_ndx(TRIM(speciesName_2))
+       K1 = get_spc_ndx(TRIM(speciesName_1), compare_uppercase=.true. )
+       K2 = get_spc_ndx(TRIM(speciesName_2), compare_uppercase=.true. )
        bulkMass(:nY,:nZ) = 0.0e+00_r8
        DO M = 1, ntot_amode
           N = lptr2_soa_a_amode(M,iBin)
@@ -3952,7 +3955,7 @@ contains
     ! Now deal with gaseous SOA species
     ! Deal with lowest two volatility bins
     speciesName_1 = 'TSOG0'
-    K1 = get_spc_ndx(TRIM(speciesName_1))
+    K1 = get_spc_ndx(TRIM(speciesName_1), compare_uppercase=.true.)
     N = lptr2_soa_g_amode(1)
     P = mapCnst(N)
     vmr1(:nY,:nZ,P) = vmr0(:nY,:nZ,P) / (vmr0(:nY,:nZ,P) + vmr0(:nY,:nZ,mapCnst(lptr2_soa_g_amode(2)))) &
@@ -3976,8 +3979,8 @@ contains
           speciesName_1 = 'TSOG3'
           speciesName_2 = 'ASOG3'
        ENDIF
-       K1 = get_spc_ndx(TRIM(speciesName_1))
-       K2 = get_spc_ndx(TRIM(speciesName_2))
+       K1 = get_spc_ndx(TRIM(speciesName_1), compare_uppercase=.true.)
+       K2 = get_spc_ndx(TRIM(speciesName_2), compare_uppercase=.true.)
        IF ( P > 0 .AND. K1 > 0 .AND. K2 > 0 ) vmr1(:nY,:nZ,P) = vmr1(:nY,:nZ,K1) + vmr1(:nY,:nZ,K2)
     ENDDO
 

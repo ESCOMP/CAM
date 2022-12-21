@@ -1,1 +1,0 @@
-../mozart/mo_setinv.F90

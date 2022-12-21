@@ -2187,6 +2187,10 @@ sub write_filepath
                 print $fh "$camsrcdir/src/chemistry/modal_aero\n";
                 print $fh "$camsrcdir/src/chemistry/aerosol\n";
             }
+            # Also build Mozart for dependencies elsewhere in CESM
+            # Some modules ignored since also in GEOS-Chem
+            print $fh "$camsrcdir/src/chemistry/pp_none\n";
+            print $fh "$camsrcdir/src/chemistry/mozart\n";
         }
     }
 

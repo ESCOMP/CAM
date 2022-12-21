@@ -1,1 +1,0 @@
-../mozart/fire_emissions.F90
