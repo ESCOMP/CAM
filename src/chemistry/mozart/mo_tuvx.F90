@@ -1510,6 +1510,8 @@ contains
 
   !-----------------------------------------------------------------------
   ! Calculates extreme-UV ionization rates
+  !
+  ! NOTE This never includes an above-column layer
   !-----------------------------------------------------------------------
   subroutine calculate_euv_rates( solar_zenith_angle, fixed_species_conc, &
       species_vmr, height_mid, height_int, euv_rates )
@@ -1529,50 +1531,41 @@ contains
     real(r8), intent(in)  :: height_int(pver+1)   ! height at interfaces (km)
     real(r8), intent(out) :: euv_rates(pver,neuv) ! calculated extreme-UV rates
 
-    real(r8) :: o_dens(pver+1), o2_dens(pver+1), n2_dens(pver+1), height_arg(pver+1)
+    real(r8) :: o_dens(pver), o2_dens(pver), n2_dens(pver), height_arg(pver)
 
     ! ==========
     ! N2 density
     ! ==========
     if( is_fixed_N2 ) then
-      n2_dens(2:) = fixed_species_conc(:pver,index_N2)
+      n2_dens(:) = fixed_species_conc(:pver,index_N2)
     else
-      n2_dens(2:) = species_vmr(:pver,index_N2) * fixed_species_conc(:pver,indexm)
+      n2_dens(:) = species_vmr(:pver,index_N2) * fixed_species_conc(:pver,indexm)
     end if
-    n2_dens(1) = 0.0_r8
-    if( ptop_ref > 10.0_r8 ) n2_dens(1) = n2_dens(2) * 0.9_r8
 
     ! =========
     ! O density
     ! =========
     if( is_fixed_O ) then
-      o_dens(2:) = fixed_species_conc(:pver,index_O)
+      o_dens(:) = fixed_species_conc(:pver,index_O)
     else
-      o_dens(2:) = species_vmr(:pver,index_O) * fixed_species_conc(:pver,indexm)
+      o_dens(:) = species_vmr(:pver,index_O) * fixed_species_conc(:pver,indexm)
     end if
-    o_dens(1) = 0.0_r8
 
     ! ==========
     ! O2 density
     ! ==========
     if( is_fixed_O2 ) then
-      o2_dens(2:) = fixed_species_conc(:pver,index_O2)
+      o2_dens(:) = fixed_species_conc(:pver,index_O2)
     else
-      o2_dens(2:) = species_vmr(:pver,index_O2) * fixed_species_conc(:pver,indexm)
-    end if
-    o2_dens(1) = 0.0_r8
-    if( ptop_ref > 10.0_r8 ) then
-      o2_dens(1) = o2_dens(2) * 7.0_r8 / ( height_int(1) - height_int(2) )
+      o2_dens(:) = species_vmr(:pver,index_O2) * fixed_species_conc(:pver,indexm)
     end if
 
     ! =======================
     ! special height argument
     ! =======================
-    height_arg(2:) = height_mid(:)
-    height_arg(1) = height_arg(2) + ( height_int(1) - height_int(2) )
+    height_arg(:) = height_mid(:)
 
-    call jeuv( pver, solar_zenith_angle, o_dens, o2_dens, n2_dens, height_arg, &
-               euv_rates )
+    call jeuv( pver, solar_zenith_angle, o_dens, o2_dens, n2_dens, height_arg, euv_rates )
 
   end subroutine calculate_euv_rates
 
