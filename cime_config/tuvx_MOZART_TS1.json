@@ -1211,13 +1211,6 @@
      "default matching": "backup",
      "pairs": [
          {
-            "to": "jno",
-            "__reaction": "NO + hv -> N + O",
-            "__comments": "TODO find this rate",
-            "from": "jo2_b",
-            "scale by": 0.0
-         },
-         {
             "to": "jalknit",
             "__reaction": "ALKNIT + hv -> NO2 + 0.4*CH3CHO + 0.1*CH2O + 0.25*CH3COCH3 + HO2 + 0.8*MEK",
             "from": "jch3ooh"
