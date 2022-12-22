@@ -11,7 +11,6 @@ module mo_tuvx
   use tuvx_grid_from_host,     only : grid_updater_t
   use tuvx_profile_from_host,  only : profile_updater_t
   use tuvx_radiator_from_host, only : radiator_updater_t
-  use tuvx_spherical_geometry, only : spherical_geometry_t
 
   implicit none
 
@@ -44,6 +43,11 @@ module mo_tuvx
   ! Indices for radiator updaters
   integer, parameter :: NUM_RADIATORS = 1          ! number of radiators that CAM will update at runtime
   integer, parameter :: RADIATOR_INDEX_AEROSOL = 1 ! Aerosol radiator index
+
+  ! Definition of the MS93 wavelength grid  TODO add description of this
+  integer,       parameter :: NUM_BINS_MS93 = 4
+  real(kind=r8), parameter :: WAVELENGTH_EDGES_MS93(NUM_BINS_MS93+1) = &
+      (/ 181.6_r8, 183.1_r8, 184.6_r8, 190.2_r8, 192.5_r8 /)
 
   ! Information needed to access CAM species state data
   logical :: is_fixed_N2 = .false. ! indicates whether N2 concentrations are fixed
@@ -101,7 +105,8 @@ module mo_tuvx
     real(r8), allocatable    :: optical_depth_(:,:,:)            ! (column, vertical level, wavelength) [unitless]
     real(r8), allocatable    :: single_scattering_albedo_(:,:,:) ! (column, vertical level, wavelength) [unitless]
     real(r8), allocatable    :: asymmetry_factor_(:,:,:)         ! (column, vertical level, wavelength) [unitless]
-    type(spherical_geometry_t), pointer :: spherical_geometry_ => null( ) ! calculator of slant paths
+    real(r8)                 :: et_flux_ms93_(NUM_BINS_MS93)     ! extraterrestrial flux on the MS93 grid
+                                                                 !   [photon cm-2 nm-1 s-1]
   end type tuvx_ptr
   type(tuvx_ptr), allocatable :: tuvx_ptrs(:)
 
@@ -348,11 +353,6 @@ contains
                                    tuvx%n_special_rates_ ) )
       deallocate( height )
 
-      ! =======================================================
-      ! Initialize a calculator for slant paths for each thread
-      ! =======================================================
-      tuvx%spherical_geometry_ => spherical_geometry_t( cam_grids )
-
     end associate
     end do
 
@@ -517,9 +517,11 @@ contains
         ! Calculate special photo rates
         ! =============================
         if( do_jno ) then
-          call calculate_jno( tuvx%spherical_geometry_, &
+          call calculate_jno( sza, &
+                              tuvx%et_flux_ms93_, &
                               fixed_species_conc(i_col,:,:), &
                               species_vmr(i_col,:,:), &
+                              height_int(i_col,:), &
                               tuvx%photo_rates_(i_col,:,jno_index) )
         end if
       end do
@@ -553,7 +555,6 @@ contains
       do i_core = 1, size( tuvx_ptrs )
       associate( tuvx => tuvx_ptrs( i_core ) )
         if( associated( tuvx%core_ ) ) deallocate( tuvx%core_ )
-        if( associated( tuvx%spherical_geometry_ ) ) deallocate( tuvx%spherical_geometry_ )
       end associate
       end do
     end if
@@ -1274,6 +1275,12 @@ contains
             mid_point_values = this%wavelength_mid_values_, &
             edge_values      = this%wavelength_values_)
 
+    ! ======================================================================
+    ! rebin extraterrestrial flux to MS93 grid for use with jno calculations
+    ! ======================================================================
+    call rebin( nbins, NUM_BINS_MS93, we, WAVELENGTH_EDGES_MS93, et_flux_orig, &
+                this%et_flux_ms93_ )
+
   end subroutine set_et_flux
 
 !================================================================================================
@@ -1573,23 +1580,97 @@ contains
 
   !-----------------------------------------------------------------------
   ! Calculates NO photolysis rates
+  !
+  ! NOTE: Always includes an above-column layer
   !-----------------------------------------------------------------------
-  subroutine calculate_jno( spherical_geometry, fixed_species_conc, &
-      species_vmr, jno )
+  subroutine calculate_jno( solar_zenith_angle, et_flux, fixed_species_conc, species_vmr, &
+      height_int, jno )
 
     use chem_mods, only : gas_pcnst, & ! number of non-fixed species
                           nfs, &       ! number of fixed species
                           indexm       ! index for air density in fixed species array
-    use tuvx_spherical_geometry, only : spherical_geometry_t
+    use mo_jshort, only : sphers, slant_col, calc_jno
+    use ref_pres,  only : ptop_ref     ! pressure at the top of the column (Pa)
 
-    type(spherical_geometry_t), intent(in) :: spherical_geometry ! slant column calculator
+    real(r8), intent(in)  :: solar_zenith_angle                  ! degrees
+    real(r8), intent(in)  :: et_flux(NUM_BINS_MS93)              ! extraterrestrial flux MS93 grid
+                                                                 !   (photon cm-2 nm-1 s-1)
     real(r8), intent(in)  :: fixed_species_conc(pver,max(1,nfs)) ! fixed species densities
                                                                  !   (molecule cm-3)
     real(r8), intent(in)  :: species_vmr(pver,max(1,gas_pcnst))  ! species volume mixing
                                                                  !   ratios (mol mol-1)
+    real(r8), intent(in)  :: height_int(pver+1)                  ! height at interfaces (km)
     real(r8), intent(out) :: jno(pver)                           ! calculated NO rate
 
-    jno(:) = 0.0_r8
+    ! species column densities (molecule cm-3)
+    real(kind=r8) :: n2_dens(pver+1), o2_dens(pver+1), o3_dens(pver+1), no_dens(pver+1)
+    ! species slant column densities (molecule cm-2)
+    real(kind=r8) :: o2_slant(pver+1), o3_slant(pver+1), no_slant(pver+1)
+    ! working photo rate array
+    real(kind=r8) :: work_jno(pver+1)
+    ! parameters needed to calculate slant column densities
+    ! (see sphers routine description for details)
+    integer       :: nid(pver+1)
+    real(kind=r8) :: dsdh(0:pver+1,pver+1)
+    ! layer thickness (cm)
+    real(kind=r8) :: delz(pver+1)
+    ! conversion from km to cm
+    real(kind=r8), parameter :: km2cm = 1.0e5_r8
+
+    ! ==========
+    ! N2 density
+    ! ==========
+    if( is_fixed_N2 ) then
+      n2_dens(2:) = fixed_species_conc(:pver,index_N2)
+    else
+      n2_dens(2:) = species_vmr(:pver,index_N2) * fixed_species_conc(:pver,indexm)
+    end if
+    n2_dens(1) = n2_dens(2) * 0.9_r8
+
+    ! ==========
+    ! O2 density
+    ! ==========
+    if( is_fixed_O2 ) then
+      o2_dens(2:) = fixed_species_conc(:pver,index_O2)
+    else
+      o2_dens(2:) = species_vmr(:pver,index_O2) * fixed_species_conc(:pver,indexm)
+    end if
+    o2_dens(1) = o2_dens(2) * 7.0_r8 / ( height_int(1) - height_int(2) )
+
+    ! ==========
+    ! O3 density
+    ! ==========
+    if( is_fixed_O3 ) then
+      o3_dens(2:) = fixed_species_conc(:pver,index_O3)
+    else
+      o3_dens(2:) = species_vmr(:pver,index_O3) * fixed_species_conc(:pver,indexm)
+    end if
+    o3_dens(1) = o3_dens(2) * 7.0_r8 / ( height_int(1) - height_int(2) )
+
+    ! ==========
+    ! NO density
+    ! ==========
+    if( is_fixed_NO ) then
+      no_dens(2:) = fixed_species_conc(:pver,index_NO)
+    else
+      no_dens(2:) = species_vmr(:pver,index_NO) * fixed_species_conc(:pver,indexm)
+    end if
+    no_dens(1) = no_dens(2) * 0.9_r8
+
+    ! ================================
+    ! calculate slant column densities
+    ! ================================
+    call sphers( pver+1, height_int, solar_zenith_angle, dsdh, nid )
+    delz(1:pver) = km2cm * ( height_int(1:pver) - height_int(2:pver+1) )
+    call slant_col( pver+1, delz, dsdh, nid, o2_dens, o2_slant )
+    call slant_col( pver+1, delz, dsdh, nid, o3_dens, o3_slant )
+    call slant_col( pver+1, delz, dsdh, nid, no_dens, no_slant )
+
+    ! =========================================
+    ! calculate the NO photolysis rate constant
+    ! =========================================
+    call calc_jno( pver+1, et_flux, n2_dens, o2_slant, o3_slant, no_slant, work_jno )
+    jno(:) = work_jno(:pver)
 
   end subroutine calculate_jno
 
