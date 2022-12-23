@@ -152,6 +152,7 @@ subroutine microp_driver_init(pbuf2d)
    case ('MG')
       call micro_pumas_cam_init(pbuf2d)
 !CACNOTE - Should this only be called when machine learning is on?
+!CACNOTE - probably move into pumas module
 ! ++ TAU
       call stochastic_kernel_init
       call initialize_tau_emulators

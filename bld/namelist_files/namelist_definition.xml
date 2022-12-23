@@ -2599,12 +2599,17 @@ Default: 1
 Maximum allowed ice number concentration
 Default: 1.0e8
 </entry>
-x
+ 
 <entry id="micro_do_sb_physics" type="logical" category="microphys"
        group="micro_mg_nl" valid_values="" >
 Do Seifert and Behang (2001) autoconversion and accretion physics when set to true.
 Default: .false.
 </entry>
+
+<entry id="micro_mg_warm_rain" type="char*16" category="microphys"
+       group="micro_mg_nl" valid_values="kk2000,sb2001,tau,emulated" >
+Warm rain process
+Default: set in namelist_defaults
 
 <entry id="micro_do_massless_droplet_destroyer" type="logical" category="microphys"
        group="micro_mg_nl" valid_values="" >
