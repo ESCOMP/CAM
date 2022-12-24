@@ -81,10 +81,10 @@
               "override bands": [
                 {
                   "band": "lyman-alpha",
-                  "value": 0.47
+                  "value": 0.53
                 },
                 {
-                  "band": "schumann-runge",
+                  "band": "schumann-runge continuum",
                   "value": 1.0
                 }
               ]
@@ -108,11 +108,11 @@
                "override bands": [
                  {
                    "band": "lyman-alpha",
-                   "value": 0.53
+                   "value": 0.47
                  },
                  {
                    "band": "schumann-runge continuum",
-                   "value": 1.0
+                   "value": 0.0
                  }
                ]
             }
