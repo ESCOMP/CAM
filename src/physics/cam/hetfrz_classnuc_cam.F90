@@ -8,7 +8,7 @@ module hetfrz_classnuc_cam
 
 use shr_kind_mod,   only: r8=>shr_kind_r8
 use spmd_utils,     only: masterproc
-use ppgrid,         only: pcols, pver, begchunk, endchunk
+use ppgrid,         only: pcols, pver
 use physconst,      only: rair, cpair, rh2o, rhoh2o, mwh2o, tmelt, pi
 use constituents,   only: cnst_get_ind
 use physics_types,  only: physics_state
