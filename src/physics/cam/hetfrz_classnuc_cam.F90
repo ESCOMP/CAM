@@ -42,6 +42,8 @@ public :: &
 
 ! Namelist variables
 logical :: hist_hetfrz_classnuc = .false.
+real(r8) :: hetfrz_bc_scalfac = 0.01_r8 ! scaling factor for BC
+real(r8) :: hetfrz_dust_scalfac = 1._r8 ! scaling factor for dust
 
 ! Vars set via init method.
 real(r8) :: mincld      ! minimum allowed cloud fraction
@@ -99,7 +101,7 @@ subroutine hetfrz_classnuc_cam_readnl(nlfile)
   integer :: unitn, ierr
   character(len=*), parameter :: subname = 'hetfrz_classnuc_cam_readnl'
 
-  namelist /hetfrz_classnuc_nl/ hist_hetfrz_classnuc
+  namelist /hetfrz_classnuc_nl/ hist_hetfrz_classnuc, hetfrz_bc_scalfac, hetfrz_dust_scalfac
 
   !-----------------------------------------------------------------------------
 
@@ -121,6 +123,12 @@ subroutine hetfrz_classnuc_cam_readnl(nlfile)
   ! Broadcast namelist variables
   call mpi_bcast(hist_hetfrz_classnuc, 1, mpi_logical, mstrid, mpicom, ierr)
   if (ierr /= 0) call endrun(subname//" mpi_bcast: hist_hetfrz_classnuc")
+
+  if (masterproc) then
+     write(iulog,*) subname,': hist_hetfrz_classnuc = ',hist_hetfrz_classnuc
+     write(iulog,*) subname,': hetfrz_bc_scalfac = ',hetfrz_bc_scalfac
+     write(iulog,*) subname,': hetfrz_dust_scalfac = ',hetfrz_dust_scalfac
+  end if
 
 end subroutine hetfrz_classnuc_cam_readnl
 
@@ -338,7 +346,8 @@ subroutine hetfrz_classnuc_cam_init(mincld_in, aero_props)
 
    end if
 
-   call hetfrz_classnuc_init(rair, cpair, rh2o, rhoh2o, mwh2o, tmelt, iulog)
+   call hetfrz_classnuc_init(rair, cpair, rh2o, rhoh2o, mwh2o, tmelt, iulog, &
+        hetfrz_bc_scalfac, hetfrz_dust_scalfac )
 
 end subroutine hetfrz_classnuc_cam_init
 
@@ -461,7 +470,7 @@ subroutine hetfrz_classnuc_cam_calc( aero_props, aero_state, &
       call outfld(awfacm_hnames(i), aer_awfacm(:,:,i), pcols, lchnk)
 
       fn_cld_aer_num(:ncol,:) = tot_aer_num(:ncol,:,i)*factnum(:ncol,:,indices(i)%bin_ndx)
-      call outfld(cldfn_dens_hnames(i), fn_cld_aer_num(:ncol,:), pcols, lchnk)
+      call outfld(cldfn_dens_hnames(i), fn_cld_aer_num, pcols, lchnk)
 
       fraction_activated(:ncol,:,i) = factnum(:ncol,:,indices(i)%bin_ndx)
 

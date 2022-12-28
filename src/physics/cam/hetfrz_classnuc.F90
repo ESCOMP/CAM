@@ -24,7 +24,7 @@ use shr_kind_mod,  only: r8 => shr_kind_r8
 use wv_saturation, only: svp_water
 use shr_spfn_mod,  only: erf => shr_spfn_erf
 
-use physconst,     only:  pi
+use physconst,     only: pi, planck, boltz, mwso4
 
 implicit none
 private
@@ -37,6 +37,9 @@ real(r8) :: rh2o
 real(r8) :: rhoh2o
 real(r8) :: mwh2o
 real(r8) :: tmelt
+
+real(r8) :: bc_limfac = -huge(1._r8)
+real(r8) :: dust_limfac = -huge(1._r8)
 
 !*****************************************************************************
 !                PDF theta model
@@ -65,11 +68,8 @@ real(r8) :: dim_f_imm(pdf_n_theta) = 0.0_r8
 integer  :: iulog
 
 real(r8), parameter :: n1 = 1.e19_r8           ! number of water molecules in contact with unit area of substrate [m-2]
-real(r8), parameter :: kboltz = 1.38e-23_r8    ! Boltzmann constant [J K-1]
-real(r8), parameter :: hplanck = 6.63e-34_r8
-real(r8), parameter :: rhplanck = 1._r8/hplanck
+real(r8), parameter :: rhplanck = 1._r8/planck
 real(r8), parameter :: amu = 1.66053886e-27_r8
-real(r8), parameter :: Mso4 = 96.06_r8
 real(r8), parameter :: nus = 1.e13_r8          ! frequ. of vibration [s-1] higher freq. (as in P&K, consistent with Anupam's data)
 real(r8), parameter :: rhwincloud = 0.98_r8    ! 98% RH in mixed-phase clouds (Korolev & Isaac, JAS 2006)
 
@@ -81,7 +81,7 @@ contains
 
 subroutine hetfrz_classnuc_init( &
    rair_in, cpair_in, rh2o_in, rhoh2o_in, mwh2o_in, &
-   tmelt_in, iulog_in)
+   tmelt_in, iulog_in, bc_limfac_in, dust_limfac_in)
 
    real(r8), intent(in) :: rair_in
    real(r8), intent(in) :: cpair_in
@@ -90,6 +90,8 @@ subroutine hetfrz_classnuc_init( &
    real(r8), intent(in) :: mwh2o_in
    real(r8), intent(in) :: tmelt_in
    integer,  intent(in) :: iulog_in
+   real(r8), intent(in) :: bc_limfac_in
+   real(r8), intent(in) :: dust_limfac_in
 
    rair   = rair_in
    cpair  = cpair_in
@@ -98,6 +100,9 @@ subroutine hetfrz_classnuc_init( &
    mwh2o  = mwh2o_in
    tmelt  = tmelt_in
    iulog  = iulog_in
+
+   bc_limfac = bc_limfac_in
+   dust_limfac = dust_limfac_in
 
    ! Initialize all the PDF theta variables:
    if (pdf_imm_in) then
@@ -245,25 +250,25 @@ subroutine hetfrz_classnuc_calc(ntypes, types,&
    sigma_iv = (76.1_r8-0.155_r8*tc + 28.5_r8+0.25_r8*tc)*1E-3_r8
 
    ! critical germ size
-   rgimm = 2*vwice*sigma_iw/(kboltz*t*LOG(supersatice))
+   rgimm = 2*vwice*sigma_iw/(boltz*t*LOG(supersatice))
 
    ! critical germ size
    ! assume 98% RH in mixed-phase clouds (Korolev & Isaac, JAS 2006)
-   rgdep=2*vwice*sigma_iv/(kboltz*t*LOG(rhwincloud*supersatice))
+   rgdep=2*vwice*sigma_iv/(boltz*t*LOG(rhwincloud*supersatice))
 
    ! homogeneous energy of germ formation
    dg0dep = 4*pi/3._r8*sigma_iv*rgdep**2
 
    ! prefactor
    ! attention: division of small numbers
-   Adep = (rhwincloud*eswtr)**2*(vwice/(mwh2o*amu))/(kboltz*T*nus)*SQRT(sigma_iv/(kboltz*T))
+   Adep = (rhwincloud*eswtr)**2*(vwice/(mwh2o*amu))/(boltz*T*nus)*SQRT(sigma_iv/(boltz*T))
 
    ! homogeneous energy of germ formation
    dg0cnt = 4*pi/3._r8*sigma_iv*rgimm**2
 
    ! prefactor
    ! attention: division of small numbers
-   Acnt = rhwincloud*eswtr*4*pi/(nus*SQRT(2*pi*mwh2o*amu*kboltz*T))
+   Acnt = rhwincloud*eswtr*4*pi/(nus*SQRT(2*pi*mwh2o*amu*boltz*T))
 
    do ispc = 1, ntypes
 
@@ -290,7 +295,7 @@ subroutine hetfrz_classnuc_calc(ntypes, types,&
          dga_dep = dga_dep_bc
          dga_imm = dga_imm_bc
          pdf_imm = .false.
-         limfac = 0.01_r8 ! Limit to 1% of available potential IN (for BC), no limit for dust
+         limfac = bc_limfac
          frzimm_ptr => frzbcimm
          frzcnt_ptr => frzbccnt
          frzdep_ptr => frzbcdep
@@ -301,7 +306,7 @@ subroutine hetfrz_classnuc_calc(ntypes, types,&
          dga_dep = dga_dep_dust
          dga_imm = dga_imm_dust
          pdf_imm = .true.
-         limfac = 1._r8
+         limfac = dust_limfac
       case default
          errstring = 'hetfrz_classnuc_calc ERROR: unrecognized aerosol type: '//trim(types(ispc))
          return
@@ -405,7 +410,7 @@ subroutine hetfrz_classnuc_calc(ntypes, types,&
 
    !calculate molality
    if ( total_interstitial_aer_num > 0._r8 ) then
-      molal = (1.e-6_r8*awcam*(1._r8-awfacm)/(Mso4*total_interstitial_aer_num*1.e6_r8))/ &
+      molal = (1.e-6_r8*awcam*(1._r8-awfacm)/(mwso4*total_interstitial_aer_num*1.e6_r8))/ &
            (4*pi/3*rhoh2o*(MAX(r3lx,4.e-6_r8))**3)
       aw = 1._r8/(1._r8+2.9244948e-2_r8*molal+2.3141243e-3_r8*molal**2+7.8184854e-7_r8*molal**3)
    end if
@@ -425,7 +430,7 @@ subroutine hetfrz_classnuc_calc(ntypes, types,&
 
    do_frz = aw*supersatice > 1._r8
    if (do_frz) then
-      rgimm_aer = 2*vwice*sigma_iw/(kboltz*t*LOG(aw*supersatice))
+      rgimm_aer = 2*vwice*sigma_iw/(boltz*t*LOG(aw*supersatice))
    else
       return
    endif
@@ -437,7 +442,7 @@ subroutine hetfrz_classnuc_calc(ntypes, types,&
       dg0imm = 4*pi/3._r8*sigma_iw*rgimm_aer**2
 
       ! prefactor
-      Aimm = n1*((vwice*rhplanck)/(rgimm_aer**3)*SQRT(3._r8/pi*kboltz*T*dg0imm))
+      Aimm = n1*((vwice*rhplanck)/(rgimm_aer**3)*SQRT(3._r8/pi*boltz*T*dg0imm))
 
       ! nucleation rate per particle
 
@@ -445,7 +450,7 @@ subroutine hetfrz_classnuc_calc(ntypes, types,&
          dim_Jimm(:) = 0._r8
          do i = i1,i2
             ! 1/sqrt(f)
-            dim_Jimm(i) = Aimm*mradius**2/SQRT(dim_f_imm(i))*EXP((-dga_imm-dim_f_imm(i)*dg0imm)/(kboltz*T))
+            dim_Jimm(i) = Aimm*mradius**2/SQRT(dim_f_imm(i))*EXP((-dga_imm-dim_f_imm(i)*dg0imm)/(boltz*T))
             dim_Jimm(i) = max(dim_Jimm(i), 0._r8)
          end do
 
@@ -458,7 +463,7 @@ subroutine hetfrz_classnuc_calc(ntypes, types,&
             sum_imm = 1.0_r8
          end if
       else
-         Jimm = Aimm*mradius**2/SQRT(f_imm)*EXP(( -dga_imm - f_imm*dg0imm )/(kboltz*T))
+         Jimm = Aimm*mradius**2/SQRT(f_imm)*EXP(( -dga_imm - f_imm*dg0imm )/(boltz*T))
          sum_imm = exp(-Jimm*deltat)
       end if
    end if
@@ -469,7 +474,7 @@ subroutine hetfrz_classnuc_calc(ntypes, types,&
 
    ! nucleation rate per particle
    if (rgdep > 0) then
-      Jdep = Adep*mradius**2/SQRT(f_dep)*EXP((-dga_dep-f_dep*dg0dep)/(kboltz*T))
+      Jdep = Adep*mradius**2/SQRT(f_dep)*EXP((-dga_dep-f_dep*dg0dep)/(boltz*T))
    else
       Jdep = 0._r8
    end if
@@ -479,7 +484,7 @@ subroutine hetfrz_classnuc_calc(ntypes, types,&
    !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
    ! nucleation rate per particle
-   Jcnt = Acnt*mradius**2*EXP((-dga_dep-f_cnt*dg0cnt)/(kboltz*T))*Kcoll*icnlx
+   Jcnt = Acnt*mradius**2*EXP((-dga_dep-f_cnt*dg0cnt)/(boltz*T))*Kcoll*icnlx
 
    ! Limit to 1% of available potential IN (for BC), no limit for dust
    if (tot_in) then
@@ -543,7 +548,6 @@ subroutine collkernel( temp, pres, eswtr, rhwincloud, r3lx,  rad, Ktherm, Kcoll 
    real(r8) :: Dvap        ! water vapor diffusivity [m2 s-1]
    real(r8) :: Daer        ! aerosol diffusivity [m2 s-1]
    real(r8) :: latvap      ! latent heat of vaporization [J kg-1]
-   real(r8) :: kboltz      ! Boltzmann constant [J K-1]
    real(r8) :: G           ! thermodynamic function in Cotton et al. [kg m-1 s-1]
    real(r8) :: f_t         ! factor by Waldmann & Schmidt [ ]
    real(r8) :: Q_heat      ! heat flux [J m-2 s-1]
@@ -559,7 +563,6 @@ subroutine collkernel( temp, pres, eswtr, rhwincloud, r3lx,  rad, Ktherm, Kcoll 
    Kcoll(:) = 0._r8
 
    tc = temp - tmelt
-   kboltz = 1.38065e-23_r8
 
    ! air viscosity for tc<0, from depvel_part.F90
    viscos_air = (1.718_r8+0.0049_r8*tc-1.2e-5_r8*tc*tc)*1.e-5_r8
@@ -596,7 +599,7 @@ subroutine collkernel( temp, pres, eswtr, rhwincloud, r3lx,  rad, Ktherm, Kcoll 
          ! Knudsen number (Seinfeld & Pandis 8.1)
          Kn = lambda/rad(idx)
          ! aerosol diffusivity
-         Daer = kboltz*temp*(1 + Kn)/(6*pi*rad(idx)*viscos_air)
+         Daer = boltz*temp*(1 + Kn)/(6*pi*rad(idx)*viscos_air)
 
          ! Schmidt number
          Sc = viscos_air/(Daer*rho_air)

@@ -508,11 +508,6 @@ contains
     !------------coated variables--------------------
     real(r8), parameter :: n_so4_monolayers_dust = 1.0_r8 ! number of so4(+nh4) monolayers needed to coat a dust particle
     real(r8), parameter :: dr_so4_monolayers_dust = n_so4_monolayers_dust * 4.76e-10_r8
-    real(r8), parameter :: spechygro_so4 = 0.507_r8          ! Sulfate hygroscopicity
-    real(r8), parameter :: spechygro_soa = 0.14_r8           ! SOA hygroscopicity
-    real(r8), parameter :: spechygro_pom = 0.1_r8            ! POM hygroscopicity
-    real(r8), parameter :: soa_equivso4_factor = spechygro_soa/spechygro_so4
-    real(r8), parameter :: pom_equivso4_factor = spechygro_pom/spechygro_so4
     real(r8) :: vol_shell(ncol,nlev)
     real(r8) :: vol_core(ncol,nlev)
     real(r8) :: alnsg, fac_volsfc
@@ -568,12 +563,12 @@ contains
     if (pom_ndx>0) then
        call aero_props%get(bin_ndx, pom_ndx, density=specdens_pom)
        call self%get_ambient_mmr(pom_ndx, bin_ndx, pom_mmr)
-       vol_shell(:ncol,:) = vol_shell(:ncol,:) + pom_mmr(:ncol,:)*rho(:ncol,:)*pom_equivso4_factor/specdens_pom
+       vol_shell(:ncol,:) = vol_shell(:ncol,:) + pom_mmr(:ncol,:)*rho(:ncol,:)*aero_props%pom_equivso4_factor()/specdens_pom
     end if
     if (soa_ndx>0) then
        call aero_props%get(bin_ndx, soa_ndx, density=specdens_soa)
        call self%get_ambient_mmr(soa_ndx, bin_ndx, soa_mmr)
-       vol_shell(:ncol,:) = vol_shell(:ncol,:) + soa_mmr(:ncol,:)*rho(:ncol,:)*soa_equivso4_factor/specdens_soa
+       vol_shell(:ncol,:) = vol_shell(:ncol,:) + soa_mmr(:ncol,:)*rho(:ncol,:)*aero_props%soa_equivso4_factor()/specdens_soa
     end if
 
     call aero_props%get(bin_ndx, species_ndx, density=specdens)
