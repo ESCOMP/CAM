@@ -1485,19 +1485,6 @@
       <option name="wallclock">00:20:00</option>
     </options>
   </test>
-  <test compset="FCSD" grid="f05_f05_mg17" name="ERP_Ln9_Vnuopc" testmods="cam/outfrq9s">
-    <machines>
-      <machine name="cheyenne" compiler="intel" category="camchem"/>
-    </machines>
-    <options>
-      <option name="wallclock">00:30:00</option>
-    </options>
-  </test>
-  <test compset="FCSD" grid="f05_f05_mg17" name="SMS_D_Ln9_Vnuopc" testmods="cam/outfrq9s">
-    <machines>
-      <machine name="cheyenne" compiler="intel" category="camchem"/>
-    </machines>
-  </test>
   <test compset="FCSD" grid="f09_f09_mg17" name="ERP_Lh12_Vnuopc" testmods="cam/outfrq3h">
     <machines>
       <machine name="cheyenne" compiler="intel" category="camchem"/>
@@ -1633,7 +1620,7 @@
       <option name="comment">"Free running CAM-Chem on a reginally refined grid"</option>
     </options>
   </test>
-  <test compset="FCHIST" grid="ne0CONUSne30x8_ne0CONUSne30x8_mt12" name="ERS_Ld3_Vnuopc" testmods="cam/outfrq1d_refined_camchem">
+  <test compset="FCHIST" grid="ne0CONUSne30x8_ne0CONUSne30x8_mt12" name="ERS_Lh3_P720x1" testmods="cam/outfrq3h">
     <machines>
       <machine name="cheyenne" compiler="intel" category="camchem"/>
     </machines>
@@ -2065,16 +2052,6 @@
     <options>
       <option name="wallclock">00:30:00</option>
     </options>
-  </test>
-  <test compset="FX2000" grid="f05_f05_mg17" name="ERS_Ln9_Vnuopc"   testmods="cam/outfrq9s_f05">
-    <machines>
-      <machine name="cheyenne" compiler="intel" category="waccmx"/>
-    </machines>
-  </test>
-  <test compset="FX2000" grid="f05_f05_mg17" name="SMS_D_Ln9_Vnuopc"   testmods="cam/outfrq9s_f05">
-    <machines>
-      <machine name="cheyenne" compiler="intel" category="waccmx"/>
-    </machines>
   </test>
   <test compset="FXHIST" grid="f19_f19_mg17" name="SMS_D_Ln9_Vnuopc" testmods="cam/outfrq9s_amie">
     <machines>

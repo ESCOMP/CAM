@@ -2986,7 +2986,7 @@
 <!-- Chemistry Rates Diagnostics                                        -->
 <!-- ================================================================== -->
 
-<rxn_rate_sums chem="trop_strat_mam4_ts2">
+<rxn_rate_sums chem="trop_strat_mam5_ts2">
     'O3_Prod = NO_HO2 + CH3O2_NO + HOCH2OO_NO + C2H5O2_NO + CH3CO3_NO + EO2_NO + C3H7O2_NO + PO2_NO + ',
                'RO2_NO + ENEO2_NO + MACRO2_NOa + jhonitr + ',
                'MCO3_NO + MEKO2_NO + ALKO2_NO + jalknit + ACBZO2_NO + BENZO2_NO + BZOO_NO + ',
