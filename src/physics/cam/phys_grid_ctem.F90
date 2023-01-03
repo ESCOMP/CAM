@@ -18,6 +18,7 @@ module phys_grid_ctem
   use shr_const_mod, only: rgas => shr_const_rgas ! J/K/kmole
   use shr_const_mod, only: grav => shr_const_g ! m/s2
   use air_composition, only: mbarv ! g/mole
+  use string_utils,  only: int2str
 
   implicit none
 
@@ -83,7 +84,8 @@ contains
     do_tem_diags = .false.
     if (phys_grid_ctem_nfreq/=0) then
        if (.not.(phys_grid_ctem_zm_nbas>0 .and. phys_grid_ctem_za_nlat>0)) then
-          call endrun(prefix//'inconsistent phys_grid_ctem namelist settings')
+          call endrun(prefix//'inconsistent phys_grid_ctem namelist settings -- phys_grid_ctem_zm_nbas=' &
+                      //int2str(phys_grid_ctem_zm_nbas)//', phys_grid_ctem_za_nlat='//int2str(phys_grid_ctem_za_nlat))
        end if
        if (phys_grid_ctem_nfreq>0) then
           ntimesteps = phys_grid_ctem_nfreq
@@ -92,7 +94,8 @@ contains
           ntimesteps = nint( -phys_grid_ctem_nfreq*3600._r8/dtime )
        end if
        if (ntimesteps<1) then
-          call endrun(prefix//'invalid ntimesteps')
+          call endrun(prefix//'invalid ntimesteps -- phys_grid_ctem_nfreq needs to be a larger negative value ' &
+                            //'or the model time step needs to be shorter')
        end if
        do_tem_diags = .true.
     end if
@@ -164,7 +167,7 @@ contains
 
     ! sanity check
     if ( abs(1._r8-total_wght)>1.e-12_r8 .or. abs(fourpi-total_area)>1.e-12_r8 ) then
-       call endrun('zmean_phys_fields_reg: problem with area/wght calc')
+       call endrun('phys_grid_ctem_reg: problem with area/wght calc')
     end if
 
     ! initialize zonal-average and zonal-mean utility objects

@@ -18,7 +18,7 @@ module zonal_mean_mod
 !
 !   NOTE: The weighting of the Zonal Profiles values is scaled such
 !         that ZonalMean_t amplitudes can be used to evaluate values
-!         the ZonalProfile_t grid and vise-versa.
+!         on the ZonalProfile_t grid and vice-versa.
 !
 !         The ZonalMean_t computes global integrals to compute basis
 !         amplitudes. For distributed environments the cost of these
@@ -73,7 +73,7 @@ module zonal_mean_mod
 !           ------------------------------------------------------
 !               - Initialize the data structure for the given number of
 !                 latitudes. Either use the given Latitudes and weights,
-!                 or OPTIONALLY create a profile gridpoints and associated
+!                 or OPTIONALLY create profile gridpoints and associated
 !                 area weights from SP to NP. Then initialize 'nbas' basis
 !                 functions for the profile gridpoints.
 !                 If the user supplies the lats/area values, the area values must
@@ -115,7 +115,7 @@ module zonal_mean_mod
 !                 real(r8),intent(in ):: Bamp (nbas,pver) - Zonal Basis Amplitudes
 !                 real(r8),intent(out):: Zdata(nlat,pver) - Meridional Profile data
 !
-!    (3) Compute Zonal mean averages (FASTER/NOT-ACCURATE) on Zonal profile grid
+!    (3) Compute Zonal mean averages (FASTER/LESS-ACCURATE) on Zonal profile grid
 !        (For the created zonal profile, just bin average area weighted
 !         2D/3D physgrid grid values)
 !
@@ -123,8 +123,8 @@ module zonal_mean_mod
 !         =========================================
 !           call ZA%init(lats,area,nlat,GEN_GAUSSLATS=.true.)
 !           --------------------------------------------------
-!               - Given the latitude/area for the nlat meridional gridpopints, initialize
-!                 the ZonalAverage datastruture for computing bin-averaging of physgrid
+!               - Given the latitude/area for the nlat meridional gridpoints, initialize
+!                 the ZonalAverage data struture for computing bin-averaging of physgrid
 !                 values. It is assumed that the domain of these gridpoints of the
 !                 profile span latitudes from SP to NP.
 !                 The optional GEN_GAUSSLATS flag allows for the generation of Gaussian
@@ -161,6 +161,7 @@ module zonal_mean_mod
   use spmd_utils,      only: mpicom
   use physconst,       only: pi
   use phys_grid,       only: ngcols_p => num_global_phys_cols
+  use cam_logfile,     only: iulog
 
   implicit none
   private
@@ -226,16 +227,19 @@ module zonal_mean_mod
      procedure, pass :: final => final_ZonalAverage
   end type ZonalAverage_t
 
-  real(r8), parameter :: PI2 = 0.5_r8*pi
+  real(r8), parameter :: halfPI = 0.5_r8*pi
+  real(r8), parameter :: twoPI  = 2.0_r8*pi
+  real(r8), parameter :: fourPI = 4.0_r8*pi
+  real(r8), parameter :: qrtrPI = .25_r8*pi
 
 contains
     !=======================================================================
     subroutine init_ZonalMean(this,I_nbas)
       !
-      ! init_ZonalMean: Initialize the ZonalMean datastrutures for the
+      ! init_ZonalMean: Initialize the ZonalMean data strutures for the
       !                 physics grid. It is assumed that the domain
       !                 of these gridpoints spans the surface of the sphere.
-      !                 The representation of basis functions functions is
+      !                 The representation of basis functions is
       !                 normalized w.r.t integration over the sphere.
       !=====================================================================
       !
@@ -293,7 +297,7 @@ contains
 
       allocate(Clats(pcols,begchunk:endchunk), stat=astat)
       call handle_allocate_error(astat, subname, 'Clats')
-      allocate(Bcoef(I_nbas), stat=astat)
+      allocate(Bcoef(I_nbas/2+1), stat=astat)
       call handle_allocate_error(astat, subname, 'Bcoef')
       allocate(Csum (nlcols, Cvec_len), stat=astat)
       call handle_allocate_error(astat, subname, 'Csum')
@@ -309,7 +313,7 @@ contains
       Bsum(:,:) = 0._r8
       Csum(:,:) = 0._r8
 
-      ! Save a copy the area weights for each ncol gridpoint
+      ! Save a copy of the area weights for each ncol gridpoint
       ! and convert Latitudes to SP->NP colatitudes in radians
       !-------------------------------------------------------
       do lchnk=begchunk,endchunk
@@ -318,18 +322,13 @@ contains
          do cc = 1,ncols
             rlat=get_rlat_p(lchnk,cc)
             this%area(cc,lchnk) = area(cc)
-            Clats    (cc,lchnk) = rlat + PI2
+            Clats    (cc,lchnk) = rlat + halfPI
          end do
       end do
 
       ! Add first basis for the mean values.
       !------------------------------------------
-      do lchnk=begchunk,endchunk
-         ncols = get_ncols_p(lchnk)
-         do cc = 1,ncols
-            this%basis(cc,lchnk,1) = 1._r8/sqrt(8._r8*PI2)
-         end do
-      end do
+      this%basis(:,begchunk:endchunk,1) = 1._r8/sqrt(fourPI)
 
       ! Loop over the remaining basis functions
       !---------------------------------------
@@ -366,12 +365,10 @@ contains
       call shr_reprosum_calc(Bsum, Bnorm, count, nlcols, this%nbas, gbl_count=ngcols_p, commid=mpicom)
 
       do nn=1,this%nbas
-        do lchnk=begchunk,endchunk
-          ncols = get_ncols_p(lchnk)
-          do cc = 1,ncols
-            this%basis(cc,lchnk,nn) = this%basis(cc,lchnk,nn)/sqrt(Bnorm(nn))
-          end do
-        end do
+         do lchnk=begchunk,endchunk
+            ncols = get_ncols_p(lchnk)
+            this%basis(:ncols,lchnk,nn) = this%basis(:ncols,lchnk,nn)/sqrt(Bnorm(nn))
+         end do
       end do ! nn=1,this%nbas
 
       ! Compute covariance matrix for basis functions
@@ -379,7 +376,7 @@ contains
       !---------------------------------------------------------------
       cnum = 0
       do nn= 1,this%nbas
-         do n2=nn,I_nbas
+         do n2=nn,this%nbas
             cnum = cnum + 1
             count = 0
             do lchnk=begchunk,endchunk
@@ -387,7 +384,6 @@ contains
                do cc = 1,ncols
                   count=count+1
                   Csum(count,cnum) = this%basis(cc,lchnk,nn)*this%basis(cc,lchnk,n2)*this%area(cc,lchnk)
-
                end do
             end do
 
@@ -650,7 +646,7 @@ contains
     !=======================================================================
     subroutine init_ZonalProfile(this,IO_lats,IO_area,I_nlat,I_nbas,GEN_GAUSSLATS)
       !
-      ! init_ZonalProfile: Initialize the ZonalProfile datastruture for the
+      ! init_ZonalProfile: Initialize the ZonalProfile data struture for the
       !                    given nlat gridpoints. It is assumed that the domain
       !                    of these gridpoints of the profile span latitudes
       !                    from SP to NP.
@@ -658,7 +654,7 @@ contains
       !                    normalized w.r.t integration over the sphere so that
       !                    when configured for tha same number of basis functions,
       !                    the calculated amplitudes are interchangable with
-      !                    those for the for the ZonalMean_t class.
+      !                    those for the ZonalMean_t class.
       !
       !                    The optional GEN_GAUSSLATS flag allows for the
       !                    generation of Gaussian latitudes. The generated grid
@@ -709,7 +705,7 @@ contains
 
       allocate(Clats(I_nlat), stat=astat)
       call handle_allocate_error(astat, subname, 'Clats')
-      allocate(Bcoef(I_nbas), stat=astat)
+      allocate(Bcoef(I_nbas/2+1), stat=astat)
       call handle_allocate_error(astat, subname, 'Bcoef')
       allocate(Bcov (I_nbas,I_nbas), stat=astat)
       call handle_allocate_error(astat, subname, 'Bcov')
@@ -731,25 +727,25 @@ contains
         ! to degrees and scale the area for global 2D integrals
         !-----------------------------------------------------------
         do nn=1,I_nlat
-          IO_lats(nn) = (45._r8*Clats(nn)/atan(1._r8)) - 90._r8
-          IO_area(nn) = IO_area(nn)*(8._r8*atan(1._r8))
+          IO_lats(nn) = (45._r8*Clats(nn)/qrtrPI) - 90._r8
+          IO_area(nn) = IO_area(nn)*pi
         end do
       else
         ! Convert Latitudes to SP->NP colatitudes in radians
         !----------------------------------------------------
         do nn=1,I_nlat
-          Clats(nn) = (IO_lats(nn) + 90._r8)*atan(1._r8)/45._r8
+          Clats(nn) = (IO_lats(nn) + 90._r8)*qrtrPI/45._r8
         end do
       endif
 
       ! Copy the area weights for each nlat
-      ! gridpoint to the datastructure
+      ! gridpoint to the data structure
       !---------------------------------------
       this%area(1:I_nlat) = IO_area(1:I_nlat)
 
       ! Add first basis for the mean values.
       !------------------------------------------
-      this%basis(:,1) = 1._r8/sqrt(16._r8*atan(1._r8))
+      this%basis(:,1) = 1._r8/sqrt(fourPI)
       Bnorm = 0._r8
       do ii=1,I_nlat
         Bnorm = Bnorm + (this%basis(ii,1)*this%basis(ii,1)*this%area(ii))
@@ -986,7 +982,7 @@ contains
     !=======================================================================
     subroutine init_ZonalAverage(this,IO_lats,IO_area,I_nlat,GEN_GAUSSLATS)
       !
-      ! init_ZonalAverage: Initialize the ZonalAverage datastruture for the
+      ! init_ZonalAverage: Initialize the ZonalAverage data struture for the
       !                    given nlat gridpoints. It is assumed that the domain
       !                    of these gridpoints of the profile span latitudes
       !                    from SP to NP.
@@ -1072,22 +1068,22 @@ contains
         ! to degrees and scale the area for global 2D integrals
         !-----------------------------------------------------------
         do nn=1,this%nlat
-          IO_lats(nn) = (45._r8*Clats(nn)/atan(1._r8)) - 90._r8
-          IO_area(nn) = IO_area(nn)*(8._r8*atan(1._r8))
+          IO_lats(nn) = (45._r8*Clats(nn)/qrtrPI) - 90._r8
+          IO_area(nn) = IO_area(nn)*twoPI
         end do
       else
         ! Convert Latitudes to SP->NP colatitudes in radians
         !----------------------------------------------------
         do nn=1,this%nlat
-          Clats(nn) = (IO_lats(nn) + 90._r8)*atan(1._r8)/45._r8
+          Clats(nn) = (IO_lats(nn) + 90._r8)*qrtrPI/45._r8
         end do
       endif
 
-      ! Copy the Lat grid area weights to the datastructure
+      ! Copy the Lat grid area weights to the data structure
       !-----------------------------------------------------
       this%area(1:this%nlat) = IO_area(1:this%nlat)
 
-      ! Save a copy the area weights for each 2D gridpoint
+      ! Save a copy of the area weights for each 2D gridpoint
       ! and convert Latitudes to SP->NP colatitudes in radians
       !-------------------------------------------------------
       do lchnk=begchunk,endchunk
@@ -1096,14 +1092,14 @@ contains
         do cc = 1,ncols
           rlat=get_rlat_p(lchnk,cc)
           this%area_g(cc,lchnk) = area(cc)
-          Glats      (cc,lchnk) = rlat + PI2
+          Glats      (cc,lchnk) = rlat + halfPI
         end do
       end do
 
       ! Set boundaries for Latitude bins
       !-----------------------------------
       BinLat(1)           = 0._r8
-      BinLat(this%nlat+1) = 4._r8*atan(1._r8)
+      BinLat(this%nlat+1) = pi
       do nn=2,this%nlat
         BinLat(nn) = (Clats(nn-1)+Clats(nn))/2._r8
       end do
@@ -1114,22 +1110,22 @@ contains
         ncols = get_ncols_p(lchnk)
         do cc = 1,ncols
           jlat = -1
-          if((Glats(cc,lchnk).le.BinLat(2)).and. &
-             (Glats(cc,lchnk).ge.BinLat(1))      ) then
+          if((Glats(cc,lchnk)<=BinLat(2)).and. &
+             (Glats(cc,lchnk)>=BinLat(1))      ) then
             jlat = 1
-          elseif((Glats(cc,lchnk).ge.BinLat(this%nlat)  ).and. &
-                 (Glats(cc,lchnk).le.BinLat(this%nlat+1))      ) then
+          elseif((Glats(cc,lchnk)>=BinLat(this%nlat)  ).and. &
+                 (Glats(cc,lchnk)<=BinLat(this%nlat+1))      ) then
             jlat = this%nlat
           else
             do jj=2,(this%nlat-1)
-              if((Glats(cc,lchnk).gt.BinLat(jj  )).and. &
-                 (Glats(cc,lchnk).le.BinLat(jj+1))      ) then
+              if((Glats(cc,lchnk)>BinLat(jj  )).and. &
+                 (Glats(cc,lchnk)<=BinLat(jj+1))      ) then
                 jlat = jj
                 exit
               endif
             end do
           endif
-          if((jlat.lt.1).or.(jlat.gt.this%nlat)) then
+          if (jlat<1) then
             call endrun('ZonalAverage init ERROR: jlat not in range')
           endif
           this%idx_map(cc,lchnk) = jlat
@@ -1155,8 +1151,13 @@ contains
       this%a_norm = Anorm
 
       if (.not.all(Anorm(:)>0._r8)) then
-         print*, 'ZonalAverage init ERROR: Anorm; ',Anorm(:)
-         call endrun('init_ZonalAverage: error in Anorm')
+         write(iulog,*) 'init_ZonalAverage -- ERROR in Anorm values: '
+         do jlat = 1,I_nlat
+            if (.not.Anorm(jlat)>0._r8) then
+               write(iulog,*) ' Anorm(',jlat,'): ', Anorm(jlat)
+            endif
+         end do
+         call endrun('init_ZonalAverage -- ERROR in Anorm values')
       end if
 
       ! End Routine
@@ -1422,21 +1423,21 @@ contains
 
       cp(1) = 0._r8
       ma = abs(mm)
-      if(ma.gt.nn) return
+      if(ma>nn) return
 
-      if((nn-1).lt.0) then
+      if((nn-1)<0) then
         cp(1) = sqrt(2._r8)
         return
-      elseif((nn-1).eq.0) then
-        if(ma.ne.0) then
+      elseif((nn-1)==0) then
+        if(ma/=0) then
           cp(1) = sqrt(.75_r8)
-          if(mm.eq.-1) cp(1) = -cp(1)
+          if(mm==-1) cp(1) = -cp(1)
         else
           cp(1) = sqrt(1.5_r8)
         endif
         return
       else
-        if(mod(nn+ma,2).ne.0) then
+        if(mod(nn+ma,2)/=0) then
           nmms2 = (nn-ma-1)/2
           fnum  = nn + ma + 2
           fnmh  = nn - ma + 2
@@ -1452,10 +1453,10 @@ contains
       t1   = 1._r8/SC20
       nex  = 20
       fden = 2._r8
-      if(nmms2.ge.1) then
+      if(nmms2>=1) then
         do ii = 1,nmms2
           t1 = fnum*t1/fden
-          if(t1.GT.SC20) THEN
+          if(t1>SC20) THEN
             t1  = t1/SC40
             nex = nex + 40
           endif
@@ -1464,13 +1465,13 @@ contains
         end do
       endif
 
-      if(mod(ma/2,2).ne.0) then
+      if(mod(ma/2,2)/=0) then
         t1 = -t1/2._r8**(nn-1-nex)
       else
         t1 =  t1/2._r8**(nn-1-nex)
       endif
       t2 = 1._r8
-      if(ma.ne.0) then
+      if(ma/=0) then
         do ii = 1,ma
           t2   = fnmh*t2/ (fnmh+pm1)
           fnmh = fnmh + 2._r8
@@ -1481,31 +1482,32 @@ contains
       fnnp1 = nn*(nn+1)
       fnmsq = fnnp1 - 2._r8*ma*ma
 
-      if((mod(nn,2).eq.0).and.(mod(ma,2).eq.0)) then
+      if((mod(nn,2)==0).and.(mod(ma,2)==0)) then
         jj = 1+(nn+1)/2
       else
         jj = (nn+1)/2
       endif
 
       cp(jj) = cp2
-      if(mm.lt.0) then
-        if(mod(ma,2).ne.0) cp(jj) = -cp(jj)
+      if(mm<0) then
+        if(mod(ma,2)/=0) cp(jj) = -cp(jj)
       endif
-      if(jj.le.1) return
+      if(jj<=1) return
 
       fk = nn
       a1 = (fk-2._r8)*(fk-1._r8) - fnnp1
       b1 = 2._r8* (fk*fk-fnmsq)
       cp(jj-1) = b1*cp(jj)/a1
-   30 continue
-        jj = jj - 1
-        if(jj.le.1) return
+
+      jj = jj - 1
+      do while(jj>1)
         fk = fk - 2._r8
         a1 = (fk-2._r8)*(fk-1._r8) - fnnp1
         b1 = -2._r8*(fk*fk-fnmsq)
         c1 = (fk+1._r8)*(fk+2._r8) - fnnp1
         cp(jj-1) = -(b1*cp(jj)+c1*cp(jj+1))/a1
-      goto 30
+        jj = jj - 1
+     end do
 
     end subroutine dalfk
     !=======================================================================
@@ -1600,20 +1602,20 @@ contains
 
       pb = 0._r8
       ma = abs(mm)
-      if(ma.gt.nn) return
+      if(ma>nn) return
 
-      if(nn.le.0) then
-        if(ma.le.0) then
+      if(nn<=0) then
+        if(ma<=0) then
           pb = sqrt(.5_r8)
-          goto 140
+          return
         endif
       endif
 
       nmod = mod(nn,2)
       mmod = mod(ma,2)
 
-      if(nmod.le.0) then
-        if(mmod.le.0) then
+      if(nmod<=0) then
+        if(mmod<=0) then
           kdo = nn/2 + 1
           cdt = cos(theta+theta)
           sdt = sin(theta+theta)
@@ -1627,7 +1629,7 @@ contains
             summ = summ + cp(kp1)*ct
           end do
           pb = summ
-          goto 140
+          return
         endif
         kdo = nn/2
         cdt = cos(theta+theta)
@@ -1642,11 +1644,11 @@ contains
           summ = summ + cp(kk)*st
         end do
         pb = summ
-        goto 140
+        return
       endif
 
       kdo = (nn+1)/2
-      if(mmod.le.0) then
+      if(mmod<=0) then
         cdt =  cos(theta+theta)
         sdt =  sin(theta+theta)
         ct  =  cos(theta)
@@ -1659,7 +1661,7 @@ contains
           summ = summ + cp(kk)*ct
         end do
         pb = summ
-        goto 140
+        return
       endif
 
       cdt =  cos(theta+theta)
@@ -1674,8 +1676,6 @@ contains
         summ = summ + cp(kk)*st
       end do
       pb = summ
-
-140   continue
 
     end subroutine dlfpt
     !=======================================================================
@@ -1722,10 +1722,10 @@ contains
       do ii=1,Nbas
         Mmax = 0._r8
         do jj=1,Nbas
-          if(abs(Mwrk(ii,jj)).gt.Mmax) Mmax = abs(Mwrk(ii,jj))
+          if(abs(Mwrk(ii,jj))>Mmax) Mmax = abs(Mwrk(ii,jj))
         end do
-        if(Mmax.eq.0._r8) then
-          call endrun('Singular Matrix')
+        if(Mmax==0._r8) then
+          call endrun('Invert_Matrix: Singular Matrix')
         endif
         Rscl(ii) = 1._r8/Mmax
       end do
@@ -1734,10 +1734,10 @@ contains
       !-----------------------
       do jj=1,Nbas
 
-        if(jj.gt.1) then
+        if(jj>1) then
           do ii=1,(jj-1)
             Sval = Mwrk(ii,jj)
-            if(ii.gt.1) then
+            if(ii>1) then
               do kk=1,(ii-1)
                 Sval = Sval - Mwrk(ii,kk)*Mwrk(kk,jj)
               end do
@@ -1749,20 +1749,20 @@ contains
         Mmax = 0._r8
         do ii=jj,Nbas
           Sval = Mwrk(ii,jj)
-          if(jj.gt.1) then
+          if(jj>1) then
             do kk=1,(jj-1)
               Sval = Sval - Mwrk(ii,kk)*Mwrk(kk,jj)
             end do
             Mwrk(ii,jj) = Sval
           endif
           Mval = Rscl(ii)*abs(Sval)
-          if(Mval.ge.Mmax) then
+          if(Mval>=Mmax) then
             ii_max = ii
             Mmax = Mval
           endif
         end do
 
-        if(jj.ne.ii_max) then
+        if(jj/=ii_max) then
           do kk=1,Nbas
             Mval            = Mwrk(ii_max,kk)
             Mwrk(ii_max,kk) = Mwrk(jj,kk)
@@ -1773,8 +1773,8 @@ contains
         endif
 
         Indx(jj) = ii_max
-        if(jj.ne.Nbas) then
-          if(Mwrk(jj,jj).eq.0._r8) Mwrk(jj,jj) = TINY
+        if(jj/=Nbas) then
+          if(Mwrk(jj,jj)==0._r8) Mwrk(jj,jj) = TINY
           Mval = 1._r8/Mwrk(jj,jj)
           do ii=(jj+1),Nbas
             Mwrk(ii,jj) = Mwrk(ii,jj)*Mval
@@ -1783,7 +1783,7 @@ contains
 
       end do ! jj=1,Nbas
 
-      if(Mwrk(Nbas,Nbas).eq.0._r8) Mwrk(Nbas,Nbas) = TINY
+      if(Mwrk(Nbas,Nbas)==0._r8) Mwrk(Nbas,Nbas) = TINY
 
       ! Initialize the inverse array with the identity matrix
       !-------------------------------------------------------
@@ -1801,11 +1801,11 @@ contains
           ndx = Indx(ii)
           Sval = O_InvMat(ndx,kk)
           O_InvMat(ndx,kk) = O_InvMat(ii,kk)
-          if(i2.ne.0) then
+          if(i2/=0) then
             do jj=i2,(ii-1)
               Sval = Sval - Mwrk(ii,jj)*O_InvMat(jj,kk)
             end do
-          elseif(Sval.ne.0._r8) then
+          elseif(Sval/=0._r8) then
             i2 = ii
           endif
           O_InvMat(ii,kk) = Sval
@@ -1813,7 +1813,7 @@ contains
 
         do ii=Nbas,1,-1
           Sval = O_InvMat(ii,kk)
-          if(ii.lt.Nbas) then
+          if(ii<Nbas) then
             do jj=(ii+1),Nbas
               Sval = Sval - Mwrk(ii,jj)*O_InvMat(jj,kk)
             end do
@@ -1851,7 +1851,7 @@ contains
       !     gauss points and weights are computed using the fourier-newton
       !     described in "on computing the points and weights for
       !     gauss-legendre quadrature", paul n. swarztrauber, siam journal
-      !     on scientific computing that has been accepted for publication.
+      !     on scientific computing (DOI 10.1137/S1064827500379690).
       !     This routine is faster and more accurate than older program
       !     with the same name.
       !
@@ -1874,7 +1874,7 @@ contains
       !             containing the gaussian weights.
       !
       !     ierror = 0 no errors
-      !            = 1 if nlat.le.0
+      !            = 1 if nlat<=0
       !
       !===================================================================
       !
@@ -1887,27 +1887,28 @@ contains
       !
       ! Local Values
       !-------------
-      real(r8):: eps
       real(r8):: sgnd
-      real(r8):: xx,pi,pis2,dtheta,dthalf
+      real(r8):: xx,dtheta,dthalf
       real(r8):: cmax,zprev,zlast,zero,zhold,pb,dpb,dcor,summ,cz
       integer :: mnlat,ns2,nhalf,nix,it,ii
 
+      real(r8), parameter :: eps = epsilon(1._r8)
+
       ! check work space length
       !------------------------
-      if(nlat.le.0) then
-        return
+      if(nlat<=0) then
         ierr = 1
+        return
       endif
       ierr = 0
 
       ! compute weights and points analytically when nlat=1,2
       !-------------------------------------------------------
-      if(nlat.eq.1) then
+      if(nlat==1) then
         theta(1) = acos(0._r8)
         wts  (1) = 2._r8
         return
-      elseif(nlat.eq.2) then
+      elseif(nlat==2) then
         xx       = sqrt(1._r8/3._r8)
         theta(1) = acos( xx)
         theta(2) = acos(-xx)
@@ -1918,71 +1919,62 @@ contains
 
       ! Proceed for nlat > 2
       !----------------------
-      eps   = sqrt(ddzeps(1._r8))
-      eps   = eps*sqrt(eps)
-      pis2  = 2._r8*atan(1._r8)
-      pi    = pis2 + pis2
       mnlat = mod(nlat,2)
       ns2   = nlat/2
       nhalf = (nlat+1)/2
 
       call dcpdp(nlat,cz,theta(ns2+1),wts(ns2+1))
 
-      dtheta = pis2/nhalf
+      dtheta = halfPI/nhalf
       dthalf = dtheta/2._r8
       cmax   = .2_r8*dtheta
 
       ! estimate first point next to theta = pi/2
       !-------------------------------------------
-      if(mnlat.ne.0) then
-        zero  = pis2 - dtheta
-        zprev = pis2
+      if(mnlat/=0) then
+        zero  = halfPI - dtheta
+        zprev = halfPI
         nix   = nhalf - 1
       else
-        zero = pis2 - dthalf
+        zero = halfPI - dthalf
         nix  = nhalf
       endif
 
-   10 continue
-        it = 0
-   20   continue
-          it = it + 1
-          zlast = zero
+      do while(nix/=0)
+         it = 0
+         do while (abs(dcor) > eps*abs(zero))
+            it = it + 1
+            ! newton iterations
+            !-----------------------
+            call dtpdp(nlat,zero,cz,theta(ns2+1),wts(ns2+1),pb,dpb)
+            dcor = pb/dpb
+            if(dcor.ne.0._r8) then
+               sgnd = dcor/abs(dcor)
+            else
+               sgnd = 1._r8
+            endif
+            dcor = sgnd*min(abs(dcor),cmax)
+            zero = zero - dcor
+         end do
 
-          ! newton iterations
-          !-----------------------
-          call dtpdp(nlat,zero,cz,theta(ns2+1),wts(ns2+1),pb,dpb)
+         theta(nix) = zero
+         zhold      = zero
 
-          dcor = pb/dpb
-          if(dcor.ne.0._r8) then
-            sgnd = dcor/abs(dcor)
-          else
-            sgnd = 1._r8
-          endif
-          dcor = sgnd*min(abs(dcor),cmax)
-          zero = zero - dcor
-        if(abs(zero-zlast).gt.eps*abs(zero)) goto 20
-
-        theta(nix) = zero
-        zhold      = zero
-
-        !   wts(nix) = (nlat+nlat+1)/(dpb*dpb)
-        ! yakimiw's formula permits using old pb and dpb
-        !--------------------------------------------------
-        wts(nix) = (nlat+nlat+1)/ (dpb+pb*dcos(zlast)/dsin(zlast))**2
-        nix      = nix - 1
-        if(nix.eq.0) goto 30
-        if(nix.eq.nhalf-1) zero = 3._r8*zero - pi
-        if(nix.lt.nhalf-1) zero = zero + zero - zprev
-        zprev = zhold
-      goto 10
-   30 continue
+         !   wts(nix) = (nlat+nlat+1)/(dpb*dpb)
+         ! yakimiw's formula permits using old pb and dpb
+         !--------------------------------------------------
+         wts(nix) = (nlat+nlat+1)/ (dpb+pb*dcos(zlast)/dsin(zlast))**2
+         nix      = nix - 1
+         if(nix==nhalf-1) zero = 3._r8*zero - pi
+         if(nix<nhalf-1) zero = zero + zero - zprev
+         zprev = zhold
+      end do
 
       ! extend points and weights via symmetries
       !-------------------------------------------
-      if(mnlat.ne.0) then
-        theta(nhalf) = pis2
-        call dtpdp(nlat,pis2,cz,theta(ns2+1),wts(ns2+1),pb,dpb)
+      if(mnlat/=0) then
+        theta(nhalf) = halfPI
+        call dtpdp(nlat,halfPI,cz,theta(ns2+1),wts(ns2+1),pb,dpb)
         wts(nhalf) = (nlat+nlat+1)/ (dpb*dpb)
       endif
 
@@ -2032,7 +2024,7 @@ contains
       t2  = nn + 1._r8
       t3  = 0._r8
       t4  = nn + nn + 1._r8
-      if(mod(nn,2).eq.0) then
+      if(mod(nn,2)==0) then
         cp(ncp) = 1._r8
         do jj = ncp,2,-1
           t1 = t1 + 2._r8
@@ -2091,13 +2083,13 @@ contains
 
       cdt = dcos(theta+theta)
       sdt = dsin(theta+theta)
-      if(mod(nn,2).eq.0) then
+      if(mod(nn,2)==0) then
         ! n even
         !----------
         kdo = nn/2
         pb  = .5_r8*cz
         dpb = 0._r8
-        if(nn.gt.0) then
+        if(nn>0) then
           cth = cdt
           sth = sdt
           do kk = 1,kdo
@@ -2126,52 +2118,6 @@ contains
       endif
 
     end subroutine dtpdp
-    !=======================================================================
-
-
-    !=======================================================================
-    real(r8) function ddzeps(xx)
-      !
-      !     estimate unit roundoff in quantities of size xx.
-      !
-      !     this program should function properly on all systems
-      !     satisfying the following two assumptions,
-      !        1.  the base used in representing floating point
-      !            numbers is not a power of three.
-      !        2.  the quantity aa in statement 10 is represented to
-      !            the accuracy used in floating point variables
-      !            that are stored in memory.
-      !     under these assumptions, it should be true that,
-      !            aa is not exactly equal to four-thirds,
-      !            bb has a zero for its last bit or digit,
-      !            cc is not exactly equal to one,
-      !            eps  measures the separation of 1.0 from
-      !                 the next larger floating point number.
-      !     the developers of eispack would appreciate being informed
-      !     about any systems where these assumptions do not hold.
-      !
-      !=====================================================================
-      !
-      ! Passed variables
-      !-----------------
-      real(r8), intent(in) :: xx
-      !
-      ! Local Values
-      !--------------
-      real(r8):: bb,cc,eps
-      real(r8), parameter :: aa = 4._r8/3._r8
-
-      eps = 0.0_r8
-
-      do while(eps == 0.0_r8)
-         bb  = aa - 1._r8
-         cc  = bb + bb + bb
-         eps = abs(cc-1._r8)
-      end do
-
-      ddzeps = eps*abs(xx)
-
-    end function ddzeps
     !=======================================================================
 
 end module zonal_mean_mod
