@@ -265,8 +265,8 @@ contains
        ! vertical velocity
        w(:ncol,:,lchnk) = -sheight(:ncol,:) *  phys_state(lchnk)%omega(:ncol,:) / phys_state(lchnk)%pmid(:ncol,:)
 
-       u(:ncol,:,lchnk) =  phys_state(lchnk)%u(:,:)
-       v(:ncol,:,lchnk) =  phys_state(lchnk)%v(:,:)
+       u(:ncol,:,lchnk) =  phys_state(lchnk)%u(:ncol,:)
+       v(:ncol,:,lchnk) =  phys_state(lchnk)%v(:ncol,:)
 
     end do
 
