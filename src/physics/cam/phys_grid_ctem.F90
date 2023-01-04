@@ -211,7 +211,7 @@ contains
     call addfld ('WTHzaphys',(/'lev'/), 'A', 'MK/S', 'Vertical Heat Flux:', gridname='ctem_zavg_phys')
     call addfld ('UVzaphys', (/'lev'/), 'A', 'M2/S2','Meridional Flux of Zonal Momentum', gridname='ctem_zavg_phys')
     call addfld ('UWzaphys', (/'lev'/), 'A', 'M2/S2','Vertical Flux of Zonal Momentum', gridname='ctem_zavg_phys')
-    call addfld ('THphys', (/'lev' /), 'A',  'K',  'Zonal-Mean potential temp - defined on ilev', gridname='physgrid' )
+    call addfld ('THphys',   (/'lev'/), 'A', 'K',    'Potential temp - defined on ilev', gridname='physgrid' )
 
   end subroutine phys_grid_ctem_init
 

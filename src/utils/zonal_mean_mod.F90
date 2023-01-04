@@ -337,14 +337,14 @@ contains
 
          ! Generate coefs for the basis
          !------------------------------
-         call dalfk(nb,0,Bcoef)
+         call sh_gen_basis_coefs(nb,0,Bcoef)
 
          ! Create basis for the coefs at each ncol gridpoint
          !---------------------------------------------------
          do lchnk=begchunk,endchunk
             ncols = get_ncols_p(lchnk)
             do cc = 1,ncols
-               call dlfpt(nb,0,Clats(cc,lchnk),Bcoef,this%basis(cc,lchnk,nn))
+               call sh_create_basis(nb,0,Clats(cc,lchnk),Bcoef,this%basis(cc,lchnk,nn))
             end do
          end do
       end do ! nn=2,this%nbas
@@ -718,7 +718,7 @@ contains
 
         ! Create a Gaussian grid from SP to NP
         !--------------------------------------
-        call dgaqd(I_nlat,Clats,IO_area,ierr)
+        call sh_create_gaus_grid(I_nlat,Clats,IO_area,ierr)
         if (ierr/=0) then
            call endrun('init_ZonalProfile: Error creating Gaussian grid')
         end if
@@ -759,13 +759,13 @@ contains
 
         ! Generate coefs for the basis
         !------------------------------
-        call dalfk(nb,0,Bcoef)
+        call sh_gen_basis_coefs(nb,0,Bcoef)
 
         ! Create an un-normalized basis for the
         ! coefs at each nlat gridpoint
         !---------------------------------------
         do ii=1,I_nlat
-          call dlfpt(nb,0,Clats(ii),Bcoef,this%basis(ii,nn))
+          call sh_create_basis(nb,0,Clats(ii),Bcoef,this%basis(ii,nn))
         end do
 
         ! Numerically normalize the basis funnction
@@ -1059,7 +1059,7 @@ contains
 
         ! Create a Gaussin grid from SP to NP
         !--------------------------------------
-        call dgaqd(this%nlat,Clats,IO_area,ierr)
+        call sh_create_gaus_grid(this%nlat,Clats,IO_area,ierr)
         if (ierr/=0) then
            call endrun('init_ZonalAverage: Error creating Gaussian grid')
         end if
@@ -1311,375 +1311,6 @@ contains
     end subroutine final_ZonalAverage
     !=======================================================================
 
-    !=======================================================================
-    subroutine dalfk(nn,mm,cp)
-      !
-      ! subroutine alfk (n,m,cp)
-      !
-      ! dimension of           real cp(n/2 + 1)
-      ! arguments
-      !
-      ! purpose                routine alfk computes single precision fourier
-      !                        coefficients in the trigonometric series
-      !                        representation of the normalized associated
-      !                        legendre function pbar(n,m,theta) for use by
-      !                        routines lfp and lfpt in calculating single
-      !                        precision pbar(n,m,theta).
-      !
-      !                        first define the normalized associated
-      !                        legendre functions
-      !
-      !                        pbar(m,n,theta) = sqrt((2*n+1)*factorial(n-m)
-      !                        /(2*factorial(n+m)))*sin(theta)**m/(2**n*
-      !                        factorial(n)) times the (n+m)th derivative of
-      !                        (x**2-1)**n with respect to x=cos(theta)
-      !
-      !                        where theta is colatitude.
-      !
-      !                        then subroutine alfk computes the coefficients
-      !                        cp(k) in the following trigonometric
-      !                        expansion of pbar(m,n,theta).
-      !
-      !                        1) for n even and m even, pbar(m,n,theta) =
-      !                           .5*cp(1) plus the sum from k=1 to k=n/2
-      !                           of cp(k+1)*cos(2*k*th)
-      !
-      !                        2) for n even and m odd, pbar(m,n,theta) =
-      !                           the sum from k=1 to k=n/2 of
-      !                           cp(k)*sin(2*k*th)
-      !
-      !                        3) for n odd and m even, pbar(m,n,theta) =
-      !                           the sum from k=1 to k=(n+1)/2 of
-      !                           cp(k)*cos((2*k-1)*th)
-      !
-      !                        4) for n odd and m odd,  pbar(m,n,theta) =
-      !                           the sum from k=1 to k=(n+1)/2 of
-      !                           cp(k)*sin((2*k-1)*th)
-      !
-      !
-      ! usage                  call alfk(n,m,cp)
-      !
-      ! arguments
-      !
-      ! on input               n
-      !                          nonnegative integer specifying the degree of
-      !                          pbar(n,m,theta)
-      !
-      !                        m
-      !                          is the order of pbar(n,m,theta). m can be
-      !                          any integer however cp is computed such that
-      !                          pbar(n,m,theta) = 0 if abs(m) is greater
-      !                          than n and pbar(n,m,theta) = (-1)**m*
-      !                          pbar(n,-m,theta) for negative m.
-      !
-      ! on output              cp
-      !                          single precision array of length (n/2)+1
-      !                          which contains the fourier coefficients in
-      !                          the trigonometric series representation of
-      !                          pbar(n,m,theta)
-      !
-      !
-      ! special conditions     none
-      !
-      ! precision              single
-      !
-      ! algorithm              the highest order coefficient is determined in
-      !                        closed form and the remainig coefficients are
-      !                        determined as the solution of a backward
-      !                        recurrence relation.
-      !
-      ! accuracy               comparison between routines alfk and double
-      !                        precision dalfk on the cray1 indicates
-      !                        greater accuracy for smaller values
-      !                        of input parameter n.  agreement to 14
-      !                        places was obtained for n=10 and to 13
-      !                        places for n=100.
-      !
-      !=====================================================================
-      !
-      ! Passed Variables
-      !------------------
-      integer ,intent(in ):: nn
-      integer ,intent(in ):: mm
-      real(r8),intent(out):: cp(nn/2+1)
-      !
-      ! Local Values
-      !----------------
-      real(r8):: fnum,fnmh
-      real(r8):: pm1
-      real(r8):: t1,t2
-      real(r8):: fden
-      real(r8):: cp2
-      real(r8):: fnnp1
-      real(r8):: fnmsq
-      real(r8):: fk
-      real(r8):: a1,b1,C1
-      integer :: ma,nmms2,nex
-      integer :: ii,jj
-
-      real(r8),parameter:: SC10=1024._r8
-      real(r8),parameter:: SC20=SC10*SC10
-      real(r8),parameter:: SC40=SC20*SC20
-
-      cp(1) = 0._r8
-      ma = abs(mm)
-      if(ma>nn) return
-
-      if((nn-1)<0) then
-        cp(1) = sqrt(2._r8)
-        return
-      elseif((nn-1)==0) then
-        if(ma/=0) then
-          cp(1) = sqrt(.75_r8)
-          if(mm==-1) cp(1) = -cp(1)
-        else
-          cp(1) = sqrt(1.5_r8)
-        endif
-        return
-      else
-        if(mod(nn+ma,2)/=0) then
-          nmms2 = (nn-ma-1)/2
-          fnum  = nn + ma + 2
-          fnmh  = nn - ma + 2
-          pm1   = -1._r8
-        else
-          nmms2 = (nn-ma)/2
-          fnum  = nn + ma + 1
-          fnmh  = nn - ma + 1
-          pm1   = 1._r8
-        endif
-      endif
-
-      t1   = 1._r8/SC20
-      nex  = 20
-      fden = 2._r8
-      if(nmms2>=1) then
-        do ii = 1,nmms2
-          t1 = fnum*t1/fden
-          if(t1>SC20) THEN
-            t1  = t1/SC40
-            nex = nex + 40
-          endif
-          fnum = fnum + 2._r8
-          fden = fden + 2._r8
-        end do
-      endif
-
-      if(mod(ma/2,2)/=0) then
-        t1 = -t1/2._r8**(nn-1-nex)
-      else
-        t1 =  t1/2._r8**(nn-1-nex)
-      endif
-      t2 = 1._r8
-      if(ma/=0) then
-        do ii = 1,ma
-          t2   = fnmh*t2/ (fnmh+pm1)
-          fnmh = fnmh + 2._r8
-        end do
-      endif
-
-      cp2   = t1*sqrt((nn+.5_r8)*t2)
-      fnnp1 = nn*(nn+1)
-      fnmsq = fnnp1 - 2._r8*ma*ma
-
-      if((mod(nn,2)==0).and.(mod(ma,2)==0)) then
-        jj = 1+(nn+1)/2
-      else
-        jj = (nn+1)/2
-      endif
-
-      cp(jj) = cp2
-      if(mm<0) then
-        if(mod(ma,2)/=0) cp(jj) = -cp(jj)
-      endif
-      if(jj<=1) return
-
-      fk = nn
-      a1 = (fk-2._r8)*(fk-1._r8) - fnnp1
-      b1 = 2._r8* (fk*fk-fnmsq)
-      cp(jj-1) = b1*cp(jj)/a1
-
-      jj = jj - 1
-      do while(jj>1)
-        fk = fk - 2._r8
-        a1 = (fk-2._r8)*(fk-1._r8) - fnnp1
-        b1 = -2._r8*(fk*fk-fnmsq)
-        c1 = (fk+1._r8)*(fk+2._r8) - fnnp1
-        cp(jj-1) = -(b1*cp(jj)+c1*cp(jj+1))/a1
-        jj = jj - 1
-     end do
-
-    end subroutine dalfk
-    !=======================================================================
-
-
-    !=======================================================================
-    subroutine dlfpt(nn,mm,theta,cp,pb)
-      !
-      ! subroutine lfpt (n,m,theta,cp,pb)
-      !
-      ! dimension of
-      ! arguments
-      !                        cp((n/2)+1)
-      !
-      ! purpose                routine lfpt uses coefficients computed by
-      !                        routine alfk to compute the single precision
-      !                        normalized associated legendre function pbar(n,
-      !                        m,theta) at colatitude theta.
-      !
-      ! usage                  call lfpt(n,m,theta,cp,pb)
-      !
-      ! arguments
-      !
-      ! on input               n
-      !                          nonnegative integer specifying the degree of
-      !                          pbar(n,m,theta)
-      !                        m
-      !                          is the order of pbar(n,m,theta). m can be
-      !                          any integer however pbar(n,m,theta) = 0
-      !                          if abs(m) is greater than n and
-      !                          pbar(n,m,theta) = (-1)**m*pbar(n,-m,theta)
-      !                          for negative m.
-      !
-      !                        theta
-      !                          single precision colatitude in radians
-      !
-      !                        cp
-      !                          single precision array of length (n/2)+1
-      !                          containing coefficients computed by routine
-      !                          alfk
-      !
-      ! on output              pb
-      !                          single precision variable containing
-      !                          pbar(n,m,theta)
-      !
-      ! special conditions     calls to routine lfpt must be preceded by an
-      !                        appropriate call to routine alfk.
-      !
-      ! precision              single
-      !
-      ! algorithm              the trigonometric series formula used by
-      !                        routine lfpt to calculate pbar(n,m,th) at
-      !                        colatitude th depends on m and n as follows:
-      !
-      !                           1) for n even and m even, the formula is
-      !                              .5*cp(1) plus the sum from k=1 to k=n/2
-      !                              of cp(k)*cos(2*k*th)
-      !                           2) for n even and m odd. the formula is
-      !                              the sum from k=1 to k=n/2 of
-      !                              cp(k)*sin(2*k*th)
-      !                           3) for n odd and m even, the formula is
-      !                              the sum from k=1 to k=(n+1)/2 of
-      !                              cp(k)*cos((2*k-1)*th)
-      !                           4) for n odd and m odd, the formula is
-      !                              the sum from k=1 to k=(n+1)/2 of
-      !                              cp(k)*sin((2*k-1)*th)
-      !
-      ! accuracy               comparison between routines lfpt and double
-      !                        precision dlfpt on the cray1 indicates greater
-      !                        accuracy for greater values on input parameter
-      !                        n.  agreement to 13 places was obtained for
-      !                        n=10 and to 12 places for n=100.
-      !
-      ! timing                 time per call to routine lfpt is dependent on
-      !                        the input parameter n.
-      !
-      !=====================================================================
-      integer, intent(in) :: nn,mm
-      real(r8), intent(in) :: theta
-      real(r8), intent(in) :: cp(:)
-      real(r8), intent(out) :: pb
-
-      real(r8) :: cdt
-      real(r8) :: sdt
-      real(r8) :: ct
-      real(r8) :: st
-      real(r8) :: summ
-      real(r8) :: cth
-
-      integer:: ma,nmod,mmod,kdo
-      integer:: kp1,kk
-
-      pb = 0._r8
-      ma = abs(mm)
-      if(ma>nn) return
-
-      if(nn<=0) then
-        if(ma<=0) then
-          pb = sqrt(.5_r8)
-          return
-        endif
-      endif
-
-      nmod = mod(nn,2)
-      mmod = mod(ma,2)
-
-      if(nmod<=0) then
-        if(mmod<=0) then
-          kdo = nn/2 + 1
-          cdt = cos(theta+theta)
-          sdt = sin(theta+theta)
-          ct  = 1._r8
-          st  = 0._r8
-          summ = .5_r8*cp(1)
-          do kp1 = 2,kdo
-            cth = cdt*ct - sdt*st
-            st  = sdt*ct + cdt*st
-            ct  = cth
-            summ = summ + cp(kp1)*ct
-          end do
-          pb = summ
-          return
-        endif
-        kdo = nn/2
-        cdt = cos(theta+theta)
-        sdt = sin(theta+theta)
-        ct  = 1._r8
-        st  = 0._r8
-        summ = 0._r8
-        do kk = 1,kdo
-          cth = cdt*ct - sdt*st
-          st  = sdt*ct + cdt*st
-          ct  = cth
-          summ = summ + cp(kk)*st
-        end do
-        pb = summ
-        return
-      endif
-
-      kdo = (nn+1)/2
-      if(mmod<=0) then
-        cdt =  cos(theta+theta)
-        sdt =  sin(theta+theta)
-        ct  =  cos(theta)
-        st  = -sin(theta)
-        summ = 0._r8
-        do kk = 1,kdo
-          cth = cdt*ct - sdt*st
-          st  = sdt*ct + cdt*st
-          ct  = cth
-          summ = summ + cp(kk)*ct
-        end do
-        pb = summ
-        return
-      endif
-
-      cdt =  cos(theta+theta)
-      sdt =  sin(theta+theta)
-      ct  =  cos(theta)
-      st  = -sin(theta)
-      summ = 0._r8
-      do kk = 1,kdo
-        cth = cdt*ct - sdt*st
-        st  = sdt*ct + cdt*st
-        ct  = cth
-        summ = summ + cp(kk)*st
-      end do
-      pb = summ
-
-    end subroutine dlfpt
-    !=======================================================================
-
 
     !=======================================================================
     subroutine Invert_Matrix(I_Mat,Nbas,O_InvMat)
@@ -1832,10 +1463,351 @@ contains
     end subroutine Invert_Matrix
     !=======================================================================
 
+    !=======================================================================
+    ! legacy spherepack routines
+    !=======================================================================
+    subroutine sh_gen_basis_coefs(nn,mm,cp)
+      !
+      ! spherepack alfk
+      !
+      ! dimension of           real cp(nn/2 + 1)
+      ! arguments
+      !
+      ! purpose                computes fourier coefficients in the trigonometric series
+      !                        representation of the normalized associated
+      !                        legendre function pbar(nn,mm,theta) for use by
+      !                        sh_gen_basis_coefs in calculating pbar(nn,mm,theta).
+      !
+      !                        first define the normalized associated
+      !                        legendre functions
+      !
+      !                        pbar(mm,nn,theta) = sqrt((2*nn+1)*factorial(nn-mm)
+      !                        /(2*factorial(nn+mm)))*sin(theta)**mm/(2**nn*
+      !                        factorial(nn)) times the (nn+mm)th derivative of
+      !                        (x**2-1)**nn with respect to x=cos(theta)
+      !
+      !                        where theta is colatitude.
+      !
+      !                        then subroutine sh_gen_basis_coefs computes the coefficients
+      !                        cp(k) in the following trigonometric
+      !                        expansion of pbar(m,n,theta).
+      !
+      !                        1) for n even and m even, pbar(mm,nn,theta) =
+      !                           .5*cp(1) plus the sum from k=1 to k=nn/2
+      !                           of cp(k+1)*cos(2*k*th)
+      !
+      !                        2) for nn even and mm odd, pbar(mm,nn,theta) =
+      !                           the sum from k=1 to k=nn/2 of
+      !                           cp(k)*sin(2*k*th)
+      !
+      !                        3) for n odd and m even, pbar(mm,nn,theta) =
+      !                           the sum from k=1 to k=(nn+1)/2 of
+      !                           cp(k)*cos((2*k-1)*th)
+      !
+      !                        4) for nn odd and mm odd,  pbar(mm,nn,theta) =
+      !                           the sum from k=1 to k=(nn+1)/2 of
+      !                           cp(k)*sin((2*k-1)*th)
+      !
+      ! arguments
+      !
+      ! on input               nn
+      !                          nonnegative integer specifying the degree of
+      !                          pbar(nn,mm,theta)
+      !
+      !                        mm
+      !                          is the order of pbar(nn,mm,theta). mm can be
+      !                          any integer however cp is computed such that
+      !                          pbar(nn,mm,theta) = 0 if abs(m) is greater
+      !                          than nn and pbar(nn,mm,theta) = (-1)**mm*
+      !                          pbar(nn,-mm,theta) for negative mm.
+      !
+      ! on output              cp
+      !                          array of length (nn/2)+1
+      !                          which contains the fourier coefficients in
+      !                          the trigonometric series representation of
+      !                          pbar(nn,mm,theta)
+      !
+      ! special conditions     none
+      !
+      ! algorithm              the highest order coefficient is determined in
+      !                        closed form and the remainig coefficients are
+      !                        determined as the solution of a backward
+      !                        recurrence relation.
+      !
+      !=====================================================================
+      !
+      ! Passed Variables
+      !------------------
+      integer ,intent(in ):: nn
+      integer ,intent(in ):: mm
+      real(r8),intent(out):: cp(nn/2+1)
+      !
+      ! Local Values
+      !----------------
+      real(r8):: fnum,fnmh
+      real(r8):: pm1
+      real(r8):: t1,t2
+      real(r8):: fden
+      real(r8):: cp2
+      real(r8):: fnnp1
+      real(r8):: fnmsq
+      real(r8):: fk
+      real(r8):: a1,b1,C1
+      integer :: ma,nmms2,nex
+      integer :: ii,jj
+
+      real(r8),parameter:: SC10=1024._r8
+      real(r8),parameter:: SC20=SC10*SC10
+      real(r8),parameter:: SC40=SC20*SC20
+
+      cp(1) = 0._r8
+      ma = abs(mm)
+      if(ma>nn) return
+
+      if((nn-1)<0) then
+        cp(1) = sqrt(2._r8)
+        return
+      elseif((nn-1)==0) then
+        if(ma/=0) then
+          cp(1) = sqrt(.75_r8)
+          if(mm==-1) cp(1) = -cp(1)
+        else
+          cp(1) = sqrt(1.5_r8)
+        endif
+        return
+      else
+        if(mod(nn+ma,2)/=0) then
+          nmms2 = (nn-ma-1)/2
+          fnum  = nn + ma + 2
+          fnmh  = nn - ma + 2
+          pm1   = -1._r8
+        else
+          nmms2 = (nn-ma)/2
+          fnum  = nn + ma + 1
+          fnmh  = nn - ma + 1
+          pm1   = 1._r8
+        endif
+      endif
+
+      t1   = 1._r8/SC20
+      nex  = 20
+      fden = 2._r8
+      if(nmms2>=1) then
+        do ii = 1,nmms2
+          t1 = fnum*t1/fden
+          if (t1>SC20) then
+            t1  = t1/SC40
+            nex = nex + 40
+          endif
+          fnum = fnum + 2._r8
+          fden = fden + 2._r8
+        end do
+      endif
+
+      if(mod(ma/2,2)/=0) then
+        t1 = -t1/2._r8**(nn-1-nex)
+      else
+        t1 =  t1/2._r8**(nn-1-nex)
+      endif
+      t2 = 1._r8
+      if(ma/=0) then
+        do ii = 1,ma
+          t2   = fnmh*t2/ (fnmh+pm1)
+          fnmh = fnmh + 2._r8
+        end do
+      endif
+
+      cp2   = t1*sqrt((nn+.5_r8)*t2)
+      fnnp1 = nn*(nn+1)
+      fnmsq = fnnp1 - 2._r8*ma*ma
+
+      if((mod(nn,2)==0).and.(mod(ma,2)==0)) then
+        jj = 1+(nn+1)/2
+      else
+        jj = (nn+1)/2
+      endif
+
+      cp(jj) = cp2
+      if(mm<0) then
+        if(mod(ma,2)/=0) cp(jj) = -cp(jj)
+      endif
+      if(jj<=1) return
+
+      fk = nn
+      a1 = (fk-2._r8)*(fk-1._r8) - fnnp1
+      b1 = 2._r8* (fk*fk-fnmsq)
+      cp(jj-1) = b1*cp(jj)/a1
+
+      jj = jj - 1
+      do while(jj>1)
+        fk = fk - 2._r8
+        a1 = (fk-2._r8)*(fk-1._r8) - fnnp1
+        b1 = -2._r8*(fk*fk-fnmsq)
+        c1 = (fk+1._r8)*(fk+2._r8) - fnnp1
+        cp(jj-1) = -(b1*cp(jj)+c1*cp(jj+1))/a1
+        jj = jj - 1
+     end do
+
+    end subroutine sh_gen_basis_coefs
+    !=======================================================================
 
     !=======================================================================
-    subroutine dgaqd(nlat,theta,wts,ierr)
+    subroutine sh_create_basis(nn,mm,theta,cp,pb)
       !
+      ! spherepack lfpt
+      !
+      ! dimension of
+      ! arguments
+      !                        cp((nn/2)+1)
+      !
+      ! purpose                routine sh_create_basis uses coefficients computed by
+      !                        routine sh_gen_basis_coefs to compute the
+      !                        normalized associated legendre function pbar(nn,mm,theta)
+      !                        at colatitude theta.
+      !
+      ! arguments
+      !
+      ! on input               nn
+      !                          nonnegative integer specifying the degree of
+      !                          pbar(nn,mm,theta)
+      !                        mm
+      !                          is the order of pbar(nn,mm,theta). mm can be
+      !                          any integer however pbar(nn,mm,theta) = 0
+      !                          if abs(mm) is greater than nn and
+      !                          pbar(nn,mm,theta) = (-1)**mm*pbar(nn,-mm,theta)
+      !                          for negative mm.
+      !
+      !                        theta
+      !                          colatitude in radians
+      !
+      !                        cp
+      !                          array of length (nn/2)+1
+      !                          containing coefficients computed by routine
+      !                          sh_gen_basis_coefs
+      !
+      ! on output              pb
+      !                          variable containing pbar(n,m,theta)
+      !
+      ! special conditions     calls to routine sh_create_basis must be preceded by an
+      !                        appropriate call to routine sh_gen_basis_coefs.
+      !
+      ! algorithm              the trigonometric series formula used by
+      !                        routine sh_create_basis to calculate pbar(nn,mm,theta) at
+      !                        colatitude theta depends on mm and nn as follows:
+      !
+      !                           1) for nn even and mm even, the formula is
+      !                              .5*cp(1) plus the sum from k=1 to k=n/2
+      !                              of cp(k)*cos(2*k*theta)
+      !                           2) for nn even and mm odd. the formula is
+      !                              the sum from k=1 to k=nn/2 of
+      !                              cp(k)*sin(2*k*theta)
+      !                           3) for nn odd and mm even, the formula is
+      !                              the sum from k=1 to k=(nn+1)/2 of
+      !                              cp(k)*cos((2*k-1)*theta)
+      !                           4) for nn odd and mm odd, the formula is
+      !                              the sum from k=1 to k=(nn+1)/2 of
+      !                              cp(k)*sin((2*k-1)*theta)
+      !
+      !=====================================================================
+      integer, intent(in) :: nn,mm
+      real(r8), intent(in) :: theta
+      real(r8), intent(in) :: cp(:)
+      real(r8), intent(out) :: pb
+
+      real(r8) :: cdt
+      real(r8) :: sdt
+      real(r8) :: ct
+      real(r8) :: st
+      real(r8) :: summ
+      real(r8) :: cth
+
+      integer:: ma,nmod,mmod,kdo
+      integer:: kp1,kk
+
+      pb = 0._r8
+      ma = abs(mm)
+      if(ma>nn) return
+
+      if(nn<=0) then
+        if(ma<=0) then
+          pb = sqrt(.5_r8)
+          return
+        endif
+      endif
+
+      nmod = mod(nn,2)
+      mmod = mod(ma,2)
+
+      if(nmod<=0) then
+        if(mmod<=0) then
+          kdo = nn/2 + 1
+          cdt = cos(theta+theta)
+          sdt = sin(theta+theta)
+          ct  = 1._r8
+          st  = 0._r8
+          summ = .5_r8*cp(1)
+          do kp1 = 2,kdo
+            cth = cdt*ct - sdt*st
+            st  = sdt*ct + cdt*st
+            ct  = cth
+            summ = summ + cp(kp1)*ct
+          end do
+          pb = summ
+          return
+        endif
+        kdo = nn/2
+        cdt = cos(theta+theta)
+        sdt = sin(theta+theta)
+        ct  = 1._r8
+        st  = 0._r8
+        summ = 0._r8
+        do kk = 1,kdo
+          cth = cdt*ct - sdt*st
+          st  = sdt*ct + cdt*st
+          ct  = cth
+          summ = summ + cp(kk)*st
+        end do
+        pb = summ
+        return
+      endif
+
+      kdo = (nn+1)/2
+      if(mmod<=0) then
+        cdt =  cos(theta+theta)
+        sdt =  sin(theta+theta)
+        ct  =  cos(theta)
+        st  = -sin(theta)
+        summ = 0._r8
+        do kk = 1,kdo
+          cth = cdt*ct - sdt*st
+          st  = sdt*ct + cdt*st
+          ct  = cth
+          summ = summ + cp(kk)*ct
+        end do
+        pb = summ
+        return
+      endif
+
+      cdt =  cos(theta+theta)
+      sdt =  sin(theta+theta)
+      ct  =  cos(theta)
+      st  = -sin(theta)
+      summ = 0._r8
+      do kk = 1,kdo
+        cth = cdt*ct - sdt*st
+        st  = sdt*ct + cdt*st
+        ct  = cth
+        summ = summ + cp(kk)*st
+      end do
+      pb = summ
+
+    end subroutine sh_create_basis
+    !=======================================================================
+
+    !=======================================================================
+    subroutine sh_create_gaus_grid(nlat,theta,wts,ierr)
+      !
+      ! spherepack gaqd
       !  . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .
       !  .                                                             .
       !  .                  copyright (c) 2001 by ucar                 .
@@ -1855,7 +1827,7 @@ contains
       !     This routine is faster and more accurate than older program
       !     with the same name.
       !
-      !     subroutine gaqd computes the nlat gaussian colatitudes and weights
+      !     computes the nlat gaussian colatitudes and weights
       !     in double precision. the colatitudes are in radians and lie in the
       !     in the interval (0,pi).
       !
@@ -1923,7 +1895,7 @@ contains
       ns2   = nlat/2
       nhalf = (nlat+1)/2
 
-      call dcpdp(nlat,cz,theta(ns2+1),wts(ns2+1))
+      call sh_fourier_coefs_dp(nlat,cz,theta(ns2+1),wts(ns2+1))
 
       dtheta = halfPI/nhalf
       dthalf = dtheta/2._r8
@@ -1946,7 +1918,7 @@ contains
             it = it + 1
             ! newton iterations
             !-----------------------
-            call dtpdp(nlat,zero,cz,theta(ns2+1),wts(ns2+1),pb,dpb)
+            call sh_legp_dlegp_theta(nlat,zero,cz,theta(ns2+1),wts(ns2+1),pb,dpb)
             dcor = pb/dpb
             if(dcor.ne.0._r8) then
                sgnd = dcor/abs(dcor)
@@ -1974,7 +1946,7 @@ contains
       !-------------------------------------------
       if(mnlat/=0) then
         theta(nhalf) = halfPI
-        call dtpdp(nlat,halfPI,cz,theta(ns2+1),wts(ns2+1),pb,dpb)
+        call sh_legp_dlegp_theta(nlat,halfPI,cz,theta(ns2+1),wts(ns2+1),pb,dpb)
         wts(nhalf) = (nlat+nlat+1)/ (dpb*dpb)
       endif
 
@@ -1991,19 +1963,20 @@ contains
         wts(ii) = 2._r8*wts(ii)/summ
       end do
 
-    end subroutine dgaqd
+    end subroutine sh_create_gaus_grid
     !=======================================================================
 
-
     !=======================================================================
-    subroutine dcpdp(nn,cz,cp,dcp)
+    subroutine sh_fourier_coefs_dp(nn,cz,cp,dcp)
+      !
+      ! spherepack cpdp
       !
       !     computes the fourier coefficients of the legendre
       !     polynomial p_n^0 and its derivative.
-      !     n is the degree and n/2 or (n+1)/2
+      !     nn is the degree and nn/2 or (nn+1)/2
       !     coefficients are returned in cp depending on whether
-      !     n is even or odd. The same number of coefficients
-      !     are returned in dcp. For n even the constant
+      !     nn is even or odd. The same number of coefficients
+      !     are returned in dcp. For nn even the constant
       !     coefficient is returned in cz.
       !=====================================================================
       !
@@ -2055,12 +2028,13 @@ contains
         end do
       endif
 
-    end subroutine dcpdp
+    end subroutine sh_fourier_coefs_dp
     !=======================================================================
 
-
     !=======================================================================
-    subroutine dtpdp(nn,theta,cz,cp,dcp,pb,dpb)
+    subroutine sh_legp_dlegp_theta(nn,theta,cz,cp,dcp,pb,dpb)
+      !
+      ! spherepack tpdp
       !
       !     computes pn(theta) and its derivative dpb(theta) with
       !     respect to theta
@@ -2117,7 +2091,7 @@ contains
         end do
       endif
 
-    end subroutine dtpdp
+    end subroutine sh_legp_dlegp_theta
     !=======================================================================
 
 end module zonal_mean_mod
