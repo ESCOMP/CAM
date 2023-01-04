@@ -1,0 +1,82 @@
+<?xml version="1.0"?>
+<!-- waccm_sc_1850_cam6 + smyle specific mods -->
+
+<namelist_defaults>
+
+<start_ymd>19790101</start_ymd>
+
+<!-- Solar data -->
+<solar_irrad_data_file>atm/cam/solar/SolarForcingCMIP6piControl_c160921.nc</solar_irrad_data_file>
+<solar_data_ymd>18500101</solar_data_ymd>
+<solar_data_type>FIXED</solar_data_type>
+
+<!-- Kp and F10.7 -->
+<solar_parms_data_file>atm/cam/solar/SolarForcingCMIP6piControl_c160921.nc</solar_parms_data_file>
+
+<!--Species IC -->
+<ncdata dyn="fv"  hgrid="0.9x1.25">cesm2_init/b.e21.BWsc1850.test.002/0014-01-01/b.e21.BWsc1850.test.002.cam.i.0014-01-01-00000.nc</ncdata>
+<ncdata dyn="fv"  hgrid="1.9x2.5" >atm/waccm/ic/f.e15.FWmaAMIP.f19_f19.misc08_cam5_4_81.003.cam.i.1980-01-01-00000_c160928.nc</ncdata>
+
+<!-- LBC, UBC Files -->
+<flbc_type>CYCLICAL</flbc_type>
+<flbc_cycle_yr>1850</flbc_cycle_yr>
+<flbc_file>atm/waccm/lb/LBC_17500116-20150116_CMIP6_0p5degLat_c180905.nc</flbc_file>
+<flbc_list>'CO2','CH4','N2O','CFC11','CFC12','CFC11eq'</flbc_list>
+
+<!-- 1850 upper atmos forcings -->
+<waccm_forcing_type>CYCLICAL</waccm_forcing_type>
+<waccm_forcing_cycle_yr>1850</waccm_forcing_cycle_yr>
+<waccm_forcing_file>SCWACCM_forcing_zm_L70_CMIP6piControl001_MonthlyCycle1850_y21-50avg_c181012.nc</waccm_forcing_file>
+<waccm_forcing_datapath>atm/waccm/waccm_forcing</waccm_forcing_datapath>
+
+<!-- 1850 ozone data -->
+<prescribed_ozone_cycle_yr>   1850                                                                                      </prescribed_ozone_cycle_yr>
+<prescribed_ozone_datapath>   'atm/cam/ozone_strataero'                                                                 </prescribed_ozone_datapath>
+<prescribed_ozone_file    >   'ozone_strataero_cyclical_WACCM6_L70_CMIP6-piControl.001_y21-50avg_zm_5day_c180802.nc'    </prescribed_ozone_file>
+<prescribed_ozone_name    >   'O3'                                                                                      </prescribed_ozone_name>
+<prescribed_ozone_type    >   'CYCLICAL'                                                                                </prescribed_ozone_type>
+
+<!-- Prescribed stratospheric aerosols -->
+<prescribed_strataero_use_chemtrop>   .true.                                                                                    </prescribed_strataero_use_chemtrop>
+<prescribed_strataero_cycle_yr    >   1850                                                                                      </prescribed_strataero_cycle_yr>
+<prescribed_strataero_datapath    >   'atm/cam/ozone_strataero'                                                                 </prescribed_strataero_datapath>
+<prescribed_strataero_file        >   'ozone_strataero_cyclical_WACCM6_L70_CMIP6-piControl.001_y21-50avg_zm_5day_c180802.nc'    </prescribed_strataero_file>
+<prescribed_strataero_type        >   'CYCLICAL'                                                                                </prescribed_strataero_type>
+
+<!-- Prescribed oxidants for aerosol chemistry -->
+<tracer_cnst_cycle_yr >   1850                                                                                          </tracer_cnst_cycle_yr>
+<tracer_cnst_datapath >   'atm/cam/tracer_cnst'                                                                         </tracer_cnst_datapath>
+<tracer_cnst_file     >   'tracer_cnst_WACCM6_halons_3DmonthlyL70_1850climoCMIP6piControl001_y21-50avg_c180802.nc'      </tracer_cnst_file>
+<tracer_cnst_specifier>   'O3','OH','NO3','HO2','HALONS'                                                                </tracer_cnst_specifier>
+<tracer_cnst_type     >   'CYCLICAL'                                                                                    </tracer_cnst_type>
+<tracer_cnst_filelist >   ''                                                                                            </tracer_cnst_filelist>
+
+<!-- emissions -->
+
+<!-- External forcing -->
+<ext_frc_type>CYCLICAL</ext_frc_type>
+<ext_frc_cycle_yr>1850</ext_frc_cycle_yr>
+
+<!-- Surface emissions -->
+<srf_emis_type>CYCLICAL</srf_emis_type>
+<srf_emis_cycle_yr>1850</srf_emis_cycle_yr>
+
+<!-- History Files -->
+<do_circulation_diags>.true.</do_circulation_diags>
+<history_chemistry>.true.</history_chemistry>
+
+<effgw_beres_dp>0.90D0</effgw_beres_dp>
+<gw_qbo_hdepth_scaling>0.25D0</gw_qbo_hdepth_scaling>
+<qbo_use_forcing>.false.</qbo_use_forcing>
+<tau_0_ubc>.true.</tau_0_ubc>
+<frontgfc>2.7D-15</frontgfc>
+<taubgnd>2.5D-3</taubgnd>
+<effgw_rdg_beta>0.75D0</effgw_rdg_beta>
+<effgw_rdg_beta_max>0.75D0</effgw_rdg_beta_max>
+<do_circulation_diags>.true.</do_circulation_diags>
+<history_dust>.true.</history_dust>
+<fv_nsplit>16</fv_nsplit>
+<fv_nspltrac>8</fv_nspltrac>
+<fv_nspltvrm>8</fv_nspltvrm>
+
+</namelist_defaults>
