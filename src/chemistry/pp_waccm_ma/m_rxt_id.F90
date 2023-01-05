@@ -279,14 +279,15 @@
       integer, parameter :: rid_ion_O2p_NO = 277
       integer, parameter :: rid_ion_Op_CO2 = 278
       integer, parameter :: rid_ion_Op_N2 = 279
-      integer, parameter :: rid_ion_Op_O2 = 280
-      integer, parameter :: rid_Op2D_e = 281
-      integer, parameter :: rid_Op2D_N2 = 282
-      integer, parameter :: rid_Op2D_O = 283
-      integer, parameter :: rid_Op2D_O2 = 284
-      integer, parameter :: rid_Op2P_ea = 285
-      integer, parameter :: rid_Op2P_eb = 286
-      integer, parameter :: rid_Op2P_N2a = 287
-      integer, parameter :: rid_Op2P_N2b = 288
-      integer, parameter :: rid_Op2P_O = 289
+      integer, parameter :: rid_ion_Op_N2D = 280
+      integer, parameter :: rid_ion_Op_O2 = 281
+      integer, parameter :: rid_Op2D_e = 282
+      integer, parameter :: rid_Op2D_N2 = 283
+      integer, parameter :: rid_Op2D_O = 284
+      integer, parameter :: rid_Op2D_O2 = 285
+      integer, parameter :: rid_Op2P_ea = 286
+      integer, parameter :: rid_Op2P_eb = 287
+      integer, parameter :: rid_Op2P_N2a = 288
+      integer, parameter :: rid_Op2P_N2b = 289
+      integer, parameter :: rid_Op2P_O = 290
       end module m_rxt_id

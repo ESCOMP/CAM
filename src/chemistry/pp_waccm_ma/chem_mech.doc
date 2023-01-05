@@ -1,66 +1,66 @@
   
   
      Solution species
-      (  1)  BRCL               (BrCl)
-      (  2)  BRO                (BrO)
-      (  3)  BRONO2             (BrONO2)
-      (  4)  BRY             
-      (  5)  CCL4               (CCl4)
-      (  6)  CF2CLBR            (CF2ClBr)
-      (  7)  CF3BR              (CF3Br)
-      (  8)  CFC11              (CFCl3)
-      (  9)  CFC113             (CCl2FCClF2)
-      ( 10)  CFC114             (CClF2CClF2)
-      ( 11)  CFC115             (CClF2CF3)
-      ( 12)  CFC12              (CF2Cl2)
-      ( 13)  CH2BR2             (CH2Br2)
-      ( 14)  CH2O            
-      ( 15)  CH3BR              (CH3Br)
-      ( 16)  CH3CCL3            (CH3CCl3)
-      ( 17)  CH3CL              (CH3Cl)
-      ( 18)  CH3O2           
-      ( 19)  CH3OOH          
-      ( 20)  CH4             
-      ( 21)  CHBR3              (CHBr3)
-      ( 22)  CL2                (Cl2)
-      ( 23)  CL2O2              (Cl2O2)
-      ( 24)  CLO                (ClO)
-      ( 25)  CLONO2             (ClONO2)
-      ( 26)  CLY             
-      ( 27)  CO              
-      ( 28)  CO2             
-      ( 29)  COF2            
-      ( 30)  COFCL              (COFCl)
-      ( 31)  F               
-      ( 32)  H               
-      ( 33)  H2              
-      ( 34)  H2402              (CBrF2CBrF2)
-      ( 35)  H2O2            
-      ( 36)  HBR                (HBr)
-      ( 37)  HCFC141B           (CH3CCl2F)
-      ( 38)  HCFC142B           (CH3CClF2)
-      ( 39)  HCFC22             (CHF2Cl)
-      ( 40)  HCL                (HCl)
-      ( 41)  HF              
-      ( 42)  HNO3            
-      ( 43)  HO2             
-      ( 44)  HO2NO2          
-      ( 45)  HOBR               (HOBr)
-      ( 46)  HOCL               (HOCl)
-      ( 47)  N               
-      ( 48)  N2O             
-      ( 49)  N2O5            
-      ( 50)  NO              
-      ( 51)  NO2             
-      ( 52)  NO3             
-      ( 53)  O               
-      ( 54)  O2              
-      ( 55)  O3              
-      ( 56)  OCLO               (OClO)
-      ( 57)  SF6             
-      ( 58)  BR                 (Br)
-      ( 59)  CL                 (Cl)
-      ( 60)  e                  (E)
+      (  1)  BR                 (Br)
+      (  2)  BRCL               (BrCl)
+      (  3)  BRO                (BrO)
+      (  4)  BRONO2             (BrONO2)
+      (  5)  BRY             
+      (  6)  CCL4               (CCl4)
+      (  7)  CF2CLBR            (CF2ClBr)
+      (  8)  CF3BR              (CF3Br)
+      (  9)  CFC11              (CFCl3)
+      ( 10)  CFC113             (CCl2FCClF2)
+      ( 11)  CFC114             (CClF2CClF2)
+      ( 12)  CFC115             (CClF2CF3)
+      ( 13)  CFC12              (CF2Cl2)
+      ( 14)  CH2BR2             (CH2Br2)
+      ( 15)  CH2O            
+      ( 16)  CH3BR              (CH3Br)
+      ( 17)  CH3CCL3            (CH3CCl3)
+      ( 18)  CH3CL              (CH3Cl)
+      ( 19)  CH3O2           
+      ( 20)  CH3OOH          
+      ( 21)  CH4             
+      ( 22)  CHBR3              (CHBr3)
+      ( 23)  CL                 (Cl)
+      ( 24)  CL2                (Cl2)
+      ( 25)  CL2O2              (Cl2O2)
+      ( 26)  CLO                (ClO)
+      ( 27)  CLONO2             (ClONO2)
+      ( 28)  CLY             
+      ( 29)  CO              
+      ( 30)  CO2             
+      ( 31)  COF2            
+      ( 32)  COFCL              (COFCl)
+      ( 33)  F               
+      ( 34)  H               
+      ( 35)  H2              
+      ( 36)  H2402              (CBrF2CBrF2)
+      ( 37)  H2O2            
+      ( 38)  HBR                (HBr)
+      ( 39)  HCFC141B           (CH3CCl2F)
+      ( 40)  HCFC142B           (CH3CClF2)
+      ( 41)  HCFC22             (CHF2Cl)
+      ( 42)  HCL                (HCl)
+      ( 43)  HF              
+      ( 44)  HNO3            
+      ( 45)  HO2NO2          
+      ( 46)  HOBR               (HOBr)
+      ( 47)  HOCL               (HOCl)
+      ( 48)  N               
+      ( 49)  N2O             
+      ( 50)  N2O5            
+      ( 51)  NO              
+      ( 52)  NO2             
+      ( 53)  NO3             
+      ( 54)  O               
+      ( 55)  O2              
+      ( 56)  O3              
+      ( 57)  OCLO               (OClO)
+      ( 58)  SF6             
+      ( 59)  e                  (E)
+      ( 60)  HO2             
       ( 61)  N2D                (N)
       ( 62)  N2p                (N2)
       ( 63)  NOp                (NO)
@@ -115,43 +115,43 @@ Class List
   
  Implicit  
  --------
-      (  1)  BRCL            
-      (  2)  BRO             
-      (  3)  BRONO2          
-      (  4)  CH2O            
-      (  5)  CH3O2           
-      (  6)  CH3OOH          
-      (  7)  CL2             
-      (  8)  CL2O2           
-      (  9)  CLO             
-      ( 10)  CLONO2          
-      ( 11)  CO              
-      ( 12)  COF2            
-      ( 13)  COFCL           
-      ( 14)  F               
-      ( 15)  H               
-      ( 16)  H2              
-      ( 17)  H2O2            
-      ( 18)  HBR             
-      ( 19)  HCL             
-      ( 20)  HF              
-      ( 21)  HNO3            
-      ( 22)  HO2             
-      ( 23)  HO2NO2          
-      ( 24)  HOBR            
-      ( 25)  HOCL            
-      ( 26)  N               
-      ( 27)  N2O5            
-      ( 28)  NO              
-      ( 29)  NO2             
-      ( 30)  NO3             
-      ( 31)  O               
-      ( 32)  O2              
-      ( 33)  O3              
-      ( 34)  OCLO            
-      ( 35)  BR              
-      ( 36)  CL              
-      ( 37)  e               
+      (  1)  BR              
+      (  2)  BRCL            
+      (  3)  BRO             
+      (  4)  BRONO2          
+      (  5)  CH2O            
+      (  6)  CH3O2           
+      (  7)  CH3OOH          
+      (  8)  CL              
+      (  9)  CL2             
+      ( 10)  CL2O2           
+      ( 11)  CLO             
+      ( 12)  CLONO2          
+      ( 13)  CO              
+      ( 14)  COF2            
+      ( 15)  COFCL           
+      ( 16)  F               
+      ( 17)  H               
+      ( 18)  H2              
+      ( 19)  H2O2            
+      ( 20)  HBR             
+      ( 21)  HCL             
+      ( 22)  HF              
+      ( 23)  HNO3            
+      ( 24)  HO2NO2          
+      ( 25)  HOBR            
+      ( 26)  HOCL            
+      ( 27)  N               
+      ( 28)  N2O5            
+      ( 29)  NO              
+      ( 30)  NO2             
+      ( 31)  NO3             
+      ( 32)  O               
+      ( 33)  O2              
+      ( 34)  O3              
+      ( 35)  OCLO            
+      ( 36)  e               
+      ( 37)  HO2             
       ( 38)  N2D             
       ( 39)  N2p             
       ( 40)  NOp             
@@ -471,16 +471,17 @@ Class List
   ion_O2p_NO       (191)   O2p + NO ->  NOp + O2                                                rate = 4.40E-10                   (277)
   ion_Op_CO2       (192)   Op + CO2 ->  O2p + CO                                                rate = 9.00E-10                   (278)
   ion_Op_N2        (193)   Op + N2 ->  NOp + N                                                  rate = ** User defined **         (279)
-  ion_Op_O2        (194)   Op + O2 ->  O2p + O                                                  rate = ** User defined **         (280)
-  Op2D_e           (195)   Op2D + e ->  Op + e                                                  rate = ** User defined **         (281)
-  Op2D_N2          (196)   Op2D + N2 ->  N2p + O                                                rate = 8.00E-10                   (282)
-  Op2D_O           (197)   Op2D + O ->  Op + O                                                  rate = 5.00E-12                   (283)
-  Op2D_O2          (198)   Op2D + O2 ->  O2p + O                                                rate = 7.00E-10                   (284)
-  Op2P_ea          (199)   Op2P + e ->  Op2D + e                                                rate = ** User defined **         (285)
-  Op2P_eb          (200)   Op2P + e ->  Op + e                                                  rate = ** User defined **         (286)
-  Op2P_N2a         (201)   Op2P + N2 ->  N2p + O                                                rate = 4.80E-10                   (287)
-  Op2P_N2b         (202)   Op2P + N2 ->  Np + NO                                                rate = 1.00E-10                   (288)
-  Op2P_O           (203)   Op2P + O ->  Op + O                                                  rate = 4.00E-10                   (289)
+  ion_Op_N2D       (194)   Op + N2D ->  Np + O                                                  rate = 1.30E-10                   (280)
+  ion_Op_O2        (195)   Op + O2 ->  O2p + O                                                  rate = ** User defined **         (281)
+  Op2D_e           (196)   Op2D + e ->  Op + e                                                  rate = ** User defined **         (282)
+  Op2D_N2          (197)   Op2D + N2 ->  N2p + O                                                rate = 8.00E-10                   (283)
+  Op2D_O           (198)   Op2D + O ->  Op + O                                                  rate = 5.00E-12                   (284)
+  Op2D_O2          (199)   Op2D + O2 ->  O2p + O                                                rate = 7.00E-10                   (285)
+  Op2P_ea          (200)   Op2P + e ->  Op2D + e                                                rate = ** User defined **         (286)
+  Op2P_eb          (201)   Op2P + e ->  Op + e                                                  rate = ** User defined **         (287)
+  Op2P_N2a         (202)   Op2P + N2 ->  N2p + O                                                rate = 4.80E-10                   (288)
+  Op2P_N2b         (203)   Op2P + N2 ->  Np + NO                                                rate = 1.00E-10                   (289)
+  Op2P_O           (204)   Op2P + O ->  Op + O                                                  rate = 4.00E-10                   (290)
   
 Extraneous prod/loss species
  ( 1)   NO2   (dataset)
@@ -498,6 +499,13 @@ Extraneous prod/loss species
   
  Equation Report
   
+    d(BR)/dt = j26*BRCL  + j27*BRO  + j29*BRONO2  + j31*CF2CLBR  + j32*CF3BR  + 2*j38*CH2BR2  + j39*CH3BR               
+                + 3*j42*CHBR3  + 2*j50*H2402  + j51*HBR  + j57*HOBR  + r90*O1D*CF2CLBR  + 2*r103*BRO*BRO                
+                + r104*BRO*CLO  + r105*BRO*CLO  + r108*BRO*NO  + r111*BRO*O  + r112*BRO*OH  + r113*HBR*O                
+                + r114*HBR*OH  + r116*O1D*CF3BR  + 3*r117*O1D*CHBR3  + 2*r118*O1D*H2402  + r119*O1D*HBR                 
+                + 2*r127*CH2BR2*CL  + 2*r128*CH2BR2*OH  + r129*CH3BR*CL  + r130*CH3BR*OH  + 3*r134*CHBR3*CL             
+                + 3*r135*CHBR3*OH  + 2*r139*O1D*CH2BR2  + r140*O1D*CH3BR                                                
+                - r100*CH2O*BR  - r101*HO2*BR  - r102*O3*BR                                                             
     d(BRCL)/dt = r106*BRO*CLO  + r168*HOBR*HCL  + r173*HOBR*HCL                                                         
                   - j26*BRCL                                                                                            
     d(BRO)/dt = j28*BRONO2  + r102*BR*O3  + r110*BRONO2*O  + r115*HOBR*O  + r120*O1D*HBR                                
@@ -530,6 +538,16 @@ Extraneous prod/loss species
     d(CH4)/dt =  - j23*CH4  - j24*CH4  - r65*CL*CH4  - r121*F*CH4  - r150*OH*CH4  - r152*O1D*CH4  - r153*O1D*CH4        
                  - r154*O1D*CH4                                                                                         
     d(CHBR3)/dt =  - j42*CHBR3  - r117*O1D*CHBR3  - r134*CL*CHBR3  - r135*OH*CHBR3                                      
+    d(CL)/dt = j26*BRCL  + 4*j30*CCL4  + j31*CF2CLBR  + 2*j33*CFC11  + 2*j34*CFC113  + 2*j35*CFC114  + j36*CFC115       
+                + 2*j37*CFC12  + 3*j40*CH3CCL3  + j41*CH3CL  + 2*j43*CL2  + 2*j44*CL2O2  + j45*CLO  + j46*CLONO2        
+                + j49*COFCL  + j52*HCFC141B  + j53*HCFC142B  + j54*HCFC22  + j55*HCL  + j58*HOCL  + r71*CLO*CH3O2       
+                + 2*r72*CLO*CLO  + r74*CLO*CLO  + r76*CLO*NO  + r81*CLO*O  + r82*CLO*OH  + r84*HCL*O  + r85*HCL*OH      
+                + 4*r89*O1D*CCL4  + r90*O1D*CF2CLBR  + 2*r91*O1D*CFC11  + 2*r92*O1D*CFC113  + 2*r93*O1D*CFC114          
+                + r94*O1D*CFC115  + 2*r95*O1D*CFC12  + r96*O1D*HCL  + r105*BRO*CLO  + r126*O1D*COFCL                    
+                + 3*r131*CH3CCL3*OH  + r133*CH3CL*OH  + r136*HCFC141B*OH  + r137*HCFC142B*OH  + r138*HCFC22*OH          
+                + r141*O1D*HCFC141B  + r142*O1D*HCFC142B  + r143*O1D*HCFC22                                             
+                - r64*CH2O*CL  - r65*CH4*CL  - r66*H2*CL  - r67*H2O2*CL  - r68*HO2*CL  - r69*HO2*CL  - r70*O3*CL        
+                - r77*CLONO2*CL  - r86*HOCL*CL  - r127*CH2BR2*CL  - r129*CH3BR*CL  - r132*CH3CL*CL  - r134*CHBR3*CL     
     d(CL2)/dt = r73*CLO*CLO  + r77*CLONO2*CL  + r161*HOCL*HCL  + r166*CLONO2*HCL  + r167*HOCL*HCL  + r171*CLONO2*HCL    
                  + r172*HOCL*HCL  + r176*CLONO2*HCL                                                                     
                  - j43*CL2                                                                                              
@@ -585,13 +603,6 @@ Extraneous prod/loss species
                   + r165*BRONO2  + r169*CLONO2  + r170*BRONO2  + 2*r174*N2O5  + r175*CLONO2  + r60*M*NO2*OH             
                   + r144*CH2O*NO3  + r166*CLONO2*HCL  + r171*CLONO2*HCL  + r176*CLONO2*HCL                              
                   - j9*HNO3  - r61*OH*HNO3  - r124*F*HNO3                                                               
-    d(HO2)/dt = j11*HO2NO2  + r62*M*HO2NO2  + r21*H2O2*O  + r25*M*H*O2  + r30*OH*H2O2  + r33*OH*O3  + r51*NO3*OH        
-                 + r64*CL*CH2O  + r67*CL*H2O2  + r71*CLO*CH3O2  + r82*CLO*OH  + r100*BR*CH2O  + r112*BRO*OH             
-                 + r129*CH3BR*CL  + r130*CH3BR*OH  + r132*CH3CL*CL  + r133*CH3CL*OH  + r144*CH2O*NO3  + r145*CH2O*O     
-                 + r148*CH3O2*NO  + r151*M*CO*OH  + r153*O1D*CH4                                                        
-                 - r156*HO2  - r22*H*HO2  - r23*H*HO2  - r24*H*HO2  - r26*O*HO2  - r27*O3*HO2  - r31*OH*HO2             
-                 - 2*r36*HO2*HO2  - r48*NO3*HO2  - r53*NO*HO2  - r58*M*NO2*HO2  - r68*CL*HO2  - r69*CL*HO2              
-                 - r75*CLO*HO2  - r101*BR*HO2  - r107*BRO*HO2  - r147*CH3O2*HO2                                         
     d(HO2NO2)/dt = r58*M*NO2*HO2                                                                                        
                     - j10*HO2NO2  - j11*HO2NO2  - r62*M*HO2NO2  - r37*OH*HO2NO2                                         
     d(HOBR)/dt = r162*BRONO2  + r165*BRONO2  + r170*BRONO2  + r107*BRO*HO2                                              
@@ -606,7 +617,7 @@ Extraneous prod/loss species
                  - j12*N2O  - r56*O1D*N2O  - r57*O1D*N2O                                                                
     d(N2O5)/dt = r59*M*NO2*NO3                                                                                          
                   - j13*N2O5  - j14*N2O5  - r63*M*N2O5  - r157*N2O5  - r160*N2O5  - r163*N2O5  - r174*N2O5              
-    d(NO)/dt = j14*N2O5  + j17*NO2  + j19*NO3  + .5*r158*NO2  + r190*N2*O2p  + r202*N2*Op2P  + r39*N2D*O2               
+    d(NO)/dt = j14*N2O5  + j17*NO2  + j19*NO3  + .5*r158*NO2  + r190*N2*O2p  + r203*N2*Op2P  + r39*N2D*O2               
                 + 2*r42*N*NO2  + r44*N*O2  + r45*NO2*O  + r52*N*OH  + 2*r56*O1D*N2O                                     
                 - j15*NO  - j16*NO  - r40*N*NO  - r49*NO3*NO  - r53*HO2*NO  - r54*O3*NO  - r55*M*O*NO  - r76*CLO*NO     
                 - r108*BRO*NO  - r148*CH3O2*NO  - r191*O2p*NO                                                           
@@ -622,9 +633,9 @@ Extraneous prod/loss species
                  - r59*M*NO2*NO3  - r144*CH2O*NO3                                                                       
     d(O)/dt = j2*H2O  + 2*j5*O2  + j6*O2  + j8*O3  + j14*N2O5  + j15*NO  + j17*NO2  + j18*NO3  + .18*j24*CH4            
                + j25*CO2  + j27*BRO  + j45*CLO  + j59*OCLO  + j61*CO2  + j77*O2  + j79*O2  + j81*O2  + 2*j82*O2         
-               + 2*j83*O2  + j84*O2  + j85*O2  + j86*O2  + r5*N2*O1D  + r196*N2*Op2D  + r201*N2*Op2P  + r6*O1D*O2       
+               + 2*j83*O2  + j84*O2  + j85*O2  + j86*O2  + r5*N2*O1D  + r197*N2*Op2D  + r202*N2*Op2P  + r6*O1D*O2       
                + r7*O1D*O2  + r24*H*HO2  + r34*OH*OH  + r40*N*NO  + r41*N*NO2  + r44*N*O2  + r180*NOp*e                 
-               + 1.15*r181*O2p*e  + r188*Np*O2  + r189*O2p*N  + r194*Op*O2  + r198*Op2D*O2                              
+               + 1.15*r181*O2p*e  + r188*Np*O2  + r189*O2p*N  + r194*Op*N2D  + r195*Op*O2  + r199*Op2D*O2               
                - j71*O  - j72*O  - j73*O  - j74*O  - j75*O  - j76*O  - r17*O3*O  - 2*r18*M*O*O  - r19*M*O2*O            
                - r20*H2*O  - r21*H2O2*O  - r26*HO2*O  - r32*OH*O  - r45*NO2*O  - r47*M*NO2*O  - r50*NO3*O               
                - r55*M*NO*O  - r79*CLONO2*O  - r81*CLO*O  - r84*HCL*O  - r87*HOCL*O  - r110*BRONO2*O  - r111*BRO*O      
@@ -638,41 +649,31 @@ Extraneous prod/loss species
                 + r191*O2p*NO                                                                                           
                 - j5*O2  - j6*O2  - j77*O2  - j78*O2  - j79*O2  - j80*O2  - j81*O2  - j82*O2  - j83*O2  - j84*O2        
                 - j85*O2  - j86*O2  - r6*O1D*O2  - r11*O2_1D*O2  - r19*M*O*O2  - r25*M*H*O2  - r39*N2D*O2  - r44*N*O2   
-                - r183*N2p*O2  - r187*Np*O2  - r188*Np*O2  - r194*Op*O2  - r198*Op2D*O2                                 
+                - r183*N2p*O2  - r187*Np*O2  - r188*Np*O2  - r195*Op*O2  - r199*Op2D*O2                                 
     d(O3)/dt = r19*M*O*O2                                                                                               
                 - j7*O3  - j8*O3  - r8*O1D*O3  - r17*O*O3  - r27*HO2*O3  - r28*H*O3  - r33*OH*O3  - r46*NO2*O3          
                 - r54*NO*O3  - r70*CL*O3  - r102*BR*O3                                                                  
     d(OCLO)/dt = r74*CLO*CLO  + r104*BRO*CLO                                                                            
                   - j59*OCLO                                                                                            
     d(SF6)/dt =  - j60*SF6                                                                                              
-    d(BR)/dt = j26*BRCL  + j27*BRO  + j29*BRONO2  + j31*CF2CLBR  + j32*CF3BR  + 2*j38*CH2BR2  + j39*CH3BR               
-                + 3*j42*CHBR3  + 2*j50*H2402  + j51*HBR  + j57*HOBR  + r90*O1D*CF2CLBR  + 2*r103*BRO*BRO                
-                + r104*BRO*CLO  + r105*BRO*CLO  + r108*BRO*NO  + r111*BRO*O  + r112*BRO*OH  + r113*HBR*O                
-                + r114*HBR*OH  + r116*O1D*CF3BR  + 3*r117*O1D*CHBR3  + 2*r118*O1D*H2402  + r119*O1D*HBR                 
-                + 2*r127*CH2BR2*CL  + 2*r128*CH2BR2*OH  + r129*CH3BR*CL  + r130*CH3BR*OH  + 3*r134*CHBR3*CL             
-                + 3*r135*CHBR3*OH  + 2*r139*O1D*CH2BR2  + r140*O1D*CH3BR                                                
-                - r100*CH2O*BR  - r101*HO2*BR  - r102*O3*BR                                                             
-    d(CL)/dt = j26*BRCL  + 4*j30*CCL4  + j31*CF2CLBR  + 2*j33*CFC11  + 2*j34*CFC113  + 2*j35*CFC114  + j36*CFC115       
-                + 2*j37*CFC12  + 3*j40*CH3CCL3  + j41*CH3CL  + 2*j43*CL2  + 2*j44*CL2O2  + j45*CLO  + j46*CLONO2        
-                + j49*COFCL  + j52*HCFC141B  + j53*HCFC142B  + j54*HCFC22  + j55*HCL  + j58*HOCL  + r71*CLO*CH3O2       
-                + 2*r72*CLO*CLO  + r74*CLO*CLO  + r76*CLO*NO  + r81*CLO*O  + r82*CLO*OH  + r84*HCL*O  + r85*HCL*OH      
-                + 4*r89*O1D*CCL4  + r90*O1D*CF2CLBR  + 2*r91*O1D*CFC11  + 2*r92*O1D*CFC113  + 2*r93*O1D*CFC114          
-                + r94*O1D*CFC115  + 2*r95*O1D*CFC12  + r96*O1D*HCL  + r105*BRO*CLO  + r126*O1D*COFCL                    
-                + 3*r131*CH3CCL3*OH  + r133*CH3CL*OH  + r136*HCFC141B*OH  + r137*HCFC142B*OH  + r138*HCFC22*OH          
-                + r141*O1D*HCFC141B  + r142*O1D*HCFC142B  + r143*O1D*HCFC22                                             
-                - r64*CH2O*CL  - r65*CH4*CL  - r66*H2*CL  - r67*H2O2*CL  - r68*HO2*CL  - r69*HO2*CL  - r70*O3*CL        
-                - r77*CLONO2*CL  - r86*HOCL*CL  - r127*CH2BR2*CL  - r129*CH3BR*CL  - r132*CH3CL*CL  - r134*CHBR3*CL     
     d(e)/dt = j63*N2  + j65*N2  + j66*N2  + j67*N2  + j69*N2  + j70*N2  + j16*NO  + j62*N  + j71*O  + j72*O  + j73*O    
                + j74*O  + j75*O  + j76*O  + j77*O2  + j78*O2  + j79*O2  + j80*O2  + j81*O2  + j84*O2  + j85*O2          
                + j86*O2                                                                                                 
                - r180*NOp*e  - r181*O2p*e  - r182*N2p*e                                                                 
+    d(HO2)/dt = j11*HO2NO2  + r62*M*HO2NO2  + r21*H2O2*O  + r25*M*H*O2  + r30*OH*H2O2  + r33*OH*O3  + r51*NO3*OH        
+                 + r64*CL*CH2O  + r67*CL*H2O2  + r71*CLO*CH3O2  + r82*CLO*OH  + r100*BR*CH2O  + r112*BRO*OH             
+                 + r129*CH3BR*CL  + r130*CH3BR*OH  + r132*CH3CL*CL  + r133*CH3CL*OH  + r144*CH2O*NO3  + r145*CH2O*O     
+                 + r148*CH3O2*NO  + r151*M*CO*OH  + r153*O1D*CH4                                                        
+                 - r156*HO2  - r22*H*HO2  - r23*H*HO2  - r24*H*HO2  - r26*O*HO2  - r27*O3*HO2  - r31*OH*HO2             
+                 - 2*r36*HO2*HO2  - r48*NO3*HO2  - r53*NO*HO2  - r58*M*NO2*HO2  - r68*CL*HO2  - r69*CL*HO2              
+                 - r75*CLO*HO2  - r101*BR*HO2  - r107*BRO*HO2  - r147*CH3O2*HO2                                         
     d(N2D)/dt = j63*N2  + 1.2*j64*N2  + 1.2*j68*N2  + j69*N2  + .8*r180*NOp*e  + .9*r182*N2p*e  + r184*N2p*O            
-                 - r38*O*N2D  - r39*O2*N2D                                                                              
-    d(N2p)/dt = j65*N2  + j67*N2  + r196*N2*Op2D  + r201*N2*Op2P                                                        
+                 - r38*O*N2D  - r39*O2*N2D  - r194*Op*N2D                                                               
+    d(N2p)/dt = j65*N2  + j67*N2  + r197*N2*Op2D  + r202*N2*Op2P                                                        
                  - r182*e*N2p  - r183*O2*N2p  - r184*O*N2p  - r185*O*N2p                                                
     d(NOp)/dt = j16*NO  + r190*N2*O2p  + r193*N2*Op  + r184*N2p*O  + r188*Np*O2  + r189*O2p*N  + r191*O2p*NO            
                  - r180*e*NOp                                                                                           
-    d(Np)/dt = j63*N2  + j66*N2  + j69*N2  + j70*N2  + j62*N  + r202*N2*Op2P                                            
+    d(Np)/dt = j63*N2  + j66*N2  + j69*N2  + j70*N2  + j62*N  + r203*N2*Op2P  + r194*Op*N2D                             
                 - r186*O*Np  - r187*O2*Np  - r188*O2*Np                                                                 
     d(O1D)/dt = j1*H2O  + j6*O2  + j7*O3  + j12*N2O  + r39*N2D*O2  + .85*r181*O2p*e                                     
                  - r5*N2*O1D  - r3*H2*O1D  - r4*H2O*O1D  - r6*O2*O1D  - r7*O2*O1D  - r8*O3*O1D  - r56*N2O*O1D           
@@ -685,7 +686,7 @@ Extraneous prod/loss species
                    - r1*O2_1D  - r9*N2*O2_1D  - r10*O*O2_1D  - r11*O2*O2_1D                                             
     d(O2_1S)/dt = r6*O1D*O2                                                                                             
                    - r2*O2_1S  - r13*N2*O2_1S  - r12*CO2*O2_1S  - r14*O*O2_1S  - r15*O2*O2_1S  - r16*O3*O2_1S           
-    d(O2p)/dt = j78*O2  + j80*O2  + r183*N2p*O2  + r187*Np*O2  + r192*Op*CO2  + r194*Op*O2  + r198*Op2D*O2              
+    d(O2p)/dt = j78*O2  + j80*O2  + r183*N2p*O2  + r187*Np*O2  + r192*Op*CO2  + r195*Op*O2  + r199*Op2D*O2              
                  - r190*N2*O2p  - r181*e*O2p  - r189*N*O2p  - r191*NO*O2p                                               
     d(OH)/dt = j3*H2O  + 2*j4*H2O2  + j9*HNO3  + j10*HO2NO2  + j22*CH3OOH  + .33*j24*CH4  + j57*HOBR  + j58*HOCL        
                 + .5*r158*NO2  + r3*O1D*H2  + 2*r4*O1D*H2O  + r20*H2*O  + r21*H2O2*O  + 2*r23*H*HO2  + r26*HO2*O        
@@ -698,14 +699,14 @@ Extraneous prod/loss species
                 - r128*CH2BR2*OH  - r130*CH3BR*OH  - r131*CH3CCL3*OH  - r133*CH3CL*OH  - r135*CHBR3*OH                  
                 - r136*HCFC141B*OH  - r137*HCFC142B*OH  - r138*HCFC22*OH  - r146*CH2O*OH  - r149*CH3OOH*OH              
                 - r150*CH4*OH  - r151*M*CO*OH  - r155*CO*OH                                                             
-    d(Op)/dt = j71*O  + j72*O  + j79*O2  + j81*O2  + r177*Op2P  + r178*Op2D  + r185*N2p*O  + r186*Np*O  + r195*Op2D*e   
-                + r197*Op2D*O  + r200*Op2P*e  + r203*Op2P*O                                                             
-                - r193*N2*Op  - r192*CO2*Op  - r194*O2*Op                                                               
-    d(Op2D)/dt = j73*O  + j75*O  + j84*O2  + j86*O2  + r179*Op2P  + r199*Op2P*e                                         
-                  - r178*Op2D  - r196*N2*Op2D  - r195*e*Op2D  - r197*O*Op2D  - r198*O2*Op2D                             
+    d(Op)/dt = j71*O  + j72*O  + j79*O2  + j81*O2  + r177*Op2P  + r178*Op2D  + r185*N2p*O  + r186*Np*O  + r196*Op2D*e   
+                + r198*Op2D*O  + r201*Op2P*e  + r204*Op2P*O                                                             
+                - r193*N2*Op  - r192*CO2*Op  - r194*N2D*Op  - r195*O2*Op                                                
+    d(Op2D)/dt = j73*O  + j75*O  + j84*O2  + j86*O2  + r179*Op2P  + r200*Op2P*e                                         
+                  - r178*Op2D  - r197*N2*Op2D  - r196*e*Op2D  - r198*O*Op2D  - r199*O2*Op2D                             
     d(Op2P)/dt = j74*O  + j76*O  + j77*O2  + j85*O2                                                                     
-                  - r177*Op2P  - r179*Op2P  - r201*N2*Op2P  - r202*N2*Op2P  - r199*e*Op2P  - r200*e*Op2P                
-                  - r203*O*Op2P                                                                                         
+                  - r177*Op2P  - r179*Op2P  - r202*N2*Op2P  - r203*N2*Op2P  - r200*e*Op2P  - r201*e*Op2P                
+                  - r204*O*Op2P                                                                                         
     d(H2O)/dt = .05*j24*CH4  + r24*H*HO2  + r29*OH*H2  + r30*OH*H2O2  + r31*OH*HO2  + r34*OH*OH  + r37*HO2NO2*OH        
                  + r61*HNO3*OH  + r85*HCL*OH  + r88*HOCL*OH  + r114*HBR*OH  + r128*CH2BR2*OH  + r130*CH3BR*OH           
                  + r131*CH3CCL3*OH  + r133*CH3CL*OH  + r138*HCFC22*OH  + r146*CH2O*OH  + r149*CH3OOH*OH  + r150*CH4*OH  
