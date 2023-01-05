@@ -3191,6 +3191,7 @@ if ($clubb_sgs  =~ /$TRUE/io) {
    add_default($nl, 'clubb_l_damp_wp3_Skw_squared');
    add_default($nl, 'clubb_l_do_expldiff_rtm_thlm');
    add_default($nl, 'clubb_l_e3sm_config');
+   add_default($nl, 'clubb_l_enable_relaxed_clipping');
    add_default($nl, 'clubb_l_godunov_upwind_wpxp_ta');
    add_default($nl, 'clubb_l_godunov_upwind_xpyp_ta');
    add_default($nl, 'clubb_l_intr_sfc_flux_smooth');

@@ -3844,6 +3844,11 @@ normal prognostic equations for rtm and thlm.
 Flag to run CLUBB with E3SM settings.
 </entry>
 
+<entry id="clubb_l_enable_relaxed_clipping" type="logical" category="pblrad"
+       group="clubb_params_nl" valid_values="" >
+Flag to relax clipping on wpxp in xm_wpxp_clipping_and_stats.
+</entry>
+
 <entry id="clubb_l_godunov_upwind_wpxp_ta" type="logical" category="pblrad"
        group="clubb_params_nl" valid_values="" >
 This flag determines whether we want to use an upwind differencing approximation
