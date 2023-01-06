@@ -754,7 +754,7 @@
   </test>
   <test compset="FWsc2000climo" grid="mpasa120_mpasa120" name="ERS_Ld3_Vnuopc_P360x1" testmods="cam/outfrq1d_physgrid_tem_mpasa120_wcmsc">
     <machines>
-      <machine name="cheyenne" compiler="intel" category="aux_cam"/>
+      <machine name="cheyenne" compiler="intel" category="prealpha"/>
       <machine name="cheyenne" compiler="intel" category="waccm"/>
       <machine name="cheyenne" compiler="intel" category="tem_diags"/>
    </machines>

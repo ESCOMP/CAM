@@ -207,11 +207,11 @@ contains
 
     if (.not.do_tem_diags) return
 
-    call addfld ('VTHzaphys',(/'lev'/), 'A', 'MK/S', 'Meridional Heat Flux:', gridname='ctem_zavg_phys')
-    call addfld ('WTHzaphys',(/'lev'/), 'A', 'MK/S', 'Vertical Heat Flux:', gridname='ctem_zavg_phys')
-    call addfld ('UVzaphys', (/'lev'/), 'A', 'M2/S2','Meridional Flux of Zonal Momentum', gridname='ctem_zavg_phys')
-    call addfld ('UWzaphys', (/'lev'/), 'A', 'M2/S2','Vertical Flux of Zonal Momentum', gridname='ctem_zavg_phys')
-    call addfld ('THphys',   (/'lev'/), 'A', 'K',    'Potential temp - defined on ilev', gridname='physgrid' )
+    call addfld ('VTHzaphys',(/'lev'/), 'A', 'K m s-1','Meridional Heat Flux:', gridname='ctem_zavg_phys')
+    call addfld ('WTHzaphys',(/'lev'/), 'A', 'K m s-1','Vertical Heat Flux:', gridname='ctem_zavg_phys')
+    call addfld ('UVzaphys', (/'lev'/), 'A', 'm2 s-2', 'Meridional Flux of Zonal Momentum', gridname='ctem_zavg_phys')
+    call addfld ('UWzaphys', (/'lev'/), 'A', 'm2 s-2', 'Vertical Flux of Zonal Momentum', gridname='ctem_zavg_phys')
+    call addfld ('THphys',   (/'lev'/), 'A', 'K',      'Potential temp', gridname='physgrid' )
 
   end subroutine phys_grid_ctem_init
 
