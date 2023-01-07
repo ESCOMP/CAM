@@ -4070,7 +4070,6 @@ sub add_stream_default {
 
 # Get array of group names that have been defined in the namelist.
 my @nl_groups = $nl->get_group_names();
-print "DEBUG: nl_groups are @nl_groups \n";
 
 # Temp vars reused for each component.
 my @comp_groups;
