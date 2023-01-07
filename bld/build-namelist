@@ -2398,7 +2398,7 @@ if (($chem =~ /_mam4/ or $chem =~ /_mam5/) and ($phys =~ /cam6/ or $phys =~ /cam
         add_default($nl, 'megan_factors_file');
         add_default($nl, 'megan_mapped_emisfctrs', 'val'=>'.false.');
     }
-    if ($chem =~ /trop_strat_mam4_vbs/ ) {
+    if ($chem =~ /trop_strat_mam4_vbs/ or $chem =~ /trop_strat_mam5_vbs/) {
         my $val = "'ISOP = isoprene',"
                 . "'MTERP = carene_3 + pinene_a + thujene_a + bornene + terpineol_4 + terpineol_a + terpinyl_ACT_a "
                 . "+ myrtenal + sabinene + pinene_b + camphene + fenchene_a + limonene + phellandrene_a + terpinene_a "

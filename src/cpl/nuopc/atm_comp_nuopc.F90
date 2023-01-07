@@ -36,7 +36,7 @@ module atm_comp_nuopc
    use NUOPC_Model         , only : NUOPC_ModelGet
    use shr_kind_mod        , only : r8=>shr_kind_r8, i8=>shr_kind_i8, cl=>shr_kind_cl, cs=>shr_kind_cs
    use shr_sys_mod         , only : shr_sys_abort
-   use shr_file_mod        , only : shr_file_getlogunit, shr_file_setlogunit
+   use shr_log_mod         , only : shr_log_getlogunit, shr_log_setlogunit
    use shr_cal_mod         , only : shr_cal_noleap, shr_cal_gregorian, shr_cal_ymd2date
    use shr_const_mod       , only : shr_const_pi
    use shr_orb_mod         , only : shr_orb_decl, shr_orb_params, SHR_ORB_UNDEF_REAL, SHR_ORB_UNDEF_INT
@@ -49,8 +49,6 @@ module atm_comp_nuopc
    use time_manager        , only : get_curr_calday, advance_timestep, get_curr_date, get_nstep, get_step_size
    use atm_import_export   , only : read_surface_fields_namelists, advertise_fields, realize_fields
    use atm_import_export   , only : import_fields, export_fields
-   use srf_field_check     , only : active_Faxa_nhx, active_Faxa_noy
-   use atm_stream_ndep     , only : stream_ndep_init
    use nuopc_shr_methods   , only : chkerr, state_setscalar, state_getscalar, state_diagnose, alarmInit
    use nuopc_shr_methods   , only : set_component_logging, get_component_instance, log_clock_advance
    use perf_mod            , only : t_startf, t_stopf
@@ -70,8 +68,8 @@ module atm_comp_nuopc
    use pio                 , only : pio_read_darray, pio_write_darray
    use pio                 , only : pio_noerr, pio_bcast_error, pio_internal_error, pio_seterrorhandling
    use pio                 , only : pio_def_var, pio_get_var, pio_put_var, PIO_INT
-   use ioFileMod           , only : getfil
-  !$use omp_lib            , only : omp_set_num_threads
+   use ioFileMod
+   !$use omp_lib           , only : omp_set_num_threads
 
   implicit none
   private ! except
@@ -243,7 +241,7 @@ contains
     call set_component_logging(gcomp, localpet==0, iulog, shrlogunit, rc)
     if (ChkErr(rc,__LINE__,u_FILE_u)) return
 
-    call shr_file_setLogUnit (shrlogunit)
+    call shr_log_setLogUnit (iulog)
 
     !----------------------------------------------------------------------------
     ! advertise import/export fields
@@ -415,7 +413,7 @@ contains
        call ESMF_LogWrite(subname//' called', ESMF_LOGMSG_INFO)
     end if
 
-    call shr_file_setLogUnit (iulog)
+    call shr_log_setLogUnit (iulog)
 
     !----------------------------------------------------------------------------
     ! generate local mpi comm
@@ -772,7 +770,7 @@ contains
 
     end if ! end of mediator_present if-block
 
-    call shr_file_setLogUnit (shrlogunit)
+    call shr_log_setLogUnit (shrlogunit)
 
 #if (defined _MEMTRACE)
     if(masterproc) then
@@ -818,8 +816,8 @@ contains
        call ESMF_LogWrite(subname//' called', ESMF_LOGMSG_INFO)
     end if
 
-    call shr_file_getLogUnit (shrlogunit)
-    call shr_file_setLogUnit (iulog)
+    call shr_log_getLogUnit (shrlogunit)
+    call shr_log_setLogUnit (iulog)
 
 #if (defined _MEMTRACE)
     if (masterproc) then
@@ -970,7 +968,7 @@ contains
     end if
 
     ! End redirection of share output to cam log
-    call shr_file_setLogUnit (shrlogunit)
+    call shr_log_setLogUnit (shrlogunit)
 
 #if (defined _MEMTRACE)
     if(masterproc) then
@@ -1036,8 +1034,8 @@ contains
 
 !$  call omp_set_num_threads(nthrds)
 
-    call shr_file_getLogUnit (shrlogunit)
-    call shr_file_setLogUnit (iulog)
+    call shr_log_getLogUnit (shrlogunit)
+    call shr_log_setLogUnit (iulog)
 
 #if (defined _MEMTRACE)
     if(masterproc) then
@@ -1232,7 +1230,7 @@ contains
     ! Reset shr logging to my original values
     !--------------------------------
 
-    call shr_file_setLogUnit (shrlogunit)
+    call shr_log_setLogUnit (shrlogunit)
 
   end subroutine ModelAdvance
 
@@ -1376,10 +1374,10 @@ contains
 
     rc = ESMF_SUCCESS
 
-    call cam_final( cam_out, cam_in )
+    call shr_log_getLogUnit (shrlogunit)
+    call shr_log_setLogUnit (iulog)
 
-    call shr_file_getLogUnit (shrlogunit)
-    call shr_file_setLogUnit (iulog)
+    call cam_final( cam_out, cam_in )
 
     if (masterproc) then
        write(iulog,F91)
@@ -1387,7 +1385,7 @@ contains
        write(iulog,F91)
     end if
 
-    call shr_file_setLogUnit (shrlogunit)
+    call shr_log_setLogUnit (shrlogunit)
 
   end subroutine ModelFinalize
 
@@ -1512,6 +1510,7 @@ contains
     integer           :: year     ! model year at current time
     integer           :: orb_year ! orbital year for current orbital computation
     character(len=CL) :: msgstr   ! temporary
+    logical, save     :: logprint = .true.
     character(len=*) , parameter :: subname = "(cam_orbital_update)"
     !-------------------------------------------
 
@@ -1526,10 +1525,14 @@ contains
     else
        orb_year = orb_iyear
     end if
+    if(.not. (logprint .and. mastertask)) then
+       logprint = .false.
+    endif
 
     eccen = orb_eccen
-    call shr_orb_params(orb_year, eccen, orb_obliq, orb_mvelp, obliqr, lambm0, mvelpp, mastertask)
 
+    call shr_orb_params(orb_year, eccen, orb_obliq, orb_mvelp, obliqr, lambm0, mvelpp, logprint)
+    logprint = .false.
     if ( eccen  == SHR_ORB_UNDEF_REAL .or. obliqr == SHR_ORB_UNDEF_REAL .or. &
          mvelpp == SHR_ORB_UNDEF_REAL .or. lambm0 == SHR_ORB_UNDEF_REAL) then
        write (msgstr, *) subname//' ERROR: orb params incorrect'
