@@ -13,7 +13,7 @@ module atm_stream_ndep
   use dshr_strdata_mod  , only : shr_strdata_type
   use shr_kind_mod      , only : r8 => shr_kind_r8, CL => shr_kind_cl, CS => shr_kind_cs
   use shr_log_mod       , only : errMsg => shr_log_errMsg
-  use spmdMod           , only : mpicom, masterproc, iam
+  use spmd_utils        , only : mpicom, masterproc, iam
   use cam_logfile       , only : iulog
   use cam_abortutils    , only : endrun
 
@@ -154,30 +154,33 @@ contains
     ! Check that units are correct on the file and if need any conversion
     !--------------------------------------------------------
 
-    use ncdio_pio     , only : ncd_pio_openfile, ncd_inqvid, ncd_getatt, ncd_pio_closefile, ncd_nowrite
-    use ncdio_pio     , only : file_desc_t, var_desc_t
-    use shr_log_mod   , only : errMsg => shr_log_errMsg
+     use cam_pio_utils , only : cam_pio_createfile, cam_pio_openfile, cam_pio_closefile, pio_subsystem
+     use pio           , only : file_desc_t, io_desc_t, var_desc_t, pio_double, pio_def_dim
+     use pio           , only : pio_bcast_error, pio_seterrorhandling, pio_inq_varid, pio_get_att
+     use pio           , only : PIO_NOERR, PIO_NOWRITE
 
     ! Arguments
     character(len=*), intent(in)  :: stream_fldFileName_ndep  ! ndep filename
     !
     ! Local variables
-    type(file_desc_t) :: ncid     ! NetCDF filehandle for ndep file
+    type(file_desc_t) :: File     ! NetCDF filehandle for ndep file
     type(var_desc_t)  :: vardesc  ! variable descriptor
-    integer           :: varid    ! variable index
-    logical           :: readvar  ! If variable was read
+    integer           :: ierr     ! error status
+    integer           :: err_handling ! temporary
     character(len=CS) :: ndepunits! ndep units
     !-----------------------------------------------------------------------
 
-    call ncd_pio_openfile( ncid, trim(stream_fldFileName_ndep), ncd_nowrite )
-    call ncd_inqvid(ncid, stream_varlist_ndep(1), varid, vardesc, readvar=readvar)
-    if ( readvar ) then
-       call ncd_getatt(ncid, varid, "units", ndepunits)
-    else
+    call cam_pio_openfile( File, trim(stream_fldFileName_ndep), PIO_NOWRITE)
+    call pio_seterrorhandling(File, PIO_BCAST_ERROR, err_handling)
+    ierr = pio_inq_varid(File, stream_varlist_ndep(1), vardesc)
+    if (ierr /= PIO_NOERR) then
        call endrun(' ERROR finding variable: '//trim(stream_varlist_ndep(1))//" in file: "// &
             trim(stream_fldFileName_ndep)//errMsg(sourcefile, __LINE__))
+    else
+       ierr = PIO_get_att(File, vardesc, "units", ndepunits)
     end if
-    call ncd_pio_closefile( ncid )
+    call pio_seterrorhandling(File, err_handling)
+    call cam_pio_closefile(File)
 
     ! Now check to make sure they are correct
     if (.not. trim(ndepunits) == "g(N)/m2/s"  )then
