@@ -124,7 +124,7 @@ module zonal_mean_mod
 !           call ZA%init(lats,area,nlat,GEN_GAUSSLATS=.true.)
 !           --------------------------------------------------
 !               - Given the latitude/area for the nlat meridional gridpoints, initialize
-!                 the ZonalAverage data struture for computing bin-averaging of physgrid
+!                 the ZonalAverage data structure for computing bin-averaging of physgrid
 !                 values. It is assumed that the domain of these gridpoints of the
 !                 profile span latitudes from SP to NP.
 !                 The optional GEN_GAUSSLATS flag allows for the generation of Gaussian
@@ -230,13 +230,14 @@ module zonal_mean_mod
   real(r8), parameter :: halfPI = 0.5_r8*pi
   real(r8), parameter :: twoPI  = 2.0_r8*pi
   real(r8), parameter :: fourPI = 4.0_r8*pi
-  real(r8), parameter :: qrtrPI = .25_r8*pi
+  real(r8), parameter :: qrtrPI = 0.25_r8*pi
+  real(r8), parameter :: invSqrt4pi = 1._r8/sqrt(fourPI)
 
 contains
     !=======================================================================
     subroutine init_ZonalMean(this,I_nbas)
       !
-      ! init_ZonalMean: Initialize the ZonalMean data strutures for the
+      ! init_ZonalMean: Initialize the ZonalMean data structures for the
       !                 physics grid. It is assumed that the domain
       !                 of these gridpoints spans the surface of the sphere.
       !                 The representation of basis functions is
@@ -328,7 +329,7 @@ contains
 
       ! Add first basis for the mean values.
       !------------------------------------------
-      this%basis(:,begchunk:endchunk,1) = 1._r8/sqrt(fourPI)
+      this%basis(:,begchunk:endchunk,1) = invSqrt4pi
 
       ! Loop over the remaining basis functions
       !---------------------------------------
@@ -646,7 +647,7 @@ contains
     !=======================================================================
     subroutine init_ZonalProfile(this,IO_lats,IO_area,I_nlat,I_nbas,GEN_GAUSSLATS)
       !
-      ! init_ZonalProfile: Initialize the ZonalProfile data struture for the
+      ! init_ZonalProfile: Initialize the ZonalProfile data structure for the
       !                    given nlat gridpoints. It is assumed that the domain
       !                    of these gridpoints of the profile span latitudes
       !                    from SP to NP.
@@ -728,7 +729,7 @@ contains
         !-----------------------------------------------------------
         do nn=1,I_nlat
           IO_lats(nn) = (45._r8*Clats(nn)/qrtrPI) - 90._r8
-          IO_area(nn) = IO_area(nn)*pi
+          IO_area(nn) = IO_area(nn)*twoPI
         end do
       else
         ! Convert Latitudes to SP->NP colatitudes in radians
@@ -745,7 +746,7 @@ contains
 
       ! Add first basis for the mean values.
       !------------------------------------------
-      this%basis(:,1) = 1._r8/sqrt(fourPI)
+      this%basis(:,1) = invSqrt4pi
       Bnorm = 0._r8
       do ii=1,I_nlat
         Bnorm = Bnorm + (this%basis(ii,1)*this%basis(ii,1)*this%area(ii))
@@ -982,7 +983,7 @@ contains
     !=======================================================================
     subroutine init_ZonalAverage(this,IO_lats,IO_area,I_nlat,GEN_GAUSSLATS)
       !
-      ! init_ZonalAverage: Initialize the ZonalAverage data struture for the
+      ! init_ZonalAverage: Initialize the ZonalAverage data structure for the
       !                    given nlat gridpoints. It is assumed that the domain
       !                    of these gridpoints of the profile span latitudes
       !                    from SP to NP.
@@ -1913,6 +1914,7 @@ contains
       endif
 
       do while(nix/=0)
+         dcor = huge(1._r8)
          it = 0
          do while (abs(dcor) > eps*abs(zero))
             it = it + 1
