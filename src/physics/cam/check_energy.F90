@@ -1,3 +1,4 @@
+
 module check_energy
 
 !---------------------------------------------------------------------------------
@@ -45,13 +46,28 @@ module check_energy
   public :: check_energy_timestep_init  ! timestep initialization of energy integrals and cumulative boundary fluxes
   public :: check_energy_chng      ! check changes in integrals against cumulative boundary fluxes
   public :: check_energy_gmean     ! global means of physics input and output total energy
-  public :: check_energy_budget_init ! initialization of energy budget integrals
-  public :: check_energy_budget    ! global budgets of physics energies
+  public :: check_energy_budgets_init ! initialization of energy budgets (addflds and budget_adds)
+  public :: check_energy_budget_state_init ! initialization of energy budget integrals
+  public :: check_energy_phys_budget_update    ! global budgets of physics energies
+  public :: check_energy_phys_cnt_update    ! global budgets of physics energies
   public :: check_energy_fix       ! add global mean energy difference as a heating
   public :: check_tracers_init      ! initialize tracer integrals and cumulative boundary fluxes
   public :: check_tracers_chng      ! check changes in integrals against cumulative boundary fluxes
 
   public :: calc_te_and_aam_budgets ! calculate and output total energy and axial angular momentum diagnostics
+
+  integer, public, parameter                         :: num_stages = 8
+  character (len = 4), dimension(num_stages) :: stage = (/"phBF","phBP","phAP","phAM","dyBF","dyBP","dyAP","dyAM"/)
+  character (len = 45),dimension(num_stages) :: stage_txt = (/&
+       " before energy fixer                     ",& !phBF - physics energy
+       " before parameterizations                ",& !phBF - physics energy
+       " after parameterizations                 ",& !phAP - physics energy
+       " after dry mass correction               ",& !phAM - physics energy
+       " before energy fixer (dycore)            ",& !dyBF - dynamics energy
+       " before parameterizations (dycore)       ",& !dyBF - dynamics energy
+       " after parameterizations (dycore)        ",& !dyAP - dynamics energy
+       " after dry mass correction (dycore)      " & !dyAM - dynamics energy
+       /)
 
 ! Private module data
 
@@ -187,7 +203,6 @@ end subroutine check_energy_get_integrals
 !-----------------------------------------------------------------------
     use cam_history,       only: addfld, add_default, horiz_only
     use phys_control,      only: phys_getopts
-    use budgets,           only: budget_num, budget_outfld, budget_info
 
     implicit none
 
@@ -218,24 +233,6 @@ end subroutine check_energy_get_integrals
        call add_default ('DTCORE', 1, ' ')
     end if
 
-! register history budget variables
-    do m=1,budget_num
-       if (budget_outfld(m)) then
-          call budget_info(m,name=budget_name,longname=budget_longname,pkgtype=budget_pkgtype)
-          if (trim(budget_pkgtype)=='phy') then
-             call addfld(trim(budget_name),  horiz_only,  'A', 'W/m2', trim(budget_longname))
-          endif
-       end if
-    end do
-!!$    call addfld('BP_phy_params',  horiz_only,  'A', 'W/m2', 'dE/dt CAM physics parameterizations (phAP-phBP)')
-!!$    call addfld('BD_phy_params',  horiz_only,  'A', 'W/m2', 'dE/dt CAM physics parameterizations using dycore E (dyAP-dyBP)')
-!!$    call addfld('BP_pwork',  horiz_only,  'A', 'W/m2', 'dE/dt dry mass adjustment (phAM-phAP)')
-!!$    call addfld('BD_pwork',  horiz_only,  'A', 'W/m2', 'dE/dt dry mass adjustment using dycore E (dyAM-dyAP)')
-!!$    call addfld('BP_efix',  horiz_only,  'A', 'W/m2', 'dE/dt energy fixer (phBP-phBF)')
-!!$    call addfld('BD_efix',  horiz_only,  'A', 'W/m2', 'dE/dt energy fixer using dycore E (dyBP-dyBF)')
-!!$    call addfld('BP_phys_tot',  horiz_only,  'A', 'W/m2', 'dE/dt physics total (phAM-phBF)')
-!!$    call addfld('BD_phys_tot',  horiz_only,  'A', 'W/m2', 'dE/dt physics total using dycore E (dyAM-dyBF)')
-
   end subroutine check_energy_init
 
 !===============================================================================
@@ -260,7 +257,6 @@ end subroutine check_energy_get_integrals
     real(r8)              :: cp_or_cv(state%psetcols,pver)
     integer lchnk                                  ! chunk identifier
     integer ncol                                   ! number of atmospheric columns
-!jt    integer  i,k                                   ! column, level indices
 !-----------------------------------------------------------------------
 
     lchnk = state%lchnk
@@ -329,7 +325,7 @@ end subroutine check_energy_get_integrals
 
 !===============================================================================
 
-  subroutine check_energy_budget_init(state)
+  subroutine check_energy_budget_state_init(state)
 !-----------------------------------------------------------------------
 ! Compute initial values of energy and water integrals,
 ! zero cumulative tendencies
@@ -338,14 +334,86 @@ end subroutine check_energy_get_integrals
 !------------------------------Arguments--------------------------------
 
     type(physics_state),   intent(inout)    :: state
-!---------------------------Local storage-------------------------------
-    integer ncol                                   ! number of atmospheric columns
 !-----------------------------------------------------------------------
 
-!jt    ncol  = state%ncol
 ! zero cummulative boundary fluxes
     state%te_budgets(:,:,:) = 0._r8
-  end subroutine check_energy_budget_init
+
+  end subroutine check_energy_budget_state_init
+
+!===============================================================================
+
+  subroutine check_energy_budgets_init()
+!-----------------------------------------------------------------------
+! Compute initial values of energy and water integrals,
+! zero cumulative tendencies
+!-----------------------------------------------------------------------
+    use budgets,            only: budget_add, budget_info, budget_num
+    use cam_history,        only: addfld, horiz_only
+    use cam_thermo,         only: thermo_budget_num_vars,thermo_budget_vars, &
+                                  thermo_budget_vars_descriptor,thermo_budget_vars_unit
+!---------------------------Local storage-------------------------------
+    !
+    ! variables for energy diagnostics
+    !
+    integer                                    :: istage, ivars, i
+    character (len=256)                        :: str1, str2, str3
+    character(len=32)                          :: budget_name     ! budget names
+    character(len=3)                           :: budget_pkgtype,budget_optype
+    character(len=128)                         :: budget_longname ! long name of budgets
+!-----------------------------------------------------------------------
+
+!
+! energy diagnostics addflds for vars_stage combinations plus budget_adds for
+! just the stages as the vars portion is accounted for via an extra array
+! dimension in the state%te_budgets array.
+!
+    do istage = 1, num_stages
+      do ivars=1, thermo_budget_num_vars
+        write(str1,*) TRIM(ADJUSTL(thermo_budget_vars(ivars))),"_",TRIM(ADJUSTL(stage(istage)))
+        write(str2,*) TRIM(ADJUSTL(thermo_budget_vars_descriptor(ivars)))," ", &
+                           TRIM(ADJUSTL(stage_txt(istage)))
+        write(str3,*) TRIM(ADJUSTL(thermo_budget_vars_unit(ivars)))
+        call addfld (TRIM(ADJUSTL(str1)),   horiz_only, 'A', TRIM(ADJUSTL(str3)),TRIM(ADJUSTL(str2)))
+      end do
+      call budget_add(TRIM(ADJUSTL(stage(istage))),'phy',longname=TRIM(ADJUSTL(stage_txt(istage))),outfld=.true.)
+      write(iulog,*)'Calling addfld for ',TRIM(ADJUSTL(stage(istage)))
+      call addfld (TRIM(ADJUSTL(stage(istage))),   horiz_only, 'A', TRIM(ADJUSTL(str3)),TRIM(ADJUSTL(stage_txt(istage))))
+    end do
+
+    ! Create budgets that are a sum/dif of 2 stages
+
+    call budget_add('BP_param_and_efix','phAP','phBF','phy','dif',longname='dE/dt CAM physics parameterizations + efix dycore E (phAP-phBF)',outfld=.true.)
+    call budget_add('BD_param_and_efix','dyAP','dyBF','phy','dif',longname='dE/dt CAM physics parameterizations + efix dycore E (dyAP-dyBF)',outfld=.true.)
+    call budget_add('BP_phy_params','phAP','phBP','phy','dif',longname='dE/dt CAM physics parameterizations (phAP-phBP)',outfld=.true.)
+    call budget_add('BD_phy_params','dyAP','dyBP','phy','dif',longname='dE/dt CAM physics parameterizations using dycore E (dyAP-dyBP)',outfld=.true.)
+    call budget_add('BP_pwork','phAM','phAP','phy','dif',longname='dE/dt dry mass adjustment (phAM-phAP)',outfld=.true.)
+    call budget_add('BD_pwork','dyAM','dyAP','phy','dif',longname='dE/dt dry mass adjustment using dycore E (dyAM-dyAP)',outfld=.true.)
+    call budget_add('BP_efix','phBP','phBF','phy','dif',longname='dE/dt energy fixer (phBP-phBF)',outfld=.true.)
+    call budget_add('BD_efix','dyBP','dyBF','phy','dif',longname='dE/dt energy fixer using dycore E (dyBP-dyBF)',outfld=.true.)
+    call budget_add('BP_phys_tot','phAM','phBF','phy','dif',longname='dE/dt physics total (phAM-phBF)',outfld=.true.)
+    call budget_add('BD_phys_tot','dyAM','dyBF','phy','dif',longname='dE/dt physics total using dycore E (dyAM-dyBF)',outfld=.true.)
+
+    ! create addfld calls for all two stage budgets
+    do i=1,budget_num
+       call budget_info(i,name=budget_name,longname=budget_longname,pkgtype=budget_pkgtype,optype=budget_optype)
+       if (budget_pkgtype=='phy'.and.(budget_optype=='dif'.or.budget_optype=='sum')) then
+          do ivars=1, thermo_budget_num_vars
+             write(str1,*) TRIM(ADJUSTL(thermo_budget_vars(ivars))),"_",TRIM(ADJUSTL(budget_name))
+             write(str2,*) TRIM(ADJUSTL(thermo_budget_vars_descriptor(ivars)))," ", &
+                  TRIM(ADJUSTL(budget_longname))
+             write(str3,*) TRIM(ADJUSTL(thermo_budget_vars_unit(ivars)))
+             write(iulog,*)'Calling addfld for ',TRIM(ADJUSTL(str1))
+             call addfld (TRIM(ADJUSTL(str1)),   horiz_only, 'A', TRIM(ADJUSTL(str3)),TRIM(ADJUSTL(str2)))
+             if (TRIM(ADJUSTL(thermo_budget_vars(ivars)))=='TE') then
+                write(iulog,*)'Calling addfld for ',TRIM(ADJUSTL(budget_name))
+                call addfld (TRIM(ADJUSTL(budget_name)),   horiz_only, 'A', 'J/m2',TRIM(ADJUSTL(budget_longname)))
+             end if
+          end do
+       end if
+    end do
+
+  end subroutine check_energy_budgets_init
 
 !===============================================================================
 
@@ -403,7 +471,6 @@ end subroutine check_energy_get_integrals
 
     integer lchnk                                  ! chunk identifier
     integer ncol                                   ! number of atmospheric columns
-    !jt    integer  i,k                                   ! column, level indices
     integer  i                                   ! column
 !-----------------------------------------------------------------------
 
@@ -519,7 +586,6 @@ end subroutine check_energy_get_integrals
   subroutine check_energy_gmean(state, pbuf2d, dtime, nstep)
 
     use physics_buffer, only : physics_buffer_desc, pbuf_get_field, pbuf_get_chunk
-!jt    use dyn_tests_utils, only: vc_dycore, vc_height
     use physics_types,   only: dyn_te_idx
 !-----------------------------------------------------------------------
 ! Compute global mean total energy of physics input and output states
@@ -582,15 +648,13 @@ end subroutine check_energy_get_integrals
 
   end subroutine check_energy_gmean
 
-  subroutine check_energy_budget(state, dtime, nstep)
+  subroutine check_energy_phys_budget_update(state, dtime, nstep)
 
     use cam_history,     only: outfld
-!jt    use physics_buffer,  only: physics_buffer_desc, pbuf_get_field, pbuf_get_chunk
-!jt    use dyn_tests_utils, only: vc_dycore, vc_height
-!jt    use physics_types,   only: phys_te_idx, dyn_te_idx
     use budgets,         only: budget_num, budget_info, &
                                budget_outfld, budget_num_phy, &
-                               budget_me_varnum, budget_put_global
+                               budget_put_global
+    use cam_thermo,      only: thermo_budget_num_vars, thermo_budget_vars_massv
     use cam_abortutils,  only: endrun
     use dycore_budget,   only: print_budget
 !-----------------------------------------------------------------------
@@ -609,20 +673,18 @@ end subroutine check_energy_get_integrals
     integer :: ncol                      ! number of active columns
     integer :: lchnk                     ! chunk index
 
-!jt    real(r8),allocatable :: te(pcols,begchunk:endchunk,budget_num_phy)
     real(r8),allocatable :: te(:,:,:,:) ! total energy of input/output states (copy)
-!jt    real(r8),allocatable :: te_glob(budget_num_phy)      ! global means of total energy
     real(r8),allocatable :: te_glob(:,:) ! global means of total energy
-    integer  :: i,ii,ind,is1,is2,is1b,is2b
+    integer  :: i,ii,s_ind,is1,is2,is1b,is2b
     character*32 :: budget_name               ! parameterization name for fluxes
     character*3 :: budget_pkgtype             ! parameterization type phy or dyn
     character*3 :: budget_optype              ! dif or stg
 !-----------------------------------------------------------------------
     if (.not.allocated (te)) then
-       allocate( te(pcols,begchunk:endchunk,budget_num_phy,budget_me_varnum))
+       allocate( te(pcols,begchunk:endchunk,budget_num_phy,thermo_budget_num_vars))
     end if
     if (.not.allocated (te_glob)) then
-       allocate( te_glob(budget_num_phy,budget_me_varnum))
+       allocate( te_glob(budget_num_phy,thermo_budget_num_vars))
     else
        write(iulog,*)'no alloc call shape te_glob=',shape(te_glob)
     end if
@@ -638,60 +700,108 @@ end subroutine check_energy_get_integrals
              if (budget_optype=='dif') then
                 call budget_info(ii,stg1stateidx=is1, stg2stateidx=is2,stg1index=is1b,stg2index=is2b)
                 if (state(lchnk)%budget_cnt(is1b).ne.state(lchnk)%budget_cnt(is2b)) then
-                   write(iulog,*)'budget_cnt mismatch stage1=',state(lchnk)%budget_cnt(is1b),'stage2=',state(lchnk)%budget_cnt(is2b)
+                   if (lchnk==begchunk.and.masterproc) write(iulog,*)'budget_cnt mismatch stage1=',state(lchnk)%budget_cnt(is1b),'stage2=',state(lchnk)%budget_cnt(is2b)
                    call endrun()
                 end if
                 if (state(lchnk)%budget_cnt(is1b)==0.or.state(lchnk)%budget_cnt(is2b)==0) then
                    te(:,lchnk,i,:)=0._r8
-                else          
+                   if (lchnk==begchunk.and.masterproc) write(iulog,*)'zeroing:',budget_name,' cnt1:',state(lchnk)%budget_cnt(is1b),' cnt2 ',state(lchnk)%budget_cnt(is2b)
+                else
+                   if (lchnk==begchunk.and.masterproc) write(iulog,*)'dif and norm into te:',budget_name,' cnt:',state(lchnk)%budget_cnt(ii),' cnt1:',state(lchnk)%budget_cnt(is1b),'budget index ii/is1b=',ii,'/',is1b
                    te(:,lchnk,i,:) = (state(lchnk)%te_budgets(:,:,is1)-state(lchnk)%te_budgets(:,:,is2))/state(lchnk)%budget_cnt(is1b)
                 end if
              else if (budget_optype=='sum') then
                 call budget_info(ii,stg1stateidx=is1, stg2stateidx=is2,stg1index=is1b,stg2index=is2b)
                 if (state(lchnk)%budget_cnt(is1b).ne.state(lchnk)%budget_cnt(is2b)) then
-                   write(iulog,*)'budget_cnt mismatch stage1=',state(lchnk)%budget_cnt(is1b),'stage2=',state(lchnk)%budget_cnt(is2b)
+                   if (lchnk==begchunk.and.masterproc) write(iulog,*)'budget_cnt mismatch stage1=',state(lchnk)%budget_cnt(is1b),'stage2=',state(lchnk)%budget_cnt(is2b)
                    call endrun()
                 end if
                 if (state(lchnk)%budget_cnt(is1b)==0.or.state(lchnk)%budget_cnt(is2b)==0) then
                    te(:,lchnk,i,:)=0._r8
                 else          
+                   if (lchnk==begchunk.and.masterproc) write(iulog,*)'sum and norm into te:',budget_name,' cnt:',state(lchnk)%budget_cnt(ii),' cnt1:',state(lchnk)%budget_cnt(is1b),'budget index ii/is1b=',ii,'/',is1b
                    te(:,lchnk,i,:) = (state(lchnk)%te_budgets(:,:,is1)+state(lchnk)%te_budgets(:,:,is2))/state(lchnk)%budget_cnt(is1b)
                 end if
              else
-                te(:,lchnk,i,:)=state(lchnk)%te_budgets(:,:,i)
+                if (state(lchnk)%budget_cnt(ii)==0) then
+                   te(:,lchnk,i,:)=0._r8
+                   if (lchnk==begchunk.and.masterproc) write(iulog,*)'zeroing:',budget_name,' cnt:',state(lchnk)%budget_cnt(ii),' ii=',ii,"current vals=",state(lchnk)%te_budgets(:,:,ii)
+                else
+                   if (lchnk==begchunk.and.masterproc) write(iulog,*)'norm and read into te:',budget_name,' cnt:',state(lchnk)%budget_cnt(ii),'budget index=',ii
+                   te(:,lchnk,i,:)=state(lchnk)%te_budgets(:,:,i)/state(lchnk)%budget_cnt(ii)
+                end if
              end if
              if (budget_outfld(i).and.budget_pkgtype=='phy') call outfld(trim(budget_name), te(:ncol,lchnk,i,1), pcols, lchnk)
           end if
        end do
     end do
     ! Compute global means of budgets
-    do i=1,budget_me_varnum
+    do i=1,thermo_budget_num_vars
        call gmean(te(:,:,:,i), te_glob(:,i), budget_num_phy)
        !divide by time to get flux if not a mass budget
-       if (i.le.3) te_glob(:,i)=te_glob(:,i)/dtime
-    end do
-    do ii=1,budget_num
-       call budget_info(ii,name=budget_name,pkgtype=budget_pkgtype,optype=budget_optype,state_ind=i)
-       if (budget_pkgtype=='phy') then
-          do lchnk = begchunk, endchunk
-             state(lchnk)%budget_cnt(ii)=0
-          end do
-       end if
+       if (.not.thermo_budget_vars_massv(i)) te_glob(:,i)=te_glob(:,i)/dtime
     end do
 
     if (masterproc) then
        do ii=1,budget_num
-          call budget_info(ii,name=budget_name,pkgtype=budget_pkgtype,optype=budget_optype,state_ind=ind)
+          call budget_info(ii,name=budget_name,pkgtype=budget_pkgtype,optype=budget_optype,state_ind=s_ind)
           if (budget_pkgtype=='phy') then
-             do i=1,budget_me_varnum
-                call budget_put_global(trim(budget_name),i,te_glob(ind,i))
-!jt                write(iulog,*)"putting global ",trim(budget_name)," m_cnst=",i," ",te_glob(ind,i)
+             do i=1,thermo_budget_num_vars
+                call budget_put_global(trim(budget_name),i,te_glob(s_ind,i))
+                if (budget_optype=='dif'.or.budget_optype=='sum') then
+                   call budget_info(ii,stg1index=is1b)
+                   write(iulog,*)"putting global ",trim(budget_name)," m_cnst=",i," ",te_glob(s_ind,i)," cnt=",state(begchunk)%budget_cnt(is1b),"is1b=",is1b
+                else
+                   write(iulog,*)"putting global ",trim(budget_name)," m_cnst=",i," ",te_glob(s_ind,i)," cnt=",state(begchunk)%budget_cnt(ii),"ii=",ii
+                end if
              end do
           end if
        end do
     end if
     call print_budget()
-  end subroutine check_energy_budget
+    do lchnk = begchunk, endchunk
+       state(lchnk)%budget_cnt(:)=0._r8
+       state(lchnk)%te_budgets(:,:,:)=0._r8
+    end do
+
+  end subroutine check_energy_phys_budget_update
+  subroutine check_energy_phys_cnt_update(state)
+
+    use budgets,         only: budget_num, budget_info, &
+                               budget_outfld, budget_num_phy, &
+                               budget_put_global
+    use cam_abortutils,  only: endrun
+    use dycore_budget,   only: print_budget
+!-----------------------------------------------------------------------
+! Compute global mean total energy of physics input and output states
+! computed consistently with dynamical core vertical coordinate
+! (under hydrostatic assumption)
+!-----------------------------------------------------------------------
+!------------------------------Arguments--------------------------------
+
+    type(physics_state), intent(inout   ), dimension(begchunk:endchunk) :: state
+
+!---------------------------Local storage-------------------------------
+    integer :: ncol                      ! number of active columns
+    integer :: lchnk                     ! chunk index
+
+    integer  :: i,ii,s_ind,is1,is2,is1b,is2b
+    character*32 :: budget_name               ! parameterization name for fluxes
+    character*3 :: budget_pkgtype             ! parameterization type phy or dyn
+    character*3 :: budget_optype              ! dif or stg
+!-----------------------------------------------------------------------
+    do lchnk = begchunk, endchunk
+       ncol = state(lchnk)%ncol
+       do ii=1,budget_num
+          call budget_info(ii,name=budget_name,pkgtype=budget_pkgtype,optype=budget_optype,state_ind=i)
+          if (budget_pkgtype=='phy'.and.(budget_optype=='dif'.or.budget_optype=='sub')) then
+             state(lchnk)%budget_cnt(ii)=state(lchnk)%budget_cnt(ii)+1
+             call budget_info(ii,stg1index=is1b,stg2index=is2b)
+             if (lchnk==begchunk .and. masterproc) write(iulog,*)trim(budget_name)," cnt(",ii,") updated to ",state(lchnk)%budget_cnt(ii),'stage1=',state(lchnk)%budget_cnt(is1b),'stage2=',state(lchnk)%budget_cnt(is2b),' is1b/is2b=',is1b,'/',is2b
+          end if
+       end do
+    end do
+  end subroutine check_energy_phys_cnt_update
 
 !===============================================================================
   subroutine check_energy_fix(state, ptend, nstep, eshflx)
@@ -943,11 +1053,13 @@ end subroutine check_energy_get_integrals
 
   subroutine calc_te_and_aam_budgets(state, outfld_name_suffix,vc)
     use physconst,       only: gravit,cpair,pi,rearth,omega
-    use cam_thermo,      only: get_hydrostatic_energy
+    use cam_thermo,      only: get_hydrostatic_energy,thermo_budget_num_vars,thermo_budget_vars, &
+                               wvidx,wlidx,wiidx,seidx,keidx,moidx,mridx,ttidx,teidx,poidx
     use cam_history,     only: hist_fld_active, outfld
     use dyn_tests_utils, only: vc_physics, vc_height
     use cam_abortutils,  only: endrun
     use budgets,         only: budget_info_byname
+    use cam_history_support, only: max_fieldname_len
 !------------------------------Arguments--------------------------------
 
     type(physics_state), intent(inout) :: state
@@ -956,7 +1068,7 @@ end subroutine check_energy_get_integrals
 
 !---------------------------Local storage-------------------------------
     real(r8) :: se(pcols)                          ! Dry Static energy (J/m2)
-    real(r8) :: po(pcols)                          ! Dry Static energy (J/m2)
+    real(r8) :: po(pcols)                          ! surface potential or potential energy (J/m2)
     real(r8) :: ke(pcols)                          ! kinetic energy    (J/m2)
     real(r8) :: wv(pcols)                          ! column integrated vapor       (kg/m2)
     real(r8) :: liq(pcols)                         ! column integrated liquid      (kg/m2)
@@ -974,20 +1086,24 @@ end subroutine check_energy_get_integrals
     integer :: ncol                                ! number of atmospheric columns
     integer :: i,k                                 ! column, level indices
     integer :: vc_loc                              ! local vertical coordinate variable
-    integer :: s_ind,b_ind                         ! budget array index
+    integer :: s_ind,b_ind                      ! budget array index
     integer :: ixtt                                ! test tracer index
-    character(len=32) :: name_out1,name_out2,name_out3,name_out4,name_out5,name_out6
+    character(len=32) :: name_out1,name_out2,name_out3,name_out4,name_out5,name_out6,name_out7
+    character(len=max_fieldname_len) :: name_out(thermo_budget_num_vars)
+
 !-----------------------------------------------------------------------
 
+
+    do i=1,thermo_budget_num_vars
+       name_out(i)=trim(thermo_budget_vars(i))//'_'//trim(outfld_name_suffix)
+    end do
     name_out1 = 'SE_'   //trim(outfld_name_suffix)
     name_out2 = 'KE_'   //trim(outfld_name_suffix)
     name_out3 = 'WV_'   //trim(outfld_name_suffix)
     name_out4 = 'WL_'   //trim(outfld_name_suffix)
     name_out5 = 'WI_'   //trim(outfld_name_suffix)
     name_out6 = 'TT_'   //trim(outfld_name_suffix)
-
-!jt    if ( hist_fld_active(name_out1).or.hist_fld_active(name_out2).or.hist_fld_active(name_out3).or.&
-!jt         hist_fld_active(name_out4).or.hist_fld_active(name_out5).or.hist_fld_active(name_out6)) then
+    name_out7 = 'TE_'   //trim(outfld_name_suffix)
 
       lchnk = state%lchnk
       ncol  = state%ncol
@@ -1051,24 +1167,33 @@ end subroutine check_energy_get_integrals
         end if
       end if
 
-      state%te_budgets(1:ncol,1,s_ind)=(se(1:ncol)+ke(1:ncol)+po(1:ncol))
-      state%te_budgets(1:ncol,2,s_ind)=se(1:ncol)
-      state%te_budgets(1:ncol,3,s_ind)=ke(1:ncol)
-      state%te_budgets(1:ncol,4,s_ind)=wv(1:ncol)
-      state%te_budgets(1:ncol,5,s_ind)=liq(1:ncol)
-      state%te_budgets(1:ncol,6,s_ind)=ice(1:ncol)
-      state%te_budgets(1:ncol,7,s_ind)=tt(1:ncol)
+      state%te_budgets(1:ncol,teidx,s_ind)=state%te_budgets(1:ncol,teidx,s_ind)+(se(1:ncol)+ke(1:ncol)+po(1:ncol))
+      state%te_budgets(1:ncol,seidx,s_ind)=      state%te_budgets(1:ncol,seidx,s_ind)+se(1:ncol)
+      state%te_budgets(1:ncol,poidx,s_ind)=      state%te_budgets(1:ncol,poidx,s_ind)+po(1:ncol)
+      state%te_budgets(1:ncol,keidx,s_ind)=      state%te_budgets(1:ncol,keidx,s_ind)+ke(1:ncol)
+      state%te_budgets(1:ncol,wvidx,s_ind)=      state%te_budgets(1:ncol,wvidx,s_ind)+wv(1:ncol)
+      state%te_budgets(1:ncol,wlidx,s_ind)=      state%te_budgets(1:ncol,wlidx,s_ind)+liq(1:ncol)
+      state%te_budgets(1:ncol,wiidx,s_ind)=      state%te_budgets(1:ncol,wiidx,s_ind)+ice(1:ncol)
+      state%te_budgets(1:ncol,ttidx,s_ind)=      state%te_budgets(1:ncol,ttidx,s_ind)+tt(1:ncol)
       state%budget_cnt(b_ind)=state%budget_cnt(b_ind)+1
-
       ! Output energy diagnostics
 
-      call outfld(name_out1  ,se      , pcols   ,lchnk   )
-      call outfld(name_out2  ,ke      , pcols   ,lchnk   )
-      call outfld(name_out3  ,wv      , pcols   ,lchnk   )
-      call outfld(name_out4  ,liq     , pcols   ,lchnk   )
-      call outfld(name_out5  ,ice     , pcols   ,lchnk   )
-      call outfld(name_out6  ,tt      , pcols   ,lchnk   )
-!!jt   end if
+      call outfld(name_out1  ,se+po     ,pcols   ,lchnk   )
+      call outfld(name_out2  ,ke        ,pcols   ,lchnk   )
+      call outfld(name_out3  ,wv        ,pcols   ,lchnk   )
+      call outfld(name_out4  ,liq       ,pcols   ,lchnk   )
+      call outfld(name_out5  ,ice       ,pcols   ,lchnk   )
+      call outfld(name_out6  ,tt        ,pcols   ,lchnk   )
+      call outfld(name_out7  ,se+ke+po  ,pcols   ,lchnk   )
+
+!!$      call outfld(name_out(seidx)  ,se      , pcols   ,lchnk   )
+!!$      call outfld(name_out(keidx)  ,ke      , pcols   ,lchnk   )
+!!$      call outfld(name_out(wiidx)  ,wv      , pcols   ,lchnk   )
+!!$      call outfld(name_out(wlidx)  ,liq     , pcols   ,lchnk   )
+!!$      call outfld(name_out(wiidx)  ,ice     , pcols   ,lchnk   )
+!!$      call outfld(name_out(ttidx)  ,tt      , pcols   ,lchnk   )
+!!$      call outfld(name_out(teidx)  ,te      , pcols   ,lchnk   )
+
     !
     ! Axial angular momentum diagnostics
     !
@@ -1104,9 +1229,15 @@ end subroutine check_energy_get_integrals
           mo(i) = mo(i) + mo_tmp
         end do
       end do
+      state%te_budgets(1:ncol,moidx,s_ind)=mo(1:ncol)
+      state%te_budgets(1:ncol,mridx,s_ind)=mr(1:ncol)
+      call outfld(name_out(mridx)  ,mr, pcols,lchnk   )
+      call outfld(name_out(moidx)  ,mo, pcols,lchnk   )
+
       call outfld(name_out1  ,mr, pcols,lchnk   )
       call outfld(name_out2  ,mo, pcols,lchnk   )
 !!jt    end if
   end subroutine calc_te_and_aam_budgets
+
 
 end module check_energy

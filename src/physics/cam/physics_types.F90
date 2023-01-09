@@ -14,7 +14,7 @@ module physics_types
   use cam_abortutils,   only: endrun
   use phys_control,     only: waccmx_is
   use shr_const_mod,    only: shr_const_rwv
-  use budgets,          only: budget_array_max,budget_name,budget_me_varnum
+  use budgets,          only: budget_array_max,budget_name
 
   implicit none
   private          ! Make default type private to the module
@@ -1320,6 +1320,7 @@ end subroutine physics_ptend_copy
 
     use ppgrid,       only: pver, pverp
     use constituents, only: pcnst
+    use cam_thermo,   only: thermo_budget_num_vars
 
     implicit none
 
@@ -1410,7 +1411,7 @@ end subroutine physics_ptend_copy
     end do
 
     do m = 1, budget_array_max
-       do k = 1, budget_me_varnum
+       do k = 1, thermo_budget_num_vars
           do i = 1, ncol
              state_out%te_budgets(i,k,m) = state_in%te_budgets(i,k,m)
           end do
@@ -1537,7 +1538,8 @@ end subroutine set_dry_to_wet
 
 subroutine physics_state_alloc(state,lchnk,psetcols)
 
-  use infnan, only : inf, assignment(=)
+  use infnan,     only: inf, assignment(=)
+  use cam_thermo, only: thermo_budget_num_vars
 
 ! allocate the individual state components
 
@@ -1628,7 +1630,7 @@ subroutine physics_state_alloc(state,lchnk,psetcols)
   allocate(state%q(psetcols,pver,pcnst), stat=ierr)
   if ( ierr /= 0 ) call endrun('physics_state_alloc error: allocation error for state%q')
 
-  allocate(state%te_budgets(psetcols,7,budget_array_max), stat=ierr)
+  allocate(state%te_budgets(psetcols,thermo_budget_num_vars,budget_array_max), stat=ierr)
   if ( ierr /= 0 ) call endrun('physics_state_alloc error: allocation error for state%te_budgets')
 
   allocate(state%budget_cnt(budget_array_max), stat=ierr)

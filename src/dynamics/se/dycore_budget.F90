@@ -21,13 +21,15 @@ subroutine print_budget()
   use budgets,                only: budget_get_global, is_budget
   use dimensions_mod,         only: lcp_moist,qsize
   use control_mod,            only: ftype
+  use cam_thermo,             only: teidx, thermo_budget_vars_descriptor, thermo_budget_num_vars, thermo_budget_vars_massv
   ! Local variables
   integer          :: i
   character(len=*), parameter :: subname = 'check_energy:print_budgets'
 
   real(r8)          :: ph_param,ph_EFIX,ph_DMEA,ph_phys_total
   real(r8)          :: dy_param,dy_EFIX,dy_DMEA,dy_param_and_efix,dy_phys_total
-  real(r8)          :: se_param,se_dmea,se_phys_total, dycore, err, param, pefix, &
+!jt  real(r8)          :: se_param,se_dmea,se_phys_total, dycore, err, param, pefix, &
+  real(r8)          :: dycore, err, param, pefix, &
                        pdmea, phys_total, dyn_total, dyn_phys_total, &
                        rate_of_change_2D_dyn, rate_of_change_vertical_remapping, &
                        diffusion_del4, diffusion_fric, diffusion_del4_tot, diffusion_sponge, &
@@ -45,34 +47,29 @@ subroutine print_budget()
   !--------------------------------------------------------------------------------------
 
   if (masterproc) then
-     call budget_get_global('phAP-phBP',1,ph_param)
-     call budget_get_global('phBP-phBF',1,ph_EFIX)
-     call budget_get_global('phAM-phAP',1,ph_DMEA)
-     call budget_get_global('phAM-phBF',1,ph_phys_total)
+     call budget_get_global('phAP-phBP',teidx,ph_param)
+     call budget_get_global('phBP-phBF',teidx,ph_EFIX)
+     call budget_get_global('phAM-phAP',teidx,ph_DMEA)
+     call budget_get_global('phAM-phBF',teidx,ph_phys_total)
      
-     call budget_get_global('dyAP-dyBP',1,dy_param)
-     call budget_get_global('dyBP-dyBF',1,dy_EFIX)
-     call budget_get_global('dyAM-dyAP',1,dy_DMEA)
-     call budget_get_global('dyAP-dyBF',1,dy_param_and_efix)
-     call budget_get_global('dyAM-dyBF',1,dy_phys_total)
+     call budget_get_global('dyAP-dyBP',teidx,dy_param)
+     call budget_get_global('dyBP-dyBF',teidx,dy_EFIX)
+     call budget_get_global('dyAM-dyAP',teidx,dy_DMEA)
+     call budget_get_global('dyAP-dyBF',teidx,dy_param_and_efix)
+     call budget_get_global('dyAM-dyBF',teidx,dy_phys_total)
      
-!jt     call budget_get_global('dAP-dBP',1,se_param)
-!jt     call budget_get_global('dAM-dAP',1,se_dmea)
-!jt     call budget_get_global('dAM-dBF',1,se_phys_total)
-
-     call budget_get_global('dBF-dED',1,dyn_total)
-!jt     call budget_get_global('dAD-dAF',1,dyn_phys_total)
-     call budget_get_global('dAD-dBD',1,rate_of_change_2D_dyn)
-     call budget_get_global('dAR-dAD',1,rate_of_change_vertical_remapping)
+     call budget_get_global('dBF-dED',teidx,dyn_total)
+     call budget_get_global('dAD-dBD',teidx,rate_of_change_2D_dyn)
+     call budget_get_global('dAR-dAD',teidx,rate_of_change_vertical_remapping)
      dADIA = rate_of_change_2D_dyn+rate_of_change_vertical_remapping
 
-     call budget_get_global('dCH-dBH',1,diffusion_del4)
-     call budget_get_global('dAH-dCH',1,diffusion_fric)
-     call budget_get_global('dAH-dBH',1,diffusion_del4_tot)
-     call budget_get_global('dAS-dBS',1,diffusion_sponge)
+     call budget_get_global('dCH-dBH',teidx,diffusion_del4)
+     call budget_get_global('dAH-dCH',teidx,diffusion_fric)
+     call budget_get_global('dAH-dBH',teidx,diffusion_del4_tot)
+     call budget_get_global('dAS-dBS',teidx,diffusion_sponge)
      diffusion_total      = diffusion_del4_tot+diffusion_sponge
      
-     call budget_get_global('dBD-dAF',1,rate_of_change_physics)
+     call budget_get_global('dBD-dAF',teidx,rate_of_change_physics)
 
      rate_of_change_heating_term_put_back_in = diffusion_fric
      rate_of_change_hvis_sponge = diffusion_sponge
@@ -206,8 +203,8 @@ subroutine print_budget()
      write(iulog,*) "Is globally integrated total energy of state at the end of dynamics (dBF)"
      write(iulog,*) "and beginning of physics (phBF) the same?"
      write(iulog,*) ""     
-     call budget_get_global('dBF',1,E_dBF)  !state passed to physics
-     call budget_get_global('phBF',1,E_phBF)!state beginning physics
+     call budget_get_global('dBF',teidx,E_dBF)  !state passed to physics
+     call budget_get_global('phBF',teidx,E_phBF)!state beginning physics
      if (abs(E_phBF)>eps) then
        diff = abs_diff(E_dBF,E_phBF)
        if (abs(diff)<eps) then
@@ -224,62 +221,61 @@ subroutine print_budget()
        end if
      end if
      
-!jt    do m_cnst=4,4+qsize-1
-    do m_cnst=4,6
-      write(iulog,*)"------------------------------------------------------------"
-      if (m_cnst.eq.4) write(iulog,*)"Water vapor mass budget"
-      if (m_cnst.eq.5) write(iulog,*)"Cloud liquid mass budget"
-      if (m_cnst.eq.6) write(iulog,*)"Cloud ice mass budget"
-      write(iulog,*)"------------------------------------------------------------"
-      call budget_get_global('phBP-phBF',m_cnst,pEFIX)
-      call budget_get_global('phAM-phAP',m_cnst,pDMEA)
-      call budget_get_global('phAP-phBP',m_cnst,param)
-!jt      call budget_get_global('dBF-dED',m_cnst,dyn_total)
-      call budget_get_global('phAM-phBF',m_cnst,phys_total)
-
-      write(iulog,*)"dMASS/dt energy fixer        (pBP-pBF) ",pEFIX," Pa"
-      write(iulog,*)"dMASS/dt parameterizations   (pAP-pBP) ",param," Pa"
-      write(iulog,*)"dMASS/dt dry mass adjustment (pAM-pAP) ",pDMEA," Pa"
-      write(iulog,*)"dMASS/dt physics total       (pAM-pBF) ",phys_total," Pa"
-      write(iulog,*)"  "
-      if (is_budget('dAD').and.is_budget('dBD').and.is_budget('dAR').and.is_budget('dCH')) then
-        call budget_get_global('dAD-dBD',m_cnst,mass_change__2D_dyn)
-        call budget_get_global('dAR-dAD',m_cnst,mass_change__vertical_remapping)
-        diff = mass_change__2D_dyn+mass_change__vertical_remapping
-        write(iulog,*)"dMASS/dt total adiabatic dynamics       ",diff," Pa"
-        if (abs(diff)>1.E-12_r8) then
-          write(iulog,*) "Error: mass non-conservation in dynamical core"
-
-          write(iulog,*)"dMASS/dt 2D dynamics            (dAD-dBD) ",mass_change__2D_dyn," Pa"
-          if (is_budget('dAR').and.is_budget('dAD')) then
-            call budget_get_global('dAR',m_cnst,dar)
-            call budget_get_global('dAD',m_cnst,dad)
-            call budget_get_global('dAR-dAD',m_cnst,mass_change__vertical_remapping)
-            write(iulog,*)"dE/dt vertical remapping        (dAR-dAD) ",mass_change__vertical_remapping
+    do m_cnst=1,thermo_budget_num_vars
+       if (thermo_budget_vars_massv(m_cnst)) then 
+          
+          write(iulog,*)"------------------------------------------------------------"
+          write(iulog,*)thermo_budget_vars_descriptor(m_cnst)//" budget"
+          write(iulog,*)"------------------------------------------------------------"
+          call budget_get_global('phBP-phBF',m_cnst,pEFIX)
+          call budget_get_global('phAM-phAP',m_cnst,pDMEA)
+          call budget_get_global('phAP-phBP',m_cnst,param)
+          call budget_get_global('phAM-phBF',m_cnst,phys_total)
+          
+          write(iulog,*)"dMASS/dt energy fixer        (pBP-pBF) ",pEFIX," Pa"
+          write(iulog,*)"dMASS/dt parameterizations   (pAP-pBP) ",param," Pa"
+          write(iulog,*)"dMASS/dt dry mass adjustment (pAM-pAP) ",pDMEA," Pa"
+          write(iulog,*)"dMASS/dt physics total       (pAM-pBF) ",phys_total," Pa"
+          write(iulog,*)"  "
+          if (is_budget('dAD').and.is_budget('dBD').and.is_budget('dAR').and.is_budget('dCH')) then
+             call budget_get_global('dAD-dBD',m_cnst,mass_change__2D_dyn)
+             call budget_get_global('dAR-dAD',m_cnst,mass_change__vertical_remapping)
+             diff = mass_change__2D_dyn+mass_change__vertical_remapping
+             write(iulog,*)"dMASS/dt total adiabatic dynamics       ",diff," Pa"
+             if (abs(diff)>1.E-12_r8) then
+                write(iulog,*) "Error: mass non-conservation in dynamical core"
+                
+                write(iulog,*)"dMASS/dt 2D dynamics            (dAD-dBD) ",mass_change__2D_dyn," Pa"
+                if (is_budget('dAR').and.is_budget('dAD')) then
+                   call budget_get_global('dAR',m_cnst,dar)
+                   call budget_get_global('dAD',m_cnst,dad)
+                   call budget_get_global('dAR-dAD',m_cnst,mass_change__vertical_remapping)
+                   write(iulog,*)"dE/dt vertical remapping        (dAR-dAD) ",mass_change__vertical_remapping
+                end if
+                write(iulog,*)" "
+                write(iulog,*)"Breakdown of 2D dynamics:"
+                write(iulog,*)" "
+                call budget_get_global('dAH-dCH',m_cnst,mass_change__heating_term_put_back_in)
+                call budget_get_global('dAH-dBH',m_cnst,mass_change__hypervis_total)
+                write(iulog,*)"dMASS/dt hypervis               (dAH-dBH) ",mass_change__hypervis_total," Pa"
+                write(iulog,*)"dMASS/dt frictional heating     (dAH-dCH) ",mass_change__heating_term_put_back_in," Pa"
+                error = mass_change__2D_dyn-mass_change__hypervis_total
+                write(iulog,*)"dMASS/dt residual (time truncation errors)",error," Pa"
+             end if
           end if
           write(iulog,*)" "
-          write(iulog,*)"Breakdown of 2D dynamics:"
-          write(iulog,*)" "
-          call budget_get_global('dAH-dCH',m_cnst,mass_change__heating_term_put_back_in)
-          call budget_get_global('dAH-dBH',m_cnst,mass_change__hypervis_total)
-          write(iulog,*)"dMASS/dt hypervis               (dAH-dBH) ",mass_change__hypervis_total," Pa"
-          write(iulog,*)"dMASS/dt frictional heating     (dAH-dCH) ",mass_change__heating_term_put_back_in," Pa"
-          error = mass_change__2D_dyn-mass_change__hypervis_total
-          write(iulog,*)"dMASS/dt residual (time truncation errors)",error," Pa"
-        end if
-      end if
-      write(iulog,*)" "
-      if (is_budget('dBD').and.is_budget('dAF')) then
-        call budget_get_global('dBD',m_cnst,dbd)
-        call budget_get_global('dAF',m_cnst,daf)
-        call budget_get_global('dBD-dAF',m_cnst,mass_change__physics)
-        write(iulog,*)"dMASS/dt physics tendency in dynamics (dBD-dAF) ",mass_change__physics," Pa"
-        val = phys_total-mass_change__physics
-        write(iulog,*) "Mass physics dynamics coupling error:",val
-      end if
-      write(iulog,*)""
-   end do
-   !
+          if (is_budget('dBD').and.is_budget('dAF')) then
+             call budget_get_global('dBD',m_cnst,dbd)
+             call budget_get_global('dAF',m_cnst,daf)
+             call budget_get_global('dBD-dAF',m_cnst,mass_change__physics)
+             write(iulog,*)"dMASS/dt physics tendency in dynamics (dBD-dAF) ",mass_change__physics," Pa"
+             val = phys_total-mass_change__physics
+             write(iulog,*) "Mass physics dynamics coupling error:",val
+          end if
+          write(iulog,*)""
+       end if
+    end do
+       !
    ! save adiabatic dycore dE/dt and dry-mass adjustment to avoid samping error
    !
    previous_dEdt_adiabatic_dycore = dADIA

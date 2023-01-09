@@ -6,6 +6,8 @@ module element_mod
   use edgetype_mod,           only: edgedescriptor_t
   use gridgraph_mod,          only: gridvertex_t
   use budgets,                only: budget_array_max
+  use cam_thermo,             only: thermo_budget_num_vars
+
   implicit none
   private
   integer, public, parameter :: timelevels = 3
@@ -79,7 +81,7 @@ module element_mod
     real (kind=r8) :: dp_ref(np,np,nlev)                       ! reference pressure level thickness
 
     ! budgets
-    real (kind=r8) :: budget(np,np,9,budget_array_max)         ! budgets
+    real (kind=r8) :: budget(np,np,thermo_budget_num_vars,budget_array_max)  ! budgets
     integer        :: budget_cnt(budget_array_max)             ! budget count for averaging
     integer        :: budget_subcycle(budget_array_max)        ! budget subcycle count
 

@@ -170,6 +170,38 @@ module cam_thermo
       !    2-d interface is not needed (but can easily be added)
    end interface get_hydrostatic_energy
 
+   integer, public, parameter :: thermo_budget_num_vars = 10
+   integer, public, parameter :: wvidx = 1
+   integer, public, parameter :: wlidx = 2
+   integer, public, parameter :: wiidx = 3
+   integer, public, parameter :: seidx = 4 ! enthalpy or internal energy (J/m2) index
+   integer, public, parameter :: poidx = 5 ! surface potential or potential energy index
+   integer, public, parameter :: keidx = 6 ! kinetic energy index
+   integer, public, parameter :: mridx = 7
+   integer, public, parameter :: moidx = 8
+   integer, public, parameter :: ttidx = 9
+   integer, public, parameter :: teidx = 10
+   character (len = 2)  ,public, dimension(thermo_budget_num_vars) :: thermo_budget_vars  = &
+        (/"WV"  ,"WL"  ,"WI"  ,"SE"   ,"PO"   ,"KE"   ,"MR"   ,"MO"   ,"TT"   ,"TE"   /)
+   character (len = 46) ,public, dimension(thermo_budget_num_vars) :: thermo_budget_vars_descriptor = (/&
+        "Total column water vapor                      ",&
+        "Total column liquid water                     ",&
+        "Total column frozen water                     ",&
+        "Total column enthalpy or internal energy      ",&
+        "Total column srf potential or potential energy",&
+        "Total column kinetic energy                   ",&
+        "Total column wind axial angular momentum      ",&
+        "Total column mass axial angular momentum      ",&
+        "Total column test_tracer                      ",&
+        "Total column energy (ke + se + po)            "/)
+
+   character (len = 14), public, dimension(thermo_budget_num_vars)  :: &
+        thermo_budget_vars_unit = (/&
+        "kg/m2        ","kg/m2        ","kg/m2        ","J/m2         ",&
+        "J/m2         ","J/m2         ","kg*m2/s*rad2 ","kg*m2/s*rad2 ",&
+        "kg/m2        ","J/m2         "/)
+   logical              ,public, dimension(thermo_budget_num_vars) :: thermo_budget_vars_massv = (/&
+        .true.,.true.,.true.,.false.,.false.,.false.,.false.,.false.,.true.,.false./)
 CONTAINS
 
    !===========================================================================
@@ -1742,7 +1774,5 @@ CONTAINS
       deallocate(species_idx, species_liq_idx, species_ice_idx)
 
    end subroutine get_hydrostatic_energy_1hd
-
-   !===========================================================================
 
 end module cam_thermo

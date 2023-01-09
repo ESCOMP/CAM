@@ -184,38 +184,6 @@ contains
 
     integer :: k, m
     integer :: ierr
-    !
-    ! variables for energy diagnostics
-    !
-    integer                                    :: istage, ivars
-    character (len=108)                        :: str1, str2, str3
-    integer, parameter                         :: num_stages = 8, num_vars = 8
-    character (len = 4), dimension(num_stages) :: stage = (/"phBF","phBP","phAP","phAM","dyBF","dyBP","dyAP","dyAM"/)
-    character (len = 45),dimension(num_stages) :: stage_txt = (/&
-         " before energy fixer                     ",& !phBF - physics energy
-         " before parameterizations                ",& !phBF - physics energy
-         " after parameterizations                 ",& !phAP - physics energy
-         " after dry mass correction               ",& !phAM - physics energy
-         " before energy fixer (dycore)            ",& !dyBF - dynamics energy
-         " before parameterizations (dycore)       ",& !dyBF - dynamics energy
-         " after parameterizations (dycore)        ",& !dyAP - dynamics energy
-         " after dry mass correction (dycore)      " & !dyAM - dynamics energy
-         /)
-    character (len = 2)  , dimension(num_vars) :: vars  = (/"WV"  ,"WL"  ,"WI"  ,"SE"   ,"KE"   ,"MR"   ,"MO"   ,"TT"   /)
-    character (len = 45) , dimension(num_vars) :: vars_descriptor = (/&
-         "Total column water vapor                ",&
-         "Total column liquid water               ",&
-         "Total column frozen water               ",&
-         "Total column dry static energy          ",&
-         "Total column kinetic energy             ",&
-         "Total column wind axial angular momentum",&
-         "Total column mass axial angular momentum",&
-         "Total column test tracer                "/)
-    character (len = 14), dimension(num_vars)  :: &
-         vars_unit = (/&
-         "kg/m2        ","kg/m2        ","kg/m2        ","J/m2         ",&
-         "J/m2         ","kg*m2/s*rad2 ","kg*m2/s*rad2 ","kg/m2        "/)
-
     ! outfld calls in diag_phys_writeout
     call addfld (cnst_name(1), (/ 'lev' /), 'A', 'kg/kg',    cnst_longname(1))
     call addfld ('NSTEP',      horiz_only,  'A', 'timestep', 'Model timestep')
@@ -411,19 +379,6 @@ contains
     ! create history variables for fourier coefficients of the diurnal
     ! and semidiurnal tide in T, U, V, and Z3
     call tidal_diag_init()
-
-    !
-    ! energy diagnostics
-    !
-    do istage = 1, num_stages
-      do ivars=1, num_vars
-        write(str1,*) TRIM(ADJUSTL(vars(ivars))),"_",TRIM(ADJUSTL(stage(istage)))
-        write(str2,*) TRIM(ADJUSTL(vars_descriptor(ivars)))," ", &
-                           TRIM(ADJUSTL(stage_txt(istage)))
-        write(str3,*) TRIM(ADJUSTL(vars_unit(ivars)))
-        call addfld (TRIM(ADJUSTL(str1)),   horiz_only, 'A', TRIM(ADJUSTL(str3)),TRIM(ADJUSTL(str2)))
-      end do
-    end do
 
     call addfld( 'CPAIRV', (/ 'lev' /), 'I', 'J/K/kg', 'Variable specific heat cap air' )
     call addfld( 'RAIRV', (/ 'lev' /), 'I', 'J/K/kg', 'Variable dry air gas constant' )

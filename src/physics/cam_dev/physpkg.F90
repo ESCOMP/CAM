@@ -177,37 +177,27 @@ contains
     ! Register the subcol scheme
     call subcol_register()
 
-    ! Register stages for budgets.
-    call budget_add('phAP','phy',longname='vertically integrated phys energy after physics',outfld=.true.)
-    call budget_add('dyAP','phy',longname='vertically integrated dyn energy after physics',outfld=.true.)
-    call budget_add('phBP','phy',longname='vertically integrated phys energy before physics',outfld=.true.)
-    call budget_add('dyBP','phy',longname='vertically integrated dyn energy before physics',outfld=.true.)
-    call budget_add('phBF','phy',longname='vertically integrated phys energy before fixer',outfld=.true.)
-    call budget_add('dyBF','phy',longname='vertically integrated dyn energy before fixer',outfld=.true.)
-    call budget_add('phAM','phy',longname='vertically integrated phys energy after dry mass adj',outfld=.true.)
-    call budget_add('dyAM','phy',longname='vertically integrated dyn energy after dry mass adj',outfld=.true.)
-
-    ! Register budgets.
-!!$    call budget_add('BP_phy_params',iphAP,iphBP,'phy','dif',longname='dE/dt CAM physics parameterizations (phAP-phBP)',outfld=.true.)
-!!$    call budget_add('BD_phy_params',idyAP,idyBP,'phy','dif',longname='dE/dt CAM physics parameterizations using dycore E (dyAP-dyBP)',outfld=.true.)
-!!$    call budget_add('BP_pwork',iphAM,iphAP,'phy','dif',longname='dE/dt dry mass adjustment (phAM-phAP)',outfld=.true.)
-!!$    call budget_add('BD_pwork',idyAM,idyAP,'phy','dif',longname='dE/dt dry mass adjustment using dycore E (dyAM-dyAP)',outfld=.true.)
-!!$    call budget_add('BP_efix',iphBP,iphBF,'phy','dif',longname='dE/dt energy fixer (phBP-phBF)',outfld=.true.)
-!!$    call budget_add('BD_efix',idyBP,idyBF,'phy','dif',longname='dE/dt energy fixer using dycore E (dyBP-dyBF)',outfld=.true.)
-!!$    call budget_add('BP_phys_tot',iphAM,iphBF,'phy','dif',longname='dE/dt physics total (phAM-phBF)',outfld=.true.)
-!!$    call budget_add('BD_phys_tot',idyAM,idyBF,'phy','dif',longname='dE/dt physics total using dycore E (dyAM-dyBF)',outfld=.true.)
-
-    ! Register budgets.
-    call budget_add('BP_param_and_efix','phAP','phBF','phy','dif',longname='dE/dt CAM physics parameterizations + efix dycore E (phAP-phBF)',outfld=.true.)
-    call budget_add('BP_phy_params','phAP','phBP','phy','dif',longname='dE/dt CAM physics parameterizations (phAP-phBP)',outfld=.true.)
-    call budget_add('BD_phy_params','dyAP','dyBP','phy','dif',longname='dE/dt CAM physics parameterizations using dycore E (dyAP-dyBP)',outfld=.true.)
-    call budget_add('BP_pwork','phAM','phAP','phy','dif',longname='dE/dt dry mass adjustment (phAM-phAP)',outfld=.true.)
-    call budget_add('BD_pwork','dyAM','dyAP','phy','dif',longname='dE/dt dry mass adjustment using dycore E (dyAM-dyAP)',outfld=.true.)
-    call budget_add('BP_efix','phBP','phBF','phy','dif',longname='dE/dt energy fixer (phBP-phBF)',outfld=.true.)
-    call budget_add('BD_efix','dyBP','dyBF','phy','dif',longname='dE/dt energy fixer using dycore E (dyBP-dyBF)',outfld=.true.)
-    call budget_add('BP_phys_tot','phAM','phBF','phy','dif',longname='dE/dt physics total (phAM-phBF)',outfld=.true.)
-    call budget_add('BD_phys_tot','dyAM','dyBF','phy','dif',longname='dE/dt physics total using dycore E (dyAM-dyBF)',outfld=.true.)
-    call budget_add('BD_param_and_efix','dyAP','dyBF','phy','dif',longname='dE/dt parameterizations + efix dycore E  (dyAP-dyBF)',outfld=.true.)
+!!$    ! Register stages for budgets.
+!!$    call budget_add('phAP','phy',longname='vertically integrated phys energy after physics',outfld=.true.)
+!!$    call budget_add('dyAP','phy',longname='vertically integrated dyn energy after physics',outfld=.true.)
+!!$    call budget_add('phBP','phy',longname='vertically integrated phys energy before physics',outfld=.true.)
+!!$    call budget_add('dyBP','phy',longname='vertically integrated dyn energy before physics',outfld=.true.)
+!!$    call budget_add('phBF','phy',longname='vertically integrated phys energy before fixer',outfld=.true.)
+!!$    call budget_add('dyBF','phy',longname='vertically integrated dyn energy before fixer',outfld=.true.)
+!!$    call budget_add('phAM','phy',longname='vertically integrated phys energy after dry mass adj',outfld=.true.)
+!!$    call budget_add('dyAM','phy',longname='vertically integrated dyn energy after dry mass adj',outfld=.true.)
+!!$
+!!$    ! Register budgets.
+!!$    call budget_add('BP_param_and_efix','phAP','phBF','phy','dif',longname='dE/dt CAM physics parameterizations + efix dycore E (phAP-phBF)',outfld=.true.)
+!!$    call budget_add('BP_phy_params','phAP','phBP','phy','dif',longname='dE/dt CAM physics parameterizations (phAP-phBP)',outfld=.true.)
+!!$    call budget_add('BD_phy_params','dyAP','dyBP','phy','dif',longname='dE/dt CAM physics parameterizations using dycore E (dyAP-dyBP)',outfld=.true.)
+!!$    call budget_add('BP_pwork','phAM','phAP','phy','dif',longname='dE/dt dry mass adjustment (phAM-phAP)',outfld=.true.)
+!!$    call budget_add('BD_pwork','dyAM','dyAP','phy','dif',longname='dE/dt dry mass adjustment using dycore E (dyAM-dyAP)',outfld=.true.)
+!!$    call budget_add('BP_efix','phBP','phBF','phy','dif',longname='dE/dt energy fixer (phBP-phBF)',outfld=.true.)
+!!$    call budget_add('BD_efix','dyBP','dyBF','phy','dif',longname='dE/dt energy fixer using dycore E (dyBP-dyBF)',outfld=.true.)
+!!$    call budget_add('BP_phys_tot','phAM','phBF','phy','dif',longname='dE/dt physics total (phAM-phBF)',outfld=.true.)
+!!$    call budget_add('BD_phys_tot','dyAM','dyBF','phy','dif',longname='dE/dt physics total using dycore E (dyAM-dyBF)',outfld=.true.)
+!!$    call budget_add('BD_param_and_efix','dyAP','dyBF','phy','dif',longname='dE/dt parameterizations + efix dycore E  (dyAP-dyBF)',outfld=.true.)
 
     ! Register water vapor.
     ! ***** N.B. ***** This must be the first call to cnst_add so that
@@ -787,7 +777,7 @@ contains
     use cam_snapshot,       only: cam_snapshot_init
     use cam_history,        only: addfld, register_vector_field, add_default
     use budgets,            only: budget_num, budget_info, budget_outfld, budget_init
-    use check_energy,       only: check_energy_budget_init
+    use check_energy,       only: check_energy_budgets_init, check_energy_budget_state_init
 
     ! Input/output arguments
     type(physics_state), pointer       :: phys_state(:)
@@ -799,7 +789,7 @@ contains
 
     ! local variables
     integer :: lchnk
-    integer :: i,ierr
+    integer :: ierr
 
     logical :: history_budget              ! output tendencies and state variables for
                                            ! temperature, water vapor, cloud
@@ -814,8 +804,9 @@ contains
 
     do lchnk = begchunk, endchunk
        call physics_state_set_grid(lchnk, phys_state(lchnk))
-       call check_energy_budget_init(phys_state(lchnk))
+       call check_energy_budget_state_init(phys_state(lchnk))
     end do
+    call check_energy_budgets_init()
 
     !-------------------------------------------------------------------------------------------
     ! Initialize any variables in cam_thermo which are not temporally and/or spatially constant
@@ -1056,9 +1047,10 @@ contains
     ! First part of atmospheric physics package before updating of surface models
     !
     !-----------------------------------------------------------------------
+    use budgets,        only: budget_write
     use time_manager,   only: get_nstep
     use cam_diagnostics,only: diag_allocate, diag_physvar_ic
-    use check_energy,   only: check_energy_gmean, check_energy_budget
+    use check_energy,   only: check_energy_gmean, check_energy_phys_budget_update, check_energy_phys_cnt_update
     use spmd_utils,     only: mpicom
     use physics_buffer, only: physics_buffer_desc, pbuf_get_chunk, pbuf_allocate
 #if (defined BFB_CAM_SCAM_IOP )
@@ -1108,8 +1100,14 @@ contains
     ! Compute total energy of input state and previous output state
     call t_startf ('chk_en_gmean')
     call check_energy_gmean(phys_state, pbuf2d, ztodt, nstep)
-    call check_energy_budget(phys_state, ztodt, nstep)
     call t_stopf ('chk_en_gmean')
+    call t_startf ('chk_en_p_budget_update')
+    if(budget_write()) then
+       call check_energy_phys_budget_update(phys_state, ztodt, nstep)
+    else
+       call check_energy_phys_cnt_update(phys_state)
+    end if
+    call t_stopf ('chk_en_p_budget_update')
 
     call pbuf_allocate(pbuf2d, 'physpkg')
     call diag_allocate()
@@ -2362,7 +2360,7 @@ contains
       call physics_dme_adjust(state, tend, qini, totliqini, toticeini, ztodt)
 
       call calc_te_and_aam_budgets(state, 'phAM')
-      call calc_te_and_aam_budgets(state, 'dyAM',vc=vc_dycore)
+      call calc_te_and_aam_budgets(state, 'dyAM', vc=vc_dycore)
       ! Restore pre-"physics_dme_adjust" tracers
       state%q(:ncol,:pver,:pcnst) = tmp_trac(:ncol,:pver,:pcnst)
       state%pdel(:ncol,:pver)     = tmp_pdel(:ncol,:pver)
@@ -2384,7 +2382,7 @@ contains
       end if
 
       call calc_te_and_aam_budgets(state, 'phAM')
-      call calc_te_and_aam_budgets(state, 'dyAM',vc=vc_dycore)
+      call calc_te_and_aam_budgets(state, 'dyAM', vc=vc_dycore)
     endif
 
 !!!   REMOVE THIS CALL, SINCE ONLY Q IS BEING ADJUSTED. WON'T BALANCE ENERGY. TE IS SAVED BEFORE THIS
