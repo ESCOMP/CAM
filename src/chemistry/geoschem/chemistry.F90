@@ -890,8 +890,11 @@ contains
     CALL MPIBCAST (h2orates,           LEN(h2orates),                    MPICHAR, 0, MPICOM)
 #endif
 
-    ! Update "short_lived_species" arrays
-    nSlvd = nSls
+    IF ( nSls .NE. nSlvd ) THEN
+       write(iulog,'(a,i4)') 'nSlvd in geoschem/chem_mods.F90 does not match # non-advected KPP species. Set nSlvd to ', nSls
+       CALL ENDRUN('Failure while allocating slvd_Lst')
+    ENDIF
+
     ALLOCATE(slvd_Lst(nSlvd), STAT=IERR)
     IF ( IERR .NE. 0 ) CALL ENDRUN('Failure while allocating slvd_Lst')
     ALLOCATE(slvd_ref_MMR(nSlvd), STAT=IERR)
@@ -1892,8 +1895,8 @@ contains
     ! Grid area
     use Phys_Grid,           only : get_area_all_p, get_lat_all_p, get_lon_all_p
 
-    use short_lived_species, only : get_short_lived_species
-    use short_lived_species, only : set_short_lived_species
+    use short_lived_species, only : get_short_lived_species_gc
+    use short_lived_species, only : set_short_lived_species_gc
 
 #if defined( MODAL_AERO )
     ! Aqueous chemistry and aerosol growth
@@ -2163,7 +2166,7 @@ contains
 
     ! Retrieve previous value of species data
     SlsData(:,:,:) = 0.0e+0_r8
-    CALL get_short_lived_species( SlsData, LCHNK, nY, pbuf )
+    CALL get_short_lived_species_gc( SlsData, LCHNK, nY, pbuf )
 
     IF ( iStep == 1 ) THEN
        ! Retrieve list of species with surface boundary conditions (copied from
@@ -4051,7 +4054,7 @@ contains
        IF ( M <= 0 ) CYCLE
        SlsData(:nY,nZ:1:-1,N) = REAL(State_Chm(LCHNK)%Species(M)%Conc(1,:nY,:nZ),r8)
     ENDDO
-    CALL set_short_lived_species( SlsData, LCHNK, nY, pbuf )
+    CALL set_short_lived_species_gc( SlsData, LCHNK, nY, pbuf )
 
     ! Apply tendencies to GEOS-Chem species
     DO N = 1, pcnst

@@ -79,8 +79,8 @@
                             indexh2o = 4, & ! index of water vapor density
                             clsze = 1, & ! loop length for implicit chemistry
                             rxt_tag_cnt = 95, &
-                            enthalpy_cnt = 0
-!                            nslvd = 0
+                            enthalpy_cnt = 0, &
+                            nslvd = 86  ! number of short-lived (non-advected) species
       integer :: clscnt(5) = 0
       integer :: cls_rxt_cnt(4,5) = 0
       integer :: clsmap(gas_pcnst,5) = 0
@@ -101,8 +101,6 @@
       logical :: frc_from_dataset(max(1,extcnt))
       logical :: is_vector
       logical :: is_scalar
-!      character(len=16) :: slvd_lst(max(1,nslvd))
-      integer :: nslvd
       character(len=255), allocatable :: slvd_lst(:)
       real(r8), allocatable :: slvd_ref_mmr(:)
 

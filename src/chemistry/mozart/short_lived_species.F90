@@ -23,7 +23,9 @@ module short_lived_species
   public :: short_lived_species_writeic
   public :: initialize_short_lived_species
   public :: set_short_lived_species
+  public :: set_short_lived_species_gc ! for GEOS-Chem chemistry
   public :: get_short_lived_species
+  public :: get_short_lived_species_gc ! for GEOS-Chem chemistry
   public :: slvd_index
   public :: pbf_idx
 
@@ -91,9 +93,11 @@ contains
     use cam_grid_support, only : cam_grid_check, cam_grid_id
     use cam_grid_support, only : cam_grid_get_dim_names
     use cam_abortutils,   only : endrun
+    use chem_mods,        only : slvd_ref_mmr
     use mo_tracname,      only : solsym
     use ncdio_atm,        only : infld
     use pio,              only : file_desc_t
+    use phys_control,     only : cam_chempkg_is
     use physics_buffer,   only : physics_buffer_desc, pbuf_set_field
 
     implicit none
@@ -124,18 +128,30 @@ contains
     allocate(tmpptr(pcols,pver,begchunk:endchunk))
 
     do m=1,nslvd
-       n = map(m)
-       fieldname = solsym(n)
+
+       if (cam_chempkg_is('geoschem_mam4')) then
+          write(fieldname,'(a,a)') trim(slvd_lst(m))
+       else
+          n = map(m)
+          fieldname = solsym(n)
+       end if
+
        call infld( fieldname,ncid_ini,dim1name, 'lev', dim2name, 1, pcols, 1, pver, begchunk, endchunk, &
                    tmpptr, found, gridname='physgrid')
 
        if (.not.found) then
-          tmpptr(:,:,:) = 1.e-36_r8
+          if ( cam_chempkg_is('geoschem_mam4') ) then
+             tmpptr(:,:,:) = slvd_ref_mmr(m)
+          else
+             tmpptr(:,:,:) = 1.e-36_r8
+          endif
        endif
 
        call pbuf_set_field(pbuf2d, pbf_idx, tmpptr, start=(/1,1,m/),kount=(/pcols,pver,1/))
 
        if (masterproc) write(iulog,*)  fieldname, ' is set to short-lived'
+
+       if (cam_chempkg_is('geoschem_mam4') .and. masterproc) write(iulog,'(a, E16.5E4)') ' --> reference MMR: ', slvd_ref_mmr(m)
 
     enddo
 
@@ -168,6 +184,29 @@ contains
 
 !---------------------------------------------------------------------
 !---------------------------------------------------------------------
+  subroutine set_short_lived_species_gc( q, lchnk, ncol, pbuf )
+
+    use physics_buffer, only : physics_buffer_desc, pbuf_set_field
+
+    implicit none 
+
+    ! 3rd dimension of out array is nslvd if using GEOS-Chem chemistry
+    real(r8), intent(in)               :: q(pcols,pver,nslvd)
+    integer,  intent(in)               :: lchnk, ncol
+    type(physics_buffer_desc), pointer :: pbuf(:)
+
+    integer :: m
+
+    if ( nslvd < 1 ) return
+
+    do m=1,nslvd
+       call pbuf_set_field(pbuf, pbf_idx, q(:,:,m), start=(/1,1,m/),kount=(/pcols,pver,1/))
+    enddo
+
+  end subroutine set_short_lived_species_gc
+
+!---------------------------------------------------------------------
+!---------------------------------------------------------------------
   subroutine get_short_lived_species( q, lchnk, ncol, pbuf )
     use physics_buffer, only : physics_buffer_desc, pbuf_get_field
 
@@ -190,6 +229,31 @@ contains
     enddo
 
   endsubroutine get_short_lived_species
+
+!---------------------------------------------------------------------
+!---------------------------------------------------------------------
+  subroutine get_short_lived_species_gc( q, lchnk, ncol, pbuf )
+    use physics_buffer, only : physics_buffer_desc, pbuf_get_field
+
+    implicit none 
+
+    ! 3rd dimension of out array is nslvd if using GEOS-Chem chemistry
+    real(r8), intent(inout)            :: q(pcols,pver,nslvd)
+    integer,  intent(in)               :: lchnk, ncol
+    type(physics_buffer_desc), pointer :: pbuf(:)
+    real(r8),pointer                   :: tmpptr(:,:)
+
+
+    integer :: m
+
+    if ( nslvd < 1 ) return
+
+    do m=1,nslvd
+       call pbuf_get_field(pbuf, pbf_idx, tmpptr, start=(/1,1,m/), kount=(/ pcols,pver,1 /))
+       q(:ncol,:,m) = tmpptr(:ncol,:)
+    enddo
+
+  endsubroutine get_short_lived_species_gc
 
 !---------------------------------------------------------------------
 !---------------------------------------------------------------------
