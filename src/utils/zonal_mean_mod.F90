@@ -1914,6 +1914,7 @@ contains
       endif
 
       do while(nix/=0)
+         dcor = huge(1._r8)
          it = 0
          do while (abs(dcor) > eps*abs(zero))
             it = it + 1
