@@ -921,17 +921,6 @@ subroutine dyn_init(dyn_in, dyn_out)
             call addfld (TRIM(ADJUSTL(str1)),   horiz_only, 'A', TRIM(ADJUSTL(str3)),TRIM(ADJUSTL(str2)),gridname='GLL')
          end if
       end do
-      do ivars=1, 1
-         write(str1,*) "WX","_",TRIM(ADJUSTL(stage(istage)))
-         write(str2,*) TRIM(ADJUSTL(thermo_budget_vars_descriptor(ivars)))," ", &
-              TRIM(ADJUSTL(stage_txt(istage)))
-         write(str3,*) TRIM(ADJUSTL(thermo_budget_vars_unit(ivars)))
-         if (ntrac>0.and.thermo_budget_vars_massv(ivars)) then
-            call addfld (TRIM(ADJUSTL(str1)),   horiz_only, 'A', TRIM(ADJUSTL(str3)),TRIM(ADJUSTL(str2)),gridname='FVM')
-         else
-            call addfld (TRIM(ADJUSTL(str1)),   horiz_only, 'A', TRIM(ADJUSTL(str3)),TRIM(ADJUSTL(str2)),gridname='GLL')
-         end if
-      end do
       ! Register stages for budgets
       call budget_add(TRIM(ADJUSTL(stage(istage))), pkgtype='dyn', longname=TRIM(ADJUSTL(stage_txt(istage))), outfld=.true.)
    end do
