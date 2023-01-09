@@ -832,8 +832,11 @@ function budget_count(ind)
 
       call timemgr_time_ge(YMD_Next,Sec_Next,            &
            YMD_Curr_woff ,Sec_Curr_woff           ,update_budget)
-!jt      budget_write  = ( nstep+(abs(offset/dtime))==1 .or. ((nstep /= 0).and.update_budget) )
-      budget_write  = ((nstep /= 0).and.update_budget)
+      if (thermo_budget_averaging_option == 'NSTEP'.and.thermo_budget_averaging_n==1) then
+         budget_write  = ( nstep+(abs(offset/dtime))==1 .or. ((nstep /= 0).and.update_budget) )
+      else
+         budget_write  = ((nstep /= 0).and.update_budget)
+      end if
       if (masterproc) write(iulog,*)'checking for budget_write w/offset:',budget_write
 
    else
@@ -879,8 +882,11 @@ function budget_count(ind)
             if (masterproc) write(iulog,*)'curr gt next, reset next,new values ymdn/secn',YMD_Next,Sec_Next
          end if
       end if
-!jt      budget_write  = ( nstep+(abs(offset/dtime))==1 .or. ((nstep /= 0).and.update_budget) )
-      budget_write  = ((nstep /= 0).and.update_budget)
+      if (thermo_budget_averaging_option == 'NSTEP'.and.thermo_budget_averaging_n==1) then
+         budget_write  = ( nstep+(abs(offset/dtime))==1 .or. ((nstep /= 0).and.update_budget) )
+      else
+         budget_write  = ((nstep /= 0).and.update_budget)
+      end if
    end if
 
    return
