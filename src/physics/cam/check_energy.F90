@@ -1137,8 +1137,8 @@ end subroutine check_energy_get_integrals
       ! scale accumulated temperature increment for constant volume (otherwise effectively do nothing)
       temp(1:ncol,:) = state%temp_ini(1:ncol,:)+scaling(1:ncol,:)*(state%T(1:ncol,:)- state%temp_ini(1:ncol,:))
 
-      call get_hydrostatic_energy(state%q(1:ncol,1:pver,1:pcnst),&
-           state%pdel(1:ncol,1:pver), cp_or_cv,                                        &
+      call get_hydrostatic_energy(state%q(1:ncol,1:pver,1:pcnst),                      &
+           state%pdel(1:ncol,1:pver), cp_or_cv(1:ncol,1:pver),                         &
            state%u(1:ncol,1:pver), state%v(1:ncol,1:pver), temp(1:ncol,1:pver),        &
            vc_loc, ps = state%ps(1:ncol), phis = state%phis(1:ncol),                   &
            z_mid = state%z_ini(1:ncol,:), se = se, po = po, ke = ke, wv = wv, liq = liq, ice = ice)
