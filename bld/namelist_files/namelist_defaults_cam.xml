@@ -1759,8 +1759,6 @@
 <xs_coef_file>atm/waccm/phot/effxstex.txt</xs_coef_file>
 <xs_short_file>atm/waccm/phot/xs_short_c220622mm.nc</xs_short_file>
 <xs_long_file >atm/waccm/phot/temp_prs_GT200nm_c220622mm.nc</xs_long_file>
-<xs_long_file chem="trop_mam3">atm/waccm/phot/temp_prs_GT200nm_JPL10_c140624.nc</xs_long_file>
-<xs_long_file chem="trop_mam4" phys="cam6">atm/waccm/phot/temp_prs_GT200nm_JPL10_c140624.nc</xs_long_file>
 <rsf_file     >atm/waccm/phot/RSF_GT200nm_v3.0_c080811.nc</rsf_file>
 <exo_coldens_file>atm/cam/chem/trop_mozart/phot/exo_coldens.nc</exo_coldens_file>
 
