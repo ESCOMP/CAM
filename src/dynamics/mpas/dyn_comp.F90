@@ -327,7 +327,8 @@ subroutine dyn_init(dyn_in, dyn_out)
    use air_composition,    only : thermodynamic_active_species_liq_num, thermodynamic_active_species_ice_num
    use cam_mpas_subdriver, only : domain_ptr, cam_mpas_init_phase4
    use cam_mpas_subdriver, only : cam_mpas_define_scalars
-   use cam_thermo,         only : thermo_budget_num_vars
+   use cam_thermo,         only: thermo_budget_vars, thermo_budget_vars_descriptor, &
+                                 thermo_budget_vars_unit, thermo_budget_vars_massv, thermo_budget_num_vars
    use mpas_pool_routines, only : mpas_pool_get_subpool, mpas_pool_get_array, mpas_pool_get_dimension, &
                                   mpas_pool_get_config
    use mpas_timekeeping,   only : MPAS_set_timeInterval
@@ -367,7 +368,7 @@ subroutine dyn_init(dyn_in, dyn_out)
    character(len=*), parameter :: subname = 'dyn_comp::dyn_init'
 
    ! variables for initializing energy and axial angular momentum diagnostics
-   integer, parameter                         :: num_stages = 6, num_vars = 5
+   integer, parameter                         :: num_stages = 6
    character (len = 8), dimension(num_stages) :: stage = (/"dBF     ","dAP     ","dAM     ","BD_dparm","BD_DMEA ","BD_phys "/)
    character (len = 55),dimension(num_stages) :: stage_txt = (/&
       " dynamics state before physics (d_p_coupling)       ",&
@@ -377,21 +378,6 @@ subroutine dyn_init(dyn_in, dyn_out)
       "dE/dt dry mass adjustment in dycore        (dAM-dAP)",&
       "dE/dt physics total in dycore (phys)       (dAM-dBF)" &
       /)
-
-
-
-
-   character (len = 2)  , dimension(num_vars) :: vars  = (/"WV"  ,"WL"  ,"WI"  ,"SE"   ,"KE"/)
-   character (len = 45) , dimension(num_vars) :: vars_descriptor = (/&
-      "Total column water vapor                ",&
-      "Total column cloud water                ",&
-      "Total column cloud ice                  ",&
-      "Total column static energy              ",&
-      "Total column kinetic energy             "/)
-   character (len = 14), dimension(num_vars)  :: &
-      vars_unit = (/&
-      "kg/m2        ","kg/m2        ","kg/m2        ","J/m2         ",&
-      "J/m2         "/)
 
    integer :: istage, ivars, m
    character (len=108)         :: str1, str2, str3
@@ -587,11 +573,11 @@ subroutine dyn_init(dyn_in, dyn_out)
    call MPAS_set_timeInterval(integrationLength, S=nint(dtime), S_n=0, S_d=1)
 
    do istage = 1, num_stages
-     do ivars=1, num_vars
-       write(str1,*) TRIM(ADJUSTL(vars(ivars))),"_",TRIM(ADJUSTL(stage(istage)))
-       write(str2,*) TRIM(ADJUSTL(vars_descriptor(ivars)))," ", &
+     do ivars=1, thermo_budget_num_vars
+       write(str1,*) TRIM(ADJUSTL(thermo_budget_vars(ivars))),"_",TRIM(ADJUSTL(stage(istage)))
+       write(str2,*) TRIM(ADJUSTL(thermo_budget_vars_descriptor(ivars)))," ", &
                            TRIM(ADJUSTL(stage_txt(istage)))
-        write(str3,*) TRIM(ADJUSTL(vars_unit(ivars)))
+        write(str3,*) TRIM(ADJUSTL(thermo_budget_vars_unit(ivars)))
         call addfld (TRIM(ADJUSTL(str1)),   horiz_only, 'A', TRIM(ADJUSTL(str3)),TRIM(ADJUSTL(str2)), gridname='mpas_cell')
       end do
     end do
@@ -646,6 +632,7 @@ subroutine dyn_run(dyn_in, dyn_out)
    use cam_mpas_subdriver, only : domain_ptr
    use mpas_pool_routines, only : mpas_pool_get_subpool, mpas_pool_get_array
    use mpas_derived_types, only : mpas_pool_type
+   use budgets,            only : budget_write
 
    ! Advances the dynamics state provided in dyn_in by one physics
    ! timestep to produce dynamics state held in dyn_out.
@@ -656,6 +643,7 @@ subroutine dyn_run(dyn_in, dyn_out)
    ! Local variables
    type(mpas_pool_type), pointer :: state_pool
    character(len=*), parameter :: subname = 'dyn_comp:dyn_run'
+   real(r8) :: dtime
 
    !----------------------------------------------------------------------------
 
@@ -677,6 +665,7 @@ subroutine dyn_run(dyn_in, dyn_out)
 
    ! update energy budgets calculated from snapshots (stages)
 
+   dtime = get_step_size()
    if(budget_write(step_offset=nint(dtime))) then
       call budget_update(dyn_in%nCellsSolve,dyn_out)
    else
@@ -686,7 +675,7 @@ end subroutine dyn_run
 
 subroutine budget_update(nCells,dyn_out)
 
-  use cam_thermo,            only : thermo_budget_num_vars,thermo_budget_vars_massv,wvidx,wlidx,wiidx,seidx,keidx,moidx,mridx,ttidx,teidx
+  use cam_thermo,            only : thermo_budget_num_vars,thermo_budget_vars_massv,wvidx,wlidx,wiidx,seidx,keidx,poidx,moidx,mridx,ttidx,teidx
   use budgets,               only : budget_num, budget_info, budget_put_global
   use air_composition,       only : thermodynamic_active_species_liq_num, thermodynamic_active_species_ice_num
 
@@ -697,9 +686,10 @@ subroutine budget_update(nCells,dyn_out)
   ! Local variables
   real(r8), pointer :: te_budgets(:,:,:) ! energy/mass budgets se,ke,wv,liq,ice
   integer, pointer  :: budgets_cnt(:) ! budget counts for normalizating sum
+  integer, pointer  :: budgets_subcycle_cnt(:) ! budget counts for normalizating sum
   integer :: b_ind,s_ind,is1,is2,i
   logical :: budget_outfld
-  character(len=64)    :: name_out1,name_out2,name_out3,name_out4,name_out5,budget_name
+  character(len=64)    :: name_out1,name_out2,name_out3,name_out4,name_out5,name_out6,budget_name
   character(len=3)     :: budget_pkgtype,budget_optype  ! budget type phy or dyn
   real(r8)             :: tmp(thermo_budget_num_vars,nCells)
   real(r8), pointer :: areaCell(:)  ! cell area (m^2)
@@ -710,14 +700,14 @@ subroutine budget_update(nCells,dyn_out)
 
   !--------------------------------------------------------------------------------------
 
-  te_budgets         => dyn_out % te_budgets
-  budgets_cnt     => dyn_out % budgets_cnt
-
+  te_budgets           => dyn_out % te_budgets
+  budgets_cnt          => dyn_out % budgets_cnt
+  budgets_subcycle_cnt => dyn_out % budgets_subcycle_cnt
 
   do b_ind=1,budget_num
      call budget_info(b_ind,optype=budget_optype, pkgtype=budget_pkgtype,state_ind=s_ind,outfld=budget_outfld,name=budget_name)
      if (budget_pkgtype=='dyn') then
-        if (budget_optype!='stg') then
+        if (budget_optype /= 'stg') then
            call budget_info(b_ind,stg1stateidx=is1, stg2stateidx=is2)
            if (budget_optype=='dif') then
               te_budgets(s_ind,:,:)=(te_budgets(is1,:,:)-te_budgets(is2,:,:))
@@ -733,8 +723,10 @@ subroutine budget_update(nCells,dyn_out)
               name_out3 = 'WV_'   //trim(budget_name)
               name_out4 = 'WL_'   //trim(budget_name)
               name_out5 = 'WI_'   //trim(budget_name)
+              name_out6 = 'PO_'   //trim(budget_name)
               call outfld(name_out1, te_budgets(s_ind,seidx,:), nCells, 1)
               call outfld(name_out2, te_budgets(s_ind,keidx,:), nCells, 1)
+              call outfld(name_out6, te_budgets(s_ind,poidx,:), nCells, 1)
               !
               ! sum over vapor
               call outfld(name_out3, te_budgets(s_ind,wvidx,:), nCells, 1)
@@ -771,7 +763,7 @@ subroutine budget_update(nCells,dyn_out)
            if (.not.thermo_budget_vars_massv(i)) &
                 budgets_global(b_ind,i)=budgets_global(b_ind,i)/dtime
            if (masterproc) &
-                write(iulog,*)"putting global ",trim(budget_name)," m_cnst=",n," ",budgets_global(b_ind,i)," cnt=",budgets_cnt(b_ind),budgets_subcycle_cnt(b_ind)
+                write(iulog,*)"putting global ",trim(budget_name)," m_cnst=",i," ",budgets_global(b_ind,i)," cnt=",budgets_cnt(b_ind),budgets_subcycle_cnt(b_ind)
                 call budget_put_global(trim(budget_name),i,budgets_global(b_ind,i))
         end do
         ! reset dyn budget states and counts
@@ -793,14 +785,17 @@ subroutine budget_update_dyn_cnts(nCells,dyn_out)
 
   ! Local variables
   integer, pointer  :: budgets_cnt(:) ! budget counts for normalizating sum
+  integer, pointer  :: budgets_subcycle_cnt(:) ! budget subcycle counts
   integer :: b_ind,s_ind
+  logical :: budget_outfld
   character(len=64)    :: budget_name
   character(len=3)     :: budget_pkgtype,budget_optype  ! budget type phy or dyn
 
   !--------------------------------------------------------------------------------------
 
-  if (thermo_budget_history) then
-     budgets_cnt        => dyn_out % budgets_cnt
+!jt  if (thermo_budget_history) then
+     budgets_cnt           => dyn_out % budgets_cnt
+     budgets_subcycle_cnt  => dyn_out % budgets_subcycle_cnt
 
 
      do b_ind=1,budget_num
@@ -813,7 +808,7 @@ subroutine budget_update_dyn_cnts(nCells,dyn_out)
                 budgets_cnt(b_ind)=budgets_cnt(b_ind)+1
         end if
      end do
-  end if
+!jt  end if
 
 end subroutine budget_update_dyn_cnts
 !=========================================================================================

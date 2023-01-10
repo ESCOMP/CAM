@@ -826,6 +826,8 @@ subroutine tot_energy(nCells, nVertLevels, qsize, index_qv, zz, zgrid, rho_zz, t
   use air_composition,   only: thermodynamic_active_species_ice_idx_dycore,thermodynamic_active_species_liq_idx_dycore
   use air_composition,   only: thermodynamic_active_species_ice_num,thermodynamic_active_species_liq_num
   use budgets,           only: budget_array_max,budget_info_byname
+  use cam_thermo,        only: wvidx,wlidx,wiidx,seidx,poidx,keidx,moidx,mridx,ttidx,teidx,thermo_budget_num_vars
+
   ! Arguments
   integer, intent(in) :: nCells
   integer, intent(in) :: nVertLevels
@@ -838,7 +840,7 @@ subroutine tot_energy(nCells, nVertLevels, qsize, index_qv, zz, zgrid, rho_zz, t
   real(r8), dimension(qsize,nVertLevels, nCells), intent(in) :: q       ! tracer array
   real(r8), dimension(nVertLevels, nCells),       intent(in) :: ux      ! A-grid zonal velocity component
   real(r8), dimension(nVertLevels, nCells),       intent(in) :: uy      ! A-grid meridional velocity component
-  real(r8), dimension(budget_array_max, 9, nCells), intent(inout) :: te_budgets ! energy/mass budget arrays
+  real(r8), dimension(budget_array_max, thermo_budget_num_vars, nCells), intent(inout) :: te_budgets ! energy/mass budget arrays
   integer, dimension(budget_array_max),           intent(inout) :: budgets_cnt ! budget counts for normalization
   integer, dimension(budget_array_max),           intent(inout) :: budgets_subcycle_cnt ! budget counts for normalization
   character*(*),                                  intent(in) :: outfld_name_suffix ! suffix for "outfld" names
@@ -854,16 +856,17 @@ subroutine tot_energy(nCells, nVertLevels, qsize, index_qv, zz, zgrid, rho_zz, t
   real(r8), dimension(nCells) :: liq !total column integrated liquid
   real(r8), dimension(nCells) :: ice !total column integrated ice
 
-  character(len=16) :: name_out1,name_out2,name_out3,name_out4,name_out5
+  character(len=16) :: name_out1,name_out2,name_out3,name_out4,name_out5,name_out6
 
   name_out1 = 'SE_'   //trim(outfld_name_suffix)
   name_out2 = 'KE_'   //trim(outfld_name_suffix)
   name_out3 = 'WV_'   //trim(outfld_name_suffix)
   name_out4 = 'WL_'   //trim(outfld_name_suffix)
   name_out5 = 'WI_'   //trim(outfld_name_suffix)
+  name_out6 = 'PO_'   //trim(outfld_name_suffix)
 
   if ( hist_fld_active(name_out1).or.hist_fld_active(name_out2).or.hist_fld_active(name_out3).or.&
-       hist_fld_active(name_out4).or.hist_fld_active(name_out5)) then
+       hist_fld_active(name_out4).or.hist_fld_active(name_out5).or.hist_fld_active(name_out6)) then
 
     kinetic_energy   = 0.0_r8
     potential_energy = 0.0_r8
@@ -899,11 +902,10 @@ subroutine tot_energy(nCells, nVertLevels, qsize, index_qv, zz, zgrid, rho_zz, t
     call outfld(name_out1,internal_energy,ncells,1)
     call outfld(name_out2,kinetic_energy ,ncells,1)
     call outfld(name_out3,water_vapor    ,ncells,1)
+    call outfld(name_out6,potential_energy ,ncells,1)
 
     call budget_info_byname(trim(outfld_name_suffix),budget_ind=b_ind,state_ind=s_ind,subcycle=b_subcycle)
     ! reset all when cnt is 0
-    write(iulog,*)'dpc calc se,ke ',s_ind,',1:3,1 is ',internal_energy(1),' ',kinetic_energy(1)
-    write(iulog,*)'dpc budgets initial ',s_ind,',1:3,1 is ',te_budgets(s_ind,1,1),' ',te_budgets(s_ind,2,1),' ',te_budgets(s_ind,3,1)
     if (budgets_cnt(b_ind) == 0) then
        budgets_subcycle_cnt(b_ind) = 0
        te_budgets(s_ind,:,:)=0.0_r8
@@ -920,12 +922,12 @@ subroutine tot_energy(nCells, nVertLevels, qsize, index_qv, zz, zgrid, rho_zz, t
        te_budgets(s_ind,:,:)=0._r8
     end if
        
-    te_budgets(s_ind,1,:)=te_budgets(s_ind,1,:)+potential_energy+internal_energy+kinetic_energy
-    te_budgets(s_ind,2,:)=te_budgets(s_ind,2,:)+internal_energy
-    te_budgets(s_ind,3,:)=te_budgets(s_ind,3,:)+kinetic_energy
-    write(iulog,*)'tot_e te_budget for this proc ',s_ind,',1:3,1 is ',te_budgets(s_ind,1,1),' ',te_budgets(s_ind,2,1),' ',te_budgets(s_ind,3,1)
+    te_budgets(s_ind,teidx,:)=te_budgets(s_ind,teidx,:)+potential_energy+internal_energy+kinetic_energy
+    te_budgets(s_ind,seidx,:)=te_budgets(s_ind,seidx,:)+internal_energy
+    te_budgets(s_ind,keidx,:)=te_budgets(s_ind,keidx,:)+kinetic_energy
+    te_budgets(s_ind,poidx,:)=te_budgets(s_ind,poidx,:)+potential_energy
 
-    te_budgets(s_ind,4,:)=te_budgets(s_ind,4,:)+water_vapor
+    te_budgets(s_ind,wvidx,:)=te_budgets(s_ind,wvidx,:)+water_vapor
 
     !
     ! vertical integral of total liquid water
@@ -941,7 +943,7 @@ subroutine tot_energy(nCells, nVertLevels, qsize, index_qv, zz, zgrid, rho_zz, t
         end do
       end do
       call outfld(name_out4,liq,ncells,1)
-      te_budgets(s_ind,5,:)=te_budgets(s_ind,5,:)+liq
+      te_budgets(s_ind,wlidx,:)=te_budgets(s_ind,wlidx,:)+liq
     end if
     !
     ! vertical integral of total frozen (ice) water
@@ -957,7 +959,7 @@ subroutine tot_energy(nCells, nVertLevels, qsize, index_qv, zz, zgrid, rho_zz, t
         end do
       end do
       call outfld(name_out5,ice,ncells,1)
-      te_budgets(s_ind,6,:)=te_budgets(s_ind,6,:)+ice
+      te_budgets(s_ind,wiidx,:)=te_budgets(s_ind,wiidx,:)+ice
     end if
   end if
  end subroutine tot_energy

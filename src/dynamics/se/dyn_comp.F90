@@ -1192,7 +1192,7 @@ subroutine dyn_run(dyn_state)
    call write_dyn_vars(dyn_state)
 
    if(budget_write(step_offset=nint(dtime))) then
-   call budget_update(dyn_state%elem,dyn_state%fvm, nets, nete, TimeLevel%n0, n0_qdp, hybrid)
+      call budget_update(dyn_state%elem,dyn_state%fvm, nets, nete, TimeLevel%n0, n0_qdp, hybrid)
    else
       call budget_update_dyn_cnts(dyn_state%elem,dyn_state%fvm, nets, nete, TimeLevel%n0, n0_qdp, hybrid)
    end if

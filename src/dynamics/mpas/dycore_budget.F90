@@ -15,6 +15,7 @@ subroutine print_budget()
   use spmd_utils,         only: masterproc
   use cam_logfile,        only: iulog
   use cam_abortutils,     only: endrun
+  use cam_thermo,             only: teidx, thermo_budget_vars_descriptor, thermo_budget_num_vars, thermo_budget_vars_massv
   ! Local variables
   integer :: b_ind,s_ind,is1,is2
   logical :: budget_outfld
@@ -38,21 +39,21 @@ subroutine print_budget()
   !--------------------------------------------------------------------------------------
 
   if (masterproc) then
-     call budget_get_global('phAP-phBP',1,ph_param)
-     call budget_get_global('phBP-phBF',1,ph_EFIX)
-     call budget_get_global('phAM-phAP',1,ph_dmea)
-     call budget_get_global('phAP-phBF',1,ph_param_and_efix)
-     call budget_get_global('phAM-phBF',1,ph_phys_total)
+     call budget_get_global('phAP-phBP',teidx,ph_param)
+     call budget_get_global('phBP-phBF',teidx,ph_EFIX)
+     call budget_get_global('phAM-phAP',teidx,ph_dmea)
+     call budget_get_global('phAP-phBF',teidx,ph_param_and_efix)
+     call budget_get_global('phAM-phBF',teidx,ph_phys_total)
      
-     call budget_get_global('dyAP-dyBP',1,dy_param)
-     call budget_get_global('dyBP-dyBF',1,dy_EFIX)
-     call budget_get_global('dyAM-dyAP',1,dy_dmea)
-     call budget_get_global('dyAP-dyBF',1,dy_param_and_efix)
-     call budget_get_global('dyAM-dyBF',1,dy_phys_total)
+     call budget_get_global('dyAP-dyBP',teidx,dy_param)
+     call budget_get_global('dyBP-dyBF',teidx,dy_EFIX)
+     call budget_get_global('dyAM-dyAP',teidx,dy_dmea)
+     call budget_get_global('dyAP-dyBF',teidx,dy_param_and_efix)
+     call budget_get_global('dyAM-dyBF',teidx,dy_phys_total)
      
-     call budget_get_global('dAP-dBF',1,mpas_param)
-     call budget_get_global('dAM-dAP',1,mpas_dmea)
-     call budget_get_global('dAM-dBF',1,mpas_phys_total)
+     call budget_get_global('dAP-dBF',teidx,mpas_param)
+     call budget_get_global('dAM-dAP',teidx,mpas_dmea)
+     call budget_get_global('dAM-dBF',teidx,mpas_phys_total)
 
      write(iulog,*)" "
      write(iulog,*)"======================================================================"
@@ -169,8 +170,8 @@ subroutine print_budget()
      write(iulog,*) "Is globally integrated total energy of state at the end of dynamics (dBF)"
      write(iulog,*) "and beginning of physics (dyBF) the same?"
      write(iulog,*) ""     
-     call budget_get_global('dBF',1,E_dBF)  !state passed to physics
-     call budget_get_global('dyBF',1,E_dyBF)!state beginning physics
+     call budget_get_global('dBF',teidx,E_dBF)  !state passed to physics
+     call budget_get_global('dyBF',teidx,E_dyBF)!state beginning physics
      if (abs(E_dyBF)>eps) then
        diff = abs_diff(E_dBF,E_dyBF)
        if (abs(diff)<eps) then
@@ -195,31 +196,31 @@ subroutine print_budget()
      write(iulog,*)"            ((dAM-dAP)-(dyAM-dyAP))/(dyAM-dyAP) =",diff,pf
      write(iulog,*)" "     
      write(iulog,*)" "     
-     do m_cnst=4,6
-       write(iulog,*)"------------------------------------------------------------"
-       if (m_cnst.eq.4) write(iulog,*)"Water vapor mass budget"
-       if (m_cnst.eq.5) write(iulog,*)"Liquid water mass budget"
-       if (m_cnst.eq.6) write(iulog,*)"Ice water mass budget"
-       write(iulog,*)"------------------------------------------------------------"        
-       call budget_get_global('phAP-phBP',m_cnst,param)
-       call budget_get_global('phBP-phBF',m_cnst,pEFIX)
-       call budget_get_global('phAM-phAP',m_cnst,pdmea)
-       
-       call budget_get_global('dAM-dBF',m_cnst,param_mpas)
-       call budget_get_global('phAM-phBF',m_cnst,phys_total)
-       
-       write(iulog,fmt2)"dMASS/dt energy fixer               (pBP-pBF) ",pEFIX," Pa"
-       write(iulog,fmt2)"dMASS/dt parameterizations          (pAP-pBP) ",param," Pa"
-       write(iulog,fmt2)"dMASS/dt dry mass adjustment        (pAM-pAP) ",pdmea," Pa"
-       write(iulog,fmt2)"dMass/dt physics total in MPAS      (dAM-dBF) ",param_mpas," Pa"
-       err = (param_mpas-param)
-       write(iulog,*)""
-       write(iulog,*)"Is mass budget closed?    (pAP-pBP)-(dAM-dBF) ",err
-       write(iulog,*)"-----------------------------------------------------------------"
-       write(iulog,*)" "
-       if (err>eps) write(iulog,*)" MASS BUDGET ERROR"
+     do m_cnst=1,thermo_budget_num_vars
+        if (thermo_budget_vars_massv(m_cnst)) then 
+           write(iulog,*)"------------------------------------------------------------"
+           write(iulog,*)thermo_budget_vars_descriptor(m_cnst)//" budget"
+           write(iulog,*)"------------------------------------------------------------"        
+           call budget_get_global('phAP-phBP',m_cnst,param)
+           call budget_get_global('phBP-phBF',m_cnst,pEFIX)
+           call budget_get_global('phAM-phAP',m_cnst,pdmea)
+           
+           call budget_get_global('dAM-dBF',m_cnst,param_mpas)
+           call budget_get_global('phAM-phBF',m_cnst,phys_total)
+           
+           write(iulog,fmt2)"dMASS/dt energy fixer               (pBP-pBF) ",pEFIX," Pa"
+           write(iulog,fmt2)"dMASS/dt parameterizations          (pAP-pBP) ",param," Pa"
+           write(iulog,fmt2)"dMASS/dt dry mass adjustment        (pAM-pAP) ",pdmea," Pa"
+           write(iulog,fmt2)"dMass/dt physics total in MPAS      (dAM-dBF) ",param_mpas," Pa"
+           err = (param_mpas-param)
+           write(iulog,*)""
+           write(iulog,*)"Is mass budget closed?    (pAP-pBP)-(dAM-dBF) ",err
+           write(iulog,*)"-----------------------------------------------------------------"
+           write(iulog,*)" "
+           if (err>eps) write(iulog,*)" MASS BUDGET ERROR"
+        end if
      end do
-   end if
+  end if
  end subroutine print_budget
  !=========================================================================================
  function abs_diff(a,b,pf)
