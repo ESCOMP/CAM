@@ -92,10 +92,6 @@ module cam_cpl_indices
   integer :: index_x2a_So_re           ! square of atm/ocn exch. coeff
   integer :: index_x2a_So_ssq          ! surface saturation specific humidity in ocean
   integer :: index_x2a_Sl_ddvel        ! dry deposition velocities from land
-  !ewl: comment out what Thibaud added
-  !integer :: index_x2a_Sl_lwtgcell     ! landunit area weights
-  !integer :: index_x2a_Sl_pwtgcell     ! patch area weights
-  !integer :: index_x2a_Sl_lai          ! leaf area indices
   integer :: index_x2a_Sx_u10          ! 10m wind
 
 contains
@@ -170,10 +166,6 @@ contains
        index_x2a_Sl_ddvel   = mct_avect_indexra(x2a, trim(drydep_fields_token))
     else
        index_x2a_Sl_ddvel    = 0
-       ! ewl: comment out what thibaud added
-       !index_x2a_Sl_lwtgcell = 0
-       !index_x2a_Sl_pwtgcell = 0
-       !index_x2a_Sl_lai      = 0
     end if
 
     index_a2x_Sa_z          = mct_avect_indexra(a2x,'Sa_z')

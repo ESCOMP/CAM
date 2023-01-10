@@ -1619,7 +1619,6 @@ contains
    !------------------------------------------
    ! Call major diffusion for extended model
    !------------------------------------------
-
     if ( waccmx_is('ionosphere') .or. waccmx_is('neutral') ) then
        call waccmx_phys_mspd_tend (ztodt    ,state    ,ptend)
     endif
@@ -1646,7 +1645,6 @@ contains
     !===================================================
     ! Rayleigh friction calculation
     !===================================================
-
     call t_startf('rayleigh_friction')
     call rayleigh_friction_tend( ztodt, state, ptend)
     if ( ptend%lu ) then
@@ -1701,7 +1699,6 @@ contains
    ! that cam_out%xxxdryxxx fields have already been set for CAM aerosols and cam_out
    ! can be added to for CARMA aerosols.
    if (carma_do_aerosol) then
-
      call t_startf('carma_timestep_tend')
      call carma_timestep_tend(state, cam_in, cam_out, ptend, ztodt, pbuf, obklen=obklen, ustar=surfric)
      call physics_update(state, ptend, ztodt, tend)
@@ -1714,7 +1711,6 @@ contains
     !---------------------------------------------------------------------------------
     !   ... enforce charge neutrality
     !---------------------------------------------------------------------------------
-
     call charge_balance(state, pbuf)
 
     !===================================================
@@ -1807,7 +1803,6 @@ contains
     !----------------------------------------------------------------------------
     ! Call ionosphere routines for extended model if mode is set to ionosphere
     !----------------------------------------------------------------------------
-
     if( waccmx_is('ionosphere') ) then
        call waccmx_phys_ion_elec_temp_tend(state, ptend, pbuf, ztodt)
     endif

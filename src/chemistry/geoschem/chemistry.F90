@@ -1850,6 +1850,9 @@ contains
     use modal_aero_data,     only : lptr2_soa_a_amode, lptr2_soa_g_amode
 #endif
 
+    use Diagnostics_Mod,     only : Zero_Diagnostics_StartOfTimestep
+    use Diagnostics_Mod,     only : Set_Diagnostics_EndofTimestep
+    use Aerosol_Mod,         only : Set_AerMass_Diagnostic
     use Olson_Landmap_Mod,   only : Compute_Olson_Landmap
     use Modis_LAI_Mod,       only : Compute_XLAI
     use CMN_Size_Mod,        only : NSURFTYPE
@@ -2215,6 +2218,13 @@ contains
           ENDIF
        ENDDO
     ENDIF
+
+    !-----------------------------------------------------------------------
+    !        ... Reset certain GEOS-Chem diagnostics at start of timestep
+    !-----------------------------------------------------------------------
+    CALL Zero_Diagnostics_StartOfTimestep( Input_Opt  = Input_Opt,         &
+                                           State_Diag = State_Diag(LCHNK), &
+                                           RC         = RC                )
 
     !-----------------------------------------------------------------------
     !        ... Set atmosphere mean mass
@@ -4146,6 +4156,23 @@ contains
                            state      = state,             &
                            mmr_tend   = mmr_tend,          &
                            LCHNK      = LCHNK             )
+
+    CALL Set_Diagnostics_EndofTimestep( Input_Opt  = Input_Opt,         &
+                                        State_Chm  = State_Chm(LCHNK),  &
+                                        State_Diag = State_Diag(LCHNK), &
+                                        State_Grid = State_Grid(LCHNK), &
+                                        State_Met  = State_Met(LCHNK),  &
+                                        RC         = RC                )
+
+
+    IF ( State_Diag(LCHNK)%Archive_AerMass ) THEN
+       CALL Set_AerMass_Diagnostic(  Input_Opt  = Input_Opt,         &
+                                     State_Chm  = State_Chm(LCHNK),  &
+                                     State_Diag = State_Diag(LCHNK), &
+                                     State_Grid = State_Grid(LCHNK), &
+                                     State_Met  = State_Met(LCHNK),  &
+                                     RC         = RC                )
+    ENDIF
 
     ! Compute new GEOS-Chem diagnostics into CESM History (hplin, 10/31/22)
     ! Note that the containers (data pointers) actually need to be updated every time step,
