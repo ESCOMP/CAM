@@ -157,8 +157,6 @@ module fvm_control_volume_mod
     real (kind=r8)           , allocatable :: fm(:,:,:,:)
     real (kind=r8)           , allocatable :: dp_phys(:,:,:)
     real (kind=r8)           , allocatable :: budget(:,:,:,:)         ! budgets
-    integer                                :: budget_cnt(budget_array_max)             ! budget count for averaging
-    integer                                :: budget_subcycle(budget_array_max)        ! budget subcycle count
   end type fvm_struct
 
   public :: fvm_mesh, fvm_set_cubeboundary, allocate_physgrid_vars

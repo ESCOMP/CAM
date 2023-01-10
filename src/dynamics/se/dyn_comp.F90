@@ -1031,11 +1031,9 @@ subroutine dyn_run(dyn_state)
    logical        :: ldiag
 
    real(r8) :: ftmp(npsq,nlev,3)
-   real(r8) :: global_ave
    real(r8) :: rec2dt, pdel
    real(r8) :: dtime
 
-   real(r8), allocatable, dimension(:,:,:) :: tmp,tmptot,tmpse,tmpke,tmp1,tmp2
    real(r8), allocatable, dimension(:,:,:) :: ps_before
    real(r8), allocatable, dimension(:,:,:) :: abs_ps_tend
 
@@ -2394,7 +2392,7 @@ subroutine budget_update(elem,fvm,nets,nete,n0,n0_qdp,hybrid)
                                     thermo_budget_vars_massv,wvidx,wlidx,wiidx,seidx,keidx,moidx,mridx,ttidx,teidx
   ! arguments
   type (element_t) , intent(inout) :: elem(:)
-  type(fvm_struct) , intent(in)    :: fvm(:)
+  type(fvm_struct) , intent(inout) :: fvm(:)
   type(hybrid_t)   , intent(in)    :: hybrid
   integer          , intent(in)    :: n0, n0_qdp,nets,nete
 
@@ -2405,7 +2403,7 @@ subroutine budget_update(elem,fvm,nets,nete,n0,n0_qdp,hybrid)
   logical            :: budget_outfld
 
   real(r8)           :: budgets_global(budget_num,thermo_budget_num_vars)
-  real(r8), allocatable, dimension(:,:,:) :: tmp
+  real(r8), allocatable, dimension(:,:,:) :: tmpgll,tmpfvm
   real(r8) :: dtime
 
   !--------------------------------------------------------------------------------------
@@ -2449,43 +2447,61 @@ subroutine budget_update(elem,fvm,nets,nete,n0,n0_qdp,hybrid)
 
   ! update energy budget globals
 
-  allocate(tmp(np,np,nets:nete))
-  tmp=0._r8
+  allocate(tmpgll(np,np,nets:nete))
+  if (ntrac>0) allocate(tmpfvm(nc,nc,nets:nete))
 
   do b_ind=1,budget_num
      call budget_info(b_ind,name=budget_name,pkgtype=budget_pkgtype,optype=budget_optype,state_ind=s_ind)
      if (budget_pkgtype=='dyn') then
         do n=1,thermo_budget_num_vars
            ! Normalize energy sums and convert to W/s
-           tmp=0._r8
-           if (elem(nets)%derived%budget_cnt(b_ind).gt.0.) then
-              do ie=nets,nete
-                 tmp(:,:,ie)=elem(ie)%derived%budget(:,:,n,s_ind)/elem(ie)%derived%budget_cnt(b_ind)
-              enddo
+           if (ntrac>0.and.thermo_budget_vars_massv(n)) then
+              tmpfvm=0._r8
+              if (elem(nets)%derived%budget_cnt(b_ind).gt.0.) then
+                 do ie=nets,nete
+                    tmpfvm(:,:,ie)=fvm(ie)%budget(:,:,n,s_ind)/elem(ie)%derived%budget_cnt(b_ind)
+                 enddo
+              end if
+           else
+              tmpgll=0._r8
+              if (elem(nets)%derived%budget_cnt(b_ind).gt.0.) then
+                 do ie=nets,nete
+                    tmpgll(:,:,ie)=elem(ie)%derived%budget(:,:,n,s_ind)/elem(ie)%derived%budget_cnt(b_ind)
+                 end do
+              end if
            end if
-           budgets_global(b_ind,n) = global_integral(elem, tmp(:,:,nets:nete),hybrid,np,nets,nete)
+           if (ntrac>0.and.thermo_budget_vars_massv(n)) then
+              budgets_global(b_ind,n) = global_integral(fvm, tmpfvm(:,:,nets:nete),hybrid,nc,nets,nete)
+           else
+              budgets_global(b_ind,n) = global_integral(elem, tmpgll(:,:,nets:nete),hybrid,np,nets,nete)
+           end if
            ! divide by time for proper units if not a mass budget.
            if (.not.thermo_budget_vars_massv(n)) &
                 budgets_global(b_ind,n)=budgets_global(b_ind,n)/dtime
            if (masterproc) then
-              write(iulog,*)"putting global ",trim(budget_name)," m_cnst=",n," ",budgets_global(b_ind,n)," cnt/subcyc/sum_tmp=",elem(nets)%derived%budget_cnt(b_ind),elem(nets)%derived%budget_subcycle(b_ind),sum(tmp(:,:,nets))
+              if (ntrac>0.and.thermo_budget_vars_massv(n)) then
+                 write(iulog,*)"putting global from fvm ",trim(budget_name)," m_cnst=",n," ",budgets_global(b_ind,n)," cnt/subcyc/sum_tmp=",elem(nets)%derived%budget_cnt(b_ind),elem(nets)%derived%budget_subcycle(b_ind),sum(tmpfvm(:,:,nets))
+              else
+                 write(iulog,*)"putting global from elem ",trim(budget_name)," m_cnst=",n," ",budgets_global(b_ind,n)," cnt/subcyc/sum_tmp=",elem(nets)%derived%budget_cnt(b_ind),elem(nets)%derived%budget_subcycle(b_ind),sum(tmpgll(:,:,nets))
+              end if
               call budget_put_global(trim(budget_name),n,budgets_global(b_ind,n))
            end if
         end do
      end if
   end do
-  deallocate(tmp)
+  deallocate(tmpgll)
+  if (ntrac > 0) deallocate(tmpfvm)
 
   ! reset dyn budget states and counts
   do b_ind=1,budget_num
      call budget_info(b_ind,name=budget_name,pkgtype=budget_pkgtype,optype=budget_optype,state_ind=s_ind)
      if (budget_pkgtype=='dyn') then
-        if (masterproc) &
-           write(iulog,*)"resetting %budget for ",trim(budget_name)
+        if (masterproc) write(iulog,*)"resetting %budget for ",trim(budget_name)
         do ie=nets,nete
            elem(ie)%derived%budget(:,:,:,s_ind)=0._r8
            elem(ie)%derived%budget_cnt(b_ind)=0
            elem(ie)%derived%budget_subcycle(b_ind)=0
+           if (ntrac>0) fvm(ie)%budget(:,:,:,s_ind)=0._r8
         end do
      end if
   end do
@@ -2516,11 +2532,8 @@ subroutine budget_update_dyn_cnts(elem,fvm,nets,nete,n0,n0_qdp,hybrid)
   logical            :: budget_outfld
 
   real(r8)           :: budgets_global(budget_num,thermo_budget_num_vars)
-  real(r8), allocatable, dimension(:,:,:) :: tmp
 
   !--------------------------------------------------------------------------------------
-
-
   ! update energy budget differences and outfld
 
   if (thermo_budget_history) then

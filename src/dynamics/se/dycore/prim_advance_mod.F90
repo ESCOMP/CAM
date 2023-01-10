@@ -1565,7 +1565,7 @@ contains
           end do
         end do
 
-! could store pointer to dyn/phys state index inside of budget and call budget_state_update pass in se,ke etc.
+        ! could store pointer to dyn/phys state index inside of budget and call budget_state_update pass in se,ke etc.
         call budget_info_byname(trim(outfld_name_suffix),budget_ind=budget_ind,state_ind=state_ind)
         ! reset all when cnt is 0
 
@@ -1573,6 +1573,7 @@ contains
            if (ie.eq.nets) write(iulog,*)'cnt = 0;resetting :',trim(outfld_name_suffix)
            elem(ie)%derived%budget_subcycle(budget_ind) = 0
            elem(ie)%derived%budget(:,:,:,state_ind)=0.0_r8
+           if (ntrac>0) fvm(ie)%budget(:,:,:,state_ind)=0.0_r8
         end if
         if (present(subcycle)) then
            if (subcycle) then
@@ -1588,12 +1589,13 @@ contains
            elem(ie)%derived%budget_cnt(budget_ind) = elem(ie)%derived%budget_cnt(budget_ind) + 1
            elem(ie)%derived%budget_subcycle(budget_ind) = 1
         end if
+
         do j=1,np
-          do i = 1, np
-            elem(ie)%derived%budget(i,j,teidx,state_ind) = elem(ie)%derived%budget(i,j,teidx,state_ind) + (se(i+(j-1)*np) + ke(i+(j-1)*np))
-            elem(ie)%derived%budget(i,j,seidx,state_ind) = elem(ie)%derived%budget(i,j,seidx,state_ind) + se(i+(j-1)*np)
-            elem(ie)%derived%budget(i,j,keidx,state_ind) = elem(ie)%derived%budget(i,j,keidx,state_ind) + ke(i+(j-1)*np)
-          end do
+           do i = 1, np
+              elem(ie)%derived%budget(i,j,teidx,state_ind) = elem(ie)%derived%budget(i,j,teidx,state_ind) + (se(i+(j-1)*np) + ke(i+(j-1)*np))
+              elem(ie)%derived%budget(i,j,seidx,state_ind) = elem(ie)%derived%budget(i,j,seidx,state_ind) + se(i+(j-1)*np)
+              elem(ie)%derived%budget(i,j,keidx,state_ind) = elem(ie)%derived%budget(i,j,keidx,state_ind) + ke(i+(j-1)*np)
+           end do
         end do
         !
         ! Output energy diagnostics on GLL grid
@@ -1639,7 +1641,7 @@ contains
                    *fvm(ie)%dp_fvm(1:nc,1:nc,:)
              end do
              call util_function(cdp_fvm,nc,nlev,name_out5,ie)
-              
+
               do j = 1, nc
                  do i = 1, nc
                     fvm(ie)%budget(i,j,wiidx,state_ind) = fvm(ie)%budget(i,j,wiidx,state_ind) + sum(cdp_fvm(i,j,:)*inv_g)
@@ -1758,162 +1760,77 @@ contains
   end subroutine calc_tot_energy_dynamics
 
 
-  subroutine calc_tot_energy_dynamics_diff(elem,fvm,nets,nete,tl,tl_qdp,outfld_name_suffix, subcycle)
-    use dimensions_mod,         only: np,nc,ntrac,npsq
+  subroutine calc_tot_energy_dynamics_diff(elem,fvm,nets,nete,tl,tl_qdp,budget_name, subcycle)
+    use dimensions_mod,         only: ntrac
     use element_mod,            only: element_t
-    use cam_history,            only: hist_fld_active,outfld
     use constituents,           only: cnst_get_ind
     use fvm_control_volume_mod, only: fvm_struct
-    use air_composition,        only: thermodynamic_active_species_idx_dycore
-    use air_composition,        only: thermodynamic_active_species_ice_num
-    use air_composition,        only: thermodynamic_active_species_liq_num
-    use air_composition,        only: thermodynamic_active_species_liq_idx
-    use air_composition,        only: thermodynamic_active_species_ice_idx
-
     use budgets,                only: budget_info,budget_ind_byname
     use cam_thermo,             only: thermo_budget_num_vars, &
                                       thermo_budget_vars_massv,wvidx,wlidx,wiidx,seidx,keidx,moidx,mridx,ttidx,teidx
     !------------------------------Arguments--------------------------------
 
     type (element_t) , intent(inout) :: elem(:)
-    type(fvm_struct) , intent(in) :: fvm(:)
+    type(fvm_struct) , intent(inout) :: fvm(:)
     integer          , intent(in) :: tl, tl_qdp,nets,nete
-    character*(*)    , intent(in) :: outfld_name_suffix ! suffix for "outfld" names
+    character*(*)    , intent(in) :: budget_name ! suffix for "outfld" names
     logical, optional, intent(in) :: subcycle ! true if called inside subcycle loop
 
     !---------------------------Local storage-------------------------------
 
-    integer :: ie,ixtt,b_ind,s_ind,is1,is2,isb1,isb2
-    character(len=16) :: name_out1,name_out2,name_out3,name_out4,name_out5,name_out6
-    real(r8), allocatable, dimension(:,:,:,:) :: tmp,tmp1,tmp2
-   character(len=3)   :: budget_pkgtype,budget_optype  ! budget type phy or dyn
+    integer :: ie,ixtt,b_ind,s_ind,is1,is2,isb1,isb2,n
+    character(len=3)   :: budget_pkgtype,budget_optype  ! budget type phy or dyn
     !-----------------------------------------------------------------------
-    name_out1 = 'SE_'   //trim(outfld_name_suffix)
-    name_out2 = 'KE_'   //trim(outfld_name_suffix)
-    name_out3 = 'WV_'   //trim(outfld_name_suffix)
-    name_out4 = 'WL_'   //trim(outfld_name_suffix)
-    name_out5 = 'WI_'   //trim(outfld_name_suffix)
-    name_out6 = 'TT_'   //trim(outfld_name_suffix)
+    b_ind=budget_ind_byname(trim(budget_name))
+    call budget_info(b_ind,stg1stateidx=is1, stg2stateidx=is2,stg1index=isb1, stg2index=isb2, optype=budget_optype, pkgtype=budget_pkgtype,state_ind=s_ind)
 
-!jt    if ( hist_fld_active(name_out1).or.hist_fld_active(name_out2).or.hist_fld_active(name_out3).or.&
-!jt         hist_fld_active(name_out4).or.hist_fld_active(name_out5).or.hist_fld_active(name_out6)) then
-!jt       call cnst_get_ind('TT_UN' , ixtt    , abort=.false.)
-       !
-       ! Compute frozen static energy in 3 parts:  KE, SE, and energy associated with vapor and liquid
-       !
-       allocate(tmp(np,np,thermo_budget_num_vars,nets:nete))
-       allocate(tmp1(np,np,thermo_budget_num_vars,nets:nete))
-       allocate(tmp2(np,np,thermo_budget_num_vars,nets:nete))
-       b_ind=budget_ind_byname(trim(outfld_name_suffix))
-       call budget_info(b_ind,stg1stateidx=is1, stg2stateidx=is2,stg1index=isb1, stg2index=isb2, optype=budget_optype, pkgtype=budget_pkgtype,state_ind=s_ind)
-       do ie=nets,nete
-          ! advance budget_cnt 
-          if (present(subcycle)) then
-             if (subcycle) then
-                ! reset subcycle when cnt is 0
-                if (elem(ie)%derived%budget_cnt(b_ind) == 0) then
-                   elem(ie)%derived%budget_subcycle(b_ind) = 0
-                   elem(ie)%derived%budget(:,:,:,s_ind)=0.0_r8
-                end if
-                elem(ie)%derived%budget_subcycle(b_ind) = elem(ie)%derived%budget_subcycle(b_ind) + 1
-                if (elem(ie)%derived%budget_subcycle(b_ind) == 1) then
-                   elem(ie)%derived%budget_cnt(b_ind) = elem(ie)%derived%budget_cnt(b_ind) + 1
-                end if
-             else
+    do ie=nets,nete
+       ! advance budget_cnt
+       if (present(subcycle)) then
+          if (subcycle) then
+             ! reset subcycle when cnt is 0
+             if (elem(ie)%derived%budget_cnt(b_ind) == 0) then
+                elem(ie)%derived%budget_subcycle(b_ind) = 0
+                elem(ie)%derived%budget(:,:,:,s_ind)=0._r8
+                if (ntrac>0) fvm(ie)%budget(:,:,:,s_ind)=0._r8
+             end if
+             elem(ie)%derived%budget_subcycle(b_ind) = elem(ie)%derived%budget_subcycle(b_ind) + 1
+             if (elem(ie)%derived%budget_subcycle(b_ind) == 1) then
                 elem(ie)%derived%budget_cnt(b_ind) = elem(ie)%derived%budget_cnt(b_ind) + 1
-                elem(ie)%derived%budget_subcycle(b_ind) = 1
              end if
           else
              elem(ie)%derived%budget_cnt(b_ind) = elem(ie)%derived%budget_cnt(b_ind) + 1
              elem(ie)%derived%budget_subcycle(b_ind) = 1
           end if
-          if (elem(ie)%derived%budget_cnt(isb1)==0.or.elem(ie)%derived%budget_cnt(isb2)==0) then
-             tmp(:,:,:,ie)=0._r8
-          else          
-             tmp1(:,:,:,ie)=elem(ie)%derived%budget(:,:,:,is1)
-             tmp2(:,:,:,ie)=elem(ie)%derived%budget(:,:,:,is2)
+       else
+          elem(ie)%derived%budget_cnt(b_ind) = elem(ie)%derived%budget_cnt(b_ind) + 1
+          elem(ie)%derived%budget_subcycle(b_ind) = 1
+       end if
+
+       if (elem(ie)%derived%budget_cnt(isb1)==0.or.elem(ie)%derived%budget_cnt(isb2)==0) then
+          elem(ie)%derived%budget(:,:,:,s_ind)=0._r8
+       else
+          do n=1,thermo_budget_num_vars
              if (budget_optype=='dif') then
-                tmp(:,:,:,ie)=(tmp1(:,:,:,ie)-tmp2(:,:,:,ie))
+                if (ntrac>0.and.thermo_budget_vars_massv(n)) then
+                   fvm(ie)%budget(:,:,n,s_ind)=(fvm(ie)%budget(:,:,n,is1)-fvm(ie)%budget(:,:,n,is2))
+                else
+                   elem(ie)%derived%budget(:,:,n,s_ind)=(elem(ie)%derived%budget(:,:,n,is1)-elem(ie)%derived%budget(:,:,n,is2))
+                end if
              else if (budget_optype=='sum') then
-                tmp(:,:,:,ie)=(tmp1(:,:,:,ie)+tmp2(:,:,:,ie))
+                if (ntrac>0.and.thermo_budget_vars_massv(n)) then
+                   fvm(ie)%budget(:,:,n,s_ind)=(fvm(ie)%budget(:,:,n,is1)+fvm(ie)%budget(:,:,n,is2))
+                else
+                   elem(ie)%derived%budget(:,:,n,s_ind)=(elem(ie)%derived%budget(:,:,n,is1)+elem(ie)%derived%budget(:,:,n,is2))
+                end if
              else
                 call endrun('dyn_readnl: ERROR: budget_optype unknown:'//budget_optype)
              end if
-          end if
-          elem(ie)%derived%budget(:,:,:,s_ind)=tmp(:,:,:,ie)
-          !
-          ! Output energy diagnostics on GLL grid
-          !
-!          call outfld(name_out1,elem(ie)%derived%budget(:,:,seidx,s_ind),npsq,ie)
-!          call outfld(name_out2,elem(ie)%derived%budget(:,:,keidx,s_ind),npsq,ie)
-          !
-          ! mass variables are output on CSLAM grid if using CSLAM else GLL grid
-          !
-!          if (ntrac>0) then
-!             call outfld(name_out3,elem(ie)%derived%budget(:,:,wvidx,s_ind),nc*nc,ie)
-             !
-             ! sum over liquid water
-             !
-!             if (thermodynamic_active_species_liq_num>0) &
-!                  call outfld(name_out4,elem(ie)%derived%budget(:,:,wlidx,s_ind),nc*nc,ie)
-             !
-             ! sum over ice water
-             !
-!             if (thermodynamic_active_species_ice_num>0) &
-!                  call outfld(name_out5,elem(ie)%derived%budget(:,:,wiidx,s_ind),nc*nc,ie)
-             !
-             ! dry test tracer
-             !
-!             if (ixtt>0) &
-!                  call outfld(name_out6,elem(ie)%derived%budget(:,:,ttidx,s_ind),nc*nc,ie)
-!          else
-!             call outfld(name_out3,elem(ie)%derived%budget(:,:,wvidx,s_ind),npsq,ie)
-             !
-             ! sum over liquid water
-             !
-!             if (thermodynamic_active_species_liq_num>0) &
-!                  call outfld(name_out4,elem(ie)%derived%budget(:,:,wlidx,s_ind),npsq,ie)
-             !
-             ! sum over ice water
-             !
-!             if (thermodynamic_active_species_ice_num>0) &
-!                  call outfld(name_out5,elem(ie)%derived%budget(:,:,6,s_ind),npsq,ie)
-             !
-             ! dry test tracer
-             !
-!             if (ixtt>0) &
-!                  call outfld(name_out6,elem(ie)%derived%budget(:,:,ttidx,s_ind),npsq,ie)
-!          end if
-       end do
-!jt    end if
-    deallocate(tmp)
-    deallocate(tmp1)
-    deallocate(tmp2)
-    !
-    ! Axial angular momentum diagnostics
-    !
-    ! Code follows
-    !
-    ! Lauritzen et al., (2014): Held-Suarez simulations with the Community Atmosphere Model
-    ! Spectral Element (CAM-SE) dynamical core: A global axial angularmomentum analysis using Eulerian
-    ! and floating Lagrangian vertical coordinates. J. Adv. Model. Earth Syst. 6,129-140,
-    ! doi:10.1002/2013MS000268
-    !
-    ! MR is equation (6) without \Delta A and sum over areas (areas are in units of radians**2)
-    ! MO is equation (7) without \Delta A and sum over areas (areas are in units of radians**2)
-    !
-    name_out1 = 'MR_'   //trim(outfld_name_suffix)
-    name_out2 = 'MO_'   //trim(outfld_name_suffix)
-
-!!$    if ( hist_fld_active(name_out1).or.hist_fld_active(name_out2)) then
-!!$      do ie=nets,nete
-!!$         call outfld(name_out1  ,elem(ie)%derived%budget(:,:,mridx,s_ind)      ,npsq,ie)
-!!$         call outfld(name_out2  ,elem(ie)%derived%budget(:,:,moidx,s_ind)      ,npsq,ie)
-!!$      end do
-!!$    end if
-
+          end do
+       end if
+    end do
   end subroutine calc_tot_energy_dynamics_diff
-  
+
   subroutine output_qdp_var_dynamics(qdp,nx,num_trac,nets,nete,outfld_name)
     use dimensions_mod, only: nlev,ntrac
     use cam_history   , only: outfld, hist_fld_active

@@ -24,6 +24,11 @@ module global_norms_mod
   private :: global_maximum
   type (EdgeBuffer_t), private :: edgebuf
 
+  interface global_integral
+     module procedure global_integral_elem
+     module procedure global_integral_fvm
+  end interface global_integral
+
 contains
 
 
@@ -133,7 +138,7 @@ contains
   !
   ! ================================
   ! --------------------------
-  function global_integral(elem, h,hybrid,npts,nets,nete) result(I_sphere)
+  function global_integral_elem(elem, h,hybrid,npts,nets,nete) result(I_sphere)
     use hybrid_mod,     only: hybrid_t
     use element_mod,    only: element_t
     use dimensions_mod, only: np, nelemd
@@ -183,7 +188,58 @@ contains
 !JMD    print *,'global_integral: after global_shared_sum'
     I_sphere = I_tmp(1)/(4.0_r8*PI)
 
-  end function global_integral
+  end function global_integral_elem
+
+  function global_integral_fvm(fvm, h,hybrid,npts,nets,nete) result(I_sphere)
+    use hybrid_mod,     only: hybrid_t
+    use fvm_control_volume_mod, only: fvm_struct
+    use physconst,      only: pi
+    use parallel_mod,   only: global_shared_buf, global_shared_sum
+
+    type (fvm_struct)    , intent(in) :: fvm(:)
+    integer              , intent(in) :: npts,nets,nete
+    real (kind=r8), intent(in) :: h(npts,npts,nets:nete)
+    type (hybrid_t)      , intent(in) :: hybrid
+
+    real (kind=r8) :: I_sphere
+
+    real (kind=r8) :: I_priv
+    real (kind=r8) :: I_shared
+    common /gblintcom/I_shared
+
+    ! Local variables
+
+    integer :: ie,j,i
+    real(kind=r8) :: I_tmp(1)
+
+    real (kind=r8) :: da
+    real (kind=r8) :: J_tmp(nets:nete)
+!
+! This algorythm is independent of thread count and task count.
+! This is a requirement of consistancy checking in cam.
+!
+    J_tmp = 0.0_r8
+
+!JMD    print *,'global_integral: before loop'
+       do ie=nets,nete
+          do j=1,npts
+             do i=1,npts
+                da = fvm(ie)%area_sphere(i,j)
+                J_tmp(ie) = J_tmp(ie) + da*h(i,j,ie)
+             end do
+          end do
+       end do
+    do ie=nets,nete
+      global_shared_buf(ie,1) = J_tmp(ie)
+    enddo
+!JMD    print *,'global_integral: before wrap_repro_sum'
+    call wrap_repro_sum(nvars=1, comm=hybrid%par%comm)
+!JMD    print *,'global_integral: after wrap_repro_sum'
+    I_tmp = global_shared_sum(1)
+!JMD    print *,'global_integral: after global_shared_sum'
+    I_sphere = I_tmp(1)/(4.0_r8*PI)
+
+  end function global_integral_fvm
 
 !------------------------------------------------------------------------------------
 
