@@ -336,7 +336,7 @@ subroutine dyn_init(dyn_in, dyn_out)
    use mpas_constants,     only : mpas_constants_compute_derived
    use dyn_tests_utils,    only : vc_dycore, vc_height, string_vc, vc_str_lgth
    use constituents,       only : cnst_get_ind
-   use budgets,            only : budget_array_max, budget_info, budget_add, budget_num
+   use budgets,            only : budget_array_max, budget_info, budget_add, budget_num, thermo_budget_history
    ! arguments:
    type(dyn_import_t), intent(inout)  :: dyn_in
    type(dyn_export_t), intent(inout)  :: dyn_out
@@ -572,6 +572,10 @@ subroutine dyn_init(dyn_in, dyn_out)
    ! Set the interval over which the dycore should integrate during each call to dyn_run.
    call MPAS_set_timeInterval(integrationLength, S=nint(dtime), S_n=0, S_d=1)
 
+   !
+   ! initialize history for MPAS energy budgets
+   ! call addfld for every thermo_budget_category and stage as well as calling add_budget for each stage
+   !
    do istage = 1, num_stages
      do ivars=1, thermo_budget_num_vars
        write(str1,*) TRIM(ADJUSTL(thermo_budget_vars(ivars))),"_",TRIM(ADJUSTL(stage(istage)))
@@ -580,6 +584,8 @@ subroutine dyn_init(dyn_in, dyn_out)
         write(str3,*) TRIM(ADJUSTL(thermo_budget_vars_unit(ivars)))
         call addfld (TRIM(ADJUSTL(str1)),   horiz_only, 'A', TRIM(ADJUSTL(str3)),TRIM(ADJUSTL(str2)), gridname='mpas_cell')
       end do
+      ! Register stages for budgets
+      call budget_add(TRIM(ADJUSTL(stage(istage))), pkgtype='dyn', longname=TRIM(ADJUSTL(stage_txt(istage))), outfld=.true.)
     end do
 
    !
@@ -606,22 +612,28 @@ subroutine dyn_init(dyn_in, dyn_out)
 
    !
    ! initialize MPAS energy budgets
-   !
-   ! add budget snapshots (stages)
-   istage=1
-   call budget_add('dBF', pkgtype='dyn', longname=TRIM(ADJUSTL(stage_txt(istage))), outfld=.false., subcycle=.false.)
-   istage=istage+1
-   call budget_add('dAP', pkgtype='dyn', longname=TRIM(ADJUSTL(stage_txt(istage))), outfld=.false., subcycle=.false.)
-   istage=istage+1
-   call budget_add('dAM', pkgtype='dyn', longname=TRIM(ADJUSTL(stage_txt(istage))), outfld=.false., subcycle=.false.)
-   !
    ! add budgets that are derived from stages
    !
 
-  call budget_add('mpas_param','dAP','dBF',pkgtype='dyn',optype='dif',longname="dE/dt parameterizations+efix in dycore (dparam)(dAP-dBF)",outfld=.false.)
-  call budget_add('mpas_dmea' ,'dAM','dAP',pkgtype='dyn',optype='dif',longname="dE/dt dry mass adjustment in dycore            (dAM-dAP)",outfld=.false.)
-  call budget_add('mpas_phys_total' ,'dAM','dBF',pkgtype='dyn',optype='dif',longname="dE/dt physics total in dycore (phys)           (dAM-dBF)",outfld=.false.)
-
+   call budget_add('mpas_param','dAP','dBF',pkgtype='dyn',optype='dif',longname="dE/dt parameterizations+efix in dycore (dparam)(dAP-dBF)",outfld=.false.)
+   call budget_add('mpas_dmea' ,'dAM','dAP',pkgtype='dyn',optype='dif',longname="dE/dt dry mass adjustment in dycore            (dAM-dAP)",outfld=.false.)
+   call budget_add('mpas_phys_total' ,'dAM','dBF',pkgtype='dyn',optype='dif',longname="dE/dt physics total in dycore (phys)           (dAM-dBF)",outfld=.false.)
+   
+   ! call addfield for budget diff/sum that we just added above
+   if (thermo_budget_history) then
+      do m=1,budget_num
+         call budget_info(m,name=budget_name,longname=budget_longname,pkgtype=budget_pkgtype,optype=budget_optype)
+         if (trim(budget_pkgtype)=='dyn'.and.(trim(budget_optype)=='dif'.or.trim(budget_optype)=='sum')) then
+            do ivars=1, thermo_budget_num_vars
+               write(str1,*) TRIM(ADJUSTL(thermo_budget_vars(ivars))),"_",TRIM(ADJUSTL(budget_name))
+               write(str2,*) TRIM(ADJUSTL(thermo_budget_vars_descriptor(ivars)))," ", &
+                    TRIM(ADJUSTL(budget_longname))
+               write(str3,*) TRIM(ADJUSTL(thermo_budget_vars_unit(ivars)))
+               call addfld (TRIM(ADJUSTL(str1)),   horiz_only, 'A', TRIM(ADJUSTL(str3)),TRIM(ADJUSTL(str2)),gridname='mpas_cell')
+            end do
+         end if
+      end do
+   end if
  end subroutine dyn_init
 
 !=========================================================================================
@@ -689,7 +701,7 @@ subroutine budget_update(nCells,dyn_out)
   integer, pointer  :: budgets_subcycle_cnt(:) ! budget counts for normalizating sum
   integer :: b_ind,s_ind,is1,is2,i
   logical :: budget_outfld
-  character(len=64)    :: name_out1,name_out2,name_out3,name_out4,name_out5,name_out6,budget_name
+  character(len=64)    :: name_out1,name_out2,name_out3,name_out4,name_out5,name_out6,name_out7,budget_name
   character(len=3)     :: budget_pkgtype,budget_optype  ! budget type phy or dyn
   real(r8)             :: tmp(thermo_budget_num_vars,nCells)
   real(r8), pointer :: areaCell(:)  ! cell area (m^2)
@@ -717,16 +729,18 @@ subroutine budget_update(nCells,dyn_out)
            !
            ! Output energy diagnostics
            !
-           if (budget_outfld) then
+!jt           if (budget_outfld) then
               name_out1 = 'SE_'   //trim(budget_name)
               name_out2 = 'KE_'   //trim(budget_name)
               name_out3 = 'WV_'   //trim(budget_name)
               name_out4 = 'WL_'   //trim(budget_name)
               name_out5 = 'WI_'   //trim(budget_name)
               name_out6 = 'PO_'   //trim(budget_name)
+              name_out7 = 'TE_'   //trim(budget_name)
               call outfld(name_out1, te_budgets(s_ind,seidx,:), nCells, 1)
               call outfld(name_out2, te_budgets(s_ind,keidx,:), nCells, 1)
               call outfld(name_out6, te_budgets(s_ind,poidx,:), nCells, 1)
+              call outfld(name_out7, te_budgets(s_ind,teidx,:), nCells, 1)
               !
               ! sum over vapor
               call outfld(name_out3, te_budgets(s_ind,wvidx,:), nCells, 1)
@@ -738,7 +752,7 @@ subroutine budget_update(nCells,dyn_out)
               ! sum over ice water
               if (thermodynamic_active_species_ice_num>0) &
                    call outfld(name_out5, te_budgets(s_ind,wiidx,:), nCells, 1)
-           end if
+!jt           end if
            budgets_cnt(b_ind)=budgets_cnt(b_ind)+1
         end if
      end if
