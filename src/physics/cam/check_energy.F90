@@ -492,7 +492,8 @@ end subroutine check_energy_get_integrals
          state%pdel(1:ncol,1:pver), cp_or_cv(1:ncol,1:pver),                         &
          state%u(1:ncol,1:pver), state%v(1:ncol,1:pver), state%T(1:ncol,1:pver),     &
          vc_physics, ps = state%ps(1:ncol), phis = state%phis(1:ncol),               &
-         te = te, H2O = tw, se=se,po=po,ke=ke,wv=wv,liq=liq,ice=ice)
+         te = te(1:ncol), H2O = tw(1:ncol), se=se(1:ncol),po=po(1:ncol),             &
+         ke=ke(1:ncol),wv=wv(1:ncol),liq=liq(1:ncol),ice=ice(1:ncol))
     ! compute expected values and tendencies
     do i = 1, ncol
        ! change in static energy and total water
