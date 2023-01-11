@@ -422,6 +422,24 @@ Default: .false.,  unless it is overridden (WACCM with interactive chemistry and
           configurations do this)
 </entry>
 
+<entry id="phys_grid_ctem_zm_nbas" type="integer"  category="diagnostics"
+       group="phys_grid_ctem_opts" valid_values="" >
+Number of zonal mean basis functions (number of m=0 spherical harmonics) used in
+Transformed Eulerian Mean (TEM) diagnostics
+</entry>
+
+<entry id="phys_grid_ctem_za_nlat" type="integer"  category="diagnostics"
+       group="phys_grid_ctem_opts" valid_values="" >
+Number of latitude grid points for zonal average TEM diagnostics history fields
+</entry>
+
+<entry id="phys_grid_ctem_nfreq" type="integer"  category="diagnostics"
+       group="phys_grid_ctem_opts" valid_values="" >
+  Frequency of TEM diagnostics calucation.
+  If &gt; 0, frequency is specified as number of timesteps.
+  If &lt; 0, frequency is specified as number of hours.
+</entry>
+
 <entry id="print_energy_errors" type="logical"  category="diagnostics"
        group="check_energy_nl" valid_values="" >
 Turn on verbose output identifying columns that fail energy/water
@@ -4724,7 +4742,7 @@ Default: set by build-namelist
 </entry>
 
 <entry id="cam_chempkg" type="char*32" category="build"
-       group="phys_ctl_nl" valid_values="trop_mam3,trop_mam4,trop_mam5,trop_mam7,trop_mozart,trop_strat_mam4_vbs,trop_strat_mam4_vbsext,
+       group="phys_ctl_nl" valid_values="trop_mam3,trop_mam4,trop_mam5,trop_mam7,trop_mozart,trop_strat_mam4_vbs,trop_strat_mam4_vbsext,trop_strat_mam5_vbs,
                                          waccm_ma,waccm_mad_mam4,waccm_ma_mam4,waccm_ma_sulfur,waccm_sc,waccm_sc_mam4,waccm_tsmlt_mam4,waccm_tsmlt_mam5,
                                          terminator,none" >
 Name of the CAM chemistry package.  N.B. this variable may not be set by
