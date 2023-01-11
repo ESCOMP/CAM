@@ -36,6 +36,7 @@ subroutine read_namelist(nlfilename, single_column, scmlat, scmlon)
    use spmd_utils,          only: spmd_utils_readnl
    use cam_history,         only: history_readnl
    use physconst,           only: physconst_readnl
+   use air_composition,     only: air_composition_readnl
    use physics_buffer,      only: pbuf_readnl
    use phys_control,        only: phys_ctl_readnl
    use wv_saturation,       only: wv_sat_readnl
@@ -95,6 +96,8 @@ subroutine read_namelist(nlfilename, single_column, scmlat, scmlon)
    use ionosphere_interface,only: ionosphere_readnl
    use qneg_module,         only: qneg_readnl
    use lunar_tides,         only: lunar_tides_readnl
+   use upper_bc,            only: ubc_readnl
+   use phys_grid_ctem,      only: phys_grid_ctem_readnl
 
    !---------------------------Arguments-----------------------------------
 
@@ -121,6 +124,7 @@ subroutine read_namelist(nlfilename, single_column, scmlat, scmlon)
 
    call spmd_utils_readnl(nlfilename)
    call phys_grid_readnl(nlfilename)
+   call air_composition_readnl(nlfilename)
    call physconst_readnl(nlfilename)
 !++bee 13 Oct 2015, need to fix the pbuf_global_allocate functionality, then
 !                   can uncomment the pbuf_readnl line
@@ -129,6 +133,7 @@ subroutine read_namelist(nlfilename, single_column, scmlat, scmlon)
    call cnst_readnl(nlfilename)
    call history_readnl(nlfilename)
    call chem_surfvals_readnl(nlfilename)
+   call ubc_readnl(nlfilename)
    call phys_ctl_readnl(nlfilename)
    call wv_sat_readnl(nlfilename)
    call ref_pres_readnl(nlfilename)
@@ -191,6 +196,7 @@ subroutine read_namelist(nlfilename, single_column, scmlat, scmlon)
    call dyn_readnl(nlfilename)
    call ionosphere_readnl(nlfilename)
    call qneg_readnl(nlfilename)
+   call phys_grid_ctem_readnl(nlfilename)
 
 end subroutine read_namelist
 

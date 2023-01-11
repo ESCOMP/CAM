@@ -596,6 +596,7 @@ if ($chem) {
     if ($chem =~ /_mam/ and ($dyn =~ /se|fv3|mpas/)) {
         add_default($nl, 'drydep_srf_file');
     }
+    add_default($nl, 'dep_data_file');
 }
 
 # Initial conditions
@@ -1645,7 +1646,8 @@ if ($chem =~ /waccm_sc/) {
         add_default($nl, 'waccm_forcing_type', 'val'=>'CYCLICAL');
         add_default($nl, 'waccm_forcing_cycle_yr');
     }
-    add_default($nl, 'nlte_use_mo', 'val'=>".false.");
+    add_default($nl, 'nlte_use_mo',      'val'=>".false.");
+    add_default($nl, 'nlte_use_aliarms', 'val'=>".false.");
     add_default($nl, 'h2orates');
     add_default($nl, 'solar_parms_data_file');
 }
@@ -2379,7 +2381,7 @@ if (($chem =~ /_mam4/ or $chem =~ /_mam5/) and ($phys =~ /cam6/ or $phys =~ /cam
         add_default($nl, 'megan_factors_file');
         add_default($nl, 'megan_mapped_emisfctrs', 'val'=>'.false.');
     }
-    if ($chem =~ /trop_strat_mam4_vbs/ ) {
+    if ($chem =~ /trop_strat_mam4_vbs/ or $chem =~ /trop_strat_mam5_vbs/) {
         my $val = "'ISOP = isoprene',"
                 . "'MTERP = carene_3 + pinene_a + thujene_a + bornene + terpineol_4 + terpineol_a + terpinyl_ACT_a "
                 . "+ myrtenal + sabinene + pinene_b + camphene + fenchene_a + limonene + phellandrene_a + terpinene_a "
@@ -2599,6 +2601,17 @@ if ($waccmx){
 }
 if ($maxzen>0.0) {
     add_default($nl, 'photo_max_zen', 'val'=>"${maxzen}D0");
+}
+
+# upper boundary specifier
+my $ubc_ver;
+if (($chem =~ /waccm_ma/ or $chem =~ /waccm_tsmlt/ ) and !$waccmx) {
+    $ubc_ver = 'waccmchem';
+} elsif ($chem =~ /waccm_sc/) {
+    $ubc_ver = 'waccmsc';
+}
+if (defined $ubc_ver) {
+    add_default($nl, 'ubc_specifier', 'ver'=>$ubc_ver);
 }
 
 # WACCM options.

@@ -436,6 +436,24 @@ Default: .false.,  unless it is overridden (WACCM with interactive chemistry and
           configurations do this)
 </entry>
 
+<entry id="phys_grid_ctem_zm_nbas" type="integer"  category="diagnostics"
+       group="phys_grid_ctem_opts" valid_values="" >
+Number of zonal mean basis functions (number of m=0 spherical harmonics) used in
+Transformed Eulerian Mean (TEM) diagnostics
+</entry>
+
+<entry id="phys_grid_ctem_za_nlat" type="integer"  category="diagnostics"
+       group="phys_grid_ctem_opts" valid_values="" >
+Number of latitude grid points for zonal average TEM diagnostics history fields
+</entry>
+
+<entry id="phys_grid_ctem_nfreq" type="integer"  category="diagnostics"
+       group="phys_grid_ctem_opts" valid_values="" >
+  Frequency of TEM diagnostics calucation.
+  If &gt; 0, frequency is specified as number of timesteps.
+  If &lt; 0, frequency is specified as number of hours.
+</entry>
+
 <entry id="print_energy_errors" type="logical"  category="diagnostics"
        group="check_energy_nl" valid_values="" >
 Turn on verbose output identifying columns that fail energy/water
@@ -4738,7 +4756,7 @@ Default: set by build-namelist
 </entry>
 
 <entry id="cam_chempkg" type="char*32" category="build"
-       group="phys_ctl_nl" valid_values="trop_mam3,trop_mam4,trop_mam5,trop_mam7,trop_mozart,trop_strat_mam4_vbs,trop_strat_mam4_vbsext,
+       group="phys_ctl_nl" valid_values="trop_mam3,trop_mam4,trop_mam5,trop_mam7,trop_mozart,trop_strat_mam4_vbs,trop_strat_mam4_vbsext,trop_strat_mam5_vbs,
                                          waccm_ma,waccm_mad_mam4,waccm_ma_mam4,waccm_ma_sulfur,waccm_sc,waccm_sc_mam4,waccm_tsmlt_mam4,waccm_tsmlt_mam5,
                                          terminator,none" >
 Name of the CAM chemistry package.  N.B. this variable may not be set by
@@ -6145,56 +6163,6 @@ Type of time interpolation for fixed lower boundary data.
 Default: 'CYCLICAL'
 </entry>
 
-<entry id="noy_ubc_filename" type="char*256" input_pathname="rel:noy_ubc_datapath" category="cam_chem"
-       group="noy_ubc_nl" valid_values="" >
-File name of dataset for NOy upper boundary conditions.
-Default: set by build-namelist.
-</entry>
-
-<entry id="noy_ubc_datapath" type="char*256" input_pathname="abs" category="cam_chem"
-       group="noy_ubc_nl" valid_values="" >
-Full pathname of the directory that contains the NOy upper boundary conditions files specified in
-{{ hilight }}noy_ubc_filelist{{ closehilight }}.
-Default: set by build-namelist.
-</entry>
-
-<entry id="noy_ubc_filelist" type="char*256" input_pathname="rel:noy_ubc_datapath" category="cam_chem"
-       group="noy_ubc_nl" valid_values="" >
-Filename of file that contains a sequence of filenames for prescribed NOy upper boundary conditions.
-The filenames in this file are relative to the directory specified by {{ hilight }}noy_ubc_datapath{{ closehilight }}.
-Default: set by build-namelist.
-</entry>
-
-<entry id="noy_ubc_datatype" type="char*32" category="cam_chem"
-       group="noy_ubc_nl" valid_values="CYCLICAL,SERIAL,INTERP_MISSING_MONTHS,FIXED" >
-Type of time interpolation for NOy upper boundary conditions.
-Default: 'SERIAL'
-</entry>
-
-<entry id="noy_ubc_cycle_yr" type="integer" category="cam_chem"
-       group="noy_ubc_nl" valid_values="" >
-The cycle year of the NOy upper boundary data
-if {{ hilight }}flbc_type{{ closehilight }}  is 'CYCLICAL'.
-Format: YYYY
-Default: 0
-</entry>
-
-<entry id="noy_ubc_fixed_ymd" type="integer" category="cam_chem"
-       group="noy_ubc_nl" valid_values="" >
-The date at which the NOy upper boundary data is fixed
-if {{ hilight }}flbc_type{{ closehilight }} is 'FIXED'..
-Format: YYYYMMDD
-Default: 0
-</entry>
-
-<entry id="noy_ubc_fixed_tod" type="integer" category="cam_chem"
-       group="noy_ubc_nl" valid_values="" >
-The time of day (seconds) corresponding to {{ hilight }}noy_ubc_fixed_ymd{{ closehilight }}
-at which the NOy upper boundary data is fixed
-if {{ hilight }}flbc_type{{ closehilight }} is 'FIXED'.
-Default: 0 seconds
-</entry>
-
 <entry id="fstrat_file" type="char*256" input_pathname="abs" category="cam_chem"
        group="chem_inparm" valid_values="" >
 Full pathname of dataset for chemical tracers constrained  in the stratosphere
@@ -6220,7 +6188,7 @@ Default: 1.0.
 </entry>
 
 <entry id="no_xfac_ubc" type="real" category="waccm"
-       group="chem_inparm" valid_values="" >
+       group="upper_bc_opts" valid_values="" >
 Multiplication factor applied to the upper boundary NO mass mixing ratio.
 Default: 1.0
 </entry>
@@ -6754,7 +6722,7 @@ Default: set by build-namelist.
 </entry>
 
 <entry id="snoe_ubc_file" type="char*256" input_pathname="abs" category="waccm"
-       group="chem_inparm" valid_values="" >
+       group="upper_bc_opts" valid_values="" >
 Full pathname of dataset for the coefficients of the NOEM nitric oxide model used
 to calculate its upper boundary concentration.
 Default: set by build-namelist.
@@ -6853,25 +6821,20 @@ if {{ hilight }}sulf_type{{ closehilight }} is 'FIXED'.
 Default: 0 seconds
 </entry>
 
-
-
-
-
-
 <entry id="tgcm_ubc_file" type="char*256" input_pathname="abs" category="waccm"
-       group="chem_inparm" valid_values="" >
+       group="upper_bc_opts" valid_values="" >
 Full pathname of dataset for TGCM upper boundary
 Default: set by build-namelist.
 </entry>
 <entry id="tgcm_ubc_data_type" type="char*32" category="waccm"
-       group="chem_inparm" valid_values="CYCLICAL,SERIAL,INTERP_MISSING_MONTHS,FIXED" >
+       group="upper_bc_opts" valid_values="CYCLICAL,SERIAL,INTERP_MISSING_MONTHS,FIXED" >
 Type of time interpolation for data in TGCM upper boundary file.
 Can be set to 'CYCLICAL', 'SERIAL', 'INTERP_MISSING_MONTHS', or 'FIXED'.
 Default: 'SERIAL'
 </entry>
 
 <entry id="tgcm_ubc_cycle_yr" type="integer" category="waccm"
-       group="chem_inparm" valid_values="" >
+       group="upper_bc_opts" valid_values="" >
 The cycle year of the TGCM upper boundary data
 if {{ hilight }}tgcm_ubc_type{{ closehilight }}  is 'CYCLICAL'.
 Format: YYYY
@@ -6879,7 +6842,7 @@ Default: 0
 </entry>
 
 <entry id="tgcm_ubc_fixed_ymd" type="integer" category="waccm"
-       group="chem_inparm" valid_values="" >
+       group="upper_bc_opts" valid_values="" >
 The date at which the TGCM upper boundary data is fixed
 if {{ hilight }}tgcm_ubc_type{{ closehilight }} is 'FIXED'.
 Format: YYYY
@@ -6887,7 +6850,7 @@ Default: 0
 </entry>
 
 <entry id="tgcm_ubc_fixed_tod" type="integer" category="waccm"
-       group="chem_inparm" valid_values="" >
+       group="upper_bc_opts" valid_values="" >
 The time of day (seconds) corresponding to {{ hilight }}tgcm_ubc_fixed_ymd{{ closehilight }}
 at which the TGCM upper boundary data is fixed
 if {{ hilight }}tgcm_ubc_type{{ closehilight }} is 'FIXED'.
@@ -6895,9 +6858,73 @@ Default: 0 seconds
 </entry>
 
 <entry id="t_pert_ubc" type="real" category="waccm"
-       group="chem_inparm" valid_values="" >
+       group="upper_bc_opts" valid_values="" >
 Perturbation applied to the upper boundary temperature.
 Default: 0.0
+</entry>
+
+<entry id="ubc_specifier" type="char*64(pcnst)"  category="upper_boundary"
+       group="upper_bc_opts" valid_values="" >
+
+List of fields that have fixed upper boundary conditions (temperature and mass mixing ratios)
+and corresponding data sources. Each entry in this list is of the form:
+  FLD->source
+where source may be of the following:
+  MSIS - NRL neutral atmosphere empirical model (Mass Spectrometer Incoherent Scatter radar)
+  TGCM - Input file generated by Thermospheric General Circulation Model
+  SNOE - Input file generated from Student Nitric Oxide Explorer satellite observations
+  UBC_FILE - Generalized input file which spans the upper boundary altitude
+  value (mmr|vmr) - Set to a constant value (e.g., 1.2e-6 mmr)
+
+These fields can be set to constant values with units of "mmr" (mass mixing ratio)
+or "vmr" (volume mixing ratio).  The upper boundary values of source UBC_FILE are prescribed
+in the UBC_FILE_path file. Fields of source UBC_FILE may include a CAM constituent name
+and a file field name separated by ":".
+
+Note: Constituents not included in ubc_specifier default to zero flux through the upper boundary.
+
+Example:
+  ubc_specifier = 'Q:H2O->UBC_FILE', 'CH4->2.D-10vmr', 'F->1.0D-15mmr', 'HF->1.0D-15mmr',
+                  'T->MSIS', 'H->MSIS', 'N->MSIS','O->MSIS', 'O2->MSIS', 'H2->TGCM', 'NO->SNOE'
+
+Default: set by build-namelist
+</entry>
+
+<entry id="ubc_file_path" type="char*512" input_pathname="abs" category="upper_boundary"
+       group="upper_bc_file_opts" valid_values="" >
+Full path of the file containing prescribed upper boundary conditions.
+Default: NONE
+</entry>
+
+<entry id="ubc_file_input_type" type="char*32" category="upper_boundary"
+       group="upper_bc_file_opts" valid_values="CYCLICAL,SERIAL,INTERP_MISSING_MONTHS,FIXED" >
+Type of time interpolation for data in {{ hilight }}ubc_file_path file{{ closehilight }}.
+Can be set to 'CYCLICAL', 'SERIAL', 'INTERP_MISSING_MONTHS', or 'FIXED'.
+Default: NONE
+</entry>
+
+<entry id="ubc_file_cycle_yr" type="integer" category="upper_boundary"
+       group="upper_bc_file_opts" valid_values="" >
+The cycle year of the prescribed upper boundary data
+if {{ hilight }}ubc_file_input_type{{ closehilight }} is 'CYCLICAL'.
+Format: YYYY
+Default: 0
+</entry>
+
+<entry id="ubc_file_fixed_ymd" type="integer" category="upper_boundary"
+       group="upper_bc_file_opts" valid_values="" >
+The date at which the upper boundary data is fixed
+if {{ hilight }}ubc_file_input_type{{ closehilight }} is 'FIXED'.
+Format: YYYYMMDD
+Default: 0
+</entry>
+
+<entry id="ubc_file_fixed_tod" type="integer" category="upper_boundary"
+       group="upper_bc_file_opts" valid_values="" >
+The time of day (seconds) corresponding to {{ hilight }}ubc_file_fixed_ymd{{ closehilight }}
+at which the upper boundary data is fixed
+if {{ hilight }}ubc_file_input_type{{ closehilight }} is 'FIXED'.
+Default: 0 seconds
 </entry>
 
 <entry id="chem_freq" type="integer" category="cam_chem"
@@ -7063,6 +7090,13 @@ Default: set by build-namelist.
 <entry id="drydep_list" type="char*16(1000)" category="dry_deposition"
        group="drydep_inparm" valid_values="" >
 List of species that undergo dry deposition.
+Default: set by build-namelist.
+</entry>
+
+<entry id="dep_data_file" type="char*500" input_pathname="abs" category="dry_deposition"
+       group="drydep_inparm" valid_values="" >
+Full pathname of file containing gas phase deposition data including effective
+Henry's law coefficients.
 Default: set by build-namelist.
 </entry>
 
@@ -7318,6 +7352,18 @@ incorrect cooling rates if model CO2 exceeds 720 ppmv.  If FALSE simulation will
 exceed this value at altitudes above 1 mbar.  The 720 ppmv CO2 limiter in the Formichev non-LTE cooling
 scheme is applied to all vertical levels regardless of this setting.
 Default: FALSE
+</entry>
+
+<entry id="nlte_use_aliarms" type="logical" category="waccm_phys"
+       group="radheat_nl" valid_values="" >
+If TRUE, then use the ALI-ARMS scheme (an alternative method of computing non-LTE heating rates in the upper atmosphere)
+Default: FALSE
+</entry>
+
+<entry id="nlte_aliarms_every_x" type="integer" category="waccm_phys"
+       group="radheat_nl" valid_values="" >
+Call ALI-ARMS every X timesteps
+Default: 1
 </entry>
 
 <entry id="qbo_cyclic" type="logical" category="waccm_phys"

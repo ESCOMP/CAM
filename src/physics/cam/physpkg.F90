@@ -149,17 +149,20 @@ contains
     use cloud_diagnostics,  only: cloud_diagnostics_register
     use cospsimulator_intr, only: cospsimulator_intr_register
     use rad_constituents,   only: rad_cnst_get_info ! Added to query if it is a modal aero sim or not
+    use radheat,            only: radheat_register
     use subcol,             only: subcol_register
     use subcol_utils,       only: is_subcol_on, subcol_get_scheme
     use dyn_comp,           only: dyn_register
     use spcam_drivers,      only: spcam_register
     use offline_driver,     only: offline_driver_reg
+    use upper_bc,           only: ubc_fixed_conc
 
     !---------------------------Local variables-----------------------------
     !
     integer  :: m        ! loop index
     integer  :: mm       ! constituent index
     integer  :: nmodes
+    logical  :: has_fixed_ubc ! for upper bndy cond
     !-----------------------------------------------------------------------
 
     ! Get physics options
@@ -186,11 +189,12 @@ contains
     ! Register water vapor.
     ! ***** N.B. ***** This must be the first call to cnst_add so that
     !                  water vapor is constituent 1.
+    has_fixed_ubc = ubc_fixed_conc('Q') ! .false.
     if (moist_physics) then
-       call cnst_add('Q', mwh2o, cpwv, 1.E-12_r8, mm, &
+       call cnst_add('Q', mwh2o, cpwv, 1.E-12_r8, mm, fixed_ubc=has_fixed_ubc, &
             longname='Specific humidity', readiv=.true., is_convtran1=.true.)
     else
-       call cnst_add('Q', mwh2o, cpwv, 0.0_r8, mm, &
+       call cnst_add('Q', mwh2o, cpwv, 0.0_r8, mm, fixed_ubc=has_fixed_ubc, &
             longname='Specific humidity', readiv=.false., is_convtran1=.true.)
     end if
 
@@ -311,6 +315,7 @@ contains
        ! radiation
        call radiation_register
        call cloud_diagnostics_register
+       call radheat_register
 
        ! COSP
        call cospsimulator_intr_register
@@ -703,7 +708,8 @@ contains
     use physics_buffer,     only: physics_buffer_desc, pbuf_initialize, pbuf_get_index
     use physconst,          only: rair, cpair, gravit, stebol, tmelt, &
                                   latvap, latice, rh2o, rhoh2o, pstd, zvir, &
-                                  karman, rhodair, physconst_init
+                                  karman, rhodair
+    use cam_thermo,         only: cam_thermo_init
     use ref_pres,           only: pref_edge, pref_mid
 
     use carma_intr,         only: carma_init
@@ -766,6 +772,7 @@ contains
     use cam_snapshot,       only: cam_snapshot_init
     use cam_history,        only: addfld, register_vector_field, add_default
     use phys_control,       only: phys_getopts
+    use phys_grid_ctem,     only: phys_grid_ctem_init
 
     ! Input/output arguments
     type(physics_state), pointer       :: phys_state(:)
@@ -793,9 +800,9 @@ contains
     end do
 
     !-------------------------------------------------------------------------------------------
-    ! Initialize any variables in physconst which are not temporally and/or spatially constant
+    ! Initialize any variables in cam_thermo which are not temporally and/or spatially constant
     !-------------------------------------------------------------------------------------------
-    call physconst_init()
+    call cam_thermo_init()
 
     ! Initialize debugging a physics column
     call phys_debug_init()
@@ -900,7 +907,7 @@ contains
        call rk_stratiform_init()
     elseif( microp_scheme == 'MG' ) then
        if (.not. do_clubb_sgs) call macrop_driver_init(pbuf2d)
-       call microp_aero_init(pbuf2d)
+       call microp_aero_init(phys_state,pbuf2d)
        call microp_driver_init(pbuf2d)
        call conv_water_init
     elseif( microp_scheme == 'SPCAM_m2005') then
@@ -959,6 +966,9 @@ contains
 
     ! Initialize qneg3 and qneg4
     call qneg_init()
+
+    ! Initialize phys TEM diagnostics
+    call phys_grid_ctem_init()
 
     ! Initialize the snapshot capability
     call cam_snapshot_init(cam_in, cam_out, pbuf2d, begchunk)
@@ -1296,6 +1306,9 @@ contains
     use chemistry, only : chem_final
     use carma_intr, only : carma_final
     use wv_saturation, only : wv_sat_final
+    use microp_aero, only : microp_aero_final
+    use phys_grid_ctem, only : phys_grid_ctem_final
+
     !-----------------------------------------------------------------------
     !
     ! Purpose:
@@ -1316,6 +1329,8 @@ contains
     call chem_final
     call carma_final
     call wv_sat_final
+    call microp_aero_final()
+    call phys_grid_ctem_final()
 
   end subroutine phys_final
 
@@ -2872,6 +2887,7 @@ subroutine phys_timestep_init(phys_state, cam_in, cam_out, pbuf2d)
   use iop_forcing,         only: scam_use_iop_srf
   use nudging,             only: Nudge_Model, nudging_timestep_init
   use waccmx_phys_intr,    only: waccmx_phys_ion_elec_temp_timestep_init
+  use phys_grid_ctem,      only: phys_grid_ctem_diags
 
   implicit none
 
@@ -2944,6 +2960,9 @@ subroutine phys_timestep_init(phys_state, cam_in, cam_out, pbuf2d)
   ! Update Nudging values, if needed
   !----------------------------------
   if(Nudge_Model) call nudging_timestep_init(phys_state)
+
+  ! Update TEM diagnostics
+  call phys_grid_ctem_diags(phys_state)
 
 end subroutine phys_timestep_init
 

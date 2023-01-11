@@ -1228,19 +1228,20 @@ subroutine gw_tend(state, pbuf, dt, ptend, cam_in, flx_heat)
   ! Interface for multiple gravity wave drag parameterization.
   !-----------------------------------------------------------------------
 
-  use physics_types,  only: physics_state_copy, set_dry_to_wet
-  use constituents,   only: cnst_type
-  use physics_buffer, only: physics_buffer_desc, pbuf_get_field
-  use camsrfexch, only: cam_in_t
+  use physics_types,   only: physics_state_copy, set_dry_to_wet
+  use constituents,    only: cnst_type
+  use physics_buffer,  only: physics_buffer_desc, pbuf_get_field
+  use camsrfexch,      only: cam_in_t
   ! Location-dependent cpair
-  use physconst,  only: cpairv, pi
-  use coords_1d,  only: Coords1D
-  use gw_common,  only: gw_prof, gw_drag_prof, calc_taucd, &
-       momentum_flux, momentum_fixer, energy_change, energy_fixer, &
-       coriolis_speed, adjust_inertial
-  use gw_oro,     only: gw_oro_src
-  use gw_front,   only: gw_cm_src
-  use gw_convect, only: gw_beres_src
+  use air_composition, only: cpairv
+  use physconst,       only: pi
+  use coords_1d,       only: Coords1D
+  use gw_common,       only: gw_prof, gw_drag_prof, calc_taucd
+  use gw_common,       only: momentum_flux, momentum_fixer, energy_change
+  use gw_common,       only: energy_fixer, coriolis_speed, adjust_inertial
+  use gw_oro,          only: gw_oro_src
+  use gw_front,        only: gw_cm_src
+  use gw_convect,      only: gw_beres_src
 
   !------------------------------Arguments--------------------------------
   type(physics_state), intent(in) :: state   ! physics state structure
