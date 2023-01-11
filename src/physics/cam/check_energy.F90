@@ -1141,7 +1141,9 @@ end subroutine check_energy_get_integrals
            state%pdel(1:ncol,1:pver), cp_or_cv(1:ncol,1:pver),                         &
            state%u(1:ncol,1:pver), state%v(1:ncol,1:pver), temp(1:ncol,1:pver),        &
            vc_loc, ps = state%ps(1:ncol), phis = state%phis(1:ncol),                   &
-           z_mid = state%z_ini(1:ncol,:), se = se, po = po, ke = ke, wv = wv, liq = liq, ice = ice)
+           z_mid = state%z_ini(1:ncol,:), se = se(1:ncol),                             &
+           po = po(1:ncol), ke = ke(1:ncol), wv = wv(1:ncol), liq = liq(1:ncol),       &
+           ice = ice(1:ncol))
 
       call cnst_get_ind('TT_LW' , ixtt    , abort=.false.)
 
