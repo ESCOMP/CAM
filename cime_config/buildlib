@@ -347,6 +347,7 @@ def _build_tuvx(caseroot, libroot, bldroot):
         cmake_args += "-DENABLE_TESTS=OFF "
         cmake_args += "-DJSON_INCLUDE_DIR={} ".format(jsoninc)
         cmake_args += "-DJSON_LIB={} ".format(jsonlib)
+        cmake_args += "-DENABLE_LOCAL_MUSICA_CORE=ON "
         cmake_args += "-DMUSICA_CORE_INCLUDE_DIR={} ".format(coreinc)
         cmake_args += "-DMUSICA_CORE_LIB={} ".format(corelib)
         cmake_args += "-DCMAKE_Fortran_FLAGS='{}' ".format(arg_dict["FFLAGS"])
