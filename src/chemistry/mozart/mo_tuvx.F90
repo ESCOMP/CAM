@@ -837,7 +837,7 @@ contains
 
     do i_diag = 1, size( diagnostics )
     associate( diag => diagnostics( i_diag ) )
-      call outfld( "tuvx_"//diag%name_, this%photo_rates_(:ncol,:,diag%index_), &
+      call outfld( "tuvx_"//diag%name_, this%photo_rates_(:ncol,pver:1:-1,diag%index_), &
                    ncol, lchnk )
     end associate
     end do
