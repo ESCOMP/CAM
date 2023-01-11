@@ -3740,20 +3740,17 @@ Coefficient in the pressure-turbulence term of CLUBB's wp3 predictive equation.
 <entry id="clubb_detice_rad" type="real" category="pblrad"
        group="clubb_params_nl" valid_values="" >
 Radius of detrained ice drops as they are used in the CLUBB parameterization in units of (m).
-Default: 25.0e-6 m
 </entry>
 
 <entry id="clubb_detliq_rad" type="real" category="pblrad"
        group="clubb_params_nl" valid_values="" >
 Radius of detrained liquid drops as they are used in the CLUBB parameterization in units of (m).
-Default: 8.0e-6 m
 </entry>
 
 <entry id="clubb_detphase_lowtemp" type="real" category="pblrad"
        group="clubb_params_nl" valid_values="" >
 Temperature at which detrained water is classified as entirely ice (no liquid)
 in the CLUBB parameterization in units of (K).
-Default: 238.15 K
 </entry>
 
 <entry id="clubb_do_energyfix" type="logical"  category="conv"
