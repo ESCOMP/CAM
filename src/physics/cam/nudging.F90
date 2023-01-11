@@ -1280,7 +1280,7 @@ contains
          ncol=phys_state(lchnk)%ncol
          Target_S(:ncol,:pver,lchnk)=cpair*Target_T(:ncol,:pver,lchnk)
        end do
-     elseif(Nudge_TSmode == 1) then   !***** FOR ZONAL MEAN VALUES WILL THIS OPTION BE A PROBLEM?? *****
+     elseif(Nudge_TSmode == 1) then
        ! Caluculate DSE tendencies from Temperature, Water Vapor, and Surface Pressure
        !------------------------------------------------------------------------------
        do lchnk=begchunk,endchunk
@@ -1681,6 +1681,7 @@ contains
     if (allocated(Nudge_Sstep)) deallocate(Nudge_Sstep)
     if (allocated(Nudge_Qstep)) deallocate(Nudge_Qstep)
     if (allocated(Nudge_PSstep)) deallocate(Nudge_PSstep)
+
     if (allocated(Nudge_ObsInd)) deallocate(Nudge_ObsInd)
     if (allocated(Nudge_File_Present)) deallocate(Nudge_File_Present)
     if (allocated(Nobs_U)) deallocate(Nobs_U)
