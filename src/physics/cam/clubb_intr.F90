@@ -186,7 +186,7 @@ module clubb_intr
                                  ! CLUBB's multivariate, two-component PDF.
     clubb_ipdf_call_placement = unset_i, & ! Selected option for the placement of the call to
                                            ! CLUBB's PDF.
-    clubb_penta_solve_method = unset_i,  & ! Specifier for method to solve then penta-diagonal system
+    clubb_penta_solve_method = unset_i,  & ! Specifier for method to solve the penta-diagonal system
     clubb_tridiag_solve_method = unset_i   ! Specifier for method to solve tri-diagonal systems
 
 
@@ -293,7 +293,7 @@ module clubb_intr
     clubb_l_use_tke_in_wp2_wp3_K_dfsn,  & ! Use TKE in eddy diffusion for wp2 and wp3
     clubb_l_smooth_Heaviside_tau_wpxp,  & ! Use smooth Heaviside 'Peskin' in computation of invrs_tau
     clubb_l_enable_relaxed_clipping,    & ! Flag to relax clipping on wpxp in xm_wpxp_clipping_and_stats
-    clubb_l_linearize_pbl_winds,        & ! Code to linearize PBL winds
+    clubb_l_linearize_pbl_winds,        & ! Flag to turn on code to linearize PBL winds
     clubb_l_single_C2_Skw,              & ! Use a single Skewness dependent C2 for rtp2, thlp2, and
                                           ! rtpthlp
     clubb_l_damp_wp3_Skw_squared,       & ! Set damping on wp3 to use Skw^2 rather than Skw^4
@@ -2069,16 +2069,15 @@ end subroutine clubb_init_cnst
     ! Local CLUBB variables dimensioned as NCOL (only useful columns) to be sent into the clubb run api
     ! NOTE: THESE VARIABLS SHOULD NOT BE USED IN PBUF OR OUTFLD (HISTORY) SUBROUTINES
     real(r8), dimension(state%ncol) :: &
-      fcor, &                  ! Coriolis forcing 			      	[s^-1]
-      sfc_elevation, &    		          ! Elevation of ground			      	[m AMSL]			      	[m]
-      wpthlp_sfc, &                       ! w' theta_l' at surface                        [(m K)/s]
-      wprtp_sfc, &                        ! w' r_t' at surface                            [(kg m)/( kg s)]
-      upwp_sfc, &                         ! u'w' at surface                               [m^2/s^2]
-      vpwp_sfc, &                         ! v'w' at surface                               [m^2/s^2]   
-      upwp_sfc_pert, &                    ! perturbed u'w' at surface                     [m^2/s^2]
-      vpwp_sfc_pert, &                    ! perturbed v'w' at surface                     [m^2/s^2]   
-      grid_dx, & 
-      grid_dy  ! CAM grid [m]      
+      fcor, &                             ! Coriolis forcing 			      	[s^-1]
+      sfc_elevation, &    		  ! Elevation of ground			      	[m AMSL][m]
+      wpthlp_sfc, &                       ! w' theta_l' at surface                      [(m K)/s]
+      wprtp_sfc, &                        ! w' r_t' at surface                          [(kg m)/( kg s)]
+      upwp_sfc, &                         ! u'w' at surface                             [m^2/s^2]
+      vpwp_sfc, &                         ! v'w' at surface                             [m^2/s^2]
+      upwp_sfc_pert, &                    ! perturbed u'w' at surface                   [m^2/s^2]
+      vpwp_sfc_pert, &                    ! perturbed v'w' at surface                   [m^2/s^2]
+      grid_dx, grid_dy                    ! CAM grid [m]
       
     real(r8), dimension(state%ncol,sclr_dim) :: &
       wpsclrp_sfc            ! Scalar flux at surface                        [{units vary} m/s]
@@ -2400,6 +2399,9 @@ end subroutine clubb_init_cnst
                                             s_awql,     s_awqi,        &
                                             s_awu,      s_awv,         &
                                             mf_thlflx,  mf_qtflx
+
+    real(r8) :: inv_rh2o ! To reduce the number of divisions in clubb_tend
+
     ! MF local vars
     real(r8), dimension(pcols,pverp)     :: rtm_zm_in,  thlm_zm_in,    & ! momentum grid
                                             dzt,        invrs_dzt,     & ! thermodynamic grid
@@ -2425,6 +2427,8 @@ end subroutine clubb_init_cnst
 #endif
     det_s(:)   = 0.0_r8
     det_ice(:) = 0.0_r8
+    inv_rh2o = 1._r8/rh2o
+
 #ifdef CLUBB_SGS
 
     !-----------------------------------------------------------------------------------!
@@ -3029,8 +3033,9 @@ end subroutine clubb_init_cnst
       wprtp_sfc(i)  = cam_in%cflx(i,1)/rho_zt(i,2)            ! Moisture flux  (check rho)
     end do
 
+    !  Based on Thomas Toniazzo's implementation in NorESM
     !  Other Surface fluxes provided by host model
-    if( (cld_macmic_num_steps > 1) .and. (clubb_l_intr_sfc_flux_smooth) ) then
+    if( (cld_macmic_num_steps > 1) .and. clubb_l_intr_sfc_flux_smooth ) then
        ! Adjust surface stresses using winds from the prior macmic iteration
        do i=1,ncol
           ubar = sqrt(state1%u(i,pver)**2+state1%v(i,pver)**2)
@@ -4018,13 +4023,13 @@ end subroutine clubb_init_cnst
     ! ------------------------------------------------- !
 
     !  density
-    rho(:ncol,1:pver) = state1%pmid(:ncol,1:pver)/(rairv(:ncol,1:pver,lchnk)*state1%t(:ncol,1:pver))
-    rho(:ncol,pverp)  = state1%ps(:ncol)/(rairv(:ncol,pver,lchnk)*state1%t(:ncol,pver))
+    rho(1:ncol,1:pver) = rga*state1%pdel(1:ncol,1:pver)/(state1%zi(1:ncol,1:pver)-state1%zi(1:ncol,2:pverp))
+    rho(1:ncol,pverp) = rho(1:ncol,pver)
 
     wpthvp_diag(:,:) = 0.0_r8
     do k=1,pver
       do i=1,ncol
-        eps = rairv(i,k,lchnk)/rh2o
+        eps = rairv(i,k,lchnk)*inv_rh2o
         !  buoyancy flux
         wpthvp_diag(i,k) = (wpthlp(i,k)-(apply_const*wpthlp_const))+((1._r8-eps)/eps)*theta0* &
                        (wprtp(i,k)-(apply_const*wprtp_const))+((latvap/cpairv(i,k,lchnk))* &
@@ -4075,8 +4080,8 @@ end subroutine clubb_init_cnst
     !  THIS PART COMPUTES CONVECTIVE AND DEEP CONVECTIVE CLOUD FRACTION                 !
     ! --------------------------------------------------------------------------------- ! 
  
-    deepcu(:,pver) = 0.0_r8
-    shalcu(:,pver) = 0.0_r8
+    deepcu(:,:) = 0.0_r8
+    shalcu(:,:) = 0.0_r8
  
     do k=1,pver-1
       do i=1,ncol
@@ -4181,13 +4186,15 @@ end subroutine clubb_init_cnst
     ! --------------------------------------------------------------------------------- !       
     do i=1,ncol
       do k=1,pver
-        th(i,k) = state1%t(i,k)*state1%exner(i,k)
-        thv(i,k) = th(i,k)*(1.0_r8+zvir*state1%q(i,k,ixq))
+         !use local exner since state%exner is not a proper exner
+         th(i,k) = state1%t(i,k)*inv_exner_clubb(i,k)
+         !thv should have condensate loading to be consistent with earlier def's in this module
+         thv(i,k) = th(i,k)*(1.0_r8+zvir*state1%q(i,k,ixq) - state1%q(i,k,ixcldliq))
       enddo
     enddo
  
     ! diagnose surface friction and obukhov length (inputs to diagnose PBL depth)
-    rrho(1:ncol) = (1._r8/gravit)*(state1%pdel(1:ncol,pver)/dz_g(1:ncol,pver)) 
+    rrho(1:ncol) = (rga)*(state1%pdel(1:ncol,pver)/dz_g(1:ncol,pver))
     call calc_ustar( ncol, state1%t(1:ncol,pver), state1%pmid(1:ncol,pver), cam_in%wsx(1:ncol), cam_in%wsy(1:ncol), &
                     rrho(1:ncol), ustar2(1:ncol))
     ! use correct qflux from coupler
