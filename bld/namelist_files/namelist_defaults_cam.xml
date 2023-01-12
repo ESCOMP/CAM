@@ -779,8 +779,9 @@
 <cam_physics_mesh waccmx_opt="ionosphere" hgrid="ne16np4">atm/cam/coords/ne16np4_esmf_c210305.nc</cam_physics_mesh>
 <cam_physics_mesh waccmx_opt="ionosphere" hgrid="ne30np4">atm/cam/coords/ne30np4_esmf_c210305.nc</cam_physics_mesh>
 <cam_physics_mesh waccmx_opt="ionosphere" hgrid="ne30np4" npg="3">atm/cam/coords/ne30pg3_esmf_20200428.nc</cam_physics_mesh>
-<cam_physics_mesh hemco="1" hgrid="0.9x1.25">atm/cam/coords/fv0.9x1.25_esmf_141008.nc'</cam_physics_mesh>
-<cam_physics_mesh hemco="1" hgrid="1.9x2.5">atm/cam/coords/fv1.9x2.5_esmf_141008.nc'</cam_physics_mesh>
+<cam_physics_mesh hemco="1"               hgrid="0.9x1.25">atm/cam/coords/fv0.9x1.25_esmf_c210305.nc</cam_physics_mesh>
+<cam_physics_mesh hemco="1"               hgrid="1.9x2.5">atm/cam/coords/fv1.9x2.5_esmf_200428.nc</cam_physics_mesh>
+<cam_physics_mesh hemco="1"               hgrid="ne30np4">atm/cam/coords/ne30np4_esmf_c210305.nc</cam_physics_mesh>
 
 <!-- For scaling lightning sources of NOx -->
 <lght_no_prd_factor                                              >1.00D0</lght_no_prd_factor>
