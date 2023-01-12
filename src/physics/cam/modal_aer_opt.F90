@@ -667,8 +667,8 @@ subroutine modal_aero_sw(list_idx, state, pbuf, nnite, idxnite, &
    call tropopause_findChemTrop(state, troplevchem)
 
 !++ag
-   aeuv(:ncol)          = 0.0_r8
-   aenir(:ncol)         = 0.0_r8
+   aeuv(:)          = 0.0_r8
+   aenir(:)         = 0.0_r8
 !--ag
 
    ! loop over all aerosol modes
@@ -1092,8 +1092,8 @@ subroutine modal_aero_sw(list_idx, state, pbuf, nnite, idxnite, &
 ! AEUV = -ln(AODVIS/AODUV) / ln(350/550)
 ! AENIR= -ln(AODVIS/AODNIR) / ln(350/1020)
 
-  aeuv(:)  = -log(aodvis(:)/aoduv(:)) / log(350._r8/550._r8)
-  aenir(:) = -log(aodvis(:)/aodnir(:)) / log(350._r8/550._r8)
+  aeuv(:ncol)  = -log(aodvis(:ncol)/aoduv(:ncol)) / log(350._r8/550._r8)
+  aenir(:ncol) = -log(aodvis(:ncol)/aodnir(:ncol)) / log(350._r8/550._r8)
 !--ag
 
    ! Output visible band diagnostics for quantities summed over the modes
