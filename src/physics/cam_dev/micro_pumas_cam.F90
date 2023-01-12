@@ -236,7 +236,6 @@ integer :: &
    frzdep_idx = -1
 
 logical :: allow_sed_supersat            ! allow supersaturated conditions after sedimentation loop
-logical :: micro_do_sb_physics           ! no longer needed, but kept because part of CAM namelist still (older CAM)
 character(len=16) :: micro_mg_warm_rain= 'emulated'  ! 'tau', 'emulated', 'sb2001' and ' kk2000'
 
 integer :: bergso_idx = -1
@@ -264,12 +263,10 @@ subroutine micro_pumas_cam_readnl(nlfile)
   integer :: unitn, ierr
   character(len=*), parameter :: sub = 'micro_pumas_cam_readnl'
 
-!CACNOTE - PUT BACK IN WHEN NAMELIST WORKING
-
   namelist /micro_mg_nl/ micro_mg_version, micro_mg_sub_version, &
        micro_mg_do_cldice, micro_mg_do_cldliq, micro_mg_num_steps, &
        microp_uniform, micro_mg_dcs, micro_mg_precip_frac_method, &
-       micro_mg_berg_eff_factor, micro_do_sb_physics, micro_mg_warm_rain, micro_mg_adjust_cpt, &
+       micro_mg_berg_eff_factor, micro_mg_warm_rain, micro_mg_adjust_cpt, &
        micro_mg_do_hail, micro_mg_do_graupel, micro_mg_ngcons, micro_mg_ngnst, &
        micro_mg_vtrmi_factor, micro_mg_effi_factor, micro_mg_iaccr_factor, &
        micro_mg_max_nicons, micro_mg_accre_enhan_fact, &
@@ -2337,16 +2334,15 @@ subroutine micro_pumas_cam_tend(state, ptend, dtime, pbuf)
       ! Update local state
       call physics_update(state_loc, ptend_loc, dtime/num_steps)
 
-!CACNOTE - Don't know if this still needs summing or not - if so need the init to zero that will be above
 !++ TAU
-!CACCOMMENT      proc_rates%amk_c = proc_rates%amk_c + packed_amk_c/num_steps
-!CACCOMMENT      proc_rates%ank_c = proc_rates%ank_c + packed_ank_c/num_steps
-!CACCOMMENT      proc_rates%amk_r = proc_rates%amk_r + packed_amk_r/num_steps
-!CACCOMMENT      proc_rates%ank_r = proc_rates%ank_r + packed_ank_r/num_steps
-!CACCOMMENT      proc_rates%amk = proc_rates%amk + packed_amk/num_steps
-!CACCOMMENT      proc_rates%ank = proc_rates%ank + packed_ank/num_steps
-!CACCOMMENT      proc_rates%amk_out = proc_rates%amk_out + packed_amk_out/num_steps
-!CACCOMMENT      proc_rates%ank_out = proc_rates%ank_out + packed_ank_out/num_steps
+      proc_rates%amk_c = proc_rates%amk_c/num_steps
+      proc_rates%ank_c = proc_rates%ank_c/num_steps
+      proc_rates%amk_r = proc_rates%amk_r/num_steps
+      proc_rates%ank_r = proc_rates%ank_r/num_steps
+      proc_rates%amk = proc_rates%amk/num_steps
+      proc_rates%ank = proc_rates%ank/num_steps
+      proc_rates%amk_out = proc_rates%amk_out/num_steps
+      proc_rates%ank_out = proc_rates%ank_out/num_steps
 !-- TAU
 
    end do

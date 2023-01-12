@@ -2064,6 +2064,7 @@
 
 <micro_mg_implicit_fall    phys="cam_dev" > .true. </micro_mg_implicit_fall>
 <micro_mg_accre_sees_auto  phys="cam_dev" > .true. </micro_mg_accre_sees_auto>
+<micro_mg_warm_rain        phys="cam_dev" > kk2000 </micro_mg_warm_rain>
 <micro_mg_precip_fall_corr phys="cam_dev" > .true. </micro_mg_precip_fall_corr>
 
 <cld_macmic_num_steps>                                            1 </cld_macmic_num_steps>

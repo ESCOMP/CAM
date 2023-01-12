@@ -2962,7 +2962,6 @@ if ($cfg->get('microphys') =~ /^mg/) {
     add_default($nl, 'nucleate_ice_incloud');
     add_default($nl, 'nucleate_ice_strat');
     add_default($nl, 'micro_mg_do_hail');
-    add_default($nl, 'micro_mg_warm_rain', 'val'=>'kk2000');
     add_default($nl, 'micro_mg_do_graupel');
     add_default($nl, 'graupel_in_rad');
     add_default($nl, 'micro_do_massless_droplet_destroyer');
@@ -2976,14 +2975,17 @@ if ($cfg->get('microphys') =~ /^mg/) {
     add_default($nl, 'micro_mg_iaccr_factor');
     add_default($nl, 'micro_mg_max_nicons');
 
-    # For CESM2, the decision was made to set micro_do_sb_physics to false
-    add_default($nl, 'micro_do_sb_physics', 'val'=>'.false.');
 
     # namelist options for pumas tag release_v1.22 or later
     #   (currently only in the cam_dev physics package)
     if ($phys =~ /cam_dev/) {
+        add_default($nl, 'micro_mg_warm_rain');
 	add_default($nl, 'micro_mg_accre_sees_auto');
 	add_default($nl, 'micro_mg_implicit_fall');
+    }else {
+    # For CESM2, the decision was made to set micro_do_sb_physics to false
+    # This variable is replaced with micro_mg_warm_rain in cam_dev runs
+        add_default($nl, 'micro_do_sb_physics', 'val'=>'.false.');
     }
 }
 
