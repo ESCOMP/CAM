@@ -3042,7 +3042,7 @@ end subroutine clubb_init_cnst
       wprtp_sfc(i)  = cam_in%cflx(i,1)/rho_zt(i,2)            ! Moisture flux  (check rho)
     end do
 
-    !  Based on Thomas Toniazzo's implementation in NorESM
+    ! Implementation after Thomas Toniazzo (NorESM) and Colin Zarzycki (PSU)
     !  Other Surface fluxes provided by host model
     if( (cld_macmic_num_steps > 1) .and. clubb_l_intr_sfc_flux_smooth ) then
        ! Adjust surface stresses using winds from the prior macmic iteration
