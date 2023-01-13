@@ -41,6 +41,7 @@
          {
             "name": "air",
             "type": "base",
+            "treat as air": true,
             "cross section": "air",
             "vertical profile": "air",
             "vertical profile units": "molecule cm-3"
@@ -1207,280 +1208,282 @@
          }
       ]
    },
-   "__CAM aliasing": {
-      "default matching": "backup",
-      "pairs": [
-         {
-            "to": "jno_i",
-            "__reaction": "NO + hv -> NOp + e",
-            "__comments": "TODO find this rate",
-            "from": "jo2_b",
-            "scale by": 0.0
-         },
-         {
-            "to": "jalknit",
-            "__reaction": "ALKNIT + hv -> NO2 + 0.4*CH3CHO + 0.1*CH2O + 0.25*CH3COCH3 + HO2 + 0.8*MEK",
-            "from": "jch3ooh"
-         },
-         {
-            "to": "jpooh",
-            "__reaction": "POOH (C3H6OHOOH) + hv -> CH3CHO + CH2O + HO2 + OH",
-            "from": "jch3ooh"
-         },
-         {
-            "to": "jch3co3h",
-            "__reaction": "CH3COOOH + hv -> CH3O2 + OH + CO2",
-            "from": "jh2o2",
-            "scale by": 0.28
-         },
-         {
-            "to": "jmpan",
-            "__reaction": "MPAN + hv -> MCO3 + NO2",
-            "from": "jpan"
-         },
-         {
-            "to": "jc2h5ooh",
-            "__reaction": "C2H5OOH + hv -> CH3CHO + HO2 + OH",
-            "from": "jch3ooh"
-         },
-         {
-            "to": "jc3h7ooh",
-            "__reaction": "C3H7OOH + hv -> 0.82*CH3COCH3 + OH + HO2",
-            "from": "jch3ooh"
-         },
-         {
-            "to": "jc6h5ooh",
-            "__reaction": "C6H5OOH + hv -> PHENO + OH",
-            "from": "jch3ooh"
-         },
-         {
-            "to": "jeooh",
-            "__reaction": "EOOH + hv -> EO + OH",
-            "from": "jch3ooh"
-         },
-         {
-            "to": "jrooh",
-            "__reaction": "ROOH + hv -> CH3CO3 + CH2O + OH",
-            "from": "jch3ooh"
-         },
-         {
-            "to": "jxooh",
-            "__reaction": "XOOH + hv -> OH",
-            "from": "jch3ooh"
-         },
-         {
-            "to": "jonitr",
-            "__reaction": "ONITR + hv -> NO2",
-            "from": "jch3cho"
-         },
-         {
-            "to": "jisopooh",
-            "__reaction": "ISOPOOH + hv -> 0.402*MVK + 0.288*MACR + 0.69*CH2O + HO2",
-            "from": "jch3ooh"
-         },
-         {
-            "to": "jmek",
-            "__reaction": "MEK + hv -> CH3CO3 + C2H5O2",
-            "from": "jacet"
-         },
-         {
-            "to": "jalkooh",
-            "__reaction": "ALKOOH + hv  -> .4*CH3CHO + .1*CH2O + .25*CH3COCH3 + .9*HO2 + .8*MEK + OH",
-            "from": "jch3ooh"
-         },
-         {
-            "to": "jbenzooh",
-            "__reaction": "BENZOOH + hv -> OH + GLYOXAL + 0.5*BIGALD1 + HO2",
-            "from": "jch3ooh"
-         },
-         {
-            "to": "jbepomuc",
-            "__reaction": "BEPOMUC + hv -> BIGALD1 + 1.5*HO2 + 1.5*CO",
-            "from": "jno2",
-            "scale by": 0.1
-         },
-         {
-            "to": "jbigald",
-            "__reaction": "BIGALD + hv -> 0.45*CO + 0.13*GLYOXAL + 0.56*HO2 + 0.13*CH3CO3 + 0.18*CH3COCHO",
-            "from": "jno2",
-            "scale by": 0.2
-         },
-         {
-            "to": "jbigald1",
-            "__reaction": "BIGALD1 + hv -> 0.6*MALO2 + HO2",
-            "from": "jno2",
-            "scale by": 0.14
-         },
-         {
-            "to": "jbigald2",
-            "__reaction": "BIGALD2 + hv -> 0.6*HO2 + 0.6*DICARBO2",
-            "from": "jno2",
-            "scale by": 0.2
-         },
-         {
-            "to": "jbigald3",
-            "__reaction": "BIGALD3 + hv -> 0.6*HO2 + 0.6*CO + 0.6*MDIALO2",
-            "from": "jno2",
-            "scale by": 0.2
-         },
-         {
-            "to": "jbigald4",
-            "__reaction": "BIGALD4 + hv -> HO2 + CO + CH3COCHO + CH3CO3",
-            "from": "jno2",
-            "scale by": 0.006
-         },
-         {
-            "to": "jbzooh",
-            "__reaction": "BZOOH + hv -> BZALD + OH + HO2",
-            "from": "jch3ooh"
-         },
-         {
-            "to": "jmekooh",
-            "__reaction": "MEKOOH + hv  -> OH + CH3CO3 + CH3CHO",
-            "from": "jch3ooh"
-         },
-         {
-            "to": "jtolooh",
-            "__reaction": "TOLOOH + hv  -> OH + .45*GLYOXAL + .45*CH3COCHO + .9*BIGALD",
-            "from": "jch3ooh"
-         },
-         {
-            "to": "jterpooh",
-            "__reaction": "TERPOOH + hv  -> OH + .1*CH3COCH3 + HO2 + MVK + MACR",
-            "from": "jch3ooh"
-         },
-         {
-            "to": "jhonitr",
-            "__reaction": "HONITR + hv -> NO2 + 0.67*HO2 + 0.33*CH3CHO + 0.33*CH2O + 0.33*CO + 0.33*GLYALD + 0.33*CH3CO3 + 0.17*HYAC + 0.17*CH3COCH3",
-            "from": "jch2o_a"
-         },
-         {
-            "to": "jhpald",
-            "__reaction": "HPALD + hv -> BIGALD3 + OH + HO2",
-            "from": "jno2",
-            "scale by": 0.006
-         },
-         {
-            "to": "jisopnooh",
-            "__reaction": "ISOPNOOH + hv -> NO2 + HO2 + ISOPOOH",
-            "from": "jch3ooh"
-         },
-         {
-            "to": "jnc4cho",
-            "__reaction": "NC4CHO + hv -> BIGALD3 + NO2 + HO2",
-            "from": "jch2o_a"
-         },
-         {
-            "to": "jnoa",
-            "__reaction": "NOA + hv -> NO2 + CH2O + CH3CO3",
-            "from": "jch2o_a"
-         },
-         {
-            "to": "jnterpooh",
-            "__reaction": "NTERPOOH + hv -> TERPROD1 + NO2 + OH",
-            "from": "jch3ooh"
-         },
-         {
-            "to": "jphenooh",
-            "__reaction": "PHENOOH + hv -> OH + HO2 + 0.7*GLYOXAL",
-            "from": "jch3ooh"
-         },
-         {
-            "to": "jtepomuc",
-            "__reaction": "TEPOMUC + hv -> 0.5*CH3CO3 + HO2 + 1.5*CO",
-            "from": "jno2",
-            "scale by": 0.1
-         },
-         {
-            "to": "jterp2ooh",
-            "__reaction": "TERP2OOH + hv -> OH + 0.375*CH2O + 0.3*CH3COCH3 + 0.25*CO + CO2 + TERPROD2 + HO2 + 0.25*GLYALD",
-            "from": "jch3ooh"
-         },
-         {
-            "to": "jterpnit",
-            "__reaction": "TERPNIT + hv -> TERPROD1 + NO2 + HO2",
-            "from": "jch3ooh"
-         },
-         {
-            "to": "jterprd1",
-            "__reaction": "TERPROD1 + hv -> HO2 + CO + TERPROD2",
-            "from": "jch3cho"
-         },
-         {
-            "to": "jterprd2",
-            "__reaction": "TERPROD2 + hv -> 0.15*RO2 + 0.68*CH2O + 0.8*CO2 + 0.5*CH3COCH3 + 0.65*CH3CO3 + 1.2*HO2 + 1.7*CO",
-            "from": "jch3cho"
-         },
-         {
-            "to": "jxylenooh",
-            "__reaction": "XYLENOOH + hv -> OH + HO2 + 0.34*GLYOXAL + 0.54*CH3COCHO + 0.06*BIGALD1 + 0.2*BIGALD2 + 0.15*BIGALD3 + 0.21*BIGALD4",
-            "from": "jch3ooh"
-         },
-         {
-            "to": "jxylolooh",
-            "__reaction": "XYLOLOOH + hv -> OH + 0.17*GLYOXAL + 0.51*CH3COCHO + HO2",
-            "from": "jch3ooh"
-         },
-         {
-            "to": "jsoa1_a1",
-            "__reaction": "soa1_a1 + hv -> Products",
-            "from": "jno2",
-            "scale by": 0.0004
-         },
-         {
-            "to": "jsoa1_a2",
-            "__reaction": "soa1_a2 + hv -> Products",
-            "from": "jno2",
-            "scale by": 0.0004
-         },
-         {
-            "to": "jsoa2_a1",
-            "__reaction": "soa2_a1 + hv -> Products",
-            "from": "jno2",
-            "scale by": 0.0004
-         },
-         {
-            "to": "jsoa2_a2",
-            "__reaction": "soa2_a2 + hv -> Products",
-            "from": "jno2",
-            "scale by": 0.0004
-         },
-         {
-            "to": "jsoa3_a1",
-            "__reaction": "soa3_a1 + hv -> Products",
-            "from": "jno2",
-            "scale by": 0.0004
-         },
-         {
-            "to": "jsoa3_a2",
-            "__reaction": "soa3_a2 + hv -> Products",
-            "from": "jno2",
-            "scale by": 0.0004
-         },
-         {
-            "to": "jsoa4_a1",
-            "__reaction": "soa4_a1 + hv -> Products",
-            "from": "jno2",
-            "scale by": 0.0004
-         },
-         {
-            "to": "jsoa4_a2",
-            "__reaction": "soa4_a2 + hv -> Products",
-            "from": "jno2",
-            "scale by": 0.0004
-         },
-         {
-            "to": "jsoa5_a1",
-            "__reaction": "soa5_a1 + hv -> Products",
-            "from": "jno2",
-            "scale by": 0.0004
-         },
-         {
-            "to": "jsoa5_a2",
-            "__reaction": "soa5_a2 + hv -> Products",
-            "from": "jno2",
-            "scale by": 0.0004
-         }
-      ]
+   "__CAM options": {
+      "aliasing": {
+        "default matching": "backup",
+        "pairs": [
+           {
+              "to": "jno_i",
+              "__reaction": "NO + hv -> NOp + e",
+              "__comments": "TODO find this rate",
+              "from": "jo2_b",
+              "scale by": 0.0
+           },
+           {
+              "to": "jalknit",
+              "__reaction": "ALKNIT + hv -> NO2 + 0.4*CH3CHO + 0.1*CH2O + 0.25*CH3COCH3 + HO2 + 0.8*MEK",
+              "from": "jch3ooh"
+           },
+           {
+              "to": "jpooh",
+              "__reaction": "POOH (C3H6OHOOH) + hv -> CH3CHO + CH2O + HO2 + OH",
+              "from": "jch3ooh"
+           },
+           {
+              "to": "jch3co3h",
+              "__reaction": "CH3COOOH + hv -> CH3O2 + OH + CO2",
+              "from": "jh2o2",
+              "scale by": 0.28
+           },
+           {
+              "to": "jmpan",
+              "__reaction": "MPAN + hv -> MCO3 + NO2",
+              "from": "jpan"
+           },
+           {
+              "to": "jc2h5ooh",
+              "__reaction": "C2H5OOH + hv -> CH3CHO + HO2 + OH",
+              "from": "jch3ooh"
+           },
+           {
+              "to": "jc3h7ooh",
+              "__reaction": "C3H7OOH + hv -> 0.82*CH3COCH3 + OH + HO2",
+              "from": "jch3ooh"
+           },
+           {
+              "to": "jc6h5ooh",
+              "__reaction": "C6H5OOH + hv -> PHENO + OH",
+              "from": "jch3ooh"
+           },
+           {
+              "to": "jeooh",
+              "__reaction": "EOOH + hv -> EO + OH",
+              "from": "jch3ooh"
+           },
+           {
+              "to": "jrooh",
+              "__reaction": "ROOH + hv -> CH3CO3 + CH2O + OH",
+              "from": "jch3ooh"
+           },
+           {
+              "to": "jxooh",
+              "__reaction": "XOOH + hv -> OH",
+              "from": "jch3ooh"
+           },
+           {
+              "to": "jonitr",
+              "__reaction": "ONITR + hv -> NO2",
+              "from": "jch3cho"
+           },
+           {
+              "to": "jisopooh",
+              "__reaction": "ISOPOOH + hv -> 0.402*MVK + 0.288*MACR + 0.69*CH2O + HO2",
+              "from": "jch3ooh"
+           },
+           {
+              "to": "jmek",
+              "__reaction": "MEK + hv -> CH3CO3 + C2H5O2",
+              "from": "jacet"
+           },
+           {
+              "to": "jalkooh",
+              "__reaction": "ALKOOH + hv  -> .4*CH3CHO + .1*CH2O + .25*CH3COCH3 + .9*HO2 + .8*MEK + OH",
+              "from": "jch3ooh"
+           },
+           {
+              "to": "jbenzooh",
+              "__reaction": "BENZOOH + hv -> OH + GLYOXAL + 0.5*BIGALD1 + HO2",
+              "from": "jch3ooh"
+           },
+           {
+              "to": "jbepomuc",
+              "__reaction": "BEPOMUC + hv -> BIGALD1 + 1.5*HO2 + 1.5*CO",
+              "from": "jno2",
+              "scale by": 0.1
+           },
+           {
+              "to": "jbigald",
+              "__reaction": "BIGALD + hv -> 0.45*CO + 0.13*GLYOXAL + 0.56*HO2 + 0.13*CH3CO3 + 0.18*CH3COCHO",
+              "from": "jno2",
+              "scale by": 0.2
+           },
+           {
+              "to": "jbigald1",
+              "__reaction": "BIGALD1 + hv -> 0.6*MALO2 + HO2",
+              "from": "jno2",
+              "scale by": 0.14
+           },
+           {
+              "to": "jbigald2",
+              "__reaction": "BIGALD2 + hv -> 0.6*HO2 + 0.6*DICARBO2",
+              "from": "jno2",
+              "scale by": 0.2
+           },
+           {
+              "to": "jbigald3",
+              "__reaction": "BIGALD3 + hv -> 0.6*HO2 + 0.6*CO + 0.6*MDIALO2",
+              "from": "jno2",
+              "scale by": 0.2
+           },
+           {
+              "to": "jbigald4",
+              "__reaction": "BIGALD4 + hv -> HO2 + CO + CH3COCHO + CH3CO3",
+              "from": "jno2",
+              "scale by": 0.006
+           },
+           {
+              "to": "jbzooh",
+              "__reaction": "BZOOH + hv -> BZALD + OH + HO2",
+              "from": "jch3ooh"
+           },
+           {
+              "to": "jmekooh",
+              "__reaction": "MEKOOH + hv  -> OH + CH3CO3 + CH3CHO",
+              "from": "jch3ooh"
+           },
+           {
+              "to": "jtolooh",
+              "__reaction": "TOLOOH + hv  -> OH + .45*GLYOXAL + .45*CH3COCHO + .9*BIGALD",
+              "from": "jch3ooh"
+           },
+           {
+              "to": "jterpooh",
+              "__reaction": "TERPOOH + hv  -> OH + .1*CH3COCH3 + HO2 + MVK + MACR",
+              "from": "jch3ooh"
+           },
+           {
+              "to": "jhonitr",
+              "__reaction": "HONITR + hv -> NO2 + 0.67*HO2 + 0.33*CH3CHO + 0.33*CH2O + 0.33*CO + 0.33*GLYALD + 0.33*CH3CO3 + 0.17*HYAC + 0.17*CH3COCH3",
+              "from": "jch2o_a"
+           },
+           {
+              "to": "jhpald",
+              "__reaction": "HPALD + hv -> BIGALD3 + OH + HO2",
+              "from": "jno2",
+              "scale by": 0.006
+           },
+           {
+              "to": "jisopnooh",
+              "__reaction": "ISOPNOOH + hv -> NO2 + HO2 + ISOPOOH",
+              "from": "jch3ooh"
+           },
+           {
+              "to": "jnc4cho",
+              "__reaction": "NC4CHO + hv -> BIGALD3 + NO2 + HO2",
+              "from": "jch2o_a"
+           },
+           {
+              "to": "jnoa",
+              "__reaction": "NOA + hv -> NO2 + CH2O + CH3CO3",
+              "from": "jch2o_a"
+           },
+           {
+              "to": "jnterpooh",
+              "__reaction": "NTERPOOH + hv -> TERPROD1 + NO2 + OH",
+              "from": "jch3ooh"
+           },
+           {
+              "to": "jphenooh",
+              "__reaction": "PHENOOH + hv -> OH + HO2 + 0.7*GLYOXAL",
+              "from": "jch3ooh"
+           },
+           {
+              "to": "jtepomuc",
+              "__reaction": "TEPOMUC + hv -> 0.5*CH3CO3 + HO2 + 1.5*CO",
+              "from": "jno2",
+              "scale by": 0.1
+           },
+           {
+              "to": "jterp2ooh",
+              "__reaction": "TERP2OOH + hv -> OH + 0.375*CH2O + 0.3*CH3COCH3 + 0.25*CO + CO2 + TERPROD2 + HO2 + 0.25*GLYALD",
+              "from": "jch3ooh"
+           },
+           {
+              "to": "jterpnit",
+              "__reaction": "TERPNIT + hv -> TERPROD1 + NO2 + HO2",
+              "from": "jch3ooh"
+           },
+           {
+              "to": "jterprd1",
+              "__reaction": "TERPROD1 + hv -> HO2 + CO + TERPROD2",
+              "from": "jch3cho"
+           },
+           {
+              "to": "jterprd2",
+              "__reaction": "TERPROD2 + hv -> 0.15*RO2 + 0.68*CH2O + 0.8*CO2 + 0.5*CH3COCH3 + 0.65*CH3CO3 + 1.2*HO2 + 1.7*CO",
+              "from": "jch3cho"
+           },
+           {
+              "to": "jxylenooh",
+              "__reaction": "XYLENOOH + hv -> OH + HO2 + 0.34*GLYOXAL + 0.54*CH3COCHO + 0.06*BIGALD1 + 0.2*BIGALD2 + 0.15*BIGALD3 + 0.21*BIGALD4",
+              "from": "jch3ooh"
+           },
+           {
+              "to": "jxylolooh",
+              "__reaction": "XYLOLOOH + hv -> OH + 0.17*GLYOXAL + 0.51*CH3COCHO + HO2",
+              "from": "jch3ooh"
+           },
+           {
+              "to": "jsoa1_a1",
+              "__reaction": "soa1_a1 + hv -> Products",
+              "from": "jno2",
+              "scale by": 0.0004
+           },
+           {
+              "to": "jsoa1_a2",
+              "__reaction": "soa1_a2 + hv -> Products",
+              "from": "jno2",
+              "scale by": 0.0004
+           },
+           {
+              "to": "jsoa2_a1",
+              "__reaction": "soa2_a1 + hv -> Products",
+              "from": "jno2",
+              "scale by": 0.0004
+           },
+           {
+              "to": "jsoa2_a2",
+              "__reaction": "soa2_a2 + hv -> Products",
+              "from": "jno2",
+              "scale by": 0.0004
+           },
+           {
+              "to": "jsoa3_a1",
+              "__reaction": "soa3_a1 + hv -> Products",
+              "from": "jno2",
+              "scale by": 0.0004
+           },
+           {
+              "to": "jsoa3_a2",
+              "__reaction": "soa3_a2 + hv -> Products",
+              "from": "jno2",
+              "scale by": 0.0004
+           },
+           {
+              "to": "jsoa4_a1",
+              "__reaction": "soa4_a1 + hv -> Products",
+              "from": "jno2",
+              "scale by": 0.0004
+           },
+           {
+              "to": "jsoa4_a2",
+              "__reaction": "soa4_a2 + hv -> Products",
+              "from": "jno2",
+              "scale by": 0.0004
+           },
+           {
+              "to": "jsoa5_a1",
+              "__reaction": "soa5_a1 + hv -> Products",
+              "from": "jno2",
+              "scale by": 0.0004
+           },
+           {
+              "to": "jsoa5_a2",
+              "__reaction": "soa5_a2 + hv -> Products",
+              "from": "jno2",
+              "scale by": 0.0004
+           }
+        ]
+      }
    }
 }

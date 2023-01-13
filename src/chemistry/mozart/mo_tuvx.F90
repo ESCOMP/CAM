@@ -241,22 +241,30 @@ contains
     class(core_t), pointer :: core
     character, allocatable :: buffer(:)
     type(string_t) :: config_path
-    type(config_t) :: tuvx_config, map_config
+    type(config_t) :: tuvx_config, cam_config, map_config
     type(map_t) :: map
     class(grid_t), pointer :: height
     class(grid_warehouse_t), pointer :: cam_grids
     class(profile_warehouse_t), pointer :: cam_profiles
     class(radiator_warehouse_t), pointer :: cam_radiators
     integer :: pack_size, pos, i_core, i_err
+    logical :: disable_aerosols
+    type(string_t) :: required_keys(1), optional_keys(1)
     logical, save :: is_initialized = .false.
 
     if( .not. tuvx_active ) return
     if( is_initialized ) return
     is_initialized = .true.
 
+    if( is_main_task ) write(iulog,*) "Beginning TUV-x Initialization"
+
     config_path = trim(tuvx_config_path)
 
-    if( is_main_task ) call log_initialization( )
+    ! ===============================
+    ! CAM TUV-x configuration options
+    ! ===============================
+    required_keys(1) = "aliasing"
+    optional_keys(1) = "disable aerosols"
 
 #ifndef HAVE_MPI
     call assert_msg( 113937299, is_main_task, "Multiple tasks present without " &
@@ -267,7 +275,6 @@ contains
     ! set the maximum solar zenith angle to calculate photo rates for
     ! ===============================================================
     max_sza = max_solar_zenith_angle
-    if( is_main_task ) write(iulog,*) "TUV-x max solar zenith angle [degrees]:", max_sza
     if( max_sza <= 0.0_r8 .or. max_sza > 180.0_r8 ) then
       call endrun( "TUV-x: max solar zenith angle must be between 0 and 180 degress" )
     end if
@@ -290,19 +297,27 @@ contains
     ! ==================================================================
     if( is_main_task ) then
       call tuvx_config%from_file( config_path%to_char( ) )
-      call tuvx_config%get( "__CAM aliasing", map_config, my_name )
+      call tuvx_config%get( "__CAM options", cam_config, my_name )
+      call assert_msg( 973680295, &
+                       cam_config%validate( required_keys, optional_keys ), &
+                       "Bad configuration for CAM TUV-x options." )
+      call cam_config%get( "disable aerosols", disable_aerosols, my_name, &
+                           default = .false. )
+      call cam_config%get( "aliasing", map_config, my_name )
       core => core_t( config_path, cam_grids, cam_profiles, cam_radiators )
       call set_photo_rate_map( core, map_config, do_euv, do_jno, jno_index, map )
       pack_size = core%pack_size( mpicom ) + &
                   map%pack_size( mpicom ) + &
                   musica_mpi_pack_size( do_jno, mpicom ) + &
-                  musica_mpi_pack_size( jno_index, mpicom )
+                  musica_mpi_pack_size( jno_index, mpicom ) + &
+                  musica_mpi_pack_size( disable_aerosols, mpicom )
       allocate( buffer( pack_size ) )
       pos = 0
       call core%mpi_pack( buffer, pos, mpicom )
       call map%mpi_pack(  buffer, pos, mpicom )
-      call musica_mpi_pack( buffer, pos, do_jno,    mpicom )
-      call musica_mpi_pack( buffer, pos, jno_index, mpicom )
+      call musica_mpi_pack( buffer, pos, do_jno,           mpicom )
+      call musica_mpi_pack( buffer, pos, jno_index,        mpicom )
+      call musica_mpi_pack( buffer, pos, disable_aerosols, mpicom )
       deallocate( core )
     end if
 
@@ -333,13 +348,15 @@ contains
       pos = 0
       call tuvx%core_%mpi_unpack( buffer, pos, mpicom )
       call tuvx%photo_rate_map_%mpi_unpack( buffer, pos, mpicom )
-      call musica_mpi_unpack( buffer, pos, do_jno,    mpicom )
-      call musica_mpi_unpack( buffer, pos, jno_index, mpicom )
+      call musica_mpi_unpack( buffer, pos, do_jno,           mpicom )
+      call musica_mpi_unpack( buffer, pos, jno_index,        mpicom )
+      call musica_mpi_unpack( buffer, pos, disable_aerosols, mpicom )
 
       ! ===================================================================
       ! Set up connections between CAM and TUV-x input data for each thread
       ! ===================================================================
-      call create_updaters( tuvx, cam_grids, cam_profiles, cam_radiators )
+      call create_updaters( tuvx, cam_grids, cam_profiles, cam_radiators, &
+                            disable_aerosols )
 
       ! ===============================================================
       ! Create a working array for calculated photolysis rate constants
@@ -389,6 +406,8 @@ contains
     ! set up diagnostic output of photolysis rates
     ! ============================================
     call initialize_diagnostics( tuvx_ptrs( 1 ) )
+
+    if( is_main_task ) call log_initialization( )
 
   end subroutine tuvx_init
 
@@ -618,7 +637,7 @@ contains
                                is_main_task => masterproc
 
     if( is_main_task ) then
-      write(iulog,*) "Initializing TUV-x"
+      write(iulog,*) "Initialized TUV-x"
 #ifdef HAVE_MPI
       write(iulog,*) "  - with MPI support on task "//trim( to_char( main_task ) )
 #else
@@ -637,6 +656,14 @@ contains
       else
         write(iulog,*) "  - without on-line aerosols"
       end if
+      if( index_N2 > 0 ) write(iulog,*) "  - including N2"
+      if( index_O  > 0 ) write(iulog,*) "  - including O"
+      if( index_O2 > 0 ) write(iulog,*) "  - including O2"
+      if( index_O3 > 0 ) write(iulog,*) "  - including O3"
+      if( index_NO > 0 ) write(iulog,*) "  - including NO"
+      if( do_euv ) write(iulog,*) "  - doing Extreme-UV calculations"
+      if( do_jno ) write(iulog,*) "  - including special jno rate calculation"
+      write(iulog,*) "  - max solar zenith angle [degrees]:", max_sza
     end if
 
   end subroutine log_initialization
@@ -963,7 +990,7 @@ contains
 !================================================================================================
 
   !-----------------------------------------------------------------------
-  ! Creates and loads a radiator warehouse with radiators that CAM
+  ! Creates and loads a radiator warehouse with radiators that CAM will
   !    update at runtime
   !-----------------------------------------------------------------------
   function get_cam_radiators( grids ) result( radiators )
@@ -1008,7 +1035,7 @@ contains
   !   for runtime access of CAM data
   !
   !-----------------------------------------------------------------------
-  subroutine create_updaters( this, grids, profiles, radiators )
+  subroutine create_updaters( this, grids, profiles, radiators, disable_aerosols )
 
     use modal_aer_opt,           only : modal_aer_opt_init
     use ppgrid,                  only : pcols ! maximum number of columns
@@ -1028,6 +1055,7 @@ contains
     class(grid_warehouse_t),     intent(in)    :: grids
     class(profile_warehouse_t),  intent(in)    :: profiles
     class(radiator_warehouse_t), intent(in)    :: radiators
+    logical,                     intent(in)    :: disable_aerosols
 
     class(grid_t),     pointer :: height, wavelength
     class(profile_t),  pointer :: host_profile
@@ -1105,7 +1133,7 @@ contains
     ! intialize the aerosol optics module
     ! ====================================================================
     call rad_cnst_get_info( 0, nmodes = n_modes )
-    if( n_modes > 0 .and. .not. aerosol_exists ) then
+    if( n_modes > 0 .and. .not. aerosol_exists .and. .not. disable_aerosols ) then
       aerosol_exists = .true.
       call modal_aer_opt_init( )
     else
