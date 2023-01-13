@@ -93,7 +93,7 @@ subroutine hetfrz_classnuc_cam_readnl(nlfile)
 
   use namelist_utils,  only: find_group_name
   use units,           only: getunit, freeunit
-  use spmd_utils,      only: mpicom, mstrid=>masterprocid, mpi_logical
+  use spmd_utils,      only: mpicom, mstrid=>masterprocid, mpi_logical, mpi_real8
 
   character(len=*), intent(in) :: nlfile  ! filepath for file containing namelist input
 
@@ -117,12 +117,15 @@ subroutine hetfrz_classnuc_cam_readnl(nlfile)
      end if
      close(unitn)
      call freeunit(unitn)
-
   end if
 
   ! Broadcast namelist variables
   call mpi_bcast(hist_hetfrz_classnuc, 1, mpi_logical, mstrid, mpicom, ierr)
   if (ierr /= 0) call endrun(subname//" mpi_bcast: hist_hetfrz_classnuc")
+  call mpi_bcast(hetfrz_bc_scalfac, 1, mpi_real8, mstrid, mpicom, ierr)
+  if (ierr /= 0) call endrun(subname//" mpi_bcast: hetfrz_bc_scalfac")
+  call mpi_bcast(hetfrz_dust_scalfac, 1, mpi_real8, mstrid, mpicom, ierr)
+  if (ierr /= 0) call endrun(subname//" mpi_bcast: hetfrz_dust_scalfac")
 
   if (masterproc) then
      write(iulog,*) subname,': hist_hetfrz_classnuc = ',hist_hetfrz_classnuc

@@ -307,6 +307,9 @@ subroutine hetfrz_classnuc_calc(ntypes, types,&
          dga_imm = dga_imm_dust
          pdf_imm = .true.
          limfac = dust_limfac
+         frzimm_ptr => frzduimm
+         frzcnt_ptr => frzducnt
+         frzdep_ptr => frzdudep
       case default
          errstring = 'hetfrz_classnuc_calc ERROR: unrecognized aerosol type: '//trim(types(ispc))
          return
