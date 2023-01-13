@@ -2436,7 +2436,6 @@ end subroutine clubb_init_cnst
 #endif
     det_s(:)   = 0.0_r8
     det_ice(:) = 0.0_r8
-    inv_rh2o = 1._r8/rh2o
 
 #ifdef CLUBB_SGS
 
@@ -2463,6 +2462,7 @@ end subroutine clubb_init_cnst
 
     frac_limit = 0.01_r8
     ic_limit   = 1.e-12_r8
+    inv_rh2o = 1._r8/rh2o
 
     if (clubb_do_adv) then 
       apply_const = 1._r8  ! Initialize to one, only if CLUBB's moments are advected
