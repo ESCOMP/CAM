@@ -60,7 +60,7 @@ module hco_cc_emissions
 !EOP
 !------------------------------------------------------------------------------
 !BOC
-
+    logical :: pcnst_is_extfrc(gas_pcnst)
 contains
 !EOC
 !------------------------------------------------------------------------------
@@ -91,6 +91,7 @@ contains
 !
 ! !REVISION HISTORY:
 !  08 Aug 2022 - H.P. Lin    - Initial version
+!  12 Jan 2023 - H.P. Lin    - Check if pbuf is 2-D or 3-D first
 !EOP
 !------------------------------------------------------------------------------
 !BOC
@@ -99,10 +100,26 @@ contains
 !
     integer               :: n
 
-    real(r8), pointer     :: pbuf_ptr(:,:)             ! ptr to pbuf data (/pcols,pver/)
+    real(r8), pointer     :: pbuf_ptr_3d(:,:)          ! ptr to pbuf data (/pcols,pver/)
+    real(r8), pointer     :: pbuf_ptr_2d(:)            ! ptr to pbuf data (/pcols/)
     integer               :: tmpIdx                    ! pbuf field id
     character(len=255)    :: fldname_ns                ! field name HCO_NH3
     integer               :: RC                        ! return code (dummy)
+
+    logical, save         :: FIRST = .true.            ! is first run?
+
+    ! for first run, cache results of 3-D or 2-D scan within pcnst_is_extfrc
+    ! to avoid lengthy lookups in future timesteps. hplin 1/12/23
+    if(FIRST) then
+        do n = 1, gas_pcnst
+            pcnst_is_extfrc = (get_extfrc_ndx(trim(solsym(n))) > 0)
+        enddo
+
+        write(iulog,*) "hco_set_srf_emissions: first run pcnst_is_extfrc cache"
+        write(iulog,*) pcnst_is_extfrc
+
+        FIRST = .false.
+    endif
 
     !--------------------------------------------------------
     ! ... set HEMCO_CESM emissions
@@ -128,16 +145,32 @@ contains
         ! species name: solsym(n)
         fldname_ns = 'HCO_' // trim(solsym(n))
         tmpIdx = pbuf_get_index(fldname_ns, RC)
-        if ( tmpIdx > 0 ) then
-            ! this is already in chunk, retrieve it
-            call pbuf_get_field(pbuf, tmpIdx, pbuf_ptr)
+        if(tmpIdx > 0) then
+            if(pcnst_is_extfrc(n)) then ! 3-D data
+                call pbuf_get_field(pbuf, tmpIdx, pbuf_ptr_3d)
 
-            if(.not. associated(pbuf_ptr)) then ! sanity check
-              call endrun("mo_srf_emissions hemco: FATAL - tmpIdx > 0 but pbuf_ptr unassoc")
+                if(.not. associated(pbuf_ptr_3d)) then ! sanity check
+                  call endrun("mo_srf_emissions hemco: FATAL - tmpIdx > 0 but pbuf_ptr_3d unassoc")
+                endif
+
+                ! for each col retrieve data from pbuf_ptr(I, K)
+                ! in this routine we only handle the pver (1 is TOA) dim of the 3-D emis data
+                ! and the rest is handled in extfrc_set to mimic existing behavior in CAM
+                sflx(1:ncol,n) = pbuf_ptr_3d(1:ncol,pver)
+
+                pbuf_ptr_3d => null()
+            else ! 2-D data
+                call pbuf_get_field(pbuf, tmpIdx, pbuf_ptr_2d)
+
+                if(.not. associated(pbuf_ptr_2d)) then ! sanity check
+                  call endrun("mo_srf_emissions hemco: FATAL - tmpIdx > 0 but pbuf_ptr_2d unassoc")
+                endif
+
+                ! for each col retrieve data from pbuf_ptr(I, K)
+                sflx(1:ncol,n) = pbuf_ptr_2d(1:ncol)
+
+                pbuf_ptr_3d => null()
             endif
-
-            ! for each col retrieve data from pbuf_ptr(I, K)
-            sflx(1:ncol,n) = pbuf_ptr(1:ncol,pver) ! only surface emissions for now, remember vertical is inverted
         endif
     enddo
 
