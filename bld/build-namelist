@@ -3204,10 +3204,12 @@ if ($clubb_sgs  =~ /$TRUE/io) {
    add_default($nl, 'clubb_l_mono_flux_lim_thlm');
    add_default($nl, 'clubb_l_mono_flux_lim_um');
    add_default($nl, 'clubb_l_mono_flux_lim_vm');
+   add_default($nl, 'clubb_l_partial_upwind_wp3');
    add_default($nl, 'clubb_l_predict_upwp_vpwp');
    add_default($nl, 'clubb_l_rcm_supersat_adj');
    add_default($nl, 'clubb_l_smooth_Heaviside_tau_wpxp');
    add_default($nl, 'clubb_l_stability_correct_tau_zm');
+   add_default($nl, 'clubb_l_standard_term_ta');
    add_default($nl, 'clubb_l_trapezoidal_rule_zm');
    add_default($nl, 'clubb_l_trapezoidal_rule_zt');
    add_default($nl, 'clubb_l_upwind_xpyp_ta');
@@ -3218,6 +3220,7 @@ if ($clubb_sgs  =~ /$TRUE/io) {
    add_default($nl, 'clubb_l_use_thvm_in_bv_freq');
    add_default($nl, 'clubb_l_use_tke_in_wp2_wp3_K_dfsn');
    add_default($nl, 'clubb_l_use_tke_in_wp3_pr_turb_term');
+   add_default($nl, 'clubb_l_vary_convect_depth');
    add_default($nl, 'clubb_l_vert_avg_closure');
    add_default($nl, 'clubb_mult_coef');
    add_default($nl, 'clubb_nu2');

@@ -3944,6 +3944,13 @@ Flag to turn on the clubb monotonic flux limiter for um (zonal momemtum).
 Flag to turn on the clubb monotonic flux limiter for vm (meridional momemtum).
 </entry>
 
+<entry id="clubb_l_partial_upwind_wp3" type="logical" category="pblrad"
+       group="clubb_params_nl" valid_values="" >
+Flag to use an "upwind" discretization rather than a centered discretization 
+for the portion of the wp3 turbulent advection term for ADG1 that is linearized 
+in terms of wp3(t+1). (Requires ADG1 PDF and l_standard_term_ta=true).
+</entry>
+
 <entry id="clubb_l_predict_upwp_vpwp" type="logical" category="pblrad"
        group="clubb_params_nl" valid_values="" >
 Flag to predict horizontal momentum fluxes upwp and vpwp along with mean
@@ -3963,6 +3970,13 @@ two grid level types.
 <entry id="clubb_l_smooth_Heaviside_tau_wpxp" type="logical" category="pblrad"
        group="clubb_params_nl" valid_values="" >
 Flag to use smooth Heaviside 'Peskin' in computation of invrs_tau.
+</entry>
+
+<entry id="clubb_l_standard_term_ta" type="logical" category="pblrad"
+       group="clubb_params_nl" valid_values="" >
+Use the standard discretization for the turbulent advection terms.  Setting to 
+.false. means that a_1 and a_3 are pulled outside of the derivative in
+advance_wp2_wp3_module.F90 and in advance_xp2_xpyp_module.F90.
 </entry>
 
 <entry id="clubb_l_stability_correct_tau_zm" type="logical" category="pblrad"
@@ -4038,6 +4052,12 @@ Flag to use Total Kenetic Energy (TKE) in eddy diffusion for wp2 and wp3.
        group="clubb_params_nl" valid_values="" >
 Flag to use Total Kenetic Energy (TKE) formulation for wp3 pr_turb (turbulent
 production) term.
+</entry>
+
+<entry id="clubb_l_vary_convect_depth" type="logical" category="pblrad"
+       group="clubb_params_nl" valid_values="" >
+Flag used to calculate convective velocity using a variable estimate of layer 
+depth based on the depth over which wpthlp is positive near the ground when true
 </entry>
 
 <entry id="clubb_l_vert_avg_closure" type="logical" category="pblrad"

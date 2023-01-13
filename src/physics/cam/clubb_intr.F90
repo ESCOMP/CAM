@@ -778,10 +778,12 @@ end subroutine clubb_init_cnst
          clubb_l_mono_flux_lim_thlm, &
          clubb_l_mono_flux_lim_um, &
          clubb_l_mono_flux_lim_vm, &
+         clubb_l_partial_upwind_wp3, &
          clubb_l_predict_upwp_vpwp, &
          clubb_l_rcm_supersat_adj, &
          clubb_l_smooth_Heaviside_tau_wpxp, &
          clubb_l_stability_correct_tau_zm, &
+         clubb_l_standard_term_ta, &
          clubb_l_trapezoidal_rule_zm, &
          clubb_l_trapezoidal_rule_zt, &
          clubb_l_upwind_xpyp_ta, &
@@ -792,6 +794,7 @@ end subroutine clubb_init_cnst
          clubb_l_use_thvm_in_bv_freq, &
          clubb_l_use_tke_in_wp2_wp3_K_dfsn, &
          clubb_l_use_tke_in_wp3_pr_turb_term, &
+         clubb_l_vary_convect_depth, &
          clubb_l_vert_avg_closure, &
          clubb_mult_coef, &
          clubb_nu2, &
@@ -1111,6 +1114,12 @@ end subroutine clubb_init_cnst
     if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: clubb_tridiag_solve_method")
     call mpi_bcast(clubb_l_intr_sfc_flux_smooth,    1, mpi_logical, mstrid, mpicom, ierr)
     if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: clubb_l_intr_sfc_flux_smooth")
+    call mpi_bcast(clubb_l_vary_convect_depth,    1, mpi_logical, mstrid, mpicom, ierr)
+    if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: clubb_l_vary_convect_depth")
+    call mpi_bcast(clubb_l_standard_term_ta,    1, mpi_logical, mstrid, mpicom, ierr)
+    if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: clubb_l_standard_term_ta")
+    call mpi_bcast(clubb_l_partial_upwind_wp3,    1, mpi_logical, mstrid, mpicom, ierr)
+    if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: clubb_l_partial_upwind_wp3")
 
     !  Overwrite defaults if they are true
     if (clubb_history) l_stats = .true.
