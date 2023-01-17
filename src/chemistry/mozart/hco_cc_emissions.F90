@@ -80,6 +80,7 @@ contains
 !
 ! !USES:
 !
+    use mo_chem_utls,   only: get_extfrc_ndx
     implicit none
 !
 ! !INPUT PARAMETERS:
