@@ -2170,12 +2170,11 @@ sub write_filepath
     print $fh "$camsrcdir/src/ionosphere\n";
 
     print $fh "$camsrcdir/src/chemistry/mozart\n";
-    # -- Added by hplin - 5/2020
+
     if ($hemco) {
         print $fh "$camsrcdir/src/hemco\n";
 
-        # if not compiling with GEOS-Chem; coordinate this with tfritz later
-        # we may eventually remove all this
+        # shared dependencies for HEMCO
         print $fh "$camsrcdir/src/hemco/HEMCO/src/Shared\n";
 
         # right now shared files have been renamed for no-conflict
@@ -2187,8 +2186,7 @@ sub write_filepath
         # to remove - need to use pio
         print $fh "$camsrcdir/src/hemco/HEMCO/src/Shared/NcdfUtil\n";
 
-        # hplin 2/16/20: temporarily add hemco src code directories manually
-        # until we figure out a better compile routine.
+        # HEMCO source code directory paths from HEMCO external
         print $fh "$camsrcdir/src/hemco/HEMCO/src/Core\n";
         print $fh "$camsrcdir/src/hemco/HEMCO/src/Extensions\n";
         print $fh "$camsrcdir/src/hemco/HEMCO/src/Interfaces/Shared\n";
