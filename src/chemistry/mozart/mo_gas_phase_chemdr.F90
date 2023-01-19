@@ -49,11 +49,9 @@ module mo_gas_phase_chemdr
   logical :: convproc_do_aer
   integer :: ele_temp_ndx, ion_temp_ndx
 
-#if defined ( HEMCO_CESM )
   ! for HEMCO-CESM ... passing J-values to ParaNOx ship plume extension
   integer :: hco_jno2_idx, hco_joh_idx
   integer :: rxt_jno2_idx, rxt_joh_idx
-#endif
 
 contains
 
@@ -243,7 +241,6 @@ contains
 
     call chem_prod_loss_diags_init
 
-#if defined ( HEMCO_CESM )
     ! diagnostics for HEMCO ParaNOx extension
     hco_jno2_idx = pbuf_get_index('HCO_IN_JNO2')
     hco_joh_idx  = pbuf_get_index('HCO_IN_JOH' )
@@ -259,7 +256,6 @@ contains
     !-----------------------------------------------------------------------
     rxt_jno2_idx  = get_rxt_ndx( 'jno2' )
     rxt_joh_idx   = get_rxt_ndx( 'jo3_b' )
-#endif
 
   end subroutine gas_phase_chemdr_inti
 
@@ -323,10 +319,6 @@ contains
     use rate_diags,        only : rate_diags_calc, rate_diags_o3s_loss
     use mo_mass_xforms,    only : mmr2vmr, vmr2mmr, h2o_to_vmr, mmr2vmri
     use orbit,             only : zenith
-
-#if defined ( HEMCO_CESM )
-    use mo_chem_utls,      only : get_rxt_ndx
-#endif
 
 !
 ! for aqueous chemistry and aerosol growth
