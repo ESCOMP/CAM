@@ -113,7 +113,7 @@ contains
     ! to avoid lengthy lookups in future timesteps. hplin 1/12/23
     if(FIRST) then
         do n = 1, gas_pcnst
-            pcnst_is_extfrc = (get_extfrc_ndx(trim(solsym(n))) > 0)
+            pcnst_is_extfrc(n) = (get_extfrc_ndx(trim(solsym(n))) > 0)
         enddo
 
         write(iulog,*) "hco_set_srf_emissions: first run pcnst_is_extfrc cache"
@@ -266,6 +266,9 @@ contains
     ! ncol: # of columns in chunk
     ! lchnk: chunk number
 
+    ! Zero out frcing to be consistent with mo_extfrc
+    frcing(:,:,:) = 0._r8
+
     do n = 1, gas_pcnst
       ! check if extfrc available?
       m = get_extfrc_ndx(trim(solsym(n)))
@@ -303,7 +306,7 @@ contains
 
           ! for each col retrieve data from pbuf_ik(I, K)
           do k = 1, pver-1
-            frcing(:ncol,k,m) = pbuf_ik(1:ncol,k) * kg_to_molec / ((zint(:ncol,k)-zint(:ncol,k+1)) * km_to_cm)
+            frcing(:ncol,k,m) = frcing(:ncol,k,m) + pbuf_ik(1:ncol,k) * kg_to_molec / ((zint(:ncol,k)-zint(:ncol,k+1)) * km_to_cm)
           enddo
           ! remember vertical is inverted - REMOVE the top level as it is injected in mo_srf_emissions instead
 
