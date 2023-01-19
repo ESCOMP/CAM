@@ -170,7 +170,7 @@ contains
                 ! for each col retrieve data from pbuf_ptr(I, K)
                 sflx(1:ncol,n) = pbuf_ptr_2d(1:ncol)
 
-                pbuf_ptr_3d => null()
+                pbuf_ptr_2d => null()
             endif
         endif
     enddo
