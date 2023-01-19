@@ -917,9 +917,6 @@ contains
      call ZM%init(Nudge_ZonalNbasis)
      allocate(Zonal_Bamp2d(Nudge_ZonalNbasis))
      allocate(Zonal_Bamp3d(Nudge_ZonalNbasis,pver))
-     if(masterproc) then
-       write(iulog,*) 'NUDGING: ZonalMean_t initialized: Nbas=',Nudge_ZonalNbasis
-     endif
    endif
 
    ! Initialize the analysis filename at the NEXT time for startup.
@@ -1691,6 +1688,8 @@ contains
     if (allocated(Nobs_PS)) deallocate(Nobs_PS)
 
     call ZM%final()
+    if (allocated(Zonal_Bamp2d)) deallocate(Zonal_Bamp2d)
+    if (allocated(Zonal_Bamp3d)) deallocate(Zonal_Bamp3d)
 
   end subroutine nudging_final
   !================================================================
