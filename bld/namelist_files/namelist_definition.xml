@@ -7198,7 +7198,7 @@ File containing MEGAN emissions factors.
 Default: set by build-namelist.
 </entry>
 
-<entry id="megan_specifier" type="char*1024(100)" category="VOC_emissions"
+<entry id="megan_specifier" type="char*512(200)" category="VOC_emissions"
        group="megan_emis_nl" valid_values="" >
 MEGAN specifier.
 Default: set by build-namelist.

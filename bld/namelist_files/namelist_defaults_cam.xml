@@ -787,6 +787,7 @@
 <megan_factors_file>atm/cam/chem/trop_mozart/emis/megan21_emis_factors_78pft_c20161108.nc</megan_factors_file>
 <!-- For ocean emissions -->
 <ocean_salinity_file>atm/cam/chem/ocnexch/SSS_climatology_f09f09_c20230110.nc</ocean_salinity_file>
+<dms_ocn_emis_file>atm/cam/chem/ocnexch/Csw_DMS_Lana2011_f09f09_1750_2100_20200717a.nc</dms_ocn_emis_file>
 
 <!-- Airplane emissions -->
 <airpl_emis_file>atm/cam/chem/trop_mozart/emis/emissions.aircraft.T42LR.nc</airpl_emis_file>

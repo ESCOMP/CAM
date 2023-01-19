@@ -2382,23 +2382,22 @@ if (($chem =~ /_mam4/ or $chem =~ /_mam5/) and ($phys =~ /cam6/ or $phys =~ /cam
 
     # MEGAN emissions
     if (($chem eq 'trop_mam4' or $chem eq 'waccm_sc_mam4') and !$aqua_mode and !$scam){
-        my $val = "'SOAE = 1.2021*isoprene + 6.6625*carene_3 + 6.6625*pinene_a + 6.6625*thujene_a + 6.6625*bornene "
-                . "+ 6.6625*terpineol_4 + 6.6625*terpineol_a + 6.6625*terpinyl_ACT_a + 6.6625*myrtenal + 6.6625*sabinene "
-                . "+ 6.6625*pinene_b + 6.6625*camphene + 6.6625*fenchene_a + 6.6625*limonene + 6.6625*phellandrene_a "
-                . "+ 6.6625*terpinene_a + 6.6625*terpinene_g + 6.6625*terpinolene + 6.6625*phellandrene_b "
-                . "+ 6.6625*linalool + 6.6625*ionone_b + 6.6625*geranyl_acetone + 6.6625*neryl_acetone + 6.6625*jasmone "
-                . "+ 6.6625*verbenene + 6.6625*ipsenol + 6.6625*myrcene + 6.6625*ocimene_t_b + 6.6625*ocimene_al "
-                . "+ 6.6625*ocimene_c_b + 14.1167*farnescene_a + 14.1167*caryophyllene_b + 14.1167*acoradiene "
-                . "+ 14.1167*aromadendrene + 14.1167*bergamotene_a + 14.1167*bergamotene_b + 14.1167*bisabolene_a "
-                . "+ 14.1167*bisabolene_b + 14.1167*bourbonene_b + 14.1167*cadinene_d + 14.1167*cadinene_g "
-                . "+ 14.1167*cedrene_a + 14.1167*copaene_a + 14.1167*cubebene_a + 14.1167*cubebene_b + 14.1167*elemene_b "
-                . "+ 14.1167*farnescene_b'";
+        my $val = "'SOAE = 1.2021*isoprene + 6.6625*(carene_3 + pinene_a + thujene_a + bornene +',"
+                . "' terpineol_4 + terpineol_a + terpinyl_ACT_a + myrtenal + sabinene + pinene_b + camphene +',"
+                . "' fenchene_a + limonene + phellandrene_a + terpinene_a + terpinene_g + terpinolene +',"
+                . "' phellandrene_b + linalool + ionone_b + geranyl_acetone + neryl_acetone + jasmone +',"
+                . "' verbenene + ipsenol + myrcene + ocimene_t_b + ocimene_al + ocimene_c_b) + ',"
+                . "' 14.1167*(farnescene_a + caryophyllene_b + acoradiene + aromadendrene + bergamotene_a +',"
+                . "' bergamotene_b + bisabolene_a + bisabolene_b + bourbonene_b + cadinene_d + cadinene_g +',"
+                . "'cedrene_a + copaene_a + cubebene_a + cubebene_b + elemene_b + farnescene_b)'";
         add_default($nl, 'megan_specifier', 'val'=>$val);
         add_default($nl, 'megan_factors_file');
         add_default($nl, 'megan_mapped_emisfctrs', 'val'=>'.false.');
 
         # DMS ocean emissions
-        my $abs_filepath = set_abs_filepath('atm/cam/chem/ocnexch/Csw_DMS_Lana2011_f09f09_1750_2100_20200717a.nc', $inputdata_rootdir);
+        my $rel_filepath = get_default_value('dms_ocn_emis_file');
+        my $abs_filepath = set_abs_filepath($rel_filepath, $inputdata_rootdir);
+
         $val = quote_string("DMS -> ". $abs_filepath);
         add_default($nl, 'csw_specifier', 'val'=>$val);
         if (!defined $nl->get_value('csw_time_type')) {
@@ -2410,9 +2409,9 @@ if (($chem =~ /_mam4/ or $chem =~ /_mam5/) and ($phys =~ /cam6/ or $phys =~ /cam
     }
     if ($chem =~ /trop_strat_mam4_vbsext/ or $chem =~ /waccm_tsmlt/) {
         my $val = "'ISOP = isoprene',"
-                . "'MTERP = pinene_a + carene_3 + thujene_a + 2met_styrene + cymene_p + cymene_o + terpinolene + bornene "
-                . "+ fenchene_a + ocimene_al + pinene_b + sabinene + camphene + limonene + phellandrene_a + terpinene_g "
-                . "+ terpinene_a + phellandrene_b +  myrcene + ocimene_t_b + ocimene_c_b',"
+                . "'MTERP = pinene_a + carene_3 + thujene_a + 2met_styrene + cymene_p + cymene_o + terpinolene + bornene +'"
+                . "' fenchene_a + ocimene_al + pinene_b + sabinene + camphene + limonene + phellandrene_a + terpinene_g +'"
+                . "' terpinene_a + phellandrene_b +  myrcene + ocimene_t_b + ocimene_c_b',"
                 . "'BCARY = caryophyllene_b + bergamotene_a + bisabolene_b + farnescene_b + humulene_a',"
                 . "'CH3OH = methanol',"
                 . "'C2H5OH = ethanol',"
