@@ -54,16 +54,19 @@ module frierson
 
   ! Private data
   !----------------------
-  real(r8),private:: gravit    ! g: gravitational acceleration (m/s2)
-  real(r8),private:: cappa     ! Rd/cp
-  real(r8),private:: rair      ! Rd: dry air gas constant (J/K/kg)
-  real(r8),private:: cpair     ! cp: specific heat of dry air (J/K/kg)
-  real(r8),private:: latvap    ! L: latent heat of vaporization (J/kg)
-  real(r8),private:: rh2o      ! Rv: water vapor gas constant (J/K/kg)
-  real(r8),private:: epsilo    ! Rd/Rv: ratio of h2o to dry air molecular weights
-  real(r8),private:: rhoh2o    ! density of liquid water (kg/m3)
-  real(r8),private:: zvir      ! (rh2o/rair) - 1, needed for virtual temperaturr
-  real(r8),private:: ps0       ! Base state surface pressure (Pa)
+  real(r8),private :: gravit    ! g: gravitational acceleration (m/s2)
+  real(r8),private :: cappa     ! Rd/cp
+  real(r8),private :: rair      ! Rd: dry air gas constant (J/K/kg)
+  real(r8),private :: cpair     ! cp: specific heat of dry air (J/K/kg)
+  real(r8),private :: latvap    ! L: latent heat of vaporization (J/kg)
+  real(r8),private :: rh2o      ! Rv: water vapor gas constant (J/K/kg)
+  real(r8),private :: epsilo    ! Rd/Rv: ratio of h2o to dry air molecular weights
+  real(r8),private :: rhoh2o    ! density of liquid water (kg/m3)
+  real(r8),private :: zvir      ! (rh2o/rair) - 1, needed for virtual temperature
+  real(r8),private :: ps0       ! Base state surface pressure (Pa)
+
+  real(r8),private :: latvap_div_cpair ! latvap/cpair
+  real(r8),private :: latvap_div_rh2o  ! latvap/rh2o
 
   real(r8),private,allocatable:: etamid(:) ! hybrid coordinate - midpoints
 
@@ -81,6 +84,9 @@ contains
     !                     Model fomulation. Optional inputs can be provided
     !                     to over-ride the model defaults.
     !=====================================================================
+
+  use cam_abortutils,      only: handle_allocate_error
+
     !
     ! Passed Variables
     !-------------------
@@ -112,11 +118,13 @@ contains
     real(r8),intent(in) :: I_Boltz
     real(r8),intent(in) :: I_Cocn
 
+    integer :: ierr
+
     ! Set global constants for later use
     !------------------------------------
-    gravit = I_gravit
-    cappa  = I_cappa
-    rair   = I_rair
+    gravit   = I_gravit
+    cappa    = I_cappa
+    rair     = I_rair
     cpair    = I_cpair
     latvap   = I_latvap
     rh2o     = I_rh2o
@@ -140,14 +148,18 @@ contains
     Boltz    = I_Boltz
     C_ocn    = I_Cocn
 
+    latvap_div_cpair = latvap/cpair
+    latvap_div_rh2o  = latvap/rh2o
+
     ! allocate space and set the level information
     !----------------------------------------------
-    allocate(etamid(size(I_etamid)))
+    allocate(etamid(size(I_etamid)),stat=ierr)
+    if (ierr /= 0) then
+      call handle_allocate_error(ierr, 'frierson_set_const', 'etamid')
+    end if
+
     etamid = I_etamid
 
-    ! End Routine
-    !-------------
-    return
   end subroutine frierson_set_const
   !=======================================================================
 
@@ -155,7 +167,7 @@ contains
   !=======================================================================
   subroutine frierson_condensate_NONE(ncol,pver,dtime,pmid,pdel,T,qv,relhum,precl)
     !
-    ! Precip_process: Implement NO large-scale consensation/precipitation
+    ! Precip_process: Implement NO large-scale condensation/precipitation
     !=======================================================================
     !
     ! Passed Variables
@@ -173,30 +185,26 @@ contains
     ! Local Values
     !-------------
     real(r8):: qsat
-    real(r8):: Crate
     integer :: i, k
 
-    ! Set intial total, convective, and large scale precipitation rates to zero
+    ! Set large scale precipitation rates to zero
     !--------------------------------------------------------------------------
     precl(:) = 0.0_r8
 
     ! Large-Scale Condensation and Precipitation without cloud stage
     !---------------------------------------------------------------
     do k = 1, pver
-    do i = 1, ncol
-      ! calculate saturation value for Q
-      !----------------------------------
-      qsat = epsilo*E0/pmid(i,k)*exp(-latvap/rh2o*((1._r8/T(i,k))-1._r8/T0))
+       do i = 1, ncol
+         ! calculate saturation value for Q
+         !----------------------------------
+         qsat = epsilo*E0/pmid(i,k)*exp(-latvap_div_rh2o*((1._r8/T(i,k))-1._r8/T0))
 
-      ! Set percent relative humidity
-      !-------------------------------
-      relhum(i,k) = (qv(i,k)/qsat)*100._r8
-    end do
+         ! Set percent relative humidity
+         !-------------------------------
+         relhum(i,k) = (qv(i,k)/qsat)*100._r8
+       end do
     end do
 
-    ! End Routine
-    !-------------
-    return
   end subroutine frierson_condensate_NONE
   !=======================================================================
 
@@ -204,7 +212,7 @@ contains
   !=======================================================================
   subroutine frierson_condensate(ncol,pver,dtime,pmid,pdel,T,qv,relhum,precl)
     !
-    ! Precip_process: Implement large-scale consensation/precipitation
+    ! Precip_process: Implement large-scale condensation/precipitation
     !                 from Frierson 2006.
     !
     !=======================================================================
@@ -223,7 +231,7 @@ contains
     !
     ! Local Values
     !-------------
-    logical,parameter:: do_evap        = .true.
+    logical,parameter :: do_evap = .true.
 
     real(r8):: esat (ncol,pver)
     real(r8):: qsat (ncol,pver)
@@ -235,7 +243,6 @@ contains
     real(r8):: qext (ncol)
     real(r8):: qdef (ncol)
 
-    real(r8):: Crate
     integer :: i, k
 
     ! Large-Scale Condensation and Precipitation
@@ -244,14 +251,14 @@ contains
 
       ! calculate saturation vapor pressure
       !-------------------------------------
-      esat(:,k) = E0*exp(-(latvap/rh2o)*((1._r8/T(:,k))-1._r8/T0))
+      esat(:,k) = E0*exp(-(latvap_div_rh2o)*((1._r8/T(:,k))-1._r8/T0))
 
       ! calculate saturation value for Q
       !----------------------------------
       do i = 1,ncol
         if(pmid(i,k) > (1._r8-epsilo)*esat(i,k)) then
           qsat (i,k) = epsilo*esat(i,k)/pmid(i,k)
-          dqsat(i,k) = (latvap/rh2o)*qsat(i,k)/(T(i,k)**2)
+          dqsat(i,k) = (latvap_div_rh2o)*qsat(i,k)/(T(i,k)**2)
         else
           qsat (i,k) = 0._r8
           dqsat(i,k) = 0._r8
@@ -261,8 +268,8 @@ contains
       ! if > 100% relative humidity, rain falls out
       !---------------------------------------------
       where(((qv(:,k)-qsat(:,k))*qsat(:,k)) > 0._r8)
-        qdel (:,k) = (qsat(:,k)-qv(:,k))/(1._r8+(latvap/cpair)*dqsat(:,k))
-        tdel (:,k) = -(latvap/cpair)*qdel(:,k)
+        qdel (:,k) = (qsat(:,k)-qv(:,k))/(1._r8+(latvap_div_cpair)*dqsat(:,k))
+        tdel (:,k) = -(latvap_div_cpair)*qdel(:,k)
       else where
         qdel (:,k) = 0._r8
         tdel (:,k) = 0._r8
@@ -293,10 +300,10 @@ contains
         !----------------------------------
         where((qdel(:,k) >= 0._r8).and.(qext(:) > 0._r8))
           qext(:)   = qext(:)*gravit/pdel(:,k)
-          qdef(:)   = (qsat(:,k)-qv(:,k))/(1._r8+(latvap/cpair)*dqsat(:,k))
+          qdef(:)   = (qsat(:,k)-qv(:,k))/(1._r8+(latvap_div_cpair)*dqsat(:,k))
           qdef(:)   = min(qext(:),max(qdef(:),0._r8))
           qdel(:,k) = qdel(:,k) + qdef(:)
-          tdel(:,k) = tdel(:,k) -(latvap/cpair)*qdef(:)
+          tdel(:,k) = tdel(:,k) -(latvap_div_cpair)*qdef(:)
           qext(:)   = (qext(:)-qdef(:))*pdel(:,k)/gravit
 
           ! Update temperature and water vapor
@@ -307,7 +314,7 @@ contains
       end do ! k = 1, pver
     endif
 
-    ! Set intial total, convective, and large scale precipitation rates to zero
+    ! Set large scale precipitation rates to zero
     !--------------------------------------------------------------------------
     precl(:) = 0.0_r8
 
@@ -315,7 +322,7 @@ contains
     !--------------------------------------------------------
     do k = 1, pver
       precl (:)   = precl(:) - (qdel(:,k)*pdel(:,k))/(gravit*rhoh2o)
-      qsat  (:,k) = (epsilo/pmid(:,k))*E0*exp(-latvap/rh2o*((1._r8/tnew(:,k))-1._r8/T0))
+      qsat  (:,k) = (epsilo/pmid(:,k))*E0*exp(-latvap_div_rh2o*((1._r8/tnew(:,k))-1._r8/T0))
       relhum(:,k) = (qnew(:,k)/qsat (:,k))*100._r8
     end do
     precl(:) = max(precl(:),0._r8)/dtime
@@ -325,9 +332,6 @@ contains
     qv(:,:) = qnew(:,:)
     T (:,:) = tnew(:,:)
 
-    ! End Routine
-    !-------------
-    return
   end subroutine frierson_condensate
   !=======================================================================
 
@@ -335,7 +339,7 @@ contains
   !=======================================================================
   subroutine frierson_condensate_TJ16(ncol,pver,dtime,pmid,pdel,T,qv,relhum,precl)
     !
-    ! Precip_process: Implement large-scale consensation/precipitation
+    ! Precip_process: Implement large-scale condensation/precipitation
     !                 from TJ16.
     !
     !=======================================================================
@@ -358,46 +362,43 @@ contains
     real(r8):: Crate
     integer :: i, k
 
-    ! Set intial total, convective, and large scale precipitation rates to zero
+    ! Set large scale precipitation rates to zero
     !--------------------------------------------------------------------------
     precl(:) = 0.0_r8
 
     ! Large-Scale Condensation and Precipitation without cloud stage
     !---------------------------------------------------------------
     do k = 1, pver
-    do i = 1, ncol
-      ! calculate saturation value for Q
-      !----------------------------------
-      qsat = epsilo*E0/pmid(i,k)*exp(-latvap/rh2o*((1._r8/T(i,k))-1._r8/T0))
+       do i = 1, ncol
+         ! calculate saturation value for Q
+         !----------------------------------
+         qsat = epsilo*E0/pmid(i,k)*exp(-latvap_div_rh2o*((1._r8/T(i,k))-1._r8/T0))
 
-      ! if > 100% relative humidity rain falls out
-      !-------------------------------------------
-      if(qv(i,k) > qsat) then
-        ! calc the condensation and large-scale precipitation(m/s) rates
-        !-------------------------------------------------------------------
-        Crate    =  ((qv(i,k)-qsat)/dtime)                                     &
-                   /(1._r8+(latvap/cpair)*(epsilo*latvap*qsat/(rair*T(i,k)**2)))
-        precl(i) = precl(i) + (Crate*pdel(i,k))/(gravit*rhoh2o)
+         ! if > 100% relative humidity rain falls out
+         !-------------------------------------------
+         if(qv(i,k) > qsat) then
+           ! calc the condensation and large-scale precipitation(m/s) rates
+           !-------------------------------------------------------------------
+           Crate    =  ((qv(i,k)-qsat)/dtime)                                     &
+                      /(1._r8+(latvap_div_cpair)*(epsilo*latvap*qsat/(rair*T(i,k)**2)))
+           precl(i) = precl(i) + (Crate*pdel(i,k))/(gravit*rhoh2o)
 
-        ! Update T and qv values due to precipitation
-        !--------------------------------------------
-        T (i,k) = T (i,k) + Crate*(latvap/cpair)*dtime
-        qv(i,k) = qv(i,k) - Crate*dtime
+           ! Update T and qv values due to precipitation
+           !--------------------------------------------
+           T (i,k) = T (i,k) + Crate*(latvap_div_cpair)*dtime
+           qv(i,k) = qv(i,k) - Crate*dtime
 
-        ! recompute qsat with updated T
-        !-------------------------------
-        qsat = epsilo*E0/pmid(i,k)*exp(-latvap/rh2o*((1._r8/T(i,k))-1._r8/T0))
-      endif
+           ! recompute qsat with updated T
+           !-------------------------------
+           qsat = epsilo*E0/pmid(i,k)*exp(-latvap_div_rh2o*((1._r8/T(i,k))-1._r8/T0))
+         endif
 
-      ! Set percent relative humidity
-      !-------------------------------
-      relhum(i,k) = (qv(i,k)/qsat)*100._r8
+         ! Set percent relative humidity
+         !-------------------------------
+         relhum(i,k) = (qv(i,k)/qsat)*100._r8
+       end do
     end do
-    end do
 
-    ! End Routine
-    !-------------
-    return
   end subroutine frierson_condensate_TJ16
   !=======================================================================
 
@@ -425,30 +426,26 @@ contains
     ! Local Values
     !-------------
     real(r8):: qsat
-    real(r8):: Crate
     integer :: i, k
 
-    ! Set intial total, convective, and large scale precipitation rates to zero
+    ! Set large scale precipitation rates to zero
     !--------------------------------------------------------------------------
     precl(:) = 0.0_r8
 
     ! Large-Scale Condensation and Precipitation without cloud stage
     !---------------------------------------------------------------
     do k = 1, pver
-    do i = 1, ncol
-      ! calculate saturation value for Q
-      !----------------------------------
-      qsat = epsilo*E0/pmid(i,k)*exp(-latvap/rh2o*((1._r8/T(i,k))-1._r8/T0))
+      do i = 1, ncol
+        ! calculate saturation value for Q
+        !----------------------------------
+        qsat = epsilo*E0/pmid(i,k)*exp(-latvap_div_rh2o*((1._r8/T(i,k))-1._r8/T0))
 
-      ! Set percent relative humidity
-      !-------------------------------
-      relhum(i,k) = (qv(i,k)/qsat)*100._r8
-    end do
+        ! Set percent relative humidity
+        !-------------------------------
+        relhum(i,k) = (qv(i,k)/qsat)*100._r8
+      end do
     end do
 
-    ! End Routine
-    !-------------
-    return
   end subroutine frierson_condensate_USER
   !=======================================================================
 
@@ -488,8 +485,8 @@ contains
     real(r8),intent(in)   :: Fsw  (ncol)         ! Net SW flux at surface from gray radiation
     real(r8),intent(out)  :: Cdrag(ncol)         ! Surface drage coef.
     real(r8),intent(out)  :: Km   (ncol,pver+1)  ! Eddy diffusivity for PBL
-    real(r8),intent(out)  :: Ke   (ncol,pver+1)  ! Eddy diffusivity for PBL
-    real(r8),intent(out)  :: VSE  (ncol,pver)    ! Virtual-Dry Static energy.(huh?)
+    real(r8),intent(out)  :: Ke   (ncol,pver+1)  ! Eddy diffusivity for PBL (momentum)
+    real(r8),intent(out)  :: VSE  (ncol,pver)    ! Virtual-Dry Static energy
     real(r8),intent(out)  :: Z_pbl(ncol)         ! Height of PBL layer.
     real(r8),intent(out)  :: Rf   (ncol,pver)
     real(r8),intent(out)  :: dTa  (ncol,pver)
@@ -499,20 +496,16 @@ contains
     !
     ! Local Values
     !---------------
-    real(r8):: Tv_srf(ncol)
     real(r8):: Tv    (ncol,pver)
     real(r8):: Thv   (ncol,pver)
     real(r8):: Ws    (ncol,pver)
-    real(r8):: za    (ncol)  ! Height at midpoint of the lowest model level (m)
     real(r8):: rho   (ncol)  ! Air density near the ground (kg/m3)
     real(r8):: Z_sfc (ncol)
     real(r8):: Rf_sfc(ncol)
-    real(r8):: R_scl (ncol)
     real(r8):: Ri_a  (ncol)
     real(r8):: Ri    (ncol,pver)
     integer :: K_sfc (ncol)
     integer :: K_pbl (ncol)
-    real(r8):: K_coef(ncol)
     real(r8):: Ke_pbl(ncol)
     real(r8):: Km_pbl(ncol)
     real(r8):: Z_a   (ncol)  ! Height at midpoint of the lowest model level (m)
@@ -521,7 +514,6 @@ contains
     real(r8):: Thv_s (ncol)
     real(r8):: Ustar (ncol)
     real(r8):: Bstar (ncol)
-    real(r8):: E_denom,M_denom,Tnext,Qnext
     real(r8):: ZETA,PHI
 
     real(r8):: MU (ncol,pver)
@@ -600,7 +592,7 @@ contains
   !       Tsfc(:),Qsfc(:),Psfc(:)
   !============================================================================
 
-    ! Sx() values allow for explicit source tendencies passed to
+    ! Sx() values allow for explicit source tendencies to be passed to
     ! implicit PBL calculation.  Set all value to 0. for now.
     !-------------------------------------------------------------------------
     Su(:,:) = 0._r8
@@ -612,7 +604,7 @@ contains
     !------------------------------------------
     do k = 1, pver
       Ws (:,k) = sqrt(U(:,k)**2 + V(:,k)**2 + Wind_min)
-      Tv (:,k) = T (:,k)*(1._R8+zvir*Q(:,k))
+      Tv (:,k) = T (:,k)*(1._r8+zvir*Q(:,k))
       Thv(:,k) = Tv(:,k)*((ps0/pmid(:,k))**cappa)
       VSE(:,k) = Tv(:,k)+gravit*Zm(:,k)/cpair
     end do
@@ -623,21 +615,21 @@ contains
       Z_a  (i) = Zm (i,pver)
       Ws_a (i) = Ws (i,pver)
       Thv_a(i) = Thv(i,pver)
-      Thv_s(i) = Tsfc(i)*(1._R8+zvir*Qsfc(i)  )*((ps0/Psfc(i))**cappa)
+      Thv_s(i) = Tsfc(i)*(1._r8+zvir*Qsfc(i)  )*((ps0/Psfc(i))**cappa)
       Ri_a (i) = (gravit*Z_a(i)/(Ws_a(i)**2))*(Thv_a(i)-Thv_s(i))/Thv_s(i)
       if(Ri_a(i) <= 0._r8) then
         Cdrag(i) = (Karman/log((Z_a(i)/Z0)))**2
       elseif(Ri_a(i) >= Ri_c) then
-        Cdrag(i) = 0._R8
+        Cdrag(i) = 0._r8
       else
-        Cdrag(i) = ((1._R8-(Ri_a(i)/Ri_c))*Karman/log((Z_a(i)/Z0)))**2
+        Cdrag(i) = ((1._r8-(Ri_a(i)/Ri_c))*Karman/log((Z_a(i)/Z0)))**2
       endif
       Ustar(i) = sqrt(Cdrag(i))*Ws_a(i)
       Bstar(i) = sqrt(Cdrag(i))*(gravit*(Thv_a(i)-Thv_s(i))/Thv_s(i))
     end do
 
-    ! Calcualte a bulk Richardson number and determine
-    ! depths of bounddary/surface layers.
+    ! Calculate a bulk Richardson number and determine
+    ! depths of boundary/surface layers.
     !----------------------------------------------------
     do k = 1,pver
      Ri(:,k) = (gravit*Zm(:,k)/(Ws(:,k)**2))*(VSE(:,k)-VSE(:,pver))/VSE(:,pver)
@@ -831,7 +823,7 @@ contains
     end do
 
     ! Incorporate surface fluxes into implicit scheme, then
-    ! update flux values and dericvatives
+    ! update flux values and derivatives
     !------------------------------------------
     FN_u   (:) =  (Estar_u(:) + MU(:,pver)*Fu(:))          &
                  /(1._r8-MU(:,pver)*(dFa_dUa(:)+dFu_dUa(:)))
@@ -874,7 +866,7 @@ contains
                                      -cpair*Ft(:) -latvap*Fq(:)  )
     dFlux(:) = (dtime/C_ocn)*(-dFup_dTs(:) -cpair*dFt_dTs(:) -latvap*dFq_dTs(:))
     Tsfc (:) = Tsfc(:) + (Flux(:)/(1._r8-dFlux(:)))
-    Qsfc (:) = epsilo*E0/Psfc(:)*exp(-latvap/rh2o*((1._r8/Tsfc(:))-1._r8/T0))
+    Qsfc (:) = epsilo*E0/Psfc(:)*exp(-latvap_div_rh2o*((1._r8/Tsfc(:))-1._r8/T0))
     dTs  (:) = Tsfc(:) - Tsfc_bc(:)
 
   !============================================================================
@@ -917,9 +909,6 @@ contains
     dQa(:,:) = dQa(:,:)/dtime
     dTa(:,:) = dTa(:,:)/dtime
 
-    ! End Routine
-    !---------------
-    return
   end subroutine frierson_pbl
   !=======================================================================
 
@@ -967,11 +956,17 @@ contains
     !---------------
 
 
+    Cdrag = 0._r8
+    Km    = 0._r8
+    Ke    = 0._r8
+    VSE   = 0._r8
+    Z_pbl = 0._r8
+    Rf    = 0._r8
+    dTa   = 0._r8
+    dQa   = 0._r8
+    dUa   = 0._r8
+    dVa   = 0._r8
 
-
-    ! End Routine
-    !---------------
-    return
   end subroutine frierson_pbl_USER
   !=======================================================================
 
@@ -984,7 +979,7 @@ contains
     ! The gray radiation parameterization based on Frierson, et al. 2006.
     !
     ! frierson_radiation: This is an implementation of the gray radiation
-    !                     scheme user in the Frierson model.
+    !                     scheme used in the Frierson model.
     !==========================================================================
     !
     ! Passed Variables
@@ -1023,10 +1018,9 @@ contains
     real(r8):: Fdown  (ncol,pver+1)
     real(r8):: Bval   (ncol,pver)
     real(r8):: Etau   (ncol,pver)
-    real(r8):: Qr     (ncol,pver)
     integer :: k
 
-    ! Calc current Tv values Heights
+    ! Calc current Tv Heights
     !---------------------------------
     Tv_srf(:)  = Tsfc(:)*(1._r8+zvir*Qsfc(:))
     do k = 1, pver
@@ -1089,7 +1083,7 @@ contains
                        /(              Zi(:,k+1)  -   Zi(:,k)            )
     end do
 
-    ! Return Upwad/Downward long wave ratiation at Surface
+    ! Return Upward/Downward long wave radiation at Surface
     !----------------------------------------------------------
     Fup_s  (:) = Fup  (:,pver+1)
     Fdown_s(:) = Fdown(:,pver+1)
@@ -1100,9 +1094,6 @@ contains
       T(:,k) =  T(:,k) + dtdt_rad(:,k)*dtime
     end do
 
-    ! End Routine
-    !--------------
-    return
   end subroutine frierson_radiation
   !=======================================================================
 
@@ -1137,11 +1128,12 @@ contains
     ! Local Values
     !-------------
 
+    dtdt_rad = 0._r8
+    Fsolar   = 0._r8
+    Fup_s    = 0._r8
+    Fdown_s  = 0._r8
 
 
-    ! End Routine
-    !--------------
-    return
   end subroutine frierson_radiation_USER
   !=======================================================================
 

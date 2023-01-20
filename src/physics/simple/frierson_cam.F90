@@ -24,12 +24,12 @@ module frierson_cam
   use spmd_utils,     only: masterproc
   use cam_logfile,    only: iulog
   use hycoef,         only: ps0, etamid
-  use spmd_utils,     only: mpicom, mstrid=>masterprocid, mpi_logical, mpi_real8
+  use spmd_utils,     only: mpicom, mstrid=>masterprocid, mpi_real8
 
   use pio             ,only: file_desc_t, var_desc_t, io_desc_t, pio_double, pio_def_var
   use pio             ,only: pio_write_darray, pio_read_darray, pio_inq_varid
   use cam_grid_support,only: cam_grid_id, cam_grid_dimensions, cam_grid_get_decomp
-  use shr_const_mod,   only: SHR_CONST_STEBOL, SHR_CONST_REARTH, SHR_CONST_KARMAN
+  use shr_const_mod,   only: SHR_CONST_STEBOL, SHR_CONST_REARTH, SHR_CONST_KARMAN, SHR_CONST_TKTRIP
 
   ! Set all Global values and routines to private by default
   ! and then explicitly set their exposure.
@@ -60,7 +60,7 @@ module frierson_cam
   integer,parameter :: CONDENSATE_NONE       = 0  ! No Condensation, PRECL=0
   integer,parameter :: CONDENSATE_FRIERSON   = 1  ! Frierson condensation w/ re-evaporation
   integer,parameter :: CONDENSATE_TJ16       = 2  ! Condensation from TJ2016 model.
-  integer,parameter :: CONDENSATE_USER       = 3  ! Optional user defined Consensation scheme
+  integer,parameter :: CONDENSATE_USER       = 3  ! Optional user defined Condensation scheme
 
   integer,parameter :: RADIATION_FRIERSON    = 0  ! Frierson Gray radiation.
   integer,parameter :: RADIATION_USER        = 1  ! Optional user defined Radiation scheme
@@ -73,14 +73,14 @@ module frierson_cam
 
   ! Global Constants
   !---------------------
-  real(r8),parameter :: frierson_T0     = 273.16_r8     ! Reference Temperature for E0
+  real(r8),parameter :: frierson_T0     = SHR_CONST_TKTRIP  ! Reference Temperature for E0
   real(r8),parameter :: frierson_E0     = 610.78_r8     ! Saturation Vapor pressure @ T0
   real(r8),parameter :: frierson_Rs0    = 1360.0_r8     ! Solar Constant
   real(r8),parameter :: frierson_Erad   = SHR_CONST_REARTH  ! Earth Radius
   real(r8),parameter :: frierson_Karman = SHR_CONST_KARMAN  ! Von Karman constant
   real(r8),parameter :: frierson_Boltz  = SHR_CONST_STEBOL  ! Stefan-Boltzmann constant
 
-  ! Some Physics buffer indicies
+  ! Some Physics buffer indices
   !-------------------------------
   integer :: prec_pcw_idx = 0
   integer :: prec_dp_idx  = 0
@@ -122,7 +122,7 @@ module frierson_cam
   real(r8) :: frierson_WetDryCoef = unset_r8      ! E0 Scale factor to control moisture
   real(r8) :: frierson_Tmin       = unset_r8      ! IC: Minimum sst (K)
   real(r8) :: frierson_Tdlt       = unset_r8      ! IC: eq-polar difference sst (K)
-  real(r8) :: frierson_Twidth     = unset_r8      ! IC: width parameter for sst (C)
+  real(r8) :: frierson_Twidth     = unset_r8      ! IC: Latitudinal width parameter for sst (degrees)
 
 contains
   !==============================================================================
@@ -210,9 +210,6 @@ contains
     call mpi_bcast(frierson_WetDryCoef, 1, mpi_real8 , mstrid, mpicom, ierr)
     if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: frierson_WetDryCoef")
 
-    ! End Routine
-    !-------------
-    return
   end subroutine frierson_readnl
   !==============================================================================
 
@@ -236,7 +233,7 @@ contains
     !
     ! Local Values
     !---------------
-    integer :: istat,lchnk,icol,ncol,ll
+    integer :: istat,lchnk,icol,ncol
     real(r8):: adjusted_E0
     real(r8):: frierson_Rs
 
@@ -357,7 +354,7 @@ contains
       end do
     endif
 
-    ! Initialize radiation and flux values to 0.0  (Add Init from restart file???)
+    ! Initialize radiation and flux values to 0.0
     !---------------------------------------------------------------------------
     do lchnk = begchunk,endchunk
       Fsolar(:,lchnk) = 0._r8
@@ -415,9 +412,6 @@ contains
       write(iulog,*) ' '
     endif
 
-    ! End Routine
-    !--------------
-    return
   end subroutine frierson_init
   !==============================================================================
 
@@ -433,7 +427,6 @@ contains
     !=====================================================================
     use physics_types,only: physics_state, physics_ptend
     use physics_types,only: physics_ptend_init
-    use physconst,    only: cpair
     use frierson,     only: frierson_condensate_NONE,frierson_condensate
     use frierson,     only: frierson_condensate_USER,frierson_condensate_TJ16
     !
@@ -519,9 +512,6 @@ contains
       ptend%q(:ncol,k,1) = (qv(:,k)-state%q(:ncol,k,1))/ztodt
     end do
 
-    ! End Routine
-    !--------------
-    return
   end subroutine frierson_condensate_tend
   !==============================================================================
 
@@ -533,7 +523,6 @@ contains
     !=========================================================================
     use physics_types,only: physics_state, physics_ptend
     use physics_types,only: physics_ptend_init
-    use physconst,    only: cpair
     use phys_grid,    only: get_rlat_all_p
     use frierson,     only: frierson_pbl,frierson_pbl_USER
     !
@@ -686,9 +675,6 @@ contains
     call outfld('R_Tsurf' , Tsurf (:ncol,lchnk),ncol,lchnk)
     call outfld('R_Qsurf' , Qsurf (:ncol,lchnk),ncol,lchnk)
 
-    ! End Routine
-    !--------------
-    return
   end subroutine frierson_pbl_tend
   !============================================================================
 
@@ -696,11 +682,10 @@ contains
   !============================================================================
   subroutine frierson_radiative_tend(state, ptend, ztodt,cam_in,cam_out)
     !
-    ! frierson_radiative_tend: Run the radiatvie process
+    ! frierson_radiative_tend: Run the radiative process
     !=========================================================================
     use physics_types,only: physics_state, physics_ptend
     use physics_types,only: physics_ptend_init
-    use physconst,    only: cpair
     use phys_grid,    only: get_rlat_all_p
     use frierson,     only: frierson_radiation,frierson_radiation_USER
     !
@@ -797,9 +782,6 @@ contains
     !-----------------------------------------------------------------------
     call outfld('QRS',dtdt_heating, ncol,lchnk)
 
-    ! End Routine
-    !------------
-    return
   end subroutine frierson_radiative_tend
   !============================================================================
 
@@ -832,9 +814,6 @@ contains
                  *exp(-latvap/rh2o*((1._r8/Tsfc(ii))-1._r8/frierson_T0))
     end do
 
-    ! End Routine
-    !--------------
-    return
   end subroutine frierson_surface_init
   !=======================================================================
 
@@ -856,11 +835,15 @@ contains
     integer:: ierr
 
     ierr = pio_def_var(File,'Frierson_Tsfc',pio_double, hdimids, Tsurf_desc)
-    ierr = pio_def_var(File,'Frierson_Qsfc',pio_double, hdimids, Qsurf_desc)
+    if (ierr /= 0) then
+       call endrun('frierson_restart_init: ERROR defining Frierson_Tsfc')
+    end if
 
-    ! End Routine
-    !--------------
-    return
+    ierr = pio_def_var(File,'Frierson_Qsfc',pio_double, hdimids, Qsurf_desc)
+    if (ierr /= 0) then
+       call endrun('frierson_restart_init: ERROR defining Frierson_Qsfc')
+    end if
+
   end subroutine frierson_restart_init
   !=======================================================================
 
@@ -893,11 +876,15 @@ contains
     ! Write Surface values
     !---------------------
     call pio_write_darray(File, Tsurf_desc, iodesc, Tsurf, ierr)
-    call pio_write_darray(File, Qsurf_desc, iodesc, Qsurf, ierr)
+    if (ierr /= 0) then
+       call endrun('frierson_restart_write: ERROR writing Tsurf')
+    end if
 
-    ! End Routine
-    !--------------
-    return
+    call pio_write_darray(File, Qsurf_desc, iodesc, Qsurf, ierr)
+    if (ierr /= 0) then
+       call endrun('frierson_restart_write: ERROR writing Qsurf')
+    end if
+
   end subroutine frierson_restart_write
   !=======================================================================
 
@@ -939,13 +926,25 @@ contains
     ! Read Surface values
     !---------------------
     ierr = pio_inq_varid(File,'Frierson_Tsfc',vardesc)
-    call pio_read_darray(File, vardesc, iodesc, Tsurf, ierr)
-    ierr = pio_inq_varid(File,'Frierson_Qsfc',vardesc)
-    call pio_read_darray(File, vardesc, iodesc, Qsurf, ierr)
+    if (ierr /= 0) then
+       call endrun('frierson_restart_read: ERROR PIO unable to find variable Frierson_Tsfc')
+    end if
 
-    ! End Routine
-    !--------------
-    return
+    call pio_read_darray(File, vardesc, iodesc, Tsurf, ierr)
+    if (ierr /= 0) then
+       call endrun('frierson_restart_read: ERROR PIO unable to read variable Tsurf')
+    end if
+
+    ierr = pio_inq_varid(File,'Frierson_Qsfc',vardesc)
+    if (ierr /= 0) then
+       call endrun('frierson_restart_read: ERROR PIO unable to find variable Frierson_Qsfc')
+    end if
+
+    call pio_read_darray(File, vardesc, iodesc, Qsurf, ierr)
+    if (ierr /= 0) then
+       call endrun('frierson_restart_read: ERROR PIO unable to read variable Qsurf')
+    end if
+
   end subroutine frierson_restart_read
   !=======================================================================
 

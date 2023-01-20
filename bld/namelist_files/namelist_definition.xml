@@ -78,7 +78,7 @@
 <entry id="frierson_Fb" type="real" category="frierson"
        group="frierson_nl" valid_values="" >
        Surface Layer Fraction of boundary layer depth.
-       The prescribed fraction of the bounary layer depth
+       The prescribed fraction of the boundary layer depth
        for surface interactions.
        Default: 0.1
        </entry>
@@ -134,7 +134,7 @@
 <entry id="frierson_C0" type="real" category="frierson"
        group="frierson_nl" valid_values="" >
        Ocean Mixed-Layer Heat Capacity.
-       The ocean surface is a slab mixed layer with a specified heat capacity.
+       The ocean surface is a slab mixed layer with a specified heat capacity in units of J K-1 m-2
        Default: 1.e7
        </entry>
 
@@ -164,7 +164,7 @@
 
 <entry id="frierson_Twidth" type="real" category="frierson"
        group="frierson_nl" valid_values="" >
-       Tsrf Initial Condition: SST Width of Latitudinal variation.
+       Tsrf Initial Condition: Latitudinal width parameter for sst (degrees)
        The ocean temperatures are initailized with the values:
         T_s = Tmin + Tdlt*exp[-0.5*(Lat/Twidth)^2]
        Default: 26.
