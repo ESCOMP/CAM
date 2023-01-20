@@ -2335,14 +2335,16 @@ subroutine micro_pumas_cam_tend(state, ptend, dtime, pbuf)
       call physics_update(state_loc, ptend_loc, dtime/num_steps)
 
 !++ TAU
-      proc_rates%amk_c = proc_rates%amk_c/num_steps
-      proc_rates%ank_c = proc_rates%ank_c/num_steps
-      proc_rates%amk_r = proc_rates%amk_r/num_steps
-      proc_rates%ank_r = proc_rates%ank_r/num_steps
-      proc_rates%amk = proc_rates%amk/num_steps
-      proc_rates%ank = proc_rates%ank/num_steps
-      proc_rates%amk_out = proc_rates%amk_out/num_steps
-      proc_rates%ank_out = proc_rates%ank_out/num_steps
+      if (trim(micro_mg_warm_rain) == 'tau' .or. trim(micro_mg_warm_rain) == 'emulate') then
+         proc_rates%amk_c(:ncol,:,:) = proc_rates%amk_c(:ncol,:,:)/num_steps
+         proc_rates%ank_c(:ncol,:,:) = proc_rates%ank_c(:ncol,:,:)/num_steps
+         proc_rates%amk_r(:ncol,:,:) = proc_rates%amk_r(:ncol,:,:)/num_steps
+         proc_rates%ank_r(:ncol,:,:) = proc_rates%ank_r(:ncol,:,:)/num_steps
+         proc_rates%amk(:ncol,:,:) = proc_rates%amk(:ncol,:,:)/num_steps
+         proc_rates%ank(:ncol,:,:) = proc_rates%ank(:ncol,:,:)/num_steps
+         proc_rates%amk_out(:ncol,:,:) = proc_rates%amk_out(:ncol,:,:)/num_steps
+         proc_rates%ank_out(:ncol,:,:) = proc_rates%ank_out(:ncol,:,:)/num_steps
+      end if
 !-- TAU
 
    end do
