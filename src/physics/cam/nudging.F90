@@ -198,7 +198,7 @@ module nudging
   use time_manager,   only: timemgr_time_ge, timemgr_time_inc, get_curr_date
   use time_manager,   only: get_step_size
   use cam_abortutils, only: endrun
-  use spmd_utils,     only: masterproc, mstrid=>masterprocid, mpicom
+  use spmd_utils,     only: masterproc, mstrid=>masterprocid, mpicom, mpi_success
   use spmd_utils,     only: mpi_integer, mpi_real8, mpi_logical, mpi_character
   use cam_logfile,    only: iulog
   use zonal_mean_mod, only: ZonalMean_t
@@ -336,6 +336,8 @@ contains
    ! Local Values
    !---------------
    integer :: ierr, unitn
+
+   character(len=*), parameter :: prefix = 'nudging_readnl: '
 
    namelist /nudging_nl/ Nudge_Model, Nudge_Path,                             &
                          Nudge_File_Template, Nudge_Force_Opt,                &
@@ -489,52 +491,98 @@ contains
    !------------------------------
    call MPI_bcast(Nudge_Path         , len(Nudge_Path),                       &
         mpi_character, mstrid, mpicom, ierr)
+   if (ierr /= mpi_success) call endrun(prefix//'FATAL: mpi_bcast: Nudge_Path ')
    call MPI_bcast(Nudge_File_Template,len(Nudge_File_Template),               &
         mpi_character, mstrid, mpicom, ierr)
+   if (ierr /= mpi_success) call endrun(prefix//'FATAL: mpi_bcast: Nudge_File_Template')
    call MPI_bcast(Nudge_Model        , 1, mpi_logical, mstrid, mpicom, ierr)
+   if (ierr /= mpi_success) call endrun(prefix//'FATAL: mpi_bcast: Nudge_Model')
    call MPI_bcast(Nudge_Initialized  , 1, mpi_logical, mstrid, mpicom, ierr)
+   if (ierr /= mpi_success) call endrun(prefix//'FATAL: mpi_bcast: Nudge_Initialized')
    call MPI_bcast(Nudge_ON           , 1, mpi_logical, mstrid, mpicom, ierr)
+   if (ierr /= mpi_success) call endrun(prefix//'FATAL: mpi_bcast: Nudge_ON')
    call MPI_bcast(Nudge_Force_Opt    , 1, mpi_integer, mstrid, mpicom, ierr)
+   if (ierr /= mpi_success) call endrun(prefix//'FATAL: mpi_bcast: Nudge_Force_Opt')
    call MPI_bcast(Nudge_TimeScale_Opt, 1, mpi_integer, mstrid, mpicom, ierr)
+   if (ierr /= mpi_success) call endrun(prefix//'FATAL: mpi_bcast: Nudge_TimeScale_Opt')
    call MPI_bcast(Nudge_TSmode       , 1, mpi_integer, mstrid, mpicom, ierr)
+   if (ierr /= mpi_success) call endrun(prefix//'FATAL: mpi_bcast: Nudge_TSmode')
    call MPI_bcast(Nudge_Times_Per_Day, 1, mpi_integer, mstrid, mpicom, ierr)
+   if (ierr /= mpi_success) call endrun(prefix//'FATAL: mpi_bcast: Nudge_Times_Per_Day')
    call MPI_bcast(Model_Times_Per_Day, 1, mpi_integer, mstrid, mpicom, ierr)
+   if (ierr /= mpi_success) call endrun(prefix//'FATAL: mpi_bcast: Model_Times_Per_Day')
    call MPI_bcast(Nudge_Ucoef        , 1, mpi_real8 ,  mstrid, mpicom, ierr)
+   if (ierr /= mpi_success) call endrun(prefix//'FATAL: mpi_bcast: Nudge_Ucoef')
    call MPI_bcast(Nudge_Vcoef        , 1, mpi_real8 ,  mstrid, mpicom, ierr)
+   if (ierr /= mpi_success) call endrun(prefix//'FATAL: mpi_bcast: Nudge_Vcoef')
    call MPI_bcast(Nudge_Tcoef        , 1, mpi_real8 ,  mstrid, mpicom, ierr)
+   if (ierr /= mpi_success) call endrun(prefix//'FATAL: mpi_bcast: Nudge_Tcoef')
    call MPI_bcast(Nudge_Qcoef        , 1, mpi_real8 ,  mstrid, mpicom, ierr)
+   if (ierr /= mpi_success) call endrun(prefix//'FATAL: mpi_bcast: Nudge_Qcoef')
    call MPI_bcast(Nudge_PScoef       , 1, mpi_real8 ,  mstrid, mpicom, ierr)
+   if (ierr /= mpi_success) call endrun(prefix//'FATAL: mpi_bcast: Nudge_PScoef')
    call MPI_bcast(Nudge_Uprof        , 1, mpi_integer, mstrid, mpicom, ierr)
+   if (ierr /= mpi_success) call endrun(prefix//'FATAL: mpi_bcast: Nudge_Uprof')
    call MPI_bcast(Nudge_Vprof        , 1, mpi_integer, mstrid, mpicom, ierr)
+   if (ierr /= mpi_success) call endrun(prefix//'FATAL: mpi_bcast: Nudge_Vprof')
    call MPI_bcast(Nudge_Tprof        , 1, mpi_integer, mstrid, mpicom, ierr)
+   if (ierr /= mpi_success) call endrun(prefix//'FATAL: mpi_bcast: Nudge_Tprof')
    call MPI_bcast(Nudge_Qprof        , 1, mpi_integer, mstrid, mpicom, ierr)
+   if (ierr /= mpi_success) call endrun(prefix//'FATAL: mpi_bcast: Nudge_Qprof')
    call MPI_bcast(Nudge_PSprof       , 1, mpi_integer, mstrid, mpicom, ierr)
+   if (ierr /= mpi_success) call endrun(prefix//'FATAL: mpi_bcast: Nudge_PSprof')
    call MPI_bcast(Nudge_Beg_Year     , 1, mpi_integer, mstrid, mpicom, ierr)
+   if (ierr /= mpi_success) call endrun(prefix//'FATAL: mpi_bcast: Nudge_Beg_Year')
    call MPI_bcast(Nudge_Beg_Month    , 1, mpi_integer, mstrid, mpicom, ierr)
+   if (ierr /= mpi_success) call endrun(prefix//'FATAL: mpi_bcast: Nudge_Beg_Month')
    call MPI_bcast(Nudge_Beg_Day      , 1, mpi_integer, mstrid, mpicom, ierr)
+   if (ierr /= mpi_success) call endrun(prefix//'FATAL: mpi_bcast: Nudge_Beg_Day')
    call MPI_bcast(Nudge_Beg_Sec      , 1, mpi_integer, mstrid, mpicom, ierr)
+   if (ierr /= mpi_success) call endrun(prefix//'FATAL: mpi_bcast: Nudge_Beg_Sec')
    call MPI_bcast(Nudge_End_Year     , 1, mpi_integer, mstrid, mpicom, ierr)
+   if (ierr /= mpi_success) call endrun(prefix//'FATAL: mpi_bcast: Nudge_End_Year')
    call MPI_bcast(Nudge_End_Month    , 1, mpi_integer, mstrid, mpicom, ierr)
+   if (ierr /= mpi_success) call endrun(prefix//'FATAL: mpi_bcast: Nudge_End_Month')
    call MPI_bcast(Nudge_End_Day      , 1, mpi_integer, mstrid, mpicom, ierr)
+   if (ierr /= mpi_success) call endrun(prefix//'FATAL: mpi_bcast: Nudge_End_Day')
    call MPI_bcast(Nudge_End_Sec      , 1, mpi_integer, mstrid, mpicom, ierr)
+   if (ierr /= mpi_success) call endrun(prefix//'FATAL: mpi_bcast: Nudge_End_Sec')
    call MPI_bcast(Nudge_Hwin_lo      , 1, mpi_real8 ,  mstrid, mpicom, ierr)
+   if (ierr /= mpi_success) call endrun(prefix//'FATAL: mpi_bcast: Nudge_Hwin_lo')
    call MPI_bcast(Nudge_Hwin_hi      , 1, mpi_real8 ,  mstrid, mpicom, ierr)
+   if (ierr /= mpi_success) call endrun(prefix//'FATAL: mpi_bcast: Nudge_Hwin_hi')
    call MPI_bcast(Nudge_Hwin_lat0    , 1, mpi_real8 ,  mstrid, mpicom, ierr)
+   if (ierr /= mpi_success) call endrun(prefix//'FATAL: mpi_bcast: Nudge_Hwin_lat0')
    call MPI_bcast(Nudge_Hwin_latWidth, 1, mpi_real8 ,  mstrid, mpicom, ierr)
+   if (ierr /= mpi_success) call endrun(prefix//'FATAL: mpi_bcast: Nudge_Hwin_latWidth')
    call MPI_bcast(Nudge_Hwin_latDelta, 1, mpi_real8 ,  mstrid, mpicom, ierr)
+   if (ierr /= mpi_success) call endrun(prefix//'FATAL: mpi_bcast: Nudge_Hwin_latDelta')
    call MPI_bcast(Nudge_Hwin_lon0    , 1, mpi_real8 ,  mstrid, mpicom, ierr)
+   if (ierr /= mpi_success) call endrun(prefix//'FATAL: mpi_bcast: Nudge_Hwin_lon0')
    call MPI_bcast(Nudge_Hwin_lonWidth, 1, mpi_real8 ,  mstrid, mpicom, ierr)
+   if (ierr /= mpi_success) call endrun(prefix//'FATAL: mpi_bcast: Nudge_Hwin_lonWidth')
    call MPI_bcast(Nudge_Hwin_lonDelta, 1, mpi_real8 ,  mstrid, mpicom, ierr)
+   if (ierr /= mpi_success) call endrun(prefix//'FATAL: mpi_bcast: Nudge_Hwin_lonDelta')
    call MPI_bcast(Nudge_Hwin_Invert,   1, mpi_logical, mstrid, mpicom, ierr)
+   if (ierr /= mpi_success) call endrun(prefix//'FATAL: mpi_bcast: Nudge_Hwin_Invert')
    call MPI_bcast(Nudge_Vwin_lo      , 1, mpi_real8 ,  mstrid, mpicom, ierr)
+   if (ierr /= mpi_success) call endrun(prefix//'FATAL: mpi_bcast: Nudge_Vwin_lo')
    call MPI_bcast(Nudge_Vwin_hi      , 1, mpi_real8 ,  mstrid, mpicom, ierr)
+   if (ierr /= mpi_success) call endrun(prefix//'FATAL: mpi_bcast: Nudge_Vwin_hi')
    call MPI_bcast(Nudge_Vwin_Hindex  , 1, mpi_real8 ,  mstrid, mpicom, ierr)
+   if (ierr /= mpi_success) call endrun(prefix//'FATAL: mpi_bcast: Nudge_Vwin_Hindex')
    call MPI_bcast(Nudge_Vwin_Hdelta  , 1, mpi_real8 ,  mstrid, mpicom, ierr)
+   if (ierr /= mpi_success) call endrun(prefix//'FATAL: mpi_bcast: Nudge_Vwin_Hdelta')
    call MPI_bcast(Nudge_Vwin_Lindex  , 1, mpi_real8 ,  mstrid, mpicom, ierr)
+   if (ierr /= mpi_success) call endrun(prefix//'FATAL: mpi_bcast: Nudge_Vwin_Lindex')
    call MPI_bcast(Nudge_Vwin_Ldelta  , 1, mpi_real8 ,  mstrid, mpicom, ierr)
+   if (ierr /= mpi_success) call endrun(prefix//'FATAL: mpi_bcast: Nudge_Vwin_Ldelta')
    call MPI_bcast(Nudge_Vwin_Invert,   1, mpi_logical, mstrid, mpicom, ierr)
+   if (ierr /= mpi_success) call endrun(prefix//'FATAL: mpi_bcast: Nudge_Vwin_Invert')
    call MPI_bcast(Nudge_ZonalFilter,   1, mpi_logical, mstrid, mpicom, ierr)
+   if (ierr /= mpi_success) call endrun(prefix//'FATAL: mpi_bcast: Nudge_ZonalFilter')
    call MPI_bcast(Nudge_ZonalNbasis,   1, mpi_integer, mstrid, mpicom, ierr)
+   if (ierr /= mpi_success) call endrun(prefix//'FATAL: mpi_bcast: Nudge_ZonalNbasis')
 
    ! End Routine
    !------------
@@ -573,6 +621,8 @@ contains
    real(r8) :: Val1_0,Val2_0,Val3_0,Val4_0
    real(r8) :: Val1_n,Val2_n,Val3_n,Val4_n
    integer :: nn
+
+   character(len=*), parameter :: prefix = 'nudging_init: '
 
    ! Get the time step size
    !------------------------
@@ -844,27 +894,49 @@ contains
    ! Broadcast other variables that have changed
    !---------------------------------------------
    call MPI_bcast(Model_Step          , 1, mpi_real8 ,  mstrid, mpicom, ierr)
+   if (ierr /= mpi_success) call endrun(prefix//'FATAL: mpi_bcast: Model_Step')
    call MPI_bcast(Nudge_Step          , 1, mpi_real8 ,  mstrid, mpicom, ierr)
+   if (ierr /= mpi_success) call endrun(prefix//'FATAL: mpi_bcast: Nudge_Step')
    call MPI_bcast(Model_Next_Year     , 1, mpi_integer, mstrid, mpicom, ierr)
+   if (ierr /= mpi_success) call endrun(prefix//'FATAL: mpi_bcast: Model_Next_Year')
    call MPI_bcast(Model_Next_Month    , 1, mpi_integer, mstrid, mpicom, ierr)
+   if (ierr /= mpi_success) call endrun(prefix//'FATAL: mpi_bcast: Model_Next_Month')
    call MPI_bcast(Model_Next_Day      , 1, mpi_integer, mstrid, mpicom, ierr)
+   if (ierr /= mpi_success) call endrun(prefix//'FATAL: mpi_bcast: Model_Next_Day')
    call MPI_bcast(Model_Next_Sec      , 1, mpi_integer, mstrid, mpicom, ierr)
+   if (ierr /= mpi_success) call endrun(prefix//'FATAL: mpi_bcast: Model_Next_Sec')
    call MPI_bcast(Nudge_Next_Year     , 1, mpi_integer, mstrid, mpicom, ierr)
+   if (ierr /= mpi_success) call endrun(prefix//'FATAL: mpi_bcast: Nudge_Next_Year')
    call MPI_bcast(Nudge_Next_Month    , 1, mpi_integer, mstrid, mpicom, ierr)
+   if (ierr /= mpi_success) call endrun(prefix//'FATAL: mpi_bcast: Nudge_Next_Month')
    call MPI_bcast(Nudge_Next_Day      , 1, mpi_integer, mstrid, mpicom, ierr)
+   if (ierr /= mpi_success) call endrun(prefix//'FATAL: mpi_bcast: Nudge_Next_Day')
    call MPI_bcast(Nudge_Next_Sec      , 1, mpi_integer, mstrid, mpicom, ierr)
+   if (ierr /= mpi_success) call endrun(prefix//'FATAL: mpi_bcast: Nudge_Next_Sec')
    call MPI_bcast(Nudge_Model         , 1, mpi_logical, mstrid, mpicom, ierr)
+   if (ierr /= mpi_success) call endrun(prefix//'FATAL: mpi_bcast: Nudge_Model')
    call MPI_bcast(Nudge_ON            , 1, mpi_logical, mstrid, mpicom, ierr)
+   if (ierr /= mpi_success) call endrun(prefix//'FATAL: mpi_bcast: Nudge_ON')
    call MPI_bcast(Nudge_Initialized   , 1, mpi_logical, mstrid, mpicom, ierr)
+   if (ierr /= mpi_success) call endrun(prefix//'FATAL: mpi_bcast: Nudge_Initialized')
    call MPI_bcast(Nudge_ncol          , 1, mpi_integer, mstrid, mpicom, ierr)
+   if (ierr /= mpi_success) call endrun(prefix//'FATAL: mpi_bcast: Nudge_ncol')
    call MPI_bcast(Nudge_nlev          , 1, mpi_integer, mstrid, mpicom, ierr)
+   if (ierr /= mpi_success) call endrun(prefix//'FATAL: mpi_bcast: Nudge_nlev')
    call MPI_bcast(Nudge_nlon          , 1, mpi_integer, mstrid, mpicom, ierr)
+   if (ierr /= mpi_success) call endrun(prefix//'FATAL: mpi_bcast: Nudge_nlon')
    call MPI_bcast(Nudge_nlat          , 1, mpi_integer, mstrid, mpicom, ierr)
+   if (ierr /= mpi_success) call endrun(prefix//'FATAL: mpi_bcast: Nudge_nlat')
    call MPI_bcast(Nudge_Hwin_max      , 1, mpi_real8 ,  mstrid, mpicom, ierr)
+   if (ierr /= mpi_success) call endrun(prefix//'FATAL: mpi_bcast: Nudge_Hwin_max')
    call MPI_bcast(Nudge_Hwin_min      , 1, mpi_real8 ,  mstrid, mpicom, ierr)
+   if (ierr /= mpi_success) call endrun(prefix//'FATAL: mpi_bcast: Nudge_Hwin_min')
    call MPI_bcast(Nudge_Hwin_lonWidthH, 1, mpi_real8 ,  mstrid, mpicom, ierr)
+   if (ierr /= mpi_success) call endrun(prefix//'FATAL: mpi_bcast: Nudge_Hwin_lonWidthH')
    call MPI_bcast(Nudge_Hwin_latWidthH, 1, mpi_real8 ,  mstrid, mpicom, ierr)
+   if (ierr /= mpi_success) call endrun(prefix//'FATAL: mpi_bcast: Nudge_Hwin_latWidthH')
    call MPI_bcast(Nudge_NumObs        , 1, mpi_integer, mstrid, mpicom, ierr)
+   if (ierr /= mpi_success) call endrun(prefix//'FATAL: mpi_bcast: Nudge_NumObs')
 
    ! All non-masterproc processes also need to allocate space
    ! before the broadcast of Nudge_NumObs dependent data.
@@ -877,7 +949,9 @@ contains
    endif
 
    call MPI_bcast(Nudge_ObsInd      , Nudge_NumObs, mpi_integer, mstrid, mpicom, ierr)
+   if (ierr /= mpi_success) call endrun(prefix//'FATAL: mpi_bcast: ')
    call MPI_bcast(Nudge_File_Present, Nudge_NumObs, mpi_logical, mstrid, mpicom, ierr)
+   if (ierr /= mpi_success) call endrun(prefix//'FATAL: mpi_bcast: ')
 
    ! Allocate Space for Nudging observation arrays, initialize with 0's
    !---------------------------------------------------------------------
@@ -915,8 +989,10 @@ contains
    !------------------------------------------
    if(Nudge_ZonalFilter) then
      call ZM%init(Nudge_ZonalNbasis)
-     allocate(Zonal_Bamp2d(Nudge_ZonalNbasis))
-     allocate(Zonal_Bamp3d(Nudge_ZonalNbasis,pver))
+     allocate(Zonal_Bamp2d(Nudge_ZonalNbasis),stat=istat)
+     call alloc_err(istat,'nudging_init','Zonal_Bamp2d',Nudge_ZonalNbasis)
+     allocate(Zonal_Bamp3d(Nudge_ZonalNbasis,pver),stat=istat)
+     call alloc_err(istat,'nudging_init','Zonal_Bamp3d',Nudge_ZonalNbasis*pver)
    endif
 
    ! Initialize the analysis filename at the NEXT time for startup.
@@ -1432,6 +1508,8 @@ contains
    real(r8),allocatable:: Tmp3D(:,:,:)
    real(r8),allocatable:: Tmp2D(:,:)
 
+   character(len=*), parameter :: prefix = 'nudging_update_analyses: '
+
    ! Rotate Nudge_ObsInd() indices, then check the existence of the analyses
    ! file; broadcast the updated indices and file status to all the other MPI nodes.
    ! If the file is not there, then just return.
@@ -1448,7 +1526,9 @@ contains
    endif
 
    call MPI_bcast(Nudge_File_Present, Nudge_NumObs, mpi_logical, mstrid, mpicom, ierr)
+   if (ierr /= mpi_success) call endrun(prefix//'FATAL: mpi_bcast: Nudge_File_Present')
    call MPI_bcast(Nudge_ObsInd      , Nudge_NumObs, mpi_integer, mstrid, mpicom, ierr)
+   if (ierr /= mpi_success) call endrun(prefix//'FATAL: mpi_bcast: Nudge_ObsInd')
 
    if(.not. Nudge_File_Present(Nudge_ObsInd(1))) then
       return
@@ -1478,7 +1558,7 @@ contains
      endif
      Nobs_U(:,:,begchunk:endchunk,Nudge_ObsInd(1)) = Tmp3D(:,:,begchunk:endchunk)
    else
-     call endrun('Varibale "U" is missing in '//trim(anal_file))
+     call endrun('Variable "U" is missing in '//trim(anal_file))
    endif
 
    call infld('V',fileID,dim1name,'lev',dim2name,     &
@@ -1491,7 +1571,7 @@ contains
      endif
      Nobs_V(:,:,begchunk:endchunk,Nudge_ObsInd(1)) = Tmp3D(:,:,begchunk:endchunk)
    else
-     call endrun('Varibale "V" is missing in '//trim(anal_file))
+     call endrun('Variable "V" is missing in '//trim(anal_file))
    endif
 
    call infld('T',fileID,dim1name,'lev',dim2name,     &
@@ -1504,7 +1584,7 @@ contains
      endif
      Nobs_T(:,:,begchunk:endchunk,Nudge_ObsInd(1)) = Tmp3D(:,:,begchunk:endchunk)
    else
-     call endrun('Varibale "T" is missing in '//trim(anal_file))
+     call endrun('Variable "T" is missing in '//trim(anal_file))
    endif
 
    call infld('Q',fileID,dim1name,'lev',dim2name,     &
@@ -1517,7 +1597,7 @@ contains
      endif
      Nobs_Q(:,:,begchunk:endchunk,Nudge_ObsInd(1)) = Tmp3D(:,:,begchunk:endchunk)
    else
-     call endrun('Varibale "Q" is missing in '//trim(anal_file))
+     call endrun('Variable "Q" is missing in '//trim(anal_file))
    endif
 
    call infld('PS',fileID,dim1name,dim2name,          &
@@ -1530,7 +1610,7 @@ contains
      endif
      Nobs_PS(:,begchunk:endchunk,Nudge_ObsInd(1)) = Tmp2D(:,begchunk:endchunk)
    else
-     call endrun('Varibale "PS" is missing in '//trim(anal_file))
+     call endrun('Variable "PS" is missing in '//trim(anal_file))
    endif
 
    ! Restore old error handling
@@ -1686,10 +1766,10 @@ contains
     if (allocated(Nobs_T)) deallocate(Nobs_T)
     if (allocated(Nobs_Q)) deallocate(Nobs_Q)
     if (allocated(Nobs_PS)) deallocate(Nobs_PS)
-
-    call ZM%final()
     if (allocated(Zonal_Bamp2d)) deallocate(Zonal_Bamp2d)
     if (allocated(Zonal_Bamp3d)) deallocate(Zonal_Bamp3d)
+
+    call ZM%final()
 
   end subroutine nudging_final
   !================================================================
