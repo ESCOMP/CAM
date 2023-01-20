@@ -1273,7 +1273,7 @@ contains
     class(tuvx_ptr), intent(inout) :: this  ! TUV-x calculator
 
     real(r8) :: et_flux_orig(nbins)
-    integer  :: n_tuvx_bins
+    integer  :: n_tuvx_bins, i_bin
 
     ! ===============================================
     ! regrid normalized flux to TUV-x wavelength grid
@@ -1293,8 +1293,18 @@ contains
     ! ====================================
     ! estimate unused edge values for flux
     ! ====================================
-    this%wavelength_values_(1)  = this%wavelength_mid_values_(1)
-    this%wavelength_values_(2:n_tuvx_bins+1) = this%wavelength_mid_values_(1:n_tuvx_bins)
+    this%wavelength_values_(1)  = this%wavelength_mid_values_(1) - &
+                                  ( this%wavelength_mid_values_(2) - &
+                                    this%wavelength_mid_values_(1) ) * 0.5_r8
+    do i_bin = 2, n_tuvx_bins
+      this%wavelength_values_(i_bin) = this%wavelength_mid_values_(i_bin-1) + &
+                                         ( this%wavelength_mid_values_(i_bin) - &
+                                           this%wavelength_mid_values_(i_bin-1) ) * 0.5_r8
+    end do
+    this%wavelength_values_(n_tuvx_bins+1) = &
+        this%wavelength_mid_values_(n_tuvx_bins) + &
+        ( this%wavelength_mid_values_(n_tuvx_bins) - &
+          this%wavelength_mid_values_(n_tuvx_bins-1) ) * 0.5_r8
 
     ! ============================
     ! update TUV-x ET flux profile
@@ -1370,16 +1380,11 @@ contains
     else
       edges(:) = 0.0_r8
     end if
-    if( nabscol >= 2 ) then
-      exo_val = exo_column_conc(i_col,0,2)
-    else
-      exo_val = 0.0_r8
-    end if
     densities(1:pver) = this%height_delta_(1:pver) * km2cm * &
                         sqrt(edges(1:pver)) * sqrt(edges(2:pver+1))
     call this%profiles_( PROFILE_INDEX_O2 )%update( &
         edge_values = edges, layer_densities = densities, &
-        exo_density = exo_val )
+        scale_height = 7.0_r8 )
 
     ! ==========
     ! O3 profile
@@ -1395,16 +1400,11 @@ contains
     else
       edges(:) = 0.0_r8
     end if
-    if( nabscol >= 1 ) then
-      exo_val = exo_column_conc(i_col,0,1)
-    else
-      exo_val = 0.0_r8
-    end if
     densities(1:pver) = this%height_delta_(1:pver) * km2cm * &
                         sqrt(edges(1:pver)) * sqrt(edges(2:pver+1))
     call this%profiles_( PROFILE_INDEX_O3 )%update( &
         edge_values = edges, layer_densities = densities, &
-        exo_density = exo_val )
+        scale_height = 7.0_r8 )
 
     ! ===============
     ! aerosol profile
