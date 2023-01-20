@@ -1680,11 +1680,11 @@ CONTAINS
             po_vint(idx) =  (phis(idx) * ps(idx) / gravit)
          end do
       case(vc_height)
-         if (.not. present(z_mid)) then
-            write(iulog, *) subname,                                          &
-                 ' z_mid must be present for height vertical coordinate'
-            call endrun(subname//': z_mid must be present for height '//      &
-                 'vertical coordinate')
+         if ((.not. present(phis)) .or. (.not. present(phis))) then
+            write(iulog, *) subname, ' phis and phis must be present for ',     &
+                 'heigt-based vertical coordinate'
+            call endrun(subname//':  phis and phis must be present for '//      &
+                 'height-based vertical coordinate')
          end if
          ke_vint = 0._r8
          se_vint = 0._r8
@@ -1772,7 +1772,6 @@ CONTAINS
          end select
       end if
       deallocate(species_idx, species_liq_idx, species_ice_idx)
-
    end subroutine get_hydrostatic_energy_1hd
 
 end module cam_thermo
