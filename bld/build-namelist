@@ -2288,6 +2288,8 @@ if (($chem =~ /_mam4/ or $chem =~ /_mam5/) and ($phys =~ /cam6/ or $phys =~ /cam
         }
     }
     if ($chem eq 'trop_mam4' or $chem eq 'waccm_sc_mam4') {
+	# SOA yields (used for the interactive emissions) have been calculated based on the VBS yields in CAM-chem.
+	# Duseong Jo, et al. to be submitted to GMD -- doi provided when available
         my %soae_fctrs = ('BENZENE_an_srf_file' => '4.4323D0',
                           'BENZENE_bb_srf_file' => '4.4323D0',
                           'ISOP_bb_srf_file'    => '1.2021D0',
@@ -2389,7 +2391,7 @@ if (($chem =~ /_mam4/ or $chem =~ /_mam5/) and ($phys =~ /cam6/ or $phys =~ /cam
                 . "' verbenene + ipsenol + myrcene + ocimene_t_b + ocimene_al + ocimene_c_b) + ',"
                 . "' 14.1167*(farnescene_a + caryophyllene_b + acoradiene + aromadendrene + bergamotene_a +',"
                 . "' bergamotene_b + bisabolene_a + bisabolene_b + bourbonene_b + cadinene_d + cadinene_g +',"
-                . "'cedrene_a + copaene_a + cubebene_a + cubebene_b + elemene_b + farnescene_b)'";
+                . "' cedrene_a + copaene_a + cubebene_a + cubebene_b + elemene_b + farnescene_b)'";
         add_default($nl, 'megan_specifier', 'val'=>$val);
         add_default($nl, 'megan_factors_file');
         add_default($nl, 'megan_mapped_emisfctrs', 'val'=>'.false.');
