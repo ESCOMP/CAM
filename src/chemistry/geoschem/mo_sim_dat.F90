@@ -237,9 +237,25 @@
                           250.445000_r8, 250.445000_r8, 250.445000_r8, 250.445000_r8, 250.445000_r8, &
                            44.010000_r8, 33.0100000_r8, 17.0100000_r8  /)
 
-      extfrc_lst(: 1) = (/ '                ' /)
+      extfrc_lst(: 34) = (/ 'NO              ', 'CO              ', 'SO2             ', 'SO4             ', &
+                           'NH3             ', 'ACET            ', 'ALD2            ', 'ALK4            ', &
+                           'C2H6            ', 'C3H8            ', 'CH2O            ', 'PRPE            ', &
+                           'MACR            ', 'RCHO            ', 'BCPI            ', 'OCPI            ', &
+                           'HNO2            ', 'NO2             ', 'so4_a1          ', 'num_a1          ', &
+                           'H2O             ', 'bc_a4           ', 'pom_a4          ', 'num_a4          ', &
+                           'MEK             ', 'POG1            ', 'POG2            ', 'MTPA            ', &
+                           'BENZ            ', 'TOLU            ', 'XYLE            ', 'NAP             ', &
+                           'EOH             ', 'MOH             ' /)
 
-      frc_from_dataset(: 1) = (/ .false. /)
+      frc_from_dataset(: 34) = (/ .false., .false., .false., .false., &
+                                  .false., .false., .false., .false., &
+                                  .false., .false., .false., .false., &
+                                  .false., .false., .false., .false., &
+                                  .false., .false., .false., .false., &
+                                  .false., .false., .false., .false., &
+                                  .false., .false., .false., .false., &
+                                  .false., .false., .false., .false., &
+                                  .false., .false. /)
 
       ! crb_mass(:221) = (/    60.055000_r8,    60.055000_r8,    12.011000_r8,    12.011000_r8,    12.011000_r8, &
       !                       180.165000_r8,    72.066000_r8,    72.066000_r8,    72.066000_r8,    60.055000_r8, &

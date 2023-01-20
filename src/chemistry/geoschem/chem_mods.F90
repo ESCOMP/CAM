@@ -69,7 +69,7 @@
                             relcnt = 0, & ! number of relationship species
                             grpcnt = 0, & ! number of group members
                             nzcnt = 824, & ! number of non-zero matrix entries
-                            extcnt = 0, & ! number of species with external forcing
+                            extcnt = 34, & ! number of species with external forcing, aka 3-D emissions
                             clscnt1 = 8, & ! number of species in explicit class
                             clscnt2 = 0, & ! number of species in hov class
                             clscnt3 = 0, & ! number of species in ebi class
