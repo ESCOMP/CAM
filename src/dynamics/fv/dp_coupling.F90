@@ -7,9 +7,10 @@ module dp_coupling
    use ppgrid,            only: pcols, pver
    use phys_grid
 
-   use physics_types,     only: physics_state, physics_tend
+   use physics_types,     only: physics_state, physics_tend, physics_cnst_limit
    use constituents,      only: pcnst
-   use physconst,         only: gravit, zvir, cpairv, rairv
+   use physconst,         only: gravit, zvir
+   use air_composition,   only: cpairv, rairv
    use geopotential,      only: geopotential_t
    use check_energy,      only: check_energy_timestep_init
    use dynamics_vars,     only: T_FVDYCORE_GRID, t_fvdycore_state
@@ -21,11 +22,6 @@ module dp_coupling
 #endif
    use perf_mod
    use cam_logfile,       only: iulog
-
-!--------------------------------------------
-!  Variables needed for WACCM-X
-!--------------------------------------------
-   use constituents,  only: cnst_get_ind           !Needed to access constituent indices
 !
 ! !PUBLIC MEMBER FUNCTIONS:
       PUBLIC d_p_coupling, p_d_coupling
@@ -81,7 +77,7 @@ CONTAINS
     use ctem,           only: ctem_diags, do_circulation_diags
     use diag_module,    only: fv_diag_am_calc
     use gravity_waves_sources, only: gws_src_fnct
-    use physconst,      only: physconst_update
+    use cam_thermo,     only: cam_thermo_update
     use shr_const_mod,  only: shr_const_rwv
     use dyn_comp,       only: frontgf_idx, frontga_idx, uzm_idx
     use qbo,            only: qbo_use_forcing
@@ -196,15 +192,6 @@ CONTAINS
     real(r8), pointer :: pbuf_frontga(:,:)
     ! needed for qbo
     real(r8), pointer :: pbuf_uzm(:,:)
-
-!--------------------------------------------
-!  Variables needed for WACCM-X
-!--------------------------------------------
-    integer  :: ixo, ixo2, ixh, ixh2         ! indices into state structure for O, O2, H, and H2
-    real(r8) :: mmrSum_O_O2_H                ! Sum of mass mixing ratios for O, O2, and H
-    real(r8), parameter :: mmrMin=1.e-20_r8  ! lower limit of o2, o, and h mixing ratios
-    real(r8), parameter :: N2mmrMin=1.e-6_r8 ! lower limit of o2, o, and h mixing ratios
-
 #if (! defined SPMD)
     integer  :: block_buf_nrecs = 0
     integer  :: chunk_buf_nrecs = 0
@@ -541,7 +528,7 @@ chnk_loop2 : &
 ! Evaluate derived quantities
 !
     call t_startf ('derived_fields')
-!$omp parallel do private (lchnk, ncol, i, k, m, qmavl, dqreq, qbot, qbotm1, zvirv, pbuf_chnk, mmrSum_O_O2_H)
+!$omp parallel do private (lchnk, ncol, i, k, m, qmavl, dqreq, qbot, qbotm1, zvirv, pbuf_chnk)
     do lchnk = begchunk,endchunk
        ncol = phys_state(lchnk)%ncol
        do k=1,km
@@ -585,48 +572,16 @@ chnk_loop2 : &
           end do
        end do
 
-!-----------------------------------------------------------------------------------------------------------------
-! Ensure O2 + O + H (N2) mmr greater than one.  Check for unusually large H2 values and set to lower value
-!-----------------------------------------------------------------------------------------------------------------
        if ( waccmx_is('ionosphere') .or. waccmx_is('neutral') ) then
-
-          call cnst_get_ind('O', ixo)
-          call cnst_get_ind('O2', ixo2)
-          call cnst_get_ind('H', ixh)
-          call cnst_get_ind('H2', ixh2)
-
-          do i=1,ncol
-             do k=1,pver
-
-                if (phys_state(lchnk)%q(i,k,ixo) < mmrMin) phys_state(lchnk)%q(i,k,ixo) = mmrMin
-                if (phys_state(lchnk)%q(i,k,ixo2) < mmrMin) phys_state(lchnk)%q(i,k,ixo2) = mmrMin
-
-                mmrSum_O_O2_H = phys_state(lchnk)%q(i,k,ixo)+phys_state(lchnk)%q(i,k,ixo2)+phys_state(lchnk)%q(i,k,ixh)
-
-                if ((1._r8-mmrMin-mmrSum_O_O2_H) < 0._r8) then
-
-                   phys_state(lchnk)%q(i,k,ixo) = phys_state(lchnk)%q(i,k,ixo) * (1._r8 - N2mmrMin) / mmrSum_O_O2_H
-
-                   phys_state(lchnk)%q(i,k,ixo2) = phys_state(lchnk)%q(i,k,ixo2) * (1._r8 - N2mmrMin) / mmrSum_O_O2_H
-
-                   phys_state(lchnk)%q(i,k,ixh) = phys_state(lchnk)%q(i,k,ixh) * (1._r8 - N2mmrMin) / mmrSum_O_O2_H
-
-                endif
-
-                if(phys_state(lchnk)%q(i,k,ixh2) .gt. 6.e-5_r8) then
-                   phys_state(lchnk)%q(i,k,ixh2) = 6.e-5_r8
-                endif
-
-             end do
-          end do
-       endif
-
+!------------------------------------------------------------
+! Apply limiters to mixing ratios of major species
+!------------------------------------------------------------
+         call physics_cnst_limit( phys_state(lchnk) )
 !-----------------------------------------------------------------------------
-! Call physconst_update to compute cpairv, rairv, mbarv, and cappav as constituent dependent variables
+! Call cam_thermo_update to compute cpairv, rairv, mbarv, and cappav as constituent dependent variables
 ! and compute molecular viscosity(kmvis) and conductivity(kmcnd)
 !-----------------------------------------------------------------------------
-       if ( waccmx_is('ionosphere') .or. waccmx_is('neutral') ) then
-         call physconst_update(phys_state(lchnk)%q, phys_state(lchnk)%t, lchnk, ncol)
+         call cam_thermo_update(phys_state(lchnk)%q, phys_state(lchnk)%t, lchnk, ncol)
        endif
 
 !------------------------------------------------------------------------
@@ -698,7 +653,7 @@ chnk_loop2 : &
    use metdata,     only: get_met_fields
 #endif
    use physics_buffer, only: physics_buffer_desc
-   use physconst,      only: physconst_calc_kappav
+   use cam_thermo,     only: cam_thermo_calc_kappav
 
 !-----------------------------------------------------------------------
     implicit none
@@ -959,7 +914,7 @@ chnk_loop2 : &
     call t_startf ('p_d_adjust')
     if (iam .lt. grid%npes_xy) then
        if (grid%high_alt) then
-          call physconst_calc_kappav(ifirstxy,ilastxy,jfirstxy,jlastxy,1,km, grid%ntotq, tracer, cappa3v )
+          call cam_thermo_calc_kappav(tracer, cappa3v )
        else
           cappa3v = cappa
        endif

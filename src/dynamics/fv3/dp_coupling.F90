@@ -16,7 +16,8 @@ use fv_grid_utils_mod, only: g_sum
 use hycoef,            only: hyam, hybm, hyai, hybi, ps0
 use mpp_domains_mod,   only: mpp_update_domains, domain2D, DGRID_NE
 use perf_mod,          only: t_startf, t_stopf, t_barrierf
-use physconst,         only: cpair, gravit, rair, zvir, cappa, rairv
+use physconst,         only: cpair, gravit, rair, zvir, cappa
+use air_composition,   only: rairv
 use phys_grid,         only: get_ncols_p, get_gcol_all_p, block_to_chunk_send_pters, &
                              transpose_block_to_chunk, block_to_chunk_recv_pters, &
                              chunk_to_block_send_pters, transpose_chunk_to_block, &
@@ -253,8 +254,8 @@ subroutine p_d_coupling(phys_state, phys_tend, dyn_in)
   use fms_mod,                only: set_domain
   use fv_arrays_mod,          only: fv_atmos_type
   use fv_grid_utils_mod,      only: cubed_to_latlon
-  use physconst,              only: thermodynamic_active_species_num,thermodynamic_active_species_idx_dycore
-  use physconst,              only: thermodynamic_active_species_cp,thermodynamic_active_species_cv,dry_air_species_num
+  use air_composition,        only: thermodynamic_active_species_num,thermodynamic_active_species_idx_dycore
+  use air_composition,        only: thermodynamic_active_species_cp,thermodynamic_active_species_cv,dry_air_species_num
   use physics_types,          only: set_state_pdry
   use time_manager,           only: get_step_size
 
@@ -606,16 +607,16 @@ end subroutine p_d_coupling
 
 subroutine derived_phys_dry(phys_state, phys_tend, pbuf2d)
 
-  use check_energy,   only: check_energy_timestep_init
-  use constituents,   only: qmin
-  use geopotential,   only: geopotential_t
-  use physics_buffer, only: physics_buffer_desc, pbuf_get_chunk
-  use physics_types,  only: set_wet_to_dry
-  use physconst,      only: thermodynamic_active_species_num,thermodynamic_active_species_idx_dycore
-  use physconst,      only: thermodynamic_active_species_idx,dry_air_species_num
-  use ppgrid,         only: pver
-  use qneg_module,    only: qneg3
-  use shr_vmath_mod,  only: shr_vmath_log
+  use check_energy,    only: check_energy_timestep_init
+  use constituents,    only: qmin
+  use geopotential,    only: geopotential_t
+  use physics_buffer,  only: physics_buffer_desc, pbuf_get_chunk
+  use physics_types,   only: set_wet_to_dry
+  use air_composition, only: thermodynamic_active_species_num,thermodynamic_active_species_idx_dycore
+  use air_composition, only: thermodynamic_active_species_idx,dry_air_species_num
+  use ppgrid,          only: pver
+  use qneg_module,     only: qneg3
+  use shr_vmath_mod,   only: shr_vmath_log
 
   ! arguments
   type(physics_state), intent(inout), dimension(begchunk:endchunk) :: phys_state
@@ -950,7 +951,7 @@ subroutine fv3_tracer_diags(atm)
   use dimensions_mod,        only: nlev,cnst_name_ffsl
   use dyn_grid,              only: mytile
   use fv_arrays_mod,         only: fv_atmos_type
-  use physconst,             only: thermodynamic_active_species_num,thermodynamic_active_species_idx_dycore, &
+  use air_composition,       only: thermodynamic_active_species_num,thermodynamic_active_species_idx_dycore, &
                                    dry_air_species_num
 
   ! arguments

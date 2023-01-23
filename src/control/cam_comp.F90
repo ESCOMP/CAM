@@ -88,10 +88,11 @@ subroutine cam_init(                                             &
    use cam_pio_utils,    only: init_pio_subsystem
    use cam_instance,     only: inst_suffix
    use cam_snapshot_common, only: cam_snapshot_deactivate
-   use physconst,        only: composition_init
+   use air_composition,  only: air_composition_init
 #if (defined BFB_CAM_SCAM_IOP)
    use history_defaults, only: initialize_iop_history
 #endif
+   use phys_grid_ctem,   only: phys_grid_ctem_reg
 
    ! Arguments
    character(len=cl), intent(in) :: caseid                ! case ID
@@ -168,6 +169,9 @@ subroutine cam_init(                                             &
    ! Initialize physics grid decomposition
    call phys_grid_init()
 
+   ! Register zonal average grid for phys TEM diagnostics
+   call phys_grid_ctem_reg()
+
    ! Register advected tracers and physics buffer fields
    call phys_register ()
 
@@ -175,7 +179,7 @@ subroutine cam_init(                                             &
    ! are set in dyn_init
    call chem_surfvals_init()
 
-   call composition_init()
+   call air_composition_init()
    ! initialize ionosphere
    call ionosphere_init()
 
