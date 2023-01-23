@@ -8,11 +8,6 @@
 <orb_mvelp                >0.</orb_mvelp>
 <orb_mode>fixed_parameters</orb_mode>
 
-<!-- Set Aquaplanet to False -->
-<aqua_planet              >.false. </aqua_planet>
-
-<start_ymd> 10101 </start_ymd>
-
 <!-- Force PHIS to be set to zero -->
 <use_topo_file>.false.</use_topo_file>
 
