@@ -2289,7 +2289,7 @@ if (($chem =~ /_mam4/ or $chem =~ /_mam5/) and ($phys =~ /cam6/ or $phys =~ /cam
     }
     if ($chem eq 'trop_mam4' or $chem eq 'waccm_sc_mam4') {
 	# SOA yields (used for the interactive emissions) have been calculated based on the VBS yields in CAM-chem.
-	# Duseong Jo, et al. to be submitted to GMD -- doi provided when available
+	# Duseong Jo, et al. to be submitted to GMD, 2023 -- see https://github.com/ESCOMP/CAM/pull/727 discussion for additional detail.
         my %soae_fctrs = ('BENZENE_an_srf_file' => '4.4323D0',
                           'BENZENE_bb_srf_file' => '4.4323D0',
                           'ISOP_bb_srf_file'    => '1.2021D0',
