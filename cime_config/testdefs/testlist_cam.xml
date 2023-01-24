@@ -1619,7 +1619,7 @@
       <machine name="cheyenne" compiler="intel" category="camchem"/>
     </machines>
     <options>
-      <option name="wallclock">00:20:00</option>
+      <option name="wallclock">00:30:00</option>
       <option name="comment">"Nudged CAM-Chem on a regionally refined grid"</option>
     </options>
   </test>
