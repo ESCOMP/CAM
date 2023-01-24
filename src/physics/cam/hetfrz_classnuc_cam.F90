@@ -80,8 +80,7 @@ character(len=fieldname_len),allocatable :: uncoated_dens_hnames(:)
 character(len=fieldname_len),allocatable :: cldfn_dens_hnames(:)
 character(len=fieldname_len),allocatable :: coated_frac_hnames(:)
 character(len=fieldname_len),allocatable :: radius_hnames(:)
-character(len=fieldname_len),allocatable :: amass_hnames(:)
-character(len=fieldname_len),allocatable :: awfacm_hnames(:)
+character(len=fieldname_len),allocatable :: wactfac_hnames(:)
 
 integer :: tot_num_bins = 0
 
@@ -206,10 +205,8 @@ subroutine hetfrz_classnuc_cam_init(mincld_in, aero_props)
    allocate(radius_hnames(tot_num_bins), stat=istat)
    call alloc_err(istat, routine, 'radius_hnames', tot_num_bins)
 
-   allocate(amass_hnames(tot_num_bins), stat=istat)
-   call alloc_err(istat, routine, 'amass_hnames', tot_num_bins)
-   allocate(awfacm_hnames(tot_num_bins), stat=istat)
-   call alloc_err(istat, routine, 'awfacm_hnames', tot_num_bins)
+   allocate(wactfac_hnames(tot_num_bins), stat=istat)
+   call alloc_err(istat, routine, 'wactfac_hnames', tot_num_bins)
 
    cnt = 0
    do ibin = 1, aero_props%nbins()
@@ -232,8 +229,7 @@ subroutine hetfrz_classnuc_cam_init(mincld_in, aero_props)
             uncoated_dens_hnames(cnt) = trim(str32)//'_uncoated'
             coated_frac_hnames(cnt) = trim(str32)//'_coated_frac'
             radius_hnames(cnt) = trim(str32)//'_radius'
-            amass_hnames(cnt) = trim(str32)//'_amass'
-            awfacm_hnames(cnt) = trim(str32)//'_awfacm'
+            wactfac_hnames(cnt) = trim(str32)//'_wactfac'
 
             call addfld(tot_dens_hnames(cnt),(/ 'lev' /), 'A', '#/cm3', &
                  'total '//trim(str32)//' number density' )
@@ -251,10 +247,8 @@ subroutine hetfrz_classnuc_cam_init(mincld_in, aero_props)
                  'coated '//trim(str32)//' fraction' )
             call addfld(radius_hnames(cnt),(/ 'lev' /), 'A', 'microns', &
                  'ambient '//trim(str32)//' radius' )
-            call addfld(amass_hnames(cnt),(/ 'lev' /), 'A', ' ', &
-                 trim(str32)//' added mass' )
-            call addfld(awfacm_hnames(cnt),(/ 'lev' /), 'A', ' ', &
-                 trim(str32)//' awfacm fraction' )
+            call addfld(wactfac_hnames(cnt),(/ 'lev' /), 'A', ' ', &
+                 trim(str32)//' water activity mass factor' )
 
          end if
       end do
@@ -405,8 +399,7 @@ subroutine hetfrz_classnuc_cam_calc( aero_props, aero_state, &
 
    real(r8) :: coated(pcols,pver,tot_num_bins)
    real(r8) :: aer_radius(pcols,pver,tot_num_bins)
-   real(r8) :: aer_awcam(pcols,pver,tot_num_bins)
-   real(r8) :: aer_awfacm(pcols,pver,tot_num_bins)
+   real(r8) :: aer_wactfac(pcols,pver,tot_num_bins)
 
    real(r8) :: coated_amb_aer_num(pcols,pver,tot_num_bins)
    real(r8) :: uncoated_amb_aer_num(pcols,pver,tot_num_bins)
@@ -468,9 +461,8 @@ subroutine hetfrz_classnuc_cam_calc( aero_props, aero_state, &
       call outfld(uncoated_dens_hnames(i), uncoated_amb_aer_num(:,:,i), pcols, lchnk)
       call outfld(radius_hnames(i), aer_radius(:ncol,:,i)*1.0e6_r8, ncol, lchnk)
 
-      call aero_state%mass_factors(indices(i)%bin_ndx, types(i), ncol, pver, aero_props, rho, aer_awcam(:,:,i), aer_awfacm(:,:,i))
-      call outfld(amass_hnames(i), aer_awcam(:,:,i), pcols, lchnk)
-      call outfld(awfacm_hnames(i), aer_awfacm(:,:,i), pcols, lchnk)
+      call aero_state%watact_mfactor(indices(i)%bin_ndx, types(i), ncol, pver, aero_props, rho, aer_wactfac(:,:,i))
+      call outfld(wactfac_hnames(i), aer_wactfac(:,:,i), pcols, lchnk)
 
       fn_cld_aer_num(:ncol,:) = tot_aer_num(:ncol,:,i)*factnum(:ncol,:,indices(i)%bin_ndx)
       call outfld(cldfn_dens_hnames(i), fn_cld_aer_num, pcols, lchnk)
@@ -538,7 +530,7 @@ subroutine hetfrz_classnuc_cam_calc( aero_props, aero_state, &
                deltatin,  t(i,k),  pmid(i,k),  supersatice,   &
                fraction_activated(i,k,:),  r3lx,  ncic*rho(i,k)*1.0e-6_r8,  frzbcimm(i,k),  frzduimm(i,k),   &
                frzbccnt(i,k),  frzducnt(i,k),  frzbcdep(i,k),  frzdudep(i,k),  aer_radius(i,k,:), &
-               aer_awcam(i,k,:), aer_awfacm(i,k,:), coated(i,k,:), tot_aer_num(i,k,:),  &
+               aer_wactfac(i,k,:), coated(i,k,:), tot_aer_num(i,k,:),  &
                uncoated_amb_aer_num(i,k,:), amb_aer_num(i,k,:), &
                cld_aer_num(i,k,:), errstring)
 

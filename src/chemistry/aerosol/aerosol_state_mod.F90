@@ -45,7 +45,7 @@ module aerosol_state_mod
      procedure :: get_cld_species_numdens
      procedure :: coated_frac
      procedure :: mass_mean_radius
-     procedure :: mass_factors
+     procedure :: watact_mfactor
      procedure(aero_hetfrz_size_wght), deferred :: hetfrz_size_wght
   end type aerosol_state
 
@@ -639,10 +639,10 @@ contains
   end function mass_mean_radius
 
   !------------------------------------------------------------------------------
-  ! returns mass density [mug m-3] and mass factor (OC+BC)/(OC+BC+SO4) of species
-  ! `species_type` in subset `bin_ndx`
+  ! calculates water activity mass factor -- density*(1.-(OC+BC)/(OC+BC+SO4)) [mug m-3]
+  ! of species `species_type` in subset `bin_ndx`
   !------------------------------------------------------------------------------
-  subroutine mass_factors(self, bin_ndx,  species_type, ncol, nlev, aero_props, rho, awcam, awfacm)
+  subroutine watact_mfactor(self, bin_ndx,  species_type, ncol, nlev, aero_props, rho, wact_factor)
 
     class(aerosol_state), intent(in) :: self
     integer, intent(in) :: bin_ndx                ! bin number
@@ -651,8 +651,7 @@ contains
     integer, intent(in) :: nlev                   ! number of vertical levels
     class(aerosol_properties), intent(in) :: aero_props ! aerosol properties object
     real(r8), intent(in) :: rho(:,:)              ! air density (kg m-3)
-    real(r8), intent(out) :: awcam(:,:)           ! mass density [mug m-3]
-    real(r8), intent(out) :: awfacm(:,:)          ! mass factor ! (OC+BC)/(OC+BC+SO4)
+    real(r8), intent(out) :: wact_factor(:,:)     ! water activity factor -- density*(1.-(OC+BC)/(OC+BC+SO4)) [mug m-3]
 
     real(r8), pointer :: aer_mmr(:,:)
     real(r8), pointer :: bin_num(:,:)
@@ -661,6 +660,9 @@ contains
     real(r8) :: aer_numdens(ncol,nlev)
     integer :: ispc
     character(len=aero_name_len) :: spectype
+
+    real(r8) :: awcam(ncol,nlev)          ! mass density [mug m-3]
+    real(r8) :: awfacm(ncol,nlev)         ! mass factor ! (OC+BC)/(OC+BC+SO4)
 
     tot2_mmr = 0.0_r8
     tot1_mmr = 0.0_r8
@@ -695,6 +697,8 @@ contains
        awfacm(:ncol,:) = 0._r8
     end where
 
-  end subroutine mass_factors
+    wact_factor(:ncol,:) = awcam(:ncol,:)*(1._r8-awfacm(:ncol,:))
+
+  end subroutine watact_mfactor
 
 end module aerosol_state_mod

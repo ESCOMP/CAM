@@ -120,8 +120,8 @@ subroutine hetfrz_classnuc_calc(ntypes, types,&
    frzbcimm, frzduimm,                        &
    frzbccnt, frzducnt,                        &
    frzbcdep, frzdudep,                        &
-   hetraer, awcam, awfacm, dstcoat,                   &
-   total_aer_num, uncoated_aer_num,  &
+   hetraer, wact_factor, dstcoat,             &
+   total_aer_num, uncoated_aer_num,           &
    total_interstitial_aer_num, total_cloudborne_aer_num, errstring)
 
    integer, intent(in) :: ntypes
@@ -136,8 +136,7 @@ subroutine hetfrz_classnuc_calc(ntypes, types,&
    real(r8), intent(in) :: fn(ntypes)               ! fraction activated [ ] for cloud borne aerosol number
                                                     ! index values are 1:bc, 2:dust_a1, 3:dust_a3
    real(r8), intent(in) :: hetraer(ntypes)          ! bc and dust mass mean radius [m]
-   real(r8), intent(in) :: awcam(ntypes)            ! modal added mass [mug m-3]
-   real(r8), intent(in) :: awfacm(ntypes)           ! (OC+BC)/(OC+BC+SO4)
+   real(r8), intent(in) :: wact_factor(ntypes)      ! water activity factor -- density*(1.-(OC+BC)/(OC+BC+SO4)) [mug m-3]
    real(r8), intent(in) :: dstcoat(ntypes)          ! coated fraction
    real(r8), intent(in) :: total_aer_num(ntypes)    ! total bc and dust number concentration(interstitial+cloudborne) [#/cm^3]
    real(r8), intent(in) :: uncoated_aer_num(ntypes) ! uncoated bc and dust number concentration(interstitial)
@@ -318,7 +317,7 @@ subroutine hetfrz_classnuc_calc(ntypes, types,&
       call hetfrz_classnuc_calc_rates( f_dep, f_cnt, f_imm, dga_dep, dga_imm, pdf_imm, limfac, &
            kcoll(ispc), hetraer(ispc), icnlx, r3lx, t, supersatice, sigma_iw, &
            rgimm, rgdep, dg0dep, Adep, dg0cnt, Acnt, vwice, deltat, &
-           fn(ispc), awcam(ispc), awfacm(ispc), dstcoat(ispc), &
+           fn(ispc), wact_factor(ispc), dstcoat(ispc), &
            total_aer_num(ispc), total_interstitial_aer_num(ispc), total_cloudborne_aer_num(ispc), uncoated_aer_num(ispc), &
            frzimm, frzcnt, frzdep, errstring )
 
@@ -334,7 +333,7 @@ subroutine hetfrz_classnuc_calc(ntypes, types,&
  subroutine  hetfrz_classnuc_calc_rates( f_dep, f_cnt, f_imm, dga_dep, dga_imm, pdf_imm, limfac, &
       kcoll, mradius, icnlx, r3lx, t, supersatice, sigma_iw, &
       rgimm, rgdep, dg0dep, Adep, dg0cnt, Acnt, vwice, deltat, &
-      fn, awcam, awfacm, dstcoat, &
+      fn, wact_factor, dstcoat, &
       total_aer_num, total_interstitial_aer_num, total_cloudborne_aer_num, uncoated_aer_num, &
       frzimm, frzcnt, frzdep, errstring )
 
@@ -363,8 +362,7 @@ subroutine hetfrz_classnuc_calc(ntypes, types,&
    real(r8), intent(in) :: vwice
    real(r8), intent(in) :: deltat                     ! timestep [s]
    real(r8), intent(in) :: fn                         ! fraction activated [ ] for cloud borne aerosol number
-   real(r8), intent(in) :: awcam                      ! modal added mass [mug m-3]
-   real(r8), intent(in) :: awfacm                     ! (OC+BC)/(OC+BC+SO4)
+   real(r8), intent(in) :: wact_factor                ! water activity factor -- density*(1.-(OC+BC)/(OC+BC+SO4)) [mug m-3]
    real(r8), intent(in) :: dstcoat                    ! coated fraction
    real(r8), intent(in) :: total_aer_num              ! total bc and dust number concentration(interstitial+cloudborne) [#/cm^3]
    real(r8), intent(in) :: total_interstitial_aer_num ! total bc and dust concentration(interstitial)
@@ -413,7 +411,7 @@ subroutine hetfrz_classnuc_calc(ntypes, types,&
 
    !calculate molality
    if ( total_interstitial_aer_num > 0._r8 ) then
-      molal = (1.e-6_r8*awcam*(1._r8-awfacm)/(mwso4*total_interstitial_aer_num*1.e6_r8))/ &
+      molal = (1.e-6_r8*wact_factor/(mwso4*total_interstitial_aer_num*1.e6_r8))/ &
            (4*pi/3*rhoh2o*(MAX(r3lx,4.e-6_r8))**3)
       aw = 1._r8/(1._r8+2.9244948e-2_r8*molal+2.3141243e-3_r8*molal**2+7.8184854e-7_r8*molal**3)
    end if
