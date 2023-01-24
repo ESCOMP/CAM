@@ -1563,7 +1563,7 @@
   </test>
  <test compset="FCnudged" grid="f09_f09_mg17" name="SMS_D_Ln9_Vnuopc" testmods="cam/outfrq3s_zmean_nudging">
     <machines>
-      <machine name="cheyenne" compiler="intel" category="prealpha"/>
+      <machine name="cheyenne" compiler="intel" category="prebeta"/>
       <machine name="cheyenne" compiler="intel" category="zmean_nudging"/>
       <machine name="cheyenne" compiler="intel" category="camchem"/>
     </machines>
