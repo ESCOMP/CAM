@@ -2131,6 +2131,21 @@ if ($chem eq 'trop_mam3') {
 
 # CMIP6 emissions
 if (($chem =~ /_mam4/ or $chem =~ /_mam5/) and ($phys =~ /cam6/ or $phys =~ /cam_dev/)) {
+
+    # OASISS (ocean) DMS emissions
+    if (!$aqua_mode and !$scam) {
+        my $rel_filepath = get_default_value('dms_ocn_emis_file');
+        my $abs_filepath = set_abs_filepath($rel_filepath, $inputdata_rootdir);
+        my $val = quote_string("DMS -> ". $abs_filepath);
+        add_default($nl, 'csw_specifier', 'val'=>$val);
+        if (!defined $nl->get_value('csw_time_type')) {
+            add_default($nl, 'csw_time_type', 'val'=>'CYCLICAL');
+            add_default($nl, 'csw_cycle_yr', 'val'=>'2000');
+        }
+        add_default($nl, 'bubble_mediated_transfer', 'val'=>'.false.');
+        add_default($nl, 'ocean_salinity_file');
+    }
+
     my %species;
 
     # Surface emission datasets:
@@ -2150,11 +2165,9 @@ if (($chem =~ /_mam4/ or $chem =~ /_mam5/) and ($phys =~ /cam6/ or $phys =~ /cam
                 'num_a4_oc_srf_file'  => 'num_a4',
                 'num_a4_bb_srf_file'  => 'num_a4',
                 'num_pom_bb_srf_file' => 'num_a4' );
-    if ((not (($chem eq 'trop_mam4' or $chem eq 'waccm_sc_mam4') and !$aqua_mode and !$scam)) and
-        (not $nl->get_value('csw_specifier') ~~ /DMS/ )) {
+    if ((not defined $nl->get_value('csw_specifier')) or (not $nl->get_value('csw_specifier') ~~ /DMS/)) {
       %species = (%species,
                 'dms_ot_srf_file'     => 'DMS' );
-
     }
     if ($chem =~ /_vbsext/) {
       %species = (%species,
@@ -2400,19 +2413,6 @@ if (($chem =~ /_mam4/ or $chem =~ /_mam5/) and ($phys =~ /cam6/ or $phys =~ /cam
         add_default($nl, 'megan_specifier', 'val'=>$val);
         add_default($nl, 'megan_factors_file');
         add_default($nl, 'megan_mapped_emisfctrs', 'val'=>'.false.');
-
-        # DMS ocean emissions
-        my $rel_filepath = get_default_value('dms_ocn_emis_file');
-        my $abs_filepath = set_abs_filepath($rel_filepath, $inputdata_rootdir);
-
-        $val = quote_string("DMS -> ". $abs_filepath);
-        add_default($nl, 'csw_specifier', 'val'=>$val);
-        if (!defined $nl->get_value('csw_time_type')) {
-	    add_default($nl, 'csw_time_type', 'val'=>'CYCLICAL');
-	    add_default($nl, 'csw_cycle_yr', 'val'=>'2000');
-	}
-        add_default($nl, 'bubble_mediated_transfer', 'val'=>'.false.');
-        add_default($nl, 'ocean_salinity_file');
     }
     if ($chem =~ /trop_strat_mam4_vbsext/ or $chem =~ /waccm_tsmlt/) {
         my $val = "'ISOP = isoprene',"
