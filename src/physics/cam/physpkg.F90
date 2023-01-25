@@ -1308,6 +1308,7 @@ contains
     use wv_saturation, only : wv_sat_final
     use microp_aero, only : microp_aero_final
     use phys_grid_ctem, only : phys_grid_ctem_final
+    use nudging, only: Nudge_Model, nudging_final
 
     !-----------------------------------------------------------------------
     !
@@ -1331,6 +1332,7 @@ contains
     call wv_sat_final
     call microp_aero_final()
     call phys_grid_ctem_final()
+    if(Nudge_Model) call nudging_final()
 
   end subroutine phys_final
 
