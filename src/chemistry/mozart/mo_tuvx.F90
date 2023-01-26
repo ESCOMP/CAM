@@ -23,6 +23,7 @@ module mo_tuvx
   public :: tuvx_get_photo_rates
   public :: tuvx_finalize
   public :: tuvx_active
+  public :: tuvx_is_first_time_step
 
   ! Inidices for grid updaters
   integer, parameter :: NUM_GRIDS = 2             ! number of grids that CAM will update at runtime
@@ -79,7 +80,7 @@ module mo_tuvx
 
   ! TODO how should these paths be set and communicated to this wrapper?
   character(len=*), parameter :: wavelength_config_path = &
-                                                    "data/grids/wavelength/combined.grid"
+                                                    "data/grids/wavelength/cam.csv"
   logical, parameter :: enable_diagnostics = .true.
 
   ! TUV-x calculator for each OMP thread
@@ -120,6 +121,7 @@ module mo_tuvx
   ! namelist options
   character(len=cl) :: tuvx_config_path = 'NONE'  ! absolute path to TUVX configuration file
   logical, protected :: tuvx_active = .false.
+  logical, protected :: tuvx_is_first_time_step = .true.
 
 !================================================================================================
 contains
@@ -372,7 +374,6 @@ contains
 
     end associate
     end do
-
     deallocate( cam_grids     )
     deallocate( cam_profiles  )
     deallocate( cam_radiators )
@@ -419,6 +420,10 @@ contains
   subroutine tuvx_timestep_init( )
 
     integer :: i_thread
+    integer, save :: n_time_step = 0
+
+    n_time_step = n_time_step + 1
+    if( n_time_step > 1 ) tuvx_is_first_time_step = .false.
 
     if( .not. tuvx_active ) return
 
@@ -528,7 +533,7 @@ contains
                                     species_vmr(i_col,:,:), &
                                     height_mid(i_col,:), &
                                     height_int(i_col,:), &
-                                    tuvx%photo_rates_(i_col,:,euv_begin:euv_end) )
+                                    tuvx%photo_rates_(i_col,2:pver+1,euv_begin:euv_end) )
         end associate
         end if
 
@@ -541,7 +546,7 @@ contains
                               fixed_species_conc(i_col,:,:), &
                               species_vmr(i_col,:,:), &
                               height_int(i_col,:), &
-                              tuvx%photo_rates_(i_col,:,jno_index) )
+                              tuvx%photo_rates_(i_col,2:pver+1,jno_index) )
         end if
       end do
 
@@ -550,7 +555,7 @@ contains
       ! ============================================
       do i_col = 1, ncol
         do i_level = 1, pver
-          call tuvx%photo_rate_map_%apply( tuvx%photo_rates_(i_col,pver-i_level+1,:), &
+          call tuvx%photo_rate_map_%apply( tuvx%photo_rates_(i_col,pver-i_level+2,:), &
                                            photolysis_rates(i_col,i_level,:) )
         end do
       end do
@@ -864,7 +869,7 @@ contains
 
     do i_diag = 1, size( diagnostics )
     associate( diag => diagnostics( i_diag ) )
-      call outfld( "tuvx_"//diag%name_, this%photo_rates_(:ncol,pver:1:-1,diag%index_), &
+      call outfld( "tuvx_"//diag%name_, this%photo_rates_(:ncol,pver+1:2:-1,diag%index_), &
                    ncol, lchnk )
     end associate
     end do

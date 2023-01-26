@@ -9,7 +9,8 @@
    ],
    "radiative transfer": {
       "solver": {
-         "type": "delta eddington"
+         "type": "discrete ordinate",
+         "number of streams": 4
       },
       "cross sections": [
          {
@@ -402,7 +403,7 @@
             },
             "quantum yield": {
                "type": "base",
-               "constant value": 1.0
+               "constant value": 0.5
             }
          },
          {
