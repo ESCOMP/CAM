@@ -2138,12 +2138,17 @@ if (($chem =~ /_mam4/ or $chem =~ /_mam5/) and ($phys =~ /cam6/ or $phys =~ /cam
         my $abs_filepath = set_abs_filepath($rel_filepath, $inputdata_rootdir);
         my $val = quote_string("DMS -> ". $abs_filepath);
         add_default($nl, 'csw_specifier', 'val'=>$val);
+        add_default($nl, 'bubble_mediated_transfer', 'val'=>'.false.');
+        add_default($nl, 'ocean_salinity_file');
         if (!defined $nl->get_value('csw_time_type')) {
             add_default($nl, 'csw_time_type', 'val'=>'CYCLICAL');
             add_default($nl, 'csw_cycle_yr', 'val'=>'2000');
         }
-        add_default($nl, 'bubble_mediated_transfer', 'val'=>'.false.');
-        add_default($nl, 'ocean_salinity_file');
+        if ($nl->get_value('csw_time_type') =~ /CYCLICAL/) {
+            if ((not defined $nl->get_value('csw_cycle_yr'))) {
+                die "$ProgName - ERROR: must set csw_cycle_yr when csw_time_type is 'CYCLICAL' \n";
+            }
+        }
     }
 
     my %species;
