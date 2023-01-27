@@ -825,7 +825,9 @@ contains
           !-----------------------------------------------------------------
           call cloud_mod( zen_angle(i), cld_line, lwc_line, fac1, srf_alb(i), &
                           eff_alb, cld_mult )
-          cld_mult(:) = esfact * cld_mult(:)
+          cld_mult(:) = esfact ! * cld_mult(:)
+          eff_alb(:) = 0.0_r8
+          eff_alb(pver) = srf_alb(i)
 
           !-----------------------------------------------------------------
           !	... long wave length component

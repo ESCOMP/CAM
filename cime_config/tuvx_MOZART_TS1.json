@@ -32,7 +32,8 @@
             "netcdf files": [
               {
                 "file path": "data/cross_sections/O2_1.nc",
-                "lower extrapolation": { "type": "boundary" }
+                "lower extrapolation": { "type": "boundary" },
+                "interpolator": { "type": "fractional target" }
               }
             ],
             "type": "base"
@@ -72,7 +73,8 @@
               "netcdf files": [
                 {
                    "file path": "data/cross_sections/O2_1.nc",
-                   "lower extrapolation": { "type": "boundary" }
+                   "lower extrapolation": { "type": "boundary" },
+                   "interpolator": { "type": "fractional target" }
                  }
                ],
                "type": "base"
@@ -99,7 +101,8 @@
                "netcdf files": [
                  {
                    "file path": "data/cross_sections/O2_1.nc",
-                   "lower extrapolation": { "type": "boundary" }
+                   "lower extrapolation": { "type": "boundary" },
+                   "interpolator": { "type": "fractional target" }
                  }
                ],
                "type": "base"
@@ -1210,6 +1213,7 @@
       ]
    },
    "__CAM options": {
+     "disable aerosols": true,
      "aliasing": {
        "default matching": "backup",
        "pairs": [

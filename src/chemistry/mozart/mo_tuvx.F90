@@ -1315,7 +1315,7 @@ contains
     ! update TUV-x ET flux profile
     ! ============================
     call this%profiles_( PROFILE_INDEX_ET_FLUX )%update( &
-            mid_point_values = this%wavelength_mid_values_, &
+            !mid_point_values = this%wavelength_mid_values_, &
             edge_values      = this%wavelength_values_)
 
     ! ======================================================================
@@ -1366,7 +1366,7 @@ contains
     edges(1) = fixed_species_conc(i_col,pver,indexm)
     edges(2:pver+1) = fixed_species_conc(i_col,pver:1:-1,indexm)
     densities(1:pver) = this%height_delta_(1:pver) * km2cm * &
-                        sqrt(edges(1:pver)) * sqrt(edges(2:pver+1))
+                        ( edges(1:pver) + edges(2:pver+1) ) * 0.5_r8
     call this%profiles_( PROFILE_INDEX_AIR )%update( &
         edge_values = edges, layer_densities = densities, &
         scale_height = 8.01_r8 ) ! scale height in [km]
@@ -1386,7 +1386,7 @@ contains
       edges(:) = 0.0_r8
     end if
     densities(1:pver) = this%height_delta_(1:pver) * km2cm * &
-                        sqrt(edges(1:pver)) * sqrt(edges(2:pver+1))
+                        ( edges(1:pver) + edges(2:pver+1) ) * 0.5_r8
     call this%profiles_( PROFILE_INDEX_O2 )%update( &
         edge_values = edges, layer_densities = densities, &
         scale_height = 7.0_r8 )
@@ -1406,7 +1406,7 @@ contains
       edges(:) = 0.0_r8
     end if
     densities(1:pver) = this%height_delta_(1:pver) * km2cm * &
-                        sqrt(edges(1:pver)) * sqrt(edges(2:pver+1))
+                        ( edges(1:pver) + edges(2:pver+1) ) * 0.5_r8
     call this%profiles_( PROFILE_INDEX_O3 )%update( &
         edge_values = edges, layer_densities = densities, &
         scale_height = 7.0_r8 )

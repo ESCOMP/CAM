@@ -786,7 +786,7 @@ contains
     call shr_orb_decl( calday, eccen, mvelpp, lambm0, obliqr  , &
          delta, esfact )
 
-!    if (tuvx_active .and. .not. tuvx_is_first_time_step) then
+    if (tuvx_active .and. .not. tuvx_is_first_time_step) then
       !-----------------------------------------------------------------
       !	... get calculated photolysis rates from TUV-x
       !-----------------------------------------------------------------
@@ -794,14 +794,14 @@ contains
                                  tfld, ts, invariants, vmr, col_delta, &
                                  asdir, zen_angle, esfact, &
                                  reaction_rates(:,:,1:phtcnt) )
-!    else
+    else
       !-----------------------------------------------------------------
       !	... lookup the photolysis rates from table
       !-----------------------------------------------------------------
       call table_photo( reaction_rates, pmid, pdel, tfld, zmid, zint, &
                         col_dens, zen_angle, asdir, cwat, cldfr, &
                         esfact, vmr, invariants, ncol, lchnk, pbuf )
-!    endif
+    endif
 
     do i = 1,phtcnt
        call outfld( tag_names(i), reaction_rates(:ncol,:,rxt_tag_map(i)), ncol, lchnk )
