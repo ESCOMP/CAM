@@ -593,7 +593,7 @@ contains
   !============================================================================
 
     ! Sx() values allow for explicit source tendencies to be passed to
-    ! implicit PBL calculation.  Set all value to 0. for now.
+    ! implicit PBL calculation.  Set all values to 0. for now.
     !-------------------------------------------------------------------------
     Su(:,:) = 0._r8
     Sv(:,:) = 0._r8
@@ -1020,7 +1020,7 @@ contains
     real(r8):: Etau   (ncol,pver)
     integer :: k
 
-    ! Calc current Tv Heights
+    ! Calc current Tv values
     !---------------------------------
     Tv_srf(:)  = Tsfc(:)*(1._r8+zvir*Qsfc(:))
     do k = 1, pver
