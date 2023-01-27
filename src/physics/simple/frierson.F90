@@ -484,8 +484,8 @@ contains
     real(r8),intent(in)   :: Fdn  (ncol)         ! Downward LW flux at surface
     real(r8),intent(in)   :: Fsw  (ncol)         ! Net SW flux at surface from gray radiation
     real(r8),intent(out)  :: Cdrag(ncol)         ! Surface drage coef.
-    real(r8),intent(out)  :: Km   (ncol,pver+1)  ! Eddy diffusivity for PBL
-    real(r8),intent(out)  :: Ke   (ncol,pver+1)  ! Eddy diffusivity for PBL (momentum)
+    real(r8),intent(out)  :: Km   (ncol,pver+1)  ! Eddy diffusivity for PBL (momentum)
+    real(r8),intent(out)  :: Ke   (ncol,pver+1)  ! Eddy diffusivity for PBL
     real(r8),intent(out)  :: VSE  (ncol,pver)    ! Virtual-Dry Static energy
     real(r8),intent(out)  :: Z_pbl(ncol)         ! Height of PBL layer.
     real(r8),intent(out)  :: Rf   (ncol,pver)
