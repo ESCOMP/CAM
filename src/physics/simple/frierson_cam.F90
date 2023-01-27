@@ -122,7 +122,7 @@ module frierson_cam
   real(r8) :: frierson_WetDryCoef = unset_r8      ! E0 Scale factor to control moisture
   real(r8) :: frierson_Tmin       = unset_r8      ! IC: Minimum sst (K)
   real(r8) :: frierson_Tdlt       = unset_r8      ! IC: eq-polar difference sst (K)
-  real(r8) :: frierson_Twidth     = unset_r8      ! IC: Latitudinal width parameter for sst (degrees)
+  real(r8) :: frierson_Twidth     = unset_r8      ! IC: Latitudinal width parameter for sst (degrees latitude)
 
 contains
   !==============================================================================
