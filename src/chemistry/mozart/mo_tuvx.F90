@@ -96,7 +96,7 @@ module mo_tuvx
     type(grid_updater_t)     :: grids_(NUM_GRIDS)         ! grid updaters
     type(profile_updater_t)  :: profiles_(NUM_PROFILES)   ! profile updaters
     type(radiator_updater_t) :: radiators_(NUM_RADIATORS) ! radiator updaters
-    real(r8)                 :: height_delta_(pver)       ! change in height in each
+    real(r8)                 :: height_delta_(pver+1)     ! change in height in each
                                                           !   vertical layer (km)
     real(r8), allocatable    :: wavelength_edges_(:)      ! TUV-x wavelength bin edges (nm)
     real(r8), allocatable    :: wavelength_values_(:)     ! Working array for interface values
@@ -903,7 +903,7 @@ contains
     ! =========================
     ! heights above the surface
     ! =========================
-    host_grid => grid_from_host_t( "height", "km", pver )
+    host_grid => grid_from_host_t( "height", "km", pver+1 )
     call grids%add( host_grid )
     deallocate( host_grid )
 
@@ -1168,13 +1168,17 @@ contains
   !  TUV-x heights are "bottom-up" and require atmospheric constituent
   !  concentrations at interfaces. Therefore, CAM mid-points are used as
   !  TUV-x grid interfaces, with an additional layer introduced between
-  !  the surface and the lowest CAM mid-point.
+  !  the surface and the lowest CAM mid-point, and a thin layer at the
+  !  top of the TUV-x grid to hold above-column species densities.
   !
   !  ---- (interface)  ===== (mid-point)
   !
   !        CAM                                  TUV-x
-  ! ------(top)------ i_int = 1                              (exo values)
-  ! ================= i_mid = 1           -------(top)------ i_int = pver + 1
+  ! ************************ (exo values) *****************************
+  ! ------(top)------ i_int = 1
+  !                                       -------(top)------ i_int = pver + 2
+  !                                       ================== i_mid = pver + 1
+  ! ================= i_mid = 1           ------------------ i_int = pver + 1
   ! ----------------- i_int = 2           ================== i_mid = pver
   !                                       ------------------ i_int = pver
   !        ||
@@ -1197,16 +1201,18 @@ contains
     real(r8),        intent(in)    :: height_int(ncol,pver+1)  ! height above the surface at interfaces (km)
 
     integer :: i_level
-    real(r8) :: edges(pver+1)
-    real(r8) :: mid_points(pver)
+    real(r8) :: edges(pver+2)
+    real(r8) :: mid_points(pver+1)
 
     edges(1) = height_int(i_col,pver+1)
     edges(2:pver+1) = height_mid(i_col,pver:1:-1)
+    edges(pver+2) = edges(pver+1) + 1.0e-10_r8 ! thin layer at the top to hold exo values
     mid_points(1) = ( height_mid(i_col,pver) - height_int(i_col,pver+1) ) * 0.5_r8 &
                     + height_int(i_col,pver+1)
     mid_points(2:pver) = height_int(i_col,pver:2:-1)
+    mid_points(pver+1) = edges(pver+1) + 0.5e-10_r8
     call this%grids_( GRID_INDEX_HEIGHT )%update( edges = edges, mid_points = mid_points )
-    this%height_delta_(1:pver) = edges(2:pver+1) - edges(1:pver)
+    this%height_delta_(1:pver+1) = edges(2:pver+2) - edges(1:pver+1)
 
   end subroutine set_heights
 
@@ -1227,10 +1233,11 @@ contains
     real(r8),        intent(in)    :: temperature_mid(pcols,pver) ! midpoint temperature (K)
     real(r8),        intent(in)    :: surface_temperature(pcols)  ! surface temperature (K)
 
-    real(r8) :: edges(pver+1)
+    real(r8) :: edges(pver+2)
 
     edges(1) = surface_temperature(i_col)
     edges(2:pver+1) = temperature_mid(i_col,pver:1:-1)
+    edges(pver+2) = temperature_mid(i_col,1) ! Use upper mid-point temperature for top edge
     call this%profiles_( PROFILE_INDEX_TEMPERATURE )%update( edge_values = edges )
 
   end subroutine set_temperatures
@@ -1356,7 +1363,7 @@ contains
     real(r8),        intent(in)    :: exo_column_conc(ncol,0:pver,max(1,nabscol)) ! above column densities
                                                                                   !   (molecule cm-3)
 
-    real(r8) :: edges(pver+1), densities(pver)
+    real(r8) :: edges(pver+2), densities(pver+1)
     real(r8) :: exo_val
     real(r8), parameter :: km2cm = 1.0e5 ! conversion from km to cm
 
@@ -1365,8 +1372,9 @@ contains
     ! ===========
     edges(1) = fixed_species_conc(i_col,pver,indexm)
     edges(2:pver+1) = fixed_species_conc(i_col,pver:1:-1,indexm)
-    densities(1:pver) = this%height_delta_(1:pver) * km2cm * &
-                        ( edges(1:pver) + edges(2:pver+1) ) * 0.5_r8
+    edges(pver+2) = fixed_species_conc(i_col,1,indexm) ! use upper mid-point value for top edge
+    densities(1:pver+1) = this%height_delta_(1:pver+1) * km2cm * &
+                        sqrt(edges(1:pver+1)) * sqrt(edges(2:pver+2))
     call this%profiles_( PROFILE_INDEX_AIR )%update( &
         edge_values = edges, layer_densities = densities, &
         scale_height = 8.01_r8 ) ! scale height in [km]
@@ -1377,19 +1385,28 @@ contains
     if( is_fixed_O2 ) then
       edges(1) = fixed_species_conc(i_col,pver,index_O2)
       edges(2:pver+1) = fixed_species_conc(i_col,pver:1:-1,index_O2)
+      edges(pver+2) = fixed_species_conc(i_col,1,index_O2)
     else if( index_O2 > 0 ) then
       edges(1) = species_vmr(i_col,pver,index_O2) * &
                  fixed_species_conc(i_col,pver,indexm)
       edges(2:pver+1) = species_vmr(i_col,pver:1:-1,index_O2) * &
                         fixed_species_conc(i_col,pver:1:-1,indexm)
+      edges(pver+2) = species_vmr(i_col,1,index_O2) * &
+                        fixed_species_conc(i_col,1,indexm)
     else
       edges(:) = 0.0_r8
     end if
-    densities(1:pver) = this%height_delta_(1:pver) * km2cm * &
-                        ( edges(1:pver) + edges(2:pver+1) ) * 0.5_r8
-    call this%profiles_( PROFILE_INDEX_O2 )%update( &
-        edge_values = edges, layer_densities = densities, &
-        scale_height = 7.0_r8 )
+    densities(1:pver+1) = this%height_delta_(1:pver+1) * km2cm * &
+                        sqrt(edges(1:pver+1)) * sqrt(edges(2:pver+2))
+    if( nabscol >= 2 ) then
+      call this%profiles_( PROFILE_INDEX_O2 )%update( &
+          edge_values = edges, layer_densities = densities, &
+          exo_density = exo_column_conc(i_col,0,2) )
+    else
+      call this%profiles_( PROFILE_INDEX_O2 )%update( &
+          edge_values = edges, layer_densities = densities, &
+          scale_height = 7.0_r8 )
+    end if
 
     ! ==========
     ! O3 profile
@@ -1397,19 +1414,28 @@ contains
     if( is_fixed_O3 ) then
       edges(1) = fixed_species_conc(i_col,pver,index_O3)
       edges(2:pver+1) = fixed_species_conc(i_col,pver:1:-1,index_O3)
+      edges(pver+2) = fixed_species_conc(i_col,1,index_O3)
     else if( index_O3 > 0 ) then
       edges(1) = species_vmr(i_col,pver,index_O3) * &
                  fixed_species_conc(i_col,pver,indexm)
       edges(2:pver+1) = species_vmr(i_col,pver:1:-1,index_O3) * &
                         fixed_species_conc(i_col,pver:1:-1,indexm)
+      edges(pver+2) = species_vmr(i_col,1,index_O3) * &
+                        fixed_species_conc(i_col,1,indexm)
     else
       edges(:) = 0.0_r8
     end if
-    densities(1:pver) = this%height_delta_(1:pver) * km2cm * &
-                        ( edges(1:pver) + edges(2:pver+1) ) * 0.5_r8
-    call this%profiles_( PROFILE_INDEX_O3 )%update( &
-        edge_values = edges, layer_densities = densities, &
-        scale_height = 7.0_r8 )
+    densities(1:pver+1) = this%height_delta_(1:pver+1) * km2cm * &
+                        ( edges(1:pver+1) + edges(2:pver+2) ) * 0.5_r8
+    if( nabscol >= 1 ) then
+      call this%profiles_( PROFILE_INDEX_O3 )%update( &
+          edge_values = edges, layer_densities = densities, &
+          exo_density = exo_column_conc(i_col,0,1) )
+    else
+      call this%profiles_( PROFILE_INDEX_O3 )%update( &
+          edge_values = edges, layer_densities = densities, &
+          scale_height = 7.0_r8 )
+    end if
 
     ! ===============
     ! aerosol profile
@@ -1496,6 +1522,12 @@ contains
         call rebin(nswbands, n_tuvx_bins, wavelength_edges, this%wavelength_edges_, &
                    aer_tau_w_g(i_col,pver-i_level,:), this%asymmetry_factor_(i_col,i_level,:))
       end do
+      this%optical_depth_(i_col,pver+1,:) = &
+          this%optical_depth_(i_col,pver,:)
+      this%single_scattering_albedo_(i_col,pver+1,:) = &
+          this%single_scattering_albedo_(i_col,pver,:)
+      this%asymmetry_factor_(i_col,pver+1,:) = &
+          this%asymmetry_factor_(i_col,pver,:)
     end do
 
     ! ================================================================

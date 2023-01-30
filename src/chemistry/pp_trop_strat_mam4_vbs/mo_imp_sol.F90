@@ -382,8 +382,9 @@ contains
                 end if
                 base_sol_blk(i,:) = sbase_sol_blk(i,:)
               else
-                write(iulog,'('' imp_sol: step failed to converge @ (lchnk,vctrpos,nstep,dt,time) = '',3i8,1p,2g15.7)') &
-                      lchnk,ofl+i-1,nstep,dt(i),interval_done+dt(i)
+                write(iulog,'('' imp_sol: step failed to converge '')')
+                !write(iulog,'('' imp_sol: step failed to converge @ (lchnk,vctrpos,nstep,dt,time) = '',3i8,1p,2g15.7)') &
+                !      lchnk,ofl+i-1,nstep,dt(i),interval_done+dt(i)
                 do m = 1,clscnt4
                    if( .not. spc_conv_blk(i,m) ) then
                       write(iulog,'(1x,a16,1x,1pe10.3)') solsym(clsmap(m,4)), max_delta(m)
