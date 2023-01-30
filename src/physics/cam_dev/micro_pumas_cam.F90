@@ -852,6 +852,7 @@ subroutine micro_pumas_cam_init(pbuf2d)
    use time_manager,   only: is_first_step
    use micro_pumas_utils, only: micro_pumas_utils_init
    use micro_pumas_v1, only: micro_mg_init3_0 => micro_pumas_init
+   use stochastic_collect_tau_cam, only:  stochastic_kernel_init_cam
 
    !-----------------------------------------------------------------------
    !
@@ -1189,6 +1190,10 @@ subroutine micro_pumas_cam_init(pbuf2d)
    ! qc limiter (only output in versions 1.5 and later)
    call addfld('QCRAT', (/ 'lev' /), 'A', 'fraction', 'Qc Limiter: Fraction of qc tendency applied')
 
+   ! If Machine learning is turned on, perform it's initializations
+   if (trim(micro_mg_warm_rain) == 'tau' .or. trim(micro_mg_warm_rain) == 'emulate') then
+      call stochastic_kernel_init_cam()
+   end if
    ! determine the add_default fields
    call phys_getopts(history_amwg_out           = history_amwg         , &
                      history_budget_out         = history_budget       , &
@@ -1432,9 +1437,6 @@ subroutine micro_pumas_cam_tend(state, ptend, dtime, pbuf)
    use wv_saturation,   only: qsat
    use infnan,          only: nan, assignment(=)
    use cam_abortutils,  only: handle_allocate_error
-!++ TAU
-   use stochastic_collect_tau_cam, only: ncd
-!-- TAU
 
    type(physics_state),         intent(in)    :: state
    type(physics_ptend),         intent(out)   :: ptend
