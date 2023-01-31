@@ -1008,7 +1008,6 @@ subroutine tot_energy(nCells, nVertLevels, qsize, index_qv, zz, zgrid, rho_zz, t
       !        E = u_x - v_y (stretching deformation)
       !        F = v_x + u_y (shearing deformation)
       !
-      !DIR$ IVDEP
       do k=1, nVertLevels
 
          frontogenesisFunction(k,iCell) = 0.5_r8*(         &

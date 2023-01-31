@@ -504,23 +504,21 @@ subroutine dyn_init(dyn_in, dyn_out)
    dyn_out % ux    => dyn_in % ux
    dyn_out % uy    => dyn_in % uy
 
-   ! components needed in output, no time level index
+   ! for frontogenesis calc
 
-   dyn_out % areaCell => dyn_in % areaCell
-   dyn_out % cellsOnEdge => dyn_in % cellsOnEdge
-
-   call mpas_pool_get_array(mesh_pool,  'defc_a',                dyn_out % defc_a)
-   call mpas_pool_get_array(mesh_pool,  'defc_b',                dyn_out % defc_b)
    if (use_gw_front .or. use_gw_front_igw) then
-      call mpas_pool_get_array(mesh_pool,  'cell_gradient_coef_x',  dyn_out % cell_gradient_coef_x)
-      call mpas_pool_get_array(mesh_pool,  'cell_gradient_coef_y',  dyn_out % cell_gradient_coef_y)
+      dyn_out % areaCell => dyn_in % areaCell
+      dyn_out % cellsOnEdge => dyn_in % cellsOnEdge
+      call mpas_pool_get_array(mesh_pool, 'defc_a',               dyn_out % defc_a)
+      call mpas_pool_get_array(mesh_pool, 'defc_b',               dyn_out % defc_b)
+      call mpas_pool_get_array(mesh_pool, 'cell_gradient_coef_x', dyn_out % cell_gradient_coef_x)
+      call mpas_pool_get_array(mesh_pool, 'cell_gradient_coef_y', dyn_out % cell_gradient_coef_y)
+      call mpas_pool_get_array(mesh_pool, 'edgesOnCell_sign',     dyn_out % edgesOnCell_sign)
+      call mpas_pool_get_array(mesh_pool, 'dvEdge',               dyn_out % dvEdge)
+      call mpas_pool_get_array(mesh_pool, 'edgesOnCell',          dyn_out % edgesOnCell)
+      call mpas_pool_get_array(mesh_pool, 'nEdgesOnCell',         dyn_out % nEdgesOnCell)
+      call mpas_pool_get_array(diag_pool, 'v',                    dyn_out % utangential)
    endif
-   call mpas_pool_get_array(mesh_pool,  'edgesOnCell_sign',      dyn_out % edgesOnCell_sign)
-   call mpas_pool_get_array(mesh_pool,  'dvEdge',                dyn_out % dvEdge)
-   call mpas_pool_get_array(mesh_pool,  'edgesOnCell',           dyn_out % edgesOnCell)
-   call mpas_pool_get_array(mesh_pool,  'nEdgesOnCell',          dyn_out % nEdgesOnCell)
-
-   call mpas_pool_get_array(diag_pool,  'v',                     dyn_out % utangential)
 
    ! cam-required hydrostatic pressures
 

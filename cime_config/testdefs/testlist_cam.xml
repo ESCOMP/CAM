@@ -752,15 +752,16 @@
       <option name="wallclock">00:10:00</option>
     </options>
   </test>
-  <test compset="FWsc2000climo" grid="mpasa120_mpasa120" name="ERS_Ld3_Vnuopc_P360x1" testmods="cam/outfrq1d_physgrid_tem_mpasa120_wcmsc">
+  <test compset="FWsc2000climo" grid="mpasa120_mpasa120" name="ERS_Ld3_Vnuopc" testmods="cam/outfrq1d_physgrid_tem_mpasa120_wcmsc">
     <machines>
       <machine name="cheyenne" compiler="intel" category="prealpha"/>
       <machine name="cheyenne" compiler="intel" category="waccm"/>
+      <machine name="cheyenne" compiler="intel" category="frontogw_mpas"/>
       <machine name="cheyenne" compiler="intel" category="tem_diags"/>
    </machines>
     <options>
       <option name="comment" >TEM diagnostics and zonal-average output</option>
-      <option name="wallclock">00:20:00</option>
+      <option name="wallclock">00:30:00</option>
     </options>
   </test>
   <test compset="FWsc2000climo" grid="f09_f09_mg17" name="ERP_Ln9_Vnuopc" testmods="cam/outfrq9s_physgrid_tem_1deg">
@@ -1989,8 +1990,8 @@
 
   <test compset="FWsc2000climo" grid="mpasa120_mpasa120" name="SMS_D_Ln9_Vnuopc" testmods="cam/outfrq9s_mpasa120">
     <machines>
-      <machine name="cheyenne" compiler="intel" category="aux_cam"/>
-      <machine name="cheyenne" compiler="intel" category="waccm_mpas"/>
+      <machine name="cheyenne" compiler="intel" category="frontogw_mpas"/>
+      <machine name="cheyenne" compiler="intel" category="waccm"/>
     </machines>
     <options>
       <option name="wallclock">00:30:00</option>
@@ -1998,8 +1999,8 @@
   </test>
   <test compset="FWsc2000climo" grid="mpasa120_mpasa120" name="ERS_Ln9_Vnuopc" testmods="cam/outfrq9s_mpasa120">
     <machines>
-      <machine name="cheyenne" compiler="intel" category="aux_cam"/>
-      <machine name="cheyenne" compiler="intel" category="waccm_mpas"/>
+      <machine name="cheyenne" compiler="intel" category="frontogw_mpas"/>
+      <machine name="cheyenne" compiler="intel" category="waccm"/>
     </machines>
     <options>
       <option name="wallclock">00:30:00</option>
