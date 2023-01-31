@@ -1168,15 +1168,15 @@ contains
   !  TUV-x heights are "bottom-up" and require atmospheric constituent
   !  concentrations at interfaces. Therefore, CAM mid-points are used as
   !  TUV-x grid interfaces, with an additional layer introduced between
-  !  the surface and the lowest CAM mid-point, and a thin layer at the
-  !  top of the TUV-x grid to hold above-column species densities.
+  !  the surface and the lowest CAM mid-point, and a layer at the
+  !  top of the TUV-x grid to hold species densities above the top CAM
+  !  mid-point.
   !
   !  ---- (interface)  ===== (mid-point)
   !
   !        CAM                                  TUV-x
+  ! ------(top)------ i_int = 1           -------(top)------ i_int = pver + 2
   ! ************************ (exo values) *****************************
-  ! ------(top)------ i_int = 1
-  !                                       -------(top)------ i_int = pver + 2
   !                                       ================== i_mid = pver + 1
   ! ================= i_mid = 1           ------------------ i_int = pver + 1
   ! ----------------- i_int = 2           ================== i_mid = pver
@@ -1206,11 +1206,11 @@ contains
 
     edges(1) = height_int(i_col,pver+1)
     edges(2:pver+1) = height_mid(i_col,pver:1:-1)
-    edges(pver+2) = edges(pver+1) + 1.0e-10_r8 ! thin layer at the top to hold exo values
+    edges(pver+2) = height_int(i_col,1)
     mid_points(1) = ( height_mid(i_col,pver) - height_int(i_col,pver+1) ) * 0.5_r8 &
                     + height_int(i_col,pver+1)
     mid_points(2:pver) = height_int(i_col,pver:2:-1)
-    mid_points(pver+1) = edges(pver+1) + 0.5e-10_r8
+    mid_points(pver+1) = 0.5_r8 * ( edges(pver+1) + edges(pver+2) )
     call this%grids_( GRID_INDEX_HEIGHT )%update( edges = edges, mid_points = mid_points )
     this%height_delta_(1:pver+1) = edges(2:pver+2) - edges(1:pver+1)
 
@@ -1361,7 +1361,7 @@ contains
     real(r8),        intent(in)    :: species_vmr(ncol,pver,max(1,gas_pcnst))     ! species volume mixing
                                                                                   !   ratios (mol mol-1)
     real(r8),        intent(in)    :: exo_column_conc(ncol,0:pver,max(1,nabscol)) ! above column densities
-                                                                                  !   (molecule cm-3)
+                                                                                  !   (molecule cm-2)
 
     real(r8) :: edges(pver+2), densities(pver+1)
     real(r8) :: exo_val
@@ -1396,13 +1396,17 @@ contains
     else
       edges(:) = 0.0_r8
     end if
-    densities(1:pver+1) = this%height_delta_(1:pver+1) * km2cm * &
-                        sqrt(edges(1:pver+1)) * sqrt(edges(2:pver+2))
     if( nabscol >= 2 ) then
+      densities(1) = 0.5_r8 * exo_column_conc(i_col,pver,2)
+      densities(2:pver) = 0.5_r8 * ( exo_column_conc(i_col,pver-1:1:-1,2) &
+                                     + exo_column_conc(i_col,pver:2:-1,2) )
+      densities(pver+1) = exo_column_conc(i_col,0,2) &
+                          + 0.5_r8 * exo_column_conc(i_col,1,2)
       call this%profiles_( PROFILE_INDEX_O2 )%update( &
-          edge_values = edges, layer_densities = densities, &
-          exo_density = exo_column_conc(i_col,0,2) )
+          edge_values = edges, layer_densities = densities )
     else
+      densities(1:pver+1) = this%height_delta_(1:pver+1) * km2cm * &
+                          sqrt(edges(1:pver+1)) * sqrt(edges(2:pver+2))
       call this%profiles_( PROFILE_INDEX_O2 )%update( &
           edge_values = edges, layer_densities = densities, &
           scale_height = 7.0_r8 )
@@ -1425,13 +1429,18 @@ contains
     else
       edges(:) = 0.0_r8
     end if
-    densities(1:pver+1) = this%height_delta_(1:pver+1) * km2cm * &
-                        ( edges(1:pver+1) + edges(2:pver+2) ) * 0.5_r8
     if( nabscol >= 1 ) then
+      densities(1) = 0.5_r8 * exo_column_conc(i_col,pver,1)
+      densities(2:pver) = 0.5_r8 * ( exo_column_conc(i_col,pver-1:1:-1,1) &
+                                     + exo_column_conc(i_col,pver:2:-1,1) )
+      densities(pver+1) = exo_column_conc(i_col,0,1) &
+                          + 0.5_r8 * exo_column_conc(i_col,1,1)
       call this%profiles_( PROFILE_INDEX_O3 )%update( &
           edge_values = edges, layer_densities = densities, &
           exo_density = exo_column_conc(i_col,0,1) )
     else
+      densities(1:pver+1) = this%height_delta_(1:pver+1) * km2cm * &
+                          ( edges(1:pver+1) + edges(2:pver+2) ) * 0.5_r8
       call this%profiles_( PROFILE_INDEX_O3 )%update( &
           edge_values = edges, layer_densities = densities, &
           scale_height = 7.0_r8 )
