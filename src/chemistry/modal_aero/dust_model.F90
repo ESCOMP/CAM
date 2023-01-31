@@ -46,7 +46,6 @@ module dust_model
   subroutine dust_readnl(nlfile)
 
     use namelist_utils,  only: find_group_name
-    use units,           only: getunit, freeunit
     use spmd_utils,      only: mpicom, masterprocid, mpi_character, mpi_logical, mpi_real8, mpi_success
 
     character(len=*), intent(in) :: nlfile  ! filepath for file containing namelist input
@@ -61,8 +60,7 @@ module dust_model
 
     ! Read namelist
     if (masterproc) then
-       unitn = getunit()
-       open( unitn, file=trim(nlfile), status='old' )
+       open( newunit=unitn, file=trim(nlfile), status='old' )
        call find_group_name(unitn, 'dust_nl', status=ierr)
        if (ierr == 0) then
           read(unitn, dust_nl, iostat=ierr)
@@ -71,7 +69,6 @@ module dust_model
           end if
        end if
        close(unitn)
-       call freeunit(unitn)
     end if
 
     ! Broadcast namelist variables
