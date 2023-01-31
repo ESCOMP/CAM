@@ -1322,7 +1322,7 @@ contains
     ! update TUV-x ET flux profile
     ! ============================
     call this%profiles_( PROFILE_INDEX_ET_FLUX )%update( &
-            !mid_point_values = this%wavelength_mid_values_, &
+            mid_point_values = this%wavelength_mid_values_, &
             edge_values      = this%wavelength_values_)
 
     ! ======================================================================
