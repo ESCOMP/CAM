@@ -3001,6 +3001,11 @@ if (!$simple_phys) {
     } else {
         add_default($nl, 'use_hetfrz_classnuc', 'val'=>'.false.');
     }
+    if ($nl->get_value('use_hetfrz_classnuc') =~ m/$TRUE/io) {
+	# set default scaling factors if het frz is turned on
+        add_default($nl, 'hetfrz_bc_scalfac');
+        add_default($nl, 'hetfrz_dust_scalfac');
+    }
     add_default($nl, 'use_preexisting_ice');
     if ($chem =~ /_mam7/) {
         if ($nl->get_value('use_preexisting_ice') =~ m/$TRUE/io) {

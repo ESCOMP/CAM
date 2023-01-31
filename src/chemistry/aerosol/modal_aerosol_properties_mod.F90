@@ -382,7 +382,7 @@ contains
 
     call rad_cnst_get_info(0, bin_ndx, mode_type=mode_name)
 
-    if (trim(mode_name) /= 'aitken') then
+    if ((trim(mode_name)/='aitken').and.(trim(mode_name)/='primary_carbon')) then
 
        call self%species_type(bin_ndx, spc_ndx, species_type)
 
