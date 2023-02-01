@@ -59,10 +59,10 @@ subroutine stochastic_kernel_init_cam
     use cam_history_support, only:          add_hist_coord
     use pumas_stochastic_collect_tau, only: pumas_stochastic_kernel_init
 
-    integer  :: iunit      ! unit number of opened file for collection kernel code from a lookup table.
+    integer  :: iunit=40      ! unit number of opened file for collection kernel code from a lookup table.
 
 !CACNOTE  - Need to fix the opening and reading of this file
-    open(unit=40,file='/glade/u/home/cchen/TAU/input/KBARF',status='old')
+    open(unit=iunit,file='/glade/u/home/cchen/TAU/input/KBARF',status='old')
 
     call pumas_stochastic_kernel_init(iunit)
 
