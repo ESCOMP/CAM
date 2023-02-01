@@ -47,7 +47,6 @@ contains
     use mo_srf_emissions,  only : srf_emissions_inti
     use mo_sulf,           only : sulf_inti
     use mo_photo,          only : photo_inti
-    use mo_lightning,      only : lightning_inti
     use mo_drydep,         only : drydep_inti
     use mo_imp_sol,        only : imp_slv_inti
     use mo_exp_sol,        only : exp_sol_inti
@@ -158,12 +157,6 @@ contains
     !-----------------------------------------------------------------------
     call sad_inti(pbuf2d)
     if (masterproc) write(iulog,*) 'chemini: after sad_inti on node ',iam
-
-    !-----------------------------------------------------------------------
-    !	... initialize the lightning module
-    !-----------------------------------------------------------------------
-    call lightning_inti(pbuf2d, calc_nox_prod_rate=.true.)
-    if (masterproc) write(iulog,*) 'chemini: after lightning_inti on node ',iam
 
     !-----------------------------------------------------------------------
     !	... initialize the dry deposition module

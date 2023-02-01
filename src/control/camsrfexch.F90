@@ -303,7 +303,7 @@ CONTAINS
        cam_out(c)%co2prog(:)  = 0._r8
        cam_out(c)%co2diag(:)  = 0._r8
        cam_out(c)%ozone(:)    = 0._r8
-       cam_out(c)%lightning_flash_freq(:) = 0._r8
+       cam_out(c)%lightning_flash_freq(:) = -huge(1._r8)
        cam_out(c)%psl(:)      = 0._r8
        cam_out(c)%bcphidry(:) = 0._r8
        cam_out(c)%bcphodry(:) = 0._r8
@@ -525,7 +525,6 @@ subroutine cam_export(state,cam_out,pbuf)
       call pbuf_get_field(pbuf, lightning_idx, lightning_ptr)
       cam_out%lightning_flash_freq(:ncol) = lightning_ptr(:ncol)
    end if
-
 
    !
    ! Precipation and snow rates from shallow convection, deep convection and stratiform processes.

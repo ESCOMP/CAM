@@ -19,7 +19,7 @@ module mo_lightning
 
   public  :: lightning_readnl
   public  :: lightning_register
-  public  :: lightning_inti
+  public  :: lightning_init
   public  :: lightning_no_prod
   public  :: prod_no
 
@@ -44,7 +44,7 @@ contains
   !-------------------------------------------------------------------------
   subroutine lightning_readnl(nlfile)
     use namelist_utils, only : find_group_name
-    use spmd_utils,     only : mpicom, masterprocid, mpi_real8
+    use spmd_utils,     only : mpicom, masterprocid, mpi_real8, mpi_success
 
     character(len=*), intent(in)  :: nlfile  ! filepath for file containing namelist input
 
@@ -75,6 +75,9 @@ contains
     ! Broadcast namelist variables
     ! ============================
     call mpi_bcast(lght_no_prd_factor, 1, mpi_real8, masterprocid, mpicom, ierr)
+    if (ierr/=mpi_success) then
+       call endrun(subname//': MPI_BCAST ERROR: lght_no_prd_factor')
+    end if
 
     if (masterproc) then
        write(iulog,*) subname,' lght_no_prd_factor: ',lght_no_prd_factor
@@ -96,7 +99,7 @@ contains
 
   !-------------------------------------------------------------------------
   !-------------------------------------------------------------------------
-  subroutine lightning_inti( pbuf2d, calc_nox_prod_rate )
+  subroutine lightning_init( pbuf2d )
     !----------------------------------------------------------------------
     !       ... initialize the lightning module
     !----------------------------------------------------------------------
@@ -111,15 +114,13 @@ contains
     !	... dummy args
     !----------------------------------------------------------------------
     type(physics_buffer_desc), pointer :: pbuf2d(:,:)
-    logical,optional, intent(in) :: calc_nox_prod_rate
 
     !----------------------------------------------------------------------
     !	... local variables
     !----------------------------------------------------------------------
     integer  :: astat, err
     logical :: history_cesm_forcing
-    character(len=*),parameter :: prefix = 'lightning_inti: '
-
+    character(len=*),parameter :: prefix = 'lightning_init: '
 
     cldtop_ndx = pbuf_get_index('CLDTOP',errcode=err)
     cldbot_ndx = pbuf_get_index('CLDBOT',errcode=err)
@@ -127,9 +128,7 @@ contains
 
     if (.not.calc_lightning) return
 
-    if (present(calc_nox_prod_rate)) then
-       calc_nox_prod = calc_nox_prod_rate
-    end if
+    calc_nox_prod = flsh_frq_ndx>0
 
     if (calc_nox_prod) then
 
@@ -153,7 +152,7 @@ contains
 
        allocate( prod_no(pcols,pver,begchunk:endchunk),stat=astat )
        if( astat /= 0 ) then
-          write(iulog,*) 'lght_inti: failed to allocate prod_no; error = ',astat
+          write(iulog,*) prefix, 'failed to allocate prod_no; error = ',astat
           call endrun
        end if
        geo_factor = ngcols_p/(4._r8*pi)
@@ -167,6 +166,10 @@ contains
           call add_default('LNO_COL_PROD',1,' ')
        endif
 
+       if (is_first_step()) then
+          call pbuf_set_field(pbuf2d, flsh_frq_ndx, 0.0_r8)
+       endif
+
     endif
 
     call addfld( 'FLASHFRQ',     horiz_only,  'I', '1/MIN',   'lighting flash rate' )        ! flash frequency in grid box per minute (PPP)
@@ -174,10 +177,7 @@ contains
     call addfld( 'DCHGZONE',     horiz_only,  'I', 'KM',      'depth of discharge zone' )       ! depth of discharge zone
     call addfld( 'CGIC',         horiz_only,  'I', 'RATIO',   'ratio of cloud-ground/intracloud discharges' ) ! ratio of cloud-ground/intracloud discharges
 
-    if (is_first_step()) then
-       call pbuf_set_field(pbuf2d, flsh_frq_ndx, 0.0_r8)
-    endif
-  end subroutine lightning_inti
+  end subroutine lightning_init
 
   !-------------------------------------------------------------------------
   !-------------------------------------------------------------------------
@@ -197,15 +197,14 @@ contains
     !	... dummy args
     !----------------------------------------------------------------------
     type(physics_state), intent(in) :: state(begchunk:endchunk) ! physics state
-
     type(physics_buffer_desc), pointer :: pbuf2d(:,:)
     type(cam_in_t), intent(in) :: cam_in(begchunk:endchunk) ! physics state
 
     !----------------------------------------------------------------------
     !	... local variables
     !----------------------------------------------------------------------
-    real(r8), parameter    :: land   = 1._r8
-    real(r8), parameter    :: secpyr = 365._r8 * 8.64e4_r8
+    real(r8), parameter :: land   = 1._r8
+    real(r8), parameter :: secpyr = 365._r8 * 8.64e4_r8
 
     integer :: i, c
     integer :: cldtind             ! level index for cloud top
@@ -253,11 +252,11 @@ contains
     real(r8), parameter  :: lat25 = 25._r8*d2r      ! 25 degrees latitude in radians
 
     real(r8) :: flash_freq_land, flash_freq_ocn
-    real(r8), pointer :: lightning_flash_freq(:)
+    real(r8), pointer :: cld2grnd_flash_freq(:)
 
     if (.not.calc_lightning) return
 
-    nullify(lightning_flash_freq)
+    nullify(cld2grnd_flash_freq)
 
     !----------------------------------------------------------------------
     !	... initialization
@@ -296,7 +295,7 @@ contains
     Chunk_loop : do c = begchunk,endchunk
        ncol  = state(c)%ncol
        lchnk = state(c)%lchnk
-       call pbuf_get_field(pbuf_get_chunk(pbuf2d,lchnk), flsh_frq_ndx, lightning_flash_freq )
+       call pbuf_get_field(pbuf_get_chunk(pbuf2d,lchnk), flsh_frq_ndx, cld2grnd_flash_freq )
        call pbuf_get_field(pbuf_get_chunk(pbuf2d,lchnk), cldtop_ndx, cldtop )
        call pbuf_get_field(pbuf_get_chunk(pbuf2d,lchnk), cldbot_ndx, cldbot )
        zsurf(:ncol) = state(c)%phis(:ncol)*rga
@@ -351,7 +350,7 @@ contains
                 cgic(i,c) = .02_r8
              end if
 
-             lightning_flash_freq(i) = flash_freq(i,c)*cgic(i,c) * factor ! cld-to-grnd flash frq (per min)
+             cld2grnd_flash_freq(i) = cam_in(c)%landfrac(i)*flash_freq_land *cgic(i,c) * factor ! cld-to-grnd flash frq (per min)
 
              if (calc_nox_prod) then
                 !--------------------------------------------------------------------------------
