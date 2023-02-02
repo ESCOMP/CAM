@@ -468,8 +468,7 @@ add_default($nl, 'water_species_in_air');
 # Spectral Element dycore
 my $dyn = $cfg->get('dyn');
 
-# Physics package checks done here since aqua_planet setting is in
-# the seq_infodata_inparm group
+# Physics package checks done here
 my $phys_mode_flags = 0;
 my $adia_mode = 0;
 my $aqua_mode = 0;

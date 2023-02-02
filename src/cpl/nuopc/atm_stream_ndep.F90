@@ -14,6 +14,7 @@ module atm_stream_ndep
   use shr_kind_mod      , only : r8 => shr_kind_r8, CL => shr_kind_cl, CS => shr_kind_cs
   use shr_log_mod       , only : errMsg => shr_log_errMsg
   use spmd_utils        , only : mpicom, masterproc, iam
+  use spmd_utils        , only : mpi_character, mpi_integer
   use cam_logfile       , only : iulog
   use cam_abortutils    , only : endrun
 
@@ -46,7 +47,6 @@ contains
 
     ! Uses:
     use shr_nl_mod       , only : shr_nl_find_group_name
-    use shr_mpi_mod      , only : shr_mpi_bcast
     use dshr_strdata_mod , only : shr_strdata_init_from_inline
 
     ! input/output variables
@@ -61,7 +61,8 @@ contains
     character(len=CL)       :: stream_ndep_mesh_filename
     integer                 :: stream_ndep_year_first ! first year in stream to use
     integer                 :: stream_ndep_year_last  ! last year in stream to use
-    integer                 :: stream_ndep_year_align  ! align stream_year_firstndep with
+    integer                 :: stream_ndep_year_align ! align stream_year_firstndep with
+    integer                 :: ierr
     character(*), parameter :: subName = "('stream_ndep_init')"
     !-----------------------------------------------------------------------
 
@@ -98,11 +99,16 @@ contains
        end if
        close(nu_nml)
     endif
-    call shr_mpi_bcast(stream_ndep_mesh_filename , mpicom)
-    call shr_mpi_bcast(stream_ndep_data_filename , mpicom)
-    call shr_mpi_bcast(stream_ndep_year_first    , mpicom)
-    call shr_mpi_bcast(stream_ndep_year_last     , mpicom)
-    call shr_mpi_bcast(stream_ndep_year_align    , mpicom)
+    call mpi_bcast(stream_ndep_mesh_filename, len(stream_ndep_mesh_filename), mpi_character, 0, mpicom, ierr)
+    if (ierr /= 0) call endrun(trim(subname)//": FATAL: mpi_bcast: stream_ndep_mesh_filename")
+    call mpi_bcast(stream_ndep_data_filename, len(stream_ndep_data_filename), mpi_character, 0, mpicom, ierr)
+    if (ierr /= 0) call endrun(trim(subname)//": FATAL: mpi_bcast: stream_ndep_data_filename")
+    call mpi_bcast(stream_ndep_year_first, 1, mpi_integer, 0, mpicom, ierr)
+    if (ierr /= 0) call endrun(trim(subname)//": FATAL: mpi_bcast: stream_ndep_year_first")
+    call mpi_bcast(stream_ndep_year_last, 1, mpi_integer, 0, mpicom, ierr)
+    if (ierr /= 0) call endrun(trim(subname)//": FATAL: mpi_bcast: stream_ndep_year_first")
+    call mpi_bcast(stream_ndep_year_align, 1, mpi_integer, 0, mpicom, ierr)
+    if (ierr /= 0) call endrun(trim(subname)//": FATAL: mpi_bcast: stream_ndep_year_first")
 
     if (masterproc) then
        write(iulog,'(a)'   ) ' '

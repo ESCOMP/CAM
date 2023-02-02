@@ -1081,11 +1081,11 @@ contains
        end if
        call stream_ndep_interp(cam_out, rc)
        if (ChkErr(rc,__LINE__,u_FILE_u)) return
-       ! NDEP read from forcing is expected to be in units if gN/m2/sec - but the mediator
+       ! NDEP read from forcing is expected to be in units of gN/m2/sec - but the mediator
        ! expects units of kgN/m2/sec
        scale_ndep = .001_r8
     else
-       ! If waccm computes ndep, then its in of kgN/m2/s - and the mediator expects
+       ! If waccm computes ndep, then its in units of kgN/m2/s - and the mediator expects
        ! units of kgN/m2/sec, so the following conversion needs to happen
        scale_ndep = 1._r8
     end if
