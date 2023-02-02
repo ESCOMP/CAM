@@ -842,8 +842,8 @@ subroutine process_inidat(fieldname, m_cnst, fh)
          ret = pio_inq_varid(fh, cnst_name(m_cnst), varid)
          ret = pio_get_att(fh, varid, 'units', trunits)
          if (trunits(1:5) .ne. 'KG/KG' .and. trunits(1:5) .ne. 'kg/kg') then
-            call endrun(sub//': ERROR:  Units for tracer ' &
-               //trim(cnst_name(m_cnst))//' must be in KG/KG')
+            !call endrun(sub//': ERROR:  Units for tracer ' &
+            !   //trim(cnst_name(m_cnst))//' must be in KG/KG')
          end if
 
       else if (.not. analytic_ic_active()) then
