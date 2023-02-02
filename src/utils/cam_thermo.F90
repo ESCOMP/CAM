@@ -1555,9 +1555,9 @@ CONTAINS
    !
    !***************************************************************************
    !
-   subroutine get_hydrostatic_energy_1hd(tracer, pdel, cp_or_cv, U, V, T,     &
-        vcoord, ps, phis, z_mid, dycore_idx, qidx, te, se, po, ke,            &
-        wv, H2O, liq, ice)
+   subroutine get_hydrostatic_energy_1hd(tracer, moist_mixing_ratio, pdel_in, &
+        cp_or_cv, U, V, T, vcoord, ps, phis, z_mid, dycore_idx, qidx,         &
+        te, se, po, ke, wv, H2O, liq, ice)
 
       use cam_logfile,     only: iulog
       use dyn_tests_utils, only: vc_height, vc_moist_pressure, vc_dry_pressure
@@ -1566,9 +1566,12 @@ CONTAINS
 
       ! Dummy arguments
       ! tracer: tracer mixing ratio
+      !
+      ! note - if pdeldry passed to subroutine then tracer mixing ratio must be dry
       real(r8), intent(in)            :: tracer(:,:,:)
+      logical, intent(in)             :: moist_mixing_ratio
       ! pdel: pressure level thickness
-      real(r8), intent(in)            :: pdel(:,:)
+      real(r8), intent(in)            :: pdel_in(:,:)
       ! cp_or_cv: dry air heat capacity under constant pressure or
       !           constant volume (depends on vcoord)
       real(r8), intent(in)            :: cp_or_cv(:,:)
@@ -1609,6 +1612,7 @@ CONTAINS
       real(r8) :: wv_vint(SIZE(tracer, 1))  ! Vertical integral of wv
       real(r8) :: liq_vint(SIZE(tracer, 1)) ! Vertical integral of liq
       real(r8) :: ice_vint(SIZE(tracer, 1)) ! Vertical integral of ice
+      real(r8) :: pdel(SIZE(tracer, 1),SIZE(tracer, 2)) !moist pressure level thickness
       real(r8)                      :: latsub ! latent heat of sublimation
 
       integer                       :: ierr
@@ -1655,6 +1659,15 @@ CONTAINS
          wvidx = wv_idx
       end if
 
+      if (moist_mixing_ratio) then
+        pdel     = pdel_in
+      else
+        pdel     = pdel_in
+        do qdx = 1, thermodynamic_active_species_num
+          pdel(:,:) = pdel(:,:) + pdel_in(:, :)*tracer(:,:,species_idx(qdx))
+        end do
+      end if
+
       select case (vcoord)
       case(vc_moist_pressure, vc_dry_pressure)
          if ((.not. present(ps)) .or. (.not. present(phis))) then
@@ -1665,15 +1678,12 @@ CONTAINS
          end if
          ke_vint = 0._r8
          se_vint = 0._r8
-         wv_vint = 0._r8
          do kdx = 1, SIZE(tracer, 2)
             do idx = 1, SIZE(tracer, 1)
                ke_vint(idx) = ke_vint(idx) + (pdel(idx, kdx) *                &
                     0.5_r8 * (U(idx, kdx)**2 + V(idx, kdx)**2) / gravit)
                se_vint(idx) = se_vint(idx) + (T(idx, kdx) *                   &
                     cp_or_cv(idx, kdx) * pdel(idx, kdx) / gravit)
-               wv_vint(idx) = wv_vint(idx) + (tracer(idx, kdx, wvidx) *       &
-                    pdel(idx, kdx) / gravit)
             end do
          end do
          do idx = 1, SIZE(tracer, 1)
@@ -1689,7 +1699,6 @@ CONTAINS
          ke_vint = 0._r8
          se_vint = 0._r8
          po_vint = 0._r8
-         wv_vint = 0._r8
          do kdx = 1, SIZE(tracer, 2)
             do idx = 1, SIZE(tracer, 1)
                ke_vint(idx) = ke_vint(idx) + (pdel(idx, kdx) *                &
@@ -1699,8 +1708,6 @@ CONTAINS
                ! z_mid is height above ground
                po_vint(idx) = po_vint(idx) + (z_mid(idx, kdx) +               &
                     phis(idx) / gravit) * pdel(idx, kdx)
-               wv_vint(idx) = wv_vint(idx) + (tracer(idx, kdx, wvidx) *       &
-                    pdel(idx, kdx) / gravit)
             end do
          end do
       case default
@@ -1719,17 +1726,27 @@ CONTAINS
       if (present(ke)) then
          ke = ke_vint
       end if
-      if (present(wv)) then
-         wv = wv_vint
-      end if
       !
       ! vertical integral of total liquid water
       !
+      if (.not.moist_mixing_ratio) then
+        pdel = pdel_in! set pseudo density to dry
+      end if
+
+      wv_vint = 0._r8
+      do kdx = 1, SIZE(tracer, 2)
+        do idx = 1, SIZE(tracer, 1)
+          wv_vint(idx) = wv_vint(idx) + (tracer(idx, kdx, wvidx) *       &
+               pdel(idx, kdx) / gravit)
+        end do
+      end do
+      if (present(wv)) wv = wv_vint
+
       liq_vint = 0._r8
       do qdx = 1, thermodynamic_active_species_liq_num
          do kdx = 1, SIZE(tracer, 2)
             do idx = 1, SIZE(tracer, 1)
-               liq_vint(idx) = liq_vint(idx) + (pdel(idx, kdx) *              &
+               liq_vint(idx) = liq_vint(idx) + (pdel(idx, kdx) *         &
                     tracer(idx, kdx, species_liq_idx(qdx)) / gravit)
             end do
          end do

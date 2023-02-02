@@ -827,7 +827,8 @@ subroutine tot_energy(nCells, nVertLevels, qsize, index_qv, zz, zgrid, rho_zz, t
   use air_composition,   only: thermodynamic_active_species_ice_num,thermodynamic_active_species_liq_num
   use budgets,           only: budget_array_max,budget_info_byname
   use cam_thermo,        only: wvidx,wlidx,wiidx,seidx,poidx,keidx,moidx,mridx,ttidx,teidx,thermo_budget_num_vars
-
+  use dyn_tests_utils,   only: vcoord=>vc_height
+  use cam_thermo,        only: get_hydrostatic_energy
   ! Arguments
   integer, intent(in) :: nCells
   integer, intent(in) :: nVertLevels
@@ -846,12 +847,14 @@ subroutine tot_energy(nCells, nVertLevels, qsize, index_qv, zz, zgrid, rho_zz, t
   character*(*),                                  intent(in) :: outfld_name_suffix ! suffix for "outfld" names
 
   ! Local variables
-  integer :: iCell, k, idx
+  integer :: iCell, k, idx, idx_tmp
   integer :: s_ind,b_ind
   logical :: b_subcycle
-  real(r8) :: rho_dz,zcell,temperature,theta,pk,ptop,exner
-  real(r8), dimension(nVertLevels, nCells) :: rhod, dz
-  real(r8), dimension(nCells)              :: kinetic_energy,potential_energy,internal_energy,water_vapor
+  real(r8) :: rho_dz,theta,pk,ptop,exner,dz,rhod
+  real(r8), dimension(nCells,nVertLevels)       :: temperature, pdeldry, cp_or_cv, zcell, u, v
+  real(r8), dimension(nCells)                   :: phis
+  real(r8), dimension(nCells,nVertLevels,qsize) :: tracers
+  real(r8), dimension(nCells)                   :: kinetic_energy,potential_energy,internal_energy,water_vapor
 
   real(r8), dimension(nCells) :: liq !total column integrated liquid
   real(r8), dimension(nCells) :: ice !total column integrated ice
@@ -872,40 +875,42 @@ subroutine tot_energy(nCells, nVertLevels, qsize, index_qv, zz, zgrid, rho_zz, t
     potential_energy = 0.0_r8
     internal_energy  = 0.0_r8
     water_vapor      = 0.0_r8
+    tracers          = 0.0_r8
 
     do iCell = 1, nCells
       do k = 1, nVertLevels
-        dz(k,iCell)   = zgrid(k+1,iCell) - zgrid(k,iCell)
-        zcell         = 0.5_r8*(zgrid(k,iCell)+zgrid(k+1,iCell))
-        rhod(k,iCell) = zz(k,iCell) * rho_zz(k,iCell)
-#ifdef phl_cam_development
-        rho_dz        = (1.0_r8+q(index_qv,k,iCell))*rhod(k,iCell)*dz(k,iCell)
-#else
-        rho_dz        = 1.0_r8
+        dz              = zgrid(k+1,iCell) - zgrid(k,iCell)
+        zcell(iCell,k)  = 0.5_r8*(zgrid(k,iCell)+zgrid(k+1,iCell))-zgrid(1,iCell)
+        rhod            = zz(k,iCell) * rho_zz(k,iCell)
+        theta           = theta_m(k,iCell)/(1.0_r8 + Rv_over_Rd *q(index_qv,k,iCell))!convert theta_m to theta
+        exner           = (rgas*rhod*theta_m(k,iCell)/p0)**(rgas/cv)
+
+        temperature(iCell,k)   = exner*theta
+        pdeldry(iCell,k)       = gravit*rhod*dz
+        cp_or_cv(iCell,k)      = cv
+        u(iCell,k)             = ux(k,iCell)
+        v(iCell,k)             = uy(k,iCell)
+        phis(iCell)            = zgrid(1,iCell)*gravit
         do idx=1,thermodynamic_active_species_num
-          rho_dz     = rho_dz+q(thermodynamic_active_species_idx_dycore(idx),k,iCell)
+          idx_tmp = thermodynamic_active_species_idx_dycore(idx)          
+          tracers(iCell,k,idx_tmp) = q(idx_tmp,k,iCell)
         end do
-        rho_dz = rho_dz*rhod(k,iCell)*dz(k,iCell)
-#endif
-        theta         = theta_m(k,iCell)/(1.0_r8 + Rv_over_Rd *q(index_qv,k,iCell))!convert theta_m to theta
-
-        exner         = (rgas*rhod(k,iCell)*theta_m(k,iCell)/p0)**(rgas/cv)
-        temperature   = exner*theta
-
-        water_vapor(iCell)      = water_vapor(iCell) + rhod(k,iCell)*q(index_qv,k,iCell)*dz(k,iCell)
-        kinetic_energy(iCell)   = kinetic_energy(iCell)  + &
-                                  0.5_r8*(ux(k,iCell)**2._r8+uy(k,iCell)**2._r8)*rho_dz
-        potential_energy(iCell) = potential_energy(iCell)+ rho_dz*gravit*zcell
-        internal_energy(iCell)  = internal_energy(iCell) + rho_dz*cv*temperature
       end do
-    end do
-    call outfld(name_out1,internal_energy,ncells,1)
-    call outfld(name_out2,kinetic_energy ,ncells,1)
-    call outfld(name_out3,water_vapor    ,ncells,1)
-    call outfld(name_out6,potential_energy ,ncells,1)
+    enddo
+    call get_hydrostatic_energy(tracers, .false., pdeldry, cp_or_cv, u, v, temperature, &
+         vcoord=vcoord, phis = phis, z_mid=zcell, dycore_idx=.true.,                    &
+         se=internal_energy, po =potential_energy, ke =kinetic_energy,                  &
+         wv=water_vapor    , liq=liq             , ice=ice)
+
+    call outfld(name_out1,internal_energy ,ncells,1)
+    call outfld(name_out2,kinetic_energy  ,ncells,1)
+    call outfld(name_out3,water_vapor     ,ncells,1)
+    call outfld(name_out6,potential_energy,ncells,1)
 
     call budget_info_byname(trim(outfld_name_suffix),budget_ind=b_ind,state_ind=s_ind,subcycle=b_subcycle)
     ! reset all when cnt is 0
+    write(iulog,*)'dpc calc se,ke ',s_ind,',1:3,1 is ',internal_energy(1),' ',kinetic_energy(1)
+    write(iulog,*)'dpc budgets initial ',s_ind,',1:3,1 is ',te_budgets(s_ind,1,1),' ',te_budgets(s_ind,2,1),' ',te_budgets(s_ind,3,1)
     if (budgets_cnt(b_ind) == 0) then
        budgets_subcycle_cnt(b_ind) = 0
        te_budgets(s_ind,:,:)=0.0_r8
@@ -921,27 +926,18 @@ subroutine tot_energy(nCells, nVertLevels, qsize, index_qv, zz, zgrid, rho_zz, t
        !not subcycling so don't sum just replace previous budget values
        te_budgets(s_ind,:,:)=0._r8
     end if
-       
+
     te_budgets(s_ind,teidx,:)=te_budgets(s_ind,teidx,:)+potential_energy+internal_energy+kinetic_energy
     te_budgets(s_ind,seidx,:)=te_budgets(s_ind,seidx,:)+internal_energy
     te_budgets(s_ind,keidx,:)=te_budgets(s_ind,keidx,:)+kinetic_energy
     te_budgets(s_ind,poidx,:)=te_budgets(s_ind,poidx,:)+potential_energy
-
     te_budgets(s_ind,wvidx,:)=te_budgets(s_ind,wvidx,:)+water_vapor
 
+    write(iulog,*)'tot_e te_budget for this proc ',s_ind,',1:3,1 is ',te_budgets(s_ind,1,1),' ',te_budgets(s_ind,2,1),' ',te_budgets(s_ind,3,1)
     !
     ! vertical integral of total liquid water
     !
     if (hist_fld_active(name_out4)) then
-      liq = 0._r8
-      do idx = 1,thermodynamic_active_species_liq_num
-        do iCell = 1, nCells
-          do k = 1, nVertLevels
-            liq(iCell) = liq(iCell) + &
-                 q(thermodynamic_active_species_liq_idx_dycore(idx),k,iCell)*rhod(k,iCell)*dz(k,iCell)
-          end do
-        end do
-      end do
       call outfld(name_out4,liq,ncells,1)
       te_budgets(s_ind,wlidx,:)=te_budgets(s_ind,wlidx,:)+liq
     end if
@@ -949,15 +945,6 @@ subroutine tot_energy(nCells, nVertLevels, qsize, index_qv, zz, zgrid, rho_zz, t
     ! vertical integral of total frozen (ice) water
     !
     if (hist_fld_active(name_out5)) then
-      ice = 0._r8
-      do idx = 1,thermodynamic_active_species_ice_num
-        do iCell = 1, nCells
-          do k = 1, nVertLevels
-            ice(iCell) = ice(iCell) + &
-                 q(thermodynamic_active_species_ice_idx_dycore(idx),k,iCell)*rhod(k,iCell)*dz(k,iCell)
-          end do
-        end do
-      end do
       call outfld(name_out5,ice,ncells,1)
       te_budgets(s_ind,wiidx,:)=te_budgets(s_ind,wiidx,:)+ice
     end if
