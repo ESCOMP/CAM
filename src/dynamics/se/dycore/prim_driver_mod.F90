@@ -65,7 +65,7 @@ contains
     real (kind=r8) :: dt_dyn_del2_sponge, dt_remap 
     real (kind=r8) :: dt_tracer_vis      ! viscosity timestep used in tracers
 
-    real (kind=r8) :: dp,T1,T0,pmid_ref(np,np)
+    real (kind=r8) :: dp,dp0,T1,T0,pmid_ref(np,np)
     real (kind=r8) :: ps_ref(np,np,nets:nete)
 
     integer :: i,j,k,ie,t,q
@@ -162,8 +162,14 @@ contains
      do ie=nets,nete
        do k=1,nlev
          pmid_ref =hvcoord%hyam(k)*hvcoord%ps0 + hvcoord%hybm(k)*ps_ref(:,:,ie)
+         dp0 = ( hvcoord%hyai(k+1) - hvcoord%hyai(k) )*hvcoord%ps0 + &
+               ( hvcoord%hybi(k+1) - hvcoord%hybi(k) )*hvcoord%ps0    
          if (hvcoord%hybm(k)>0) then
            elem(ie)%derived%T_ref(:,:,k)    = T0+T1*(pmid_ref/hvcoord%ps0)**cappa
+           !
+           ! pel@ucar.edu: resolved noise issue over Antartica
+           !
+           elem(ie)%derived%dp_ref(:,:,k)   = elem(ie)%derived%dp_ref(:,:,k)-dp0
          else
            elem(ie)%derived%T_ref(:,:,k)    = 0.0_r8
          end if
