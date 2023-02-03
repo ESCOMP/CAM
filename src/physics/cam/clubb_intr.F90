@@ -1954,10 +1954,7 @@ end subroutine clubb_init_cnst
 
     use physics_types,  only: physics_state, physics_ptend, &
                               physics_state_copy, physics_ptend_init, &
-!+++ARH
                               physics_ptend_sum, physics_update, set_wet_to_dry
-                              !physics_ptend_sum, physics_update, set_dry_to_wet
-!---ARH
 
     use physics_buffer, only: pbuf_old_tim_idx, pbuf_get_field, physics_buffer_desc
 
@@ -2128,10 +2125,6 @@ end subroutine clubb_init_cnst
       invrs_rho_ds_zt,          & ! Inv. dry, static density on thermo. levels  	[m^3/kg]
       thv_ds_zm,                & ! Dry, base-state theta_v on momentum levels  	[K]
       thv_ds_zt,                & ! Dry, base-state theta_v on thermo. levels   	[K]
-!+++ARH
-      !p_ds_zt,                  & ! Dry, base-state pressure on thermo. levels          [Pa]
-      !exner_ds_zt,              & ! Dry, base-state exner on thermo. levels             [-]
-!---ARH
       rfrzm,                    &
       radf,                     &
       um_in,                    & ! meridional wind				[m/s]
@@ -2493,10 +2486,7 @@ end subroutine clubb_init_cnst
     call physics_state_copy(state, state1)
 
     ! constituents are all treated as wet mmr by clubb
-!+++ARH
-    !call set_dry_to_wet(state1)
     call set_wet_to_dry(state1)
-!---ARH
 
     if (clubb_do_liqsupersat) then
       call pbuf_get_field(pbuf, npccn_idx, npccn)
@@ -2872,33 +2862,25 @@ end subroutine clubb_init_cnst
     do k=1,nlev
       do i=1, ncol
         ! base state (dry) variables
-!+++ARH
-        !p_ds_zt(i,k+1)         = state1%pmid(i,pver-k+1) &
-        !                           /(1._r8 + state1%q(i,pver-k+1,ixq)*rh2o/rairv(i,pver-k+1,lchnk))
-        !exner_ds_zt(i,k+1)     = (p_ds_zt(i,k+1)/p0_clubb)**(rairv(i,pver-k+1,lchnk)/cpairv(i,pver-k+1,lchnk))
-        !thv_ds_zt(i,k+1)       = state1%t(i,pver-k+1)/exner_ds_zt(i,k+1)
-        !rho_ds_zt(i,k+1)       = rga*(state1%pdel(i,pver-k+1) &
-        !                           /dz_g(i,pver-k+1)) * (1._r8-state1%q(i,pver-k+1,ixq))
         rho_ds_zt(i,k+1)       = (1._r8/gravit)*(state1%pdeldry(i,pver-k+1)/dz_g(i,pver-k+1))
-!---ARH
         invrs_rho_ds_zt(i,k+1) = 1._r8/(rho_ds_zt(i,k+1))
 
         ! full state (moist) variables
         p_in_Pa(i,k+1)         = state1%pmid(i,pver-k+1)                              
         exner(i,k+1)           = 1._r8/inv_exner_clubb(i,pver-k+1)
-!+++ARH
         thv(i,k+1)             = state1%t(i,pver-k+1)*inv_exner_clubb(i,pver-k+1)*(1._r8+zvir*state1%q(i,pver-k+1,ixq) &
                                    -state1%q(i,pver-k+1,ixcldliq))
+
+        !+++ARH this should be changed to theta, as that is what dry thv means?
         thv_ds_zt(i,k+1)       = thv(i,k+1)
+
+        !+++ ARH should we keep rho_zt moist? It's not clear where it's used
         !rho_zt(i,k+1)          = rga*state1%pdel(i,pver-k+1)/dz_g(i,pver-k+1)
         rho_zt(i,k+1)          = rho_ds_zt(i,k+1)
-!---ARH
+
         rfrzm(i,k+1)           = state1%q(i,pver-k+1,ixcldice)   
         radf(i,k+1)            = radf_clubb(i,pver-k+1)
-!+++ARH
-        !qrl_clubb(i,k+1)       = qrl(i,pver-k+1)/(cpairv(i,k,lchnk)*state1%pdel(i,pver-k+1))
         qrl_clubb(i,k+1)       = qrl(i,pver-k+1)/(cpairv(i,k,lchnk)*state1%pdeldry(i,pver-k+1))
-!---ARH
       end do
     end do
     
@@ -2913,10 +2895,6 @@ end subroutine clubb_init_cnst
     !  Below computes the same stuff for the ghost point.  May or may
     !  not be needed, just to be safe to avoid NaN's
     do i=1, ncol
-!+++ARH
-      !p_ds_zt(i,1)         = p_ds_zt(i,2)
-      !exner_ds_zt(i,1)     = exner_ds_zt(i,2)
-!---ARH
       thv_ds_zt(i,1)       = thv_ds_zt(i,2)
       rho_ds_zt(i,1)       = rho_ds_zt(i,2)
       invrs_rho_ds_zt(i,1) = invrs_rho_ds_zt(i,2)
@@ -3058,13 +3036,9 @@ end subroutine clubb_init_cnst
  
     !  Surface fluxes provided by host model
     do i=1,ncol                                                                  
-!+++ARH
-      !wpthlp_sfc(i) = cam_in%shf(i)/(cpairv(i,pver,lchnk)*rho_zt(i,2))! Sensible heat flux
-      wpthlp_sfc(i) = cam_in%shf(i)/(cpairv(i,pver,lchnk)*rho_ds_zm(i,1))
+      wpthlp_sfc(i) = cam_in%shf(i)/(cpairv(i,pver,lchnk)*rho_ds_zm(i,1)) ! Sensible heat flux
       wpthlp_sfc(i) = wpthlp_sfc(i)*inv_exner_clubb_surf(i)   ! Potential temperature flux
-      !wprtp_sfc(i)  = cam_in%cflx(i,1)/rho_zt(i,2)            ! Moisture flux  (check rho)
-      wprtp_sfc(i)  = cam_in%cflx(i,1)/rho_ds_zm(i,1)
-!---ARH
+      wprtp_sfc(i)  = cam_in%cflx(i,1)/rho_ds_zm(i,1)         ! Moisture flux
     end do
 
     ! Implementation after Thomas Toniazzo (NorESM) and Colin Zarzycki (PSU)
@@ -3083,12 +3057,8 @@ end subroutine clubb_init_cnst
        end do
     else
        do i=1,ncol
-!+++ARH
-          !upwp_sfc(i)   = cam_in%wsx(i)/rho_zt(i,2)               ! Surface meridional momentum flux
-          !vpwp_sfc(i)   = cam_in%wsy(i)/rho_zt(i,2)               ! Surface zonal momentum flux
           upwp_sfc(i)   = cam_in%wsx(i)/rho_ds_zm(i,1)               ! Surface meridional momentum flux
           vpwp_sfc(i)   = cam_in%wsy(i)/rho_ds_zm(i,1)               ! Surface zonal momentum flux
-!---ARH
        end do
     endif
 
@@ -3692,12 +3662,8 @@ end subroutine clubb_init_cnst
       do i=1, ncol
         se_a(i) = se_a(i) + clubb_s(i,k)*state1%pdel(i,k)/gravit
         ke_a(i) = ke_a(i) + 0.5_r8*(um(i,k)**2+vm(i,k)**2)*state1%pdel(i,k)/gravit
-!+++ARH
-        !wv_a(i) = wv_a(i) + (rtm(i,k)-rcm(i,k))*state1%pdel(i,k)/gravit
-        !wl_a(i) = wl_a(i) + (rcm(i,k))*state1%pdel(i,k)/gravit
         wv_a(i) = wv_a(i) + (rtm(i,k)-rcm(i,k))*state1%pdeldry(i,k)/gravit
         wl_a(i) = wl_a(i) + (rcm(i,k))*state1%pdeldry(i,k)/gravit
-!---ARH
       end do
     end do   
     
@@ -3711,12 +3677,8 @@ end subroutine clubb_init_cnst
       do i=1, ncol
         se_b(i) = se_b(i) + state1%s(i,k)*state1%pdel(i,k)/gravit
         ke_b(i) = ke_b(i) + 0.5_r8*(state1%u(i,k)**2+state1%v(i,k)**2)*state1%pdel(i,k)/gravit
-!+++ARH
-        !wv_b(i) = wv_b(i) + state1%q(i,k,ixq)*state1%pdel(i,k)/gravit
-        !wl_b(i) = wl_b(i) + state1%q(i,k,ixcldliq)*state1%pdel(i,k)/gravit
         wv_b(i) = wv_b(i) + state1%q(i,k,ixq)*state1%pdeldry(i,k)/gravit
         wl_b(i) = wl_b(i) + state1%q(i,k,ixcldliq)*state1%pdeldry(i,k)/gravit
-!---ARH
       end do
     end do
       
@@ -3766,10 +3728,9 @@ end subroutine clubb_init_cnst
         ptend_loc%q(i,k,ixcldliq) = (rcm(i,k) - state1%q(i,k,ixcldliq))     / hdtime ! Tendency of liquid water
         ptend_loc%s(i,k)          = (clubb_s(i,k) - state1%s(i,k))          / hdtime ! Tendency of static energy
 
-!+++ARH - what's the point of this? remove?
+        !+++ARH - what's the point of this? remove?
         rtm_integral_ltend(i) = rtm_integral_ltend(i) + ptend_loc%q(i,k,ixcldliq)*state1%pdel(i,k)/gravit
         rtm_integral_vtend(i) = rtm_integral_vtend(i) + ptend_loc%q(i,k,ixq)*state1%pdel(i,k)/gravit
-!---ARH
       end do
     end do
     
@@ -4008,19 +3969,15 @@ end subroutine clubb_init_cnst
           dlf_liq_out(i,k) = dlf(i,k) * ( 1._r8 - dum1 ) 
           dlf_ice_out(i,k) = dlf(i,k) * dum1
         end if
-!+++ARH
-        ptend_loc%q(i,k,ixcldliq) = ptend_loc%q(i,k,ixcldliq)*state1%pdel(i,k)/state1%pdeldry(i,k)!xxx convert to dry
-        ptend_loc%q(i,k,ixcldice) = ptend_loc%q(i,k,ixcldice)*state1%pdel(i,k)/state1%pdeldry(i,k)!xxx convert to dry
-        !!!ptend_loc%s(i,k)          = ptend_loc%s(i,k)*state1%pdel(i,k)!xxx convert to dry .. not sure about this one?
-!---ARH
+        ! convert moist dlf tendencies to dry
+        ptend_loc%q(i,k,ixcldliq) = ptend_loc%q(i,k,ixcldliq)*state1%pdel(i,k)/state1%pdeldry(i,k)
+        ptend_loc%q(i,k,ixcldice) = ptend_loc%q(i,k,ixcldice)*state1%pdel(i,k)/state1%pdeldry(i,k)
+
         ! Only rliq is saved from deep convection, which is the reserved liquid.  We need to keep
         !   track of the integrals of ice and static energy that is effected from conversion to ice
         !   so that the energy checker doesn't complain.
         det_s(i)                  = det_s(i) + ptend_loc%s(i,k)*state1%pdel(i,k)/gravit
-!+++ARH
-        !det_ice(i)                = det_ice(i) - ptend_loc%q(i,k,ixcldice)*state1%pdel(i,k)/gravit
         det_ice(i)                = det_ice(i) - ptend_loc%q(i,k,ixcldice)*state1%pdeldry(i,k)/gravit 
-!---ARH
       enddo
     enddo
    
@@ -4039,16 +3996,12 @@ end subroutine clubb_init_cnst
     call physics_update(state1,ptend_loc,hdtime)
 
     ! ptend_all now has all accumulated tendencies.  Convert the tendencies for the
-    ! dry constituents to dry air basis.
+    ! wet constituents to wet air basis.
     do ixind = 1, pcnst
-!+++ARH
-      !if (lq(ixind) .and. cnst_type(ixind) == 'dry') then
       if (lq(ixind) .and. cnst_type(ixind) == 'wet') then
         do k = 1, pver
           do i = 1, ncol
-            !ptend_all%q(i,k,ixind) = ptend_all%q(i,k,ixind)*state1%pdel(i,k)/state1%pdeldry(i,k)
             ptend_all%q(i,k,ixind) = ptend_all%q(i,k,ixind)*state1%pdeldry(i,k)/state1%pdel(i,k)
-!---ARH
           end do
         end do
       end if
