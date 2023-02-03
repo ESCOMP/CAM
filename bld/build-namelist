@@ -4061,10 +4061,10 @@ if ($opts{'cmeps'}) {
     add_default($nl, 'atm_ozone_frequency', 'val'=>'multiday_average');
   }
   # for lightning flash freq to CTSM
-  if ($phys =~ /^cam/) {
-    add_default($nl, 'atm_provides_lightning', 'val'=>'.true.');
-  } else {
+  if ($simple_phys or $aqua_mode) {
     add_default($nl, 'atm_provides_lightning', 'val'=>'.false.');
+  } else {
+    add_default($nl, 'atm_provides_lightning', 'val'=>'.true.');
   }
 }
 $outfile = "$opts{'dir'}/drv_flds_in";
