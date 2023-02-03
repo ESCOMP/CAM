@@ -1556,7 +1556,7 @@ CONTAINS
    !***************************************************************************
    !
    subroutine get_hydrostatic_energy_1hd(tracer, moist_mixing_ratio, pdel_in, &
-        cp_or_cv, U, V, T, vcoord, ps, phis, z_mid, dycore_idx, qidx,         &
+        cp_or_cv, U, V, T, vcoord, ptop, phis, z_mid, dycore_idx, qidx,       &
         te, se, po, ke, wv, H2O, liq, ice)
 
       use cam_logfile,     only: iulog
@@ -1579,7 +1579,7 @@ CONTAINS
       real(r8), intent(in)            :: V(:,:)
       real(r8), intent(in)            :: T(:,:)
       integer,  intent(in)            :: vcoord ! vertical coordinate
-      real(r8), intent(in),  optional :: ps(:)
+      real(r8), intent(in),  optional :: ptop(:)
       real(r8), intent(in),  optional :: phis(:)
       real(r8), intent(in),  optional :: z_mid(:,:)
       ! dycore_idx: use dycore index for thermodynamic active species
@@ -1668,26 +1668,29 @@ CONTAINS
         end do
       end if
 
+      ke_vint = 0._r8
+      se_vint = 0._r8
       select case (vcoord)
       case(vc_moist_pressure, vc_dry_pressure)
-         if ((.not. present(ps)) .or. (.not. present(phis))) then
-            write(iulog, *) subname, ' ps and phis must be present for ',     &
+         if (.not. present(ptop).or. (.not. present(phis))) then
+            write(iulog, *) subname, ' ptop and phis must be present for ',     &
                  'moist/dry pressure vertical coordinate'
-            call endrun(subname//':  ps and phis must be present for '//      &
+            call endrun(subname//':  ptop and phis must be present for '//      &
                  'moist/dry pressure vertical coordinate')
          end if
-         ke_vint = 0._r8
-         se_vint = 0._r8
+         po_vint = ptop
          do kdx = 1, SIZE(tracer, 2)
             do idx = 1, SIZE(tracer, 1)
                ke_vint(idx) = ke_vint(idx) + (pdel(idx, kdx) *                &
                     0.5_r8 * (U(idx, kdx)**2 + V(idx, kdx)**2) / gravit)
                se_vint(idx) = se_vint(idx) + (T(idx, kdx) *                   &
                     cp_or_cv(idx, kdx) * pdel(idx, kdx) / gravit)
+               po_vint(idx) =  po_vint(idx)+pdel(idx, kdx)
+
             end do
          end do
          do idx = 1, SIZE(tracer, 1)
-            po_vint(idx) =  (phis(idx) * ps(idx) / gravit)
+            po_vint(idx) =  (phis(idx) * po_vint(idx) / gravit)
          end do
       case(vc_height)
          if ((.not. present(phis)) .or. (.not. present(phis))) then
@@ -1696,8 +1699,6 @@ CONTAINS
             call endrun(subname//':  phis and phis must be present for '//      &
                  'height-based vertical coordinate')
          end if
-         ke_vint = 0._r8
-         se_vint = 0._r8
          po_vint = 0._r8
          do kdx = 1, SIZE(tracer, 2)
             do idx = 1, SIZE(tracer, 1)

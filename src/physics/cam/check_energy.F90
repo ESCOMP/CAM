@@ -278,7 +278,7 @@ end subroutine check_energy_get_integrals
     call get_hydrostatic_energy(state%q(1:ncol,1:pver,1:pcnst),.true.,               &
          state%pdel(1:ncol,1:pver), cp_or_cv(1:ncol,1:pver),                         &
          state%u(1:ncol,1:pver), state%v(1:ncol,1:pver), state%T(1:ncol,1:pver),     &
-         vc_physics, ps = state%ps(1:ncol), phis = state%phis(1:ncol),               &
+         vc_physics, ptop=state%pintdry(1:ncol,1), phis = state%phis(1:ncol),&
          te = state%te_ini(1:ncol,phys_te_idx), H2O = state%tw_ini(1:ncol,phys_te_idx))
     !
     ! Dynamical core total energy
@@ -298,8 +298,8 @@ end subroutine check_energy_get_integrals
       call get_hydrostatic_energy(state%q(1:ncol,1:pver,1:pcnst),.true.,               &
            state%pdel(1:ncol,1:pver), cp_or_cv(1:ncol,1:pver),                         &
            state%u(1:ncol,1:pver), state%v(1:ncol,1:pver), state%T(1:ncol,1:pver),     &
-           vc_dycore, ps = state%ps(1:ncol), phis = state%phis(1:ncol),                &
-           z_mid = state%z_ini(1:ncol,:),                                                  &
+           vc_dycore, ptop=state%pintdry(1:ncol,1), phis = state%phis(1:ncol),         &
+           z_mid = state%z_ini(1:ncol,:),                                              &
            te = state%te_ini(1:ncol,dyn_te_idx), H2O = state%tw_ini(1:ncol,dyn_te_idx))
     else
       state%te_ini(1:ncol,dyn_te_idx) = state%te_ini(1:ncol,phys_te_idx)
@@ -490,7 +490,7 @@ end subroutine check_energy_get_integrals
     call get_hydrostatic_energy(state%q(1:ncol,1:pver,1:pcnst),.true.,               &
          state%pdel(1:ncol,1:pver), cp_or_cv(1:ncol,1:pver),                         &
          state%u(1:ncol,1:pver), state%v(1:ncol,1:pver), state%T(1:ncol,1:pver),     &
-         vc_physics, ps = state%ps(1:ncol), phis = state%phis(1:ncol),               &
+         vc_physics, ptop=state%pintdry(1:ncol,1), phis = state%phis(1:ncol),        &
          te = te(1:ncol), H2O = tw(1:ncol), se=se(1:ncol),po=po(1:ncol),             &
          ke=ke(1:ncol),wv=wv(1:ncol),liq=liq(1:ncol),ice=ice(1:ncol))
     ! compute expected values and tendencies
@@ -573,8 +573,8 @@ end subroutine check_energy_get_integrals
       call get_hydrostatic_energy(state%q(1:ncol,1:pver,1:pcnst),.true.,               &
            state%pdel(1:ncol,1:pver), cp_or_cv(1:ncol,1:pver),                         &
            state%u(1:ncol,1:pver), state%v(1:ncol,1:pver), temp(1:ncol,1:pver),        &
-           vc_dycore, ps = state%ps(1:ncol), phis = state%phis(1:ncol),                &
-           z_mid = state%z_ini(1:ncol,:),                                                  &
+           vc_dycore, ptop=state%pintdry(1:ncol,1), phis = state%phis(1:ncol),         &
+           z_mid = state%z_ini(1:ncol,:),                                              &
            te = state%te_cur(1:ncol,dyn_te_idx), H2O = state%tw_cur(1:ncol,dyn_te_idx))
     else
       state%te_cur(1:ncol,dyn_te_idx) = te(1:ncol)
@@ -1140,7 +1140,7 @@ end subroutine check_energy_get_integrals
       call get_hydrostatic_energy(state%q(1:ncol,1:pver,1:pcnst),.true.,               &
            state%pdel(1:ncol,1:pver), cp_or_cv(1:ncol,1:pver),                         &
            state%u(1:ncol,1:pver), state%v(1:ncol,1:pver), temp(1:ncol,1:pver),        &
-           vc_loc, ps = state%ps(1:ncol), phis = state%phis(1:ncol),                   &
+           vc_loc, ptop=state%pintdry(1:ncol,1), phis = state%phis(1:ncol),&
            z_mid = state%z_ini(1:ncol,:), se = se(1:ncol),                             &
            po = po(1:ncol), ke = ke(1:ncol), wv = wv(1:ncol), liq = liq(1:ncol),       &
            ice = ice(1:ncol))
@@ -1169,7 +1169,7 @@ end subroutine check_energy_get_integrals
         end if
       end if
 
-      state%te_budgets(1:ncol,teidx,s_ind)=state%te_budgets(1:ncol,teidx,s_ind)+(se(1:ncol)+ke(1:ncol)+po(1:ncol))
+      state%te_budgets(1:ncol,teidx,s_ind)=state%te_budgets(1:ncol,teidx,s_ind)+se(1:ncol)+ke(1:ncol)+po(1:ncol)
       state%te_budgets(1:ncol,seidx,s_ind)=      state%te_budgets(1:ncol,seidx,s_ind)+se(1:ncol)
       state%te_budgets(1:ncol,poidx,s_ind)=      state%te_budgets(1:ncol,poidx,s_ind)+po(1:ncol)
       state%te_budgets(1:ncol,keidx,s_ind)=      state%te_budgets(1:ncol,keidx,s_ind)+ke(1:ncol)

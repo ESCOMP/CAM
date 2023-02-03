@@ -206,7 +206,7 @@ subroutine print_budget()
      write(iulog,*) ""     
      call budget_get_global('dBF',teidx,E_dBF)  !state passed to physics
      call budget_get_global('phBF',teidx,E_phBF)!state beginning physics
-     if (abs(E_phBF)>eps) then
+!     if (abs(E_phBF)>eps) then
        diff = abs_diff(E_dBF,E_phBF)
        if (abs(diff)<eps) then
          write(iulog,*)"yes. (dBF-phBF)/phBF =",diff
@@ -220,7 +220,7 @@ subroutine print_budget()
          write(iulog,*) "water_species_in_air = 'Q' !only water vapor energetically active"
          write(iulog,*) ""         
        end if
-     end if
+!     end if
      
     do m_cnst=1,thermo_budget_num_vars
        if (thermo_budget_vars_massv(m_cnst)) then 

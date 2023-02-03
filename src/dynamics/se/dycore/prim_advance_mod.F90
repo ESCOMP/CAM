@@ -1457,15 +1457,17 @@ contains
     use string_utils,           only: strlist_get_ind
     use hycoef,                 only: hyai, ps0
     use fvm_control_volume_mod, only: fvm_struct
-    use cam_thermo,             only: get_dp, MASS_MIXING_RATIO,wvidx,wlidx,wiidx,seidx,keidx,moidx,mridx,ttidx,teidx
+    use cam_thermo,             only: get_dp, MASS_MIXING_RATIO,wvidx,wlidx,wiidx,seidx,poidx,keidx,moidx,mridx,ttidx,teidx
+    use cam_thermo,             only: get_hydrostatic_energy
     use air_composition,        only: thermodynamic_active_species_idx_dycore, get_cp
+    use air_composition,        only: thermodynamic_active_species_num,    thermodynamic_active_species_idx_dycore
     use air_composition,        only: thermodynamic_active_species_liq_num,thermodynamic_active_species_liq_idx
     use air_composition,        only: thermodynamic_active_species_ice_num,thermodynamic_active_species_ice_idx
     use dimensions_mod,         only: cnst_name_gll
     use budgets,                only: budget_info_byname
     use cam_logfile,            only: iulog
     use spmd_utils,             only: masterproc
-
+    use dyn_tests_utils,        only: vcoord=>vc_dry_pressure
     !------------------------------Arguments--------------------------------
 
     type (element_t) , intent(inout) :: elem(:)
@@ -1476,15 +1478,19 @@ contains
 
     !---------------------------Local storage-------------------------------
 
-    real(kind=r8) :: se(npsq)                          ! Dry Static energy (J/m2)
-    real(kind=r8) :: ke(npsq)                          ! kinetic energy    (J/m2)
+    real(kind=r8) :: se(np,np)                       ! Enthalpy energy (J/m2)
+    real(kind=r8) :: ke(np,np)                       ! kinetic energy    (J/m2)
+    real(kind=r8) :: po(np,np)                       ! PHIS term in energy equation   (J/m2)
+    real(kind=r8) :: wv(np,np)                       ! water vapor
+    real(kind=r8) :: liq(np,np)                      ! liquid
+    real(kind=r8) :: ice(np,np)                      ! ice
 
+    real(kind=r8) :: q(np,nlev,qsize)
     real(kind=r8) :: cdp_fvm(nc,nc,nlev)
     real(kind=r8) :: cdp(np,np,nlev)
-    real(kind=r8) :: se_tmp
-    real(kind=r8) :: ke_tmp
-    real(kind=r8) :: ps(np,np)
+    real(kind=r8) :: ptop(np,np)
     real(kind=r8) :: pdel(np,np,nlev)
+    real(kind=r8) :: cp(np,np,nlev)
     !
     ! global axial angular momentum (AAM) can be separated into one part (mr) associatedwith the relative motion
     ! of the atmosphere with respect to the planets surface (also known as wind AAM) and another part (mo)
@@ -1494,9 +1500,8 @@ contains
     real(kind=r8) :: mr(npsq)  ! wind AAM
     real(kind=r8) :: mo(npsq)  ! mass AAM
     real(kind=r8) :: mr_cnst, mo_cnst, cos_lat, mr_tmp, mo_tmp,inv_g
-    real(kind=r8) :: cp(np,np,nlev),btmp(np,np)
 
-    integer :: ie,i,j,k,budget_ind,state_ind,idx
+    integer :: ie,i,j,k,budget_ind,state_ind,idx,idx_tmp
     integer :: ixwv,ixcldice, ixcldliq, ixtt ! CLDICE, CLDLIQ and test tracer indices
     character(len=16) :: name_out1,name_out2,name_out3,name_out4,name_out5,name_out6
 
@@ -1531,40 +1536,29 @@ contains
       ! Compute frozen static energy in 3 parts:  KE, SE, and energy associated with vapor and liquid
       !
       do ie=nets,nete
-        se    = 0.0_r8
-        ke    = 0.0_r8
-        call get_dp(elem(ie)%state%Qdp(:,:,:,1:qsize,tl_qdp), MASS_MIXING_RATIO, thermodynamic_active_species_idx_dycore,&
-             elem(ie)%state%dp3d(:,:,:,tl), pdel, ps=ps, ptop=hyai(1)*ps0)
-        call get_cp(elem(ie)%state%Qdp(:,:,:,1:qsize,tl_qdp),&
-             .false., cp, dp_dry=elem(ie)%state%dp3d(:,:,:,tl),&
-             active_species_idx_dycore=thermodynamic_active_species_idx_dycore)
-        do k = 1, nlev
-          do j=1,np
-            do i = 1, np
-              !
-              ! kinetic energy
-              !
-              ke_tmp   = 0.5_r8*(elem(ie)%state%v(i,j,1,k,tl)**2+ elem(ie)%state%v(i,j,2,k,tl)**2)*pdel(i,j,k)/gravit
-              if (lcp_moist) then
-                se_tmp = cp(i,j,k)*elem(ie)%state%T(i,j,k,tl)*pdel(i,j,k)/gravit
-              else
-                !
-                ! using CAM physics definition of internal energy
-                !
-                se_tmp   = cpair*elem(ie)%state%T(i,j,k,tl)*pdel(i,j,k)/gravit
-              end if
-              se   (i+(j-1)*np) = se   (i+(j-1)*np) + se_tmp
-              ke   (i+(j-1)*np) = ke   (i+(j-1)*np) + ke_tmp
-            end do
-          end do
-        end do
+        if (lcp_moist) then
+          call get_cp(elem(ie)%state%Qdp(:,:,:,1:qsize,tl_qdp),&
+               .false., cp, dp_dry=elem(ie)%state%dp3d(:,:,:,tl),&
+               active_species_idx_dycore=thermodynamic_active_species_idx_dycore)
+        else
+          cp = cpair
+        end if
 
+        ptop = hyai(1)*ps0
         do j=1,np
-          do i = 1, np
-            se(i+(j-1)*np) = se(i+(j-1)*np) + elem(ie)%state%phis(i,j)*ps(i,j)/gravit
+          !set thermodynamic active species
+          do idx=1,thermodynamic_active_species_num
+            idx_tmp = thermodynamic_active_species_idx_dycore(idx)
+            q(:,:,idx_tmp) = elem(ie)%state%Qdp(:,j,:,idx_tmp,tl_qdp)/&
+                 elem(ie)%state%dp3d(:,j,:,tl) 
           end do
+          call get_hydrostatic_energy(q, &
+               .false., elem(ie)%state%dp3d(:,j,:,tl), cp(:,j,:), elem(ie)%state%v(:,j,1,:,tl),     &
+               elem(ie)%state%v(:,j,2,:,tl), elem(ie)%state%T(:,j,:,tl), vcoord, ptop=ptop(:,j),    &
+               phis=elem(ie)%state%phis(:,j),dycore_idx=.true.,    &
+               se=se(:,j), po=po(:,j), ke=ke(:,j), wv=wv(:,j), liq=liq(:,j), ice=ice(:,j))
         end do
-
+        
         ! could store pointer to dyn/phys state index inside of budget and call budget_state_update pass in se,ke etc.
         call budget_info_byname(trim(outfld_name_suffix),budget_ind=budget_ind,state_ind=state_ind)
         ! reset all when cnt is 0
@@ -1592,16 +1586,21 @@ contains
 
         do j=1,np
            do i = 1, np
-              elem(ie)%derived%budget(i,j,teidx,state_ind) = elem(ie)%derived%budget(i,j,teidx,state_ind) + (se(i+(j-1)*np) + ke(i+(j-1)*np))
-              elem(ie)%derived%budget(i,j,seidx,state_ind) = elem(ie)%derived%budget(i,j,seidx,state_ind) + se(i+(j-1)*np)
-              elem(ie)%derived%budget(i,j,keidx,state_ind) = elem(ie)%derived%budget(i,j,keidx,state_ind) + ke(i+(j-1)*np)
+              elem(ie)%derived%budget(i,j,teidx,state_ind) = elem(ie)%derived%budget(i,j,teidx,state_ind) + &
+                   se(i,j) + ke(i,j)+po(i,j)
+              elem(ie)%derived%budget(i,j,seidx,state_ind) = elem(ie)%derived%budget(i,j,seidx,state_ind) + se(i,j)
+              elem(ie)%derived%budget(i,j,keidx,state_ind) = elem(ie)%derived%budget(i,j,keidx,state_ind) + ke(i,j)
+              elem(ie)%derived%budget(i,j,poidx,state_ind) = elem(ie)%derived%budget(i,j,poidx,state_ind) + po(i,j)
+              elem(ie)%derived%budget(i,j,wvidx,state_ind) = elem(ie)%derived%budget(i,j,wvidx,state_ind) + wv(i,j)
+              elem(ie)%derived%budget(i,j,wlidx,state_ind) = elem(ie)%derived%budget(i,j,wlidx,state_ind) + liq(i,j)
+              elem(ie)%derived%budget(i,j,wiidx,state_ind) = elem(ie)%derived%budget(i,j,wiidx,state_ind) + ice(i,j)
            end do
         end do
         !
         ! Output energy diagnostics on GLL grid
         !
-        call outfld(name_out1  ,se       ,npsq,ie)
-        call outfld(name_out2  ,ke       ,npsq,ie)
+        call outfld(name_out1  ,se,npsq,ie)
+        call outfld(name_out2  ,ke,npsq,ie)
         !
         ! mass variables are output on CSLAM grid if using CSLAM else GLL grid
         !
@@ -1658,43 +1657,6 @@ contains
               end do
            end if
         else
-           cdp = elem(ie)%state%qdp(:,:,:,1,tl_qdp)
-           call util_function(cdp,np,nlev,name_out3,ie)
-           do j = 1, np
-              do i = 1, np
-                 elem(ie)%derived%budget(i,j,wvidx,state_ind) = elem(ie)%derived%budget(i,j,wvidx,state_ind) + sum(cdp(i,j,:)*inv_g)
-              end do
-           end do
-           !
-           ! sum over liquid water
-           !
-           if (thermodynamic_active_species_liq_num>0) then
-              cdp = 0.0_r8
-              do idx = 1,thermodynamic_active_species_liq_num
-                 cdp = cdp + elem(ie)%state%qdp(:,:,:,thermodynamic_active_species_liq_idx(idx),tl_qdp)
-              end do
-              call util_function(cdp,np,nlev,name_out4,ie)
-              do j = 1, np
-                 do i = 1, np
-                    elem(ie)%derived%budget(i,j,wlidx,state_ind) = elem(ie)%derived%budget(i,j,wlidx,state_ind) + sum(cdp(i,j,:)*inv_g)
-                 end do
-              end do
-           end if
-           !
-           ! sum over ice water
-           !
-           if (thermodynamic_active_species_ice_num>0) then
-              cdp = 0.0_r8
-              do idx = 1,thermodynamic_active_species_ice_num
-                 cdp = cdp + elem(ie)%state%qdp(:,:,:,thermodynamic_active_species_ice_idx(idx),tl_qdp)
-              end do
-              call util_function(cdp,np,nlev,name_out5,ie)
-              do j = 1, np
-                 do i = 1, np
-                    elem(ie)%derived%budget(i,j,wiidx,state_ind) = elem(ie)%derived%budget(i,j,wiidx,state_ind) + sum(cdp(i,j,:)*inv_g)
-                 end do
-              end do
-           end if
            if (ixtt>0) then
               cdp = elem(ie)%state%qdp(:,:,:,ixtt    ,tl_qdp)
               call util_function(cdp,np,nlev,name_out6,ie)
@@ -1732,7 +1694,7 @@ contains
         mr    = 0.0_r8
         mo    = 0.0_r8
         call get_dp(elem(ie)%state%Qdp(:,:,:,1:qsize,tl_qdp), MASS_MIXING_RATIO, thermodynamic_active_species_idx_dycore,&
-             elem(ie)%state%dp3d(:,:,:,tl), pdel, ps=ps, ptop=hyai(1)*ps0)
+             elem(ie)%state%dp3d(:,:,:,tl), pdel)
         do k = 1, nlev
           do j=1,np
             do i = 1, np
@@ -1767,7 +1729,7 @@ contains
     use fvm_control_volume_mod, only: fvm_struct
     use budgets,                only: budget_info,budget_ind_byname
     use cam_thermo,             only: thermo_budget_num_vars, &
-                                      thermo_budget_vars_massv,wvidx,wlidx,wiidx,seidx,keidx,moidx,mridx,ttidx,teidx
+                                      thermo_budget_vars_massv,wvidx,wlidx,wiidx,poidx,seidx,keidx,moidx,mridx,ttidx,teidx
     !------------------------------Arguments--------------------------------
 
     type (element_t) , intent(inout) :: elem(:)
