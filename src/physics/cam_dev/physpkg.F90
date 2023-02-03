@@ -110,6 +110,7 @@ contains
 
     use cam_control_mod,    only: moist_physics
     use chemistry,          only: chem_register
+    use mo_lightning,       only: lightning_register
     use cloud_fraction,     only: cldfrc_register
     use microp_driver,      only: microp_driver_register
     use microp_aero,        only: microp_aero_register
@@ -252,6 +253,9 @@ contains
 
        ! register chemical constituents including aerosols ...
        call chem_register()
+
+       ! add prognostic lightning flash freq pbuf fld
+       call lightning_register()
 
        ! co2 constituents
        call co2_register()
@@ -699,6 +703,7 @@ contains
     use cam_control_mod,    only: initial_run
     use check_energy,       only: check_energy_init
     use chemistry,          only: chem_init
+    use mo_lightning,       only: lightning_init
     use prescribed_ozone,   only: prescribed_ozone_init
     use prescribed_ghg,     only: prescribed_ghg_init
     use prescribed_aero,    only: prescribed_aero_init
@@ -830,6 +835,9 @@ contains
 
     ! Prognostic chemistry.
     call chem_init(phys_state,pbuf2d)
+
+    ! Lightning flash frq and NOx prod
+    call lightning_init( pbuf2d )
 
     ! Prescribed tracers
     call prescribed_ozone_init()
@@ -1192,9 +1200,9 @@ contains
     !
     call get_met_srf2( cam_in )
 #endif
-    ! Set lightning production of NO
+    ! lightning flash freq and prod rate of NOx
     call t_startf ('lightning_no_prod')
-    call lightning_no_prod( phys_state, pbuf2d,  cam_in )
+    call lightning_no_prod( phys_state, pbuf2d, cam_in )
     call t_stopf ('lightning_no_prod')
 
     call t_barrierf('sync_ac_physics', mpicom)

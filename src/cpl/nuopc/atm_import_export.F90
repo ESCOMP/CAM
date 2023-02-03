@@ -57,7 +57,8 @@ module atm_import_export
   integer                :: drydep_nflds = -huge(1) ! number of dry deposition velocity fields lnd-> atm
   integer                :: megan_nflds = -huge(1)  ! number of MEGAN voc fields from lnd-> atm
   integer                :: emis_nflds = -huge(1)   ! number of fire emission fields from lnd-> atm
-  integer, public        :: ndep_nflds = -huge(1)   ! number  of nitrogen deposition fields from atm->lnd/ocn
+  integer, public        :: ndep_nflds = -huge(1)   ! number of nitrogen deposition fields from atm->lnd/ocn
+  logical                :: atm_provides_lightning = .false. ! cld to grnd lightning flash freq (min-1)
   character(*),parameter :: F01 = "('(cam_import_export) ',a,i8,2x,i8,2x,d21.14)"
   character(*),parameter :: F02 = "('(cam_import_export) ',a,i8,2x,i8,2x,i8,2x,d21.14)"
   character(*),parameter :: u_FILE_u = __FILE__
@@ -86,6 +87,7 @@ contains
     call shr_megan_readnl(nl_file_name, megan_nflds)
     call shr_fire_emis_readnl(nl_file_name, emis_nflds)
     call shr_carma_readnl(nl_file_name, carma_fields)
+    call shr_lightning_coupling_readnl(nl_file_name, atm_provides_lightning)
 
   end subroutine read_surface_fields_namelists
 
@@ -106,8 +108,6 @@ contains
     logical                :: flds_co2a      ! use case
     logical                :: flds_co2b      ! use case
     logical                :: flds_co2c      ! use case
-    logical                :: atm_provides_lightning
-    integer                :: ndep_nflds, megan_nflds, emis_nflds
     character(len=128)     :: fldname
     character(len=*), parameter :: subname='(atm_import_export:advertise_fields)'
     !-------------------------------------------------------------------------------
@@ -197,7 +197,6 @@ contains
     end if
 
     ! lightning flash freq
-    call shr_lightning_coupling_readnl("drv_flds_in", atm_provides_lightning)
     if (atm_provides_lightning) then
        call fldlist_add(fldsFrAtm_num, fldsFrAtm, 'Sa_lightning')
     end if

@@ -308,6 +308,9 @@ contains
        end do
        zint(:ncol,pver+1,c) = state(c)%zi(:ncol,pver+1) + zsurf(:ncol)
 
+
+       cld2grnd_flash_freq(:) = 0.0_r8
+
        col_loop : do i = 1,ncol
           !--------------------------------------------------------------------------------
           ! 	... find cloud top and bottom level above 273k
