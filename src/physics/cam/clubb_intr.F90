@@ -2128,8 +2128,10 @@ end subroutine clubb_init_cnst
       invrs_rho_ds_zt,          & ! Inv. dry, static density on thermo. levels  	[m^3/kg]
       thv_ds_zm,                & ! Dry, base-state theta_v on momentum levels  	[K]
       thv_ds_zt,                & ! Dry, base-state theta_v on thermo. levels   	[K]
-      p_ds_zt,                  & ! Dry, base-state pressure on thermo. levels          [Pa]
-      exner_ds_zt,              & ! Dry, base-state exner on thermo. levels             [-]
+!+++ARH
+      !p_ds_zt,                  & ! Dry, base-state pressure on thermo. levels          [Pa]
+      !exner_ds_zt,              & ! Dry, base-state exner on thermo. levels             [-]
+!---ARH
       rfrzm,                    &
       radf,                     &
       um_in,                    & ! meridional wind				[m/s]
@@ -2893,7 +2895,7 @@ end subroutine clubb_init_cnst
 !---ARH
         rfrzm(i,k+1)           = state1%q(i,pver-k+1,ixcldice)   
         radf(i,k+1)            = radf_clubb(i,pver-k+1)
-!+++ARH - what is this used for?
+!+++ARH
         !qrl_clubb(i,k+1)       = qrl(i,pver-k+1)/(cpairv(i,k,lchnk)*state1%pdel(i,pver-k+1))
         qrl_clubb(i,k+1)       = qrl(i,pver-k+1)/(cpairv(i,k,lchnk)*state1%pdeldry(i,pver-k+1))
 !---ARH
@@ -2903,6 +2905,7 @@ end subroutine clubb_init_cnst
     !  Compute mean w wind on thermo grid, convert from omega to w 
     do k=1,nlev
       do i=1,ncol
+        !+++ARH which rho should be used here?
         wm_zt(i,k+1) = -1._r8*(state1%omega(i,pver-k+1)-state1%omega(i,pver))/(rho_zt(i,k+1)*gravit)
       end do
     end do
