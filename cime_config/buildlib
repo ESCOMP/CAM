@@ -301,13 +301,27 @@ def _musica_core_install_dir(libroot):
 ###############################################################################
 # Returns the path to the musica-core install directory
 
-    corepaths = glob(os.path.join(libroot, "ncar", "musicacore*"))
+    corepaths = glob(os.path.join(libroot, "musicacore*"))
     expect(len(corepaths)>0, \
            "musica-core not found at {}".format(libroot))
     expect(len(corepaths)<2, \
            "Multiple musica-core versions found at {}".format(libroot))
     expect(os.path.exists(corepaths[0]), \
            "musica-core install directory not found at {}".format(corepaths[0]))
+    return corepaths[0]
+
+###############################################################################
+def _musica_core_package_dir(libroot):
+###############################################################################
+# Returns the path to the musica-core CMake package
+
+    corepaths = glob(os.path.join(libroot, "musicacore*", "cmake", "musicacore*" ))
+    expect(len(corepaths)>0, \
+           "musica-core package not found at {}".format(libroot))
+    expect(len(corepaths)<2, \
+           "Multiple musica-core versions found at {}".format(libroot))
+    expect(os.path.exists(corepaths[0]), \
+           "musica-core package directory not found at {}".format(corepaths[0]))
     return corepaths[0]
 
 ###############################################################################
@@ -323,8 +337,7 @@ def _build_tuvx(caseroot, libroot, bldroot):
             os.makedirs(bldpath)
         jsoninc = _json_fortran_include_dir(libroot)
         jsonlib = _json_fortran_lib_path(libroot)
-        coreinc = _musica_core_include_dir(libroot)
-        corelib = _musica_core_lib_path(libroot)
+        corepackage = _musica_core_package_dir(libroot)
         srcpath = os.path.abspath(os.path.join(case.get_value("COMP_ROOT_DIR_ATM"), \
                                                "libraries", "tuv-x", ""))
         logger.info("Building TUV-x in {} from source in {}\n".format(bldpath, srcpath))
@@ -347,9 +360,7 @@ def _build_tuvx(caseroot, libroot, bldroot):
         cmake_args += "-DENABLE_TESTS=OFF "
         cmake_args += "-DJSON_INCLUDE_DIR={} ".format(jsoninc)
         cmake_args += "-DJSON_LIB={} ".format(jsonlib)
-        cmake_args += "-DENABLE_LOCAL_MUSICA_CORE=ON "
-        cmake_args += "-DMUSICA_CORE_INCLUDE_DIR={} ".format(coreinc)
-        cmake_args += "-DMUSICA_CORE_LIB={} ".format(corelib)
+        cmake_args += "-DCMAKE_PREFIX_PATH={} ".format(corepackage)
         cmake_args += "-DCMAKE_Fortran_FLAGS='{}' ".format(arg_dict["FFLAGS"])
         cmake_args += "-DCMAKE_INSTALL_PREFIX='{}' ".format(libroot)
         cmake_args += srcpath
@@ -398,7 +409,7 @@ def _tuvx_install_dir(libroot):
 ###############################################################################
 # Returns the path to the TUV-x install directory
 
-    tuvxpaths = glob(os.path.join(libroot, "ncar", "tuvx*"))
+    tuvxpaths = glob(os.path.join(libroot, "tuvx*"))
     expect(len(tuvxpaths)>0, \
            "TUV-x not found at {}".format(libroot))
     expect(len(tuvxpaths)<2, \

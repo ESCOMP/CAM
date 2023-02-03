@@ -550,6 +550,11 @@ contains
         end if
       end do
 
+      ! ==============================================
+      ! Filter negative rates TODO fix inputs to TUV-x
+      ! ==============================================
+      tuvx%photo_rates_(:,:,:) = max( 0.0_r8, tuvx%photo_rates_(:,:,:) )
+
       ! ============================================
       ! Return the photolysis rates on the CAM grids
       ! ============================================
@@ -1396,21 +1401,11 @@ contains
     else
       edges(:) = 0.0_r8
     end if
-    if( nabscol >= 2 ) then
-      densities(1) = 0.5_r8 * exo_column_conc(i_col,pver,2)
-      densities(2:pver) = 0.5_r8 * ( exo_column_conc(i_col,pver-1:1:-1,2) &
-                                     + exo_column_conc(i_col,pver:2:-1,2) )
-      densities(pver+1) = exo_column_conc(i_col,0,2) &
-                          + 0.5_r8 * exo_column_conc(i_col,1,2)
-      call this%profiles_( PROFILE_INDEX_O2 )%update( &
-          edge_values = edges, layer_densities = densities )
-    else
-      densities(1:pver+1) = this%height_delta_(1:pver+1) * km2cm * &
-                          sqrt(edges(1:pver+1)) * sqrt(edges(2:pver+2))
-      call this%profiles_( PROFILE_INDEX_O2 )%update( &
-          edge_values = edges, layer_densities = densities, &
-          scale_height = 7.0_r8 )
-    end if
+    densities(1:pver+1) = this%height_delta_(1:pver+1) * km2cm * &
+                        sqrt(edges(1:pver+1)) * sqrt(edges(2:pver+2))
+    call this%profiles_( PROFILE_INDEX_O2 )%update( &
+        edge_values = edges, layer_densities = densities, &
+        scale_height = 7.0_r8 )
 
     ! ==========
     ! O3 profile
