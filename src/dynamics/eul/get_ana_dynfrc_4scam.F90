@@ -412,6 +412,7 @@ subroutine get_ana_dynfrc_fv ( scmlon, scmlat ,  &
            UTCOREo_1 = UTCOREo_2
            VTCOREo_1 = VTCOREo_2
            TTCOREo_1 = TTCOREo_2
+           OGCOREo_1 = OGCOREo_2
 
            call read_netcdf_ana_fv ( Ana_File2, nlon_ana, nlat_ana, nlev_ana, & 
                                    U_2, V_2, & 
