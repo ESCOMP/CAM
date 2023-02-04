@@ -89,7 +89,7 @@
 !    19 December  2012; updated using Wegner et al., JGR, 2013a,b.
 !    25 April     2013; Removed volcanic heating logic.
 !     6 April     2022; update nat_part_dens from 1e-02 to 5.0e-4
-!                       (Wilka et al., ACP, 2021)
+!                       (Wilka et al., ACP, 2021, doi:10.5194/acp-21-15771-2021)
 !
 ! DESCRIPTION
 !

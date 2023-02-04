@@ -646,7 +646,7 @@ contains
 !-----------------------------------------------------------------
     real(r8), parameter :: gamma_n2o5 = 0.02_r8         ! JPL19
     real(r8), parameter :: gamma_ho2  = 0.10_r8         ! Gaubert et al., https://doi.org/10.5194/acp-20-14617-2020
-    real(r8), parameter :: gamma_no2  = 8.0e-6_r8       ! Liu et al., Environ.Sci.&Tech, 53, 3517, 2019
+    real(r8), parameter :: gamma_no2  = 8.0e-6_r8       ! Liu et al., Environ.Sci.&Tech, 53, 3517, 2019 doi:10.1021/acs.est.8b06367
     real(r8), parameter :: gamma_no3  = 0.002_r8        ! JPL19
     real(r8), parameter :: gamma_glyoxal  = 2.0e-4_r8   !  Washenfelder et al, JGR, 2011
 !TS1 species
@@ -923,7 +923,7 @@ contains
        if( usr_CO_OH_ndx > 0 ) then
          ko  (:)  = 6.9e-33_r8 * ( 298._r8 / temp(:ncol,k) )**(2.1_r8)
          kinf(:)  = 1.1e-12_r8 * ( 298._r8 / temp(:ncol,k) )**(-1.3_r8)
-         
+
          term2(:) = (1 + (log10( ko(:)*m(:,k) / kinf(:) ))**2)**(-1)
 
          term1(:) = (kinf(:) * ko(:)*m(:,k)) / (kinf(:) + ko(:)*m(:,k)) * (0.6_r8)**term2(:)

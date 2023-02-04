@@ -1626,6 +1626,7 @@
     </machines>
     <options>
       <option name="wallclock">02:00:00</option>
+      <option name="comment">"Free running CAM-Chem on a reginally refined grid"</option>
     </options>
   </test>
   <test compset="FCvbsxHIST" grid="f09_f09_mg17" name="SMS_D_Ln9_Vnuopc" testmods="cam/outfrq9s">
@@ -1635,6 +1636,7 @@
     </machines>
     <options>
       <option name="wallclock">00:30:00</option>
+      <option name="comment">Free running CAM-Chem with extended VBS</option>
     </options>
   </test>
   <test compset="FCvbsxHIST" grid="f09_f09_mg17" name="ERP_Ld3_Vnuopc" testmods="cam/outfrq1d">
