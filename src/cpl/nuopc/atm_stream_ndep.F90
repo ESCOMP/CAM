@@ -66,14 +66,14 @@ contains
     character(*), parameter :: subName = "('stream_ndep_init')"
     !-----------------------------------------------------------------------
 
-    rc = ESMF_SUCCESS
-
     namelist /ndep_stream_nl/      &
          stream_ndep_data_filename, &
          stream_ndep_mesh_filename, &
          stream_ndep_year_first,    &
          stream_ndep_year_last,     &
          stream_ndep_year_align
+
+    rc = ESMF_SUCCESS
 
     ! Default values for namelist
     stream_ndep_data_filename = ' '
