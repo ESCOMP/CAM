@@ -470,8 +470,7 @@ contains
     ! Call the Selected condensation routine  ~~DEVO style~~
     !--------------------------------------------------------
     if(CONDENSATE_OPT == CONDENSATE_NONE) then
-      call frierson_condensate_NONE(ncol,pver,ztodt,state%pmid(:ncol,:), &
-                                                    state%pdel(:ncol,:), &
+      call frierson_condensate_NONE(ncol,pver,state%pmid(:ncol,:), &
                                                              T(:ncol,:), &
                                                             qv(:ncol,:), &
                                                         relhum(:ncol,:), &
@@ -591,7 +590,6 @@ contains
       !--------------------------------------------------
       call frierson_pbl(ncol, pver, ztodt,state%pmid (:ncol,:),     &
                                           state%pint (:ncol,:),     &
-                                          state%rpdel(:ncol,:),     &
                                                    Zm(:ncol,:),     &
                                                    Zi(:ncol,:),     &
                                              state%ps(:ncol)  ,     &
@@ -618,7 +616,6 @@ contains
       !--------------------------------------------------
       call frierson_pbl_USER(ncol, pver, ztodt,state%pmid (:ncol,:),     &
                                                state%pint (:ncol,:),     &
-                                               state%rpdel(:ncol,:),     &
                                                         Zm(:ncol,:),     &
                                                         Zi(:ncol,:),     &
                                                   state%ps(:ncol)  ,     &

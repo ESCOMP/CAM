@@ -165,7 +165,7 @@ contains
 
 
   !=======================================================================
-  subroutine frierson_condensate_NONE(ncol,pver,dtime,pmid,pdel,T,qv,relhum,precl)
+  subroutine frierson_condensate_NONE(ncol,pver,pmid,T,qv,relhum,precl)
     !
     ! Precip_process: Implement NO large-scale condensation/precipitation
     !=======================================================================
@@ -174,9 +174,7 @@ contains
     !---------------------
     integer ,intent(in)   :: ncol              ! number of columns
     integer ,intent(in)   :: pver              ! number of vertical levels
-    real(r8),intent(in)   :: dtime             ! time step (s)
     real(r8),intent(in)   :: pmid  (ncol,pver) ! mid-point pressure (Pa)
-    real(r8),intent(in)   :: pdel  (ncol,pver) ! layer thickness (Pa)
     real(r8),intent(inout):: T     (ncol,pver) ! temperature (K)
     real(r8),intent(inout):: qv    (ncol,pver) ! specific humidity Q (kg/kg)
     real(r8),intent(out)  :: relhum(ncol,pver) ! relative humidity
@@ -451,7 +449,7 @@ contains
 
 
   !=======================================================================
-  subroutine frierson_pbl(ncol, pver, dtime, pmid, pint, rpdel, Zm, Zi,    &
+  subroutine frierson_pbl(ncol, pver, dtime, pmid, pint, Zm, Zi,    &
                           Psfc, Tsfc, Qsfc, T, U, V, Q,  Fsw, Fdn,         &
                           Cdrag, Km, Ke, VSE, Z_pbl, Rf, dQa, dTa, dUa, dVa)
     !
@@ -471,7 +469,6 @@ contains
     real(r8),intent(in)   :: dtime               ! Time Step
     real(r8),intent(in)   :: pmid (ncol,pver)    ! Pressure at model levels
     real(r8),intent(in)   :: pint (ncol,pver+1)  ! Pressure at interface levels.
-    real(r8),intent(in)   :: rpdel(ncol,pver)    ! reciprocal of layer thickness (Pa)
     real(r8),intent(in)   :: Zm   (ncol,pver)    ! Height at model levels.
     real(r8),intent(in)   :: Zi   (ncol,pver)    ! Height at interface levels.
     real(r8),intent(in)   :: Psfc (ncol)         ! Surface Pressure.
@@ -680,7 +677,7 @@ contains
               Ke(i,k) = Karman*Ustar(i)*Zi(i,k)                  &
                               *(((Z_pbl(i)-Zi(i,k))/(Z_pbl(i)-Z_sfc(i)))**2)
             endif
-          elseif((0._r8 <= ZETA).and.(ZETA < Ri_c)) then
+          elseif (ZETA < Ri_c) then
             PHI = 1._r8 + ZETA
             if(k >= K_sfc(i)) then
               Ke(i,k) = Karman*Ustar(i)*Zi(i,k)/PHI
@@ -914,7 +911,7 @@ contains
 
 
   !=======================================================================
-  subroutine frierson_pbl_USER(ncol, pver, dtime, pmid, pint, rpdel, Zm, Zi,    &
+  subroutine frierson_pbl_USER(ncol, pver, dtime, pmid, pint, Zm, Zi,    &
                                Psfc, Tsfc, Qsfc, T, U, V, Q,  Fsw, Fdn,         &
                                Cdrag, Km, Ke, VSE, Z_pbl, Rf, dQa, dTa, dUa, dVa)
     !
@@ -929,7 +926,6 @@ contains
     real(r8),intent(in)   :: dtime               ! Time Step
     real(r8),intent(in)   :: pmid (ncol,pver)    ! Pressure at model levels
     real(r8),intent(in)   :: pint (ncol,pver+1)  ! Pressure at interface levels.
-    real(r8),intent(in)   :: rpdel(ncol,pver)    ! reciprocal of layer thickness (Pa)
     real(r8),intent(in)   :: Zm   (ncol,pver)    ! Height at model levels.
     real(r8),intent(in)   :: Zi   (ncol,pver)    ! Height at interface levels.
     real(r8),intent(in)   :: Psfc (ncol)         ! Surface Pressure.
