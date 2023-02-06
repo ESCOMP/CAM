@@ -92,6 +92,7 @@ subroutine cam_init(                                             &
 #if (defined BFB_CAM_SCAM_IOP)
    use history_defaults, only: initialize_iop_history
 #endif
+   use phys_grid_ctem,   only: phys_grid_ctem_reg
 
    ! Arguments
    character(len=cl), intent(in) :: caseid                ! case ID
@@ -167,6 +168,9 @@ subroutine cam_init(                                             &
 
    ! Initialize physics grid decomposition
    call phys_grid_init()
+
+   ! Register zonal average grid for phys TEM diagnostics
+   call phys_grid_ctem_reg()
 
    ! Register advected tracers and physics buffer fields
    call phys_register ()

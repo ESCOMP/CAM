@@ -738,6 +738,41 @@
       <option name="wallclock">00:30:00</option>
     </options>
   </test>
+<!-- TEM diagnostics and zonal-average output -->
+  <test compset="QPWmaC4" grid="ne5_ne5_mg37" name="SMS_D_Ln6_Vnuopc" testmods="cam/outfrq3s_physgrid_tem">
+    <machines>
+      <machine name="izumi" compiler="nag" category="aux_cam"/>
+      <machine name="izumi" compiler="nag" category="waccm"/>
+      <machine name="cheyenne" compiler="intel" category="waccm"/>
+      <machine name="izumi" compiler="nag" category="tem_diags"/>
+      <machine name="cheyenne" compiler="intel" category="tem_diags"/>
+    </machines>
+    <options>
+      <option name="comment" >TEM diagnostics and zonal-average output</option>
+      <option name="wallclock">00:10:00</option>
+    </options>
+  </test>
+  <test compset="FWsc2000climo" grid="mpasa120_mpasa120" name="ERS_Ld3_Vnuopc_P360x1" testmods="cam/outfrq1d_physgrid_tem_mpasa120_wcmsc">
+    <machines>
+      <machine name="cheyenne" compiler="intel" category="prealpha"/>
+      <machine name="cheyenne" compiler="intel" category="waccm"/>
+      <machine name="cheyenne" compiler="intel" category="tem_diags"/>
+   </machines>
+    <options>
+      <option name="comment" >TEM diagnostics and zonal-average output</option>
+      <option name="wallclock">00:20:00</option>
+    </options>
+  </test>
+  <test compset="FWsc2000climo" grid="f09_f09_mg17" name="ERP_Ln9_Vnuopc" testmods="cam/outfrq9s_physgrid_tem_1deg">
+    <machines>
+      <machine name="cheyenne" compiler="intel" category="waccm"/>
+      <machine name="cheyenne" compiler="intel" category="tem_diags"/>
+    </machines>
+    <options>
+      <option name="comment" >TEM diagnostics and zonal-average output</option>
+      <option name="wallclock">00:20:00</option>
+    </options>
+  </test>
 <!--              carma sulfate           -->
   <test compset="FW4ma2000" grid="f10_f10_mg37" name="SMS_D_Ln9_Vnuopc" testmods="cam/carma_sulfate">
     <machines>
@@ -1516,14 +1551,103 @@
       <option name="wallclock">00:20:00</option>
     </options>
   </test>
+  <test compset="FCnudged" grid="ne30_ne30_mg17" name="SMS_D_Ln9_Vnuopc" testmods="cam/outfrq3s_zmean_nudging">
+    <machines>
+      <machine name="cheyenne" compiler="intel" category="zmean_nudging"/>
+      <machine name="cheyenne" compiler="intel" category="camchem"/>
+    </machines>
+    <options>
+      <option name="wallclock">00:30:00</option>
+      <option name="comment">Zonal Mean Nudged</option>
+    </options>
+  </test>
+ <test compset="FCnudged" grid="f09_f09_mg17" name="SMS_D_Ln9_Vnuopc" testmods="cam/outfrq3s_zmean_nudging">
+    <machines>
+      <machine name="cheyenne" compiler="intel" category="prebeta"/>
+      <machine name="cheyenne" compiler="intel" category="zmean_nudging"/>
+      <machine name="cheyenne" compiler="intel" category="camchem"/>
+    </machines>
+    <options>
+      <option name="wallclock">00:30:00</option>
+      <option name="comment">Zonal Mean Nudged</option>
+    </options>
+  </test>
+  <test compset="FCnudged" grid="ne30_ne30_mg17" name="ERP_Ln9_Vnuopc" testmods="cam/outfrq3s_zmean_nudging">
+    <machines>
+      <machine name="cheyenne" compiler="intel" category="zmean_nudging"/>
+      <machine name="cheyenne" compiler="intel" category="camchem"/>
+    </machines>
+    <options>
+      <option name="wallclock">00:30:00</option>
+      <option name="comment">Zonal Mean Nudged</option>
+    </options>
+  </test>
+  <test compset="FCnudged" grid="f09_f09_mg17" name="ERP_Ln9_Vnuopc" testmods="cam/outfrq3s_zmean_nudging">
+    <machines>
+      <machine name="cheyenne" compiler="intel" category="zmean_nudging"/>
+      <machine name="cheyenne" compiler="intel" category="camchem"/>
+    </machines>
+    <options>
+      <option name="wallclock">00:30:00</option>
+      <option name="comment">Zonal Mean Nudged</option>
+    </options>
+  </test>
+  <test compset="QPC4" grid="f10_f10_mg37" name="ERC_D_Ln9_Vnuopc" testmods="cam/outfrq3s_nudging_f10_L26">
+    <machines>
+      <machine name="izumi" compiler="nag" category="zmean_nudging"/>
+      <machine name="izumi" compiler="gnu" category="zmean_nudging"/>
+    </machines>
+    <options>
+      <option name="wallclock">00:10:00</option>
+      <option name="comment">Zonal Mean Nudged</option>
+    </options>
+  </test>
+  <test compset="QPC4" grid="ne5_ne5_mg37" name="ERC_D_Ln9_Vnuopc" testmods="cam/outfrq3s_nudging_ne5_L26">
+    <machines>
+      <machine name="izumi" compiler="nag" category="zmean_nudging"/>
+      <machine name="izumi" compiler="gnu" category="zmean_nudging"/>
+      <machine name="izumi" compiler="gnu" category="aux_cam"/>
+    </machines>
+    <options>
+      <option name="wallclock">00:10:00</option>
+      <option name="comment">Zonal Mean Nudged</option>
+    </options>
+  </test>
   <test compset="FCnudged" grid="ne0CONUSne30x8_ne0CONUSne30x8_mt12" name="SMS_D_Ln9_Vnuopc_P720x1" testmods="cam/outfrq9s">
     <machines>
       <machine name="cheyenne" compiler="intel" category="prealpha"/>
       <machine name="cheyenne" compiler="intel" category="camchem"/>
     </machines>
     <options>
-      <option name="wallclock">00:20:00</option>
+      <option name="wallclock">00:30:00</option>
       <option name="comment">"Nudged CAM-Chem on a regionally refined grid"</option>
+    </options>
+  </test>
+  <test compset="FHIST" grid="ne0CONUSne30x8_ne0CONUSne30x8_mt12" name="SMS_D_Ln9_Vnuopc_P720x1" testmods="cam/outfrq9s" supported="false">
+    <machines>
+      <machine name="cheyenne" compiler="intel" category="prealpha"/>
+      <machine name="cheyenne" compiler="intel" category="cam_refined"/>
+    </machines>
+    <options>
+      <option name="wallclock">00:30:00</option>
+    </options>
+  </test>
+  <test compset="FHIST" grid="ne0ARCTICne30x4_ne0ARCTICne30x4_mt12" name="SMS_D_Ln9_Vnuopc_P720x1" testmods="cam/outfrq9s" supported="false">
+    <machines>
+      <machine name="cheyenne" compiler="intel" category="aux_cam"/>
+      <machine name="cheyenne" compiler="intel" category="cam_refined"/>
+    </machines>
+    <options>
+      <option name="wallclock">00:20:00</option>
+    </options>
+  </test>
+  <test compset="FHIST" grid="ne0ARCTICGRISne30x8_ne0ARCTICGRISne30x8_mt12" name="SMS_D_Ln9_Vnuopc_P720x1" testmods="cam/outfrq9s" supported="false">
+    <machines>
+      <machine name="cheyenne" compiler="intel" category="prebeta"/>
+      <machine name="cheyenne" compiler="intel" category="cam_refined"/>
+    </machines>
+    <options>
+      <option name="wallclock">00:20:00</option>
     </options>
   </test>
   <test compset="FCts2nudged" grid="f09_f09_mg17" name="SMS_D_Ln9_Vnuopc" testmods="cam/outfrq9s_leapday">
@@ -1892,6 +2016,44 @@
     </machines>
     <options>
       <option name="wallclock">00:20:00</option>
+    </options>
+  </test>
+  <test compset="FC2000mam5" grid="f10_f10_mg37" name="SMS_D_Ln9_Vnuopc" testmods="cam/outfrq9s">
+    <machines>
+      <machine name="cheyenne" compiler="intel" category="aux_cam"/>
+      <machine name="cheyenne" compiler="intel" category="camchem"/>
+    </machines>
+    <options>
+      <option name="wallclock">00:10:00</option>
+      <option name="comment" >CAM-Chem with MAM5 aerosols and cam6 physics on coarse grid</option>
+    </options>
+  </test>
+  <test compset="FC2000mam5" grid="f19_f19_mg17" name="ERP_Ln9_Vnuopc" testmods="cam/outfrq9s">
+    <machines>
+      <machine name="cheyenne" compiler="intel" category="camchem"/>
+    </machines>
+    <options>
+      <option name="wallclock">00:20:00</option>
+      <option name="comment" >CAM-Chem with MAM5 aerosols and cam6 physics</option>
+    </options>
+  </test>
+  <test compset="FCLTHIST" grid="ne30pg3_ne30pg3_mg17" name="SMS_D_Ln9_Vnuopc_P720x1" testmods="cam/outfrq9s">
+    <machines>
+      <machine name="cheyenne" compiler="intel" category="aux_cam"/>
+      <machine name="cheyenne" compiler="intel" category="camchem"/>
+    </machines>
+    <options>
+      <option name="wallclock">00:40:00</option>
+      <option name="comment" >Low-top CAM-Chem with MAM5 aerosols and cam_dev physics</option>
+    </options>
+  </test>
+  <test compset="FCMTHIST" grid="ne30pg3_ne30pg3_mg17" name="SMS_D_Ln9_Vnuopc" testmods="cam/outfrq9s">
+    <machines>
+      <machine name="cheyenne" compiler="intel" category="camchem"/>
+    </machines>
+    <options>
+      <option name="wallclock">00:40:00</option>
+      <option name="comment" >Medium-top CAM-Chem with MAM5 aerosols and cam_dev physics</option>
     </options>
   </test>
   <test compset="F2000mam5" grid="f09_f09_mg17" name="ERP_Ld3_Vnuopc" testmods="cam/outfrq1d">

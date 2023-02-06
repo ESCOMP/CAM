@@ -11,7 +11,7 @@
 <solar_parms_data_file>atm/cam/solar/SolarForcing1995-2005avg_c160929.nc</solar_parms_data_file>
 
 <!--Species IC -->
-<ncdata dyn="fv"  hgrid="0.9x1.25">cesm2_init/f.e21.FWsc2000climo.f09_f09_mg17.cesm2.1-exp011.001/0003-01-01/f.e21.FWsc2000climo.f09_f09_mg17.cesm2.1-exp011.001.cam.i.0003-01-01-00000.nc</ncdata>
+<ncdata dyn="fv"  hgrid="0.9x1.25">cesm2_init/f.e21.FWsc2000climo.f09_f09_mg17.cesm2.1-exp011.001_v2/0003-01-01/f.e21.FWsc2000climo.f09_f09_mg17.cesm2.1-exp011.001_v2.cam.i.0003-01-01-00000.nc</ncdata>
 <ncdata dyn="fv"  hgrid="1.9x2.5" >atm/waccm/ic/f2000.waccm-mam3_1.9x2.5_L70.cam2.i.0017-01-01.c120410.nc</ncdata>
 
 <!-- LBC, UBC Files -->
@@ -99,7 +99,7 @@
 </srf_emis_specifier>
 
 <!-- History Files -->
-<do_circulation_diags>.true.</do_circulation_diags>
+<do_circulation_diags dyn="fv">.true.</do_circulation_diags>
 <history_chemistry>.true.</history_chemistry>
 
 <mfilt>             1,  30, 120, 240, 240, 480, 365,  73,  30  </mfilt>
@@ -117,7 +117,7 @@
 </fincl7>
 
 <!-- Reduce output size by removing some variables. -->
-<fexcl1>
+<fexcl1 dyn="fv">
  'BTAUN', 'BTAUS', 'BTAUE', 'BTAUW', 'BTAUNET', 'BUTEND1', 'BUTEND2', 'BUTEND3', 'BUTEND4', 'BUTEND5', 'BVTGWSPEC',
  'MAXQ0', 'HDEPTH', 'NETDT', 'TAUN', 'TAUS', 'TAUE', 'TAUW', 'TAUGWX', 'TAUGWY', 'UTEND1', 'UTEND2', 'UTEND3',
  'UTEND4', 'UTEND5', 'FRONTGF', 'FRONTGFA', 'EKGW', 'QNO', 'QRLNLTE', 'QRL_TOT', 'DUV', 'DVV', 'TTPXMLC'
