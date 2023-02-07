@@ -665,9 +665,7 @@ contains
     Ke(:,:)   = 0._r8
     Ke_pbl(:) = 0._r8
     do i = 1,ncol
-      if(Cdrag(i) == 0._r8) then
-        Ke(i,:) = 0._r8
-      else
+      if (.not.(Cdrag(i) == 0._r8)) then
         do k = pver,K_pbl(i),-1
           ZETA = Zi(i,k)*Karman*Bstar(i)/(Ustar(i)*Ustar(i))
           if(ZETA < 0._r8) then
