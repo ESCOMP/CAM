@@ -807,6 +807,9 @@
 
 <!-- For MEGAN VOCs -->
 <megan_factors_file>atm/cam/chem/trop_mozart/emis/megan21_emis_factors_78pft_c20161108.nc</megan_factors_file>
+<!-- For ocean emissions -->
+<ocean_salinity_file>atm/cam/chem/ocnexch/SSS_climatology_f09f09_c20230110.nc</ocean_salinity_file>
+<dms_ocn_emis_file>atm/cam/chem/ocnexch/Csw_DMS_Lana2011_f09f09_1750_2100_20200717a.nc</dms_ocn_emis_file>
 
 <!-- Airplane emissions -->
 <airpl_emis_file>atm/cam/chem/trop_mozart/emis/emissions.aircraft.T42LR.nc</airpl_emis_file>
@@ -1772,7 +1775,7 @@
 <depvel_lnd_file   aquaplanet="1" >atm/cam/chem/trop_mozart/dvel/regrid_vegetation_all_zero_aquaplanet_1deg_regularGrid_c20170421.nc</depvel_lnd_file>
 
 <!-- effective Henry's coef data for wet and dry deposition -->
-<dep_data_file>atm/cam/chem/trop_mozart/dvel/dep_data_c201019.nc</dep_data_file>
+<dep_data_file>atm/cam/chem/trop_mozart/dvel/dep_data_c20221208.nc</dep_data_file>
 
 <!-- photolysis inputs -->
 <xs_coef_file>atm/waccm/phot/effxstex.txt</xs_coef_file>

@@ -1404,7 +1404,7 @@
       <option name="wallclock">01:00:00</option>
     </options>
   </test>
-  <test compset="F2000dev" grid="f19_f19" name="SMS_Ld1_Vnuopc" testmods="cam/outfrq9s" supported="false">
+  <test compset="F2000dev" grid="f19_f19" name="SMS_Ld1_Vnuopc" testmods="cam/outfrq1d" supported="false">
     <machines>
       <machine name="cheyenne" compiler="intel" category="aux_cam"/>
       <machine name="cheyenne" compiler="intel" category="prealpha"/>

@@ -125,7 +125,6 @@
   'bc_a4 -> $INPUTDATA_ROOT/atm/cam/chem/emis/CMIP6_emissions_2010climo/emissions-cmip6_bc_a4_anthro_surface_2010climo_0.9x1.25_c20180918.nc',
   'bc_a4 -> $INPUTDATA_ROOT/atm/cam/chem/emis/CMIP6_emissions_2010climo/emissions-cmip6_bc_a4_bb_surface_2010climo_0.9x1.25_c20180918.nc',
   'DMS -> $INPUTDATA_ROOT/atm/cam/chem/emis/CMIP6_emissions_2010climo/emissions-cmip6_DMS_bb_surface_2010climo_0.9x1.25_c20180918.nc',
-  'DMS -> $INPUTDATA_ROOT/atm/cam/chem/emis/CMIP6_emissions_2010climo/emissions-cmip6_DMS_other_surface_2010climo_0.9x1.25_c20180918.nc',
   'num_a1 -> $INPUTDATA_ROOT/atm/cam/chem/emis/CMIP6_emissions_2010climo/emissions-cmip6_num_so4_a1_bb_surface_2010climo_0.9x1.25_c20180918.nc',
   'num_a1 -> $INPUTDATA_ROOT/atm/cam/chem/emis/CMIP6_emissions_2010climo/emissions-cmip6_num_so4_a1_anthro-ag-ship_surface_2010climo_0.9x1.25_c20180918.nc',
   'num_a2 -> $INPUTDATA_ROOT/atm/cam/chem/emis/CMIP6_emissions_2010climo/emissions-cmip6_num_so4_a2_anthro-res_surface_2010climo_0.9x1.25_c20180918.nc',
