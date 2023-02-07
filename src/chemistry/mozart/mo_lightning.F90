@@ -157,9 +157,9 @@ contains
        end if
        geo_factor = ngcols_p/(4._r8*pi)
 
-       call addfld( 'LNO_COL_PROD', horiz_only,  'I', 'TG N/YR', 'lighting column NO source' )
-       call addfld( 'LNO_PROD',     (/ 'lev' /), 'I', '/cm3/s',  'lighting insitu NO source' )
-       call addfld( 'FLASHENGY',    horiz_only,  'I', '   ',     'lighting flash rate' )          ! flash frequency in grid box per minute (PPP)
+       call addfld( 'LNO_COL_PROD', horiz_only,  'I', 'TG N/YR', 'lightning column NO source' )
+       call addfld( 'LNO_PROD',     (/ 'lev' /), 'I', '/cm3/s',  'lightning insitu NO source' )
+       call addfld( 'FLASHENGY',    horiz_only,  'I', 'J',       'lightning flash energy' ) ! flash energy
 
        call phys_getopts( history_cesm_forcing_out = history_cesm_forcing )
        if ( history_cesm_forcing ) then
@@ -172,9 +172,9 @@ contains
 
     endif
 
-    call addfld( 'FLASHFRQ',     horiz_only,  'I', '1/MIN',   'lighting flash rate' )        ! flash frequency in grid box per minute (PPP)
-    call addfld( 'CLDHGT',       horiz_only,  'I', 'KM',      'cloud top height' )              ! cloud top height
-    call addfld( 'DCHGZONE',     horiz_only,  'I', 'KM',      'depth of discharge zone' )       ! depth of discharge zone
+    call addfld( 'FLASHFRQ',     horiz_only,  'I', '1/MIN',   'lightning flash rate' )    ! flash frequency in grid box per minute (PPP)
+    call addfld( 'CLDHGT',       horiz_only,  'I', 'KM',      'cloud top height' )        ! cloud top height
+    call addfld( 'DCHGZONE',     horiz_only,  'I', 'KM',      'depth of discharge zone' ) ! depth of discharge zone
     call addfld( 'CGIC',         horiz_only,  'I', 'RATIO',   'ratio of cloud-ground/intracloud discharges' ) ! ratio of cloud-ground/intracloud discharges
 
   end subroutine lightning_init
@@ -353,7 +353,7 @@ contains
                 cgic(i,c) = .02_r8
              end if
 
-             cld2grnd_flash_freq(i) = cam_in(c)%landfrac(i)*flash_freq_land *cgic(i,c) * factor ! cld-to-grnd flash frq (per min)
+             cld2grnd_flash_freq(i) = cam_in(c)%landfrac(i)*flash_freq_land*cgic(i,c) ! cld-to-grnd flash frq (per min)
 
              if (calc_nox_prod) then
                 !--------------------------------------------------------------------------------
