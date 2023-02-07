@@ -1708,8 +1708,8 @@ end subroutine clubb_init_cnst
     call addfld ('NCTENDICE',        (/ 'lev' /),  'A', 'kg/kg/s',  'NUMICE tendency from Ice Saturation Adjustment')
     call addfld ('FQTENDICE',        (/ 'lev' /),  'A', 'fraction', 'Frequency of Ice Saturation Adjustment')
 
-    call addfld ('DPDLFLIQ',         (/ 'lev' /),  'A', 'kg/kg/s',  'Detrained liquid water from deep convection')
-    call addfld ('DPDLFICE',         (/ 'lev' /),  'A', 'kg/kg/s',  'Detrained ice from deep convection')  
+    call addfld ('DPDLFLIQ',         (/ 'lev' /),  'A', 'kg/kg/s',  'Detrained liquid water from deep convection (dry mixing ratio)')
+    call addfld ('DPDLFICE',         (/ 'lev' /),  'A', 'kg/kg/s',  'Detrained ice from deep convection (dry mixing ratio)')  
     call addfld ('DPDLFT',           (/ 'lev' /),  'A', 'K/s',      'T-tendency due to deep convective detrainment') 
     call addfld ('RELVAR',           (/ 'lev' /),  'A', '-',        'Relative cloud water variance')
     call addfld ('CLUBB_GRID_SIZE',  horiz_only,   'A', 'm',        'Horizontal grid box size seen by CLUBB')
@@ -2117,7 +2117,6 @@ end subroutine clubb_init_cnst
       p_in_Pa,                  & ! Air pressure (thermodynamic levels)       	[Pa]
       rho_zm,                   & ! Air density on momentum levels              [kg/m^3]
       rho_zt,                   & ! Air density on thermo levels                [kggg/m^3]
-      rho_in,                   & ! mid-point density				[kg/m^3]
       exner,                    & ! Exner function (thermodynamic levels)       [-]
       rho_ds_zm,                & ! Dry, static density on momentum levels      	[kg/m^3]
       rho_ds_zt,                & ! Dry, static density on thermodynamic levels 	[kg/m^3]
@@ -2274,9 +2273,6 @@ end subroutine clubb_init_cnst
     character(len=200) :: temp1, sub             ! Strings needed for CLUBB output
     real(kind=time_precision)                 :: time_elapsed                ! time keep track of stats          [s]
     integer :: stats_nsamp, stats_nout           ! Stats sampling and output intervals for CLUBB [timestep]
-
-    real(r8) :: rtm_integral_vtend(pcols), &
-                rtm_integral_ltend(pcols)
 
     real(r8) :: rtm_integral_1, rtm_integral_update, rtm_integral_forcing
 
@@ -2870,13 +2866,10 @@ end subroutine clubb_init_cnst
         exner(i,k+1)           = 1._r8/inv_exner_clubb(i,pver-k+1)
         thv(i,k+1)             = state1%t(i,pver-k+1)*inv_exner_clubb(i,pver-k+1)*(1._r8+zvir*state1%q(i,pver-k+1,ixq) &
                                    -state1%q(i,pver-k+1,ixcldliq))
+        rho_zt(i,k+1)          = rga*state1%pdel(i,pver-k+1)/dz_g(i,pver-k+1)
 
-        !+++ARH this should be changed to theta, as that is what dry thv means?
+        ! exception - setting this to moist thv
         thv_ds_zt(i,k+1)       = thv(i,k+1)
-
-        !+++ ARH should we keep rho_zt moist? It's not clear where it's used
-        !rho_zt(i,k+1)          = rga*state1%pdel(i,pver-k+1)/dz_g(i,pver-k+1)
-        rho_zt(i,k+1)          = rho_ds_zt(i,k+1)
 
         rfrzm(i,k+1)           = state1%q(i,pver-k+1,ixcldice)   
         radf(i,k+1)            = radf_clubb(i,pver-k+1)
@@ -2887,7 +2880,6 @@ end subroutine clubb_init_cnst
     !  Compute mean w wind on thermo grid, convert from omega to w 
     do k=1,nlev
       do i=1,ncol
-        !+++ARH which rho should be used here?
         wm_zt(i,k+1) = -1._r8*(state1%omega(i,pver-k+1)-state1%omega(i,pver))/(rho_zt(i,k+1)*gravit)
       end do
     end do
@@ -2898,7 +2890,6 @@ end subroutine clubb_init_cnst
       thv_ds_zt(i,1)       = thv_ds_zt(i,2)
       rho_ds_zt(i,1)       = rho_ds_zt(i,2)
       invrs_rho_ds_zt(i,1) = invrs_rho_ds_zt(i,2)
-
       p_in_Pa(i,1)         = p_in_Pa(i,2)
       exner(i,1)           = exner(i,2)
       thv(i,1)             = thv(i,2)
@@ -3349,7 +3340,7 @@ end subroutine clubb_init_cnst
           wpsclrp_sfc, wpedsclrp_sfc, &
           upwp_sfc_pert, vpwp_sfc_pert, &
           rtm_ref, thlm_ref, um_ref, vm_ref, ug, vg, &
-          p_in_Pa, rho_zm, rho_in, exner, &
+          p_in_Pa, rho_zm, rho_zt, exner, &
           rho_ds_zm, rho_ds_zt, invrs_rho_ds_zm, &
           invrs_rho_ds_zt, thv_ds_zm, thv_ds_zt, hydromet, &
           rfrzm, radf, &
@@ -3716,9 +3707,6 @@ end subroutine clubb_init_cnst
       
     !  Now compute the tendencies of CLUBB to CAM, note that pverp is the ghost point
     !  for all variables and therefore is never called in this loop
-    rtm_integral_vtend(:) = 0._r8
-    rtm_integral_ltend(:) = 0._r8
-    
     do k=1, pver
       do i=1, ncol
 
@@ -3728,9 +3716,6 @@ end subroutine clubb_init_cnst
         ptend_loc%q(i,k,ixcldliq) = (rcm(i,k) - state1%q(i,k,ixcldliq))     / hdtime ! Tendency of liquid water
         ptend_loc%s(i,k)          = (clubb_s(i,k) - state1%s(i,k))          / hdtime ! Tendency of static energy
 
-        !+++ARH - what's the point of this? remove?
-        rtm_integral_ltend(i) = rtm_integral_ltend(i) + ptend_loc%q(i,k,ixcldliq)*state1%pdel(i,k)/gravit
-        rtm_integral_vtend(i) = rtm_integral_vtend(i) + ptend_loc%q(i,k,ixq)*state1%pdel(i,k)/gravit
       end do
     end do
     
@@ -3975,15 +3960,14 @@ end subroutine clubb_init_cnst
 
         ! Only rliq is saved from deep convection, which is the reserved liquid.  We need to keep
         !   track of the integrals of ice and static energy that is effected from conversion to ice
-        !   so that the energy checker doesn't complain.
+        !   so that the energy checker doesn't complain. 
         det_s(i)                  = det_s(i) + ptend_loc%s(i,k)*state1%pdel(i,k)/gravit
-        det_ice(i)                = det_ice(i) - ptend_loc%q(i,k,ixcldice)*state1%pdeldry(i,k)/gravit 
+        det_ice(i)                = det_ice(i) - ptend_loc%q(i,k,ixcldice)*state1%pdeldry(i,k)/gravit
       enddo
     enddo
    
     det_ice(:ncol) = det_ice(:ncol)/1000._r8  ! divide by density of water
 
-    !+++ARH -- these are now dry, users may expect wet?
     call outfld( 'DPDLFLIQ', ptend_loc%q(:,:,ixcldliq), pcols, lchnk)
     call outfld( 'DPDLFICE', ptend_loc%q(:,:,ixcldice), pcols, lchnk)
    
