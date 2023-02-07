@@ -1,11 +1,11 @@
 * Comments
-* User-given Tag Description: CAM_MAM4_2021
-* Tag database identifier : MZ290_CAM_MAM4_20210504
+* User-given Tag Description: CAM_MAM4
+* Tag database identifier : MZ311_CAM_MAM4_20221214
 * Tag created by : lke
 * Tag created from branch : CAM_MAM4
-* Tag created on : 2021-05-03 18:08:30.812686-06
+* Tag created on : 2022-12-14 14:27:19.958014-07
 * Comments for this tag follow:
-*     lke : 2021-05-03 : specified oxidants mechanism for CAM
+*     lke : 2022-12-14 : updated simple SOA for CAM
 
       SPECIES
 
@@ -16,8 +16,8 @@
  dst_a1 -> AlSiO5,
  dst_a2 -> AlSiO5,
  dst_a3 -> AlSiO5,
- H2O2, 
- H2SO4, 
+ H2O2,
+ H2SO4,
  ncl_a1 -> NaCl,
  ncl_a2 -> NaCl,
  ncl_a3 -> NaCl,
@@ -31,9 +31,10 @@
  so4_a1 -> NH4HSO4,
  so4_a2 -> NH4HSO4,
  so4_a3 -> NH4HSO4,
- SOAG -> C,
  soa_a1 -> C,
  soa_a2 -> C,
+ SOAE -> C,
+ SOAG -> C,
  H2O
 
       End Solution
@@ -82,9 +83,10 @@
  so4_a1
  so4_a2
  so4_a3
- SOAG
  soa_a1
  soa_a2
+ SOAE
+ SOAG
  H2O
       End Implicit
 
@@ -96,39 +98,48 @@
 *********************************
 *** odd-oxygen
 *********************************
-[jh2o2]                       H2O2 + hv -> 2*OH 
+[jh2o2]                       H2O2 + hv -> 2*OH
+*********************************
+*** soa
+*********************************
+[jsoa_a1->,.0004*jno2]        soa_a1 + hv ->
+[jsoa_a2->,.0004*jno2]        soa_a2 + hv ->
       End Photolysis
 
       Reactions
 *********************************
 *** odd-hydrogen
 *********************************
-[OH_H2O2]              OH + H2O2  -> H2O + HO2                                  ; 1.8e-12 
-[usr_HO2_HO2]          HO2 + HO2  -> H2O2 + O2                                 
+[OH_H2O2]              OH + H2O2  -> H2O + HO2                                  ; 1.8e-12
+[usr_HO2_HO2] HO2 + HO2  -> H2O2 + O2
 *********************************
 *** Sulfur
 *********************************
-[DMS_NO3]              DMS + NO3  -> SO2 + HNO3                                 ; 1.9e-13, 520 
-[DMS_OHa]              DMS + OH  -> SO2                                         ; 9.6e-12, -234 
-[usr_DMS_OH]           DMS + OH  -> 0.5*SO2 + 0.5*HO2                            
-[usr_SO2_OH]           SO2 + OH  -> H2SO4                                        
+[DMS_NO3]              DMS + NO3  -> SO2 + HNO3                                 ; 1.9e-13, 520
+[DMS_OHa]              DMS + OH  -> SO2                                         ; 1.1e-11, -280
+[SO2_OH_M]             SO2 + OH + M  -> H2SO4                                   ; 2.9e-31, 4.1, 1.7e-12, -0.2, 0.6
+[usr_DMS_OH]           DMS + OH  -> 0.5*SO2 + 0.5*HO2
+*********************************
+*** SOA
+*********************************
+[SOAE_tau]             SOAE  -> SOAG                                            ; 1.157e-05
       End Reactions
 
       Ext Forcing
- SO2 <- dataset 
- so4_a1 <- dataset 
- so4_a2 <- dataset 
- pom_a4 <- dataset 
- bc_a4 <- dataset 
- H2O <- dataset 
- num_a1 <- dataset 
- num_a2 <- dataset 
- num_a4 <- dataset 
+ SO2 <- dataset
+ so4_a1 <- dataset
+ so4_a2 <- dataset
+ pom_a4 <- dataset
+ bc_a4 <- dataset
+ H2O <- dataset
+ num_a1 <- dataset
+ num_a2 <- dataset
+ num_a4 <- dataset
       End Ext Forcing
 
       End Chemistry
 
-      SIMULATION PARAMETERS
+SIMULATION PARAMETERS
 
       Version Options
         model   = cam
@@ -140,5 +151,4 @@
         modules = on
       End Version Options
 
-
-      End Simulation Parameters
+End Simulation Parameters

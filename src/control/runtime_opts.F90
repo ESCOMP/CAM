@@ -98,6 +98,7 @@ subroutine read_namelist(nlfilename, single_column, scmlat, scmlon)
    use lunar_tides,         only: lunar_tides_readnl
    use upper_bc,            only: ubc_readnl
    use budgets,             only: budget_readnl
+   use phys_grid_ctem,      only: phys_grid_ctem_readnl
 
    !---------------------------Arguments-----------------------------------
 
@@ -197,6 +198,7 @@ subroutine read_namelist(nlfilename, single_column, scmlat, scmlon)
    call ionosphere_readnl(nlfilename)
    call qneg_readnl(nlfilename)
    call budget_readnl(nlfilename)
+   call phys_grid_ctem_readnl(nlfilename)
 
 end subroutine read_namelist
 
