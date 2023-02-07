@@ -2131,11 +2131,30 @@ if ($chem eq 'trop_mam3') {
 
 # CMIP6 emissions
 if (($chem =~ /_mam4/ or $chem =~ /_mam5/) and ($phys =~ /cam6/ or $phys =~ /cam_dev/)) {
+
+    # OASISS (ocean) DMS emissions
+    if (!$aqua_mode and !$scam) {
+        my $rel_filepath = get_default_value('dms_ocn_emis_file');
+        my $abs_filepath = set_abs_filepath($rel_filepath, $inputdata_rootdir);
+        my $val = quote_string("DMS -> ". $abs_filepath);
+        add_default($nl, 'csw_specifier', 'val'=>$val);
+        add_default($nl, 'bubble_mediated_transfer', 'val'=>'.false.');
+        add_default($nl, 'ocean_salinity_file');
+        if (!defined $nl->get_value('csw_time_type')) {
+            add_default($nl, 'csw_time_type', 'val'=>'CYCLICAL');
+            add_default($nl, 'csw_cycle_yr', 'val'=>'2000');
+        }
+        if ($nl->get_value('csw_time_type') =~ /CYCLICAL/) {
+            if ((not defined $nl->get_value('csw_cycle_yr'))) {
+                die "$ProgName - ERROR: must set csw_cycle_yr when csw_time_type is 'CYCLICAL' \n";
+            }
+        }
+    }
+
     my %species;
 
     # Surface emission datasets:
-    %species = ('dms_ot_srf_file'     => 'DMS',
-                'dms_bb_srf_file'     => 'DMS',
+    %species = ('dms_bb_srf_file'     => 'DMS',
                 'so2_ag_sh_file'      => 'SO2',
                 'so2_an_srf_file'     => 'SO2',
                 'so2_bb_srf_file'     => 'SO2',
@@ -2151,6 +2170,10 @@ if (($chem =~ /_mam4/ or $chem =~ /_mam5/) and ($phys =~ /cam6/ or $phys =~ /cam
                 'num_a4_oc_srf_file'  => 'num_a4',
                 'num_a4_bb_srf_file'  => 'num_a4',
                 'num_pom_bb_srf_file' => 'num_a4' );
+    if ((not defined $nl->get_value('csw_specifier')) or (not $nl->get_value('csw_specifier') ~~ /DMS/)) {
+      %species = (%species,
+                'dms_ot_srf_file'     => 'DMS' );
+    }
     if ($chem =~ /_vbsext/) {
       %species = (%species,
                 'pom_a4_an_srf_file'  => 'pomff1_a4',
@@ -2161,8 +2184,8 @@ if (($chem =~ /_mam4/ or $chem =~ /_mam5/) and ($phys =~ /cam6/ or $phys =~ /cam
                 'pom_a4_bb_srf_file'  => 'pom_a4' );
     }
 
-    # for mechanism missing full tropospheric chemistry
-    if ($chem =~ /trop_mam/ or $chem =~ /waccm_ma/ or $chem =~ /waccm_sc/) {
+    # for old simple SOA schemes (without SOAE)
+    if ($chem =~ /trop_mam3/ or $chem =~ /trop_mam5/ or $chem =~ /waccm_ma/) {
         %species = (%species,
                     'soag_an_srf_file'    => 'SOAG',
                     'soag_bg_srf_file'    => 'SOAG',
@@ -2284,6 +2307,31 @@ if (($chem =~ /_mam4/ or $chem =~ /_mam5/) and ($phys =~ /cam6/ or $phys =~ /cam
             $first = 0;
         }
     }
+    if ($chem eq 'trop_mam4' or $chem eq 'waccm_sc_mam4') {
+	# SOA yields (used for the interactive emissions) have been calculated based on the VBS yields in CAM-chem.
+	# Duseong S. Jo, et al. to be submitted to GMD, 2023 -- see https://github.com/ESCOMP/CAM/pull/727 discussion for additional detail.
+        my %soae_fctrs = ('BENZENE_an_srf_file' => '3.4192D0',
+                          'BENZENE_bb_srf_file' => '3.4192D0',
+                          'ISOP_bb_srf_file'    => '0.9058D0',
+                          'MTERP_bb_srf_file'   => '5.8638D0',
+                          'TOLUENE_an_srf_file' => '9.4429D0',
+                          'TOLUENE_bb_srf_file' => '9.4429D0',
+                          'XYLENES_an_srf_file' => '7.3804D0',
+                          'XYLENES_bb_srf_file' => '7.3804D0',
+                          'IVOC_an_srf_file'    => '8.6158D0',
+                          'IVOC_bb_srf_file'    => '8.6158D0',
+                          'SVOC_an_srf_file'    => '16.7388D0',
+                          'SVOC_bb_srf_file'    => '16.7388D0');
+        foreach my $id (sort keys %soae_fctrs) {
+            my $rel_filepath = get_default_value($id, \%verhash);
+            my $abs_filepath = set_abs_filepath($rel_filepath, $inputdata_rootdir);
+            $val .= $pre . quote_string("SOAE -> $soae_fctrs{$id}*" . $abs_filepath);
+            if ($first) {
+                $pre = ",";
+                $first = 0;
+            }
+        }
+    }
     add_default($nl, 'srf_emis_specifier', 'val'=>$val);
     unless (defined $nl->get_value('srf_emis_type')) {
         add_default($nl, 'srf_emis_type',      'val'=>'CYCLICAL');
@@ -2355,11 +2403,27 @@ if (($chem =~ /_mam4/ or $chem =~ /_mam5/) and ($phys =~ /cam6/ or $phys =~ /cam
     }
 
     # MEGAN emissions
+    if (($chem eq 'trop_mam4' or $chem eq 'waccm_sc_mam4') and !$aqua_mode and !$scam){
+	my $val = "'SOAE = 0.9058*isoprene + 5.8638*(carene_3 + pinene_a + thujene_a + bornene +',"
+                . "' terpineol_4 + terpineol_a + terpinyl_ACT_a + myrtenal + sabinene + pinene_b + camphene +',"
+                . "' fenchene_a + limonene + phellandrene_a + terpinene_a + terpinene_g + terpinolene +',"
+                . "' phellandrene_b + linalool + ionone_b + geranyl_acetone + neryl_acetone + jasmone +',"
+                . "' verbenene + ipsenol + myrcene + ocimene_t_b + ocimene_al + ocimene_c_b + 2met_nonatriene) + ',"
+                . "' 13.4042*(farnescene_a + caryophyllene_b + acoradiene + aromadendrene + bergamotene_a +',"
+                . "' bergamotene_b + bisabolene_a + bisabolene_b + bourbonene_b + cadinene_d + cadinene_g +',"
+                . "' cedrene_a + copaene_a + cubebene_a + cubebene_b + elemene_b + farnescene_b +',"
+                . "' germacrene_B + germacrene_D + gurjunene_b + humulene_a + humulene_g + isolongifolene +',"
+                . "' longifolene + longipinene + muurolene_a + muurolene_g + selinene_b + selinene_d +',"
+                . "' nerolidol_c + nerolidol_t)'";
+        add_default($nl, 'megan_specifier', 'val'=>$val);
+        add_default($nl, 'megan_factors_file');
+        add_default($nl, 'megan_mapped_emisfctrs', 'val'=>'.false.');
+    }
     if ($chem =~ /trop_strat_mam4_vbsext/ or $chem =~ /waccm_tsmlt/) {
         my $val = "'ISOP = isoprene',"
-                . "'MTERP = pinene_a + carene_3 + thujene_a + 2met_styrene + cymene_p + cymene_o + terpinolene + bornene "
-                . "+ fenchene_a + ocimene_al + pinene_b + sabinene + camphene + limonene + phellandrene_a + terpinene_g "
-                . "+ terpinene_a + phellandrene_b +  myrcene + ocimene_t_b + ocimene_c_b',"
+                . "'MTERP = pinene_a + carene_3 + thujene_a + 2met_styrene + cymene_p + cymene_o + terpinolene + bornene +'"
+                . "' fenchene_a + ocimene_al + pinene_b + sabinene + camphene + limonene + phellandrene_a + terpinene_g +'"
+                . "' terpinene_a + phellandrene_b +  myrcene + ocimene_t_b + ocimene_c_b',"
                 . "'BCARY = caryophyllene_b + bergamotene_a + bisabolene_b + farnescene_b + humulene_a',"
                 . "'CH3OH = methanol',"
                 . "'C2H5OH = ethanol',"
