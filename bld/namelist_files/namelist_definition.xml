@@ -1701,12 +1701,13 @@ Default: none
 <!-- History and Initial Conditions Output -->
 
 <entry id="avgflag_pertape" type="char*1(10)"  category="history"
-       group="cam_history_nl" valid_values="A,B,I,X,M,L,S" >
+       group="cam_history_nl" valid_values="A,B,C,I,X,M,L,S" >
 Sets the averaging flag for all variables on a particular history file
 series. Valid values are:
 
  A ==&gt; Average
  B ==&gt; GMT 00:00:00 average
+ C ==&gt; average over nsteps not nacs
  I ==&gt; Instantaneous
  M ==&gt; Minimum
  X ==&gt; Maximum
@@ -1798,6 +1799,7 @@ are:
 
  A ==&gt; Average
  B ==&gt; GMT 00:00:00 average
+ C ==&gt; average over nsteps
  I ==&gt; Instantaneous
  M ==&gt; Minimum
  X ==&gt; Maximum
@@ -2089,6 +2091,14 @@ Default: 1
 Sets the number of timesteps closest to the observation that should be output. Setting
 this to a number greater than 1 allows for temporal interpolation in the post processing.
 Default: 1
+</entry>
+
+<entry id="budgethist" type="char*8"  category="history"
+       group="cam_history_nl" valid_values="NONE,STEP,HOURLY,DAILY,MONTHLY,YEARLY,CAMIOP,ENDOFRUN" >
+Frequency that budget files will be output: none, step, hourly, daily, monthly,
+yearly, or endofrun.  Valid values: 'NONE', 'STEP', 'HOURLY', 'DAILY', 'MONTHLY',
+'YEARLY', 'ENDOFRUN'.
+Default: 'NONE'
 </entry>
 
 <entry id="inithist" type="char*8"  category="history"
@@ -5073,6 +5083,18 @@ Default: .false.
 <entry id="history_budget_histfile_num" type="integer"  category="diagnostics"
        group="phys_ctl_nl" valid_values="1,2,3,4,5,6" >
 History tape number T/Q budget output is written to.
+Default: 1
+</entry>
+
+<entry id="thermo_budget_hist" type="logical"  category="diagnostics"
+       group="phys_ctl_nl" valid_values="" >
+Switch for budget diagnostic output
+Default: .false.
+</entry>
+
+<entry id="thermo_budget_hfile_num" type="integer"  category="diagnostics"
+       group="phys_ctl_nl" valid_values="1,2,3,4,5,6" >
+History tape number thermo budget output is written to.
 Default: 1
 </entry>
 

@@ -5,8 +5,6 @@ module element_mod
   use dimensions_mod,         only: np, nc, npsq, nlev, nlevp, qsize_d, max_neigh_edges,ntrac_d
   use edgetype_mod,           only: edgedescriptor_t
   use gridgraph_mod,          only: gridvertex_t
-  use budgets,                only: budget_array_max
-  use cam_thermo,             only: thermo_budget_num_vars
 
   implicit none
   private
@@ -79,12 +77,6 @@ module element_mod
     ! reference profiles
     real (kind=r8) :: T_ref(np,np,nlev)                        ! reference temperature
     real (kind=r8) :: dp_ref(np,np,nlev)                       ! reference pressure level thickness
-
-    ! budgets
-    real (kind=r8) :: budget(np,np,thermo_budget_num_vars,budget_array_max)  ! budgets
-    integer        :: budget_cnt(budget_array_max)             ! budget count for averaging
-    integer        :: budget_subcycle(budget_array_max)        ! budget subcycle count
-
   end type derived_state_t
 
   !___________________________________________________________________

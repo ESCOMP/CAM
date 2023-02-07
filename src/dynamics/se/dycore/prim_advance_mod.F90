@@ -10,8 +10,7 @@ module prim_advance_mod
   private
   save
 
-  public :: prim_advance_exp, prim_advance_init, applyCAMforcing, calc_tot_energy_dynamics, compute_omega, &
-       calc_tot_energy_dynamics_diff
+  public :: prim_advance_exp, prim_advance_init, applyCAMforcing, calc_tot_energy_dynamics, compute_omega
 
   type (EdgeBuffer_t) :: edge3,edgeOmega,edgeSponge
   real (kind=r8), allocatable :: ur_weights(:)
@@ -1453,20 +1452,22 @@ contains
     use physconst,              only: gravit, cpair, rearth, omega
     use element_mod,            only: element_t
     use cam_history,            only: outfld, hist_fld_active
+    use cam_history_support,    only: max_fieldname_len
     use constituents,           only: cnst_get_ind
     use string_utils,           only: strlist_get_ind
     use hycoef,                 only: hyai, ps0
     use fvm_control_volume_mod, only: fvm_struct
-    use cam_thermo,             only: get_dp, MASS_MIXING_RATIO,wvidx,wlidx,wiidx,seidx,poidx,keidx,moidx,mridx,ttidx,teidx
+    use cam_thermo,             only: get_dp, MASS_MIXING_RATIO,wvidx,wlidx,wiidx,seidx,poidx,keidx,moidx,mridx,ttidx,teidx, &
+                                      thermo_budget_num_vars,thermo_budget_vars
     use cam_thermo,             only: get_hydrostatic_energy
     use air_composition,        only: thermodynamic_active_species_idx_dycore, get_cp
     use air_composition,        only: thermodynamic_active_species_num,    thermodynamic_active_species_idx_dycore
     use air_composition,        only: thermodynamic_active_species_liq_num,thermodynamic_active_species_liq_idx
     use air_composition,        only: thermodynamic_active_species_ice_num,thermodynamic_active_species_ice_idx
     use dimensions_mod,         only: cnst_name_gll
-    use budgets,                only: budget_info_byname
     use cam_logfile,            only: iulog
     use spmd_utils,             only: masterproc
+    use time_manager,           only: get_step_size
     use dyn_tests_utils,        only: vcoord=>vc_dry_pressure
     !------------------------------Arguments--------------------------------
 
@@ -1491,6 +1492,8 @@ contains
     real(kind=r8) :: ptop(np,np)
     real(kind=r8) :: pdel(np,np,nlev)
     real(kind=r8) :: cp(np,np,nlev)
+
+    real(kind=r8) :: dtime                             ! time_step
     !
     ! global axial angular momentum (AAM) can be separated into one part (mr) associatedwith the relative motion
     ! of the atmosphere with respect to the planets surface (also known as wind AAM) and another part (mo)
@@ -1499,26 +1502,20 @@ contains
     !
     real(kind=r8) :: mr(npsq)  ! wind AAM
     real(kind=r8) :: mo(npsq)  ! mass AAM
-    real(kind=r8) :: mr_cnst, mo_cnst, cos_lat, mr_tmp, mo_tmp,inv_g
+    real(kind=r8) :: mr_cnst, mo_cnst, cos_lat, mr_tmp, mo_tmp
 
     integer :: ie,i,j,k,budget_ind,state_ind,idx,idx_tmp
     integer :: ixwv,ixcldice, ixcldliq, ixtt ! CLDICE, CLDLIQ and test tracer indices
-    character(len=16) :: name_out1,name_out2,name_out3,name_out4,name_out5,name_out6
+    character(len=max_fieldname_len) :: name_out(thermo_budget_num_vars)
 
     !-----------------------------------------------------------------------
 
-    name_out1 = 'SE_'   //trim(outfld_name_suffix)
-    name_out2 = 'KE_'   //trim(outfld_name_suffix)
-    name_out3 = 'WV_'   //trim(outfld_name_suffix)
-    name_out4 = 'WL_'   //trim(outfld_name_suffix)
-    name_out5 = 'WI_'   //trim(outfld_name_suffix)
-    name_out6 = 'TT_'   //trim(outfld_name_suffix)
+    do i=1,thermo_budget_num_vars
+       name_out(i)=trim(thermo_budget_vars(i))//'_'//trim(outfld_name_suffix)
+    end do
 
-    if ( hist_fld_active(name_out1).or.hist_fld_active(name_out2).or.hist_fld_active(name_out3).or.&
-         hist_fld_active(name_out4).or.hist_fld_active(name_out5).or.hist_fld_active(name_out6)) then
-
-       inv_g = 1.0_r8/gravit
-
+      dtime=get_step_size()
+      
       if (ntrac>0) then
         ixwv = 1
         call cnst_get_ind('CLDLIQ' , ixcldliq, abort=.false.)
@@ -1558,61 +1555,22 @@ contains
                phis=elem(ie)%state%phis(:,j),dycore_idx=.true.,    &
                se=se(:,j), po=po(:,j), ke=ke(:,j), wv=wv(:,j), liq=liq(:,j), ice=ice(:,j))
         end do
-        
-        ! could store pointer to dyn/phys state index inside of budget and call budget_state_update pass in se,ke etc.
-        call budget_info_byname(trim(outfld_name_suffix),budget_ind=budget_ind,state_ind=state_ind)
-        ! reset all when cnt is 0
-
-        if (elem(ie)%derived%budget_cnt(budget_ind) == 0) then
-           if (ie.eq.nets) write(iulog,*)'cnt = 0;resetting :',trim(outfld_name_suffix)
-           elem(ie)%derived%budget_subcycle(budget_ind) = 0
-           elem(ie)%derived%budget(:,:,:,state_ind)=0.0_r8
-           if (ntrac>0) fvm(ie)%budget(:,:,:,state_ind)=0.0_r8
-        end if
-        if (present(subcycle)) then
-           if (subcycle) then
-              elem(ie)%derived%budget_subcycle(budget_ind) = elem(ie)%derived%budget_subcycle(budget_ind) + 1
-              if (elem(ie)%derived%budget_subcycle(budget_ind) == 1) then
-                 elem(ie)%derived%budget_cnt(budget_ind) = elem(ie)%derived%budget_cnt(budget_ind) + 1
-              end if
-           else
-              elem(ie)%derived%budget_cnt(budget_ind) = elem(ie)%derived%budget_cnt(budget_ind) + 1
-              elem(ie)%derived%budget_subcycle(budget_ind) = 1
-           end if
-        else
-           elem(ie)%derived%budget_cnt(budget_ind) = elem(ie)%derived%budget_cnt(budget_ind) + 1
-           elem(ie)%derived%budget_subcycle(budget_ind) = 1
-        end if
-
-        do j=1,np
-           do i = 1, np
-              elem(ie)%derived%budget(i,j,teidx,state_ind) = elem(ie)%derived%budget(i,j,teidx,state_ind) + &
-                   se(i,j) + ke(i,j)+po(i,j)
-              elem(ie)%derived%budget(i,j,seidx,state_ind) = elem(ie)%derived%budget(i,j,seidx,state_ind) + se(i,j)
-              elem(ie)%derived%budget(i,j,keidx,state_ind) = elem(ie)%derived%budget(i,j,keidx,state_ind) + ke(i,j)
-              elem(ie)%derived%budget(i,j,poidx,state_ind) = elem(ie)%derived%budget(i,j,poidx,state_ind) + po(i,j)
-              elem(ie)%derived%budget(i,j,wvidx,state_ind) = elem(ie)%derived%budget(i,j,wvidx,state_ind) + wv(i,j)
-              elem(ie)%derived%budget(i,j,wlidx,state_ind) = elem(ie)%derived%budget(i,j,wlidx,state_ind) + liq(i,j)
-              elem(ie)%derived%budget(i,j,wiidx,state_ind) = elem(ie)%derived%budget(i,j,wiidx,state_ind) + ice(i,j)
-           end do
-        end do
+        !
+        ! Normalize energy variables by dtime for W/s
+!jt        se(:)=se(:)/dtime
+!jt        ke(:)=ke(:)/dtime
         !
         ! Output energy diagnostics on GLL grid
         !
-        call outfld(name_out1  ,se,npsq,ie)
-        call outfld(name_out2  ,ke,npsq,ie)
+        call outfld(name_out(seidx)  ,se       ,npsq,ie)
+        call outfld(name_out(keidx)  ,ke       ,npsq,ie)
         !
         ! mass variables are output on CSLAM grid if using CSLAM else GLL grid
         !
         if (ntrac>0) then
            if (ixwv>0) then
               cdp_fvm = fvm(ie)%c(1:nc,1:nc,:,ixwv)*fvm(ie)%dp_fvm(1:nc,1:nc,:)
-              call util_function(cdp_fvm,nc,nlev,name_out3,ie)
-              do j = 1, nc
-                 do i = 1, nc
-                    fvm(ie)%budget(i,j,wvidx,state_ind) = fvm(ie)%budget(i,j,wvidx,state_ind) + sum(cdp_fvm(i,j,:)*inv_g)
-                 end do
-              end do
+              call util_function(cdp_fvm,nc,nlev,name_out(wvidx),ie)
            end if
            !
            ! sum over liquid water
@@ -1623,12 +1581,7 @@ contains
                 cdp_fvm = cdp_fvm + fvm(ie)%c(1:nc,1:nc,:,thermodynamic_active_species_liq_idx(idx))&
                      *fvm(ie)%dp_fvm(1:nc,1:nc,:)
               end do
-              call util_function(cdp_fvm,nc,nlev,name_out4,ie)
-              do j = 1, nc
-                 do i = 1, nc
-                    fvm(ie)%budget(i,j,wlidx,state_ind) = fvm(ie)%budget(i,j,wlidx,state_ind) + sum(cdp_fvm(i,j,:)*inv_g)
-                 end do
-              end do
+              call util_function(cdp_fvm,nc,nlev,name_out(wlidx),ie)
            end if
            !
            ! sum over ice water
@@ -1639,36 +1592,41 @@ contains
                cdp_fvm = cdp_fvm + fvm(ie)%c(1:nc,1:nc,:,thermodynamic_active_species_ice_idx(idx))&
                    *fvm(ie)%dp_fvm(1:nc,1:nc,:)
              end do
-             call util_function(cdp_fvm,nc,nlev,name_out5,ie)
-
-              do j = 1, nc
-                 do i = 1, nc
-                    fvm(ie)%budget(i,j,wiidx,state_ind) = fvm(ie)%budget(i,j,wiidx,state_ind) + sum(cdp_fvm(i,j,:)*inv_g)
-                 end do
-              end do
+             call util_function(cdp_fvm,nc,nlev,name_out(wiidx),ie)
            end if
            if (ixtt>0) then
               cdp_fvm = fvm(ie)%c(1:nc,1:nc,:,ixtt)*fvm(ie)%dp_fvm(1:nc,1:nc,:)
-              call util_function(cdp_fvm,nc,nlev,name_out6,ie)
-              do j = 1, nc
-                 do i = 1, nc
-                    fvm(ie)%budget(i,j,ttidx,state_ind) = fvm(ie)%budget(i,j,ttidx,state_ind) + sum(cdp_fvm(i,j,:)*inv_g)
-                 end do
-              end do
+              call util_function(cdp_fvm,nc,nlev,name_out(ttidx),ie)
            end if
         else
+           cdp = elem(ie)%state%qdp(:,:,:,1,tl_qdp)
+           call util_function(cdp,np,nlev,name_out(wvidx),ie)
+           !
+           ! sum over liquid water
+           !
+           if (thermodynamic_active_species_liq_num>0) then
+              cdp = 0.0_r8
+              do idx = 1,thermodynamic_active_species_liq_num
+                 cdp = cdp + elem(ie)%state%qdp(:,:,:,thermodynamic_active_species_liq_idx(idx),tl_qdp)
+              end do
+              call util_function(cdp,np,nlev,name_out(wlidx),ie)
+           end if
+           !
+           ! sum over ice water
+           !
+           if (thermodynamic_active_species_ice_num>0) then
+              cdp = 0.0_r8
+              do idx = 1,thermodynamic_active_species_ice_num
+                 cdp = cdp + elem(ie)%state%qdp(:,:,:,thermodynamic_active_species_ice_idx(idx),tl_qdp)
+              end do
+              call util_function(cdp,np,nlev,name_out(wiidx),ie)
+           end if
            if (ixtt>0) then
               cdp = elem(ie)%state%qdp(:,:,:,ixtt    ,tl_qdp)
-              call util_function(cdp,np,nlev,name_out6,ie)
-              do j = 1, np
-                 do i = 1, np
-                    elem(ie)%derived%budget(i,j,ttidx,state_ind) = elem(ie)%derived%budget(i,j,ttidx,state_ind) + sum(cdp(i,j,:)*inv_g)
-                 end do
-              end do
+              call util_function(cdp,np,nlev,name_out(ttidx),ie)
            end if
         end if
      end do
-  end if
   !
   ! Axial angular momentum diagnostics
   !
@@ -1682,10 +1640,7 @@ contains
     ! MR is equation (6) without \Delta A and sum over areas (areas are in units of radians**2)
     ! MO is equation (7) without \Delta A and sum over areas (areas are in units of radians**2)
     !
-    name_out1 = 'MR_'   //trim(outfld_name_suffix)
-    name_out2 = 'MO_'   //trim(outfld_name_suffix)
 
-    if ( hist_fld_active(name_out1).or.hist_fld_active(name_out2)) then
       call strlist_get_ind(cnst_name_gll, 'CLDLIQ', ixcldliq, abort=.false.)
       call strlist_get_ind(cnst_name_gll, 'CLDICE', ixcldice, abort=.false.)
       mr_cnst = rearth**3/gravit
@@ -1702,96 +1657,20 @@ contains
               mr_tmp   = mr_cnst*elem(ie)%state%v(i,j,1,k,tl)*pdel(i,j,k)*cos_lat
               mo_tmp   = mo_cnst*pdel(i,j,k)*cos_lat**2
 
+!jt              mr   (i+(j-1)*np) = mr   (i+(j-1)*np) + mr_tmp/dtime
+!jt              mo   (i+(j-1)*np) = mo   (i+(j-1)*np) + mo_tmp/dtime
               mr   (i+(j-1)*np) = mr   (i+(j-1)*np) + mr_tmp
               mo   (i+(j-1)*np) = mo   (i+(j-1)*np) + mo_tmp
             end do
           end do
         end do
-        call outfld(name_out1  ,mr       ,npsq,ie)
-        call outfld(name_out2  ,mo       ,npsq,ie)
-        do j=1,np
-           do i = 1, np
-              elem(ie)%derived%budget(i,j,mridx,state_ind) = elem(ie)%derived%budget(i,j,mridx,state_ind) + mr(i+(j-1)*np)
-              elem(ie)%derived%budget(i,j,moidx,state_ind) = elem(ie)%derived%budget(i,j,moidx,state_ind) + mo(i+(j-1)*np)
-           end do
-        end do
+        call outfld(name_out(mridx)  ,mr       ,npsq,ie)
+        call outfld(name_out(moidx)  ,mo       ,npsq,ie)
       end do
-    end if
 
 
   end subroutine calc_tot_energy_dynamics
 
-
-  subroutine calc_tot_energy_dynamics_diff(elem,fvm,nets,nete,tl,tl_qdp,budget_name, subcycle)
-    use dimensions_mod,         only: ntrac
-    use element_mod,            only: element_t
-    use constituents,           only: cnst_get_ind
-    use fvm_control_volume_mod, only: fvm_struct
-    use budgets,                only: budget_info,budget_ind_byname
-    use cam_thermo,             only: thermo_budget_num_vars, &
-                                      thermo_budget_vars_massv,wvidx,wlidx,wiidx,poidx,seidx,keidx,moidx,mridx,ttidx,teidx
-    !------------------------------Arguments--------------------------------
-
-    type (element_t) , intent(inout) :: elem(:)
-    type(fvm_struct) , intent(inout) :: fvm(:)
-    integer          , intent(in) :: tl, tl_qdp,nets,nete
-    character*(*)    , intent(in) :: budget_name ! suffix for "outfld" names
-    logical, optional, intent(in) :: subcycle ! true if called inside subcycle loop
-
-    !---------------------------Local storage-------------------------------
-
-    integer :: ie,ixtt,b_ind,s_ind,is1,is2,isb1,isb2,n
-    character(len=3)   :: budget_pkgtype,budget_optype  ! budget type phy or dyn
-    !-----------------------------------------------------------------------
-    b_ind=budget_ind_byname(trim(budget_name))
-    call budget_info(b_ind,stg1stateidx=is1, stg2stateidx=is2,stg1index=isb1, stg2index=isb2, optype=budget_optype, pkgtype=budget_pkgtype,state_ind=s_ind)
-
-    do ie=nets,nete
-       ! advance budget_cnt
-       if (present(subcycle)) then
-          if (subcycle) then
-             ! reset subcycle when cnt is 0
-             if (elem(ie)%derived%budget_cnt(b_ind) == 0) then
-                elem(ie)%derived%budget_subcycle(b_ind) = 0
-                elem(ie)%derived%budget(:,:,:,s_ind)=0._r8
-                if (ntrac>0) fvm(ie)%budget(:,:,:,s_ind)=0._r8
-             end if
-             elem(ie)%derived%budget_subcycle(b_ind) = elem(ie)%derived%budget_subcycle(b_ind) + 1
-             if (elem(ie)%derived%budget_subcycle(b_ind) == 1) then
-                elem(ie)%derived%budget_cnt(b_ind) = elem(ie)%derived%budget_cnt(b_ind) + 1
-             end if
-          else
-             elem(ie)%derived%budget_cnt(b_ind) = elem(ie)%derived%budget_cnt(b_ind) + 1
-             elem(ie)%derived%budget_subcycle(b_ind) = 1
-          end if
-       else
-          elem(ie)%derived%budget_cnt(b_ind) = elem(ie)%derived%budget_cnt(b_ind) + 1
-          elem(ie)%derived%budget_subcycle(b_ind) = 1
-       end if
-
-       if (elem(ie)%derived%budget_cnt(isb1)==0.or.elem(ie)%derived%budget_cnt(isb2)==0) then
-          elem(ie)%derived%budget(:,:,:,s_ind)=0._r8
-       else
-          do n=1,thermo_budget_num_vars
-             if (budget_optype=='dif') then
-                if (ntrac>0.and.thermo_budget_vars_massv(n)) then
-                   fvm(ie)%budget(:,:,n,s_ind)=(fvm(ie)%budget(:,:,n,is1)-fvm(ie)%budget(:,:,n,is2))
-                else
-                   elem(ie)%derived%budget(:,:,n,s_ind)=(elem(ie)%derived%budget(:,:,n,is1)-elem(ie)%derived%budget(:,:,n,is2))
-                end if
-             else if (budget_optype=='sum') then
-                if (ntrac>0.and.thermo_budget_vars_massv(n)) then
-                   fvm(ie)%budget(:,:,n,s_ind)=(fvm(ie)%budget(:,:,n,is1)+fvm(ie)%budget(:,:,n,is2))
-                else
-                   elem(ie)%derived%budget(:,:,n,s_ind)=(elem(ie)%derived%budget(:,:,n,is1)+elem(ie)%derived%budget(:,:,n,is2))
-                end if
-             else
-                call endrun('dyn_readnl: ERROR: budget_optype unknown:'//budget_optype)
-             end if
-          end do
-       end if
-    end do
-  end subroutine calc_tot_energy_dynamics_diff
 
   subroutine output_qdp_var_dynamics(qdp,nx,num_trac,nets,nete,outfld_name)
     use dimensions_mod, only: nlev,ntrac

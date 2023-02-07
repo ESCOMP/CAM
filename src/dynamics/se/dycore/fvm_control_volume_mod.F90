@@ -17,7 +17,6 @@ module fvm_control_volume_mod
   use dimensions_mod,         only: fv_nphys, nhe_phys, nhr_phys, ns_phys, nhc_phys,fv_nphys
   use dimensions_mod,         only: irecons_tracer
   use cam_abortutils,         only: endrun
-  use budgets,                only: budget_array_max
 
   implicit none
   private
@@ -156,7 +155,6 @@ module fvm_control_volume_mod
     real (kind=r8)           , allocatable :: ft(:,:,:)
     real (kind=r8)           , allocatable :: fm(:,:,:,:)
     real (kind=r8)           , allocatable :: dp_phys(:,:,:)
-    real (kind=r8)           , allocatable :: budget(:,:,:,:)         ! budgets
   end type fvm_struct
 
   public :: fvm_mesh, fvm_set_cubeboundary, allocate_physgrid_vars
@@ -308,7 +306,6 @@ contains
       allocate(fvm(ie)%ft(1-nhc_phys:fv_nphys+nhc_phys,1-nhc_phys:fv_nphys+nhc_phys,nlev))
       allocate(fvm(ie)%fm(1-nhc_phys:fv_nphys+nhc_phys,1-nhc_phys:fv_nphys+nhc_phys,2,nlev))
       allocate(fvm(ie)%dp_phys(1-nhc_phys:fv_nphys+nhc_phys,1-nhc_phys:fv_nphys+nhc_phys,nlev))
-      allocate(fvm(ie)%budget(nc,nc,9,budget_array_max))
     end do
   end subroutine allocate_physgrid_vars
 end module fvm_control_volume_mod

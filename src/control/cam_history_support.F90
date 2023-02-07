@@ -26,7 +26,7 @@ module cam_history_support
   integer, parameter, public :: max_string_len = shr_kind_cxx
   integer, parameter, public :: max_chars = shr_kind_cl         ! max chars for char variables
   integer, parameter, public :: fieldname_len = 32   ! max chars for field name
-  integer, parameter, public :: fieldname_suffix_len =  3 ! length of field name suffix ("&IC")
+  integer, parameter, public :: fieldname_suffix_len =  3 ! length of field name suffix ("&IC" and "&BG")
   integer, parameter, public :: fieldname_lenp2      = fieldname_len + 2 ! allow for extra characters
   ! max_fieldname_len = max chars for field name (including suffix)
   integer, parameter, public :: max_fieldname_len    = fieldname_len + fieldname_suffix_len
@@ -118,6 +118,10 @@ module cam_history_support
     integer :: meridional_complement         ! meridional field id or -1
     integer :: zonal_complement              ! zonal field id or -1
 
+    character(len=3) :: field_op             ! 'sum' or 'dif'
+    integer          :: op_field1_id ! first field id to be summed/diffed or -1
+    integer          :: op_field2_id ! second field id to be summed/diffed or -1
+    
     character(len=max_fieldname_len) :: name ! field name
     character(len=max_chars) :: long_name    ! long name
     character(len=max_chars) :: units        ! units
@@ -127,6 +131,7 @@ module cam_history_support
     ! radiation calcs; etc.
     character(len=max_chars) :: cell_methods ! optional cell_methods attribute
   contains
+    procedure :: is_composed => field_info_is_composed
     procedure :: get_shape   => field_info_get_shape
     procedure :: get_bounds  => field_info_get_bounds
     procedure :: get_dims_2d => field_info_get_dims_2d
@@ -159,11 +164,18 @@ module cam_history_support
 
     integer                   :: hwrt_prec   ! history output precision
     real(r8),         pointer :: hbuf(:,:,:) => NULL()
+    real(r8)                  :: hbuf_area_wgt_integral! area weighted integral of active field field
     real(r8),         pointer :: sbuf(:,:,:) => NULL() ! for standard deviation
+    real(r8),         pointer :: gbuf(:,:,:) => NULL() ! pointer to area weights
     type(var_desc_t), pointer :: varid(:)    => NULL() ! variable ids
     integer,          pointer :: nacs(:,:)   => NULL() ! accumulation counter
     type(var_desc_t), pointer :: nacs_varid  => NULL()
+    integer,          pointer :: nsteps(:,:) => NULL() ! accumulation counter
+    type(var_desc_t), pointer :: nsteps_varid=> NULL()
     type(var_desc_t), pointer :: sbuf_varid  => NULL()
+    type(var_desc_t), pointer :: gbuf_varid  => NULL()
+  contains
+    procedure :: get_global   => hentry_get_global
   end type hentry
 
   !---------------------------------------------------------------------------
@@ -435,6 +447,12 @@ contains
 
   end function field_info_get_dims_3d
 
+  ! field_info_is_composed: Return whether this field is composed of two other fields
+  logical function field_info_is_composed(this)
+    class(field_info)                         :: this
+    field_info_is_composed = (this%field_op=='sum' .or. this%field_op=='dif')
+  end function field_info_is_composed
+
   ! field_info_get_shape: Return a pointer to the field's global shape.
   !                       Calculate it first if necessary
   subroutine field_info_get_shape(this, shape_out, rank_out)
@@ -503,6 +521,26 @@ contains
 
   end subroutine field_info_get_bounds
 
+  subroutine hentry_get_global(this, gval)
+
+    ! Dummy arguments
+    class(hentry)                    :: this
+    real(r8),          intent(out)   :: gval
+    
+    gval=this%hbuf_area_wgt_integral
+
+  end subroutine hentry_get_global
+
+  subroutine hentry_put_global(this, gval)
+
+    ! Dummy arguments
+    class(hentry)                    :: this
+    real(r8),          intent(in)    :: gval
+    
+    this%hbuf_area_wgt_integral=gval
+
+  end subroutine hentry_put_global
+  
   ! history_patch_write_attrs: Define coordinate variables and attributes
   !               for a patch
   subroutine history_patch_write_attrs(this, File)
@@ -957,6 +995,9 @@ contains
 
     f_out%meridional_complement = f_in%meridional_complement ! id  or -1
     f_out%zonal_complement = f_in%zonal_complement           ! id  or -1
+    f_out%field_op = f_in%field_op                           ! sum,dif, or ''
+    f_out%op_field1_id = f_in%op_field1_id   ! id  or -1
+    f_out%op_field2_id = f_in%op_field2_id   ! id  or -1
 
     f_out%name = f_in%name                           ! field name
     f_out%long_name = f_in%long_name                 ! long name

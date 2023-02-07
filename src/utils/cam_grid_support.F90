@@ -314,6 +314,8 @@ module cam_grid_support
   public     :: cam_grid_is_zonal
   ! Functions for dealing with patch masks
   public     :: cam_grid_compute_patch
+  ! Functions for dealing with grid areas
+  public     :: cam_grid_get_area
 
   interface cam_grid_attribute_register
     module procedure add_cam_grid_attribute_0d_int
@@ -1615,6 +1617,55 @@ contains
       call endrun('cam_grid_get_lonvals: Bad grid ID')
     end if
   end function cam_grid_get_lonvals
+
+  function cam_grid_get_area(id) result(areavals)
+
+    ! Dummy argument
+    integer,                  intent(in)       :: id
+    real(r8), pointer                          :: areavals(:)
+
+    ! Local variables
+    character(len=max_chars)                   :: areaname
+    integer                                    :: gridind
+    type(cam_grid_attribute_1d_r8_t), pointer  :: attrptr_r8
+    class(cam_grid_attribute_t),      pointer  :: attrptr
+    character(len=120)                         :: errormsg
+
+    nullify(attrptr_r8)
+    nullify(attrptr)
+    gridind = get_cam_grid_index(id)
+    if (gridind > 0) then
+       select case(cam_grids(gridind)%name)
+       case('GLL')
+          areaname='area_d'
+       case('INI')
+          areaname='area'
+       case('FVM')
+          areaname='area_fvm'
+       case default
+          call endrun('cam_grid_get_area: Invalid gridname:'//trim(cam_grids(gridind)%name))
+       end select
+
+       call find_cam_grid_attr(gridind, trim(areaname), attrptr)
+       if (.not.associated(attrptr)) then
+          write(errormsg, '(4a)')                                               &
+               'cam_grid_get_area: error retrieving area ', trim(areaname),         &
+               ' for cam grid ', cam_grids(gridind)%name
+          call endrun(errormsg)
+       else
+          call attrptr%print_attr()
+          select type(attrptr)
+          type is (cam_grid_attribute_1d_r8_t)
+             !jt                attrptr_r8 => attrptr
+             areavals => attrptr%values
+          class default
+             call endrun('cam_grid_get_area: area attribute is not a real datatype')
+!jt             areavals => null()
+          end select
+       end if
+    end if
+    
+  end function cam_grid_get_area
 
   ! Find the longitude and latitude of a range of map entries
   ! beg and end are the range of the first source index. blk is a block or chunk index

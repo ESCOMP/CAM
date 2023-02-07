@@ -46,7 +46,6 @@ use time_mod,               only: nsplit
 use edge_mod,               only: initEdgeBuffer, edgeVpack, edgeVunpack, FreeEdgeBuffer
 use edgetype_mod,           only: EdgeBuffer_t
 use bndry_mod,              only: bndry_exchange
-use budgets,                only: budget_add
 
 implicit none
 private
@@ -609,9 +608,9 @@ subroutine dyn_init(dyn_in, dyn_out)
    use control_mod,        only: vert_remap_uvTq_alg, vert_remap_tracer_alg
    use std_atm_profile,    only: std_atm_height
    use dyn_tests_utils,    only: vc_dycore, vc_dry_pressure, string_vc, vc_str_lgth
-   use budgets,            only: thermo_budget_history, budget_num, budget_outfld, budget_info
-   use cam_thermo,         only: thermo_budget_vars, thermo_budget_vars_descriptor, &
-                                 thermo_budget_vars_unit, thermo_budget_vars_massv, thermo_budget_num_vars
+   use budgets,            only: thermo_budget_history, budget_outfld, budget_info, &
+                                 thermo_budget_histfile_num, budget_add
+
    ! Dummy arguments:
    type(dyn_import_t), intent(out) :: dyn_in
    type(dyn_export_t), intent(out) :: dyn_out
@@ -628,7 +627,8 @@ subroutine dyn_init(dyn_in, dyn_out)
 
    ! variables for initializing energy and axial angular momentum diagnostics
    integer, parameter                         :: num_stages = 12
-   character (len = 3), dimension(num_stages) :: stage = (/"dED","dAF","dBD","dAD","dAR","dBF","dBH","dCH","dAH",'dBS','dAS','p2d'/)
+   character (len = 3), dimension(num_stages) :: stage         = (/"dED","dAF","dBD","dAD","dAR","dBF","dBH","dCH","dAH","dBS","dAS","p2d"/)
+   character (len = 1), dimension(num_stages) :: stage_avgflag = (/"A"  ,"C"  ,"C"  ,"C"  ,"C"  ,"A"  ,"C"  ,"C"  ,"C"  ,"C"  ,"C"  ,"A"/)
    character (len = 70),dimension(num_stages) :: stage_txt = (/&
       " end of previous dynamics                           ",& !dED
       " from previous remapping or state passed to dynamics",& !dAF - state in beginning of nsplit loop
@@ -645,19 +645,16 @@ subroutine dyn_init(dyn_in, dyn_out)
       /)
 
    integer :: istage, ivars
-   character (len=108)         :: str1, str2, str3
+   character (len=108)         :: str1, str2, str3, str4
    character (len=vc_str_lgth) :: vc_str
 
-   logical :: history_budget      ! output tendencies and state variables for budgets
-   integer :: budget_hfile_num
+   logical :: history_budget        ! output tendencies and state variables for budgets
+   logical :: thermo_budget_hist    ! output tendencies and state variables for budgets
+   integer :: budget_hfile_num, thermo_budget_hfile_num
 
    character(len=*), parameter :: sub = 'dyn_init'
 
    real(r8) :: km_sponge_factor_local(nlev+1)
-   character(len=64)  :: budget_name     ! budget names
-   character(len=3)   :: budget_pkgtype  ! budget type phy or dyn
-   character(len=3)   :: budget_optype  ! budget type phy or dyn
-   character(len=128) :: budget_longname ! long name of budgets
    !----------------------------------------------------------------------------
    vc_dycore = vc_dry_pressure
    if (masterproc) then
@@ -909,73 +906,48 @@ subroutine dyn_init(dyn_in, dyn_out)
      call addfld ('TT_PDC',   horiz_only, 'A', 'kg/m2','Total column test tracer lost in physics-dynamics coupling',gridname='GLL')
    end if
 
-   do istage = 1, num_stages
-      do ivars=1, thermo_budget_num_vars
-         write(str1,*) TRIM(ADJUSTL(thermo_budget_vars(ivars))),"_",TRIM(ADJUSTL(stage(istage)))
-         write(str2,*) TRIM(ADJUSTL(thermo_budget_vars_descriptor(ivars)))," ", &
-              TRIM(ADJUSTL(stage_txt(istage)))
-         write(str3,*) TRIM(ADJUSTL(thermo_budget_vars_unit(ivars)))
-         if (ntrac>0.and.thermo_budget_vars_massv(ivars)) then
-            call addfld (TRIM(ADJUSTL(str1)),   horiz_only, 'A', TRIM(ADJUSTL(str3)),TRIM(ADJUSTL(str2)),gridname='FVM')
-         else
-            call addfld (TRIM(ADJUSTL(str1)),   horiz_only, 'A', TRIM(ADJUSTL(str3)),TRIM(ADJUSTL(str2)),gridname='GLL')
-         end if
-      end do
+   call phys_getopts(thermo_budget_hist_out=thermo_budget_hist)
+   if (thermo_budget_hist) then
       ! Register stages for budgets
-      call budget_add(TRIM(ADJUSTL(stage(istage))), pkgtype='dyn', longname=TRIM(ADJUSTL(stage_txt(istage))), outfld=.true.)
-   end do
 
-    !
-    ! Register dif/sum budgets.
-    !
-    call budget_add('BD_dyn_total','dBF','dED',pkgtype='dyn',optype='dif',longname="dE/dt dyn total (dycore+phys tendency (dBF-dED)",outfld=.true.)
-
-    call budget_add('rate_2d_dyn','dAD','dBD',pkgtype='dyn',optype='dif',longname="rate_of_change_2d_dyn (dAD-dBD)",outfld=.false.)
-
-    call budget_add('rate_vert_remap','dAR','dAD',pkgtype='dyn',optype='dif',longname="rate_of_change_2d_dyn (dAR-dAD)",outfld=.false.)
-
-    call budget_add('BD_dyn_adai','rate_2d_dyn','rate_vert_remap',pkgtype='dyn',optype='sum',longname="dE/dt total adiabatic dynamics (adiab=rate2ddyn+vremap) ",outfld=.true.)
-
-    call budget_add('BD_dyn_2D','dAD','dBD',pkgtype='dyn',optype='dif',longname="dE/dt 2D dynamics (dAD-dBD)",outfld=.true.)
-
-    call budget_add('BD_dyn_remap','dAR','dAD',pkgtype='dyn',optype='dif',longname="dE/dt vertical remapping (dAR-dAD)",outfld=.true.)
-
-    call budget_add('BD_dyn_ptend','dBD','dAF',pkgtype='dyn',optype='dif',longname="dE/dt physics tendency in dynamics (dBD-dAF)",outfld=.true.)
-
-    call budget_add('BD_dyn_hvis','dCH','dBH',pkgtype='dyn',optype='dif',longname="dE/dt hypervis del4 (dCH-dBH)",outfld=.true.)
-
-    call budget_add('BD_dyn_fric','dAH','dCH',pkgtype='dyn',optype='dif',longname="dE/dt hypervis frictional heating del4 (dAH-dCH)",outfld=.true.)
-
-    call budget_add('BD_dyn_difdel4tot','dAH','dBH',pkgtype='dyn',optype='dif',longname="dE/dt hypervis del4 total (dAH-dBH)",outfld=.true.)
-
-    call budget_add('BD_dyn_sponge','dAS','dBS',pkgtype='dyn',optype='dif',longname="dE/dt hypervis sponge total (dAS-dBS)",outfld=.true.)
-
-    call budget_add('BD_dyn_difftot','BD_dyn_difdel4tot','BD_dyn_sponge',pkgtype='dyn',optype='sum',longname="dE/dt explicit diffusion total (hvisdel4tot+hvisspngtot)",outfld=.true.)
-
-    call budget_add('BD_dyn_res','BD_dyn_2D','BD_dyn_difftot',pkgtype='dyn',optype='dif',longname="dE/dt residual (2ddyn-expdifftot)",outfld=.true.)
-
-    call budget_add('hrate','dAH','dCH',pkgtype='dyn',optype='dif',longname="rate of change heating term put back in (dAH-dCH)",outfld=.false.)
-
-! register history budget variables
-    if (thermo_budget_history) then
-    do m=1,budget_num
-          call budget_info(m,name=budget_name,longname=budget_longname,pkgtype=budget_pkgtype,optype=budget_optype)
-          if (trim(budget_pkgtype)=='dyn'.and.(trim(budget_optype)=='dif'.or.trim(budget_optype)=='sum')) then
-             do ivars=1, thermo_budget_num_vars
-                write(str1,*) TRIM(ADJUSTL(thermo_budget_vars(ivars))),"_",TRIM(ADJUSTL(budget_name))
-                write(str2,*) TRIM(ADJUSTL(thermo_budget_vars_descriptor(ivars)))," ", &
-                     TRIM(ADJUSTL(budget_longname))
-                write(str3,*) TRIM(ADJUSTL(thermo_budget_vars_unit(ivars)))
-                if (ntrac>0.and.thermo_budget_vars_massv(ivars)) then
-                   call addfld (TRIM(ADJUSTL(str1)),   horiz_only, 'A', TRIM(ADJUSTL(str3)),TRIM(ADJUSTL(str2)),gridname='FVM')
-                else
-                   call addfld (TRIM(ADJUSTL(str1)),   horiz_only, 'A', TRIM(ADJUSTL(str3)),TRIM(ADJUSTL(str2)),gridname='GLL')
-          endif
-             end do
-       end if
-    end do
-    end if
-
+      do istage = 1, num_stages
+         call budget_add(TRIM(ADJUSTL(stage(istage))), 'dyn', longname=TRIM(ADJUSTL(stage_txt(istage))), outfld=.true.)
+      end do
+      
+      !
+      ! Register dif/sum budgets.
+      !
+      call budget_add('BD_dyn_total','dBF','dED','dyn','dif',longname="dE/dt dyn total (dycore+phys tendency (dBF-dED)",outfld=.true.)
+      
+      call budget_add('rate_2d_dyn','dAD','dBD','dyn','dif',longname="rate_of_change_2d_dyn (dAD-dBD)",outfld=.false.)
+      
+      call budget_add('rate_vert_remap','dAR','dAD','dyn','dif',longname="rate_of_change_2d_dyn (dAR-dAD)",outfld=.false.)
+      
+      call budget_add('BD_dyn_adai','rate_2d_dyn','rate_vert_remap','dyn','sum',longname="dE/dt total adiabatic dynamics (adiab=rate2ddyn+vremap) ",outfld=.true.)
+      
+      call budget_add('BD_dyn_2D','dAD','dBD','dyn','dif',longname="dE/dt 2D dynamics (dAD-dBD)",outfld=.true.)
+      
+      call budget_add('BD_dyn_remap','dAR','dAD','dyn','dif',longname="dE/dt vertical remapping (dAR-dAD)",outfld=.true.)
+      
+      call budget_add('BD_dyn_ptend','dBD','dAF','dyn','dif',longname="dE/dt physics tendency in dynamics (dBD-dAF)",outfld=.true.)
+      
+      call budget_add('BD_dyn_hvis','dCH','dBH','dyn','dif',longname="dE/dt hypervis del4 (dCH-dBH)",outfld=.true.)
+      
+      call budget_add('BD_dyn_fric','dAH','dCH','dyn','dif',longname="dE/dt hypervis frictional heating del4 (dAH-dCH)",outfld=.true.)
+      
+      call budget_add('BD_dyn_difdel4tot','dAH','dBH','dyn','dif',longname="dE/dt hypervis del4 total (dAH-dBH)",outfld=.true.)
+      
+      call budget_add('BD_dyn_sponge','dAS','dBS','dyn','dif',longname="dE/dt hypervis sponge total (dAS-dBS)",outfld=.true.)
+      
+      call budget_add('BD_dyn_difftot','BD_dyn_difdel4tot','BD_dyn_sponge','dyn','sum',longname="dE/dt explicit diffusion total (hvisdel4tot+hvisspngtot)",outfld=.true.)
+      
+      call budget_add('BD_dyn_res','BD_dyn_2D','BD_dyn_difftot','dyn','dif',longname="dE/dt residual (2ddyn-expdifftot)",outfld=.true.)
+      
+      call budget_add('hrate','dAH','dCH','dyn','dif',longname="rate of change heating term put back in (dAH-dCH)",outfld=.false.)
+      
+   end if
+   call addfld ('dyn_area',  horiz_only, 'I', 'steradian', 'dynamics grid area' , gridname='GLL')
+   !
    ! add dynamical core tracer tendency output
    !
    if (ntrac>0) then
@@ -1014,8 +986,7 @@ subroutine dyn_run(dyn_state)
    use control_mod,      only: qsplit, rsplit, ftype_conserve
    use thread_mod,       only: horz_num_threads
    use time_mod,         only: tevolve
-   use budgets,          only: budget_cnt,budget_num,&
-                               budget_outfld,budget_count, budget_write
+!jt   use budgets,          only: budget_write
    use global_norms_mod, only: global_integral, wrap_repro_sum
    use parallel_mod,     only: global_shared_buf, global_shared_sum
    use dycore_budget,    only: print_budget
@@ -1038,10 +1009,6 @@ subroutine dyn_run(dyn_state)
    real(r8), allocatable, dimension(:,:,:) :: abs_ps_tend
 
    real (kind=r8)                          :: omega_cn(2,nelemd) !min and max of vertical Courant number
-   integer  :: is1,is2,is1b,is2b,budget_state_ind
-   character(len=64)  :: budget_name     ! budget names
-   character(len=3)   :: budget_pkgtype  ! budget type phy or dyn
-   character(len=3)   :: budget_optype  ! budget type phy or dyn
    !----------------------------------------------------------------------------
 
 #ifdef debug_coupling
@@ -1189,11 +1156,9 @@ subroutine dyn_run(dyn_state)
    ! output vars on CSLAM fvm grid
    call write_dyn_vars(dyn_state)
 
-   if(budget_write(step_offset=nint(dtime))) then
-      call budget_update(dyn_state%elem,dyn_state%fvm, nets, nete, TimeLevel%n0, n0_qdp, hybrid)
-   else
-      call budget_update_dyn_cnts(dyn_state%elem,dyn_state%fvm, nets, nete, TimeLevel%n0, n0_qdp, hybrid)
-   end if
+!jt   if(budget_write(step_offset=nint(dtime))) then
+!jt      call budget_update(dyn_state%elem,dyn_state%fvm, nets, nete, TimeLevel%n0, n0_qdp, hybrid)
+!jt   end if
 end subroutine dyn_run
 
 !===============================================================================
@@ -2378,179 +2343,4 @@ subroutine write_dyn_vars(dyn_out)
 
 end subroutine write_dyn_vars
 
-!=========================================================================================
-subroutine budget_update(elem,fvm,nets,nete,n0,n0_qdp,hybrid)
-
-  use budgets,                only: budget_write, thermo_budget_history, budget_num, budget_info, budget_put_global
-  use element_mod,            only: element_t
-  use fvm_control_volume_mod, only: fvm_struct
-  use global_norms_mod,       only: global_integral
-  use air_composition,        only: thermodynamic_active_species_liq_num, thermodynamic_active_species_ice_num
-  use prim_advance_mod,       only: calc_tot_energy_dynamics_diff
-  use time_manager,           only: get_step_size
-  use cam_thermo,             only: thermo_budget_num_vars, &
-                                    thermo_budget_vars_massv,wvidx,wlidx,wiidx,seidx,keidx,moidx,mridx,ttidx,teidx
-  ! arguments
-  type (element_t) , intent(inout) :: elem(:)
-  type(fvm_struct) , intent(inout) :: fvm(:)
-  type(hybrid_t)   , intent(in)    :: hybrid
-  integer          , intent(in)    :: n0, n0_qdp,nets,nete
-
-  ! Local variables
-  character(len=3)   :: budget_pkgtype,budget_optype  ! budget type phy or dyn
-  character(len=64)  :: name_out1,name_out2,name_out3,name_out4,name_out5,budget_name
-  integer            :: budget_state_ind,s_ind,b_ind,i,n,ie
-  logical            :: budget_outfld
-
-  real(r8)           :: budgets_global(budget_num,thermo_budget_num_vars)
-  real(r8), allocatable, dimension(:,:,:) :: tmpgll,tmpfvm
-  real(r8) :: dtime
-
-  !--------------------------------------------------------------------------------------
-
-
-  ! update energy budget differences and outfld
-
-  dtime = get_step_size()
-
-  do b_ind = 1,budget_num
-     call budget_info(b_ind,name=budget_name,pkgtype=budget_pkgtype,optype=budget_optype,state_ind=s_ind,outfld=budget_outfld)
-     if (budget_pkgtype=='dyn'.and.(budget_optype=='dif'.or.budget_optype=='sum')) then
-          call calc_tot_energy_dynamics_diff(elem,fvm, nets, nete, n0, n0_qdp,trim(budget_name))
-     !
-     ! Output energy diagnostics
-     !
-        if (thermo_budget_history) then
-        name_out1 = 'SE_'   //trim(budget_name)
-        name_out2 = 'KE_'   //trim(budget_name)
-        name_out3 = 'WV_'   //trim(budget_name)
-        name_out4 = 'WL_'   //trim(budget_name)
-        name_out5 = 'WI_'   //trim(budget_name)
-           do ie=nets,nete
-              call outfld(name_out1, elem(ie)%derived%budget(:,:,seidx,s_ind), npsq, ie)
-              call outfld(name_out2, elem(ie)%derived%budget(:,:,keidx,s_ind), npsq, ie)
-              !
-              ! sum over vapor
-              call outfld(name_out3, elem(ie)%derived%budget(:,:,wvidx,s_ind), npsq, ie)
-              !
-              ! sum over liquid water
-              if (thermodynamic_active_species_liq_num>0) &
-                   call outfld(name_out4, elem(ie)%derived%budget(:,:,wlidx,s_ind), npsq, ie)
-              !
-              ! sum over ice water
-              if (thermodynamic_active_species_ice_num>0) &
-                   call outfld(name_out5, elem(ie)%derived%budget(:,:,wiidx,s_ind), npsq, ie)
-           end do
-        end if
-     end if
-  end do
-
-  ! update energy budget globals
-
-  allocate(tmpgll(np,np,nets:nete))
-  if (ntrac>0) allocate(tmpfvm(nc,nc,nets:nete))
-
-  do b_ind=1,budget_num
-     call budget_info(b_ind,name=budget_name,pkgtype=budget_pkgtype,optype=budget_optype,state_ind=s_ind)
-     if (budget_pkgtype=='dyn') then
-        do n=1,thermo_budget_num_vars
-           ! Normalize energy sums and convert to W/s
-           if (ntrac>0.and.thermo_budget_vars_massv(n)) then
-              tmpfvm=0._r8
-              if (elem(nets)%derived%budget_cnt(b_ind).gt.0.) then
-                 do ie=nets,nete
-                    tmpfvm(:,:,ie)=fvm(ie)%budget(:,:,n,s_ind)/elem(ie)%derived%budget_cnt(b_ind)
-                 enddo
-              end if
-           else
-              tmpgll=0._r8
-              if (elem(nets)%derived%budget_cnt(b_ind).gt.0.) then
-                 do ie=nets,nete
-                    tmpgll(:,:,ie)=elem(ie)%derived%budget(:,:,n,s_ind)/elem(ie)%derived%budget_cnt(b_ind)
-                 end do
-              end if
-           end if
-           if (ntrac>0.and.thermo_budget_vars_massv(n)) then
-              budgets_global(b_ind,n) = global_integral(fvm, tmpfvm(:,:,nets:nete),hybrid,nc,nets,nete)
-           else
-              budgets_global(b_ind,n) = global_integral(elem, tmpgll(:,:,nets:nete),hybrid,np,nets,nete)
-           end if
-           ! divide by time for proper units if not a mass budget.
-           if (.not.thermo_budget_vars_massv(n)) &
-                budgets_global(b_ind,n)=budgets_global(b_ind,n)/dtime
-           if (masterproc) then
-              if (ntrac>0.and.thermo_budget_vars_massv(n)) then
-                 write(iulog,*)"putting global from fvm ",trim(budget_name)," m_cnst=",n," ",budgets_global(b_ind,n)," cnt/subcyc/sum_tmp=",elem(nets)%derived%budget_cnt(b_ind),elem(nets)%derived%budget_subcycle(b_ind),sum(tmpfvm(:,:,nets))
-              else
-                 write(iulog,*)"putting global from elem ",trim(budget_name)," m_cnst=",n," ",budgets_global(b_ind,n)," cnt/subcyc/sum_tmp=",elem(nets)%derived%budget_cnt(b_ind),elem(nets)%derived%budget_subcycle(b_ind),sum(tmpgll(:,:,nets))
-              end if
-              call budget_put_global(trim(budget_name),n,budgets_global(b_ind,n))
-           end if
-        end do
-     end if
-  end do
-  deallocate(tmpgll)
-  if (ntrac > 0) deallocate(tmpfvm)
-
-  ! reset dyn budget states and counts
-  do b_ind=1,budget_num
-     call budget_info(b_ind,name=budget_name,pkgtype=budget_pkgtype,optype=budget_optype,state_ind=s_ind)
-     if (budget_pkgtype=='dyn') then
-        if (masterproc) write(iulog,*)"resetting %budget for ",trim(budget_name)
-        do ie=nets,nete
-           elem(ie)%derived%budget(:,:,:,s_ind)=0._r8
-           elem(ie)%derived%budget_cnt(b_ind)=0
-           elem(ie)%derived%budget_subcycle(b_ind)=0
-           if (ntrac>0) fvm(ie)%budget(:,:,:,s_ind)=0._r8
-        end do
-     end if
-  end do
-
-end subroutine budget_update
-!=========================================================================================
-subroutine budget_update_dyn_cnts(elem,fvm,nets,nete,n0,n0_qdp,hybrid)
-
-  use budgets,                only: thermo_budget_history, budget_num, budget_info, budget_put_global
-  use element_mod,            only: element_t
-  use fvm_control_volume_mod, only: fvm_struct
-  use global_norms_mod,       only: global_integral
-  use air_composition,        only: thermodynamic_active_species_liq_num, thermodynamic_active_species_ice_num
-  use prim_advance_mod,       only: calc_tot_energy_dynamics_diff
-  use time_manager,           only: get_step_size
-  use cam_thermo,             only: thermo_budget_num_vars, &
-                                    thermo_budget_vars_massv,wvidx,wlidx,wiidx,seidx,keidx,moidx,mridx,ttidx,teidx
-  ! arguments
-  type (element_t) , intent(inout) :: elem(:)
-  type(fvm_struct) , intent(in)    :: fvm(:)
-  type(hybrid_t)   , intent(in)    :: hybrid
-  integer          , intent(in)    :: n0, n0_qdp,nets,nete
-
-  ! Local variables
-  character(len=3)   :: budget_pkgtype,budget_optype  ! budget type phy or dyn
-  character(len=64)  :: name_out1,name_out2,name_out3,name_out4,name_out5,budget_name
-  integer            :: budget_state_ind,s_ind,b_ind,i,n,ie
-  logical            :: budget_outfld
-
-  real(r8)           :: budgets_global(budget_num,thermo_budget_num_vars)
-
-  !--------------------------------------------------------------------------------------
-  ! update energy budget differences and outfld
-
-  if (thermo_budget_history) then
-     do b_ind = 1,budget_num
-        call budget_info(b_ind,name=budget_name,pkgtype=budget_pkgtype,optype=budget_optype,state_ind=s_ind,outfld=budget_outfld)
-        if (budget_pkgtype=='dyn') then
-           do ie=nets,nete
-              ! stage budget counts updated in calc_te on the first subcycle need to reset the subcycle count
-              elem(ie)%derived%budget_subcycle(b_ind)=0
-              ! need to update dif and sum budget_counts for normalization
-              if (budget_optype=='dif'.or.budget_optype=='sum') &
-                   elem(ie)%derived%budget_cnt(b_ind)=elem(ie)%derived%budget_cnt(b_ind)+1
-           end do
-        end if
-     end do
-  end if
-
-end subroutine budget_update_dyn_cnts
-!=========================================================================================
 end module dyn_comp

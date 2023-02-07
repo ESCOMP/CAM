@@ -46,6 +46,18 @@ public :: &
    diag_physvar_ic,          &
    nsurf
 
+integer, public, parameter                         :: num_stages = 8
+character (len = 4), dimension(num_stages) :: stage = (/"phBF","phBP","phAP","phAM","dyBF","dyBP","dyAP","dyAM"/)
+character (len = 45),dimension(num_stages) :: stage_txt = (/&
+     " before energy fixer                     ",& !phBF - physics energy
+     " before parameterizations                ",& !phBF - physics energy
+     " after parameterizations                 ",& !phAP - physics energy
+     " after dry mass correction               ",& !phAM - physics energy
+     " before energy fixer (dycore)            ",& !dyBF - dynamics energy
+     " before parameterizations (dycore)       ",& !dyBF - dynamics energy
+     " after parameterizations (dycore)        ",& !dyAP - dynamics energy
+     " after dry mass correction (dycore)      " & !dyAM - dynamics energy
+     /)
 
 ! Private data
 
@@ -74,6 +86,8 @@ logical          :: history_budget                 ! output tendencies and state
                                                    ! temperature, water vapor, cloud ice and cloud
                                                    ! liquid budgets.
 integer          :: history_budget_histfile_num    ! output history file number for budget fields
+logical          :: thermo_budget_hist             ! output budget
+integer          :: thermo_budget_hfile_num        ! output history file number for budget fields
 logical          :: history_waccm                  ! outputs typically used for WACCM
 
 ! Physics buffer indices
@@ -179,10 +193,11 @@ contains
     use constituent_burden, only: constituent_burden_init
     use physics_buffer,     only: pbuf_set_field
     use tidal_diag,         only: tidal_diag_init
+    use budgets,            only: budget_add
 
     type(physics_buffer_desc), pointer, intent(in) :: pbuf2d(:,:)
 
-    integer :: k, m
+    integer :: k, m, istage
     integer :: ierr
     ! outfld calls in diag_phys_writeout
     call addfld (cnst_name(1), (/ 'lev' /), 'A', 'kg/kg',    cnst_longname(1))
@@ -383,8 +398,31 @@ contains
     call addfld( 'CPAIRV', (/ 'lev' /), 'I', 'J/K/kg', 'Variable specific heat cap air' )
     call addfld( 'RAIRV', (/ 'lev' /), 'I', 'J/K/kg', 'Variable dry air gas constant' )
 
+    if (thermo_budget_hist) then
+       !
+       ! energy diagnostics addflds for vars_stage combinations plus budget_adds for
+       ! just the stages as the vars portion is accounted for via an extra array
+       ! dimension in the state%te_budgets array.
+       !
+       do istage = 1, num_stages
+          call budget_add(TRIM(ADJUSTL(stage(istage))),'phy',longname=TRIM(ADJUSTL(stage_txt(istage))),outfld=.true.)
+       end do
+       
+       ! Create budgets that are a sum/dif of 2 stages
+       
+       call budget_add('BP_param_and_efix','phAP','phBF','phy','dif',longname='dE/dt CAM physics parameterizations + efix dycore E (phAP-phBF)',outfld=.true.)
+       call budget_add('BD_param_and_efix','dyAP','dyBF','phy','dif',longname='dE/dt CAM physics parameterizations + efix dycore E (dyAP-dyBF)',outfld=.true.)
+       call budget_add('BP_phy_params','phAP','phBP','phy','dif',longname='dE/dt CAM physics parameterizations (phAP-phBP)',outfld=.true.)
+       call budget_add('BD_phy_params','dyAP','dyBP','phy','dif',longname='dE/dt CAM physics parameterizations using dycore E (dyAP-dyBP)',outfld=.true.)
+       call budget_add('BP_pwork','phAM','phAP','phy','dif',longname='dE/dt dry mass adjustment (phAM-phAP)',outfld=.true.)
+       call budget_add('BD_pwork','dyAM','dyAP','phy','dif',longname='dE/dt dry mass adjustment using dycore E (dyAM-dyAP)',outfld=.true.)
+       call budget_add('BP_efix','phBP','phBF','phy','dif',longname='dE/dt energy fixer (phBP-phBF)',outfld=.true.)
+       call budget_add('BD_efix','dyBP','dyBF','phy','dif',longname='dE/dt energy fixer using dycore E (dyBP-dyBF)',outfld=.true.)
+       call budget_add('BP_phys_tot','phAM','phBF','phy','dif',longname='dE/dt physics total (phAM-phBF)',outfld=.true.)
+       call budget_add('BD_phys_tot','dyAM','dyBF','phy','dif',longname='dE/dt physics total using dycore E (dyAM-dyBF)',outfld=.true.)
+    endif
   end subroutine diag_init_dry
-
+  
   subroutine diag_init_moist(pbuf2d)
 
     ! Declare the history fields for which this module contains outfld calls.
@@ -693,6 +731,8 @@ contains
 
     type(physics_buffer_desc), pointer, intent(in) :: pbuf2d(:,:)
 
+    integer          :: thermo_budget_hfile_num        ! output history file number for budget fields
+
     ! ----------------------------
     ! determine default variables
     ! ----------------------------
@@ -701,7 +741,9 @@ contains
          history_eddy_out   = history_eddy    , &
          history_budget_out = history_budget  , &
          history_budget_histfile_num_out = history_budget_histfile_num, &
-         history_waccm_out  = history_waccm)
+         history_waccm_out  = history_waccm, &
+         thermo_budget_hist_out = thermo_budget_hist, &
+         thermo_budget_hfile_num_out = thermo_budget_hfile_num)
 
     call diag_init_dry(pbuf2d)
     if (moist_physics) then

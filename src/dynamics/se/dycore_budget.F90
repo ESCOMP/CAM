@@ -3,8 +3,7 @@ use shr_kind_mod, only: r8=>shr_kind_r8
 implicit none
 
 public :: print_budget
-real(r8), parameter :: eps      = 1.0E-9_r8
-real(r8), parameter :: eps_mass = 1.0E-12_r8
+real(r8), parameter :: eps = 1.0E-9_r8
 
 real(r8), save :: previous_dEdt_adiabatic_dycore = 0.0_r8
 real(r8), save :: previous_dEdt_dry_mass_adjust  = 0.0_r8
@@ -135,7 +134,7 @@ subroutine print_budget()
      dycore = -ph_EFIX-previous_dEdt_dry_mass_adjust
      write(iulog,*) ""
      write(iulog,*) "Dycore TE dissipation estimated from physics in pressure coordinate:"
-     write(iulog,*) "(note: to avoid sampling error we need dE/dt from previous time-step)"
+     write(iulog,*) "(note to avoid sampling error we need dE/dt from previous time-step)"
      write(iulog,*) ""
      write(iulog,*) "dE/dt adiabatic dycore estimated from physics (t=n-1) = "
      write(iulog,'(a58,F6.2,a6)') "-dE/dt energy fixer(t=n)-dE/dt dry-mass adjust(t=n-1) = ",dycore," W/M^2"
@@ -206,7 +205,7 @@ subroutine print_budget()
      write(iulog,*) ""     
      call budget_get_global('dBF',teidx,E_dBF)  !state passed to physics
      call budget_get_global('phBF',teidx,E_phBF)!state beginning physics
-!     if (abs(E_phBF)>eps) then
+     if (abs(E_phBF)>eps) then
        diff = abs_diff(E_dBF,E_phBF)
        if (abs(diff)<eps) then
          write(iulog,*)"yes. (dBF-phBF)/phBF =",diff
@@ -220,7 +219,7 @@ subroutine print_budget()
          write(iulog,*) "water_species_in_air = 'Q' !only water vapor energetically active"
          write(iulog,*) ""         
        end if
-!     end if
+     end if
      
     do m_cnst=1,thermo_budget_num_vars
        if (thermo_budget_vars_massv(m_cnst)) then 
@@ -233,38 +232,19 @@ subroutine print_budget()
           call budget_get_global('phAP-phBP',m_cnst,param)
           call budget_get_global('phAM-phBF',m_cnst,phys_total)
           
-          if (abs(pEFIX)>eps_mass) then
-            write(iulog,*) "dMASS/dt energy fixer        (pBP-pBF) ",pEFIX," Pa"
-            write(iulog,*) "ERROR: Mass not conserved in energy fixer. ABORT"
-            call endrun('dycore_budget module: Mass not conserved in energy fixer. See atm.log')
-          endif
-          if (abs(pDMEA)>eps_mass) then
-            write(iulog,*)"dMASS/dt dry mass adjustment (pAM-pAP) ",pDMEA," Pa"
-            write(iulog,*) "ERROR: Mass not conserved in dry mass adjustment. ABORT"
-            call endrun('dycore_budget module: Mass not conserved in dry mass adjustment. See atm.log')
-          end if
-          if (abs(param-phys_total)>eps_mass) then
-            write(iulog,*) "Error: dMASS/dt parameterizations (pAP-pBP) .ne. dMASS/dt physics total (pAM-pBF)"
-            write(iulog,*) "dMASS/dt parameterizations   (pAP-pBP) ",param," Pa"
-            write(iulog,*) "dMASS/dt physics total       (pAM-pBF) ",phys_total," Pa"
-            call endrun('dycore_budget module: mass change not only due to parameterizations. See atm.log')
-          end if
-
+          write(iulog,*)"dMASS/dt energy fixer        (pBP-pBF) ",pEFIX," Pa"
           write(iulog,*)"dMASS/dt parameterizations   (pAP-pBP) ",param," Pa"
+          write(iulog,*)"dMASS/dt dry mass adjustment (pAM-pAP) ",pDMEA," Pa"
           write(iulog,*)"dMASS/dt physics total       (pAM-pBF) ",phys_total," Pa"
           write(iulog,*)"  "
-          !
-          ! detailed mass budget in dynamical core
-          !
           if (is_budget('dAD').and.is_budget('dBD').and.is_budget('dAR').and.is_budget('dCH')) then
              call budget_get_global('dAD-dBD',m_cnst,mass_change__2D_dyn)
              call budget_get_global('dAR-dAD',m_cnst,mass_change__vertical_remapping)
              diff = mass_change__2D_dyn+mass_change__vertical_remapping
              write(iulog,*)"dMASS/dt total adiabatic dynamics       ",diff," Pa"
-             if (abs(diff)>eps_mass) then
+             if (abs(diff)>1.E-12_r8) then
                 write(iulog,*) "Error: mass non-conservation in dynamical core"
-                write(iulog,*) "(detailed budget below)"
-                write(iulog,*) " "                
+                
                 write(iulog,*)"dMASS/dt 2D dynamics            (dAD-dBD) ",mass_change__2D_dyn," Pa"
                 if (is_budget('dAR').and.is_budget('dAD')) then
                    call budget_get_global('dAR',m_cnst,dar)

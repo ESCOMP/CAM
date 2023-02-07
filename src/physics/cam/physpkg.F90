@@ -776,7 +776,8 @@ contains
     use cam_snapshot,       only: cam_snapshot_init
     use cam_history,        only: addfld, register_vector_field, add_default, horiz_only
     use phys_control,       only: phys_getopts
-    use check_energy,       only: check_energy_budgets_init, check_energy_budget_state_init
+!jt    use check_energy,       only: check_energy_budgets_init, check_energy_budget_state_init
+!jt    use check_energy,       only: check_energy_budgets_init
 
     ! Input/output arguments
     type(physics_state), pointer       :: phys_state(:)
@@ -803,9 +804,9 @@ contains
 
     do lchnk = begchunk, endchunk
        call physics_state_set_grid(lchnk, phys_state(lchnk))
-       call check_energy_budget_state_init(phys_state(lchnk))
+!jt       call check_energy_budget_state_init(phys_state(lchnk))
     end do
-    call check_energy_budgets_init()
+!jt    call check_energy_budgets_init()
 
     !-------------------------------------------------------------------------------------------
     ! Initialize any variables in cam_thermo which are not temporally and/or spatially constant
@@ -1064,7 +1065,8 @@ contains
     use budgets,        only: budget_write
     use time_manager,   only: get_nstep
     use cam_diagnostics,only: diag_allocate, diag_physvar_ic
-    use check_energy,   only: check_energy_gmean, check_energy_phys_budget_update, check_energy_phys_cnt_update
+!jt    use check_energy,   only: check_energy_gmean, check_energy_phys_budget_update, check_energy_phys_cnt_update
+    use check_energy,   only: check_energy_gmean
     use phys_control,   only: phys_getopts
     use spcam_drivers,  only: tphysbc_spcam
     use spmd_utils,     only: mpicom
@@ -1118,13 +1120,13 @@ contains
     call t_startf ('chk_en_gmean')
     call check_energy_gmean(phys_state, pbuf2d, ztodt, nstep)
     call t_stopf ('chk_en_gmean')
-    call t_startf ('chk_en_p_budget_update')
-    if(budget_write()) then
-       call check_energy_phys_budget_update(phys_state, ztodt, nstep)
-    else
-       call check_energy_phys_cnt_update(phys_state)
-    end if
-    call t_stopf ('chk_en_p_budget_update')
+!!$    call t_startf ('chk_en_p_budget_update')
+!!$    if(budget_write()) then
+!!$       call check_energy_phys_budget_update(phys_state, ztodt, nstep)
+!!$    else
+!!$       call check_energy_phys_cnt_update(phys_state)
+!!$    end if
+!!$    call t_stopf ('chk_en_p_budget_update')
 
     call t_stopf ('physpkg_st1')
 

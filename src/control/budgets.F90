@@ -6,7 +6,9 @@ use shr_kind_mod,     only: r8 => shr_kind_r8
 use spmd_utils,       only: masterproc
 use cam_abortutils,   only: endrun
 use cam_logfile,      only: iulog
-use cam_thermo,       only: thermo_budget_num_vars
+use cam_thermo,       only: thermo_budget_vars, thermo_budget_vars_descriptor, &
+                                 thermo_budget_vars_unit, thermo_budget_vars_massv, thermo_budget_num_vars
+use cam_history,      only: addfld, add_default, horiz_only
 
 implicit none
 private
@@ -26,6 +28,7 @@ end interface budget_add
 public :: &
    budget_init,           &! initialize budget variables
    budget_add,            &! add a budget to the list of budgets
+   budget_update,         &! update budget diffs, outflds, store new globals.
    budget_num_avail,      &! returns the number of available slots in the budget array
    budget_chk_dim,        &! check that number of budgets added equals dimensions (budget_array_max)
    budget_name_byind,     &! return name of a budget
@@ -37,6 +40,7 @@ public :: &
    budget_cnt_adjust,     &! advance or reset budget count
    budget_count,          &! return budget count
    is_budget,             &! return budget count
+!jt   is_budgetfile,         &! return budget count
    budget_get_global,     &! return budget count
    budget_put_global,     &! return budget count
    budget_write,          &! write_budget: time to write global budget
@@ -50,9 +54,9 @@ public :: &
 integer, parameter, public :: budget_array_max  = 100     ! number of budget diffs
 integer,           public            :: budget_cnt(budget_array_max)      ! budget counts for normalization
 logical,           public            :: budget_subcycle(budget_array_max) ! budget_subcycle counts
-integer,           public            :: budget_num_dyn = 0 !
-integer,           public            :: budget_num_phy = 0 !
 integer,           public            :: budget_num     = 0 !
+integer,           public            :: budget_num_phy = 0 !
+integer,           public            :: budget_num_dyn = 0 !
 integer,           public            :: budget_state_ind(budget_array_max)      !
 logical,           public, protected :: budget_out(budget_array_max)      ! outfld this stage
 character(len=64), public, protected :: budget_name(budget_array_max)     ! budget names
@@ -82,8 +86,8 @@ character*3, public :: budget_pkgtype(budget_array_max)! phy or dyn
 CONTAINS
 !==============================================================================================
 
-subroutine budget_stage_add (name, pkgtype, longname, outfld, subcycle)
-
+subroutine budget_stage_add (name, pkgtype, longname, outfld)
+   use dimensions_mod,    only: ntrac
    ! Register a budget.
 
    character(len=*), intent(in) :: &
@@ -95,30 +99,15 @@ subroutine budget_stage_add (name, pkgtype, longname, outfld, subcycle)
       longname    ! value for long_name attribute in netcdf output (128 char max, defaults to name)
    logical,          intent(in), optional :: &
       outfld  ! true => default CAM output of budget in kg/kg
-   logical,          intent(in), optional :: &
-      subcycle  ! true => This budget is subcycled
-   integer  :: state_idx    ! dyn/phy state budget index (in q array)
+
    character(len=*), parameter :: sub='budget_stage_add'
    character(len=128) :: errmsg
-   !-----------------------------------------------------------------------
+   character (len=108)         :: str1, str2, str3
+   logical :: thermo_budget_hist
+   integer :: ivars
+  !-----------------------------------------------------------------------
 
-   ! set budget index and check validity
-   if (pkgtype=='phy') then
-      budget_num_phy = budget_num_phy+1
-      state_idx  = budget_num_phy
-   else if (pkgtype=='dyn') then
-      budget_num_dyn = budget_num_dyn+1
-      state_idx  = budget_num_dyn
-   else
-      call endrun('unknown budget pkgtype')
-   end if
    budget_num = budget_num+1
-
-   if (budget_num > budget_array_max) then
-      write(errmsg, *) sub//': FATAL: budget stage index greater than budget stage max=', budget_array_max
-      call endrun(errmsg)
-   end if
-
    ! set budget name and constants
    budget_name(budget_num) = name
    if (present(longname)) then
@@ -136,19 +125,31 @@ subroutine budget_stage_add (name, pkgtype, longname, outfld, subcycle)
    end if
    budget_optype(budget_num)='stg'
    budget_pkgtype(budget_num)=pkgtype
-   budget_state_ind(budget_num)=state_idx
-   if (present(subcycle)) then
-      budget_subcycle(budget_num)=subcycle
-   else
-      budget_subcycle(budget_num)=.false.
-   end if
    budget_stagename(budget_num)= trim(name)
 
-end subroutine budget_stage_add
-
+   do ivars=1, thermo_budget_num_vars
+      write(str1,*) TRIM(ADJUSTL(thermo_budget_vars(ivars))),"_",TRIM(ADJUSTL(name))
+      write(str2,*) TRIM(ADJUSTL(thermo_budget_vars_descriptor(ivars)))," ", &
+           TRIM(ADJUSTL(longname))
+      write(str3,*) TRIM(ADJUSTL(thermo_budget_vars_unit(ivars)))
+      if (ntrac>0.and.thermo_budget_vars_massv(ivars)) then
+!jt         call addfld (TRIM(ADJUSTL(str1))//'&BG',   horiz_only, 'C', TRIM(ADJUSTL(str3)),TRIM(ADJUSTL(str2)),gridname='FVM')
+         call addfld (TRIM(ADJUSTL(str1)),   horiz_only, 'C', TRIM(ADJUSTL(str3)),TRIM(ADJUSTL(str2)),gridname='FVM')
+      else
+!jt         call addfld (TRIM(ADJUSTL(str1))//'&BG',   horiz_only, 'C', TRIM(ADJUSTL(str3)),TRIM(ADJUSTL(str2)),gridname='GLL')
+         call addfld (TRIM(ADJUSTL(str1)),   horiz_only, 'C', TRIM(ADJUSTL(str3)),TRIM(ADJUSTL(str2)),gridname='GLL')
+      end if
+!jt      call add_default(TRIM(ADJUSTL(str1))//'&BG', 0, 'C') 
+      call add_default(TRIM(ADJUSTL(str1)), thermo_budget_histfile_num, 'C') 
+      write(6,*)'adding default budget field ',TRIM(ADJUSTL(str1)),' on history file ',thermo_budget_histfile_num
+   end do
+   
+ end subroutine budget_stage_add
+ 
 !!$!==============================================================================
 
-subroutine budget_diff_add (name, stg1name, stg2name, pkgtype, optype, longname, outfld, subcycle)
+subroutine budget_diff_add (name, stg1name, stg2name, pkgtype, optype, longname, outfld)
+   use dimensions_mod,     only: ntrac
 
    ! Register a budget.
 
@@ -167,30 +168,15 @@ subroutine budget_diff_add (name, stg1name, stg2name, pkgtype, optype, longname,
    logical,          intent(in), optional :: &
       outfld  ! true => default CAM output of budget in kg/kg
 
-   logical,          intent(in), optional :: &
-      subcycle  ! true => if this budget is subcycled
-
    character(len=*), parameter :: sub='budget_diff_add'
    character(len=128) :: errmsg
    character(len=1)   :: opchar
-   integer            :: state_idx
+   character (len=256)         :: str1, str2, str3, strstg1, strstg2
+   integer :: ivars
    !-----------------------------------------------------------------------
-   ! set budget index and check validity
-   if (pkgtype=='phy') then
-      budget_num_phy=budget_num_phy+1
-      state_idx = budget_num_phy
-   else if (pkgtype=='dyn') then
-      budget_num_dyn=budget_num_dyn+1
-      state_idx = budget_num_dyn
-   else
-      call endrun('bad budget pkgtype')
-   end if
-   budget_num= budget_num+1
+
+   budget_num = budget_num + 1
    budget_pkgtype(budget_num)=pkgtype
-   if (budget_num > budget_array_max) then
-      write(errmsg, *) sub//': FATAL: budget diff index:',budget_num,' greater than budget_array_max=', budget_array_max
-      call endrun(errmsg)
-   end if
 
    ! set budget name and constants
    budget_name(budget_num) = name
@@ -210,8 +196,6 @@ subroutine budget_diff_add (name, stg1name, stg2name, pkgtype, optype, longname,
    budget_stagename(budget_num)= trim(stg1name)//opchar//trim(stg2name)
    budget_stg1index(budget_num) = budget_ind_byname(trim(stg1name))
    budget_stg2index(budget_num) = budget_ind_byname(trim(stg2name))
-   budget_stg1stateidx(budget_num) = budget_state_ind(budget_stg1index(budget_num))
-   budget_stg2stateidx(budget_num) = budget_state_ind(budget_stg2index(budget_num))
    ! set outfld type
    ! (false: the module declaring the budget is responsible for outfld calls)
    if (present(outfld)) then
@@ -221,12 +205,30 @@ subroutine budget_diff_add (name, stg1name, stg2name, pkgtype, optype, longname,
    end if
 
    budget_optype(budget_num)=optype
-   budget_state_ind(budget_num)=state_idx
-   if (present(subcycle)) then
-      budget_subcycle(budget_num)=subcycle
-   else
-      budget_subcycle(budget_num)=.false.
-   end if
+
+
+! register history budget variables
+   do ivars=1, thermo_budget_num_vars
+      write(str1,*) TRIM(ADJUSTL(thermo_budget_vars(ivars))),"_",TRIM(ADJUSTL(name))
+      write(strstg1,*) TRIM(ADJUSTL(thermo_budget_vars(ivars))),"_",TRIM(ADJUSTL(stg1name))
+      write(strstg2,*) TRIM(ADJUSTL(thermo_budget_vars(ivars))),"_",TRIM(ADJUSTL(stg2name))
+      write(str2,*) TRIM(ADJUSTL(thermo_budget_vars_descriptor(ivars)))," ", &
+           TRIM(ADJUSTL(longname))
+      write(str3,*) TRIM(ADJUSTL(thermo_budget_vars_unit(ivars)))
+      if (ntrac>0.and.thermo_budget_vars_massv(ivars)) then
+!jt         call addfld (TRIM(ADJUSTL(str1))//'&BG',   horiz_only, 'C', TRIM(ADJUSTL(str3)),TRIM(ADJUSTL(str2)),gridname='FVM')
+!jt         call addfld (TRIM(ADJUSTL(str1))//'&BG',   horiz_only, 'C', TRIM(ADJUSTL(str3)),TRIM(ADJUSTL(str2)), &
+         call addfld (TRIM(ADJUSTL(str1)),   horiz_only, 'C', TRIM(ADJUSTL(str3)),TRIM(ADJUSTL(str2)), &
+              gridname='FVM',op=optype,op_f1name=TRIM(ADJUSTL(strstg1)),op_f2name=TRIM(ADJUSTL(strstg2)))
+      else
+!jt         call addfld (TRIM(ADJUSTL(str1))//'&BG',   horiz_only, 'C', TRIM(ADJUSTL(str3)),TRIM(ADJUSTL(str2)), &
+         call addfld (TRIM(ADJUSTL(str1)),   horiz_only, 'C', TRIM(ADJUSTL(str3)),TRIM(ADJUSTL(str2)), &
+              gridname='GLL',op=optype,op_f1name=TRIM(ADJUSTL(strstg1)),op_f2name=TRIM(ADJUSTL(strstg2)))
+      endif
+!jt      call add_default(TRIM(ADJUSTL(str1))//'&BG', 0, 'C) 
+      call add_default(TRIM(ADJUSTL(str1)), thermo_budget_histfile_num, 'C') 
+      write(6,*)'adding default budget field ',TRIM(ADJUSTL(str1)),' on history file ',thermo_budget_histfile_num
+   end do
 
  end subroutine budget_diff_add
 !==============================================================================
@@ -408,8 +410,13 @@ subroutine budget_cnt_adjust(ind,reset)
 
  end subroutine budget_cnt_adjust
 !==============================================================================================
-subroutine budget_init()
+subroutine budget_init(dyn_area,phy_area,npsq,ncsq,nets,nete)
 
+  real(r8),          intent(in)   :: dyn_area(npsq,nets:nete)
+  real(r8),          intent(in)   :: phy_area(ncsq,nets:nete)
+  integer,           intent(in)   :: npsq,nets,nete,ncsq
+
+  integer                         :: i,ie
    ! Initial budget module variables.
 
   budget_cnt(:) = 0._r8
@@ -426,6 +433,16 @@ subroutine budget_init()
   budget_stg1name(:)= 'UNSET'
   budget_stg2name(:)= 'UNSET'
   budget_subcycle(:)= .false.
+
+!jt  call addfld ('dyn_area&BG',  horiz_only, 'A', 'steradian', 'dynamics grid area' , gridname='GLL')
+!jt  call addfld ('phy_area&BG',  horiz_only, 'A', 'steradian', 'physics grid area'  , gridname='FVM')
+  call addfld ('dyn_area',  horiz_only, 'A', 'steradian', 'dynamics grid area' , gridname='GLL')
+  call addfld ('phy_area',  horiz_only, 'A', 'steradian', 'physics grid area'  , gridname='FVM')
+!!$  ! Create hbuf fields to weight global integrals
+!!$  do ie=nets,nete
+!!$     call outfld('dyn_area', dyn_area(:,ie), npsq, ie)
+!!$     call outfld('phy_area', phy_area(:,ie), ncsq, ie)
+!!$  end do
 
 end subroutine budget_init
 !==============================================================================================
@@ -943,6 +960,7 @@ function budget_count(ind)
    else
       thermo_budgeting=.true.
    end if
+
    ! Write out thermo_budget options
    if (masterproc) then
       if (trim(thermo_budget_averaging_option) == 'NSTEP' ) then
@@ -975,8 +993,156 @@ function budget_count(ind)
       end if
 
    end if
-
-
  end subroutine budget_readnl
+!=========================================================================================
+ subroutine budget_update(pkgtype, mpi_comm_id)
+
+!!$  use shr_kind_mod,         only: r8 => shr_kind_r8
+!!$  use shr_reprosum_mod,     only: shr_reprosum_calc, shr_reprosum_tolExceeded
+!!$  use shr_reprosum_mod,     only: shr_reprosum_reldiffmax, shr_reprosum_recompute
+!!$  use perf_mod,             only: t_startf, t_stopf
+!!$  use cam_logfile,          only: iulog
+!!$  use cam_thermo,           only: thermo_budget_vars_massv
+!!$  use cam_history_support,  only: active_entry,ptapes
+!!$  use cam_history,          only: is_budgetfile
+!!$
+!!$  ! arguments
+  character(len=3), intent(in)     :: pkgtype
+  integer,          intent(in)     :: mpi_comm_id
+!!$
+!!$  ! Local variables
+!!$  integer            :: s_ind,b_ind,n,ie,begdim3,enddim3,t
+!!$  logical            :: budget_outfld
+!!$
+!!$  type (active_entry), pointer :: tape(:) => null()          ! history tapes
+!!$!  real(r8)           :: budgets_global(budget_num,thermo_budget_num_vars)
+!!$!  real(r8), allocatable, dimension(:,:,:) :: tmpgll,tmpfvm
+!!$  real(r8),pointer      :: hbuf0(:,:,:),hbuf1(:,:,:),hbuf2(:,:,:)     ! history buffer
+!!$
+!!$  !--------------------------------------------------------------------------------------
+!!$  call t_startf ('budget_update')
+!!$
+!!$  if (thermo_budget_history) then
+!!$     ! update energy budget differences
+!!$     do t=1,ptapes
+!!$        if(is_budgetfile(file_index=t)) then
+!!$           do b_ind = 1,budget_num
+!              call budget_info(b_ind,name=budget_name,pkgtype=budget_pkgtype,optype=budget_optype,state_ind=s_ind)
+!!$              if (budget_pkgtype(b_ind)==trim(pkgtype).and.(budget_optype(b_ind)=='dif'.or.budget_optype(b_ind)=='sum')) then
+!!$                 call get_field_properties(trim(budget_name(b_ind)), found, tape_out=tape, ff_out=ff0)
+!!$                 call get_field_properties(trim(budget_stg1name(b_ind)), found, tape_out=tape, ff_out=ff1)
+!!$                 call get_field_properties(trim(budget_stg2name(b_ind)), found, tape_out=tape, ff_out=ff2)
+!!$                 f0 = masterlist(ff0)%thisentry%htapeindx(t)
+!!$                 f1 = masterlist(ff1)%thisentry%htapeindx(t)
+!!$                 f2 = masterlist(ff2)%thisentry%htapeindx(t)
+!!$                 
+!!$                 call tape(t)%hlist(f0)%field%get_bounds(3, begdim3, enddim3)
+!!$                 !           call h_field_op(f0,f1,f2,tape(t),budget_optype(b_ind))
+!!$                 hbuf0 => tape(t)%hlist(f0)%hbuf
+!!$                 hbuf1 => tape(t)%hlist(f1)%hbuf
+!!$                 hbuf2 => tape(t)%hlist(f2)%hbuf
+!!$                 do ie=begdim3,enddim3
+!!$                    if (budget_optype(b_ind)=='dif') then
+!!$                       hbuf0(:,:,ie)=hbuf1(:,:,ie)-hbuf2(:,:,ie)
+!!$                       call outfld(trim(budget_name(b_ind)),hbuf0(:,:,ie),npsq,ie)
+!!$                    else if (budget_optype=='sum') then
+!!$                       hbuf0(:,:,ie)=hbuf1(:,:,ie)+hbuf2(:,:,ie)
+!!$                       call outfld(budget_name(b_ind),hbuf0(:,:,ie),npsq,ie)
+!!$                    else
+!!$                       call endrun('dyn_readnl: ERROR: budget_optype unknown:'//budget_optype)
+!!$                    end if
+!!$                 end do
+!!$              end if
+!!$           end do
+!!$        end if
+!!$     end do
+!!$  end if
+!!$
+!!$  ! update all dynamics energy budget globals
+!!$
+!!$  allocate(tmpgll(np,np,nets:nete))
+!!$  if (ntrac>0) allocate(tmpfvm(nc,nc,nets:nete))
+!!$
+!!$  do b_ind=1,budget_num
+!!$     call budget_info(b_ind,name=budget_name,pkgtype=budget_pkgtype,optype=budget_optype,state_ind=s_ind)
+!!$     if (pkgtype(b_ind)=='dyn') then
+!!$        do n=1,thermo_budget_num_vars
+!!$           ! Normalize energy sums and convert to W/s
+!!$           if (ntrac>0.and.thermo_budget_vars_massv(n)) then
+!!$              tmpfvm=0._r8
+!!$              if (elem(nets)%derived%budget_cnt(b_ind).gt.0.) then
+!!$                 do ie=nets,nete
+!!$                    tmpfvm(:,:,ie)=fvm(ie)%budget(:,:,n,s_ind)/elem(ie)%derived%budget_cnt(b_ind)
+!!$                 enddo
+!!$              end if
+!!$           else
+!!$              tmpgll=0._r8
+!!$              if (elem(nets)%derived%budget_cnt(b_ind).gt.0.) then
+!!$                 do ie=nets,nete
+!!$                    tmpgll(:,:,ie)=elem(ie)%derived%budget(:,:,n,s_ind)/elem(ie)%derived%budget_cnt(b_ind)
+!!$                 end do
+!!$              end if
+!!$           end if
+!!$
+!!$              budgets_global(b_ind,n) = global_integral(fvm, hbuf(:,:,nets:nete),hybrid,nc,nets,nete)
+!!$
+!!$           if (ntrac>0.and.thermo_budget_vars_massv(n)) then
+!!$              budgets_global(b_ind,n) = global_integral(fvm, tmpfvm(:,:,nets:nete),hybrid,nc,nets,nete)
+!!$           else
+!!$              budgets_global(b_ind,n) = global_integral(elem, tmpgll(:,:,nets:nete),hybrid,np,nets,nete)
+!!$           end if
+!!$
+!!$           ! divide by time for proper units if not a mass budget.
+!!$           if (.not.thermo_budget_vars_massv(n)) &
+!!$                budgets_global(b_ind,n)=budgets_global(b_ind,n)/dtime
+!!$           if (masterproc) then
+!!$              if (ntrac>0.and.thermo_budget_vars_massv(n)) then
+!!$                 write(iulog,*)"putting global from fvm ",trim(budget_name)," m_cnst=",n," ",budgets_global(b_ind,n)," cnt/subcyc/sum_tmp=",elem(nets)%derived%budget_cnt(b_ind),elem(nets)%derived%budget_subcycle(b_ind),sum(tmpfvm(:,:,nets))
+!!$              else
+!!$                 write(iulog,*)"putting global from elem ",trim(budget_name)," m_cnst=",n," ",budgets_global(b_ind,n)," cnt/subcyc/sum_tmp=",elem(nets)%derived%budget_cnt(b_ind),elem(nets)%derived%budget_subcycle(b_ind),sum(tmpgll(:,:,nets))
+!!$              end if
+!!$              call budget_put_global(trim(budget_name),n,budgets_global(b_ind,n))
+!!$           end if
+!!$        end do
+!!$     end if
+!!$  end do
+!!$  deallocate(tmpgll)
+!!$  if (ntrac > 0) deallocate(tmpfvm)
+!!$
+!!$  call t_stopf ('budget_update')
+
+end subroutine budget_update
+!!$  !#######################################################################
+!!$
+!!$  logical function is_budgetfile (file_index)
+!!$    !
+!!$    !------------------------------------------------------------------------
+!!$    !
+!!$    ! Purpose: to determine:
+!!$    !
+!!$    !   a) if an IC file is active in this model run at all
+!!$    !       OR,
+!!$    !   b) if it is active, is the current file index referencing the IC file
+!!$    !      (IC file is always at ptapes)
+!!$    !
+!!$    !------------------------------------------------------------------------
+!!$    !
+!!$    ! Arguments
+!!$    !
+!!$    integer, intent(in), optional :: file_index ! index of file in question
+!!$
+!!$    is_budgetfile = .false.
+!!$
+!!$    if (present(file_index)) then
+!!$!jt      if (budgethist /= 'NONE' .and. file_index == ptapes) is_budgetfile = .true.
+!!$      if (budgethist /= 'NONE' .and. file_index == thermo_budget_histfile_num) is_budgetfile = .true.
+!!$    else
+!!$      if (budgethist /= 'NONE'                           ) is_budgetfile = .true.
+!!$    end if
+!!$
+!!$    return
+!!$
+!!$  end function is_budgetfile
+!!$
 
 end module budgets

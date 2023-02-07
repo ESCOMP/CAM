@@ -1790,6 +1790,6 @@ CONTAINS
          end select
       end if
       deallocate(species_idx, species_liq_idx, species_ice_idx)
-   end subroutine get_hydrostatic_energy_1hd
+    end subroutine get_hydrostatic_energy_1hd
 
 end module cam_thermo
