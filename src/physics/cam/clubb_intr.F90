@@ -2481,7 +2481,7 @@ end subroutine clubb_init_cnst
     ! Copy the state to state1 array to use in this routine
     call physics_state_copy(state, state1)
 
-    ! constituents are all treated as wet mmr by clubb
+    ! constituents are all treated as dry mmr by clubb
     call set_wet_to_dry(state1)
 
     if (clubb_do_liqsupersat) then
@@ -2858,7 +2858,7 @@ end subroutine clubb_init_cnst
     do k=1,nlev
       do i=1, ncol
         ! base state (dry) variables
-        rho_ds_zt(i,k+1)       = (1._r8/gravit)*(state1%pdeldry(i,pver-k+1)/dz_g(i,pver-k+1))
+        rho_ds_zt(i,k+1)       = rga*(state1%pdeldry(i,pver-k+1)/dz_g(i,pver-k+1))
         invrs_rho_ds_zt(i,k+1) = 1._r8/(rho_ds_zt(i,k+1))
 
         ! full state (moist) variables
@@ -3651,10 +3651,10 @@ end subroutine clubb_init_cnst
        
     do k=1,pver
       do i=1, ncol
-        se_a(i) = se_a(i) + clubb_s(i,k)*state1%pdel(i,k)/gravit
-        ke_a(i) = ke_a(i) + 0.5_r8*(um(i,k)**2+vm(i,k)**2)*state1%pdel(i,k)/gravit
-        wv_a(i) = wv_a(i) + (rtm(i,k)-rcm(i,k))*state1%pdeldry(i,k)/gravit
-        wl_a(i) = wl_a(i) + (rcm(i,k))*state1%pdeldry(i,k)/gravit
+        se_a(i) = se_a(i) + clubb_s(i,k)*state1%pdel(i,k)*rga
+        ke_a(i) = ke_a(i) + 0.5_r8*(um(i,k)**2+vm(i,k)**2)*state1%pdel(i,k)*rga
+        wv_a(i) = wv_a(i) + (rtm(i,k)-rcm(i,k))*state1%pdeldry(i,k)*rga
+        wl_a(i) = wl_a(i) + (rcm(i,k))*state1%pdeldry(i,k)*rga
       end do
     end do   
     
@@ -3666,10 +3666,10 @@ end subroutine clubb_init_cnst
     
     do k=1, pver
       do i=1, ncol
-        se_b(i) = se_b(i) + state1%s(i,k)*state1%pdel(i,k)/gravit
-        ke_b(i) = ke_b(i) + 0.5_r8*(state1%u(i,k)**2+state1%v(i,k)**2)*state1%pdel(i,k)/gravit
-        wv_b(i) = wv_b(i) + state1%q(i,k,ixq)*state1%pdeldry(i,k)/gravit
-        wl_b(i) = wl_b(i) + state1%q(i,k,ixcldliq)*state1%pdeldry(i,k)/gravit
+        se_b(i) = se_b(i) + state1%s(i,k)*state1%pdel(i,k)*rga
+        ke_b(i) = ke_b(i) + 0.5_r8*(state1%u(i,k)**2+state1%v(i,k)**2)*state1%pdel(i,k)*rga
+        wv_b(i) = wv_b(i) + state1%q(i,k,ixq)*state1%pdeldry(i,k)*rga
+        wl_b(i) = wl_b(i) + state1%q(i,k,ixcldliq)*state1%pdeldry(i,k)*rga
       end do
     end do
       
@@ -3961,8 +3961,8 @@ end subroutine clubb_init_cnst
         ! Only rliq is saved from deep convection, which is the reserved liquid.  We need to keep
         !   track of the integrals of ice and static energy that is effected from conversion to ice
         !   so that the energy checker doesn't complain.
-        det_s(i)                  = det_s(i) + ptend_loc%s(i,k)*state1%pdel(i,k)/gravit
-        det_ice(i)                = det_ice(i) - ptend_loc%q(i,k,ixcldice)*state1%pdeldry(i,k)/gravit
+        det_s(i)                  = det_s(i) + ptend_loc%s(i,k)*state1%pdel(i,k)*rga
+        det_ice(i)                = det_ice(i) - ptend_loc%q(i,k,ixcldice)*state1%pdeldry(i,k)*rga
       enddo
     enddo
    
