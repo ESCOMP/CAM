@@ -93,6 +93,7 @@ contains
 ! !REVISION HISTORY:
 !  08 Aug 2022 - H.P. Lin    - Initial version
 !  12 Jan 2023 - H.P. Lin    - Check if pbuf is 2-D or 3-D first
+!  09 Feb 2023 - H.P. Lin    - For 3-D pbuf, no longer set cflx and use 3-D forcing only.
 !EOP
 !------------------------------------------------------------------------------
 !BOC
@@ -108,6 +109,11 @@ contains
     integer               :: RC                        ! return code (dummy)
 
     logical, save         :: FIRST = .true.            ! is first run?
+
+    ! reset sflx here. (same as mo_srf_emissions.F90)
+    ! sflx is defined in chem_emissions (chemistry.F90) but without default values, and is
+    ! later added to cam_in%cflx. it must be initialized in this subroutine.
+    sflx(:,:) = 0._r8
 
     ! for first run, cache results of 3-D or 2-D scan within pcnst_is_extfrc
     ! to avoid lengthy lookups in future timesteps. hplin 1/12/23
@@ -148,18 +154,8 @@ contains
         tmpIdx = pbuf_get_index(fldname_ns, RC)
         if(tmpIdx > 0) then
             if(pcnst_is_extfrc(n)) then ! 3-D data
-                call pbuf_get_field(pbuf, tmpIdx, pbuf_ptr_3d)
-
-                if(.not. associated(pbuf_ptr_3d)) then ! sanity check
-                  call endrun("mo_srf_emissions hemco: FATAL - tmpIdx > 0 but pbuf_ptr_3d unassoc")
-                endif
-
-                ! for each col retrieve data from pbuf_ptr(I, K)
-                ! in this routine we only handle the pver (1 is TOA) dim of the 3-D emis data
-                ! and the rest is handled in extfrc_set to mimic existing behavior in CAM
-                sflx(1:ncol,n) = pbuf_ptr_3d(1:ncol,pver)
-
-                pbuf_ptr_3d => null()
+                ! if species is 3-D data, then all forcings set through 3-D. no longer process
+                ! their emissions here.
             else ! 2-D data
                 call pbuf_get_field(pbuf, tmpIdx, pbuf_ptr_2d)
 
@@ -214,6 +210,7 @@ contains
 !
 ! !REVISION HISTORY:
 !  08 Aug 2022 - H.P. Lin    - Initial version based on original from 14 Nov 2020
+!  09 Feb 2023 - H.P. Lin    - Use full 3-D emissions, including surface, if available
 !EOP
 !------------------------------------------------------------------------------
 !BOC
@@ -305,10 +302,10 @@ contains
           endif
 
           ! for each col retrieve data from pbuf_ik(I, K)
-          do k = 1, pver-1
+          ! this includes surface layer.
+          do k = 1, pver
             frcing(:ncol,k,m) = frcing(:ncol,k,m) + pbuf_ik(1:ncol,k) * kg_to_molec / ((zint(:ncol,k)-zint(:ncol,k+1)) * km_to_cm)
           enddo
-          ! remember vertical is inverted - REMOVE the top level as it is injected in mo_srf_emissions instead
 
           if ( frc_from_dataset(m) ) then
              xfcname = trim(extfrc_lst(m))//'_XFRC'
