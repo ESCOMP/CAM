@@ -3813,7 +3813,7 @@ end subroutine clubb_init_cnst
     ! and compute output, etc                           !
     ! ------------------------------------------------- !
 
-    !  Output CLUBB tendencies (convert dry basis to wet for consistent history variable definition
+    !  Output CLUBB tendencies (convert dry basis to wet for consistency with  history variable definition)
     temp2d(:ncol,:pver) = ptend_loc%q(:ncol,:pver,ixq)*state1%pdeldry(:ncol,:pver)/state1%pdel(:ncol,:pver)
     call outfld( 'RVMTEND_CLUBB', temp2d, pcols, lchnk)
 
