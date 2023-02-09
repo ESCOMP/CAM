@@ -1296,7 +1296,13 @@ end function chem_is_active
 !-------------------------------------------------------------------
   subroutine chem_final()
     use mee_ionization, only: mee_ion_final
+    use rate_diags, only: rate_diags_final
+    use species_sums_diags, only: species_sums_final
+
     call mee_ion_final()
+    call rate_diags_final()
+    call species_sums_final()
+
   end subroutine chem_final
 
 !-------------------------------------------------------------------

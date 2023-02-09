@@ -138,7 +138,6 @@
   'bc_a4 -> $INPUTDATA_ROOT/atm/cam/chem/emis/CMIP6_emissions_2010climo/emissions-cmip6_bc_a4_anthro_surface_2010climo_0.9x1.25_c20180918.nc',
   'bc_a4 -> $INPUTDATA_ROOT/atm/cam/chem/emis/CMIP6_emissions_2010climo/emissions-cmip6_bc_a4_bb_surface_2010climo_0.9x1.25_c20180918.nc',
   'DMS -> $INPUTDATA_ROOT/atm/cam/chem/emis/CMIP6_emissions_2010climo/emissions-cmip6_DMS_bb_surface_2010climo_0.9x1.25_c20180918.nc',
-  'DMS -> $INPUTDATA_ROOT/atm/cam/chem/emis/CMIP6_emissions_2010climo/emissions-cmip6_DMS_other_surface_2010climo_0.9x1.25_c20180918.nc',
   'num_a1 -> $INPUTDATA_ROOT/atm/cam/chem/emis/CMIP6_emissions_2010climo/emissions-cmip6_num_so4_a1_bb_surface_2010climo_0.9x1.25_c20180918.nc',
   'num_a1 -> $INPUTDATA_ROOT/atm/cam/chem/emis/CMIP6_emissions_2010climo/emissions-cmip6_num_so4_a1_anthro-ag-ship_surface_2010climo_0.9x1.25_c20180918.nc',
   'num_a2 -> $INPUTDATA_ROOT/atm/cam/chem/emis/CMIP6_emissions_2010climo/emissions-cmip6_num_so4_a2_anthro-res_surface_2010climo_0.9x1.25_c20180918.nc',
@@ -221,7 +220,6 @@
          'bc_a4 -> $INPUTDATA_ROOT/atm/cam/chem/emis/ne30np4/2010climo/emissions-cmip6_bc_a4_anthro_surface_2010climo_ne30np4_c20200519.nc',
          'bc_a4 -> $INPUTDATA_ROOT/atm/cam/chem/emis/ne30np4/2010climo/emissions-cmip6_bc_a4_bb_surface_2010climo_ne30np4_c20200519.nc',
          'DMS -> $INPUTDATA_ROOT/atm/cam/chem/emis/ne30np4/2010climo/emissions-cmip6_DMS_bb_surface_2010climo_ne30np4_c20200519.nc',
-         'DMS -> $INPUTDATA_ROOT/atm/cam/chem/emis/ne30np4/2010climo/emissions-cmip6_DMS_other_surface_2010climo_ne30np4_c20200224.nc',
          'num_a1 -> $INPUTDATA_ROOT/atm/cam/chem/emis/ne30np4/2010climo/emissions-cmip6_num_so4_a1_bb_surface_2010climo_ne30np4_c20200519.nc',
          'num_a1 -> $INPUTDATA_ROOT/atm/cam/chem/emis/ne30np4/2010climo/emissions-cmip6_num_so4_a1_anthro-ag-ship_surface_mol_2010climo_ne30np4_c20200519.nc',
          'num_a2 -> $INPUTDATA_ROOT/atm/cam/chem/emis/ne30np4/2010climo/emissions-cmip6_num_so4_a2_anthro-res_surface_mol_2010climo_ne30np4_c20200519.nc',
@@ -302,7 +300,6 @@
          'XYLENES -> $INPUTDATA_ROOT/atm/cam/chem/emis/ne30pg3/2010climo/emissions-cmip6_XYLENES_anthro_surface_2010climo_ne30pg3_c20200224.nc',
          'XYLENES -> $INPUTDATA_ROOT/atm/cam/chem/emis/ne30pg3/2010climo/emissions-cmip6_XYLENES_bb_surface_2010climo_ne30pg3_c20200224.nc',
          'DMS -> $INPUTDATA_ROOT/atm/cam/chem/emis/ne30pg3/2010climo/emissions-cmip6_DMS_bb_surface_2010climo_ne30pg3_c20200224.nc',
-         'DMS -> $INPUTDATA_ROOT/atm/cam/chem/emis/ne30pg3/2010climo/emissions-cmip6_DMS_other_surface_2010climo_ne30pg3_c20200224.nc',
          'num_a1 -> $INPUTDATA_ROOT/atm/cam/chem/emis/ne30pg3/2010climo/emissions-cmip6_num_so4_a1_bb_surface_2010climo_ne30pg3_c20200224.nc',
          'num_a1 -> $INPUTDATA_ROOT/atm/cam/chem/emis/ne30pg3/2010climo/emissions-cmip6_num_so4_a1_anthro-ag-ship_surface_mol_2010climo_ne30pg3_c20200224.nc',
          'num_a2 -> $INPUTDATA_ROOT/atm/cam/chem/emis/ne30pg3/2010climo/emissions-cmip6_num_so4_a2_anthro-res_surface_mol_2010climo_ne30pg3_c20200224.nc',
@@ -340,14 +337,14 @@
 <history_cesm_forcing>.false.</history_cesm_forcing>
 <history_scwaccm_forcing>.false.</history_scwaccm_forcing>
 
-<!-- Monthly --> 
+<!-- Monthly -->
 <fincl1>
          'CFC11STAR', 'AODDUST', 'AODDUST2', 'T', 'U', 'V', 'O3', 'OH', 'NO3', 'HO2',
          'LNO_COL_PROD', 'NO2_CLXF', 'SFNO', 'SFNH3', 'BRO',
          'CH3CL', 'CLO', 'CO2', 'HCL', 'HO2', 'HOCL', 'H2O', 'PHIS', 'Z3',
          'BENZENE', 'C2H2', 'C2H4', 'C2H6', 'C3H8', 'CCL4', 'CFC11', 'CFC113', 'CFC12',
          'CH2O', 'CH3BR', 'CH3CCL3', 'CH3CHO', 'CH3CL', 'CH3CN', 'CH3COCH3', 'CH3OH', 'CH4',
-         'CO', 'H2O2', 'HCFC22', 'HCN', 'HNO3', 'ISOP', 'MTERP', 'N2O', 'O3', 'O3S',  
+         'CO', 'H2O2', 'HCFC22', 'HCN', 'HNO3', 'ISOP', 'MTERP', 'N2O', 'O3', 'O3S',
          'PAN', 'SO2', 'TOLUENE', 'OH', 'ALKNIT', 'ALKOOH', 'BCARY', 'BENZENE', 'BENZOOH',
          'BEPOMUC', 'BIGALD', 'BIGALD1', 'BIGALD2', 'BIGALD3', 'BIGALD4', 'BIGALK', 'BIGENE', 'BR',
          'BRCL', 'BRO', 'BRONO2', 'BRY', 'BZALD', 'BZOOH', 'C2H2', 'C2H4', 'C2H5OH',
@@ -407,8 +404,8 @@
          'DF_SO2', 'DF_SOAG0', 'DF_SOAG1', 'DF_SOAG2', 'DF_SOAG3', 'DF_SOAG4', 'DF_SVOC', 'SO2_CLXF', 'SVOC_CLXF',
          'SFISOP', 'SFMTERP', 'SFCH3OH', 'SFCH3COCH3', 'SFCO', 'SFIVOC', 'SFSVOC', 'DO3CHM', 'DCOCHM',
          'O3_CHMP', 'O3_CHML', 'CH4_CHML', 'CO_CHMP', 'CO_CHML', 'CH3CCL3_CHML', 'SO2_CHML', 'SO2_CHMP', 'SO2_CLXF',
-         'SOAG0_CHMP', 'SOAG1_CHMP', 'SOAG2_CHMP', 'SOAG3_CHMP', 'SOAG4_CHMP',  
-         'r_HO2_O3', 'r_OH_O3', 'r_OH_O', 'r_O1D_H2O', 'r_het1', 'r_het2', 'r_het3', 'r_het4', 'r_het5', 'r_het6', 
+         'SOAG0_CHMP', 'SOAG1_CHMP', 'SOAG2_CHMP', 'SOAG3_CHMP', 'SOAG4_CHMP',
+         'r_HO2_O3', 'r_OH_O3', 'r_OH_O', 'r_O1D_H2O', 'r_het1', 'r_het2', 'r_het3', 'r_het4', 'r_het5', 'r_het6',
          'jo3_a', 'jno2', 'jpan', 'jh2o2', 'jcl2o2', 'bc_a1', 'bc_a4', 'dst_a1', 'dst_a2',
          'dst_a3', 'ncl_a1', 'ncl_a1', 'ncl_a2', 'ncl_a3', 'pom_a1', 'pom_a4', 'so4_a1', 'so4_a2',
          'so4_a3', 'soa1_a1', 'soa2_a1', 'soa3_a1', 'soa4_a1', 'soa5_a1', 'soa1_a2', 'soa2_a2', 'soa3_a2',
