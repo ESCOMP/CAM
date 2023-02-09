@@ -3808,22 +3808,27 @@ end subroutine clubb_init_cnst
       end if
     end if   
 
-    cmeliq(:,:) = ptend_loc%q(:,:,ixcldliq)
-
     ! ------------------------------------------------- !
     ! End column computation of CLUBB, begin to apply   !
     ! and compute output, etc                           !
     ! ------------------------------------------------- !
 
-    !  Output CLUBB tendencies 
-    call outfld( 'RVMTEND_CLUBB', ptend_loc%q(:,:,ixq), pcols, lchnk)
-    call outfld( 'RCMTEND_CLUBB', ptend_loc%q(:,:,ixcldliq), pcols, lchnk)
-    call outfld( 'RIMTEND_CLUBB', ptend_loc%q(:,:,ixcldice), pcols, lchnk)
-    call outfld( 'STEND_CLUBB',   ptend_loc%s,pcols, lchnk)
-    call outfld( 'UTEND_CLUBB',   ptend_loc%u,pcols, lchnk)
-    call outfld( 'VTEND_CLUBB',   ptend_loc%v,pcols, lchnk)     
+    !  Output CLUBB tendencies (convert dry basis to wet for consistent history variable definition
+    temp2d(:ncol,:pver) = ptend_loc%q(:ncol,:pver,ixq)*state1%pdeldry(:ncol,:pver)/state1%pdel(:ncol,:pver)
+    call outfld( 'RVMTEND_CLUBB', temp2d, pcols, lchnk)
 
-    call outfld( 'CMELIQ',        cmeliq, pcols, lchnk)
+    temp2d(:ncol,:pver) = ptend_loc%q(:ncol,:pver,ixcldliq)*state1%pdeldry(:ncol,:pver)/state1%pdel(:ncol,:pver)
+    call outfld( 'RCMTEND_CLUBB', temp2d, pcols, lchnk)
+
+    temp2d(:ncol,:pver) = ptend_loc%q(:ncol,:pver,ixcldice)*state1%pdeldry(:ncol,:pver)/state1%pdel(:ncol,:pver)
+    call outfld( 'RIMTEND_CLUBB', temp2d, pcols, lchnk)
+
+    call outfld( 'STEND_CLUBB', ptend_loc%s,pcols, lchnk)
+    call outfld( 'UTEND_CLUBB', ptend_loc%u,pcols, lchnk)
+    call outfld( 'VTEND_CLUBB', ptend_loc%v,pcols, lchnk)
+
+    cmeliq(:ncol,:pver) = ptend_loc%q(:ncol,:pver,ixcldliq)*state1%pdeldry(:ncol,:pver)/state1%pdel(:ncol,:pver)
+    call outfld( 'CMELIQ', cmeliq, pcols, lchnk)
 
     call physics_ptend_sum(ptend_loc,ptend_all,ncol)
     call physics_update(state1,ptend_loc,hdtime)
