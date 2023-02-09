@@ -2116,7 +2116,7 @@ end subroutine clubb_init_cnst
       vg,                       & ! V geostrophic wind                          [m/s]
       p_in_Pa,                  & ! Air pressure (thermodynamic levels)       	[Pa]
       rho_zm,                   & ! Air density on momentum levels              [kg/m^3]
-      rho_zt,                   & ! Air density on thermo levels                [kggg/m^3]
+      rho_zt,                   & ! Air density on thermo levels                [kg/m^3]
       exner,                    & ! Exner function (thermodynamic levels)       [-]
       rho_ds_zm,                & ! Dry, static density on momentum levels      	[kg/m^3]
       rho_ds_zt,                & ! Dry, static density on thermodynamic levels 	[kg/m^3]
