@@ -932,8 +932,8 @@ contains
 
        end if
 !-----------------------------------------------------------------
-!           co + oh --> co2 + ho2     (combined branches - do not use with CO_OH_b)
-! OBSOLETE - for mechanisms prior to Dec 2022
+!       ... co + oh --> co2 + ho2     (combined branches - do not use with CO_OH_b)
+!       note: for mechanisms prior to Dec 2022
 !-----------------------------------------------------------------
        if( usr_CO_OH_a_ndx > 0 ) then
           rxt(:,k,usr_CO_OH_a_ndx) = 1.5e-13_r8 * &
@@ -941,7 +941,7 @@ contains
        end if
 !-----------------------------------------------------------------
 ! 	... co + oh --> co2 + h (second branch JPL15-10, with CO+OH+M)
-! OBSOLETE - for mechanisms prior to Dec 2022
+!       note: for mechanisms prior to Dec 2022
 !-----------------------------------------------------------------
        if( usr_CO_OH_b_ndx > 0 ) then
          kinf(:)  = 2.1e+09_r8 * (temp(:ncol,k)/ t0)**(6.1_r8)
