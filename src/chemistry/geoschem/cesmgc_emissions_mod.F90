@@ -53,7 +53,7 @@ MODULE CESMGC_Emissions_Mod
   REAL(r8), ALLOCATABLE :: megan_wght_factors(:)
 
   ! Cache for is_extfrc?
-  LOGICAL :: pcnst_is_extfrc(iFirstCnst:pcnst) ! no idea why the indexing is not 1:gas_pcnst or why iFirstCnst can be < 0
+  LOGICAL,  ALLOCATABLE :: pcnst_is_extfrc(:) ! no idea why the indexing is not 1:gas_pcnst or why iFirstCnst can be < 0
 !
 ! !REVISION HISTORY:
 !  07 Oct 2020 - T. M. Fritz   - Initial version
@@ -249,8 +249,11 @@ CONTAINS
 
     ! Initialize pcnst_is_extfrc cache to avoid lengthy lookups in future timesteps
     ! on the get_extfrc_ndx routine. (hplin 1/20/23)
+    if(.not. allocated(pcnst_is_extfrc)) then
+      allocate(pcnst_is_extfrc(pcnst - iFirstCnst + 1))
+    endif
     do n = iFirstCnst, pcnst
-       pcnst_is_extfrc(n) = (get_extfrc_ndx(trim(cnst_name(n))) > 0)
+       pcnst_is_extfrc(n - iFirstCnst + 1) = (get_extfrc_ndx(trim(cnst_name(n))) > 0)
     enddo
 
   END SUBROUTINE CESMGC_Emissions_Init
@@ -379,7 +382,7 @@ CONTAINS
           pbuf_chnk => pbuf_get_chunk(hco_pbuf2d, LCHNK)
 
           ! Check if we need to get 3-D, or 2-D data
-          IF (pcnst_is_extfrc(N)) THEN
+          IF (pcnst_is_extfrc(N - iFirstCnst + 1)) THEN
              CALL pbuf_get_field(pbuf_chnk, tmpIdx, pbuf_ik)
 
              IF ( .NOT. ASSOCIATED(pbuf_ik) ) THEN ! Sanity check
@@ -397,7 +400,8 @@ CONTAINS
                 CALL ENDRUN("CESMGC_Emissions_Calc: FATAL - tmpIdx > 0 but pbuf_i not associated (E-2)")
              ENDIF
 
-             eflx(1:nY,:nZ,N) = pbuf_i(1:nY)
+             ! note: write to nZ level here as this is surface
+             eflx(1:nY,nZ,N) = pbuf_i(1:nY)
 
              ! Reset pointers
              pbuf_i    => NULL()
