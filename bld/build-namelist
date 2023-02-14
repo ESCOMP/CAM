@@ -2185,7 +2185,7 @@ if (($chem =~ /_mam4/ or $chem =~ /_mam5/) and ($phys =~ /cam6/ or $phys =~ /cam
     }
 
     # for old simple SOA schemes (without SOAE)
-    if ($chem =~ /trop_mam3/ or $chem =~ /trop_mam5/ or $chem =~ /waccm_ma/) {
+    if ($chem =~ /trop_mam3/ or $chem =~ /waccm_ma/) {
         %species = (%species,
                     'soag_an_srf_file'    => 'SOAG',
                     'soag_bg_srf_file'    => 'SOAG',
