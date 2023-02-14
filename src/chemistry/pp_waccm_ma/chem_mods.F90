@@ -25,7 +25,7 @@
                             clsze = 1, & ! loop length for implicit chemistry
                             rxt_tag_cnt = 290, &
                             enthalpy_cnt = 54, &
-                            nslvd = 15
+                            nslvd = 14
       integer :: clscnt(5) = 0
       integer :: cls_rxt_cnt(4,5) = 0
       integer :: clsmap(gas_pcnst,5) = 0
