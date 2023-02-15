@@ -19,6 +19,7 @@ module mo_usrrxt
   integer :: usr_N2O5_aer_ndx
   integer :: usr_NO3_aer_ndx
   integer :: usr_NO2_aer_ndx
+  integer :: usr_CO_OH_ndx
   integer :: usr_CO_OH_a_ndx
   integer :: usr_CO_OH_b_ndx
   integer :: usr_PAN_M_ndx
@@ -257,6 +258,7 @@ contains
     usr_N2O5_aer_ndx     = get_rxt_ndx( 'usr_N2O5_aer' )
     usr_NO3_aer_ndx      = get_rxt_ndx( 'usr_NO3_aer' )
     usr_NO2_aer_ndx      = get_rxt_ndx( 'usr_NO2_aer' )
+    usr_CO_OH_ndx        = get_rxt_ndx( 'usr_CO_OH' )
     usr_CO_OH_a_ndx      = get_rxt_ndx( 'usr_CO_OH_a' )
     usr_CO_OH_b_ndx      = get_rxt_ndx( 'usr_CO_OH_b' )
     usr_PAN_M_ndx        = get_rxt_ndx( 'usr_PAN_M' )
@@ -642,10 +644,10 @@ contains
 !-----------------------------------------------------------------
 ! 	... reaction probabilities for heterogeneous reactions
 !-----------------------------------------------------------------
-    real(r8), parameter :: gamma_n2o5 = 0.10_r8         ! from Jacob, Atm Env, 34, 2131, 2000
-    real(r8), parameter :: gamma_ho2  = 0.20_r8         !
-    real(r8), parameter :: gamma_no2  = 0.0001_r8       !
-    real(r8), parameter :: gamma_no3  = 0.001_r8        !
+    real(r8), parameter :: gamma_n2o5 = 0.02_r8         ! JPL19
+    real(r8), parameter :: gamma_ho2  = 0.10_r8         ! Gaubert et al., https://doi.org/10.5194/acp-20-14617-2020
+    real(r8), parameter :: gamma_no2  = 8.0e-6_r8       ! Liu et al., Environ.Sci.&Tech, 53, 3517, 2019 doi:10.1021/acs.est.8b06367
+    real(r8), parameter :: gamma_no3  = 0.002_r8        ! JPL19
     real(r8), parameter :: gamma_glyoxal  = 2.0e-4_r8   !  Washenfelder et al, JGR, 2011
 !TS1 species
     real(r8), parameter :: gamma_isopnita  = 0.005_r8        ! from Fisher et al., ACP, 2016
@@ -916,7 +918,22 @@ contains
           end if
        end if
 !-----------------------------------------------------------------
-!           co + oh --> co2 + ho2     (combined branches - do not use with CO_OH_b)
+! 	... co + oh --> co2 + ho2 (new single reaction for combined branches [JPL19])
+!-----------------------------------------------------------------
+       if( usr_CO_OH_ndx > 0 ) then
+         ko  (:)  = 6.9e-33_r8 * ( 298._r8 / temp(:ncol,k) )**(2.1_r8)
+         kinf(:)  = 1.1e-12_r8 * ( 298._r8 / temp(:ncol,k) )**(-1.3_r8)
+
+         term2(:) = (1 + (log10( ko(:)*m(:,k) / kinf(:) ))**2)**(-1)
+
+         term1(:) = (kinf(:) * ko(:)*m(:,k)) / (kinf(:) + ko(:)*m(:,k)) * (0.6_r8)**term2(:)
+
+         rxt(:ncol,k,usr_CO_OH_ndx) = term1(:) + 1.85e-13_r8 * exp(-65._r8/temp(:ncol,k)) * (1._r8 - term1(:)/kinf(:))
+
+       end if
+!-----------------------------------------------------------------
+!       ... co + oh --> co2 + ho2     (combined branches - do not use with CO_OH_b)
+!       note: for mechanisms prior to Dec 2022
 !-----------------------------------------------------------------
        if( usr_CO_OH_a_ndx > 0 ) then
           rxt(:,k,usr_CO_OH_a_ndx) = 1.5e-13_r8 * &
@@ -924,6 +941,7 @@ contains
        end if
 !-----------------------------------------------------------------
 ! 	... co + oh --> co2 + h (second branch JPL15-10, with CO+OH+M)
+!       note: for mechanisms prior to Dec 2022
 !-----------------------------------------------------------------
        if( usr_CO_OH_b_ndx > 0 ) then
          kinf(:)  = 2.1e+09_r8 * (temp(:ncol,k)/ t0)**(6.1_r8)
@@ -1065,12 +1083,14 @@ contains
 
 !-----------------------------------------------------------------
 !       ... DMS + OH  --> .5 * SO2
+!       JPL15-10 (use [O2] = 0.21*[M])
+!       k = 8.2E-39 * exp(5376/T) * [O2] / (1 + 1.05E-5 *([O2]/[M]) * exp(3644/T))
 !-----------------------------------------------------------------
        if( usr_DMS_OH_ndx > 0 ) then
-          call comp_exp( exp_fac, 7460._r8*tinv, ncol )
-          ko(:) = 1._r8 + 5.5e-31_r8 * exp_fac * m(:,k) * 0.21_r8
-          call comp_exp( exp_fac, 7810._r8*tinv, ncol )
-          rxt(:,k,usr_DMS_OH_ndx) = 1.7e-42_r8 * exp_fac * m(:,k) * 0.21_r8 / ko(:)
+          call comp_exp( exp_fac, 3644._r8*tinv, ncol )
+          ko(:) = 1._r8 + 1.05e-5_r8 * exp_fac * 0.21_r8
+          call comp_exp( exp_fac, 5376._r8*tinv, ncol )
+          rxt(:,k,usr_DMS_OH_ndx) = 8.2e-39_r8 * exp_fac * m(:,k) * 0.21_r8 / ko(:)
        end if
 
 !-----------------------------------------------------------------

@@ -2185,7 +2185,7 @@ if (($chem =~ /_mam4/ or $chem =~ /_mam5/) and ($phys =~ /cam6/ or $phys =~ /cam
     }
 
     # for old simple SOA schemes (without SOAE)
-    if ($chem =~ /trop_mam3/ or $chem =~ /trop_mam5/ or $chem =~ /waccm_ma/) {
+    if ($chem =~ /trop_mam3/ or $chem =~ /waccm_ma/) {
         %species = (%species,
                     'soag_an_srf_file'    => 'SOAG',
                     'soag_bg_srf_file'    => 'SOAG',
@@ -2257,7 +2257,7 @@ if (($chem =~ /_mam4/ or $chem =~ /_mam5/) and ($phys =~ /cam6/ or $phys =~ /cam
                     'XYLENES_an_srf_file' => 'XYLENES',
                     'XYLENES_bb_srf_file' => 'XYLENES',
                     'E90_srf_file' => 'E90' );
-        if ($chem =~ /trop_strat_mam4_ts2/) {
+        if ($chem =~ /trop_strat_mam4_ts2/ or $chem =~ /trop_strat_mam5_ts2/) {
             %species = (%species,
                     'MTERP_bb_srf_file' => 'APIN') ;
         } else {
@@ -2484,7 +2484,7 @@ if (($chem =~ /_mam4/ or $chem =~ /_mam5/) and ($phys =~ /cam6/ or $phys =~ /cam
         add_default($nl, 'megan_factors_file');
         add_default($nl, 'megan_mapped_emisfctrs', 'val'=>'.false.');
     }
-    if ($chem =~ /trop_strat_mam4_ts2/ ) {
+    if ($chem =~ /trop_strat_mam4_ts2/ or $chem =~ /trop_strat_mam5_ts2/) {
         my $val = "'ISOP = isoprene',"
                 . "'APIN = pinene_a + myrtenal',"
                 . "'BPIN = carene_3 + thujene_a + bornene + fenchene_a + pinene_b + sabinene + camphene + terpineol_4 + terpineol_a + terpinyl_ACT_a',"
@@ -2530,7 +2530,7 @@ if (($chem =~ /_mam4/ or $chem =~ /_mam5/) and ($phys =~ /cam6/ or $phys =~ /cam
     }
 }
 
-if ($chem eq 'trop_mam4' or $chem eq 'waccm_sc_mam4' or $chem eq 'trop_mam5') {
+if ($chem eq 'trop_mam4' or $chem eq 'waccm_sc_mam4') {
 
     # Prescribed species
     if ($chem eq 'waccm_sc_mam4') {
