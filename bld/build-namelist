@@ -4039,7 +4039,7 @@ add_default($nl, 'cam_snapshot_before_num');
 add_default($nl, 'cam_snapshot_after_num');
 check_snapshot_settings();
 
-# ndep stream forching
+# ndep stream forcing
 add_stream_default($nl, 'stream_ndep_year_first'    , $opts{'stream_ndep_year_first'}   , 0);
 add_stream_default($nl, 'stream_ndep_year_last'     , $opts{'stream_ndep_year_last'}    , 0);
 add_stream_default($nl, 'stream_ndep_year_align'    , $opts{'stream_ndep_year_align'}   , 0);

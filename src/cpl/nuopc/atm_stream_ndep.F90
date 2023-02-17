@@ -34,9 +34,6 @@ module atm_stream_ndep
   character(len=*), parameter :: sourcefile = &
        __FILE__
 
-  character(*)    ,parameter   :: u_FILE_u = &
-       __FILE__
-
 !==============================================================================
 contains
 !==============================================================================
@@ -106,9 +103,9 @@ contains
     call mpi_bcast(stream_ndep_year_first, 1, mpi_integer, 0, mpicom, ierr)
     if (ierr /= 0) call endrun(trim(subname)//": FATAL: mpi_bcast: stream_ndep_year_first")
     call mpi_bcast(stream_ndep_year_last, 1, mpi_integer, 0, mpicom, ierr)
-    if (ierr /= 0) call endrun(trim(subname)//": FATAL: mpi_bcast: stream_ndep_year_first")
+    if (ierr /= 0) call endrun(trim(subname)//": FATAL: mpi_bcast: stream_ndep_year_last")
     call mpi_bcast(stream_ndep_year_align, 1, mpi_integer, 0, mpicom, ierr)
-    if (ierr /= 0) call endrun(trim(subname)//": FATAL: mpi_bcast: stream_ndep_year_first")
+    if (ierr /= 0) call endrun(trim(subname)//": FATAL: mpi_bcast: stream_ndep_year_align")
 
     if (masterproc) then
        write(iulog,'(a)'   ) ' '
@@ -229,7 +226,7 @@ contains
        call ESMF_Finalize(endflag=ESMF_END_ABORT)
     end if
 
-    ! Get pointer for stream data that is time and spatially interpolate to model time and grid
+    ! Get pointer for stream data that is time and spatially interpolated to model time and grid
     call dshr_fldbun_getFldPtr(sdat_ndep%pstrm(1)%fldbun_model, stream_varlist_ndep(1), fldptr1=dataptr1d_nhx, rc=rc)
     if (ESMF_LogFoundError(rcToCheck=rc, msg=ESMF_LOGERR_PASSTHRU, line=__LINE__, file=__FILE__)) then
        call ESMF_Finalize(endflag=ESMF_END_ABORT)

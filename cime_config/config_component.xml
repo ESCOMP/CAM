@@ -392,7 +392,7 @@
     </values>
     <group>run_component_cam</group>
     <file>env_run.xml</file>
-    <desc>Nitrogen depqosition align CAM_STREAM_NDEP_YEAR_FIRST with this model year</desc>
+    <desc>Nitrogen deposition align CAM_STREAM_NDEP_YEAR_FIRST with this model year</desc>
   </entry>
 
   <entry id="CAM_STREAM_NDEP_DATA_FILENAME">
