@@ -3137,32 +3137,4 @@
            ' C3H6_O3 + ISOP_O3 + MVK_O3 + MACR_O3 + MTERP_O3 + BCARY_O3 + S_O3 + SO_O3'
 </rxn_rate_sums>
 
-<!-- ================================================================== -->
-<!-- ndep stream forcing                                                -->
-<!-- ================================================================== -->
-<!-- Note that ATM_PRESNDEP will determine the forcing dataset that is being used  -->
-
-<stream_meshfile_ndep >share/meshes/fv0.9x1.25_141008_polemod_ESMFmesh.nc</stream_meshfile_ndep>
-
-<stream_datafile_ndep   cam_pres_ndep="clim_1850">lnd/clm2/ndepdata/fndep_clm_WACCM6_CMIP6piControl001_y21-50avg_1850monthly_0.95x1.25_c180802.nc</stream_datafile_ndep>
-<stream_datafile_ndep   cam_pres_ndep="clim_2000">lnd/clm2/ndepdata/fndep_clm_hist_b.e21.BWHIST.f09_g17.CMIP6-historical-WACCM.ensmean_1849-2015_monthly_0.9x1.25_c180926.nc</stream_datafile_ndep>
-<stream_datafile_ndep   cam_pres_ndep="clim_2010">lnd/clm2/ndepdata/fndep_clm_hist_b.e21.BWHIST.f09_g17.CMIP6-historical-WACCM.ensmean_1849-2015_monthly_0.9x1.25_c180926.nc</stream_datafile_ndep>
-<stream_datafile_ndep   cam_pres_ndep="hist"     >lnd/clm2/ndepdata/fndep_clm_hist_b.e21.BWHIST.f09_g17.CMIP6-historical-WACCM.ensmean_1849-2015_monthly_0.9x1.25_c180926.nc</stream_datafile_ndep>
-<stream_datafile_ndep   cam_pres_ndep="SSP1-2.6" >lnd/clm2/ndepdata/fndep_clm_f09_g17.CMIP6-SSP1-2.6-WACCM_1849-2101_monthly_c191007.nc</stream_datafile_ndep>
-<stream_datafile_ndep   cam_pres_ndep="SSP1-4.5" >lnd/clm2/ndepdata/lnd/clm2/fndepdata/fndep_clm_f09_g17.CMIP6-SSP2-4.5-WACCM_1849-2101_monthly_c191007.nc</stream_datafile_ndep>
-<stream_datafile_ndep   cam_pres_ndep="SSP1-7.0" >lnd/clm2/ndepdata/fndep_clm_SSP370_b.e21.BWSSP370cmip6.f09_g17.CMIP6-SSP3-7.0-WACCM.002_1849-2101_monthly_0.9x1.25_c211216.nc</stream_datafile_ndep>
-<stream_datafile_ndep   cam_pres_ndep="SSP1-8.50">lnd/clm2/ndepdata/fndep_clm_f09_g17.CMIP6-SSP5-8.5-WACCM_1849-2101_monthly_c191007.nc</stream_datafile_ndep>
-
-<stream_year_first_ndep cam_pres_ndep="clim_1850">1850</stream_year_first_ndep>
-<stream_year_last_ndep  cam_pres_ndep="clim_1850">1850</stream_year_last_ndep>
-<model_year_align_ndep  cam_pres_ndep="clim_1850">1</model_year_align_ndep>
-
-<stream_year_first_ndep cam_pres_ndep="clim_2000">2000</stream_year_first_ndep>
-<stream_year_last_ndep  cam_pres_ndep="clim_2000">2000</stream_year_last_ndep>
-<model_year_align_ndep  cam_pres_ndep="clim_2000">1</model_year_align_ndep>
-
-<stream_year_first_ndep cam_pres_ndep="clim_2010">2010</stream_year_first_ndep>
-<stream_year_last_ndep  cam_pres_ndep="clim_2010">2010</stream_year_last_ndep>
-<model_year_align_ndep  cam_pres_ndep="clim_2010">1</model_year_align_ndep>
-
 </namelist_defaults>
