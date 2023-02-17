@@ -7222,24 +7222,6 @@ NDEP mesh file corresponding to sream_ndep_data_filename.
 Set by case xml variable CAM_STREAM_NDEP_MESH_FILENAME.
 </entry>
 
-<entry id="stream_ndep_mapalgo" type="char*256" category="Nitrogen Deposition"
-       group="ndep_stream_nl" valid_values="" >
-NDEP spatial mapping to go from forcing data resolution to model resolution.
-Set by case xml variable CAM_STREAM_NDEP_MAPALGO.
-</entry>
-
-<entry id="stream_ndep_tintalgo" type="char*256" category="Nitrogen Deposition"
-       group="ndep_stream_nl" valid_values="" >
-NDEP time interpolation to go from forcing data times to model times.
-Set by case xml variable CAM_STREAM_NDEP_TINTALGO.
-</entry>
-
-<entry id="stream_ndep_taxmode" type="char*256" category="Nitrogen Deposition"
-       group="ndep_stream_nl" valid_values="" >
-NDEP time extrapolation mode.
-Set by case xml variable CAM_STREAM_DEP_TAXMODE.
-</entry>
-
 <entry id="megan_factors_file" type="char*256" input_pathname="abs" category="VOC_emissions"
        group="megan_emis_nl" valid_values="" >
 File containing MEGAN emissions factors.
