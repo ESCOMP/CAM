@@ -2803,13 +2803,13 @@ Default: .false.
 <entry id="hetfrz_bc_scalfac" type="real" category="microphys"
        group="hetfrz_classnuc_nl" valid_values="" >
 Heterogeneous freezing scaling factor for black carbon aerosols.
-Default: 0.01
+Default: 0.0
 </entry>
 
 <entry id="hetfrz_dust_scalfac" type="real" category="microphys"
        group="hetfrz_classnuc_nl" valid_values="" >
 Heterogeneous freezing scaling factor for dust aerosols.
-Default: 1.0
+Default: 0.05
 </entry>
 
 <entry id="use_preexisting_ice" type="logical" category="microphys"
