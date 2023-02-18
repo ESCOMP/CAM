@@ -54,7 +54,7 @@
     </options>
   </test>
 
-  <test compset="FHIST" grid="ne0CONUSne30x8_ne0CONUSne30x8_mt12" name="SMS_D_Ln9_P1440x1" testmods="cam/outfrq9s_refined" supported="false">
+  <test compset="FHIST" grid="ne0CONUSne30x8_ne0CONUSne30x8_mt12" name="SMS_D_Ln9_P720x1" testmods="cam/outfrq9s_refined" supported="false">
     <machines>
       <machine name="cheyenne" compiler="intel" category="aux_cam"/>
       <machine name="cheyenne" compiler="intel" category="cam_refined"/>
