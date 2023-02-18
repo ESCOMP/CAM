@@ -17,17 +17,15 @@ use phys_control,   only: use_hetfrz_classnuc
 use physics_buffer, only: pbuf_add_field, dtype_r8, pbuf_old_tim_idx, &
                           pbuf_get_index, pbuf_get_field
 use cam_history,    only: addfld, add_default, outfld, fieldname_len
-
 use ref_pres,       only: top_lev => trop_cloud_top_lev
 use wv_saturation,  only: svp_water_vect, svp_ice_vect
-
 use cam_logfile,    only: iulog
 use error_messages, only: handle_errmsg, alloc_err
 use cam_abortutils, only: endrun
+use string_utils,   only: int2str
+use hetfrz_classnuc,only: hetfrz_classnuc_init, hetfrz_classnuc_calc
 
-use hetfrz_classnuc,   only: hetfrz_classnuc_init, hetfrz_classnuc_calc
-
-use aerosol_properties_mod, only: aerosol_properties
+use aerosol_properties_mod, only: aerosol_properties, aero_name_len
 use aerosol_state_mod, only: aerosol_state
 
 implicit none
@@ -156,9 +154,8 @@ subroutine hetfrz_classnuc_cam_init(mincld_in, aero_props)
 
    ! local variables
    integer :: istat, cnt, ibin, ispc
-   character(len=4) :: str4
-   character(len=32) :: str32
-   character(len=32) :: species_type
+   character(len=42) :: tmpstr
+   character(len=aero_name_len) :: species_type
    character(len=*), parameter :: routine = 'hetfrz_classnuc_cam_init'
 
    !--------------------------------------------------------------------------------------------
@@ -218,37 +215,36 @@ subroutine hetfrz_classnuc_cam_init(mincld_in, aero_props)
             indices(cnt)%bin_ndx = ibin
             indices(cnt)%spc_ndx = ispc
             types(cnt) = trim(species_type)
-            write(str4,'(I4)') ibin
-            str32 =  trim(species_type)//trim(adjustl(str4))
+            tmpstr = trim(species_type)//trim(int2str(ibin))
 
-            cldfn_dens_hnames(cnt) = trim(str32)//'_cld_fn'
-            tot_dens_hnames(cnt) = trim(str32)//'_tot_num'
-            cld_dens_hnames(cnt) = trim(str32)//'_cld_num'
-            amb_dens_hnames(cnt) = trim(str32)//'_amb_num'
-            coated_dens_hnames(cnt) = trim(str32)//'_coated'
-            uncoated_dens_hnames(cnt) = trim(str32)//'_uncoated'
-            coated_frac_hnames(cnt) = trim(str32)//'_coated_frac'
-            radius_hnames(cnt) = trim(str32)//'_radius'
-            wactfac_hnames(cnt) = trim(str32)//'_wactfac'
+            cldfn_dens_hnames(cnt) = trim(tmpstr)//'_cld_fn'
+            tot_dens_hnames(cnt) = trim(tmpstr)//'_tot_num'
+            cld_dens_hnames(cnt) = trim(tmpstr)//'_cld_num'
+            amb_dens_hnames(cnt) = trim(tmpstr)//'_amb_num'
+            coated_dens_hnames(cnt) = trim(tmpstr)//'_coated'
+            uncoated_dens_hnames(cnt) = trim(tmpstr)//'_uncoated'
+            coated_frac_hnames(cnt) = trim(tmpstr)//'_coated_frac'
+            radius_hnames(cnt) = trim(tmpstr)//'_radius'
+            wactfac_hnames(cnt) = trim(tmpstr)//'_wactfac'
 
             call addfld(tot_dens_hnames(cnt),(/ 'lev' /), 'A', '#/cm3', &
-                 'total '//trim(str32)//' number density' )
+                 'total '//trim(tmpstr)//' number density' )
             call addfld(cld_dens_hnames(cnt),(/ 'lev' /), 'A', '#/cm3', &
-                 'cloud borne '//trim(str32)//' number density' )
+                 'cloud borne '//trim(tmpstr)//' number density' )
             call addfld(cldfn_dens_hnames(cnt),(/ 'lev' /), 'A', '#/cm3', &
-                 'cloud borne '//trim(str32)//' number density derived from fn' )
+                 'cloud borne '//trim(tmpstr)//' number density derived from fn' )
             call addfld(amb_dens_hnames(cnt),(/ 'lev' /), 'A', '#/cm3', &
-                 'ambient '//trim(str32)//' number density' )
+                 'ambient '//trim(tmpstr)//' number density' )
             call addfld(coated_dens_hnames(cnt),(/ 'lev' /), 'A', '#/cm3', &
-                 'coated '//trim(str32)//' number density' )
+                 'coated '//trim(tmpstr)//' number density' )
             call addfld(uncoated_dens_hnames(cnt),(/ 'lev' /), 'A', '#/cm3', &
-                 'uncoated '//trim(str32)//' number density' )
+                 'uncoated '//trim(tmpstr)//' number density' )
             call addfld(coated_frac_hnames(cnt),(/ 'lev' /), 'A', '#/cm3', &
-                 'coated '//trim(str32)//' fraction' )
+                 'coated '//trim(tmpstr)//' fraction' )
             call addfld(radius_hnames(cnt),(/ 'lev' /), 'A', 'microns', &
-                 'ambient '//trim(str32)//' radius' )
+                 'ambient '//trim(tmpstr)//' radius' )
             call addfld(wactfac_hnames(cnt),(/ 'lev' /), 'A', ' ', &
-                 trim(str32)//' water activity mass factor' )
+                 trim(tmpstr)//' water activity mass factor' )
 
          end if
       end do

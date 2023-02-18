@@ -583,7 +583,7 @@ contains
     where(tmp1(:ncol,:)>0._r8 .and. tmp2(:ncol,:)>0._r8)
        frac(:ncol,:) = tmp1(:ncol,:)/tmp2(:ncol,:)
     elsewhere
-       frac(:ncol,:) = 0._r8
+       frac(:ncol,:) = 0.001_r8
     end where
 
     where(frac(:ncol,:)>1._r8)
@@ -673,7 +673,6 @@ contains
        if (trim(spectype)=='black-c' .or. trim(spectype)=='p-organic' .or. trim(spectype)=='s-organic') then
           call self%get_ambient_mmr(ispc, bin_ndx, aer_mmr)
           tot2_mmr(:ncol,:) = tot2_mmr(:ncol,:) + aer_mmr(:ncol,:)
-          tot1_mmr(:ncol,:) = tot1_mmr(:ncol,:) + aer_mmr(:ncol,:)
        end if
        if (trim(spectype)=='sulfate') then
           call self%get_ambient_mmr(ispc, bin_ndx, aer_mmr)
@@ -681,6 +680,7 @@ contains
        end if
 
     end do
+    tot1_mmr(:ncol,:) = tot1_mmr(:ncol,:) + tot2_mmr(:ncol,:)
 
     call self%get_amb_species_numdens(bin_ndx, ncol, nlev, species_type, aero_props, rho, aer_numdens) ! #/cm3
     call self%get_ambient_num(bin_ndx, bin_num) ! #/kg

@@ -24,7 +24,7 @@ use shr_kind_mod,  only: r8 => shr_kind_r8
 use wv_saturation, only: svp_water
 use shr_spfn_mod,  only: erf => shr_spfn_erf
 
-use physconst,     only: pi, planck, boltz, mwso4
+use physconst,     only: pi, planck, boltz, mwso4, amu, pstd
 
 implicit none
 private
@@ -69,7 +69,6 @@ integer  :: iulog
 
 real(r8), parameter :: n1 = 1.e19_r8           ! number of water molecules in contact with unit area of substrate [m-2]
 real(r8), parameter :: rhplanck = 1._r8/planck
-real(r8), parameter :: amu = 1.66053886e-27_r8
 real(r8), parameter :: nus = 1.e13_r8          ! frequ. of vibration [s-1] higher freq. (as in P&K, consistent with Anupam's data)
 real(r8), parameter :: rhwincloud = 0.98_r8    ! 98% RH in mixed-phase clouds (Korolev & Isaac, JAS 2006)
 
@@ -114,7 +113,7 @@ end subroutine hetfrz_classnuc_init
 !===================================================================================================
 
 subroutine hetfrz_classnuc_calc(ntypes, types,&
-   deltat, t, p, supersatice,                 &
+   deltat, T, p, supersatice,                 &
    fn,                                        &
    r3lx, icnlx,                               &
    frzbcimm, frzduimm,                        &
@@ -127,7 +126,7 @@ subroutine hetfrz_classnuc_calc(ntypes, types,&
    integer, intent(in) :: ntypes
    character(len=*), intent(in) :: types(ntypes)
    real(r8), intent(in) :: deltat            ! timestep [s]
-   real(r8), intent(in) :: t                 ! temperature [K]
+   real(r8), intent(in) :: T                 ! temperature [K]
    real(r8), intent(in) :: p                 ! pressure [Pa]
    real(r8), intent(in) :: supersatice       ! supersaturation ratio wrt ice at 100%rh over water [ ]
    real(r8), intent(in) :: r3lx              ! volume mean drop radius [m]
@@ -221,8 +220,8 @@ subroutine hetfrz_classnuc_calc(ntypes, types,&
 
    real(r8) :: ktherm(ntypes), kcoll(ntypes)
 
-   real(r8), parameter :: Ktherm_bc = 4.2_r8   ! black carbon
-   real(r8), parameter :: Ktherm_dst = 0.72_r8 ! clay
+   real(r8), parameter :: Ktherm_bc = 4.2_r8   ! black carbon thermal conductivity [J/(m s K)]
+   real(r8), parameter :: Ktherm_dst = 0.72_r8 ! clay thermal conductivity [J/(m s K)]
 
    !------------------------------------------------------------------------------------------------
 
@@ -242,18 +241,18 @@ subroutine hetfrz_classnuc_calc(ntypes, types,&
    ! get saturation vapor pressure
    eswtr = svp_water(t)  ! 0 for liquid
 
-   tc = t - tmelt
+   tc = T - tmelt
    rhoice = 916.7_r8-0.175_r8*tc-5.e-4_r8*tc**2
    vwice = mwh2o*amu/rhoice
    sigma_iw = (28.5_r8+0.25_r8*tc)*1E-3_r8
    sigma_iv = (76.1_r8-0.155_r8*tc + 28.5_r8+0.25_r8*tc)*1E-3_r8
 
    ! critical germ size
-   rgimm = 2*vwice*sigma_iw/(boltz*t*LOG(supersatice))
+   rgimm = 2*vwice*sigma_iw/(boltz*T*LOG(supersatice))
 
    ! critical germ size
    ! assume 98% RH in mixed-phase clouds (Korolev & Isaac, JAS 2006)
-   rgdep=2*vwice*sigma_iv/(boltz*t*LOG(rhwincloud*supersatice))
+   rgdep=2*vwice*sigma_iv/(boltz*T*LOG(rhwincloud*supersatice))
 
    ! homogeneous energy of germ formation
    dg0dep = 4*pi/3._r8*sigma_iv*rgdep**2
@@ -282,7 +281,7 @@ subroutine hetfrz_classnuc_calc(ntypes, types,&
       end select
    end do
 
-   call collkernel(t, p, eswtr, rhwincloud, r3lx, hetraer, Ktherm, Kcoll)
+   call collkernel(T, p, eswtr, rhwincloud, r3lx, hetraer, Ktherm, Kcoll)
 
    do ispc = 1, ntypes
 
@@ -315,7 +314,7 @@ subroutine hetfrz_classnuc_calc(ntypes, types,&
       end select
 
       call hetfrz_classnuc_calc_rates( f_dep, f_cnt, f_imm, dga_dep, dga_imm, pdf_imm, limfac, &
-           kcoll(ispc), hetraer(ispc), icnlx, r3lx, t, supersatice, sigma_iw, &
+           kcoll(ispc), hetraer(ispc), icnlx, r3lx, T, supersatice, sigma_iw, &
            rgimm, rgdep, dg0dep, Adep, dg0cnt, Acnt, vwice, deltat, &
            fn(ispc), wact_factor(ispc), dstcoat(ispc), &
            total_aer_num(ispc), total_interstitial_aer_num(ispc), total_cloudborne_aer_num(ispc), uncoated_aer_num(ispc), &
@@ -331,7 +330,7 @@ subroutine hetfrz_classnuc_calc(ntypes, types,&
  end subroutine  hetfrz_classnuc_calc
 
  subroutine  hetfrz_classnuc_calc_rates( f_dep, f_cnt, f_imm, dga_dep, dga_imm, pdf_imm, limfac, &
-      kcoll, mradius, icnlx, r3lx, t, supersatice, sigma_iw, &
+      kcoll, mradius, icnlx, r3lx, T, supersatice, sigma_iw, &
       rgimm, rgdep, dg0dep, Adep, dg0cnt, Acnt, vwice, deltat, &
       fn, wact_factor, dstcoat, &
       total_aer_num, total_interstitial_aer_num, total_cloudborne_aer_num, uncoated_aer_num, &
@@ -349,15 +348,15 @@ subroutine hetfrz_classnuc_calc(ntypes, types,&
    real(r8), intent(in) :: mradius                    ! mass mean radius [m]
    real(r8), intent(in) :: icnlx                      ! in-cloud droplet concentration [cm-3]
    real(r8), intent(in) :: r3lx                       ! volume mean drop radius [m]
-   real(r8), intent(in) :: t                          ! temperature [K]
+   real(r8), intent(in) :: T                          ! temperature [K]
    real(r8), intent(in) :: supersatice                ! supersaturation ratio wrt ice at 100%rh over water [ ]
    real(r8), intent(in) :: sigma_iw                   ! [J/m2]
    real(r8), intent(in) :: rgimm                      ! critical germ size
    real(r8), intent(in) :: rgdep                      ! critical germ size
    real(r8), intent(in) :: dg0dep                     ! homogeneous energy of germ formation
-   real(r8), intent(in) :: Adep                       ! prefactor
+   real(r8), intent(in) :: Adep                       ! deposition nucleation prefactor
    real(r8), intent(in) :: dg0cnt                     ! homogeneous energy of germ formation
-   real(r8), intent(in) :: Acnt                       ! prefactor
+   real(r8), intent(in) :: Acnt                       ! contact nucleation prefactor
 
    real(r8), intent(in) :: vwice
    real(r8), intent(in) :: deltat                     ! timestep [s]
@@ -431,12 +430,12 @@ subroutine hetfrz_classnuc_calc(ntypes, types,&
 
    do_frz = aw*supersatice > 1._r8
    if (do_frz) then
-      rgimm_aer = 2*vwice*sigma_iw/(boltz*t*LOG(aw*supersatice))
+      rgimm_aer = 2*vwice*sigma_iw/(boltz*T*LOG(aw*supersatice))
    else
       return
    endif
 
-   do_imm = t <= 263.15_r8
+   do_imm = T <= 263.15_r8
 
    if (do_imm) then
       ! homogeneous energy of germ formation
@@ -590,7 +589,7 @@ subroutine collkernel( temp, pres, eswtr, rhwincloud, r3lx,  rad, Ktherm, Kcoll 
    ! Prandtl number
    Pr = viscos_air*cpair/Ktherm_air
    ! water vapor diffusivity: Pruppacher & Klett 13-3
-   Dvap = 0.211e-4_r8*(temp/273.15_r8)*(101325._r8/pres)
+   Dvap = 0.211e-4_r8*(temp/tmelt)*(pstd/pres)
    ! G-factor = rhoh2o*Xi in Rogers & Yau, p. 104
    G = rhoh2o/((latvap/(rh2o*temp) - 1)*latvap*rhoh2o/(Ktherm_air*temp) &
        + rhoh2o*rh2o*temp/(Dvap*eswtr))

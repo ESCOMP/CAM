@@ -386,7 +386,7 @@ contains
 
        call self%species_type(bin_ndx, spc_ndx, species_type)
 
-       if ( trim(species_type)=='black-c' .or. trim(species_type)=='dust' ) then
+       if ((trim(species_type)=='black-c').or.(trim(species_type)=='dust')) then
 
           res = .true.
 
