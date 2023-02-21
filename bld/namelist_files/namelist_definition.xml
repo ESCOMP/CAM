@@ -9054,7 +9054,7 @@ Default: FALSE
 
 <entry id="stream_datafile_ndep" type="char*256" category="ndep_stream"
        group="ndep_stream_nml" valid_values="" input_pathname="abs" >
-Stream filename(s) of for Nitrogen Deposition data
+Stream filename(s) for Nitrogen Deposition data
 </entry>
 
 <entry id="stream_meshfile_ndep" type="char*256" category="ndep_stream"
