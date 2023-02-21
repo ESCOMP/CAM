@@ -967,7 +967,7 @@ subroutine get_aer_num(ii, kk, ncnst, aer, aer_cb, rhoair,&
                                           ! bc number in accumulation and primary carbon mode for MAM7 and MAM4
    real(r8) :: dst1_num, dst3_num         ! dust number in accumulation and corase mode for MAM3
                                           ! dust number in fine dust and corase dust mode for MAM7 and MAM4
-   logical :: num_to_mass_in = .true.
+   logical :: num_to_mass_in = .false.
    real(r8), parameter :: bc_num_to_mass = 4.669152e+17_r8      ! #/kg from emission
    real(r8), parameter :: dst1_num_to_mass = 3.484e+15_r8       ! #/kg for dust in accumulation mode
 

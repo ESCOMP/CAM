@@ -158,6 +158,7 @@ subroutine hetfrz_classnuc_calc( &
    real(r8), parameter :: taufrz = 195.435_r8     ! time constant for falloff of freezing rate [s]
    real(r8), parameter :: rhwincloud = 0.98_r8    ! 98% RH in mixed-phase clouds (Korolev & Isaac, JAS 2006)
    real(r8), parameter :: limfacbc = 0.01_r8      ! max. ice nucleating fraction soot
+   real(r8), parameter :: limfacdst = 0.05_r8      ! max. ice nucleating fraction dust
    real(r8) :: tc   
    real(r8) :: vwice   
    real(r8) :: rhoice   
@@ -398,14 +399,14 @@ subroutine hetfrz_classnuc_calc( &
                             total_cloudborne_aer_num(id_bc)/deltat*(1._r8-exp(-Jimm_bc*deltat))) 
 
       if (.not. pdf_imm_in) then
-         if (do_dst1) frzduimm = frzduimm+MIN(1*total_cloudborne_aer_num(id_dst1)/deltat, & 
+         if (do_dst1) frzduimm = frzduimm+MIN(limfacdst*total_cloudborne_aer_num(id_dst1)/deltat, & 
                                  total_cloudborne_aer_num(id_dst1)/deltat*(1._r8-exp(-Jimm_dust_a1*deltat)))
-         if (do_dst3) frzduimm = frzduimm+MIN(1*total_cloudborne_aer_num(id_dst3)/deltat, &
+         if (do_dst3) frzduimm = frzduimm+MIN(limfacdst*total_cloudborne_aer_num(id_dst3)/deltat, &
                                  total_cloudborne_aer_num(id_dst3)/deltat*(1._r8-exp(-Jimm_dust_a3*deltat)))
       else
-         if (do_dst1) frzduimm = frzduimm+MIN(1*total_cloudborne_aer_num(id_dst1)/deltat,        &
+         if (do_dst1) frzduimm = frzduimm+MIN(limfacdst*total_cloudborne_aer_num(id_dst1)/deltat,        &
                                  total_cloudborne_aer_num(id_dst1)/deltat*(1._r8-sum_imm_dust_a1))
-         if (do_dst3) frzduimm = frzduimm+MIN(1*total_cloudborne_aer_num(id_dst3)/deltat,        &
+         if (do_dst3) frzduimm = frzduimm+MIN(limfacdst*total_cloudborne_aer_num(id_dst3)/deltat,        &
                                  total_cloudborne_aer_num(id_dst3)/deltat*(1._r8-sum_imm_dust_a3))
       end if
 
@@ -414,14 +415,14 @@ subroutine hetfrz_classnuc_calc( &
                             fn(id_bc)*total_aer_num(id_bc)/deltat*(1._r8-exp(-Jimm_bc*deltat))) 
 
       if (.not. pdf_imm_in) then
-         if (do_dst1) frzduimm = frzduimm+MIN(1*fn(id_dst1)*total_aer_num(id_dst1)/deltat, &
+         if (do_dst1) frzduimm = frzduimm+MIN(limfacdst*fn(id_dst1)*total_aer_num(id_dst1)/deltat, &
                                  fn(id_dst1)*total_aer_num(id_dst1)/deltat*(1._r8-exp(-Jimm_dust_a1*deltat)))
-         if (do_dst3) frzduimm = frzduimm+MIN(1*fn(id_dst3)*total_aer_num(id_dst3)/deltat, &
+         if (do_dst3) frzduimm = frzduimm+MIN(limfacdst*fn(id_dst3)*total_aer_num(id_dst3)/deltat, &
                                  fn(id_dst3)*total_aer_num(id_dst3)/deltat*(1._r8-exp(-Jimm_dust_a3*deltat)))
       else
-         if (do_dst1) frzduimm = frzduimm+MIN(1*fn(id_dst1)*total_aer_num(id_dst1)/deltat,        &
+         if (do_dst1) frzduimm = frzduimm+MIN(limfacdst*fn(id_dst1)*total_aer_num(id_dst1)/deltat,        &
                                  fn(id_dst1)*total_aer_num(id_dst1)/deltat*(1._r8-sum_imm_dust_a1))
-         if (do_dst3) frzduimm = frzduimm+MIN(1*fn(id_dst3)*total_aer_num(id_dst3)/deltat,        &
+         if (do_dst3) frzduimm = frzduimm+MIN(limfacdst*fn(id_dst3)*total_aer_num(id_dst3)/deltat,        &
                                  fn(id_dst3)*total_aer_num(id_dst3)/deltat*(1._r8-sum_imm_dust_a3))
       end if
    end if
@@ -471,10 +472,10 @@ subroutine hetfrz_classnuc_calc( &
       if (do_bc) frzbcdep = frzbcdep+MIN(limfacbc*uncoated_aer_num(id_bc)/deltat, &
                                          uncoated_aer_num(id_bc)/deltat &
                                          *(1._r8-exp(-Jdep_bc*deltat))) 
-      if (do_dst1) frzdudep = frzdudep+MIN(uncoated_aer_num(id_dst1)/deltat, &
+      if (do_dst1) frzdudep = frzdudep+MIN(limfacdst*uncoated_aer_num(id_dst1)/deltat, &
                                            uncoated_aer_num(id_dst1)/deltat &
                                            *(1._r8-exp(-Jdep_dust_a1*deltat)))
-      if (do_dst3) frzdudep = frzdudep+MIN(uncoated_aer_num(id_dst3)/deltat, &
+      if (do_dst3) frzdudep = frzdudep+MIN(limfacdst*uncoated_aer_num(id_dst3)/deltat, &
                                            uncoated_aer_num(id_dst3)/deltat &
                                            *(1._r8-exp(-Jdep_dust_a3*deltat)))
    else
@@ -482,11 +483,11 @@ subroutine hetfrz_classnuc_calc( &
                                          *(1._r8-dstcoat(1))*total_aer_num(id_bc)/deltat, &
                                           (1._r8-fn(id_bc))*(1._r8-dstcoat(1))*total_aer_num(id_bc)/deltat &
                                           *(1._r8-exp(-Jdep_bc*deltat))) 
-      if (do_dst1) frzdudep = frzdudep+MIN((1._r8-fn(id_dst1)) &
+      if (do_dst1) frzdudep = frzdudep+MIN(limfacdst*(1._r8-fn(id_dst1)) &
                                            *(1._r8-dstcoat(2))*total_aer_num(id_dst1)/deltat, &
                                            (1._r8-fn(id_dst1))*(1._r8-dstcoat(2))*total_aer_num(id_dst1)/deltat &
                                            *(1._r8-exp(-Jdep_dust_a1*deltat))) 
-      if (do_dst3) frzdudep = frzdudep+MIN((1._r8-fn(id_dst3)) &
+      if (do_dst3) frzdudep = frzdudep+MIN(limfacdst*(1._r8-fn(id_dst3)) &
                                            *(1._r8-dstcoat(3))*total_aer_num(id_dst3)/deltat, &
                                            (1._r8-fn(id_dst3))*(1._r8-dstcoat(3))*total_aer_num(id_dst3)/deltat &
                                            *(1._r8-exp(-Jdep_dust_a3*deltat))) 
@@ -523,20 +524,20 @@ subroutine hetfrz_classnuc_calc( &
       if (do_bc) frzbccnt = frzbccnt+MIN(limfacbc*uncoated_aer_num(id_bc)/deltat, &
                                          uncoated_aer_num(id_bc)/deltat &
                                          *(1._r8-exp(-Jcnt_bc*deltat))) 
-      if (do_dst1) frzducnt = frzducnt+MIN(uncoated_aer_num(id_dst1)/deltat, &
+      if (do_dst1) frzducnt = frzducnt+MIN(limfacdst*uncoated_aer_num(id_dst1)/deltat, &
                                            uncoated_aer_num(id_dst1)/deltat &
                                            *(1._r8-exp(-Jcnt_dust_a1*deltat)))
-      if (do_dst3) frzducnt = frzducnt+MIN(uncoated_aer_num(id_dst3)/deltat, &
+      if (do_dst3) frzducnt = frzducnt+MIN(limfacdst*uncoated_aer_num(id_dst3)/deltat, &
                                            uncoated_aer_num(id_dst3)/deltat &
                                            *(1._r8-exp(-Jcnt_dust_a3*deltat)))
    else
       if (do_bc) frzbccnt = frzbccnt+MIN(limfacbc*(1._r8-fn(id_bc))*(1._r8-dstcoat(1))*total_aer_num(id_bc)/deltat, &
                                          (1._r8-fn(id_bc))*(1._r8-dstcoat(1))*total_aer_num(id_bc)/deltat &
                                          *(1._r8-exp(-Jcnt_bc*deltat))) 
-      if (do_dst1) frzducnt = frzducnt+MIN((1._r8-fn(id_dst1))*(1._r8-dstcoat(2))*total_aer_num(id_dst1)/deltat, &
+      if (do_dst1) frzducnt = frzducnt+MIN(limfacdst*(1._r8-fn(id_dst1))*(1._r8-dstcoat(2))*total_aer_num(id_dst1)/deltat, &
                                            (1._r8-fn(id_dst1))*(1._r8-dstcoat(2))*total_aer_num(id_dst1)/deltat &
                                            *(1._r8-exp(-Jcnt_dust_a1*deltat)))
-      if (do_dst3) frzducnt = frzducnt+MIN((1._r8-fn(id_dst3))*(1._r8-dstcoat(3))*total_aer_num(id_dst3)/deltat, &
+      if (do_dst3) frzducnt = frzducnt+MIN(limfacdst*(1._r8-fn(id_dst3))*(1._r8-dstcoat(3))*total_aer_num(id_dst3)/deltat, &
                                            (1._r8-fn(id_dst3))*(1._r8-dstcoat(3))*total_aer_num(id_dst3)/deltat &
                                            *(1._r8-exp(-Jcnt_dust_a3*deltat)))
    end if
