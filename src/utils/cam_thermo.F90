@@ -18,6 +18,7 @@ module cam_thermo
    use air_composition, only: thermodynamic_active_species_liq_idx_dycore
    use air_composition, only: thermodynamic_active_species_ice_idx
    use air_composition, only: thermodynamic_active_species_ice_idx_dycore
+   use air_composition, only: dry_air_species_num
    use air_composition, only: enthalpy_reference_state
    use air_composition, only: mmro2, mmrn2, o2_mwi, n2_mwi, mbar
 
@@ -33,8 +34,10 @@ module cam_thermo
 
    ! cam_thermo_init: Initialize constituent dependent properties
    public :: cam_thermo_init
-   ! cam_thermo_update: Update constituent dependent properties
-   public :: cam_thermo_update
+   ! cam_thermo_update: Update dry air composition dependent properties
+   public :: cam_thermo_dry_air_update
+   ! cam_thermo_update: Update water dependent properties
+   public :: cam_thermo_water_update
    ! get_enthalpy: enthalpy quantity = dp*cp*T
    public :: get_enthalpy
    ! get_virtual_temp: virtual temperature
@@ -174,7 +177,7 @@ module cam_thermo
    integer, public, parameter :: wvidx = 1
    integer, public, parameter :: wlidx = 2
    integer, public, parameter :: wiidx = 3
-   integer, public, parameter :: seidx = 4 ! enthalpy or internal energy (J/m2) index
+   integer, public, parameter :: seidx = 4 ! enthalpy or internal energy (W/m2) index
    integer, public, parameter :: poidx = 5 ! surface potential or potential energy index
    integer, public, parameter :: keidx = 6 ! kinetic energy index
    integer, public, parameter :: mridx = 7
@@ -243,9 +246,40 @@ CONTAINS
    !
    !***************************************************************************
    !
-   subroutine cam_thermo_update(mmr, T, lchnk, ncol, to_moist_factor)
-      use air_composition, only: air_composition_update
+   subroutine cam_thermo_dry_air_update(mmr, T, lchnk, ncol, to_dry_factor)
+      use air_composition, only: dry_air_composition_update
       use string_utils,    only: int2str
+      !-----------------------------------------------------------------------
+      ! Update the physics "constants" that vary
+      !-------------------------------------------------------------------------
+
+      !------------------------------Arguments----------------------------------
+      !(mmr = dry mixing ratio, if not use to_moist_factor to convert)
+      real(r8),           intent(in) :: mmr(:,:,:) ! constituents array
+      real(r8),           intent(in) :: T(:,:)     ! temperature
+      integer,            intent(in) :: lchnk      ! Chunk number
+      integer,            intent(in) :: ncol       ! number of columns
+      real(r8), optional, intent(in) :: to_dry_factor(:,:)
+      !
+      !---------------------------Local storage-------------------------------
+      real(r8):: sponge_factor(SIZE(mmr, 2))
+      character(len=*), parameter :: subname = 'cam_thermo_update: '
+
+      if (present(to_dry_factor)) then
+        if (SIZE(to_dry_factor, 1) /= ncol) then
+          call endrun(subname//'DIM 1 of to_dry_factor is'//int2str(SIZE(to_dry_factor,1))//'but should be'//int2str(ncol))
+        end if
+      end if
+
+      sponge_factor = 1.0_r8
+      call dry_air_composition_update(mmr, lchnk, ncol, to_dry_factor=to_dry_factor)
+      call get_molecular_diff_coef(T(:ncol,:), .true., sponge_factor, kmvis(:ncol,:,lchnk), &
+           kmcnd(:ncol,:,lchnk), tracer=mmr(:ncol,:,:), fact=to_dry_factor,  &
+           active_species_idx_dycore=thermodynamic_active_species_idx)
+    end subroutine cam_thermo_dry_air_update
+
+   subroutine cam_thermo_water_update(mmr, lchnk, ncol, to_dry_factor)
+      use air_composition, only: water_composition_update
       !-----------------------------------------------------------------------
       ! Update the physics "constants" that vary
       !-------------------------------------------------------------------------
@@ -253,29 +287,12 @@ CONTAINS
       !------------------------------Arguments----------------------------------
 
       real(r8),           intent(in) :: mmr(:,:,:) ! constituents array
-      real(r8),           intent(in) :: T(:,:)     ! temperature
       integer,            intent(in) :: lchnk      ! Chunk number
       integer,            intent(in) :: ncol       ! number of columns
-      real(r8), optional, intent(in) :: to_moist_factor(:,:)
+      real(r8), optional, intent(in) :: to_dry_factor(:,:)
       !
-      !---------------------------Local storage-------------------------------
-      real(r8):: sponge_factor(SIZE(mmr, 2))
-      character(len=*), parameter :: subname = 'cam_thermo_update: '
-
-
-      if (present(to_moist_factor)) then
-         if (SIZE(to_moist_factor, 1) /= ncol) then
-            call endrun(subname//'DIM 1 of to_moist_factor is'//int2str(SIZE(to_moist_factor,1))//'but should be'//int2str(ncol))
-         end if
-      end if
-      sponge_factor = 1.0_r8
-
-      call air_composition_update(mmr, lchnk, ncol, to_moist_factor=to_moist_factor)
-      call get_molecular_diff_coef(T(:ncol,:), .true., sponge_factor, kmvis(:ncol,:,lchnk), &
-           kmcnd(:ncol,:,lchnk), tracer=mmr(:ncol,:,:), fact=to_moist_factor,  &
-           active_species_idx_dycore=thermodynamic_active_species_idx)
-
-   end subroutine cam_thermo_update
+      call water_composition_update(mmr, lchnk, ncol, to_dry_factor=to_dry_factor)
+    end subroutine cam_thermo_water_update
 
    !===========================================================================
 
@@ -1663,7 +1680,7 @@ CONTAINS
         pdel     = pdel_in
       else
         pdel     = pdel_in
-        do qdx = 1, thermodynamic_active_species_num
+        do qdx = dry_air_species_num+1, thermodynamic_active_species_num
           pdel(:,:) = pdel(:,:) + pdel_in(:, :)*tracer(:,:,species_idx(qdx))
         end do
       end if

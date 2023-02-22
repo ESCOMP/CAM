@@ -1393,6 +1393,7 @@ contains
     use carma_flags_mod,    only: carma_do_aerosol, carma_do_emission, carma_do_detrain
     use carma_flags_mod,    only: carma_do_cldice, carma_do_cldliq, carma_do_wetdep
     use dyn_tests_utils,    only: vc_dycore
+    use cam_thermo,         only: cam_thermo_water_update
     !
     ! Arguments
     !
@@ -2342,12 +2343,15 @@ contains
     ! FV: convert dry-type mixing ratios to moist here because physics_dme_adjust
     !     assumes moist. This is done in p_d_coupling for other dynamics. Bundy, Feb 2004.
     moist_mixing_ratio_dycore = dycore_is('LR').or. dycore_is('FV3')
-    if (moist_mixing_ratio_dycore) call set_dry_to_wet(state)    ! Physics had dry, dynamics wants moist
+    ! Physics had dry, dynamics wants moist
+    ! Note: this operation will NOT be reverted with set_wet_to_dry after set_dry_to_wet call
+    if (moist_mixing_ratio_dycore) call set_dry_to_wet(state)
 
     ! for dry mixing ratio dycore, physics_dme_adjust is called for energy diagnostic purposes only.
     ! So, save off tracers
     if (.not.moist_mixing_ratio_dycore.and.&
          (hist_fld_active('SE_phAM').or.hist_fld_active('KE_phAM').or.hist_fld_active('WV_phAM').or.&
+          hist_fld_active('SE_dyAM').or.hist_fld_active('KE_dyAM').or.hist_fld_active('WV_dyAM').or.&
           hist_fld_active('WL_phAM').or.hist_fld_active('WI_phAM').or.hist_fld_active('MR_phAM').or.&
           hist_fld_active('MO_phAM'))) then
       tmp_trac(:ncol,:pver,:pcnst) = state%q(:ncol,:pver,:pcnst)
@@ -2355,9 +2359,10 @@ contains
       tmp_ps(:ncol)                = state%ps(:ncol)
 
       call set_dry_to_wet(state)
-
-
       call physics_dme_adjust(state, tend, qini, totliqini, toticeini, ztodt)
+      ! update cp/cv for energy computation based in updated water variables
+      call cam_thermo_water_update(state%q(:ncol,:,:), lchnk, ncol, &
+           to_dry_factor=state%pdel(:ncol,:)/state%pdeldry(:ncol,:))
 
       call calc_te_and_aam_budgets(state, 'phAM')
       call calc_te_and_aam_budgets(state, 'dyAM', vc=vc_dycore)
@@ -2373,7 +2378,6 @@ contains
          call cam_snapshot_all_outfld_tphysac(cam_snapshot_before_num, state, tend, cam_in, cam_out, pbuf,&
                     fh2o, surfric, obklen, flx_heat, cmfmc, dlf, det_s, det_ice, net_flx)
       end if
-
       call physics_dme_adjust(state, tend, qini, totliqini, toticeini, ztodt)
 
       if (trim(cam_take_snapshot_after) == "physics_dme_adjust") then

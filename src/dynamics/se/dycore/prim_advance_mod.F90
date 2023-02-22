@@ -124,16 +124,16 @@ contains
         !
         ! make sure Q is updated
         !
-        qwater(:,:,:,nq,ie)      = elem(ie)%state%Qdp(:,:,:,m_cnst,qn0)/elem(ie)%state%dp3d(:,:,:,n0)
+        qwater(:,:,:,nq,ie) = elem(ie)%state%Qdp(:,:,:,m_cnst,qn0)/elem(ie)%state%dp3d(:,:,:,n0)
       end do
     end do
     !
-    ! compute Cp and kappa=Rdry/cpdry here and not in RK-stages since Q stays constant => Cp and kappa also stays constant
+    ! compute Cp and kappa=Rdry/cpdry here and not in RK-stages since Q stays constant
     !
     if (lcp_moist) then
       do ie=nets,nete
-        call get_cp(qwater(:,:,:,:,ie),&
-             .true., inv_cp_full(:,:,:,ie), active_species_idx_dycore=qidx)
+        call get_cp(qwater(:,:,:,:,ie),.true.,&
+             inv_cp_full(:,:,:,ie), active_species_idx_dycore=qidx)
       end do
     else
       do ie=nets,nete
@@ -399,15 +399,13 @@ contains
         if (ntrac>0) ftmp_fvm(:,:,:,:,ie) = 0.0_r8
       end if
 
-
       if (ftype_conserve==1) then
         call get_dp(elem(ie)%state%Qdp(:,:,:,1:qsize,np1_qdp), MASS_MIXING_RATIO, &
-            thermodynamic_active_species_idx_dycore, elem(ie)%state%dp3d(:,:,:,np1), pdel)
+             thermodynamic_active_species_idx_dycore, elem(ie)%state%dp3d(:,:,:,np1), pdel)
         do k=1,nlev
           do j=1,np
             do i = 1,np
               pdel(i,j,k)=elem(ie)%derived%FDP(i,j,k)/pdel(i,j,k)
-
               elem(ie)%state%T(i,j,k,np1) = elem(ie)%state%T(i,j,k,np1) + &
                    dt_local*elem(ie)%derived%FT(i,j,k)*pdel(i,j,k)
               !
@@ -680,7 +678,10 @@ contains
       call calc_tot_energy_dynamics(elem,fvm,nets,nete,nt,qn0,'dCH',subcycle=.true.)
       do ie=nets,nete
         !$omp parallel do num_threads(vert_num_threads), private(k,i,j,v1,v2,heating)
-        do k=kbeg,kend
+        do k=ksponge_end,nlev
+          !
+          ! only do "frictional heating" away from del2 sponge
+          !
           !OMP_COLLAPSE_SIMD
           !DIR_VECTOR_ALIGNED
           do j=1,np
@@ -946,12 +947,6 @@ contains
               v2new=elem(ie)%state%v(i,j,2,k,nt)
               v1   =elem(ie)%state%v(i,j,1,k,nt)- vtens(i,j,1,k,ie)
               v2   =elem(ie)%state%v(i,j,2,k,nt)- vtens(i,j,2,k,ie)
-              !
-              ! frictional heating
-              !
-              heating = 0.5_r8*(v1new*v1new+v2new*v2new-(v1*v1+v2*v2))
-              elem(ie)%state%T(i,j,k,nt)=elem(ie)%state%T(i,j,k,nt) &
-                   -heating*inv_cp_full(i,j,k,ie)
             enddo
           enddo
         enddo
@@ -1486,6 +1481,7 @@ contains
     real(kind=r8) :: ice(np,np)                      ! ice
 
     real(kind=r8) :: q(np,nlev,qsize)
+    integer       :: qidx(thermodynamic_active_species_num)
     real(kind=r8) :: cdp_fvm(nc,nc,nlev)
     real(kind=r8) :: cdp(np,np,nlev)
     real(kind=r8) :: ptop(np,np)
@@ -1501,7 +1497,7 @@ contains
     real(kind=r8) :: mo(npsq)  ! mass AAM
     real(kind=r8) :: mr_cnst, mo_cnst, cos_lat, mr_tmp, mo_tmp,inv_g
 
-    integer :: ie,i,j,k,budget_ind,state_ind,idx,idx_tmp
+    integer :: ie,i,j,k,budget_ind,state_ind,m_cnst,nq
     integer :: ixwv,ixcldice, ixcldliq, ixtt ! CLDICE, CLDLIQ and test tracer indices
     character(len=16) :: name_out1,name_out2,name_out3,name_out4,name_out5,name_out6
 
@@ -1535,27 +1531,30 @@ contains
       !
       ! Compute frozen static energy in 3 parts:  KE, SE, and energy associated with vapor and liquid
       !
+      do nq=1,thermodynamic_active_species_num
+        qidx(nq) = nq
+      end do
       do ie=nets,nete
         if (lcp_moist) then
           call get_cp(elem(ie)%state%Qdp(:,:,:,1:qsize,tl_qdp),&
-               .false., cp, dp_dry=elem(ie)%state%dp3d(:,:,:,tl),&
+               .false., cp, factor=1.0_r8/elem(ie)%state%dp3d(:,:,:,tl),&
                active_species_idx_dycore=thermodynamic_active_species_idx_dycore)
         else
           cp = cpair
         end if
-
         ptop = hyai(1)*ps0
         do j=1,np
-          !set thermodynamic active species
-          do idx=1,thermodynamic_active_species_num
-            idx_tmp = thermodynamic_active_species_idx_dycore(idx)
-            q(:,:,idx_tmp) = elem(ie)%state%Qdp(:,j,:,idx_tmp,tl_qdp)/&
+          !get mixing ratio of thermodynamic active species only 
+          !(other tracers not used in get_hydrostatic_energy)
+          do nq=1,thermodynamic_active_species_num
+            m_cnst = thermodynamic_active_species_idx_dycore(nq)
+            q(:,:,m_cnst) = elem(ie)%state%Qdp(:,j,:,m_cnst,tl_qdp)/&
                  elem(ie)%state%dp3d(:,j,:,tl) 
           end do
           call get_hydrostatic_energy(q, &
-               .false., elem(ie)%state%dp3d(:,j,:,tl), cp(:,j,:), elem(ie)%state%v(:,j,1,:,tl),     &
-               elem(ie)%state%v(:,j,2,:,tl), elem(ie)%state%T(:,j,:,tl), vcoord, ptop=ptop(:,j),    &
-               phis=elem(ie)%state%phis(:,j),dycore_idx=.true.,    &
+               .false., elem(ie)%state%dp3d(:,j,:,tl), cp(:,j,:), elem(ie)%state%v(:,j,1,:,tl), &
+               elem(ie)%state%v(:,j,2,:,tl), elem(ie)%state%T(:,j,:,tl), vcoord, ptop=ptop(:,j),&
+               phis=elem(ie)%state%phis(:,j), dycore_idx=.true.,                                &
                se=se(:,j), po=po(:,j), ke=ke(:,j), wv=wv(:,j), liq=liq(:,j), ice=ice(:,j))
         end do
         
@@ -1586,7 +1585,7 @@ contains
 
         do j=1,np
            do i = 1, np
-              elem(ie)%derived%budget(i,j,teidx,state_ind) = elem(ie)%derived%budget(i,j,teidx,state_ind) + &
+              elem(ie)%derived%budget(i,j,teidx,state_ind) = elem(ie)%derived%budget(i,j,teidx,state_ind) +&
                    se(i,j) + ke(i,j)+po(i,j)
               elem(ie)%derived%budget(i,j,seidx,state_ind) = elem(ie)%derived%budget(i,j,seidx,state_ind) + se(i,j)
               elem(ie)%derived%budget(i,j,keidx,state_ind) = elem(ie)%derived%budget(i,j,keidx,state_ind) + ke(i,j)
@@ -1619,8 +1618,8 @@ contains
            !
            if (thermodynamic_active_species_liq_num>0) then
               cdp_fvm = 0.0_r8
-              do idx = 1,thermodynamic_active_species_liq_num
-                cdp_fvm = cdp_fvm + fvm(ie)%c(1:nc,1:nc,:,thermodynamic_active_species_liq_idx(idx))&
+              do nq = 1,thermodynamic_active_species_liq_num
+                cdp_fvm = cdp_fvm + fvm(ie)%c(1:nc,1:nc,:,thermodynamic_active_species_liq_idx(nq))&
                      *fvm(ie)%dp_fvm(1:nc,1:nc,:)
               end do
               call util_function(cdp_fvm,nc,nlev,name_out4,ie)
@@ -1635,8 +1634,8 @@ contains
            !
            if (thermodynamic_active_species_ice_num>0) then
              cdp_fvm = 0.0_r8
-             do idx = 1,thermodynamic_active_species_ice_num
-               cdp_fvm = cdp_fvm + fvm(ie)%c(1:nc,1:nc,:,thermodynamic_active_species_ice_idx(idx))&
+             do nq = 1,thermodynamic_active_species_ice_num
+               cdp_fvm = cdp_fvm + fvm(ie)%c(1:nc,1:nc,:,thermodynamic_active_species_ice_idx(nq))&
                    *fvm(ie)%dp_fvm(1:nc,1:nc,:)
              end do
              call util_function(cdp_fvm,nc,nlev,name_out5,ie)

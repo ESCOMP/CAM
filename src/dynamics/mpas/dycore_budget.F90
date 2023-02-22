@@ -185,7 +185,7 @@ subroutine print_budget()
      end if
      write(iulog,*)" "
      write(iulog,*)"-------------------------------------------------------------------------"
-     write(iulog,*)" Consistency check 2: total energy increment in dynamics same as phyiscs?"
+     write(iulog,*)" Consistency check 2: total energy increment in dynamics same as physics?"
      write(iulog,*)"-------------------------------------------------------------------------"
      write(iulog,*)" "
      diff = abs_diff(mpas_param,dy_param+dy_EFIX,pf=pf)
