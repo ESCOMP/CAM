@@ -336,11 +336,12 @@ subroutine derived_phys(phys_state, phys_tend, pbuf2d)
    use check_energy,    only: check_energy_timestep_init
    use shr_vmath_mod,   only: shr_vmath_log
    use phys_control,    only: waccmx_is
-   use cam_thermo,      only: cam_thermo_update
-   use air_composition, only: rairv
+   use cam_thermo,      only: cam_thermo_dry_air_update
+   use air_composition, only: rairv, dry_air_species_num
    use qneg_module,     only: qneg3
    use shr_const_mod,   only: shr_const_rwv
    use constituents,    only: qmin
+
    ! Arguments
    type(physics_state),       intent(inout) :: phys_state(begchunk:endchunk)
    type(physics_tend ),       intent(inout) :: phys_tend(begchunk:endchunk)
@@ -442,7 +443,7 @@ subroutine derived_phys(phys_state, phys_tend, pbuf2d)
       end do
 
 
-      if ( waccmx_is('ionosphere') .or. waccmx_is('neutral') ) then
+      if (dry_air_species_num>0) then
         !------------------------------------------------------------
         ! Apply limiters to mixing ratios of major species
         !------------------------------------------------------------
@@ -453,7 +454,7 @@ subroutine derived_phys(phys_state, phys_tend, pbuf2d)
         ! Compute molecular viscosity(kmvis) and conductivity(kmcnd).
         ! Fill local zvirv variable; calculated for WACCM-X.
         !-----------------------------------------------------------------------------
-        call cam_thermo_update(phys_state(lchnk)%q, phys_state(lchnk)%t, lchnk, ncol)
+        call cam_thermo_dry_air_update(phys_state(lchnk)%q, phys_state(lchnk)%t, lchnk, ncol)
         zvirv(:,:) = shr_const_rwv / rairv(:,:,lchnk) -1._r8
       else
         zvirv(:,:) = zvir
