@@ -15,7 +15,7 @@ use dyn_grid,               only: ini_grid_name, timelevel, hvcoord, edgebuf, &
                                   ini_grid_hdim_name
 
 use cam_grid_support,       only: cam_grid_id, cam_grid_get_gcid, &
-                                  cam_grid_dimensions, cam_grid_get_dim_names, &
+                                  cam_grid_dimensions, &
                                   cam_grid_get_latvals, cam_grid_get_lonvals,  &
                                   max_hcoordname_len
 use cam_map_utils,          only: iMap
@@ -120,13 +120,11 @@ subroutine dyn_readnl(NLFileName)
    use parallel_mod,   only: initmpi
    use thread_mod,     only: initomp, max_num_threads
    use thread_mod,     only: horz_num_threads, vert_num_threads, tracer_num_threads
-   use physconst,      only: rearth
    ! Dummy argument
    character(len=*), intent(in) :: NLFileName
 
    ! Local variables
    integer                      :: unitn, ierr,k
-   real(r8)                     :: uniform_res_hypervis_scaling,nu_fac
 
    ! SE Namelist variables
    integer                      :: se_fine_ne
@@ -584,7 +582,7 @@ subroutine dyn_init(dyn_in, dyn_out)
    use prim_advance_mod,   only: prim_advance_init
    use dyn_grid,           only: elem, fvm
    use cam_pio_utils,      only: clean_iodesc_list
-   use physconst,          only: rair, cpair, pstd
+   use physconst,          only: cpair, pstd
    use air_composition,    only: thermodynamic_active_species_num, thermodynamic_active_species_idx
    use air_composition,    only: thermodynamic_active_species_idx_dycore
    use air_composition,    only: thermodynamic_active_species_liq_idx,thermodynamic_active_species_ice_idx
@@ -595,40 +593,37 @@ subroutine dyn_init(dyn_in, dyn_out)
 
    use thread_mod,         only: horz_num_threads
    use hybrid_mod,         only: get_loop_ranges, config_thread_region
-   use dimensions_mod,     only: nu_scale_top, nu_lev, nu_div_lev
+   use dimensions_mod,     only: nu_scale_top
    use dimensions_mod,     only: ksponge_end, kmvis_ref, kmcnd_ref,rho_ref,km_sponge_factor
    use dimensions_mod,     only: cnst_name_gll, cnst_longname_gll
    use dimensions_mod,     only: irecons_tracer_lev, irecons_tracer, kord_tr, kord_tr_cslam
    use prim_driver_mod,    only: prim_init2
-   use time_mod,           only: time_at
-   use control_mod,        only: runtype, molecular_diff, nu_top
+   use control_mod,        only: molecular_diff, nu_top
    use test_fvm_mapping,   only: test_mapping_addfld
    use phys_control,       only: phys_getopts
    use cam_thermo,         only: get_molecular_diff_coef_reference
    use control_mod,        only: vert_remap_uvTq_alg, vert_remap_tracer_alg
    use std_atm_profile,    only: std_atm_height
    use dyn_tests_utils,    only: vc_dycore, vc_dry_pressure, string_vc, vc_str_lgth
-   use budgets,            only: thermo_budget_history, budget_outfld, budget_info, &
-                                 thermo_budget_histfile_num, budget_add
+   use budgets,            only: budget_add, thermo_budget_history
 
    ! Dummy arguments:
    type(dyn_import_t), intent(out) :: dyn_in
    type(dyn_export_t), intent(out) :: dyn_out
 
    ! Local variables
-   integer             :: ithr, nets, nete, ie, k, kmol_end, mfound
+   integer             :: nets, nete, ie, k, kmol_end, mfound
    real(r8), parameter :: Tinit = 300.0_r8
    real(r8)            :: press(1), ptop, tref,z(1)
 
    type(hybrid_t)      :: hybrid
 
-   integer :: ixcldice, ixcldliq, ixrain, ixsnow, ixgraupel
+   integer :: ixcldice, ixcldliq
    integer :: m_cnst, m
 
    ! variables for initializing energy and axial angular momentum diagnostics
    integer, parameter                         :: num_stages = 12
-   character (len = 3), dimension(num_stages) :: stage         = (/"dED","dAF","dBD","dAD","dAR","dBF","dBH","dCH","dAH","dBS","dAS","p2d"/)
-   character (len = 1), dimension(num_stages) :: stage_avgflag = (/"A"  ,"C"  ,"C"  ,"C"  ,"C"  ,"A"  ,"C"  ,"C"  ,"C"  ,"C"  ,"C"  ,"A"/)
+   character (len = 4), dimension(num_stages) :: stage         = (/"dED","dAF","dBD","dAD","dAR","dBF","dBH","dCH","dAH","dBS","dAS","p2d"/)
    character (len = 70),dimension(num_stages) :: stage_txt = (/&
       " end of previous dynamics                           ",& !dED
       " from previous remapping or state passed to dynamics",& !dAF - state in beginning of nsplit loop
@@ -644,13 +639,11 @@ subroutine dyn_init(dyn_in, dyn_out)
       " phys2dyn mapping errors (requires ftype-1)         " & !p2d - for assessing phys2dyn mapping errors
       /)
 
-   integer :: istage, ivars
-   character (len=108)         :: str1, str2, str3, str4
+   integer :: istage
    character (len=vc_str_lgth) :: vc_str
 
    logical :: history_budget        ! output tendencies and state variables for budgets
-   logical :: thermo_budget_hist    ! output tendencies and state variables for budgets
-   integer :: budget_hfile_num, thermo_budget_hfile_num
+   integer :: budget_hfile_num
 
    character(len=*), parameter :: sub = 'dyn_init'
 
@@ -906,47 +899,45 @@ subroutine dyn_init(dyn_in, dyn_out)
      call addfld ('TT_PDC',   horiz_only, 'A', 'kg/m2','Total column test tracer lost in physics-dynamics coupling',gridname='GLL')
    end if
 
-   call phys_getopts(thermo_budget_hist_out=thermo_budget_hist)
-   if (thermo_budget_hist) then
+   if (thermo_budget_history) then
       ! Register stages for budgets
 
       do istage = 1, num_stages
-         call budget_add(TRIM(ADJUSTL(stage(istage))), 'dyn', longname=TRIM(ADJUSTL(stage_txt(istage))), outfld=.true.)
+         call budget_add(TRIM(ADJUSTL(stage(istage))), 'dyn', longname=TRIM(ADJUSTL(stage_txt(istage))), cslam=ntrac>0)
       end do
       
       !
       ! Register dif/sum budgets.
       !
-      call budget_add('BD_dyn_total','dBF','dED','dyn','dif',longname="dE/dt dyn total (dycore+phys tendency (dBF-dED)",outfld=.true.)
+      call budget_add('BD_dyn_total','dBF','dED','dyn','dif',longname="dE/dt dyn total (dycore+phys tendency (dBF-dED)",cslam=ntrac>0)
       
-      call budget_add('rate_2d_dyn','dAD','dBD','dyn','dif',longname="rate_of_change_2d_dyn (dAD-dBD)",outfld=.false.)
+      call budget_add('rate_2d_dyn','dAD','dBD','dyn','dif',longname="rate_of_change_2d_dyn (dAD-dBD)",cslam=ntrac>0.)
       
-      call budget_add('rate_vert_remap','dAR','dAD','dyn','dif',longname="rate_of_change_2d_dyn (dAR-dAD)",outfld=.false.)
+      call budget_add('rate_vert_remap','dAR','dAD','dyn','dif',longname="rate_of_change_2d_dyn (dAR-dAD)",cslam=ntrac>0.)
       
-      call budget_add('BD_dyn_adai','rate_2d_dyn','rate_vert_remap','dyn','sum',longname="dE/dt total adiabatic dynamics (adiab=rate2ddyn+vremap) ",outfld=.true.)
+      call budget_add('BD_dyn_adai','rate_2d_dyn','rate_vert_remap','dyn','sum',longname="dE/dt total adiabatic dynamics (adiab=rate2ddyn+vremap) ",cslam=ntrac>0)
       
-      call budget_add('BD_dyn_2D','dAD','dBD','dyn','dif',longname="dE/dt 2D dynamics (dAD-dBD)",outfld=.true.)
+      call budget_add('BD_dyn_2D','dAD','dBD','dyn','dif',longname="dE/dt 2D dynamics (dAD-dBD)",cslam=ntrac>0)
       
-      call budget_add('BD_dyn_remap','dAR','dAD','dyn','dif',longname="dE/dt vertical remapping (dAR-dAD)",outfld=.true.)
+      call budget_add('BD_dyn_remap','dAR','dAD','dyn','dif',longname="dE/dt vertical remapping (dAR-dAD)",cslam=ntrac>0)
       
-      call budget_add('BD_dyn_ptend','dBD','dAF','dyn','dif',longname="dE/dt physics tendency in dynamics (dBD-dAF)",outfld=.true.)
+      call budget_add('BD_dyn_ptend','dBD','dAF','dyn','dif',longname="dE/dt physics tendency in dynamics (dBD-dAF)",cslam=ntrac>0)
       
-      call budget_add('BD_dyn_hvis','dCH','dBH','dyn','dif',longname="dE/dt hypervis del4 (dCH-dBH)",outfld=.true.)
+      call budget_add('BD_dyn_hvis','dCH','dBH','dyn','dif',longname="dE/dt hypervis del4 (dCH-dBH)",cslam=ntrac>0)
       
-      call budget_add('BD_dyn_fric','dAH','dCH','dyn','dif',longname="dE/dt hypervis frictional heating del4 (dAH-dCH)",outfld=.true.)
+      call budget_add('BD_dyn_fric','dAH','dCH','dyn','dif',longname="dE/dt hypervis frictional heating del4 (dAH-dCH)",cslam=ntrac>0)
       
-      call budget_add('BD_dyn_difdel4tot','dAH','dBH','dyn','dif',longname="dE/dt hypervis del4 total (dAH-dBH)",outfld=.true.)
+      call budget_add('BD_dyn_difdel4tot','dAH','dBH','dyn','dif',longname="dE/dt hypervis del4 total (dAH-dBH)",cslam=ntrac>0)
       
-      call budget_add('BD_dyn_sponge','dAS','dBS','dyn','dif',longname="dE/dt hypervis sponge total (dAS-dBS)",outfld=.true.)
+      call budget_add('BD_dyn_sponge','dAS','dBS','dyn','dif',longname="dE/dt hypervis sponge total (dAS-dBS)",cslam=ntrac>0)
       
-      call budget_add('BD_dyn_difftot','BD_dyn_difdel4tot','BD_dyn_sponge','dyn','sum',longname="dE/dt explicit diffusion total (hvisdel4tot+hvisspngtot)",outfld=.true.)
+      call budget_add('BD_dyn_difftot','BD_dyn_difdel4tot','BD_dyn_sponge','dyn','sum',longname="dE/dt explicit diffusion total (hvisdel4tot+hvisspngtot)",cslam=ntrac>0)
       
-      call budget_add('BD_dyn_res','BD_dyn_2D','BD_dyn_difftot','dyn','dif',longname="dE/dt residual (2ddyn-expdifftot)",outfld=.true.)
+      call budget_add('BD_dyn_res','BD_dyn_2D','BD_dyn_difftot','dyn','dif',longname="dE/dt residual (2ddyn-expdifftot)",cslam=ntrac>0)
       
-      call budget_add('hrate','dAH','dCH','dyn','dif',longname="rate of change heating term put back in (dAH-dCH)",outfld=.false.)
+      call budget_add('hrate','dAH','dCH','dyn','dif',longname="rate of change heating term put back in (dAH-dCH)",cslam=ntrac>0)
       
    end if
-   call addfld ('dyn_area',  horiz_only, 'I', 'steradian', 'dynamics grid area' , gridname='GLL')
    !
    ! add dynamical core tracer tendency output
    !
@@ -978,7 +969,6 @@ end subroutine dyn_init
 subroutine dyn_run(dyn_state)
    use air_composition,  only: thermodynamic_active_species_num, dry_air_species_num
    use air_composition,  only: thermodynamic_active_species_idx_dycore
-   use prim_advance_mod, only: calc_tot_energy_dynamics
    use prim_driver_mod,  only: prim_run_subcycle
    use dimensions_mod,   only: cnst_name_gll
    use time_mod,         only: tstep, nsplit, timelevel_qdp
@@ -986,28 +976,23 @@ subroutine dyn_run(dyn_state)
    use control_mod,      only: qsplit, rsplit, ftype_conserve
    use thread_mod,       only: horz_num_threads
    use time_mod,         only: tevolve
-!jt   use budgets,          only: budget_write
-   use global_norms_mod, only: global_integral, wrap_repro_sum
-   use parallel_mod,     only: global_shared_buf, global_shared_sum
-   use dycore_budget,    only: print_budget
 
    type(dyn_export_t), intent(inout) :: dyn_state
 
    type(hybrid_t) :: hybrid
    integer        :: tl_f
    integer        :: n
-   integer        :: nets, nete, ithr
+   integer        :: nets, nete
    integer        :: i, ie, j, k, m, nq, m_cnst
    integer        :: n0_qdp, nsplit_local
    logical        :: ldiag
 
    real(r8) :: ftmp(npsq,nlev,3)
-   real(r8) :: rec2dt, pdel
    real(r8) :: dtime
+   real(r8) :: rec2dt, pdel
 
    real(r8), allocatable, dimension(:,:,:) :: ps_before
    real(r8), allocatable, dimension(:,:,:) :: abs_ps_tend
-
    real (kind=r8)                          :: omega_cn(2,nelemd) !min and max of vertical Courant number
    !----------------------------------------------------------------------------
 
@@ -1156,9 +1141,6 @@ subroutine dyn_run(dyn_state)
    ! output vars on CSLAM fvm grid
    call write_dyn_vars(dyn_state)
 
-!jt   if(budget_write(step_offset=nint(dtime))) then
-!jt      call budget_update(dyn_state%elem,dyn_state%fvm, nets, nete, TimeLevel%n0, n0_qdp, hybrid)
-!jt   end if
 end subroutine dyn_run
 
 !===============================================================================
@@ -1180,7 +1162,7 @@ subroutine read_inidat(dyn_in)
 
    use element_mod,         only: timelevels
    use fvm_mapping,         only: dyn2fvm_mass_vars
-   use control_mod,         only: runtype,initial_global_ave_dry_ps
+   use control_mod,         only: runtype
    use prim_driver_mod,     only: prim_set_dry_mass
    use air_composition,     only: thermodynamic_active_species_idx
    use cam_initfiles,       only: scale_dry_air_mass
@@ -1203,8 +1185,8 @@ subroutine read_inidat(dyn_in)
    logical,  allocatable            :: pmask(:)           ! (npsq*nelemd) unique grid vals
 
    character(len=max_hcoordname_len):: grid_name
-   real(r8), allocatable            :: latvals(:),latvals_phys(:)
-   real(r8), allocatable            :: lonvals(:),lonvals_phys(:)
+   real(r8), allocatable            :: latvals(:)
+   real(r8), allocatable            :: lonvals(:)
    real(r8), pointer                :: latvals_deg(:)
    real(r8), pointer                :: lonvals_deg(:)
 
@@ -1216,9 +1198,6 @@ subroutine read_inidat(dyn_in)
    integer                          :: kptr, m_cnst
    type(EdgeBuffer_t)               :: edge
 
-   character(len=max_fieldname_len) :: varname
-   integer                          :: ierr
-
    integer                          :: rndm_seed_sz
    integer, allocatable             :: rndm_seed(:)
    integer                          :: dims(2)
@@ -1228,10 +1207,6 @@ subroutine read_inidat(dyn_in)
    integer                          :: dyn_cols
    character(len=128)               :: errmsg
    character(len=*), parameter      :: sub='READ_INIDAT'
-
-   ! fvm vars
-   real(r8), allocatable            :: inv_dp_darea_fvm(:,:,:)
-   real(r8)                         :: min_val, max_val
 
    real(r8)                         :: dp_tmp, pstmp(np,np)
 
@@ -2044,7 +2019,6 @@ subroutine check_file_layout(file, elem, dyn_cols, file_desc, dyn_ok)
    integer                          :: ncol_did, ncol_size
    integer                          :: ierr
    integer                          :: ie, i, j
-   integer                          :: grid_id
    integer                          :: indx
    real(r8)                         :: dbuf2(npsq, nelemd)
    logical                          :: found
@@ -2343,4 +2317,5 @@ subroutine write_dyn_vars(dyn_out)
 
 end subroutine write_dyn_vars
 
+!=========================================================================================
 end module dyn_comp

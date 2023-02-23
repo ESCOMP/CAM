@@ -733,6 +733,7 @@ subroutine define_cam_grids()
    use cam_grid_support, only: horiz_coord_t, horiz_coord_create
    use cam_grid_support, only: cam_grid_register, cam_grid_attribute_register
    use dimensions_mod,   only: nc
+   use shr_const_mod,       only: PI => SHR_CONST_PI
 
    ! Local variables
    integer                      :: i, ii, j, k, ie, mapind
@@ -745,18 +746,20 @@ subroutine define_cam_grids()
    real(r8),        allocatable :: pelat_deg(:)  ! pe-local latitudes (degrees)
    real(r8),        allocatable :: pelon_deg(:)  ! pe-local longitudes (degrees)
    real(r8),        pointer     :: pearea(:) => null()  ! pe-local areas
-   real(r8)                     :: areaw(np,np)
+   real(r8),        pointer     :: pearea_wt(:) => null()  ! pe-local areas
    integer(iMap)                :: fdofP_local(npsq,nelemd) ! pe-local map for dynamics decomp
    integer(iMap),   allocatable :: pemap(:)                 ! pe-local map for PIO decomp
 
    integer                      :: ncols_fvm, ngcols_fvm
    real(r8),        allocatable :: fvm_coord(:)
    real(r8),            pointer :: fvm_area(:)
+   real(r8),            pointer :: fvm_areawt(:)
    integer(iMap),       pointer :: fvm_map(:)
 
    integer                      :: ncols_physgrid, ngcols_physgrid
    real(r8),        allocatable :: physgrid_coord(:)
    real(r8),            pointer :: physgrid_area(:)
+   real(r8),            pointer :: physgrid_areawt(:)
    integer(iMap),       pointer :: physgrid_map(:)
    !----------------------------------------------------------------------------
 
@@ -777,16 +780,17 @@ subroutine define_cam_grids()
    allocate(pelat_deg(np*np*nelemd))
    allocate(pelon_deg(np*np*nelemd))
    allocate(pearea(np*np*nelemd))
+   allocate(pearea_wt(np*np*nelemd))
    allocate(pemap(np*np*nelemd))
 
    pemap = 0_iMap
    ii = 1
    do ie = 1, nelemd
-      areaw = 1.0_r8 / elem(ie)%rspheremp(:,:)
-      pearea(ii:ii+npsq-1) = reshape(areaw, (/ np*np /))
       pemap(ii:ii+npsq-1) = fdofp_local(:,ie)
       do j = 1, np
          do i = 1, np
+            pearea(ii) = elem(ie)%mp(i,j)*elem(ie)%metdet(i,j)
+            pearea_wt(ii) = pearea(ii)/(4.0_r8*PI)
             pelat_deg(ii) = elem(ie)%spherep(i,j)%lat * rad2deg
             pelon_deg(ii) = elem(ie)%spherep(i,j)%lon * rad2deg
             ii = ii + 1
@@ -832,6 +836,8 @@ subroutine define_cam_grids()
          grid_map, block_indexed=.false., unstruct=.true.)
    call cam_grid_attribute_register('GLL', 'area_d', 'gll grid areas', &
          'ncol_d', pearea, map=pemap)
+   call cam_grid_attribute_register('GLL', 'area_weight_gll', 'gll grid area weights', &
+         'ncol_d', pearea_wt, map=pemap)
    call cam_grid_attribute_register('GLL', 'np', '', np)
    call cam_grid_attribute_register('GLL', 'ne', '', ne)
 
@@ -848,6 +854,8 @@ subroutine define_cam_grids()
          grid_map, block_indexed=.false., unstruct=.true.)
       call cam_grid_attribute_register('INI', 'area', 'ini grid areas', &
                'ncol', pearea, map=pemap)
+      call cam_grid_attribute_register('INI', 'area_weight_ini', 'ini grid area weights', &
+           'ncol', pearea_wt, map=pemap)
 
       ini_grid_name = 'INI'
    else
@@ -865,6 +873,7 @@ subroutine define_cam_grids()
    ! to that memory.  It can be nullified since the attribute object has
    ! the reference.
    nullify(pearea)
+   nullify(pearea_wt)
 
    ! grid_map cannot be deallocated as the cam_filemap_t object just points
    ! to it.  It can be nullified.
@@ -881,6 +890,7 @@ subroutine define_cam_grids()
       allocate(fvm_coord(ncols_fvm))
       allocate(fvm_map(ncols_fvm))
       allocate(fvm_area(ncols_fvm))
+      allocate(fvm_areawt(ncols_fvm))
 
       do ie = 1, nelemd
          k = 1
@@ -890,6 +900,7 @@ subroutine define_cam_grids()
                fvm_coord(mapind) = fvm(ie)%center_cart(i,j)%lon*rad2deg
                fvm_map(mapind) = k + ((elem(ie)%GlobalId-1) * nc * nc)
                fvm_area(mapind) = fvm(ie)%area_sphere(i,j)
+               fvm_areawt(mapind) = fvm_area(mapind)/(4.0_r8*PI)
                k = k + 1
             end do
          end do
@@ -930,12 +941,15 @@ subroutine define_cam_grids()
            grid_map, block_indexed=.false., unstruct=.true.)
       call cam_grid_attribute_register('FVM', 'area_fvm', 'fvm grid areas',   &
            'ncol_fvm', fvm_area, map=fvm_map)
+      call cam_grid_attribute_register('FVM', 'area_weight_fvm', 'fvm grid area weights',   &
+           'ncol_fvm', fvm_areawt, map=fvm_map)
       call cam_grid_attribute_register('FVM', 'nc', '', nc)
       call cam_grid_attribute_register('FVM', 'ne', '', ne)
 
       deallocate(fvm_coord)
       deallocate(fvm_map)
       nullify(fvm_area)
+      nullify(fvm_areawt)
       nullify(grid_map)
 
    end if
@@ -951,6 +965,7 @@ subroutine define_cam_grids()
       allocate(physgrid_coord(ncols_physgrid))
       allocate(physgrid_map(ncols_physgrid))
       allocate(physgrid_area(ncols_physgrid))
+      allocate(physgrid_areawt(ncols_physgrid))
 
       do ie = 1, nelemd
          k = 1
@@ -960,6 +975,7 @@ subroutine define_cam_grids()
                physgrid_coord(mapind) = fvm(ie)%center_cart_physgrid(i,j)%lon*rad2deg
                physgrid_map(mapind) = k + ((elem(ie)%GlobalId-1) * fv_nphys * fv_nphys)
                physgrid_area(mapind) = fvm(ie)%area_sphere_physgrid(i,j)
+               physgrid_areawt(mapind) = physgrid_area(mapind)/(4.0_r8*PI)
                k = k + 1
             end do
          end do
@@ -1000,12 +1016,15 @@ subroutine define_cam_grids()
            grid_map, block_indexed=.false., unstruct=.true.)
       call cam_grid_attribute_register('physgrid_d', 'area_physgrid', 'physics grid areas',   &
            'ncol', physgrid_area, map=physgrid_map)
+      call cam_grid_attribute_register('physgrid_d', 'area_weight_physgrid', 'physics grid area weight',   &
+           'ncol', physgrid_areawt, map=physgrid_map)
       call cam_grid_attribute_register('physgrid_d', 'fv_nphys', '', fv_nphys)
       call cam_grid_attribute_register('physgrid_d', 'ne',       '', ne)
 
       deallocate(physgrid_coord)
       deallocate(physgrid_map)
       nullify(physgrid_area)
+      nullify(physgrid_areawt)
       nullify(grid_map)
 
    end if

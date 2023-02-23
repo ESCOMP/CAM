@@ -10,7 +10,6 @@ module cam_history_support
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
   use shr_kind_mod,     only: r8=>shr_kind_r8, shr_kind_cl, shr_kind_cxx
-  use shr_sys_mod,      only: shr_sys_flush
   use pio,              only: var_desc_t, file_desc_t
   use cam_abortutils,   only: endrun
   use cam_logfile,      only: iulog
@@ -26,7 +25,7 @@ module cam_history_support
   integer, parameter, public :: max_string_len = shr_kind_cxx
   integer, parameter, public :: max_chars = shr_kind_cl         ! max chars for char variables
   integer, parameter, public :: fieldname_len = 32   ! max chars for field name
-  integer, parameter, public :: fieldname_suffix_len =  3 ! length of field name suffix ("&IC" and "&BG")
+  integer, parameter, public :: fieldname_suffix_len =  3 ! length of field name suffix ("&IC")
   integer, parameter, public :: fieldname_lenp2      = fieldname_len + 2 ! allow for extra characters
   ! max_fieldname_len = max chars for field name (including suffix)
   integer, parameter, public :: max_fieldname_len    = fieldname_len + fieldname_suffix_len
@@ -118,7 +117,7 @@ module cam_history_support
     integer :: meridional_complement         ! meridional field id or -1
     integer :: zonal_complement              ! zonal field id or -1
 
-    character(len=3) :: field_op             ! 'sum' or 'dif'
+    character(len=max_chars) :: field_op = ''             ! 'sum' or 'dif'
     integer          :: op_field1_id ! first field id to be summed/diffed or -1
     integer          :: op_field2_id ! second field id to be summed/diffed or -1
     
@@ -161,21 +160,24 @@ module cam_history_support
     type (field_info)         :: field       ! field information
     character(len=1)          :: avgflag     ! averaging flag
     character(len=max_chars)  :: time_op     ! time operator (e.g. max, min, avg)
+    character(len=max_fieldname_len)  :: op_field1     ! field1 name for sum/dif operation
+    character(len=max_fieldname_len)  :: op_field2     ! field2 name for sum/dif operation
 
     integer                   :: hwrt_prec   ! history output precision
     real(r8),         pointer :: hbuf(:,:,:) => NULL()
-    real(r8)                  :: hbuf_area_wgt_integral! area weighted integral of active field field
+    real(r8)                  :: hbuf_integral  ! area weighted integral of active field
     real(r8),         pointer :: sbuf(:,:,:) => NULL() ! for standard deviation
-    real(r8),         pointer :: gbuf(:,:,:) => NULL() ! pointer to area weights
+    real(r8),         pointer :: wbuf(:,:,:) => NULL() ! pointer to area weights
     type(var_desc_t), pointer :: varid(:)    => NULL() ! variable ids
     integer,          pointer :: nacs(:,:)   => NULL() ! accumulation counter
     type(var_desc_t), pointer :: nacs_varid  => NULL()
-    integer,          pointer :: nsteps(:,:) => NULL() ! accumulation counter
-    type(var_desc_t), pointer :: nsteps_varid=> NULL()
+    integer                   :: beg_nstep           ! starting time step for nstep normalization
+    type(var_desc_t), pointer :: beg_nstep_varid=> NULL()
     type(var_desc_t), pointer :: sbuf_varid  => NULL()
-    type(var_desc_t), pointer :: gbuf_varid  => NULL()
+    type(var_desc_t), pointer :: wbuf_varid  => NULL()
   contains
     procedure :: get_global   => hentry_get_global
+    procedure :: put_global   => hentry_put_global
   end type hentry
 
   !---------------------------------------------------------------------------
@@ -450,7 +452,7 @@ contains
   ! field_info_is_composed: Return whether this field is composed of two other fields
   logical function field_info_is_composed(this)
     class(field_info)                         :: this
-    field_info_is_composed = (this%field_op=='sum' .or. this%field_op=='dif')
+    field_info_is_composed = (trim(adjustl(this%field_op))=='sum' .or. trim(adjustl(this%field_op))=='dif')
   end function field_info_is_composed
 
   ! field_info_get_shape: Return a pointer to the field's global shape.
@@ -527,7 +529,7 @@ contains
     class(hentry)                    :: this
     real(r8),          intent(out)   :: gval
     
-    gval=this%hbuf_area_wgt_integral
+    gval=this%hbuf_integral
 
   end subroutine hentry_get_global
 
@@ -537,7 +539,7 @@ contains
     class(hentry)                    :: this
     real(r8),          intent(in)    :: gval
     
-    this%hbuf_area_wgt_integral=gval
+    this%hbuf_integral=gval
 
   end subroutine hentry_put_global
   
@@ -689,16 +691,8 @@ contains
     type(cam_grid_patch_t), pointer         :: patchptr
     type(var_desc_t), pointer               :: vardesc => NULL()  ! PIO var desc
     character(len=128)                      :: errormsg
-    character(len=max_chars)                :: lat_name
-    character(len=max_chars)                :: lon_name
-    character(len=max_chars)                :: col_name
-    character(len=max_chars)                :: temp_str
-    integer                                 :: dimid    ! PIO dimension ID
     integer                                 :: num_patches
-    integer                                 :: temp1, temp2
-    integer                                 :: latid, lonid ! Coordinate dims
     integer                                 :: i
-    logical                                 :: col_only
 
     num_patches = size(this%patches)
     if (.not. associated(this%header_info)) then

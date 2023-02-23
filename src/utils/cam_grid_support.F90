@@ -315,7 +315,7 @@ module cam_grid_support
   ! Functions for dealing with patch masks
   public     :: cam_grid_compute_patch
   ! Functions for dealing with grid areas
-  public     :: cam_grid_get_area
+  public     :: cam_grid_get_areawt
 
   interface cam_grid_attribute_register
     module procedure add_cam_grid_attribute_0d_int
@@ -1618,54 +1618,54 @@ contains
     end if
   end function cam_grid_get_lonvals
 
-  function cam_grid_get_area(id) result(areavals)
+  function cam_grid_get_areawt(id) result(wtvals)
 
     ! Dummy argument
     integer,                  intent(in)       :: id
-    real(r8), pointer                          :: areavals(:)
+    real(r8), pointer                          :: wtvals(:)
 
     ! Local variables
-    character(len=max_chars)                   :: areaname
+    character(len=max_chars)                   :: wtname
     integer                                    :: gridind
-    type(cam_grid_attribute_1d_r8_t), pointer  :: attrptr_r8
     class(cam_grid_attribute_t),      pointer  :: attrptr
     character(len=120)                         :: errormsg
 
-    nullify(attrptr_r8)
     nullify(attrptr)
     gridind = get_cam_grid_index(id)
     if (gridind > 0) then
        select case(cam_grids(gridind)%name)
        case('GLL')
-          areaname='area_d'
+          wtname='area_weight_gll'
        case('INI')
-          areaname='area'
+          wtname='area_weight_ini'
+       case('physgrid')
+          wtname='areawt'
        case('FVM')
-          areaname='area_fvm'
+          wtname='area_weight_fvm'
+       case('mpas_cell')
+          wtname='area_weight_mpas'
        case default
-          call endrun('cam_grid_get_area: Invalid gridname:'//trim(cam_grids(gridind)%name))
+          call endrun('cam_grid_get_areawt: Invalid gridname:'//trim(cam_grids(gridind)%name))
        end select
 
-       call find_cam_grid_attr(gridind, trim(areaname), attrptr)
+       call find_cam_grid_attr(gridind, trim(wtname), attrptr)
        if (.not.associated(attrptr)) then
           write(errormsg, '(4a)')                                               &
-               'cam_grid_get_area: error retrieving area ', trim(areaname),         &
+               'cam_grid_get_areawt: error retrieving weight attribute ', trim(wtname),         &
                ' for cam grid ', cam_grids(gridind)%name
           call endrun(errormsg)
        else
           call attrptr%print_attr()
           select type(attrptr)
           type is (cam_grid_attribute_1d_r8_t)
-             !jt                attrptr_r8 => attrptr
-             areavals => attrptr%values
+             wtvals => attrptr%values
           class default
-             call endrun('cam_grid_get_area: area attribute is not a real datatype')
-!jt             areavals => null()
+             call endrun('cam_grid_get_areawt: wt attribute is not a real datatype')
           end select
        end if
     end if
     
-  end function cam_grid_get_area
+  end function cam_grid_get_areawt
 
   ! Find the longitude and latitude of a range of map entries
   ! beg and end are the range of the first source index. blk is a block or chunk index
@@ -2075,7 +2075,7 @@ contains
     character(len=120)                                  :: errormsg
     integer                                             :: gridind
     integer                                             :: dimsize
-
+    if (masterproc) write(iulog,*)'adding cam_grid_attribute gridname,name,dimname=',gridname,name,dimname
     gridind = get_cam_grid_index(trim(gridname))
     if (gridind > 0) then
       call find_cam_grid_attr(gridind, trim(name), attptr)
@@ -2176,7 +2176,6 @@ contains
     type(file_desc_t),                  intent(inout) :: File ! PIO file Handle
 
     ! Local variables
-    character(len=120)                  :: errormsg
     integer                             :: attrtype
     integer(imap)                       :: attrlen
     integer                             :: ierr
@@ -2223,7 +2222,6 @@ contains
     type(file_desc_t),                   intent(inout) :: File ! PIO file Handle
 
     ! Local variables
-    character(len=120)                  :: errormsg
     integer                             :: attrtype
     integer(imap)                       :: attrlen
     integer                             :: ierr
@@ -2386,7 +2384,6 @@ contains
   !---------------------------------------------------------------------------
   subroutine cam_grid_write_attr(File, grid_id, header_info)
     use pio, only: file_desc_t, PIO_BCAST_ERROR, pio_seterrorhandling
-    use pio, only: pio_inq_dimid
 
     ! Dummy arguments
     type(file_desc_t),            intent(inout) :: File       ! PIO file Handle
@@ -2465,14 +2462,13 @@ contains
   end subroutine cam_grid_write_attr
 
   subroutine write_cam_grid_val_0d_int(attr, File)
-    use pio, only: file_desc_t, pio_inq_varid, pio_put_var
+    use pio, only: file_desc_t, pio_put_var
 
     ! Dummy arguments
     class(cam_grid_attribute_0d_int_t), intent(inout) :: attr
     type(file_desc_t),                  intent(inout) :: File
 
     ! Local variables
-    character(len=120)               :: errormsg
     integer                          :: ierr
 
     ! We only write this var if it is a variable
@@ -2499,7 +2495,7 @@ contains
 
   subroutine write_cam_grid_val_1d_int(attr, File)
     use pio,           only: file_desc_t, pio_put_var, pio_int,               &
-         pio_inq_varid, pio_write_darray, io_desc_t, pio_freedecomp
+                             pio_write_darray, io_desc_t, pio_freedecomp
     use cam_pio_utils, only: cam_pio_newdecomp
 
     ! Dummy arguments
@@ -2507,7 +2503,6 @@ contains
     type(file_desc_t),                  intent(inout) :: File
 
     ! Local variables
-    character(len=120)               :: errormsg
     integer                          :: ierr
     type(io_desc_t), pointer         :: iodesc
 
@@ -2537,7 +2532,7 @@ contains
 
   subroutine write_cam_grid_val_1d_r8(attr, File)
     use pio,           only: file_desc_t, pio_put_var, pio_double,            &
-         pio_inq_varid, pio_write_darray, io_desc_t, pio_freedecomp
+                             pio_write_darray, io_desc_t, pio_freedecomp
     use cam_pio_utils, only: cam_pio_newdecomp
 
     ! Dummy arguments
@@ -2545,7 +2540,6 @@ contains
     type(file_desc_t),                 intent(inout) :: File
 
     ! Local variables
-    character(len=120)               :: errormsg
     integer                          :: ierr
     type(io_desc_t), pointer         :: iodesc
 
@@ -3050,7 +3044,7 @@ contains
     integer,                   intent(out)   :: dimids(:)
 
     ! Local vaariables
-    integer                                  :: dsize, ierr
+    integer                                  :: ierr
     integer                                  :: err_handling
     character(len=max_hcoordname_len)        :: dimname1, dimname2
 
@@ -3931,8 +3925,6 @@ contains
   end subroutine cam_grid_patch_get_decomp
 
   subroutine cam_grid_patch_compact(this, collected_output)
-    use spmd_utils,  only: mpi_sum, mpi_integer, mpicom
-    use shr_mpi_mod, only: shr_mpi_chkerr
 
     ! Dummy arguments
     class(cam_grid_patch_t)               :: this

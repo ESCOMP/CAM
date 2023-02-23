@@ -1,3 +1,4 @@
+
 module check_energy
 
 !---------------------------------------------------------------------------------
@@ -50,7 +51,6 @@ module check_energy
   public :: check_tracers_chng      ! check changes in integrals against cumulative boundary fluxes
 
   public :: calc_te_and_aam_budgets ! calculate and output total energy and axial angular momentum diagnostics
-
 
 ! Private module data
 
@@ -191,10 +191,7 @@ end subroutine check_energy_get_integrals
 
     logical          :: history_budget, history_waccm
     integer          :: history_budget_histfile_num ! output history file number for budget fields
-    integer          :: m                           ! budget array index into te_budgets
-    character(len=32):: budget_name     ! budget names
-    character(len=3) :: budget_pkgtype     ! budget type phy or dyn
-    character(len=128):: budget_longname ! long name of budgets
+
 !-----------------------------------------------------------------------
 
     call phys_getopts( history_budget_out = history_budget, &
@@ -473,6 +470,7 @@ end subroutine check_energy_get_integrals
       state%tw_cur(1:ncol,dyn_te_idx) = tw(1:ncol)
     end if
   end subroutine check_energy_chng
+
 
   subroutine check_energy_gmean(state, pbuf2d, dtime, nstep)
 
@@ -787,15 +785,14 @@ end subroutine check_energy_get_integrals
 !#######################################################################
 
   subroutine calc_te_and_aam_budgets(state, outfld_name_suffix,vc)
-    use physconst,       only: gravit,cpair,pi,rearth,omega
+    use physconst,       only: gravit,rearth,omega
     use cam_thermo,      only: get_hydrostatic_energy,thermo_budget_num_vars,thermo_budget_vars, &
-                               wvidx,wlidx,wiidx,seidx,keidx,moidx,mridx,ttidx,teidx,poidx
-    use cam_history,     only: hist_fld_active, outfld
+                               wvidx,wlidx,wiidx,seidx,keidx,moidx,mridx,ttidx,teidx
+    use cam_history,     only: outfld
     use dyn_tests_utils, only: vc_physics, vc_height
     use cam_abortutils,  only: endrun
-    use budgets,         only: budget_info_byname
     use cam_history_support, only: max_fieldname_len
-    use shr_assert_mod,  only: shr_assert_in_domain
+    use budgets,         only: thermo_budget_history
 !------------------------------Arguments--------------------------------
 
     type(physics_state), intent(inout) :: state
@@ -822,21 +819,18 @@ end subroutine check_energy_get_integrals
     integer :: ncol                                ! number of atmospheric columns
     integer :: i,k                                 ! column, level indices
     integer :: vc_loc                              ! local vertical coordinate variable
-    integer :: s_ind,b_ind                      ! budget array index
     integer :: ixtt                                ! test tracer index
     character(len=max_fieldname_len) :: name_out(thermo_budget_num_vars)
 
 !-----------------------------------------------------------------------
 
-
+    if (thermo_budget_history) then
     do i=1,thermo_budget_num_vars
        name_out(i)=trim(thermo_budget_vars(i))//'_'//trim(outfld_name_suffix)
     end do
 
       lchnk = state%lchnk
       ncol  = state%ncol
-
-      call budget_info_byname(trim(outfld_name_suffix),budget_ind=b_ind,state_ind=s_ind)
 
       if (present(vc)) then
         vc_loc = vc
@@ -873,9 +867,6 @@ end subroutine check_energy_get_integrals
            po = po(1:ncol), ke = ke(1:ncol), wv = wv(1:ncol), liq = liq(1:ncol),       &
            ice = ice(1:ncol))
 
-      call shr_assert_in_domain(ke(:),       is_nan=.false., &
-           varname="ke",         msg='ke out of get_hydro has nan'//trim(outfld_name_suffix))
-
       call cnst_get_ind('TT_LW' , ixtt    , abort=.false.)
 
       tt    = 0._r8
@@ -899,7 +890,6 @@ end subroutine check_energy_get_integrals
           end do
         end if
       end if
-
 
       call outfld(name_out(seidx)  ,se+po   , pcols   ,lchnk   )
       call outfld(name_out(keidx)  ,ke      , pcols   ,lchnk   )
@@ -943,7 +933,7 @@ end subroutine check_energy_get_integrals
 
       call outfld(name_out(mridx)  ,mr, pcols,lchnk   )
       call outfld(name_out(moidx)  ,mo, pcols,lchnk   )
-
+   end if
   end subroutine calc_te_and_aam_budgets
 
 

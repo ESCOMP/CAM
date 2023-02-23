@@ -57,13 +57,9 @@ logical           :: history_aerosol      = .false.    ! output the MAM aerosol 
 logical           :: history_aero_optics  = .false.    ! output the aerosol
 logical           :: history_eddy         = .false.    ! output the eddy variables
 logical           :: history_budget       = .false.    ! output tendencies and state variables for CAM4
-logical           :: thermo_budget_hist   = .false.    ! output thermo budget for CAM
-                                                       ! temperature, water vapor, cloud ice and cloud
-                                                       ! liquid budgets.
 logical           :: convproc_do_aer      = .false.    ! switch for new convective scavenging treatment for modal aerosols
 
 integer           :: history_budget_histfile_num = 1   ! output history file number for budget fields
-integer           :: thermo_budget_hfile_num = 2       ! output history file number for thermo budget fields
 logical           :: history_waccm        = .false.    ! output variables of interest for WACCM runs
 logical           :: history_waccmx       = .false.    ! output variables of interest for WACCM-X runs
 logical           :: history_chemistry    = .true.     ! output default chemistry-related variables
@@ -136,8 +132,7 @@ subroutine phys_ctl_readnl(nlfile)
       do_clubb_sgs, state_debug_checks, use_hetfrz_classnuc, use_gw_oro, use_gw_front, &
       use_gw_front_igw, use_gw_convect_dp, use_gw_convect_sh, cld_macmic_num_steps, &
       offline_driver, convproc_do_aer, cam_snapshot_before_num, cam_snapshot_after_num, &
-      cam_take_snapshot_before, cam_take_snapshot_after, cam_physics_mesh, &
-      thermo_budget_hist, thermo_budget_hfile_num
+      cam_take_snapshot_before, cam_take_snapshot_after, cam_physics_mesh
    !-----------------------------------------------------------------------------
 
    if (masterproc) then
@@ -175,8 +170,6 @@ subroutine phys_ctl_readnl(nlfile)
    call mpi_bcast(history_aero_optics,         1,                     mpi_logical,   masterprocid, mpicom, ierr)
    call mpi_bcast(history_budget,              1,                     mpi_logical,   masterprocid, mpicom, ierr)
    call mpi_bcast(history_budget_histfile_num, 1,                     mpi_integer,   masterprocid, mpicom, ierr)
-   call mpi_bcast(thermo_budget_hist,          1,                     mpi_logical,   masterprocid, mpicom, ierr)
-   call mpi_bcast(thermo_budget_hfile_num,     1,                     mpi_integer,   masterprocid, mpicom, ierr)
    call mpi_bcast(history_waccm,               1,                     mpi_logical,   masterprocid, mpicom, ierr)
    call mpi_bcast(history_waccmx,              1,                     mpi_logical,   masterprocid, mpicom, ierr)
    call mpi_bcast(history_chemistry,           1,                     mpi_logical,   masterprocid, mpicom, ierr)
@@ -317,8 +310,7 @@ subroutine phys_getopts(deep_scheme_out, shallow_scheme_out, eddy_scheme_out, mi
                         cam_chempkg_out, prog_modal_aero_out, macrop_scheme_out, &
                         do_clubb_sgs_out, use_spcam_out, state_debug_checks_out, cld_macmic_num_steps_out, &
                         offline_driver_out, convproc_do_aer_out, cam_snapshot_before_num_out, cam_snapshot_after_num_out,&
-                        cam_take_snapshot_before_out, cam_take_snapshot_after_out, physics_grid_out,&
-                        thermo_budget_hist_out, thermo_budget_hfile_num_out)
+                        cam_take_snapshot_before_out, cam_take_snapshot_after_out, physics_grid_out)
 !-----------------------------------------------------------------------
 ! Purpose: Return runtime settings
 !          deep_scheme_out   : deep convection scheme
@@ -345,8 +337,6 @@ subroutine phys_getopts(deep_scheme_out, shallow_scheme_out, eddy_scheme_out, mi
    logical,           intent(out), optional :: history_aero_optics_out
    logical,           intent(out), optional :: history_budget_out
    integer,           intent(out), optional :: history_budget_histfile_num_out
-   logical,           intent(out), optional :: thermo_budget_hist_out
-   integer,           intent(out), optional :: thermo_budget_hfile_num_out
    logical,           intent(out), optional :: history_waccm_out
    logical,           intent(out), optional :: history_waccmx_out
    logical,           intent(out), optional :: history_chemistry_out
@@ -382,12 +372,10 @@ subroutine phys_getopts(deep_scheme_out, shallow_scheme_out, eddy_scheme_out, mi
    if ( present(history_aerosol_out     ) ) history_aerosol_out      = history_aerosol
    if ( present(history_aero_optics_out ) ) history_aero_optics_out  = history_aero_optics
    if ( present(history_budget_out      ) ) history_budget_out       = history_budget
-   if ( present(thermo_budget_hist_out) ) thermo_budget_hist_out = thermo_budget_hist
    if ( present(history_amwg_out        ) ) history_amwg_out         = history_amwg
    if ( present(history_vdiag_out       ) ) history_vdiag_out        = history_vdiag
    if ( present(history_eddy_out        ) ) history_eddy_out         = history_eddy
    if ( present(history_budget_histfile_num_out ) ) history_budget_histfile_num_out = history_budget_histfile_num
-   if ( present(thermo_budget_hfile_num_out ) ) thermo_budget_hfile_num_out = thermo_budget_hfile_num
    if ( present(history_waccm_out       ) ) history_waccm_out        = history_waccm
    if ( present(history_waccmx_out      ) ) history_waccmx_out       = history_waccmx
    if ( present(history_chemistry_out   ) ) history_chemistry_out    = history_chemistry

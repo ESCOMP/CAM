@@ -35,7 +35,7 @@ contains
   subroutine global_integrals(elem, h,hybrid,npts,num_flds,nets,nete,I_sphere)
     use hybrid_mod,     only: hybrid_t
     use element_mod,    only: element_t
-    use dimensions_mod, only: np, nelemd
+    use dimensions_mod, only: np
     use physconst,      only: pi
     use parallel_mod,   only: global_shared_buf, global_shared_sum
 
@@ -46,7 +46,6 @@ contains
 
     real (kind=r8) :: I_sphere(num_flds)
 
-    real (kind=r8) :: I_priv
     real (kind=r8) :: I_shared
     common /gblintcom/I_shared
     !
@@ -84,7 +83,6 @@ contains
 
   subroutine global_integrals_general(h,hybrid,npts,da,num_flds,nets,nete,I_sphere)
     use hybrid_mod,     only: hybrid_t
-    use dimensions_mod, only: nc, nelemd
     use physconst,      only: pi
     use parallel_mod,   only: global_shared_buf, global_shared_sum
 
@@ -95,7 +93,6 @@ contains
 
     real (kind=r8) :: I_sphere(num_flds)
 
-    real (kind=r8) :: I_priv
     real (kind=r8) :: I_shared
     common /gblintcom/I_shared
     !
@@ -141,7 +138,7 @@ contains
   function global_integral_elem(elem, h,hybrid,npts,nets,nete) result(I_sphere)
     use hybrid_mod,     only: hybrid_t
     use element_mod,    only: element_t
-    use dimensions_mod, only: np, nelemd
+    use dimensions_mod, only: np
     use physconst,      only: pi
     use parallel_mod,   only: global_shared_buf, global_shared_sum
 
@@ -152,7 +149,6 @@ contains
 
     real (kind=r8) :: I_sphere
 
-    real (kind=r8) :: I_priv
     real (kind=r8) :: I_shared
     common /gblintcom/I_shared
 
@@ -203,7 +199,6 @@ contains
 
     real (kind=r8) :: I_sphere
 
-    real (kind=r8) :: I_priv
     real (kind=r8) :: I_shared
     common /gblintcom/I_shared
 
@@ -261,23 +256,22 @@ contains
     !   worse viscosity CFL (given by dtnu) is not violated by reducing
     !   viscosity coefficient in regions where CFL is violated
     !
-    use hybrid_mod,     only: hybrid_t, PrintHybrid
+    use hybrid_mod,     only: hybrid_t
     use element_mod,    only: element_t
-    use dimensions_mod, only: np,ne,nelem,nelemd,nc,nhe,qsize,ntrac,nlev,large_Courant_incr
+    use dimensions_mod, only: np,ne,nelem,nc,nhe,ntrac,nlev,large_Courant_incr
     use dimensions_mod, only: nu_scale_top,nu_div_lev,nu_lev,nu_t_lev
 
     use quadrature_mod, only: gausslobatto, quadrature_t
 
     use reduction_mod,  only: ParallelMin,ParallelMax
     use physconst,      only: ra, rearth, pi
-    use control_mod,    only: nu, nu_div, nu_q, nu_p, nu_t, nu_top, fine_ne, rk_stage_user, max_hypervis_courant
+    use control_mod,    only: nu, nu_div, nu_q, nu_p, nu_t, nu_top, fine_ne, max_hypervis_courant
     use control_mod,    only: tstep_type, hypervis_power, hypervis_scaling
     use control_mod,    only: sponge_del4_nu_div_fac, sponge_del4_nu_fac, sponge_del4_lev
     use cam_abortutils, only: endrun
     use parallel_mod,   only: global_shared_buf, global_shared_sum
     use edge_mod,       only: initedgebuffer, FreeEdgeBuffer, edgeVpack, edgeVunpack
     use bndry_mod,      only: bndry_exchange
-    use time_mod,       only: tstep
     use mesh_mod,       only: MeshUseMeshFile
     use dimensions_mod, only: ksponge_end, kmvis_ref, kmcnd_ref,rho_ref
     use physconst,      only: cpair
@@ -303,8 +297,8 @@ contains
     real (kind=r8) :: x, y, noreast, nw, se, sw
     real (kind=r8), dimension(np,np,nets:nete) :: zeta
     real (kind=r8) :: lambda_max, lambda_vis, min_gw, lambda,umax, ugw
-    real (kind=r8) :: scale1,scale2,scale3, max_laplace,z(nlev)
-    integer :: ie,corner, i, j, rowind, colind, k
+    real (kind=r8) :: scale1, max_laplace,z(nlev)
+    integer :: ie, i, j, rowind, colind, k
     type (quadrature_t)    :: gp
     character(LEN=256) :: rk_str
 
