@@ -3,13 +3,14 @@
    "O2 absorption" : {
      "cross section parameters file": "data/cross_sections/O2_parameters.txt"
    },
-   "grids": {
-   },
-   "profiles": {
-   },
+   "grids": [
+   ],
+   "profiles": [
+   ],
    "radiative transfer": {
       "solver": {
-         "type": "delta eddington"
+         "type": "discrete ordinate",
+         "number of streams": 4
       },
       "cross sections": [
          {
@@ -31,7 +32,8 @@
             "netcdf files": [
               {
                 "file path": "data/cross_sections/O2_1.nc",
-                "lower extrapolation": { "type": "boundary" }
+                "lower extrapolation": { "type": "boundary" },
+                "interpolator": { "type": "fractional target" }
               }
             ],
             "type": "base"
@@ -70,42 +72,16 @@
             "cross section": {
               "netcdf files": [
                 {
-                  "file path": "data/cross_sections/O2_1.nc",
-                  "lower extrapolation": { "type": "boundary" }
-                }
-              ],
-              "type": "base"
+                   "file path": "data/cross_sections/O2_1.nc",
+                   "lower extrapolation": { "type": "boundary" },
+                   "interpolator": { "type": "fractional target" }
+                 }
+               ],
+               "type": "base"
             },
             "quantum yield": {
               "type": "base",
               "constant value": 0,
-              "override bands": [
-                {
-                  "band": "lyman-alpha",
-                  "value": 0.47
-                },
-                {
-                  "band": "schumann-runge",
-                  "value": 1.0
-                }
-              ]
-            }
-         },
-         {
-            "name": "jo2_b",
-            "__reaction": "O2 + hv -> O + O",
-            "cross section": {
-              "netcdf files": [
-                {
-                  "file path": "data/cross_sections/O2_1.nc",
-                  "lower extrapolation": { "type": "boundary" }
-                }
-              ],
-              "type": "base"
-            },
-            "quantum yield": {
-              "type": "base",
-              "constant value": 1.0,
               "override bands": [
                 {
                   "band": "lyman-alpha",
@@ -116,6 +92,34 @@
                   "value": 1.0
                 }
               ]
+            }
+         },
+         {
+            "name": "jo2_b",
+            "__reaction": "O2 + hv -> O + O",
+            "cross section": {
+               "netcdf files": [
+                 {
+                   "file path": "data/cross_sections/O2_1.nc",
+                   "lower extrapolation": { "type": "boundary" },
+                   "interpolator": { "type": "fractional target" }
+                 }
+               ],
+               "type": "base"
+            },
+            "quantum yield": {
+               "type": "base",
+               "constant value": 1.0,
+               "override bands": [
+                 {
+                   "band": "lyman-alpha",
+                   "value": 0.47
+                 },
+                 {
+                   "band": "schumann-runge continuum",
+                   "value": 0.0
+                 }
+               ]
             }
          },
          {
@@ -402,7 +406,7 @@
             },
             "quantum yield": {
                "type": "base",
-               "constant value": 1.0
+               "constant value": 0.5
             }
          },
          {

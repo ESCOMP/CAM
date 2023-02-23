@@ -1213,7 +1213,6 @@
       ]
    },
    "__CAM options": {
-     "disable aerosols": true,
      "aliasing": {
        "default matching": "backup",
        "pairs": [
