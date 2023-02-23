@@ -13,6 +13,7 @@ use physics_buffer,  only: physics_buffer_desc, pbuf_add_field, dtype_r8
 use physics_buffer,  only: dyn_time_lvls, pbuf_get_field, pbuf_get_index, pbuf_old_tim_idx
 
 use cam_history,     only: outfld, write_inithist, hist_fld_active, inithist_all
+use cam_history_support, only: max_fieldname_len
 use constituents,    only: pcnst, cnst_name, cnst_longname, cnst_cam_outfld
 use constituents,    only: ptendnam, apcnst, bpcnst, cnst_get_ind
 use dycore,          only: dycore_is
@@ -46,6 +47,18 @@ public :: &
    diag_physvar_ic,          &
    nsurf
 
+integer, public, parameter                                 :: num_stages = 8
+character (len = max_fieldname_len), dimension(num_stages) :: stage = (/"phBF","phBP","phAP","phAM","dyBF","dyBP","dyAP","dyAM"/)
+character (len = 45),dimension(num_stages) :: stage_txt = (/&
+     " before energy fixer                     ",& !phBF - physics energy
+     " before parameterizations                ",& !phBF - physics energy
+     " after parameterizations                 ",& !phAP - physics energy
+     " after dry mass correction               ",& !phAM - physics energy
+     " before energy fixer (dycore)            ",& !dyBF - dynamics energy
+     " before parameterizations (dycore)       ",& !dyBF - dynamics energy
+     " after parameterizations (dycore)        ",& !dyAP - dynamics energy
+     " after dry mass correction (dycore)      " & !dyAM - dynamics energy
+     /)
 
 ! Private data
 
@@ -176,14 +189,12 @@ contains
 
     use cam_history,        only: addfld, add_default, horiz_only
     use cam_history,        only: register_vector_field
-    use constituent_burden, only: constituent_burden_init
-    use physics_buffer,     only: pbuf_set_field
     use tidal_diag,         only: tidal_diag_init
+    use budgets,            only: budget_add, thermo_budget_history
 
     type(physics_buffer_desc), pointer, intent(in) :: pbuf2d(:,:)
 
-    integer :: k, m
-    integer :: ierr
+    integer :: istage
     ! outfld calls in diag_phys_writeout
     call addfld (cnst_name(1), (/ 'lev' /), 'A', 'kg/kg',    cnst_longname(1))
     call addfld ('NSTEP',      horiz_only,  'A', 'timestep', 'Model timestep')
@@ -383,6 +394,27 @@ contains
     call addfld( 'CPAIRV', (/ 'lev' /), 'I', 'J/K/kg', 'Variable specific heat cap air' )
     call addfld( 'RAIRV', (/ 'lev' /), 'I', 'J/K/kg', 'Variable dry air gas constant' )
 
+    if (thermo_budget_history) then
+       !
+       ! energy diagnostics addflds for vars_stage combinations plus budget_adds
+       !
+       do istage = 1, num_stages
+          call budget_add(TRIM(ADJUSTL(stage(istage))),'phy',longname=TRIM(ADJUSTL(stage_txt(istage))))
+       end do
+       
+       ! Create budgets that are a sum/dif of 2 stages
+       
+       call budget_add('BP_param_and_efix','phAP','phBF','phy','dif',longname='dE/dt CAM physics parameterizations + efix dycore E (phAP-phBF)')
+       call budget_add('BD_param_and_efix','dyAP','dyBF','phy','dif',longname='dE/dt CAM physics parameterizations + efix dycore E (dyAP-dyBF)')
+       call budget_add('BP_phy_params','phAP','phBP','phy','dif',longname='dE/dt CAM physics parameterizations (phAP-phBP)')
+       call budget_add('BD_phy_params','dyAP','dyBP','phy','dif',longname='dE/dt CAM physics parameterizations using dycore E (dyAP-dyBP)')
+       call budget_add('BP_pwork','phAM','phAP','phy','dif',longname='dE/dt dry mass adjustment (phAM-phAP)')
+       call budget_add('BD_pwork','dyAM','dyAP','phy','dif',longname='dE/dt dry mass adjustment using dycore E (dyAM-dyAP)')
+       call budget_add('BP_efix','phBP','phBF','phy','dif',longname='dE/dt energy fixer (phBP-phBF)')
+       call budget_add('BD_efix','dyBP','dyBF','phy','dif',longname='dE/dt energy fixer using dycore E (dyBP-dyBF)')
+       call budget_add('BP_phys_tot','phAM','phBF','phy','dif',longname='dE/dt physics total (phAM-phBF)')
+       call budget_add('BD_phys_tot','dyAM','dyBF','phy','dif',longname='dE/dt physics total using dycore E (dyAM-dyBF)')
+    endif
   end subroutine diag_init_dry
 
   subroutine diag_init_moist(pbuf2d)
@@ -395,7 +427,7 @@ contains
 
     type(physics_buffer_desc), pointer, intent(in) :: pbuf2d(:,:)
 
-    integer :: k, m
+    integer :: m
     integer :: ixcldice, ixcldliq ! constituent indices for cloud liquid and ice water.
     integer :: ierr
     ! column burdens for all constituents except water vapor
@@ -687,7 +719,6 @@ contains
   end subroutine diag_init_moist
 
   subroutine diag_init(pbuf2d)
-    use cam_history,        only: addfld
 
     ! Declare the history fields for which this module contains outfld calls.
 
@@ -868,15 +899,11 @@ contains
     ! Purpose: output dry physics diagnostics
     !
     !-----------------------------------------------------------------------
-    use physconst,          only: gravit, rga, rair, cpair, latvap, rearth, pi, cappa
+    use physconst,          only: gravit, rga, rair, cappa
     use time_manager,       only: get_nstep
     use interpolate_data,   only: vertinterp
-    use constituent_burden, only: constituent_burden_comp
-    use co2_cycle,          only: c_i, co2_transport
-
     use tidal_diag,         only: tidal_diag_write
     use air_composition,    only: cpairv, rairv
-
     !-----------------------------------------------------------------------
     !
     ! Arguments
@@ -888,15 +915,9 @@ contains
     !---------------------------Local workspace-----------------------------
     !
     real(r8) :: ftem(pcols,pver)  ! temporary workspace
-    real(r8) :: ftem1(pcols,pver) ! another temporary workspace
-    real(r8) :: ftem2(pcols,pver) ! another temporary workspace
     real(r8) :: z3(pcols,pver)    ! geo-potential height
     real(r8) :: p_surf(pcols)     ! data interpolated to a pressure surface
-    real(r8) :: tem2(pcols,pver)  ! temporary workspace
     real(r8) :: timestep(pcols)   ! used for outfld call
-    real(r8) :: esl(pcols,pver)   ! saturation vapor pressures
-    real(r8) :: esi(pcols,pver)   !
-    real(r8) :: dlon(pcols)       ! width of grid cell (meters)
 
     real(r8), pointer :: psl(:)   ! Sea Level Pressure
 
@@ -1210,8 +1231,7 @@ contains
     ! Purpose: record dynamics variables on physics grid
     !
     !-----------------------------------------------------------------------
-    use physconst,          only: gravit, rga, rair, cpair, latvap, rearth, pi, cappa, &
-                                  epsilo, rh2o
+    use physconst,          only: gravit, rga, rair, cpair, latvap, rearth, cappa
     use interpolate_data,   only: vertinterp
     use constituent_burden, only: constituent_burden_comp
     use co2_cycle,          only: c_i, co2_transport
@@ -1228,7 +1248,6 @@ contains
     real(r8) :: ftem(pcols,pver) ! temporary workspace
     real(r8) :: ftem1(pcols,pver) ! another temporary workspace
     real(r8) :: ftem2(pcols,pver) ! another temporary workspace
-    real(r8) :: z3(pcols,pver)   ! geo-potential height
     real(r8) :: p_surf(pcols)    ! data interpolated to a pressure surface
     real(r8) :: p_surf_q1(pcols)    ! data interpolated to a pressure surface
     real(r8) :: p_surf_q2(pcols)    ! data interpolated to a pressure surface
@@ -1545,7 +1564,6 @@ contains
     ! Output diagnostics associated with all convective processes.
     !
     !-----------------------------------------------------------------------
-    use physconst,     only: cpair
     use tidal_diag,    only: get_tidal_coeffs
 
     ! Arguments:
@@ -1907,7 +1925,6 @@ contains
     !
     !---------------------------Local workspace-----------------------------
     !
-    integer  :: k                 ! indices
     integer  :: itim_old          ! indices
 
     real(r8), pointer, dimension(:,:) :: cwat_var

@@ -1,27 +1,51 @@
+* Comments
+* User-given Tag Description: WACCM_SC_MAM4
+* Tag database identifier : MZ312_WACCM_SC_MAM4_20221214
+* Tag created by : lke
+* Tag created from branch : WACCM_SC_MAM4
+* Tag created on : 2022-12-14 15:17:17.723566-07
+* Comments for this tag follow:
+*     lke : 2022-12-14 : Specified chemistry (SC) WACCM mechanism, with updated simple SOA.
 
       SPECIES
 
       Solution
-    CH4, N2O, CFC11 -> CFCl3, CFC12 -> CF2Cl2
-    H2O2, H2SO4, SO2, DMS -> CH3SCH3, SOAG -> C
-    so4_a1 -> NH4HSO4
-    pom_a1 -> C, soa_a1 -> C, bc_a1 -> C
-    dst_a1 -> AlSiO5, ncl_a1 -> NaCl
-    num_a1 -> H
-    so4_a2 -> NH4HSO4
-    soa_a2 -> C, ncl_a2 -> NaCl
-    num_a2 -> H
-    dst_a2 -> AlSiO5
-    dst_a3 -> AlSiO5, ncl_a3 -> NaCl
-    so4_a3 -> NH4HSO4
-    num_a3 -> H
-    pom_a4 -> C, bc_a4 -> C
-    num_a4 -> H
-    H2O
+ bc_a1 -> C,
+ bc_a4 -> C,
+ CFC11 -> CFCl3,
+ CFC12 -> CF2Cl2,
+ CH4,
+ DMS -> CH3SCH3,
+ dst_a1 -> AlSiO5,
+ dst_a2 -> AlSiO5,
+ dst_a3 -> AlSiO5,
+ H2O2,
+ H2SO4,
+ N2O,
+ ncl_a1 -> NaCl,
+ ncl_a2 -> NaCl,
+ ncl_a3 -> NaCl,
+ num_a1 -> H,
+ num_a2 -> H,
+ num_a3 -> H,
+ num_a4 -> H,
+ pom_a1 -> C,
+ pom_a4 -> C,
+ SO2,
+ so4_a1 -> NH4HSO4,
+ so4_a2 -> NH4HSO4,
+ so4_a3 -> NH4HSO4,
+ soa_a1 -> C,
+ soa_a2 -> C,
+ SOAE -> C,
+ SOAG -> C,
+ H2O
+
       End Solution
 
+
       Fixed
-    M, N2, O2, O3, OH, NO3, HO2, HALONS->CFCl3
+ M, O2, N2, HO2, OH, NO3, O3, HALONS->CFCl3
       End Fixed
 
       Col-int
@@ -29,62 +53,119 @@
  O2 = 0.
       End Col-int
 
-   End SPECIES
+      Not-Transported
 
-   Solution Classes
+      End Not-Transported
+
+   END Species
+
+
+   Solution classes
       Explicit
+
       End Explicit
+
       Implicit
-       CH4, N2O, CFC11, CFC12, H2O
-       H2O2, H2SO4, SO2, DMS, SOAG
-       so4_a1, pom_a1
-       soa_a1, bc_a1, dst_a1, ncl_a1
-       num_a1
-       so4_a2, soa_a2, ncl_a2, num_a2
-       dst_a2
-       dst_a3, ncl_a3, so4_a3, num_a3
-       pom_a4, bc_a4, num_a4
+ bc_a1
+ bc_a4
+ CFC11
+ CFC12
+ CH4
+ DMS
+ dst_a1
+ dst_a2
+ dst_a3
+ H2O2
+ H2SO4
+ N2O
+ ncl_a1
+ ncl_a2
+ ncl_a3
+ num_a1
+ num_a2
+ num_a3
+ num_a4
+ pom_a1
+ pom_a4
+ SO2
+ so4_a1
+ so4_a2
+ so4_a3
+ soa_a1
+ soa_a2
+ SOAE
+ SOAG
+ H2O
       End Implicit
-   End Solution Classes
+
+   End Solution classes
+
 
  CHEMISTRY
       Photolysis
- [jh2o2]    H2O2 + hv ->
+*********************************
+*** odd-oxygen
+*********************************
+[jh2o2]                       H2O2 + hv -> 2*OH
+*********************************
+*** soa
+*********************************
+[jsoa_a1->,.0004*jno2]        soa_a1 + hv ->
+[jsoa_a2->,.0004*jno2]        soa_a2 + hv ->
       End Photolysis
 
       Reactions
-    [ch4_loss]    CH4   -> 2.* H2O
-    [n2o_loss]    N2O   ->
-    [cfc11_loss]  CFC11 ->
-    [cfc12_loss]  CFC12 ->
-    [lyman_alpha] H2O   ->
-    [usr_HO2_HO2] HO2 + HO2 -> H2O2
-                  H2O2 + OH -> H2O + HO2                                           ; 1.8e-12
-    [usr_SO2_OH]  SO2 + OH -> H2SO4
-                  DMS + OH -> SO2                                                  ; 9.6e-12, -234.
-    [usr_DMS_OH]  DMS + OH -> .5 * SO2 + .5 * HO2
-                  DMS + NO3 -> SO2 + HNO3                                          ; 1.9e-13,  520.
+*********************************
+*** odd-hydrogen
+*********************************
+[lyman_alpha]          H2O  ->
+[OH_H2O2]              OH + H2O2  -> H2O + HO2                                  ; 1.8e-12
+[usr_HO2_HO2] HO2 + HO2  -> H2O2 + O2
+*********************************
+*** odd-nitrogen
+*********************************
+[n2o_loss]             N2O  ->
+*********************************
+*** odd-chlorine
+*********************************
+[cfc11_loss]           CFC11  ->
+[cfc12_loss]           CFC12  ->
+*********************************
+*** C1
+*********************************
+[ch4_loss]             CH4  -> 2*H2O
+*********************************
+*** Sulfur
+*********************************
+[DMS_NO3]              DMS + NO3  -> SO2 + HNO3                                 ; 1.9e-13, 520
+[DMS_OHa]              DMS + OH  -> SO2                                         ; 1.1e-11, -280
+[SO2_OH_M]             SO2 + OH + M  -> H2SO4                                   ; 2.9e-31, 4.1, 1.7e-12, -0.2, 0.6
+[usr_DMS_OH]           DMS + OH  -> 0.5*SO2 + 0.5*HO2
+*********************************
+*** SOA
+*********************************
+[SOAE_tau]             SOAE  -> SOAG                                            ; 1.157e-05
       End Reactions
 
       Ext Forcing
-          SO2 <- dataset
-          so4_a1 <- dataset
-          so4_a2 <- dataset
-          pom_a1 <- dataset
-          pom_a4 <- dataset
-          bc_a1 <- dataset
-          bc_a4  <- dataset
-          num_a1 <- dataset
-          num_a2 <- dataset
-          num_a4 <- dataset
-          H2O <- dataset
+ bc_a1 <- dataset
+ bc_a4 <- dataset
+ H2O <- dataset
+ num_a1 <- dataset
+ num_a2 <- dataset
+ num_a4 <- dataset
+ pom_a1 <- dataset
+ pom_a4 <- dataset
+ SO2 <- dataset
+ so4_a1 <- dataset
+ so4_a2 <- dataset
       End Ext Forcing
 
-   END CHEMISTRY
+      End Chemistry
 
-   SIMULATION PARAMETERS
+SIMULATION PARAMETERS
 
-     Version Options
+      Version Options
         model   = cam
         machine = intel
         architecture = hybrid
@@ -92,6 +173,6 @@
         multitask = on
         namemod = on
         modules = on
-     End Version Options
+      End Version Options
 
-   END SIMULATION PARAMETERS
+End Simulation Parameters

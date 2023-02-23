@@ -9,21 +9,19 @@ real(r8), save :: previous_dEdt_adiabatic_dycore = 0.0_r8
 contains
 !=========================================================================================
 
-subroutine print_budget()
+subroutine print_budget(hstwr)
 
-  use budgets,            only: budget_get_global
+  use budgets,            only: budget_get_global, thermo_budget_histfile_num
   use spmd_utils,         only: masterproc
   use cam_logfile,        only: iulog
   use cam_abortutils,     only: endrun
   use cam_thermo,             only: teidx, thermo_budget_vars_descriptor, thermo_budget_num_vars, thermo_budget_vars_massv
+
+  ! arguments
+  logical, intent(in) :: hstwr(:)
+
   ! Local variables
-  integer :: b_ind,s_ind,is1,is2
-  logical :: budget_outfld
-  character(len=64)    :: name_out1,name_out2,name_out3,name_out4,name_out5,budget_name,name_out(9)
-  character(len=3)     :: budget_pkgtype,budget_optype  ! budget type phy or dyn
   real(r8),allocatable :: tmp(:,:)
-  real(r8), pointer :: te_budgets(:,:,:)! energy/mass budgets se,ke,wv,liq,ice
-  integer, pointer :: budgets_cnt(:) ! budget counts for normalizating sum
   integer          :: i
   character(len=*), parameter :: subname = 'check_energy:print_budgets'
 
@@ -38,7 +36,7 @@ subroutine print_budget()
   character(LEN=5)  :: pf! pass or fail identifier
   !--------------------------------------------------------------------------------------
 
-  if (masterproc) then
+  if (masterproc .and. hstwr(thermo_budget_histfile_num)) then
      call budget_get_global('phAP-phBP',teidx,ph_param)
      call budget_get_global('phBP-phBF',teidx,ph_EFIX)
      call budget_get_global('phAM-phAP',teidx,ph_dmea)

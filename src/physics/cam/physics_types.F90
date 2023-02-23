@@ -14,7 +14,6 @@ module physics_types
   use cam_abortutils,   only: endrun
   use phys_control,     only: waccmx_is
   use shr_const_mod,    only: shr_const_rwv
-  use budgets,          only: budget_array_max,budget_name
 
   implicit none
   private          ! Make default type private to the module
@@ -108,9 +107,6 @@ module physics_types
      real(r8), dimension(:,:),allocatable          :: &
           temp_ini,       &! Temperature of initial state (used for energy computations)
           z_ini            ! Height of initial state (used for energy computations)
-     real(r8), dimension(:,:,:),allocatable      :: &
-          te_budgets       ! te budget array
-     integer, allocatable :: budget_cnt(:) ! budget counter
      integer :: count ! count of values with significant energy or water imbalances
      integer, dimension(:),allocatable           :: &
           latmapback, &! map from column to unique lat for that column
@@ -598,17 +594,6 @@ contains
     call shr_assert_in_domain(state%q(:ncol,:,:),       is_nan=.false., &
          varname="state%q",         msg=msg)
 
-    ! Budget variables
-    do m = 1,budget_array_max
-       call shr_assert_in_domain(state%te_budgets(:ncol,:,m),       is_nan=.false., &
-            varname="state%te_budgets ("//trim(budget_name(m))//")", msg=msg)
-    end do
-
-    do m = 1,budget_array_max
-       call shr_assert_in_domain(state%budget_cnt(m),       is_nan=.false., &
-            varname="state%budget_cnt ("//trim(budget_name(m))//")", msg=msg)
-    end do
-
     ! Now run other checks (i.e. values are finite and within a range that
     ! is physically meaningful).
 
@@ -689,11 +674,6 @@ contains
             varname="state%q ("//trim(cnst_name(m))//")", msg=msg)
     end do
 
-    ! Budget variables
-    do m = 1,budget_array_max
-       call shr_assert_in_domain(state%te_budgets(:ncol,:,m),    lt=posinf_r8, gt=neginf_r8, &
-            varname="state%te_budgets ("//trim(budget_name(m))//")", msg=msg)
-    end do
   end subroutine physics_state_check
 
 !===============================================================================
@@ -1320,7 +1300,6 @@ end subroutine physics_ptend_copy
 
     use ppgrid,       only: pver, pverp
     use constituents, only: pcnst
-    use cam_thermo,   only: thermo_budget_num_vars
 
     implicit none
 
@@ -1408,18 +1387,6 @@ end subroutine physics_ptend_copy
              state_out%q(i,k,m) = state_in%q(i,k,m)
           end do
        end do
-    end do
-
-    do m = 1, budget_array_max
-       do k = 1, thermo_budget_num_vars
-          do i = 1, ncol
-             state_out%te_budgets(i,k,m) = state_in%te_budgets(i,k,m)
-          end do
-       end do
-    end do
-
-    do m = 1, budget_array_max
-       state_out%budget_cnt(m) = state_in%budget_cnt(m)
     end do
 
   end subroutine physics_state_copy
@@ -1539,7 +1506,6 @@ end subroutine set_dry_to_wet
 subroutine physics_state_alloc(state,lchnk,psetcols)
 
   use infnan,     only: inf, assignment(=)
-  use cam_thermo, only: thermo_budget_num_vars
 
 ! allocate the individual state components
 
@@ -1630,12 +1596,6 @@ subroutine physics_state_alloc(state,lchnk,psetcols)
   allocate(state%q(psetcols,pver,pcnst), stat=ierr)
   if ( ierr /= 0 ) call endrun('physics_state_alloc error: allocation error for state%q')
 
-  allocate(state%te_budgets(psetcols,thermo_budget_num_vars,budget_array_max), stat=ierr)
-  if ( ierr /= 0 ) call endrun('physics_state_alloc error: allocation error for state%te_budgets')
-
-  allocate(state%budget_cnt(budget_array_max), stat=ierr)
-  if ( ierr /= 0 ) call endrun('physics_state_alloc error: allocation error for state%budget_cnt')
-
   allocate(state%pint(psetcols,pver+1), stat=ierr)
   if ( ierr /= 0 ) call endrun('physics_state_alloc error: allocation error for state%pint')
 
@@ -1701,8 +1661,6 @@ subroutine physics_state_alloc(state,lchnk,psetcols)
   state%exner(:,:) = inf
   state%zm(:,:) = inf
   state%q(:,:,:) = inf
-  state%te_budgets(:,:,:) = inf
-  state%budget_cnt(:) = 0
 
   state%pint(:,:) = inf
   state%pintdry(:,:) = inf
@@ -1829,12 +1787,6 @@ subroutine physics_state_dealloc(state)
 
   deallocate(state%z_ini, stat=ierr)
   if ( ierr /= 0 ) call endrun('physics_state_dealloc error: deallocation error for state%z_ini')
-
-  deallocate(state%te_budgets, stat=ierr)
-  if ( ierr /= 0 ) call endrun('physics_state_dealloc error: deallocation error for state%te_budgets')
-
-  deallocate(state%budget_cnt, stat=ierr)
-  if ( ierr /= 0 ) call endrun('physics_state_dealloc error: deallocation error for state%budget_cnt')
 
   deallocate(state%latmapback, stat=ierr)
   if ( ierr /= 0 ) call endrun('physics_state_dealloc error: deallocation error for state%latmapback')

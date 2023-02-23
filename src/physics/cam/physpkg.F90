@@ -13,7 +13,7 @@ module physpkg
 
   use shr_kind_mod,     only: r8 => shr_kind_r8
   use spmd_utils,       only: masterproc
-  use physconst,        only: latvap, latice, rh2o
+  use physconst,        only: latvap, latice
   use physics_types,    only: physics_state, physics_tend, physics_state_set_grid, &
        physics_ptend, physics_tend_init, physics_update,    &
        physics_type_alloc, physics_ptend_dealloc,&
@@ -21,7 +21,7 @@ module physpkg
   use phys_grid,        only: get_ncols_p
   use phys_gmean,       only: gmean_mass
   use ppgrid,           only: begchunk, endchunk, pcols, pver, pverp, psubcols
-  use constituents,     only: pcnst, cnst_name, cnst_get_ind
+  use constituents,     only: pcnst, cnst_get_ind
   use camsrfexch,       only: cam_out_t, cam_in_t
 
   use cam_control_mod,  only: ideal_phys, adiabatic
@@ -111,8 +111,7 @@ contains
     use physics_buffer,     only: pbuf_init_time, pbuf_cam_snapshot_register
     use physics_buffer,     only: pbuf_add_field, dtype_r8, pbuf_register_subcol
     use shr_kind_mod,       only: r8 => shr_kind_r8
-    use spmd_utils,         only: masterproc
-    use constituents,       only: pcnst, cnst_add, cnst_chk_dim, cnst_name
+    use constituents,       only: pcnst, cnst_add, cnst_chk_dim
 
     use cam_control_mod,    only: moist_physics
     use chemistry,          only: chem_register
@@ -123,7 +122,7 @@ contains
     use macrop_driver,      only: macrop_driver_register
     use clubb_intr,         only: clubb_register_cam
     use conv_water,         only: conv_water_register
-    use physconst,          only: mwdry, cpair, mwh2o, cpwv
+    use physconst,          only: mwh2o, cpwv
     use tracers,            only: tracers_register
     use check_energy,       only: check_energy_register
     use carma_intr,         only: carma_register
@@ -138,7 +137,6 @@ contains
     use flux_avg,           only: flux_avg_register
     use iondrag,            only: iondrag_register
     use waccmx_phys_intr,   only: waccmx_phys_ion_elec_temp_reg
-    use string_utils,       only: to_lower
     use prescribed_ozone,   only: prescribed_ozone_register
     use prescribed_volcaero,only: prescribed_volcaero_register
     use prescribed_strataero,only: prescribed_strataero_register
@@ -363,7 +361,7 @@ contains
   subroutine phys_inidat( cam_out, pbuf2d )
     use cam_abortutils,      only: endrun
 
-    use physics_buffer,      only: pbuf_get_index, pbuf_get_field, physics_buffer_desc, pbuf_set_field, dyn_time_lvls
+    use physics_buffer,      only: pbuf_get_index, physics_buffer_desc, pbuf_set_field, dyn_time_lvls
 
 
     use cam_initfiles,       only: initial_file_get_id, topo_file_get_id
@@ -379,11 +377,10 @@ contains
 
     type(cam_out_t),     intent(inout) :: cam_out(begchunk:endchunk)
     type(physics_buffer_desc), pointer :: pbuf2d(:,:)
-    integer :: lchnk, m, n, i, k, ncol
+    integer :: lchnk, m, n, ncol
     type(file_desc_t), pointer :: fh_ini, fh_topo
     character(len=8) :: fieldname
     real(r8), pointer :: tptr(:,:), tptr_2(:,:), tptr3d(:,:,:), tptr3d_2(:,:,:)
-    real(r8), pointer :: qpert(:,:)
 
     character(len=11) :: subname='phys_inidat' ! subroutine name
     integer :: tpert_idx, qpert_idx, pblh_idx
@@ -710,9 +707,7 @@ contains
     !-----------------------------------------------------------------------
 
     use physics_buffer,     only: physics_buffer_desc, pbuf_initialize, pbuf_get_index
-    use physconst,          only: rair, cpair, gravit, stebol, tmelt, &
-                                  latvap, latice, rh2o, rhoh2o, pstd, zvir, &
-                                  karman, rhodair
+    use physconst,          only: rair, cpair, gravit, zvir, karman
     use cam_thermo,         only: cam_thermo_init
     use ref_pres,           only: pref_edge, pref_mid
 
@@ -752,14 +747,13 @@ contains
     use pbl_utils,          only: pbl_utils_init
     use vertical_diffusion, only: vertical_diffusion_init
     use phys_debug_util,    only: phys_debug_init
-    use phys_debug,         only: phys_debug_state_init
     use rad_constituents,   only: rad_cnst_init
     use aer_rad_props,      only: aer_rad_props_init
     use subcol,             only: subcol_init
     use qbo,                only: qbo_init
     use qneg_module,        only: qneg_init
     use lunar_tides,        only: lunar_tides_init
-    use iondrag,            only: iondrag_init, do_waccm_ions
+    use iondrag,            only: iondrag_init
 #if ( defined OFFLINE_DYN )
     use metdata,            only: metdata_phys_init
 #endif
@@ -774,9 +768,10 @@ contains
     use cam_abortutils,     only: endrun
     use nudging,            only: Nudge_Model, nudging_init
     use cam_snapshot,       only: cam_snapshot_init
-    use cam_history,        only: addfld, register_vector_field, add_default, horiz_only
+    use cam_history,        only: addfld, register_vector_field, add_default
     use phys_control,       only: phys_getopts
-    use check_energy,       only: check_energy_budgets_init, check_energy_budget_state_init
+    use phys_grid_ctem,     only: phys_grid_ctem_init
+    use budgets,            only: budget_init
 
     ! Input/output arguments
     type(physics_state), pointer       :: phys_state(:)
@@ -794,18 +789,13 @@ contains
                                            ! temperature, water vapor, cloud
                                            ! ice, cloud liquid, U, V
     integer :: history_budget_histfile_num ! output history file number for budget fields
-    character*32  :: budget_name           ! parameterization name for fluxes
-    character*128 :: budget_longname       ! parameterization name for fluxes
-
     !-----------------------------------------------------------------------
 
     call physics_type_alloc(phys_state, phys_tend, begchunk, endchunk, pcols)
 
     do lchnk = begchunk, endchunk
        call physics_state_set_grid(lchnk, phys_state(lchnk))
-       call check_energy_budget_state_init(phys_state(lchnk))
     end do
-    call check_energy_budgets_init()
 
     !-------------------------------------------------------------------------------------------
     ! Initialize any variables in cam_thermo which are not temporally and/or spatially constant
@@ -975,9 +965,15 @@ contains
     ! Initialize qneg3 and qneg4
     call qneg_init()
 
+    ! Initialize phys TEM diagnostics
+    call phys_grid_ctem_init()
+
     ! Initialize the snapshot capability
     call cam_snapshot_init(cam_in, cam_out, pbuf2d, begchunk)
 
+    ! Initialize the budget capability
+    call budget_init()
+ 
     ! addfld calls for U, V tendency budget variables that are output in
     ! tphysac, tphysbc
     call addfld ( 'UTEND_DCONV', (/ 'lev' /), 'A', 'm/s2', 'Zonal wind tendency by deep convection')
@@ -1061,10 +1057,9 @@ contains
     ! First part of atmospheric physics package before updating of surface models
     !
     !-----------------------------------------------------------------------
-    use budgets,        only: budget_write
     use time_manager,   only: get_nstep
     use cam_diagnostics,only: diag_allocate, diag_physvar_ic
-    use check_energy,   only: check_energy_gmean, check_energy_phys_budget_update, check_energy_phys_cnt_update
+    use check_energy,   only: check_energy_gmean
     use phys_control,   only: phys_getopts
     use spcam_drivers,  only: tphysbc_spcam
     use spmd_utils,     only: mpicom
@@ -1094,7 +1089,6 @@ contains
     !---------------------------Local workspace-----------------------------
     !
     integer :: c                                 ! indices
-    integer :: ncol                              ! number of columns
     integer :: nstep                             ! current timestep number
     logical :: use_spcam
     type(physics_buffer_desc), pointer :: phys_buffer_chunk(:)
@@ -1118,17 +1112,6 @@ contains
     call t_startf ('chk_en_gmean')
     call check_energy_gmean(phys_state, pbuf2d, ztodt, nstep)
     call t_stopf ('chk_en_gmean')
-    call t_startf ('chk_en_p_budget_update')
-    if(budget_write()) then
-       call check_energy_phys_budget_update(phys_state, ztodt, nstep)
-    else
-       call check_energy_phys_cnt_update(phys_state)
-    end if
-    call t_stopf ('chk_en_p_budget_update')
-
-    call t_stopf ('physpkg_st1')
-
-    call t_startf ('physpkg_st1')
 
     call pbuf_allocate(pbuf2d, 'physpkg')
     call diag_allocate()
@@ -1213,7 +1196,6 @@ contains
     use physics_buffer,  only: physics_buffer_desc, pbuf_get_chunk, pbuf_deallocate, pbuf_update_tim_idx
     use mo_lightning,    only: lightning_no_prod
     use cam_diagnostics, only: diag_deallocate, diag_surf
-    use physconst,       only: stebol, latvap
     use carma_intr,      only: carma_accumulate_stats
     use spmd_utils,      only: mpicom
     use iop_forcing,     only: scam_use_iop_srf
@@ -1320,6 +1302,8 @@ contains
     use carma_intr, only : carma_final
     use wv_saturation, only : wv_sat_final
     use microp_aero, only : microp_aero_final
+    use phys_grid_ctem, only : phys_grid_ctem_final
+    use nudging, only: Nudge_Model, nudging_final
 
     !-----------------------------------------------------------------------
     !
@@ -1342,6 +1326,8 @@ contains
     call carma_final
     call wv_sat_final
     call microp_aero_final()
+    call phys_grid_ctem_final()
+    if(Nudge_Model) call nudging_final()
 
   end subroutine phys_final
 
@@ -1425,20 +1411,16 @@ contains
     !
     type(physics_ptend)     :: ptend               ! indivdual parameterization tendencies
 
-    integer  :: nstep                              ! current timestep number
-    real(r8) :: zero(pcols)                        ! array of zeros
+    integer  :: nstep                  ! current timestep number
+    real(r8) :: zero(pcols)            ! array of zeros
 
-    integer :: lchnk                                ! chunk identifier
-    integer :: ncol                                 ! number of atmospheric columns
-    integer i,k,m                 ! Longitude, level indices
-    integer :: yr, mon, day, tod       ! components of a date
-    integer :: ixcldice, ixcldliq      ! constituent indices for cloud liquid and ice water.
+    integer :: lchnk                   ! chunk identifier
+    integer :: ncol                    ! number of atmospheric columns
+    integer :: i,k                     ! Longitude, level indices
     integer :: ixq
 
-    logical :: labort                            ! abort flag
+    logical :: labort                  ! abort flag
 
-    real(r8) tvm(pcols,pver)           ! virtual temperature
-    real(r8) prect(pcols)              ! total precipitation
     real(r8) surfric(pcols)            ! surface friction velocity
     real(r8) obklen(pcols)             ! Obukhov length
     real(r8) :: fh2o(pcols)            ! h2o flux to balance source from methane chemistry
@@ -2007,11 +1989,11 @@ contains
     use physics_types,   only: physics_state, physics_tend, physics_ptend, &
                                physics_update, physics_ptend_init, physics_ptend_sum, &
                                physics_state_check, physics_ptend_scale, &
-                               phys_te_idx, dyn_te_idx
+                               dyn_te_idx
     use cam_diagnostics, only: diag_conv_tend_ini, diag_phys_writeout, diag_conv, diag_export, diag_state_b4_phys_write
     use cam_diagnostics, only: diag_clip_tend_writeout
     use cam_history,     only: outfld
-    use physconst,       only: cpair, latvap
+    use physconst,       only: latvap
     use constituents,    only: pcnst, qmin, cnst_get_ind
     use air_composition, only: thermodynamic_active_species_liq_num,thermodynamic_active_species_liq_idx
     use air_composition, only: thermodynamic_active_species_ice_num,thermodynamic_active_species_ice_idx
@@ -2152,8 +2134,6 @@ contains
     real(r8) :: flx_heat(pcols)
     type(check_tracers_data):: tracerint             ! energy integrals and cummulative boundary fluxes
     real(r8) :: zero_tracers(pcols,pcnst)
-
-    logical   :: lq(pcnst)
 
     !-----------------------------------------------------------------------
 
@@ -2881,7 +2861,6 @@ subroutine phys_timestep_init(phys_state, cam_in, cam_out, pbuf2d)
 !          datasets.
 !
 !-----------------------------------------------------------------------------------
-  use shr_kind_mod,        only: r8 => shr_kind_r8
   use chemistry,           only: chem_timestep_init
   use chem_surfvals,       only: chem_surfvals_set
   use physics_types,       only: physics_state
@@ -2910,6 +2889,7 @@ subroutine phys_timestep_init(phys_state, cam_in, cam_out, pbuf2d)
   use iop_forcing,         only: scam_use_iop_srf
   use nudging,             only: Nudge_Model, nudging_timestep_init
   use waccmx_phys_intr,    only: waccmx_phys_ion_elec_temp_timestep_init
+  use phys_grid_ctem,      only: phys_grid_ctem_diags
 
   implicit none
 
@@ -2982,6 +2962,9 @@ subroutine phys_timestep_init(phys_state, cam_in, cam_out, pbuf2d)
   ! Update Nudging values, if needed
   !----------------------------------
   if(Nudge_Model) call nudging_timestep_init(phys_state)
+
+  ! Update TEM diagnostics
+  call phys_grid_ctem_diags(phys_state)
 
 end subroutine phys_timestep_init
 

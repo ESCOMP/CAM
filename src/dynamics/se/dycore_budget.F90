@@ -13,33 +13,34 @@ real(r8), save :: previous_dEdt_dry_mass_adjust  = 0.0_r8
 contains
 !=========================================================================================
 
-subroutine print_budget()
+subroutine print_budget(hstwr)
 
   use spmd_utils,             only: masterproc
   use cam_abortutils,         only: endrun  
   use cam_logfile,            only: iulog
   use shr_kind_mod,           only: r8=>shr_kind_r8
-  use budgets,                only: budget_get_global, is_budget
-  use dimensions_mod,         only: lcp_moist,qsize
-  use control_mod,            only: ftype
+  use budgets,                only: budget_get_global, is_budget, thermo_budget_histfile_num
   use cam_thermo,             only: teidx, thermo_budget_vars_descriptor, thermo_budget_num_vars, thermo_budget_vars_massv
+
+  ! arguments
+  logical, intent(in) :: hstwr(:)
+
   ! Local variables
-  integer          :: i
   character(len=*), parameter :: subname = 'check_energy:print_budgets'
 
   real(r8)          :: ph_param,ph_EFIX,ph_DMEA,ph_phys_total
   real(r8)          :: dy_param,dy_EFIX,dy_DMEA,dy_param_and_efix,dy_phys_total
 !jt  real(r8)          :: se_param,se_dmea,se_phys_total, dycore, err, param, pefix, &
-  real(r8)          :: dycore, err, param, pefix, &
-                       pdmea, phys_total, dyn_total, dyn_phys_total, &
+  real(r8)          :: dycore, param, pefix, &
+                       pdmea, phys_total, dyn_total, &
                        rate_of_change_2D_dyn, rate_of_change_vertical_remapping, &
                        diffusion_del4, diffusion_fric, diffusion_del4_tot, diffusion_sponge, &
                        diffusion_total, twoDresidual, rate_of_change_physics, &
                        rate_of_change_heating_term_put_back_in, rate_of_change_hvis_sponge, &
-                       dADIA, ttt, fff, &
+                       dADIA, &
                        mass_change__2D_dyn,mass_change__vertical_remapping, &
                        mass_change__heating_term_put_back_in,mass_change__hypervis_total, &
-                       error, mass_change__physics, dbd, daf, dar, dad, qneg, val,phbf,ded
+                       error, mass_change__physics, dbd, daf, dar, dad, val
 
   real(r8) :: E_dBF, E_phBF, diff
   
@@ -47,7 +48,7 @@ subroutine print_budget()
   integer           :: m_cnst
   !--------------------------------------------------------------------------------------
 
-  if (masterproc) then
+  if (masterproc .and. hstwr(thermo_budget_histfile_num)) then
      call budget_get_global('phAP-phBP',teidx,ph_param)
      call budget_get_global('phBP-phBF',teidx,ph_EFIX)
      call budget_get_global('phAM-phAP',teidx,ph_DMEA)

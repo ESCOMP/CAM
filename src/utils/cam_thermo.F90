@@ -7,7 +7,6 @@ module cam_thermo
    use air_composition, only: thermodynamic_active_species_idx
    use air_composition, only: thermodynamic_active_species_idx_dycore
    use air_composition, only: thermodynamic_active_species_cp
-   use air_composition, only: thermodynamic_active_species_cv
    use air_composition, only: thermodynamic_active_species_R
    use air_composition, only: thermodynamic_active_species_mwi
    use air_composition, only: thermodynamic_active_species_kv
@@ -209,7 +208,6 @@ CONTAINS
    subroutine cam_thermo_init()
       use shr_infnan_mod,  only: assignment(=), shr_infnan_qnan
       use ppgrid,          only: pcols, pver, pverp, begchunk, endchunk
-      use physconst,       only: cpair, rair, mwdry
 
       integer                     :: ierr
       character(len=*), parameter :: subname = "cam_thermo_init"
@@ -719,7 +717,6 @@ CONTAINS
 
      real(r8) :: dp_local(SIZE(tracer, 1), SIZE(tracer, 2))      ! local pressure level thickness
      real(r8) :: pint_local(SIZE(tracer, 1), SIZE(tracer, 2) + 1)! local interface pressure
-     integer  :: kdx
 
      call get_dp(tracer, mixing_ratio, active_species_idx, dp_dry, dp_local)
 
@@ -1790,6 +1787,6 @@ CONTAINS
          end select
       end if
       deallocate(species_idx, species_liq_idx, species_ice_idx)
-   end subroutine get_hydrostatic_energy_1hd
+    end subroutine get_hydrostatic_energy_1hd
 
 end module cam_thermo
