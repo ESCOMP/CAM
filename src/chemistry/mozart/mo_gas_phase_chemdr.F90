@@ -792,8 +792,8 @@ contains
       !-----------------------------------------------------------------
       call tuvx_get_photo_rates( state, pbuf, ncol, lchnk, zmid, zint, &
                                  tfld, ts, invariants, vmr, col_delta, &
-                                 asdir, zen_angle, esfact, &
-                                 reaction_rates(:,:,1:phtcnt) )
+                                 asdir, zen_angle, esfact, pdel, cldfr,&
+                                 cwat, reaction_rates(:,:,1:phtcnt) )
     else
       !-----------------------------------------------------------------
       !	... lookup the photolysis rates from table

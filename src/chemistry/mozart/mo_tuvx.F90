@@ -42,8 +42,9 @@ module mo_tuvx
   integer, parameter :: PROFILE_INDEX_NO2          = 8 ! Nitrogen dioxide profile index
 
   ! Indices for radiator updaters
-  integer, parameter :: NUM_RADIATORS = 1          ! number of radiators that CAM will update at runtime
+  integer, parameter :: NUM_RADIATORS = 2          ! number of radiators that CAM will update at runtime
   integer, parameter :: RADIATOR_INDEX_AEROSOL = 1 ! Aerosol radiator index
+  integer, parameter :: RADIATOR_INDEX_CLOUDS  = 2 ! Cloud radiator index
 
   ! Definition of the MS93 wavelength grid  TODO add description of this
   integer,       parameter :: NUM_BINS_MS93 = 4
@@ -62,8 +63,13 @@ module mo_tuvx
   integer :: index_O3 = 0 ! index for O3 in concentration array
   integer :: index_NO = 0 ! index for NO in concentration array
 
-  ! Information needed to access aerosol optical properties
-  logical :: aerosol_exists = .false. ! indicates whether aerosol optical properties are available
+  ! Information needed to access aerosol and cloud optical properties
+  logical :: do_aerosol = .false. ! indicates whether aerosol optical properties
+                                  !   are available and should be used in radiative
+                                  !   transfer calculations
+  logical :: do_clouds  = .false. ! indicates whether cloud optical properties
+                                  !   should be calculated and used in radiative
+                                  !   transfer calculations
 
   ! Information needed to set extended-UV photo rates
   logical :: do_euv = .false.              ! Indicates whether to calculate
@@ -250,8 +256,8 @@ contains
     class(profile_warehouse_t), pointer :: cam_profiles
     class(radiator_warehouse_t), pointer :: cam_radiators
     integer :: pack_size, pos, i_core, i_err
-    logical :: disable_aerosols
-    type(string_t) :: required_keys(1), optional_keys(1)
+    logical :: disable_aerosols, disable_clouds
+    type(string_t) :: required_keys(1), optional_keys(2)
     logical, save :: is_initialized = .false.
 
     if( .not. tuvx_active ) return
@@ -267,6 +273,7 @@ contains
     ! ===============================
     required_keys(1) = "aliasing"
     optional_keys(1) = "disable aerosols"
+    optional_keys(2) = "disable clouds"
 
 #ifndef HAVE_MPI
     call assert_msg( 113937299, is_main_task, "Multiple tasks present without " &
@@ -305,6 +312,8 @@ contains
                        "Bad configuration for CAM TUV-x options." )
       call cam_config%get( "disable aerosols", disable_aerosols, my_name, &
                            default = .false. )
+      call cam_config%get( "disable clouds", disable_clouds, my_name, &
+                           default = .false. )
       call cam_config%get( "aliasing", map_config, my_name )
       core => core_t( config_path, cam_grids, cam_profiles, cam_radiators )
       call set_photo_rate_map( core, map_config, do_euv, do_jno, jno_index, map )
@@ -312,7 +321,8 @@ contains
                   map%pack_size( mpicom ) + &
                   musica_mpi_pack_size( do_jno, mpicom ) + &
                   musica_mpi_pack_size( jno_index, mpicom ) + &
-                  musica_mpi_pack_size( disable_aerosols, mpicom )
+                  musica_mpi_pack_size( disable_aerosols, mpicom ) + &
+                  musica_mpi_pack_size( disable_clouds, mpicom )
       allocate( buffer( pack_size ) )
       pos = 0
       call core%mpi_pack( buffer, pos, mpicom )
@@ -320,6 +330,7 @@ contains
       call musica_mpi_pack( buffer, pos, do_jno,           mpicom )
       call musica_mpi_pack( buffer, pos, jno_index,        mpicom )
       call musica_mpi_pack( buffer, pos, disable_aerosols, mpicom )
+      call musica_mpi_pack( buffer, pos, disable_clouds,   mpicom )
       deallocate( core )
     end if
 
@@ -353,12 +364,13 @@ contains
       call musica_mpi_unpack( buffer, pos, do_jno,           mpicom )
       call musica_mpi_unpack( buffer, pos, jno_index,        mpicom )
       call musica_mpi_unpack( buffer, pos, disable_aerosols, mpicom )
+      call musica_mpi_unpack( buffer, pos, disable_clouds,   mpicom )
 
       ! ===================================================================
       ! Set up connections between CAM and TUV-x input data for each thread
       ! ===================================================================
       call create_updaters( tuvx, cam_grids, cam_profiles, cam_radiators, &
-                            disable_aerosols )
+                            disable_aerosols, disable_clouds )
 
       ! ===============================================================
       ! Create a working array for calculated photolysis rate constants
@@ -443,7 +455,8 @@ contains
   subroutine tuvx_get_photo_rates( state, pbuf, ncol, lchnk, height_mid, &
       height_int, temperature_mid, surface_temperature, fixed_species_conc, &
       species_vmr, exo_column_conc, surface_albedo, solar_zenith_angle, &
-      earth_sun_distance, photolysis_rates )
+      earth_sun_distance, pressure_delta, cloud_fraction, liquid_water_content, &
+      photolysis_rates )
 
     use cam_logfile,      only : iulog        ! log info output unit
     use chem_mods,        only : phtcnt,    & ! number of photolysis reactions
@@ -475,6 +488,9 @@ contains
     real(r8), intent(in)    :: surface_albedo(pcols)       ! surface albedo (unitless)
     real(r8), intent(in)    :: solar_zenith_angle(ncol)    ! solar zenith angle (radians)
     real(r8), intent(in)    :: earth_sun_distance          ! Earth-Sun distance (AU)
+    real(r8), intent(in)    :: pressure_delta(pcols,pver)  ! pressure delta about midpoints (Pa)
+    real(r8), intent(in)    :: cloud_fraction(ncol,pver)   ! cloud fraction (unitless)
+    real(r8), intent(in)    :: liquid_water_content(ncol,pver)    ! liquid water content (kg/kg)
     real(r8), intent(inout) :: photolysis_rates(ncol,pver,phtcnt) ! photolysis rate
                                                                   !   constants (1/s)
 
@@ -512,7 +528,9 @@ contains
         call set_temperatures( tuvx, i_col, temperature_mid, surface_temperature )
         call set_surface_albedo( tuvx, i_col, surface_albedo )
         call set_radiator_profiles( tuvx, i_col, ncol, fixed_species_conc, &
-                                    species_vmr, exo_column_conc )
+                                    species_vmr, exo_column_conc, &
+                                    pressure_delta(1:ncol,:), cloud_fraction, &
+                                    liquid_water_content )
 
         ! ===================================================
         ! Calculate photolysis rate constants for this column
@@ -520,7 +538,7 @@ contains
         call tuvx%core_%run( solar_zenith_angle = sza, &
                              earth_sun_distance = earth_sun_distance, &
                              photolysis_rate_constants = &
-                               tuvx%photo_rates_(i_col,:,1:tuvx%n_photo_rates_) )
+                             tuvx%photo_rates_(i_col,:,1:tuvx%n_photo_rates_) )
 
         ! ==============================
         ! Calculate the extreme-UV rates
@@ -661,10 +679,15 @@ contains
       write(iulog,*) "  - without OpenMP support"
 #endif
       write(iulog,*) "  - with configuration file: '"//trim( tuvx_config_path )//"'"
-      if( aerosol_exists ) then
+      if( do_aerosol ) then
         write(iulog,*) "  - with on-line aerosols"
       else
         write(iulog,*) "  - without on-line aerosols"
+      end if
+      if( do_clouds ) then
+        write(iulog,*) "  - with on-line clouds"
+      else
+        write(iulog,*) "  - without on-line clouds"
       end if
       if( index_N2 > 0 ) write(iulog,*) "  - including N2"
       if( index_O  > 0 ) write(iulog,*) "  - including O"
@@ -1027,6 +1050,13 @@ contains
     call radiators%add( host_radiator )
     deallocate( host_radiator )
 
+    ! ==============
+    ! Cloud radiator
+    ! ==============
+    host_radiator => radiator_from_host_t( "clouds", height, wavelength )
+    call radiators%add( host_radiator )
+    deallocate( host_radiator )
+
     deallocate( height )
     deallocate( wavelength )
 
@@ -1045,7 +1075,8 @@ contains
   !   for runtime access of CAM data
   !
   !-----------------------------------------------------------------------
-  subroutine create_updaters( this, grids, profiles, radiators, disable_aerosols )
+  subroutine create_updaters( this, grids, profiles, radiators, disable_aerosols, &
+                              disable_clouds )
 
     use modal_aer_opt,           only : modal_aer_opt_init
     use ppgrid,                  only : pcols ! maximum number of columns
@@ -1066,6 +1097,7 @@ contains
     class(profile_warehouse_t),  intent(in)    :: profiles
     class(radiator_warehouse_t), intent(in)    :: radiators
     logical,                     intent(in)    :: disable_aerosols
+    logical,                     intent(in)    :: disable_clouds
 
     class(grid_t),     pointer :: height, wavelength
     class(profile_t),  pointer :: host_profile
@@ -1143,8 +1175,8 @@ contains
     ! intialize the aerosol optics module
     ! ====================================================================
     call rad_cnst_get_info( 0, nmodes = n_modes )
-    if( n_modes > 0 .and. .not. aerosol_exists .and. .not. disable_aerosols ) then
-      aerosol_exists = .true.
+    if( n_modes > 0 .and. .not. do_aerosol .and. .not. disable_aerosols ) then
+      do_aerosol = .true.
       call modal_aer_opt_init( )
     else
       ! TODO are there default aerosol optical properties that should be used
@@ -1157,6 +1189,16 @@ contains
     this%radiators_( RADIATOR_INDEX_AEROSOL ) = &
         this%core_%get_updater( host_radiator, found )
     call assert( 675200430, found )
+    nullify( host_radiator )
+
+    ! =====================================
+    ! get an updater for the cloud radiator
+    ! =====================================
+    do_clouds = .not. disable_clouds
+    host_radiator => radiators%get_radiator( "clouds" )
+    this%radiators_( RADIATOR_INDEX_CLOUDS ) = &
+        this%core_%get_updater( host_radiator, found )
+    call assert( 993715720, found )
     nullify( host_radiator )
 
   end subroutine create_updaters
@@ -1351,7 +1393,8 @@ contains
   ! and pre-calculated values for O2 and O3
   !-----------------------------------------------------------------------
   subroutine set_radiator_profiles( this, i_col, ncol, fixed_species_conc, species_vmr, &
-                                    exo_column_conc )
+                                    exo_column_conc, delta_pressure, cloud_fraction, &
+                                    liquid_water_content )
 
     use chem_mods, only : gas_pcnst, & ! number of non-fixed species
                           nfs,       & ! number of fixed species
@@ -1367,10 +1410,17 @@ contains
                                                                                   !   ratios (mol mol-1)
     real(r8),        intent(in)    :: exo_column_conc(ncol,0:pver,max(1,nabscol)) ! above column densities
                                                                                   !   (molecule cm-2)
+    real(r8),        intent(in)    :: delta_pressure(ncol,pver)       ! pressure delta about midpoints (Pa)
+    real(r8),        intent(in)    :: cloud_fraction(ncol,pver)       ! cloud fraction (unitless)
+    real(r8),        intent(in)    :: liquid_water_content(ncol,pver) ! liquid water content (kg/kg)
 
+    integer  :: i_level
+    real(r8) :: tmp(pver)
+    real(r8) :: tau(pver+1, size(this%wavelength_mid_values_))
     real(r8) :: edges(pver+2), densities(pver+1)
     real(r8) :: exo_val
-    real(r8), parameter :: km2cm = 1.0e5 ! conversion from km to cm
+    real(r8), parameter :: rgrav = 1.0_r8 / 9.80616_r8 ! reciprocal of acceleration by gravity (s/m)
+    real(r8), parameter :: km2cm = 1.0e5_r8 ! conversion from km to cm
 
     ! ===========
     ! air profile
@@ -1444,10 +1494,35 @@ contains
     ! ===============
     ! aerosol profile
     ! ===============
-    call this%radiators_( RADIATOR_INDEX_AEROSOL )%update( &
-        optical_depths            = this%optical_depth_(i_col,:,:), &
-        single_scattering_albedos = this%single_scattering_albedo_(i_col,:,:), &
-        asymmetry_factors         = this%asymmetry_factor_(i_col,:,:) )
+    if( do_aerosol ) then
+      call this%radiators_( RADIATOR_INDEX_AEROSOL )%update( &
+          optical_depths            = this%optical_depth_(i_col,:,:), &
+          single_scattering_albedos = this%single_scattering_albedo_(i_col,:,:), &
+          asymmetry_factors         = this%asymmetry_factor_(i_col,:,:) )
+    end if
+
+    ! =============
+    ! cloud profile
+    ! =============
+    if( do_clouds ) then
+      ! ===================================================
+      ! estimate cloud optical depth as:
+      !    liquid_water_path * 0.155 * cloud_fraction^(1.5)
+      ! ===================================================
+      associate( clouds => cloud_fraction(i_col,:) )
+      where( clouds(:) /= 0.0_r8 )
+        tmp(:) = ( rgrav * liquid_water_content(i_col,:) * delta_pressure(i_col,:) &
+                   * 1.0e3_r8 / clouds(:) ) * 0.155_r8 * clouds(:)**1.5_r8
+      elsewhere
+        tmp(:) = 0.0_r8
+      end where
+      end associate
+      do i_level = 1, pver
+        tau(i_level,:) = tmp(pver-i_level+1)
+      end do
+      tau(pver+1,:) = 0.0_r8
+      call this%radiators_( RADIATOR_INDEX_CLOUDS )%update( optical_depths = tau )
+    end if
 
   end subroutine set_radiator_profiles
 
@@ -1486,7 +1561,7 @@ contains
     ! ============================================
     ! do nothing if no aerosol module is available
     ! ============================================
-    if( .not. aerosol_exists ) return
+    if( .not. do_aerosol ) return
 
     ! TODO just assume all daylight columns for now
     !      can adjust later if necessary
