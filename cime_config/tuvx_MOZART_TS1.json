@@ -1,5 +1,5 @@
 {
-   "__description": "TUV-x configuration for the MOZART-TS1 chemical mechanism",
+   "__description": "TUV-x configuration for the MOZART-TS1 and MOZART-TSMLT chemical mechanisms",
    "O2 absorption" : {
      "cross section parameters file": "data/cross_sections/O2_parameters.txt"
    },
