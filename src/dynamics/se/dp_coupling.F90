@@ -551,7 +551,7 @@ subroutine derived_phys_dry(phys_state, phys_tend, pbuf2d)
    use hycoef,          only: hyai, ps0
    use shr_vmath_mod,   only: shr_vmath_log
    use qneg_module,     only: qneg3
-
+   use dyn_tests_utils, only: vc_dry_pressure
    ! arguments
    type(physics_state), intent(inout), dimension(begchunk:endchunk) :: phys_state
    type(physics_tend ), intent(inout), dimension(begchunk:endchunk) :: phys_tend
@@ -665,7 +665,7 @@ subroutine derived_phys_dry(phys_state, phys_tend, pbuf2d)
       ! update cp_dycore in modeule air_composition.
       ! (note: at this point q is dry)
       !
-      call cam_thermo_water_update(phys_state(lchnk)%q(1:ncol,:,:), lchnk, ncol)
+      call cam_thermo_water_update(phys_state(lchnk)%q(1:ncol,:,:), lchnk, ncol, vc_dry_pressure)
       do k = 1, nlev
          do i = 1, ncol
             phys_state(lchnk)%exner(i,k) = (phys_state(lchnk)%pint(i,pver+1) &

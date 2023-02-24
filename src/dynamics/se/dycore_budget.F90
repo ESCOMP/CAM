@@ -9,7 +9,6 @@ real(r8), parameter :: eps_mass = 1.0E-12_r8
 real(r8), save :: previous_dEdt_adiabatic_dycore    = 0.0_r8
 real(r8), save :: previous_dEdt_dry_mass_adjust     = 0.0_r8
 real(r8), save :: previous_dEdt_phys_dyn_coupl_err  = 0.0_r8
-
 !=========================================================================================
 contains
 !=========================================================================================
@@ -25,6 +24,8 @@ subroutine print_budget()
   use control_mod,            only: ftype
   use cam_thermo,             only: teidx, seidx, keidx, poidx
   use cam_thermo,             only: thermo_budget_vars_descriptor, thermo_budget_num_vars, thermo_budget_vars_massv
+  use time_manager,           only: get_step_size
+  use budgets,                only: thermo_budget_averaging_option, thermo_budget_averaging_n
   ! Local variables
   integer          :: i
   character(len=*), parameter :: subname = 'check_energy:print_budgets'
@@ -35,7 +36,7 @@ subroutine print_budget()
   real(r8), dimension(4) :: se_phys_total
 
 !jt  real(r8)          :: se_phys_total,se_dmea,se_phys_total, dycore, err, param, pefix, &
-  real(r8)          :: dycore, err, param, pefix, &
+  real(r8)          :: dycore, err, param, pefix, E_dyAP,&
                        pdmea, phys_total, dyn_total, dyn_phys_total, &
                        rate_of_change_2D_dyn, rate_of_change_vertical_remapping, &
                        diffusion_del4, diffusion_fric, diffusion_del4_tot, diffusion_sponge, &
@@ -47,7 +48,7 @@ subroutine print_budget()
                        error, mass_change__physics, dbd, daf, dar, dad, qneg, val,phbf,ded
 
   real(r8) :: E_dBF(4), E_phBF, diff, tmp
-  real(r8) :: E_dyBF(4)
+  real(r8) :: E_dyBF(4), dtime
   integer  :: m_cnst
   character(LEN=*), parameter :: fmt  = "(a40,a15,a1,F6.2,a1,F6.2,a1,E10.2,a5)"
   character(LEN=*), parameter :: fmt2 = "(a40,F6.2,a3)"
@@ -56,6 +57,8 @@ subroutine print_budget()
   !--------------------------------------------------------------------------------------
 
   if (masterproc) then
+    dtime = REAL(get_step_size())
+
     idx(1) = teidx !total energy index
     idx(2) = seidx !enthaly index
     idx(3) = keidx !kinetic energy index
@@ -89,6 +92,8 @@ subroutine print_budget()
       call budget_get_global('dBD-dAF',idx(i),se_phys_total(i))
       call budget_get_global('dBF'    ,idx(i),E_dBF(i))  !state passed to physics
     end do
+
+    call budget_get_global('dyAP',teidx,E_dyAP)
 
     call budget_get_global('dBF-dED',teidx,dyn_total)
     call budget_get_global('dAD-dBD',teidx,rate_of_change_2D_dyn)
@@ -201,6 +206,9 @@ subroutine print_budget()
       write(iulog,*) " "
     end do
     write(iulog,*)" "
+    !
+    ! these diagnostics only make sense time-step to time-step
+    !
     write(iulog,*)" "
     write(iulog,*)"Some energy budget observations:"
     write(iulog,*)"--------------------------------"
@@ -213,24 +221,45 @@ subroutine print_budget()
     write(iulog,*) " "
     write(iulog,*) "(equation 23 in Lauritzen and Williamson (2019))"
     write(iulog,*) " "
+
     tmp = previous_dEdt_phys_dyn_coupl_err+previous_dEdt_adiabatic_dycore+previous_dEdt_dry_mass_adjust
     diff = abs_diff(-dy_EFIX(1),tmp,pf)
-    write(iulog,*) "Check if that is the case:", pf, diff
-    write(iulog,*) " "
-
-
-    if (abs(diff)>eps) then
+    if (ntrac==0) then
+      write(iulog,*) "Check if that is the case:", pf, diff
+      write(iulog,*) " "
+      if (abs(diff)>eps) then
+        write(iulog,*) "dE/dt energy fixer(t=n)                        = ",dy_EFIX(1)
+        write(iulog,*) "dE/dt dry mass adjustment (t=n-1)              = ",previous_dEdt_dry_mass_adjust
+        write(iulog,*) "dE/dt adiabatic dycore (t=n-1)                 = ",previous_dEdt_adiabatic_dycore
+        write(iulog,*) "dE/dt physics-dynamics coupling errors (t=n-1) = ",previous_dEdt_phys_dyn_coupl_err
+        !      call endrun(subname//"Error in energy fixer budget")
+      end if
+    else
+      previous_dEdt_phys_dyn_coupl_err = dy_EFIX(1)+previous_dEdt_dry_mass_adjust+previous_dEdt_adiabatic_dycore
       write(iulog,*) "dE/dt energy fixer(t=n)                        = ",dy_EFIX(1)
       write(iulog,*) "dE/dt dry mass adjustment (t=n-1)              = ",previous_dEdt_dry_mass_adjust
       write(iulog,*) "dE/dt adiabatic dycore (t=n-1)                 = ",previous_dEdt_adiabatic_dycore
       write(iulog,*) "dE/dt physics-dynamics coupling errors (t=n-1) = ",previous_dEdt_phys_dyn_coupl_err
-!      call endrun(subname//"Error in energy fixer budget")
+      write(iulog,*) " "
+      write(iulog,*) "Note: when running CSLAM the physics-dynamics coupling error is diagnosed"
+      write(iulog,*) "      (using equation above) rather than explicitly computed"
+      write(iulog,*) " "
+      write(iulog,*) " "
+      write(iulog,*) "Physics-dynamics coupling errors include: "
+      write(iulog,*) " "
+      write(iulog,*) " -dE/dt adiabatic dycore is computed on GLL grid;"
+      write(iulog,*) " error in mapping to physics grid"
+      write(iulog,*) " -dE/dt physics tendencies mapped to GLL grid"
+      write(iulog,*) " (tracer tendencies mapped non-conservatively!)"
+      write(iulog,*) " -dE/dt dynamics state mapped to GLL grid"
     end if
     write(iulog,*) ""
-    dycore = -dy_EFIX(1)-previous_dEdt_phys_dyn_coupl_err-previous_dEdt_dry_mass_adjust
-    write(iulog,*) "Hence the dycore E dissipation estimated from energy fixer "
-    write(iulog,*) "based on previous time-step values is ",dycore," W/M^2"
-    write(iulog,*) " "
+    if (ntrac==0) then
+      dycore = -dy_EFIX(1)-previous_dEdt_phys_dyn_coupl_err-previous_dEdt_dry_mass_adjust
+      write(iulog,*) "Hence the dycore E dissipation estimated from energy fixer "
+      write(iulog,*) "based on previous time-step values is ",dycore," W/M^2"
+      write(iulog,*) " "
+    end if
     write(iulog,*) " "
     write(iulog,*) "-------------------------------------------------------------------"
     write(iulog,*) " Consistency check 1: state passed to physics same as end dynamics?"
@@ -271,23 +300,33 @@ subroutine print_budget()
         write(iulog,*) " "
       end do
     end if
+
     write(iulog,*)" "
     write(iulog,*)"-------------------------------------------------------------------------"
     write(iulog,*)" Consistency check 2: total energy increment in dynamics same as physics?"
     write(iulog,*)"-------------------------------------------------------------------------"
     write(iulog,*)" "
-    write(iulog,'(a46,F6.2,a6)')"dE/dt physics tendency in dynamics (dBD-dAF)   ",se_phys_total(1)," W/M^2"
-    write(iulog,'(a46,F6.2,a6)')"dE/dt physics tendency in physics  (dyAM-dyBF) ",dy_phys_total(1)," W/M^2"
-    write(iulog,*)" "
-    previous_dEdt_phys_dyn_coupl_err = se_phys_total(1)-dy_phys_total(1)
-    diff = abs_diff(dy_phys_total(1),se_phys_total(1),pf=pf)
-    write(iulog,*)"dE/dt physics-dynamics coupling errors       ",diff," W/M^2 "
-    write(iulog,*) pf
-    if (abs(diff)>eps) then
-      !
-      ! if errors print details
-      !
-      if (ntrac==0) then
+    if (ntrac>0) then
+      write(iulog,'(a46,F6.2,a6)')"dE/dt physics tendency in dynamics (dBD-dAF)   ",se_phys_total(1)," W/M^2"
+      write(iulog,'(a46,F6.2,a6)')"dE/dt physics tendency in physics  (dyAM-dyBF) ",dy_phys_total(1)," W/M^2"
+      write(iulog,*)" "
+      write(iulog,*) " When runnig with a physics grid this consistency check does not make sense"
+      write(iulog,*) " since it is computed on the GLL grid whereas we enforce energy conservation"
+      write(iulog,*) " on the physics grid. To assess the errors of running dynamics on GLL"
+      write(iulog,*) " grid, tracers on CSLAM grid and physics on physics grid we use the energy"
+      write(iulog,*) " fixer check from above:"
+      write(iulog,*) " "
+      write(iulog,*) " dE/dt physics-dynamics coupling errors (t=n-1) =",previous_dEdt_phys_dyn_coupl_err
+      write(iulog,*) ""
+    else
+      previous_dEdt_phys_dyn_coupl_err = se_phys_total(1)-dy_phys_total(1)
+      diff = abs_diff(dy_phys_total(1),se_phys_total(1),pf=pf)
+      write(iulog,*)"dE/dt physics-dynamics coupling errors       ",diff," W/M^2 "
+      write(iulog,*) pf
+      if (abs(diff)>eps) then
+        !
+        ! if errors print details
+        !
         if (ftype==1) then
           write(iulog,*) ""
           write(iulog,*) "You are using ftype==1 so physics-dynamics coupling errors should be round-off!"
@@ -301,22 +340,22 @@ subroutine print_budget()
           write(iulog,*) "Break-down below:"
           write(iulog,*) ""
         end if
-      else
-        write(iulog,*)" "
-        write(iulog,*)"Since you are using a separate physics grid, the physics tendencies"
-        write(iulog,*)"in the dynamical core will not match due to the tendencies being"
-        write(iulog,*)"interpolated from the physics to the dynamics grid:"
-        write(iulog,*)" "
+!        else
+!          write(iulog,*)" "
+!          write(iulog,*)"Since you are using a separate physics grid, the physics tendencies"
+!          write(iulog,*)"in the dynamical core will not match due to the tendencies being"
+!          write(iulog,*)"interpolated from the physics to the dynamics grid:"
+!          write(iulog,*)" "
+        do i=1,4
+          write(iulog,*) str(i),":"
+          write(iulog,*) "======"
+          diff = abs_diff(dy_phys_total(i),se_phys_total(i),pf=pf)
+          write(iulog,*) "dE/dt physics-dynamics coupling errors (diff) ",diff
+          write(iulog,*) "dE/dt physics tendency in dynamics (dBD-dAF)  ",se_phys_total(i)
+          write(iulog,*) "dE/dt physics tendency in physics  (pAM-pBF)  ",dy_phys_total(i)
+          write(iulog,*) " "
+        end do
       end if
-      do i=1,4
-        write(iulog,*) str(i),":"
-        write(iulog,*) "======"
-        diff = abs_diff(dy_phys_total(i),se_phys_total(i),pf=pf)
-        write(iulog,*) "dE/dt physics-dynamics coupling errors (diff) ",diff
-        write(iulog,*) "dE/dt physics tendency in dynamics (dBD-dAF)  ",se_phys_total(i)
-        write(iulog,*) "dE/dt physics tendency in physics  (pAM-pBF)  ",dy_phys_total(i)
-        write(iulog,*) " "
-      end do
     end if
     write(iulog,*)" "
     write(iulog,*)"------------------------------------------------------------"
@@ -411,10 +450,9 @@ subroutine print_budget()
     write(iulog,*) "and beginning of physics (phBF) the same?"
     write(iulog,*) ""
     call budget_get_global('dBF' ,teidx,E_dBF)  !state passed to physics
-    call budget_get_global('dyBF' ,teidx,E_dyBF)  !state passed to physics
     call budget_get_global('phBF',teidx,E_phBF)!state beginning physics
     !     if (abs(E_phBF)>eps) then
-    diff = abs_diff(E_dBF,E_phBF)
+    diff = abs_diff(E_dBF(1),E_phBF)
     if (abs(diff)<eps) then
       write(iulog,*)"yes. (dBF-phBF)/phBF =",diff
       write(iulog,*)"E_dBF=",E_dBF,"; E_phBF=",E_phBF
@@ -431,12 +469,12 @@ subroutine print_budget()
     write(iulog,*) "Is globally integrated total energy of state at the end of dynamics (dBF)"
     write(iulog,*) "and beginning of physics dynamics energy (dyBF) the same?"
     write(iulog,*) ""
-    diff = abs_diff(E_dBF,E_dyBF)
+    diff = abs_diff(E_dBF,E_dyBF(1))
     if (abs(diff)<eps) then
       write(iulog,*)"yes. (dBF-dyBF)/dyBF =",diff
-      write(iulog,*)"E_dBF=",E_dBF,"; E_dyBF=",E_dyBF
+      write(iulog,*)"E_dBF=",E_dBF,"; E_dyBF=",E_dyBF(1)
     else
-      write(iulog,*) "no. (dBF-dyBF)/dyBF =",diff,E_dBF,E_dyBF
+      write(iulog,*) "no. (dBF-dyBF)/dyBF =",diff,E_dBF,E_dyBF(1)
     end if
     !     end if
 #endif
@@ -505,6 +543,7 @@ subroutine print_budget()
           call budget_get_global('dBD-dAF',m_cnst,mass_change__physics)
           write(iulog,*)"dMASS/dt physics tendency in dynamics (dBD-dAF) ",mass_change__physics," Pa"
           val = phys_total-mass_change__physics
+          write(iulog,*) " "
           write(iulog,*) "Mass physics dynamics coupling error:",val
         end if
         write(iulog,*)""

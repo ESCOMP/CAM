@@ -2361,7 +2361,7 @@ contains
       call set_dry_to_wet(state)
       call physics_dme_adjust(state, tend, qini, totliqini, toticeini, ztodt)
       ! update cp/cv for energy computation based in updated water variables
-      call cam_thermo_water_update(state%q(:ncol,:,:), lchnk, ncol, &
+      call cam_thermo_water_update(state%q(:ncol,:,:), lchnk, ncol, vc_dycore,&
            to_dry_factor=state%pdel(:ncol,:)/state%pdeldry(:ncol,:))
 
       call calc_te_and_aam_budgets(state, 'phAM')

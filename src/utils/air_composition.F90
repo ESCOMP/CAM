@@ -105,8 +105,8 @@ module air_composition
    ! mbarv: composition dependent atmosphere mean mass
    real(r8), public, protected, allocatable :: mbarv(:,:,:)
 
-   ! cpair_dycore:  composition dependent specific heat at constant pressure
-   real(r8), public, protected, allocatable :: cpair_dycore(:,:,:)
+   ! cp_or_cv_dycore:  composition dependent specific heat at constant pressure
+   real(r8), public, protected, allocatable :: cp_or_cv_dycore(:,:,:)
    !
    ! Interfaces for public routines
    interface get_cp_dry
@@ -234,7 +234,6 @@ CONTAINS
       use physconst,    only: r_universal, cpair, rair, cpwv, rh2o, cpliq, cpice, mwdry
       use constituents, only: cnst_get_ind, cnst_mw
       use ppgrid,       only: pcols, pver, begchunk, endchunk
-
       integer  :: icnst, ix, isize, ierr, idx
       integer  :: liq_num, ice_num
       integer  :: liq_idx(water_species_in_air_num)
@@ -334,9 +333,9 @@ CONTAINS
       if (ierr /= 0) then
          call endrun(errstr//"mbarv")
       end if
-      allocate(cpair_dycore(pcols,pver,begchunk:endchunk), stat=ierr)
+      allocate(cp_or_cv_dycore(pcols,pver,begchunk:endchunk), stat=ierr)
       if (ierr /= 0) then
-         call endrun(errstr//"cpair_dycore")
+         call endrun(errstr//"cp_or_cv_dycore")
       end if
 
       thermodynamic_active_species_idx        = -HUGE(1)
@@ -354,7 +353,6 @@ CONTAINS
       rairv(:pcols,  :pver, begchunk:endchunk)       = rair
       cappav(:pcols, :pver, begchunk:endchunk)       = rair / cpair
       mbarv(:pcols,  :pver, begchunk:endchunk)       = mwdry
-      cpair_dycore(:pcols, :pver, begchunk:endchunk) = cpair
       !
       if (dry_air_species_num > 0) then
          !
@@ -651,26 +649,29 @@ CONTAINS
    end subroutine dry_air_composition_update
 
    !===========================================================================
-   !-----------------------------------------------------------------------
-   ! dry_air_composition_update: Update the physics "constants" that vary xxx change description
-   !-------------------------------------------------------------------------
+   !---------------------------------------------------------------------------
+   ! water_composition_update: Update generalized cp or cv depending on dycore
+   !---------------------------------------------------------------------------
    !===========================================================================
 
-   subroutine water_composition_update(mmr, lchnk, ncol, to_dry_factor)
+   subroutine water_composition_update(mmr, lchnk, ncol, vcoord, to_dry_factor)
       use cam_abortutils,  only: endrun
-      
+      use dyn_tests_utils, only: vc_height, vc_moist_pressure, vc_dry_pressure
       real(r8),           intent(in) :: mmr(:,:,:) ! constituents array
       integer,            intent(in) :: lchnk      ! Chunk number
       integer,            intent(in) :: ncol       ! number of columns
+      integer,            intent(in) :: vcoord
       real(r8), optional, intent(in) :: to_dry_factor(:,:)
 
-      real(r8), dimension(ncol,SIZE(mmr, 2),thermodynamic_active_species_num-dry_air_species_num) :: dry_mmr
-      integer,  dimension(thermodynamic_active_species_num-dry_air_species_num)                   :: idx_water
       character(len=*), parameter :: subname = 'water_composition_update'
-      integer :: i, num_water, idx_cam
 
-      call get_cp(mmr(:ncol,:,:),.false.,cpair_dycore(:ncol,:,lchnk), factor=to_dry_factor,       &
-           active_species_idx_dycore=thermodynamic_active_species_idx,cpdry=cpairv(:ncol,:,lchnk))
+      if (vcoord==vc_dry_pressure) then
+        call get_cp(mmr(:ncol,:,:),.false.,cp_or_cv_dycore(:ncol,:,lchnk), factor=to_dry_factor,       &
+             active_species_idx_dycore=thermodynamic_active_species_idx,cpdry=cpairv(:ncol,:,lchnk))
+      else if (vcoord==vc_height) then
+        call get_R(mmr(:ncol,:,:), active_species_idx=thermodynamic_active_species_idx, &
+             cp_or_cv_dycore(:ncol,:,lchnk), fact=to_dry_factor, rdry=rairv(:ncol,:,lchnk))
+      end if
    end subroutine water_composition_update
 
    !===========================================================================
@@ -1004,7 +1005,8 @@ CONTAINS
    !
    !***************************************************************************
    !
-   subroutine get_R_1hd(tracer, active_species_idx, R, fact)
+   subroutine get_R_1hd(tracer, active_species_idx, R, fact, Rdry)
+!   subroutine get_cp_1hd(tracer, cp, factor, active_species_idx_dycore, cpdry)
       use cam_abortutils,  only: endrun
       use string_utils,    only: int2str
 
@@ -1017,6 +1019,7 @@ CONTAINS
       real(r8), intent(out) :: R(:, :)
       ! fact: optional factor for converting tracer to dry mixing ratio
       real(r8), optional, intent(in) :: fact(:, :)
+      real(r8), optional, intent(in) :: Rdry(:, :)
 
       ! Local variables
       integer  :: qdx, itrac
@@ -1035,12 +1038,19 @@ CONTAINS
             call endrun(subname//"SIZE mismatch in dimension 2 "//            &
                  int2str(SIZE(fact, 2))//' /= '//int2str(SIZE(factor, 2)))
          end if
-         call get_R_dry(tracer, active_species_idx, R, fact=fact)
          factor = fact(:,:)
       else
-         call get_R_dry(tracer, active_species_idx, R)
          factor = 1.0_r8
       end if
+
+      if (dry_air_species_num == 0) then
+        R = rair
+      else if (present(Rdry)) then
+        R = Rdry
+      else
+        call get_R_dry(tracer, active_species_idx, R, fact=factor)
+      end if
+
       idx_local = active_species_idx
       sum_species = 1.0_r8 ! all dry air species sum to 1
       do qdx = dry_air_species_num + 1, thermodynamic_active_species_num

@@ -25,7 +25,7 @@ module check_energy
 
   use gmean_mod,       only: gmean
   use physconst,       only: gravit, latvap, latice, cpair, rair
-  use air_composition, only: cpairv, rairv, cpair_dycore
+  use air_composition, only: cpairv, rairv, cp_or_cv_dycore
   use physics_types,   only: physics_state, physics_tend, physics_ptend, physics_ptend_init
   use constituents,    only: cnst_get_ind, pcnst, cnst_name, cnst_get_type_byind
   use time_manager,    only: is_first_step
@@ -308,7 +308,7 @@ end subroutine check_energy_get_integrals
       ! SE specific hydrostatic energy (enthalpy)
       !
       if (state%psetcols == pcols) then
-        cp_or_cv(:ncol,:) = cpair_dycore(:ncol,:,lchnk)
+        cp_or_cv(:ncol,:) = cp_or_cv_dycore(:ncol,:,lchnk)
       else
         cp_or_cv(:ncol,:) = cpair
       endif
@@ -596,14 +596,14 @@ end subroutine check_energy_get_integrals
       ! SE specific hydrostatic energy
       !
       if (state%psetcols == pcols) then
-        cp_or_cv(:ncol,:) = cpair_dycore(:ncol,:,lchnk)
+        cp_or_cv(:ncol,:) = cp_or_cv_dycore(:ncol,:,lchnk)
       else
         cp_or_cv(:ncol,:) = cpair
       endif
       !
       ! enthalpy scaling for energy consistency
       !
-      scaling(:ncol,:) = cpairv(:ncol,:,lchnk)/cpair_dycore(:ncol,:,lchnk)
+      scaling(:ncol,:) = cpairv(:ncol,:,lchnk)/cp_or_cv_dycore(:ncol,:,lchnk)
       temp(1:ncol,:)   = state%temp_ini(1:ncol,:)+scaling(1:ncol,:)*(state%T(1:ncol,:)-state%temp_ini(1:ncol,:))
       call get_hydrostatic_energy(state%q(1:ncol,1:pver,1:pcnst),.true.,               &
            state%pdel(1:ncol,1:pver), cp_or_cv(1:ncol,1:pver),                         &
@@ -1157,7 +1157,7 @@ end subroutine check_energy_get_integrals
         !
         cp_or_cv(:,:) = cpairv(:,:,lchnk)-rairv(:,:,lchnk)!cv
       else if (vc_loc == vc_dry_pressure) then
-        cp_or_cv(:ncol,:) = cpair_dycore(:ncol,:,lchnk)
+        cp_or_cv(:ncol,:) = cp_or_cv_dycore(:ncol,:,lchnk)
       else
         cp_or_cv(:ncol,:) = cpairv(:ncol,:,lchnk)
       end if
@@ -1168,7 +1168,7 @@ end subroutine check_energy_get_integrals
     if (vc_loc == vc_height) then
       scaling(:ncol,:) = cpairv(:ncol,:,lchnk)/cp_or_cv(:ncol,:) !cp/cv scaling for temperature increment under constant volume
     else if (vc_loc == vc_dry_pressure) then
-      scaling(:ncol,:)   = cpairv(:ncol,:,lchnk)/cpair_dycore(:ncol,:,lchnk)
+      scaling(:ncol,:)   = cpairv(:ncol,:,lchnk)/cp_or_cv_dycore(:ncol,:,lchnk)
     else
       scaling(:ncol,:) = 1.0_r8 !internal energy / enthalpy same as CAM physics
     end if
