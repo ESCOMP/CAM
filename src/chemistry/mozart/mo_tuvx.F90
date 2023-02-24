@@ -23,6 +23,7 @@ module mo_tuvx
   public :: tuvx_get_photo_rates
   public :: tuvx_finalize
   public :: tuvx_active
+  public :: tuvx_is_first_time_step
 
   ! Inidices for grid updaters
   integer, parameter :: NUM_GRIDS = 2             ! number of grids that CAM will update at runtime
@@ -120,6 +121,7 @@ module mo_tuvx
   ! namelist options
   character(len=cl) :: tuvx_config_path = 'NONE'  ! absolute path to TUVX configuration file
   logical, protected :: tuvx_active = .false.
+  logical, protected :: tuvx_is_first_time_step = .true.
 
 !================================================================================================
 contains
@@ -418,8 +420,12 @@ contains
   subroutine tuvx_timestep_init( )
 
     integer :: i_thread
+    integer, save :: n_time_step = 0
 
     if( .not. tuvx_active ) return
+
+    if( n_time_step > 0 ) tuvx_is_first_time_step = .false.
+    n_time_step = n_time_step + 1
 
     do i_thread = 1, size( tuvx_ptrs )
     associate( tuvx => tuvx_ptrs( i_thread ) )
