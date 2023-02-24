@@ -544,10 +544,6 @@ end subroutine micro_pumas_cam_readnl
 !================================================================================================
 
 subroutine micro_pumas_cam_register
-!++ TAU
-!!!!!!   use stochastic_collect_tau_cam,  only: ncd, diammean, diamedge
-!!!!!!   use cam_history_support, only: add_hist_coord
-!-- TAU
    use cam_history_support, only: add_vert_coord, hist_dimension_values
    use cam_abortutils,      only: handle_allocate_error
 
@@ -853,6 +849,7 @@ subroutine micro_pumas_cam_init(pbuf2d)
    use micro_pumas_utils, only: micro_pumas_utils_init
    use micro_pumas_v1, only: micro_mg_init3_0 => micro_pumas_init
    use stochastic_collect_tau_cam, only:  stochastic_kernel_init_cam
+   use stochastic_emulate_cam, only:  stochastic_emulate_init_cam
 
    !-----------------------------------------------------------------------
    !
@@ -1191,8 +1188,10 @@ subroutine micro_pumas_cam_init(pbuf2d)
    call addfld('QCRAT', (/ 'lev' /), 'A', 'fraction', 'Qc Limiter: Fraction of qc tendency applied')
 
    ! If Machine learning is turned on, perform it's initializations
-   if (trim(micro_mg_warm_rain) == 'tau' .or. trim(micro_mg_warm_rain) == 'emulate') then
+   if (trim(micro_mg_warm_rain) == 'tau') then
       call stochastic_kernel_init_cam()
+   else if( trim(micro_mg_warm_rain) == 'emulate') then
+      call stochastic_emulate_init_cam()
    end if
    ! determine the add_default fields
    call phys_getopts(history_amwg_out           = history_amwg         , &
