@@ -289,10 +289,8 @@ end subroutine check_energy_get_integrals
       !
       ! MPAS specific hydrostatic energy computation (internal energy)
       !
-      ! compute cv if vertical coordinate is height: cv = cp - R
-      !
       if (state%psetcols == pcols) then
-        cp_or_cv(:ncol,:) = cpairv(:ncol,:,lchnk)-rairv(:ncol,:,lchnk)
+        cp_or_cv(:ncol,:) = cp_or_cv_dycore(:ncol,:,lchnk)
       else
         cp_or_cv(:ncol,:) = cpair-rair
       endif
@@ -579,7 +577,7 @@ end subroutine check_energy_get_integrals
       !
       ! Note: cp_or_cv set above for pressure coordinate
       if (state%psetcols == pcols) then
-        cp_or_cv(:ncol,:) = cpairv(:ncol,:,lchnk)-rairv(:ncol,:,lchnk)
+        cp_or_cv(:ncol,:) = cp_or_cv_dycore(:ncol,:,lchnk)
       else
         cp_or_cv(:ncol,:) = cpair-rair
       endif
@@ -1155,7 +1153,7 @@ end subroutine check_energy_get_integrals
         !
         ! compute cv if vertical coordinate is height: cv = cp - R
         !
-        cp_or_cv(:,:) = cpairv(:,:,lchnk)-rairv(:,:,lchnk)!cv
+        cp_or_cv(:ncol,:) = cp_or_cv_dycore(:ncol,:,lchnk)
       else if (vc_loc == vc_dry_pressure) then
         cp_or_cv(:ncol,:) = cp_or_cv_dycore(:ncol,:,lchnk)
       else
@@ -1168,7 +1166,7 @@ end subroutine check_energy_get_integrals
     if (vc_loc == vc_height) then
       scaling(:ncol,:) = cpairv(:ncol,:,lchnk)/cp_or_cv(:ncol,:) !cp/cv scaling for temperature increment under constant volume
     else if (vc_loc == vc_dry_pressure) then
-      scaling(:ncol,:)   = cpairv(:ncol,:,lchnk)/cp_or_cv_dycore(:ncol,:,lchnk)
+      scaling(:ncol,:) = cpairv(:ncol,:,lchnk)/cp_or_cv(:ncol,:)
     else
       scaling(:ncol,:) = 1.0_r8 !internal energy / enthalpy same as CAM physics
     end if

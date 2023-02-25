@@ -657,6 +657,7 @@ CONTAINS
    subroutine water_composition_update(mmr, lchnk, ncol, vcoord, to_dry_factor)
       use cam_abortutils,  only: endrun
       use dyn_tests_utils, only: vc_height, vc_moist_pressure, vc_dry_pressure
+      use physconst,    only: r_universal, cpair, rair, cpwv, rh2o, cpliq, cpice, mwdry!xxx
       real(r8),           intent(in) :: mmr(:,:,:) ! constituents array
       integer,            intent(in) :: lchnk      ! Chunk number
       integer,            intent(in) :: ncol       ! number of columns
@@ -666,11 +667,19 @@ CONTAINS
       character(len=*), parameter :: subname = 'water_composition_update'
 
       if (vcoord==vc_dry_pressure) then
-        call get_cp(mmr(:ncol,:,:),.false.,cp_or_cv_dycore(:ncol,:,lchnk), factor=to_dry_factor,       &
+        call get_cp(mmr(:ncol,:,:),.false.,cp_or_cv_dycore(:ncol,:,lchnk), factor=to_dry_factor,    &
              active_species_idx_dycore=thermodynamic_active_species_idx,cpdry=cpairv(:ncol,:,lchnk))
       else if (vcoord==vc_height) then
-        call get_R(mmr(:ncol,:,:), active_species_idx=thermodynamic_active_species_idx, &
-             cp_or_cv_dycore(:ncol,:,lchnk), fact=to_dry_factor, rdry=rairv(:ncol,:,lchnk))
+        call get_R(mmr(:ncol,:,:), thermodynamic_active_species_idx, &
+             cp_or_cv_dycore(:ncol,:,lchnk), fact=to_dry_factor, Rdry=rairv(:ncol,:,lchnk))
+        !
+        ! internal energy coefficient for MPAS 
+        ! (equation 92 in Eldred et al. 2023; https://rmets.onlinelibrary.wiley.com/doi/epdf/10.1002/qj.4353)
+        !
+        cp_or_cv_dycore(:ncol,:,lchnk)=cp_or_cv_dycore(:ncol,:,lchnk)*&
+             (cpairv(:ncol,:,lchnk)-rairv(:ncol,:,lchnk)) /rairv(:ncol,:,lchnk)
+!       cp_or_cv_dycore(:ncol,:,lchnk)=rair*&
+!            (cpairv(:ncol,:,lchnk)-rairv(:ncol,:,lchnk))/rairv(:ncol,:,lchnk)
       end if
    end subroutine water_composition_update
 
@@ -1006,9 +1015,9 @@ CONTAINS
    !***************************************************************************
    !
    subroutine get_R_1hd(tracer, active_species_idx, R, fact, Rdry)
-!   subroutine get_cp_1hd(tracer, cp, factor, active_species_idx_dycore, cpdry)
       use cam_abortutils,  only: endrun
       use string_utils,    only: int2str
+      use physconst,       only: rair
 
       ! Dummy arguments
       ! tracer: !tracer array
@@ -1105,7 +1114,7 @@ CONTAINS
    !*************************************************************************************************************************
    !
    subroutine get_mbarv_1hd(tracer, active_species_idx, mbarv_in, fact)
-     use physconst,        only: mwdry, rair, cpair
+     use physconst,        only: mwdry
      real(r8), intent(in)  :: tracer(:,:,:)                      !tracer array
      integer,  intent(in)  :: active_species_idx(:)              !index of active species in tracer
      real(r8), intent(out) :: mbarv_in(:,:)                        !molecular weight of dry air

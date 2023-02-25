@@ -336,12 +336,12 @@ subroutine derived_phys(phys_state, phys_tend, pbuf2d)
    use check_energy,    only: check_energy_timestep_init
    use shr_vmath_mod,   only: shr_vmath_log
    use phys_control,    only: waccmx_is
-   use cam_thermo,      only: cam_thermo_dry_air_update
+   use cam_thermo,      only: cam_thermo_dry_air_update, cam_thermo_water_update
    use air_composition, only: rairv, dry_air_species_num
    use qneg_module,     only: qneg3
    use shr_const_mod,   only: shr_const_rwv
    use constituents,    only: qmin
-
+   use dyn_tests_utils, only: vcoord=>vc_height
    ! Arguments
    type(physics_state),       intent(inout) :: phys_state(begchunk:endchunk)
    type(physics_tend ),       intent(inout) :: phys_tend(begchunk:endchunk)
@@ -432,15 +432,7 @@ subroutine derived_phys(phys_state, phys_tend, pbuf2d)
          phys_state(lchnk)%exner(:ncol,k) = (pref / phys_state(lchnk)%pmid(:ncol,k))**cappa
       end do
 
-      ! Tracers from MPAS are in dry mixing ratio units.  CAM's physics package expects constituents
-      ! which have been declared to be type 'wet' when they are registered to be represented by mixing
-      ! ratios based on moist air mass (dry air + water vapor).  Do appropriate conversion here.
-      factor(:ncol,:) = 1._r8/factor(:ncol,:)
-      do m = 1,pcnst
-         if (cnst_type(m) == 'wet') then
-            phys_state(lchnk)%q(:ncol,:,m) = factor(:ncol,:)*phys_state(lchnk)%q(:ncol,:,m)
-         end if
-      end do
+
 
 
       if (dry_air_species_num>0) then
@@ -459,6 +451,20 @@ subroutine derived_phys(phys_state, phys_tend, pbuf2d)
       else
         zvirv(:,:) = zvir
       endif
+      !
+      ! update cp_dycore in modeule air_composition.
+      ! (note: at this point q is dry)
+      !
+      call cam_thermo_water_update(phys_state(lchnk)%q(1:ncol,:,:), lchnk, ncol, vcoord)
+      ! Tracers from MPAS are in dry mixing ratio units.  CAM's physics package expects constituents
+      ! which have been declared to be type 'wet' when they are registered to be represented by mixing
+      ! ratios based on moist air mass (dry air + water vapor).  Do appropriate conversion here.
+      factor(:ncol,:) = 1._r8/factor(:ncol,:)
+      do m = 1,pcnst
+         if (cnst_type(m) == 'wet') then
+            phys_state(lchnk)%q(:ncol,:,m) = factor(:ncol,:)*phys_state(lchnk)%q(:ncol,:,m)
+         end if
+      end do
 
       ! Compute geopotential height above surface - based on full pressure
       ! Note that phys_state%zi(:,plev+1) = 0 whereas zint in MPAS is surface height
@@ -498,7 +504,7 @@ subroutine derived_tend(nCellsSolve, nCells, t_tend, u_tend, v_tend, q_tend, dyn
    use cam_mpas_subdriver, only : cam_mpas_cell_to_edge_winds, cam_mpas_update_halo
    use mpas_constants,     only : Rv_over_Rd => rvord
    use time_manager,       only : get_step_size
-
+   use air_composition,    only: get_R
    ! Arguments
    integer,             intent(in)    :: nCellsSolve
    integer,             intent(in)    :: nCells
@@ -539,10 +545,13 @@ subroutine derived_tend(nCellsSolve, nCells, t_tend, u_tend, v_tend, q_tend, dyn
    real(r8), pointer :: uy(:,:)
    real(r8)          :: theta_m_new(pver,nCellsSolve) !modified potential temperature after various physics updates
    real(r8)          :: rtheta_param(pver,nCellsSolve)!tendency from temperature change only (for diagnostics)
-   real(r8)          :: qk (thermodynamic_active_species_num,pver,nCellsSolve) !water species before physics (diagnostics)
+   real(r8)          :: Rold(nCellsSolve,pver)
+   real(r8)          :: Rnew(nCellsSolve,pver)
+   real(r8)          :: qk    (thermodynamic_active_species_num,pver,nCellsSolve) !water species before physics (diagnostics)
+   real(r8)          :: qktmp (nCellsSolve,pver,thermodynamic_active_species_num)
+   integer           :: idx_thermo (thermodynamic_active_species_num) 
    real(r8)          :: qwv(pver,nCellsSolve)                                  !water vapor before physics
    real(r8)          :: facnew, facold
-   real(r8), allocatable :: tracers_old(:,:,:)
 
    integer  :: iCell,k
 
@@ -607,9 +616,35 @@ subroutine derived_tend(nCellsSolve, nCells, t_tend, u_tend, v_tend, q_tend, dyn
    uy       => dyn_in % uy
    !
    ! Compute q not updated by physics
-   !
-   qwv = tracers(index_qv,:,1:nCellsSolve)-dtime*q_tend(index_qv_phys,:,1:nCellsSolve)
 
+!xxx clean-up this code   
+   do m=1,thermodynamic_active_species_num
+     do iCell = 1, nCellsSolve
+       do k = 1, pver
+         idx_thermo(m) = m
+         idx_dycore                         = thermodynamic_active_species_idx_dycore(m)
+         qktmp(iCell,k,m)                   = tracers(idx_dycore,k,iCell)
+       end do
+     end do
+   end do
+   call get_R(qktmp,idx_thermo,Rnew)
+   Rnew = Rnew*cv/Rgas
+
+
+   do m=1,thermodynamic_active_species_num
+     do iCell = 1, nCellsSolve
+       do k = 1, pver
+         idx_thermo(m) = m
+         idx_dycore                         = thermodynamic_active_species_idx_dycore(m)
+         qktmp(iCell,k,m)                   = tracers(idx_dycore,k,iCell)-&
+                                              dtime*q_tend(m,k,iCell)
+       end do
+     end do
+   end do
+   call get_R(qktmp,idx_thermo,Rold)
+   Rold=Rold*cv/Rgas
+
+   qwv = tracers(index_qv,:,1:nCellsSolve)-dtime*q_tend(index_qv_phys,:,1:nCellsSolve)!xxx not needed
    do iCell = 1, nCellsSolve
      do k = 1, pver
        rhodk     = zz(k,iCell) * rho_zz(k,iCell)
@@ -617,8 +652,7 @@ subroutine derived_tend(nCellsSolve, nCells, t_tend, u_tend, v_tend, q_tend, dyn
        thetak    = theta_m(k,iCell)/facold
 
        exnerk    = (rgas*rhodk*theta_m(k,iCell)/p0)**(rgas/cv)
-       tknew     = exnerk*thetak+(cp/cv)*dtime*t_tend(k,icell)
-
+       tknew     = exnerk*thetak+(cp/Rold(iCell,k))*dtime*t_tend(k,icell)
 
        thetaknew = (tknew**(cv/cp))*((rgas*rhodk*facold)/p0)**(-rgas/cp)
        !
@@ -631,6 +665,7 @@ subroutine derived_tend(nCellsSolve, nCells, t_tend, u_tend, v_tend, q_tend, dyn
        ! include water change in theta_m
        !
        facnew               = 1.0_r8 + Rv_over_Rd *tracers(index_qv,k,iCell)
+       tknew                = exnerk*thetak+(cp/Rnew(iCell,k))*dtime*t_tend(k,icell)
        thetaknew            = (tknew**(cv/cp))*((rgas*rhodk*facnew)/p0)**(-rgas/cp)
        rtheta_tend(k,iCell) = (thetaknew*facnew-thetak*facold)/dtime
        rtheta_tend(k,iCell) = rtheta_tend(k,iCell) * rho_zz(k,iCell)
@@ -718,11 +753,7 @@ subroutine hydrostatic_pressure(nCells, nVertLevels, qsize, index_qv, zz, zgrid,
    integer :: iCell, k, idx
    real(r8), dimension(nVertLevels)          :: dz       ! Geometric layer thickness in column
    real(r8), dimension(nVertLevels)          :: dp,dpdry ! Pressure thickness
-#ifdef phl_cam_development
-   real(r8), dimension(nVertLevels+1) :: pint  ! hydrostatic pressure at interface
-#else
    real(r8), dimension(nVertLevels+1,nCells) :: pint  ! hydrostatic pressure at interface
-#endif
    real(r8) :: pi, t, sum_water
    real(r8) :: pk,rhok,rhodryk,theta,thetavk,kap1,kap2,tvk,tk
    !
@@ -730,42 +761,6 @@ subroutine hydrostatic_pressure(nCells, nVertLevels, qsize, index_qv, zz, zgrid,
    ! midpoints and interfaces. The pressure averaged to layer midpoints should be consistent with
    ! the ideal gas law using the rho_zz and theta values prognosed by MPAS at layer midpoints.
    !
-#ifdef phl_cam_development
-   kap1 = p0**(-rgas/cp)           ! pre-compute constants
-   kap2 = cp/cv                    ! pre-compute constants
-   do iCell = 1, nCells
-
-      dz(:) = zgrid(2:nVertLevels+1,iCell) - zgrid(1:nVertLevels,iCell)
-
-      k = nVertLevels
-      rhok    = (1.0_r8+q(index_qv,k,iCell))*zz(k,iCell) * rho_zz(k,iCell) !full CAM physics density
-      thetavk = theta_m(k,iCell)/ (1.0_r8 + q(index_qv,k,iCell))           !convert modified theta to virtual theta
-      pk      = (rhok*rgas*thetavk*kap1)**kap2                             !mid-level top pressure
-      !
-      ! model top pressure consistently diagnosed using the assumption that the mid level
-      ! is at height z(nVertLevels-1)+0.5*dz
-      !
-      pintdry(nVertLevels+1,iCell) = pk-0.5_r8*dz(nVertLevels)*rhok*gravity  !hydrostatic
-      pint   (nVertLevels+1)       = pintdry(nVertLevels+1,iCell)
-      do k = nVertLevels, 1, -1
-        !
-        ! compute hydrostatic dry interface pressure so that (pintdry(k+1)-pintdry(k))/g is pseudo density
-        !
-        rhodryk = zz(k,iCell) * rho_zz(k,iCell)
-        rhok    = (1.0_r8+q(index_qv,k,iCell))*rhodryk
-        pintdry(k,iCell) = pintdry(k+1,iCell) + gravity * rhodryk * dz(k)
-        pint   (k)       = pint   (k+1)       + gravity * rhok    * dz(k)
-      end do
-
-      do k = nVertLevels, 1, -1
-        !hydrostatic mid-level pressure - MPAS full pressure is (rhok*rgas*thetavk*kap1)**kap2 
-        pmid   (k,iCell) = 0.5_r8*(pint(k+1)+pint(k))       
-        !hydrostatic dry mid-level dry pressure - 
-        !MPAS non-hydrostatic dry pressure is pmiddry(k,iCell) = (rhodryk*rgas*theta*kap1)**kap2
-        pmiddry(k,iCell) = 0.5_r8*(pintdry(k+1,iCell)+pintdry(k,iCell))  
-      end do
-    end do
-#else
    do iCell = 1, nCells
       dz(:) = zgrid(2:nVertLevels+1,iCell) - zgrid(1:nVertLevels,iCell)
       do k = nVertLevels, 1, -1
@@ -815,8 +810,6 @@ subroutine hydrostatic_pressure(nCells, nVertLevels, qsize, index_qv, zz, zgrid,
         pmiddry(k,iCell) = dpdry(k)*rgas*tk /(gravit*dz(k))
       end do
     end do
-#endif
-
 end subroutine hydrostatic_pressure
 
 subroutine tot_energy(nCells, nVertLevels, qsize, index_qv, zz, zgrid, rho_zz, theta_m, q, ux,uy,outfld_name_suffix,te_budgets,budgets_cnt,budgets_subcycle_cnt)
@@ -826,6 +819,7 @@ subroutine tot_energy(nCells, nVertLevels, qsize, index_qv, zz, zgrid, rho_zz, t
   use mpas_constants,    only: Rv_over_Rd => rvord
   use air_composition,   only: thermodynamic_active_species_ice_idx_dycore,thermodynamic_active_species_liq_idx_dycore
   use air_composition,   only: thermodynamic_active_species_ice_num,thermodynamic_active_species_liq_num
+  use air_composition,   only: dry_air_species_num, thermodynamic_active_species_R
   use budgets,           only: budget_array_max,budget_info_byname
   use cam_thermo,        only: wvidx,wlidx,wiidx,seidx,poidx,keidx,moidx,mridx,ttidx,teidx,thermo_budget_num_vars
   use dyn_tests_utils,   only: vcoord=>vc_height
@@ -859,6 +853,7 @@ subroutine tot_energy(nCells, nVertLevels, qsize, index_qv, zz, zgrid, rho_zz, t
 
   real(r8), dimension(nCells) :: liq !total column integrated liquid
   real(r8), dimension(nCells) :: ice !total column integrated ice
+  real(r8) :: sum_species
 
   character(len=16) :: name_out1,name_out2,name_out3,name_out4,name_out5,name_out6
 
@@ -888,7 +883,18 @@ subroutine tot_energy(nCells, nVertLevels, qsize, index_qv, zz, zgrid, rho_zz, t
 
         temperature(iCell,k)   = exner*theta
         pdeldry(iCell,k)       = gravit*rhod*dz
-        cp_or_cv(iCell,k)      = cv
+        !
+        ! internal energy coefficient for MPAS 
+        ! (equation 92 in Eldred et al. 2023; https://rmets.onlinelibrary.wiley.com/doi/epdf/10.1002/qj.4353)
+        !
+        cp_or_cv(iCell,k)      = rair
+        sum_species            = 1.0_r8
+        do idx=dry_air_species_num + 1,thermodynamic_active_species_num
+          idx_tmp = thermodynamic_active_species_idx_dycore(idx)
+          cp_or_cv(iCell,k) = cp_or_cv(iCell,k)+thermodynamic_active_species_R(idx)*q(idx_tmp,k,iCell)
+          sum_species       = sum_species+q(idx_tmp,k,iCell)
+        end do
+        cp_or_cv(iCell,k)      = cv*cp_or_cv(iCell,k)/(sum_species*rair)
         u(iCell,k)             = ux(k,iCell)
         v(iCell,k)             = uy(k,iCell)
         phis(iCell)            = zgrid(1,iCell)*gravit
