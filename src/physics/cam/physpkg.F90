@@ -1888,7 +1888,7 @@ contains
       call physics_dme_adjust(state, tend, qini, totliqini, toticeini, ztodt)
       ! update cp/cv for energy computation based in updated water variables
       call cam_thermo_water_update(state%q(:ncol,:,:), lchnk, ncol, &
-           to_dry_factor=state%pdel(:ncol,:)/state%pdeldry(:ncol,:))
+           to_dry_factor=state%pdel(:ncol,:)/state%pdeldry(:ncol,:), vc_dycore)
       call calc_te_and_aam_budgets(state, 'phAM')
       call calc_te_and_aam_budgets(state, 'dyAM', vc=vc_dycore)
       ! Restore pre-"physics_dme_adjust" tracers
