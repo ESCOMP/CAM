@@ -379,9 +379,8 @@ subroutine p_d_coupling(phys_state, phys_tend, dyn_in, tl_f, tl_qdp)
             end do
          end do
       end do
-      call thermodynamic_consistency( &
-           phys_state(lchnk), phys_tend(lchnk), ncols, pver, lchnk)
-   end do
+      call thermodynamic_consistency(phys_state(lchnk), phys_tend(lchnk), ncols, pver, lchnk)
+    end do
 
    call t_startf('pd_copy')
    !$omp parallel do num_threads(max_num_threads) private (col_ind, lchnk, icol, ie, blk_ind, ilyr, m)
@@ -541,12 +540,10 @@ subroutine derived_phys_dry(phys_state, phys_tend, pbuf2d)
 
    use constituents,    only: qmin
    use physconst,       only: gravit, zvir
-   use cam_thermo,      only: cam_thermo_update
-#ifndef phl_cam_development
+   use cam_thermo,      only: cam_thermo_dry_air_update, cam_thermo_water_update
    use air_composition, only: thermodynamic_active_species_num
    use air_composition, only: thermodynamic_active_species_idx
-#endif
-   use air_composition, only: cpairv, rairv, cappav
+   use air_composition, only: cpairv, rairv, cappav, dry_air_species_num
    use shr_const_mod,   only: shr_const_rwv
    use phys_control,    only: waccmx_is
    use geopotential,    only: geopotential_t
@@ -608,16 +605,6 @@ subroutine derived_phys_dry(phys_state, phys_tend, pbuf2d)
       end do
 
       ! wet pressure variables (should be removed from physics!)
-!#define phl_cam_development
-#ifdef phl_cam_development
-      do k=1,nlev
-         do i=1,ncol
-            ! to be consistent with total energy formula in physic's check_energy module only
-            ! include water vapor in in moist dp
-            factor_array(i,k) = 1+phys_state(lchnk)%q(i,k,1)
-         end do
-      end do
-#else
       factor_array(:,:) = 1.0_r8
       do m_cnst=1,thermodynamic_active_species_num
         m = thermodynamic_active_species_idx(m_cnst)
@@ -628,7 +615,7 @@ subroutine derived_phys_dry(phys_state, phys_tend, pbuf2d)
           end do
         end do
       end do
-#endif
+
       do k=1,nlev
          do i=1,ncol
             phys_state(lchnk)%pdel (i,k) = phys_state(lchnk)%pdeldry(i,k)*factor_array(i,k)
@@ -658,10 +645,37 @@ subroutine derived_phys_dry(phys_state, phys_tend, pbuf2d)
          end do
       end do
 
-      ! all tracers (including moisture) are in dry mixing ratio units
-      ! physics expect water variables moist
+      !------------------------------------------------------------
+      ! Apply limiters to mixing ratios of major species (waccmx)
+      !------------------------------------------------------------
+      if (dry_air_species_num>0) then
+        call physics_cnst_limit( phys_state(lchnk) )
+        !-----------------------------------------------------------------------------
+        ! Call cam_thermo_dry_air_update to compute cpairv, rairv, mbarv, and cappav as
+        ! constituent dependent variables.
+        ! Compute molecular viscosity(kmvis) and conductivity(kmcnd).
+        ! Fill local zvirv variable; calculated for WACCM-X.
+        !-----------------------------------------------------------------------------
+        call cam_thermo_dry_air_update(phys_state(lchnk)%q, phys_state(lchnk)%t, lchnk, ncol)
+        zvirv(:,:) = shr_const_rwv / rairv(:,:,lchnk) -1._r8
+      else
+        zvirv(:,:) = zvir
+      end if
+      !
+      ! update cp_dycore in modeule air_composition.
+      ! (note: at this point q is dry)
+      !
+      call cam_thermo_water_update(phys_state(lchnk)%q(1:ncol,:,:), lchnk, ncol)
+      do k = 1, nlev
+         do i = 1, ncol
+            phys_state(lchnk)%exner(i,k) = (phys_state(lchnk)%pint(i,pver+1) &
+                                            / phys_state(lchnk)%pmid(i,k))**cappav(i,k,lchnk)
+         end do
+      end do
+      !
+      ! CAM physics: water tracers are moist; the rest dry
+      !
       factor_array(1:ncol,1:nlev) = 1/factor_array(1:ncol,1:nlev)
-
       do m = 1,pcnst
          if (cnst_type(m) == 'wet') then
             do k = 1, nlev
@@ -670,31 +684,6 @@ subroutine derived_phys_dry(phys_state, phys_tend, pbuf2d)
                end do
             end do
          end if
-      end do
-
-      if ( waccmx_is('ionosphere') .or. waccmx_is('neutral') ) then
-        !------------------------------------------------------------
-        ! Apply limiters to mixing ratios of major species
-        !------------------------------------------------------------
-        call physics_cnst_limit( phys_state(lchnk) )
-        !-----------------------------------------------------------------------------
-        ! Call cam_thermo_update to compute cpairv, rairv, mbarv, and cappav as
-        ! constituent dependent variables.
-        ! Compute molecular viscosity(kmvis) and conductivity(kmcnd).
-        ! Fill local zvirv variable; calculated for WACCM-X.
-        !-----------------------------------------------------------------------------
-        call cam_thermo_update(phys_state(lchnk)%q, phys_state(lchnk)%t, lchnk, ncol,&
-             to_moist_factor=phys_state(lchnk)%pdeldry(:ncol,:)/phys_state(lchnk)%pdel(:ncol,:) )
-        zvirv(:,:) = shr_const_rwv / rairv(:,:,lchnk) -1._r8
-      else
-        zvirv(:,:) = zvir
-      endif
-
-      do k = 1, nlev
-         do i = 1, ncol
-            phys_state(lchnk)%exner(i,k) = (phys_state(lchnk)%pint(i,pver+1) &
-                                            / phys_state(lchnk)%pmid(i,k))**cappav(i,k,lchnk)
-         end do
       end do
 
       ! Compute initial geopotential heights - based on full pressure
@@ -752,7 +741,7 @@ subroutine thermodynamic_consistency(phys_state, phys_tend, ncols, pver, lchnk)
      ! note that if lcp_moist=.false. then there is thermal energy increment
      ! consistency (not taking into account dme adjust)
      !
-     call get_cp(phys_state%q(1:ncols,1:pver,:), .true., inv_cp)
+     call get_cp(phys_state%q(1:ncols,1:pver,:), .true.,inv_cp, cpdry=cpairv(1:ncols,:,lchnk))
      phys_tend%dtdt(1:ncols,1:pver) = phys_tend%dtdt(1:ncols,1:pver) * cpairv(1:ncols,1:pver,lchnk) * inv_cp
    end if
 end subroutine thermodynamic_consistency

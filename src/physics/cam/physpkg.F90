@@ -1391,7 +1391,7 @@ contains
     use cam_snapshot,       only: cam_snapshot_all_outfld_tphysac
     use cam_snapshot_common,only: cam_snapshot_ptend_outfld
     use lunar_tides,        only: lunar_tides_tend
-
+    use cam_thermo,         only: cam_thermo_water_update
     !
     ! Arguments
     !
@@ -1877,6 +1877,7 @@ contains
     ! So, save off tracers
     if (.not.moist_mixing_ratio_dycore.and.&
          (hist_fld_active('SE_phAM').or.hist_fld_active('KE_phAM').or.hist_fld_active('WV_phAM').or.&
+          hist_fld_active('SE_dyAM').or.hist_fld_active('KE_dyAM').or.hist_fld_active('WV_dyAM').or.&
           hist_fld_active('WL_phAM').or.hist_fld_active('WI_phAM').or.hist_fld_active('MR_phAM').or.&
           hist_fld_active('MO_phAM'))) then
       tmp_trac(:ncol,:pver,:pcnst) = state%q(:ncol,:pver,:pcnst)
@@ -1884,9 +1885,10 @@ contains
       tmp_ps(:ncol)                = state%ps(:ncol)
 
       call set_dry_to_wet(state)
-
       call physics_dme_adjust(state, tend, qini, totliqini, toticeini, ztodt)
-
+      ! update cp/cv for energy computation based in updated water variables
+      call cam_thermo_water_update(state%q(:ncol,:,:), lchnk, ncol, &
+           to_dry_factor=state%pdel(:ncol,:)/state%pdeldry(:ncol,:))
       call calc_te_and_aam_budgets(state, 'phAM')
       call calc_te_and_aam_budgets(state, 'dyAM', vc=vc_dycore)
       ! Restore pre-"physics_dme_adjust" tracers

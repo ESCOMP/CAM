@@ -26,7 +26,7 @@ module check_energy
 
   use gmean_mod,       only: gmean
   use physconst,       only: gravit, latvap, latice, cpair, rair
-  use air_composition, only: cpairv, rairv
+  use air_composition, only: cpairv, rairv, cpair_dycore
   use physics_types,   only: physics_state, physics_tend, physics_ptend, physics_ptend_init
   use constituents,    only: cnst_get_ind, pcnst, cnst_name, cnst_get_type_byind
   use time_manager,    only: is_first_step
@@ -221,7 +221,7 @@ end subroutine check_energy_get_integrals
     use cam_thermo,      only: get_hydrostatic_energy
     use physics_buffer,  only: physics_buffer_desc, pbuf_set_field
     use cam_abortutils,  only: endrun
-    use dyn_tests_utils, only: vc_physics, vc_dycore, vc_height
+    use dyn_tests_utils, only: vc_physics, vc_dycore, vc_height, vc_dry_pressure
     use physics_types,   only: phys_te_idx, dyn_te_idx
 !-----------------------------------------------------------------------
 ! Compute initial values of energy and water integrals,
@@ -249,7 +249,7 @@ end subroutine check_energy_get_integrals
     if (state%psetcols == pcols) then
        cp_or_cv(:,:) = cpairv(:,:,lchnk)
     else if (state%psetcols > pcols .and. all(cpairv(:,:,lchnk) == cpair)) then
-       cp_or_cv(:,:) = cpair
+       cp_or_cv(1:ncol,:) = cpair
     else
        call endrun('check_energy_timestep_init: cpairv is not allowed to vary when subcolumns are turned on')
     end if
@@ -268,12 +268,14 @@ end subroutine check_energy_get_integrals
     state%z_ini(:ncol,:)    = state%zm(:ncol,:)
     if (vc_dycore == vc_height) then
       !
+      ! MPAS specific hydrostatic energy computation (internal energy)
+      !
       ! compute cv if vertical coordinate is height: cv = cp - R
       !
       if (state%psetcols == pcols) then
-        cp_or_cv(:,:) = cpairv(:,:,lchnk)-rairv(:,:,lchnk)
+        cp_or_cv(:ncol,:) = cpairv(:ncol,:,lchnk)-rairv(:ncol,:,lchnk)
       else
-        cp_or_cv(:,:) = cpair-rair
+        cp_or_cv(:ncol,:) = cpair-rair
       endif
 
       call get_hydrostatic_energy(state%q(1:ncol,1:pver,1:pcnst),.true.,               &
@@ -282,11 +284,27 @@ end subroutine check_energy_get_integrals
            vc_dycore, ptop=state%pintdry(1:ncol,1), phis = state%phis(1:ncol),         &
            z_mid = state%z_ini(1:ncol,:),                                              &
            te = state%te_ini(1:ncol,dyn_te_idx), H2O = state%tw_ini(1:ncol,dyn_te_idx))
+    else if (vc_dycore == vc_dry_pressure) then
+      !
+      ! SE specific hydrostatic energy (enthalpy)
+      !
+      if (state%psetcols == pcols) then
+        cp_or_cv(:ncol,:) = cpair_dycore(:ncol,:,lchnk)
+      else
+        cp_or_cv(:ncol,:) = cpair
+      endif
+      call get_hydrostatic_energy(state%q(1:ncol,1:pver,1:pcnst),.true.,               &
+           state%pdel(1:ncol,1:pver), cp_or_cv(1:ncol,1:pver),                         &
+           state%u(1:ncol,1:pver), state%v(1:ncol,1:pver), state%T(1:ncol,1:pver),     &
+           vc_dry_pressure, ptop=state%pintdry(1:ncol,1), phis = state%phis(1:ncol),   &
+           te = state%te_ini(1:ncol,dyn_te_idx), H2O = state%tw_ini(1:ncol,dyn_te_idx))
     else
+      !
+      ! dycore energy is the same as physics
+      !
       state%te_ini(1:ncol,dyn_te_idx) = state%te_ini(1:ncol,phys_te_idx)
       state%tw_ini(1:ncol,dyn_te_idx) = state%tw_ini(1:ncol,phys_te_idx)
     end if
-
     state%te_cur(:ncol,:) = state%te_ini(:ncol,:)
     state%tw_cur(:ncol,:) = state%tw_ini(:ncol,:)
 
@@ -308,7 +326,7 @@ end subroutine check_energy_get_integrals
   subroutine check_energy_chng(state, tend, name, nstep, ztodt,        &
        flx_vap, flx_cnd, flx_ice, flx_sen)
     use cam_thermo,      only: get_hydrostatic_energy
-    use dyn_tests_utils, only: vc_physics, vc_dycore, vc_height
+    use dyn_tests_utils, only: vc_physics, vc_dycore, vc_height, vc_dry_pressure
     use cam_abortutils,  only: endrun
     use physics_types,   only: phys_te_idx, dyn_te_idx
 !-----------------------------------------------------------------------
@@ -375,7 +393,6 @@ end subroutine check_energy_get_integrals
     else
        call endrun('check_energy_chng: cpairv is not allowed to vary when subcolumns are turned on')
     end if
-
     call get_hydrostatic_energy(state%q(1:ncol,1:pver,1:pcnst),.true.,               &
          state%pdel(1:ncol,1:pver), cp_or_cv(1:ncol,1:pver),                         &
          state%u(1:ncol,1:pver), state%v(1:ncol,1:pver), state%T(1:ncol,1:pver),     &
@@ -450,20 +467,37 @@ end subroutine check_energy_get_integrals
       ! compute cv if vertical coordinate is height: cv = cp - R
       !
       ! Note: cp_or_cv set above for pressure coordinate
-      !
       if (state%psetcols == pcols) then
-        cp_or_cv(:,:) = cpairv(:,:,lchnk)-rairv(:,:,lchnk)
+        cp_or_cv(:ncol,:) = cpairv(:ncol,:,lchnk)-rairv(:ncol,:,lchnk)
       else
-        cp_or_cv(:,:) = cpair-rair
+        cp_or_cv(:ncol,:) = cpair-rair
       endif
-      scaling(:,:) = cpairv(:,:,lchnk)/cp_or_cv(:,:) !cp/cv scaling
-
+      scaling(:,:)   = cpairv(:,:,lchnk)/cp_or_cv(:,:) !cp/cv scaling
       temp(1:ncol,:) = state%temp_ini(1:ncol,:)+scaling(1:ncol,:)*(state%T(1:ncol,:)-state%temp_ini(1:ncol,:))
       call get_hydrostatic_energy(state%q(1:ncol,1:pver,1:pcnst),.true.,               &
            state%pdel(1:ncol,1:pver), cp_or_cv(1:ncol,1:pver),                         &
            state%u(1:ncol,1:pver), state%v(1:ncol,1:pver), temp(1:ncol,1:pver),        &
            vc_dycore, ptop=state%pintdry(1:ncol,1), phis = state%phis(1:ncol),         &
            z_mid = state%z_ini(1:ncol,:),                                              &
+           te = state%te_cur(1:ncol,dyn_te_idx), H2O = state%tw_cur(1:ncol,dyn_te_idx))
+    else if (vc_dycore == vc_dry_pressure) then
+      !
+      ! SE specific hydrostatic energy
+      !
+      if (state%psetcols == pcols) then
+        cp_or_cv(:ncol,:) = cpair_dycore(:ncol,:,lchnk)
+      else
+        cp_or_cv(:ncol,:) = cpair
+      endif
+      !
+      ! enthalpy scaling for energy consistency
+      !
+      scaling(:ncol,:) = cpairv(:ncol,:,lchnk)/cpair_dycore(:ncol,:,lchnk)
+      temp(1:ncol,:)   = state%temp_ini(1:ncol,:)+scaling(1:ncol,:)*(state%T(1:ncol,:)-state%temp_ini(1:ncol,:))
+      call get_hydrostatic_energy(state%q(1:ncol,1:pver,1:pcnst),.true.,               &
+           state%pdel(1:ncol,1:pver), cp_or_cv(1:ncol,1:pver),                         &
+           state%u(1:ncol,1:pver), state%v(1:ncol,1:pver), temp(1:ncol,1:pver),        &
+           vc_dry_pressure, ptop=state%pintdry(1:ncol,1), phis = state%phis(1:ncol),   &
            te = state%te_cur(1:ncol,dyn_te_idx), H2O = state%tw_cur(1:ncol,dyn_te_idx))
     else
       state%te_cur(1:ncol,dyn_te_idx) = te(1:ncol)
@@ -789,7 +823,8 @@ end subroutine check_energy_get_integrals
     use cam_thermo,      only: get_hydrostatic_energy,thermo_budget_num_vars,thermo_budget_vars, &
                                wvidx,wlidx,wiidx,seidx,keidx,moidx,mridx,ttidx,teidx
     use cam_history,     only: outfld
-    use dyn_tests_utils, only: vc_physics, vc_height
+    use dyn_tests_utils, only: vc_physics, vc_height, vc_dry_pressure
+
     use cam_abortutils,  only: endrun
     use cam_history_support, only: max_fieldname_len
     use budgets,         only: thermo_budget_history
@@ -824,81 +859,83 @@ end subroutine check_energy_get_integrals
 
 !-----------------------------------------------------------------------
 
-    if (thermo_budget_history) then
+    if (.not.thermo_budget_history) return
+
     do i=1,thermo_budget_num_vars
        name_out(i)=trim(thermo_budget_vars(i))//'_'//trim(outfld_name_suffix)
     end do
 
-      lchnk = state%lchnk
-      ncol  = state%ncol
+    lchnk = state%lchnk
+    ncol  = state%ncol
 
-      if (present(vc)) then
-        vc_loc = vc
-      else
-        vc_loc = vc_physics
-      end if
+    if (present(vc)) then
+      vc_loc = vc
+    else
+      vc_loc = vc_physics
+    end if
 
-      if (state%psetcols == pcols) then
-        if (vc_loc == vc_height) then
-          !
-          ! compute cv if vertical coordinate is height: cv = cp - R
-          !
-          cp_or_cv(:,:) = cpairv(:,:,lchnk)-rairv(:,:,lchnk)!cv
-        else
-          cp_or_cv(:,:) = cpairv(:,:,lchnk)                 !cp
-        end if
-      else
-        call endrun('calc_te_and_aam_budgets: energy diagnostics not implemented/tested for subcolumns')
-      end if
-
+    if (state%psetcols == pcols) then
       if (vc_loc == vc_height) then
-        scaling(:,:) = cpairv(:,:,lchnk)/cp_or_cv(:,:) !cp/cv scaling for temperature increment under constant volume
+        !
+        ! compute cv if vertical coordinate is height: cv = cp - R
+        !
+        cp_or_cv(:,:) = cpairv(:,:,lchnk)-rairv(:,:,lchnk)!cv
+      else if (vc_loc == vc_dry_pressure) then
+        cp_or_cv(:ncol,:) = cpair_dycore(:ncol,:,lchnk)
       else
-        scaling(:,:) = 1.0_r8
+        cp_or_cv(:ncol,:) = cpairv(:ncol,:,lchnk)
       end if
-      ! scale accumulated temperature increment for constant volume (otherwise effectively do nothing)
-      temp(1:ncol,:) = state%temp_ini(1:ncol,:)+scaling(1:ncol,:)*(state%T(1:ncol,:)- state%temp_ini(1:ncol,:))
+    else
+      call endrun('calc_te_and_aam_budgets: energy diagnostics not implemented/tested for subcolumns')
+    end if
 
-      call get_hydrostatic_energy(state%q(1:ncol,1:pver,1:pcnst),.true.,               &
-           state%pdel(1:ncol,1:pver), cp_or_cv(1:ncol,1:pver),                         &
-           state%u(1:ncol,1:pver), state%v(1:ncol,1:pver), temp(1:ncol,1:pver),        &
-           vc_loc, ptop=state%pintdry(1:ncol,1), phis = state%phis(1:ncol),&
-           z_mid = state%z_ini(1:ncol,:), se = se(1:ncol),                             &
-           po = po(1:ncol), ke = ke(1:ncol), wv = wv(1:ncol), liq = liq(1:ncol),       &
-           ice = ice(1:ncol))
+    if (vc_loc == vc_height) then
+      scaling(:ncol,:) = cpairv(:ncol,:,lchnk)/cp_or_cv(:ncol,:) !cp/cv scaling for temperature increment under constant volume
+    else if (vc_loc == vc_dry_pressure) then
+      scaling(:ncol,:)   = cpairv(:ncol,:,lchnk)/cpair_dycore(:ncol,:,lchnk)
+    else
+      scaling(:ncol,:) = 1.0_r8 !internal energy / enthalpy same as CAM physics
+    end if
+    ! scale accumulated temperature increment for internal energy / enthalpy consistency
+    temp(1:ncol,:) = state%temp_ini(1:ncol,:)+scaling(1:ncol,:)*(state%T(1:ncol,:)- state%temp_ini(1:ncol,:))
+    call get_hydrostatic_energy(state%q(1:ncol,1:pver,1:pcnst),.true.,               &
+         state%pdel(1:ncol,1:pver), cp_or_cv(1:ncol,1:pver),                         &
+         state%u(1:ncol,1:pver), state%v(1:ncol,1:pver), temp(1:ncol,1:pver),        &
+         vc_loc, ptop=state%pintdry(1:ncol,1), phis = state%phis(1:ncol),            &
+         z_mid = state%z_ini(1:ncol,:), se = se(1:ncol),                             &
+         po = po(1:ncol), ke = ke(1:ncol), wv = wv(1:ncol), liq = liq(1:ncol),       &
+         ice = ice(1:ncol))
 
-      call cnst_get_ind('TT_LW' , ixtt    , abort=.false.)
-
-      tt    = 0._r8
-      if (ixtt > 1) then
-        if (name_out(ttidx) == 'TT_pAM'.or.name_out(ttidx) == 'TT_zAM') then
-          !
-          ! after dme_adjust mixing ratios are all wet
-          !
-          do k = 1, pver
-            do i = 1, ncol
-              tt_tmp   = state%q(i,k,ixtt)*state%pdel(i,k)/gravit
-              tt   (i) = tt(i)    + tt_tmp
-            end do
+    call cnst_get_ind('TT_LW' , ixtt    , abort=.false.)
+    tt    = 0._r8
+    if (ixtt > 1) then
+      if (name_out(ttidx) == 'TT_pAM'.or.name_out(ttidx) == 'TT_zAM') then
+        !
+        ! after dme_adjust mixing ratios are all wet
+        !
+        do k = 1, pver
+          do i = 1, ncol
+            tt_tmp   = state%q(i,k,ixtt)*state%pdel(i,k)/gravit
+            tt   (i) = tt(i)    + tt_tmp
           end do
-        else
-          do k = 1, pver
-            do i = 1, ncol
-              tt_tmp   = state%q(i,k,ixtt)*state%pdeldry(i,k)/gravit
-              tt   (i) = tt(i)    + tt_tmp
-            end do
+        end do
+      else
+        do k = 1, pver
+          do i = 1, ncol
+            tt_tmp   = state%q(i,k,ixtt)*state%pdeldry(i,k)/gravit
+            tt   (i) = tt(i)    + tt_tmp
           end do
-        end if
+        end do
       end if
+    end if
 
-      call outfld(name_out(seidx)  ,se+po   , pcols   ,lchnk   )
-      call outfld(name_out(keidx)  ,ke      , pcols   ,lchnk   )
-      call outfld(name_out(wvidx)  ,wv      , pcols   ,lchnk   )
-      call outfld(name_out(wlidx)  ,liq     , pcols   ,lchnk   )
-      call outfld(name_out(wiidx)  ,ice     , pcols   ,lchnk   )
-      call outfld(name_out(ttidx)  ,tt      , pcols   ,lchnk   )
-      call outfld(name_out(teidx)  ,se+ke+po      , pcols   ,lchnk   )
-
+    call outfld(name_out(seidx)  ,se+po   , pcols   ,lchnk   )
+    call outfld(name_out(keidx)  ,ke      , pcols   ,lchnk   )
+    call outfld(name_out(wvidx)  ,wv      , pcols   ,lchnk   )
+    call outfld(name_out(wlidx)  ,liq     , pcols   ,lchnk   )
+    call outfld(name_out(wiidx)  ,ice     , pcols   ,lchnk   )
+    call outfld(name_out(ttidx)  ,tt      , pcols   ,lchnk   )
+    call outfld(name_out(teidx)  ,se+ke+po      , pcols   ,lchnk   )
     !
     ! Axial angular momentum diagnostics
     !
@@ -912,28 +949,28 @@ end subroutine check_energy_get_integrals
     ! MR is equation (6) without \Delta A and sum over areas (areas are in units of radians**2)
     ! MO is equation (7) without \Delta A and sum over areas (areas are in units of radians**2)
     !
-      lchnk = state%lchnk
-      ncol  = state%ncol
-
-      mr_cnst = rearth**3/gravit
-      mo_cnst = omega*rearth**4/gravit
-
-      mr = 0.0_r8
-      mo = 0.0_r8
-      do k = 1, pver
-        do i = 1, ncol
+    lchnk = state%lchnk
+    ncol  = state%ncol
+    
+    mr_cnst = rearth**3/gravit
+    mo_cnst = omega*rearth**4/gravit
+    
+    mr = 0.0_r8
+    mo = 0.0_r8
+    do k = 1, pver
+       do i = 1, ncol
           cos_lat = cos(state%lat(i))
           mr_tmp = mr_cnst*state%u(i,k)*state%pdel(i,k)*cos_lat
           mo_tmp = mo_cnst*state%pdel(i,k)*cos_lat**2
-
+          
           mr(i) = mr(i) + mr_tmp
           mo(i) = mo(i) + mo_tmp
-        end do
-      end do
+       end do
+    end do
+    
+    call outfld(name_out(mridx)  ,mr, pcols,lchnk   )
+    call outfld(name_out(moidx)  ,mo, pcols,lchnk   )
 
-      call outfld(name_out(mridx)  ,mr, pcols,lchnk   )
-      call outfld(name_out(moidx)  ,mo, pcols,lchnk   )
-   end if
   end subroutine calc_te_and_aam_budgets
 
 

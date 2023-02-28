@@ -208,10 +208,11 @@ contains
 !-----------------------------------------------------------------------
 ! Update the state and or tendency structure with the parameterization tendencies
 !-----------------------------------------------------------------------
-    use scamMod,      only: scm_crm_mode, single_column
-    use phys_control, only: phys_getopts
-    use cam_thermo,   only: cam_thermo_update ! Routine which updates physconst variables (WACCM-X)
-    use qneg_module,  only: qneg3
+    use scamMod,         only: scm_crm_mode, single_column
+    use phys_control,    only: phys_getopts
+    use cam_thermo,      only: cam_thermo_dry_air_update ! Routine which updates physconst variables (WACCM-X)
+    use air_composition, only: dry_air_species_num
+    use qneg_module   ,  only: qneg3
 
 !------------------------------Arguments--------------------------------
     type(physics_ptend), intent(inout)  :: ptend   ! Parameterization tendencies
@@ -375,9 +376,8 @@ contains
     !------------------------------------------------------------------------
     ! Get indices for molecular weights and call WACCM-X cam_thermo_update
     !------------------------------------------------------------------------
-    if ( waccmx_is('ionosphere') .or. waccmx_is('neutral') ) then
-       call cam_thermo_update(state%q, state%t, state%lchnk, state%ncol, &
-                             to_moist_factor=state%pdeldry(:ncol,:)/state%pdel(:ncol,:) )
+    if (dry_air_species_num>0) then
+      call cam_thermo_dry_air_update(state%q, state%t, state%lchnk, state%ncol)
     endif
 
     !-----------------------------------------------------------------------
@@ -1260,8 +1260,6 @@ end subroutine physics_ptend_copy
     ! constituents, momentum, and total energy
     state%ps(:ncol) = state%pint(:ncol,1)
     do k = 1, pver
-!#define phl_cam_development
-#ifndef phl_cam_development
       tot_water(:ncol,1) = qini(:ncol,k)+liqini(:ncol,k)+iceini(:ncol,k) !initial total H2O
       tot_water(:ncol,2) = 0.0_r8
       do m_cnst=dry_air_species_num+1,thermodynamic_active_species_num
@@ -1269,21 +1267,17 @@ end subroutine physics_ptend_copy
         tot_water(:ncol,2) = tot_water(:ncol,2)+state%q(:ncol,k,m)
       end do
       fdq(:ncol) = 1._r8 + tot_water(:ncol,2) - tot_water(:ncol,1)
-#else
-      fdq(:ncol) = 1._r8 + state%q(:ncol,k,1) - qini(:ncol,k)
-#endif
-       ! adjust constituents to conserve mass in each layer
-       do m = 1, pcnst
-          state%q(:ncol,k,m) = state%q(:ncol,k,m) / fdq(:ncol)
-       end do
-
-! compute new total pressure variables
-       state%pdel  (:ncol,k  ) = state%pdel(:ncol,k  ) * fdq(:ncol)
-       state%ps(:ncol)         = state%ps(:ncol)       + state%pdel(:ncol,k)
-       state%pint  (:ncol,k+1) = state%pint(:ncol,k  ) + state%pdel(:ncol,k)
-       state%lnpint(:ncol,k+1) = log(state%pint(:ncol,k+1))
-       state%rpdel (:ncol,k  ) = 1._r8/ state%pdel(:ncol,k  )
-       !note that mid-level variables (e.g. pmid) are not recomputed
+      ! adjust constituents to conserve mass in each layer
+      do m = 1, pcnst
+        state%q(:ncol,k,m) = state%q(:ncol,k,m) / fdq(:ncol)
+      end do
+      ! compute new total pressure variables
+      state%pdel  (:ncol,k  ) = state%pdel(:ncol,k  ) * fdq(:ncol)
+      state%ps(:ncol)         = state%ps(:ncol)       + state%pdel(:ncol,k)
+      state%pint  (:ncol,k+1) = state%pint(:ncol,k  ) + state%pdel(:ncol,k)
+      state%lnpint(:ncol,k+1) = log(state%pint(:ncol,k+1))
+      state%rpdel (:ncol,k  ) = 1._r8/ state%pdel(:ncol,k  )
+      !note that mid-level variables (e.g. pmid) are not recomputed
     end do
 
     if ( waccmx_is('ionosphere') .or. waccmx_is('neutral') ) then
