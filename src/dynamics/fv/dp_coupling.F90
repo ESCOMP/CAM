@@ -581,7 +581,7 @@ chnk_loop2 : &
 ! Call cam_thermo_update to compute cpairv, rairv, mbarv, and cappav as constituent dependent variables
 ! and compute molecular viscosity(kmvis) and conductivity(kmcnd)
 !-----------------------------------------------------------------------------
-         call cam_thermo_update(phys_state(lchnk)%q, phys_state(lchnk)%t, lchnk, ncol)
+         call cam_thermo_dry_air_update(phys_state(lchnk)%q, phys_state(lchnk)%t, lchnk, ncol)
        endif
 
 !------------------------------------------------------------------------

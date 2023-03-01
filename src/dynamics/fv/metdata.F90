@@ -902,6 +902,8 @@ contains
     use ppgrid,         only: pcols, pver, begchunk, endchunk
     use phys_grid,      only: get_ncols_p
     use cam_history,    only: outfld
+    use air_composition,only: thermodynamic_active_species_liq_num, thermodynamic_active_species_ice_num
+    use air_composition,only: thermodynamic_active_species_liq_idx,thermodynamic_active_species_ice_idx
 
     implicit none
 
@@ -912,7 +914,10 @@ contains
     integer :: lats(pcols)           ! array of latitude indices
     integer :: lons(pcols)           ! array of longitude indices
     integer :: c, ncol, i,j,k
-    real(r8):: qini(pcols,pver)   ! initial specific humidity
+    integer :: m_cnst,m
+    real(r8):: qini(pcols,pver)      ! initial specific humidity
+    real(r8):: totliqini(pcols,pver) ! initial total liquid
+    real(r8):: toticeini(pcols,pver) ! initial total ice
 
     real(r8) :: tmp(pcols,pver)
 
@@ -926,7 +931,17 @@ contains
                 state(c)%t(i,k) = (1._r8-met_rlx(k))*state(c)%t(i,k) + met_rlx(k)*met_t(i,k,c)
              end if
 
-             qini(i,k) = state(c)%q(i,k,1)
+             qini     (:ncol,:pver) = state(c)%q(:ncol,:pver,       1)
+             totliqini = 0.0_r8
+             do m_cnst=1,thermodynamic_active_species_liq_num
+                m = thermodynamic_active_species_liq_idx(m_cnst)
+                totliqini(:ncol,:pver) = totliqini(:ncol,:pver)+state(c)%q(:ncol,:pver,m)
+             end do
+             toticeini = 0.0_r8
+             do m_cnst=1,thermodynamic_active_species_ice_num
+                m = thermodynamic_active_species_ice_idx(m_cnst)
+                toticeini(:ncol,:pver) = toticeini(:ncol,:pver)+state(c)%q(:ncol,:pver,m)
+             end do
 
              ! at this point tracer mixing ratios have already been
              ! converted from dry to moist
@@ -940,7 +955,7 @@ contains
 
        ! now adjust mass of each layer now that water vapor has changed
        if (( .not. online_test ) .and. (alpha .ne. D1_0 )) then
-          call physics_dme_adjust(state(c), tend(c), qini, dt)
+          call physics_dme_adjust(state(c), tend(c), qini, totliqini, toticeini, dt)
        endif
 
     end do

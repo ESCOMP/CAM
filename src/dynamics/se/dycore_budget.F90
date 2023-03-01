@@ -19,15 +19,16 @@ subroutine print_budget(hstwr)
   use cam_abortutils,         only: endrun  
   use cam_logfile,            only: iulog
   use shr_kind_mod,           only: r8=>shr_kind_r8
-  use budgets,                only: budget_get_global, is_budget, thermo_budget_histfile_num
+  use budgets,                only: budget_get_global, is_budget, thermo_budget_histfile_num, thermo_budget_history
   use cam_thermo,             only: thermo_budget_vars_descriptor, thermo_budget_num_vars, thermo_budget_vars_massv, &
                                     teidx, seidx, keidx, poidx
   use dimensions_mod,         only: ntrac
   use control_mod,            only: ftype
   use cam_thermo,             only: teidx, seidx, keidx, poidx
   use cam_thermo,             only: thermo_budget_vars_descriptor, thermo_budget_num_vars, thermo_budget_vars_massv
-  use time_manager,           only: get_step_size
-  use budgets,                only: thermo_budget_averaging_option, thermo_budget_averaging_n
+
+  ! arguments
+  logical, intent(in) :: hstwr(:)
 
   ! Local variables
   character(len=*), parameter :: subname = 'check_energy:print_budgets'
@@ -56,9 +57,7 @@ subroutine print_budget(hstwr)
   character(LEN=5)  :: pf! pass or fail identifier
   !--------------------------------------------------------------------------------------
 
-  if (masterproc) then
-    dtime = REAL(get_step_size())
-
+  if (masterproc .and. thermo_budget_history .and. hstwr(thermo_budget_histfile_num)) then
     idx(1) = teidx !total energy index
     idx(2) = seidx !enthaly index
     idx(3) = keidx !kinetic energy index
@@ -92,8 +91,6 @@ subroutine print_budget(hstwr)
       call budget_get_global('dBD-dAF',idx(i),se_phys_total(i))
       call budget_get_global('dBF'    ,idx(i),E_dBF(i))  !state passed to physics
     end do
-
-    call budget_get_global('dyAP',teidx,E_dyAP)
 
     call budget_get_global('dBF-dED',teidx,dyn_total)
     call budget_get_global('dAD-dBD',teidx,rate_of_change_2D_dyn)

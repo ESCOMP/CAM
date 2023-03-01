@@ -11,7 +11,7 @@ contains
 
 subroutine print_budget(hstwr)
 
-  use budgets,            only: budget_get_global, thermo_budget_histfile_num
+  use budgets,            only: budget_get_global, thermo_budget_histfile_num, thermo_budget_history
   use spmd_utils,         only: masterproc
   use cam_logfile,        only: iulog
   use cam_abortutils,     only: endrun
@@ -36,7 +36,7 @@ subroutine print_budget(hstwr)
   character(LEN=5)  :: pf! pass or fail identifier
   !--------------------------------------------------------------------------------------
 
-  if (masterproc .and. hstwr(thermo_budget_histfile_num)) then
+  if (masterproc .and. thermo_budget_history .and. hstwr(thermo_budget_histfile_num)) then
      call budget_get_global('phAP-phBP',teidx,ph_param)
      call budget_get_global('phBP-phBF',teidx,ph_EFIX)
      call budget_get_global('phAM-phAP',teidx,ph_dmea)

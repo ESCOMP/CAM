@@ -41,10 +41,8 @@ character(len=128),public, protected :: budget_stagename(budget_array_max) ! lon
 character(len=64), public, protected :: budget_stg1name(budget_array_max)
 character(len=64), public, protected :: budget_stg2name(budget_array_max)
 
-integer,           public            :: thermo_budget_averaging_n = 1
 integer,           public            :: thermo_budget_histfile_num = 1
 logical,           public            :: thermo_budget_history = .false.
-character(len=8),  public            :: thermo_budget_averaging_option = 'NONE'
 integer,           private           :: stepsize
 !
 ! Constants for each budget
@@ -252,7 +250,7 @@ subroutine budget_get_global (name, me_idx, global)
   character(len=128)             :: errmsg
   integer                        :: b_ind                      ! hentry index
   integer                        :: f(ptapes),ff               ! hentry index
-  integer                        :: idx,pidx,midx              ! substring index for sum dif char
+  integer                        :: idx,pidx,midx,uidx         ! substring index for sum dif char
   integer                        :: m                          ! budget index
   logical                        :: found                      ! true if global integral found
 
@@ -261,22 +259,32 @@ subroutine budget_get_global (name, me_idx, global)
 
   str1=''
   write(str1,*) TRIM(ADJUSTL(name))
-  ! check for stagename short format (stg1//op/stg2) where stg1 is name without thermo string appended
+
   midx=index(str1, '-')
   pidx=index(str1, '+')
   idx=midx+pidx
+
+  ! check for difference budget using stagename short format (stg1//op/stg2) where stg1 is name without thermo string appended
   if (idx /= 0 .and. (midx==0 .or. pidx==0)) then
      write(str1,*) TRIM(ADJUSTL(thermo_budget_vars(me_idx)))//"_"//trim(adjustl(str1(1:idx)))// &
-                   TRIM(ADJUSTL(thermo_budget_vars(me_idx)))//"_"//TRIM(ADJUSTL(str1(idx+1:)))
+          TRIM(ADJUSTL(thermo_budget_vars(me_idx)))//"_"//TRIM(ADJUSTL(str1(idx+1:)))
   end if
+
+  uidx=index(str1, '_')
+  if (uidx == 0) then
+     !This is a stage name need to append the type of thermo variable using input index
+     write(str1,*) TRIM(ADJUSTL(thermo_budget_vars(me_idx)))//"_"//trim(adjustl(str1(1:)))
+  end if
+
   b_ind=budget_ind_byname(trim(adjustl(str1)))
-
-  if (idx>0 .and. budget_optype(b_ind) == 'stg') call endrun(sub//'FATAL not a difference budget but name contains + or - character')
-
+     
+  if (b_ind < 0) call endrun(sub//'FATAL field name '//name//' not found'//' looked for '//trim(adjustl(str1)))
+  
   write(str1,*) TRIM(ADJUSTL(budget_name(b_ind)))
 
   ! Find budget name in list and return global value
   call get_field_properties(trim(adjustl(str1)), found, tape_out=tape, ff_out=ff, f_out=f)
+
   if (found.and.f(thermo_budget_histfile_num)>0) then
      call tape(thermo_budget_histfile_num)%hlist(f(thermo_budget_histfile_num))%get_global(global)
      if (.not. thermo_budget_vars_massv(me_idx)) global=global/stepsize
@@ -329,11 +337,8 @@ subroutine budget_put_global (name, me_idx, global)
 end subroutine budget_put_global
 !==============================================================================
 function budget_ind_byname (name)
-
-   ! Get the index of a budget.  Optional abort argument allows returning
-   ! control to caller when budget name is not found.  Default behavior is
-   ! to call endrun when name is not found.
-
+   !
+   ! Get the index of a budget.  Ret -1 for not found
    !-----------------------------Arguments---------------------------------
    character(len=*),  intent(in)  :: name  ! budget name
 
@@ -350,13 +355,9 @@ function budget_ind_byname (name)
          return
       end if
    end do
-   if (budget_ind_byname  == -1) then
-      write(iulog,*)'ind_byname failed, name=',trim(name),'budget_name='
-      call endrun()
-   end if
+ end function budget_ind_byname
 
 !==============================================================================
- end function budget_ind_byname
 
  function is_budget(name)
 
@@ -404,8 +405,7 @@ function budget_ind_byname (name)
    character(len=8)            :: period
    logical                     :: thermo_budgeting
 
-   namelist /thermo_budget_nl/  thermo_budget_averaging_option, thermo_budget_averaging_n,    &
-        thermo_budget_history, thermo_budget_histfile_num
+   namelist /thermo_budget_nl/  thermo_budget_history, thermo_budget_histfile_num
    !-----------------------------------------------------------------------
 
    if (masterproc) then
@@ -421,52 +421,17 @@ function budget_ind_byname (name)
    end if
 
    ! Broadcast namelist variables
-   call mpi_bcast(thermo_budget_averaging_option, len(thermo_budget_averaging_option), mpi_character, masterprocid, mpicom, ierr)
-   if (ierr /= 0) call endrun(subname//": FATAL: mpi_bcast: thermo_budget_averaging_option")
    call mpi_bcast(thermo_budget_history         , 1                                  , mpi_logical  , masterprocid, mpicom, ierr)
    if (ierr /= 0) call endrun(subname//": FATAL: mpi_bcast: thermo_budget_history")
    call mpi_bcast(thermo_budget_histfile_num    , 1                                  , mpi_integer  , masterprocid, mpicom, ierr)
    if (ierr /= 0) call endrun(subname//": FATAL: mpi_bcast: thermo_budget_histfile_num")
-   call mpi_bcast(thermo_budget_averaging_n     , 1                                  , mpi_integer  , masterprocid, mpicom, ierr)
-   if (ierr /= 0) call endrun(subname//": FATAL: mpi_bcast: thermo_budget_averaging_n")
-
-   if (trim(shr_string_toUpper(thermo_budget_averaging_option)) == 'NONE') then
-      thermo_budgeting=.false.
-   else
-      thermo_budgeting=.true.
-   end if
 
    ! Write out thermo_budget options
    if (masterproc) then
-      if (trim(thermo_budget_averaging_option) == 'NSTEP' ) then
-         period='step'
-      else if (trim(thermo_budget_averaging_option) == 'NHOUR' ) then
-         period='hour'
-      else if (trim(thermo_budget_averaging_option) == 'NDAY' ) then
-         period='day'
-      else if (trim(thermo_budget_averaging_option) == 'NMONTH' ) then
-         period='month'
-      else if (trim(thermo_budget_averaging_option) == 'NYEAR' ) then
-         period='year'
-      else
-         period=''
+      if (thermo_budget_history) then
+         write(iulog,*)'Thermo budgets will be written to the log file and diagnostics saved to history file:',&
+              thermo_budget_histfile_num
       end if
-
-      if (trim(thermo_budget_averaging_option) == 'ENDOFRUN' ) then
-         write(iulog,*)'Thermo thermo_budgets will be written at the end of the run'
-      else
-         if (thermo_budget_averaging_n == 1) then
-            write(iulog,*)'Thermo thermo_budgets will be written every ',period
-         else
-            write(iulog,*)'Thermo thermo_budgets will be written every ',thermo_budget_averaging_n,' ',trim(period)//'s'
-         end if
-      end if
-
-      if(thermo_budget_history.and..not.thermo_budgeting) then
-         write(iulog,*)subname//": FATAL: thermo_budget_averaging_option =",thermo_budget_averaging_option
-         call endrun(subname//": FATAL: thermo_budget averaging option must not be set to NONE when requesting thermo_budget history output")
-      end if
-
    end if
  end subroutine budget_readnl
 

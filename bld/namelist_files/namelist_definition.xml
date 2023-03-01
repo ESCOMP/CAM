@@ -5058,21 +5058,8 @@ Default: 4 m/s
 </entry>
 
 <!-- Diagnostics -->
-<entry id="thermo_budget_averaging_option" type="char*8"  category="diagnostics"
-       group="thermo_budget_nl" valid_values="NONE,NSTEP,NDAY,NMONTH,NYEAR,ENDOFRUN" >
-Frequency that thermo budgets will be calculated and output: Valid values: 'NONE', 'NSTEP', 'NDAY', 'NMONTH',
-'NYEAR', 'ENDOFRUN'.
-Default: 'NONE'
-</entry>
-
 <entry id="thermo_budget_histfile_num" type="integer"  category="diagnostics"
        group="thermo_budget_nl" valid_values="1,2,3,4,5,6" >
-History tape number thermo budget output is written to.
-Default: 1
-</entry>
-
-<entry id="thermo_budget_averaging_n" type="integer"  category="diagnostics"
-       group="thermo_budget_nl" valid_values="" >
 History tape number thermo budget output is written to.
 Default: 1
 </entry>

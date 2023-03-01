@@ -4159,15 +4159,20 @@ end subroutine print_active_fldlst
 
     type(master_entry), pointer :: listentry
 
-
     avgflg = avgflag_pertape(t)
-
 
     listentry=>masterlinkedlist
     do while(associated(listentry))
-      call AvgflagToString(avgflg, listentry%time_op(t))
-      listentry%avgflag(t) = avgflag_pertape(t)
-      listentry=>listentry%next_entry
+       ! Budgets require flag to be N, dont override
+
+!jt       if (listentry%avgflag(t) == 'N' .and. listentry%actflag(t) ) then
+!jt          call endrun('FATAL:h_override: tape averaging override for "N" averaged fields is not supported')
+!jt       else
+       if (listentry%avgflag(t) /= 'N' ) then
+          call AvgflagToString(avgflg, listentry%time_op(t))
+          listentry%avgflag(t) = avgflag_pertape(t)
+       end if
+       listentry=>listentry%next_entry
     end do
 
   end subroutine h_override

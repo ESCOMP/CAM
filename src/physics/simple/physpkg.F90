@@ -47,6 +47,8 @@ module physpkg
   integer :: qini_idx      = 0
   integer :: cldliqini_idx = 0
   integer :: cldiceini_idx = 0
+  integer :: totliqini_idx = 0
+  integer :: toticeini_idx = 0
 
   logical :: state_debug_checks  ! Debug physics_state.
 
@@ -471,6 +473,7 @@ contains
     use dycore,          only: dycore_is
     use check_energy,    only: calc_te_and_aam_budgets
     use cam_history,     only: hist_fld_active
+    use budgets,         only: thermo_budget_history
 
     ! Arguments
     !
@@ -492,6 +495,8 @@ contains
     real(r8), pointer                        :: qini(:,:)
     real(r8), pointer                        :: cldliqini(:,:)
     real(r8), pointer                        :: cldiceini(:,:)
+    real(r8), pointer                        :: totliqini(:,:)
+    real(r8), pointer                        :: toticeini(:,:)
     integer                                  :: ixcldliq
     integer                                  :: ixcldice
     integer                                  :: k
@@ -518,11 +523,17 @@ contains
     if (moist_physics) then
       call pbuf_get_field(pbuf, cldliqini_idx, cldliqini)
       call pbuf_get_field(pbuf, cldiceini_idx, cldiceini)
+      call pbuf_get_field(pbuf, totliqini_idx, totliqini)
+      call pbuf_get_field(pbuf, toticeini_idx, toticeini)
     else
       allocate(cldliqini(pcols, pver))
       cldliqini = 0.0_r8
       allocate(cldiceini(pcols, pver))
       cldiceini = 0.0_r8
+      allocate(totliqini(pcols, pver))
+      totliqini = 0.0_r8
+      allocate(toticeini(pcols, pver))
+      toticeini = 0.0_r8
     end if
 
     !=========================
@@ -564,10 +575,7 @@ contains
 
       ! for dry mixing ratio dycore, physics_dme_adjust is called for energy diagnostic purposes only.  
       ! So, save off tracers
-      if (.not.moist_mixing_ratio_dycore.and.&
-         (hist_fld_active('SE_phAM').or.hist_fld_active('KE_phAM').or.hist_fld_active('WV_phAM').or.&
-          hist_fld_active('WL_phAM').or.hist_fld_active('WI_phAM').or.hist_fld_active('MR_phAM').or.&
-          hist_fld_active('MO_phAM'))) then
+      if (.not.moist_mixing_ratio_dycore.and. thermo_budget_history) then
         tmp_trac(:ncol,:pver,:pcnst) = state%q(:ncol,:pver,:pcnst)
         tmp_pdel(:ncol,:pver)        = state%pdel(:ncol,:pver)
         tmp_ps(:ncol)                = state%ps(:ncol)
@@ -577,7 +585,7 @@ contains
         !
         call set_dry_to_wet(state)
 
-        call physics_dme_adjust(state, tend, qini, ztodt)
+        call physics_dme_adjust(state, tend, qini, totliqini, toticeini, ztodt)
 
         call calc_te_and_aam_budgets(state, 'phAM')
         call calc_te_and_aam_budgets(state, 'dyAM',vc=vc_dycore)
@@ -588,7 +596,7 @@ contains
       end if
 
       if (moist_mixing_ratio_dycore) then
-        call physics_dme_adjust(state, tend, qini, ztodt)
+        call physics_dme_adjust(state, tend, qini, totliqini, toticeini, ztodt)
         call calc_te_and_aam_budgets(state, 'phAM')
         call calc_te_and_aam_budgets(state, 'dyAM',vc=vc_dycore)
       end if
@@ -609,7 +617,7 @@ contains
     end do
 
     call diag_phys_tend_writeout (state, pbuf,  tend, ztodt,                  &
-         tmp_q, tmp_cldliq, tmp_cldice, qini, cldliqini, cldiceini)
+                                  qini, cldliqini, cldiceini)
 
     call diag_surf(cam_in, cam_out, state, pbuf)
 
