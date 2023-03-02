@@ -3204,12 +3204,6 @@ contains
        IF ( iMaxLoc(1) == 3 ) iMaxLoc(1) = 0
        ! reset ocean to 0
 
-       ! Field      : LWI
-       ! Description: Land/water indices
-       ! Unit       : -
-       ! Dimensions : nX, nY
-       State_Met(LCHNK)%LWI(1,J) = FLOAT( iMaxLoc(1) )
-
        IF ( iMaxLoc(1) == 0 ) THEN
           State_Met(LCHNK)%isLand(1,J)  = .False.
           State_Met(LCHNK)%isWater(1,J) = .True.
@@ -4272,7 +4266,6 @@ contains
     use State_Met_Mod,   only : Cleanup_State_Met
     use Error_Mod,       only : Cleanup_Error
     use Fullchem_Mod,    only : Cleanup_FullChem
-    use UCX_Mod,         only : Cleanup_UCX
     use Drydep_Mod,      only : Cleanup_Drydep
     use Carbon_Mod,      only : Cleanup_Carbon
     use Dust_Mod,        only : Cleanup_Dust
@@ -4300,7 +4293,6 @@ contains
 
     ! Finalize GEOS-Chem
 
-    CALL Cleanup_UCX
     CALL Cleanup_Aerosol
     CALL Cleanup_Carbon
     CALL Cleanup_Drydep
