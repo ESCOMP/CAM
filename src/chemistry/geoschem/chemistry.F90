@@ -3867,8 +3867,8 @@ contains
     ENDIF
 
     ! Amount of chemically-produced H2SO4 (mol/mol)
-    del_h2so4_gasprod(:nY,:nZ) = vmr1(:nY,:nZ,l_H2SO4) &
-                               - vmr0(:nY,:nZ,l_H2SO4)
+    ! This is archived from fullchem_mod.F90 using SO2 + OH rate from KPP (hplin, 1/25/23)
+    del_h2so4_gasprod(:nY,:nZ) = State_Chm(LCHNK)%H2SO4_PRDR(1,:nY,nZ:1:-1)
 
     call aero_model_gasaerexch( loffset           = iFirstCnst - 1,         &
                                 ncol              = NCOL,                   &
