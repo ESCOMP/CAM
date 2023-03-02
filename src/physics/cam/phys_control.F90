@@ -316,7 +316,7 @@ subroutine phys_getopts(deep_scheme_out, shallow_scheme_out, eddy_scheme_out, mi
                         cam_chempkg_out, prog_modal_aero_out, macrop_scheme_out, &
                         do_clubb_sgs_out, use_spcam_out, state_debug_checks_out, cld_macmic_num_steps_out, &
                         offline_driver_out, convproc_do_aer_out, cam_snapshot_before_num_out, cam_snapshot_after_num_out,&
-                        cam_take_snapshot_before_out, cam_take_snapshot_after_out, physics_grid_out)
+                        cam_take_snapshot_before_out, cam_take_snapshot_after_out, physics_grid_out, use_hemco_out)
 !-----------------------------------------------------------------------
 ! Purpose: Return runtime settings
 !          deep_scheme_out   : deep convection scheme

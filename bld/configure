@@ -1931,7 +1931,8 @@ if ($unicon) { $cfg_cppdefs .= ' -DUSE_UNICON'; }
 #   MODEL_     - HEMCO/GEOS-Chem components running in model environment
 #   MODEL_CESM - ...within CESM
 #   USE_REAL8  - HEMCO/GEOS-Chem should use real8 internal precision
-$cfg_cppdefs .= ' -DMODEL_ -DMODEL_CESM -DUSE_REAL8 ';
+#   HEMCO_CESM - indicates CESM model environment. Deprecated, will be removed soon.
+$cfg_cppdefs .= ' -DMODEL_ -DMODEL_CESM -DHEMCO_CESM -DUSE_REAL8 ';
 
 #-----------------------------------------------------------------------------------------------
 # CPP defines to put on Makefile

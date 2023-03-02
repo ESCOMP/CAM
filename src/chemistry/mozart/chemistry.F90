@@ -741,7 +741,7 @@ end function chem_is_active
                        history_budget_out = history_budget , &
                        history_budget_histfile_num_out = history_budget_histfile_num, &
                        history_cesm_forcing_out = history_cesm_forcing, &
-                       use_hemco = use_hemco )
+                       use_hemco_out = use_hemco )
 
     ! aqueous chem initialization
     call sox_inti()
@@ -853,6 +853,7 @@ end function chem_is_active
        , tuv_xsect_file &
        , o2_xsect_file &
        , lght_no_prd_factor &
+       , use_hemco &
        , pbuf2d &
        )
 
