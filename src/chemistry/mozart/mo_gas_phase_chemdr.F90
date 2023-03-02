@@ -270,7 +270,8 @@ contains
                               delt, ps, xactive_prates, &
                               fsds, ts, asdir, ocnfrac, icefrac, &
                               precc, precl, snowhland, ghg_chem, latmapback, &
-                              drydepflx, wetdepflx, cflx, fire_sflx, fire_ztop, nhx_nitrogen_flx, noy_nitrogen_flx, qtend, pbuf)
+                              drydepflx, wetdepflx, cflx, fire_sflx, fire_ztop, nhx_nitrogen_flx, noy_nitrogen_flx, &
+                              use_hemco, qtend, pbuf)
 
     !-----------------------------------------------------------------------
     !     ... Chem_solver advances the volumetric mixing ratio
@@ -369,6 +370,7 @@ contains
     real(r8),       intent(in)    :: wetdepflx(pcols,pcnst)         ! wet deposition flux (kg/m^2/s)
     real(r8), intent(out) :: nhx_nitrogen_flx(pcols)
     real(r8), intent(out) :: noy_nitrogen_flx(pcols)
+    logical,        intent(in)    :: use_hemco                      ! use Harmonized Emissions Component (HEMCO)
 
     type(physics_buffer_desc), pointer :: pbuf(:)
 
@@ -457,10 +459,8 @@ contains
     real(r8) :: del_h2so4_gasprod(ncol,pver)
     real(r8) :: vmr0(ncol,pver,gas_pcnst)
 
-#if defined ( HEMCO_CESM )
   ! for HEMCO-CESM ... passing J-values to ParaNOx ship plume extension
     real(r8), pointer :: hco_j_tmp_fld(:)    ! J-value pointer (sfc only) [1/s]
-#endif
 
 !
 ! CCMI
@@ -870,26 +870,26 @@ contains
     !-----------------------------------------------------------------------
     call phtadj( reaction_rates, invariants, invariants(:,:,indexm), ncol,pver )
 
-#if defined ( HEMCO_CESM )
-    !-------------------------- HEMCO_CESM ---------------------------------
-    !  ... save photo rxn rates for HEMCO ParaNOx, chem_mech rxns:
-    !    jo3_b            (  8)   O3 + hv ->  O + O2
-    !    jno2             ( 16)   NO2 + hv ->  NO + O
-    ! (hplin, 5/17/21)
-    !-----------------------------------------------------------------------
-    ! get the rxn rate [1/s] and write to pbuf
-    if(rxt_jno2_idx > 0 .and. hco_jno2_idx > 0) then
-      call pbuf_get_field(pbuf, hco_jno2_idx, hco_j_tmp_fld)
-      ! this is already in chunk, write /pcols/ at surface
-      hco_j_tmp_fld(:ncol) = reaction_rates(:ncol,pver,rxt_jno2_idx)
-    endif
+    if ( use_hemco ) then
+       !-------------------------- HEMCO_CESM ---------------------------------
+       !  ... save photo rxn rates for HEMCO ParaNOx, chem_mech rxns:
+       !    jo3_b            (  8)   O3 + hv ->  O + O2
+       !    jno2             ( 16)   NO2 + hv ->  NO + O
+       ! (hplin, 5/17/21)
+       !-----------------------------------------------------------------------
+       ! get the rxn rate [1/s] and write to pbuf
+       if(rxt_jno2_idx > 0 .and. hco_jno2_idx > 0) then
+         call pbuf_get_field(pbuf, hco_jno2_idx, hco_j_tmp_fld)
+         ! this is already in chunk, write /pcols/ at surface
+         hco_j_tmp_fld(:ncol) = reaction_rates(:ncol,pver,rxt_jno2_idx)
+       endif
 
-    if(rxt_joh_idx > 0 .and. hco_joh_idx > 0) then
-      call pbuf_get_field(pbuf, hco_joh_idx, hco_j_tmp_fld)
-      ! this is already in chunk, write /pcols, pver/
-      hco_j_tmp_fld(:ncol) = reaction_rates(:ncol,pver,rxt_joh_idx)
+       if(rxt_joh_idx > 0 .and. hco_joh_idx > 0) then
+         call pbuf_get_field(pbuf, hco_joh_idx, hco_j_tmp_fld)
+         ! this is already in chunk, write /pcols, pver/
+         hco_j_tmp_fld(:ncol) = reaction_rates(:ncol,pver,rxt_joh_idx)
+       endif
     endif
-#endif
 
     !-----------------------------------------------------------------------
     !        ... Compute the extraneous frcing at time = t(n+1)

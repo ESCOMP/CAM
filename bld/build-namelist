@@ -2774,12 +2774,22 @@ else {
 }
 
 # Harmonized Emissions Component (HEMCO) options
+# Because HEMCO is configured at runtime, all of the options will be
+# present in the namelist.
+add_default($nl, 'use_hemco');
+add_default($nl, 'cam_physics_mesh');
+add_default($nl, 'hemco_config_file');
+add_default($nl, 'hemco_grid_xdim');
+add_default($nl, 'hemco_grid_ydim');
+
 my $hco = $cfg->get('hemco');
 if ( $hco eq '1' ) {
-    add_default($nl, 'cam_physics_mesh');
-    add_default($nl, 'hemco_config_file');
-    add_default($nl, 'hemco_grid_xdim');
-    add_default($nl, 'hemco_grid_ydim');
+    # In a compset with %HEMCO modifier enabled, set the value
+    # of the use_hemco variable to true
+    #
+    # use_hemco is in &phys_ctl_nl so that the relevant routine calls
+    # can be controlled in physpkg and at levels below
+    $nl->set_variable_value('phys_ctl_nl', 'use_hemco', '.true.');
 }
 
 # Physics options

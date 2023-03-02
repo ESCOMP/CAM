@@ -4514,6 +4514,14 @@ cache file to be consistent with how CAM was built.
 Default: set by build-namelist
 </entry>
 
+<entry id="use_hemco" type="logical" category="hemco"
+       group="phys_ctl_nl" valid_values="" >
+If TRUE then the Harmonized Emissions Component, HEMCO, will be used
+to calculate emissions in chemistry. ext_frc_specifier and srf_emis_specifier
+will be ignored.
+Default: FALSE
+</entry>
+
 <entry id="waccmx_opt" type="char*16" category="waccmx"
        group="phys_ctl_nl" valid_values="ionosphere,neutral,off" >
 Runtime options of upper thermosphere WACCM-X.  'ionosphere' for

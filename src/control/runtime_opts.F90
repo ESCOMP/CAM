@@ -95,10 +95,7 @@ subroutine read_namelist(nlfilename, single_column, scmlat, scmlon)
    use ionosphere_interface,only: ionosphere_readnl
    use qneg_module,         only: qneg_readnl
    use lunar_tides,         only: lunar_tides_readnl
-
-#if (defined HEMCO_CESM)
    use hemco_interface,     only: hemco_readnl
-#endif
 
    !---------------------------Arguments-----------------------------------
 
@@ -195,9 +192,7 @@ subroutine read_namelist(nlfilename, single_column, scmlat, scmlon)
    call dyn_readnl(nlfilename)
    call ionosphere_readnl(nlfilename)
    call qneg_readnl(nlfilename)
-#if (defined HEMCO_CESM)
    call hemco_readnl(nlfilename)
-#endif
 
 end subroutine read_namelist
 

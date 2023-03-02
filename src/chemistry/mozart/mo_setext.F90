@@ -10,6 +10,8 @@ module mo_setext
 
   save
 
+  logical :: use_hemco           ! Use Harmonized Emissions Component (HEMCO)
+
   integer :: co_ndx, no_ndx, xno_ndx, o_ndx
   integer :: op_ndx, o2p_ndx, np_ndx, n2p_ndx, n2d_ndx, n_ndx, e_ndx, oh_ndx
   logical :: has_ions = .false.
@@ -27,7 +29,12 @@ contains
     use cam_history,  only : addfld
     use spmd_utils,   only : masterproc
 
+    use phys_control, only : phys_getopts
+
     implicit none
+
+    ! Check if HEMCO is enabled in this run
+    call phys_getopts(use_hemco_out               = use_hemco)
 
     co_ndx    = get_extfrc_ndx( 'CO' )
     no_ndx    = get_extfrc_ndx( 'NO' )
@@ -104,9 +111,7 @@ contains
     use mo_lightning, only : prod_no
 
     use mo_extfrc,    only : extfrc_set
-#if defined( HEMCO_CESM )
     use hco_cc_emissions, only : hco_set_extfrc
-#endif
     use chem_mods,    only : extcnt
     use tracer_srcs,  only : num_tracer_srcs, tracer_src_flds, get_srcs_data
     use mo_chem_utls, only : get_extfrc_ndx
@@ -163,17 +168,17 @@ contains
 
     no_lgt(:,:) = 0._r8
 
-#if defined( HEMCO_CESM )
-    !--------------------------------------------------------
-    !     ... set frcing from datasets (HEMCO)
-    !--------------------------------------------------------
-    call hco_set_extfrc( lchnk, zint_rel, extfrc, ncol, pbuf )
-#else
-    !--------------------------------------------------------
-    !     ... set frcing from datasets
-    !--------------------------------------------------------
-    call extfrc_set( lchnk, zint_rel, extfrc, ncol )
-#endif
+    if(use_hemco) then
+       !--------------------------------------------------------
+       !     ... set frcing from datasets (HEMCO)
+       !--------------------------------------------------------
+       call hco_set_extfrc( lchnk, zint_rel, extfrc, ncol, pbuf )
+    else
+       !--------------------------------------------------------
+       !     ... set frcing from datasets
+       !--------------------------------------------------------
+       call extfrc_set( lchnk, zint_rel, extfrc, ncol )
+    endif
 
     !--------------------------------------------------------
     !     ... set nox production from lighting

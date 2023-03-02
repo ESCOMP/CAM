@@ -85,6 +85,7 @@ module chemistry
   character(len=shr_kind_cl) :: depvel_lnd_file = 'depvel_lnd_file'
 
   ! emis
+  logical            :: use_hemco = .false.
 
   character(len=shr_kind_cl) :: airpl_emis_file = '' ! airplane emissions
   character(len=shr_kind_cl) :: srf_emis_specifier(pcnst) = ''
@@ -160,18 +161,13 @@ end function chem_is
     use mo_sim_dat,          only : set_sim_dat
     use chem_mods,           only : gas_pcnst, adv_mass
     use mo_tracname,         only : solsym
-    use mo_chem_utls,        only : get_spc_ndx, get_inv_ndx
+    use mo_chem_utls,        only : get_spc_ndx, get_inv_ndx, get_rxt_ndx
     use short_lived_species, only : slvd_index, short_lived_map=>map, register_short_lived_species
     use cfc11star,           only : register_cfc11star
     use mo_photo,            only : photo_register
     use mo_aurora,           only : aurora_register
     use aero_model,          only : aero_model_register
     use physics_buffer,      only : pbuf_add_field, dtype_r8
-
-#if defined ( HEMCO_CESM )
-    use mo_chem_utls,        only : get_rxt_ndx
-#endif
-
     implicit none
 
 !-----------------------------------------------------------------------
@@ -194,10 +190,8 @@ end function chem_is
     character(len=128) :: molectype
     integer :: islvd
 
-#if defined ( HEMCO_CESM )
     integer  :: hco_jno2_idx, hco_joh_idx
     integer  :: rxt_jno2_idx, rxt_joh_idx
-#endif
 
 !-----------------------------------------------------------------------
 ! Set the simulation chemistry variables
@@ -336,19 +330,6 @@ end function chem_is
 
     ! add fields to pbuf needed by aerosol models
     call aero_model_register()
-
-#if defined ( HEMCO_CESM )
-    ! add fields to pbuf needed by HEMCO-CESM hplin 5/17/21
-    ! these are used to pass NO2, OH J-values to the HEMCO ParaNOx ship plume extension
-    ! for computation of ship plume emissions per Vinken et al., 2011.
-    rxt_jno2_idx  = get_rxt_ndx( 'jno2' )
-    rxt_joh_idx   = get_rxt_ndx( 'jo3_b' )
-
-    if(rxt_jno2_idx > 0 .and. rxt_joh_idx > 0) then
-       call pbuf_add_field('HCO_IN_JNO2', 'global', dtype_r8, (/pcols/), hco_jno2_idx)
-       call pbuf_add_field('HCO_IN_JOH',  'global', dtype_r8, (/pcols/), hco_joh_idx )
-    endif
-#endif
 
   end subroutine chem_register
 
@@ -759,7 +740,8 @@ end function chem_is_active
                        history_chemistry_out=history_chemistry , &
                        history_budget_out = history_budget , &
                        history_budget_histfile_num_out = history_budget_histfile_num, &
-                       history_cesm_forcing_out = history_cesm_forcing )
+                       history_cesm_forcing_out = history_cesm_forcing, &
+                       use_hemco = use_hemco )
 
     ! aqueous chem initialization
     call sox_inti()
@@ -930,9 +912,7 @@ end function chem_is_active
     use constituents,     only: sflxnam
     use cam_history,      only: outfld
     use mo_srf_emissions, only: set_srf_emissions
-#if defined( HEMCO_CESM )
     use hco_cc_emissions, only: hco_set_srf_emissions
-#endif
     use fire_emissions,   only: fire_emissions_srf
     use ocean_emis,       only: ocean_emis_getflux
 
@@ -979,22 +959,22 @@ end function chem_is_active
 
     endif
 
-#if defined( HEMCO_CESM )
-   ! prescribed emissions from HEMCO ...
+    if ( use_hemco ) then
+       ! prescribed emissions from HEMCO ...
 
-    !-----------------------------------------------------------------------
-    !        ... Set surface emissions using HEMCO compatibility API
-    ! (hplin, 8/8/22)
-    !-----------------------------------------------------------------------
-    call hco_set_srf_emissions( lchnk, ncol, sflx(:,:), pbuf )
-#else
-   ! prescribed emissions from file ...
+       !-----------------------------------------------------------------------
+       !        ... Set surface emissions using HEMCO compatibility API
+       ! (hplin, 8/8/22)
+       !-----------------------------------------------------------------------
+       call hco_set_srf_emissions( lchnk, ncol, sflx(:,:), pbuf )
+    else
+       ! prescribed emissions from file ...
 
-    !-----------------------------------------------------------------------
-    !        ... Set surface emissions
-    !-----------------------------------------------------------------------
-    call set_srf_emissions( lchnk, ncol, sflx(:,:) )
-#endif
+       !-----------------------------------------------------------------------
+       !        ... Set surface emissions
+       !-----------------------------------------------------------------------
+       call set_srf_emissions( lchnk, ncol, sflx(:,:) )
+    endif
 
     do m = 1,pcnst
        n = map2chm(m)
@@ -1340,7 +1320,7 @@ end function chem_is_active
                           fsds, cam_in%ts, cam_in%asdir, cam_in%ocnfrac, cam_in%icefrac, &
                           cam_out%precc, cam_out%precl, cam_in%snowhland, ghg_chem, state%latmapback, &
                           drydepflx, wetdepflx, cam_in%cflx, cam_in%fireflx, cam_in%fireztop, &
-                          nhx_nitrogen_flx, noy_nitrogen_flx, ptend%q, pbuf )
+                          nhx_nitrogen_flx, noy_nitrogen_flx, use_hemco, ptend%q, pbuf )
     if (associated(cam_out%nhx_nitrogen_flx)) then
        cam_out%nhx_nitrogen_flx(:ncol) = nhx_nitrogen_flx(:ncol)
     endif

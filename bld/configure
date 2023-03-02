@@ -1557,6 +1557,7 @@ if ($print>=2) { print "Total advected constituents: $nadv$eol"; }
 #-----------------------------------------------------------------------------------------------
 
 # Harmonized Emissions Component (HEMCO)
+# This switch controls namelist generation only, HEMCO is now always built.
 if (defined $opts{'hemco'}) {
     $cfg_ref->set('hemco', $opts{'hemco'});
 }
@@ -1926,9 +1927,11 @@ if ($silhs == 1) {
 if ($unicon) { $cfg_cppdefs .= ' -DUSE_UNICON'; }
 
 # Harmonized Emissions Component (HEMCO)
-if ($hemco) {
-    $cfg_cppdefs .= ' -DMODEL_ -DMODEL_CESM -DHEMCO_CESM -DUSE_REAL8 ';
-}
+# These CPP definitions are used by HEMCO to recognize -
+#   MODEL_     - HEMCO/GEOS-Chem components running in model environment
+#   MODEL_CESM - ...within CESM
+#   USE_REAL8  - HEMCO/GEOS-Chem should use real8 internal precision
+$cfg_cppdefs .= ' -DMODEL_ -DMODEL_CESM -DUSE_REAL8 ';
 
 #-----------------------------------------------------------------------------------------------
 # CPP defines to put on Makefile
@@ -2086,7 +2089,6 @@ sub write_filepath
     my $waccm_phys    = $cfg_ref->get('waccm_phys');
     my $waccmx        = $cfg_ref->get('waccmx');
     my $ionos         = $cfg_ref->get('ionosphere');
-    my $hemco         = $cfg_ref->get('hemco');
     my $carma         = $cfg_ref->get('carma');
     my $rad           = $cfg_ref->get('rad');
     my $dyn           = $cfg_ref->get('dyn');
@@ -2171,26 +2173,18 @@ sub write_filepath
 
     print $fh "$camsrcdir/src/chemistry/mozart\n";
 
-    if ($hemco) {
-        print $fh "$camsrcdir/src/hemco\n";
+    print $fh "$camsrcdir/src/hemco\n";
 
-        # shared dependencies for HEMCO
-        print $fh "$camsrcdir/src/hemco/HEMCO/src/Shared\n";
+    # shared dependencies for HEMCO (Harmonized Emissions Component)
+    print $fh "$camsrcdir/src/hemco/HEMCO/src/Shared\n";
+    print $fh "$camsrcdir/src/hemco/HEMCO/src/Shared/Headers\n";
+    print $fh "$camsrcdir/src/hemco/HEMCO/src/Shared/GeosUtil\n";
+    print $fh "$camsrcdir/src/hemco/HEMCO/src/Shared/NcdfUtil\n";
 
-        # right now shared files have been renamed for no-conflict
-        # if ($chem_pkg ne 'geoschem') {
-        print $fh "$camsrcdir/src/hemco/HEMCO/src/Shared/Headers\n";
-        print $fh "$camsrcdir/src/hemco/HEMCO/src/Shared/GeosUtil\n";
-        # }
-
-        # to remove - need to use pio
-        print $fh "$camsrcdir/src/hemco/HEMCO/src/Shared/NcdfUtil\n";
-
-        # HEMCO source code directory paths from HEMCO external
-        print $fh "$camsrcdir/src/hemco/HEMCO/src/Core\n";
-        print $fh "$camsrcdir/src/hemco/HEMCO/src/Extensions\n";
-        print $fh "$camsrcdir/src/hemco/HEMCO/src/Interfaces/Shared\n";
-    }
+    # HEMCO source code directory paths from HEMCO external
+    print $fh "$camsrcdir/src/hemco/HEMCO/src/Core\n";
+    print $fh "$camsrcdir/src/hemco/HEMCO/src/Extensions\n";
+    print $fh "$camsrcdir/src/hemco/HEMCO/src/Interfaces/Shared\n";
 
     print $fh "$camsrcdir/src/chemistry/utils\n";
 
