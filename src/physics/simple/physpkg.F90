@@ -473,7 +473,6 @@ contains
     use dycore,          only: dycore_is
     use check_energy,    only: calc_te_and_aam_budgets
     use cam_history,     only: hist_fld_active
-    use budgets,         only: thermo_budget_history
 
     ! Arguments
     !
@@ -575,7 +574,7 @@ contains
 
       ! for dry mixing ratio dycore, physics_dme_adjust is called for energy diagnostic purposes only.  
       ! So, save off tracers
-      if (.not.moist_mixing_ratio_dycore.and. thermo_budget_history) then
+      if (.not.moist_mixing_ratio_dycore) then
         tmp_trac(:ncol,:pver,:pcnst) = state%q(:ncol,:pver,:pcnst)
         tmp_pdel(:ncol,:pver)        = state%pdel(:ncol,:pver)
         tmp_ps(:ncol)                = state%ps(:ncol)

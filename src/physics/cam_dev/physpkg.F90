@@ -2316,11 +2316,7 @@ contains
 
     ! for dry mixing ratio dycore, physics_dme_adjust is called for energy diagnostic purposes only.
     ! So, save off tracers
-    if (.not.moist_mixing_ratio_dycore.and.&
-         (hist_fld_active('SE_phAM').or.hist_fld_active('KE_phAM').or.hist_fld_active('WV_phAM').or.&
-          hist_fld_active('SE_dyAM').or.hist_fld_active('KE_dyAM').or.hist_fld_active('WV_dyAM').or.&
-          hist_fld_active('WL_phAM').or.hist_fld_active('WI_phAM').or.hist_fld_active('MR_phAM').or.&
-          hist_fld_active('MO_phAM'))) then
+    if (.not.moist_mixing_ratio_dycore) then
       tmp_trac(:ncol,:pver,:pcnst) = state%q(:ncol,:pver,:pcnst)
       tmp_pdel(:ncol,:pver)        = state%pdel(:ncol,:pver)
       tmp_ps(:ncol)                = state%ps(:ncol)

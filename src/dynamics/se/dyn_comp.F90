@@ -911,9 +911,9 @@ subroutine dyn_init(dyn_in, dyn_out)
       !
       call budget_add('BD_dyn_total','dBF','dED','dyn','dif',longname="dE/dt dyn total (dycore+phys tendency (dBF-dED)",cslam=ntrac>0)
       
-      call budget_add('rate_2d_dyn','dAD','dBD','dyn','dif',longname="rate_of_change_2d_dyn (dAD-dBD)",cslam=ntrac>0.)
+      call budget_add('rate_2d_dyn','dAD','dBD','dyn','dif',longname="rate_of_change_2d_dyn (dAD-dBD)",cslam=ntrac>0)
       
-      call budget_add('rate_vert_remap','dAR','dAD','dyn','dif',longname="rate_of_change_2d_dyn (dAR-dAD)",cslam=ntrac>0.)
+      call budget_add('rate_vert_remap','dAR','dAD','dyn','dif',longname="rate_of_change_2d_dyn (dAR-dAD)",cslam=ntrac>0)
       
       call budget_add('BD_dyn_adai','rate_2d_dyn','rate_vert_remap','dyn','sum',longname="dE/dt total adiabatic dynamics (adiab=rate2ddyn+vremap) ",cslam=ntrac>0)
       
