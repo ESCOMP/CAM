@@ -1167,7 +1167,7 @@ contains
 
        ! onlineAlbedo    -> True  (use CLM albedo)
        !                 -> False (read monthly-mean albedo from HEMCO)
-       Input_Opt%onlineAlbedo           = .False.
+       Input_Opt%onlineAlbedo           = .true.
 
        ! applyQtend: apply tendencies of water vapor to specific humidity
        Input_Opt%applyQtend             = .False.
