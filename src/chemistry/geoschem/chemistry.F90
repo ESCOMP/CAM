@@ -1609,11 +1609,17 @@ contains
        ENDIF
     ENDIF
 
+    ! hplin 3/3/23: note, since we moved UCX module variables to
+    ! individual State_Chm variables, Init_UCX has to be called
+    ! for all chunks (all State_Chm) to properly initialize all
+    ! variables.
     IF ( Input_Opt%LChem ) THEN
-       CALL Init_UCX( Input_Opt  = Input_Opt,            &
-                      State_Chm  = State_Chm(BEGCHUNK),  &
-                      State_Diag = State_Diag(BEGCHUNK), &
-                      State_Grid = maxGrid              )
+        DO I = BEGCHUNK, ENDCHUNK
+           CALL Init_UCX( Input_Opt  = Input_Opt,                &
+                          State_Chm  = State_Chm(I),             &
+                          State_Diag = State_Diag(I),            &
+                          State_Grid = State_Grid(I)           )
+        ENDDO
     ENDIF
 
     IF ( Input_Opt%Linear_Chem ) THEN
