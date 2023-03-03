@@ -2278,6 +2278,27 @@ contains
     ENDDO
 
     ! Compute ratios of bin to bulk mass
+    !------------------------------------------------------------------------------------------
+    ! Notes for the indices used here (hplin 3/3/23):
+    !
+    !   K = GEOS-Chem species index in State_Chm%Species(K).
+    !   P = constituent index for BULK lumped tracer in GEOS-Chem (BCPI, BCPO, DST1, DST4, SO4, SALA, SALC, OCPI, OCPO)
+    !   N = constituent index for MODAL tracer in MAM4 (bc_a1, bc_a4, ...)
+    !      each combination of species and mode is described by (SM, M)
+    !      SM = species (i.e., bc, dst, so4, ncl, pom) in mode M
+    !       M = mode number
+    !   constituent indices are used in state%q(column number,level number,constituent index)
+    !   chemical tracer index (NOT constituent index) is used in mo_sim_dat, e.g., adv_mass(tracer index)
+    !
+    ! Mapping functions:                maps from...                    ...to
+    !   mapCnst(constituent index)      constituent index               chemical tracer index
+    !   lmassptr_amode(SM, M)           SM, M                           constituent index (modal)
+    !   map2GC(bulk constituent index)  constituent index (bulk)        GEOS-Chem species index (bulk)
+    !   map2MAM4(SM, M)                 SM, M (modal)                   constituent index (bulk)            this is a N to 1 operation.
+    !
+    ! Query functions:
+    !   xname_massptr(SM, M)            SM, M                           NAME of modal aer (bc_a1, bc_a4, ...)
+    !------------------------------------------------------------------------------------------
     binRatio = 0.0e+00_r8
     DO M = 1, ntot_amode
        DO SM = 1, nspec_amode(M)
