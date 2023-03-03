@@ -39,8 +39,7 @@ public :: &
    hetfrz_classnuc_cam_readnl,   &
    hetfrz_classnuc_cam_register, &
    hetfrz_classnuc_cam_init,     &
-   hetfrz_classnuc_cam_calc,     &
-   hetfrz_classnuc_cam_save_cbaero
+   hetfrz_classnuc_cam_calc
 
 ! Namelist variables
 logical :: hist_hetfrz_classnuc = .false.
@@ -673,8 +672,6 @@ subroutine hetfrz_classnuc_cam_calc( &
    ! Convert interstitial and cloud borne aerosols from a mass to a volume basis before
    ! being used in get_aer_num
    do i = 1, ncnst
-      aer_cb(:ncol,:,i,lchnk) = aer_cb(:ncol,:,i,lchnk) * rho(:ncol,:)
-
       ! Check whether constituent is a mass or number mixing ratio
       if (spec_idx(i) == 0) then
          call rad_cnst_get_mode_num(0, mode_idx(i), 'a', state, pbuf, ptr2d)
@@ -682,7 +679,15 @@ subroutine hetfrz_classnuc_cam_calc( &
          call rad_cnst_get_aer_mmr(0, mode_idx(i), spec_idx(i), 'a', state, pbuf, ptr2d)
       end if
       aer(:ncol,:,i,lchnk) = ptr2d(:ncol,:) * rho(:ncol,:)
-   end do
+
+      ! Check whether constituent is a mass or number mixing ratio
+      if (spec_idx(i) == 0) then
+         call rad_cnst_get_mode_num(0, mode_idx(i), 'c', state, pbuf, ptr2d)
+      else
+         call rad_cnst_get_aer_mmr(0, mode_idx(i), spec_idx(i), 'c', state, pbuf, ptr2d)
+      end if
+      aer_cb(:ncol,:,i,lchnk) = ptr2d(:ncol,:) * rho(:ncol,:)
+  end do
 
    ! Init top levels of outputs of get_aer_num
    total_aer_num              = 0._r8
@@ -889,37 +894,6 @@ end subroutine hetfrz_classnuc_cam_calc
 
 !====================================================================================================
 
-subroutine hetfrz_classnuc_cam_save_cbaero(state, pbuf)
-
-   ! Save the required cloud borne aerosol constituents.
-   type(physics_state),         intent(in)    :: state
-   type(physics_buffer_desc),   pointer       :: pbuf(:)
-
-   ! local variables
-   integer :: i, lchnk
-   real(r8), pointer :: ptr2d(:,:)
-   !-------------------------------------------------------------------------------
-
-   lchnk = state%lchnk
-
-   ! loop over the cloud borne constituents required by this module and save
-   ! a local copy
-
-   do i = 1, ncnst
-
-      ! Check whether constituent is a mass or number mixing ratio
-      if (spec_idx(i) == 0) then
-         call rad_cnst_get_mode_num(0, mode_idx(i), 'c', state, pbuf, ptr2d)
-      else
-         call rad_cnst_get_aer_mmr(0, mode_idx(i), spec_idx(i), 'c', state, pbuf, ptr2d)
-      end if
-      aer_cb(:,:,i,lchnk) = ptr2d
-   end do
-
-end subroutine hetfrz_classnuc_cam_save_cbaero
-
-!====================================================================================================
-
 subroutine get_aer_num(ii, kk, ncnst, aer, aer_cb, rhoair,&
                        total_aer_num,                     &
                        coated_aer_num,                    &
@@ -980,11 +954,11 @@ subroutine get_aer_num(ii, kk, ncnst, aer, aer_cb, rhoair,&
    real(r8), parameter :: bc_num_to_mass = 4.669152e+17_r8      ! #/kg from emission
    real(r8), parameter :: dst1_num_to_mass = 3.484e+15_r8       ! #/kg for dust in accumulation mode
 
-   real(r8) :: dmc, ssmc
+   real(r8) :: dmc, ssmc, so4
 
    real(r8) :: as_so4, as_du, as_soa
    real(r8) :: dst1_num_imm, dst3_num_imm, bc_num_imm
-   real(r8) :: dmc_imm, ssmc_imm
+   real(r8) :: dmc_imm, ssmc_imm, so4_imm
    real(r8) :: as_bc, as_pom, as_ss
 
    real(r8) :: r_bc                         ! model radii of BC modes [m]
@@ -1043,15 +1017,22 @@ subroutine get_aer_num(ii, kk, ncnst, aer, aer_cb, rhoair,&
       end if
       dmc = aer(ii,kk,dst_coarse)
       ssmc = aer(ii,kk,ncl_coarse)
+      so4 = aer(ii,kk,so4_coarse)
 
       if (dmc > 0._r8 ) then
-         dst3_num = dmc/(ssmc+dmc) * aer(ii,kk,num_coarse)*1.0e-6_r8 ! #/cm^3
+         dst3_num = dmc/(ssmc+dmc+so4) * aer(ii,kk,num_coarse)*1.0e-6_r8 ! #/cm^3
       else
          dst3_num = 0.0_r8
       end if
 
       if (nmodes == MAM4_nmodes .or. nmodes == MAM5_nmodes) then
-        bc_num = bc_num+(aer(ii,kk,bc_pcarbon)) * bc_num_to_mass*1.0e-6_r8 ! #/cm^3
+         if (num_to_mass_in) then
+            bc_num = bc_num+(aer(ii,kk,bc_pcarbon)) * bc_num_to_mass*1.0e-6_r8 ! #/cm^3
+         else
+            as_bc  = aer(ii,kk,bc_pcarbon)
+            as_pom = aer(ii,kk,pom_pcarbon)
+            bc_num = bc_num + as_bc/(as_bc+as_pom)*aer(ii,kk,num_pcarbon)*1.0e-6_r8 ! #/cm^3
+         end if
       end if
    else if (nmodes == MAM7_nmodes) then
       bc_num = (aer(ii,kk,bc_accum)+aer(ii,kk,bc_pcarbon)) * bc_num_to_mass*1.0e-6_r8 ! #/cm^3
@@ -1088,9 +1069,10 @@ subroutine get_aer_num(ii, kk, ncnst, aer, aer_cb, rhoair,&
 
       dmc_imm = aer_cb(ii,kk,dst_coarse)
       ssmc_imm = aer_cb(ii,kk,ncl_coarse)
+      so4_imm = aer_cb(ii,kk,so4_coarse)
 
       if (dmc_imm > 0._r8) then
-         dst3_num_imm = dmc_imm/(ssmc_imm+dmc_imm) * aer_cb(ii,kk,num_coarse)*1.0e-6_r8 ! #/cm^3
+         dst3_num_imm = dmc_imm/(ssmc_imm+dmc_imm+so4_imm) * aer_cb(ii,kk,num_coarse)*1.0e-6_r8 ! #/cm^3
       else
          dst3_num_imm = 0.0_r8
       end if
