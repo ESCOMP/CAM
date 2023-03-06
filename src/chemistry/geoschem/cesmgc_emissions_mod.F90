@@ -52,9 +52,12 @@ MODULE CESMGC_Emissions_Mod
   INTEGER,  ALLOCATABLE :: megan_indices_map(:) 
   REAL(r8), ALLOCATABLE :: megan_wght_factors(:)
 
+  ! Cache for is_extfrc?
+  LOGICAL,  ALLOCATABLE :: pcnst_is_extfrc(:) ! no idea why the indexing is not 1:gas_pcnst or why iFirstCnst can be < 0
 !
 ! !REVISION HISTORY:
 !  07 Oct 2020 - T. M. Fritz   - Initial version
+!  20 Jan 2023 - H.P. Lin      - Update for 2D/3D pbuf switches
 !EOP
 !------------------------------------------------------------------------------
 !BOC
@@ -80,7 +83,7 @@ CONTAINS
     USE PHYSICS_TYPES,       ONLY : physics_state
     USE CONSTITUENTS,        ONLY : cnst_get_ind
     USE PHYS_CONTROL,        ONLY : phys_getopts
-    USE MO_CHEM_UTLS,        ONLY : get_spc_ndx
+    USE MO_CHEM_UTLS,        ONLY : get_spc_ndx, get_extfrc_ndx
     USE CAM_HISTORY,         ONLY : addfld, add_default, horiz_only
     USE MO_LIGHTNING,        ONLY : lightning_inti
     USE FIRE_EMISSIONS,      ONLY : fire_emissions_init
@@ -244,6 +247,15 @@ CONTAINS
     !-----------------------------------------------------------------------
     CALL fire_emissions_init()
 
+    ! Initialize pcnst_is_extfrc cache to avoid lengthy lookups in future timesteps
+    ! on the get_extfrc_ndx routine. (hplin 1/20/23)
+    if(.not. allocated(pcnst_is_extfrc)) then
+      allocate(pcnst_is_extfrc(pcnst - iFirstCnst + 1))
+    endif
+    do n = iFirstCnst, pcnst
+       pcnst_is_extfrc(n - iFirstCnst + 1) = (get_extfrc_ndx(trim(cnst_name(n))) > 0)
+    enddo
+
   END SUBROUTINE CESMGC_Emissions_Init
 !EOC
 !------------------------------------------------------------------------------
@@ -368,16 +380,33 @@ CONTAINS
        ELSE
           ! This is already in chunk, retrieve it
           pbuf_chnk => pbuf_get_chunk(hco_pbuf2d, LCHNK)
-          CALL pbuf_get_field(pbuf_chnk, tmpIdx, pbuf_ik)
 
-          IF ( .NOT. ASSOCIATED(pbuf_ik) ) THEN ! Sanity check
-             CALL ENDRUN("CESMGC_Emissions_Calc: FATAL - tmpIdx > 0 but pbuf_ik not associated")
+          ! Check if we need to get 3-D, or 2-D data
+          IF (pcnst_is_extfrc(N - iFirstCnst + 1)) THEN
+             CALL pbuf_get_field(pbuf_chnk, tmpIdx, pbuf_ik)
+
+             IF ( .NOT. ASSOCIATED(pbuf_ik) ) THEN ! Sanity check
+                CALL ENDRUN("CESMGC_Emissions_Calc: FATAL - tmpIdx > 0 but pbuf_ik not associated (E-1)")
+             ENDIF
+
+             eflx(1:nY,:nZ,N) = pbuf_ik(1:nY,:nZ)
+
+             ! Reset pointers
+             pbuf_ik   => NULL()
+          ELSE ! 2-D
+             CALL pbuf_get_field(pbuf_chnk, tmpIdx, pbuf_i)
+
+             IF ( .NOT. ASSOCIATED(pbuf_i) ) THEN ! Sanity check
+                CALL ENDRUN("CESMGC_Emissions_Calc: FATAL - tmpIdx > 0 but pbuf_i not associated (E-2)")
+             ENDIF
+
+             ! note: write to nZ level here as this is surface
+             eflx(1:nY,nZ,N) = pbuf_i(1:nY)
+
+             ! Reset pointers
+             pbuf_i    => NULL()
           ENDIF
 
-          eflx(1:nY,:nZ,N) = pbuf_ik(1:nY,:nZ)
-
-          ! Reset pointers
-          pbuf_ik   => NULL()
           pbuf_chnk => NULL()
 
           !IF ( MINVAL(eflx(:nY,:nZ,N)) < 0.0e+00_r8 ) THEN
