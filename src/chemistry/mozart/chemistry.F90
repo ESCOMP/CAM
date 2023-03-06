@@ -1296,7 +1296,9 @@ end function chem_is_active
 !-------------------------------------------------------------------
   subroutine chem_final()
     use mee_ionization, only: mee_ion_final
+    use short_lived_species, only: short_lived_species_final
     call mee_ion_final()
+    call short_lived_species_final()
   end subroutine chem_final
 
 !-------------------------------------------------------------------

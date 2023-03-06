@@ -12,7 +12,6 @@ module short_lived_species
   use ppgrid,       only : pcols, pver, begchunk, endchunk
   use spmd_utils,   only : masterproc
 
-
   implicit none
 
   save
@@ -28,20 +27,30 @@ module short_lived_species
   public :: get_short_lived_species_gc ! for GEOS-Chem chemistry
   public :: slvd_index
   public :: pbf_idx
+  public :: short_lived_species_final
 
   integer :: pbf_idx
   integer :: map(nslvd)
 
   character(len=*), parameter :: pbufname = 'ShortLivedSpecies'
 
+  real(r8), allocatable :: slvd_ref_mmr(:)
+
 contains
 
 !---------------------------------------------------------------------
 !---------------------------------------------------------------------
-  subroutine register_short_lived_species
+  subroutine register_short_lived_species (ref_mmr)
     use physics_buffer, only : pbuf_add_field, dtype_r8
 
+    real(r8), optional :: ref_mmr(nslvd)
+
     if ( nslvd < 1 ) return
+
+    if ( present(ref_mmr) ) then
+       allocate(slvd_ref_mmr(nslvd))
+       slvd_ref_mmr = ref_mmr
+    endif
 
     call pbuf_add_field(pbufname,'global',dtype_r8,(/pcols,pver,nslvd/),pbf_idx)
 
@@ -93,7 +102,6 @@ contains
     use cam_grid_support, only : cam_grid_check, cam_grid_id
     use cam_grid_support, only : cam_grid_get_dim_names
     use cam_abortutils,   only : endrun
-    use chem_mods,        only : slvd_ref_mmr
     use mo_tracname,      only : solsym
     use ncdio_atm,        only : infld
     use pio,              only : file_desc_t
@@ -140,7 +148,7 @@ contains
                    tmpptr, found, gridname='physgrid')
 
        if (.not.found) then
-          if ( cam_chempkg_is('geoschem_mam4') ) then
+          if ( allocated(slvd_ref_mmr) ) then
              tmpptr(:,:,:) = slvd_ref_mmr(m)
           else
              tmpptr(:,:,:) = 1.e-36_r8
@@ -151,7 +159,7 @@ contains
 
        if (masterproc) write(iulog,*)  fieldname, ' is set to short-lived'
 
-       if (cam_chempkg_is('geoschem_mam4') .and. masterproc) write(iulog,'(a, E16.5E4)') ' --> reference MMR: ', slvd_ref_mmr(m)
+       if ( allocated(slvd_ref_mmr) .and. masterproc) write(iulog,'(a, E16.5E4)') ' --> reference MMR: ', slvd_ref_mmr(m)
 
     enddo
 
@@ -277,5 +285,13 @@ contains
     enddo
 
   endfunction slvd_index
+
+!---------------------------------------------------------------------
+!---------------------------------------------------------------------
+  subroutine short_lived_species_final
+
+    if ( allocated(slvd_ref_mmr) ) deallocate(slvd_ref_mmr)
+
+  end subroutine short_lived_species_final
 
 end module short_lived_species

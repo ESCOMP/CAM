@@ -47,6 +47,5 @@
       logical :: is_vector
       logical :: is_scalar
       character(len=16) :: slvd_lst(max(1,nslvd))
-      real(r8), allocatable :: slvd_ref_mmr(max(1,nslvd))
       integer, parameter :: veclen = 32
       end module chem_mods

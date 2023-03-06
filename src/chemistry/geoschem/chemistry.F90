@@ -32,7 +32,7 @@ module chemistry
   USE Error_Mod                                 ! For error checking
   USE Precision_Mod,       ONLY : fp, f4        ! Flexible precision
 
-  use chem_mods,           only : nSlvd, slvd_Lst, slvd_ref_MMR
+  use chem_mods,           only : nSlvd, slvd_Lst
 
   !--------------------------------------------------------------------
   ! GEOS-Chem History exports module
@@ -55,7 +55,6 @@ module chemistry
   use chem_mods,           only : nSlsMax
   use chem_mods,           only : nSls
   use chem_mods,           only : slsNames
-  use chem_mods,           only : sls_ref_MMR
   use chem_mods,           only : nAerMax
   use chem_mods,           only : nAer
   use chem_mods,           only : aerNames
@@ -200,9 +199,7 @@ contains
 
     use physics_buffer,      only : pbuf_add_field, dtype_r8
     use PhysConst,           only : MWDry
-
-    use Short_Lived_Species, only : Register_Short_Lived_Species
-
+    use short_lived_species, only : Register_Short_Lived_Species
     use State_Grid_Mod,      only : Init_State_Grid, Cleanup_State_Grid
     use State_Chm_Mod,       only : Init_State_Chm, Cleanup_State_Chm
     use State_Chm_Mod,       only : Ind_
@@ -236,6 +233,7 @@ contains
     REAL(r8)                       :: MWTmp
     REAL(r8)                       :: qmin
     REAL(r8)                       :: refmmr, refvmr
+    REAL(r8), ALLOCATABLE          :: slvd_refmmr(:)
     CHARACTER(LEN=128)             :: mixtype
     CHARACTER(LEN=128)             :: molectype
     CHARACTER(LEN=128)             :: lngName
@@ -478,23 +476,23 @@ contains
 
     ! Now unadvected species
     map2GC_Sls = 0
-    sls_ref_MMR(:) = 0.0e+0_r8
-    DO I = 1, nSls
+    ALLOCATE(slvd_refmmr(nslvd), STAT=IERR)
+    slvd_refmmr(:) = 0.0e+0_r8
+    IF ( IERR .NE. 0 ) CALL ENDRUN('Failed to allocate map2MAM4')
+    DO I = 1, nSlvd
        N = Ind_(slsNames(I))
        IF ( N .GT. 0 ) THEN
           ThisSpc         => SC%SpcData(N)%Info
           MWTmp           = REAL(ThisSpc%MW_g,r8)
           refvmr          = REAL(ThisSpc%BackgroundVV,r8)
           lngName         = TRIM(ThisSpc%FullName)
-          sls_ref_MMR(I)  = refvmr / (MWDry / MWTmp)
+          slvd_refmmr(I)  = refvmr / (MWDry / MWTmp)
           map2GC_Sls(I)   = N
           ThisSpc         => NULL()
        ENDIF
     ENDDO
-
-    ! Pass information to "short_lived_species" module
-    slvd_ref_MMR(1:nSls) = sls_ref_MMR(1:nSls)
-    CALL Register_Short_Lived_Species()
+    CALL Register_Short_Lived_Species(slvd_refmmr)
+    DEALLOCATE(slvd_refmmr)
     ! More information:
     ! http://www.cesm.ucar.edu/models/atm-cam/docs/phys-interface/node5.html
 
@@ -897,8 +895,6 @@ contains
 
     ALLOCATE(slvd_Lst(nSlvd), STAT=IERR)
     IF ( IERR .NE. 0 ) CALL ENDRUN('Failure while allocating slvd_Lst')
-    ALLOCATE(slvd_ref_MMR(nSlvd), STAT=IERR)
-    IF ( IERR .NE. 0 ) CALL ENDRUN('Failure while allocating slvd_ref_MMR')
     DO I = 1, nSls
        slvd_Lst(I) = TRIM(slsNames(I))
     ENDDO
@@ -4310,7 +4306,8 @@ contains
     use Diag_Mod,        only : Cleanup_Diag
 #endif
 
-    use GeosChem_Emissions_Mod, only: GC_Emissions_Final
+    use GeosChem_Emissions_Mod, only : GC_Emissions_Final
+    use short_lived_species,    only : short_lived_species_final
 
     ! Local variables
     INTEGER  :: I, RC
@@ -4336,6 +4333,8 @@ contains
     CALL Cleanup_Linear_Chem
 
     CALL GC_Emissions_Final
+
+    CALL short_lived_species_final()
 
     CALL Cleanup_CMN_FJX( RC )
     IF ( RC /= GC_SUCCESS ) THEN
@@ -4373,7 +4372,6 @@ contains
     IF ( ALLOCATED( State_Met ) )     DEALLOCATE( State_Met )
 
     IF ( ALLOCATED( slvd_Lst     ) )  DEALLOCATE( slvd_Lst     )
-    IF ( ALLOCATED( slvd_ref_MMR ) )  DEALLOCATE( slvd_ref_MMR )
 
     RETURN
 

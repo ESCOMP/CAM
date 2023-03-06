@@ -21,7 +21,6 @@
       INTEGER              :: nSls    
       CHARACTER(LEN=255)   :: slsNames(nSlsMax)
       CHARACTER(LEN=255)   :: slsLongnames(nSlsMax)
-      REAL(r8)             :: sls_Ref_MMR(nSlsMax)
 
       ! Mapping between constituents and GEOS-Chem tracers
       INTEGER              :: map2GC(pcnst)
@@ -102,7 +101,6 @@
       logical :: is_vector
       logical :: is_scalar
       character(len=255), allocatable :: slvd_lst(:)
-      real(r8), allocatable :: slvd_ref_mmr(:)
 
       ! Mapping between chemical species and GEOS-Chem species/other tracers
       INTEGER              :: map2chm(gas_pcnst)
