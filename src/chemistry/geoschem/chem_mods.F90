@@ -78,7 +78,7 @@
                             indexm = 1, & ! index of total atm density in invariant array
                             indexh2o = 4, & ! index of water vapor density
                             clsze = 1, & ! loop length for implicit chemistry
-                            rxt_tag_cnt = 95, &
+                            rxt_tag_cnt = 0, & ! number of tagged reactions (unused in GEOS-Chem)
                             enthalpy_cnt = 0, &
                             nslvd = 86  ! number of short-lived (non-advected) species
       integer :: clscnt(5) = 0
