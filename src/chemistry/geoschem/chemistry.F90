@@ -1609,11 +1609,17 @@ contains
        ENDIF
     ENDIF
 
+    ! hplin 3/3/23: note, since we moved UCX module variables to
+    ! individual State_Chm variables, Init_UCX has to be called
+    ! for all chunks (all State_Chm) to properly initialize all
+    ! variables.
     IF ( Input_Opt%LChem ) THEN
-       CALL Init_UCX( Input_Opt  = Input_Opt,            &
-                      State_Chm  = State_Chm(BEGCHUNK),  &
-                      State_Diag = State_Diag(BEGCHUNK), &
-                      State_Grid = maxGrid              )
+        DO I = BEGCHUNK, ENDCHUNK
+           CALL Init_UCX( Input_Opt  = Input_Opt,                &
+                          State_Chm  = State_Chm(I),             &
+                          State_Diag = State_Diag(I),            &
+                          State_Grid = State_Grid(I)           )
+        ENDDO
     ENDIF
 
     IF ( Input_Opt%Linear_Chem ) THEN
@@ -2272,6 +2278,27 @@ contains
     ENDDO
 
     ! Compute ratios of bin to bulk mass
+    !------------------------------------------------------------------------------------------
+    ! Notes for the indices used here (hplin 3/3/23):
+    !
+    !   K = GEOS-Chem species index in State_Chm%Species(K).
+    !   P = constituent index for BULK lumped tracer in GEOS-Chem (BCPI, BCPO, DST1, DST4, SO4, SALA, SALC, OCPI, OCPO)
+    !   N = constituent index for MODAL tracer in MAM4 (bc_a1, bc_a4, ...)
+    !      each combination of species and mode is described by (SM, M)
+    !      SM = species (i.e., bc, dst, so4, ncl, pom) in mode M
+    !       M = mode number
+    !   constituent indices are used in state%q(column number,level number,constituent index)
+    !   chemical tracer index (NOT constituent index) is used in mo_sim_dat, e.g., adv_mass(tracer index)
+    !
+    ! Mapping functions:                maps from...                    ...to
+    !   mapCnst(constituent index)      constituent index               chemical tracer index
+    !   lmassptr_amode(SM, M)           SM, M                           constituent index (modal)
+    !   map2GC(bulk constituent index)  constituent index (bulk)        GEOS-Chem species index (bulk)
+    !   map2MAM4(SM, M)                 SM, M (modal)                   constituent index (bulk)            this is a N to 1 operation.
+    !
+    ! Query functions:
+    !   xname_massptr(SM, M)            SM, M                           NAME of modal aer (bc_a1, bc_a4, ...)
+    !------------------------------------------------------------------------------------------
     binRatio = 0.0e+00_r8
     DO M = 1, ntot_amode
        DO SM = 1, nspec_amode(M)
@@ -3203,12 +3230,6 @@ contains
                             State_Met(LCHNK)%FRSEAICE(1,J) /) )
        IF ( iMaxLoc(1) == 3 ) iMaxLoc(1) = 0
        ! reset ocean to 0
-
-       ! Field      : LWI
-       ! Description: Land/water indices
-       ! Unit       : -
-       ! Dimensions : nX, nY
-       State_Met(LCHNK)%LWI(1,J) = FLOAT( iMaxLoc(1) )
 
        IF ( iMaxLoc(1) == 0 ) THEN
           State_Met(LCHNK)%isLand(1,J)  = .False.
@@ -4272,7 +4293,6 @@ contains
     use State_Met_Mod,   only : Cleanup_State_Met
     use Error_Mod,       only : Cleanup_Error
     use Fullchem_Mod,    only : Cleanup_FullChem
-    use UCX_Mod,         only : Cleanup_UCX
     use Drydep_Mod,      only : Cleanup_Drydep
     use Carbon_Mod,      only : Cleanup_Carbon
     use Dust_Mod,        only : Cleanup_Dust
@@ -4300,7 +4320,6 @@ contains
 
     ! Finalize GEOS-Chem
 
-    CALL Cleanup_UCX
     CALL Cleanup_Aerosol
     CALL Cleanup_Carbon
     CALL Cleanup_Drydep

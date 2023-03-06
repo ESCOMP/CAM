@@ -890,7 +890,7 @@ CONTAINS
 ! !INPUT PARAMETERS:
 !
     TYPE(OptInput),      INTENT(IN)    :: Input_Opt   ! Input options
-    TYPE(ChmState),      INTENT(IN)    :: State_Chm   ! Chemistry State object
+    TYPE(ChmState),      INTENT(INOUT) :: State_Chm   ! Chemistry State object
     TYPE(DgnState),      INTENT(IN)    :: State_Diag  ! Diag State object
     TYPE(GrdState),      INTENT(IN)    :: State_Grid  ! Grid State object
     TYPE(MetState),      INTENT(IN)    :: State_Met   ! Meteorology State object
@@ -1250,7 +1250,7 @@ CONTAINS
        radTmp = 0.0e+00_r8
        DO J = 1, nY
        DO L = 1, nZ
-          CALL GET_STRAT_OPT(1,J,L,1,RAER,REFF,SADSTRAT,XSASTRAT)
+          CALL GET_STRAT_OPT(State_Chm,1,J,L,1,RAER,REFF,SADSTRAT,XSASTRAT)
           outTmp(J,nZ+1-L) = SADSTRAT
           radTmp(J,nZ+1-L) = RAER
        ENDDO
@@ -1263,7 +1263,7 @@ CONTAINS
        outTmp = 0.0e+00_r8
        DO J = 1, nY
        DO L = 1, nZ
-          CALL GET_STRAT_OPT(1,J,L,2,RAER,REFF,SADSTRAT,XSASTRAT)
+          CALL GET_STRAT_OPT(State_Chm,1,J,L,2,RAER,REFF,SADSTRAT,XSASTRAT)
           outTmp(J,nZ+1-L) = SADSTRAT
           radTmp(J,nZ+1-L) = RAER
        ENDDO
