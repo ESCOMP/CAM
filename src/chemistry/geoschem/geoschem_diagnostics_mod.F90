@@ -1,17 +1,17 @@
 !------------------------------------------------------------------------------
-!            "GEOS-Chem" chemistry diagnostics interface                      !
+!            GEOS-Chem chemistry diagnostics interface                      !
 !------------------------------------------------------------------------------
 !BOP
 !
-! !MODULE: cesmgc_diag_mod.F90
+! !MODULE: geoschem_diagnostics_mod.F90
 !
-! !DESCRIPTION: Module cesmgc\_diag\_mod contains routines which aim to
+! !DESCRIPTION: Module geoschem\_diagnostics\_mod contains routines which aim to
 !  diagnose variables from GEOS-Chem
 !\\
 !\\
 ! !INTERFACE:
 !
-MODULE CESMGC_Diag_Mod
+MODULE GeosChem_Diagnostics_Mod
 !
 ! !USES:
 !
@@ -36,8 +36,8 @@ MODULE CESMGC_Diag_Mod
 !
 ! !PUBLIC MEMBER FUNCTIONS:
 !
-  PUBLIC :: CESMGC_Diag_Init
-  PUBLIC :: CESMGC_Diag_Calc
+  PUBLIC :: GC_Diagnostics_Init
+  PUBLIC :: GC_Diagnostics_Calc
   PUBLIC :: wetdep_name, wtrate_name
 
   CHARACTER(LEN=fieldname_len) :: srcnam(gas_pcnst)      ! Names of source/sink tendencies
@@ -137,15 +137,15 @@ CONTAINS
 !------------------------------------------------------------------------------
 !BOP
 !
-! !IROUTINE: cesmgc_diag_init
+! !IROUTINE: gc_diagnostics_init
 !
-! !DESCRIPTION: Subroutine CESMGC\_Diag\_Init declares the variables to
+! !DESCRIPTION: Subroutine GC\_Diagnostics\_Init declares the variables to
 !  diagnosethe
 !\\
 !\\
 ! !INTERFACE:
 !
-  SUBROUTINE CESMGC_Diag_Init( Input_Opt, State_Chm, State_Met )
+  SUBROUTINE GC_Diagnostics_Init( Input_Opt, State_Chm, State_Met )
 !
 ! !USES:
 !
@@ -220,7 +220,7 @@ CONTAINS
     TYPE(RegItem    ), POINTER :: Item
 
     !=================================================================
-    ! CESMGC_Diag_Init begins here!
+    ! GC_Diagnostics_Init begins here!
     !=================================================================
 
     ! Initialize pointers
@@ -845,22 +845,22 @@ CONTAINS
     Current => NULL()
     Item    => NULL()
 
-  END SUBROUTINE CESMGC_Diag_Init
+  END SUBROUTINE GC_Diagnostics_Init
 !EOC
 !------------------------------------------------------------------------------
 !BOP
 !
-! !IROUTINE: cesmgc_diag_calc
+! !IROUTINE: gc_diagnostics_calc
 !
-! !DESCRIPTION: Subroutine CESMGC\_Diag\_Calc passes the diagnostics variable
+! !DESCRIPTION: Subroutine GC\_Diagnostics\_Calc passes the diagnostics variable
 !  to the CAM History routines
 !\\
 !\\
 ! !INTERFACE:
 !
-  SUBROUTINE CESMGC_Diag_Calc( Input_Opt,  State_Chm, State_Diag, &
-                               State_Grid, State_Met, cam_in, state, &
-                               mmr_tend,   LCHNK )
+  SUBROUTINE GC_Diagnostics_Calc( Input_Opt,  State_Chm, State_Diag, &
+                                  State_Grid, State_Met, cam_in, state, &
+                                  mmr_tend,   LCHNK )
 !
 ! !USES:
 !
@@ -947,7 +947,7 @@ CONTAINS
     TYPE(RegItem    ), POINTER :: Item
 
     !=================================================================
-    ! CESMGC_Diag_Calc begins here!
+    ! GC_Diagnostics_Calc begins here!
     !=================================================================
 
     nY = State_Grid%nY
@@ -959,8 +959,8 @@ CONTAINS
     Item    => NULL()
 
     ! For error trapping
-    ErrMsg                  = ''
-    ThisLoc                 = ' -> at CESMGC_Diag_Calc (in chemistry/geoschem/cesmgc_diag_mod.F90)'
+    ErrMsg  = ''
+    ThisLoc = ' -> at GC_Diagnostics_Calc (in chemistry/geoschem/geoschem_diagnostics_mod.F90)'
 
     ! Define rootChunk
     rootChunk = ( MasterProc.and.(LCHNK==BEGCHUNK) )
@@ -1438,8 +1438,8 @@ CONTAINS
     Ptr2d_8 => NULL()
     Ptr3d_8 => NULL()
 
-  END SUBROUTINE CESMGC_Diag_Calc
+  END SUBROUTINE GC_Diagnostics_Calc
 !EOC
 !------------------------------------------------------------------------------
-  END MODULE CESMGC_Diag_Mod
+  END MODULE GeosChem_Diagnostics_Mod
 

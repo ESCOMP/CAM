@@ -3,15 +3,15 @@
 !------------------------------------------------------------------------------
 !BOP
 !
-! !MODULE: cesmgc_emissions_mod.F90
+! !MODULE: geoschem_emissions_mod.F90
 !
-! !DESCRIPTION: Module cesmgc\_emissions\_mod contains routines which retrieve
+! !DESCRIPTION: Module geoschem\_emissions\_mod contains routines which retrieve
 !  emission fluxes from HEMCO and transfers it back to the CESM-GC interface
 !\\
 !\\
 ! !INTERFACE:
 !
-MODULE CESMGC_Emissions_Mod
+MODULE GeosChem_Emissions_Mod
 !
 ! !USES:
 !
@@ -30,9 +30,9 @@ MODULE CESMGC_Emissions_Mod
 !
 ! !PUBLIC MEMBER FUNCTIONS:
 !
-  PUBLIC  :: CESMGC_Emissions_Init
-  PUBLIC  :: CESMGC_Emissions_Calc
-  PUBLIC  :: CESMGC_Emissions_Final
+  PUBLIC  :: GC_Emissions_Init
+  PUBLIC  :: GC_Emissions_Calc
+  PUBLIC  :: GC_Emissions_Final
 
   ! Constituent number for NO
   INTEGER :: iNO
@@ -68,15 +68,15 @@ CONTAINS
 !------------------------------------------------------------------------------
 !BOP
 !
-! !IROUTINE: cesmgc_emissions_init
+! !IROUTINE: gc_emissions_init
 !
-! !DESCRIPTION: Subroutine CESMGC\_Emissions\_Init initializes the emissions
+! !DESCRIPTION: Subroutine GC\_Emissions\_Init initializes the emissions
 !  routine
 !\\
 !\\
 ! !INTERFACE:
 !
-  SUBROUTINE CESMGC_Emissions_Init( lght_no_prd_factor )
+  SUBROUTINE GC_Emissions_Init( lght_no_prd_factor )
 !
 ! !USES:
 !
@@ -117,7 +117,7 @@ CONTAINS
     REAL(r8)               :: MW
 
     !=================================================================
-    ! CESMGC_Emissions_Init begins here!
+    ! GC_Emissions_Init begins here!
     !=================================================================
 
     CALL phys_getopts( history_aerosol_out      = history_aerosol,   &
@@ -256,21 +256,21 @@ CONTAINS
        pcnst_is_extfrc(n - iFirstCnst + 1) = (get_extfrc_ndx(trim(cnst_name(n))) > 0)
     enddo
 
-  END SUBROUTINE CESMGC_Emissions_Init
+  END SUBROUTINE GC_Emissions_Init
 !EOC
 !------------------------------------------------------------------------------
 !BOP
 !
-! !IROUTINE: cesmgc_emissions_calc
+! !IROUTINE: gc_emissions_calc
 !
-! !DESCRIPTION: Subroutine CESMGC\_Emissions\_Calc retrieves emission fluxes
+! !DESCRIPTION: Subroutine GC\_Emissions\_Calc retrieves emission fluxes
 !  from HEMCO and returns a 3-D array of emission flux to the CESM-GC
 !  interface. On top of passing data, this routine handles a number of checks.
 !\\
 !\\
 ! !INTERFACE:
 !
-  SUBROUTINE CESMGC_Emissions_Calc( state, hco_pbuf2d, State_Met, cam_in, eflx, iStep )
+  SUBROUTINE GC_Emissions_Calc( state, hco_pbuf2d, State_Met, cam_in, eflx, iStep )
 !
 ! !USES:
 !
@@ -352,7 +352,7 @@ CONTAINS
     CHARACTER(LEN=255)                     :: fldname_ns     ! field name HCO_*
 
     !=================================================================
-    ! CESMGC_Emissions_Calc begins here!
+    ! GC_Emissions_Calc begins here!
     !=================================================================
 
     ! Initialize pointers
@@ -375,7 +375,7 @@ CONTAINS
        tmpIdx = pbuf_get_index(fldname_ns, RC)
 
        IF ( tmpIdx < 0 .OR. ( iStep == 1 ) ) THEN
-          IF ( rootChunk ) Write(iulog,'(a,a)') " CESMGC_Emissions_Calc: Field not found ", &
+          IF ( rootChunk ) Write(iulog,'(a,a)') " GC_Emissions_Calc: Field not found ", &
              TRIM(fldname_ns)
        ELSE
           ! This is already in chunk, retrieve it
@@ -386,7 +386,7 @@ CONTAINS
              CALL pbuf_get_field(pbuf_chnk, tmpIdx, pbuf_ik)
 
              IF ( .NOT. ASSOCIATED(pbuf_ik) ) THEN ! Sanity check
-                CALL ENDRUN("CESMGC_Emissions_Calc: FATAL - tmpIdx > 0 but pbuf_ik not associated (E-1)")
+                CALL ENDRUN("GC_Emissions_Calc: FATAL - tmpIdx > 0 but pbuf_ik not associated (E-1)")
              ENDIF
 
              eflx(1:nY,:nZ,N) = pbuf_ik(1:nY,:nZ)
@@ -397,7 +397,7 @@ CONTAINS
              CALL pbuf_get_field(pbuf_chnk, tmpIdx, pbuf_i)
 
              IF ( .NOT. ASSOCIATED(pbuf_i) ) THEN ! Sanity check
-                CALL ENDRUN("CESMGC_Emissions_Calc: FATAL - tmpIdx > 0 but pbuf_i not associated (E-2)")
+                CALL ENDRUN("GC_Emissions_Calc: FATAL - tmpIdx > 0 but pbuf_i not associated (E-2)")
              ENDIF
 
              ! note: write to nZ level here as this is surface
@@ -410,16 +410,16 @@ CONTAINS
           pbuf_chnk => NULL()
 
           !IF ( MINVAL(eflx(:nY,:nZ,N)) < 0.0e+00_r8 ) THEN
-          !   Write(iulog,*) " CESMGC_Emissions_Calc: HEMCO emission flux is negative for ", &
+          !   Write(iulog,*) " GC_Emissions_Calc: HEMCO emission flux is negative for ", &
           !      TRIM(cnst_name(N)), " with value ", MINVAL(eflx(:nY,:nZ,N)), " at ", &
           !      MINLOC(eflx(:nY,:nZ,N))
           !ENDIF
 
           IF ( rootChunk .AND. (iStep == 2) .AND. ( MAXVAL(eflx(:nY,:nZ,N)) > 0.0e+0_r8 ) ) THEN
              ! Only print this once
-             Write(iulog,'(a,a,a,a)') " CESMGC_Emissions_Calc: HEMCO flux ", &
+             Write(iulog,'(a,a,a,a)') " GC_Emissions_Calc: HEMCO flux ", &
                 TRIM(fldname_ns), " added to ", TRIM(cnst_name(N))
-             Write(iulog,'(a,a,E16.4)') " CESMGC_Emissions_Calc: Maximum flux ", &
+             Write(iulog,'(a,a,E16.4)') " GC_Emissions_Calc: Maximum flux ", &
                 TRIM(fldname_ns), MAXVAL(eflx(:nY,:nZ,N))
           ENDIF
        ENDIF
@@ -449,20 +449,20 @@ CONTAINS
         CALL pbuf_get_field(pbuf_chnk, tmpIdx, pbuf_i)
 
         IF ( .NOT. ASSOCIATED(pbuf_i) ) THEN ! Sanity check
-           CALL ENDRUN("CESMGC_Emissions_Calc: FATAL - tmpIdx > 0 but pbuf_i not associated (2)")
+           CALL ENDRUN("GC_Emissions_Calc: FATAL - tmpIdx > 0 but pbuf_i not associated (2)")
         ENDIF
 
         ! apply loss flux to surface (level nZ)
         eflx(1:NY,nZ,id_O3) = eflx(1:NY,nZ,id_O3) - pbuf_i(1:nY)
 
         !IF ( MINVAL(eflx(:nY,nZ,id_O3)) < 0.0e+00_r8 ) THEN
-        !   Write(iulog,*) " CESMGC_Emissions_Calc: HEMCO sfc flux after ParaNOx is negative for O3 with value ", MINVAL(eflx(:nY,:nZ,id_O3)), " at ", &
+        !   Write(iulog,*) " GC_Emissions_Calc: HEMCO sfc flux after ParaNOx is negative for O3 with value ", MINVAL(eflx(:nY,:nZ,id_O3)), " at ", &
         !      MINLOC(eflx(:nY,nZ,id_O3))
         !ENDIF
 
         IF ( rootChunk .and. ( MINVAL(pbuf_i(1:nY)) < 0.0e+0_r8 ) ) THEN
-           Write(iulog,'(a,a,a,a)') " CESMGC_Emissions_Calc: HEMCO dflx(paranox) O3 added to ", TRIM(cnst_name(id_O3))
-           Write(iulog,'(a,a,E16.4)') " CESMGC_Emissions_Calc: Minval dflx(paranox), eflx(sfc) O3 ", MINVAL(pbuf_i(1:nY)), MINVAL(eflx(:nY,nZ,id_O3))
+           Write(iulog,'(a,a,a,a)') " GC_Emissions_Calc: HEMCO dflx(paranox) O3 added to ", TRIM(cnst_name(id_O3))
+           Write(iulog,'(a,a,E16.4)') " GC_Emissions_Calc: Minval dflx(paranox), eflx(sfc) O3 ", MINVAL(pbuf_i(1:nY)), MINVAL(eflx(:nY,nZ,id_O3))
         ENDIF
 
         ! Reset pointers
@@ -478,19 +478,19 @@ CONTAINS
         CALL pbuf_get_field(pbuf_chnk, tmpIdx, pbuf_i)
 
         IF ( .NOT. ASSOCIATED(pbuf_i) ) THEN ! Sanity check
-           CALL ENDRUN("CESMGC_Emissions_Calc: FATAL - tmpIdx > 0 but pbuf_i not associated (3)")
+           CALL ENDRUN("GC_Emissions_Calc: FATAL - tmpIdx > 0 but pbuf_i not associated (3)")
         ENDIF
 
         eflx(1:NY,nZ,id_HNO3) = eflx(1:NY,nZ,id_HNO3) - pbuf_i(1:nY)
 
         !IF ( MINVAL(eflx(:nY,nZ,id_HNO3)) < 0.0e+00_r8 ) THEN
-        !   Write(iulog,*) " CESMGC_Emissions_Calc: HEMCO sfc flux after ParaNOx is negative for HNO3 with value ", MINVAL(eflx(:nY,nZ,id_HNO3)), " at ", &
+        !   Write(iulog,*) " GC_Emissions_Calc: HEMCO sfc flux after ParaNOx is negative for HNO3 with value ", MINVAL(eflx(:nY,nZ,id_HNO3)), " at ", &
         !      MINLOC(eflx(:nY,nZ,id_HNO3))
         !ENDIF
 
         IF ( rootChunk .and. ( MINVAL(pbuf_i(1:nY)) < 0.0e+0_r8 ) ) THEN
-           Write(iulog,'(a,a,a,a)') " CESMGC_Emissions_Calc: HEMCO dflx(paranox) HNO3 added to ", TRIM(cnst_name(id_HNO3))
-           Write(iulog,'(a,a,E16.4)') " CESMGC_Emissions_Calc: Minval dflx(paranox), eflx(sfc) HNO3 ", MINVAL(pbuf_i(1:nY)), MINVAL(eflx(:nY,nZ,id_HNO3))
+           Write(iulog,'(a,a,a,a)') " GC_Emissions_Calc: HEMCO dflx(paranox) HNO3 added to ", TRIM(cnst_name(id_HNO3))
+           Write(iulog,'(a,a,E16.4)') " GC_Emissions_Calc: Minval dflx(paranox), eflx(sfc) HNO3 ", MINVAL(pbuf_i(1:nY)), MINVAL(eflx(:nY,nZ,id_HNO3))
         ENDIF
 
         ! Reset pointers
@@ -607,19 +607,19 @@ CONTAINS
     cam_in%cflx(1:nY,:) = cam_in%cflx(1:nY,:) + eflx(1:nY,nZ,:)
     eflx(1:nY,nZ,:)     = 0.0e+00_r8
 
-  END SUBROUTINE CESMGC_Emissions_Calc
+  END SUBROUTINE GC_Emissions_Calc
 !EOC
 !------------------------------------------------------------------------------
 !BOP
 !
-! !IROUTINE: cesmgc_emissions_final
+! !IROUTINE: gc_emissions_final
 !
-! !DESCRIPTION: Subroutine CESMGC\_Emissions\_Final cleans up the module
+! !DESCRIPTION: Subroutine GC\_Emissions\_Final cleans up the module
 !\\
 !\\
 ! !INTERFACE:
 !
-  SUBROUTINE CESMGC_Emissions_Final
+  SUBROUTINE GC_Emissions_Final
 !
 ! !REVISION HISTORY:
 !  07 Oct 2020 - T. M. Fritz   - Initial version
@@ -628,14 +628,14 @@ CONTAINS
 !BOC
 !
     !=================================================================
-    ! CESMGC_Emissions_Final begins here!
+    ! GC_Emissions_Final begins here!
     !=================================================================
 
     IF ( ALLOCATED( megan_indices_map  ) ) DEALLOCATE( megan_indices_map )
     IF ( ALLOCATED( megan_wght_factors ) ) DEALLOCATE( megan_wght_factors )
 
-  END SUBROUTINE CESMGC_Emissions_Final
+  END SUBROUTINE GC_Emissions_Final
 !EOC
 !------------------------------------------------------------------------------
 !EOC
-  END MODULE CESMGC_Emissions_Mod
+  END MODULE GeosChem_Emissions_Mod

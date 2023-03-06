@@ -1,4 +1,4 @@
-#define _ASSERT(cond,msg) if(.not.cond) then; print *, "assertion error: ", Iam, __LINE__; call endrun("assertion error - look above - in cesmgc_history_mod.F90"); endif
+#define _ASSERT(cond,msg) if(.not.cond) then; print *, "assertion error: ", Iam, __LINE__; call endrun("assertion error - look above - in geoschem_history_mod.F90"); endif
 #define _Iam_(name) character(len=255) :: Iam=name
 #define __Iam__(name) integer :: STATUS; _Iam_(name)
 ! Above are compatibility shorthands to avoid excessive divergence from
@@ -8,9 +8,9 @@
 !------------------------------------------------------------------------------
 !BOP
 !
-! !MODULE: cesmgc_history_mod.F90
+! !MODULE: geoschem_history_mod.F90
 !
-! !DESCRIPTION: Module CESMGC\_History\_Mod interfaces between the CAM history
+! !DESCRIPTION: Module GeosChem\_History\_Mod interfaces between the CAM history
 !  component, the HISTORY.rc configuration file, and the GEOS-Chem State registry.
 !  This module is based off GCHP\_HistoryExports\_Mod originally developed by
 !  Lizzie Lundgren for GCHP.
@@ -18,7 +18,7 @@
 !\\
 ! !INTERFACE:
 !
-MODULE CESMGC_History_Mod
+MODULE GeosChem_History_Mod
 !
 ! !USES:
 !
@@ -151,7 +151,7 @@ CONTAINS
 !EOP
 !------------------------------------------------------------------------------
 !BOC
-    __Iam__('Init_HistoryConfig (cesmgc_history_mod.F90)')
+    __Iam__('Init_HistoryConfig (geoschem_history_mod.F90)')
     RC = GC_SUCCESS
     ALLOCATE(HistoryConfig)
     HistoryConfig%ROOT               =  ''
@@ -237,7 +237,7 @@ CONTAINS
     ! ================================================================
     ! Init_HistoryExportsList begins here
     ! ================================================================
-    __Iam__('Init_HistoryExportsList (cesmgc_history_mod.F90)')
+    __Iam__('Init_HistoryExportsList (geoschem_history_mod.F90)')
     RC = GC_SUCCESS
 
     ! Init
@@ -425,7 +425,7 @@ CONTAINS
 !EOP
 !------------------------------------------------------------------------------
 !BOC
-    __Iam__('Init_HistoryExport (cesmgc_history_mod.F90)')
+    __Iam__('Init_HistoryExport (geoschem_history_mod.F90)')
     RC = GC_SUCCESS
     ALLOCATE(NewHistExp)
 
@@ -560,7 +560,7 @@ CONTAINS
     ! ================================================================
     ! Append_HistoryExportsList begins here
     ! ================================================================
-    __Iam__('Append_HistoryExportsList (cesmgc_history_mod.F90)')
+    __Iam__('Append_HistoryExportsList (geoschem_history_mod.F90)')
     RC = GC_SUCCESS
 
     ! Add new object to the beginning of the linked list
@@ -610,7 +610,7 @@ CONTAINS
 !
     TYPE(HistoryExportObj), POINTER :: current
 
-    __Iam__('Check_HistoryExportsList (cesmgc_history_mod.F90)')
+    __Iam__('Check_HistoryExportsList (geoschem_history_mod.F90)')
     RC = GC_SUCCESS
 
     ! Assume not found
@@ -682,7 +682,7 @@ CONTAINS
     ! ================================================================
 
     ! For error handling (defines Iam and STATUS)
-    __Iam__('HistoryExports_SetServices (cesmgc_history_mod.F90)')
+    __Iam__('HistoryExports_SetServices (geoschem_history_mod.F90)')
     RC = GC_SUCCESS
 
     ! Create a config object if it does not already exist
@@ -817,7 +817,7 @@ CONTAINS
     ! ================================================================
     ! CopyGCStates2Exports begins here
     ! ================================================================
-    __Iam__('CopyGCStates2Exports (cesmgc_history_mod.F90)')
+    __Iam__('CopyGCStates2Exports (geoschem_history_mod.F90)')
     RC = GC_SUCCESS
 
     ! Loop over the History Exports list
@@ -939,7 +939,7 @@ CONTAINS
     ! ================================================================
     ! Print_HistoryExportsList begins here
     ! ================================================================
-    __Iam__('Print_HistoryExportsList (cesmgc_history_mod.F90)')
+    __Iam__('Print_HistoryExportsList (geoschem_history_mod.F90)')
     RC = GC_SUCCESS
 
     ! Loop over the History Exports list
@@ -1158,7 +1158,7 @@ CONTAINS
     ! ================================================================
     ! Destroy_HistoryConfig begins here
     ! ================================================================
-    __Iam__('Destroy_HistoryConfig (cesmgc_history_mod.F90)')
+    __Iam__('Destroy_HistoryConfig (geoschem_history_mod.F90)')
 
     current => NULL()
     next => NULL()
@@ -1188,4 +1188,4 @@ CONTAINS
 
   END SUBROUTINE Destroy_HistoryConfig
 !EOC
-END MODULE CESMGC_History_Mod
+END MODULE GeosChem_History_Mod

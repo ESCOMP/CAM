@@ -37,7 +37,7 @@ module chemistry
   !--------------------------------------------------------------------
   ! GEOS-Chem History exports module
   !--------------------------------------------------------------------
-  use CESMGC_History_Mod
+  use GeosChem_History_Mod
 
   !--------------------------------------------------------------------
   ! CAM modules
@@ -1012,8 +1012,8 @@ contains
     use tracer_cnst,           only : tracer_cnst_init
     use tracer_srcs,           only : tracer_srcs_init
 
-    use CESMGC_Emissions_Mod,  only : CESMGC_Emissions_Init
-    use CESMGC_Diag_Mod,       only : CESMGC_Diag_Init
+    use GeosChem_Emissions_Mod,   only : GC_Emissions_Init
+    use GeosChem_Diagnostics_Mod, only : GC_Diagnostics_Init
 
     TYPE(physics_state),                INTENT(IN   ) :: phys_state(BEGCHUNK:ENDCHUNK)
     TYPE(physics_buffer_desc), POINTER, INTENT(INOUT) :: pbuf2d(:,:)
@@ -1408,7 +1408,7 @@ contains
     ! within HistoryConfig to mimic the properties of GCHP.
     !
     ! The above original implementation is similar to GC-Classic and WRF-GC,
-    ! and is used by cesmgc_diag_mod for lookups for certain diagnostic
+    ! and is used by geoschem_diagnostics_mod for lookups for certain diagnostic
     ! fields for compatibility with CAM-chem outputs.
     ! (hplin, 10/31/22)
     CALL HistoryExports_SetServices(am_I_Root     = masterproc,        &
@@ -1688,12 +1688,12 @@ contains
     ENDIF
 
     ! Initialize diagnostics interface
-    CALL CESMGC_Diag_Init( Input_Opt = Input_Opt,           &
-                           State_Chm = State_Chm(BEGCHUNK), &
-                           State_Met = State_Met(BEGCHUNK) )
+    CALL GC_Diagnostics_Init( Input_Opt = Input_Opt,           &
+                              State_Chm = State_Chm(BEGCHUNK), &
+                              State_Met = State_Met(BEGCHUNK) )
 
     ! Initialize emissions interface
-    CALL CESMGC_Emissions_Init( lght_no_prd_factor = lght_no_prd_factor )
+    CALL GC_Emissions_Init( lght_no_prd_factor = lght_no_prd_factor )
 
     hco_pbuf2d => pbuf2d
 
@@ -1887,9 +1887,9 @@ contains
     use Linear_Chem_Mod,     only : TrID_GC, GC_Bry_TrID, NSCHEM
     use Linear_Chem_Mod,     only : BrPtrDay, BrPtrNight, PLVEC, GMI_OH
 
-    use CESMGC_Emissions_Mod,only : CESMGC_Emissions_Calc
-    use CESMGC_Diag_Mod,     only : CESMGC_Diag_Calc
-    use CESMGC_Diag_Mod,     only : wetdep_name, wtrate_name
+    use GeosChem_Emissions_Mod,   only : GC_Emissions_Calc
+    use GeosChem_Diagnostics_Mod, only : GC_Diagnostics_Calc
+    use GeosChem_Diagnostics_Mod, only : wetdep_name, wtrate_name
 
     use Tropopause,          only : Tropopause_findChemTrop, Tropopause_Find
     use HCO_Interface_GC_Mod  ! Utility routines for GC-HEMCO interface
@@ -3644,12 +3644,12 @@ contains
     ! Add surface emissions to cam_in
     !-----------------------------------------------------------------------
 
-    CALL CESMGC_Emissions_Calc( state      = state,            &
-                                hco_pbuf2d = hco_pbuf2d,       &
-                                State_Met  = State_Met(LCHNK), &
-                                cam_in     = cam_in,           &
-                                eflx       = eflx,             &
-                                iStep      = iStep            )
+    CALL GC_Emissions_Calc( state      = state,            &
+                            hco_pbuf2d = hco_pbuf2d,       &
+                            State_Met  = State_Met(LCHNK), &
+                            cam_in     = cam_in,           &
+                            eflx       = eflx,             &
+                            iStep      = iStep            )
 
     !-----------------------------------------------------------------------
     ! Add dry deposition flux 
@@ -4168,15 +4168,15 @@ contains
        ptend%q(:,:,cQ) = ptend%q(:,:,cH2O)
     ENDIF
 
-    CALL CESMGC_Diag_Calc( Input_Opt  = Input_Opt,         &
-                           State_Chm  = State_Chm(LCHNK),  &
-                           State_Diag = State_Diag(LCHNK), &
-                           State_Grid = State_Grid(LCHNK), &
-                           State_Met  = State_Met(LCHNK),  &
-                           cam_in     = cam_in,            &
-                           state      = state,             &
-                           mmr_tend   = mmr_tend,          &
-                           LCHNK      = LCHNK             )
+    CALL GC_Diagnostics_Calc( Input_Opt  = Input_Opt,         &
+                              State_Chm  = State_Chm(LCHNK),  &
+                              State_Diag = State_Diag(LCHNK), &
+                              State_Grid = State_Grid(LCHNK), &
+                              State_Met  = State_Met(LCHNK),  &
+                              cam_in     = cam_in,            &
+                              state      = state,             &
+                              mmr_tend   = mmr_tend,          &
+                              LCHNK      = LCHNK             )
 
     CALL Set_Diagnostics_EndofTimestep( Input_Opt  = Input_Opt,         &
                                         State_Chm  = State_Chm(LCHNK),  &
@@ -4310,7 +4310,7 @@ contains
     use Diag_Mod,        only : Cleanup_Diag
 #endif
 
-    use CESMGC_Emissions_Mod, only: CESMGC_Emissions_Final
+    use GeosChem_Emissions_Mod, only: GC_Emissions_Final
 
     ! Local variables
     INTEGER  :: I, RC
@@ -4335,7 +4335,7 @@ contains
     CALL Cleanup_Sulfate
     CALL Cleanup_Linear_Chem
 
-    CALL CESMGC_Emissions_Final
+    CALL GC_Emissions_Final
 
     CALL Cleanup_CMN_FJX( RC )
     IF ( RC /= GC_SUCCESS ) THEN
