@@ -1,4 +1,4 @@
-module stochastic_emulate_cam
+module stochastic_emulated_cam
 ! From Morrison (Lebo, originally TAU bin code)
 ! Gettelman and Chen 2018
 !the subroutines take in air density, air temperature, and the bin mass boundaries, and 
@@ -24,7 +24,7 @@ private
 save
 
 ! Subroutines
-public :: stochastic_emulate_init_cam
+public :: stochastic_emulated_init_cam
 
 
 
@@ -53,7 +53,7 @@ integer, private  :: cutoff_id                       ! cutoff between cloud wate
 contains
 !===============================================================================
 
-subroutine stochastic_emulate_init_cam
+subroutine stochastic_emulated_init_cam
 
     use cam_history_support, only:          add_hist_coord
 
@@ -102,7 +102,7 @@ subroutine stochastic_emulate_init_cam
     call addfld('qr_fixer',(/'lev'/),'A','kg/kg','delta qr due to ML fixer')
     call addfld('nr_fixer',(/'lev'/),'A','kg/kg','delta nr due to ML fixer')
 
-end subroutine stochastic_emulate_init_cam
-end module stochastic_emulate_cam
+end subroutine stochastic_emulated_init_cam
+end module stochastic_emulated_cam
 
 

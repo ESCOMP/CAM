@@ -236,7 +236,7 @@ integer :: &
    frzdep_idx = -1
 
 logical :: allow_sed_supersat            ! allow supersaturated conditions after sedimentation loop
-character(len=16) :: micro_mg_warm_rain= 'emulated'  ! 'tau', 'emulated', 'sb2001' and ' kk2000'
+character(len=16) :: micro_mg_warm_rain= 'kk2000'  ! 'tau', 'emulated', 'sb2001' and ' kk2000'
 
 integer :: bergso_idx = -1
 
@@ -849,7 +849,7 @@ subroutine micro_pumas_cam_init(pbuf2d)
    use micro_pumas_utils, only: micro_pumas_utils_init
    use micro_pumas_v1, only: micro_mg_init3_0 => micro_pumas_init
    use stochastic_collect_tau_cam, only:  stochastic_kernel_init_cam
-   use stochastic_emulate_cam, only:  stochastic_emulate_init_cam
+   use stochastic_emulated_cam, only:  stochastic_emulated_init_cam
 
    !-----------------------------------------------------------------------
    !
@@ -1190,8 +1190,8 @@ subroutine micro_pumas_cam_init(pbuf2d)
    ! If Machine learning is turned on, perform it's initializations
    if (trim(micro_mg_warm_rain) == 'tau') then
       call stochastic_kernel_init_cam()
-   else if( trim(micro_mg_warm_rain) == 'emulate') then
-      call stochastic_emulate_init_cam()
+   else if( trim(micro_mg_warm_rain) == 'emulated') then
+      call stochastic_emulated_init_cam()
    end if
    ! determine the add_default fields
    call phys_getopts(history_amwg_out           = history_amwg         , &
@@ -2336,7 +2336,7 @@ subroutine micro_pumas_cam_tend(state, ptend, dtime, pbuf)
       call physics_update(state_loc, ptend_loc, dtime/num_steps)
 
 !++ TAU
-      if (trim(micro_mg_warm_rain) == 'tau' .or. trim(micro_mg_warm_rain) == 'emulate') then
+      if (trim(micro_mg_warm_rain) == 'tau' .or. trim(micro_mg_warm_rain) == 'emulated') then
          proc_rates%amk_c(:ncol,:,:) = proc_rates%amk_c(:ncol,:,:)/num_steps
          proc_rates%ank_c(:ncol,:,:) = proc_rates%ank_c(:ncol,:,:)/num_steps
          proc_rates%amk_r(:ncol,:,:) = proc_rates%amk_r(:ncol,:,:)/num_steps
@@ -3217,7 +3217,7 @@ subroutine micro_pumas_cam_tend(state, ptend, dtime, pbuf)
 
    ! Output fields which have not been averaged already, averaging if use_subcol_microp is true
 !++ TAU
-   if (trim(micro_mg_warm_rain) == 'tau' .or. trim(micro_mg_warm_rain) == 'emulate') then
+   if (trim(micro_mg_warm_rain) == 'tau' .or. trim(micro_mg_warm_rain) == 'emulated') then
       call outfld('scale_qc',    proc_rates%scale_qc,    psetcols, lchnk, avg_subcol_field=use_subcol_microp)
       call outfld('scale_nc',    proc_rates%scale_nc,    psetcols, lchnk, avg_subcol_field=use_subcol_microp)
       call outfld('scale_qr',    proc_rates%scale_qr,    psetcols, lchnk, avg_subcol_field=use_subcol_microp)
@@ -3350,7 +3350,7 @@ subroutine micro_pumas_cam_tend(state, ptend, dtime, pbuf)
 
    ! Output fields which are already on the grid
 !++ TAU
-   if (trim(micro_mg_warm_rain) == 'tau' .or. trim(micro_mg_warm_rain) == 'emulate') then
+   if (trim(micro_mg_warm_rain) == 'tau' .or. trim(micro_mg_warm_rain) == 'emulated') then
       call outfld('QC_TAU_in',  state%q(1,1,ixcldliq), pcols, lchnk)
       call outfld('NC_TAU_in',  state%q(1,1,ixnumliq), pcols, lchnk)
       call outfld('QR_TAU_in',  state%q(1,1,ixrain),   pcols, lchnk)
