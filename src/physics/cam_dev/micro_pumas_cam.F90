@@ -7,6 +7,7 @@ module micro_pumas_cam
 !---------------------------------------------------------------------------------
 
 use shr_kind_mod,   only: r8=>shr_kind_r8
+use shr_kind_mod,   only: cl=>shr_kind_cl
 use spmd_utils,     only: masterproc
 use ppgrid,         only: pcols, pver, pverp, psubcols
 use physconst,      only: gravit, rair, tmelt, cpair, rh2o, rhoh2o, &
@@ -251,6 +252,8 @@ subroutine micro_pumas_cam_readnl(nlfile)
   use spmd_utils,      only: mpicom, mstrid=>masterprocid, mpi_integer, mpi_real8, &
                              mpi_logical, mpi_character
 
+  use stochastic_emulated_cam, only: stochastic_emulated_readnl
+
   character(len=*), intent(in) :: nlfile  ! filepath for file containing namelist input
 
   ! Namelist variables
@@ -337,7 +340,7 @@ subroutine micro_pumas_cam_readnl(nlfile)
         end if
 
      end if
-
+   
   end if
 
   ! Broadcast namelist variables
@@ -527,6 +530,11 @@ subroutine micro_pumas_cam_readnl(nlfile)
      write(iulog,*) '  micro_mg_precip_fall_corr     = ', micro_mg_precip_fall_corr
      write(iulog,*) '  micro_mg_implicit_fall     = ', micro_mg_implicit_fall
      write(iulog,*) '  micro_mg_accre_sees_auto     = ', micro_mg_accre_sees_auto
+  end if
+
+  ! Read in the emulated namelist
+  if( trim(micro_mg_warm_rain) == 'emulated') then
+     call stochastic_emulated_readnl(nlfile)
   end if
 
 contains
@@ -848,7 +856,7 @@ subroutine micro_pumas_cam_init(pbuf2d)
    use time_manager,   only: is_first_step
    use micro_pumas_utils, only: micro_pumas_utils_init
    use micro_pumas_v1, only: micro_mg_init3_0 => micro_pumas_init
-   use stochastic_collect_tau_cam, only:  stochastic_kernel_init_cam
+   use stochastic_tau_cam, only:  stochastic_tau_init_cam
    use stochastic_emulated_cam, only:  stochastic_emulated_init_cam
 
    !-----------------------------------------------------------------------
@@ -869,6 +877,9 @@ subroutine micro_pumas_cam_init(pbuf2d)
    integer :: budget_histfile      ! output history file number for budget fields
    integer :: ierr
    character(128) :: errstring     ! return status (non-blank for error return)
+
+   character(len=cl) :: stochastic_emulated_filename_quantile, stochastic_emulated_filename_input_scale, &
+                                       stochastic_emulated_filename_output_scale
 
    !-----------------------------------------------------------------------
 
@@ -897,6 +908,15 @@ subroutine micro_pumas_cam_init(pbuf2d)
          ncnst = 10
    end if
 
+   ! If Machine learning is turned on, perform it's initializations
+   if (trim(micro_mg_warm_rain) == 'tau') then
+      call stochastic_tau_init_cam()
+   else if( trim(micro_mg_warm_rain) == 'emulated') then
+      call stochastic_emulated_init_cam(stochastic_emulated_filename_quantile, &
+                                       stochastic_emulated_filename_input_scale, &
+                                       stochastic_emulated_filename_output_scale)
+   end if
+ 
    call micro_mg_init3_0( &
            r8, gravit, rair, rh2o, cpair, &
            tmelt, latvap, latice, rhmini, &
@@ -915,7 +935,9 @@ subroutine micro_pumas_cam_init(pbuf2d)
            micro_mg_accre_sees_auto, micro_mg_implicit_fall, &
            micro_mg_nccons, micro_mg_nicons, micro_mg_ncnst, &
            micro_mg_ninst, micro_mg_ngcons, micro_mg_ngnst, &
-           micro_mg_nrcons,  micro_mg_nrnst, micro_mg_nscons, micro_mg_nsnst, errstring)
+           micro_mg_nrcons,  micro_mg_nrnst, micro_mg_nscons, micro_mg_nsnst, &
+           stochastic_emulated_filename_quantile, stochastic_emulated_filename_input_scale, &
+           stochastic_emulated_filename_output_scale, errstring)
 
    call handle_errmsg(errstring, subname="micro_pumas_cam_init")
 
@@ -1187,12 +1209,6 @@ subroutine micro_pumas_cam_init(pbuf2d)
    ! qc limiter (only output in versions 1.5 and later)
    call addfld('QCRAT', (/ 'lev' /), 'A', 'fraction', 'Qc Limiter: Fraction of qc tendency applied')
 
-   ! If Machine learning is turned on, perform it's initializations
-   if (trim(micro_mg_warm_rain) == 'tau') then
-      call stochastic_kernel_init_cam()
-   else if( trim(micro_mg_warm_rain) == 'emulated') then
-      call stochastic_emulated_init_cam()
-   end if
    ! determine the add_default fields
    call phys_getopts(history_amwg_out           = history_amwg         , &
                      history_budget_out         = history_budget       , &
@@ -1436,6 +1452,8 @@ subroutine micro_pumas_cam_tend(state, ptend, dtime, pbuf)
    use wv_saturation,   only: qsat
    use infnan,          only: nan, assignment(=)
    use cam_abortutils,  only: handle_allocate_error
+
+   use stochastic_tau_cam, only: ncd
 
    type(physics_state),         intent(in)    :: state
    type(physics_ptend),         intent(out)   :: ptend
@@ -1862,7 +1880,7 @@ subroutine micro_pumas_cam_tend(state, ptend, dtime, pbuf)
    !     all the other arrays in this routine are dimensioned pver.  This is required because
    !     PUMAS only gets the top_lev:pver array subsection, and the proc_rates arrays
    !     need to be the same levels.
-   call proc_rates%allocate(ncol,nlev, errstring)
+   call proc_rates%allocate(ncol,nlev, ncd, errstring)
 
    call handle_errmsg(errstring, subname="micro_pumas_cam_tend")
 

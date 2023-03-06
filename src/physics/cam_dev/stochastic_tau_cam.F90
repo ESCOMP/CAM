@@ -1,4 +1,4 @@
-module stochastic_collect_tau_cam
+module stochastic_tau_cam
 ! From Morrison (Lebo, originally TAU bin code)
 ! Gettelman and Chen 2018
 !the subroutines take in air density, air temperature, and the bin mass boundaries, and 
@@ -24,36 +24,16 @@ private
 save
 
 ! Subroutines
-public :: stochastic_kernel_init_cam
-
-
+public :: stochastic_tau_init_cam
 
 !In the module top, declare the following so that these can be used throughout the module:
 
 integer, parameter, public  :: ncd = 35
-integer, parameter, public  :: ncdp = ncd + 1
-integer, parameter, public  :: ncdl = ncd
-integer, parameter, public  :: ncdpl = ncdl+1
-
-!integer, private :: ncd,ncdp
-!integer, private :: ncdl,ncdpl
-!PARAMETER(ncd=35,ncdl=ncd) ! set number of ice and liquid bins
-!PARAMETER(ncdp=ncd+1,ncdpl=ncdl+1)
-
-! for Zach's collision-coalescence code
-
-
-real(r8), private :: knn(ncd,ncd)
-
-real(r8), public :: mmean(ncd), diammean(ncd)       ! kg & m at bin mid-points
-real(r8), public :: medge(ncdp), diamedge(ncdp)     ! kg & m at bin edges 
-integer, private  :: cutoff_id                       ! cutoff between cloud water and rain drop, D = 40 microns
 
 !===============================================================================
 contains
 !===============================================================================
-
-subroutine stochastic_kernel_init_cam
+subroutine stochastic_tau_init_cam
 
     use cam_history_support, only:          add_hist_coord
     use pumas_stochastic_collect_tau, only: pumas_stochastic_kernel_init
@@ -110,7 +90,7 @@ subroutine stochastic_kernel_init_cam
     call addfld('qr_fixer',(/'lev'/),'A','kg/kg','delta qr due to ML fixer')
     call addfld('nr_fixer',(/'lev'/),'A','kg/kg','delta nr due to ML fixer')
 
-end subroutine stochastic_kernel_init_cam
-end module stochastic_collect_tau_cam
+end subroutine stochastic_tau_init_cam
+end module stochastic_tau_cam
 
 

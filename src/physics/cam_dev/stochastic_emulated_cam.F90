@@ -15,35 +15,28 @@ use shr_spfn_mod, only: gamma => shr_spfn_gamma
 !use
   
 use shr_kind_mod,      only: r8=>shr_kind_r8
+use shr_kind_mod,      only: cl=>shr_kind_cl
 use cam_history,       only: addfld
 use micro_pumas_utils, only: pi, rhow, qsmall
 use cam_logfile,       only: iulog
+use cam_abortutils,    only: endrun
 
 implicit none
 private
 save
 
 ! Subroutines
+public :: stochastic_emulated_readnl
 public :: stochastic_emulated_init_cam
-
-
 
 !In the module top, declare the following so that these can be used throughout the module:
 
 integer, parameter, public  :: ncd = 35
 integer, parameter, public  :: ncdp = ncd + 1
-integer, parameter, public  :: ncdl = ncd
-integer, parameter, public  :: ncdpl = ncdl+1
 
-!integer, private :: ncd,ncdp
-!integer, private :: ncdl,ncdpl
-!PARAMETER(ncd=35,ncdl=ncd) ! set number of ice and liquid bins
-!PARAMETER(ncdp=ncd+1,ncdpl=ncdl+1)
-
-! for Zach's collision-coalescence code
-
-
-real(r8), private :: knn(ncd,ncd)
+character(len=cl) :: stochastic_emulated_filename_quantile = " "
+character(len=cl) :: stochastic_emulated_filename_input_scale = " "
+character(len=cl) :: stochastic_emulated_filename_output_scale = " "
 
 real(r8), public :: mmean(ncd), diammean(ncd)       ! kg & m at bin mid-points
 real(r8), public :: medge(ncdp), diamedge(ncdp)     ! kg & m at bin edges 
@@ -53,9 +46,57 @@ integer, private  :: cutoff_id                       ! cutoff between cloud wate
 contains
 !===============================================================================
 
-subroutine stochastic_emulated_init_cam
+subroutine stochastic_emulated_readnl(nlfile)
+
+  use namelist_utils,  only: find_group_name
+  use units,           only: getunit, freeunit
+  use spmd_utils,      only: mpicom, mstrid=>masterprocid, mpi_character, masterproc
+
+  character(len=*), intent(in) :: nlfile  ! filepath for file containing namelist input
+
+  integer :: unitn, ierr
+  character(len=*), parameter :: sub = 'stochastic_emulated_readnl'
+
+  namelist /stochastic_emulated_nl/ stochastic_emulated_filename_quantile, stochastic_emulated_filename_input_scale, &
+                               stochastic_emulated_filename_output_scale
+
+  if (masterproc) then
+     unitn = getunit()
+     open( unitn, file=trim(nlfile), status='old' )
+     call find_group_name(unitn, 'stochastic_emulated_nl', status=ierr)
+     if (ierr == 0) then
+        read(unitn, stochastic_emulated_nl, iostat=ierr)
+        if (ierr /= 0) then
+           call endrun(sub // ':: ERROR reading namelist')
+        end if
+     end if
+     close(unitn)
+     call freeunit(unitn)
+  end if
+
+  ! Broadcast namelist variables
+  call mpi_bcast(stochastic_emulated_filename_quantile, cl, mpi_character, mstrid, mpicom, ierr)
+  if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: stochastic_emulated_filename_quantile")
+
+  call mpi_bcast(stochastic_emulated_filename_input_scale, cl, mpi_character, mstrid, mpicom, ierr)
+  if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: stochastic_emulated_filename_input_scale")
+
+  call mpi_bcast(stochastic_emulated_filename_output_scale, cl, mpi_character, mstrid, mpicom, ierr)
+  if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: stochastic_emulated_filename_output_scale")
+
+    write(0,*) ' Inside stochastic_emulated_readnl, stochastic_emulated_filename_quantile=',&
+                       stochastic_emulated_filename_quantile
+end subroutine stochastic_emulated_readnl
+
+subroutine stochastic_emulated_init_cam(stochastic_emulated_filename_quantile_out, &
+                                       stochastic_emulated_filename_input_scale_out, &
+                                       stochastic_emulated_filename_output_scale_out)
 
     use cam_history_support, only:          add_hist_coord
+
+    character(len=cl),intent(out) :: stochastic_emulated_filename_quantile_out
+    character(len=cl),intent(out) :: stochastic_emulated_filename_input_scale_out
+    character(len=cl),intent(out) :: stochastic_emulated_filename_output_scale_out
 
     call add_hist_coord('bins_ncd', ncd, 'bins for TAU microphysics')
 
@@ -101,6 +142,10 @@ subroutine stochastic_emulated_init_cam
     call addfld('nc_fixer',(/'lev'/),'A','kg/kg','delta nc due to ML fixer')
     call addfld('qr_fixer',(/'lev'/),'A','kg/kg','delta qr due to ML fixer')
     call addfld('nr_fixer',(/'lev'/),'A','kg/kg','delta nr due to ML fixer')
+
+    stochastic_emulated_filename_quantile_out     = stochastic_emulated_filename_quantile
+    stochastic_emulated_filename_input_scale_out  = stochastic_emulated_filename_input_scale
+    stochastic_emulated_filename_output_scale_out = stochastic_emulated_filename_output_scale
 
 end subroutine stochastic_emulated_init_cam
 end module stochastic_emulated_cam
