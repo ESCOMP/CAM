@@ -3181,10 +3181,14 @@
 
 <focndomain hgrid="1.9x2.5" ocn="som">atm/cam/ocnfrac/domain.aqua.fv1.9x2.5.nc</focndomain>
 
-<!-- HEMCO -->
+<!-- HEMCO: Harmonized Emissions Component -->
 <use_hemco>.false.</use_hemco>
 <use_hemco hemco="1">.true.</use_hemco>
-<hemco_config_file>HEMCO_Config.rc</hemco_config_file>
+<hemco_config_file>/glade/work/hplin/hco_inputdata/HEMCO_Config_FCnudged.CC.c230306.rc</hemco_config_file>
+
+<!-- Default emissions grid resolution at 2x2.5 degree: coarser may result in masking artifacts -->
+<hemco_grid_xdim>144</hemco_grid_xdim>
+<hemco_grid_ydim>91</hemco_grid_ydim>
 
 <hemco_grid_xdim hgrid="ne30np4">288</hemco_grid_xdim>
 <hemco_grid_ydim hgrid="ne30np4">201</hemco_grid_ydim>
