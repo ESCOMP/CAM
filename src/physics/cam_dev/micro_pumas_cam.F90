@@ -2354,7 +2354,7 @@ subroutine micro_pumas_cam_tend(state, ptend, dtime, pbuf)
       call physics_update(state_loc, ptend_loc, dtime/num_steps)
 
 !++ TAU
-      if (trim(micro_mg_warm_rain) == 'tau' .or. trim(micro_mg_warm_rain) == 'emulated') then
+      if (trim(micro_mg_warm_rain) == 'tau') then
          proc_rates%amk_c(:ncol,:,:) = proc_rates%amk_c(:ncol,:,:)/num_steps
          proc_rates%ank_c(:ncol,:,:) = proc_rates%ank_c(:ncol,:,:)/num_steps
          proc_rates%amk_r(:ncol,:,:) = proc_rates%amk_r(:ncol,:,:)/num_steps
