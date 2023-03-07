@@ -67,11 +67,8 @@ OPTIONS
                          trop_strat_mam4_vbs | trop_strat_mam4_vbsext | trop_strat_mam5_ts2 | trop_strat_mam5_vbs |
                          trop_strat_mam5_vbsext | waccm_ma | waccm_mad | waccm_ma_sulfur | waccm_sc | waccm_sc_mam4 |
                          waccm_mad_mam4 | waccm_ma_mam4 | waccm_tsmlt_mam4 | waccm_tsmlt_mam4_vbsext | waccm_mad_mam5 |
-                         waccm_ma_mam5 | waccm_tsmlt_mam5 | waccm_tsmlt_mam5_vbsext | geoschem | geoschem_mam4 ].
+                         waccm_ma_mam5 | waccm_tsmlt_mam5 | waccm_tsmlt_mam5_vbsext | geoschem_mam4 ].
                         Default: trop_mam4 for cam6 and trop_mam3 for cam5.
-     -clm_vers <name>   Version of land model to use. This option is only used when chem
-                        is set to 'geoschem'.
-                        [ 4.0 | 4.5 | 5.0 ]
      -[no]clubb_sgs     Switch on [off] CLUBB_SGS.  Default: on for cam6, otherwise off.
      -clubb_opts <list> Comma separated list of CLUBB options to turn on/off.  By default they are all off.
                         Current option is: clubb_do_adv (Advect CLUBB moments)
@@ -251,7 +248,6 @@ GetOptions(
     "cc=s"                      => \$opts{'cc'},
     "cflags=s"                  => \$opts{'cflags'},
     "chem=s"                    => \$opts{'chem'},
-    "clm_vers=s"                => \$opts{'clm_vers'},
     "clubb_sgs!"                => \$opts{'clubb_sgs'},
     "clubb_opts=s"              => \$opts{'clubb_opts'},
     "co2_cycle"                 => \$opts{'co2_cycle'},
@@ -1401,21 +1397,10 @@ if ($chem_pkg =~ '_mam3') {
     $chem_cppdefs = ' -DMODAL_AERO -DMODAL_AERO_7MODE ';
 }
 
-# TMMF - wedge in GEOS-Chem CPP definitions here
+# Set GEOS-Chem CPP definitions here
 if ($chem_pkg =~ 'geoschem') {
     $chem_cppdefs .= ' -DEXTERNAL_GRID -DEXTERNAL_FORCING -DLINUX_IFORT -DUSE_REAL8 -DMODEL_ -DMODEL_CESM';
     $chem_nadv = 267; # includes GC advected species (233), CO2 (1), and MAM aerosols (33)
-    if (defined $opts{'clm_vers'}) {
-        if ($opts{'clm_vers'} =~ 'CLM4.0') {
-            $chem_cppdefs .= ' -DCLM40'
-        }
-        elsif ($opts{'clm_vers'} =~ 'CLM4.5') {
-            $chem_cppdefs .= ' -DCLM45'
-        }
-        elsif ($opts{'clm_vers'} =~ 'CLM5.0') {
-            $chem_cppdefs .= ' -DCLM50'
-        }
-    }
 }
 
 
