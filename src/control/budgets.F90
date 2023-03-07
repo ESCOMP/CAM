@@ -1,15 +1,15 @@
 module budgets
 
-! Metadata manager for the budgets.
+! Adds support for energy and mass budgets using cam_history api.
 
-use shr_kind_mod,     only: r8 => shr_kind_r8
-use spmd_utils,       only: masterproc
-use cam_abortutils,   only: endrun
-use cam_logfile,      only: iulog
-use cam_thermo,       only: thermo_budget_vars, thermo_budget_vars_descriptor, &
-                                 thermo_budget_vars_unit, thermo_budget_vars_massv, thermo_budget_num_vars
-use cam_history,      only: addfld, add_default, horiz_only
+use cam_abortutils,      only: endrun
+use cam_history,         only: addfld, add_default, horiz_only
 use cam_history_support, only: max_fieldname_len,ptapes
+use cam_logfile,         only: iulog
+use cam_thermo,          only: thermo_budget_vars, thermo_budget_vars_descriptor, &
+                               thermo_budget_vars_unit, thermo_budget_vars_massv, thermo_budget_num_vars
+use shr_kind_mod,        only: r8 => shr_kind_r8
+use spmd_utils,          only: masterproc
 
 implicit none
 private
@@ -34,6 +34,7 @@ public :: &
 ! Public data
 
 integer, parameter, public           :: budget_array_max  = 500     ! number of budget diffs
+
 integer,           public            :: budget_num     = 0 !
 character(len=64), public, protected :: budget_name(budget_array_max)     ! budget names
 character(len=128),public, protected :: budget_longname(budget_array_max) ! long name of budgets
@@ -389,9 +390,7 @@ function budget_ind_byname (name)
  ! Read namelist variables.
  subroutine budget_readnl(nlfile)
    use namelist_utils,  only: find_group_name
-   use spmd_utils,      only: masterproc, mpicom, masterprocid
    use spmd_utils,      only: mpi_character, mpi_logical, mpi_integer
-   use cam_logfile,     only: iulog
    use shr_string_mod, only: shr_string_toUpper
 
    ! Dummy argument: filepath for file containing namelist input

@@ -588,8 +588,6 @@ subroutine define_cam_grids()
  
    allocate(areaWeight(nCellsSolve), stat=ierr)
    if( ierr /= 0 ) call endrun(subname//':failed to allocate area_weight :'//int2str(__LINE__))
-!jt   allocate(dyn_cols(nCellsSolve), stat=ierr)
-!jt   if( ierr /= 0 ) call endrun(subname//':failed to allocate dyn_columns :'//int2str(__LINE__))
    call get_dyn_grid_info(hdim1_d, hdim2_d, num_levels, index_model_top_layer, index_surface_layer, unstructured, dyn_cols)
 
 
