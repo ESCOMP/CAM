@@ -165,7 +165,7 @@ contains
     if ( n_drydep>0 )then
        index_x2a_Sl_ddvel   = mct_avect_indexra(x2a, trim(drydep_fields_token))
     else
-       index_x2a_Sl_ddvel    = 0
+       index_x2a_Sl_ddvel   = 0
     end if
 
     index_a2x_Sa_z          = mct_avect_indexra(a2x,'Sa_z')

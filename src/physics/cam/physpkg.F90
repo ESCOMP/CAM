@@ -1427,7 +1427,6 @@ contains
     integer :: ixq
 
     logical :: labort                            ! abort flag
-    logical :: debug                   ! enable status prints
 
     real(r8) tvm(pcols,pver)           ! virtual temperature
     real(r8) prect(pcols)              ! total precipitation
@@ -1462,8 +1461,6 @@ contains
 
     nstep = get_nstep()
     call cnst_get_ind('Q', ixq)
-
-    debug = .false.
 
     ! Adjust the surface fluxes to reduce instabilities in near sfc layer
     if (phys_do_flux_avg()) then
@@ -1588,10 +1585,8 @@ contains
                     fh2o, surfric, obklen, flx_heat)
        end if
 
-       if (debug .and. masterproc) print *, "cam/physpkg.F90: calling chem_timestep_tend"
        call chem_timestep_tend(state, ptend, cam_in, cam_out, ztodt, &
             pbuf,  fh2o=fh2o)
-       if (debug .and. masterproc) print *, "cam/physpkg.F90: chem_timestep_tend complete"
 
        if ( (trim(cam_take_snapshot_after) == "chem_timestep_tend") .and.     &
             (trim(cam_take_snapshot_before) == trim(cam_take_snapshot_after))) then
@@ -1681,16 +1676,12 @@ contains
                     fh2o, surfric, obklen, flx_heat)
     end if
 
-    if (debug .and. masterproc) print *, "cam/physpkg.F90: calling aero_model_drydep"
-
     call aero_model_drydep( state, pbuf, obklen, surfric, cam_in, ztodt, cam_out, ptend )
     if ( (trim(cam_take_snapshot_after) == "aero_model_drydep") .and.         &
          (trim(cam_take_snapshot_before) == trim(cam_take_snapshot_after))) then
        call cam_snapshot_ptend_outfld(ptend, lchnk)
     end if
     call physics_update(state, ptend, ztodt, tend)
-
-    if (debug .and. masterproc) print *, "cam/physpkg.F90: aero_model_drydep complete"
 
    if (trim(cam_take_snapshot_after) == "aero_model_drydep") then
       call cam_snapshot_all_outfld_tphysac(cam_snapshot_after_num, state, tend, cam_in, cam_out, pbuf,&
