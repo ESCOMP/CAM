@@ -2777,13 +2777,12 @@ else {
 # Because HEMCO is configured at runtime, all of the options will be
 # present in the namelist.
 add_default($nl, 'use_hemco');
-add_default($nl, 'cam_physics_mesh');
-add_default($nl, 'hemco_config_file');
-add_default($nl, 'hemco_grid_xdim');
-add_default($nl, 'hemco_grid_ydim');
+if ($nl->get_value('use_hemco') =~ m/$TRUE/io) {
+    add_default($nl, 'cam_physics_mesh');
+    add_default($nl, 'hemco_config_file');
+    add_default($nl, 'hemco_grid_xdim');
+    add_default($nl, 'hemco_grid_ydim');
 
-my $hco = $cfg->get('hemco');
-if ( $hco eq '1' ) {
     # In a compset with %HEMCO modifier enabled, set the value
     # of the use_hemco variable to true
     #
