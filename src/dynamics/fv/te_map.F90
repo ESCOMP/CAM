@@ -33,7 +33,7 @@ contains
    use mod_comm,      only : mp_send3d, mp_recv3d
 #endif
    use phys_control,  only: waccmx_is !WACCM-X runtime switch
-   use physconst,     only: physconst_calc_kappav
+   use cam_thermo,    only: cam_thermo_calc_kappav
    use par_vecsum_mod,only: par_vecsum
 
    implicit none
@@ -334,7 +334,7 @@ contains
 #endif
 
        if (high_alt) then
-          call physconst_calc_kappav( ifirst,ilast,jfirst,jlast,1,km, grid%ntotq, tracer, cap3v, cpv=cp3v)
+          call cam_thermo_calc_kappav( tracer, cap3v, cpv=cp3v )
        endif
 
 !$omp  parallel do        &
@@ -509,7 +509,7 @@ contains
               if (pe1(i,k)-pe1(i,k-1)<lagrangianlevcrit) then                
                 write(iulog,*) "Lagrangian levels are crossing", lagrangianlevcrit
                 write(iulog,*) "Run will ABORT!"
-                write(iulog,*) "Suggest to increase NSPLTVRM"
+                write(iulog,*) "Suggest to increase FV_NSPLTVRM"
                 do kk=1,km
                   write(iulog,'(A21,I5,A1,3f16.12)') "k,dp(unit=hPa),u,v: ",&
                        kk," ",(pe(i,kk,j)-pe(i,kk-1,j))/100.0_r8,u(i,j,kk),v(i,j,kk)
@@ -857,7 +857,7 @@ contains
 2000  continue
 
        if (high_alt) then
-          call physconst_calc_kappav( ifirst,ilast,jfirst,jlast,1,km,grid%ntotq, tracer, cap3v, cpv=cp3v)
+          call cam_thermo_calc_kappav( tracer, cap3v, cpv=cp3v )
           !$omp parallel do private(i,j,k)
           do k=2,km
              do j=jfirst,jlast

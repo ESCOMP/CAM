@@ -5,9 +5,10 @@ module physics_types
 
   use shr_kind_mod,     only: r8 => shr_kind_r8
   use ppgrid,           only: pcols, pver
-  use constituents,     only: pcnst, qmin, cnst_name
+  use constituents,     only: pcnst, qmin, cnst_name, cnst_get_ind
   use geopotential,     only: geopotential_dse, geopotential_t
-  use physconst,        only: zvir, gravit, cpair, rair, cpairv, rairv
+  use physconst,        only: zvir, gravit, cpair, rair
+  use air_composition,  only: cpairv, rairv
   use phys_grid,        only: get_ncols_p, get_rlon_all_p, get_rlat_all_p, get_gcol_all_p
   use cam_logfile,      only: iulog
   use cam_abortutils,   only: endrun
@@ -52,6 +53,7 @@ module physics_types
   public physics_ptend_alloc   ! allocate individual components within tend
   public physics_ptend_dealloc ! deallocate individual components within tend
 
+  public physics_cnst_limit ! apply limiters to constituents (waccmx)
 !-------------------------------------------------------------------------------
   integer, parameter, public :: phys_te_idx = 1
   integer ,parameter, public :: dyn_te_idx = 2
@@ -98,7 +100,7 @@ module physics_types
           zi         ! geopotential height above surface at interfaces (m)
 
      real(r8), dimension(:,:),allocatable          :: &
-                           ! Second dimension is (phys_te_idx) CAM physics total energy and 
+                           ! Second dimension is (phys_te_idx) CAM physics total energy and
                            ! (dyn_te_idx) dycore total energy computed in physics
           te_ini,         &! vertically integrated total (kinetic + static) energy of initial state
           te_cur,         &! vertically integrated total (kinetic + static) energy of current state
@@ -208,10 +210,9 @@ contains
 !-----------------------------------------------------------------------
 ! Update the state and or tendency structure with the parameterization tendencies
 !-----------------------------------------------------------------------
-    use constituents, only: cnst_get_ind
     use scamMod,      only: scm_crm_mode, single_column
     use phys_control, only: phys_getopts
-    use physconst,    only: physconst_update ! Routine which updates physconst variables (WACCM-X)
+    use cam_thermo,   only: cam_thermo_update ! Routine which updates physconst variables (WACCM-X)
     use qneg_module,  only: qneg3
 
 !------------------------------Arguments--------------------------------
@@ -374,10 +375,10 @@ contains
     end if
 
     !------------------------------------------------------------------------
-    ! Get indices for molecular weights and call WACCM-X physconst_update
+    ! Get indices for molecular weights and call WACCM-X cam_thermo_update
     !------------------------------------------------------------------------
     if ( waccmx_is('ionosphere') .or. waccmx_is('neutral') ) then
-       call physconst_update(state%q, state%t, state%lchnk, state%ncol, &
+       call cam_thermo_update(state%q, state%t, state%lchnk, state%ncol, &
                              to_moist_factor=state%pdeldry(:ncol,:)/state%pdel(:ncol,:) )
     endif
 
@@ -1136,6 +1137,59 @@ end subroutine physics_ptend_copy
 
 
   end subroutine init_geo_unique
+
+!===============================================================================
+  subroutine physics_cnst_limit(state)
+    type(physics_state), intent(inout) :: state
+
+    integer :: i,k, ncol
+
+    real(r8) :: mmrSum_O_O2_H                ! Sum of mass mixing ratios for O, O2, and H
+    real(r8), parameter :: mmrMin=1.e-20_r8  ! lower limit of o2, o, and h mixing ratios
+    real(r8), parameter :: N2mmrMin=1.e-6_r8 ! lower limit of N2 mass mixing ratio
+    real(r8), parameter :: H2lim=6.e-5_r8    ! H2 limiter: 10x global H2 MMR (Roble, 1995)
+    integer :: ixo, ixo2, ixh, ixh2
+
+    if ( waccmx_is('ionosphere') .or. waccmx_is('neutral') ) then
+       call cnst_get_ind('O', ixo)
+       call cnst_get_ind('O2', ixo2)
+       call cnst_get_ind('H', ixh)
+       call cnst_get_ind('H2', ixh2)
+
+       ncol = state%ncol
+
+       !------------------------------------------------------------
+       ! Ensure N2 = 1-(O2 + O + H) mmr is greater than 0
+       ! Check for unusually large H2 values and set to lower value.
+       !------------------------------------------------------------
+
+       do k=1,pver
+          do i=1,ncol
+
+             if (state%q(i,k,ixo) < mmrMin) state%q(i,k,ixo) = mmrMin
+             if (state%q(i,k,ixo2) < mmrMin) state%q(i,k,ixo2) = mmrMin
+
+             mmrSum_O_O2_H = state%q(i,k,ixo)+state%q(i,k,ixo2)+state%q(i,k,ixh)
+
+             if ((1._r8-mmrMin-mmrSum_O_O2_H) < 0._r8) then
+
+                state%q(i,k,ixo) = state%q(i,k,ixo) * (1._r8 - N2mmrMin) / mmrSum_O_O2_H
+
+                state%q(i,k,ixo2) = state%q(i,k,ixo2) * (1._r8 - N2mmrMin) / mmrSum_O_O2_H
+
+                state%q(i,k,ixh) = state%q(i,k,ixh) * (1._r8 - N2mmrMin) / mmrSum_O_O2_H
+
+             endif
+
+             if(state%q(i,k,ixh2) > H2lim) then
+                state%q(i,k,ixh2) = H2lim
+             endif
+
+          end do
+       end do
+
+    end if
+  end subroutine physics_cnst_limit
 
 !===============================================================================
   subroutine physics_dme_adjust(state, tend, qini, dt)

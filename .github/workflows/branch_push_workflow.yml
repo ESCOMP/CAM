@@ -16,13 +16,13 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     # acquire github action routines
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v3
     # acquire specific version of python
-    - name: Set up Python 3.6
+    - name: Set up Python 3.10
       if: github.repository == 'ESCOMP/CAM' #Only run on main repo
-      uses: actions/setup-python@v1
+      uses: actions/setup-python@v4
       with:
-        python-version: '3.6' # Semantic version range syntax or exact version of a Python version
+        python-version: '3.10' # Semantic version range syntax or exact version of a Python version
     # install required python packages
     - name: Install dependencies
       if: github.repository == 'ESCOMP/CAM' #Only run on main repo

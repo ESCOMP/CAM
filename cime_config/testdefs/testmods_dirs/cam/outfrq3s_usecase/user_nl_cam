@@ -3,3 +3,4 @@ ndens=1,1,1,1,1,1
 nhtfrq=3,3,3,3,3,3
 inithist='ENDOFRUN'
 pbuf_global_allocate=.false.
+fincl2='U:I','V:I','T:I','TTEND_TOT:I','DTCORE:I'

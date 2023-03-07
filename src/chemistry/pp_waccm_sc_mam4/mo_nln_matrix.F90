@@ -64,15 +64,18 @@
          mat( 31) = lmat( 31)
          mat( 32) = lmat( 32)
          mat( 33) = lmat( 33)
+         mat( 34) = lmat( 34)
+         mat( 35) = lmat( 35)
          mat( 1) = mat( 1) - dti
+         mat( 2) = mat( 2) - dti
          mat( 3) = mat( 3) - dti
          mat( 4) = mat( 4) - dti
          mat( 5) = mat( 5) - dti
-         mat( 6) = mat( 6) - dti
-         mat( 8) = mat( 8) - dti
+         mat( 7) = mat( 7) - dti
          mat( 9) = mat( 9) - dti
+         mat( 10) = mat( 10) - dti
          mat( 11) = mat( 11) - dti
-         mat( 13) = mat( 13) - dti
+         mat( 12) = mat( 12) - dti
          mat( 14) = mat( 14) - dti
          mat( 15) = mat( 15) - dti
          mat( 16) = mat( 16) - dti
@@ -84,7 +87,6 @@
          mat( 22) = mat( 22) - dti
          mat( 23) = mat( 23) - dti
          mat( 24) = mat( 24) - dti
-         mat( 25) = mat( 25) - dti
          mat( 26) = mat( 26) - dti
          mat( 27) = mat( 27) - dti
          mat( 28) = mat( 28) - dti
@@ -92,6 +94,7 @@
          mat( 30) = mat( 30) - dti
          mat( 31) = mat( 31) - dti
          mat( 32) = mat( 32) - dti
-         mat( 33) = mat( 33) - dti
+         mat( 34) = mat( 34) - dti
+         mat( 35) = mat( 35) - dti
       end subroutine nlnmat_finit
       end module mo_nln_matrix

@@ -13,7 +13,7 @@ use spmd_utils,     only: iam
 use dyn_grid,       only: TimeLevel, edgebuf
 use dyn_comp,       only: dyn_export_t, dyn_import_t
 
-use physics_types,  only: physics_state, physics_tend
+use physics_types,  only: physics_state, physics_tend, physics_cnst_limit
 use phys_grid,      only: get_ncols_p
 use phys_grid,      only: get_dyn_col_p, columns_on_task, get_chunk_info_p
 use physics_buffer, only: physics_buffer_desc, pbuf_get_chunk, pbuf_get_field
@@ -537,16 +537,17 @@ subroutine derived_phys_dry(phys_state, phys_tend, pbuf2d)
    ! mixing ratios are converted to a wet basis.  Initialize geopotential heights.
    ! Finally compute energy and water column integrals of the physics input state.
 
-   use constituents,  only: qmin
-   use physconst,     only: cpairv, gravit, zvir, cappav, rairv, physconst_update
-   use shr_const_mod, only: shr_const_rwv
-   use phys_control,  only: waccmx_is
-   use geopotential,  only: geopotential_t
-   use check_energy,  only: check_energy_timestep_init
-   use hycoef,        only: hyai, ps0
-   use shr_vmath_mod, only: shr_vmath_log
-   use qneg_module,   only: qneg3
-   use dyn_comp,      only: ixo, ixo2, ixh, ixh2
+   use constituents,    only: qmin
+   use physconst,       only: gravit, zvir
+   use cam_thermo,      only: cam_thermo_update
+   use air_composition, only: cpairv, rairv, cappav
+   use shr_const_mod,   only: shr_const_rwv
+   use phys_control,    only: waccmx_is
+   use geopotential,    only: geopotential_t
+   use check_energy,    only: check_energy_timestep_init
+   use hycoef,          only: hyai, ps0
+   use shr_vmath_mod,   only: shr_vmath_log
+   use qneg_module,     only: qneg3
 
    ! arguments
    type(physics_state), intent(inout), dimension(begchunk:endchunk) :: phys_state
@@ -560,14 +561,6 @@ subroutine derived_phys_dry(phys_state, phys_tend, pbuf2d)
    real(r8) :: factor_array(pcols,nlev)
 
    integer :: m, i, k, ncol
-
-   !--------------------------------------------
-   !  Variables needed for WACCM-X
-   !--------------------------------------------
-    real(r8) :: mmrSum_O_O2_H                ! Sum of mass mixing ratios for O, O2, and H
-    real(r8), parameter :: mmrMin=1.e-20_r8  ! lower limit of o2, o, and h mixing ratios
-    real(r8), parameter :: N2mmrMin=1.e-6_r8 ! lower limit of o2, o, and h mixing ratios
-
    type(physics_buffer_desc), pointer :: pbuf_chnk(:)
    !----------------------------------------------------------------------------
 
@@ -660,46 +653,19 @@ subroutine derived_phys_dry(phys_state, phys_tend, pbuf2d)
             end do
          end if
       end do
-      !------------------------------------------------------------
-      ! Ensure O2 + O + H (N2) mmr greater than one.
-      ! Check for unusually large H2 values and set to lower value.
-      !------------------------------------------------------------
-       if ( waccmx_is('ionosphere') .or. waccmx_is('neutral') ) then
 
-          do i=1,ncol
-             do k=1,pver
-
-                if (phys_state(lchnk)%q(i,k,ixo) < mmrMin) phys_state(lchnk)%q(i,k,ixo) = mmrMin
-                if (phys_state(lchnk)%q(i,k,ixo2) < mmrMin) phys_state(lchnk)%q(i,k,ixo2) = mmrMin
-
-                mmrSum_O_O2_H = phys_state(lchnk)%q(i,k,ixo)+phys_state(lchnk)%q(i,k,ixo2)+phys_state(lchnk)%q(i,k,ixh)
-
-                if ((1._r8-mmrMin-mmrSum_O_O2_H) < 0._r8) then
-
-                   phys_state(lchnk)%q(i,k,ixo) = phys_state(lchnk)%q(i,k,ixo) * (1._r8 - N2mmrMin) / mmrSum_O_O2_H
-
-                   phys_state(lchnk)%q(i,k,ixo2) = phys_state(lchnk)%q(i,k,ixo2) * (1._r8 - N2mmrMin) / mmrSum_O_O2_H
-
-                   phys_state(lchnk)%q(i,k,ixh) = phys_state(lchnk)%q(i,k,ixh) * (1._r8 - N2mmrMin) / mmrSum_O_O2_H
-
-                endif
-
-                if(phys_state(lchnk)%q(i,k,ixh2) .gt. 6.e-5_r8) then
-                   phys_state(lchnk)%q(i,k,ixh2) = 6.e-5_r8
-                endif
-
-             end do
-          end do
-       endif
-
-      !-----------------------------------------------------------------------------
-      ! Call physconst_update to compute cpairv, rairv, mbarv, and cappav as
-      ! constituent dependent variables.
-      ! Compute molecular viscosity(kmvis) and conductivity(kmcnd).
-      ! Fill local zvirv variable; calculated for WACCM-X.
-      !-----------------------------------------------------------------------------
       if ( waccmx_is('ionosphere') .or. waccmx_is('neutral') ) then
-        call physconst_update(phys_state(lchnk)%q, phys_state(lchnk)%t, lchnk, ncol,&
+        !------------------------------------------------------------
+        ! Apply limiters to mixing ratios of major species
+        !------------------------------------------------------------
+        call physics_cnst_limit( phys_state(lchnk) )
+        !-----------------------------------------------------------------------------
+        ! Call cam_thermo_update to compute cpairv, rairv, mbarv, and cappav as
+        ! constituent dependent variables.
+        ! Compute molecular viscosity(kmvis) and conductivity(kmcnd).
+        ! Fill local zvirv variable; calculated for WACCM-X.
+        !-----------------------------------------------------------------------------
+        call cam_thermo_update(phys_state(lchnk)%q, phys_state(lchnk)%t, lchnk, ncol,&
              to_moist_factor=phys_state(lchnk)%pdeldry(:ncol,:)/phys_state(lchnk)%pdel(:ncol,:) )
         zvirv(:,:) = shr_const_rwv / rairv(:,:,lchnk) -1._r8
       else
@@ -707,7 +673,7 @@ subroutine derived_phys_dry(phys_state, phys_tend, pbuf2d)
       endif
 
       do k = 1, nlev
-         do i = 1, ncol           
+         do i = 1, ncol
             phys_state(lchnk)%exner(i,k) = (phys_state(lchnk)%pint(i,pver+1) &
                                             / phys_state(lchnk)%pmid(i,k))**cappav(i,k,lchnk)
          end do
@@ -749,9 +715,9 @@ subroutine thermodynamic_consistency(phys_state, phys_tend, ncols, pver, lchnk)
    ! Note: mixing ratios are assumed to be dry.
    !
    use dimensions_mod,    only: lcp_moist
-   use physconst,         only: get_cp
+   use air_composition,   only: get_cp
    use control_mod,       only: phys_dyn_cp
-   use physconst,         only: cpairv
+   use air_composition,   only: cpairv
 
    type(physics_state), intent(in)    :: phys_state
    type(physics_tend ), intent(inout) :: phys_tend
@@ -768,8 +734,8 @@ subroutine thermodynamic_consistency(phys_state, phys_tend, ncols, pver, lchnk)
      ! note that if lcp_moist=.false. then there is thermal energy increment
      ! consistency (not taking into account dme adjust)
      !
-     call get_cp(1,ncols,1,pver,1,1,pcnst,phys_state%q(1:ncols,1:pver,:),.true.,inv_cp)
-     phys_tend%dtdt(1:ncols,1:pver) = phys_tend%dtdt(1:ncols,1:pver)*cpairv(1:ncols,1:pver,lchnk)*inv_cp
+     call get_cp(phys_state%q(1:ncols,1:pver,:), .true., inv_cp)
+     phys_tend%dtdt(1:ncols,1:pver) = phys_tend%dtdt(1:ncols,1:pver) * cpairv(1:ncols,1:pver,lchnk) * inv_cp
    end if
 end subroutine thermodynamic_consistency
 

@@ -11,7 +11,8 @@ module dp_coupling
    use phys_grid
    use physics_types,     only: physics_state, physics_tend
    use constituents,      only: pcnst
-   use physconst,         only: cpair, gravit, rair, zvir, rairv
+   use physconst,         only: cpair, gravit, rair, zvir
+   use air_composition,   only: rairv
    use geopotential,      only: geopotential_t
    use check_energy,      only: check_energy_timestep_init
 #if (defined SPMD)

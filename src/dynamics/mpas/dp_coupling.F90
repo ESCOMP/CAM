@@ -8,14 +8,15 @@ use shr_kind_mod,   only: r8=>shr_kind_r8
 use pmgrid,         only: plev
 use ppgrid,         only: begchunk, endchunk, pcols, pver, pverp
 use constituents,   only: pcnst, cnst_type
-use physconst,      only: gravit, cpairv, cappa, rairv, rh2o, zvir
+use physconst,      only: gravit, cappa, rh2o, zvir
+use air_composition,only: cpairv, rairv
 
 use spmd_dyn,       only: local_dp_map, block_buf_nrecs, chunk_buf_nrecs
 use spmd_utils,     only: mpicom, iam, masterproc
 
 use dyn_comp,       only: dyn_export_t, dyn_import_t
 
-use physics_types,  only: physics_state, physics_tend
+use physics_types,  only: physics_state, physics_tend, physics_cnst_limit
 use phys_grid,      only: get_dyn_col_p, get_chunk_info_p, get_ncols_p, get_gcol_all_p
 use phys_grid,      only: columns_on_task
 
@@ -24,7 +25,7 @@ use physics_buffer, only: physics_buffer_desc, pbuf_get_chunk, pbuf_get_field
 use cam_logfile,    only: iulog
 use perf_mod,       only: t_startf, t_stopf, t_barrierf
 use cam_abortutils, only: endrun
-use physconst,      only: thermodynamic_active_species_num,thermodynamic_active_species_idx,thermodynamic_active_species_idx_dycore
+use air_composition,only: thermodynamic_active_species_num,thermodynamic_active_species_idx,thermodynamic_active_species_idx_dycore
 implicit none
 private
 save
@@ -327,15 +328,15 @@ subroutine derived_phys(phys_state, phys_tend, pbuf2d)
    ! Compute fields in the physics state object which are diagnosed from the
    ! MPAS prognostic fields.
 
-   use geopotential,  only: geopotential_t
-   use check_energy,  only: check_energy_timestep_init
-   use shr_vmath_mod, only: shr_vmath_log
-   use phys_control,  only: waccmx_is
-   use physconst,     only: rairv, physconst_update
-   use qneg_module,   only: qneg3
-   use dyn_comp,      only: ixo, ixo2, ixh, ixh2
-   use shr_const_mod, only: shr_const_rwv
-   use constituents,  only: qmin
+   use geopotential,    only: geopotential_t
+   use check_energy,    only: check_energy_timestep_init
+   use shr_vmath_mod,   only: shr_vmath_log
+   use phys_control,    only: waccmx_is
+   use cam_thermo,      only: cam_thermo_update
+   use air_composition, only: rairv
+   use qneg_module,     only: qneg3
+   use shr_const_mod,   only: shr_const_rwv
+   use constituents,    only: qmin
    ! Arguments
    type(physics_state),       intent(inout) :: phys_state(begchunk:endchunk)
    type(physics_tend ),       intent(inout) :: phys_tend(begchunk:endchunk)
@@ -353,15 +354,6 @@ subroutine derived_phys(phys_state, phys_tend, pbuf2d)
    type(physics_buffer_desc), pointer :: pbuf_chnk(:)
 
    character(len=*), parameter :: subname = 'dp_coupling::derived_phys'
-
-   !--------------------------------------------
-   !  Variables needed for WACCM-X
-   !--------------------------------------------
-    real(r8) :: mmrSum_O_O2_H                ! Sum of mass mixing ratios for O, O2, and H
-    real(r8), parameter :: mmrMin=1.e-20_r8  ! lower limit of o2, o, and h mixing ratios
-    real(r8), parameter :: N2mmrMin=1.e-6_r8 ! lower limit of N2 mass mixing ratio
-    real(r8), parameter :: H2lim=6.e-5_r8    ! H2 limiter: 10x global H2 MMR (Roble, 1995)
-   !----------------------------------------------------------------------------
 
    !$omp parallel do private (lchnk, ncol, k, factor)
    do lchnk = begchunk,endchunk
@@ -436,46 +428,19 @@ subroutine derived_phys(phys_state, phys_tend, pbuf2d)
          end if
       end do
 
-      !------------------------------------------------------------
-      ! Ensure N2 = 1-(O2 + O + H) mmr is greater than 0
-      ! Check for unusually large H2 values and set to lower value.
-      !------------------------------------------------------------
-       if ( waccmx_is('ionosphere') .or. waccmx_is('neutral') ) then
 
-          do i=1,ncol
-             do k=1,pver
-
-                if (phys_state(lchnk)%q(i,k,ixo) < mmrMin) phys_state(lchnk)%q(i,k,ixo) = mmrMin
-                if (phys_state(lchnk)%q(i,k,ixo2) < mmrMin) phys_state(lchnk)%q(i,k,ixo2) = mmrMin
-
-                mmrSum_O_O2_H = phys_state(lchnk)%q(i,k,ixo)+phys_state(lchnk)%q(i,k,ixo2)+phys_state(lchnk)%q(i,k,ixh)
-
-                if ((1._r8-mmrMin-mmrSum_O_O2_H) < 0._r8) then
-
-                   phys_state(lchnk)%q(i,k,ixo) = phys_state(lchnk)%q(i,k,ixo) * (1._r8 - N2mmrMin) / mmrSum_O_O2_H
-
-                   phys_state(lchnk)%q(i,k,ixo2) = phys_state(lchnk)%q(i,k,ixo2) * (1._r8 - N2mmrMin) / mmrSum_O_O2_H
-
-                   phys_state(lchnk)%q(i,k,ixh) = phys_state(lchnk)%q(i,k,ixh) * (1._r8 - N2mmrMin) / mmrSum_O_O2_H
-
-                endif
-
-                if(phys_state(lchnk)%q(i,k,ixh2) > H2lim) then
-                   phys_state(lchnk)%q(i,k,ixh2) = H2lim
-                endif
-
-             end do
-          end do
-       endif
-
-      !-----------------------------------------------------------------------------
-      ! Call physconst_update to compute cpairv, rairv, mbarv, and cappav as
-      ! constituent dependent variables.
-      ! Compute molecular viscosity(kmvis) and conductivity(kmcnd).
-      ! Fill local zvirv variable; calculated for WACCM-X.
-      !-----------------------------------------------------------------------------
       if ( waccmx_is('ionosphere') .or. waccmx_is('neutral') ) then
-        call physconst_update(phys_state(lchnk)%q, phys_state(lchnk)%t, lchnk, ncol)
+        !------------------------------------------------------------
+        ! Apply limiters to mixing ratios of major species
+        !------------------------------------------------------------
+        call physics_cnst_limit( phys_state(lchnk) )
+        !-----------------------------------------------------------------------------
+        ! Call cam_thermo_update to compute cpairv, rairv, mbarv, and cappav as
+        ! constituent dependent variables.
+        ! Compute molecular viscosity(kmvis) and conductivity(kmcnd).
+        ! Fill local zvirv variable; calculated for WACCM-X.
+        !-----------------------------------------------------------------------------
+        call cam_thermo_update(phys_state(lchnk)%q, phys_state(lchnk)%t, lchnk, ncol)
         zvirv(:,:) = shr_const_rwv / rairv(:,:,lchnk) -1._r8
       else
         zvirv(:,:) = zvir
@@ -774,13 +739,12 @@ end subroutine hydrostatic_pressure
 
 
 subroutine tot_energy(nCells, nVertLevels, qsize, index_qv, zz, zgrid, rho_zz, theta_m, q, ux,uy,outfld_name_suffix)
-  use physconst,      only: rair, cpair, gravit,cappa!=R/cp (dry air)
-  use physconst,      only: thermodynamic_active_species_liq_num
-  use mpas_constants, only: p0,cv,rv,rgas,cp
-  use cam_history,    only: outfld, hist_fld_active
-  use mpas_constants, only: Rv_over_Rd => rvord
-  use physconst,      only: thermodynamic_active_species_ice_idx_dycore,thermodynamic_active_species_liq_idx_dycore
-  use physconst,      only: thermodynamic_active_species_ice_num,thermodynamic_active_species_liq_num
+  use physconst,         only: rair, cpair, gravit,cappa!=R/cp (dry air)
+  use mpas_constants,    only: p0,cv,rv,rgas,cp
+  use cam_history,       only: outfld, hist_fld_active
+  use mpas_constants,    only: Rv_over_Rd => rvord
+  use air_composition,   only: thermodynamic_active_species_ice_idx_dycore,thermodynamic_active_species_liq_idx_dycore
+  use air_composition,   only: thermodynamic_active_species_ice_num,thermodynamic_active_species_liq_num
   ! Arguments
   integer, intent(in) :: nCells
   integer, intent(in) :: nVertLevels

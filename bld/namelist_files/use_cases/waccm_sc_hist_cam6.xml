@@ -48,6 +48,7 @@
 
 <!-- Surface emissions -->
 <srf_emis_type>INTERP_MISSING_MONTHS</srf_emis_type>
+<csw_time_type>SERIAL</csw_time_type>
 
 <!-- History Files -->
 <do_circulation_diags>.true.</do_circulation_diags>

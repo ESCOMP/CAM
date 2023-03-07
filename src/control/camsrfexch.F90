@@ -132,7 +132,7 @@ CONTAINS
     ! Allocate space for the surface to atmosphere data type. And initialize
     ! the values.
 
-    use seq_drydep_mod,  only: lnd_drydep, n_drydep
+    use shr_drydep_mod,  only: n_drydep
     use shr_megan_mod,   only: shr_megan_mechcomps_n
     use shr_fire_emis_mod,only: shr_fire_emis_mechcomps_n
 
@@ -186,7 +186,7 @@ CONTAINS
        endif
     end do
 
-    if (lnd_drydep .and. n_drydep>0) then
+    if (n_drydep>0) then
        do c = begchunk,endchunk
           allocate (cam_in(c)%depvel(pcols,n_drydep), stat=ierror)
           if ( ierror /= 0 ) call endrun(sub//': allocation error depvel')
@@ -243,7 +243,7 @@ CONTAINS
        cam_in(c)%ustar    (:) = 0._r8
        cam_in(c)%re       (:) = 0._r8
        cam_in(c)%ssq      (:) = 0._r8
-       if (lnd_drydep .and. n_drydep>0) then
+       if (n_drydep>0) then
           cam_in(c)%depvel (:,:) = 0._r8
        endif
        if (active_Fall_flxfire .and. shr_fire_emis_mechcomps_n>0) then

@@ -24,6 +24,7 @@ class TMC(SystemTestsCommon):
         self.run_indv()
         cpllog = ''.join(self._get_latest_cpl_logs())
         atmlog  = cpllog.replace("cpl.log","atm.log")
+        atmlog  = atmlog.replace("drv.log","atm.log")
         if '.gz' == atmlog[-3:]:
             fopen = gzip.open
         else:
@@ -50,8 +51,8 @@ class TMC(SystemTestsCommon):
                         append_testlog(comments, self._orig_caseroot)
                 use_this_tt_un = False 
         if first_val == -9.0:
-                with self._test_status:
-                    self._test_status.set_status("COMPARE_MASS", TEST_FAIL_STATUS, comments="Failed to find TT_UN in atm.log")
-                comments = "CAM mass conservation test FAILED."
-                append_testlog(comments, self._orig_caseroot)
+            with self._test_status:
+                self._test_status.set_status("COMPARE_MASS", TEST_FAIL_STATUS, comments="Failed to find TT_UN in atm.log")
+            comments = "CAM mass conservation test FAILED."
+            append_testlog(comments, self._orig_caseroot)
 
