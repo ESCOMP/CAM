@@ -230,8 +230,8 @@ contains
     call chem_prod_loss_diags_init
 
     ! diagnostics for HEMCO ParaNOx extension
-    hco_jno2_idx = pbuf_get_index('HCO_IN_JNO2')
-    hco_joh_idx  = pbuf_get_index('HCO_IN_JOH' )
+    hco_jno2_idx = pbuf_get_index('HCO_IN_JNO2',errcode=err)
+    hco_joh_idx  = pbuf_get_index('HCO_IN_JOH',errcode=err)
 
     !-------------------------- HEMCO_CESM ---------------------------------
     !  ... save photo rxn rates for HEMCO ParaNOx, chem_mech rxns:
