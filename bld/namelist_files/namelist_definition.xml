@@ -4942,6 +4942,13 @@ Number of y-dimensions in HEMCO internal grid.
 Default: set by build-namelist.
 </entry>
 
+<entry id="hemco_emission_year" type="integer" category="hemco"
+       group="hemco_nl" valid_values="">
+Force emission year for HEMCO clock if positive. This will force cycling of data on this year.
+Default: set by build-namelist for climo cases, otherwise -1 to use model clock
+</entry>
+
+
 <!-- Reference Pressures -->
 
 <entry id="trop_cloud_top_press" type="real" category="press_lim"

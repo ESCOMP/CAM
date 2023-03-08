@@ -1783,6 +1783,28 @@
     </options>
   </test>
 
+  <!--  Test of CAM-chem component sets with Harmonized Emissions Component (HEMCO) -->
+  <test compset="FCSD_HCO" grid="f09_f09_mg17" name="ERP_Lh12_Vnuopc" testmods="cam/outfrq3h">
+    <machines>
+      <machine name="cheyenne" compiler="intel" category="aux_cam"/>
+      <machine name="cheyenne" compiler="intel" category="camchem_hco"/>
+    </machines>
+    <options>
+      <option name="wallclock">00:20:00</option>
+      <option name="comment">FCSD CAM-chem f09 with HEMCO</option>
+    </options>
+  </test>
+  <test compset="FCnudged_HCO" grid="ne30_ne30_mg17" name="ERP_Ln9_Vnuopc" testmods="cam/outfrq9s">
+    <machines>
+      <machine name="cheyenne" compiler="intel" category="aux_cam"/>
+      <machine name="cheyenne" compiler="intel" category="camchem_hco"/>
+    </machines>
+    <options>
+      <option name="wallclock">00:20:00</option>
+      <option name="comment">FCnudged CAM-chem ne30 with HEMCO</option>
+    </options>
+  </test>
+
   <!--  Test of finite volume CAM-SE grid with CSLAM tracer advection -->
   <test compset="FKESSLER" grid="ne5pg3_ne5pg3_mg37" name="ERS_Ln27_Vnuopc" testmods="cam/outfrq9s" supported="false">
     <machines>
