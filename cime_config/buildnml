@@ -47,6 +47,12 @@ def buildnml(case, caseroot, compname):
     RUN_REFTOD          = case.get_value("RUN_REFTOD")
     COMP_INTERFACE      = case.get_value("COMP_INTERFACE")
 
+    stream_ndep_year_first    = case.get_value("CAM_STREAM_NDEP_YEAR_FIRST")
+    stream_ndep_year_last     = case.get_value("CAM_STREAM_NDEP_YEAR_LAST")
+    stream_ndep_year_align    = case.get_value("CAM_STREAM_NDEP_YEAR_ALIGN")
+    stream_ndep_data_filename = case.get_value("CAM_STREAM_NDEP_DATA_FILENAME")
+    stream_ndep_mesh_filename = case.get_value("CAM_STREAM_NDEP_MESH_FILENAME")
+
     testsrc = os.path.join(srcroot, "components", "cam")
     if os.path.exists(testsrc):
         srcroot = testsrc
@@ -169,10 +175,17 @@ def buildnml(case, caseroot, compname):
         buildnl_opts += ["-namelist",
                          '" &atmexp ' + CAM_NAMELIST_OPTS + '/" ']
 
+        buildnl_opts += ["-stream_ndep_year_first"    , stream_ndep_year_first]
+        buildnl_opts += ["-stream_ndep_year_last"     , stream_ndep_year_last]
+        buildnl_opts += ["-stream_ndep_year_align"    , stream_ndep_year_align]
+        buildnl_opts += ["-stream_ndep_data_filename" , stream_ndep_data_filename]
+        buildnl_opts += ["-stream_ndep_mesh_filename" , stream_ndep_mesh_filename]
+
         if COMP_INTERFACE == 'nuopc':
             buildnl_opts.append("-cmeps")
 
         cmd = os.path.join(srcroot,  "bld", "build-namelist")
+
         cmd += " " + " ".join(buildnl_opts)
 
         rc, out, err = run_cmd(cmd, from_dir=camconf)
