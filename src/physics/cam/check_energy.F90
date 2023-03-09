@@ -50,7 +50,7 @@ module check_energy
   public :: check_tracers_init      ! initialize tracer integrals and cumulative boundary fluxes
   public :: check_tracers_chng      ! check changes in integrals against cumulative boundary fluxes
 
-  public :: calc_te_and_aam_budgets ! calculate and output total energy and axial angular momentum diagnostics
+  public :: tot_energy_phys ! calculate and output total energy and axial angular momentum diagnostics
 
 ! Private module data
 
@@ -816,7 +816,7 @@ end subroutine check_energy_get_integrals
 
 !#######################################################################
 
-  subroutine calc_te_and_aam_budgets(state, outfld_name_suffix,vc)
+  subroutine tot_energy_phys(state, outfld_name_suffix,vc)
     use physconst,       only: gravit,rearth,omega
     use cam_thermo,      only: get_hydrostatic_energy,thermo_budget_num_vars,thermo_budget_vars, &
                                wvidx,wlidx,wiidx,seidx,keidx,moidx,mridx,ttidx,teidx
@@ -884,7 +884,7 @@ end subroutine check_energy_get_integrals
         cp_or_cv(:ncol,:) = cpairv(:ncol,:,lchnk)
       end if
     else
-      call endrun('calc_te_and_aam_budgets: energy diagnostics not implemented/tested for subcolumns')
+      call endrun('tot_energy_phys: energy diagnostics not implemented/tested for subcolumns')
     end if
 
     if (vc_loc == vc_height) then
@@ -969,7 +969,7 @@ end subroutine check_energy_get_integrals
     call outfld(name_out(mridx)  ,mr, pcols,lchnk   )
     call outfld(name_out(moidx)  ,mo, pcols,lchnk   )
 
-  end subroutine calc_te_and_aam_budgets
+  end subroutine tot_energy_phys
 
 
 end module check_energy

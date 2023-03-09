@@ -106,7 +106,7 @@ subroutine d_p_coupling(phys_state, phys_tend, pbuf2d, dyn_out)
    tracers  => dyn_out % tracers
 
    if (compute_energy_diags) then
-     call tot_energy(nCellsSolve, plev,size(tracers, 1), index_qv, zz(:,1:nCellsSolve), zint(:,1:nCellsSolve), &
+     call tot_energy_dyn(nCellsSolve, plev,size(tracers, 1), index_qv, zz(:,1:nCellsSolve), zint(:,1:nCellsSolve), &
           rho_zz(:,1:nCellsSolve), theta_m(:,1:nCellsSolve), tracers(:,:,1:nCellsSolve),&
           ux(:,1:nCellsSolve),uy(:,1:nCellsSolve),'dBF')
    end if
@@ -671,7 +671,7 @@ subroutine derived_tend(nCellsSolve, nCells, t_tend, u_tend, v_tend, q_tend, dyn
        tracers(idx_dycore,:,1:nCellsSolve)= qk(m,:,: )-dtime*q_tend(m,:,1:nCellsSolve)
      end do
 
-     call tot_energy( &
+     call tot_energy_dyn( &
           nCellsSolve, plev, size(tracers, 1), index_qv, zz(:,1:nCellsSolve), zint(:,1:nCellsSolve), rho_zz(:,1:nCellsSolve), &
           theta_m_new,  tracers(:,:,1:nCellsSolve),   &
           ux(:,1:nCellsSolve)+dtime*u_tend(:,1:nCellsSolve)/rho_zz(:,1:nCellsSolve),       &
@@ -685,7 +685,7 @@ subroutine derived_tend(nCellsSolve, nCells, t_tend, u_tend, v_tend, q_tend, dyn
      ! compute energy incl. water change
      !
      theta_m_new = theta_m(:,1:nCellsSolve)+dtime*rtheta_tend(:,1:nCellsSolve)/rho_zz(:,1:nCellsSolve)
-     call tot_energy( &
+     call tot_energy_dyn( &
           nCellsSolve, plev, size(tracers, 1), index_qv, zz(:,1:nCellsSolve), zint(:,1:nCellsSolve), &
           rho_zz(:,1:nCellsSolve), theta_m_new, tracers(:,:,1:nCellsSolve),    &
           ux(:,1:nCellsSolve)+dtime*u_tend(:,1:nCellsSolve)/rho_zz(:,1:nCellsSolve),       &
@@ -795,7 +795,7 @@ subroutine hydrostatic_pressure(nCells, nVertLevels, qsize, index_qv, zz, zgrid,
     end do
 end subroutine hydrostatic_pressure
 
-subroutine tot_energy(nCells, nVertLevels, qsize, index_qv, zz, zgrid, rho_zz, theta_m, q, ux,uy,outfld_name_suffix)
+subroutine tot_energy_dyn(nCells, nVertLevels, qsize, index_qv, zz, zgrid, rho_zz, theta_m, q, ux,uy,outfld_name_suffix)
   use physconst,         only: rair, cpair, gravit,cappa!=R/cp (dry air)
   use mpas_constants,    only: p0,cv,rv,rgas,cp
   use cam_history,       only: outfld, hist_fld_active
@@ -892,6 +892,6 @@ subroutine tot_energy(nCells, nVertLevels, qsize, index_qv, zz, zgrid, rho_zz, t
   call outfld(name_out(wiidx),ice             ,ncells,1)
   call outfld(name_out(teidx),potential_energy+internal_energy+kinetic_energy,ncells,1)
   
-end subroutine tot_energy
+end subroutine tot_energy_dyn
 
 end module dp_coupling

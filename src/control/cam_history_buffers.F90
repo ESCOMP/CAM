@@ -112,59 +112,6 @@ contains
 
   !#######################################################################
 
-  subroutine hbuf_accum_addnsteps (buf8, field, nacs, dimind, idim, flag_xyfill, fillvalue)
-    !
-    !-----------------------------------------------------------------------
-    !
-    ! Purpose: Add the values of field to 2-D hbuf.
-    !
-    !-----------------------------------------------------------------------
-    !
-    real(r8), pointer :: buf8(:,:)    ! 2-D history buffer
-    integer, pointer                 :: nacs(:) ! accumulation counter
-    integer, intent(in) :: idim           ! Longitude dimension of field array
-    logical, intent(in)              :: flag_xyfill ! non-applicable xy points flagged with fillvalue
-    real(r8),          intent(in )   :: field(idim,*)   ! real*8 array
-    type (dim_index_2d), intent(in ) :: dimind  ! 2-D dimension index
-    real(r8), intent(in)             :: fillvalue
-    !
-    ! Local indices
-    !
-    integer :: ieu, jeu  ! number of elements in each dimension
-    integer :: i,k       ! indices
-
-    call dimind%dim_sizes(ieu, jeu)
-
-    if (flag_xyfill) then
-       do k=1,jeu
-          do i=1,ieu
-             if (field(i,k) /= fillvalue) then
-                buf8(i,k) = buf8(i,k) + field(i,k)
-             end if
-          end do
-       end do
-       !
-       ! Ensure input field has fillvalue defined invariant in the z-direction, then increment nacs
-       !
-       call check_accum (field, idim, ieu, jeu, fillvalue)
-       do i=1,ieu
-          if (field(i,1) /= fillvalue) then
-             nacs(i) = nacs(i) + 1
-          end if
-       end do
-    else
-       do k=1,jeu
-          do i=1,ieu
-             buf8(i,k) = buf8(i,k) + field(i,k)
-          end do
-       end do
-       nacs(1) = nacs(1) + 1
-    end if
-
-    return
-  end subroutine hbuf_accum_addnsteps
-
-  !#######################################################################
   subroutine hbuf_accum_variance (hbuf, sbuf, field, nacs, dimind, idim, flag_xyfill, fillvalue)
     !
     !-----------------------------------------------------------------------

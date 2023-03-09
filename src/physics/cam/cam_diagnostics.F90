@@ -190,7 +190,7 @@ contains
     use cam_history,        only: addfld, add_default, horiz_only
     use cam_history,        only: register_vector_field
     use tidal_diag,         only: tidal_diag_init
-    use budgets,            only: budget_add, thermo_budget_history
+    use budgets,            only: e_m_snapshot, e_m_budget, thermo_budget_history
 
     type(physics_buffer_desc), pointer, intent(in) :: pbuf2d(:,:)
 
@@ -396,24 +396,24 @@ contains
 
     if (thermo_budget_history) then
        !
-       ! energy diagnostics addflds for vars_stage combinations plus budget_adds
+       ! energy diagnostics addflds for vars_stage combinations plus e_m_snapshots
        !
        do istage = 1, num_stages
-          call budget_add(TRIM(ADJUSTL(stage(istage))),'phy',longname=TRIM(ADJUSTL(stage_txt(istage))))
+          call e_m_snapshot(TRIM(ADJUSTL(stage(istage))),'phy',longname=TRIM(ADJUSTL(stage_txt(istage))))
        end do
        
        ! Create budgets that are a sum/dif of 2 stages
        
-       call budget_add('BP_param_and_efix','phAP','phBF','phy','dif',longname='dE/dt CAM physics parameterizations + efix dycore E (phAP-phBF)')
-       call budget_add('BD_param_and_efix','dyAP','dyBF','phy','dif',longname='dE/dt CAM physics parameterizations + efix dycore E (dyAP-dyBF)')
-       call budget_add('BP_phy_params','phAP','phBP','phy','dif',longname='dE/dt CAM physics parameterizations (phAP-phBP)')
-       call budget_add('BD_phy_params','dyAP','dyBP','phy','dif',longname='dE/dt CAM physics parameterizations using dycore E (dyAP-dyBP)')
-       call budget_add('BP_pwork','phAM','phAP','phy','dif',longname='dE/dt dry mass adjustment (phAM-phAP)')
-       call budget_add('BD_pwork','dyAM','dyAP','phy','dif',longname='dE/dt dry mass adjustment using dycore E (dyAM-dyAP)')
-       call budget_add('BP_efix','phBP','phBF','phy','dif',longname='dE/dt energy fixer (phBP-phBF)')
-       call budget_add('BD_efix','dyBP','dyBF','phy','dif',longname='dE/dt energy fixer using dycore E (dyBP-dyBF)')
-       call budget_add('BP_phys_tot','phAM','phBF','phy','dif',longname='dE/dt physics total (phAM-phBF)')
-       call budget_add('BD_phys_tot','dyAM','dyBF','phy','dif',longname='dE/dt physics total using dycore E (dyAM-dyBF)')
+       call e_m_budget('BP_param_and_efix','phAP','phBF','phy','dif',longname='dE/dt CAM physics parameterizations + efix dycore E (phAP-phBF)')
+       call e_m_budget('BD_param_and_efix','dyAP','dyBF','phy','dif',longname='dE/dt CAM physics parameterizations + efix dycore E (dyAP-dyBF)')
+       call e_m_budget('BP_phy_params','phAP','phBP','phy','dif',longname='dE/dt CAM physics parameterizations (phAP-phBP)')
+       call e_m_budget('BD_phy_params','dyAP','dyBP','phy','dif',longname='dE/dt CAM physics parameterizations using dycore E (dyAP-dyBP)')
+       call e_m_budget('BP_pwork','phAM','phAP','phy','dif',longname='dE/dt dry mass adjustment (phAM-phAP)')
+       call e_m_budget('BD_pwork','dyAM','dyAP','phy','dif',longname='dE/dt dry mass adjustment using dycore E (dyAM-dyAP)')
+       call e_m_budget('BP_efix','phBP','phBF','phy','dif',longname='dE/dt energy fixer (phBP-phBF)')
+       call e_m_budget('BD_efix','dyBP','dyBF','phy','dif',longname='dE/dt energy fixer using dycore E (dyBP-dyBF)')
+       call e_m_budget('BP_phys_tot','phAM','phBF','phy','dif',longname='dE/dt physics total (phAM-phBF)')
+       call e_m_budget('BD_phys_tot','dyAM','dyBF','phy','dif',longname='dE/dt physics total using dycore E (dyAM-dyBF)')
     endif
   end subroutine diag_init_dry
 

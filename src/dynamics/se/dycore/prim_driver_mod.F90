@@ -221,7 +221,7 @@ contains
     use time_mod,               only: TimeLevel_t, timelevel_update, timelevel_qdp, nsplit
     use control_mod,            only: statefreq,qsplit, rsplit, variable_nsplit
     use prim_advance_mod,       only: applycamforcing
-    use prim_advance_mod,       only: calc_tot_energy_dynamics,compute_omega
+    use prim_advance_mod,       only: tot_energy_dyn,compute_omega
     use prim_state_mod,         only: prim_printstate, adjust_nsplit
     use prim_advection_mod,     only: vertical_remap, deriv
     use thread_mod,             only: omp_get_thread_num
@@ -282,9 +282,9 @@ contains
 
     call TimeLevel_Qdp( tl, qsplit, n0_qdp)
 
-    call calc_tot_energy_dynamics(elem,fvm,nets,nete,tl%n0,n0_qdp,'dAF')
+    call tot_energy_dyn(elem,fvm,nets,nete,tl%n0,n0_qdp,'dAF')
     call ApplyCAMForcing(elem,fvm,tl%n0,n0_qdp,dt_remap,dt_phys,nets,nete,nsubstep)
-    call calc_tot_energy_dynamics(elem,fvm,nets,nete,tl%n0,n0_qdp,'dBD')    
+    call tot_energy_dyn(elem,fvm,nets,nete,tl%n0,n0_qdp,'dBD')    
     do r=1,rsplit
       if (r.ne.1) call TimeLevel_update(tl,"leapfrog")
       call prim_step(elem, fvm, hybrid,nets,nete, dt, tl, hvcoord,r)
@@ -300,7 +300,7 @@ contains
     !  always for tracers
     !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
-    call calc_tot_energy_dynamics(elem,fvm,nets,nete,tl%np1,np1_qdp,'dAD')    
+    call tot_energy_dyn(elem,fvm,nets,nete,tl%np1,np1_qdp,'dAD')    
 
     if (variable_nsplit.or.compute_diagnostics) then
       !
@@ -317,7 +317,7 @@ contains
     !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
     ! time step is complete.
     !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-    call calc_tot_energy_dynamics(elem,fvm,nets,nete,tl%np1,np1_qdp,'dAR')
+    call tot_energy_dyn(elem,fvm,nets,nete,tl%np1,np1_qdp,'dAR')
 
     if (nsubstep==nsplit) then
       call compute_omega(hybrid,tl%np1,np1_qdp,elem,deriv,nets,nete,dt_remap,hvcoord)           

@@ -154,7 +154,7 @@ subroutine stepon_run2(phys_state, phys_tend, dyn_in, dyn_out)
 
    use time_mod,               only: TimeLevel_Qdp
    use control_mod,            only: qsplit
-   use prim_advance_mod,       only: calc_tot_energy_dynamics
+   use prim_advance_mod,       only: tot_energy_dyn
 
 
    ! arguments
@@ -194,7 +194,7 @@ subroutine stepon_run2(phys_state, phys_tend, dyn_in, dyn_out)
    call t_stopf('p_d_coupling')
 
    if (iam < par%nprocs) then
-      call calc_tot_energy_dynamics(dyn_in%elem,dyn_in%fvm, 1, nelemd, tl_f, tl_fQdp,'dED')
+      call tot_energy_dyn(dyn_in%elem,dyn_in%fvm, 1, nelemd, tl_f, tl_fQdp,'dED')
    end if
 
 end subroutine stepon_run2

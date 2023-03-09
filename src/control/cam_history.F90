@@ -3473,7 +3473,7 @@ end subroutine print_active_fldlst
   recursive subroutine outfld (fname, field, idim, c, avg_subcol_field)
     use cam_history_buffers, only: hbuf_accum_inst, hbuf_accum_add, hbuf_accum_variance,  &
          hbuf_accum_add00z, hbuf_accum_max, hbuf_accum_min,          &
-         hbuf_accum_addlcltime, hbuf_accum_addnsteps
+         hbuf_accum_addlcltime
     use cam_history_support, only: dim_index_2d
     use subcol_pack_mod,     only: subcol_unpack
     use cam_grid_support,    only: cam_grid_id
@@ -3649,7 +3649,7 @@ end subroutine print_active_fldlst
                flag_xyfill, fillvalue)
 
         case ('N') ! Time average over nsteps
-          call hbuf_accum_addnsteps(hbuf, ufield, nacs, dimind, pcols,      &
+          call hbuf_accum_add(hbuf, ufield, nacs, dimind, pcols,      &
                flag_xyfill, fillvalue)
 
         case ('X') ! Maximum over time
@@ -3691,7 +3691,7 @@ end subroutine print_active_fldlst
                flag_xyfill, fillvalue)
 
         case ('N') ! Time average over nsteps
-          call hbuf_accum_addnsteps (hbuf, field, nacs, dimind, idim,        &
+          call hbuf_accum_add (hbuf, field, nacs, dimind, idim,        &
                flag_xyfill, fillvalue)
 
         case ('X') ! Maximum over time

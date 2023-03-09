@@ -10,7 +10,7 @@ module prim_advance_mod
   private
   save
 
-  public :: prim_advance_exp, prim_advance_init, applyCAMforcing, calc_tot_energy_dynamics, compute_omega
+  public :: prim_advance_exp, prim_advance_init, applyCAMforcing, tot_energy_dyn, compute_omega
 
   type (EdgeBuffer_t) :: edge3,edgeOmega,edgeSponge
   real (kind=r8), allocatable :: ur_weights(:)
@@ -428,7 +428,7 @@ contains
     else
       call output_qdp_var_dynamics(ftmp(:,:,:,:,:),np,qsize,nets,nete,'PDC')
     end if
-    if (ftype==1.and.nsubstep==1) call calc_tot_energy_dynamics(elem,fvm,nets,nete,np1,np1_qdp,'p2d')
+    if (ftype==1.and.nsubstep==1) call tot_energy_dyn(elem,fvm,nets,nete,np1,np1_qdp,'p2d')
     if (ntrac>0) deallocate(ftmp_fvm)
   end subroutine applyCAMforcing
 
@@ -510,7 +510,7 @@ contains
      !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
     do ic=1,hypervis_subcycle
-      call calc_tot_energy_dynamics(elem,fvm,nets,nete,nt,qn0,'dBH')
+      call tot_energy_dyn(elem,fvm,nets,nete,nt,qn0,'dBH')
 
       rhypervis_subcycle=1.0_r8/real(hypervis_subcycle,kind=r8)
       call biharmonic_wk_dp3d(elem,dptens,dpflux,ttens,vtens,deriv,edge3,hybrid,nt,nets,nete,kbeg,kend,hvcoord)
@@ -670,7 +670,7 @@ contains
         enddo
       end do
 
-      call calc_tot_energy_dynamics(elem,fvm,nets,nete,nt,qn0,'dCH')
+      call tot_energy_dyn(elem,fvm,nets,nete,nt,qn0,'dCH')
       do ie=nets,nete
         !$omp parallel do num_threads(vert_num_threads), private(k,i,j,v1,v2,heating)
         do k=ksponge_end,nlev
@@ -693,7 +693,7 @@ contains
           enddo
         enddo
       enddo
-      call calc_tot_energy_dynamics(elem,fvm,nets,nete,nt,qn0,'dAH')
+      call tot_energy_dyn(elem,fvm,nets,nete,nt,qn0,'dAH')
     end do
 
     !
@@ -768,7 +768,7 @@ contains
     ! Horizontal Laplacian diffusion
     !
     dt=dt2/hypervis_subcycle_sponge
-    call calc_tot_energy_dynamics(elem,fvm,nets,nete,nt,qn0,'dBS')
+    call tot_energy_dyn(elem,fvm,nets,nete,nt,qn0,'dBS')
     kblk = ksponge_end
     do ic=1,hypervis_subcycle_sponge
       rhypervis_subcycle=1.0_r8/real(hypervis_subcycle_sponge,kind=r8)
@@ -948,7 +948,7 @@ contains
       end do
     end do
     call t_stopf('sponge_diff')
-    call calc_tot_energy_dynamics(elem,fvm,nets,nete,nt,qn0,'dAS')
+    call tot_energy_dyn(elem,fvm,nets,nete,nt,qn0,'dAS')
   end subroutine advance_hypervis_dp
 
 
@@ -1434,7 +1434,7 @@ contains
      endif
    end subroutine distribute_flux_at_corners
 
-  subroutine calc_tot_energy_dynamics(elem,fvm,nets,nete,tl,tl_qdp,outfld_name_suffix)
+  subroutine tot_energy_dyn(elem,fvm,nets,nete,tl,tl_qdp,outfld_name_suffix)
     use dimensions_mod,         only: npsq,nlev,np,lcp_moist,nc,ntrac,qsize
     use physconst,              only: gravit, cpair, rearth, omega
     use element_mod,            only: element_t
@@ -1650,7 +1650,7 @@ contains
       end do
    endif ! if thermo budget history
 
-  end subroutine calc_tot_energy_dynamics
+  end subroutine tot_energy_dyn
 
 
   subroutine output_qdp_var_dynamics(qdp,nx,num_trac,nets,nete,outfld_name)

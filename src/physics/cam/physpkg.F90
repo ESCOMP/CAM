@@ -1370,7 +1370,7 @@ contains
     use aero_model,         only: aero_model_drydep
     use carma_intr,         only: carma_emission_tend, carma_timestep_tend
     use carma_flags_mod,    only: carma_do_aerosol, carma_do_emission
-    use check_energy,       only: check_energy_chng, calc_te_and_aam_budgets
+    use check_energy,       only: check_energy_chng, tot_energy_phys
     use check_energy,       only: check_tracers_data, check_tracers_init, check_tracers_chng
     use time_manager,       only: get_nstep
     use cam_abortutils,     only: endrun
@@ -1816,8 +1816,8 @@ contains
                     fh2o, surfric, obklen, flx_heat)
     end if
 
-    call calc_te_and_aam_budgets(state, 'phAP')
-    call calc_te_and_aam_budgets(state, 'dyAP',vc=vc_dycore)
+    call tot_energy_phys(state, 'phAP')
+    call tot_energy_phys(state, 'dyAP',vc=vc_dycore)
 
     !---------------------------------------------------------------------------------
     ! Enforce charge neutrality after O+ change from ionos_tend
@@ -1885,8 +1885,8 @@ contains
       ! update cp/cv for energy computation based in updated water variables
       call cam_thermo_water_update(state%q(:ncol,:,:), lchnk, ncol, vc_dycore, &
            to_dry_factor=state%pdel(:ncol,:)/state%pdeldry(:ncol,:))
-      call calc_te_and_aam_budgets(state, 'phAM')
-      call calc_te_and_aam_budgets(state, 'dyAM', vc=vc_dycore)
+      call tot_energy_phys(state, 'phAM')
+      call tot_energy_phys(state, 'dyAM', vc=vc_dycore)
       ! Restore pre-"physics_dme_adjust" tracers
       state%q(:ncol,:pver,:pcnst) = tmp_trac(:ncol,:pver,:pcnst)
       state%pdel(:ncol,:pver)     = tmp_pdel(:ncol,:pver)
@@ -1907,8 +1907,8 @@ contains
                     fh2o, surfric, obklen, flx_heat)
       end if
 
-      call calc_te_and_aam_budgets(state, 'phAM')
-      call calc_te_and_aam_budgets(state, 'dyAM', vc=vc_dycore)
+      call tot_energy_phys(state, 'phAM')
+      call tot_energy_phys(state, 'dyAM', vc=vc_dycore)
 
     endif
 
@@ -2000,7 +2000,7 @@ contains
     use convect_shallow, only: convect_shallow_tend
     use check_energy,    only: check_energy_chng, check_energy_fix, check_energy_timestep_init
     use check_energy,    only: check_tracers_data, check_tracers_init, check_tracers_chng
-    use check_energy,    only: calc_te_and_aam_budgets
+    use check_energy,    only: tot_energy_phys
     use dycore,          only: dycore_is
     use aero_model,      only: aero_model_wetdep
     use carma_intr,      only: carma_wetdep_tend, carma_timestep_tend
@@ -2205,16 +2205,16 @@ contains
     !===================================================
     call t_startf('energy_fixer')
 
-    call calc_te_and_aam_budgets(state, 'phBF')
-    call calc_te_and_aam_budgets(state, 'dyBF',vc=vc_dycore)
+    call tot_energy_phys(state, 'phBF')
+    call tot_energy_phys(state, 'dyBF',vc=vc_dycore)
     if (.not.dycore_is('EUL')) then
        call check_energy_fix(state, ptend, nstep, flx_heat)
        call physics_update(state, ptend, ztodt, tend)
        call check_energy_chng(state, tend, "chkengyfix", nstep, ztodt, zero, zero, zero, flx_heat)
        call outfld( 'EFIX', flx_heat    , pcols, lchnk   )
     end if
-    call calc_te_and_aam_budgets(state, 'phBP')
-    call calc_te_and_aam_budgets(state, 'dyBP',vc=vc_dycore)
+    call tot_energy_phys(state, 'phBP')
+    call tot_energy_phys(state, 'dyBP',vc=vc_dycore)
     ! Save state for convective tendency calculations.
     call diag_conv_tend_ini(state, pbuf)
 

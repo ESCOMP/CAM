@@ -57,7 +57,7 @@ subroutine d_p_coupling(phys_state, phys_tend,  pbuf2d, dyn_out)
    use time_mod,               only: timelevel_qdp
    use control_mod,            only: qsplit
    use test_fvm_mapping,       only: test_mapping_overwrite_dyn_state, test_mapping_output_phys_state
-   use prim_advance_mod,       only: calc_tot_energy_dynamics
+   use prim_advance_mod,       only: tot_energy_dyn
    ! arguments
    type(dyn_export_t),  intent(inout)                               :: dyn_out             ! dynamics export
    type(physics_buffer_desc), pointer                               :: pbuf2d(:,:)
@@ -128,7 +128,7 @@ subroutine d_p_coupling(phys_state, phys_tend,  pbuf2d, dyn_out)
    allocate(q_tmp(nphys_pts,pver,pcnst,nelemd))
    allocate(omega_tmp(nphys_pts,pver,nelemd))
 
-   call calc_tot_energy_dynamics(elem,dyn_out%fvm, 1, nelemd,tl_f , tl_qdp_np0,'dBF')
+   call tot_energy_dyn(elem,dyn_out%fvm, 1, nelemd,tl_f , tl_qdp_np0,'dBF')
 
    if (use_gw_front .or. use_gw_front_igw) then
       allocate(frontgf(nphys_pts,pver,nelemd), stat=ierr)
