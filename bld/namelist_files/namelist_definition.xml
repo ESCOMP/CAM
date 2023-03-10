@@ -7252,13 +7252,13 @@ Model year to align with CAM_STREAM_NDEP_YEAR_FIRST.
 Set by case xml variable CAM_STREAM_NDEP_YEAR_ALIGN
 </entry>
 
-<entry id="stream_ndep_data_filename" type="char*256" category="Nitrogen Deposition"
+<entry id="stream_ndep_data_filename" type="char*256" input_pathname="abs" category="Nitrogen Deposition"
        group="ndep_stream_nl" valid_values="" >
 NDEP stream data filename.
 Set by case xml variable CAM_STREAM_NDEP_DATA_FILENAME.
 </entry>
 
-<entry id="stream_ndep_mesh_filename" type="char*256" category="Nitrogen Deposition"
+<entry id="stream_ndep_mesh_filename" type="char*256" input_pathname="abs" category="Nitrogen Deposition"
        group="ndep_stream_nl" valid_values="" >
 NDEP mesh file corresponding to sream_ndep_data_filename.
 Set by case xml variable CAM_STREAM_NDEP_MESH_FILENAME.

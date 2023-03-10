@@ -172,20 +172,19 @@ def buildnml(case, caseroot, compname):
 
         buildnl_opts += ["-inputdata", input_data_list]
 
+        CAM_NAMELIST_OPTS += " stream_ndep_year_first="     + stream_ndep_year_first 
+        CAM_NAMELIST_OPTS += " stream_ndep_year_last="      + stream_ndep_year_last
+        CAM_NAMELIST_OPTS += " stream_ndep_year_align="     + stream_ndep_year_align
+        CAM_NAMELIST_OPTS += " stream_ndep_data_filename='" + stream_ndep_data_filename.strip() + "'"
+        CAM_NAMELIST_OPTS += " stream_ndep_mesh_filename='" + stream_ndep_mesh_filename.strip() + "'"
+
         buildnl_opts += ["-namelist",
                          '" &atmexp ' + CAM_NAMELIST_OPTS + '/" ']
-
-        buildnl_opts += ["-stream_ndep_year_first"    , stream_ndep_year_first]
-        buildnl_opts += ["-stream_ndep_year_last"     , stream_ndep_year_last]
-        buildnl_opts += ["-stream_ndep_year_align"    , stream_ndep_year_align]
-        buildnl_opts += ["-stream_ndep_data_filename" , stream_ndep_data_filename]
-        buildnl_opts += ["-stream_ndep_mesh_filename" , stream_ndep_mesh_filename]
 
         if COMP_INTERFACE == 'nuopc':
             buildnl_opts.append("-cmeps")
 
         cmd = os.path.join(srcroot,  "bld", "build-namelist")
-
         cmd += " " + " ".join(buildnl_opts)
 
         rc, out, err = run_cmd(cmd, from_dir=camconf)

@@ -192,7 +192,7 @@ contains
     end if
 
     if (ndep_nflds > 0) then
-       ! The following is when WACCM computes ndep
+       ! The following is when CAM/WACCM computes ndep
        call set_active_Faxa_nhx(.true.)
        call set_active_Faxa_noy(.true.)
     else

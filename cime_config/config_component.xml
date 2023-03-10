@@ -82,7 +82,6 @@
     <desc option="PORT"         >CAM Parallel Offline Radiation Tool:</desc>
   </description>
 
-
   <entry id="COMP_ATM">
     <type>char</type>
     <valid_values>cam</valid_values>
