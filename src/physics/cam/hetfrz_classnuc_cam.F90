@@ -960,7 +960,7 @@ subroutine get_aer_num(ii, kk, ncnst, aer, aer_cb, rhoair,&
    real(r8) :: dst1_num_imm, dst3_num_imm, bc_num_imm
    real(r8) :: dmc_imm, ssmc_imm, so4_imm
    real(r8) :: as_bc, as_pom, as_ss
-
+   real(r8) :: bc4_num
    real(r8) :: r_bc                         ! model radii of BC modes [m]
    real(r8) :: r_dust_a1, r_dust_a3         ! model radii of dust modes [m]
 
@@ -1031,7 +1031,8 @@ subroutine get_aer_num(ii, kk, ncnst, aer, aer_cb, rhoair,&
          else
             as_bc  = aer(ii,kk,bc_pcarbon)
             as_pom = aer(ii,kk,pom_pcarbon)
-            bc_num = bc_num + as_bc/(as_bc+as_pom)*aer(ii,kk,num_pcarbon)*1.0e-6_r8 ! #/cm^3
+            bc4_num = as_bc/(as_bc+as_pom)*aer(ii,kk,num_pcarbon)*1.0e-6_r8 ! #/cm^3
+            bc_num = bc_num + bc4_num
          end if
       end if
    else if (nmodes == MAM7_nmodes) then
@@ -1266,9 +1267,14 @@ subroutine get_aer_num(ii, kk, ncnst, aer, aer_cb, rhoair,&
    end do
 
    if (nmodes == MAM4_nmodes .or. nmodes == MAM7_nmodes .or. nmodes == MAM5_nmodes) then
-      coated_aer_num(1)   = (aer(ii,kk,bc_pcarbon)*bc_num_to_mass*1.0e-6_r8)*dstcoat(1)+ &
-                            (aer(ii,kk,bc_accum)*bc_num_to_mass*1.0e-6_r8)
-      uncoated_aer_num(1) = (aer(ii,kk,bc_pcarbon)*bc_num_to_mass*1.0e-6_r8)*(1._r8-dstcoat(1))
+      if (num_to_mass_in) then
+         coated_aer_num(1)   = (aer(ii,kk,bc_pcarbon)*bc_num_to_mass*1.0e-6_r8)*dstcoat(1)+ &
+                               (aer(ii,kk,bc_accum)*bc_num_to_mass*1.0e-6_r8) !! missing *dstcoat(1) ???
+         uncoated_aer_num(1) = (aer(ii,kk,bc_pcarbon)*bc_num_to_mass*1.0e-6_r8)*(1._r8-dstcoat(1))
+      else
+         coated_aer_num(1)   = bc4_num*dstcoat(1) +  bc_num !! missing *dstcoat(1) ???
+         uncoated_aer_num(1) = bc4_num*(1._r8-dstcoat(1))
+      end if
    end if
 
    if (nmodes == MAM3_nmodes .or. nmodes == MAM4_nmodes .or. nmodes == MAM5_nmodes) then

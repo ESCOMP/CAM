@@ -2233,7 +2233,7 @@
 <use_hetfrz_classnuc               >.false.</use_hetfrz_classnuc>
 <use_hetfrz_classnuc phys="cam6"   >.true.</use_hetfrz_classnuc>
 <use_hetfrz_classnuc phys="cam_dev">.true.</use_hetfrz_classnuc>
-<hetfrz_bc_scalfac>0.0D0</hetfrz_bc_scalfac>
+<hetfrz_bc_scalfac>0.01D0</hetfrz_bc_scalfac>
 <hetfrz_dust_scalfac>0.05D0</hetfrz_dust_scalfac>
 
 <use_preexisting_ice               >.false.</use_preexisting_ice>
