@@ -64,8 +64,8 @@ real(r8) :: dim_f_imm_dust_a3(pdf_n_theta) = 0.0_r8
 
 integer  :: iulog
 
-real(r8) :: limfacbc = -huge(1._r8) ! 0.01_r8  ! soot ice nucleating fraction
-real(r8) :: limfacdst = -huge(1._r8) ! 0.05_r8 ! dust ice nucleating fraction dust
+real(r8) :: limfacbc = -huge(1._r8)  ! soot ice nucleating fraction
+real(r8) :: limfacdst = -huge(1._r8) ! dust ice nucleating fraction
 
 !===================================================================================================
 contains

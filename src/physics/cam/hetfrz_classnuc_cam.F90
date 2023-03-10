@@ -1269,10 +1269,10 @@ subroutine get_aer_num(ii, kk, ncnst, aer, aer_cb, rhoair,&
    if (nmodes == MAM4_nmodes .or. nmodes == MAM7_nmodes .or. nmodes == MAM5_nmodes) then
       if (num_to_mass_in) then
          coated_aer_num(1)   = (aer(ii,kk,bc_pcarbon)*bc_num_to_mass*1.0e-6_r8)*dstcoat(1)+ &
-                               (aer(ii,kk,bc_accum)*bc_num_to_mass*1.0e-6_r8) !! missing *dstcoat(1) ???
+                               (aer(ii,kk,bc_accum)*bc_num_to_mass*1.0e-6_r8)
          uncoated_aer_num(1) = (aer(ii,kk,bc_pcarbon)*bc_num_to_mass*1.0e-6_r8)*(1._r8-dstcoat(1))
       else
-         coated_aer_num(1)   = bc4_num*dstcoat(1) +  bc_num !! missing *dstcoat(1) ???
+         coated_aer_num(1)   = bc4_num*dstcoat(1) +  bc_num
          uncoated_aer_num(1) = bc4_num*(1._r8-dstcoat(1))
       end if
    end if
