@@ -110,7 +110,7 @@ module chemistry
 
   character(len=fieldname_len) :: srcnam(gas_pcnst) ! names of source/sink tendencies
 
-  integer :: ixcldliq, ixcldice                     ! indicies of liquid and ice cloud water
+  integer :: ixcldliq                ! index of liquid cloud water
   integer :: ndx_cld
   integer :: ndx_cmfdqr
   integer :: ndx_nevapr
@@ -687,7 +687,6 @@ end function chem_is_active
 ! Get liq and ice cloud water indicies
 !-----------------------------------------------------------------------
     call cnst_get_ind( 'CLDLIQ', ixcldliq )
-    call cnst_get_ind( 'CLDICE', ixcldice )
     call cnst_get_ind( 'NUMLIQ', ixndrop, abort=.false.  )
 
 !-----------------------------------------------------------------------
@@ -1210,7 +1209,7 @@ end function chem_is_active
 !-----------------------------------------------------------------------
     call t_startf( 'chemdr' )
     do k = 1,pver
-       cldw(:ncol,k) = state%q(:ncol,k,ixcldliq) + state%q(:ncol,k,ixcldice)
+       cldw(:ncol,k) = state%q(:ncol,k,ixcldliq)
        if (ixndrop>0) &
             ncldwtr(:ncol,k) = state%q(:ncol,k,ixndrop)
     end do
@@ -1296,7 +1295,13 @@ end function chem_is_active
 !-------------------------------------------------------------------
   subroutine chem_final()
     use mee_ionization, only: mee_ion_final
+    use rate_diags, only: rate_diags_final
+    use species_sums_diags, only: species_sums_final
+
     call mee_ion_final()
+    call rate_diags_final()
+    call species_sums_final()
+
   end subroutine chem_final
 
 !-------------------------------------------------------------------
