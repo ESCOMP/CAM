@@ -232,7 +232,7 @@ contains
 !-----------------------------------------------------------------------
   subroutine gas_phase_chemdr(lchnk, ncol, imozart, q, &
                               phis, zm, zi, calday, &
-                              tfld, pmid, pdel, pint,  &
+                              tfld, pmid, pdel, pint, rpdel, rpdeldry, &
                               cldw, troplev, troplevchem, &
                               ncldwtr, ufld, vfld,  &
                               delt, ps, &
@@ -247,7 +247,7 @@ contains
     !-----------------------------------------------------------------------
 
     use chem_mods,         only : nabscol, nfs, indexm, clscnt4
-    use physconst,         only : rga
+    use physconst,         only : rga, gravit
     use mo_photo,          only : set_ub_col, setcol, table_photo
     use mo_exp_sol,        only : exp_sol
     use mo_imp_sol,        only : imp_sol
@@ -306,6 +306,8 @@ contains
     real(r8),target,intent(in)    :: tfld(pcols,pver)               ! midpoint temperature (K)
     real(r8),       intent(in)    :: pmid(pcols,pver)               ! midpoint pressures (Pa)
     real(r8),       intent(in)    :: pdel(pcols,pver)               ! pressure delta about midpoints (Pa)
+    real(r8),       intent(in)    :: rpdel(pcols,pver)              ! reciprocal pressure delta about midpoints (Pa)
+    real(r8),       intent(in)    :: rpdeldry(pcols,pver)           ! reciprocal dry pressure delta about midpoints (Pa)
     real(r8),       intent(in)    :: ufld(pcols,pver)               ! zonal velocity (m/s)
     real(r8),       intent(in)    :: vfld(pcols,pver)               ! meridional velocity (m/s)
     real(r8),       intent(in)    :: cldw(pcols,pver)               ! cloud water (kg/kg)
@@ -1022,7 +1024,13 @@ contains
     do m = 1,pcnst
        n = map2chm( m )
        if ( n > 0 ) then
-         cflx(:ncol,m)      = cflx(:ncol,m) - sflx(:ncol,n)
+         if (cam_physpkg_is("cam_dev")) then
+           ! adjust ptend array
+           qtend(:ncol,pver,m) = qtend(:ncol,pver,m) - sflx(:ncol,n)*rpdel(:ncol,pver)*gravit
+         else
+           ! adjust emissions array
+           cflx(:ncol,m) = cflx(:ncol,m) - sflx(:ncol,n)
+         end if
          drydepflx(:ncol,m) = sflx(:ncol,n)
          wetdepflx_diag(:ncol,n) = wetdepflx(:ncol,m)
        endif
