@@ -246,6 +246,7 @@ contains
     !         ebi, hov, fully implicit, and/or rodas algorithms.
     !-----------------------------------------------------------------------
 
+    use phys_control,      only : cam_physpkg_is
     use chem_mods,         only : nabscol, nfs, indexm, clscnt4
     use physconst,         only : rga, gravit
     use mo_photo,          only : set_ub_col, setcol, table_photo
