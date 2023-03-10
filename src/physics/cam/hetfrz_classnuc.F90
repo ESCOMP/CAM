@@ -472,7 +472,7 @@ subroutine hetfrz_classnuc_calc( &
       Jdep_dust_a3 = 0._r8
    end if
 
-   ! Limit to 1% of available potential IN (for BC), no limit for dust
+   ! Limit available potential IN (for BC and dust)
    if (.not.tot_in) then
       if (do_bc) frzbcdep = frzbcdep+MIN(limfacbc*uncoated_aer_num(id_bc)/deltat, &
                                          uncoated_aer_num(id_bc)/deltat &
@@ -524,7 +524,7 @@ subroutine hetfrz_classnuc_calc( &
    Jcnt_dust_a1 = Acnt*r_dust_a1**2*EXP((-dga_dep_dust-f_cnt_dust_a1*dg0cnt)/(kboltz*T))*Kcoll_dust_a1*icnlx
    Jcnt_dust_a3 = Acnt*r_dust_a3**2*EXP((-dga_dep_dust-f_cnt_dust_a3*dg0cnt)/(kboltz*T))*Kcoll_dust_a3*icnlx
 
-   ! Limit to 1% of available potential IN (for BC), no limit for dust
+   ! Limit available potential IN (for BC and dust)
    if (.not.tot_in) then
       if (do_bc) frzbccnt = frzbccnt+MIN(limfacbc*uncoated_aer_num(id_bc)/deltat, &
                                          uncoated_aer_num(id_bc)/deltat &
