@@ -232,7 +232,7 @@ contains
 !-----------------------------------------------------------------------
   subroutine gas_phase_chemdr(lchnk, ncol, imozart, q, &
                               phis, zm, zi, calday, &
-                              tfld, pmid, pdel, pint, rpdel, rpdeldry, &
+                              tfld, pmid, pdel, pint, rpdel, &
                               cldw, troplev, troplevchem, &
                               ncldwtr, ufld, vfld,  &
                               delt, ps, &
@@ -308,7 +308,6 @@ contains
     real(r8),       intent(in)    :: pmid(pcols,pver)               ! midpoint pressures (Pa)
     real(r8),       intent(in)    :: pdel(pcols,pver)               ! pressure delta about midpoints (Pa)
     real(r8),       intent(in)    :: rpdel(pcols,pver)              ! reciprocal pressure delta about midpoints (Pa)
-    real(r8),       intent(in)    :: rpdeldry(pcols,pver)           ! reciprocal dry pressure delta about midpoints (Pa)
     real(r8),       intent(in)    :: ufld(pcols,pver)               ! zonal velocity (m/s)
     real(r8),       intent(in)    :: vfld(pcols,pver)               ! meridional velocity (m/s)
     real(r8),       intent(in)    :: cldw(pcols,pver)               ! cloud water (kg/kg)
