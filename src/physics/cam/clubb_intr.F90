@@ -4387,7 +4387,7 @@ end subroutine clubb_init_cnst
     ptend%q(:ncol,pver,m) = cam_in%cflx(:ncol,m)*state%rpdel(:ncol,pver)*gravit
   end do
 
-  ! Convert tendencies to dry basis for dry constituents
+  ! Convert tendencies of dry constituents to dry basis.
   do m = 2,pcnst
      if (cnst_type(m).eq.'dry') then
         ptend%q(:ncol,pver,m) = ptend%q(:ncol,pver,m)*state%pdel(:ncol,pver)*state%rpdeldry(:ncol,pver)
