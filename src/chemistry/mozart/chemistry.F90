@@ -1216,7 +1216,7 @@ end function chem_is_active
 
     call gas_phase_chemdr(lchnk, ncol, imozart, state%q, &
                           state%phis, state%zm, state%zi, calday, &
-                          state%t, state%pmid, state%pdel, state%pint, state%rpdel, &
+                          state%t, state%pmid, state%pdel, state%pint, state%rpdel, state%rpdeldry, &
                           cldw, tropLev, tropLevChem, ncldwtr, state%u, state%v, chem_dt, state%ps, &
                           fsds, cam_in%ts, cam_in%asdir, cam_in%ocnfrac, cam_in%icefrac, &
                           cam_out%precc, cam_out%precl, cam_in%snowhland, ghg_chem, state%latmapback, &
