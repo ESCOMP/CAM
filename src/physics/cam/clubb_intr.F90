@@ -4387,15 +4387,12 @@ end subroutine clubb_init_cnst
     ptend%q(:ncol,pver,m) = cam_in%cflx(:ncol,m)*state%rpdel(:ncol,pver)*gravit
   end do
 
-!+++ARH - I don't think we need to be converting to dry here
-          ! will clean this up after talking with Julio, Peter (and Pete B via email) 
-  ! Convert tendencies of dry constituents to dry basis.
-  !do m = 2,pcnst
-  !   if (cnst_type(m).eq.'dry') then
-  !      ptend%q(:ncol,pver,m) = ptend%q(:ncol,pver,m)*state%pdel(:ncol,pver)*state%rpdeldry(:ncol,pver)
-  !   endif
-  !end do
-!---ARH
+  ! Convert tendencies to dry basis for dry constituents
+  do m = 2,pcnst
+     if (cnst_type(m).eq.'dry') then
+        ptend%q(:ncol,pver,m) = ptend%q(:ncol,pver,m)*state%pdel(:ncol,pver)*state%rpdeldry(:ncol,pver)
+     endif
+  end do
 
   end subroutine clubb_emissions_cam  
 
