@@ -42,7 +42,7 @@ use ndrop,            only: ndrop_init, dropmixnuc
 use ndrop_bam,        only: ndrop_bam_init, ndrop_bam_run, ndrop_bam_ccn
 
 use hetfrz_classnuc_cam, only: hetfrz_classnuc_cam_readnl, hetfrz_classnuc_cam_register, hetfrz_classnuc_cam_init, &
-                               hetfrz_classnuc_cam_save_cbaero, hetfrz_classnuc_cam_calc
+                               hetfrz_classnuc_cam_calc
 
 use cam_history,      only: addfld, add_default, outfld
 use cam_logfile,      only: iulog
@@ -577,11 +577,6 @@ subroutine microp_aero_run ( &
    rndst(1:ncol,1:pver,2) = rn_dst2
    rndst(1:ncol,1:pver,3) = rn_dst3
    rndst(1:ncol,1:pver,4) = rn_dst4
-
-   ! save copy of cloud borne aerosols for use in heterogeneous freezing
-   if (use_hetfrz_classnuc) then
-      call hetfrz_classnuc_cam_save_cbaero(state1, pbuf)
-   end if
 
    ! initialize time-varying parameters
    do k = top_lev, pver
