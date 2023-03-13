@@ -40,8 +40,8 @@ public :: &
 
 ! Namelist variables
 logical :: hist_hetfrz_classnuc = .false.
-real(r8) :: hetfrz_bc_scalfac = 0.01_r8 ! scaling factor for BC
-real(r8) :: hetfrz_dust_scalfac = 1._r8 ! scaling factor for dust
+real(r8) :: hetfrz_bc_scalfac = -huge(1._r8) ! scaling factor for BC
+real(r8) :: hetfrz_dust_scalfac = -huge(1._r8) ! scaling factor for dust
 
 ! Vars set via init method.
 real(r8) :: mincld      ! minimum allowed cloud fraction
@@ -90,7 +90,7 @@ subroutine hetfrz_classnuc_cam_readnl(nlfile)
 
   use namelist_utils,  only: find_group_name
   use units,           only: getunit, freeunit
-  use spmd_utils,      only: mpicom, mstrid=>masterprocid, mpi_logical, mpi_real8
+  use spmd_utils,      only: mpicom, mstrid=>masterprocid, mpi_logical, mpi_real8, mpi_success
 
   character(len=*), intent(in) :: nlfile  ! filepath for file containing namelist input
 
@@ -118,11 +118,11 @@ subroutine hetfrz_classnuc_cam_readnl(nlfile)
 
   ! Broadcast namelist variables
   call mpi_bcast(hist_hetfrz_classnuc, 1, mpi_logical, mstrid, mpicom, ierr)
-  if (ierr /= 0) call endrun(subname//" mpi_bcast: hist_hetfrz_classnuc")
+  if (ierr /= mpi_success) call endrun(subname//" mpi_bcast: hist_hetfrz_classnuc")
   call mpi_bcast(hetfrz_bc_scalfac, 1, mpi_real8, mstrid, mpicom, ierr)
-  if (ierr /= 0) call endrun(subname//" mpi_bcast: hetfrz_bc_scalfac")
+  if (ierr /= mpi_success) call endrun(subname//" mpi_bcast: hetfrz_bc_scalfac")
   call mpi_bcast(hetfrz_dust_scalfac, 1, mpi_real8, mstrid, mpicom, ierr)
-  if (ierr /= 0) call endrun(subname//" mpi_bcast: hetfrz_dust_scalfac")
+  if (ierr /= mpi_success) call endrun(subname//" mpi_bcast: hetfrz_dust_scalfac")
 
   if (masterproc) then
      write(iulog,*) subname,': hist_hetfrz_classnuc = ',hist_hetfrz_classnuc
@@ -260,7 +260,6 @@ subroutine hetfrz_classnuc_cam_init(mincld_in, aero_props)
 
    ! pbuf fields used by hetfrz_classnuc
    ast_idx      = pbuf_get_index('AST')
-
 
    call addfld('FRZIMM', (/ 'lev' /), 'A', ' ', 'immersion  freezing')
    call addfld('FRZCNT', (/ 'lev' /), 'A', ' ', 'contact    freezing')

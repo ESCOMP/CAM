@@ -38,9 +38,6 @@ real(r8) :: rhoh2o
 real(r8) :: mwh2o
 real(r8) :: tmelt
 
-real(r8) :: bc_limfac = -huge(1._r8)
-real(r8) :: dust_limfac = -huge(1._r8)
-
 !*****************************************************************************
 !                PDF theta model
 !*****************************************************************************
@@ -73,6 +70,9 @@ real(r8), parameter :: nus = 1.e13_r8          ! frequ. of vibration [s-1] highe
 real(r8), parameter :: rhwincloud = 0.98_r8    ! 98% RH in mixed-phase clouds (Korolev & Isaac, JAS 2006)
 
 logical, parameter :: tot_in = .false.
+
+real(r8) :: bc_limfac = -huge(1._r8)   ! soot ice nucleating fraction
+real(r8) :: dust_limfac = -huge(1._r8) ! dust ice nucleating fraction
 
 !===================================================================================================
 contains
