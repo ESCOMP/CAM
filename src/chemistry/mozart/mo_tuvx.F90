@@ -3,6 +3,7 @@
 !----------------------------------------------------------------------
 module mo_tuvx
 
+  use musica_map,              only : map_t
   use musica_string,           only : string_t
   use ppgrid,                  only : pver                ! number of vertical layers
   use shr_kind_mod,            only : r8 => shr_kind_r8, cl=>shr_kind_cl
@@ -16,6 +17,7 @@ module mo_tuvx
   private
 
   public :: tuvx_readnl
+  public :: tuvx_register
   public :: tuvx_init
   public :: tuvx_timestep_init
   public :: tuvx_get_photo_rates
@@ -42,30 +44,58 @@ module mo_tuvx
   integer, parameter :: NUM_RADIATORS = 1          ! number of radiators that CAM will update at runtime
   integer, parameter :: RADIATOR_INDEX_AEROSOL = 1 ! Aerosol radiator index
 
+  ! Definition of the MS93 wavelength grid  TODO add description of this
+  integer,       parameter :: NUM_BINS_MS93 = 4
+  real(kind=r8), parameter :: WAVELENGTH_EDGES_MS93(NUM_BINS_MS93+1) = &
+      (/ 181.6_r8, 183.1_r8, 184.6_r8, 190.2_r8, 192.5_r8 /)
+
   ! Information needed to access CAM species state data
+  logical :: is_fixed_N2 = .false. ! indicates whether N2 concentrations are fixed
+  logical :: is_fixed_O  = .false. ! indicates whether O concentrations are fixed
   logical :: is_fixed_O2 = .false. ! indicates whether O2 concentrations are fixed
   logical :: is_fixed_O3 = .false. ! indicates whether O3 concentrations are fixed
+  logical :: is_fixed_NO = .false. ! indicates whether NO concentrations are fixed
+  integer :: index_N2 = 0 ! index for N2 in concentration array
+  integer :: index_O  = 0 ! index for O in concentration array
   integer :: index_O2 = 0 ! index for O2 in concentration array
   integer :: index_O3 = 0 ! index for O3 in concentration array
+  integer :: index_NO = 0 ! index for NO in concentration array
 
   ! Information needed to access aerosol optical properties
   logical :: aerosol_exists = .false. ! indicates whether aerosol optical properties are available
 
+  ! Information needed to set extended-UV photo rates
+  logical :: do_euv = .false.              ! Indicates whether to calculate
+                                           !   extended-UV photo rates
+  integer :: ion_rates_pbuf_index = 0      ! Index in physics buffer for
+                                           !   ionization rates
+
+  ! Information needed to do special NO photolysis rate calculation
+  logical :: do_jno     = .false. ! Indicates whether to calculate jno
+  integer :: jno_index  = 0       ! Index in tuvx_ptr::photo_rates_ array for jno
+
+  ! Cutoff solar zenith angle for doing photolysis rate calculations [degrees]
+  integer :: max_sza = 0.0_r8
+
   ! TODO how should these paths be set and communicated to this wrapper?
   character(len=*), parameter :: wavelength_config_path = &
-                                                    "data/grids/wavelength/combined.grid"
+                                                    "data/grids/wavelength/cam.csv"
   logical, parameter :: enable_diagnostics = .true.
 
   ! TUV-x calculator for each OMP thread
   type :: tuvx_ptr
     type(core_t), pointer    :: core_ => null( )          ! TUV-x calculator
-    integer                  :: n_photo_rates_            ! number of photo reactions in TUV-x
+    integer                  :: n_photo_rates_ = 0        ! number of photo reactions in TUV-x
+    integer                  :: n_euv_rates_ = 0          ! number of extreme-UV rates
+    integer                  :: n_special_rates_ = 0      ! number of special photo rates
     real(r8), allocatable    :: photo_rates_(:,:,:)       ! photolysis rate constants
                                                           !   (column, vertical level, reaction) [s-1]
+    type(map_t)              :: photo_rate_map_           ! map between TUV-x and CAM
+                                                          !   photo rate constant arrays
     type(grid_updater_t)     :: grids_(NUM_GRIDS)         ! grid updaters
     type(profile_updater_t)  :: profiles_(NUM_PROFILES)   ! profile updaters
     type(radiator_updater_t) :: radiators_(NUM_RADIATORS) ! radiator updaters
-    real(r8)                 :: height_delta_(pver)       ! change in height in each
+    real(r8)                 :: height_delta_(pver+1)     ! change in height in each
                                                           !   vertical layer (km)
     real(r8), allocatable    :: wavelength_edges_(:)      ! TUV-x wavelength bin edges (nm)
     real(r8), allocatable    :: wavelength_values_(:)     ! Working array for interface values
@@ -75,6 +105,8 @@ module mo_tuvx
     real(r8), allocatable    :: optical_depth_(:,:,:)            ! (column, vertical level, wavelength) [unitless]
     real(r8), allocatable    :: single_scattering_albedo_(:,:,:) ! (column, vertical level, wavelength) [unitless]
     real(r8), allocatable    :: asymmetry_factor_(:,:,:)         ! (column, vertical level, wavelength) [unitless]
+    real(r8)                 :: et_flux_ms93_(NUM_BINS_MS93)     ! extraterrestrial flux on the MS93 grid
+                                                                 !   [photon cm-2 nm-1 s-1]
   end type tuvx_ptr
   type(tuvx_ptr), allocatable :: tuvx_ptrs(:)
 
@@ -91,6 +123,23 @@ module mo_tuvx
 
 !================================================================================================
 contains
+!================================================================================================
+
+  !-----------------------------------------------------------------------
+  ! registers fields in the physics buffer
+  !-----------------------------------------------------------------------
+  subroutine tuvx_register( )
+
+    use mo_jeuv,        only : nIonRates
+    use physics_buffer, only : pbuf_add_field, dtype_r8
+    use ppgrid,         only : pcols ! maximum number of columns
+
+    ! add photo-ionization rates to physics buffer for WACCMX Ionosphere module
+    call pbuf_add_field( 'IonRates', 'physpkg', dtype_r8, (/ pcols, pver, nIonRates /), &
+                         ion_rates_pbuf_index ) ! Ionization rates for O+, O2+, N+, N2+, NO+
+
+  end subroutine tuvx_register
+
 !================================================================================================
 
   !-----------------------------------------------------------------------
@@ -156,17 +205,24 @@ contains
   !-----------------------------------------------------------------------
   ! Initializes TUV-x for photolysis calculations
   !-----------------------------------------------------------------------
-  subroutine tuvx_init( )
+  subroutine tuvx_init( photon_file, electron_file, max_solar_zenith_angle )
 
 #ifdef HAVE_MPI
     use mpi
 #endif
+    use cam_abortutils,          only : endrun
     use cam_logfile,             only : iulog ! log file output unit
     use mo_chem_utls,            only : get_spc_ndx, get_inv_ndx
+    use mo_jeuv,                 only : neuv ! number of extreme-UV rates
     use musica_assert,           only : assert_msg
-    use musica_mpi,              only : musica_mpi_rank
+    use musica_config,           only : config_t
+    use musica_mpi,              only : musica_mpi_rank, &
+                                        musica_mpi_pack_size, &
+                                        musica_mpi_pack, &
+                                        musica_mpi_unpack
     use musica_string,           only : string_t, to_char
     use ppgrid,                  only : pcols ! maximum number of columns
+    use shr_const_mod,           only : pi => shr_const_pi
     use solar_irrad_data,        only : has_spectrum
     use spmd_utils,              only : main_task => masterprocid, &
                                         is_main_task => masterproc, &
@@ -176,49 +232,99 @@ contains
     use tuvx_profile_warehouse,  only : profile_warehouse_t
     use tuvx_radiator_warehouse, only : radiator_warehouse_t
 
+    character(len=*), intent(in) :: photon_file   ! photon file used in extended-UV module setup
+    character(len=*), intent(in) :: electron_file ! electron file used in extended-UV module setup
+    real(r8),         intent(in) :: max_solar_zenith_angle ! cutoff solar zenith angle for
+                                                           !    photo rate calculations [degrees]
+
+    character(len=*), parameter :: my_name = "TUV-x wrapper initialization"
     class(core_t), pointer :: core
     character, allocatable :: buffer(:)
     type(string_t) :: config_path
+    type(config_t) :: tuvx_config, cam_config, map_config
+    type(map_t) :: map
     class(grid_t), pointer :: height
     class(grid_warehouse_t), pointer :: cam_grids
     class(profile_warehouse_t), pointer :: cam_profiles
     class(radiator_warehouse_t), pointer :: cam_radiators
     integer :: pack_size, pos, i_core, i_err
+    logical :: disable_aerosols
+    type(string_t) :: required_keys(1), optional_keys(1)
+    logical, save :: is_initialized = .false.
 
-    if (.not.tuvx_active) return
+    if( .not. tuvx_active ) return
+    if( is_initialized ) return
+    is_initialized = .true.
+
+    if( is_main_task ) write(iulog,*) "Beginning TUV-x Initialization"
 
     config_path = trim(tuvx_config_path)
 
-    if( is_main_task ) call log_initialization( )
+    ! ===============================
+    ! CAM TUV-x configuration options
+    ! ===============================
+    required_keys(1) = "aliasing"
+    optional_keys(1) = "disable aerosols"
 
 #ifndef HAVE_MPI
     call assert_msg( 113937299, is_main_task, "Multiple tasks present without " &
                      //"MPI support enabled for TUV-x" )
 #endif
 
+    ! ===============================================================
+    ! set the maximum solar zenith angle to calculate photo rates for
+    ! ===============================================================
+    max_sza = max_solar_zenith_angle
+    if( max_sza <= 0.0_r8 .or. max_sza > 180.0_r8 ) then
+      call endrun( "TUV-x: max solar zenith angle must be between 0 and 180 degress" )
+    end if
+
+    ! =================================
+    ! initialize the extended-UV module
+    ! =================================
+    call initialize_euv( photon_file, electron_file, do_euv )
+
     ! ==========================================================================
-    ! Create the set of TUV-x grids and profiles that CAM will update at runtime
+    ! create the set of TUV-x grids and profiles that CAM will update at runtime
     ! ==========================================================================
     cam_grids => get_cam_grids( wavelength_config_path )
     cam_profiles => get_cam_profiles( cam_grids )
     cam_radiators => get_cam_radiators( cam_grids )
 
-    ! ======================================================================
-    ! construct a core on the primary process and pack it onto an MPI buffer
-    ! ======================================================================
+    ! ==================================================================
+    ! construct a core and a map between TUV-x and CAM photolysis arrays
+    ! on the primary process and pack them onto an MPI buffer
+    ! ==================================================================
     if( is_main_task ) then
+      call tuvx_config%from_file( config_path%to_char( ) )
+      call tuvx_config%get( "__CAM options", cam_config, my_name )
+      call assert_msg( 973680295, &
+                       cam_config%validate( required_keys, optional_keys ), &
+                       "Bad configuration for CAM TUV-x options." )
+      call cam_config%get( "disable aerosols", disable_aerosols, my_name, &
+                           default = .false. )
+      call cam_config%get( "aliasing", map_config, my_name )
       core => core_t( config_path, cam_grids, cam_profiles, cam_radiators )
-      pack_size = core%pack_size( mpicom )
+      call set_photo_rate_map( core, map_config, do_euv, do_jno, jno_index, map )
+      pack_size = core%pack_size( mpicom ) + &
+                  map%pack_size( mpicom ) + &
+                  musica_mpi_pack_size( do_jno, mpicom ) + &
+                  musica_mpi_pack_size( jno_index, mpicom ) + &
+                  musica_mpi_pack_size( disable_aerosols, mpicom )
       allocate( buffer( pack_size ) )
       pos = 0
       call core%mpi_pack( buffer, pos, mpicom )
+      call map%mpi_pack(  buffer, pos, mpicom )
+      call musica_mpi_pack( buffer, pos, do_jno,           mpicom )
+      call musica_mpi_pack( buffer, pos, jno_index,        mpicom )
+      call musica_mpi_pack( buffer, pos, disable_aerosols, mpicom )
       deallocate( core )
     end if
 
 #ifdef HAVE_MPI
-    ! ============================================
-    ! broadcast the core data to all MPI processes
-    ! ============================================
+    ! ====================================================
+    ! broadcast the core and map data to all MPI processes
+    ! ====================================================
     call mpi_bcast( pack_size, 1, MPI_INTEGER, main_task, mpicom, i_err )
     if( i_err /= MPI_SUCCESS ) then
       write(iulog,*) "TUV-x MPI int bcast error"
@@ -232,30 +338,40 @@ contains
     end if
 #endif
 
-    ! ========================================================
-    ! unpack the core for each OMP thread on every MPI process
-    ! ========================================================
+    ! ================================================================
+    ! unpack the core and map for each OMP thread on every MPI process
+    ! ================================================================
     allocate( tuvx_ptrs( max_threads( ) ) )
     do i_core = 1, size( tuvx_ptrs )
     associate( tuvx => tuvx_ptrs( i_core ) )
       allocate( tuvx%core_ )
       pos = 0
       call tuvx%core_%mpi_unpack( buffer, pos, mpicom )
+      call tuvx%photo_rate_map_%mpi_unpack( buffer, pos, mpicom )
+      call musica_mpi_unpack( buffer, pos, do_jno,           mpicom )
+      call musica_mpi_unpack( buffer, pos, jno_index,        mpicom )
+      call musica_mpi_unpack( buffer, pos, disable_aerosols, mpicom )
 
-      ! =====================================================================
-      ! Set up map between CAM and TUV-x photolysis reactions for each thread
-      ! =====================================================================
-      call create_updaters( tuvx, cam_grids, cam_profiles, cam_radiators )
+      ! ===================================================================
+      ! Set up connections between CAM and TUV-x input data for each thread
+      ! ===================================================================
+      call create_updaters( tuvx, cam_grids, cam_profiles, cam_radiators, &
+                            disable_aerosols )
 
-      ! TEMPORARY FOR DEVELOPMENT
+      ! ===============================================================
+      ! Create a working array for calculated photolysis rate constants
+      ! ===============================================================
       tuvx%n_photo_rates_ = tuvx%core_%number_of_photolysis_reactions( )
+      if( do_euv ) tuvx%n_euv_rates_ = neuv
+      if( do_jno ) tuvx%n_special_rates_ = tuvx%n_special_rates_ + 1
       height => tuvx%core_%get_grid( "height", "km" )
-      allocate( tuvx%photo_rates_( pcols, height%ncells_ + 1, tuvx%n_photo_rates_ ) )
+      allocate( tuvx%photo_rates_( pcols, height%ncells_ + 1, &
+                                   tuvx%n_photo_rates_ + tuvx%n_euv_rates_ + &
+                                   tuvx%n_special_rates_ ) )
       deallocate( height )
 
     end associate
     end do
-
     deallocate( cam_grids     )
     deallocate( cam_profiles  )
     deallocate( cam_radiators )
@@ -263,12 +379,21 @@ contains
     ! =============================================
     ! Get index info for CAM species concentrations
     ! =============================================
+    index_N2  = get_inv_ndx( 'N2' )
+    is_fixed_N2 = index_N2 > 0
+    if( .not. is_fixed_N2 ) index_N2 = get_spc_ndx( 'N2' )
+    index_O  = get_inv_ndx( 'O' )
+    is_fixed_O = index_O > 0
+    if( .not. is_fixed_O ) index_O = get_spc_ndx( 'O' )
     index_O2 = get_inv_ndx( 'O2' )
     is_fixed_O2 = index_O2 > 0
     if( .not. is_fixed_O2 ) index_O2 = get_spc_ndx( 'O2' )
     index_O3 = get_inv_ndx( 'O3' )
     is_fixed_O3 = index_O3 > 0
     if( .not. is_fixed_O3 ) index_O3 = get_spc_ndx( 'O3' )
+    index_NO = get_inv_ndx( 'NO' )
+    is_fixed_NO = index_NO > 0
+    if( .not. is_fixed_NO ) index_NO = get_spc_ndx( 'NO' )
 
     ! ====================================================
     ! make sure extraterrestrial flux values are available
@@ -281,6 +406,8 @@ contains
     ! ============================================
     call initialize_diagnostics( tuvx_ptrs( 1 ) )
 
+    if( is_main_task ) call log_initialization( )
+
   end subroutine tuvx_init
 
 !================================================================================================
@@ -291,6 +418,8 @@ contains
   subroutine tuvx_timestep_init( )
 
     integer :: i_thread
+
+    if( .not. tuvx_active ) return
 
     do i_thread = 1, size( tuvx_ptrs )
     associate( tuvx => tuvx_ptrs( i_thread ) )
@@ -308,10 +437,11 @@ contains
   subroutine tuvx_get_photo_rates( state, pbuf, ncol, lchnk, height_mid, &
       height_int, temperature_mid, surface_temperature, fixed_species_conc, &
       species_vmr, exo_column_conc, surface_albedo, solar_zenith_angle, &
-      earth_sun_distance )
+      earth_sun_distance, photolysis_rates )
 
     use cam_logfile,      only : iulog        ! log info output unit
-    use chem_mods,        only : gas_pcnst, & ! number of non-fixed species
+    use chem_mods,        only : phtcnt,    & ! number of photolysis reactions
+                                 gas_pcnst, & ! number of non-fixed species
                                  nfs,       & ! number of fixed species
                                  nabscol      ! number of absorbing species (radiators)
     use physics_types,    only : physics_state
@@ -324,34 +454,46 @@ contains
 
     type(physics_state),       target,  intent(in)    :: state
     type(physics_buffer_desc), pointer, intent(inout) :: pbuf(:)
-    integer,  intent(in) :: ncol                        ! number of active columns on this thread
-    integer,  intent(in) :: lchnk                       ! identifier for this thread
-    real(r8), intent(in) :: height_mid(pcols,pver)      ! height at mid-points (km)
-    real(r8), intent(in) :: height_int(pcols,pver+1)    ! height at interfaces (km)
-    real(r8), intent(in) :: temperature_mid(pcols,pver) ! midpoint temperature (K)
-    real(r8), intent(in) :: surface_temperature(pcols)  ! surface temperature (K)
-    real(r8), intent(in) :: fixed_species_conc(ncol,pver,max(1,nfs))    ! fixed species densities
-                                                                        !   (molecule cm-3)
-    real(r8), intent(in) :: species_vmr(ncol,pver,max(1,gas_pcnst))     ! species volume mixing
-                                                                        !   ratios (mol mol-1)
-    real(r8), intent(in) :: exo_column_conc(ncol,0:pver,max(1,nabscol)) ! above column densities
-                                                                        !   (molecule cm-3)
-    real(r8), intent(in) :: surface_albedo(pcols)       ! surface albedo (unitless)
-    real(r8), intent(in) :: solar_zenith_angle(ncol)    ! solar zenith angle (radians)
-    real(r8), intent(in) :: earth_sun_distance          ! Earth-Sun distance (AU)
+    integer,  intent(in)    :: ncol                        ! number of active columns on this thread
+    integer,  intent(in)    :: lchnk                       ! identifier for this thread
+    real(r8), intent(in)    :: height_mid(ncol,pver)       ! height at mid-points (km)
+    real(r8), intent(in)    :: height_int(ncol,pver+1)     ! height at interfaces (km)
+    real(r8), intent(in)    :: temperature_mid(pcols,pver) ! midpoint temperature (K)
+    real(r8), intent(in)    :: surface_temperature(pcols)  ! surface temperature (K)
+    real(r8), intent(in)    :: fixed_species_conc(ncol,pver,max(1,nfs))    ! fixed species densities
+                                                                           !   (molecule cm-3)
+    real(r8), intent(in)    :: species_vmr(ncol,pver,max(1,gas_pcnst))     ! species volume mixing
+                                                                           !   ratios (mol mol-1)
+    real(r8), intent(in)    :: exo_column_conc(ncol,0:pver,max(1,nabscol)) ! layer column densities
+                                                                           !   (molecule cm-2)
+    real(r8), intent(in)    :: surface_albedo(pcols)       ! surface albedo (unitless)
+    real(r8), intent(in)    :: solar_zenith_angle(ncol)    ! solar zenith angle (radians)
+    real(r8), intent(in)    :: earth_sun_distance          ! Earth-Sun distance (AU)
+    real(r8), intent(inout) :: photolysis_rates(ncol,pver,phtcnt) ! photolysis rate
+                                                                  !   constants (1/s)
 
-    integer :: i_col                                ! column index
+    integer  :: i_col   ! column index
+    integer  :: i_level ! vertical level index
+    real(r8) :: sza     ! solar zenith angle [degrees]
 
-    if (.not.tuvx_active) return
+    if( .not. tuvx_active ) return
 
     associate( tuvx => tuvx_ptrs( thread_id( ) ) )
 
+      tuvx%photo_rates_(:,:,:) = 0.0_r8
+
       ! ==============================================
-      ! get aerosol optical properties for all columns
+      ! set aerosol optical properties for all columns
       ! ==============================================
       call get_aerosol_optical_properties( tuvx, state, pbuf )
 
       do i_col = 1, ncol
+
+        ! ===================================
+        ! skip columns in near total darkness
+        ! ===================================
+        sza = solar_zenith_angle(i_col) * 180.0_r8 / pi
+        if( sza < 0.0_r8 .or. sza > max_sza ) cycle
 
         ! ===================
         ! update grid heights
@@ -369,12 +511,52 @@ contains
         ! ===================================================
         ! Calculate photolysis rate constants for this column
         ! ===================================================
-        call tuvx%core_%run( solar_zenith_angle = &
-                               solar_zenith_angle(i_col) * 180.0_r8 / pi, &
+        call tuvx%core_%run( solar_zenith_angle = sza, &
                              earth_sun_distance = earth_sun_distance, &
                              photolysis_rate_constants = &
-                               tuvx%photo_rates_(i_col,:,:) )
+                               tuvx%photo_rates_(i_col,:,1:tuvx%n_photo_rates_) )
 
+        ! ==============================
+        ! Calculate the extreme-UV rates
+        ! ==============================
+        if( do_euv ) then
+        associate( euv_begin => tuvx%n_photo_rates_ + 1, &
+                   euv_end   => tuvx%n_photo_rates_ + tuvx%n_euv_rates_ )
+          call calculate_euv_rates( sza, &
+                                    fixed_species_conc(i_col,:,:), &
+                                    species_vmr(i_col,:,:), &
+                                    height_mid(i_col,:), &
+                                    height_int(i_col,:), &
+                                    tuvx%photo_rates_(i_col,2:pver+1,euv_begin:euv_end) )
+        end associate
+        end if
+
+        ! =============================
+        ! Calculate special photo rates
+        ! =============================
+        if( do_jno ) then
+          call calculate_jno( sza, &
+                              tuvx%et_flux_ms93_, &
+                              fixed_species_conc(i_col,:,:), &
+                              species_vmr(i_col,:,:), &
+                              height_int(i_col,:), &
+                              tuvx%photo_rates_(i_col,2:pver+1,jno_index) )
+        end if
+      end do
+
+      ! ==============================================
+      ! Filter negative rates TODO fix inputs to TUV-x
+      ! ==============================================
+      tuvx%photo_rates_(:,:,:) = max( 0.0_r8, tuvx%photo_rates_(:,:,:) )
+
+      ! ============================================
+      ! Return the photolysis rates on the CAM grids
+      ! ============================================
+      do i_col = 1, ncol
+        do i_level = 1, pver
+          call tuvx%photo_rate_map_%apply( tuvx%photo_rates_(i_col,pver-i_level+2,:), &
+                                           photolysis_rates(i_col,i_level,:) )
+        end do
       end do
 
       call output_diagnostics( tuvx, ncol, lchnk )
@@ -459,7 +641,7 @@ contains
                                is_main_task => masterproc
 
     if( is_main_task ) then
-      write(iulog,*) "Initializing TUV-x"
+      write(iulog,*) "Initialized TUV-x"
 #ifdef HAVE_MPI
       write(iulog,*) "  - with MPI support on task "//trim( to_char( main_task ) )
 #else
@@ -478,9 +660,43 @@ contains
       else
         write(iulog,*) "  - without on-line aerosols"
       end if
+      if( index_N2 > 0 ) write(iulog,*) "  - including N2"
+      if( index_O  > 0 ) write(iulog,*) "  - including O"
+      if( index_O2 > 0 ) write(iulog,*) "  - including O2"
+      if( index_O3 > 0 ) write(iulog,*) "  - including O3"
+      if( index_NO > 0 ) write(iulog,*) "  - including NO"
+      if( do_euv ) write(iulog,*) "  - doing Extreme-UV calculations"
+      if( do_jno ) write(iulog,*) "  - including special jno rate calculation"
+      write(iulog,*) "  - max solar zenith angle [degrees]:", max_sza
     end if
 
   end subroutine log_initialization
+
+!================================================================================================
+
+  !-----------------------------------------------------------------------
+  ! initializes the external extreme-UV module
+  !-----------------------------------------------------------------------
+  subroutine initialize_euv( photon_file, electron_file, do_euv )
+
+    use chem_mods,    only : phtcnt    ! number of CAM-Chem photolysis reactions
+    use mo_jeuv,      only : jeuv_init ! extreme-UV initialization
+
+    character(len=*),     intent(in)  :: photon_file   ! photon file used in extended-UV module
+                                                       !   setup
+    character(len=*),     intent(in)  :: electron_file ! electron file used in extended-UV
+                                                       !   module setup
+    logical,              intent(out) :: do_euv        ! indicates whether extreme-UV
+                                                       !   calculations are needed
+
+    integer, allocatable :: euv_index_map(:)
+
+    allocate( euv_index_map( phtcnt ) )
+    euv_index_map(:) = 0
+    call jeuv_init( photon_file, electron_file, euv_index_map )
+    do_euv = any( euv_index_map(:) > 0 )
+
+  end subroutine initialize_euv
 
 !================================================================================================
 
@@ -490,11 +706,12 @@ contains
   subroutine initialize_diagnostics( this )
 
     use cam_history,   only : addfld
+    use musica_assert, only : assert
     use musica_string, only : string_t
 
     type(tuvx_ptr), intent(in) :: this
 
-    type(string_t), allocatable :: labels(:)
+    type(string_t), allocatable :: labels(:), all_labels(:)
     integer :: i_label
 
     if( .not. enable_diagnostics ) then
@@ -506,15 +723,131 @@ contains
     ! add output for specific photolysis reaction rate constants
     ! ==========================================================
     labels = this%core_%photolysis_reaction_labels( )
-    allocate( diagnostics( size( labels ) ) )
-    do i_label = 1, size( labels )
-      diagnostics( i_label )%name_  = trim( labels( i_label )%to_char( ) )
+    allocate( all_labels( size( labels ) + this%n_special_rates_ ) )
+    all_labels( 1 : size( labels ) ) = labels(:)
+    i_label = size( labels ) + 1
+    if( do_jno ) then
+      all_labels( i_label ) = "jno"
+      i_label = i_label + 1
+    end if
+    call assert( 522515214, i_label == size( all_labels ) + 1 )
+    allocate( diagnostics( size( all_labels ) ) )
+    do i_label = 1, size( all_labels )
+      diagnostics( i_label )%name_  = trim( all_labels( i_label )%to_char( ) )
       diagnostics( i_label )%index_ = i_label
       call addfld( "tuvx_"//diagnostics( i_label )%name_, (/ 'lev' /), 'A', 'sec-1', &
                    'photolysis rate constant' )
     end do
 
   end subroutine initialize_diagnostics
+
+!================================================================================================
+
+  !-----------------------------------------------------------------------
+  ! Sets up a map between the TUV-x and CAM photolysis rate arrays
+  !-----------------------------------------------------------------------
+  subroutine set_photo_rate_map( core, config, do_euv, do_jno, jno_index, map )
+
+    use cam_logfile,   only : iulog       ! log info output unit
+    use chem_mods,     only : phtcnt, &   ! number of photolysis reactions
+                              rxt_tag_lst ! labels for all chemical reactions
+                                          ! NOTE photolysis reactions are
+                                          ! expected to appear first
+    use mo_jeuv,       only : neuv        ! number of extreme-UV rates
+    use musica_config, only : config_t
+    use musica_string, only : string_t
+
+    type(core_t),   intent(in)    :: core      ! TUV-x core
+    type(config_t), intent(inout) :: config    ! CAM<->TUV-x map configuration
+    logical,        intent(in)    :: do_euv    ! indicates whether to include
+                                               !   extreme-UV rates in the mapping
+    logical,        intent(out)   :: do_jno    ! indicates whether jno should be
+                                               !   calculated
+    integer,        intent(out)   :: jno_index ! index for jno in source photo
+                                               !   rate array
+    type(map_t),    intent(out)   :: map
+
+    integer :: i_label, i_start, i_end
+    type(string_t) :: str_label
+    type(string_t), allocatable :: tuvx_labels(:), euv_labels(:), special_labels(:), &
+                                   all_labels(:), cam_labels(:)
+
+    ! ==================
+    ! MOZART photo rates
+    ! ==================
+    allocate( cam_labels( phtcnt ) )
+    do i_label = 1, phtcnt
+      cam_labels( i_label ) = trim( rxt_tag_lst( i_label ) )
+    end do
+
+    ! =================
+    ! TUV-x photo rates
+    ! =================
+    tuvx_labels = core%photolysis_reaction_labels( )
+
+    ! ======================
+    ! Extreme-UV photo rates
+    ! ======================
+    if( do_euv ) then
+      allocate( euv_labels( neuv ) )
+      do i_label = 1, neuv
+        str_label = i_label
+        euv_labels( i_label ) = "jeuv_"//str_label
+      end do
+    else
+      allocate( euv_labels(0) )
+    end if
+
+    ! ===============================
+    ! Special photo rate calculations
+    ! ===============================
+    do_jno = .false.
+    jno_index = 0
+    do i_label = 1, size( cam_labels )
+      if( cam_labels( i_label ) == "jno" ) then
+        do_jno = .true.
+        exit
+      end if
+    end do
+    if( do_jno ) then
+      allocate( special_labels(1) )
+      special_labels(1) = "jno"
+    else
+      allocate( special_labels(0) )
+    end if
+
+    ! ==========================
+    ! Combine photo rate sources
+    ! ==========================
+    allocate( all_labels( size( tuvx_labels ) + size( euv_labels ) + &
+                          size( special_labels ) ) )
+    i_end = 0
+    if( size( tuvx_labels ) > 0 ) then
+      i_start = i_end + 1
+      i_end   = i_start + size( tuvx_labels ) - 1
+      all_labels( i_start : i_end ) = tuvx_labels(:)
+    end if
+    if( size( euv_labels ) > 0 ) then
+      i_start = i_end + 1
+      i_end   = i_start + size( euv_labels ) - 1
+      all_labels( i_start : i_end ) = euv_labels(:)
+    end if
+    if( size( special_labels ) > 0 ) then
+      i_start = i_end + 1
+      i_end   = i_start + size( special_labels ) - 1
+      all_labels( i_start : i_end ) = special_labels(:)
+      jno_index = i_start
+    end if
+
+    ! ==========
+    ! Create map
+    ! ==========
+    map = map_t( config, all_labels, cam_labels )
+    write(iulog,*)
+    write(iulog,*) "TUV-x --> CAM-Chem photolysis rate constant map"
+    call map%print( all_labels, cam_labels, iulog )
+
+  end subroutine set_photo_rate_map
 
 !================================================================================================
 
@@ -535,7 +868,7 @@ contains
 
     do i_diag = 1, size( diagnostics )
     associate( diag => diagnostics( i_diag ) )
-      call outfld( "tuvx_"//diag%name_, this%photo_rates_(:ncol,:,diag%index_), &
+      call outfld( "tuvx_"//diag%name_, this%photo_rates_(:ncol,pver+1:2:-1,diag%index_), &
                    ncol, lchnk )
     end associate
     end do
@@ -569,7 +902,7 @@ contains
     ! =========================
     ! heights above the surface
     ! =========================
-    host_grid => grid_from_host_t( "height", "km", pver )
+    host_grid => grid_from_host_t( "height", "km", pver+1 )
     call grids%add( host_grid )
     deallocate( host_grid )
 
@@ -661,7 +994,7 @@ contains
 !================================================================================================
 
   !-----------------------------------------------------------------------
-  ! Creates and loads a radiator warehouse with radiators that CAM
+  ! Creates and loads a radiator warehouse with radiators that CAM will
   !    update at runtime
   !-----------------------------------------------------------------------
   function get_cam_radiators( grids ) result( radiators )
@@ -706,7 +1039,7 @@ contains
   !   for runtime access of CAM data
   !
   !-----------------------------------------------------------------------
-  subroutine create_updaters( this, grids, profiles, radiators )
+  subroutine create_updaters( this, grids, profiles, radiators, disable_aerosols )
 
     use modal_aer_opt,           only : modal_aer_opt_init
     use ppgrid,                  only : pcols ! maximum number of columns
@@ -726,6 +1059,7 @@ contains
     class(grid_warehouse_t),     intent(in)    :: grids
     class(profile_warehouse_t),  intent(in)    :: profiles
     class(radiator_warehouse_t), intent(in)    :: radiators
+    logical,                     intent(in)    :: disable_aerosols
 
     class(grid_t),     pointer :: height, wavelength
     class(profile_t),  pointer :: host_profile
@@ -803,7 +1137,7 @@ contains
     ! intialize the aerosol optics module
     ! ====================================================================
     call rad_cnst_get_info( 0, nmodes = n_modes )
-    if( n_modes > 0 .and. .not. aerosol_exists ) then
+    if( n_modes > 0 .and. .not. aerosol_exists .and. .not. disable_aerosols ) then
       aerosol_exists = .true.
       call modal_aer_opt_init( )
     else
@@ -833,13 +1167,17 @@ contains
   !  TUV-x heights are "bottom-up" and require atmospheric constituent
   !  concentrations at interfaces. Therefore, CAM mid-points are used as
   !  TUV-x grid interfaces, with an additional layer introduced between
-  !  the surface and the lowest CAM mid-point.
+  !  the surface and the lowest CAM mid-point, and a layer at the
+  !  top of the TUV-x grid to hold species densities above the top CAM
+  !  mid-point.
   !
   !  ---- (interface)  ===== (mid-point)
   !
   !        CAM                                  TUV-x
-  ! ------(top)------ i_int = 1                              (exo values)
-  ! ================= i_mid = 1           -------(top)------ i_int = pver + 1
+  ! ------(top)------ i_int = 1           -------(top)------ i_int = pver + 2
+  ! ************************ (exo values) *****************************
+  !                                       ================== i_mid = pver + 1
+  ! ================= i_mid = 1           ------------------ i_int = pver + 1
   ! ----------------- i_int = 2           ================== i_mid = pver
   !                                       ------------------ i_int = pver
   !        ||
@@ -858,19 +1196,22 @@ contains
     class(tuvx_ptr), intent(inout) :: this                     ! TUV-x calculator
     integer,         intent(in)    :: i_col                    ! column to set conditions for
     integer,         intent(in)    :: ncol                     ! number of colums to calculated photolysis for
-    real(r8),        intent(in)    :: height_mid(pcols,pver)   ! height above the surface at mid-points (km)
-    real(r8),        intent(in)    :: height_int(pcols,pver+1) ! height above the surface at interfaces (km)
+    real(r8),        intent(in)    :: height_mid(ncol,pver)    ! height above the surface at mid-points (km)
+    real(r8),        intent(in)    :: height_int(ncol,pver+1)  ! height above the surface at interfaces (km)
 
     integer :: i_level
-    real(r8) :: edges(pver+1)
-    real(r8) :: mid_points(pver)
+    real(r8) :: edges(pver+2)
+    real(r8) :: mid_points(pver+1)
 
-    edges(1) = 0.0_r8
+    edges(1) = height_int(i_col,pver+1)
     edges(2:pver+1) = height_mid(i_col,pver:1:-1)
-    mid_points(1) = height_mid(i_col,pver) * 0.5_r8
+    edges(pver+2) = height_int(i_col,1)
+    mid_points(1) = ( height_mid(i_col,pver) - height_int(i_col,pver+1) ) * 0.5_r8 &
+                    + height_int(i_col,pver+1)
     mid_points(2:pver) = height_int(i_col,pver:2:-1)
+    mid_points(pver+1) = 0.5_r8 * ( edges(pver+1) + edges(pver+2) )
     call this%grids_( GRID_INDEX_HEIGHT )%update( edges = edges, mid_points = mid_points )
-    this%height_delta_(1:pver) = edges(2:pver+1) - edges(1:pver)
+    this%height_delta_(1:pver+1) = edges(2:pver+2) - edges(1:pver+1)
 
   end subroutine set_heights
 
@@ -891,10 +1232,11 @@ contains
     real(r8),        intent(in)    :: temperature_mid(pcols,pver) ! midpoint temperature (K)
     real(r8),        intent(in)    :: surface_temperature(pcols)  ! surface temperature (K)
 
-    real(r8) :: edges(pver+1)
+    real(r8) :: edges(pver+2)
 
     edges(1) = surface_temperature(i_col)
     edges(2:pver+1) = temperature_mid(i_col,pver:1:-1)
+    edges(pver+2) = temperature_mid(i_col,1) ! Use upper mid-point temperature for top edge
     call this%profiles_( PROFILE_INDEX_TEMPERATURE )%update( edge_values = edges )
 
   end subroutine set_temperatures
@@ -940,18 +1282,53 @@ contains
                                             !   (photon cm-2 nm-1 s-1)
 
     class(tuvx_ptr), intent(inout) :: this  ! TUV-x calculator
-    real(r8) :: et_flux_orig(nbins)
-    integer  :: n_tuvx_bins
 
-    et_flux_orig(:) = sol_etf(:) * ( we(2:nbins+1) - we(1:nbins) )
+    real(r8) :: et_flux_orig(nbins)
+    integer  :: n_tuvx_bins, i_bin
+
+    ! ===============================================
+    ! regrid normalized flux to TUV-x wavelength grid
+    !================================================
+    et_flux_orig(:) = sol_etf(:)
     n_tuvx_bins = size(this%wavelength_mid_values_)
     call rebin( nbins, n_tuvx_bins, we, this%wavelength_edges_, et_flux_orig, &
                 this%wavelength_mid_values_ )
-    this%wavelength_values_(1)  = this%wavelength_mid_values_(1)
-    this%wavelength_values_(2:n_tuvx_bins+1) = this%wavelength_mid_values_(1:n_tuvx_bins)
+
+    ! ========================================================
+    ! convert normalized flux to flux on TUV-x wavelength grid
+    ! ========================================================
+    this%wavelength_mid_values_(:) = this%wavelength_mid_values_(:) * &
+                                     ( this%wavelength_edges_(2:n_tuvx_bins+1) - &
+                                       this%wavelength_edges_(1:n_tuvx_bins) )
+
+    ! ====================================
+    ! estimate unused edge values for flux
+    ! ====================================
+    this%wavelength_values_(1)  = this%wavelength_mid_values_(1) - &
+                                  ( this%wavelength_mid_values_(2) - &
+                                    this%wavelength_mid_values_(1) ) * 0.5_r8
+    do i_bin = 2, n_tuvx_bins
+      this%wavelength_values_(i_bin) = this%wavelength_mid_values_(i_bin-1) + &
+                                         ( this%wavelength_mid_values_(i_bin) - &
+                                           this%wavelength_mid_values_(i_bin-1) ) * 0.5_r8
+    end do
+    this%wavelength_values_(n_tuvx_bins+1) = &
+        this%wavelength_mid_values_(n_tuvx_bins) + &
+        ( this%wavelength_mid_values_(n_tuvx_bins) - &
+          this%wavelength_mid_values_(n_tuvx_bins-1) ) * 0.5_r8
+
+    ! ============================
+    ! update TUV-x ET flux profile
+    ! ============================
     call this%profiles_( PROFILE_INDEX_ET_FLUX )%update( &
             mid_point_values = this%wavelength_mid_values_, &
             edge_values      = this%wavelength_values_)
+
+    ! ======================================================================
+    ! rebin extraterrestrial flux to MS93 grid for use with jno calculations
+    ! ======================================================================
+    call rebin( nbins, NUM_BINS_MS93, we, WAVELENGTH_EDGES_MS93, et_flux_orig, &
+                this%et_flux_ms93_ )
 
   end subroutine set_et_flux
 
@@ -983,9 +1360,9 @@ contains
     real(r8),        intent(in)    :: species_vmr(ncol,pver,max(1,gas_pcnst))     ! species volume mixing
                                                                                   !   ratios (mol mol-1)
     real(r8),        intent(in)    :: exo_column_conc(ncol,0:pver,max(1,nabscol)) ! above column densities
-                                                                                  !   (molecule cm-3)
+                                                                                  !   (molecule cm-2)
 
-    real(r8) :: edges(pver+1), densities(pver)
+    real(r8) :: edges(pver+2), densities(pver+1)
     real(r8) :: exo_val
     real(r8), parameter :: km2cm = 1.0e5 ! conversion from km to cm
 
@@ -994,8 +1371,9 @@ contains
     ! ===========
     edges(1) = fixed_species_conc(i_col,pver,indexm)
     edges(2:pver+1) = fixed_species_conc(i_col,pver:1:-1,indexm)
-    densities(1:pver) = this%height_delta_(1:pver) * km2cm * &
-                        sqrt(edges(1:pver)) + sqrt(edges(2:pver+1))
+    edges(pver+2) = fixed_species_conc(i_col,1,indexm) ! use upper mid-point value for top edge
+    densities(1:pver+1) = this%height_delta_(1:pver+1) * km2cm * &
+                        sqrt(edges(1:pver+1)) * sqrt(edges(2:pver+2))
     call this%profiles_( PROFILE_INDEX_AIR )%update( &
         edge_values = edges, layer_densities = densities, &
         scale_height = 8.01_r8 ) ! scale height in [km]
@@ -1006,20 +1384,22 @@ contains
     if( is_fixed_O2 ) then
       edges(1) = fixed_species_conc(i_col,pver,index_O2)
       edges(2:pver+1) = fixed_species_conc(i_col,pver:1:-1,index_O2)
+      edges(pver+2) = fixed_species_conc(i_col,1,index_O2)
     else if( index_O2 > 0 ) then
       edges(1) = species_vmr(i_col,pver,index_O2) * &
                  fixed_species_conc(i_col,pver,indexm)
       edges(2:pver+1) = species_vmr(i_col,pver:1:-1,index_O2) * &
                         fixed_species_conc(i_col,pver:1:-1,indexm)
+      edges(pver+2) = species_vmr(i_col,1,index_O2) * &
+                        fixed_species_conc(i_col,1,indexm)
     else
       edges(:) = 0.0_r8
     end if
-    exo_val = exo_column_conc(i_col,0,1)
-    densities(1:pver) = this%height_delta_(1:pver) * km2cm * &
-                        sqrt(edges(1:pver)) + sqrt(edges(2:pver+1))
+    densities(1:pver+1) = this%height_delta_(1:pver+1) * km2cm * &
+                        sqrt(edges(1:pver+1)) * sqrt(edges(2:pver+2))
     call this%profiles_( PROFILE_INDEX_O2 )%update( &
         edge_values = edges, layer_densities = densities, &
-        exo_density = exo_val )
+        scale_height = 7.0_r8 )
 
     ! ==========
     ! O3 profile
@@ -1027,24 +1407,33 @@ contains
     if( is_fixed_O3 ) then
       edges(1) = fixed_species_conc(i_col,pver,index_O3)
       edges(2:pver+1) = fixed_species_conc(i_col,pver:1:-1,index_O3)
+      edges(pver+2) = fixed_species_conc(i_col,1,index_O3)
     else if( index_O3 > 0 ) then
       edges(1) = species_vmr(i_col,pver,index_O3) * &
                  fixed_species_conc(i_col,pver,indexm)
       edges(2:pver+1) = species_vmr(i_col,pver:1:-1,index_O3) * &
                         fixed_species_conc(i_col,pver:1:-1,indexm)
+      edges(pver+2) = species_vmr(i_col,1,index_O3) * &
+                        fixed_species_conc(i_col,1,indexm)
     else
       edges(:) = 0.0_r8
     end if
-    if( nabscol >= 2 ) then
-      exo_val = exo_column_conc(i_col,0,2)
+    if( nabscol >= 1 ) then
+      densities(1) = 0.5_r8 * exo_column_conc(i_col,pver,1)
+      densities(2:pver) = 0.5_r8 * ( exo_column_conc(i_col,pver-1:1:-1,1) &
+                                     + exo_column_conc(i_col,pver:2:-1,1) )
+      densities(pver+1) = exo_column_conc(i_col,0,1) &
+                          + 0.5_r8 * exo_column_conc(i_col,1,1)
+      call this%profiles_( PROFILE_INDEX_O3 )%update( &
+          edge_values = edges, layer_densities = densities, &
+          exo_density = exo_column_conc(i_col,0,1) )
     else
-      exo_val = 0.0_r8
+      densities(1:pver+1) = this%height_delta_(1:pver+1) * km2cm * &
+                          ( edges(1:pver+1) + edges(2:pver+2) ) * 0.5_r8
+      call this%profiles_( PROFILE_INDEX_O3 )%update( &
+          edge_values = edges, layer_densities = densities, &
+          scale_height = 7.0_r8 )
     end if
-    densities(1:pver) = this%height_delta_(1:pver) * km2cm * &
-                        sqrt(edges(1:pver)) + sqrt(edges(2:pver+1))
-    call this%profiles_( PROFILE_INDEX_O3 )%update( &
-        edge_values = edges, layer_densities = densities, &
-        exo_density = exo_val )
 
     ! ===============
     ! aerosol profile
@@ -1131,6 +1520,12 @@ contains
         call rebin(nswbands, n_tuvx_bins, wavelength_edges, this%wavelength_edges_, &
                    aer_tau_w_g(i_col,pver-i_level,:), this%asymmetry_factor_(i_col,i_level,:))
       end do
+      this%optical_depth_(i_col,pver+1,:) = &
+          this%optical_depth_(i_col,pver,:)
+      this%single_scattering_albedo_(i_col,pver+1,:) = &
+          this%single_scattering_albedo_(i_col,pver,:)
+      this%asymmetry_factor_(i_col,pver+1,:) = &
+          this%asymmetry_factor_(i_col,pver,:)
     end do
 
     ! ================================================================
@@ -1173,6 +1568,167 @@ contains
     optics_array(:,:,1:nswbands-1) = working(:,:,nswbands-1:1:-1)
 
   end subroutine reorder_optics_array
+
+!================================================================================================
+
+  !-----------------------------------------------------------------------
+  ! Calculates extreme-UV ionization rates
+  !
+  ! NOTE This never includes an above-column layer
+  !-----------------------------------------------------------------------
+  subroutine calculate_euv_rates( solar_zenith_angle, fixed_species_conc, &
+      species_vmr, height_mid, height_int, euv_rates )
+
+    use chem_mods, only : gas_pcnst, & ! number of non-fixed species
+                          nfs, &       ! number of fixed species
+                          indexm       ! index for air density in fixed species array
+    use mo_jeuv,   only : jeuv, neuv   ! number of extreme-UV rates
+    use ref_pres,  only : ptop_ref     ! pressure at the top of the column (Pa)
+
+    real(r8), intent(in)  :: solar_zenith_angle ! degrees
+    real(r8), intent(in)  :: fixed_species_conc(pver,max(1,nfs))   ! fixed species densities
+                                                                   !   (molecule cm-3)
+    real(r8), intent(in)  :: species_vmr(pver,max(1,gas_pcnst))    ! species volume mixing
+                                                                   !   ratios (mol mol-1)
+    real(r8), intent(in)  :: height_mid(pver)     ! height at mid-points (km)
+    real(r8), intent(in)  :: height_int(pver+1)   ! height at interfaces (km)
+    real(r8), intent(out) :: euv_rates(pver,neuv) ! calculated extreme-UV rates
+
+    real(r8) :: o_dens(pver), o2_dens(pver), n2_dens(pver), height_arg(pver)
+
+    ! ==========
+    ! N2 density
+    ! ==========
+    if( is_fixed_N2 ) then
+      n2_dens(:) = fixed_species_conc(:pver,index_N2)
+    else
+      n2_dens(:) = species_vmr(:pver,index_N2) * fixed_species_conc(:pver,indexm)
+    end if
+
+    ! =========
+    ! O density
+    ! =========
+    if( is_fixed_O ) then
+      o_dens(:) = fixed_species_conc(:pver,index_O)
+    else
+      o_dens(:) = species_vmr(:pver,index_O) * fixed_species_conc(:pver,indexm)
+    end if
+
+    ! ==========
+    ! O2 density
+    ! ==========
+    if( is_fixed_O2 ) then
+      o2_dens(:) = fixed_species_conc(:pver,index_O2)
+    else
+      o2_dens(:) = species_vmr(:pver,index_O2) * fixed_species_conc(:pver,indexm)
+    end if
+
+    ! =======================
+    ! special height argument
+    ! =======================
+    height_arg(:) = height_mid(:)
+
+    call jeuv( pver, solar_zenith_angle, o_dens, o2_dens, n2_dens, height_arg, euv_rates )
+
+  end subroutine calculate_euv_rates
+
+!================================================================================================
+
+  !-----------------------------------------------------------------------
+  ! Calculates NO photolysis rates
+  !
+  ! NOTE: Always includes an above-column layer
+  !-----------------------------------------------------------------------
+  subroutine calculate_jno( solar_zenith_angle, et_flux, fixed_species_conc, species_vmr, &
+      height_int, jno )
+
+    use chem_mods, only : gas_pcnst, & ! number of non-fixed species
+                          nfs, &       ! number of fixed species
+                          indexm       ! index for air density in fixed species array
+    use mo_jshort, only : sphers, slant_col, calc_jno
+    use ref_pres,  only : ptop_ref     ! pressure at the top of the column (Pa)
+
+    real(r8), intent(in)  :: solar_zenith_angle                  ! degrees
+    real(r8), intent(in)  :: et_flux(NUM_BINS_MS93)              ! extraterrestrial flux MS93 grid
+                                                                 !   (photon cm-2 nm-1 s-1)
+    real(r8), intent(in)  :: fixed_species_conc(pver,max(1,nfs)) ! fixed species densities
+                                                                 !   (molecule cm-3)
+    real(r8), intent(in)  :: species_vmr(pver,max(1,gas_pcnst))  ! species volume mixing
+                                                                 !   ratios (mol mol-1)
+    real(r8), intent(in)  :: height_int(pver+1)                  ! height at interfaces (km)
+    real(r8), intent(out) :: jno(pver)                           ! calculated NO rate
+
+    ! species column densities (molecule cm-3)
+    real(kind=r8) :: n2_dens(pver+1), o2_dens(pver+1), o3_dens(pver+1), no_dens(pver+1)
+    ! species slant column densities (molecule cm-2)
+    real(kind=r8) :: o2_slant(pver+1), o3_slant(pver+1), no_slant(pver+1)
+    ! working photo rate array
+    real(kind=r8) :: work_jno(pver+1)
+    ! parameters needed to calculate slant column densities
+    ! (see sphers routine description for details)
+    integer       :: nid(pver+1)
+    real(kind=r8) :: dsdh(0:pver+1,pver+1)
+    ! layer thickness (cm)
+    real(kind=r8) :: delz(pver+1)
+    ! conversion from km to cm
+    real(kind=r8), parameter :: km2cm = 1.0e5_r8
+
+    ! ==========
+    ! N2 density
+    ! ==========
+    if( is_fixed_N2 ) then
+      n2_dens(2:) = fixed_species_conc(:pver,index_N2)
+    else
+      n2_dens(2:) = species_vmr(:pver,index_N2) * fixed_species_conc(:pver,indexm)
+    end if
+    n2_dens(1) = n2_dens(2) * 0.9_r8
+
+    ! ==========
+    ! O2 density
+    ! ==========
+    if( is_fixed_O2 ) then
+      o2_dens(2:) = fixed_species_conc(:pver,index_O2)
+    else
+      o2_dens(2:) = species_vmr(:pver,index_O2) * fixed_species_conc(:pver,indexm)
+    end if
+    o2_dens(1) = o2_dens(2) * 7.0_r8 / ( height_int(1) - height_int(2) )
+
+    ! ==========
+    ! O3 density
+    ! ==========
+    if( is_fixed_O3 ) then
+      o3_dens(2:) = fixed_species_conc(:pver,index_O3)
+    else
+      o3_dens(2:) = species_vmr(:pver,index_O3) * fixed_species_conc(:pver,indexm)
+    end if
+    o3_dens(1) = o3_dens(2) * 7.0_r8 / ( height_int(1) - height_int(2) )
+
+    ! ==========
+    ! NO density
+    ! ==========
+    if( is_fixed_NO ) then
+      no_dens(2:) = fixed_species_conc(:pver,index_NO)
+    else
+      no_dens(2:) = species_vmr(:pver,index_NO) * fixed_species_conc(:pver,indexm)
+    end if
+    no_dens(1) = no_dens(2) * 0.9_r8
+
+    ! ================================
+    ! calculate slant column densities
+    ! ================================
+    call sphers( pver+1, height_int, solar_zenith_angle, dsdh, nid )
+    delz(1:pver) = km2cm * ( height_int(1:pver) - height_int(2:pver+1) )
+    call slant_col( pver+1, delz, dsdh, nid, o2_dens, o2_slant )
+    call slant_col( pver+1, delz, dsdh, nid, o3_dens, o3_slant )
+    call slant_col( pver+1, delz, dsdh, nid, no_dens, no_slant )
+
+    ! =========================================
+    ! calculate the NO photolysis rate constant
+    ! =========================================
+    call calc_jno( pver+1, et_flux, n2_dens, o2_slant, o3_slant, no_slant, work_jno )
+    jno(:) = work_jno(:pver)
+
+  end subroutine calculate_jno
 
 !================================================================================================
 
