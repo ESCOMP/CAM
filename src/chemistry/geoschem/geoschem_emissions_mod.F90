@@ -317,6 +317,7 @@ CONTAINS
 !
 ! !REVISION HISTORY:
 !  07 Oct 2020 - T. M. Fritz   - Initial version
+!  06 Mar 2023 - H.P. Lin      - Now emit surface fluxes directly
 !EOP
 !------------------------------------------------------------------------------
 !BOC
@@ -429,10 +430,10 @@ CONTAINS
     ! Deposition fluxes from HEMCO
     !-----------------------------------------------------------------------
 
-    ! Part 1: Eventually retrieve deposition velocities [1/s] from HEMCO
-    ! and convert to negative flux and apply.
-    ! TODO hplin 3/24/21
-    
+    ! Deposition velocities in HEMCO are now handled within HEMCO_CESM for a
+    ! hardcoded list of species, primarily for the SeaFlux extension.
+    ! This is not to be confused with dry deposition fluxes which are not
+    ! handled by HEMCO.
 
     ! Part 2: Handle special deposition fluxes for the ParaNOx extension
     ! for PAR_O3_DEP and PAR_HNO3_DEP
@@ -601,11 +602,14 @@ CONTAINS
     ! TMMF - vertical distribution of fire emissions is not implemented yet
     !CALL fire_emissions_vrt( nY, LCHNK, zint, cam_in%fireflx, cam_in%fireztop, extfrc )
 
-    !-----------------------------------------------------------------------
-    ! Add near-surface emissions to surface flux boundary condition
-    !-----------------------------------------------------------------------
-    cam_in%cflx(1:nY,:) = cam_in%cflx(1:nY,:) + eflx(1:nY,nZ,:)
-    eflx(1:nY,nZ,:)     = 0.0e+00_r8
+    ! Near-surface emissions are now emitted directly to GEOS-Chem Species array
+    ! for consistency with CAM-chem implementation of HEMCO
+    ! (but not with GEOS-Chem standalone, where fluxes are mixed by the turbulence routines)
+    ! Refer to discussion here: https://github.com/ESCOMP/CAM/pull/560#discussion_r1084559191
+    !
+    ! To replicate old behavior, uncomment these two lines below:
+    ! cam_in%cflx(1:nY,:) = cam_in%cflx(1:nY,:) + eflx(1:nY,nZ,:)
+    ! eflx(1:nY,nZ,:)     = 0.0e+00_r8
 
   END SUBROUTINE GC_Emissions_Calc
 !EOC
