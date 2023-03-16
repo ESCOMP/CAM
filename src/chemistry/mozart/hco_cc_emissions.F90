@@ -122,8 +122,10 @@ contains
             pcnst_is_extfrc(n) = (get_extfrc_ndx(trim(solsym(n))) > 0)
         enddo
 
-        write(iulog,*) "hco_set_srf_emissions: first run pcnst_is_extfrc cache"
-        write(iulog,*) pcnst_is_extfrc
+        if(masterproc) then
+            write(iulog,*) "hco_set_srf_emissions: first run pcnst_is_extfrc cache"
+            write(iulog,*) pcnst_is_extfrc
+        endif
 
         FIRST = .false.
     endif
