@@ -2430,25 +2430,28 @@ contains
           K4 = Ind_(speciesName_4)
           DO J = 1, nY
           DO L = 1, nZ
+             ! Total SOA aerosol masses from GC are available. Partition according to the ratio given in speciesId_N to totMass summed above.
              IF ( totMass(J,L) > 0.0e+00_r8 ) THEN
                 IF ( K1 > 0 ) State_Chm(LCHNK)%Species(K1)%Conc(1,J,L) = state%q(J,nZ+1-L,speciesId_1) / totMass(J,nZ+1-L) * bulkMass(J,nZ+1-L) * adv_mass(mapCnst(speciesId_1)) / tmpMW_g
-                IF ( K2 > 0 ) State_Chm(LCHNK)%Species(K1)%Conc(1,J,L) = state%q(J,nZ+1-L,speciesId_2) / totMass(J,nZ+1-L) * bulkMass(J,nZ+1-L) * adv_mass(mapCnst(speciesId_2)) / tmpMW_g
+                IF ( K2 > 0 ) State_Chm(LCHNK)%Species(K2)%Conc(1,J,L) = state%q(J,nZ+1-L,speciesId_2) / totMass(J,nZ+1-L) * bulkMass(J,nZ+1-L) * adv_mass(mapCnst(speciesId_2)) / tmpMW_g
                 IF ( K3 > 0 ) State_Chm(LCHNK)%Species(K3)%Conc(1,J,L) = state%q(J,nZ+1-L,speciesId_3) / totMass(J,nZ+1-L) * bulkMass(J,nZ+1-L) * adv_mass(mapCnst(speciesId_3)) / tmpMW_g
                 IF ( K4 > 0 ) State_Chm(LCHNK)%Species(K4)%Conc(1,J,L) = state%q(J,nZ+1-L,speciesId_4) / totMass(J,nZ+1-L) * bulkMass(J,nZ+1-L) * adv_mass(mapCnst(speciesId_4)) / tmpMW_g
              ELSE
+                ! Total SOA aerosol masses from GC are unknown. In this case partition the bulkMass by 1/2 to K1 and K2.
                 IF ( K1 == K2 ) THEN
+                   ! ... go in same bin. This actually does not exist in the partitioning above.
                    State_Chm(LCHNK)%Species(K1)%Conc(1,J,L) = bulkMass(J,nZ+1-L) * adv_mass(mapCnst(speciesId_1)) / tmpMW_g
                 ELSE
                    State_Chm(LCHNK)%Species(K1)%Conc(1,J,L) = bulkMass(J,nZ+1-L) * adv_mass(mapCnst(speciesId_1)) / tmpMW_g / 2.0_r8
-                   State_Chm(LCHNK)%Species(K1)%Conc(1,J,L) = bulkMass(J,nZ+1-L) * adv_mass(mapCnst(speciesId_1)) / tmpMW_g / 2.0_r8
+                   State_Chm(LCHNK)%Species(K2)%Conc(1,J,L) = bulkMass(J,nZ+1-L) * adv_mass(mapCnst(speciesId_2)) / tmpMW_g / 2.0_r8
                 ENDIF
              ENDIF
           ENDDO
           ENDDO
           IF ( K1 > 0 ) MMR_Beg(:nY,:nZ,K1) = State_Chm(LCHNK)%Species(K1)%Conc(1,:nY,:nZ)
           IF ( K2 > 0 ) MMR_Beg(:nY,:nZ,K2) = State_Chm(LCHNK)%Species(K2)%Conc(1,:nY,:nZ)
-          IF ( K3 > 0 ) MMR_Beg(:nY,:nZ,K4) = State_Chm(LCHNK)%Species(K3)%Conc(1,:nY,:nZ)
-          IF ( K4 > 0 ) MMR_Beg(:nY,:nZ,K3) = State_Chm(LCHNK)%Species(K4)%Conc(1,:nY,:nZ)
+          IF ( K3 > 0 ) MMR_Beg(:nY,:nZ,K3) = State_Chm(LCHNK)%Species(K3)%Conc(1,:nY,:nZ)
+          IF ( K4 > 0 ) MMR_Beg(:nY,:nZ,K4) = State_Chm(LCHNK)%Species(K4)%Conc(1,:nY,:nZ)
        ENDDO
     ENDIF
 
