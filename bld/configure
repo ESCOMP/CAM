@@ -89,9 +89,10 @@ OPTIONS
      -max_n_rad_cnst <n> Maximum number of constituents that are either radiatively
                         active, or in any single diagnostic list for the radiation.
      -microphys <name>  Specify the microphysics option [mg1 | mg2 | mg3| rk].
+     -model_top <name>  Specify the model_top option [low | med | high | xhigh] Cannot be use along with nlev.
      -nadv <n>          Set total number of advected species to <n>.
      -nadv_tt <n>       Set number of advected test tracers <n>.
-     -nlev <n>          Set number of levels to <n>.
+     -nlev <n>          Set number of levels to <n> Cannot be use along with model_top.
      -offline_dyn       Switch enables the use of offline driver for FV dycore.
      -pbl <name>        Specify the PBL option [uw | hb | hbr].
      -pcols <n>         Set maximum number of columns in a chunk to <n>.
@@ -271,6 +272,7 @@ GetOptions(
     "max_n_rad_cnst=s"          => \$opts{'max_n_rad_cnst'},
     "mct_libdir=s"              => \$opts{'mct_libdir'},
     "microphys=s"               => \$opts{'microphys'},
+    "model_top=s"               => \$opts{'model_top'},
     "mpas_libdir=s"             => \$opts{'mpas_libdir'},
     "mpi_inc=s"                 => \$opts{'mpi_inc'},
     "mpi_lib=s"                 => \$opts{'mpi_lib'},
@@ -1274,44 +1276,64 @@ if ($print>=2) { print "Maximum number of sub-columns per column: $psubcols$eol"
 #-----------------------------------------------------------------------------------------------
 # Number of vertical levels
 my $nlev = 0;
+my $model_top = 'not_set';
 
-# Defaults
-if ($waccmx) {
-    if ($phys_pkg eq 'cam6') {
-        $nlev = 130;
-    } elsif ($phys_pkg eq 'cam_dev') {
-        $nlev = 130;
-    } else {
-        $nlev = 126;
-    }
-}
-elsif ($chem_pkg =~ /waccm_/) {
-    if ($phys_pkg eq 'cam4') {
-        $nlev = 66;
+if (defined $opts{'model_top'}) {
+    if (defined $opts{'nlev'}) {
+        die "configure ERROR: cannot set both model_top and nlev at same time\n";
     }
     else {
-        $nlev = 70;
+        $model_top = $opts{'model_top'};
     }
 }
-elsif ($phys_pkg eq 'cam_dev') {
-    $nlev = 32;
-}
-elsif ($phys_pkg eq 'cam6') {
-    $nlev = 32;
-}
-elsif ($phys_pkg eq 'cam5' or $phys_pkg eq 'spcam_m2005') {
-    $nlev = 30;
-}
-elsif ($phys_pkg eq 'cam4' or $phys_pkg eq 'spcam_sam1mom') {
-    $nlev = 26;
-}
-elsif ($phys_pkg eq 'cam3') {
-    $nlev = 26;
-}
-else {
-    # This will be used for Held-Suarez and other 'simple' physics
-    # We may change this to 32 once IC files are available.
-    $nlev = 30;
+
+# Defaults
+
+if ($model_top eq 'low') {
+   $nlev = 58 }
+elsif ($model_top eq 'mid') {
+   $nlev = 93 }
+
+# If model_top has not set nlev, proceed with older nlev settings
+
+if ($model_top eq 'not_set') {
+    if ($waccmx) {
+        if ($phys_pkg eq 'cam6') {
+            $nlev = 130;
+        } elsif ($phys_pkg eq 'cam_dev') {
+            $nlev = 130;
+        } else {
+            $nlev = 126;
+        }
+    }
+    elsif ($chem_pkg =~ /waccm_/) {
+        if ($phys_pkg eq 'cam4') {
+            $nlev = 66;
+        }
+        else {
+            $nlev = 70;
+        }
+    }
+    elsif ($phys_pkg eq 'cam_dev') {
+        $nlev = 32;
+    }
+    elsif ($phys_pkg eq 'cam6') {
+        $nlev = 32;
+    }
+    elsif ($phys_pkg eq 'cam5' or $phys_pkg eq 'spcam_m2005') {
+        $nlev = 30;
+    }
+    elsif ($phys_pkg eq 'cam4' or $phys_pkg eq 'spcam_sam1mom') {
+        $nlev = 26;
+    }
+    elsif ($phys_pkg eq 'cam3') {
+        $nlev = 26;
+    }
+    else {
+        # This will be used for Held-Suarez and other 'simple' physics
+        # We may change this to 32 once IC files are available.
+        $nlev = 30;
+        }
 }
 
 # user override
