@@ -1317,7 +1317,7 @@ contains
     use aoa_tracers,        only: aoa_tracers_timestep_tend
     use physconst,          only: rhoh2o
     use aero_model,         only: aero_model_drydep
-    use check_energy,       only: check_energy_chng, calc_te_and_aam_budgets
+    use check_energy,       only: check_energy_chng, tot_energy_phys
     use check_energy,       only: check_tracers_data, check_tracers_init, check_tracers_chng
     use time_manager,       only: get_nstep
     use cam_abortutils,     only: endrun
@@ -2274,8 +2274,8 @@ contains
        call cam_snapshot_all_outfld_tphysac(cam_snapshot_after_num, state, tend, cam_in, cam_out, pbuf,&
                     fh2o, surfric, obklen, flx_heat, cmfmc, dlf, det_s, det_ice, net_flx)
     end if
-    call calc_te_and_aam_budgets(state, 'phAP')
-    call calc_te_and_aam_budgets(state, 'dyAP',vc=vc_dycore)
+    call tot_energy_phys(state, 'phAP')
+    call tot_energy_phys(state, 'dyAP',vc=vc_dycore)
 
     !---------------------------------------------------------------------------------
     ! Enforce charge neutrality after O+ change from ionos_tend
@@ -2327,8 +2327,8 @@ contains
       call cam_thermo_water_update(state%q(:ncol,:,:), lchnk, ncol, vc_dycore,&
            to_dry_factor=state%pdel(:ncol,:)/state%pdeldry(:ncol,:))
 
-      call calc_te_and_aam_budgets(state, 'phAM')
-      call calc_te_and_aam_budgets(state, 'dyAM', vc=vc_dycore)
+      call tot_energy_phys(state, 'phAM')
+      call tot_energy_phys(state, 'dyAM', vc=vc_dycore)
       ! Restore pre-"physics_dme_adjust" tracers
       state%q(:ncol,:pver,:pcnst) = tmp_trac(:ncol,:pver,:pcnst)
       state%pdel(:ncol,:pver)     = tmp_pdel(:ncol,:pver)
@@ -2348,8 +2348,8 @@ contains
                     fh2o, surfric, obklen, flx_heat, cmfmc, dlf, det_s, det_ice, net_flx)
       end if
 
-      call calc_te_and_aam_budgets(state, 'phAM')
-      call calc_te_and_aam_budgets(state, 'dyAM', vc=vc_dycore)
+      call tot_energy_phys(state, 'phAM')
+      call tot_energy_phys(state, 'dyAM', vc=vc_dycore)
     endif
 
 !!!   REMOVE THIS CALL, SINCE ONLY Q IS BEING ADJUSTED. WON'T BALANCE ENERGY. TE IS SAVED BEFORE THIS
@@ -2429,7 +2429,7 @@ contains
     use convect_diagnostics,only: convect_diagnostics_calc
     use check_energy,    only: check_energy_chng, check_energy_fix
     use check_energy,    only: check_tracers_data, check_tracers_init
-    use check_energy,    only: calc_te_and_aam_budgets
+    use check_energy,    only: tot_energy_phys
     use dycore,          only: dycore_is
     use radiation,       only: radiation_tend
     use perf_mod
@@ -2604,8 +2604,8 @@ contains
     !===================================================
     call t_startf('energy_fixer')
 
-    call calc_te_and_aam_budgets(state, 'phBF')
-    call calc_te_and_aam_budgets(state, 'dyBF',vc=vc_dycore)
+    call tot_energy_phys(state, 'phBF')
+    call tot_energy_phys(state, 'dyBF',vc=vc_dycore)
 
     if (.not.dycore_is('EUL')) then
        call check_energy_fix(state, ptend, nstep, flx_heat)
@@ -2614,8 +2614,8 @@ contains
        call outfld( 'EFIX', flx_heat    , pcols, lchnk   )
     end if
 
-    call calc_te_and_aam_budgets(state, 'phBP')
-    call calc_te_and_aam_budgets(state, 'dyBP',vc=vc_dycore)
+    call tot_energy_phys(state, 'phBP')
+    call tot_energy_phys(state, 'dyBP',vc=vc_dycore)
     ! Save state for convective tendency calculations.
     call diag_conv_tend_ini(state, pbuf)
 
