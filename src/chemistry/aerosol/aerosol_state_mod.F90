@@ -44,7 +44,8 @@ module aerosol_state_mod
      procedure :: get_amb_species_numdens
      procedure :: get_cld_species_numdens
      procedure :: coated_frac
-     procedure :: mass_mean_radius
+     procedure :: mass_mean_radius_base
+     procedure :: mass_mean_radius => mass_mean_radius_base
      procedure :: watact_mfactor
      procedure(aero_hetfrz_size_wght), deferred :: hetfrz_size_wght
   end type aerosol_state
@@ -492,7 +493,7 @@ contains
   ! returns the fraction of particle surface area of aerosol subset `bin_ndx` covered
   ! by at least a monolayer of species `species_type` [0-1]
   !------------------------------------------------------------------------------
-  function coated_frac(self, bin_ndx,  species_type, ncol, nlev, aero_props, rho, radius) result(frac)
+  function coated_frac(self, bin_ndx,  species_type, ncol, nlev, aero_props, radius) result(frac)
 
     class(aerosol_state), intent(in) :: self
     integer, intent(in) :: bin_ndx                ! bin number
@@ -500,8 +501,7 @@ contains
     integer, intent(in) :: ncol                   ! number of columns
     integer, intent(in) :: nlev                   ! number of vertical levels
     class(aerosol_properties), intent(in) :: aero_props ! aerosol properties object
-    real(r8), intent(in) :: rho(:,:)              ! air density (kg m-3)
-    real(r8), intent(in) :: radius(:,:)
+    real(r8), intent(in) :: radius(:,:) ! m
 
     real(r8) :: frac(ncol,nlev)                              ! coated fraction
 
@@ -558,28 +558,29 @@ contains
     if (sulf_ndx>0) then
        call aero_props%get(bin_ndx, sulf_ndx, density=specdens_so4)
        call self%get_ambient_mmr(sulf_ndx, bin_ndx, sulf_mmr)
-       vol_shell(:ncol,:) = vol_shell(:ncol,:) + sulf_mmr(:ncol,:)*rho(:ncol,:)/specdens_so4
+       vol_shell(:ncol,:) = vol_shell(:ncol,:) + sulf_mmr(:ncol,:)/specdens_so4
     end if
     if (pom_ndx>0) then
        call aero_props%get(bin_ndx, pom_ndx, density=specdens_pom)
        call self%get_ambient_mmr(pom_ndx, bin_ndx, pom_mmr)
-       vol_shell(:ncol,:) = vol_shell(:ncol,:) + pom_mmr(:ncol,:)*rho(:ncol,:)*aero_props%pom_equivso4_factor()/specdens_pom
+       vol_shell(:ncol,:) = vol_shell(:ncol,:) + pom_mmr(:ncol,:)*aero_props%pom_equivso4_factor()/specdens_pom
     end if
     if (soa_ndx>0) then
        call aero_props%get(bin_ndx, soa_ndx, density=specdens_soa)
        call self%get_ambient_mmr(soa_ndx, bin_ndx, soa_mmr)
-       vol_shell(:ncol,:) = vol_shell(:ncol,:) + soa_mmr(:ncol,:)*rho(:ncol,:)*aero_props%soa_equivso4_factor()/specdens_soa
+       vol_shell(:ncol,:) = vol_shell(:ncol,:) + soa_mmr(:ncol,:)*aero_props%soa_equivso4_factor()/specdens_soa
     end if
 
     call aero_props%get(bin_ndx, species_ndx, density=specdens)
     call self%get_ambient_mmr(species_ndx, bin_ndx, aer_mmr)
-    vol_core(:ncol,:) = aer_mmr(:ncol,:)*rho(:ncol,:)/specdens
+    vol_core(:ncol,:) = aer_mmr(:ncol,:)/specdens
 
     alnsg = aero_props%alogsig(bin_ndx)
     fac_volsfc = exp(2.5_r8*alnsg**2)
 
     tmp1(:ncol,:) = vol_shell(:ncol,:)*(radius(:ncol,:)*2._r8)*fac_volsfc
     tmp2(:ncol,:) = max(6.0_r8*dr_so4_monolayers_dust*vol_core(:ncol,:), 0.0_r8)
+
     where(tmp1(:ncol,:)>0._r8 .and. tmp2(:ncol,:)>0._r8)
        frac(:ncol,:) = tmp1(:ncol,:)/tmp2(:ncol,:)
     elsewhere
@@ -599,7 +600,7 @@ contains
   ! returns the radius [m] of particles in aerosol subset `bin_ndx` assuming all particles are
   ! the same size and only species `species_ndx` contributes to the particle volume
   !------------------------------------------------------------------------------
-  function mass_mean_radius(self, bin_ndx, species_ndx, ncol, nlev, aero_props, rho) result(radius)
+  function mass_mean_radius_base(self, bin_ndx, species_ndx, ncol, nlev, aero_props, rho) result(radius)
 
     class(aerosol_state), intent(in) :: self
     integer, intent(in) :: bin_ndx                ! bin number
@@ -636,7 +637,7 @@ contains
        radius(:ncol,:) = 0._r8
     end where
 
-  end function mass_mean_radius
+  end function mass_mean_radius_base
 
   !------------------------------------------------------------------------------
   ! calculates water activity mass factor -- density*(1.-(OC+BC)/(OC+BC+SO4)) [mug m-3]
@@ -668,15 +669,19 @@ contains
     tot1_mmr = 0.0_r8
 
     do ispc = 1, aero_props%nspecies(bin_ndx)
-       call aero_props%species_type(bin_ndx, ispc, spectype)
 
-       if (trim(spectype)=='black-c' .or. trim(spectype)=='p-organic' .or. trim(spectype)=='s-organic') then
-          call self%get_ambient_mmr(ispc, bin_ndx, aer_mmr)
-          tot2_mmr(:ncol,:) = tot2_mmr(:ncol,:) + aer_mmr(:ncol,:)
-       end if
-       if (trim(spectype)=='sulfate') then
-          call self%get_ambient_mmr(ispc, bin_ndx, aer_mmr)
-          tot1_mmr(:ncol,:) = tot1_mmr(:ncol,:) + aer_mmr(:ncol,:)
+       if (aero_props%soluble(bin_ndx, ispc)) then
+
+          call aero_props%species_type(bin_ndx, ispc, spectype)
+
+          if (trim(spectype)=='black-c' .or. trim(spectype)=='p-organic' .or. trim(spectype)=='s-organic') then
+             call self%get_ambient_mmr(ispc, bin_ndx, aer_mmr)
+             tot2_mmr(:ncol,:) = tot2_mmr(:ncol,:) + aer_mmr(:ncol,:)
+          end if
+          if (trim(spectype)=='sulfate') then
+             call self%get_ambient_mmr(ispc, bin_ndx, aer_mmr)
+             tot1_mmr(:ncol,:) = tot1_mmr(:ncol,:) + aer_mmr(:ncol,:)
+          end if
        end if
 
     end do

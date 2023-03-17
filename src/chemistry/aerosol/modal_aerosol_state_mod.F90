@@ -33,6 +33,7 @@ module modal_aerosol_state_mod
      procedure :: icenuc_type_wght
      procedure :: update_bin
      procedure :: hetfrz_size_wght
+     procedure :: mass_mean_radius
 
      final :: destructor
 
@@ -398,5 +399,63 @@ contains
     end if
 
   end function hetfrz_size_wght
+
+  !------------------------------------------------------------------------------
+  ! returns the radius [m] of particles in aerosol subset `bin_ndx` assuming all particles are
+  ! the same size and only species `species_ndx` contributes to the particle volume
+  !------------------------------------------------------------------------------
+  function mass_mean_radius(self, bin_ndx, species_ndx, ncol, nlev, aero_props, rho) result(radius)
+
+    class(modal_aerosol_state), intent(in) :: self
+    integer, intent(in) :: bin_ndx                ! bin number
+    integer, intent(in) :: species_ndx            ! species number
+    integer, intent(in) :: ncol                   ! number of columns
+    integer, intent(in) :: nlev                   ! number of vertical levels
+    class(aerosol_properties), intent(in) :: aero_props ! aerosol properties object
+    real(r8), intent(in) :: rho(:,:)              ! air density (kg m-3)
+
+    real(r8) :: radius(ncol,nlev) ! m
+
+    integer :: ibin, ispc, m, i
+    character(len=aero_name_len) :: modetype, spectype
+
+
+    call rad_cnst_get_info(0, bin_ndx, mode_type=modetype)
+
+    if (trim(modetype) == 'primary_carbon') then
+
+       ! This replicates the inconsistency in the calculation of the p-carbon mode BC
+       ! that is currently in cam_development
+
+       ibin = -1
+       ispc = -1
+
+       find_accum_bc: do m = 1,aero_props%nbins()
+          call rad_cnst_get_info(0, m, mode_type=modetype)
+          if (modetype=='accum') then
+             do i = 1,aero_props%nspecies(m)
+                call aero_props%species_type( m, i, spectype)
+                if (trim(spectype)=='black-c') then
+                   ibin = m
+                   ispc = i
+                   exit find_accum_bc
+                end if
+             end do
+          end if
+       end do find_accum_bc
+
+       if (ibin<1 .or. ispc<1) then
+          radius = -huge(1._r8)
+          return
+       end if
+
+    else
+       ibin = bin_ndx
+       ispc = species_ndx
+    end if
+
+    radius = self%mass_mean_radius_base(ibin, ispc, ncol, nlev, aero_props, rho)
+
+  end function mass_mean_radius
 
 end module modal_aerosol_state_mod

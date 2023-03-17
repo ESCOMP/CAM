@@ -61,6 +61,7 @@ module aerosol_properties_mod
      procedure(aero_hetfrz_species), deferred :: hetfrz_species
      procedure :: soa_equivso4_factor ! SOA Hygroscopicity / Sulfate Hygroscopicity
      procedure :: pom_equivso4_factor ! POM Hygroscopicity / Sulfate Hygroscopicity
+     procedure :: soluble
 
      procedure :: final=>aero_props_final
   end type aerosol_properties
@@ -250,9 +251,16 @@ contains
     integer :: imas,ibin,indx, ispc
     character(len=*),parameter :: prefix = 'aerosol_properties::aero_props_init: '
 
-    real(r8) :: spechygro_so4   ! Sulfate hygroscopicity
-    real(r8) :: spechygro_soa   ! SOA hygroscopicity
-    real(r8) :: spechygro_pom   ! POM hygroscopicity
+!!$    real(r8) :: spechygro_so4   ! Sulfate hygroscopicity
+!!$    real(r8) :: spechygro_soa   ! SOA hygroscopicity
+!!$    real(r8) :: spechygro_pom   ! POM hygroscopicity
+!!$
+   real(r8), parameter :: spechygro_so4 = 0.507_r8          ! Sulfate hygroscopicity
+   real(r8), parameter :: spechygro_soa = 0.14_r8           ! SOA hygroscopicity
+   real(r8), parameter :: spechygro_pom = 0.1_r8            ! POM hygroscopicity
+!!$   real(r8), parameter :: soa_equivso4_factor = spechygro_soa/spechygro_so4
+!!$   real(r8), parameter :: pom_equivso4_factor = spechygro_pom/spechygro_so4
+
     character(len=aero_name_len) :: spectype
 
     ierr = 0
@@ -305,25 +313,25 @@ contains
     self%alogsig_(:) = alogsig(:)
     self%f1_(:) = f1(:)
     self%f2_(:) = f2(:)
-
-    spechygro_so4 = 0._r8
-    spechygro_pom = 0._r8
-    spechygro_soa = 0._r8
-
-    do ibin=1,nbin
-       do ispc = 1,nspec(ibin)
-          call self%species_type(ibin, ispc, spectype)
-
-          select case ( trim(spectype) )
-          case('sulfate')
-             call self%get(ibin, ispc, hygro=spechygro_so4)
-          case('p-organic')
-             call self%get(ibin, ispc, hygro=spechygro_pom)
-          case('s-organic')
-             call self%get(ibin, ispc, hygro=spechygro_soa)
-          end select
-       end do
-    end do
+!!$
+!!$    spechygro_so4 = 0._r8
+!!$    spechygro_pom = 0._r8
+!!$    spechygro_soa = 0._r8
+!!$
+!!$    do ibin=1,nbin
+!!$       do ispc = 1,nspec(ibin)
+!!$          call self%species_type(ibin, ispc, spectype)
+!!$
+!!$          select case ( trim(spectype) )
+!!$          case('sulfate')
+!!$             call self%get(ibin, ispc, hygro=spechygro_so4)
+!!$          case('p-organic')
+!!$             call self%get(ibin, ispc, hygro=spechygro_pom)
+!!$          case('s-organic')
+!!$             call self%get(ibin, ispc, hygro=spechygro_soa)
+!!$          end select
+!!$       end do
+!!$    end do
 
     if (spechygro_so4 > 0._r8 .and. spechygro_pom > 0._r8 .and. spechygro_soa > 0._r8) then
        self%soa_equivso4_factor_ = spechygro_soa/spechygro_so4
@@ -527,5 +535,16 @@ contains
     pom_equivso4_factor = self%pom_equivso4_factor_
 
   end function pom_equivso4_factor
+
+  !------------------------------------------------------------------------------
+  ! returns TRUE if soluble
+  !------------------------------------------------------------------------------
+  logical function soluble(self,bin_ndx,species_ndx)
+    class(aerosol_properties), intent(in) :: self
+    integer, intent(in) :: bin_ndx           ! bin number
+    integer, intent(in) :: species_ndx       ! species number
+
+    soluble = .true.
+  end function soluble
 
 end module aerosol_properties_mod

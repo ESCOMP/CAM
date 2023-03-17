@@ -29,6 +29,7 @@ module modal_aerosol_properties_mod
      procedure :: icenuc_updates_mmr
      procedure :: apply_number_limits
      procedure :: hetfrz_species
+     procedure :: soluble
      final :: destructor
   end type modal_aerosol_properties
 
@@ -382,7 +383,7 @@ contains
 
     call rad_cnst_get_info(0, bin_ndx, mode_type=mode_name)
 
-    if ((trim(mode_name)/='aitken').and.(trim(mode_name)/='primary_carbon')) then
+    if ((trim(mode_name)/='aitken')) then
 
        call self%species_type(bin_ndx, spc_ndx, species_type)
 
@@ -395,5 +396,21 @@ contains
     end if
 
   end function hetfrz_species
+
+  !------------------------------------------------------------------------------
+  ! returns TRUE if soluble
+  !------------------------------------------------------------------------------
+  logical function soluble(self,bin_ndx,species_ndx)
+    class(modal_aerosol_properties), intent(in) :: self
+    integer, intent(in) :: bin_ndx           ! bin number
+    integer, intent(in) :: species_ndx       ! species number
+
+    character(len=aero_name_len) :: mode_name
+
+    call rad_cnst_get_info(0, bin_ndx, mode_type=mode_name)
+
+    soluble = trim(mode_name)/='primary_carbon'
+
+  end function soluble
 
 end module modal_aerosol_properties_mod
