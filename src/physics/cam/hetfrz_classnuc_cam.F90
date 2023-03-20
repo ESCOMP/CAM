@@ -305,87 +305,6 @@ subroutine hetfrz_classnuc_cam_init(mincld_in, aero_props)
    call addfld('NUMIMM10sBC', (/ 'lev' /), 'A', '#/m3', &
                'Ice Number Concentration due to imm freezing by bc in Mixed Clouds during 10-s period')
 
-   call addfld('hetfrz_supersatice',(/ 'lev' /), 'A', ' ','hetfrz debug field')
-   call addfld('hetfrz_fn1',(/ 'lev' /), 'A', ' ','hetfrz debug field')
-   call addfld('hetfrz_fn2',(/ 'lev' /), 'A', ' ','hetfrz debug field')
-   call addfld('hetfrz_fn3',(/ 'lev' /), 'A', ' ','hetfrz debug field')
-   call addfld('hetfrz_fn4',(/ 'lev' /), 'A', ' ','hetfrz debug field')
-   call addfld('hetfrz_r3lx',(/ 'lev' /), 'A', ' ','hetfrz debug field')
-   call addfld('hetfrz_icnlx',(/ 'lev' /), 'A', ' ','hetfrz debug field')
-   call addfld('hetfrz_radius1',(/ 'lev' /), 'A', ' ','hetfrz debug field')
-   call addfld('hetfrz_radius2',(/ 'lev' /), 'A', ' ','hetfrz debug field')
-   call addfld('hetfrz_radius3',(/ 'lev' /), 'A', ' ','hetfrz debug field')
-   call addfld('hetfrz_radius4',(/ 'lev' /), 'A', ' ','hetfrz debug field')
-!!$   call addfld('hetfrz_awcam1',(/ 'lev' /), 'A', ' ','hetfrz debug field')
-!!$   call addfld('hetfrz_awcam2',(/ 'lev' /), 'A', ' ','hetfrz debug field')
-!!$   call addfld('hetfrz_awcam3',(/ 'lev' /), 'A', ' ','hetfrz debug field')
-!!$   call addfld('hetfrz_awcam4',(/ 'lev' /), 'A', ' ','hetfrz debug field')
-!!$   call addfld('hetfrz_awfacm1',(/ 'lev' /), 'A', ' ','hetfrz debug field')
-!!$   call addfld('hetfrz_awfacm2',(/ 'lev' /), 'A', ' ','hetfrz debug field')
-!!$   call addfld('hetfrz_awfacm3',(/ 'lev' /), 'A', ' ','hetfrz debug field')
-!!$   call addfld('hetfrz_awfacm4',(/ 'lev' /), 'A', ' ','hetfrz debug field')
-   call addfld('hetfrz_dstcoat1',(/ 'lev' /), 'A', ' ','hetfrz debug field')
-   call addfld('hetfrz_dstcoat2',(/ 'lev' /), 'A', ' ','hetfrz debug field')
-   call addfld('hetfrz_dstcoat3',(/ 'lev' /), 'A', ' ','hetfrz debug field')
-   call addfld('hetfrz_dstcoat4',(/ 'lev' /), 'A', ' ','hetfrz debug field')
-   call addfld('hetfrz_totaernum1',(/ 'lev' /), 'A', ' ','hetfrz debug field')
-   call addfld('hetfrz_totaernum2',(/ 'lev' /), 'A', ' ','hetfrz debug field')
-   call addfld('hetfrz_totaernum3',(/ 'lev' /), 'A', ' ','hetfrz debug field')
-   call addfld('hetfrz_totaernum4',(/ 'lev' /), 'A', ' ','hetfrz debug field')
-   call addfld('hetfrz_uncoatednum1',(/ 'lev' /), 'A', ' ','hetfrz debug field')
-   call addfld('hetfrz_uncoatednum2',(/ 'lev' /), 'A', ' ','hetfrz debug field')
-   call addfld('hetfrz_uncoatednum3',(/ 'lev' /), 'A', ' ','hetfrz debug field')
-   call addfld('hetfrz_uncoatednum4',(/ 'lev' /), 'A', ' ','hetfrz debug field')
-   call addfld('hetfrz_totinum1',(/ 'lev' /), 'A', ' ','hetfrz debug field')
-   call addfld('hetfrz_totinum2',(/ 'lev' /), 'A', ' ','hetfrz debug field')
-   call addfld('hetfrz_totinum3',(/ 'lev' /), 'A', ' ','hetfrz debug field')
-   call addfld('hetfrz_totinum4',(/ 'lev' /), 'A', ' ','hetfrz debug field')
-   call addfld('hetfrz_totcnum1',(/ 'lev' /), 'A', ' ','hetfrz debug field')
-   call addfld('hetfrz_totcnum2',(/ 'lev' /), 'A', ' ','hetfrz debug field')
-   call addfld('hetfrz_totcnum3',(/ 'lev' /), 'A', ' ','hetfrz debug field')
-   call addfld('hetfrz_totcnum4',(/ 'lev' /), 'A', ' ','hetfrz debug field')
-
-
-   call add_default('hetfrz_supersatice', 3, ' ')
-   call add_default('hetfrz_fn1', 3, ' ')
-   call add_default('hetfrz_fn2', 3, ' ')
-   call add_default('hetfrz_fn3', 3, ' ')
-   call add_default('hetfrz_fn4', 3, ' ')
-   call add_default('hetfrz_r3lx', 3, ' ')
-   call add_default('hetfrz_icnlx', 3, ' ')
-   call add_default('hetfrz_radius1', 3, ' ')
-   call add_default('hetfrz_radius2', 3, ' ')
-   call add_default('hetfrz_radius3', 3, ' ')
-   call add_default('hetfrz_radius4', 3, ' ')
-!!$   call add_default('hetfrz_awcam1', 3, ' ')
-!!$   call add_default('hetfrz_awcam2', 3, ' ')
-!!$   call add_default('hetfrz_awcam3', 3, ' ')
-!!$   call add_default('hetfrz_awcam4', 3, ' ')
-!!$   call add_default('hetfrz_awfacm1', 3, ' ')
-!!$   call add_default('hetfrz_awfacm2', 3, ' ')
-!!$   call add_default('hetfrz_awfacm3', 3, ' ')
-!!$   call add_default('hetfrz_awfacm4', 3, ' ')
-   call add_default('hetfrz_dstcoat1', 3, ' ')
-   call add_default('hetfrz_dstcoat2', 3, ' ')
-   call add_default('hetfrz_dstcoat3', 3, ' ')
-   call add_default('hetfrz_dstcoat4', 3, ' ')
-   call add_default('hetfrz_totaernum1', 3, ' ')
-   call add_default('hetfrz_totaernum2', 3, ' ')
-   call add_default('hetfrz_totaernum3', 3, ' ')
-   call add_default('hetfrz_totaernum4', 3, ' ')
-   call add_default('hetfrz_uncoatednum1', 3, ' ')
-   call add_default('hetfrz_uncoatednum2', 3, ' ')
-   call add_default('hetfrz_uncoatednum3', 3, ' ')
-   call add_default('hetfrz_uncoatednum4', 3, ' ')
-   call add_default('hetfrz_totinum1', 3, ' ')
-   call add_default('hetfrz_totinum2', 3, ' ')
-   call add_default('hetfrz_totinum3', 3, ' ')
-   call add_default('hetfrz_totinum4', 3, ' ')
-   call add_default('hetfrz_totcnum1', 3, ' ')
-   call add_default('hetfrz_totcnum2', 3, ' ')
-   call add_default('hetfrz_totcnum3', 3, ' ')
-   call add_default('hetfrz_totcnum4', 3, ' ')
-
    if (hist_hetfrz_classnuc) then
 
       call add_default('FREQIMM', 1, ' ')
@@ -487,14 +406,6 @@ subroutine hetfrz_classnuc_cam_calc( aero_props, aero_state, &
 
    character(128) :: errstring   ! Error status
    !-------------------------------------------------------------------------------
-
-   real(r8) :: supersatice_tmp(pcols,pver)
-   real(r8) :: r3lx_tmp(pcols,pver)
-   real(r8) :: icnlx_tmp(pcols,pver)
-
-   supersatice_tmp = 0.0_r8
-   r3lx_tmp = 0.0_r8
-   icnlx_tmp = 0.0_r8
 
    associate( &
       lchnk => state%lchnk,             &
@@ -610,11 +521,6 @@ subroutine hetfrz_classnuc_cam_calc( aero_props, aero_state, &
             r3lx = max(4.e-6_r8, r3lx)
             supersatice = esl(i)/esi(i)
 
-            supersatice_tmp(i,k) = supersatice
-
-            r3lx_tmp(i,k) = r3lx
-            icnlx_tmp(i,k) = ncic*rho(i,k)*1.0e-6_r8
-
             call hetfrz_classnuc_calc( tot_num_bins, types, &
                deltatin,  t(i,k),  pmid(i,k),  supersatice,   &
                fraction_activated(i,k,:),  r3lx,  ncic*rho(i,k)*1.0e-6_r8,  frzbcimm(i,k),  frzduimm(i,k),   &
@@ -661,56 +567,6 @@ subroutine hetfrz_classnuc_cam_calc( aero_props, aero_state, &
          numice10s_imm_bc(i,k) = frzbcimm(i,k)*1.0e6_r8*deltatin*(10._r8/deltatin)
       end do
    end do
-
-   call outfld('hetfrz_supersatice', supersatice_tmp(:ncol,:), ncol, lchnk)
-   call outfld('hetfrz_fn1', fraction_activated(:ncol,:,1), ncol, lchnk)
-   call outfld('hetfrz_fn2', fraction_activated(:ncol,:,2), ncol, lchnk)
-   call outfld('hetfrz_fn3', fraction_activated(:ncol,:,3), ncol, lchnk)
-   call outfld('hetfrz_fn4', fraction_activated(:ncol,:,4), ncol, lchnk)
-   call outfld('hetfrz_r3lx', r3lx_tmp(:ncol,:), ncol, lchnk)
-   call outfld('hetfrz_icnlx', icnlx_tmp(:ncol,:), ncol, lchnk)
-
-   call outfld('hetfrz_radius1', aer_radius(:ncol,:,1), ncol, lchnk)
-   call outfld('hetfrz_radius2', aer_radius(:ncol,:,2), ncol, lchnk)
-   call outfld('hetfrz_radius3', aer_radius(:ncol,:,3), ncol, lchnk)
-   call outfld('hetfrz_radius4', aer_radius(:ncol,:,4), ncol, lchnk)
-
-!!$
-!!$   call outfld('hetfrz_awcam1', awcam(:ncol,:,1), ncol, lchnk)
-!!$   call outfld('hetfrz_awcam2', awcam(:ncol,:,2), ncol, lchnk)
-!!$   call outfld('hetfrz_awcam3', awcam(:ncol,:,3), ncol, lchnk)
-!!$   call outfld('hetfrz_awcam4', awcam(:ncol,:,4), ncol, lchnk)
-!!$
-!!$   call outfld('hetfrz_awfacm1', awfacm(:ncol,:,1), ncol, lchnk)
-!!$   call outfld('hetfrz_awfacm2', awfacm(:ncol,:,2), ncol, lchnk)
-!!$   call outfld('hetfrz_awfacm3', awfacm(:ncol,:,3), ncol, lchnk)
-!!$   call outfld('hetfrz_awfacm4', awfacm(:ncol,:,4), ncol, lchnk)
-
-   call outfld('hetfrz_dstcoat1', coated(:ncol,:,1), ncol, lchnk)
-   call outfld('hetfrz_dstcoat2', coated(:ncol,:,2), ncol, lchnk)
-   call outfld('hetfrz_dstcoat3', coated(:ncol,:,3), ncol, lchnk)
-   call outfld('hetfrz_dstcoat4', coated(:ncol,:,4), ncol, lchnk)
-
-   call outfld('hetfrz_totaernum1', tot_aer_num(:ncol,:,1), ncol, lchnk)
-   call outfld('hetfrz_totaernum2', tot_aer_num(:ncol,:,2), ncol, lchnk)
-   call outfld('hetfrz_totaernum3', tot_aer_num(:ncol,:,3), ncol, lchnk)
-   call outfld('hetfrz_totaernum4', tot_aer_num(:ncol,:,4), ncol, lchnk)
-
-   call outfld('hetfrz_uncoatednum1', uncoated_amb_aer_num(:ncol,:,1), ncol, lchnk)
-   call outfld('hetfrz_uncoatednum2', uncoated_amb_aer_num(:ncol,:,2), ncol, lchnk)
-   call outfld('hetfrz_uncoatednum3', uncoated_amb_aer_num(:ncol,:,3), ncol, lchnk)
-   call outfld('hetfrz_uncoatednum4', uncoated_amb_aer_num(:ncol,:,4), ncol, lchnk)
-
-   call outfld('hetfrz_totinum1', amb_aer_num(:ncol,:,1), ncol, lchnk)
-   call outfld('hetfrz_totinum2', amb_aer_num(:ncol,:,2), ncol, lchnk)
-   call outfld('hetfrz_totinum3', amb_aer_num(:ncol,:,3), ncol, lchnk)
-   call outfld('hetfrz_totinum4', amb_aer_num(:ncol,:,4), ncol, lchnk)
-
-   call outfld('hetfrz_totcnum1', cld_aer_num(:ncol,:,1), ncol, lchnk)
-   call outfld('hetfrz_totcnum2', cld_aer_num(:ncol,:,2), ncol, lchnk)
-   call outfld('hetfrz_totcnum3', cld_aer_num(:ncol,:,3), ncol, lchnk)
-   call outfld('hetfrz_totcnum4', cld_aer_num(:ncol,:,4), ncol, lchnk)
-
 
    call outfld('FRZIMM', frzimm, pcols, lchnk)
    call outfld('FRZCNT', frzcnt, pcols, lchnk)
