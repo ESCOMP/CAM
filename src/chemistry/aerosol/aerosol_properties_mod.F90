@@ -248,14 +248,12 @@ contains
     real(r8),intent(in) :: f2(nbin)           ! eq 29 Abdul-Razzak et al 1998
     integer,intent(out) :: ierr
 
-    integer :: imas,ibin,indx, ispc
+    integer :: imas,ibin,indx
     character(len=*),parameter :: prefix = 'aerosol_properties::aero_props_init: '
 
     real(r8), parameter :: spechygro_so4 = 0.507_r8          ! Sulfate hygroscopicity
     real(r8), parameter :: spechygro_soa = 0.14_r8           ! SOA hygroscopicity
     real(r8), parameter :: spechygro_pom = 0.1_r8            ! POM hygroscopicity
-
-    character(len=aero_name_len) :: spectype
 
     ierr = 0
 
