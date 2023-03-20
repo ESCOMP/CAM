@@ -572,6 +572,7 @@
 <!-- Time-variant chemistry surface values -->
 <bndtvghg>atm/cam/ggas/ghg_hist_1765-2005_c091218.nc</bndtvghg>
 <flbc_file>atm/waccm/lb/LBC_1765-2100_1.9x2.5_CCMI_RCP60_za_RNOCStrend_c141002.nc</flbc_file>
+<flbc_file chem="ghg_mam4">atm/waccm/lb/LBC_17500116-20150116_CMIP6_0p5degLat_c180905.nc</flbc_file>
 
 <!-- Time-variant CO2 fossil fuel emissions -->
 <co2flux_fuel_file hgrid="0.9x1.25" sim_year="1850-2000">atm/cam/ggas/emissions-cmip6_CO2_anthro_surface_175001-201512_fv_0.9x1.25_c20181011.nc</co2flux_fuel_file>
@@ -624,6 +625,7 @@
 <!-- WACCM_GHG H2O production/loss rates -->
 <h2orates chem="waccm_sc"     >atm/waccm/phot/xh2o_c080826.nc</h2orates>
 <h2orates chem="waccm_sc_mam4">atm/waccm/phot/xh2o_c080826.nc</h2orates>
+<h2orates chem="ghg_mam4"     >atm/waccm/phot/xh2o_c080826.nc</h2orates>
 
 <!-- Constituents for non-LTE calculations and heating rates below 200 nm -->
 <waccm_forcing_datapath chem="waccm_sc">atm/waccm/ub</waccm_forcing_datapath>
@@ -1810,6 +1812,8 @@
 
 <tracer_cnst_file     chem="waccm_sc_mam4">halons_oxid_1.9x2.5zm_L66_1849-2099_c160714.nc</tracer_cnst_file>
 <tracer_cnst_datapath chem="waccm_sc_mam4">atm/waccm/halons</tracer_cnst_datapath>
+<tracer_cnst_file     chem="ghg_mam4">halons_oxid_1.9x2.5zm_L66_1849-2099_c160714.nc</tracer_cnst_file>
+<tracer_cnst_datapath chem="ghg_mam4">atm/waccm/halons</tracer_cnst_datapath>
 <tracer_cnst_type     >CYCLICAL</tracer_cnst_type>
 <tracer_cnst_cycle_yr >2000</tracer_cnst_cycle_yr>
 
