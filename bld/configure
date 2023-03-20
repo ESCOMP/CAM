@@ -1278,21 +1278,25 @@ if ($print>=2) { print "Maximum number of sub-columns per column: $psubcols$eol"
 my $nlev = 0;
 my $model_top = 'not_set';
 
+
 if (defined $opts{'model_top'}) {
+    $model_top = $opts{'model_top'};
     if (defined $opts{'nlev'}) {
         die "configure ERROR: cannot set both model_top and nlev at same time\n";
-    }
-    else {
-        $model_top = $opts{'model_top'};
     }
 }
 
 # Defaults
 
 if ($model_top eq 'low') {
-   $nlev = 58 }
+   $nlev = 58;
+   $cfg_ref->set('model_top', $model_top);
+}
+
 elsif ($model_top eq 'mid') {
-   $nlev = 93 }
+   $nlev = 93;
+   $cfg_ref->set('model_top', $model_top);
+}
 
 # If model_top has not set nlev, proceed with older nlev settings
 
@@ -1335,6 +1339,15 @@ if ($model_top eq 'not_set') {
         $nlev = 30;
         }
 }
+
+# CACNOTE - Not sure why these checks aren't working
+#if (($nlev = 58) and ($model_top ne 'low')) {
+#   die "configure ERROR: do not specify nlev=58, use model_top='low' instead \n";
+#}
+
+#if (($nlev = 93) and ($model_top ne 'mid')) {
+#   die "configure ERROR: do not specify nlev=93, use model_top='mid' instead \n";
+#}
 
 # user override
 if (defined $opts{'nlev'}) {
