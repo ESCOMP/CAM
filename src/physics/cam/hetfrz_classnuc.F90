@@ -24,18 +24,12 @@ use shr_kind_mod,  only: r8 => shr_kind_r8
 use wv_saturation, only: svp_water
 use shr_spfn_mod,  only: erf => shr_spfn_erf
 
-use physconst,     only: pi, amu, pstd
+use physconst,     only: pi, planck, boltz, mwso4, amu, pstd
 
 implicit none
 private
 
 public :: hetfrz_classnuc_init, hetfrz_classnuc_calc
-
-real(r8), parameter :: boltz = 1.38e-23_r8
-
-real(r8), parameter :: planck = 6.63e-34_r8
-real(r8), parameter :: rhplanck = 1._r8/planck
-real(r8), parameter :: Mwso4 = 96.06_r8
 
 real(r8) :: rair
 real(r8) :: cpair
@@ -71,7 +65,7 @@ real(r8) :: dim_f_imm(pdf_n_theta) = 0.0_r8
 integer  :: iulog
 
 real(r8), parameter :: n1 = 1.e19_r8           ! number of water molecules in contact with unit area of substrate [m-2]
-!real(r8), parameter :: rhplanck = 1._r8/planck
+real(r8), parameter :: rhplanck = 1._r8/planck
 real(r8), parameter :: nus = 1.e13_r8          ! frequ. of vibration [s-1] higher freq. (as in P&K, consistent with Anupam's data)
 real(r8), parameter :: rhwincloud = 0.98_r8    ! 98% RH in mixed-phase clouds (Korolev & Isaac, JAS 2006)
 
@@ -563,7 +557,6 @@ subroutine collkernel( temp, pres, eswtr, rhwincloud, r3lx,  rad, Ktherm, Kcoll 
    integer :: ntot, idx
 
    !------------------------------------------------------------------------------------------------
-   real(r8), parameter :: kboltz = 1.38065e-23_r8
 
    ntot = size(ktherm)
 
@@ -606,7 +599,7 @@ subroutine collkernel( temp, pres, eswtr, rhwincloud, r3lx,  rad, Ktherm, Kcoll 
          ! Knudsen number (Seinfeld & Pandis 8.1)
          Kn = lambda/rad(idx)
          ! aerosol diffusivity
-         Daer = kboltz*temp*(1 + Kn)/(6*pi*rad(idx)*viscos_air)
+         Daer = boltz*temp*(1 + Kn)/(6*pi*rad(idx)*viscos_air)
 
          ! Schmidt number
          Sc = viscos_air/(Daer*rho_air)
