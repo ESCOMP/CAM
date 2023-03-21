@@ -25,7 +25,7 @@ module mo_lightning
 
   real(r8),protected, allocatable :: prod_no(:,:,:)
 
-  real(r8) :: factor = -huge(1._r8)        ! user-controlled scaling factor to achieve arbitrary no prod.
+  real(r8) :: factor = 0.1_r8              ! user-controlled scaling factor to achieve arbitrary no prod.
   real(r8) :: geo_factor = -huge(1._r8)    ! grid cell area factor
   real(r8), allocatable :: vdist(:,:)      ! vertical distribution of lightning
 
@@ -35,6 +35,7 @@ module mo_lightning
   integer :: flsh_frq_ndx = -1
   integer :: cldtop_ndx = -1, cldbot_ndx = -1
 
+  ! namelist parameter
   real(r8) :: lght_no_prd_factor = -huge(1._r8)
 
 contains
@@ -83,7 +84,9 @@ contains
        write(iulog,*) subname,' lght_no_prd_factor: ',lght_no_prd_factor
     end if
 
-    factor = 0.1_r8*lght_no_prd_factor
+    if( lght_no_prd_factor /= 1._r8 ) then
+       factor = factor*lght_no_prd_factor
+    end if
 
   end subroutine lightning_readnl
 
