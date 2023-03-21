@@ -121,12 +121,12 @@
 <ncdata dyn="se" hgrid="ne30np4" npg="3" nlev="32" chem="trop_strat_mam5_vbs">atm/cam/inic/se/f.e22.FC2010climo.ne30pg3_ne30pg3_mg17.cam6_2_032.001.cam.i.0007-01-01-00000_c200623.nc</ncdata>
 <ncdata dyn="se" hgrid="ne0np4CONUS.ne30x8" nlev="32" chem="trop_strat_mam4_vbs">atm/cam/inic/se/f.e22.FCnudged.ne0CONUSne30x8_ne0CONUSne30x8_mt12.cam6_2_032.002.cam.i.2013-01-01-00000_c200623.nc</ncdata>
 <ncdata dyn="se" hgrid="ne0np4CONUS.ne30x8" nlev="32" chem="trop_strat_mam5_vbs">atm/cam/inic/se/f.e22.FCnudged.ne0CONUSne30x8_ne0CONUSne30x8_mt12.cam6_2_032.002.cam.i.2013-01-01-00000_c200623.nc</ncdata>
-<ncdata dyn="se" hgrid="ne30np4" model_top="low" chem="trop_strat_mam5_vbs">atm/cam/inic/se/f.e22.FCnudged.ne30_ne30_mg17.release-cesm2.2.0_spinup.2010_2020.001.cam.i.2011-01-01-00000_L58_c220310.nc</ncdata>
-<ncdata dyn="se" hgrid="ne30np4" model_top="mid" chem="trop_strat_mam5_vbs">atm/cam/inic/se/FCMTHIST_ne30pg3_1980-01-01_c221214.nc</ncdata>
+<ncdata dyn="se" hgrid="ne30np4" nlev="58" chem="trop_strat_mam5_vbs">atm/cam/inic/se/f.e22.FCnudged.ne30_ne30_mg17.release-cesm2.2.0_spinup.2010_2020.001.cam.i.2011-01-01-00000_L58_c220310.nc</ncdata>
+<ncdata dyn="se" hgrid="ne30np4" nlev="93" chem="trop_strat_mam5_vbs">atm/cam/inic/se/FCMTHIST_ne30pg3_1980-01-01_c221214.nc</ncdata>
 <ncdata dyn="se" hgrid="10x15"   nlev="32" chem="trop_strat_mam5_vbs">atm/cam/inic/fv/FC2000mam5_f10_0002-01-01_c221214.nc</ncdata>
 
-<ncdata dyn="se" hgrid="ne30np4" model_top="low" chem="ghg_mam4">atm/cam/inic/se/FWsc_ne30pg3_58L_GRID_48_taperstart10km_lowtop_BL10_v3_beta1p75_Top_43km.nc</ncdata>
-<ncdata dyn="se" hgrid="ne30np4" model_top="mid" chem="ghg_mam4">atm/cam/inic/se/L93_ne30pg3_ne30pg3_mg17_450_short.cam.i.1979-01-07-00000.nc</ncdata>
+<ncdata dyn="se" hgrid="ne30np4" npg="3" nlev="58">atm/cam/inic/se/FWsc_ne30pg3_58L_GRID_48_taperstart10km_lowtop_BL10_v3_beta1p75_Top_43km.nc</ncdata>
+<ncdata dyn="se" hgrid="ne30np4" npg="3" nlev="93">atm/cam/inic/se/L93_ne30pg3_ne30pg3_mg17_450_short.cam.i.1979-01-07-00000.nc</ncdata>
 
 <ncdata dyn="fv"  hgrid="4x5"       nlev="26"  chem="trop_mozart" ic_ymd="901" >atm/cam/chem/trop_mozart/ic/cami_0000-09-01_4x5_L26_c060217.nc</ncdata>
 <ncdata dyn="fv"  hgrid="10x15"     nlev="26"  chem="trop_mozart" ic_ymd="901" >atm/cam/chem/trop_mozart/ic/cami_0000-09-01_10x15_L26_c060216.nc</ncdata>
@@ -571,9 +571,6 @@
 <n2ovmr>316.0e-9</n2ovmr>
 <f11vmr>653.45e-12</f11vmr>
 <f12vmr>535.0e-12</f12vmr>
-
-<co2_flag model_top='low'> .false. </co2_flag>
-<co2_flag model_top='mid'> .false. </co2_flag>
 
 <!-- Time-variant chemistry surface values -->
 <bndtvghg>atm/cam/ggas/ghg_hist_1765-2005_c091218.nc</bndtvghg>
@@ -1891,17 +1888,6 @@
 <rsf_file     >atm/waccm/phot/RSF_GT200nm_v3.0_c080811.nc</rsf_file>
 <exo_coldens_file>atm/cam/chem/trop_mozart/phot/exo_coldens.nc</exo_coldens_file>
 
-<!-- Low top upper boundary conditions -->
-<ubc_specifier model_top='low'>
-  'Q:H2O->UBC_FILE'
-</ubc_specifier>
-<ubc_file_path model_top='low'>
-  atm/cam/chem/ubc/f.e21.FWHISTBgcCrop.f09_f09_mg17.CMIP6-AMIP-WACCM.ensAvg123.cam.h0zm.UBC.195001-201412_c220322.nc
-</ubc_file_path>
-
-<ubc_file_input_type model_top='low'> 'SERIAL'</ubc_file_input_type>
-
-
 <!-- WACCM Upper boundary conditions -->
 <tgcm_ubc_file>atm/waccm/ub/tgcm_ubc_1993_c100204.nc</tgcm_ubc_file>
 <snoe_ubc_file>atm/waccm/ub/snoe_eof.nc</snoe_ubc_file>
@@ -2991,7 +2977,6 @@
 <se_hypervis_subcycle                                            > 3 </se_hypervis_subcycle>
 <se_hypervis_subcycle  waccm_phys="1"                            > 2 </se_hypervis_subcycle>
 <se_hypervis_subcycle  hgrid="ne16np4"                           > 4 </se_hypervis_subcycle>
-<se_hypervis_subcycle  model_top="low"                           > 4 </se_hypervis_subcycle>
 <se_hypervis_subcycle  se_refined_mesh="1"                       > 3 </se_hypervis_subcycle>
 <se_hypervis_subcycle  hgrid="ne0np4CONUS.ne30x8" waccm_phys="1" > 1 </se_hypervis_subcycle>
 
@@ -3024,7 +3009,7 @@
 
 <se_nu_top                    > 1.25e5 </se_nu_top>
 <se_nu_top waccmx="1"         > 1.0e6 </se_nu_top>
-<se_nu_top model_top="mid"    > 1.0e6 </se_nu_top>
+<se_nu_top nlev="93"          > 1.0e6 </se_nu_top>
 
 <se_molecular_diff               >  0.0 </se_molecular_diff>
 <se_molecular_diff waccmx="1"    >  1.0 </se_molecular_diff>
@@ -3042,21 +3027,20 @@
 <se_refined_mesh hgrid="ne0np4.ARCTICGRIS.ne30x8" > .true. </se_refined_mesh>
 
 <se_nsplit>                   2 </se_nsplit>
-<se_nsplit model_top="mid" >  3 </se_nsplit>
 <se_nsplit hgrid="ne16np4" >  1 </se_nsplit>
 
 <se_nsplit hgrid="ne5np4"   waccm_phys="1"            >  3  </se_nsplit>
 <se_nsplit hgrid="ne16np4"  waccm_phys="1" waccmx="1" >  5  </se_nsplit>
 <se_nsplit hgrid="ne16np4"  waccm_phys="1"            >  3  </se_nsplit>
 <se_nsplit hgrid="ne30np4"  waccm_phys="1"            >  5  </se_nsplit>
-<se_nsplit hgrid="ne30np4"  model_top="mid"           >  3  </se_nsplit>
+<se_nsplit hgrid="ne30np4"  nlev="93"                 >  3  </se_nsplit>
 <se_nsplit hgrid="ne0np4CONUS.ne30x8" waccm_phys="1"  > 10  </se_nsplit>
 
 <se_nsplit hgrid="ne0np4TESTONLY.ne5x4"> 7 </se_nsplit>
 
 <se_rsplit                                          > 3 </se_rsplit>
 <se_rsplit waccm_phys="1"                           > 4 </se_rsplit>
-<se_rsplit model_top="mid"                          > 6 </se_rsplit>
+<se_rsplit nlev="93"                                > 6 </se_rsplit>
 <se_rsplit hgrid="ne0np4CONUS.ne30x8" waccm_phys="1"> 3 </se_rsplit>
 
 <se_fvm_supercycling>-1</se_fvm_supercycling>

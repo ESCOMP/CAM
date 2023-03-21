@@ -1,0 +1,16 @@
+<?xml version="1.0"?>
+<namelist_defaults>
+
+  <solar_irrad_data_file>'atm/cam/solar/SolarForcingCMIP6_18491230-23000102_c20200615.nc'</solar_irrad_data_file>
+
+  <se_hypervis_subcycle> 4 </se_hypervis_subcycle>
+
+  <!-- Low top upper boundary conditions -->
+  <ubc_specifier>'Q:H2O->UBC_FILE'</ubc_specifier>
+  <ubc_file_path>atm/cam/chem/ubc/f.e21.FWHISTBgcCrop.f09_f09_mg17.CMIP6-AMIP-WACCM.ensAvg123.cam.h0zm.UBC.195001-201412_c220322.nc</ubc_file_path>
+  <ubc_file_input_type>'SERIAL'</ubc_file_input_type>
+
+  <!-- sim_year used for CO2 cycle namelist settings -->
+  <sim_year>1850-2000</sim_year>
+
+</namelist_defaults>

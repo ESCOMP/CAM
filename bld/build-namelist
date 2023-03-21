@@ -720,12 +720,6 @@ if ($cfg->get('cosp')) {
 # ============
 
 # Carbon cycle constituents
-
-my $model_top = $cfg->get('model_top');
-if ( ($model_top = 'low') or ($model_top = 'mid') ) {
-   add_default($nl, 'co2_flag');
-}
-
 my $co2_cycle = $cfg->get('co2_cycle');
 
 if ($co2_cycle) {
@@ -2682,14 +2676,6 @@ if ($maxzen>0.0) {
     add_default($nl, 'photo_max_zen', 'val'=>"${maxzen}D0");
 }
 
-# Add upper boundary specifier information for low top model
-#
-if ($model_top = 'low')  {
-   add_default($nl, 'ubc_specifier');
-   add_default($nl, 'ubc_file_path');
-   add_default($nl, 'ubc_file_input_type');
-}
-
 # upper boundary specifier
 my $ubc_ver;
 if (($chem =~ /waccm_ma/ or $chem =~ /waccm_tsmlt/ ) and !$waccmx) {
@@ -3168,7 +3154,6 @@ if ($subcol_scheme eq 'vamp') {
 if ($use_subcol_microp =~ /$TRUE/io) {
     add_default($nl, 'microp_uniform', 'val'=>'.true.');
 }
-
 
 # CLUBB_SGS
 add_default($nl, 'do_clubb_sgs');
