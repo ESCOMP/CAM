@@ -909,8 +909,6 @@ subroutine dyn_init(dyn_in, dyn_out)
       !
       ! Register tendency (difference) budgets
       !
-!xxx      call e_m_budget('dEdt_total_dyn'  ,'dBF','dED','dyn','dif',longname="dE/dt dynamics total (dycore+phys tendency: dBF-dED)",cslam=ntrac>0)!xxx used?
-      
       call e_m_budget('dEdt_floating_dyn'      ,'dAD','dBD','dyn','dif',longname="dE/dt floating dynamics (dAD-dBD)"               ,cslam=ntrac>0)     
       call e_m_budget('dEdt_vert_remap'        ,'dAR','dAD','dyn','dif',longname="dE/dt vertical remapping (dAR-dAD)"              ,cslam=ntrac>0)      
       call e_m_budget('dEdt_phys_tend_in_dyn'  ,'dBD','dAF','dyn','dif',longname="dE/dt physics tendency in dynamics (dBD-dAF)"    ,cslam=ntrac>0)
