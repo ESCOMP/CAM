@@ -52,7 +52,8 @@ subroutine print_budget(hstwr)
   real(r8) :: E_dyBF(4)
   integer  :: m_cnst, i
   character(LEN=*), parameter :: fmt  = "(a40,a15,a1,F6.2,a1,F6.2,a1,E10.2,a5)"
-  character(LEN=*), parameter :: fmt2 = "(a40,F6.2,a3)"
+  character(LEN=*), parameter :: fmtf = "(a48,F8.4,a6)"
+  character(LEN=*), parameter :: fmtm = "(a48,E8.2,a7)"
   character(LEN=15)           :: str(4)
   character(LEN=5)  :: pf! pass or fail identifier
   !--------------------------------------------------------------------------------------
@@ -192,7 +193,8 @@ subroutine print_budget(hstwr)
     write(iulog,*)  "                                                        -----   -----  ----"
     do i=1,4
       diff = ph_dmea(i)-dy_dmea(i)
-      write(iulog,*)"dE/dt dry mass adjustment   (xxAM-xxAP) ",str(i)," ",ph_dmea(i)," ",dy_dmea(i)," ",diff
+!'(a41,a15,a1,F6.2,a1,F6.2,a1,E6.2)'
+      write(iulog,fmt)"dE/dt dry mass adjustment   (xxAM-xxAP) ",str(i)," ",ph_dmea(i)," ",dy_dmea(i)," ",diff
     end do
     write(iulog,*)" "
     write(iulog,*)" "
@@ -246,8 +248,8 @@ subroutine print_budget(hstwr)
     write(iulog,*) ""
     if (ntrac==0) then
       dycore = -dy_EFIX(1)-previous_dEdt_phys_dyn_coupl_err-previous_dEdt_dry_mass_adjust
-      write(iulog,*) "Hence the dycore E dissipation estimated from energy fixer "
-      write(iulog,*) "based on previous time-step values is ",dycore," W/M^2"
+      write(iulog,*)               "Hence the dycore E dissipation estimated from energy fixer "
+      write(iulog,'(A39,F6.2,A6)') "based on previous time-step values is ",dycore," W/M^2"
       write(iulog,*) " "
     end if
     write(iulog,*) " "
@@ -262,7 +264,7 @@ subroutine print_budget(hstwr)
       if (abs(E_dyBF(1))>eps) then
         diff = abs_diff(E_dBF(1),E_dyBF(1))
         if (abs(diff)<eps) then
-          write(iulog,*)"yes. (dBF-dyBF)/dyBF =",diff
+          write(iulog,'(A23,E8.3)')"yes. (dBF-dyBF)/dyBF =",diff
         else
           write(iulog,*)"Error in physics dynamics coupling!"
           write(iulog,*)" "
@@ -311,8 +313,7 @@ subroutine print_budget(hstwr)
     else
       previous_dEdt_phys_dyn_coupl_err = se_phys_total(1)-dy_phys_total(1)
       diff = abs_diff(dy_phys_total(1),se_phys_total(1),pf=pf)
-      write(iulog,*)"dE/dt physics-dynamics coupling errors       ",diff," W/M^2 "
-      write(iulog,*) pf
+      write(iulog,'(A40,E8.2,A7,A4)')"dE/dt physics-dynamics coupling errors       ",diff," W/M^2 ",pf
       if (abs(diff)>eps) then
         !
         ! if errors print details
@@ -330,12 +331,7 @@ subroutine print_budget(hstwr)
           write(iulog,*) "Break-down below:"
           write(iulog,*) ""
         end if
-!        else
-!          write(iulog,*)" "
-!          write(iulog,*)"Since you are using a separate physics grid, the physics tendencies"
-!          write(iulog,*)"in the dynamical core will not match due to the tendencies being"
-!          write(iulog,*)"interpolated from the physics to the dynamics grid:"
-!          write(iulog,*)" "
+
         do i=1,4
           write(iulog,*) str(i),":"
           write(iulog,*) "======"
@@ -352,53 +348,68 @@ subroutine print_budget(hstwr)
     write(iulog,*)" SE dycore energy tendencies"
     write(iulog,*)"------------------------------------------------------------"
     write(iulog,*)" "
-    write(iulog,'(a46,F6.2,a6)')"dE/dt dycore                     ",dADIA," W/M^2"
+    write(iulog,fmtf)"   dE/dt dycore                                  ",dADIA," W/M^2"
     write(iulog,*)" "
     write(iulog,*)"Adiabatic dynamics can be divided into quasi-horizontal and vertical remapping: "
     write(iulog,*)" "
-    write(iulog,'(a40,F6.2,a6)') "dE/dt floating dynamics     (dAD-dBD)  ",rate_of_change_2D_dyn," W/M^2"
-    write(iulog,'(a40,F6.2,a6)') "dE/dt vertical remapping    (dAR-dAD)  ",rate_of_change_vertical_remapping," W/M^2"
+    write(iulog,fmtf)"   dE/dt floating dynamics           (dAD-dBD)   ",rate_of_change_2D_dyn," W/M^2"
+    write(iulog,fmtf)"   dE/dt vertical remapping          (dAR-dAD)   ",rate_of_change_vertical_remapping," W/M^2"
 
     write(iulog,*) " "
-    write(iulog,*) "Breakdown of 2D dynamics:"
+    write(iulog,*) "Breakdown of floating dynamics:"
     write(iulog,*) " "
-    write(iulog,'(a46,F6.2,a6)')"   dE/dt hypervis del4               (dCH-dBH) ",diffusion_del4," W/M^2"
-    write(iulog,'(a46,F6.2,a6)')"   dE/dt hypervis frictional heating (dAH-dCH) ",diffusion_fric," W/M^2"
-    write(iulog,'(a46,F6.2,a6)')"   dE/dt hypervis del4 total         (dAH-dBH) ",diffusion_del4_tot," W/M^2"
-    write(iulog,'(a46,F6.2,a6)')"   dE/dt hypervis sponge del2        (dAS-dBS) ",diffusion_sponge," W/M^2"
-    write(iulog,'(a46,F6.2,a6)')"   dE/dt explicit diffusion total              ",diffusion_total," W/M^2"
+    write(iulog,fmtf)"   dE/dt hypervis del4               (dCH-dBH)   ",diffusion_del4,    " W/M^2"
+    write(iulog,fmtf)"   dE/dt hypervis frictional heating (dAH-dCH)   ",diffusion_fric,    " W/M^2"
+    write(iulog,fmtf)"   dE/dt hypervis del4 total         (dAH-dBH)   ",diffusion_del4_tot," W/M^2"
+    write(iulog,fmtf)"   dE/dt hypervis sponge del2        (dAS-dBS)   ",diffusion_sponge,  " W/M^2"
+    write(iulog,fmtf)"   dE/dt explicit diffusion total                ",diffusion_total,   " W/M^2"
     twoDresidual = rate_of_change_2D_dyn-diffusion_total
-    write(iulog,'(a46,F6.2,a6)')"   dE/dt residual (time-truncation errors)     ",twoDresidual," W/M^2"
+    write(iulog,*) " "
+    write(iulog,fmtf)"   dE/dt residual (time-truncation errors,...)   ",twoDresidual,      " W/M^2"
     write(iulog,*)" "
     write(iulog,*)" "
-
+    write(iulog,*)"------------------------------------------------------------"
+    write(iulog,*)"Tracer mass budgets"
+    write(iulog,*)"------------------------------------------------------------"
+    write(iulog,*)" "
+    write(iulog,*)"Below the physics-dynamics coupling error is computed as    "
+    write(iulog,*)"dMASS/dt physics tendency in dycore (dBD-dAF) minus"
+    write(iulog,*)"dMASS/dt total physics              (pAM-pBF)"
+    write(iulog,*)" "
+    write(iulog,*)" "
     do m_cnst=1,thermo_budget_num_vars
       if (thermo_budget_vars_massv(m_cnst)) then
-        write(iulog,*)"------------------------------------------------------------"
-        write(iulog,*)thermo_budget_vars_descriptor(m_cnst)//" budget"
-        write(iulog,*)"------------------------------------------------------------"
+        write(iulog,*)thermo_budget_vars_descriptor(m_cnst)
+        write(iulog,*)"------------------------------"
         call budget_get_global('phBP-phBF',m_cnst,pEFIX)
         call budget_get_global('phAM-phAP',m_cnst,pDMEA)
         call budget_get_global('phAP-phBP',m_cnst,param)
         call budget_get_global('phAM-phBF',m_cnst,phys_total)
+        !
+        ! total energy fixer should not affect mass - checking
+        !
         if (abs(pEFIX)>eps_mass) then
-          write(iulog,*) "dMASS/dt energy fixer        (pBP-pBF) ",pEFIX," Pa"
+          write(iulog,*) "dMASS/dt energy fixer        (pBP-pBF)           ",pEFIX," Pa/m^2"
           write(iulog,*) "ERROR: Mass not conserved in energy fixer. ABORT"      
           call endrun(subname//"Mass not conserved in energy fixer. See atm.log")
         endif
+        !
+        ! dry-mass adjustmnt should not affect mass - checking
+        !
         if (abs(pDMEA)>eps_mass) then
           write(iulog,*)"dMASS/dt dry mass adjustment (pAM-pAP) ",pDMEA," Pa"
           write(iulog,*) "ERROR: Mass not conserved in dry mass adjustment. ABORT"
           call endrun(subname//"Mass not conserved in dry mass adjustment. See atm.log")
         end if
+        !
+        ! all of the mass-tendency should come from parameterization - checking
+        !
         if (abs(param-phys_total)>eps_mass) then
           write(iulog,*) "Error: dMASS/dt parameterizations (pAP-pBP) .ne. dMASS/dt physics total (pAM-pBF)"
           write(iulog,*) "dMASS/dt parameterizations   (pAP-pBP) ",param," Pa"
           write(iulog,*) "dMASS/dt physics total       (pAM-pBF) ",phys_total," Pa"
           call endrun(subname//"mass change not only due to parameterizations. See atm.log")
         end if
-        write(iulog,*)"dMASS/dt parameterizations   (pAP-pBP) ",param," Pa"
-        write(iulog,*)"dMASS/dt physics total       (pAM-pBF) ",phys_total," Pa"
         write(iulog,*)"  "
         !
         ! detailed mass budget in dynamical core
@@ -406,13 +417,18 @@ subroutine print_budget(hstwr)
         if (is_budget('dAD').and.is_budget('dBD').and.is_budget('dAR').and.is_budget('dCH')) then
           call budget_get_global('dAD-dBD',m_cnst,mass_change__2D_dyn)
           call budget_get_global('dAR-dAD',m_cnst,mass_change__vertical_remapping)
-          diff = mass_change__2D_dyn+mass_change__vertical_remapping
-          write(iulog,*)"dMASS/dt total adiabatic dynamics       ",diff," Pa"
+          tmp  = mass_change__2D_dyn+mass_change__vertical_remapping
+          diff = abs_diff(tmp,0.0_r8,pf=pf)
+          write(iulog,fmtm)"   dMASS/dt total adiabatic dynamics             ",diff,pf
+          !
+          ! check for mass-conservation in the adiabatic dynamical core -
+          ! if not conserved provide detailed break-down
+          !
           if (abs(diff)>eps_mass) then
             write(iulog,*) "Error: mass non-conservation in dynamical core"
             write(iulog,*) "(detailed budget below)"
             write(iulog,*) " "
-            write(iulog,*)"dMASS/dt 2D dynamics            (dAD-dBD) ",mass_change__2D_dyn," Pa"
+            write(iulog,*)"dMASS/dt 2D dynamics            (dAD-dBD) ",mass_change__2D_dyn," Pa/m^2"
             if (is_budget('dAR').and.is_budget('dAD')) then
               call budget_get_global('dAR',m_cnst,dar)
               call budget_get_global('dAD',m_cnst,dad)
@@ -424,23 +440,27 @@ subroutine print_budget(hstwr)
             write(iulog,*)" "
             call budget_get_global('dAH-dCH',m_cnst,mass_change__heating_term_put_back_in)
             call budget_get_global('dAH-dBH',m_cnst,mass_change__hypervis_total)
-            write(iulog,*)"dMASS/dt hypervis               (dAH-dBH) ",mass_change__hypervis_total," Pa"
-            write(iulog,*)"dMASS/dt frictional heating     (dAH-dCH) ",mass_change__heating_term_put_back_in," Pa"
+            write(iulog,*)"dMASS/dt hypervis               (dAH-dBH) ",mass_change__hypervis_total," Pa/m^2"
+            write(iulog,*)"dMASS/dt frictional heating     (dAH-dCH) ",mass_change__heating_term_put_back_in," Pa/m^2"
             error = mass_change__2D_dyn-mass_change__hypervis_total
-            write(iulog,*)"dMASS/dt residual (time truncation errors)",error," Pa"
+            write(iulog,*)"dMASS/dt residual (time truncation errors)",error," Pa/m^2"
           end if
         end if
-        write(iulog,*)" "
         if (is_budget('dBD').and.is_budget('dAF')) then
+          !
+          ! check if mass change in physics is the same as dynamical core
+          !
           call budget_get_global('dBD',m_cnst,dbd)
           call budget_get_global('dAF',m_cnst,daf)
           call budget_get_global('dBD-dAF',m_cnst,mass_change__physics)
-          write(iulog,*)"dMASS/dt physics tendency in dynamics (dBD-dAF) ",mass_change__physics," Pa"
           val = phys_total-mass_change__physics
-          write(iulog,*) " "
-          write(iulog,*) "Mass physics dynamics coupling error:",val
+          write(iulog,fmtm)"   Mass physics-dynamics coupling error          ",val," Pa/m^2"
+          write(iulog,*)" "
+          if (abs(val)>eps_mass) then
+            write(iulog,fmtm)"   dMASS/dt physics tendency in dycore (dBD-dAF) ",mass_change__physics," Pa/m^2"
+            write(iulog,fmtm)"   dMASS/dt total physics                        ",phys_total," Pa/m^2"
+          end if
         end if
-        write(iulog,*)""
       end if
     end do
     !
