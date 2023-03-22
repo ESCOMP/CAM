@@ -38,7 +38,7 @@ subroutine print_budget(hstwr)
   real(r8), dimension(4) :: dy_param,dy_EFIX,dy_DMEA,dy_param_and_efix,dy_phys_total
   real(r8), dimension(4) :: se_phys_total
   real(r8)               :: dycore, err, param, pefix, &
-                            pdmea, phys_total, dyn_total, dyn_phys_total, &
+                            pdmea, phys_total, dyn_phys_total, &
                             rate_of_change_2D_dyn, rate_of_change_vertical_remapping, &
                             diffusion_del4, diffusion_fric, diffusion_del4_tot, diffusion_sponge, &
                             diffusion_total, twoDresidual, &
@@ -92,7 +92,6 @@ subroutine print_budget(hstwr)
       call budget_get_global('dBF'    ,idx(i),E_dBF(i))  !state passed to physics
     end do
 
-    call budget_get_global('dBF-dED',teidx,dyn_total)
     call budget_get_global('dAD-dBD',teidx,rate_of_change_2D_dyn)
     call budget_get_global('dAR-dAD',teidx,rate_of_change_vertical_remapping)
     dADIA = rate_of_change_2D_dyn+rate_of_change_vertical_remapping
@@ -137,10 +136,10 @@ subroutine print_budget(hstwr)
     write(iulog,*)"Suffix dy is dycore energy computed in CAM physics using"
     write(iulog,*)"CAM physics state variables"
     write(iulog,*)" "
-    write(iulog,*)"Energy stages in dynamics"
-    write(iulog,*)"-------------------------"
+    write(iulog,*)"Energy stages in dynamics (specific to the SE dycore)"
+    write(iulog,*)"-----------------------------------------------------"
     write(iulog,*)" "
-    write(iulog,*)"suffix (dynamics)"
+    write(iulog,*)"suffix (d)"
     write(iulog,*)"dED: state from end of previous dynamics (= pBF + time sampling)"
     write(iulog,*)"   loop over vertical remapping and physics dribbling -------- (nsplit) -------"
     write(iulog,*)"            (dribbling and remapping always done together)                    |"
@@ -182,7 +181,7 @@ subroutine print_budget(hstwr)
     end do
     if (diff>eps) then
       write(iulog,*)"FAIL"
-      call endrun(subname//"dE/dts in physics inconsistent")
+      call endrun(subname//"dE/dt's in physics inconsistent")
     end if
     write(iulog,*)" "
     write(iulog,*)" "
@@ -193,15 +192,9 @@ subroutine print_budget(hstwr)
     write(iulog,*)  "                                                        -----   -----  ----"
     do i=1,4
       diff = ph_dmea(i)-dy_dmea(i)
-      write(iulog,fmt)"dE/dt dry mass adjustment   (xxAM-xxAP) ",str(i)," ",ph_dmea(i)," ",dy_dmea(i)," ",diff
-      write(iulog,*) ""
-      write(iulog,*) str(i),":"
-      write(iulog,*) "======"
-      write(iulog,*)"dE/dt dry mass adjustment   (phAM-phAP)"," ",ph_dmea(i)
-      write(iulog,*)"dE/dt dry mass adjustment   (dyAM-dyAP)"," ",dy_dmea(i)
-      write(iulog,*) " "
-      write(iulog,*) " "
+      write(iulog,*)"dE/dt dry mass adjustment   (xxAM-xxAP) ",str(i)," ",ph_dmea(i)," ",dy_dmea(i)," ",diff
     end do
+    write(iulog,*)" "
     write(iulog,*)" "
     !
     ! these diagnostics only make sense time-step to time-step
@@ -359,122 +352,26 @@ subroutine print_budget(hstwr)
     write(iulog,*)" SE dycore energy tendencies"
     write(iulog,*)"------------------------------------------------------------"
     write(iulog,*)" "
-    !     write(iulog,*)"dE/dt dyn total (dycore+phys tendency   (dBF-dED) ",dyn_total," W/M^2"
-    write(iulog,'(a46,F6.2,a6)')"dE/dt adiabatic dynamics                     ",dADIA," W/M^2"
+    write(iulog,'(a46,F6.2,a6)')"dE/dt dycore                     ",dADIA," W/M^2"
     write(iulog,*)" "
     write(iulog,*)"Adiabatic dynamics can be divided into quasi-horizontal and vertical remapping: "
     write(iulog,*)" "
-    write(iulog,'(a40,F6.2,a6)') "dE/dt 2D dynamics           (dAD-dBD)  ",rate_of_change_2D_dyn," W/M^2"
+    write(iulog,'(a40,F6.2,a6)') "dE/dt floating dynamics     (dAD-dBD)  ",rate_of_change_2D_dyn," W/M^2"
     write(iulog,'(a40,F6.2,a6)') "dE/dt vertical remapping    (dAR-dAD)  ",rate_of_change_vertical_remapping," W/M^2"
 
     write(iulog,*) " "
     write(iulog,*) "Breakdown of 2D dynamics:"
     write(iulog,*) " "
-    write(iulog,'(a45,F6.2,a6)')"   dE/dt hypervis del4               (dCH-dBH) ",diffusion_del4," W/M^2"
-    write(iulog,'(a45,F6.2,a6)')"   dE/dt hypervis frictional heating (dAH-dCH) ",diffusion_fric," W/M^2"
-    write(iulog,'(a45,F6.2,a6)')"   dE/dt hypervis del4 total         (dAH-dBH) ",diffusion_del4_tot," W/M^2"
-    write(iulog,'(a45,F6.2,a6)')"   dE/dt hypervis sponge total       (dAS-dBS) ",diffusion_sponge," W/M^2"
-    write(iulog,'(a45,F6.2,a6)')"   dE/dt explicit diffusion total              ",diffusion_total," W/M^2"
+    write(iulog,'(a46,F6.2,a6)')"   dE/dt hypervis del4               (dCH-dBH) ",diffusion_del4," W/M^2"
+    write(iulog,'(a46,F6.2,a6)')"   dE/dt hypervis frictional heating (dAH-dCH) ",diffusion_fric," W/M^2"
+    write(iulog,'(a46,F6.2,a6)')"   dE/dt hypervis del4 total         (dAH-dBH) ",diffusion_del4_tot," W/M^2"
+    write(iulog,'(a46,F6.2,a6)')"   dE/dt hypervis sponge del2        (dAS-dBS) ",diffusion_sponge," W/M^2"
+    write(iulog,'(a46,F6.2,a6)')"   dE/dt explicit diffusion total              ",diffusion_total," W/M^2"
     twoDresidual = rate_of_change_2D_dyn-diffusion_total
-    write(iulog,'(a45,F6.2,a6)')"   dE/dt residual (time-truncation errors)     ",twoDresidual," W/M^2"
+    write(iulog,'(a46,F6.2,a6)')"   dE/dt residual (time-truncation errors)     ",twoDresidual," W/M^2"
     write(iulog,*)" "
     write(iulog,*)" "
-#ifdef xxx
-    write(iulog,*)" "
-    write(iulog,*)"------------------------------------------------------------"
-    write(iulog,*)" CAM physics energy tendencies (using pressure coordinate)"
-    write(iulog,*)"------------------------------------------------------------"
-    write(iulog,*)" "
-    write(iulog,'(a40,F6.2,a6)')"dE/dt energy fixer          (phBP-phBF) ",ph_EFIX," W/M^2"
-    write(iulog,'(a40,F6.2,a6)')"dE/dt all parameterizations (phAP-phBP) ",ph_param," W/M^2"
-    write(iulog,'(a40,F6.2,a6)')"dE/dt dry mass adjustment   (phAM-phAP) ",ph_DMEA," W/M^2"
-    write(iulog,'(a40,F6.2,a6)')"dE/dt physics total         (phAM-phBF) ",ph_phys_total," W/M^2"
-    write(iulog,*)" "
-    write(iulog,*) " "
-    write(iulog,*) "-dE/dt energy fixer = dE/dt dry mass adjustment              +"
-    write(iulog,*) "                      dE/dt dycore                           +"
-    write(iulog,*) "                      dE/dt physics-dynamics coupling errors +"
-    write(iulog,*) "                      dE/dt energy formula differences       "
-    write(iulog,*) " "
-    write(iulog,*) "(equation 23 in Lauritzen and Williamson (2019))"
-    write(iulog,*) " "
-    dycore = -ph_EFIX-ph_DMEA
-    dycore = -ph_EFIX-previous_dEdt_dry_mass_adjust
-    write(iulog,*) ""
-    write(iulog,*) "Dycore TE dissipation estimated from physics in pressure coordinate:"
-    write(iulog,*) "(note: to avoid sampling error we need dE/dt from previous time-step)"
-    write(iulog,*) ""
-    write(iulog,*) "dE/dt adiabatic dycore estimated from physics (t=n-1) = "
-    write(iulog,'(a58,F6.2,a6)') "-dE/dt energy fixer(t=n)-dE/dt dry-mass adjust(t=n-1) = ",dycore," W/M^2"
-    write(iulog,*) ""
-    write(iulog,'(a58,F6.2,a6)') "dE/dt adiabatic dycore computed in dycore (t=n-1)     = ",&
-         previous_dEdt_adiabatic_dycore," W/M^2"
-    write(iulog,'(a58,F6.2,a6)') "dE/dt dry-mass adjust  (t=n-1)                        = ",&
-         previous_dEdt_dry_mass_adjust," W/M^2"
-    write(iulog,*) ""
-    if (abs(previous_dEdt_adiabatic_dycore)>eps) then
-      diff = abs((dycore-previous_dEdt_adiabatic_dycore)/previous_dEdt_adiabatic_dycore)
-      if (diff>eps) then
-        write(iulog,*) "energy budget not closed: previous_dEdt_adiabatic_dycore <> dycore"
-        write(iulog,*) "normalized difference is:",diff
-        !        call endrun(subname//"physics energy budget consistency error 2")
-      end if
-    end if
-    write(iulog,*)"------------------------------------------------------------"
-    write(iulog,*)" Physics dynamics coupling errors"
-    write(iulog,*)"------------------------------------------------------------"
-    write(iulog,*)" "
-    write(iulog,'(a46,F6.2,a6)')"dE/dt physics tendency in dynamics (dBD-dAF) ",se_phys_total_te," W/M^2"
-    write(iulog,'(a46,F6.2,a6)')"dE/dt physics tendency in physics  (pAM-pBF) ",ph_phys_total," W/M^2"
-    write(iulog,*)" "
-    write(iulog,'(a46,F6.2,a6)')"dE/dt physics-dynamics coupling errors       ",ph_phys_total-se_phys_total_te," W/M^2"
 
-    write(iulog,*)"------------------------------------------------------------"
-    write(iulog,*)" Consistency checks"
-    write(iulog,*)"------------------------------------------------------------"
-    write(iulog,*)" "
-    !
-    ! consistency check
-    !
-    if (abs(ph_param+ph_EFIX+ph_DMEA-ph_phys_total)>eps) then
-      write(iulog,*) "Physics energy budget not adding up:"
-      write(iulog,*) "(phBP-pBF)+(phAP-pBP)+(pAM-pAP) does not add up to (pAM-pBF)",\
-      abs(ph_param+ph_EFIX+ph_DMEA-ph_phys_total)
-      call endrun(subname//"physics energy budget consistency error")
-    endif
-    write(iulog,*) ""
-    write(iulog,*) "Is globally integrated total energy of state at the end of dynamics (dBF)"
-    write(iulog,*) "and beginning of physics (phBF) the same?"
-    write(iulog,*) ""
-    call budget_get_global('dBF' ,teidx,E_dBF(1))  !state passed to physics
-    call budget_get_global('phBF',teidx,E_phBF)!state beginning physics
-    !     if (abs(E_phBF)>eps) then
-    diff = abs_diff(E_dBF(1),E_phBF)
-    if (abs(diff)<eps) then
-      write(iulog,*)"yes. (dBF-phBF)/phBF =",diff
-      write(iulog,*)"E_dBF=",E_dBF(1),"; E_phBF=",E_phBF
-    else
-      write(iulog,*) "no. (dBF-phBF)/phBF =",diff,E_dBF(1),E_phBF
-      write(iulog,*) "To run energy consistent version of SE use namelist"
-      write(iulog,*) ""
-      write(iulog,*) "se_ftype     = 1           !no dribbling of physics tendencies"
-      write(iulog,*) "se_lcp_moist =  .false.    !no variable latent heats"
-      write(iulog,*) "water_species_in_air = 'Q' !only water vapor energetically active"
-      write(iulog,*) ""
-    end if
-    write(iulog,*) ""
-    write(iulog,*) "Is globally integrated total energy of state at the end of dynamics (dBF)"
-    write(iulog,*) "and beginning of physics dynamics energy (dyBF) the same?"
-    write(iulog,*) ""
-    diff = abs_diff(E_dBF(1),E_dyBF(1))
-    if (abs(diff)<eps) then
-      write(iulog,*)"yes. (dBF-dyBF)/dyBF =",diff
-      write(iulog,*)"E_dBF=",E_dBF(1),"; E_dyBF=",E_dyBF(1)
-    else
-      write(iulog,*) "no. (dBF-dyBF)/dyBF =",diff,E_dBF(1),E_dyBF(1)
-    end if
-    !     end if
-#endif
     do m_cnst=1,thermo_budget_num_vars
       if (thermo_budget_vars_massv(m_cnst)) then
         write(iulog,*)"------------------------------------------------------------"
