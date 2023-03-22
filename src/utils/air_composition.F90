@@ -657,7 +657,6 @@ CONTAINS
    subroutine water_composition_update(mmr, lchnk, ncol, vcoord, to_dry_factor)
       use cam_abortutils,  only: endrun
       use dyn_tests_utils, only: vc_height, vc_moist_pressure, vc_dry_pressure
-      use physconst,    only: r_universal, cpair, rair, cpwv, rh2o, cpliq, cpice, mwdry!xxx
       real(r8),           intent(in) :: mmr(:,:,:) ! constituents array
       integer,            intent(in) :: lchnk      ! Chunk number
       integer,            intent(in) :: ncol       ! number of columns
@@ -678,8 +677,6 @@ CONTAINS
         !
         cp_or_cv_dycore(:ncol,:,lchnk)=cp_or_cv_dycore(:ncol,:,lchnk)*&
              (cpairv(:ncol,:,lchnk)-rairv(:ncol,:,lchnk)) /rairv(:ncol,:,lchnk)
-!       cp_or_cv_dycore(:ncol,:,lchnk)=rair*&
-!            (cpairv(:ncol,:,lchnk)-rairv(:ncol,:,lchnk))/rairv(:ncol,:,lchnk)
       end if
    end subroutine water_composition_update
 

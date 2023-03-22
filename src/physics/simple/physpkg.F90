@@ -119,6 +119,8 @@ contains
     if (moist_physics) then
       call pbuf_add_field('CLDLIQINI', 'physpkg', dtype_r8, (/pcols,pver/), cldliqini_idx)
       call pbuf_add_field('CLDICEINI', 'physpkg', dtype_r8, (/pcols,pver/), cldiceini_idx)
+      call pbuf_add_field('TOTLIQINI', 'physpkg', dtype_r8, (/pcols,pver/), totliqini_idx)
+      call pbuf_add_field('TOTICEINI', 'physpkg', dtype_r8, (/pcols,pver/), toticeini_idx)
     end if
 
     ! check energy package
@@ -471,9 +473,9 @@ contains
     use cam_diagnostics, only: diag_phys_tend_writeout, diag_surf
     use tj2016_cam,      only: thatcher_jablonowski_sfc_pbl_hs_tend
     use dycore,          only: dycore_is
-    use check_energy,    only: calc_te_and_aam_budgets
+    use check_energy,    only: tot_energy_phys
     use cam_history,     only: hist_fld_active
-
+    use cam_thermo,      only: cam_thermo_water_update
     ! Arguments
     !
     real(r8),                  intent(in)    :: ztodt ! Two times model timestep (2 delta-t)
@@ -499,7 +501,7 @@ contains
     integer                                  :: ixcldliq
     integer                                  :: ixcldice
     integer                                  :: k
-    integer                                  :: ncol
+    integer                                  :: ncol, lchnk
     integer                                  :: itim_old
     logical                                  :: moist_mixing_ratio_dycore
 
@@ -510,6 +512,7 @@ contains
 
     ! number of active atmospheric columns
     ncol  = state%ncol
+    lchnk = state%lchnk
     ! Associate pointers with physics buffer fields
     itim_old = pbuf_old_tim_idx()
 
@@ -544,8 +547,8 @@ contains
        call physics_update(state, ptend, ztodt, tend)
     end if
 
-    call calc_te_and_aam_budgets(state, 'phAP')
-    call calc_te_and_aam_budgets(state, 'dyAP',vc=vc_dycore)
+    call tot_energy_phys(state, 'phAP')
+    call tot_energy_phys(state, 'dyAP',vc=vc_dycore)
     
     ! FV: convert dry-type mixing ratios to moist here because
     !     physics_dme_adjust assumes moist. This is done in p_d_coupling for
@@ -585,9 +588,11 @@ contains
         call set_dry_to_wet(state)
 
         call physics_dme_adjust(state, tend, qini, totliqini, toticeini, ztodt)
-
-        call calc_te_and_aam_budgets(state, 'phAM')
-        call calc_te_and_aam_budgets(state, 'dyAM',vc=vc_dycore)
+        ! update cp/cv for energy computation based in updated water variables
+        call cam_thermo_water_update(state%q(:ncol,:,:), lchnk, ncol, vc_dycore, &
+             to_dry_factor=state%pdel(:ncol,:)/state%pdeldry(:ncol,:))
+        call tot_energy_phys(state, 'phAM')
+        call tot_energy_phys(state, 'dyAM',vc=vc_dycore)
         ! Restore pre-"physics_dme_adjust" tracers
         state%q(:ncol,:pver,:pcnst) = tmp_trac(:ncol,:pver,:pcnst)
         state%pdel(:ncol,:pver)     = tmp_pdel(:ncol,:pver)
@@ -596,16 +601,16 @@ contains
 
       if (moist_mixing_ratio_dycore) then
         call physics_dme_adjust(state, tend, qini, totliqini, toticeini, ztodt)
-        call calc_te_and_aam_budgets(state, 'phAM')
-        call calc_te_and_aam_budgets(state, 'dyAM',vc=vc_dycore)
+        call tot_energy_phys(state, 'phAM')
+        call tot_energy_phys(state, 'dyAM',vc=vc_dycore)
       end if
 
     else
       tmp_q     (:ncol,:pver) = 0.0_r8
       tmp_cldliq(:ncol,:pver) = 0.0_r8
       tmp_cldice(:ncol,:pver) = 0.0_r8
-      call calc_te_and_aam_budgets(state, 'phAM')
-      call calc_te_and_aam_budgets(state, 'dyAM',vc=vc_dycore)
+      call tot_energy_phys(state, 'phAM')
+      call tot_energy_phys(state, 'dyAM',vc=vc_dycore)
     end if
 
     ! store T in buffer for use in computing dynamics T-tendency in next timestep
@@ -654,7 +659,7 @@ contains
     use time_manager,      only: get_nstep
     use check_energy,      only: check_energy_chng, check_energy_fix, check_energy_timestep_init
     use check_energy,      only: check_tracers_data, check_tracers_init, check_tracers_chng
-    use check_energy,      only: calc_te_and_aam_budgets
+    use check_energy,      only: tot_energy_phys
     use chemistry,         only: chem_is_active, chem_timestep_tend
     use held_suarez_cam,   only: held_suarez_tend
     use kessler_cam,       only: kessler_tend
@@ -663,6 +668,8 @@ contains
     use cam_snapshot_common,only: cam_snapshot_all_outfld
     use cam_snapshot_common,only: cam_snapshot_ptend_outfld
     use physics_types,     only: dyn_te_idx
+    use air_composition, only: thermodynamic_active_species_liq_num,thermodynamic_active_species_liq_idx
+    use air_composition, only: thermodynamic_active_species_ice_num,thermodynamic_active_species_ice_idx
     ! Arguments
 
     real(r8),                  intent(in)    :: ztodt ! model time increment
@@ -683,12 +690,15 @@ contains
     integer                  :: itim_old
     integer                  :: ixcldliq
     integer                  :: ixcldice
+    integer                  :: m, m_cnst
 
     ! physics buffer fields for total energy and mass adjustment
     real(r8), pointer        :: teout(:)
     real(r8), pointer        :: qini(:,:)
     real(r8), pointer        :: cldliqini(:,:)
     real(r8), pointer        :: cldiceini(:,:)
+    real(r8), pointer        :: totliqini(:,:)
+    real(r8), pointer        :: toticeini(:,:)
     real(r8), pointer        :: dtcore(:,:)
 
     real(r8)                 :: zero(pcols) ! array of zeros
@@ -716,6 +726,8 @@ contains
     if (moist_physics) then
       call pbuf_get_field(pbuf, cldliqini_idx, cldliqini)
       call pbuf_get_field(pbuf, cldiceini_idx, cldiceini)
+      call pbuf_get_field(pbuf, totliqini_idx, totliqini)
+      call pbuf_get_field(pbuf, toticeini_idx, toticeini)
     end if
 
     ! Set accumulated physics tendencies to 0
@@ -740,8 +752,8 @@ contains
     !===================================================
     ! Global mean total energy fixer and AAM diagnostics
     !===================================================
-    call calc_te_and_aam_budgets(state, 'phBF')
-    call calc_te_and_aam_budgets(state, 'dyBF',vc=vc_dycore)
+    call tot_energy_phys(state, 'phBF')
+    call tot_energy_phys(state, 'dyBF',vc=vc_dycore)
 
     call t_startf('energy_fixer')
 
@@ -754,8 +766,8 @@ contains
 
     call t_stopf('energy_fixer')
 
-    call calc_te_and_aam_budgets(state, 'phBP')
-    call calc_te_and_aam_budgets(state, 'dyBP',vc=vc_dycore)
+    call tot_energy_phys(state, 'phBP')
+    call tot_energy_phys(state, 'dyBP',vc=vc_dycore)
 
     ! Save state for convective tendency calculations.
     call diag_conv_tend_ini(state, pbuf)
@@ -771,8 +783,17 @@ contains
       if (ixcldice > 0) then
         cldiceini(:ncol,:pver) = state%q(:ncol,:pver,ixcldice)
       end if
+      totliqini(:ncol,:pver) = 0.0_r8
+      do m_cnst=1,thermodynamic_active_species_liq_num
+        m = thermodynamic_active_species_liq_idx(m_cnst)
+        totliqini(:ncol,:pver) = totliqini(:ncol,:pver)+state%q(:ncol,:pver,m)
+      end do
+      toticeini(:ncol,:pver) = 0.0_r8
+      do m_cnst=1,thermodynamic_active_species_ice_num
+        m = thermodynamic_active_species_ice_idx(m_cnst)
+        toticeini(:ncol,:pver) = toticeini(:ncol,:pver)+state%q(:ncol,:pver,m)
+      end do
     end if
-
     call outfld('TEOUT', teout       , pcols, lchnk   )
     call outfld('TEINP', state%te_ini(:,dyn_te_idx), pcols, lchnk   )
     call outfld('TEFIX', state%te_cur(:,dyn_te_idx), pcols, lchnk   )
