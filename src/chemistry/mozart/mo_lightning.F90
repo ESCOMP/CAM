@@ -107,7 +107,6 @@ contains
     !       ... initialize the lightning module
     !----------------------------------------------------------------------
     use mo_constants,  only : pi
-    use mo_chem_utls,  only : get_spc_ndx
 
     use cam_history,   only : addfld, add_default, horiz_only
     use phys_control,  only : phys_getopts
