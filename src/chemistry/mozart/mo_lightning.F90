@@ -131,7 +131,7 @@ contains
 
     if (.not.calc_lightning) return
 
-    calc_nox_prod = flsh_frq_ndx>0
+    calc_nox_prod = lght_no_prd_factor>0._r8
 
     if (calc_nox_prod) then
 
@@ -210,7 +210,6 @@ contains
     real(r8), parameter :: land   = 1._r8
     real(r8), parameter :: secpyr = 365._r8 * 8.64e4_r8
 
-    integer :: i, c
     integer :: cldtind             ! level index for cloud top
     integer :: cldbind             ! level index for cloud base > 273k
     integer :: k, kk, zlow_ind, zhigh_ind, itype
@@ -229,14 +228,15 @@ contains
     real(r8) :: flash_energy(pcols,begchunk:endchunk)       ! energy of flashes per second
     real(r8) :: prod_no_col(pcols,begchunk:endchunk)        ! global no production rate for diagnostics
     real(r8) :: wrk, wrk1, wrk2(1)
+    integer  :: icol                                    ! column index
     integer  :: ncol                                    ! columns per chunk
-    integer  :: lchnk                                   ! columns per chunk
+    integer  :: lchnk                                   ! chunk index
     real(r8),pointer :: cldtop(:)                       ! cloud top level index
     real(r8),pointer :: cldbot(:)                       ! cloud bottom level index
     real(r8) :: zmid(pcols,pver)                        ! geopot height above surface at midpoints (m)
     real(r8) :: zint(pcols,pver+1,begchunk:endchunk)    ! geopot height above surface at interfaces (m)
     real(r8) :: zsurf(pcols)                            ! geopot height above surface at interfaces (m)
-    real(r8) :: rlats(pcols,begchunk:endchunk)          ! column latitudes in chunks
+    real(r8) :: rlats(pcols)                            ! column latitudes in chunks
     real(r8) :: wght(pcols)
 
     real(r8) :: glob_prod_no_col(pcols,begchunk:endchunk)
@@ -257,7 +257,6 @@ contains
 
     real(r8) :: flash_freq_land, flash_freq_ocn
     real(r8), pointer :: cld2grnd_flash_freq(:)
-    real(r8) :: cld2grnd_flash_out(pcols,begchunk:endchunk)
 
     if (.not.calc_lightning) return
 
@@ -272,7 +271,6 @@ contains
     dchgzone(:,:)         = 0._r8
     cgic(:,:)             = 0._r8
     flash_energy(:,:)     = 0._r8
-    cld2grnd_flash_out(:,:) = 0._r8
 
     if (calc_nox_prod) then
        prod_no(:,:,:)     = 0._r8
@@ -298,32 +296,30 @@ contains
     !    with 1e17 n atoms per j. the total number of n atoms is then distributed
     !    over the complete column of grid boxes.
     !--------------------------------------------------------------------------------
-    Chunk_loop : do c = begchunk,endchunk
-       ncol  = state(c)%ncol
-       lchnk = state(c)%lchnk
+    Chunk_loop : do lchnk = begchunk,endchunk
+       ncol  = state(lchnk)%ncol
        call pbuf_get_field(pbuf_get_chunk(pbuf2d,lchnk), flsh_frq_ndx, cld2grnd_flash_freq )
        call pbuf_get_field(pbuf_get_chunk(pbuf2d,lchnk), cldtop_ndx, cldtop )
        call pbuf_get_field(pbuf_get_chunk(pbuf2d,lchnk), cldbot_ndx, cldbot )
-       zsurf(:ncol) = state(c)%phis(:ncol)*rga
-       call get_rlat_all_p(c, ncol, rlats(1,c) )
-       call get_wght_all_p(c, ncol, wght)
+       zsurf(:ncol) = state(lchnk)%phis(:ncol)*rga
+       call get_wght_all_p(lchnk, pcols, wght)
 
        do k = 1,pver
-          zmid(:ncol,k)   = state(c)%zm(:ncol,k) + zsurf(:ncol)
-          zint(:ncol,k,c) = state(c)%zi(:ncol,k) + zsurf(:ncol)
+          zmid(:ncol,k)   = state(lchnk)%zm(:ncol,k) + zsurf(:ncol)
+          zint(:ncol,k,lchnk) = state(lchnk)%zi(:ncol,k) + zsurf(:ncol)
        end do
-       zint(:ncol,pver+1,c) = state(c)%zi(:ncol,pver+1) + zsurf(:ncol)
+       zint(:ncol,pver+1,lchnk) = state(lchnk)%zi(:ncol,pver+1) + zsurf(:ncol)
 
        cld2grnd_flash_freq(:) = 0.0_r8
 
-       col_loop : do i = 1,ncol
+       col_loop : do icol = 1,ncol
           !--------------------------------------------------------------------------------
           ! 	... find cloud top and bottom level above 273k
           !--------------------------------------------------------------------------------
-          cldtind = nint( cldtop(i) )
-          cldbind = nint( cldbot(i) )
+          cldtind = nint( cldtop(icol) )
+          cldbind = nint( cldbot(icol) )
           do
-             if( cldbind <= cldtind .or. state(c)%t(i,cldbind) < t0 ) then
+             if( cldbind <= cldtind .or. state(lchnk)%t(icol,cldbind) < t0 ) then
                 exit
              end if
              cldbind = cldbind - 1
@@ -332,17 +328,17 @@ contains
              !--------------------------------------------------------------------------------
              !       ... compute cloud top height and depth of charging zone
              !--------------------------------------------------------------------------------
-             cldhgt(i,c)   = m2km*max( 0._r8,zint(i,cldtind,c) )
-             dchgz = cldhgt(i,c) - m2km*zmid(i,cldbind)
-             dchgzone(i,c) = dchgz
+             cldhgt(icol,lchnk)   = m2km*max( 0._r8,zint(icol,cldtind,lchnk) )
+             dchgz = cldhgt(icol,lchnk) - m2km*zmid(icol,cldbind)
+             dchgzone(icol,lchnk) = dchgz
              !--------------------------------------------------------------------------------
              !       ... compute flash frequency for given cloud top height
              !           (flashes storm^-1 min^-1)
              !--------------------------------------------------------------------------------
-             flash_freq_land = 3.44e-5_r8 * cldhgt(i,c)**4.9_r8
-             flash_freq_ocn  = 6.40e-4_r8 * cldhgt(i,c)**1.7_r8
-             flash_freq(i,c) = cam_in(c)%landfrac(i)*flash_freq_land + &
-                               cam_in(c)%ocnfrac(i) *flash_freq_ocn
+             flash_freq_land = 3.44e-5_r8 * cldhgt(icol,lchnk)**4.9_r8
+             flash_freq_ocn  = 6.40e-4_r8 * cldhgt(icol,lchnk)**1.7_r8
+             flash_freq(icol,lchnk) = cam_in(lchnk)%landfrac(icol)*flash_freq_land + &
+                               cam_in(lchnk)%ocnfrac(icol) *flash_freq_ocn
 
              !--------------------------------------------------------------------------------
              !   cgic = proportion of cloud-to-ground flashes
@@ -351,15 +347,14 @@ contains
              ! (https://agupubs.onlinelibrary.wiley.com/doi/epdf/10.1029/96JD03504)
              ! eq 14
              !--------------------------------------------------------------------------------
-             cgic(i,c) = 1._r8/((((ca*dchgz + cb)*dchgz + cc) *dchgz + cd)*dchgz + ce)
+             cgic(icol,lchnk) = 1._r8/((((ca*dchgz + cb)*dchgz + cc) *dchgz + cd)*dchgz + ce)
              if( dchgz < 5.5_r8 ) then
-                cgic(i,c) = 0._r8
+                cgic(icol,lchnk) = 0._r8
              else if( dchgz > 14._r8 ) then
-                cgic(i,c) = .02_r8
+                cgic(icol,lchnk) = .02_r8
              end if
 
-             cld2grnd_flash_freq(i) = cam_in(c)%landfrac(i)*flash_freq_land*cgic(i,c) ! cld-to-grnd flash frq (per min)
-             cld2grnd_flash_out(i,c) = cld2grnd_flash_freq(i)
+             cld2grnd_flash_freq(icol) = cam_in(lchnk)%landfrac(icol)*flash_freq_land*cgic(icol,lchnk) ! cld-to-grnd flash frq (per min)
 
              if (calc_nox_prod) then
                 !--------------------------------------------------------------------------------
@@ -367,18 +362,18 @@ contains
                 !           and convert to total energy per second
                 !           set ic = cg
                 !--------------------------------------------------------------------------------
-                flash_energy(i,c) = 6.7e9_r8 * flash_freq(i,c)/60._r8
+                flash_energy(icol,lchnk) = 6.7e9_r8 * flash_freq(icol,lchnk)/60._r8
                 !--------------------------------------------------------------------------------
                 !       ... LKE Aug 23, 2005: scale production to account for different grid
                 !           box sizes. This requires a reduction in the overall fudge factor
                 !           (e.g., from 1.2 to 0.5)
                 !--------------------------------------------------------------------------------
-                flash_energy(i,c) =  flash_energy(i,c) * wght(i) * geo_factor
+                flash_energy(icol,lchnk) =  flash_energy(icol,lchnk) * wght(icol) * geo_factor
                 !--------------------------------------------------------------------------------
                 ! 	... compute number of n atoms produced per second
                 !           and convert to n atoms per second per cm2 and apply fudge factor
                 !--------------------------------------------------------------------------------
-                prod_no_col(i,c) = 1.e17_r8*flash_energy(i,c)/(1.e4_r8*rearth*rearth*wght(i)) * factor
+                prod_no_col(icol,lchnk) = 1.e17_r8*flash_energy(icol,lchnk)/(1.e4_r8*rearth*rearth*wght(icol)) * factor
 
                 !--------------------------------------------------------------------------------
                 ! 	... compute global no production rate in tgn/yr:
@@ -386,20 +381,20 @@ contains
                 !             nb: 1.65979e-24 = 1/avo
                 !           tgn per year: * secpyr
                 !--------------------------------------------------------------------------------
-                glob_prod_no_col(i,c) = 1.e17_r8*flash_energy(i,c) &
+                glob_prod_no_col(icol,lchnk) = 1.e17_r8*flash_energy(icol,lchnk) &
                      * 14.00674_r8 * 1.65979e-24_r8 * 1.e-12_r8 * secpyr * factor
              end if
           end if cloud_layer
        end do Col_loop
+
+       call outfld( 'LGHTNG_CLD2GRND', cld2grnd_flash_freq, pcols, lchnk )
     end do Chunk_loop
 
-    do c = begchunk,endchunk
-       lchnk = state(c)%lchnk
-       call outfld( 'FLASHFRQ',     flash_freq(:,c),       pcols, lchnk )
-       call outfld( 'CGIC',         cgic(:,c),             pcols, lchnk )
-       call outfld( 'CLDHGT',       cldhgt(:,c),           pcols, lchnk )
-       call outfld( 'DCHGZONE',     dchgzone(:,c),         pcols, lchnk )
-       call outfld( 'LGHTNG_CLD2GRND', cld2grnd_flash_out(:,c), pcols, lchnk )
+    do lchnk = begchunk,endchunk
+       call outfld( 'FLASHFRQ',     flash_freq(:,lchnk),       pcols, lchnk )
+       call outfld( 'CGIC',         cgic(:,lchnk),             pcols, lchnk )
+       call outfld( 'CLDHGT',       cldhgt(:,lchnk),           pcols, lchnk )
+       call outfld( 'DCHGZONE',     dchgzone(:,lchnk),         pcols, lchnk )
     enddo
 
     if (.not.calc_nox_prod) return
@@ -423,29 +418,29 @@ contains
        !--------------------------------------------------------------------------------
        !	... Distribute production up to cloud top [Pickering et al., 1998 (JGR)]
        !--------------------------------------------------------------------------------
-       do c = begchunk,endchunk
-          ncol  = state(c)%ncol
-          lchnk = state(c)%lchnk
+       do lchnk = begchunk,endchunk
+          call get_rlat_all_p(lchnk, pcols, rlats)
+          ncol = state(lchnk)%ncol
           call pbuf_get_field(pbuf_get_chunk(pbuf2d,lchnk), cldtop_ndx, cldtop )
-          do i = 1,ncol
-             cldtind = nint( cldtop(i) )
-             if( prod_no_col(i,c) > 0._r8 ) then
-                if( cldhgt(i,c) > 0._r8 ) then
-                   if( abs( rlats(i,c) ) > lat25 ) then
-                      itype = 1                                                    ! midlatitude continental
-                   else if( nint( cam_in(c)%landfrac(i) ) == land ) then
-                      itype = 3                                                    ! tropical continental
+          do icol = 1,ncol
+             cldtind = nint( cldtop(icol) )
+             if( prod_no_col(icol,lchnk) > 0._r8 ) then
+                if( cldhgt(icol,lchnk) > 0._r8 ) then
+                   if( abs( rlats(icol) ) > lat25 ) then
+                      itype = 1                                                     ! midlatitude continental
+                   else if( nint( cam_in(lchnk)%landfrac(icol) ) == land ) then
+                      itype = 3                                                     ! tropical continental
                    else
-                      itype = 2                                                    ! topical marine
+                      itype = 2                                                     ! topical marine
                    end if
                    frac_sum = 0._r8
                    do k = cldtind,pver
-                      zlow       = zint(i,k+1,c) * m2km                            ! lower interface height (km)
-                      zlow_scal  = zlow * 16._r8/cldhgt(i,c)                       ! scale to 16 km convection height
-                      zlow_ind   = max( 1,INT(zlow_scal)+1 )                       ! lowest vdist index to include in layer
-                      zhigh      = zint(i,k,c) * m2km                              ! upper interface height (km)
-                      zhigh_scal = zhigh * 16._r8/cldhgt(i,c)                      ! height (km) scaled to 16km convection height
-                      zhigh_ind  = max( 1,MIN( 16,INT(zhigh_scal)+1 ) )            ! highest vdist index to include in layer
+                      zlow       = zint(icol,k+1,lchnk) * m2km                      ! lower interface height (km)
+                      zlow_scal  = zlow * 16._r8/cldhgt(icol,lchnk)                 ! scale to 16 km convection height
+                      zlow_ind   = max( 1,INT(zlow_scal)+1 )                        ! lowest vdist index to include in layer
+                      zhigh      = zint(icol,k,lchnk) * m2km                        ! upper interface height (km)
+                      zhigh_scal = zhigh * 16._r8/cldhgt(icol,lchnk)                ! height (km) scaled to 16km convection height
+                      zhigh_ind  = max( 1,MIN( 16,INT(zhigh_scal)+1 ) )             ! highest vdist index to include in layer
                       do kk = zlow_ind,zhigh_ind
                          wrk  = kk
                          wrk1 = kk - 1
@@ -453,11 +448,11 @@ contains
                               - max( zlow_scal,wrk1 )
                          fraction = max( 0._r8, min( 1._r8,fraction ) )
                          frac_sum = frac_sum + fraction*vdist(kk,itype)
-                         prod_no(i,k,c) = prod_no(i,k,c) &                         ! sum the fraction of column NOx in layer k
+                         prod_no(icol,k,lchnk) = prod_no(icol,k,lchnk) &            ! sum the fraction of column NOx in layer k
                               + fraction*vdist(kk,itype)*.01_r8
                       end do
-                      prod_no(i,k,c) = prod_no_col(i,c) * prod_no(i,k,c) &         ! multiply fraction by column amount
-                           / (km2cm*(zhigh - zlow))                    ! and convert to atom N cm^-3 s^-1
+                      prod_no(icol,k,lchnk) = prod_no_col(icol,lchnk) * prod_no(icol,k,lchnk) & ! multiply fraction by column amount
+                                            / (km2cm*(zhigh - zlow))                ! and convert to atom N cm^-3 s^-1
                    end do
                 end if
              end if
@@ -468,11 +463,10 @@ contains
     !--------------------------------------------------------------------------------
     !       ... output lightning no production to history file
     !--------------------------------------------------------------------------------
-    do c = begchunk,endchunk
-       lchnk = state(c)%lchnk
-       call outfld( 'LNO_PROD',     prod_no(:,:,c),        pcols, lchnk )
-       call outfld( 'LNO_COL_PROD', glob_prod_no_col(:,c), pcols, lchnk )
-       call outfld( 'FLASHENGY',    flash_energy(:,c),     pcols, lchnk )
+    do lchnk = begchunk,endchunk
+       call outfld( 'LNO_PROD',     prod_no(:,:,lchnk),        pcols, lchnk )
+       call outfld( 'LNO_COL_PROD', glob_prod_no_col(:,lchnk), pcols, lchnk )
+       call outfld( 'FLASHENGY',    flash_energy(:,lchnk),     pcols, lchnk )
     enddo
 
   end subroutine lightning_no_prod

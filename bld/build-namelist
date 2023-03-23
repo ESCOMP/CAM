@@ -3403,7 +3403,7 @@ if ( length($nl->get_value('soil_erod_file'))>0 ) {
         }
     }
 }
-if ($phys =~ /^cam/) {
+if (chem_has_species($cfg, 'NO')) {
   # Lightning scaling
   add_default($nl, 'lght_no_prd_factor');
 }
