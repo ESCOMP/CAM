@@ -179,6 +179,7 @@ contains
     call addfld( 'CLDHGT',   horiz_only,  'I', 'km',    'cloud top height' )        ! cloud top height
     call addfld( 'DCHGZONE', horiz_only,  'I', 'km',    'depth of discharge zone' ) ! depth of discharge zone
     call addfld( 'CGIC',     horiz_only,  'I', '1',     'ratio of cloud-ground/intracloud discharges' ) ! ratio of cloud-ground/intracloud discharges
+    call addfld( 'LGHTNG_CLD2GRND', horiz_only,  'I', 'min-1', 'clound-to-ground lightning flash rate') ! clound to ground flash frequency
 
   end subroutine lightning_init
 
@@ -256,6 +257,7 @@ contains
 
     real(r8) :: flash_freq_land, flash_freq_ocn
     real(r8), pointer :: cld2grnd_flash_freq(:)
+    real(r8) :: cld2grnd_flash_out(pcols,begchunk:endchunk)
 
     if (.not.calc_lightning) return
 
@@ -270,6 +272,7 @@ contains
     dchgzone(:,:)         = 0._r8
     cgic(:,:)             = 0._r8
     flash_energy(:,:)     = 0._r8
+    cld2grnd_flash_out(:,:) = 0._r8
 
     if (calc_nox_prod) then
        prod_no(:,:,:)     = 0._r8
@@ -310,7 +313,6 @@ contains
           zint(:ncol,k,c) = state(c)%zi(:ncol,k) + zsurf(:ncol)
        end do
        zint(:ncol,pver+1,c) = state(c)%zi(:ncol,pver+1) + zsurf(:ncol)
-
 
        cld2grnd_flash_freq(:) = 0.0_r8
 
@@ -357,6 +359,7 @@ contains
              end if
 
              cld2grnd_flash_freq(i) = cam_in(c)%landfrac(i)*flash_freq_land*cgic(i,c) ! cld-to-grnd flash frq (per min)
+             cld2grnd_flash_out(i,c) = cld2grnd_flash_freq(i)
 
              if (calc_nox_prod) then
                 !--------------------------------------------------------------------------------
@@ -396,6 +399,7 @@ contains
        call outfld( 'CGIC',         cgic(:,c),             pcols, lchnk )
        call outfld( 'CLDHGT',       cldhgt(:,c),           pcols, lchnk )
        call outfld( 'DCHGZONE',     dchgzone(:,c),         pcols, lchnk )
+       call outfld( 'LGHTNG_CLD2GRND', cld2grnd_flash_out(:,c), pcols, lchnk )
     enddo
 
     if (.not.calc_nox_prod) return
