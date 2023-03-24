@@ -1193,6 +1193,7 @@ end subroutine physics_ptend_copy
   subroutine physics_dme_adjust(state, tend, qini, liqini, iceini, dt)
     use air_composition, only: dry_air_species_num,thermodynamic_active_species_num
     use air_composition, only: thermodynamic_active_species_idx
+    use dycore,          only: dycore_is
     !-----------------------------------------------------------------------
     !
     ! Purpose: Adjust the dry mass in each layer back to the value of physics input state
@@ -1259,27 +1260,49 @@ end subroutine physics_ptend_copy
     ! adjust dry mass in each layer back to input value, while conserving
     ! constituents, momentum, and total energy
     state%ps(:ncol) = state%pint(:ncol,1)
-    do k = 1, pver
-      tot_water(:ncol,1) = qini(:ncol,k)+liqini(:ncol,k)+iceini(:ncol,k) !initial total H2O
-      tot_water(:ncol,2) = 0.0_r8
-      do m_cnst=dry_air_species_num+1,thermodynamic_active_species_num
-        m = thermodynamic_active_species_idx(m_cnst)
-        tot_water(:ncol,2) = tot_water(:ncol,2)+state%q(:ncol,k,m)
-      end do
-      fdq(:ncol) = 1._r8 + tot_water(:ncol,2) - tot_water(:ncol,1)
-      ! adjust constituents to conserve mass in each layer
-      do m = 1, pcnst
-        state%q(:ncol,k,m) = state%q(:ncol,k,m) / fdq(:ncol)
-      end do
-      ! compute new total pressure variables
-      state%pdel  (:ncol,k  ) = state%pdel(:ncol,k  ) * fdq(:ncol)
-      state%ps(:ncol)         = state%ps(:ncol)       + state%pdel(:ncol,k)
-      state%pint  (:ncol,k+1) = state%pint(:ncol,k  ) + state%pdel(:ncol,k)
-      state%lnpint(:ncol,k+1) = log(state%pint(:ncol,k+1))
-      state%rpdel (:ncol,k  ) = 1._r8/ state%pdel(:ncol,k  )
-      !note that mid-level variables (e.g. pmid) are not recomputed
-    end do
 
+    !
+    ! original code for backwards compatability with FV and EUL
+    !
+    if (.not.(dycore_is('MPAS') .or. dycore_is('SE'))) then
+      do k = 1, pver
+        
+        ! adjusment factor is just change in water vapor
+        fdq(:ncol) = 1._r8 + state%q(:ncol,k,1) - qini(:ncol,k)
+        
+        ! adjust constituents to conserve mass in each layer
+        do m = 1, pcnst
+          state%q(:ncol,k,m) = state%q(:ncol,k,m) / fdq(:ncol)
+        end do
+        ! compute new total pressure variables
+        state%pdel  (:ncol,k  ) = state%pdel(:ncol,k  ) * fdq(:ncol)
+        state%ps(:ncol)         = state%ps(:ncol)       + state%pdel(:ncol,k)
+        state%pint  (:ncol,k+1) = state%pint(:ncol,k  ) + state%pdel(:ncol,k)
+        state%lnpint(:ncol,k+1) = log(state%pint(:ncol,k+1))
+        state%rpdel (:ncol,k  ) = 1._r8/ state%pdel(:ncol,k  )
+      end do
+    else
+      do k = 1, pver
+        tot_water(:ncol,1) = qini(:ncol,k) +liqini(:ncol,k)+iceini(:ncol,k) !initial total H2O
+        tot_water(:ncol,2) = 0.0_r8
+        do m_cnst=dry_air_species_num+1,thermodynamic_active_species_num
+          m = thermodynamic_active_species_idx(m_cnst)
+          tot_water(:ncol,2) = tot_water(:ncol,2)+state%q(:ncol,k,m)
+        end do
+        fdq(:ncol) = 1._r8 + tot_water(:ncol,2) - tot_water(:ncol,1)
+        ! adjust constituents to conserve mass in each layer
+        do m = 1, pcnst
+          state%q(:ncol,k,m) = state%q(:ncol,k,m) / fdq(:ncol)
+        end do
+        ! compute new total pressure variables
+        state%pdel  (:ncol,k  ) = state%pdel(:ncol,k  ) * fdq(:ncol)
+        state%ps(:ncol)         = state%ps(:ncol)       + state%pdel(:ncol,k)
+        state%pint  (:ncol,k+1) = state%pint(:ncol,k  ) + state%pdel(:ncol,k)
+        state%lnpint(:ncol,k+1) = log(state%pint(:ncol,k+1))
+        state%rpdel (:ncol,k  ) = 1._r8/ state%pdel(:ncol,k  )
+        !note that mid-level variables (e.g. pmid) are not recomputed
+      end do
+    endif
     if ( waccmx_is('ionosphere') .or. waccmx_is('neutral') ) then
       zvirv(:,:) = shr_const_rwv / rairv(:,:,state%lchnk) - 1._r8
     else
@@ -1287,6 +1310,7 @@ end subroutine physics_ptend_copy
     endif
 
   end subroutine physics_dme_adjust
+
 !-----------------------------------------------------------------------
 
 !===============================================================================

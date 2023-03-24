@@ -84,102 +84,105 @@ use air_composition, only: thermodynamic_active_species_num,thermodynamic_active
     do i = 1,ncol
        zi(i,pverp) = 0.0_r8
     end do
-#ifdef phl_cam_development
-! Compute zi, zm from bottom up. 
-! Note, zi(i,k) is the interface above zm(i,k)
 
-    do k = pver, 1, -1
+    ! Compute zi, zm from bottom up. 
+    ! Note, zi(i,k) is the interface above zm(i,k)
 
-! First set hydrostatic elements consistent with dynamics
-
-      if ((dycore_is('LR') .or. dycore_is('FV3'))) then
+    !
+    ! original code for backwards compatability with FV and EUL
+    !
+    if (.not.(dycore_is('MPAS') .or. dycore_is('SE'))) then
+      do k = pver, 1, -1
+        
+        ! First set hydrostatic elements consistent with dynamics
+        
+        if ((dycore_is('LR') .or. dycore_is('FV3'))) then
+          do i = 1,ncol
+            hkl(i) = piln(i,k+1) - piln(i,k)
+            hkk(i) = 1._r8 - pint(i,k) * hkl(i) * rpdel(i,k)
+          end do
+        else!MPAS, SE or EUL
+          !
+          ! For EUL and SE: pmid = 0.5*(pint(k+1)+pint(k))
+          ! For MPAS      : pmid is computed from theta_m, rhodry, etc.
+          !
+          do i = 1,ncol
+            hkl(i) = pdel(i,k) / pmid(i,k)
+            hkk(i) = 0.5_r8 * hkl(i)
+          end do
+        end if
+        
+        ! Now compute tv, zm, zi
+        
         do i = 1,ncol
-          hkl(i) = piln(i,k+1) - piln(i,k)
-          hkk(i) = 1._r8 - pint(i,k) * hkl(i) * rpdel(i,k)
-        end do
-      else!MPAS, SE or EUL
-        !
-        ! For EUL and SE: pmid = 0.5*(pint(k+1)+pint(k))
-        ! For MPAS      : pmid is computed from theta_m, rhodry, etc.
-        !
-        do i = 1,ncol
-          hkl(i) = pdel(i,k) / pmid(i,k)
-          hkk(i) = 0.5_r8 * hkl(i)
-        end do
-      end if
-
-! Now compute tv, zm, zi
-
-       do i = 1,ncol
           tvfac   = 1._r8 + zvir(i,k) * q(i,k,1)
           tv      = t(i,k) * tvfac
-
+          
           zm(i,k) = zi(i,k+1) + rog(i,k) * tv * hkk(i)
           zi(i,k) = zi(i,k+1) + rog(i,k) * tv * hkl(i)
-       end do
-    end do
-#else
-    !
-    ! For the computation of generalized virtual temperature (equation 16
-    ! in Lauritzen et al. (2018);  https://doi.org/10.1029/2017MS001257)
-    !
-
-    ! Compute factor for converting wet to dry mixing ratio (eq.7)
-    qfac = 1.0_r8
-    do idx = 1,thermodynamic_active_species_num
-      do k = 1,pver
-        do i = 1,ncol
-          qfac(i,k) = qfac(i,k)-q(i,k,thermodynamic_active_species_idx(idx))
         end do
       end do
-    end do
-    qfac = 1.0_r8/qfac
-
-    ! Compute sum of dry water mixing ratios
-    sum_dry_mixing_ratio = 1.0_r8
-    do idx = 1,thermodynamic_active_species_num
-      do k = 1,pver
-        do i = 1,ncol
-          sum_dry_mixing_ratio(i,k) = sum_dry_mixing_ratio(i,k)&
-               +q(i,k,thermodynamic_active_species_idx(idx))*qfac(i,k)
+    else
+      !
+      ! For the computation of generalized virtual temperature (equation 16
+      ! in Lauritzen et al. (2018);  https://doi.org/10.1029/2017MS001257)
+      !
+      ! Compute factor for converting wet to dry mixing ratio (eq.7)
+      !
+      qfac = 1.0_r8
+      do idx = 1,thermodynamic_active_species_num
+        do k = 1,pver
+          do i = 1,ncol
+            qfac(i,k) = qfac(i,k)-q(i,k,thermodynamic_active_species_idx(idx))
+          end do
         end do
       end do
-    end do
-    sum_dry_mixing_ratio(:,:) = 1.0_r8/sum_dry_mixing_ratio(:,:)
-
-! Compute zi, zm from bottom up. 
-! Note, zi(i,k) is the interface above zm(i,k)
-    do k = pver, 1, -1
-
-! First set hydrostatic elements consistent with dynamics
-
-      if ((dycore_is('LR') .or. dycore_is('FV3'))) then
-        do i = 1,ncol
-          hkl(i) = piln(i,k+1) - piln(i,k)
-          hkk(i) = 1._r8 - pint(i,k) * hkl(i) * rpdel(i,k)
+      qfac = 1.0_r8/qfac
+      
+      ! Compute sum of dry water mixing ratios
+      sum_dry_mixing_ratio = 1.0_r8
+      do idx = 1,thermodynamic_active_species_num
+        do k = 1,pver
+          do i = 1,ncol
+            sum_dry_mixing_ratio(i,k) = sum_dry_mixing_ratio(i,k)&
+                 +q(i,k,thermodynamic_active_species_idx(idx))*qfac(i,k)
+          end do
         end do
-      else!MPAS, SE or EUL
-        !
-        ! For EUL and SE: pmid = 0.5*(pint(k+1)+pint(k))
-        ! For MPAS      : pmid is computed from theta_m, rhodry, etc.
-        !
+      end do
+      sum_dry_mixing_ratio(:,:) = 1.0_r8/sum_dry_mixing_ratio(:,:)
+      ! Compute zi, zm from bottom up. 
+      ! Note, zi(i,k) is the interface above zm(i,k)
+      do k = pver, 1, -1
+        
+        ! First set hydrostatic elements consistent with dynamics
+        
+        if ((dycore_is('LR') .or. dycore_is('FV3'))) then
+          do i = 1,ncol
+            hkl(i) = piln(i,k+1) - piln(i,k)
+            hkk(i) = 1._r8 - pint(i,k) * hkl(i) * rpdel(i,k)
+          end do
+        else!MPAS, SE or EUL
+          !
+          ! For EUL and SE: pmid = 0.5*(pint(k+1)+pint(k))
+          ! For MPAS      : pmid is computed from theta_m, rhodry, etc.
+          !
+          do i = 1,ncol
+            hkl(i) = pdel(i,k) / pmid(i,k)
+            hkk(i) = 0.5_r8 * hkl(i)
+          end do
+        end if
+        
+        ! Now compute tv, zm, zi
+        
         do i = 1,ncol
-          hkl(i) = pdel(i,k) / pmid(i,k)
-          hkk(i) = 0.5_r8 * hkl(i)
-        end do
-      end if
-
-! Now compute tv, zm, zi
-
-       do i = 1,ncol
           tvfac   = (1._r8 + (zvir(i,k)+1.0_r8) * q(i,k,1)*qfac(i,k))*sum_dry_mixing_ratio(i,k)
           tv      = t(i,k) * tvfac
-
+          
           zm(i,k) = zi(i,k+1) + rog(i,k) * tv * hkk(i)
           zi(i,k) = zi(i,k+1) + rog(i,k) * tv * hkl(i)
-       end do
-    end do
-#endif
+        end do
+      end do
+    end if
     return
   end subroutine geopotential_t
 end module geopotential
