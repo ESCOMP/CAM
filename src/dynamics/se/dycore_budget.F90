@@ -34,8 +34,8 @@ subroutine print_budget(hstwr)
   character(len=*), parameter :: subname = 'check_energy:print_budgets'
 
   integer,  dimension(4) :: idx
-  real(r8), dimension(4) :: ph_param,ph_EFIX,ph_DMEA,ph_PARAM_AND_EFIX,ph_phys_total
-  real(r8), dimension(4) :: dy_param,dy_EFIX,dy_DMEA,dy_param_and_efix,dy_phys_total
+  real(r8), dimension(4) :: dEdt_param_physE,dEdt_efix_physE,dEdt_dme_adjust_physE,dEdt_param_efix_physE,ph_phys_total
+  real(r8), dimension(4) :: dEdt_param_dynE, dEdt_efix_dynE ,dEdt_dme_adjust_dynE ,dEdt_param_efix_dynE ,dy_phys_total
   real(r8), dimension(4) :: se_phys_total
   real(r8)               :: dycore, err, param, pefix, &
                             pdmea, phys_total, dyn_phys_total, &
@@ -71,19 +71,19 @@ subroutine print_budget(hstwr)
       !
       ! CAM physics energy tendencies
       !
-      call budget_get_global('phAP-phBP',idx(i),ph_param(i))
-      call budget_get_global('phBP-phBF',idx(i),ph_EFIX(i))
-      call budget_get_global('phAM-phAP',idx(i),ph_dmea(i))
-      call budget_get_global('phAP-phBF',idx(i),ph_param_and_efix(i))
+      call budget_get_global('phAP-phBP',idx(i),dEdt_param_physE(i))
+      call budget_get_global('phBP-phBF',idx(i),dEdt_efix_physE(i))
+      call budget_get_global('phAM-phAP',idx(i),dEdt_dme_adjust_physE(i))
+      call budget_get_global('phAP-phBF',idx(i),dEdt_param_efix_physE(i))
       call budget_get_global('phAM-phBF',idx(i),ph_phys_total(i))
       !
       ! CAM physics energy tendencies using dycore energy formula scaling
       ! temperature tendencies for consistency with CAM physics
       !
-      call budget_get_global('dyAP-dyBP',idx(i),dy_param(i))
-      call budget_get_global('dyBP-dyBF',idx(i),dy_EFIX(i))
-      call budget_get_global('dyAM-dyAP',idx(i),dy_dmea(i))
-      call budget_get_global('dyAP-dyBF',idx(i),dy_param_and_efix(i))
+      call budget_get_global('dyAP-dyBP',idx(i),dEdt_param_dynE(i))
+      call budget_get_global('dyBP-dyBF',idx(i),dEdt_efix_dynE(i))
+      call budget_get_global('dyAM-dyAP',idx(i),dEdt_dme_adjust_dynE(i))
+      call budget_get_global('dyAP-dyBF',idx(i),dEdt_param_efix_dynE(i))
       call budget_get_global('dyAM-dyBF',idx(i),dy_phys_total(i))
       call budget_get_global('dyBF'     ,idx(i),E_dyBF(i))!state beginning physics
       !
@@ -174,10 +174,10 @@ subroutine print_budget(hstwr)
     write(iulog,*)  "                                                        xx=ph   xx=dy  norm. diff."
     write(iulog,*)  "                                                        -----   -----  -----------"
     do i=1,4
-      diff = abs_diff(ph_EFIX(i),dy_EFIX(i),pf=pf)
-      write(iulog,fmt)"dE/dt energy fixer          (xxBP-xxBF) ",str(i)," ",ph_EFIX(i), " ",dy_EFIX(i)," ",diff,pf
-      diff = abs_diff(ph_param(i),dy_param(i),pf=pf)
-      write(iulog,fmt)"dE/dt all parameterizations (xxAP-xxBP) ",str(i)," ",ph_param(i)," ",dy_param(i)," ",diff,pf
+      diff = abs_diff(dEdt_efix_physE(i),dEdt_efix_dynE(i),pf=pf)
+      write(iulog,fmt)"dE/dt energy fixer          (xxBP-xxBF) ",str(i)," ",dEdt_efix_physE(i), " ",dEdt_efix_dynE(i)," ",diff,pf
+      diff = abs_diff(dEdt_param_physE(i),dEdt_param_dynE(i),pf=pf)
+      write(iulog,fmt)"dE/dt all parameterizations (xxAP-xxBP) ",str(i)," ",dEdt_param_physE(i)," ",dEdt_param_dynE(i)," ",diff,pf
       write(iulog,*) " "
     end do
     if (diff>eps) then
@@ -192,9 +192,9 @@ subroutine print_budget(hstwr)
     write(iulog,*)  "                                                        xx=ph   xx=dy  diff"
     write(iulog,*)  "                                                        -----   -----  ----"
     do i=1,4
-      diff = ph_dmea(i)-dy_dmea(i)
+      diff = dEdt_dme_adjust_physE(i)-dEdt_dme_adjust_dynE(i)
 !'(a41,a15,a1,F6.2,a1,F6.2,a1,E6.2)'
-      write(iulog,fmt)"dE/dt dry mass adjustment   (xxAM-xxAP) ",str(i)," ",ph_dmea(i)," ",dy_dmea(i)," ",diff
+      write(iulog,fmt)"dE/dt dry mass adjustment   (xxAM-xxAP) ",str(i)," ",dEdt_dme_adjust_physE(i)," ",dEdt_dme_adjust_dynE(i)," ",diff
     end do
     write(iulog,*)" "
     write(iulog,*)" "
@@ -215,20 +215,20 @@ subroutine print_budget(hstwr)
     write(iulog,*) " "
 
     tmp = previous_dEdt_phys_dyn_coupl_err+previous_dEdt_adiabatic_dycore+previous_dEdt_dry_mass_adjust
-    diff = abs_diff(-dy_EFIX(1),tmp,pf)
+    diff = abs_diff(-dEdt_efix_dynE(1),tmp,pf)
     if (ntrac==0) then
       write(iulog,*) "Check if that is the case:", pf, diff
       write(iulog,*) " "
       if (abs(diff)>eps) then
-        write(iulog,*) "dE/dt energy fixer(t=n)                        = ",dy_EFIX(1)
+        write(iulog,*) "dE/dt energy fixer(t=n)                        = ",dEdt_efix_dynE(1)
         write(iulog,*) "dE/dt dry mass adjustment (t=n-1)              = ",previous_dEdt_dry_mass_adjust
         write(iulog,*) "dE/dt adiabatic dycore (t=n-1)                 = ",previous_dEdt_adiabatic_dycore
         write(iulog,*) "dE/dt physics-dynamics coupling errors (t=n-1) = ",previous_dEdt_phys_dyn_coupl_err
         !      call endrun(subname//"Error in energy fixer budget")
       end if
     else
-      previous_dEdt_phys_dyn_coupl_err = dy_EFIX(1)+previous_dEdt_dry_mass_adjust+previous_dEdt_adiabatic_dycore
-      write(iulog,*) "dE/dt energy fixer(t=n)                        = ",dy_EFIX(1)
+      previous_dEdt_phys_dyn_coupl_err = dEdt_efix_dynE(1)+previous_dEdt_dry_mass_adjust+previous_dEdt_adiabatic_dycore
+      write(iulog,*) "dE/dt energy fixer(t=n)                        = ",dEdt_efix_dynE(1)
       write(iulog,*) "dE/dt dry mass adjustment (t=n-1)              = ",previous_dEdt_dry_mass_adjust
       write(iulog,*) "dE/dt adiabatic dycore (t=n-1)                 = ",previous_dEdt_adiabatic_dycore
       write(iulog,*) "dE/dt physics-dynamics coupling errors (t=n-1) = ",previous_dEdt_phys_dyn_coupl_err
@@ -247,7 +247,7 @@ subroutine print_budget(hstwr)
     end if
     write(iulog,*) ""
     if (ntrac==0) then
-      dycore = -dy_EFIX(1)-previous_dEdt_phys_dyn_coupl_err-previous_dEdt_dry_mass_adjust
+      dycore = -dEdt_efix_dynE(1)-previous_dEdt_phys_dyn_coupl_err-previous_dEdt_dry_mass_adjust
       write(iulog,*)               "Hence the dycore E dissipation estimated from energy fixer "
       write(iulog,'(A39,F6.2,A6)') "based on previous time-step values is ",dycore," W/M^2"
       write(iulog,*) " "
@@ -467,7 +467,7 @@ subroutine print_budget(hstwr)
     ! save adiabatic dycore dE/dt and dry-mass adjustment to avoid samping error
     !
     previous_dEdt_adiabatic_dycore = dADIA
-    previous_dEdt_dry_mass_adjust  = dy_DMEA(1)
+    previous_dEdt_dry_mass_adjust  = dEdt_dme_adjust_dynE(1)
   end if
 end subroutine print_budget
 !=========================================================================================

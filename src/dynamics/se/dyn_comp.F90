@@ -922,7 +922,8 @@ subroutine dyn_init(dyn_in, dyn_out)
       !
       call e_m_budget('dEdt_dycore'        ,'dEdt_floating_dyn'               ,'dEdt_vert_remap','dyn','sum',longname="dE/dt adiabatic dynamics",cslam=ntrac>0)      
       call e_m_budget('dEdt_del2_del4_tot' ,'dEdt_del4_tot','dEdt_del2_sponge','dyn','sum',longname="dE/dt explicit diffusion total",cslam=ntrac>0)      
-      call e_m_budget('dEdt_residual'      ,'dEdt_floating_dyn','dEdt_del2_del4_tot','dyn','dif',longname="dE/dt residual (dEdt_floating_dyn-dEdt_del2_del4_tot)",cslam=ntrac>0)      
+      call e_m_budget('dEdt_residual'      ,'dEdt_floating_dyn','dEdt_del2_del4_tot','dyn','dif',&
+           longname="dE/dt residual (dEdt_floating_dyn-dEdt_del2_del4_tot)",cslam=ntrac>0)      
    end if
    !
    ! add dynamical core tracer tendency output
