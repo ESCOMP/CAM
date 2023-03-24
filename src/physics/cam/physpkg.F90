@@ -1392,6 +1392,7 @@ contains
     use cam_snapshot_common,only: cam_snapshot_ptend_outfld
     use lunar_tides,        only: lunar_tides_tend
     use cam_thermo,         only: cam_thermo_water_update
+    use budgets,            only: thermo_budget_history
     !
     ! Arguments
     !
@@ -1869,13 +1870,10 @@ contains
     end if
     moist_mixing_ratio_dycore = dycore_is('LR').or. dycore_is('FV3')
     !
-    ! FV: convert dry-type mixing ratios to moist here because physics_dme_adjust
-    !     assumes moist. This is done in p_d_coupling for other dynamics. Bundy, Feb 2004.
-    if (moist_mixing_ratio_dycore) call set_dry_to_wet(state)    ! Physics had dry, dynamics wants moist
-
     ! for dry mixing ratio dycore, physics_dme_adjust is called for energy diagnostic purposes only.
     ! So, save off tracers
-    if (.not.moist_mixing_ratio_dycore) then
+    !
+    if (.not.moist_mixing_ratio_dycore.and.thermo_budget_history) then
       tmp_trac(:ncol,:pver,:pcnst) = state%q(:ncol,:pver,:pcnst)
       tmp_pdel(:ncol,:pver)        = state%pdel(:ncol,:pver)
       tmp_ps(:ncol)                = state%ps(:ncol)
@@ -1894,14 +1892,20 @@ contains
     end if
 
     if (moist_mixing_ratio_dycore) then
-
+      !
+      ! FV: convert dry-type mixing ratios to moist here because physics_dme_adjust
+      !     assumes moist. This is done in p_d_coupling for other dynamics. Bundy, Feb 2004.      
+      call set_dry_to_wet(state)    ! Physics had dry, dynamics wants moist
       if (trim(cam_take_snapshot_before) == "physics_dme_adjust") then
          call cam_snapshot_all_outfld_tphysac(cam_snapshot_before_num, state, tend, cam_in, cam_out, pbuf,&
                     fh2o, surfric, obklen, flx_heat)
       end if
 
       call physics_dme_adjust(state, tend, qini, totliqini, toticeini, ztodt)
-
+      if (thermo_budget_history) then
+        call cam_thermo_water_update(state%q(:ncol,:,:), lchnk, ncol, vc_dycore, &
+             to_dry_factor=state%pdel(:ncol,:)/state%pdeldry(:ncol,:))
+      end if
       if (trim(cam_take_snapshot_after) == "physics_dme_adjust") then
          call cam_snapshot_all_outfld_tphysac(cam_snapshot_after_num, state, tend, cam_in, cam_out, pbuf,&
                     fh2o, surfric, obklen, flx_heat)
