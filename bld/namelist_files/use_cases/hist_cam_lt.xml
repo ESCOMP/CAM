@@ -19,8 +19,10 @@
   <tracer_cnst_type>'INTERP_MISSING_MONTHS'</tracer_cnst_type>
   <flbc_type>'SERIAL'</flbc_type>
   <csw_time_type>'SERIAL'</csw_time_type>
-  <prescribed_ozone_type>'SERIAL'</prescribed_ozone_type>
   <prescribed_strataero_type>'SERIAL'</prescribed_strataero_type>
+
+  <prescribed_ozone_type>'SERIAL'</prescribed_ozone_type>
+  <prescribed_ozone_file>'ozone_strataero_WACCM_L70_zm5day_18500101-20150103_CMIP6ensAvg_c180923.nc'</prescribed_ozone_file>
 
   <!-- gravity wave settings -->
   <gw_apply_tndmax>.false.</gw_apply_tndmax>
