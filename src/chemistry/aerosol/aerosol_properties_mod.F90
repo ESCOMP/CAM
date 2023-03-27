@@ -62,6 +62,7 @@ module aerosol_properties_mod
      procedure :: soa_equivso4_factor ! SOA Hygroscopicity / Sulfate Hygroscopicity
      procedure :: pom_equivso4_factor ! POM Hygroscopicity / Sulfate Hygroscopicity
      procedure :: soluble
+     procedure(aero_min_mass_mean_rad), deferred :: min_mass_mean_rad
 
      procedure :: final=>aero_props_final
   end type aerosol_properties
@@ -229,6 +230,19 @@ module aerosol_properties_mod
        logical :: res
 
      end function aero_hetfrz_species
+
+     !------------------------------------------------------------------------------
+     ! returns minimum mass mean radius (meters)
+     !------------------------------------------------------------------------------
+     function aero_min_mass_mean_rad(self,bin_ndx,species_ndx) result(minrad)
+       import :: aerosol_properties, r8
+       class(aerosol_properties), intent(in) :: self
+       integer, intent(in) :: bin_ndx           ! bin number
+       integer, intent(in) :: species_ndx       ! species number
+
+       real(r8) :: minrad  ! meters
+
+     end function aero_min_mass_mean_rad
 
    end interface
 
@@ -516,4 +530,4 @@ contains
     soluble = .true.
   end function soluble
 
-end module aerosol_properties_mod
+ end module aerosol_properties_mod

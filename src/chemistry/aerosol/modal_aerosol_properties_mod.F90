@@ -30,6 +30,7 @@ module modal_aerosol_properties_mod
      procedure :: apply_number_limits
      procedure :: hetfrz_species
      procedure :: soluble
+     procedure :: min_mass_mean_rad
      final :: destructor
   end type modal_aerosol_properties
 
@@ -412,5 +413,43 @@ contains
     soluble = trim(mode_name)/='primary_carbon'
 
   end function soluble
+
+  !------------------------------------------------------------------------------
+  ! returns minimum mass mean radius (meters)
+  !------------------------------------------------------------------------------
+  function min_mass_mean_rad(self,bin_ndx,species_ndx) result(minrad)
+    class(modal_aerosol_properties), intent(in) :: self
+    integer, intent(in) :: bin_ndx           ! bin number
+    integer, intent(in) :: species_ndx       ! species number
+
+    real(r8) :: minrad  ! meters
+
+    integer :: nmodes
+    character(len=aero_name_len) :: species_type, mode_type
+
+    call self%species_type(bin_ndx, species_ndx, spectype=species_type)
+    select case ( trim(species_type) )
+    case('dust')
+       call rad_cnst_get_info(0, bin_ndx, mode_type=mode_type)
+       select case ( trim(mode_type) )
+       case ('accum','fine_dust')
+          minrad = 0.258e-6_r8
+       case ('coarse','coarse_dust')
+          minrad = 1.576e-6_r8
+       case default
+          minrad = -huge(1._r8)
+       end select
+    case('black-c')
+       call rad_cnst_get_info(0, nmodes=nmodes)
+       if (nmodes==3) then
+          minrad = 0.04e-6_r8
+       else
+          minrad = 0.067e-6_r8 ! from emission size
+       endif
+    case default
+       minrad = -huge(1._r8)
+    end select
+
+  end function min_mass_mean_rad
 
 end module modal_aerosol_properties_mod

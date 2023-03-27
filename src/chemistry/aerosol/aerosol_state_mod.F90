@@ -44,8 +44,7 @@ module aerosol_state_mod
      procedure :: get_amb_species_numdens
      procedure :: get_cld_species_numdens
      procedure :: coated_frac
-     procedure :: mass_mean_radius_base
-     procedure :: mass_mean_radius => mass_mean_radius_base
+     procedure :: mass_mean_radius
      procedure :: watact_mfactor
      procedure(aero_hetfrz_size_wght), deferred :: hetfrz_size_wght
   end type aerosol_state
@@ -600,7 +599,7 @@ contains
   ! returns the radius [m] of particles in aerosol subset `bin_ndx` assuming all particles are
   ! the same size and only species `species_ndx` contributes to the particle volume
   !------------------------------------------------------------------------------
-  function mass_mean_radius_base(self, bin_ndx, species_ndx, ncol, nlev, aero_props, rho) result(radius)
+  function mass_mean_radius(self, bin_ndx, species_ndx, ncol, nlev, aero_props, rho) result(radius)
 
     class(aerosol_state), intent(in) :: self
     integer, intent(in) :: bin_ndx                ! bin number
@@ -617,9 +616,9 @@ contains
     real(r8) :: aer_massdens(ncol,nlev) ! kg/m3
     real(r8),pointer :: aer_mmr(:,:) ! kg/kg
 
-    real(r8) :: specdens
-
+    real(r8) :: specdens,minrad
     real(r8) :: wght(ncol,nlev)
+    integer :: i,k
 
     wght = self%hetfrz_size_wght(bin_ndx, ncol, nlev)
 
@@ -631,13 +630,19 @@ contains
 
     aer_massdens(:ncol,:) = aer_mmr(:ncol,:)*rho(:ncol,:)*wght(:ncol,:) ! kg/m3
 
-    where(aer_massdens(:ncol,:)>0._r8 .and. aer_numdens(:ncol,:)>0._r8)
-       radius(:ncol,:) = (3._r8/(4*pi*specdens)*aer_massdens(:ncol,:)/(aer_numdens(:ncol,:)*per_m3))**(1._r8/3._r8) ! m
-    elsewhere
-       radius(:ncol,:) = 0._r8
-    end where
+    minrad = aero_props%min_mass_mean_rad(bin_ndx, species_ndx)
 
-  end function mass_mean_radius_base
+    do i = 1,ncol
+       do k = 1,nlev
+          if (aer_massdens(i,k)*1.0e-3_r8 > 1.0e-30_r8 .and. aer_numdens(i,k) > 1.0e-3_r8) then
+             radius(i,k) = (3._r8/(4*pi*specdens)*aer_massdens(i,k)/(aer_numdens(i,k)*per_m3))**(1._r8/3._r8) ! m
+          else
+             radius(i,k) = minrad
+          end if
+       end do
+    end do
+
+  end function mass_mean_radius
 
   !------------------------------------------------------------------------------
   ! calculates water activity mass factor -- density*(1.-(OC+BC)/(OC+BC+SO4)) [mug m-3]
