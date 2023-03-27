@@ -10,7 +10,6 @@ module budgets
   ! e_m_budget
   ! budget_ind_byname
   ! budget_get_global
-  ! budget_put_global
   ! budget_readnl
   ! is_budget
   !-----------------------------------------------------------------------
@@ -35,7 +34,6 @@ module budgets
        e_m_budget,            &! define a budget and add to history buffer
        budget_ind_byname,     &! return budget index given name
        budget_get_global,     &! return budget global
-       budget_put_global,     &! put budget global
        budget_readnl,         &! budget_readnl: read cam thermo namelist
        is_budget               ! return logical if budget_defined
 
@@ -53,7 +51,7 @@ module budgets
 
   integer,           public            :: thermo_budget_histfile_num = 1
   logical,           public            :: thermo_budget_history = .false.
-  integer,           private           :: stepsize
+  real(r8),          private           :: dstepsize
   !
   ! Constants for each budget
 
@@ -232,7 +230,7 @@ CONTAINS
   subroutine budget_init()
     use time_manager,         only:  get_step_size
 
-    stepsize=get_step_size()
+    dstepsize=get_step_size()
 
   end subroutine budget_init
   !==============================================================================
@@ -295,54 +293,18 @@ CONTAINS
 
     if (found.and.f(thermo_budget_histfile_num)>0) then
        call tape(thermo_budget_histfile_num)%hlist(f(thermo_budget_histfile_num))%get_global(global)
-       if (.not. thermo_budget_vars_massv(me_idx)) global=global/stepsize
+       if (.not. thermo_budget_vars_massv(me_idx)) then
+          write(iulog,*)'scaling ',trim(adjustl(str1)),' by ',dstepsize,' old/new global',global,'/',global/dstepsize
+          global=global/dstepsize
+       else
+          write(iulog,*)'returning ',trim(adjustl(str1)),' global ',global
+       end if
     else
        write(errmsg,*) sub//': FATAL: name not found: ', trim(name)
        call endrun(errmsg)
     end if
 
   end subroutine budget_get_global
-  !==============================================================================
-  subroutine budget_put_global (name, me_idx, global)
-
-    use cam_history,          only: get_field_properties
-    use cam_history_support,  only: active_entry
-    use cam_thermo,           only: thermo_budget_vars_massv
-
-    ! Get the global integral of a budget.  Optional abort argument allows returning
-    ! control to caller when budget name is not found.  Default behavior is
-    ! to call endrun when name is not found.
-
-    !-----------------------------Arguments---------------------------------
-    character(len=*),  intent(in)  :: name    ! budget name
-    integer,           intent(in)  :: me_idx  ! mass energy variable index
-    real(r8),          intent(in)  :: global  ! global budget index (in q array)
-
-    !---------------------------Local workspace-----------------------------
-    type (active_entry), pointer :: tape(:) => null()          ! history tapes
-    integer                      :: m                          ! budget index
-    integer                      :: f(ptapes),ff               ! hentry index
-    character(len=*), parameter  :: sub='budget_put_global'
-    character(len=128)           :: errmsg
-    character (len=128)          :: str1
-    logical                      :: found                      ! true if global integral found
-    real(r8)                     :: global_normalized
-    !-----------------------------------------------------------------------
-
-    ! append thermo field to stage name
-    write(str1,*) TRIM(ADJUSTL(thermo_budget_vars(me_idx))),"_",TRIM(ADJUSTL(name))
-
-    ! Find budget name in list and push global value to hentry
-    call get_field_properties(trim(str1), found, tape_out=tape, ff_out=ff, f_out=f)
-    if (found.and.f(thermo_budget_histfile_num)>0) then
-       if (.not. thermo_budget_vars_massv(me_idx)) global_normalized=global/stepsize
-       call tape(thermo_budget_histfile_num)%hlist(f(thermo_budget_histfile_num))%put_global(global_normalized)
-    else
-       write(errmsg,*) sub//': FATAL: name not found: ', trim(name)
-       call endrun(errmsg)
-    end if
-
-  end subroutine budget_put_global
   !==============================================================================
   function budget_ind_byname (name)
     !
@@ -396,20 +358,17 @@ CONTAINS
   !===========================================================================
   ! Read namelist variables.
   subroutine budget_readnl(nlfile)
+    use dycore,          only: dycore_is
     use namelist_utils,  only: find_group_name
     use spmd_utils,      only: mpi_character, mpi_logical, mpi_integer
-    use shr_string_mod, only: shr_string_toUpper
+    use shr_string_mod,  only: shr_string_toUpper
 
     ! Dummy argument: filepath for file containing namelist input
     character(len=*), intent(in) :: nlfile
 
     ! Local variables
     integer                     :: unitn, ierr
-    integer,          parameter :: lsize = 76
-    integer,          parameter :: fsize = 23
     character(len=*), parameter :: subname = 'budget_readnl :: '
-    character(len=8)            :: period
-    logical                     :: thermo_budgeting
 
     namelist /thermo_budget_nl/  thermo_budget_history, thermo_budget_histfile_num
     !-----------------------------------------------------------------------
@@ -435,8 +394,12 @@ CONTAINS
     ! Write out thermo_budget options
     if (masterproc) then
        if (thermo_budget_history) then
-          write(iulog,*)'Thermo budgets will be written to the log file and diagnostics saved to history file:',&
+          if (dycore_is('EUL').or.dycore_is('FV').or.dycore_is('FV3')) then
+             call endrun(subname//'ERROR thermodynamic budgets not implemented for this dycore')
+          else
+             write(iulog,*)'Thermo budgets will be written to the log file and diagnostics saved to history file:',&
                thermo_budget_histfile_num
+          end if
        end if
     end if
   end subroutine budget_readnl

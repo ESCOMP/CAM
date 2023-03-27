@@ -530,6 +530,7 @@ subroutine define_cam_grids()
 
    use cam_grid_support, only: horiz_coord_t, horiz_coord_create, iMap
    use cam_grid_support, only: cam_grid_register, cam_grid_attribute_register
+   use shr_const_mod,    only: PI => SHR_CONST_PI
  
    ! Local variables
    integer :: i, j
@@ -599,7 +600,7 @@ subroutine define_cam_grids()
       grid_map(1, i) = i
       grid_map(2, i) = 1
       grid_map(3, i) = gidx(i)
-      areaWeight(i) = dyn_cols(i)%weight
+      areaWeight(i) = dyn_cols(i)%weight/(4.0_r8*PI)
    end do
 
    ! cell center grid for I/O using MPAS names

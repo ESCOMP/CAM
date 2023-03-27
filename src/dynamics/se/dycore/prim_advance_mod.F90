@@ -1453,7 +1453,7 @@ contains
     use hycoef,                 only: hyai, ps0
     use fvm_control_volume_mod, only: fvm_struct
     use cam_thermo,             only: get_dp, MASS_MIXING_RATIO,wvidx,wlidx,wiidx,seidx,keidx,moidx,mridx,ttidx,teidx, &
-                                      thermo_budget_num_vars,thermo_budget_vars
+                                      poidx,thermo_budget_num_vars,thermo_budget_vars
     use cam_thermo,             only: get_hydrostatic_energy
     use air_composition,        only: thermodynamic_active_species_idx_dycore, get_cp
     use air_composition,        only: thermodynamic_active_species_num,    thermodynamic_active_species_idx_dycore
@@ -1552,6 +1552,7 @@ contains
         !
         ! Output energy diagnostics on GLL grid
         !
+        call outfld(name_out(poidx)  ,po       ,npsq,ie)
         call outfld(name_out(seidx)  ,se       ,npsq,ie)
         call outfld(name_out(keidx)  ,ke       ,npsq,ie)
         call outfld(name_out(teidx)  ,ke+se+po ,npsq,ie)
