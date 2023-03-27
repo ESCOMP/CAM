@@ -13,4 +13,16 @@
   <!-- sim_year used for CO2 cycle namelist settings -->
   <sim_year>1850-2000</sim_year>
 
+  <!-- Set various chemistry settings -->
+  <ext_frc_type>'INTERP_MISSING_MONTHS'</ext_frc_type>
+  <srf_emis_type>'INTERP_MISSING_MONTHS'</srf_emis_type>
+  <tracer_cnst_type>'INTERP_MISSING_MONTHS'</tracer_cnst_type>
+  <flbc_type>'SERIAL'</flbc_type>
+  <csw_time_type>'SERIAL'</csw_time_type>
+  <prescribed_ozone_type>'SERIAL'</prescribed_ozone_type>
+  <prescribed_strataero_type>'SERIAL'</prescribed_strataero_type>
+
+  <!-- gravity wave settings -->
+  <gw_apply_tndmax>.false.</gw_apply_tndmax>
+
 </namelist_defaults>
