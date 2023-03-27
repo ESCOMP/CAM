@@ -911,12 +911,12 @@ subroutine dyn_init(dyn_in, dyn_out)
       !
       call e_m_budget('dEdt_floating_dyn'      ,'dAD','dBD','dyn','dif',longname="dE/dt floating dynamics (dAD-dBD)"               ,cslam=ntrac>0)     
       call e_m_budget('dEdt_vert_remap'        ,'dAR','dAD','dyn','dif',longname="dE/dt vertical remapping (dAR-dAD)"              ,cslam=ntrac>0)      
-      call e_m_budget('dEdt_phys_tend_in_dyn'  ,'dBD','dAF','dyn','dif',longname="dE/dt physics tendency in dynamics (dBD-dAF)"    ,cslam=ntrac>0)
+      call e_m_budget('dEdt_phys_tot_in_dyn'   ,'dBD','dAF','dyn','dif',longname="dE/dt physics tendency in dynamics (dBD-dAF)"    ,cslam=ntrac>0)
 
-      call e_m_budget('dEdt_del4'          ,'dCH','dBH','dyn','dif',longname="dE/dt dycore hypervis del4 (dCH-dBH)"            ,cslam=ntrac>0)      
-      call e_m_budget('dEdt_del4_fric_heat','dAH','dCH','dyn','dif',longname="dE/dt hypervis frictional heating del4 (dAH-dCH)",cslam=ntrac>0)      
-      call e_m_budget('dEdt_del4_tot'      ,'dAH','dBH','dyn','dif',longname="dE/dt hypervis del4 total (dAH-dBH)",cslam=ntrac>0)      
-      call e_m_budget('dEdt_del2_sponge'   ,'dAS','dBS','dyn','dif',longname="dE/dt hypervis sponge del2 (dAS-dBS)",cslam=ntrac>0)
+      call e_m_budget('dEdt_del4'          ,'dCH','dBH','dyn','dif',longname="dE/dt del4 (dCH-dBH)"            ,cslam=ntrac>0)      
+      call e_m_budget('dEdt_del4_fric_heat','dAH','dCH','dyn','dif',longname="dE/dt del4 frictional heating (dAH-dCH)",cslam=ntrac>0)      
+      call e_m_budget('dEdt_del4_tot'      ,'dAH','dBH','dyn','dif',longname="dE/dt del4 + del4 frictional heating (dAH-dBH)",cslam=ntrac>0)      
+      call e_m_budget('dEdt_del2_sponge'   ,'dAS','dBS','dyn','dif',longname="dE/dt del2 sponge (dAS-dBS)",cslam=ntrac>0)
       !
       ! Register derived budgets
       !
