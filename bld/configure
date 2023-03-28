@@ -573,6 +573,9 @@ if ($simple_phys or $phys_pkg =~ m/^cam[34]$/ or $phys_pkg eq 'spcam_sam1mom') {
 elsif ($phys_pkg eq 'cam5' or $phys_pkg eq 'spcam_m2005') {
     $chem_pkg = 'trop_mam3';
 }
+elsif ($phys_pkg eq 'cam_dev') {
+    $chem_pkg = 'ghg_mam4';
+}
 
 # some overrides for special configurations
 if (defined $opts{'prog_species'}) {
