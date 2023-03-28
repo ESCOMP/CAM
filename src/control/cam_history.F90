@@ -5580,14 +5580,20 @@ end subroutine print_active_fldlst
 
           !$OMP PARALLEL DO PRIVATE (F)
           do f=1,nflds(t)
-             ! First compose field if needed
-             if (tape(t)%hlist(f)%field%is_composed()) then
-                call h_field_op (f, t)
-             end if
              if(.not. restart) then
-                ! Normalized averaged fields
-                if (tape(t)%hlist(f)%avgflag /= 'I') then
+                ! Normalize all non composed fields, composed fields are calculated next using the normalized components 
+                if (tape(t)%hlist(f)%avgflag /= 'I'.and..not.tape(t)%hlist(f)%field%is_composed()) then
                    call h_normalize (f, t)
+                end if
+             end if
+          end do
+
+          !$OMP PARALLEL DO PRIVATE (F)
+          do f=1,nflds(t)
+             if(.not. restart) then
+                ! calculate composed fields from normalized components
+                if (tape(t)%hlist(f)%field%is_composed()) then
+                   call h_field_op (f, t)
                 end if
              end if
           end do
