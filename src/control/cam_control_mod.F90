@@ -136,7 +136,7 @@ subroutine cam_ctrl_set_physics_type(phys_package)
   ideal_phys = trim(phys_package) == 'held_suarez'
   kessler_phys = trim(phys_package) == 'kessler'
   tj2016_phys = trim(phys_package) == 'tj2016'
-  frierson_phys = trim(phys_package) == 'frierson'
+  frierson_phys = trim(phys_package) == 'grayrad'
 
   simple_phys = adiabatic .or. ideal_phys .or. kessler_phys .or. tj2016_phys .or. frierson_phys
 

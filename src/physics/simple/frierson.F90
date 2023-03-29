@@ -449,9 +449,10 @@ contains
 
 
   !=======================================================================
-  subroutine frierson_pbl(ncol, pver, dtime, pmid, pint, Zm, Zi,    &
-                          Psfc, Tsfc, Qsfc, T, U, V, Q,  Fsw, Fdn,         &
-                          Cdrag, Km, Ke, VSE, Z_pbl, Rf, dQa, dTa, dUa, dVa)
+  subroutine frierson_pbl(ncol, pver, dtime, pmid, pint, Zm, Zi,             &
+                          Psfc, Tsfc, Qsfc, T, U, V, Q,  Fsw, Fdn,           &
+                          Cdrag, Km, Ke, VSE, Z_pbl, Rf, dQa, dTa, dUa, dVa, &
+                          LHflux, SHflux, TUflux, TVflux                     )
     !
     ! The implicit PBL parameterization based on Frierson, et al. 2006.
     !
@@ -464,32 +465,36 @@ contains
     !
     ! Passed Variables
     !------------------
-    integer ,intent(in)   :: ncol                ! Number of columns
-    integer ,intent(in)   :: pver                ! Number of levels
-    real(r8),intent(in)   :: dtime               ! Time Step
-    real(r8),intent(in)   :: pmid (ncol,pver)    ! Pressure at model levels
-    real(r8),intent(in)   :: pint (ncol,pver+1)  ! Pressure at interface levels.
-    real(r8),intent(in)   :: Zm   (ncol,pver)    ! Height at model levels.
-    real(r8),intent(in)   :: Zi   (ncol,pver)    ! Height at interface levels.
-    real(r8),intent(in)   :: Psfc (ncol)         ! Surface Pressure.
-    real(r8),intent(inout):: Tsfc (ncol)         ! SST temperature K
-    real(r8),intent(inout):: Qsfc (ncol)         ! sea surface water vapor (kg/kg)
-    real(r8),intent(inout):: T    (ncol,pver)    ! ATM Temperature values.
-    real(r8),intent(inout):: U    (ncol,pver)    ! ATM Zonal Wind values.
-    real(r8),intent(inout):: V    (ncol,pver)    ! ATM Meridional Wind values.
-    real(r8),intent(inout):: Q    (ncol,pver)    ! ATM Water vapor values.
-    real(r8),intent(in)   :: Fdn  (ncol)         ! Downward LW flux at surface
-    real(r8),intent(in)   :: Fsw  (ncol)         ! Net SW flux at surface from gray radiation
-    real(r8),intent(out)  :: Cdrag(ncol)         ! Surface drage coef.
-    real(r8),intent(out)  :: Km   (ncol,pver+1)  ! Eddy diffusivity for PBL (momentum)
-    real(r8),intent(out)  :: Ke   (ncol,pver+1)  ! Eddy diffusivity for PBL
-    real(r8),intent(out)  :: VSE  (ncol,pver)    ! Virtual-Dry Static energy
-    real(r8),intent(out)  :: Z_pbl(ncol)         ! Height of PBL layer.
-    real(r8),intent(out)  :: Rf   (ncol,pver)
-    real(r8),intent(out)  :: dTa  (ncol,pver)
-    real(r8),intent(out)  :: dQa  (ncol,pver)
-    real(r8),intent(out)  :: dUa  (ncol,pver)
-    real(r8),intent(out)  :: dVa  (ncol,pver)
+    integer ,intent(in)   :: ncol                 ! Number of columns
+    integer ,intent(in)   :: pver                 ! Number of levels
+    real(r8),intent(in)   :: dtime                ! Time Step
+    real(r8),intent(in)   :: pmid  (ncol,pver)    ! Pressure at model levels
+    real(r8),intent(in)   :: pint  (ncol,pver+1)  ! Pressure at interface levels.
+    real(r8),intent(in)   :: Zm    (ncol,pver)    ! Height at model levels.
+    real(r8),intent(in)   :: Zi    (ncol,pver)    ! Height at interface levels.
+    real(r8),intent(in)   :: Psfc  (ncol)         ! Surface Pressure.
+    real(r8),intent(inout):: Tsfc  (ncol)         ! SST temperature K
+    real(r8),intent(inout):: Qsfc  (ncol)         ! sea surface water vapor (kg/kg)
+    real(r8),intent(inout):: T     (ncol,pver)    ! ATM Temperature values.
+    real(r8),intent(inout):: U     (ncol,pver)    ! ATM Zonal Wind values.
+    real(r8),intent(inout):: V     (ncol,pver)    ! ATM Meridional Wind values.
+    real(r8),intent(inout):: Q     (ncol,pver)    ! ATM Water vapor values.
+    real(r8),intent(in)   :: Fdn   (ncol)         ! Downward LW flux at surface
+    real(r8),intent(in)   :: Fsw   (ncol)         ! Net SW flux at surface from gray radiation
+    real(r8),intent(out)  :: Cdrag (ncol)         ! Surface drage coef.
+    real(r8),intent(out)  :: Km    (ncol,pver+1)  ! Eddy diffusivity for PBL (momentum)
+    real(r8),intent(out)  :: Ke    (ncol,pver+1)  ! Eddy diffusivity for PBL
+    real(r8),intent(out)  :: VSE   (ncol,pver)    ! Virtual-Dry Static energy
+    real(r8),intent(out)  :: Z_pbl (ncol)         ! Height of PBL layer.
+    real(r8),intent(out)  :: Rf    (ncol,pver)
+    real(r8),intent(out)  :: dTa   (ncol,pver)
+    real(r8),intent(out)  :: dQa   (ncol,pver)
+    real(r8),intent(out)  :: dUa   (ncol,pver)
+    real(r8),intent(out)  :: dVa   (ncol,pver)
+    real(r8),intent(out)  :: LHflux(ncol)         ! Latent Heat Flux
+    real(r8),intent(out)  :: SHflux(ncol)         ! Sensible Heat Flux
+    real(r8),intent(out)  :: TUflux(ncol)         ! U Surface stress
+    real(r8),intent(out)  :: TVflux(ncol)         ! V Surface stress
     !
     ! Local Values
     !---------------
@@ -864,6 +869,11 @@ contains
     Qsfc (:) = epsilo*E0/Psfc(:)*exp(-latvap_div_rh2o*((1._r8/Tsfc(:))-1._r8/T0))
     dTs  (:) = Tsfc(:) - Tsfc_bc(:)
 
+    LHflux(:) = latvap*Fq(:)
+    SHflux(:) = cpair *Ft(:)
+    TUflux(:) = Fu(:)
+    TVflux(:) = Fv(:)
+
   !============================================================================
   ! <PHYSICS> tphysac():
   !
@@ -909,9 +919,10 @@ contains
 
 
   !=======================================================================
-  subroutine frierson_pbl_USER(ncol, pver, dtime, pmid, pint, Zm, Zi,    &
-                               Psfc, Tsfc, Qsfc, T, U, V, Q,  Fsw, Fdn,         &
-                               Cdrag, Km, Ke, VSE, Z_pbl, Rf, dQa, dTa, dUa, dVa)
+  subroutine frierson_pbl_USER(ncol, pver, dtime, pmid, pint, Zm, Zi,             &
+                               Psfc, Tsfc, Qsfc, T, U, V, Q,  Fsw, Fdn,           &
+                               Cdrag, Km, Ke, VSE, Z_pbl, Rf, dQa, dTa, dUa, dVa, &
+                               LHflux, SHflux, TUflux, TVflux                     )
     !
     ! frierson_pbl_USER: This routine is a stub which users can use
     !                    to develop and test their own PBL scheme
@@ -919,47 +930,55 @@ contains
     !
     ! Passed Variables
     !------------------
-    integer ,intent(in)   :: ncol                ! Number of columns
-    integer ,intent(in)   :: pver                ! Number of levels
-    real(r8),intent(in)   :: dtime               ! Time Step
-    real(r8),intent(in)   :: pmid (ncol,pver)    ! Pressure at model levels
-    real(r8),intent(in)   :: pint (ncol,pver+1)  ! Pressure at interface levels.
-    real(r8),intent(in)   :: Zm   (ncol,pver)    ! Height at model levels.
-    real(r8),intent(in)   :: Zi   (ncol,pver)    ! Height at interface levels.
-    real(r8),intent(in)   :: Psfc (ncol)         ! Surface Pressure.
-    real(r8),intent(inout):: Tsfc (ncol)         ! SST temperature K
-    real(r8),intent(inout):: Qsfc (ncol)         ! sea surface water vapor (kg/kg)
-    real(r8),intent(inout):: T    (ncol,pver)    ! ATM Temperature values.
-    real(r8),intent(inout):: U    (ncol,pver)    ! ATM Zonal Wind values.
-    real(r8),intent(inout):: V    (ncol,pver)    ! ATM Meridional Wind values.
-    real(r8),intent(inout):: Q    (ncol,pver)    ! ATM Water vapor values.
-    real(r8),intent(in)   :: Fdn  (ncol)         ! Downward LW flux at surface
-    real(r8),intent(in)   :: Fsw  (ncol)         ! Net SW flux at surface from gray radiation
-    real(r8),intent(out)  :: Cdrag(ncol)         ! Surface drage coef.
-    real(r8),intent(out)  :: Km   (ncol,pver+1)  ! Eddy diffusivity for PBL
-    real(r8),intent(out)  :: Ke   (ncol,pver+1)  ! Eddy diffusivity for PBL
-    real(r8),intent(out)  :: VSE  (ncol,pver)    ! Virtual-Dry Static energy.(huh?)
-    real(r8),intent(out)  :: Z_pbl(ncol)         ! Height of PBL layer.
-    real(r8),intent(out)  :: Rf   (ncol,pver)
-    real(r8),intent(out)  :: dTa  (ncol,pver)
-    real(r8),intent(out)  :: dQa  (ncol,pver)
-    real(r8),intent(out)  :: dUa  (ncol,pver)
-    real(r8),intent(out)  :: dVa  (ncol,pver)
+    integer ,intent(in)   :: ncol                 ! Number of columns
+    integer ,intent(in)   :: pver                 ! Number of levels
+    real(r8),intent(in)   :: dtime                ! Time Step
+    real(r8),intent(in)   :: pmid  (ncol,pver)    ! Pressure at model levels
+    real(r8),intent(in)   :: pint  (ncol,pver+1)  ! Pressure at interface levels.
+    real(r8),intent(in)   :: Zm    (ncol,pver)    ! Height at model levels.
+    real(r8),intent(in)   :: Zi    (ncol,pver)    ! Height at interface levels.
+    real(r8),intent(in)   :: Psfc  (ncol)         ! Surface Pressure.
+    real(r8),intent(inout):: Tsfc  (ncol)         ! SST temperature K
+    real(r8),intent(inout):: Qsfc  (ncol)         ! sea surface water vapor (kg/kg)
+    real(r8),intent(inout):: T     (ncol,pver)    ! ATM Temperature values.
+    real(r8),intent(inout):: U     (ncol,pver)    ! ATM Zonal Wind values.
+    real(r8),intent(inout):: V     (ncol,pver)    ! ATM Meridional Wind values.
+    real(r8),intent(inout):: Q     (ncol,pver)    ! ATM Water vapor values.
+    real(r8),intent(in)   :: Fdn   (ncol)         ! Downward LW flux at surface
+    real(r8),intent(in)   :: Fsw   (ncol)         ! Net SW flux at surface from gray radiation
+    real(r8),intent(out)  :: Cdrag (ncol)         ! Surface drage coef.
+    real(r8),intent(out)  :: Km    (ncol,pver+1)  ! Eddy diffusivity for PBL
+    real(r8),intent(out)  :: Ke    (ncol,pver+1)  ! Eddy diffusivity for PBL
+    real(r8),intent(out)  :: VSE   (ncol,pver)    ! Virtual-Dry Static energy.(huh?)
+    real(r8),intent(out)  :: Z_pbl (ncol)         ! Height of PBL layer.
+    real(r8),intent(out)  :: Rf    (ncol,pver)
+    real(r8),intent(out)  :: dTa   (ncol,pver)
+    real(r8),intent(out)  :: dQa   (ncol,pver)
+    real(r8),intent(out)  :: dUa   (ncol,pver)
+    real(r8),intent(out)  :: dVa   (ncol,pver)
+    real(r8),intent(out)  :: LHflux(ncol)         ! Latent Heat Flux
+    real(r8),intent(out)  :: SHflux(ncol)         ! Sensible Heat Flux
+    real(r8),intent(out)  :: TUflux(ncol)         ! U Surface stress
+    real(r8),intent(out)  :: TVflux(ncol)         ! V Surface stress
     !
     ! Local Values
     !---------------
 
 
-    Cdrag = 0._r8
-    Km    = 0._r8
-    Ke    = 0._r8
-    VSE   = 0._r8
-    Z_pbl = 0._r8
-    Rf    = 0._r8
-    dTa   = 0._r8
-    dQa   = 0._r8
-    dUa   = 0._r8
-    dVa   = 0._r8
+    Cdrag  = 0._r8
+    Km     = 0._r8
+    Ke     = 0._r8
+    VSE    = 0._r8
+    Z_pbl  = 0._r8
+    Rf     = 0._r8
+    dTa    = 0._r8
+    dQa    = 0._r8
+    dUa    = 0._r8
+    dVa    = 0._r8
+    LHflux = 0._r8
+    SHflux = 0._r8
+    TUflux = 0._r8
+    TVflux = 0._r8
 
   end subroutine frierson_pbl_USER
   !=======================================================================

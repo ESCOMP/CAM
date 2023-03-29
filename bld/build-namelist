@@ -473,11 +473,11 @@ if ($phys eq 'adiabatic') {
     ++$phys_mode_flags;
 }
 my $ideal_mode = 0;
-if ($phys eq 'kessler' or $phys eq 'held_suarez' or $phys eq 'tj2016' or $phys eq 'frierson' ) {
+if ($phys eq 'kessler' or $phys eq 'held_suarez' or $phys eq 'tj2016' or $phys eq 'grayrad' ) {
     $ideal_mode = 1;
     ++$phys_mode_flags;
 }
-if ($phys eq 'frierson' ) {
+if ($phys eq 'grayrad' ) {
     add_default($nl, 'frierson_albedo');
     add_default($nl, 'frierson_c0');
     add_default($nl, 'frierson_deltas');
@@ -4822,7 +4822,7 @@ sub check_snapshot_settings {
             push (@validList_bc, ("'kessler_tend'"));
         } elsif ($phys eq 'tj2016') {
             push (@validList_bc, ("'thatcher_jablonowski_precip_tend'"));
-        } elsif ($phys eq 'frierson') {
+        } elsif ($phys eq 'grayrad') {
             push (@validList_bc, ("'frierson_tend'"));
         }
         if ($chem ne 'none') {

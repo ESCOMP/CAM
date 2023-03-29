@@ -97,11 +97,9 @@ module frierson_cam
   real(r8),allocatable :: Fdown (:,:)     ! Downward Longwave heating
   real(r8),allocatable :: SHflux(:,:)     ! Sensible Heat flux
   real(r8),allocatable :: LHflux(:,:)     ! Latent Heat Flux
-  real(r8),allocatable :: SWflux(:,:)     ! Surface Water flux
-  real(r8),allocatable :: TUflux(:,:)     ! U momentum flux
-  real(r8),allocatable :: TVflux(:,:)     ! V momentum flux
-  real(r8),allocatable :: Evap  (:,:)     ! U momentum flux
-  real(r8),allocatable :: Cd    (:,:)     ! V momentum flux
+  real(r8),allocatable :: TUflux(:,:)     ! U stress momentum flux
+  real(r8),allocatable :: TVflux(:,:)     ! V stress momentum flux
+  real(r8),allocatable :: Cd    (:,:)     ! Surface Drag
   real(r8),allocatable :: clat  (:,:)     ! latitudes(radians) for columns
   real(r8),allocatable :: Fnet  (:,:)     ! Net Radiative Surface Heating
 
@@ -249,42 +247,59 @@ contains
 
     ! Add values for history output
     !---------------------------------
-    call addfld('QRS',(/'lev'/),'A','K/s','Temperature tendency associated with the '//           &
-                                          'relaxation toward the equilibrium temperature profile' )
-    call addfld('KVH' ,(/'ilev'/),'A','m2/s'   ,'Vertical diffusion diffusivities (heat/moisture)')
-    call addfld('KVM' ,(/'ilev'/),'A','m2/s'   ,'Vertical diffusion diffusivities (momentum)'     )
-    call addfld('VSE' ,(/'lev' /),'A','K'      ,'VSE: (Tv + gZ/Cp)'                               )
-    call addfld('Zm'  ,(/'lev' /),'A','m'      ,'ATM Layer Heights use in PBL'                    )
-    call addfld('DTV' ,(/'lev' /),'A','K/s'    ,'T vertical diffusion'                            )
-    call addfld('DUV' ,(/'lev' /),'A','m/s2'   ,'U vertical diffusion'                            )
-    call addfld('DVV' ,(/'lev' /),'A','m/s2'   ,'V vertical diffusion'                            )
-    call addfld('VD01',(/'lev' /),'A','kg/kg/s','Q tendency (vertical diffusion)'                 )
-    call addfld('Cdrag',horiz_only,'A','1'    ,'Surface Drag'                                   )
-    call addfld('Z_pbl',horiz_only,'I','m'      ,'PBL Height'                                     )
-    call addfld('Rf'  ,(/'lev' /),'I','1'     ,'Another Richardson number / Ri_c'               )
+    call addfld('gray_QRL'   ,(/'lev' /),'A','K/s'    ,'Longwave heating rate for gray atmosphere'       )
+    call addfld('gray_QRS'   ,(/'lev' /),'A','K/s'    ,'Solar heating rate for gray atmosphere'          )
+    call addfld('gray_DTCOND',(/'lev' /),'A','K/s'    ,'T tendency - gray atmosphere moist process'      )
+    call addfld('gray_KVH'   ,(/'ilev'/),'A','m2/s'   ,'Vertical diffusion diffusivities (heat/moisture)')
+    call addfld('gray_KVM'   ,(/'ilev'/),'A','m2/s'   ,'Vertical diffusion diffusivities (momentum)'     )
+    call addfld('gray_VSE'   ,(/'lev' /),'A','K'      ,'VSE: (Tv + gZ/Cp)'                               )
+    call addfld('gray_Zm'    ,(/'lev' /),'A','m'      ,'ATM Layer Heights use in PBL'                    )
+    call addfld('gray_Rf'    ,(/'lev' /),'A','1'      ,'Another Richardson number / Ri_c'                )
+    call addfld('gray_DTV'   ,(/'lev' /),'A','K/s'    ,'T vertical diffusion'                            )
+    call addfld('gray_DUV'   ,(/'lev' /),'A','m/s2'   ,'U vertical diffusion'                            )
+    call addfld('gray_DVV'   ,(/'lev' /),'A','m/s2'   ,'V vertical diffusion'                            )
+    call addfld('gray_VD01'  ,(/'lev' /),'A','kg/kg/s','Q tendency (vertical diffusion)'                 )
+    call addfld('gray_PRECL' ,horiz_only,'A','m/s'    ,'Large-scale precipitation rate'                  )
+    call addfld('gray_PRECC' ,horiz_only,'A','m/s'    ,'Convective precipitation rate'                   )
+    call addfld('gray_Tsurf ',horiz_only,'I','K'      ,'Surface Temperature'                             )
+    call addfld('gray_Qsurf ',horiz_only,'I','kg/kg'  ,'Surface Water Vapor'                             )
+    call addfld('gray_Cdrag' ,horiz_only,'A','1'      ,'Surface Drag'                                    )
+    call addfld('gray_Zpbl'  ,horiz_only,'I','m'      ,'PBL Height'                                      )
+    call addfld('gray_SWflux',horiz_only,'I','W/m2'   ,'SW Solar Flux'                                   )
+    call addfld('gray_LUflux',horiz_only,'I','W/m2'   ,'LW Upward Radiative Flux'                        )
+    call addfld('gray_LDflux',horiz_only,'I','W/m2'   ,'LW Downward Radiative Flux'                      )
+    call addfld('gray_LWflux',horiz_only,'I','W/m2'   ,'LW Net Radiative Flux'                           )
+    call addfld('gray_SHflux',horiz_only,'I','W/m2'   , 'Sensible Heat Flux'        )
+    call addfld('gray_LHflux',horiz_only,'I','W/m2'   , 'Latent Heat Flux'          )
+    call addfld('gray_TauU'  ,horiz_only,'I','N/m2'   , 'U Surface Stress'          )
+    call addfld('gray_TauV'  ,horiz_only,'I','N/m2'   , 'V Surface Stress'          )
 
-    call addfld('R_Fsolar', horiz_only, 'I','W/m2', 'SW Solar Flux'             )
-    call addfld('R_Fup'   , horiz_only, 'I','W/m2', 'LW Upward Radiative Flux'  )
-    call addfld('R_Fdown' , horiz_only, 'I','W/m2', 'LW Downward Radiative Flux')
-    call addfld('R_SHflux', horiz_only, 'I','W/m2', 'Sensible Heat Flux'        )
-    call addfld('R_LHflux', horiz_only, 'I','W/m2', 'Latent Heat Flux'          )
-    call addfld('R_Fnet  ', horiz_only, 'I','W/m2', 'Net Radiative Flux'        )
-    call addfld('R_Tsurf ', horiz_only, 'I','K'   , 'Surface Temperature'       )
-    call addfld('R_Qsurf ', horiz_only, 'I','kg/kg', 'Surface Water Vapor'      )
-    call addfld('R_Cdrag' , horiz_only, 'I','1'  , 'Surface Drag'             )
-
-    call add_default('QRS'  ,1,' ')
-    call add_default('KVH'  ,1,' ')
-    call add_default('KVM'  ,1,' ')
-    call add_default('VSE'  ,1,' ')
-    call add_default('Zm'   ,1,' ')
-    call add_default('DTV'  ,1,' ')
-    call add_default('DUV'  ,1,' ')
-    call add_default('DVV'  ,1,' ')
-    call add_default('VD01' ,1,' ')
-    call add_default('Cdrag',1,' ')
-    call add_default('Z_pbl',1,' ')
-    call add_default('Rf'   ,1,' ')
+    call add_default('gray_QRL'   ,1,' ')
+    call add_default('gray_QRS'   ,1,' ')
+    call add_default('gray_DTCOND',1,' ')
+    call add_default('gray_KVH'   ,1,' ')
+    call add_default('gray_KVM'   ,1,' ')
+    call add_default('gray_VSE'   ,1,' ')
+    call add_default('gray_Zm'    ,1,' ')
+    call add_default('gray_Rf'    ,1,' ')
+    call add_default('gray_DTV'   ,1,' ')
+    call add_default('gray_DUV'   ,1,' ')
+    call add_default('gray_DVV'   ,1,' ')
+    call add_default('gray_VD01'  ,1,' ')
+    call add_default('gray_PRECC' ,1,' ')
+    call add_default('gray_PRECL' ,1,' ')
+    call add_default('gray_Tsurf' ,1,' ')
+    call add_default('gray_Qsurf' ,1,' ')
+    call add_default('gray_Cdrag' ,1,' ')
+    call add_default('gray_Zpbl'  ,1,' ')
+    call add_default('gray_SWflux',1,' ')
+    call add_default('gray_LUflux',1,' ')
+    call add_default('gray_LDflux',1,' ')
+    call add_default('gray_LWflux',1,' ')
+    call add_default('gray_SHflux',1,' ')
+    call add_default('gray_LHflux',1,' ')
+    call add_default('gray_TauU'  ,1,' ')
+    call add_default('gray_TauV'  ,1,' ')
 
     ! Allocate Global arrays
     !-------------------------
@@ -294,25 +309,21 @@ contains
     call alloc_err(istat,'Frierson INIT','Fup'   ,pcols*(endchunk-begchunk+1))
     allocate(Fdown (pcols,begchunk:endchunk)  ,stat=istat)
     call alloc_err(istat,'Frierson INIT','Fdown' ,pcols*(endchunk-begchunk+1))
+    allocate(Fnet(pcols,begchunk:endchunk)  ,stat=istat)
+    call alloc_err(istat,'Frierson INIT','Fnet',pcols*(endchunk-begchunk+1))
+
     allocate(SHflux(pcols,begchunk:endchunk)  ,stat=istat)
     call alloc_err(istat,'Frierson INIT','SHflux',pcols*(endchunk-begchunk+1))
     allocate(LHflux(pcols,begchunk:endchunk)  ,stat=istat)
     call alloc_err(istat,'Frierson INIT','LHflux',pcols*(endchunk-begchunk+1))
-    allocate(SWflux(pcols,begchunk:endchunk)  ,stat=istat)
-    call alloc_err(istat,'Frierson INIT','SWflux',pcols*(endchunk-begchunk+1))
     allocate(TUflux(pcols,begchunk:endchunk)  ,stat=istat)
     call alloc_err(istat,'Frierson INIT','TUflux',pcols*(endchunk-begchunk+1))
     allocate(TVflux(pcols,begchunk:endchunk)  ,stat=istat)
     call alloc_err(istat,'Frierson INIT','TVflux',pcols*(endchunk-begchunk+1))
-    allocate(Evap  (pcols,begchunk:endchunk)  ,stat=istat)
-    call alloc_err(istat,'Frierson INIT','Evap'  ,pcols*(endchunk-begchunk+1))
     allocate(Cd    (pcols,begchunk:endchunk)  ,stat=istat)
     call alloc_err(istat,'Frierson INIT','Cd'    ,pcols*(endchunk-begchunk+1))
     allocate(clat  (pcols,begchunk:endchunk)  ,stat=istat)
     call alloc_err(istat,'Frierson INIT','clat'  ,pcols*(endchunk-begchunk+1))
-
-    allocate(Fnet(pcols,begchunk:endchunk)  ,stat=istat)
-    call alloc_err(istat,'Frierson INIT','Fnet',pcols*(endchunk-begchunk+1))
 
     ! Initialize time indices and latitudes
     !----------------------------------------
@@ -362,10 +373,8 @@ contains
       Fdown (:,lchnk) = 0._r8
       SHflux(:,lchnk) = 0._r8
       LHflux(:,lchnk) = 0._r8
-      SWflux(:,lchnk) = 0._r8
       TUflux(:,lchnk) = 0._r8
       TVflux(:,lchnk) = 0._r8
-      Evap  (:,lchnk) = 0._r8
       Cd    (:,lchnk) = 0._r8
       Fnet  (:,lchnk) = 0._r8
     end do
@@ -439,13 +448,15 @@ contains
     !
     ! Local Values
     !-----------------
-    real(r8),pointer:: prec_pcw(:)          ! large scale precip
     real(r8),pointer:: relhum  (:,:)
-    real(r8)        :: T (state%ncol, pver) ! T temporary
-    real(r8)        :: qv(state%ncol, pver) ! Q temporary
-    logical         :: lq(pcnst)            ! Calc tendencies?
-    integer         :: lchnk                ! chunk identifier
-    integer         :: ncol                 ! number of atmospheric columns
+    real(r8),pointer:: prec_pcw(:)          ! large scale precip
+    real(r8)        :: prec_cnv(state%ncol) ! Convective Precip
+    real(r8)        :: dtcond(state%ncol, pver) ! Temperature tendency due to convection
+    real(r8)        :: T     (state%ncol, pver) ! T temporary
+    real(r8)        :: qv    (state%ncol, pver) ! Q temporary
+    logical         :: lq(pcnst)                ! Calc tendencies?
+    integer         :: lchnk                    ! chunk identifier
+    integer         :: ncol                     ! number of atmospheric columns
     integer         :: k
 
     ! Set local copies of values
@@ -467,15 +478,23 @@ contains
     call pbuf_get_field(pbuf,prec_pcw_idx,prec_pcw)
     call pbuf_get_field(pbuf,  relhum_idx,relhum  )
 
+    ! Initialize values for condensate tendencies
+    !---------------------------------------------
+    do k = 1, pver
+      dtcond(:ncol, k) = state%T(:ncol,k)
+    end do
+
     ! Call the Selected condensation routine  ~~DEVO style~~
     !--------------------------------------------------------
     if(CONDENSATE_OPT == CONDENSATE_NONE) then
+      prec_cnv(:ncol) = 0._r8
       call frierson_condensate_NONE(ncol,pver,state%pmid(:ncol,:), &
                                                              T(:ncol,:), &
                                                             qv(:ncol,:), &
                                                         relhum(:ncol,:), &
                                                       prec_pcw(:ncol)    )
     elseif(CONDENSATE_OPT == CONDENSATE_FRIERSON) then
+      prec_cnv(:ncol) = 0._r8
       call frierson_condensate(ncol,pver,ztodt,state%pmid(:ncol,:), &
                                                state%pdel(:ncol,:), &
                                                         T(:ncol,:), &
@@ -483,6 +502,7 @@ contains
                                                    relhum(:ncol,:), &
                                                  prec_pcw(:ncol)    )
     elseif(CONDENSATE_OPT == CONDENSATE_TJ16) then
+      prec_cnv(:ncol) = 0._r8
       call frierson_condensate_TJ16(ncol,pver,ztodt,state%pmid(:ncol,:), &
                                                     state%pdel(:ncol,:), &
                                                              T(:ncol,:), &
@@ -490,6 +510,7 @@ contains
                                                         relhum(:ncol,:), &
                                                       prec_pcw(:ncol)    )
     elseif(CONDENSATE_OPT == CONDENSATE_USER) then
+      prec_cnv(:ncol) = 0._r8
       call frierson_condensate_USER(ncol,pver,ztodt,state%pmid(:ncol,:), &
                                                     state%pdel(:ncol,:), &
                                                              T(:ncol,:), &
@@ -510,6 +531,15 @@ contains
       ptend%s(:ncol,k)   = (T (:,k)-state%T(:ncol,k)  )/ztodt*cpair
       ptend%q(:ncol,k,1) = (qv(:,k)-state%q(:ncol,k,1))/ztodt
     end do
+
+    ! Output condensate tendencies
+    !------------------------------
+    do k = 1, pver
+      dtcond(:ncol, k) = (T(:ncol,k) - dtcond(:ncol, k))/ztodt
+    end do
+    call outfld('gray_DTCOND',dtcond  ,ncol,lchnk)
+    call outfld('gray_PRECL' ,prec_pcw,ncol,lchnk)
+    call outfld('gray_PRECC' ,prec_cnv,ncol,lchnk)
 
   end subroutine frierson_condensate_tend
   !==============================================================================
@@ -610,7 +640,11 @@ contains
                                            dqdt_vdiff(:ncol,:),     &
                                            dtdt_vdiff(:ncol,:),     &
                                            dudt_vdiff(:ncol,:),     &
-                                           dvdt_vdiff(:ncol,:)      )
+                                           dvdt_vdiff(:ncol,:),     &
+                                               LHflux(:ncol,lchnk), &
+                                               SHflux(:ncol,lchnk), &
+                                               TUflux(:ncol,lchnk), &
+                                               TVflux(:ncol,lchnk)  )
     elseif(PBL_OPT == PBL_USER) then
       ! Call USER implemented routine in frierson module
       !--------------------------------------------------
@@ -636,15 +670,20 @@ contains
                                                 dqdt_vdiff(:ncol,:),     &
                                                 dtdt_vdiff(:ncol,:),     &
                                                 dudt_vdiff(:ncol,:),     &
-                                                dvdt_vdiff(:ncol,:)      )
+                                                dvdt_vdiff(:ncol,:),     &
+                                                    LHflux(:ncol,lchnk), &
+                                                    SHflux(:ncol,lchnk), &
+                                                    TUflux(:ncol,lchnk), &
+                                                    TVflux(:ncol,lchnk)  )
     else
       ! ERROR: Unknown PBL_OPT value
       !-------------------------------------
       write(iulog,*) 'ERROR: unknown PBL_OPT=',PBL_OPT
       call endrun('frierson_pbl_tend() PBL_OPT ERROR')
     endif
-    Tsurf(:ncol,lchnk) = Tsfc(:ncol)
-    Qsurf(:ncol,lchnk) = Qsfc(:ncol)
+    Tsurf(:ncol,lchnk) = Tsfc (:ncol)
+    Qsurf(:ncol,lchnk) = Qsfc (:ncol)
+    Cd   (:ncol,lchnk) = Cdrag(:ncol)
 
     ! Back out tendencies from updated fields
     !-----------------------------------------
@@ -657,20 +696,23 @@ contains
 
     ! Archive diagnostic fields
     !----------------------------
-    call outfld('KVH'  ,Ke        ,ncol,lchnk) ! Eddy diffusivity (heat and moisture,m2/s)
-    call outfld('KVM'  ,Km        ,ncol,lchnk) ! Eddy diffusivity (momentum, m2/s)
-    call outfld('VSE'  ,VSE       ,ncol,lchnk) ! Virtual Dry Static Energy divided by Cp (K)
-    call outfld('Zm'   ,Zm        ,ncol,lchnk) !
-    call outfld('Z_pbl',Z_pbl     ,ncol,lchnk) !
-    call outfld('Rf'   ,Rf        ,ncol,lchnk) !
-    call outfld('DUV'  ,dudt_vdiff,ncol,lchnk) ! PBL u tendency (m/s2)
-    call outfld('DVV'  ,dvdt_vdiff,ncol,lchnk) ! PBL v tendency (m/s2)
-    call outfld('DTV'  ,dtdt_vdiff,ncol,lchnk) ! PBL + surface flux T tendency (K/s)
-    call outfld('VD01' ,dqdt_vdiff,ncol,lchnk) ! PBL + surface flux Q tendency (kg/kg/s)
-    call outfld('Cdrag',Cdrag     ,ncol,lchnk) !
-
-    call outfld('R_Tsurf' , Tsurf (:ncol,lchnk),ncol,lchnk)
-    call outfld('R_Qsurf' , Qsurf (:ncol,lchnk),ncol,lchnk)
+    call outfld('gray_Tsurf' ,Tsurf(:ncol,lchnk) ,ncol,lchnk)
+    call outfld('gray_Qsurf' ,Qsurf(:ncol,lchnk) ,ncol,lchnk)
+    call outfld('gray_Cdrag' ,Cd   (:ncol,lchnk) ,ncol,lchnk)
+    call outfld('gray_Zpbl'  ,Z_pbl              ,ncol,lchnk) !
+    call outfld('gray_KVH'   ,Ke                 ,ncol,lchnk) ! Eddy diffusivity (heat and moisture,m2/s)
+    call outfld('gray_KVM'   ,Km                 ,ncol,lchnk) ! Eddy diffusivity (momentum, m2/s)
+    call outfld('gray_VSE'   ,VSE                ,ncol,lchnk) ! Virtual Dry Static Energy divided by Cp (K)
+    call outfld('gray_Zm'    ,Zm                 ,ncol,lchnk) !
+    call outfld('gray_Rf'    ,Rf                 ,ncol,lchnk) !
+    call outfld('gray_DTV'   ,dtdt_vdiff         ,ncol,lchnk) ! PBL + surface flux T tendency (K/s)
+    call outfld('gray_DUV'   ,dudt_vdiff         ,ncol,lchnk) ! PBL u tendency (m/s2)
+    call outfld('gray_DVV'   ,dvdt_vdiff         ,ncol,lchnk) ! PBL v tendency (m/s2)
+    call outfld('gray_VD01'  ,dqdt_vdiff         ,ncol,lchnk) ! PBL + surface flux Q tendency (kg/kg/s)
+    call outfld('gray_SHflux',SHflux(:ncol,lchnk),ncol,lchnk) ! Sensible Heat Flux
+    call outfld('gray_LHflux',LHflux(:ncol,lchnk),ncol,lchnk) ! Latent Heat Flux
+    call outfld('gray_TauU'  ,TUflux(:ncol,lchnk),ncol,lchnk) ! U Surface Stress
+    call outfld('gray_TauV'  ,TVflux(:ncol,lchnk),ncol,lchnk) ! V Surface Stress
 
   end subroutine frierson_pbl_tend
   !============================================================================
@@ -698,7 +740,8 @@ contains
     !---------------
     real(r8):: T           (state%ncol,pver) ! T temporary
     real(r8):: qv          (state%ncol,pver) ! Q temporary
-    real(r8):: dtdt_heating(state%ncol,pver) ! temperature tendency from relaxation in K/s
+    real(r8):: dtdt_heating(state%ncol,pver) ! Longwave heating tendency K/s
+    real(r8):: dtdt_solar  (state%ncol,pver) ! Shortwave heating tendency K/s
     real(r8):: Tsfc        (state%ncol)      ! Surface T
     real(r8):: Qsfc        (state%ncol)      ! Surface Q (saturated)
     logical :: lq(pcnst)                     ! Calc tendencies?
@@ -738,6 +781,7 @@ contains
                                             Fsolar(:ncol,lchnk), &
                                                Fup(:ncol,lchnk), &
                                              Fdown(:ncol,lchnk)  )
+      dtdt_solar(:ncol,:) = 0._r8
     elseif(RADIATION_OPT == RADIATION_USER) then
       call frierson_radiation_USER(ncol,pver,ztodt,clat(:ncol,lchnk), &
                                              state%pint(:ncol,:),     &
@@ -751,6 +795,7 @@ contains
                                                  Fsolar(:ncol,lchnk), &
                                                     Fup(:ncol,lchnk), &
                                                   Fdown(:ncol,lchnk)  )
+      dtdt_solar(:ncol,:) = 0._r8
     else
       ! ERROR: Unknown RADIATION_OPT value
       !-------------------------------------
@@ -777,7 +822,12 @@ contains
 
     ! Archive T tendency from temperature relaxation (mimics radiation, K/s)
     !-----------------------------------------------------------------------
-    call outfld('QRS',dtdt_heating, ncol,lchnk)
+    call outfld('gray_QRL'   ,dtdt_heating, ncol,lchnk)
+    call outfld('gray_QRS'   ,dtdt_solar  , ncol,lchnk)
+    call outfld('gray_SWflux',Fsolar      , ncol,lchnk)
+    call outfld('gray_LUflux',Fup         , ncol,lchnk)
+    call outfld('gray_LDflux',Fdown       , ncol,lchnk)
+    call outfld('gray_LWflux',Fnet        , ncol,lchnk)
 
   end subroutine frierson_radiative_tend
   !============================================================================
