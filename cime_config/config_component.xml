@@ -41,7 +41,9 @@
     <desc option="CFIRE"        >CAM-Chem troposphere/stratosphere chem with simplified volatility basis set SOA scheme and fire emissons :</desc>
     <desc option="CLB"          >CAM CLUBB - turned on by default in CAM60:</desc>
     <desc option="CVBSX"        >CAM-Chem troposphere/stratosphere chem with extended volatility basis set SOA scheme and modal aersols :</desc>
+    <desc option="LT"           >CAM low top model </desc>
     <desc option="MAM7"         >Modal Aerosol Model composed of 7 modes: </desc>
+    <desc option="MT"           >CAM mid top model </desc>
     <desc option="RCO2"         >CAM CO2 ramp: </desc>
     <desc option="SPCAMS"       >CAM super-parameterized CAM one moment SAM microphysics </desc>
     <desc option="SPCAMCLBS"    >CAM super-parameterized CAM one moment SAM microphysics using CLUBB </desc>
