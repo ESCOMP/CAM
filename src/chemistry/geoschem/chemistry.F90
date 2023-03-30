@@ -3927,8 +3927,8 @@ contains
     ! First deal with lowest two volatility bins
     speciesName_1 = 'TSOA0'
     speciesName_2 = 'ASOAN'
-    speciesName_2 = 'SOAIE'
-    speciesName_2 = 'SOAGX'
+    speciesName_3 = 'SOAIE'
+    speciesName_4 = 'SOAGX'
     K1 = get_spc_ndx(TRIM(speciesName_1), compare_uppercase=.true.)
     K2 = get_spc_ndx(TRIM(speciesName_2), compare_uppercase=.true.)
     K3 = get_spc_ndx(TRIM(speciesName_3), compare_uppercase=.true.)
@@ -3986,11 +3986,12 @@ contains
     ENDDO
 
     ! Now deal with gaseous SOA species
-    ! Deal with lowest two volatility bins
+    ! Deal with lowest two volatility bins - TSOG0 corresponds to SOAG0 and SOAG1
     speciesName_1 = 'TSOG0'
     K1 = get_spc_ndx(TRIM(speciesName_1), compare_uppercase=.true.)
     N = lptr2_soa_g_amode(1)
     P = mapCnst(N)
+    !                                        current mode        other modes (this mapping was verified to be correct.)
     vmr1(:nY,:nZ,P) = vmr0(:nY,:nZ,P) / (vmr0(:nY,:nZ,P) + vmr0(:nY,:nZ,mapCnst(lptr2_soa_g_amode(2)))) &
                     * vmr1(:nY,:nZ,K1)
     N = lptr2_soa_g_amode(2)
