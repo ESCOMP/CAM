@@ -4033,6 +4033,21 @@ add_default($nl, 'cam_snapshot_before_num');
 add_default($nl, 'cam_snapshot_after_num');
 check_snapshot_settings();
 
+if ($opts{'cmeps'}) {
+  # advertise the nature of ozone data passed to surface models
+  if ($rad_prog_ozone) {
+    add_default($nl, 'atm_ozone_frequency', 'val'=>'subdaily');
+  } else {
+    add_default($nl, 'atm_ozone_frequency', 'val'=>'multiday_average');
+  }
+  # for lightning flash freq to CTSM
+  if ($simple_phys or $aqua_mode) {
+    add_default($nl, 'atm_provides_lightning', 'val'=>'.false.');
+  } else {
+    add_default($nl, 'atm_provides_lightning', 'val'=>'.true.');
+  }
+}
+
 #-----------------------------------------------------------------------------------------------
 # Write output files
 
@@ -4051,20 +4066,6 @@ foreach my $name (@nl_groups) { $nl_group{$name} = ''; }
 # Dry deposition, MEGAN VOC emis and ozone namelists
 @comp_groups = qw(drydep_inparm megan_emis_nl fire_emis_nl carma_inparm ndep_inparm ozone_coupling_nl lightning_coupling_nl);
 
-# nature of ozone data passed to surface models -- only if cmeps (nuopc) coupling is used
-if ($opts{'cmeps'}) {
-  if ($rad_prog_ozone) {
-    add_default($nl, 'atm_ozone_frequency', 'val'=>'subdaily');
-  } else {
-    add_default($nl, 'atm_ozone_frequency', 'val'=>'multiday_average');
-  }
-  # for lightning flash freq to CTSM
-  if ($simple_phys or $aqua_mode) {
-    add_default($nl, 'atm_provides_lightning', 'val'=>'.false.');
-  } else {
-    add_default($nl, 'atm_provides_lightning', 'val'=>'.true.');
-  }
-}
 $outfile = "$opts{'dir'}/drv_flds_in";
 $nl->write($outfile, 'groups'=>\@comp_groups);
 if ($print>=1) {
