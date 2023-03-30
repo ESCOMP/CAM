@@ -749,6 +749,7 @@ contains
     use nudging,            only: Nudge_Model, nudging_init
     use cam_snapshot,       only: cam_snapshot_init
     use cam_history,        only: addfld, register_vector_field, add_default
+    use phys_grid_ctem,     only: phys_grid_ctem_init
 
     ! Input/output arguments
     type(physics_state), pointer       :: phys_state(:)
@@ -927,6 +928,9 @@ contains
 
     ! Initialize qneg3 and qneg4
     call qneg_init()
+
+    ! Initialize phys TEM diagnostics
+    call phys_grid_ctem_init()
 
     ! Initialize the snapshot capability
     call cam_snapshot_init(cam_in, cam_out, pbuf2d, begchunk)
@@ -1248,6 +1252,8 @@ contains
     use carma_intr,     only: carma_final
     use wv_saturation,  only: wv_sat_final
     use microp_aero,    only: microp_aero_final
+    use phys_grid_ctem, only: phys_grid_ctem_final
+    use nudging,        only: Nudge_Model, nudging_final
 
     !-----------------------------------------------------------------------
     !
@@ -1270,6 +1276,8 @@ contains
     call carma_final
     call wv_sat_final
     call microp_aero_final()
+    call phys_grid_ctem_final()
+    if(Nudge_Model) call nudging_final()
 
   end subroutine phys_final
 
@@ -2828,6 +2836,7 @@ subroutine phys_timestep_init(phys_state, cam_in, cam_out, pbuf2d)
   use iop_forcing,         only: scam_use_iop_srf
   use nudging,             only: Nudge_Model, nudging_timestep_init
   use waccmx_phys_intr,    only: waccmx_phys_ion_elec_temp_timestep_init
+  use phys_grid_ctem,      only: phys_grid_ctem_diags
 
   implicit none
 
@@ -2894,6 +2903,9 @@ subroutine phys_timestep_init(phys_state, cam_in, cam_out, pbuf2d)
   ! Update Nudging values, if needed
   !----------------------------------
   if(Nudge_Model) call nudging_timestep_init(phys_state)
+
+  ! Update TEM diagnostics
+  call phys_grid_ctem_diags(phys_state)
 
 end subroutine phys_timestep_init
 
