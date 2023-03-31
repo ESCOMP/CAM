@@ -208,7 +208,7 @@ contains
 
 
   !=======================================================================
-  subroutine frierson_condensate(ncol,pver,dtime,pmid,pdel,T,qv,relhum,precl)
+  subroutine frierson_condensate(ncol,pver,dtime,pmid,pdel,T,qv,relhum,precl,evapdt,evapdq)
     !
     ! Precip_process: Implement large-scale condensation/precipitation
     !                 from Frierson 2006.
@@ -226,6 +226,8 @@ contains
     real(r8),intent(inout):: qv    (ncol,pver) ! specific humidity Q (kg/kg)
     real(r8),intent(out)  :: relhum(ncol,pver) ! relative humidity
     real(r8),intent(out)  :: precl (ncol)      ! large-scale precipitation rate (m/s)
+    real(r8),intent(out)  :: evapdt(ncol,pver) ! T tendency due to re-evaporation
+    real(r8),intent(out)  :: evapdq(ncol,pver) ! Q tendency due to re-evaporation
     !
     ! Local Values
     !-------------
@@ -296,6 +298,7 @@ contains
 
         ! Evaporate excess Q where needed
         !----------------------------------
+        qdef(:) = 0._r8
         where((qdel(:,k) >= 0._r8).and.(qext(:) > 0._r8))
           qext(:)   = qext(:)*gravit/pdel(:,k)
           qdef(:)   = (qsat(:,k)-qv(:,k))/(1._r8+(latvap_div_cpair)*dqsat(:,k))
@@ -309,7 +312,17 @@ contains
           qnew(:,k) = qv(:,k) + qdel(:,k)
           tnew(:,k) =  T(:,k) + tdel(:,k)
         end where
+
+        ! Save T/Q tendencies due to re-evaporation
+        !--------------------------------------------
+        evapdq(:,k) =  qdef(:)/dtime
+        evapdt(:,k) = -qdef(:)*latvap_div_cpair/dtime
       end do ! k = 1, pver
+    else
+      ! Set T/Q re-evaporation tendencies to 0
+      !--------------------------------------------
+      evapdt(:,:) = 0._r8
+      evapdq(:,:) = 0._r8
     endif
 
     ! Set large scale precipitation rates to zero

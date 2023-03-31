@@ -250,6 +250,9 @@ contains
     call addfld('gray_QRL'   ,(/'lev' /),'A','K/s'    ,'Longwave heating rate for gray atmosphere'       )
     call addfld('gray_QRS'   ,(/'lev' /),'A','K/s'    ,'Solar heating rate for gray atmosphere'          )
     call addfld('gray_DTCOND',(/'lev' /),'A','K/s'    ,'T tendency - gray atmosphere moist process'      )
+    call addfld('gray_DQCOND',(/'lev' /),'A','kg/kg/s','Q tendency - gray atmosphere moist process'      )
+    call addfld('gray_EVAPDT',(/'lev' /),'A','K/s'    ,'T tendency due to re-evaporation'                )
+    call addfld('gray_EVAPDQ',(/'lev' /),'A','kg/kg/s','Q tendency due to re-evaporation'                )
     call addfld('gray_KVH'   ,(/'ilev'/),'A','m2/s'   ,'Vertical diffusion diffusivities (heat/moisture)')
     call addfld('gray_KVM'   ,(/'ilev'/),'A','m2/s'   ,'Vertical diffusion diffusivities (momentum)'     )
     call addfld('gray_VSE'   ,(/'lev' /),'A','K'      ,'VSE: (Tv + gZ/Cp)'                               )
@@ -277,6 +280,9 @@ contains
     call add_default('gray_QRL'   ,1,' ')
     call add_default('gray_QRS'   ,1,' ')
     call add_default('gray_DTCOND',1,' ')
+    call add_default('gray_DQCOND',1,' ')
+    call add_default('gray_EVAPDT',1,' ')
+    call add_default('gray_EVAPDQ',1,' ')
     call add_default('gray_KVH'   ,1,' ')
     call add_default('gray_KVM'   ,1,' ')
     call add_default('gray_VSE'   ,1,' ')
@@ -451,7 +457,10 @@ contains
     real(r8),pointer:: relhum  (:,:)
     real(r8),pointer:: prec_pcw(:)          ! large scale precip
     real(r8)        :: prec_cnv(state%ncol) ! Convective Precip
-    real(r8)        :: dtcond(state%ncol, pver) ! Temperature tendency due to convection
+    real(r8)        :: evapdt(state%ncol, pver) ! T tendency due to re-evaporation of condensation
+    real(r8)        :: evapdq(state%ncol, pver) ! Q tendency due to re-evaporation of condensation
+    real(r8)        :: dtcond(state%ncol, pver) ! Temperature tendency due to condensation
+    real(r8)        :: dqcond(state%ncol, pver) ! Q tendency due to condensation
     real(r8)        :: T     (state%ncol, pver) ! T temporary
     real(r8)        :: qv    (state%ncol, pver) ! Q temporary
     logical         :: lq(pcnst)                ! Calc tendencies?
@@ -481,28 +490,35 @@ contains
     ! Initialize values for condensate tendencies
     !---------------------------------------------
     do k = 1, pver
-      dtcond(:ncol, k) = state%T(:ncol,k)
+      dtcond(:ncol,k) = state%T(:ncol,k)
+      dqcond(:ncol,k) = state%q(:ncol,k,1)
     end do
 
     ! Call the Selected condensation routine  ~~DEVO style~~
     !--------------------------------------------------------
     if(CONDENSATE_OPT == CONDENSATE_NONE) then
-      prec_cnv(:ncol) = 0._r8
+      prec_cnv(:ncol)   = 0._r8
+      evapdt  (:ncol,:) = 0._r8
+      evapdq  (:ncol,:) = 0._r8
       call frierson_condensate_NONE(ncol,pver,state%pmid(:ncol,:), &
                                                              T(:ncol,:), &
                                                             qv(:ncol,:), &
                                                         relhum(:ncol,:), &
                                                       prec_pcw(:ncol)    )
     elseif(CONDENSATE_OPT == CONDENSATE_FRIERSON) then
-      prec_cnv(:ncol) = 0._r8
+      prec_cnv(:ncol)   = 0._r8
       call frierson_condensate(ncol,pver,ztodt,state%pmid(:ncol,:), &
                                                state%pdel(:ncol,:), &
                                                         T(:ncol,:), &
                                                        qv(:ncol,:), &
                                                    relhum(:ncol,:), &
-                                                 prec_pcw(:ncol)    )
+                                                 prec_pcw(:ncol)  , &
+                                                   evapdt(:ncol,:), &
+                                                   evapdq(:ncol,:)  )
     elseif(CONDENSATE_OPT == CONDENSATE_TJ16) then
-      prec_cnv(:ncol) = 0._r8
+      prec_cnv(:ncol)   = 0._r8
+      evapdt  (:ncol,:) = 0._r8
+      evapdq  (:ncol,:) = 0._r8
       call frierson_condensate_TJ16(ncol,pver,ztodt,state%pmid(:ncol,:), &
                                                     state%pdel(:ncol,:), &
                                                              T(:ncol,:), &
@@ -510,7 +526,9 @@ contains
                                                         relhum(:ncol,:), &
                                                       prec_pcw(:ncol)    )
     elseif(CONDENSATE_OPT == CONDENSATE_USER) then
-      prec_cnv(:ncol) = 0._r8
+      prec_cnv(:ncol)   = 0._r8
+      evapdt  (:ncol,:) = 0._r8
+      evapdq  (:ncol,:) = 0._r8
       call frierson_condensate_USER(ncol,pver,ztodt,state%pmid(:ncol,:), &
                                                     state%pdel(:ncol,:), &
                                                              T(:ncol,:), &
@@ -535,9 +553,13 @@ contains
     ! Output condensate tendencies
     !------------------------------
     do k = 1, pver
-      dtcond(:ncol, k) = (T(:ncol,k) - dtcond(:ncol, k))/ztodt
+      dtcond(:ncol,k) = (T (:ncol,k) - dtcond(:ncol,k))/ztodt
+      dqcond(:ncol,k) = (qv(:ncol,k) - dqcond(:ncol,k))/ztodt
     end do
+    call outfld('gray_EVAPDT',evapdt  ,ncol,lchnk)
+    call outfld('gray_EVAPDQ',evapdq  ,ncol,lchnk)
     call outfld('gray_DTCOND',dtcond  ,ncol,lchnk)
+    call outfld('gray_DQCOND',dqcond  ,ncol,lchnk)
     call outfld('gray_PRECL' ,prec_pcw,ncol,lchnk)
     call outfld('gray_PRECC' ,prec_cnv,ncol,lchnk)
 
