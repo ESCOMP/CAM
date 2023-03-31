@@ -140,7 +140,7 @@ contains
     real(r8), parameter :: latrad0 = -pi*0.5_r8
     real(r8), parameter :: fourpi = pi*4._r8
 
-    integer, parameter :: ctem_zavg_phys_decomp = 201 ! Must be unique within CAM
+    integer, parameter :: ctem_zavg_phys_decomp = 333 ! Must be unique within CAM
 
     if (.not.do_tem_diags) return
 
@@ -313,17 +313,22 @@ contains
     call ZAobj%binAvg(uvp, uvza)
     call ZAobj%binAvg(uwp, uwza)
     call ZAobj%binAvg(vthp, vthza)
-    call ZAobj%binAvg(uzm, uza)
-    call ZAobj%binAvg(vzm, vza)
-    call ZAobj%binAvg(wzm, wza)
-    call ZAobj%binAvg(thzm, thza)
-
-    call ZAobj%binAvg(uvp, uvza)
+    call ZAobj%binAvg(wthp, wthza)
 
     if (any(abs(uvza)>1.e20_r8)) call endrun(prefix//'bad values in uvza')
     if (any(abs(uwza)>1.e20_r8)) call endrun(prefix//'bad values in uwza')
     if (any(abs(vthza)>1.e20_r8)) call endrun(prefix//'bad values in vthza')
     if (any(abs(wthza)>1.e20_r8)) call endrun(prefix//'bad values in wthza')
+
+    call ZAobj%binAvg(uzm, uza)
+    call ZAobj%binAvg(vzm, vza)
+    call ZAobj%binAvg(wzm, wza)
+    call ZAobj%binAvg(thzm, thza)
+
+    if (any(abs(uza)>1.e20_r8)) call endrun(prefix//'bad values in uza')
+    if (any(abs(vza)>1.e20_r8)) call endrun(prefix//'bad values in vza')
+    if (any(abs(wza)>1.e20_r8)) call endrun(prefix//'bad values in wza')
+    if (any(abs(thza)>1.e20_r8)) call endrun(prefix//'bad values in thza')
 
     ! diagnostic output
     do j = 1,nzalat
