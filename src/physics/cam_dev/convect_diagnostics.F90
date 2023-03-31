@@ -85,12 +85,14 @@
   !                                                                                !
   !=============================================================================== !
 
-  subroutine convect_diagnostics_init
+  subroutine convect_diagnostics_init(pbuf2d)
 
   !------------------------------------------------------------------------------- !
   ! Purpose : Declare output fields, and initialize variables needed by convection !
   !------------------------------------------------------------------------------- !
-  use physics_buffer,    only: pbuf_get_index
+  use physics_buffer,    only: pbuf_get_index, physics_buffer_desc, pbuf_set_field
+
+  type(physics_buffer_desc), pointer :: pbuf2d(:,:)
 
   call addfld( 'CMFMC',      (/ 'ilev' /), 'A', 'kg/m2/s',  'Moist convection (deep+shallow) mass flux'                 )
   call addfld( 'CLDTOP',     horiz_only,   'I', '1',        'Vertical index of cloud top'                               )
@@ -99,6 +101,11 @@
   call addfld( 'PCLDBOT',    horiz_only,   'A', 'Pa',       'Pressure of cloud base'                                    )
 
   rprddp_idx   = pbuf_get_index('RPRDDP')
+
+  call pbuf_set_field(pbuf2d, sh_cldliq_idx, 0._r8)
+  call pbuf_set_field(pbuf2d, sh_cldice_idx, 0._r8)
+  call pbuf_set_field(pbuf2d, sh_flxprc_idx, 0._r8)
+  call pbuf_set_field(pbuf2d, sh_flxsnw_idx, 0._r8)
 
   end subroutine convect_diagnostics_init
 

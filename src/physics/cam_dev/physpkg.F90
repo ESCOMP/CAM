@@ -866,7 +866,7 @@ contains
 
     call radheat_init(pref_mid)
 
-    call convect_diagnostics_init
+    call convect_diagnostics_init(pbuf2d)
 
     call cldfrc_init()
     call cldfrc2m_init()
