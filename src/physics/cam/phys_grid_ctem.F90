@@ -207,11 +207,15 @@ contains
 
     if (.not.do_tem_diags) return
 
-    call addfld ('VTHzaphys',(/'lev'/), 'A', 'K m s-1','Meridional Heat Flux:', gridname='ctem_zavg_phys')
-    call addfld ('WTHzaphys',(/'lev'/), 'A', 'K m s-1','Vertical Heat Flux:', gridname='ctem_zavg_phys')
-    call addfld ('UVzaphys', (/'lev'/), 'A', 'm2 s-2', 'Meridional Flux of Zonal Momentum', gridname='ctem_zavg_phys')
-    call addfld ('UWzaphys', (/'lev'/), 'A', 'm2 s-2', 'Vertical Flux of Zonal Momentum', gridname='ctem_zavg_phys')
-    call addfld ('THphys',   (/'lev'/), 'A', 'K',      'Potential temp', gridname='physgrid' )
+    call addfld ('Uzm',  (/'lev'/), 'A','m s-1',  'Zonal-Mean zonal wind - defined on ilev', gridname='ctem_zavg_phys' )
+    call addfld ('Vzm',  (/'lev'/), 'A','m s-1',  'Zonal-Mean meridional wind - defined on ilev', gridname='ctem_zavg_phys' )
+    call addfld ('Wzm',  (/'lev'/), 'A','m s-1',  'Zonal-Mean vertical wind - defined on ilev', gridname='ctem_zavg_phys' )
+    call addfld ('THzm', (/'lev'/), 'A','K',      'Zonal-Mean potential temp - defined on ilev', gridname='ctem_zavg_phys' )
+    call addfld ('VTHzm',(/'lev'/), 'A','K m s-1','Meridional Heat Flux:', gridname='ctem_zavg_phys')
+    call addfld ('WTHzm',(/'lev'/), 'A','K m s-1','Vertical Heat Flux:', gridname='ctem_zavg_phys')
+    call addfld ('UVzm', (/'lev'/), 'A','m2 s-2', 'Meridional Flux of Zonal Momentum', gridname='ctem_zavg_phys')
+    call addfld ('UWzm', (/'lev'/), 'A','m2 s-2', 'Vertical Flux of Zonal Momentum', gridname='ctem_zavg_phys')
+    call addfld ('THphys',(/'lev'/), 'A', 'K',    'Potential temp', gridname='physgrid' )
 
   end subroutine phys_grid_ctem_init
 
@@ -250,6 +254,11 @@ contains
     real(r8) :: uwza(nzalat,pver)
     real(r8) :: vthza(nzalat,pver)
     real(r8) :: wthza(nzalat,pver)
+
+    real(r8) :: uza(nzalat,pver)
+    real(r8) :: vza(nzalat,pver)
+    real(r8) :: wza(nzalat,pver)
+    real(r8) :: thza(nzalat,pver)
 
     real(r8) :: sheight(pcols,pver) ! pressure scale height (m)
 
@@ -304,7 +313,12 @@ contains
     call ZAobj%binAvg(uvp, uvza)
     call ZAobj%binAvg(uwp, uwza)
     call ZAobj%binAvg(vthp, vthza)
-    call ZAobj%binAvg(wthp, wthza)
+    call ZAobj%binAvg(uzm, uza)
+    call ZAobj%binAvg(vzm, vza)
+    call ZAobj%binAvg(wzm, wza)
+    call ZAobj%binAvg(thzm, thza)
+
+    call ZAobj%binAvg(uvp, uvza)
 
     if (any(abs(uvza)>1.e20_r8)) call endrun(prefix//'bad values in uvza')
     if (any(abs(uwza)>1.e20_r8)) call endrun(prefix//'bad values in uwza')
@@ -313,10 +327,14 @@ contains
 
     ! diagnostic output
     do j = 1,nzalat
-       call outfld('UVzaphys',uvza(j,:),1,j)
-       call outfld('UWzaphys',uwza(j,:),1,j)
-       call outfld('VTHzaphys',vthza(j,:),1,j)
-       call outfld('WTHzaphys',wthza(j,:),1,j)
+       call outfld('Uzm',uza(j,:),1,j)
+       call outfld('Vzm',vza(j,:),1,j)
+       call outfld('Wzm',wza(j,:),1,j)
+       call outfld('THzm',thza(j,:),1,j)
+       call outfld('UVzm',uvza(j,:),1,j)
+       call outfld('UWzm',uwza(j,:),1,j)
+       call outfld('VTHzm',vthza(j,:),1,j)
+       call outfld('WTHzm',wthza(j,:),1,j)
     end do
 
   contains
