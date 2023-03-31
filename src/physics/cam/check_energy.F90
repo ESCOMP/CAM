@@ -819,7 +819,7 @@ end subroutine check_energy_get_integrals
   subroutine tot_energy_phys(state, outfld_name_suffix,vc)
     use physconst,       only: gravit,rearth,omega
     use cam_thermo,      only: get_hydrostatic_energy,thermo_budget_num_vars,thermo_budget_vars, &
-                               wvidx,wlidx,wiidx,seidx,keidx,moidx,mridx,ttidx,teidx
+                               wvidx,wlidx,wiidx,seidx,poidx,keidx,moidx,mridx,ttidx,teidx
     use cam_history,     only: outfld
     use dyn_tests_utils, only: vc_physics, vc_height, vc_dry_pressure
 
@@ -927,13 +927,14 @@ end subroutine check_energy_get_integrals
       end if
     end if
 
-    call outfld(name_out(seidx)  ,se+po   , pcols   ,lchnk   )
+    call outfld(name_out(seidx)  ,se      , pcols   ,lchnk   )
+    call outfld(name_out(poidx)  ,po      , pcols   ,lchnk   )
     call outfld(name_out(keidx)  ,ke      , pcols   ,lchnk   )
     call outfld(name_out(wvidx)  ,wv      , pcols   ,lchnk   )
     call outfld(name_out(wlidx)  ,liq     , pcols   ,lchnk   )
     call outfld(name_out(wiidx)  ,ice     , pcols   ,lchnk   )
     call outfld(name_out(ttidx)  ,tt      , pcols   ,lchnk   )
-    call outfld(name_out(teidx)  ,se+ke+po      , pcols   ,lchnk   )
+    call outfld(name_out(teidx)  ,se+ke+po, pcols   ,lchnk   )
     !
     ! Axial angular momentum diagnostics
     !
