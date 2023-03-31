@@ -49,11 +49,13 @@ subroutine print_budget(hstwr)
   real(r8) :: dEdt_param_efix_dynE(4)  ! dE/dt CAM physics + energy fixer using dycore E formula (dyAP-dyBF)
 
   real(r8) :: dEdt_phys_total_dynE(4)  ! dE/dt physics total using dycore E (dyAM-dyBF)
+                                       ! physics total = parameterizations + efix + dry-mass adjustment
   !
   ! SE dycore specific energy tendencies
   !
   real(r8) :: dEdt_phys_total_in_dyn(4) ! dEdt of physics total in dynamical core
-  real(r8) :: dEdt_dycore_phys               ! dEdt dycore (estimated in physics)
+                                        ! physics total = parameterizations + efix + dry-mass adjustment
+  real(r8) :: dEdt_dycore_phys          ! dEdt dycore (estimated in physics)
   !
   ! mass budgets physics
   !
@@ -104,7 +106,7 @@ subroutine print_budget(hstwr)
     idx(2) = seidx !enthaly index
     idx(3) = keidx !kinetic energy index
     idx(4) = poidx !surface potential energy index
-    str(1) = "(total)       )"
+    str(1) = "(total        )"
     str(2) = "(enthalpy     )"
     str(3) = "(kinetic      )"
     str(4) = "(srf potential)"
@@ -232,7 +234,6 @@ subroutine print_budget(hstwr)
     write(iulog,*)  "                                                        -----   -----  ----"
     do i=1,4
       diff = dEdt_dme_adjust_physE(i)-dEdt_dme_adjust_dynE(i)
-!'(a41,a15,a1,F6.2,a1,F6.2,a1,E6.2)'
       write(iulog,fmt)"dE/dt dry mass adjustment   (xxAM-xxAP) ",str(i)," ",dEdt_dme_adjust_physE(i)," ",dEdt_dme_adjust_dynE(i)," ",diff
     end do
     write(iulog,*)" "
@@ -320,8 +321,8 @@ subroutine print_budget(hstwr)
     else
       write(iulog,*)" "
       write(iulog,*)"Since you are using a separate physics grid, the state in dynamics"
-      write(iulog,*)"will not be the same on the physics grid"
-      write(iulog,*)"interpolated from the physics to the dynamics "
+      write(iulog,*)"will not be the same on the physics grid since it is"
+      write(iulog,*)"interpolated from the dynamics to the physics grid"
       write(iulog,*)" "
       do i=1,4
         write(iulog,*) str(i),":"
@@ -352,16 +353,16 @@ subroutine print_budget(hstwr)
     else
       previous_dEdt_phys_dyn_coupl_err = dEdt_phys_total_in_dyn(1)-dEdt_phys_total_dynE(1)
       diff = abs_diff(dEdt_phys_total_dynE(1),dEdt_phys_total_in_dyn(1),pf=pf)
-      write(iulog,'(A40,E8.2,A7,A4)')"dE/dt physics-dynamics coupling errors       ",diff," W/M^2 ",pf
+      write(iulog,'(A40,E8.2,A7,A5)')" dE/dt physics-dynamics coupling errors       ",diff," W/M^2 ",pf
       if (abs(diff)>eps) then
         !
         ! if errors print details
         !
         if (ftype==1) then
           write(iulog,*) ""
-          write(iulog,*) "You are using ftype==1 so physics-dynamics coupling errors should be round-off!"
+          write(iulog,*) " You are using ftype==1 so physics-dynamics coupling errors should be round-off!"
           write(iulog,*) ""
-          write(iulog,*) "Because of failure provide detailed diagnostics below:"
+          write(iulog,*) " Because of failure provide detailed diagnostics below:"
           write(iulog,*) ""
         else
           write(iulog,*) ""
@@ -376,8 +377,10 @@ subroutine print_budget(hstwr)
           write(iulog,*) "======"
           diff = abs_diff(dEdt_phys_total_dynE(i),dEdt_phys_total_in_dyn(i),pf=pf)
           write(iulog,*) "dE/dt physics-dynamics coupling errors (diff) ",diff
-          write(iulog,*) "dE/dt physics tendency in dynamics (dBD-dAF)  ",dEdt_phys_total_in_dyn(i)
-          write(iulog,*) "dE/dt physics tendency in physics  (pAM-pBF)  ",dEdt_phys_total_dynE(i)
+          write(iulog,*) "dE/dt physics total in dynamics (dBD-dAF)     ",dEdt_phys_total_in_dyn(i)
+          write(iulog,*) "dE/dt physics total in physics  (dyAM-dyBF)   ",dEdt_phys_total_dynE(i)
+          write(iulog,*) " "
+          write(iulog,*) "      physics total = parameterizations + efix + dry-mass adjustment"
           write(iulog,*) " "
         end do
       end if
