@@ -35,6 +35,10 @@
    integer    ::     prec_sh_idx    = 0
    integer    ::     snow_sh_idx    = 0
    integer    ::    cmfmc_sh_idx    = 0
+   integer    ::   sh_flxprc_idx    = 0
+   integer    ::   sh_flxsnw_idx    = 0
+   integer    ::   sh_cldliq_idx    = 0
+   integer    ::   sh_cldice_idx    = 0
 
    contains
 
@@ -61,6 +65,14 @@
   call pbuf_add_field('SNOW_SH',    'physpkg' ,dtype_r8,(/pcols/),            snow_sh_idx )
   ! Updraft mass flux by shallow convection [ kg/s/m2 ]
   call pbuf_add_field('CMFMC_SH',   'physpkg' ,dtype_r8,(/pcols,pverp/),      cmfmc_sh_idx )
+! shallow interface gbm flux_convective_cloud_rain+snow (kg/m2/s)
+  call pbuf_add_field('SH_FLXPRC',  'physpkg' ,dtype_r8,(/pcols,pverp/),      sh_flxprc_idx)
+! shallow interface gbm flux_convective_cloud_snow (kg/m2/s)
+  call pbuf_add_field('SH_FLXSNW',  'physpkg' ,dtype_r8,(/pcols,pverp/),      sh_flxsnw_idx)
+! shallow gbm cloud liquid water (kg/kg)
+  call pbuf_add_field('SH_CLDLIQ',  'physpkg' ,dtype_r8,(/pcols,pver/),       sh_cldliq_idx)
+! shallow gbm cloud ice water (kg/kg)
+  call pbuf_add_field('SH_CLDICE',  'physpkg' ,dtype_r8,(/pcols,pver/),       sh_cldice_idx)
 
   ! for this implementation, only CLUBB_SGS is supported
   if (shallow_scheme /= 'CLUBB_SGS') then
