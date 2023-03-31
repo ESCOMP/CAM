@@ -62,6 +62,16 @@
   </compset>
 
   <compset>
+    <alias>FLTHIST_v0a</alias>
+    <lname>HIST_CAM%DEV%LT%GHGMAM4_CLM50%SP_CICE%PRES_DOCN%DOM_MOSART_SGLC_SWAV</lname>
+  </compset>
+
+  <compset>
+    <alias>FMTHIST_v0a</alias>
+    <lname>HIST_CAM%DEV%MT_CLM50%SP_CICE%PRES_DOCN%DOM_MOSART_SGLC_SWAV</lname>
+  </compset>
+
+  <compset>
     <alias>FHIST_BGC</alias>
     <lname>HIST_CAM60_CLM50%BGC-CROP_CICE%PRES_DOCN%DOM_MOSART_SGLC_SWAV</lname>
 <!--    <science_support grid="f09_f09_mg17"/> -->
@@ -316,11 +326,11 @@
   </compset>
   <compset>
     <alias>FCLTHIST</alias>
-    <lname>HIST_CAM%DEV%L58%CCTS1_CLM50%SP_CICE%PRES_DOCN%DOM_MOSART_SGLC_SWAV</lname>
+    <lname>HIST_CAM%DEV%LT%CCTS1_CLM50%SP_CICE%PRES_DOCN%DOM_MOSART_SGLC_SWAV</lname>
   </compset>
   <compset>
     <alias>FCMTHIST</alias>
-    <lname>HIST_CAM%DEV%L93%CCTS1_CLM50%SP_CICE%PRES_DOCN%DOM_MOSART_SGLC_SWAV</lname>
+    <lname>HIST_CAM%DEV%MT%CCTS1_CLM50%SP_CICE%PRES_DOCN%DOM_MOSART_SGLC_SWAV</lname>
   </compset>
   <compset>
     <alias>FCvbsxHIST</alias>

@@ -13,7 +13,7 @@
     <desc atm="CAM40[%PORT][%RCO2][%SCAM][%SDYN][%TMOZ][%WX][%WXIE][%WXIED][%WCCM][%WCMD]"                                                         >CAM cam4 physics:</desc>
     <desc atm="CAM30"                                                                                                                              >CAM cam3 physics:</desc>
     <desc atm="CAM[%ADIAB][%DABIP04][%TJ16][%HS94][%KESSLER][%RCO2][%SPCAMS][%SPCAMCLBS][%SPCAMM][%SPCAMCLBM]"                                     >CAM simplified and non-versioned physics :</desc>
-    <desc atm="CAM%DEV[%L58][%L93][%CCTS1]"                                                                                                        >CAM7 development physics:</desc>
+    <desc atm="CAM%DEV[%LT][%MT][%CCTS1][%GHGMAM4]"                                                                                              >CAM7 development physics:</desc>
 
   <!--
     ===============
@@ -36,14 +36,15 @@
      CAM Options
     ===============
    -->
-    <desc option="L58"          >58 vertical layers:</desc>
-    <desc option="L93"          >93 vertical layers:</desc>
     <desc option="CCTS1"        >CAM-Chem troposphere/stratosphere chemistry with simplified VBS-SOA:</desc>
     <desc option="CCTS2"        >CAM-Chem troposphere/stratosphere chemistry with simplified VBS-SOA and expanded isoprene and terpene oxidation:</desc>
     <desc option="CFIRE"        >CAM-Chem troposphere/stratosphere chem with simplified volatility basis set SOA scheme and fire emissons :</desc>
     <desc option="CLB"          >CAM CLUBB - turned on by default in CAM60:</desc>
     <desc option="CVBSX"        >CAM-Chem troposphere/stratosphere chem with extended volatility basis set SOA scheme and modal aersols :</desc>
+    <desc option="LT"           >CAM low top model </desc>
+    <desc option="GHGMAM4"      >Prognostic GHG chemistry mechanism for CAM7:</desc>
     <desc option="MAM7"         >Modal Aerosol Model composed of 7 modes: </desc>
+    <desc option="MT"           >CAM mid top model </desc>
     <desc option="RCO2"         >CAM CO2 ramp: </desc>
     <desc option="SPCAMS"       >CAM super-parameterized CAM one moment SAM microphysics </desc>
     <desc option="SPCAMCLBS"    >CAM super-parameterized CAM one moment SAM microphysics using CLUBB </desc>
@@ -127,6 +128,7 @@
 
       <!-- Modifiers for CAM runs (%.* includes SCAM runs) -->
       <value compset="_CAM%DEV">-phys cam_dev</value>
+      <value compset="_CAM.*(%GHGMAM4)">-chem ghg_mam4</value>
       <value compset="_CAM.*(%CCTS1|%CFIRE)">-chem trop_strat_mam5_vbs</value>
 
       <value compset="%MAM7">-chem trop_mam7</value>
@@ -159,12 +161,13 @@
       <value compset="_CAM60%WXIED">-chem waccm_mad_mam5</value>
 
       <value compset="_CAM.*%SDYN">-offline_dyn</value>
+
       <value compset="_CAM\d0%SDYN_CLM">-nlev 56</value>
       <value compset="_CAM\d0%CC.*%SDYN">-nlev 56</value>
       <value compset="_CAM\d0%WC.*%SDYN">-nlev 88</value>
       <value compset="_CAM\d0%WX.*%SDYN">-nlev 145</value>
-      <value compset="_CAM.*%L58">-nlev 58</value>
-      <value compset="_CAM.*%L93">-nlev 93</value>
+      <value compset="_CAM.*%LT">-nlev 58</value>
+      <value compset="_CAM.*%MT">-nlev 93</value>
 
       <!-- Simple models -->
       <value compset="_CAM%ADIAB">-phys adiabatic</value>
@@ -240,6 +243,8 @@
       <value compset="HIST_CAM40%WXIE"   >1950-2010_ccmi_refc1_waccmx_ma</value>
       <value compset="HIST_CAM50"        >1850-2005_cam5</value>
       <value compset="HIST_CAM60"        >hist_cam6</value>
+      <value compset="HIST_CAM%DEV%LT"   >hist_cam_lt</value>
+      <value compset="HIST_CAM%DEV%MT"   >hist_cam_mt</value>
       <value compset="HIST_CAM60%WCTS"   >waccm_tsmlt_hist_cam6</value>
       <value compset="HIST_CAM60%WCSC"   >waccm_sc_hist_cam6</value>
       <value compset="HIST_CAM60%WCCM"   >waccm_ma_hist_cam6</value>
