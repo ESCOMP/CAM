@@ -933,7 +933,6 @@ contains
        nullify(cell_gradient_coef_x)
        nullify(cell_gradient_coef_y)
 
-
        call MPAS_createStream(mesh_stream, domain_ptr % ioContext, 'not_used', MPAS_IO_NETCDF, MPAS_IO_READ, &
                               pio_file_desc=fh_ini, ierr=ierr)
        if (ierr /= MPAS_STREAM_NOERR) then
@@ -1364,6 +1363,8 @@ contains
        type (field1DReal), pointer :: u_init
        type (field1DReal), pointer :: qv_init
 
+       nullify(cell_gradient_coef_x)
+       nullify(cell_gradient_coef_y)
 
        call MPAS_createStream(restart_stream, domain_ptr % ioContext, 'not_used', MPAS_IO_NETCDF, &
                               direction, pio_file_desc=fh_rst, ierr=ierr)

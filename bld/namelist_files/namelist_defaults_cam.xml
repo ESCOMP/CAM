@@ -3000,14 +3000,10 @@
 
 <mpas_dt hgrid="mpasa120" waccm_phys="1"> 600.D0 </mpas_dt>
 <mpas_dynamics_split_steps hgrid="mpasa120" waccm_phys="1"> 4 </mpas_dynamics_split_steps>
-<mpas_len_disp hgrid="mpasa120" waccm_phys="1"> 120000.D0 </mpas_len_disp>
 <mpas_zd hgrid="mpasa120" waccm_phys="1"> 80000.0D0 </mpas_zd>
-<mpas_xnutr hgrid="mpasa120" waccm_phys="1"> 0.2D0 </mpas_xnutr>
 <mpas_cam_coef hgrid="mpasa120" waccm_phys="1"> 0.2D0 </mpas_cam_coef>
 <mpas_epssm hgrid="mpasa120" waccm_phys="1"> 0.5D0 </mpas_epssm>
 <mpas_apvm_upwinding hgrid="mpasa120" waccm_phys="1"> 0.0D0 </mpas_apvm_upwinding>
-<mpas_rayleigh_damp_u hgrid="mpasa120" waccm_phys="1"> .true. </mpas_rayleigh_damp_u>
-<mpas_rayleigh_damp_u_timescale_days hgrid="mpasa120" waccm_phys="1"> 5.D0 </mpas_rayleigh_damp_u_timescale_days>
 
 <!-- ================================================================== -->
 <!-- Chemistry Rates Diagnostics                                        -->

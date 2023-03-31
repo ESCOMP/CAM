@@ -37,7 +37,7 @@ contains
 !=========================================================================================
 
 subroutine d_p_coupling(phys_state, phys_tend, pbuf2d, dyn_out)
-   use cam_mpas_subdriver, only : cam_mpas_update_halo
+   use cam_mpas_subdriver, only: cam_mpas_update_halo
 
    ! Convert the dynamics output state into the physics input state.
    ! Note that all pressures and tracer mixing ratios coming from the dycore are based on
@@ -74,28 +74,28 @@ subroutine d_p_coupling(phys_state, phys_tend, pbuf2d, dyn_out)
    ! mesh information and coefficients needed for
    ! frontogenesis function calculation
    !
-   real(r8), dimension(:,:),   pointer :: defc_a
-   real(r8), dimension(:,:),   pointer :: defc_b
-   real(r8), dimension(:,:),   pointer :: cell_gradient_coef_x
-   real(r8), dimension(:,:),   pointer :: cell_gradient_coef_y
-   real(r8), dimension(:,:),   pointer :: edgesOnCell_sign
-   real(r8), dimension(:),     pointer :: dvEdge
-   real(r8), dimension(:),     pointer :: areaCell
+   real(r8), pointer :: defc_a(:,:)
+   real(r8), pointer :: defc_b(:,:)
+   real(r8), pointer :: cell_gradient_coef_x(:,:)
+   real(r8), pointer :: cell_gradient_coef_y(:,:)
+   real(r8), pointer :: edgesOnCell_sign(:,:)
+   real(r8), pointer :: dvEdge(:)
+   real(r8), pointer :: areaCell(:)
 
-   integer, dimension(:,:), pointer :: cellsOnEdge
-   integer, dimension(:,:), pointer :: edgesOnCell
-   integer, dimension(:),   pointer :: nEdgesOnCell
+   integer, pointer :: cellsOnEdge(:,:)
+   integer, pointer :: edgesOnCell(:,:)
+   integer, pointer :: nEdgesOnCell(:)
 
-   real(r8), dimension(:,:),   pointer :: uperp
-   real(r8), dimension(:,:),   pointer :: utangential
+   real(r8), pointer :: uperp(:,:)
+   real(r8), pointer :: utangential(:,:)
 
    !
    ! local storage for frontogenesis function and angle
    !
-   real(r8), dimension(:,:),  pointer :: frontogenesisFunction
-   real(r8), dimension(:,:),  pointer :: frontogenesisAngle
-   real(r8), dimension(:,:),  pointer :: pbuf_frontgf
-   real(r8), dimension(:,:),  pointer :: pbuf_frontga
+   real(r8), pointer :: frontogenesisFunction(:,:)
+   real(r8), pointer :: frontogenesisAngle(:,:)
+   real(r8), pointer :: pbuf_frontgf(:,:)
+   real(r8), pointer :: pbuf_frontga(:,:)
    real(r8), allocatable :: frontgf_phys(:,:,:)
    real(r8), allocatable :: frontga_phys(:,:,:)
 
@@ -178,11 +178,13 @@ subroutine d_p_coupling(phys_state, phys_tend, pbuf2d, dyn_out)
       allocate(frontogenesisFunction(plev, nCellsSolve), stat=ierr)
       if( ierr /= 0 ) call endrun(subname//':failed to allocate frontogenesisFunction array')
       allocate(frontogenesisAngle(plev, nCellsSolve), stat=ierr)
-
-      allocate(frontgf_phys(pcols, pver, begchunk:endchunk))
-      allocate(frontga_phys(pcols, pver, begchunk:endchunk))
-
       if( ierr /= 0 ) call endrun(subname//':failed to allocate frontogenesisAngle array')
+
+      allocate(frontgf_phys(pcols, pver, begchunk:endchunk), stat=ierr)
+      if( ierr /= 0 ) call endrun(subname//':failed to allocate frontgf_phys array')
+      allocate(frontga_phys(pcols, pver, begchunk:endchunk), stat=ierr)
+      if( ierr /= 0 ) call endrun(subname//':failed to allocate frontga_phys array')
+
 
       call calc_frontogenesis( frontogenesisFunction, frontogenesisAngle,  &
                                theta_m, tracers(index_qv,:,:),             &
@@ -247,8 +249,8 @@ subroutine d_p_coupling(phys_state, phys_tend, pbuf2d, dyn_out)
          pbuf_chnk => pbuf_get_chunk(pbuf2d, lchnk)
          call pbuf_get_field(pbuf_chnk, frontgf_idx, pbuf_frontgf)
          call pbuf_get_field(pbuf_chnk, frontga_idx, pbuf_frontga)
-         do icol = 1, ncols
-            do k = 1, pver
+         do k = 1, pver
+            do icol = 1, ncols
                pbuf_frontgf(icol, k) = frontgf_phys(icol, k, lchnk)
                pbuf_frontga(icol, k) = frontga_phys(icol, k, lchnk)
             end do
@@ -256,6 +258,8 @@ subroutine d_p_coupling(phys_state, phys_tend, pbuf2d, dyn_out)
       end do
       deallocate(frontgf_phys)
       deallocate(frontga_phys)
+      deallocate(frontogenesisFunction)
+      deallocate(frontogenesisAngle)
    end if
 
    call t_stopf('dpcopy')
@@ -265,8 +269,6 @@ subroutine d_p_coupling(phys_state, phys_tend, pbuf2d, dyn_out)
    call t_stopf('derived_phys')
 
    deallocate(pmid,pintdry,pmiddry)
-
-   if (use_gw_front .or. use_gw_front_igw) deallocate(frontogenesisFunction, frontogenesisAngle)
 
 end subroutine d_p_coupling
 
@@ -753,7 +755,7 @@ subroutine hydrostatic_pressure(nCells, nVertLevels, zz, zgrid, rho_zz, theta_m,
    ! The vertical dimension for 3-d arrays is innermost, and k=1 represents
    ! the lowest layer or level in the fields.
    !
-  use mpas_constants, only : cp, rgas, cv, gravity, p0
+   use mpas_constants, only: cp, rgas, cv, gravity, p0
 
    ! Arguments
    integer, intent(in) :: nCells
@@ -921,7 +923,7 @@ subroutine tot_energy(nCells, nVertLevels, qsize, index_qv, zz, zgrid, rho_zz, t
       areaCell, dvEdge, cellsOnEdge, edgesOnCell, nEdgesOnCell, edgesOnCell_sign,   &
       nVertLevels, nCellsSolve )
 
-   use mpas_constants, only : rvord
+   use mpas_constants, only: rvord
 
    ! inputs
 
@@ -941,23 +943,20 @@ subroutine tot_energy(nCells, nVertLevels, qsize, index_qv, zz, zgrid, rho_zz, t
 
    ! outputs
 
-   real(r8), dimension(:,:), intent(out) :: frontogenesisFunction
-   real(r8), dimension(:,:), intent(out) :: frontogenesisAngle
+   real(r8), dimension(:,:), intent(out) :: frontogenesisFunction(:,:)
+   real(r8), dimension(:,:), intent(out) :: frontogenesisAngle(:,:)
 
    ! local storage
 
    integer :: iCell, iEdge, k, cell1, cell2
-   integer :: CellStart, CellEnd
    real(r8), dimension(nVertLevels) :: d_diag, d_off_diag, divh, theta_x, theta_y
    real(r8) :: edge_sign, thetaEdge
 
    !
    ! for each column, compute frontogenesis function and del(theta) angle
    !
-   CellStart = 1
-   CellEnd = nCellsSolve
 
-   do iCell = cellStart,cellEnd
+   do iCell = 1,nCellsSolve
 
       d_diag(1:nVertLevels) = 0.0_r8
       d_off_diag(1:nVertLevels) = 0.0_r8
