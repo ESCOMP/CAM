@@ -901,27 +901,25 @@ subroutine dyn_init(dyn_in, dyn_out)
 
    if (thermo_budget_history) then
       ! Register stages for budgets
-
       do istage = 1, num_stages
          call e_m_snapshot(TRIM(ADJUSTL(stage(istage))), 'dyn', longname=TRIM(ADJUSTL(stage_txt(istage))), cslam=ntrac>0)
       end do
-      
       !
       ! Register tendency (difference) budgets
       !
-      call e_m_budget('dEdt_floating_dyn'      ,'dAD','dBD','dyn','dif',longname="dE/dt floating dynamics (dAD-dBD)"               ,cslam=ntrac>0)     
-      call e_m_budget('dEdt_vert_remap'        ,'dAR','dAD','dyn','dif',longname="dE/dt vertical remapping (dAR-dAD)"              ,cslam=ntrac>0)      
-      call e_m_budget('dEdt_phys_tot_in_dyn'   ,'dBD','dAF','dyn','dif',longname="dE/dt physics tendency in dynamics (dBD-dAF)"    ,cslam=ntrac>0)
+      call e_m_budget('dEdt_floating_dyn'   ,'dAD','dBD','dyn','dif',longname="dE/dt floating dynamics (dAD-dBD)"            ,cslam=ntrac>0)
+      call e_m_budget('dEdt_vert_remap'     ,'dAR','dAD','dyn','dif',longname="dE/dt vertical remapping (dAR-dAD)"           ,cslam=ntrac>0)
+      call e_m_budget('dEdt_phys_tot_in_dyn','dBD','dAF','dyn','dif',longname="dE/dt physics tendency in dynamics (dBD-dAF)" ,cslam=ntrac>0)
 
-      call e_m_budget('dEdt_del4'          ,'dCH','dBH','dyn','dif',longname="dE/dt del4 (dCH-dBH)"            ,cslam=ntrac>0)      
-      call e_m_budget('dEdt_del4_fric_heat','dAH','dCH','dyn','dif',longname="dE/dt del4 frictional heating (dAH-dCH)",cslam=ntrac>0)      
-      call e_m_budget('dEdt_del4_tot'      ,'dAH','dBH','dyn','dif',longname="dE/dt del4 + del4 frictional heating (dAH-dBH)",cslam=ntrac>0)      
-      call e_m_budget('dEdt_del2_sponge'   ,'dAS','dBS','dyn','dif',longname="dE/dt del2 sponge (dAS-dBS)",cslam=ntrac>0)
+      call e_m_budget('dEdt_del4'          ,'dCH','dBH','dyn','dif',longname="dE/dt del4 (dCH-dBH)"                          ,cslam=ntrac>0)
+      call e_m_budget('dEdt_del4_fric_heat','dAH','dCH','dyn','dif',longname="dE/dt del4 frictional heating (dAH-dCH)"       ,cslam=ntrac>0)
+      call e_m_budget('dEdt_del4_tot'      ,'dAH','dBH','dyn','dif',longname="dE/dt del4 + del4 frictional heating (dAH-dBH)",cslam=ntrac>0)
+      call e_m_budget('dEdt_del2_sponge'   ,'dAS','dBS','dyn','dif',longname="dE/dt del2 sponge (dAS-dBS)"                   ,cslam=ntrac>0)
       !
       ! Register derived budgets
       !
-      call e_m_budget('dEdt_dycore'        ,'dEdt_floating_dyn'               ,'dEdt_vert_remap','dyn','sum',longname="dE/dt adiabatic dynamics",cslam=ntrac>0)      
-      call e_m_budget('dEdt_del2_del4_tot' ,'dEdt_del4_tot','dEdt_del2_sponge','dyn','sum',longname="dE/dt explicit diffusion total",cslam=ntrac>0)      
+      call e_m_budget('dEdt_dycore'        ,'dEdt_floating_dyn','dEdt_vert_remap'   ,'dyn','sum',longname="dE/dt adiabatic dynamics"      ,cslam=ntrac>0)
+      call e_m_budget('dEdt_del2_del4_tot' ,'dEdt_del4_tot'    ,'dEdt_del2_sponge'  ,'dyn','sum',longname="dE/dt explicit diffusion total",cslam=ntrac>0)
       call e_m_budget('dEdt_residual'      ,'dEdt_floating_dyn','dEdt_del2_del4_tot','dyn','dif',&
            longname="dE/dt residual (dEdt_floating_dyn-dEdt_del2_del4_tot)",cslam=ntrac>0)      
    end if

@@ -26,13 +26,6 @@ subroutine print_budget(hstwr)
 
   ! Local variables
   character(len=*), parameter :: subname = 'check_energy:print_budgets'
-
-!xxx  real(r8)          :: ph_param,ph_EFIX,ph_dmea,ph_param_and_efix,ph_phys_total
-!xxx  real(r8)          :: dy_param,dy_EFIX,dy_dmea,dy_param_and_efix,dy_phys_total
-!xxx  real(r8)          :: mpas_param,mpas_dmea,mpas_phys_total, dycore, err, param, pefix, pdmea, param_mpas, phys_total
-!xxx  character(LEN=*), parameter :: fmt2 = "(a40,F6.2,a3)"
-
-
   !
   ! physics energy tendencies
   !
@@ -54,8 +47,6 @@ subroutine print_budget(hstwr)
   !
   ! SE dycore specific energy tendencies
   !
-
-
   real(r8) :: dEdt_phys_total_in_dyn(4) ! dEdt of physics total in dynamical core
                                         ! physics total = parameterizations + efix + dry-mass adjustment
   real(r8) :: dEdt_param_efix_in_dyn(4) ! dEdt of physics total in dynamical core

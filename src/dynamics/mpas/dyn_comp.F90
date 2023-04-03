@@ -22,7 +22,7 @@ use cam_map_utils,      only: iMap
 use inic_analytic,      only: analytic_ic_active, dyn_set_inic_col
 use dyn_tests_utils,    only: vcoord=>vc_height
 
-use cam_history,        only: addfld, add_default, horiz_only, register_vector_field, &
+use cam_history,        only: add_default, horiz_only, register_vector_field, &
                               outfld, hist_fld_active
 use cam_history_support, only: max_fieldname_len
 use string_utils,       only: date2yyyymmdd, sec2hms, int2str
@@ -547,9 +547,9 @@ subroutine dyn_init(dyn_in, dyn_out)
       ! initialize MPAS energy budgets
       ! add budgets that are derived from stages
       !
-      call e_m_budget('mpas_param','dAP','dBF',pkgtype='dyn',optype='dif',longname="dE/dt parameterizations+efix in dycore (dparam)(dAP-dBF)")
-      call e_m_budget('mpas_dmea' ,'dAM','dAP',pkgtype='dyn',optype='dif',longname="dE/dt dry mass adjustment in dycore (dAM-dAP)")
-      call e_m_budget('mpas_phys_total' ,'dAM','dBF',pkgtype='dyn',optype='dif',longname="dE/dt physics total in dycore (phys) (dAM-dBF)")
+      call e_m_budget('dEdt_param_efix_in_dyn','dAP','dBF',pkgtype='dyn',optype='dif',longname="dE/dt parameterizations+efix in dycore (dparam)(dAP-dBF)")
+      call e_m_budget('dEdt_dme_adjust_in_dyn','dAM','dAP',pkgtype='dyn',optype='dif',longname="dE/dt dry mass adjustment in dycore (dAM-dAP)")
+      call e_m_budget('dEdt_phys_total_in_dyn','dAM','dBF',pkgtype='dyn',optype='dif',longname="dE/dt physics total in dycore (phys) (dAM-dBF)")
    end if
       
    !
