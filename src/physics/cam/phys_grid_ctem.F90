@@ -207,10 +207,10 @@ contains
 
     if (.not.do_tem_diags) return
 
-    call addfld ('Uzm',  (/'lev'/), 'A','m s-1',  'Zonal-Mean zonal wind - defined on ilev', gridname='ctem_zavg_phys' )
-    call addfld ('Vzm',  (/'lev'/), 'A','m s-1',  'Zonal-Mean meridional wind - defined on ilev', gridname='ctem_zavg_phys' )
-    call addfld ('Wzm',  (/'lev'/), 'A','m s-1',  'Zonal-Mean vertical wind - defined on ilev', gridname='ctem_zavg_phys' )
-    call addfld ('THzm', (/'lev'/), 'A','K',      'Zonal-Mean potential temp - defined on ilev', gridname='ctem_zavg_phys' )
+    call addfld ('Uzm',  (/'lev'/), 'A','m s-1',  'Zonal-Mean zonal wind', gridname='ctem_zavg_phys' )
+    call addfld ('Vzm',  (/'lev'/), 'A','m s-1',  'Zonal-Mean meridional wind', gridname='ctem_zavg_phys' )
+    call addfld ('Wzm',  (/'lev'/), 'A','m s-1',  'Zonal-Mean vertical wind', gridname='ctem_zavg_phys' )
+    call addfld ('THzm', (/'lev'/), 'A','K',      'Zonal-Mean potential temp', gridname='ctem_zavg_phys' )
     call addfld ('VTHzm',(/'lev'/), 'A','K m s-1','Meridional Heat Flux:', gridname='ctem_zavg_phys')
     call addfld ('WTHzm',(/'lev'/), 'A','K m s-1','Vertical Heat Flux:', gridname='ctem_zavg_phys')
     call addfld ('UVzm', (/'lev'/), 'A','m2 s-2', 'Meridional Flux of Zonal Momentum', gridname='ctem_zavg_phys')
