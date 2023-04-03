@@ -978,6 +978,10 @@ end function chem_is_active
              where(mask)
                 q(:,ilev) = rmwf12 * chem_surfvals_get('F12VMR')
              end where
+          case ('CO2')
+             where(mask)
+                q(:,ilev) = chem_surfvals_get('CO2MMR')
+             end where
           end select
        end do
     end if
