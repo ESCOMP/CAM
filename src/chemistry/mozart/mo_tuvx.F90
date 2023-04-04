@@ -563,9 +563,9 @@ contains
         end if
       end do
 
-      ! ==============================================
-      ! Filter negative rates TODO fix inputs to TUV-x
-      ! ==============================================
+      ! =====================
+      ! Filter negative rates
+      ! =====================
       tuvx%photo_rates_(:,:,:) = max( 0.0_r8, tuvx%photo_rates_(:,:,:) )
 
       ! ============================================
