@@ -1,0 +1,9 @@
+<?xml version="1.0"?>
+<namelist_defaults>
+
+  <solar_irrad_data_file>'atm/cam/solar/SolarForcingCMIP6_18491230-23000102_c20200615.nc'</solar_irrad_data_file>
+
+  <!-- sim_year used for CO2 cycle namelist settings -->
+  <sim_year>1850-2000</sim_year>
+
+</namelist_defaults>

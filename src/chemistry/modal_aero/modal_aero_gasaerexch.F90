@@ -1176,9 +1176,9 @@ implicit none
 
       ! New SOA properties added by Manish Shrivastava on 09/27/2012
       if (ntot_soaspec ==1) then
-         p0_soa_298(:) = 1.0e-10_r8
-         delh_vap_soa(:) = 156.0e3_r8
-         opoa_frac(:) = 0.1_r8
+         p0_soa_298(:) = 9.7831E-11_r8
+         delh_vap_soa(:) = 131.0e3_r8
+         opoa_frac(:) = 0.0_r8
       elseif (ntot_soaspec ==2) then
          ! same for anthropogenic and biomass burning species
          p0_soa_298 (1) = 1.0e-10_r8
@@ -1276,7 +1276,6 @@ implicit none
          a_opoa(m) = 0.0_r8
          do ll = 1, ntot_poaspec
             a_opoa(m) = opoa_frac(ll)*a_poa_in(m,ll)
-            a_opoa(m) = max( a_opoa(m), 1.0e-20_r8 )  ! force to small non-zero value
          end do
       end do
 

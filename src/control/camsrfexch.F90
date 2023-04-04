@@ -319,18 +319,14 @@ CONTAINS
        cam_out(c)%dstwet4(:)  = 0._r8
 
        nullify(cam_out(c)%nhx_nitrogen_flx)
-       nullify(cam_out(c)%noy_nitrogen_flx)
+       allocate (cam_out(c)%nhx_nitrogen_flx(pcols), stat=ierror)
+       if ( ierror /= 0 ) call endrun(sub//': allocation error nhx_nitrogen_flx')
+       cam_out(c)%nhx_nitrogen_flx(:) = 0._r8
 
-       if (active_Faxa_nhx) then
-          allocate (cam_out(c)%nhx_nitrogen_flx(pcols), stat=ierror)
-          if ( ierror /= 0 ) call endrun(sub//': allocation error nhx_nitrogen_flx')
-          cam_out(c)%nhx_nitrogen_flx(:) = 0._r8
-       endif
-       if (active_Faxa_noy) then
-          allocate (cam_out(c)%noy_nitrogen_flx(pcols), stat=ierror)
-          if ( ierror /= 0 ) call endrun(sub//': allocation error noy_nitrogen_flx')
-          cam_out(c)%noy_nitrogen_flx(:) = 0._r8
-       endif
+       nullify(cam_out(c)%noy_nitrogen_flx)
+       allocate (cam_out(c)%noy_nitrogen_flx(pcols), stat=ierror)
+       if ( ierror /= 0 ) call endrun(sub//': allocation error noy_nitrogen_flx')
+       cam_out(c)%noy_nitrogen_flx(:) = 0._r8
     end do
 
   end subroutine atm2hub_alloc

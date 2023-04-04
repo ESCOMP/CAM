@@ -4,60 +4,79 @@ module atm_comp_nuopc
   ! This is the NUOPC cap for CAM
   !----------------------------------------------------------------------------
 
-  use ESMF
-  use NUOPC               , only : NUOPC_CompDerive, NUOPC_CompSetEntryPoint, NUOPC_CompSpecialize
-  use NUOPC               , only : NUOPC_CompFilterPhaseMap, NUOPC_IsUpdated, NUOPC_IsAtTime
-  use NUOPC               , only : NUOPC_CompAttributeGet, NUOPC_Advertise
-  use NUOPC               , only : NUOPC_SetAttribute, NUOPC_CompAttributeGet, NUOPC_CompAttributeSet
-  use NUOPC_Model         , only : model_routine_SS           => SetServices
-  use NUOPC_Model         , only : SetVM
-  use NUOPC_Model         , only : model_label_Advance        => label_Advance
-  use NUOPC_Model         , only : model_label_DataInitialize => label_DataInitialize
-  use NUOPC_Model         , only : model_label_SetRunClock    => label_SetRunClock
-  use NUOPC_Model         , only : model_label_Finalize       => label_Finalize
-  use NUOPC_Model         , only : NUOPC_ModelGet
-  use shr_kind_mod        , only : r8=>shr_kind_r8, i8=>shr_kind_i8, cl=>shr_kind_cl, cs=>shr_kind_cs
-  use shr_sys_mod         , only : shr_sys_abort
-  use shr_file_mod        , only : shr_file_getlogunit, shr_file_setlogunit
-  use shr_cal_mod         , only : shr_cal_noleap, shr_cal_gregorian, shr_cal_ymd2date
-  use shr_const_mod       , only : shr_const_pi
-  use shr_orb_mod         , only : shr_orb_decl, shr_orb_params, SHR_ORB_UNDEF_REAL, SHR_ORB_UNDEF_INT
-  use cam_instance        , only : cam_instance_init, inst_suffix, inst_index
-  use cam_comp            , only : cam_init, cam_run1, cam_run2, cam_run3, cam_run4, cam_final
-  use camsrfexch          , only : cam_out_t, cam_in_t
-  use radiation           , only : nextsw_cday
-  use cam_logfile         , only : iulog
-  use spmd_utils          , only : spmdinit, masterproc, iam, mpicom
-  use time_manager        , only : get_curr_calday, advance_timestep, get_curr_date, get_nstep, get_step_size
-  use atm_import_export   , only : read_surface_fields_namelists, advertise_fields, realize_fields
-  use atm_import_export   , only : import_fields, export_fields
-  use nuopc_shr_methods   , only : chkerr, state_setscalar, state_getscalar, state_diagnose, alarmInit
-  use nuopc_shr_methods   , only : set_component_logging, get_component_instance, log_clock_advance
-  use perf_mod            , only : t_startf, t_stopf
-  use ppgrid              , only : pcols, begchunk, endchunk
-  use dyn_grid            , only : get_horiz_grid_dim_d
-  use phys_grid           , only : get_ncols_p, get_gcol_p, get_rlon_all_p, get_rlat_all_p
-  use phys_grid           , only : ngcols=>num_global_phys_cols
-  use cam_control_mod     , only : cam_ctrl_set_orbit
-  use cam_pio_utils       , only : cam_pio_createfile, cam_pio_openfile, cam_pio_closefile, pio_subsystem
-  use cam_initfiles       , only : cam_initfiles_get_caseid, cam_initfiles_get_restdir
-  use cam_history_support , only : fillvalue
-  use filenames           , only : interpret_filename_spec
-  use pio                 , only : file_desc_t, io_desc_t, var_desc_t, pio_double, pio_def_dim, PIO_MAX_NAME
-  use pio                 , only : pio_closefile, pio_put_att, pio_enddef, pio_nowrite
-  use pio                 , only : pio_inq_dimid, pio_inq_varid, pio_inquire_dimension, pio_def_var
-  use pio                 , only : pio_initdecomp, pio_freedecomp
-  use pio                 , only : pio_read_darray, pio_write_darray
-  use pio                 , only : pio_noerr, pio_bcast_error, pio_internal_error, pio_seterrorhandling
-  use pio                 , only : pio_def_var, pio_get_var, pio_put_var, PIO_INT
-  use ioFileMod
-!$use omp_lib             , only : omp_set_num_threads
+   use ESMF                , only : operator(<=), operator(>), operator(==), operator(+)
+   use ESMF                , only : ESMF_MethodRemove
+   use ESMF                , only : ESMF_GridComp, ESMF_GridCompGet, ESMF_State, ESMF_StateGet
+   use ESMF                , only : ESMF_Grid, ESMF_GridCreateNoPeriDimUfrm, ESMF_Field, ESMF_FieldGet
+   use ESMF                , only : ESMF_DistGrid, ESMF_DistGridCreate
+   use ESMF                , only : ESMF_Mesh, ESMF_MeshCreate, ESMF_MeshGet, ESMF_FILEFORMAT_ESMFMESH
+   use ESMF                , only : ESMF_Clock, ESMF_ClockGet, ESMF_ClockSet, ESMF_ClockGetNextTime, ESMF_ClockAdvance
+   use ESMF                , only : ESMF_Time, ESMF_TimeGet
+   use ESMF                , only : ESMF_Alarm, ESMF_ClockGetAlarm, ESMF_AlarmRingerOff, ESMF_AlarmIsRinging
+   use ESMF                , only : ESMF_ClockGetAlarmList, ESMF_ALARMLIST_ALL, ESMF_AlarmSet
+   use ESMF                , only : ESMF_TimeInterval, ESMF_TimeIntervalGet
+   use ESMF                , only : ESMF_CalKind_Flag, ESMF_MAXSTR, ESMF_KIND_I8
+   use ESMF                , only : ESMF_CALKIND_NOLEAP, ESMF_CALKIND_GREGORIAN
+   use ESMF                , only : ESMF_GridCompSetEntryPoint
+   use ESMF                , only : ESMF_VM, ESMF_VMGetCurrent, ESMF_VMGet
+   use ESMF                , only : ESMF_LOGMSG_INFO, ESMF_LOGERR_PASSTHRU
+   use ESMF                , only : ESMF_LogWrite, ESMF_LogSetError, ESMF_LogFoundError
+   use ESMF                , only : ESMF_SUCCESS, ESMF_METHOD_INITIALIZE, ESMF_FAILURE, ESMF_RC_NOT_VALID
+   use ESMF                , only : ESMF_STAGGERLOC_CENTER, ESMF_STAGGERLOC_CORNER
+   use NUOPC               , only : NUOPC_CompDerive, NUOPC_CompSetEntryPoint, NUOPC_CompSpecialize
+   use NUOPC               , only : NUOPC_CompFilterPhaseMap, NUOPC_IsUpdated, NUOPC_IsAtTime
+   use NUOPC               , only : NUOPC_CompAttributeGet, NUOPC_Advertise
+   use NUOPC               , only : NUOPC_SetAttribute, NUOPC_CompAttributeGet, NUOPC_CompAttributeSet
+   use NUOPC_Model         , only : model_routine_SS           => SetServices
+   use NUOPC_Model         , only : SetVM
+   use NUOPC_Model         , only : model_label_Advance        => label_Advance
+   use NUOPC_Model         , only : model_label_DataInitialize => label_DataInitialize
+   use NUOPC_Model         , only : model_label_SetRunClock    => label_SetRunClock
+   use NUOPC_Model         , only : model_label_Finalize       => label_Finalize
+   use NUOPC_Model         , only : NUOPC_ModelGet
+   use shr_kind_mod        , only : r8=>shr_kind_r8, i8=>shr_kind_i8, cl=>shr_kind_cl, cs=>shr_kind_cs
+   use shr_sys_mod         , only : shr_sys_abort
+   use shr_log_mod         , only : shr_log_getlogunit, shr_log_setlogunit
+   use shr_cal_mod         , only : shr_cal_noleap, shr_cal_gregorian, shr_cal_ymd2date
+   use shr_const_mod       , only : shr_const_pi
+   use shr_orb_mod         , only : shr_orb_decl, shr_orb_params, SHR_ORB_UNDEF_REAL, SHR_ORB_UNDEF_INT
+   use cam_instance        , only : cam_instance_init, inst_suffix, inst_index
+   use cam_comp            , only : cam_init, cam_run1, cam_run2, cam_run3, cam_run4, cam_final
+   use camsrfexch          , only : cam_out_t, cam_in_t
+   use radiation           , only : nextsw_cday
+   use cam_logfile         , only : iulog
+   use spmd_utils          , only : spmdinit, masterproc, iam, mpicom
+   use time_manager        , only : get_curr_calday, advance_timestep, get_curr_date, get_nstep, get_step_size
+   use atm_import_export   , only : read_surface_fields_namelists, advertise_fields, realize_fields
+   use atm_import_export   , only : import_fields, export_fields
+   use nuopc_shr_methods   , only : chkerr, state_setscalar, state_getscalar, state_diagnose, alarmInit
+   use nuopc_shr_methods   , only : set_component_logging, get_component_instance, log_clock_advance
+   use perf_mod            , only : t_startf, t_stopf
+   use ppgrid              , only : pcols, begchunk, endchunk
+   use dyn_grid            , only : get_horiz_grid_dim_d
+   use phys_grid           , only : get_ncols_p, get_gcol_p, get_rlon_all_p, get_rlat_all_p
+   use phys_grid           , only : ngcols=>num_global_phys_cols
+   use cam_control_mod     , only : cam_ctrl_set_orbit
+   use cam_pio_utils       , only : cam_pio_createfile, cam_pio_openfile, cam_pio_closefile, pio_subsystem
+   use cam_initfiles       , only : cam_initfiles_get_caseid, cam_initfiles_get_restdir
+   use cam_history_support , only : fillvalue
+   use filenames           , only : interpret_filename_spec
+   use pio                 , only : file_desc_t, io_desc_t, var_desc_t, pio_double, pio_def_dim, PIO_MAX_NAME
+   use pio                 , only : pio_closefile, pio_put_att, pio_enddef, pio_nowrite
+   use pio                 , only : pio_inq_dimid, pio_inq_varid, pio_inquire_dimension, pio_def_var
+   use pio                 , only : pio_initdecomp, pio_freedecomp
+   use pio                 , only : pio_read_darray, pio_write_darray
+   use pio                 , only : pio_noerr, pio_bcast_error, pio_internal_error, pio_seterrorhandling
+   use pio                 , only : pio_def_var, pio_get_var, pio_put_var, PIO_INT
+   use ioFileMod
+   !$use omp_lib           , only : omp_set_num_threads
 
   implicit none
   private ! except
 
   public :: SetServices
   public :: SetVM
+
   !--------------------------------------------------------------------------
   ! Private interfaces
   !--------------------------------------------------------------------------
@@ -109,6 +128,10 @@ module atm_comp_nuopc
   character(len=*) , parameter :: orb_fixed_parameters = 'fixed_parameters'
 
   real(R8) , parameter         :: grid_tol = 1.e-2_r8 ! tolerance for calculated lat/lon vs read in
+
+  type(ESMF_Mesh)  :: model_mesh     ! model_mesh
+  type(ESMF_Clock) :: model_clock    ! model_clock
+
 !===============================================================================
 contains
 !===============================================================================
@@ -218,7 +241,7 @@ contains
     call set_component_logging(gcomp, localpet==0, iulog, shrlogunit, rc)
     if (ChkErr(rc,__LINE__,u_FILE_u)) return
 
-    call shr_file_setLogUnit (shrlogunit)
+    call shr_log_setLogUnit (iulog)
 
     !----------------------------------------------------------------------------
     ! advertise import/export fields
@@ -319,7 +342,6 @@ contains
     type(ESMF_TimeInterval) :: timeStep
     type(ESMF_CalKind_Flag) :: esmf_caltype                      ! esmf calendar type
     type(ESMF_DistGrid)     :: distGrid
-    type(ESMF_Mesh)         :: mesh
     integer                 :: spatialDim
     integer                 :: numOwnedElements
     real(R8), pointer       :: ownedElemCoords(:)
@@ -391,7 +413,7 @@ contains
        call ESMF_LogWrite(subname//' called', ESMF_LOGMSG_INFO)
     end if
 
-    call shr_file_setLogUnit (iulog)
+    call shr_log_setLogUnit (iulog)
 
     !----------------------------------------------------------------------------
     ! generate local mpi comm
@@ -626,7 +648,7 @@ contains
 
        if (single_column) then
 
-          call cam_set_mesh_for_single_column(scol_lon, scol_lat, mesh, rc)
+          call cam_set_mesh_for_single_column(scol_lon, scol_lat, model_mesh, rc)
           if (ChkErr(rc,__LINE__,u_FILE_u)) return
           allocate(dof(1))
           dof(1) = 1
@@ -657,7 +679,7 @@ contains
           call NUOPC_CompAttributeGet(gcomp, name='mesh_atm', value=cvalue, rc=rc)
           if (ChkErr(rc,__LINE__,u_FILE_u)) return
 
-          mesh = ESMF_MeshCreate(filename=trim(cvalue), fileformat=ESMF_FILEFORMAT_ESMFMESH, &
+          model_mesh = ESMF_MeshCreate(filename=trim(cvalue), fileformat=ESMF_FILEFORMAT_ESMFMESH, &
                elementDistgrid=Distgrid, rc=rc)
           if (ChkErr(rc,__LINE__,u_FILE_u)) return
           if (masterproc) then
@@ -665,7 +687,7 @@ contains
           end if
 
           ! obtain mesh lats and lons
-          call ESMF_MeshGet(mesh, spatialDim=spatialDim, numOwnedElements=numOwnedElements, rc=rc)
+          call ESMF_MeshGet(model_mesh, spatialDim=spatialDim, numOwnedElements=numOwnedElements, rc=rc)
           if (ChkErr(rc,__LINE__,u_FILE_u)) return
           if (numOwnedElements /= lsize) then
              write(tempc1,'(i10)') numOwnedElements
@@ -677,7 +699,7 @@ contains
           end if
           allocate(ownedElemCoords(spatialDim*numOwnedElements))
           allocate(lonMesh(lsize), latMesh(lsize))
-          call ESMF_MeshGet(mesh, ownedElemCoords=ownedElemCoords)
+          call ESMF_MeshGet(model_mesh, ownedElemCoords=ownedElemCoords)
           if (ChkErr(rc,__LINE__,u_FILE_u)) return
           do n = 1,lsize
              lonMesh(n) = ownedElemCoords(2*n-1)
@@ -722,11 +744,14 @@ contains
        end if ! end of if single_column
 
        ! realize the actively coupled fields
-       call realize_fields(gcomp,  mesh, flds_scalar_name, flds_scalar_num, single_column, rc)
+       call realize_fields(gcomp, model_mesh, flds_scalar_name, flds_scalar_num, single_column, rc)
        if (ChkErr(rc,__LINE__,u_FILE_u)) return
 
+       ! Create model_clock as a module variable - needed for generating streams
+       model_clock = clock
+
        ! Create cam export array and set the state scalars
-       call export_fields( gcomp, cam_out, rc=rc  )
+       call export_fields( gcomp, model_mesh, model_clock, cam_out, rc=rc )
        if (ChkErr(rc,__LINE__,u_FILE_u)) return
 
        call get_horiz_grid_dim_d(hdim1_d, hdim2_d)
@@ -745,7 +770,7 @@ contains
 
     end if ! end of mediator_present if-block
 
-    call shr_file_setLogUnit (shrlogunit)
+    call shr_log_setLogUnit (shrlogunit)
 
 #if (defined _MEMTRACE)
     if(masterproc) then
@@ -791,8 +816,8 @@ contains
        call ESMF_LogWrite(subname//' called', ESMF_LOGMSG_INFO)
     end if
 
-    call shr_file_getLogUnit (shrlogunit)
-    call shr_file_setLogUnit (iulog)
+    call shr_log_getLogUnit (shrlogunit)
+    call shr_log_setLogUnit (iulog)
 
 #if (defined _MEMTRACE)
     if (masterproc) then
@@ -881,7 +906,7 @@ contains
           call import_fields( gcomp, cam_in, rc=rc )
           if (ChkErr(rc,__LINE__,u_FILE_u)) return
           call cam_run1 ( cam_in, cam_out )
-          call export_fields( gcomp, cam_out, rc=rc )
+          call export_fields( gcomp, model_mesh, model_clock, cam_out, rc=rc )
           if (ChkErr(rc,__LINE__,u_FILE_u)) return
        else
           call cam_read_srfrest( gcomp, clock, rc=rc )
@@ -889,7 +914,7 @@ contains
           call import_fields( gcomp, cam_in, restart_init=.true., rc=rc )
           if (ChkErr(rc,__LINE__,u_FILE_u)) return
           call cam_run1 ( cam_in, cam_out )
-          call export_fields( gcomp, cam_out, rc=rc )
+          call export_fields( gcomp, model_mesh, model_clock, cam_out, rc=rc )
           if (ChkErr(rc,__LINE__,u_FILE_u)) return
        end if
 
@@ -943,7 +968,7 @@ contains
     end if
 
     ! End redirection of share output to cam log
-    call shr_file_setLogUnit (shrlogunit)
+    call shr_log_setLogUnit (shrlogunit)
 
 #if (defined _MEMTRACE)
     if(masterproc) then
@@ -1009,8 +1034,8 @@ contains
 
 !$  call omp_set_num_threads(nthrds)
 
-    call shr_file_getLogUnit (shrlogunit)
-    call shr_file_setLogUnit (iulog)
+    call shr_log_getLogUnit (shrlogunit)
+    call shr_log_setLogUnit (iulog)
 
 #if (defined _MEMTRACE)
     if(masterproc) then
@@ -1136,7 +1161,7 @@ contains
     if (mediator_present) then
        ! Set export fields
        call t_startf ('CAM_export')
-       call export_fields( gcomp, cam_out, rc )
+       call export_fields( gcomp, model_mesh, model_clock, cam_out, rc )
        if (ChkErr(rc,__LINE__,u_FILE_u)) return
        call t_stopf ('CAM_export')
 
@@ -1205,7 +1230,7 @@ contains
     ! Reset shr logging to my original values
     !--------------------------------
 
-    call shr_file_setLogUnit (shrlogunit)
+    call shr_log_setLogUnit (shrlogunit)
 
   end subroutine ModelAdvance
 
@@ -1349,10 +1374,10 @@ contains
 
     rc = ESMF_SUCCESS
 
-    call cam_final( cam_out, cam_in )
+    call shr_log_getLogUnit (shrlogunit)
+    call shr_log_setLogUnit (iulog)
 
-    call shr_file_getLogUnit (shrlogunit)
-    call shr_file_setLogUnit (iulog)
+    call cam_final( cam_out, cam_in )
 
     if (masterproc) then
        write(iulog,F91)
@@ -1360,7 +1385,7 @@ contains
        write(iulog,F91)
     end if
 
-    call shr_file_setLogUnit (shrlogunit)
+    call shr_log_setLogUnit (shrlogunit)
 
   end subroutine ModelFinalize
 
@@ -1485,6 +1510,7 @@ contains
     integer           :: year     ! model year at current time
     integer           :: orb_year ! orbital year for current orbital computation
     character(len=CL) :: msgstr   ! temporary
+    logical, save     :: logprint = .true.
     character(len=*) , parameter :: subname = "(cam_orbital_update)"
     !-------------------------------------------
 
@@ -1499,10 +1525,14 @@ contains
     else
        orb_year = orb_iyear
     end if
+    if(.not. (logprint .and. mastertask)) then
+       logprint = .false.
+    endif
 
     eccen = orb_eccen
-    call shr_orb_params(orb_year, eccen, orb_obliq, orb_mvelp, obliqr, lambm0, mvelpp, mastertask)
 
+    call shr_orb_params(orb_year, eccen, orb_obliq, orb_mvelp, obliqr, lambm0, mvelpp, logprint)
+    logprint = .false.
     if ( eccen  == SHR_ORB_UNDEF_REAL .or. obliqr == SHR_ORB_UNDEF_REAL .or. &
          mvelpp == SHR_ORB_UNDEF_REAL .or. lambm0 == SHR_ORB_UNDEF_REAL) then
        write (msgstr, *) subname//' ERROR: orb params incorrect'

@@ -308,6 +308,7 @@ module cam_history_support
   public     :: lookup_hist_coord_indices, hist_coord_find_levels
   public     :: get_hist_coord_index, hist_coord_name, hist_coord_size
   public     :: hist_dimension_name
+  public     :: hist_dimension_values
 
   interface add_hist_coord
     module procedure add_hist_coord_regonly
@@ -318,7 +319,12 @@ module cam_history_support
   interface hist_coord_size
     module procedure hist_coord_size_char
     module procedure hist_coord_size_int
-  end interface
+ end interface hist_coord_size
+
+ interface hist_dimension_values
+    module procedure hist_dimension_values_r8
+    module procedure hist_dimension_values_int
+ end interface hist_dimension_values
 
   interface assignment(=)
     module procedure field_copy
@@ -1938,7 +1944,7 @@ contains
 
   !#######################################################################
 
-  character(len=max_hcoordname_len) function hist_dimension_name (size)
+  character(len=max_hcoordname_len) function hist_dimension_name(size)
   ! Given a specific size value, return the first registered dimension name which matches the size, if it exists
   ! Otherwise the name returned is blank
 
@@ -1956,6 +1962,136 @@ contains
      end do
 
   end function hist_dimension_name
+
+  !#######################################################################
+
+  subroutine hist_dimension_values_r8(name, rvalues, istart, istop, found)
+     ! Given the name of a dimension, return its (real) values in <rvalues>
+     ! If <istart> and <istop> are present, they are the beginning and ending
+     ! indices of the dimension values to return in <rvalues>. By default,
+     ! the entire array is copied.
+     ! If <found> is passed, return .true. if <name> is a defined dimension
+     !       with real values.
+
+     ! Dummy arguments
+     character(len=*),  intent(in)  :: name
+     real(r8),          intent(out) :: rvalues(:)
+     integer, optional, intent(in)  :: istart
+     integer, optional, intent(in)  :: istop
+     logical, optional, intent(out) :: found
+     ! Local variables
+     integer :: indx, jndx, rndx
+     integer :: ibeg
+     integer :: iend
+     logical :: dim_ok
+     real(r8), parameter :: unset_r8 = huge(1.0_r8)
+     character(len=*), parameter  :: subname = ': hist_dimension_values_r8'
+
+     dim_ok = .false.
+     rvalues(:) = unset_r8
+
+     do indx = 1, registeredmdims
+        if(trim(name) == trim(hist_coords(indx)%name)) then
+           dim_ok = associated(hist_coords(indx)%real_values)
+           if (dim_ok) then
+              if (present(istart)) then
+                 ibeg = istart
+                 if (ibeg < LBOUND(hist_coords(indx)%real_values, 1)) then
+                    call endrun(subname//": istart is outside the bounds")
+                 end if
+              else
+                 ibeg = LBOUND(hist_coords(indx)%real_values, 1)
+              end if
+              if (present(istop)) then
+                 iend = istop
+                 if (iend > UBOUND(hist_coords(indx)%real_values, 1)) then
+                    call endrun(subname//": istop is outside the bounds")
+                 end if
+              else
+                 iend = UBOUND(hist_coords(indx)%real_values, 1)
+              end if
+              if (SIZE(rvalues) < (iend - ibeg + 1)) then
+                 call endrun(subname//": rvalues too small")
+              end if
+              rndx = 1
+              do jndx = ibeg, iend
+                 rvalues(rndx) = hist_coords(indx)%real_values(jndx)
+                 rndx = rndx + 1
+              end do
+           end if
+           exit
+        end if
+     end do
+     if (present(found)) then
+        found = dim_ok
+     end if
+
+  end subroutine hist_dimension_values_r8
+
+  !#######################################################################
+
+  subroutine hist_dimension_values_int(name, ivalues, istart, istop, found)
+     ! Given the name of a dimension, return its (integer) values in <ivalues>
+     ! If <istart> and <istop> are present, they are the beginning and ending
+     ! indices of the dimension values to return in <ivalues>. By default,
+     ! the entire array is copied.
+     ! If <found> is passed, return .true. if <name> is a defined dimension
+     !       with integer values.
+
+     ! Dummy arguments
+     character(len=*),  intent(in)  :: name
+     integer,           intent(out) :: ivalues(:)
+     integer, optional, intent(in)  :: istart
+     integer, optional, intent(in)  :: istop
+     logical, optional, intent(out) :: found
+     ! Local variables
+     integer :: indx, jndx, rndx
+     integer :: ibeg
+     integer :: iend
+     logical :: dim_ok
+     integer, parameter  :: unset_i = huge(1)
+     character(len=*), parameter  :: subname = 'hist_dimension_values_int'
+
+     dim_ok = .false.
+     ivalues(:) = unset_i
+
+     do indx = 1, registeredmdims
+        if(trim(name) == trim(hist_coords(indx)%name)) then
+           dim_ok = associated(hist_coords(indx)%integer_values)
+           if (dim_ok) then
+              if (present(istart)) then
+                 ibeg = istart
+                 if (ibeg < LBOUND(hist_coords(indx)%integer_values, 1)) then
+                    call endrun(subname//": istart is outside the bounds")
+                 end if
+              else
+                 ibeg = LBOUND(hist_coords(indx)%integer_values, 1)
+              end if
+              if (present(istop)) then
+                 iend = istop
+                 if (iend > UBOUND(hist_coords(indx)%integer_values, 1)) then
+                    call endrun(subname//": istop is outside the bounds")
+                 end if
+              else
+                 iend = UBOUND(hist_coords(indx)%integer_values, 1)
+              end if
+              if (SIZE(ivalues) < (iend - ibeg + 1)) then
+                 call endrun(subname//": ivalues too small")
+              end if
+              rndx = 1
+              do jndx = ibeg, iend
+                 ivalues(rndx) = hist_coords(indx)%integer_values(jndx)
+                 rndx = rndx + 1
+              end do
+           end if
+           exit
+        end if
+     end do
+     if (present(found)) then
+        found = dim_ok
+     end if
+
+  end subroutine hist_dimension_values_int
 
   !#######################################################################
 
