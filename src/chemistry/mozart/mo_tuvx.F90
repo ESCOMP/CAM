@@ -23,7 +23,6 @@ module mo_tuvx
   public :: tuvx_get_photo_rates
   public :: tuvx_finalize
   public :: tuvx_active
-  public :: tuvx_is_first_time_step
 
   ! Inidices for grid updaters
   integer, parameter :: NUM_GRIDS = 2             ! number of grids that CAM will update at runtime
@@ -51,11 +50,6 @@ module mo_tuvx
   real(kind=r8), parameter :: WAVELENGTH_EDGES_MS93(NUM_BINS_MS93+1) = &
       (/ 181.6_r8, 183.1_r8, 184.6_r8, 190.2_r8, 192.5_r8 /)
 
-  ! Definition of the MS93 wavelength grid  TODO add description of this
-  integer,       parameter :: NUM_BINS_MS93 = 4
-  real(kind=r8), parameter :: WAVELENGTH_EDGES_MS93(NUM_BINS_MS93+1) = &
-      (/ 181.6_r8, 183.1_r8, 184.6_r8, 190.2_r8, 192.5_r8 /)
-
   ! Information needed to access CAM species state data
   logical :: is_fixed_N2 = .false. ! indicates whether N2 concentrations are fixed
   logical :: is_fixed_O  = .false. ! indicates whether O concentrations are fixed
@@ -75,19 +69,6 @@ module mo_tuvx
   logical :: do_clouds  = .false. ! indicates whether cloud optical properties
                                   !   should be calculated and used in radiative
                                   !   transfer calculations
-
-  ! Information needed to set extended-UV photo rates
-  logical :: do_euv = .false.              ! Indicates whether to calculate
-                                           !   extended-UV photo rates
-  integer :: ion_rates_pbuf_index = 0      ! Index in physics buffer for
-                                           !   ionization rates
-
-  ! Information needed to do special NO photolysis rate calculation
-  logical :: do_jno     = .false. ! Indicates whether to calculate jno
-  integer :: jno_index  = 0       ! Index in tuvx_ptr::photo_rates_ array for jno
-
-  ! Cutoff solar zenith angle for doing photolysis rate calculations [degrees]
-  integer :: max_sza = 0.0_r8
 
   ! Information needed to set extended-UV photo rates
   logical :: do_euv = .false.              ! Indicates whether to calculate
@@ -145,7 +126,6 @@ module mo_tuvx
   ! namelist options
   character(len=cl) :: tuvx_config_path = 'NONE'  ! absolute path to TUVX configuration file
   logical, protected :: tuvx_active = .false.
-  logical, protected :: tuvx_is_first_time_step = .true.
 
 !================================================================================================
 contains
@@ -450,12 +430,6 @@ contains
   subroutine tuvx_timestep_init( )
 
     integer :: i_thread
-    integer, save :: n_time_step = 0
-
-    if( .not. tuvx_active ) return
-
-    if( n_time_step > 0 ) tuvx_is_first_time_step = .false.
-    n_time_step = n_time_step + 1
 
     if( .not. tuvx_active ) return
 
