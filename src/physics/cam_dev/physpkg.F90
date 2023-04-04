@@ -140,6 +140,7 @@ contains
     use cloud_diagnostics,  only: cloud_diagnostics_register
     use cospsimulator_intr, only: cospsimulator_intr_register
     use rad_constituents,   only: rad_cnst_get_info ! Added to query if it is a modal aero sim or not
+    use radheat,            only: radheat_register
     use subcol,             only: subcol_register
     use subcol_utils,       only: is_subcol_on, subcol_get_scheme
     use dyn_comp,           only: dyn_register
@@ -288,6 +289,7 @@ contains
        ! radiation
        call radiation_register
        call cloud_diagnostics_register
+       call radheat_register
 
        ! COSP
        call cospsimulator_intr_register
@@ -1331,7 +1333,7 @@ contains
     use physics_types,      only: physics_ptend_init, physics_ptend_sum, physics_ptend_scale
     use microp_driver,      only: microp_driver_tend
     use microp_aero,        only: microp_aero_run
-    use clubb_intr,         only: clubb_tend_cam
+    use clubb_intr,         only: clubb_tend_cam, clubb_emissions_cam
     use subcol,             only: subcol_gen, subcol_ptend_avg
     use subcol_utils,       only: subcol_ptend_copy, is_subcol_on
     use subcol_SILHS,       only: subcol_SILHS_var_covar_driver, init_state_subcol
@@ -1568,6 +1570,19 @@ contains
          cam_in%shf, cam_in%lhf, cam_in%cflx)
 
     call t_stopf('tphysac_init')
+
+    !===================================================
+    ! Apply tracer surface fluxes to lowest model layer
+    !===================================================
+    call t_startf('clubb_emissions_tend')
+
+    call clubb_emissions_cam(state, cam_in, ptend)
+
+    call physics_update(state, ptend, ztodt, tend)
+
+    call check_energy_chng(state, tend, "clubb_emissions_tend", nstep, ztodt, zero, zero, zero, zero)
+
+    call t_stopf('clubb_emissions_tend')
 
     !===================================================
     ! Calculate tendencies from CARMA bin microphysics.

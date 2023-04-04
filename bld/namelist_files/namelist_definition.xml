@@ -7333,6 +7333,18 @@ scheme is applied to all vertical levels regardless of this setting.
 Default: FALSE
 </entry>
 
+<entry id="nlte_use_aliarms" type="logical" category="waccm_phys"
+       group="radheat_nl" valid_values="" >
+If TRUE, then use the ALI-ARMS scheme (an alternative method of computing non-LTE heating rates in the upper atmosphere)
+Default: FALSE
+</entry>
+
+<entry id="nlte_aliarms_every_x" type="integer" category="waccm_phys"
+       group="radheat_nl" valid_values="" >
+Call ALI-ARMS every X timesteps
+Default: 1
+</entry>
+
 <entry id="qbo_cyclic" type="logical" category="waccm_phys"
        group="qbo_nl" valid_values="" >
 TRUE implies assume cyclic qbo data.
