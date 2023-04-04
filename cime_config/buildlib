@@ -221,21 +221,22 @@ def _json_fortran_install_dir(libroot):
     return jsonpaths[0]
 
 ###############################################################################
-def _build_musica_core(caseroot, libroot, bldroot):
+def _build_musica(caseroot, libroot, bldroot):
 ###############################################################################
-# Builds the musica-core support library for TUV-x and updates the case
-# variables used to set the include paths and linked libraries
+# Builds the musica library, including TUV-x, musica, and MICM 
+# and updates the case variables used to set the include paths 
+# and linked libraries
 
     build = EnvBuild(case_root=caseroot)
     with Case(caseroot) as case:
-        bldpath = os.path.join(bldroot, "musica-core")
+        bldpath = os.path.join(bldroot, "musica")
         if not os.path.exists(bldpath):
             os.makedirs(bldpath)
         jsoninc = _json_fortran_include_dir(libroot)
         jsonlib = _json_fortran_lib_path(libroot)
         srcpath = os.path.abspath(os.path.join(case.get_value("COMP_ROOT_DIR_ATM"), \
-                                               "libraries", "musica-core", ""))
-        logger.info("Building musica-core in {} from source in {}\n".format(bldpath, srcpath))
+                                               "libraries", "musica", ""))
+        logger.info("Building musica in {} from source in {}\n".format(bldpath, srcpath))
 
         arg_dict = _cmake_default_args(caseroot)
         if build.get_value("MPILIB") == "mpi-serial":
@@ -250,6 +251,9 @@ def _build_musica_core(caseroot, libroot, bldroot):
         cmake_args += "-DENABLE_UTIL_ONLY=ON "
         cmake_args += "-DCMAKE_C_COMPILER_WORKS=1 "
         cmake_args += "-DCMAKE_CXX_COMPILER_WORKS=1 "
+        cmake_args += "-DENABLE_MICM=OFF "
+        cmake_args += "-DENABLE_TUVX=ON "
+        cmake_args += "-DENABLE_TESTS=OFF "
         cmake_args += "-DENABLE_COVERAGE=OFF "
         cmake_args += "-DJSON_INCLUDE_DIR={} ".format(jsoninc)
         cmake_args += "-DJSON_LIB={} ".format(jsonlib)
@@ -261,170 +265,75 @@ def _build_musica_core(caseroot, libroot, bldroot):
         _run_cmd(case.get_value("GMAKE"), bldpath)
         _run_cmd("{} install".format(case.get_value("GMAKE")), bldpath)
 
-        # add musica-core to include paths
+        # add musica to include paths
         incldir = os.environ.get('USER_INCLDIR')
         if incldir is None:
             incldir = ''
         os.environ['USER_INCLDIR'] = incldir + \
-            " -I{} ".format(_musica_core_include_dir(libroot))
+            " -I{} ".format(_musica_include_dir(libroot))
 
         # create simlink to library in folder CIME expects libraries to be in
-        dst = os.path.join(libroot, "libmusicacore.a")
+        dst = os.path.join(libroot, "libmusica.a")
         if os.path.isfile(dst):
             os.remove(dst)
-        os.symlink(_musica_core_lib_path(libroot), dst)
+        os.symlink(_musica_lib_path(libroot), dst)
 
 ###############################################################################
-def _musica_core_include_dir(libroot):
+def _musica_include_dir(libroot):
 ###############################################################################
-# Returns the path to the musica-core include directory
+# Returns the path to the musica include directory
 
-    coreinc = os.path.join(_musica_core_install_dir(libroot), "include", "")
+    coreinc = os.path.join(_musica_install_dir(libroot), "include", "")
     expect(os.path.exists(coreinc), \
-           "musica-core include directory not found at {}".format(coreinc))
+           "musica include directory not found at {}".format(coreinc))
     return coreinc
 
 ###############################################################################
-def _musica_core_lib_path(libroot):
+def _musica_lib_path(libroot):
 ###############################################################################
-# Returns the path to the musica-core library
+# Returns the path to the musica library
 
-    corelib = os.path.join(_musica_core_install_dir(libroot), "lib64", "libmusicacore.a")
+    corelib = os.path.join(_musica_install_dir(libroot), "lib64", "libmusica.a")
     if not os.path.exists(corelib):
-        corelib = os.path.join(_musica_core_install_dir(libroot), "lib", "libmusicacore.a")
+        corelib = os.path.join(_musica_install_dir(libroot), "lib", "libmusica.a")
     expect(os.path.exists(corelib), \
-           "musica-core library not found at {}".format(corelib))
+           "musica library not found at {}".format(corelib))
     return corelib
 
 ###############################################################################
-def _musica_core_install_dir(libroot):
+def _musica_install_dir(libroot):
 ###############################################################################
-# Returns the path to the musica-core install directory
+# Returns the path to the musica install directory
 
-    corepaths = glob(os.path.join(libroot, "musicacore*"))
+    corepaths = glob(os.path.join(libroot, "musica*"))
     expect(len(corepaths)>0, \
-           "musica-core not found at {}".format(libroot))
+           "musica not found at {}".format(libroot))
     expect(len(corepaths)<2, \
-           "Multiple musica-core versions found at {}".format(libroot))
+           "Multiple musica versions found at {}".format(libroot))
     expect(os.path.exists(corepaths[0]), \
-           "musica-core install directory not found at {}".format(corepaths[0]))
+           "musica install directory not found at {}".format(corepaths[0]))
     return corepaths[0]
 
 ###############################################################################
-def _musica_core_package_dir(libroot):
+def _musica_package_dir(libroot):
 ###############################################################################
-# Returns the path to the musica-core CMake package
+# Returns the path to the musica CMake package
 
-    corepaths = glob(os.path.join(libroot, "musicacore*", "cmake", "musicacore*" ))
-    expect(len(corepaths)>0, \
-           "musica-core package not found at {}".format(libroot))
-    expect(len(corepaths)<2, \
-           "Multiple musica-core versions found at {}".format(libroot))
-    expect(os.path.exists(corepaths[0]), \
-           "musica-core package directory not found at {}".format(corepaths[0]))
-    return corepaths[0]
-
-###############################################################################
-def _build_tuvx(caseroot, libroot, bldroot):
-###############################################################################
-# Builds the TUV-x library and updates the case variables used to set the
-# include paths and linked libraries
-
-    build = EnvBuild(case_root=caseroot)
-    with Case(caseroot) as case:
-        bldpath = os.path.join(bldroot, "tuv-x")
-        if not os.path.exists(bldpath):
-            os.makedirs(bldpath)
-        jsoninc = _json_fortran_include_dir(libroot)
-        jsonlib = _json_fortran_lib_path(libroot)
-        corepackage = _musica_core_package_dir(libroot)
-        srcpath = os.path.abspath(os.path.join(case.get_value("COMP_ROOT_DIR_ATM"), \
-                                               "libraries", "tuv-x", ""))
-        logger.info("Building TUV-x in {} from source in {}\n".format(bldpath, srcpath))
-
-        arg_dict = _cmake_default_args(caseroot)
-        if build.get_value("MPILIB") == "mpi-serial":
-            cmake_args = "-DCMAKE_Fortran_COMPILER={} ".format(arg_dict["SFC"])
-            cmake_args += "-DCMAKE_C_COMPILER={} ".format(arg_dict["SCC"])
-        else:
-            cmake_args = "-DCMAKE_Fortran_COMPILER={} ".format(arg_dict["MPIFC"])
-            cmake_args += "-DCMAKE_C_COMPILER={} ".format(arg_dict["MPICC"])
-            cmake_args += "-DENABLE_MPI:BOOL=TRUE "
-        if case.get_value("DEBUG"):
-            cmake_args += "-DCMAKE_BUILD_TYPE=Debug "
-        else:
-            cmake_args += "-DCMAKE_BUILD_TYPE=Release "
-        cmake_args += "-DCMAKE_C_COMPILER_WORKS=1 "
-        cmake_args += "-DCMAKE_CXX_COMPILER_WORKS=1 "
-        cmake_args += "-DENABLE_COVERAGE=OFF "
-        cmake_args += "-DENABLE_TESTS=OFF "
-        cmake_args += "-DJSON_INCLUDE_DIR={} ".format(jsoninc)
-        cmake_args += "-DJSON_LIB={} ".format(jsonlib)
-        cmake_args += "-DCMAKE_PREFIX_PATH={} ".format(corepackage)
-        cmake_args += "-DCMAKE_Fortran_FLAGS='{}' ".format(arg_dict["FFLAGS"])
-        cmake_args += "-DCMAKE_INSTALL_PREFIX='{}' ".format(libroot)
-        cmake_args += srcpath
-
-        _run_cmd("cmake {}".format(cmake_args), bldpath)
-        _run_cmd(case.get_value("GMAKE"), bldpath)
-        _run_cmd("{} install".format(case.get_value("GMAKE")), bldpath)
-
-        # add TUV-x to include paths
-        incldir = os.environ.get('USER_INCLDIR')
-        if incldir is None:
-            incldir = ''
-        os.environ['USER_INCLDIR'] = incldir + \
-            " -I{} ".format(os.path.join(bldroot, "tuv-x", "include"))
-
-        # create simlink to library in folder CIME expects libraries to be in
-        dst = os.path.join(libroot, "libtuvx.a")
-        if os.path.isfile(dst):
-            os.remove(dst)
-        os.symlink(_tuvx_lib_path(libroot), dst)
-
-###############################################################################
-def _tuvx_include_dir(libroot):
-###############################################################################
-# Returns the path to the TUV-x include directory
-
-    tuvxinc = os.path.join(_tuvx_install_dir(libroot), "include", "")
-    expect(os.path.exists(tuvxinc), \
-           "TUV-x include directory not found at {}".format(tuvxinc))
-    return tuvxinc
-
-###############################################################################
-def _tuvx_lib_path(libroot):
-###############################################################################
-# Returns the path to the TUV-x library
-
-    tuvxlib = os.path.join(_tuvx_install_dir(libroot), "lib64", "libtuvx.a")
-    if not os.path.exists(tuvxlib):
-        tuvxlib = os.path.join(_tuvx_install_dir(libroot), "lib", "libtuvx.a")
-    expect(os.path.exists(tuvxlib), \
-           "TUV-x library not found at {}".format(tuvxlib))
-    return tuvxlib
-
-###############################################################################
-def _tuvx_install_dir(libroot):
-###############################################################################
-# Returns the path to the TUV-x install directory
-
-    tuvxpaths = glob(os.path.join(libroot, "tuvx*"))
-    expect(len(tuvxpaths)>0, \
-           "TUV-x not found at {}".format(libroot))
-    expect(len(tuvxpaths)<2, \
-           "Multiple TUV-x versions found at {}".format(libroot))
-    expect(os.path.exists(tuvxpaths[0]), \
-           "TUV-x install directory not found at {}".format(tuvxpaths[0]))
-    return tuvxpaths[0]
+    paths = glob(os.path.join(libroot, "musica*", "cmake", "musica*" ))
+    expect(len(paths)>0, \
+           "musica package not found at {}".format(libroot))
+    expect(len(paths)<2, \
+           "Multiple musica versions found at {}".format(libroot))
+    expect(os.path.exists(paths[0]), \
+           "musica package directory not found at {}".format(paths[0]))
+    return paths[0]
 
 ###############################################################################
 
 def _main_func():
     caseroot, libroot, bldroot = parse_input(sys.argv)
     _build_json_fortran(caseroot, libroot, bldroot)
-    _build_musica_core(caseroot, libroot, bldroot)
-    _build_tuvx(caseroot, libroot, bldroot)
+    _build_musica(caseroot, libroot, bldroot)
     _build_fms(caseroot, libroot, bldroot)
     _build_cam(caseroot, libroot, bldroot)
 
