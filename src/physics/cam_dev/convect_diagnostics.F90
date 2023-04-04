@@ -35,10 +35,6 @@
    integer    ::     prec_sh_idx    = 0
    integer    ::     snow_sh_idx    = 0
    integer    ::    cmfmc_sh_idx    = 0
-   integer    ::   sh_flxprc_idx    = 0
-   integer    ::   sh_flxsnw_idx    = 0
-   integer    ::   sh_cldliq_idx    = 0
-   integer    ::   sh_cldice_idx    = 0
 
    contains
 
@@ -65,14 +61,6 @@
   call pbuf_add_field('SNOW_SH',    'physpkg' ,dtype_r8,(/pcols/),            snow_sh_idx )
   ! Updraft mass flux by shallow convection [ kg/s/m2 ]
   call pbuf_add_field('CMFMC_SH',   'physpkg' ,dtype_r8,(/pcols,pverp/),      cmfmc_sh_idx )
-! shallow interface gbm flux_convective_cloud_rain+snow (kg/m2/s)
-  call pbuf_add_field('SH_FLXPRC',  'physpkg' ,dtype_r8,(/pcols,pverp/),      sh_flxprc_idx)
-! shallow interface gbm flux_convective_cloud_snow (kg/m2/s)
-  call pbuf_add_field('SH_FLXSNW',  'physpkg' ,dtype_r8,(/pcols,pverp/),      sh_flxsnw_idx)
-! shallow gbm cloud liquid water (kg/kg)
-  call pbuf_add_field('SH_CLDLIQ',  'physpkg' ,dtype_r8,(/pcols,pver/),       sh_cldliq_idx)
-! shallow gbm cloud ice water (kg/kg)
-  call pbuf_add_field('SH_CLDICE',  'physpkg' ,dtype_r8,(/pcols,pver/),       sh_cldice_idx)
 
   ! for this implementation, only CLUBB_SGS is supported
   if (shallow_scheme /= 'CLUBB_SGS') then
@@ -85,14 +73,12 @@
   !                                                                                !
   !=============================================================================== !
 
-  subroutine convect_diagnostics_init(pbuf2d)
+  subroutine convect_diagnostics_init
 
   !------------------------------------------------------------------------------- !
   ! Purpose : Declare output fields, and initialize variables needed by convection !
   !------------------------------------------------------------------------------- !
-  use physics_buffer,    only: pbuf_get_index, physics_buffer_desc, pbuf_set_field
-
-  type(physics_buffer_desc), pointer :: pbuf2d(:,:)
+  use physics_buffer,    only: pbuf_get_index
 
   call addfld( 'CMFMC',      (/ 'ilev' /), 'A', 'kg/m2/s',  'Moist convection (deep+shallow) mass flux'                 )
   call addfld( 'CLDTOP',     horiz_only,   'I', '1',        'Vertical index of cloud top'                               )
@@ -101,11 +87,6 @@
   call addfld( 'PCLDBOT',    horiz_only,   'A', 'Pa',       'Pressure of cloud base'                                    )
 
   rprddp_idx   = pbuf_get_index('RPRDDP')
-
-  call pbuf_set_field(pbuf2d, sh_cldliq_idx, 0._r8)
-  call pbuf_set_field(pbuf2d, sh_cldice_idx, 0._r8)
-  call pbuf_set_field(pbuf2d, sh_flxprc_idx, 0._r8)
-  call pbuf_set_field(pbuf2d, sh_flxsnw_idx, 0._r8)
 
   end subroutine convect_diagnostics_init
 
