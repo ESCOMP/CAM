@@ -193,7 +193,7 @@
   <entry id="CAM_LINKED_LIBS">
     <type>char</type>
     <valid_values></valid_values>
-    <default_value>-ltuvx -lmusicacore -ljsonfortran</default_value>
+    <default_value>-lmusica -ljsonfortran</default_value>
     <group>build_component_cam</group>
     <file>env_build.xml</file>
     <desc>
