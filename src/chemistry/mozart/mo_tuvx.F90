@@ -216,11 +216,10 @@ contains
 #ifdef HAVE_MPI
     use mpi
 #endif
-    use cam_abortutils,          only : endrun
     use cam_logfile,             only : iulog ! log file output unit
     use mo_chem_utls,            only : get_spc_ndx, get_inv_ndx
     use mo_jeuv,                 only : neuv ! number of extreme-UV rates
-    use musica_assert,           only : assert_msg
+    use musica_assert,           only : assert_msg, die_msg
     use musica_config,           only : config_t
     use musica_mpi,              only : musica_mpi_rank, &
                                         musica_mpi_pack_size, &
@@ -262,6 +261,8 @@ contains
     if( is_initialized ) return
     is_initialized = .true.
 
+    call die_msg( 121631567, "TUV-x is not yet ready for use in CAM" )
+
     if( is_main_task ) write(iulog,*) "Beginning TUV-x Initialization"
 
     config_path = trim(tuvx_config_path)
@@ -283,7 +284,7 @@ contains
     ! ===============================================================
     max_sza = max_solar_zenith_angle
     if( max_sza <= 0.0_r8 .or. max_sza > 180.0_r8 ) then
-      call endrun( "TUV-x: max solar zenith angle must be between 0 and 180 degress" )
+      call die_msg( 723815691, "TUV-x max solar zenith angle must be between 0 and 180 degress" )
     end if
 
     ! =================================
