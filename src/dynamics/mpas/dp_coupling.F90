@@ -387,16 +387,12 @@ subroutine derived_phys(phys_state, phys_tend, pbuf2d)
       do k = 1, pver
          ! To be consistent with total energy formula in physic's check_energy module only
          ! include water vapor in moist pdel.
-#ifdef phl_cam_development
-         factor(:ncol,k) = 1._r8 + phys_state(lchnk)%q(:ncol,k,1)
-#else
          factor(:ncol,k) = 1.0_r8
          do m_cnst=1,thermodynamic_active_species_num
            m = thermodynamic_active_species_idx(m_cnst)
            ! at this point all q's are dry
            factor(:ncol,k) = factor(:ncol,k)+phys_state(lchnk)%q(:ncol,k,m)
          end do
-#endif
          phys_state(lchnk)%pdel(:ncol,k)  = phys_state(lchnk)%pdeldry(:ncol,k)*factor(:ncol,k)
          phys_state(lchnk)%rpdel(:ncol,k) = 1._r8 / phys_state(lchnk)%pdel(:ncol,k)
       end do
