@@ -598,7 +598,6 @@ subroutine derived_tend(nCellsSolve, nCells, t_tend, u_tend, v_tend, q_tend, dyn
    !
    ! Compute q not updated by physics
 
-!xxx clean-up this code   
    do m=1,thermodynamic_active_species_num
      do iCell = 1, nCellsSolve
        do k = 1, pver
@@ -625,7 +624,7 @@ subroutine derived_tend(nCellsSolve, nCells, t_tend, u_tend, v_tend, q_tend, dyn
    call get_R(qktmp,idx_thermo,Rold)
    Rold=Rold*cv/Rgas
 
-   qwv = tracers(index_qv,:,1:nCellsSolve)-dtime*q_tend(index_qv_phys,:,1:nCellsSolve)!xxx not needed
+   qwv = tracers(index_qv,:,1:nCellsSolve)-dtime*q_tend(index_qv_phys,:,1:nCellsSolve)
    do iCell = 1, nCellsSolve
      do k = 1, pver
        rhodk     = zz(k,iCell) * rho_zz(k,iCell)
