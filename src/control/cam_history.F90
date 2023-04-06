@@ -5091,7 +5091,7 @@ end subroutine print_active_fldlst
          tape(t)%hlist(f2)%hbuf(dimind%beg1:dimind%end1,dimind%beg2:dimind%end2,c)
       else if (trim(op) == 'sum') then
          tape(t)%hlist(f)%hbuf(dimind%beg1:dimind%end1,dimind%beg2:dimind%end2,c) = &
-         tape(t)%hlist(f1)%hbuf(dimind%beg1:dimind%end1,dimind%beg2:dimind%end2,c) - &
+         tape(t)%hlist(f1)%hbuf(dimind%beg1:dimind%end1,dimind%beg2:dimind%end2,c) + &
          tape(t)%hlist(f2)%hbuf(dimind%beg1:dimind%end1,dimind%beg2:dimind%end2,c)
       else
          call endrun('dyn_readnl: ERROR: budget_optype unknown:'//trim(op))
