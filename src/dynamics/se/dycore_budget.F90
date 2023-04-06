@@ -3,7 +3,7 @@ use shr_kind_mod, only: r8=>shr_kind_r8
 implicit none
 
 public :: print_budget
-real(r8), parameter :: eps      = 1.0E-9_r8
+real(r8), parameter :: eps      = 1.0E-7_r8
 real(r8), parameter :: eps_mass = 1.0E-12_r8
 
 real(r8), save :: previous_dEdt_adiabatic_dycore    = 0.0_r8

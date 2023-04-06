@@ -595,62 +595,77 @@ subroutine derived_tend(nCellsSolve, nCells, t_tend, u_tend, v_tend, q_tend, dyn
    zint     => dyn_in % zint
    ux       => dyn_in % ux
    uy       => dyn_in % uy
+
+   if (compute_energy_diags) then
+     !
+     ! Rnew and Rold are only needed for diagnostics purposes
+     !
+     do m=1,thermodynamic_active_species_num
+       do iCell = 1, nCellsSolve
+         do k = 1, pver
+           idx_thermo(m) = m
+           idx_dycore                         = thermodynamic_active_species_idx_dycore(m)
+           qktmp(iCell,k,m)                   = tracers(idx_dycore,k,iCell)
+         end do
+       end do
+     end do
+     call get_R(qktmp,idx_thermo,Rnew)
+     Rnew = Rnew*cv/Rgas
+
+     do m=1,thermodynamic_active_species_num
+       do iCell = 1, nCellsSolve
+         do k = 1, pver
+           idx_thermo(m) = m
+           idx_dycore                         = thermodynamic_active_species_idx_dycore(m)
+           qktmp(iCell,k,m)                   = tracers(idx_dycore,k,iCell)-&
+                dtime*q_tend(m,k,iCell)
+         end do
+       end do
+     end do
+     call get_R(qktmp,idx_thermo,Rold)
+     Rold=Rold*cv/Rgas
+   else
+     Rnew = 0.0_r8
+     Rold = 0.0_r8
+   end if
    !
    ! Compute q not updated by physics
-
-   do m=1,thermodynamic_active_species_num
-     do iCell = 1, nCellsSolve
-       do k = 1, pver
-         idx_thermo(m) = m
-         idx_dycore                         = thermodynamic_active_species_idx_dycore(m)
-         qktmp(iCell,k,m)                   = tracers(idx_dycore,k,iCell)
-       end do
-     end do
-   end do
-   call get_R(qktmp,idx_thermo,Rnew)
-   Rnew = Rnew*cv/Rgas
-
-
-   do m=1,thermodynamic_active_species_num
-     do iCell = 1, nCellsSolve
-       do k = 1, pver
-         idx_thermo(m) = m
-         idx_dycore                         = thermodynamic_active_species_idx_dycore(m)
-         qktmp(iCell,k,m)                   = tracers(idx_dycore,k,iCell)-&
-                                              dtime*q_tend(m,k,iCell)
-       end do
-     end do
-   end do
-   call get_R(qktmp,idx_thermo,Rold)
-   Rold=Rold*cv/Rgas
-
+   !
    qwv = tracers(index_qv,:,1:nCellsSolve)-dtime*q_tend(index_qv_phys,:,1:nCellsSolve)
+   !
+   ! for energy diagnostics compute state with physics tendency (no water change) first
+   ! and then add water changes (parameterizations + dme_adjust)
+   !
    do iCell = 1, nCellsSolve
      do k = 1, pver
        rhodk     = zz(k,iCell) * rho_zz(k,iCell)
        facold    = 1.0_r8 + Rv_over_Rd *qwv(k,iCell)
        thetak    = theta_m(k,iCell)/facold
-
        exnerk    = (rgas*rhodk*theta_m(k,iCell)/p0)**(rgas/cv)
-       tknew     = exnerk*thetak+(cp/Rold(iCell,k))*dtime*t_tend(k,icell)
-
-       thetaknew = (tknew**(cv/cp))*((rgas*rhodk*facold)/p0)**(-rgas/cp)
+       !
+       ! for compute_energy_diags only
+       !
+       tknew     = exnerk*thetak+(cp/Rold(iCell,k))*(Rnew(iCell,k)/cp)*dtime*t_tend(k,icell)!for diags only
+       thetaknew = (tknew**(cv/cp))*((rgas*rhodk*facold)/p0)**(-rgas/cp)                    !for diags only
        !
        ! calculate theta_m tendency due to parameterizations (but no water adjustment)
+       ! (for diagnostics only)
        !
-       rtheta_param(k,iCell) = (thetaknew-thetak)/dtime
-       rtheta_param(k,iCell) = rtheta_param(k,iCell)*(1.0_r8 + Rv_over_Rd *qwv(k,iCell)) !convert to thetam
-       rtheta_param(k,iCell) = rtheta_param(k,iCell)*rho_zz(k,iCell)
+       rtheta_param(k,iCell) = (thetaknew-thetak)/dtime                                     !for diags only
+       rtheta_param(k,iCell) = rtheta_param(k,iCell)*(1.0_r8 + Rv_over_Rd *qwv(k,iCell))    !for diags only
+       !convert to thetam
+       rtheta_param(k,iCell) = rtheta_param(k,iCell)*rho_zz(k,iCell)                        !for diags only
        !
        ! include water change in theta_m
        !
        facnew               = 1.0_r8 + Rv_over_Rd *tracers(index_qv,k,iCell)
-       tknew                = exnerk*thetak+(cp/Rnew(iCell,k))*dtime*t_tend(k,icell)
+       tknew                = exnerk*thetak+dtime*t_tend(k,icell)
        thetaknew            = (tknew**(cv/cp))*((rgas*rhodk*facnew)/p0)**(-rgas/cp)
        rtheta_tend(k,iCell) = (thetaknew*facnew-thetak*facold)/dtime
        rtheta_tend(k,iCell) = rtheta_tend(k,iCell) * rho_zz(k,iCell)
      end do
    end do
+
 
    if (compute_energy_diags) then
      !
@@ -686,6 +701,11 @@ subroutine derived_tend(nCellsSolve, nCells, t_tend, u_tend, v_tend, q_tend, dyn
           ux(:,1:nCellsSolve)+dtime*u_tend(:,1:nCellsSolve)/rho_zz(:,1:nCellsSolve),       &
           uy(:,1:nCellsSolve)+dtime*v_tend(:,1:nCellsSolve)/rho_zz(:,1:nCellsSolve),'dAM')
    end if
+   !
+   ! compute energy based on parameterization increment (excl. water change)
+   !
+   theta_m_new = theta_m(:,1:nCellsSolve)+dtime*rtheta_param(:,1:nCellsSolve)/rho_zz(:,1:nCellsSolve)
+
    !
    ! Update halo for rtheta_m tendency
    !
@@ -799,9 +819,8 @@ subroutine tot_energy_dyn(nCells, nVertLevels, qsize, index_qv, zz, zgrid, rho_z
   use air_composition,   only: thermodynamic_active_species_ice_num,thermodynamic_active_species_liq_num
   use air_composition,   only: dry_air_species_num, thermodynamic_active_species_R
   use cam_thermo,        only: wvidx,wlidx,wiidx,seidx,poidx,keidx,moidx,mridx,ttidx,teidx,thermo_budget_num_vars
+  use cam_thermo,        only: get_hydrostatic_energy,moidx,mridx,ttidx, thermo_budget_vars
   use dyn_tests_utils,   only: vcoord=>vc_height
-  use cam_thermo,        only: get_hydrostatic_energy,wvidx,wlidx,wiidx,seidx,poidx,keidx,moidx,mridx,ttidx,teidx, &
-                               thermo_budget_num_vars,thermo_budget_vars
   use cam_history_support,    only: max_fieldname_len
   ! Arguments
   integer, intent(in) :: nCells

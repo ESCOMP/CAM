@@ -379,7 +379,6 @@ subroutine p_d_coupling(phys_state, phys_tend, dyn_in, tl_f, tl_qdp)
             end do
          end do
       end do
-      call thermodynamic_consistency(phys_state(lchnk), phys_tend(lchnk), ncols, pver, lchnk)
     end do
 
    call t_startf('pd_copy')
@@ -712,40 +711,4 @@ subroutine derived_phys_dry(phys_state, phys_tend, pbuf2d)
    end do  ! lchnk
 
 end subroutine derived_phys_dry
-
-!=========================================================================================
-
-subroutine thermodynamic_consistency(phys_state, phys_tend, ncols, pver, lchnk)
-  !
-   ! Adjust the physics temperature tendency for thermal energy consistency with the
-   ! dynamics.
-   ! Note: mixing ratios are assumed to be dry.
-   !
-   use dimensions_mod,    only: lcp_moist
-   use air_composition,   only: get_cp
-   use control_mod,       only: phys_dyn_cp
-   use air_composition,   only: cpairv
-
-   type(physics_state), intent(in)    :: phys_state
-   type(physics_tend ), intent(inout) :: phys_tend
-   integer,  intent(in)               :: ncols, pver, lchnk
-
-   real(r8):: inv_cp(ncols,pver)
-   !----------------------------------------------------------------------------
-
-   if (lcp_moist.and.phys_dyn_cp==1) then
-     !
-     ! scale temperature tendency so that thermal energy increment from physics
-     ! matches SE (not taking into account dme adjust)
-     !
-     ! note that if lcp_moist=.false. then there is thermal energy increment
-     ! consistency (not taking into account dme adjust)
-     !
-     call get_cp(phys_state%q(1:ncols,1:pver,:), .true.,inv_cp, cpdry=cpairv(1:ncols,:,lchnk))
-     phys_tend%dtdt(1:ncols,1:pver) = phys_tend%dtdt(1:ncols,1:pver) * cpairv(1:ncols,1:pver,lchnk) * inv_cp
-   end if
-end subroutine thermodynamic_consistency
-
-!=========================================================================================
-
 end module dp_coupling

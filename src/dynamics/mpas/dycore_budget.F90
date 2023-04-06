@@ -8,6 +8,8 @@ real(r8), parameter :: eps_mass = 1.0E-12_r8
 real(r8), save :: previous_dEdt_adiabatic_dycore    = 0.0_r8
 real(r8), save :: previous_dEdt_dry_mass_adjust     = 0.0_r8
 real(r8), save :: previous_dEdt_phys_dyn_coupl_err  = 0.0_r8
+real(r8), save :: previous_E_bf  = 0.0_r8!xxx
+real(r8), save :: previous_dEdt_phys_total_dynE = 0.0_r8!xxx
 !=========================================================================================
 contains
 !=========================================================================================
@@ -105,7 +107,7 @@ subroutine print_budget(hstwr)
       call budget_get_global('dyBP-dyBF',idx(i),dEdt_efix_dynE(i))
       call budget_get_global('dyAM-dyAP',idx(i),dEdt_dme_adjust_dynE(i))
       call budget_get_global('dyAP-dyBF',idx(i),dEdt_param_efix_dynE(i))
-      call budget_get_global('dyAM-dyBF',idx(i),dEdt_phys_total_dynE(i))!xxx
+      call budget_get_global('dyAM-dyBF',idx(i),dEdt_phys_total_dynE(i))
       call budget_get_global('dyBF'     ,idx(i),E_dyBF(i))!state beginning physics
       !
       ! CAM physics energy tendencies in dynamical core
@@ -117,7 +119,6 @@ subroutine print_budget(hstwr)
       call budget_get_global('dAM-dBF',idx(i),dEdt_phys_total_in_dyn(i))
       call budget_get_global('dBF'    ,idx(i),E_dBF(i))  !state passed to physics
     end do
-
     write(iulog,*)" "
     write(iulog,*)"======================================================================"
     write(iulog,*)"Total energy diagnostics introduced in Lauritzen and Williamson (2019)"
@@ -197,6 +198,15 @@ subroutine print_budget(hstwr)
       write(iulog,fmt)"dE/dt dry mass adjustment   (xxAM-xxAP) ",str(i)," ",dEdt_dme_adjust_physE(i)," ",dEdt_dme_adjust_dynE(i)," ",diff
     end do
     write(iulog,*)" "
+    write(iulog,*)"Compare to dry mass adjustment in dynamics (xx=d,dy):"
+    write(iulog,*)  "                                                        xx=d    xx=dy  diff"
+    write(iulog,*)  "                                                        -----   -----  ----"
+    do i=1,4
+      diff = abs_diff(dEdt_dme_adjust_in_dyn(i),dEdt_dme_adjust_dynE(i),pf=pf)
+      write(iulog,fmt)"dE/dt dry mass adjustment   (xxAM-xxAP) ",str(i)," ",dEdt_dme_adjust_in_dyn(i),&
+           " ",dEdt_dme_adjust_dynE(i)," ",diff,pf
+    end do
+    write(iulog,*)" "
     write(iulog,*)" "
     !
     ! these diagnostics only make sense time-step to time-step
@@ -227,6 +237,20 @@ subroutine print_budget(hstwr)
       !      call endrun(subname//"Error in energy fixer budget")
     end if
     dEdt_dycore_phys = -dEdt_efix_dynE(1)-previous_dEdt_phys_dyn_coupl_err-previous_dEdt_dry_mass_adjust
+
+    write(iulog,*) " "
+    write(iulog,*) "xxx "
+    write(iulog,*) " "
+
+    tmp = (E_dyBF(1)-previous_E_bf)/1800.0_r8!-previous_dEdt_phys_total_dynE
+    write(iulog,*) "Dycore: ",tmp
+    write(iulog,*) "Phys total:" ,previous_dEdt_phys_total_dynE
+    write(iulog,*) "Residual: ",previous_dEdt_phys_total_dynE-tmp
+    write(iulog,*) " "
+    write(iulog,*) "xxx "
+    write(iulog,*) " "
+
+
     write(iulog,*)               "Hence the dycore E dissipation estimated from energy fixer "
     write(iulog,'(A39,F6.2,A6)') "based on previous time-step values is ",dEdt_dycore_phys," W/M^2"
     write(iulog,*) " "
@@ -259,13 +283,15 @@ subroutine print_budget(hstwr)
 
     write(iulog,*)" "
     write(iulog,*)"-------------------------------------------------------------------------"
-    write(iulog,*)" Consistency check 2: total energy increment in dynamics same as physics?"
+    write(iulog,*)" Consistency check 2: total energy increment on dynamics decomposition   "
+    write(iulog,*)" on an A-grid (physics grid) the as physics increment (also on A-grid)?"
+    write(iulog,*)" (note that wind tendencies are mapped to C-grid in MPAS dycore"
     write(iulog,*)"-------------------------------------------------------------------------"
     write(iulog,*)" "
 
     previous_dEdt_phys_dyn_coupl_err = dEdt_phys_total_in_dyn(1)-dEdt_phys_total_dynE(1)
     diff = abs_diff(dEdt_phys_total_dynE(1),dEdt_phys_total_in_dyn(1),pf=pf)
-    write(iulog,'(A40,E8.2,A7,A4)')"dE/dt physics-dynamics coupling errors       ",diff," W/M^2 ",pf
+    write(iulog,'(A41,E8.2,A7,A5)')" dE/dt physics-dynamics coupling errors       ",diff," W/M^2 ",pf
     write(iulog,*)" "
     if (abs(diff)>eps) then
       do i=1,4
@@ -371,6 +397,9 @@ subroutine print_budget(hstwr)
     !
     previous_dEdt_adiabatic_dycore = dEdt_dycore_phys
     previous_dEdt_dry_mass_adjust  = dEdt_dme_adjust_dynE(1)
+
+    previous_E_bf  = E_dyBF(1) !xxx
+    previous_dEdt_phys_total_dynE = dEdt_phys_total_dynE(1)!xxx
    end if
  end subroutine print_budget
  !=========================================================================================
