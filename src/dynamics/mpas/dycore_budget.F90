@@ -163,7 +163,8 @@ subroutine print_budget(hstwr)
     write(iulog,*)"variables."
     write(iulog,*)" "
     write(iulog,*)" "
-    write(iulog,*)"FYI: all difference (diff) below are absolute normalized differences"
+    write(iulog,*)"FYI : norm. diff = absolute normalized difference"
+    write(iulog,*)"FYI2: diff       = difference (not normalized)"
     write(iulog,*)" "
     write(iulog,*)" "
     write(iulog,*)"Consistency check 0:"
@@ -199,8 +200,8 @@ subroutine print_budget(hstwr)
     end do
     write(iulog,*)" "
     write(iulog,*)"Compare to dry mass adjustment in dynamics (xx=d,dy):"
-    write(iulog,*)  "                                                        xx=d    xx=dy  diff"
-    write(iulog,*)  "                                                        -----   -----  ----"
+    write(iulog,*)  "                                                        xx=d    xx=dy  norm. diff"
+    write(iulog,*)  "                                                        -----   -----  ----------"
     do i=1,4
       diff = abs_diff(dEdt_dme_adjust_in_dyn(i),dEdt_dme_adjust_dynE(i),pf=pf)
       write(iulog,fmt)"dE/dt dry mass adjustment   (xxAM-xxAP) ",str(i)," ",dEdt_dme_adjust_in_dyn(i),&
