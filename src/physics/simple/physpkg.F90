@@ -202,6 +202,7 @@ contains
     use phys_debug_util,    only: phys_debug_init
     use qneg_module,        only: qneg_init
     use cam_snapshot,       only: cam_snapshot_init
+    use budgets,            only: budget_init
 
     ! Input/output arguments
     type(physics_state), pointer       :: phys_state(:)
@@ -270,6 +271,9 @@ contains
 
     ! Initialize the snapshot capability
     call cam_snapshot_init(cam_in, cam_out, pbuf2d, begchunk)
+
+    ! Initialize energy budgets
+    call budget_init()
 
   end subroutine phys_init
 
