@@ -3858,7 +3858,6 @@ if ($dyn =~ /se/) {
     my @vars = qw(
                   se_ftype
                   se_horz_num_threads
-                  se_lcp_moist
 		  se_large_Courant_incr
                   se_hypervis_subcycle
                   se_hypervis_subcycle_sponge
@@ -3886,7 +3885,6 @@ if ($dyn =~ /se/) {
 		  se_fvm_supercycling_jet
 		  se_kmin_jet
 		  se_kmax_jet
-		  se_phys_dyn_cp
                   se_molecular_diff
         );
 

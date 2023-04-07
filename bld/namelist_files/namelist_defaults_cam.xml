@@ -2966,8 +2966,6 @@
 
 <se_ftype> 2 </se_ftype>
 
-<se_lcp_moist                 > .true.  </se_lcp_moist>
-
 <se_large_Courant_incr        > .true.  </se_large_Courant_incr>
 
 <se_hypervis_scaling se_refined_mesh="1" hypervis_type="tensor" >3.22D0 </se_hypervis_scaling>
@@ -2994,8 +2992,6 @@
 
 <se_max_hypervis_courant > 1.0e99 </se_max_hypervis_courant>
 <se_max_hypervis_courant se_refined_mesh="1" hypervis_type="scalar" > 1.9 </se_max_hypervis_courant>
-
-<se_phys_dyn_cp>1</se_phys_dyn_cp>
 
 <se_nu>-1</se_nu>
 <se_nu waccmx="1">5.e15</se_nu>

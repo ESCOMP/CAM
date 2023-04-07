@@ -31,14 +31,7 @@ module dimensions_mod
   !
   character(len=16),  allocatable, public :: cnst_name_gll(:)     ! constituent names for SE tracers
   character(len=128), allocatable, public :: cnst_longname_gll(:) ! long name of SE tracers
-  !
-  !moist cp in energy conversion term
-  !
-  ! .false.: force dycore to use cpd (cp dry) instead of moist cp
-  ! .true. : use moist cp in dycore
-  !
-  logical           , public :: lcp_moist = .true. 
- 
+
   integer, parameter, public :: np = NP
   integer, parameter, public :: nc = 3       !cslam resolution
   integer           , public :: fv_nphys !physics-grid resolution - the "MAX" is so that the code compiles with NC=0

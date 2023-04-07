@@ -7685,16 +7685,6 @@ Number of dynamics steps per physics timestep.
 Default: Set by build-namelist.
 </entry>
 
-<entry id="se_phys_dyn_cp" type="integer" category="se"
-       group="dyn_se_inparm" valid_values="0,1,2" >
-Scaling of temperature increment for different levels of
-thermal energy consistency.
-0: no scaling
-1: scale increment for cp consistency between dynamics and physics
-2: do 1 as well as take into account condensate effect on thermal energy
-Default: Set by build-namelist.
-</entry>
-
 <entry id="se_nu" type="real" category="se"
        group="dyn_se_inparm" valid_values="" >
 Hyperviscosity coefficient for u,v, T [m^4/s].
@@ -7758,17 +7748,6 @@ See se_sponge_del4_nu_fac and se_sponge_del4_nu_div_fac
 
 If &lt; 0, se_sponge_del4_lev is automatically set based on model top location.
 Default: Set by build-namelist.
-</entry>
-
-<entry id="se_lcp_moist" type="logical" category="se"
-       group="dyn_se_inparm" valid_values="" >
-If TRUE the continous equations the dynamical core is based on will conserve a
-comprehensive moist total energy
-If FALSE the continous equations the dynamical core is based on will conserve
-a total energy based on cp for dry air and no condensates (same total energy as
-CAM physics uses).
-For more details see Lauritzen et al., (2018;DOI:10.1029/2017MS001257)
-Default: TRUE
 </entry>
 
 <entry id="se_large_Courant_incr" type="logical" category="se"

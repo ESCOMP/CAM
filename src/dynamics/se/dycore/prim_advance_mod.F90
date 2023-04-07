@@ -54,7 +54,6 @@ contains
     use hybvcoord_mod,     only: hvcoord_t
     use hybrid_mod,        only: hybrid_t
     use time_mod,          only: TimeLevel_t,  timelevel_qdp, tevolve
-    use dimensions_mod,    only: lcp_moist
     use fvm_control_volume_mod, only: fvm_struct
     use cam_thermo,        only: get_kappa_dry
     use air_composition,   only: thermodynamic_active_species_num
@@ -128,16 +127,10 @@ contains
     !
     ! compute Cp and kappa=Rdry/cpdry here and not in RK-stages since Q stays constant
     !
-    if (lcp_moist) then
-      do ie=nets,nete
-        call get_cp(qwater(:,:,:,:,ie),.true.,&
-             inv_cp_full(:,:,:,ie), active_species_idx_dycore=qidx)
-      end do
-    else
-      do ie=nets,nete
-        inv_cp_full(:,:,:,ie) = 1.0_r8/cpair
-      end do
-    end if
+    do ie=nets,nete
+      call get_cp(qwater(:,:,:,:,ie),.true.,&
+           inv_cp_full(:,:,:,ie), active_species_idx_dycore=qidx)
+    end do
     do ie=nets,nete
       call get_kappa_dry(qwater(:,:,:,:,ie), qidx, kappa(:,:,:,ie))
     end do
@@ -1443,7 +1436,7 @@ contains
    end subroutine distribute_flux_at_corners
 
   subroutine tot_energy_dyn(elem,fvm,nets,nete,tl,tl_qdp,outfld_name_suffix)
-    use dimensions_mod,         only: npsq,nlev,np,lcp_moist,nc,ntrac,qsize
+    use dimensions_mod,         only: npsq,nlev,np,nc,ntrac,qsize
     use physconst,              only: gravit, cpair, rearth, omega
     use element_mod,            only: element_t
     use cam_history,            only: outfld
@@ -1527,13 +1520,9 @@ contains
         qidx(nq) = nq
       end do
       do ie=nets,nete
-        if (lcp_moist) then
-          call get_cp(elem(ie)%state%Qdp(:,:,:,1:qsize,tl_qdp),&
-               .false., cp, factor=1.0_r8/elem(ie)%state%dp3d(:,:,:,tl),&
-               active_species_idx_dycore=thermodynamic_active_species_idx_dycore)
-        else
-          cp = cpair
-        end if
+        call get_cp(elem(ie)%state%Qdp(:,:,:,1:qsize,tl_qdp),&
+             .false., cp, factor=1.0_r8/elem(ie)%state%dp3d(:,:,:,tl),&
+             active_species_idx_dycore=thermodynamic_active_species_idx_dycore)
         ptop = hyai(1)*ps0
         do j=1,np
           !get mixing ratio of thermodynamic active species only 
