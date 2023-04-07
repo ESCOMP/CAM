@@ -30,7 +30,6 @@
 <ndep_list>'noy', 'nhx'</ndep_list>
 
 <!-- nudging -->
-
 <Nudge_Model>.true.</Nudge_Model>
 <Nudge_Path hgrid="0.9x1.25" nlev="32">'atm/cam/met/nudging/MERRA2_fv09_32L/'</Nudge_Path>
 <Nudge_Path hgrid="ne30np4" nlev="32">'atm/cam/met/nudging/MERRA2_ne30_32L/'</Nudge_Path>
@@ -42,16 +41,15 @@
 <Nudge_File_Template hgrid="ne0np4CONUS.ne30x8" nlev="32">'%y/MERRA2_ne0CONUS30x8_L32.cam2.i.%y-%m-%d-%s.nc'</Nudge_File_Template>
 <Nudge_Force_Opt>0</Nudge_Force_Opt>
 <Nudge_TimeScale_Opt>0</Nudge_TimeScale_Opt>
-<Nudge_Times_Per_Day>4</Nudge_Times_Per_Day>
-<Nudge_Times_Per_Day hgrid="ne0np4CONUS.ne30x8">8</Nudge_Times_Per_Day>
-<Model_Times_Per_Day>24</Model_Times_Per_Day>
+<Nudge_Times_Per_Day>8</Nudge_Times_Per_Day>
+<Model_Times_Per_Day>48</Model_Times_Per_Day>
 <Model_Times_Per_Day hgrid="ne0np4CONUS.ne30x8">384</Model_Times_Per_Day>
 <Nudge_Uprof>1</Nudge_Uprof>
-<Nudge_Ucoef>0.06</Nudge_Ucoef>
+<Nudge_Ucoef>0.25</Nudge_Ucoef>
 <Nudge_Vprof>1</Nudge_Vprof>
-<Nudge_Vcoef>0.06</Nudge_Vcoef>
+<Nudge_Vcoef>0.25</Nudge_Vcoef>
 <Nudge_Tprof>1</Nudge_Tprof>
-<Nudge_Tcoef>0.06</Nudge_Tcoef>
+<Nudge_Tcoef>0.25</Nudge_Tcoef>
 <Nudge_Qprof>0</Nudge_Qprof>
 <Nudge_Qcoef>0.00</Nudge_Qcoef>
 <Nudge_PSprof>0</Nudge_PSprof>

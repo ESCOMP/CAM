@@ -106,7 +106,7 @@ module chemistry
 
   character(len=fieldname_len) :: srcnam(gas_pcnst) ! names of source/sink tendencies
 
-  integer :: ixcldliq, ixcldice                     ! indicies of liquid and ice cloud water
+  integer :: ixcldliq                ! index of liquid cloud water
   integer :: ndx_cld
   integer :: ndx_cmfdqr
   integer :: ndx_nevapr
@@ -678,7 +678,6 @@ end function chem_is_active
 ! Get liq and ice cloud water indicies
 !-----------------------------------------------------------------------
     call cnst_get_ind( 'CLDLIQ', ixcldliq )
-    call cnst_get_ind( 'CLDICE', ixcldice )
     call cnst_get_ind( 'NUMLIQ', ixndrop, abort=.false.  )
 
 !-----------------------------------------------------------------------
@@ -969,6 +968,10 @@ end function chem_is_active
              where(mask)
                 q(:,ilev) = rmwf12 * chem_surfvals_get('F12VMR')
              end where
+          case ('CO2')
+             where(mask)
+                q(:,ilev) = chem_surfvals_get('CO2MMR')
+             end where
           end select
        end do
     end if
@@ -1200,16 +1203,15 @@ end function chem_is_active
 !-----------------------------------------------------------------------
     call t_startf( 'chemdr' )
     do k = 1,pver
-       cldw(:ncol,k) = state%q(:ncol,k,ixcldliq) + state%q(:ncol,k,ixcldice)
+       cldw(:ncol,k) = state%q(:ncol,k,ixcldliq)
        if (ixndrop>0) &
             ncldwtr(:ncol,k) = state%q(:ncol,k,ixndrop)
     end do
 
     call gas_phase_chemdr(lchnk, ncol, imozart, state%q, &
                           state%phis, state%zm, state%zi, calday, &
-                          state%t, state%pmid, state%pdel, state%pint, &
-                          cldw, tropLev, tropLevChem, ncldwtr, state%u, state%v, &
-                          chem_dt, state%ps, &
+                          state%t, state%pmid, state%pdel, state%pint, state%rpdel, state%rpdeldry, &
+                          cldw, tropLev, tropLevChem, ncldwtr, state%u, state%v, chem_dt, state%ps, &
                           fsds, cam_in%ts, cam_in%asdir, cam_in%ocnfrac, cam_in%icefrac, &
                           cam_out%precc, cam_out%precl, cam_in%snowhland, ghg_chem, state%latmapback, &
                           drydepflx, wetdepflx, cam_in%cflx, cam_in%fireflx, cam_in%fireztop, &
@@ -1286,7 +1288,13 @@ end function chem_is_active
 !-------------------------------------------------------------------
   subroutine chem_final()
     use mee_ionization, only: mee_ion_final
+    use rate_diags, only: rate_diags_final
+    use species_sums_diags, only: species_sums_final
+
     call mee_ion_final()
+    call rate_diags_final()
+    call species_sums_final()
+
   end subroutine chem_final
 
 !-------------------------------------------------------------------

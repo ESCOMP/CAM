@@ -2825,6 +2825,18 @@ Add diagnostic output for heterogeneous freezing code.
 Default: .false.
 </entry>
 
+<entry id="hetfrz_bc_scalfac" type="real" category="microphys"
+       group="hetfrz_classnuc_nl" valid_values="" >
+Heterogeneous freezing scaling factor for black carbon aerosols.
+Default: 0.01
+</entry>
+
+<entry id="hetfrz_dust_scalfac" type="real" category="microphys"
+       group="hetfrz_classnuc_nl" valid_values="" >
+Heterogeneous freezing scaling factor for dust aerosols.
+Default: 0.05
+</entry>
+
 <entry id="use_preexisting_ice" type="logical" category="microphys"
        group="nucleate_ice_nl" valid_values="" >
 Switch to turn on treatment of pre-existing ice in the ice nucleation code.
@@ -4763,10 +4775,12 @@ cache file to be consistent with how CAM was built.
 Default: set by build-namelist
 </entry>
 
-<entry id="cam_chempkg" type="char*32" category="build"
-       group="phys_ctl_nl" valid_values="trop_mam3,trop_mam4,trop_mam5,trop_mam7,trop_mozart,trop_strat_mam4_vbs,trop_strat_mam4_vbsext,trop_strat_mam5_vbs,
-                                         waccm_ma,waccm_mad_mam4,waccm_ma_mam4,waccm_ma_sulfur,waccm_sc,waccm_sc_mam4,waccm_tsmlt_mam4,waccm_tsmlt_mam5,
-                                         terminator,none" >
+<entry id="cam_chempkg" type="char*32" category="build" group="phys_ctl_nl"
+       valid_values="none,ghg_mam4,terminator,trop_mam3,trop_mam4,trop_mam7,trop_mozart,trop_strat_mam4_ts2,
+		     trop_strat_mam4_vbs,trop_strat_mam4_vbsext,trop_strat_mam5_ts2,trop_strat_mam5_vbs,
+		     trop_strat_mam5_vbsext,waccm_ma,waccm_mad,waccm_ma_sulfur,waccm_sc,waccm_sc_mam4,
+		     waccm_mad_mam4,waccm_ma_mam4,waccm_tsmlt_mam4,waccm_tsmlt_mam4_vbsext,waccm_mad_mam5,
+		     waccm_ma_mam5,waccm_tsmlt_mam5,waccm_tsmlt_mam5_vbsext">
 Name of the CAM chemistry package.  N.B. this variable may not be set by
 the user.  It is set by build-namelist via information in the configure
 cache file to be consistent with how CAM was built.
@@ -7226,13 +7240,43 @@ List of nitrogen deposition fluxes to be sent from CAM to surface models.
 Default: set by build-namelist.
 </entry>
 
+<entry id="stream_ndep_year_first" type="integer" category="Nitrogen Deposition"
+       group="ndep_stream_nl" valid_values="" >
+Year first to use in nitrogen deposition stream data. Set by case xml variable
+CAM_STREAM_NDEP_YEAR_FIRST
+</entry>
+
+<entry id="stream_ndep_year_last" type="integer" category="Nitrogen Deposition"
+       group="ndep_stream_nl" valid_values="" >
+Year last to use in nitrogen deposition stream data.
+Set by case xml variable CAM_STREAM_NDEP_YEAR_LAST
+</entry>
+
+<entry id="stream_ndep_year_align" type="integer" category="Nitrogen Deposition"
+       group="ndep_stream_nl" valid_values="" >
+Model year to align with CAM_STREAM_NDEP_YEAR_FIRST.
+Set by case xml variable CAM_STREAM_NDEP_YEAR_ALIGN
+</entry>
+
+<entry id="stream_ndep_data_filename" type="char*256" input_pathname="abs" category="Nitrogen Deposition"
+       group="ndep_stream_nl" valid_values="" >
+NDEP stream data filename.
+Set by case xml variable CAM_STREAM_NDEP_DATA_FILENAME.
+</entry>
+
+<entry id="stream_ndep_mesh_filename" type="char*256" input_pathname="abs" category="Nitrogen Deposition"
+       group="ndep_stream_nl" valid_values="" >
+NDEP mesh file corresponding to sream_ndep_data_filename.
+Set by case xml variable CAM_STREAM_NDEP_MESH_FILENAME.
+</entry>
+
 <entry id="megan_factors_file" type="char*256" input_pathname="abs" category="VOC_emissions"
        group="megan_emis_nl" valid_values="" >
 File containing MEGAN emissions factors.
 Default: set by build-namelist.
 </entry>
 
-<entry id="megan_specifier" type="char*1024(100)" category="VOC_emissions"
+<entry id="megan_specifier" type="char*512(200)" category="VOC_emissions"
        group="megan_emis_nl" valid_values="" >
 MEGAN specifier.
 Default: set by build-namelist.
@@ -8257,30 +8301,6 @@ us_standard_atmosphere: static atmospheric state (u,v)=0, standard lapse rate fo
 Default: 'none'
 </entry>
 
-<!-- Specify ocean data and domain files in a component independent way. -->
-<!-- build-namelist associates this information with the component       -->
-<!-- dependend variables.                                                -->
-
-<entry id="bndtvs" type="char*256" input_pathname="abs" category="ocn"
-       group="camexp" valid_values="" >
-Full pathname of time-variant sea-surface temperature and sea-ice
-concentration boundary dataset.
-Default: set by build-namelist.
-</entry>
-
-<entry id="focndomain" type="char*256" input_pathname="abs" category="ocn"
-       group="camexp" valid_values="" >
-Full pathname of
-Default: set by build-namelist.
-</entry>
-
-<entry id="bndtvs_domain" type="char*256" input_pathname="abs" category="ocn"
-       group="camexp" valid_values="" >
-Full pathname of grid file for time-variant sea-surface temperature and sea-ice
-concentration boundary dataset.
-Default: set by build-namelist.
-</entry>
-
 <!-- ========================================================================================  -->
 <!-- Rename component log files.  shr_file_mod::shr_file_setIO reads
      namelist /modelio/.  These variables in group camexp are treated
@@ -9077,6 +9097,38 @@ Default: 0.0
        group="dyn_fv3_inparm" valid_values="" >
 If TRUE perform temp tendency scaling before send to fv3 dynamics
 Default: FALSE
+</entry>
+
+<!-- ndep stream forcing -->
+
+<!-- ========================================================================================  -->
+<!-- ndepdyn streams namelist                                                                  -->
+<!-- (only used when the ndep_list namelist variable (above) in drv_flds_in is not empty       -->
+<!-- ========================================================================================  -->
+
+<entry id="stream_datafile_ndep" type="char*256" category="ndep_stream"
+       group="ndep_stream_nml" valid_values="" input_pathname="abs" >
+Stream filename(s) for Nitrogen Deposition data
+</entry>
+
+<entry id="stream_meshfile_ndep" type="char*256" category="ndep_stream"
+       group="ndep_stream_nml" valid_values="" input_pathname="abs" >
+Stream meshfile for Nitrogen Deposition data
+</entry>
+
+<entry id="stream_year_first_ndep" type="integer" category="ndep_stream"
+       group="ndep_stream_nml" valid_values="" >
+First year to loop over for Nitrogen Deposition data
+</entry>
+
+<entry id="stream_year_last_ndep" type="integer" category="ndep_stream"
+       group="ndep_stream_nml" valid_values="" >
+Last year to loop over for Nitrogen Deposition data
+</entry>
+
+<entry id="model_year_align_ndep" type="integer" category="ndep_stream"
+       group="ndep_stream_nml" valid_values="" >
+Simulation year that aligns with stream_year_first_ndep value
 </entry>
 
 </namelist_definition>

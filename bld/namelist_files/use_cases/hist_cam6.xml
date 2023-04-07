@@ -18,10 +18,11 @@
 
   <srf_emis_type            >    INTERP_MISSING_MONTHS  </srf_emis_type>
   <ext_frc_type             >    INTERP_MISSING_MONTHS  </ext_frc_type>
+  <csw_time_type>SERIAL</csw_time_type>
 
   <prescribed_strataero_type    >     'SERIAL'                                                                     </prescribed_strataero_type>
   <prescribed_strataero_datapath>     'atm/cam/ozone_strataero'                                                    </prescribed_strataero_datapath>
-  <prescribed_strataero_file>         'ozone_strataero_WACCM_L70_zm5day_18500101-20150103_CMIP6ensAvg_c180923.nc'  </prescribed_strataero_file> 
+  <prescribed_strataero_file>         'ozone_strataero_WACCM_L70_zm5day_18500101-20150103_CMIP6ensAvg_c180923.nc'  </prescribed_strataero_file>
   <prescribed_strataero_use_chemtrop> .true.                                                                       </prescribed_strataero_use_chemtrop>
 
   <scenario_ghg            >    'CHEM_LBC_FILE'   </scenario_ghg>

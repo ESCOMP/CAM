@@ -482,11 +482,7 @@ subroutine nucleate_ice_cam_calc( &
    ni    => state%q(:,:,numice_idx)
    pmid  => state%pmid
 
-   do k = top_lev, pver
-      do i = 1, ncol
-         rho(i,k) = pmid(i,k)/(rair*t(i,k))
-      end do
-   end do
+   rho(:ncol,:) = pmid(:ncol,:)/(rair*t(:ncol,:))
 
    if (clim_modal_aero) then
 
