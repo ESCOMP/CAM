@@ -632,8 +632,8 @@ contains
 
     minrad = aero_props%min_mass_mean_rad(bin_ndx, species_ndx)
 
-    do i = 1,ncol
-       do k = 1,nlev
+    do k = 1,nlev
+       do i = 1,ncol
           if (aer_massdens(i,k)*1.0e-3_r8 > 1.0e-30_r8 .and. aer_numdens(i,k) > 1.0e-3_r8) then
              radius(i,k) = (3._r8/(4*pi*specdens)*aer_massdens(i,k)/(aer_numdens(i,k)*per_m3))**(1._r8/3._r8) ! m
           else
@@ -673,9 +673,9 @@ contains
     tot2_mmr = 0.0_r8
     tot1_mmr = 0.0_r8
 
-    do ispc = 1, aero_props%nspecies(bin_ndx)
+    if (aero_props%soluble(bin_ndx)) then
 
-       if (aero_props%soluble(bin_ndx, ispc)) then
+       do ispc = 1, aero_props%nspecies(bin_ndx)
 
           call aero_props%species_type(bin_ndx, ispc, spectype)
 
@@ -687,9 +687,10 @@ contains
              call self%get_ambient_mmr(ispc, bin_ndx, aer_mmr)
              tot1_mmr(:ncol,:) = tot1_mmr(:ncol,:) + aer_mmr(:ncol,:)
           end if
-       end if
+       end do
 
-    end do
+    end if
+
     tot1_mmr(:ncol,:) = tot1_mmr(:ncol,:) + tot2_mmr(:ncol,:)
 
     call self%get_amb_species_numdens(bin_ndx, ncol, nlev, species_type, aero_props, rho, aer_numdens) ! #/cm3

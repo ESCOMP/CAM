@@ -61,7 +61,7 @@ module aerosol_properties_mod
      procedure(aero_hetfrz_species), deferred :: hetfrz_species
      procedure :: soa_equivso4_factor ! SOA Hygroscopicity / Sulfate Hygroscopicity
      procedure :: pom_equivso4_factor ! POM Hygroscopicity / Sulfate Hygroscopicity
-     procedure :: soluble
+     procedure(aero_soluble), deferred :: soluble
      procedure(aero_min_mass_mean_rad), deferred :: min_mass_mean_rad
 
      procedure :: final=>aero_props_final
@@ -243,6 +243,16 @@ module aerosol_properties_mod
        real(r8) :: minrad  ! meters
 
      end function aero_min_mass_mean_rad
+
+     !------------------------------------------------------------------------------
+     ! returns TRUE if soluble
+     !------------------------------------------------------------------------------
+     logical function aero_soluble(self,bin_ndx)
+       import :: aerosol_properties
+       class(aerosol_properties), intent(in) :: self
+       integer, intent(in) :: bin_ndx           ! bin number
+
+     end function aero_soluble
 
    end interface
 
@@ -518,16 +528,5 @@ contains
     pom_equivso4_factor = self%pom_equivso4_factor_
 
   end function pom_equivso4_factor
-
-  !------------------------------------------------------------------------------
-  ! returns TRUE if soluble
-  !------------------------------------------------------------------------------
-  logical function soluble(self,bin_ndx,species_ndx)
-    class(aerosol_properties), intent(in) :: self
-    integer, intent(in) :: bin_ndx           ! bin number
-    integer, intent(in) :: species_ndx       ! species number
-
-    soluble = .true.
-  end function soluble
 
  end module aerosol_properties_mod

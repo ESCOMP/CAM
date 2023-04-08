@@ -401,10 +401,9 @@ contains
   !------------------------------------------------------------------------------
   ! returns TRUE if soluble
   !------------------------------------------------------------------------------
-  logical function soluble(self,bin_ndx,species_ndx)
+  logical function soluble(self,bin_ndx)
     class(modal_aerosol_properties), intent(in) :: self
     integer, intent(in) :: bin_ndx           ! bin number
-    integer, intent(in) :: species_ndx       ! species number
 
     character(len=aero_name_len) :: mode_name
 
