@@ -19,7 +19,7 @@ module budgets
   use cam_history_support, only: max_fieldname_len,ptapes
   use cam_logfile,         only: iulog
   use cam_thermo,          only: thermo_budget_vars, thermo_budget_vars_descriptor, &
-       thermo_budget_vars_unit, thermo_budget_vars_massv, thermo_budget_num_vars
+       thermo_budget_vars_unit, thermo_budget_vars_massv, thermo_budget_num_vars,teidx,wvidx,wlidx,wiidx
   use shr_kind_mod,        only: r8 => shr_kind_r8
   use spmd_utils,          only: masterproc, masterprocid, mpicom
 
@@ -51,6 +51,7 @@ module budgets
 
   integer,           public            :: thermo_budget_histfile_num = 1
   logical,           public            :: thermo_budget_history = .false.
+  logical,           public            :: thermo_budget_debug = .false.
   real(r8),          private           :: dstepsize
   !
   ! Constants for each budget
@@ -77,7 +78,6 @@ CONTAINS
     character (len=128)                    :: errmsg
     character (len=max_fieldname_len)      :: str1
     character (len=128)                    :: str2, str3
-    logical                                :: thermo_budget_hist
     logical                                :: cslamtr        ! using cslam transport for mass tracers
     integer                                :: ivars
     character(len=*), parameter            :: sub='e_m_snapshot'
@@ -90,7 +90,6 @@ CONTAINS
           cslamtr = .false.
        end if
        do ivars=1, thermo_budget_num_vars
-
           write(str1,*) TRIM(ADJUSTL(thermo_budget_vars(ivars))),"_",TRIM(ADJUSTL(name))
           write(str2,*) TRIM(ADJUSTL(thermo_budget_vars_descriptor(ivars)))," ", &
                TRIM(ADJUSTL(longname))
@@ -120,12 +119,16 @@ CONTAINS
                 end if
              else if (dycore_is('MPAS')) then
                 call addfld (TRIM(ADJUSTL(str1)),   horiz_only, 'N', TRIM(ADJUSTL(str3)),TRIM(ADJUSTL(str2)),gridname='mpas_cell')
+             else if (dycore_is('EUL')) then
+                call addfld (TRIM(ADJUSTL(str1)),   horiz_only, 'N', TRIM(ADJUSTL(str3)),TRIM(ADJUSTL(str2)),gridname='gauss_grid')
+             else if (dycore_is('FV')) then
+                call addfld (TRIM(ADJUSTL(str1)),   horiz_only, 'N', TRIM(ADJUSTL(str3)),TRIM(ADJUSTL(str2)),gridname='fv_centers')
              else
-                call endrun(sub//'budget_add is only supported for MPAS and SE dycores')
-                call endrun(errmsg)
+                call endrun(sub//'unknown dycore type ')
              end if
           end if
-          call add_default(TRIM(ADJUSTL(str1)), thermo_budget_histfile_num, 'N') 
+          if (thermo_budget_debug .or. ivars==teidx .or. ivars==wvidx.or. ivars==wlidx.or. ivars==wiidx) &
+               call add_default(TRIM(ADJUSTL(str1)), thermo_budget_histfile_num, 'N')
        end do
     end if
   end subroutine e_m_snapshot
@@ -170,14 +173,12 @@ CONTAINS
 
        ! register history budget variables
        do ivars=1, thermo_budget_num_vars
-
           write(str1,*) TRIM(ADJUSTL(thermo_budget_vars(ivars))),"_",TRIM(ADJUSTL(name))
           write(strstg1,*) TRIM(ADJUSTL(thermo_budget_vars(ivars))),"_",TRIM(ADJUSTL(stg1name))
           write(strstg2,*) TRIM(ADJUSTL(thermo_budget_vars(ivars))),"_",TRIM(ADJUSTL(stg2name))
           write(str2,*) TRIM(ADJUSTL(thermo_budget_vars_descriptor(ivars)))," ", &
                TRIM(ADJUSTL(longname))
           write(str3,*) TRIM(ADJUSTL(thermo_budget_vars_unit(ivars)))
-
 
           budget_num = budget_num + 1
           budget_pkgtype(budget_num)=pkgtype
@@ -220,7 +221,8 @@ CONTAINS
                 call endrun(errmsg)
              end if
           end if
-          call add_default(TRIM(ADJUSTL(str1)), thermo_budget_histfile_num, 'N') 
+          if (thermo_budget_debug .or. ivars==teidx .or. ivars==wvidx.or. ivars==wlidx.or. ivars==wiidx) &
+               call add_default(TRIM(ADJUSTL(str1)), thermo_budget_histfile_num, 'N')
        end do
     end if
   end subroutine e_m_budget
@@ -370,7 +372,7 @@ CONTAINS
     integer                     :: unitn, ierr
     character(len=*), parameter :: subname = 'budget_readnl :: '
 
-    namelist /thermo_budget_nl/  thermo_budget_history, thermo_budget_histfile_num
+    namelist /thermo_budget_nl/  thermo_budget_history, thermo_budget_histfile_num, thermo_budget_debug
     !-----------------------------------------------------------------------
 
     if (masterproc) then
@@ -388,6 +390,8 @@ CONTAINS
     ! Broadcast namelist variables
     call mpi_bcast(thermo_budget_history         , 1  , mpi_logical  , masterprocid, mpicom, ierr)
     if (ierr /= 0) call endrun(subname//": FATAL: mpi_bcast: thermo_budget_history")
+    call mpi_bcast(thermo_budget_debug         , 1  , mpi_logical  , masterprocid, mpicom, ierr)
+    if (ierr /= 0) call endrun(subname//": FATAL: mpi_bcast: thermo_budget_debug")
     call mpi_bcast(thermo_budget_histfile_num    , 1  , mpi_integer  , masterprocid, mpicom, ierr)
     if (ierr /= 0) call endrun(subname//": FATAL: mpi_bcast: thermo_budget_histfile_num")
 

@@ -1636,6 +1636,10 @@ contains
        select case(cam_grids(gridind)%name)
        case('GLL')
           wtname='area_weight_gll'
+       case('EUL')
+          wtname='gw'
+       case('FV')
+          wtname='gw'
        case('INI')
           wtname='area_weight_ini'
        case('physgrid')

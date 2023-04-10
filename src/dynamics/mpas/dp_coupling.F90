@@ -626,7 +626,7 @@ subroutine derived_tend(nCellsSolve, nCells, t_tend, u_tend, v_tend, q_tend, dyn
      Rold=Rold*cv/Rgas
    else
      Rnew = 0.0_r8
-     Rold = 0.0_r8
+     Rold = 1.0_r8
    end if
    !
    ! Compute q not updated by physics
