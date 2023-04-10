@@ -366,16 +366,16 @@ end subroutine check_energy_get_integrals
     real(r8) :: scaling(state%psetcols,pver)       ! scaling for conversion of temperature increment
     real(r8) :: temp(state%ncol,pver)              ! temperature
 
-    real(r8) :: se(pcols)                          ! enthalpy or internal energy (J/m2)
-    real(r8) :: po(pcols)                          ! surface potential or potential energy (J/m2)
-    real(r8) :: ke(pcols)                          ! kinetic energy    (J/m2)
-    real(r8) :: wv(pcols)                          ! column integrated vapor       (kg/m2)
-    real(r8) :: liq(pcols)                         ! column integrated liquid      (kg/m2)
-    real(r8) :: ice(pcols)                         ! column integrated ice         (kg/m2)
+    real(r8) :: se(state%ncol)                     ! enthalpy or internal energy (J/m2)
+    real(r8) :: po(state%ncol)                     ! surface potential or potential energy (J/m2)
+    real(r8) :: ke(state%ncol)                     ! kinetic energy    (J/m2)
+    real(r8) :: wv(state%ncol)                     ! column integrated vapor       (kg/m2)
+    real(r8) :: liq(state%ncol)                    ! column integrated liquid      (kg/m2)
+    real(r8) :: ice(state%ncol)                    ! column integrated ice         (kg/m2)
 
     integer lchnk                                  ! chunk identifier
     integer ncol                                   ! number of atmospheric columns
-    integer  i                                   ! column
+    integer  i                                     ! column index
 !-----------------------------------------------------------------------
 
     lchnk = state%lchnk
@@ -390,7 +390,8 @@ end subroutine check_energy_get_integrals
        cp_or_cv(:,:) = cpair
     else
        call endrun('check_energy_chng: cpairv is not allowed to vary when subcolumns are turned on')
-    end if
+     end if
+
     call get_hydrostatic_energy(state%q(1:ncol,1:pver,1:pcnst),.true.,               &
          state%pdel(1:ncol,1:pver), cp_or_cv(1:ncol,1:pver),                         &
          state%u(1:ncol,1:pver), state%v(1:ncol,1:pver), state%T(1:ncol,1:pver),     &
