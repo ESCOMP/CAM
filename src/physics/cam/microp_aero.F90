@@ -858,9 +858,11 @@ subroutine microp_aero_run ( &
       deallocate(factnum)
    end if
 
-   ! destroy the aerosol state object
-   deallocate(aero_state1_obj)
-   nullify(aero_state1_obj)
+   if (associated(aero_state1_obj)) then
+      ! destroy the aerosol state object
+      deallocate(aero_state1_obj)
+      nullify(aero_state1_obj)
+   endif
 
  end subroutine microp_aero_run
 
