@@ -32,6 +32,8 @@ module physpkg
   use cam_logfile,     only: iulog
   use camsrfexch,      only: cam_export
 
+  use phys_control,    only: use_hemco            ! Use Harmonized Emissions Component (HEMCO)
+
   use modal_aero_calcsize,    only: modal_aero_calcsize_init, modal_aero_calcsize_diag, modal_aero_calcsize_reg
   use modal_aero_wateruptake, only: modal_aero_wateruptake_init, modal_aero_wateruptake_dr, modal_aero_wateruptake_reg
 
@@ -63,7 +65,6 @@ module physpkg
   logical           :: state_debug_checks  ! Debug physics_state.
   logical           :: clim_modal_aero     ! climate controled by prognostic or prescribed modal aerosols
   logical           :: prog_modal_aero     ! Prognostic modal aerosols present
-  logical           :: use_hemco           ! Use Harmonized Emissions Component (HEMCO)
 
   !  Physics buffer index
   integer ::  teout_idx          = 0
@@ -178,8 +179,7 @@ contains
                       cam_take_snapshot_before_out= cam_take_snapshot_before, &
                       cam_take_snapshot_after_out = cam_take_snapshot_after, &
                       cam_snapshot_before_num_out = cam_snapshot_before_num, &
-                      cam_snapshot_after_num_out  = cam_snapshot_after_num, &
-                      use_hemco_out               = use_hemco)
+                      cam_snapshot_after_num_out  = cam_snapshot_after_num)
 
     subcol_scheme = subcol_get_scheme()
 

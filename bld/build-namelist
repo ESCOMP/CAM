@@ -2854,13 +2854,6 @@ if ($nl->get_value('use_hemco') =~ m/$TRUE/io) {
     add_default($nl, 'hemco_config_file');
     add_default($nl, 'hemco_grid_xdim');
     add_default($nl, 'hemco_grid_ydim');
-
-    # In a compset with %HEMCO modifier enabled, set the value
-    # of the use_hemco variable to true
-    #
-    # use_hemco is in &phys_ctl_nl so that the relevant routine calls
-    # can be controlled in physpkg and at levels below
-    $nl->set_variable_value('phys_ctl_nl', 'use_hemco', '.true.');
 }
 
 # Physics options

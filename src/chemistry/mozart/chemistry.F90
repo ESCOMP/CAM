@@ -23,6 +23,7 @@ module chemistry
   use mo_apex,          only : mo_apex_readnl
   use ref_pres,         only : ptop_ref
   use phys_control,     only : waccmx_is   ! WACCM-X switch query function
+  use phys_control,     only : use_hemco   ! HEMCO switch logical
 
   implicit none
   private
@@ -81,9 +82,6 @@ module chemistry
   ! dry dep
 
   character(len=shr_kind_cl) :: depvel_lnd_file = 'depvel_lnd_file'
-
-  ! emis
-  logical            :: use_hemco = .false.
 
   character(len=shr_kind_cl) :: airpl_emis_file = '' ! airplane emissions
   character(len=shr_kind_cl) :: srf_emis_specifier(pcnst) = ''
@@ -676,8 +674,7 @@ end function chem_is_active
                        history_chemistry_out=history_chemistry , &
                        history_budget_out = history_budget , &
                        history_budget_histfile_num_out = history_budget_histfile_num, &
-                       history_cesm_forcing_out = history_cesm_forcing, &
-                       use_hemco_out = use_hemco )
+                       history_cesm_forcing_out = history_cesm_forcing )
 
     ! aqueous chem initialization
     call sox_inti()

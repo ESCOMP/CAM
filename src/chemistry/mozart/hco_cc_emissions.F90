@@ -60,7 +60,8 @@ module hco_cc_emissions
 !EOP
 !------------------------------------------------------------------------------
 !BOC
-    logical :: pcnst_is_extfrc(gas_pcnst)
+    logical :: pcnst_is_extfrc(gas_pcnst)              ! Is external forcing? (3-D data)
+    integer :: hco_pbuf_idx(gas_pcnst)                 ! Physics buffer indices for HCO_* fields from HEMCO
 contains
 !EOC
 !------------------------------------------------------------------------------
@@ -80,7 +81,6 @@ contains
 !
 ! !USES:
 !
-    use mo_chem_utls,   only: get_extfrc_ndx
     implicit none
 !
 ! !INPUT PARAMETERS:
@@ -105,30 +105,11 @@ contains
     real(r8), pointer     :: pbuf_ptr_3d(:,:)          ! ptr to pbuf data (/pcols,pver/)
     real(r8), pointer     :: pbuf_ptr_2d(:)            ! ptr to pbuf data (/pcols/)
     integer               :: tmpIdx                    ! pbuf field id
-    character(len=255)    :: fldname_ns                ! field name HCO_NH3
-    integer               :: RC                        ! return code (dummy)
-
-    logical, save         :: FIRST = .true.            ! is first run?
 
     ! reset sflx here. (same as mo_srf_emissions.F90)
     ! sflx is defined in chem_emissions (chemistry.F90) but without default values, and is
     ! later added to cam_in%cflx. it must be initialized in this subroutine.
     sflx(:,:) = 0._r8
-
-    ! for first run, cache results of 3-D or 2-D scan within pcnst_is_extfrc
-    ! to avoid lengthy lookups in future timesteps. hplin 1/12/23
-    if(FIRST) then
-        do n = 1, gas_pcnst
-            pcnst_is_extfrc(n) = (get_extfrc_ndx(trim(solsym(n))) > 0)
-        enddo
-
-        if(masterproc) then
-            write(iulog,*) "hco_set_srf_emissions: first run pcnst_is_extfrc cache"
-            write(iulog,*) pcnst_is_extfrc
-        endif
-
-        FIRST = .false.
-    endif
 
     !--------------------------------------------------------
     ! ... set HEMCO emissions
@@ -151,9 +132,7 @@ contains
     ! we loop over the pbuf to prevent inquiries. tbd hplin 7/19/20
 
     do n = 1, gas_pcnst
-        ! species name: solsym(n)
-        fldname_ns = 'HCO_' // trim(solsym(n))
-        tmpIdx = pbuf_get_index(fldname_ns, RC)
+        tmpIdx = hco_pbuf_idx(n)
         if(tmpIdx > 0) then
             if(pcnst_is_extfrc(n)) then ! 3-D data
                 ! if species is 3-D data, then all forcings set through 3-D. no longer process
@@ -192,7 +171,6 @@ contains
 ! !USES:
 !
         use mo_chem_utls,   only: get_spc_ndx
-        use mo_chem_utls,   only: get_extfrc_ndx
 
         ! Check list whether this species has external forcing from dataset - this is a CAM-chem flag
         ! and this is CAM-chem specific.
@@ -235,8 +213,6 @@ contains
 
     real(r8), pointer     :: pbuf_ik(:,:)              ! ptr to pbuf data (/pcols,pver/)
     integer               :: tmpIdx                    ! pbuf field id
-    character(len=255)    :: fldname_ns                ! field name HCO_NH3
-    integer               :: RC                        ! return code (dummy)
     real(r8)              :: kg_to_molec
 
     ! for every species index retrieve the species name, compute the pbuf name,
@@ -270,12 +246,7 @@ contains
 
     do n = 1, gas_pcnst
       ! check if extfrc available?
-      m = get_extfrc_ndx(trim(solsym(n)))
-
-      if(m > 0) then
-        ! confirm extfrc present
-        ! has_emis(m) = .true.
-
+      if(pcnst_is_extfrc(n)) then
         ! add extfrc
         ! "external insitu forcing" (1/cm^3/s) -- NOTE UNITS COMING OUT OF HEMCO are
         ! kg/m2/s, so unit conversion must be done
@@ -290,11 +261,7 @@ contains
         ! (hplin, 11/14/20)
         kg_to_molec = 1/(adv_mass(n) / avogadro * cm2_to_m2 * kg_to_g)
 
-        ! species name: solsym(n)
-        fldname_ns = 'HCO_' // trim(solsym(n))
-        ! if(masterproc) write(iulog,*) "mo_extfrc hemco: Adding extfrc for", fldname_ns
-
-        tmpIdx = pbuf_get_index(fldname_ns, RC)
+        tmpIdx = hco_pbuf_idx(n)
         if(tmpIdx > 0) then
           ! this is already in chunk, retrieve it
           call pbuf_get_field(pbuf, tmpIdx, pbuf_ik)
@@ -355,10 +322,12 @@ contains
         use chem_mods,    only: frc_from_dataset, extcnt, extfrc_lst
         use cam_history,  only: addfld, add_default, horiz_only
         use phys_control, only: phys_getopts
+        use mo_chem_utls, only: get_extfrc_ndx
         implicit none
 !
 ! !REVISION HISTORY:
 !  04 Nov 2022 - H.P. Lin    - Initial version based on extfrc_inti
+!  10 Apr 2023 - H.P. Lin    - Now move pcnst_is_extfrc initialization here
 !EOP
 !------------------------------------------------------------------------------
 !BOC
@@ -371,6 +340,25 @@ contains
     character(len=16)  :: spc_name
     integer  :: n
 
+    character(len=255)    :: fldname_ns                ! field name HCO_NH3
+    integer               :: RC                        ! return code (dummy)
+
+    ! for first run, cache results of 3-D or 2-D scan within pcnst_is_extfrc
+    ! to avoid lengthy lookups in future timesteps. hplin 1/12/23
+    do n = 1, gas_pcnst
+        pcnst_is_extfrc(n) = (get_extfrc_ndx(trim(solsym(n))) > 0)
+
+        ! construct information about HCO_* corresponding pbuf location
+        fldname_ns = 'HCO_' // trim(solsym(n))
+        hco_pbuf_idx(n) = pbuf_get_index(fldname_ns, RC)
+    enddo
+
+    if(masterproc) then
+        write(iulog,*) "hco_set_srf_emissions: first run pcnst_is_extfrc cache"
+        write(iulog,*) pcnst_is_extfrc
+    endif
+
+    ! Replicate functionality in extfrc_inti to create _XFRC... diagnostics
     call phys_getopts( &
          history_aerosol_out = history_aerosol, &
          history_chemistry_out = history_chemistry, &

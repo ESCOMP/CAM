@@ -149,9 +149,6 @@
 
       <value compset="_CAM.*_BGC%B">-co2_cycle</value>
 
-      <!-- Modifiers for HEMCO -->
-      <value compset="_CAM60%.*%HEMCO">-hemco</value>
-
       <!-- Match against "%WC" to set defaults for all WACCM cases. -->
       <!-- Later settings of "-chem" take precedence over earlier ones. -->
       <value compset="_(CAM50|CAM60)%(WC|CC|CV|CF)">-age_of_air_trcs</value>
@@ -329,6 +326,8 @@
       <value compset="_CAM60%WCTS%1PCT"> flbc_file='$DIN_LOC_ROOT/atm/waccm/lb/LBC_CMIP6_1pctCO2ramp_y1-165_0p5degLat_c180930.nc'</value>
       <value compset="_CAM60%WCTS%1PCT"> nlte_limit_co2=.true.</value>
       <value compset="_BGC%BDRD"> co2_cycle_rad_passive=.true. </value>
+      <!-- hemco (harmonized emissions component) option -->
+      <value compset="_CAM.*%HEMCO"> use_hemco=.true. </value>
       <!-- rearth provided by FMS for FV3 and must remain fixed to that value to maintain consistency between phys/dyn. -->
       <value grid="a%C[0-9]"> rearth = 6.37122D6 </value>
     </values>

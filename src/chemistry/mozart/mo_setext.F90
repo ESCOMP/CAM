@@ -9,8 +9,6 @@ module mo_setext
 
   save
 
-  logical :: use_hemco           ! Use Harmonized Emissions Component (HEMCO)
-
   integer :: co_ndx, no_ndx, xno_ndx, o_ndx
   integer :: op_ndx, o2p_ndx, np_ndx, n2p_ndx, n2d_ndx, n_ndx, e_ndx, oh_ndx
   logical :: has_ions = .false.
@@ -29,12 +27,7 @@ contains
     use spmd_utils,   only : masterproc
     use mee_ionization,only : mee_ion_init
 
-    use phys_control, only : phys_getopts
-
     implicit none
-
-    ! Check if HEMCO is enabled in this run
-    call phys_getopts(use_hemco_out               = use_hemco)
 
     co_ndx    = get_extfrc_ndx( 'CO' )
     no_ndx    = get_extfrc_ndx( 'NO' )
@@ -125,6 +118,8 @@ contains
     use spehox,         only : hox_prod_factor
 
     use physics_buffer, only : physics_buffer_desc
+
+    use phys_control,   only : use_hemco                   ! Use Harmonized Emissions Component (HEMCO)
 
     implicit none
 
