@@ -2785,12 +2785,18 @@ contains
     ! Dimensions : nX, nY
     State_Met(LCHNK)%SLP       (1,:nY) = state%ps(:nY)*0.01e+0_fp
 
-    ! Field      : TS, TSKIN
-    ! Description: Surface temperature, surface skin temperature
+    ! Field      : TS
+    ! Description: Surface temperature
     ! Unit       : K
     ! Dimensions : nX, nY
     State_Met(LCHNK)%TS        (1,:nY) = cam_in%TS(:nY)
-    State_Met(LCHNK)%TSKIN     (1,:nY) = cam_in%TS(:nY)
+
+    ! Field      : TSKIN
+    ! Description: Surface skin temperature
+    ! Remarks    : NOT to be confused with TS (T at 2m) (hplin, 3/20/23)
+    ! Unit       : K
+    ! Dimensions : nX, nY
+    State_Met(LCHNK)%TSKIN     (1,:nY) = cam_in%SST(:nY)
 
     ! Field      : SWGDN
     ! Description: Incident radiation @ ground
