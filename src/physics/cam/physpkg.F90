@@ -1144,13 +1144,6 @@ contains
     call gmean_mass ('before tphysbc DRY', phys_state)
 #endif
 
-    if(use_hemco) then
-        !----------------------------------------------------------
-        ! run hemco (first phase)
-        !----------------------------------------------------------
-        call HCOI_Chunk_Run(cam_in, phys_state, pbuf2d, phase=1)
-    endif
-
     !-----------------------------------------------------------------------
     ! Tendency physics before flux coupler invocation
     !-----------------------------------------------------------------------
@@ -1263,6 +1256,7 @@ contains
     if(use_hemco) then
         !----------------------------------------------------------
         ! run hemco (phase 2 before chemistry)
+        ! only phase 2 is used currently for HEMCO-CESM
         !----------------------------------------------------------
         call HCOI_Chunk_Run(cam_in, phys_state, pbuf2d, phase=2)
     endif
