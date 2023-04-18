@@ -686,7 +686,6 @@ contains
 #endif
     use gckpp_Model,     only : nSpec, Spc_Names
     use chem_mods,       only : drySpc_ndx
-    use charpak_mod,     only : strsplit
 
     ! args
     CHARACTER(LEN=*), INTENT(IN) :: nlfile  ! filepath for file containing namelist input
@@ -771,7 +770,6 @@ contains
 
        Write(iulog,'(/,a,/)') 'Now defining GEOS-Chem tracers and dry deposition mapping...'
 
-
        !==============================================================
        ! Read GEOS-Chem advected species from geoschem_config.yml
        !==============================================================
@@ -791,7 +789,7 @@ contains
           IF ( INDEX( LINE, 'transported_species' ) > 0 ) EXIT
        ENDDO
 
-       if (debug .and. masterproc) write(iulog,'(a)') 'chem_readnl: reading advected species list from geoschem_config.yml'
+       if (debug) write(iulog,'(a)') 'chem_readnl: reading advected species list from geoschem_config.yml'
 
        ! Read in all advected species names and add them to tracer names list
        nTracers = 0
@@ -799,12 +797,11 @@ contains
           READ(unitn,'(a)', IOSTAT=IERR) line
           IF ( IERR .NE. 0 ) CALL ENDRUN('chem_readnl: error setting adv spc list')
           line = ADJUSTL( ADJUSTR( line ) )
-
           IF ( INDEX( line, 'passive_species' ) > 0 ) EXIT
-          CALL StrSplit( line, '-', substrs, N )
           IF ( INDEX( LINE, '-' ) > 0 ) THEN
+             substrs(1) = LINE(3:)
              substrs(1) = ADJUSTL( ADJUSTR( substrs(1) ) )
-       
+
              ! Remove quotes (i.e. 'NO' -> NO)
              I = INDEX( substrs(1), "'" )
              IF ( I > 0 ) THEN
@@ -857,7 +854,11 @@ contains
        !==============================================================
 
        unitn = getunit()
-       OPEN( unitn, FILE=TRIM(nlfile), STATUS='old' )
+       OPEN( unitn, FILE=TRIM(nlfile), STATUS='old', IOSTAT=IERR )
+       IF (IERR .NE. 0) THEN
+          CALL ENDRUN('chem_readnl: ERROR opening '//TRIM(nlfile))
+       ENDIF
+
        CALL find_group_name(unitn, 'chem_inparm', STATUS=IERR)
        IF (IERR == 0) THEN
           READ(unitn, chem_inparm, IOSTAT=IERR)

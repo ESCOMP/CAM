@@ -19,7 +19,7 @@
   </test>
   <test compset="FC2000climo_GC" grid="f09_f09_mg17" name="ERP_Ln9_Vnuopc" testmods="cam/outfrq9s">
     <machines>
-      <machine name="cheyenne" compiler="intel" category="geochem"/>
+      <machine name="cheyenne" compiler="intel" category="geoschem"/>
     </machines>
     <options>
       <option name="wallclock">00:10:00</option>
