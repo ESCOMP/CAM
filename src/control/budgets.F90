@@ -69,7 +69,7 @@ CONTAINS
     use namelist_utils,  only: find_group_name
     use spmd_utils,      only: mpi_character, mpi_logical, mpi_integer
     use shr_string_mod,  only: shr_string_toUpper
-    use string_utils,    only: inst2str
+    use string_utils,    only: int2str
     
     ! Dummy argument: filepath for file containing namelist input
     character(len=*), intent(in) :: nlfile
@@ -139,7 +139,8 @@ CONTAINS
 
     character (len=128)                    :: errmsg
     character (len=max_fieldname_len)      :: name_str
-    character (len=128)                    :: desc_str, unit_str
+    character (len=128)                    :: desc_str, units_str
+    character (len=128)                    :: gridname
     logical                                :: cslamtr        ! using cslam transport for mass tracers
     integer                                :: ivars
     character(len=*), parameter            :: sub='e_m_snapshot'
@@ -186,7 +187,7 @@ CONTAINS
                 call endrun(errmsg)
              end if
           end if
-          call addfld (TRIM(ADJUSTL(str1)),   horiz_only, 'N', TRIM(ADJUSTL(str3)),TRIM(ADJUSTL(str2)),gridname=gridname)
+          call addfld (TRIM(ADJUSTL(name_str)),   horiz_only, 'N', TRIM(ADJUSTL(units_str)),TRIM(ADJUSTL(desc_str)),gridname=gridname)
 
           if (thermo_budget_debug .or. ivars==teidx .or. ivars==wvidx.or. ivars==wlidx.or. ivars==wiidx) &
                call add_default(TRIM(ADJUSTL(name_str)), thermo_budget_histfile_num, 'N')
@@ -217,12 +218,15 @@ CONTAINS
     logical,          intent(in), optional :: &
          cslam       ! true => use cslam to transport mass variables
 
-    character(len=*), parameter :: sub='e_m_budget'
-    character(len=128) :: errmsg
-    character(len=1)   :: opchar
-    character (len=256)         :: name_str, desc_str, units_str, strstg1, strstg2
-    integer :: ivars
-    logical :: cslamtr        ! using cslam transport for mass tracers
+    character(len=*), parameter            :: sub='e_m_budget'
+    character(len=128)                     :: errmsg
+    character(len=1)                       :: opchar
+    character (len=max_fieldname_len)      :: name_str
+    character (len=128)                    :: desc_str, units_str
+    character (len=128)                    :: gridname
+    character (len=256)                    :: strstg1, strstg2
+    integer                                :: ivars
+    logical                                :: cslamtr        ! using cslam transport for mass tracers
     !-----------------------------------------------------------------------
 
     if (thermo_budget_history) then
@@ -278,7 +282,7 @@ CONTAINS
                 call endrun(errmsg)
              end if
           end if
-          call addfld (TRIM(ADJUSTL(str1)),   horiz_only, 'N', TRIM(ADJUSTL(str3)),TRIM(ADJUSTL(str2)), &     
+          call addfld (TRIM(ADJUSTL(name_str)),   horiz_only, 'N', TRIM(ADJUSTL(units_str)),TRIM(ADJUSTL(desc_str)), &     
                gridname=gridname,op=optype,op_f1name=TRIM(ADJUSTL(strstg1)),op_f2name=TRIM(ADJUSTL(strstg2)))
 
           if (thermo_budget_debug .or. ivars==teidx .or. ivars==wvidx.or. ivars==wlidx.or. ivars==wiidx) &
