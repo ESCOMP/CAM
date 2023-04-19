@@ -18,10 +18,10 @@ module atm_comp_nuopc
   use NUOPC_Model         , only : NUOPC_ModelGet
   use shr_kind_mod        , only : r8=>shr_kind_r8, i8=>shr_kind_i8, cl=>shr_kind_cl, cs=>shr_kind_cs
   use shr_sys_mod         , only : shr_sys_abort
-  use shr_file_mod        , only : shr_file_getlogunit, shr_file_setlogunit
   use shr_cal_mod         , only : shr_cal_noleap, shr_cal_gregorian, shr_cal_ymd2date
   use shr_const_mod       , only : shr_const_pi
   use shr_orb_mod         , only : shr_orb_decl, shr_orb_params, SHR_ORB_UNDEF_REAL, SHR_ORB_UNDEF_INT
+  use shr_log_mod         , only : shr_log_setLogUnit
   use cam_instance        , only : cam_instance_init, inst_suffix, inst_index
   use cam_comp            , only : cam_init, cam_run1, cam_run2, cam_run3, cam_run4, cam_final
   use camsrfexch          , only : cam_out_t, cam_in_t
@@ -218,7 +218,7 @@ contains
     call set_component_logging(gcomp, localpet==0, iulog, shrlogunit, rc)
     if (ChkErr(rc,__LINE__,u_FILE_u)) return
 
-    call shr_file_setLogUnit (shrlogunit)
+    call shr_log_setLogUnit (iulog)
 
     !----------------------------------------------------------------------------
     ! advertise import/export fields
@@ -379,7 +379,6 @@ contains
     logical                 :: restart_run                       ! continue a previous run; requires a restart file
     logical                 :: branch_run                        ! branch from a previous run; requires a restart file
     character(len=CL)       :: tempc1,tempc2
-    integer                 :: shrlogunit          ! original log unit
     real(r8)        , parameter :: radtodeg = 180.0_r8/shr_const_pi
     integer         , parameter :: aqua_perpetual_ymd = 321
     character(len=*), parameter :: subname=trim(modName)//':(InitializeRealize) '
@@ -391,7 +390,7 @@ contains
        call ESMF_LogWrite(subname//' called', ESMF_LOGMSG_INFO)
     end if
 
-    call shr_file_setLogUnit (iulog)
+    call shr_log_setLogUnit (iulog)
 
     !----------------------------------------------------------------------------
     ! generate local mpi comm
@@ -745,8 +744,6 @@ contains
 
     end if ! end of mediator_present if-block
 
-    call shr_file_setLogUnit (shrlogunit)
-
 #if (defined _MEMTRACE)
     if(masterproc) then
        write(iulog,*) TRIM(Sub) // ':end::'
@@ -777,7 +774,6 @@ contains
     character(ESMF_MAXSTR),allocatable :: fieldNameList(:)
     character(ESMF_MAXSTR)             :: fieldName
     integer                            :: n, fieldCount
-    integer                            :: shrlogunit    ! original log unit
     integer(ESMF_KIND_I8)              :: stepno        ! time step
     integer                            :: atm_cpl_dt    ! driver atm coupling time step
     logical                            :: importDone    ! true => import data is valid
@@ -790,9 +786,7 @@ contains
     if (dbug_flag > 5) then
        call ESMF_LogWrite(subname//' called', ESMF_LOGMSG_INFO)
     end if
-
-    call shr_file_getLogUnit (shrlogunit)
-    call shr_file_setLogUnit (iulog)
+    call shr_log_setLogUnit (iulog)
 
 #if (defined _MEMTRACE)
     if (masterproc) then
@@ -943,7 +937,6 @@ contains
     end if
 
     ! End redirection of share output to cam log
-    call shr_file_setLogUnit (shrlogunit)
 
 #if (defined _MEMTRACE)
     if(masterproc) then
@@ -979,7 +972,6 @@ contains
     type(ESMF_State)        :: importState
     type(ESMF_State)        :: exportState
     character(CL)           :: cvalue
-    integer                 :: shrlogunit  ! original log unit
     character(CL)           :: case_name   ! case name
     real(r8)                :: eccen
     real(r8)                :: obliqr
@@ -1009,8 +1001,7 @@ contains
 
 !$  call omp_set_num_threads(nthrds)
 
-    call shr_file_getLogUnit (shrlogunit)
-    call shr_file_setLogUnit (iulog)
+    call shr_log_setLogUnit (iulog)
 
 #if (defined _MEMTRACE)
     if(masterproc) then
@@ -1205,7 +1196,6 @@ contains
     ! Reset shr logging to my original values
     !--------------------------------
 
-    call shr_file_setLogUnit (shrlogunit)
 
   end subroutine ModelAdvance
 
@@ -1337,7 +1327,6 @@ contains
     integer, intent(out) :: rc
 
     ! local variables
-    integer :: shrlogunit            ! original log unit
     character(*), parameter :: F00   = "('(atm_comp_nuopc) ',8a)"
     character(*), parameter :: F91   = "('(atm_comp_nuopc) ',73('-'))"
     character(len=*),parameter  :: subname=trim(modName)//':(ModelFinalize) '
@@ -1348,19 +1337,16 @@ contains
     !--------------------------------
 
     rc = ESMF_SUCCESS
+    call shr_log_setLogUnit (iulog)
 
     call cam_final( cam_out, cam_in )
 
-    call shr_file_getLogUnit (shrlogunit)
-    call shr_file_setLogUnit (iulog)
 
     if (masterproc) then
        write(iulog,F91)
        write(iulog,F00) 'CAM: end of main integration loop'
        write(iulog,F91)
     end if
-
-    call shr_file_setLogUnit (shrlogunit)
 
   end subroutine ModelFinalize
 
