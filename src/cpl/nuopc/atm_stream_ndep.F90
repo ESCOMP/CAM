@@ -43,8 +43,9 @@ contains
     ! Initialize data stream information.
 
     ! Uses:
-    use shr_nl_mod       , only : shr_nl_find_group_name
-    use dshr_strdata_mod , only : shr_strdata_init_from_inline
+    use cam_instance     , only: inst_suffix
+    use shr_nl_mod       , only: shr_nl_find_group_name
+    use dshr_strdata_mod , only: shr_strdata_init_from_inline
 
     ! input/output variables
     type(ESMF_CLock), intent(in)  :: model_clock
@@ -56,6 +57,7 @@ contains
     integer                 :: nml_error              ! namelist i/o error flag
     character(len=CL)       :: stream_ndep_data_filename
     character(len=CL)       :: stream_ndep_mesh_filename
+    character(len=CL)       :: filein                 ! atm namelist file
     integer                 :: stream_ndep_year_first ! first year in stream to use
     integer                 :: stream_ndep_year_last  ! last year in stream to use
     integer                 :: stream_ndep_year_align ! align stream_year_firstndep with
@@ -84,7 +86,11 @@ contains
 
     ! Read ndep_stream namelist
     if (masterproc) then
-       open( newunit=nu_nml, file='atm_in', status='old', iostat=nml_error )
+       filein = "atm_in" // trim(inst_suffix)
+       open( newunit=nu_nml, file=trim(filein), status='old', iostat=nml_error )
+       if (nml_error /= 0) then
+          call endrun(subName//': ERROR opening '//trim(filein)//errMsg(sourcefile, __LINE__))
+       end if
        call shr_nl_find_group_name(nu_nml, 'ndep_stream_nl', status=nml_error)
        if (nml_error == 0) then
           read(nu_nml, nml=ndep_stream_nl, iostat=nml_error)

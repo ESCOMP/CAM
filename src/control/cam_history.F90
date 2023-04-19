@@ -1,5 +1,4 @@
 module cam_history
-#define HDEBUG1 FALSE
   !-------------------------------------------------------------------------------------------
   !
   ! The cam_history module provides the user interface for CAM's history output capabilities.
@@ -50,7 +49,8 @@ module cam_history
                                   field_info, active_entry, hentry,           &
                                   horiz_only, write_hist_coord_attrs,         &
                                   write_hist_coord_vars, interp_info_t,       &
-                                  lookup_hist_coord_indices, get_hist_coord_index
+                                  lookup_hist_coord_indices, get_hist_coord_index, &
+                                  field_op_len
    use string_utils,        only: date2yyyymmdd, sec2hms
    use sat_hist,            only: is_satfile
    use solar_parms_data,    only: solar_parms_on, kp=>solar_parms_kp, ap=>solar_parms_ap
@@ -70,27 +70,27 @@ module cam_history
   public :: cam_history_snapshot_activate
 
   type grid_area_entry
-     integer                         :: decomp_type = -1      ! type of decomposition (e.g., physics or dynamics)
-     real(r8), allocatable           :: wbuf(:,:,:)           ! for area weights
+     integer                         :: decomp_type = -1         ! type of decomposition (e.g., physics or dynamics)
+     real(r8), allocatable           :: wbuf(:,:,:)              ! for area weights
   end type grid_area_entry
-  type (grid_area_entry), target, allocatable:: grid_wts(:)  ! area wts for each decomp type
-  type (grid_area_entry), pointer    :: allgrids_wt(:)  ! area wts for each decomp type
+  type (grid_area_entry), target, allocatable:: grid_wts(:)      ! area wts for each decomp type
+  type (grid_area_entry), pointer    :: allgrids_wt(:) => null() ! area wts for each decomp type
   !
   ! master_entry: elements of an entry in the master field list
   !
   type master_entry
-    type (field_info)        :: field            ! field information
+    type (field_info)                :: field            ! field information
     character(len=max_fieldname_len) :: meridional_field = '' ! for vector fields
     character(len=max_fieldname_len) :: zonal_field = '' ! for vector fields
-    character(len=1)         :: avgflag(ptapes)  ! averaging flag
-    character(len=max_chars) :: time_op(ptapes)  ! time operator (e.g. max, min, avg)
-    character(len=max_chars) :: field_op  = ''   ! field derived from sum/dif of field1 and field2
-    character(len=max_fieldname_len) :: op_field1 = '' ! first field name to be summed/diffed
-    character(len=max_fieldname_len) :: op_field2 = '' ! second field name to be summed/diffed
-    logical               :: act_sometape     ! Field is active on some tape
-    logical               :: actflag(ptapes)  ! Per tape active/inactive flag
-    integer               :: htapeindx(ptapes)! This field's index on particular history tape
-    type(master_entry), pointer :: next_entry => null() ! The next master entry
+    character(len=1)                 :: avgflag(ptapes)  ! averaging flag
+    character(len=max_chars)         :: time_op(ptapes)  ! time operator (e.g. max, min, avg)
+    character(len=field_op_len)      :: field_op  = ''   ! field derived from sum/dif of field1 and field2
+    character(len=max_fieldname_len) :: op_field1 = ''   ! first field name to be summed/diffed
+    character(len=max_fieldname_len) :: op_field2 = ''   ! second field name to be summed/diffed
+    logical                          :: act_sometape     ! Field is active on some tape
+    logical                          :: actflag(ptapes)  ! Per tape active/inactive flag
+    integer                          :: htapeindx(ptapes)! This field's index on particular history tape
+    type(master_entry), pointer      :: next_entry => null() ! The next master entry
   end type master_entry
 
   type (master_entry), pointer :: masterlinkedlist => null()   ! master field linkedlist top
@@ -485,7 +485,7 @@ CONTAINS
         if (tape(t)%hlist(f)%avgflag .eq. 'N') then ! set up areawt weight buffer
            fdecomp = tape(t)%hlist(f)%field%decomp_type
            if (any(allgrids_wt(:)%decomp_type == fdecomp)) then
-              wtidx=MAXLOC(allgrids_wt(:)%decomp_type, MASK = allgrids_wt(:)%decomp_type .EQ. fdecomp)
+              wtidx=FINDLOC(allgrids_wt(:)%decomp_type, fdecomp)
               tape(t)%hlist(f)%wbuf => allgrids_wt(wtidx(1))%wbuf
            else
               ! area weights not found for this grid, then create them
@@ -1003,16 +1003,19 @@ CONTAINS
                 tape(t)%hlist(f)%op_field2=trim(field2)
                 ! find ids for field1/2
                 do ff = 1, nflds(t)
-                   if (trim(field1) == trim(tape(t)%hlist(ff)%field%name)) &
-                        tape(t)%hlist(f)%field%op_field1_id = ff
-                   if (trim(field2) == trim(tape(t)%hlist(ff)%field%name)) &
-                        tape(t)%hlist(f)%field%op_field2_id = ff
+                   if (trim(field1) == trim(tape(t)%hlist(ff)%field%name)) then
+                      tape(t)%hlist(f)%field%op_field1_id = ff
+                   end if
+                   if (trim(field2) == trim(tape(t)%hlist(ff)%field%name)) then
+                      tape(t)%hlist(f)%field%op_field2_id = ff
+                   end if
                 end do
-                if (tape(t)%hlist(f)%field%op_field1_id == -1) &
-                     call endrun(trim(subname)//': No op_field1 match for '//trim(tape(t)%hlist(f)%field%name))
-                if (tape(t)%hlist(f)%field%op_field2_id == -1) &
-                     call endrun(trim(subname)//': No op_field2 match for '//trim(tape(t)%hlist(f)%field%name))
-
+                if (tape(t)%hlist(f)%field%op_field1_id == -1) then
+                   call endrun(trim(subname)//': No op_field1 match for '//trim(tape(t)%hlist(f)%field%name))
+                end if
+                if (tape(t)%hlist(f)%field%op_field2_id == -1) then
+                   call endrun(trim(subname)//': No op_field2 match for '//trim(tape(t)%hlist(f)%field%name))
+                end if
              else
                 call endrun(trim(subname)//': Component fields not found for composed field')
              end if
@@ -1537,7 +1540,7 @@ CONTAINS
     integer, allocatable      ::  interp_output(:)
 
     integer                   ::  maxnflds
-
+    real(r8)                  ::  integral  ! hbuf area weighted integral
 
     maxnflds = maxval(nflds)
     allocate(xyfill(maxnflds, ptapes))
@@ -1679,7 +1682,8 @@ CONTAINS
         ierr = pio_put_var(File, numlev_desc,start,tape(t)%hlist(f)%field%numlev)
 
         ierr = pio_put_var(File, hwrt_prec_desc,start,tape(t)%hlist(f)%hwrt_prec)
-        ierr = pio_put_var(File, hbuf_integral_desc,start,tape(t)%hlist(f)%hbuf_integral)
+        call tape(t)%hlist(f)%get_global(integral)
+        ierr = pio_put_var(File, hbuf_integral_desc,start,integral)
         ierr = pio_put_var(File, beg_nstep_desc,start,tape(t)%hlist(f)%beg_nstep)
         ierr = pio_put_var(File, sseq_desc,startc,tape(t)%hlist(f)%field%sampling_seq)
         ierr = pio_put_var(File, cm_desc,startc,tape(t)%hlist(f)%field%cell_methods)
@@ -2081,8 +2085,8 @@ CONTAINS
         tape(t)%hlist(f)%field%decomp_type = decomp(f,t)
         tape(t)%hlist(f)%field%numlev = tmpnumlev(f,t)
         tape(t)%hlist(f)%hwrt_prec = tmpprec(f,t)
-        tape(t)%hlist(f)%hbuf_integral = tmpintegral(f,t)
         tape(t)%hlist(f)%beg_nstep = tmpbeg_nstep(f,t)
+        call tape(t)%hlist(f)%put_global(tmpintegral(f,t))
         ! If the field is an advected constituent set the mixing_ratio attribute
         fname_tmp = strip_suffix(tape(t)%hlist(f)%field%name)
         call cnst_get_ind(fname_tmp, idx, abort=.false.)
@@ -2101,7 +2105,7 @@ CONTAINS
         end if
       end do
     end do
-    deallocate(tmpname, tmpnumlev, tmpprec, tmpbeg_nstep, decomp, xyfill, is_subcol)
+    deallocate(tmpname, tmpnumlev, tmpprec, tmpbeg_nstep, decomp, xyfill, is_subcol, tmpintegral)
     deallocate(mdimnames)
     deallocate(tmpf1name,tmpf2name)
 
@@ -2160,7 +2164,7 @@ CONTAINS
            nullify(tape(t)%hlist(f)%wbuf)
 
            if (any(allgrids_wt(:)%decomp_type == tape(t)%hlist(f)%field%decomp_type)) then
-              wtidx=MAXLOC(allgrids_wt(:)%decomp_type, MASK = allgrids_wt(:)%decomp_type .EQ. fdecomp)
+              wtidx=FINDLOC(allgrids_wt(:)%decomp_type, fdecomp)
               tape(t)%hlist(f)%wbuf => allgrids_wt(wtidx(1))%wbuf
            else
               ! area weights not found for this grid, then create them
@@ -2215,6 +2219,7 @@ CONTAINS
         do f = 1, nflds(t)
 
           fname_tmp = strip_suffix(tape(t)%hlist(f)%field%name)
+          if(masterproc) write(iulog, *) 'Reading history variable ',fname_tmp
           ierr = pio_inq_varid(tape(t)%File, fname_tmp, vdesc)
 
           call cam_pio_var_info(tape(t)%File, vdesc, ndims, dimids, dimlens)
@@ -3045,6 +3050,8 @@ end subroutine print_active_fldlst
       write(iulog,'(2a)')'  units     = ',trim(tape(t)%hlist(n)%field%units)
       write(iulog,'(a,i0)')'  numlev    = ',tape(t)%hlist(n)%field%numlev
       write(iulog,'(2a)')'  avgflag   = ',tape(t)%hlist(n)%avgflag
+      write(iulog,'(3a)')'  time_op   = "',trim(tape(t)%hlist(n)%time_op),'"'
+      write(iulog,'(a,i0)')'  hwrt_prec = ',tape(t)%hlist(n)%hwrt_prec
     end if
 #endif
 

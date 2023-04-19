@@ -21,6 +21,7 @@ module budgets
   use cam_thermo,          only: thermo_budget_vars, thermo_budget_vars_descriptor, &
        thermo_budget_vars_unit, thermo_budget_vars_massv, thermo_budget_num_vars,teidx,wvidx,wlidx,wiidx
   use shr_kind_mod,        only: r8 => shr_kind_r8
+  use shr_kind_mod,        only: cl => shr_kind_cl
   use spmd_utils,          only: masterproc, masterprocid, mpicom
 
   implicit none
@@ -43,15 +44,14 @@ module budgets
   integer, parameter, public           :: budget_array_max  = 500     ! number of budget diffs
 
   integer,           public            :: budget_num     = 0 !
-  character(len=64), public, protected :: budget_name(budget_array_max)     ! budget names
-  character(len=128),public, protected :: budget_longname(budget_array_max) ! long name of budgets
-  character(len=128),public, protected :: budget_stagename(budget_array_max) ! long name of budgets
-  character(len=64), public, protected :: budget_stg1name(budget_array_max)
-  character(len=64), public, protected :: budget_stg2name(budget_array_max)
+  character(cl),     public, protected :: budget_name(budget_array_max)     ! budget names
+  character(cl),     public, protected :: budget_longname(budget_array_max) ! long name of budgets
+  character(cl),     public, protected :: budget_stagename(budget_array_max) ! long name of budgets
+  character(cl),     public, protected :: budget_stg1name(budget_array_max)
+  character(cl),     public, protected :: budget_stg2name(budget_array_max)
 
   integer,           public            :: thermo_budget_histfile_num = 1
   logical,           public            :: thermo_budget_history = .false.
-  logical,           public            :: thermo_budget_debug = .false.
   real(r8),          private           :: dstepsize
   !
   ! Constants for each budget
@@ -78,7 +78,7 @@ CONTAINS
     integer                     :: unitn, ierr
     character(len=*), parameter :: subname = 'budget_readnl :: '
 
-    namelist /thermo_budget_nl/  thermo_budget_history, thermo_budget_histfile_num, thermo_budget_debug
+    namelist /thermo_budget_nl/  thermo_budget_history, thermo_budget_histfile_num
     !-----------------------------------------------------------------------
 
     if (masterproc) then
@@ -96,8 +96,6 @@ CONTAINS
     ! Broadcast namelist variables
     call mpi_bcast(thermo_budget_history         , 1  , mpi_logical  , masterprocid, mpicom, ierr)
     if (ierr /= 0) call endrun(subname//": FATAL: mpi_bcast: thermo_budget_history")
-    call mpi_bcast(thermo_budget_debug         , 1  , mpi_logical  , masterprocid, mpicom, ierr)
-    if (ierr /= 0) call endrun(subname//": FATAL: mpi_bcast: thermo_budget_debug")
     call mpi_bcast(thermo_budget_histfile_num    , 1  , mpi_integer  , masterprocid, mpicom, ierr)
     if (ierr /= 0) call endrun(subname//": FATAL: mpi_bcast: thermo_budget_histfile_num")
 
@@ -132,15 +130,15 @@ CONTAINS
          name      ! budget name used as variable name in history file output (8 char max)
     character(len=*), intent(in)           :: &
          pkgtype      ! budget type either phy or dyn
-    character(len=*), intent(in), optional :: &
+    character(len=*), intent(in)           :: &
          longname    ! value for long_name attribute in netcdf output (128 char max, defaults to name)
     logical,          intent(in), optional :: &
          cslam  ! true => CSLAM used to transport mass tracers
 
-    character (len=128)                    :: errmsg
+    character (cl)                         :: errmsg
     character (len=max_fieldname_len)      :: name_str
-    character (len=128)                    :: desc_str, units_str
-    character (len=128)                    :: gridname
+    character (cl)                         :: desc_str, units_str
+    character (cl)                         :: gridname
     logical                                :: cslamtr        ! using cslam transport for mass tracers
     integer                                :: ivars
     character(len=*), parameter            :: sub='e_m_snapshot'
@@ -161,11 +159,7 @@ CONTAINS
           budget_num = budget_num+1
           ! set budget name and constants
           budget_name(budget_num) = trim(name_str)
-          if (present(longname)) then
-             budget_longname(budget_num) = trim(name_str)
-          else
-             budget_longname(budget_num) = trim(desc_str)
-          end if
+          budget_longname(budget_num) = trim(desc_str)
 
           budget_optype(budget_num)='stg'
           budget_pkgtype(budget_num)=pkgtype
@@ -188,9 +182,7 @@ CONTAINS
              end if
           end if
           call addfld (TRIM(ADJUSTL(name_str)),   horiz_only, 'N', TRIM(ADJUSTL(units_str)),TRIM(ADJUSTL(desc_str)),gridname=gridname)
-
-          if (thermo_budget_debug .or. ivars==teidx .or. ivars==wvidx.or. ivars==wlidx.or. ivars==wiidx) &
-               call add_default(TRIM(ADJUSTL(name_str)), thermo_budget_histfile_num, 'N')
+          call add_default(TRIM(ADJUSTL(name_str)), thermo_budget_histfile_num, 'N')
        end do
     end if
   end subroutine e_m_snapshot
@@ -212,19 +204,19 @@ CONTAINS
     character(len=*), intent(in) :: &
          optype    !  dif (difference) or sum
 
-    character(len=*), intent(in), optional :: &
+    character(len=*), intent(in) :: &
          longname    ! value for long_name attribute in netcdf output (128 char max, defaults to name)
 
     logical,          intent(in), optional :: &
          cslam       ! true => use cslam to transport mass variables
 
     character(len=*), parameter            :: sub='e_m_budget'
-    character(len=128)                     :: errmsg
+    character(cl)                          :: errmsg
     character(len=1)                       :: opchar
     character (len=max_fieldname_len)      :: name_str
-    character (len=128)                    :: desc_str, units_str
-    character (len=128)                    :: gridname
-    character (len=256)                    :: strstg1, strstg2
+    character (cl)                         :: desc_str, units_str
+    character (cl)                         :: gridname
+    character (cl)                         :: strstg1, strstg2
     integer                                :: ivars
     logical                                :: cslamtr        ! using cslam transport for mass tracers
     !-----------------------------------------------------------------------
@@ -250,11 +242,8 @@ CONTAINS
 
           ! set budget name and constants
           budget_name(budget_num) = trim(name_str)
-          if (present(longname)) then
-             budget_longname(budget_num) = trim(desc_str)
-          else
-             budget_longname(budget_num) = trim(name_str)
-          end if
+          budget_longname(budget_num) = trim(desc_str)
+
           if (optype=='dif') opchar='-'
           if (optype=='sum') opchar='+'
           if (optype=='stg') then
@@ -284,9 +273,7 @@ CONTAINS
           end if
           call addfld (TRIM(ADJUSTL(name_str)),   horiz_only, 'N', TRIM(ADJUSTL(units_str)),TRIM(ADJUSTL(desc_str)), &     
                gridname=gridname,op=optype,op_f1name=TRIM(ADJUSTL(strstg1)),op_f2name=TRIM(ADJUSTL(strstg2)))
-
-          if (thermo_budget_debug .or. ivars==teidx .or. ivars==wvidx.or. ivars==wlidx.or. ivars==wiidx) &
-               call add_default(TRIM(ADJUSTL(name_str)), thermo_budget_histfile_num, 'N')
+          call add_default(TRIM(ADJUSTL(name_str)), thermo_budget_histfile_num, 'N')
        end do
     end if
   end subroutine e_m_budget
@@ -299,28 +286,29 @@ CONTAINS
     use cam_history_support,  only: active_entry,ptapes
     use cam_thermo,           only: thermo_budget_vars_massv
 
-    ! Get the global integral of a budget.  Optional abort argument allows returning
-    ! control to caller when budget name is not found.  Default behavior is
-    ! to call endrun when name is not found.
-
+    ! Get the global integral of a budget. Endrun will be called
+    ! when name is not found.
     !-----------------------------Arguments---------------------------------
     character(len=*),  intent(in)  :: name    ! budget name
     integer,           intent(in)  :: me_idx  ! mass energy variable index
     real(r8),          intent(out) :: global  ! global integral of the budget field
 
     !---------------------------Local workspace-----------------------------
-    type (active_entry), pointer   :: tape(:) => null()          ! history tapes
+    type (active_entry), pointer   :: tape(:)                    ! history tapes
     character (len=max_fieldname_len) :: name_str
-    character(len=128)             :: errmsg
-    integer                        :: b_ind                      ! hentry index
-    integer                        :: f(ptapes),ff               ! hentry index
+    character(cl)                  :: errmsg
+    integer                        :: b_ind                      ! budget index
+    integer                        :: h_ind(ptapes)              ! hentry index
+    integer                        :: m_ind                      ! masterlist index
     integer                        :: idx,pidx,midx,uidx         ! substring index for sum dif char
     integer                        :: m                          ! budget index
     logical                        :: found                      ! true if global integral found
 
     character(len=*), parameter    :: sub='budget_get_global'
     !-----------------------------------------------------------------------
-
+    ! Initialize tape pointer here to avoid initialization only on first invocation
+    nullify(tape)
+    
     name_str=''
     write(name_str,*) TRIM(ADJUSTL(name))
 
@@ -347,10 +335,10 @@ CONTAINS
     write(name_str,*) TRIM(ADJUSTL(budget_name(b_ind)))
 
     ! Find budget name in list and return global value
-    call get_field_properties(trim(adjustl(name_str)), found, tape_out=tape, ff_out=ff, f_out=f)
+    call get_field_properties(trim(adjustl(name_str)), found, tape_out=tape, ff_out=m_ind, f_out=h_ind)
 
-    if (found.and.f(thermo_budget_histfile_num)>0) then
-       call tape(thermo_budget_histfile_num)%hlist(f(thermo_budget_histfile_num))%get_global(global)
+    if (found.and.h_ind(thermo_budget_histfile_num)>0) then
+       call tape(thermo_budget_histfile_num)%hlist(h_ind(thermo_budget_histfile_num))%get_global(global)
        if (.not. thermo_budget_vars_massv(me_idx)) &
             global=global/dstepsize
     else

@@ -5076,13 +5076,6 @@ Produce output for the energy budget diagnostic package.
 Default: .false.
 </entry>
 
-<entry id="thermo_budget_debug" type="logical"  category="diagnostics"
-       group="thermo_budget_nl" valid_values="" >
-Produce full output for the diagnostic package.
-Default: .false.
-</entry>
-
-
 <entry id="history_amwg" type="logical"  category="diagnostics"
        group="phys_ctl_nl" valid_values="" >
 Produce output for the AMWG diagnostic package.

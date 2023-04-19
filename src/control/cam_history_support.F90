@@ -24,9 +24,10 @@ module cam_history_support
 
   integer, parameter, public :: max_string_len = shr_kind_cxx
   integer, parameter, public :: max_chars = shr_kind_cl         ! max chars for char variables
-  integer, parameter, public :: fieldname_len = 32   ! max chars for field name
-  integer, parameter, public :: fieldname_suffix_len =  3 ! length of field name suffix ("&IC")
-  integer, parameter, public :: fieldname_lenp2      = fieldname_len + 2 ! allow for extra characters
+  integer, parameter, public :: field_op_len  = 3               ! max chars for field operation string (sum/dif)
+  integer, parameter, public :: fieldname_len = 32              ! max chars for field name
+  integer, parameter, public :: fieldname_suffix_len =  3       ! length of field name suffix ("&IC")
+  integer, parameter, public :: fieldname_lenp2 = fieldname_len + 2 ! allow for extra characters
   ! max_fieldname_len = max chars for field name (including suffix)
   integer, parameter, public :: max_fieldname_len    = fieldname_len + fieldname_suffix_len
 
@@ -117,9 +118,9 @@ module cam_history_support
     integer :: meridional_complement         ! meridional field id or -1
     integer :: zonal_complement              ! zonal field id or -1
 
-    character(len=max_chars) :: field_op = ''             ! 'sum' or 'dif'
-    integer          :: op_field1_id ! first field id to be summed/diffed or -1
-    integer          :: op_field2_id ! second field id to be summed/diffed or -1
+    character(len=field_op_len) :: field_op = ''        ! 'sum' or 'dif'
+    integer                     :: op_field1_id         ! first field id to be summed/diffed or -1
+    integer                     :: op_field2_id         ! second field id to be summed/diffed or -1
     
     character(len=max_fieldname_len) :: name ! field name
     character(len=max_chars) :: long_name    ! long name
@@ -157,21 +158,21 @@ module cam_history_support
   !
   !---------------------------------------------------------------------------
   type, public:: hentry
-    type (field_info)         :: field       ! field information
-    character(len=1)          :: avgflag     ! averaging flag
-    character(len=max_chars)  :: time_op     ! time operator (e.g. max, min, avg)
+    type (field_info)         :: field                 ! field information
+    character(len=1)          :: avgflag               ! averaging flag
+    character(len=max_chars)  :: time_op               ! time operator (e.g. max, min, avg)
     character(len=max_fieldname_len)  :: op_field1     ! field1 name for sum/dif operation
     character(len=max_fieldname_len)  :: op_field2     ! field2 name for sum/dif operation
 
-    integer                   :: hwrt_prec   ! history output precision
+    integer                   :: hwrt_prec             ! history output precision
     real(r8),         pointer :: hbuf(:,:,:) => NULL()
-    real(r8)                  :: hbuf_integral  ! area weighted integral of active field
+    real(r8),         private :: hbuf_integral         ! area weighted integral of active field
     real(r8),         pointer :: sbuf(:,:,:) => NULL() ! for standard deviation
     real(r8),         pointer :: wbuf(:,:,:) => NULL() ! pointer to area weights
     type(var_desc_t), pointer :: varid(:)    => NULL() ! variable ids
     integer,          pointer :: nacs(:,:)   => NULL() ! accumulation counter
     type(var_desc_t), pointer :: nacs_varid  => NULL()
-    integer                   :: beg_nstep           ! starting time step for nstep normalization
+    integer                   :: beg_nstep             ! starting time step for nstep normalization
     type(var_desc_t), pointer :: beg_nstep_varid=> NULL()
     type(var_desc_t), pointer :: sbuf_varid  => NULL()
     type(var_desc_t), pointer :: wbuf_varid  => NULL()
