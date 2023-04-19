@@ -489,7 +489,12 @@ CONTAINS
               tape(t)%hlist(f)%wbuf => allgrids_wt(wtidx(1))%wbuf
            else
               ! area weights not found for this grid, then create them
-              wtidx=MINLOC(allgrids_wt(:)%decomp_type)
+              ! first check for an available spot in the array
+              if (any(allgrids_wt(:)%decomp_type == -1)) then
+                 wtidx=MINLOC(allgrids_wt(:)%decomp_type)
+              else
+                 call endrun('cam_history:intht: Error initializing allgrids_wt with area weights')
+              end if
               allgrids_wt(wtidx)%decomp_type=fdecomp
               areawt => cam_grid_get_areawt(fdecomp)
               allocate(allgrids_wt(wtidx(1))%wbuf(begdim1:enddim1,begdim2:enddim2,begdim3:enddim3))
@@ -1929,30 +1934,30 @@ CONTAINS
     ierr = pio_inq_varid(File, 'numlev', vdesc)
     ierr = pio_get_var(File, vdesc, tmpnumlev)
 
-    allocate(tmpintegral(maxnflds,mtapes))
     ierr = pio_inq_varid(File, 'hbuf_integral',vdesc)
+    allocate(tmpintegral(maxnflds,mtapes))
     ierr = pio_get_var(File, vdesc, tmpintegral(:,:))
 
 
-    allocate(tmpprec(maxnflds,mtapes))
     ierr = pio_inq_varid(File, 'hwrt_prec',vdesc)
+    allocate(tmpprec(maxnflds,mtapes))
     ierr = pio_get_var(File, vdesc, tmpprec(:,:))
 
-    allocate(tmpbeg_nstep(maxnflds,mtapes))
     ierr = pio_inq_varid(File, 'beg_nstep',vdesc)
+    allocate(tmpbeg_nstep(maxnflds,mtapes))
     ierr = pio_get_var(File, vdesc, tmpbeg_nstep(:,:))
 
-    allocate(xyfill(maxnflds,mtapes))
     ierr = pio_inq_varid(File, 'xyfill', vdesc)
+    allocate(xyfill(maxnflds,mtapes))
     ierr = pio_get_var(File, vdesc, xyfill)
 
-    allocate(is_subcol(maxnflds,mtapes))
     ierr = pio_inq_varid(File, 'is_subcol', vdesc)
+    allocate(is_subcol(maxnflds,mtapes))
     ierr = pio_get_var(File, vdesc, is_subcol)
 
     !! interpolated output
-    allocate(interp_output(mtapes))
     ierr = pio_inq_varid(File, 'interpolate_output', vdesc)
+    allocate(interp_output(mtapes))
     ierr = pio_get_var(File, vdesc, interp_output)
     interpolate_output(1:mtapes) = interp_output(1:mtapes) > 0
     if (ptapes > mtapes) then
@@ -2168,7 +2173,12 @@ CONTAINS
               tape(t)%hlist(f)%wbuf => allgrids_wt(wtidx(1))%wbuf
            else
               ! area weights not found for this grid, then create them
-              wtidx=MINLOC(allgrids_wt(:)%decomp_type)
+              ! first check for an available spot in the array
+              if (any(allgrids_wt(:)%decomp_type == -1)) then
+                 wtidx=MINLOC(allgrids_wt(:)%decomp_type)
+              else
+                 call endrun('cam_history.F90:read_restart_history: Error initializing allgrids_wt with area weights')
+              end if
               allgrids_wt(wtidx)%decomp_type=fdecomp
               areawt => cam_grid_get_areawt(fdecomp)
               allocate(allgrids_wt(wtidx(1))%wbuf(begdim1:enddim1,begdim2:enddim2,begdim3:enddim3))
@@ -4911,7 +4921,7 @@ end subroutine print_active_fldlst
                     / nsteps
             end do
          else
-            write(errmsg,*) sub//'FATAL: nstep normalization is bad, currstep,beg_nstep, nsteps=',currstep, tape(t)%hlist(f)%beg_nstep
+            write(errmsg,*) sub,'FATAL: bad nstep normalization, currstep, beg_nstep, nsteps=',currstep,tape(t)%hlist(f)%beg_nstep
             call endrun(errmsg)
          end if
       end if
@@ -5007,17 +5017,14 @@ end subroutine print_active_fldlst
     !
     type (dim_index_2d)     :: dimind    ! 2-D dimension index
     integer                 :: ie        ! dim3 index
-    integer                 :: count     ! 
-    integer                 :: i1        ! 
-    integer                 :: j1        ! 
-    integer                 :: fdims(3)  ! 
-    integer                 :: comm_id! 
+    integer                 :: count     ! tmp index 
+    integer                 :: i1        ! dim1 index
+    integer                 :: j1        ! dim2 index
+    integer                 :: fdims(3)  ! array shape
     integer                 :: begdim1,enddim1,begdim2,enddim2,begdim3,enddim3        ! 
     real(r8)                :: globalsum(1) ! globalsum
     real(r8), allocatable   :: globalarr(:) ! globalarr values for this pe
-    
-    
-    
+        
     call t_startf ('h_global')
 
     ! wbuf contains the area weighting for this field decomposition
@@ -5054,7 +5061,6 @@ end subroutine print_active_fldlst
        deallocate(globalarr)
     end if
     call t_stopf ('h_global')
-    return
   end subroutine h_global
 
   subroutine h_field_op (f, t)
@@ -5088,8 +5094,6 @@ end subroutine print_active_fldlst
     begdim3  = tape(t)%hlist(f)%field%begdim3
     enddim3  = tape(t)%hlist(f)%field%enddim3
 
-    dimind = tape(t)%hlist(f)%field%get_dims(begdim3)
-
     do c = begdim3, enddim3
       dimind = tape(t)%hlist(f)%field%get_dims(c)
       if (trim(op) == 'dif') then 
@@ -5101,15 +5105,13 @@ end subroutine print_active_fldlst
          tape(t)%hlist(f1)%hbuf(dimind%beg1:dimind%end1,dimind%beg2:dimind%end2,c) + &
          tape(t)%hlist(f2)%hbuf(dimind%beg1:dimind%end1,dimind%beg2:dimind%end2,c)
       else
-         call endrun('dyn_readnl: ERROR: budget_optype unknown:'//trim(op))
+         call endrun('h_field_op: ERROR: budget_optype unknown:'//trim(op))
       end if
     end do
     ! Set nsteps for composed fields using value of one of the component fields
     tape(t)%hlist(f)%beg_nstep=tape(t)%hlist(f1)%beg_nstep
     tape(t)%hlist(f)%nacs(:,:)=tape(t)%hlist(f1)%nacs(:,:)
     call t_stopf ('h_field_op')
-
-    return
   end subroutine h_field_op
 
   !#######################################################################
@@ -5585,25 +5587,25 @@ end subroutine print_active_fldlst
           ierr = pio_put_var (tape(t)%File, tape(t)%date_writtenid, startc, countc, (/cdate/))
           ierr = pio_put_var (tape(t)%File, tape(t)%time_writtenid, startc, countc, (/ctime/))
 
-          !$OMP PARALLEL DO PRIVATE (F)
-          do f=1,nflds(t)
-             if(.not. restart) then
+          if(.not. restart) then
+             !$OMP PARALLEL DO PRIVATE (F)
+             do f=1,nflds(t)
                 ! Normalize all non composed fields, composed fields are calculated next using the normalized components 
                 if (tape(t)%hlist(f)%avgflag /= 'I'.and..not.tape(t)%hlist(f)%field%is_composed()) then
                    call h_normalize (f, t)
                 end if
-             end if
-          end do
+             end do
+          end if
 
-          !$OMP PARALLEL DO PRIVATE (F)
-          do f=1,nflds(t)
-             if(.not. restart) then
+          if(.not. restart) then
+             !$OMP PARALLEL DO PRIVATE (F)
+             do f=1,nflds(t)
                 ! calculate composed fields from normalized components
                 if (tape(t)%hlist(f)%field%is_composed()) then
                    call h_field_op (f, t)
                 end if
-             end if
-          end do
+             end do
+          end if
           !
           ! Write field to history tape.  Note that this is NOT threaded due to netcdf limitations
           !

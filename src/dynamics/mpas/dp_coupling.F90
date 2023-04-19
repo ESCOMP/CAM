@@ -439,7 +439,7 @@ subroutine derived_phys(phys_state, phys_tend, pbuf2d)
         zvirv(:,:) = zvir
       endif
       !
-      ! update cp_dycore in modeule air_composition.
+      ! update cp_dycore in module air_composition.
       ! (note: at this point q is dry)
       !
       call cam_thermo_water_update(phys_state(lchnk)%q(1:ncol,:,:), lchnk, ncol, vcoord)
@@ -601,11 +601,11 @@ subroutine derived_tend(nCellsSolve, nCells, t_tend, u_tend, v_tend, q_tend, dyn
      ! Rnew and Rold are only needed for diagnostics purposes
      !
      do m=1,thermodynamic_active_species_num
+       idx_thermo(m) = m
+       idx_dycore                   = thermodynamic_active_species_idx_dycore(m)
        do iCell = 1, nCellsSolve
          do k = 1, pver
-           idx_thermo(m) = m
-           idx_dycore                         = thermodynamic_active_species_idx_dycore(m)
-           qktmp(iCell,k,m)                   = tracers(idx_dycore,k,iCell)
+           qktmp(iCell,k,m)         = tracers(idx_dycore,k,iCell)
          end do
        end do
      end do
@@ -613,12 +613,10 @@ subroutine derived_tend(nCellsSolve, nCells, t_tend, u_tend, v_tend, q_tend, dyn
      Rnew = Rnew*cv/Rgas
 
      do m=1,thermodynamic_active_species_num
+       idx_dycore    = thermodynamic_active_species_idx_dycore(m)
        do iCell = 1, nCellsSolve
          do k = 1, pver
-           idx_thermo(m) = m
-           idx_dycore                         = thermodynamic_active_species_idx_dycore(m)
-           qktmp(iCell,k,m)                   = tracers(idx_dycore,k,iCell)-&
-                dtime*q_tend(m,k,iCell)
+           qktmp(iCell,k,m)  = tracers(idx_dycore,k,iCell)-dtime*q_tend(m,k,iCell)
          end do
        end do
      end do

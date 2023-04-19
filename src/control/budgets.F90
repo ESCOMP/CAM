@@ -33,7 +33,6 @@ module budgets
        budget_init,           &! initialize budget variables
        e_m_snapshot,          &! define a snapshot and add to history buffer
        e_m_budget,            &! define a budget and add to history buffer
-       budget_ind_byname,     &! return budget index given name
        budget_get_global,     &! get global budget from history buffer
        budget_readnl,         &! read budget namelist setting
        is_budget               ! return logical if budget_defined
@@ -346,28 +345,27 @@ CONTAINS
        call endrun(errmsg)
     end if
 
+  CONTAINS
+    function budget_ind_byname (name)
+      !
+      ! Get the index of a budget.  Ret -1 for not found
+      !-----------------------------Arguments---------------------------------
+      character(len=*),  intent(in)  :: name  ! budget name
+      
+      !---------------------------Local workspace-----------------------------
+      integer                        :: budget_ind_byname   ! function return
+      integer                        :: m                   ! budget index
+      !-----------------------------------------------------------------------
+      ! Find budget name in list
+      budget_ind_byname  = -1
+      do m = 1, budget_array_max
+         if (trim(adjustl(name)) == trim(adjustl(budget_name(m))).or.trim(adjustl(name)) == trim(adjustl(budget_stagename(m)))) then
+            budget_ind_byname  = m
+            return
+         end if
+      end do
+    end function budget_ind_byname
   end subroutine budget_get_global
-  !==============================================================================
-  function budget_ind_byname (name)
-    !
-    ! Get the index of a budget.  Ret -1 for not found
-    !-----------------------------Arguments---------------------------------
-    character(len=*),  intent(in)  :: name  ! budget name
-
-    !---------------------------Local workspace-----------------------------
-    integer                        :: budget_ind_byname   ! function return
-    integer                        :: m                   ! budget index
-    !-----------------------------------------------------------------------
-    ! Find budget name in list
-    budget_ind_byname  = -1
-    do m = 1, budget_array_max
-       if (trim(adjustl(name)) == trim(adjustl(budget_name(m))).or.trim(adjustl(name)) == trim(adjustl(budget_stagename(m)))) then
-          budget_ind_byname  = m
-          return
-       end if
-    end do
-  end function budget_ind_byname
-
   !==============================================================================
 
   function is_budget(name)
