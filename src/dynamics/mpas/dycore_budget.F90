@@ -20,7 +20,7 @@ subroutine print_budget(hstwr)
   use spmd_utils,     only: masterproc
   use cam_logfile,    only: iulog
   use cam_abortutils, only: endrun
-  use cam_thermo,     only: teidx, thermo_budget_vars_descriptor, thermo_budget_num_vars, thermo_budget_vars_massv
+  use cam_thermo,     only: thermo_budget_vars_descriptor, thermo_budget_num_vars, thermo_budget_vars_massv
   use cam_thermo,     only: teidx, seidx, keidx, poidx
 
   ! arguments
@@ -47,7 +47,7 @@ subroutine print_budget(hstwr)
   real(r8) :: dEdt_phys_total_dynE(4)  ! dE/dt physics total using dycore E (dyAM-dyBF)
                                        ! physics total = parameterizations + efix + dry-mass adjustment
   !
-  ! SE dycore specific energy tendencies
+  ! dycore specific energy tendencies
   !
   real(r8) :: dEdt_phys_total_in_dyn(4) ! dEdt of physics total in dynamical core
                                         ! physics total = parameterizations + efix + dry-mass adjustment
@@ -224,6 +224,8 @@ subroutine print_budget(hstwr)
     write(iulog,*)" "
     write(iulog,*)" (equation 23 in Lauritzen and Williamson (2019))"
     write(iulog,*)" "
+    write(iulog,*)" Technically this equation is only valid with instantaneous time-step to"
+    write(iulog,*)" time-step output"
 
     tmp = previous_dEdt_phys_dyn_coupl_err+previous_dEdt_adiabatic_dycore+previous_dEdt_dry_mass_adjust
     diff = abs_diff(-dEdt_efix_dynE(1),tmp,pf)

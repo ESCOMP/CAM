@@ -925,24 +925,26 @@ contains
 
     do c = begchunk, endchunk
        ncol = get_ncols_p(c)
+       !
+       ! update water variables
+       !
+       qini(:ncol,:pver) = state(c)%q(:ncol,:pver,1)
+       totliqini = 0.0_r8
+       do m_cnst=1,thermodynamic_active_species_liq_num
+         m = thermodynamic_active_species_liq_idx(m_cnst)
+         totliqini(:ncol,:pver) = totliqini(:ncol,:pver)+state(c)%q(:ncol,:pver,m)
+       end do
+       toticeini = 0.0_r8
+       do m_cnst=1,thermodynamic_active_species_ice_num
+         m = thermodynamic_active_species_ice_idx(m_cnst)
+         toticeini(:ncol,:pver) = toticeini(:ncol,:pver)+state(c)%q(:ncol,:pver,m)
+       end do
+
        do k=1,pver
           do i=1,ncol
              if (met_nudge_temp) then
                 state(c)%t(i,k) = (1._r8-met_rlx(k))*state(c)%t(i,k) + met_rlx(k)*met_t(i,k,c)
              end if
-
-             qini     (:ncol,:pver) = state(c)%q(:ncol,:pver,       1)
-             totliqini = 0.0_r8
-             do m_cnst=1,thermodynamic_active_species_liq_num
-                m = thermodynamic_active_species_liq_idx(m_cnst)
-                totliqini(:ncol,:pver) = totliqini(:ncol,:pver)+state(c)%q(:ncol,:pver,m)
-             end do
-             toticeini = 0.0_r8
-             do m_cnst=1,thermodynamic_active_species_ice_num
-                m = thermodynamic_active_species_ice_idx(m_cnst)
-                toticeini(:ncol,:pver) = toticeini(:ncol,:pver)+state(c)%q(:ncol,:pver,m)
-             end do
-
              ! at this point tracer mixing ratios have already been
              ! converted from dry to moist
              state(c)%q(i,k,1) = alpha*state(c)%q(i,k,1) + (D1_0-alpha)*met_q(i,k,c)
