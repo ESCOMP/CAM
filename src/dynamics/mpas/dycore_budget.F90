@@ -5,9 +5,8 @@ implicit none
 public :: print_budget
 real(r8), parameter :: eps      = 1.0E-9_r8
 real(r8), parameter :: eps_mass = 1.0E-12_r8
-real(r8), save :: previous_dEdt_adiabatic_dycore_and_pdc_errors = 0.0_r8
-real(r8), save :: previous_dEdt_dry_mass_adjust                 = 0.0_r8
-real(r8), save :: previous_dEdt_phys_dyn_coupl_err_Agrid        = 0.0_r8
+real(r8), save :: previous_dEdt_dry_mass_adjust          = 0.0_r8
+real(r8), save :: previous_dEdt_phys_dyn_coupl_err_Agrid = 0.0_r8
 !=========================================================================================
 contains
 !=========================================================================================
@@ -224,12 +223,12 @@ subroutine print_budget(hstwr)
     write(iulog,*)" "
     write(iulog,*)" Technically this equation is only valid with instantaneous time-step to"
     write(iulog,*)" time-step output"
-
+    write(iulog,*) " "
     write(iulog,*) " dE/dt energy fixer(t=n)           = ",dEdt_efix_dynE(1)
     write(iulog,*) " dE/dt dry mass adjustment (t=n-1) = ",previous_dEdt_dry_mass_adjust
-    write(iulog,*) " dE/dt adiabatic dycore (t=n-1)    = ",previous_dEdt_adiabatic_dycore_and_pdc_errors
+    write(iulog,*) " dE/dt adiabatic dycore (t=n-1)    = unknown"
     write(iulog,*) " dE/dt PDC errors (A-grid) (t=n-1) = ",previous_dEdt_phys_dyn_coupl_err_Agrid
-    write(iulog,*) " dE/dt PDC errors (other ) (t=n-1) = ??"
+    write(iulog,*) " dE/dt PDC errors (other ) (t=n-1) = unknown"
 
     dEdt_dycore_and_pdc_estimated_from_efix = -dEdt_efix_dynE(1)-previous_dEdt_phys_dyn_coupl_err_Agrid-previous_dEdt_dry_mass_adjust
     write(iulog,*) " "
@@ -377,12 +376,10 @@ subroutine print_budget(hstwr)
         end if
       end if
     end do
-
     !
-    ! save adiabatic dycore dE/dt and dry-mass adjustment to avoid samping error
+    ! save dry-mass adjustment to avoid samping error
     !
-    previous_dEdt_adiabatic_dycore_and_pdc_errors = dEdt_dycore_and_pdc_estimated_from_efix
-    previous_dEdt_dry_mass_adjust                 = dEdt_dme_adjust_dynE(1)
+    previous_dEdt_dry_mass_adjust = dEdt_dme_adjust_dynE(1)
    end if
  end subroutine print_budget
  !=========================================================================================
