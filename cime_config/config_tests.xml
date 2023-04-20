@@ -23,6 +23,7 @@ TMC   CAM mass conservation test
     <STOP_N>9</STOP_N>
     <HIST_OPTION>$STOP_OPTION</HIST_OPTION>
     <HIST_N>$STOP_N</HIST_N>
+    <ALLOW_SINGLE_EXE>TRUE</ALLOW_SINGLE_EXE>
   </test>
 
   <test NAME="SUB">
