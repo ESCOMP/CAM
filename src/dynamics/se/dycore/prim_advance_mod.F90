@@ -987,7 +987,7 @@ contains
      use cam_thermo,      only: get_gz, get_virtual_temp
      use air_composition, only: thermodynamic_active_species_num, dry_air_species_num
      use air_composition, only: get_cp_dry, get_R_dry
-     use physconst,       only: tref,cpair,gravit,lapse_rate
+     use physconst,       only: tref,cpair,rga,lapse_rate
 
      implicit none
      integer,        intent(in) :: np1,nm1,n0,nets,nete
@@ -1205,7 +1205,7 @@ contains
          !  T1 = .0065*Tref*Cp/g ! = ~191
          !  T0 = Tref-T1         ! = ~97
          !
-         T1 = lapse_rate*Tref*cpair/gravit
+         T1 = lapse_rate*Tref*cpair*rga
          T0 = Tref-T1
 
          if (hvcoord%hybm(k)>0) then
@@ -1437,7 +1437,7 @@ contains
 
   subroutine tot_energy_dyn(elem,fvm,nets,nete,tl,tl_qdp,outfld_name_suffix)
     use dimensions_mod,         only: npsq,nlev,np,nc,use_cslam,qsize
-    use physconst,              only: gravit, cpair, rearth, omega
+    use physconst,              only: rga, cpair, rearth, omega
     use element_mod,            only: element_t
     use cam_history,            only: outfld
     use cam_history_support,    only: max_fieldname_len
@@ -1624,8 +1624,8 @@ contains
 
       call strlist_get_ind(cnst_name_gll, 'CLDLIQ', ixcldliq, abort=.false.)
       call strlist_get_ind(cnst_name_gll, 'CLDICE', ixcldice, abort=.false.)
-      mr_cnst = rearth**3/gravit
-      mo_cnst = omega*rearth**4/gravit
+      mr_cnst = rga*rearth**3
+      mo_cnst = rga*omega*rearth**4
       do ie=nets,nete
         mr    = 0.0_r8
         mo    = 0.0_r8

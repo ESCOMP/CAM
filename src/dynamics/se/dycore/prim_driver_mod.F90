@@ -40,7 +40,7 @@ contains
     use hybvcoord_mod,          only: hvcoord_t
     use prim_advection_mod,     only: prim_advec_init2,deriv
     use prim_advance_mod,       only: compute_omega
-    use physconst,              only: gravit, cappa, cpair, tref, lapse_rate
+    use physconst,              only: rga, cappa, cpair, tref, lapse_rate
     use cam_thermo,             only: get_dp_ref
     use physconst,              only: pstd
 
@@ -157,7 +157,7 @@ contains
      !  T1 = .0065*Tref*Cp/g ! = ~191
      !  T0 = Tref-T1         ! = ~97
      !
-     T1 = lapse_rate*Tref*cpair/gravit
+     T1 = lapse_rate*Tref*cpair*rga
      T0 = Tref-T1
      do ie=nets,nete
        do k=1,nlev
