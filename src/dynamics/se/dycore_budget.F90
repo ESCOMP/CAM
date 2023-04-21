@@ -350,9 +350,9 @@ subroutine print_budget(hstwr)
           write(iulog,*) ""
         else
           write(iulog,*) ""
-          write(iulog,*) "Since ftype<>1 there are physics dynamics coupling errors"
+          write(iulog,*) " Since ftype<>1 there are physics dynamics coupling errors"
           write(iulog,*) ""
-          write(iulog,*) "Break-down below:"
+          write(iulog,*) " Break-down below:"
           write(iulog,*) ""
         end if
         
@@ -367,9 +367,12 @@ subroutine print_budget(hstwr)
           write(iulog,*) "      physics total = parameterizations + efix + dry-mass adjustment"
           write(iulog,*) " "
         end do
+        if (ftype==1) then
+          call endrun(subname//"Physics-dynamics coupling error. See atm.log")
+        end if
       else
-        write(iulog,'(a46,F6.2,a6)')"dE/dt physics tendency in dynamics (dBD-dAF)   ",dEdt_phys_total_in_dyn(1)," W/M^2"
-        write(iulog,'(a46,F6.2,a6)')"dE/dt physics tendency in physics  (dyAM-dyBF) ",dEdt_phys_total_dynE(1)," W/M^2"
+        write(iulog,'(a47,F6.2,a6)')" dE/dt physics tendency in dynamics (dBD-dAF)   ",dEdt_phys_total_in_dyn(1)," W/M^2"
+        write(iulog,'(a47,F6.2,a6)')" dE/dt physics tendency in physics  (dyAM-dyBF) ",dEdt_phys_total_dynE(1)," W/M^2"
         write(iulog,*)" "
         write(iulog,*) " When runnig with a physics grid this consistency check does not make sense"
         write(iulog,*) " since it is computed on the GLL grid whereas we enforce energy conservation"
