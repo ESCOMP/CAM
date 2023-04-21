@@ -4921,8 +4921,8 @@ end subroutine print_active_fldlst
                     / nsteps
             end do
          else
-            write(errmsg,*) sub,'FATAL: bad nstep normalization, currstep, beg_nstep, nsteps=',currstep,tape(t)%hlist(f)%beg_nstep
-            call endrun(errmsg)
+            write(errmsg,*) sub,'FATAL: bad nstep normalization, currstep, beg_nstep=',currstep,',',tape(t)%hlist(f)%beg_nstep
+            call endrun(trim(errmsg))
          end if
       end if
       if (avgflag == 'S') then

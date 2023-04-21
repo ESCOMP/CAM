@@ -390,7 +390,7 @@ end subroutine check_energy_get_integrals
        cp_or_cv(:,:) = cpair
     else
        call endrun('check_energy_chng: cpairv is not allowed to vary when subcolumns are turned on')
-     end if
+    end if
 
     call get_hydrostatic_energy(state%q(1:ncol,1:pver,1:pcnst),.true.,               &
          state%pdel(1:ncol,1:pver), cp_or_cv(1:ncol,1:pver),                         &
@@ -949,8 +949,6 @@ end subroutine check_energy_get_integrals
     ! MR is equation (6) without \Delta A and sum over areas (areas are in units of radians**2)
     ! MO is equation (7) without \Delta A and sum over areas (areas are in units of radians**2)
     !
-    lchnk = state%lchnk
-    ncol  = state%ncol
     
     mr_cnst = rearth**3/gravit
     mo_cnst = omega*rearth**4/gravit

@@ -28,7 +28,7 @@ subroutine print_budget(hstwr)
   logical, intent(in) :: hstwr(:)
 
   ! Local variables
-  character(len=*), parameter :: subname = 'dycore_budget:print_budgets'
+  character(len=*), parameter :: subname = 'dycore_budget:print_budgets:'
   !
   ! physics energy tendencies
   !

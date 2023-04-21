@@ -180,7 +180,8 @@ CONTAINS
                 call endrun(errmsg)
              end if
           end if
-          call addfld (TRIM(ADJUSTL(name_str)),   horiz_only, 'N', TRIM(ADJUSTL(units_str)),TRIM(ADJUSTL(desc_str)),gridname=gridname)
+          call addfld (TRIM(ADJUSTL(name_str)), horiz_only, 'N', TRIM(ADJUSTL(units_str)), &
+                       TRIM(ADJUSTL(desc_str)), gridname=gridname)
           call add_default(TRIM(ADJUSTL(name_str)), thermo_budget_histfile_num, 'N')
        end do
     end if
@@ -359,7 +360,8 @@ CONTAINS
       ! Find budget name in list
       budget_ind_byname  = -1
       do m = 1, budget_array_max
-         if (trim(adjustl(name)) == trim(adjustl(budget_name(m))).or.trim(adjustl(name)) == trim(adjustl(budget_stagename(m)))) then
+         if (trim(adjustl(name)) == trim(adjustl(budget_name(m))).or. &
+             trim(adjustl(name)) == trim(adjustl(budget_stagename(m)))) then
             budget_ind_byname  = m
             return
          end if
@@ -384,7 +386,8 @@ CONTAINS
 
     is_budget = .false.
     do m = 1, budget_array_max
-       if (trim(adjustl(name)) == trim(adjustl(budget_name(m))).or.trim(adjustl(name)) == trim(adjustl(budget_stagename(m)))) then
+       if (trim(adjustl(name)) == trim(adjustl(budget_name(m))).or. &
+           trim(adjustl(name)) == trim(adjustl(budget_stagename(m)))) then
           is_budget = .true.
           return
        end if

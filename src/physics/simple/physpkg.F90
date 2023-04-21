@@ -654,6 +654,8 @@ contains
     if (.not. moist_physics) then
       deallocate(cldliqini)
       deallocate(cldiceini)
+      deallocate(totliqini)
+      deallocate(toticeini)
     end if
 
   end subroutine tphysac

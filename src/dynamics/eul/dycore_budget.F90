@@ -15,7 +15,7 @@ subroutine print_budget(hstwr)
 
   ! arguments
   logical, intent(in) :: hstwr(:)
-  character(len=*), parameter :: subname = 'dycore_budget:print_budgets'
+  character(len=*), parameter :: subname = 'dycore_budget:print_budgets:'
 
   !--------------------------------------------------------------------------------------
 

@@ -2079,7 +2079,7 @@ contains
     character(len=120)                                  :: errormsg
     integer                                             :: gridind
     integer                                             :: dimsize
-    if (masterproc) write(iulog,*)'adding cam_grid_attribute gridname,name,dimname=',gridname,name,dimname
+
     gridind = get_cam_grid_index(trim(gridname))
     if (gridind > 0) then
       call find_cam_grid_attr(gridind, trim(name), attptr)

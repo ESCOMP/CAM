@@ -27,7 +27,7 @@ subroutine print_budget(hstwr)
   logical, intent(in) :: hstwr(:)
 
   ! Local variables
-  character(len=*), parameter :: subname = 'dycore_budget:print_budgets'
+  character(len=*), parameter :: subname = 'dycore_budget:print_budgets:'
   !
   ! physics energy tendencies
   !
@@ -394,7 +394,7 @@ subroutine print_budget(hstwr)
     end do
 
     !
-    ! save adiabatic dycore dE/dt and dry-mass adjustment to avoid samping error
+    ! save adiabatic dycore dE/dt and dry-mass adjustment to avoid sampling error
     !
     previous_dEdt_adiabatic_dycore = dEdt_dycore_phys
     previous_dEdt_dry_mass_adjust  = dEdt_dme_adjust_dynE(1)

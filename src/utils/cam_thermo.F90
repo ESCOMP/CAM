@@ -1613,7 +1613,7 @@ CONTAINS
       !     or internal energy (z coordinate)
       real(r8), intent(out), optional :: se (:)
       ! PO: vertically integrated PHIS term (pressure coordinate)
-      !     or potential enerhy (z coordinate)
+      !     or potential energy (z coordinate)
       real(r8), intent(out), optional :: po (:)
       ! WV: vertically integrated water vapor
       real(r8), intent(out), optional :: wv (:)

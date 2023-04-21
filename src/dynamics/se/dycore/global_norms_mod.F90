@@ -61,7 +61,6 @@ contains
     !
     J_tmp = 0.0_r8
 
-!JMD    print *,'global_integral: before loop'
     do ie=nets,nete
       do q=1,num_flds
         do j=1,np
@@ -75,9 +74,7 @@ contains
     do ie=nets,nete
       global_shared_buf(ie,1:num_flds) = J_tmp(ie,:)
     enddo
-    !JMD    print *,'global_integral: before wrap_repro_sum'
     call wrap_repro_sum(nvars=num_flds, comm=hybrid%par%comm)
-    !JMD    print *,'global_integral: after wrap_repro_sum'
     I_sphere(:) =global_shared_sum(1:num_flds) /(4.0_r8*PI)
   end subroutine global_integrals
 
@@ -107,7 +104,6 @@ contains
     !
     J_tmp = 0.0_r8
 
-!JMD    print *,'global_integral: before loop'
     do ie=nets,nete
       do q=1,num_flds
         do j=1,npts
@@ -120,9 +116,7 @@ contains
     do ie=nets,nete
       global_shared_buf(ie,1:num_flds) = J_tmp(ie,:)
     enddo
-    !JMD    print *,'global_integral: before wrap_repro_sum'
     call wrap_repro_sum(nvars=num_flds, comm=hybrid%par%comm)
-    !JMD    print *,'global_integral: after wrap_repro_sum'
     I_sphere(:) =global_shared_sum(1:num_flds) /(4.0_r8*PI)
   end subroutine global_integrals_general
 
@@ -160,12 +154,11 @@ contains
     real (kind=r8) :: da
     real (kind=r8) :: J_tmp(nets:nete)
 !
-! This algorythm is independent of thread count and task count.
+! This algorithm is independent of thread count and task count.
 ! This is a requirement of consistancy checking in cam.
 !
     J_tmp = 0.0_r8
 
-!JMD    print *,'global_integral: before loop'
        do ie=nets,nete
           do j=1,np
              do i=1,np
@@ -177,11 +170,8 @@ contains
     do ie=nets,nete
       global_shared_buf(ie,1) = J_tmp(ie)
     enddo
-!JMD    print *,'global_integral: before wrap_repro_sum'
     call wrap_repro_sum(nvars=1, comm=hybrid%par%comm)
-!JMD    print *,'global_integral: after wrap_repro_sum'
     I_tmp = global_shared_sum(1)
-!JMD    print *,'global_integral: after global_shared_sum'
     I_sphere = I_tmp(1)/(4.0_r8*PI)
 
   end function global_integral_elem
@@ -210,28 +200,23 @@ contains
     real (kind=r8) :: da
     real (kind=r8) :: J_tmp(nets:nete)
 !
-! This algorythm is independent of thread count and task count.
+! This algorithm is independent of thread count and task count.
 ! This is a requirement of consistancy checking in cam.
 !
     J_tmp = 0.0_r8
-
-!JMD    print *,'global_integral: before loop'
-       do ie=nets,nete
-          do j=1,npts
-             do i=1,npts
-                da = fvm(ie)%area_sphere(i,j)
-                J_tmp(ie) = J_tmp(ie) + da*h(i,j,ie)
-             end do
+    do ie=nets,nete
+       do j=1,npts
+          do i=1,npts
+             da = fvm(ie)%area_sphere(i,j)
+             J_tmp(ie) = J_tmp(ie) + da*h(i,j,ie)
           end do
        end do
+    end do
     do ie=nets,nete
-      global_shared_buf(ie,1) = J_tmp(ie)
+       global_shared_buf(ie,1) = J_tmp(ie)
     enddo
-!JMD    print *,'global_integral: before wrap_repro_sum'
     call wrap_repro_sum(nvars=1, comm=hybrid%par%comm)
-!JMD    print *,'global_integral: after wrap_repro_sum'
     I_tmp = global_shared_sum(1)
-!JMD    print *,'global_integral: after global_shared_sum'
     I_sphere = I_tmp(1)/(4.0_r8*PI)
 
   end function global_integral_fvm
