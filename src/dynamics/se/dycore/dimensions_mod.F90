@@ -15,7 +15,6 @@ module dimensions_mod
 #else
   integer, parameter         :: ntrac_d = 0 ! No fvm tracers if CSLAM is off
 #endif
-
   !
   ! The variables below hold indices of water vapor and condensate loading tracers as well as
   ! associated heat capacities (initialized in dyn_init):
@@ -36,8 +35,9 @@ module dimensions_mod
   integer, parameter, public :: nc = 3       !cslam resolution
   integer           , public :: fv_nphys !physics-grid resolution - the "MAX" is so that the code compiles with NC=0
 
-  integer         :: ntrac = 0 !ntrac is set in dyn_comp
-  integer         :: qsize = 0 !qsize is set in dyn_comp
+  integer         :: ntrac = 0           !ntrac is set in dyn_comp
+  logical, public :: use_cslam = .false. !logical for CSLAM
+  integer         :: qsize = 0           !qsize is set in dyn_comp
   !
   ! fvm dimensions:
   logical, public :: lprint!for debugging

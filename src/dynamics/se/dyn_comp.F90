@@ -38,8 +38,8 @@ use shr_sys_mod,            only: shr_sys_flush
 
 use parallel_mod,           only: par
 use hybrid_mod,             only: hybrid_t
-use dimensions_mod,         only: nelemd, nlev, np, npsq, ntrac, nc, fv_nphys, &
-                                  qsize
+use dimensions_mod,         only: nelemd, nlev, np, npsq, ntrac, nc, fv_nphys
+use dimensions_mod,         only: qsize, use_cslam
 use element_mod,            only: element_t, elem_state_t
 use fvm_control_volume_mod, only: fvm_struct
 use time_mod,               only: nsplit
@@ -356,12 +356,14 @@ subroutine dyn_readnl(NLFileName)
       ! Use finite volume physics grid and CSLAM for tracer advection
       nphys_pts = fv_nphys*fv_nphys
       qsize = thermodynamic_active_species_num ! number tracers advected by GLL
-      ntrac = pcnst                    ! number tracers advected by CSLAM
+      ntrac = pcnst                            ! number tracers advected by CSLAM
+      use_cslam = .true.
    else
       ! Use GLL grid for physics and tracer advection
       nphys_pts = npsq
       qsize = pcnst
       ntrac = 0
+      use_cslam = .false.
    end if
 
    if (rsplit < 1) then
@@ -649,7 +651,7 @@ subroutine dyn_init(dyn_in, dyn_out)
 
    allocate(kord_tr(qsize))
    kord_tr(:) = vert_remap_tracer_alg
-   if (ntrac>0) then
+   if (use_cslam) then
      allocate(kord_tr_cslam(ntrac))
      kord_tr_cslam(:) = vert_remap_tracer_alg
    end if
@@ -667,7 +669,7 @@ subroutine dyn_init(dyn_in, dyn_out)
      ! CSLAM tracers are always indexed as in physics
      ! of no CSLAM then SE tracers are always indexed as in physics
      !
-     if (ntrac>0) then
+     if (use_cslam) then
        !
        ! note that in this case qsize = thermodynamic_active_species_num
        !
@@ -691,7 +693,7 @@ subroutine dyn_init(dyn_in, dyn_out)
    end do
 
    do m=1,thermodynamic_active_species_liq_num
-     if (ntrac>0) then
+     if (use_cslam) then
        do mfound=1,qsize
          if (TRIM(cnst_name(thermodynamic_active_species_liq_idx(m)))==TRIM(cnst_name_gll(mfound))) then
            thermodynamic_active_species_liq_idx_dycore(m) = mfound
@@ -705,7 +707,7 @@ subroutine dyn_init(dyn_in, dyn_out)
      end if
    end do
    do m=1,thermodynamic_active_species_ice_num
-     if (ntrac>0) then
+     if (use_cslam) then
        do mfound=1,qsize
          if (TRIM(cnst_name(thermodynamic_active_species_ice_idx(m)))==TRIM(cnst_name_gll(mfound))) then
            thermodynamic_active_species_ice_idx_dycore(m) = mfound
@@ -851,7 +853,7 @@ subroutine dyn_init(dyn_in, dyn_out)
    call addfld ('FT',  (/ 'lev' /), 'A', 'K/s', 'Temperature forcing term on GLL grid',gridname='GLL')
 
    ! Tracer forcing on fvm (CSLAM) grid and internal CSLAM pressure fields
-   if (ntrac>0) then
+   if (use_cslam) then
       do m = 1, ntrac
          call addfld (trim(cnst_name(m))//'_fvm',  (/ 'lev' /), 'I', 'kg/kg',   &
             trim(cnst_longname(m)), gridname='FVM')
@@ -873,7 +875,7 @@ subroutine dyn_init(dyn_in, dyn_out)
    ! Energy diagnostics and axial angular momentum diagnostics
    call addfld ('ABS_dPSdt',  horiz_only, 'A', 'Pa/s', 'Absolute surface pressure tendency',gridname='GLL')
 
-   if (ntrac>0) then
+   if (use_cslam) then
 #ifdef waccm_debug
      call addfld ('CSLAM_gamma',  (/ 'lev' /), 'A', '', 'Courant number from CSLAM',     gridname='FVM')
 #endif
@@ -891,31 +893,31 @@ subroutine dyn_init(dyn_in, dyn_out)
    if (thermo_budget_history) then
       ! Register stages for budgets
       do istage = 1, num_stages
-         call e_m_snapshot(TRIM(ADJUSTL(stage(istage))), 'dyn', longname=TRIM(ADJUSTL(stage_txt(istage))), cslam=ntrac>0)
+         call e_m_snapshot(TRIM(ADJUSTL(stage(istage))), 'dyn', longname=TRIM(ADJUSTL(stage_txt(istage))), cslam=use_cslam)
       end do
       !
       ! Register tendency (difference) budgets
       !
-      call e_m_budget('dEdt_floating_dyn'   ,'dAD','dBD','dyn','dif',longname="dE/dt floating dynamics (dAD-dBD)"            ,cslam=ntrac>0)
-      call e_m_budget('dEdt_vert_remap'     ,'dAR','dAD','dyn','dif',longname="dE/dt vertical remapping (dAR-dAD)"           ,cslam=ntrac>0)
-      call e_m_budget('dEdt_phys_tot_in_dyn','dBD','dAF','dyn','dif',longname="dE/dt physics tendency in dynamics (dBD-dAF)" ,cslam=ntrac>0)
+      call e_m_budget('dEdt_floating_dyn'   ,'dAD','dBD','dyn','dif',longname="dE/dt floating dynamics (dAD-dBD)"            ,cslam=use_cslam)
+      call e_m_budget('dEdt_vert_remap'     ,'dAR','dAD','dyn','dif',longname="dE/dt vertical remapping (dAR-dAD)"           ,cslam=use_cslam)
+      call e_m_budget('dEdt_phys_tot_in_dyn','dBD','dAF','dyn','dif',longname="dE/dt physics tendency in dynamics (dBD-dAF)" ,cslam=use_cslam)
 
-      call e_m_budget('dEdt_del4'          ,'dCH','dBH','dyn','dif',longname="dE/dt del4 (dCH-dBH)"                          ,cslam=ntrac>0)
-      call e_m_budget('dEdt_del4_fric_heat','dAH','dCH','dyn','dif',longname="dE/dt del4 frictional heating (dAH-dCH)"       ,cslam=ntrac>0)
-      call e_m_budget('dEdt_del4_tot'      ,'dAH','dBH','dyn','dif',longname="dE/dt del4 + del4 frictional heating (dAH-dBH)",cslam=ntrac>0)
-      call e_m_budget('dEdt_del2_sponge'   ,'dAS','dBS','dyn','dif',longname="dE/dt del2 sponge (dAS-dBS)"                   ,cslam=ntrac>0)
+      call e_m_budget('dEdt_del4'          ,'dCH','dBH','dyn','dif',longname="dE/dt del4 (dCH-dBH)"                          ,cslam=use_cslam)
+      call e_m_budget('dEdt_del4_fric_heat','dAH','dCH','dyn','dif',longname="dE/dt del4 frictional heating (dAH-dCH)"       ,cslam=use_cslam)
+      call e_m_budget('dEdt_del4_tot'      ,'dAH','dBH','dyn','dif',longname="dE/dt del4 + del4 frictional heating (dAH-dBH)",cslam=use_cslam)
+      call e_m_budget('dEdt_del2_sponge'   ,'dAS','dBS','dyn','dif',longname="dE/dt del2 sponge (dAS-dBS)"                   ,cslam=use_cslam)
       !
       ! Register derived budgets
       !
-      call e_m_budget('dEdt_dycore'        ,'dEdt_floating_dyn','dEdt_vert_remap'   ,'dyn','sum',longname="dE/dt adiabatic dynamics"      ,cslam=ntrac>0)
-      call e_m_budget('dEdt_del2_del4_tot' ,'dEdt_del4_tot'    ,'dEdt_del2_sponge'  ,'dyn','sum',longname="dE/dt explicit diffusion total",cslam=ntrac>0)
+      call e_m_budget('dEdt_dycore'        ,'dEdt_floating_dyn','dEdt_vert_remap'   ,'dyn','sum',longname="dE/dt adiabatic dynamics"      ,cslam=use_cslam)
+      call e_m_budget('dEdt_del2_del4_tot' ,'dEdt_del4_tot'    ,'dEdt_del2_sponge'  ,'dyn','sum',longname="dE/dt explicit diffusion total",cslam=use_cslam)
       call e_m_budget('dEdt_residual'      ,'dEdt_floating_dyn','dEdt_del2_del4_tot','dyn','dif',&
-           longname="dE/dt residual (dEdt_floating_dyn-dEdt_del2_del4_tot)",cslam=ntrac>0)      
+           longname="dE/dt residual (dEdt_floating_dyn-dEdt_del2_del4_tot)",cslam=use_cslam)      
    end if
    !
    ! add dynamical core tracer tendency output
    !
-   if (ntrac>0) then
+   if (use_cslam) then
      do m = 1, pcnst
        call addfld(tottnam(m),(/ 'lev' /),'A','kg/kg/s',trim(cnst_name(m))//' horz + vert',  &
             gridname='FVM')
@@ -1059,7 +1061,7 @@ subroutine dyn_run(dyn_state)
    end if
 
 
-   if (ntrac > 0) then
+   if (use_cslam) then
       do ie = nets, nete
          do m = 1, ntrac
             do k = 1, nlev
@@ -1673,7 +1675,7 @@ subroutine read_inidat(dyn_in)
    ! if CSLAM active then we only advect water vapor and condensate
    ! loading tracers in state%qdp
 
-   if (ntrac > 0) then
+   if (use_cslam) then
       do ie = 1, nelemd
          do nq = 1, thermodynamic_active_species_num
             m_cnst = thermodynamic_active_species_idx(nq)
@@ -1704,7 +1706,7 @@ subroutine read_inidat(dyn_in)
 
    ! interpolate fvm tracers and fvm pressure variables
 
-   if (ntrac > 0) then
+   if (use_cslam) then
       if (par%masterproc) then
          write(iulog,*) 'Initializing dp_fvm from spectral element dp'
       end if
@@ -1726,7 +1728,7 @@ subroutine read_inidat(dyn_in)
          write(iulog,*) 'FVM tracers, FVM pressure variables and se_area_sphere initialized.'
       end if
 
-   end if    ! (ntrac > 0)
+   end if    ! (use_cslam)
 
    ! Cleanup
    deallocate(qtmp)
@@ -2271,7 +2273,7 @@ subroutine write_dyn_vars(dyn_out)
    integer                      :: ie, m
    !----------------------------------------------------------------------------
 
-   if (ntrac > 0) then
+   if (use_cslam) then
       do ie = 1, nelemd
          call outfld('dp_fvm', RESHAPE(dyn_out%fvm(ie)%dp_fvm(1:nc,1:nc,:), &
                                        (/nc*nc,nlev/)), nc*nc, ie)

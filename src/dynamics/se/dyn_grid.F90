@@ -41,7 +41,7 @@ use cam_abortutils,         only: endrun
 use pio,                    only: file_desc_t
 
 use dimensions_mod,         only: globaluniquecols, nelem, nelemd, nelemdmax
-use dimensions_mod,         only: ne, np, npsq, fv_nphys, nlev, ntrac
+use dimensions_mod,         only: ne, np, npsq, fv_nphys, nlev, use_cslam
 use element_mod,            only: element_t
 use fvm_control_volume_mod, only: fvm_struct
 use hybvcoord_mod,          only: hvcoord_t
@@ -59,7 +59,6 @@ integer, parameter :: dyn_decomp = 101 ! The SE dynamics grid
 integer, parameter :: fvm_decomp = 102 ! The FVM (CSLAM) grid
 integer, parameter :: physgrid_d = 103 ! physics grid on dynamics decomp
 integer, parameter :: ini_decomp = 104 ! alternate dynamics grid for reading initial file
-
 character(len=3), protected :: ini_grid_name
 
 ! Name of horizontal grid dimension in initial file.
@@ -736,6 +735,8 @@ subroutine define_cam_grids()
    use shr_const_mod,       only: PI => SHR_CONST_PI
 
    ! Local variables
+    real(r8),         parameter :: area_sphere = 4.0_r8*PI
+
    integer                      :: i, ii, j, k, ie, mapind
    character(len=8)             :: latname, lonname, ncolname, areaname
 
@@ -790,7 +791,7 @@ subroutine define_cam_grids()
       do j = 1, np
          do i = 1, np
             pearea(ii) = elem(ie)%mp(i,j)*elem(ie)%metdet(i,j)
-            pearea_wt(ii) = pearea(ii)/(4.0_r8*PI)
+            pearea_wt(ii) = pearea(ii)/area_sphere
             pelat_deg(ii) = elem(ie)%spherep(i,j)%lat * rad2deg
             pelon_deg(ii) = elem(ie)%spherep(i,j)%lon * rad2deg
             ii = ii + 1
@@ -883,7 +884,7 @@ subroutine define_cam_grids()
    ! Create FVM grid object for CSLAM
    !---------------------------------
 
-   if (ntrac > 0) then
+   if (use_cslam) then
 
       ncols_fvm = nc * nc * nelemd
       ngcols_fvm = nc * nc * nelem_d
@@ -900,7 +901,7 @@ subroutine define_cam_grids()
                fvm_coord(mapind) = fvm(ie)%center_cart(i,j)%lon*rad2deg
                fvm_map(mapind) = k + ((elem(ie)%GlobalId-1) * nc * nc)
                fvm_area(mapind) = fvm(ie)%area_sphere(i,j)
-               fvm_areawt(mapind) = fvm_area(mapind)/(4.0_r8*PI)
+               fvm_areawt(mapind) = fvm_area(mapind)/area_sphere
                k = k + 1
             end do
          end do
@@ -975,7 +976,7 @@ subroutine define_cam_grids()
                physgrid_coord(mapind) = fvm(ie)%center_cart_physgrid(i,j)%lon*rad2deg
                physgrid_map(mapind) = k + ((elem(ie)%GlobalId-1) * fv_nphys * fv_nphys)
                physgrid_area(mapind) = fvm(ie)%area_sphere_physgrid(i,j)
-               physgrid_areawt(mapind) = physgrid_area(mapind)/(4.0_r8*PI)
+               physgrid_areawt(mapind) = physgrid_area(mapind)/area_sphere
                k = k + 1
             end do
          end do
