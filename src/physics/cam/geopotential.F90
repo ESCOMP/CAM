@@ -101,11 +101,7 @@ use air_composition, only: thermodynamic_active_species_num,thermodynamic_active
             hkl(i) = piln(i,k+1) - piln(i,k)
             hkk(i) = 1._r8 - pint(i,k) * hkl(i) * rpdel(i,k)
           end do
-        else!MPAS, SE or EUL
-          !
-          ! For EUL and SE: pmid = 0.5*(pint(k+1)+pint(k))
-          ! For MPAS      : pmid is computed from theta_m, rhodry, etc.
-          !
+        else
           do i = 1,ncol
             hkl(i) = pdel(i,k) / pmid(i,k)
             hkk(i) = 0.5_r8 * hkl(i)
@@ -155,22 +151,27 @@ use air_composition, only: thermodynamic_active_species_num,thermodynamic_active
       do k = pver, 1, -1
         
         ! First set hydrostatic elements consistent with dynamics
-        
-        if ((dycore_is('LR') .or. dycore_is('FV3'))) then
-          do i = 1,ncol
-            hkl(i) = piln(i,k+1) - piln(i,k)
-            hkk(i) = 1._r8 - pint(i,k) * hkl(i) * rpdel(i,k)
-          end do
-        else!MPAS, SE or EUL
+ 
+        !
+        ! the outcommented code is left for when/if we will support
+        ! FV3 and/or FV with condensate loading
+        !
+       
+!        if ((dycore_is('LR') .or. dycore_is('FV3'))) then
+!          do i = 1,ncol
+!            hkl(i) = piln(i,k+1) - piln(i,k)
+!            hkk(i) = 1._r8 - pint(i,k) * hkl(i) * rpdel(i,k)
+!          end do
+!        else!MPAS, SE or EUL
           !
-          ! For EUL and SE: pmid = 0.5*(pint(k+1)+pint(k))
-          ! For MPAS      : pmid is computed from theta_m, rhodry, etc.
+          ! For SE   : pmid = 0.5*(pint(k+1)+pint(k))
+          ! For MPAS : pmid is computed from theta_m, rhodry, etc.
           !
           do i = 1,ncol
             hkl(i) = pdel(i,k) / pmid(i,k)
             hkk(i) = 0.5_r8 * hkl(i)
           end do
-        end if
+!        end if
         
         ! Now compute tv, zm, zi
         

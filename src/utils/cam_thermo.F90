@@ -1699,7 +1699,7 @@ CONTAINS
          do kdx = 1, SIZE(tracer, 2)
             do idx = 1, SIZE(tracer, 1)
                ke_vint(idx) = ke_vint(idx) + (pdel(idx, kdx) *                &
-                    0.5_r8 * (U(idx, kdx)**2 + V(idx, kdx)**2) * rga
+                    0.5_r8 * (U(idx, kdx)**2 + V(idx, kdx)**2)) * rga
                se_vint(idx) = se_vint(idx) + (T(idx, kdx) *                   &
                     cp_or_cv(idx, kdx) * pdel(idx, kdx) * rga)
                po_vint(idx) =  po_vint(idx)+pdel(idx, kdx)
