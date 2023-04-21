@@ -155,7 +155,12 @@ CONTAINS
                TRIM(ADJUSTL(longname))
           write(units_str,*) TRIM(ADJUSTL(thermo_budget_vars_unit(ivars)))
 
-          budget_num = budget_num+1
+          if (budget_num < budget_array_max) then
+             budget_num = budget_num + 1
+          else
+             write(errmsg, *) sub, ': Maximum number of budgets reached - increase budget_array_max parameter '
+             call endrun(errmsg)
+          end if
           ! set budget name and constants
           budget_name(budget_num) = trim(name_str)
           budget_longname(budget_num) = trim(desc_str)
