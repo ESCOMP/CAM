@@ -45,9 +45,6 @@ contains
     type (hybrid_t)      , intent(in) :: hybrid
 
     real (kind=r8) :: I_sphere(num_flds)
-
-    real (kind=r8) :: I_shared
-    common /gblintcom/I_shared
     !
     ! Local variables
     !
@@ -89,9 +86,6 @@ contains
     real (kind=r8),  intent(in) :: da(npts,npts,nets:nete)
 
     real (kind=r8) :: I_sphere(num_flds)
-
-    real (kind=r8) :: I_shared
-    common /gblintcom/I_shared
     !
     ! Local variables
     !
@@ -143,9 +137,6 @@ contains
 
     real (kind=r8) :: I_sphere
 
-    real (kind=r8) :: I_shared
-    common /gblintcom/I_shared
-
     ! Local variables
 
     integer :: ie,j,i
@@ -188,9 +179,6 @@ contains
     type (hybrid_t)      , intent(in) :: hybrid
 
     real (kind=r8) :: I_sphere
-
-    real (kind=r8) :: I_shared
-    common /gblintcom/I_shared
 
     ! Local variables
 
@@ -387,11 +375,11 @@ contains
     max_min_dx   = ParallelMax(max_min_dx,hybrid)
     min_max_dx   = ParallelMin(min_max_dx,hybrid)
     max_ratio    = ParallelMax(max_ratio,hybrid)
-    ! Physical units for area
-    min_area = min_area*rearth*rearth/1000000._r8
-    max_area = max_area*rearth*rearth/1000000._r8
-    avg_area = avg_area*rearth*rearth/1000000._r8          
-    tot_area = tot_area_rad*rearth*rearth/1000000._r8          
+    ! Physical units for area (unit sphere to Earth sphere)
+    min_area = min_area*rearth*rearth/1000000._r8    !m2 (rearth is in units of km)
+    max_area = max_area*rearth*rearth/1000000._r8    !m2 (rearth is in units of km)
+    avg_area = avg_area*rearth*rearth/1000000._r8    !m2 (rearth is in units of km)
+    tot_area = tot_area_rad*rearth*rearth/1000000._r8!m2 (rearth is in units of km)
     if (hybrid%masterthread) then
        write(iulog,* )""
        write(iulog,* )"Running Global Integral Diagnostic..."

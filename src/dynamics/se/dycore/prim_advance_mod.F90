@@ -1693,17 +1693,15 @@ contains
   ! column integrate mass-variable and outfld
   !
   subroutine util_function(f_in,nx,nz,name_out,ie)
-    use physconst,   only: gravit
+    use physconst,   only: rga
     use cam_history, only: outfld, hist_fld_active
     integer,           intent(in) :: nx,nz,ie
     real(kind=r8),     intent(in) :: f_in(nx,nx,nz)
     character(len=16), intent(in) :: name_out
     real(kind=r8)       :: f_out(nx*nx)
     integer             :: i,j,k
-    real(kind=r8)       :: inv_g
     if (hist_fld_active(name_out)) then
       f_out = 0.0_r8
-      inv_g = 1.0_r8/gravit
       do k = 1, nz
         do j = 1, nx
           do i = 1, nx
@@ -1711,7 +1709,7 @@ contains
           end do
         end do
       end do
-      f_out = f_out*inv_g
+      f_out = f_out*rga
       call outfld(name_out,f_out,nx*nx,ie)
     end if
   end subroutine util_function
