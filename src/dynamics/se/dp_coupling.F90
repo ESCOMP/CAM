@@ -674,7 +674,7 @@ subroutine derived_phys_dry(phys_state, phys_tend, pbuf2d)
       !
       ! CAM physics: water tracers are moist; the rest dry
       !
-      factor_array(1:ncol,1:nlev) = 1/factor_array(1:ncol,1:nlev)
+      factor_array(1:ncol,1:nlev) = 1._r8/factor_array(1:ncol,1:nlev)
       do m = 1,pcnst
          if (cnst_type(m) == 'wet') then
             do k = 1, nlev

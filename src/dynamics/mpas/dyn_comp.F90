@@ -197,10 +197,6 @@ type dyn_export_t
    real(r8), dimension(:),     pointer :: fzm     ! Interp weight from k layer midpoint to k layer
                                                   ! interface [dimensionless]             (nver)
    real(r8), dimension(:),     pointer :: fzp     ! Interp weight from k-1 layer midpoint to k
-
-   real(r8), dimension(:),     pointer :: areaCell ! cell area (m^2)
-                                                  ! layer interface [dimensionless]       (nver)
-
    !
    ! State that may be directly derived from dycore prognostic state
    !

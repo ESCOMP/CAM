@@ -237,17 +237,24 @@ CONTAINS
                TRIM(ADJUSTL(longname))
           write(units_str,*) TRIM(ADJUSTL(thermo_budget_vars_unit(ivars)))
 
-          budget_num = budget_num + 1
+          if (budget_num < budget_array_max) then
+             budget_num = budget_num + 1
+          else
+             write(errmsg, *) sub, ': Maximum number of budgets reached - increase budget_array_max parameter '
+             call endrun(errmsg)
+          end if
           budget_pkgtype(budget_num)=pkgtype
 
           ! set budget name and constants
           budget_name(budget_num) = trim(name_str)
           budget_longname(budget_num) = trim(desc_str)
 
-          if (optype=='dif') opchar='-'
-          if (optype=='sum') opchar='+'
-          if (optype=='stg') then
-             write(errmsg,*) sub, ': FATAL: bad value optype should be sum of dif:', optype
+          if (optype=='dif') then
+             opchar='-'
+          else if (optype=='sum') then
+             opchar='+'
+          else
+             write(errmsg,*) sub, ': FATAL: unknown operation type, expecting "sum" or "dif":', optype
              call endrun(errmsg)
           end if
           budget_stg1name(budget_num) = trim(adjustl(strstg1))
@@ -359,7 +366,7 @@ CONTAINS
       !-----------------------------------------------------------------------
       ! Find budget name in list
       budget_ind_byname  = -1
-      do m = 1, budget_array_max
+      do m = 1, budget_num
          if (trim(adjustl(name)) == trim(adjustl(budget_name(m))).or. &
              trim(adjustl(name)) == trim(adjustl(budget_stagename(m)))) then
             budget_ind_byname  = m
@@ -385,7 +392,7 @@ CONTAINS
     ! Find budget name in list of defined budgets
 
     is_budget = .false.
-    do m = 1, budget_array_max
+    do m = 1, budget_num
        if (trim(adjustl(name)) == trim(adjustl(budget_name(m))).or. &
            trim(adjustl(name)) == trim(adjustl(budget_stagename(m)))) then
           is_budget = .true.
