@@ -21,7 +21,7 @@ subroutine print_budget(hstwr)
   use budgets,                only: budget_get_global, is_budget, thermo_budget_histfile_num, thermo_budget_history
   use cam_thermo,             only: thermo_budget_vars_descriptor, thermo_budget_num_vars, thermo_budget_vars_massv, &
                                     teidx, seidx, keidx, poidx
-  use dimensions_mod,         only: ntrac
+  use dimensions_mod,         only: use_cslam
   use control_mod,            only: ftype
 
   ! arguments
@@ -217,11 +217,11 @@ subroutine print_budget(hstwr)
       diff = abs_diff(dEdt_param_physE(i),dEdt_param_dynE(i),pf=pf)
       write(iulog,fmt)"dE/dt all parameterizations (xxAP-xxBP) ",str(i)," ",dEdt_param_physE(i)," ",dEdt_param_dynE(i)," ",diff,pf
       write(iulog,*) " "
+      if (diff>eps) then
+        write(iulog,*)"FAIL"
+        call endrun(subname//"dE/dt's in physics inconsistent")
+      end if
     end do
-    if (diff>eps) then
-      write(iulog,*)"FAIL"
-      call endrun(subname//"dE/dt's in physics inconsistent")
-    end if
     write(iulog,*)" "
     write(iulog,*)" "
     write(iulog,*)"dE/dt from dry-mass adjustment will differ if dynamics and physics use"
@@ -253,7 +253,7 @@ subroutine print_budget(hstwr)
 
     tmp = previous_dEdt_phys_dyn_coupl_err+previous_dEdt_adiabatic_dycore+previous_dEdt_dry_mass_adjust
     diff = abs_diff(-dEdt_efix_dynE(1),tmp,pf)
-    if (ntrac==0) then
+    if (.not.use_cslam) then
       write(iulog,*) "Check if that is the case:", pf, diff
       write(iulog,*) " "
       if (abs(diff)>eps) then
@@ -261,7 +261,6 @@ subroutine print_budget(hstwr)
         write(iulog,*) "dE/dt dry mass adjustment (t=n-1)              = ",previous_dEdt_dry_mass_adjust
         write(iulog,*) "dE/dt adiabatic dycore (t=n-1)                 = ",previous_dEdt_adiabatic_dycore
         write(iulog,*) "dE/dt physics-dynamics coupling errors (t=n-1) = ",previous_dEdt_phys_dyn_coupl_err
-        !      call endrun(subname//"Error in energy fixer budget")
       end if
     else
       previous_dEdt_phys_dyn_coupl_err = dEdt_efix_dynE(1)+previous_dEdt_dry_mass_adjust+previous_dEdt_adiabatic_dycore
@@ -283,7 +282,7 @@ subroutine print_budget(hstwr)
       write(iulog,*) " -dE/dt dynamics state mapped to GLL grid"
     end if
     write(iulog,*) ""
-    if (ntrac==0) then
+    if (.not.use_cslam) then
       dEdt_dycore_phys = -dEdt_efix_dynE(1)-previous_dEdt_phys_dyn_coupl_err-previous_dEdt_dry_mass_adjust
       write(iulog,*)               "Hence the dycore E dissipation estimated from energy fixer "
       write(iulog,'(A39,F6.2,A6)') "based on previous time-step values is ",dEdt_dycore_phys," W/M^2"
@@ -297,7 +296,7 @@ subroutine print_budget(hstwr)
     write(iulog,*) "Is globally integrated total energy of state at the end of dynamics (dBF)"
     write(iulog,*) "and beginning of physics (using dynamics in physics energy; dyBF) the same?"
     write(iulog,*) ""
-    if (ntrac==0) then
+    if (.not.use_cslam) then
       if (abs(E_dyBF(1))>eps) then
         diff = abs_diff(E_dBF(1),E_dyBF(1))
         if (abs(diff)<eps) then
@@ -335,19 +334,7 @@ subroutine print_budget(hstwr)
     write(iulog,*)" Consistency check 2: total energy increment in dynamics same as physics?"
     write(iulog,*)"-------------------------------------------------------------------------"
     write(iulog,*)" "
-    if (ntrac>0) then
-      write(iulog,'(a46,F6.2,a6)')"dE/dt physics tendency in dynamics (dBD-dAF)   ",dEdt_phys_total_in_dyn(1)," W/M^2"
-      write(iulog,'(a46,F6.2,a6)')"dE/dt physics tendency in physics  (dyAM-dyBF) ",dEdt_phys_total_dynE(1)," W/M^2"
-      write(iulog,*)" "
-      write(iulog,*) " When runnig with a physics grid this consistency check does not make sense"
-      write(iulog,*) " since it is computed on the GLL grid whereas we enforce energy conservation"
-      write(iulog,*) " on the physics grid. To assess the errors of running dynamics on GLL"
-      write(iulog,*) " grid, tracers on CSLAM grid and physics on physics grid we use the energy"
-      write(iulog,*) " fixer check from above:"
-      write(iulog,*) " "
-      write(iulog,*) " dE/dt physics-dynamics coupling errors (t=n-1) =",previous_dEdt_phys_dyn_coupl_err
-      write(iulog,*) ""
-    else
+    if (.not.use_cslam) then
       previous_dEdt_phys_dyn_coupl_err = dEdt_phys_total_in_dyn(1)-dEdt_phys_total_dynE(1)
       diff = abs_diff(dEdt_phys_total_dynE(1),dEdt_phys_total_in_dyn(1),pf=pf)
       write(iulog,'(A40,E8.2,A7,A5)')" dE/dt physics-dynamics coupling errors       ",diff," W/M^2 ",pf
@@ -363,12 +350,12 @@ subroutine print_budget(hstwr)
           write(iulog,*) ""
         else
           write(iulog,*) ""
-          write(iulog,*) "Since ftype<>1 there are physics dynamics coupling errors"
+          write(iulog,*) " Since ftype<>1 there are physics dynamics coupling errors"
           write(iulog,*) ""
-          write(iulog,*) "Break-down below:"
+          write(iulog,*) " Break-down below:"
           write(iulog,*) ""
         end if
-
+        
         do i=1,4
           write(iulog,*) str(i),":"
           write(iulog,*) "======"
@@ -380,7 +367,22 @@ subroutine print_budget(hstwr)
           write(iulog,*) "      physics total = parameterizations + efix + dry-mass adjustment"
           write(iulog,*) " "
         end do
+        if (ftype==1) then
+          call endrun(subname//"Physics-dynamics coupling error. See atm.log")
+        end if
       end if
+    else
+      write(iulog,'(a47,F6.2,a6)')" dE/dt physics tendency in dynamics (dBD-dAF)   ",dEdt_phys_total_in_dyn(1)," W/M^2"
+      write(iulog,'(a47,F6.2,a6)')" dE/dt physics tendency in physics  (dyAM-dyBF) ",dEdt_phys_total_dynE(1)," W/M^2"
+      write(iulog,*)" "
+      write(iulog,*) " When runnig with a physics grid this consistency check does not make sense"
+      write(iulog,*) " since it is computed on the GLL grid whereas we enforce energy conservation"
+      write(iulog,*) " on the physics grid. To assess the errors of running dynamics on GLL"
+      write(iulog,*) " grid, tracers on CSLAM grid and physics on physics grid we use the energy"
+      write(iulog,*) " fixer check from above:"
+      write(iulog,*) " "
+      write(iulog,*) " dE/dt physics-dynamics coupling errors (t=n-1) =",previous_dEdt_phys_dyn_coupl_err
+      write(iulog,*) ""
     end if
     write(iulog,*)" "
     write(iulog,*)"------------------------------------------------------------"
@@ -467,10 +469,7 @@ subroutine print_budget(hstwr)
             write(iulog,*) "(detailed budget below)"
             write(iulog,*) " "
             write(iulog,*)"dMASS/dt 2D dynamics            (dAD-dBD) ",dMdt_floating_dyn," Pa/m^2/s"
-            if (is_budget('dAR').and.is_budget('dAD')) then
-              call budget_get_global('dAR-dAD',m_cnst,dMdt_vert_remap)
-              write(iulog,*)"dE/dt vertical remapping        (dAR-dAD) ",dMdt_vert_remap
-            end if
+            write(iulog,*)"dE/dt vertical remapping        (dAR-dAD) ",dMdt_vert_remap
             write(iulog,*)" "
             write(iulog,*)"Breakdown of 2D dynamics:"
             write(iulog,*)" "
