@@ -165,7 +165,7 @@ CONTAINS
           budget_name(budget_num) = trim(name_str)
           budget_longname(budget_num) = trim(desc_str)
 
-          budget_optype(budget_num)='stg'
+          budget_optype(budget_num)=''
           budget_pkgtype(budget_num)=pkgtype
           budget_stagename(budget_num)= trim(name)
 
