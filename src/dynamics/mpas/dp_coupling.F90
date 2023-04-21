@@ -771,18 +771,14 @@ subroutine hydrostatic_pressure(nCells, nVertLevels, qsize, index_qv, zz, zgrid,
       end do
 
       k = nVertLevels
-      rhok = 1.0_r8
-      do idx=1,thermodynamic_active_species_num
-        rhok = rhok+q(thermodynamic_active_species_idx_dycore(idx),k,iCell)
-      end do
-      rhok     = rhok*zz(k,iCell) * rho_zz(k,iCell)
       sum_water = 1.0_r8
       do idx=1,thermodynamic_active_species_num
         sum_water = sum_water+q(thermodynamic_active_species_idx_dycore(idx),k,iCell)
       end do
-      thetavk = theta_m(k,iCell)/sum_water
-      tvk     = thetavk*exner(k,iCell)
-      pk = dp(k)*rgas*tvk/(gravit*dz(k))
+      rhok     = sum_water*zz(k,iCell) * rho_zz(k,iCell)
+      thetavk  = theta_m(k,iCell)/sum_water
+      tvk      = thetavk*exner(k,iCell)
+      pk       = dp(k)*rgas*tvk/(gravit*dz(k))
       !
       ! model top pressure consistently diagnosed using the assumption that the mid level
       ! is at height z(nVertLevels-1)+0.5*dz
@@ -797,7 +793,7 @@ subroutine hydrostatic_pressure(nCells, nVertLevels, qsize, index_qv, zz, zgrid,
         do idx=1,thermodynamic_active_species_num
           sum_water = sum_water+q(thermodynamic_active_species_idx_dycore(idx),k,iCell)
         end do
-        thetavk = theta_m(k,iCell)/sum_water! (1.0_r8 + q(index_qv,k,iCell))  !convert modified theta to virtual theta
+        thetavk = theta_m(k,iCell)/sum_water!convert modified theta to virtual theta
         tvk     = thetavk*exner(k,iCell)
         tk      = tvk*sum_water/(1.0_r8+Rv_over_Rd*q(index_qv,k,iCell))
         pint   (k,iCell) = pint   (k+1,iCell)+dp(k)
@@ -816,8 +812,8 @@ subroutine tot_energy_dyn(nCells, nVertLevels, qsize, index_qv, zz, zgrid, rho_z
   use air_composition,   only: thermodynamic_active_species_ice_idx_dycore,thermodynamic_active_species_liq_idx_dycore
   use air_composition,   only: thermodynamic_active_species_ice_num,thermodynamic_active_species_liq_num
   use air_composition,   only: dry_air_species_num, thermodynamic_active_species_R
-  use cam_thermo,        only: wvidx,wlidx,wiidx,seidx,poidx,keidx,moidx,mridx,ttidx,teidx,thermo_budget_num_vars
-  use cam_thermo,        only: get_hydrostatic_energy,moidx,mridx,ttidx, thermo_budget_vars
+  use cam_thermo,        only: wvidx,wlidx,wiidx,seidx,poidx,keidx,teidx,thermo_budget_num_vars
+  use cam_thermo,        only: get_hydrostatic_energy,thermo_budget_vars
   use dyn_tests_utils,   only: vcoord=>vc_height
   use cam_history_support,    only: max_fieldname_len
   ! Arguments
@@ -893,7 +889,7 @@ subroutine tot_energy_dyn(nCells, nVertLevels, qsize, index_qv, zz, zgrid, rho_z
   enddo
   call get_hydrostatic_energy(tracers, .false., pdeldry, cp_or_cv, u, v, temperature, &
        vcoord=vcoord, phis = phis, z_mid=zcell, dycore_idx=.true.,                    &
-       se=internal_energy, po =potential_energy, ke =kinetic_energy,                  &
+       se=internal_energy, po=potential_energy, ke=kinetic_energy,                    &
        wv=water_vapor    , liq=liq             , ice=ice)
   
   call outfld(name_out(seidx),internal_energy ,ncells,1)

@@ -5,11 +5,8 @@ implicit none
 public :: print_budget
 real(r8), parameter :: eps      = 1.0E-9_r8
 real(r8), parameter :: eps_mass = 1.0E-12_r8
-real(r8), save :: previous_dEdt_adiabatic_dycore    = 0.0_r8
-real(r8), save :: previous_dEdt_dry_mass_adjust     = 0.0_r8
-real(r8), save :: previous_dEdt_phys_dyn_coupl_err  = 0.0_r8
-real(r8), save :: previous_E_bf  = 0.0_r8!xxx
-real(r8), save :: previous_dEdt_phys_total_dynE = 0.0_r8!xxx
+real(r8), save :: previous_dEdt_dry_mass_adjust          = 0.0_r8
+real(r8), save :: previous_dEdt_phys_dyn_coupl_err_Agrid = 0.0_r8
 !=========================================================================================
 contains
 !=========================================================================================
@@ -20,7 +17,7 @@ subroutine print_budget(hstwr)
   use spmd_utils,     only: masterproc
   use cam_logfile,    only: iulog
   use cam_abortutils, only: endrun
-  use cam_thermo,     only: teidx, thermo_budget_vars_descriptor, thermo_budget_num_vars, thermo_budget_vars_massv
+  use cam_thermo,     only: thermo_budget_vars_descriptor, thermo_budget_num_vars, thermo_budget_vars_massv
   use cam_thermo,     only: teidx, seidx, keidx, poidx
 
   ! arguments
@@ -47,13 +44,13 @@ subroutine print_budget(hstwr)
   real(r8) :: dEdt_phys_total_dynE(4)  ! dE/dt physics total using dycore E (dyAM-dyBF)
                                        ! physics total = parameterizations + efix + dry-mass adjustment
   !
-  ! SE dycore specific energy tendencies
+  ! dycore specific energy tendencies
   !
   real(r8) :: dEdt_phys_total_in_dyn(4) ! dEdt of physics total in dynamical core
                                         ! physics total = parameterizations + efix + dry-mass adjustment
-  real(r8) :: dEdt_param_efix_in_dyn(4) ! dEdt of physics total in dynamical core
+  real(r8) :: dEdt_param_efix_in_dyn(4) ! dEdt CAM physics + energy fixer in dynamical core
   real(r8) :: dEdt_dme_adjust_in_dyn(4) ! dEdt of dme adjust in dynamical core
-  real(r8) :: dEdt_dycore_phys          ! dEdt dycore (estimated in physics)
+  real(r8) :: dEdt_dycore_and_pdc_estimated_from_efix ! dEdt dycore and PDC errors (estimated in physics)
   !
   ! mass budgets physics
   !
@@ -182,11 +179,11 @@ subroutine print_budget(hstwr)
       diff = abs_diff(dEdt_param_physE(i),dEdt_param_dynE(i),pf=pf)
       write(iulog,fmt)"dE/dt all parameterizations (xxAP-xxBP) ",str(i)," ",dEdt_param_physE(i)," ",dEdt_param_dynE(i)," ",diff,pf
       write(iulog,*) " "
+      if (diff>eps) then
+        write(iulog,*)"FAIL"
+        call endrun(subname//"dE/dt's in physics inconsistent")
+      end if
     end do
-    if (diff>eps) then
-      write(iulog,*)"FAIL"
-      call endrun(subname//"dE/dt's in physics inconsistent")
-    end if
     write(iulog,*)" "
     write(iulog,*)" "
     write(iulog,*)"dE/dt from dry-mass adjustment will differ if dynamics and physics use"
@@ -224,36 +221,21 @@ subroutine print_budget(hstwr)
     write(iulog,*)" "
     write(iulog,*)" (equation 23 in Lauritzen and Williamson (2019))"
     write(iulog,*)" "
-
-    tmp = previous_dEdt_phys_dyn_coupl_err+previous_dEdt_adiabatic_dycore+previous_dEdt_dry_mass_adjust
-    diff = abs_diff(-dEdt_efix_dynE(1),tmp,pf)
-    write(iulog,*) ""
-    write(iulog,*) "Check if that is the case:", pf, diff
+    write(iulog,*)" Technically this equation is only valid with instantaneous time-step to"
+    write(iulog,*)" time-step output"
     write(iulog,*) " "
-    if (abs(diff)>eps) then
-      write(iulog,*) "dE/dt energy fixer(t=n)                        = ",dEdt_efix_dynE(1)
-      write(iulog,*) "dE/dt dry mass adjustment (t=n-1)              = ",previous_dEdt_dry_mass_adjust
-      write(iulog,*) "dE/dt adiabatic dycore (t=n-1)                 = ",previous_dEdt_adiabatic_dycore
-      write(iulog,*) "dE/dt physics-dynamics coupling errors (t=n-1) = ",previous_dEdt_phys_dyn_coupl_err
-      !      call endrun(subname//"Error in energy fixer budget")
-    end if
-    dEdt_dycore_phys = -dEdt_efix_dynE(1)-previous_dEdt_phys_dyn_coupl_err-previous_dEdt_dry_mass_adjust
+    write(iulog,*) " dE/dt energy fixer(t=n)           = ",dEdt_efix_dynE(1)
+    write(iulog,*) " dE/dt dry mass adjustment (t=n-1) = ",previous_dEdt_dry_mass_adjust
+    write(iulog,*) " dE/dt adiabatic dycore (t=n-1)    = unknown"
+    write(iulog,*) " dE/dt PDC errors (A-grid) (t=n-1) = ",previous_dEdt_phys_dyn_coupl_err_Agrid
+    write(iulog,*) " dE/dt PDC errors (other ) (t=n-1) = unknown"
 
+    dEdt_dycore_and_pdc_estimated_from_efix = -dEdt_efix_dynE(1)-previous_dEdt_phys_dyn_coupl_err_Agrid-previous_dEdt_dry_mass_adjust
     write(iulog,*) " "
-    write(iulog,*) "xxx "
-    write(iulog,*) " "
-
-    tmp = (E_dyBF(1)-previous_E_bf)/1800.0_r8!-previous_dEdt_phys_total_dynE
-    write(iulog,*) "Dycore: ",tmp
-    write(iulog,*) "Phys total:" ,previous_dEdt_phys_total_dynE
-    write(iulog,*) "Residual: ",previous_dEdt_phys_total_dynE-tmp
-    write(iulog,*) " "
-    write(iulog,*) "xxx "
-    write(iulog,*) " "
-
-
-    write(iulog,*)               "Hence the dycore E dissipation estimated from energy fixer "
-    write(iulog,'(A39,F6.2,A6)') "based on previous time-step values is ",dEdt_dycore_phys," W/M^2"
+    write(iulog,*)               "Hence the dycore E dissipation and physics-dynamics coupling errors"
+    write(iulog,*)               "associated with mapping wind tendencies to C-grid and dribbling    "
+    write(iulog,*)               "tendencies in the dycore (PDC other), estimated from energy fixer "
+    write(iulog,'(A39,F6.2,A6)') "based on previous time-step values is ",dEdt_dycore_and_pdc_estimated_from_efix," W/M^2"
     write(iulog,*) " "
     write(iulog,*) " "
     write(iulog,*) "-------------------------------------------------------------------"
@@ -283,16 +265,18 @@ subroutine print_budget(hstwr)
     end if
 
     write(iulog,*)" "
-    write(iulog,*)"-------------------------------------------------------------------------"
-    write(iulog,*)" Consistency check 2: total energy increment on dynamics decomposition   "
-    write(iulog,*)" on an A-grid (physics grid) the as physics increment (also on A-grid)?"
-    write(iulog,*)" (note that wind tendencies are mapped to C-grid in MPAS dycore"
-    write(iulog,*)"-------------------------------------------------------------------------"
+    write(iulog,*)"----------------------------------------------------------------------------"
+    write(iulog,*)" Consistency check 2: total energy increment on dynamics decomposition      "
+    write(iulog,*)" on an A-grid (physics grid) the same as physics increment (also on A-grid)?"
+    write(iulog,*)" Note that wind tendencies are mapped to C-grid in MPAS dycore and added    "
+    write(iulog,*)" throughout the time-integration leading to additional physics-dynamics     "
+    write(iulog,*)" coupling errors                                                            "
+    write(iulog,*)"----------------------------------------------------------------------------"
     write(iulog,*)" "
 
-    previous_dEdt_phys_dyn_coupl_err = dEdt_phys_total_in_dyn(1)-dEdt_phys_total_dynE(1)
+    previous_dEdt_phys_dyn_coupl_err_Agrid = dEdt_phys_total_in_dyn(1)-dEdt_phys_total_dynE(1)
     diff = abs_diff(dEdt_phys_total_dynE(1),dEdt_phys_total_in_dyn(1),pf=pf)
-    write(iulog,'(A41,E8.2,A7,A5)')" dE/dt physics-dynamics coupling errors       ",diff," W/M^2 ",pf
+    write(iulog,'(A50,E8.2,A7,A5)')" dE/dt physics-dynamics coupling errors (A-grid) ",diff," W/M^2 ",pf
     write(iulog,*)" "
     if (abs(diff)>eps) then
       do i=1,4
@@ -315,7 +299,7 @@ subroutine print_budget(hstwr)
     write(iulog,*)" Energy diagnostics have not been implemented in the MPAS"
     write(iulog,*)" dynamical core so a detailed budget is not available."
     write(iulog,*)" "
-    write(iulog,*)" dE/dt adiabatic dynamical core must therefore be estiamted"
+    write(iulog,*)" dE/dt adiabatic dynamical core must therefore be estimated"
     write(iulog,*)" from"
     write(iulog,*)" "
     write(iulog,*)" dE/dt adiabatic dycore (t=n-1) = "
@@ -323,15 +307,15 @@ subroutine print_budget(hstwr)
     write(iulog,*)"    -dE/dt energy fixer(t=n)"
     write(iulog,*)"    -dE/dt physics-dynamics coupling errors (t=n-1)"
     write(iulog,*)" "
-    dEdt_dycore_phys = -dEdt_efix_dynE(1)-previous_dEdt_dry_mass_adjust
-    write(iulog,'(A34,F6.2,A6)') "                                = ",dEdt_dycore_phys," W/M^2"
+    dEdt_dycore_and_pdc_estimated_from_efix = -dEdt_efix_dynE(1)-previous_dEdt_dry_mass_adjust
+    write(iulog,'(A34,F6.2,A6)') "                                = ",dEdt_dycore_and_pdc_estimated_from_efix," W/M^2"
     write(iulog,*)" "
     write(iulog,*)" assuming no physics-dynamics coupling errors, that is,"
     write(iulog,*)" dE/dt physics-dynamics coupling errors (t=n-1) = 0"
     write(iulog,*)" "
     write(iulog,*)" For MPAS the physics-dynamics coupling errors include:"
     write(iulog,*)"  - `dribbling' temperature and wind tendencies during the"
-    write(iulog,*)"    dynamical core time-integration."
+    write(iulog,*)"    dynamical core time-integration"
     write(iulog,*)"  - mapping wind tendencies from A to C grid"
     write(iulog,*)" "
 
@@ -373,7 +357,7 @@ subroutine print_budget(hstwr)
         ! all of the mass-tendency should come from parameterization - checking
         !
         if (abs(dMdt_parameterizations-dMdt_phys_total)>eps_mass) then
-          write(iulog,*) "Error: dMASS/dt parameterizations (pAP-pBP) .ne. dMASS/dt physics total (pAM-pBF)"
+          write(iulog,*) "Error: dMASS/dt parameterizations (pAP-pBP) /= dMASS/dt physics total (pAM-pBF)"
           write(iulog,*) "dMASS/dt parameterizations   (pAP-pBP) ",dMdt_parameterizations," Pa/m^2/s"
           write(iulog,*) "dMASS/dt physics total       (pAM-pBF) ",dMdt_phys_total," Pa/m^2/s"
           call endrun(subname//"mass change not only due to parameterizations. See atm.log")
@@ -392,15 +376,10 @@ subroutine print_budget(hstwr)
         end if
       end if
     end do
-
     !
-    ! save adiabatic dycore dE/dt and dry-mass adjustment to avoid sampling error
+    ! save dry-mass adjustment to avoid sampling error
     !
-    previous_dEdt_adiabatic_dycore = dEdt_dycore_phys
-    previous_dEdt_dry_mass_adjust  = dEdt_dme_adjust_dynE(1)
-
-    previous_E_bf  = E_dyBF(1) !xxx
-    previous_dEdt_phys_total_dynE = dEdt_phys_total_dynE(1)!xxx
+    previous_dEdt_dry_mass_adjust = dEdt_dme_adjust_dynE(1)
    end if
  end subroutine print_budget
  !=========================================================================================
