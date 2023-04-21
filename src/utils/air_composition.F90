@@ -1,4 +1,5 @@
-! air_composition module defines major species of the atmosphere and manages the physical properties that are dependent on the composition of air
+! air_composition module defines major species of the atmosphere and manages
+! the physical properties that are dependent on the composition of air
 module air_composition
 
    use shr_kind_mod,   only: r8 => shr_kind_r8

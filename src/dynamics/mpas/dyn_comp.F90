@@ -543,9 +543,12 @@ subroutine dyn_init(dyn_in, dyn_out)
       ! initialize MPAS energy budgets
       ! add budgets that are derived from stages
       !
-      call e_m_budget('dEdt_param_efix_in_dyn','dAP','dBF',pkgtype='dyn',optype='dif',longname="dE/dt parameterizations+efix in dycore (dparam)(dAP-dBF)")
-      call e_m_budget('dEdt_dme_adjust_in_dyn','dAM','dAP',pkgtype='dyn',optype='dif',longname="dE/dt dry mass adjustment in dycore (dAM-dAP)")
-      call e_m_budget('dEdt_phys_total_in_dyn','dAM','dBF',pkgtype='dyn',optype='dif',longname="dE/dt physics total in dycore (phys) (dAM-dBF)")
+      call e_m_budget('dEdt_param_efix_in_dyn','dAP','dBF',pkgtype='dyn',optype='dif', &
+                      longname="dE/dt parameterizations+efix in dycore (dparam)(dAP-dBF)")
+      call e_m_budget('dEdt_dme_adjust_in_dyn','dAM','dAP',pkgtype='dyn',optype='dif', &
+                      longname="dE/dt dry mass adjustment in dycore (dAM-dAP)")
+      call e_m_budget('dEdt_phys_total_in_dyn','dAM','dBF',pkgtype='dyn',optype='dif', &
+                      longname="dE/dt physics total in dycore (phys) (dAM-dBF)")
    end if
       
    !
@@ -554,19 +557,22 @@ subroutine dyn_init(dyn_in, dyn_out)
    do m=1,thermodynamic_active_species_num
       thermodynamic_active_species_idx_dycore(m) = dyn_out % cam_from_mpas_cnst(thermodynamic_active_species_idx(m))
       if (masterproc) then
-         write(iulog,'(a,2I4)') subname//": m,thermodynamic_active_species_idx_dycore: ",m,thermodynamic_active_species_idx_dycore(m)
+         write(iulog,'(a,2I4)') subname//": m,thermodynamic_active_species_idx_dycore: ", &
+                                m,thermodynamic_active_species_idx_dycore(m)
       end if
    end do
    do m=1,thermodynamic_active_species_liq_num
       thermodynamic_active_species_liq_idx_dycore(m) = dyn_out % cam_from_mpas_cnst(thermodynamic_active_species_liq_idx(m))
       if (masterproc) then
-         write(iulog,'(a,2I4)') subname//": m,thermodynamic_active_species_idx_liq_dycore: ",m,thermodynamic_active_species_liq_idx_dycore(m)
+         write(iulog,'(a,2I4)') subname//": m,thermodynamic_active_species_idx_liq_dycore: ", &
+                                m,thermodynamic_active_species_liq_idx_dycore(m)
       end if
    end do
    do m=1,thermodynamic_active_species_ice_num
       thermodynamic_active_species_ice_idx_dycore(m) = dyn_out % cam_from_mpas_cnst(thermodynamic_active_species_ice_idx(m))
       if (masterproc) then
-         write(iulog,'(a,2I4)') subname//": m,thermodynamic_active_species_idx_ice_dycore: ",m,thermodynamic_active_species_ice_idx_dycore(m)
+         write(iulog,'(a,2I4)') subname//": m,thermodynamic_active_species_idx_ice_dycore: ", &
+                                m,thermodynamic_active_species_ice_idx_dycore(m)
       end if
    end do
    

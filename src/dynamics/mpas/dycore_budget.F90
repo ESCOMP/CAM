@@ -193,7 +193,8 @@ subroutine print_budget(hstwr)
     write(iulog,*)  "                                                        -----   -----  ----"
     do i=1,4
       diff = dEdt_dme_adjust_physE(i)-dEdt_dme_adjust_dynE(i)
-      write(iulog,fmt)"dE/dt dry mass adjustment   (xxAM-xxAP) ",str(i)," ",dEdt_dme_adjust_physE(i)," ",dEdt_dme_adjust_dynE(i)," ",diff
+      write(iulog,fmt)"dE/dt dry mass adjustment   (xxAM-xxAP) ",str(i)," ",dEdt_dme_adjust_physE(i), &
+           " ",dEdt_dme_adjust_dynE(i)," ",diff
     end do
     write(iulog,*)" "
     write(iulog,*)"Compare to dry mass adjustment in dynamics (xx=d,dy):"
@@ -230,7 +231,9 @@ subroutine print_budget(hstwr)
     write(iulog,*) " dE/dt PDC errors (A-grid) (t=n-1) = ",previous_dEdt_phys_dyn_coupl_err_Agrid
     write(iulog,*) " dE/dt PDC errors (other ) (t=n-1) = unknown"
 
-    dEdt_dycore_and_pdc_estimated_from_efix = -dEdt_efix_dynE(1)-previous_dEdt_phys_dyn_coupl_err_Agrid-previous_dEdt_dry_mass_adjust
+    dEdt_dycore_and_pdc_estimated_from_efix = -dEdt_efix_dynE(1) - &
+                                              previous_dEdt_phys_dyn_coupl_err_Agrid - &
+                                              previous_dEdt_dry_mass_adjust
     write(iulog,*) " "
     write(iulog,*)               "Hence the dycore E dissipation and physics-dynamics coupling errors"
     write(iulog,*)               "associated with mapping wind tendencies to C-grid and dribbling    "

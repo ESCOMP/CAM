@@ -1307,7 +1307,8 @@ CONTAINS
      real(r8), intent(in)           :: temp(:,:)                     ! temperature
      logical,  intent(in)           :: get_at_interfaces             ! true: compute kmvis and kmcnd at interfaces
                                                                      ! false: compute kmvis and kmcnd at mid-levels
-     real(r8), intent(in)           :: sponge_factor(:)              ! multiply kmvis and kmcnd with sponge_factor (for sponge layer)
+     real(r8), intent(in)           :: sponge_factor(:)              ! multiply kmvis and kmcnd with sponge_factor
+                                                                     ! (for sponge layer)
      real(r8), intent(out)          :: kmvis(:,:)
      real(r8), intent(out)          :: kmcnd(:,:)
      real(r8), intent(in)           :: tracer(:,:,:)                 ! tracer array
@@ -1383,7 +1384,8 @@ CONTAINS
              residual = 1.0_r8
              do icnst = 1, dry_air_species_num
                ispecies = idx_local(icnst)
-               mm       = 0.5_r8 * (tracer(idx, kdx, ispecies) * factor(idx, kdx) + tracer(idx, kdx - 1, ispecies) * factor(idx, kdx-1))
+               mm       = 0.5_r8 * (tracer(idx, kdx, ispecies) * factor(idx, kdx) + &
+                          tracer(idx, kdx - 1, ispecies) * factor(idx, kdx-1))
                kmvis(idx, kdx) = kmvis(idx, kdx) + thermodynamic_active_species_kv(icnst) * &
                                            thermodynamic_active_species_mwi(icnst) * mm
                kmcnd(idx, kdx) = kmcnd(idx, kdx) + thermodynamic_active_species_kc(icnst) * &
@@ -1445,7 +1447,8 @@ CONTAINS
      real(r8), intent(in)           :: temp(:,:,:)                     ! temperature
      logical,  intent(in)           :: get_at_interfaces               ! true: compute kmvis and kmcnd at interfaces
                                                                        ! false: compute kmvis and kmcnd at mid-levels
-     real(r8), intent(in)           :: sponge_factor(:)                ! multiply kmvis and kmcnd with sponge_factor (for sponge layer)
+     real(r8), intent(in)           :: sponge_factor(:)                ! multiply kmvis and kmcnd with sponge_factor
+                                                                       ! (for sponge layer)
      real(r8), intent(out)          :: kmvis(:,:,:)
      real(r8), intent(out)          :: kmcnd(:,:,:)
      real(r8), intent(in)           :: tracer(:,:,:,:)                 ! tracer array

@@ -660,7 +660,9 @@ contains
 
           ! Nudging land and forcing ocean.
           if (met_srf_land_scale) then
-            met_rlx_sfc(:ncol) = (1._r8 - cam_in(c)%landfrac(:ncol)) * met_rlx_sfc(:ncol) + cam_in(c)%landfrac(:ncol) * met_rlx(pver)
+             met_rlx_sfc(:ncol) = (1._r8 - cam_in(c)%landfrac(:ncol)) * &
+                                  met_rlx_sfc(:ncol) + &
+                                  cam_in(c)%landfrac(:ncol) * met_rlx(pver)
           else
             where(cam_in(c)%landfrac(:ncol) == 1._r8) met_rlx_sfc(:ncol) = 0._r8
           end if
@@ -725,9 +727,9 @@ contains
        end if
 
        if (met_srf_refs) then
-          cam_in(c)%qref(:ncol)    = (1._r8-met_rlx_sfc(:ncol)) * cam_in(c)%qref(:ncol)    + met_rlx_sfc(:ncol) * met_qref(:ncol,c)
-          cam_in(c)%tref(:ncol)    = (1._r8-met_rlx_sfc(:ncol)) * cam_in(c)%tref(:ncol)    + met_rlx_sfc(:ncol) * met_tref(:ncol,c)
-          cam_in(c)%u10(:ncol)     = (1._r8-met_rlx_sfc(:ncol)) * cam_in(c)%u10(:ncol)     + met_rlx_sfc(:ncol) * met_u10(:ncol,c)
+          cam_in(c)%qref(:ncol)  = (1._r8-met_rlx_sfc(:ncol)) * cam_in(c)%qref(:ncol)    + met_rlx_sfc(:ncol) * met_qref(:ncol,c)
+          cam_in(c)%tref(:ncol)  = (1._r8-met_rlx_sfc(:ncol)) * cam_in(c)%tref(:ncol)    + met_rlx_sfc(:ncol) * met_tref(:ncol,c)
+          cam_in(c)%u10(:ncol)   = (1._r8-met_rlx_sfc(:ncol)) * cam_in(c)%u10(:ncol)     + met_rlx_sfc(:ncol) * met_u10(:ncol,c)
        end if
 
        if (met_srf_sst) then

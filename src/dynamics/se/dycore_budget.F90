@@ -213,9 +213,11 @@ subroutine print_budget(hstwr)
     write(iulog,*)  "                                                        -----   -----  -----------"
     do i=1,4
       diff = abs_diff(dEdt_efix_physE(i),dEdt_efix_dynE(i),pf=pf)
-      write(iulog,fmt)"dE/dt energy fixer          (xxBP-xxBF) ",str(i)," ",dEdt_efix_physE(i), " ",dEdt_efix_dynE(i)," ",diff,pf
+      write(iulog,fmt)"dE/dt energy fixer          (xxBP-xxBF) ",str(i)," ",dEdt_efix_physE(i), " ", &
+                       dEdt_efix_dynE(i)," ",diff,pf
       diff = abs_diff(dEdt_param_physE(i),dEdt_param_dynE(i),pf=pf)
-      write(iulog,fmt)"dE/dt all parameterizations (xxAP-xxBP) ",str(i)," ",dEdt_param_physE(i)," ",dEdt_param_dynE(i)," ",diff,pf
+      write(iulog,fmt)"dE/dt all parameterizations (xxAP-xxBP) ",str(i)," ",dEdt_param_physE(i)," ", &
+                      dEdt_param_dynE(i)," ",diff,pf
       write(iulog,*) " "
       if (diff>eps) then
         write(iulog,*)"FAIL"
@@ -231,7 +233,8 @@ subroutine print_budget(hstwr)
     write(iulog,*)  "                                                        -----   -----  ----"
     do i=1,4
       diff = dEdt_dme_adjust_physE(i)-dEdt_dme_adjust_dynE(i)
-      write(iulog,fmt)"dE/dt dry mass adjustment   (xxAM-xxAP) ",str(i)," ",dEdt_dme_adjust_physE(i)," ",dEdt_dme_adjust_dynE(i)," ",diff
+      write(iulog,fmt)"dE/dt dry mass adjustment   (xxAM-xxAP) ",str(i)," ",dEdt_dme_adjust_physE(i)," ", &
+                      dEdt_dme_adjust_dynE(i)," ",diff
     end do
     write(iulog,*)" "
     write(iulog,*)" "
