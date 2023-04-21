@@ -25,7 +25,7 @@ module check_energy
   use spmd_utils,      only: masterproc
 
   use gmean_mod,       only: gmean
-  use physconst,       only: gravit, latvap, latice, cpair, rair
+  use physconst,       only: gravit, rga, latvap, latice, cpair, rair
   use air_composition, only: cpairv, rairv, cp_or_cv_dycore
   use physics_types,   only: physics_state, physics_tend, physics_ptend, physics_ptend_init
   use constituents,    only: cnst_get_ind, pcnst, cnst_name, cnst_get_type_byind
@@ -601,7 +601,7 @@ end subroutine check_energy_get_integrals
 
 ! compute effective sensible heat flux
     do i = 1, ncol
-       eshflx(i) = heat_glob * (state%pint(i,pver+1) - state%pint(i,1)) / gravit
+       eshflx(i) = heat_glob * (state%pint(i,pver+1) - state%pint(i,1)) * rga
     end do
 
     return
@@ -657,7 +657,7 @@ end subroutine check_energy_get_integrals
        tr = 0._r8
        do k = 1, pver
           do i = 1, ncol
-             tr(i) = tr(i) + state%q(i,k,m)*trpdel(i,k)/gravit
+             tr(i) = tr(i) + state%q(i,k,m)*trpdel(i,k)*rga
           end do
        end do
 
@@ -745,7 +745,7 @@ end subroutine check_energy_get_integrals
        tr = 0._r8
        do k = 1, pver
           do i = 1, ncol
-             tr(i) = tr(i) + state%q(i,k,m)*trpdel(i,k)/gravit
+             tr(i) = tr(i) + state%q(i,k,m)*trpdel(i,k)*rga
           end do
        end do
 
@@ -818,7 +818,7 @@ end subroutine check_energy_get_integrals
 !#######################################################################
 
   subroutine tot_energy_phys(state, outfld_name_suffix,vc)
-    use physconst,       only: gravit,rearth,omega
+    use physconst,       only: rga,rearth,omega
     use cam_thermo,      only: get_hydrostatic_energy,thermo_budget_num_vars,thermo_budget_vars, &
                                wvidx,wlidx,wiidx,seidx,poidx,keidx,moidx,mridx,ttidx,teidx
     use cam_history,     only: outfld
@@ -874,12 +874,7 @@ end subroutine check_energy_get_integrals
     end if
 
     if (state%psetcols == pcols) then
-      if (vc_loc == vc_height) then
-        !
-        ! compute cv if vertical coordinate is height: cv = cp - R
-        !
-        cp_or_cv(:ncol,:) = cp_or_cv_dycore(:ncol,:,lchnk)
-      else if (vc_loc == vc_dry_pressure) then
+      if (vc_loc == vc_height .or. vc_loc == vc_dry_pressure) then
         cp_or_cv(:ncol,:) = cp_or_cv_dycore(:ncol,:,lchnk)
       else
         cp_or_cv(:ncol,:) = cpairv(:ncol,:,lchnk)
@@ -888,10 +883,8 @@ end subroutine check_energy_get_integrals
       call endrun('tot_energy_phys: energy diagnostics not implemented/tested for subcolumns')
     end if
 
-    if (vc_loc == vc_height) then
-      scaling(:ncol,:) = cpairv(:ncol,:,lchnk)/cp_or_cv(:ncol,:) !cp/cv scaling for temperature increment under constant volume
-    else if (vc_loc == vc_dry_pressure) then
-      scaling(:ncol,:) = cpairv(:ncol,:,lchnk)/cp_or_cv(:ncol,:)
+    if (vc_loc == vc_height .or. vc_loc == vc_dry_pressure) then
+      scaling(:ncol,:) = cpairv(:ncol,:,lchnk)/cp_or_cv(:ncol,:)!scaling for energy consistency
     else
       scaling(:ncol,:) = 1.0_r8 !internal energy / enthalpy same as CAM physics
     end if
@@ -914,14 +907,14 @@ end subroutine check_energy_get_integrals
         !
         do k = 1, pver
           do i = 1, ncol
-            tt_tmp   = state%q(i,k,ixtt)*state%pdel(i,k)/gravit
+            tt_tmp   = state%q(i,k,ixtt)*state%pdel(i,k)*rga
             tt   (i) = tt(i)    + tt_tmp
           end do
         end do
       else
         do k = 1, pver
           do i = 1, ncol
-            tt_tmp   = state%q(i,k,ixtt)*state%pdeldry(i,k)/gravit
+            tt_tmp   = state%q(i,k,ixtt)*state%pdeldry(i,k)*rga
             tt   (i) = tt(i)    + tt_tmp
           end do
         end do
@@ -950,8 +943,8 @@ end subroutine check_energy_get_integrals
     ! MO is equation (7) without \Delta A and sum over areas (areas are in units of radians**2)
     !
     
-    mr_cnst = rearth**3/gravit
-    mo_cnst = omega*rearth**4/gravit
+    mr_cnst = rga*rearth**3
+    mo_cnst = rga*omega*rearth**4
     
     mr = 0.0_r8
     mo = 0.0_r8

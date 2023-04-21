@@ -1579,7 +1579,7 @@ CONTAINS
       use cam_logfile,     only: iulog
       use dyn_tests_utils, only: vc_height, vc_moist_pressure, vc_dry_pressure
       use air_composition, only: wv_idx
-      use physconst,       only: gravit, latvap, latice
+      use physconst,       only: rga, latvap, latice
 
       ! Dummy arguments
       ! tracer: tracer mixing ratio
@@ -1699,15 +1699,15 @@ CONTAINS
          do kdx = 1, SIZE(tracer, 2)
             do idx = 1, SIZE(tracer, 1)
                ke_vint(idx) = ke_vint(idx) + (pdel(idx, kdx) *                &
-                    0.5_r8 * (U(idx, kdx)**2 + V(idx, kdx)**2) / gravit)
+                    0.5_r8 * (U(idx, kdx)**2 + V(idx, kdx)**2) * rga
                se_vint(idx) = se_vint(idx) + (T(idx, kdx) *                   &
-                    cp_or_cv(idx, kdx) * pdel(idx, kdx) / gravit)
+                    cp_or_cv(idx, kdx) * pdel(idx, kdx) * rga)
                po_vint(idx) =  po_vint(idx)+pdel(idx, kdx)
 
             end do
          end do
          do idx = 1, SIZE(tracer, 1)
-            po_vint(idx) =  (phis(idx) * po_vint(idx) / gravit)
+            po_vint(idx) =  (phis(idx) * po_vint(idx) * rga)
          end do
       case(vc_height)
          if ((.not. present(phis)) .or. (.not. present(phis))) then
@@ -1720,12 +1720,12 @@ CONTAINS
          do kdx = 1, SIZE(tracer, 2)
             do idx = 1, SIZE(tracer, 1)
                ke_vint(idx) = ke_vint(idx) + (pdel(idx, kdx) *                &
-                    0.5_r8 * (U(idx, kdx)**2 + V(idx, kdx)**2) / gravit)
+                    0.5_r8 * (U(idx, kdx)**2 + V(idx, kdx)**2) * rga)
                se_vint(idx) = se_vint(idx) + (T(idx, kdx) *                   &
-                    cp_or_cv(idx, kdx) * pdel(idx, kdx) / gravit)
+                    cp_or_cv(idx, kdx) * pdel(idx, kdx) * rga)
                ! z_mid is height above ground
                po_vint(idx) = po_vint(idx) + (z_mid(idx, kdx) +               &
-                    phis(idx) / gravit) * pdel(idx, kdx)
+                    phis(idx) * rga) * pdel(idx, kdx)
             end do
          end do
       case default
@@ -1755,7 +1755,7 @@ CONTAINS
       do kdx = 1, SIZE(tracer, 2)
         do idx = 1, SIZE(tracer, 1)
           wv_vint(idx) = wv_vint(idx) + (tracer(idx, kdx, wvidx) *       &
-               pdel(idx, kdx) / gravit)
+               pdel(idx, kdx) * rga)
         end do
       end do
       if (present(wv)) wv = wv_vint
@@ -1765,7 +1765,7 @@ CONTAINS
          do kdx = 1, SIZE(tracer, 2)
             do idx = 1, SIZE(tracer, 1)
                liq_vint(idx) = liq_vint(idx) + (pdel(idx, kdx) *         &
-                    tracer(idx, kdx, species_liq_idx(qdx)) / gravit)
+                    tracer(idx, kdx, species_liq_idx(qdx)) * rga)
             end do
          end do
       end do
@@ -1779,7 +1779,7 @@ CONTAINS
          do kdx = 1, SIZE(tracer, 2)
             do idx = 1, SIZE(tracer, 1)
                ice_vint(idx) = ice_vint(idx) + (pdel(idx, kdx) *              &
-                    tracer(idx, kdx, species_ice_idx(qdx))  / gravit)
+                    tracer(idx, kdx, species_ice_idx(qdx))  * rga)
             end do
          end do
       end do
