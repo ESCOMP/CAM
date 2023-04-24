@@ -105,8 +105,8 @@ module air_composition
    real(r8), public, protected, allocatable :: cappav(:,:,:)
    ! mbarv: composition dependent atmosphere mean mass
    real(r8), public, protected, allocatable :: mbarv(:,:,:)
-
-   ! cp_or_cv_dycore:  composition dependent specific heat at constant pressure
+   ! cp_or_cv_dycore:  enthalpy or internal energy scaling factor for 
+   !                   energy consistency
    real(r8), public, protected, allocatable :: cp_or_cv_dycore(:,:,:)
    !
    ! Interfaces for public routines
@@ -350,10 +350,10 @@ CONTAINS
       !------------------------------------------------------------------------
       !  Initialize constituent dependent properties
       !------------------------------------------------------------------------
-      cpairv(:pcols, :pver, begchunk:endchunk)       = cpair
-      rairv(:pcols,  :pver, begchunk:endchunk)       = rair
-      cappav(:pcols, :pver, begchunk:endchunk)       = rair / cpair
-      mbarv(:pcols,  :pver, begchunk:endchunk)       = mwdry
+      cpairv(:pcols, :pver, begchunk:endchunk) = cpair
+      rairv(:pcols,  :pver, begchunk:endchunk) = rair
+      cappav(:pcols, :pver, begchunk:endchunk) = rair / cpair
+      mbarv(:pcols,  :pver, begchunk:endchunk) = mwdry
       !
       if (dry_air_species_num > 0) then
          !
@@ -657,6 +657,7 @@ CONTAINS
 
    subroutine water_composition_update(mmr, lchnk, ncol, vcoord, to_dry_factor)
       use cam_abortutils,  only: endrun
+      use string_utils,    only: int2str
       use dyn_tests_utils, only: vc_height, vc_moist_pressure, vc_dry_pressure
       real(r8),           intent(in) :: mmr(:,:,:) ! constituents array
       integer,            intent(in) :: lchnk      ! Chunk number
@@ -678,6 +679,8 @@ CONTAINS
         !
         cp_or_cv_dycore(:ncol,:,lchnk)=cp_or_cv_dycore(:ncol,:,lchnk)*&
              (cpairv(:ncol,:,lchnk)-rairv(:ncol,:,lchnk)) /rairv(:ncol,:,lchnk)
+      else
+        call endrun(subname//" vertical coordinate not supported; vcoord="//  int2str(vcoord))
       end if
    end subroutine water_composition_update
 
