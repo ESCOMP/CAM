@@ -303,7 +303,7 @@ CONTAINS
        cam_out(c)%co2prog(:)  = 0._r8
        cam_out(c)%co2diag(:)  = 0._r8
        cam_out(c)%ozone(:)    = 0._r8
-       cam_out(c)%lightning_flash_freq(:) = -huge(1._r8)
+       cam_out(c)%lightning_flash_freq(:) = 0._r8
        cam_out(c)%psl(:)      = 0._r8
        cam_out(c)%bcphidry(:) = 0._r8
        cam_out(c)%bcphodry(:) = 0._r8

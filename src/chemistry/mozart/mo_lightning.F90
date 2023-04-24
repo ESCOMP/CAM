@@ -155,7 +155,7 @@ contains
        allocate( prod_no(pcols,pver,begchunk:endchunk),stat=astat )
        if( astat /= 0 ) then
           write(iulog,*) prefix, 'failed to allocate prod_no; error = ',astat
-          call endrun
+          call endrun(prefix//'failed to allocate prod_no')
        end if
        geo_factor = ngcols_p/(4._r8*pi)
 
