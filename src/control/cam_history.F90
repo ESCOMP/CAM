@@ -5105,7 +5105,7 @@ end subroutine print_active_fldlst
          tape(t)%hlist(f1)%hbuf(dimind%beg1:dimind%end1,dimind%beg2:dimind%end2,c) + &
          tape(t)%hlist(f2)%hbuf(dimind%beg1:dimind%end1,dimind%beg2:dimind%end2,c)
       else
-         call endrun('h_field_op: ERROR: budget_optype unknown:'//trim(op))
+         call endrun('h_field_op: ERROR: budget_optype unknown:'//trim(optype))
       end if
     end do
     ! Set nsteps for composed fields using value of one of the component fields
