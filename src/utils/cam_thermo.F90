@@ -33,9 +33,9 @@ module cam_thermo
 
    ! cam_thermo_init: Initialize constituent dependent properties
    public :: cam_thermo_init
-   ! cam_thermo_update: Update dry air composition dependent properties
+   ! cam_thermo_dry_air_update: Update dry air composition dependent properties
    public :: cam_thermo_dry_air_update
-   ! cam_thermo_update: Update water dependent properties
+   ! cam_thermo_water_update: Update water dependent properties
    public :: cam_thermo_water_update
    ! get_enthalpy: enthalpy quantity = dp*cp*T
    public :: get_enthalpy
