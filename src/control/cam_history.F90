@@ -84,9 +84,9 @@ module cam_history
     character(len=max_fieldname_len) :: zonal_field = '' ! for vector fields
     character(len=1)                 :: avgflag(ptapes)  ! averaging flag
     character(len=max_chars)         :: time_op(ptapes)  ! time operator (e.g. max, min, avg)
-    character(len=field_op_len)      :: field_op  = ''   ! field derived from sum/dif of field1 and field2
-    character(len=max_fieldname_len) :: op_field1 = ''   ! first field name to be summed/diffed
-    character(len=max_fieldname_len) :: op_field2 = ''   ! second field name to be summed/diffed
+    character(len=field_op_len)      :: field_op  = ''   ! field derived from sum or dif of field1 and field2
+    character(len=max_fieldname_len) :: op_field1 = ''   ! first field name to be operated on
+    character(len=max_fieldname_len) :: op_field2 = ''   ! second field name to be operated on
     logical                          :: act_sometape     ! Field is active on some tape
     logical                          :: actflag(ptapes)  ! Per tape active/inactive flag
     integer                          :: htapeindx(ptapes)! This field's index on particular history tape
@@ -5068,7 +5068,7 @@ end subroutine print_active_fldlst
     !
     !-----------------------------------------------------------------------
     !
-    ! Purpose: run field sum/dif opperation on all contructed fields
+    ! Purpose: run field sum or dif opperation on all contructed fields
     !
     ! Method: Loop through fields on the tape
     !
@@ -5084,23 +5084,23 @@ end subroutine print_active_fldlst
     integer :: f1,f2                ! fields to be operated on
     integer :: begdim1, begdim2, begdim3              ! on-node chunk or lat start index
     integer :: enddim1, enddim2, enddim3              ! on-node chunk or lat end index
-    character(len=max_chars) :: op          ! field operation currently only sum/diff
+    character(len=field_op_len) :: optype             ! field operation only sum or diff supported
 
     call t_startf ('h_field_op')
     f1 = tape(t)%hlist(f)%field%op_field1_id
     f2 = tape(t)%hlist(f)%field%op_field2_id
-    op =  trim(adjustl(tape(t)%hlist(f)%field%field_op))
+    optype =  trim(adjustl(tape(t)%hlist(f)%field%field_op))
 
     begdim3  = tape(t)%hlist(f)%field%begdim3
     enddim3  = tape(t)%hlist(f)%field%enddim3
 
     do c = begdim3, enddim3
       dimind = tape(t)%hlist(f)%field%get_dims(c)
-      if (trim(op) == 'dif') then 
+      if (trim(optype) == 'dif') then 
          tape(t)%hlist(f)%hbuf(dimind%beg1:dimind%end1,dimind%beg2:dimind%end2,c) = &
          tape(t)%hlist(f1)%hbuf(dimind%beg1:dimind%end1,dimind%beg2:dimind%end2,c) - &
          tape(t)%hlist(f2)%hbuf(dimind%beg1:dimind%end1,dimind%beg2:dimind%end2,c)
-      else if (trim(op) == 'sum') then
+      else if (trim(optype) == 'sum') then
          tape(t)%hlist(f)%hbuf(dimind%beg1:dimind%end1,dimind%beg2:dimind%end2,c) = &
          tape(t)%hlist(f1)%hbuf(dimind%beg1:dimind%end1,dimind%beg2:dimind%end2,c) + &
          tape(t)%hlist(f2)%hbuf(dimind%beg1:dimind%end1,dimind%beg2:dimind%end2,c)
@@ -5936,12 +5936,12 @@ end subroutine print_active_fldlst
     else
        if (present(op_f1name)) then
           write(errormsg, '(3a)') ': creating a composed field using component field 1:',&
-               trim(op_f1name),' but no field operation (op=sum/dif) has been defined'
+               trim(op_f1name),' but no field operation (optype=sum or dif) has been defined'
           call endrun (trim(subname)//errormsg)
        end if
        if (present(op_f2name)) then
           write(errormsg, '(3a)') ': creating a composed field using component field 2:',&
-               trim(op_f2name),' but no field operation (op=sum/dif) has been defined'
+               trim(op_f2name),' but no field operation (optype=sum or dif) has been defined'
           call endrun (trim(subname)//errormsg)
        end if
     end if
