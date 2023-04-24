@@ -2057,7 +2057,7 @@ CONTAINS
         ierr = pio_get_var(File,fillval_desc, (/f,t/), tape(t)%hlist(f)%field%fillvalue)
         ierr = pio_get_var(File,meridional_complement_desc, (/f,t/), tape(t)%hlist(f)%field%meridional_complement)
         ierr = pio_get_var(File,zonal_complement_desc, (/f,t/), tape(t)%hlist(f)%field%zonal_complement)
-        tape(t)%hlist(f)%field%field_op(1:max_chars) = ' '
+        tape(t)%hlist(f)%field%field_op(1:field_op_len) = ' '
         ierr = pio_get_var(File,field_op_desc, (/1,f,t/), tape(t)%hlist(f)%field%field_op)
         call strip_null(tape(t)%hlist(f)%field%field_op)
         ierr = pio_get_var(File,op_field1_id_desc, (/f,t/), tape(t)%hlist(f)%field%op_field1_id)
@@ -5649,7 +5649,7 @@ end subroutine print_active_fldlst
 
   subroutine addfld_1d(fname, vdim_name, avgflag, units, long_name,           &
        gridname, flag_xyfill, sampling_seq, standard_name, fill_value,        &
-       op, op_f1name, op_f2name)
+       optype, op_f1name, op_f2name)
 
     !
     !-----------------------------------------------------------------------
@@ -5678,7 +5678,7 @@ end subroutine print_active_fldlst
     ! every other; only during LW/SW radiation calcs, etc.
     character(len=*), intent(in), optional :: standard_name  ! CF standard name (max_chars)
     real(r8),         intent(in), optional :: fill_value
-    character(len=*), intent(in), optional :: op           ! currently 'dif'/'sum' supported dif ex fname = op_f1name - op_f2name
+    character(len=*), intent(in), optional :: optype           ! currently 'dif' or 'sum' supported
     character(len=*), intent(in), optional :: op_f1name    ! first field to be operated on
     character(len=*), intent(in), optional :: op_f2name    ! second field which is subtracted from or added to first field
 
@@ -5699,13 +5699,13 @@ end subroutine print_active_fldlst
       dimnames(1) = trim(vdim_name)
     end if
     call addfld(fname, dimnames, avgflag, units, long_name, gridname,         &
-         flag_xyfill, sampling_seq, standard_name, fill_value, op, op_f1name, &
+         flag_xyfill, sampling_seq, standard_name, fill_value, optype, op_f1name, &
          op_f2name)
 
   end subroutine addfld_1d
 
   subroutine addfld_nd(fname, dimnames, avgflag, units, long_name,            &
-       gridname, flag_xyfill, sampling_seq, standard_name, fill_value, op,    &
+       gridname, flag_xyfill, sampling_seq, standard_name, fill_value, optype,    &
        op_f1name, op_f2name)
 
     !
@@ -5739,7 +5739,7 @@ end subroutine print_active_fldlst
     ! every other; only during LW/SW radiation calcs, etc.
     character(len=*), intent(in), optional :: standard_name  ! CF standard name (max_chars)
     real(r8),         intent(in), optional :: fill_value
-    character(len=*), intent(in), optional :: op           ! currently 'dif'/'sum' supported dif ex fname = op_f1name - op_f2name
+    character(len=*), intent(in), optional :: optype       ! currently 'dif' or 'sum' supported
     character(len=*), intent(in), optional :: op_f1name    ! first field to be operated on
     character(len=*), intent(in), optional :: op_f2name    ! second field which is subtracted from or added to first field
 
@@ -5913,8 +5913,8 @@ end subroutine print_active_fldlst
       call AvgflagToString(avgflag, listentry%time_op(dimcnt))
     end do
 
-    if (present(op)) then
-       listentry%field%field_op = op
+    if (present(optype)) then
+       listentry%field%field_op = optype
        if (present(op_f1name).and.present(op_f2name)) then
           ! Look for the field IDs
           f1listentry => get_entry_by_name(masterlinkedlist, trim(op_f1name))
@@ -5955,7 +5955,7 @@ end subroutine print_active_fldlst
 
   !#######################################################################
 
-  ! field_part_of_vector: Determinie if fname is part of a vector set
+  ! field_part_of_vector: Determine if fname is part of a vector set
   !       Optionally fill in the names of the vector set fields
   logical function field_part_of_vector(fname, meridional_name, zonal_name)
 
@@ -5996,7 +5996,7 @@ end subroutine print_active_fldlst
   end function field_part_of_vector
 
   !#######################################################################
-  ! composed field: Determinie if fname is composed from 2 other
+  ! composed field: Determine if fname is composed from 2 other
   !       fields
   !       Optionally fill in the names of the composing fields
   logical function composed_field(fname, fname1, fname2)

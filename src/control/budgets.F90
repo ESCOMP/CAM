@@ -40,14 +40,14 @@ module budgets
 
   ! Public data
 
-  integer, parameter, public           :: budget_array_max  = 500     ! number of budget diffs
+  integer, parameter, public           :: budget_array_max  = 500           ! max number of budgets
 
-  integer,           public            :: budget_num     = 0 !
+  integer,           public            :: budget_num     = 0                ! current number of defined budgets.
   character(cl),     public, protected :: budget_name(budget_array_max)     ! budget names
-  character(cl),     public, protected :: budget_longname(budget_array_max) ! long name of budgets
-  character(cl),     public, protected :: budget_stagename(budget_array_max) ! long name of budgets
-  character(cl),     public, protected :: budget_stg1name(budget_array_max)
-  character(cl),     public, protected :: budget_stg2name(budget_array_max)
+  character(cl),     public, protected :: budget_longname(budget_array_max) ! descriptive name of budget
+  character(cl),     public, protected :: budget_stagename(budget_array_max)! shortname of both of the 3 char snapshot components
+  character(cl),     public, protected :: budget_stg1name(budget_array_max) ! The 1st of 2 snapshots used to calculate a budget
+  character(cl),     public, protected :: budget_stg2name(budget_array_max) ! The 2nd of 2 snapshots used to calculate a budget
 
   integer,           public            :: thermo_budget_histfile_num = 1
   logical,           public            :: thermo_budget_history = .false.
@@ -284,7 +284,7 @@ CONTAINS
              end if
           end if
           call addfld (TRIM(ADJUSTL(name_str)),   horiz_only, 'N', TRIM(ADJUSTL(units_str)),TRIM(ADJUSTL(desc_str)), &     
-               gridname=gridname,op=optype,op_f1name=TRIM(ADJUSTL(strstg1)),op_f2name=TRIM(ADJUSTL(strstg2)))
+               gridname=gridname,optype=optype,op_f1name=TRIM(ADJUSTL(strstg1)),op_f2name=TRIM(ADJUSTL(strstg2)))
           call add_default(TRIM(ADJUSTL(name_str)), thermo_budget_histfile_num, 'N')
        end do
     end if
