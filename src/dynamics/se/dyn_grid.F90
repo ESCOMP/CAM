@@ -735,8 +735,6 @@ subroutine define_cam_grids()
    use shr_const_mod,       only: PI => SHR_CONST_PI
 
    ! Local variables
-    real(r8),         parameter :: area_sphere = 4.0_r8*PI
-
    integer                      :: i, ii, j, k, ie, mapind
    character(len=8)             :: latname, lonname, ncolname, areaname
 
@@ -746,8 +744,8 @@ subroutine define_cam_grids()
 
    real(r8),        allocatable :: pelat_deg(:)  ! pe-local latitudes (degrees)
    real(r8),        allocatable :: pelon_deg(:)  ! pe-local longitudes (degrees)
-   real(r8),        pointer     :: pearea(:) => null()  ! pe-local areas
-   real(r8),        pointer     :: pearea_wt(:) => null()  ! pe-local areas
+   real(r8),        pointer     :: pearea(:)     ! pe-local areas
+   real(r8),        pointer     :: pearea_wt(:)  ! pe-local areas normalized for unit sphere
    integer(iMap)                :: fdofP_local(npsq,nelemd) ! pe-local map for dynamics decomp
    integer(iMap),   allocatable :: pemap(:)                 ! pe-local map for PIO decomp
 
@@ -762,7 +760,23 @@ subroutine define_cam_grids()
    real(r8),            pointer :: physgrid_area(:)
    real(r8),            pointer :: physgrid_areawt(:)
    integer(iMap),       pointer :: physgrid_map(:)
+
+   real(r8), parameter          :: rarea_unit_sphere = 1.0_r8 / (4.0_r8*PI)
+
    !----------------------------------------------------------------------------
+
+   !-----------------------
+   ! initialize pointers to null
+   !-----------------------
+   nullify(pearea_wt)
+   nullify(pearea)
+   nullify(fvm_area)
+   nullify(fvm_areawt)
+   nullify(fvm_map)
+   nullify(physgrid_area)
+   nullify(physgrid_areawt)
+   nullify(physgrid_map)
+   nullify(grid_map)
 
    !-----------------------
    ! Create GLL grid object
@@ -791,7 +805,7 @@ subroutine define_cam_grids()
       do j = 1, np
          do i = 1, np
             pearea(ii) = elem(ie)%mp(i,j)*elem(ie)%metdet(i,j)
-            pearea_wt(ii) = pearea(ii)/area_sphere
+            pearea_wt(ii) = pearea(ii)*rarea_unit_sphere
             pelat_deg(ii) = elem(ie)%spherep(i,j)%lat * rad2deg
             pelon_deg(ii) = elem(ie)%spherep(i,j)%lon * rad2deg
             ii = ii + 1
@@ -901,7 +915,7 @@ subroutine define_cam_grids()
                fvm_coord(mapind) = fvm(ie)%center_cart(i,j)%lon*rad2deg
                fvm_map(mapind) = k + ((elem(ie)%GlobalId-1) * nc * nc)
                fvm_area(mapind) = fvm(ie)%area_sphere(i,j)
-               fvm_areawt(mapind) = fvm_area(mapind)/area_sphere
+               fvm_areawt(mapind) = fvm_area(mapind)*rarea_unit_sphere
                k = k + 1
             end do
          end do
@@ -976,7 +990,7 @@ subroutine define_cam_grids()
                physgrid_coord(mapind) = fvm(ie)%center_cart_physgrid(i,j)%lon*rad2deg
                physgrid_map(mapind) = k + ((elem(ie)%GlobalId-1) * fv_nphys * fv_nphys)
                physgrid_area(mapind) = fvm(ie)%area_sphere_physgrid(i,j)
-               physgrid_areawt(mapind) = physgrid_area(mapind)/area_sphere
+               physgrid_areawt(mapind) = physgrid_area(mapind)*rarea_unit_sphere
                k = k + 1
             end do
          end do

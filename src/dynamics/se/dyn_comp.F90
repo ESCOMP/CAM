@@ -84,6 +84,7 @@ end interface read_dyn_var
 
 real(r8), parameter :: rad2deg = 180.0_r8 / pi
 real(r8), parameter :: deg2rad = pi / 180.0_r8
+real(r8), parameter :: rarea_sphere = 1.0_r8 / (4.0_r8*PI)
 
 !===============================================================================
 contains

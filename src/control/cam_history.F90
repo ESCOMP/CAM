@@ -71,7 +71,7 @@ module cam_history
 
   type grid_area_entry
      integer                         :: decomp_type = -1         ! type of decomposition (e.g., physics or dynamics)
-     real(r8), allocatable           :: wbuf(:,:,:)              ! for area weights
+     real(r8), allocatable           :: wbuf(:,:)                ! for area weights
   end type grid_area_entry
   type (grid_area_entry), target, allocatable:: grid_wts(:)      ! area wts for each decomp type
   type (grid_area_entry), pointer    :: allgrids_wt(:) => null() ! area wts for each decomp type
@@ -497,20 +497,16 @@ CONTAINS
               end if
               allgrids_wt(wtidx)%decomp_type=fdecomp
               areawt => cam_grid_get_areawt(fdecomp)
-              allocate(allgrids_wt(wtidx(1))%wbuf(begdim1:enddim1,begdim2:enddim2,begdim3:enddim3))
-              allgrids_wt(wtidx(1))%wbuf(begdim1:enddim1,begdim2:enddim2,begdim3:enddim3)=0._r8
+              allocate(allgrids_wt(wtidx(1))%wbuf(begdim1:enddim1,begdim3:enddim3))
+              allgrids_wt(wtidx(1))%wbuf(begdim1:enddim1,begdim3:enddim3)=0._r8
               count=0
               do c=begdim3,enddim3
                  dimind = tape(t)%hlist(f)%field%get_dims(c)
                  ib=dimind%beg1
                  ie=dimind%end1
-                 jb=dimind%beg2
-                 je=dimind%end2
-                 do k=jb,je
-                    do i=ib,ie
-                       count=count+1
-                       allgrids_wt(wtidx(1))%wbuf(i,k,c)=areawt(count)
-                    end do
+                 do i=ib,ie
+                    count=count+1
+                    allgrids_wt(wtidx(1))%wbuf(i,c)=areawt(count)
                  end do
               end do
               tape(t)%hlist(f)%wbuf => allgrids_wt(wtidx(1))%wbuf
@@ -998,36 +994,36 @@ CONTAINS
     character(len=max_fieldname_len) :: field1
     character(len=max_fieldname_len) :: field2
     character(len=*), parameter      :: subname='define_composed_field_ids'
+    logical                          :: is_composed
 
-       do f = 1, nflds(t)
-          if (composed_field(trim(tape(t)%hlist(f)%field%name),      &
-               field1, field2)) then
-             if (len_trim(field1) > 0 .and. len_trim(field2) > 0) then
-                ! set field1/field2 names for htape from the masterfield list
-                tape(t)%hlist(f)%op_field1=trim(field1)
-                tape(t)%hlist(f)%op_field2=trim(field2)
-                ! find ids for field1/2
-                do ff = 1, nflds(t)
-                   if (trim(field1) == trim(tape(t)%hlist(ff)%field%name)) then
-                      tape(t)%hlist(f)%field%op_field1_id = ff
-                   end if
-                   if (trim(field2) == trim(tape(t)%hlist(ff)%field%name)) then
-                      tape(t)%hlist(f)%field%op_field2_id = ff
-                   end if
-                end do
-                if (tape(t)%hlist(f)%field%op_field1_id == -1) then
-                   call endrun(trim(subname)//': No op_field1 match for '//trim(tape(t)%hlist(f)%field%name))
+    do f = 1, nflds(t)
+       call composed_field_info(tape(t)%hlist(f)%field%name,is_composed,fname1=field1,fname2=field2)
+       if (is_composed) then
+          if (len_trim(field1) > 0 .and. len_trim(field2) > 0) then
+             ! set field1/field2 names for htape from the masterfield list
+             tape(t)%hlist(f)%op_field1=trim(field1)
+             tape(t)%hlist(f)%op_field2=trim(field2)
+             ! find ids for field1/2
+             do ff = 1, nflds(t)
+                if (trim(field1) == trim(tape(t)%hlist(ff)%field%name)) then
+                   tape(t)%hlist(f)%field%op_field1_id = ff
                 end if
-                if (tape(t)%hlist(f)%field%op_field2_id == -1) then
-                   call endrun(trim(subname)//': No op_field2 match for '//trim(tape(t)%hlist(f)%field%name))
+                if (trim(field2) == trim(tape(t)%hlist(ff)%field%name)) then
+                   tape(t)%hlist(f)%field%op_field2_id = ff
                 end if
-             else
-                call endrun(trim(subname)//': Component fields not found for composed field')
+             end do
+             if (tape(t)%hlist(f)%field%op_field1_id == -1) then
+                call endrun(trim(subname)//': No op_field1 match for '//trim(tape(t)%hlist(f)%field%name))
              end if
+             if (tape(t)%hlist(f)%field%op_field2_id == -1) then
+                call endrun(trim(subname)//': No op_field2 match for '//trim(tape(t)%hlist(f)%field%name))
+             end if
+          else
+             call endrun(trim(subname)//': Component fields not found for composed field')
           end if
-       end do
+       end if
+    end do
   end subroutine define_composed_field_ids
-
 
   subroutine restart_vars_setnames()
 
@@ -2181,19 +2177,15 @@ CONTAINS
               end if
               allgrids_wt(wtidx)%decomp_type=fdecomp
               areawt => cam_grid_get_areawt(fdecomp)
-              allocate(allgrids_wt(wtidx(1))%wbuf(begdim1:enddim1,begdim2:enddim2,begdim3:enddim3))
+              allocate(allgrids_wt(wtidx(1))%wbuf(begdim1:enddim1,begdim3:enddim3))
               cnt=0
               do c=begdim3,enddim3
                  dimind = tape(t)%hlist(f)%field%get_dims(c)
                  ib=dimind%beg1
                  ie=dimind%end1
-                 jb=dimind%beg2
-                 je=dimind%end2
-                 do k=jb,je
-                    do i=ib,ie
-                       cnt=cnt+1
-                       allgrids_wt(wtidx(1))%wbuf(i,k,c)=areawt(cnt)
-                    end do
+                 do i=ib,ie
+                    cnt=cnt+1
+                    allgrids_wt(wtidx(1))%wbuf(i,c)=areawt(cnt)
                  end do
               end do
               tape(t)%hlist(f)%wbuf => allgrids_wt(wtidx(1))%wbuf
@@ -3549,7 +3541,7 @@ end subroutine print_active_fldlst
 
     type (active_entry), pointer :: otape(:) ! Local history_tape pointer
     real(r8),pointer      :: hbuf(:,:)     ! history buffer
-    real(r8),pointer      :: wbuf(:,:)     ! area weights for field
+    real(r8),pointer      :: wbuf(:)       ! area weights for field
     real(r8),pointer      :: sbuf(:,:)     ! variance buffer
     integer, pointer      :: nacs(:)       ! accumulation counter
     integer               :: begdim2, enddim2, endi
@@ -3590,7 +3582,7 @@ end subroutine print_active_fldlst
       nacs   => otape(t)%hlist(f)%nacs(:,c)
       hbuf => otape(t)%hlist(f)%hbuf(:,:,c)
       if (associated(tape(t)%hlist(f)%wbuf)) then
-         wbuf => otape(t)%hlist(f)%wbuf(:,:,c)
+         wbuf => otape(t)%hlist(f)%wbuf(:,c)
       endif
       if (associated(tape(t)%hlist(f)%sbuf)) then
          sbuf => otape(t)%hlist(f)%sbuf(:,:,c)
@@ -5048,7 +5040,7 @@ end subroutine print_active_fldlst
           do j1 = dimind%beg2, dimind%end2
              do i1 = dimind%beg1, dimind%end1
                 count=count+1
-                globalarr(count)=globalarr(count)+tape(t)%hlist(f)%hbuf(i1,j1,ie)*tape(t)%hlist(f)%wbuf(i1,j1,ie)
+                globalarr(count)=globalarr(count)+tape(t)%hlist(f)%hbuf(i1,j1,ie)*tape(t)%hlist(f)%wbuf(i1,ie)
              end do
           end do
        end do
@@ -5105,7 +5097,7 @@ end subroutine print_active_fldlst
          tape(t)%hlist(f1)%hbuf(dimind%beg1:dimind%end1,dimind%beg2:dimind%end2,c) + &
          tape(t)%hlist(f2)%hbuf(dimind%beg1:dimind%end1,dimind%beg2:dimind%end2,c)
       else
-         call endrun('h_field_op: ERROR: budget_optype unknown:'//trim(optype))
+         call endrun('h_field_op: ERROR: composed field operation type unknown:'//trim(optype))
       end if
     end do
     ! Set nsteps for composed fields using value of one of the component fields
@@ -5678,10 +5670,9 @@ end subroutine print_active_fldlst
     ! every other; only during LW/SW radiation calcs, etc.
     character(len=*), intent(in), optional :: standard_name  ! CF standard name (max_chars)
     real(r8),         intent(in), optional :: fill_value
-    character(len=*), intent(in), optional :: optype           ! currently 'dif' or 'sum' supported
+    character(len=*), intent(in), optional :: optype       ! currently 'dif' or 'sum' is supported
     character(len=*), intent(in), optional :: op_f1name    ! first field to be operated on
     character(len=*), intent(in), optional :: op_f2name    ! second field which is subtracted from or added to first field
-
     !
     ! Local workspace
     !
@@ -5996,46 +5987,51 @@ end subroutine print_active_fldlst
   end function field_part_of_vector
 
   !#######################################################################
-  ! composed field: Determine if fname is composed from 2 other
-  !       fields
-  !       Optionally fill in the names of the composing fields
-  logical function composed_field(fname, fname1, fname2)
+  ! composed field_info: Determine if a field is derived from a mathematical
+  !       operation using 2 other defined fields.  Optionally,
+  !       retrieve names of the composing fields
+  subroutine composed_field_info(fname, is_composed, fname1, fname2)
 
     ! Dummy arguments
     character(len=*),           intent(in)  :: fname
+    logical,                    intent(out) :: is_composed
     character(len=*), optional, intent(out) :: fname1
     character(len=*), optional, intent(out) :: fname2
 
     ! Local variables
     type(master_entry), pointer             :: listentry
+    character(len=128)                      :: errormsg
+    character(len=*), parameter             :: subname='composed_field_info'
 
     listentry => get_entry_by_name(masterlinkedlist, fname)
     if (associated(listentry)) then
       if ( (len_trim(listentry%op_field1) > 0) .or.                     &
            (len_trim(listentry%op_field2) > 0)) then
-        composed_field = .true.
-        if (present(fname1)) then
-          fname1 = listentry%op_field1
-        end if
-        if (present(fname2)) then
-          fname2 = listentry%op_field2
-        end if
+         is_composed = .true.
       else
-        composed_field = .false.
+         is_composed = .false.
       end if
-    else
-      composed_field = .false.
-    end if
-    if (.not. composed_field) then
-      if (present(fname1)) then
-        fname1 = ''
+      if (is_composed) then
+         if (present(fname1)) then
+            fname1=trim(listentry%op_field1)
+         end if
+         if (present(fname2)) then
+            fname2=trim(listentry%op_field2)
+         end if
+      else
+         if (present(fname1)) then
+            fname1 = ''
+         end if
+         if (present(fname2)) then
+            fname2 = ''
+         end if
       end if
-      if (present(fname2)) then
-        fname2 = ''
-      end if
-    end if
+   else
+      write(errormsg, '(3a)') ': Field:',trim(fname),' not defined in masterlist'
+      call endrun (trim(subname)//errormsg)
+   end if
 
-  end function composed_field
+ end subroutine composed_field_info
 
 
   ! register_vector_field: Register a pair of history field names as

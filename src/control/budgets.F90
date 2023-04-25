@@ -37,26 +37,23 @@ module budgets
        budget_readnl,         &! read budget namelist setting
        is_budget               ! return logical if budget_defined
 
+  ! Private
+  real(r8)                             :: dstepsize
+  integer, parameter                   :: budget_array_max  = 500                 ! max number of budgets
+  character*3                          :: budget_optype(budget_array_max)  = ''   ! allows 'dif' or 'sum'
+  character*3                          :: budget_pkgtype(budget_array_max) = ''   ! allows 'phy' or 'dyn'
 
   ! Public data
+  integer,           public, protected :: budget_num     = 0                      ! current number of defined budgets.
+  character(cl),     public, protected :: budget_name(budget_array_max)     = ''  ! budget names
+  character(cl),     public, protected :: budget_longname(budget_array_max) = ''  ! descriptive name of budget
+  character(cl),     public, protected :: budget_stagename(budget_array_max)= ''  ! shortname of both of the 3 char snapshot components
+  character(cl),     public, protected :: budget_stg1name(budget_array_max) = ''  ! The 1st of 2 snapshots used to calculate a budget
+  character(cl),     public, protected :: budget_stg2name(budget_array_max) = ''  ! The 2nd of 2 snapshots used to calculate a budget
 
-  integer, parameter, public           :: budget_array_max  = 500           ! max number of budgets
+  integer,           public, protected :: thermo_budget_histfile_num = 1          ! The history tape number for budget fields
+  logical,           public, protected :: thermo_budget_history = .false.         ! Turn budgeting on or off
 
-  integer,           public            :: budget_num     = 0                ! current number of defined budgets.
-  character(cl),     public, protected :: budget_name(budget_array_max)     ! budget names
-  character(cl),     public, protected :: budget_longname(budget_array_max) ! descriptive name of budget
-  character(cl),     public, protected :: budget_stagename(budget_array_max)! shortname of both of the 3 char snapshot components
-  character(cl),     public, protected :: budget_stg1name(budget_array_max) ! The 1st of 2 snapshots used to calculate a budget
-  character(cl),     public, protected :: budget_stg2name(budget_array_max) ! The 2nd of 2 snapshots used to calculate a budget
-
-  integer,           public            :: thermo_budget_histfile_num = 1
-  logical,           public            :: thermo_budget_history = .false.
-  real(r8),          private           :: dstepsize
-  !
-  ! Constants for each budget
-
-  character*3, public :: budget_optype(budget_array_max)! stage or difference or sum
-  character*3, public :: budget_pkgtype(budget_array_max)! phy or dyn
 
   !==============================================================================================
 CONTAINS
@@ -66,7 +63,7 @@ CONTAINS
   subroutine budget_readnl(nlfile)
     use dycore,          only: dycore_is
     use namelist_utils,  only: find_group_name
-    use spmd_utils,      only: mpi_character, mpi_logical, mpi_integer
+    use spmd_utils,      only: mpi_character, mpi_logical, mpi_integer, mpi_success
     use shr_string_mod,  only: shr_string_toUpper
     use string_utils,    only: int2str
     
@@ -94,9 +91,9 @@ CONTAINS
 
     ! Broadcast namelist variables
     call mpi_bcast(thermo_budget_history         , 1  , mpi_logical  , masterprocid, mpicom, ierr)
-    if (ierr /= 0) call endrun(subname//": FATAL: mpi_bcast: thermo_budget_history")
+    if (ierr /= mpi_success) call endrun(subname//": FATAL: mpi_bcast: thermo_budget_history")
     call mpi_bcast(thermo_budget_histfile_num    , 1  , mpi_integer  , masterprocid, mpicom, ierr)
-    if (ierr /= 0) call endrun(subname//": FATAL: mpi_bcast: thermo_budget_histfile_num")
+    if (ierr /= mpi_success) call endrun(subname//": FATAL: mpi_bcast: thermo_budget_histfile_num")
 
     ! Write out thermo_budget options
     if (masterproc) then
@@ -165,7 +162,6 @@ CONTAINS
           budget_name(budget_num) = trim(name_str)
           budget_longname(budget_num) = trim(desc_str)
 
-          budget_optype(budget_num)=''
           budget_pkgtype(budget_num)=pkgtype
           budget_stagename(budget_num)= trim(name)
 
@@ -359,7 +355,7 @@ CONTAINS
     end if
 
   CONTAINS
-    function budget_ind_byname (name)
+    pure function budget_ind_byname (name)
       !
       ! Get the index of a budget.  Ret -1 for not found
       !-----------------------------Arguments---------------------------------
@@ -382,7 +378,7 @@ CONTAINS
   end subroutine budget_get_global
   !==============================================================================
 
-  function is_budget(name)
+  pure function is_budget(name)
 
     ! Get the index of a budget.  
 

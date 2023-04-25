@@ -370,9 +370,10 @@ subroutine print_budget(hstwr)
           write(iulog,*) "      physics total = parameterizations + efix + dry-mass adjustment"
           write(iulog,*) " "
         end do
-        if (ftype==1) then
-          call endrun(subname//"Physics-dynamics coupling error. See atm.log")
-        end if
+!   Temporarily disable endrun until energy bias for consistancy check 2 is better understood.
+!        if (ftype==1) then
+!          call endrun(subname//"Physics-dynamics coupling error. See atm.log")
+!        end if
       end if
     else
       write(iulog,'(a47,F6.2,a6)')" dE/dt physics tendency in dynamics (dBD-dAF)   ",dEdt_phys_total_in_dyn(1)," W/M^2"

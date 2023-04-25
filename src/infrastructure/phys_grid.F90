@@ -216,6 +216,7 @@ CONTAINS
       character(len=hclen),   pointer     :: copy_attributes(:)
       character(len=hclen)                :: copy_gridname
       character(len=*),       parameter   :: subname = 'phys_grid_init: '
+      real(r8),               parameter   :: rarea_sphere = 1.0_r8 / (4.0_r8*PI)
 
       nullify(lonvals)
       nullify(latvals)
@@ -422,7 +423,7 @@ CONTAINS
 
             allocate(areawt_d(size(grid_map, 2)))
             do col_index = 1, columns_on_task
-               areawt_d(col_index) = phys_columns(col_index)%weight/(4.0_r8*PI)
+               areawt_d(col_index) = phys_columns(col_index)%weight*rarea_sphere
             end do
             call cam_grid_attribute_register('physgrid', 'areawt',              &
                  'physics column area weight', 'ncol', areawt_d, map=grid_map(3,:))

@@ -119,8 +119,8 @@ module cam_history_support
     integer :: zonal_complement              ! zonal field id or -1
 
     character(len=field_op_len) :: field_op = ''        ! 'sum' or 'dif'
-    integer                     :: op_field1_id         ! first field id to be summed/diffed or -1
-    integer                     :: op_field2_id         ! second field id to be summed/diffed or -1
+    integer                     :: op_field1_id         ! first field id or -1
+    integer                     :: op_field2_id         ! second field id or -1
     
     character(len=max_fieldname_len) :: name ! field name
     character(len=max_chars) :: long_name    ! long name
@@ -161,14 +161,14 @@ module cam_history_support
     type (field_info)         :: field                 ! field information
     character(len=1)          :: avgflag               ! averaging flag
     character(len=max_chars)  :: time_op               ! time operator (e.g. max, min, avg)
-    character(len=max_fieldname_len)  :: op_field1     ! field1 name for sum/dif operation
-    character(len=max_fieldname_len)  :: op_field2     ! field2 name for sum/dif operation
+    character(len=max_fieldname_len)  :: op_field1     ! field1 name for sum or dif operation
+    character(len=max_fieldname_len)  :: op_field2     ! field2 name for sum or dif operation
 
     integer                   :: hwrt_prec             ! history output precision
     real(r8),         pointer :: hbuf(:,:,:) => NULL()
     real(r8),         private :: hbuf_integral         ! area weighted integral of active field
     real(r8),         pointer :: sbuf(:,:,:) => NULL() ! for standard deviation
-    real(r8),         pointer :: wbuf(:,:,:) => NULL() ! pointer to area weights
+    real(r8),         pointer :: wbuf(:,:)   => NULL() ! pointer to area weights
     type(var_desc_t), pointer :: varid(:)    => NULL() ! variable ids
     integer,          pointer :: nacs(:,:)   => NULL() ! accumulation counter
     type(var_desc_t), pointer :: nacs_varid  => NULL()
@@ -451,9 +451,11 @@ contains
   end function field_info_get_dims_3d
 
   ! field_info_is_composed: Return whether this field is composed of two other fields
-  logical function field_info_is_composed(this)
-    class(field_info)                         :: this
-    field_info_is_composed = (trim(adjustl(this%field_op))=='sum' .or. trim(adjustl(this%field_op))=='dif')
+  pure logical function field_info_is_composed(this)
+    class(field_info), intent(IN)  :: this
+
+    field_info_is_composed = ((trim(adjustl(this%field_op))=='sum' .or. trim(adjustl(this%field_op))=='dif') .and. &
+                              this%op_field1_id /= -1 .and. this%op_field2_id /= -1)
   end function field_info_is_composed
 
   ! field_info_get_shape: Return a pointer to the field's global shape.
