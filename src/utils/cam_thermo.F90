@@ -235,29 +235,23 @@ CONTAINS
       kmcnd(:pcols,  :pver, begchunk:endchunk) = shr_infnan_qnan
 
    end subroutine cam_thermo_init
-
-   !===========================================================================
-
+   !
    !***************************************************************************
    !
-   ! cam_thermo_update: update species dependent constants for physics
+   ! cam_thermo_dry_air_update: update dry air species dependent constants for physics
    !
    !***************************************************************************
    !
    subroutine cam_thermo_dry_air_update(mmr, T, lchnk, ncol, to_dry_factor)
       use air_composition, only: dry_air_composition_update
       use string_utils,    only: int2str
-      !-----------------------------------------------------------------------
-      ! Update the physics "constants" that vary
-      !-------------------------------------------------------------------------
-
       !------------------------------Arguments----------------------------------
-      !(mmr = dry mixing ratio, if not use to_moist_factor to convert)
+      !(mmr = dry mixing ratio, if not use to_dry_factor to convert)
       real(r8),           intent(in) :: mmr(:,:,:) ! constituents array
       real(r8),           intent(in) :: T(:,:)     ! temperature
       integer,            intent(in) :: lchnk      ! Chunk number
       integer,            intent(in) :: ncol       ! number of columns
-      real(r8), optional, intent(in) :: to_dry_factor(:,:)
+      real(r8), optional, intent(in) :: to_dry_factor(:,:)!if mmr moist convert
       !
       !---------------------------Local storage-------------------------------
       real(r8):: sponge_factor(SIZE(mmr, 2))
@@ -275,8 +269,14 @@ CONTAINS
            kmcnd(:ncol,:,lchnk), tracer=mmr(:ncol,:,:), fact=to_dry_factor,  &
            active_species_idx_dycore=thermodynamic_active_species_idx)
     end subroutine cam_thermo_dry_air_update
-
-   subroutine cam_thermo_water_update(mmr, lchnk, ncol, vcoord, to_dry_factor)
+    !
+    !***************************************************************************
+    !
+    ! cam_thermo_water+update: update water species dependent constants for physics
+    !
+    !***************************************************************************
+    !
+    subroutine cam_thermo_water_update(mmr, lchnk, ncol, vcoord, to_dry_factor)
       use air_composition, only: water_composition_update
       !-----------------------------------------------------------------------
       ! Update the physics "constants" that vary
@@ -1713,10 +1713,10 @@ CONTAINS
             po_vint(idx) =  (phis(idx) * po_vint(idx) * rga)
          end do
       case(vc_height)
-         if ((.not. present(phis)) .or. (.not. present(phis))) then
-            write(iulog, *) subname, ' phis and phis must be present for ',     &
+         if (.not. present(phis)) then
+            write(iulog, *) subname, ' phis must be present for ',     &
                  'heigt-based vertical coordinate'
-            call endrun(subname//':  phis and phis must be present for '//      &
+            call endrun(subname//':  phis must be present for '//      &
                  'height-based vertical coordinate')
          end if
          po_vint = 0._r8
