@@ -243,6 +243,7 @@ contains
 
     end do
 
+    ! fill in missing values with climatology for modern-day
     where(salinity < 0._r8)
        salinity = 33.0_r8
     end where
