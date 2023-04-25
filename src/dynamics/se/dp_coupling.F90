@@ -661,7 +661,7 @@ subroutine derived_phys_dry(phys_state, phys_tend, pbuf2d)
         zvirv(:,:) = zvir
       end if
       !
-      ! update cp_dycore in modeule air_composition.
+      ! update cp_dycore in module air_composition.
       ! (note: at this point q is dry)
       !
       call cam_thermo_water_update(phys_state(lchnk)%q(1:ncol,:,:), lchnk, ncol, vc_dry_pressure)
