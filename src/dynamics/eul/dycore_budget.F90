@@ -11,7 +11,7 @@ subroutine print_budget(hstwr)
 
   use spmd_utils,             only: masterproc
   use cam_abortutils,         only: endrun  
-  use budgets,                only: thermo_budget_history,thermo_budget_histfile_num
+  use cam_budget,             only: thermo_budget_history,thermo_budget_histfile_num
 
   ! arguments
   logical, intent(in) :: hstwr(:)

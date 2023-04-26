@@ -47,7 +47,7 @@ subroutine d_p_coupling(phys_state, phys_tend, pbuf2d, dyn_out)
    ! dry air mass.
    use cam_history,    only : hist_fld_active
    use mpas_constants, only : Rv_over_Rd => rvord
-   use budgets,        only : thermo_budget_history
+   use cam_budget,     only : thermo_budget_history
 
    ! arguments
    type(physics_state),       intent(inout) :: phys_state(begchunk:endchunk)

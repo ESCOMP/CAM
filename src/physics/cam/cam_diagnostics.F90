@@ -190,7 +190,7 @@ contains
     use cam_history,        only: addfld, add_default, horiz_only
     use cam_history,        only: register_vector_field
     use tidal_diag,         only: tidal_diag_init
-    use budgets,            only: e_m_snapshot, e_m_budget, thermo_budget_history
+    use cam_budget,         only: cam_budget_em_snapshot, cam_budget_em_budget, thermo_budget_history
 
     type(physics_buffer_desc), pointer, intent(in) :: pbuf2d(:,:)
 
@@ -399,21 +399,21 @@ contains
        ! energy diagnostics addflds for vars_stage combinations plus e_m_snapshots
        !
        do istage = 1, num_stages
-          call e_m_snapshot(TRIM(ADJUSTL(stage(istage))),'phy',longname=TRIM(ADJUSTL(stage_txt(istage))))
+          call cam_budget_em_snapshot(TRIM(ADJUSTL(stage(istage))),'phy',longname=TRIM(ADJUSTL(stage_txt(istage))))
        end do
 
        ! Create budgets that are a sum/dif of 2 stages
 
-       call e_m_budget('dEdt_param_efix_physE','phAP','phBF','phy','dif',longname='dE/dt CAM physics + energy fixer using physics E formula (phAP-phBF)')
-       call e_m_budget('dEdt_param_efix_dynE' ,'dyAP','dyBF','phy','dif',longname='dE/dt CAM physics + energy fixer using dycore E formula (dyAP-dyBF)')
-       call e_m_budget('dEdt_param_physE'     ,'phAP','phBP','phy','dif',longname='dE/dt CAM physics using physics E formula (phAP-phBP)')
-       call e_m_budget('dEdt_param_dynE'      ,'dyAP','dyBP','phy','dif',longname='dE/dt CAM physics using dycore E (dyAP-dyBP)')
-       call e_m_budget('dEdt_dme_adjust_physE','phAM','phAP','phy','dif',longname='dE/dt dry mass adjustment using physics E formula (phAM-phAP)')
-       call e_m_budget('dEdt_dme_adjust_dynE' ,'dyAM','dyAP','phy','dif',longname='dE/dt dry mass adjustment using dycore E (dyAM-dyAP)')
-       call e_m_budget('dEdt_efix_physE'      ,'phBP','phBF','phy','dif',longname='dE/dt energy fixer using physics E formula (phBP-phBF)')
-       call e_m_budget('dEdt_efix_dynE'       ,'dyBP','dyBF','phy','dif',longname='dE/dt energy fixer using dycore E formula (dyBP-dyBF)')
-       call e_m_budget('dEdt_phys_tot_physE'  ,'phAM','phBF','phy','dif',longname='dE/dt physics total using physics E formula (phAM-phBF)')
-       call e_m_budget('dEdt_phys_tot_dynE'   ,'dyAM','dyBF','phy','dif',longname='dE/dt physics total using dycore E (dyAM-dyBF)')
+       call cam_budget_em_budget('dEdt_param_efix_physE','phAP','phBF','phy','dif',longname='dE/dt CAM physics + energy fixer using physics E formula (phAP-phBF)')
+       call cam_budget_em_budget('dEdt_param_efix_dynE' ,'dyAP','dyBF','phy','dif',longname='dE/dt CAM physics + energy fixer using dycore E formula (dyAP-dyBF)')
+       call cam_budget_em_budget('dEdt_param_physE'     ,'phAP','phBP','phy','dif',longname='dE/dt CAM physics using physics E formula (phAP-phBP)')
+       call cam_budget_em_budget('dEdt_param_dynE'      ,'dyAP','dyBP','phy','dif',longname='dE/dt CAM physics using dycore E (dyAP-dyBP)')
+       call cam_budget_em_budget('dEdt_dme_adjust_physE','phAM','phAP','phy','dif',longname='dE/dt dry mass adjustment using physics E formula (phAM-phAP)')
+       call cam_budget_em_budget('dEdt_dme_adjust_dynE' ,'dyAM','dyAP','phy','dif',longname='dE/dt dry mass adjustment using dycore E (dyAM-dyAP)')
+       call cam_budget_em_budget('dEdt_efix_physE'      ,'phBP','phBF','phy','dif',longname='dE/dt energy fixer using physics E formula (phBP-phBF)')
+       call cam_budget_em_budget('dEdt_efix_dynE'       ,'dyBP','dyBF','phy','dif',longname='dE/dt energy fixer using dycore E formula (dyBP-dyBF)')
+       call cam_budget_em_budget('dEdt_phys_tot_physE'  ,'phAM','phBF','phy','dif',longname='dE/dt physics total using physics E formula (phAM-phBF)')
+       call cam_budget_em_budget('dEdt_phys_tot_dynE'   ,'dyAM','dyBF','phy','dif',longname='dE/dt physics total using dycore E (dyAM-dyBF)')
     endif
   end subroutine diag_init_dry
 

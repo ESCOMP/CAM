@@ -1454,7 +1454,7 @@ contains
     use air_composition,        only: thermodynamic_active_species_ice_num,thermodynamic_active_species_ice_idx
     use dimensions_mod,         only: cnst_name_gll
     use dyn_tests_utils,        only: vcoord=>vc_dry_pressure
-    use budgets,                only: thermo_budget_history
+    use cam_budget,             only: thermo_budget_history
     !------------------------------Arguments--------------------------------
 
     type (element_t) , intent(inout) :: elem(:)

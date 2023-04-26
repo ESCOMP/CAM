@@ -753,7 +753,7 @@ contains
     use nudging,            only: Nudge_Model, nudging_init
     use cam_snapshot,       only: cam_snapshot_init
     use cam_history,        only: addfld, register_vector_field, add_default
-    use budgets,            only: budget_init
+    use cam_budget,         only: cam_budget_init
     use phys_grid_ctem,     only: phys_grid_ctem_init
 
     ! Input/output arguments
@@ -941,7 +941,7 @@ contains
     call cam_snapshot_init(cam_in, cam_out, pbuf2d, begchunk)
 
     ! Initialize the budget capability
-    call budget_init()
+    call cam_budget_init()
  
     ! addfld calls for U, V tendency budget variables that are output in
     ! tphysac, tphysbc
@@ -1369,7 +1369,7 @@ contains
     use carma_flags_mod,    only: carma_do_cldice, carma_do_cldliq, carma_do_wetdep
     use dyn_tests_utils,    only: vc_dycore
     use cam_thermo,         only: cam_thermo_water_update
-    use budgets,            only: thermo_budget_history
+    use cam_budget,         only: thermo_budget_history
     use dyn_tests_utils,    only: vc_dycore, vc_height, vc_dry_pressure
     use air_composition,    only: cpairv, cp_or_cv_dycore
     !

@@ -771,7 +771,7 @@ contains
     use cam_history,        only: addfld, register_vector_field, add_default
     use phys_control,       only: phys_getopts
     use phys_grid_ctem,     only: phys_grid_ctem_init
-    use budgets,            only: budget_init
+    use cam_budget,         only: cam_budget_init
 
     ! Input/output arguments
     type(physics_state), pointer       :: phys_state(:)
@@ -1392,7 +1392,7 @@ contains
     use cam_snapshot_common,only: cam_snapshot_ptend_outfld
     use lunar_tides,        only: lunar_tides_tend
     use cam_thermo,         only: cam_thermo_water_update
-    use budgets,            only: thermo_budget_history
+    use cam_budget,         only: thermo_budget_history
     use dyn_tests_utils,    only: vc_dycore, vc_height, vc_dry_pressure
     use air_composition,    only: cpairv, cp_or_cv_dycore
     !

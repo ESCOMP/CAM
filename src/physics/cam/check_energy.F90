@@ -826,7 +826,7 @@ end subroutine check_energy_get_integrals
 
     use cam_abortutils,  only: endrun
     use cam_history_support, only: max_fieldname_len
-    use budgets,         only: thermo_budget_history
+    use cam_budget,      only: thermo_budget_history
 !------------------------------Arguments--------------------------------
 
     type(physics_state), intent(inout) :: state

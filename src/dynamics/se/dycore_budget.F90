@@ -18,7 +18,7 @@ subroutine print_budget(hstwr)
   use spmd_utils,             only: masterproc
   use cam_abortutils,         only: endrun  
   use cam_logfile,            only: iulog
-  use budgets,                only: budget_get_global, is_budget, thermo_budget_histfile_num, thermo_budget_history
+  use cam_budget,             only: cam_budget_get_global, is_budget, thermo_budget_histfile_num, thermo_budget_history
   use cam_thermo,             only: thermo_budget_vars_descriptor, thermo_budget_num_vars, thermo_budget_vars_massv, &
                                     teidx, seidx, keidx, poidx
   use dimensions_mod,         only: use_cslam
@@ -111,35 +111,35 @@ subroutine print_budget(hstwr)
       !
       ! CAM physics energy tendencies
       !
-      call budget_get_global('phAP-phBP',idx(i),dEdt_param_physE(i))
-      call budget_get_global('phBP-phBF',idx(i),dEdt_efix_physE(i))
-      call budget_get_global('phAM-phAP',idx(i),dEdt_dme_adjust_physE(i))
-      call budget_get_global('phAP-phBF',idx(i),dEdt_param_efix_physE(i))
+      call cam_budget_get_global('phAP-phBP',idx(i),dEdt_param_physE(i))
+      call cam_budget_get_global('phBP-phBF',idx(i),dEdt_efix_physE(i))
+      call cam_budget_get_global('phAM-phAP',idx(i),dEdt_dme_adjust_physE(i))
+      call cam_budget_get_global('phAP-phBF',idx(i),dEdt_param_efix_physE(i))
       !
       ! CAM physics energy tendencies using dycore energy formula scaling
       ! temperature tendencies for consistency with CAM physics
       !
-      call budget_get_global('dyAP-dyBP',idx(i),dEdt_param_dynE(i))
-      call budget_get_global('dyBP-dyBF',idx(i),dEdt_efix_dynE(i))
-      call budget_get_global('dyAM-dyAP',idx(i),dEdt_dme_adjust_dynE(i))
-      call budget_get_global('dyAP-dyBF',idx(i),dEdt_param_efix_dynE(i))
-      call budget_get_global('dyAM-dyBF',idx(i),dEdt_phys_total_dynE(i))
-      call budget_get_global('dyBF'     ,idx(i),E_dyBF(i))!state beginning physics
+      call cam_budget_get_global('dyAP-dyBP',idx(i),dEdt_param_dynE(i))
+      call cam_budget_get_global('dyBP-dyBF',idx(i),dEdt_efix_dynE(i))
+      call cam_budget_get_global('dyAM-dyAP',idx(i),dEdt_dme_adjust_dynE(i))
+      call cam_budget_get_global('dyAP-dyBF',idx(i),dEdt_param_efix_dynE(i))
+      call cam_budget_get_global('dyAM-dyBF',idx(i),dEdt_phys_total_dynE(i))
+      call cam_budget_get_global('dyBF'     ,idx(i),E_dyBF(i))!state beginning physics
       !
       ! CAM physics energy tendencies in dynamical core
       !
-      call budget_get_global('dBD-dAF',idx(i),dEdt_phys_total_in_dyn(i))
-      call budget_get_global('dBF'    ,idx(i),E_dBF(i))  !state passed to physics
+      call cam_budget_get_global('dBD-dAF',idx(i),dEdt_phys_total_in_dyn(i))
+      call cam_budget_get_global('dBF'    ,idx(i),E_dBF(i))  !state passed to physics
     end do
 
-    call budget_get_global('dAD-dBD',teidx,dEdt_floating_dyn)
-    call budget_get_global('dAR-dAD',teidx,dEdt_vert_remap)
+    call cam_budget_get_global('dAD-dBD',teidx,dEdt_floating_dyn)
+    call cam_budget_get_global('dAR-dAD',teidx,dEdt_vert_remap)
     dEdt_dycore_dyn = dEdt_floating_dyn+dEdt_vert_remap
 
-    call budget_get_global('dCH-dBH',teidx,dEdt_del4)
-    call budget_get_global('dAH-dCH',teidx,dEdt_del4_fric_heat)
-    call budget_get_global('dAH-dBH',teidx,dEdt_del4_tot)
-    call budget_get_global('dAS-dBS',teidx,dEdt_del2_sponge)
+    call cam_budget_get_global('dCH-dBH',teidx,dEdt_del4)
+    call cam_budget_get_global('dAH-dCH',teidx,dEdt_del4_fric_heat)
+    call cam_budget_get_global('dAH-dBH',teidx,dEdt_del4_tot)
+    call cam_budget_get_global('dAS-dBS',teidx,dEdt_del2_sponge)
     dEdt_del2_del4_tot      = dEdt_del4_tot+dEdt_del2_sponge
     dEdt_residual           = dEdt_floating_dyn-dEdt_del2_del4_tot
 
@@ -425,10 +425,10 @@ subroutine print_budget(hstwr)
       if (thermo_budget_vars_massv(m_cnst)) then
         write(iulog,*)thermo_budget_vars_descriptor(m_cnst)
         write(iulog,*)"------------------------------"
-        call budget_get_global('phBP-phBF',m_cnst,dMdt_efix)
-        call budget_get_global('phAM-phAP',m_cnst,dMdt_dme_adjust)
-        call budget_get_global('phAP-phBP',m_cnst,dMdt_parameterizations)
-        call budget_get_global('phAM-phBF',m_cnst,dMdt_phys_total)
+        call cam_budget_get_global('phBP-phBF',m_cnst,dMdt_efix)
+        call cam_budget_get_global('phAM-phAP',m_cnst,dMdt_dme_adjust)
+        call cam_budget_get_global('phAP-phBP',m_cnst,dMdt_parameterizations)
+        call cam_budget_get_global('phAM-phBF',m_cnst,dMdt_phys_total)
         !
         ! total energy fixer should not affect mass - checking
         !
@@ -459,8 +459,8 @@ subroutine print_budget(hstwr)
         ! detailed mass budget in dynamical core
         !
         if (is_budget('dAD').and.is_budget('dBD').and.is_budget('dAR').and.is_budget('dCH')) then
-          call budget_get_global('dAD-dBD',m_cnst,dMdt_floating_dyn)
-          call budget_get_global('dAR-dAD',m_cnst,dMdt_vert_remap)
+          call cam_budget_get_global('dAD-dBD',m_cnst,dMdt_floating_dyn)
+          call cam_budget_get_global('dAR-dAD',m_cnst,dMdt_vert_remap)
           tmp  = dMdt_floating_dyn+dMdt_vert_remap
           diff = abs_diff(tmp,0.0_r8,pf=pf)
           write(iulog,fmtm)"   dMASS/dt total adiabatic dynamics             ",diff,pf
@@ -477,8 +477,8 @@ subroutine print_budget(hstwr)
             write(iulog,*)" "
             write(iulog,*)"Breakdown of 2D dynamics:"
             write(iulog,*)" "
-            call budget_get_global('dAH-dCH',m_cnst,dMdt_del4_fric_heat)
-            call budget_get_global('dAH-dBH',m_cnst,dMdt_del4_tot)
+            call cam_budget_get_global('dAH-dCH',m_cnst,dMdt_del4_fric_heat)
+            call cam_budget_get_global('dAH-dBH',m_cnst,dMdt_del4_tot)
             write(iulog,*)"dMASS/dt hypervis               (dAH-dBH) ",dMdt_del4_tot," Pa/m^2/s"
             write(iulog,*)"dMASS/dt frictional heating     (dAH-dCH) ",dMdt_del4_fric_heat," Pa/m^2/s"
             dMdt_residual = dMdt_floating_dyn-dMdt_del4_tot
@@ -489,7 +489,7 @@ subroutine print_budget(hstwr)
           !
           ! check if mass change in physics is the same as dynamical core
           !
-          call budget_get_global('dBD-dAF',m_cnst,dMdt_phys_total_in_dyn)
+          call cam_budget_get_global('dBD-dAF',m_cnst,dMdt_phys_total_in_dyn)
           dMdt_PDC = dMdt_phys_total-dMdt_phys_total_in_dyn
           write(iulog,fmtm)"   Mass physics-dynamics coupling error          ",dMdt_PDC," Pa/m^2/s"
           write(iulog,*)" "

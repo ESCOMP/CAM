@@ -40,7 +40,7 @@ use cam_abortutils,     only: endrun
 
 use mpas_timekeeping,   only : MPAS_TimeInterval_type
 use cam_mpas_subdriver, only: cam_mpas_global_sum_real
-use budgets,            only: e_m_snapshot, e_m_budget
+use cam_budget,         only: cam_budget_em_snapshot, cam_budget_em_budget
 
 
 implicit none
@@ -316,7 +316,7 @@ subroutine dyn_init(dyn_in, dyn_out)
    use dyn_tests_utils,    only : vc_dycore, vc_height, string_vc, vc_str_lgth
    use constituents,       only : cnst_get_ind
    use phys_control,       only: phys_getopts
-   use budgets,            only: thermo_budget_history
+   use cam_budget,         only: thermo_budget_history
 
    ! arguments:
    type(dyn_import_t), intent(inout)  :: dyn_in
@@ -537,17 +537,17 @@ subroutine dyn_init(dyn_in, dyn_out)
 
       ! Define energy/mass snapshots using stage structure
       do istage = 1, num_stages
-         call e_m_snapshot(TRIM(ADJUSTL(stage(istage))), 'dyn', longname=TRIM(ADJUSTL(stage_txt(istage))))
+         call cam_budget_em_snapshot(TRIM(ADJUSTL(stage(istage))), 'dyn', longname=TRIM(ADJUSTL(stage_txt(istage))))
       end do
       !
       ! initialize MPAS energy budgets
       ! add budgets that are derived from stages
       !
-      call e_m_budget('dEdt_param_efix_in_dyn','dAP','dBF',pkgtype='dyn',optype='dif', &
+      call cam_budget_em_budget('dEdt_param_efix_in_dyn','dAP','dBF',pkgtype='dyn',optype='dif', &
                       longname="dE/dt parameterizations+efix in dycore (dparam)(dAP-dBF)")
-      call e_m_budget('dEdt_dme_adjust_in_dyn','dAM','dAP',pkgtype='dyn',optype='dif', &
+      call cam_budget_em_budget('dEdt_dme_adjust_in_dyn','dAM','dAP',pkgtype='dyn',optype='dif', &
                       longname="dE/dt dry mass adjustment in dycore (dAM-dAP)")
-      call e_m_budget('dEdt_phys_total_in_dyn','dAM','dBF',pkgtype='dyn',optype='dif', &
+      call cam_budget_em_budget('dEdt_phys_total_in_dyn','dAM','dBF',pkgtype='dyn',optype='dif', &
                       longname="dE/dt physics total in dycore (phys) (dAM-dBF)")
    end if
       

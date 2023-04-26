@@ -1,16 +1,16 @@
-module budgets
+module cam_budget
   !----------------------------------------------------------------------------
   !
   ! Adds support for energy and mass snapshots and budgets using cam_history api.
   !
   ! Public functions/subroutines:
   !
-  ! budget_init
-  ! e_m_snapshot
-  ! e_m_budget
+  ! cam_budget_init
+  ! cam_budget_em_snapshot
+  ! cam_budget_em_budget
+  ! cam_budget_get_global
+  ! cam_budget_readnl
   ! budget_ind_byname
-  ! budget_get_global
-  ! budget_readnl
   ! is_budget
   !-----------------------------------------------------------------------
 
@@ -30,11 +30,11 @@ module budgets
 
   ! Public interfaces
   public :: &
-       budget_init,           &! initialize budget variables
-       e_m_snapshot,          &! define a snapshot and add to history buffer
-       e_m_budget,            &! define a budget and add to history buffer
-       budget_get_global,     &! get global budget from history buffer
-       budget_readnl,         &! read budget namelist setting
+       cam_budget_init,       &! initialize budget variables
+       cam_budget_em_snapshot,   &! define a snapshot and add to history buffer
+       cam_budget_em_budget,     &! define a budget and add to history buffer
+       cam_budget_get_global,     &! get global budget from history buffer
+       cam_budget_readnl,         &! read budget namelist setting
        is_budget               ! return logical if budget_defined
 
   ! Private
@@ -60,7 +60,7 @@ CONTAINS
   !==============================================================================================
   !
   ! Read namelist variables.
-  subroutine budget_readnl(nlfile)
+  subroutine cam_budget_readnl(nlfile)
     use dycore,          only: dycore_is
     use namelist_utils,  only: find_group_name
     use spmd_utils,      only: mpi_character, mpi_logical, mpi_integer, mpi_success
@@ -72,7 +72,7 @@ CONTAINS
 
     ! Local variables
     integer                     :: unitn, ierr
-    character(len=*), parameter :: subname = 'budget_readnl :: '
+    character(len=*), parameter :: subname = 'cam_budget_readnl :: '
 
     namelist /thermo_budget_nl/  thermo_budget_history, thermo_budget_histfile_num
     !-----------------------------------------------------------------------
@@ -106,20 +106,20 @@ CONTAINS
           end if
        end if
     end if
-  end subroutine budget_readnl
+  end subroutine cam_budget_readnl
 
   !==============================================================================================
 
-  subroutine budget_init()
+  subroutine cam_budget_init()
     use time_manager,         only:  get_step_size
 
     dstepsize=get_step_size()
 
-  end subroutine budget_init
+  end subroutine cam_budget_init
 
   !==============================================================================================
 
-  subroutine e_m_snapshot (name, pkgtype, longname, cslam)
+  subroutine cam_budget_em_snapshot (name, pkgtype, longname, cslam)
     use dycore,          only: dycore_is  
 
     character(len=*), intent(in)           :: &
@@ -137,7 +137,7 @@ CONTAINS
     character (cl)                         :: gridname
     logical                                :: cslamtr        ! using cslam transport for mass tracers
     integer                                :: ivars
-    character(len=*), parameter            :: sub='e_m_snapshot'
+    character(len=*), parameter            :: sub='cam_budget_em_snapshot'
     !-----------------------------------------------------------------------
 
     if (thermo_budget_history) then
@@ -186,11 +186,11 @@ CONTAINS
           call add_default(TRIM(ADJUSTL(name_str)), thermo_budget_histfile_num, 'N')
        end do
     end if
-  end subroutine e_m_snapshot
+  end subroutine cam_budget_em_snapshot
 
   !==============================================================================
 
-  subroutine e_m_budget (name, stg1name, stg2name, pkgtype, optype, longname, cslam)
+  subroutine cam_budget_em_budget (name, stg1name, stg2name, pkgtype, optype, longname, cslam)
     use dycore,          only: dycore_is  
 
 
@@ -211,7 +211,7 @@ CONTAINS
     logical,          intent(in), optional :: &
          cslam       ! true => use cslam to transport mass variables
 
-    character(len=*), parameter            :: sub='e_m_budget'
+    character(len=*), parameter            :: sub='cam_budget_em_budget'
     character(cl)                          :: errmsg
     character(len=1)                       :: opchar
     character (len=max_fieldname_len)      :: name_str
@@ -284,11 +284,11 @@ CONTAINS
           call add_default(TRIM(ADJUSTL(name_str)), thermo_budget_histfile_num, 'N')
        end do
     end if
-  end subroutine e_m_budget
+  end subroutine cam_budget_em_budget
 
   !==============================================================================
 
-  subroutine budget_get_global (name, me_idx, global)
+  subroutine cam_budget_get_global (name, me_idx, global)
 
     use cam_history,          only: get_field_properties
     use cam_history_support,  only: active_entry,ptapes
@@ -312,7 +312,7 @@ CONTAINS
     integer                        :: m                          ! budget index
     logical                        :: found                      ! true if global integral found
 
-    character(len=*), parameter    :: sub='budget_get_global'
+    character(len=*), parameter    :: sub='cam_budget_get_global'
     !-----------------------------------------------------------------------
     ! Initialize tape pointer here to avoid initialization only on first invocation
     nullify(tape)
@@ -375,7 +375,7 @@ CONTAINS
          end if
       end do
     end function budget_ind_byname
-  end subroutine budget_get_global
+  end subroutine cam_budget_get_global
   !==============================================================================
 
   pure function is_budget(name)
@@ -404,4 +404,4 @@ CONTAINS
 
   !===========================================================================
 
-end module budgets
+end module cam_budget

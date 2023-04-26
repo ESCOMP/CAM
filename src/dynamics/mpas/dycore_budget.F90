@@ -13,7 +13,7 @@ contains
 
 subroutine print_budget(hstwr)
 
-  use budgets,        only: budget_get_global, thermo_budget_histfile_num, thermo_budget_history
+  use cam_budget,     only: cam_budget_get_global, thermo_budget_histfile_num, thermo_budget_history
   use spmd_utils,     only: masterproc
   use cam_logfile,    only: iulog
   use cam_abortutils, only: endrun

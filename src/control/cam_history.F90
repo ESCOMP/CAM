@@ -5905,6 +5905,11 @@ end subroutine print_active_fldlst
     end do
 
     if (present(optype)) then
+       ! make sure optype is "sum" or "dif"
+       if (.not.(trim(optype) == 'dif' .or. trim(optype) == 'sum')) then 
+          write(errormsg, '(2a)')': Fatal : optype must be "sum" or "dif" not ',trim(optype)
+          call endrun (trim(subname)//errormsg)
+       end if
        listentry%field%field_op = optype
        if (present(op_f1name).and.present(op_f2name)) then
           ! Look for the field IDs

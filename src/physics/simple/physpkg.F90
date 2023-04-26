@@ -202,7 +202,7 @@ contains
     use phys_debug_util,    only: phys_debug_init
     use qneg_module,        only: qneg_init
     use cam_snapshot,       only: cam_snapshot_init
-    use budgets,            only: budget_init
+    use cam_budget,         only: cam_budget_init
 
     ! Input/output arguments
     type(physics_state), pointer       :: phys_state(:)
@@ -273,7 +273,7 @@ contains
     call cam_snapshot_init(cam_in, cam_out, pbuf2d, begchunk)
 
     ! Initialize energy budgets
-    call budget_init()
+    call cam_budget_init()
 
   end subroutine phys_init
 
@@ -480,7 +480,7 @@ contains
     use check_energy,    only: tot_energy_phys
     use cam_history,     only: hist_fld_active
     use cam_thermo,      only: cam_thermo_water_update
-    use budgets,         only: thermo_budget_history
+    use cam_budget,      only: thermo_budget_history
     use dyn_tests_utils, only: vc_dycore, vc_height, vc_dry_pressure
     use air_composition, only: cpairv, cp_or_cv_dycore
     ! Arguments
