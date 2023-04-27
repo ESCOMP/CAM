@@ -895,34 +895,34 @@ subroutine dyn_init(dyn_in, dyn_out)
       ! Register stages for budgets
       do istage = 1, num_stages
          call cam_budget_em_snapshot(TRIM(ADJUSTL(stage(istage))), 'dyn', &
-              longname=TRIM(ADJUSTL(stage_txt(istage))), cslam=use_cslam)
+              longname=TRIM(ADJUSTL(stage_txt(istage))))
       end do
       !
       ! Register tendency (difference) budgets
       !
       call cam_budget_em_register('dEdt_floating_dyn'   ,'dAD','dBD','dyn','dif', &
-                      longname="dE/dt floating dynamics (dAD-dBD)"            ,cslam=use_cslam)
+                      longname="dE/dt floating dynamics (dAD-dBD)"               )
       call cam_budget_em_register('dEdt_vert_remap'     ,'dAR','dAD','dyn','dif', &
-                      longname="dE/dt vertical remapping (dAR-dAD)"           ,cslam=use_cslam)
+                      longname="dE/dt vertical remapping (dAR-dAD)"              )
       call cam_budget_em_register('dEdt_phys_tot_in_dyn','dBD','dAF','dyn','dif', &
-                      longname="dE/dt physics tendency in dynamics (dBD-dAF)" ,cslam=use_cslam)
+                      longname="dE/dt physics tendency in dynamics (dBD-dAF)"    )
       call cam_budget_em_register('dEdt_del4'          ,'dCH','dBH','dyn','dif', &
-                      longname="dE/dt del4 (dCH-dBH)"                          ,cslam=use_cslam)
+                      longname="dE/dt del4 (dCH-dBH)"                            )
       call cam_budget_em_register('dEdt_del4_fric_heat','dAH','dCH','dyn','dif', &
-                      longname="dE/dt del4 frictional heating (dAH-dCH)"       ,cslam=use_cslam)
+                      longname="dE/dt del4 frictional heating (dAH-dCH)"         )
       call cam_budget_em_register('dEdt_del4_tot'      ,'dAH','dBH','dyn','dif', &
-                      longname="dE/dt del4 + del4 frictional heating (dAH-dBH)",cslam=use_cslam)
+                      longname="dE/dt del4 + del4 frictional heating (dAH-dBH)"  )
       call cam_budget_em_register('dEdt_del2_sponge'   ,'dAS','dBS','dyn','dif', &
-                      longname="dE/dt del2 sponge (dAS-dBS)"                   ,cslam=use_cslam)
+                      longname="dE/dt del2 sponge (dAS-dBS)"                     )
       !
       ! Register derived budgets
       !
       call cam_budget_em_register('dEdt_dycore'        ,'dEdt_floating_dyn','dEdt_vert_remap'   ,'dyn','sum', &
-                      longname="dE/dt adiabatic dynamics"      ,cslam=use_cslam)
+                      longname="dE/dt adiabatic dynamics"                              )
       call cam_budget_em_register('dEdt_del2_del4_tot' ,'dEdt_del4_tot'    ,'dEdt_del2_sponge'  ,'dyn','sum', &
-                      longname="dE/dt explicit diffusion total",cslam=use_cslam)
+                      longname="dE/dt explicit diffusion total"                        )
       call cam_budget_em_register('dEdt_residual'      ,'dEdt_floating_dyn','dEdt_del2_del4_tot','dyn','dif',&
-                      longname="dE/dt residual (dEdt_floating_dyn-dEdt_del2_del4_tot)",cslam=use_cslam)      
+                      longname="dE/dt residual (dEdt_floating_dyn-dEdt_del2_del4_tot)" )
    end if
    !
    ! add dynamical core tracer tendency output

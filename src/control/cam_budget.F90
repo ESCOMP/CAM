@@ -119,8 +119,9 @@ CONTAINS
 
   !==============================================================================================
 
-  subroutine cam_budget_em_snapshot (name, pkgtype, longname, cslam)
-    use dycore,          only: dycore_is  
+  subroutine cam_budget_em_snapshot (name, pkgtype, longname)
+    use dycore,           only: dycore_is
+    use cam_grid_support, only: cam_grid_id
 
     character(len=*), intent(in)           :: &
          name      ! budget name used as variable name in history file output (8 char max)
@@ -128,24 +129,20 @@ CONTAINS
          pkgtype      ! budget type either phy or dyn
     character(len=*), intent(in)           :: &
          longname    ! value for long_name attribute in netcdf output (128 char max, defaults to name)
-    logical,          intent(in), optional :: &
-         cslam  ! true => CSLAM used to transport mass tracers
 
     character (cl)                         :: errmsg
     character (len=max_fieldname_len)      :: name_str
     character (cl)                         :: desc_str, units_str
     character (cl)                         :: gridname
-    logical                                :: cslamtr        ! using cslam transport for mass tracers
     integer                                :: ivars
     character(len=*), parameter            :: sub='cam_budget_em_snapshot'
+    logical                                :: use_cslam        ! using cslam transport for mass tracers
     !-----------------------------------------------------------------------
 
     if (thermo_budget_history) then
-       if (present(cslam)) then
-          cslamtr=cslam
-       else
-          cslamtr = .false.
-       end if
+       ! FVM grid is only registered when using cslam
+       use_cslam=cam_grid_id('FVM')>0
+
        do ivars=1, thermo_budget_num_vars
           write(name_str,*) TRIM(ADJUSTL(thermo_budget_vars(ivars))),"_",TRIM(ADJUSTL(name))
           write(desc_str,*) TRIM(ADJUSTL(thermo_budget_vars_descriptor(ivars)))," ", &
@@ -169,7 +166,7 @@ CONTAINS
              gridname='physgrid'
           else
              if (dycore_is('SE')) then
-                if (cslamtr .and. thermo_budget_vars_massv(ivars)) then
+                if (use_cslam .and. thermo_budget_vars_massv(ivars)) then
                    gridname='FVM'
                 else
                    gridname='GLL'
@@ -182,7 +179,7 @@ CONTAINS
              end if
           end if
           call addfld (TRIM(ADJUSTL(name_str)), horiz_only, 'N', TRIM(ADJUSTL(units_str)), &
-                       TRIM(ADJUSTL(desc_str)), gridname=gridname)
+                       TRIM(ADJUSTL(desc_str)), gridname=trim(gridname))
           call add_default(TRIM(ADJUSTL(name_str)), thermo_budget_histfile_num, 'N')
        end do
     end if
@@ -190,9 +187,9 @@ CONTAINS
 
   !==============================================================================
 
-  subroutine cam_budget_em_register (name, stg1name, stg2name, pkgtype, optype, longname, cslam)
-    use dycore,          only: dycore_is  
-
+  subroutine cam_budget_em_register (name, stg1name, stg2name, pkgtype, optype, longname)
+    use dycore,           only: dycore_is
+    use cam_grid_support, only: cam_grid_id
 
     ! Register a budget.
 
@@ -208,9 +205,6 @@ CONTAINS
     character(len=*), intent(in) :: &
          longname    ! value for long_name attribute in netcdf output (128 char max, defaults to name)
 
-    logical,          intent(in), optional :: &
-         cslam       ! true => use cslam to transport mass variables
-
     character(len=*), parameter            :: sub='cam_budget_em_register'
     character(cl)                          :: errmsg
     character(len=1)                       :: opchar
@@ -219,15 +213,12 @@ CONTAINS
     character (cl)                         :: gridname
     character (cl)                         :: strstg1, strstg2
     integer                                :: ivars
-    logical                                :: cslamtr        ! using cslam transport for mass tracers
+    logical                                :: use_cslam       ! true => use cslam to transport mass variables
     !-----------------------------------------------------------------------
 
     if (thermo_budget_history) then
-       if (present(cslam)) then
-          cslamtr=cslam
-       else
-          cslamtr = .false.
-       end if
+       ! the FVM gridname is only defined when use_cslam is true.
+       use_cslam=cam_grid_id('FVM')>0
 
        ! register history budget variables
        do ivars=1, thermo_budget_num_vars
@@ -267,7 +258,7 @@ CONTAINS
             gridname='physgrid'
           else
              if (dycore_is('SE')) then
-                if (cslamtr .and. thermo_budget_vars_massv(ivars)) then
+                if (use_cslam .and. thermo_budget_vars_massv(ivars)) then
                    gridname='FVM'
                 else
                    gridname='GLL'
