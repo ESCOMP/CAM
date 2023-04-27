@@ -1,9 +1,59 @@
 <?xml version="1.0"?>
 <namelist_defaults>
 
-  <solar_irrad_data_file>'atm/cam/solar/SolarForcingCMIP6_18491230-23000102_c20200615.nc'</solar_irrad_data_file>
+<start_ymd>19790101</start_ymd>
 
-  <!-- sim_year used for CO2 cycle namelist settings -->
-  <sim_year>1850-2000</sim_year>
+<!-- Solar data from NRL -->
+<solar_irrad_data_file>atm/cam/solar/SolarForcingCMIP6_18491230-23000102_c20200615.nc</solar_irrad_data_file>
+
+<!-- Initial conditions -->
+<ncdata hgrid="ne30np4" npg="3" nlev="93">atm/cam/inic/se/L93_ne30pg3_ne30pg3_mg17_450_short.cam.i.1979-01-07-00000.nc</ncdata>
+
+<!-- Topography -->
+<bnd_topo hgrid="ne30np4" npg="3">atm/cam/topo/se/ne30pg3_gmted2010_modis_bedmachine_nc3000_Laplace0100_20230105.nc</bnd_topo>
+
+<!-- LBC Files -->
+<flbc_file>atm/waccm/lb/LBC_17500116-20150116_CMIP6_0p5degLat_c180905.nc</flbc_file>
+<flbc_type>'SERIAL'</flbc_type>
+<flbc_list>'CO2','CH4','N2O','CFC11','CFC12','CFC11eq'</flbc_list>
+
+<!-- ozone data -->
+<prescribed_ozone_datapath>   'atm/cam/ozone_strataero'                                                         </prescribed_ozone_datapath>
+<prescribed_ozone_file    >   'ozone_strataero_WACCM_L70_zm5day_18500101-20150103_CMIP6ensAvg_c180923.nc'       </prescribed_ozone_file>
+<prescribed_ozone_name    >   'O3'                                                                              </prescribed_ozone_name>
+<prescribed_ozone_type    >   SERIAL                                                                            </prescribed_ozone_type>
+
+<!-- Prescribed stratospheric aerosols -->
+<prescribed_strataero_use_chemtrop>   .true.                                                                       </prescribed_strataero_use_chemtrop>
+<prescribed_strataero_datapath    >   'atm/cam/ozone_strataero'                                                    </prescribed_strataero_datapath>
+<prescribed_strataero_file        >   'ozone_strataero_WACCM_L70_zm5day_18500101-20150103_CMIP6ensAvg_c180923.nc'  </prescribed_strataero_file>
+<prescribed_strataero_type        >   SERIAL                                                                       </prescribed_strataero_type>
+
+<!-- Prescribed oxidants for aerosol chemistry -->
+<tracer_cnst_datapath >   'atm/cam/tracer_cnst'                                         </tracer_cnst_datapath>
+<tracer_cnst_file     >   'tracer_cnst_halons_3D_L70_1849-2015_CMIP6ensAvg_c180927.nc'  </tracer_cnst_file>
+<tracer_cnst_specifier>   'O3','OH','NO3','HO2','HALONS'                                </tracer_cnst_specifier>
+<tracer_cnst_type     >   INTERP_MISSING_MONTHS                                         </tracer_cnst_type>
+<tracer_cnst_filelist >   ''                                                            </tracer_cnst_filelist>
+
+<!-- External forcing -->
+<ext_frc_type>INTERP_MISSING_MONTHS</ext_frc_type>
+
+<!-- Surface emissions -->
+<srf_emis_type>INTERP_MISSING_MONTHS</srf_emis_type>
+<csw_time_type>SERIAL</csw_time_type>
+
+<!-- Dycore settings -->
+<se_rsplit>            6 </se_rsplit>
+<se_nsplit>            3 </se_nsplit>
+<se_hypervis_subcycle> 3 </se_hypervis_subcycle>
+
+<!-- gravity wave settings -->
+<gw_apply_tndmax>   .false. </gw_apply_tndmax>
+<use_gw_convect_dp> .true. </use_gw_convect_dp>
+<use_gw_front>      .true. </use_gw_front>
+
+<tau_0_ubc> .true.  </tau_0_ubc>
+<se_nu_top> 1.E6  </se_nu_top>
 
 </namelist_defaults>
