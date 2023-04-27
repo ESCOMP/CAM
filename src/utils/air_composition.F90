@@ -679,6 +679,8 @@ CONTAINS
         !
         cp_or_cv_dycore(:ncol,:,lchnk)=cp_or_cv_dycore(:ncol,:,lchnk)*&
              (cpairv(:ncol,:,lchnk)-rairv(:ncol,:,lchnk)) /rairv(:ncol,:,lchnk)
+      else if (vcoord==vc_moist_pressure) then
+        ! no update needed for moist pressure vcoord
       else
         call endrun(subname//" vertical coordinate not supported; vcoord="//  int2str(vcoord))
       end if
