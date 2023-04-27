@@ -7,11 +7,11 @@ module cam_budget
   !
   ! cam_budget_init
   ! cam_budget_em_snapshot
-  ! cam_budget_em_budget
+  ! cam_budget_em_register
   ! cam_budget_get_global
   ! cam_budget_readnl
   ! budget_ind_byname
-  ! is_budget
+  ! is_cam_budget
   !-----------------------------------------------------------------------
 
   use cam_abortutils,      only: endrun
@@ -32,10 +32,10 @@ module cam_budget
   public :: &
        cam_budget_init,       &! initialize budget variables
        cam_budget_em_snapshot,   &! define a snapshot and add to history buffer
-       cam_budget_em_budget,     &! define a budget and add to history buffer
+       cam_budget_em_register,     &! define a budget and add to history buffer
        cam_budget_get_global,     &! get global budget from history buffer
        cam_budget_readnl,         &! read budget namelist setting
-       is_budget               ! return logical if budget_defined
+       is_cam_budget               ! return logical if budget_defined
 
   ! Private
   real(r8)                             :: dstepsize
@@ -190,7 +190,7 @@ CONTAINS
 
   !==============================================================================
 
-  subroutine cam_budget_em_budget (name, stg1name, stg2name, pkgtype, optype, longname, cslam)
+  subroutine cam_budget_em_register (name, stg1name, stg2name, pkgtype, optype, longname, cslam)
     use dycore,          only: dycore_is  
 
 
@@ -211,7 +211,7 @@ CONTAINS
     logical,          intent(in), optional :: &
          cslam       ! true => use cslam to transport mass variables
 
-    character(len=*), parameter            :: sub='cam_budget_em_budget'
+    character(len=*), parameter            :: sub='cam_budget_em_register'
     character(cl)                          :: errmsg
     character(len=1)                       :: opchar
     character (len=max_fieldname_len)      :: name_str
@@ -284,7 +284,7 @@ CONTAINS
           call add_default(TRIM(ADJUSTL(name_str)), thermo_budget_histfile_num, 'N')
        end do
     end if
-  end subroutine cam_budget_em_budget
+  end subroutine cam_budget_em_register
 
   !==============================================================================
 
@@ -378,7 +378,7 @@ CONTAINS
   end subroutine cam_budget_get_global
   !==============================================================================
 
-  pure function is_budget(name)
+  pure function is_cam_budget(name)
 
     ! Get the index of a budget.  
 
@@ -386,21 +386,21 @@ CONTAINS
     character(len=*),  intent(in)  :: name  ! budget name
 
     !---------------------------Local workspace-----------------------------
-    logical                        :: is_budget           ! function return
+    logical                        :: is_cam_budget           ! function return
     integer                        :: m                   ! budget index
     !-----------------------------------------------------------------------
 
     ! Find budget name in list of defined budgets
 
-    is_budget = .false.
+    is_cam_budget = .false.
     do m = 1, budget_num
        if (trim(adjustl(name)) == trim(adjustl(budget_name(m))).or. &
            trim(adjustl(name)) == trim(adjustl(budget_stagename(m)))) then
-          is_budget = .true.
+          is_cam_budget = .true.
           return
        end if
     end do
-  end function is_budget
+  end function is_cam_budget
 
   !===========================================================================
 

@@ -40,7 +40,7 @@ use cam_abortutils,     only: endrun
 
 use mpas_timekeeping,   only : MPAS_TimeInterval_type
 use cam_mpas_subdriver, only: cam_mpas_global_sum_real
-use cam_budget,         only: cam_budget_em_snapshot, cam_budget_em_budget
+use cam_budget,         only: cam_budget_em_snapshot, cam_budget_em_register
 
 
 implicit none
@@ -543,11 +543,11 @@ subroutine dyn_init(dyn_in, dyn_out)
       ! initialize MPAS energy budgets
       ! add budgets that are derived from stages
       !
-      call cam_budget_em_budget('dEdt_param_efix_in_dyn','dAP','dBF',pkgtype='dyn',optype='dif', &
+      call cam_budget_em_register('dEdt_param_efix_in_dyn','dAP','dBF',pkgtype='dyn',optype='dif', &
                       longname="dE/dt parameterizations+efix in dycore (dparam)(dAP-dBF)")
-      call cam_budget_em_budget('dEdt_dme_adjust_in_dyn','dAM','dAP',pkgtype='dyn',optype='dif', &
+      call cam_budget_em_register('dEdt_dme_adjust_in_dyn','dAM','dAP',pkgtype='dyn',optype='dif', &
                       longname="dE/dt dry mass adjustment in dycore (dAM-dAP)")
-      call cam_budget_em_budget('dEdt_phys_total_in_dyn','dAM','dBF',pkgtype='dyn',optype='dif', &
+      call cam_budget_em_register('dEdt_phys_total_in_dyn','dAM','dBF',pkgtype='dyn',optype='dif', &
                       longname="dE/dt physics total in dycore (phys) (dAM-dBF)")
    end if
       

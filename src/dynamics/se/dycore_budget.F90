@@ -18,7 +18,7 @@ subroutine print_budget(hstwr)
   use spmd_utils,             only: masterproc
   use cam_abortutils,         only: endrun  
   use cam_logfile,            only: iulog
-  use cam_budget,             only: cam_budget_get_global, is_budget, thermo_budget_histfile_num, thermo_budget_history
+  use cam_budget,             only: cam_budget_get_global, is_cam_budget, thermo_budget_histfile_num, thermo_budget_history
   use cam_thermo,             only: thermo_budget_vars_descriptor, thermo_budget_num_vars, thermo_budget_vars_massv, &
                                     teidx, seidx, keidx, poidx
   use dimensions_mod,         only: use_cslam
@@ -458,7 +458,7 @@ subroutine print_budget(hstwr)
         !
         ! detailed mass budget in dynamical core
         !
-        if (is_budget('dAD').and.is_budget('dBD').and.is_budget('dAR').and.is_budget('dCH')) then
+        if (is_cam_budget('dAD').and.is_cam_budget('dBD').and.is_cam_budget('dAR').and.is_cam_budget('dCH')) then
           call cam_budget_get_global('dAD-dBD',m_cnst,dMdt_floating_dyn)
           call cam_budget_get_global('dAR-dAD',m_cnst,dMdt_vert_remap)
           tmp  = dMdt_floating_dyn+dMdt_vert_remap
@@ -485,7 +485,7 @@ subroutine print_budget(hstwr)
             write(iulog,*)"dMASS/dt residual (time truncation errors)",dMdt_residual," Pa/m^2/s"
           end if
         end if
-        if (is_budget('dBD').and.is_budget('dAF')) then
+        if (is_cam_budget('dBD').and.is_cam_budget('dAF')) then
           !
           ! check if mass change in physics is the same as dynamical core
           !
