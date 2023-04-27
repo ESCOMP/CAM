@@ -263,7 +263,6 @@ contains
     use mo_sethet,         only : sethet
     use mo_drydep,         only : drydep
     use mo_fstrat,         only : set_fstrat_vals, set_fstrat_h2o
-    use noy_ubc,           only : noy_ubc_set
     use mo_flbc,           only : flbc_set
     use phys_grid,         only : get_rlat_all_p, get_rlon_all_p
     use mo_mean_mass,      only : set_mean_mass
@@ -975,11 +974,6 @@ contains
     !         ... Set fixed lower boundary mmr values
     !-----------------------------------------------------------------------
     call flbc_set( vmr, ncol, lchnk, map2chm )
-
-    !-----------------------------------------------------------------------
-    ! set NOy UBC
-    !-----------------------------------------------------------------------
-    call noy_ubc_set( lchnk, ncol, vmr )
 
     if ( ghg_chem ) then
        call ghg_chem_set_flbc( vmr, ncol )

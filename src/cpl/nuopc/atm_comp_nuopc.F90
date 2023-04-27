@@ -29,7 +29,7 @@ module atm_comp_nuopc
   use cam_logfile         , only : iulog
   use spmd_utils          , only : spmdinit, masterproc, iam, mpicom
   use time_manager        , only : get_curr_calday, advance_timestep, get_curr_date, get_nstep, get_step_size
-  use atm_import_export   , only : advertise_fields, realize_fields
+  use atm_import_export   , only : read_surface_fields_namelists, advertise_fields, realize_fields
   use atm_import_export   , only : import_fields, export_fields
   use nuopc_shr_methods   , only : chkerr, state_setscalar, state_getscalar, state_diagnose, alarmInit
   use nuopc_shr_methods   , only : set_component_logging, get_component_instance, log_clock_advance
@@ -278,6 +278,9 @@ contains
        call shr_sys_abort(subname//'Need to set attribute ScalarFieldIdxNextSwCday')
     endif
 
+    ! read mediator fields namelists
+    call read_surface_fields_namelists()
+
     call NUOPC_CompAttributeGet(gcomp, name="mediator_present", value=cvalue, isPresent=isPresent, isSet=isSet, rc=rc)
     if (ChkErr(rc,__LINE__,u_FILE_u)) return
     if (isPresent .and. isSet) then
@@ -361,14 +364,13 @@ contains
     real(r8)                :: obliqr
     real(r8)                :: lambm0
     real(r8)                :: mvelpp
-    logical                 :: dart_mode_in
     !character(len=cl)      :: atm_resume_all_inst(num_inst_atm) ! atm resume file
     integer                 :: lbnum
     character(CS)           :: inst_name
     integer                 :: inst_index
     character(CS)           :: inst_suffix
     integer                 :: lmpicom
-    logical                 :: isPresent
+    logical                 :: isPresent, isSet
     character(len=512)      :: diro
     character(len=512)      :: logfile
     integer                 :: compid                            ! component id
@@ -526,14 +528,6 @@ contains
     ! TODO: must obtain model_doi_url from gcomp - for now hardwire to 'not_set'
     model_doi_url = 'not_set'
 
-    ! TODO: obtain dart_mode as a attribute variable
-    ! DART always starts up as an initial run.
-    if (dart_mode) then
-       initial_run = .true.
-       restart_run = .false.
-       branch_run  = .false.
-    end if
-
     ! Initialize CAM, allocate cam_in and cam_out and determine
     ! atm decomposition (needed to initialize gsmap)
     ! for an initial run, cam_in and cam_out are allocated in cam_init
@@ -553,6 +547,19 @@ contains
        branch_run = .true.
     else
        call shr_sys_abort( subname//' ERROR: unknown start_type' )
+    end if
+
+    ! DART always starts up as an initial run.
+    call NUOPC_CompAttributeGet(gcomp, name='data_assimilation_atm', value=cvalue, &
+         isPresent=isPresent, isSet=isSet, rc=rc)
+    if (ChkErr(rc,__LINE__,u_FILE_u)) return
+    if (isPresent .and. isSet) then
+       read(cvalue,*) dart_mode
+    end if
+    if (dart_mode) then
+       initial_run = .true.
+       restart_run = .false.
+       branch_run  = .false.
     end if
 
     ! Get properties from clock
@@ -592,7 +599,6 @@ contains
     end if
 
     ! Initialize module orbital values and update orbital
-
     call cam_orbital_init(gcomp, iulog, masterproc, rc)
     if (ChkErr(rc,__LINE__,u_FILE_u)) return
     call cam_orbital_update(clock, iulog, masterproc, eccen, obliqr, lambm0, mvelpp, rc)

@@ -40,7 +40,8 @@ contains
     use hybvcoord_mod,          only: hvcoord_t
     use prim_advection_mod,     only: prim_advec_init2,deriv
     use prim_advance_mod,       only: compute_omega
-    use physconst,              only: gravit, cappa, cpair, tref, lapse_rate, get_dp_ref
+    use physconst,              only: gravit, cappa, cpair, tref, lapse_rate
+    use cam_thermo,             only: get_dp_ref
     use physconst,              only: pstd
 
     type (element_t), intent(inout) :: elem(:)
@@ -64,7 +65,7 @@ contains
     real (kind=r8) :: dt_dyn_del2_sponge, dt_remap 
     real (kind=r8) :: dt_tracer_vis      ! viscosity timestep used in tracers
 
-    real (kind=r8) :: dp,T1,T0,pmid_ref(np,np)
+    real (kind=r8) :: dp,dp0,T1,T0,pmid_ref(np,np)
     real (kind=r8) :: ps_ref(np,np,nets:nete)
 
     integer :: i,j,k,ie,t,q
@@ -145,8 +146,8 @@ contains
      ! pre-compute pressure-level thickness reference profile
      !
      do ie=nets,nete
-       call get_dp_ref(hvcoord%hyai, hvcoord%hybi, hvcoord%ps0,1,np,1,np,1,nlev,&
-            elem(ie)%state%phis(:,:),elem(ie)%derived%dp_ref(:,:,:),ps_ref(:,:,ie))
+       call get_dp_ref(hvcoord%hyai, hvcoord%hybi, hvcoord%ps0, elem(ie)%state%phis(:,:), &
+            elem(ie)%derived%dp_ref(:,:,:), ps_ref(:,:,ie))
      end do
      !
      ! pre-compute reference temperature profile (Simmons and Jiabin, 1991, QJRMS, Section 2a
@@ -161,8 +162,14 @@ contains
      do ie=nets,nete
        do k=1,nlev
          pmid_ref =hvcoord%hyam(k)*hvcoord%ps0 + hvcoord%hybm(k)*ps_ref(:,:,ie)
+         dp0 = ( hvcoord%hyai(k+1) - hvcoord%hyai(k) )*hvcoord%ps0 + &
+               ( hvcoord%hybi(k+1) - hvcoord%hybi(k) )*hvcoord%ps0    
          if (hvcoord%hybm(k)>0) then
            elem(ie)%derived%T_ref(:,:,k)    = T0+T1*(pmid_ref/hvcoord%ps0)**cappa
+           !
+           ! pel@ucar.edu: resolved noise issue over Antartica
+           !
+           elem(ie)%derived%dp_ref(:,:,k)   = elem(ie)%derived%dp_ref(:,:,k)-dp0
          else
            elem(ie)%derived%T_ref(:,:,k)    = 0.0_r8
          end if

@@ -651,7 +651,7 @@ subroutine vertical_diffusion_tend( &
   use physics_buffer,     only : physics_buffer_desc, pbuf_get_field, pbuf_set_field
   use physics_types,      only : physics_state, physics_ptend, physics_ptend_init
   use physics_types,      only : set_dry_to_wet, set_wet_to_dry
-  
+
   use camsrfexch,         only : cam_in_t
   use cam_history,        only : outfld
 
@@ -663,14 +663,16 @@ subroutine vertical_diffusion_tend( &
   use molec_diff,         only : compute_molec_diff, vd_lu_qdecomp
   use constituents,       only : qmincg, qmin, cnst_type
   use diffusion_solver,   only : compute_vdiff, any, operator(.not.)
-  use physconst,          only : cpairv, rairv !Needed for calculation of upward H flux
+  use air_composition,    only : cpairv, rairv !Needed for calculation of upward H flux
   use time_manager,       only : get_nstep
   use constituents,       only : cnst_get_type_byind, cnst_name, &
        cnst_mw, cnst_fixed_ubc, cnst_fixed_ubflx
   use physconst,          only : pi
   use pbl_utils,          only : virtem, calc_obklen, calc_ustar
-  use upper_bc,           only : ubc_get_vals
+  use upper_bc,           only : ubc_get_vals, ubc_fixed_temp
+  use upper_bc,           only : ubc_get_flxs
   use coords_1d,          only : Coords1D
+  use phys_control,       only : cam_physpkg_is
 
   ! --------------- !
   ! Input Arguments !
@@ -846,7 +848,7 @@ subroutine vertical_diffusion_tend( &
 
   ! Assume 'wet' mixing ratios in diffusion code.
   call set_dry_to_wet(state)
-  
+
   rztodt = 1._r8 / ztodt
   lchnk  = state%lchnk
   ncol   = state%ncol
@@ -867,17 +869,14 @@ subroutine vertical_diffusion_tend( &
   tint(:ncol,pver+1) = state%t(:ncol,pver)
 
   ! Get upper boundary values
-  call ubc_get_vals( state%lchnk, ncol, state%pint, state%zi, state%t, state%q, state%omega, state%phis, &
-                     ubc_t, ubc_mmr, ubc_flux )
+  call ubc_get_vals( state%lchnk, ncol, state%pint, state%zi, ubc_t, ubc_mmr )
 
-  ! Always have a fixed upper boundary T if molecular diffusion is active. Why ?
-  ! For WACCM-X, set ubc temperature to extrapolate from next two lower interface level temperatures
-  if (do_molec_diff) then
-     if (waccmx_mode) then
-        tint(:ncol,1) = 1.5_r8*tint(:ncol,2)-.5_r8*tint(:ncol,3)
-     else
-        tint (:ncol,1) = ubc_t(:ncol)
-     endif
+  if (waccmx_mode) then
+     call ubc_get_flxs( state%lchnk, ncol, state%pint, state%zi, state%t, state%q, state%phis, ubc_flux )
+     ! For WACCM-X, set ubc temperature to extrapolate from next two lower interface level temperatures
+     tint(:ncol,1) = 1.5_r8*tint(:ncol,2)-.5_r8*tint(:ncol,3)
+  else if(ubc_fixed_temp) then
+     tint(:ncol,1) = ubc_t(:ncol)
   else
      tint(:ncol,1) = state%t(:ncol,1)
   end if
@@ -1098,7 +1097,12 @@ subroutine vertical_diffusion_tend( &
      tauy = 0._r8
      shflux = 0._r8
      cflux(:,1) = 0._r8
-     cflux(:,2:) = cam_in%cflx(:,2:)
+     if (cam_physpkg_is("cam_dev")) then
+       ! surface fluxes applied in clubb emissions module
+       cflux(:,2:) = 0._r8
+     else
+       cflux(:,2:) = cam_in%cflx(:,2:)
+     end if
   case default
      taux = cam_in%wsx
      tauy = cam_in%wsy
@@ -1152,7 +1156,7 @@ subroutine vertical_diffusion_tend( &
           p_dry , state%t      , rhoi_dry,  ztodt         , taux          , &
           tauy          , shflux             , cflux        , &
           kvh           , kvm                , kvq          , cgs           , cgh           , &
-          state%zi      , ksrftms            , dragblj      , & 
+          state%zi      , ksrftms            , dragblj      , &
           qmincg       , fieldlist_dry , fieldlist_molec,&
           u_tmp         , v_tmp              , q_tmp        , s_tmp         ,                 &
           tautmsx_temp  , tautmsy_temp       , dtk_temp     , topflx_temp   , errstring     , &
@@ -1176,7 +1180,7 @@ subroutine vertical_diffusion_tend( &
      tmp1(:ncol) = ztodt * gravit * state%rpdel(:ncol,pver)
      do m = 1, pmam_ncnst
         l = pmam_cnst_idx(m)
-        q_tmp(:ncol,pver,l) = q_tmp(:ncol,pver,l) + tmp1(:ncol) * cam_in%cflx(:ncol,l)
+        q_tmp(:ncol,pver,l) = q_tmp(:ncol,pver,l) + tmp1(:ncol) * cflux(:ncol,l)
      enddo
   end if
 

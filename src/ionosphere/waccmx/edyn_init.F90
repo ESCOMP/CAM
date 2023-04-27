@@ -70,8 +70,8 @@ contains
       call addfld ('ED23D'     ,(/ 'lev' /), 'I', 'V/m  ','ED23D: Equatorward Electric Field',gridname='gmag_grid')
       call addfld ('ZPOT_MAG'  ,(/ 'lev' /), 'I', 'cm   ','Geopotential on mag grid (h0 min)',gridname='gmag_grid')
 
-      call addfld ('EDYN_ZIGM2_HAL' , horiz_only, 'I', 'S','Hall Conductance' ,gridname='gmag_grid')
-      call addfld ('EDYN_ZIGM11_PED', horiz_only, 'I', 'S','Pedersen Conductance',gridname='gmag_grid')
+      call addfld ('HALL_CONDUCTANCE',horiz_only, 'I', 'S','Hall Conductance',    gridname='gmag_grid')
+      call addfld ('PED_CONDUCTANCE', horiz_only, 'I', 'S','Pedersen Conductance',gridname='gmag_grid')
 
       call addfld ('POTEN',(/ 'lev' /), 'I', 'Volts','POTEN: Electric Potential', gridname='geo_grid')
 
@@ -113,8 +113,8 @@ contains
       call phys_getopts(history_waccmx_out=history_waccmx)
 
       if (history_waccmx) then
-         call add_default ('EDYN_ZIGM11_PED', 1, ' ')
-         call add_default ('EDYN_ZIGM2_HAL' , 1, ' ')
+         call add_default ('PED_CONDUCTANCE', 1, ' ')
+         call add_default ('HALL_CONDUCTANCE' , 1, ' ')
       end if
 
    end subroutine add_fields
@@ -181,14 +181,22 @@ contains
       end do
 
       allocate(coord_map(mlat1 - mlat0 + 1))
-      coord_map = (/ (i, i = mlat0, mlat1) /)
+      if (mlon0==1) then
+         coord_map = (/ (i, i = mlat0, mlat1) /)
+      else
+         coord_map = 0
+      end if
       lat_coord => horiz_coord_create('mlat', '', nmlat, 'latitude',           &
            'degrees_north', mlat0, mlat1, gmlat(mlat0:mlat1),                  &
            map=coord_map)
       nullify(coord_map)
 
       allocate(coord_map(omlon1 - mlon0 + 1))
-      coord_map = (/ (i, i = mlon0, omlon1) /)
+      if (mlat0==1) then
+         coord_map = (/ (i, i = mlon0, omlon1) /)
+      else
+         coord_map = 0
+      end if
       lon_coord => horiz_coord_create('mlon', '', nmlon, 'longitude',          &
            'degrees_east', mlon0, omlon1, gmlon(mlon0:omlon1),                 &
            map=coord_map)
@@ -214,14 +222,23 @@ contains
       end do
 
       allocate(coord_map(lat1 - lat0 + 1))
-      coord_map = (/ (i, i = lat0, lat1) /)
+      if (lon0==1) then
+         coord_map = (/ (i, i = lat0, lat1) /)
+      else
+         coord_map = 0
+      end if
       lat_coord => horiz_coord_create('glat', '', nlat, 'latitude',           &
            'degrees_north', lat0, lat1, glat(lat0:lat1),                  &
            map=coord_map)
       nullify(coord_map)
 
       allocate(coord_map(lon1 - lon0 + 1))
-      coord_map = (/ (i, i = lon0, lon1) /)
+      if (lat0==1) then
+         coord_map = (/ (i, i = lon0, lon1) /)
+      else
+         coord_map = 0
+      end if
+
       lon_coord => horiz_coord_create('glon', '', nlon, 'longitude',          &
            'degrees_east', lon0, lon1, glon(lon0:lon1),                 &
            map=coord_map)
