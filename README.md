@@ -33,12 +33,12 @@ git checkout cam_cesm2_1_rel_41
 
 ### To use unsupported CAM **development** code:
 
-## NOTE: This is **unsupported** development code and is subject to the [CESM developer's agreement](http://www.cgd.ucar.edu/cseg/development-code.html).
+## NOTE: This is **unsupported** development code and is subject to the [CESM developer's agreement](https://www.cgd.ucar.edu/sections/cseg/policies).
 ```
 git checkout cam6_3_002
 ./manage_externals/checkout_externals
 ```
 ### CAM Documentation - https://ncar.github.io/CAM/doc/build/html/index.html
 
-### CAM6 namelist settings - http://www.cesm.ucar.edu/models/cesm2/settings/current/cam_nml.html
+### CAM6 namelist settings - https://docs.cesm.ucar.edu/models/cesm2/settings/current/cam_nml.html
 
