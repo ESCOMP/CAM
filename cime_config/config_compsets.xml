@@ -62,13 +62,13 @@
   </compset>
 
   <compset>
-    <alias>FLTHIST_v0a</alias>
-    <lname>HIST_CAM%DEV%LT%GHGMAM4_CLM50%SP_CICE%PRES_DOCN%DOM_MOSART_SGLC_SWAV</lname>
+    <alias>FLTHIST_v0b</alias>
+    <lname>HIST_CAM%DEV%LT%GHGMAM4_CLM51%SP_CICE%PRES_DOCN%DOM_MOSART_SGLC_SWAV</lname>
   </compset>
 
   <compset>
-    <alias>FMTHIST_v0a</alias>
-    <lname>HIST_CAM%DEV%MT_CLM50%SP_CICE%PRES_DOCN%DOM_MOSART_SGLC_SWAV</lname>
+    <alias>FMTHIST_v0b</alias>
+    <lname>HIST_CAM%DEV%MT_CLM51%SP_CICE%PRES_DOCN%DOM_MOSART_SGLC_SWAV</lname>
   </compset>
 
   <compset>
