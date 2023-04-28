@@ -485,7 +485,7 @@ CONTAINS
         if (tape(t)%hlist(f)%avgflag .eq. 'N') then ! set up areawt weight buffer
            fdecomp = tape(t)%hlist(f)%field%decomp_type
            if (any(allgrids_wt(:)%decomp_type == fdecomp)) then
-              wtidx=FINDLOC(allgrids_wt(:)%decomp_type, fdecomp)
+              wtidx=MAXLOC(allgrids_wt(:)%decomp_type, fdecomp)
               tape(t)%hlist(f)%wbuf => allgrids_wt(wtidx(1))%wbuf
            else
               ! area weights not found for this grid, then create them
@@ -2165,7 +2165,7 @@ CONTAINS
            nullify(tape(t)%hlist(f)%wbuf)
 
            if (any(allgrids_wt(:)%decomp_type == tape(t)%hlist(f)%field%decomp_type)) then
-              wtidx=FINDLOC(allgrids_wt(:)%decomp_type, fdecomp)
+              wtidx=MAXLOC(allgrids_wt(:)%decomp_type, fdecomp)
               tape(t)%hlist(f)%wbuf => allgrids_wt(wtidx(1))%wbuf
            else
               ! area weights not found for this grid, then create them
