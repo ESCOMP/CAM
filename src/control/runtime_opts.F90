@@ -99,6 +99,7 @@ subroutine read_namelist(nlfilename, single_column, scmlat, scmlon)
    use upper_bc,            only: ubc_readnl
    use cam_budget,          only: cam_budget_readnl
    use phys_grid_ctem,      only: phys_grid_ctem_readnl
+   use mo_lightning,        only: lightning_readnl
 
    !---------------------------Arguments-----------------------------------
 
@@ -166,6 +167,7 @@ subroutine read_namelist(nlfilename, single_column, scmlat, scmlon)
    call rad_data_readnl(nlfilename)
    call modal_aer_opt_readnl(nlfilename)
    call chem_readnl(nlfilename)
+   call lightning_readnl(nlfilename)
    call prescribed_volcaero_readnl(nlfilename)
    call prescribed_strataero_readnl(nlfilename)
    call solar_data_readnl(nlfilename)
