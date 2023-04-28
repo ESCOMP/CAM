@@ -6210,8 +6210,14 @@ List of species that are constrained in the stratosphere.
 Default: set by build-namelist.
 </entry>
 
+<entry id="lght_landmask_file" type="char*256" input_pathname="abs" category="cam_chem"
+       group="chem_inparm" valid_values="" >
+Full pathname of dataset for land mask applied to the lighting NOx production
+Default: set by build-namelist.
+</entry>
+
 <entry id="lght_no_prd_factor" type="real" category="cam_chem"
-       group="lightning_nl" valid_values="" >
+       group="chem_inparm" valid_values="" >
 Multiplication factor  applied to the lighting NOx production
 Default: 1.0.
 </entry>
@@ -7317,12 +7323,6 @@ Surface ozone is passed every coupling interval, but this namelist flag
 indicates whether the timestep-level values are interpolated from a
 coarser temporal resolution.
 Default: set by build-namelist.
-</entry>
-
-<entry id="atm_provides_lightning" type="logical" category="lightning_coupling"
-       group="lightning_coupling_nl" valid_values="">
-If TRUE atmosphere model will provide prognosed lightning flash frequency.
-Default: FALSE
 </entry>
 
 <!-- WACCM_GHG Chemistry -->
