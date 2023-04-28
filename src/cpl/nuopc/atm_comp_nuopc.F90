@@ -724,7 +724,8 @@ contains
 
           ! error check differences between internally generated lons and those read in
           do n = 1,lsize
-             if (abs(lonMesh(n) - lon(n)) > grid_tol .and. abs(lonMesh(n) - lon(n)) /= 360._r8) then
+             if (abs(lonMesh(n) - lon(n)) > grid_tol .and. .not. &
+                  abs(abs(lonMesh(n) - lon(n))- 360._r8) < grid_tol) then
                 write(6,100)n,lon(n),lonMesh(n), abs(lonMesh(n)-lon(n))
 100             format('ERROR: CAM n, lonmesh(n), lon(n), diff_lon = ',i6,2(f21.13,3x),d21.5)
                 call shr_sys_abort()

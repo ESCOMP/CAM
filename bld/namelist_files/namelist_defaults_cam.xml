@@ -2863,14 +2863,16 @@
 <dry_air_species                           >''</dry_air_species>
 <dry_air_species    waccmx="1"             >'O', 'O2', 'H', 'N2'</dry_air_species>
 
-<water_species_in_air                         >'Q'                                    </water_species_in_air>
-<water_species_in_air phys="kessler"          >'Q','CLDLIQ','RAINQM'                  </water_species_in_air>
-<water_species_in_air phys="cam4"             >'Q','CLDLIQ','CLDICE'                  </water_species_in_air>
-<water_species_in_air phys="cam5"             >'Q','CLDLIQ','CLDICE'                  </water_species_in_air>
-<water_species_in_air phys="spcam_m2005"      >'Q','CLDLIQ','CLDICE'                  </water_species_in_air>
-<water_species_in_air phys="spcam_sam1mom"    >'Q','CLDLIQ','CLDICE'                  </water_species_in_air>
-<water_species_in_air phys="cam6"             >'Q','CLDLIQ','CLDICE','RAINQM','SNOWQM'</water_species_in_air>
-<water_species_in_air phys="cam_dev"          >'Q','CLDLIQ','CLDICE','RAINQM','SNOWQM'</water_species_in_air>
+<water_species_in_air                                    >'Q'                                             </water_species_in_air>
+<water_species_in_air microphys="none" phys="adiabatic"  >'Q'                                             </water_species_in_air>
+<water_species_in_air microphys="none" phys="held_suarez">'Q'                                             </water_species_in_air>
+<water_species_in_air microphys="none" phys="kessler"    >'Q','CLDLIQ','RAINQM'                           </water_species_in_air>
+<water_species_in_air microphys="rk"                     >'Q','CLDLIQ','CLDICE'                           </water_species_in_air>
+<water_species_in_air microphys="spcam_m2005"            >'Q','CLDLIQ','CLDICE'                           </water_species_in_air>
+<water_species_in_air microphys="spcam_sam1mom"          >'Q','CLDLIQ','CLDICE'                           </water_species_in_air>
+<water_species_in_air microphys="mg1"                    >'Q','CLDLIQ','CLDICE'                           </water_species_in_air>
+<water_species_in_air microphys="mg2"                    >'Q','CLDLIQ','CLDICE','RAINQM','SNOWQM'         </water_species_in_air>
+<water_species_in_air microphys="mg3"                    >'Q','CLDLIQ','CLDICE','RAINQM','SNOWQM','GRAUQM'</water_species_in_air>
 
 <!-- ================================================================== -->
 <!-- Defaults for FV3                                                   -->
@@ -2968,8 +2970,6 @@
 
 <se_ftype> 2 </se_ftype>
 
-<se_lcp_moist                 > .true.  </se_lcp_moist>
-
 <se_large_Courant_incr        > .true.  </se_large_Courant_incr>
 
 <se_hypervis_scaling se_refined_mesh="1" hypervis_type="tensor" >3.22D0 </se_hypervis_scaling>
@@ -2996,8 +2996,6 @@
 
 <se_max_hypervis_courant > 1.0e99 </se_max_hypervis_courant>
 <se_max_hypervis_courant se_refined_mesh="1" hypervis_type="scalar" > 1.9 </se_max_hypervis_courant>
-
-<se_phys_dyn_cp>1</se_phys_dyn_cp>
 
 <se_nu>-1</se_nu>
 <se_nu waccmx="1">5.e15</se_nu>

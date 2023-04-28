@@ -56,9 +56,8 @@ logical           :: history_vdiag        = .false.    ! output the variables us
 logical           :: history_aerosol      = .false.    ! output the MAM aerosol variables and tendencies
 logical           :: history_aero_optics  = .false.    ! output the aerosol
 logical           :: history_eddy         = .false.    ! output the eddy variables
-logical           :: history_budget       = .false.    ! output tendencies and state variables for CAM4
-                                                       ! temperature, water vapor, cloud ice and cloud
-                                                       ! liquid budgets.
+logical           :: history_budget       = .false.    ! output tendencies and state variables for T, water vapor, 
+                                                       ! cloud ice and cloud liquid budgets
 logical           :: convproc_do_aer      = .false.    ! switch for new convective scavenging treatment for modal aerosols
 
 integer           :: history_budget_histfile_num = 1   ! output history file number for budget fields

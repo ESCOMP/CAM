@@ -3,7 +3,7 @@ module test_fvm_mapping
   use fvm_control_volume_mod, only: fvm_struct
   use cam_history,            only: outfld
   use physconst,              only: pi
-  use dimensions_mod,         only: np, nelemd, nlev, npsq, ntrac
+  use dimensions_mod,         only: np, nelemd, nlev, npsq, ntrac, use_cslam
   use element_mod,            only: element_t
   implicit none
   private
@@ -147,10 +147,6 @@ contains
     integer :: m_cnst, nq, ie
 
     q_prev(:,:,ntrac) = 0.0_r8
-    do ie=1,nelemd
-!xxx      fvm(ie)%c(:,:,:,ntrac) = 0.0_r8
-    end do
-    
     phys_state%pdel(1:ncols,:) = phys_state%pdeldry(1:ncols,:) !make sure there is no conversion from wet to dry
     do nq=ntrac,ntrac
       m_cnst = nq
@@ -243,7 +239,7 @@ contains
         name = 'p2d_'//trim(cnst_name(m_cnst))//'_err_gll'
         call outfld(TRIM(name), RESHAPE(elem(ie)%derived%fq(:,:,:,nq),(/npsq,nlev/)), npsq, ie)
       end do
-      if (ntrac>0) then
+      if (use_cslam) then
         do nq=ntrac,ntrac
           m_cnst = nq
           name = 'p2f_'//trim(cnst_name(m_cnst))//'_fvm'
@@ -356,7 +352,6 @@ contains
         end do
       end if
     end do
-!    call fill_halo_fvm_noprealloc(elem,fvm,hybrid,nets,nete,nhc,1,nlev)!xxx nhr chould be a function of interp_method
 #endif
   end subroutine test_mapping_overwrite_dyn_state
 
@@ -370,15 +365,11 @@ contains
     integer            :: lchnk, ncol,k,icol,m_cnst,nq,ie
     character(LEN=128) :: name
 
-    do ie=1,nelemd
-!xxx      fvm(ie)%c(:,:,:,ntrac) = 0.0_r8
-    end do
-
     do lchnk = begchunk, endchunk
       call outfld('d2p_scalar', phys_state(lchnk)%omega(1:pcols,1:pver), pcols, lchnk)
       call outfld('d2p_u', phys_state(lchnk)%U(1:pcols,1:pver), pcols, lchnk)
       call outfld('d2p_v', phys_state(lchnk)%V(1:pcols,1:pver), pcols, lchnk)
-      if (ntrac>0) then
+      if (use_cslam) then
         do nq=ntrac,ntrac
           m_cnst = nq
           name = 'f2p_'//trim(cnst_name(m_cnst))
