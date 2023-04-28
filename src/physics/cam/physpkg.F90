@@ -980,7 +980,7 @@ contains
     call cam_snapshot_init(cam_in, cam_out, pbuf2d, begchunk)
 
     ! Initialize the budget capability
-    call budget_init()
+    call cam_budget_init()
  
     ! addfld calls for U, V tendency budget variables that are output in
     ! tphysac, tphysbc
