@@ -345,16 +345,15 @@ end subroutine hetfrz_classnuc_cam_init
 
 !================================================================================================
 
-subroutine hetfrz_classnuc_cam_calc( aero_props, aero_state, &
-   state, deltatin, factnum, pbuf)
+subroutine hetfrz_classnuc_cam_calc(aero_props, aero_state, state, deltatin, factnum, pbuf)
 
    ! arguments
-   class(aerosol_properties),optional, intent(in) :: aero_props
-   class(aerosol_state),optional, intent(in) :: aero_state
-   type(physics_state), target, intent(in)    :: state
-   real(r8),                    intent(in)    :: deltatin       ! time step (s)
-   real(r8),                    intent(in)    :: factnum(:,:,:) ! activation fraction for aerosol number
-   type(physics_buffer_desc),   pointer       :: pbuf(:)
+   class(aerosol_properties),   intent(in) :: aero_props
+   class(aerosol_state),        intent(in) :: aero_state
+   type(physics_state), target, intent(in) :: state
+   real(r8),                    intent(in) :: deltatin       ! time step (s)
+   real(r8),                    intent(in) :: factnum(:,:,:) ! activation fraction for aerosol number
+   type(physics_buffer_desc),   pointer    :: pbuf(:)
 
    ! local workspace
 
