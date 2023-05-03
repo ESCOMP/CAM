@@ -135,7 +135,7 @@
       <value compset="CAM60%CVBSX">-chem trop_strat_mam5_vbsext</value>
       <value compset="CAM60%CCTS2">-chem trop_strat_mam5_ts2</value>
       <value compset="_CAM50%CLB">-clubb_sgs</value>
-      <value compset="_(CAM40|CAM50|CAM60).*%SCAM">-dyn eul -scam</value>
+      <value compset="_(CAM40|CAM50|CAM60).*%SCAM">-scam</value>
       <value compset="CAM%SPCAMS">-rad camrt -chem none -spcam_nx 32 -spcam_ny 1 -spcam_dx 4000 -spcam_dt 20 -phys spcam_sam1mom </value>
       <value compset="CAM%SPCAMCLBS">-rad camrt -chem none -spcam_nx 32 -spcam_ny 1 -spcam_dx 4000 -spcam_dt 20 -phys spcam_sam1mom -spcam_clubb_sgs </value>
       <value compset="CAM%SPCAMM">-rad rrtmg -chem trop_mam3 -spcam_nx 32 -spcam_ny 1 -spcam_dx 4000 -spcam_dt 20 -phys spcam_m2005 </value>

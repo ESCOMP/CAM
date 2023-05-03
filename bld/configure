@@ -1178,7 +1178,7 @@ if (defined $opts{'scam'}) {
 my $scam = $cfg_ref->get('scam') ? "ON" : "OFF";
 
 # The only dycore supported in SCAM mode is Eulerian
-if ($scam eq 'ON' and $dyn_pkg ne 'eul') {
+if ($scam eq 'ON' and !($dyn_pkg eq 'eul' or $dyn_pkg eq 'se')) {
     die <<"EOF";
 **  ERROR: SCAM mode only works with Eulerian dycore.
 **         Requested dycore is: $dyn_pkg
@@ -1195,7 +1195,7 @@ if (defined $opts{'camiop'}) {
 my $camiop = $cfg_ref->get('camiop') ? "ON" : "OFF";
 
 # The only dycore supported in CAMIOP mode is Eulerian
-if ($camiop eq 'ON' and $dyn_pkg ne 'eul') {
+if ($camiop eq 'ON' and !($dyn_pkg eq 'eul' or $dyn_pkg eq 'se')) {
     die <<"EOF";
 **  ERROR: CAMIOP mode only works with Eulerian dycore.
 **         Requested dycore is: $dyn_pkg
