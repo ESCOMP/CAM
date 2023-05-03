@@ -100,14 +100,14 @@ subroutine stochastic_emulated_init_cam(stochastic_emulated_filename_quantile_ou
 
     call add_hist_coord('bins_ncd', ncd, 'bins for TAU microphysics')
 
-    call addfld('amk_c',(/'trop_cld_lev','bins_ncd'/),'A','kg','cloud liquid mass from bins')
-    call addfld('ank_c',(/'trop_cld_lev','bins_ncd'/),'A','1/kg','cloud liquid number concentration from bins')
-    call addfld('amk_r',(/'trop_cld_lev','bins_ncd'/),'A','kg','cloud liquid mass from bins')
-    call addfld('ank_r',(/'trop_cld_lev','bins_ncd'/),'A','1/kg','cloud liquid number concentration from bins')
-    call addfld('amk',(/'trop_cld_lev','bins_ncd'/),'A','kg','all liquid mass from bins')
-    call addfld('ank',(/'trop_cld_lev','bins_ncd'/),'A','1/kg','all liquid number concentration from bins')
-    call addfld('amk_out',(/'trop_cld_lev','bins_ncd'/),'A','kg','all liquid mass from bins')
-    call addfld('ank_out',(/'trop_cld_lev','bins_ncd'/),'A','1/kg','all liquid number concentration from bins')
+    call addfld('amk_c',(/'trop_cld_lev','bins_ncd    '/),'A','kg','cloud liquid mass from bins')
+    call addfld('ank_c',(/'trop_cld_lev','bins_ncd    '/),'A','1/kg','cloud liquid number concentration from bins')
+    call addfld('amk_r',(/'trop_cld_lev','bins_ncd    '/),'A','kg','cloud liquid mass from bins')
+    call addfld('ank_r',(/'trop_cld_lev','bins_ncd    '/),'A','1/kg','cloud liquid number concentration from bins')
+    call addfld('amk',(/'trop_cld_lev','bins_ncd    '/),'A','kg','all liquid mass from bins')
+    call addfld('ank',(/'trop_cld_lev','bins_ncd    '/),'A','1/kg','all liquid number concentration from bins')
+    call addfld('amk_out',(/'trop_cld_lev','bins_ncd    '/),'A','kg','all liquid mass from bins')
+    call addfld('ank_out',(/'trop_cld_lev','bins_ncd    '/),'A','1/kg','all liquid number concentration from bins')
 
     call addfld('scale_nc',(/'trop_cld_lev'/),'A','1','scaling factor for nc') 
     call addfld('scale_nr',(/'trop_cld_lev'/),'A','1','scaling factor for nr') 

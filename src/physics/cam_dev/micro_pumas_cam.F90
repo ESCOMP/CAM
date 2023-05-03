@@ -937,7 +937,7 @@ subroutine micro_pumas_cam_init(pbuf2d)
            micro_mg_ninst, micro_mg_ngcons, micro_mg_ngnst, &
            micro_mg_nrcons,  micro_mg_nrnst, micro_mg_nscons, micro_mg_nsnst, &
            stochastic_emulated_filename_quantile, stochastic_emulated_filename_input_scale, &
-           stochastic_emulated_filename_output_scale, errstring)
+           stochastic_emulated_filename_output_scale, iulog, errstring)
 
    call handle_errmsg(errstring, subname="micro_pumas_cam_init")
 
@@ -1893,7 +1893,7 @@ subroutine micro_pumas_cam_tend(state, ptend, dtime, pbuf)
    !     all the other arrays in this routine are dimensioned pver.  This is required because
    !     PUMAS only gets the top_lev:pver array subsection, and the proc_rates arrays
    !     need to be the same levels.
-   call proc_rates%allocate(ncol,nlev, ncd, errstring)
+   call proc_rates%allocate(ncol, nlev, ncd, micro_mg_warm_rain, errstring)
 
    call handle_errmsg(errstring, subname="micro_pumas_cam_tend")
 
@@ -3497,7 +3497,7 @@ subroutine micro_pumas_cam_tend(state, ptend, dtime, pbuf)
    end if
 
    ! deallocate the proc_rates DDT
-   call proc_rates%deallocate()
+   call proc_rates%deallocate(micro_mg_warm_rain)
 
    ! ptend_loc is deallocated in physics_update above
    call physics_state_dealloc(state_loc)
