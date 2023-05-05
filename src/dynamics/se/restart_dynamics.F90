@@ -43,7 +43,7 @@ use cam_abortutils,   only: endrun
 
 use parallel_mod,     only: par
 use thread_mod,       only: horz_num_threads
-use dimensions_mod,   only: np, npsq, ne, nlev, qsize, nelemd, nc, ntrac
+use dimensions_mod,   only: np, npsq, ne, nlev, qsize, nelemd, nc, ntrac, use_cslam
 use dof_mod,          only: UniquePoints
 use element_mod,      only: element_t
 use time_mod,         only: tstep, TimeLevel_Qdp
@@ -148,7 +148,7 @@ subroutine init_restart_dynamics(file, dyn_out)
 
    ! CSLAM restart fields
 
-   if (ntrac > 0) then
+   if (use_cslam) then
 
       grid_id = cam_grid_id('FVM')
       call cam_grid_write_attr(File, grid_id, info)
@@ -223,7 +223,7 @@ subroutine write_restart_dynamics(File, dyn_out)
 
    ! write CSLAM fields
 
-   if (ntrac > 0) then
+   if (use_cslam) then
 
       grid_id = cam_grid_id('FVM')
 
@@ -621,7 +621,7 @@ subroutine read_restart_dynamics(File, dyn_in, dyn_out)
 
    ! read cslam fields
 
-   if (ntrac > 0) then
+   if (use_cslam) then
 
       ! Checks that file and model dimensions agree.
 

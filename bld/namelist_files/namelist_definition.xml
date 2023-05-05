@@ -1733,7 +1733,7 @@ Default: none
 <!-- History and Initial Conditions Output -->
 
 <entry id="avgflag_pertape" type="char*1(10)"  category="history"
-       group="cam_history_nl" valid_values="A,B,I,X,M,L,S" >
+       group="cam_history_nl" valid_values="A,B,I,X,M,N,L,S" >
 Sets the averaging flag for all variables on a particular history file
 series. Valid values are:
 
@@ -1741,6 +1741,7 @@ series. Valid values are:
  B ==&gt; GMT 00:00:00 average
  I ==&gt; Instantaneous
  M ==&gt; Minimum
+ N ==&gt; average over nsteps
  X ==&gt; Maximum
  L ==&gt; Local-time
  S ==&gt; Standard deviation
@@ -1832,6 +1833,7 @@ are:
  B ==&gt; GMT 00:00:00 average
  I ==&gt; Instantaneous
  M ==&gt; Minimum
+ N ==&gt; average over nsteps
  X ==&gt; Maximum
  L ==&gt; Local-time
  S ==&gt; Standard deviation
@@ -5062,6 +5064,17 @@ Default: 4 m/s
 </entry>
 
 <!-- Diagnostics -->
+<entry id="thermo_budget_histfile_num" type="integer"  category="diagnostics"
+       group="thermo_budget_nl" valid_values="1,2,3,4,5,6,7,8,9,10" >
+History tape number thermo budget output is written to.
+Default: 1
+</entry>
+
+<entry id="thermo_budget_history" type="logical"  category="diagnostics"
+       group="thermo_budget_nl" valid_values="" >
+Produce output for the energy budget diagnostic package.
+Default: .false.
+</entry>
 
 <entry id="history_amwg" type="logical"  category="diagnostics"
        group="phys_ctl_nl" valid_values="" >
@@ -6197,14 +6210,8 @@ List of species that are constrained in the stratosphere.
 Default: set by build-namelist.
 </entry>
 
-<entry id="lght_landmask_file" type="char*256" input_pathname="abs" category="cam_chem"
-       group="chem_inparm" valid_values="" >
-Full pathname of dataset for land mask applied to the lighting NOx production
-Default: set by build-namelist.
-</entry>
-
 <entry id="lght_no_prd_factor" type="real" category="cam_chem"
-       group="chem_inparm" valid_values="" >
+       group="lightning_nl" valid_values="" >
 Multiplication factor  applied to the lighting NOx production
 Default: 1.0.
 </entry>
@@ -7312,6 +7319,12 @@ coarser temporal resolution.
 Default: set by build-namelist.
 </entry>
 
+<entry id="atm_provides_lightning" type="logical" category="lightning_coupling"
+       group="lightning_coupling_nl" valid_values="">
+If TRUE atmosphere model will provide prognosed lightning flash frequency.
+Default: FALSE
+</entry>
+
 <!-- WACCM_GHG Chemistry -->
 
 <entry id="waccm_forcing_file" type="char*256" input_pathname="rel:waccm_forcing_datapath" category="waccm_sc"
@@ -7671,16 +7684,6 @@ Number of dynamics steps per physics timestep.
 Default: Set by build-namelist.
 </entry>
 
-<entry id="se_phys_dyn_cp" type="integer" category="se"
-       group="dyn_se_inparm" valid_values="0,1,2" >
-Scaling of temperature increment for different levels of
-thermal energy consistency.
-0: no scaling
-1: scale increment for cp consistency between dynamics and physics
-2: do 1 as well as take into account condensate effect on thermal energy
-Default: Set by build-namelist.
-</entry>
-
 <entry id="se_nu" type="real" category="se"
        group="dyn_se_inparm" valid_values="" >
 Hyperviscosity coefficient for u,v, T [m^4/s].
@@ -7744,17 +7747,6 @@ See se_sponge_del4_nu_fac and se_sponge_del4_nu_div_fac
 
 If &lt; 0, se_sponge_del4_lev is automatically set based on model top location.
 Default: Set by build-namelist.
-</entry>
-
-<entry id="se_lcp_moist" type="logical" category="se"
-       group="dyn_se_inparm" valid_values="" >
-If TRUE the continous equations the dynamical core is based on will conserve a
-comprehensive moist total energy
-If FALSE the continous equations the dynamical core is based on will conserve
-a total energy based on cp for dry air and no condensates (same total energy as
-CAM physics uses).
-For more details see Lauritzen et al., (2018;DOI:10.1029/2017MS001257)
-Default: TRUE
 </entry>
 
 <entry id="se_large_Courant_incr" type="logical" category="se"

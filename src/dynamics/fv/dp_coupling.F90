@@ -77,7 +77,7 @@ CONTAINS
     use ctem,           only: ctem_diags, do_circulation_diags
     use diag_module,    only: fv_diag_am_calc
     use gravity_waves_sources, only: gws_src_fnct
-    use cam_thermo,     only: cam_thermo_update
+    use cam_thermo,     only: cam_thermo_dry_air_update
     use shr_const_mod,  only: shr_const_rwv
     use dyn_comp,       only: frontgf_idx, frontga_idx, uzm_idx
     use qbo,            only: qbo_use_forcing
@@ -85,7 +85,7 @@ CONTAINS
     use zonal_mean,     only: zonal_mean_3D
     use d2a3dikj_mod,   only: d2a3dikj
     use qneg_module,   only: qneg3
-
+    use air_composition,only: dry_air_species_num
 !-----------------------------------------------------------------------
     implicit none
 !-----------------------------------------------------------------------
@@ -572,7 +572,7 @@ chnk_loop2 : &
           end do
        end do
 
-       if ( waccmx_is('ionosphere') .or. waccmx_is('neutral') ) then
+       if (dry_air_species_num>0) then
 !------------------------------------------------------------
 ! Apply limiters to mixing ratios of major species
 !------------------------------------------------------------
@@ -581,7 +581,7 @@ chnk_loop2 : &
 ! Call cam_thermo_update to compute cpairv, rairv, mbarv, and cappav as constituent dependent variables
 ! and compute molecular viscosity(kmvis) and conductivity(kmcnd)
 !-----------------------------------------------------------------------------
-         call cam_thermo_update(phys_state(lchnk)%q, phys_state(lchnk)%t, lchnk, ncol)
+         call cam_thermo_dry_air_update(phys_state(lchnk)%q, phys_state(lchnk)%t, lchnk, ncol)
        endif
 
 !------------------------------------------------------------------------
@@ -596,7 +596,7 @@ chnk_loop2 : &
 ! Compute initial geopotential heights
        call geopotential_t (phys_state(lchnk)%lnpint, phys_state(lchnk)%lnpmid  , phys_state(lchnk)%pint  , &
                             phys_state(lchnk)%pmid  , phys_state(lchnk)%pdel    , phys_state(lchnk)%rpdel , &
-                            phys_state(lchnk)%t     , phys_state(lchnk)%q(:,:,1), rairv(:,:,lchnk), gravit, zvirv, &
+                            phys_state(lchnk)%t     , phys_state(lchnk)%q(:,:,:), rairv(:,:,lchnk), gravit, zvirv, &
                             phys_state(lchnk)%zi    , phys_state(lchnk)%zm      , ncol                )
 
 ! Compute initial dry static energy, include surface geopotential

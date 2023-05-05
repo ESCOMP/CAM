@@ -13,8 +13,9 @@ use physics_buffer,  only: physics_buffer_desc, pbuf_add_field, dtype_r8
 use physics_buffer,  only: dyn_time_lvls, pbuf_get_field, pbuf_get_index, pbuf_old_tim_idx
 
 use cam_history,     only: outfld, write_inithist, hist_fld_active, inithist_all
+use cam_history_support, only: max_fieldname_len
 use constituents,    only: pcnst, cnst_name, cnst_longname, cnst_cam_outfld
-use constituents,    only: ptendnam, dmetendnam, apcnst, bpcnst, cnst_get_ind
+use constituents,    only: ptendnam, apcnst, bpcnst, cnst_get_ind
 use dycore,          only: dycore_is
 use phys_control,    only: phys_getopts
 use wv_saturation,   only: qsat, qsat_water, svp_ice_vect
@@ -46,6 +47,18 @@ public :: &
    diag_physvar_ic,          &
    nsurf
 
+integer, public, parameter                                 :: num_stages = 8
+character (len = max_fieldname_len), dimension(num_stages) :: stage = (/"phBF","phBP","phAP","phAM","dyBF","dyBP","dyAP","dyAM"/)
+character (len = 45),dimension(num_stages) :: stage_txt = (/&
+     " before energy fixer                     ",& !phBF - physics energy
+     " before parameterizations                ",& !phBF - physics energy
+     " after parameterizations                 ",& !phAP - physics energy
+     " after dry mass correction               ",& !phAM - physics energy
+     " before energy fixer (dycore)            ",& !dyBF - dynamics energy
+     " before parameterizations (dycore)       ",& !dyBF - dynamics energy
+     " after parameterizations (dycore)        ",& !dyAP - dynamics energy
+     " after dry mass correction (dycore)      " & !dyAM - dynamics energy
+     /)
 
 ! Private data
 
@@ -176,46 +189,12 @@ contains
 
     use cam_history,        only: addfld, add_default, horiz_only
     use cam_history,        only: register_vector_field
-    use constituent_burden, only: constituent_burden_init
-    use physics_buffer,     only: pbuf_set_field
     use tidal_diag,         only: tidal_diag_init
+    use cam_budget,         only: cam_budget_em_snapshot, cam_budget_em_register, thermo_budget_history
 
     type(physics_buffer_desc), pointer, intent(in) :: pbuf2d(:,:)
 
-    integer :: k, m
-    integer :: ierr
-    !
-    ! variables for energy diagnostics
-    !
-    integer                                    :: istage, ivars
-    character (len=108)                        :: str1, str2, str3
-    integer, parameter                         :: num_stages = 8, num_vars = 8
-    character (len = 4), dimension(num_stages) :: stage = (/"phBF","phBP","phAP","phAM","dyBF","dyBP","dyAP","dyAM"/)
-    character (len = 45),dimension(num_stages) :: stage_txt = (/&
-         " before energy fixer                     ",& !phBF - physics energy
-         " before parameterizations                ",& !phBF - physics energy
-         " after parameterizations                 ",& !phAP - physics energy
-         " after dry mass correction               ",& !phAM - physics energy
-         " before energy fixer (dycore)            ",& !dyBF - dynamics energy
-         " before parameterizations (dycore)       ",& !dyBF - dynamics energy
-         " after parameterizations (dycore)        ",& !dyAP - dynamics energy
-         " after dry mass correction (dycore)      " & !dyAM - dynamics energy
-         /)
-    character (len = 2)  , dimension(num_vars) :: vars  = (/"WV"  ,"WL"  ,"WI"  ,"SE"   ,"KE"   ,"MR"   ,"MO"   ,"TT"   /)
-    character (len = 45) , dimension(num_vars) :: vars_descriptor = (/&
-         "Total column water vapor                ",&
-         "Total column liquid water               ",&
-         "Total column frozen water               ",&
-         "Total column dry static energy          ",&
-         "Total column kinetic energy             ",&
-         "Total column wind axial angular momentum",&
-         "Total column mass axial angular momentum",&
-         "Total column test tracer                "/)
-    character (len = 14), dimension(num_vars)  :: &
-         vars_unit = (/&
-         "kg/m2        ","kg/m2        ","kg/m2        ","J/m2         ",&
-         "J/m2         ","kg*m2/s*rad2 ","kg*m2/s*rad2 ","kg/m2        "/)
-
+    integer :: istage
     ! outfld calls in diag_phys_writeout
     call addfld (cnst_name(1), (/ 'lev' /), 'A', 'kg/kg',    cnst_longname(1))
     call addfld ('NSTEP',      horiz_only,  'A', 'timestep', 'Model timestep')
@@ -242,7 +221,7 @@ contains
     call register_vector_field('UAP','VAP')
 
     call addfld (apcnst(1), (/ 'lev' /), 'A','kg/kg',         trim(cnst_longname(1))//' (after physics)')
-    if ( dycore_is('LR') .or. dycore_is('SE')  .or. dycore_is('FV3') ) then
+    if (.not.dycore_is('EUL')) then 
       call addfld ('TFIX',    horiz_only,  'A', 'K/s',        'T fixer (T equivalent of Energy correction)')
     end if
     call addfld ('TTEND_TOT', (/ 'lev' /), 'A', 'K/s',        'Total temperature tendency')
@@ -386,7 +365,7 @@ contains
       call add_default ('UAP     '  , history_budget_histfile_num, ' ')
       call add_default ('VAP     '  , history_budget_histfile_num, ' ')
       call add_default (apcnst(1)   , history_budget_histfile_num, ' ')
-      if ( dycore_is('LR') .or. dycore_is('SE') .or. dycore_is('FV3')  ) then
+      if (.not.dycore_is('EUL')) then 
         call add_default ('TFIX    '    , history_budget_histfile_num, ' ')
       end if
     end if
@@ -412,22 +391,30 @@ contains
     ! and semidiurnal tide in T, U, V, and Z3
     call tidal_diag_init()
 
-    !
-    ! energy diagnostics
-    !
-    do istage = 1, num_stages
-      do ivars=1, num_vars
-        write(str1,*) TRIM(ADJUSTL(vars(ivars))),"_",TRIM(ADJUSTL(stage(istage)))
-        write(str2,*) TRIM(ADJUSTL(vars_descriptor(ivars)))," ", &
-                           TRIM(ADJUSTL(stage_txt(istage)))
-        write(str3,*) TRIM(ADJUSTL(vars_unit(ivars)))
-        call addfld (TRIM(ADJUSTL(str1)),   horiz_only, 'A', TRIM(ADJUSTL(str3)),TRIM(ADJUSTL(str2)))
-      end do
-    end do
-
     call addfld( 'CPAIRV', (/ 'lev' /), 'I', 'J/K/kg', 'Variable specific heat cap air' )
     call addfld( 'RAIRV', (/ 'lev' /), 'I', 'J/K/kg', 'Variable dry air gas constant' )
 
+    if (thermo_budget_history) then
+       !
+       ! energy diagnostics addflds for vars_stage combinations plus e_m_snapshots
+       !
+       do istage = 1, num_stages
+          call cam_budget_em_snapshot(TRIM(ADJUSTL(stage(istage))),'phy',longname=TRIM(ADJUSTL(stage_txt(istage))))
+       end do
+
+       ! Create budgets that are a sum/dif of 2 stages
+
+       call cam_budget_em_register('dEdt_param_efix_physE','phAP','phBF','phy','dif',longname='dE/dt CAM physics + energy fixer using physics E formula (phAP-phBF)')
+       call cam_budget_em_register('dEdt_param_efix_dynE' ,'dyAP','dyBF','phy','dif',longname='dE/dt CAM physics + energy fixer using dycore E formula (dyAP-dyBF)')
+       call cam_budget_em_register('dEdt_param_physE'     ,'phAP','phBP','phy','dif',longname='dE/dt CAM physics using physics E formula (phAP-phBP)')
+       call cam_budget_em_register('dEdt_param_dynE'      ,'dyAP','dyBP','phy','dif',longname='dE/dt CAM physics using dycore E (dyAP-dyBP)')
+       call cam_budget_em_register('dEdt_dme_adjust_physE','phAM','phAP','phy','dif',longname='dE/dt dry mass adjustment using physics E formula (phAM-phAP)')
+       call cam_budget_em_register('dEdt_dme_adjust_dynE' ,'dyAM','dyAP','phy','dif',longname='dE/dt dry mass adjustment using dycore E (dyAM-dyAP)')
+       call cam_budget_em_register('dEdt_efix_physE'      ,'phBP','phBF','phy','dif',longname='dE/dt energy fixer using physics E formula (phBP-phBF)')
+       call cam_budget_em_register('dEdt_efix_dynE'       ,'dyBP','dyBF','phy','dif',longname='dE/dt energy fixer using dycore E formula (dyBP-dyBF)')
+       call cam_budget_em_register('dEdt_phys_tot_physE'  ,'phAM','phBF','phy','dif',longname='dE/dt physics total using physics E formula (phAM-phBF)')
+       call cam_budget_em_register('dEdt_phys_tot_dynE'   ,'dyAM','dyBF','phy','dif',longname='dE/dt physics total using dycore E (dyAM-dyBF)')
+    endif
   end subroutine diag_init_dry
 
   subroutine diag_init_moist(pbuf2d)
@@ -440,7 +427,7 @@ contains
 
     type(physics_buffer_desc), pointer, intent(in) :: pbuf2d(:,:)
 
-    integer :: k, m
+    integer :: m
     integer :: ixcldice, ixcldliq ! constituent indices for cloud liquid and ice water.
     integer :: ierr
     ! column burdens for all constituents except water vapor
@@ -547,18 +534,6 @@ contains
     if (ixcldice > 0) then
       call addfld (ptendnam(ixcldice),(/ 'lev' /), 'A', 'kg/kg/s',trim(cnst_name(ixcldice))//' total physics tendency ')
     end if
-    if ( dycore_is('LR') .or. dycore_is('FV3')  )then
-      call addfld (dmetendnam(       1),(/ 'lev' /), 'A','kg/kg/s', &
-           trim(cnst_name(       1))//' dme adjustment tendency (FV) ')
-      if (ixcldliq > 0) then
-         call addfld (dmetendnam(ixcldliq),(/ 'lev' /), 'A','kg/kg/s', &
-            trim(cnst_name(ixcldliq))//' dme adjustment tendency (FV) ')
-      end if
-      if (ixcldice > 0) then
-        call addfld (dmetendnam(ixcldice),(/ 'lev' /), 'A','kg/kg/s', &
-             trim(cnst_name(ixcldice))//' dme adjustment tendency (FV) ')
-      end if
-    end if
 
     ! outfld calls in diag_physvar_ic
 
@@ -648,15 +623,6 @@ contains
       end if
       if (ixcldice > 0) then
         call add_default (ptendnam(ixcldice), history_budget_histfile_num, ' ')
-      end if
-      if ( dycore_is('LR') .or. dycore_is('FV3')  )then
-        call add_default(dmetendnam(1)       , history_budget_histfile_num, ' ')
-        if (ixcldliq > 0) then
-           call add_default(dmetendnam(ixcldliq), history_budget_histfile_num, ' ')
-        end if
-        if (ixcldice > 0) then
-          call add_default(dmetendnam(ixcldice), history_budget_histfile_num, ' ')
-        end if
       end if
       if( history_budget_histfile_num > 1 ) then
         call add_default ('DTCOND  '         , history_budget_histfile_num, ' ')
@@ -753,7 +719,6 @@ contains
   end subroutine diag_init_moist
 
   subroutine diag_init(pbuf2d)
-    use cam_history,        only: addfld
 
     ! Declare the history fields for which this module contains outfld calls.
 
@@ -934,15 +899,11 @@ contains
     ! Purpose: output dry physics diagnostics
     !
     !-----------------------------------------------------------------------
-    use physconst,          only: gravit, rga, rair, cpair, latvap, rearth, pi, cappa
+    use physconst,          only: gravit, rga, rair, cappa
     use time_manager,       only: get_nstep
     use interpolate_data,   only: vertinterp
-    use constituent_burden, only: constituent_burden_comp
-    use co2_cycle,          only: c_i, co2_transport
-
     use tidal_diag,         only: tidal_diag_write
     use air_composition,    only: cpairv, rairv
-
     !-----------------------------------------------------------------------
     !
     ! Arguments
@@ -954,15 +915,9 @@ contains
     !---------------------------Local workspace-----------------------------
     !
     real(r8) :: ftem(pcols,pver)  ! temporary workspace
-    real(r8) :: ftem1(pcols,pver) ! another temporary workspace
-    real(r8) :: ftem2(pcols,pver) ! another temporary workspace
     real(r8) :: z3(pcols,pver)    ! geo-potential height
     real(r8) :: p_surf(pcols)     ! data interpolated to a pressure surface
-    real(r8) :: tem2(pcols,pver)  ! temporary workspace
     real(r8) :: timestep(pcols)   ! used for outfld call
-    real(r8) :: esl(pcols,pver)   ! saturation vapor pressures
-    real(r8) :: esi(pcols,pver)   !
-    real(r8) :: dlon(pcols)       ! width of grid cell (meters)
 
     real(r8), pointer :: psl(:)   ! Sea Level Pressure
 
@@ -1276,8 +1231,7 @@ contains
     ! Purpose: record dynamics variables on physics grid
     !
     !-----------------------------------------------------------------------
-    use physconst,          only: gravit, rga, rair, cpair, latvap, rearth, pi, cappa, &
-                                  epsilo, rh2o
+    use physconst,          only: gravit, rga, rair, cpair, latvap, rearth, cappa
     use interpolate_data,   only: vertinterp
     use constituent_burden, only: constituent_burden_comp
     use co2_cycle,          only: c_i, co2_transport
@@ -1294,7 +1248,6 @@ contains
     real(r8) :: ftem(pcols,pver) ! temporary workspace
     real(r8) :: ftem1(pcols,pver) ! another temporary workspace
     real(r8) :: ftem2(pcols,pver) ! another temporary workspace
-    real(r8) :: z3(pcols,pver)   ! geo-potential height
     real(r8) :: p_surf(pcols)    ! data interpolated to a pressure surface
     real(r8) :: p_surf_q1(pcols)    ! data interpolated to a pressure surface
     real(r8) :: p_surf_q2(pcols)    ! data interpolated to a pressure surface
@@ -1611,7 +1564,6 @@ contains
     ! Output diagnostics associated with all convective processes.
     !
     !-----------------------------------------------------------------------
-    use physconst,     only: cpair
     use tidal_diag,    only: get_tidal_coeffs
 
     ! Arguments:
@@ -1973,7 +1925,6 @@ contains
     !
     !---------------------------Local workspace-----------------------------
     !
-    integer  :: k                 ! indices
     integer  :: itim_old          ! indices
 
     real(r8), pointer, dimension(:,:) :: cwat_var
@@ -2104,7 +2055,7 @@ contains
     ! Total physics tendency for Temperature
     ! (remove global fixer tendency from total for FV and SE dycores)
 
-    if (dycore_is('LR') .or. dycore_is('SE') .or. dycore_is('FV3') ) then
+    if (.not.dycore_is('EUL')) then 
       call check_energy_get_integrals( heat_glob_out=heat_glob )
       ftem2(:ncol)  = heat_glob/cpair
       call outfld('TFIX', ftem2, pcols, lchnk   )
@@ -2144,7 +2095,7 @@ contains
 !#######################################################################
 
   subroutine diag_phys_tend_writeout_moist(state, pbuf,  tend, ztodt,         &
-       tmp_q, tmp_cldliq, tmp_cldice, qini, cldliqini, cldiceini)
+       qini, cldliqini, cldiceini)
 
     !---------------------------------------------------------------
     !
@@ -2159,9 +2110,6 @@ contains
     type(physics_buffer_desc), pointer :: pbuf(:)
     type(physics_tend ), intent(in)    :: tend
     real(r8),            intent(in)    :: ztodt                  ! physics timestep
-    real(r8),            intent(inout) :: tmp_q     (pcols,pver) ! As input, holds pre-adjusted tracers (FV)
-    real(r8),            intent(inout) :: tmp_cldliq(pcols,pver) ! As input, holds pre-adjusted tracers (FV)
-    real(r8),            intent(inout) :: tmp_cldice(pcols,pver) ! As input, holds pre-adjusted tracers (FV)
     real(r8),            intent(in)    :: qini      (pcols,pver) ! tracer fields at beginning of physics
     real(r8),            intent(in)    :: cldliqini (pcols,pver) ! tracer fields at beginning of physics
     real(r8),            intent(in)    :: cldiceini (pcols,pver) ! tracer fields at beginning of physics
@@ -2194,35 +2142,6 @@ contains
       end if
     end if
 
-    ! Tendency for dry mass adjustment of q (FV only)
-
-    if (dycore_is('LR') .or. dycore_is('FV3') ) then
-      tmp_q     (:ncol,:pver) = (state%q(:ncol,:pver,       1) - tmp_q     (:ncol,:pver))*rtdt
-      if (ixcldliq > 0) then
-        tmp_cldliq(:ncol,:pver) = (state%q(:ncol,:pver,ixcldliq) - tmp_cldliq(:ncol,:pver))*rtdt
-      else
-        tmp_cldliq(:ncol,:pver) = 0.0_r8
-      end if
-      if (ixcldice > 0) then
-        tmp_cldice(:ncol,:pver) = (state%q(:ncol,:pver,ixcldice) - tmp_cldice(:ncol,:pver))*rtdt
-      else
-        tmp_cldice(:ncol,:pver) = 0.0_r8
-      end if
-      if ( cnst_cam_outfld(       1) ) then
-        call outfld (dmetendnam(       1), tmp_q     , pcols, lchnk)
-      end if
-      if (ixcldliq > 0) then
-        if ( cnst_cam_outfld(ixcldliq) ) then
-          call outfld (dmetendnam(ixcldliq), tmp_cldliq, pcols, lchnk)
-        end if
-      end if
-      if (ixcldice > 0) then
-        if ( cnst_cam_outfld(ixcldice) ) then
-          call outfld (dmetendnam(ixcldice), tmp_cldice, pcols, lchnk)
-        end if
-      end if
-    end if
-
     ! Total physics tendency for moisture and other tracers
 
     if ( cnst_cam_outfld(       1) ) then
@@ -2247,7 +2166,7 @@ contains
 !#######################################################################
 
   subroutine diag_phys_tend_writeout(state, pbuf,  tend, ztodt,               &
-       tmp_q, tmp_cldliq, tmp_cldice, qini, cldliqini, cldiceini)
+       qini, cldliqini, cldiceini)
 
     !---------------------------------------------------------------
     !
@@ -2262,9 +2181,6 @@ contains
     type(physics_buffer_desc), pointer :: pbuf(:)
     type(physics_tend ), intent(in)    :: tend
     real(r8),            intent(in)    :: ztodt                  ! physics timestep
-    real(r8)           , intent(inout) :: tmp_q     (pcols,pver) ! As input, holds pre-adjusted tracers (FV)
-    real(r8),            intent(inout) :: tmp_cldliq(pcols,pver) ! As input, holds pre-adjusted tracers (FV)
-    real(r8),            intent(inout) :: tmp_cldice(pcols,pver) ! As input, holds pre-adjusted tracers (FV)
     real(r8),            intent(in)    :: qini      (pcols,pver) ! tracer fields at beginning of physics
     real(r8),            intent(in)    :: cldliqini (pcols,pver) ! tracer fields at beginning of physics
     real(r8),            intent(in)    :: cldiceini (pcols,pver) ! tracer fields at beginning of physics
@@ -2274,7 +2190,7 @@ contains
     call diag_phys_tend_writeout_dry(state, pbuf, tend, ztodt)
     if (moist_physics) then
       call diag_phys_tend_writeout_moist(state, pbuf,  tend, ztodt,           &
-           tmp_q, tmp_cldliq, tmp_cldice, qini, cldliqini, cldiceini)
+           qini, cldliqini, cldiceini)
     end if
 
   end subroutine diag_phys_tend_writeout

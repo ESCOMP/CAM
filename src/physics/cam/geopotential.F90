@@ -20,102 +20,9 @@ module geopotential
   private
   save
 
-  public geopotential_dse
   public geopotential_t
 
 contains
-!===============================================================================
-  subroutine geopotential_dse(                                &
-       piln   , pmln   , pint   , pmid   , pdel   , rpdel  ,  &
-       dse    , q      , phis   , rair   , gravit , cpair  ,  &
-       zvir   , t      , zi     , zm     , ncol             )
-!----------------------------------------------------------------------- 
-! 
-! Purpose: 
-! Compute the temperature  and geopotential height (above the surface) at the
-! midpoints and interfaces from the input dry static energy and pressures.
-!
-!-----------------------------------------------------------------------
-!------------------------------Arguments--------------------------------
-!
-! Input arguments
-    integer, intent(in) :: ncol                  ! Number of longitudes
-
-    ! rair, and cpair are passed in as slices of rank 3 arrays allocated
-    ! at runtime. Don't specify size to avoid temporary copy.
-    real(r8), intent(in) :: piln (:,:)    ! (pcols,pverp) - Log interface pressures
-    real(r8), intent(in) :: pmln (:,:)    ! (pcols,pver)  - Log midpoint pressures
-    real(r8), intent(in) :: pint (:,:)    ! (pcols,pverp) - Interface pressures
-    real(r8), intent(in) :: pmid (:,:)    ! (pcols,pver)  - Midpoint pressures
-    real(r8), intent(in) :: pdel (:,:)    ! (pcols,pver)  - layer thickness
-    real(r8), intent(in) :: rpdel(:,:)    ! (pcols,pver)  - inverse of layer thickness
-    real(r8), intent(in) :: dse  (:,:)    ! (pcols,pver)  - dry static energy
-    real(r8), intent(in) :: q    (:,:)    ! (pcols,pver)  - specific humidity
-    real(r8), intent(in) :: phis (:)      ! (pcols)       - surface geopotential
-    real(r8), intent(in) :: rair (:,:)    !               - Gas constant for dry air
-    real(r8), intent(in) :: gravit        !               - Acceleration of gravity
-    real(r8), intent(in) :: cpair(:,:)    !               - specific heat at constant p for dry air
-    real(r8), intent(in) :: zvir (:,:)    ! (pcols,pver)  - rh2o/rair - 1
-
-! Output arguments
-
-    real(r8), intent(out) :: t(:,:)       ! (pcols,pver)  - temperature
-    real(r8), intent(out) :: zi(:,:)      ! (pcols,pverp) - Height above surface at interfaces
-    real(r8), intent(out) :: zm(:,:)      ! (pcols,pver)  - Geopotential height at mid level
-!
-!---------------------------Local variables-----------------------------------------
-!
-    logical  :: calc1                   ! switch for calculation method
-    integer  :: i,k                     ! Lon, level, level indices
-    real(r8) :: hkk(ncol)               ! diagonal element of hydrostatic matrix
-    real(r8) :: hkl(ncol)               ! off-diagonal element
-    real(r8) :: rog(ncol,pver)          ! Rair / gravit
-    real(r8) :: tv                      ! virtual temperature
-    real(r8) :: tvfac                   ! Tv/T
-!
-!----------------------------------------------------------------------------------
-    rog(:ncol,:) = rair(:ncol,:) / gravit
-
-! set calculation method based on dycore type
-    calc1 = dycore_is ('LR').or.dycore_is('FV3')
-
-! The surface height is zero by definition.
-    do i = 1,ncol
-       zi(i,pverp) = 0.0_r8
-    end do
-
-! Compute the virtual temperature, zi, zm from bottom up
-! Note, zi(i,k) is the interface above zm(i,k)
-    do k = pver, 1, -1
-
-! First set hydrostatic elements consistent with dynamics
-       if (calc1) then
-          do i = 1,ncol
-             hkl(i) = piln(i,k+1) - piln(i,k)
-             hkk(i) = 1._r8 - pint(i,k) * hkl(i) * rpdel(i,k)
-          end do
-       else
-          do i = 1,ncol
-             hkl(i) = pdel(i,k) / pmid(i,k)
-             hkk(i) = 0.5_r8 * hkl(i)
-          end do
-       end if
-
-! Now compute tv, t, zm, zi
-       do i = 1,ncol
-          tvfac   = 1._r8 + zvir(i,k) * q(i,k)
-          tv      = (dse(i,k) - phis(i) - gravit*zi(i,k+1)) / ((cpair(i,k) / tvfac) + &
-	                                                               rair(i,k)*hkk(i))
-
-          t (i,k) = tv / tvfac
-
-          zm(i,k) = zi(i,k+1) + rog(i,k) * tv * hkk(i)
-          zi(i,k) = zi(i,k+1) + rog(i,k) * tv * hkl(i)
-       end do
-    end do
-
-    return
-  end subroutine geopotential_dse
 
 !===============================================================================
   subroutine geopotential_t(                                 &
@@ -132,7 +39,7 @@ contains
 !-----------------------------------------------------------------------
 
 use ppgrid, only : pcols
-
+use air_composition, only: thermodynamic_active_species_num,thermodynamic_active_species_idx
 !------------------------------Arguments--------------------------------
 !
 ! Input arguments
@@ -146,7 +53,7 @@ use ppgrid, only : pcols
     real(r8), intent(in) :: pdel (:,:)    ! (pcols,pver)  - layer thickness
     real(r8), intent(in) :: rpdel(:,:)    ! (pcols,pver)  - inverse of layer thickness
     real(r8), intent(in) :: t    (:,:)    ! (pcols,pver)  - temperature
-    real(r8), intent(in) :: q    (:,:)    ! (pcols,pver)  - specific humidity
+    real(r8), intent(in) :: q    (:,:,:)  ! (pcols,pver,:)- tracers (moist mixing ratios)
     real(r8), intent(in) :: rair (:,:)    ! (pcols,pver)  - Gas constant for dry air
     real(r8), intent(in) :: gravit        !               - Acceleration of gravity
     real(r8), intent(in) :: zvir (:,:)    ! (pcols,pver)  - rh2o/rair - 1
@@ -158,12 +65,15 @@ use ppgrid, only : pcols
 !
 !---------------------------Local variables-----------------------------
 !
-    integer  :: i,k                     ! Lon, level indices
+    integer  :: i,k,idx                 ! Lon, level indices, water species index
     real(r8) :: hkk(ncol)               ! diagonal element of hydrostatic matrix
     real(r8) :: hkl(ncol)               ! off-diagonal element
     real(r8) :: rog(ncol,pver)          ! Rair / gravit
     real(r8) :: tv                      ! virtual temperature
     real(r8) :: tvfac                   ! Tv/T
+    real(r8) :: qfac(ncol,pver)         ! factor to convert from wet to dry mixing ratio
+    real(r8) :: sum_dry_mixing_ratio(ncol,pver)! sum of dry water mixing ratios
+
 !
 !-----------------------------------------------------------------------
 !
@@ -175,40 +85,105 @@ use ppgrid, only : pcols
        zi(i,pverp) = 0.0_r8
     end do
 
-! Compute zi, zm from bottom up. 
-! Note, zi(i,k) is the interface above zm(i,k)
+    ! Compute zi, zm from bottom up. 
+    ! Note, zi(i,k) is the interface above zm(i,k)
 
-    do k = pver, 1, -1
-
-! First set hydrostatic elements consistent with dynamics
-
-      if ((dycore_is('LR') .or. dycore_is('FV3'))) then
+    !
+    ! original code for backwards compatability with FV and EUL
+    !
+    if (.not.(dycore_is('MPAS') .or. dycore_is('SE'))) then
+      do k = pver, 1, -1
+        
+        ! First set hydrostatic elements consistent with dynamics
+        
+        if ((dycore_is('LR') .or. dycore_is('FV3'))) then
+          do i = 1,ncol
+            hkl(i) = piln(i,k+1) - piln(i,k)
+            hkk(i) = 1._r8 - pint(i,k) * hkl(i) * rpdel(i,k)
+          end do
+        else
+          do i = 1,ncol
+            hkl(i) = pdel(i,k) / pmid(i,k)
+            hkk(i) = 0.5_r8 * hkl(i)
+          end do
+        end if
+        
+        ! Now compute tv, zm, zi
+        
         do i = 1,ncol
-          hkl(i) = piln(i,k+1) - piln(i,k)
-          hkk(i) = 1._r8 - pint(i,k) * hkl(i) * rpdel(i,k)
-        end do
-      else!MPAS, SE or EUL
-        !
-        ! For EUL and SE: pmid = 0.5*(pint(k+1)+pint(k))
-        ! For MPAS      : pmid is computed from theta_m, rhodry, etc.
-        !
-        do i = 1,ncol
-          hkl(i) = pdel(i,k) / pmid(i,k)
-          hkk(i) = 0.5_r8 * hkl(i)
-        end do
-      end if
-
-! Now compute tv, zm, zi
-
-       do i = 1,ncol
-          tvfac   = 1._r8 + zvir(i,k) * q(i,k)
+          tvfac   = 1._r8 + zvir(i,k) * q(i,k,1)
           tv      = t(i,k) * tvfac
-
+          
           zm(i,k) = zi(i,k+1) + rog(i,k) * tv * hkk(i)
           zi(i,k) = zi(i,k+1) + rog(i,k) * tv * hkl(i)
-       end do
-    end do
-
+        end do
+      end do
+    else
+      !
+      ! For the computation of generalized virtual temperature (equation 16
+      ! in Lauritzen et al. (2018);  https://doi.org/10.1029/2017MS001257)
+      !
+      ! Compute factor for converting wet to dry mixing ratio (eq.7)
+      !
+      qfac = 1.0_r8
+      do idx = 1,thermodynamic_active_species_num
+        do k = 1,pver
+          do i = 1,ncol
+            qfac(i,k) = qfac(i,k)-q(i,k,thermodynamic_active_species_idx(idx))
+          end do
+        end do
+      end do
+      qfac = 1.0_r8/qfac
+      
+      ! Compute sum of dry water mixing ratios
+      sum_dry_mixing_ratio = 1.0_r8
+      do idx = 1,thermodynamic_active_species_num
+        do k = 1,pver
+          do i = 1,ncol
+            sum_dry_mixing_ratio(i,k) = sum_dry_mixing_ratio(i,k)&
+                 +q(i,k,thermodynamic_active_species_idx(idx))*qfac(i,k)
+          end do
+        end do
+      end do
+      sum_dry_mixing_ratio(:,:) = 1.0_r8/sum_dry_mixing_ratio(:,:)
+      ! Compute zi, zm from bottom up. 
+      ! Note, zi(i,k) is the interface above zm(i,k)
+      do k = pver, 1, -1
+        
+        ! First set hydrostatic elements consistent with dynamics
+ 
+        !
+        ! the outcommented code is left for when/if we will support
+        ! FV3 and/or FV with condensate loading
+        !
+       
+!        if ((dycore_is('LR') .or. dycore_is('FV3'))) then
+!          do i = 1,ncol
+!            hkl(i) = piln(i,k+1) - piln(i,k)
+!            hkk(i) = 1._r8 - pint(i,k) * hkl(i) * rpdel(i,k)
+!          end do
+!        else!MPAS, SE or EUL
+          !
+          ! For SE   : pmid = 0.5*(pint(k+1)+pint(k))
+          ! For MPAS : pmid is computed from theta_m, rhodry, etc.
+          !
+          do i = 1,ncol
+            hkl(i) = pdel(i,k) / pmid(i,k)
+            hkk(i) = 0.5_r8 * hkl(i)
+          end do
+!        end if
+        
+        ! Now compute tv, zm, zi
+        
+        do i = 1,ncol
+          tvfac   = (1._r8 + (zvir(i,k)+1.0_r8) * q(i,k,1)*qfac(i,k))*sum_dry_mixing_ratio(i,k)
+          tv      = t(i,k) * tvfac
+          
+          zm(i,k) = zi(i,k+1) + rog(i,k) * tv * hkk(i)
+          zi(i,k) = zi(i,k+1) + rog(i,k) * tv * hkl(i)
+        end do
+      end do
+    end if
     return
   end subroutine geopotential_t
 end module geopotential

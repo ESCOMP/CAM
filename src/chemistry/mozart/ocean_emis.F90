@@ -3,23 +3,23 @@
 ! Ref: Carpenter et al Chem Soc Rev (2012); Johnson, Ocean sci (2010)
 ! ------------------------------------------------------------------------------------
 ! Required inputs for the air-sea flux module:
-!   - Seawater concentration (nanomoles per liter) and Sea surface salinity 
+!   - Seawater concentration (nanomoles per liter) and Sea surface salinity
 !     (parts per thousand) read from namelist (netCDF)
 !   - Concentration in the gas-phase (pptv), air temperature (K), 10m windspeed (m/s),
 !     surface pressure (atm), sea surface temperature (K): all from other modules
 ! ------------------------------------------------------------------------------------
 ! Key subroutines:
-! ocean_emis_readnl(..):   Read salinity from namelist (user_nl_cam). 
+! ocean_emis_readnl(..):   Read salinity from namelist (user_nl_cam).
 !                          Salinity not time-dependent. Flux depends very weakly on it
-! ocean_emis_init(...):    Interpolate salinity, initialize the library for the flux 
+! ocean_emis_init(...):    Interpolate salinity, initialize the library for the flux
 !                          reading time-dependent seawater conc. from user_nl_cam
 ! ocean_emis_advance(...): process the seawater concentration
-! ocean_emis_getflux(...): calculate the air-sea flux (upward or downward), 
+! ocean_emis_getflux(...): calculate the air-sea flux (upward or downward),
 !                          then add to total surface flux (sflx)
 ! ------------------------------------------------------------------------------------
 ! Last built: 9 March 2018.
 ! Written by: Siyuan Wang (ACOM/NCAR)           siyuan@ucar.edu
-! Acknowledgement: Francis Vitt (NCAR). and of course Dr. Peppurr too 
+! Acknowledgement: Francis Vitt (NCAR). and of course Dr. Peppurr too
 ! ====================================================================================
 
 module ocean_emis
@@ -33,7 +33,7 @@ module ocean_emis
   use tracer_data,    only : trfld,trfile
   use chem_mods,      only : gas_pcnst
   use cam_logfile,    only : iulog
-  use ioFileMod,      only : getfil  
+  use ioFileMod,      only : getfil
 
   implicit none
 
@@ -57,9 +57,9 @@ module ocean_emis
 
   logical                :: switch_bubble
   type(Csw), allocatable :: Csw_nM(:)
-  integer                :: n_Csw_files 
+  integer                :: n_Csw_files
 
-  real(r8), allocatable :: salinity(:,:)      
+  real(r8), allocatable :: salinity(:,:)
 
   ! ================
   ! Air-sea exchange
@@ -69,32 +69,32 @@ module ocean_emis
   Integer, Parameter    :: HowManySalts = 5          ! Change this number if you wanna add more salts
   Integer, Parameter    :: HowManySaltProperties = 7 ! Don't touch this (unless you wanna add more fields)
 
-  Type GasLib                                                   
+  Type GasLib
      Character(16)                          :: CmpdName
      Real(r8), Dimension(HowManyProperties) :: CmpdProperties
   End Type GasLib
 
-  Type SaltLib                                                  
+  Type SaltLib
      Character(16)                              :: SaltName
-     Real(r8), Dimension(HowManySaltProperties) :: SaltProperties 
+     Real(r8), Dimension(HowManySaltProperties) :: SaltProperties
   End Type SaltLib
 
   Type(GasLib), Dimension(HowManyMolecules) :: GasList  ! Library for the trace gas properties
   Type(SaltLib), Dimension(HowManySalts)    :: SaltList ! Library for the salt properties
 
-  ! ===========================  
+  ! ===========================
   ! seawater concentration:
   ! ===========================
-  character(len=cl) :: csw_specifier(gas_pcnst) = ''                    
+  character(len=cl) :: csw_specifier(gas_pcnst) = ''
   character(len=24) :: csw_time_type = 'CYCLICAL' ! 'CYCLICAL' | 'SERIAL' | 'INTERP_MISSING_MONTHS'
   integer           :: csw_cycle_yr  = 0
-  logical           :: bubble_mediated_transfer = .false.                                                                                                      
+  logical           :: bubble_mediated_transfer = .false.
   character(len=cl) :: ocean_salinity_file = 'NONE'
 
 contains
 
-!--------------------------------------------------------------------------------
-!--------------------------------------------------------------------------------
+  !--------------------------------------------------------------------------------
+  !--------------------------------------------------------------------------------
   subroutine ocean_emis_readnl(nlfile)
 
     use namelist_utils, only : find_group_name
@@ -105,7 +105,7 @@ contains
     integer                       :: unitn, ierr
     character(len=*), parameter   :: subname = 'ocean_emis_readnl'
 
-    ! ===================       
+    ! ===================
     ! Namelist definition
     ! ===================
     namelist /ocean_emis_nl/ ocean_salinity_file
@@ -125,7 +125,7 @@ contains
        end if
        close(unitn)
     end if
-    
+
     ! ============================
     ! Broadcast namelist variables
     ! ============================
@@ -151,7 +151,7 @@ contains
     use pio,              only : file_desc_t, pio_inq_dimid, pio_inq_dimlen, pio_inq_varid, pio_get_var
     use pio,              only : PIO_NOWRITE, PIO_NOERR
     use pio,              only : pio_seterrorhandling, PIO_BCAST_ERROR, pio_closefile
-    use phys_grid,        only : get_ncols_p, get_rlon_all_p, get_rlat_all_p 
+    use phys_grid,        only : get_ncols_p, get_rlon_all_p, get_rlat_all_p
     use interpolate_data, only : lininterp_init, lininterp, interp_type, lininterp_finish
     use mo_constants,     only : pi
 
@@ -162,19 +162,19 @@ contains
     real(r8), allocatable :: file_lats(:), file_lons(:)
     real(r8), allocatable :: wrk2d(:,:)
     real(r8)              :: to_lats(pcols), to_lons(pcols)
-    type(interp_type)     :: lon_wgts, lat_wgts 
+    type(interp_type)     :: lon_wgts, lat_wgts
 
     real(r8), parameter   :: zero=0_r8, twopi=2_r8*pi, degs2rads = pi/180._r8
 
     character(len=*), parameter :: subname = 'ocean_emis_init'
-    
+
     if (trim(ocean_salinity_file) == 'NONE') return
 
     call getfil( ocean_salinity_file, filen, 0 )
     call cam_pio_openfile( fid, filen, PIO_NOWRITE)
-    
+
     call pio_seterrorhandling(fid, PIO_BCAST_ERROR)
-    
+
     ierr = pio_inq_dimid( fid, 'lon', dimid )
     if (ierr /= PIO_NOERR) then
        call endrun(subname//': pio_inq_dimid lon FAILED')
@@ -225,6 +225,7 @@ contains
     endif
 
     allocate(salinity(pcols,begchunk:endchunk))
+    salinity = 0._r8
 
     do c=begchunk,endchunk
 
@@ -235,17 +236,22 @@ contains
        call lininterp_init(file_lons, file_nlon, to_lons, ncols, 2, lon_wgts, zero, twopi)
        call lininterp_init(file_lats, file_nlat, to_lats, ncols, 1, lat_wgts)
 
-       call lininterp(wrk2d, file_nlon, file_nlat, salinity(1:ncols,c), ncols, lon_wgts, lat_wgts)    
+       call lininterp(wrk2d, file_nlon, file_nlat, salinity(1:ncols,c), ncols, lon_wgts, lat_wgts)
 
        call lininterp_finish(lon_wgts)
        call lininterp_finish(lat_wgts)
 
     end do
 
+    ! fill in missing values with climatology for modern-day
+    where(salinity < 0._r8)
+       salinity = 33.0_r8
+    end where
+
     deallocate( file_lons, file_lats )
     deallocate( wrk2d )
 
-    call addfld('OCN_SALINITY', horiz_only, 'A', 'parts per thousands', 'ocean salinity' ) 
+    call addfld('OCN_SALINITY', horiz_only, 'A', 'parts per thousands', 'ocean salinity' )
 
     ! ======================================================
     ! initializing the libraries for the air-sea flux module
@@ -253,17 +259,17 @@ contains
     Call CmpLibInitialization()
     Call SaltLibInitialization()
 
-    ! ---------------------------------------------	
+    ! ---------------------------------------------
     ! Read seawater concentration: WSY
     ! ---------------------------------------------
     call cseawater_ini()
 
     call pio_closefile (fid)
-    
+
   end subroutine ocean_emis_init
 
-!--------------------------------------------------------------------------------
-!--------------------------------------------------------------------------------
+  !--------------------------------------------------------------------------------
+  !--------------------------------------------------------------------------------
   subroutine ocean_emis_advance( pbuf2d, state )
     ! -------------------------------
     ! check serial case for time span
@@ -274,7 +280,7 @@ contains
     use tracer_data,    only : advance_trcdata
     use physics_buffer, only : physics_buffer_desc
 
-    type(physics_state), intent(in)    :: state(begchunk:endchunk)                 
+    type(physics_state), intent(in)    :: state(begchunk:endchunk)
     type(physics_buffer_desc), pointer :: pbuf2d(:,:)
     integer                            :: m
 
@@ -286,12 +292,12 @@ contains
 
   end subroutine ocean_emis_advance
 
-!--------------------------------------------------------------------------------
-!--------------------------------------------------------------------------------
+  !--------------------------------------------------------------------------------
+  !--------------------------------------------------------------------------------
   subroutine ocean_emis_getflux(lchnk, ncol, state, u10, sst, ocnfrac, icefrac, sflx)
 
     use physics_types, only : physics_state
-    use ppgrid,        only : pver                      
+    use ppgrid,        only : pver
 
     integer, intent(in)                     :: lchnk, ncol
     type(physics_state), target, intent(in) :: state        ! Physics state variables
@@ -301,13 +307,13 @@ contains
     real(r8), intent(in)                    :: icefrac(:)   ! Ice fraction
     real(r8), intent(inout)                 :: sflx(:,:)    ! Surface emissions (kg/m^2/s)
 
-    integer             :: m, isec, SpeciesID
-    real(r8)            :: Csw_col(ncol)
-    real(r8)            :: MW_species
-    real(r8) :: oceanflux_kg_m2_s(ncol)        
+    integer  :: i, m, isec, SpeciesID
+    real(r8) :: Csw_col(ncol)
+    real(r8) :: MW_species
+    real(r8) :: oceanflux_kg_m2_s(ncol)
 
     if (trim(ocean_salinity_file) == 'NONE') return
-    
+
     ! ==================================================
     ! Get seawater concentrations and calculate the flux
     ! ==================================================
@@ -317,28 +323,30 @@ contains
        isec = 1
        Csw_col(:ncol) = Csw_nM(m)%scalefactor*Csw_nM(m)%fields(isec)%data(:ncol,1,lchnk)
 
-       MW_species = MolecularWeight(SpeciesIndex( Csw_nM(m)%species )) 
+       MW_species = MolecularWeight(SpeciesIndex( Csw_nM(m)%species ))
 
        call cnst_get_ind( trim(Csw_nM(m)%species), SpeciesID, abort=.true. )
 
        oceanflux_kg_m2_s = 0.0_r8
 
-       where (ocnfrac(:ncol) >= 0.2_r8 .and. Csw_col(:ncol) >= 0._r8)   ! calculate flux only for ocean
-          oceanflux_kg_m2_s(:ncol) = Flux_kg_m2_s( &
-               Csw_nM(m)%species,                  & ! name of species
-               state%q(:ncol,pver,SpeciesID) * (28.97_r8/MW_species) * 1.0e+12_r8, & ! air concentration (ppt)
-               Csw_col(:ncol),                     & ! sea water concentration (nM)
-               state%t(:ncol,pver),                & ! air temperature (K)
-               u10(:ncol),                         & ! wind speed at 10m (m/s) <- should use this
-               state%ps(:ncol) / 101325.0_r8,      & ! surface pressure (atm)
-               sst(:ncol),                         & ! sea surface temperautre (K)
-               salinity(:ncol,lchnk),              & ! ocean salinity (parts per thousands)
-               switch_bubble,                      & ! bubble-mediated transfer: on or off
-               ncol  ) 
-       end where
+       do i = 1,ncol
+          if (ocnfrac(i) >= 0.2_r8 .and. Csw_col(i) >= 0._r8) then
+             ! calculate flux only for ocean
+             oceanflux_kg_m2_s(i) = Flux_kg_m2_s( &
+                  Csw_nM(m)%species,              & ! name of species
+                  state%q(i,pver,SpeciesID) * (28.97_r8/MW_species) * 1.0e+12_r8, & ! air concentration (ppt)
+                  Csw_col(i),                     & ! sea water concentration (nM)
+                  state%t(i,pver),                & ! air temperature (K)
+                  u10(i),                         & ! wind speed at 10m (m/s) <- should use this
+                  state%ps(i) / 101325.0_r8,      & ! surface pressure (atm)
+                  sst(i),                         & ! sea surface temperautre (K)
+                  salinity(i,lchnk),              & ! ocean salinity (parts per thousands)
+                  switch_bubble )                   ! bubble-mediated transfer: on or off
+          end if
+       end do
 
        ! ===========================================================================
-       ! Add the ocean flux to the other fluxes 
+       ! Add the ocean flux to the other fluxes
        ! Make sure this ocean module is called after other surface emissions are set
        ! ===========================================================================
        sflx(:ncol,SpeciesID) = sflx(:ncol,SpeciesID) + oceanflux_kg_m2_s(:ncol) * ocnfrac(:ncol)
@@ -355,10 +363,8 @@ contains
 
   end subroutine ocean_emis_getflux
 
-  
-!--------------------------------------------------------------------------------
-!--------------------------------------------------------------------------------
-
+  !--------------------------------------------------------------------------------
+  !--------------------------------------------------------------------------------
   Subroutine CmpLibInitialization()
     ! =====================================================================================
     ! This is the lookup table for molecular weight, Vb, and Henry's law constant
@@ -377,7 +383,7 @@ contains
     GasList(2) = GasLib('C2H5OH',   (/ 46.07_r8, 2.0_r8, 6.0_r8, 0.0_r8, 1.0_r8, 0.0_r8, 0.0_r8, &
          0.0_r8, 0.0_r8, 0.0_r8, 0.0_r8, 0.0_r8, 0.0_r8, 0.0_r8, 190.0_r8, 6500.0_r8 /))
     GasList(3) = GasLib('CH2O',     (/ 30.03_r8, 1.0_r8, 2.0_r8, 0.0_r8, 1.0_r8, 0.0_r8, 0.0_r8, &
-         0.0_r8, 0.0_r8, 0.0_r8, 1.0_r8, 0.0_r8, 0.0_r8, 0.0_r8, 3230.0_r8, 7100.0_r8 /))  
+         0.0_r8, 0.0_r8, 0.0_r8, 1.0_r8, 0.0_r8, 0.0_r8, 0.0_r8, 3230.0_r8, 7100.0_r8 /))
     GasList(4) = GasLib('CH3CHO',   (/ 44.05_r8, 2.0_r8, 4.0_r8, 0.0_r8, 1.0_r8, 0.0_r8, 0.0_r8, &
          0.0_r8, 0.0_r8, 0.0_r8, 1.0_r8, 0.0_r8, 0.0_r8, 0.0_r8, 12.9_r8, 5890.0_r8/))
     GasList(5) = GasLib('PROPANAL',  (/ 58.08_r8, 3.0_r8, 6.0_r8, 0.0_r8, 1.0_r8, 0.0_r8, 0.0_r8, &
@@ -409,10 +415,12 @@ contains
     ! --------------------------------------------------------------------------------
   End Subroutine CmpLibInitialization
 
+  !--------------------------------------------------------------------------------
+  !--------------------------------------------------------------------------------
   Subroutine SaltLibInitialization()
     ! ================================================================================
-    ! This is the lookup table for common solutes in seawater and the parameters to 
-    ! calculate the dynamic viscosity of seawater. 
+    ! This is the lookup table for common solutes in seawater and the parameters to
+    ! calculate the dynamic viscosity of seawater.
     ! You may add other solutes or change the mass fractions.
     ! --------------------------------------------------------------------------------
     ! Col 1:   mass fraction of solute
@@ -431,6 +439,8 @@ contains
     ! ---------------------------------------------
   End Subroutine SaltLibInitialization
 
+  !--------------------------------------------------------------------------------
+  !--------------------------------------------------------------------------------
   Function SpeciesIndex(SpeciesName)
     ! ==============================================
     ! This function is to look for the species index
@@ -439,7 +449,7 @@ contains
     Character(Len=16)   :: SpeciesName
 
     SpeciesIndex = -1 ! return -1 if species is not found
- 
+
     Do i = 1, HowManyMolecules
        If (trim(SpeciesName) == trim(GasList(i)%CmpdName)) Then
           SpeciesIndex = i
@@ -448,13 +458,15 @@ contains
     End Do
   End Function SpeciesIndex
 
-  Function Flux_kg_m2_s(SpeciesName,Cgas_ppt,Cwater_nM,T_air_K,u10_m_s,P_atm,T_water_K,&
-                        Salinity_PartsPerThousand,switch_bubble,ncol)
+  !--------------------------------------------------------------------------------
+  !--------------------------------------------------------------------------------
+  Real(r8) Function Flux_kg_m2_s(SpeciesName,Cgas_ppt,Cwater_nM,T_air_K,u10_m_s,P_atm,T_water_K,&
+                                 Salinity_PartsPerThousand,switch_bubble)
     ! ===========================================================================
     ! This is the main module function. Input variables:
     ! ---------------------------------------------------------------------------
     !    - SpeciesName: name of species
-    !    - Cgas_ppt: mixing ratio (parts per trillion) of trace gas of interest 
+    !    - Cgas_ppt: mixing ratio (parts per trillion) of trace gas of interest
     !      in the gas-phase (lowest modeling layer)
     !    - Cwater_nM: concentration of trace gas of interest in the surface ocean
     !    - T_air_K: temperature in the lowest modeling layer
@@ -463,52 +475,51 @@ contains
     !    - T_water_K: sea surface temperature
     !    - Salinity_PartsPerThousand: surface ocean salinity
     !    - switch_bubble: bubble-mediated transfer switch
-    ! All must be 1D arrays with same dimension(ncol, so CESM-compatible)
     ! ===========================================================================
-    Integer                   :: ncol, SpeciesID
-    Character(16)             :: SpeciesName
-    Real(r8), Dimension(ncol) :: Flux_kg_m2_s
-    Real(r8), Dimension(ncol) :: Cgas_ppt, Cwater_nM, T_air_K, u10_m_s, P_atm, T_water_K, Salinity_PartsPerThousand
-    Real(r8), Dimension(ncol) :: H_gas_over_liquid_dimless, kt_m_s
-    Logical                   :: switch_bubble
+    Character(16),intent(in) :: SpeciesName
+    Real(r8),intent(in)      :: Cgas_ppt, Cwater_nM, T_air_K, u10_m_s, P_atm, T_water_K, Salinity_PartsPerThousand
+    Logical ,intent(in)      :: switch_bubble
 
-    where(Salinity_PartsPerThousand .lt. 0.0_r8) Salinity_PartsPerThousand = 33.0_r8
+    Integer :: SpeciesID
+    Real(r8) :: H_gas_over_liquid_dimless, kt_m_s
 
-    SpeciesID = SpeciesIndex(SpeciesName)       
-    H_gas_over_liquid_dimless = 1.0_r8/(Henry_M_atm(SpeciesID,T_water_K,Salinity_PartsPerThousand,ncol)*&
+    SpeciesID = SpeciesIndex(SpeciesName)
+    H_gas_over_liquid_dimless = 1.0_r8/(Henry_M_atm(SpeciesID,T_water_K,Salinity_PartsPerThousand)*&
                                         0.082_r8*T_water_K)
     If (switch_bubble) then
        ! --------------------------------------------------------
        ! k_water parameterization with bubble-induced enhancement
        ! --------------------------------------------------------
        kt_m_s = (1.0_r8/k_water_m_s_bubble(SpeciesID, T_water_K, Salinity_PartsPerThousand, &
-                                           u10_m_s, Cgas_ppt, P_atm, T_air_K, ncol) &
-               + 1.0_r8/k_air_m_s(SpeciesID, u10_m_s, T_air_K, P_atm, ncol)&
+                                           u10_m_s, Cgas_ppt, P_atm, T_air_K) &
+               + 1.0_r8/k_air_m_s(SpeciesID, u10_m_s, T_air_K, P_atm)&
                        /H_gas_over_liquid_dimless)**(-1.0_r8)
     else
        ! ------------------------------------------------
        ! Original k_water parameterization, scaled to CO2
        ! ------------------------------------------------
-       kt_m_s = (1.0_r8/k_water_m_s(SpeciesID, T_water_K, Salinity_PartsPerThousand, u10_m_s, ncol) &
-            + 1.0_r8/k_air_m_s(SpeciesID, u10_m_s, T_air_K, P_atm, ncol)/H_gas_over_liquid_dimless)**(-1.0_r8)
+       kt_m_s = (1.0_r8/k_water_m_s(SpeciesID, T_water_K, Salinity_PartsPerThousand, u10_m_s) &
+            + 1.0_r8/k_air_m_s(SpeciesID, u10_m_s, T_air_K, P_atm)/H_gas_over_liquid_dimless)**(-1.0_r8)
     endif
     Flux_kg_m2_s = kt_m_s * (Cwater_nM*1E-9_r8*1000.0_r8                                               &
          - Cgas_ppt*1E-12_r8*(101325.0_r8*P_atm)/8.314_r8/T_air_K/H_gas_over_liquid_dimless) & ! g/m2/s
          * MolecularWeight(SpeciesIndex(SpeciesName)) / 1000.0_r8                              ! convert to kg/m2/s
   End Function Flux_kg_m2_s
 
-
-  Function k_air_m_s(SpeciesIndex, u10_m_s, T_air_K, P_atm, ncol)
+  !--------------------------------------------------------------------------------
+  !--------------------------------------------------------------------------------
+  Real(r8) Function k_air_m_s(SpeciesIndex, u10_m_s, T_air_K, P_atm)
     use shr_const_mod, only: vonKarman=>SHR_CONST_KARMAN
     ! =============================================================================
-    ! Air-side transfer velocity. Slightly modified NOAA COARE (Fairall et al 2003; 
-    ! Feffery et al 2010), as recommended by Johnson Ocean Sci. 2010. 
+    ! Air-side transfer velocity. Slightly modified NOAA COARE (Fairall et al 2003;
+    ! Feffery et al 2010), as recommended by Johnson Ocean Sci. 2010.
     ! Dynamic viscosity of air: Tsilingiris 2008
     ! =============================================================================
-    Integer                   :: ncol, SpeciesIndex
-    Real(r8), Dimension(ncol) :: k_air_m_s 
-    Real(r8), Dimension(ncol) :: u10_m_s, T_air_K, P_atm, ustar_m_s, DragCoeff
-    Real(r8), Dimension(ncol) :: DynamicViscosityAir_kg_m_s, DensityAir_kg_m3, DiffusivityInAir, SchmidtNumberInAir
+    Integer ,intent(in) :: SpeciesIndex
+    Real(r8),intent(in) :: u10_m_s, T_air_K, P_atm
+
+    Real(r8) :: ustar_m_s, DragCoeff
+    Real(r8) :: DynamicViscosityAir_kg_m_s, DensityAir_kg_m3, DiffusivityInAir, SchmidtNumberInAir
 
     ! WSY: If local friction velocity is available from the model, might as well use that?
     ustar_m_s = u10_m_s * sqrt(6.1E-4_r8 + 6.3E-5_r8 * u10_m_s)
@@ -516,53 +527,53 @@ contains
     DynamicViscosityAir_kg_m_s = 1.715747771E-5_r8 + 4.722402075E-8_r8 * (T_air_K-273.15_r8) &
          - 3.663027156E-10_r8 * ((T_air_K-273.15_r8)**2.0_r8) &
          + 1.873236686E-12_r8 * ((T_air_K-273.15_r8)**3.0_r8) &
-         - 8.050218737E-14_r8 * ((T_air_K-273.15_r8)**4.0_r8)    
+         - 8.050218737E-14_r8 * ((T_air_K-273.15_r8)**4.0_r8)
     DensityAir_kg_m3 = 1.293393662_r8 - 5.538444326e-3_r8 * (T_air_K-273.15_r8) &
          + 3.860201577e-5_r8 * (T_air_K-273.15_r8)**2.0_r8 &
          - 5.2536065e-7_r8 * (T_air_K-273.15_r8)**3.0_r8
-    DiffusivityInAir = DiffusivityInAir_cm2_s(SpeciesIndex, T_air_K, P_atm, ncol)       
-    SchmidtNumberInAir = DynamicViscosityAir_kg_m_s / DensityAir_kg_m3 / (DiffusivityInAir/10000.0_r8)  
+    DiffusivityInAir = DiffusivityInAir_cm2_s(SpeciesIndex, T_air_K, P_atm)
+    SchmidtNumberInAir = DynamicViscosityAir_kg_m_s / DensityAir_kg_m3 / (DiffusivityInAir/10000.0_r8)
     k_air_m_s = 1E-3_r8 + ustar_m_s / (13.3_r8*(SchmidtNumberInAir**0.5_r8)+(DragCoeff**(-0.5_r8))-&
                 5.0_r8+log(SchmidtNumberInAir)/2.0_r8/vonKarman)
   End Function k_air_m_s
 
-
-
-
-  Function k_water_m_s(SpeciesIndex, T_water_K, Salinity_PartsPerThousand, u10_m_s, ncol)
+  !--------------------------------------------------------------------------------
+  !--------------------------------------------------------------------------------
+  Real(r8) Function k_water_m_s(SpeciesIndex, T_water_K, Salinity_PartsPerThousand, u10_m_s)
     ! ================================================================================
     ! Water-side transfer velocity. Ref: Nightingale et al (2000). Salinity considered
     ! ================================================================================
-    Integer                    :: ncol, SpeciesIndex
-    Real(r8), Dimension(ncol)  :: k_water_m_s
-    Real(r8), Dimension(ncol)  :: T_water_K, Salinity_PartsPerThousand, u10_m_s
-    Real(r8), Dimension(ncol)  :: DiffusivityInWater, SchmidtNumberInWater
-    Real(r8)                   :: SchmidtNumberInWater_CO2ref
+    Integer ,intent(in) :: SpeciesIndex
+    Real(r8),intent(in) :: T_water_K, Salinity_PartsPerThousand, u10_m_s
+
+    Real(r8) :: DiffusivityInWater, SchmidtNumberInWater
+    Real(r8) :: SchmidtNumberInWater_CO2ref
+
     SchmidtNumberInWater_CO2ref = 660.0_r8              ! this is the Schmidt number of CO2 at 20 degC in fresh water
-    DiffusivityInWater = DiffusivityInWater_cm2_s(SpeciesIndex, T_water_K, Salinity_PartsPerThousand, ncol)
-    SchmidtNumberInWater = DynamicViscosityWater_g_m_s(T_water_K, Salinity_PartsPerThousand, ncol) / 1000.0_r8 &
-         / DensityWater_kg_m3(T_water_K,Salinity_PartsPerThousand,ncol)/(DiffusivityInWater/10000.0_r8)
+    DiffusivityInWater = DiffusivityInWater_cm2_s(SpeciesIndex, T_water_K, Salinity_PartsPerThousand)
+    SchmidtNumberInWater = DynamicViscosityWater_g_m_s(T_water_K, Salinity_PartsPerThousand) / 1000.0_r8 &
+         / DensityWater_kg_m3(T_water_K,Salinity_PartsPerThousand)/(DiffusivityInWater/10000.0_r8)
     k_water_m_s = ((0.222_r8*(u10_m_s**2.0_r8)+0.333_r8*u10_m_s)*&
                   ((SchmidtNumberInWater/SchmidtNumberInWater_CO2ref)**(-0.5_r8)))/360000.0_r8
   End Function k_water_m_s
 
-
-
-
-  Function k_water_m_s_bubble(SpeciesIndex, T_water_K, Salinity_PartsPerThousand, u10_m_s, Cgas_ppt, P_atm, T_air_K, ncol)
+  !--------------------------------------------------------------------------------
+  !--------------------------------------------------------------------------------
+  Real(r8) Function k_water_m_s_bubble(SpeciesIndex, T_water_K, Salinity_PartsPerThousand, u10_m_s, Cgas_ppt, P_atm, T_air_K)
     ! ==============================================================
     ! Water-side transfer velocity. Ref: Asher and Wanninkhof (1998).
     ! ==============================================================
-    Integer                   :: ncol, SpeciesIndex
-    Real(r8), Dimension(ncol) :: k_water_m_s_bubble
-    Real(r8), Dimension(ncol) :: T_water_K, Salinity_PartsPerThousand, u10_m_s, Cgas_ppt, P_atm, T_air_K
-    Real(r8), Dimension(ncol) :: DiffusivityInWater, SchmidtNumberInWater
-    Real(r8), Dimension(ncol) :: FracCoverage_WhiteCaps, OstwaldSolubilityCoefficient
-    DiffusivityInWater = DiffusivityInWater_cm2_s(SpeciesIndex, T_water_K, Salinity_PartsPerThousand, ncol)
-    SchmidtNumberInWater = DynamicViscosityWater_g_m_s(T_water_K, Salinity_PartsPerThousand, ncol) / 1000.0_r8 &
-         / DensityWater_kg_m3(T_water_K,Salinity_PartsPerThousand,ncol)/(DiffusivityInWater/10000.0_r8)
-    FracCoverage_WhiteCaps = 2.56e-6_r8 * (u10_m_s - 1.77_r8)**3.0_r8      
-    OstwaldSolubilityCoefficient = Henry_M_atm(SpeciesIndex,T_water_K,Salinity_PartsPerThousand,ncol) ! just Henry's law (M/atm)
+    Integer, intent(in) :: SpeciesIndex
+    Real(r8),intent(in) :: T_water_K, Salinity_PartsPerThousand, u10_m_s, Cgas_ppt, P_atm, T_air_K
+
+    Real(r8) :: DiffusivityInWater, SchmidtNumberInWater
+    Real(r8) :: FracCoverage_WhiteCaps, OstwaldSolubilityCoefficient
+
+    DiffusivityInWater = DiffusivityInWater_cm2_s(SpeciesIndex, T_water_K, Salinity_PartsPerThousand)
+    SchmidtNumberInWater = DynamicViscosityWater_g_m_s(T_water_K, Salinity_PartsPerThousand) / 1000.0_r8 &
+         / DensityWater_kg_m3(T_water_K,Salinity_PartsPerThousand)/(DiffusivityInWater/10000.0_r8)
+    FracCoverage_WhiteCaps = 2.56e-6_r8 * (u10_m_s - 1.77_r8)**3.0_r8
+    OstwaldSolubilityCoefficient = Henry_M_atm(SpeciesIndex,T_water_K,Salinity_PartsPerThousand) ! just Henry's law (M/atm)
     OstwaldSolubilityCoefficient = OstwaldSolubilityCoefficient * (Cgas_ppt*1.0E-12_r8*P_atm)         ! mol / L
     OstwaldSolubilityCoefficient = OstwaldSolubilityCoefficient * 0.082_r8 * T_air_K / P_atm          ! L / L
     k_water_m_s_bubble = ((47.0_r8*u10_m_s + FracCoverage_WhiteCaps*(115200.0_r8 - 47.0_r8* u10_m_s)) &
@@ -570,40 +581,46 @@ contains
                        + FracCoverage_WhiteCaps * (-37.0_r8/OstwaldSolubilityCoefficient &
                        + 6120.0_r8*(OstwaldSolubilityCoefficient**(-0.37_r8)) *(SchmidtNumberInWater**(-0.18_r8)))) &
                        * 2.8e-6_r8
+
   End Function k_water_m_s_bubble
 
-
-
-
-  Function DiffusivityInAir_cm2_s(SpeciesIndex, T_air_K, P_atm, ncol)
+  !--------------------------------------------------------------------------------
+  !--------------------------------------------------------------------------------
+  Real(r8) Function DiffusivityInAir_cm2_s(SpeciesIndex, T_air_K, P_atm)
     ! ============================
     ! Ref: Johnson Ocean Sci. 2010
     ! ============================
-    Integer                   :: ncol, SpeciesIndex
-    Real(r8), Dimension(ncol) :: DiffusivityInAir_cm2_s, T_air_K, P_atm
+    Integer ,intent(in) :: SpeciesIndex
+    Real(r8),intent(in) :: T_air_K, P_atm
+
     Real(r8), parameter       :: MW_air = 28.97_r8   ! molecular weight for air
     Real(r8), parameter       :: Va = 20.1_r8        ! molar volume for air
     Real(r8)                  :: Vb, MW_species
+
     Vb = LiquidMolarVolume_cm3_mol(SpeciesIndex)
     MW_species = MolecularWeight(SpeciesIndex)
     DiffusivityInAir_cm2_s = 0.001_r8 * (T_air_K**1.75_r8) &    ! oh f* me
          * (((MW_air + MW_species)/(MW_air*MW_species))**0.5_r8) &
          / ((P_atm*(Va**(1.0_r8/3.0_r8)+Vb**(1.0_r8/3.0_r8)))**2.0_r8)
+
   End Function DiffusivityInAir_cm2_s
 
-
-
-  Function DiffusivityInWater_cm2_s(SpeciesIndex, T_water_K, Salinity_PartsPerThousand, ncol)
+  !--------------------------------------------------------------------------------
+  !--------------------------------------------------------------------------------
+  Real(r8) Function DiffusivityInWater_cm2_s(SpeciesIndex, T_water_K, Salinity_PartsPerThousand)
     ! =================================================
     ! Ref: Johnson Ocean Sci. 2010. Salinity considered
     ! =================================================
-    Integer                   :: ncol, SpeciesIndex
-    Real(r8), Dimension(ncol) :: DiffusivityInWater_cm2_s, DynamicViscosityWater, T_water_K, Salinity_PartsPerThousand
+    Integer, intent(in) :: SpeciesIndex
+    Real(r8),intent(in) :: T_water_K, Salinity_PartsPerThousand
+
     Real(r8), parameter       :: AssociationFactor = 2.6_r8     ! ... for water
-    Real(r8)                  :: Vb, MW_species
+    Real(r8)                  :: DynamicViscosityWater, Vb, MW_species
+
     Vb = LiquidMolarVolume_cm3_mol(SpeciesIndex)
     MW_species = MolecularWeight(SpeciesIndex)
-    DynamicViscosityWater = DynamicViscosityWater_g_m_s(T_water_K, Salinity_PartsPerThousand, ncol)
+
+    DynamicViscosityWater = DynamicViscosityWater_g_m_s(T_water_K, Salinity_PartsPerThousand)
     ! -------------------------------------------------
     ! Wilke and Chang 1955: this seems to be a bit high
     ! -------------------------------------------------
@@ -617,47 +634,51 @@ contains
 
   End Function DiffusivityInWater_cm2_s
 
-
-  Function DynamicViscosityWater_g_m_s(T_water_K, Salinity_PartsPerThousand, ncol)
+  !--------------------------------------------------------------------------------
+  !--------------------------------------------------------------------------------
+  Real(r8) Function DynamicViscosityWater_g_m_s(T_water_K, Salinity_PartsPerThousand)
     ! =================================================
     ! Ref: Johnson Ocean Sci. 2010. Salinity considered
     ! =================================================
-    Integer                    :: ncol
-    Real(r8), Dimension(ncol)  :: DynamicViscosityWater_g_m_s, T_water_K, Salinity_PartsPerThousand 
-    Real(r8), Dimension(ncol)  :: MassFrac_water, DynamicViscosityPureWater_g_m_s, SaltViscosity, sum_w_ln_SaltViscosity
-    Integer                    :: j, n 
+    Real(r8),intent(in) :: T_water_K, Salinity_PartsPerThousand
+
+    Real(r8) :: MassFrac_water, DynamicViscosityPureWater_g_m_s, SaltViscosity, sum_w_ln_SaltViscosity
+    Integer :: n
+
     sum_w_ln_SaltViscosity = 0.0_r8
     MassFrac_water = 1.0_r8 - Salinity_PartsPerThousand / 1000.0_r8
     DynamicViscosityPureWater_g_m_s = ((T_water_K-273.15_r8)+246.0_r8) &
-         / (0.05594_r8*(T_water_K-273.15_r8)**2.0_r8+5.2842_r8*(T_water_K-273.15_r8)+137.37_r8)   
-    Do j = 1, ncol      
-       If (Salinity_PartsPerThousand(j) == 0.0_r8) Then          ! pure water
-          DynamicViscosityWater_g_m_s(j) = DynamicViscosityPureWater_g_m_s(j)
+         / (0.05594_r8*(T_water_K-273.15_r8)**2.0_r8+5.2842_r8*(T_water_K-273.15_r8)+137.37_r8)
+
+       If (Salinity_PartsPerThousand == 0.0_r8) Then          ! pure water
+          DynamicViscosityWater_g_m_s = DynamicViscosityPureWater_g_m_s
        Else                                                      ! salty water
           Do n = 1, HowManySalts
-             SaltViscosity(j) = exp((SaltList(n)%SaltProperties(2) * &
-                  (Salinity_PartsPerThousand(j)/1000.0_r8)**SaltList(n)%SaltProperties(3) &
+             SaltViscosity = exp((SaltList(n)%SaltProperties(2) * &
+                  (Salinity_PartsPerThousand/1000.0_r8)**SaltList(n)%SaltProperties(3) &
                   + SaltList(n)%SaltProperties(4)) &
-                  / (SaltList(n)%SaltProperties(5)*(T_water_K(j)-273.15_r8) + 1.0_r8)) &
-                  / (SaltList(n)%SaltProperties(6) * (Salinity_PartsPerThousand(j) / &
+                  / (SaltList(n)%SaltProperties(5)*(T_water_K-273.15_r8) + 1.0_r8)) &
+                  / (SaltList(n)%SaltProperties(6) * (Salinity_PartsPerThousand / &
                   1000.0_r8)**SaltList(n)%SaltProperties(7) + 1.0_r8)
-             sum_w_ln_SaltViscosity(j) = sum_w_ln_SaltViscosity(j) + (Salinity_PartsPerThousand(j)/1000.0_r8) &
-                  * SaltList(n)%SaltProperties(1) * log(SaltViscosity(j))
+             sum_w_ln_SaltViscosity = sum_w_ln_SaltViscosity + (Salinity_PartsPerThousand/1000.0_r8) &
+                  * SaltList(n)%SaltProperties(1) * log(SaltViscosity)
           End Do
-          DynamicViscosityWater_g_m_s(j) = exp(MassFrac_water(j) &
-               * log(DynamicViscosityPureWater_g_m_s(j)) + sum_w_ln_SaltViscosity(j))
+          DynamicViscosityWater_g_m_s = exp(MassFrac_water &
+               * log(DynamicViscosityPureWater_g_m_s) + sum_w_ln_SaltViscosity)
        Endif
-    End Do
+
   End Function DynamicViscosityWater_g_m_s
 
-
-  Function DensityWater_kg_m3(T_water_K, Salinity_PartsPerThousand, ncol)
+  !--------------------------------------------------------------------------------
+  !--------------------------------------------------------------------------------
+  Real(r8) Function DensityWater_kg_m3(T_water_K, Salinity_PartsPerThousand)
     ! ====================================================
     ! Ref: Millero and Poisson (1981). Salinity considered
     ! ====================================================
-    Integer                   :: ncol
-    Real(r8), Dimension(ncol) :: DensityWater_kg_m3, T_water_K, Salinity_PartsPerThousand
-    Real(r8), Dimension(ncol) :: DensityPureWater_kg_m3, FactorA, FactorB, FactorC
+    Real(r8), intent(in) :: T_water_K, Salinity_PartsPerThousand
+
+    Real(r8) :: DensityPureWater_kg_m3, FactorA, FactorB, FactorC
+
     DensityPureWater_kg_m3 = 999.842594_r8 + 0.06793952_r8*(T_water_K-273.15_r8) &
          - 0.00909529_r8*((T_water_K-273.15_r8)**2.0_r8) &
          + 0.0001001685_r8*((T_water_K-273.15_r8)**3.0_r8) &
@@ -669,41 +690,46 @@ contains
     FactorC = 0.00048314_r8
     DensityWater_kg_m3 = DensityPureWater_kg_m3 + FactorA*Salinity_PartsPerThousand &
          + FactorB*(Salinity_PartsPerThousand**(2.0_r8/3.0_r8)) + FactorC*Salinity_PartsPerThousand
+
   End Function DensityWater_kg_m3
 
-
-  Function Henry_M_atm(SpeciesIndex, T_water_K, Salinity_PartsPerThousand, ncol)
+  !--------------------------------------------------------------------------------
+  !--------------------------------------------------------------------------------
+  Real(r8) Function Henry_M_atm(SpeciesIndex, T_water_K, Salinity_PartsPerThousand)
     ! =========================================================================================
     ! Ref: Sander compilation 2015. Salt-in or salt-out estimated based on Setschenow constants
     ! =========================================================================================
-    Integer                    :: ncol, j
-    Integer                    :: SpeciesIndex
-    Real(r8), Dimension(ncol)  :: Henry_M_atm, T_water_K, Salinity_PartsPerThousand
-    Real(r8), Dimension(ncol)  :: Heff_M_atm_PureWater, Setschenow, Heff_M_atm_SaltyWater
+    Integer,  intent(in) :: SpeciesIndex
+    Real(r8), intent(in) :: T_water_K, Salinity_PartsPerThousand
+
+    Real(r8) :: Heff_M_atm_PureWater, Setschenow, Heff_M_atm_SaltyWater
+
     Heff_M_atm_PureWater = GasList(SpeciesIndex)%CmpdProperties(15) * &
          exp(GasList(SpeciesIndex)%CmpdProperties(16) * (1.0_r8/T_water_K - 1.0_r8/298.0_r8))
-    Do j = 1, ncol      
-       If (Salinity_PartsPerThousand(j)==0.0_r8) Then
-          Henry_M_atm(j) = Heff_M_atm_PureWater(j) 
-       Else
-          Setschenow(j) = log(LiquidMolarVolume_cm3_mol(SpeciesIndex)) * &
-               (7.33532E-4_r8 + 3.39615E-5_r8 * log(Heff_M_atm_PureWater(j)) &
-               - 2.40888E-6_r8 * ((log(Heff_M_atm_PureWater(j)))**2.0_r8) &
-               + 1.57114E-7_r8 * ((log(Heff_M_atm_PureWater(j)))**3.0_r8))
-          Heff_M_atm_SaltyWater(j) = Heff_M_atm_PureWater(j) * 10.0_r8**(Setschenow(j)*Salinity_PartsPerThousand(j))
-          Henry_M_atm(j) = Heff_M_atm_SaltyWater(j)
-       Endif
-    End Do
+
+    If (Salinity_PartsPerThousand==0.0_r8) Then
+       Henry_M_atm = Heff_M_atm_PureWater
+    Else
+       Setschenow = log(LiquidMolarVolume_cm3_mol(SpeciesIndex)) * &
+            (7.33532E-4_r8 + 3.39615E-5_r8 * log(Heff_M_atm_PureWater) &
+            - 2.40888E-6_r8 * ((log(Heff_M_atm_PureWater))**2.0_r8) &
+            + 1.57114E-7_r8 * ((log(Heff_M_atm_PureWater))**3.0_r8))
+       Heff_M_atm_SaltyWater = Heff_M_atm_PureWater * 10.0_r8**(Setschenow*Salinity_PartsPerThousand)
+       Henry_M_atm = Heff_M_atm_SaltyWater
+    Endif
+
   End Function Henry_M_atm
 
-
+  !--------------------------------------------------------------------------------
+  !--------------------------------------------------------------------------------
   Function MolecularWeight(SpeciesIndex)
     Real(r8)  :: MolecularWeight
     Integer   :: SpeciesIndex
     MolecularWeight = GasList(SpeciesIndex)%CmpdProperties(1)
   End Function MolecularWeight
 
-
+  !--------------------------------------------------------------------------------
+  !--------------------------------------------------------------------------------
   Function LiquidMolarVolume_cm3_mol(SpeciesIndex)
     ! ===========================================================================
     ! If no measurements available, i.e. GasList(SpeciesIndex)%CmpdProperties(14)
@@ -712,7 +738,7 @@ contains
     Real(r8)    :: LiquidMolarVolume_cm3_mol
     Integer     :: SpeciesIndex
 
-    If (GasList(SpeciesIndex)%CmpdProperties(14)/=0.0_r8) Then  
+    If (GasList(SpeciesIndex)%CmpdProperties(14)/=0.0_r8) Then
        LiquidMolarVolume_cm3_mol = GasList(SpeciesIndex)%CmpdProperties(14)
     Else
        LiquidMolarVolume_cm3_mol = 7.0_r8*GasList(SpeciesIndex)%CmpdProperties(2)                                ! C
@@ -731,18 +757,20 @@ contains
 
   End Function LiquidMolarVolume_cm3_mol
 
+  !--------------------------------------------------------------------------------
+  !--------------------------------------------------------------------------------
   subroutine cseawater_ini()
 
-    use mo_chem_utls,     only : get_spc_ndx 
-    use tracer_data,      only : trcdata_init   
-    use cam_pio_utils,    only : cam_pio_openfile       
+    use mo_chem_utls,     only : get_spc_ndx
+    use tracer_data,      only : trcdata_init
+    use cam_pio_utils,    only : cam_pio_openfile
     use pio,              only : pio_inquire, pio_nowrite, pio_closefile, pio_inq_varndims
     use pio,              only : pio_inq_varname, file_desc_t, pio_get_att, PIO_NOERR, PIO_GLOBAL
-    use pio,              only : pio_seterrorhandling, PIO_BCAST_ERROR    
-    use string_utils,     only : GLC    
+    use pio,              only : pio_seterrorhandling, PIO_BCAST_ERROR
+    use string_utils,     only : GLC
 
     integer             :: i, j, l, m, n, nn, astat, vid, ierr, nvars, isec
-    integer             :: indx(gas_pcnst)      
+    integer             :: indx(gas_pcnst)
     type(file_desc_t)   :: ncid
     character(len=16)   :: csw_species(gas_pcnst)
     character(len=256)  :: csw_filenam(gas_pcnst)
@@ -766,7 +794,7 @@ contains
 
     character(len=*), parameter :: subname = 'cseawater_ini'
 
-    ! ========================================================  
+    ! ========================================================
     ! Read sea water concentration specifier from the namelist
     ! ========================================================
 
@@ -827,7 +855,7 @@ contains
     ! -------------------------------------------
     ! Setup the seawater concentration type array
     ! -------------------------------------------
-    do m=1,n_Csw_files 
+    do m=1,n_Csw_files
        Csw_nM(m)%spc_ndx = csw_indexes(indx(m))
        Csw_nM(m)%units = 'nM'
        Csw_nM(m)%species = csw_species(indx(m))
@@ -898,9 +926,9 @@ contains
        deallocate(vndims)
 
        ! Global attribute 'input_method' overrides the srf_emis_type namelist setting on
-       ! a file-by-file basis.  If the emis file does not contain the 'input_method' 
+       ! a file-by-file basis.  If the emis file does not contain the 'input_method'
        ! attribute then the srf_emis_type namelist setting is used.
-       ierr = pio_get_att(ncid, PIO_GLOBAL, 'input_method', file_interp_type)   
+       ierr = pio_get_att(ncid, PIO_GLOBAL, 'input_method', file_interp_type)
        if ( ierr == PIO_NOERR) then
           l = GLC(file_interp_type)
           csw_time_type(1:l) = file_interp_type(1:l)
@@ -931,6 +959,5 @@ contains
     end do
 
   end subroutine cseawater_ini
-
 
 end module ocean_emis

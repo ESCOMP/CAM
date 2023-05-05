@@ -3475,13 +3475,15 @@ if ( length($nl->get_value('soil_erod_file'))>0 ) {
     else {
         if ($chem =~ /trop_strat/ or $chem =~ /waccm_ma/ or $chem =~ /waccm_tsmlt/ or $chem =~ /trop_mozart/) {
             add_default($nl, 'dust_emis_fact', 'ver'=>'chem');
-            # set scaling of lightning NOx production
-	    add_default($nl, 'lght_no_prd_factor' );
         }
         else {
             add_default($nl, 'dust_emis_fact');
         }
     }
+}
+if (chem_has_species($cfg, 'NO')) {
+    # set scaling of lightning NOx production
+    add_default($nl, 'lght_no_prd_factor' );
 }
 
 # Seasalt emissions tuning factor
@@ -3858,7 +3860,6 @@ if ($dyn =~ /se/) {
     my @vars = qw(
                   se_ftype
                   se_horz_num_threads
-                  se_lcp_moist
 		  se_large_Courant_incr
                   se_hypervis_subcycle
                   se_hypervis_subcycle_sponge
@@ -3886,7 +3887,6 @@ if ($dyn =~ /se/) {
 		  se_fvm_supercycling_jet
 		  se_kmin_jet
 		  se_kmax_jet
-		  se_phys_dyn_cp
                   se_molecular_diff
         );
 
@@ -4111,6 +4111,21 @@ add_default($nl, 'cam_snapshot_before_num');
 add_default($nl, 'cam_snapshot_after_num');
 check_snapshot_settings();
 
+if ($opts{'cmeps'}) {
+  # advertise the nature of ozone data passed to surface models
+  if ($rad_prog_ozone) {
+    add_default($nl, 'atm_ozone_frequency', 'val'=>'subdaily');
+  } else {
+    add_default($nl, 'atm_ozone_frequency', 'val'=>'multiday_average');
+  }
+  # for lightning flash freq to CTSM
+  if ($simple_phys or $aqua_mode) {
+    add_default($nl, 'atm_provides_lightning', 'val'=>'.false.');
+  } else {
+    add_default($nl, 'atm_provides_lightning', 'val'=>'.true.');
+  }
+}
+
 #-----------------------------------------------------------------------------------------------
 # Write output files
 
@@ -4127,16 +4142,8 @@ my %nl_group = ();
 foreach my $name (@nl_groups) { $nl_group{$name} = ''; }
 
 # Dry deposition, MEGAN VOC emis and ozone namelists
-@comp_groups = qw(drydep_inparm megan_emis_nl fire_emis_nl carma_inparm ndep_inparm ozone_coupling_nl);
+@comp_groups = qw(drydep_inparm megan_emis_nl fire_emis_nl carma_inparm ndep_inparm ozone_coupling_nl lightning_coupling_nl);
 
-# nature of ozone data passed to surface models -- only if cmeps (nuopc) coupling is used
-if ($opts{'cmeps'}) {
-  if ($rad_prog_ozone) {
-    add_default($nl, 'atm_ozone_frequency', 'val'=>'subdaily');
-  } else {
-    add_default($nl, 'atm_ozone_frequency', 'val'=>'multiday_average');
-  }
-}
 $outfile = "$opts{'dir'}/drv_flds_in";
 $nl->write($outfile, 'groups'=>\@comp_groups);
 if ($print>=1) {

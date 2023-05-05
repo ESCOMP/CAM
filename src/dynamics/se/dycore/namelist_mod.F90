@@ -70,7 +70,7 @@ module namelist_mod
 
   subroutine homme_postprocess_namelist(mesh_file, par)
     use mesh_mod,        only: MeshOpen
-    use dimensions_mod,  only: ntrac
+    use dimensions_mod,  only: use_cslam
     ! Dummy arguments
     character(len=*),  intent(in) :: mesh_file
     type (parallel_t), intent(in) :: par
@@ -120,7 +120,7 @@ module namelist_mod
       end if
     end if
 
-    if ((cubed_sphere_map /= 0) .AND. ntrac>0) then
+    if ((cubed_sphere_map /= 0) .AND. use_cslam) then
       if (par%masterproc) then
         write(iulog, *) subname, 'fvm transport and require equi-angle gnomonic cube sphere mapping.'
         write(iulog, *) '         Set cubed_sphere_map = 0 or comment it out all together.                          '

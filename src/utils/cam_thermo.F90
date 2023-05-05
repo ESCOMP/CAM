@@ -7,7 +7,6 @@ module cam_thermo
    use air_composition, only: thermodynamic_active_species_idx
    use air_composition, only: thermodynamic_active_species_idx_dycore
    use air_composition, only: thermodynamic_active_species_cp
-   use air_composition, only: thermodynamic_active_species_cv
    use air_composition, only: thermodynamic_active_species_R
    use air_composition, only: thermodynamic_active_species_mwi
    use air_composition, only: thermodynamic_active_species_kv
@@ -18,6 +17,7 @@ module cam_thermo
    use air_composition, only: thermodynamic_active_species_liq_idx_dycore
    use air_composition, only: thermodynamic_active_species_ice_idx
    use air_composition, only: thermodynamic_active_species_ice_idx_dycore
+   use air_composition, only: dry_air_species_num
    use air_composition, only: enthalpy_reference_state
    use air_composition, only: mmro2, mmrn2, o2_mwi, n2_mwi, mbar
 
@@ -33,8 +33,10 @@ module cam_thermo
 
    ! cam_thermo_init: Initialize constituent dependent properties
    public :: cam_thermo_init
-   ! cam_thermo_update: Update constituent dependent properties
-   public :: cam_thermo_update
+   ! cam_thermo_dry_air_update: Update dry air composition dependent properties
+   public :: cam_thermo_dry_air_update
+   ! cam_thermo_water_update: Update water dependent properties
+   public :: cam_thermo_water_update
    ! get_enthalpy: enthalpy quantity = dp*cp*T
    public :: get_enthalpy
    ! get_virtual_temp: virtual temperature
@@ -170,6 +172,38 @@ module cam_thermo
       !    2-d interface is not needed (but can easily be added)
    end interface get_hydrostatic_energy
 
+   integer, public, parameter :: thermo_budget_num_vars = 10
+   integer, public, parameter :: wvidx = 1
+   integer, public, parameter :: wlidx = 2
+   integer, public, parameter :: wiidx = 3
+   integer, public, parameter :: seidx = 4 ! enthalpy or internal energy (W/m2) index
+   integer, public, parameter :: poidx = 5 ! surface potential or potential energy index
+   integer, public, parameter :: keidx = 6 ! kinetic energy index
+   integer, public, parameter :: mridx = 7
+   integer, public, parameter :: moidx = 8
+   integer, public, parameter :: ttidx = 9
+   integer, public, parameter :: teidx = 10
+   character (len = 2)  ,public, dimension(thermo_budget_num_vars) :: thermo_budget_vars  = &
+        (/"WV"  ,"WL"  ,"WI"  ,"SE"   ,"PO"   ,"KE"   ,"MR"   ,"MO"   ,"TT"   ,"TE"   /)
+   character (len = 46) ,public, dimension(thermo_budget_num_vars) :: thermo_budget_vars_descriptor = (/&
+        "Total column water vapor                      ",&
+        "Total column liquid water                     ",&
+        "Total column frozen water                     ",&
+        "Total column enthalpy or internal energy      ",&
+        "Total column srf potential or potential energy",&
+        "Total column kinetic energy                   ",&
+        "Total column wind axial angular momentum      ",&
+        "Total column mass axial angular momentum      ",&
+        "Total column test_tracer                      ",&
+        "Total column energy (ke + se + po)            "/)
+
+   character (len = 14), public, dimension(thermo_budget_num_vars)  :: &
+        thermo_budget_vars_unit = (/&
+        "kg/m2        ","kg/m2        ","kg/m2        ","J/m2         ",&
+        "J/m2         ","J/m2         ","kg*m2/s*rad2 ","kg*m2/s*rad2 ",&
+        "kg/m2        ","J/m2         "/)
+   logical              ,public, dimension(thermo_budget_num_vars) :: thermo_budget_vars_massv = (/&
+        .true.,.true.,.true.,.false.,.false.,.false.,.false.,.false.,.true.,.false./)
 CONTAINS
 
    !===========================================================================
@@ -177,7 +211,6 @@ CONTAINS
    subroutine cam_thermo_init()
       use shr_infnan_mod,  only: assignment(=), shr_infnan_qnan
       use ppgrid,          only: pcols, pver, pverp, begchunk, endchunk
-      use physconst,       only: cpair, rair, mwdry
 
       integer                     :: ierr
       character(len=*), parameter :: subname = "cam_thermo_init"
@@ -202,18 +235,49 @@ CONTAINS
       kmcnd(:pcols,  :pver, begchunk:endchunk) = shr_infnan_qnan
 
    end subroutine cam_thermo_init
-
-   !===========================================================================
-
-   !***************************************************************************
-   !
-   ! cam_thermo_update: update species dependent constants for physics
    !
    !***************************************************************************
    !
-   subroutine cam_thermo_update(mmr, T, lchnk, ncol, to_moist_factor)
-      use air_composition, only: air_composition_update
+   ! cam_thermo_dry_air_update: update dry air species dependent constants for physics
+   !
+   !***************************************************************************
+   !
+   subroutine cam_thermo_dry_air_update(mmr, T, lchnk, ncol, to_dry_factor)
+      use air_composition, only: dry_air_composition_update
       use string_utils,    only: int2str
+      !------------------------------Arguments----------------------------------
+      !(mmr = dry mixing ratio, if not use to_dry_factor to convert)
+      real(r8),           intent(in) :: mmr(:,:,:) ! constituents array
+      real(r8),           intent(in) :: T(:,:)     ! temperature
+      integer,            intent(in) :: lchnk      ! Chunk number
+      integer,            intent(in) :: ncol       ! number of columns
+      real(r8), optional, intent(in) :: to_dry_factor(:,:)!if mmr moist convert
+      !
+      !---------------------------Local storage-------------------------------
+      real(r8):: sponge_factor(SIZE(mmr, 2))
+      character(len=*), parameter :: subname = 'cam_thermo_update: '
+
+      if (present(to_dry_factor)) then
+        if (SIZE(to_dry_factor, 1) /= ncol) then
+          call endrun(subname//'DIM 1 of to_dry_factor is'//int2str(SIZE(to_dry_factor,1))//'but should be'//int2str(ncol))
+        end if
+      end if
+
+      sponge_factor = 1.0_r8
+      call dry_air_composition_update(mmr, lchnk, ncol, to_dry_factor=to_dry_factor)
+      call get_molecular_diff_coef(T(:ncol,:), .true., sponge_factor, kmvis(:ncol,:,lchnk), &
+           kmcnd(:ncol,:,lchnk), tracer=mmr(:ncol,:,:), fact=to_dry_factor,  &
+           active_species_idx_dycore=thermodynamic_active_species_idx)
+    end subroutine cam_thermo_dry_air_update
+    !
+    !***************************************************************************
+    !
+    ! cam_thermo_water+update: update water species dependent constants for physics
+    !
+    !***************************************************************************
+    !
+    subroutine cam_thermo_water_update(mmr, lchnk, ncol, vcoord, to_dry_factor)
+      use air_composition, only: water_composition_update
       !-----------------------------------------------------------------------
       ! Update the physics "constants" that vary
       !-------------------------------------------------------------------------
@@ -221,29 +285,15 @@ CONTAINS
       !------------------------------Arguments----------------------------------
 
       real(r8),           intent(in) :: mmr(:,:,:) ! constituents array
-      real(r8),           intent(in) :: T(:,:)     ! temperature
       integer,            intent(in) :: lchnk      ! Chunk number
       integer,            intent(in) :: ncol       ! number of columns
-      real(r8), optional, intent(in) :: to_moist_factor(:,:)
+      integer,            intent(in) :: vcoord
+      real(r8), optional, intent(in) :: to_dry_factor(:,:)
       !
-      !---------------------------Local storage-------------------------------
-      real(r8):: sponge_factor(SIZE(mmr, 2))
-      character(len=*), parameter :: subname = 'cam_thermo_update: '
+      logical :: lcp
 
-
-      if (present(to_moist_factor)) then
-         if (SIZE(to_moist_factor, 1) /= ncol) then
-            call endrun(subname//'DIM 1 of to_moist_factor is'//int2str(SIZE(to_moist_factor,1))//'but should be'//int2str(ncol))
-         end if
-      end if
-      sponge_factor = 1.0_r8
-
-      call air_composition_update(mmr, lchnk, ncol, to_moist_factor=to_moist_factor)
-      call get_molecular_diff_coef(T(:ncol,:), .true., sponge_factor, kmvis(:ncol,:,lchnk), &
-           kmcnd(:ncol,:,lchnk), tracer=mmr(:ncol,:,:), fact=to_moist_factor,  &
-           active_species_idx_dycore=thermodynamic_active_species_idx)
-
-   end subroutine cam_thermo_update
+      call water_composition_update(mmr, lchnk, ncol, vcoord, to_dry_factor=to_dry_factor)
+    end subroutine cam_thermo_water_update
 
    !===========================================================================
 
@@ -687,7 +737,6 @@ CONTAINS
 
      real(r8) :: dp_local(SIZE(tracer, 1), SIZE(tracer, 2))      ! local pressure level thickness
      real(r8) :: pint_local(SIZE(tracer, 1), SIZE(tracer, 2) + 1)! local interface pressure
-     integer  :: kdx
 
      call get_dp(tracer, mixing_ratio, active_species_idx, dp_dry, dp_local)
 
@@ -1258,7 +1307,8 @@ CONTAINS
      real(r8), intent(in)           :: temp(:,:)                     ! temperature
      logical,  intent(in)           :: get_at_interfaces             ! true: compute kmvis and kmcnd at interfaces
                                                                      ! false: compute kmvis and kmcnd at mid-levels
-     real(r8), intent(in)           :: sponge_factor(:)              ! multiply kmvis and kmcnd with sponge_factor (for sponge layer)
+     real(r8), intent(in)           :: sponge_factor(:)              ! multiply kmvis and kmcnd with sponge_factor
+                                                                     ! (for sponge layer)
      real(r8), intent(out)          :: kmvis(:,:)
      real(r8), intent(out)          :: kmcnd(:,:)
      real(r8), intent(in)           :: tracer(:,:,:)                 ! tracer array
@@ -1334,7 +1384,8 @@ CONTAINS
              residual = 1.0_r8
              do icnst = 1, dry_air_species_num
                ispecies = idx_local(icnst)
-               mm       = 0.5_r8 * (tracer(idx, kdx, ispecies) * factor(idx, kdx) + tracer(idx, kdx - 1, ispecies) * factor(idx, kdx-1))
+               mm       = 0.5_r8 * (tracer(idx, kdx, ispecies) * factor(idx, kdx) + &
+                          tracer(idx, kdx - 1, ispecies) * factor(idx, kdx-1))
                kmvis(idx, kdx) = kmvis(idx, kdx) + thermodynamic_active_species_kv(icnst) * &
                                            thermodynamic_active_species_mwi(icnst) * mm
                kmcnd(idx, kdx) = kmcnd(idx, kdx) + thermodynamic_active_species_kc(icnst) * &
@@ -1396,7 +1447,8 @@ CONTAINS
      real(r8), intent(in)           :: temp(:,:,:)                     ! temperature
      logical,  intent(in)           :: get_at_interfaces               ! true: compute kmvis and kmcnd at interfaces
                                                                        ! false: compute kmvis and kmcnd at mid-levels
-     real(r8), intent(in)           :: sponge_factor(:)                ! multiply kmvis and kmcnd with sponge_factor (for sponge layer)
+     real(r8), intent(in)           :: sponge_factor(:)                ! multiply kmvis and kmcnd with sponge_factor
+                                                                       ! (for sponge layer)
      real(r8), intent(out)          :: kmvis(:,:,:)
      real(r8), intent(out)          :: kmcnd(:,:,:)
      real(r8), intent(in)           :: tracer(:,:,:,:)                 ! tracer array
@@ -1523,20 +1575,23 @@ CONTAINS
    !
    !***************************************************************************
    !
-   subroutine get_hydrostatic_energy_1hd(tracer, pdel, cp_or_cv, U, V, T,     &
-        vcoord, ps, phis, z_mid, dycore_idx, qidx, te, se, ke,                &
-        wv, H2O, liq, ice)
+   subroutine get_hydrostatic_energy_1hd(tracer, moist_mixing_ratio, pdel_in, &
+        cp_or_cv, U, V, T, vcoord, ptop, phis, z_mid, dycore_idx, qidx,       &
+        te, se, po, ke, wv, H2O, liq, ice)
 
       use cam_logfile,     only: iulog
       use dyn_tests_utils, only: vc_height, vc_moist_pressure, vc_dry_pressure
       use air_composition, only: wv_idx
-      use physconst,       only: gravit, latvap, latice
+      use physconst,       only: rga, latvap, latice
 
       ! Dummy arguments
       ! tracer: tracer mixing ratio
+      !
+      ! note - if pdeldry passed to subroutine then tracer mixing ratio must be dry
       real(r8), intent(in)            :: tracer(:,:,:)
+      logical, intent(in)             :: moist_mixing_ratio
       ! pdel: pressure level thickness
-      real(r8), intent(in)            :: pdel(:,:)
+      real(r8), intent(in)            :: pdel_in(:,:)
       ! cp_or_cv: dry air heat capacity under constant pressure or
       !           constant volume (depends on vcoord)
       real(r8), intent(in)            :: cp_or_cv(:,:)
@@ -1544,7 +1599,7 @@ CONTAINS
       real(r8), intent(in)            :: V(:,:)
       real(r8), intent(in)            :: T(:,:)
       integer,  intent(in)            :: vcoord ! vertical coordinate
-      real(r8), intent(in),  optional :: ps(:)
+      real(r8), intent(in),  optional :: ptop(:)
       real(r8), intent(in),  optional :: phis(:)
       real(r8), intent(in),  optional :: z_mid(:,:)
       ! dycore_idx: use dycore index for thermodynamic active species
@@ -1557,8 +1612,12 @@ CONTAINS
       real(r8), intent(out), optional :: te (:)
       ! KE: vertically integrated kinetic energy
       real(r8), intent(out), optional :: ke (:)
-      ! SE: vertically integrated internal+geopotential energy
+      ! SE: vertically integrated enthalpy (pressure coordinate) 
+      !     or internal energy (z coordinate)
       real(r8), intent(out), optional :: se (:)
+      ! PO: vertically integrated PHIS term (pressure coordinate)
+      !     or potential energy (z coordinate)
+      real(r8), intent(out), optional :: po (:)
       ! WV: vertically integrated water vapor
       real(r8), intent(out), optional :: wv (:)
       ! liq: vertically integrated liquid
@@ -1568,10 +1627,12 @@ CONTAINS
 
       ! Local variables
       real(r8) :: ke_vint(SIZE(tracer, 1))  ! Vertical integral of KE
-      real(r8) :: se_vint(SIZE(tracer, 1))  ! Vertical integral of SE
+      real(r8) :: se_vint(SIZE(tracer, 1))  ! Vertical integral of enthalpy or internal energy
+      real(r8) :: po_vint(SIZE(tracer, 1))  ! Vertical integral of PHIS or potential energy
       real(r8) :: wv_vint(SIZE(tracer, 1))  ! Vertical integral of wv
       real(r8) :: liq_vint(SIZE(tracer, 1)) ! Vertical integral of liq
       real(r8) :: ice_vint(SIZE(tracer, 1)) ! Vertical integral of ice
+      real(r8) :: pdel(SIZE(tracer, 1),SIZE(tracer, 2)) !moist pressure level thickness
       real(r8)                      :: latsub ! latent heat of sublimation
 
       integer                       :: ierr
@@ -1618,51 +1679,56 @@ CONTAINS
          wvidx = wv_idx
       end if
 
+      if (moist_mixing_ratio) then
+        pdel     = pdel_in
+      else
+        pdel     = pdel_in
+        do qdx = dry_air_species_num+1, thermodynamic_active_species_num
+          pdel(:,:) = pdel(:,:) + pdel_in(:, :)*tracer(:,:,species_idx(qdx))
+        end do
+      end if
+
+      ke_vint = 0._r8
+      se_vint = 0._r8
       select case (vcoord)
       case(vc_moist_pressure, vc_dry_pressure)
-         if ((.not. present(ps)) .or. (.not. present(phis))) then
-            write(iulog, *) subname, ' ps and phis must be present for ',     &
+         if (.not. present(ptop).or. (.not. present(phis))) then
+            write(iulog, *) subname, ' ptop and phis must be present for ',     &
                  'moist/dry pressure vertical coordinate'
-            call endrun(subname//':  ps and phis must be present for '//      &
+            call endrun(subname//':  ptop and phis must be present for '//      &
                  'moist/dry pressure vertical coordinate')
          end if
-         ke_vint = 0._r8
-         se_vint = 0._r8
-         wv_vint = 0._r8
+         po_vint = ptop
          do kdx = 1, SIZE(tracer, 2)
             do idx = 1, SIZE(tracer, 1)
                ke_vint(idx) = ke_vint(idx) + (pdel(idx, kdx) *                &
-                    0.5_r8 * (U(idx, kdx)**2 + V(idx, kdx)**2) / gravit)
+                    0.5_r8 * (U(idx, kdx)**2 + V(idx, kdx)**2)) * rga
                se_vint(idx) = se_vint(idx) + (T(idx, kdx) *                   &
-                    cp_or_cv(idx, kdx) * pdel(idx, kdx) / gravit)
-               wv_vint(idx) = wv_vint(idx) + (tracer(idx, kdx, wvidx) *       &
-                    pdel(idx, kdx) / gravit)
+                    cp_or_cv(idx, kdx) * pdel(idx, kdx) * rga)
+               po_vint(idx) =  po_vint(idx)+pdel(idx, kdx)
+
             end do
          end do
          do idx = 1, SIZE(tracer, 1)
-            se_vint(idx) = se_vint(idx) + (phis(idx) * ps(idx) / gravit)
+            po_vint(idx) =  (phis(idx) * po_vint(idx) * rga)
          end do
       case(vc_height)
-         if (.not. present(z_mid)) then
-            write(iulog, *) subname,                                          &
-                 ' z_mid must be present for height vertical coordinate'
-            call endrun(subname//': z_mid must be present for height '//      &
-                 'vertical coordinate')
+         if (.not. present(phis)) then
+            write(iulog, *) subname, ' phis must be present for ',     &
+                 'heigt-based vertical coordinate'
+            call endrun(subname//':  phis must be present for '//      &
+                 'height-based vertical coordinate')
          end if
-         ke_vint = 0._r8
-         se_vint = 0._r8
-         wv_vint = 0._r8
+         po_vint = 0._r8
          do kdx = 1, SIZE(tracer, 2)
             do idx = 1, SIZE(tracer, 1)
                ke_vint(idx) = ke_vint(idx) + (pdel(idx, kdx) *                &
-                    0.5_r8 * (U(idx, kdx)**2 + V(idx, kdx)**2) / gravit)
+                    0.5_r8 * (U(idx, kdx)**2 + V(idx, kdx)**2) * rga)
                se_vint(idx) = se_vint(idx) + (T(idx, kdx) *                   &
-                    cp_or_cv(idx, kdx) * pdel(idx, kdx) / gravit)
+                    cp_or_cv(idx, kdx) * pdel(idx, kdx) * rga)
                ! z_mid is height above ground
-               se_vint(idx) = se_vint(idx) + (z_mid(idx, kdx) +               &
-                    phis(idx) / gravit) * pdel(idx, kdx)
-               wv_vint(idx) = wv_vint(idx) + (tracer(idx, kdx, wvidx) *       &
-                    pdel(idx, kdx) / gravit)
+               po_vint(idx) = po_vint(idx) + (z_mid(idx, kdx) +               &
+                    phis(idx) * rga) * pdel(idx, kdx)
             end do
          end do
       case default
@@ -1670,26 +1736,39 @@ CONTAINS
          call endrun(subname//': vertical coordinate not supported')
       end select
       if (present(te)) then
-         te  = se_vint + ke_vint
+         te  = se_vint + po_vint+ ke_vint
       end if
       if (present(se)) then
          se = se_vint
       end if
+      if (present(po)) then
+         po = po_vint
+      end if
       if (present(ke)) then
          ke = ke_vint
-      end if
-      if (present(wv)) then
-         wv = wv_vint
       end if
       !
       ! vertical integral of total liquid water
       !
+      if (.not.moist_mixing_ratio) then
+        pdel = pdel_in! set pseudo density to dry
+      end if
+
+      wv_vint = 0._r8
+      do kdx = 1, SIZE(tracer, 2)
+        do idx = 1, SIZE(tracer, 1)
+          wv_vint(idx) = wv_vint(idx) + (tracer(idx, kdx, wvidx) *       &
+               pdel(idx, kdx) * rga)
+        end do
+      end do
+      if (present(wv)) wv = wv_vint
+
       liq_vint = 0._r8
       do qdx = 1, thermodynamic_active_species_liq_num
          do kdx = 1, SIZE(tracer, 2)
             do idx = 1, SIZE(tracer, 1)
-               liq_vint(idx) = liq_vint(idx) + (pdel(idx, kdx) *              &
-                    tracer(idx, kdx, species_liq_idx(qdx)) / gravit)
+               liq_vint(idx) = liq_vint(idx) + (pdel(idx, kdx) *         &
+                    tracer(idx, kdx, species_liq_idx(qdx)) * rga)
             end do
          end do
       end do
@@ -1703,7 +1782,7 @@ CONTAINS
          do kdx = 1, SIZE(tracer, 2)
             do idx = 1, SIZE(tracer, 1)
                ice_vint(idx) = ice_vint(idx) + (pdel(idx, kdx) *              &
-                    tracer(idx, kdx, species_ice_idx(qdx))  / gravit)
+                    tracer(idx, kdx, species_ice_idx(qdx))  * rga)
             end do
          end do
       end do
@@ -1731,9 +1810,6 @@ CONTAINS
          end select
       end if
       deallocate(species_idx, species_liq_idx, species_ice_idx)
-
-   end subroutine get_hydrostatic_energy_1hd
-
-   !===========================================================================
+    end subroutine get_hydrostatic_energy_1hd
 
 end module cam_thermo
