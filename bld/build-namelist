@@ -670,6 +670,22 @@ my $rad_pkg = $cfg->get('rad');
 if ($rad_pkg eq 'camrt') {
     add_default($nl, 'absems_data');
 }
+elsif ($rad_pkg eq 'rrtmgp') {
+    # Data for gas optics is provided with the source code.  The paths to this data
+    # are relative to the root directory of the cam component.
+    my $cam_dir = $cfg->get('cam_dir');
+
+    add_default($nl, 'rrtmgp_coefs_lw_file');
+    my $rel_path = $nl->get_value('rrtmgp_coefs_lw_file');
+    my $abs_path = quote_string(set_abs_filepath($rel_path, $cam_dir));
+    # need to overwrite the relative pathname with the absolute pathname in the namelist object
+    $nl->set_variable_value('radiation_nl', 'rrtmgp_coefs_lw_file', $abs_path);
+
+    add_default($nl, 'rrtmgp_coefs_sw_file');
+    $rel_path = $nl->get_value('rrtmgp_coefs_sw_file');
+    my $abs_path = quote_string(set_abs_filepath($rel_path, $cam_dir));
+    $nl->set_variable_value('radiation_nl', 'rrtmgp_coefs_sw_file', $abs_path);
+}
 
 # Solar irradiance
 
@@ -681,15 +697,18 @@ if (defined $nl->get_value('solar_const') and
 
 }
 
-if ($rad_pkg eq 'rrtmg' or $chem =~ /waccm/) {
+if ($rad_pkg =~ /rrtmg/ or $chem =~ /waccm/) {
 
    if (defined $nl->get_value('solar_const')) {
-      die "$ProgName - ERROR: Specifying solar_const with RRTMG or WACCM is not allowed.\n"
+      die "$ProgName - ERROR: Specifying solar_const with RRTMG/RRTMGP or WACCM is not allowed.\n"
    }
 
    # use solar data file as the default for rrtmg and waccm_ma
    add_default($nl, 'solar_irrad_data_file');
-   add_default($nl, 'solar_htng_spctrl_scl', 'val'=>'.true.');
+   # restrict this option to just the rrtmg code
+   if ($rad_pkg eq 'rrtmg') {
+       add_default($nl, 'solar_htng_spctrl_scl', 'val'=>'.true.');
+   }
 
 }
 elsif (!$simple_phys) {
@@ -1095,7 +1114,7 @@ if ($aer_model eq 'mam' ) {
   }
 
   if ($rad_prog_sslt) {
-    if ($rrtmg) {
+    if ($rad_pkg =~ /rrtmg/) {
         push(@aero_names, "SSLT01", "SSLT02", "SSLT03", "SSLT04");
         push(@aerosources, "A:", "A:", "A:", "A:" );
     } else {
@@ -1103,7 +1122,7 @@ if ($aer_model eq 'mam' ) {
         push(@aerosources, "N:", "N:");
     }
   } elsif ($moz_aero_data =~ /$TRUE/io ) {
-    if ($rrtmg) {
+    if ($rad_pkg =~ /rrtmg/) {
         push(@aero_names, "sslt1", "sslt2", "sslt3", "sslt4");
         push(@aerosources, "N:", "N:", "N:", "N:" );
     } else {
@@ -1618,7 +1637,7 @@ if ($rad_pkg ne 'none') {
 }
 
 # Cloud optics
-if ($rrtmg) {
+if ($rad_pkg =~ /rrtmg/) { # matches both rrtmg and rrtmgp
     add_default($nl, 'liqcldoptics');
     add_default($nl, 'icecldoptics');
     add_default($nl, 'liqopticsfile');

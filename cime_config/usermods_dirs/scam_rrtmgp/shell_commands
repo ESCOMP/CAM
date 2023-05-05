@@ -1,0 +1,21 @@
+./xmlchange --force MPILIB=mpi-serial
+
+./xmlchange --force REST_OPTION=never
+
+./xmlchange --force CLM_FORCE_COLDSTART=on
+
+./xmlchange --force PTS_LON=238.5
+
+./xmlchange --force PTS_LAT=31.5
+
+./xmlchange --force RUN_STARTDATE=1999-07-11
+
+./xmlchange --force START_TOD=0
+
+./xmlchange --force STOP_OPTION=nsteps
+
+./xmlchange --force STOP_N=144
+
+./xmlchange --append CAM_CONFIG_OPTS="--rad rrtmgp"
+
+./xmlchange DOUT_S=FALSE

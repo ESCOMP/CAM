@@ -1,0 +1,11 @@
+nhtfrq = 0,-3,1
+mfilt = 1,8,1
+ndens = 2,2,2
+history_budget = .true.
+history_budget_histfile_num = 1
+
+FINCL1 = 'FUS', 'FDS', 'FUL', 'FDL', 'FUSC', 'FDSC', 'FULC', 'FDLC', 'HR', 'QRSC', 'QRLC', 'TOT_CLD_VISTAU', 'TOT_ICLD_VISTAU', 'LIQ_ICLD_VISTAU', 'ICE_ICLD_VISTAU', 'SNOW_ICLD_VISTAU'
+
+FINCL2 = 'SOLIN','FSNT','FSNTC','FSNTOA','FSNTOAC','SWCF','LWCF','FLUT','FLUTC','PRECT','CLDTOT','CLDLOW','CLDHGH','TMQ','TGCLDLWP','TGCLDIWP','QRS','QRSC','QRL','QRLC'
+
+FINCL3 = 'T','Q','U','V','QRS','QRSC','QRL','QRLC','DTCOND','PTTEND','DTCORE','PRECT','LHFLX','SHFLX','FLUT','FLUTC','FSNT','FSNTC'

@@ -1,0 +1,838 @@
+module rrtmgp_inputs
+
+!--------------------------------------------------------------------------------
+! Transform data for state inputs from CAM's data structures to those used by
+! RRTMGP.  Subset the number of model levels if CAM's top exceeds RRTMGP's
+! valid domain.
+!
+! This code is currently set up to send RRTMGP vertical layers ordered bottom
+! to top of model.  Although the RRTMGP is supposed to be agnostic about the   
+! vertical ordering problems have arisen trying to use the top to bottom order
+! as used by CAM's infrastructure.
+!
+!--------------------------------------------------------------------------------
+
+use shr_kind_mod,     only: r8=>shr_kind_r8
+use ppgrid,           only: pcols, pver, pverp
+
+use physconst,        only: stebol
+
+use physics_types,    only: physics_state
+use physics_buffer,   only: physics_buffer_desc
+use camsrfexch,       only: cam_in_t
+
+use radconstants,     only: get_ref_solar_band_irrad, rad_gas_index
+use radconstants,     only: nradgas, gaslist, rrtmg_to_rrtmgp_swbands
+use rad_solar_var,    only: get_variability
+use solar_irrad_data, only : do_spctrl_scaling, sol_tsi
+use rad_constituents, only: rad_cnst_get_gas
+
+use mcica_subcol_gen, only: mcica_subcol_sw, mcica_subcol_lw
+
+use mo_gas_concentrations, only: ty_gas_concs
+use mo_gas_optics_rrtmgp, only: ty_gas_optics_rrtmgp 
+use mo_optical_props, only: ty_optical_props, ty_optical_props_2str, ty_optical_props_1scl
+
+! unneeded use mo_rrtmgp_util_string, only: lower_case 
+use cam_logfile,         only: iulog
+use cam_abortutils,   only: endrun
+
+use cam_history,     only: outfld  ! just for getting ozone VMR above model top.
+use b_checker, only: assert_shape ! checking on shapes
+
+implicit none
+private
+save
+
+public :: &
+   rrtmgp_inputs_init,  &
+   rrtmgp_set_state,    &
+   rrtmgp_set_gases_lw, &
+   rrtmgp_set_gases_sw, &
+   rrtmgp_set_cloud_lw, &
+   rrtmgp_set_cloud_sw, &
+   rrtmgp_set_aer_lw,   &
+   rrtmgp_set_aer_sw
+
+real(r8), parameter :: cldmin = 1.0e-80_r8   ! min cloud fraction
+
+real(r8), parameter :: amdw = 1.607793_r8    ! Molecular weight of dry air / water vapor
+real(r8), parameter :: amdc = 0.658114_r8    ! Molecular weight of dry air / carbon dioxide
+real(r8), parameter :: amdo = 0.603428_r8    ! Molecular weight of dry air / ozone
+real(r8), parameter :: amdm = 1.805423_r8    ! Molecular weight of dry air / methane
+real(r8), parameter :: amdn = 0.658090_r8    ! Molecular weight of dry air / nitrous oxide
+real(r8), parameter :: amdo2 = 0.905140_r8   ! Molecular weight of dry air / oxygen
+real(r8), parameter :: amdc1 = 0.210852_r8   ! Molecular weight of dry air / CFC11
+real(r8), parameter :: amdc2 = 0.239546_r8   ! Molecular weight of dry air / CFC12
+
+! Indices for copying data between cam and rrtmgp arrays
+! Assume the rrtmgp vertical index goes bottom to top of atm
+integer :: ktopcamm ! cam index of top layer
+integer :: ktopradm ! rrtmgp index of layer corresponding to ktopcamm
+integer :: ktopcami ! cam index of top interface
+integer :: ktopradi ! rrtmgp index of interface corresponding to ktopcami
+
+!==================================================================================================
+contains
+!==================================================================================================
+
+subroutine rrtmgp_inputs_init(ktcamm, ktradm, ktcami, ktradi)
+      
+   integer, intent(in) :: ktcamm
+   integer, intent(in) :: ktradm
+   integer, intent(in) :: ktcami
+   integer, intent(in) :: ktradi
+
+   ktopcamm = ktcamm
+   ktopradm = ktradm
+   ktopcami = ktcami
+   ktopradi = ktradi
+
+end subroutine rrtmgp_inputs_init
+
+!==================================================================================================
+
+subroutine rrtmgp_set_state( &
+   pstate, cam_in, ncol, nlay, nlwbands, &
+   nswbands, ngpt_sw, nday, idxday, coszrs, &
+   kdist_sw, &   ! eccf, & !!! Removing eccf from arguments, as it is not needed here
+   band2gpt_sw,    &
+   t_sfc, emis_sfc, t_rad, &
+   pmid_rad, pint_rad, t_day, pmid_day, pint_day, &
+   coszrs_day, alb_dir, alb_dif, tsi) 
+
+   ! arguments
+   type(physics_state), target, intent(in) :: pstate
+   type(cam_in_t),              intent(in) :: cam_in
+   integer,                     intent(in) :: ncol
+   integer,                     intent(in) :: nlay
+   integer,                     intent(in) :: nlwbands
+   integer,                     intent(in) :: nswbands
+   integer,                     intent(in) :: ngpt_sw
+   integer,                     intent(in) :: nday
+   integer,                     intent(in) :: idxday(:)
+   real(r8),                    intent(in) :: coszrs(:)
+   ! real(r8),                    intent(in) :: eccf       ! Earth orbit eccentricity factor
+   integer,                     intent(in) :: band2gpt_sw(:,:) !< (2, nswbands)
+
+   class(ty_gas_optics_rrtmgp), intent(in) :: kdist_sw  ! spectral information
+!!! CHECK pcols vs ncol !!!
+   real(r8), intent(out) :: t_sfc(ncol)              ! surface temperature [K] 
+   real(r8), intent(out) :: emis_sfc(nlwbands,ncol)  ! emissivity at surface []
+   real(r8), intent(out) :: t_rad(ncol,nlay)         ! layer midpoint temperatures [K]
+   real(r8), intent(out) :: pmid_rad(ncol,nlay)      ! layer midpoint pressures [Pa]
+   real(r8), intent(out) :: pint_rad(ncol,nlay+1)    ! layer interface pressures [Pa]
+   real(r8), intent(out) :: t_day(nday,nlay)         ! layer midpoint temperatures [K]
+   real(r8), intent(out) :: pmid_day(nday,nlay)      ! layer midpoint pressure [Pa]
+   real(r8), intent(out) :: pint_day(nday,nlay+1)    ! layer interface pressures [Pa]
+   real(r8), intent(out) :: coszrs_day(nday)         ! cosine of solar zenith angle
+   real(r8), intent(out) :: alb_dir(nswbands,nday)   ! surface albedo, direct radiation
+   real(r8), intent(out) :: alb_dif(nswbands,nday)   ! surface albedo, diffuse radiation
+   ! real(r8), intent(out) :: solin(ncol)             ! incident flux at domain top [W/m2]
+   ! real(r8), intent(out) :: solar_irrad_gpt(nday,ngpt_sw)  ! incident flux at domain top per gpoint [W/m2] AT DAYLIT POINTS
+   ! real(r8), intent(out) :: tsi_scaling_gpt(ngpt_sw)  ! scale factor for irradiance by gpoint [fraction]
+   real(r8), intent(out) :: tsi ! total irradiance W/m2
+
+   ! local variables
+   integer :: k, kk, i, iband
+
+   real(r8) :: solar_band_irrad(nswbands) ! specified solar irradiance in each sw band (per radconstants)
+
+   real(r8) :: sfac(nswbands)             ! time varying scaling factors due to Solar Spectral
+                                          ! Irrad at 1 A.U. per band
+   real(r8) :: wavenumber_limits(2,nswbands)
+
+   ! real(r8) :: toa_flx_by_band(nswbands) ! temporary array of incoming flux by band
+   ! real(r8) :: toa_flx_by_gpt(ngpt_sw) ! temporary array of incoming flux by gpt
+
+   character(len=*), parameter :: sub='rrtmgp_set_state'
+   character(len=512) :: errmsg
+   !--------------------------------------------------------------------------------
+
+   !
+   ! bpm note: the size of pstate%t 's 1st dimension can be larger than ncol. Assume we are only interested in 1:ncol.
+   !
+   ! call assert_shape(pstate%t, (/ncol, pver/), errmsg)
+   ! if (len_trim(errmsg) > 0) then
+   !    write(iulog,*) '['//sub//'] : pstate%t -- shape: ',SHAPE(pstate%t),'[EXPECTED: (',ncol,'x',pver,')] max: ',maxval(pstate%t),' min: ',minval(pstate%t)
+   !    call endrun(sub//trim(errmsg))
+   ! end if
+   ! call assert_shape(pstate%pmid, (/ncol, pver/), errmsg)
+   ! if (len_trim(errmsg) > 0) then
+   !    write(iulog,*) '['//sub//'] : pstate%pmid -- shape: ',SHAPE(pstate%pmid),' max: ',maxval(pstate%pmid),' min: ',minval(pstate%pmid)
+   !    call endrun(sub//trim(errmsg))
+   ! end if
+   ! call assert_shape(pstate%pint, (/ncol, pverp/), errmsg)
+   ! if (len_trim(errmsg) > 0) then
+   !    write(iulog,*) '['//sub//'] : pstate%pint -- shape: ',SHAPE(pstate%pint),' max: ',maxval(pstate%pint),' min: ',minval(pstate%pint)
+   !    call endrun(sub//trim(errmsg))
+   ! end if
+
+   t_sfc = sqrt(sqrt(cam_in%lwup(:ncol)/stebol))  ! Surface temp set based on longwave up flux.
+
+   ! Set surface emissivity to 1.0.
+   ! The land model *does* have its own surface emissivity, but is not spectrally resolved.
+   ! The LW upward flux is calculated with that land emissivity, and the "radiative temperature" t_sfc is derived
+   ! from that flux. We assume, therefore, that the emissivity is unity to be consistent with t_sfc.
+   emis_sfc(:,:) = 1._r8
+
+
+   ! Assume level ordering is the same for both CAM and RAD (top to bottom)
+   if (nlay == pver) then
+      t_rad(:ncol, :) = pstate%t(:ncol, :)
+      pmid_rad(:ncol, :) = pstate%pmid(:ncol, :)
+      pint_rad(:ncol, :) = pstate%pint(:ncol, :)
+   else if (nlay < pver) then
+      t_rad(:ncol, :) = pstate%t(:ncol, pver-nlay+1:pver)
+      pmid_rad(:ncol, :) = pstate%pmid(:ncol, pver-nlay+1:pver)
+      pint_rad(:ncol, :) = pstate%pint(:ncol, pver-nlay+1:pverp)
+   else if (nlay > pver) then
+      t_rad(:ncol, nlay-pver+1:)    = pstate%t(:ncol, :)
+      pmid_rad(:ncol, nlay-pver+1:) = pstate%pmid(:ncol, :)
+      pint_rad(:ncol, nlay-pver+1:) = pstate%pint(:ncol, :)
+   end if
+
+   
+   if (nlay == pverp) then
+      ! add midpoint and top interface values for extra layer
+      t_rad(:,1)      = pstate%t(:ncol,1)
+      pmid_rad(:,1)   = 0.5_r8 * pstate%pint(:ncol,1)
+
+      ! pint_rad(:,nlay+1) = 1.e-2_r8 ! rrtmg value (in hPa?)
+      pint_rad(:,1) = 1.01_r8         ! in Pa
+   else if (nlay > pverp) then
+      call endrun(sub//': ERROR: radiation should not have more layers than CAM has interfaces')
+   end if
+
+   ! properties needed at day columns
+   do i = 1, nday
+      t_day(i,:)    = t_rad(idxday(i),:)
+      pmid_day(i,:) = pmid_rad(idxday(i),:)
+      pint_day(i,:) = pint_rad(idxday(i),:)
+      coszrs_day(i) = coszrs(idxday(i))
+   end do
+ 
+
+   ! total solar incident radiation
+   tsi = sol_tsi ! when using sol_tsi from solar_irrad_data, this is read from a file.
+
+   ! TO BE REMOVED
+   ! We can get TSI from the solar forcing file (above).
+   ! We can't get the scaling here because we might not have access
+   ! to RRTMGP's reference irradiance on bands yet (without running kdist%gas_optics).
+   ! The scaling can be derived in rrtmgp_driver / rte_sw (after %gas_optics provides the toa_flux).
+   ! call get_ref_solar_band_irrad(solar_band_irrad)
+   ! call get_variability(sfac)
+   ! solar_band_irrad = solar_band_irrad(rrtmg_to_rrtmgp_swbands)
+   ! tsi = sum(solar_band_irrad(:)) ! total TSI integrated across bands, BUT NOT scaled for variability
+   ! ! convert from irradiance scale factor per band (sfac) to per gpoint
+   ! ! --> this can then be used in rrtmgp_driver module, rte_sw to scale TOA flux
+   ! tsi_scaling_gpt = 0.0
+
+   ! do iband = 1,nswbands
+   !    tsi_scaling_gpt(band2gpt_sw(1,iband):band2gpt_sw(2,iband)) = sfac(iband)
+   ! end do
+
+   ! if we had a method to produce toa flux by gpoint, we could make that an output here.
+
+   ! <-- begin: old way of setting albedo hard-wired to 14 SW bands -->
+   ! ! Surface albedo (band mapping is hardcoded for RRTMG(P) code)
+   ! ! This mapping assumes nswbands=14.
+   ! if (nswbands /= 14) &
+   !    call endrun(sub//': ERROR: albedo band mapping assumes nswbands=14')
+
+   ! do i = 1, nday
+   !    ! Near-IR bands (1-9 and 14), 820-16000 cm-1, 0.625-12.195 microns
+   !    alb_dir(1:8,i) = cam_in%aldir(idxday(i))
+   !    alb_dif(1:8,i) = cam_in%aldif(idxday(i))
+   !    alb_dir(14,i)  = cam_in%aldir(idxday(i))
+   !    alb_dif(14,i)  = cam_in%aldif(idxday(i))
+
+   !    ! Set band 24 (or, band 9 counting from 1) to use linear average of UV/visible
+   !    ! and near-IR values, since this band straddles 0.7 microns:
+   !    alb_dir(9,i) = 0.5_r8*(cam_in%aldir(idxday(i)) + cam_in%asdir(idxday(i)))
+   !    alb_dif(9,i) = 0.5_r8*(cam_in%aldif(idxday(i)) + cam_in%asdif(idxday(i)))
+
+   !    ! UV/visible bands 25-28 (10-13), 16000-50000 cm-1, 0.200-0.625 micron
+   !    alb_dir(10:13,i) = cam_in%asdir(idxday(i))
+   !    alb_dif(10:13,i) = cam_in%asdif(idxday(i))
+   ! enddo
+   ! <-- end: old way of setting albedo hard-wired to 14 SW bands -->
+
+   ! More flexible way to assign albedo (from E3SM implementation)
+   ! adapted here to loop over bands and cols b/c cam_in has all cols but albedos are daylit cols
+   ! We could remove cols loop if we just set albedos for all columns separate from rrtmgp_set_state.
+   ! Albedos are input as broadband (visible, and near-IR), and we need to map
+   ! these to appropriate bands. Bands are categorized broadly as "visible" or
+   ! "infrared" based on wavenumber, so we get the wavenumber limits here
+   wavenumber_limits = kdist_sw%get_band_lims_wavenumber()
+   ! Loop over bands, and determine for each band whether it is broadly in the
+   ! visible or infrared part of the spectrum (visible or "not visible")
+   do iband = 1,nswbands
+      if (is_visible(wavenumber_limits(1,iband)) .and. &
+         is_visible(wavenumber_limits(2,iband))) then
+
+         ! Entire band is in the visible
+         do i = 1, nday
+            alb_dir(iband,i) = cam_in%asdir(idxday(i))
+            alb_dif(iband,i) = cam_in%asdif(idxday(i))
+         end do
+
+      else if (.not.is_visible(wavenumber_limits(1,iband)) .and. &
+               .not.is_visible(wavenumber_limits(2,iband))) then
+         ! Entire band is in the longwave (near-infrared)
+         do i = 1, nday
+            alb_dir(iband,i) = cam_in%aldir(idxday(i))
+            alb_dif(iband,i) = cam_in%aldif(idxday(i))
+         end do
+      else
+         ! Band straddles the visible to near-infrared transition, so we take
+         ! the albedo to be the average of the visible and near-infrared
+         ! broadband albedos
+         do i = 1, nday
+            alb_dir(iband,i) = 0.5 * (cam_in%aldir(idxday(i)) + cam_in%asdir(idxday(i)))
+            alb_dif(iband,i) = 0.5 * (cam_in%aldif(idxday(i)) + cam_in%asdif(idxday(i)))
+         end do
+      end if
+   end do
+
+
+   ! Strictly enforce albedo bounds
+   where (alb_dir < 0)
+       alb_dir = 0.0_r8
+   end where
+   where (alb_dir > 1)
+       alb_dir = 1.0_r8
+   end where
+   where (alb_dif < 0)
+       alb_dif = 0.0_r8
+   end where
+   where (alb_dif > 1)
+       alb_dif = 1.0_r8
+   end where
+
+end subroutine rrtmgp_set_state
+!
+
+! Function to check if a wavenumber is in the visible or IR
+logical function is_visible(wavenumber)
+
+   ! wavenumber in inverse cm (cm^-1)
+   real(r8), intent(in) :: wavenumber
+
+   ! Threshold between visible and infrared is 0.7 micron, or 14286 cm^-1
+   real(r8), parameter :: visible_wavenumber_threshold = 14286._r8  ! cm^-1
+
+   ! Wavenumber is in the visible if it is above the visible threshold
+   ! wavenumber, and in the infrared if it is below the threshold
+   if (wavenumber > visible_wavenumber_threshold) then
+      is_visible = .true.
+   else
+      is_visible = .false.
+   end if
+
+end function is_visible
+
+
+!==================================================================================================
+function get_molar_mass_ratio(gas_name) result(massratio)
+   ! return the molar mass ratio of dry air to gas based on gas_name
+   character(len=*),intent(in) :: gas_name
+   real(r8)                    :: massratio
+
+   select case (trim(gas_name)) 
+      case ('h2o', 'H2O') 
+         massratio = 1.607793_r8
+      case ('co2', 'CO2')
+         massratio = 0.658114_r8
+      case ('o3', 'O3')
+         massratio = 0.603428_r8
+      case ('ch4', 'CH4')
+         massratio = 1.805423_r8
+      case ('n2o', 'N2O')
+         massratio = 0.658090_r8
+      case ('o2', 'O2')
+         massratio = 0.905140_r8
+      case ('cfc11', 'CFC11')
+         massratio = 0.210852_r8
+      case ('cfc12', 'CFC12')
+         massratio = 0.239546_r8
+      case default
+         call endrun("Invalid gas: "//trim(gas_name))
+   end select
+end function get_molar_mass_ratio
+
+subroutine rad_gas_get_vmr(icall, gas_name, pstate, pbuf, nlay, numactivecols, gas_concs, indices)
+   ! provides volume mixing ratio into gas_concs data structure
+   ! Assumes gas_name will be found with rad_cnst_get_gas(). 
+   integer,                     intent(in)    :: icall      ! index of climate/diagnostic radiation call
+   character(len=*),            intent(in)    :: gas_name
+   type(physics_state), target, intent(in)    :: pstate
+   type(physics_buffer_desc),   pointer       :: pbuf(:)
+   integer,                     intent(in)    :: nlay           ! number of layers in radiation calculation
+   integer,                     intent(in)    :: numactivecols  ! number of columns, ncol for LW, nday for SW
+
+   type(ty_gas_concs), intent(inout)          :: gas_concs      ! the result is VRM inside gas_concs
+
+   integer, intent(in), OPTIONAL :: indices(:) ! this would be idxday, providing the indices of the active columns
+
+   ! local
+   real(r8), pointer     :: gas_mmr(:,:)
+   real(r8), allocatable :: gas_vmr(:,:)
+   character(len=128)    :: errmsg
+   real(r8), allocatable :: mmr(:,:)
+   character(len=*), parameter :: sub = 'rad_gas_get_vmr'
+   ! -- for ozone profile above model
+   real(r8), allocatable :: P_int(:), P_mid(:), alpha(:), beta(:), a(:), b(:), chi_mid(:), chi_0(:), chi_eff(:)
+   real(r8) :: P_top
+   integer :: idx(numactivecols)
+   integer :: i
+   real(r8) :: alpha_value
+   real(r8) :: amdo !! alpha_value of ozone
+
+
+   allocate(mmr(numactivecols, nlay))
+   allocate(gas_vmr(numactivecols, nlay))
+
+   call rad_cnst_get_gas(icall, gas_name, pstate, pbuf, gas_mmr)
+   ! copy the gas and actually convert to mmr in case of H2O (specific to mixing ratio)
+
+   mmr = gas_mmr
+   ! special case: H2O is specific humidity, not mixing ratio. Use r = q/(1-q):
+   if (gas_name == 'h2o') then 
+      mmr = mmr / (1._r8 - mmr)
+   end if  
+
+   ! convert MMR to VMR, multipy by ratio of dry air molar mas to gas molar mass.
+   alpha_value = get_molar_mass_ratio(gas_name)
+
+   ! set the column indices; when indices is provided (e.g. daylit columns) use them, otherwise just count.
+   do i = 1,numactivecols
+      if (present(indices)) then
+         idx(i) = indices(i)
+      else
+         idx(i) = i
+      end if
+   end do
+
+
+   if (nlay == pver) then
+      do i = 1,numactivecols
+         gas_vmr(i, :pver) = mmr(idx(i),:pver) * alpha_value
+      end do
+   else if (nlay < pver) then ! radiation calculation doesn't go through atmospheric depth
+      do i = 1,numactivecols
+         gas_vmr(i,nlay+1-pver:) = mmr(idx(i),:pver) * alpha_value
+      end do
+   else if (nlay > pver) then ! radiation has more layers than atmosphere --> only one extra layer allowed, so could say gas_vmr(:ncol, 2:) = gas_mmr(:ncol, :pver)*amdc
+      do i = 1,numactivecols
+         gas_vmr(i,nlay+1-pver:) = mmr(idx(i),:pver) * alpha_value
+      end do
+      if (nlay == pverp) then
+         gas_vmr(:,1) = gas_vmr(:,nlay+1-pver) 
+      else
+         call endrun(sub//': Radiation can not have more than 1 extra layer.')
+      end if
+   end if
+
+   ! special case: O3
+   ! 
+   ! """
+   ! For the purpose of attenuating solar fluxes above the CAM model top, we assume that ozone 
+   ! mixing decreases linearly in each column from the value in the top layer of CAM to zero at 
+   ! the pressure level set by P_top. P_top has been set to 50 Pa (0.5 hPa) based on model tuning 
+   ! to produce temperatures at the top of CAM that are most consistent with WACCM at similar pressure levels. 
+   ! """
+   if ((gas_name == 'O3') .and. (nlay == pverp)) then
+      allocate(P_int(numactivecols), P_mid(numactivecols), alpha(numactivecols), beta(numactivecols), a(numactivecols), b(numactivecols), chi_mid(numactivecols), chi_0(numactivecols), chi_eff(numactivecols))
+      amdo = get_molar_mass_ratio('O3')
+      do i = 1, numactivecols
+            P_top = 50.0_r8                     ! pressure (Pa) at which we assume O3 = 0 in linear decay from CAM top
+            P_int(i) = pstate%pint(idx(i),1) ! pressure (Pa) at upper interface of CAM
+            P_mid(i) = pstate%pmid(idx(i),1) ! pressure (Pa) at midpoint of top layer of CAM
+            alpha(i) = 0.0_r8
+            beta(i) = 0.0_r8
+            alpha(i) = log(P_int(i)/P_top)
+            beta(i) =  log(P_mid(i)/P_int(i))/log(P_mid(i)/P_top)
+      
+            a(i) =  ( (1._r8 + alpha(i)) * exp(-alpha(i)) - 1._r8 ) / alpha(i)
+            b(i) =  1._r8 - exp(-alpha(i))
+   
+            if (alpha(i) .gt. 0) then              ! only apply where top level is below 80 km
+               chi_mid(i) = mmr(i,1)*amdo          ! molar mixing ratio of O3 at midpoint of top layer
+               chi_0(i) = chi_mid(i) /  (1._r8 + beta(i))
+               chi_eff(i) = chi_0(i) * (a(i) + b(i))
+               gas_vmr(i,1) = chi_eff(i)
+               chi_eff(i) = chi_eff(i) * P_int(i) / amdo / 9.8_r8 ! O3 column above in kg m-2
+               chi_eff(i) = chi_eff(i) / 2.1415e-5_r8             ! O3 column above in DU
+            end if
+      end do
+      deallocate(P_int, P_mid, alpha, beta, a, b, chi_mid, chi_0, chi_eff)
+   end if
+
+   ! other special cases: 
+   ! N2 and CO: If these are in the gas list, would set them to constants
+   ! as in E3SM. Currently, these will abort run because they are not found by rad_cnst_get_gas.
+   ! So while RTE-RRTMGP can cope with them, we do not use them for radiation at this time.
+
+   errmsg = gas_concs%set_vmr(gas_name, gas_vmr)
+   if (len_trim(errmsg) > 0) then
+      call endrun(sub//': error setting CO2: '//trim(errmsg))
+   end if
+
+   deallocate(gas_vmr)
+   deallocate(mmr)
+
+end subroutine rad_gas_get_vmr
+
+!==================================================================================================
+
+subroutine rrtmgp_set_gases_lw(icall, pstate, pbuf, nlay, gas_concs)
+
+   ! The gases in the LW coefficients file are:
+   ! H2O, CO2, O3, N2O, CO, CH4, O2, N2
+   ! But we only use the gases in the radconstants module's gaslist.
+
+   ! The memory management for the gas_concs object is internal.  The arrays passed to it
+   ! are copied to the internally allocated memory.  Each call to the set_vmr method checks
+   ! whether the gas already has memory allocated, and if it does that memory is deallocated
+   ! and new memory is allocated.
+
+   ! arguments
+   integer,                     intent(in)    :: icall      ! index of climate/diagnostic radiation call
+   type(physics_state), target, intent(in)    :: pstate
+   type(physics_buffer_desc),   pointer       :: pbuf(:)
+   integer,                     intent(in)    :: nlay
+   type(ty_gas_concs),          intent(inout) :: gas_concs
+
+   ! local variables
+   integer :: ncol
+
+   integer :: lchnk
+   character(len=*), parameter :: sub = 'rrtmgp_set_gases_lw'
+   integer :: i
+   !--------------------------------------------------------------------------------
+
+   ncol = pstate%ncol
+   lchnk = pstate%lchnk
+   do i = 1,nradgas
+      call rad_gas_get_vmr(icall, gaslist(i), pstate, pbuf, nlay, ncol, gas_concs)
+   end do
+end subroutine rrtmgp_set_gases_lw
+
+!==================================================================================================
+
+subroutine rrtmgp_set_gases_sw( &
+   icall, pstate, pbuf, nlay, nday, &
+   idxday, gas_concs)
+
+   ! Return gas_concs with gas volume mixing ratio on DAYLIT columns.
+
+   ! The gases in the SW coefficients file are:
+   ! H2O, CO2, O3, N2O, CO, CH4, O2, N2, CCL4, CFC11, CFC12, CFC22, HFC143a,
+   ! HFC125, HFC23, HFC32, HFC134a, CF4, NO2
+   ! We only use the gases in radconstants gaslist. 
+
+   ! arguments
+   integer,                     intent(in)    :: icall      ! index of climate/diagnostic radiation call
+   type(physics_state), target, intent(in)    :: pstate
+   type(physics_buffer_desc),   pointer       :: pbuf(:)
+   integer,                     intent(in)    :: nlay
+   integer,                     intent(in)    :: nday
+   integer,                     intent(in)    :: idxday(:)
+   type(ty_gas_concs),          intent(inout) :: gas_concs
+
+   ! local variables
+   character(len=*), parameter :: sub = 'rrtmgp_set_gases_sw'
+   integer :: i
+
+   ! use the optional argument indices to specify which columns are sunlit
+    do i = 1,nradgas
+      call rad_gas_get_vmr(icall, gaslist(i), pstate, pbuf, nlay, nday, gas_concs, indices=idxday)
+   end do
+
+end subroutine rrtmgp_set_gases_sw
+
+!==================================================================================================
+
+subroutine rrtmgp_set_cloud_lw(state, nlwbands, cldfrac, c_cld_lw_abs, lwkDist, cloud_lw)
+
+   ! Create MCICA stochastic arrays for cloud LW optical properties.
+
+   ! arguments
+   type(physics_state),         intent(in)    :: state
+   integer,                     intent(in)    :: nlwbands
+   real(r8),                    intent(in)    :: cldfrac(pcols,pver)               ! combined cloud fraction (snow plus regular)
+   real(r8),                    intent(in)    :: c_cld_lw_abs(nlwbands,pcols,pver) ! combined cloud absorption optics depth (LW)
+   class(ty_gas_optics_rrtmgp), intent(in)    :: lwkDist
+   type(ty_optical_props_1scl), intent(inout) :: cloud_lw
+   ! local vars
+   integer :: i
+   integer :: ncol
+   integer :: ngptlw
+   real(r8), allocatable :: taucmcl(:,:,:) ! cloud optical depth [mcica]
+   character(len=32)  :: sub = 'rrtmgp_set_cloud_lw'
+   character(len=128) :: errmsg
+   !--------------------------------------------------------------------------------
+   ncol   = state%ncol
+   ngptlw = lwkDist%get_ngpt()
+
+   allocate(taucmcl(ngptlw,ncol,pver))
+   
+   !***NB*** this code is currently set up to create the subcols for all model layers
+   !         not just the ones where the radiation calc is being done.  Need
+   !         to subset cldfrac and c_cld_lw_abs to avoid computing unneeded random numbers.
+   
+   call mcica_subcol_lw( &
+      lwkdist,      & ! spectral information
+      nlwbands,     & ! number of spectral bands
+      ngptlw,       & ! number of subcolumns (g-point intervals)
+      ncol,         & ! number of columns
+      ngptlw,       & ! changeseed, should be set to number of subcolumns
+      state%pmid,   & ! layer pressures (Pa)
+      cldfrac,      & ! layer cloud fraction
+      c_cld_lw_abs, & ! cloud optical depth
+      taucmcl       & ! OUTPUT: subcolumn cloud optical depth [mcica] (ngpt, ncol, nver)
+      )
+
+   ! If there is an extra layer in the radiation then this initialization
+   ! will provide zero optical depths there.
+   cloud_lw%tau = 0.0_r8
+   do i = 1, ngptlw
+      cloud_lw%tau(:ncol, ktopradm:, i) = taucmcl(i, :ncol, ktopcamm:)
+   end do
+   errmsg = cloud_lw%validate()
+   if (len_trim(errmsg) > 0) then
+      call endrun(sub//': ERROR: cloud_lw%validate: '//trim(errmsg))
+   end if
+   deallocate(taucmcl)
+end subroutine rrtmgp_set_cloud_lw
+
+!==================================================================================================
+
+subroutine rrtmgp_set_aer_lw(ncol, nlwbands, aer_lw_abs, aer_lw)
+
+   ! Load aerosol optical properties into the RRTMGP object.
+
+   ! arguments
+   integer,                intent(in)    :: ncol
+   integer,                intent(in)    :: nlwbands
+   real(r8),               intent(in)    :: aer_lw_abs(pcols,pver,nlwbands) ! aerosol absorption optics depth (LW)
+   type(ty_optical_props_1scl), intent(inout) :: aer_lw
+   character(len=32)  :: sub = 'rrtmgp_set_aer_lw'
+   character(len=128) :: errmsg
+
+   !--------------------------------------------------------------------------------
+   ! If there is an extra layer in the radiation then this initialization
+   ! will provide zero optical depths there.
+   aer_lw%tau = 0.0_r8
+   aer_lw%tau(:ncol, ktopradm:, :) = aer_lw_abs(:ncol, ktopcamm:, :)
+   errmsg = aer_lw%validate()
+   if (len_trim(errmsg) > 0) then
+      call endrun(sub//': ERROR: aer_lw%validate: '//trim(errmsg))
+   end if
+end subroutine rrtmgp_set_aer_lw
+
+!==================================================================================================
+
+subroutine rrtmgp_set_cloud_sw( &
+   nswbands, nday, nlay, idxday, pmid, cldfrac, &
+   c_cld_tau, c_cld_tau_w, c_cld_tau_w_g, c_cld_tau_w_f, kdist_sw, &
+   cloud_sw)
+
+   ! Create MCICA stochastic arrays for cloud SW optical properties.
+
+   ! arguments
+   integer,                intent(in) :: nswbands
+   integer,                intent(in) :: nday
+   integer,                intent(in) :: nlay           ! number of layers in rad calc (may include "extra layer")
+   integer,                intent(in) :: idxday(:)
+
+   real(r8),               intent(in) :: pmid(nday,nlay)                    ! pressure at layer midpoints (Pa)
+   real(r8),               intent(in) :: cldfrac(pcols,pver)                ! combined cloud fraction (snow plus regular)
+   real(r8),               intent(in) :: c_cld_tau    (nswbands,pcols,pver) ! combined cloud extinction optical depth
+   real(r8),               intent(in) :: c_cld_tau_w  (nswbands,pcols,pver) ! combined cloud single scattering albedo * tau
+   real(r8),               intent(in) :: c_cld_tau_w_g(nswbands,pcols,pver) ! combined cloud assymetry parameter * w * tau
+   real(r8),               intent(in) :: c_cld_tau_w_f(nswbands,pcols,pver) ! combined cloud forward scattered fraction * w * tau
+
+   class(ty_gas_optics_rrtmgp), intent(in)    :: kdist_sw  ! shortwave gas optics object
+   type(ty_optical_props_2str), intent(inout) :: cloud_sw  ! cloud optical properties object
+
+   ! local vars
+   integer, parameter :: changeseed = 1
+
+   integer :: i, k, kk, ns, igpt
+   integer :: ngptsw
+   integer :: nver       ! nver is the number of cam layers in the SW calc.  It
+                         ! does not include the "extra layer".
+
+   real(r8), allocatable :: cldf(:,:)
+   real(r8), allocatable :: tauc(:,:,:)
+   real(r8), allocatable :: ssac(:,:,:)
+   real(r8), allocatable :: asmc(:,:,:)
+   real(r8), allocatable :: taucmcl(:,:,:)
+   real(r8), allocatable :: ssacmcl(:,:,:)
+   real(r8), allocatable :: asmcmcl(:,:,:)
+
+   character(len=32)  :: sub = 'rrtmgp_set_cloud_sw'
+   character(len=128) :: errmsg
+   real(r8) :: small_val = 1.e-80_r8
+   real(r8), allocatable :: day_cld_tau(:,:,:)
+   real(r8), allocatable :: day_cld_tau_w(:,:,:)
+   real(r8), allocatable :: day_cld_tau_w_g(:,:,:)
+   !--------------------------------------------------------------------------------
+   ngptsw = kdist_sw%get_ngpt()
+   nver   = pver - ktopcamm + 1 ! number of CAM's layers in radiation calculation. 
+
+   ! Compute the input quantities needed for the 2-stream optical props
+   ! object.  Also subset the vertical levels and the daylight columns
+   ! here.  But don't reorder the vertical index because the mcica sub-column
+   ! generator assumes the CAM vertical indexing.
+   allocate( &
+      cldf(nday,nver),           &
+      tauc(nswbands,nday,nver),  &
+      ssac(nswbands,nday,nver),  &
+      asmc(nswbands,nday,nver),  &
+      taucmcl(ngptsw,nday,nver), &
+      ssacmcl(ngptsw,nday,nver), &
+      asmcmcl(ngptsw,nday,nver), &
+      day_cld_tau(nswbands,nday,nver),     &
+      day_cld_tau_w(nswbands,nday,nver),   &
+      day_cld_tau_w_g(nswbands,nday,nver))
+
+   ! get daylit arrays on radiation levels, note: expect idxday to be truncated to size nday
+   day_cld_tau     = c_cld_tau(    :, idxday(1:nday), ktopcamm:)
+   day_cld_tau_w   = c_cld_tau_w(  :, idxday(1:nday), ktopcamm:)
+   day_cld_tau_w_g = c_cld_tau_w_g(:, idxday(1:nday), ktopcamm:)
+   cldf = cldfrac(idxday(1:nday), ktopcamm:)  ! daylit cloud fraction on radiation levels
+   tauc = merge(day_cld_tau, 0.0_r8, day_cld_tau > 0.0_r8)  ! start by setting cloud optical depth, clip @ zero
+   asmc = merge(day_cld_tau_w_g / max(day_cld_tau_w, small_val), 0.0_r8, day_cld_tau_w > 0.0_r8)  ! set value of asymmetry
+   ssac = merge(max(day_cld_tau_w, small_val) / max(tauc, small_val), 1.0_r8 , tauc > 0.0_r8)
+   asmc = merge(asmc, 0.0_r8, tauc > 0.0_r8) ! double-check asymmetry; reset when tauc = 0
+
+
+   ! mcica_subcol_sw converts to gpts (e.g., 224 pts instead of 14 bands)
+   ! inputs (pmid, cldf, tauc, ssac, asmc) and outputs (taucmcl, ssacmcl, asmcmcl)
+   ! are on the same nver vertical levels
+   ! output is shape (ngpt, ncol, nver)
+   call mcica_subcol_sw( &
+         kdist_sw, nswbands, ngptsw, nday, nlay, nver, changeseed, &
+         pmid, cldf, tauc, ssac, asmc,     &
+         taucmcl, ssacmcl, asmcmcl) ! 32
+   
+
+   ! If there is an extra layer in the radiation then this initialization
+   ! will provide the optical properties there.
+   ! These should be shape (ncol, nlay, ngpt); assign levels using ktopradm+k, should 
+   cloud_sw%tau(:,:,:) = 0.0_r8
+   cloud_sw%ssa(:,:,:) = 1.0_r8
+   cloud_sw%g(:,:,:)   = 0.0_r8
+   do igpt = 1,ngptsw
+      cloud_sw%g  (:, ktopradm:, igpt) = asmcmcl(igpt, ktopcamm:, :)
+      cloud_sw%ssa(:, ktopradm:, igpt) = ssacmcl(igpt, ktopcamm:, :)
+      cloud_sw%tau(:, ktopradm:, igpt) = taucmcl(igpt, ktopcamm:, :)
+   end do
+
+
+   errmsg = cloud_sw%validate()
+   if (len_trim(errmsg) > 0) then
+      call endrun(sub//': ERROR: cloud_sw%validate: '//trim(errmsg))
+   end if
+
+   ! delta scaling adjusts for forward scattering
+   ! If delta_scale() is applied, cloud_sw%tau differs from RRTMG implementation going into SW calculation.   
+   errmsg = cloud_sw%delta_scale()
+   if (len_trim(errmsg) > 0) then
+      call endrun(sub//': ERROR: cloud_sw%delta_scale: '//trim(errmsg))
+   end if
+
+   ! all information is in cloud_sw, now deallocate
+   deallocate( &
+      cldf, tauc, ssac, asmc, &
+      taucmcl, ssacmcl, asmcmcl,&
+      day_cld_tau, day_cld_tau_w, day_cld_tau_w_g )
+
+end subroutine rrtmgp_set_cloud_sw
+
+!==================================================================================================
+
+subroutine rrtmgp_set_aer_sw( &
+   nswbands, nday, idxday, aer_tau, aer_tau_w, &
+   aer_tau_w_g, aer_tau_w_f, aer_sw)
+
+   ! Load aerosol SW optical properties into the RRTMGP object.
+   !
+   ! *** N.B. *** The input optical arrays from CAM are dimensioned in the vertical
+   !              as 0:pver.  The index 0 is for the extra layer used in the radiation
+   !              calculation.  
+
+
+   ! arguments
+   integer,   intent(in) :: nswbands
+   integer,   intent(in) :: nday
+   integer,   intent(in) :: idxday(:)
+   real(r8),  intent(in) :: aer_tau    (pcols,0:pver,nswbands) ! extinction optical depth
+   real(r8),  intent(in) :: aer_tau_w  (pcols,0:pver,nswbands) ! single scattering albedo * tau
+   real(r8),  intent(in) :: aer_tau_w_g(pcols,0:pver,nswbands) ! asymmetry parameter * w * tau
+   real(r8),  intent(in) :: aer_tau_w_f(pcols,0:pver,nswbands) ! forward scattered fraction * w * tau
+   type(ty_optical_props_2str), intent(inout) :: aer_sw
+
+   ! local variables
+   integer  :: ns
+   integer  :: k, kk
+   integer  :: i
+   integer, dimension(nday) :: day_cols
+   character(len=32)  :: sub = 'rrtmgp_set_aer_sw'
+   character(len=128) :: errmsg
+   !--------------------------------------------------------------------------------
+   ! If there is an extra layer in the radiation then this initialization
+   ! will provide default values there.
+   aer_sw%tau = 0.0_r8
+   aer_sw%ssa = 1.0_r8
+   aer_sw%g   = 0.0_r8
+   day_cols = idxday(1:nday)
+
+   ! aer_sw is on RAD grid, aer_tau* is on CAM grid ... to make sure they align, use ktop*
+   ! aer_sw has dimensions of (nday, nlay, nswbands)
+   aer_sw%tau(1:nday, ktopradm:, :) = max(aer_tau(day_cols, ktopcamm:, :), 0._r8)
+   aer_sw%ssa(1:nday, ktopradm:, :) = merge(aer_tau_w(day_cols, ktopcamm:,:)/aer_tau(day_cols, ktopcamm:, :), 1._r8, aer_tau(day_cols, ktopcamm:, :) > 0._r8)
+   aer_sw%g(  1:nday, ktopradm:, :) = merge(aer_tau_w_g(day_cols, ktopcamm:, :) / aer_tau_w(day_cols, ktopcamm:, :), 0._r8, aer_tau_w(day_cols, ktopcamm:, :) > 1.e-80_r8)
+
+   ! impose limits on the components:
+   ! aer_sw%tau = max(aer_sw%tau, 0._r) <-- already imposed 
+   aer_sw%ssa = min(max(aer_sw%ssa, 0._r8), 1._r8)
+   aer_sw%g = min(max(aer_sw%g, -1._r8), 1._r8)
+   ! by clamping the values here, the validate method should be guaranteed to succeed,
+   ! but we're also saying that any errors in the method to this point are being swept aside. 
+   ! We might want to check for out-of-bounds values and report them in the log file.
+
+   errmsg = aer_sw%validate()
+   if (len_trim(errmsg) > 0) then
+      call endrun(sub//': ERROR: aer_sw%validate: '//trim(errmsg))
+   end if
+end subroutine rrtmgp_set_aer_sw
+
+!==================================================================================================
+
+subroutine expand_and_transpose(ops,arr_in,arr_out)
+   ! based on version in mo_rte_sw
+   class(ty_gas_optics_rrtmgp), intent(in) :: ops  ! spectral information
+   real(r8), dimension(:), intent(in ) :: arr_in  ! (nband)
+   real(r8), dimension(:), intent(out) :: arr_out ! (igpt)
+   ! -------------
+   integer :: nband, ngpt
+   integer :: iband, igpt
+   integer, dimension(2,ops%get_nband()) :: limits
+
+   nband = ops%get_nband()
+   ngpt  = ops%get_ngpt()
+   limits = ops%get_band_lims_gpoint()
+   do iband = 1, nband
+      do igpt = limits(1, iband), limits(2, iband)
+         arr_out(igpt) = arr_in(iband)
+      end do
+   end do
+
+ end subroutine expand_and_transpose
+
+end module rrtmgp_inputs

@@ -1,0 +1,7 @@
+./xmlchange --force STOP_OPTION=ndays
+
+./xmlchange --force STOP_N=2
+
+./xmlchange --append CAM_CONFIG_OPTS="--rad rrtmgp"
+
+./xmlchange DOUT_S=FALSE
