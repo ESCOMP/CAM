@@ -2521,9 +2521,10 @@ CONTAINS
     ! To avoid duplicating long fincl lists in use case files to provide both FV and non-FV
     ! versions this short list of fields is checked for and removed from fincl lists when
     ! the dycore is not FV.
-    integer, parameter :: n_fv_only = 2
+    integer, parameter :: n_fv_only = 10
     character(len=6) :: fv_only_flds(n_fv_only) = &
-       [ 'TH    ', 'MSKtem' ]
+       [ 'VTHzm ', 'WTHzm ', 'UVzm  ', 'UWzm  ', 'Uzm   ', 'Vzm   ', 'Wzm   ', &
+         'THzm  ', 'TH    ', 'MSKtem' ]
 
     integer :: n_vec_comp, add_fincl_idx
     integer, parameter :: nvecmax = 50 ! max number of vector components in a fincl list
