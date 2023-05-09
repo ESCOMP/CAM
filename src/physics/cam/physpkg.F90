@@ -1081,7 +1081,6 @@ contains
 #if ( defined OFFLINE_DYN )
      use metdata,       only: get_met_srf1
 #endif
-    use hemco_interface, only: HCOI_Chunk_Run
     !
     ! Input arguments
     !
@@ -1143,6 +1142,7 @@ contains
 #ifdef TRACER_CHECK
     call gmean_mass ('before tphysbc DRY', phys_state)
 #endif
+
 
     !-----------------------------------------------------------------------
     ! Tendency physics before flux coupler invocation
