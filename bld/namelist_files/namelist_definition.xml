@@ -1908,27 +1908,27 @@ if .true. then output CLUBBs radiative history statistics
 Default: false
 </entry>
 
-<entry id="clubb_vars_zt" type="char*16(10000)"  category="history"
+<entry id="clubb_vars_zt" type="char*35(10000)"  category="history"
        group="clubb_stats_nl" valid_values="" >
 Same as {{ hilight }}fincl1{{ closehilight }}, but for CLUBB statistics on zt grid.
 </entry>
 
-<entry id="clubb_vars_zm" type="char*16(10000)"  category="history"
+<entry id="clubb_vars_zm" type="char*35(10000)"  category="history"
        group="clubb_stats_nl" valid_values="" >
 Same as {{ hilight }}fincl1{{ closehilight }}, but for CLUBB statistics on zm grid.
 </entry>
 
-<entry id="clubb_vars_rad_zt" type="char*16(10000)"  category="history"
+<entry id="clubb_vars_rad_zt" type="char*35(10000)"  category="history"
        group="clubb_stats_nl" valid_values="" >
 Same as {{ hilight }}fincl1{{ closehilight }}, but for CLUBB statistics on radiation zt grid.
 </entry>
 
-<entry id="clubb_vars_rad_zm" type="char*16(10000)"  category="history"
+<entry id="clubb_vars_rad_zm" type="char*35(10000)"  category="history"
        group="clubb_stats_nl" valid_values="" >
 Same as {{ hilight }}fincl1{{ closehilight }}, but for CLUBB statistics on radiation zm grid.
 </entry>
 
-<entry id="clubb_vars_sfc" type="char*16(10000)"  category="history"
+<entry id="clubb_vars_sfc" type="char*35(10000)"  category="history"
        group="clubb_stats_nl" valid_values="" >
 Same as {{ hilight }}fincl1{{ closehilight }}, but for CLUBB statistics on surface.
 </entry>
