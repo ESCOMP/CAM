@@ -1,3 +1,6 @@
+<?xml version="1.0"?>
+<namelist_defaults>
+
 <!-- Solar data from NRL -->
 <solar_irrad_data_file>atm/cam/solar/SolarForcingCMIP6piControl_c160921.nc</solar_irrad_data_file>
 <solar_data_ymd>   18500101           </solar_data_ymd>
@@ -49,10 +52,11 @@
 <ext_frc_cycle_yr>  1850       </ext_frc_cycle_yr>
 
 <!-- Surface emissions -->
-<<srf_emis_type>     CYCLICAL   </srf_emis_type>
+<srf_emis_type>     CYCLICAL   </srf_emis_type>
 <srf_emis_cycle_yr> 1850       </srf_emis_cycle_yr>
 
 <csw_time_type>CYCLICAL</csw_time_type>
+<csw_cycle_yr>1850 </csw_cycle_yr>
 
 <!-- Dycore settings -->
 <se_rsplit>            3 </se_rsplit>
@@ -63,3 +67,6 @@
 <gw_apply_tndmax>   .false. </gw_apply_tndmax>
 <use_gw_convect_dp> .false. </use_gw_convect_dp>
 <use_gw_front>      .false. </use_gw_front>
+
+</namelist_defaults>
+
