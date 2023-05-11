@@ -44,9 +44,17 @@
 <ncdata nlev="32" analytic_ic="1" >atm/cam/inic/cam_vcoords_L32_c180105.nc</ncdata>
 
 <!-- Vertical/Horizontal coordinates only - MPAS initial files for analytic cases-->
+
+<ncdata hgrid="mpasa120" nlev="32" analytic_ic="1" >atm/cam/inic/mpas/mpasa15_L32_notopo_coords_c211118.nc</ncdata>
+<ncdata hgrid="mpasa120" nlev="32" analytic_ic="1" >atm/cam/inic/mpas/mpasa30_L32_notopo_coords_c211118.nc</ncdata>
+<ncdata hgrid="mpasa120" nlev="32" analytic_ic="1" >atm/cam/inic/mpas/mpasa60_L32_notopo_coords_c211118.nc</ncdata>
+<ncdata hgrid="mpasa120" nlev="32" analytic_ic="1" >atm/cam/inic/mpas/mpasa120_L32_notopo_coords_c211118.nc</ncdata>
+<ncdata hgrid="mpasa120" nlev="32" analytic_ic="1" >atm/cam/inic/mpas/mpasa240_L32_notopo_coords_c211118.nc</ncdata>
 <ncdata hgrid="mpasa480" nlev="32" analytic_ic="1" >atm/cam/inic/mpas/mpasa480_L32_notopo_coords_c201125.nc</ncdata>
-<ncdata hgrid="mpasa120" nlev="32" analytic_ic="1" >atm/cam/inic/mpas/mpasa120_L32_notopo_coords_c201216.nc</ncdata>
-<ncdata hgrid="mpasa120" nlev="32" analytic_ic="1" phys="cam6" >atm/cam/inic/mpas/mpasa120_L32_topo_coords_c201022.nc</ncdata>
+
+<ncdata hgrid="mpasa120" nlev="32" analytic_ic="1" phys="cam6"    >atm/cam/inic/mpas/mpasa60_L32_topo_coords_c210518.nc</ncdata>
+<ncdata hgrid="mpasa120" nlev="32" analytic_ic="1" phys="cam6_dev">atm/cam/inic/mpas/mpasa60_L32_topo_coords_c210518.nc</ncdata>
+<ncdata hgrid="mpasa120" nlev="32" analytic_ic="1" phys="cam6"    >atm/cam/inic/mpas/mpasa120_L32_topo_coords_c201022.nc</ncdata>
 <ncdata hgrid="mpasa120" nlev="32" analytic_ic="1" phys="cam_dev" >atm/cam/inic/mpas/mpasa120_L32_topo_coords_c201022.nc</ncdata>
 
 <!-- Files with initial conditions -->
@@ -262,6 +270,8 @@
 
 <ncdata dyn="se" hgrid="ne0np4CONUS.ne30x8"       nlev="70" ic_ymd="101">atm/waccm/ic/FW2000_CONUS_30x8_L70_01-01-0001_c200602.nc</ncdata>
 
+<ncdata hgrid="mpasa30" nlev="32" >atm/cam/inic/mpas/cami_01-01-2000_00Z_mpasa30_L32_CFSR_c210611.nc</ncdata>
+<ncdata hgrid="mpasa60" nlev="32" >atm/cam/inic/mpas/cami_01-01-2000_00Z_mpasa60_L32_CFSR_c210518.nc</ncdata>
 <ncdata hgrid="mpasa120" nlev="32" >atm/cam/inic/mpas/cami_01-01-2000_00Z_mpasa120_L32_CFSR_c210426.nc</ncdata>
 <ncdata hgrid="mpasa480" nlev="32" >atm/cam/inic/mpas/cami_01-01-2000_00Z_mpasa480_L32_CFSR_c211013.nc</ncdata>
 
@@ -319,7 +329,9 @@
 <bnd_topo hgrid="ne0np4.ARCTIC.ne30x4"     >atm/cam/topo/se/ne30x4_ARCTIC_nc3000_Co060_Fi001_MulG_PF_RR_Nsw042_c200428.nc</bnd_topo>
 <bnd_topo hgrid="ne0np4.ARCTICGRIS.ne30x8" >atm/cam/topo/se/ne30x8_ARCTICGRIS_nc3000_Co060_Fi001_MulG_PF_RR_Nsw042_c200428.nc</bnd_topo>
 
-<bnd_topo hgrid="mpasa120" >atm/cam/topo/mpas/mpas_120_nc3000_Co060_Fi001_MulG_PF_Nsw042_c200921.nc</bnd_topo>
+<bnd_topo hgrid="mpasa30" >atm/cam/topo/mpas_30_nc3000_Co015_Fi001_MulG_PF_Nsw011.nc</bnd_topo>
+<bnd_topo hgrid="mpasa60" >atm/cam/topo/mpas_60_nc3000_Co030_Fi001_MulG_PF_Nsw021.nc</bnd_topo>
+<bnd_topo hgrid="mpasa120" >atm/cam/topo/mpas_120_nc3000_Co060_Fi001_MulG_PF_Nsw042_c200921.nc</bnd_topo>
 <bnd_topo hgrid="mpasa480" >atm/cam/topo/mpas_480_nc3000_Co240_Fi001_MulG_PF_Nsw170.nc</bnd_topo>
 
 <!-- Scale Dry Air Mass: 0=> no scaling / +nnn=>scale to nnn Pressure  -->
@@ -1871,7 +1883,11 @@
 <drydep_srf_file hgrid="C192">atm/cam/chem/trop_mam/atmsrf_C192_c200625.nc</drydep_srf_file>
 <drydep_srf_file hgrid="C384">atm/cam/chem/trop_mam/atmsrf_C384_c200625.nc</drydep_srf_file>
 
+<drydep_srf_file hgrid="mpasa15">atm/cam/chem/trop_mam/atmsrf_mpasa15_20210804.nc</drydep_srf_file>
+<drydep_srf_file hgrid="mpasa30">atm/cam/chem/trop_mam/atmsrf_mpasa30_20210804.nc</drydep_srf_file>
+<drydep_srf_file hgrid="mpasa60">atm/cam/chem/trop_mam/atmsrf_mpasa60_20210803.nc</drydep_srf_file>
 <drydep_srf_file hgrid="mpasa120">atm/cam/chem/trop_mam/atmsrf_mpasa120_c090720.nc</drydep_srf_file>
+<drydep_srf_file hgrid="mpasa240">atm/cam/chem/trop_mam/atmsrf_mpasa240_20211115.nc</drydep_srf_file>
 <drydep_srf_file hgrid="mpasa480">atm/cam/chem/trop_mam/atmsrf_mpasa480_c090720.nc</drydep_srf_file>
 
 <!-- depvel data -->
@@ -3085,8 +3101,12 @@
 <mpas_v_theta_eddy_visc2      > 0.0D0 </mpas_v_theta_eddy_visc2>
 <mpas_horiz_mixing            > 2d_smagorinsky </mpas_horiz_mixing>
 
-<mpas_len_disp hgrid="mpasa480">480000.0D0</mpas_len_disp>
-<mpas_len_disp hgrid="mpasa120">120000.0D0</mpas_len_disp>
+<mpas_len_disp hgrid="mpasa15" >  15000.0D0 </mpas_len_disp>
+<mpas_len_disp hgrid="mpasa30" >  30000.0D0 </mpas_len_disp>
+<mpas_len_disp hgrid="mpasa60" >  60000.0D0 </mpas_len_disp>
+<mpas_len_disp hgrid="mpasa120"> 120000.0D0 </mpas_len_disp>
+<mpas_len_disp hgrid="mpasa240"> 240000.0D0 </mpas_len_disp>
+<mpas_len_disp hgrid="mpasa480"> 480000.0D0 </mpas_len_disp>
 
 <mpas_visc4_2dsmag            > 0.05D0 </mpas_visc4_2dsmag>
 <mpas_del4u_div_factor        > 10.0D0 </mpas_del4u_div_factor>
@@ -3117,6 +3137,7 @@
 <mpas_jedi_da> .false. </mpas_jedi_da>
 <mpas_print_detailed_minmax_vel> .true.  </mpas_print_detailed_minmax_vel>
 <mpas_block_decomp_file_prefix hgrid="mpasa480">atm/cam/inic/mpas/mpasa480.graph.info.part.</mpas_block_decomp_file_prefix>
+<mpas_block_decomp_file_prefix hgrid="mpasa240">atm/cam/inic/mpas/mpasa240.graph.info.part.</mpas_block_decomp_file_prefix>
 <mpas_block_decomp_file_prefix hgrid="mpasa120">atm/cam/inic/mpas/mpasa120.graph.info.part.</mpas_block_decomp_file_prefix>
 <mpas_block_decomp_file_prefix hgrid="mpasa60">atm/cam/inic/mpas/mpasa60.graph.info.part.</mpas_block_decomp_file_prefix>
 <mpas_block_decomp_file_prefix hgrid="mpasa30">atm/cam/inic/mpas/mpasa30.graph.info.part.</mpas_block_decomp_file_prefix>
