@@ -1,3 +1,6 @@
+<?xml version="1.0"?>
+<namelist_defaults>
+
 <!-- Solar data from NRL -->
 <solar_irrad_data_file>atm/cam/solar/SolarForcingCMIP6piControl_c160921.nc</solar_irrad_data_file>
 <solar_data_ymd>   18500101           </solar_data_ymd>
@@ -9,21 +12,21 @@
 <!-- Topography -->
 <bnd_topo hgrid="ne30np4" npg="3">atm/cam/topo/se/ne30pg3_gmted2010_modis_bedmachine_nc3000_Laplace0100_20230105.nc</bnd_topo>
 
-<!-- LBC Files : FRANCIS: CHECK/ADVICE !!!!!-->
+<!-- LBC Files : -->
 <flbc_file>atm/waccm/lb/LBC_17500116-20150116_CMIP6_0p5degLat_c180905.nc</flbc_file>
 <flbc_cycle_yr>1850</flbc_cycle_yr>
 <flbc_type>'CYCLICAL'</flbc_type>
 <flbc_list>'CO2','CH4','N2O','CFC11','CFC12','CFC11eq'</flbc_list>
 
 
-<!-- ozone data : FRANCIS: CHECK/ADVICE !!!!! -->
+<!-- ozone data :  -->
 <prescribed_ozone_datapath>   'atm/cam/ozone_strataero'  </prescribed_ozone_datapath>
 <prescribed_ozone_file    >   'ozone_strataero_cyclical_WACCM6_L70_CMIP6-piControl.001_y21-50avg_zm_5day_c180802.nc'       </prescribed_ozone_file>
 <prescribed_ozone_name    >   'O3'  </prescribed_ozone_name>
 <prescribed_ozone_type    >   CYCLICAL   </prescribed_ozone_type>
 <prescribed_ozone_cycle_yr>   1850    </prescribed_ozone_cycle_yr>
 
-<!-- Prescribed stratospheric aerosols : FRANCIS: CHECK/ADVICE !!!!!-->
+<!-- Prescribed stratospheric aerosols : -->
 <prescribed_strataero_cycle_yr>      1850   </prescribed_strataero_cycle_yr>
 <prescribed_strataero_datapath>      'atm/cam/ozone_strataero'   </prescribed_strataero_datapath>
 <prescribed_strataero_file>   'ozone_strataero_cyclical_WACCM6_L70_CMIP6-piControl.001_y21-50avg_zm_5day_c180802.nc' </prescribed_strataero_file>
@@ -31,7 +34,7 @@
 <prescribed_strataero_type>          'CYCLICAL'    </prescribed_strataero_type>
 
 
-<!-- Prescribed oxidants for aerosol chemistry : FRANCIS: CHECK/ADVICE !!!!!-->
+<!-- Prescribed oxidants for aerosol chemistry : -->
 <tracer_cnst_cycle_yr >   1850    </tracer_cnst_cycle_yr>
 <tracer_cnst_datapath >   'atm/cam/tracer_cnst'   </tracer_cnst_datapath>
 <tracer_cnst_file     >   'tracer_cnst_WACCM6_halons_3DmonthlyL70_1850climoCMIP6piControl001_y21-50avg_c180802.nc' </tracer_cnst_file>
@@ -44,10 +47,11 @@
 <ext_frc_cycle_yr>  1850       </ext_frc_cycle_yr>
 
 <!-- Surface emissions -->
-<<srf_emis_type>     CYCLICAL   </srf_emis_type>
+<srf_emis_type>     CYCLICAL   </srf_emis_type>
 <srf_emis_cycle_yr> 1850       </srf_emis_cycle_yr>
 
 <csw_time_type>CYCLICAL</csw_time_type>
+<csw_cycle_yr>1850 </csw_cycle_yr>
 
 <!-- Dycore settings -->
 <se_rsplit>            6 </se_rsplit>
@@ -61,3 +65,6 @@
 
 <tau_0_ubc> .true. </tau_0_ubc>
 <se_nu_top> 1.E6 </se_nu_top>
+
+</namelist_defaults>
+
