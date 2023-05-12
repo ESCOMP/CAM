@@ -33,7 +33,7 @@ use cam_history,         only: addfld, add_default, horiz_only, outfld, hist_fld
 use cam_history_support, only: fillvalue
 
 use pio,                 only: file_desc_t, var_desc_t,               &
-                               pio_int, pio_noerr,                    &
+                               pio_int, pio_double, pio_noerr,        &
                                pio_seterrorhandling, pio_bcast_error, &
                                pio_inq_varid, pio_def_var,            &
                                pio_put_var, pio_get_var, pio_put_att
@@ -647,7 +647,7 @@ subroutine radiation_define_restart(file)
 
    call pio_seterrorhandling(File, PIO_BCAST_ERROR)
 
-   ierr = pio_def_var(File, 'nextsw_cday', pio_int, nextsw_cday_desc)
+   ierr = pio_def_var(File, 'nextsw_cday', pio_double, nextsw_cday_desc)
    ierr = pio_put_att(File, nextsw_cday_desc, 'long_name', 'future radiation calday for surface models')
    if (docosp) then
       ierr = pio_def_var(File, 'cosp_cnt_init', pio_int, cospcnt_desc)
@@ -688,6 +688,7 @@ subroutine radiation_read_restart(file)
 
    integer :: err_handling
    integer :: ierr
+   real(r8) :: temp_var
 
    type(var_desc_t) :: vardesc
    !----------------------------------------------------------------------------
@@ -704,7 +705,8 @@ subroutine radiation_read_restart(file)
    end if
 
    ierr = pio_inq_varid(File, 'nextsw_cday', vardesc)
-   ierr = pio_get_var(File, vardesc, nextsw_cday)
+   ierr = pio_get_var(File, vardesc, temp_var)
+   nextsw_cday = temp_var
 
 end subroutine radiation_read_restart
   

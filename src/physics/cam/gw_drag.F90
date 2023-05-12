@@ -658,6 +658,44 @@ subroutine gw_init()
         call pio_closefile(fh_topo)
      end if
 
+     call addfld ('WBR_HT1',     horiz_only,  'I','m', &
+          'Wave breaking height for DSW')
+     call addfld ('TLB_HT1',     horiz_only,  'I','m', &
+          'Form drag layer height')
+     call addfld ('BWV_HT1',     horiz_only,  'I','m', &
+          'Bottom of freely-propagating OGW regime')
+     call addfld ('TAUDSW1',     horiz_only,  'I','Nm-2', &
+          'DSW enhanced drag')
+     call addfld ('TAUORO1',     horiz_only,  'I','Nm-2', &
+          'lower BC on propagating wave stress')
+     call addfld ('UBMSRC1',     horiz_only,  'I','ms-1', &
+          'below-peak-level on-ridge wind')
+     call addfld ('USRC1',     horiz_only,  'I','ms-1', &
+          'below-peak-level Zonal wind')
+     call addfld ('VSRC1',     horiz_only,  'I','ms-1', &
+          'below-peak-level Meridional wind')
+     call addfld ('NSRC1',     horiz_only,  'I','s-1', &
+          'below-peak-level stratification')
+     call addfld ('MXDIS1',     horiz_only,  'I','m', &
+          'Ridge/obstacle height')
+     call addfld ('ANGLL1',     horiz_only,  'I','degrees', &
+          'orientation clockwise w/resp north-south')
+     call addfld ('ANIXY1',     horiz_only,  'I','1', &
+          'Ridge quality')
+     call addfld ('HWDTH1',     horiz_only,  'I','km', &
+          'Ridge width')
+     call addfld ('CLNGT1',     horiz_only,  'I','km', &
+          'Ridge length')
+     call addfld ('GBXAR1',     horiz_only,  'I','km+2', &
+          'grid box area')
+
+     call addfld ('Fr1_DIAG',     horiz_only,  'I','1', &
+          'Critical Froude number for linear waves')
+     call addfld ('Fr2_DIAG',     horiz_only,  'I','1', &
+          'Critical Froude number for blocked flow')
+     call addfld ('Frx_DIAG',     horiz_only,  'I','1', &
+          'Obstacle Froude Number')
+
      call addfld('UEGW',  (/ 'lev' /) , 'A'  ,'1/s' ,  &
           'Zonal wind profile-entry to GW ' )
      call addfld('VEGW',  (/ 'lev' /) , 'A'  ,'1/s' ,  &
@@ -665,7 +703,13 @@ subroutine gw_init()
      call register_vector_field('UEGW','VEGW')
      call addfld('TEGW',  (/ 'lev' /) , 'A'  ,'K' ,  &
           'Temperature profile-entry to GW ' )
-
+     call addfld('ZEGW',  (/ 'ilev' /) , 'A'  ,'m' ,  &
+          'interface geopotential heights in GW code ' )
+     call addfld('ZMGW',  (/ 'lev' /) , 'A'  ,'m' ,  &
+          'midlayer geopotential heights in GW code ' )
+ 
+     call addfld('TAUM1_DIAG' , (/ 'ilev' /) , 'I'  ,'N/m2' , &
+          'Ridge based momentum flux profile')
      call addfld('TAU1RDGBETAM' , (/ 'ilev' /) , 'I'  ,'N/m2' , &
           'Ridge based momentum flux profile')
      call addfld('UBM1BETA',  (/ 'lev' /) , 'A'  ,'1/s' ,  &
@@ -1184,19 +1228,20 @@ subroutine gw_tend(state, pbuf, dt, ptend, cam_in, flx_heat)
   ! Interface for multiple gravity wave drag parameterization.
   !-----------------------------------------------------------------------
 
-  use physics_types,  only: physics_state_copy, set_dry_to_wet
-  use constituents,   only: cnst_type
-  use physics_buffer, only: physics_buffer_desc, pbuf_get_field
-  use camsrfexch, only: cam_in_t
+  use physics_types,   only: physics_state_copy, set_dry_to_wet
+  use constituents,    only: cnst_type
+  use physics_buffer,  only: physics_buffer_desc, pbuf_get_field
+  use camsrfexch,      only: cam_in_t
   ! Location-dependent cpair
-  use physconst,  only: cpairv, pi
-  use coords_1d,  only: Coords1D
-  use gw_common,  only: gw_prof, gw_drag_prof, calc_taucd, &
-       momentum_flux, momentum_fixer, energy_change, energy_fixer, &
-       coriolis_speed, adjust_inertial
-  use gw_oro,     only: gw_oro_src
-  use gw_front,   only: gw_cm_src
-  use gw_convect, only: gw_beres_src
+  use air_composition, only: cpairv
+  use physconst,       only: pi
+  use coords_1d,       only: Coords1D
+  use gw_common,       only: gw_prof, gw_drag_prof, calc_taucd
+  use gw_common,       only: momentum_flux, momentum_fixer, energy_change
+  use gw_common,       only: energy_fixer, coriolis_speed, adjust_inertial
+  use gw_oro,          only: gw_oro_src
+  use gw_front,        only: gw_cm_src
+  use gw_convect,      only: gw_beres_src
 
   !------------------------------Arguments--------------------------------
   type(physics_state), intent(in) :: state   ! physics state structure
@@ -1866,6 +1911,8 @@ subroutine gw_tend(state, pbuf, dt, ptend, cam_in, flx_heat)
      call outfld('UEGW', u ,  ncol, lchnk)
      call outfld('VEGW', v ,  ncol, lchnk)
      call outfld('TEGW', t ,  ncol, lchnk)
+     call outfld('ZEGW', zi , ncol, lchnk)
+     call outfld('ZMGW', zm , ncol, lchnk)
 
      call gw_rdg_calc(&
         'BETA ', ncol, lchnk, n_rdg_beta, dt,     &
@@ -2074,6 +2121,8 @@ subroutine gw_rdg_calc( &
    real(r8) :: taurx0(ncol,pver+1)
    real(r8) :: taury(ncol,pver+1)
    real(r8) :: taury0(ncol,pver+1)
+   ! Provisional absolute wave stress from gw_drag_prof
+   real(r8) :: tau_diag(ncol,pver+1)
 
    ! U,V tendency accumulators
    real(r8) :: utrdg(ncol,pver)
@@ -2098,9 +2147,9 @@ subroutine gw_rdg_calc( &
    ttrdg = 0._r8
    utrdg = 0._r8
    vtrdg = 0._r8
+   tau_diag = -9999._r8
 
    do nn = 1, n_rdg
-  
       kwvrdg  = 0.001_r8 / ( hwdth(:,nn) + 0.001_r8 ) ! this cant be done every time step !!!
       isoflag = 0   
       effgw   = effgw_rdg * ( hwdth(1:ncol,nn)* clngt(1:ncol,nn) ) / gbxar(1:ncol)
@@ -2118,11 +2167,13 @@ subroutine gw_rdg_calc( &
          ubmsrc, nsrc, rsrc, m2src, tlb, bwv, Fr1, Fr2, Frx, & 
          tauoro, taudsw, hdspwv, hdspdw)
 
+
       call gw_rdg_break_trap(ncol, band_oro, &
          zi, nm, ni, ubm, ubi, rhoi, kwvrdg , bwv, tlb, wbr, & 
          src_level, tlb_level, hdspwv, hdspdw,  mxdis(:,nn), & 
          tauoro, taudsw, tau, & 
          ldo_trapped_waves=trpd_leewv)
+
      
       call gw_drag_prof(ncol, band_oro, p, src_level, tend_level, dt, &
          t, vramp,    &
@@ -2130,7 +2181,7 @@ subroutine gw_rdg_calc( &
          effgw, c, kvtt, q, dse, tau, utgw, vtgw, &
          ttgw, qtgw, egwdffi,   gwut, dttdf, dttke, &
          kwvrdg=kwvrdg, & 
-         satfac_in = 1._r8, lapply_vdiff=gw_rdg_do_vdiff )
+         satfac_in = 1._r8, lapply_vdiff=gw_rdg_do_vdiff , tau_diag=tau_diag )
 
       ! Add the tendencies from each ridge to the totals.
       do k = 1, pver
@@ -2158,6 +2209,27 @@ subroutine gw_rdg_calc( &
       end do
 
       if (nn == 1) then
+         call outfld('BWV_HT1', bwv,     ncol, lchnk)
+         call outfld('TLB_HT1', tlb,     ncol, lchnk)
+         call outfld('WBR_HT1', wbr,     ncol, lchnk)
+         call outfld('TAUDSW1', taudsw,  ncol, lchnk)
+         call outfld('TAUORO1', tauoro,  ncol, lchnk)
+         call outfld('UBMSRC1', ubmsrc,  ncol, lchnk)
+         call outfld('USRC1',   usrc,    ncol, lchnk)
+         call outfld('VSRC1',   vsrc,    ncol, lchnk)
+         call outfld('NSRC1'  , nsrc,    ncol, lchnk)
+         ! Froude numbers
+         call outfld('Fr1_DIAG' , Fr1,    ncol, lchnk)
+         call outfld('Fr2_DIAG' , Fr2,    ncol, lchnk)
+         call outfld('Frx_DIAG' , Frx,    ncol, lchnk)
+         ! Ridge quantities - don't change.  Written for convenience
+         call outfld('MXDIS1' , mxdis(:,nn) ,  ncol, lchnk)
+         call outfld('ANGLL1' , angll(:,nn) ,  ncol, lchnk)
+         call outfld('ANIXY1' , anixy(:,nn) ,  ncol, lchnk)
+         call outfld('HWDTH1' , hwdth(:,nn) ,  ncol, lchnk)
+         call outfld('CLNGT1' , clngt(:,nn) ,  ncol, lchnk)
+         call outfld('GBXAR1' , gbxar ,        ncol, lchnk)
+         call outfld('TAUM1_DIAG' , tau_diag ,  ncol, lchnk)
          call outfld('TAU1RDG'//trim(type)//'M', tau(:,0,:),  ncol, lchnk)
          call outfld('UBM1'//trim(type),         ubm,         ncol, lchnk)
          call outfld('UBT1RDG'//trim(type),      gwut,        ncol, lchnk)

@@ -87,7 +87,7 @@ contains
   subroutine charge_fix_mmr(state, pbuf)
 
     use constituents,        only : cnst_get_ind
-    use physconst,           only : mbarv                       ! Constituent dependent mbar
+    use air_composition,     only : mbarv                       ! Constituent dependent mbar
     use short_lived_species, only : slvd_index,slvd_pbf_ndx => pbf_idx ! Routines to access short lived species in pbuf
     use chem_mods,           only : adv_mass
     use physics_buffer,      only : pbuf_get_field,physics_buffer_desc ! Needed to get variables from physics buffer

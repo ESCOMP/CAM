@@ -17,6 +17,7 @@ module amie_module
   use utils_mod,      only: check_ncerr, check_alloc, boxcar_ave
   use edyn_mpi,       only: ntask, mytid
   use edyn_params,    only: pi, dtr, rtd
+  use input_data_utils, only: time_coordinate
 
   implicit none
 
@@ -66,6 +67,9 @@ module amie_module
   character(len=cl), allocatable :: amienh_files(:)
   character(len=cl), allocatable :: amiesh_files(:)
   integer :: num_files, file_ndx
+
+  type(time_coordinate) :: time_coord_nh
+  type(time_coordinate) :: time_coord_sh
 
 contains
 
@@ -130,6 +134,9 @@ contains
     istat = pio_inq_dimid(ncid_nh, 'lat', id_lat)
     istat = pio_inquire_dimension(ncid_nh, id_lat, len=latp1)
     call check_ncerr(istat, subname, 'AMIE latitude dimension')
+
+    call time_coord_nh%initialize( amienh, set_weights=.false. )
+
     !
     ! Get time dimension:
     istat = pio_inquire(ncid_nh, unlimiteddimid=id_time)
@@ -243,17 +250,17 @@ contains
     !
     ! Allocate 3-d fields:
     if (.not. allocated(pot_nh_input)) then
-       allocate(pot_nh_input(lonp1, latp1, ntimes), stat=ier)
+       allocate(pot_nh_input(lonp1, latp1, 2), stat=ier)
        call check_alloc(ier, subname, 'pot_nh_input', &
             lonp1=lonp1, latp1=latp1, ntimes=ntimes)
     end if
     if (.not. allocated(ekv_nh_input)) then
-       allocate(ekv_nh_input(lonp1, latp1, ntimes), stat=ier)
+       allocate(ekv_nh_input(lonp1, latp1, 2), stat=ier)
        call check_alloc(ier, subname, 'ekv_nh_input', &
             lonp1=lonp1, latp1=latp1, ntimes=ntimes)
     end if
     if (.not. allocated(efx_nh_input)) then
-       allocate(efx_nh_input(lonp1, latp1, ntimes), stat=ier)
+       allocate(efx_nh_input(lonp1, latp1, 2), stat=ier)
        call check_alloc(ier, subname, 'efx_nh_input', &
             lonp1=lonp1, latp1=latp1, ntimes=ntimes)
     end if
@@ -292,6 +299,9 @@ contains
     istat = pio_inq_dimid(ncid_sh, 'lat', id_lat)
     istat = pio_inquire_dimension(ncid_sh, id_lat, len=latp1)
     call check_ncerr(istat, subname, 'AMIE latitude dimension')
+
+    call time_coord_sh%initialize( amiesh, set_weights=.false. )
+
     !
     ! Get time dimension:
     istat = pio_inquire(ncid_sh, unlimiteddimid=id_time)
@@ -405,17 +415,17 @@ contains
     !
     ! Allocate 3-d fields:
     if (.not. allocated(pot_sh_input)) then
-       allocate(pot_sh_input(lonp1, latp1, ntimes), stat=ier)
+       allocate(pot_sh_input(lonp1, latp1, 2), stat=ier)
        call check_alloc(ier, subname, 'pot_sh_input', &
             lonp1=lonp1, latp1=latp1, ntimes=ntimes)
     end if
     if (.not. allocated(ekv_sh_input)) then
-       allocate(ekv_sh_input(lonp1, latp1, ntimes), stat=ier)
+       allocate(ekv_sh_input(lonp1, latp1, 2), stat=ier)
        call check_alloc(ier, subname, 'ekv_sh_input', &
             lonp1=lonp1, latp1=latp1, ntimes=ntimes)
     end if
     if (.not. allocated(efx_sh_input)) then
-       allocate(efx_sh_input(lonp1, latp1, ntimes), stat=ier)
+       allocate(efx_sh_input(lonp1, latp1, 2), stat=ier)
        call check_alloc(ier, subname, 'efx_sh_input', &
             lonp1=lonp1, latp1=latp1, ntimes=ntimes)
     end if
@@ -496,10 +506,9 @@ contains
     integer,  allocatable       :: iw(:)
     real(r8), allocatable       :: w(:)
     integer                     :: i, j
-    integer                     :: nn, iset, iset1, m, mp1, n
+    integer                     :: nn, iset1, iset2, m, mp1, n
     integer                     :: iboxcar
-    integer                     :: idate, bdate, edate
-    real(r8)                    :: model_ut, denoma, f1, f2
+    real(r8)                    :: f1, f2
     real(r8)                    :: del, xmlt, dmlat, dlatm, dlonm, dmltm, rot
     integer                     :: offset(3), kount(3)
     character(len=*), parameter :: subname = 'getamie'
@@ -517,45 +526,36 @@ contains
     end if
 
     nn = size(amie_sh_ut)
-    bdate = year(1)*10000+month(1)*100+day(1)
-    edate = year(nn)*10000+month(nn)*100+day(nn)
-    idate = iyear*10000+imo*100+iday
     !
     !     Check times:
     !
-    iamie=-1
+
+    iamie = 1 - time_coord_sh%times_check()
     check_loop: do while( iamie/=1 )
-       if (masterproc) write(iulog,*) 'file_ndx = ',file_ndx
-
-       iamie = 1
-
-       if (idate<bdate) then
+       if (iamie==2) then
           if (masterproc) then
              write(iulog, "(a,': Model date prior to AMIE first date:',3I5)")   &
                   subname, year(1), month(1), day(1)
           end if
-          iamie = 2
           return
-       endif
-       if (idate>edate) then
+       end if
+
+       if (iamie==0) then
           if (masterproc) then
              write(iulog, "(a,': Model date beyond the AMIE last Data:',3I5)")  &
                   subname, year(nn), month(nn), day(nn)
           end if
-          iamie = 0
 
           if (file_ndx<num_files) then
              file_ndx = file_ndx+1
              call close_files()
              call open_files()
+             iamie = 1 - time_coord_sh%times_check()
           else
              return
           end if
-
-       endif
+       end if
     end do check_loop
-
-    model_ut = real(iutsec, kind=r8) / 3600._r8
 
 !     get SH AMIE data
     pot_sh_amie(:,:) = 0._r8
@@ -568,58 +568,40 @@ contains
     !
 
     iboxcar = 0
-    iset = 0
-    iset1 = nn
-    do i=1,nn
-       if (amie_sh_ut(i) < model_ut+(iday-day(i))*24._r8) iset = i
-    end do
 
-    if (iset == 0) iset = 1
-    if (iset == nn) iset = nn-1
-    iset1 = iset + 1
+    call time_coord_sh%advance()
 
-    denoma = amie_sh_ut(iset1) - amie_sh_ut(iset)
-    if (denoma > 1._r8) then
-       write(iulog, "(a,2(a,i0))")                                        &
-            subname, ': Finding a gap in the AMIE Data set: modelday = ', &
-            iday, ', amieday = ', day(n)
-       iamie = 2
-       return
-    end if
-    if (denoma == 0._r8) then
-       f1 = 1._r8
-       f2 = 0._r8
-    else
-       f1 = (amie_sh_ut(iset1) - (model_ut+(iday- &
-            day(iset1))*24._r8))/denoma
-       f2 = (model_ut+(iday-day(iset1))*24._r8 - &
-            amie_sh_ut(iset))/denoma
-    end if
+    iset1 = time_coord_sh%indxs(1)
+    iset2 = time_coord_sh%indxs(2)
+
+    f1 = time_coord_sh%wghts(1)
+    f2 = time_coord_sh%wghts(2)
+
     cusplat_sh_amie = (f1*cusplat_sh_input(iset1) + &
-         f2*cusplat_sh_input(iset))
+                       f2*cusplat_sh_input(iset2))
     cuspmlt_sh_amie = (f1*cuspmlt_sh_input(iset1) + &
-         f2*cuspmlt_sh_input(iset))
-    hpi_sh_amie = (f1*hpi_sh_input(iset1) + f2*hpi_sh_input(iset))
-    pcp_sh_amie = (f1*pcp_sh_input(iset1) + f2*pcp_sh_input(iset))
+                       f2*cuspmlt_sh_input(iset2))
+    hpi_sh_amie = (f1*hpi_sh_input(iset1) + f2*hpi_sh_input(iset2))
+    pcp_sh_amie = (f1*pcp_sh_input(iset1) + f2*pcp_sh_input(iset2))
 
-    offset = (/1,1,iset/)
+    offset = (/1,1,iset1/)
     kount = (/lonp1,latp1,2/)
 
     call update_3d_fields( ncid_sh, offset, kount, pot_sh_input,ekv_sh_input,efx_sh_input )
     if (iboxcar == 0) then
-       pot_sh_amie(:,:) = (f1*pot_sh_input(:,:,2) + &
-            f2*pot_sh_input(:,:,1))
-       ekv_sh_amie(:,:) = (f1*ekv_sh_input(:,:,2) + &
-            f2*ekv_sh_input(:,:,1))
-       efx_sh_amie(:,:) = (f1*efx_sh_input(:,:,2) + &
-            f2*efx_sh_input(:,:,1))
+       pot_sh_amie(:,:) = (f1*pot_sh_input(:,:,1) + &
+                           f2*pot_sh_input(:,:,2))
+       ekv_sh_amie(:,:) = (f1*ekv_sh_input(:,:,1) + &
+                           f2*ekv_sh_input(:,:,2))
+       efx_sh_amie(:,:) = (f1*efx_sh_input(:,:,1) + &
+                           f2*efx_sh_input(:,:,2))
     else
        call boxcar_ave(pot_sh_input,pot_sh_amie,lonp1,latp1, &
-            nn,iset,iboxcar)
+            nn,iset1,iboxcar)
        call boxcar_ave(efx_sh_input,efx_sh_amie,lonp1,latp1, &
-            nn,iset,iboxcar)
+            nn,iset1,iboxcar)
        call boxcar_ave(ekv_sh_input,ekv_sh_amie,lonp1,latp1, &
-            nn,iset,iboxcar)
+            nn,iset1,iboxcar)
     end if
 !
 !     get NH AMIE data
@@ -632,58 +614,41 @@ contains
     pcp_nh_amie = 0._r8
 
     iboxcar = 0
-    iset = 0
-    iset1 = nn
 
-    do i=1,nn
-       if (amie_nh_ut(i) < model_ut+(iday-day(i))*24._r8) iset = i
-    end do
-    if (iset == 0) iset = 1
-    if (iset == nn) iset = nn-1
-    iset1 = iset + 1
+    call time_coord_nh%advance()
 
-    denoma = amie_nh_ut(iset1) - amie_nh_ut(iset)
-    if (denoma > 1._r8) then
-       write(iulog, "('getamie: Finding a gap in the AMIE Data set:',  &
-            'modelday, amieday =',2I5)") iday,day(n)
-       iamie = 2
-       return
-    end if
-    if (denoma == 0._r8) then
-       f1 = 1._r8
-       f2 = 0._r8
-    else
-       f1 = (amie_nh_ut(iset1) - (model_ut+(iday- &
-            day(iset1))*24._r8))/denoma
-       f2 = (model_ut+(iday-day(iset1))*24._r8 - &
-            amie_nh_ut(iset))/denoma
-    end if
+    iset1 = time_coord_nh%indxs(1)
+    iset2 = time_coord_nh%indxs(2)
+
+    f1 = time_coord_nh%wghts(1)
+    f2 = time_coord_nh%wghts(2)
+
     cusplat_nh_amie = (f1*cusplat_nh_input(iset1) + &
-         f2*cusplat_nh_input(iset))
+                       f2*cusplat_nh_input(iset2))
     cuspmlt_nh_amie = (f1*cuspmlt_nh_input(iset1) + &
-         f2*cuspmlt_nh_input(iset))
-    hpi_nh_amie = (f1*hpi_nh_input(iset1) + f2*hpi_nh_input(iset))
-    pcp_nh_amie = (f1*pcp_nh_input(iset1) + f2*pcp_nh_input(iset))
+                       f2*cuspmlt_nh_input(iset2))
+    hpi_nh_amie = (f1*hpi_nh_input(iset1) + f2*hpi_nh_input(iset2))
+    pcp_nh_amie = (f1*pcp_nh_input(iset1) + f2*pcp_nh_input(iset2))
 
-    offset = (/1,1,iset/)
+    offset = (/1,1,iset1/)
     kount = (/lonp1,latp1,2/)
 
     call update_3d_fields( ncid_nh, offset, kount, pot_nh_input,ekv_nh_input,efx_nh_input )
 
     if (iboxcar == 0) then
-       pot_nh_amie(:,:) = (f1*pot_nh_input(:,:,2) + &
-            f2*pot_nh_input(:,:,1))
-       ekv_nh_amie(:,:) = (f1*ekv_nh_input(:,:,2) + &
-            f2*ekv_nh_input(:,:,1))
-       efx_nh_amie(:,:) = (f1*efx_nh_input(:,:,2) + &
-            f2*efx_nh_input(:,:,1))
+       pot_nh_amie(:,:) = (f1*pot_nh_input(:,:,1) + &
+                           f2*pot_nh_input(:,:,2))
+       ekv_nh_amie(:,:) = (f1*ekv_nh_input(:,:,1) + &
+                           f2*ekv_nh_input(:,:,2))
+       efx_nh_amie(:,:) = (f1*efx_nh_input(:,:,1) + &
+                           f2*efx_nh_input(:,:,2))
     else
        call boxcar_ave(pot_nh_input,pot_nh_amie,lonp1,latp1, &
-            nn,iset,iboxcar)
+            nn,iset1,iboxcar)
        call boxcar_ave(efx_nh_input,efx_nh_amie,lonp1,latp1, &
-            nn,iset,iboxcar)
+            nn,iset1,iboxcar)
        call boxcar_ave(ekv_nh_input,ekv_nh_amie,lonp1,latp1, &
-            nn,iset,iboxcar)
+            nn,iset1,iboxcar)
     end if
     !
     !     The OLTMAX latitude also defines the co-latitude theta0, which in
@@ -834,8 +799,8 @@ contains
           write(iulog,"(a,': iyear,imo,iday,iutsec = ',3i6,i10)") subname,       &
                iyear, imo, iday, iutsec
           write(iulog,"(2a,i6,2F9.5,3I6,f10.4)")                                 &
-               subname, ': AMIE iset f1,f2,year,mon,day,ut = ', iset,            &
-               f1, f2, year(iset), month(iset), day(iset), amie_nh_ut(iset)
+               subname, ': AMIE iset1 f1,f2,year,mon,day,ut = ', iset1,          &
+               f1, f2, year(iset1), month(iset1), day(iset1), amie_nh_ut(iset1)
           write(iulog,*) subname, ': max,min phihm= ', maxval(phihm), minval(phihm)
        end if
     end if active_task
