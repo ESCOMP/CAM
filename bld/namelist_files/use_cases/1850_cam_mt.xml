@@ -38,7 +38,7 @@
 <tracer_cnst_cycle_yr >   1850    </tracer_cnst_cycle_yr>
 <tracer_cnst_datapath >   'atm/cam/tracer_cnst'   </tracer_cnst_datapath>
 <tracer_cnst_file     >   'tracer_cnst_WACCM6_halons_3DmonthlyL70_1850climoCMIP6piControl001_y21-50avg_c180802.nc' </tracer_cnst_file>
-<tracer_cnst_specifier>   'O3','OH','NO3','HO2' </tracer_cnst_specifier>
+<tracer_cnst_specifier>   'O3','OH','NO3','HO2','HALONS' </tracer_cnst_specifier>
 <tracer_cnst_type     >   'CYCLICAL'  </tracer_cnst_type>
 <tracer_cnst_filelist >   ''   </tracer_cnst_filelist>
 
