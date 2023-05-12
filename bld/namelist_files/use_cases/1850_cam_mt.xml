@@ -45,6 +45,15 @@
 <!-- External forcing -->
 <ext_frc_type>      CYCLICAL   </ext_frc_type>
 <ext_frc_cycle_yr>  1850       </ext_frc_cycle_yr>
+<ext_frc_specifier>
+     'num_a1 -> $INPUTDATA_ROOT/atm/cam/chem/emis/historical_ne30pg3/emissions-cmip6_num_so4_a1_anthro-ene_vertical_mol_175001-201412_ne30pg3_c20200103.nc',
+     'num_a1 -> $INPUTDATA_ROOT/atm/cam/chem/emis/historical_ne30pg3/emissions-cmip6_num_a1_so4_contvolcano_vertical_850-5000_ne30pg3_c20200125.nc',
+     'num_a2 -> $INPUTDATA_ROOT/atm/cam/chem/emis/historical_ne30pg3/emissions-cmip6_num_a2_so4_contvolcano_vertical_850-5000_ne30pg3_c20200125.nc',
+     'SO2 -> $INPUTDATA_ROOT/atm/cam/chem/emis/historical_ne30pg3/emissions-cmip6_SO2_contvolcano_vertical_850-5000_ne30pg3_c20200125.nc',
+     'so4_a1 -> $INPUTDATA_ROOT/atm/cam/chem/emis/historical_ne30pg3/emissions-cmip6_so4_a1_anthro-ene_vertical_mol_175001-201412_ne30pg3_c20200103.nc',
+     'so4_a1 -> $INPUTDATA_ROOT/atm/cam/chem/emis/historical_ne30pg3/emissions-cmip6_so4_a1_contvolcano_vertical_850-5000_ne30pg3_c20200125.nc',
+     'so4_a2 -> $INPUTDATA_ROOT/atm/cam/chem/emis/historical_ne30pg3/emissions-cmip6_so4_a2_contvolcano_vertical_850-5000_ne30pg3_c20200125.nc'
+</ext_frc_specifier>
 
 <!-- Surface emissions -->
 <srf_emis_type>     CYCLICAL   </srf_emis_type>
