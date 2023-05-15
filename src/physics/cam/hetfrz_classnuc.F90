@@ -14,8 +14,8 @@ module hetfrz_classnuc
 !   Yong Wang and Xiaohong Liu, UWyo, 12/2012,
 !   implement in CAM5 and constrain uncertain parameters using natural dust and
 !   BC(soot) datasets.
-!   Yong Wang and Xiaohong Liu, UWyo, 05/2013, implement the PDF-contact angle
-!   approach: Y. Wang et al., Atmos. Chem. Phys., 2014.
+!   Yong Wang and Xiaohong Liu, UWyo, 05/2013, implement the PDF-contact angle approach:
+!   Y. Wang et al., Atmos. Chem. Phys., 2014. https://doi.org/10.5194/acp-14-10411-2014
 !   Jack Chen, NCAR, 09/2015, modify calculation of dust activation fraction.
 !
 !-----------------------------------------------------------------------
@@ -435,7 +435,7 @@ subroutine hetfrz_classnuc_calc(ntypes, types,&
       return
    endif
 
-   do_imm = T <= 263.15_r8
+   do_imm = T <= 263.15_r8 ! temperature threshold for immersion freezing (-10 C)
 
    if (do_imm) then
       ! homogeneous energy of germ formation
@@ -520,6 +520,10 @@ end subroutine  hetfrz_classnuc_calc_rates
 ! Author: Corinna Hoose, UiO, October 2009
 !
 ! Modifications: Yong Wang and Xiaohong Liu, UWyo, 12/2012
+!
+! "Seinfeld & Pandis" referenced in several places in this routine is:
+! Atmospheric Chemistry and Physics: From Air Pollution to Climate Change, 3rd Edition
+! John H. Seinfeld, Spyros N. Pandis  ISBN: 978-1-118-94740-1
 !-----------------------------------------------------------------------
 
 subroutine collkernel( temp, pres, eswtr, rhwincloud, r3lx,  rad, Ktherm, Kcoll )
@@ -568,11 +572,11 @@ subroutine collkernel( temp, pres, eswtr, rhwincloud, r3lx,  rad, Ktherm, Kcoll 
    viscos_air = (1.718_r8+0.0049_r8*tc-1.2e-5_r8*tc*tc)*1.e-5_r8
    ! air density
    rho_air = pres/(rair*temp)
-   ! mean free path: Seinfeld & Pandis 8.6
+   ! mean free path: Seinfeld & Pandis 8.6 (Book: ISBN: 978-1-118-94740-1)
    lambda = 2*viscos_air/(pres*SQRT(8/(pi*rair*temp)))
    ! latent heat of vaporization, varies with T
    latvap = 1000*(-0.0000614342_r8*tc**3 + 0.00158927_r8*tc**2 - 2.36418_r8*tc + 2500.79_r8)
-   ! droplet terminal velocity after Chen & Liu, QJRMS 2004
+   ! droplet terminal velocity after Chen & Liu, QJRMS 2004 (https://doi-org.cuucar.idm.oclc.org/10.1256/qj.03.41)
    a = 8.8462e2_r8
    b = 9.7593e7_r8
    c = -3.4249e-11_r8
@@ -584,11 +588,11 @@ subroutine collkernel( temp, pres, eswtr, rhwincloud, r3lx,  rad, Ktherm, Kcoll 
 
    ! Reynolds number
    Re = 2*vterm*r3lx*rho_air/viscos_air
-   ! thermal conductivity of air: Seinfeld & Pandis eq. 15.75
+   ! thermal conductivity of air: Seinfeld & Pandis eq. 15.75 (Book: ISBN: 978-1-118-94740-1)
    Ktherm_air = 1.e-3_r8*(4.39_r8+0.071_r8*temp)  !J/(m s K)
    ! Prandtl number
    Pr = viscos_air*cpair/Ktherm_air
-   ! water vapor diffusivity: Pruppacher & Klett 13-3
+   ! water vapor diffusivity: Pruppacher & Klett 13-3 (https://link.springer.com/book/10.1007/978-0-306-48100-0)
    Dvap = 0.211e-4_r8*(temp/tmelt)*(pstd/pres)
    ! G-factor = rhoh2o*Xi in Rogers & Yau, p. 104
    G = rhoh2o/((latvap/(rh2o*temp) - 1)*latvap*rhoh2o/(Ktherm_air*temp) &
@@ -596,7 +600,7 @@ subroutine collkernel( temp, pres, eswtr, rhwincloud, r3lx,  rad, Ktherm, Kcoll 
 
    do idx = 1,ntot
       if (rad(idx)>0._r8) then
-         ! Knudsen number (Seinfeld & Pandis 8.1)
+         ! Knudsen number (Seinfeld & Pandis 8.1) (Book: ISBN: 978-1-118-94740-1)
          Kn = lambda/rad(idx)
          ! aerosol diffusivity
          Daer = boltz*temp*(1 + Kn)/(6*pi*rad(idx)*viscos_air)
@@ -604,10 +608,10 @@ subroutine collkernel( temp, pres, eswtr, rhwincloud, r3lx,  rad, Ktherm, Kcoll 
          ! Schmidt number
          Sc = viscos_air/(Daer*rho_air)
 
-         ! Young (1974) first equ. on page 771
+         ! Young (1974) first equ. on page 771 (doi: 10.1175/1520-0469(1974)031<0768:TROCNI>2.0.CO;2)
          K_brownian = 4*pi*r3lx*Daer*(1 + 0.3_r8*Re**0.5_r8*Sc**0.33_r8)
 
-         ! thermal conductivities from Seinfeld & Pandis, Table 8.6
+         ! thermal conductivities from Seinfeld & Pandis, Table 8.6 (Book: ISBN: 978-1-118-94740-1)
          ! form factor
          f_t = 0.4_r8*(1._r8 + 1.45_r8*Kn + 0.4_r8*Kn*EXP(-1._r8/Kn))      &
               *(Ktherm_air + 2.5_r8*Kn*Ktherm(idx))                      &
