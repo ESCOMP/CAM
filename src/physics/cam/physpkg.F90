@@ -352,8 +352,8 @@ contains
         ! initialize harmonized emissions component (HEMCO). this will add
         ! pbuf fields so must go before pbuf_initialize. also, it must go
         ! before pbuf_cam_snapshot_register as pbuf fields are registered within
-        ! hcoi_chunk_init here.
-        call hcoi_chunk_init()
+        ! HCOI_Chunk_Init here.
+        call HCOI_Chunk_Init()
     endif
 
     ! This needs to be last as it requires all pbuf fields to be added

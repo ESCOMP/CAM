@@ -248,21 +248,22 @@ contains
       ! check if extfrc available?
       if(pcnst_is_extfrc(n)) then
         ! add extfrc
-        ! "external insitu forcing" (1/cm^3/s) -- NOTE UNITS COMING OUT OF HEMCO are
-        ! kg/m2/s, so unit conversion must be done
-        !
-        ! using species factor...
-        ! (kg_to_g is actually kg/g...)
-        !
-        !     1 / (kg/molec cm2/m2) = molec/kg m2/cm2
-        !
-        ! kg/m2/s * molec/kg m2/cm2 = molec/cm2/s
-        ! now divide by z-interface height (in CM!) for each height to get the right answer!
-        ! (hplin, 11/14/20)
-        kg_to_molec = 1/(adv_mass(n) / avogadro * cm2_to_m2 * kg_to_g)
+        ! "external insitu forcing" (1/cm^3/s)
 
         tmpIdx = hco_pbuf_idx(n)
         if(tmpIdx > 0) then
+          ! Note: units coming out of HEMCO are in kg/m2/s, so unit conversion must be done
+          !
+          ! using species factor...
+          ! (kg_to_g is actually kg/g...)
+          !
+          !     1 / (kg/molec cm2/m2) = molec/kg m2/cm2
+          !
+          ! kg/m2/s * molec/kg m2/cm2 = molec/cm2/s
+          ! now divide by z-interface height (in CM!) for each height to get the right answer!
+          ! (hplin, 11/14/20)
+          kg_to_molec = 1/(adv_mass(n) / avogadro * cm2_to_m2 * kg_to_g)
+
           ! this is already in chunk, retrieve it
           call pbuf_get_field(pbuf, tmpIdx, pbuf_ik)
 
@@ -293,9 +294,6 @@ contains
              call outfld( xfcname, frcing_col(:ncol), ncol, lchnk )
              xfcname = trim(extfrc_lst(m))//'_CMXF'
              call outfld( xfcname, frcing_col_kg(:ncol), ncol, lchnk )
-             if ( masterproc ) then
-                 ! write(iulog,*) "mo_extfrc hemco: debug added 3D emiss for ", TRIM(solsym(n)), maxval(frcing(:ncol,:,m))
-             endif
           endif
         endif
       endif
@@ -355,8 +353,10 @@ contains
 
     if(masterproc) then
         write(iulog,*) "hco_set_srf_emissions: first run pcnst_is_extfrc cache"
-        write(iulog,*) pcnst_is_extfrc
-    endif
+        do n = 1, gas_pcnst
+           write(iulog,*) trim(fldname_ns(n)), ' : ', pcnst_is_extfrc(n)
+        end do
+     endif
 
     ! Replicate functionality in extfrc_inti to create _XFRC... diagnostics
     call phys_getopts( &
