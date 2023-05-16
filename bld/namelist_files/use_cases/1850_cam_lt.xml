@@ -9,9 +9,6 @@
 <!-- Initial conditions-->
 <ncdata hgrid="ne30np4" npg="3" nlev="58">atm/cam/inic/se/FWsc_ne30pg3_58L_GRID_48_taperstart10km_lowtop_BL10_v3_beta1p75_Top_43km.nc</ncdata>
 
-<!-- Topography -->
-<bnd_topo hgrid="ne30np4" npg="3">atm/cam/topo/se/ne30pg3_gmted2010_modis_bedmachine_nc3000_Laplace0100_20230105.nc</bnd_topo>
-
 <!-- LBC Files : -->
 <flbc_file>atm/waccm/lb/LBC_17500116-20150116_CMIP6_0p5degLat_c180905.nc</flbc_file>
 <flbc_cycle_yr>1850</flbc_cycle_yr>
@@ -50,7 +47,7 @@
 <!-- External forcing -->
 <ext_frc_type>      CYCLICAL   </ext_frc_type>
 <ext_frc_cycle_yr>  1850       </ext_frc_cycle_yr>
-<ext_frc_specifier> 
+<ext_frc_specifier>
      'num_a1 -> $INPUTDATA_ROOT/atm/cam/chem/emis/historical_ne30pg3/emissions-cmip6_num_so4_a1_anthro-ene_vertical_mol_175001-201412_ne30pg3_c20200103.nc',
      'num_a1 -> $INPUTDATA_ROOT/atm/cam/chem/emis/historical_ne30pg3/emissions-cmip6_num_a1_so4_contvolcano_vertical_850-5000_ne30pg3_c20200125.nc',
      'num_a2 -> $INPUTDATA_ROOT/atm/cam/chem/emis/historical_ne30pg3/emissions-cmip6_num_a2_so4_contvolcano_vertical_850-5000_ne30pg3_c20200125.nc',
@@ -58,7 +55,7 @@
      'so4_a1 -> $INPUTDATA_ROOT/atm/cam/chem/emis/historical_ne30pg3/emissions-cmip6_so4_a1_anthro-ene_vertical_mol_175001-201412_ne30pg3_c20200103.nc',
      'so4_a1 -> $INPUTDATA_ROOT/atm/cam/chem/emis/historical_ne30pg3/emissions-cmip6_so4_a1_contvolcano_vertical_850-5000_ne30pg3_c20200125.nc',
      'so4_a2 -> $INPUTDATA_ROOT/atm/cam/chem/emis/historical_ne30pg3/emissions-cmip6_so4_a2_contvolcano_vertical_850-5000_ne30pg3_c20200125.nc'
-</ext_frc_specifier> 
+</ext_frc_specifier>
 
 <!-- Surface emissions -->
 <srf_emis_type>     CYCLICAL   </srf_emis_type>
@@ -67,15 +64,4 @@
 <csw_time_type>CYCLICAL</csw_time_type>
 <csw_cycle_yr>1850 </csw_cycle_yr>
 
-<!-- Dycore settings -->
-<se_rsplit>            3 </se_rsplit>
-<se_nsplit>            2 </se_nsplit>
-<se_hypervis_subcycle> 4 </se_hypervis_subcycle>
-
-<!-- gravity wave settings -->
-<gw_apply_tndmax>   .false. </gw_apply_tndmax>
-<use_gw_convect_dp> .false. </use_gw_convect_dp>
-<use_gw_front>      .false. </use_gw_front>
-
 </namelist_defaults>
-
