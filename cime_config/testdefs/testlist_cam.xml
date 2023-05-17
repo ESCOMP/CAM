@@ -1796,7 +1796,7 @@
   </test>
   <test compset="FCnudged_HCO" grid="ne30_ne30_mg17" name="ERP_Ln9_Vnuopc" testmods="cam/outfrq9s">
     <machines>
-      <machine name="cheyenne" compiler="intel" category="aux_cam"/>
+      <machine name="cheyenne" compiler="intel" category="prealpha"/>
       <machine name="cheyenne" compiler="intel" category="camchem_hco"/>
     </machines>
     <options>
