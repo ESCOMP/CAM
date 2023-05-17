@@ -1538,7 +1538,7 @@ subroutine radiation_tend( &
                !    call endrun(sub//': ERROR code returned by check_bounds gas_concs_sw: '//trim(errmsg))
                ! end if
                ! call check_bounds(kdist_sw, errmsg)
-               call shr_mem_getusage(mem_hw_beg, mem_beg)
+!               call shr_mem_getusage(mem_hw_beg, mem_beg)
                ! inputs are the daylit columns --> output fluxes therefore also on daylit columns. 
                errmsg = rte_sw( kdist_sw,     & ! input (from init)
                                 gas_concs_sw, & ! input, (from rrtmgp_set_gases_sw)
@@ -1555,17 +1555,17 @@ subroutine radiation_tend( &
                                 tsi_scaling=eccf & !< optional input, scaling for irradiance
                )
 
-               call shr_mem_getusage(mem_hw_end, mem_end)
-               temp = mem_hw_end - mem_hw_beg
-               if (masterproc) then
-                  write(iulog, *) 'rte_sw: Increase in memory highwater = ',    &
-                      temp, ' (MB)'
-               end if
-               temp = mem_end - mem_beg
-               if (masterproc) then
-                  write(iulog, *) 'rte_sw: Increase in memory usage = ',    &
-                      temp, ' (MB)'
-               end if
+!               call shr_mem_getusage(mem_hw_end, mem_end)
+!               temp = mem_hw_end - mem_hw_beg
+!               if (masterproc) then
+!                  write(iulog, *) 'rte_sw: Increase in memory highwater = ',    &
+!                      temp, ' (MB)'
+!               end if
+!               temp = mem_end - mem_beg
+!               if (masterproc) then
+!                  write(iulog, *) 'rte_sw: Increase in memory usage = ',    &
+!                      temp, ' (MB)'
+!               end if
 
                if (len_trim(errmsg) > 0) then
                   call endrun(sub//': ERROR code returned by rte_sw: '//trim(errmsg))
