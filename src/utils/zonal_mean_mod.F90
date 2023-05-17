@@ -1318,104 +1318,31 @@ contains
       !
       ! Invert_Matrix: Given the NbasxNbas matrix, calculate and return
       !                the inverse of the matrix.
+      !
+      ! Implemented with the LAPACK DGESV routine.
+      !
       !====================================================================
-      real(r8),parameter:: TINY = 1.e-20_r8
       !
       ! Passed Variables
       !------------------
-      real(r8),intent(in ):: I_Mat   (:,:)
-      integer ,intent(in ):: Nbas
-      real(r8),intent(out):: O_InvMat(:,:)
+      real(r8), intent(inout) :: I_Mat(:,:)  ! input matrix contains P*L*U
+                                             ! decomposition on output
+      integer,  intent(in)    :: Nbas
+      real(r8), intent(out)   :: O_InvMat(:,:)
       !
       ! Local Values
       !-------------
-      real(r8),allocatable:: Mwrk(:,:),Rscl(:)
-      integer ,allocatable:: Indx(:)
-      real(r8):: Psgn,Mmax,Mval,Sval
-      integer :: ii,jj,kk,ndx,i2,ii_max, astat
+      integer, allocatable :: Indx(:)  ! pivot indices
+      integer :: astat, ii
       character(len=*), parameter :: subname = 'Invert_Matrix'
+      character(len=80) :: msg
+
+      external DGESV
 
       ! Allocate work space
       !---------------------
-      allocate(Mwrk(Nbas,Nbas), stat=astat)
-      call handle_allocate_error(astat, subname, 'Mwrk')
-      allocate(Rscl(Nbas), stat=astat)
-      call handle_allocate_error(astat, subname, 'Rscl')
       allocate(Indx(Nbas), stat=astat)
       call handle_allocate_error(astat, subname, 'Indx')
-
-      ! Copy the Input matrix so it can be decomposed
-      !-------------------------------------------------
-      Mwrk(1:Nbas,1:Nbas) = I_Mat(1:Nbas,1:Nbas)
-
-      ! Initailize Row scales
-      !----------------------
-      Psgn = 1._r8
-      do ii=1,Nbas
-        Mmax = 0._r8
-        do jj=1,Nbas
-          if(abs(Mwrk(ii,jj))>Mmax) Mmax = abs(Mwrk(ii,jj))
-        end do
-        if(Mmax==0._r8) then
-          call endrun('Invert_Matrix: Singular Matrix')
-        endif
-        Rscl(ii) = 1._r8/Mmax
-      end do
-
-      ! Decompose the matrix
-      !-----------------------
-      do jj=1,Nbas
-
-        if(jj>1) then
-          do ii=1,(jj-1)
-            Sval = Mwrk(ii,jj)
-            if(ii>1) then
-              do kk=1,(ii-1)
-                Sval = Sval - Mwrk(ii,kk)*Mwrk(kk,jj)
-              end do
-              Mwrk(ii,jj) = Sval
-            endif
-          end do
-        endif
-
-        Mmax = 0._r8
-        do ii=jj,Nbas
-          Sval = Mwrk(ii,jj)
-          if(jj>1) then
-            do kk=1,(jj-1)
-              Sval = Sval - Mwrk(ii,kk)*Mwrk(kk,jj)
-            end do
-            Mwrk(ii,jj) = Sval
-          endif
-          Mval = Rscl(ii)*abs(Sval)
-          if(Mval>=Mmax) then
-            ii_max = ii
-            Mmax = Mval
-          endif
-        end do
-
-        if(jj/=ii_max) then
-          do kk=1,Nbas
-            Mval            = Mwrk(ii_max,kk)
-            Mwrk(ii_max,kk) = Mwrk(jj,kk)
-            Mwrk(jj,kk)     = Mval
-          end do
-          Psgn = -Psgn
-          Rscl(ii_max) = Rscl(jj)
-        endif
-
-        Indx(jj) = ii_max
-        if(jj/=Nbas) then
-          if(Mwrk(jj,jj)==0._r8) Mwrk(jj,jj) = TINY
-          Mval = 1._r8/Mwrk(jj,jj)
-          do ii=(jj+1),Nbas
-            Mwrk(ii,jj) = Mwrk(ii,jj)*Mval
-          end do
-        endif
-
-      end do ! jj=1,Nbas
-
-      if(Mwrk(Nbas,Nbas)==0._r8) Mwrk(Nbas,Nbas) = TINY
 
       ! Initialize the inverse array with the identity matrix
       !-------------------------------------------------------
@@ -1424,41 +1351,15 @@ contains
         O_InvMat(ii,ii) = 1._r8
       end do
 
-      ! Back substitution to construct the inverse
-      !---------------------------------------------
-      do kk=1,Nbas
+      call DGESV(Nbas, Nbas, I_Mat, Nbas, Indx, O_InvMat, Nbas, astat)
 
-        i2 = 0
-        do ii=11,Nbas
-          ndx = Indx(ii)
-          Sval = O_InvMat(ndx,kk)
-          O_InvMat(ndx,kk) = O_InvMat(ii,kk)
-          if(i2/=0) then
-            do jj=i2,(ii-1)
-              Sval = Sval - Mwrk(ii,jj)*O_InvMat(jj,kk)
-            end do
-          elseif(Sval/=0._r8) then
-            i2 = ii
-          endif
-          O_InvMat(ii,kk) = Sval
-        end do
+      if (astat < 0) then
+         write(msg, '(a, i1, a)') 'argument # ', abs(astat), ' has an illegal value'
+         call endrun(subname//': DGESV error return: '//msg)
+      else if (astat > 0) then
+         call endrun(subname//': DGESV error return: matrix is singular')
+      end if
 
-        do ii=Nbas,1,-1
-          Sval = O_InvMat(ii,kk)
-          if(ii<Nbas) then
-            do jj=(ii+1),Nbas
-              Sval = Sval - Mwrk(ii,jj)*O_InvMat(jj,kk)
-            end do
-          endif
-          O_InvMat(ii,kk) = Sval/Mwrk(ii,ii)
-        end do
-
-      end do ! kk=1,Nbas
-
-      ! Clean up this mess
-      !---------------------
-      deallocate(Mwrk)
-      deallocate(Rscl)
       deallocate(Indx)
 
     end subroutine Invert_Matrix

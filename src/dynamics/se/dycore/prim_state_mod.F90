@@ -19,7 +19,7 @@ module prim_state_mod
 CONTAINS
 
   subroutine prim_printstate(elem, tl,hybrid,nets,nete, fvm, omega_cn)
-    use dimensions_mod,         only: ntrac
+    use dimensions_mod,         only: use_cslam
     use constituents,           only: cnst_name
     use air_composition,        only: thermodynamic_active_species_idx_dycore, dry_air_species_num
     use air_composition,        only: thermodynamic_active_species_num,thermodynamic_active_species_idx
@@ -60,7 +60,7 @@ CONTAINS
     n0=tl%n0
     call TimeLevel_Qdp( tl, qsplit, n0_qdp)
     ! moist surface pressure
-    if (ntrac>0) then
+    if (use_cslam) then
       do ie=nets,nete
         moist_ps_fvm(:,:,ie)=SUM(fvm(ie)%dp_fvm(1:nc,1:nc,:),DIM=3)
         do q=dry_air_species_num+1,thermodynamic_active_species_num
@@ -86,7 +86,7 @@ CONTAINS
     do ie=nets,nete
       da_gll(:,:,ie) = elem(ie)%mp(:,:)*elem(ie)%metdet(:,:)
     enddo
-    if (ntrac>0) then
+    if (use_cslam) then
       do ie=nets,nete
         da_fvm(:,:,ie) = fvm(ie)%area_sphere(:,:)
       enddo
@@ -103,7 +103,7 @@ CONTAINS
     varname(3)           = 'T         '
     varname(4)           = 'OMEGA     '
     varname(5)           = 'OMEGA CN  '
-    if (ntrac>0) then
+    if (use_cslam) then
       varname(6)         = 'PSDRY(fvm)'
       varname(7)         = 'PS(fvm)   '
       varname(8)         = 'PSDRY(gll)'
@@ -133,7 +133,7 @@ CONTAINS
         min_local(ie,5)  = 0.0_r8
         max_local(ie,5)  = 0.0_r8
       end if
-      if (ntrac>0) then
+      if (use_cslam) then
         min_local(ie,6) = MINVAL(SUM(fvm(ie)%dp_fvm(1:nc,1:nc,:),DIM=3))
         max_local(ie,6) = MAXVAL(SUM(fvm(ie)%dp_fvm(1:nc,1:nc,:),DIM=3))
         min_local(ie,7) = MINVAL(moist_ps_fvm(:,:,ie))
@@ -168,7 +168,7 @@ CONTAINS
       max_local(ie,nm2+1)  = MAXVAL(elem(ie)%derived%FT(:,:,:))
       min_local(ie,nm2+2)  = MINVAL(elem(ie)%derived%FM(:,:,:,:))
       max_local(ie,nm2+2)  = MAXVAL(elem(ie)%derived%FM(:,:,:,:))
-      if (ntrac>0) then
+      if (use_cslam) then
         do q=1,statediag_numtrac
           varname(nm2+2+q)         = TRIM('F'//TRIM(cnst_name(q)))
           min_local(ie,nm2+2+q) = MINVAL(fvm(ie)%fc(1:nc,1:nc,:,q))
@@ -201,7 +201,7 @@ CONTAINS
     ! tracers
     !
     mass = -1.0_r8
-    if (ntrac>0) then
+    if (use_cslam) then
       do ie=nets,nete
         do q=1,statediag_numtrac
           tmp_fvm(:,:,q,ie) = SUM(fvm(ie)%c(1:nc,1:nc,:,q)*fvm(ie)%dp_fvm(1:nc,1:nc,:),DIM=3)
@@ -243,7 +243,7 @@ CONTAINS
     if (tl%nstep==0.or..not. initial_run) then
       mass_chg(:) = 0.0_R8
       elem(nets)%derived%mass(nm+1:nm+statediag_numtrac)   = mass(nm+1:nm+statediag_numtrac)
-      if (ntrac>0) then
+      if (use_cslam) then
         elem(nets)%derived%mass(6:9)   = mass(6:9)
       else
         elem(nets)%derived%mass(6:7)   = mass(6:7)

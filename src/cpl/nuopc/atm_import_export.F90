@@ -3,6 +3,7 @@ module atm_import_export
   use NUOPC             , only : NUOPC_CompAttributeGet, NUOPC_Advertise, NUOPC_IsConnected
   use NUOPC_Model       , only : NUOPC_ModelGet
   use ESMF              , only : ESMF_GridComp, ESMF_State, ESMF_Mesh, ESMF_StateGet, ESMF_Field
+  use ESMF              , only : ESMF_Clock
   use ESMF              , only : ESMF_KIND_R8, ESMF_SUCCESS, ESMF_MAXSTR, ESMF_LOGMSG_INFO
   use ESMF              , only : ESMF_LogWrite, ESMF_LOGMSG_ERROR, ESMF_LogFoundError
   use ESMF              , only : ESMF_STATEITEM_NOTFOUND, ESMF_StateItem_Flag
@@ -23,6 +24,8 @@ module atm_import_export
   use srf_field_check   , only : set_active_Faoo_fco2_ocn
   use srf_field_check   , only : set_active_Faxa_nhx
   use srf_field_check   , only : set_active_Faxa_noy
+  use srf_field_check   , only : active_Faxa_nhx, active_Faxa_noy
+  use atm_stream_ndep   , only : stream_ndep_init, stream_ndep_interp, stream_ndep_is_initialized
 
   implicit none
   private ! except
@@ -57,7 +60,8 @@ module atm_import_export
   integer                :: drydep_nflds = -huge(1) ! number of dry deposition velocity fields lnd-> atm
   integer                :: megan_nflds = -huge(1)  ! number of MEGAN voc fields from lnd-> atm
   integer                :: emis_nflds = -huge(1)   ! number of fire emission fields from lnd-> atm
-  integer, public        :: ndep_nflds = -huge(1)   ! number  of nitrogen deposition fields from atm->lnd/ocn
+  integer, public        :: ndep_nflds = -huge(1)   ! number of nitrogen deposition fields from atm->lnd/ocn
+  logical                :: atm_provides_lightning = .false. ! cld to grnd lightning flash freq (min-1)
   character(*),parameter :: F01 = "('(cam_import_export) ',a,i8,2x,i8,2x,d21.14)"
   character(*),parameter :: F02 = "('(cam_import_export) ',a,i8,2x,i8,2x,i8,2x,d21.14)"
   character(*),parameter :: u_FILE_u = __FILE__
@@ -76,6 +80,7 @@ contains
     use shr_fire_emis_mod , only : shr_fire_emis_readnl
     use shr_carma_mod     , only : shr_carma_readnl
     use shr_ndep_mod      , only : shr_ndep_readnl
+    use shr_lightning_coupling_mod, only : shr_lightning_coupling_readnl
 
     character(len=*), parameter :: nl_file_name = 'drv_flds_in'
 
@@ -85,9 +90,13 @@ contains
     call shr_megan_readnl(nl_file_name, megan_nflds)
     call shr_fire_emis_readnl(nl_file_name, emis_nflds)
     call shr_carma_readnl(nl_file_name, carma_fields)
+    call shr_lightning_coupling_readnl(nl_file_name, atm_provides_lightning)
 
   end subroutine read_surface_fields_namelists
 
+  !-----------------------------------------------------------
+  ! advertise fields
+  !-----------------------------------------------------------
   subroutine advertise_fields(gcomp, flds_scalar_name, rc)
 
     ! input/output variables
@@ -100,7 +109,6 @@ contains
     type(ESMF_State)       :: exportState
     character(ESMF_MAXSTR) :: stdname
     character(ESMF_MAXSTR) :: cvalue
-    character(len=2)       :: nec_str
     integer                :: n, num
     logical                :: flds_co2a      ! use case
     logical                :: flds_co2b      ! use case
@@ -186,11 +194,21 @@ contains
        call fldlist_add(fldsFrAtm_num, fldsFrAtm, 'Sa_co2diag' )
     end if
 
-    ! from atm - nitrogen deposition
     if (ndep_nflds > 0) then
-       call fldlist_add(fldsFrAtm_num, fldsFrAtm, 'Faxa_ndep', ungridded_lbound=1, ungridded_ubound=ndep_nflds)
+       ! The following is when CAM/WACCM computes ndep
        call set_active_Faxa_nhx(.true.)
        call set_active_Faxa_noy(.true.)
+    else
+       ! The following is used for reading in stream data
+       call set_active_Faxa_nhx(.false.)
+       call set_active_Faxa_noy(.false.)
+    end if
+    ! Assume that 2 fields are always sent as part of Faxa_ndep
+    call fldlist_add(fldsFrAtm_num, fldsFrAtm, 'Faxa_ndep', ungridded_lbound=1, ungridded_ubound=2)
+
+    ! lightning flash freq
+    if (atm_provides_lightning) then
+       call fldlist_add(fldsFrAtm_num, fldsFrAtm, 'Sa_lightning')
     end if
 
     ! Now advertise above export fields
@@ -858,7 +876,7 @@ contains
 
   !===============================================================================
 
-  subroutine export_fields( gcomp, cam_out, rc)
+  subroutine export_fields( gcomp, model_mesh, model_clock, cam_out, rc)
 
     ! -----------------------------------------------------
     ! Set field pointers in export set
@@ -876,16 +894,20 @@ contains
     !-------------------------------
 
     ! input/output variables
-    type(ESMF_GridComp)           :: gcomp
-    type(cam_out_t) , intent(in)  :: cam_out(begchunk:endchunk)
-    integer         , intent(out) :: rc
+    type(ESMF_GridComp)              :: gcomp
+    type(ESMF_Mesh) , intent(in)     :: model_mesh
+    type(ESMF_Clock), intent(in)     :: model_clock
+    type(cam_out_t) , intent(inout)  :: cam_out(begchunk:endchunk)
+    integer         , intent(out)    :: rc
 
     ! local variables
     type(ESMF_State)  :: exportState
+    type(ESMF_Clock)  :: clock
     integer           :: i,m,c,n,g  ! indices
     integer           :: ncols      ! Number of columns
     integer           :: nstep
     logical           :: exists
+    real(r8)          :: scale_ndep
     ! 2d pointers
     real(r8), pointer :: fldptr_ndep(:,:)
     real(r8), pointer :: fldptr_bcph(:,:)  , fldptr_ocph(:,:)
@@ -903,6 +925,7 @@ contains
     real(r8), pointer :: fldptr_ptem(:)    , fldptr_pslv(:)
     real(r8), pointer :: fldptr_co2prog(:) , fldptr_co2diag(:)
     real(r8), pointer :: fldptr_ozone(:)
+    real(r8), pointer :: fldptr_lght(:)
     character(len=*), parameter :: subname='(atm_import_export:export_fields)'
     !---------------------------------------------------------------------------
 
@@ -1032,6 +1055,18 @@ contains
        end do
     end if
 
+    call state_getfldptr(exportState, 'Sa_lightning', fldptr=fldptr_lght, exists=exists, rc=rc)
+    if (ChkErr(rc,__LINE__,u_FILE_u)) return
+    if (exists) then
+       g = 1
+       do c = begchunk,endchunk
+          do i = 1,get_ncols_p(c)
+             fldptr_lght(g) = cam_out(c)%lightning_flash_freq(i) ! cloud-to-ground lightning flash frequency (/min)
+             g = g + 1
+          end do
+       end do
+    end if
+
     call state_getfldptr(exportState, 'Sa_co2prog', fldptr=fldptr_co2prog, exists=exists, rc=rc)
     if (ChkErr(rc,__LINE__,u_FILE_u)) return
     if (exists) then
@@ -1056,19 +1091,33 @@ contains
        end do
     end if
 
-    call state_getfldptr(exportState, 'Faxa_ndep', fldptr2d=fldptr_ndep, exists=exists, rc=rc)
+    ! If ndep fields are not computed in cam and must be obtained from the ndep input stream
+    call state_getfldptr(exportState, 'Faxa_ndep', fldptr2d=fldptr_ndep, rc=rc)
     if (ChkErr(rc,__LINE__,u_FILE_u)) return
-    if (exists) then
-       ! (1) => nhx, (2) => noy
-       g = 1
-       do c = begchunk,endchunk
-          do i = 1,get_ncols_p(c)
-             fldptr_ndep(1,g) = cam_out(c)%nhx_nitrogen_flx(i) * mod2med_areacor(g)
-             fldptr_ndep(2,g) = cam_out(c)%noy_nitrogen_flx(i) * mod2med_areacor(g)
-             g = g + 1
-          end do
-       end do
+    if (.not. active_Faxa_nhx .and. .not. active_Faxa_noy) then
+       if (.not. stream_ndep_is_initialized) then
+          call stream_ndep_init(model_mesh, model_clock, rc)
+          if (ChkErr(rc,__LINE__,u_FILE_u)) return
+          stream_ndep_is_initialized = .true.
+       end if
+       call stream_ndep_interp(cam_out, rc)
+       if (ChkErr(rc,__LINE__,u_FILE_u)) return
+       ! NDEP read from forcing is expected to be in units of gN/m2/sec - but the mediator
+       ! expects units of kgN/m2/sec
+       scale_ndep = .001_r8
+    else
+       ! If waccm computes ndep, then its in units of kgN/m2/s - and the mediator expects
+       ! units of kgN/m2/sec, so the following conversion needs to happen
+       scale_ndep = 1._r8
     end if
+    g = 1
+    do c = begchunk,endchunk
+       do i = 1,get_ncols_p(c)
+          fldptr_ndep(1,g) = cam_out(c)%nhx_nitrogen_flx(i) * scale_ndep * mod2med_areacor(g)
+          fldptr_ndep(2,g) = cam_out(c)%noy_nitrogen_flx(i) * scale_ndep * mod2med_areacor(g)
+          g = g + 1
+       end do
+    end do
 
   end subroutine export_fields
 

@@ -10,7 +10,6 @@ module cam_history_support
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
   use shr_kind_mod,     only: r8=>shr_kind_r8, shr_kind_cl, shr_kind_cxx
-  use shr_sys_mod,      only: shr_sys_flush
   use pio,              only: var_desc_t, file_desc_t
   use cam_abortutils,   only: endrun
   use cam_logfile,      only: iulog
@@ -25,9 +24,10 @@ module cam_history_support
 
   integer, parameter, public :: max_string_len = shr_kind_cxx
   integer, parameter, public :: max_chars = shr_kind_cl         ! max chars for char variables
-  integer, parameter, public :: fieldname_len = 32   ! max chars for field name
-  integer, parameter, public :: fieldname_suffix_len =  3 ! length of field name suffix ("&IC")
-  integer, parameter, public :: fieldname_lenp2      = fieldname_len + 2 ! allow for extra characters
+  integer, parameter, public :: field_op_len  = 3               ! max chars for field operation string (sum/dif)
+  integer, parameter, public :: fieldname_len = 32              ! max chars for field name
+  integer, parameter, public :: fieldname_suffix_len =  3       ! length of field name suffix ("&IC")
+  integer, parameter, public :: fieldname_lenp2 = fieldname_len + 2 ! allow for extra characters
   ! max_fieldname_len = max chars for field name (including suffix)
   integer, parameter, public :: max_fieldname_len    = fieldname_len + fieldname_suffix_len
 
@@ -118,6 +118,10 @@ module cam_history_support
     integer :: meridional_complement         ! meridional field id or -1
     integer :: zonal_complement              ! zonal field id or -1
 
+    character(len=field_op_len) :: field_op = ''        ! 'sum' or 'dif'
+    integer                     :: op_field1_id         ! first field id or -1
+    integer                     :: op_field2_id         ! second field id or -1
+    
     character(len=max_fieldname_len) :: name ! field name
     character(len=max_chars) :: long_name    ! long name
     character(len=max_chars) :: units        ! units
@@ -127,6 +131,7 @@ module cam_history_support
     ! radiation calcs; etc.
     character(len=max_chars) :: cell_methods ! optional cell_methods attribute
   contains
+    procedure :: is_composed => field_info_is_composed
     procedure :: get_shape   => field_info_get_shape
     procedure :: get_bounds  => field_info_get_bounds
     procedure :: get_dims_2d => field_info_get_dims_2d
@@ -153,17 +158,27 @@ module cam_history_support
   !
   !---------------------------------------------------------------------------
   type, public:: hentry
-    type (field_info)         :: field       ! field information
-    character(len=1)          :: avgflag     ! averaging flag
-    character(len=max_chars)  :: time_op     ! time operator (e.g. max, min, avg)
+    type (field_info)         :: field                 ! field information
+    character(len=1)          :: avgflag               ! averaging flag
+    character(len=max_chars)  :: time_op               ! time operator (e.g. max, min, avg)
+    character(len=max_fieldname_len)  :: op_field1     ! field1 name for sum or dif operation
+    character(len=max_fieldname_len)  :: op_field2     ! field2 name for sum or dif operation
 
-    integer                   :: hwrt_prec   ! history output precision
+    integer                   :: hwrt_prec             ! history output precision
     real(r8),         pointer :: hbuf(:,:,:) => NULL()
+    real(r8),         private :: hbuf_integral         ! area weighted integral of active field
     real(r8),         pointer :: sbuf(:,:,:) => NULL() ! for standard deviation
+    real(r8),         pointer :: wbuf(:,:)   => NULL() ! pointer to area weights
     type(var_desc_t), pointer :: varid(:)    => NULL() ! variable ids
     integer,          pointer :: nacs(:,:)   => NULL() ! accumulation counter
     type(var_desc_t), pointer :: nacs_varid  => NULL()
+    integer                   :: beg_nstep             ! starting time step for nstep normalization
+    type(var_desc_t), pointer :: beg_nstep_varid=> NULL()
     type(var_desc_t), pointer :: sbuf_varid  => NULL()
+    type(var_desc_t), pointer :: wbuf_varid  => NULL()
+  contains
+    procedure :: get_global   => hentry_get_global
+    procedure :: put_global   => hentry_put_global
   end type hentry
 
   !---------------------------------------------------------------------------
@@ -435,6 +450,14 @@ contains
 
   end function field_info_get_dims_3d
 
+  ! field_info_is_composed: Return whether this field is composed of two other fields
+  pure logical function field_info_is_composed(this)
+    class(field_info), intent(IN)  :: this
+
+    field_info_is_composed = ((trim(adjustl(this%field_op))=='sum' .or. trim(adjustl(this%field_op))=='dif') .and. &
+                              this%op_field1_id /= -1 .and. this%op_field2_id /= -1)
+  end function field_info_is_composed
+
   ! field_info_get_shape: Return a pointer to the field's global shape.
   !                       Calculate it first if necessary
   subroutine field_info_get_shape(this, shape_out, rank_out)
@@ -503,6 +526,26 @@ contains
 
   end subroutine field_info_get_bounds
 
+  subroutine hentry_get_global(this, gval)
+
+    ! Dummy arguments
+    class(hentry)                    :: this
+    real(r8),          intent(out)   :: gval
+    
+    gval=this%hbuf_integral
+
+  end subroutine hentry_get_global
+
+  subroutine hentry_put_global(this, gval)
+
+    ! Dummy arguments
+    class(hentry)                    :: this
+    real(r8),          intent(in)    :: gval
+    
+    this%hbuf_integral=gval
+
+  end subroutine hentry_put_global
+  
   ! history_patch_write_attrs: Define coordinate variables and attributes
   !               for a patch
   subroutine history_patch_write_attrs(this, File)
@@ -651,16 +694,8 @@ contains
     type(cam_grid_patch_t), pointer         :: patchptr
     type(var_desc_t), pointer               :: vardesc => NULL()  ! PIO var desc
     character(len=128)                      :: errormsg
-    character(len=max_chars)                :: lat_name
-    character(len=max_chars)                :: lon_name
-    character(len=max_chars)                :: col_name
-    character(len=max_chars)                :: temp_str
-    integer                                 :: dimid    ! PIO dimension ID
     integer                                 :: num_patches
-    integer                                 :: temp1, temp2
-    integer                                 :: latid, lonid ! Coordinate dims
     integer                                 :: i
-    logical                                 :: col_only
 
     num_patches = size(this%patches)
     if (.not. associated(this%header_info)) then
@@ -957,6 +992,9 @@ contains
 
     f_out%meridional_complement = f_in%meridional_complement ! id  or -1
     f_out%zonal_complement = f_in%zonal_complement           ! id  or -1
+    f_out%field_op = f_in%field_op                           ! sum,dif, or ''
+    f_out%op_field1_id = f_in%op_field1_id   ! id  or -1
+    f_out%op_field2_id = f_in%op_field2_id   ! id  or -1
 
     f_out%name = f_in%name                           ! field name
     f_out%long_name = f_in%long_name                 ! long name

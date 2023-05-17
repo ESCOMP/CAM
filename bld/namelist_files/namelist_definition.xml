@@ -1733,7 +1733,7 @@ Default: none
 <!-- History and Initial Conditions Output -->
 
 <entry id="avgflag_pertape" type="char*1(10)"  category="history"
-       group="cam_history_nl" valid_values="A,B,I,X,M,L,S" >
+       group="cam_history_nl" valid_values="A,B,I,X,M,N,L,S" >
 Sets the averaging flag for all variables on a particular history file
 series. Valid values are:
 
@@ -1741,6 +1741,7 @@ series. Valid values are:
  B ==&gt; GMT 00:00:00 average
  I ==&gt; Instantaneous
  M ==&gt; Minimum
+ N ==&gt; average over nsteps
  X ==&gt; Maximum
  L ==&gt; Local-time
  S ==&gt; Standard deviation
@@ -1832,6 +1833,7 @@ are:
  B ==&gt; GMT 00:00:00 average
  I ==&gt; Instantaneous
  M ==&gt; Minimum
+ N ==&gt; average over nsteps
  X ==&gt; Maximum
  L ==&gt; Local-time
  S ==&gt; Standard deviation
@@ -1906,27 +1908,27 @@ if .true. then output CLUBBs radiative history statistics
 Default: false
 </entry>
 
-<entry id="clubb_vars_zt" type="char*16(10000)"  category="history"
+<entry id="clubb_vars_zt" type="char*35(10000)"  category="history"
        group="clubb_stats_nl" valid_values="" >
 Same as {{ hilight }}fincl1{{ closehilight }}, but for CLUBB statistics on zt grid.
 </entry>
 
-<entry id="clubb_vars_zm" type="char*16(10000)"  category="history"
+<entry id="clubb_vars_zm" type="char*35(10000)"  category="history"
        group="clubb_stats_nl" valid_values="" >
 Same as {{ hilight }}fincl1{{ closehilight }}, but for CLUBB statistics on zm grid.
 </entry>
 
-<entry id="clubb_vars_rad_zt" type="char*16(10000)"  category="history"
+<entry id="clubb_vars_rad_zt" type="char*35(10000)"  category="history"
        group="clubb_stats_nl" valid_values="" >
 Same as {{ hilight }}fincl1{{ closehilight }}, but for CLUBB statistics on radiation zt grid.
 </entry>
 
-<entry id="clubb_vars_rad_zm" type="char*16(10000)"  category="history"
+<entry id="clubb_vars_rad_zm" type="char*35(10000)"  category="history"
        group="clubb_stats_nl" valid_values="" >
 Same as {{ hilight }}fincl1{{ closehilight }}, but for CLUBB statistics on radiation zm grid.
 </entry>
 
-<entry id="clubb_vars_sfc" type="char*16(10000)"  category="history"
+<entry id="clubb_vars_sfc" type="char*35(10000)"  category="history"
        group="clubb_stats_nl" valid_values="" >
 Same as {{ hilight }}fincl1{{ closehilight }}, but for CLUBB statistics on surface.
 </entry>
@@ -4776,7 +4778,7 @@ Default: set by build-namelist
 </entry>
 
 <entry id="cam_chempkg" type="char*32" category="build" group="phys_ctl_nl"
-       valid_values="none,terminator,trop_mam3,trop_mam4,trop_mam7,trop_mozart,trop_strat_mam4_ts2,
+       valid_values="none,ghg_mam4,terminator,trop_mam3,trop_mam4,trop_mam7,trop_mozart,trop_strat_mam4_ts2,
 		     trop_strat_mam4_vbs,trop_strat_mam4_vbsext,trop_strat_mam5_ts2,trop_strat_mam5_vbs,
 		     trop_strat_mam5_vbsext,waccm_ma,waccm_mad,waccm_ma_sulfur,waccm_sc,waccm_sc_mam4,
 		     waccm_mad_mam4,waccm_ma_mam4,waccm_tsmlt_mam4,waccm_tsmlt_mam4_vbsext,waccm_mad_mam5,
@@ -5062,6 +5064,17 @@ Default: 4 m/s
 </entry>
 
 <!-- Diagnostics -->
+<entry id="thermo_budget_histfile_num" type="integer"  category="diagnostics"
+       group="thermo_budget_nl" valid_values="1,2,3,4,5,6,7,8,9,10" >
+History tape number thermo budget output is written to.
+Default: 1
+</entry>
+
+<entry id="thermo_budget_history" type="logical"  category="diagnostics"
+       group="thermo_budget_nl" valid_values="" >
+Produce output for the energy budget diagnostic package.
+Default: .false.
+</entry>
 
 <entry id="history_amwg" type="logical"  category="diagnostics"
        group="phys_ctl_nl" valid_values="" >
@@ -6197,14 +6210,8 @@ List of species that are constrained in the stratosphere.
 Default: set by build-namelist.
 </entry>
 
-<entry id="lght_landmask_file" type="char*256" input_pathname="abs" category="cam_chem"
-       group="chem_inparm" valid_values="" >
-Full pathname of dataset for land mask applied to the lighting NOx production
-Default: set by build-namelist.
-</entry>
-
 <entry id="lght_no_prd_factor" type="real" category="cam_chem"
-       group="chem_inparm" valid_values="" >
+       group="lightning_nl" valid_values="" >
 Multiplication factor  applied to the lighting NOx production
 Default: 1.0.
 </entry>
@@ -7246,6 +7253,36 @@ List of nitrogen deposition fluxes to be sent from CAM to surface models.
 Default: set by build-namelist.
 </entry>
 
+<entry id="stream_ndep_year_first" type="integer" category="Nitrogen Deposition"
+       group="ndep_stream_nl" valid_values="" >
+Year first to use in nitrogen deposition stream data. Set by case xml variable
+CAM_STREAM_NDEP_YEAR_FIRST
+</entry>
+
+<entry id="stream_ndep_year_last" type="integer" category="Nitrogen Deposition"
+       group="ndep_stream_nl" valid_values="" >
+Year last to use in nitrogen deposition stream data.
+Set by case xml variable CAM_STREAM_NDEP_YEAR_LAST
+</entry>
+
+<entry id="stream_ndep_year_align" type="integer" category="Nitrogen Deposition"
+       group="ndep_stream_nl" valid_values="" >
+Model year to align with CAM_STREAM_NDEP_YEAR_FIRST.
+Set by case xml variable CAM_STREAM_NDEP_YEAR_ALIGN
+</entry>
+
+<entry id="stream_ndep_data_filename" type="char*256" input_pathname="abs" category="Nitrogen Deposition"
+       group="ndep_stream_nl" valid_values="" >
+NDEP stream data filename.
+Set by case xml variable CAM_STREAM_NDEP_DATA_FILENAME.
+</entry>
+
+<entry id="stream_ndep_mesh_filename" type="char*256" input_pathname="abs" category="Nitrogen Deposition"
+       group="ndep_stream_nl" valid_values="" >
+NDEP mesh file corresponding to sream_ndep_data_filename.
+Set by case xml variable CAM_STREAM_NDEP_MESH_FILENAME.
+</entry>
+
 <entry id="megan_factors_file" type="char*256" input_pathname="abs" category="VOC_emissions"
        group="megan_emis_nl" valid_values="" >
 File containing MEGAN emissions factors.
@@ -7280,6 +7317,12 @@ Surface ozone is passed every coupling interval, but this namelist flag
 indicates whether the timestep-level values are interpolated from a
 coarser temporal resolution.
 Default: set by build-namelist.
+</entry>
+
+<entry id="atm_provides_lightning" type="logical" category="lightning_coupling"
+       group="lightning_coupling_nl" valid_values="">
+If TRUE atmosphere model will provide prognosed lightning flash frequency.
+Default: FALSE
 </entry>
 
 <!-- WACCM_GHG Chemistry -->
@@ -7641,16 +7684,6 @@ Number of dynamics steps per physics timestep.
 Default: Set by build-namelist.
 </entry>
 
-<entry id="se_phys_dyn_cp" type="integer" category="se"
-       group="dyn_se_inparm" valid_values="0,1,2" >
-Scaling of temperature increment for different levels of
-thermal energy consistency.
-0: no scaling
-1: scale increment for cp consistency between dynamics and physics
-2: do 1 as well as take into account condensate effect on thermal energy
-Default: Set by build-namelist.
-</entry>
-
 <entry id="se_nu" type="real" category="se"
        group="dyn_se_inparm" valid_values="" >
 Hyperviscosity coefficient for u,v, T [m^4/s].
@@ -7714,17 +7747,6 @@ See se_sponge_del4_nu_fac and se_sponge_del4_nu_div_fac
 
 If &lt; 0, se_sponge_del4_lev is automatically set based on model top location.
 Default: Set by build-namelist.
-</entry>
-
-<entry id="se_lcp_moist" type="logical" category="se"
-       group="dyn_se_inparm" valid_values="" >
-If TRUE the continous equations the dynamical core is based on will conserve a
-comprehensive moist total energy
-If FALSE the continous equations the dynamical core is based on will conserve
-a total energy based on cp for dry air and no condensates (same total energy as
-CAM physics uses).
-For more details see Lauritzen et al., (2018;DOI:10.1029/2017MS001257)
-Default: TRUE
 </entry>
 
 <entry id="se_large_Courant_incr" type="logical" category="se"
@@ -8269,30 +8291,6 @@ dry_baroclinic_wave_jw2006: Dry baroclinic wave as specified in Jablonowski and 
 us_standard_atmosphere: static atmospheric state (u,v)=0, standard lapse rate for T, PS is hydrostatic equilibrium with topography
 (this ic is recommended for spinning up new initial condition files when changing horizontal or vertical resolution)
 Default: 'none'
-</entry>
-
-<!-- Specify ocean data and domain files in a component independent way. -->
-<!-- build-namelist associates this information with the component       -->
-<!-- dependend variables.                                                -->
-
-<entry id="bndtvs" type="char*256" input_pathname="abs" category="ocn"
-       group="camexp" valid_values="" >
-Full pathname of time-variant sea-surface temperature and sea-ice
-concentration boundary dataset.
-Default: set by build-namelist.
-</entry>
-
-<entry id="focndomain" type="char*256" input_pathname="abs" category="ocn"
-       group="camexp" valid_values="" >
-Full pathname of
-Default: set by build-namelist.
-</entry>
-
-<entry id="bndtvs_domain" type="char*256" input_pathname="abs" category="ocn"
-       group="camexp" valid_values="" >
-Full pathname of grid file for time-variant sea-surface temperature and sea-ice
-concentration boundary dataset.
-Default: set by build-namelist.
 </entry>
 
 <!-- ========================================================================================  -->
@@ -9091,6 +9089,38 @@ Default: 0.0
        group="dyn_fv3_inparm" valid_values="" >
 If TRUE perform temp tendency scaling before send to fv3 dynamics
 Default: FALSE
+</entry>
+
+<!-- ndep stream forcing -->
+
+<!-- ========================================================================================  -->
+<!-- ndepdyn streams namelist                                                                  -->
+<!-- (only used when the ndep_list namelist variable (above) in drv_flds_in is not empty       -->
+<!-- ========================================================================================  -->
+
+<entry id="stream_datafile_ndep" type="char*256" category="ndep_stream"
+       group="ndep_stream_nml" valid_values="" input_pathname="abs" >
+Stream filename(s) for Nitrogen Deposition data
+</entry>
+
+<entry id="stream_meshfile_ndep" type="char*256" category="ndep_stream"
+       group="ndep_stream_nml" valid_values="" input_pathname="abs" >
+Stream meshfile for Nitrogen Deposition data
+</entry>
+
+<entry id="stream_year_first_ndep" type="integer" category="ndep_stream"
+       group="ndep_stream_nml" valid_values="" >
+First year to loop over for Nitrogen Deposition data
+</entry>
+
+<entry id="stream_year_last_ndep" type="integer" category="ndep_stream"
+       group="ndep_stream_nml" valid_values="" >
+Last year to loop over for Nitrogen Deposition data
+</entry>
+
+<entry id="model_year_align_ndep" type="integer" category="ndep_stream"
+       group="ndep_stream_nml" valid_values="" >
+Simulation year that aligns with stream_year_first_ndep value
 </entry>
 
 </namelist_definition>

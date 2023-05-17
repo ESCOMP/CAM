@@ -59,10 +59,6 @@ module chemistry
   character(len=shr_kind_cl) :: bndtvg = ' ' ! pathname for greenhouse gas loss rate
   character(len=shr_kind_cl) :: h2orates = ' ' ! pathname for greenhouse gas (lyman-alpha H2O loss)
 
-  ! lightning
-
-  real(r8)           :: lght_no_prd_factor = 1._r8
-
   ! photolysis
 
   character(len=shr_kind_cl) :: rsf_file = 'rsf_file'
@@ -377,7 +373,6 @@ end function chem_is
          xs_coef_file, xs_short_file, &
          exo_coldens_file, &
          xs_long_file, rsf_file, photo_max_zen, &
-         lght_no_prd_factor, &
          depvel_lnd_file, drydep_srf_file, &
          srf_emis_type, srf_emis_cycle_yr, srf_emis_fixed_ymd, srf_emis_fixed_tod, srf_emis_specifier,  &
          fstrat_file, fstrat_list, &
@@ -453,10 +448,6 @@ end function chem_is
     call mpibcast (ghg_chem,          1,                               mpilog,  0, mpicom)
     call mpibcast (bndtvg,            len(bndtvg),                     mpichar, 0, mpicom)
     call mpibcast (h2orates,          len(h2orates),                   mpichar, 0, mpicom)
-
-    ! lightning
-
-    call mpibcast (lght_no_prd_factor,1,                               mpir8,   0, mpicom)
 
     ! photolysis
 
@@ -766,7 +757,6 @@ end function chem_is_active
        , ext_frc_fixed_ymd &
        , ext_frc_fixed_tod &
        , exo_coldens_file &
-       , lght_no_prd_factor &
        , pbuf2d &
        )
 
@@ -977,6 +967,10 @@ end function chem_is_active
           case ('CFC12')
              where(mask)
                 q(:,ilev) = rmwf12 * chem_surfvals_get('F12VMR')
+             end where
+          case ('CO2')
+             where(mask)
+                q(:,ilev) = chem_surfvals_get('CO2MMR')
              end where
           end select
        end do
@@ -1216,9 +1210,8 @@ end function chem_is_active
 
     call gas_phase_chemdr(lchnk, ncol, imozart, state%q, &
                           state%phis, state%zm, state%zi, calday, &
-                          state%t, state%pmid, state%pdel, state%pint, &
-                          cldw, tropLev, tropLevChem, ncldwtr, state%u, state%v, &
-                          chem_dt, state%ps, &
+                          state%t, state%pmid, state%pdel, state%pint, state%rpdel, state%rpdeldry, &
+                          cldw, tropLev, tropLevChem, ncldwtr, state%u, state%v, chem_dt, state%ps, &
                           fsds, cam_in%ts, cam_in%asdir, cam_in%ocnfrac, cam_in%icefrac, &
                           cam_out%precc, cam_out%precl, cam_in%snowhland, ghg_chem, state%latmapback, &
                           drydepflx, wetdepflx, cam_in%cflx, cam_in%fireflx, cam_in%fireztop, &

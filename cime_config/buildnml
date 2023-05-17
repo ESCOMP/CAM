@@ -47,6 +47,12 @@ def buildnml(case, caseroot, compname):
     RUN_REFTOD          = case.get_value("RUN_REFTOD")
     COMP_INTERFACE      = case.get_value("COMP_INTERFACE")
 
+    stream_ndep_year_first    = case.get_value("CAM_STREAM_NDEP_YEAR_FIRST")
+    stream_ndep_year_last     = case.get_value("CAM_STREAM_NDEP_YEAR_LAST")
+    stream_ndep_year_align    = case.get_value("CAM_STREAM_NDEP_YEAR_ALIGN")
+    stream_ndep_data_filename = case.get_value("CAM_STREAM_NDEP_DATA_FILENAME")
+    stream_ndep_mesh_filename = case.get_value("CAM_STREAM_NDEP_MESH_FILENAME")
+
     testsrc = os.path.join(srcroot, "components", "cam")
     if os.path.exists(testsrc):
         srcroot = testsrc
@@ -165,6 +171,12 @@ def buildnml(case, caseroot, compname):
             buildnl_opts += ["-use_case", CAM_NML_USE_CASE]
 
         buildnl_opts += ["-inputdata", input_data_list]
+
+        CAM_NAMELIST_OPTS += " stream_ndep_year_first="     + stream_ndep_year_first 
+        CAM_NAMELIST_OPTS += " stream_ndep_year_last="      + stream_ndep_year_last
+        CAM_NAMELIST_OPTS += " stream_ndep_year_align="     + stream_ndep_year_align
+        CAM_NAMELIST_OPTS += " stream_ndep_data_filename='" + stream_ndep_data_filename.strip() + "'"
+        CAM_NAMELIST_OPTS += " stream_ndep_mesh_filename='" + stream_ndep_mesh_filename.strip() + "'"
 
         buildnl_opts += ["-namelist",
                          '" &atmexp ' + CAM_NAMELIST_OPTS + '/" ']
