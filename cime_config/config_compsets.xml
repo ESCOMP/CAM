@@ -72,12 +72,12 @@
   </compset>
 
   <compset>
-    <alias>FLT1850</alias>
+    <alias>FLT1850_TESTINGONLY_v0c</alias>
     <lname>1850_CAM%DEV%LT%GHGMAM4_CLM51%SP_CICE%PRES_DOCN%DOM_MOSART_SGLC_SWAV</lname>
   </compset>
 
   <compset>
-    <alias>FMT1850</alias>
+    <alias>FMT1850_TESTINGONLY_v0c</alias>
     <lname>1850_CAM%DEV%MT%GHGMAM4_CLM51%SP_CICE%PRES_DOCN%DOM_MOSART_SGLC_SWAV</lname>
   </compset>
 
