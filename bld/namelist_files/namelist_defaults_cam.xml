@@ -741,7 +741,9 @@
 <gw_limit_tau_without_eff chem="trop_strat_mam5_vbs">.true. </gw_limit_tau_without_eff>
 <gw_limit_tau_without_eff chem="trop_strat_mam5_vbsext">.true. </gw_limit_tau_without_eff>
 <gw_apply_tndmax                        >.true. </gw_apply_tndmax>
-<gw_apply_tndmax          waccm_phys="1">.false.</gw_apply_tndmax>
+<gw_apply_tndmax chem="ghg_mam4" nlev="93">.false.</gw_apply_tndmax>
+<gw_apply_tndmax chem="ghg_mam4" nlev="58">.false.</gw_apply_tndmax>
+<gw_apply_tndmax            waccm_phys="1">.false.</gw_apply_tndmax>
 <gw_apply_tndmax chem="trop_strat_mam4_vbs">.false.</gw_apply_tndmax>
 <gw_apply_tndmax chem="trop_strat_mam4_vbsext">.false.</gw_apply_tndmax>
 <gw_apply_tndmax chem="trop_strat_mam5_vbs">.false.</gw_apply_tndmax>
@@ -2977,6 +2979,7 @@
 <se_hypervis_subcycle                                            > 3 </se_hypervis_subcycle>
 <se_hypervis_subcycle  waccm_phys="1"                            > 2 </se_hypervis_subcycle>
 <se_hypervis_subcycle  hgrid="ne16np4"                           > 4 </se_hypervis_subcycle>
+<se_hypervis_subcycle  hgrid="ne30np4" npg="3" nlev="58"         > 4 </se_hypervis_subcycle>
 <se_hypervis_subcycle  se_refined_mesh="1"                       > 3 </se_hypervis_subcycle>
 <se_hypervis_subcycle  hgrid="ne0np4CONUS.ne30x8" waccm_phys="1" > 1 </se_hypervis_subcycle>
 
