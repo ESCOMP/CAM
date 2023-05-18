@@ -31,8 +31,6 @@
 <!-- shut off prescribed aerosols -->
 <prescribed_aero_file    ></prescribed_aero_file>
 
-<!-- Analytic sst forcing type 1 -->
-<aqua_planet              >.true. </aqua_planet>
 <!-- Revised physics constants for ape experiments -->
 <sday                     >86164.10063718943</sday>
 <rearth                   >6.37100e6</rearth>
@@ -45,4 +43,3 @@
 
 <use_topo_file            >.false.</use_topo_file>
 </namelist_defaults>
-

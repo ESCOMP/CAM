@@ -93,8 +93,8 @@ module frierson_cam
   real(r8),allocatable :: Tsurf (:,:)     ! Surface Temp
   real(r8),allocatable :: Qsurf (:,:)     ! Surface Q
   real(r8),allocatable :: Fsolar(:,:)     ! Net Solar Heating
-  real(r8),allocatable :: Fup   (:,:)     ! Upward Longwave heating
-  real(r8),allocatable :: Fdown (:,:)     ! Downward Longwave heating
+  real(r8),allocatable :: Fup   (:,:)     ! Upward Longwave flux
+  real(r8),allocatable :: Fdown (:,:)     ! Downward Longwave flux
   real(r8),allocatable :: SHflux(:,:)     ! Sensible Heat flux
   real(r8),allocatable :: LHflux(:,:)     ! Latent Heat Flux
   real(r8),allocatable :: TUflux(:,:)     ! U stress momentum flux
@@ -269,9 +269,9 @@ contains
     call addfld('gray_Cdrag' ,horiz_only,'A','1'      ,'Surface Drag Coefficient'                        )
     call addfld('gray_Zpbl'  ,horiz_only,'I','m'      ,'PBL Height'                                      )
     call addfld('gray_SWflux',horiz_only,'I','W/m2'   ,'SW Solar Flux'                                   )
-    call addfld('gray_LUflux',horiz_only,'I','W/m2'   ,'LW Upward Radiative Flux'                        )
-    call addfld('gray_LDflux',horiz_only,'I','W/m2'   ,'LW Downward Radiative Flux'                      )
-    call addfld('gray_LWflux',horiz_only,'I','W/m2'   ,'LW Net Radiative Flux'                           )
+    call addfld('gray_LUflux',horiz_only,'I','W/m2'   ,'LW Upward Radiative Flux at Surface'             )
+    call addfld('gray_LDflux',horiz_only,'I','W/m2'   ,'LW Downward Radiative Flux at Surface'           )
+    call addfld('gray_LWflux',horiz_only,'I','W/m2'   ,'LW Net Radiative Flux at Surface'                )
     call addfld('gray_SHflux',horiz_only,'I','W/m2'   , 'Sensible Heat Flux'        )
     call addfld('gray_LHflux',horiz_only,'I','W/m2'   , 'Latent Heat Flux'          )
     call addfld('gray_TauU'  ,horiz_only,'I','N/m2'   , 'U Surface Stress'          )

@@ -858,7 +858,7 @@ if (($chem =~ /waccm_ma/ or $chem =~ /waccm_tsmlt/) and !$chem_rad_passive) {
 elsif ($chem =~ /trop_strat/ and !$chem_rad_passive) {
     $radval .= ",'N:O2:O2','A:CO2:CO2'";
 }
-elsif ($co2_cycle and !$co2_cycle_rad_passive) {
+elsif (($co2_cycle and !$co2_cycle_rad_passive) or ($chem =~ /ghg_mam4/)) {
     $radval .= ",'N:O2:O2','A:CO2:CO2'";
 }
 else {
@@ -884,7 +884,7 @@ if ($rad_prog_ozone) {
     die "ERROR: can not set ozone rad_climate specification\n";
 }
 
-if ((($chem =~ /waccm_ma/) or ($chem =~ /waccm_sc_mam/) or ($chem =~ /waccm_tsmlt/) or ($chem =~ /trop_strat/)) and !$chem_rad_passive ) {
+if ((($chem =~ /ghg_mam4/) or ($chem =~ /waccm_ma/) or ($chem =~ /waccm_sc_mam/) or ($chem =~ /waccm_tsmlt/) or ($chem =~ /trop_strat/)) and !$chem_rad_passive ) {
     $radval .= ",'A:N2O:N2O','A:CH4:CH4','N:CFC11STAR:CFC11','A:CFC12:CFC12'";
 } elsif ($prog_ghg1 and $prog_ghg2 and !$chem_rad_passive ) {
     $radval .= ",'A:N2O:N2O','A:CH4:CH4','A:CFC11:CFC11','A:CFC12:CFC12'";
@@ -1667,7 +1667,16 @@ if ($chem =~ /waccm_sc/) {
     add_default($nl, 'h2orates');
     add_default($nl, 'solar_parms_data_file');
 }
-
+if ($chem =~ /ghg_mam4/) {
+    add_default($nl, 'h2orates');
+    my $flbc_list = "'CH4','N2O','CO2','CFC11','CFC12'";
+    add_default($nl, 'flbc_list', 'val'=>$flbc_list);
+    unless (defined $nl->get_value('flbc_type')) {
+        add_default($nl, 'flbc_type',  'val'=>'CYCLICAL');
+        add_default($nl, 'flbc_cycle_yr',  'val'=>'2000');
+    }
+    add_default($nl, 'flbc_file');
+}
 if ( $prog_species ) {
     my $ddval;
     my $emisval;
@@ -2201,7 +2210,7 @@ if (($chem =~ /_mam4/ or $chem =~ /_mam5/) and ($phys =~ /cam6/ or $phys =~ /cam
     }
 
     # for old simple SOA schemes (without SOAE)
-    if ($chem =~ /trop_mam3/ or $chem =~ /trop_mam5/ or $chem =~ /waccm_ma/) {
+    if ($chem =~ /trop_mam3/ or $chem =~ /waccm_ma/) {
         %species = (%species,
                     'soag_an_srf_file'    => 'SOAG',
                     'soag_bg_srf_file'    => 'SOAG',
@@ -2273,7 +2282,7 @@ if (($chem =~ /_mam4/ or $chem =~ /_mam5/) and ($phys =~ /cam6/ or $phys =~ /cam
                     'XYLENES_an_srf_file' => 'XYLENES',
                     'XYLENES_bb_srf_file' => 'XYLENES',
                     'E90_srf_file' => 'E90' );
-        if ($chem =~ /trop_strat_mam4_ts2/) {
+        if ($chem =~ /trop_strat_mam4_ts2/ or $chem =~ /trop_strat_mam5_ts2/) {
             %species = (%species,
                     'MTERP_bb_srf_file' => 'APIN') ;
         } else {
@@ -2323,7 +2332,7 @@ if (($chem =~ /_mam4/ or $chem =~ /_mam5/) and ($phys =~ /cam6/ or $phys =~ /cam
             $first = 0;
         }
     }
-    if ($chem eq 'trop_mam4' or $chem eq 'waccm_sc_mam4') {
+    if ($chem eq 'trop_mam4' or $chem eq 'waccm_sc_mam4'or $chem eq 'ghg_mam4') {
 	# SOA yields (used for the interactive emissions) have been calculated based on the VBS yields in CAM-chem.
 	# Duseong S. Jo, et al. to be submitted to GMD, 2023 -- see https://github.com/ESCOMP/CAM/pull/727 discussion for additional detail.
         my %soae_fctrs = ('BENZENE_an_srf_file' => '3.4192D0',
@@ -2365,7 +2374,7 @@ if (($chem =~ /_mam4/ or $chem =~ /_mam5/) and ($phys =~ /cam6/ or $phys =~ /cam
         );
 
     # air craft emissions
-    if ($chem !~ /trop_mam/ and $chem !~ /waccm_sc/) {
+    if ($chem !~ /trop_mam/ and $chem !~ /ghg_mam/ and $chem !~ /waccm_sc/) {
         %species = (%species,
                     'bc_a4_ar_ext_file'  => 'bc_a4',
                     'num_a4_ar_ext_file' => 'num_a4',
@@ -2419,7 +2428,7 @@ if (($chem =~ /_mam4/ or $chem =~ /_mam5/) and ($phys =~ /cam6/ or $phys =~ /cam
     }
 
     # MEGAN emissions
-    if (($chem eq 'trop_mam4' or $chem eq 'waccm_sc_mam4') and !$aqua_mode and !$scam){
+    if (($chem eq 'trop_mam4' or $chem eq 'waccm_sc_mam4' or $chem eq 'ghg_mam4') and !$aqua_mode and !$scam){
 	my $val = "'SOAE = 0.9058*isoprene + 5.8638*(carene_3 + pinene_a + thujene_a + bornene +',"
                 . "' terpineol_4 + terpineol_a + terpinyl_ACT_a + myrtenal + sabinene + pinene_b + camphene +',"
                 . "' fenchene_a + limonene + phellandrene_a + terpinene_a + terpinene_g + terpinolene +',"
@@ -2500,7 +2509,7 @@ if (($chem =~ /_mam4/ or $chem =~ /_mam5/) and ($phys =~ /cam6/ or $phys =~ /cam
         add_default($nl, 'megan_factors_file');
         add_default($nl, 'megan_mapped_emisfctrs', 'val'=>'.false.');
     }
-    if ($chem =~ /trop_strat_mam4_ts2/ ) {
+    if ($chem =~ /trop_strat_mam4_ts2/ or $chem =~ /trop_strat_mam5_ts2/) {
         my $val = "'ISOP = isoprene',"
                 . "'APIN = pinene_a + myrtenal',"
                 . "'BPIN = carene_3 + thujene_a + bornene + fenchene_a + pinene_b + sabinene + camphene + terpineol_4 + terpineol_a + terpinyl_ACT_a',"
@@ -2546,10 +2555,10 @@ if (($chem =~ /_mam4/ or $chem =~ /_mam5/) and ($phys =~ /cam6/ or $phys =~ /cam
     }
 }
 
-if ($chem eq 'trop_mam4' or $chem eq 'waccm_sc_mam4' or $chem eq 'trop_mam5') {
+if (($chem eq 'trop_mam4') or ($chem eq 'waccm_sc_mam4') or ($chem eq 'ghg_mam4')) {
 
     # Prescribed species
-    if ($chem eq 'waccm_sc_mam4') {
+    if (($chem eq 'waccm_sc_mam4')or($chem eq 'ghg_mam4')) {
         add_default($nl, 'tracer_cnst_specifier', 'val'=>"'O3','OH','NO3','HO2','HALONS'");
         add_default($nl, 'tracer_cnst_file');
         add_default($nl, 'tracer_cnst_datapath');
@@ -2676,7 +2685,7 @@ if ($waccmx){
     $maxzen = 116.;
 } elsif ($chem =~ "trop_strat" or $chem =~ "waccm_") {
     $maxzen = 97.01;
-} elsif ($chem =~ "trop_mam" or $chem =~ "trop_mozart") {
+} elsif ($chem =~ "trop_mam" or $chem =~ "trop_mozart" or $chem =~ "ghg_mam") {
     $maxzen = 88.85;
 }
 if ($maxzen>0.0) {
@@ -3081,6 +3090,11 @@ if (!$simple_phys) {
     } else {
         add_default($nl, 'use_hetfrz_classnuc', 'val'=>'.false.');
     }
+    if ($nl->get_value('use_hetfrz_classnuc') =~ m/$TRUE/io) {
+	# set default scaling factors if het frz is turned on
+        add_default($nl, 'hetfrz_bc_scalfac');
+        add_default($nl, 'hetfrz_dust_scalfac');
+    }
     add_default($nl, 'use_preexisting_ice');
     if ($chem =~ /_mam7/) {
         if ($nl->get_value('use_preexisting_ice') =~ m/$TRUE/io) {
@@ -3477,13 +3491,15 @@ if ( length($nl->get_value('soil_erod_file'))>0 ) {
     else {
         if ($chem =~ /trop_strat/ or $chem =~ /waccm_ma/ or $chem =~ /waccm_tsmlt/ or $chem =~ /trop_mozart/) {
             add_default($nl, 'dust_emis_fact', 'ver'=>'chem');
-            # set scaling of lightning NOx production
-	    add_default($nl, 'lght_no_prd_factor' );
         }
         else {
             add_default($nl, 'dust_emis_fact');
         }
     }
+}
+if (chem_has_species($cfg, 'NO')) {
+    # set scaling of lightning NOx production
+    add_default($nl, 'lght_no_prd_factor' );
 }
 
 # Seasalt emissions tuning factor
@@ -3860,7 +3876,6 @@ if ($dyn =~ /se/) {
     my @vars = qw(
                   se_ftype
                   se_horz_num_threads
-                  se_lcp_moist
 		  se_large_Courant_incr
                   se_hypervis_subcycle
                   se_hypervis_subcycle_sponge
@@ -3888,7 +3903,6 @@ if ($dyn =~ /se/) {
 		  se_fvm_supercycling_jet
 		  se_kmin_jet
 		  se_kmax_jet
-		  se_phys_dyn_cp
                   se_molecular_diff
         );
 
@@ -4113,6 +4127,21 @@ add_default($nl, 'cam_snapshot_before_num');
 add_default($nl, 'cam_snapshot_after_num');
 check_snapshot_settings();
 
+if ($opts{'cmeps'}) {
+  # advertise the nature of ozone data passed to surface models
+  if ($rad_prog_ozone) {
+    add_default($nl, 'atm_ozone_frequency', 'val'=>'subdaily');
+  } else {
+    add_default($nl, 'atm_ozone_frequency', 'val'=>'multiday_average');
+  }
+  # for lightning flash freq to CTSM
+  if ($simple_phys or $aqua_mode) {
+    add_default($nl, 'atm_provides_lightning', 'val'=>'.false.');
+  } else {
+    add_default($nl, 'atm_provides_lightning', 'val'=>'.true.');
+  }
+}
+
 #-----------------------------------------------------------------------------------------------
 # Write output files
 
@@ -4129,16 +4158,8 @@ my %nl_group = ();
 foreach my $name (@nl_groups) { $nl_group{$name} = ''; }
 
 # Dry deposition, MEGAN VOC emis and ozone namelists
-@comp_groups = qw(drydep_inparm megan_emis_nl fire_emis_nl carma_inparm ndep_inparm ozone_coupling_nl);
+@comp_groups = qw(drydep_inparm megan_emis_nl fire_emis_nl carma_inparm ndep_inparm ozone_coupling_nl lightning_coupling_nl);
 
-# nature of ozone data passed to surface models -- only if cmeps (nuopc) coupling is used
-if ($opts{'cmeps'}) {
-  if ($rad_prog_ozone) {
-    add_default($nl, 'atm_ozone_frequency', 'val'=>'subdaily');
-  } else {
-    add_default($nl, 'atm_ozone_frequency', 'val'=>'multiday_average');
-  }
-}
 $outfile = "$opts{'dir'}/drv_flds_in";
 $nl->write($outfile, 'groups'=>\@comp_groups);
 if ($print>=1) {
