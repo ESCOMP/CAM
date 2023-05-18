@@ -52,7 +52,7 @@ CONTAINS
 
 subroutine biharmonic_wk_dp3d(elem,dptens,dpflux,ttens,vtens,deriv,edge3,hybrid,nt,nets,nete,kbeg,kend,hvcoord)
   use derivative_mod, only : subcell_Laplace_fluxes
-  use dimensions_mod, only : ntrac, nu_div_lev,nu_lev
+  use dimensions_mod, only : use_cslam, nu_div_lev,nu_lev
   use hybvcoord_mod,  only : hvcoord_t  
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
   ! compute weak biharmonic operator
@@ -86,7 +86,7 @@ subroutine biharmonic_wk_dp3d(elem,dptens,dpflux,ttens,vtens,deriv,edge3,hybrid,
   
   kblk = kend - kbeg + 1
   
-  if (ntrac>0) dpflux = 0
+  if (use_cslam) dpflux = 0
   !if tensor hyperviscosity with tensor V is used, then biharmonic operator is (\grad\cdot V\grad) (\grad \cdot \grad) 
   !so tensor is only used on second call to laplace_sphere_wk
   var_coef1 = .true.
@@ -150,7 +150,7 @@ subroutine biharmonic_wk_dp3d(elem,dptens,dpflux,ttens,vtens,deriv,edge3,hybrid,
     kptr = kbeg - 1 + 3*nlev
     call edgeVunpack(edge3,dptens(:,:,kbeg:kend,ie),kblk,kptr,ie)
 
-    if (ntrac>0) then
+    if (use_cslam) then
       do k=1,nlev
 !CLEAN        tmp(:,:)= rspheremv(:,:)*dptens(:,:,k,ie)
         tmp(:,:)= elem(ie)%rspheremp(:,:)*dptens(:,:,k,ie)

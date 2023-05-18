@@ -139,27 +139,4 @@
 <!-- sim_year used for CLM datasets and SSTs forcings -->
 <sim_year>1850-2000</sim_year>
 
-<!-- Use AMIP SST datasets -->
-<sstcyc>.false.</sstcyc>
-<stream_year_first>1850</stream_year_first>
-<stream_year_last>2008</stream_year_last>
-
-<bndtvs hgrid="0.47x0.63"  sim_year="1850-2000">atm/cam/sst/sst_HadOIBl_bc_0.47x0.63_1850_2008_c100128.nc</bndtvs>
-<bndtvs hgrid="0.9x1.25"   sim_year="1850-2000">atm/cam/sst/sst_HadOIBl_bc_0.9x1.25_1850_2008_c100127.nc</bndtvs>
-<bndtvs hgrid="1.9x2.5"    sim_year="1850-2000">atm/cam/sst/sst_HadOIBl_bc_1.9x2.5_1850_2008_c100127.nc</bndtvs>
-<bndtvs hgrid="4x5"        sim_year="1850-2000">atm/cam/sst/sst_HadOIBl_bc_4x5_1850_2008_c100127.nc</bndtvs>
-<bndtvs hgrid="10x15"      sim_year="1850-2000">atm/cam/sst/sst_HadOIBl_bc_10x15_1850_2008_c100127.nc</bndtvs>
-
-<bndtvs hgrid="128x256"    sim_year="1850-2000">atm/cam/sst/sst_HadOIBl_bc_128x256_1850_2008_c100128.nc</bndtvs>
-<bndtvs hgrid="64x128"     sim_year="1850-2000">atm/cam/sst/sst_HadOIBl_bc_64x128_1850_2008_c100128.nc</bndtvs>
-<bndtvs hgrid="48x96"      sim_year="1850-2000">atm/cam/sst/sst_HadOIBl_bc_48x96_1850_2008_c100128.nc</bndtvs>
-<bndtvs hgrid="32x64"      sim_year="1850-2000">atm/cam/sst/sst_HadOIBl_bc_32x64_1850_2008_c100128.nc</bndtvs>
-<bndtvs hgrid="8x16"       sim_year="1850-2000">atm/cam/sst/sst_HadOIBl_bc_8x16_1850_2008_c100128.nc</bndtvs>
-
-<!-- Use the clim_pi SST datasets if AMIP datasets not available -->
-<sstcyc            hgrid="0.23x0.31">.true.</sstcyc>
-<stream_year_first hgrid="0.23x0.31">0</stream_year_first>
-<stream_year_last  hgrid="0.23x0.31">0</stream_year_last>
-<bndtvs            hgrid="0.23x0.31"  sim_year="1850-2000">atm/cam/sst/sst_HadOIBl_bc_0.23x0.31_clim_pi_c091020.nc</bndtvs>
-
 </namelist_defaults>

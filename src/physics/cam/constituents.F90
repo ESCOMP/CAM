@@ -72,7 +72,6 @@ character(len=16), public :: dcconnam  (pcnst)   ! names of convection tendencie
 character(len=16), public :: fixcnam   (pcnst)   ! names of species slt fixer tendencies
 character(len=16), public :: tendnam   (pcnst)   ! names of total tendencies of species
 character(len=16), public :: ptendnam  (pcnst)   ! names of total physics tendencies of species
-character(len=16), public :: dmetendnam(pcnst)   ! names of dme adjusted tracers (FV)
 character(len=16), public :: sflxnam   (pcnst)   ! names of surface fluxes of species
 character(len=16), public :: tottnam   (pcnst)   ! names for horz + vert + fixer tendencies
 
@@ -497,7 +496,6 @@ subroutine cnst_chk_dim
       fixcnam   (m)  = 'DF'//cnst_name(m)
       tendnam   (m)  = 'TE'//cnst_name(m)
       ptendnam  (m)  = 'PTE'//cnst_name(m)
-      dmetendnam(m)  = 'DME'//cnst_name(m)
       tottnam   (m)  = 'TA'//cnst_name(m)
       sflxnam(m)     = 'SF'//cnst_name(m)
    end do

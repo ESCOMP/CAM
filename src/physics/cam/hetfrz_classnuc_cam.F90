@@ -39,11 +39,12 @@ public :: &
    hetfrz_classnuc_cam_readnl,   &
    hetfrz_classnuc_cam_register, &
    hetfrz_classnuc_cam_init,     &
-   hetfrz_classnuc_cam_calc,     &
-   hetfrz_classnuc_cam_save_cbaero
+   hetfrz_classnuc_cam_calc
 
 ! Namelist variables
 logical :: hist_hetfrz_classnuc = .false.
+real(r8) :: hetfrz_bc_scalfac = -huge(1._r8) ! scaling factor for BC
+real(r8) :: hetfrz_dust_scalfac = -huge(1._r8) ! scaling factor for dust
 
 ! Vars set via init method.
 real(r8) :: mincld      ! minimum allowed cloud fraction
@@ -143,7 +144,7 @@ subroutine hetfrz_classnuc_cam_readnl(nlfile)
 
   use namelist_utils,  only: find_group_name
   use units,           only: getunit, freeunit
-  use mpishorthand
+  use spmd_utils,      only: mpicom, mstrid=>masterprocid, mpi_logical, mpi_real8, mpi_success
 
   character(len=*), intent(in) :: nlfile  ! filepath for file containing namelist input
 
@@ -151,7 +152,7 @@ subroutine hetfrz_classnuc_cam_readnl(nlfile)
   integer :: unitn, ierr
   character(len=*), parameter :: subname = 'hetfrz_classnuc_cam_readnl'
 
-  namelist /hetfrz_classnuc_nl/ hist_hetfrz_classnuc
+  namelist /hetfrz_classnuc_nl/ hist_hetfrz_classnuc, hetfrz_bc_scalfac, hetfrz_dust_scalfac
 
   !-----------------------------------------------------------------------------
 
@@ -167,13 +168,21 @@ subroutine hetfrz_classnuc_cam_readnl(nlfile)
      end if
      close(unitn)
      call freeunit(unitn)
-
   end if
 
-#ifdef SPMD
   ! Broadcast namelist variables
-  call mpibcast(hist_hetfrz_classnuc, 1, mpilog, 0, mpicom)
-#endif
+  call mpi_bcast(hist_hetfrz_classnuc, 1, mpi_logical, mstrid, mpicom, ierr)
+  if (ierr /= mpi_success) call endrun(subname//" mpi_bcast: hist_hetfrz_classnuc")
+  call mpi_bcast(hetfrz_bc_scalfac, 1, mpi_real8, mstrid, mpicom, ierr)
+  if (ierr /= mpi_success) call endrun(subname//" mpi_bcast: hetfrz_bc_scalfac")
+  call mpi_bcast(hetfrz_dust_scalfac, 1, mpi_real8, mstrid, mpicom, ierr)
+  if (ierr /= mpi_success) call endrun(subname//" mpi_bcast: hetfrz_dust_scalfac")
+
+  if (masterproc) then
+     write(iulog,*) subname,': hist_hetfrz_classnuc = ',hist_hetfrz_classnuc
+     write(iulog,*) subname,': hetfrz_bc_scalfac = ',hetfrz_bc_scalfac
+     write(iulog,*) subname,': hetfrz_dust_scalfac = ',hetfrz_dust_scalfac
+  end if
 
 end subroutine hetfrz_classnuc_cam_readnl
 
@@ -239,7 +248,7 @@ subroutine hetfrz_classnuc_cam_init(mincld_in)
    call addfld('bc_c1_num',     (/ 'lev' /), 'A', '#/cm3', 'cloud borne bc number')
    call addfld('dst_c1_num',    (/ 'lev' /), 'A', '#/cm3', 'cloud borne dst1 number')
    call addfld('dst_c3_num',    (/ 'lev' /), 'A', '#/cm3', 'cloud borne dst3 number')
-    
+
    call addfld('fn_bc_c1_num',  (/ 'lev' /), 'A', '#/cm3', 'cloud borne bc number derived from fn')
    call addfld('fn_dst_c1_num', (/ 'lev' /), 'A', '#/cm3', 'cloud borne dst1 number derived from fn')
    call addfld('fn_dst_c3_num', (/ 'lev' /), 'A', '#/cm3', 'cloud borne dst3 number derived from fn')
@@ -306,7 +315,7 @@ subroutine hetfrz_classnuc_cam_init(mincld_in)
       call add_default('bc_c1_num', 1, ' ')
       call add_default('dst_c1_num', 1, ' ')
       call add_default('dst_c3_num', 1, ' ')
-    
+
       call add_default('fn_bc_c1_num', 1, ' ')
       call add_default('fn_dst_c1_num', 1, ' ')
       call add_default('fn_dst_c3_num', 1, ' ')
@@ -328,7 +337,7 @@ subroutine hetfrz_classnuc_cam_init(mincld_in)
       call add_default('BCFREZDEP', 1, ' ')
 
       call add_default('NIMIX_IMM', 1, ' ')
-      call add_default('NIMIX_CNT', 1, ' ')  
+      call add_default('NIMIX_CNT', 1, ' ')
       call add_default('NIMIX_DEP', 1, ' ')
 
       call add_default('DSTNIDEP', 1, ' ')
@@ -391,7 +400,7 @@ subroutine hetfrz_classnuc_cam_init(mincld_in)
 
    call rad_cnst_get_mode_props(0, mode_accum_idx, sigmag=sigma_logr_aer)
    alnsg_mode_accum = log(sigma_logr_aer)
-    
+
    if (nmodes == MAM3_nmodes) then
       call rad_cnst_get_mode_props(0, mode_coarse_idx, sigmag=sigma_logr_aer)
       alnsg_mode_coarse = log(sigma_logr_aer)
@@ -415,7 +424,7 @@ subroutine hetfrz_classnuc_cam_init(mincld_in)
    end if
 
    ! Set list indices for all constituents (mass and number) used in this module.
-   ! The list is specific to the aerosol model used.  Note that the order of the 
+   ! The list is specific to the aerosol model used.  Note that the order of the
    ! constituents in these lists is arbitrary.
 
    if (nmodes == MAM3_nmodes) then
@@ -466,7 +475,7 @@ subroutine hetfrz_classnuc_cam_init(mincld_in)
       num_pcarbon  = 14
    end if
 
-   ! Allocate arrays to hold specie and mode indices for all constitutents (mass and number) 
+   ! Allocate arrays to hold specie and mode indices for all constitutents (mass and number)
    ! needed in this module.
    allocate(mode_idx(ncnst), spec_idx(ncnst), stat=istat)
    call alloc_err(istat, routine, 'mode_idx, spec_idx', ncnst)
@@ -545,7 +554,7 @@ subroutine hetfrz_classnuc_cam_init(mincld_in)
       spec_idx(pom_pcarbon) = rad_cnst_get_spec_idx(0, mode_pcarbon_idx, 'p-organic')
       mode_idx(pom_pcarbon) = mode_pcarbon_idx
    end if
- 
+
    ! Check that all required specie types were found
    if (any(spec_idx == -1)) then
       write(iulog,*) routine//': ERROR required species type not found - indicies:', spec_idx
@@ -563,9 +572,8 @@ subroutine hetfrz_classnuc_cam_init(mincld_in)
    call rad_cnst_get_aer_props(0, mode_idx(soa_accum), spec_idx(soa_accum), density_aer=specdens_soa)
    call rad_cnst_get_aer_props(0, mode_idx(pom_accum), spec_idx(pom_accum), density_aer=specdens_pom)
 
-   call hetfrz_classnuc_init( &
-      rair, cpair, rh2o, rhoh2o, mwh2o, &
-      tmelt, pi, iulog)
+   call hetfrz_classnuc_init(rair, cpair, rh2o, rhoh2o, mwh2o, tmelt, pi, iulog, &
+                             hetfrz_bc_scalfac, hetfrz_dust_scalfac )
 
 end subroutine hetfrz_classnuc_cam_init
 
@@ -579,7 +587,7 @@ subroutine hetfrz_classnuc_cam_calc( &
    real(r8),                    intent(in)    :: deltatin       ! time step (s)
    real(r8),                    intent(in)    :: factnum(:,:,:) ! activation fraction for aerosol number
    type(physics_buffer_desc),   pointer       :: pbuf(:)
- 
+
    ! local workspace
 
    ! outputs shared with the microphysics via the pbuf
@@ -592,7 +600,7 @@ subroutine hetfrz_classnuc_cam_calc( &
 
    real(r8) :: rho(pcols,pver)          ! air density (kg m-3)
 
-   real(r8), pointer :: ast(:,:)        
+   real(r8), pointer :: ast(:,:)
 
    real(r8) :: lcldm(pcols,pver)
 
@@ -611,7 +619,7 @@ subroutine hetfrz_classnuc_cam_calc( &
 
    real(r8) :: fn_cloudborne_aer_num(pcols,pver,3)
 
-   real(r8) :: esi(pcols), esl(pcols) 
+   real(r8) :: esi(pcols), esl(pcols)
    real(r8) :: con1, r3lx, supersatice
 
    real(r8) :: qcic
@@ -664,8 +672,6 @@ subroutine hetfrz_classnuc_cam_calc( &
    ! Convert interstitial and cloud borne aerosols from a mass to a volume basis before
    ! being used in get_aer_num
    do i = 1, ncnst
-      aer_cb(:ncol,:,i,lchnk) = aer_cb(:ncol,:,i,lchnk) * rho(:ncol,:)
-
       ! Check whether constituent is a mass or number mixing ratio
       if (spec_idx(i) == 0) then
          call rad_cnst_get_mode_num(0, mode_idx(i), 'a', state, pbuf, ptr2d)
@@ -673,7 +679,15 @@ subroutine hetfrz_classnuc_cam_calc( &
          call rad_cnst_get_aer_mmr(0, mode_idx(i), spec_idx(i), 'a', state, pbuf, ptr2d)
       end if
       aer(:ncol,:,i,lchnk) = ptr2d(:ncol,:) * rho(:ncol,:)
-   end do
+
+      ! Check whether constituent is a mass or number mixing ratio
+      if (spec_idx(i) == 0) then
+         call rad_cnst_get_mode_num(0, mode_idx(i), 'c', state, pbuf, ptr2d)
+      else
+         call rad_cnst_get_aer_mmr(0, mode_idx(i), spec_idx(i), 'c', state, pbuf, ptr2d)
+      end if
+      aer_cb(:ncol,:,i,lchnk) = ptr2d(:ncol,:) * rho(:ncol,:)
+  end do
 
    ! Init top levels of outputs of get_aer_num
    total_aer_num              = 0._r8
@@ -702,8 +716,8 @@ subroutine hetfrz_classnuc_cam_calc( &
             fn_cloudborne_aer_num(i,k,2) = total_aer_num(i,k,2)*factnum(i,k,mode_accum_idx)  ! dst_a1
             fn_cloudborne_aer_num(i,k,3) = total_aer_num(i,k,3)*factnum(i,k,mode_coarse_idx) ! dst_a3
          else if (nmodes == MAM7_nmodes) then
-            fn_cloudborne_aer_num(i,k,2) = total_aer_num(i,k,2)*factnum(i,k,mode_finedust_idx) 
-            fn_cloudborne_aer_num(i,k,3) = total_aer_num(i,k,3)*factnum(i,k,mode_coardust_idx) 
+            fn_cloudborne_aer_num(i,k,2) = total_aer_num(i,k,2)*factnum(i,k,mode_finedust_idx)
+            fn_cloudborne_aer_num(i,k,3) = total_aer_num(i,k,3)*factnum(i,k,mode_coardust_idx)
          end if
       end do
    end do
@@ -731,7 +745,7 @@ subroutine hetfrz_classnuc_cam_calc( &
    call outfld('fn_bc_c1_num',  fn_cloudborne_aer_num(:,:,1),      pcols, lchnk)
    call outfld('fn_dst_c1_num', fn_cloudborne_aer_num(:,:,2),      pcols, lchnk)
    call outfld('fn_dst_c3_num', fn_cloudborne_aer_num(:,:,3),      pcols, lchnk)
-        
+
    call outfld('na500',         na500,     pcols, lchnk)
    call outfld('totna500',      tot_na500, pcols, lchnk)
 
@@ -739,7 +753,7 @@ subroutine hetfrz_classnuc_cam_calc( &
    call pbuf_get_field(pbuf, frzimm_idx, frzimm)
    call pbuf_get_field(pbuf, frzcnt_idx, frzcnt)
    call pbuf_get_field(pbuf, frzdep_idx, frzdep)
-    
+
    frzimm(:ncol,:) = 0._r8
    frzcnt(:ncol,:) = 0._r8
    frzdep(:ncol,:) = 0._r8
@@ -795,8 +809,8 @@ subroutine hetfrz_classnuc_cam_calc( &
                 fn(2) = factnum(i,k,mode_accum_idx)  ! dust_a1 accumulation mode
                 fn(3) = factnum(i,k,mode_coarse_idx) ! dust_a3 coarse mode
             else if (nmodes == MAM7_nmodes) then
-                fn(2) = factnum(i,k,mode_finedust_idx)  
-                fn(3) = factnum(i,k,mode_coardust_idx)   
+                fn(2) = factnum(i,k,mode_finedust_idx)
+                fn(3) = factnum(i,k,mode_coardust_idx)
             end if
 
             call hetfrz_classnuc_calc( &
@@ -828,7 +842,7 @@ subroutine hetfrz_classnuc_cam_calc( &
          nnudep_bc(i,k) = frzbcdep(i,k)*1.0e6_r8*ast(i,k)
 
          nnuccc_dst(i,k) = frzduimm(i,k)*1.0e6_r8*ast(i,k)
-         nnucct_dst(i,k) = frzducnt(i,k)*1.0e6_r8*ast(i,k)     
+         nnucct_dst(i,k) = frzducnt(i,k)*1.0e6_r8*ast(i,k)
          nnudep_dst(i,k) = frzdudep(i,k)*1.0e6_r8*ast(i,k)
 
          niimm_bc(i,k) = frzbcimm(i,k)*1.0e6_r8*deltatin
@@ -859,7 +873,7 @@ subroutine hetfrz_classnuc_cam_calc( &
    call outfld('BCFREZDEP', nnudep_bc, pcols, lchnk)
 
    call outfld('NIMIX_IMM', niimm_bc+niimm_dst, pcols, lchnk)
-   call outfld('NIMIX_CNT', nicnt_bc+nicnt_dst, pcols, lchnk)   
+   call outfld('NIMIX_CNT', nicnt_bc+nicnt_dst, pcols, lchnk)
    call outfld('NIMIX_DEP', nidep_bc+nidep_dst, pcols, lchnk)
 
    call outfld('DSTNICNT', nicnt_dst, pcols, lchnk)
@@ -880,37 +894,6 @@ end subroutine hetfrz_classnuc_cam_calc
 
 !====================================================================================================
 
-subroutine hetfrz_classnuc_cam_save_cbaero(state, pbuf)
-
-   ! Save the required cloud borne aerosol constituents.
-   type(physics_state),         intent(in)    :: state
-   type(physics_buffer_desc),   pointer       :: pbuf(:)
-
-   ! local variables
-   integer :: i, lchnk
-   real(r8), pointer :: ptr2d(:,:)
-   !-------------------------------------------------------------------------------
-
-   lchnk = state%lchnk
-
-   ! loop over the cloud borne constituents required by this module and save
-   ! a local copy
-
-   do i = 1, ncnst
-
-      ! Check whether constituent is a mass or number mixing ratio
-      if (spec_idx(i) == 0) then
-         call rad_cnst_get_mode_num(0, mode_idx(i), 'c', state, pbuf, ptr2d)
-      else
-         call rad_cnst_get_aer_mmr(0, mode_idx(i), spec_idx(i), 'c', state, pbuf, ptr2d)
-      end if
-      aer_cb(:,:,i,lchnk) = ptr2d
-   end do
-
-end subroutine hetfrz_classnuc_cam_save_cbaero
-
-!====================================================================================================
-
 subroutine get_aer_num(ii, kk, ncnst, aer, aer_cb, rhoair,&
                        total_aer_num,                     &
                        coated_aer_num,                    &
@@ -919,7 +902,7 @@ subroutine get_aer_num(ii, kk, ncnst, aer, aer_cb, rhoair,&
                        total_cloudborne_aer_num,          &
                        hetraer, awcam, awfacm, dstcoat,   &
                        na500, tot_na500)
-    
+
    !*****************************************************************************
    ! Purpose: Calculate BC and Dust number, including total number(interstitial+
    !          cloud borne), one monolayer coated number, and uncoated number
@@ -940,7 +923,7 @@ subroutine get_aer_num(ii, kk, ncnst, aer, aer_cb, rhoair,&
    real(r8), intent(out) :: total_aer_num(3)            ! #/cm^3
    real(r8), intent(out) :: total_interstial_aer_num(3) ! #/cm^3
    real(r8), intent(out) :: total_cloudborne_aer_num(3) ! #/cm^3
-   real(r8), intent(out) :: coated_aer_num(3)           ! #/cm^3 
+   real(r8), intent(out) :: coated_aer_num(3)           ! #/cm^3
    real(r8), intent(out) :: uncoated_aer_num(3)         ! #/cm^3
    real(r8), intent(out) :: hetraer(3)                  ! BC and Dust mass mean radius [m]
    real(r8), intent(out) :: awcam(3)                    ! modal added mass [mug m-3]
@@ -960,26 +943,26 @@ subroutine get_aer_num(ii, kk, ncnst, aer, aer_cb, rhoair,&
    real(r8), parameter :: soa_equivso4_factor = spechygro_soa/spechygro_so4
    real(r8), parameter :: pom_equivso4_factor = spechygro_pom/spechygro_so4
    real(r8) :: vol_shell(3)
-   real(r8) :: vol_core(3) 
+   real(r8) :: vol_core(3)
    real(r8) :: fac_volsfc_dust_a1, fac_volsfc_dust_a3, fac_volsfc_bc
    real(r8) :: tmp1, tmp2
-   real(r8) :: bc_num                     ! bc number in accumulation mode for MAM3 
+   real(r8) :: bc_num                     ! bc number in accumulation mode for MAM3
                                           ! bc number in accumulation and primary carbon mode for MAM7 and MAM4
    real(r8) :: dst1_num, dst3_num         ! dust number in accumulation and corase mode for MAM3
                                           ! dust number in fine dust and corase dust mode for MAM7 and MAM4
-   logical :: num_to_mass_in = .true.
+   logical :: num_to_mass_in = .false.
    real(r8), parameter :: bc_num_to_mass = 4.669152e+17_r8      ! #/kg from emission
    real(r8), parameter :: dst1_num_to_mass = 3.484e+15_r8       ! #/kg for dust in accumulation mode
 
-   real(r8) :: dmc, ssmc
+   real(r8) :: dmc, ssmc, so4
 
    real(r8) :: as_so4, as_du, as_soa
    real(r8) :: dst1_num_imm, dst3_num_imm, bc_num_imm
-   real(r8) :: dmc_imm, ssmc_imm
+   real(r8) :: dmc_imm, ssmc_imm, so4_imm
    real(r8) :: as_bc, as_pom, as_ss
-
-   real(r8) :: r_bc                         ! model radii of BC modes [m]   
-   real(r8) :: r_dust_a1, r_dust_a3         ! model radii of dust modes [m]   
+   real(r8) :: bc4_num
+   real(r8) :: r_bc                         ! model radii of BC modes [m]
+   real(r8) :: r_dust_a1, r_dust_a3         ! model radii of dust modes [m]
 
    integer :: i
    real(r8) :: dst1_scale
@@ -999,9 +982,9 @@ subroutine get_aer_num(ii, kk, ncnst, aer, aer_cb, rhoair,&
    tot_na500                 = 0._r8
 
    !*****************************************************************************
-   !                calculate intersitial aerosol 
+   !                calculate intersitial aerosol
    !*****************************************************************************
-   
+
    if (nmodes == MAM3_nmodes .or. nmodes == MAM4_nmodes .or. nmodes == MAM5_nmodes) then
 
       if (.not. num_to_mass_in) then
@@ -1034,26 +1017,34 @@ subroutine get_aer_num(ii, kk, ncnst, aer, aer_cb, rhoair,&
       end if
       dmc = aer(ii,kk,dst_coarse)
       ssmc = aer(ii,kk,ncl_coarse)
-      
+      so4 = aer(ii,kk,so4_coarse)
+
       if (dmc > 0._r8 ) then
-         dst3_num = dmc/(ssmc+dmc) * aer(ii,kk,num_coarse)*1.0e-6_r8 ! #/cm^3
+         dst3_num = dmc/(ssmc+dmc+so4) * aer(ii,kk,num_coarse)*1.0e-6_r8 ! #/cm^3
       else
          dst3_num = 0.0_r8
       end if
 
       if (nmodes == MAM4_nmodes .or. nmodes == MAM5_nmodes) then
-        bc_num = bc_num+(aer(ii,kk,bc_pcarbon)) * bc_num_to_mass*1.0e-6_r8 ! #/cm^3
+         if (num_to_mass_in) then
+            bc_num = bc_num+(aer(ii,kk,bc_pcarbon)) * bc_num_to_mass*1.0e-6_r8 ! #/cm^3
+         else
+            as_bc  = aer(ii,kk,bc_pcarbon)
+            as_pom = aer(ii,kk,pom_pcarbon)
+            bc4_num = as_bc/(as_bc+as_pom)*aer(ii,kk,num_pcarbon)*1.0e-6_r8 ! #/cm^3
+            bc_num = bc_num + bc4_num
+         end if
       end if
    else if (nmodes == MAM7_nmodes) then
       bc_num = (aer(ii,kk,bc_accum)+aer(ii,kk,bc_pcarbon)) * bc_num_to_mass*1.0e-6_r8 ! #/cm^3
       dst1_num = aer(ii,kk,num_finedust)*1.0e-6_r8  ! #/cm^3
-      dst3_num = aer(ii,kk,num_coardust)*1.0e-6_r8 ! #/cm^3    
+      dst3_num = aer(ii,kk,num_coardust)*1.0e-6_r8 ! #/cm^3
    end if
 
    !*****************************************************************************
-   !                calculate cloud borne aerosol 
-   !*****************************************************************************    
-   
+   !                calculate cloud borne aerosol
+   !*****************************************************************************
+
    if (nmodes == MAM3_nmodes .or. nmodes == MAM4_nmodes .or. nmodes == MAM5_nmodes) then
 
       as_so4 = aer_cb(ii,kk,so4_accum)
@@ -1076,12 +1067,13 @@ subroutine get_aer_num(ii, kk, ncnst, aer, aer_cb, rhoair,&
       else
          bc_num_imm = 0.0_r8
       end if
-       
+
       dmc_imm = aer_cb(ii,kk,dst_coarse)
       ssmc_imm = aer_cb(ii,kk,ncl_coarse)
+      so4_imm = aer_cb(ii,kk,so4_coarse)
 
       if (dmc_imm > 0._r8) then
-         dst3_num_imm = dmc_imm/(ssmc_imm+dmc_imm) * aer_cb(ii,kk,num_coarse)*1.0e-6_r8 ! #/cm^3
+         dst3_num_imm = dmc_imm/(ssmc_imm+dmc_imm+so4_imm) * aer_cb(ii,kk,num_coarse)*1.0e-6_r8 ! #/cm^3
       else
          dst3_num_imm = 0.0_r8
       end if
@@ -1105,16 +1097,16 @@ subroutine get_aer_num(ii, kk, ncnst, aer, aer_cb, rhoair,&
 
    total_interstial_aer_num(1) = bc_num
    total_interstial_aer_num(2) = dst1_num
-   total_interstial_aer_num(3) = dst3_num 
+   total_interstial_aer_num(3) = dst3_num
 
-   total_cloudborne_aer_num(1) = bc_num_imm 
-   total_cloudborne_aer_num(2) = dst1_num_imm 
+   total_cloudborne_aer_num(1) = bc_num_imm
+   total_cloudborne_aer_num(2) = dst1_num_imm
    total_cloudborne_aer_num(3) = dst3_num_imm
-  
-   !*****************************************************************************    
+
+   !*****************************************************************************
    ! calculate mass mean radius
-   !*****************************************************************************    
-   
+   !*****************************************************************************
+
    if (nmodes == MAM3_nmodes .or. nmodes == MAM4_nmodes .or. nmodes == MAM5_nmodes) then
 
       if (nmodes == MAM3_nmodes) then
@@ -1157,7 +1149,7 @@ subroutine get_aer_num(ii, kk, ncnst, aer, aer_cb, rhoair,&
       else
           r_bc = 0.067e-6_r8 ! from emission size
       end if
-      
+
       if (aer(ii,kk,dst_finedust)*1.0e-3_r8 > 1.0e-30_r8 .and. dst1_num > 1.0e-3_r8) then
          r_dust_a1 = ( 3._r8/(4*pi*specdens_dust)*aer(ii,kk,dst_finedust)/(dst1_num*1.0e6_r8) )**(1._r8/3._r8)
       else
@@ -1169,16 +1161,16 @@ subroutine get_aer_num(ii, kk, ncnst, aer, aer_cb, rhoair,&
       else
          r_dust_a3 = 1.576e-6_r8
       end if
-   end if    
+   end if
 
    hetraer(1) = r_bc
    hetraer(2) = r_dust_a1
    hetraer(3) = r_dust_a3
 
    !*****************************************************************************
-   !                calculate coated fraction 
+   !                calculate coated fraction
    !*****************************************************************************
-   
+
    if (nmodes == MAM3_nmodes .or. nmodes == MAM4_nmodes .or. nmodes == MAM5_nmodes) then
 
       fac_volsfc_bc      = exp(2.5_r8*alnsg_mode_accum**2)
@@ -1191,16 +1183,16 @@ subroutine get_aer_num(ii, kk, ncnst, aer, aer_cb, rhoair,&
 
       vol_core(2) = aer(ii,kk,dst_accum)/(specdens_dust*rhoair)
 
-      !   ratio1 = vol_shell/vol_core = 
+      !   ratio1 = vol_shell/vol_core =
       !      actual hygroscopic-shell-volume/dust-core-volume
       !   ratio2 = 6.0_r8*dr_so4_monolayers_pcage/(dgncur_a*fac_volsfc_dust)
-      !      = (shell-volume corresponding to n_so4_monolayers_pcage)/core-volume 
+      !      = (shell-volume corresponding to n_so4_monolayers_pcage)/core-volume
       !      The 6.0/(dgncur_a*fac_volsfc_dust) = (mode-surface-area/mode-volume)
       !   Note that vol_shell includes both so4, pom, AND soa as "equivalent so4",
       !      The soa_equivso4_factor accounts for the lower hygroscopicity of soa.
       !
       !   Define xferfrac_pcage = min( 1.0, ratio1/ratio2)
-      !   But ratio1/ratio2 == tmp1/tmp2, and coding below avoids possible overflow 
+      !   But ratio1/ratio2 == tmp1/tmp2, and coding below avoids possible overflow
 
       ! bc
       if (nmodes == MAM3_nmodes) then
@@ -1255,10 +1247,10 @@ subroutine get_aer_num(ii, kk, ncnst, aer, aer_cb, rhoair,&
 
       vol_shell(3) = aer(ii,kk,so4_coardust)/(specdens_so4*rhoair)
       vol_core(3)  = aer(ii,kk,dst_coardust)/(specdens_dust*rhoair)
-      tmp1 = vol_shell(3)*(r_dust_a3*2._r8)*fac_volsfc_dust_a3 
+      tmp1 = vol_shell(3)*(r_dust_a3*2._r8)*fac_volsfc_dust_a3
       tmp2 = max(6.0_r8*dr_so4_monolayers_dust*vol_core(3), 0.0_r8)
       dstcoat(3) = tmp1/tmp2
-    
+
    end if
 
    if (dstcoat(1) > 1._r8)    dstcoat(1) = 1._r8
@@ -1267,19 +1259,24 @@ subroutine get_aer_num(ii, kk, ncnst, aer, aer_cb, rhoair,&
    if (dstcoat(2) < 0.001_r8) dstcoat(2) = 0.001_r8
    if (dstcoat(3) > 1._r8)    dstcoat(3) = 1._r8
    if (dstcoat(3) < 0.001_r8) dstcoat(3) = 0.001_r8
-   
+
    do i = 1, 3
       total_aer_num(i)    = total_interstial_aer_num(i) + total_cloudborne_aer_num(i)
       coated_aer_num(i)   = total_interstial_aer_num(i)*dstcoat(i)
       uncoated_aer_num(i) = total_interstial_aer_num(i)*(1._r8-dstcoat(i))
    end do
-    
+
    if (nmodes == MAM4_nmodes .or. nmodes == MAM7_nmodes .or. nmodes == MAM5_nmodes) then
-      coated_aer_num(1)   = (aer(ii,kk,bc_pcarbon)*bc_num_to_mass*1.0e-6_r8)*dstcoat(1)+ &
-                            (aer(ii,kk,bc_accum)*bc_num_to_mass*1.0e-6_r8)
-      uncoated_aer_num(1) = (aer(ii,kk,bc_pcarbon)*bc_num_to_mass*1.0e-6_r8)*(1._r8-dstcoat(1))
+      if (num_to_mass_in) then
+         coated_aer_num(1)   = (aer(ii,kk,bc_pcarbon)*bc_num_to_mass*1.0e-6_r8)*dstcoat(1)+ &
+                               (aer(ii,kk,bc_accum)*bc_num_to_mass*1.0e-6_r8)
+         uncoated_aer_num(1) = (aer(ii,kk,bc_pcarbon)*bc_num_to_mass*1.0e-6_r8)*(1._r8-dstcoat(1))
+      else
+         coated_aer_num(1)   = bc4_num*dstcoat(1) +  bc_num
+         uncoated_aer_num(1) = bc4_num*(1._r8-dstcoat(1))
+      end if
    end if
-    
+
    if (nmodes == MAM3_nmodes .or. nmodes == MAM4_nmodes .or. nmodes == MAM5_nmodes) then
       dst1_scale = 0.488_r8    ! scaled for D>0.5-1 um from 0.1-1 um
    else if (nmodes == MAM7_nmodes) then
@@ -1293,12 +1290,12 @@ subroutine get_aer_num(ii, kk, ncnst, aer, aer_cb, rhoair,&
       + total_interstial_aer_num(2)*dst1_scale + total_interstial_aer_num(3)
 
    !*****************************************************************************
-   !                prepare some variables for water activity 
+   !                prepare some variables for water activity
    !*****************************************************************************
-   
+
    if (nmodes == MAM3_nmodes .or. nmodes == MAM4_nmodes .or. nmodes == MAM5_nmodes) then
-      ! accumulation mode for dust_a1 
-      if (aer(ii,kk,num_accum) > 0._r8) then 
+      ! accumulation mode for dust_a1
+      if (aer(ii,kk,num_accum) > 0._r8) then
          awcam(2) = (dst1_num*1.0e6_r8)/aer(ii,kk,num_accum)* &
             ( aer(ii,kk,so4_accum) + aer(ii,kk,soa_accum) + &
             aer(ii,kk,pom_accum) + aer(ii,kk,bc_accum) )*1.0e9_r8 ! [mug m-3]
@@ -1306,7 +1303,7 @@ subroutine get_aer_num(ii, kk, ncnst, aer, aer_cb, rhoair,&
          awcam(2) = 0._r8
       end if
 
-      if (awcam(2) > 0._r8) then   
+      if (awcam(2) > 0._r8) then
          awfacm(2) = ( aer(ii,kk,bc_accum) + aer(ii,kk,soa_accum) + aer(ii,kk,pom_accum) )/ &
             ( aer(ii,kk,soa_accum) + aer(ii,kk,pom_accum) + aer(ii,kk,so4_accum) + aer(ii,kk,bc_accum) )
       else
@@ -1356,13 +1353,13 @@ subroutine get_aer_num(ii, kk, ncnst, aer, aer_cb, rhoair,&
 
       if (aer(ii,kk,num_coardust) > 0._r8) then
          awcam(3) = (dst3_num*1.0e6_r8)/aer(ii,kk,num_coardust)* aer(ii,kk,so4_coardust)*1.0e9_r8
-      else 
+      else
          awcam(3) = 0._r8
       end if
       awfacm(3) = 0._r8
 
    end if
-  
+
 end subroutine get_aer_num
 
 !====================================================================================================

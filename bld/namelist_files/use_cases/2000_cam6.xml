@@ -2,13 +2,15 @@
 
 <namelist_defaults>
 
-
-<tracer_cnst_cycle_yr>   2000                                                           </tracer_cnst_cycle_yr>
-<tracer_cnst_datapath>   atm/cam/ozone                                                  </tracer_cnst_datapath>
-<tracer_cnst_file>       tracer_cnst_CAM6chem_2000climo_3D_monthly_c171004.nc           </tracer_cnst_file>
-<tracer_cnst_filelist>   ''                                                             </tracer_cnst_filelist>
-<tracer_cnst_specifier>  'O3','OH','NO3','HO2'                                          </tracer_cnst_specifier>
-<tracer_cnst_type>       'CYCLICAL'                                                     </tracer_cnst_type>
+<tracer_cnst_datapath  chem="trop_mam4">atm/cam/ozone                                             </tracer_cnst_datapath>
+<tracer_cnst_file      chem="trop_mam4">tracer_cnst_CAM6chem_2000climo_3D_monthly_c171004.nc      </tracer_cnst_file>
+<tracer_cnst_specifier chem="trop_mam4">'O3','OH','NO3','HO2'                                     </tracer_cnst_specifier>
+<tracer_cnst_datapath  chem="ghg_mam4" >atm/cam/tracer_cnst                                       </tracer_cnst_datapath>
+<tracer_cnst_file      chem="ghg_mam4" >tracer_cnst_halons_3D_L70_1849-2015_CMIP6ensAvg_c180927.nc</tracer_cnst_file>
+<tracer_cnst_specifier chem="ghg_mam4" >'O3','OH','NO3','HO2','HALONS'                            </tracer_cnst_specifier>
+<tracer_cnst_cycle_yr                  >2000                                                      </tracer_cnst_cycle_yr>
+<tracer_cnst_type                      >CYCLICAL                                                  </tracer_cnst_type>
+<tracer_cnst_filelist                  >''                                                        </tracer_cnst_filelist>
 
 <prescribed_ozone_cycle_yr>   2000                                                           </prescribed_ozone_cycle_yr>
 <prescribed_ozone_datapath>   atm/cam/ozone                                                  </prescribed_ozone_datapath>
