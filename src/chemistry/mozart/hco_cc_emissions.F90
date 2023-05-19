@@ -61,6 +61,7 @@ module hco_cc_emissions
 !------------------------------------------------------------------------------
 !BOC
     logical :: pcnst_is_extfrc(gas_pcnst)              ! Is external forcing? (3-D data)
+    integer :: pcnst_extfrc_ndx(gas_pcnst)             ! External forcing index from get_extfrc_ndx
     integer :: hco_pbuf_idx(gas_pcnst)                 ! Physics buffer indices for HCO_* fields from HEMCO
 contains
 !EOC
@@ -249,7 +250,7 @@ contains
       if(pcnst_is_extfrc(n)) then
         ! add extfrc
         ! "external insitu forcing" (1/cm^3/s)
-
+        m = pcnst_extfrc_ndx(n)
         tmpIdx = hco_pbuf_idx(n)
         if(tmpIdx > 0) then
           ! Note: units coming out of HEMCO are in kg/m2/s, so unit conversion must be done
@@ -344,7 +345,8 @@ contains
     ! for first run, cache results of 3-D or 2-D scan within pcnst_is_extfrc
     ! to avoid lengthy lookups in future timesteps. hplin 1/12/23
     do n = 1, gas_pcnst
-        pcnst_is_extfrc(n) = (get_extfrc_ndx(trim(solsym(n))) > 0)
+        pcnst_extfrc_ndx(n) = get_extfrc_ndx(trim(solsym(n)))
+        pcnst_is_extfrc(n) = (pcnst_extfrc_ndx(n) > 0)
 
         ! construct information about HCO_* corresponding pbuf location
         fldname_ns = 'HCO_' // trim(solsym(n))
@@ -352,9 +354,9 @@ contains
     enddo
 
     if(masterproc) then
-        write(iulog,*) "hco_set_srf_emissions: first run pcnst_is_extfrc cache"
+        write(iulog,*) "hco_set_srf_emissions: first run pcnst_is_extfrc cache, extfrc_ndx:"
         do n = 1, gas_pcnst
-           write(iulog,*) trim(fldname_ns(n)), ' : ', pcnst_is_extfrc(n)
+           write(iulog,*) trim(fldname_ns(n)), ' : ', pcnst_is_extfrc(n), pcnst_extfrc_ndx(n)
         end do
      endif
 

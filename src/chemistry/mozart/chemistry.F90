@@ -882,7 +882,6 @@ end function chem_is_active
 
        !-----------------------------------------------------------------------
        !        ... Set surface emissions using HEMCO compatibility API
-       ! (hplin, 8/8/22)
        !-----------------------------------------------------------------------
        call hco_set_srf_emissions( lchnk, ncol, sflx(:,:), pbuf )
     else

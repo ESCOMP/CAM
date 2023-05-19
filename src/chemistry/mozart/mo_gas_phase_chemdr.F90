@@ -237,10 +237,11 @@ contains
     !  ... save photo rxn rates for HEMCO ParaNOx, chem_mech rxns:
     !    jo3_b            (  8)   O3 + hv ->  O + O2
     !    jno2             ( 16)   NO2 + hv ->  NO + O
-    ! (hplin, 5/17/21)
     !
-    ! Note hplin 1/25/22: might have to check if this rxt_idx available for
-    ! all sub-mechanisms in CAM-chem
+    ! The reactions jo2 and jo3_b exist in the mechanisms that would use
+    ! the ParaNOx ship plume extension. If they do not exist, then the indices
+    ! would not be found and the HCO_IN_JNO2 and HCO_IN_JOH fields would not
+    ! be zero and the extension would have no effect.
     !-----------------------------------------------------------------------
     rxt_jno2_idx  = get_rxt_ndx( 'jno2' )
     rxt_joh_idx   = get_rxt_ndx( 'jo3_b' )
@@ -828,7 +829,6 @@ contains
        !  ... save photo rxn rates for HEMCO ParaNOx, chem_mech rxns:
        !    jo3_b            (  8)   O3 + hv ->  O + O2
        !    jno2             ( 16)   NO2 + hv ->  NO + O
-       ! (hplin, 5/17/21)
        !-----------------------------------------------------------------------
        ! get the rxn rate [1/s] and write to pbuf
        if(rxt_jno2_idx > 0 .and. hco_jno2_idx > 0) then
@@ -839,7 +839,7 @@ contains
 
        if(rxt_joh_idx > 0 .and. hco_joh_idx > 0) then
          call pbuf_get_field(pbuf, hco_joh_idx, hco_j_tmp_fld)
-         ! this is already in chunk, write /pcols, pver/
+         ! this is already in chunk, write /pcols/ at surface
          hco_j_tmp_fld(:ncol) = reaction_rates(:ncol,pver,rxt_joh_idx)
        endif
     endif
