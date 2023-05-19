@@ -141,10 +141,6 @@ contains
             else ! 2-D data
                 call pbuf_get_field(pbuf, tmpIdx, pbuf_ptr_2d)
 
-                if(.not. associated(pbuf_ptr_2d)) then ! sanity check
-                  call endrun("mo_srf_emissions hemco: FATAL - tmpIdx > 0 but pbuf_ptr_2d unassoc")
-                endif
-
                 ! for each col retrieve data from pbuf_ptr(I, K)
                 sflx(1:ncol,n) = pbuf_ptr_2d(1:ncol)
 
@@ -265,12 +261,9 @@ contains
           ! (hplin, 11/14/20)
           kg_to_molec = 1/(adv_mass(n) / avogadro * cm2_to_m2 * kg_to_g)
 
-          ! this is already in chunk, retrieve it
+          ! this is already in chunk, retrieve it.
+          ! if the field does not exist, pbuf_get_field will return an error, so sanity check for pbuf_ik is not needed.
           call pbuf_get_field(pbuf, tmpIdx, pbuf_ik)
-
-          if(.not. associated(pbuf_ik)) then ! sanity check
-            call endrun("mo_extfrc hemco: FATAL - tmpIdx > 0 but pbuf_ik unassoc")
-          endif
 
           ! for each col retrieve data from pbuf_ik(I, K)
           ! this includes surface layer.
