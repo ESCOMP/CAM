@@ -17,23 +17,24 @@ module clubb_intr
   !                                                                                                      ! 
   !----------------------------------------------------------------------------------------------------- !
 
-  use shr_kind_mod,     only: r8=>shr_kind_r8                                                                  
-  use ppgrid,           only: pver, pverp, pcols, begchunk, endchunk
-  use phys_control,     only: phys_getopts
-  use physconst,        only: cpair, gravit, rga, latvap, latice, zvir, rh2o, karman
-  use air_composition,  only: rairv, cpairv
+  use shr_kind_mod,        only: r8=>shr_kind_r8                                                                  
+  use ppgrid,              only: pver, pverp, pcols, begchunk, endchunk
+  use phys_control,        only: phys_getopts
+  use physconst,           only: cpair, gravit, rga, latvap, latice, zvir, rh2o, karman
+  use air_composition,     only: rairv, cpairv
+  use cam_history_support, only: max_fieldname_len
 
-  use spmd_utils,       only: masterproc 
-  use constituents,     only: pcnst, cnst_add
-  use pbl_utils,        only: calc_ustar, calc_obklen
-  use ref_pres,         only: top_lev => trop_cloud_top_lev  
-  use zm_conv_intr,     only: zmconv_microp
+  use spmd_utils,          only: masterproc 
+  use constituents,        only: pcnst, cnst_add
+  use pbl_utils,           only: calc_ustar, calc_obklen
+  use ref_pres,            only: top_lev => trop_cloud_top_lev  
+  use zm_conv_intr,        only: zmconv_microp
 #ifdef CLUBB_SGS
-  use clubb_api_module, only: pdf_parameter, implicit_coefs_terms
-  use clubb_api_module, only: clubb_config_flags_type, grid, stats, nu_vertical_res_dep
-  use clubb_api_module, only: nparams
-  use clubb_mf,         only: do_clubb_mf, do_clubb_mf_diag
-  use cloud_fraction,   only: dp1, dp2
+  use clubb_api_module,    only: pdf_parameter, implicit_coefs_terms
+  use clubb_api_module,    only: clubb_config_flags_type, grid, stats, nu_vertical_res_dep
+  use clubb_api_module,    only: nparams
+  use clubb_mf,            only: do_clubb_mf, do_clubb_mf_diag
+  use cloud_fraction,      only: dp1, dp2
 #endif
 
   implicit none
@@ -4305,7 +4306,7 @@ end subroutine clubb_init_cnst
    
         temp1 = trim(stats_zt(1)%file%grid_avg_var(j)%name)
         sub   = temp1
-        if (len(temp1) >  16) sub = temp1(1:16)
+        if (len(temp1) >  max_fieldname_len) sub = temp1(1:max_fieldname_len)
  
         call outfld(trim(sub), out_zt(:,:,j), pcols, lchnk )
       enddo
@@ -4314,7 +4315,7 @@ end subroutine clubb_init_cnst
    
         temp1 = trim(stats_zm(1)%file%grid_avg_var(j)%name)
         sub   = temp1
-        if (len(temp1) > 16) sub = temp1(1:16)
+        if (len(temp1) > max_fieldname_len) sub = temp1(1:max_fieldname_len)
    
         call outfld(trim(sub),out_zm(:,:,j), pcols, lchnk)
       enddo
@@ -5020,7 +5021,7 @@ end function diag_ustar
       
         temp1 = trim(stats_zt%file%grid_avg_var(i)%name)
         sub   = temp1
-        if (len(temp1) > 16) sub = temp1(1:16)
+        if (len(temp1) > max_fieldname_len) sub = temp1(1:max_fieldname_len)
        
           call addfld(trim(sub),(/ 'ilev' /),&
                'A',trim(stats_zt%file%grid_avg_var(i)%units),trim(stats_zt%file%grid_avg_var(i)%description))
@@ -5030,7 +5031,7 @@ end function diag_ustar
       
         temp1 = trim(stats_zm%file%grid_avg_var(i)%name)
         sub   = temp1
-        if (len(temp1) > 16) sub = temp1(1:16)
+        if (len(temp1) > max_fieldname_len) sub = temp1(1:max_fieldname_len)
       
          call addfld(trim(sub),(/ 'ilev' /),&
               'A',trim(stats_zm%file%grid_avg_var(i)%units),trim(stats_zm%file%grid_avg_var(i)%description))

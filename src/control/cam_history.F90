@@ -49,7 +49,8 @@ module cam_history
                                   field_info, active_entry, hentry,           &
                                   horiz_only, write_hist_coord_attrs,         &
                                   write_hist_coord_vars, interp_info_t,       &
-                                  lookup_hist_coord_indices, get_hist_coord_index
+                                  lookup_hist_coord_indices, get_hist_coord_index, &
+                                  field_op_len
    use string_utils,        only: date2yyyymmdd, sec2hms
    use sat_hist,            only: is_satfile
    use solar_parms_data,    only: solar_parms_on, kp=>solar_parms_kp, ap=>solar_parms_ap
@@ -68,19 +69,28 @@ module cam_history
   public :: cam_history_snapshot_deactivate
   public :: cam_history_snapshot_activate
 
+  type grid_area_entry
+     integer                         :: decomp_type = -1         ! type of decomposition (e.g., physics or dynamics)
+     real(r8), allocatable           :: wbuf(:,:)                ! for area weights
+  end type grid_area_entry
+  type (grid_area_entry), target, allocatable:: grid_wts(:)      ! area wts for each decomp type
+  type (grid_area_entry), pointer    :: allgrids_wt(:) => null() ! area wts for each decomp type
   !
   ! master_entry: elements of an entry in the master field list
   !
   type master_entry
-    type (field_info)        :: field            ! field information
+    type (field_info)                :: field            ! field information
     character(len=max_fieldname_len) :: meridional_field = '' ! for vector fields
     character(len=max_fieldname_len) :: zonal_field = '' ! for vector fields
-    character(len=1)         :: avgflag(ptapes)  ! averaging flag
-    character(len=max_chars) :: time_op(ptapes)  ! time operator (e.g. max, min, avg)
-    logical               :: act_sometape     ! Field is active on some tape
-    logical               :: actflag(ptapes)  ! Per tape active/inactive flag
-    integer               :: htapeindx(ptapes)! This field's index on particular history tape
-    type(master_entry), pointer :: next_entry => null() ! The next master entry
+    character(len=1)                 :: avgflag(ptapes)  ! averaging flag
+    character(len=max_chars)         :: time_op(ptapes)  ! time operator (e.g. max, min, avg)
+    character(len=field_op_len)      :: field_op  = ''   ! field derived from sum or dif of field1 and field2
+    character(len=max_fieldname_len) :: op_field1 = ''   ! first field name to be operated on
+    character(len=max_fieldname_len) :: op_field2 = ''   ! second field name to be operated on
+    logical                          :: act_sometape     ! Field is active on some tape
+    logical                          :: actflag(ptapes)  ! Per tape active/inactive flag
+    integer                          :: htapeindx(ptapes)! This field's index on particular history tape
+    type(master_entry), pointer      :: next_entry => null() ! The next master entry
   end type master_entry
 
   type (master_entry), pointer :: masterlinkedlist => null()   ! master field linkedlist top
@@ -115,7 +125,7 @@ module cam_history
   !
   !   The size of these parameters should match the assignments in restart_vars_setnames and restart_dims_setnames below
   !
-  integer, parameter :: restartvarcnt              = 38
+  integer, parameter :: restartvarcnt              = 45
   integer, parameter :: restartdimcnt              = 10
   type(rvar_id)      :: restartvars(restartvarcnt)
   type(rdim_id)      :: restartdims(restartdimcnt)
@@ -177,8 +187,7 @@ module cam_history
 
   ! Allowed history averaging flags
   ! This should match namelist_definition.xml => avgflag_pertape (+ ' ')
-  ! The presence of 'ABI' and 'XML' in this string is a coincidence
-  character(len=7), parameter    :: HIST_AVG_FLAGS = ' ABIXML'
+  character(len=9), parameter    :: HIST_AVG_FLAGS = ' ABILMNSX'
   character(len=22) ,parameter   :: LT_DESC = 'mean (over local time)' ! local time description
   logical :: collect_column_output(ptapes)
 
@@ -349,6 +358,8 @@ CONTAINS
     use cam_control_mod,  only: restart_run, branch_run
     use sat_hist,         only: sat_hist_init
     use spmd_utils,       only: mpicom, masterprocid, mpi_character
+    use cam_grid_support, only: cam_grid_get_areawt
+    use cam_history_support, only: dim_index_2d
     !
     !-----------------------------------------------------------------------
     !
@@ -367,8 +378,13 @@ CONTAINS
     integer :: enddim3           ! on-node chunk or lat end index
     integer :: day, sec          ! day and seconds from base date
     integer :: rcode             ! shr_sys_getenv return code
+    integer :: wtidx(1)          ! area weight index
+    integer :: i,k,c,ib,ie,jb,je,count ! index
+    integer :: fdecomp           ! field decomp
+    type(dim_index_2d)          :: dimind    ! 2-D dimension index
+    real(r8), pointer           :: areawt(:)  ! pointer to areawt values for attribute
     type(master_entry), pointer :: listentry
-    character(len=32) :: fldname ! temp variable used to produce a left justified field name
+    character(len=32)           :: fldname ! temp variable used to produce a left justified field name
     ! in the formatted logfile output
 
     !
@@ -466,12 +482,43 @@ CONTAINS
            allocate(tape(t)%hlist(f)%sbuf(begdim1:enddim1,begdim2:enddim2,begdim3:enddim3))
            tape(t)%hlist(f)%sbuf = 0._r8
         endif
+        if (tape(t)%hlist(f)%avgflag .eq. 'N') then ! set up areawt weight buffer
+           fdecomp = tape(t)%hlist(f)%field%decomp_type
+           if (any(allgrids_wt(:)%decomp_type == fdecomp)) then
+              wtidx=MAXLOC(allgrids_wt(:)%decomp_type, MASK = allgrids_wt(:)%decomp_type .EQ. fdecomp)
+              tape(t)%hlist(f)%wbuf => allgrids_wt(wtidx(1))%wbuf
+           else
+              ! area weights not found for this grid, then create them
+              ! first check for an available spot in the array
+              if (any(allgrids_wt(:)%decomp_type == -1)) then
+                 wtidx=MINLOC(allgrids_wt(:)%decomp_type)
+              else
+                 call endrun('cam_history:intht: Error initializing allgrids_wt with area weights')
+              end if
+              allgrids_wt(wtidx)%decomp_type=fdecomp
+              areawt => cam_grid_get_areawt(fdecomp)
+              allocate(allgrids_wt(wtidx(1))%wbuf(begdim1:enddim1,begdim3:enddim3))
+              allgrids_wt(wtidx(1))%wbuf(begdim1:enddim1,begdim3:enddim3)=0._r8
+              count=0
+              do c=begdim3,enddim3
+                 dimind = tape(t)%hlist(f)%field%get_dims(c)
+                 ib=dimind%beg1
+                 ie=dimind%end1
+                 do i=ib,ie
+                    count=count+1
+                    allgrids_wt(wtidx(1))%wbuf(i,c)=areawt(count)
+                 end do
+              end do
+              tape(t)%hlist(f)%wbuf => allgrids_wt(wtidx(1))%wbuf
+           endif
+        endif
         if(tape(t)%hlist(f)%field%flag_xyfill .or. (avgflag_pertape(t) .eq. 'L')) then
           allocate (tape(t)%hlist(f)%nacs(begdim1:enddim1,begdim3:enddim3))
         else
           allocate (tape(t)%hlist(f)%nacs(1,begdim3:enddim3))
         end if
         tape(t)%hlist(f)%nacs(:,:) = 0
+        tape(t)%hlist(f)%beg_nstep = 0
         tape(t)%hlist(f)%field%meridional_complement = -1
         tape(t)%hlist(f)%field%zonal_complement = -1
       end do
@@ -937,6 +984,47 @@ CONTAINS
     end if
   end subroutine setup_interpolation_and_define_vector_complements
 
+  subroutine define_composed_field_ids(t)
+
+    ! Dummy arguments
+    integer, intent(in)               :: t     ! Current tape
+
+    ! Local variables
+    integer :: f, ff
+    character(len=max_fieldname_len) :: field1
+    character(len=max_fieldname_len) :: field2
+    character(len=*), parameter      :: subname='define_composed_field_ids'
+    logical                          :: is_composed
+
+    do f = 1, nflds(t)
+       call composed_field_info(tape(t)%hlist(f)%field%name,is_composed,fname1=field1,fname2=field2)
+       if (is_composed) then
+          if (len_trim(field1) > 0 .and. len_trim(field2) > 0) then
+             ! set field1/field2 names for htape from the masterfield list
+             tape(t)%hlist(f)%op_field1=trim(field1)
+             tape(t)%hlist(f)%op_field2=trim(field2)
+             ! find ids for field1/2
+             do ff = 1, nflds(t)
+                if (trim(field1) == trim(tape(t)%hlist(ff)%field%name)) then
+                   tape(t)%hlist(f)%field%op_field1_id = ff
+                end if
+                if (trim(field2) == trim(tape(t)%hlist(ff)%field%name)) then
+                   tape(t)%hlist(f)%field%op_field2_id = ff
+                end if
+             end do
+             if (tape(t)%hlist(f)%field%op_field1_id == -1) then
+                call endrun(trim(subname)//': No op_field1 match for '//trim(tape(t)%hlist(f)%field%name))
+             end if
+             if (tape(t)%hlist(f)%field%op_field2_id == -1) then
+                call endrun(trim(subname)//': No op_field2 match for '//trim(tape(t)%hlist(f)%field%name))
+             end if
+          else
+             call endrun(trim(subname)//': Component fields not found for composed field')
+          end if
+       end if
+    end do
+  end subroutine define_composed_field_ids
+
   subroutine restart_vars_setnames()
 
     ! Local variable
@@ -1078,6 +1166,25 @@ CONTAINS
     restartvars(rvindex)%ifill = 0
 
     rvindex = rvindex + 1
+    restartvars(rvindex)%name = 'beg_nstep'
+    restartvars(rvindex)%type = pio_int
+    restartvars(rvindex)%ndims = 2
+    restartvars(rvindex)%dims(1) = maxnflds_dim_ind
+    restartvars(rvindex)%dims(2) = ptapes_dim_ind
+    restartvars(rvindex)%fillset = .true.
+    restartvars(rvindex)%ifill = 0
+
+    rvindex = rvindex + 1
+    restartvars(rvindex)%name = 'hbuf_integral'
+    restartvars(rvindex)%type = pio_double
+    restartvars(rvindex)%ndims = 2
+    restartvars(rvindex)%dims(1) = maxnflds_dim_ind
+    restartvars(rvindex)%dims(2) = ptapes_dim_ind
+    restartvars(rvindex)%fillset = .true.
+    restartvars(rvindex)%ifill = 0
+
+
+    rvindex = rvindex + 1
     restartvars(rvindex)%name = 'avgflag'
     restartvars(rvindex)%type = pio_char
     restartvars(rvindex)%ndims = 2
@@ -1216,6 +1323,48 @@ CONTAINS
     restartvars(rvindex)%dims(2) = ptapes_dim_ind
     restartvars(rvindex)%fillset = .true.
     restartvars(rvindex)%ifill = 0
+
+    rvindex = rvindex + 1
+    restartvars(rvindex)%name = 'field_op'
+    restartvars(rvindex)%type = pio_char
+    restartvars(rvindex)%ndims = 3
+    restartvars(rvindex)%dims(1) = max_chars_dim_ind
+    restartvars(rvindex)%dims(2) = maxnflds_dim_ind
+    restartvars(rvindex)%dims(3) = ptapes_dim_ind
+
+    rvindex = rvindex + 1
+    restartvars(rvindex)%name = 'op_field1_id'
+    restartvars(rvindex)%type = pio_int
+    restartvars(rvindex)%ndims = 2
+    restartvars(rvindex)%dims(1) = maxnflds_dim_ind
+    restartvars(rvindex)%dims(2) = ptapes_dim_ind
+    restartvars(rvindex)%fillset = .true.
+    restartvars(rvindex)%ifill = 0
+
+    rvindex = rvindex + 1
+    restartvars(rvindex)%name = 'op_field2_id'
+    restartvars(rvindex)%type = pio_int
+    restartvars(rvindex)%ndims = 2
+    restartvars(rvindex)%dims(1) = maxnflds_dim_ind
+    restartvars(rvindex)%dims(2) = ptapes_dim_ind
+    restartvars(rvindex)%fillset = .true.
+    restartvars(rvindex)%ifill = 0
+
+    rvindex = rvindex + 1
+    restartvars(rvindex)%name = 'op_field1'
+    restartvars(rvindex)%type = pio_char
+    restartvars(rvindex)%ndims = 3
+    restartvars(rvindex)%dims(1) = max_fieldname_len_dim_ind
+    restartvars(rvindex)%dims(2) = maxnflds_dim_ind
+    restartvars(rvindex)%dims(3) = ptapes_dim_ind
+
+    rvindex = rvindex + 1
+    restartvars(rvindex)%name = 'op_field2'
+    restartvars(rvindex)%type = pio_char
+    restartvars(rvindex)%ndims = 3
+    restartvars(rvindex)%dims(1) = max_fieldname_len_dim_ind
+    restartvars(rvindex)%dims(2) = maxnflds_dim_ind
+    restartvars(rvindex)%dims(3) = ptapes_dim_ind
 
   end subroutine restart_vars_setnames
 
@@ -1366,6 +1515,8 @@ CONTAINS
     type(var_desc_t), pointer ::  longname_desc
     type(var_desc_t), pointer ::  units_desc
     type(var_desc_t), pointer ::  hwrt_prec_desc
+    type(var_desc_t), pointer ::  hbuf_integral_desc
+    type(var_desc_t), pointer ::  beg_nstep_desc
     type(var_desc_t), pointer ::  xyfill_desc
     type(var_desc_t), pointer ::  mdims_desc        ! mdim name indices
     type(var_desc_t), pointer ::  mdimname_desc     ! mdim names
@@ -1378,6 +1529,11 @@ CONTAINS
     type(var_desc_t), pointer ::  interpolate_nlon_desc
     type(var_desc_t), pointer ::  meridional_complement_desc
     type(var_desc_t), pointer ::  zonal_complement_desc
+    type(var_desc_t), pointer ::  field_op_desc
+    type(var_desc_t), pointer ::  op_field1_id_desc
+    type(var_desc_t), pointer ::  op_field2_id_desc
+    type(var_desc_t), pointer ::  op_field1_desc
+    type(var_desc_t), pointer ::  op_field2_desc
 
     integer, allocatable      ::  allmdims(:,:,:)
     integer, allocatable      ::  xyfill(:,:)
@@ -1385,7 +1541,7 @@ CONTAINS
     integer, allocatable      ::  interp_output(:)
 
     integer                   ::  maxnflds
-
+    real(r8)                  ::  integral  ! hbuf area weighted integral
 
     maxnflds = maxval(nflds)
     allocate(xyfill(maxnflds, ptapes))
@@ -1479,6 +1635,8 @@ CONTAINS
     decomp_type_desc => restartvar_getdesc('decomp_type')
     numlev_desc => restartvar_getdesc('numlev')
     hwrt_prec_desc => restartvar_getdesc('hwrt_prec')
+    hbuf_integral_desc => restartvar_getdesc('hbuf_integral')
+    beg_nstep_desc => restartvar_getdesc('beg_nstep')
 
     sseq_desc => restartvar_getdesc('sampling_seq')
     cm_desc => restartvar_getdesc('cell_methods')
@@ -1496,6 +1654,12 @@ CONTAINS
 
     meridional_complement_desc => restartvar_getdesc('meridional_complement')
     zonal_complement_desc => restartvar_getdesc('zonal_complement')
+
+    field_op_desc => restartvar_getdesc('field_op')
+    op_field1_id_desc => restartvar_getdesc('op_field1_id')
+    op_field2_id_desc => restartvar_getdesc('op_field2_id')
+    op_field1_desc => restartvar_getdesc('op_field1')
+    op_field2_desc => restartvar_getdesc('op_field2')
 
     mdims_desc => restartvar_getdesc('mdims')
     mdimname_desc => restartvar_getdesc('mdimnames')
@@ -1519,6 +1683,9 @@ CONTAINS
         ierr = pio_put_var(File, numlev_desc,start,tape(t)%hlist(f)%field%numlev)
 
         ierr = pio_put_var(File, hwrt_prec_desc,start,tape(t)%hlist(f)%hwrt_prec)
+        call tape(t)%hlist(f)%get_global(integral)
+        ierr = pio_put_var(File, hbuf_integral_desc,start,integral)
+        ierr = pio_put_var(File, beg_nstep_desc,start,tape(t)%hlist(f)%beg_nstep)
         ierr = pio_put_var(File, sseq_desc,startc,tape(t)%hlist(f)%field%sampling_seq)
         ierr = pio_put_var(File, cm_desc,startc,tape(t)%hlist(f)%field%cell_methods)
         ierr = pio_put_var(File, longname_desc,startc,tape(t)%hlist(f)%field%long_name)
@@ -1528,6 +1695,11 @@ CONTAINS
         ierr = pio_put_var(File, fillval_desc,start, tape(t)%hlist(f)%field%fillvalue)
         ierr = pio_put_var(File, meridional_complement_desc,start, tape(t)%hlist(f)%field%meridional_complement)
         ierr = pio_put_var(File, zonal_complement_desc,start, tape(t)%hlist(f)%field%zonal_complement)
+        ierr = pio_put_var(File, field_op_desc,startc, tape(t)%hlist(f)%field%field_op)
+        ierr = pio_put_var(File, op_field1_id_desc,start, tape(t)%hlist(f)%field%op_field1_id)
+        ierr = pio_put_var(File, op_field2_id_desc,start, tape(t)%hlist(f)%field%op_field2_id)
+        ierr = pio_put_var(File, op_field1_desc,startc, tape(t)%hlist(f)%op_field1)
+        ierr = pio_put_var(File, op_field2_desc,startc, tape(t)%hlist(f)%op_field2)
         if(associated(tape(t)%hlist(f)%field%mdims)) then
           allmdims(1:size(tape(t)%hlist(f)%field%mdims),f,t) = tape(t)%hlist(f)%field%mdims
         else
@@ -1591,11 +1763,13 @@ CONTAINS
     use ioFileMod,           only: getfil
     use sat_hist,            only: sat_hist_define, sat_hist_init
     use cam_grid_support,    only: cam_grid_read_dist_array, cam_grid_num_grids
-    use cam_history_support, only: get_hist_coord_index, add_hist_coord
+    use cam_history_support, only: get_hist_coord_index, add_hist_coord, dim_index_2d
     use constituents,        only: cnst_get_ind, cnst_get_type_byind
+    use cam_grid_support,    only: cam_grid_get_areawt
 
     use shr_sys_mod,         only: shr_sys_getenv
     use spmd_utils,          only: mpicom, mpi_character, masterprocid
+    use time_manager,        only: get_nstep
     !
     !-----------------------------------------------------------------------
     !
@@ -1619,8 +1793,11 @@ CONTAINS
 
     character(len=max_string_len)  :: locfn       ! Local filename
     character(len=max_fieldname_len), allocatable :: tmpname(:,:)
+    character(len=max_fieldname_len), allocatable :: tmpf1name(:,:)
+    character(len=max_fieldname_len), allocatable :: tmpf2name(:,:)
     integer, allocatable :: decomp(:,:), tmpnumlev(:,:)
-    integer, pointer :: nacs(:,:)    ! accumulation counter
+    integer, pointer :: nacs(:,:)    ! outfld accumulation counter
+    integer          :: beg_nstep  ! start timestep of this slice for nstep accumulation counter
     character(len=max_fieldname_len) :: fname_tmp ! local copy of field name
     character(len=max_fieldname_len) :: dname_tmp ! local copy of dim name
 
@@ -1635,7 +1812,15 @@ CONTAINS
     type(var_desc_t)                 :: fillval_desc
     type(var_desc_t)                 :: meridional_complement_desc
     type(var_desc_t)                 :: zonal_complement_desc
+    type(var_desc_t)                 :: field_op_desc
+    type(var_desc_t)                 :: op_field1_id_desc
+    type(var_desc_t)                 :: op_field2_id_desc
+    type(var_desc_t)                 :: op_field1_desc
+    type(var_desc_t)                 :: op_field2_desc
+    type(dim_index_2d)               :: dimind    ! 2-D dimension index
     integer,            allocatable  :: tmpprec(:,:)
+    real(r8),           allocatable  :: tmpintegral(:,:)
+    integer,            allocatable  :: tmpbeg_nstep(:,:)
     integer,            allocatable  :: xyfill(:,:)
     integer,            allocatable  :: allmdims(:,:,:)
     integer,            allocatable  :: is_subcol(:,:)
@@ -1658,6 +1843,8 @@ CONTAINS
     integer                          :: fdecomp          ! Grid ID for field
     integer                          :: idx
     character(len=3)                 :: mixing_ratio
+    integer                          :: c,ib,ie,jb,je,k,cnt,wtidx(1)
+    real(r8), pointer                :: areawt(:)  ! pointer to areawt values for attribute
 
     !
     ! Get users logname and machine hostname
@@ -1735,33 +1922,38 @@ CONTAINS
     ierr = pio_inq_varid(File, 'lcltod_stop', vdesc)
     ierr = pio_get_var(File, vdesc, lcltod_stop(1:mtapes))
 
-
-
-
     allocate(tmpname(maxnflds, mtapes), decomp(maxnflds, mtapes), tmpnumlev(maxnflds,mtapes))
     ierr = pio_inq_varid(File, 'field_name', vdesc)
     ierr = pio_get_var(File, vdesc, tmpname)
-
     ierr = pio_inq_varid(File, 'decomp_type', vdesc)
     ierr = pio_get_var(File, vdesc, decomp)
     ierr = pio_inq_varid(File, 'numlev', vdesc)
     ierr = pio_get_var(File, vdesc, tmpnumlev)
 
-    allocate(tmpprec(maxnflds,mtapes))
+    ierr = pio_inq_varid(File, 'hbuf_integral',vdesc)
+    allocate(tmpintegral(maxnflds,mtapes))
+    ierr = pio_get_var(File, vdesc, tmpintegral(:,:))
+
+
     ierr = pio_inq_varid(File, 'hwrt_prec',vdesc)
+    allocate(tmpprec(maxnflds,mtapes))
     ierr = pio_get_var(File, vdesc, tmpprec(:,:))
 
-    allocate(xyfill(maxnflds,mtapes))
+    ierr = pio_inq_varid(File, 'beg_nstep',vdesc)
+    allocate(tmpbeg_nstep(maxnflds,mtapes))
+    ierr = pio_get_var(File, vdesc, tmpbeg_nstep(:,:))
+
     ierr = pio_inq_varid(File, 'xyfill', vdesc)
+    allocate(xyfill(maxnflds,mtapes))
     ierr = pio_get_var(File, vdesc, xyfill)
 
-    allocate(is_subcol(maxnflds,mtapes))
     ierr = pio_inq_varid(File, 'is_subcol', vdesc)
+    allocate(is_subcol(maxnflds,mtapes))
     ierr = pio_get_var(File, vdesc, is_subcol)
 
     !! interpolated output
-    allocate(interp_output(mtapes))
     ierr = pio_inq_varid(File, 'interpolate_output', vdesc)
+    allocate(interp_output(mtapes))
     ierr = pio_get_var(File, vdesc, interp_output)
     interpolate_output(1:mtapes) = interp_output(1:mtapes) > 0
     if (ptapes > mtapes) then
@@ -1816,6 +2008,13 @@ CONTAINS
       end if
     end do
 
+    allocate(tmpf1name(maxnflds, mtapes), tmpf2name(maxnflds, mtapes))
+    ierr = pio_inq_varid(File, 'op_field1', vdesc)
+    ierr = pio_get_var(File, vdesc, tmpf1name)
+    ierr = pio_inq_varid(File, 'op_field2', vdesc)
+    ierr = pio_get_var(File, vdesc, tmpf2name)
+
+
     ierr = pio_inq_varid(File, 'avgflag', avgflag_desc)
 
     ierr = pio_inq_varid(File, 'long_name', longname_desc)
@@ -1826,6 +2025,9 @@ CONTAINS
     ierr = pio_inq_varid(File, 'fillvalue', fillval_desc)
     ierr = pio_inq_varid(File, 'meridional_complement', meridional_complement_desc)
     ierr = pio_inq_varid(File, 'zonal_complement', zonal_complement_desc)
+    ierr = pio_inq_varid(File, 'field_op', field_op_desc)
+    ierr = pio_inq_varid(File, 'op_field1_id', op_field1_id_desc)
+    ierr = pio_inq_varid(File, 'op_field2_id', op_field2_id_desc)
 
     rgnht(:)=.false.
 
@@ -1851,6 +2053,11 @@ CONTAINS
         ierr = pio_get_var(File,fillval_desc, (/f,t/), tape(t)%hlist(f)%field%fillvalue)
         ierr = pio_get_var(File,meridional_complement_desc, (/f,t/), tape(t)%hlist(f)%field%meridional_complement)
         ierr = pio_get_var(File,zonal_complement_desc, (/f,t/), tape(t)%hlist(f)%field%zonal_complement)
+        tape(t)%hlist(f)%field%field_op(1:field_op_len) = ' '
+        ierr = pio_get_var(File,field_op_desc, (/1,f,t/), tape(t)%hlist(f)%field%field_op)
+        call strip_null(tape(t)%hlist(f)%field%field_op)
+        ierr = pio_get_var(File,op_field1_id_desc, (/f,t/), tape(t)%hlist(f)%field%op_field1_id)
+        ierr = pio_get_var(File,op_field2_id_desc, (/f,t/), tape(t)%hlist(f)%field%op_field2_id)
         ierr = pio_get_var(File,avgflag_desc, (/f,t/), tape(t)%hlist(f)%avgflag)
         ierr = pio_get_var(File,longname_desc, (/1,f,t/), tape(t)%hlist(f)%field%long_name)
         ierr = pio_get_var(File,units_desc, (/1,f,t/), tape(t)%hlist(f)%field%units)
@@ -1871,11 +2078,16 @@ CONTAINS
            tape(t)%hlist(f)%field%is_subcol=.false.
         end if
         call strip_null(tmpname(f,t))
+        call strip_null(tmpf1name(f,t))
+        call strip_null(tmpf2name(f,t))
         tape(t)%hlist(f)%field%name = tmpname(f,t)
+        tape(t)%hlist(f)%op_field1 = tmpf1name(f,t)
+        tape(t)%hlist(f)%op_field2 = tmpf2name(f,t)
         tape(t)%hlist(f)%field%decomp_type = decomp(f,t)
         tape(t)%hlist(f)%field%numlev = tmpnumlev(f,t)
         tape(t)%hlist(f)%hwrt_prec = tmpprec(f,t)
-
+        tape(t)%hlist(f)%beg_nstep = tmpbeg_nstep(f,t)
+        call tape(t)%hlist(f)%put_global(tmpintegral(f,t))
         ! If the field is an advected constituent set the mixing_ratio attribute
         fname_tmp = strip_suffix(tape(t)%hlist(f)%field%name)
         call cnst_get_ind(fname_tmp, idx, abort=.false.)
@@ -1892,11 +2104,14 @@ CONTAINS
             tape(t)%hlist(f)%field%mdims(i) = get_hist_coord_index(mdimnames(allmdims(i,f,t)))
           end do
         end if
-
       end do
     end do
-    deallocate(tmpname, tmpnumlev, tmpprec, decomp, xyfill, is_subcol)
+    deallocate(tmpname, tmpnumlev, tmpprec, tmpbeg_nstep, decomp, xyfill, is_subcol, tmpintegral)
     deallocate(mdimnames)
+    deallocate(tmpf1name,tmpf2name)
+
+    allocate(grid_wts(cam_grid_num_grids() + 1))
+    allgrids_wt => grid_wts
 
     allocate(gridsontape(cam_grid_num_grids() + 1, ptapes))
     gridsontape = -1
@@ -1943,7 +2158,39 @@ CONTAINS
             exit
           end if
         end do
+        !
+        !rebuild area wt array and set field wbuf pointer
+        !
+        if (tape(t)%hlist(f)%avgflag .eq. 'N') then ! set up area weight buffer
+           nullify(tape(t)%hlist(f)%wbuf)
 
+           if (any(allgrids_wt(:)%decomp_type == tape(t)%hlist(f)%field%decomp_type)) then
+              wtidx=MAXLOC(allgrids_wt(:)%decomp_type, MASK = allgrids_wt(:)%decomp_type .EQ. fdecomp)
+              tape(t)%hlist(f)%wbuf => allgrids_wt(wtidx(1))%wbuf
+           else
+              ! area weights not found for this grid, then create them
+              ! first check for an available spot in the array
+              if (any(allgrids_wt(:)%decomp_type == -1)) then
+                 wtidx=MINLOC(allgrids_wt(:)%decomp_type)
+              else
+                 call endrun('cam_history.F90:read_restart_history: Error initializing allgrids_wt with area weights')
+              end if
+              allgrids_wt(wtidx)%decomp_type=fdecomp
+              areawt => cam_grid_get_areawt(fdecomp)
+              allocate(allgrids_wt(wtidx(1))%wbuf(begdim1:enddim1,begdim3:enddim3))
+              cnt=0
+              do c=begdim3,enddim3
+                 dimind = tape(t)%hlist(f)%field%get_dims(c)
+                 ib=dimind%beg1
+                 ie=dimind%end1
+                 do i=ib,ie
+                    cnt=cnt+1
+                    allgrids_wt(wtidx(1))%wbuf(i,c)=areawt(cnt)
+                 end do
+              end do
+              tape(t)%hlist(f)%wbuf => allgrids_wt(wtidx(1))%wbuf
+           endif
+        endif
       end do
     end do
     !
@@ -2049,6 +2296,9 @@ CONTAINS
             ierr = pio_get_var(tape(t)%File, vdesc, nacsval)
             tape(t)%hlist(f)%nacs(1,:)= nacsval
           end if
+
+          ierr = pio_inq_varid(tape(t)%File, trim(fname_tmp)//'_nacs', vdesc)
+          call cam_pio_var_info(tape(t)%File, vdesc, nacsdimcnt, dimids, dimlens)
 
         end do
         !
@@ -2210,6 +2460,8 @@ CONTAINS
       time_op(:) = 'mean'
     case ('B')
       time_op(:) = 'mean00z'
+    case ('N')
+      time_op(:) = 'mean_over_nsteps'
     case ('I')
       time_op(:) = ' '
     case ('X')
@@ -2430,6 +2682,8 @@ fincls: do while (f < pflds .and. fincl(f,t) /= ' ')
     end if
 
 
+    allocate(grid_wts(cam_grid_num_grids() + 1))
+    allgrids_wt => grid_wts
 
     allocate(gridsontape(cam_grid_num_grids() + 1, ptapes))
     gridsontape = -1
@@ -2510,6 +2764,7 @@ fincls: do while (f < pflds .and. fincl(f,t) /= ' ')
       do ff=1,nflds(t)
         nullify(tape(t)%hlist(ff)%hbuf)
         nullify(tape(t)%hlist(ff)%sbuf)
+        nullify(tape(t)%hlist(ff)%wbuf)
         nullify(tape(t)%hlist(ff)%nacs)
         nullify(tape(t)%hlist(ff)%varid)
       end do
@@ -2579,6 +2834,9 @@ fincls: do while (f < pflds .and. fincl(f,t) /= ' ')
 
         end do
       end do
+
+      !  Initialize the field names/ids for each composed field on tapes
+      call define_composed_field_ids(t)
 
     end do    ! do t=1,ptapes
     deallocate(gridsontape)
@@ -3283,6 +3541,7 @@ end subroutine print_active_fldlst
 
     type (active_entry), pointer :: otape(:) ! Local history_tape pointer
     real(r8),pointer      :: hbuf(:,:)     ! history buffer
+    real(r8),pointer      :: wbuf(:)       ! area weights for field
     real(r8),pointer      :: sbuf(:,:)     ! variance buffer
     integer, pointer      :: nacs(:)       ! accumulation counter
     integer               :: begdim2, enddim2, endi
@@ -3322,6 +3581,9 @@ end subroutine print_active_fldlst
       avgflag = otape(t)%hlist(f)%avgflag
       nacs   => otape(t)%hlist(f)%nacs(:,c)
       hbuf => otape(t)%hlist(f)%hbuf(:,:,c)
+      if (associated(tape(t)%hlist(f)%wbuf)) then
+         wbuf => otape(t)%hlist(f)%wbuf(:,c)
+      endif
       if (associated(tape(t)%hlist(f)%sbuf)) then
          sbuf => otape(t)%hlist(f)%sbuf(:,:,c)
       endif
@@ -3395,6 +3657,10 @@ end subroutine print_active_fldlst
           call hbuf_accum_add00z(hbuf, ufield, nacs, dimind, pcols,      &
                flag_xyfill, fillvalue)
 
+        case ('N') ! Time average over nsteps
+          call hbuf_accum_add(hbuf, ufield, nacs, dimind, pcols,      &
+               flag_xyfill, fillvalue)
+
         case ('X') ! Maximum over time
           call hbuf_accum_max (hbuf, ufield, nacs, dimind, pcols,        &
                flag_xyfill, fillvalue)
@@ -3433,6 +3699,10 @@ end subroutine print_active_fldlst
           call hbuf_accum_add00z(hbuf, field, nacs, dimind, idim,        &
                flag_xyfill, fillvalue)
 
+        case ('N') ! Time average over nsteps
+          call hbuf_accum_add (hbuf, field, nacs, dimind, idim,        &
+               flag_xyfill, fillvalue)
+
         case ('X') ! Maximum over time
           call hbuf_accum_max (hbuf, field, nacs, dimind, idim,          &
                flag_xyfill, fillvalue)
@@ -3464,7 +3734,7 @@ end subroutine print_active_fldlst
 
   !#######################################################################
 
-  subroutine get_field_properties(fname, found, tape_out, ff_out, no_tape_check_in)
+  subroutine get_field_properties(fname, found, tape_out, ff_out, no_tape_check_in, f_out)
 
     implicit none
     !
@@ -3487,6 +3757,7 @@ end subroutine print_active_fldlst
     type(active_entry), pointer, optional :: tape_out(:)
     integer,            intent(out), optional :: ff_out
     logical,            intent(in), optional  :: no_tape_check_in
+    integer,            intent(out), optional :: f_out(:)
 
     !
     ! Local variables
@@ -3514,6 +3785,9 @@ end subroutine print_active_fldlst
     end if
     if (present(ff_out)) then
       ff_out = -1
+    end if
+    if (present(f_out)) then
+      f_out = -1
     end if
 
     !
@@ -3548,8 +3822,12 @@ end subroutine print_active_fldlst
         if (present(ff_out)) then
           ff_out   =  ff
         end if
-        ! We found the info so we are done with the loop
-        exit
+        if (present(f_out)) then
+           f_out(t) = masterlist(ff)%thisentry%htapeindx(t)
+        else
+           ! only need to loop through all ptapes if f_out present
+           exit
+        end if
       end if
     end do
 
@@ -3834,15 +4112,16 @@ end subroutine print_active_fldlst
 
     type(master_entry), pointer :: listentry
 
-
     avgflg = avgflag_pertape(t)
-
 
     listentry=>masterlinkedlist
     do while(associated(listentry))
-      call AvgflagToString(avgflg, listentry%time_op(t))
-      listentry%avgflag(t) = avgflag_pertape(t)
-      listentry=>listentry%next_entry
+       ! Budgets require flag to be N, dont override
+       if (listentry%avgflag(t) /= 'N' ) then
+          call AvgflagToString(avgflg, listentry%time_op(t))
+          listentry%avgflag(t) = avgflag_pertape(t)
+       end if
+       listentry=>listentry%next_entry
     end do
 
   end subroutine h_override
@@ -4547,6 +4826,7 @@ end subroutine print_active_fldlst
   subroutine h_normalize (f, t)
 
     use cam_history_support, only: dim_index_2d
+    use time_manager, only: get_nstep
 
     !
     !-----------------------------------------------------------------------
@@ -4572,10 +4852,13 @@ end subroutine print_active_fldlst
     integer     :: begdim3, enddim3 ! Chunk or block bounds
     integer     :: k         ! level
     integer     :: i, ii
+    integer     :: currstep, nsteps
     real(r8) :: variance, tmpfill
 
     logical     :: flag_xyfill ! non-applicable xy points flagged with fillvalue
     character*1 :: avgflag     ! averaging flag
+    character(len=max_chars) :: errmsg
+    character(len=*), parameter      :: sub='H_NORMALIZE:'
 
     call t_startf ('h_normalize')
 
@@ -4620,6 +4903,20 @@ end subroutine print_active_fldlst
           end do
         end if
       end if
+      currstep=get_nstep()
+      if (avgflag == 'N' .and. currstep >  0) then
+         if( currstep > tape(t)%hlist(f)%beg_nstep) then
+            nsteps=currstep-tape(t)%hlist(f)%beg_nstep
+            do k=jb,je
+               tape(t)%hlist(f)%hbuf(ib:ie,k,c) = &
+                    tape(t)%hlist(f)%hbuf(ib:ie,k,c) &
+                    / nsteps
+            end do
+         else
+            write(errmsg,*) sub,'FATAL: bad nstep normalization, currstep, beg_nstep=',currstep,',',tape(t)%hlist(f)%beg_nstep
+            call endrun(trim(errmsg))
+         end if
+      end if
       if (avgflag == 'S') then
          ! standard deviation ...
          ! from http://www.johndcook.com/blog/standard_deviation/
@@ -4647,6 +4944,7 @@ end subroutine print_active_fldlst
 
   subroutine h_zero (f, t)
     use cam_history_support, only: dim_index_2d
+    use time_manager, only: get_nstep, is_first_restart_step
     !
     !-----------------------------------------------------------------------
     !
@@ -4679,10 +4977,134 @@ end subroutine print_active_fldlst
     end do
     tape(t)%hlist(f)%nacs(:,:) = 0
 
+    !Don't reset beg_nstep if this is a restart
+    if (.not. is_first_restart_step()) tape(t)%hlist(f)%beg_nstep = get_nstep()
+
     call t_stopf ('h_zero')
 
     return
   end subroutine h_zero
+
+  !#######################################################################
+
+  subroutine h_global (f, t)
+
+    use cam_history_support, only: dim_index_2d
+    use shr_reprosum_mod,    only: shr_reprosum_calc
+    use spmd_utils,          only: mpicom
+    use shr_const_mod,       only: PI => SHR_CONST_PI
+    !
+    !-----------------------------------------------------------------------
+    !
+    ! Purpose: compute globals of field
+    !
+    ! Method: Loop through fields on the tape
+    !
+    !-----------------------------------------------------------------------
+    !
+    integer, intent(in) :: f     ! field index
+    integer, intent(in) :: t     ! tape index
+    !
+    ! Local workspace
+    !
+    type (dim_index_2d)     :: dimind    ! 2-D dimension index
+    integer                 :: ie        ! dim3 index
+    integer                 :: count     ! tmp index 
+    integer                 :: i1        ! dim1 index
+    integer                 :: j1        ! dim2 index
+    integer                 :: fdims(3)  ! array shape
+    integer                 :: begdim1,enddim1,begdim2,enddim2,begdim3,enddim3        ! 
+    real(r8)                :: globalsum(1) ! globalsum
+    real(r8), allocatable   :: globalarr(:) ! globalarr values for this pe
+        
+    call t_startf ('h_global')
+
+    ! wbuf contains the area weighting for this field decomposition
+    if (associated(tape(t)%hlist(f)%wbuf) ) then
+       
+       begdim1    =  tape(t)%hlist(f)%field%begdim1
+       enddim1    =  tape(t)%hlist(f)%field%enddim1
+       fdims(1)   =  enddim1 - begdim1 + 1
+       begdim2    =  tape(t)%hlist(f)%field%begdim2
+       enddim2    =  tape(t)%hlist(f)%field%enddim2
+       fdims(2)   =  enddim2 - begdim2 + 1
+       begdim3    =  tape(t)%hlist(f)%field%begdim3
+       enddim3    =  tape(t)%hlist(f)%field%enddim3
+       fdims(3)   =  enddim3 - begdim3 + 1
+       
+       allocate(globalarr(fdims(1)*fdims(2)*fdims(3)))
+       count=0
+       globalarr=0._r8
+       do ie = begdim3, enddim3
+          dimind = tape(t)%hlist(f)%field%get_dims(ie)
+          do j1 = dimind%beg2, dimind%end2
+             do i1 = dimind%beg1, dimind%end1
+                count=count+1
+                globalarr(count)=globalarr(count)+tape(t)%hlist(f)%hbuf(i1,j1,ie)*tape(t)%hlist(f)%wbuf(i1,ie)
+             end do
+          end do
+       end do
+       ! call fixed-point algorithm
+       call shr_reprosum_calc (globalarr, globalsum, count, count, 1, commid=mpicom)
+       if (masterproc) write(iulog,*)'h_global:field:',trim(tape(t)%hlist(f)%field%name),' global integral=',globalsum(1)
+       ! store global entry for this history tape entry
+       call tape(t)%hlist(f)%put_global(globalsum(1))
+       ! deallocate temp array
+       deallocate(globalarr)
+    end if
+    call t_stopf ('h_global')
+  end subroutine h_global
+
+  subroutine h_field_op (f, t)
+    use cam_history_support, only: dim_index_2d
+    !
+    !-----------------------------------------------------------------------
+    !
+    ! Purpose: run field sum or dif opperation on all contructed fields
+    !
+    ! Method: Loop through fields on the tape
+    !
+    !-----------------------------------------------------------------------
+    !
+    integer, intent(in) :: f        ! field index
+    integer, intent(in) :: t        ! tape index
+    !
+    ! Local workspace
+    !
+    type (dim_index_2d) :: dimind   ! 2-D dimension index
+    integer :: c                    ! chunk index
+    integer :: f1,f2                ! fields to be operated on
+    integer :: begdim1, begdim2, begdim3              ! on-node chunk or lat start index
+    integer :: enddim1, enddim2, enddim3              ! on-node chunk or lat end index
+    character(len=field_op_len) :: optype             ! field operation only sum or diff supported
+
+    call t_startf ('h_field_op')
+    f1 = tape(t)%hlist(f)%field%op_field1_id
+    f2 = tape(t)%hlist(f)%field%op_field2_id
+    optype =  trim(adjustl(tape(t)%hlist(f)%field%field_op))
+
+    begdim3  = tape(t)%hlist(f)%field%begdim3
+    enddim3  = tape(t)%hlist(f)%field%enddim3
+
+    do c = begdim3, enddim3
+      dimind = tape(t)%hlist(f)%field%get_dims(c)
+      if (trim(optype) == 'dif') then 
+         tape(t)%hlist(f)%hbuf(dimind%beg1:dimind%end1,dimind%beg2:dimind%end2,c) = &
+         tape(t)%hlist(f1)%hbuf(dimind%beg1:dimind%end1,dimind%beg2:dimind%end2,c) - &
+         tape(t)%hlist(f2)%hbuf(dimind%beg1:dimind%end1,dimind%beg2:dimind%end2,c)
+      else if (trim(optype) == 'sum') then
+         tape(t)%hlist(f)%hbuf(dimind%beg1:dimind%end1,dimind%beg2:dimind%end2,c) = &
+         tape(t)%hlist(f1)%hbuf(dimind%beg1:dimind%end1,dimind%beg2:dimind%end2,c) + &
+         tape(t)%hlist(f2)%hbuf(dimind%beg1:dimind%end1,dimind%beg2:dimind%end2,c)
+      else
+         call endrun('h_field_op: ERROR: composed field operation type unknown:'//trim(optype))
+      end if
+    end do
+    ! Set nsteps for composed fields using value of one of the component fields
+    tape(t)%hlist(f)%beg_nstep=tape(t)%hlist(f1)%beg_nstep
+    tape(t)%hlist(f)%nacs(:,:)=tape(t)%hlist(f1)%nacs(:,:)
+    call t_stopf ('h_field_op')
+  end subroutine h_field_op
 
   !#######################################################################
 
@@ -5158,13 +5580,23 @@ end subroutine print_active_fldlst
           ierr = pio_put_var (tape(t)%File, tape(t)%time_writtenid, startc, countc, (/ctime/))
 
           if(.not. restart) then
-            !$OMP PARALLEL DO PRIVATE (F)
-            do f=1,nflds(t)
-              ! Normalized averaged fields
-              if (tape(t)%hlist(f)%avgflag /= 'I') then
-                call h_normalize (f, t)
-              end if
-            end do
+             !$OMP PARALLEL DO PRIVATE (F)
+             do f=1,nflds(t)
+                ! Normalize all non composed fields, composed fields are calculated next using the normalized components 
+                if (tape(t)%hlist(f)%avgflag /= 'I'.and..not.tape(t)%hlist(f)%field%is_composed()) then
+                   call h_normalize (f, t)
+                end if
+             end do
+          end if
+
+          if(.not. restart) then
+             !$OMP PARALLEL DO PRIVATE (F)
+             do f=1,nflds(t)
+                ! calculate composed fields from normalized components
+                if (tape(t)%hlist(f)%field%is_composed()) then
+                   call h_field_op (f, t)
+                end if
+             end do
           end if
           !
           ! Write field to history tape.  Note that this is NOT threaded due to netcdf limitations
@@ -5175,11 +5607,14 @@ end subroutine print_active_fldlst
           end do
           call t_stopf ('dump_field')
           !
+          ! Calculate globals
+          !
+          do f=1,nflds(t)
+             call h_global(f, t)
+          end do
+          !
           ! Zero history buffers and accumulators now that the fields have been written.
           !
-
-
-
           if(restart) then
             do f=1,nflds(t)
               if(associated(tape(t)%hlist(f)%varid)) then
@@ -5205,7 +5640,8 @@ end subroutine print_active_fldlst
   !#######################################################################
 
   subroutine addfld_1d(fname, vdim_name, avgflag, units, long_name,           &
-       gridname, flag_xyfill, sampling_seq, standard_name, fill_value)
+       gridname, flag_xyfill, sampling_seq, standard_name, fill_value,        &
+       optype, op_f1name, op_f2name)
 
     !
     !-----------------------------------------------------------------------
@@ -5234,7 +5670,9 @@ end subroutine print_active_fldlst
     ! every other; only during LW/SW radiation calcs, etc.
     character(len=*), intent(in), optional :: standard_name  ! CF standard name (max_chars)
     real(r8),         intent(in), optional :: fill_value
-
+    character(len=*), intent(in), optional :: optype       ! currently 'dif' or 'sum' is supported
+    character(len=*), intent(in), optional :: op_f1name    ! first field to be operated on
+    character(len=*), intent(in), optional :: op_f2name    ! second field which is subtracted from or added to first field
     !
     ! Local workspace
     !
@@ -5252,12 +5690,14 @@ end subroutine print_active_fldlst
       dimnames(1) = trim(vdim_name)
     end if
     call addfld(fname, dimnames, avgflag, units, long_name, gridname,         &
-         flag_xyfill, sampling_seq, standard_name, fill_value)
+         flag_xyfill, sampling_seq, standard_name, fill_value, optype, op_f1name, &
+         op_f2name)
 
   end subroutine addfld_1d
 
   subroutine addfld_nd(fname, dimnames, avgflag, units, long_name,            &
-       gridname, flag_xyfill, sampling_seq, standard_name, fill_value)
+       gridname, flag_xyfill, sampling_seq, standard_name, fill_value, optype,    &
+       op_f1name, op_f2name)
 
     !
     !-----------------------------------------------------------------------
@@ -5272,7 +5712,7 @@ end subroutine print_active_fldlst
     use cam_history_support, only: fillvalue, hist_coord_find_levels
     use cam_grid_support,    only: cam_grid_id, cam_grid_is_zonal
     use cam_grid_support,    only: cam_grid_get_coord_names
-    use constituents,        only: pcnst, cnst_get_ind, cnst_get_type_byind
+    use constituents,        only: cnst_get_ind, cnst_get_type_byind
 
     !
     ! Arguments
@@ -5290,6 +5730,9 @@ end subroutine print_active_fldlst
     ! every other; only during LW/SW radiation calcs, etc.
     character(len=*), intent(in), optional :: standard_name  ! CF standard name (max_chars)
     real(r8),         intent(in), optional :: fill_value
+    character(len=*), intent(in), optional :: optype       ! currently 'dif' or 'sum' supported
+    character(len=*), intent(in), optional :: op_f1name    ! first field to be operated on
+    character(len=*), intent(in), optional :: op_f2name    ! second field which is subtracted from or added to first field
 
     !
     ! Local workspace
@@ -5299,9 +5742,12 @@ end subroutine print_active_fldlst
     character(len=128)               :: errormsg
     character(len=3)                 :: mixing_ratio
     type(master_entry), pointer      :: listentry
+    type(master_entry), pointer      :: f1listentry,f2listentry
 
     integer :: dimcnt
     integer :: idx
+
+    character(len=*), parameter      :: subname='ADDFLD_ND'
 
     if (htapes_defined) then
       call endrun ('ADDFLD: Attempt to add field '//trim(fname)//' after history files set')
@@ -5352,6 +5798,11 @@ end subroutine print_active_fldlst
     listentry%field%mixing_ratio = mixing_ratio
     listentry%field%meridional_complement = -1
     listentry%field%zonal_complement      = -1
+    listentry%field%field_op  = ''
+    listentry%field%op_field1_id  = -1
+    listentry%field%op_field2_id  = -1
+    listentry%op_field1  = ''
+    listentry%op_field2  = ''
     listentry%htapeindx(:) = -1
     listentry%act_sometape = .false.
     listentry%actflag(:) = .false.
@@ -5453,6 +5904,45 @@ end subroutine print_active_fldlst
       call AvgflagToString(avgflag, listentry%time_op(dimcnt))
     end do
 
+    if (present(optype)) then
+       ! make sure optype is "sum" or "dif"
+       if (.not.(trim(optype) == 'dif' .or. trim(optype) == 'sum')) then 
+          write(errormsg, '(2a)')': Fatal : optype must be "sum" or "dif" not ',trim(optype)
+          call endrun (trim(subname)//errormsg)
+       end if
+       listentry%field%field_op = optype
+       if (present(op_f1name).and.present(op_f2name)) then
+          ! Look for the field IDs
+          f1listentry => get_entry_by_name(masterlinkedlist, trim(op_f1name))
+          f2listentry => get_entry_by_name(masterlinkedlist, trim(op_f2name))
+          if (associated(f1listentry).and.associated(f2listentry)) then
+             listentry%op_field1=trim(op_f1name)
+             listentry%op_field2=trim(op_f2name)
+          else
+             write(errormsg, '(5a)') ': Attempt to create a composed field using  (',         &
+                  trim(op_f1name), ', ', trim(op_f2name),         &
+                  ') but both fields have not been added to masterlist via addfld first'
+             call endrun (trim(subname)//errormsg)
+          end if
+       else
+          write(errormsg, *) ': Attempt to create a composed field but no component fields have been specified'
+          call endrun (trim(subname)//errormsg)
+       end if
+
+    else
+       if (present(op_f1name)) then
+          write(errormsg, '(3a)') ': creating a composed field using component field 1:',&
+               trim(op_f1name),' but no field operation (optype=sum or dif) has been defined'
+          call endrun (trim(subname)//errormsg)
+       end if
+       if (present(op_f2name)) then
+          write(errormsg, '(3a)') ': creating a composed field using component field 2:',&
+               trim(op_f2name),' but no field operation (optype=sum or dif) has been defined'
+          call endrun (trim(subname)//errormsg)
+       end if
+    end if
+
+
     nullify(listentry%next_entry)
 
     call add_entry_to_master(listentry)
@@ -5461,7 +5951,7 @@ end subroutine print_active_fldlst
 
   !#######################################################################
 
-  ! field_part_of_vector: Determinie if fname is part of a vector set
+  ! field_part_of_vector: Determine if fname is part of a vector set
   !       Optionally fill in the names of the vector set fields
   logical function field_part_of_vector(fname, meridional_name, zonal_name)
 
@@ -5500,6 +5990,53 @@ end subroutine print_active_fldlst
     end if
 
   end function field_part_of_vector
+
+  !#######################################################################
+  ! composed field_info: Determine if a field is derived from a mathematical
+  !       operation using 2 other defined fields.  Optionally,
+  !       retrieve names of the composing fields
+  subroutine composed_field_info(fname, is_composed, fname1, fname2)
+
+    ! Dummy arguments
+    character(len=*),           intent(in)  :: fname
+    logical,                    intent(out) :: is_composed
+    character(len=*), optional, intent(out) :: fname1
+    character(len=*), optional, intent(out) :: fname2
+
+    ! Local variables
+    type(master_entry), pointer             :: listentry
+    character(len=128)                      :: errormsg
+    character(len=*), parameter             :: subname='composed_field_info'
+
+    listentry => get_entry_by_name(masterlinkedlist, fname)
+    if (associated(listentry)) then
+      if ( (len_trim(listentry%op_field1) > 0) .or.                     &
+           (len_trim(listentry%op_field2) > 0)) then
+         is_composed = .true.
+      else
+         is_composed = .false.
+      end if
+      if (is_composed) then
+         if (present(fname1)) then
+            fname1=trim(listentry%op_field1)
+         end if
+         if (present(fname2)) then
+            fname2=trim(listentry%op_field2)
+         end if
+      else
+         if (present(fname1)) then
+            fname1 = ''
+         end if
+         if (present(fname2)) then
+            fname2 = ''
+         end if
+      end if
+   else
+      write(errormsg, '(3a)') ': Field:',trim(fname),' not defined in masterlist'
+      call endrun (trim(subname)//errormsg)
+   end if
+
+ end subroutine composed_field_info
 
 
   ! register_vector_field: Register a pair of history field names as
