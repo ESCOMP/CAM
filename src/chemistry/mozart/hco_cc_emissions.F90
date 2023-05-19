@@ -349,7 +349,7 @@ contains
     if(masterproc) then
         write(iulog,*) "hco_set_srf_emissions: first run pcnst_is_extfrc cache, extfrc_ndx:"
         do n = 1, gas_pcnst
-           write(iulog,*) trim(fldname_ns(n)), ' : ', pcnst_is_extfrc(n), pcnst_extfrc_ndx(n)
+           write(iulog,*) trim(solsym(n)), ' : ', pcnst_is_extfrc(n), pcnst_extfrc_ndx(n)
         end do
      endif
 
