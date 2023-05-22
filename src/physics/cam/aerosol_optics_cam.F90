@@ -161,9 +161,9 @@ contains
     if (modal_active) then
        iaermod = iaermod+1
        aero_props(iaermod)%obj => modal_aerosol_properties()
-!!$    else if (carma_active) then
-!!$       iaermod = iaermod+1
-!!$       aero_props(iaermod)%obj => carma_aerosol_properties()
+    else if (carma_active) then
+       iaermod = iaermod+1
+!       aero_props(iaermod)%obj => carma_aerosol_properties()
     end if
 
     if (water_refindex_file/='NONE') then
@@ -618,9 +618,9 @@ contains
     if (modal_active) then
        iaermod = iaermod+1
        aero_state(iaermod)%obj => modal_aerosol_state( state, pbuf )
-!!$    else if (carma_active) then
-!!$       iaermod = iaermod+1
-!!$       aero_state(iaermod)%obj => carma_aerosol_state( state, pbuf )
+    else if (carma_active) then
+       iaermod = iaermod+1
+!       aero_state(iaermod)%obj => carma_aerosol_state( state, pbuf )
     end if
 
     allocate(pext(ncol), stat=istat)
@@ -659,16 +659,16 @@ contains
           case('modal') ! refractive method
              aero_optics=>refractive_aerosol_optics(aeroprops, aerostate, list_idx, ibin, &
                                                     ncol, pver, nswbands, nlwbands, crefwsw, crefwlw)
-!!$          case('hygroscopic_coreshell')
-!!$             ! calculate relative humidity for table lookup into rh grid
-!!$             call qsat(state%t(:ncol,:), state%pmid(:ncol,:), sate(:ncol,:), satq(:ncol,:), ncol, pver)
-!!$             relh(:ncol,:) = state%q(1:ncol,:,1) / satq(:ncol,:)
-!!$             relh(:ncol,:) = max(1.e-20_r8,relh(:ncol,:))
-!!$             aero_optics=>hygrocoreshell_aerosol_optics(aeroprops, aerostate, list_idx, &
-!!$                                                        ibin, ncol, pver, relh(:ncol,:))
-!!$          case('hygroscopic_wtp')
-!!$             aero_optics=>hygrowghtpct_aerosol_optics(aeroprops, aerostate, list_idx, &
-!!$                                                      ibin, ncol, pver)
+          case('hygroscopic_coreshell')
+             ! calculate relative humidity for table lookup into rh grid
+             call qsat(state%t(:ncol,:), state%pmid(:ncol,:), sate(:ncol,:), satq(:ncol,:), ncol, pver)
+             relh(:ncol,:) = state%q(1:ncol,:,1) / satq(:ncol,:)
+             relh(:ncol,:) = max(1.e-20_r8,relh(:ncol,:))
+             !aero_optics=>hygrocoreshell_aerosol_optics(aeroprops, aerostate, list_idx, &
+             !                                           ibin, ncol, pver, relh(:ncol,:))
+          case('hygroscopic_wtp')
+             !aero_optics=>hygrowghtpct_aerosol_optics(aeroprops, aerostate, list_idx, &
+             !                                         ibin, ncol, pver)
           case default
              call endrun(prefix//'optics method not recognized')
           end select
@@ -1103,9 +1103,9 @@ contains
     if (modal_active) then
        iaermod = iaermod+1
        aero_state(iaermod)%obj => modal_aerosol_state( state, pbuf )
-!!$    else if (carma_active) then
-!!$       iaermod = iaermod+1
-!!$       aero_state(iaermod)%obj => carma_aerosol_state( state, pbuf )
+    else if (carma_active) then
+       iaermod = iaermod+1
+!       aero_state(iaermod)%obj => carma_aerosol_state( state, pbuf )
     end if
 
     ncol = state%ncol
@@ -1130,15 +1130,18 @@ contains
 
           select case (trim(opticstype))
           case('modal') ! refractive method
-             aero_optics=>refractive_aerosol_optics(aeroprops, aerostate, list_idx, ibin, ncol, pver, nswbands, nlwbands, crefwsw, crefwlw)
-!!$          case('hygroscopic_coreshell')
-!!$             ! calculate relative humidity for table lookup into rh grid
-!!$             call qsat(state%t(:ncol,:), state%pmid(:ncol,:), sate(:ncol,:), satq(:ncol,:), ncol, pver)
-!!$             relh(:ncol,:) = state%q(1:ncol,:,1) / satq(:ncol,:)
-!!$             relh(:ncol,:) = max(1.e-20_r8,relh(:ncol,:))
-!!$             aero_optics=>hygrocoreshell_aerosol_optics(aeroprops, aerostate, list_idx, ibin, ncol, pver, relh(:ncol,:))
-!!$          case('hygroscopic_wtp')
-!!$             aero_optics=>hygrowghtpct_aerosol_optics(aeroprops, aerostate, list_idx, ibin, ncol, pver)
+             aero_optics=>refractive_aerosol_optics(aeroprops, aerostate, list_idx, ibin, &
+                                                    ncol, pver, nswbands, nlwbands, crefwsw, crefwlw)
+          case('hygroscopic_coreshell')
+             ! calculate relative humidity for table lookup into rh grid
+             call qsat(state%t(:ncol,:), state%pmid(:ncol,:), sate(:ncol,:), satq(:ncol,:), ncol, pver)
+             relh(:ncol,:) = state%q(1:ncol,:,1) / satq(:ncol,:)
+             relh(:ncol,:) = max(1.e-20_r8,relh(:ncol,:))
+             !aero_optics=>hygrocoreshell_aerosol_optics(aeroprops, aerostate, list_idx, &
+             !                                           ibin, ncol, pver, relh(:ncol,:))
+          case('hygroscopic_wtp')
+             !aero_optics=>hygrowghtpct_aerosol_optics(aeroprops, aerostate, list_idx, &
+             !                                         ibin, ncol, pver)
           case default
              call endrun(prefix//'optics method not recognized')
           end select
