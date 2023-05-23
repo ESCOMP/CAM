@@ -259,9 +259,9 @@ contains
     end if
 
     if (ideal_phys) then
-      call held_suarez_init(pbuf2d)
+      call held_suarez_init()
     else if (kessler_phys) then
-      call kessler_cam_init(pbuf2d)
+      call kessler_cam_init()
     else if (tj2016_phys) then
       call thatcher_jablonowski_init(pbuf2d)
     else if (frierson_phys) then
