@@ -250,7 +250,7 @@ contains
           call addfld ('TOTABSLW'//diag(ilist), (/ 'lev' /), 'A',' ', &
                'LW Aero total abs')
 
-          if (history_aero_optics) then
+          if (ilist>0 .and. history_aero_optics) then
              call add_default ('EXTINCT'//diag(ilist), 1, ' ')
              call add_default ('ABSORB'//diag(ilist),  1, ' ')
              call add_default ('AODVIS'//diag(ilist),  1, ' ')
