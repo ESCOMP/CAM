@@ -76,7 +76,7 @@ CONTAINS
 !\\
 ! !INTERFACE:
 !
-  SUBROUTINE GC_Emissions_Init( lght_no_prd_factor )
+  SUBROUTINE GC_Emissions_Init( )
 !
 ! !USES:
 !
@@ -85,14 +85,9 @@ CONTAINS
     USE PHYS_CONTROL,        ONLY : phys_getopts
     USE MO_CHEM_UTLS,        ONLY : get_spc_ndx, get_extfrc_ndx
     USE CAM_HISTORY,         ONLY : addfld, add_default, horiz_only
-    USE MO_LIGHTNING,        ONLY : lightning_inti
     USE FIRE_EMISSIONS,      ONLY : fire_emissions_init
     USE CHEM_MODS,           ONLY : adv_mass
     USE INFNAN,              ONLY : NaN, assignment(=)
-!
-! !INPUT PARAMETERS:
-!
-    REAL(r8),                INTENT(IN   ) :: lght_no_prd_factor ! Lightning scaling factor
 !
 ! !REVISION HISTORY:
 !  07 Oct 2020 - T. M. Fritz   - Initial version
@@ -126,11 +121,6 @@ CONTAINS
 
     ! Get constituent index for NO
     CALL cnst_get_ind('NO', iNO, abort=.True.)
-
-    !-----------------------------------------------------------------------
-    !	... initialize the lightning module
-    !-----------------------------------------------------------------------
-    CALL lightning_inti(lght_no_prd_factor)
 
     !-----------------------------------------------------------------------
     ! ... MEGAN emissions

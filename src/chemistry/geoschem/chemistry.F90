@@ -166,9 +166,6 @@ module chemistry
   CHARACTER(len=shr_kind_cl) :: bndtvg = ' '   ! pathname for greenhouse gas loss rate
   CHARACTER(len=shr_kind_cl) :: h2orates = ' ' ! pathname for greenhouse gas (lyman-alpha H2O loss)
 
-  ! lightning
-  REAL(r8)                   :: lght_no_prd_factor = 1._r8
-
   ! Strings
   CHARACTER(LEN=255)         :: ThisLoc
   CHARACTER(LEN=255)         :: ErrMsg
@@ -681,6 +678,7 @@ contains
     use dust_model,      only : dust_readnl
 #endif
     use gas_wetdep_opts, only : gas_wetdep_readnl
+    use mo_lightning,    only : lightning_readnl
 #ifdef SPMD
     use mpishorthand
 #endif
@@ -700,8 +698,7 @@ contains
     ! Assume a successful return until otherwise
     RC                      = GC_SUCCESS
 
-    namelist /chem_inparm/ lght_no_prd_factor,  &
-                           depvel_lnd_file
+    namelist /chem_inparm/ depvel_lnd_file
 
     ! ghg chem
 
@@ -753,6 +750,8 @@ contains
     ENDDO
 
     CALL gas_wetdep_readnl(nlfile)
+
+    CALL lightning_readnl(nlfile)
 
     CALL gc_readnl(nlfile)
 
@@ -883,7 +882,6 @@ contains
 
     ! Broadcast namelist variables
     CALL MPIBCAST (depvel_lnd_file, LEN(depvel_lnd_file), MPICHAR, 0, MPICOM)
-    CALL MPIBCAST (lght_no_prd_factor, 1,                                MPIR8,   0, MPICOM)
     CALL MPIBCAST (ghg_chem,           1,                                MPILOG,  0, MPICOM)
     CALL MPIBCAST (bndtvg,             LEN(bndtvg),                      MPICHAR, 0, MPICOM)
     CALL MPIBCAST (h2orates,           LEN(h2orates),                    MPICHAR, 0, MPICOM)
@@ -1690,7 +1688,7 @@ contains
                               State_Met = State_Met(BEGCHUNK) )
 
     ! Initialize emissions interface
-    CALL GC_Emissions_Init( lght_no_prd_factor = lght_no_prd_factor )
+    CALL GC_Emissions_Init( )
 
     hco_pbuf2d => pbuf2d
 
