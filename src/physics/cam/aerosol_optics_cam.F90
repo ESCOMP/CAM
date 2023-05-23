@@ -129,11 +129,15 @@ contains
 
     character(len=30) :: fldname
     character(len=128) :: lngname
-    logical           :: history_aero_optics     ! output aerosol optics diagnostics
+    logical :: history_aero_optics     ! output aerosol optics diagnostics
+    logical :: history_amwg            ! output the variables used by the AMWG diag package
+    logical :: history_dust            ! output dust diagnostics
 
     character(len=256) :: locfile
 
-    call phys_getopts(history_aero_optics_out = history_aero_optics)
+    call phys_getopts(history_amwg_out        = history_amwg, &
+                      history_aero_optics_out = history_aero_optics, &
+                      history_dust_out        = history_dust )
 
     num_aero_models = 0
     nbins = 0
@@ -257,7 +261,6 @@ contains
        end if
     end do
 
-
     if (num_aero_models>0) then
 
        allocate(burden_fields(num_aero_models), stat=istat)
@@ -320,7 +323,7 @@ contains
              burden_fields(n)%name(m) = fldname
              write(lngname,'(a,i2.2)') 'Aerosol burden bin ', m
              call addfld (fldname, horiz_only, 'A', 'kg/m2', lngname, flag_xyfill=.true.)
-             if (history_aero_optics) then
+             if (m>3 .and. history_aero_optics) then
                 call add_default (fldname, 1, ' ')
              end if
 
@@ -328,7 +331,7 @@ contains
              aodbin_fields(n)%name(m) = fldname
              write(lngname,'(a,i2)') 'Aerosol optical depth, day only, 550 nm bin ', m
              call addfld (aodbin_fields(n)%name(m), horiz_only, 'A', '  ', lngname, flag_xyfill=.true.)
-             if (history_aero_optics) then
+             if (m>3 .and. history_aero_optics) then
                 call add_default (fldname, 1, ' ')
              end if
 
@@ -336,7 +339,7 @@ contains
              aoddust_fields(n)%name(m) = fldname
              write(lngname,'(a,i2,a)') 'Aerosol optical depth, day only, 550 nm mode ',m,' from dust'
              call addfld (aoddust_fields(n)%name(m), horiz_only, 'A', '  ', lngname, flag_xyfill=.true.)
-             if (history_aero_optics) then
+             if (m>3 .and. history_aero_optics) then
                 call add_default (fldname, 1, ' ')
              end if
 
@@ -344,7 +347,7 @@ contains
              burdendn_fields(n)%name(m) = fldname
              write(lngname,'(a,i2)') 'Aerosol burden, day night, bin ', m
              call addfld (burdendn_fields(n)%name(m), horiz_only, 'A', 'kg/m2', lngname, flag_xyfill=.true.)
-             if (history_aero_optics) then
+             if (m>3 .and. history_aero_optics) then
                 call add_default (fldname, 1, ' ')
              end if
 
@@ -352,7 +355,7 @@ contains
              aodbindn_fields(n)%name(m) = fldname
              write(lngname,'(a,i2)') 'Aerosol optical depth 550 nm, day night, bin ', m
              call addfld (aodbindn_fields(n)%name(m), horiz_only, 'A', '  ', lngname, flag_xyfill=.true.)
-             if (history_aero_optics) then
+             if (m>3 .and. history_aero_optics) then
                 call add_default (fldname, 1, ' ')
              end if
 
@@ -360,7 +363,7 @@ contains
              aoddustdn_fields(n)%name(m) = fldname
              write(lngname,'(a,i2,a)') 'Aerosol optical depth 550 nm, day night, bin ',m,' from dust'
              call addfld (aoddustdn_fields(n)%name(m), horiz_only, 'A', '  ', lngname, flag_xyfill=.true.)
-             if (history_aero_optics) then
+             if (m>3 .and. history_aero_optics) then
                 call add_default (fldname, 1, ' ')
              end if
 
@@ -428,6 +431,83 @@ contains
    call addfld ('SSAVISdn',        horiz_only, 'A','  ',    'Aerosol single-scatter albedo, day night',                  &
         flag_xyfill=.true.)
 
+   if (history_amwg) then
+      call add_default ('AODDUST01'     , 1, ' ')
+      call add_default ('AODDUST03'     , 1, ' ')
+      call add_default ('AODDUST'      , 1, ' ')
+      call add_default ('AODVIS'       , 1, ' ')
+   end if
+
+   if (history_dust) then
+      call add_default ('AODDUST01'     , 1, ' ')
+      call add_default ('AODDUST02'     , 1, ' ')
+      call add_default ('AODDUST03'     , 1, ' ')
+   end if
+
+   if (history_aero_optics) then
+      call add_default ('AODDUST01'     , 1, ' ')
+      call add_default ('AODDUST03'     , 1, ' ')
+      call add_default ('ABSORB'       , 1, ' ')
+      call add_default ('AOD01'     , 1, ' ')
+      call add_default ('AOD02'     , 1, ' ')
+      call add_default ('AOD03'     , 1, ' ')
+      call add_default ('AODVIS'       , 1, ' ')
+      call add_default ('AODUV'        , 1, ' ')
+      call add_default ('AODNIR'       , 1, ' ')
+      call add_default ('AODABS'       , 1, ' ')
+      call add_default ('AODABSBC'     , 1, ' ')
+      call add_default ('AODDUST'      , 1, ' ')
+      call add_default ('AODSO4'       , 1, ' ')
+      call add_default ('AODPOM'       , 1, ' ')
+      call add_default ('AODSOA'       , 1, ' ')
+      call add_default ('AODBC'        , 1, ' ')
+      call add_default ('AODSS'        , 1, ' ')
+      call add_default ('BURDEN01'      , 1, ' ')
+      call add_default ('BURDEN02'      , 1, ' ')
+      call add_default ('BURDEN03'      , 1, ' ')
+      call add_default ('BURDENDUST'   , 1, ' ')
+      call add_default ('BURDENSO4'    , 1, ' ')
+      call add_default ('BURDENPOM'    , 1, ' ')
+      call add_default ('BURDENSOA'    , 1, ' ')
+      call add_default ('BURDENBC'     , 1, ' ')
+      call add_default ('BURDENSEASALT', 1, ' ')
+      call add_default ('SSAVIS'       , 1, ' ')
+      call add_default ('EXTINCT'      , 1, ' ')
+      call add_default ('AODxASYM'     , 1, ' ')
+      call add_default ('EXTxASYM'     , 1, ' ')
+
+      call add_default ('AODdnDUST01'     , 1, ' ')
+      call add_default ('AODdnDUST03'     , 1, ' ')
+      call add_default ('ABSORBdn'       , 1, ' ')
+      call add_default ('AODdn01'     , 1, ' ')
+      call add_default ('AODdn02'     , 1, ' ')
+      call add_default ('AODdn03'     , 1, ' ')
+      call add_default ('AODVISdn'       , 1, ' ')
+      call add_default ('AODUVdn'        , 1, ' ')
+      call add_default ('AODNIRdn'       , 1, ' ')
+      call add_default ('AODABSdn'       , 1, ' ')
+      call add_default ('AODABSBCdn'     , 1, ' ')
+      call add_default ('AODDUSTdn'      , 1, ' ')
+      call add_default ('AODSO4dn'       , 1, ' ')
+      call add_default ('AODPOMdn'       , 1, ' ')
+      call add_default ('AODSOAdn'       , 1, ' ')
+      call add_default ('AODBCdn'        , 1, ' ')
+      call add_default ('AODSSdn'        , 1, ' ')
+      call add_default ('BURDENdn01'      , 1, ' ')
+      call add_default ('BURDENdn02'      , 1, ' ')
+      call add_default ('BURDENdn03'      , 1, ' ')
+      call add_default ('BURDENDUSTdn'   , 1, ' ')
+      call add_default ('BURDENSO4dn'    , 1, ' ')
+      call add_default ('BURDENPOMdn'    , 1, ' ')
+      call add_default ('BURDENSOAdn'    , 1, ' ')
+      call add_default ('BURDENBCdn'     , 1, ' ')
+      call add_default ('BURDENSEASALTdn', 1, ' ')
+      call add_default ('SSAVISdn'       , 1, ' ')
+      call add_default ('EXTINCTdn'      , 1, ' ')
+      call add_default ('AODxASYMdn'     , 1, ' ')
+      call add_default ('EXTxASYMdn'     , 1, ' ')
+   end if
+
   end subroutine aerosol_optics_cam_init
 
   !===============================================================================
@@ -478,10 +558,10 @@ contains
     real(r8) :: mass(pcols,pver)
     real(r8) :: air_density(pcols,pver)
 
-    real(r8), allocatable :: pext(:)
-    real(r8), allocatable :: pabs(:)
-    real(r8), allocatable :: palb(:)
-    real(r8), allocatable :: pasm(:)
+    real(r8), allocatable :: pext(:)  ! parameterized specific extinction (m2/kg)
+    real(r8), allocatable :: pabs(:)  ! parameterized specific absorption (m2/kg)
+    real(r8), allocatable :: palb(:)  ! parameterized single scattering albedo
+    real(r8), allocatable :: pasm(:)  ! parameterized asymmetry factor
 
     real(r8) :: relh(pcols,pver)
     real(r8) :: sate(pcols,pver)     ! saturation vapor pressure
@@ -730,6 +810,9 @@ contains
 
     !===============================================================================
     subroutine init_diags
+
+      dustvol(:ncol) = 0._r8
+
       scatdust(:ncol)  = 0._r8
       absdust(:ncol)   = 0._r8
       hygrodust(:ncol) = 0._r8
@@ -1026,6 +1109,8 @@ contains
             ssltaod(idxnite(icol)) = fillvalue
 
          end do
+
+         call outfld('SSAVIS',        ssavis,        pcols, lchnk)
 
          call outfld('AODxASYM',      asymvis,       pcols, lchnk)
 
