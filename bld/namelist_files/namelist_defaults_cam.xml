@@ -3289,7 +3289,7 @@
 
 <!-- HEMCO: Harmonized Emissions Component -->
 <use_hemco>.false.</use_hemco>
-<hemco_config_file>/glade/work/hplin/hco_inputdata/HEMCO_Config_FCnudged.CC.c230306.rc</hemco_config_file>
+<hemco_config_file>atm/cam/geoschem/emis/HEMCO_Config.CC.CEDS_AEIC19.c230523.rc</hemco_config_file>
 <hemco_emission_year>-1</hemco_emission_year>
 
 <!-- Default emissions grid resolution at 2x2.5 degree: coarser may result in masking artifacts -->
