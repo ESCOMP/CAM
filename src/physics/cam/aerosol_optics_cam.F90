@@ -127,7 +127,7 @@ contains
     real(r8) :: lwavlen_lo(nlwbands), lwavlen_hi(nlwbands)
     integer :: m, n
 
-    character(len=30) :: fldname
+    character(len=fieldname_len) :: fldname
     character(len=128) :: lngname
     logical :: history_aero_optics     ! output aerosol optics diagnostics
     logical :: history_amwg            ! output the variables used by the AMWG diag package
@@ -167,7 +167,7 @@ contains
        aero_props(iaermod)%obj => modal_aerosol_properties()
     else if (carma_active) then
        iaermod = iaermod+1
-!       aero_props(iaermod)%obj => carma_aerosol_properties()
+       !aero_props(iaermod)%obj => carma_aerosol_properties()
     end if
 
     if (water_refindex_file/='NONE') then
@@ -327,11 +327,11 @@ contains
                 call add_default (fldname, 1, ' ')
              end if
 
-             write(fldname,'(a,i2.2)') 'AOD', m
+             fldname = 'AOD_'//trim(aero_props(n)%obj%bin_name(0,m))
              aodbin_fields(n)%name(m) = fldname
-             write(lngname,'(a,i2)') 'Aerosol optical depth, day only, 550 nm bin ', m
+             lngname = 'Aerosol optical depth, day only, 550 nm, '//trim(aero_props(n)%obj%bin_name(0,m))
              call addfld (aodbin_fields(n)%name(m), horiz_only, 'A', '  ', lngname, flag_xyfill=.true.)
-             if (m>3 .and. history_aero_optics) then
+             if (history_aero_optics) then
                 call add_default (fldname, 1, ' ')
              end if
 
@@ -351,11 +351,11 @@ contains
                 call add_default (fldname, 1, ' ')
              end if
 
-             write(fldname,'(a,i2.2)') 'AODdn', m
+             fldname = 'AODdn_'//trim(aero_props(n)%obj%bin_name(0,m))
              aodbindn_fields(n)%name(m) = fldname
-             write(lngname,'(a,i2)') 'Aerosol optical depth 550 nm, day night, bin ', m
+             lngname = 'Aerosol optical depth 550 nm, day night, '//trim(aero_props(n)%obj%bin_name(0,m))
              call addfld (aodbindn_fields(n)%name(m), horiz_only, 'A', '  ', lngname, flag_xyfill=.true.)
-             if (m>3 .and. history_aero_optics) then
+             if (history_aero_optics) then
                 call add_default (fldname, 1, ' ')
              end if
 
@@ -448,9 +448,6 @@ contains
       call add_default ('AODDUST01'     , 1, ' ')
       call add_default ('AODDUST03'     , 1, ' ')
       call add_default ('ABSORB'       , 1, ' ')
-      call add_default ('AOD01'     , 1, ' ')
-      call add_default ('AOD02'     , 1, ' ')
-      call add_default ('AOD03'     , 1, ' ')
       call add_default ('AODVIS'       , 1, ' ')
       call add_default ('AODUV'        , 1, ' ')
       call add_default ('AODNIR'       , 1, ' ')
@@ -479,9 +476,6 @@ contains
       call add_default ('AODdnDUST01'     , 1, ' ')
       call add_default ('AODdnDUST03'     , 1, ' ')
       call add_default ('ABSORBdn'       , 1, ' ')
-      call add_default ('AODdn01'     , 1, ' ')
-      call add_default ('AODdn02'     , 1, ' ')
-      call add_default ('AODdn03'     , 1, ' ')
       call add_default ('AODVISdn'       , 1, ' ')
       call add_default ('AODUVdn'        , 1, ' ')
       call add_default ('AODNIRdn'       , 1, ' ')
@@ -700,7 +694,7 @@ contains
        aero_state(iaermod)%obj => modal_aerosol_state( state, pbuf )
     else if (carma_active) then
        iaermod = iaermod+1
-!       aero_state(iaermod)%obj => carma_aerosol_state( state, pbuf )
+       !aero_state(iaermod)%obj => carma_aerosol_state( state, pbuf )
     end if
 
     allocate(pext(ncol), stat=istat)
@@ -739,16 +733,6 @@ contains
           case('modal') ! refractive method
              aero_optics=>refractive_aerosol_optics(aeroprops, aerostate, list_idx, ibin, &
                                                     ncol, pver, nswbands, nlwbands, crefwsw, crefwlw)
-          case('hygroscopic_coreshell')
-             ! calculate relative humidity for table lookup into rh grid
-             call qsat(state%t(:ncol,:), state%pmid(:ncol,:), sate(:ncol,:), satq(:ncol,:), ncol, pver)
-             relh(:ncol,:) = state%q(1:ncol,:,1) / satq(:ncol,:)
-             relh(:ncol,:) = max(1.e-20_r8,relh(:ncol,:))
-             !aero_optics=>hygrocoreshell_aerosol_optics(aeroprops, aerostate, list_idx, &
-             !                                           ibin, ncol, pver, relh(:ncol,:))
-          case('hygroscopic_wtp')
-             !aero_optics=>hygrowghtpct_aerosol_optics(aeroprops, aerostate, list_idx, &
-             !                                         ibin, ncol, pver)
           case default
              call endrun(prefix//'optics method not recognized')
           end select
@@ -810,9 +794,7 @@ contains
 
     !===============================================================================
     subroutine init_diags
-
-      dustvol(:ncol) = 0._r8
-
+      dustvol(:ncol)   = 0._r8
       scatdust(:ncol)  = 0._r8
       absdust(:ncol)   = 0._r8
       hygrodust(:ncol) = 0._r8
@@ -1111,18 +1093,14 @@ contains
          end do
 
          call outfld('SSAVIS',        ssavis,        pcols, lchnk)
-
          call outfld('AODxASYM',      asymvis,       pcols, lchnk)
-
          call outfld('BURDENDUST',    burdendust,    pcols, lchnk)
          call outfld('BURDENSO4' ,    burdenso4,     pcols, lchnk)
          call outfld('BURDENPOM' ,    burdenpom,     pcols, lchnk)
          call outfld('BURDENSOA' ,    burdensoa,     pcols, lchnk)
          call outfld('BURDENBC'  ,    burdenbc,      pcols, lchnk)
          call outfld('BURDENSEASALT', burdenseasalt, pcols, lchnk)
-
          call outfld('AODABSBC',      aodabsbc,      pcols, lchnk)
-
          call outfld('AODDUST',       dustaod,       pcols, lchnk)
          call outfld('AODSO4',        sulfaod,       pcols, lchnk)
          call outfld('AODPOM',        pomaod,        pcols, lchnk)
@@ -1190,7 +1168,7 @@ contains
        aero_state(iaermod)%obj => modal_aerosol_state( state, pbuf )
     else if (carma_active) then
        iaermod = iaermod+1
-!       aero_state(iaermod)%obj => carma_aerosol_state( state, pbuf )
+       !aero_state(iaermod)%obj => carma_aerosol_state( state, pbuf )
     end if
 
     ncol = state%ncol
@@ -1217,16 +1195,6 @@ contains
           case('modal') ! refractive method
              aero_optics=>refractive_aerosol_optics(aeroprops, aerostate, list_idx, ibin, &
                                                     ncol, pver, nswbands, nlwbands, crefwsw, crefwlw)
-          case('hygroscopic_coreshell')
-             ! calculate relative humidity for table lookup into rh grid
-             call qsat(state%t(:ncol,:), state%pmid(:ncol,:), sate(:ncol,:), satq(:ncol,:), ncol, pver)
-             relh(:ncol,:) = state%q(1:ncol,:,1) / satq(:ncol,:)
-             relh(:ncol,:) = max(1.e-20_r8,relh(:ncol,:))
-             !aero_optics=>hygrocoreshell_aerosol_optics(aeroprops, aerostate, list_idx, &
-             !                                           ibin, ncol, pver, relh(:ncol,:))
-          case('hygroscopic_wtp')
-             !aero_optics=>hygrowghtpct_aerosol_optics(aeroprops, aerostate, list_idx, &
-             !                                         ibin, ncol, pver)
           case default
              call endrun(prefix//'optics method not recognized')
           end select

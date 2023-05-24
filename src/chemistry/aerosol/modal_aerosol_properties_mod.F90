@@ -35,6 +35,8 @@ module modal_aerosol_properties_mod
      procedure :: alogsig_rlist
      procedure :: soluble
      procedure :: min_mass_mean_rad
+     procedure :: bin_name
+
      final :: destructor
   end type modal_aerosol_properties
 
@@ -623,5 +625,19 @@ contains
     res = log(sig)
 
   end function alogsig_rlist
+
+  !------------------------------------------------------------------------------
+  ! returns name for a given radiation list number and aerosol bin
+  !------------------------------------------------------------------------------
+  function bin_name(self, list_ndx,  bin_ndx) result(name)
+    class(modal_aerosol_properties), intent(in) :: self
+    integer, intent(in) :: list_ndx ! radiation list number
+    integer, intent(in) :: bin_ndx  ! bin number
+
+    character(len=32) name
+
+    call rad_cnst_get_info(list_ndx, bin_ndx, mode_type=name)
+
+  end function bin_name
 
 end module modal_aerosol_properties_mod
