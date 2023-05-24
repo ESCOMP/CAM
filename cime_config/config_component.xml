@@ -207,6 +207,8 @@
       <value compset="1850_CAM60%WCTS"   >waccm_tsmlt_1850_cam6</value>
       <value compset="1850_CAM60%WCCM"   >waccm_ma_1850_cam6</value>
       <value compset="1850_CAM60%WCSC"   >waccm_sc_1850_cam6</value>
+      <value compset="1850_CAM%DEV%LT"   >1850_cam_lt</value>
+      <value compset="1850_CAM%DEV%MT"   >1850_cam_mt</value>
 
       <value compset="2000_CAM40%TMOZ"   >2000_cam4_trop_chem</value>
       <value compset="2000_CAM40%WXIE"   >waccmxie_ma_2000_cam4</value>
