@@ -15,7 +15,7 @@ module aerosol_optics_cam
   use cam_history,       only: addfld, add_default, outfld, horiz_only, fieldname_len
   use cam_history_support, only: fillvalue
 
-  use tropopause,      only : tropopause_find
+  use tropopause, only : tropopause_findChemTrop
 
   use aerosol_properties_mod, only: aerosol_properties
   use modal_aerosol_properties_mod, only: modal_aerosol_properties
@@ -641,7 +641,7 @@ contains
 
     nullify(aero_optics)
 
-    call tropopause_find(state, troplev)
+    call tropopause_findChemTrop(state, troplev)
 
     lchnk = state%lchnk
     ncol  = state%ncol
