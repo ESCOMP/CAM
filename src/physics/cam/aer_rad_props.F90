@@ -53,6 +53,7 @@ subroutine aer_rad_props_init()
    logical                    :: history_aero_optics  ! Output aerosol optics diagnostics
    logical                    :: history_dust         ! Output dust diagnostics
    logical                    :: prog_modal_aero      ! Prognostic modal aerosols present
+   integer                    :: nmodes          ! number of aerosol modes
 
    !----------------------------------------------------------------------------
 
@@ -77,7 +78,7 @@ subroutine aer_rad_props_init()
 
    ! get names of bulk aerosols
    allocate(aernames(numaerosols))
-   call rad_cnst_get_info(0, aernames=aernames)
+   call rad_cnst_get_info(0, aernames=aernames, nmodes=nmodes)
 
    ! diagnostic output for bulk aerosols
    ! create outfld names for visible OD
@@ -101,7 +102,9 @@ subroutine aer_rad_props_init()
       end do
     endif
 
-    call aerosol_optics_cam_init()
+    if (nmodes > 0) then
+       call aerosol_optics_cam_init()
+    end if
 
    deallocate(aernames)
 
