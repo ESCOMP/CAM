@@ -330,11 +330,8 @@ contains
 
     call offline_driver_reg()
 
-    if(use_hemco) then
-        ! initialize harmonized emissions component (HEMCO). this will add
-        ! pbuf fields so must go before pbuf_initialize. also, it must go
-        ! before pbuf_cam_snapshot_register as pbuf fields are registered within
-        ! HCOI_Chunk_Init here.
+    if (use_hemco) then
+        ! initialize harmonized emissions component (HEMCO)
         call HCOI_Chunk_Init()
     endif
 
