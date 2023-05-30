@@ -247,6 +247,7 @@
       <value compset="SSP370_CAM60%SMBB%SMYLE" >ssp370BB_smyle_cam6</value>
       <value compset="SSP370EXT_CAM60%SMBB" >ssp370BBext_cam6</value>
       <value compset="SSP245_CAM60%SMBB" >ssp245BB_cam6</value>
+      <value compset="SSP585_CAM60%SMBB" >ssp585BB_cam6</value>
       <value compset="SSP126_CAM60%WCTS" >waccm_tsmlt_ssp126_cam6</value>
       <value compset="SSP245_CAM60%WCTS" >waccm_tsmlt_ssp245_cam6</value>
       <value compset="SSP370_CAM60%WCTS" >waccm_tsmlt_ssp370_cam6</value>
