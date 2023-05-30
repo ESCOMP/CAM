@@ -396,13 +396,12 @@ contains
     real(r8),intent(in) :: f2(nbin)           ! eq 29 Abdul-Razzak et al 1998
     integer,intent(out) :: ierr
 
-    integer :: imas,ibin,indx, ispc
+    integer :: imas,ibin,indx
     character(len=*),parameter :: prefix = 'aerosol_properties::aero_props_init: '
 
-    real(r8) :: spechygro_so4   ! Sulfate hygroscopicity
-    real(r8) :: spechygro_soa   ! SOA hygroscopicity
-    real(r8) :: spechygro_pom   ! POM hygroscopicity
-    character(len=aero_name_len) :: spectype
+    real(r8), parameter :: spechygro_so4 = 0.507_r8          ! Sulfate hygroscopicity
+    real(r8), parameter :: spechygro_soa = 0.14_r8           ! SOA hygroscopicity
+    real(r8), parameter :: spechygro_pom = 0.1_r8            ! POM hygroscopicity
 
     ierr = 0
 
@@ -455,31 +454,8 @@ contains
     self%f1_(:) = f1(:)
     self%f2_(:) = f2(:)
 
-    spechygro_so4 = 0._r8
-    spechygro_pom = 0._r8
-    spechygro_soa = 0._r8
-
-    do ibin=1,nbin
-       do ispc = 1,nspec(ibin)
-          call self%species_type(ibin, ispc, spectype)
-
-          select case ( trim(spectype) )
-          case('sulfate')
-             call self%get(ibin, ispc, hygro=spechygro_so4)
-          case('p-organic')
-             call self%get(ibin, ispc, hygro=spechygro_pom)
-          case('s-organic')
-             call self%get(ibin, ispc, hygro=spechygro_soa)
-          end select
-       end do
-    end do
-
-    if (spechygro_so4 > 0._r8 .and. spechygro_pom > 0._r8 .and. spechygro_soa > 0._r8) then
-       self%soa_equivso4_factor_ = spechygro_soa/spechygro_so4
-       self%pom_equivso4_factor_ = spechygro_pom/spechygro_so4
-    else
-       ierr = 99
-    end if
+    self%soa_equivso4_factor_ = spechygro_soa/spechygro_so4
+    self%pom_equivso4_factor_ = spechygro_pom/spechygro_so4
 
   end subroutine aero_props_init
 
