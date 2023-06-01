@@ -3296,12 +3296,19 @@
 <hemco_grid_xdim>144</hemco_grid_xdim>
 <hemco_grid_ydim>91</hemco_grid_ydim>
 
+<!-- if using SE refined mesh use 0.5x0.625 degree grid -->
+<hemco_grid_xdim se_refined_mesh="1">576</hemco_grid_xdim>
+<hemco_grid_ydim se_refined_mesh="1">361</hemco_grid_ydim>
+
+<!-- use 0.9x1.25 degree HEMCO grid for ne30 simulation -->
 <hemco_grid_xdim hgrid="ne30np4">288</hemco_grid_xdim>
 <hemco_grid_ydim hgrid="ne30np4">201</hemco_grid_ydim>
 
+<!-- use 0.9x1.25 degree HEMCO grid for 0.9x1.25 degree simulation -->
 <hemco_grid_xdim hgrid="0.9x1.25">288</hemco_grid_xdim>
 <hemco_grid_ydim hgrid="0.9x1.25">201</hemco_grid_ydim>
 
+<!-- use 2x2.5 degree HEMCO grid for 1.9x2.5 degree simulation -->
 <hemco_grid_xdim hgrid="1.9x2.5">144</hemco_grid_xdim>
 <hemco_grid_ydim hgrid="1.9x2.5">91</hemco_grid_ydim>
 </namelist_defaults>
