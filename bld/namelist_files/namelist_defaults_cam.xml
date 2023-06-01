@@ -741,8 +741,8 @@
 <gw_limit_tau_without_eff chem="trop_strat_mam5_vbs">.true. </gw_limit_tau_without_eff>
 <gw_limit_tau_without_eff chem="trop_strat_mam5_vbsext">.true. </gw_limit_tau_without_eff>
 <gw_apply_tndmax                        >.true. </gw_apply_tndmax>
-<gw_apply_tndmax chem="ghg_mam4" nlev="93">.false.</gw_apply_tndmax>
-<gw_apply_tndmax chem="ghg_mam4" nlev="58">.false.</gw_apply_tndmax>
+<gw_apply_tndmax phys="cam_dev" chem="ghg_mam4" model_top="mt">.false.</gw_apply_tndmax>
+<gw_apply_tndmax phys="cam_dev" chem="ghg_mam4" model_top="lt">.false.</gw_apply_tndmax>
 <gw_apply_tndmax            waccm_phys="1">.false.</gw_apply_tndmax>
 <gw_apply_tndmax chem="trop_strat_mam4_vbs">.false.</gw_apply_tndmax>
 <gw_apply_tndmax chem="trop_strat_mam4_vbsext">.false.</gw_apply_tndmax>
@@ -2985,12 +2985,12 @@
 
 <se_hypervis_scaling se_refined_mesh="1" hypervis_type="tensor" >3.22D0 </se_hypervis_scaling>
 
-<se_hypervis_subcycle                                            > 3 </se_hypervis_subcycle>
-<se_hypervis_subcycle  waccm_phys="1"                            > 2 </se_hypervis_subcycle>
-<se_hypervis_subcycle  hgrid="ne16np4"                           > 4 </se_hypervis_subcycle>
-<se_hypervis_subcycle  hgrid="ne30np4" npg="3" nlev="58"         > 4 </se_hypervis_subcycle>
-<se_hypervis_subcycle  se_refined_mesh="1"                       > 3 </se_hypervis_subcycle>
-<se_hypervis_subcycle  hgrid="ne0np4CONUS.ne30x8" waccm_phys="1" > 1 </se_hypervis_subcycle>
+<se_hypervis_subcycle                                                           > 3 </se_hypervis_subcycle>
+<se_hypervis_subcycle  waccm_phys="1"                                           > 2 </se_hypervis_subcycle>
+<se_hypervis_subcycle  hgrid="ne16np4"                                          > 4 </se_hypervis_subcycle>
+<se_hypervis_subcycle  phys="cam_dev" hgrid="ne30np4" npg="3" model_top="lt"    > 4 </se_hypervis_subcycle>
+<se_hypervis_subcycle  se_refined_mesh="1"                                      > 3 </se_hypervis_subcycle>
+<se_hypervis_subcycle  hgrid="ne0np4CONUS.ne30x8" waccm_phys="1"                > 1 </se_hypervis_subcycle>
 
 <se_hypervis_subcycle_sponge                                          > 1  </se_hypervis_subcycle_sponge>
 <se_hypervis_subcycle_sponge waccmx="1"                               > 20 </se_hypervis_subcycle_sponge>
@@ -3017,9 +3017,9 @@
 
 <se_nu_p>-1 </se_nu_p>
 
-<se_nu_top                    > 1.25e5 </se_nu_top>
-<se_nu_top waccmx="1"         > 1.0e6 </se_nu_top>
-<se_nu_top nlev="93"          > 1.0e6 </se_nu_top>
+<se_nu_top                                   > 1.25e5 </se_nu_top>
+<se_nu_top waccmx="1"                        > 1.0e6 </se_nu_top>
+<se_nu_top phys="cam_dev" model_top="mt"     > 1.0e6 </se_nu_top>
 
 <se_molecular_diff               >  0.0 </se_molecular_diff>
 <se_molecular_diff waccmx="1"    >  1.0 </se_molecular_diff>
@@ -3039,18 +3039,18 @@
 <se_nsplit>                   2 </se_nsplit>
 <se_nsplit hgrid="ne16np4" >  1 </se_nsplit>
 
-<se_nsplit hgrid="ne5np4"   waccm_phys="1"            >  3  </se_nsplit>
-<se_nsplit hgrid="ne16np4"  waccm_phys="1" waccmx="1" >  5  </se_nsplit>
-<se_nsplit hgrid="ne16np4"  waccm_phys="1"            >  3  </se_nsplit>
-<se_nsplit hgrid="ne30np4"  waccm_phys="1"            >  5  </se_nsplit>
-<se_nsplit hgrid="ne30np4"  nlev="93"                 >  3  </se_nsplit>
-<se_nsplit hgrid="ne0np4CONUS.ne30x8" waccm_phys="1"  > 10  </se_nsplit>
+<se_nsplit hgrid="ne5np4"   waccm_phys="1"                >  3  </se_nsplit>
+<se_nsplit hgrid="ne16np4"  waccm_phys="1" waccmx="1"     >  5  </se_nsplit>
+<se_nsplit hgrid="ne16np4"  waccm_phys="1"                >  3  </se_nsplit>
+<se_nsplit hgrid="ne30np4"  waccm_phys="1"                >  5  </se_nsplit>
+<se_nsplit phys="cam_dev" hgrid="ne30np4"  model_top="mt" >  3  </se_nsplit>
+<se_nsplit hgrid="ne0np4CONUS.ne30x8" waccm_phys="1"      > 10  </se_nsplit>
 
 <se_nsplit hgrid="ne0np4TESTONLY.ne5x4"> 7 </se_nsplit>
 
 <se_rsplit                                          > 3 </se_rsplit>
 <se_rsplit waccm_phys="1"                           > 4 </se_rsplit>
-<se_rsplit nlev="93"                                > 6 </se_rsplit>
+<se_rsplit phys="cam_dev" model_top="mt"            > 6 </se_rsplit>
 <se_rsplit hgrid="ne0np4CONUS.ne30x8" waccm_phys="1"> 3 </se_rsplit>
 
 <se_fvm_supercycling>-1</se_fvm_supercycling>

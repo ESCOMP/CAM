@@ -89,6 +89,7 @@ OPTIONS
      -max_n_rad_cnst <n> Maximum number of constituents that are either radiatively
                         active, or in any single diagnostic list for the radiation.
      -microphys <name>  Specify the microphysics option [mg1 | mg2 | mg3| rk].
+     -model_top <name>  Specify the model_top option [ lt | mt ].
      -nadv <n>          Set total number of advected species to <n>.
      -nadv_tt <n>       Set number of advected test tracers <n>.
      -nlev <n>          Set number of levels to <n>.
@@ -271,6 +272,7 @@ GetOptions(
     "max_n_rad_cnst=s"          => \$opts{'max_n_rad_cnst'},
     "mct_libdir=s"              => \$opts{'mct_libdir'},
     "microphys=s"               => \$opts{'microphys'},
+    "model_top=s"               => \$opts{'model_top'},
     "mpas_libdir=s"             => \$opts{'mpas_libdir'},
     "mpi_inc=s"                 => \$opts{'mpi_inc'},
     "mpi_lib=s"                 => \$opts{'mpi_lib'},
@@ -673,6 +675,17 @@ if (defined $opts{'max_n_rad_cnst'}) {
 my $max_n_rad_cnst = $cfg_ref->get('max_n_rad_cnst');
 
 if ($print>=2) { print "Maximum radiatively active tracers: $max_n_rad_cnst$eol"; }
+
+#-----------------------------------------------------------------------------------------------
+# model_top - not set by default
+my $model_top = 'none';
+$cfg_ref->set('model_top', $model_top);
+
+# user override
+if (defined $opts{'model_top'}) {
+    $cfg_ref->set('model_top', $opts{'model_top'});
+}
+if ($print>=2) { print "model_top: $model_top$eol"; }
 
 #-----------------------------------------------------------------------------------------------
 # waccm physics
