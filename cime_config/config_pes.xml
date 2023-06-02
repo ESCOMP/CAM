@@ -156,8 +156,8 @@
           <ntasks_rof>-50</ntasks_rof>
           <ntasks_ice>-50</ntasks_ice>
           <ntasks_ocn>-50</ntasks_ocn>
-          <ntasks_glc>-50</ntasks_glc>
-          <ntasks_wav>-50</ntasks_wav>
+          <ntasks_glc>1</ntasks_glc>
+          <ntasks_wav>1</ntasks_wav>
           <ntasks_cpl>-50</ntasks_cpl>
         </ntasks>
         <nthrds>

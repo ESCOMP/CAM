@@ -498,8 +498,6 @@ my $dtime = $nl->get_value('dtime');
 #-----------------------------------------------------------------------------------------------
 # Add defaults for the CAM component
 
-my $model_top = $cfg->get('model_top');
-
 my $chem = $cfg->get('chem');
 my $waccm_chem = ($chem =~ "waccm_");
 my $waccm_phys = $cfg->get('waccm_phys');
