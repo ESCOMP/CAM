@@ -31,6 +31,8 @@ module aerosol_properties_mod
      real(r8), allocatable :: f2_(:) ! eq 29 Abdul-Razzak et al 1998
      ! Abdul-Razzak, H., S.J. Ghan, and C. Rivera-Carpio, A parameterization of aerosol activation,
      ! 1, Singleaerosoltype. J. Geophys. Res., 103, 6123-6132, 1998.
+     real(r8) :: soa_equivso4_factor_ = -huge(1._r8)
+     real(r8) :: pom_equivso4_factor_ = -huge(1._r8)
    contains
      procedure :: initialize => aero_props_init
      procedure :: nbins
@@ -56,6 +58,11 @@ module aerosol_properties_mod
      procedure(aero_icenuc_updates_num), deferred :: icenuc_updates_num
      procedure(aero_icenuc_updates_mmr), deferred :: icenuc_updates_mmr
      procedure(aero_apply_num_limits), deferred :: apply_number_limits
+     procedure(aero_hetfrz_species), deferred :: hetfrz_species
+     procedure :: soa_equivso4_factor ! SOA Hygroscopicity / Sulfate Hygroscopicity
+     procedure :: pom_equivso4_factor ! POM Hygroscopicity / Sulfate Hygroscopicity
+     procedure(aero_soluble), deferred :: soluble
+     procedure(aero_min_mass_mean_rad), deferred :: min_mass_mean_rad
 
      procedure :: final=>aero_props_final
   end type aerosol_properties
@@ -77,7 +84,7 @@ module aerosol_properties_mod
      !  density
      !  hygroscopicity
      !------------------------------------------------------------------------
-     subroutine aero_props_get(self, bin_ndx, species_ndx, density,hygro)
+     subroutine aero_props_get(self, bin_ndx, species_ndx, density, hygro)
        import :: aerosol_properties, r8
        class(aerosol_properties), intent(in) :: self
        integer, intent(in) :: bin_ndx             ! bin index
@@ -210,7 +217,44 @@ module aerosol_properties_mod
 
      end subroutine aero_apply_num_limits
 
-  end interface
+     !------------------------------------------------------------------------------
+     ! returns TRUE if species `spc_ndx` in aerosol subset `bin_ndx` contributes to
+     ! the particles' ability to act as heterogeneous freezing nuclei
+     !------------------------------------------------------------------------------
+     function aero_hetfrz_species(self, bin_ndx, spc_ndx) result(res)
+       import :: aerosol_properties
+       class(aerosol_properties), intent(in) :: self
+       integer, intent(in) :: bin_ndx  ! bin number
+       integer, intent(in) :: spc_ndx  ! species number
+
+       logical :: res
+
+     end function aero_hetfrz_species
+
+     !------------------------------------------------------------------------------
+     ! returns minimum mass mean radius (meters)
+     !------------------------------------------------------------------------------
+     function aero_min_mass_mean_rad(self,bin_ndx,species_ndx) result(minrad)
+       import :: aerosol_properties, r8
+       class(aerosol_properties), intent(in) :: self
+       integer, intent(in) :: bin_ndx           ! bin number
+       integer, intent(in) :: species_ndx       ! species number
+
+       real(r8) :: minrad  ! meters
+
+     end function aero_min_mass_mean_rad
+
+     !------------------------------------------------------------------------------
+     ! returns TRUE if soluble
+     !------------------------------------------------------------------------------
+     logical function aero_soluble(self,bin_ndx)
+       import :: aerosol_properties
+       class(aerosol_properties), intent(in) :: self
+       integer, intent(in) :: bin_ndx           ! bin number
+
+     end function aero_soluble
+
+   end interface
 
 contains
 
@@ -230,6 +274,10 @@ contains
 
     integer :: imas,ibin,indx
     character(len=*),parameter :: prefix = 'aerosol_properties::aero_props_init: '
+
+    real(r8), parameter :: spechygro_so4 = 0.507_r8          ! Sulfate hygroscopicity
+    real(r8), parameter :: spechygro_soa = 0.14_r8           ! SOA hygroscopicity
+    real(r8), parameter :: spechygro_pom = 0.1_r8            ! POM hygroscopicity
 
     ierr = 0
 
@@ -281,6 +329,9 @@ contains
     self%alogsig_(:) = alogsig(:)
     self%f1_(:) = f1(:)
     self%f2_(:) = f2(:)
+
+    self%soa_equivso4_factor_ = spechygro_soa/spechygro_so4
+    self%pom_equivso4_factor_ = spechygro_pom/spechygro_so4
 
   end subroutine aero_props_init
 
@@ -458,4 +509,24 @@ contains
 
   end function maxsat
 
-end module aerosol_properties_mod
+  !------------------------------------------------------------------------------
+  ! returns the ratio of SOA Hygroscopicity / Sulfate Hygroscopicity
+  !------------------------------------------------------------------------------
+  pure real(r8) function soa_equivso4_factor(self)
+    class(aerosol_properties), intent(in) :: self
+
+    soa_equivso4_factor = self%soa_equivso4_factor_
+
+  end function soa_equivso4_factor
+
+  !------------------------------------------------------------------------------
+  ! returns the ratio of POM Hygroscopicity / Sulfate Hygroscopicity
+  !------------------------------------------------------------------------------
+  pure real(r8) function pom_equivso4_factor(self)
+    class(aerosol_properties), intent(in) :: self
+
+    pom_equivso4_factor = self%pom_equivso4_factor_
+
+  end function pom_equivso4_factor
+
+ end module aerosol_properties_mod

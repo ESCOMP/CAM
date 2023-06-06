@@ -32,6 +32,7 @@ module modal_aerosol_state_mod
      procedure :: icenuc_size_wght_val
      procedure :: icenuc_type_wght
      procedure :: update_bin
+     procedure :: hetfrz_size_wght
 
      final :: destructor
 
@@ -303,7 +304,7 @@ contains
   !------------------------------------------------------------------------------
   ! returns aerosol type weights for a given aerosol type and bin
   !------------------------------------------------------------------------------
-  subroutine icenuc_type_wght(self, bin_ndx, ncol, nlev, species_type, aero_props, rho, wght)
+  subroutine icenuc_type_wght(self, bin_ndx, ncol, nlev, species_type, aero_props, rho, wght, cloud_borne)
 
     use aerosol_properties_mod, only: aerosol_properties
 
@@ -313,8 +314,10 @@ contains
     integer, intent(in) :: nlev                   ! number of vertical levels
     character(len=*), intent(in) :: species_type  ! species type
     class(aerosol_properties), intent(in) :: aero_props ! aerosol properties object
-    real(r8), intent(in) :: rho(:,:)        ! air density (kg m-3)
-    real(r8), intent(out) :: wght(:,:)           ! type weights
+    real(r8), intent(in) :: rho(:,:)              ! air density (kg m-3)
+    real(r8), intent(out) :: wght(:,:)            ! type weights
+    logical, optional, intent(in) :: cloud_borne  ! if TRUE cloud-borne aerosols are used
+                                                  ! otherwise ambient aerosols are used
 
     character(len=aero_name_len) :: modetype
 
@@ -326,13 +329,13 @@ contains
        if (modetype=='coarse_dust') then
           wght(:ncol,:) = 1._r8
        else
-          call self%icenuc_type_wght_base(bin_ndx, ncol, nlev, species_type, aero_props, rho, wght)
+          call self%icenuc_type_wght_base(bin_ndx, ncol, nlev, species_type, aero_props, rho, wght, cloud_borne)
        end if
     else if (species_type == 'sulfate_strat') then
        if (modetype=='accum') then
           wght(:ncol,:) = 1._r8
        elseif ( modetype=='coarse' .or. modetype=='coarse_strat') then
-          call self%icenuc_type_wght_base(bin_ndx, ncol, nlev, species_type, aero_props, rho, wght)
+          call self%icenuc_type_wght_base(bin_ndx, ncol, nlev, species_type, aero_props, rho, wght, cloud_borne)
        endif
     else
        wght(:ncol,:) = 1._r8
@@ -371,5 +374,29 @@ contains
     cld_num(col_ndx,lyr_ndx) = cld_num(col_ndx,lyr_ndx) + delnum_sum
 
   end subroutine update_bin
+
+  !------------------------------------------------------------------------------
+  ! returns the volume-weighted fractions of aerosol subset `bin_ndx` that can act
+  ! as heterogeneous freezing nuclei
+  !------------------------------------------------------------------------------
+  function hetfrz_size_wght(self, bin_ndx, ncol, nlev) result(wght)
+    class(modal_aerosol_state), intent(in) :: self
+    integer, intent(in) :: bin_ndx             ! bin number
+    integer, intent(in) :: ncol                ! number of columns
+    integer, intent(in) :: nlev                ! number of vertical levels
+
+    real(r8) :: wght(ncol,nlev)
+
+    character(len=aero_name_len) :: modetype
+
+    wght(:,:) = 1._r8
+
+    call rad_cnst_get_info(0, bin_ndx, mode_type=modetype)
+
+    if (trim(modetype) == 'aitken') then
+       wght(:,:) = 0._r8
+    end if
+
+  end function hetfrz_size_wght
 
 end module modal_aerosol_state_mod

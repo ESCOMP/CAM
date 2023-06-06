@@ -2384,7 +2384,7 @@ if (($chem =~ /_mam4/ or $chem =~ /_mam5/) and ($phys =~ /cam6/ or $phys =~ /cam
     }
 
     # for cam6 add h2o source from methane oxidation
-    if ($chem =~ /trop_mam/ or $chem =~ /ghg_mam/) {
+    if ($chem =~ /trop_mam/) {
         %species = (%species, 'h2o_ch4ox_ext_file' => 'H2O');
     }
     # for mechanisms without OCS use prescribed OCS oxidation rates for
