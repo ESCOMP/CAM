@@ -1,24 +1,44 @@
 # Testing for checkout_externals
 
-## Unit tests
+NOTE: Python2 is the supported runtime environment. Python3 compatibility is
+in progress, complicated by the different proposed input methods
+(yaml, xml, cfg/ini, json) and their different handling of strings
+(unicode vs byte) in python2. Full python3 compatibility will be
+possible once the number of possible input formats has been narrowed.
+
+## Setup development environment
+
+Development environments should be setup for python2 and python3:
 
 ```SH
     cd checkout_externals/test
+    make python=python2 env
+    make python=python3 env
+```
+
+## Unit tests
+
+Tests should be run for both python2 and python3. It is recommended
+that you have seperate terminal windows open python2 and python3
+testing to avoid errors activating and deactivating environments.
+
+```SH
+    cd checkout_externals/test
+    . env_python2/bin/activate
     make utest
+    deactivate
+```
+
+```SH
+    cd checkout_externals/test
+    . env_python2/bin/activate
+    make utest
+    deactivate
 ```
 
 ## System tests
 
-```SH
-    cd checkout_externals/test
-    make stest
-```
-
-Example to run a single test:
-```SH
-    cd checkout_externals
-    python -m unittest test.test_sys_checkout.TestSysCheckout.test_container_simple_required
-```
+Not yet implemented.
 
 ## Static analysis
 
@@ -31,7 +51,9 @@ regularly for automatic code formatting and linting.
 
 ```SH
     cd checkout_externals/test
+    . env_python2/bin/activate
     make lint
+    deactivate
 ```
 
 The canonical formatting for the code is whatever autopep8
@@ -46,8 +68,10 @@ coverage, run the code coverage tool:
 
 ```SH
     cd checkout_externals/test
+    . env_python2/bin/activate
     make coverage
     open -a Firefox.app htmlcov/index.html
+    deactivate
 ```
 
 

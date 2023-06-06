@@ -12,6 +12,3 @@ components/
 
 # generated python files
 *.pyc
-
-# test tmp file
-test/tmp

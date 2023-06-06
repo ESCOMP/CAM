@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/env python
 
 """Model description
 
@@ -71,8 +71,7 @@ def read_externals_description_file(root_dir, file_name):
     root_dir = os.path.abspath(root_dir)
     msg = 'In directory : {0}'.format(root_dir)
     logging.info(msg)
-    printlog('Processing externals description file : {0} ({1})'.format(file_name,
-                                                                        root_dir))
+    printlog('Processing externals description file : {0}'.format(file_name))
 
     file_path = os.path.join(root_dir, file_name)
     if not os.path.exists(file_name):
@@ -88,7 +87,7 @@ def read_externals_description_file(root_dir, file_name):
 
     externals_description = None
     if file_name == ExternalsDescription.GIT_SUBMODULES_FILENAME:
-        externals_description = _read_gitmodules_file(root_dir, file_name)
+        externals_description = read_gitmodules_file(root_dir, file_name)
     else:
         try:
             config = config_parser()
@@ -151,8 +150,9 @@ def git_submodule_status(repo_dir):
     """Run the git submodule status command to obtain submodule hashes.
         """
     # This function is here instead of GitRepository to avoid a dependency loop
-    cmd = 'git -C {repo_dir} submodule status'.format(
-        repo_dir=repo_dir).split()
+    cwd = os.getcwd()
+    os.chdir(repo_dir)
+    cmd = ['git', 'submodule', 'status']
     git_output = execute_subprocess(cmd, output_to_caller=True)
     submodules = {}
     submods = git_output.split('\n')
@@ -167,6 +167,7 @@ def git_submodule_status(repo_dir):
 
             submodules[items[1]] = {'hash':items[0], 'status':status, 'tag':tag}
 
+    os.chdir(cwd)
     return submodules
 
 def parse_submodules_desc_section(section_items, file_path):
@@ -179,9 +180,6 @@ def parse_submodules_desc_section(section_items, file_path):
             path = item[1].strip()
         elif name == 'url':
             url = item[1].strip()
-        elif name == 'branch':
-            # We do not care about branch since we have a hash - silently ignore
-            pass
         else:
             msg = 'WARNING: Ignoring unknown {} property, in {}'
             msg = msg.format(item[0], file_path) # fool pylint
@@ -189,23 +187,21 @@ def parse_submodules_desc_section(section_items, file_path):
 
     return path, url
 
-def _read_gitmodules_file(root_dir, file_name):
+def read_gitmodules_file(root_dir, file_name):
     # pylint: disable=deprecated-method
     # Disabling this check because the method is only used for python2
-    # pylint: disable=too-many-locals
-    # pylint: disable=too-many-branches
-    # pylint: disable=too-many-statements
     """Read a .gitmodules file and convert it to be compatible with an
     externals description.
     """
     root_dir = os.path.abspath(root_dir)
     msg = 'In directory : {0}'.format(root_dir)
     logging.info(msg)
+    printlog('Processing submodules description file : {0}'.format(file_name))
 
     file_path = os.path.join(root_dir, file_name)
     if not os.path.exists(file_name):
         msg = ('ERROR: submodules description file, "{0}", does not '
-               'exist in dir:\n    {1}'.format(file_name, root_dir))
+               'exist at path:\n    {1}'.format(file_name, file_path))
         fatal_error(msg)
 
     submodules_description = None
@@ -254,21 +250,9 @@ def _read_gitmodules_file(root_dir, file_name):
                                           ExternalsDescription.REPO_URL, url)
                 externals_description.set(sec_name,
                                           ExternalsDescription.REQUIRED, 'True')
-                if sec_name in submods:
-                    submod_name = sec_name
-                else:
-                    # The section name does not have to match the path
-                    submod_name = path
-
-                if submod_name in submods:
-                    git_hash = submods[submod_name]['hash']
-                    externals_description.set(sec_name,
-                                              ExternalsDescription.HASH,
-                                              git_hash)
-                else:
-                    emsg = "submodule status has no section, '{}'"
-                    emsg += "\nCheck section names in externals config file"
-                    fatal_error(emsg.format(submod_name))
+                git_hash = submods[sec_name]['hash']
+                externals_description.set(sec_name,
+                                          ExternalsDescription.HASH, git_hash)
 
         # Required items
         externals_description.add_section(DESCRIPTION_SECTION)
@@ -277,22 +261,18 @@ def _read_gitmodules_file(root_dir, file_name):
     return externals_description
 
 def create_externals_description(
-        model_data, model_format='cfg', components=None, exclude=None, parent_repo=None):
+        model_data, model_format='cfg', components=None, parent_repo=None):
     """Create the a externals description object from the provided data
-        
-    components: list of component names to include, None to include all. If a
-                name isn't found, it is silently omitted from the return value.
-    exclude: list of component names to skip.
     """
     externals_description = None
     if model_format == 'dict':
         externals_description = ExternalsDescriptionDict(
-            model_data, components=components, exclude=exclude)
+            model_data, components=components)
     elif model_format == 'cfg':
         major, _, _ = get_cfg_schema_version(model_data)
         if major == 1:
             externals_description = ExternalsDescriptionConfigV1(
-                model_data, components=components, exclude=exclude, parent_repo=parent_repo)
+                model_data, components=components, parent_repo=parent_repo)
         else:
             msg = ('Externals description file has unsupported schema '
                    'version "{0}".'.format(major))
@@ -359,9 +339,8 @@ class ExternalsDescription(dict):
     input value.
 
     """
-    # keywords defining the interface into the externals description data; these
-    # are brought together by the schema below.
-    EXTERNALS = 'externals'  # path to externals file.
+    # keywords defining the interface into the externals description data
+    EXTERNALS = 'externals'
     BRANCH = 'branch'
     SUBMODULE = 'from_submodule'
     HASH = 'hash'
@@ -387,8 +366,6 @@ class ExternalsDescription(dict):
     _V1_BRANCH = 'BRANCH'
     _V1_REQ_SOURCE = 'REQ_SOURCE'
 
-    # Dictionary keys are component names. The corresponding values are laid out
-    # according to this schema.
     _source_schema = {REQUIRED: True,
                       PATH: 'string',
                       EXTERNALS: 'string',
@@ -637,11 +614,8 @@ class ExternalsDescription(dict):
                        '       Parent repo, "{1}" does not have submodules')
                 fatal_error(msg.format(field, self._parent_repo.name()))
 
-            printlog(
-                'Processing submodules description file : {0} ({1})'.format(
-                    submod_file, repo_path))
-            submod_model_data= _read_gitmodules_file(repo_path, submod_file)
-            submod_desc = create_externals_description(submod_model_data)
+            submod_file = read_gitmodules_file(repo_path, submod_file)
+            submod_desc = create_externals_description(submod_file)
 
         # Can we find our external?
         repo_url = None
@@ -733,7 +707,7 @@ class ExternalsDescriptionDict(ExternalsDescription):
 
     """
 
-    def __init__(self, model_data, components=None, exclude=None):
+    def __init__(self, model_data, components=None):
         """Parse a native dictionary into a externals description.
         """
         ExternalsDescription.__init__(self)
@@ -745,13 +719,8 @@ class ExternalsDescriptionDict(ExternalsDescription):
         self._input_patch = 0
         self._verify_schema_version()
         if components:
-            for key in list(model_data.keys()):
+            for key in model_data.items():
                 if key not in components:
-                    del model_data[key]
-
-        if exclude:
-            for key in list(model_data.keys()):
-                if key in exclude:
                     del model_data[key]
 
         self.update(model_data)
@@ -764,12 +733,10 @@ class ExternalsDescriptionConfigV1(ExternalsDescription):
 
     """
 
-    def __init__(self, model_data, components=None, exclude=None, parent_repo=None):
+    def __init__(self, model_data, components=None, parent_repo=None):
         """Convert the config data into a standardized dict that can be used to
         construct the source objects
 
-        components: list of component names to include, None to include all.
-        exclude: list of component names to skip.
         """
         ExternalsDescription.__init__(self, parent_repo=parent_repo)
         self._schema_major = 1
@@ -779,7 +746,7 @@ class ExternalsDescriptionConfigV1(ExternalsDescription):
             get_cfg_schema_version(model_data)
         self._verify_schema_version()
         self._remove_metadata(model_data)
-        self._parse_cfg(model_data, components=components, exclude=exclude)
+        self._parse_cfg(model_data, components=components)
         self._check_user_input()
 
     @staticmethod
@@ -791,11 +758,8 @@ class ExternalsDescriptionConfigV1(ExternalsDescription):
         """
         model_data.remove_section(DESCRIPTION_SECTION)
 
-    def _parse_cfg(self, cfg_data, components=None, exclude=None):
+    def _parse_cfg(self, cfg_data, components=None):
         """Parse a config_parser object into a externals description.
-
-        components: list of component names to include, None to include all.
-        exclude: list of component names to skip.
         """
         def list_to_dict(input_list, convert_to_lower_case=True):
             """Convert a list of key-value pairs into a dictionary.
@@ -811,7 +775,7 @@ class ExternalsDescriptionConfigV1(ExternalsDescription):
 
         for section in cfg_data.sections():
             name = config_string_cleaner(section.lower().strip())
-            if (components and name not in components) or (exclude and name in exclude):
+            if components and name not in components:
                 continue
             self[name] = {}
             self[name].update(list_to_dict(cfg_data.items(section)))
