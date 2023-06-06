@@ -1296,6 +1296,10 @@ end subroutine physics_ptend_copy
        state_out%te_cur(i) = state_in%te_cur(i)
        state_out%tw_ini(i) = state_in%tw_ini(i)
        state_out%tw_cur(i) = state_in%tw_cur(i)
+       ! MOSAIC (dsj) - added by Francis
+       state_out%lonmapback(i) = state_in%lonmapback(i)
+       state_out%latmapback(i) = state_in%latmapback(i)
+       state_out%cid(i) = state_in%cid(i)
     end do
 
     do k = 1, pver

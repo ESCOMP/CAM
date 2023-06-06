@@ -34,6 +34,11 @@ module dust_model
   character(len=cl) :: soil_erod_file = 'soil_erod_file' ! full pathname for soil erodibility dataset
 
   logical :: dust_active = .false.
+  ! MOSAIC (dsj)
+  character(len=5), allocatable :: ca_names(:)
+  character(len=6), allocatable :: co3_names(:)
+  integer, allocatable :: ca_indices(:)
+  integer, allocatable :: co3_indices(:)
 
  contains
 
@@ -100,6 +105,11 @@ module dust_model
     allocate( dust_emis_sclfctr(ndst) )
     allocate( dust_dmt_vwr(ndst) )
     allocate( dust_stk_crc(ndst) )
+    ! MOSAIC (dsj)
+    allocate( ca_names(ndst) )
+    allocate( ca_indices(ndst) )
+    allocate( co3_names(ndst) )
+    allocate( co3_indices(ndst) )    
 
     if ( ntot_amode == 3 ) then
        dust_dmt_grd(:) = (/ 0.1e-6_r8, 1.0e-6_r8, 10.0e-6_r8/)
@@ -124,6 +134,11 @@ module dust_model
              dust_names(ndst+ndx) = 'num_'//spec_name(5:)
              call cnst_get_ind(dust_names(     ndx), dust_indices(     ndx))
              call cnst_get_ind(dust_names(ndst+ndx), dust_indices(ndst+ndx))
+             ! MOSAIC (dsj)
+             ca_names(ndx) = 'ca_'//spec_name(5:)
+             co3_names(ndx) = 'co3_'//spec_name(5:)
+             call cnst_get_ind(ca_names(ndx), ca_indices(ndx), abort=.false.)
+             call cnst_get_ind(co3_names(ndx), co3_indices(ndx), abort=.false.)             
           endif
        enddo
     enddo
@@ -155,6 +170,13 @@ module dust_model
     integer :: i, m, idst, inum
     real(r8) :: x_mton
     real(r8),parameter :: soil_erod_threshold = 0.1_r8
+    
+    ! MOSAIC (dsj)
+    integer :: ica,ico3
+    real(r8), parameter :: fracemit_caco3 = 0.05_r8                           ! fraction of dust emitted as caco3
+    real(r8), parameter :: fracemit_ca = fracemit_caco3 * 0.4004308_r8        ! fraction of dust emitted as ca
+    real(r8), parameter :: fracemit_co3 = fracemit_caco3 - fracemit_ca        ! fraction of dust emitted as co3
+    real(r8), parameter :: fracemit_oin = 1.0_r8 - fracemit_ca - fracemit_co3 ! fraction of dust emitted as oin (=dst)
 
     ! set dust emissions
 
@@ -175,8 +197,18 @@ module dust_model
           x_mton = 6._r8 / (pi * dust_density * (dust_dmt_vwr(m)**3._r8))                
 
           inum = dust_indices(m+dust_nbin)
-
+          
           cflx(i,inum) = cflx(i,idst)*x_mton
+
+          ! MOSAIC (dsj)
+          ica = ca_indices(m)
+          ico3= co3_indices(m)
+
+          if (ica>0 .and. ico3>0) then
+             cflx(i,ica)  = cflx(i,idst)*fracemit_ca 
+             cflx(i,ico3) = cflx(i,idst)*fracemit_co3 
+             cflx(i,idst) = cflx(i,idst)*fracemit_oin
+          endif
 
        enddo
 

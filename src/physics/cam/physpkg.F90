@@ -2016,6 +2016,14 @@ contains
     use cam_snapshot,    only: cam_snapshot_ptend_outfld
     use ssatcontrail,       only: ssatcontrail_d0
 
+    ! For debugging (dsj)
+    use phys_grid,   only: get_rlat_all_p, get_rlon_all_p ! For debugging (dsj)
+    use mo_mass_xforms,    only : mmr2vmr
+    use mo_chem_utls,      only : get_spc_ndx
+    use mo_mean_mass,      only : set_mean_mass
+    use mo_constants, only : d2r  
+    use chem_mods,      only: gas_pcnst
+
     ! Arguments
 
     real(r8), intent(in) :: ztodt                          ! 2 delta t (model time increment)
@@ -2123,6 +2131,36 @@ contains
 
     !-----------------------------------------------------------------------
 
+    ! For debugging (dsj) 
+    ! 115E 38N -> spot in China
+    real(r8), parameter  :: lon_114 = 114._r8*d2r ! 114.5 degrees longitude in radians
+    real(r8), parameter  :: lon_115 = 115._r8*d2r ! 115.5 degrees longitude in radians
+    real(r8), parameter  :: lat_37 = 37._r8*d2r ! 37.5 degrees latitude in radians
+    real(r8), parameter  :: lat_38 = 38._r8*d2r ! 38.5 degrees latitude in radians
+    
+    real(r8) :: vmr(pcols,pver,gas_pcnst)         ! xported species (vmr)
+    real(r8) :: mmr(pcols,pver,gas_pcnst)      ! chem working concentrations (kg/kg)
+    real(r8) :: mbar(pcols,pver)
+    
+    integer  :: n, m
+    
+    real(r8)  :: rlats(pcols)     ! chunk lats in radians
+    real(r8)  :: rlons(pcols)     ! chunk lons in radians
+    integer :: so4_a1_ndx    = 0
+    integer :: so4_a2_ndx    = 0
+    integer :: so4_a3_ndx    = 0
+    integer :: nh4_a1_ndx    = 0
+    integer :: nh4_a2_ndx    = 0
+    integer :: nh4_a3_ndx    = 0
+    integer :: dst_a1_ndx    = 0
+    integer :: dst_a2_ndx    = 0
+    integer :: dst_a3_ndx    = 0
+    integer :: bc_a1_ndx     = 0
+    integer :: bc_a4_ndx     = 0
+    integer :: soa1_a1_ndx   = 0
+    integer :: soa1_a2_ndx   = 0   
+
+    
     call t_startf('bc_init')
 
     zero = 0._r8
@@ -2133,7 +2171,7 @@ contains
     ncol  = state%ncol
 
     rtdt = 1._r8/ztodt
-
+    
     nstep = get_nstep()
 
     ! Associate pointers with physics buffer fields
@@ -2186,6 +2224,60 @@ contains
 
     call t_stopf('bc_init')
 
+
+
+    ! For debugging (dsj)
+    call get_rlat_all_p( lchnk, ncol, rlats )
+    call get_rlon_all_p( lchnk, ncol, rlons )
+    ! get species indices
+    so4_a1_ndx  = get_spc_ndx('so4_a1')
+    so4_a2_ndx  = get_spc_ndx('so4_a2')
+    so4_a3_ndx  = get_spc_ndx('so4_a3')
+    nh4_a1_ndx  = get_spc_ndx('nh4_a1')
+    nh4_a2_ndx  = get_spc_ndx('nh4_a2')
+    nh4_a3_ndx  = get_spc_ndx('nh4_a3')    
+    dst_a1_ndx  = get_spc_ndx('dst_a1')
+    dst_a2_ndx  = get_spc_ndx('dst_a2')
+    dst_a3_ndx  = get_spc_ndx('dst_a3')    
+    bc_a1_ndx   = get_spc_ndx('bc_a1')
+    bc_a4_ndx   = get_spc_ndx('bc_a4')
+    soa1_a1_ndx = get_spc_ndx('soa1_a1')
+    soa1_a2_ndx = get_spc_ndx('soa1_a2')   
+
+    do m = 1,pcnst
+       n = map2chm(m)
+       if( n > 0 ) then
+          mmr(:ncol,:,n) = state%q(:ncol,:,m)
+       end if
+    end do
+    
+    call set_mean_mass( ncol, mmr, mbar )
+    call mmr2vmr( mmr(:ncol,:,:), vmr(:ncol,:,:), mbar(:ncol,:), ncol )
+    
+    
+    !do i = 1, ncol
+    !    if ( ( rlats(i) <= lat_38 ) .and. ( rlats(i) >= lat_37 ) ) then
+    !        if ( ( rlons(i) <= lon_115 ) .and. ( rlons(i) > lon_114 ) ) then
+    !            print *, 'Check physpkg 111', rlats(i)/d2r, rlons(i)/d2r, i, lchnk
+    !            print *, 'so4_a1', vmr(i,1:2,so4_a1_ndx), vmr(i,31:32,so4_a1_ndx)
+    !            print *, 'so4_a2', vmr(i,1:2,so4_a2_ndx), vmr(i,31:32,so4_a2_ndx)
+    !            print *, 'so4_a3', vmr(i,1:2,so4_a3_ndx), vmr(i,31:32,so4_a3_ndx)
+    !            print *, 'nh4_a1', vmr(i,1:2,nh4_a1_ndx), vmr(i,31:32,nh4_a1_ndx)
+    !            print *, 'nh4_a2', vmr(i,1:2,nh4_a2_ndx), vmr(i,31:32,nh4_a2_ndx)
+    !            print *, 'nh4_a3', vmr(i,1:2,nh4_a3_ndx), vmr(i,31:32,nh4_a3_ndx)
+    !            print *, 'dst_a1', vmr(i,1:2,dst_a1_ndx), vmr(i,31:32,dst_a1_ndx)
+    !            print *, 'dst_a2', vmr(i,1:2,dst_a2_ndx), vmr(i,31:32,dst_a2_ndx)
+    !            print *, 'dst_a3', vmr(i,1:2,dst_a3_ndx), vmr(i,31:32,dst_a3_ndx)
+    !            print *, 'bc_a1', vmr(i,1:2,bc_a1_ndx), vmr(i,31:32,bc_a1_ndx)
+    !            print *, 'bc_a4', vmr(i,1:2,bc_a4_ndx), vmr(i,31:32,bc_a4_ndx)
+    !            print *, 'soa1_a1', vmr(i,1:2,soa1_a1_ndx), vmr(i,31:32,soa1_a1_ndx)
+    !            print *, 'soa1_a2', vmr(i,1:2,soa1_a2_ndx), vmr(i,31:32,soa1_a2_ndx)
+    !
+    !        end if
+    !    end if
+    !end do
+    
+    
     !===================================================
     ! Global mean total energy fixer
     !===================================================

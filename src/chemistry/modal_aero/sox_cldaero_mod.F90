@@ -16,7 +16,11 @@ module sox_cldaero_mod
   use phys_control,    only : phys_getopts
   use cldaero_mod,     only : cldaero_uptakerate
   use chem_mods,       only : gas_pcnst
-
+  ! MOSAIC (dsj)
+  use modal_aero_data, only : lptr_ca_cw_amode,  lptr_cl_cw_amode,  lptr_co3_cw_amode, &
+                              lptr_na_cw_amode, lptr_no3_cw_amode
+  use modal_aero_data, only : mosaic_aqchem_optaa
+  
   implicit none
   private
 
@@ -26,6 +30,9 @@ module sox_cldaero_mod
   public :: sox_cldaero_destroy_obj
 
   integer :: id_msa, id_h2so4, id_so2, id_h2o2, id_nh3
+  ! MOSAIC (dsj) - in addition to h2so4 and nh3
+  integer :: id_hno3, id_hcl
+  real(r8), parameter :: zero_value = 0.0_r8
 
   real(r8), parameter :: small_value = 1.e-20_r8
 
@@ -44,6 +51,9 @@ contains
     id_so2 = get_spc_ndx( 'SO2' )
     id_h2o2 = get_spc_ndx( 'H2O2' )
     id_nh3 = get_spc_ndx( 'NH3' )
+    ! MOSAIC (dsj)
+    id_hno3 = get_spc_ndx( 'HNO3' )
+    id_hcl = get_spc_ndx( 'HCL' )
 
     if (id_h2so4<1 .or. id_so2<1 .or. id_h2o2<1) then
       call endrun('sox_cldaero_init:MAM mech does not include necessary species' &
@@ -54,6 +64,14 @@ contains
     !
     !   add to history
     !
+    
+    ! MOSAIC (dsj) - additional check for newly added species by MOSAIC
+    if (mosaic_aqchem_optaa > 0) then
+       if (id_hno3<1 .or. id_hcl<1) then
+          call endrun('sox_cldaero_init:MAM mech does not include HNO3 /or HCL species' &
+               //' -- should not invoke sox_cldaero_mod ')
+       endif
+    endif
   
   end subroutine sox_cldaero_init
 
@@ -73,6 +91,14 @@ contains
 
     integer :: id_so4_1a, id_so4_2a, id_so4_3a, id_so4_4a, id_so4_5a, id_so4_6a
     integer :: id_nh4_1a, id_nh4_2a, id_nh4_3a, id_nh4_4a, id_nh4_5a, id_nh4_6a
+    ! MOSAIC (dsj)
+    integer :: id_no3_1a, id_no3_2a, id_no3_3a, id_no3_4a, id_no3_5a, id_no3_6a
+    integer :: id_cl_1a, id_cl_2a, id_cl_3a, id_cl_4a, id_cl_5a, id_cl_6a
+    integer :: id_na_1a, id_na_2a, id_na_3a, id_na_4a
+    integer :: id_ca_1a, id_ca_2a, id_ca_3a, id_ca_4a
+    integer :: id_co3_1a, id_co3_2a, id_co3_3a, id_co3_4a
+    
+    
     integer :: l,n
     integer :: i,k
 
@@ -111,6 +137,39 @@ contains
        id_nh4_4a = lptr_nh4_cw_amode(5) - loffset
        id_nh4_5a = lptr_nh4_cw_amode(6) - loffset
        id_nh4_6a = lptr_nh4_cw_amode(7) - loffset
+       
+       ! MOSAIC (dsj) - not used right now. 
+       ! Since MOSAIC only works with MAM4 currently
+       if (mosaic_aqchem_optaa > 0) then
+           id_no3_1a = lptr_no3_cw_amode(1) - loffset
+           id_no3_2a = lptr_no3_cw_amode(2) - loffset
+           id_no3_3a = lptr_no3_cw_amode(4) - loffset
+           id_no3_4a = lptr_no3_cw_amode(5) - loffset
+           id_no3_5a = lptr_no3_cw_amode(6) - loffset
+           id_no3_6a = lptr_no3_cw_amode(7) - loffset
+
+           id_cl_1a = lptr_cl_cw_amode(1) - loffset
+           id_cl_2a = lptr_cl_cw_amode(2) - loffset
+           id_cl_3a = lptr_cl_cw_amode(4) - loffset
+           id_cl_4a = lptr_cl_cw_amode(5) - loffset
+           id_cl_5a = lptr_cl_cw_amode(6) - loffset
+           id_cl_6a = lptr_cl_cw_amode(7) - loffset
+
+           id_na_1a = lptr_na_cw_amode(1) - loffset
+           id_na_2a = lptr_na_cw_amode(2) - loffset
+           id_na_3a = lptr_na_cw_amode(4) - loffset
+           id_na_4a = lptr_na_cw_amode(6) - loffset
+
+           id_ca_1a = lptr_ca_cw_amode(1) - loffset
+           id_ca_2a = lptr_ca_cw_amode(2) - loffset
+           id_ca_3a = lptr_ca_cw_amode(5) - loffset
+           id_ca_4a = lptr_ca_cw_amode(7) - loffset
+
+           id_co3_1a = lptr_co3_cw_amode(1) - loffset
+           id_co3_2a = lptr_co3_cw_amode(2) - loffset
+           id_co3_3a = lptr_co3_cw_amode(5) - loffset
+           id_co3_4a = lptr_co3_cw_amode(7) - loffset
+       endif      
 #endif
        conc_obj%so4c(:ncol,:) &
             = qcw(:ncol,:,id_so4_1a) &
@@ -136,13 +195,74 @@ contains
             + qcw(:,:,id_so4_2a) &
             + qcw(:,:,id_so4_3a)
 
-        ! for 3-mode, so4 is assumed to be nh4hso4
-        ! the partial neutralization of so4 is handled by using a 
-        !    -1 charge (instead of -2) in the electro-neutrality equation
-       conc_obj%nh4c(:ncol,:) = 0._r8
+       ! MOSAIC (dsj)
+       if (mosaic_aqchem_optaa > 0) then
 
-       ! with 3-mode, assume so4 is nh4hso4, and so half-neutralized
-       conc_obj%so4_fact = 1._r8
+          id_nh4_1a = lptr_nh4_cw_amode(1) - loffset
+          id_nh4_2a = lptr_nh4_cw_amode(2) - loffset
+          id_nh4_3a = lptr_nh4_cw_amode(3) - loffset
+
+          id_no3_1a = lptr_no3_cw_amode(1) - loffset
+          id_no3_2a = lptr_no3_cw_amode(2) - loffset
+          id_no3_3a = lptr_no3_cw_amode(3) - loffset
+
+          id_cl_1a = lptr_cl_cw_amode(1) - loffset
+          id_cl_2a = lptr_cl_cw_amode(2) - loffset
+          id_cl_3a = lptr_cl_cw_amode(3) - loffset
+
+          id_na_1a = lptr_na_cw_amode(1) - loffset
+          id_na_2a = lptr_na_cw_amode(2) - loffset
+          id_na_3a = lptr_na_cw_amode(3) - loffset
+
+          id_ca_1a = lptr_ca_cw_amode(1) - loffset
+          id_ca_2a = lptr_ca_cw_amode(2) - loffset
+          id_ca_3a = lptr_ca_cw_amode(3) - loffset
+
+          id_co3_1a = lptr_co3_cw_amode(1) - loffset
+          id_co3_2a = lptr_co3_cw_amode(2) - loffset
+          id_co3_3a = lptr_co3_cw_amode(3) - loffset
+
+          conc_obj%nh4c(:ncol,:) &
+               = qcw(:ncol,:,id_nh4_1a) &
+               + qcw(:ncol,:,id_nh4_2a) &
+               + qcw(:ncol,:,id_nh4_3a)
+
+          conc_obj%no3c(:ncol,:) &
+               = qcw(:ncol,:,id_no3_1a) &
+               + qcw(:ncol,:,id_no3_2a) &
+               + qcw(:ncol,:,id_no3_3a)
+
+          conc_obj%clc(:ncol,:) &
+               = qcw(:ncol,:,id_cl_1a) &
+               + qcw(:ncol,:,id_cl_2a) &
+               + qcw(:ncol,:,id_cl_3a)
+
+          conc_obj%nac(:ncol,:) &
+               = qcw(:ncol,:,id_na_1a) &
+               + qcw(:ncol,:,id_na_2a) &
+               + qcw(:ncol,:,id_na_3a)
+
+          conc_obj%cac(:ncol,:) &
+               = qcw(:ncol,:,id_ca_1a) &
+               + qcw(:ncol,:,id_ca_2a) &
+               + qcw(:ncol,:,id_ca_3a)
+
+          conc_obj%co3c(:ncol,:) &
+               = qcw(:ncol,:,id_co3_1a) &
+               + qcw(:ncol,:,id_co3_2a) &
+               + qcw(:ncol,:,id_co3_3a)
+
+       else
+       
+           ! for 3-mode, so4 is assumed to be nh4hso4
+           ! the partial neutralization of so4 is handled by using a 
+           !    -1 charge (instead of -2) in the electro-neutrality equation
+           conc_obj%nh4c(:ncol,:) = 0._r8
+
+           ! with 3-mode, assume so4 is nh4hso4, and so half-neutralized
+           conc_obj%so4_fact = 1._r8
+       
+       endif ! (mosaic_aqchem_optaa >0)
 
     endif
 
@@ -151,10 +271,16 @@ contains
 !----------------------------------------------------------------------------------
 ! Update the mixing ratios
 !----------------------------------------------------------------------------------
+  !subroutine sox_cldaero_update( &
+  !     ncol, lchnk, loffset, dtime, mbar, pdel, press, tfld, cldnum, cldfrc, cfact, xlwc, &
+  !     delso4_hprxn, xh2so4, xso4, xso4_init, nh3g, hno3g, xnh3, xhno3, xnh4c,  xno3c, xmsa, xso2, xh2o2, qcw, qin, &
+  !     aqso4, aqh2so4, aqso4_h2o2, aqso4_o3, aqso4_h2o2_3d, aqso4_o3_3d)
+  ! MOSAIC (dsj) - add hclg, xhcl, xclc (HCL related variables)
   subroutine sox_cldaero_update( &
        ncol, lchnk, loffset, dtime, mbar, pdel, press, tfld, cldnum, cldfrc, cfact, xlwc, &
-       delso4_hprxn, xh2so4, xso4, xso4_init, nh3g, hno3g, xnh3, xhno3, xnh4c,  xno3c, xmsa, xso2, xh2o2, qcw, qin, &
-       aqso4, aqh2so4, aqso4_h2o2, aqso4_o3, aqso4_h2o2_3d, aqso4_o3_3d)
+       delso4_hprxn, xh2so4, xso4, xso4_init, nh3g, hno3g, xnh3, xhno3, xnh4c,  xno3c, xmsa, xso2, xh2o2, &
+       hclg, xhcl, xclc, qcw, qin, &
+       aqso4, aqh2so4, aqso4_h2o2, aqso4_o3, aqso4_h2o2_3d, aqso4_o3_3d)       
 
     ! args 
 
@@ -187,6 +313,10 @@ contains
     real(r8), intent(in) :: xso2(:,:)
     real(r8), intent(in) :: xh2o2(:,:)
     real(r8), intent(in) :: xno3c(:,:)
+    ! MOSAIC (dsj)
+    real(r8), intent(in) :: hclg(:,:)
+    real(r8), intent(in) :: xhcl(:,:)
+    real(r8), intent(in) :: xclc(:,:)
 
     real(r8), intent(inout) :: qcw(:,:,:) ! cloud-borne aerosol (vmr)
     real(r8), intent(inout) :: qin(:,:,:) ! xported species ( vmr )
@@ -217,6 +347,11 @@ contains
     real(r8) :: fwetrem, sumf, uptkrate
     real(r8) :: delnh3, delnh4
 
+    ! MOSAIC (dsj)
+    real(r8) :: delhno3, delno3
+    real(r8) :: delhcl, delcl
+    real(r8) :: tmpveca(ncol), tmpvecb(ncol)
+    
     integer :: l, n, m
     integer :: ntot_msa_c
 
@@ -241,6 +376,16 @@ contains
                 if (id_nh3>0) then
                    delnh3 = nh3g(i,k) - xnh3(i,k)
                    delnh4 = - delnh3
+                endif
+
+                ! MOSAIC (dsj)
+                if (id_hno3>0) then
+                   delhno3 = hno3g(i,k) - xhno3(i,k)
+                   delno3 = - delhno3
+                endif
+                if (id_hcl>0) then
+                   delhcl = hclg(i,k) - xhcl(i,k)
+                   delcl = - delhcl
                 endif
 
                 !-------------------------------------------------------------------------
@@ -369,6 +514,40 @@ contains
                          qcw(i,k,l) = qcw(i,k,l) + dqdt*dtime
                       endif
                    end if
+                   
+                   ! MOSAIC (dsj)
+                   if (mosaic_aqchem_optaa > 0) then
+                   
+                      l = lptr_no3_cw_amode(n) - loffset
+                      if (l > 0) then
+                         if (delno3 > 0.0_r8) then
+                            dqdt_aq = faqgain_so4(n)*delno3/dtime*cldfrc(i,k)
+                            dqdt = dqdt_aq
+                            qcw(i,k,l) = qcw(i,k,l) + dqdt*dtime
+                         else
+                            dqdt = (qcw(i,k,l)/max(xno3c(i,k),1.0e-35_r8)) &
+                                 *delno3/dtime*cldfrc(i,k)
+
+                            dqdt = (qcw(i,k,l)/max(xno3c(i,k),1.0e-35_r8)) &
+                                 *delno3/dtime*cldfrc(i,k)
+                            qcw(i,k,l) = qcw(i,k,l) + dqdt*dtime
+                         endif
+                      endif
+
+                      l = lptr_cl_cw_amode(n) - loffset
+                      if (l > 0) then
+                         if (delcl > 0.0_r8) then
+                            dqdt_aq = faqgain_so4(n)*delcl/dtime*cldfrc(i,k)
+                            dqdt = dqdt_aq
+                            qcw(i,k,l) = qcw(i,k,l) + dqdt*dtime
+                         else
+                            dqdt = (qcw(i,k,l)/max(xclc(i,k),1.0e-35_r8)) &
+                                 *delcl/dtime*cldfrc(i,k)
+                            qcw(i,k,l) = qcw(i,k,l) + dqdt*dtime
+                         endif
+                      endif
+                   endif ! (mosaic_aqchem_optaa > 0)
+                   
                 end do
 
                 ! For gas species, tendency includes
@@ -407,6 +586,23 @@ contains
                    qin(i,k,id_nh3) = qin(i,k,id_nh3) + dqdt * dtime
                 endif
 
+                ! MOSAIC (dsj)
+                if (mosaic_aqchem_optaa > 0) then
+                   ! HNO3
+                   if (id_hno3>0) then
+                      dqdt_aq = delhno3/dtime*cldfrc(i,k)
+                      dqdt = dqdt_aq
+                      qin(i,k,id_hno3) = qin(i,k,id_hno3) + dqdt * dtime
+                   endif
+
+                   ! HCL
+                   if (id_hcl>0) then
+                      dqdt_aq = delhcl/dtime*cldfrc(i,k)
+                      dqdt = dqdt_aq
+                      qin(i,k,id_hcl) = qin(i,k,id_hcl) + dqdt * dtime
+                   endif
+                endif ! (mosaic_aqchem_optaa > 0)
+                
                 ! for SO4 from H2O2/O3 budgets
                 dqdt_aqhprxn(i,k) = dso4dt_hprxn*cldfrc(i,k)
                 dqdt_aqo3rxn(i,k) = (dso4dt_aqrxn - dso4dt_hprxn)*cldfrc(i,k)
@@ -422,20 +618,59 @@ contains
     do k = 1,pver
 
        do n = 1, ntot_amode
-
+          ! MOSAIC (dsj)
+          tmpveca(:) = 0.0_r8
+          
           l = lptr_so4_cw_amode(n) - loffset
           if (l > 0) then
              qcw(:,k,l) = MAX(qcw(:,k,l), small_value )
+             ! MOSAIC (dsj)
+             tmpveca(:) = tmpveca(:) + qcw(:,k,l)*2.0_r8
           end if
           l = lptr_msa_cw_amode(n) - loffset
           if (l > 0) then
              qcw(:,k,l) = MAX(qcw(:,k,l), small_value )
+             ! MOSAIC (dsj)
+             tmpveca(:) = tmpveca(:) + qcw(:,k,l)             
           end if
           l = lptr_nh4_cw_amode(n) - loffset
           if (l > 0) then
              qcw(:,k,l) = MAX(qcw(:,k,l), small_value )
+             ! MOSAIC (dsj)
+             tmpveca(:) = tmpveca(:) - qcw(:,k,l)             
           end if
 
+          ! MOSAIC (dsj)
+          if (mosaic_aqchem_optaa > 0) then
+          
+             l = lptr_no3_cw_amode(n) - loffset
+             if (l > 0) then
+                qcw(:,k,l) = MAX(qcw(:,k,l), zero_value )
+                tmpveca(:) = tmpveca(:) + qcw(:,k,l)
+             end if
+             l = lptr_cl_cw_amode(n) - loffset
+             if (l > 0) then
+                qcw(:,k,l) = MAX(qcw(:,k,l), zero_value )
+                tmpveca(:) = tmpveca(:) + qcw(:,k,l)
+             end if
+
+             l = lptr_co3_cw_amode(n) - loffset
+             if (l > 0) then
+                m = lptr_na_cw_amode(n) - loffset
+                if (m > 0) then
+                   tmpveca(:) = tmpveca(:) - qcw(:,k,m)
+                end if
+                tmpveca(:) = max( tmpveca(:), 0.0_r8 )  ! tmpveca = excess acids available to partially combine with ca (units = equivalents/mol-air)
+
+                m = lptr_ca_cw_amode(n) - loffset
+                if (m > 0) then
+                   tmpvecb(:) = max( qcw(:,k,m) - tmpveca(:)*0.5_r8, 0.0_r8 ) ! tmpvecb = amount of ca that is caco3 (units = mol/mol-air)
+                   qcw(:,k,l) = min( qcw(:,k,l), tmpvecb(:) )                 ! co3 must be <= tmpvecb
+                end if
+             end if
+             
+          endif ! (mosaic_aqchem_optaa > 0)
+          
        end do
 
        qin(:,k,id_so2) =  MAX( qin(:,k,id_so2),    small_value )
@@ -443,6 +678,16 @@ contains
        if ( id_nh3 > 0 ) then
           qin(:,k,id_nh3) =  MAX( qin(:,k,id_nh3),    small_value )
        endif
+
+       ! MOSAIC (dsj)
+       if (mosaic_aqchem_optaa > 0) then
+          if ( id_hno3 > 0 ) then
+             qin(:,k,id_hno3) =  MAX( qin(:,k,id_hno3), zero_value )
+          endif
+          if ( id_hcl > 0 ) then
+             qin(:,k,id_hcl) =  MAX( qin(:,k,id_hcl), zero_value )
+          endif
+       endif ! (mosaic_aqchem_optaa > 0)
 
     end do
 

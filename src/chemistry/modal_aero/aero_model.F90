@@ -178,13 +178,24 @@ contains
 
   !=============================================================================
   !=============================================================================
-  subroutine aero_model_init( pbuf2d )
+  ! MOSAIC (dsj) - add loffset flag
+  !subroutine aero_model_init( pbuf2d )
+  subroutine aero_model_init( loffset, pbuf2d )
 
     use mo_chem_utls,    only: get_inv_ndx
     use cam_history,     only: addfld, add_default, horiz_only
     use mo_chem_utls,    only: get_rxt_ndx, get_spc_ndx
     use modal_aero_data, only: cnst_name_cw
     use modal_aero_data, only: modal_aero_data_init
+    ! MOSAIC (dsj)
+#if ( defined ( MOSAIC_SPECIES ) )
+    use modal_aero_data, only: mosaic_gaex_prodloss3d, mosaic_gaex_prodloss3d_ga, &
+        mosaic_aqch_prodloss3d, mosaic_aqch_prodloss3d_ga, mosaic_aqch_prodloss3d_cw, &
+        lptr_h2so4_g_amode, lptr_hno3_g_amode, lptr_hcl_g_amode, lptr_nh3_g_amode, &
+        lptr_so4_a_amode,   lptr_no3_a_amode,  lptr_cl_a_amode,  lptr_nh4_a_amode,  lptr_co3_a_amode, &
+        lptr_so4_cw_amode,  lptr_no3_cw_amode, lptr_cl_cw_amode, lptr_nh4_cw_amode, lptr_co3_cw_amode, &
+        lptr_na_a_amode,    lptr_na_cw_amode
+#endif
     use rad_constituents,only: rad_cnst_get_info
     use dust_model,      only: dust_init, dust_names, dust_active, dust_nbin, dust_nnum
     use seasalt_model,   only: seasalt_init, seasalt_names, seasalt_active,seasalt_nbin
@@ -199,7 +210,15 @@ contains
     use modal_aero_rename,     only: modal_aero_rename_init
     use modal_aero_convproc,   only: ma_convproc_init
 
+    ! MOSAIC (dsj) - additional MOSAIC modules
+#if ( defined ( MOSAIC_SPECIES ) )
+    use modal_aero_amicphys,   only: modal_aero_amicphys_init
+    use module_mosaic_cam_init,only: mosaic_cam_init
+#endif
+
     ! args
+    ! MOSAIC (dsj) - addtional arg for MOSAIC
+    integer, intent(in) :: loffset
     type(physics_buffer_desc), pointer :: pbuf2d(:,:)
 
     ! local vars
@@ -210,7 +229,7 @@ contains
     logical  :: history_aerosol ! Output MAM or SECT aerosol tendencies
     logical  :: history_chemistry, history_cesm_forcing, history_dust
 
-    integer :: l
+    integer :: l, j ! MOSAIC (dsj) - add j
     character(len=6) :: test_name
     character(len=64) :: errmes
 
@@ -244,13 +263,21 @@ contains
     call modal_aero_data_init(pbuf2d)
     call modal_aero_bcscavcoef_init()
 
+    ! MOSAIC (dsj) - nucleation, gas/aerosol partitioning, coagulation, etc. 
+#ifdef MOSAIC_SPECIES
+    call modal_aero_calcsize_init( pbuf2d )
+    call modal_aero_newnuc_init(mosaic=.true.)
+    call modal_aero_amicphys_init( loffset )
+    call mosaic_cam_init()
+#else
     call modal_aero_rename_init( modal_accum_coarse_exch )
     !   calcsize call must follow rename call
     call modal_aero_calcsize_init( pbuf2d )
     call modal_aero_gasaerexch_init
     !   coag call must follow gasaerexch call
     call modal_aero_coag_init
-    call modal_aero_newnuc_init
+    call modal_aero_newnuc_init(mosaic=.false.)
+#endif
 
     ! call modal_aero_deposition_init only if the user has not specified
     ! prescribed aerosol deposition fluxes
@@ -490,6 +517,7 @@ contains
        endif
 
     enddo
+    
     do n = 1,pcnst
        if( .not. (cnst_name_cw(n) == ' ') ) then
 
@@ -501,6 +529,9 @@ contains
 
           call addfld( cnst_name_cw(n),                (/ 'lev' /), 'A', unit_basename//'/kg ',   &
                trim(cnst_name_cw(n))//' in cloud water')
+          ! MOSAIC (dsj) - aqueous chemistry diag.
+          call addfld( 'AQ_'//trim(cnst_name_cw(n)),horiz_only, 'A', unit_basename//'/m2/s ', &
+                    trim(cnst_name_cw(n))//' aqueous chemistry (for cloud-borne species)')               
           call addfld (trim(cnst_name_cw(n))//'SFWET', horiz_only,  'A', unit_basename//'/m2/s ', &
                trim(cnst_name_cw(n))//' wet deposition flux at surface')
           call addfld (trim(cnst_name_cw(n))//'SFSIC', horiz_only,  'A', unit_basename//'/m2/s ', &
@@ -533,6 +564,7 @@ contains
              call add_default (trim(cnst_name_cw(n))//'SFWET', 1, ' ')
           endif
           if ( history_aerosol ) then
+             call add_default ('AQ_'//trim(cnst_name_cw(n)), 1, ' ') ! MOSAIC (dsj)
              call add_default (trim(cnst_name_cw(n))//'GVF', 1, ' ')
              call add_default (trim(cnst_name_cw(n))//'TBF', 1, ' ')
              call add_default (trim(cnst_name_cw(n))//'DDF', 1, ' ')
@@ -662,6 +694,103 @@ contains
           call add_default ('AQSO4_O3', 1, ' ')
        endif
     endif
+    
+    
+    ! MOSAIC (dsj) - several initialization processes for MOSAIC
+#if ( defined ( MOSAIC_SPECIES ) )
+
+    ! To save aerosol pH from MOSAIC
+    call addfld ('aerosol_ph_bin1', (/ 'lev' /), 'A', 'unitless', 'aerosol pH (bin1)' )
+    call addfld ('aerosol_ph_bin2', (/ 'lev' /), 'A', 'unitless', 'aerosol pH (bin2)' )
+    call addfld ('aerosol_ph_bin3', (/ 'lev' /), 'A', 'unitless', 'aerosol pH (bin3)' )
+    call addfld ('aerosol_ph_bin4', (/ 'lev' /), 'A', 'unitless', 'aerosol pH (bin4)' )
+    call add_default( 'aerosol_ph_bin1', 1, ' ' )
+    call add_default( 'aerosol_ph_bin2', 1, ' ' )
+    call add_default( 'aerosol_ph_bin3', 1, ' ' )
+    call add_default( 'aerosol_ph_bin4', 1, ' ' )
+
+    mosaic_gaex_prodloss3d_ga(:) = 0
+    mosaic_aqch_prodloss3d_ga(:) = 0
+    mosaic_aqch_prodloss3d_cw(:) = 0
+    ! dsj: j = 5 -> 6 to include na_a_amode
+    do j = 1, 6
+       l = -1
+       if (j == 1) l = lptr_h2so4_g_amode
+       if (j == 2) l =  lptr_hno3_g_amode
+       if (j == 3) l =   lptr_hcl_g_amode
+       if (j == 4) l =   lptr_nh3_g_amode
+       if (l > 0) then
+          if (mosaic_gaex_prodloss3d > 0) mosaic_gaex_prodloss3d_ga(l) = 1
+          if (mosaic_aqch_prodloss3d > 0) mosaic_aqch_prodloss3d_ga(l) = 1
+       end if
+       do n = 1, ntot_amode
+          if (mosaic_gaex_prodloss3d > 0) then
+             l = -1
+             if (j == 1) l = lptr_so4_a_amode(n)
+             if (j == 2) l = lptr_no3_a_amode(n)
+             if (j == 3) l =  lptr_cl_a_amode(n)
+             if (j == 4) l = lptr_nh4_a_amode(n)
+             if (j == 5) l = lptr_co3_a_amode(n)
+             if (j == 6) l =  lptr_na_a_amode(n) ! dsj to add na
+             if (l > 0) mosaic_gaex_prodloss3d_ga(l) = 1
+          end if
+          if (mosaic_aqch_prodloss3d > 0) then
+             l = -1
+             if (j == 1) l = lptr_so4_cw_amode(n)
+             if (j == 2) l = lptr_no3_cw_amode(n)
+             if (j == 3) l =  lptr_cl_cw_amode(n)
+             if (j == 4) l = lptr_nh4_cw_amode(n)
+             if (j == 5) l = lptr_co3_cw_amode(n)
+             if (j == 6) l =  lptr_na_cw_amode(n) ! dsj to add na
+             if (l > 0) mosaic_aqch_prodloss3d_cw(l) = 1
+          end if
+       end do ! n
+    end do ! j
+
+    if ( masterproc ) then
+       write(iulog,'(/a)') 'mosaic_gaex & aqch_prodloss flags'
+       do l = 1, pcnst
+          j = max( mosaic_gaex_prodloss3d_ga(l), mosaic_aqch_prodloss3d_ga(l), &
+                                                 mosaic_aqch_prodloss3d_cw(l) )
+          if (j > 0) write(iulog,'(i4,2x,a,3i4)') l, cnst_name(l), mosaic_gaex_prodloss3d_ga(l), &
+             mosaic_aqch_prodloss3d_ga(l), mosaic_aqch_prodloss3d_cw(l)
+       end do
+    end if
+
+    do l = 1, pcnst
+       if (mosaic_gaex_prodloss3d > 0) then
+       if (mosaic_gaex_prodloss3d_ga(l) > 0) then
+          field_name = trim(cnst_name(l)) // '_gaex_prod3d'
+          call addfld( field_name, (/ 'lev' /), 'A','kg/kg/s', 'gas-aero exchange production')
+          if ( history_aerosol ) call add_default( field_name, 1, ' ' )
+          field_name = trim(cnst_name(l)) // '_gaex_loss3d'
+          call addfld( field_name, (/ 'lev' /), 'A','kg/kg/s', 'gas-aero exchange loss')
+          if ( history_aerosol ) call add_default( field_name, 1, ' ' )
+       end if
+       end if
+
+       if (mosaic_aqch_prodloss3d > 0) then
+       if (mosaic_aqch_prodloss3d_ga(l) > 0) then
+          field_name = trim(cnst_name(l)) // '_aqch_prod3d'
+          call addfld( field_name, (/ 'lev' /), 'A','kg/kg/s', 'aqueous chemistry production')
+          if ( history_aerosol ) call add_default( field_name, 1, ' ' )
+          field_name = trim(cnst_name(l)) // '_aqch_loss3d'
+          call addfld( field_name, (/ 'lev' /), 'A','kg/kg/s', 'aqueous chemistry loss')
+          if ( history_aerosol ) call add_default( field_name, 1, ' ' )
+       end if
+
+       if (mosaic_aqch_prodloss3d_cw(l) > 0) then
+          field_name = trim(cnst_name_cw(l)) // '_aqch_prod3d'
+          call addfld( field_name, (/ 'lev' /), 'A','kg/kg/s', 'aqueous chemistry production')
+          if ( history_aerosol ) call add_default( field_name, 1, ' ' )
+          field_name = trim(cnst_name_cw(l)) // '_aqch_loss3d'
+          call addfld( field_name, (/ 'lev' /), 'A','kg/kg/s', 'aqueous chemistry loss')
+          if ( history_aerosol ) call add_default( field_name, 1, ' ' )
+       end if
+       end if
+    end do ! l
+#endif
+    
 
   end subroutine aero_model_init
 
@@ -1750,7 +1879,14 @@ contains
     use modal_aero_gasaerexch, only : modal_aero_gasaerexch_sub
     use modal_aero_newnuc,     only : modal_aero_newnuc_sub
     use modal_aero_data,       only : cnst_name_cw, qqcw_get_field
-
+    ! MOSAIC (dsj) = mosaic modules
+    use modal_aero_data, only: mosaic_aqchem_optaa
+#if ( defined ( MOSAIC_SPECIES ) )
+    use modal_aero_data, only: mosaic_aqch_prodloss3d, mosaic_aqch_prodloss3d_ga
+    use modal_aero_data, only: mosaic_aqch_prodloss3d_cw
+    use modal_aero_amicphys,   only: modal_aero_amicphys_intr
+#endif
+    
     !-----------------------------------------------------------------------
     !      ... dummy arguments
     !-----------------------------------------------------------------------
@@ -1790,6 +1926,11 @@ contains
     real(r8), pointer :: pblh(:)                    ! pbl height (m)
 
     real(r8), dimension(ncol) :: wrk
+    ! MOSAIC (dsj) - mosaic_aqch_prodloss3d
+#if ( defined ( MOSAIC_SPECIES ) )
+    real(r8), dimension(ncol,pver) :: wrka2d, wrkb2d
+    real(r8) :: tmpa
+#endif    
     character(len=32)         :: name
     real(r8) :: dvmrcwdt(ncol,pver,gas_pcnst)
     real(r8) :: dvmrdt(ncol,pver,gas_pcnst)
@@ -1805,6 +1946,10 @@ contains
     real(r8), pointer :: sulfeq(:,:,:)
 
     logical :: is_spcam_m2005
+    
+    nstep = get_nstep()
+
+   
 !
 ! ... initialize nh3
 !
@@ -1826,7 +1971,8 @@ contains
 
 ! do gas-aerosol exchange (h2so4, msa, nh3 condensation)
 
-    nstep = get_nstep()
+    ! Moving up (dsj)
+    !nstep = get_nstep()
 
     ! calculate tendency due to gas phase chemistry and processes
     dvmrdt(:ncol,:,:) = (vmr(:ncol,:,:) - vmr0(:ncol,:,:)) / delt
@@ -1887,18 +2033,57 @@ contains
          call outfld( 'XPH_LWC',    xphlwc(:ncol,:),   ncol, lchnk )
 
       endif
-
+      
+    
 !   Tendency due to aqueous chemistry
+    
+    ! MOSAIC (dsj)
+    ! when modal_aero_gasaerexch_sub is used, 
+    !    these arrays must hold the mixing ratio tendencies due to cloud chemistry (setsox)
+    ! when modal_aero_amicphys is used, 
+    !    these arrays must hold the mixing ratios before cloud chemistry (setsox)
+#ifndef MOSAIC_SPECIES
     dvmrdt = (vmr - dvmrdt) / delt
     dvmrcwdt = (vmrcw - dvmrcwdt) / delt
+#endif
+
     do m = 1, gas_pcnst
+      ! gases and interstitial aerosol species 
+      ! (this could be skipped for interstitial aerosol species)
       wrk(:) = 0._r8
       do k = 1,pver
+        ! MOSAIC (dsj)
+#ifndef MOSAIC_SPECIES      
         wrk(:ncol) = wrk(:ncol) + dvmrdt(:ncol,k,m) * adv_mass(m)/mbar(:ncol,k)*pdel(:ncol,k)/gravit
+#else
+        ! need to calculate tendencies due to cloud chemistry [ = (vmr-dvmrdt)/delt ]
+        wrk(:ncol) = wrk(:ncol) + ((vmr(:ncol,k,m)-dvmrdt(:ncol,k,m))/delt) &
+                                                    * adv_mass(m)/mbar(:ncol,k)*pdel(:ncol,k)/gravit
+#endif        
       end do
       name = 'AQ_'//trim(solsym(m))
       call outfld( name, wrk(:ncol), ncol, lchnk )
-    enddo
+      
+      ! cloud-borne aerosol species (this could be skipped for aerosol number species)
+      if ((m+loffset) <= pcnst) then
+      if (cnst_name_cw(m+loffset) /= ' ' ) then
+        wrk(:) = 0._r8
+        do k = 1,pver
+          if ( mosaic_aqchem_optaa <= 0 ) then
+            wrk(:ncol) = wrk(:ncol) + dvmrcwdt(:ncol,k,m) * adv_mass(m)/mbar(:ncol,k)*pdel(:ncol,k)/gravit
+          else
+            ! need to calculate tendencies due to cloud chemistry [ = (vmrcw-dvmrcwdt)/delt ]
+            wrk(:ncol) = wrk(:ncol) + ((vmrcw(:ncol,k,m)-dvmrcwdt(:ncol,k,m))/delt) &
+                                                        * adv_mass(m)/mbar(:ncol,k)*pdel(:ncol,k)/gravit
+          endif
+        end do
+        name = 'AQ_'//trim(cnst_name_cw(m+loffset))
+        call outfld( name, wrk(:ncol), ncol, lchnk )
+      endif
+      endif
+      
+    enddo ! m = 1, gas_pcnst
+   
 
    else if (is_spcam_m2005) then  ! SPCAM ECPP
 ! when ECPP is used, aqueous chemistry is done in ECPP,
@@ -1909,6 +2094,31 @@ contains
       dvmrcwdt = 0.0_r8
    endif
 
+#if ( defined ( MOSAIC_SPECIES ) )
+    if (mosaic_aqch_prodloss3d > 0) then
+       do l = loffset+1, pcnst
+          m = l - loffset
+          if (mosaic_aqch_prodloss3d_ga(l) > 0) then   ! trace gas species - use vmw and dvmrdt
+             tmpa = adv_mass(m)/delt
+             wrka2d(:ncol,:) = (vmr(:ncol,:,m)-dvmrdt(:ncol,:,m)) * tmpa / mbar(:ncol,:)
+             wrkb2d(:ncol,:) = max( wrka2d(:ncol,:), 0.0_r8 )
+             call outfld( trim(cnst_name(l))//'_aqch_prod3d', wrkb2d, ncol, lchnk )
+             wrkb2d(:ncol,:) = min( wrka2d(:ncol,:), 0.0_r8 )
+             call outfld( trim(cnst_name(l))//'_aqch_loss3d', wrkb2d, ncol, lchnk )
+          end if
+          if (mosaic_aqch_prodloss3d_cw(l) > 0) then   ! cloud-borne aerosolspecies - use vmrcw and dvmrcwdt
+             tmpa = adv_mass(m)/delt
+             wrka2d(:ncol,:) = (vmrcw(:ncol,:,m)-dvmrcwdt(:ncol,:,m)) * tmpa / mbar(:ncol,:)
+             wrkb2d(:ncol,:) = max( wrka2d(:ncol,:), 0.0_r8 )
+             call outfld( trim(cnst_name_cw(l))//'_aqch_prod3d', wrkb2d, ncol, lchnk )
+             wrkb2d(:ncol,:) = min( wrka2d(:ncol,:), 0.0_r8 )
+             call outfld( trim(cnst_name_cw(l))//'_aqch_loss3d', wrkb2d, ncol, lchnk )
+          end if
+       end do ! l
+    end if
+#endif
+   
+    
 ! do gas-aerosol exchange (h2so4, msa, nh3 condensation)
 
     if (ndx_h2so4 > 0) then
@@ -1916,7 +2126,28 @@ contains
     else
        del_h2so4_aeruptk(:,:) = 0.0_r8
     endif
+    
+    ! MOSAIC (dsj) - different function all for MOSAIC
+#ifdef MOSAIC_SPECIES
+    call t_startf ('modal_aero_amicphys')
 
+    call modal_aero_amicphys_intr( &
+         1,                  1,                   &
+         1,                  1,                   &
+         lchnk,     ncol,    nstep,               &
+         loffset,   delt,                         &
+         tfld,      pmid,    pdel,                &
+         zm,        pblh,                         &
+         qh2o,      cldfr,                        &
+         vmr,                vmrcw,               &
+         vmr0,                                    &
+         dvmrdt,             dvmrcwdt,            &
+         dgnum,              dgnumwet,            &
+         wetdens                                  )
+
+    call t_stopf ('modal_aero_amicphys')    
+    
+#else
     call t_startf('modal_gas-aer_exchng')
 
     if ( sulfeq_idx>0 ) then
@@ -1924,6 +2155,7 @@ contains
     else
        nullify( sulfeq )
     endif
+
 
     call modal_aero_gasaerexch_sub(            &
          lchnk,    ncol,     nstep,            &
@@ -1967,9 +2199,10 @@ contains
          wetdens                          )
 
     call t_stopf('modal_coag')
+#endif 
 
-    call vmr2qqcw( lchnk, vmrcw, mbar, ncol, loffset, pbuf )
-
+    call vmr2qqcw( lchnk, vmrcw, mbar, ncol, loffset, pbuf )    
+    
     ! diagnostics for cloud-borne aerosols...
     do n = 1,pcnst
        fldcw => qqcw_get_field(pbuf,n,lchnk,errorhandle=.true.)
@@ -1983,8 +2216,8 @@ contains
     if ( nh3_ndx > 0 .and. nh4_ndx > 0 ) then
       vmr(1:ncol,:,nh4_ndx) = vmr(1:ncol,:,nh4_ndx) + (nh3_beg-vmr(1:ncol,:,nh3_ndx))
       vmr(1:ncol,:,nh4_ndx) = max(0._r8,vmr(1:ncol,:,nh4_ndx))
-    end if
-
+    end if    
+    
   end subroutine aero_model_gasaerexch
 
   !=============================================================================

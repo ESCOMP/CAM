@@ -65,6 +65,17 @@ integer :: so4dryvol_idx = -1
 integer :: naer_idx      = -1
 integer :: sulfeq_idx    = -1
 
+! MOSAIC (dsj)
+integer, parameter, public :: maxpair_csizxf = 1
+integer, public, protected :: maxspec_csizxf 
+integer, public, protected :: npair_csizxf = -123456789
+integer, public, protected :: modefrm_csizxf(maxpair_csizxf)
+integer, public, protected :: modetoo_csizxf(maxpair_csizxf)
+integer, public, protected :: nspecfrm_csizxf(maxpair_csizxf)
+integer, public, protected, allocatable :: lspecfrmc_csizxf(:,:)
+integer, public, protected, allocatable :: lspecfrma_csizxf(:,:)
+integer, public, protected, allocatable :: lspectooc_csizxf(:,:)
+integer, public, protected, allocatable :: lspectooa_csizxf(:,:)
 
 !===============================================================================
 contains
@@ -95,7 +106,8 @@ end subroutine modal_aero_calcsize_reg
 subroutine modal_aero_calcsize_init(pbuf2d)
    use time_manager,  only: is_first_step
    use physics_buffer,only: pbuf_set_field
-
+   use constituents,  only: cnst_species_class ! MOSAIC (dsj)
+   
    !-----------------------------------------------------------------------
    !
    ! Purpose:
@@ -116,6 +128,11 @@ subroutine modal_aero_calcsize_init(pbuf2d)
    integer  :: n, nacc, nait
    logical  :: history_aerosol
 
+   ! MOSAIC (dsj)
+   integer  :: iqfrm, iqtoo, lsfrma, lsfrmc, lstooa, lstooc, lunout
+   integer  :: mfrm, mtoo, nspec
+   integer  :: nchfrma, nchfrmc, nchfrmskip, nchtooa, nchtooc, nchtooskip
+   
    character(len=fieldname_len)   :: tmpnamea, tmpnameb
    character(len=fieldname_len+3) :: fieldname
    character(128)                 :: long_name
@@ -135,6 +152,18 @@ subroutine modal_aero_calcsize_init(pbuf2d)
    do_adjust_default          = .false.
    do_aitacc_transfer_default = .false.
 #else
+   ! MOSAIC (dsj)
+   maxspec_csizxf = nspec_max
+   allocate( lspecfrmc_csizxf(maxspec_csizxf,maxpair_csizxf) )
+   allocate( lspecfrma_csizxf(maxspec_csizxf,maxpair_csizxf) )
+   allocate( lspectooc_csizxf(maxspec_csizxf,maxpair_csizxf) )
+   allocate( lspectooa_csizxf(maxspec_csizxf,maxpair_csizxf) )
+
+   dgnum_idx = pbuf_get_index('DGNUM')    
+   npair_csizxf = 0
+   modefrm_csizxf(1) = 0
+   modetoo_csizxf(1) = 0
+   
    !  do_adjust_default allows adjustment to be turned on/off
    do_adjust_default = .true.
 
@@ -155,108 +184,297 @@ subroutine modal_aero_calcsize_init(pbuf2d)
    if ( .not. do_adjust_default ) return
 
    !  define history fields for number-adjust source-sink for all modes
-   do n = 1, ntot_amode 
-      if (mprognum_amode(n) <= 0) cycle
+   do_aitacc_transfer_if_block1: if ( do_aitacc_transfer_default ) then
+      !
+      !   compute pointers for aitken <--> accum mode transfer
+      !	(a2 <--> a1 transfer)
+      !   transfers include number_a, number_c, mass_a, mass_c
+      !
+      npair_csizxf = 1
+      modefrm_csizxf(1) = nait
+      modetoo_csizxf(1) = nacc
 
-      do jac = 1, 2
-         if (jac == 1) then
-            tmpnamea = cnst_name(numptr_amode(n))
+      !
+      !   define species involved in each transfer pairing
+      !
+      aa_ipair: do ipair = 1, npair_csizxf
+
+         mfrm = modefrm_csizxf(ipair)
+         mtoo = modetoo_csizxf(ipair)
+         if (mfrm < 10) then
+            nchfrmskip = 1
+         else if (mfrm < 100) then
+            nchfrmskip = 2
          else
-            tmpnamea = cnst_name_cw(numptrcw_amode(n))
+            nchfrmskip = 3
          end if
-         unit = '#/m2/s'
-         fieldname = trim(tmpnamea) // '_sfcsiz1'
-         long_name = trim(tmpnamea) // ' calcsize number-adjust column source'
-         call addfld( fieldname, horiz_only, 'A', unit, long_name )
-         if (history_aerosol) then
-            call add_default(fieldname, 1, ' ')
+         if (mtoo < 10) then
+            nchtooskip = 1
+         else if (mtoo < 100) then
+            nchtooskip = 2
+         else
+            nchtooskip = 3
          end if
-         if ( masterproc ) write(*,'(2a)') 'calcsize addfld - ', fieldname
+         nspec = 0
 
-         fieldname = trim(tmpnamea) // '_sfcsiz2'
-         long_name = trim(tmpnamea) // ' calcsize number-adjust column sink'
-         call addfld( fieldname, horiz_only, 'A', unit, long_name )
-         if (history_aerosol) then
-            call add_default(fieldname, 1, ' ')
+         aa_iqfrm: do iqfrm = -1, nspec_amode(mfrm)
+
+            if (iqfrm == -1) then
+               lsfrma = numptr_amode(mfrm)
+               lstooa = numptr_amode(mtoo)
+               lsfrmc = numptrcw_amode(mfrm)
+               lstooc = numptrcw_amode(mtoo)
+            else if (iqfrm == 0) then
+               !   bypass transfer of aerosol water due to calcsize transfer
+               cycle aa_iqfrm
+            else
+               lsfrma = lmassptr_amode(iqfrm,mfrm)
+               lsfrmc = lmassptrcw_amode(iqfrm,mfrm)
+               lstooa = 0
+               lstooc = 0
+            end if
+
+            if ((lsfrma < 1) .or. (lsfrma > pcnst)) then
+               write(iulog,9100) mfrm, iqfrm, lsfrma
+               call endrun( 'modal_aero_calcsize_init error aa' )
+            end if
+            if ((lsfrmc < 1) .or. (lsfrmc > pcnst)) then
+               write(iulog,9102) mfrm, iqfrm, lsfrmc
+               call endrun( 'modal_aero_calcsize_init error bb' )
+            end if
+
+            if (iqfrm > 0) then
+               nchfrma = len( trim( cnst_name(lsfrma) ) ) - nchfrmskip
+
+               ! find "too" species having same cnst_name as the "frm" species
+               ! (except for last 1/2/3 characters which are the mode index)
+               do iqtoo = 1, nspec_amode(mtoo)
+                  lstooa = lmassptr_amode(iqtoo,mtoo)
+                  nchtooa = len( trim( cnst_name(lstooa) ) ) - nchtooskip
+                  if (cnst_name(lsfrma)(1:nchfrma) == cnst_name(lstooa)(1:nchtooa)) then
+                     ! interstitial names match, so check cloudborne names too
+                     nchfrmc = len( trim( cnst_name_cw(lsfrmc) ) ) - nchfrmskip
+                     lstooc = lmassptrcw_amode(iqtoo,mtoo)
+                     nchtooc = len( trim( cnst_name_cw(lstooc) ) ) - nchtooskip
+                     if (cnst_name_cw(lsfrmc)(1:nchfrmc) /= &
+                          cnst_name_cw(lstooc)(1:nchtooc)) lstooc = 0
+                     exit
+                  else
+                     lstooa = 0
+                  end if
+               end do
+            end if ! (iqfrm > 0)
+
+            if ((lstooc < 1) .or. (lstooc > pcnst)) lstooc = 0
+            if ((lstooa < 1) .or. (lstooa > pcnst)) lstooa = 0
+            if (lstooa == 0) then
+               write(iulog,9104) mfrm, iqfrm, lsfrma, iqtoo, lstooa
+               call endrun( 'modal_aero_calcsize_init error cc' )
+            end if
+            if ((lstooc == 0) .and. (iqfrm /= 0)) then
+               write(iulog,9104) mfrm, iqfrm, lsfrmc, iqtoo, lstooc
+               call endrun( 'modal_aero_calcsize_init error dd' )
+            end if
+
+            nspec = nspec + 1
+            lspecfrma_csizxf(nspec,ipair) = lsfrma
+            lspectooa_csizxf(nspec,ipair) = lstooa
+            lspecfrmc_csizxf(nspec,ipair) = lsfrmc
+            lspectooc_csizxf(nspec,ipair) = lstooc
+         end do aa_iqfrm
+
+         nspecfrm_csizxf(ipair) = nspec
+      end do aa_ipair
+
+9100  format( / '*** subr. modal_aero_calcsize_init' /   &
+           'lspecfrma out of range' /   &
+           'modefrm, ispecfrm, lspecfrma =', 3i6 / )
+9102  format( / '*** subr. modal_aero_calcsize_init' /   &
+           'lspecfrmc out of range' /   &
+           'modefrm, ispecfrm, lspecfrmc =', 3i6 / )
+9104  format( / '*** subr. modal_aero_calcsize_init' /   &
+           'lspectooa out of range' /   &
+           'modefrm, ispecfrm, lspecfrma, ispectoo, lspectooa =', 5i6 / )
+9106  format( / '*** subr. modal_aero_calcsize_init' /   &
+           'lspectooc out of range' /   &
+           'modefrm, ispecfrm, lspecfrmc, ispectoo, lspectooc =', 5i6 / )
+
+      !
+      !   output results
+      !
+      if ( masterproc ) then
+
+         write(iulog,9310) do_adjust_default, do_aitacc_transfer_default
+
+         do ipair = 1, npair_csizxf
+            mfrm = modefrm_csizxf(ipair)
+            mtoo = modetoo_csizxf(ipair)
+            write(iulog,9320) ipair, mfrm, mtoo
+
+            do iq = 1, nspecfrm_csizxf(ipair)
+               lsfrma = lspecfrma_csizxf(iq,ipair)
+               lstooa = lspectooa_csizxf(iq,ipair)
+               lsfrmc = lspecfrmc_csizxf(iq,ipair)
+               lstooc = lspectooc_csizxf(iq,ipair)
+               if (lstooa .gt. 0) then
+                  write(iulog,9330) lsfrma, cnst_name(lsfrma),   &
+                       lstooa, cnst_name(lstooa)
+               else
+                  write(iulog,9340) lsfrma, cnst_name(lsfrma)
+               end if
+               if (lstooc .gt. 0) then
+                  write(iulog,9330) lsfrmc, cnst_name_cw(lsfrmc),   &
+                       lstooc, cnst_name_cw(lstooc)
+               else if (lsfrmc .gt. 0) then
+                  write(iulog,9340) lsfrmc, cnst_name_cw(lsfrmc)
+               else
+                  write(iulog,9350)
+               end if
+            end do ! iq
+
+         end do ! ipair
+         write(iulog,*)
+
+      end if ! ( masterproc )
+
+
+   else ! do_aitacc_transfer_if_block1
+
+      npair_csizxf = 0
+      if ( masterproc ) then
+         write(iulog,9310) do_adjust_default, do_aitacc_transfer_default
+         write(iulog,9320) 0, 0, 0
+      end if
+
+   end if do_aitacc_transfer_if_block1
+
+9310 format( / 'subr. modal_aero_calcsize_init' / &
+        'do_adjust_default, do_aitacc_transfer_default = ', 2l10 )
+9320 format( 'pair', i3, 5x, 'mode', i3, ' ---> mode', i3 )
+9330 format( 5x, 'spec', i3, '=', a, ' ---> spec', i3, '=', a )
+9340 format( 5x, 'spec', i3, '=', a, ' ---> LOSS' )
+9350 format( 5x, 'no corresponding activated species' )
+
+!  define history fields for number-adjust source-sink for all modes
+   do_adjust_if_block2: if ( do_adjust_default ) then
+
+      do n = 1, ntot_amode 
+         if (mprognum_amode(n) <= 0) cycle
+
+         do jac = 1, 2
+            if (jac == 1) then
+               tmpnamea = cnst_name(numptr_amode(n))
+            else
+               tmpnamea = cnst_name_cw(numptrcw_amode(n))
+            end if
+            unit = '#/m2/s'
+            fieldname = trim(tmpnamea) // '_sfcsiz1'
+            long_name = trim(tmpnamea) // ' calcsize number-adjust column source'
+            call addfld( fieldname, horiz_only, 'A', unit, long_name )
+            if ( history_aerosol ) then 
+               call add_default( fieldname, 1, ' ' )
+            endif
+
+            if ( masterproc ) write(iulog,'(2a)') 'calcsize addfld - ', fieldname
+
+            fieldname = trim(tmpnamea) // '_sfcsiz2'
+            long_name = trim(tmpnamea) // ' calcsize number-adjust column sink'
+            call addfld( fieldname, horiz_only, 'A', unit, long_name )
+            if ( history_aerosol ) then 
+               call add_default( fieldname, 1, ' ' )
+            endif
+            if ( masterproc ) write(iulog,'(2a)') 'calcsize addfld - ', fieldname
+         end do   ! jac = ...
+
+      end do   ! n = ...
+
+
+      !  define history fields for aitken-accum transfer
+      do_aitacc_transfer_if_block2: if ( do_aitacc_transfer_default ) then
+
+         ! check that calcsize transfer ipair=1 is aitken-->accum
+         ipair = 1
+         if ((modefrm_csizxf(ipair) .ne. nait) .or.   &
+              (modetoo_csizxf(ipair) .ne. nacc)) then
+            write( iulog, '(//2a//)' )   &
+                 '*** modal_aero_calcaersize_init error -- ',   &
+                 'modefrm/too_csizxf(1) are wrong'
+            call endrun( 'modal_aero_calcaersize_init error' )
          end if
-         if ( masterproc ) write(*,'(2a)') 'calcsize addfld - ', fieldname
-      end do   ! jac = ...
-   end do   ! n = ...
 
-   if ( .not. do_aitacc_transfer_default ) return
+         do iq = 1, nspecfrm_csizxf(ipair)
 
-   ! check that renaming ipair=1 is aitken-->accum
-   ipair = 1
-   if ((modefrm_renamexf(ipair) .ne. nait) .or.   &
-      (modetoo_renamexf(ipair) .ne. nacc)) then
-      write( 6, '(//2a//)' )   &
-         '*** modal_aero_calcaersize_init error -- ',   &
-         'modefrm/too_renamexf(1) are wrong'
-      call endrun( 'modal_aero_calcaersize_init error' )
+            ! jac=1 does interstitial ("_a"); jac=2 does activated ("_c"); 
+            do jac = 1, 2
+
+               ! the lspecfrma_csizxf (and lspecfrmc_csizxf) are aitken species
+               ! the lspectooa_csizxf (and lspectooc_csizxf) are accum  species
+               if (jac .eq. 1) then
+                  lsfrm = lspecfrma_csizxf(iq,ipair)
+                  lstoo = lspectooa_csizxf(iq,ipair)
+               else
+                  lsfrm = lspecfrmc_csizxf(iq,ipair)
+                  lstoo = lspectooc_csizxf(iq,ipair)
+               end if
+               if ((lsfrm <= 0) .or. (lstoo <= 0)) cycle
+
+               if (jac .eq. 1) then
+                  tmpnamea = cnst_name(lsfrm)
+                  tmpnameb = cnst_name(lstoo)
+               else
+                  tmpnamea = cnst_name_cw(lsfrm)
+                  tmpnameb = cnst_name_cw(lstoo)
+               end if
+
+               unit = 'kg/m2/s'
+               if ((tmpnamea(1:3) == 'num') .or. &
+                    (tmpnamea(1:3) == 'NUM')) unit = '#/m2/s'
+               fieldname = trim(tmpnamea) // '_sfcsiz3'
+               long_name = trim(tmpnamea) // ' calcsize aitken-to-accum adjust column tendency'
+               call addfld( fieldname, horiz_only, 'A', unit, long_name )
+               if ( history_aerosol ) then 
+                  call add_default( fieldname, 1, ' ' )
+               endif
+               if ( masterproc ) write(iulog,'(2a)') 'calcsize addfld - ', fieldname
+
+               fieldname = trim(tmpnameb) // '_sfcsiz3'
+               long_name = trim(tmpnameb) // ' calcsize aitken-to-accum adjust column tendency'
+               call addfld( fieldname, horiz_only, 'A', unit, long_name )
+               if ( history_aerosol ) then 
+                  call add_default( fieldname, 1, ' ' )
+               endif
+               if ( masterproc ) write(iulog,'(2a)') 'calcsize addfld - ', fieldname
+
+               fieldname = trim(tmpnamea) // '_sfcsiz4'
+               long_name = trim(tmpnamea) // ' calcsize accum-to-aitken adjust column tendency'
+               call addfld( fieldname, horiz_only, 'A', unit, long_name )
+               if ( history_aerosol ) then 
+                  call add_default( fieldname, 1, ' ' )
+               endif
+               if ( masterproc ) write(iulog,'(2a)') 'calcsize addfld - ', fieldname
+
+               fieldname = trim(tmpnameb) // '_sfcsiz4'
+               long_name = trim(tmpnameb) // ' calcsize accum-to-aitken adjust column tendency'
+               call addfld( fieldname, horiz_only, 'A', unit, long_name )
+               if ( history_aerosol ) then 
+                  call add_default( fieldname, 1, ' ' )
+               endif
+               if ( masterproc ) write(iulog,'(2a)') 'calcsize addfld - ', fieldname
+
+            end do   ! jac = ...
+         end do   ! iq = ...
+
+      end if do_aitacc_transfer_if_block2
+
+   end if do_adjust_if_block2
+
+
+   if ( masterproc ) then
+      write(iulog,'(/a)') 'l, species_class, name'
+      do n = 1, pcnst
+         write(iulog,'(2i4,2x,a)') n, cnst_species_class(n), cnst_name(n)
+      end do
    end if
-
-   ! define history fields for aitken-accum transfer
-   do iq = 1, nspecfrm_renamexf(ipair)
-
-      ! jac=1 does interstitial ("_a"); jac=2 does activated ("_c"); 
-      do jac = 1, 2
-
-         ! the lspecfrma_renamexf (and lspecfrmc_renamexf) are aitken species
-         ! the lspectooa_renamexf (and lspectooc_renamexf) are accum  species
-         if (jac .eq. 1) then
-            lsfrm = lspecfrma_renamexf(iq,ipair)
-            lstoo = lspectooa_renamexf(iq,ipair)
-         else
-            lsfrm = lspecfrmc_renamexf(iq,ipair)
-            lstoo = lspectooc_renamexf(iq,ipair)
-         end if
-         if ((lsfrm <= 0) .or. (lstoo <= 0)) cycle
-
-         if (jac .eq. 1) then
-            tmpnamea = cnst_name(lsfrm)
-            tmpnameb = cnst_name(lstoo)
-         else
-            tmpnamea = cnst_name_cw(lsfrm)
-            tmpnameb = cnst_name_cw(lstoo)
-         end if
-
-         unit = 'kg/m2/s'
-         if ((tmpnamea(1:3) == 'num') .or. &
-            (tmpnamea(1:3) == 'NUM')) unit = '#/m2/s'
-         fieldname = trim(tmpnamea) // '_sfcsiz3'
-         long_name = trim(tmpnamea) // ' calcsize aitken-to-accum adjust column tendency'
-         call addfld( fieldname, horiz_only, 'A', unit, long_name )
-         if (history_aerosol) then
-            call add_default(fieldname, 1, ' ')
-         end if
-         if ( masterproc ) write(*,'(2a)') 'calcsize addfld - ', fieldname
-
-         fieldname = trim(tmpnameb) // '_sfcsiz3'
-         long_name = trim(tmpnameb) // ' calcsize aitken-to-accum adjust column tendency'
-         call addfld( fieldname, horiz_only, 'A', unit, long_name )
-         if (history_aerosol) then
-            call add_default(fieldname, 1, ' ')
-         end if
-         if ( masterproc ) write(*,'(2a)') 'calcsize addfld - ', fieldname
-
-         fieldname = trim(tmpnamea) // '_sfcsiz4'
-         long_name = trim(tmpnamea) // ' calcsize accum-to-aitken adjust column tendency'
-         call addfld( fieldname, horiz_only, 'A', unit, long_name )
-         if (history_aerosol) then
-            call add_default(fieldname, 1, ' ')
-         end if
-         if ( masterproc ) write(*,'(2a)') 'calcsize addfld - ', fieldname
-
-         fieldname = trim(tmpnameb) // '_sfcsiz4'
-         long_name = trim(tmpnameb) // ' calcsize accum-to-aitken adjust column tendency'
-         call addfld( fieldname, horiz_only, 'A', unit, long_name )
-         if (history_aerosol) then
-            call add_default(fieldname, 1, ' ')
-         end if
-         if ( masterproc ) write(*,'(2a)') 'calcsize addfld - ', fieldname
-
-      end do   ! jac = ...
-   end do   ! iq = ...
 
 #endif
 
@@ -381,7 +599,7 @@ subroutine modal_aero_calcsize_sub(state, ptend, deltat, pbuf, do_adjust_in, &
    ! 3rd index -- 
    !    1="standard" number adjust gain;
    !    2="standard" number adjust loss;
-   !    3=aitken-->accum renaming; 4=accum-->aitken)
+   !    3=aitken-->accum transfer; 4=accum-->aitken)
    ! 4th index -- 
    !    1="a" species; 2="c" species
    !-----------------------------------------------------------------------
@@ -706,7 +924,7 @@ subroutine modal_aero_calcsize_sub(state, ptend, deltat, pbuf, do_adjust_in, &
             qsrflx(i,lnc,2,jac) = qsrflx(i,lnc,2,jac) + min(0.0_r8,dqqcwdt(i,k,lnc))*pdel_fac
 
 
-            ! save number and dryvol for aitken <--> accum renaming
+            ! save number and dryvol for aitken <--> accum transfer
             if ( do_aitacc_transfer ) then
                if (n == nait) then
                   drv_a_aitsv(i,k) = drv_a
@@ -756,36 +974,32 @@ subroutine modal_aero_calcsize_sub(state, ptend, deltat, pbuf, do_adjust_in, &
       ! old - on time first step, npair_renamexf will be <= 0,
       !       in which case need to do modal_aero_rename_init
       ! new - init is now done through chem_init and things below it
-      if (npair_renamexf .le. 0) then
-         npair_renamexf = 0
-         !        call modal_aero_rename_init
-         if (npair_renamexf .le. 0) then
-            write( 6, '(//a//)' )   &
-               '*** modal_aero_calcaersize_sub error -- npair_renamexf <= 0'
-            call endrun( 'modal_aero_calcaersize_sub error' )
-         end if
+      if (npair_csizxf .le. 0) then
+         write( iulog, '(//a//)' )   &
+            '*** modal_aero_calcaersize_sub error -- npair_csizxf <= 0'
+         call endrun( 'modal_aero_calcaersize_sub error' )
       end if
 
-      ! check that renaming ipair=1 is aitken-->accum
+      ! check that calcsize transfer ipair=1 is aitken-->accum
       ipair = 1
-      if ((modefrm_renamexf(ipair) .ne. nait) .or.   &
-         (modetoo_renamexf(ipair) .ne. nacc)) then
-         write( 6, '(//2a//)' )   &
+      if ((modefrm_csizxf(ipair) .ne. nait) .or.   &
+         (modetoo_csizxf(ipair) .ne. nacc)) then
+         write( iulog, '(//2a//)' )   &
             '*** modal_aero_calcaersize_sub error -- ',   &
-            'modefrm/too_renamexf(1) are wrong'
+            'modefrm/too_csizxf(1) are wrong'
          call endrun( 'modal_aero_calcaersize_sub error' )
       end if
 
       ! set dotend() for species that will be transferred
-      do iq = 1, nspecfrm_renamexf(ipair)
-         lsfrm = lspecfrma_renamexf(iq,ipair)
-         lstoo = lspectooa_renamexf(iq,ipair)
+      do iq = 1, nspecfrm_csizxf(ipair)
+         lsfrm = lspecfrma_csizxf(iq,ipair)
+         lstoo = lspectooa_csizxf(iq,ipair)
          if ((lsfrm > 0) .and. (lstoo > 0)) then
             dotend(lsfrm) = .true.
             dotend(lstoo) = .true.
          end if
-         lsfrm = lspecfrmc_renamexf(iq,ipair)
-         lstoo = lspectooc_renamexf(iq,ipair)
+         lsfrm = lspecfrmc_csizxf(iq,ipair)
+         lstoo = lspectooc_csizxf(iq,ipair)
          if ((lsfrm > 0) .and. (lstoo > 0)) then
             dotendqqcw(lsfrm) = .true.
             dotendqqcw(lstoo) = .true.
@@ -796,13 +1010,13 @@ subroutine modal_aero_calcsize_sub(state, ptend, deltat, pbuf, do_adjust_in, &
       noxf_acc2ait(:) = .true.
       do l1 = 1, nspec_amode(nacc)
          la = lmassptr_amode(l1,nacc)
-         do iq = 1, nspecfrm_renamexf(ipair)
-            if (lspectooa_renamexf(iq,ipair) == la) then
+         do iq = 1, nspecfrm_csizxf(ipair)
+            if (lspectooa_csizxf(iq,ipair) == la) then
                noxf_acc2ait(l1) = .false.
             end if
          end do
       end do
-
+      
       ! v2nzz is voltonumb at the "geometrically-defined" mid-point
       ! between the aitken and accum modes
       v2nzz = sqrt(voltonumb_amode(nait)*voltonumb_amode(nacc))
@@ -991,29 +1205,40 @@ subroutine modal_aero_calcsize_sub(state, ptend, deltat, pbuf, do_adjust_in, &
                ! compute tendency amounts for aitken <--> accum transfer
                !
                
+               ! MOSAIC (dsj): rename -> csiz
                if ( masterproc ) then
                   if (idiagaa > 0) then
                      do j = 1, 2
-                        do iq = 1, nspecfrm_renamexf(ipair)
+                        !do iq = 1, nspecfrm_renamexf(ipair)
+                        do iq = 1, nspecfrm_csizxf(ipair)
                            do jac = 1, 2
                               if (j .eq. 1) then
                                  if (jac .eq. 1) then
-                                    lsfrm = lspecfrma_renamexf(iq,ipair)
-                                    lstoo = lspectooa_renamexf(iq,ipair)
+                                    !lsfrm = lspecfrma_renamexf(iq,ipair)
+                                    !lstoo = lspectooa_renamexf(iq,ipair)
+                                    lsfrm = lspecfrma_csizxf(iq,ipair)
+                                    lstoo = lspectooa_csizxf(iq,ipair)
                                  else
-                                    lsfrm = lspecfrmc_renamexf(iq,ipair)
-                                    lstoo = lspectooc_renamexf(iq,ipair)
+                                    !lsfrm = lspecfrmc_renamexf(iq,ipair)
+                                    !lstoo = lspectooc_renamexf(iq,ipair)
+                                    lsfrm = lspecfrmc_csizxf(iq,ipair)
+                                    lstoo = lspectooc_csizxf(iq,ipair)
                                  end if
                               else
                                  if (jac .eq. 1) then
-                                    lsfrm = lspectooa_renamexf(iq,ipair)
-                                    lstoo = lspecfrma_renamexf(iq,ipair)
+                                    !lsfrm = lspectooa_renamexf(iq,ipair)
+                                    !lstoo = lspecfrma_renamexf(iq,ipair)
+                                    lsfrm = lspectooa_csizxf(iq,ipair)
+                                    lstoo = lspecfrma_csizxf(iq,ipair)
                                  else
-                                    lsfrm = lspectooc_renamexf(iq,ipair)
-                                    lstoo = lspecfrmc_renamexf(iq,ipair)
+                                    !lsfrm = lspectooc_renamexf(iq,ipair)
+                                    !lstoo = lspecfrmc_renamexf(iq,ipair)
+                                    lsfrm = lspectooc_csizxf(iq,ipair)
+                                    lstoo = lspecfrmc_csizxf(iq,ipair)
                                  end if
                               end if
-                              write( 6, '(a,3i3,2i4)' ) 'calcsize j,iq,jac, lsfrm,lstoo',   &
+                              !write( 6, '(a,3i3,2i4)' ) 'calcsize j,iq,jac, lsfrm,lstoo',   &
+                              write( iulog, '(a,3i3,2i4)' ) 'calcsize j,iq,jac, lsfrm,lstoo',   &
                                  j,iq,jac, lsfrm,lstoo
                            end do
                         end do
@@ -1036,30 +1261,42 @@ subroutine modal_aero_calcsize_sub(state, ptend, deltat, pbuf, do_adjust_in, &
                         xfercoef = xfercoef_vol_acc2ait
                      end if
 
-                     do  iq = 1, nspecfrm_renamexf(ipair)
+                     ! MOSAIC (dsj): rename -> csiz
+                     !do  iq = 1, nspecfrm_renamexf(ipair)
+                     do  iq = 1, nspecfrm_csizxf(ipair)
 
                         ! jac=1 does interstitial ("_a"); jac=2 does activated ("_c"); 
                         do  jac = 1, 2
 
-                           ! the lspecfrma_renamexf (and lspecfrmc_renamexf) are aitken species
-                           ! the lspectooa_renamexf (and lspectooc_renamexf) are accum  species
+                           !! the lspecfrma_renamexf (and lspecfrmc_renamexf) are aitken species
+                           !! the lspectooa_renamexf (and lspectooc_renamexf) are accum  species
+                           ! the lspecfrma_csizxf (and lspecfrmc_csizxf) are aitken species
+                           ! the lspectooa_csizxf (and lspectooc_csizxf) are accum  species
                            ! for j=1, want lsfrm=aitken species, lstoo=accum  species
                            ! for j=2, want lsfrm=accum  species,  lstoo=aitken species
                            if (j .eq. 1) then
                               if (jac .eq. 1) then
-                                 lsfrm = lspecfrma_renamexf(iq,ipair)
-                                 lstoo = lspectooa_renamexf(iq,ipair)
+                                 !lsfrm = lspecfrma_renamexf(iq,ipair)
+                                 !lstoo = lspectooa_renamexf(iq,ipair)
+                                 lsfrm = lspecfrma_csizxf(iq,ipair)
+                                 lstoo = lspectooa_csizxf(iq,ipair)
                               else
-                                 lsfrm = lspecfrmc_renamexf(iq,ipair)
-                                 lstoo = lspectooc_renamexf(iq,ipair)
+                                 !lsfrm = lspecfrmc_renamexf(iq,ipair)
+                                 !lstoo = lspectooc_renamexf(iq,ipair)
+                                 lsfrm = lspecfrmc_csizxf(iq,ipair)
+                                 lstoo = lspectooc_csizxf(iq,ipair)
                               end if
                            else
                               if (jac .eq. 1) then
-                                 lsfrm = lspectooa_renamexf(iq,ipair)
-                                 lstoo = lspecfrma_renamexf(iq,ipair)
+                                 !lsfrm = lspectooa_renamexf(iq,ipair)
+                                 !lstoo = lspecfrma_renamexf(iq,ipair)
+                                 lsfrm = lspectooa_csizxf(iq,ipair)
+                                 lstoo = lspecfrma_csizxf(iq,ipair)
                               else
-                                 lsfrm = lspectooc_renamexf(iq,ipair)
-                                 lstoo = lspecfrmc_renamexf(iq,ipair)
+                                 !lsfrm = lspectooc_renamexf(iq,ipair)
+                                 !lstoo = lspecfrmc_renamexf(iq,ipair)
+                                 lsfrm = lspectooc_csizxf(iq,ipair)
+                                 lstoo = lspecfrmc_csizxf(iq,ipair)
                               end if
                            end if
 
@@ -1147,19 +1384,26 @@ subroutine modal_aero_calcsize_sub(state, ptend, deltat, pbuf, do_adjust_in, &
    ! history fields for aitken-accum transfer
    if ( .not. do_aitacc_transfer ) return
 
+   ! MOSAIC (dsj): rename -> csiz
    do iq = 1, nspecfrm_renamexf(ipair)
 
       ! jac=1 does interstitial ("_a"); jac=2 does activated ("_c"); 
       do jac = 1, 2
 
-         ! the lspecfrma_renamexf (and lspecfrmc_renamexf) are aitken species
-         ! the lspectooa_renamexf (and lspectooc_renamexf) are accum  species
+         !! the lspecfrma_renamexf (and lspecfrmc_renamexf) are aitken species
+         !! the lspectooa_renamexf (and lspectooc_renamexf) are accum  species
+         ! the lspecfrma_csizxf (and lspecfrmc_csizxf) are aitken species
+         ! the lspectooa_csizxf (and lspectooc_csizxf) are accum  species
          if (jac .eq. 1) then
-            lsfrm = lspecfrma_renamexf(iq,ipair)
-            lstoo = lspectooa_renamexf(iq,ipair)
+            !lsfrm = lspecfrma_renamexf(iq,ipair)
+            !lstoo = lspectooa_renamexf(iq,ipair)
+            lsfrm = lspecfrma_csizxf(iq,ipair)
+            lstoo = lspectooa_csizxf(iq,ipair)
          else
-            lsfrm = lspecfrmc_renamexf(iq,ipair)
-            lstoo = lspectooc_renamexf(iq,ipair)
+            !lsfrm = lspecfrmc_renamexf(iq,ipair)
+            !lstoo = lspectooc_renamexf(iq,ipair)
+            lsfrm = lspecfrmc_csizxf(iq,ipair)
+            lstoo = lspectooc_csizxf(iq,ipair)
          end if
          if ((lsfrm <= 0) .or. (lstoo <= 0)) cycle
          

@@ -36,6 +36,20 @@
       integer, public, protected :: ntot_amode = 0
       integer, public, protected :: nSeaSalt=0, nDust=0
       integer, public, protected :: nSO4=0, nNH4=0
+      
+      ! MOSAIC (dsj)
+#if ( defined MOSAIC_SPECIES )
+      ! when mosaic_aqchem_optaa <= 0, aqueous chem calcs do not affect hclg, cl_ax, no3_ax, and co3_ax species
+
+      integer, public :: mosaic_gaex_prodloss3d = 1
+      integer, public :: mosaic_gaex_prodloss3d_ga(pcnst)
+      integer, public :: mosaic_aqch_prodloss3d = 1
+      integer, public :: mosaic_aqch_prodloss3d_ga(pcnst)
+      integer, public :: mosaic_aqch_prodloss3d_cw(pcnst)
+      integer, public, parameter :: mosaic_aqchem_optaa = 1
+#else
+      integer, public, parameter :: mosaic_aqchem_optaa = -1
+#endif
 
       !
       ! definitions for aerosol chemical components
@@ -93,6 +107,13 @@
            lptr_nacl_a_amode(:),    lptr_nacl_cw_amode(:),&
            lptr_dust_a_amode(:),    lptr_dust_cw_amode(:)
 
+      ! MOSAIC (dsj) - lptr for newly added species
+      integer, public, protected, allocatable ::  &
+           lptr_ca_a_amode(:), lptr_ca_cw_amode(:),&  
+           lptr_cl_a_amode(:), lptr_cl_cw_amode(:),& 
+           lptr_co3_a_amode(:), lptr_co3_cw_amode(:), &
+           lptr_na_a_amode(:), lptr_na_cw_amode(:)
+                 
       integer, public, protected :: &
            modeptr_accum,  modeptr_aitken,                               &
            modeptr_ufine,  modeptr_coarse,                               &
@@ -107,6 +128,12 @@
            lptr2_soa_a_amode(:,:),  lptr2_soa_cw_amode(:,:), &
            lptr2_soa_g_amode(:)
 
+      ! MOSAIC (dsj) - gases
+      integer, public, protected :: &  ! pointers to unspeciated condensing gases
+          lptr_h2so4_g_amode,            lptr_hno3_g_amode, &
+          lptr_hcl_g_amode,              lptr_nh3_g_amode
+          
+          
       real(r8), public, protected :: specmw_so4_amode
 
       logical, public, protected :: soa_multi_species = .false.
@@ -204,6 +231,12 @@
          lptr_dust_a_amode(ntot_amode), lptr_dust_cw_amode(ntot_amode), &
          lptr_no3_a_amode(ntot_amode), lptr_no3_cw_amode(ntot_amode) &
     )
+    ! MOSAIC (dsj) - newly added species
+    allocate( &
+         lptr_ca_a_amode(ntot_amode), lptr_ca_cw_amode(ntot_amode), &
+         lptr_cl_a_amode(ntot_amode), lptr_cl_cw_amode(ntot_amode), &
+         lptr_co3_a_amode(ntot_amode),lptr_co3_cw_amode(ntot_amode), &
+         lptr_na_a_amode(ntot_amode), lptr_na_cw_amode(ntot_amode) )
 
     allocate( &
          aodvislongname(ntot_amode ), &
@@ -245,7 +278,14 @@
           idx = index( xname_massptr(l,m), '_' )
           xname_massptrcw(l,m) = xname_massptr(l,m)(:idx-1)//'_c'//modestr
           if (xname_massptr(l,m)(:3) == 'dst') nDust=nDust+1
-          if (xname_massptr(l,m)(:3) == 'ncl') nSeaSalt=nSeaSalt+1
+          ! dsj to add MOSAIC
+          ! We use na instead of ncl in case of MOSAIC
+          if ( mosaic_aqchem_optaa > 0 ) then
+              if (xname_massptr(l,m)(:3) == 'na_') nSeaSalt=nSeaSalt+1
+          else
+              if (xname_massptr(l,m)(:3) == 'ncl') nSeaSalt=nSeaSalt+1
+          endif
+              
           if (xname_massptr(l,m)(:3) == 'nh4') nNH4=nNH4+1
           if (xname_massptr(l,m)(:3) == 'so4') nSO4=nSO4+1
        enddo
@@ -418,6 +458,9 @@
        character(len=*), parameter :: routine='modal_aero_initialize'
        character(len=32) :: spec_type
        integer :: soa_ndx
+       
+       ! MOSAIC (dsj) - For pointer initialization
+       integer, parameter :: init_val = -999888777
 
        !-----------------------------------------------------------------------
 
@@ -456,12 +499,28 @@
           enddo
        enddo
 
-       lptr2_soa_g_amode(:) = -1
+       !lptr2_soa_g_amode(:) = -1 ! MOSAIC (dsj)
        soa_ndx = 0
+       ! MOSAIC (dsj) - To add additional pointers
+       lptr2_soa_g_amode(:) = init_val
+       lptr_h2so4_g_amode  = init_val
+       lptr_hno3_g_amode   = init_val
+       lptr_hcl_g_amode    = init_val
+       lptr_nh3_g_amode    = init_val
+       
        do i = 1, pcnst
           if (cnst_name(i)(:4) == 'SOAG') then
              soa_ndx = soa_ndx+1
              lptr2_soa_g_amode(soa_ndx) = i
+          ! MOSAIC (dsj) - To add additional pointers for gases
+          else if (cnst_name(i) == 'H2SO4') then
+             lptr_h2so4_g_amode = i
+          else if (cnst_name(i) == 'HNO3') then
+             lptr_hno3_g_amode = i
+          else if (cnst_name(i) == 'HCL') then
+             lptr_hcl_g_amode = i
+          else if (cnst_name(i) == 'NH3') then
+             lptr_nh3_g_amode = i
           endif
        enddo
        if (.not.any(lptr2_soa_g_amode>0)) call endrun('modal_aero_data_init: lptr2_soa_g_amode is not set properly')
@@ -494,6 +553,7 @@
                   hygro_aer=spechygro(l,m)         )
 
                  specmw_amode(l,m) = cnst_mw(qArrIndex)
+                 ! MOSAIC (dsj) - It looks like we don't need to add MOSAIC species anymore in 6.3.018 version
 
              if(masterproc) then
                 write(iulog,9212) '        name : ', cnst_name(qArrIndex)
@@ -893,7 +953,16 @@
           lptr_nacl_cw_amode(m)  = init_val
           lptr_dust_a_amode(m)   = init_val
           lptr_dust_cw_amode(m)  = init_val
-
+          ! MOSAIC (dsj) - newly added species
+          lptr_ca_a_amode(m)     = init_val 
+          lptr_ca_cw_amode(m)    = init_val 
+          lptr_cl_a_amode(m)     = init_val
+          lptr_cl_cw_amode(m)    = init_val
+          lptr_co3_a_amode(m)    = init_val
+          lptr_co3_cw_amode(m)   = init_val
+          lptr_na_a_amode(m)     = init_val 
+          lptr_na_cw_amode(m)    = init_val 
+          
           pom_ndx = 0
           soa_ndx = 0
           bc_ndx = 0
@@ -933,6 +1002,19 @@
              case('ncl')
                 lptr_nacl_a_amode(m)  = lmassa
                 lptr_nacl_cw_amode(m) = lmassc
+             ! MOSAIC (dsj) - pointer for newly added aerosol species
+             case('co3')
+                lptr_co3_a_amode(m)  = lmassa
+                lptr_co3_cw_amode(m) = lmassc
+             case('ca_')
+                lptr_ca_a_amode(m)  = lmassa
+                lptr_ca_cw_amode(m) = lmassc
+             case('cl_')
+                lptr_cl_a_amode(m)  = lmassa
+                lptr_cl_cw_amode(m) = lmassc
+             case('na_')
+                lptr_na_a_amode(m)  = lmassa
+                lptr_na_cw_amode(m) = lmassc             
              case('pom')
                 pom_ndx = pom_ndx+1
                 lptr2_pom_a_amode(m,pom_ndx)  = lmassa
@@ -985,6 +1067,12 @@
           call initaermodes_setspecptrs_write2( m,                    &
                lptr_so4_a_amode(m), lptr_so4_cw_amode(m),  'so4' )
        end do
+       
+       ! MOSAIC (dsj)
+       write(iulog,9000) 'H2SO4      '
+       l = lptr_h2so4_g_amode
+       if (l>0) write(iulog,'(3x,a,2x,i12,2x,a,20x,a)') '-', &
+                                  l, cnst_name(l), 'lptr_h2so4_g_amode'       
 
        write(iulog,9000) 'msa        '
        do m = 1, ntot_amode
@@ -998,12 +1086,25 @@
                lptr_nh4_a_amode(m), lptr_nh4_cw_amode(m),  'nh4' )
        end do
 
+       ! MOSAIC (dsj)
+       write(iulog,9000) 'NH3        '
+       l = lptr_nh3_g_amode
+       if (l>0) write(iulog,'(3x,a,2x,i12,2x,a,20x,a)') '-', &
+                                  l, cnst_name(l), 'lptr_nh3_g_amode'
+       
        write(iulog,9000) 'nitrate    '
        do m = 1, ntot_amode
           call initaermodes_setspecptrs_write2( m,                    &
                lptr_no3_a_amode(m), lptr_no3_cw_amode(m),  'no3' )
        end do
 
+       ! MOSAIC (dsj)
+       write(iulog,9000) 'HNO3       '
+       l = lptr_hno3_g_amode
+       if (l>0) write(iulog,'(3x,a,2x,i12,2x,a,20x,a)') '-', &
+                                  l, cnst_name(l), 'lptr_hno3_g_amode'
+       
+       
        write(iulog,9000) 'p-organic  '
        do m = 1, ntot_amode
           do i = 1, npoa
@@ -1023,7 +1124,9 @@
        end do
        do i = 1, nsoa
           l = lptr2_soa_g_amode(i)
-          write(iulog,'(i4,2x,i12,2x,a,20x,a,i2.2,a)') i, l, cnst_name(l), 'lptr2_soa', i, '_g'
+          ! MOSAIC (dsj)
+          !write(iulog,'(i4,2x,i12,2x,a,20x,a,i2.2,a)') i, l, cnst_name(l), 'lptr2_soa', i, '_g'
+          if (l>0) write(iulog,'(i4,2x,i12,2x,a,20x,a,i2.2,a)') i, l, cnst_name(l), 'lptr2_soa', i, '_g'
        end do
 
        write(iulog,9000) 'black-c    '
@@ -1045,6 +1148,36 @@
        do m = 1, ntot_amode
           call initaermodes_setspecptrs_write2( m,                    &
                lptr_dust_a_amode(m), lptr_dust_cw_amode(m),  'dust' )
+       end do
+
+       ! MOSAIC (dsj) - newly added aerosol species
+       write(iulog,9000) 'calcium    '
+       do m = 1, ntot_amode
+          call initaermodes_setspecptrs_write2( m,                    &
+               lptr_ca_a_amode(m), lptr_ca_cw_amode(m),  'ca' )
+       end do
+
+       write(iulog,9000) 'sodium     '
+       do m = 1, ntot_amode
+          call initaermodes_setspecptrs_write2( m,                    &
+               lptr_cl_a_amode(m), lptr_cl_cw_amode(m),  'na' )
+       end do
+       
+       write(iulog,9000) 'chloride   '
+       do m = 1, ntot_amode
+          call initaermodes_setspecptrs_write2( m,                    &
+               lptr_cl_a_amode(m), lptr_cl_cw_amode(m),  'cl' )
+       end do
+       
+       write(iulog,9000) 'HCL        '
+       l = lptr_hcl_g_amode
+       if (l>0) write(iulog,'(3x,a,2x,i12,2x,a,20x,a)') '-', &
+                                  l, cnst_name(l), 'lptr_hcl_g_amode'
+
+       write(iulog,9000) 'carbonate  '
+       do m = 1, ntot_amode
+          call initaermodes_setspecptrs_write2( m,                    &
+               lptr_co3_a_amode(m), lptr_co3_cw_amode(m),  'co3' )
        end do
 
 9000   format( a )

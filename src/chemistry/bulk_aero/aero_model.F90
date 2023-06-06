@@ -122,7 +122,9 @@ contains
 
   !=============================================================================
   !=============================================================================
-  subroutine aero_model_init( pbuf2d )
+  ! MOSAIC (dsj)
+  !subroutine aero_model_init( pbuf2d )
+  subroutine aero_model_init( loffset, pbuf2d )
 
     use mo_chem_utls,  only: get_inv_ndx, get_spc_ndx
     use cam_history,   only: addfld, add_default, horiz_only
@@ -136,6 +138,7 @@ contains
     use mo_setsox,     only: has_sox
 
     ! args
+    integer, intent(in) :: loffset ! MOSAIC (dsj)    
     type(physics_buffer_desc), pointer :: pbuf2d(:,:)
 
     ! local vars
@@ -1012,7 +1015,7 @@ contains
     use mo_aerosols, only : aerosols_formation, has_aerosols
     use mo_setsox,   only : setsox, has_sox
     use mo_setsoa,   only : setsoa, has_soa
-
+    
     !-----------------------------------------------------------------------
     !      ... dummy arguments
     !-----------------------------------------------------------------------
@@ -1049,8 +1052,8 @@ contains
     real(r8) ::  aqso4_h2o2(ncol)            ! SO4 aqueous phase chemistry due to H2O2
     real(r8) ::  aqso4_o3(ncol)              ! SO4 aqueous phase chemistry due to O3
     real(r8) ::  xphlwc(ncol,pver)           ! pH value multiplied by lwc
-
-
+ 
+ 
   ! aqueous chemistry ...
 
     if( has_sox ) then

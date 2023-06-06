@@ -91,23 +91,67 @@ real(r8) :: specdens_so4
 real(r8) :: specdens_bc
 real(r8) :: specdens_soa
 real(r8) :: specdens_pom
+! zlu ++
+real(r8) :: specdens_nh4
+real(r8) :: specdens_no3
+real(r8) :: specdens_ca
+real(r8) :: specdens_co3
+real(r8) :: specdens_cl
+! zlu --
+! dsj: why there was no specdens_ncl?
+
 
 ! List all species
 integer :: ncnst = 0     ! Total number of constituents (mass and number) needed
                          ! by the parameterization (depends on aerosol model used)
 
-integer :: so4_accum     ! sulfate in accumulation mode
-integer :: bc_accum      ! black-c in accumulation mode
-integer :: pom_accum     ! p-organic in accumulation mode
-integer :: soa_accum     ! s-organic in accumulation mode
-integer :: dst_accum     ! dust in accumulation mode
-integer :: ncl_accum     ! seasalt in accumulation mode
-integer :: num_accum     ! number in accumulation mode
+!integer :: so4_accum     ! sulfate in accumulation mode
+!integer :: bc_accum      ! black-c in accumulation mode
+!integer :: pom_accum     ! p-organic in accumulation mode
+!integer :: soa_accum     ! s-organic in accumulation mode
+!integer :: dst_accum     ! dust in accumulation mode
+!integer :: ncl_accum     ! seasalt in accumulation mode
+!integer :: num_accum     ! number in accumulation mode
 
-integer :: dst_coarse    ! dust in coarse mode
-integer :: ncl_coarse    ! seasalt in coarse mode
-integer :: so4_coarse    ! sulfate in coarse mode
-integer :: num_coarse    ! number in coarse mode
+integer :: num_accum = -1    ! number in accumulation mode
+integer :: so4_accum = -1    ! sulfate in accumulation mode
+integer :: bc_accum  = -1    ! black-c in accumulation mode
+integer :: pom_accum = -1    ! p-organic in accumulation mode
+integer :: soa_accum = -1    ! s-organic in accumulation mode
+integer :: dst_accum = -1    ! dust in accumulation mode
+integer :: ncl_accum = -1    ! seasalt in accumulation mode
+
+! zlu++
+!VBS
+integer :: soa2_accum = -1
+integer :: soa3_accum = -1
+integer :: soa4_accum = -1
+integer :: soa5_accum = -1
+
+integer :: nh4_accum = -1
+integer :: no3_accum = -1
+integer :: ca_accum = -1
+integer :: co3_accum = -1
+integer :: cl_accum = -1
+! zlu --
+
+
+!integer :: dst_coarse    ! dust in coarse mode
+!integer :: ncl_coarse    ! seasalt in coarse mode
+!integer :: so4_coarse    ! sulfate in coarse mode
+!integer :: num_coarse    ! number in coarse mode
+integer :: dst_coarse = -1   ! dust in coarse mode
+integer :: ncl_coarse = -1   ! seasalt in coarse mode
+integer :: so4_coarse = -1   ! sulfate in coarse mode
+integer :: num_coarse = -1   ! number in coarse mode
+! zlu ++
+integer :: nh4_coarse = -1
+integer :: no3_coarse = -1
+integer :: ca_coarse = -1
+integer :: co3_coarse = -1
+integer :: cl_coarse = -1
+! zlu --
+
 
 integer :: dst_finedust  ! dust in finedust mode
 integer :: so4_finedust  ! sulfate in finedust mode
@@ -117,9 +161,13 @@ integer :: dst_coardust  ! dust in coardust mode
 integer :: so4_coardust  ! sulfate in coardust mode
 integer :: num_coardust  ! number in coardust mode
 
-integer :: bc_pcarbon    ! black-c in primary carbon mode
-integer :: pom_pcarbon   ! p-organic in primary carbon mode
-integer :: num_pcarbon   ! number in primary carbon mode
+!integer :: bc_pcarbon    ! black-c in primary carbon mode
+!integer :: pom_pcarbon   ! p-organic in primary carbon mode
+!integer :: num_pcarbon   ! number in primary carbon mode
+integer :: bc_pcarbon = -1   ! black-c in primary carbon mode
+integer :: pom_pcarbon = -1  ! p-organic in primary carbon mode
+integer :: num_pcarbon = -1  ! number in primary carbon mode
+
 
 ! Index arrays for looping over all constituents
 integer, allocatable :: mode_idx(:)
@@ -197,7 +245,13 @@ subroutine hetfrz_classnuc_cam_init(mincld_in)
    logical  :: prog_modal_aero
    integer  :: m, n, nspec
    integer  :: istat
-
+   !zlu ++
+   integer :: nspec_accum = 0
+   integer :: nspec_coarse = 0
+   integer :: nspec_pcarbon = 0
+   integer :: nspec_soa = 0 
+   !zlu --
+  
    real(r8) :: sigma_logr_aer
 
    character(len=32) :: str32
@@ -446,21 +500,136 @@ subroutine hetfrz_classnuc_cam_init(mincld_in)
       pom_pcarbon  = 14
       num_pcarbon  = 15
    else if (nmodes == MAM4_nmodes) then
-      ncnst = 14
-      so4_accum  =  1
-      bc_accum   =  2
-      pom_accum  =  3
-      soa_accum  =  4
-      dst_accum  =  5
-      ncl_accum  =  6
-      num_accum  =  7
-      dst_coarse =  8
-      ncl_coarse =  9
-      so4_coarse = 10
-      num_coarse = 11
-      bc_pcarbon   = 12
-      pom_pcarbon  = 13
-      num_pcarbon  = 14
+   !   ncnst = 14
+   !   so4_accum  =  1
+   !   bc_accum   =  2
+   !   pom_accum  =  3
+   !    soa_accum  =  4
+   !   dst_accum  =  5
+   !   ncl_accum  =  6
+   !   num_accum  =  7
+   !   dst_coarse =  8
+   !   ncl_coarse =  9
+   !   so4_coarse = 10
+   !   num_coarse = 11
+   !   bc_pcarbon   = 12
+   !   pom_pcarbon  = 13
+   !   num_pcarbon  = 14
+
+!zlu ++ why hard code index here?
+      call rad_cnst_get_info(0, mode_accum_idx, nspec=nspec)
+      do n = 1, nspec
+         call rad_cnst_get_info(0, mode_accum_idx, n, spec_type=str32)
+         select case (trim(str32))
+         case ('sulfate')
+            nspec_accum = nspec_accum + 1
+            so4_accum  = nspec_accum 
+        case ('black-c')
+            nspec_accum = nspec_accum + 1
+            bc_accum  = nspec_accum
+        case ('p-organic')
+           nspec_accum = nspec_accum + 1
+           pom_accum  = nspec_accum
+        case ('s-organic')  !zlu ??VBS
+           if (nspec_soa.eq.0) then
+            nspec_accum = nspec_accum + 1
+            nspec_soa = nspec_soa +1
+            soa_accum  = nspec_accum
+           else if (nspec_soa .eq.1) then
+            nspec_accum = nspec_accum + 1
+            nspec_soa = nspec_soa +1
+            soa2_accum  = nspec_accum
+           else if (nspec_soa .eq.2) then
+            nspec_accum = nspec_accum + 1
+            nspec_soa = nspec_soa +1
+            soa3_accum  = nspec_accum
+           else if (nspec_soa .eq.3) then
+            nspec_accum = nspec_accum + 1
+            nspec_soa = nspec_soa +1
+            soa4_accum  = nspec_accum
+           else if (nspec_soa .eq.4) then
+            nspec_accum = nspec_accum + 1
+            nspec_soa = nspec_soa +1
+            soa5_accum  = nspec_accum
+           end if
+         case ('dust')
+            nspec_accum = nspec_accum + 1
+           dst_accum  = nspec_accum
+         case ('seasalt')
+           nspec_accum = nspec_accum + 1
+           ncl_accum  = nspec_accum
+!zlu ++ for MOSAIC species 
+         case ('calcium')
+            nspec_accum = nspec_accum + 1
+            ca_accum  = nspec_accum 
+        case ('carbonate')
+            nspec_accum = nspec_accum + 1
+            co3_accum  = nspec_accum 
+        case ('chloride')
+            nspec_accum = nspec_accum + 1
+            cl_accum  = nspec_accum 
+        case ('ammonium')
+            nspec_accum = nspec_accum + 1
+            nh4_accum  = nspec_accum 
+        case ('nitrate')
+            nspec_accum = nspec_accum + 1
+            no3_accum  = nspec_accum
+         end select
+      end do
+      nspec_accum  = nspec_accum +1
+      num_accum    = nspec_accum
+
+      call rad_cnst_get_info(0, mode_coarse_idx,  nspec=nspec)
+      do n = 1, nspec
+         call rad_cnst_get_info(0, mode_coarse_idx, n, spec_type=str32)
+         select case (trim(str32))
+         case ('sulfate')
+            nspec_coarse = nspec_coarse + 1
+            so4_coarse  = nspec_coarse + nspec_accum 
+        case ('dust')
+            nspec_coarse = nspec_coarse + 1 
+            dst_coarse =  nspec_coarse + nspec_accum
+        case ('seasalt') ! dsj: na+ for MOSAIC
+            nspec_coarse = nspec_coarse + 1
+            ncl_coarse =  nspec_coarse + nspec_accum
+!zlu ++ for MOSAIC species
+         case ('calcium')
+            nspec_coarse = nspec_coarse + 1
+            ca_coarse =  nspec_coarse + nspec_accum
+         case ('carbonate')
+            nspec_coarse = nspec_coarse + 1
+            co3_coarse =  nspec_coarse + nspec_accum
+         case ('chloride')
+            nspec_coarse = nspec_coarse + 1
+            cl_coarse =  nspec_coarse + nspec_accum
+         case ('ammonium')
+            nspec_coarse = nspec_coarse + 1
+            nh4_coarse =  nspec_coarse + nspec_accum
+         case ('nitrate')
+            nspec_coarse = nspec_coarse + 1
+            no3_coarse =  nspec_coarse + nspec_accum
+         end select
+      end do
+      nspec_coarse  = nspec_coarse + 1
+      num_coarse    = nspec_accum + nspec_coarse
+
+      call rad_cnst_get_info(0, mode_pcarbon_idx, nspec=nspec)
+       do n = 1, nspec
+        call rad_cnst_get_info(0, mode_pcarbon_idx, n, spec_type=str32)
+         select case (trim(str32))
+         case ('black-c')
+            nspec_pcarbon = nspec_pcarbon + 1
+            bc_pcarbon = nspec_pcarbon + nspec_accum + nspec_coarse
+         case ('p-organic')
+            nspec_pcarbon = nspec_pcarbon + 1
+            pom_pcarbon  = nspec_pcarbon + nspec_accum + nspec_coarse 
+        end select
+       end do
+      nspec_pcarbon  = nspec_pcarbon + 1
+      num_pcarbon    = nspec_pcarbon + nspec_accum + nspec_coarse
+
+      ncnst = nspec_pcarbon + nspec_accum + nspec_coarse
+!zlu --
    end if
 
    ! Allocate arrays to hold specie and mode indices for all constitutents (mass and number) 
@@ -469,7 +638,18 @@ subroutine hetfrz_classnuc_cam_init(mincld_in)
    call alloc_err(istat, routine, 'mode_idx, spec_idx', ncnst)
    mode_idx = -1
    spec_idx = -1
-
+!zlu ++ for VBS 
+   if (nspec_soa .eq.5) then
+   spec_idx(soa2_accum) = spec_idx(soa_accum) +1 
+   mode_idx(soa2_accum) = mode_accum_idx
+   spec_idx(soa3_accum) = spec_idx(soa_accum) +2
+   mode_idx(soa3_accum) = mode_accum_idx
+   spec_idx(soa4_accum) = spec_idx(soa_accum) +3
+   mode_idx(soa4_accum) = mode_accum_idx
+   spec_idx(soa5_accum) = spec_idx(soa_accum) +4
+   mode_idx(soa5_accum) = mode_accum_idx
+   end if
+   
    ! Allocate space for copy of cloud borne aerosols before modification by droplet nucleation.
    allocate(aer_cb(pcols,pver,ncnst,begchunk:endchunk), stat=istat)
    call alloc_err(istat, routine, 'aer_cb', pcols*pver*ncnst*(endchunk-begchunk+1))
@@ -500,6 +680,28 @@ subroutine hetfrz_classnuc_cam_init(mincld_in)
       spec_idx(dst_accum) = rad_cnst_get_spec_idx(0, mode_accum_idx, 'dust')
       mode_idx(dst_accum) = mode_accum_idx
    end if
+! zlu ++ 
+  if (nh4_accum>0) then
+   spec_idx(nh4_accum) = rad_cnst_get_spec_idx(0, mode_accum_idx, 'ammonium')
+   mode_idx(nh4_accum) = mode_accum_idx
+  end if
+  if (no3_accum>0) then
+   spec_idx(no3_accum) = rad_cnst_get_spec_idx(0, mode_accum_idx, 'nitrate')
+   mode_idx(no3_accum) = mode_accum_idx
+  end if
+  if (cl_accum>0) then
+   spec_idx(cl_accum)  = rad_cnst_get_spec_idx(0, mode_accum_idx, 'chloride')
+   mode_idx(cl_accum)  = mode_accum_idx
+  end if
+  if (ca_accum>0) then 
+    spec_idx(ca_accum)  = rad_cnst_get_spec_idx(0, mode_accum_idx, 'calcium')
+    mode_idx(ca_accum)  = mode_accum_idx
+  end if
+  if (co3_accum>0) then
+    spec_idx(co3_accum) = rad_cnst_get_spec_idx(0, mode_accum_idx, 'carbonate')
+    mode_idx(co3_accum) = mode_accum_idx
+  end if
+!zlu --
 
    ! Indices for species in coarse mode (dust, nacl, so4)
    if (mode_coarse_idx > 0) then
@@ -511,6 +713,28 @@ subroutine hetfrz_classnuc_cam_init(mincld_in)
       mode_idx(dst_coarse) = mode_coarse_idx
       spec_idx(so4_coarse) = rad_cnst_get_spec_idx(0, mode_coarse_idx, 'sulfate')
       mode_idx(so4_coarse) = mode_coarse_idx
+!zlu ++
+    if(nh4_coarse>0) then
+     spec_idx(nh4_coarse) = rad_cnst_get_spec_idx(0, mode_coarse_idx, 'ammonium')
+     mode_idx(nh4_coarse) = mode_coarse_idx
+    end if
+    if(no3_coarse>0) then
+     spec_idx(no3_coarse) = rad_cnst_get_spec_idx(0, mode_coarse_idx, 'nitrate')
+     mode_idx(no3_coarse) = mode_coarse_idx
+    end if
+    if(ca_coarse>0) then
+     spec_idx(ca_coarse)  = rad_cnst_get_spec_idx(0, mode_coarse_idx, 'calcium')
+     mode_idx(ca_coarse)  = mode_coarse_idx
+    end if
+    if(co3_coarse>0) then
+     spec_idx(co3_coarse) = rad_cnst_get_spec_idx(0, mode_coarse_idx, 'carbonate')
+     mode_idx(co3_coarse) = mode_coarse_idx
+    end if
+    if(cl_coarse>0) then
+     spec_idx(cl_coarse)  = rad_cnst_get_spec_idx(0, mode_coarse_idx, 'chloride')
+     mode_idx(cl_coarse)  = mode_coarse_idx
+    end if
+!zlu --      
    end if
 
    ! Indices for species in fine dust mode (dust, so4)
@@ -544,10 +768,25 @@ subroutine hetfrz_classnuc_cam_init(mincld_in)
    end if
  
    ! Check that all required specie types were found
-   if (any(spec_idx == -1)) then
-      write(iulog,*) routine//': ERROR required species type not found - indicies:', spec_idx
-      call endrun(routine//': ERROR required species type not found')
-   end if
+!   if (any(spec_idx == -1)) then
+
+      !write(iulog,*) routine//': ERROR required species type not found? - indicies: idx number',   ncnst, nspec_pcarbon, nspec_accum,  nspec_coarse,nspec_soa
+
+      !write(iulog,*) routine//': ERROR required species type not found? - indicies: coarse', ncl_coarse,cl_coarse,dst_coarse,ca_coarse,&
+      ! co3_coarse,so4_coarse, no3_coarse,nh4_coarse
+
+   !write(iulog,*) routine//'++++++++++++++++++++++++++++++++++++++++++++', ncl_accum,cl_accum, dst_accum, ca_accum, co3_accum,&
+   !                    so4_accum,no3_accum,nh4_accum,bc_accum,pom_accum,soa_accum,soa2_accum, soa3_accum,soa4_accum
+
+   ! write(iulog,*) routine//'-----------------------------------------', spec_idx(ncl_accum),spec_idx(cl_accum), spec_idx(dst_accum), spec_idx(ca_accum),&
+   !                       spec_idx(co3_accum), spec_idx(so4_accum),spec_idx(no3_accum),&
+   !                     spec_idx(nh4_accum),spec_idx(bc_accum),spec_idx(pom_accum),spec_idx(soa_accum),spec_idx(soa2_accum)
+
+    
+    !write(iulog,*) routine//': ERROR required species type not found? - indicies:',bc_pcarbon, pom_pcarbon !, spec_idx(pom_pcarbon),spec_idx(bc_pcarbon)
+
+ !    call endrun(routine//': ERROR required species type not found')
+!   end if
 
    ! Get some specie specific properties.
    if (nmodes == MAM3_nmodes .or. nmodes == MAM4_nmodes) then
@@ -559,6 +798,23 @@ subroutine hetfrz_classnuc_cam_init(mincld_in)
    call rad_cnst_get_aer_props(0, mode_idx(bc_accum),  spec_idx(bc_accum),  density_aer=specdens_bc)
    call rad_cnst_get_aer_props(0, mode_idx(soa_accum), spec_idx(soa_accum), density_aer=specdens_soa)
    call rad_cnst_get_aer_props(0, mode_idx(pom_accum), spec_idx(pom_accum), density_aer=specdens_pom)
+!zlu ++
+   if(ca_accum>0) then
+      call rad_cnst_get_aer_props(0, mode_idx(ca_accum),  spec_idx(ca_accum),  density_aer=specdens_ca)
+   end if
+   if(co3_accum>0) then
+      call rad_cnst_get_aer_props(0, mode_idx(co3_accum), spec_idx(co3_accum), density_aer=specdens_co3)
+   end if
+   if(nh4_accum>0) then
+     call rad_cnst_get_aer_props(0, mode_idx(nh4_accum), spec_idx(nh4_accum), density_aer=specdens_nh4)
+   end if
+   if(no3_accum>0) then
+     call rad_cnst_get_aer_props(0, mode_idx(no3_accum), spec_idx(no3_accum), density_aer=specdens_no3)
+   end if
+   if(cl_accum>0) then
+     call rad_cnst_get_aer_props(0, mode_idx(cl_accum),  spec_idx(cl_accum),  density_aer=specdens_cl)
+   end if
+!zlu --
 
    call hetfrz_classnuc_init( &
       rair, cpair, rh2o, rhoh2o, mwh2o, &
@@ -969,12 +1225,18 @@ subroutine get_aer_num(ii, kk, ncnst, aer, aer_cb, rhoair,&
    real(r8), parameter :: dst1_num_to_mass = 3.484e+15_r8       ! #/kg for dust in accumulation mode
 
    real(r8) :: dmc, ssmc
-
+   real(r8) :: so4mc !zlu ++
+   
    real(r8) :: as_so4, as_du, as_soa
    real(r8) :: dst1_num_imm, dst3_num_imm, bc_num_imm
    real(r8) :: dmc_imm, ssmc_imm
    real(r8) :: as_bc, as_pom, as_ss
 
+!zlu ++
+   real(r8) :: so4mc_imm
+   real(r8) :: as_sum = 0.0_r8
+   real(r8) :: as_carbon = 0.0_r8
+   
    real(r8) :: r_bc                         ! model radii of BC modes [m]   
    real(r8) :: r_dust_a1, r_dust_a3         ! model radii of dust modes [m]   
 
@@ -1007,33 +1269,94 @@ subroutine get_aer_num(ii, kk, ncnst, aer, aer_cb, rhoair,&
          as_bc  = aer(ii,kk,bc_accum)
          as_pom = aer(ii,kk,pom_accum)
          as_soa = aer(ii,kk,soa_accum)
+!zlu ++ VBS
+            if(soa5_accum>0 )then
+               as_soa = as_soa +  aer(ii,kk,soa2_accum) + aer(ii,kk,soa3_accum) + &
+                                  aer(ii,kk,soa4_accum) + aer(ii,kk,soa5_accum)
+            end if
+!zlu -- VBS         
          as_ss  = aer(ii,kk,ncl_accum)
          as_du  = aer(ii,kk,dst_accum)
 
          if (as_du > 0._r8) then
-            dst1_num = as_du/(as_so4+as_bc+as_pom+as_soa+as_ss+as_du)  &
-                       * aer(ii,kk,num_accum)*1.0e-6_r8 ! #/cm^3
+            !dst1_num = as_du/(as_so4+as_bc+as_pom+as_soa+as_ss+as_du)  &
+            !           * aer(ii,kk,num_accum)*1.0e-6_r8 ! #/cm^3
+         !zlu ++
+            as_sum = as_so4+as_bc+as_pom+as_soa+as_ss+as_du
+            !dsj: to add additional species by MOSAIC
+            if(nh4_accum>0)then
+               as_sum = as_sum + aer(ii,kk,nh4_accum)
+            end if
+            if(no3_accum>0)then
+               as_sum = as_sum + aer(ii,kk,no3_accum)
+            end if
+            if(ca_accum>0)then
+               as_sum = as_sum + aer(ii,kk,ca_accum)
+               as_du = as_du + aer(ii,kk,ca_accum)
+            end if
+            if(co3_accum>0)then
+               as_sum =as_sum + aer(ii,kk,co3_accum)
+               as_du = as_du +  aer(ii,kk,co3_accum)
+            end if
+            if(cl_accum>0)then
+               as_sum = as_sum + aer(ii,kk,cl_accum)
+            end if
+         !zlu --
+            dst1_num = as_du/as_sum * aer(ii,kk,num_accum)*1.0e-6_r8 ! #/cm^3 !zlu            
          else
             dst1_num = 0.0_r8
          end if
 
          if (as_bc > 0._r8) then
-            bc_num = as_bc/(as_so4+as_bc+as_pom+as_soa+as_ss+as_du)  &
-                     * aer(ii,kk,num_accum)*1.0e-6_r8 ! #/cm^3
+            !bc_num = as_bc/(as_so4+as_bc+as_pom+as_soa+as_ss+as_du)  &
+            !         * aer(ii,kk,num_accum)*1.0e-6_r8 ! #/cm^3
+            ! 
+            ! dsj: To check if as_du <= 0._r8
+            if (as_du <= 0._r8) then
+                write(iulog,*) ': Check "as_du" in hetfrz_classnuc_cam.F90! It should be > 0', &
+                               ii, kk, as_du, dst_accum
+            endif
+            bc_num = as_bc/as_sum  * aer(ii,kk,num_accum)*1.0e-6_r8 ! #/cm^3 !zlu
          else
             bc_num = 0.0_r8
          end if
 
       else
-
-         dst1_num = aer(ii,kk,dst_accum) * dst1_num_to_mass*1.0e-6_r8 ! #/cm^3, dust # in accumulation mode
+         ! dsj: For MOSAIC species
+         if(ca_accum>0 .and. co3_accum>0)then
+            dst1_num = ( aer(ii,kk,dst_accum) + aer(ii,kk,ca_accum) + aer(ii,kk,co3_accum) ) &
+                       * dst1_num_to_mass * 1.0e-6_r8
+         else    
+            dst1_num = aer(ii,kk,dst_accum) * dst1_num_to_mass*1.0e-6_r8 ! #/cm^3, dust # in accumulation mode
+         end if
          bc_num = aer(ii,kk,bc_accum) * bc_num_to_mass*1.0e-6_r8      ! #/cm^3
       end if
       dmc = aer(ii,kk,dst_coarse)
       ssmc = aer(ii,kk,ncl_coarse)
       
+      ! dsj: agrees with Zheng's modification
+      ! Why don't we include so4 in the earlier version?
+      so4mc = aer(ii,kk,so4_coarse)
+      !zlu ++ missing so4 (no3 and nh4) in coarse mode?
+      if(ca_coarse>0)then       
+        dmc = dmc + aer(ii,kk,ca_coarse)
+      end if
+      if(co3_coarse>0)then
+        dmc = dmc + aer(ii,kk,co3_coarse)
+      end if
+      if(cl_coarse>0)then
+         ssmc = ssmc + aer(ii,kk,cl_coarse)
+      end if
+      if(no3_coarse>0)then
+        so4mc =so4mc +  aer(ii,kk,no3_coarse)
+      end if
+      if(nh4_coarse>0)then
+        so4mc =so4mc +  aer(ii,kk,nh4_coarse)
+      end if     
       if (dmc > 0._r8 ) then
-         dst3_num = dmc/(ssmc+dmc) * aer(ii,kk,num_coarse)*1.0e-6_r8 ! #/cm^3
+         !dst3_num = dmc/(ssmc+dmc) * aer(ii,kk,num_coarse)*1.0e-6_r8 ! #/cm^3
+         ! dsj: include SNA
+         dst3_num = dmc/(ssmc+dmc+so4mc) * aer(ii,kk,num_coarse)*1.0e-6_r8 ! #/cm^3 !zlu add so4
       else
          dst3_num = 0.0_r8
       end if
@@ -1057,28 +1380,81 @@ subroutine get_aer_num(ii, kk, ncnst, aer, aer_cb, rhoair,&
       as_bc  = aer_cb(ii,kk,bc_accum)
       as_pom = aer_cb(ii,kk,pom_accum)
       as_soa = aer_cb(ii,kk,soa_accum)
+      !zlu VBS
+      if( soa5_accum>0 )then
+         as_soa = as_soa +  aer_cb(ii,kk,soa2_accum) + aer_cb(ii,kk,soa3_accum) + &
+                            aer_cb(ii,kk,soa4_accum) + aer_cb(ii,kk,soa5_accum)
+      end if
+       
       as_ss  = aer_cb(ii,kk,ncl_accum)
       as_du  = aer_cb(ii,kk,dst_accum)
 
       if (as_du > 0._r8) then
-         dst1_num_imm = as_du/(as_so4+as_bc+as_pom+as_soa+as_ss+as_du)  &
-                       * aer_cb(ii,kk,num_accum)*1.0e-6_r8 ! #/cm^3
+         !dst1_num_imm = as_du/(as_so4+as_bc+as_pom+as_soa+as_ss+as_du)  &
+         !              * aer_cb(ii,kk,num_accum)*1.0e-6_r8 ! #/cm^3
+         
+         !zlu ++
+         as_sum = 0.0_r8
+         as_sum = as_so4+as_bc+as_pom+as_soa+as_ss+as_du
+         if(nh4_accum>0)then
+            as_sum = as_sum + aer_cb(ii,kk,nh4_accum)
+         end if
+         if(no3_accum>0)then
+            as_sum = as_sum + aer_cb(ii,kk,no3_accum)
+         end if
+         if(ca_accum>0)then
+            as_sum = as_sum + aer_cb(ii,kk,ca_accum)
+            as_du = as_du + aer_cb(ii,kk,ca_accum)
+         end if
+         if(co3_accum>0)then
+            as_sum = as_sum + aer_cb(ii,kk,co3_accum)
+            as_du =  as_du + aer_cb(ii,kk,co3_accum)
+         end if
+         if(cl_accum>0)then
+            as_sum = as_sum + aer_cb(ii,kk,cl_accum)
+         end if
+         !zlu --
+         dst1_num_imm = as_du/as_sum * aer_cb(ii,kk,num_accum)*1.0e-6_r8 ! #/cm^3 zlu
+         
       else
          dst1_num_imm = 0.0_r8
       end if
 
       if (as_bc > 0._r8) then
-         bc_num_imm = as_bc/(as_so4+as_bc+as_pom+as_soa+as_ss+as_du)  &
-                    * aer_cb(ii,kk,num_accum)*1.0e-6_r8 ! #/cm^3
+         !bc_num_imm = as_bc/(as_so4+as_bc+as_pom+as_soa+as_ss+as_du)  &
+         !           * aer_cb(ii,kk,num_accum)*1.0e-6_r8 ! #/cm^3
+         ! dsj: with updated as_sum from all the aerosols including MOSAIC species
+         bc_num_imm = as_bc/as_sum  * aer_cb(ii,kk,num_accum)*1.0e-6_r8 ! #/cm^3
       else
          bc_num_imm = 0.0_r8
       end if
        
       dmc_imm = aer_cb(ii,kk,dst_coarse)
       ssmc_imm = aer_cb(ii,kk,ncl_coarse)
+      !  dsj: added coarse mode SO4
+      so4mc_imm = aer_cb(ii,kk,so4_coarse) !zlu
+!zlu ++ missing so4 (no3 and nh4) in coarse mode?
+      if(ca_coarse>0)then
+        dmc_imm =dmc_imm +  aer_cb(ii,kk,ca_coarse)
+      end if
+      if(co3_coarse>0)then
+        dmc_imm =dmc_imm +  aer_cb(ii,kk,co3_coarse)
+      end if
+      if(cl_coarse>0)then
+         ssmc_imm = ssmc_imm + aer_cb(ii,kk,cl_coarse)
+      end if
+      if(no3_coarse>0)then
+         so4mc_imm = so4mc_imm + aer_cb(ii,kk,no3_coarse)
+      end if
+      if(nh4_coarse>0)then
+         so4mc_imm = so4mc_imm + aer_cb(ii,kk,nh4_coarse)
+      end if
+!zlu --
 
       if (dmc_imm > 0._r8) then
-         dst3_num_imm = dmc_imm/(ssmc_imm+dmc_imm) * aer_cb(ii,kk,num_coarse)*1.0e-6_r8 ! #/cm^3
+         !dst3_num_imm = dmc_imm/(ssmc_imm+dmc_imm) * aer_cb(ii,kk,num_coarse)*1.0e-6_r8 ! #/cm^3
+         ! dsj: added so4mc_imm
+         dst3_num_imm = dmc_imm/(ssmc_imm+dmc_imm+so4mc_imm) * aer_cb(ii,kk,num_coarse)*1.0e-6_r8 ! #/cm^3 !zlu
       else
          dst3_num_imm = 0.0_r8
       end if
@@ -1133,17 +1509,46 @@ subroutine get_aer_num(ii, kk, ncnst, aer, aer_cb, rhoair,&
 
       end if
 
-      if (aer(ii,kk,dst_accum)*1.0e-3_r8 > 1.0e-30_r8 .and. dst1_num > 1.0e-3_r8) then
-         r_dust_a1 = ( 3._r8/(4*pi*specdens_dust)*aer(ii,kk,dst_accum)/(dst1_num*1.0e6_r8) )**(1._r8/3._r8)
+!zlu ++ can not use #ifdef MOSAIC
+      ! dsj: additional if statement for newly added MOSAIC species
+      if(ca_accum>0 .and. co3_accum>0) then
+         if ( (aer(ii,kk,dst_accum)+aer(ii,kk,ca_accum)+aer(ii,kk,co3_accum) )*1.0e-3_r8 > 1.0e-30_r8 &
+            .and. dst1_num > 1.0e-3_r8) then
+            r_dust_a1 = ( 3._r8/(4*pi) * ( aer(ii,kk,dst_accum) / specdens_dust + &
+                                           aer(ii,kk,ca_accum) / specdens_ca + &
+                                           aer(ii,kk,co3_accum) / specdens_co3) &
+                           / (dst1_num*1.0e6_r8))**(1._r8/3._r8)
+         else
+            r_dust_a1 = 0.258e-6_r8
+         end if
       else
-         r_dust_a1 = 0.258e-6_r8
+         if (aer(ii,kk,dst_accum)*1.0e-3_r8 > 1.0e-30_r8 .and. dst1_num > 1.0e-3_r8) then
+            r_dust_a1 = ( 3._r8/(4*pi*specdens_dust)*aer(ii,kk,dst_accum)/(dst1_num*1.0e6_r8) )**(1._r8/3._r8)
+         else
+            r_dust_a1 = 0.258e-6_r8
+         end if
       end if
-
-      if (aer(ii,kk,dst_coarse)*1.0e-3_r8 > 1.0e-30_r8 .and. dst3_num > 1.0e-3_r8) then
-         r_dust_a3 = ( 3._r8/(4*pi*specdens_dust)*aer(ii,kk,dst_coarse)/(dst3_num*1.0e6_r8) )**(1._r8/3._r8)
+!zlu --
+!zlu ++
+      ! dsj: additional if statement for newly added MOSAIC species
+      if(ca_coarse>0 .and. co3_coarse>0) then
+         if ( (aer(ii,kk,dst_coarse)+aer(ii,kk,ca_coarse)+aer(ii,kk,co3_coarse))*1.0e-3_r8 > 1.0e-30_r8 &
+            .and. dst3_num > 1.0e-3_r8) then
+            r_dust_a3 = ( 3._r8/(4*pi) * ( aer(ii,kk,dst_coarse) / specdens_dust + & 
+                                           aer(ii,kk,ca_coarse) / specdens_ca + &
+                                           aer(ii,kk,co3_coarse) / specdens_co3) &
+                         / (dst3_num*1.0e6_r8))**(1._r8/3._r8)
+         else
+            r_dust_a3 = 1.576e-6_r8
+         end if
       else
-         r_dust_a3 = 1.576e-6_r8
+         if (aer(ii,kk,dst_coarse)*1.0e-3_r8 > 1.0e-30_r8 .and. dst3_num > 1.0e-3_r8) then
+            r_dust_a3 = ( 3._r8/(4*pi*specdens_dust)*aer(ii,kk,dst_coarse)/(dst3_num*1.0e6_r8) )**(1._r8/3._r8)
+         else
+            r_dust_a3 = 1.576e-6_r8
+         end if
       end if
+!zlu --
 
    else if (nmodes == MAM7_nmodes) then
 
@@ -1185,8 +1590,33 @@ subroutine get_aer_num(ii, kk, ncnst, aer, aer_cb, rhoair,&
       vol_shell(2) = ( aer(ii,kk,so4_accum)/specdens_so4 + &
                        aer(ii,kk,pom_accum)*pom_equivso4_factor/specdens_pom + &
                        aer(ii,kk,soa_accum)*soa_equivso4_factor/specdens_soa )/rhoair
+!zlu ++ 
+      ! dsj: adding additional shell species
+      if (nh4_accum>0) then
+        vol_shell(2) =  vol_shell(2) +  aer(ii,kk,nh4_accum)/specdens_nh4/rhoair
+      end if
+      if (no3_accum>0) then
+        vol_shell(2) =  vol_shell(2) +  aer(ii,kk,no3_accum)/specdens_no3/rhoair
+      end if
+
+      if(soa2_accum>0 .and. soa3_accum>0 .and. soa4_accum>0 .and. soa5_accum>0 )then
+         vol_shell(2) =  vol_shell(2) + aer(ii,kk,soa2_accum)*soa_equivso4_factor/specdens_soa /rhoair &
+                                      + aer(ii,kk,soa3_accum)*soa_equivso4_factor/specdens_soa /rhoair &
+                                      + aer(ii,kk,soa4_accum)*soa_equivso4_factor/specdens_soa /rhoair &
+                                      + aer(ii,kk,soa5_accum)*soa_equivso4_factor/specdens_soa /rhoair
+      end if
+!zlu --
 
       vol_core(2) = aer(ii,kk,dst_accum)/(specdens_dust*rhoair)
+!zlu ++ 
+      ! dsj: adding additional core species
+      if (ca_accum>0) then
+        vol_core(2) = vol_core(2) + aer(ii,kk,ca_accum)/(specdens_ca*rhoair)
+      end if
+      if (co3_accum>0) then
+        vol_core(2) = vol_core(2) + aer(ii,kk,co3_accum)/(specdens_co3*rhoair)
+      end if
+!zlu --
 
       !   ratio1 = vol_shell/vol_core = 
       !      actual hygroscopic-shell-volume/dust-core-volume
@@ -1226,6 +1656,23 @@ subroutine get_aer_num(ii, kk, ncnst, aer, aer_cb, rhoair,&
       tmp1 = vol_shell(3)*(r_dust_a3*2._r8)*fac_volsfc_dust_a3
       tmp2 = max(6.0_r8*dr_so4_monolayers_dust*vol_core(3), 0.0_r8)
       dstcoat(3) = tmp1/tmp2
+
+!zlu ++ 
+      ! dsj: additional species by MOSAIC
+      if (nh4_coarse>0) then
+        vol_shell(3) =  vol_shell(3) +  aer(ii,kk,nh4_coarse)/specdens_nh4/rhoair
+      end if
+      if (no3_coarse>0) then
+        vol_shell(3) =  vol_shell(3) +  aer(ii,kk,no3_coarse)/specdens_no3/rhoair
+      end if
+
+      if (ca_coarse>0) then
+        vol_core(3) = vol_core(3) + aer(ii,kk,ca_coarse)/(specdens_ca*rhoair)
+      end if
+      if (co3_accum>0) then
+        vol_core(3) = vol_core(3) + aer(ii,kk,co3_coarse)/(specdens_co3*rhoair)
+      end if
+!zlu --
 
    else if (nmodes == MAM7_nmodes) then
 
@@ -1296,24 +1743,53 @@ subroutine get_aer_num(ii, kk, ncnst, aer, aer_cb, rhoair,&
    if (nmodes == MAM3_nmodes .or. nmodes == MAM4_nmodes) then
       ! accumulation mode for dust_a1 
       if (aer(ii,kk,num_accum) > 0._r8) then 
-         awcam(2) = (dst1_num*1.0e6_r8)/aer(ii,kk,num_accum)* &
-            ( aer(ii,kk,so4_accum) + aer(ii,kk,soa_accum) + &
-            aer(ii,kk,pom_accum) + aer(ii,kk,bc_accum) )*1.0e9_r8 ! [mug m-3]
+         !awcam(2) = (dst1_num*1.0e6_r8)/aer(ii,kk,num_accum)* &
+         !   ( aer(ii,kk,so4_accum) + aer(ii,kk,soa_accum) + &
+         !   aer(ii,kk,pom_accum) + aer(ii,kk,bc_accum) )*1.0e9_r8 ! [mug m-3]
+!zlu ++ how about nacl?
+!zlu use as_sum and as_carbon 
+         ! dsj: maybe we need to add sea salt?
+         as_sum = 0._r8
+         as_sum = aer(ii,kk,so4_accum) + aer(ii,kk,soa_accum) + &
+                  aer(ii,kk,pom_accum) + aer(ii,kk,bc_accum) 
+
+         if (no3_accum > 0 .and. nh4_accum> 0 ) then    
+            as_sum = as_sum + aer(ii,kk,nh4_accum) + aer(ii,kk,no3_accum)
+         end if
+         if(soa5_accum >0) then
+            as_sum = as_sum +  aer(ii,kk,soa2_accum) + aer(ii,kk,soa3_accum) + &
+            aer(ii,kk,soa4_accum) + aer(ii,kk,soa5_accum)
+         end if
+         awcam(2) = (dst1_num*1.0e6_r8) / aer(ii,kk,num_accum)* as_sum *1.0e9_r8 ! [mug m-3] !zlu
       else
          awcam(2) = 0._r8
       end if
 
       if (awcam(2) > 0._r8) then   
-         awfacm(2) = ( aer(ii,kk,bc_accum) + aer(ii,kk,soa_accum) + aer(ii,kk,pom_accum) )/ &
-            ( aer(ii,kk,soa_accum) + aer(ii,kk,pom_accum) + aer(ii,kk,so4_accum) + aer(ii,kk,bc_accum) )
+         !awfacm(2) = ( aer(ii,kk,bc_accum) + aer(ii,kk,soa_accum) + aer(ii,kk,pom_accum) )/ &
+         !   ( aer(ii,kk,soa_accum) + aer(ii,kk,pom_accum) + aer(ii,kk,so4_accum) + aer(ii,kk,bc_accum) )
+         as_carbon = 0._r8
+         as_carbon = aer(ii,kk,bc_accum) + aer(ii,kk,soa_accum) + aer(ii,kk,pom_accum)
+         ! dsj: to addtiaionl SOA. previously bug?
+         if(soa5_accum >0) then
+            as_carbon = as_carbon + aer(ii,kk,soa2_accum) + aer(ii,kk,soa3_accum) + &
+                                    aer(ii,kk,soa4_accum) + aer(ii,kk,soa5_accum)  
+         end if
+         awfacm(2) = as_carbon / as_sum
       else
          awfacm(2) = 0._r8
       end if
 
       ! accumulation mode for bc (if MAM4, primary carbon mode is insoluble)
       if (aer(ii,kk,num_accum) > 0._r8) then
-         awcam(1) = (bc_num*1.0e6_r8)/aer(ii,kk,num_accum)* &
-            ( aer(ii,kk,so4_accum) + aer(ii,kk,soa_accum) + aer(ii,kk,pom_accum) + aer(ii,kk,bc_accum) )*1.0e9_r8 ! [mug m-3]
+         !awcam(1) = (bc_num*1.0e6_r8)/aer(ii,kk,num_accum)* &
+         !   ( aer(ii,kk,so4_accum) + aer(ii,kk,soa_accum) + aer(ii,kk,pom_accum) + aer(ii,kk,bc_accum) )*1.0e9_r8 ! [mug m-3]
+         ! dsj: as it uses as_sum, there should be check
+         if (awcam(2) <= 0._r8) then
+            write(iulog,*) ': Check "awcam(2)" in hetfrz_classnuc_cam.F90! It should be > 0', &
+                                  ii, kk, num_accum
+         endif
+         awcam(1) = (bc_num*1.0e6_r8) / aer(ii,kk,num_accum) * as_sum * 1.0e9_r8 ! [mug m-3]
       else
          awcam(1) = 0._r8
       end if
@@ -1321,7 +1797,13 @@ subroutine get_aer_num(ii, kk, ncnst, aer, aer_cb, rhoair,&
 
       ! coarse mode for dust_a3
       if (aer(ii,kk,num_coarse) > 0._r8) then
-         awcam(3) = (dst3_num*1.0e6_r8)/aer(ii,kk,num_coarse)* aer(ii,kk,so4_coarse)*1.0e9_r8
+         ! add no3 and nh4 to so4
+         if (no3_coarse > 0 .and. nh4_coarse> 0 ) then    !zlu
+            awcam(3) = (dst3_num*1.0e6_r8)/aer(ii,kk,num_coarse)* &
+              (aer(ii,kk,so4_coarse) +  aer(ii,kk,no3_coarse) +  aer(ii,kk,nh4_coarse)   )*1.0e9_r8
+         else      
+            awcam(3) = (dst3_num*1.0e6_r8)/aer(ii,kk,num_coarse)* aer(ii,kk,so4_coarse)*1.0e9_r8
+         endif
       else
          awcam(3) = 0._r8
       end if

@@ -246,7 +246,8 @@ contains
                               delt, ps, xactive_prates, &
                               fsds, ts, asdir, ocnfrac, icefrac, &
                               precc, precl, snowhland, ghg_chem, latmapback, &
-                              drydepflx, wetdepflx, cflx, fire_sflx, fire_ztop, nhx_nitrogen_flx, noy_nitrogen_flx, qtend, pbuf)
+                              drydepflx, wetdepflx, cflx, fire_sflx, fire_ztop, &
+                              nhx_nitrogen_flx, noy_nitrogen_flx, qtend, pbuf)
 
     !-----------------------------------------------------------------------
     !     ... Chem_solver advances the volumetric mixing ratio
@@ -515,7 +516,19 @@ contains
     do m = 1,pcnst
        n = map2chm(m)
        if( n > 0 ) then
+          ! MOSAIC (dsj) - no change here, follow Francis' change
+          ! The comment by r.c.easter can be seen in chemistry.F90 by Francis
           mmr(:ncol,:,n) = q(:ncol,:,m)
+!#if ( defined MODAL_AERO && defined MOSAIC_SPECIES )
+!! 2017-01-09 r.c.easter - the following fix should perhaps always be used so that
+!!    the processes done in this routine start with q values after the neu wet removal
+!! with neu wetdep and mosaic aerosols and without this fix,
+!!    the wetdep and condensation sinks for hno3 and hcl can be large enough 
+!!    to produce negative values and QNEG3 corrections
+!          mmr(:ncol,:,n) = max( 0.0_r8, q(:ncol,:,m)+delt*qtend(:ncol,:,m) )
+!#else
+!          mmr(:ncol,:,n) = q(:ncol,:,m)
+!#endif
        end if
     end do
 

@@ -919,13 +919,38 @@ if ($aer_model eq 'mam' ) {
   my @mode_num_src;
   my @mode_spec_src;
   my %modal_groups;
-  my %modal_species = ( 'so4'=>'sulfate',
-                        'nh4'=>'ammonium',
-                        'pom'=>'p-organic',
-                        'soa'=>'s-organic',
-                        'bc' =>'black-c',
-                        'dst'=>'dust',
-                        'ncl'=>'seasalt' );
+  my %modal_species;
+  
+  # MOSAIC (dsj)
+  my $mosaic = $cfg->get('mosaic');
+  if ($mosaic) {
+    if ($aero_modes eq '4mode' ) {
+      my %modal_species = ( 'so4'=>'sulfate',
+                            'no3'=>'nitrate',
+                            'nh4'=>'ammonium',
+                            'pom'=>'p-organic',
+                            'soa'=>'s-organic',
+                            'bc' =>'black-c',
+                            'dst'=>'dust',
+                            'ca' =>'calcium',
+                            'co3'=>'carbonate',
+                            'cl' =>'chloride',
+                            'na' =>'seasalt' );
+    }
+    else {
+      die "ERROR: Currently MOSAIC module only works with MAM4\n";
+    }
+  }
+  else {
+    my %modal_species = ( 'so4'=>'sulfate',
+                          'nh4'=>'ammonium',
+                          'pom'=>'p-organic',
+                          'soa'=>'s-organic',
+                          'bc' =>'black-c',
+                          'dst'=>'dust',
+                          'ncl'=>'seasalt' );
+  }
+  
 
   if ($aero_modes eq '3mode' ) {
     # MAM rad_climate settings.  The externally mixed quantities in the modal aerosol
@@ -965,11 +990,19 @@ if ($aer_model eq 'mam' ) {
     @mode_num      = qw(num_a1 num_a2 num_a3 num_a4);
     @mode_num_cw   = qw(num_c1 num_c2 num_c3 num_c4);
 
-    %modal_groups = ( 'accum'  => [qw(so4 pom soa bc dst ncl)],
-                      'aitken' => [qw(so4 soa ncl dst)],
-                      'coarse' => [qw(dst ncl so4)],
-                      'primary_carbon' => [qw(pom bc)] );
-
+    # MOSAIC (dsj)
+    if ($mosaic) {
+      %modal_groups = ( 'accum'  => [qw(so4 pom soa bc dst na cl no3 ca co3 nh4)],
+                        'aitken' => [qw(so4 soa na dst cl co3 no3 ca nh4)],
+                        'coarse' => [qw(dst na so4 ca co3 cl no3 nh4)],
+                        'primary_carbon' => [qw(pom bc)] );
+    }
+    else{
+      %modal_groups = ( 'accum'  => [qw(so4 pom soa bc dst ncl)],
+                        'aitken' => [qw(so4 soa ncl dst)],
+                        'coarse' => [qw(dst ncl so4)],
+                        'primary_carbon' => [qw(pom bc)] );
+    }
     @mode_num_src  = qw(A A A A);
 
   } elsif($aero_modes eq '7mode') {
@@ -2781,7 +2814,12 @@ if ($waccmx) {
   add_default($nl,'oplus_ring_polar_filter');
 }
 
-# Chemistry options
+# Chemistry options 
+# MOSAIC (dsj)
+my $mosaic = $cfg->get('mosaic');
+if ($mosaic) {
+  add_default($nl,'chem_neu_wetdep_serial', 'val'=>'.true.');
+}
 
 # EPP namelist sanity checks
 

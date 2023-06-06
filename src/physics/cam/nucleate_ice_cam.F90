@@ -101,12 +101,23 @@ integer :: coarse_dust_idx = -1  ! index of dust in coarse mode
 integer :: coarse_nacl_idx = -1  ! index of nacl in coarse mode
 integer :: coarse_so4_idx = -1   ! index of sulfate in coarse mode
 
+!zlu ++ add index for MOSAIC species
+integer :: coarse_ca_idx = -1  ! index of ca/dust in coarse mode
+integer :: coarse_co3_idx = -1  ! index of co3/dust in coarse mode
+integer :: coarse_cl_idx = -1  ! index of cl/nacl in coarse mode
+integer :: coarse_nh4_idx = -1  ! index of nh4 in coarse mode
+integer :: coarse_no3_idx = -1  ! index of no3 in coarse mode
+!zlu --
+
 logical  :: separate_dust = .false.
 real(r8) :: sigmag_aitken
 real(r8) :: sigmag_accum
 
 logical :: lq(pcnst) = .false. ! set flags true for constituents with non-zero tendencies
 integer :: cnum_idx, cdst_idx, cso4_idx
+
+!zlu ++ for MOSAIC
+integer :: cca_idx, cco3_idx, cnh4_idx, cno3_idx
 
 !===============================================================================
 contains
@@ -309,9 +320,16 @@ subroutine nucleate_ice_cam_init(mincld_in, bulk_scale_in, pbuf2d)
       call rad_cnst_get_info(0, mode_coarse_dst_idx, nspec=nspec)
       do n = 1, nspec
          call rad_cnst_get_info(0, mode_coarse_dst_idx, n, spec_type=str32)
+         !print *, 'nucleate_ice_check 333', n, nspec, str32
          select case (trim(str32))
          case ('dust')
             coarse_dust_idx = n
+!zlu ++
+         ! dsj: For additional species by MOSAIC
+         case ('calcium')
+            coarse_ca_idx = n
+         case ('carbonate')
+            coarse_co3_idx = n
          end select
       end do
       call rad_cnst_get_info(0, mode_coarse_slt_idx, nspec=nspec)
@@ -320,6 +338,10 @@ subroutine nucleate_ice_cam_init(mincld_in, bulk_scale_in, pbuf2d)
          select case (trim(str32))
          case ('seasalt')
             coarse_nacl_idx = n
+!zlu ++
+         ! dsj: For Cl by MOSAIC
+         case ('chloride')
+            coarse_cl_idx = n            
          end select
       end do
       if (mode_coarse_idx>0) then
@@ -329,9 +351,18 @@ subroutine nucleate_ice_cam_init(mincld_in, bulk_scale_in, pbuf2d)
             select case (trim(str32))
             case ('sulfate')
                coarse_so4_idx = n
+!zlu ++
+            ! dsj: Nitrate and Ammonium added to Sulfate
+            case ('ammonium')
+               coarse_nh4_idx = n
+            case ('nitrate')
+               coarse_no3_idx = n               
             end select
          end do
       endif
+
+      !print *, 'nucleate_ice_check 000', coarse_ca_idx, coarse_co3_idx, coarse_co3_idx, coarse_no3_idx, coarse_nh4_idx, coarse_dust_idx, coarse_so4_idx, coarse_nacl_idx, coarse_cl_idx
+      
 
       ! Check that required mode specie types were found
       if ( coarse_dust_idx == -1 .or. coarse_nacl_idx == -1 ) then
@@ -353,6 +384,28 @@ subroutine nucleate_ice_cam_init(mincld_in, bulk_scale_in, pbuf2d)
          end if
          lq(cnum_idx) = .true.
          lq(cdst_idx) = .true.
+!zlu ++
+         ! dsj: additional species by MOSAIC
+         ! dsj: mode_coarse_dst_idx is the same as mode_coarse_idx for MAM4
+         !print *, 'nucleate_ice_check 111', mode_coarse_dst_idx, mode_coarse_idx, cca_idx, cco3_idx, cno3_idx, cnh4_idx, coarse_ca_idx, coarse_co3_idx, coarse_co3_idx, coarse_no3_idx, coarse_nh4_idx
+         
+         if (coarse_ca_idx>0)then
+            call rad_cnst_get_mam_mmr_idx(mode_coarse_dst_idx, coarse_ca_idx, cca_idx)
+            lq(cca_idx) = .true.
+         end if
+         if (coarse_co3_idx>0)then
+            call rad_cnst_get_mam_mmr_idx(mode_coarse_dst_idx, coarse_co3_idx, cco3_idx)
+            lq(cco3_idx) = .true.
+         end if
+         if (coarse_no3_idx>0)then
+            call rad_cnst_get_mam_mmr_idx(mode_coarse_dst_idx, coarse_no3_idx, cno3_idx)
+            lq(cno3_idx) = .true.
+         end if
+         if (coarse_nh4_idx>0)then
+            call rad_cnst_get_mam_mmr_idx(mode_coarse_dst_idx, coarse_nh4_idx, cnh4_idx)
+            lq(cnh4_idx) = .true.
+         end if
+!zlu --         
       endif
 
    else
@@ -424,11 +477,21 @@ subroutine nucleate_ice_cam_calc( &
    real(r8), pointer :: coarse_dust(:,:) ! mass m.r. of coarse dust
    real(r8), pointer :: coarse_nacl(:,:) ! mass m.r. of coarse nacl
    real(r8), pointer :: coarse_so4(:,:) ! mass m.r. of coarse sulfate
+!zlu ++ mmr for MOSAIC species
+   real(r8), pointer :: coarse_ca(:,:) ! mass m.r. of coarse ca/dust
+   real(r8), pointer :: coarse_co3(:,:) ! mass m.r. of coarse co3/dust
+   real(r8), pointer :: coarse_cl(:,:) ! mass m.r. of coarse cl/nacl
+   real(r8), pointer :: coarse_nh4(:,:)  ! mass m.r. of coarse nh4
+   real(r8), pointer :: coarse_no3(:,:)  ! mass m.r. of coarse no3
+!zlu --   
    real(r8), pointer :: aer_mmr(:,:)    ! aerosol mass mixing ratio
    real(r8), pointer :: dgnum(:,:,:)    ! mode dry radius
    real(r8), pointer :: cld_num_coarse(:,:) ! number m.r. of coarse mode
    real(r8), pointer :: cld_coarse_dust(:,:) ! mass m.r. of coarse dust
-
+!zlu ++
+   real(r8), pointer :: cld_coarse_ca(:,:) ! mass m.r. of coarse ca/dust
+   real(r8), pointer :: cld_coarse_co3(:,:) ! mass m.r. of coarse co3/dust
+   
    real(r8), pointer :: ast(:,:)
    real(r8) :: icecldf(pcols,pver)  ! ice cloud fraction
    real(r8), pointer :: qsatfac(:,:)      ! Subgrid cloud water saturation scaling factor.
@@ -512,15 +575,45 @@ subroutine nucleate_ice_cam_calc( &
       ! mode specie mass m.r.
       call rad_cnst_get_aer_mmr(0, mode_coarse_dst_idx, coarse_dust_idx, 'a', state, pbuf, coarse_dust)
       call rad_cnst_get_aer_mmr(0, mode_coarse_slt_idx, coarse_nacl_idx, 'a', state, pbuf, coarse_nacl)
+
+!zlu ++  ca and co3 in the same mode as dust
+      if (coarse_ca_idx>0) then
+         call rad_cnst_get_aer_mmr(0, mode_coarse_dst_idx, coarse_ca_idx, 'a', state, pbuf, coarse_ca)
+      end if
+      if (coarse_co3_idx>0) then
+         call rad_cnst_get_aer_mmr(0, mode_coarse_dst_idx, coarse_co3_idx, 'a', state, pbuf, coarse_co3)
+      end if
+
+      call rad_cnst_get_aer_mmr(0, mode_coarse_slt_idx, coarse_nacl_idx, 'a', state, pbuf, coarse_nacl)
+!zlu ++ cl in the same mode as s.s.
+      if (coarse_cl_idx>0) then
+         call rad_cnst_get_aer_mmr(0, mode_coarse_slt_idx, coarse_cl_idx, 'a', state, pbuf, coarse_cl)
+      end if
+
+     
       if (mode_coarse_idx>0) then
          call rad_cnst_get_aer_mmr(0, mode_coarse_idx, coarse_so4_idx, 'a', state, pbuf, coarse_so4)
+!zlu ++
+         if (coarse_nh4_idx>0) then
+            call rad_cnst_get_aer_mmr(0, mode_coarse_idx, coarse_nh4_idx, 'a', state, pbuf, coarse_nh4)
+         end if
+         if (coarse_no3_idx>0) then
+            call rad_cnst_get_aer_mmr(0, mode_coarse_idx, coarse_no3_idx, 'a', state, pbuf, coarse_no3)
+         end if         
       endif
 
       ! Get the cloudbourne coarse mode fields, so aerosol used for nucleated
       ! can be moved from interstial to cloudbourne.
       call rad_cnst_get_mode_num(0, mode_coarse_dst_idx, 'c', state, pbuf, cld_num_coarse)
       call rad_cnst_get_aer_mmr(0, mode_coarse_dst_idx, coarse_dust_idx, 'c', state, pbuf, cld_coarse_dust)
-
+      ! dsj: ca and co3 in addition to dst
+      if (coarse_ca_idx>0) then
+         call rad_cnst_get_aer_mmr(0, mode_coarse_dst_idx, coarse_ca_idx, 'c', state, pbuf, cld_coarse_ca)
+      end if
+      if (coarse_co3_idx>0) then
+         call rad_cnst_get_aer_mmr(0, mode_coarse_dst_idx, coarse_co3_idx, 'c', state, pbuf, cld_coarse_co3)
+      end if
+    
       call physics_ptend_init(ptend, state%psetcols, 'nucleatei', lq=lq)
    else
       ! init number/mass arrays for bulk aerosols
@@ -646,9 +739,19 @@ subroutine nucleate_ice_cam_calc( &
                ! dust = coarse mode
                ! since modal has internal mixtures.
                soot_num = num_accum(i,k)*rho(i,k)*1.0e-6_r8
-               dmc  = coarse_dust(i,k)*rho(i,k)
-               ssmc = coarse_nacl(i,k)*rho(i,k)
-
+               dmc  = coarse_dust(i,k)*rho(i,k)              
+!zlu ++
+               ! dsj: additional species for MOSAIC dust
+               if (coarse_ca_idx>0  .and. coarse_co3_idx>0 ) then
+                  dmc = dmc + (coarse_ca(i,k) + coarse_co3(i,k) ) *rho(i,k)
+               end if
+               ssmc = coarse_nacl(i,k)*rho(i,k) 
+!zlu ++
+               ! dsj: additional species for MOSAIC sea salt
+               if (coarse_cl_idx>0) then
+                  ssmc = ssmc + coarse_cl(i,k)*rho(i,k)
+               end if
+            
                if (dmc > 0._r8) then
                   if ( separate_dust ) then
                      ! 7-mode -- has separate dust and seasalt mode types and
@@ -658,6 +761,15 @@ subroutine nucleate_ice_cam_calc( &
                      ! 3-mode -- needs weighting for dust since dust, seasalt,
                      !           and sulfate are combined in the "coarse" mode type
                      so4mc    = coarse_so4(i,k)*rho(i,k)
+!zlu ++
+                     ! additional inorganics by MOSAIC
+                     if (coarse_no3_idx>0) then
+                        so4mc = so4mc + coarse_no3(i,k)*rho(i,k)
+                     end if
+                     if (coarse_nh4_idx>0) then
+                        so4mc = so4mc + coarse_nh4(i,k)*rho(i,k) 
+                     end if
+!zlu --                     
                      wght = dmc/(ssmc + dmc + so4mc)
                   endif
                   dst_num = wght * num_coarse(i,k)*rho(i,k)*1.0e-6_r8
@@ -676,7 +788,15 @@ subroutine nucleate_ice_cam_calc( &
                   !           and sulfate are combined in the "coarse" mode
                   !           type
                   so4mc    = coarse_so4(i,k)*rho(i,k)
-                  
+!zlu ++
+                  ! additional inorganics by MOSAIC
+                  if (coarse_no3_idx>0) then
+                     so4mc = so4mc + coarse_no3(i,k)*rho(i,k)
+                  end if
+                  if (coarse_nh4_idx>0) then
+                     so4mc = so4mc + coarse_nh4(i,k)*rho(i,k)
+                  end if
+!zlu --      
                   if (so4mc > 0._r8) then
                     wght = so4mc/(ssmc + dmc + so4mc)
                     so4_num_cr = wght * num_coarse(i,k)*rho(i,k)*1.0e-6_r8
@@ -745,6 +865,15 @@ subroutine nucleate_ice_cam_calc( &
 
                ptend%q(i,k,cdst_idx) = - odst_num / dst_num * icldm(i,k) * coarse_dust(i,k) / dtime
                cld_coarse_dust(i,k) = cld_coarse_dust(i,k) + odst_num / dst_num *icldm(i,k) * coarse_dust(i,k)
+!zlu ++
+               ! dsj: additional dust species by MOSAIC
+               if (coarse_ca_idx>0  .and. coarse_co3_idx>0 ) then
+                  ptend%q(i,k,cca_idx) = - odst_num / dst_num * icldm(i,k) * coarse_ca(i,k) / dtime
+                  cld_coarse_ca(i,k) = cld_coarse_ca(i,k) + odst_num / dst_num *icldm(i,k) * coarse_ca(i,k)
+                  ptend%q(i,k,cco3_idx) = - odst_num / dst_num * icldm(i,k) * coarse_co3(i,k) / dtime
+                  cld_coarse_co3(i,k) = cld_coarse_co3(i,k) + odst_num / dst_num *icldm(i,k) * coarse_co3(i,k)              
+              end if
+!zlu --               
             end if
 
             ! Liu&Penner does not generate enough nucleation in the polar winter

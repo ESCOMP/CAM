@@ -752,19 +752,28 @@ subroutine modal_aero_sw(list_idx, state, pbuf, nnite, idxnite, &
                   if (trim(spectype) == 'dust') then
                      do i = 1, ncol
                         burdendust(i) = burdendust(i) + specmmr(i,k)*mass(i,k)
-                        dustvol(i)    = vol(i)
-                        scatdust(i)   = vol(i)*specrefr
-                        absdust(i)    = -vol(i)*specrefi
-                        hygrodust(i)  = vol(i)*hygro_aer
+                        ! MOSAIC (dsj) - multiple species can contribute dust
+                        !dustvol(i)    = vol(i)
+                        !scatdust(i)   = vol(i)*specrefr
+                        !absdust(i)    = -vol(i)*specrefi
+                        !hygrodust(i)  = vol(i)*hygro_aer                        
+                        dustvol(i)    = dustvol(i) + vol(i)
+                        scatdust(i)   = scatdust(i) + vol(i)*specrefr
+                        absdust(i)    = absdust(i) - vol(i)*specrefi
+                        hygrodust(i)  = hygrodust(i) + vol(i)*hygro_aer
                      end do
                   end if
 
                   if (trim(spectype) == 'sulfate') then
                      do i = 1, ncol
                         burdenso4(i) = burdenso4(i) + specmmr(i,k)*mass(i,k)
-                        scatso4(i)   = vol(i)*specrefr
-                        absso4(i)    = -vol(i)*specrefi
-                        hygroso4(i)  = vol(i)*hygro_aer
+                        ! MOSAIC (dsj) - multiple species can contribute sulfate
+                        !scatso4(i)   = vol(i)*specrefr
+                        !absso4(i)    = -vol(i)*specrefi
+                        !hygroso4(i)  = vol(i)*hygro_aer
+                        scatso4(i)   = scatso4(i) + vol(i)*specrefr
+                        absso4(i)    = absso4(i) - vol(i)*specrefi
+                        hygroso4(i)  = hygroso4(i) + vol(i)*hygro_aer
                      end do
                   end if
                   if (trim(spectype) == 'black-c') then
@@ -794,9 +803,13 @@ subroutine modal_aero_sw(list_idx, state, pbuf, nnite, idxnite, &
                   if (trim(spectype) == 'seasalt') then
                      do i = 1, ncol
                         burdenseasalt(i) = burdenseasalt(i) + specmmr(i,k)*mass(i,k)
-                        scatseasalt(i)   = vol(i)*specrefr
-                        absseasalt(i)    = -vol(i)*specrefi
-                        hygroseasalt(i)  = vol(i)*hygro_aer
+                        ! MOSAIC (dsj) - multiple species can contribute sea salt
+                        !scatseasalt(i)   = vol(i)*specrefr
+                        !absseasalt(i)    = -vol(i)*specrefi
+                        !hygroseasalt(i)  = vol(i)*hygro_aer
+                        scatseasalt(i)   = scatseasalt(i) + vol(i)*specrefr
+                        absseasalt(i)    = absseasalt(i) - vol(i)*specrefi
+                        hygroseasalt(i)  = hygroseasalt(i) + vol(i)*hygro_aer
                       end do
                   end if
 

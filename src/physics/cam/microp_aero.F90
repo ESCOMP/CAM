@@ -106,6 +106,14 @@ integer :: coarse_dust_idx = -1  ! index of dust in coarse mode
 integer :: coarse_nacl_idx = -1  ! index of nacl in coarse mode
 integer :: coarse_so4_idx = -1  ! index of sulfate in coarse mode
 
+!zlu ++ add index for MOSAIC species
+integer :: coarse_ca_idx = -1  ! index of ca/dust in coarse mode
+integer :: coarse_co3_idx = -1  ! index of co3/dust in coarse mode
+integer :: coarse_cl_idx = -1  ! index of cl/nacl in coarse mode
+integer :: coarse_nh4_idx = -1  ! index of nh4 in coarse mode
+integer :: coarse_no3_idx = -1  ! index of no3 in coarse mode
+!zlu --
+
 integer :: npccn_idx, rndst_idx, nacon_idx
 
 logical  :: separate_dust = .false.
@@ -238,6 +246,12 @@ subroutine microp_aero_init(pbuf2d)
          select case (trim(str32))
          case ('dust')
             coarse_dust_idx = n
+!zlu ++
+         ! dsj: additional dust species by MOSAIC
+         case ('calcium')
+            coarse_ca_idx = n
+         case ('carbonate')
+            coarse_co3_idx = n            
          end select
       end do
       call rad_cnst_get_info(0, mode_coarse_slt_idx, nspec=nspec)
@@ -246,6 +260,10 @@ subroutine microp_aero_init(pbuf2d)
          select case (trim(str32))
          case ('seasalt')
             coarse_nacl_idx = n
+!zlu ++
+         ! dsj: additional sea salt species by MOSAIC
+         case ('chloride')
+            coarse_cl_idx = n            
          end select
       end do
       if (mode_coarse_idx>0) then
@@ -255,6 +273,12 @@ subroutine microp_aero_init(pbuf2d)
             select case (trim(str32))
             case ('sulfate')
                coarse_so4_idx = n
+!zlu ++
+            ! dsj: additional inorganic species by MOSAIC
+            case ('ammonium')
+               coarse_nh4_idx = n
+            case ('nitrate')
+               coarse_no3_idx = n               
             end select
          end do
       endif
@@ -384,6 +408,13 @@ subroutine microp_aero_run ( &
    real(r8), pointer :: coarse_dust(:,:) ! mass m.r. of coarse dust
    real(r8), pointer :: coarse_nacl(:,:) ! mass m.r. of coarse nacl
    real(r8), pointer :: coarse_so4(:,:)  ! mass m.r. of coarse sulfate
+!zlu ++ mmr for MOSAIC species
+   real(r8), pointer :: coarse_ca(:,:) ! mass m.r. of coarse ca/dust
+   real(r8), pointer :: coarse_co3(:,:) ! mass m.r. of coarse co3/dust
+   real(r8), pointer :: coarse_cl(:,:) ! mass m.r. of coarse cl/nacl
+   real(r8), pointer :: coarse_nh4(:,:)  ! mass m.r. of coarse nh4
+   real(r8), pointer :: coarse_no3(:,:)  ! mass m.r. of coarse no3
+!zlu --
 
    real(r8), pointer :: kvh(:,:)        ! vertical eddy diff coef (m2 s-1)
    real(r8), pointer :: tke(:,:)        ! TKE from the UW PBL scheme (m2 s-2)
@@ -482,9 +513,29 @@ subroutine microp_aero_run ( &
 
       ! mode specie mass m.r.
       call rad_cnst_get_aer_mmr(0, mode_coarse_dst_idx, coarse_dust_idx, 'a', state1, pbuf, coarse_dust)
+!zlu ++  ca and co3 in the same mode as dust
+      if (coarse_ca_idx>0) then
+         call rad_cnst_get_aer_mmr(0, mode_coarse_dst_idx, coarse_ca_idx, 'a', state1, pbuf, coarse_ca)
+      end if
+      if (coarse_co3_idx>0) then
+         call rad_cnst_get_aer_mmr(0, mode_coarse_dst_idx, coarse_co3_idx, 'a', state1, pbuf, coarse_co3)
+      end if
       call rad_cnst_get_aer_mmr(0, mode_coarse_slt_idx, coarse_nacl_idx, 'a', state1, pbuf, coarse_nacl)
+!zlu ++ cl in the same mode as s.s.
+      if (coarse_cl_idx>0) then
+         call rad_cnst_get_aer_mmr(0, mode_coarse_slt_idx, coarse_cl_idx, 'a', state1, pbuf, coarse_cl)
+      end if
+      
       if (mode_coarse_idx>0) then
          call rad_cnst_get_aer_mmr(0, mode_coarse_idx, coarse_so4_idx, 'a', state1, pbuf, coarse_so4)
+!zlu ++
+         ! dsj: additional inorganic aerosols by MOSAIC
+         if (coarse_nh4_idx>0) then
+            call rad_cnst_get_aer_mmr(0, mode_coarse_idx, coarse_nh4_idx, 'a', state1, pbuf, coarse_nh4)
+         end if
+         if (coarse_no3_idx>0) then
+            call rad_cnst_get_aer_mmr(0, mode_coarse_idx, coarse_no3_idx, 'a', state1, pbuf, coarse_no3)
+         end if
       endif
 
    else
@@ -664,13 +715,32 @@ subroutine microp_aero_run ( &
                !  scale by dust fraction in coarse mode
                
                dmc  = coarse_dust(i,k)
+!zlu ++
+               ! dsj: additional dust species by MOSAIC
+               if (coarse_ca_idx>0  .and. coarse_co3_idx>0 ) then
+                  dmc  = dmc + coarse_ca(i,k) + coarse_co3(i,k)
+               end if
                ssmc = coarse_nacl(i,k)
+!zlu ++
+               ! dsj: additional sea salt species by MOSAIC
+               if (coarse_cl_idx>0) then
+                  ssmc  = ssmc + coarse_cl(i,k)
+               end if              
 
                if ( separate_dust ) then
                   ! 7-mode -- has separate dust and seasalt mode types and no need for weighting 
                   wght = 1._r8
                else
                   so4mc = coarse_so4(i,k)
+!zlu ++
+                  ! dsj: additional inorganic aerosols by MOSAIC
+                  if (coarse_no3_idx>0) then
+                     so4mc = so4mc + coarse_no3(i,k)
+                  end if
+                  if (coarse_nh4_idx>0) then
+                     so4mc = so4mc + coarse_nh4(i,k)
+                  end if
+                   
                   ! 3-mode -- needs weighting for dust since dust, seasalt, and sulfate  are combined in the "coarse" mode type
                   wght = dmc/(ssmc + dmc + so4mc)
                endif

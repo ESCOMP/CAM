@@ -29,20 +29,21 @@ module mo_chm_diags
   integer :: id_co2,id_o3,id_oh,id_ho2,id_so4_a1,id_so4_a2,id_so4_a3
   integer :: id_num_a2,id_num_a3,id_dst_a3,id_ncl_a3
   integer :: id_ndep,id_nhdep
+  integer :: id_no3_a1, id_no3_a2, id_no3_a3, id_nh4_a1, id_nh4_a2, id_nh4_a3
 
   integer, parameter :: NJEUV = neuv
   integer :: rid_jeuv(NJEUV), rid_jno_i, rid_jno
 
   logical :: has_jeuvs, has_jno_i, has_jno
 
-  integer :: nox_species(3),  noy_species(56)
+  integer :: nox_species(3),  noy_species(59)
   integer :: clox_species(6), cloy_species(9), tcly_species(21)
   integer :: brox_species(4), broy_species(6), tbry_species(13)
   integer :: foy_species(4),  tfy_species(16)
   integer :: hox_species(4)
   integer :: toth_species(3)
   integer :: sox_species(3)
-  integer :: nhx_species(2)
+  integer :: nhx_species(5)
   integer :: aer_species(gas_pcnst)
 
   character(len=fieldname_len) :: dtchem_name(gas_pcnst)
@@ -272,6 +273,12 @@ contains
     id_soab = get_spc_ndx( 'SOAB' )
     id_soax = get_spc_ndx( 'SOAX' )
 
+    id_no3_a1 = get_spc_ndx( 'no3_a1' )
+    id_no3_a2 = get_spc_ndx( 'no3_a2' )
+    id_no3_a3 = get_spc_ndx( 'no3_a3' )
+    id_nh4_a1 = get_spc_ndx( 'nh4_a1' )
+    id_nh4_a2 = get_spc_ndx( 'nh4_a2' )
+    id_nh4_a3 = get_spc_ndx( 'nh4_a3' )
 
 !... NOY species
     nox_species = (/ id_n, id_no, id_no2 /)
@@ -285,7 +292,9 @@ contains
                      id_no3ch2cho, id_macrn, id_mvkn, id_isopfnc, id_terpns, &
                      id_terpnt, id_terpnt1, id_terpns1, id_terpnpt, id_terpnps, &
                      id_terpnpt1, id_terpnps1, id_sqtn, id_terphfn, &
-                     id_terpapan, id_terpa2pan, id_terpa3pan /)
+                     id_terpapan, id_terpa2pan, id_terpa3pan, &
+                     id_no3_a1, id_no3_a2, id_no3_a3 /)
+
 !... HOX species
     hox_species = (/ id_h, id_oh, id_ho2, id_h2o2 /)
 
@@ -308,7 +317,8 @@ contains
                       id_h2402, id_ch2br2, id_chbr3 /)
 
     sox_species = (/ id_so2, id_so4, id_h2so4 /)
-    nhx_species = (/ id_nh3, id_nh4 /)
+    nhx_species = (/ id_nh3, id_nh4, id_nh4_a1, id_nh4_a2, id_nh4_a3 /)
+
     bulkaero_species(:) = -1
     bulkaero_species(1:20) = (/ id_dst01, id_dst02, id_dst03, id_dst04, &
                                 id_sslt01, id_sslt02, id_sslt03, id_sslt04, &

@@ -11,6 +11,8 @@ module chemistry
   use chem_mods,        only : gas_pcnst
   use cam_history,      only : fieldname_len
   use physics_types,    only : physics_state, physics_ptend, physics_ptend_init
+  ! MOSAIC (dsj) - update by Francis
+  use physics_types,    only : physics_update, physics_state_copy, physics_ptend_sum  
   use spmd_utils,       only : masterproc
   use cam_logfile,      only : iulog
   use mo_gas_phase_chemdr, only : map2chm
@@ -135,6 +137,9 @@ module chemistry
 
   logical :: chem_use_chemtrop = .false.
 
+  ! MOSAIC (dsj) - update by Francis
+  logical :: chem_neu_wetdep_serial = .false.
+  
 !================================================================================================
 contains
 !================================================================================================
@@ -421,6 +426,10 @@ end function chem_is
     ! tropopause level control
     namelist /chem_inparm/ chem_use_chemtrop
 
+    ! MOSAIC (dsj) - update by Francis
+    ! switch to apply Neu wet dep process before solving chemistry
+    namelist /chem_inparm/ chem_neu_wetdep_serial
+    
     ! get the default settings
 
     call tracer_cnst_defaultopts( &
@@ -477,9 +486,10 @@ end function chem_is
     call mpibcast (chem_freq,         1,                               mpiint,  0, mpicom)
 
     call mpibcast (chem_rad_passive,  1,                               mpilog,  0, mpicom)
-
+    ! MOSAIC (dsj) - update by Francis
+    call mpibcast (chem_neu_wetdep_serial,1,                           mpilog,  0, mpicom)
+    
     ! ghg
-
     call mpibcast (ghg_chem,          1,                               mpilog,  0, mpicom)
     call mpibcast (bndtvg,            len(bndtvg),                     mpichar, 0, mpicom)
     call mpibcast (h2orates,          len(h2orates),                   mpichar, 0, mpicom)
@@ -736,7 +746,9 @@ end function chem_is_active
     call sox_inti()
 
     ! Initialize aerosols
-    call aero_model_init( pbuf2d )
+    ! MOSAIC (dsj) - add loffset to aero_model_init
+    !call aero_model_init( pbuf2d )
+    call aero_model_init( imozart-1, pbuf2d )
 
 !-----------------------------------------------------------------------
 ! Get liq and ice cloud water indicies
@@ -1155,7 +1167,9 @@ end function chem_is_active
 
   end subroutine chem_timestep_init
 
-  subroutine chem_timestep_tend( state, ptend, cam_in, cam_out, dt, pbuf,  fh2o)
+  ! MOSAIC (dsj) - update by Francis
+  !subroutine chem_timestep_tend( state, ptend, cam_in, cam_out, dt, pbuf,  fh2o)
+  subroutine chem_timestep_tend( state, ptend_all, cam_in, cam_out, dt, pbuf,  fh2o)
 
 !----------------------------------------------------------------------- 
 ! 
@@ -1189,7 +1203,9 @@ end function chem_is_active
 !-----------------------------------------------------------------------
     real(r8),            intent(in)    :: dt              ! time step
     type(physics_state), intent(in)    :: state           ! Physics state variables
-    type(physics_ptend), intent(out)   :: ptend           ! indivdual parameterization tendencies
+    ! MOSAIC (dsj) - update by Francis
+    !type(physics_ptend), intent(out)   :: ptend           ! indivdual parameterization tendencies
+    type(physics_ptend), intent(out)   :: ptend_all       ! indivdual parameterization tendencies    
     type(cam_in_t),      intent(inout) :: cam_in
     type(cam_out_t),     intent(inout) :: cam_out
     real(r8),            intent(out)   :: fh2o(pcols)     ! h2o flux to balance source from chemistry
@@ -1223,6 +1239,9 @@ end function chem_is_active
     integer :: tim_ndx
 
     logical :: lq(pcnst)
+    ! MOSAIC (dsj) - update by Francis
+    type(physics_state) :: state_loc             ! Local copy of state object
+    type(physics_ptend) :: ptend_loc             ! Local tendency from processes, added up to return as ptend_all
 
     if ( .not. chem_step ) return
 
@@ -1242,7 +1261,9 @@ end function chem_is_active
     end do
     if ( ghg_chem ) lq(1) = .true.
 
-    call physics_ptend_init(ptend, state%psetcols, 'chemistry', lq=lq)
+    ! MOSAIC (dsj) - update by Francis
+    !call physics_ptend_init(ptend, state%psetcols, 'chemistry', lq=lq)
+    call physics_ptend_init(ptend_all, state%psetcols, 'chemistry', lq=lq)
     
     call drydep_update( state, cam_in )
 
@@ -1271,31 +1292,67 @@ end function chem_is_active
     call pbuf_get_field(pbuf, ndx_nevapr,     nevapr, start=(/1,1/),         kount=(/ncol,pver/))
     call pbuf_get_field(pbuf, ndx_cldtop,     cldtop )
 
+    ! MOSAIC (dsj) - update by Francis
+    call physics_state_copy(state,state_loc)
+    call physics_ptend_init(ptend_loc, state%psetcols, 'neu_wetdep', lq=lq)
+
 !-----------------------------------------------------------------------
 ! call Neu wet dep scheme
 !-----------------------------------------------------------------------
-    call neu_wetdep_tend(lchnk,ncol,state%q,state%pmid,state%pdel,state%zi,state%t,dt, &
-         prain, nevapr, cldfr, cmfdqr, ptend%q, wetdepflx)
+    ! MOSAIC (dsj) - update by Francis
+    !call neu_wetdep_tend(lchnk,ncol,state%q,state%pmid,state%pdel,state%zi,state%t,dt, &
+    !     prain, nevapr, cldfr, cmfdqr, ptend%q, wetdepflx)
+    call neu_wetdep_tend(lchnk,ncol,state_loc%q,state_loc%pmid,state_loc%pdel, &
+                         state_loc%zi,state_loc%t,dt, &
+                         prain, nevapr, cldfr, cmfdqr, ptend_loc%q, wetdepflx)
+
+    call physics_ptend_sum(ptend_loc,ptend_all,ncol)
+
+    if (chem_neu_wetdep_serial) then
+       ! 2017-01-09 r.c.easter - the following fix should perhaps always be used so that
+       !    the processes done in chemdr start with q values after the neu wet removal
+       !    with neu wetdep and mosaic aerosols and without this fix,
+       !    the wetdep and condensation sinks for hno3 and hcl can be large enough 
+       !    to produce negative values and QNEG3 corrections
+       call physics_update(state_loc, ptend_loc, dt)
+    endif
+
+    call physics_ptend_init(ptend_loc, state%psetcols, 'chemdr', lq=lq)
 
 !-----------------------------------------------------------------------
 ! compute tendencies and surface fluxes
 !-----------------------------------------------------------------------
     call t_startf( 'chemdr' )
+    ! MOSAIC (dsj) - update by Francis
+    !do k = 1,pver
+    !   cldw(:ncol,k) = state%q(:ncol,k,ixcldliq) + state%q(:ncol,k,ixcldice)
+    !   if (ixndrop>0) &
+    !        ncldwtr(:ncol,k) = state%q(:ncol,k,ixndrop)
+    !end do
+    !call gas_phase_chemdr(lchnk, ncol, imozart, state%q, &
+    !                      state%phis, state%zm, state%zi, calday, &
+    !                      state%t, state%pmid, state%pdel, state%pint, &
+    !                      cldw, tropLev, tropLevChem, ncldwtr, state%u, state%v, &
+    !                      chem_dt, state%ps, xactive_prates, &
+    !                      fsds, cam_in%ts, cam_in%asdir, cam_in%ocnfrac, cam_in%icefrac, &
+    !                      cam_out%precc, cam_out%precl, cam_in%snowhland, ghg_chem, state%latmapback, &
+    !                      drydepflx, wetdepflx, cam_in%cflx, cam_in%fireflx, cam_in%fireztop, &
+    !                      nhx_nitrogen_flx, noy_nitrogen_flx, ptend%q, pbuf )
     do k = 1,pver
-       cldw(:ncol,k) = state%q(:ncol,k,ixcldliq) + state%q(:ncol,k,ixcldice)
+       cldw(:ncol,k) = state_loc%q(:ncol,k,ixcldliq) + state_loc%q(:ncol,k,ixcldice)
        if (ixndrop>0) &
-            ncldwtr(:ncol,k) = state%q(:ncol,k,ixndrop)
+            ncldwtr(:ncol,k) = state_loc%q(:ncol,k,ixndrop)
     end do
 
-    call gas_phase_chemdr(lchnk, ncol, imozart, state%q, &
-                          state%phis, state%zm, state%zi, calday, &
-                          state%t, state%pmid, state%pdel, state%pint, &
-                          cldw, tropLev, tropLevChem, ncldwtr, state%u, state%v, &
-                          chem_dt, state%ps, xactive_prates, &
+    call gas_phase_chemdr(lchnk, ncol, imozart, state_loc%q, &
+                          state_loc%phis, state_loc%zm, state_loc%zi, calday, &
+                          state_loc%t, state_loc%pmid, state_loc%pdel, state_loc%pint, &
+                          cldw, tropLev, tropLevChem, ncldwtr, state_loc%u, state_loc%v, &
+                          chem_dt, state_loc%ps, xactive_prates, &
                           fsds, cam_in%ts, cam_in%asdir, cam_in%ocnfrac, cam_in%icefrac, &
-                          cam_out%precc, cam_out%precl, cam_in%snowhland, ghg_chem, state%latmapback, &
+                          cam_out%precc, cam_out%precl, cam_in%snowhland, ghg_chem, state_loc%latmapback, &
                           drydepflx, wetdepflx, cam_in%cflx, cam_in%fireflx, cam_in%fireztop, &
-                          nhx_nitrogen_flx, noy_nitrogen_flx, ptend%q, pbuf )
+                          nhx_nitrogen_flx, noy_nitrogen_flx, ptend_loc%q, pbuf )                          
     if (associated(cam_out%nhx_nitrogen_flx)) then
        cam_out%nhx_nitrogen_flx(:ncol) = nhx_nitrogen_flx(:ncol)
     endif
@@ -1305,6 +1362,9 @@ end function chem_is_active
 
     call t_stopf( 'chemdr' )
 
+    ! MOSAIC (dsj) - update by Francis
+    call physics_ptend_sum(ptend_loc, ptend_all, ncol)
+    
 !-----------------------------------------------------------------------
 ! set flags for tracer tendencies (water and gas phase constituents)
 ! record tendencies on history files
@@ -1312,7 +1372,9 @@ end function chem_is_active
     do n = 1,pcnst
        m = map2chm(n)
        if( m > 0 ) then
-          call outfld( srcnam(m), ptend%q(:,:,n), pcols, lchnk )
+          ! MOSAIC (dsj) - update by Francis
+          !call outfld( srcnam(m), ptend%q(:,:,n), pcols, lchnk )
+          call outfld( srcnam(m), ptend_all%q(:,:,n), pcols, lchnk )          
        end if
 
        ! if the user has specified prescribed aerosol dep fluxes then 
@@ -1340,8 +1402,11 @@ end function chem_is_active
        endif
     end do
     if ( ghg_chem ) then
-       ptend%lq(1) = .true.
-       call outfld( 'CT_H2O_GHG', ptend%q(:,:,1), pcols, lchnk )
+       ! MOSAIC (dsj) - update by Francis
+       !ptend%lq(1) = .true.
+       !call outfld( 'CT_H2O_GHG', ptend%q(:,:,1), pcols, lchnk )
+       ptend_all%lq(1) = .true.
+       call outfld( 'CT_H2O_GHG', ptend_all%q(:,:,1), pcols, lchnk )
     endif
 
     call outfld( 'HEIGHT', state%zi(:ncol,:),  ncol, lchnk )
@@ -1350,8 +1415,11 @@ end function chem_is_active
 !  turn off water vapor tendency if radiatively passive
 !-----------------------------------------------------------------------
     if (chem_rad_passive) then
-       ptend%lq(1) = .false.
-       ptend%q(:ncol,:,1) = 0._r8
+       ! MOSAIC (dsj) - update by Francis
+       !ptend%lq(1) = .false.
+       !ptend%q(:ncol,:,1) = 0._r8
+       ptend_all%lq(1) = .false.
+       ptend_all%q(:ncol,:,1) = 0._r8       
     endif
 
 !-----------------------------------------------------------------------
@@ -1359,7 +1427,9 @@ end function chem_is_active
 !-----------------------------------------------------------------------
     fh2o(:ncol) = 0._r8
     do k = 1,pver
-       fh2o(:ncol) = fh2o(:ncol) + ptend%q(:ncol,k,1)*state%pdel(:ncol,k)/gravit
+       ! MOSAIC (dsj) - update by Francis
+       !fh2o(:ncol) = fh2o(:ncol) + ptend%q(:ncol,k,1)*state%pdel(:ncol,k)/gravit
+       fh2o(:ncol) = fh2o(:ncol) + ptend_all%q(:ncol,k,1)*state%pdel(:ncol,k)/gravit
     end do
     
   end subroutine chem_timestep_tend

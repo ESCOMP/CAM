@@ -19,18 +19,34 @@
   soa_a1
   bc_a1
   ncl_a1
+  na_a1
+  cl_a1
+  no3_a1
+  ca_a1
+  co3_a1    
   num_a1
   so4_a2
   nh4_a2
   soa_a2
   ncl_a2
   dst_a2
+  na_a2
+  cl_a2
+  no3_a2
+  ca_a2
+  co3_a2    
   num_a2
   dst_a3
   ncl_a3
   so4_a3
   pom_a3
   bc_a3
+  na_a3
+  cl_a3
+  no3_a3
+  ca_a3
+  co3_a3
+  nh4_a3
   num_a3
   ncl_a4
   so4_a4
@@ -39,18 +55,34 @@
   pombb1_a4
   bc_a4
   nh4_a4
+  na_a4
+  cl_a4 
+  no3_a4    
   num_a4
   dst_a5
   so4_a5
   nh4_a5
+  na_a5
+  ca_a5 
+  co3_a5 
+  cl_a5 
+  no3_a5    
   num_a5
   ncl_a6
   so4_a6
   nh4_a6
+  na_a6
+  cl_a6 
+  no3_a6    
   num_a6
   dst_a7
   so4_a7
   nh4_a7
+  na_a7
+  ca_a7 
+  co3_a7 
+  cl_a7 
+  no3_a7    
   num_a7
   soa1_a1
   soa1_a2
