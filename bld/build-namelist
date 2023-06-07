@@ -3564,6 +3564,11 @@ if ($waccm_phys or
     }
     add_default($nl, 'gw_qbo_hdepth_scaling', 'val'=>$hdepth_scaling);
     add_default($nl, 'gw_top_taper');
+} elsif ($phys =~ /cam_dev/) {
+    # cam_dev settings for nlev<60 (Other cam_dev set above)
+    add_default($nl, 'use_gw_front'     , 'val'=>'.true.');
+    add_default($nl, 'use_gw_convect_dp', 'val'=>'.true.');
+    add_default($nl, 'gw_qbo_hdepth_scaling', 'val'=>'1.0D0');
 } else {
     add_default($nl, 'use_gw_front'     , 'val'=>'.false.');
     add_default($nl, 'use_gw_convect_dp', 'val'=>'.false.');
@@ -3694,6 +3699,8 @@ if (($do_gw_rdg_beta or $do_gw_rdg_gamma)) {
 if ((not $waccm_phys) and
     ($do_gw_front or $do_gw_front_igw or
      $do_gw_convect_dp or $do_gw_convect_sh)) {
+    add_default($nl, 'tau_0_ubc', 'val'=>'.true.');
+} elsif ($phys =~ /cam_dev/) {
     add_default($nl, 'tau_0_ubc', 'val'=>'.true.');
 } elsif (!$simple_phys) {
     add_default($nl, 'tau_0_ubc', 'val'=>'.false.');

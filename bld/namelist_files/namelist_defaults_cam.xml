@@ -740,9 +740,8 @@
 <gw_limit_tau_without_eff chem="trop_strat_mam4_vbsext">.true. </gw_limit_tau_without_eff>
 <gw_limit_tau_without_eff chem="trop_strat_mam5_vbs">.true. </gw_limit_tau_without_eff>
 <gw_limit_tau_without_eff chem="trop_strat_mam5_vbsext">.true. </gw_limit_tau_without_eff>
-<gw_apply_tndmax                        >.true. </gw_apply_tndmax>
-<gw_apply_tndmax phys="cam_dev" chem="ghg_mam4" model_top="mt">.false.</gw_apply_tndmax>
-<gw_apply_tndmax phys="cam_dev" chem="ghg_mam4" model_top="lt">.false.</gw_apply_tndmax>
+<gw_apply_tndmax                          >.true. </gw_apply_tndmax>
+<gw_apply_tndmax phys="cam_dev"           >.false.</gw_apply_tndmax>
 <gw_apply_tndmax            waccm_phys="1">.false.</gw_apply_tndmax>
 <gw_apply_tndmax chem="trop_strat_mam4_vbs">.false.</gw_apply_tndmax>
 <gw_apply_tndmax chem="trop_strat_mam4_vbsext">.false.</gw_apply_tndmax>
