@@ -1743,13 +1743,11 @@
   </test>
   <test compset="FCSD_HCO" grid="f09_f09_mg17" name="ERS_Ln9_Vnuopc" testmods="cam/outfrq9s">
     <machines>
-      <machine name="cheyenne" compiler="intel" category="aux_cam"/>
-      <machine name="cheyenne" compiler="intel" category="prealpha"/>
       <machine name="cheyenne" compiler="intel" category="camchem_hco"/>
     </machines>
     <options>
       <option name="wallclock">00:20:00</option>
-      <option name="comment">FCSD CAM-chem f19 with HEMCO ERS</option>
+      <option name="comment">FCSD CAM-chem f19 with HEMCO exact restart</option>
     </options>
   </test>
   <test compset="FCSD_HCO" grid="f09_f09_mg17" name="ERP_Ln9_Vnuopc" testmods="cam/outfrq9s">
@@ -1760,7 +1758,7 @@
     </machines>
     <options>
       <option name="wallclock">00:20:00</option>
-      <option name="comment">FCSD CAM-chem f19 with HEMCO ERP</option>
+      <option name="comment">FCSD CAM-chem f19 with HEMCO exact restart/PE tests</option>
     </options>
   </test>
 
