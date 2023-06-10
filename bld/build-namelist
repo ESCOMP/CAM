@@ -3029,7 +3029,6 @@ if ($cfg->get('microphys') =~ /^mg/) {
     add_default($nl, 'nucleate_ice_subgrid_strat');
     add_default($nl, 'nucleate_ice_use_troplev');
     add_default($nl, 'cld_macmic_num_steps', 'dtime'=>$dtime);
-    add_default($nl, 'micro_mg_dcs');
     add_default($nl, 'micro_mg_precip_frac_method');
     add_default($nl, 'micro_mg_berg_eff_factor');
     add_default($nl, 'nucleate_ice_incloud');
@@ -3057,6 +3056,35 @@ if ($cfg->get('microphys') =~ /^mg/) {
 	add_default($nl, 'micro_mg_accre_sees_auto');
 	add_default($nl, 'micro_mg_implicit_fall');
     }
+
+    # tunings for micro_mg_dcs
+    my $microphys = $cfg->get('microphys');
+    my $hgrid = $cfg->get('hgrid');
+    my $silhs = $cfg->get('silhs');
+
+    my $micro_mg_dcs = '400.D-6';        # default for cam5/mg1
+
+    if ($microphys eq 'mg2') {
+        if ($phys eq 'cam6') {
+            $micro_mg_dcs = '500.D-6';   # default for cam6/mg2
+        }
+        elsif ($phys eq 'cam_dev') {
+            $micro_mg_dcs = '250.D-6';   # default for cam_dev/mg2
+        }
+    }
+
+    if ($microphys eq 'mg3') {
+        $micro_mg_dcs = '250.D-6';       # default for cam_dev/mg3
+    }
+
+    if ($microphys =~ /mg2|mg3/ and $silhs eq '1') {
+        $micro_mg_dcs = '390.D-6';       # default for SIHLS
+    }
+    elsif ($microphys =~ /mg2|mg3/ and $hgrid =~ /1.9x2.5/) {
+        $micro_mg_dcs = '200.D-6';       # default for FV 2-deg
+    }    
+
+    add_default($nl, 'micro_mg_dcs', 'val'=>$micro_mg_dcs);
 }
 
 # Aerosol Namelist options
