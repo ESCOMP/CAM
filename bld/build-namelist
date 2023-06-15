@@ -2867,7 +2867,9 @@ else {
 add_default($nl, 'use_hemco');
 if ($nl->get_value('use_hemco') =~ m/$TRUE/io) {
     add_default($nl, 'cam_physics_mesh');
+    add_default($nl, 'hemco_data_root');
     add_default($nl, 'hemco_config_file');
+    add_default($nl, 'hemco_diagn_file');
     add_default($nl, 'hemco_grid_xdim');
     add_default($nl, 'hemco_grid_ydim');
     # Remove these variables if present in the namelist since they are
