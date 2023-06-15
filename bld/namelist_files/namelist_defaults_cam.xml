@@ -700,6 +700,8 @@
 <!-- gravity wave settings -->
 <effgw_beres_dp>0.7D0</effgw_beres_dp>
 <effgw_beres_dp hgrid="0.9x1.25"                              >0.4D0</effgw_beres_dp>
+<effgw_beres_dp model_top="lt"                                >0.30D0</effgw_beres_dp>
+<effgw_beres_dp model_top="mt"                                >0.70D0</effgw_beres_dp>
 <effgw_beres_dp waccm_phys="0"                                >0.55D0</effgw_beres_dp>
 <effgw_beres_dp waccm_phys="1" hgrid="0.9x1.25"               >0.5D0</effgw_beres_dp>
 <effgw_beres_dp waccm_phys="1" hgrid="ne30np4" nlev="70"      >0.5D0</effgw_beres_dp>
@@ -708,7 +710,16 @@
 <effgw_beres_dp chem="trop_strat_mam4_vbsext" hgrid="0.9x1.25">0.5D0</effgw_beres_dp>
 <effgw_beres_dp chem="trop_strat_mam5_vbs" hgrid="0.9x1.25"   >0.5D0</effgw_beres_dp>
 <effgw_beres_dp chem="trop_strat_mam5_vbsext" hgrid="0.9x1.25">0.5D0</effgw_beres_dp>
+
 <effgw_oro      nlev="60"     >0.0625D0</effgw_oro>
+
+<effgw_rdg_beta                    >1.0D0</effgw_rdg_beta>
+<effgw_rdg_beta model_top="lt"     >0.5D0</effgw_rdg_beta>
+<effgw_rdg_beta model_top="mt"     >0.5D0</effgw_rdg_beta>
+
+<effgw_rdg_beta_max                >1.0D0</effgw_rdg_beta_max>
+<effgw_rdg_beta_max model_top="lt" >0.5D0</effgw_rdg_beta_max>
+<effgw_rdg_beta_max model_top="mt" >0.5D0</effgw_rdg_beta_max>
 
 <!-- setting for gravity waves from shallow convection. -->
 <effgw_beres_sh>0.03D0</effgw_beres_sh>
@@ -2976,7 +2987,7 @@
 <se_hypervis_subcycle                                                           > 3 </se_hypervis_subcycle>
 <se_hypervis_subcycle  waccm_phys="1"                                           > 2 </se_hypervis_subcycle>
 <se_hypervis_subcycle  hgrid="ne16np4"                                          > 4 </se_hypervis_subcycle>
-<se_hypervis_subcycle  phys="cam_dev" hgrid="ne30np4" npg="3" model_top="lt"    > 4 </se_hypervis_subcycle>
+<se_hypervis_subcycle  hgrid="ne30np4"  model_top="lt"                          > 4 </se_hypervis_subcycle>
 <se_hypervis_subcycle  se_refined_mesh="1"                                      > 3 </se_hypervis_subcycle>
 <se_hypervis_subcycle  hgrid="ne0np4CONUS.ne30x8" waccm_phys="1"                > 1 </se_hypervis_subcycle>
 
@@ -3007,7 +3018,7 @@
 
 <se_nu_top                                   > 1.25e5 </se_nu_top>
 <se_nu_top waccmx="1"                        > 1.0e6 </se_nu_top>
-<se_nu_top phys="cam_dev" model_top="mt"     > 1.0e6 </se_nu_top>
+<se_nu_top model_top="mt"                    > 1.0e6 </se_nu_top>
 
 <se_molecular_diff               >  0.0 </se_molecular_diff>
 <se_molecular_diff waccmx="1"    >  1.0 </se_molecular_diff>
@@ -3038,7 +3049,7 @@
 
 <se_rsplit                                          > 3 </se_rsplit>
 <se_rsplit waccm_phys="1"                           > 4 </se_rsplit>
-<se_rsplit phys="cam_dev" model_top="mt"            > 6 </se_rsplit>
+<se_rsplit model_top="mt"                           > 6 </se_rsplit>
 <se_rsplit hgrid="ne0np4CONUS.ne30x8" waccm_phys="1"> 3 </se_rsplit>
 
 <se_fvm_supercycling>-1</se_fvm_supercycling>

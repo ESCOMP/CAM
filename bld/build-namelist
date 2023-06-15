@@ -3082,7 +3082,7 @@ if ($cfg->get('microphys') =~ /^mg/) {
     }
     elsif ($microphys =~ /mg2|mg3/ and $hgrid =~ /1.9x2.5/) {
         $micro_mg_dcs = '200.D-6';       # default for FV 2-deg
-    }    
+    }
 
     add_default($nl, 'micro_mg_dcs', 'val'=>$micro_mg_dcs);
 }
@@ -3669,8 +3669,8 @@ if ($do_gw_rdg_beta) {
         die "$ProgName - ERROR: beta ridge scheme requires data from a topo file.\n";
     }
     add_default($nl, 'n_rdg_beta',          'val'=>'10');
-    add_default($nl, 'effgw_rdg_beta',      'val'=>'1.0D0');
-    add_default($nl, 'effgw_rdg_beta_max',  'val'=>'1.0D0');
+    add_default($nl, 'effgw_rdg_beta');
+    add_default($nl, 'effgw_rdg_beta_max');
     add_default($nl, 'trpd_leewv_rdg_beta', 'val'=>'.false.');
     add_default($nl, 'rdg_beta_cd_llb',     'val'=>'1.0D0');
 }
@@ -3726,7 +3726,8 @@ if (($do_gw_rdg_beta or $do_gw_rdg_gamma)) {
 #    use tau_0_ubc = .false. to avoid changing answers.
 if ((not $waccm_phys) and
     ($do_gw_front or $do_gw_front_igw or
-     $do_gw_convect_dp or $do_gw_convect_sh)) {
+     $do_gw_convect_dp or $do_gw_convect_sh or
+     $do_gw_oro or $do_gw_rdg_beta or $do_gw_rdg_gamma)) {
     add_default($nl, 'tau_0_ubc', 'val'=>'.true.');
 } elsif (!$simple_phys) {
     add_default($nl, 'tau_0_ubc', 'val'=>'.false.');
