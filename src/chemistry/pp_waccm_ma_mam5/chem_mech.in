@@ -81,6 +81,7 @@
  O,
  O2,
  O3,
+ O3S -> O3,
  OCLO -> OClO,
  OCS -> OCS,
  pom_a1 -> C,
@@ -222,6 +223,7 @@
  O
  O2
  O3
+ O3S
  OCLO
  OCS
  pom_a1
