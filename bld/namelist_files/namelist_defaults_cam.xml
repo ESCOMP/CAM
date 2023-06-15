@@ -3042,7 +3042,7 @@
 <se_nsplit hgrid="ne16np4"  waccm_phys="1" waccmx="1"     >  5  </se_nsplit>
 <se_nsplit hgrid="ne16np4"  waccm_phys="1"                >  3  </se_nsplit>
 <se_nsplit hgrid="ne30np4"  waccm_phys="1"                >  5  </se_nsplit>
-<se_nsplit phys="cam_dev" hgrid="ne30np4"  model_top="mt" >  3  </se_nsplit>
+<se_nsplit hgrid="ne30np4"  model_top="mt"                >  3  </se_nsplit>
 <se_nsplit hgrid="ne0np4CONUS.ne30x8" waccm_phys="1"      > 10  </se_nsplit>
 
 <se_nsplit hgrid="ne0np4TESTONLY.ne5x4"> 7 </se_nsplit>
