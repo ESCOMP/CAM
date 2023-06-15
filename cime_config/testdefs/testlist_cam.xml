@@ -1741,24 +1741,6 @@
       <option name="comment">FCSD CAM-chem f09 with HEMCO smoke test</option>
     </options>
   </test>
-  <test compset="FCSD_HCO" grid="f09_f09_mg17" name="PEM_Ln9_Vnuopc" testmods="cam/outfrq9s">
-    <machines>
-      <machine name="cheyenne" compiler="intel" category="camchem_hco"/>
-    </machines>
-    <options>
-      <option name="wallclock">00:20:00</option>
-      <option name="comment">FCSD CAM-chem f19 with HEMCO PE tests MPI</option>
-    </options>
-  </test>
-  <test compset="FCSD_HCO" grid="f09_f09_mg17" name="PET_Ln9_Vnuopc" testmods="cam/outfrq9s">
-    <machines>
-      <machine name="cheyenne" compiler="intel" category="camchem_hco"/>
-    </machines>
-    <options>
-      <option name="wallclock">00:20:00</option>
-      <option name="comment">FCSD CAM-chem f19 with HEMCO PE tests OMP</option>
-    </options>
-  </test>
   <test compset="FCSD_HCO" grid="f09_f09_mg17" name="ERS_Ln9_Vnuopc" testmods="cam/outfrq9s">
     <machines>
       <machine name="cheyenne" compiler="intel" category="camchem_hco"/>
