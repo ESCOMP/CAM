@@ -2031,7 +2031,7 @@
 <clubb_do_energyfix                               > .true.  </clubb_do_energyfix>
 <clubb_do_liqsupersat                             > .false. </clubb_do_liqsupersat>
 <clubb_gamma_coef                                 > 0.308   </clubb_gamma_coef>
-<clubb_gamma_coef hgrid="1.9x2.5"                 > 0.280   </clubb_gamma_coef>
+<clubb_gamma_coef hgrid="1.9x2.5" phys="cam6"     > 0.280   </clubb_gamma_coef>
 <clubb_gamma_coef dyn="se"                        > 0.270   </clubb_gamma_coef>
 <clubb_gamma_coefb                                > 0.32    </clubb_gamma_coefb>
 <clubb_ipdf_call_placement                        > 2       </clubb_ipdf_call_placement>
@@ -2055,8 +2055,8 @@
 <clubb_l_mono_flux_lim_rtm                        > .true.  </clubb_l_mono_flux_lim_rtm>
 <clubb_l_mono_flux_lim_spikefix                   > .true.  </clubb_l_mono_flux_lim_spikefix>
 <clubb_l_mono_flux_lim_thlm                       > .true.  </clubb_l_mono_flux_lim_thlm>
-<clubb_l_mono_flux_lim_um                         > .true. </clubb_l_mono_flux_lim_um>
-<clubb_l_mono_flux_lim_vm                         > .true. </clubb_l_mono_flux_lim_vm>
+<clubb_l_mono_flux_lim_um                         > .true.  </clubb_l_mono_flux_lim_um>
+<clubb_l_mono_flux_lim_vm                         > .true.  </clubb_l_mono_flux_lim_vm>
 <clubb_l_partial_upwind_wp3                       > .false. </clubb_l_partial_upwind_wp3>
 <clubb_l_predict_upwp_vpwp                        > .false. </clubb_l_predict_upwp_vpwp>
 <clubb_l_predict_upwp_vpwp phys="cam_dev"         > .true.  </clubb_l_predict_upwp_vpwp>
@@ -2373,14 +2373,14 @@
 
 <!-- seasalt emission tuning factor -->
 <!-- Note that ver="strat" when modal_accum_coarse_exch=.true. -->
-<seasalt_emis_scale                          >1.35D0</seasalt_emis_scale>
-<seasalt_emis_scale ver="mam7"               >1.62D0</seasalt_emis_scale>
-<seasalt_emis_scale ver="strat"              >0.90D0</seasalt_emis_scale>
-<seasalt_emis_scale ver="strat" clubb_sgs="1">1.00D0</seasalt_emis_scale>
-<seasalt_emis_scale ver="strat" clubb_sgs="1" phys="cam_dev" >1.5D0</seasalt_emis_scale>
-<seasalt_emis_scale ver="strat" clubb_sgs="1" hgrid="1.9x2.5">1.10D0</seasalt_emis_scale>
-<seasalt_emis_scale ver="strat" spcam_clubb_sgs="1">1.2D0</seasalt_emis_scale>
-<seasalt_emis_scale ver="strat" clubb_sgs="1" silhs="1">0.60D0</seasalt_emis_scale>
+<seasalt_emis_scale                                                      >1.35D0</seasalt_emis_scale>
+<seasalt_emis_scale ver="mam7"                                           >1.62D0</seasalt_emis_scale>
+<seasalt_emis_scale ver="strat"                                          >0.90D0</seasalt_emis_scale>
+<seasalt_emis_scale ver="strat" clubb_sgs="1"                            >1.00D0</seasalt_emis_scale>
+<seasalt_emis_scale ver="strat" clubb_sgs="1" phys="cam_dev"             >1.5D0</seasalt_emis_scale>
+<seasalt_emis_scale ver="strat" clubb_sgs="1" hgrid="1.9x2.5" phys="cam6">1.10D0</seasalt_emis_scale>
+<seasalt_emis_scale ver="strat" spcam_clubb_sgs="1"                      >1.2D0</seasalt_emis_scale>
+<seasalt_emis_scale ver="strat" clubb_sgs="1" silhs="1"                  >0.60D0</seasalt_emis_scale>
 
 <!-- Wet scavenging of modal aerosols -->
 <sol_facti_cloud_borne                                                >1.0D0</sol_facti_cloud_borne>

@@ -3064,8 +3064,14 @@ if ($cfg->get('microphys') =~ /^mg/) {
 
     my $micro_mg_dcs = '400.D-6';        # default for cam5/mg1
 
-    if ($microphys eq 'mg2') {
-        if ($phys eq 'cam6') {
+    if ($microphys =~ /mg2|mg3/) {
+        if ($silhs eq '1') {
+            $micro_mg_dcs = '390.D-6';       # default for SIHLS
+        }
+        elsif ($hgrid =~ /1.9x2.5/ and $phys eq 'cam6') {
+            $micro_mg_dcs = '200.D-6';       # default for FV 2-deg
+        }
+        elsif ($phys eq 'cam6') {
             $micro_mg_dcs = '500.D-6';   # default for cam6/mg2
         }
         elsif ($phys eq 'cam_dev') {
@@ -3073,16 +3079,6 @@ if ($cfg->get('microphys') =~ /^mg/) {
         }
     }
 
-    if ($microphys eq 'mg3') {
-        $micro_mg_dcs = '250.D-6';       # default for cam_dev/mg3
-    }
-
-    if ($microphys =~ /mg2|mg3/ and $silhs eq '1') {
-        $micro_mg_dcs = '390.D-6';       # default for SIHLS
-    }
-    elsif ($microphys =~ /mg2|mg3/ and $hgrid =~ /1.9x2.5/) {
-        $micro_mg_dcs = '200.D-6';       # default for FV 2-deg
-    }
 
     add_default($nl, 'micro_mg_dcs', 'val'=>$micro_mg_dcs);
 }
