@@ -3072,10 +3072,10 @@ if ($cfg->get('microphys') =~ /^mg/) {
             $micro_mg_dcs = '200.D-6';       # default for FV 2-deg
         }
         elsif ($phys eq 'cam6') {
-            $micro_mg_dcs = '500.D-6';   # default for cam6/mg2
+            $micro_mg_dcs = '500.D-6';   # default for cam6
         }
         elsif ($phys eq 'cam_dev') {
-            $micro_mg_dcs = '250.D-6';   # default for cam_dev/mg2
+            $micro_mg_dcs = '250.D-6';   # default for cam_dev
         }
     }
 
@@ -3722,8 +3722,7 @@ if (($do_gw_rdg_beta or $do_gw_rdg_gamma)) {
 #    use tau_0_ubc = .false. to avoid changing answers.
 if ((not $waccm_phys) and
     ($do_gw_front or $do_gw_front_igw or
-     $do_gw_convect_dp or $do_gw_convect_sh or
-     $do_gw_oro or $do_gw_rdg_beta or $do_gw_rdg_gamma)) {
+     $do_gw_convect_dp or $do_gw_convect_sh )) {
     add_default($nl, 'tau_0_ubc', 'val'=>'.true.');
 } elsif (!$simple_phys) {
     add_default($nl, 'tau_0_ubc', 'val'=>'.false.');
