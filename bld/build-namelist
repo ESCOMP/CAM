@@ -3724,6 +3724,8 @@ if ((not $waccm_phys) and
     ($do_gw_front or $do_gw_front_igw or
      $do_gw_convect_dp or $do_gw_convect_sh )) {
     add_default($nl, 'tau_0_ubc', 'val'=>'.true.');
+} elsif ($phys =~ /cam_dev/) {
+    add_default($nl, 'tau_0_ubc', 'val'=>'.true.');
 } elsif (!$simple_phys) {
     add_default($nl, 'tau_0_ubc', 'val'=>'.false.');
 }
