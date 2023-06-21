@@ -28,6 +28,9 @@ module modal_aerosol_properties_mod
      procedure :: icenuc_updates_num
      procedure :: icenuc_updates_mmr
      procedure :: apply_number_limits
+     procedure :: hetfrz_species
+     procedure :: soluble
+     procedure :: min_mass_mean_rad
      final :: destructor
   end type modal_aerosol_properties
 
@@ -363,5 +366,89 @@ contains
     end do
 
   end subroutine apply_number_limits
+
+  !------------------------------------------------------------------------------
+  ! returns TRUE if species `spc_ndx` in aerosol subset `bin_ndx` contributes to
+  ! the particles' ability to act as heterogeneous freezing nuclei
+  !------------------------------------------------------------------------------
+  function hetfrz_species(self, bin_ndx, spc_ndx) result(res)
+    class(modal_aerosol_properties), intent(in) :: self
+    integer, intent(in) :: bin_ndx  ! bin number
+    integer, intent(in) :: spc_ndx  ! species number
+
+    logical :: res
+
+    character(len=aero_name_len) :: mode_name, species_type
+
+    res = .false.
+
+    call rad_cnst_get_info(0, bin_ndx, mode_type=mode_name)
+
+    if ((trim(mode_name)/='aitken')) then
+
+       call self%species_type(bin_ndx, spc_ndx, species_type)
+
+       if ((trim(species_type)=='black-c').or.(trim(species_type)=='dust')) then
+
+          res = .true.
+
+       end if
+
+    end if
+
+  end function hetfrz_species
+
+  !------------------------------------------------------------------------------
+  ! returns TRUE if soluble
+  !------------------------------------------------------------------------------
+  logical function soluble(self,bin_ndx)
+    class(modal_aerosol_properties), intent(in) :: self
+    integer, intent(in) :: bin_ndx           ! bin number
+
+    character(len=aero_name_len) :: mode_name
+
+    call rad_cnst_get_info(0, bin_ndx, mode_type=mode_name)
+
+    soluble = trim(mode_name)/='primary_carbon'
+
+  end function soluble
+
+  !------------------------------------------------------------------------------
+  ! returns minimum mass mean radius (meters)
+  !------------------------------------------------------------------------------
+  function min_mass_mean_rad(self,bin_ndx,species_ndx) result(minrad)
+    class(modal_aerosol_properties), intent(in) :: self
+    integer, intent(in) :: bin_ndx           ! bin number
+    integer, intent(in) :: species_ndx       ! species number
+
+    real(r8) :: minrad  ! meters
+
+    integer :: nmodes
+    character(len=aero_name_len) :: species_type, mode_type
+
+    call self%species_type(bin_ndx, species_ndx, spectype=species_type)
+    select case ( trim(species_type) )
+    case('dust')
+       call rad_cnst_get_info(0, bin_ndx, mode_type=mode_type)
+       select case ( trim(mode_type) )
+       case ('accum','fine_dust')
+          minrad = 0.258e-6_r8
+       case ('coarse','coarse_dust')
+          minrad = 1.576e-6_r8
+       case default
+          minrad = -huge(1._r8)
+       end select
+    case('black-c')
+       call rad_cnst_get_info(0, nmodes=nmodes)
+       if (nmodes==3) then
+          minrad = 0.04e-6_r8
+       else
+          minrad = 0.067e-6_r8 ! from emission size
+       endif
+    case default
+       minrad = -huge(1._r8)
+    end select
+
+  end function min_mass_mean_rad
 
 end module modal_aerosol_properties_mod

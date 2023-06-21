@@ -30,11 +30,11 @@ module clubb_intr
   use ref_pres,         only: top_lev => trop_cloud_top_lev
   use zm_conv_intr,     only: zmconv_microp
 #ifdef CLUBB_SGS
-  use clubb_api_module, only: pdf_parameter, implicit_coefs_terms
-  use clubb_api_module, only: clubb_config_flags_type, grid, stats, nu_vertical_res_dep
-  use clubb_api_module, only: nparams
-  use clubb_mf,         only: do_clubb_mf, do_clubb_mf_diag
-  use cloud_fraction,   only: dp1, dp2
+  use clubb_api_module,    only: pdf_parameter, implicit_coefs_terms
+  use clubb_api_module,    only: clubb_config_flags_type, grid, stats, nu_vertical_res_dep
+  use clubb_api_module,    only: nparams
+  use clubb_mf,            only: do_clubb_mf, do_clubb_mf_diag
+  use cloud_fraction,      only: dp1, dp2
 #endif
 
   implicit none
