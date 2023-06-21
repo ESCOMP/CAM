@@ -17,9 +17,14 @@
       real(r8), intent(in) :: extfrc(chnkpnts,extcnt)
       real(r8), intent(inout) :: prod(chnkpnts,nprod)
 !--------------------------------------------------------------------
+! ... "independent" production for Explicit species
+!--------------------------------------------------------------------
+      if( class == 1 ) then
+         prod(:,1) = 0._r8
+!--------------------------------------------------------------------
 ! ... "independent" production for Implicit species
 !--------------------------------------------------------------------
-      if( class == 4 ) then
+      else if( class == 4 ) then
          prod(:,1) = + extfrc(:,16)
          prod(:,2) = + extfrc(:,3)
          prod(:,97) = 0._r8
