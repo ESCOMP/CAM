@@ -17,7 +17,7 @@
 <avgflag_pertape>'A'</avgflag_pertape>
 
 <fincl1>
- 'U:A','T:A','V:A','Q:A','Z3:A','PRECL:A','PRECC:A','PS:A','SST:A','TS:A', 'gray_DTCOND', 'gray_DQCOND', 'gray_EVAPDT', 'gray_EVAPDQ', 'gray_PRECL' , 'gray_PRECC' , 'gray_Tsurf' , 'gray_Qsurf' , 'gray_Cdrag' , 'gray_Zpbl'  , 'gray_KVH'   , 'gray_KVM'   , 'gray_VSE'   , 'gray_Zm'    , 'gray_Rf'    , 'gray_DTV'   , 'gray_DUV'   , 'gray_DVV'   , 'gray_VD01'  , 'gray_SHflux', 'gray_LHflux', 'gray_TauU'  , 'gray_TauV'  , 'gray_QRL'   , 'gray_QRS'   , 'gray_SWflux', 'gray_LUflux', 'gray_LDflux', 'gray_LWflux'
+ 'U:A','T:A','V:A','Q:A','Z3:A','PRECL:A','PRECC:A','PS:A','SST:A','TS:A', 'gray_DTCOND', 'gray_DQCOND', 'gray_EVAPDT', 'gray_EVAPDQ', 'gray_PRECL' , 'gray_PRECC' , 'gray_Tsurf' , 'gray_Qsurf' , 'gray_Cdrag' , 'gray_Zpbl'  , 'gray_KVH'   , 'gray_KVM'   , 'gray_VSE'   , 'gray_Zm'    , 'gray_Rf'    , 'gray_DTV'   , 'gray_DUV'   , 'gray_DVV'   , 'gray_VD01'  , 'gray_SHflux', 'gray_LHflux', 'gray_TauU'  , 'gray_TauV'  , 'gray_QRL'   , 'gray_QRS'   , 'gray_SWflux', 'gray_LUflux', 'gray_LDflux', 'gray_LWflux', 'gray_LUflux_TOA', 'gray_LDflux_TOA', 'gray_LWflux_TOA'
 </fincl1>
 
 <analytic_ic_type>'moist_baroclinic_wave_dcmip2016'</analytic_ic_type>

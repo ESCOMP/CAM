@@ -95,6 +95,8 @@ module frierson_cam
   real(r8),allocatable :: Fsolar(:,:)     ! Net Solar Heating
   real(r8),allocatable :: Fup   (:,:)     ! Upward Longwave flux
   real(r8),allocatable :: Fdown (:,:)     ! Downward Longwave flux
+  real(r8),allocatable :: Fup_toa  (:,:)  ! Upward Longwave flux at TOA
+  real(r8),allocatable :: Fdown_toa(:,:)  ! Downward Longwave flux at TOA
   real(r8),allocatable :: SHflux(:,:)     ! Sensible Heat flux
   real(r8),allocatable :: LHflux(:,:)     ! Latent Heat Flux
   real(r8),allocatable :: TUflux(:,:)     ! U stress momentum flux
@@ -102,6 +104,7 @@ module frierson_cam
   real(r8),allocatable :: Cd    (:,:)     ! Surface Drag
   real(r8),allocatable :: clat  (:,:)     ! latitudes(radians) for columns
   real(r8),allocatable :: Fnet  (:,:)     ! Net Radiative Surface Heating
+  real(r8),allocatable :: Fnet_toa(:,:)   ! Net Radiative Surface Heating at TOA
 
   real(r8), parameter :: unset_r8 = huge(1.0_r8)
 
@@ -272,6 +275,9 @@ contains
     call addfld('gray_LUflux',horiz_only,'I','W/m2'   ,'LW Upward Radiative Flux at Surface'             )
     call addfld('gray_LDflux',horiz_only,'I','W/m2'   ,'LW Downward Radiative Flux at Surface'           )
     call addfld('gray_LWflux',horiz_only,'I','W/m2'   ,'LW Net Radiative Flux at Surface'                )
+    call addfld('gray_LUflux_TOA',horiz_only,'I','W/m2'   ,'LW Upward Radiative Flux at TOA'             )
+    call addfld('gray_LDflux_TOA',horiz_only,'I','W/m2'   ,'LW Downward Radiative Flux at TOA'           )
+    call addfld('gray_LWflux_TOA',horiz_only,'I','W/m2'   ,'LW Net Radiative Flux at TOA'                )
     call addfld('gray_SHflux',horiz_only,'I','W/m2'   , 'Sensible Heat Flux'        )
     call addfld('gray_LHflux',horiz_only,'I','W/m2'   , 'Latent Heat Flux'          )
     call addfld('gray_TauU'  ,horiz_only,'I','N/m2'   , 'U Surface Stress'          )
@@ -302,6 +308,9 @@ contains
     call add_default('gray_LUflux',1,' ')
     call add_default('gray_LDflux',1,' ')
     call add_default('gray_LWflux',1,' ')
+    call add_default('gray_LUflux_TOA',1,' ')
+    call add_default('gray_LDflux_TOA',1,' ')
+    call add_default('gray_LWflux_TOA',1,' ')
     call add_default('gray_SHflux',1,' ')
     call add_default('gray_LHflux',1,' ')
     call add_default('gray_TauU'  ,1,' ')
@@ -315,8 +324,14 @@ contains
     call alloc_err(istat,'Frierson INIT','Fup'   ,pcols*(endchunk-begchunk+1))
     allocate(Fdown (pcols,begchunk:endchunk)  ,stat=istat)
     call alloc_err(istat,'Frierson INIT','Fdown' ,pcols*(endchunk-begchunk+1))
+    allocate(Fup_toa   (pcols,begchunk:endchunk)  ,stat=istat)
+    call alloc_err(istat,'Frierson INIT','Fup_toa'   ,pcols*(endchunk-begchunk+1))
+    allocate(Fdown_toa (pcols,begchunk:endchunk)  ,stat=istat)
+    call alloc_err(istat,'Frierson INIT','Fdown_toa' ,pcols*(endchunk-begchunk+1))
     allocate(Fnet(pcols,begchunk:endchunk)  ,stat=istat)
     call alloc_err(istat,'Frierson INIT','Fnet',pcols*(endchunk-begchunk+1))
+    allocate(Fnet_toa(pcols,begchunk:endchunk)  ,stat=istat)
+    call alloc_err(istat,'Frierson INIT','Fnet_toa'  ,pcols*(endchunk-begchunk+1))
 
     allocate(SHflux(pcols,begchunk:endchunk)  ,stat=istat)
     call alloc_err(istat,'Frierson INIT','SHflux',pcols*(endchunk-begchunk+1))
@@ -377,6 +392,8 @@ contains
       Fsolar(:,lchnk) = 0._r8
       Fup   (:,lchnk) = 0._r8
       Fdown (:,lchnk) = 0._r8
+      Fup_toa   (:,lchnk) = 0._r8
+      Fdown_toa (:,lchnk) = 0._r8
       SHflux(:,lchnk) = 0._r8
       LHflux(:,lchnk) = 0._r8
       TUflux(:,lchnk) = 0._r8
@@ -802,7 +819,9 @@ contains
                                       dtdt_heating(:ncol,:),     &
                                             Fsolar(:ncol,lchnk), &
                                                Fup(:ncol,lchnk), &
-                                             Fdown(:ncol,lchnk)  )
+                                             Fdown(:ncol,lchnk), &
+                                           Fup_toa(:ncol,lchnk), &
+                                         Fdown_toa(:ncol,lchnk)  )
       dtdt_solar(:ncol,:) = 0._r8
     elseif(RADIATION_OPT == RADIATION_USER) then
       call frierson_radiation_USER(ncol,pver,ztodt,clat(:ncol,lchnk), &
@@ -816,7 +835,9 @@ contains
                                            dtdt_heating(:ncol,:),     &
                                                  Fsolar(:ncol,lchnk), &
                                                     Fup(:ncol,lchnk), &
-                                                  Fdown(:ncol,lchnk)  )
+                                                  Fdown(:ncol,lchnk), &
+                                                Fup_toa(:ncol,lchnk), &
+                                              Fdown_toa(:ncol,lchnk)  )
       dtdt_solar(:ncol,:) = 0._r8
     else
       ! ERROR: Unknown RADIATION_OPT value
@@ -825,7 +846,8 @@ contains
       call endrun('frierson_pbl_tend() RADIATION_OPT ERROR')
     endif
 
-    Fnet  (:ncol,lchnk) = Fup(:ncol,lchnk) - Fdown (:ncol,lchnk)
+    Fnet  (:ncol,lchnk)     = Fup(:ncol,lchnk)     - Fdown (:ncol,lchnk)
+    Fnet_toa  (:ncol,lchnk) = Fup_toa(:ncol,lchnk) - Fdown_toa (:ncol,lchnk)
 
     ! Copy downward LW radiative heating values to cam_out%
     !---------------------------------------------------------
@@ -850,6 +872,9 @@ contains
     call outfld('gray_LUflux',Fup(:ncol,lchnk)         , ncol,lchnk)
     call outfld('gray_LDflux',Fdown(:ncol,lchnk)       , ncol,lchnk)
     call outfld('gray_LWflux',Fnet(:ncol,lchnk)        , ncol,lchnk)
+    call outfld('gray_LUflux_TOA',Fup_toa(:ncol,lchnk)     , ncol,lchnk)
+    call outfld('gray_LDflux_TOA',Fdown_toa(:ncol,lchnk)   , ncol,lchnk)
+    call outfld('gray_LWflux_TOA',Fnet_toa(:ncol,lchnk)    , ncol,lchnk)
 
   end subroutine frierson_radiative_tend
   !============================================================================

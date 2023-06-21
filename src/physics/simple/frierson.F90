@@ -1000,7 +1000,7 @@ contains
   !=======================================================================
   subroutine frierson_radiation(ncol,pver,dtime,clat,pint,pmid,  &
                                 Psfc,Tsfc,Qsfc,T,qv,dtdt_rad, &
-                                Fsolar,Fup_s,Fdown_s)
+                                Fsolar,Fup_s,Fdown_s,Fup_toa,Fdown_toa)
     !
     ! The gray radiation parameterization based on Frierson, et al. 2006.
     !
@@ -1024,6 +1024,8 @@ contains
     real(r8),intent(out)  :: dtdt_rad(ncol,pver)   ! temperature tendency in K/s from relaxation
     real(r8),intent(out)  :: Fsolar  (ncol)        !
     real(r8),intent(out)  :: Fup_s   (ncol)        !
+    real(r8),intent(out)  :: Fdown_toa(ncol)       !
+    real(r8),intent(out)  :: Fup_toa  (ncol)       !
     real(r8),intent(out)  :: Fdown_s (ncol)        !
     !
     ! Local Values
@@ -1109,10 +1111,12 @@ contains
                        /(              Zi(:,k+1)  -   Zi(:,k)            )
     end do
 
-    ! Return Upward/Downward long wave radiation at Surface
+    ! Return Upward/Downward long wave radiation at Surface and TOA
     !----------------------------------------------------------
     Fup_s  (:) = Fup  (:,pver+1)
     Fdown_s(:) = Fdown(:,pver+1)
+    Fup_toa  (:) = Fup  (:,1)
+    Fdown_toa(:) = Fdown(:,1)
 
     ! Update T values
     !-------------------
@@ -1127,7 +1131,7 @@ contains
   !=======================================================================
   subroutine frierson_radiation_USER(ncol,pver,dtime,clat,pint,pmid,  &
                                      Psfc,Tsfc,Qsfc,T,qv,dtdt_rad, &
-                                     Fsolar,Fup_s,Fdown_s)
+                                     Fsolar,Fup_s,Fdown_s,Fup_toa,Fdown_toa)
     !
     ! frierson_radiation_USER: This routine is a stub which users can use
     !                          to develop and test their own radiation scheme
@@ -1150,6 +1154,8 @@ contains
     real(r8),intent(out)  :: Fsolar  (ncol)        !
     real(r8),intent(out)  :: Fup_s   (ncol)        !
     real(r8),intent(out)  :: Fdown_s (ncol)        !
+    real(r8),intent(out)  :: Fup_toa  (ncol)       !
+    real(r8),intent(out)  :: Fdown_toa(ncol)      !
     !
     ! Local Values
     !-------------
@@ -1158,6 +1164,8 @@ contains
     Fsolar   = 0._r8
     Fup_s    = 0._r8
     Fdown_s  = 0._r8
+    Fup_toa    = 0._r8
+    Fdown_toa  = 0._r8
 
 
   end subroutine frierson_radiation_USER
