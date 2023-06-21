@@ -688,7 +688,7 @@ subroutine vertical_diffusion_tend( &
   use upper_bc,           only : ubc_get_vals, ubc_fixed_temp
   use upper_bc,           only : ubc_get_flxs
   use coords_1d,          only : Coords1D
-  use phys_control,       only : cam_physpkg_is
+  use clubb_intr,         only : clubb_do_hb_above
 
   ! --------------- !
   ! Input Arguments !
@@ -1010,11 +1010,10 @@ subroutine vertical_diffusion_tend( &
      call outfld( 'HB_ri',          ri,         pcols,   lchnk )
 
   case ( 'CLUBB_SGS' )
-
     !
     ! run HB scheme where CLUBB is not active when running cam_dev
     !
-    if (cam_physpkg_is("cam_dev")) then
+    if (clubb_do_hb_above) then
       call compute_hb_diff( lchnk     , ncol     ,                                &
            th        , state%t  , state%q , state%zm , state%zi, &
            state%pmid, state%u  , state%v , tautotx  , tautoty , &
@@ -1025,7 +1024,9 @@ subroutine vertical_diffusion_tend( &
            eddy_scheme )
       clubbtop_idx = pbuf_get_index('clubbtop')
       call pbuf_get_field(pbuf, clubbtop_idx, clubbtop)
-
+      !
+      ! zero out HB where CLUBB is active
+      !
       do i=1,ncol
         do k=clubbtop(i),pverp
           kvm(i,k) = 0.0_r8
@@ -1141,7 +1142,7 @@ subroutine vertical_diffusion_tend( &
      tauy = 0._r8
      shflux = 0._r8
      cflux(:,1) = 0._r8
-     if (cam_physpkg_is("cam_dev")) then
+     if (clubb_do_hb_above) then
        ! surface fluxes applied in clubb emissions module
        cflux(:,2:) = 0._r8
      else

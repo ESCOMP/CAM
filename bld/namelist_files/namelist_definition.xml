@@ -4180,6 +4180,13 @@ Real: number of plumes in mass flux ensemble
 Default: 10
 </entry>
 
+<entry id="clubb_do_hb_above" type="logical" category="pbl"
+       group="clubb_params_nl" valid_values="" >
+Logical: If True activate Holtslag and Boville PBL scheme where CLUBB is not active
+         (note that CLUBB top is dynamic in each column)
+Default: none
+</entry>
+
 <!-- CARMA Sectional Microphysics -->
 
 <entry id="carma_model" type="char*32" category="carma"
