@@ -1,4 +1,3 @@
-
 module MO_SETSOX
 
   use shr_kind_mod, only : r8 => shr_kind_r8
@@ -480,12 +479,15 @@ contains
              xk = 2.1e5_r8 *EXP( 8700._r8*work1(i) )
              xe = 15.4_r8
              ! MOSAIC (dsj) - hno3 + no3 -> hno3
+#if ( defined MOSAIC_SPECIES )
              if (mosaic_aqchem_optaa > 0) then
                 fact1_hno3 = xk*xe*patm*(xhno3(i,k)+xno3(i,k))
              else
                 fact1_hno3 = xk*xe*patm*xhno3(i,k)
              endif             
-             !fact1_hno3 = xk*xe*patm*xhno3(i,k)
+#else
+             fact1_hno3 = xk*xe*patm*xhno3(i,k)
+#endif             
              fact2_hno3 = xk*ra*tz*xl
              fact3_hno3 = xe
              
