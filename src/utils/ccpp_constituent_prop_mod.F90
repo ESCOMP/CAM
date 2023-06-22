@@ -14,7 +14,7 @@ module ccpp_constituent_prop_mod
    end type ccpp_constituent_prop_ptr_t
 
    !CCPP properties init routine
-   public  :: ccpp_const_props_init
+   public :: ccpp_const_props_init
 
    !Public properties DDT variable:
    type(ccpp_constituent_prop_ptr_t), allocatable, public :: ccpp_const_props(:)
@@ -99,7 +99,7 @@ contains
 !CCPP constituents stub initialization routine
 !+++++++++++++++++++++++++++++++++++++++++++++
 
-subroutine ccpp_const_prop_init()
+subroutine ccpp_const_props_init()
 
     !Use statements:
     use constituents,    only: pcnst
@@ -127,6 +127,6 @@ subroutine ccpp_const_prop_init()
        end if
     end do
 
-end subroutine ccpp_const_prop_init
+end subroutine ccpp_const_props_init
 
 end module ccpp_constituent_prop_mod

@@ -39,9 +39,8 @@ contains
 
 use ppgrid,                    only: pcols
 use constituents,              only: pcnst, cnst_get_ind
-use ccpp_constituent_prop_mod, only: ccpp_const_props   !CCPP constituent properties array (stub version)
-use geopotential_t,            only: geopotential_t_run !CCPP version
-
+use ccpp_constituent_prop_mod, only: ccpp_const_props      !CCPP constituent properties array (stub version)
+use geopotential_temp,         only: geopotential_temp_run !CCPP version
 !------------------------------Arguments--------------------------------
 !
 ! Input arguments
@@ -141,9 +140,9 @@ use geopotential_t,            only: geopotential_t_run !CCPP version
       !end if
 
       !Use CCPP version of geopotential_t:
-      call geopotential_t_run(pver, lagrang, pver, 1, pverp, 1,  &
-        pcnst, piln, pint, pmid, pdel, rpdel, t, q(:,:,ixq), q,  &
-        ccpp_const_props, rair, gravit, zvir, zi, zm, ncol,      &
+      call geopotential_temp_run(pver, lagrang, pver, 1, pverp, 1,  &
+        pcnst, piln, pint, pmid, pdel, rpdel, t, q(:,:,ixq), q,     &
+        ccpp_const_props, rair, gravit, zvir, zi, zm, ncol,         &
         errflg, errmsg)
 
     end if
