@@ -125,7 +125,7 @@
 <ncdata dyn="se" hgrid="ne30np4" nlev="93" chem="trop_strat_mam5_vbs">atm/cam/inic/se/FCMTHIST_ne30pg3_1980-01-01_c221214.nc</ncdata>
 <ncdata dyn="se" hgrid="10x15"   nlev="32" chem="trop_strat_mam5_vbs">atm/cam/inic/fv/FC2000mam5_f10_0002-01-01_c221214.nc</ncdata>
 
-<ncdata dyn="se" hgrid="ne30np4" npg="3" nlev="58">atm/cam/inic/se/FWsc_ne30pg3_58L_GRID_48_taperstart10km_lowtop_BL10_v3_beta1p75_Top_43km.nc</ncdata>
+<ncdata dyn="se" hgrid="ne30np4" npg="3" nlev="58">atm/cam/inic/se/FLT_L58_ne30pg3_IC_c220623.nc</ncdata>
 <ncdata dyn="se" hgrid="ne30np4" npg="3" nlev="93">atm/cam/inic/se/L93_ne30pg3_ne30pg3_mg17_450_short.cam.i.1979-01-07-00000.nc</ncdata>
 
 <ncdata dyn="fv"  hgrid="4x5"       nlev="26"  chem="trop_mozart" ic_ymd="901" >atm/cam/chem/trop_mozart/ic/cami_0000-09-01_4x5_L26_c060217.nc</ncdata>
