@@ -3029,7 +3029,6 @@ if ($cfg->get('microphys') =~ /^mg/) {
     add_default($nl, 'nucleate_ice_subgrid_strat');
     add_default($nl, 'nucleate_ice_use_troplev');
     add_default($nl, 'cld_macmic_num_steps', 'dtime'=>$dtime);
-    add_default($nl, 'micro_mg_dcs');
     add_default($nl, 'micro_mg_precip_frac_method');
     add_default($nl, 'micro_mg_berg_eff_factor');
     add_default($nl, 'nucleate_ice_incloud');
@@ -3057,6 +3056,31 @@ if ($cfg->get('microphys') =~ /^mg/) {
 	add_default($nl, 'micro_mg_accre_sees_auto');
 	add_default($nl, 'micro_mg_implicit_fall');
     }
+
+    # tunings for micro_mg_dcs
+    my $microphys = $cfg->get('microphys');
+    my $hgrid = $cfg->get('hgrid');
+    my $silhs = $cfg->get('silhs');
+
+    my $micro_mg_dcs = '400.D-6';        # default for cam5/mg1
+
+    if ($microphys =~ /mg2|mg3/) {
+        if ($silhs eq '1') {
+            $micro_mg_dcs = '390.D-6';       # default for SIHLS
+        }
+        elsif ($hgrid =~ /1.9x2.5/ and $phys eq 'cam6') {
+            $micro_mg_dcs = '200.D-6';       # default for FV 2-deg
+        }
+        elsif ($phys eq 'cam6') {
+            $micro_mg_dcs = '500.D-6';   # default for cam6
+        }
+        elsif ($phys eq 'cam_dev') {
+            $micro_mg_dcs = '250.D-6';   # default for cam_dev
+        }
+    }
+
+
+    add_default($nl, 'micro_mg_dcs', 'val'=>$micro_mg_dcs);
 }
 
 # Aerosol Namelist options
@@ -3564,6 +3588,11 @@ if ($waccm_phys or
     }
     add_default($nl, 'gw_qbo_hdepth_scaling', 'val'=>$hdepth_scaling);
     add_default($nl, 'gw_top_taper');
+} elsif ($phys =~ /cam_dev/) {
+    # cam_dev settings for nlev<60 (Other cam_dev set above)
+    add_default($nl, 'use_gw_front'     , 'val'=>'.true.');
+    add_default($nl, 'use_gw_convect_dp', 'val'=>'.true.');
+    add_default($nl, 'gw_qbo_hdepth_scaling', 'val'=>'1.0D0');
 } else {
     add_default($nl, 'use_gw_front'     , 'val'=>'.false.');
     add_default($nl, 'use_gw_convect_dp', 'val'=>'.false.');
@@ -3636,8 +3665,8 @@ if ($do_gw_rdg_beta) {
         die "$ProgName - ERROR: beta ridge scheme requires data from a topo file.\n";
     }
     add_default($nl, 'n_rdg_beta',          'val'=>'10');
-    add_default($nl, 'effgw_rdg_beta',      'val'=>'1.0D0');
-    add_default($nl, 'effgw_rdg_beta_max',  'val'=>'1.0D0');
+    add_default($nl, 'effgw_rdg_beta');
+    add_default($nl, 'effgw_rdg_beta_max');
     add_default($nl, 'trpd_leewv_rdg_beta', 'val'=>'.false.');
     add_default($nl, 'rdg_beta_cd_llb',     'val'=>'1.0D0');
 }
@@ -3693,7 +3722,9 @@ if (($do_gw_rdg_beta or $do_gw_rdg_gamma)) {
 #    use tau_0_ubc = .false. to avoid changing answers.
 if ((not $waccm_phys) and
     ($do_gw_front or $do_gw_front_igw or
-     $do_gw_convect_dp or $do_gw_convect_sh)) {
+     $do_gw_convect_dp or $do_gw_convect_sh )) {
+    add_default($nl, 'tau_0_ubc', 'val'=>'.true.');
+} elsif ($phys =~ /cam_dev/) {
     add_default($nl, 'tau_0_ubc', 'val'=>'.true.');
 } elsif (!$simple_phys) {
     add_default($nl, 'tau_0_ubc', 'val'=>'.false.');

@@ -125,8 +125,8 @@
 <ncdata dyn="se" hgrid="ne30np4" nlev="93" chem="trop_strat_mam5_vbs">atm/cam/inic/se/FCMTHIST_ne30pg3_1980-01-01_c221214.nc</ncdata>
 <ncdata dyn="se" hgrid="10x15"   nlev="32" chem="trop_strat_mam5_vbs">atm/cam/inic/fv/FC2000mam5_f10_0002-01-01_c221214.nc</ncdata>
 
-<ncdata dyn="se" hgrid="ne30np4" npg="3" nlev="58">atm/cam/inic/se/FWsc_ne30pg3_58L_GRID_48_taperstart10km_lowtop_BL10_v3_beta1p75_Top_43km.nc</ncdata>
-<ncdata dyn="se" hgrid="ne30np4" npg="3" nlev="93">atm/cam/inic/se/L93_ne30pg3_ne30pg3_mg17_450_short.cam.i.1979-01-07-00000.nc</ncdata>
+<ncdata dyn="se" hgrid="ne30np4" npg="3" nlev="58">atm/cam/inic/se/FLT_L58_ne30pg3_IC_c220623.nc</ncdata>
+<ncdata dyn="se" hgrid="ne30np4" npg="3" nlev="93">atm/cam/inic/se/cam7_FMT_ne30pg3_mg17_L93_c221118.nc</ncdata>
 
 <ncdata dyn="fv"  hgrid="4x5"       nlev="26"  chem="trop_mozart" ic_ymd="901" >atm/cam/chem/trop_mozart/ic/cami_0000-09-01_4x5_L26_c060217.nc</ncdata>
 <ncdata dyn="fv"  hgrid="10x15"     nlev="26"  chem="trop_mozart" ic_ymd="901" >atm/cam/chem/trop_mozart/ic/cami_0000-09-01_10x15_L26_c060216.nc</ncdata>
@@ -708,6 +708,8 @@
 <!-- gravity wave settings -->
 <effgw_beres_dp>0.7D0</effgw_beres_dp>
 <effgw_beres_dp hgrid="0.9x1.25"                              >0.4D0</effgw_beres_dp>
+<effgw_beres_dp model_top="lt"                                >0.30D0</effgw_beres_dp>
+<effgw_beres_dp model_top="mt"                                >0.70D0</effgw_beres_dp>
 <effgw_beres_dp waccm_phys="0"                                >0.55D0</effgw_beres_dp>
 <effgw_beres_dp waccm_phys="1" hgrid="0.9x1.25"               >0.5D0</effgw_beres_dp>
 <effgw_beres_dp waccm_phys="1" hgrid="ne30np4" nlev="70"      >0.5D0</effgw_beres_dp>
@@ -716,7 +718,16 @@
 <effgw_beres_dp chem="trop_strat_mam4_vbsext" hgrid="0.9x1.25">0.5D0</effgw_beres_dp>
 <effgw_beres_dp chem="trop_strat_mam5_vbs" hgrid="0.9x1.25"   >0.5D0</effgw_beres_dp>
 <effgw_beres_dp chem="trop_strat_mam5_vbsext" hgrid="0.9x1.25">0.5D0</effgw_beres_dp>
+
 <effgw_oro      nlev="60"     >0.0625D0</effgw_oro>
+
+<effgw_rdg_beta                    >1.0D0</effgw_rdg_beta>
+<effgw_rdg_beta model_top="lt"     >0.5D0</effgw_rdg_beta>
+<effgw_rdg_beta model_top="mt"     >0.5D0</effgw_rdg_beta>
+
+<effgw_rdg_beta_max                >1.0D0</effgw_rdg_beta_max>
+<effgw_rdg_beta_max model_top="lt" >0.5D0</effgw_rdg_beta_max>
+<effgw_rdg_beta_max model_top="mt" >0.5D0</effgw_rdg_beta_max>
 
 <!-- setting for gravity waves from shallow convection. -->
 <effgw_beres_sh>0.03D0</effgw_beres_sh>
@@ -748,9 +759,8 @@
 <gw_limit_tau_without_eff chem="trop_strat_mam4_vbsext">.true. </gw_limit_tau_without_eff>
 <gw_limit_tau_without_eff chem="trop_strat_mam5_vbs">.true. </gw_limit_tau_without_eff>
 <gw_limit_tau_without_eff chem="trop_strat_mam5_vbsext">.true. </gw_limit_tau_without_eff>
-<gw_apply_tndmax                        >.true. </gw_apply_tndmax>
-<gw_apply_tndmax chem="ghg_mam4" nlev="93">.false.</gw_apply_tndmax>
-<gw_apply_tndmax chem="ghg_mam4" nlev="58">.false.</gw_apply_tndmax>
+<gw_apply_tndmax                          >.true. </gw_apply_tndmax>
+<gw_apply_tndmax phys="cam_dev"           >.false.</gw_apply_tndmax>
 <gw_apply_tndmax            waccm_phys="1">.false.</gw_apply_tndmax>
 <gw_apply_tndmax chem="trop_strat_mam4_vbs">.false.</gw_apply_tndmax>
 <gw_apply_tndmax chem="trop_strat_mam4_vbsext">.false.</gw_apply_tndmax>
@@ -2002,6 +2012,7 @@
 <clubb_c6thlb                                     > 6.0     </clubb_c6thlb>
 <clubb_c6thlc                                     > 1.0     </clubb_c6thlc>
 <clubb_C7                                         > 0.5     </clubb_C7>
+<clubb_C7 phys="cam_dev"                          > 0.1     </clubb_C7>
 <clubb_C7b                                        > 0.5     </clubb_C7b>
 <clubb_C8                                         > 4.2     </clubb_C8>
 <clubb_C8b                                        > 0.0     </clubb_C8b>
@@ -2020,6 +2031,7 @@
 <clubb_c_K8                                       > 1.25    </clubb_c_K8>
 <clubb_c_K9                                       > 0.25    </clubb_c_K9>
 <clubb_C_uu_shr                                   > 0.3     </clubb_C_uu_shr>
+<clubb_C_uu_shr phys="cam_dev"                    > 0.1     </clubb_C_uu_shr>
 <clubb_C_uu_buoy                                  > 0.3     </clubb_C_uu_buoy>
 <clubb_C_wp2_splat                                > 0.0     </clubb_C_wp2_splat>
 <clubb_C_wp3_pr_turb                              > 0.4     </clubb_C_wp3_pr_turb>
@@ -2030,7 +2042,7 @@
 <clubb_do_energyfix                               > .true.  </clubb_do_energyfix>
 <clubb_do_liqsupersat                             > .false. </clubb_do_liqsupersat>
 <clubb_gamma_coef                                 > 0.308   </clubb_gamma_coef>
-<clubb_gamma_coef hgrid="1.9x2.5"                 > 0.280   </clubb_gamma_coef>
+<clubb_gamma_coef hgrid="1.9x2.5" phys="cam6"     > 0.280   </clubb_gamma_coef>
 <clubb_gamma_coef dyn="se"                        > 0.270   </clubb_gamma_coef>
 <clubb_gamma_coefb                                > 0.32    </clubb_gamma_coefb>
 <clubb_ipdf_call_placement                        > 2       </clubb_ipdf_call_placement>
@@ -2054,10 +2066,11 @@
 <clubb_l_mono_flux_lim_rtm                        > .true.  </clubb_l_mono_flux_lim_rtm>
 <clubb_l_mono_flux_lim_spikefix                   > .true.  </clubb_l_mono_flux_lim_spikefix>
 <clubb_l_mono_flux_lim_thlm                       > .true.  </clubb_l_mono_flux_lim_thlm>
-<clubb_l_mono_flux_lim_um                         > .false. </clubb_l_mono_flux_lim_um>
-<clubb_l_mono_flux_lim_vm                         > .false. </clubb_l_mono_flux_lim_vm>
+<clubb_l_mono_flux_lim_um                         > .true.  </clubb_l_mono_flux_lim_um>
+<clubb_l_mono_flux_lim_vm                         > .true.  </clubb_l_mono_flux_lim_vm>
 <clubb_l_partial_upwind_wp3                       > .false. </clubb_l_partial_upwind_wp3>
 <clubb_l_predict_upwp_vpwp                        > .false. </clubb_l_predict_upwp_vpwp>
+<clubb_l_predict_upwp_vpwp phys="cam_dev"         > .true.  </clubb_l_predict_upwp_vpwp>
 <clubb_l_rcm_supersat_adj                         > .false. </clubb_l_rcm_supersat_adj>
 <clubb_l_smooth_Heaviside_tau_wpxp                > .false. </clubb_l_smooth_Heaviside_tau_wpxp>
 <clubb_l_standard_term_ta                         > .false. </clubb_l_standard_term_ta>
@@ -2152,21 +2165,14 @@
 <micro_mg_version     microphys="mg1">    1          </micro_mg_version>
 <micro_mg_sub_version microphys="mg1">    0          </micro_mg_sub_version>
 <micro_mg_num_steps   microphys="mg1">    1          </micro_mg_num_steps>
-<micro_mg_dcs         microphys="mg1">    400.D-6    </micro_mg_dcs>
 
-<micro_mg_version     microphys="mg2">                                 2          </micro_mg_version>
-<micro_mg_sub_version microphys="mg2">                                 0          </micro_mg_sub_version>
-<micro_mg_num_steps   microphys="mg2">                                 1          </micro_mg_num_steps>
-<micro_mg_dcs         microphys="mg2">                                 500.D-6    </micro_mg_dcs>
-<micro_mg_dcs         microphys="mg2"                   silhs="1"   >  390.D-6    </micro_mg_dcs>
-<micro_mg_dcs         microphys="mg2" hgrid="1.9x2.5">                 200.D-6    </micro_mg_dcs>
+<micro_mg_version     microphys="mg2">    2          </micro_mg_version>
+<micro_mg_sub_version microphys="mg2">    0          </micro_mg_sub_version>
+<micro_mg_num_steps   microphys="mg2">    1          </micro_mg_num_steps>
 
-<micro_mg_version     microphys="mg3">                                 3          </micro_mg_version>
-<micro_mg_sub_version microphys="mg3">                                 0          </micro_mg_sub_version>
-<micro_mg_num_steps   microphys="mg3">                                 1          </micro_mg_num_steps>
-<micro_mg_dcs         microphys="mg3">                                 500.D-6    </micro_mg_dcs>
-<micro_mg_dcs         microphys="mg3"                   silhs="1"   >  390.D-6    </micro_mg_dcs>
-<micro_mg_dcs         microphys="mg3" hgrid="1.9x2.5">                 200.D-6    </micro_mg_dcs>
+<micro_mg_version     microphys="mg3">    3          </micro_mg_version>
+<micro_mg_sub_version microphys="mg3">    0          </micro_mg_sub_version>
+<micro_mg_num_steps   microphys="mg3">    1          </micro_mg_num_steps>
 
 <micro_do_massless_droplet_destroyer                             >  .false. </micro_do_massless_droplet_destroyer>
 <micro_do_massless_droplet_destroyer   microphys="mg2" silhs="1" >  .true.  </micro_do_massless_droplet_destroyer>
@@ -2197,6 +2203,7 @@
 <microp_aero_wsub_scale                  >  1.D0    </microp_aero_wsub_scale>
 
 <microp_aero_wsubi_scale                  >  1.D0    </microp_aero_wsubi_scale>
+<microp_aero_wsubi_scale phys="cam_dev"   >  2.5D0    </microp_aero_wsubi_scale>
 
 <microp_aero_wsub_min                  >  0.2D0    </microp_aero_wsub_min>
 
@@ -2206,7 +2213,7 @@
 <micro_mg_homog_size  microphys="mg2"  >  25.D-6    </micro_mg_homog_size>
 
 <micro_mg_vtrmi_factor                  >  1.D0    </micro_mg_vtrmi_factor>
-<micro_mg_vtrmi_factor microphys="mg2"  >  1.D0    </micro_mg_vtrmi_factor>
+<micro_mg_vtrmi_factor phys="cam_dev"   >  0.5D0    </micro_mg_vtrmi_factor>
 
 <micro_mg_effi_factor                  >  1.D0    </micro_mg_effi_factor>
 <micro_mg_effi_factor microphys="mg2"  >  1.D0    </micro_mg_effi_factor>
@@ -2341,7 +2348,7 @@
 <dust_emis_fact dyn="se"                   phys="cam5"                    >0.55D0</dust_emis_fact>
 <dust_emis_fact dyn="fv"                   phys="cam5"   clubb_sgs="1"    >0.22D0</dust_emis_fact>
 <dust_emis_fact dyn="se"                   phys="cam6"                    >0.70D0</dust_emis_fact>
-<dust_emis_fact dyn="se"                   phys="cam_dev"                 >0.70D0</dust_emis_fact>
+<dust_emis_fact dyn="se"                   phys="cam_dev"                 >0.80D0</dust_emis_fact>
 <dust_emis_fact dyn="se" hgrid="ne30np4"   phys="cam6"             chem="trop_strat_mam4_vbs">0.8D0</dust_emis_fact>
 <dust_emis_fact dyn="se" hgrid="ne30np4"   phys="cam_dev"          chem="trop_strat_mam4_vbs">0.8D0</dust_emis_fact>
 <dust_emis_fact dyn="se" hgrid="ne0np4CONUS.ne30x8" phys="cam6"    chem="trop_strat_mam4_vbs">0.8D0</dust_emis_fact>
@@ -2377,13 +2384,14 @@
 
 <!-- seasalt emission tuning factor -->
 <!-- Note that ver="strat" when modal_accum_coarse_exch=.true. -->
-<seasalt_emis_scale                          >1.35D0</seasalt_emis_scale>
-<seasalt_emis_scale ver="mam7"               >1.62D0</seasalt_emis_scale>
-<seasalt_emis_scale ver="strat"              >0.90D0</seasalt_emis_scale>
-<seasalt_emis_scale ver="strat" clubb_sgs="1">1.00D0</seasalt_emis_scale>
-<seasalt_emis_scale ver="strat" clubb_sgs="1" hgrid="1.9x2.5">1.10D0</seasalt_emis_scale>
-<seasalt_emis_scale ver="strat" spcam_clubb_sgs="1">1.2D0</seasalt_emis_scale>
-<seasalt_emis_scale ver="strat" clubb_sgs="1" silhs="1">0.60D0</seasalt_emis_scale>
+<seasalt_emis_scale                                                      >1.35D0</seasalt_emis_scale>
+<seasalt_emis_scale ver="mam7"                                           >1.62D0</seasalt_emis_scale>
+<seasalt_emis_scale ver="strat"                                          >0.90D0</seasalt_emis_scale>
+<seasalt_emis_scale ver="strat" clubb_sgs="1"                            >1.00D0</seasalt_emis_scale>
+<seasalt_emis_scale ver="strat" clubb_sgs="1" phys="cam_dev"             >1.5D0</seasalt_emis_scale>
+<seasalt_emis_scale ver="strat" clubb_sgs="1" hgrid="1.9x2.5" phys="cam6">1.10D0</seasalt_emis_scale>
+<seasalt_emis_scale ver="strat" spcam_clubb_sgs="1"                      >1.2D0</seasalt_emis_scale>
+<seasalt_emis_scale ver="strat" clubb_sgs="1" silhs="1"                  >0.60D0</seasalt_emis_scale>
 
 <!-- Wet scavenging of modal aerosols -->
 <sol_facti_cloud_borne                                                >1.0D0</sol_facti_cloud_borne>
@@ -2987,12 +2995,12 @@
 
 <se_hypervis_scaling se_refined_mesh="1" hypervis_type="tensor" >3.22D0 </se_hypervis_scaling>
 
-<se_hypervis_subcycle                                            > 3 </se_hypervis_subcycle>
-<se_hypervis_subcycle  waccm_phys="1"                            > 2 </se_hypervis_subcycle>
-<se_hypervis_subcycle  hgrid="ne16np4"                           > 4 </se_hypervis_subcycle>
-<se_hypervis_subcycle  hgrid="ne30np4" npg="3" nlev="58"         > 4 </se_hypervis_subcycle>
-<se_hypervis_subcycle  se_refined_mesh="1"                       > 3 </se_hypervis_subcycle>
-<se_hypervis_subcycle  hgrid="ne0np4CONUS.ne30x8" waccm_phys="1" > 1 </se_hypervis_subcycle>
+<se_hypervis_subcycle                                                           > 3 </se_hypervis_subcycle>
+<se_hypervis_subcycle  waccm_phys="1"                                           > 2 </se_hypervis_subcycle>
+<se_hypervis_subcycle  hgrid="ne16np4"                                          > 4 </se_hypervis_subcycle>
+<se_hypervis_subcycle  hgrid="ne30np4"  model_top="lt"                          > 4 </se_hypervis_subcycle>
+<se_hypervis_subcycle  se_refined_mesh="1"                                      > 3 </se_hypervis_subcycle>
+<se_hypervis_subcycle  hgrid="ne0np4CONUS.ne30x8" waccm_phys="1"                > 1 </se_hypervis_subcycle>
 
 <se_hypervis_subcycle_sponge                                          > 1  </se_hypervis_subcycle_sponge>
 <se_hypervis_subcycle_sponge waccmx="1"                               > 20 </se_hypervis_subcycle_sponge>
@@ -3019,9 +3027,9 @@
 
 <se_nu_p>-1 </se_nu_p>
 
-<se_nu_top                    > 1.25e5 </se_nu_top>
-<se_nu_top waccmx="1"         > 1.0e6 </se_nu_top>
-<se_nu_top nlev="93"          > 1.0e6 </se_nu_top>
+<se_nu_top                                   > 1.25e5 </se_nu_top>
+<se_nu_top waccmx="1"                        > 1.0e6 </se_nu_top>
+<se_nu_top model_top="mt"                    > 1.0e6 </se_nu_top>
 
 <se_molecular_diff               >  0.0 </se_molecular_diff>
 <se_molecular_diff waccmx="1"    >  1.0 </se_molecular_diff>
@@ -3041,18 +3049,18 @@
 <se_nsplit>                   2 </se_nsplit>
 <se_nsplit hgrid="ne16np4" >  1 </se_nsplit>
 
-<se_nsplit hgrid="ne5np4"   waccm_phys="1"            >  3  </se_nsplit>
-<se_nsplit hgrid="ne16np4"  waccm_phys="1" waccmx="1" >  5  </se_nsplit>
-<se_nsplit hgrid="ne16np4"  waccm_phys="1"            >  3  </se_nsplit>
-<se_nsplit hgrid="ne30np4"  waccm_phys="1"            >  5  </se_nsplit>
-<se_nsplit hgrid="ne30np4"  nlev="93"                 >  3  </se_nsplit>
-<se_nsplit hgrid="ne0np4CONUS.ne30x8" waccm_phys="1"  > 10  </se_nsplit>
+<se_nsplit hgrid="ne5np4"   waccm_phys="1"                >  3  </se_nsplit>
+<se_nsplit hgrid="ne16np4"  waccm_phys="1" waccmx="1"     >  5  </se_nsplit>
+<se_nsplit hgrid="ne16np4"  waccm_phys="1"                >  3  </se_nsplit>
+<se_nsplit hgrid="ne30np4"  waccm_phys="1"                >  5  </se_nsplit>
+<se_nsplit hgrid="ne30np4"  model_top="mt"                >  3  </se_nsplit>
+<se_nsplit hgrid="ne0np4CONUS.ne30x8" waccm_phys="1"      > 10  </se_nsplit>
 
 <se_nsplit hgrid="ne0np4TESTONLY.ne5x4"> 7 </se_nsplit>
 
 <se_rsplit                                          > 3 </se_rsplit>
 <se_rsplit waccm_phys="1"                           > 4 </se_rsplit>
-<se_rsplit nlev="93"                                > 6 </se_rsplit>
+<se_rsplit model_top="mt"                           > 6 </se_rsplit>
 <se_rsplit hgrid="ne0np4CONUS.ne30x8" waccm_phys="1"> 3 </se_rsplit>
 
 <se_fvm_supercycling>-1</se_fvm_supercycling>
