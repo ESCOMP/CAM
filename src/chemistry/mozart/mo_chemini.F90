@@ -36,7 +36,6 @@ contains
        , ext_frc_fixed_ymd &
        , ext_frc_fixed_tod &
        , exo_coldens_file &
-       , lght_no_prd_factor &
        , pbuf2d &
        )
 
@@ -48,7 +47,6 @@ contains
     use mo_srf_emissions,  only : srf_emissions_inti
     use mo_sulf,           only : sulf_inti
     use mo_photo,          only : photo_inti
-    use mo_lightning,      only : lightning_inti
     use mo_drydep,         only : drydep_inti
     use mo_imp_sol,        only : imp_slv_inti
     use mo_exp_sol,        only : exp_sol_inti
@@ -94,7 +92,6 @@ contains
     character(len=*), dimension(:), intent(in) :: srf_emis_specifier
     character(len=*), dimension(:), intent(in) :: ext_frc_specifier
     character(len=*), intent(in) :: exo_coldens_file
-    real(r8),         intent(in) :: lght_no_prd_factor
     character(len=*), intent(in) :: ext_frc_type
     integer,          intent(in) :: ext_frc_cycle_yr
     integer,          intent(in) :: ext_frc_fixed_ymd
@@ -160,12 +157,6 @@ contains
     !-----------------------------------------------------------------------
     call sad_inti(pbuf2d)
     if (masterproc) write(iulog,*) 'chemini: after sad_inti on node ',iam
-
-    !-----------------------------------------------------------------------
-    !	... initialize the lightning module
-    !-----------------------------------------------------------------------
-    call lightning_inti(lght_no_prd_factor)
-    if (masterproc) write(iulog,*) 'chemini: after lightning_inti on node ',iam
 
     !-----------------------------------------------------------------------
     !	... initialize the dry deposition module

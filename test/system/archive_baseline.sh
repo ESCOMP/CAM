@@ -122,7 +122,7 @@ if [ -n "$CESM_TESTDIR" ]; then
       cp -r $CESM_TESTDIR/baselines/. $root_baselinedir/$cam_tag
     else
       echo "Using bless_test_results to archive baselines."
-      ../../cime/scripts/Tools/bless_test_results -p -t '' -c '' -r $CESM_TESTDIR --baseline-root $root_baselinedir -b $cam_tag -f -s
+      ../../cime/CIME/Tools/bless_test_results -p -t '' -c '' -r $CESM_TESTDIR --baseline-root $root_baselinedir -b $cam_tag -f -s
     fi
 
     echo " "

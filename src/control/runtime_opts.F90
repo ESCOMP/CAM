@@ -97,6 +97,9 @@ subroutine read_namelist(nlfilename, single_column, scmlat, scmlon)
    use qneg_module,         only: qneg_readnl
    use lunar_tides,         only: lunar_tides_readnl
    use upper_bc,            only: ubc_readnl
+   use cam_budget,          only: cam_budget_readnl
+   use phys_grid_ctem,      only: phys_grid_ctem_readnl
+   use mo_lightning,        only: lightning_readnl
 
    !---------------------------Arguments-----------------------------------
 
@@ -164,6 +167,7 @@ subroutine read_namelist(nlfilename, single_column, scmlat, scmlon)
    call rad_data_readnl(nlfilename)
    call modal_aer_opt_readnl(nlfilename)
    call chem_readnl(nlfilename)
+   call lightning_readnl(nlfilename)
    call prescribed_volcaero_readnl(nlfilename)
    call prescribed_strataero_readnl(nlfilename)
    call solar_data_readnl(nlfilename)
@@ -195,6 +199,8 @@ subroutine read_namelist(nlfilename, single_column, scmlat, scmlon)
    call dyn_readnl(nlfilename)
    call ionosphere_readnl(nlfilename)
    call qneg_readnl(nlfilename)
+   call cam_budget_readnl(nlfilename)
+   call phys_grid_ctem_readnl(nlfilename)
 
 end subroutine read_namelist
 

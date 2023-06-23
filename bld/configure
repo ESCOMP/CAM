@@ -62,12 +62,12 @@ OPTIONS
                           test_detrain | test_growth | test_passive | test_radiative | test_swelling |
                           test_tracers, test_tracers2].
                         Default: none.
-     -chem <name>       Build CAM with specified prognostic chemistry package
-                        [ trop_mam3 | trop_mam4 | trop_mam5 | trop_mam7 | trop_mozart |
-                          trop_strat_mam4_ts2 | trop_strat_mam4_vbs | trop_strat_mam4_vbsext |
-                          waccm_ma | waccm_mad | waccm_mad_mam4 | waccm_ma_mam4 |
-                          waccm_ma_sulfur | waccm_sc | waccm_sc_mam4 | waccm_tsmlt_mam4 | waccm_tsmlt_mam5 |
-                          terminator | none ].
+    -chem <name>       Build CAM with specified prognostic chemistry package
+                       [ none | ghg_mam4 | terminator | trop_mam3 | trop_mam4 | trop_mam7 | trop_mozart | trop_strat_mam4_ts2 |
+                         trop_strat_mam4_vbs | trop_strat_mam4_vbsext | trop_strat_mam5_ts2 | trop_strat_mam5_vbs |
+                         trop_strat_mam5_vbsext | waccm_ma | waccm_mad | waccm_ma_sulfur | waccm_sc | waccm_sc_mam4 |
+                         waccm_mad_mam4 | waccm_ma_mam4 | waccm_tsmlt_mam4 | waccm_tsmlt_mam4_vbsext | waccm_mad_mam5 |
+                         waccm_ma_mam5 | waccm_tsmlt_mam5 | waccm_tsmlt_mam5_vbsext ].
                         Default: trop_mam4 for cam6 and trop_mam3 for cam5.
      -[no]clubb_sgs     Switch on [off] CLUBB_SGS.  Default: on for cam6, otherwise off.
      -clubb_opts <list> Comma separated list of CLUBB options to turn on/off.  By default they are all off.
@@ -138,10 +138,6 @@ OPTIONS
      -silent [or -s]    Turns on silent mode - only fatal messages issued.
      -verbose [or -v]   Turn on verbose echoing of settings made by configure.
      -version           Echo the CVS tag name used to check out this CAM distribution.
-
-  Options for surface components used in standalone CAM mode:
-
-     -ocn <name>        Build CAM with ocean model [docn | dom | som | socn | aquaplanet | pop]. Default: aquaplanet
 
   Options for building CAM via standalone scripts:
 
@@ -1660,7 +1656,7 @@ elsif ($fc =~ /nvfor/)  { $fc_type = 'nvhpc'; }
 
 # User override for Fortran compiler type
 if (defined $opts{'fc_type'}) { $fc_type = $opts{'fc_type'}; }
-
+if ($fc_type == "oneapi") {$fc_type = 'intel'; }
 if ($fc_type) {
     $cfg_ref->set('fc_type', $fc_type);
     if ($print>=2) { print "Fortran compiler type: $fc_type$eol"; }
@@ -2150,6 +2146,9 @@ sub write_filepath
     }
     if ($waccm_phys) {
         print $fh "$camsrcdir/src/physics/waccm\n";
+	print $fh "$camsrcdir/src/physics/ali_arms\n";
+	print $fh "$camsrcdir/src/physics/ali_arms/subs\n";
+	print $fh "$camsrcdir/src/physics/ali_arms/include\n";
     }
     print $fh "$camsrcdir/src/ionosphere\n";
 
@@ -2177,10 +2176,6 @@ sub write_filepath
     } else {
 	print $fh "$camsrcdir/src/physics/pumas-frozen\n";
     }
-
-    print $fh "$camsrcdir/src/physics/ali_arms\n";
-    print $fh "$camsrcdir/src/physics/ali_arms/subs\n";
-    print $fh "$camsrcdir/src/physics/ali_arms/include\n";
 
     # Superparameterization
     if ($phys_pkg eq 'spcam_m2005' or $phys_pkg eq 'spcam_sam1mom') {
