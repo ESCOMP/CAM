@@ -30,10 +30,9 @@ module mo_srf_emissions
 
   public  :: srf_emissions_inti, set_srf_emissions, set_srf_emissions_time
 
-  save
+  logical, public, protected :: has_emis(gas_pcnst) = .false.
 
   real(r8), parameter :: amufac = 1.65979e-23_r8         ! 1.e4* kg / amu
-  logical :: has_emis(gas_pcnst)
   type(emission), allocatable :: emissions(:)
   integer                     :: n_emis_files
   integer :: c10h16_ndx, isop_ndx

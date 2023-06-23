@@ -131,6 +131,7 @@ module chemistry
   logical :: chem_use_chemtrop = .false.
 
   integer :: srf_ozone_pbf_ndx = -1
+  logical :: srf_emis_diag(pcnst) = .false.
 
 !================================================================================================
 contains
@@ -640,6 +641,7 @@ end function chem_is_active
     use fire_emissions,      only : fire_emissions_init
     use short_lived_species, only : short_lived_species_initic
     use ocean_emis,          only : ocean_emis_init
+    use mo_srf_emissions,    only : has_emis
 
     type(physics_buffer_desc), pointer :: pbuf2d(:,:)
     type(physics_state), intent(in):: phys_state(begchunk:endchunk)
@@ -695,42 +697,6 @@ end function chem_is_active
     call addfld( 'CT_H2O_GHG', (/ 'lev' /), 'A','kg/kg/s', 'ghg-chem h2o source/sink' )
 
 !-----------------------------------------------------------------------
-! Set names of chemistry variable tendencies and declare them as history variables
-!-----------------------------------------------------------------------
-    do m = 1,gas_pcnst
-       spc_name = solsym(m)
-       srcnam(m) = 'CT_' // spc_name ! chem tendancy (source/sink)
-
-       call addfld( srcnam(m), (/ 'lev' /), 'A', 'kg/kg/s', trim(spc_name)//' source/sink' )
-       call cnst_get_ind(solsym(m), n, abort=.false. )
-       if ( n > 0 ) then
-
-          if (sflxnam(n)(3:5) == 'num') then  ! name is in the form of "SF****"
-             unit_basename = ' 1'
-          else
-             unit_basename = 'kg'
-          endif
-
-          call addfld (sflxnam(n),horiz_only,    'A',  unit_basename//'/m2/s',trim(solsym(m))//' surface flux')
-          if ( history_aerosol .or. history_chemistry ) then
-             call add_default( sflxnam(n), 1, ' ' )
-          endif
-
-          if ( history_cesm_forcing ) then
-             if ( spc_name == 'NO' .or. spc_name == 'NH3' ) then
-                call add_default( sflxnam(n), 1, ' ' )
-             endif
-          endif
-
-       endif
-    end do
-
-    ! Add chemical tendency of water vapor to water budget output
-    if ( history_budget ) then
-      call add_default ('CT_H2O'  , history_budget_histfile_num, ' ')
-    endif
-
-!-----------------------------------------------------------------------
 ! Initialize chemistry modules
 !-----------------------------------------------------------------------
     call chemini &
@@ -760,53 +726,106 @@ end function chem_is_active
        , pbuf2d &
        )
 
-     if ( ghg_chem ) then
-        call ghg_chem_init(phys_state, bndtvg, h2orates)
-     endif
+    if ( ghg_chem ) then
+       call ghg_chem_init(phys_state, bndtvg, h2orates)
+    endif
 
-     call init_cfc11star(pbuf2d)
+    call init_cfc11star(pbuf2d)
 
-     ! MEGAN emissions initialize
-     if (shr_megan_mechcomps_n>0) then
+    ! MEGAN emissions initialize
+    if (shr_megan_mechcomps_n>0) then
 
-        allocate( megan_indices_map(shr_megan_mechcomps_n) )
-        allocate( megan_wght_factors(shr_megan_mechcomps_n) )
-        megan_wght_factors(:) = nan
+       allocate( megan_indices_map(shr_megan_mechcomps_n) )
+       allocate( megan_wght_factors(shr_megan_mechcomps_n) )
+       megan_wght_factors(:) = nan
 
-        do n=1,shr_megan_mechcomps_n
-           call cnst_get_ind (shr_megan_mechcomps(n)%name,  megan_indices_map(n), abort=.false.)
-           ii = get_spc_ndx(shr_megan_mechcomps(n)%name)
-           if (ii>0) then
-              megan_wght_factors(n) = adv_mass(ii)*1.e-3_r8 ! kg/moles (to convert moles/m2/sec to kg/m2/sec)
-           else
-              call endrun( 'gas_phase_chemdr_inti: MEGAN compound not in chemistry mechanism : '&
-                           //trim(shr_megan_mechcomps(n)%name))
-           endif
+       do n=1,shr_megan_mechcomps_n
+          call cnst_get_ind (shr_megan_mechcomps(n)%name,  megan_indices_map(n), abort=.false.)
+          ii = get_spc_ndx(shr_megan_mechcomps(n)%name)
+          if (ii>0) then
+             megan_wght_factors(n) = adv_mass(ii)*1.e-3_r8 ! kg/moles (to convert moles/m2/sec to kg/m2/sec)
+          else
+             call endrun( 'gas_phase_chemdr_inti: MEGAN compound not in chemistry mechanism : '&
+                  //trim(shr_megan_mechcomps(n)%name))
+          endif
 
-           ! MEGAN  history fields
-           call addfld( 'MEG_'//trim(shr_megan_mechcomps(n)%name),horiz_only,'A','kg/m2/sec',&
-                trim(shr_megan_mechcomps(n)%name)//' MEGAN emissions flux')
-           if (history_chemistry) then
-              call add_default('MEG_'//trim(shr_megan_mechcomps(n)%name), 1, ' ')
-           endif
+          ! MEGAN  history fields
+          call addfld( 'MEG_'//trim(shr_megan_mechcomps(n)%name),horiz_only,'A','kg/m2/sec',&
+               trim(shr_megan_mechcomps(n)%name)//' MEGAN emissions flux')
+          if (history_chemistry) then
+             call add_default('MEG_'//trim(shr_megan_mechcomps(n)%name), 1, ' ')
+          endif
 
-        enddo
-     endif
+          srf_emis_diag(megan_indices_map(n)) = .true.
+       enddo
+    endif
 
-     ! Galatic Cosmic Rays ...
-     call gcr_ionization_init()
+    !-----------------------------------------------------------------------
+    ! Set names of chemistry variable tendencies and declare them as history variables
+    !-----------------------------------------------------------------------
+    do m = 1,gas_pcnst
+       spc_name = solsym(m)
+       srcnam(m) = 'CT_' // spc_name ! chem tendancy (source/sink)
 
-     ! Fire emissions ...
-     call fire_emissions_init()
+       call addfld( srcnam(m), (/ 'lev' /), 'A', 'kg/kg/s', trim(spc_name)//' source/sink' )
+       call cnst_get_ind(solsym(m), n, abort=.false.)
 
-     call short_lived_species_initic()
+       if ( n>0 ) then
+          if (has_emis(m) .or. aero_has_emis(solsym(m)) .or. srf_emis_diag(n)) then
+             srf_emis_diag(n) = .true.
 
-     call ocean_emis_init()
+             if (sflxnam(n)(3:5) == 'num') then  ! name is in the form of "SF****"
+                unit_basename = ' 1'
+             else
+                unit_basename = 'kg'
+             endif
 
-     ! initialize srf ozone to zero
-     if (is_first_step() .and. srf_ozone_pbf_ndx>0) then
-        call pbuf_set_field(pbuf2d, srf_ozone_pbf_ndx, 0._r8)
-     end if
+             call addfld (sflxnam(n),horiz_only, 'A', unit_basename//'/m2/s',trim(solsym(m))//' surface flux')
+             if ( history_aerosol .or. history_chemistry ) then
+                call add_default( sflxnam(n), 1, ' ' )
+             endif
+
+             if ( history_cesm_forcing ) then
+                if ( spc_name == 'NO' .or. spc_name == 'NH3' ) then
+                   call add_default( sflxnam(n), 1, ' ' )
+                endif
+             endif
+
+          endif
+       endif
+    end do
+
+    ! Add chemical tendency of water vapor to water budget output
+    if ( history_budget ) then
+      call add_default ('CT_H2O'  , history_budget_histfile_num, ' ')
+    endif
+
+    ! Galatic Cosmic Rays ...
+    call gcr_ionization_init()
+
+    ! Fire emissions ...
+    call fire_emissions_init()
+
+    call short_lived_species_initic()
+
+    call ocean_emis_init()
+
+    ! initialize srf ozone to zero
+    if (is_first_step() .and. srf_ozone_pbf_ndx>0) then
+       call pbuf_set_field(pbuf2d, srf_ozone_pbf_ndx, 0._r8)
+    end if
+
+  contains
+
+    logical function aero_has_emis(spcname)
+      use seasalt_model, only: seasalt_names
+      use dust_model, only: dust_names
+
+      character(len=*) :: spcname
+
+      aero_has_emis = any(seasalt_names(:) == spcname).or.any(dust_names(:) == spcname)
+
+    end function aero_has_emis
 
   end subroutine chem_init
 
@@ -874,7 +893,9 @@ end function chem_is_active
        n = map2chm(m)
        if ( n /= h2o_ndx .and. n > 0 ) then
           cam_in%cflx(:ncol,m) = cam_in%cflx(:ncol,m) + sflx(:ncol,n)
-          call outfld( sflxnam(m), cam_in%cflx(:ncol,m), ncol,lchnk )
+          if (srf_emis_diag(m)) then
+             call outfld( sflxnam(m), cam_in%cflx(:ncol,m), ncol,lchnk )
+          endif
        endif
     enddo
 
