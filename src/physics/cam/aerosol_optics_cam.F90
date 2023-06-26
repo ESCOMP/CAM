@@ -43,17 +43,19 @@ module aerosol_optics_cam
      class(aerosol_state), pointer :: obj => null()
   end type aero_state_t
 
-  type(aero_props_t), allocatable :: aero_props(:)
+  type(aero_props_t), allocatable :: aero_props(:) ! array of aerosol properties objects to allow for
+                                                   ! multiple aerosol representations in the same sim
+                                                   ! such as MAM and CARMA
 
   ! refractive index for water read in read_water_refindex
   complex(r8) :: crefwsw(nswbands) = -huge(1._r8) ! complex refractive index for water visible
   complex(r8) :: crefwlw(nlwbands) = -huge(1._r8) ! complex refractive index for water infrared
   character(len=cl) :: water_refindex_file = 'NONE' ! full pathname for water refractive index dataset
 
-  logical :: carma_active = .false.
   logical :: modal_active = .false.
   integer :: num_aero_models = 0
-  integer :: lw10um_indx = -1
+  integer :: lw10um_indx = -1            ! wavelength index corresponding to 10 microns
+  real(r8), parameter :: lw10um = 10._r8 ! microns
 
   character(len=4) :: diag(0:n_diag) = (/'    ','_d1 ','_d2 ','_d3 ','_d4 ','_d5 ', '_d6 ','_d7 ','_d8 ','_d9 ','_d10'/)
 
@@ -121,7 +123,7 @@ contains
     use ioFileMod,        only: getfil
 
     character(len=*), parameter :: prefix = 'aerosol_optics_cam_sw: '
-    integer :: nmodes=0, nbins=0, iaermod, istat, ilist, i
+    integer :: nmodes=0, iaermod, istat, ilist, i
 
     logical :: call_list(0:n_diag)
     real(r8) :: lwavlen_lo(nlwbands), lwavlen_hi(nlwbands)
@@ -140,17 +142,12 @@ contains
                       history_dust_out        = history_dust )
 
     num_aero_models = 0
-    nbins = 0
 
     call rad_cnst_get_info(0, nmodes=nmodes)
     modal_active = nmodes>0
-    carma_active = nbins>0
 
     if (modal_active) then
-       num_aero_models = num_aero_models+1
-    end if
-    if (carma_active) then
-       num_aero_models = num_aero_models+1
+       num_aero_models = num_aero_models+1 ! count aerosol models
     end if
 
     if (num_aero_models>0) then
@@ -165,9 +162,6 @@ contains
     if (modal_active) then
        iaermod = iaermod+1
        aero_props(iaermod)%obj => modal_aerosol_properties()
-    else if (carma_active) then
-       iaermod = iaermod+1
-       !aero_props(iaermod)%obj => carma_aerosol_properties()
     end if
 
     if (water_refindex_file/='NONE') then
@@ -177,8 +171,8 @@ contains
 
     call get_lw_spectral_boundaries(lwavlen_lo, lwavlen_hi, units='um')
     do i = 1,nlwbands
-       if ((lwavlen_lo(i)<=10._r8) .and. (lwavlen_hi(i)>=10._r8)) then
-          lw10um_indx = i
+       if ((lwavlen_lo(i)<=lw10um) .and. (lwavlen_hi(i)>=lw10um)) then
+          lw10um_indx = i ! index corresponding to 10 microns
        end if
     end do
     call rad_cnst_get_call_list(call_list)
@@ -544,7 +538,9 @@ contains
     integer :: icol, istat
     integer :: lchnk, ncol
 
-    type(aero_state_t), allocatable :: aero_state(:)
+    type(aero_state_t), allocatable :: aero_state(:) ! array of aerosol state objects to allow for
+                                                     ! multiple aerosol representations in the same sim
+                                                     ! such as MAM and CARMA
 
     class(aerosol_optics), pointer :: aero_optics
 
@@ -692,9 +688,6 @@ contains
     if (modal_active) then
        iaermod = iaermod+1
        aero_state(iaermod)%obj => modal_aerosol_state( state, pbuf )
-    else if (carma_active) then
-       iaermod = iaermod+1
-       !aero_state(iaermod)%obj => carma_aerosol_state( state, pbuf )
     end if
 
     allocate(pext(ncol), stat=istat)
@@ -1136,7 +1129,9 @@ contains
     integer :: iwav, ilev
     integer :: ncol, icol, istat
 
-    type(aero_state_t), allocatable :: aero_state(:)
+    type(aero_state_t), allocatable :: aero_state(:) ! array of aerosol state objects to allow for
+                                                     ! multiple aerosol representations in the same sim
+                                                     ! such as MAM and CARMA
 
     class(aerosol_optics), pointer :: aero_optics
     class(aerosol_state),      pointer :: aerostate
@@ -1166,9 +1161,6 @@ contains
     if (modal_active) then
        iaermod = iaermod+1
        aero_state(iaermod)%obj => modal_aerosol_state( state, pbuf )
-    else if (carma_active) then
-       iaermod = iaermod+1
-       !aero_state(iaermod)%obj => carma_aerosol_state( state, pbuf )
     end if
 
     ncol = state%ncol
