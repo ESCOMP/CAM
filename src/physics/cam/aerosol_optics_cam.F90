@@ -10,7 +10,6 @@ module aerosol_optics_cam
   use physconst, only: rga, rair
   use cam_abortutils, only: endrun
   use spmd_utils, only : masterproc
-  use wv_saturation, only: qsat
   use rad_constituents,  only: n_diag, rad_cnst_get_call_list
   use cam_history,       only: addfld, add_default, outfld, horiz_only, fieldname_len
   use cam_history_support, only: fillvalue
@@ -553,10 +552,6 @@ contains
     real(r8), allocatable :: palb(:)  ! parameterized single scattering albedo
     real(r8), allocatable :: pasm(:)  ! parameterized asymmetry factor
 
-    real(r8) :: relh(pcols,pver)
-    real(r8) :: sate(pcols,pver)     ! saturation vapor pressure
-    real(r8) :: satq(pcols,pver)     ! saturation specific humidity
-
     character(len=ot_length) :: opticstype
     integer :: iaermod
 
@@ -615,7 +610,7 @@ contains
 
     class(aerosol_state),      pointer :: aerostate
     class(aerosol_properties), pointer :: aeroprops
-    integer :: ispec
+
     real(r8) :: specdens
     character(len=32) :: spectype            ! species type
     real(r8), pointer :: specmmr(:,:)
@@ -1138,10 +1133,6 @@ contains
     class(aerosol_properties), pointer :: aeroprops
 
     real(r8), allocatable :: pabs(:)
-
-    real(r8) :: relh(pcols,pver)
-    real(r8) :: sate(pcols,pver)     ! saturation vapor pressure
-    real(r8) :: satq(pcols,pver)     ! saturation specific humidity
 
     character(len=32) :: opticstype
     integer :: iaermod
