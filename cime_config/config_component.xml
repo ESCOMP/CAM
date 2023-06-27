@@ -166,8 +166,8 @@
       <value compset="_CAM\d0%CC.*%SDYN">-nlev 56</value>
       <value compset="_CAM\d0%WC.*%SDYN">-nlev 88</value>
       <value compset="_CAM\d0%WX.*%SDYN">-nlev 145</value>
-      <value compset="_CAM.*%LT">-nlev 58</value>
-      <value compset="_CAM.*%MT">-nlev 93</value>
+      <value compset="_CAM.*%LT">-nlev 58 -model_top lt</value>
+      <value compset="_CAM.*%MT">-nlev 93 -model_top mt</value>
 
       <!-- Simple models -->
       <value compset="_CAM%ADIAB">-phys adiabatic</value>

@@ -6,9 +6,6 @@
 <!-- Solar data from NRL -->
 <solar_irrad_data_file>atm/cam/solar/SolarForcingCMIP6_18491230-23000102_c20200615.nc</solar_irrad_data_file>
 
-<!-- Initial conditions -->
-<ncdata hgrid="ne30np4" npg="3" nlev="93">atm/cam/inic/se/L93_ne30pg3_ne30pg3_mg17_450_short.cam.i.1979-01-07-00000.nc</ncdata>
-
 <!-- LBC Files -->
 <flbc_file>atm/waccm/lb/LBC_17500116-20150116_CMIP6_0p5degLat_c180905.nc</flbc_file>
 <flbc_type>'SERIAL'</flbc_type>
