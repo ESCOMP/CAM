@@ -674,7 +674,7 @@ subroutine vertical_diffusion_tend( &
   use trb_mtn_stress_cam, only : trb_mtn_stress_tend
   use beljaars_drag_cam,  only : beljaars_drag_tend
   use eddy_diff_cam,      only : eddy_diff_tend
-  use hb_diff,            only : compute_hb_diff
+  use hb_diff,            only : compute_hb_diff, compute_hb_free_atm_diff
   use wv_saturation,      only : qsat
   use molec_diff,         only : compute_molec_diff, vd_lu_qdecomp
   use constituents,       only : qmincg, qmin, cnst_type
@@ -998,14 +998,14 @@ subroutine vertical_diffusion_tend( &
      !                consistency with the previous HB scheme.
 
 
-     call compute_hb_diff( lchnk     , ncol     ,                                &
-          th        , state%t  , state%q , state%zm , state%zi, &
-          state%pmid, state%u  , state%v , tautotx  , tautoty , &
-          cam_in%shf, cam_in%cflx(:,1), obklen  , ustar    , pblh    , &
-          kvm       , kvh      , kvq     , cgh      , cgs     , &
-          tpert     , qpert    , cldn    , cam_in%ocnfrac  , tke     , &
+     call compute_hb_diff( lchnk     , ncol                       , &
+          th        , state%t  , state%q , state%zm , state%zi    , &
+          state%pmid, state%u  , state%v , tautotx  , tautoty     , &
+          cam_in%shf, cam_in%cflx(:,1), obklen  , ustar    , pblh , &
+          kvm       , kvh      , kvq     , cgh      , cgs         , &
+          tpert     , qpert    , cldn    , cam_in%ocnfrac  , tke  , &
           ri        , &
-          eddy_scheme )
+          eddy_scheme)
 
      call outfld( 'HB_ri',          ri,         pcols,   lchnk )
 
@@ -1014,14 +1014,12 @@ subroutine vertical_diffusion_tend( &
     ! run HB scheme where CLUBB is not active when running cam_dev
     !
     if (clubb_do_hb_above) then
-      call compute_hb_diff( lchnk     , ncol     ,                                &
-           th        , state%t  , state%q , state%zm , state%zi, &
+      call compute_hb_free_atm_diff( lchnk     , ncol          , &
+           th        , state%t  , state%q , state%zm           , &
            state%pmid, state%u  , state%v , tautotx  , tautoty , &
-           cam_in%shf, cam_in%cflx(:,1), obklen  , ustar    , pblh    , &
+           cam_in%shf, cam_in%cflx(:,1), obklen  , ustar       , &
            kvm       , kvh      , kvq     , cgh      , cgs     , &
-           tpert     , qpert    , cldn    , cam_in%ocnfrac  , tke     , &
-           ri        , &
-           eddy_scheme )
+           ri        , eddy_scheme)
       clubbtop_idx = pbuf_get_index('clubbtop')
       call pbuf_get_field(pbuf, clubbtop_idx, clubbtop)
       !
