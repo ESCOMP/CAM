@@ -62,12 +62,12 @@ OPTIONS
                           test_detrain | test_growth | test_passive | test_radiative | test_swelling |
                           test_tracers, test_tracers2].
                         Default: none.
-     -chem <name>       Build CAM with specified prognostic chemistry package
-                        [ trop_mam3 | trop_mam4 | trop_mam5 | trop_mam7 | trop_mozart |
-                          trop_strat_mam4_ts2 | trop_strat_mam4_vbs | trop_strat_mam4_vbsext |
-                          waccm_ma | waccm_mad | waccm_mad_mam4 | waccm_ma_mam4 |
-                          waccm_ma_sulfur | waccm_sc | waccm_sc_mam4 | waccm_tsmlt_mam4 | waccm_tsmlt_mam5 |
-                          terminator | none ].
+    -chem <name>       Build CAM with specified prognostic chemistry package
+                       [ none | ghg_mam4 | terminator | trop_mam3 | trop_mam4 | trop_mam7 | trop_mozart | trop_strat_mam4_ts2 |
+                         trop_strat_mam4_vbs | trop_strat_mam4_vbsext | trop_strat_mam5_ts2 | trop_strat_mam5_vbs |
+                         trop_strat_mam5_vbsext | waccm_ma | waccm_mad | waccm_ma_sulfur | waccm_sc | waccm_sc_mam4 |
+                         waccm_mad_mam4 | waccm_ma_mam4 | waccm_tsmlt_mam4 | waccm_tsmlt_mam4_vbsext | waccm_mad_mam5 |
+                         waccm_ma_mam5 | waccm_tsmlt_mam5 | waccm_tsmlt_mam5_vbsext ].
                         Default: trop_mam4 for cam6 and trop_mam3 for cam5.
      -[no]clubb_sgs     Switch on [off] CLUBB_SGS.  Default: on for cam6, otherwise off.
      -clubb_opts <list> Comma separated list of CLUBB options to turn on/off.  By default they are all off.
@@ -89,6 +89,7 @@ OPTIONS
      -max_n_rad_cnst <n> Maximum number of constituents that are either radiatively
                         active, or in any single diagnostic list for the radiation.
      -microphys <name>  Specify the microphysics option [mg1 | mg2 | mg3| rk].
+     -model_top <name>  Specify the model_top option [ lt | mt ].
      -nadv <n>          Set total number of advected species to <n>.
      -nadv_tt <n>       Set number of advected test tracers <n>.
      -nlev <n>          Set number of levels to <n>.
@@ -138,10 +139,6 @@ OPTIONS
      -silent [or -s]    Turns on silent mode - only fatal messages issued.
      -verbose [or -v]   Turn on verbose echoing of settings made by configure.
      -version           Echo the CVS tag name used to check out this CAM distribution.
-
-  Options for surface components used in standalone CAM mode:
-
-     -ocn <name>        Build CAM with ocean model [docn | dom | som | socn | aquaplanet | pop]. Default: aquaplanet
 
   Options for building CAM via standalone scripts:
 
@@ -275,6 +272,7 @@ GetOptions(
     "max_n_rad_cnst=s"          => \$opts{'max_n_rad_cnst'},
     "mct_libdir=s"              => \$opts{'mct_libdir'},
     "microphys=s"               => \$opts{'microphys'},
+    "model_top=s"               => \$opts{'model_top'},
     "mpas_libdir=s"             => \$opts{'mpas_libdir'},
     "mpi_inc=s"                 => \$opts{'mpi_inc'},
     "mpi_lib=s"                 => \$opts{'mpi_lib'},
@@ -677,6 +675,17 @@ if (defined $opts{'max_n_rad_cnst'}) {
 my $max_n_rad_cnst = $cfg_ref->get('max_n_rad_cnst');
 
 if ($print>=2) { print "Maximum radiatively active tracers: $max_n_rad_cnst$eol"; }
+
+#-----------------------------------------------------------------------------------------------
+# model_top - not set by default
+my $model_top = 'none';
+$cfg_ref->set('model_top', $model_top);
+
+# user override
+if (defined $opts{'model_top'}) {
+    $cfg_ref->set('model_top', $opts{'model_top'});
+}
+if ($print>=2) { print "model_top: $model_top$eol"; }
 
 #-----------------------------------------------------------------------------------------------
 # waccm physics

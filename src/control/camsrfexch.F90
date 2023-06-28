@@ -61,6 +61,7 @@ module camsrfexch
      real(r8) :: co2prog(pcols)      ! prognostic co2
      real(r8) :: co2diag(pcols)      ! diagnostic co2
      real(r8) :: ozone(pcols)        ! surface ozone concentration (mole/mole)
+     real(r8) :: lightning_flash_freq(pcols) ! cloud-to-ground lightning flash frequency (/min)
      real(r8) :: psl(pcols)
      real(r8) :: bcphiwet(pcols)     ! wet deposition of hydrophilic black carbon
      real(r8) :: bcphidry(pcols)     ! dry deposition of hydrophilic black carbon
@@ -302,6 +303,7 @@ CONTAINS
        cam_out(c)%co2prog(:)  = 0._r8
        cam_out(c)%co2diag(:)  = 0._r8
        cam_out(c)%ozone(:)    = 0._r8
+       cam_out(c)%lightning_flash_freq(:) = 0._r8
        cam_out(c)%psl(:)      = 0._r8
        cam_out(c)%bcphidry(:) = 0._r8
        cam_out(c)%bcphodry(:) = 0._r8
@@ -319,18 +321,14 @@ CONTAINS
        cam_out(c)%dstwet4(:)  = 0._r8
 
        nullify(cam_out(c)%nhx_nitrogen_flx)
-       nullify(cam_out(c)%noy_nitrogen_flx)
+       allocate (cam_out(c)%nhx_nitrogen_flx(pcols), stat=ierror)
+       if ( ierror /= 0 ) call endrun(sub//': allocation error nhx_nitrogen_flx')
+       cam_out(c)%nhx_nitrogen_flx(:) = 0._r8
 
-       if (active_Faxa_nhx) then
-          allocate (cam_out(c)%nhx_nitrogen_flx(pcols), stat=ierror)
-          if ( ierror /= 0 ) call endrun(sub//': allocation error nhx_nitrogen_flx')
-          cam_out(c)%nhx_nitrogen_flx(:) = 0._r8
-       endif
-       if (active_Faxa_noy) then
-          allocate (cam_out(c)%noy_nitrogen_flx(pcols), stat=ierror)
-          if ( ierror /= 0 ) call endrun(sub//': allocation error noy_nitrogen_flx')
-          cam_out(c)%noy_nitrogen_flx(:) = 0._r8
-       endif
+       nullify(cam_out(c)%noy_nitrogen_flx)
+       allocate (cam_out(c)%noy_nitrogen_flx(pcols), stat=ierror)
+       if ( ierror /= 0 ) call endrun(sub//': allocation error noy_nitrogen_flx')
+       cam_out(c)%noy_nitrogen_flx(:) = 0._r8
     end do
 
   end subroutine atm2hub_alloc
@@ -427,7 +425,7 @@ subroutine cam_export(state,cam_out,pbuf)
    integer :: psl_idx
    integer :: prec_dp_idx, snow_dp_idx, prec_sh_idx, snow_sh_idx
    integer :: prec_sed_idx,snow_sed_idx,prec_pcw_idx,snow_pcw_idx
-   integer :: srf_ozone_idx
+   integer :: srf_ozone_idx, lightning_idx
 
    real(r8), pointer :: psl(:)
 
@@ -440,6 +438,7 @@ subroutine cam_export(state,cam_out,pbuf)
    real(r8), pointer :: prec_pcw(:)                ! total precipitation   from Hack convection
    real(r8), pointer :: snow_pcw(:)                ! snow from Hack   convection
    real(r8), pointer :: o3_ptr(:,:), srf_o3_ptr(:)
+   real(r8), pointer :: lightning_ptr(:)
    !-----------------------------------------------------------------------
 
    lchnk = state%lchnk
@@ -457,6 +456,7 @@ subroutine cam_export(state,cam_out,pbuf)
    prec_pcw_idx = pbuf_get_index('PREC_PCW', errcode=i)
    snow_pcw_idx = pbuf_get_index('SNOW_PCW', errcode=i)
    srf_ozone_idx = pbuf_get_index('SRFOZONE', errcode=i)
+   lightning_idx = pbuf_get_index('LGHT_FLASH_FREQ', errcode=i)
 
    if (prec_dp_idx > 0) then
      call pbuf_get_field(pbuf, prec_dp_idx, prec_dp)
@@ -515,6 +515,12 @@ subroutine cam_export(state,cam_out,pbuf)
       call rad_cnst_get_gas(0, 'O3', state, pbuf, o3_ptr)
       cam_out%ozone(:ncol) = o3_ptr(:ncol,pver) * mwdry/mwo3 ! mole/mole
    endif
+
+   ! get cloud to ground lightning flash freq (/min) to export to surface models
+   if (lightning_idx>0) then
+      call pbuf_get_field(pbuf, lightning_idx, lightning_ptr)
+      cam_out%lightning_flash_freq(:ncol) = lightning_ptr(:ncol)
+   end if
 
    !
    ! Precipation and snow rates from shallow convection, deep convection and stratiform processes.
