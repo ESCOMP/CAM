@@ -389,6 +389,10 @@
     <lname>HIST_CAM60_CLM50%SP_CICE%PRES_DOCN%DOM_SROF_SGLC_SWAV</lname>
   </compset>
 
+  <compset>
+    <alias>FGRAYRAD</alias>
+    <lname>2000_CAM%GRAYRAD_SLND_SICE_SOCN_SROF_SGLC_SWAV</lname>
+  </compset>
 
   <!-- ****************************** -->
   <!-- WACCM science supported compsets -->

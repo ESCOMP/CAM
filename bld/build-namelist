@@ -473,9 +473,25 @@ if ($phys eq 'adiabatic') {
     ++$phys_mode_flags;
 }
 my $ideal_mode = 0;
-if ($phys eq 'kessler' or $phys eq 'held_suarez' or $phys eq 'tj2016') {
+if ($phys eq 'kessler' or $phys eq 'held_suarez' or $phys eq 'tj2016' or $phys eq 'grayrad' ) {
     $ideal_mode = 1;
     ++$phys_mode_flags;
+}
+if ($phys eq 'grayrad' ) {
+    add_default($nl, 'frierson_albedo');
+    add_default($nl, 'frierson_c0');
+    add_default($nl, 'frierson_deltas');
+    add_default($nl, 'frierson_fb');
+    add_default($nl, 'frierson_linfrac');
+    add_default($nl, 'frierson_ri_c');
+    add_default($nl, 'frierson_tau_eqtr');
+    add_default($nl, 'frierson_tau_pole');
+    add_default($nl, 'frierson_tdlt');
+    add_default($nl, 'frierson_tmin');
+    add_default($nl, 'frierson_twidth');
+    add_default($nl, 'frierson_wetdrycoef');
+    add_default($nl, 'frierson_wind_min');
+    add_default($nl, 'frierson_z0');
 }
 if ($phys_mode_flags > 1) {
     die "$ProgName - ERROR: Only one of the variables atm_adiabatic, atm_ideal_phys, and aqua_planet can be set .true. \n";
@@ -4858,6 +4874,8 @@ sub check_snapshot_settings {
             push (@validList_bc, ("'kessler_tend'"));
         } elsif ($phys eq 'tj2016') {
             push (@validList_bc, ("'thatcher_jablonowski_precip_tend'"));
+        } elsif ($phys eq 'grayrad') {
+            push (@validList_bc, ("'frierson_tend'"));
         }
         if ($chem ne 'none') {
             push (@validList_bc, ("'chem_timestep_tend'"));

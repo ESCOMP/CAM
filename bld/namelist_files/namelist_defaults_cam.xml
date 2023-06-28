@@ -364,6 +364,24 @@
 <analytic_ic_type phys="held_suarez"> held_suarez_1994 </analytic_ic_type>
 <analytic_ic_type phys="kessler"    > moist_baroclinic_wave_dcmip2016 </analytic_ic_type>
 <analytic_ic_type phys="tj2016"     > moist_baroclinic_wave_dcmip2016 </analytic_ic_type>
+<analytic_ic_type phys="grayrad"    > moist_baroclinic_wave_dcmip2016 </analytic_ic_type>
+
+<!-- Frierson Gray Radiation -->
+
+<frierson_Wind_min   phys="grayrad"   > 1.0d-5    </frierson_Wind_min>
+<frierson_Z0         phys="grayrad"   > 3.21d-5   </frierson_Z0>
+<frierson_Ri_c       phys="grayrad"   > 1.0d0     </frierson_Ri_c>
+<frierson_Fb         phys="grayrad"   > 0.1d0     </frierson_Fb>
+<frierson_Albedo     phys="grayrad"   > 0.310d0   </frierson_Albedo>
+<frierson_DeltaS     phys="grayrad"   > 1.4d0     </frierson_DeltaS>
+<frierson_Tau_eqtr   phys="grayrad"   > 6.0d0     </frierson_Tau_eqtr>
+<frierson_Tau_pole   phys="grayrad"   > 1.5d0     </frierson_Tau_pole>
+<frierson_LinFrac    phys="grayrad"   > 0.1d0     </frierson_LinFrac>
+<frierson_C0         phys="grayrad"   > 1.d7      </frierson_C0>
+<frierson_WetDryCoef phys="grayrad"   > 1.d0      </frierson_WetDryCoef>
+<frierson_Tmin       phys="grayrad"   > 271.d0    </frierson_Tmin>
+<frierson_Tdlt       phys="grayrad"   > 39.d0     </frierson_Tdlt>
+<frierson_Twidth     phys="grayrad"   > 26.d0     </frierson_Twidth>
 
 <!-- Bulk aerosol physical properties (includes optics) -->
 
@@ -2940,6 +2958,7 @@
 <fv3_nwat phys="adiabatic"                                                  > 1         </fv3_nwat>
 <fv3_nwat phys="kessler"                                                    > 3         </fv3_nwat>
 <fv3_nwat phys="tj2016"                                                     > 1         </fv3_nwat>
+<fv3_nwat phys="grayrad"                                                    > 1         </fv3_nwat>
 <fv3_fv_sg_adj                                                              > 0         </fv3_fv_sg_adj>
 <fv3_grid_type                                                              > 0         </fv3_grid_type>
 <fv3_hord_dp        dyn="fv3"                                               > -10        </fv3_hord_dp>
