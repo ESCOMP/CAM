@@ -5,15 +5,6 @@ module stochastic_emulated_cam
 !output the mass and number mixing ratio tendencies in each bin directly.
 !this is then wrapped for CAM. 
 
-! note, this is now coded locally. Want the CAM interface to be over i,k I think.
-
-#ifndef HAVE_GAMMA_INTRINSICS
-use shr_spfn_mod, only: gamma => shr_spfn_gamma
-#endif
-
-!use statements here
-!use
-  
 use shr_kind_mod,      only: r8=>shr_kind_r8
 use shr_kind_mod,      only: cl=>shr_kind_cl
 use cam_history,       only: addfld
@@ -29,8 +20,7 @@ save
 public :: stochastic_emulated_readnl
 public :: stochastic_emulated_init_cam
 
-!In the module top, declare the following so that these can be used throughout the module:
-
+!Module variables
 integer, parameter, public  :: ncd = 35
 integer, parameter, public  :: ncdp = ncd + 1
 
@@ -84,8 +74,10 @@ subroutine stochastic_emulated_readnl(nlfile)
   call mpi_bcast(stochastic_emulated_filename_output_scale, cl, mpi_character, mstrid, mpicom, ierr)
   if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: stochastic_emulated_filename_output_scale")
 
-    write(0,*) ' Inside stochastic_emulated_readnl, stochastic_emulated_filename_quantile=',&
-                       stochastic_emulated_filename_quantile
+!CACNOTE
+  write(0,*) ' Inside stochastic_emulated_readnl, stochastic_emulated_filename_quantile=',&
+               stochastic_emulated_filename_quantile
+
 end subroutine stochastic_emulated_readnl
 
 subroutine stochastic_emulated_init_cam(stochastic_emulated_filename_quantile_out, &

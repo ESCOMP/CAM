@@ -253,6 +253,7 @@ subroutine micro_pumas_cam_readnl(nlfile)
                              mpi_logical, mpi_character
 
   use stochastic_emulated_cam, only: stochastic_emulated_readnl
+  use stochastic_tau_cam,      only: stochastic_tau_readnl
 
   character(len=*), intent(in) :: nlfile  ! filepath for file containing namelist input
 
@@ -532,9 +533,11 @@ subroutine micro_pumas_cam_readnl(nlfile)
      write(iulog,*) '  micro_mg_accre_sees_auto     = ', micro_mg_accre_sees_auto
   end if
 
-  ! Read in the emulated namelist
+  ! Read in the emulated or tau namelist if needed
   if( trim(micro_mg_warm_rain) == 'emulated') then
      call stochastic_emulated_readnl(nlfile)
+  else if (trim(micro_mg_warm_rain) == 'tau') then
+     call stochastic_tau_readnl(nlfile)
   end if
 
 contains

@@ -204,7 +204,7 @@ subroutine modal_aer_opt_init()
    call addfld ('EXTxASYM',   (/ 'lev' /), 'A','  ','extinction 550 nm * asymmetry factor, day only',        &
                 flag_xyfill=.true.)
 
-!++ag Add angstrom exponent
+   ! Add angstrom exponent
    call addfld ('AEXPUV',     horiz_only,  'A','  ','Angstrom Exponent from 350nn-550nm, day only',                &
                 flag_xyfill=.true.)
    call addfld ('AEXPNIR',     horiz_only,  'A','  ','Angstrom Exponent from 1020nn-550nm, day only',                &
@@ -213,7 +213,6 @@ subroutine modal_aer_opt_init()
                 flag_xyfill=.true.)
    call addfld ('AEXPNIRdn',     horiz_only,  'A','  ','Angstrom Exponent from 1020nn-550nm, day night',                &
                 flag_xyfill=.true.)
-!--ag
 
    call addfld ('EXTINCTdn',    (/ 'lev' /), 'A','/m','Aerosol extinction 550 nm, day night',                 &
                   flag_xyfill=.true.)
@@ -600,11 +599,8 @@ subroutine modal_aero_sw(list_idx, state, pbuf, nnite, idxnite, &
    real(r8) :: aodnir(pcols)              ! extinction optical depth in nir
    real(r8) :: aodnirst(pcols)            ! stratospheric extinction optical depth in nir
 
-!CACNOTE - Are these changes part of the machine learning?
-!++ag
    real(r8) :: aenir(pcols)               ! angstrom exponent
    real(r8) :: aeuv(pcols)                ! angstrom exponent
-!--ag
 
    character(len=32) :: outname
 
@@ -666,10 +662,8 @@ subroutine modal_aero_sw(list_idx, state, pbuf, nnite, idxnite, &
    aodnirst(:ncol)       = 0.0_r8
    call tropopause_findChemTrop(state, troplevchem)
 
-!++ag
    aeuv(:)          = 0.0_r8
    aenir(:)         = 0.0_r8
-!--ag
 
    ! loop over all aerosol modes
    call rad_cnst_get_info(list_idx, nmodes=nmodes)
@@ -1085,7 +1079,6 @@ subroutine modal_aero_sw(list_idx, state, pbuf, nnite, idxnite, &
       deallocate(naer_m)
    end if
 
-!++ag
 ! Calculate angstrom exponent for band differences with NIR and UV v. vis....
 ! Alpha = - ln (tau1/tau2)/ ln (lam1/lam2)
 ! Since wavenumber = 1/lam....
@@ -1094,7 +1087,6 @@ subroutine modal_aero_sw(list_idx, state, pbuf, nnite, idxnite, &
 
   aeuv(:ncol)  = -log(aodvis(:ncol)/aoduv(:ncol)) / log(350._r8/550._r8)
   aenir(:ncol) = -log(aodvis(:ncol)/aodnir(:ncol)) / log(350._r8/550._r8)
-!--ag
 
    ! Output visible band diagnostics for quantities summed over the modes
    ! These fields are put out for diagnostic lists as well as the climate list.
@@ -1158,10 +1150,8 @@ subroutine modal_aero_sw(list_idx, state, pbuf, nnite, idxnite, &
       call outfld('AODBCdn',         bcaod,         pcols, lchnk)
       call outfld('AODSSdn',         seasaltaod,    pcols, lchnk)
 
-!++ag
       call outfld('AEXPUVdn',         aeuv,         pcols, lchnk)
       call outfld('AEXPNIRdn',        aenir,        pcols, lchnk)
-!--ag
 
       do i = 1, nnite
          ssavis(idxnite(i))     = fillvalue
@@ -1169,10 +1159,8 @@ subroutine modal_aero_sw(list_idx, state, pbuf, nnite, idxnite, &
 
          aoduv(idxnite(i))      = fillvalue
          aodnir(idxnite(i))     = fillvalue
-!++ag
          aeuv(idxnite(i))      = fillvalue
          aenir(idxnite(i))     = fillvalue
-!--ag
 
          aoduvst(idxnite(i))    = fillvalue
          aodnirst(idxnite(i))   = fillvalue
@@ -1203,10 +1191,8 @@ subroutine modal_aero_sw(list_idx, state, pbuf, nnite, idxnite, &
       call outfld('EXTINCTNIR',    extinctnir,    pcols, lchnk)
       call outfld('AODUV',         aoduv,         pcols, lchnk)
       call outfld('AODNIR',        aodnir,        pcols, lchnk)
-!++ag
       call outfld('AEXPUV',         aeuv,         pcols, lchnk)
       call outfld('AEXPNIR',        aenir,        pcols, lchnk)
-!--ag
 
       call outfld('AODUVst',       aoduvst,       pcols, lchnk)
       call outfld('AODNIRst',      aodnirst,      pcols, lchnk)

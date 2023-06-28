@@ -5,16 +5,7 @@ module stochastic_tau_cam
 !output the mass and number mixing ratio tendencies in each bin directly.
 !this is then wrapped for CAM. 
 
-! note, this is now coded locally. Want the CAM interface to be over i,k I think.
-
-#ifndef HAVE_GAMMA_INTRINSICS
-use shr_spfn_mod, only: gamma => shr_spfn_gamma
-#endif
-
-!use statements here
-!use
-  
-use shr_kind_mod,      only: r8=>shr_kind_r8
+use shr_kind_mod,      only: r8=>shr_kind_r8, cl=>shr_kind_cl
 use cam_history,       only: addfld
 use micro_pumas_utils, only: pi, rhow, qsmall
 use cam_logfile,       only: iulog
@@ -24,31 +15,64 @@ private
 save
 
 ! Subroutines
-public :: stochastic_tau_init_cam
+public :: stochastic_tau_init_cam, stochastic_tau_readnl
 
-!In the module top, declare the following so that these can be used throughout the module:
+!Module variables
 
 integer, parameter, public  :: ncd = 35
+character(len=cl) :: pumas_stochastic_tau_kernel_filename ! Full filepath/filename for tau kernel file
 
 !===============================================================================
 contains
 !===============================================================================
+subroutine stochastic_tau_readnl(nlfile)
+
+  use namelist_utils,  only: find_group_name
+  use units,           only: getunit, freeunit
+  use spmd_utils,      only: mpicom, mstrid=>masterprocid, mpi_character, masterproc
+  use cam_abortutils,  only: endrun
+
+  character(len=*), intent(in) :: nlfile  ! filepath for file containing namelist input
+
+  integer :: unitn, ierr
+  character(len=*), parameter :: sub = 'stochastic_tau_readnl'
+
+  namelist /pumas_stochastic_tau_nl/ pumas_stochastic_tau_kernel_filename
+
+  if (masterproc) then
+     unitn = getunit()
+     open( unitn, file=trim(nlfile), status='old' )
+     call find_group_name(unitn, 'pumas_stochastic_tau_nl', status=ierr)
+     if (ierr == 0) then
+        read(unitn, pumas_stochastic_tau_nl, iostat=ierr)
+        if (ierr /= 0) then
+           call endrun(sub // ':: ERROR reading namelist')
+        end if
+     end if
+     close(unitn)
+     call freeunit(unitn)
+  end if
+
+  ! Broadcast namelist variables
+  call mpi_bcast(pumas_stochastic_tau_kernel_filename, cl, mpi_character, mstrid, mpicom, ierr)
+  if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: pumas_stochastic_tau_kernel_filename")
+
+!CACNOTE
+  write(0,*) ' Inside stochastic_tau_readnl, pumas_stochastic_tau_kernel_filename=',pumas_stochastic_tau_kernel_filename
+
+end subroutine stochastic_tau_readnl
+
 subroutine stochastic_tau_init_cam
 
     use cam_history_support, only:          add_hist_coord
     use pumas_stochastic_collect_tau, only: pumas_stochastic_kernel_init
 
-    integer  :: iunit=40      ! unit number of opened file for collection kernel code from a lookup table.
 
-!CACNOTE  - Need to fix the opening and reading of this file
-    open(unit=iunit,file='/glade/u/home/cchen/TAU/input/KBARF',status='old')
-
-!Note: lev needs to be trop_cld_lev for proc_rates....
-
-    call pumas_stochastic_kernel_init(iunit)
+    call pumas_stochastic_kernel_init(pumas_stochastic_tau_kernel_filename)
 
     call add_hist_coord('bins_ncd', ncd, 'bins for TAU microphysics')
 
+    !Note: lev needs to be trop_cld_lev for proc_rates....
     call addfld('amk_c',(/'trop_cld_lev','bins_ncd    '/),'A','kg','cloud liquid mass from bins')
     call addfld('ank_c',(/'trop_cld_lev','bins_ncd    '/),'A','1/kg','cloud liquid number concentration from bins')
     call addfld('amk_r',(/'trop_cld_lev','bins_ncd    '/),'A','kg','cloud liquid mass from bins')
