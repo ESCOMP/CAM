@@ -4992,7 +4992,6 @@ end subroutine print_active_fldlst
     use cam_history_support, only: dim_index_2d
     use shr_reprosum_mod,    only: shr_reprosum_calc
     use spmd_utils,          only: mpicom
-    use shr_const_mod,       only: PI => SHR_CONST_PI
     !
     !-----------------------------------------------------------------------
     !
