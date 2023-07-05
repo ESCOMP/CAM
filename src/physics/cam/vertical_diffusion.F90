@@ -210,16 +210,13 @@ subroutine vd_register()
   use beljaars_drag_cam,   only : beljaars_drag_register
   use eddy_diff_cam,       only : eddy_diff_register
 
-  integer :: err_idx, idx
-
   ! Add fields to physics buffer
 
   ! kvt is used by gw_drag.  only needs physpkg scope.
   call pbuf_add_field('kvt', 'physpkg', dtype_r8, (/pcols,pverp/), kvt_idx)
 
-  idx = pbuf_get_index('kvh',errcode=err_idx)
-  if (err_idx == -1) then
-    call pbuf_add_field('kvh',      'global', dtype_r8, (/pcols, pverp/), kvh_idx)
+  if (clubb_do_hb_above) then
+     call pbuf_add_field('kvh',      'global', dtype_r8, (/pcols, pverp/), kvh_idx)
   end if
 
   call pbuf_add_field('kvm',      'global', dtype_r8, (/pcols, pverp/), kvm_idx )
@@ -406,7 +403,7 @@ subroutine vertical_diffusion_init(pbuf2d)
        call init_hb_diff(gravit, cpair, ntop_eddy, nbot_eddy, pref_mid, &
             karman, eddy_scheme)
      !
-     ! run HB scheme where CLUBB is not active when running cam_dev
+     ! run HB scheme where CLUBB is not active when running cam6 or cam_dev
      ! else init_hb_diff is called just for diagnostic purposes
      !
      if (cam_physpkg_is("cam_dev")) then
