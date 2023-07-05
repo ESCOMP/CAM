@@ -91,6 +91,9 @@ subroutine read_namelist(nlfilename, single_column, scmlat, scmlon)
    use rate_diags,          only: rate_diags_readnl
    use tracers,             only: tracers_readnl
    use nudging,             only: nudging_readnl
+#if ( defined SIMPLE )
+   use frierson_cam,        only: frierson_readnl
+#endif
 
    use dyn_comp,            only: dyn_readnl
    use ionosphere_interface,only: ionosphere_readnl
@@ -195,6 +198,9 @@ subroutine read_namelist(nlfilename, single_column, scmlat, scmlon)
    call rate_diags_readnl(nlfilename)
    call scam_readnl(nlfilename, single_column, scmlat, scmlon)
    call nudging_readnl(nlfilename)
+#if ( defined SIMPLE )
+   call frierson_readnl(nlfilename)
+#endif
 
    call dyn_readnl(nlfilename)
    call ionosphere_readnl(nlfilename)

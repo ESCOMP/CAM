@@ -62,12 +62,12 @@
   </compset>
 
   <compset>
-    <alias>FLTHIST_v0c</alias>
+    <alias>FLTHIST_v0d</alias>
     <lname>HIST_CAM%DEV%LT%GHGMAM4_CLM51%SP_CICE%PRES_DOCN%DOM_MOSART_SGLC_SWAV</lname>
   </compset>
 
   <compset>
-    <alias>FMTHIST_v0c</alias>
+    <alias>FMTHIST_v0d</alias>
     <lname>HIST_CAM%DEV%MT%GHGMAM4_CLM51%SP_CICE%PRES_DOCN%DOM_MOSART_SGLC_SWAV</lname>
   </compset>
 
@@ -389,6 +389,10 @@
     <lname>HIST_CAM60_CLM50%SP_CICE%PRES_DOCN%DOM_SROF_SGLC_SWAV</lname>
   </compset>
 
+  <compset>
+    <alias>FGRAYRAD</alias>
+    <lname>2000_CAM%GRAYRAD_SLND_SICE_SOCN_SROF_SGLC_SWAV</lname>
+  </compset>
 
   <!-- ****************************** -->
   <!-- WACCM science supported compsets -->
