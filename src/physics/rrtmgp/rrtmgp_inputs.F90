@@ -38,7 +38,6 @@ use cam_logfile,         only: iulog
 use cam_abortutils,   only: endrun
 
 use cam_history,     only: outfld  ! just for getting ozone VMR above model top.
-use b_checker, only: assert_shape ! checking on shapes
 
 implicit none
 private
@@ -148,25 +147,6 @@ subroutine rrtmgp_set_state( &
    character(len=*), parameter :: sub='rrtmgp_set_state'
    character(len=512) :: errmsg
    !--------------------------------------------------------------------------------
-
-   !
-   ! bpm note: the size of pstate%t 's 1st dimension can be larger than ncol. Assume we are only interested in 1:ncol.
-   !
-   ! call assert_shape(pstate%t, (/ncol, pver/), errmsg)
-   ! if (len_trim(errmsg) > 0) then
-   !    write(iulog,*) '['//sub//'] : pstate%t -- shape: ',SHAPE(pstate%t),'[EXPECTED: (',ncol,'x',pver,')] max: ',maxval(pstate%t),' min: ',minval(pstate%t)
-   !    call endrun(sub//trim(errmsg))
-   ! end if
-   ! call assert_shape(pstate%pmid, (/ncol, pver/), errmsg)
-   ! if (len_trim(errmsg) > 0) then
-   !    write(iulog,*) '['//sub//'] : pstate%pmid -- shape: ',SHAPE(pstate%pmid),' max: ',maxval(pstate%pmid),' min: ',minval(pstate%pmid)
-   !    call endrun(sub//trim(errmsg))
-   ! end if
-   ! call assert_shape(pstate%pint, (/ncol, pverp/), errmsg)
-   ! if (len_trim(errmsg) > 0) then
-   !    write(iulog,*) '['//sub//'] : pstate%pint -- shape: ',SHAPE(pstate%pint),' max: ',maxval(pstate%pint),' min: ',minval(pstate%pint)
-   !    call endrun(sub//trim(errmsg))
-   ! end if
 
    t_sfc = sqrt(sqrt(cam_in%lwup(:ncol)/stebol))  ! Surface temp set based on longwave up flux.
 
