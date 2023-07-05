@@ -508,10 +508,7 @@ module clubb_intr
     !  put pbuf_add calls here (see macrop_driver.F90 for sample) use indicies defined at top
     call pbuf_add_field('pblh',       'global', dtype_r8, (/pcols/),                    pblh_idx)
     call pbuf_add_field('tke',        'global', dtype_r8, (/pcols, pverp/),             tke_idx)
-    idx = pbuf_get_index('kvh',errcode=err_idx)
-    if (err_idx == -1) then
-      call pbuf_add_field('kvh',        'global', dtype_r8, (/pcols, pverp/),             kvh_idx)
-    end if
+    call pbuf_add_field('kvh',        'global', dtype_r8, (/pcols, pverp/),             kvh_idx)
     call pbuf_add_field('tpert',      'global', dtype_r8, (/pcols/),                    tpert_idx)
     call pbuf_add_field('AST',        'global', dtype_r8, (/pcols,pver,dyn_time_lvls/),    ast_idx)
     call pbuf_add_field('AIST',       'global', dtype_r8, (/pcols,pver,dyn_time_lvls/),    aist_idx)

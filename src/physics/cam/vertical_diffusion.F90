@@ -215,7 +215,8 @@ subroutine vd_register()
   ! kvt is used by gw_drag.  only needs physpkg scope.
   call pbuf_add_field('kvt', 'physpkg', dtype_r8, (/pcols,pverp/), kvt_idx)
 
-  if (clubb_do_hb_above) then
+
+  if (eddy_scheme /= 'CLUBB_SGS') then
      call pbuf_add_field('kvh',      'global', dtype_r8, (/pcols, pverp/), kvh_idx)
   end if
 
@@ -276,6 +277,7 @@ subroutine vertical_diffusion_init(pbuf2d)
   use beljaars_drag_cam, only : beljaars_drag_init
   use upper_bc,          only : ubc_init
   use phys_control,      only : waccmx_is, fv_am_correction, cam_physpkg_is
+  use clubb_intr,        only : clubb_do_hb_above
 
   type(physics_buffer_desc), pointer :: pbuf2d(:,:)
   character(128) :: errstring   ! Error status for init_vdiff
@@ -406,7 +408,7 @@ subroutine vertical_diffusion_init(pbuf2d)
      ! run HB scheme where CLUBB is not active when running cam6 or cam_dev
      ! else init_hb_diff is called just for diagnostic purposes
      !
-     if (cam_physpkg_is("cam_dev")) then
+     if (clubb_do_hb_above) then
        if( masterproc ) then
          write(iulog,*) 'vertical_diffusion_init: '
          write(iulog,*) 'eddy_diffusivity scheme where CLUBB is not active:  Holtslag and Boville'
