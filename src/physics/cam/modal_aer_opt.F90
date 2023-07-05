@@ -53,8 +53,8 @@ integer, parameter :: ncoef=5, prefr=7, prefi=10
 real(r8) :: xrmin, xrmax
 
 ! refractive index for water read in read_water_refindex
-complex(r8), allocatable :: crefwsw(:) ! complex refractive index for water visible
-complex(r8), allocatable :: crefwlw(:) ! complex refractive index for water infrared
+complex(r8) :: crefwsw(nswbands) ! complex refractive index for water visible
+complex(r8) :: crefwlw(nlwbands) ! complex refractive index for water infrared
 
 ! physics buffer indices
 integer :: dgnumwet_idx = -1
@@ -601,7 +601,7 @@ subroutine modal_aero_sw(list_idx, state, pbuf, nnite, idxnite, &
 
    lchnk = state%lchnk
    ncol  = state%ncol
-   if (.not. allocated(crefwsw)) allocate(crefwsw(nswbands))
+
    ! initialize output variables
    tauxar(:ncol,:,:) = 0._r8
    wa(:ncol,:,:)     = 0._r8
@@ -1062,7 +1062,6 @@ subroutine modal_aero_sw(list_idx, state, pbuf, nnite, idxnite, &
       deallocate(drymass_m)
       deallocate(so4dryvol_m)
       deallocate(naer_m)
-      deallocate(crefwsw)
    end if
 
    ! Output visible band diagnostics for quantities summed over the modes
@@ -1257,7 +1256,7 @@ subroutine modal_aero_lw(list_idx, state, pbuf, tauxar)
 
    lchnk = state%lchnk
    ncol  = state%ncol
-   if (.not. allocated(crefwlw)) allocate(crefwlw(nlwbands))
+
    ! initialize output variables
    tauxar(:ncol,:,:) = 0._r8
 
@@ -1439,7 +1438,6 @@ subroutine modal_aero_lw(list_idx, state, pbuf, tauxar)
       deallocate(drymass_m)
       deallocate(so4dryvol_m)
       deallocate(naer_m)
-      deallocate(crefwlw)
    end if
 
 end subroutine modal_aero_lw
@@ -1464,8 +1462,7 @@ subroutine read_water_refindex(infilename)
    real(r8) :: refrwsw(nswbands), refiwsw(nswbands) ! real, imaginary ref index for water visible
    real(r8) :: refrwlw(nlwbands), refiwlw(nlwbands) ! real, imaginary ref index for water infrared
    !----------------------------------------------------------------------------
-   if (.not. allocated(crefwsw)) allocate(crefwsw(nswbands))
-   if (.not. allocated(crefwlw)) allocate(crefwlw(nlwbands))
+
    ! open file
    call cam_pio_openfile(ncid, infilename, PIO_NOWRITE)
 
@@ -1507,8 +1504,7 @@ subroutine read_water_refindex(infilename)
    end do
 
    call pio_closefile(ncid)
-   deallocate(crefwsw)
-   deallocate(crefwlw)
+
 end subroutine read_water_refindex
 
 !===============================================================================

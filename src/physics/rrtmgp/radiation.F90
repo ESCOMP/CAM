@@ -464,7 +464,7 @@ subroutine radiation_init(pbuf2d)
    use modal_aer_opt,   only: modal_aer_opt_init
    use rrtmgp_inputs,   only: rrtmgp_inputs_init
    use time_manager,    only: is_first_step
-   use radconstants,    only: set_number_sw_bands, set_number_lw_bands, set_wavenumber_bands, set_irrad_by_band, set_reference_tsi
+   use radconstants,    only: set_wavenumber_bands, set_irrad_by_band, set_reference_tsi
 
    ! arguments
    type(physics_buffer_desc), pointer :: pbuf2d(:,:)
@@ -530,10 +530,20 @@ subroutine radiation_init(pbuf2d)
    call coefs_init(coefs_sw_file, kdist_sw, available_gases, band2gpt_sw, ref_tsi) ! bpm : these now provide band2gpt which should be global
    call set_reference_tsi(ref_tsi)
 
-   ! set number of sw/lw bands in radconstants
-   call set_number_sw_bands(kdist_sw%get_nband())
-   call set_number_lw_bands(kdist_lw%get_nband())
-   write(iulog, *) 'rad_init: NUMBER SW BANDS: ',kdist_sw%get_nband(),' NUMBER LW BANDS: ',kdist_lw%get_nband()
+   ! check number of sw/lw bands in gas optics files
+   if (kdist_sw%get_nband() /= nswbands) then
+      write(errmsg,'(a,i4,a,i4)') 'number of sw bands in file, ', kdist_sw%get_nband(), &
+         ", doesn't match parameter nswbands= ", nswbands
+      call endrun(sub//': ERROR: '//trim(errmsg))
+   end if
+   if (kdist_lw%get_nband() /= nlwbands) then
+      write(errmsg,'(a,i4,a,i4)') 'number of lw bands in file, ', kdist_lw%get_nband(), &
+         ", doesn't match parameter nlwbands= ", nlwbands
+      call endrun(sub//': ERROR: '//trim(errmsg))
+   end if
+   if (masterproc) then
+      write(iulog, *) sub//': NUMBER SW BANDS: ', nswbands,' NUMBER LW BANDS: ', nlwbands
+   end if
 
    ! set the sw/lw band limits in radconstants
    call set_wavenumber_bands('sw', kdist_sw%get_nband(), kdist_sw%get_band_lims_wavenumber()) 
@@ -1495,50 +1505,6 @@ subroutine radiation_tend( &
                call clipper(cloud_sw%ssa, 0._r8, 1._r8)
                call clipper(cloud_sw%g,  -1._r8, 1._r8)
 
-               ! CHECK BOUNDS OF ARRAYS:
-               ! errmsg = cloud_sw%validate()  ! rte provides validate method for tau, ssa, and g all at once.
-               ! if (len_trim(errmsg) > 0) then
-               !    call endrun(sub//': ERROR code returned by check_bounds cloud_sw: '//trim(errmsg))
-               ! end if
-               ! errmsg = aer_sw%validate()  ! rte provides validate method for tau, ssa, and g all at once.
-               ! if (len_trim(errmsg) > 0) then
-               !    call endrun(sub//': ERROR code returned by check_bounds aer_sw: '//trim(errmsg))
-               ! end if
-               ! call check_bounds(alb_dir, 1.0_r8, 0.0_r8, errmsg)
-               ! if (len_trim(errmsg) > 0) then
-               !    call endrun(sub//': ERROR code returned by check_bounds alb_dir: '//trim(errmsg))
-               ! end if
-               ! call check_bounds(alb_dif, 1.0_r8, 0.0_r8, errmsg)
-               ! if (len_trim(errmsg) > 0) then
-               !    call endrun(sub//': ERROR code returned by check_bounds alb_dif: '//trim(errmsg))
-               ! end if
-               ! call check_bounds(coszrs_day, 1.0_r8, 0.0_r8, errmsg)
-               ! if (len_trim(errmsg) > 0) then
-               !    call endrun(sub//': ERROR code returned by check_bounds coszrs_day: '//trim(errmsg))
-               ! end if
-               ! call check_bounds(pint_day, 120000.0_r8, 1.0_r8, errmsg)  ! Pa -- give pretty big bounds
-               ! if (len_trim(errmsg) > 0) then
-               !    call endrun(sub//': ERROR code returned by check_bounds pint_day: '//trim(errmsg))
-               ! end if
-               ! call check_bounds(t_day, 350.0_r8, 150.0_r8, errmsg)  ! K -- give pretty big bounds
-               ! if (len_trim(errmsg) > 0) then
-               !    call endrun(sub//': ERROR code returned by check_bounds t_day: '//trim(errmsg))
-               ! end if
-               ! call check_bounds(pmid_day, 120000.0_r8, 1.0_r8, errmsg)  ! Pa -- give pretty big bounds
-               ! if (len_trim(errmsg) > 0) then
-               !    call endrun(sub//': ERROR code returned by check_bounds pint_day: '//trim(errmsg))
-               ! end if
-
-
-               ! Still to validate:
-               ! - kdist_sw
-               ! - gas_concs_sw
-               ! call check_bounds(nday, nlay, gas_concs_sw, errmsg)
-               ! if (len_trim(errmsg) > 0) then
-               !    call endrun(sub//': ERROR code returned by check_bounds gas_concs_sw: '//trim(errmsg))
-               ! end if
-               ! call check_bounds(kdist_sw, errmsg)
-!               call shr_mem_getusage(mem_hw_beg, mem_beg)
                ! inputs are the daylit columns --> output fluxes therefore also on daylit columns. 
                errmsg = rte_sw( kdist_sw,     & ! input (from init)
                                 gas_concs_sw, & ! input, (from rrtmgp_set_gases_sw)
@@ -1554,18 +1520,6 @@ subroutine radiation_tend( &
                                 aer_props=aer_sw, & ! optional input (from rrtmgp_set_aer_sw)
                                 tsi_scaling=eccf & !< optional input, scaling for irradiance
                )
-
-!               call shr_mem_getusage(mem_hw_end, mem_end)
-!               temp = mem_hw_end - mem_hw_beg
-!               if (masterproc) then
-!                  write(iulog, *) 'rte_sw: Increase in memory highwater = ',    &
-!                      temp, ' (MB)'
-!               end if
-!               temp = mem_end - mem_beg
-!               if (masterproc) then
-!                  write(iulog, *) 'rte_sw: Increase in memory usage = ',    &
-!                      temp, ' (MB)'
-!               end if
 
                if (len_trim(errmsg) > 0) then
                   call endrun(sub//': ERROR code returned by rte_sw: '//trim(errmsg))
@@ -1667,7 +1621,7 @@ subroutine radiation_tend( &
             cloud_lw               & ! inout (%tau is set, and returned bottom-to-top)
             )
 
-         ! initialize/allocate object for aerosol optics (note, don't just give it nlwbands b/c wrong type)
+         ! initialize/allocate object for aerosol optics
          errmsg = aer_lw%alloc_1scl(ncol,                                & 
                                     nlay,                                &
                                     kdist_lw%get_band_lims_wavenumber(), &
@@ -1821,9 +1775,6 @@ subroutine radiation_tend( &
 
    end if   ! if (dosw .or. dolw) then
 
-   ! write(iulog,*) 'Radiation_Tend finished calculation [timestep ',get_nstep(), ', chunk: ',lchnk,'] -- qrs max: ',maxval(qrs),' min: ',minval(qrs),' -- qrl max: ',maxval(qrl), ' min: ',minval(qrl)
-
-
    ! ------------------------------------------------------------------------
    !
    ! After any radiative transfer is done: output & convert fluxes to heating
@@ -1870,8 +1821,6 @@ subroutine radiation_tend( &
    call free_fluxes(flw)
    call free_fluxes(flwc)
 
-   ! write(iulog,*) 'Radiation_Tend END [timestep ',get_nstep(), ', chunk: ',lchnk,']'
-   
 !-------------------------------------------------------------------------------
 contains
 !-------------------------------------------------------------------------------

@@ -20,9 +20,9 @@ implicit none
 private
 save
 
-! Number of bands in SW and LW (these will be set when RRTMGP initializes)
-integer, public, protected :: nswbands = 14
-integer, public, protected :: nlwbands = 16
+! Number of bands in SW and LW (these will be checked when RRTMGP initializes)
+integer, parameter, public :: nswbands = 14
+integer, parameter, public :: nlwbands = 16
 
 ! Band limits (these get also get set at initialization)
 real(r8), public, allocatable :: wavenumber_low_shortwave(:)
@@ -137,39 +137,23 @@ integer, parameter, public :: ot_length = 32
 
 public :: rad_gas_index
 
-public :: get_number_sw_bands, &
-          get_sw_spectral_boundaries, &
+public :: get_sw_spectral_boundaries, &
           get_lw_spectral_boundaries, &
           get_ref_solar_band_irrad, &
           get_ref_total_solar_irrad, &
-         !  get_solar_band_fraction_irrad, &
           get_idx_sw_diag, &
           get_idx_nir_diag, &
           get_idx_uv_diag, &
           get_idx_lw_diag, &
           get_band_index_by_value, &
           set_wavenumber_bands,&
-          get_number_lw_bands, & 
-          set_number_lw_bands, & 
-          set_number_sw_bands, &
           set_irrad_by_band, &
           set_reference_tsi
 
+!===============================================================================
 contains
-!------------------------------------------------------------------------------
-      ! COMMENT -- THIS CODE IS NOT USED.
-      ! subroutine get_solar_band_fraction_irrad(fractional_irradiance)
-      !    ! provide Solar Irradiance for each band in RRTMG
+!===============================================================================
 
-      !    ! fraction of solar irradiance in each band
-      !    real(r8), intent(out) :: fractional_irradiance(1:nswbands)
-      !    real(r8) :: tsi ! total solar irradiance
-
-      !    tsi = sum(solar_ref_band_irradiance)
-      !    fractional_irradiance = solar_ref_band_irradiance / tsi
-
-      ! end subroutine get_solar_band_fraction_irrad
-!------------------------------------------------------------------------------
 subroutine get_ref_total_solar_irrad(tsi)
    ! provide Total Solar Irradiance assumed by RRTMGP
 
@@ -202,39 +186,9 @@ subroutine get_ref_solar_band_irrad( band_irrad )
    end if
 
 end subroutine get_ref_solar_band_irrad
+
 !------------------------------------------------------------------------------
-subroutine get_number_sw_bands(number_of_bands)
 
-   ! number of solar (shortwave) bands
-   integer, intent(out) :: number_of_bands
-
-   number_of_bands = nswbands
-
-end subroutine get_number_sw_bands
-!------------------------------------------------------------------------------
-subroutine set_number_sw_bands(number_of_bands)
-   ! set module data nswbands
-   ! expect: number_of_bands provided from RRTMGP optical properties object
-   integer, intent(in) :: number_of_bands
-   nswbands = number_of_bands
-end subroutine set_number_sw_bands
-!------------------------------------------------------------------------------
-subroutine get_number_lw_bands(number_of_bands)
-
-   ! number of longwave bands
-   integer, intent(out) :: number_of_bands
-
-   number_of_bands = nlwbands
-
-end subroutine get_number_lw_bands
-!------------------------------------------------------------------------------
-subroutine set_number_lw_bands(number_of_bands)
-   ! set module data nlwbands
-   ! expect: number_of_bands provided from RRTMGP optical properties object
-   integer, intent(in) :: number_of_bands
-   nlwbands = number_of_bands
-end subroutine set_number_lw_bands
-!------------------------------------------------------------------------------
 subroutine set_wavenumber_bands(swlw, nbands, values)
    ! set the low and high limits of the wavenumber grid for sw or lw
    ! expect that values comes from RRTMGP method get_band_lims_wavenumber
@@ -307,7 +261,7 @@ subroutine get_sw_spectral_boundaries(low_boundaries, high_boundaries, units)
       low_boundaries  = 1._r8/wavenumber_high_shortwave
       high_boundaries = 1._r8/wavenumber_low_shortwave
    case default
-      call endrun('rad_constants.F90: spectral units not acceptable'//units)
+      call endrun('rad_constants.F90: requested spectral units not acceptable: '//units)
    end select
 
 end subroutine get_sw_spectral_boundaries

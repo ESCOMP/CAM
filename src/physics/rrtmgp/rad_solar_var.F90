@@ -4,6 +4,7 @@
 !-------------------------------------------------------------------------------
 module rad_solar_var
 
+  use radconstants,      only : nswbands
   use shr_kind_mod ,     only : r8 => shr_kind_r8
   use solar_irrad_data,  only : sol_irrad, we, nbins, has_spectrum, sol_tsi
   use solar_irrad_data,  only : do_spctrl_scaling
@@ -22,14 +23,12 @@ module rad_solar_var
 
   real(r8), allocatable :: radbinmax(:)
   real(r8), allocatable :: radbinmin(:)
-  integer :: nradbins
 
 !-------------------------------------------------------------------------------
 contains
 !-------------------------------------------------------------------------------
 
   subroutine rad_solar_var_init( )
-    use radconstants,  only : get_number_sw_bands
     use radconstants,  only : get_sw_spectral_boundaries
     use radconstants,  only : get_ref_solar_band_irrad
     use radconstants,  only : get_ref_total_solar_irrad
@@ -40,30 +39,28 @@ contains
     integer :: radmax_loc
 
 
-    call get_number_sw_bands(nradbins)
-
     if ( do_spctrl_scaling ) then
 
        if ( .not.has_spectrum ) then
           call endrun('rad_solar_var_init: solar input file must have irradiance spectrum')
        endif
 
-       allocate (radbinmax(nradbins),stat=ierr)
+       allocate (radbinmax(nswbands),stat=ierr)
        if (ierr /= 0) then
           call endrun('rad_solar_var_init: Error allocating space for radbinmax')
        end if
 
-       allocate (radbinmin(nradbins),stat=ierr)
+       allocate (radbinmin(nswbands),stat=ierr)
        if (ierr /= 0) then
           call endrun('rad_solar_var_init: Error allocating space for radbinmin')
        end if
 
-       allocate (ref_band_irrad(nradbins), stat=ierr)
+       allocate (ref_band_irrad(nswbands), stat=ierr)
        if (ierr /= 0) then
           call endrun('rad_solar_var_init: Error allocating space for ref_band_irrad')
        end if
 
-       allocate (irrad(nradbins), stat=ierr)
+       allocate (irrad(nswbands), stat=ierr)
        if (ierr /= 0) then
           call endrun('rad_solar_var_init: Error allocating space for irrad')
        end if
@@ -91,15 +88,15 @@ contains
 !-------------------------------------------------------------------------------
   subroutine get_variability( sfac )
 
-    real(r8), intent(out) :: sfac(nradbins)       ! scaling factors for CAM heating
+    real(r8), intent(out) :: sfac(nswbands)       ! scaling factors for CAM heating
 
     integer :: yr, mon, day, tod
 
     if ( do_spctrl_scaling ) then
-      call integrate_spectrum( nbins, nradbins, we, radbinmin, radbinmax, sol_irrad, irrad)
-      sfac(:nradbins) = irrad(:nradbins)/ref_band_irrad(:nradbins)
+      call integrate_spectrum( nbins, nswbands, we, radbinmin, radbinmax, sol_irrad, irrad)
+      sfac(:nswbands) = irrad(:nswbands)/ref_band_irrad(:nswbands)
     else
-       sfac(:nradbins) = sol_tsi/tsi_ref
+       sfac(:nswbands) = sol_tsi/tsi_ref
     endif
 
   end subroutine get_variability
