@@ -640,7 +640,7 @@ end function chem_is_active
     use constituents,        only : sflxnam
     use fire_emissions,      only : fire_emissions_init
     use short_lived_species, only : short_lived_species_initic
-    use ocean_emis,          only : ocean_emis_init
+    use ocean_emis,          only : ocean_emis_init, ocean_emis_species
     use mo_srf_emissions,    only : has_emis
 
     type(physics_buffer_desc), pointer :: pbuf2d(:,:)
@@ -760,6 +760,21 @@ end function chem_is_active
        enddo
     endif
 
+    ! Add chemical tendency of water vapor to water budget output
+    if ( history_budget ) then
+      call add_default ('CT_H2O'  , history_budget_histfile_num, ' ')
+    endif
+
+    ! Galatic Cosmic Rays ...
+    call gcr_ionization_init()
+
+    ! Fire emissions ...
+    call fire_emissions_init()
+
+    call short_lived_species_initic()
+
+    call ocean_emis_init()
+
     !-----------------------------------------------------------------------
     ! Set names of chemistry variable tendencies and declare them as history variables
     !-----------------------------------------------------------------------
@@ -771,7 +786,7 @@ end function chem_is_active
        call cnst_get_ind(solsym(m), n, abort=.false.)
 
        if ( n>0 ) then
-          if (has_emis(m) .or. aero_has_emis(solsym(m)) .or. srf_emis_diag(n)) then
+          if (has_emis(m) .or. aero_has_emis(solsym(m)) .or. ocean_emis_species(solsym(m)) .or. srf_emis_diag(n)) then
              srf_emis_diag(n) = .true.
 
              if (sflxnam(n)(3:5) == 'num') then  ! name is in the form of "SF****"
@@ -794,21 +809,6 @@ end function chem_is_active
           endif
        endif
     end do
-
-    ! Add chemical tendency of water vapor to water budget output
-    if ( history_budget ) then
-      call add_default ('CT_H2O'  , history_budget_histfile_num, ' ')
-    endif
-
-    ! Galatic Cosmic Rays ...
-    call gcr_ionization_init()
-
-    ! Fire emissions ...
-    call fire_emissions_init()
-
-    call short_lived_species_initic()
-
-    call ocean_emis_init()
 
     ! initialize srf ozone to zero
     if (is_first_step() .and. srf_ozone_pbf_ndx>0) then
