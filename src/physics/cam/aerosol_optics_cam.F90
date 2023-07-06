@@ -163,7 +163,9 @@ contains
        aero_props(iaermod)%obj => modal_aerosol_properties()
     end if
 
-    if (water_refindex_file/='NONE') then
+    if (water_refindex_file=='NONE') then
+       call endrun(prefix//'water_refindex_file must be specified')
+    else
        call getfil(water_refindex_file, locfile)
        call read_water_refindex(locfile)
     end if
@@ -811,7 +813,7 @@ contains
       if (iwav==idx_uv_diag) then
          aoduv(icol) = aoduv(icol) + dopaer(icol)
          extinctuv(icol,ilev) = extinctuv(icol,ilev) + dopaer(icol)*air_density(icol,ilev)/mass(icol,ilev)
-         if (ilev.le.troplev(icol)) then
+         if (ilev<=troplev(icol)) then
             aoduvst(icol) = aoduvst(icol) + dopaer(icol)
          end if
 
@@ -826,7 +828,7 @@ contains
 
          aodbin(icol) = aodbin(icol) + dopaer(icol)
 
-         if (ilev.le.troplev(icol)) then
+         if (ilev<=troplev(icol)) then
             aodvisst(icol) = aodvisst(icol) + dopaer(icol)
          end if
 
@@ -938,7 +940,7 @@ contains
          aodnir(icol) = aodnir(icol) + dopaer(icol)
          extinctnir(icol,ilev) = extinctnir(icol,ilev) + dopaer(icol)*air_density(icol,ilev)/mass(icol,ilev)
 
-         if (ilev.le.troplev(icol)) then
+         if (ilev<=troplev(icol)) then
             aodnirst(icol) = aodnirst(icol) + dopaer(icol)
          end if
 
@@ -1233,7 +1235,7 @@ contains
   subroutine read_water_refindex(infilename)
     use cam_pio_utils, only: cam_pio_openfile
     use pio, only: file_desc_t, var_desc_t, pio_inq_dimlen, pio_inq_dimid, pio_inq_varid, &
-                   pio_get_var, PIO_NOWRITE, pio_closefile
+                   pio_get_var, PIO_NOWRITE, pio_closefile, pio_noerr
 
 
     ! read water refractive index file and set module data
@@ -1249,6 +1251,8 @@ contains
     type(var_desc_t)   :: vid               ! variable ids
     real(r8) :: refrwsw(nswbands), refiwsw(nswbands) ! real, imaginary ref index for water visible
     real(r8) :: refrwlw(nlwbands), refiwlw(nlwbands) ! real, imaginary ref index for water infrared
+
+    character(len=*), parameter :: prefix = 'read_water_refindex: '
     !----------------------------------------------------------------------------
 
     ! open file
@@ -1257,38 +1261,74 @@ contains
     ! inquire dimensions.  Check that file values match parameter values.
 
     ierr = pio_inq_dimid(ncid, 'lw_band', did)
+    if (ierr /= pio_noerr ) then
+       call endrun(prefix//'pio_inq_dimid lw_band')
+    end if
     ierr = pio_inq_dimlen(ncid, did, dimlen)
-    if (dimlen .ne. nlwbands) then
+    if (ierr /= pio_noerr ) then
+       call endrun(prefix//'pio_inq_dimlen lw_band')
+    end if
+    if (dimlen /= nlwbands) then
        write(iulog,*) 'lw_band len=', dimlen, ' from ', infilename, ' ne nlwbands=', nlwbands
-       call endrun('read_modal_optics: bad lw_band value')
+       call endrun(prefix//'bad lw_band value')
     endif
 
     ierr = pio_inq_dimid(ncid, 'sw_band', did)
+    if (ierr /= pio_noerr ) then
+       call endrun(prefix//'pio_inq_dimid sw_band')
+    end if
     ierr = pio_inq_dimlen(ncid, did, dimlen)
-    if (dimlen .ne. nswbands) then
+    if (ierr /= pio_noerr ) then
+       call endrun(prefix//'pio_inq_dimlen sw_band')
+    end if
+    if (dimlen /= nswbands) then
        write(iulog,*) 'sw_band len=', dimlen, ' from ', infilename, ' ne nswbands=', nswbands
-       call endrun('read_modal_optics: bad sw_band value')
+       call endrun(prefix//'bad sw_band value')
     endif
 
     ! read variables
     ierr = pio_inq_varid(ncid, 'refindex_real_water_sw', vid)
+    if (ierr /= pio_noerr ) then
+       call endrun(prefix//'pio_inq_varid refindex_real_water_sw')
+    end if
     ierr = pio_get_var(ncid, vid, refrwsw)
+    if (ierr /= pio_noerr ) then
+       call endrun(prefix//'pio_get_var refrwsw')
+    end if
 
     ierr = pio_inq_varid(ncid, 'refindex_im_water_sw', vid)
+    if (ierr /= pio_noerr ) then
+       call endrun(prefix//'pio_inq_varid refindex_im_water_sw')
+    end if
     ierr = pio_get_var(ncid, vid, refiwsw)
+    if (ierr /= pio_noerr ) then
+       call endrun(prefix//'pio_get_var refiwsw')
+    end if
 
     ierr = pio_inq_varid(ncid, 'refindex_real_water_lw', vid)
+    if (ierr /= pio_noerr ) then
+       call endrun(prefix//'pio_inq_varid refindex_real_water_lw')
+    end if
     ierr = pio_get_var(ncid, vid, refrwlw)
+    if (ierr /= pio_noerr ) then
+       call endrun(prefix//'pio_get_var refrwlw')
+    end if
 
     ierr = pio_inq_varid(ncid, 'refindex_im_water_lw', vid)
+    if (ierr /= pio_noerr ) then
+       call endrun(prefix//'pio_inq_varid refindex_im_water_lw')
+    end if
     ierr = pio_get_var(ncid, vid, refiwlw)
+    if (ierr /= pio_noerr ) then
+       call endrun(prefix//'pio_get_var refiwlw')
+    end if
 
     ! set complex representation of refractive indices as module data
     do i = 1, nswbands
-       crefwsw(i)  = cmplx(refrwsw(i), abs(refiwsw(i)),kind=r8)
+       crefwsw(i) = cmplx(refrwsw(i), abs(refiwsw(i)), kind=r8)
     end do
     do i = 1, nlwbands
-       crefwlw(i)  = cmplx(refrwlw(i), abs(refiwlw(i)),kind=r8)
+       crefwlw(i) = cmplx(refrwlw(i), abs(refiwlw(i)), kind=r8)
     end do
 
     call pio_closefile(ncid)

@@ -54,10 +54,11 @@ module refractive_aerosol_optics_mod
 
   ! Dimension sizes in coefficient arrays used to parameterize aerosol radiative properties
   ! in terms of refractive index and wet radius
-  integer, parameter :: ncoef=5, prefr=7, prefi=10  !??? get from aerosol properties ????
+  integer, parameter :: ncoef=5, prefr=7, prefi=10
 
-  real(r8), parameter :: xrmin=log(0.01e-6_r8)
-  real(r8), parameter :: xrmax=log(25.e-6_r8)
+  ! radius limits (m)
+  real(r8), parameter :: xrmin=log(0.01e-6_r8) ! min log(aerosol surface mode radius)
+  real(r8), parameter :: xrmax=log(25.e-6_r8)  ! max log(aerosol surface mode radius)
 
 contains
 
@@ -339,7 +340,7 @@ contains
   subroutine modal_size_parameters(ncol,nlev, alnsg_amode, dgnumwet, radsurf, logradsurf, cheb)
 
     integer,  intent(in)  :: ncol,nlev
-    real(r8), intent(in)  :: alnsg_amode  ! geometric standard deviation of number distribution
+    real(r8), intent(in)  :: alnsg_amode     ! geometric standard deviation of number distribution
     real(r8), intent(in)  :: dgnumwet(:,:)   ! aerosol wet number mode diameter (m)
     real(r8), intent(out) :: radsurf(:,:)    ! aerosol surface mode radius
     real(r8), intent(out) :: logradsurf(:,:) ! log(aerosol surface mode radius)
