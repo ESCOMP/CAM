@@ -54,7 +54,9 @@ module refractive_aerosol_optics_mod
 
   ! Dimension sizes in coefficient arrays used to parameterize aerosol radiative properties
   ! in terms of refractive index and wet radius
-  integer, parameter :: ncoef=5, prefr=7, prefi=10
+  integer, parameter :: ncoef = 5  ! number of chebychef coeficients
+  integer, parameter :: prefr = 7  ! number of real refractive indices
+  integer, parameter :: prefi = 10 ! number of imaginary refractive indices
 
   ! radius limits (m)
   real(r8), parameter :: xrmin=log(0.01e-6_r8) ! min log(aerosol surface mode radius)
@@ -354,7 +356,6 @@ contains
 
     explnsigma = exp(2.0_r8*alnsg_amode*alnsg_amode)
 
-    !    do k = top_lev, pver
     do k = 1, nlev
        do i = 1, ncol
           ! convert from number mode diameter to surface area
