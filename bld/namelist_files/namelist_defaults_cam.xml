@@ -2116,7 +2116,6 @@
 <clubb_wpxp_L_thresh                              > 60.0    </clubb_wpxp_L_thresh>
 <clubb_do_hb_above                                >.false.  </clubb_do_hb_above>
 <clubb_do_hb_above phys="cam_dev"                 >.true.   </clubb_do_hb_above>
-<clubb_do_hb_above phys="cam6"                    >.true.   </clubb_do_hb_above>
 <!-- SILHS options -->
 <clubb_do_icesuper                      silhs="1" > .true.  </clubb_do_icesuper>
 <clubb_C2rt                             silhs="1" > 0.2     </clubb_C2rt>
