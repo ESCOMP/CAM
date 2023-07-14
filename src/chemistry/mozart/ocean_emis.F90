@@ -971,7 +971,7 @@ contains
   !--------------------------------------------------------------------------------
   ! returns TRUE of species has ocean emissions
   !--------------------------------------------------------------------------------
-  logical function ocean_emis_species(name)
+  pure logical function ocean_emis_species(name)
     character(len=*), intent(in) :: name
 
     integer :: m

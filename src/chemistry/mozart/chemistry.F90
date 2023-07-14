@@ -652,7 +652,7 @@ end function chem_is_active
 !-----------------------------------------------------------------------
     integer :: m                                ! tracer indicies
     character(len=fieldname_len) :: spc_name
-    integer :: n, ii
+    integer :: n, ii, ierr
     logical :: history_aerosol
     logical :: history_chemistry
     logical :: history_cesm_forcing
@@ -662,6 +662,8 @@ end function chem_is_active
                                               ! temperature, water vapor, cloud ice and cloud
                                               ! liquid budgets.
     integer :: history_budget_histfile_num    ! output history file number for budget fields
+
+    character(len=*), parameter :: prefix = 'chem_init: '
 
     call phys_getopts( cam_chempkg_out=chem_name, &
                        history_aerosol_out=history_aerosol , &
@@ -735,8 +737,14 @@ end function chem_is_active
     ! MEGAN emissions initialize
     if (shr_megan_mechcomps_n>0) then
 
-       allocate( megan_indices_map(shr_megan_mechcomps_n) )
-       allocate( megan_wght_factors(shr_megan_mechcomps_n) )
+       allocate( megan_indices_map(shr_megan_mechcomps_n), stat=ierr)
+       if( ierr /= 0 ) then
+          call endrun(prefix//'failed to allocate megan_indices_map')
+       end if
+       allocate( megan_wght_factors(shr_megan_mechcomps_n), stat=ierr)
+       if( ierr /= 0 ) then
+          call endrun(prefix//'failed to allocate megan_indices_map')
+       end if
        megan_wght_factors(:) = nan
 
        do n=1,shr_megan_mechcomps_n
@@ -817,11 +825,11 @@ end function chem_is_active
 
   contains
 
-    logical function aero_has_emis(spcname)
+    pure logical function aero_has_emis(spcname)
       use seasalt_model, only: seasalt_names
       use dust_model, only: dust_names
 
-      character(len=*) :: spcname
+      character(len=*),intent(in) :: spcname
 
       aero_has_emis = any(seasalt_names(:) == spcname).or.any(dust_names(:) == spcname)
 

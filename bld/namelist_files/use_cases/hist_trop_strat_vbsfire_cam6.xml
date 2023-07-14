@@ -78,7 +78,7 @@
 <history_amwg>.true.</history_amwg>
 <history_aerosol>.false.</history_aerosol>
 <history_carma>.false.</history_carma>
-<history_chemistry>.false.</history_chemistry>
+<history_chemistry>.true.</history_chemistry>
 <history_chemspecies_srf>.false.</history_chemspecies_srf>
 <history_clubb>.false.</history_clubb>
 <history_waccm>.false.</history_waccm>
