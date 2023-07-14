@@ -2634,7 +2634,7 @@ Default: .false.
 </entry>
 
 <entry id="micro_mg_warm_rain" type="char*16" category="microphys"
-       group="micro_mg_nl" valid_values="kk2000,sb2001,tau,emulated,never" >
+       group="micro_mg_nl" valid_values="kk2000,sb2001,tau,emulated" >
 Warm rain process
 sb2001 turns on alternative autoconversion and accretion scheme for liquid in microphysics (Seifert and Behang 2001)
 kk2000 uses original autoconversion and accretion scheme for liquid in microphysics
