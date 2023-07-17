@@ -770,11 +770,6 @@ end function chem_is_active
        enddo
     endif
 
-    ! Add chemical tendency of water vapor to water budget output
-    if ( history_budget ) then
-      call add_default ('CT_H2O'  , history_budget_histfile_num, ' ')
-    endif
-
     ! Galatic Cosmic Rays ...
     call gcr_ionization_init()
 
@@ -819,6 +814,11 @@ end function chem_is_active
           endif
        endif
     end do
+
+    ! Add chemical tendency of water vapor to water budget output
+    if ( history_budget ) then
+      call add_default ('CT_H2O'  , history_budget_histfile_num, ' ')
+    endif
 
     ! initialize srf ozone to zero
     if (is_first_step() .and. srf_ozone_pbf_ndx>0) then
