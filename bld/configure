@@ -89,6 +89,7 @@ OPTIONS
      -max_n_rad_cnst <n> Maximum number of constituents that are either radiatively
                         active, or in any single diagnostic list for the radiation.
      -microphys <name>  Specify the microphysics option [mg1 | mg2 | mg3| rk].
+     -model_top <name>  Specify the model_top option [ lt | mt ].
      -nadv <n>          Set total number of advected species to <n>.
      -nadv_tt <n>       Set number of advected test tracers <n>.
      -nlev <n>          Set number of levels to <n>.
@@ -97,7 +98,7 @@ OPTIONS
      -pcols <n>         Set maximum number of columns in a chunk to <n>.
      -pergro            Switch enables building CAM for perturbation growth tests.
      -phys <name>       Physics option [cam3 | cam4 | cam5 | cam6 | cam_dev |
-                                        held_suarez | adiabatic | kessler | tj2016 |
+                                        held_suarez | adiabatic | kessler | tj2016 | grayrad
                                         spcam_sam1mom | spcam_m2005].  Default: cam6
      -prog_species <list>Comma-separate list of prognostic mozart species packages.
                         Currently available: DST,SSLT,SO4,GHG,OC,BC,CARBON16
@@ -271,6 +272,7 @@ GetOptions(
     "max_n_rad_cnst=s"          => \$opts{'max_n_rad_cnst'},
     "mct_libdir=s"              => \$opts{'mct_libdir'},
     "microphys=s"               => \$opts{'microphys'},
+    "model_top=s"               => \$opts{'model_top'},
     "mpas_libdir=s"             => \$opts{'mpas_libdir'},
     "mpi_inc=s"                 => \$opts{'mpi_inc'},
     "mpi_lib=s"                 => \$opts{'mpi_lib'},
@@ -557,7 +559,7 @@ if ($print>=2) { print "Physics package: $phys_pkg$eol"; }
 
 # Set flag to indicate a simple physics option
 my $simple_phys = 0;
-if ($phys_pkg =~ m/^adiabatic$|^held_suarez$|^kessler$|^tj2016$/) {
+if ($phys_pkg =~ m/^adiabatic$|^held_suarez$|^kessler$|^tj2016$|^grayrad$/) {
     $simple_phys = 1;
 }
 
@@ -673,6 +675,17 @@ if (defined $opts{'max_n_rad_cnst'}) {
 my $max_n_rad_cnst = $cfg_ref->get('max_n_rad_cnst');
 
 if ($print>=2) { print "Maximum radiatively active tracers: $max_n_rad_cnst$eol"; }
+
+#-----------------------------------------------------------------------------------------------
+# model_top - not set by default
+my $model_top = 'none';
+$cfg_ref->set('model_top', $model_top);
+
+# user override
+if (defined $opts{'model_top'}) {
+    $cfg_ref->set('model_top', $opts{'model_top'});
+}
+if ($print>=2) { print "model_top: $model_top$eol"; }
 
 #-----------------------------------------------------------------------------------------------
 # waccm physics
@@ -1549,6 +1562,8 @@ $nadv = $cfg_ref->get('nadv');
 if ($print>=2) { print "Total advected constituents: $nadv$eol"; }
 
 #-----------------------------------------------------------------------------------------------
+
+#-----------------------------------------------------------------------------------------------
 # Makefile configuration #######################################################################
 #-----------------------------------------------------------------------------------------------
 
@@ -1908,8 +1923,19 @@ if ($silhs == 1) {
     $cfg_cppdefs .= ' -DSILHS';
 }
 
+# Simple Models
+if ($simple_phys) { $cfg_cppdefs .= ' -DSIMPLE'; }
+
 # UNICON
 if ($unicon) { $cfg_cppdefs .= ' -DUSE_UNICON'; }
+
+# Harmonized Emissions Component (HEMCO)
+# These CPP definitions are used by HEMCO to recognize -
+#   MODEL_     - HEMCO/GEOS-Chem components running in model environment
+#   MODEL_CESM - ...within CESM
+#   USE_REAL8  - HEMCO/GEOS-Chem should use real8 internal precision
+#   HEMCO_CESM - indicates CESM model environment. Deprecated, will be removed soon.
+$cfg_cppdefs .= ' -DMODEL_ -DMODEL_CESM -DHEMCO_CESM -DUSE_REAL8 ';
 
 #-----------------------------------------------------------------------------------------------
 # CPP defines to put on Makefile
@@ -2153,6 +2179,20 @@ sub write_filepath
     print $fh "$camsrcdir/src/ionosphere\n";
 
     print $fh "$camsrcdir/src/chemistry/mozart\n";
+
+    print $fh "$camsrcdir/src/hemco\n";
+
+    # shared dependencies for HEMCO (Harmonized Emissions Component)
+    print $fh "$camsrcdir/src/hemco/HEMCO/src/Shared\n";
+    print $fh "$camsrcdir/src/hemco/HEMCO/src/Shared/Headers\n";
+    print $fh "$camsrcdir/src/hemco/HEMCO/src/Shared/GeosUtil\n";
+    print $fh "$camsrcdir/src/hemco/HEMCO/src/Shared/NcdfUtil\n";
+
+    # HEMCO source code directory paths from HEMCO external
+    print $fh "$camsrcdir/src/hemco/HEMCO/src/Core\n";
+    print $fh "$camsrcdir/src/hemco/HEMCO/src/Extensions\n";
+    print $fh "$camsrcdir/src/hemco/HEMCO/src/Interfaces/Shared\n";
+
     print $fh "$camsrcdir/src/chemistry/utils\n";
 
     if ($rad eq 'rrtmg') {

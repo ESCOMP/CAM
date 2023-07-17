@@ -18,7 +18,7 @@ libraries/parallelio
 src/atmos_phys
 src/dynamics/mpas/dycore
 share
-
+src/hemco
 # Ignore compiled python
 buildnmlc
 buildcppc

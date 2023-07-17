@@ -32,6 +32,8 @@ module physpkg
   use cam_logfile,     only: iulog
   use camsrfexch,      only: cam_export
 
+  use phys_control,    only: use_hemco            ! Use Harmonized Emissions Component (HEMCO)
+
   use modal_aero_calcsize,    only: modal_aero_calcsize_init, modal_aero_calcsize_diag, modal_aero_calcsize_reg
   use modal_aero_wateruptake, only: modal_aero_wateruptake_init, modal_aero_wateruptake_dr, modal_aero_wateruptake_reg
 
@@ -156,6 +158,7 @@ contains
     use dyn_comp,           only: dyn_register
     use spcam_drivers,      only: spcam_register
     use offline_driver,     only: offline_driver_reg
+    use hemco_interface,    only: HCOI_Chunk_Init
     use upper_bc,           only: ubc_fixed_conc
 
     !---------------------------Local variables-----------------------------
@@ -350,6 +353,11 @@ contains
     ! ***NOTE*** No registering constituents after the call to cnst_chk_dim.
 
     call offline_driver_reg()
+
+    if (use_hemco) then
+        ! initialize harmonized emissions component (HEMCO)
+        call HCOI_Chunk_Init()
+    endif
 
     ! This needs to be last as it requires all pbuf fields to be added
     if (cam_snapshot_before_num > 0 .or. cam_snapshot_after_num > 0) then
@@ -1210,6 +1218,7 @@ contains
 #if ( defined OFFLINE_DYN )
     use metdata,         only: get_met_srf2
 #endif
+    use hemco_interface,  only: HCOI_Chunk_Run
     !
     ! Input arguments
     !
@@ -1242,6 +1251,15 @@ contains
     ! if using IOP values for surface fluxes overwrite here after surface components run
     !-----------------------------------------------------------------------
     if (single_column) call scam_use_iop_srf(cam_in)
+
+
+    if(use_hemco) then
+        !----------------------------------------------------------
+        ! run hemco (phase 2 before chemistry)
+        ! only phase 2 is used currently for HEMCO-CESM
+        !----------------------------------------------------------
+        call HCOI_Chunk_Run(cam_in, phys_state, pbuf2d, phase=2)
+    endif
 
     !-----------------------------------------------------------------------
     ! Tendency physics after coupler
@@ -1309,6 +1327,7 @@ contains
     use chemistry, only : chem_final
     use carma_intr, only : carma_final
     use wv_saturation, only : wv_sat_final
+    use hemco_interface,  only: HCOI_Chunk_Final
     use microp_aero, only : microp_aero_final
     use phys_grid_ctem, only : phys_grid_ctem_final
     use nudging, only: Nudge_Model, nudging_final
@@ -1336,6 +1355,11 @@ contains
     call microp_aero_final()
     call phys_grid_ctem_final()
     if(Nudge_Model) call nudging_final()
+
+    if(use_hemco) then
+        ! cleanup hemco
+        call HCOI_Chunk_Final
+    endif
 
   end subroutine phys_final
 
@@ -1510,7 +1534,7 @@ contains
        call cam_snapshot_all_outfld_tphysac(cam_snapshot_before_num, state, tend, cam_in, cam_out, pbuf,&
                     fh2o, surfric, obklen, flx_heat)
     end if
-    call chem_emissions( state, cam_in )
+    call chem_emissions( state, cam_in, pbuf )
     if (trim(cam_take_snapshot_after) == "chem_emissions") then
        call cam_snapshot_all_outfld_tphysac(cam_snapshot_after_num, state, tend, cam_in, cam_out, pbuf,&
                     fh2o, surfric, obklen, flx_heat)
