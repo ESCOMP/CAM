@@ -77,6 +77,9 @@
     'SOAE -> 16.8188D0*$INPUTDATA_ROOT/atm/cam/chem/emis/CMIP6_emissions_2000climo/emissions-cmip6_SVOC_bb_surface_2000climo_0.9x1.25_c20170322.nc'
 </srf_emis_specifier>
 
+<!-- HEMCO emissions -->
+<hemco_emission_year>2000</hemco_emission_year>
+
 <flbc_file>      'atm/waccm/lb/LBC_2000climo_CMIP6_0p5degLat_c180227.nc' </flbc_file>
 <flbc_list>      'CO2','CH4','N2O','CFC11eq','CFC12' </flbc_list>
 <flbc_type>      'CYCLICAL'                          </flbc_type>

@@ -99,6 +99,7 @@ subroutine read_namelist(nlfilename, single_column, scmlat, scmlon)
    use ionosphere_interface,only: ionosphere_readnl
    use qneg_module,         only: qneg_readnl
    use lunar_tides,         only: lunar_tides_readnl
+   use hemco_interface,     only: hemco_readnl
    use upper_bc,            only: ubc_readnl
    use cam_budget,          only: cam_budget_readnl
    use phys_grid_ctem,      only: phys_grid_ctem_readnl
@@ -205,6 +206,7 @@ subroutine read_namelist(nlfilename, single_column, scmlat, scmlon)
    call dyn_readnl(nlfilename)
    call ionosphere_readnl(nlfilename)
    call qneg_readnl(nlfilename)
+   call hemco_readnl(nlfilename)
    call cam_budget_readnl(nlfilename)
    call phys_grid_ctem_readnl(nlfilename)
 

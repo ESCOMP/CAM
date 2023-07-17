@@ -3,8 +3,7 @@
 #
 # build-namelist
 #
-# This script builds the namelists for the standalone CAM configuration of
-# CESM.
+# This script builds the namelists for the CAM component of CESM.
 #
 # build-namelist is designed to be used in conjuction with configure.
 # By default configure produces a config_cache.xml file that contains all
@@ -49,7 +48,7 @@ OPTIONS
      -case "name"          Case identifier up to 32 characters
      -config "filepath"    Read the given configuration cache file to determine the configuration
                            of the CAM executable.  Default: "config_cache.xml".
-     -csmdata "dir"        Root directory of CCSM input data.
+     -csmdata "dir"        Root directory of CESM input data.
                            Can also be set by using the CSMDATA environment variable.
      -dir "directory"      Directory where output namelist files for each component will be
                            written, i.e., atm_in, drv_in, ice_in, lnd_in, rof_in, and ocn_in.
@@ -93,7 +92,7 @@ EOF
 (my $ProgName = $0) =~ s!(.*)/!!;      # name of this script
 $ProgName = "CAM $ProgName";           # Since multiple components are now using a build-namelist
                                        # utility add "CAM" qualifier to the name.  This helps when
-                                       # looking at error output from the whole CCSM system.
+                                       # looking at error output from the whole CESM system.
 my $ProgDir = $1;                      # name of directory containing this script -- may be a
                                        # relative or absolute path, or null if the script is in
                                        # the user's PATH
@@ -183,7 +182,7 @@ EOF
 
 if ($print>=2) { print "Using CAM configuration cache file $opts{'config'}$eol"; }
 
-# Check that the CCSM inputdata root directory has been specified.
+# Check that the CESM inputdata root directory has been specified.
 my $inputdata_rootdir = undef;
 if (defined($opts{'csmdata'})) {
     $inputdata_rootdir = $opts{'csmdata'};
@@ -192,16 +191,16 @@ elsif (defined $ENV{'CSMDATA'}) {
     $inputdata_rootdir = $ENV{'CSMDATA'};
 }
 else {
-    die "$ProgName - ERROR: CCSM inputdata root directory must be specified by either -csmdata argument\n" .
+    die "$ProgName - ERROR: CESM inputdata root directory must be specified by either -csmdata argument\n" .
         " or by the CSMDATA environment variable. :";
 }
 
-if ($print>=2) { print "CCSM inputdata root directory: $inputdata_rootdir$eol"; }
+if ($print>=2) { print "CESM inputdata root directory: $inputdata_rootdir$eol"; }
 
 # If the -test option is specified, then the inputdata root directory must be local or nfs mounted.
 if ($opts{'test'}) {
 (-d $inputdata_rootdir)  or  die <<"EOF";
-** $ProgName - ERROR: CCSM inputdata root is not a directory: \"$inputdata_rootdir\" **
+** $ProgName - ERROR: CESM inputdata root is not a directory: \"$inputdata_rootdir\" **
 EOF
 }
 
@@ -369,7 +368,9 @@ if (defined $opts{'case'}) { add_default($nl, 'case_name', 'val'=>$opts{'case'})
 # Run type
 if (defined $opts{'runtype'}) { add_default($nl, 'start_type', 'val'=>$opts{'runtype'}); }
 
-# Process the -namelist arg.
+# Process the -namelist argument.  CIME uses this argument to pass the values that have been
+# set by the compset definition via the CAM_NAMELIST_OPTS variable, along with additional
+# settings made in the buildnml script.
 
 if (defined $opts{'namelist'}) {
     # Parse commandline namelist
@@ -387,7 +388,8 @@ if (defined $opts{'namelist'}) {
     $nl->merge_nl($nl_arg_valid);
 }
 
-# Process the -infile arg.
+# Process the -infile argument.  CIME uses this argument to pass the contents of the user_nl_cam
+# file, along with additional settings made in the buildnml script.
 
 if (defined $opts{'infile'}) {
     # Parse namelist input from a file
@@ -404,6 +406,11 @@ if (defined $opts{'infile'}) {
     # and are not overwritten.
     $nl->merge_nl($nl_infile_valid);
 }
+
+# Check for user input via the user_nl_cam file which is inconsistent with settings determined by
+# the compset definition.
+
+check_user_input($nl);
 
 # Process the -use_case arg.
 # Declare global symbol $uc_defaults even if it's not defined, because we check whether it's
@@ -2870,6 +2877,23 @@ else {
     }
 }
 
+# Harmonized Emissions Component (HEMCO) options
+# Because HEMCO is configured at runtime, all of the options will be
+# present in the namelist.
+add_default($nl, 'use_hemco');
+if ($nl->get_value('use_hemco') =~ m/$TRUE/io) {
+    add_default($nl, 'cam_physics_mesh');
+    add_default($nl, 'hemco_data_root');
+    add_default($nl, 'hemco_config_file');
+    add_default($nl, 'hemco_diagn_file');
+    add_default($nl, 'hemco_grid_xdim');
+    add_default($nl, 'hemco_grid_ydim');
+    # Remove these variables if present in the namelist since they are
+    # ignored at runtime when HEMCO is used.
+    $nl->delete_variable('chem_inparm', 'ext_frc_specifier');
+    $nl->delete_variable('chem_inparm', 'srf_emis_specifier');
+}
+
 # Physics options
 
 # Add the name of the physics package based on the info in configure.  If the user tries
@@ -4346,7 +4370,7 @@ sub add_default {
 #
 # ***** N.B. ***** This routine assumes the following variables are in package main::
 #  $definition        -- the namelist definition object
-#  $inputdata_rootdir -- CCSM inputdata root directory
+#  $inputdata_rootdir -- CESM inputdata root directory
 
     my $nl = shift;     # namelist object
     my $var = shift;    # name of namelist variable
@@ -4399,7 +4423,7 @@ sub add_default {
 
     # The default values for input pathnames are relative.  If the namelist
     # variable is defined to be an absolute pathname, then prepend
-    # the CCSM inputdata root directory.
+    # the CESM inputdata root directory.
     if ($is_input_pathname eq 'abs') {
         $val = set_abs_filepath($val, $inputdata_rootdir);
     }
@@ -4564,6 +4588,37 @@ sub fv3_decomp_set{
     }
 
     return "$layoutx,$layouty";
+
+}
+
+#-----------------------------------------------------------------------------------------------
+
+sub check_user_input {
+
+# Check that user input in the user_nl_cam file is consistent with input that has been set by
+# the compset definition via CAM_NAMELIST_OPTS.  This routine is called after build-namelist has
+# processed both the -namelist argument which contains the input from CAM_NAMELIST_OPTS, and
+# the -infile argument which contains input from user_nl_cam.
+#
+# Checks for specific inconsistencies are added here by CAM developers as deemed useful for
+# improving robustness of the user interface.
+
+    my $nl = shift;    # namelist object
+
+    # When HEMCO is being used any emissions or external forcings specified by the 
+    # srf_emis_specifier and ext_frc_specifier variables will be ignored at runtime.
+    # Check here that these variable are not set if the compset definition sets
+    # use_hemco=.true.
+
+    my $hemco = $nl->get_value('use_hemco');
+    if (defined $hemco and $hemco =~ m/$TRUE/io) {
+        if (defined $nl->get_value('srf_emis_specifier') or
+            defined $nl->get_value('ext_frc_specifier') ) {
+            die "$ProgName - ERROR: It is not allowed to set either srf_emis_specifier \n",
+                "                   or ext_frc_specifier when HEMCO is used.\n";
+        }
+    }
+
 
 }
 
@@ -4734,7 +4789,7 @@ sub check_input_files {
 
                     # If $name2 starts with a slash, then it is an absolute filepath.
                     # If $name2 starts with a $, then it is an unresolved filepath
-                    # (generated when run from CCSM scripts).
+                    # (generated when run from CIME scripts).
                     # Otherwise check for more fields
                     if ($name2 =~ m:^[/\$]:) {
 
@@ -4990,38 +5045,6 @@ sub check_snapshot_settings {
             }
         }
     }
-}
-
-#-----------------------------------------------------------------------------------------------
-
-sub strip_rootdir {
-
-# Strip a root directory from the begining of a filepath.
-# Allow for the possibility that the root directory is specified as a shell variable
-# to support a CCSM script requirement.
-
-    my ($filepath, $rootdir) = @_;
-
-    # Check whether the rootdir is specified as a shell variable.
-    if ($rootdir =~ m/^\$(\w*)/) {
-
-        my $rootname = $1;
-
-        # Strip off the root directory with the following regexp that
-        # avoids the problem of $rootdir being interpolated to a scalar variable
-        # name...
-        #$filepath =~ s:^\$$rootname::;
-
-        # The CCSM scripts are currently set up to expect the shell variable in the
-        # output file that contains the list of inputdata files.  So in this case
-        # do nothing.
-
-    }
-    else {
-        # Strip off the rootdir specified as a resolved pathname
-        $filepath =~ s:^$rootdir::;
-    }
-    return $filepath;
 }
 
 #-----------------------------------------------------------------------------------------------

@@ -828,15 +828,15 @@
 <edyn_grid hgrid="0.47x0.63">320x385</edyn_grid>
 
 <!-- ESMF mesh files for physics decomposition -->
-<cam_physics_mesh waccmx_opt="ionosphere" hgrid="0.47x0.63">atm/cam/coords/fv0.47x0.63_esmf_c210305.nc</cam_physics_mesh>
-<cam_physics_mesh waccmx_opt="ionosphere" hgrid="0.9x1.25">atm/cam/coords/fv0.9x1.25_esmf_c210305.nc</cam_physics_mesh>
-<cam_physics_mesh waccmx_opt="ionosphere" hgrid="1.9x2.5">atm/cam/coords/fv1.9x2.5_esmf_200428.nc</cam_physics_mesh>
-<cam_physics_mesh waccmx_opt="ionosphere" hgrid="4x5">atm/cam/coords/fv4x5_esmf_c210305.nc</cam_physics_mesh>
-<cam_physics_mesh waccmx_opt="ionosphere" hgrid="ne5np4">atm/cam/coords/ne5np4_esmf_20191204.nc</cam_physics_mesh>
-<cam_physics_mesh waccmx_opt="ionosphere" hgrid="ne5np4" npg="3">atm/cam/coords/ne5np4.pg3_esmf_mesh_c210121.nc</cam_physics_mesh>
-<cam_physics_mesh waccmx_opt="ionosphere" hgrid="ne16np4">atm/cam/coords/ne16np4_esmf_c210305.nc</cam_physics_mesh>
-<cam_physics_mesh waccmx_opt="ionosphere" hgrid="ne30np4">atm/cam/coords/ne30np4_esmf_c210305.nc</cam_physics_mesh>
-<cam_physics_mesh waccmx_opt="ionosphere" hgrid="ne30np4" npg="3">atm/cam/coords/ne30pg3_esmf_20200428.nc</cam_physics_mesh>
+<cam_physics_mesh hgrid="0.47x0.63">atm/cam/coords/fv0.47x0.63_esmf_c210305.nc</cam_physics_mesh>
+<cam_physics_mesh hgrid="0.9x1.25">atm/cam/coords/fv0.9x1.25_esmf_c210305.nc</cam_physics_mesh>
+<cam_physics_mesh hgrid="1.9x2.5">atm/cam/coords/fv1.9x2.5_esmf_200428.nc</cam_physics_mesh>
+<cam_physics_mesh hgrid="4x5">atm/cam/coords/fv4x5_esmf_c210305.nc</cam_physics_mesh>
+<cam_physics_mesh hgrid="ne5np4">atm/cam/coords/ne5np4_esmf_20191204.nc</cam_physics_mesh>
+<cam_physics_mesh hgrid="ne5np4" npg="3">atm/cam/coords/ne5np4.pg3_esmf_mesh_c210121.nc</cam_physics_mesh>
+<cam_physics_mesh hgrid="ne16np4">atm/cam/coords/ne16np4_esmf_c210305.nc</cam_physics_mesh>
+<cam_physics_mesh hgrid="ne30np4">atm/cam/coords/ne30np4_esmf_c210305.nc</cam_physics_mesh>
+<cam_physics_mesh hgrid="ne30np4" npg="3">atm/cam/coords/ne30pg3_esmf_20200428.nc</cam_physics_mesh>
 
 <!-- For scaling lightning sources of NOx -->
 <lght_no_prd_factor                                              >1.00D0</lght_no_prd_factor>
@@ -3325,4 +3325,30 @@
            ' C3H6_O3 + ISOP_O3 + MVK_O3 + MACR_O3 + MTERP_O3 + BCARY_O3 + S_O3 + SO_O3'
 </rxn_rate_sums>
 
+<!-- HEMCO: Harmonized Emissions Component -->
+<use_hemco>.false.</use_hemco>
+<hemco_data_root>atm/cam/geoschem/emis/ExtData/HEMCO</hemco_data_root>
+<hemco_config_file>atm/cam/geoschem/emis/HEMCO_Config.CC.CEDS_AEIC19.NEx.c230615.rc</hemco_config_file>
+<hemco_diagn_file>atm/cam/geoschem/emis/HEMCO_Diagn.3_5_0.c230307.rc</hemco_diagn_file>
+<hemco_emission_year>-1</hemco_emission_year>
+
+<!-- Default emissions grid resolution at 2x2.5 degree: coarser may result in masking artifacts -->
+<hemco_grid_xdim>144</hemco_grid_xdim>
+<hemco_grid_ydim>91</hemco_grid_ydim>
+
+<!-- if using SE refined mesh use 0.5x0.625 degree grid -->
+<hemco_grid_xdim se_refined_mesh="1">576</hemco_grid_xdim>
+<hemco_grid_ydim se_refined_mesh="1">361</hemco_grid_ydim>
+
+<!-- use 0.9x1.25 degree HEMCO grid for ne30 simulation -->
+<hemco_grid_xdim hgrid="ne30np4">288</hemco_grid_xdim>
+<hemco_grid_ydim hgrid="ne30np4">201</hemco_grid_ydim>
+
+<!-- use 0.9x1.25 degree HEMCO grid for 0.9x1.25 degree simulation -->
+<hemco_grid_xdim hgrid="0.9x1.25">288</hemco_grid_xdim>
+<hemco_grid_ydim hgrid="0.9x1.25">201</hemco_grid_ydim>
+
+<!-- use 2x2.5 degree HEMCO grid for 1.9x2.5 degree simulation -->
+<hemco_grid_xdim hgrid="1.9x2.5">144</hemco_grid_xdim>
+<hemco_grid_ydim hgrid="1.9x2.5">91</hemco_grid_ydim>
 </namelist_defaults>
