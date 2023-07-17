@@ -969,7 +969,7 @@ contains
   end subroutine cseawater_ini
 
   !--------------------------------------------------------------------------------
-  ! returns TRUE of species has ocean emissions
+  ! returns TRUE if species has ocean emissions
   !--------------------------------------------------------------------------------
   pure logical function ocean_emis_species(name)
     character(len=*), intent(in) :: name
