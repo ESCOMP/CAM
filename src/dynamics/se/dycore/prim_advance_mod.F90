@@ -78,7 +78,7 @@ contains
     real (kind=r8) :: qwater(np,np,nlev,thermodynamic_active_species_num,nets:nete)
     integer        :: qidx(thermodynamic_active_species_num)
     real (kind=r8) :: kappa(np,np,nlev,nets:nete)
-    call t_startf('prim_advance_exp')
+
     nm1   = tl%nm1
     n0    = tl%n0
     np1   = tl%np1
@@ -257,7 +257,6 @@ contains
 
     call omp_set_nested(.false.)
 
-    call t_stopf('prim_advance_exp')
   end subroutine prim_advance_exp
 
 
