@@ -1215,12 +1215,6 @@ subroutine radiation_tend( &
                rd%aer_tau400(:ncol,:)       = aer_tau(:ncol,:,idx_sw_diag+1)
                rd%aer_tau700(:ncol,:)       = aer_tau(:ncol,:,idx_sw_diag-1)
 
-               print*,'--- Right before rad_rrtmg_sw ---'
-               do k=1,pver
-                  print '("LEVEL",i2,3x,"TAU (max) = ",f7.4,3x)', k,MAXVAL(c_cld_tau(:,1,k))
-               end do
-
-
                call rad_rrtmg_sw( &
                   lchnk, ncol, num_rrtmg_levs, r_state, state%pmid,          &
                   cldfprime, aer_tau, aer_tau_w, aer_tau_w_g,  aer_tau_w_f,  &

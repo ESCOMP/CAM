@@ -91,6 +91,7 @@ module solar_data
        write(iulog,*) 'solar_data_readnl: solar_data_type = ',trim(solar_data_type)
        write(iulog,*) 'solar_data_readnl: solar_data_ymd  = ',solar_data_ymd
        write(iulog,*) 'solar_data_readnl: solar_data_tod  = ',solar_data_tod
+       write(iulog,*) 'solar_data_readnl: solar_htng_spctrl_scl  = ',solar_htng_spctrl_scl
     endif
 
     solar_parms_on = solar_parms_data_file.ne.'NONE'

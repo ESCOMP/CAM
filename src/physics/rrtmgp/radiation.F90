@@ -196,14 +196,18 @@ real(r8) :: rad_uniform_angle = -99._r8
 ! Number of layers in radiation calculations.
 integer :: nlay
 
-! Indices for copying data between cam and rrtmgp arrays
-! The code currently assumes the rrtmgp vertical index goes bottom to top,
-! while CAM goes top-to-bottom ... 
-! Newer RRTMGP checks for host model order and adjusts, so a lot of the assumptions are unncessary.
-integer :: ktopcamm ! cam index of top layer
-integer :: ktopradm ! rrtmgp index of layer corresponding to ktopcamm
-integer :: ktopcami ! cam index of top interface
-integer :: ktopradi ! rrtmgp index of interface corresponding to ktopcami
+! Indices for copying data between CAM/WACCM and RRTMGP arrays.  Since RRTMGP is
+! vertical order agnostic we can send data using the top to bottom order used
+! in CAM/WACCM.  But the number of layers that RRTMGP does computations for
+! may not match the number of layers in CAM/WACCM for two reasons:
+! 1. If the CAM model top is below 1 Pa, then RRTMGP does calculations for an
+!    extra layer that is added between 1 Pa and the model top.
+! 2. If the WACCM model top is above 1 Pa, then RRMTGP only does calculations
+!    for those model layers that are below 1 Pa.
+integer :: ktopcamm ! index in CAM arrays of top layer at which RRTMGP is active
+integer :: ktopcami ! index in CAM arrays of top interface at which RRTMGP is active
+integer :: ktopradm ! index in RRTMGP arrays of layer corresponding to CAM top layer
+integer :: ktopradi ! index in RRTMGP arrays of interface corresponding to CAM top interface
 
 ! LW coefficients
 type(ty_gas_optics_rrtmgp) :: kdist_lw ! bpm changed here
@@ -287,7 +291,7 @@ subroutine radiation_readnl(nlfile)
    call mpi_bcast(rrtmgp_coefs_lw_file, cl, mpi_character, mstrid, mpicom, ierr)
    if (ierr /= 0) call endrun(subroutine_name//": FATAL: mpi_bcast: rrtmgp_coefs_lw_file")
    call mpi_bcast(rrtmgp_coefs_sw_file, cl, mpi_character, mstrid, mpicom, ierr)
-   if (ierr /= 0) call endrun(subroutine_name//": FATAL: mpi_bcast: coefs_sw_file")
+   if (ierr /= 0) call endrun(subroutine_name//": FATAL: mpi_bcast: rrtmgp_coefs_sw_file")
    call mpi_bcast(iradsw, 1, mpi_integer, mstrid, mpicom, ierr)
    if (ierr /= 0) call endrun(subroutine_name//": FATAL: mpi_bcast: iradsw")
    call mpi_bcast(iradlw, 1, mpi_integer, mstrid, mpicom, ierr)
@@ -493,36 +497,26 @@ subroutine radiation_init(pbuf2d)
    character(len=*), parameter :: sub = 'radiation_init'
    !-----------------------------------------------------------------------
    
-   !
-   ! replacement of RRTMG's rrtmg_state_init
-   !
-
    ! Number of layers in radiation calculation is capped by the number of
    ! pressure interfaces below 1 Pa.  When the entire model atmosphere is
    ! below 1 Pa then an extra layer is added to the top of the model for
    ! the purpose of the radiation calculation.
    nlay = count( pref_edge(:) > 1._r8 ) ! pascals (0.01 mbar)
 
-   ! Use k*rad* to access variables ON THE RADIATION GRID
-   ! Use k*cam* to access variables ON THE CAM GRID
    if (nlay == pverp) then
-         ktopcamm = 1               ! interpretation: highest CAM grid layer at which radiation is active
-         ktopcami = 1 
-         ktopradm = nlay + 1 - pver ! radiation grid layer the corresponds to CAM's highest layer (expected to be 2)
-         ktopradi = nlay + 1 - pver
-   else ! nlay < pverp
-      ! nlay layers are set by radiation
-      ! nlay+1 interfaces are set by radiation
+      ! Top model interface is below 1 Pa.  RRTMGP is active in all model layers plus
+      ! 1 extra layer between model top and 1 Pa.
+      ktopcamm = 1
+      ktopcami = 1 
+      ktopradm = 2
+      ktopradi = 2
+   else
+      ! nlay < pverp.  nlay layers are set by radiation
       ktopcamm = pverp - nlay + 1
       ktopcami = pverp - nlay + 1
-      ktopradm = 1  ! radiation grid index at top is just 1
+      ktopradm = 1
       ktopradi = 1
    end if
-   ! bottom indices are known, so we don't need to have extra variables.
-   ! kbotcamm = pver
-   ! kbotcami = pverp
-   ! kbotradm = nlay
-   ! kbotradi = nlay + 1
 
    call set_available_gases(active_gases, available_gases) ! gases needed to initialize spectral info
 
