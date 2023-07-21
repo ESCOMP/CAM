@@ -128,6 +128,9 @@
   'so4_a2 -> $INPUTDATA_ROOT/atm/cam/chem/emis/CMIP6_emissions_2000climo/emissions-cmip6_so4_a2_anthro-res_surface_2000climo_0.9x1.25_c20170616.nc'
 </srf_emis_specifier>
 
+<!-- HEMCO emissions -->
+<hemco_emission_year>2000</hemco_emission_year>
+
 <ndep_list>'noy', 'nhx'</ndep_list>
 
 <!-- History Files -->

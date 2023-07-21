@@ -319,6 +319,9 @@
          'so4_a2 -> $INPUTDATA_ROOT/atm/cam/chem/emis/ne30pg3/2010climo/emissions-cmip6_so4_a2_anthro-res_surface_mol_2010climo_ne30pg3_c20200224.nc'
 </srf_emis_specifier>
 
+<!-- HEMCO emissions -->
+<hemco_emission_year>2010</hemco_emission_year>
+
 <ndep_list>'noy', 'nhx'</ndep_list>
 
 <!-- History Files -->
