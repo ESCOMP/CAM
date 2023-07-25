@@ -236,7 +236,7 @@ integer :: &
    frzcnt_idx = -1, &
    frzdep_idx = -1
 
-logical :: allow_sed_supersat            ! allow supersaturated conditions after sedimentation loop
+logical :: allow_sed_supersat                      ! allow supersaturated conditions after sedimentation loop
 character(len=16) :: micro_mg_warm_rain= 'kk2000'  ! 'tau', 'emulated', 'sb2001' and ' kk2000'
 
 integer :: bergso_idx = -1
@@ -341,7 +341,7 @@ subroutine micro_pumas_cam_readnl(nlfile)
         end if
 
      end if
-   
+
   end if
 
   ! Broadcast namelist variables
@@ -570,12 +570,6 @@ subroutine micro_pumas_cam_register
 
    allocate(trop_levs(pver-top_lev+1), stat=ierr)
    call handle_allocate_error(ierr, 'micro_pumas_cam_register', 'trop_levs')
-
-!++ TAU
-!!!!!!   call add_hist_coord('bins_ncd', ncd, 'bins for TAU microphysics')
-!!!!!!   call add_hist_coord('bins_ncd', ncd, 'bins for TAU microphysics', 'cm', &
-!!!!!!                        diammean, bounds_name = 'bins_ncd_bnds', bounds = diamedge )
-!-- TAU
 
    call phys_getopts(use_subcol_microp_out    = use_subcol_microp, &
                      prog_modal_aero_out      = prog_modal_aero)
@@ -911,7 +905,7 @@ subroutine micro_pumas_cam_init(pbuf2d)
          ncnst = 10
    end if
 
-   ! If Machine learning is turned on, perform it's initializations
+   ! If Machine learning is turned on, perform its initializations
    if (trim(micro_mg_warm_rain) == 'tau') then
       call stochastic_tau_init_cam()
    else if( trim(micro_mg_warm_rain) == 'emulated') then
@@ -919,7 +913,7 @@ subroutine micro_pumas_cam_init(pbuf2d)
                                        stochastic_emulated_filename_input_scale, &
                                        stochastic_emulated_filename_output_scale)
    end if
- 
+
    call micro_mg_init3_0( &
            r8, gravit, rair, rh2o, cpair, &
            tmelt, latvap, latice, rhmini, &
@@ -2369,7 +2363,6 @@ subroutine micro_pumas_cam_tend(state, ptend, dtime, pbuf)
       ! Update local state
       call physics_update(state_loc, ptend_loc, dtime/num_steps)
 
-!++ TAU
       if (trim(micro_mg_warm_rain) == 'tau') then
          proc_rates%amk_c(:ncol,:,:) = proc_rates%amk_c(:ncol,:,:)/num_steps
          proc_rates%ank_c(:ncol,:,:) = proc_rates%ank_c(:ncol,:,:)/num_steps
@@ -2380,7 +2373,6 @@ subroutine micro_pumas_cam_tend(state, ptend, dtime, pbuf)
          proc_rates%amk_out(:ncol,:,:) = proc_rates%amk_out(:ncol,:,:)/num_steps
          proc_rates%ank_out(:ncol,:,:) = proc_rates%ank_out(:ncol,:,:)/num_steps
       end if
-!-- TAU
 
    end do
 
@@ -2745,9 +2737,6 @@ subroutine micro_pumas_cam_tend(state, ptend, dtime, pbuf)
 
       nc_grid = state_loc%q(:,:,ixnumliq)
       ni_grid = state_loc%q(:,:,ixnumice)
-
-!     write(iulog,*) "qctend_KK2000: ",proc_rates%qctend_KK2000(1,:)
-!     write(iulog,*) "prctot: ",proc_rates%prctot(1,:)
 
       qcsedtenout_grid(:ncol,top_lev:) = proc_rates%qcsedten
       qisedtenout_grid(:ncol,top_lev:) = proc_rates%qisedten
@@ -3253,7 +3242,6 @@ subroutine micro_pumas_cam_tend(state, ptend, dtime, pbuf)
    call outfld( 'MPDI2P', ftem_grid, pcols, lchnk)
 
    ! Output fields which have not been averaged already, averaging if use_subcol_microp is true
-!++ TAU
    if (trim(micro_mg_warm_rain) == 'tau' .or. trim(micro_mg_warm_rain) == 'emulated') then
       call outfld('scale_qc',    proc_rates%scale_qc,    ncol, lchnk, avg_subcol_field=use_subcol_microp)
       call outfld('scale_nc',    proc_rates%scale_nc,    ncol, lchnk, avg_subcol_field=use_subcol_microp)
@@ -3292,14 +3280,13 @@ subroutine micro_pumas_cam_tend(state, ptend, dtime, pbuf)
       call outfld('nctend_SB2001',  proc_rates%nctend_SB2001,  ncol, lchnk, avg_subcol_field=use_subcol_microp)
       call outfld('qrtend_SB2001',  proc_rates%qrtend_SB2001,  ncol, lchnk, avg_subcol_field=use_subcol_microp)
       call outfld('nrtend_SB2001',  proc_rates%nrtend_SB2001,  ncol, lchnk, avg_subcol_field=use_subcol_microp)
-   end if 
+   end if
 
    call outfld('qctend_KK2000',  proc_rates%qctend_KK2000,  ncol, lchnk, avg_subcol_field=use_subcol_microp)
    call outfld('nctend_KK2000',  proc_rates%nctend_KK2000,  ncol, lchnk, avg_subcol_field=use_subcol_microp)
    call outfld('qrtend_KK2000',  proc_rates%qrtend_KK2000,  ncol, lchnk, avg_subcol_field=use_subcol_microp)
    call outfld('nrtend_KK2000',  proc_rates%nrtend_KK2000,  ncol, lchnk, avg_subcol_field=use_subcol_microp)
 
-!-- TAU
    call outfld('MPICLWPI',    iclwpi,      psetcols, lchnk, avg_subcol_field=use_subcol_microp)
    call outfld('MPICIWPI',    iciwpi,      psetcols, lchnk, avg_subcol_field=use_subcol_microp)
    call outfld('REFL',        refl,        psetcols, lchnk, avg_subcol_field=use_subcol_microp)
