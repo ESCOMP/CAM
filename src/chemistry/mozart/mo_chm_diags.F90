@@ -10,6 +10,7 @@ module mo_chm_diags
   use cam_history,  only : fieldname_len
   use mo_jeuv,      only : neuv
   use gas_wetdep_opts,only : gas_wetdep_method
+  use mo_drydep,    only : has_drydep
 
   implicit none
   private
@@ -64,13 +65,12 @@ contains
     use cam_history,  only : addfld, add_default, horiz_only
     use constituents, only : cnst_get_ind, cnst_longname
     use phys_control, only : phys_getopts
-    use mo_drydep,    only : has_drydep
     use species_sums_diags, only : species_sums_init
 
     integer :: j, k, m, n
     character(len=16) :: jname, spc_name, attr
     character(len=2)  :: jchar
-    character(len=2)  :: unit_basename  ! Units 'kg' or '1' 
+    character(len=2)  :: unit_basename  ! Units 'kg' or '1'
 
     integer :: id_pan, id_onit, id_mpan, id_isopno3, id_onitr, id_nh4no3
     integer :: id_so2, id_so4, id_h2so4
@@ -89,7 +89,7 @@ contains
     integer :: id_dst01, id_dst02, id_dst03, id_dst04, id_sslt01, id_sslt02, id_sslt03, id_sslt04
     integer :: id_soa,  id_oc1, id_oc2, id_cb1, id_cb2
     integer :: id_soam,id_soai,id_soat,id_soab,id_soax
-    integer :: id_bry, id_cly 
+    integer :: id_bry, id_cly
     integer :: id_isopn2b, id_isopn3b, id_isopn1d, id_isopn4d, id_isopnbno3
     integer :: id_isopfnp, id_isopnoohb, id_isopnoohd, id_inheb, id_inhed
     integer :: id_no3ch2cho, id_macrn, id_mvkn, id_isopfnc, id_terpns
@@ -195,17 +195,17 @@ contains
     id_onitr   = get_spc_ndx( 'ONITR' )
     id_nh4no3  = get_spc_ndx( 'NH4NO3' )
 
-    id_honitr    = get_spc_ndx( 'HONITR' ) 
-    id_alknit    = get_spc_ndx( 'ALKNIT' ) 
-    id_isopnita  = get_spc_ndx( 'ISOPNITA' ) 
-    id_isopnitb  = get_spc_ndx( 'ISOPNITB' ) 
-    id_isopnooh  = get_spc_ndx( 'ISOPNOOH' ) 
-    id_nc4ch2oh  = get_spc_ndx( 'NC4CH2OH' ) 
-    id_nc4cho    = get_spc_ndx( 'NC4CHO' ) 
-    id_noa       = get_spc_ndx( 'NOA' ) 
-    id_nterpooh  = get_spc_ndx( 'NTERPOOH' ) 
+    id_honitr    = get_spc_ndx( 'HONITR' )
+    id_alknit    = get_spc_ndx( 'ALKNIT' )
+    id_isopnita  = get_spc_ndx( 'ISOPNITA' )
+    id_isopnitb  = get_spc_ndx( 'ISOPNITB' )
+    id_isopnooh  = get_spc_ndx( 'ISOPNOOH' )
+    id_nc4ch2oh  = get_spc_ndx( 'NC4CH2OH' )
+    id_nc4cho    = get_spc_ndx( 'NC4CHO' )
+    id_noa       = get_spc_ndx( 'NOA' )
+    id_nterpooh  = get_spc_ndx( 'NTERPOOH' )
     id_pbznit    = get_spc_ndx( 'PBZNIT' )
-    id_terpnit   = get_spc_ndx( 'TERPNIT' ) 
+    id_terpnit   = get_spc_ndx( 'TERPNIT' )
     id_ndep      = get_spc_ndx( 'NDEP' )
     id_nhdep     = get_spc_ndx( 'NHDEP' )
 
@@ -278,9 +278,9 @@ contains
     noy_species = (/ id_n, id_no, id_no2, id_no3, id_n2o5, id_hno3, id_ho2no2, id_clono2, &
                      id_brono2, id_pan, id_onit, id_mpan, id_isopno3, id_onitr, id_nh4no3, &
                      id_honitr, id_alknit, id_isopnita, id_isopnitb, id_isopnooh, id_nc4ch2oh, &
-                     id_nc4cho, id_noa, id_nterpooh, id_pbznit, id_terpnit, & 
+                     id_nc4cho, id_noa, id_nterpooh, id_pbznit, id_terpnit, &
                      id_isopn2b, id_isopn3b, id_isopn1d, id_isopn4d, id_isopnbno3, &
-                     id_isopfdn, id_isopfdnc, id_terpfdn, &                               
+                     id_isopfdn, id_isopfdnc, id_terpfdn, &
                      id_isopfnp, id_isopnoohb, id_isopnoohd, id_inheb, id_inhed, &
                      id_no3ch2cho, id_macrn, id_mvkn, id_isopfnc, id_terpns, &
                      id_terpnt, id_terpnt1, id_terpns1, id_terpnpt, id_terpnps, &
@@ -402,16 +402,17 @@ contains
           attr = spc_name
        endif
 
-       depvel_name(m) = 'DV_'//trim(spc_name)
-       depflx_name(m) = 'DF_'//trim(spc_name)
        dtchem_name(m) = 'D'//trim(spc_name)//'CHM'
-
-       call addfld( depvel_name(m), horiz_only,  'A', 'cm/s',    'deposition velocity ' )
-       call addfld( depflx_name(m), horiz_only,  'A', 'kg/m2/s', 'dry deposition flux ' )
        call addfld( dtchem_name(m), (/ 'lev' /), 'A', 'kg/s',    'net tendency from chem' )
 
-       if (has_drydep(spc_name).and.history_chemistry) then
-          call add_default( depflx_name(m), 1, ' ' )
+       depvel_name(m) = 'DV_'//trim(spc_name)
+       depflx_name(m) = 'DF_'//trim(spc_name)
+       if (has_drydep(spc_name)) then
+          call addfld( depvel_name(m), horiz_only,  'A', 'cm/s',    'deposition velocity ' )
+          call addfld( depflx_name(m), horiz_only,  'A', 'kg/m2/s', 'dry deposition flux ' )
+          if (history_chemistry) then
+             call add_default( depflx_name(m), 1, ' ' )
+          endif
        endif
 
        if (gas_wetdep_method=='MOZ') then
@@ -439,7 +440,7 @@ contains
        if ((m /= id_cly) .and. (m /= id_bry)) then
           if (history_aerosol.or.history_chemistry) then
              call add_default( spc_name, 1, ' ' )
-          endif 
+          endif
           if (history_chemspecies_srf) then
              call add_default( trim(spc_name)//'_SRF', 1, ' ' )
           endif
@@ -510,7 +511,7 @@ contains
     !--------------------------------------------------------------------
     !	... utility routine to output chemistry diagnostic variables
     !--------------------------------------------------------------------
-    
+
     use cam_history,  only : outfld
     use phys_grid,    only : get_area_all_p
     use species_sums_diags, only : species_sums_output
@@ -546,7 +547,7 @@ contains
     !      real(r8)    :: tmp(ncol,pver)
     !      real(r8)    :: m(ncol,pver)
     real(r8)    :: un2(ncol)
-    
+
     real(r8), dimension(ncol,pver) :: vmr_nox, vmr_noy, vmr_clox, vmr_cloy, vmr_tcly, vmr_brox, vmr_broy, vmr_toth
     real(r8), dimension(ncol,pver) :: vmr_tbry, vmr_foy, vmr_tfy
     real(r8), dimension(ncol,pver) :: mmr_noy, mmr_sox, mmr_nhx, net_chem
@@ -673,7 +674,7 @@ contains
        if ( any( hox_species == m ) ) then
           vmr_hox(:ncol,:) = vmr_hox(:ncol,:) +  wgt * vmr(:ncol,:,m)
        endif
-       
+
        if ( any( aer_species == m ) ) then
           call outfld( solsym(m), mmr(:ncol,:,m), ncol ,lchnk )
           call outfld( trim(solsym(m))//'_SRF', mmr(:ncol,pver,m), ncol ,lchnk )
@@ -682,8 +683,10 @@ contains
           call outfld( trim(solsym(m))//'_SRF', vmr(:ncol,pver,m), ncol ,lchnk )
        endif
 
-       call outfld( depvel_name(m), depvel(:ncol,m), ncol ,lchnk )
-       call outfld( depflx_name(m), depflx(:ncol,m), ncol ,lchnk )
+       if (has_drydep(solsym(m))) then
+          call outfld( depvel_name(m), depvel(:ncol,m), ncol ,lchnk )
+          call outfld( depflx_name(m), depflx(:ncol,m), ncol ,lchnk )
+       endif
 
        if ( any( noy_species == m ) ) then
           df_noy(:ncol) = df_noy(:ncol) +  wgt * depflx(:ncol,m)*N_molwgt/adv_mass(m)
@@ -705,15 +708,15 @@ contains
 ! add contribution from non-conservation tracers
 !
        if ( id_ndep == m ) then
-          wd_noy(:ncol) = wd_noy(:ncol) +  wgt * wetdepflx(:ncol,m)*N_molwgt/adv_mass(m) 
+          wd_noy(:ncol) = wd_noy(:ncol) +  wgt * wetdepflx(:ncol,m)*N_molwgt/adv_mass(m)
        end if
        if ( id_nhdep == m ) then
-          wd_nhx(:ncol) = wd_nhx(:ncol) +  wgt * wetdepflx(:ncol,m)*N_molwgt/adv_mass(m) 
+          wd_nhx(:ncol) = wd_nhx(:ncol) +  wgt * wetdepflx(:ncol,m)*N_molwgt/adv_mass(m)
        end if
 
        do k=1,pver
           do i=1,ncol
-             net_chem(i,k) = mmr_tend(i,k,m) * mass(i,k) 
+             net_chem(i,k) = mmr_tend(i,k,m) * mass(i,k)
           end do
        end do
        call outfld( dtchem_name(m), net_chem(:ncol,:), ncol, lchnk )
@@ -769,7 +772,7 @@ contains
     call outfld( 'DF_SOX', df_sox(:ncol), ncol ,lchnk )
     call outfld( 'dry_deposition_NHx_as_N', df_nhx(:ncol), ncol ,lchnk )
     if (gas_wetdep_method=='NEU') then
-      wd_noy(:ncol) = -wd_noy(:ncol) ! downward is possitive 
+      wd_noy(:ncol) = -wd_noy(:ncol) ! downward is possitive
       wd_nhx(:ncol) = -wd_nhx(:ncol)
       call outfld( 'wet_deposition_NOy_as_N', wd_noy(:ncol), ncol, lchnk )
       call outfld( 'wet_deposition_NHx_as_N', wd_nhx(:ncol), ncol, lchnk )
@@ -903,7 +906,7 @@ contains
        !
        wrk_wd(:ncol) = 0._r8
        do k = 1,pver
-          wrk_wd(:ncol) = wrk_wd(:ncol) + het_rates(:ncol,k,m) * mmr(:ncol,k,m) * pdel(:ncol,k) 
+          wrk_wd(:ncol) = wrk_wd(:ncol) + het_rates(:ncol,k,m) * mmr(:ncol,k,m) * pdel(:ncol,k)
        end do
        !
        wrk_wd(:ncol) = wrk_wd(:ncol) * rgrav * wght(:ncol) * rearth**2
