@@ -13,6 +13,9 @@ module restart_physics
                             pio_inq_varid, pio_def_var, pio_def_dim,          &
                             pio_put_var, pio_get_var
 
+  use cam_control_mod, only: frierson_phys
+  use frierson_cam,only: frierson_restart_init, frierson_restart_write, frierson_restart_read
+
   implicit none
   private
   save
@@ -59,6 +62,10 @@ CONTAINS
 
     call pbuf_init_restart(File, pbuf2d)
 
+    if (frierson_phys) then
+       call frierson_restart_init(File,hdimids,hdimcnt)
+    end if
+
   end subroutine init_restart_physics
 
   subroutine write_restart_physics (File, cam_in, cam_out, pbuf2d)
@@ -85,6 +92,10 @@ CONTAINS
     ! Physics buffer
     call pbuf_write_restart(File, pbuf2d)
 
+    if (frierson_phys) then
+       call frierson_restart_write(File)
+    end if
+
   end subroutine write_restart_physics
 
   !#######################################################################
@@ -110,6 +121,9 @@ CONTAINS
 
     call pbuf_read_restart(File, pbuf2d)
 
+    if (frierson_phys) then
+       call frierson_restart_read(File)
+    end if
   end subroutine read_restart_physics
 
  end module restart_physics

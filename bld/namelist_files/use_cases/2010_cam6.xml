@@ -72,6 +72,9 @@
 	 'SOAE -> 16.8188D0*$INPUTDATA_ROOT/atm/cam/chem/emis/CMIP6_emissions_2010climo/emissions-cmip6_SVOC_bb_surface_2010climo_0.9x1.25_c20180918.nc'
 </srf_emis_specifier>
 
+<!-- HEMCO emissions -->
+<hemco_emission_year>2010</hemco_emission_year>
+
 <csw_time_type>CYCLICAL</csw_time_type>
 <csw_cycle_yr>2010</csw_cycle_yr>
 
