@@ -4452,14 +4452,16 @@ contains
 
 !================================================================================
 
-  subroutine chem_emissions( state, cam_in )
+  subroutine chem_emissions( state, cam_in, pbuf )
 
+    use physics_buffer,      only : physics_buffer_desc
     use camsrfexch,          only : cam_in_t
 
     ! Arguments:
 
     TYPE(physics_state),    INTENT(IN)    :: state   ! Physics state variables
     TYPE(cam_in_t),         INTENT(INOUT) :: cam_in  ! import state
+    TYPE(physics_buffer_desc), pointer    :: pbuf(:) ! Physics buffer in chunk, for HEMCO
 
     INTEGER :: M, N
     INTEGER :: LCHNK, nY
