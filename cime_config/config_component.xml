@@ -187,7 +187,6 @@
       <value compset="_CAM%TJ16">-phys tj2016 -analytic_ic</value>
       <value compset="_CAM%GRAYRAD">-phys grayrad -analytic_ic</value>
       <value compset="_CAM%HS94">-phys held_suarez -analytic_ic</value>
-      <value compset="_CAM%GCHS">-phys held_suarez -chem geoschem -hemco -analytic_ic</value>
       <value compset="_CAM%KESSLER">-phys kessler -chem terminator -analytic_ic -nadv_tt=6</value>
 
       <!-- Aquaplanet -->
@@ -227,11 +226,6 @@
       <value compset="2000_CAM40%TMOZ"   >2000_cam4_trop_chem</value>
       <value compset="2000_CAM40%WXIE"   >waccmxie_ma_2000_cam4</value>
       <value compset="2000_CAM40%WX_"    >waccmx_ma_2000_cam4</value>
-
-      <value compset="2000_CAM40%GC"     >geoschem</value>
-      <value compset="CAM%GC"            >geoschem</value>
-      <value compset="CAM[456]0%GC"      >geoschem</value>
-      <value compset="CAM%GCHS"          >geoschem_baro_moist</value>
 
       <value compset="2000_CAM%DEV"      >2000_cam6</value>
       <value compset="2000_CAM60"        >2000_cam6</value>
@@ -278,7 +272,7 @@
       <value compset="HIST_CAM60%CVBSX"  >hist_trop_strat_vbsext_cam6</value>
       <value compset="HIST_CAM60%CFIRE"  >hist_trop_strat_vbsfire_cam6</value>
       <value compset="HIST_CAM60%GC"     >hist_geoschem</value>
-      <value compset="HIST_CAM60%GC%NUDG"     >hist_geoschem_nudged</value>
+      <value compset="HIST_CAM60%GC%NUDG">hist_geoschem_nudged</value>
       <value compset="HIST_CAM60%WXIE"   >waccmx_ma_hist_cam6</value>
 
       <value compset="PIPD_CAM50"        >1850-PD_cam5</value>

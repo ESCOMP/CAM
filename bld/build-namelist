@@ -2473,7 +2473,7 @@ if (($chem =~ /_mam4/ or $chem =~ /_mam5/) and ($phys =~ /cam6/ or $phys =~ /cam
             $first = 0;
         }
     }
-        if ($chem !~ /geoschem/) {
+    if ($chem !~ /geoschem/) {
         add_default($nl, 'ext_frc_specifier', 'val'=>$val);
         unless (defined $nl->get_value('ext_frc_type')) {
             add_default($nl, 'ext_frc_type',      'val'=>"'CYCLICAL'");
