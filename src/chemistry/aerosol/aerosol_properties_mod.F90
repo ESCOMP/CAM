@@ -129,14 +129,14 @@ module aerosol_properties_mod
        character(len=*), optional, intent(out) :: opticstype
 
        ! refactive index table parameters
-       real(r8),  optional, pointer     :: extpsw(:,:,:,:) ! specific extinction
-       real(r8),  optional, pointer     :: abspsw(:,:,:,:) ! specific absorption
-       real(r8),  optional, pointer     :: asmpsw(:,:,:,:) ! asymmetry factor
-       real(r8),  optional, pointer     :: absplw(:,:,:,:) ! specific absorption
-       real(r8),  optional, pointer     :: refrtabsw(:,:)  ! table of real refractive indices for aerosols
-       real(r8),  optional, pointer     :: refitabsw(:,:)  ! table of imaginary refractive indices for aerosols
-       real(r8),  optional, pointer     :: refrtablw(:,:)  ! table of real refractive indices for aerosols
-       real(r8),  optional, pointer     :: refitablw(:,:)  ! table of imaginary refractive indices for aerosols
+       real(r8),  optional, pointer     :: extpsw(:,:,:,:) ! short wave specific extinction
+       real(r8),  optional, pointer     :: abspsw(:,:,:,:) ! short wave specific absorption
+       real(r8),  optional, pointer     :: asmpsw(:,:,:,:) ! short wave asymmetry factor
+       real(r8),  optional, pointer     :: absplw(:,:,:,:) ! long wave specific absorption
+       real(r8),  optional, pointer     :: refrtabsw(:,:)  ! table of short wave real refractive indices for aerosols
+       real(r8),  optional, pointer     :: refitabsw(:,:)  ! table of short wave imaginary refractive indices for aerosols
+       real(r8),  optional, pointer     :: refrtablw(:,:)  ! table of long wave real refractive indices for aerosols
+       real(r8),  optional, pointer     :: refitablw(:,:)  ! table of long wave imaginary refractive indices for aerosols
        integer,   optional, intent(out) :: ncoef  ! number of chebychev polynomials
        integer,   optional, intent(out) :: prefr  ! number of real refractive indices in table
        integer,   optional, intent(out) :: prefi  ! number of imaginary refractive indices in table

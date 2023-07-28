@@ -208,21 +208,10 @@ contains
        ilist = 0
     end if
 
-    if (present(density)) then
-       call rad_cnst_get_aer_props(ilist, bin_ndx, species_ndx, density_aer=density)
-    end if
-    if (present(hygro)) then
-       call rad_cnst_get_aer_props(ilist, bin_ndx, species_ndx, hygro_aer=hygro)
-    end if
-    if (present(spectype)) then
-       call rad_cnst_get_aer_props(ilist, bin_ndx, species_ndx, spectype=spectype )
-    end if
-    if (present(refindex_sw)) then
-       call rad_cnst_get_aer_props(ilist, bin_ndx, species_ndx, refindex_aer_sw=refindex_sw )
-    end if
-    if (present(refindex_lw)) then
-       call rad_cnst_get_aer_props(ilist, bin_ndx, species_ndx, refindex_aer_lw=refindex_lw )
-    end if
+    call rad_cnst_get_aer_props(ilist, bin_ndx, species_ndx, &
+                                density_aer=density, hygro_aer=hygro, spectype=spectype, &
+                                refindex_aer_sw=refindex_sw, refindex_aer_lw=refindex_lw)
+
     if (present(specmorph)) then
        specmorph = 'UNKNOWN'
     end if
@@ -245,14 +234,14 @@ contains
     character(len=*), optional, intent(out) :: opticstype
 
     ! refactive index table parameters
-    real(r8),  optional, pointer     :: extpsw(:,:,:,:) ! specific extinction
-    real(r8),  optional, pointer     :: abspsw(:,:,:,:) ! specific absorption
-    real(r8),  optional, pointer     :: asmpsw(:,:,:,:) ! asymmetry factor
-    real(r8),  optional, pointer     :: absplw(:,:,:,:) ! specific absorption
-    real(r8),  optional, pointer     :: refrtabsw(:,:)  ! table of real refractive indices for aerosols
-    real(r8),  optional, pointer     :: refitabsw(:,:)  ! table of imaginary refractive indices for aerosols
-    real(r8),  optional, pointer     :: refrtablw(:,:)  ! table of real refractive indices for aerosols
-    real(r8),  optional, pointer     :: refitablw(:,:)  ! table of imaginary refractive indices for aerosols
+    real(r8),  optional, pointer     :: extpsw(:,:,:,:) ! short wave specific extinction
+    real(r8),  optional, pointer     :: abspsw(:,:,:,:) ! short wave specific absorption
+    real(r8),  optional, pointer     :: asmpsw(:,:,:,:) ! short wave asymmetry factor
+    real(r8),  optional, pointer     :: absplw(:,:,:,:) ! long wave specific absorption
+    real(r8),  optional, pointer     :: refrtabsw(:,:)  ! table of short wave real refractive indices for aerosols
+    real(r8),  optional, pointer     :: refitabsw(:,:)  ! table of short wave imaginary refractive indices for aerosols
+    real(r8),  optional, pointer     :: refrtablw(:,:)  ! table of long wave real refractive indices for aerosols
+    real(r8),  optional, pointer     :: refitablw(:,:)  ! table of long wave imaginary refractive indices for aerosols
     integer,   optional, intent(out) :: ncoef  ! number of chebychev polynomials
     integer,   optional, intent(out) :: prefr  ! number of real refractive indices in table
     integer,   optional, intent(out) :: prefi  ! number of imaginary refractive indices in table
@@ -279,41 +268,77 @@ contains
     integer,   optional, intent(out) :: nkap        ! hygroscopicity dimension size
     integer,   optional, intent(out) :: nrelh       ! relative humidity dimension size
 
-    if (present(opticstype)) then
-       call rad_cnst_get_mode_props(list_ndx,bin_ndx, opticstype=opticstype)
+    ! refactive index table parameters
+    call rad_cnst_get_mode_props(list_ndx, bin_ndx, &
+                                 opticstype=opticstype, &
+                                 extpsw=extpsw, &
+                                 abspsw=abspsw, &
+                                 asmpsw=asmpsw, &
+                                 absplw=absplw, &
+                                 refrtabsw=refrtabsw, &
+                                 refitabsw=refitabsw, &
+                                 refrtablw=refrtablw, &
+                                 refitablw=refitablw, &
+                                 ncoef=ncoef, &
+                                 prefr=prefr, &
+                                 prefi=prefi)
+
+    ! hygrowghtpct table parameters
+    if (present(sw_hygro_ext_wtp)) then
+       nullify(sw_hygro_ext_wtp)
     end if
-    if (present(extpsw)) then
-       call rad_cnst_get_mode_props(list_ndx,bin_ndx, extpsw=extpsw)
+    if (present(sw_hygro_ssa_wtp)) then
+       nullify(sw_hygro_ssa_wtp)
     end if
-    if (present(abspsw)) then
-       call rad_cnst_get_mode_props(list_ndx,bin_ndx, abspsw=abspsw)
+    if (present(sw_hygro_asm_wtp)) then
+       nullify(sw_hygro_asm_wtp)
     end if
-    if (present(asmpsw)) then
-       call rad_cnst_get_mode_props(list_ndx,bin_ndx, asmpsw=asmpsw)
+    if (present(lw_hygro_ext_wtp)) then
+       nullify(lw_hygro_ext_wtp)
     end if
-    if (present(absplw)) then
-       call rad_cnst_get_mode_props(list_ndx,bin_ndx, absplw=absplw)
+    if (present(wgtpct)) then
+       nullify(wgtpct)
     end if
-    if (present(refrtabsw)) then
-       call rad_cnst_get_mode_props(list_ndx,bin_ndx, refrtabsw=refrtabsw)
+    if (present(nwtp)) then
+       nwtp = -1
     end if
-    if (present(refitabsw)) then
-       call rad_cnst_get_mode_props(list_ndx,bin_ndx, refitabsw=refitabsw)
+
+    ! hygrocoreshell table parameters
+    if (present(sw_hygro_coreshell_ext)) then
+       nullify(sw_hygro_coreshell_ext)
     end if
-    if (present(refrtablw)) then
-       call rad_cnst_get_mode_props(list_ndx,bin_ndx, refrtablw=refrtablw)
+    if (present(sw_hygro_coreshell_ssa)) then
+       nullify(sw_hygro_coreshell_ssa)
     end if
-    if (present(refitablw)) then
-       call rad_cnst_get_mode_props(list_ndx,bin_ndx, refitablw=refitablw)
+    if (present(sw_hygro_coreshell_asm)) then
+       nullify(sw_hygro_coreshell_asm)
     end if
-    if (present(ncoef)) then
-       call rad_cnst_get_mode_props(list_ndx,bin_ndx, ncoef=ncoef)
+    if (present(lw_hygro_coreshell_ext)) then
+       nullify(lw_hygro_coreshell_ext)
     end if
-    if (present(prefr)) then
-       call rad_cnst_get_mode_props(list_ndx,bin_ndx, prefr=prefr)
+    if (present(corefrac)) then
+       nullify(corefrac)
     end if
-    if (present(prefi)) then
-       call rad_cnst_get_mode_props(list_ndx,bin_ndx, prefi=prefi)
+    if (present(bcdust)) then
+       nullify(bcdust)
+    end if
+    if (present(kap)) then
+       nullify(kap)
+    end if
+    if (present(relh)) then
+       nullify(relh)
+    end if
+    if (present(nfrac)) then
+       nfrac = -1
+    end if
+    if (present(nbcdust)) then
+       nbcdust = -1
+    end if
+    if (present(nkap)) then
+       nkap = -1
+    end if
+    if (present(nrelh)) then
+       nrelh = -1
     end if
 
   end subroutine optics_params
