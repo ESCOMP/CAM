@@ -3688,6 +3688,7 @@ if ($do_gw_front_igw) {
 
 if ($do_gw_front or $do_gw_front_igw) {
     add_default($nl, 'frontgfc');
+    add_default($nl, 'front_gaussian_width');
 }
 
 if ($do_gw_convect_dp) {

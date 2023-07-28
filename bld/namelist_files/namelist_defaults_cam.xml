@@ -712,6 +712,7 @@
 <frontgfc hgrid="ne30np4" >3.00D-15</frontgfc>
 <frontgfc hgrid="4x5"     >7.5D-16</frontgfc>
 <frontgfc hgrid="0.9x1.25">3.0D-15</frontgfc>
+<front_gaussian_width> 30.D0 </front_gaussian_width>
 
 <!-- Polar taper is needed for stability in FV, possibly because grid -->
 <!-- points become too dense near the poles. -->
@@ -3174,6 +3175,16 @@
 <!-- Chemistry Rates Diagnostics                                        -->
 <!-- ================================================================== -->
 
+<rxn_rate_sums chem="waccm_ma_mam5">
+  'O3S_Loss = 2.0*O_O3 + O1D_H2O + HO2_O + HO2_O3 + OH_O + OH_O3 + H_O3 + 2.0*NO2_O + 2.0*jno3_b + 2.0*CLO_O + 2.0*jcl2o2 + ',
+	     '2.0*CLO_CLOa + 2.0*CLO_CLOb + 2.0*BRO_CLOb + 2.0*BRO_CLOc + 2.0*BRO_BRO + 2.0*BRO_O + CLO_HO2 + BRO_HO2 + S_O3'
+</rxn_rate_sums>
+<rxn_rate_sums chem="waccm_ma_mam5" waccmx="1">
+  'O3S_Loss = 2.0*O_O3 + O1D_H2O + HO2_O + HO2_O3 + OH_O + OH_O3 + H_O3 + 2.0*NO2_O + 2.0*jno3_b + 2.0*CLO_O + 2.0*jcl2o2 + ',
+	     '2.0*CLO_CLOa + 2.0*CLO_CLOb + 2.0*BRO_CLOb + 2.0*BRO_CLOc + 2.0*BRO_BRO + 2.0*BRO_O + CLO_HO2 + BRO_HO2 + S_O3',
+  'SolIonRate_Tot = jeuv_1 + jeuv_2 + jeuv_3 + jeuv_4 + jeuv_5 + jeuv_6 + jeuv_7 + jeuv_8 + jeuv_9 + jeuv_10 + jeuv_11 + ',
+                   'jeuv_14 + jeuv_15 + jeuv_16 + jeuv_17 + jeuv_18 + jeuv_19 + jeuv_20 + jeuv_21 + jeuv_22 + jeuv_23',
+</rxn_rate_sums>
 <rxn_rate_sums chem="trop_strat_mam5_ts2">
     'O3_Prod = NO_HO2 + CH3O2_NO + HOCH2OO_NO + C2H5O2_NO + CH3CO3_NO + EO2_NO + C3H7O2_NO + PO2_NO + ',
                'RO2_NO + ENEO2_NO + MACRO2_NOa + jhonitr + ',
