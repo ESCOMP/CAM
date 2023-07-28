@@ -14,6 +14,9 @@
 
 <dep_data_file>/glade/p/univ/umit0034/Shared/dep_data_file_geoschem_c230417.nc</dep_data_file>
 
+<hemco_config_file>HEMCO_Config.rc</hemco_config_file>
+<hemco_diagn_file>HEMCO_Diagn.rc</hemco_diagn_file>
+
 <!-- Settings mostly in common with hist_trop_strat_vbs_cam6.xml and hist_trop_strat_nudged_cam6 -->
 
 <start_ymd>00010101</start_ymd>

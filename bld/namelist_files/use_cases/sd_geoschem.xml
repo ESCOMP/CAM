@@ -16,6 +16,9 @@
 
 <dep_data_file>/glade/p/univ/umit0034/Shared/dep_data_file_geoschem_c230417.nc</dep_data_file>
 
+<hemco_config_file>HEMCO_Config.rc</hemco_config_file>
+<hemco_diagn_file>HEMCO_Diagn.rc</hemco_diagn_file>
+
 <!-- Settings in mostly common with sd_trop_strat_vbs_cam6.xml -->
 <!-- GEOS-Chem default is to run 2015 rather than 2005 -->
 
