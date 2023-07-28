@@ -1855,10 +1855,10 @@ contains
              fswc%flux_dn(i,ktopradi:)
          fsds(idxday(i))        = fsw%flux_dn(i, nlay+1)
          rd%fsdsc(idxday(i))    = fswc%flux_dn(i, nlay+1)
-         rd%fsutoa(idxday(i))   = fsw%flux_up(i, ktopradi)
-         rd%fsntoa(idxday(i))   = fsw%flux_net(i, ktopradi)       ! net sw flux at TOA (*NOT* the same as fsnt)
-         rd%fsntoac(idxday(i))  = fswc%flux_net(i, ktopradi)     ! net sw clearsky flux at TOA (*NOT* the same as fsntc)
-         rd%solin(idxday(i))    = fswc%flux_dn(i, ktopradi)
+         rd%fsutoa(idxday(i))   = fsw%flux_up(i, 1)
+         rd%fsntoa(idxday(i))   = fsw%flux_net(i, 1)   ! net sw flux at TOA (*NOT* the same as fsnt)
+         rd%fsntoac(idxday(i))  = fswc%flux_net(i, 1)  ! net sw clearsky flux at TOA (*NOT* the same as fsntc)
+         rd%solin(idxday(i))    = fswc%flux_dn(i, 1)
       end do
 
       call heating_rate('SW', ncol, fns, qrs)
