@@ -167,7 +167,7 @@ contains
        wghts(i)%ix1 = wghts(i)%ix2 - 1
        wghts(i)%wt1 = (xgrid(wghts(i)%ix2)-xcols(i)) &
                      /(xgrid(wghts(i)%ix2)-xgrid(wghts(i)%ix1))
-       wghts(i)%wt2 = 1._8 - wghts(i)%wt1
+       wghts(i)%wt2 = 1._r8 - wghts(i)%wt1
     end do
 
   end function table_interp_calcwghts
