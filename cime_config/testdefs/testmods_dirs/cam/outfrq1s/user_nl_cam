@@ -1,0 +1,11 @@
+mfilt=10,10,10,10,10,10,10,10,10,10
+ndens=1,1,1,1,1,1,1,1,1,1
+nhtfrq=1,1,1,1,1,1,1,1,1,1
+inithist='ENDOFRUN'
+history_aero_optics = .true.
+fincl2 = 'AODABSLW','TOTABSLW', 'EXTINCT', 'EXTINCTUV', 'EXTINCTNIR', 'AODTOTdn',
+         'AODVIS', 'AODVISst', 'AODNIR', 'AODNIRst',  'AODABS',  'AODxASYM',
+	 'EXTINCTdn', 'EXTINCTUVdn',  'EXTINCTNIRdn',  'ABSORBdn', 'AODdn_accum',
+	 'AODdn_aitken',   'AODdn_coarse', 'AODdn_primary_carbon',
+iradlw=1
+iradsw=1
