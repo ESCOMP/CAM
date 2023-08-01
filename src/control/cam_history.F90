@@ -152,6 +152,7 @@ module cam_history
   integer :: ndens(ptapes) = 2        ! packing density (double (1) or real (2))
   integer :: ncprec(ptapes) = -999    ! netcdf packing parameter based on ndens
   real(r8) :: beg_time(ptapes)        ! time at beginning of an averaging interval
+  real(r8) :: mid_time(ptapes)        ! time at midpoint of an averaging interval
 
   logical :: rgnht(ptapes) = .false.  ! flag array indicating regeneration volumes
   logical :: hstwr(ptapes) = .false.  ! Flag for history writes
@@ -463,6 +464,10 @@ CONTAINS
       ! Time at beginning of current averaging interval.
 
       beg_time(t) = day + sec/86400._r8
+
+      ! Time at midpoint of current averaging inteveral
+
+      mid_time(t) = day + sec/86400._r8 + 10._r8
     end do
 
     !
@@ -1108,6 +1113,12 @@ CONTAINS
     restartvars(rvindex)%dims(1) = ptapes_dim_ind
 
     rvindex = rvindex + 1
+    restartvars(rvindex)%name = 'mid_time'
+    restartvars(rvindex)%type = pio_double
+    restartvars(rvindex)%ndims = 1
+    restartvars(rvindex)%dims(1) = ptapes_dim_ind
+
+    rvindex = rvindex + 1
     restartvars(rvindex)%name = 'fincl'
     restartvars(rvindex)%type = pio_char
     restartvars(rvindex)%ndims = 3
@@ -1621,6 +1632,8 @@ CONTAINS
     ierr= pio_put_var(File, vdesc, ncprec(1:ptapes))
     vdesc => restartvar_getdesc('beg_time')
     ierr= pio_put_var(File, vdesc, beg_time(1:ptapes))
+    vdesc => restartvar_getdesc('mid_time')
+    ierr= pio_put_var(File, vdesc, beg_time(1:ptapes))
 
     vdesc => restartvar_getdesc('hrestpath')
     ierr = pio_put_var(File, vdesc, hrestpath(1:ptapes))
@@ -1905,6 +1918,8 @@ CONTAINS
     ierr = pio_get_var(File, vdesc, ncprec(1:mtapes))
     ierr = pio_inq_varid(File, 'beg_time', vdesc)
     ierr = pio_get_var(File, vdesc, beg_time(1:mtapes))
+    ierr = pio_inq_varid(File, 'mid_time', vdesc)
+    ierr = pio_get_var(File, vdesc, mid_time(1:mtapes))
 
 
     ierr = pio_inq_varid(File, 'fincl', vdesc)
@@ -2447,13 +2462,21 @@ CONTAINS
 
   !#######################################################################
 
-  subroutine AvgflagToString(avgflag, time_op)
+  subroutine AvgflagToString(avgflag, time_op, instantaneous_valid)
     ! Dummy arguments
     character(len=1),           intent(in)  :: avgflag ! averaging flag
     character(len=max_chars),   intent(out) :: time_op ! time op (e.g. max)
+    logical,         optional,  intent(in)  :: instantaneous_valid
 
-    ! Local variable
+    ! Local variables
     character(len=*), parameter             :: subname = 'AvgflagToString'
+    logical                                 :: local_inst_valid
+
+    if (present(instantaneous_valid)) then
+       local_inst_valid = instantaneous_valid
+    else
+       local_inst_valid = .true.
+    end if
 
     select case (avgflag)
     case ('A')
@@ -2463,7 +2486,11 @@ CONTAINS
     case ('N')
       time_op(:) = 'mean_over_nsteps'
     case ('I')
-      time_op(:) = ' '
+      if (local_inst_valid) then
+         time_op(:) = ' '
+      else
+         call endrun(subname//': cannot have instantaneous output in history file with averaged fields')
+      end if
     case ('X')
       time_op(:) = 'maximum'
     case ('M')
@@ -2981,6 +3008,7 @@ end subroutine print_active_fldlst
     ! Local workspace
     !
     integer :: n                  ! field index on defined tape
+    logical :: inst_valid         ! instananeous fields allowed on history tape
 
 
     !
@@ -3032,7 +3060,12 @@ end subroutine print_active_fldlst
       tape(t)%hlist(n)%time_op = listentry%time_op(t)
     else
       tape(t)%hlist(n)%avgflag = avgflag
-      call AvgflagToString(avgflag, tape(t)%hlist(n)%time_op)
+      if (t == 1) then
+         inst_valid = .false.
+      else
+         inst_valid = .true.
+      end if
+      call AvgflagToString(avgflag, tape(t)%hlist(n)%time_op, instantaneous_valid=inst_valid)
     end if
 
     ! Some things can't be done with zonal fields
@@ -3932,7 +3965,7 @@ end subroutine print_active_fldlst
       ierr=pio_inq_varid (tape(t)%File,'nscur   ',    tape(t)%nscurid)
       ierr=pio_inq_varid (tape(t)%File,'nsteph  ',    tape(t)%nstephid)
 
-      ierr=pio_inq_varid (tape(t)%File,'time_bnds',   tape(t)%tbndid)
+      ierr=pio_inq_varid (tape(t)%File,'time_bounds', tape(t)%tbndid)
       ierr=pio_inq_varid (tape(t)%File,'date_written',tape(t)%date_writtenid)
       ierr=pio_inq_varid (tape(t)%File,'time_written',tape(t)%time_writtenid)
 #if ( defined BFB_CAM_SCAM_IOP )
@@ -4049,6 +4082,7 @@ end subroutine print_active_fldlst
     !
     integer :: t            ! file index
     type(master_entry), pointer :: listentry
+    logical                     :: inst_valid ! instantaneous fields allowed on history tape
 
     if (htapes_defined) then
       call endrun ('ADD_DEFAULT: Attempt to add hist default '//trim(name)//' after history files set')
@@ -4084,7 +4118,12 @@ end subroutine print_active_fldlst
     listentry%actflag(t) = .true.
     if (flag /= ' ') then
       listentry%avgflag(t) = flag
-      call AvgflagToString(flag, listentry%time_op(t))
+      if (t == 1) then
+         inst_valid = .false.
+      else
+         inst_valid = .true.
+      end if
+      call AvgflagToString(flag, listentry%time_op(t), instantaneous_valid=inst_valid)
     end if
 
     return
@@ -4111,6 +4150,7 @@ end subroutine print_active_fldlst
     character(len=1) :: avgflg       ! lcl equiv of avgflag_pertape(t) (to address xlf90 compiler bug)
 
     type(master_entry), pointer :: listentry
+    logical                     :: inst_valid ! instantaneous fields allowed on history tape
 
     avgflg = avgflag_pertape(t)
 
@@ -4118,7 +4158,12 @@ end subroutine print_active_fldlst
     do while(associated(listentry))
        ! Budgets require flag to be N, dont override
        if (listentry%avgflag(t) /= 'N' ) then
-          call AvgflagToString(avgflg, listentry%time_op(t))
+          if (t == 1) then
+             inst_valid = .false.
+          else
+             inst_valid = .true.
+          end if
+          call AvgflagToString(avgflg, listentry%time_op(t), instantaneous_valid=inst_valid)
           listentry%avgflag(t) = avgflag_pertape(t)
        end if
        listentry=>listentry%next_entry
@@ -4174,6 +4219,7 @@ end subroutine print_active_fldlst
     character(len=max_chars) :: cell_methods ! For cell_methods attribute
     character(len=16)        :: time_per_freq
     character(len=128)       :: errormsg
+    logical                  :: inst_valid ! instantaneous fields allowed on tape
 
     integer :: ret                        ! function return value
 
@@ -4374,9 +4420,9 @@ end subroutine print_active_fldlst
 
     if(.not. is_satfile(t)) then
 
-      ierr=pio_put_att (tape(t)%File, tape(t)%timeid, 'bounds', 'time_bnds')
+      ierr=pio_put_att (tape(t)%File, tape(t)%timeid, 'bounds', 'time_bounds')
 
-      ierr=pio_def_var (tape(t)%File,'time_bnds',pio_double,(/bnddim,timdim/),tape(t)%tbndid)
+      ierr=pio_def_var (tape(t)%File,'time_bounds',pio_double,(/bnddim,timdim/),tape(t)%tbndid)
       ierr=pio_put_att (tape(t)%File, tape(t)%tbndid, 'long_name', 'time interval endpoints')
       !
       ! Character
@@ -4539,7 +4585,12 @@ end subroutine print_active_fldlst
     do f = 1, nflds(t)
 
       !! Collect some field properties
-      call AvgflagToString(tape(t)%hlist(f)%avgflag, tape(t)%hlist(f)%time_op)
+      if (t == 1) then
+         inst_valid = .false.
+      else
+         inst_valid = .true.
+      end if
+      call AvgflagToString(tape(t)%hlist(f)%avgflag, tape(t)%hlist(f)%time_op, instantaneous_valid=inst_valid)
       if ((tape(t)%hlist(f)%hwrt_prec == 8) .or. restart) then
         ncreal = pio_double
       else
@@ -5400,6 +5451,8 @@ end subroutine print_active_fldlst
     character(len=max_string_len) :: fname ! Filename
     logical :: prev              ! Label file with previous date rather than current
     integer :: ierr
+    integer :: mid_days(ptapes)
+    integer :: mid_secs(ptapes)
 #if ( defined BFB_CAM_SCAM_IOP )
     integer :: tsec             ! day component of current time
     integer :: dtime            ! seconds component of current time
@@ -5569,15 +5622,26 @@ end subroutine print_active_fldlst
             tdata(2) = time
           end if
           ierr=pio_put_var (tape(t)%File, tape(t)%tbndid, startc, countc, tdata)
-          if(.not.restart) beg_time(t) = time  ! update beginning time of next interval
+          ! calculate date and time of midpoint of current interval
+          mid_days(t) = mid_time(t) / 24
+          mid_secs(t) = (mid_time(t) - mid_days(t)) * 86400._r8
+          if(.not.restart) then
+             mid_time(t) = time + (time - beg_time(t)) / 2._r8 ! update midpoint time of next interval
+             beg_time(t) = time  ! update beginning time of next interval
+          end if
           startc(1) = 1
           startc(2) = start
           countc(1) = 8
           countc(2) = 1
           call datetime (cdate, ctime)
-          ierr = pio_put_var (tape(t)%File, tape(t)%date_writtenid, startc, countc, (/cdate/))
-          ierr = pio_put_var (tape(t)%File, tape(t)%time_writtenid, startc, countc, (/ctime/))
-
+          
+          if (is_initfile(file_index=t)) then
+             ierr = pio_put_var (tape(t)%File, tape(t)%date_writtenid, startc, countc, (/cdate/))
+             ierr = pio_put_var (tape(t)%File, tape(t)%time_writtenid, startc, countc, (/ctime/))
+          else
+             ierr = pio_put_var (tape(t)%File, tape(t)%date_writtenid, startc, countc, (/mid_days(t)/))
+             ierr = pio_put_var (tape(t)%File, tape(t)%time_writtenid, startc, countc, (/mid_secs(t)/))
+          end if
           if(.not. restart) then
              !$OMP PARALLEL DO PRIVATE (F)
              do f=1,nflds(t)
@@ -5745,6 +5809,7 @@ end subroutine print_active_fldlst
 
     integer :: dimcnt
     integer :: idx
+    logical :: inst_valid ! instantaneous fields allowed on history tape
 
     character(len=*), parameter      :: subname='ADDFLD_ND'
 
@@ -5900,7 +5965,12 @@ end subroutine print_active_fldlst
     listentry%actflag(:) = .false.
 
     do dimcnt = 1, ptapes
-      call AvgflagToString(avgflag, listentry%time_op(dimcnt))
+      if (dimcnt == 1) then
+          inst_valid = .false.
+      else
+          inst_valid = .true.
+      end if
+      call AvgflagToString(avgflag, listentry%time_op(dimcnt), instantaneous_valid=inst_valid)
     end do
 
     if (present(optype)) then
