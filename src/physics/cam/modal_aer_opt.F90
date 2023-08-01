@@ -191,8 +191,6 @@ subroutine modal_aer_opt_init()
                 flag_xyfill=.true.)
    call addfld ('ABSORB',     (/ 'lev' /), 'A','/m','Aerosol absorption, day only',                          &
                 flag_xyfill=.true.)
-   call addfld ('AODTOT', horiz_only, 'A','1','Aerosol optical depth summed over all sw wavelenghts', flag_xyfill=.true.)
-   call addfld ('AODTOTdn', horiz_only, 'A','1','Aerosol optical depth summed over all sw wavelenghts')
    call addfld ('AODVIS',     horiz_only,  'A','  ','Aerosol optical depth 550 nm, day only',                &
                 flag_xyfill=.true.)
    call addfld ('AODVISst',   horiz_only,  'A','  ','Stratospheric aerosol optical depth 550 nm, day only',  &
@@ -239,6 +237,11 @@ subroutine modal_aer_opt_init()
    call addfld ('EXTxASYMdn',   (/ 'lev' /), 'A','  ','extinction 550 * asymmetry factor, day night',        &
                 flag_xyfill=.true.)
 
+   call addfld ('AODTOT', horiz_only, 'A','1','Aerosol optical depth summed over all sw wavelenghts', &
+                flag_xyfill=.true.)
+   call addfld ('AODTOTdn', horiz_only, 'A','1','Aerosol optical depth summed over all sw wavelenghts', &
+                flag_xyfill=.true.)
+
    call rad_cnst_get_info(0, nmodes=nmodes)
 
    do m = 1, nmodes
@@ -252,7 +255,6 @@ subroutine modal_aer_opt_init()
          call add_default (fldname, 1, ' ')
       endif
 
-      !write(fldname,'(a,i2.2)') 'AOD', m
       fldname = 'AOD_'//trim(modename)
       write(lngname,'(a,i2.2)') 'Aerosol optical depth, day only, 550 nm mode ', m
       call addfld (fldname, horiz_only, 'A', '  ', lngname, flag_xyfill=.true.)
@@ -274,7 +276,6 @@ subroutine modal_aer_opt_init()
          call add_default (fldname, 1, ' ')
       endif
 
-      !write(fldname,'(a,i2.2)') 'AODdn', m
       fldname = 'AODdn_'//trim(modename)
       write(lngname,'(a,i2.2)') 'Aerosol optical depth 550 nm, day night, mode ', m
       call addfld (fldname, horiz_only, 'A', '  ', lngname, flag_xyfill=.true.)
@@ -437,7 +438,7 @@ subroutine modal_aer_opt_init()
          call addfld ('AODTOT'//diag(ilist), horiz_only, 'A','1', &
               'Aerosol optical depth summed over all sw wavelenghts', flag_xyfill=.true.)
          call addfld ('AODTOTdn'//diag(ilist), horiz_only, 'A','1', &
-              'Aerosol optical depth summed over all sw wavelenghts')
+              'Aerosol optical depth summed over all sw wavelenghts', flag_xyfill=.true.)
 
          call addfld ('EXTINCTdn'//diag(ilist),    (/ 'lev' /), 'A','/m',&
               'Aerosol extinction 550 nm, day night', flag_xyfill=.true.)
@@ -1058,7 +1059,6 @@ subroutine modal_aero_sw(list_idx, state, pbuf, nnite, idxnite, &
          write(outname,'(a,i2.2)') 'BURDENdn', m
          call outfld(trim(outname), burden, pcols, lchnk)
 
-         !write(outname,'(a,i2.2)') 'AODdn', m
          outname = 'AODdn_'//trim(modename)
          call outfld(trim(outname), aodmode, pcols, lchnk)
 
@@ -1074,7 +1074,6 @@ subroutine modal_aero_sw(list_idx, state, pbuf, nnite, idxnite, &
          write(outname,'(a,i2.2)') 'BURDEN', m
          call outfld(trim(outname), burden, pcols, lchnk)
 
-         !write(outname,'(a,i2.2)') 'AOD', m
          outname = 'AOD_'//trim(modename)
          call outfld(trim(outname), aodmode, pcols, lchnk)
 
