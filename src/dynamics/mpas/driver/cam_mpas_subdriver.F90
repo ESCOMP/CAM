@@ -313,7 +313,7 @@ contains
        use mpas_pool_routines, only : mpas_pool_get_subpool, mpas_pool_get_dimension, mpas_pool_get_config, &
                                       mpas_pool_get_field, mpas_pool_get_array, mpas_pool_initialize_time_levels
        use atm_core, only : atm_mpas_init_block, core_clock => clock
-       use mpas_dmpar, only : mpas_dmpar_exch_halo_field
+       use mpas_atm_halos, only : atm_build_halo_groups, exchange_halo_group
        use atm_time_integration, only : mpas_atm_dynamics_init
 
        procedure(halt_model) :: endrun
@@ -364,6 +364,14 @@ contains
        clock => domain_ptr % clock
        core_clock => domain_ptr % clock
 
+       !
+       ! Build halo exchange groups and set method for exchanging halos in a group
+       !
+       call atm_build_halo_groups(domain_ptr, ierr)
+       if (ierr /= 0) then
+	       call endrun(subname//':failed to build MPAS-A halo exchange groups.')
+       end if
+
 
        call mpas_pool_get_config(domain_ptr % blocklist % configs, 'config_do_restart', config_do_restart)
        call mpas_pool_get_config(domain_ptr % blocklist % configs, 'config_dt', dt)
@@ -385,9 +393,7 @@ contains
        call mpas_get_time(startTime, dateTimeString=startTimeStamp) 
 
 
-       call mpas_pool_get_subpool(domain_ptr % blocklist % structs, 'state', state)
-       call mpas_pool_get_field(state, 'u', u_field, 1)
-       call mpas_dmpar_exch_halo_field(u_field)
+       call exchange_halo_group(domain_ptr, 'initialization:u')
 
        call mpas_pool_get_subpool(domain_ptr % blocklist % structs, 'mesh', mesh)
        call mpas_pool_get_subpool(domain_ptr % blocklist % structs, 'state', state)
@@ -404,15 +410,7 @@ contains
        call mpas_pool_get_array(state, 'initial_time', initial_time2, 2)
        initial_time2 = initial_time1
 
-       call mpas_pool_get_subpool(domain_ptr % blocklist % structs, 'diag', diag)
-       call mpas_pool_get_field(diag, 'pv_edge', pv_edge_field)
-       call mpas_dmpar_exch_halo_field(pv_edge_field)
-
-       call mpas_pool_get_field(diag, 'ru', ru_field)
-       call mpas_dmpar_exch_halo_field(ru_field)
-
-       call mpas_pool_get_field(diag, 'rw', rw_field)
-       call mpas_dmpar_exch_halo_field(rw_field)
+       call exchange_halo_group(domain_ptr, 'initialization:pv_edge,ru,rw')
 
        !
        ! Prepare the dynamics for integration
@@ -946,6 +944,7 @@ contains
        integer :: ierr_total
        type (MPAS_pool_type), pointer :: meshPool
        type (MPAS_pool_type), pointer :: reindexPool
+       type (MPAS_pool_type), pointer :: allPackages, reindexPkgs
        type (field1DReal), pointer :: latCell, lonCell, xCell, yCell, zCell
        type (field1DReal), pointer :: latEdge, lonEdge, xEdge, yEdge, zEdge
        type (field1DReal), pointer :: latVertex, lonVertex, xVertex, yVertex, zVertex
@@ -1274,9 +1273,15 @@ contains
        call MPAS_pool_add_config(reindexPool, 'edgesOnVertex', 1)
        call MPAS_pool_add_config(reindexPool, 'cellsOnVertex', 1)
 
-       call postread_reindex(meshPool, reindexPool)
+       ! Use an empty package list for reindexPool
+       call MPAS_pool_create_pool(reindexPkgs)
+
+       call postread_reindex(meshPool, domain_ptr % streamManager % allPackages, &
+	                     reindexPool, reindexPkgs)
+
 
        call MPAS_pool_destroy_pool(reindexPool)
+       call MPAS_pool_destroy_pool(reindexPkgs)
 
     end subroutine cam_mpas_read_static
 
@@ -1765,6 +1770,7 @@ contains
 
        integer :: ierr
        type (MPAS_pool_type), pointer :: reindexPool
+       type (MPAS_pool_type), pointer :: reindexPkgs
 
        call MPAS_readStream(restart_stream, 1, ierr=ierr)
        if (ierr /= MPAS_STREAM_NOERR) then
@@ -1889,9 +1895,15 @@ contains
        call MPAS_pool_add_config(reindexPool, 'edgesOnVertex', 1)
        call MPAS_pool_add_config(reindexPool, 'cellsOnVertex', 1)
 
-       call postread_reindex(domain_ptr % blocklist % allFields, reindexPool)
+       ! Use an empty package list for reindexPool
+       call MPAS_pool_create_pool(reindexPkgs)
+
+       call postread_reindex(domain_ptr % blocklist % allFields, &
+                             domain_ptr % streamManager % allPackages, &
+			     reindexPool, reindexPkgs)
 
        call MPAS_pool_destroy_pool(reindexPool)
+       call MPAS_pool_destroy_pool(reindexPkgs)
 
     end subroutine cam_mpas_read_restart
 
@@ -1927,6 +1939,7 @@ contains
 
        integer :: ierr
        type (MPAS_pool_type), pointer :: reindexPool
+       type (MPAS_pool_type), pointer :: reindexPkgs
 
        !
        ! Re-index from local index space to global index space
@@ -1942,7 +1955,11 @@ contains
        call MPAS_pool_add_config(reindexPool, 'edgesOnVertex', 1)
        call MPAS_pool_add_config(reindexPool, 'cellsOnVertex', 1)
 
-       call prewrite_reindex(domain_ptr % blocklist % allFields, reindexPool)
+       call MPAS_pool_create_pool(reindexPkgs)
+
+       call prewrite_reindex(domain_ptr % blocklist % allFields, &
+	                     domain_ptr % streamManager % allPackages, &
+		             reindexPool, reindexPkgs)
 
        call MPAS_writeStream(restart_stream, 1, ierr=ierr)
        if (ierr /= MPAS_STREAM_NOERR) then
@@ -1952,6 +1969,7 @@ contains
        call postwrite_reindex(domain_ptr % blocklist % allFields, reindexPool)
 
        call MPAS_pool_destroy_pool(reindexPool)
+       call MPAS_pool_destroy_pool(reindexPkgs)
 
        call MPAS_closeStream(restart_stream, ierr=ierr)
        if (ierr /= MPAS_STREAM_NOERR) then
@@ -2313,6 +2331,7 @@ contains
        use mpas_timer, only : mpas_timer_stop
        use mpas_framework, only : mpas_framework_finalize
        use atm_time_integration, only : mpas_atm_dynamics_finalize
+       use mpas_atm_halos, only : atm_destroy_halo_groups
 
        ! Local variables
        integer :: ierr
@@ -2326,6 +2345,12 @@ contains
 
        call mpas_destroy_clock(clock, ierr)
        call mpas_decomp_destroy_decomp_list(domain_ptr % decompositions)
+
+       call atm_destroy_halo_groups(domain_ptr, ierr)
+       if (ierr /= 0) then
+           call endrun(subname//':failed to destroy MPAS-A halo exchange groups.')
+       end if
+
        call mpas_atm_threading_finalize(domain_ptr % blocklist)
 
        call mpas_timer_stop('total time')
