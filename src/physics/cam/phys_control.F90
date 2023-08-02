@@ -100,6 +100,9 @@ logical, public, protected :: use_gw_convect_sh = .false. ! Shallow convection.
 ! FV dycore angular momentum correction
 logical, public, protected :: fv_am_correction = .false.
 
+! Option for Harmonized Emissions Component (HEMCO)
+logical, public, protected :: use_hemco = .false.
+
 ! CAM snapshot before/after file numbers and control
 character(len=32) :: cam_take_snapshot_before = ''  ! Physics routine to take a snopshot "before"
 character(len=32) :: cam_take_snapshot_after = ''   ! Physics routine to take a snopshot "after"
@@ -133,7 +136,7 @@ subroutine phys_ctl_readnl(nlfile)
       do_clubb_sgs, state_debug_checks, use_hetfrz_classnuc, use_gw_oro, use_gw_front, &
       use_gw_front_igw, use_gw_convect_dp, use_gw_convect_sh, cld_macmic_num_steps, &
       offline_driver, convproc_do_aer, cam_snapshot_before_num, cam_snapshot_after_num, &
-      cam_take_snapshot_before, cam_take_snapshot_after, cam_physics_mesh
+      cam_take_snapshot_before, cam_take_snapshot_after, cam_physics_mesh, use_hemco
    !-----------------------------------------------------------------------------
 
    if (masterproc) then
@@ -196,6 +199,7 @@ subroutine phys_ctl_readnl(nlfile)
    call mpi_bcast(cam_take_snapshot_before,    len(cam_take_snapshot_before), mpi_character, masterprocid, mpicom, ierr)
    call mpi_bcast(cam_take_snapshot_after,     len(cam_take_snapshot_after),  mpi_character, masterprocid, mpicom, ierr)
    call mpi_bcast(cam_physics_mesh,            len(cam_physics_mesh), mpi_character, masterprocid, mpicom, ierr)
+   call mpi_bcast(use_hemco,                   1,                     mpi_logical,   masterprocid, mpicom, ierr)
 
    use_spcam       = (     cam_physpkg_is('spcam_sam1mom') &
                       .or. cam_physpkg_is('spcam_m2005'))
