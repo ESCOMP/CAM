@@ -1,5 +1,7 @@
 !----------------------------------------------------------------------------
 ! Utility module used for interpolation of aerosol optics table
+!  NOTE: Results will be set to table edges for interpolations beyond
+!        the edges -- no extropolations
 !----------------------------------------------------------------------------
 module table_interp_mod
   use shr_kind_mod, only: r8=>shr_kind_r8
@@ -161,11 +163,22 @@ contains
     type(table_interp_wghts) :: wghts(ncols) ! interpolations weights at the model columns
 
     integer :: i
+    real(r8) :: xs(ncols)
+
+    xs(:) = xcols(:)
+
+    ! do not extrapolate beyond the edges of the table
+    where(xs < xgrid(1))
+       xs = xgrid(1)
+    end where
+    where(xs > xgrid(ngrid))
+       xs = xgrid(ngrid)
+    end where
 
     do i = 1,ncols
-       wghts(i)%ix2 = find_index(ngrid,xgrid,xcols(i))
+       wghts(i)%ix2 = find_index(ngrid,xgrid,xs(i))
        wghts(i)%ix1 = wghts(i)%ix2 - 1
-       wghts(i)%wt1 = (xgrid(wghts(i)%ix2)-xcols(i)) &
+       wghts(i)%wt1 = (xgrid(wghts(i)%ix2)-xs(i)) &
                      /(xgrid(wghts(i)%ix2)-xgrid(wghts(i)%ix1))
        wghts(i)%wt2 = 1._r8 - wghts(i)%wt1
     end do
@@ -183,7 +196,7 @@ contains
 
     integer :: ndx
 
-    find_ndx: do ndx = 1, nvals-1
+    find_ndx: do ndx = 2, nvals-1
        if (vals(ndx)>vx) exit find_ndx
     end do find_ndx
 

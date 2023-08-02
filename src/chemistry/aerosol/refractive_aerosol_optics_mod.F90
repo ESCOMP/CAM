@@ -215,15 +215,8 @@ contains
     do icol = 1, ncol
        crefin(icol) = crefin(icol) + self%watervol(icol,ilev)*self%crefwsw(iwav)
        crefin(icol) = crefin(icol)/max(self%wetvol(icol,ilev),1.e-60_r8)
-
        refr(icol) = real(crefin(icol))
-       refr(icol) = max(refr(icol),minval(self%refrtabsw(:,iwav)))
-       refr(icol) = min(refr(icol),maxval(self%refrtabsw(:,iwav)))
-
        refi(icol) = abs(aimag(crefin(icol)))
-       refi(icol) = max(refi(icol),minval(self%refitabsw(:,iwav)))
-       refi(icol) = min(refi(icol),maxval(self%refitabsw(:,iwav)))
-
     end do
 
     ! interpolate coefficients linear in refractive index
@@ -295,12 +288,7 @@ contains
        end if
 
        refr(icol) = real(crefin(icol))
-       refr(icol) = max(refr(icol),minval(self%refrtablw(:,iwav)))
-       refr(icol) = min(refr(icol),maxval(self%refrtablw(:,iwav)))
-
        refi(icol) = aimag(crefin(icol))
-       refi(icol) = max(refi(icol),minval(self%refitablw(:,iwav)))
-       refi(icol) = min(refi(icol),maxval(self%refitablw(:,iwav)))
 
     end do
 
