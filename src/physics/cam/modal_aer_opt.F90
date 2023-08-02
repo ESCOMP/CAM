@@ -845,15 +845,8 @@ subroutine modal_aero_sw(list_idx, state, pbuf, nnite, idxnite, &
                ! volume mixing
                crefin(i) = crefin(i) + watervol(i)*crefwsw(isw)
                crefin(i) = crefin(i)/max(wetvol(i),1.e-60_r8)
-
-               refr(i) = real(crefin(i))
-               refr(i) = max(refr(i),minval(refrtabsw(:,isw)))
-               refr(i) = min(refr(i),maxval(refrtabsw(:,isw)))
-
-               refi(i) = abs(aimag(crefin(i)))
-               refi(i) = max(refi(i),minval(refitabsw(:,isw)))
-               refi(i) = min(refi(i),maxval(refitabsw(:,isw)))
-
+               refr(i)   = real(crefin(i))
+               refi(i)   = abs(aimag(crefin(i)))
             end do
 
             ! call t_startf('binterp')
@@ -1383,15 +1376,8 @@ subroutine modal_aero_lw(list_idx, state, pbuf, tauxar)
 
                crefin(i) = crefin(i) + watervol(i)*crefwlw(ilw)
                if (wetvol(i) > 1.e-40_r8) crefin(i) = crefin(i)/wetvol(i)
-
                refr(i) = real(crefin(i))
-               refr(i) = max(refr(i),minval(refrtablw(:,ilw)))
-               refr(i) = min(refr(i),maxval(refrtablw(:,ilw)))
-
                refi(i) = aimag(crefin(i))
-               refi(i) = max(refi(i),minval(refitablw(:,ilw)))
-               refi(i) = min(refi(i),maxval(refitablw(:,ilw)))
-
             end do
 
             ! interpolate coefficients linear in refractive index
