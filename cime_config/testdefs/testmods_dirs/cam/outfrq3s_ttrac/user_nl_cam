@@ -5,4 +5,5 @@ inithist='ENDOFRUN'
 interpolate_output=.false.,.true.
 interpolate_nlat=0,30
 interpolate_nlon=0,60
-fincl2='Q:I','T:I','U:I','V:I','Q_gll:I','T_gll:I','U_gll:I','V_gll:I'
+fincl2='Q','T','U','V','Q_gll','T_gll','U_gll','V_gll'
+avgflag_pertape='A','A'

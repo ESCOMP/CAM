@@ -4607,7 +4607,8 @@ end subroutine print_active_fldlst
             inst_valid = .false. ! cannot have inst. field on average tape
          end if
       end if
-      call AvgflagToString(tape(t)%hlist(f)%avgflag, tape(t)%hlist(f)%time_op, instantaneous_valid=inst_valid, average_valid=avg_valid)
+!      call AvgflagToString(tape(t)%hlist(f)%avgflag, tape(t)%hlist(f)%time_op, instantaneous_valid=inst_valid, average_valid=avg_valid)
+      call AvgflagToString(tape(t)%hlist(f)%avgflag, tape(t)%hlist(f)%time_op)
       if ((tape(t)%hlist(f)%hwrt_prec == 8) .or. restart) then
         ncreal = pio_double
       else

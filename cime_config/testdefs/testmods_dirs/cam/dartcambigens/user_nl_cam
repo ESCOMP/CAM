@@ -1,4 +1,5 @@
 inithist     = 'ENDOFRUN'
 empty_htapes = .true.
-fincl1       = 'PHIS:I'
+fincl1       = 'PHIS'
+avgflag_pertape = 'I'
 nhtfrq       = -1
