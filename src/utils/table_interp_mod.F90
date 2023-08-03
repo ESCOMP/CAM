@@ -152,8 +152,9 @@ contains
   end function interp4d
 
   !--------------------------------------------------------------------------
+  ! determines interpolation weights and indices for given values at the model columns
   !--------------------------------------------------------------------------
-  pure function table_interp_calcwghts( ngrid, xgrid, ncols, xcols) result(wghts )
+  pure function table_interp_calcwghts( ngrid, xgrid, ncols, xcols ) result(wghts)
 
     integer,  intent(in) :: ngrid        ! number of grid point values
     real(r8), intent(in) :: xgrid(ngrid) ! grid point values
@@ -188,16 +189,24 @@ contains
   ! private methods
   !--------------------------------------------------------------------------
   !--------------------------------------------------------------------------
-
-  pure function find_index( nvals, vals, vx ) result(ndx)
+  ! determines last index of grid vals of which is greater then or equal to
+  ! value vx
+  !--------------------------------------------------------------------------
+  pure function find_index( nvals, vals, vx ) result(res)
     integer,  intent(in) :: nvals
     real(r8), intent(in) :: vals(nvals)
     real(r8), intent(in) :: vx
+    integer :: res
 
     integer :: ndx
 
-    find_ndx: do ndx = 2, nvals-1
-       if (vals(ndx)>vx) exit find_ndx
+    res = -1
+
+    find_ndx: do ndx = 2, nvals
+       if (vals(ndx)>=vx) then
+          res = ndx
+          exit find_ndx
+       end if
     end do find_ndx
 
   end function find_index
