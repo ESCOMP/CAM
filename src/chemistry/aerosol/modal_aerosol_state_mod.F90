@@ -49,6 +49,8 @@ module modal_aerosol_state_mod
      procedure :: constructor
   end interface modal_aerosol_state
 
+  real(r8), parameter :: rh2odens = 1._r8/rhoh2o
+
 contains
 
   !------------------------------------------------------------------------------
@@ -586,7 +588,10 @@ contains
 
     call self%water_uptake(aero_props, list_idx, bin_idx, ncol, nlev, dgnumwet, qaerwat)
 
-    vol(:ncol,:nlev) = qaerwat(:ncol,:nlev)/rhoh2o
+    vol(:ncol,:nlev) = qaerwat(:ncol,:nlev)*rh2odens
+    where (vol<0._r8)
+       vol = 0._r8
+    end where
 
   end function water_volume
 
