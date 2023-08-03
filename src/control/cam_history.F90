@@ -463,7 +463,6 @@ CONTAINS
       ! Time at beginning of current averaging interval.
 
       beg_time(t) = day + sec/86400._r8
-
     end do
 
     !
@@ -2452,7 +2451,7 @@ CONTAINS
     ! Dummy arguments
     character(len=1),           intent(in)  :: avgflag ! averaging flag
     character(len=max_chars),   intent(out) :: time_op ! time op (e.g. max)
-    logical,         optional,  intent(in)  :: instantaneous_valid ! flag for whether it's ok to have instanteous fields on the tape
+    logical,         optional,  intent(in)  :: instantaneous_valid ! flag for whether it's ok to have instantaneous fields on the tape
     logical,         optional,  intent(in)  :: average_valid ! flag for whether it's ok to have average fields on the tape
 
     ! Local variables
@@ -2473,7 +2472,7 @@ CONTAINS
     end if
 
     if (avgflag /= 'I' .and. .not. local_avg_valid) then
-       call endrun(subname//': cannot have average output in history file with instantaneous fields')
+       call endrun(subname//': cannot have average fields in instantaneous history file')
     end if
 
     select case (avgflag)
@@ -2487,7 +2486,7 @@ CONTAINS
       if (local_inst_valid) then
          time_op(:) = ' '
       else
-         call endrun(subname//': cannot have instantaneous output in history file with averaged fields')
+         call endrun(subname//': cannot have instantaneous fields in average history file')
       end if
     case ('X')
       time_op(:) = 'maximum'
@@ -5470,8 +5469,6 @@ end subroutine print_active_fldlst
     character(len=max_string_len) :: fname ! Filename
     logical :: prev              ! Label file with previous date rather than current
     integer :: ierr
-    integer :: mid_days(ptapes)
-    integer :: mid_secs(ptapes)
 #if ( defined BFB_CAM_SCAM_IOP )
     integer :: tsec             ! day component of current time
     integer :: dtime            ! seconds component of current time
@@ -5628,7 +5625,6 @@ end subroutine print_active_fldlst
 #endif
           ierr = pio_put_var (tape(t)%File, tape(t)%nstephid,(/start/),(/count1/),(/nstep/))
           time = ndcur + nscur/86400._r8
-!          ierr=pio_put_var (tape(t)%File, tape(t)%timeid, (/start/),(/count1/),(/time/))
 
           startc(1) = 1
           startc(2) = start
@@ -5641,22 +5637,19 @@ end subroutine print_active_fldlst
             tdata(2) = time
           end if
           if (avgflag_pertape(t) /= 'I') then
-          ! averaged fields - time is midpoint of time_bounds
+             ! average tape - time is midpoint of time_bounds
              ierr=pio_put_var (tape(t)%File, tape(t)%timeid, (/start/),(/count1/),(/(tdata(1) + tdata(2)) / 2._r8/))
           else
-          ! instantaneous fields - time is current time
+             ! instantaneous tape - time is current time
              ierr=pio_put_var (tape(t)%File, tape(t)%timeid, (/start/),(/count1/),(/time/))
           end if
           ierr=pio_put_var (tape(t)%File, tape(t)%tbndid, startc, countc, tdata)
-          if(.not.restart) then
-             beg_time(t) = time  ! update beginning time of next interval
-          end if
+          if(.not.restart) beg_time(t) = time  ! update beginning time of next interval
           startc(1) = 1
           startc(2) = start
           countc(1) = 8
           countc(2) = 1
           call datetime (cdate, ctime)
-          
           ierr = pio_put_var (tape(t)%File, tape(t)%date_writtenid, startc, countc, (/cdate/))
           ierr = pio_put_var (tape(t)%File, tape(t)%time_writtenid, startc, countc, (/ctime/))
 
