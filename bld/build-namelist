@@ -2342,18 +2342,18 @@ if (($chem =~ /_mam4/ or $chem =~ /_mam5/) and ($phys =~ /cam6/ or $phys =~ /cam
     if ($chem eq 'trop_mam4' or $chem eq 'waccm_sc_mam4'or $chem eq 'ghg_mam4') {
 	# SOA yields (used for the interactive emissions) have been calculated based on the VBS yields in CAM-chem.
 	# Duseong S. Jo, et al. to be submitted to GMD, 2023 -- see https://github.com/ESCOMP/CAM/pull/727 discussion for additional detail.
-        my %soae_fctrs = ('BENZENE_an_srf_file' => '3.4192D0',
-                          'BENZENE_bb_srf_file' => '3.4192D0',
-                          'ISOP_bb_srf_file'    => '0.9058D0',
-                          'MTERP_bb_srf_file'   => '5.8638D0',
-                          'TOLUENE_an_srf_file' => '9.4429D0',
-                          'TOLUENE_bb_srf_file' => '9.4429D0',
-                          'XYLENES_an_srf_file' => '7.3804D0',
-                          'XYLENES_bb_srf_file' => '7.3804D0',
-                          'IVOC_an_srf_file'    => '8.6158D0',
-                          'IVOC_bb_srf_file'    => '8.6158D0',
-                          'SVOC_an_srf_file'    => '16.7388D0',
-                          'SVOC_bb_srf_file'    => '16.7388D0');
+        my %soae_fctrs = ('BENZENE_an_srf_file' => '2.5592D0',
+                          'BENZENE_bb_srf_file' => '2.5592D0',
+                          'ISOP_bb_srf_file'    => '0.5954D0',
+                          'MTERP_bb_srf_file'   => '5.1004D0',
+                          'TOLUENE_an_srf_file' => '8.2367D0',
+                          'TOLUENE_bb_srf_file' => '8.2367D0',
+                          'XYLENES_an_srf_file' => '6.5013D0',
+                          'XYLENES_bb_srf_file' => '6.5013D0',
+                          'IVOC_an_srf_file'    => '8.5371D0',
+                          'IVOC_bb_srf_file'    => '8.5371D0',
+                          'SVOC_an_srf_file'    => '16.650D0',
+                          'SVOC_bb_srf_file'    => '16.650D0');
         foreach my $id (sort keys %soae_fctrs) {
             my $rel_filepath = get_default_value($id, \%verhash);
             my $abs_filepath = set_abs_filepath($rel_filepath, $inputdata_rootdir);
@@ -2436,12 +2436,12 @@ if (($chem =~ /_mam4/ or $chem =~ /_mam5/) and ($phys =~ /cam6/ or $phys =~ /cam
 
     # MEGAN emissions
     if (($chem eq 'trop_mam4' or $chem eq 'waccm_sc_mam4' or $chem eq 'ghg_mam4') and !$aqua_mode and !$scam){
-	my $val = "'SOAE = 0.9058*isoprene + 5.8638*(carene_3 + pinene_a + thujene_a + bornene +',"
+        my $val = "'SOAE = 0.5954*isoprene + 5.1004*(carene_3 + pinene_a + thujene_a + bornene +',"
                 . "' terpineol_4 + terpineol_a + terpinyl_ACT_a + myrtenal + sabinene + pinene_b + camphene +',"
                 . "' fenchene_a + limonene + phellandrene_a + terpinene_a + terpinene_g + terpinolene +',"
                 . "' phellandrene_b + linalool + ionone_b + geranyl_acetone + neryl_acetone + jasmone +',"
                 . "' verbenene + ipsenol + myrcene + ocimene_t_b + ocimene_al + ocimene_c_b + 2met_nonatriene) + ',"
-                . "' 13.4042*(farnescene_a + caryophyllene_b + acoradiene + aromadendrene + bergamotene_a +',"
+                . "' 12.3942*(farnescene_a + caryophyllene_b + acoradiene + aromadendrene + bergamotene_a +',"
                 . "' bergamotene_b + bisabolene_a + bisabolene_b + bourbonene_b + cadinene_d + cadinene_g +',"
                 . "' cedrene_a + copaene_a + cubebene_a + cubebene_b + elemene_b + farnescene_b +',"
                 . "' germacrene_B + germacrene_D + gurjunene_b + humulene_a + humulene_g + isolongifolene +',"
@@ -4606,7 +4606,7 @@ sub check_user_input {
 
     my $nl = shift;    # namelist object
 
-    # When HEMCO is being used any emissions or external forcings specified by the 
+    # When HEMCO is being used any emissions or external forcings specified by the
     # srf_emis_specifier and ext_frc_specifier variables will be ignored at runtime.
     # Check here that these variable are not set if the compset definition sets
     # use_hemco=.true.
