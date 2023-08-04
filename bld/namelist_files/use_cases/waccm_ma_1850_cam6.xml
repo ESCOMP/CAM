@@ -51,7 +51,7 @@
 <!-- History Streams -->
 
 <mfilt>             1,  30, 120, 240, 240, 480, 365,  73,  30  </mfilt>
-<nhtfrq>            0, -24,  -6,  -3,  -1,   1, -24,-120,-240  </nhtfrq>
+<nhtfrq>            0, -24,  -6,  -3,  -1,   1, -24,-120,-120  </nhtfrq>
 <avgflag_pertape> 'A', 'A', 'A', 'A', 'A', 'A', 'A', 'A', 'I'</avgflag_pertape>
 
 <fincl1>
@@ -67,7 +67,7 @@
   'DTCORE', 'T_24_COS', 'T_24_SIN', 'T_12_COS', 'T_12_SIN', 'OMEGA_24_COS', 'OMEGA_24_SIN',
   'OMEGA_12_COS', 'OMEGA_12_SIN', 'U_24_COS', 'U_24_SIN', 'U_12_COS', 'U_12_SIN',
   'V_24_COS', 'V_24_SIN', 'V_12_COS', 'V_12_SIN', 'PS_24_COS', 'PS_24_SIN', 'PS_12_COS',
-  'PS_12_SIN', 'CLDLIQ', 'CLDICE', 'CONCLD', 'FRONTGF:I', 'BUTGWSPEC', 'BTAUE', 'BTAUW',
+  'PS_12_SIN', 'CLDLIQ', 'CLDICE', 'CONCLD', 'BUTGWSPEC', 'BTAUE', 'BTAUW',
   'BTAUN', 'BTAUS', 'TAUE', 'TAUW', 'TAUN', 'TAUS', 'TAUGWX', 'TAUGWY', 'TAUX', 'TAUY',
   'SNOWHLND', 'SNOWHICE', 'ICEFRAC', 'FSDSC', 'SFNO', 'SFCO', 'SFCH2O', 'CFC11STAR',
   'TROPP_FD', 'NITROP_PD', 'TROP_P', 'TROP_T', 'TROP_Z', 'SAD_AERO', 'REFF_AERO',
@@ -86,10 +86,11 @@
   'MSKtem','PS','PSL','VTHzm','UVzm','UWzm','Uzm','Vzm','THzm','Wzm','PHIS'
 </fincl7>
 <fincl8>
-  'PS', 'PSL', 'U', 'V', 'T', 'Z3', 'PHIS', 'FRONTGF:I', 'OMEGA', 'O3',
+  'PS', 'PSL', 'U', 'V', 'T', 'Z3', 'PHIS', 'OMEGA', 'O3',
   'REFF_AERO', 'SAD_AERO', 'so4_a1', 'so4_a2', 'so4_a3', 'AODVISstdn', 'NITROP_PD',
   'dgnumwet1', 'dgnumwet2', 'dgnumwet3', 'QRS_TOT', 'CO2', 'H', 'NO', 'O'
 </fincl8>
+<fincl9>'FRONTGF'</fincl9>
 
 <history_cesm_forcing>.true.</history_cesm_forcing>
 <history_scwaccm_forcing>.true. </history_scwaccm_forcing>

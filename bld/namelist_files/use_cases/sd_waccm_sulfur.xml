@@ -61,9 +61,9 @@
 
 <!-- History Files -->
 
-<mfilt>1,10,20,73,365</mfilt>
-<nhtfrq>0,-240,-240,-24,-24</nhtfrq>
-<avgflag_pertape>'A','I','I','A','A'</avgflag_pertape>
+<mfilt>1,10,20,73,365,10</mfilt>
+<nhtfrq>0,-240,-240,-24,-24,-120</nhtfrq>
+<avgflag_pertape>'A','I','B','A','A','I'</avgflag_pertape>
 
 <!-- Monthly -->
 <fincl1>
@@ -85,7 +85,7 @@
   'OMEGA_24_COS', 'OMEGA_24_SIN', 'OMEGA_12_COS', 'OMEGA_12_SIN',
   'U_24_COS', 'U_24_SIN', 'U_12_COS', 'U_12_SIN', 'V_24_COS', 'V_24_SIN', 'V_12_COS',
   'V_12_SIN', 'PS_24_COS', 'PS_24_SIN', 'PS_12_COS', 'PS_12_SIN', 'CLDLIQ','CLDICE','CONCLD',
-  'FRONTGF:I', 'BUTGWSPEC', 'BTAUE', 'BTAUW', 'BTAUN', 'BTAUS','TAUE','TAUW','TAUN','TAUS',
+  'BUTGWSPEC', 'BTAUE', 'BTAUW', 'BTAUN', 'BTAUS','TAUE','TAUW','TAUN','TAUS',
   'TAUGWX', 'TAUGWY', 'TAUX','TAUY','SNOWHLND','SNOWHICE','ICEFRAC','FSDSC','SFNO', 'SFCO',
   'SFCH2O','CFC11STAR'
 </fincl1>
@@ -108,7 +108,7 @@
   'VTHzm', 'WTHzm', 'UVzm', 'UWzm', 'TH', 'MSKtem'
 </fincl2>
 
-<!-- Instantaneous every 10 days -->
+<!-- Average every 10 days -->
 <fincl3>
   'PS:B', 'T:B', 'Z3:B', 'U:B', 'V:B', 'CO:B', 'CO2:B',
   'H2:B', 'O:B', 'O2:B', 'O3:B', 'H:B', 'OH:B', 'HO2:B', 'H2O:B',
@@ -118,7 +118,7 @@
   'BRO:B', 'NO3:B', 'DTCORE:B', 'DTV:B', 'TTGW:B','OMEGA:B' </fincl3>
 <!-- Daily Average -->
 <fincl4>
-  'PS', 'PSL', 'U', 'V', 'T', 'Z3', 'PHIS','FRONTGF:I', 'OMEGA'
+  'PS', 'PSL', 'U', 'V', 'T', 'Z3', 'PHIS','FRONTGF', 'OMEGA'
 </fincl4>
 <!-- Daily Average -->
 <fincl5>

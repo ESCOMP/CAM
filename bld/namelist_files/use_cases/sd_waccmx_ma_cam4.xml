@@ -95,7 +95,7 @@
          'QRL_TOT', 'PSL', 'HNO3_STS', 'HNO3_NAT', 'HNO3_GAS', 'NO_Aircraft', 'NO_Lightning',
          'QRS_AUR', 'QRS_CO2NIR', 'QRS_EUV', 'SAD_ICE', 'SAD_LNAT', 'SAD_SULFC', 'TREFHT',
          'VERT', 'VTGWORO', 'VTGWSPEC', 'O2_1S', 'O2_1D', 'NOX', 'NOY', 'CLOX', 'CLOY', 'BROX', 'BROY',
-	 'TCLY', 'TOTH', 'UIONTEND', 'VIONTEND', 'DTCORE', 'CLDLIQ', 'CLDICE', 'CONCLD', 'FRONTGF:I',
+	 'TCLY', 'TOTH', 'UIONTEND', 'VIONTEND', 'DTCORE', 'CLDLIQ', 'CLDICE', 'CONCLD',
 	 'BTAUE', 'BTAUW', 'BTAUN', 'BTAUS', 'TAUE', 'TAUW', 'TAUN', 'TAUS', 'TAUGWX', 'TAUGWY', 'TAUX', 'TAUY',
 	 'SNOWHLND', 'SNOWHICE', 'ICEFRAC', 'FSDSC', 'SFNO', 'SFCO', 'SFCH2O', 'CFC11STAR', 'TROPP_FD',
          'KVH', 'KVM', 'KVT', 'Qbkgndtot', 'Z3GM', 'OpDens', 'EDens'
@@ -110,7 +110,7 @@
          'Z3', 'T', 'TIon', 'TElec', 'e', 'U', 'V', 'OMEGA', 'UI', 'VI', 'WI', 'ElecColDens', 'PHIM2D', 'PS',
          'PED_CONDUCTANCE', 'HALL_CONDUCTANCE', 'ED1', 'ED2', 'O', 'O2', 'H', 'NO', 'CO2', 'N', 'O1D',
 	 'Op2P', 'Op2D', 'Op', 'Np', 'N2p', 'O2p', 'NOp', 'QJOULE', 'SIGMAHAL', 'SIGMAPED', 'SolIonRate_Tot',
-	 'Z3GM', 'OpDens', 'EDens'
+	 'Z3GM', 'OpDens', 'EDens', 'FRONTGF'
 </fincl3>
 <!-- Average every day -->
 <fincl4>

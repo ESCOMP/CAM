@@ -82,7 +82,7 @@
          'QRL_TOT', 'PSL', 'HNO3_STS', 'HNO3_NAT', 'HNO3_GAS', 'NO_Aircraft', 'NO_Lightning',
          'QRS_AUR', 'QRS_CO2NIR', 'QRS_EUV', 'SAD_ICE', 'SAD_LNAT', 'SAD_SULFC', 'TREFHT',
          'VERT', 'VTGWORO', 'VTGWSPEC', 'O2_1S', 'O2_1D', 'NOX', 'NOY', 'CLOX', 'CLOY', 'BROX', 'BROY',
-         'TCLY', 'TOTH', 'UIONTEND', 'VIONTEND', 'DTCORE', 'CLDLIQ', 'CLDICE', 'CONCLD', 'FRONTGF:I',
+         'TCLY', 'TOTH', 'UIONTEND', 'VIONTEND', 'DTCORE', 'CLDLIQ', 'CLDICE', 'CONCLD',
          'BTAUE', 'BTAUW', 'BTAUN', 'BTAUS', 'TAUE', 'TAUW', 'TAUN', 'TAUS', 'TAUGWX', 'TAUGWY', 'TAUX', 'TAUY',
          'SNOWHLND', 'SNOWHICE', 'ICEFRAC', 'FSDSC', 'SFNO', 'SFCO', 'SFCH2O', 'CFC11STAR', 'TROPP_FD',
          'KVH', 'KVM', 'KVT', 'Qbkgndtot', 'Z3GM', 'OpDens', 'EDens'
@@ -114,15 +114,17 @@
          'OMEGA_24_COS', 'OMEGA_24_SIN', 'OMEGA_12_COS', 'OMEGA_12_SIN', 'OMEGA_08_COS', 'OMEGA_08_SIN'
 </fincl5>
 <!-- Average every day -->
-<fincl7 dyn="fv">
+<fincl6 dyn="fv">
   'MSKtem','PS','PSL','VTHzm','UVzm','UWzm','Uzm','Vzm','THzm','Wzm','PHIS'
-</fincl7>
+</fincl6>
 <!-- Average every 5 days -->
-<fincl8>
-  'PS', 'PSL', 'U', 'V', 'T', 'Z3', 'PHIS', 'FRONTGF:I', 'OMEGA', 'O3',
+<fincl7>
+  'PS', 'PSL', 'U', 'V', 'T', 'Z3', 'PHIS', 'OMEGA', 'O3',
   'REFF_AERO', 'SAD_AERO', 'so4_a1', 'so4_a2', 'so4_a3', 'AODVISstdn', 'NITROP_PD',
   'dgnumwet1', 'dgnumwet2', 'dgnumwet3', 'QRS_TOT', 'CO2', 'H', 'NO', 'O'
-</fincl8>
+</fincl7>
+<!-- Instantaneous every 5 days -->
+<fincl8>'FRONTGF'</fincl8>
 
 <history_cesm_forcing>.true.</history_cesm_forcing>
 <history_scwaccm_forcing>.true. </history_scwaccm_forcing>

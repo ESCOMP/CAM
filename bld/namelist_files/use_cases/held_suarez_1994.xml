@@ -20,7 +20,8 @@
 <!-- history output customization -->
 <nhtfrq>0,-6</nhtfrq>
 <fincl2>
- 'U:I','V:I','T:I'
+ 'U','V','T'
 </fincl2>
+<avgflag_pertape>'A','I'</avgflag_pertape>
 
 </namelist_defaults>

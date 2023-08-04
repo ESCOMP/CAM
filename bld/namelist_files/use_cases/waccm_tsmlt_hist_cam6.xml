@@ -42,8 +42,8 @@
 
 <!-- History Files -->
 
-<mfilt>           1,    5,  20,  40, 120, 240, 365,  73, 365   </mfilt>
-<nhtfrq>          0,  -24,  -6,  -3,  -1,   1, -24,-120,-240  </nhtfrq>
+<mfilt>           1,    5,  20,  40, 120, 240, 365,  73, 365  </mfilt>
+<nhtfrq>          0,  -24,  -6,  -3,  -1,   1, -24,-120,-120  </nhtfrq>
 <avgflag_pertape>'A', 'A', 'A', 'A', 'A', 'A', 'A', 'A', 'I'  </avgflag_pertape>
 
 <history_amwg>.true.</history_amwg>
@@ -105,8 +105,9 @@
          'MSKtem','PS','PSL','VTHzm','UVzm','UWzm','Uzm','Vzm','THzm','Wzm','PHIS'
 </fincl7>
 <fincl8>
-         'PS', 'PSL', 'U', 'V', 'T', 'Z3', 'PHIS', 'FRONTGF:I', 'OMEGA', 'O3', 'REFF_AERO', 'SAD_AERO',
+         'PS', 'PSL', 'U', 'V', 'T', 'Z3', 'PHIS', 'OMEGA', 'O3', 'REFF_AERO', 'SAD_AERO',
          'so4_a1', 'so4_a2', 'so4_a3', 'AODVISstdn', 'NITROP_PD', 'dgnumwet1', 'dgnumwet2', 'dgnumwet3', 'QRS_TOT', 'CO2', 'H', 'NO', 'O'
 </fincl8>
+<fincl9>'FRONTGF'</fincl9>
 
 </namelist_defaults>

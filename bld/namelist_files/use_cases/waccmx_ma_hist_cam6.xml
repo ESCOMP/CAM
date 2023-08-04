@@ -32,10 +32,10 @@
 <srf_emis_type>INTERP_MISSING_MONTHS</srf_emis_type>
 
 <!-- History -->
-<avgflag_pertape     >'A',  'I',  'I',  'A',  'A',  'A', 'A' </avgflag_pertape>
+<avgflag_pertape     >'A',  'I',  'I',  'A',  'A',  'A', 'A', 'I'  </avgflag_pertape>
 
-<nhtfrq                >0,   -3,  -24,  -24, -120,  -24, -24 </nhtfrq>
-<mfilt                 >1,    8,    1,    1,    2,    1, 365 </mfilt>
+<nhtfrq                >0,   -3,  -24,  -24, -120,  -24, -24, -120 </nhtfrq>
+<mfilt                 >1,    8,    1,    1,    2,    1, 365,   10 </mfilt>
 
 <nhtfrq hgrid="1.9x2.5">0,   -1,  -24,  -24, -120,  -24, -24 </nhtfrq>
 <mfilt  hgrid="1.9x2.5">1,   24,    7,    7,   10,    1, 365 </mfilt>
@@ -61,7 +61,7 @@
          'SOLIN', 'SWCF', 'QCP', 'QTHERMAL', 'QRL_TOT', 'PSL', 'HNO3_STS', 'HNO3_NAT', 'HNO3_GAS', 'NO_Aircraft',
          'NO_Lightning', 'QRS_AUR', 'QRS_CO2NIR', 'QRS_EUV', 'SAD_ICE', 'SAD_LNAT', 'SAD_SULFC', 'TREFHT', 'VERT', 'VTGWORO',
          'VTGWSPEC', 'O2_1S', 'O2_1D', 'NOX', 'NOY', 'CLOX', 'CLOY', 'BROX', 'BROY', 'TCLY',
-         'TOTH', 'UIONTEND', 'VIONTEND', 'DTCORE', 'CLDLIQ', 'CLDICE', 'CONCLD', 'FRONTGF:I', 'BTAUE', 'BTAUW',
+         'TOTH', 'UIONTEND', 'VIONTEND', 'DTCORE', 'CLDLIQ', 'CLDICE', 'CONCLD', 'BTAUE', 'BTAUW',
          'BTAUN', 'BTAUS', 'TAUE', 'TAUW', 'TAUN', 'TAUS', 'TAUGWX', 'TAUGWY', 'TAUX', 'TAUY',
          'SNOWHLND', 'SNOWHICE', 'ICEFRAC', 'FSDSC', 'SFNO', 'SFCO', 'SFCH2O', 'CFC11STAR', 'TROPP_FD', 'KVH',
          'KVM', 'KVT', 'Qbkgndtot', 'Z3GM', 'OpDens', 'EDens'
@@ -96,6 +96,7 @@
 <fincl7>
          'MSKtem', 'PS', 'PSL', 'VTHzm', 'UVzm', 'UWzm', 'Uzm', 'Vzm', 'THzm','Wzm', 'PHIS'
 </fincl7>
+<fincl8>'FRONTGF'</fincl8>
 
 <fv_div24del2flag>42</fv_div24del2flag>
 

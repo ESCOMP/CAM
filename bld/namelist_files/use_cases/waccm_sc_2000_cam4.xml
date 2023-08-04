@@ -47,9 +47,9 @@
 
 <!-- History Files -->
 
-<mfilt>            1,   10,   20,  73, 365 </mfilt>
-<nhtfrq>           0, -240, -240, -24, -24 </nhtfrq>
-<avgflag_pertape> 'A', 'I',  'I', 'A', 'A' </avgflag_pertape>
+<mfilt>            1,   10,   20,  73, 365, 10 </mfilt>
+<nhtfrq>           0, -240, -240, -24, -24, -120 </nhtfrq>
+<avgflag_pertape> 'A', 'I',  'B', 'A', 'A', 'I' </avgflag_pertape>
 
 <!-- Monthly --> 
 <fincl1>
@@ -68,7 +68,7 @@
   'OMEGA_24_COS', 'OMEGA_24_SIN', 'OMEGA_12_COS', 'OMEGA_12_SIN',
   'U_24_COS', 'U_24_SIN', 'U_12_COS', 'U_12_SIN', 'V_24_COS', 'V_24_SIN', 'V_12_COS', 
   'V_12_SIN', 'PS_24_COS', 'PS_24_SIN', 'PS_12_COS', 'PS_12_SIN', 'CLDLIQ','CLDICE','CONCLD',
-  'FRONTGF:I', 'BUTGWSPEC', 'BTAUE', 'BTAUW', 'BTAUN', 'BTAUS','TAUE','TAUW','TAUN','TAUS',
+  'BUTGWSPEC', 'BTAUE', 'BTAUW', 'BTAUN', 'BTAUS','TAUE','TAUW','TAUN','TAUS',
   'TAUGWX', 'TAUGWY', 'TAUX','TAUY','SNOWHLND','SNOWHICE','ICEFRAC','FSDSC',
   'WFRC_O','WFRC_O2','WFRC_O3','WFRC_NO','WFRC_H','WFRC_CO2','WFRC_QRS_TOT'
 </fincl1>
@@ -82,13 +82,15 @@
 
 <!-- Instantaneous every 10 days --> 
 <fincl3>
-  'PS:B', 'T:B', 'Z3:B', 'U:B', 'V:B',
-  'QRL_TOT:B', 'QRS_TOT:B',  'DTCORE:B', 'DTV:B', 'TTGW:B','OMEGA:B' 
+  'PS', 'T', 'Z3', 'U', 'V',
+  'QRL_TOT', 'QRS_TOT',  'DTCORE', 'DTV', 'TTGW','OMEGA' 
 </fincl3>
 <!-- Daily Average --> 
 <fincl4>
-  'PS', 'PSL', 'U', 'V', 'T', 'Z3', 'PHIS','FRONTGF:I', 'OMEGA' 
+  'PS', 'PSL', 'U', 'V', 'T', 'Z3', 'PHIS', 'OMEGA' 
 </fincl4>
+<!-- Instantaneous every 5 days -->
+<fincl5>'FRONTGF'</fincl5>
 
 <!-- sim_year used for CLM datasets and SSTs forcings -->
 <sim_year>2000</sim_year>

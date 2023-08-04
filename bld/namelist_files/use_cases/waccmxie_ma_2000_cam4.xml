@@ -90,9 +90,9 @@
 </megan_specifier>
 
 <!-- History -->
-<avgflag_pertape> 'A',  'I',  'I',  'A',  'A', 'A' </avgflag_pertape>
-<nhtfrq>            0,   -1,  -24,  -24, -120, -24 </nhtfrq>
-<mfilt>             1,   24,    7,    7,   10, 365 </mfilt>
+<avgflag_pertape> 'A',  'I',  'I',  'A',  'A', 'A',  'I'  </avgflag_pertape>
+<nhtfrq>            0,   -1,  -24,  -24, -120, -24, -120 </nhtfrq>
+<mfilt>             1,   24,    7,    7,   10, 365,   10  </mfilt>
 
 <!-- Monthly -->
 <fincl1>
@@ -114,7 +114,7 @@
          'QRL_TOT', 'PSL', 'HNO3_STS', 'HNO3_NAT', 'HNO3_GAS', 'NO_Aircraft', 'NO_Lightning',
          'QRS_AUR', 'QRS_CO2NIR', 'QRS_EUV', 'SAD_ICE', 'SAD_LNAT', 'SAD_SULFC', 'TREFHT',
          'VERT', 'VTGWORO', 'VTGWSPEC', 'O2_1S', 'O2_1D', 'NOX', 'NOY', 'CLOX', 'CLOY', 'BROX', 'BROY',
-	 'TCLY', 'TOTH', 'UIONTEND', 'VIONTEND', 'DTCORE', 'CLDLIQ', 'CLDICE', 'CONCLD', 'FRONTGF:I',
+	 'TCLY', 'TOTH', 'UIONTEND', 'VIONTEND', 'DiTCORE', 'CLDLIQ', 'CLDICE', 'CONCLD',
 	 'BTAUE', 'BTAUW', 'BTAUN', 'BTAUS', 'TAUE', 'TAUW', 'TAUN', 'TAUS', 'TAUGWX', 'TAUGWY', 'TAUX', 'TAUY',
 	 'SNOWHLND', 'SNOWHICE', 'ICEFRAC', 'FSDSC', 'SFNO', 'SFCO', 'SFCH2O', 'CFC11STAR', 'TROPP_FD',
          'KVH', 'KVM', 'KVT', 'Qbkgndtot', 'Z3GM', 'OpDens', 'EDens'
@@ -146,9 +146,11 @@
 	 'OMEGA_24_COS', 'OMEGA_24_SIN', 'OMEGA_12_COS', 'OMEGA_12_SIN', 'OMEGA_08_COS', 'OMEGA_08_SIN'
 </fincl5>
 <!-- Average every day -->
-<fincl7 dyn="fv">
+<fincl6 dyn="fv">
          'MSKtem', 'PS', 'PSL', 'VTHzm', 'UVzm', 'UWzm', 'Uzm', 'Vzm', 'THzm','Wzm', 'PHIS'
-</fincl7>
+</fincl6>
+<!-- Instantaneous every day -->
+<fincl7>'FRONTGF'</fincl7>
 
 <fv_div24del2flag dyn="fv">42</fv_div24del2flag>
 

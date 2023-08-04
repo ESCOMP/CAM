@@ -183,9 +183,9 @@
 
 <!-- History Files -->
 
-<mfilt           >  1,  30 </mfilt>
-<nhtfrq          >  0, -24 </nhtfrq>
-<avgflag_pertape >'A', 'A' </avgflag_pertape>
+<mfilt           >  1,  30,  30 </mfilt>
+<nhtfrq          >  0, -24, -24 </nhtfrq>
+<avgflag_pertape >'A', 'A', 'I' </avgflag_pertape>
 
 <mfilt           chem="trop_strat_mam5_ts2">  1,   1 </mfilt>
 <nhtfrq          chem="trop_strat_mam5_ts2">  0,   0 </nhtfrq>
@@ -236,7 +236,7 @@
 </fincl1>
 
 <fincl2 chem="trop_strat_mam5_vbs" hgrid="ne0np4CONUS.ne30x8">
-   'PMID', 'PDELDRY','PS','PHIS:I','Z3','T','U','V','Q','TROP_P', 'CLOUD',
+   'PMID', 'PDELDRY','PS','PHIS','Z3','T','U','V','Q','TROP_P', 'CLOUD',
    'CO','O3','O3S','NO2','NO','OH','ISOP','SO2', 'PAN', 'HNO3', 'C2H6', 'C3H8', 'CH2O', 'CH3COCH3',
    'SFISOP','SFCO','SFNO','SFNO2',
    'PM25_SRF', 'so4_a1','so4_a2','so4_a3','dst_a1','dst_a2','dst_a3','soa_a1','soa_a2',
@@ -284,5 +284,7 @@
        'WD_TERPACID2','WD_TERPACID3','WD_TERPA3PAN','WD_TERPOOHL','WD_TERPA3',
        'WD_APIN','WD_BPIN','WD_LIMON','WD_MYRC'
 </fincl2>
+<!-- Instantaneous -->
+<fincl3 chem="trop_strat_mam5_vbs" hgrid"ne0np4CONUS.ne30x8">'PHIS'</fincl3>
 
 </namelist_defaults>
