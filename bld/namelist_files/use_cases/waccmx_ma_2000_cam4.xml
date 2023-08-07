@@ -68,9 +68,9 @@
 
 <!-- History Files -->
 
-<mfilt>            1,   8,   1 </mfilt>
-<nhtfrq>           0,  -3, -24 </nhtfrq>
-<avgflag_pertape> 'A', 'I',  'I' </avgflag_pertape>
+<mfilt>            1,   8,   1,   73  </mfilt>
+<nhtfrq>           0,  -3, -24, -120  </nhtfrq>
+<avgflag_pertape> 'A', 'I',  'I', 'I' </avgflag_pertape>
 
 <!-- Monthly -->
 <fincl1>
@@ -136,11 +136,13 @@
   'SAD_ICE', 'SAD_LNAT', 'SAD_SULFC', 'T', 'TREFHT', 'TTGW', 'U',
   'UTGWORO', 'UTGWSPEC', 'V', 'VERT', 'VTGWORO', 'VTGWSPEC', 'Z3', 'O2_1S', 'O2_1D', 'NOX', 'NOY',
   'CLOX', 'CLOY', 'BROX', 'BROY', 'TCLY', 'TOTH', 'QJOULE', 'UIONTEND', 'VIONTEND',
-  'DTCORE', 'CLDLIQ', 'CLDICE', 'CONCLD', 'FRONTGF', 'BUTGWSPEC', 'BTAUE', 'BTAUW', 'BTAUN', 'BTAUS', 'TAUE',
+  'DTCORE', 'CLDLIQ', 'CLDICE', 'CONCLD', 'BUTGWSPEC', 'BTAUE', 'BTAUW', 'BTAUN', 'BTAUS', 'TAUE',
   'TAUW', 'TAUN', 'TAUS', 'TAUGWX', 'TAUGWY', 'TAUX', 'TAUY', 'SNOWHLND', 'SNOWHICE', 'ICEFRAC', 'FSDSC',
   'SFNO', 'SFCO', 'SFCH2O', 'CFC11STAR', 'TROPP_FD', 'Op', 'O2p', 'Np', 'NOp',
   'N2p', 'e', 'UI', 'VI', 'WI'
 </fincl3>
+<!-- Instantaneous every 5 days -->
+<fincl4>'FRONTGF'</fincl4>
 
 <!-- sim_year used for CLM datasets and SSTs forcings -->
 <sim_year>2000</sim_year>

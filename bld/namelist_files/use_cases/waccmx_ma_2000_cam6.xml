@@ -34,13 +34,13 @@
 <srf_emis_cycle_yr>2000</srf_emis_cycle_yr>
 
 <!-- History -->
-<avgflag_pertape     >'A',  'I',  'I',  'A',  'A',  'A', 'A' </avgflag_pertape>
+<avgflag_pertape     >'A',  'I',  'I',  'A',  'A',  'A', 'A', 'I'  </avgflag_pertape>
 
-<nhtfrq                >0,   -3,  -24,  -24, -120,  -24, -24 </nhtfrq>
-<mfilt                 >1,    8,    1,    1,    2,    1, 365 </mfilt>
+<nhtfrq                >0,   -3,  -24,  -24, -120,  -24, -24, -120 </nhtfrq>
+<mfilt                 >1,    8,    1,    1,    2,    1, 365,   73 </mfilt>
 
-<nhtfrq hgrid="1.9x2.5">0,   -1,  -24,  -24, -120,  -24, -24 </nhtfrq>
-<mfilt  hgrid="1.9x2.5">1,   24,    7,    7,   10,    1, 365 </mfilt>
+<nhtfrq hgrid="1.9x2.5">0,   -1,  -24,  -24, -120,  -24, -24, -120 </nhtfrq>
+<mfilt  hgrid="1.9x2.5">1,   24,    7,    7,   10,    1, 365,   73 </mfilt>
 
 <!-- Monthly -->
 <fincl1>
@@ -78,7 +78,7 @@
          'Z3', 'T', 'TIon', 'TElec', 'e', 'U', 'V', 'OMEGA', 'UI', 'VI', 'WI', 'ElecColDens', 'PHIM2D', 'PS',
          'PED_CONDUCTANCE', 'HALL_CONDUCTANCE', 'ED1', 'ED2', 'O', 'O2', 'H', 'NO', 'CO2', 'N', 'O1D',
 	 'Op2P', 'Op2D', 'Op', 'Np', 'N2p', 'O2p', 'NOp', 'QJOULE', 'SIGMAHAL', 'SIGMAPED', 'SolIonRate_Tot',
-	 'Z3GM', 'OpDens', 'EDens', 'FRONTGF'
+	 'Z3GM', 'OpDens', 'EDens'
 </fincl3>
 <!-- Average every 5 days -->
 <fincl4>
@@ -98,6 +98,8 @@
 <fincl7>
          'MSKtem', 'PS', 'PSL', 'VTHzm', 'UVzm', 'UWzm', 'Uzm', 'Vzm', 'THzm','Wzm', 'PHIS'
 </fincl7>
+<!-- Instantaneous every 5 days -->
+<fincl8>'FRONTGF'</fincl8>
 
 <fv_div24del2flag>42</fv_div24del2flag>
 

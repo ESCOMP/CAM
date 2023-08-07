@@ -73,7 +73,7 @@
 <!-- History -->
 <avgflag_pertape> 'A',  'I',  'I',  'A',  'A', 'A', 'I'  </avgflag_pertape>
 <nhtfrq>            0,   -1,  -24,  -24, -120, -24, -120 </nhtfrq>
-<mfilt>             1,   24,    7,    7,   10, 365,  10  </mfilt>
+<mfilt>             1,   24,    7,    7,   10, 365,   73 </mfilt>
 
 <!-- Monthly -->
 <fincl1>
@@ -127,11 +127,11 @@
 	 'OMEGA_24_COS', 'OMEGA_24_SIN', 'OMEGA_12_COS', 'OMEGA_12_SIN', 'OMEGA_08_COS', 'OMEGA_08_SIN'
 </fincl5>
 <!-- Average every day -->
-<fincl7>
+<fincl6>
          'MSKtem', 'PS', 'PSL', 'VTHzm', 'UVzm', 'UWzm', 'Uzm', 'Vzm', 'THzm','Wzm', 'PHIS'
-</fincl7>
+</fincl6>
 <!-- Instantaneous every 5 days -->
-<fincl8>'FRONTGF'</fincl8>
+<fincl7>'FRONTGF'</fincl7>
 
 <fv_div24del2flag>42</fv_div24del2flag>
 

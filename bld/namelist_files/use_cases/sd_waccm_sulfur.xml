@@ -118,12 +118,13 @@
   'BRO:B', 'NO3:B', 'DTCORE:B', 'DTV:B', 'TTGW:B','OMEGA:B' </fincl3>
 <!-- Daily Average -->
 <fincl4>
-  'PS', 'PSL', 'U', 'V', 'T', 'Z3', 'PHIS','FRONTGF', 'OMEGA'
+  'PS', 'PSL', 'U', 'V', 'T', 'Z3', 'PHIS','OMEGA'
 </fincl4>
 <!-- Daily Average -->
 <fincl5>
   'MSKtem', 'PS', 'PSL', 'VTHzm', 'UVzm', 'UWzm', 'Uzm', 'Vzm', 'THzm','Wzm', 'PHIS'
 </fincl5>
+<fincl6>'FRONTGF'<fincl6>
 
 <met_rlx_bot>50.</met_rlx_bot>
 <met_rlx_top>60.</met_rlx_top>

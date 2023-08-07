@@ -47,7 +47,7 @@
 
 <!-- History Files -->
 
-<mfilt>            1,   10,   20,  73, 365, 10 </mfilt>
+<mfilt>            1,   10,   20,  73, 365, 73 </mfilt>
 <nhtfrq>           0, -240, -240, -24, -24, -120 </nhtfrq>
 <avgflag_pertape> 'A', 'I',  'B', 'A', 'A', 'I' </avgflag_pertape>
 

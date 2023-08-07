@@ -59,8 +59,8 @@
 <!-- History Streams -->
 
 <avgflag_pertape> 'A',  'I',  'I',  'A',  'A',  'A',  'A',  'I' </avgflag_pertape>
-<nhtfrq>            0,   -1,  -24,  -24, -120,  -24, -120, -240 </nhtfrq>
-<mfilt>             1,   24,    7,    7,   10,  365,   73,   30 </mfilt>
+<nhtfrq>            0,   -1,  -24,  -24, -120,  -24, -120, -120 </nhtfrq>
+<mfilt>             1,   24,    7,    7,   10,  365,   73,   73 </mfilt>
 
 <!-- Monthly -->
 <fincl1>
