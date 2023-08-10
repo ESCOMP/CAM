@@ -237,9 +237,9 @@ subroutine modal_aer_opt_init()
    call addfld ('EXTxASYMdn',   (/ 'lev' /), 'A','  ','extinction 550 * asymmetry factor, day night',        &
                 flag_xyfill=.true.)
 
-   call addfld ('AODTOT', horiz_only, 'A','1','Aerosol optical depth summed over all sw wavelenghts', &
+   call addfld ('AODTOT', horiz_only, 'A','1','Aerosol optical depth summed over all sw wavelengths ', &
                 flag_xyfill=.true.)
-   call addfld ('AODTOTdn', horiz_only, 'A','1','Aerosol optical depth summed over all sw wavelenghts', &
+   call addfld ('AODTOTdn', horiz_only, 'A','1','Aerosol optical depth summed over all sw wavelengths, day night', &
                 flag_xyfill=.true.)
 
    call rad_cnst_get_info(0, nmodes=nmodes)
@@ -436,9 +436,9 @@ subroutine modal_aer_opt_init()
               'Aerosol absorption optical depth 550 nm', flag_xyfill=.true.)
 
          call addfld ('AODTOT'//diag(ilist), horiz_only, 'A','1', &
-              'Aerosol optical depth summed over all sw wavelenghts', flag_xyfill=.true.)
+              'Aerosol optical depth summed over all sw wavelengths', flag_xyfill=.true.)
          call addfld ('AODTOTdn'//diag(ilist), horiz_only, 'A','1', &
-              'Aerosol optical depth summed over all sw wavelenghts', flag_xyfill=.true.)
+              'Aerosol optical depth summed over all sw wavelengths, day night', flag_xyfill=.true.)
 
          call addfld ('EXTINCTdn'//diag(ilist),    (/ 'lev' /), 'A','/m',&
               'Aerosol extinction 550 nm, day night', flag_xyfill=.true.)
@@ -996,21 +996,16 @@ subroutine modal_aero_sw(list_idx, state, pbuf, nnite, idxnite, &
                if ((dopaer(i) <= -1.e-10_r8) .or. (dopaer(i) >= 30._r8)) then
 
                   if (dopaer(i) <= -1.e-10_r8) then
-                     write(iulog,*) "ERROR: Negative aerosol optical depth &
-                          &in this layer."
+                     write(iulog,*) "ERROR: Negative aerosol optical depth in this layer."
                   else
-                     write(iulog,*) "WARNING: Aerosol optical depth is &
-                          &unreasonably high in this layer."
+                     write(iulog,*) "WARNING: Aerosol optical depth is unreasonably high in this layer."
                   end if
 
                   write(iulog,*) 'dopaer(', i, ',', k, ',', m, ',', lchnk, ')=', dopaer(i)
-                  ! write(iulog,*) 'itab,jtab,ttab,utab=',itab(i),jtab(i),ttab(i),utab(i)
                   write(iulog,*) 'k=', k, ' pext=', pext(i), ' specext=', specpext(i)
                   write(iulog,*) 'wetvol=', wetvol(i), ' dryvol=', dryvol(i), ' watervol=', watervol(i)
-                  ! write(iulog,*) 'cext=',(cext(l,i),l=1,ncoef)
-                  ! write(iulog,*) 'crefin=',crefin(i)
                   write(iulog,*) 'nspec=', nspec
-                  ! write(iulog,*) 'cheb=', (cheb(nc,m,i,k),nc=2,ncoef)
+
                   do l = 1, nspec
                      call rad_cnst_get_aer_mmr(list_idx, m, l, 'a', state, pbuf, specmmr)
                      call rad_cnst_get_aer_props(list_idx, m, l, density_aer=specdens, &
@@ -1022,7 +1017,7 @@ subroutine modal_aero_sw(list_idx, state, pbuf, nnite, idxnite, &
                   end do
 
                   nerr_dopaer = nerr_dopaer + 1
-!                  if (nerr_dopaer >= nerrmax_dopaer) then
+
                   if (dopaer(i) < -1.e-10_r8) then
                      write(iulog,*) '*** halting in '//subname//' after nerr_dopaer =', nerr_dopaer
                      call endrun('exit from '//subname)
