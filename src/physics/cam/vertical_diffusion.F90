@@ -276,7 +276,7 @@ subroutine vertical_diffusion_init(pbuf2d)
   use trb_mtn_stress_cam,only : trb_mtn_stress_init
   use beljaars_drag_cam, only : beljaars_drag_init
   use upper_bc,          only : ubc_init
-  use phys_control,      only : waccmx_is, fv_am_correction, cam_physpkg_is
+  use phys_control,      only : waccmx_is, fv_am_correction
   use clubb_intr,        only : clubb_do_hb_above
 
   type(physics_buffer_desc), pointer :: pbuf2d(:,:)
@@ -688,6 +688,7 @@ subroutine vertical_diffusion_tend( &
   use upper_bc,           only : ubc_get_flxs
   use coords_1d,          only : Coords1D
   use clubb_intr,         only : clubb_do_hb_above
+  use phys_control,       only : cam_physpkg_is
 
   ! --------------- !
   ! Input Arguments !
@@ -1139,7 +1140,7 @@ subroutine vertical_diffusion_tend( &
      tauy = 0._r8
      shflux = 0._r8
      cflux(:,1) = 0._r8
-     if (clubb_do_hb_above) then
+     if (cam_physpkg_is("cam_dev")) then
        ! surface fluxes applied in clubb emissions module
        cflux(:,2:) = 0._r8
      else
