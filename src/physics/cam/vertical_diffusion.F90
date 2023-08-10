@@ -405,7 +405,7 @@ subroutine vertical_diffusion_init(pbuf2d)
        call init_hb_diff(gravit, cpair, ntop_eddy, nbot_eddy, pref_mid, &
             karman, eddy_scheme)
      !
-     ! run HB scheme where CLUBB is not active when running cam6 or cam_dev
+     ! run HB scheme where CLUBB is not active when running cam_dev
      ! else init_hb_diff is called just for diagnostic purposes
      !
      if (clubb_do_hb_above) then
@@ -1018,7 +1018,7 @@ subroutine vertical_diffusion_tend( &
            state%pmid, state%u  , state%v , tautotx  , tautoty , &
            cam_in%shf, cam_in%cflx(:,1), obklen  , ustar       , &
            kvm       , kvh      , kvq     , cgh      , cgs     , &
-           ri        , eddy_scheme)
+           ri        )
       clubbtop_idx = pbuf_get_index('clubbtop')
       call pbuf_get_field(pbuf, clubbtop_idx, clubbtop)
       !

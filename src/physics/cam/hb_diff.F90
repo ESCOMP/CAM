@@ -254,7 +254,7 @@ end subroutine init_hb_diff
        pmid    ,u       ,v       ,taux    ,tauy    , &
        shflx   ,qflx    ,obklen  ,ustar   , &
        kvm     ,kvh     ,kvq     ,cgh     ,cgs     , &
-       ri      ,eddy_scheme)
+       ri      )
     !-----------------------------------------------------------------------
     !
     ! This is a version of compute_hb_diff that only computes free
@@ -285,7 +285,6 @@ end subroutine init_hb_diff
     real(r8), intent(in)  :: shflx(pcols)             ! sensible heat flux
     real(r8), intent(in)  :: qflx(pcols)              ! water vapor flux
     real(r8), intent(in)  :: pmid(pcols,pver)         ! midpoint pressures
-    character(len=16), intent(in) :: eddy_scheme
     !
     ! Output arguments
     !
