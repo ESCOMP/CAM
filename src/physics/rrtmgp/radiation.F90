@@ -46,7 +46,7 @@ use mo_gas_concentrations, only: ty_gas_concs
 use mo_gas_optics_rrtmgp,  only: ty_gas_optics_rrtmgp
 
 use cam_history,         only: addfld, add_default, horiz_only, outfld, hist_fld_active
-use cam_history_support, only: fillvalue
+use cam_history_support, only: fillvalue, add_vert_coord
 
 use ioFileMod,           only: getfil
 use cam_pio_utils,       only: cam_pio_openfile
@@ -126,10 +126,20 @@ type rad_out_t
    real(r8) :: flux_sw_dn(pcols,pverp)     ! downward flux
    real(r8) :: flux_sw_clr_dn(pcols,pverp) ! downward clearsky flux
 
+   real(r8), allocatable :: fsdn(:,:)     ! Downward SW flux on rrtmgp grid
+   real(r8), allocatable :: fsdnc(:,:)    ! Downward SW clear sky flux on rrtmgp grid
+   real(r8), allocatable :: fsup(:,:)     ! Upward SW flux on rrtmgp grid
+   real(r8), allocatable :: fsupc(:,:)    ! Upward SW clear sky flux on rrtmgp grid
+
    real(r8) :: flux_lw_up(pcols,pverp)     ! upward shortwave flux on interfaces
    real(r8) :: flux_lw_clr_up(pcols,pverp) ! upward shortwave clearsky flux
    real(r8) :: flux_lw_dn(pcols,pverp)     ! downward flux
    real(r8) :: flux_lw_clr_dn(pcols,pverp) ! downward clearsky flux
+
+   real(r8), allocatable :: fldn(:,:)     ! Downward LW flux on rrtmgp grid
+   real(r8), allocatable :: fldnc(:,:)    ! Downward LW clear sky flux on rrtmgp grid
+   real(r8), allocatable :: flup(:,:)     ! Upward LW flux on rrtmgp grid
+   real(r8), allocatable :: flupc(:,:)    ! Upward LW clear sky flux on rrtmgp grid
 
    real(r8) :: qrlc(pcols,pver)
 
@@ -208,6 +218,9 @@ integer :: ktopcamm ! index in CAM arrays of top layer at which RRTMGP is active
 integer :: ktopcami ! index in CAM arrays of top interface at which RRTMGP is active
 integer :: ktopradm ! index in RRTMGP arrays of layer corresponding to CAM top layer
 integer :: ktopradi ! index in RRTMGP arrays of interface corresponding to CAM top interface
+
+! vertical coordinate for output of fluxes on radiation grid
+real(r8), allocatable, target :: plev_rad(:)
 
 ! LW coefficients
 type(ty_gas_optics_rrtmgp) :: kdist_lw ! bpm changed here
@@ -349,10 +362,10 @@ end subroutine radiation_readnl
 
 subroutine radiation_register
 
-   ! Register radiation fields in the physics buffer
-
    use physics_buffer, only: pbuf_add_field, dtype_r8
    use radiation_data, only: rad_data_register
+
+   ! Register radiation fields in the physics buffer
 
    call pbuf_add_field('QRS' , 'global',dtype_r8,(/pcols,pver/), qrs_idx) ! shortwave radiative heating rate 
    call pbuf_add_field('QRL' , 'global',dtype_r8,(/pcols,pver/), qrl_idx) ! longwave  radiative heating rate 
@@ -502,6 +515,7 @@ subroutine radiation_init(pbuf2d)
    ! below 1 Pa then an extra layer is added to the top of the model for
    ! the purpose of the radiation calculation.
    nlay = count( pref_edge(:) > 1._r8 ) ! pascals (0.01 mbar)
+   allocate(plev_rad(nlay+1))
 
    if (nlay == pverp) then
       ! Top model interface is below 1 Pa.  RRTMGP is active in all model layers plus
@@ -510,13 +524,20 @@ subroutine radiation_init(pbuf2d)
       ktopcami = 1 
       ktopradm = 2
       ktopradi = 2
+      plev_rad(1) = 1.01_r8 ! Top of extra layer, Pa.
+      plev_rad(2:) = pref_edge
    else
       ! nlay < pverp.  nlay layers are set by radiation
       ktopcamm = pverp - nlay + 1
       ktopcami = pverp - nlay + 1
       ktopradm = 1
       ktopradi = 1
+      plev_rad = pref_edge(ktopcami:)
    end if
+
+   ! Define a pressure coordinate to allow output of data on the radiation grid.
+   call add_vert_coord('plev_rad', nlay+1, 'Pressures at radiation flux calculations',  &
+            'Pa', plev_rad)
 
    call set_available_gases(active_gases, available_gases) ! gases needed to initialize spectral info
 
@@ -690,6 +711,12 @@ subroutine radiation_init(pbuf2d)
          call addfld('FUSC'//diag(icall),     (/ 'ilev' /), 'I', 'W/m2', 'Shortwave clear-sky upward flux')
          call addfld('FDSC'//diag(icall),     (/ 'ilev' /), 'I', 'W/m2', 'Shortwave clear-sky downward flux')
 
+         ! Fluxes on rrtmgp grid
+         call addfld('FSDN'//diag(icall),  (/ 'plev_rad' /), 'I', 'W/m2', 'SW downward flux on rrtmgp grid')
+         call addfld('FSDNC'//diag(icall), (/ 'plev_rad' /), 'I', 'W/m2', 'SW downward clear sky flux on rrtmgp grid')
+         call addfld('FSUP'//diag(icall),  (/ 'plev_rad' /), 'I', 'W/m2', 'SW upward flux on rrtmgp grid')
+         call addfld('FSUPC'//diag(icall), (/ 'plev_rad' /), 'I', 'W/m2', 'SW upward clear sky flux on rrtmgp grid')
+
          if (history_amwg) then
             call add_default('SOLIN'//diag(icall),   1, ' ')
             call add_default('QRS'//diag(icall),     1, ' ')
@@ -745,6 +772,12 @@ subroutine radiation_init(pbuf2d)
          call addfld('FDL'//diag(icall),    (/ 'ilev' /), 'I', 'W/m2', 'Longwave downward flux')
          call addfld('FULC'//diag(icall),   (/ 'ilev' /), 'I', 'W/m2', 'Longwave clear-sky upward flux')
          call addfld('FDLC'//diag(icall),   (/ 'ilev' /), 'I', 'W/m2', 'Longwave clear-sky downward flux')
+
+         ! Fluxes on rrtmgp grid
+         call addfld('FLDN'//diag(icall),  (/ 'plev_rad' /), 'I', 'W/m2', 'LW downward flux on rrtmgp grid')
+         call addfld('FLDNC'//diag(icall), (/ 'plev_rad' /), 'I', 'W/m2', 'LW downward clear sky flux on rrtmgp grid')
+         call addfld('FLUP'//diag(icall),  (/ 'plev_rad' /), 'I', 'W/m2', 'LW upward flux on rrtmgp grid')
+         call addfld('FLUPC'//diag(icall), (/ 'plev_rad' /), 'I', 'W/m2', 'LW upward clear sky flux on rrtmgp grid')
 
          if (history_amwg) then
             call add_default('QRL'//diag(icall),   1, ' ')
@@ -1095,6 +1128,11 @@ subroutine radiation_tend( &
       write_output = .false.
    else
       allocate(rd)
+      ! allocate some elements of rd
+      if (.not. allocated(rd%fsdn)) then
+         allocate(rd%fsdn(pcols,nlay+1), rd%fsdnc(pcols,nlay+1), rd%fsup(pcols,nlay+1), rd%fsupc(pcols,nlay+1), &
+                  rd%fldn(pcols,nlay+1), rd%fldnc(pcols,nlay+1), rd%flup(pcols,nlay+1), rd%flupc(pcols,nlay+1) )
+      end if
       write_output = .true.
    end if
 
@@ -1831,34 +1869,39 @@ contains
                           size(fsw%bnd_flux_dn,2), &
                           size(fsw%bnd_flux_dn,3)) :: flux_dn_diffuse
       !-------------------------------------------------------------------------
-      fns  = 0._r8 ! net sw flux
-      fcns = 0._r8 ! net sw clearsky flux
-      fsds               = 0._r8 ! downward sw flux at surface
-      rd%fsdsc           = 0._r8 ! downward sw clearsky flux at surface
-      rd%fsutoa          = 0._r8 ! upward sw flux at TOA
-      rd%fsntoa          = 0._r8 ! net sw at TOA
-      rd%fsntoac         = 0._r8 ! net sw clearsky flux at TOA
-      rd%solin           = 0._r8 ! solar irradiance at TOA
+
+      ! Initializing these arrays to 0.0 provides fill in the night columns:
+      fns         = 0._r8 ! net sw flux
+      fcns        = 0._r8 ! net sw clearsky flux
+      fsds        = 0._r8 ! downward sw flux at surface
+      rd%fsdsc    = 0._r8 ! downward sw clearsky flux at surface
+      rd%fsutoa   = 0._r8 ! upward sw flux at TOA
+      rd%fsntoa   = 0._r8 ! net sw at TOA
+      rd%fsntoac  = 0._r8 ! net sw clearsky flux at TOA
+      rd%solin    = 0._r8 ! solar irradiance at TOA
+      rd%fsdn     = 0._r8
+      rd%fsdnc    = 0._r8
+      rd%fsup     = 0._r8
+      rd%fsupc    = 0._r8
       
       ! fns, fcns, rd are on CAM grid (do not have "extra layer" when it is present.)
-      ! fill in the daylit columns:
       do i = 1, nday
          fns(idxday(i),ktopcami:)  = fsw%flux_net(i, ktopradi:)
          fcns(idxday(i),ktopcami:) = fswc%flux_net(i,ktopradi:)
-         rd%flux_sw_up(idxday(i),ktopcami:) = &
-             fsw%flux_up(i,ktopradi:)
-         rd%flux_sw_dn(idxday(i),ktopcami:) = &
-             fsw%flux_dn(i,ktopradi:)
-         rd%flux_sw_clr_up(idxday(i),ktopcami:) = &
-             fswc%flux_up(i,ktopradi:) 
-         rd%flux_sw_clr_dn(idxday(i),ktopcami:) = & 
-             fswc%flux_dn(i,ktopradi:)
-         fsds(idxday(i))        = fsw%flux_dn(i, nlay+1)
-         rd%fsdsc(idxday(i))    = fswc%flux_dn(i, nlay+1)
-         rd%fsutoa(idxday(i))   = fsw%flux_up(i, 1)
-         rd%fsntoa(idxday(i))   = fsw%flux_net(i, 1)   ! net sw flux at TOA (*NOT* the same as fsnt)
-         rd%fsntoac(idxday(i))  = fswc%flux_net(i, 1)  ! net sw clearsky flux at TOA (*NOT* the same as fsntc)
-         rd%solin(idxday(i))    = fswc%flux_dn(i, 1)
+         fsds(idxday(i))           = fsw%flux_dn(i, nlay+1)
+         rd%fsdsc(idxday(i))       = fswc%flux_dn(i, nlay+1)
+         rd%fsutoa(idxday(i))      = fsw%flux_up(i, 1)
+         rd%fsntoa(idxday(i))      = fsw%flux_net(i, 1)   ! net sw flux at TOA (*NOT* the same as fsnt)
+         rd%fsntoac(idxday(i))     = fswc%flux_net(i, 1)  ! net sw clearsky flux at TOA (*NOT* the same as fsntc)
+         rd%solin(idxday(i))       = fswc%flux_dn(i, 1)
+         rd%flux_sw_up(idxday(i),ktopcami:)     = fsw%flux_up(i,ktopradi:)
+         rd%flux_sw_dn(idxday(i),ktopcami:)     = fsw%flux_dn(i,ktopradi:)
+         rd%flux_sw_clr_up(idxday(i),ktopcami:) = fswc%flux_up(i,ktopradi:) 
+         rd%flux_sw_clr_dn(idxday(i),ktopcami:) = fswc%flux_dn(i,ktopradi:)
+         rd%fsdn(idxday(i),:) = fsw%flux_dn(i,:)
+         rd%fsdnc(idxday(i),:) = fswc%flux_dn(i,:)
+         rd%fsup(idxday(i),:) = fsw%flux_up(i,:)
+         rd%fsupc(idxday(i),:) = fswc%flux_up(i,:)
       end do
 
       call heating_rate('SW', ncol, fns, qrs)
@@ -1961,6 +2004,11 @@ contains
 
       rd%flut(:ncol)  = flw%flux_up(:, ktopradi) 
       rd%flutc(:ncol) = flwc%flux_up(:, ktopradi)
+
+      rd%fldn(:ncol,:)  = flw%flux_dn
+      rd%fldnc(:ncol,:) = flwc%flux_dn
+      rd%flup(:ncol,:)  = flw%flux_up
+      rd%flupc(:ncol,:) = flwc%flux_up
 
       ! Output fluxes at 200 mb
       call vertinterp(ncol, pcols, pverp, state%pint, 20000._r8, fnl,  rd%fln200)
@@ -2090,6 +2138,11 @@ subroutine radiation_output_sw(lchnk, ncol, icall, rd, pbuf, cam_out)
    call outfld('FDS'//diag(icall),  rd%flux_sw_dn,     pcols, lchnk)
    call outfld('FDSC'//diag(icall), rd%flux_sw_clr_dn, pcols, lchnk)
 
+   call outfld('FSDN'//diag(icall),  rd%fsdn,           pcols, lchnk)
+   call outfld('FSDNC'//diag(icall), rd%fsdnc,          pcols, lchnk)
+   call outfld('FSUP'//diag(icall),  rd%fsup,           pcols, lchnk)
+   call outfld('FSUPC'//diag(icall), rd%fsupc,          pcols, lchnk)
+
 end subroutine radiation_output_sw
 
 
@@ -2169,6 +2222,12 @@ subroutine radiation_output_lw(lchnk, ncol, icall, rd, pbuf, cam_out)
    call outfld('FDLC'//diag(icall), rd%flux_lw_clr_dn, pcols, lchnk)
    call outfld('FUL'//diag(icall),  rd%flux_lw_up,     pcols, lchnk)
    call outfld('FULC'//diag(icall), rd%flux_lw_clr_up, pcols, lchnk)
+
+   call outfld('FLDN'//diag(icall),  rd%fldn,          pcols, lchnk)
+   call outfld('FLDNC'//diag(icall), rd%fldnc,         pcols, lchnk)
+   call outfld('FLUP'//diag(icall),  rd%flup,          pcols, lchnk)
+   call outfld('FLUPC'//diag(icall), rd%flupc,         pcols, lchnk)
+
 end subroutine radiation_output_lw
 
 !===============================================================================
