@@ -72,7 +72,6 @@ use cam_logfile,      only : iulog
 use ref_pres,         only : do_molec_diff, nbot_molec
 use phys_control,     only : phys_getopts
 use time_manager,     only : is_first_step
-
 implicit none
 private
 save
@@ -402,8 +401,7 @@ subroutine vertical_diffusion_init(pbuf2d)
      call addfld('HB_ri',      (/ 'lev' /),  'A', 'no',  'Richardson Number (HB Scheme), I' )
   case ( 'CLUBB_SGS' )
      do_pbl_diags = .true.
-       call init_hb_diff(gravit, cpair, ntop_eddy, nbot_eddy, pref_mid, &
-            karman, eddy_scheme)
+     call init_hb_diff(gravit, cpair, ntop_eddy, nbot_eddy, pref_mid, karman, eddy_scheme)
      !
      ! run HB scheme where CLUBB is not active when running cam_dev
      ! else init_hb_diff is called just for diagnostic purposes

@@ -245,14 +245,12 @@ end subroutine init_hb_diff
     !
 
     kvq(:ncol,:) = kvh(:ncol,:)
-
-    return
   end subroutine compute_hb_diff
 
-  subroutine compute_hb_free_atm_diff(lchnk, ncol,   &
+  subroutine compute_hb_free_atm_diff(ncol,          &
        th      ,t       ,q       ,z       ,          &
        pmid    ,u       ,v       ,taux    ,tauy    , &
-       shflx   ,qflx    ,obklen  ,ustar   , &
+       shflx   ,qflx    ,obklen  ,ustar   ,          &
        kvm     ,kvh     ,kvq     ,cgh     ,cgs     , &
        ri      )
     !-----------------------------------------------------------------------
@@ -271,7 +269,6 @@ end subroutine init_hb_diff
     !
     ! Input arguments
     !
-    integer, intent(in) :: lchnk                      ! chunk index (for debug only)
     integer, intent(in) :: ncol                       ! number of atmospheric columns
 
     real(r8), intent(in)  :: th(pcols,pver)           ! potential temperature [K]
@@ -299,7 +296,7 @@ end subroutine init_hb_diff
     !
     !---------------------------Local workspace-----------------------------
     !
-    real(r8) :: thv(pcols,pver)         ! virtual temperature
+    real(r8) :: thv(pcols,pver)         ! virtual potential temperature
     real(r8) :: rrho(pcols)             ! 1./bottom level density
     real(r8) :: kqfs(pcols)             ! kinematic surf constituent flux (kg/m2/s)
     real(r8) :: khfs(pcols)             ! kinimatic surface heat flux 
@@ -308,7 +305,7 @@ end subroutine init_hb_diff
     real(r8) :: s2(pcols,pver)          ! shear squared
     real(r8) :: n2(pcols,pver)          ! brunt vaisaila frequency
 
-    ! virtual temperature
+    ! virtual potential temperature
     call virtem(ncol, (pver-ntop_turb+1), th(:ncol,ntop_turb:),q(:ncol,ntop_turb:), thv(:ncol,ntop_turb:))
 
     ! Compute ustar, Obukhov length, and kinematic surface fluxes.
@@ -333,7 +330,6 @@ end subroutine init_hb_diff
     kvh(:ncol,:) = kvf(:ncol,:)
     cgh(:ncol,:) = 0._r8
     cgs(:ncol,:) = 0._r8
-    return
   end subroutine compute_hb_free_atm_diff
 
 
