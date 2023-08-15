@@ -2818,7 +2818,18 @@ fincls: do while (f < pflds .and. fincl(f,t) /= ' ')
       do f=nflds(t)-1,1,-1
         do ff=1,f
 
-          if (tape(t)%hlist(ff)%field%name > tape(t)%hlist(ff+1)%field%name) then
+          if (tape(t)%hlist(ff)%field%numlev > tape(t)%hlist(ff+1)%field%numlev) then
+            tmp = tape(t)%hlist(ff)
+            tape(t)%hlist(ff  ) = tape(t)%hlist(ff+1)
+            tape(t)%hlist(ff+1) = tmp
+          end if
+
+        end do
+
+        do ff=1,f
+
+           if ((tape(t)%hlist(ff)%field%numlev == tape(t)%hlist(ff+1)%field%numlev) .and. &
+                (tape(t)%hlist(ff)%field%name > tape(t)%hlist(ff+1)%field%name)) then
 
             tmp = tape(t)%hlist(ff)
             tape(t)%hlist(ff  ) = tape(t)%hlist(ff+1)
