@@ -273,6 +273,63 @@ EOF
 
 ##^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ writing to batch script ^^^^^^^^^^^^^^^^^^^
     ;;
+    ##derecho
+    derecho* | dec* )
+    submit_script_cime="`pwd -P`/test_driver_derecho_cime_${cur_time}.sh"
+
+    if [ -z "$CAM_ACCOUNT" ]; then
+        echo "ERROR: Must set the environment variable CAM_ACCOUNT"
+        exit 2
+    fi
+
+    if [ -z "$CAM_BATCHQ" ]; then
+        export CAM_BATCHQ="main"
+    fi
+
+    # wallclock for run job
+    wallclock_limit="5:00:00"
+
+    if [ $gmake_j = 0 ]; then
+        gmake_j=128
+    fi
+
+    # run tests on 1 node using 64 tasks/node, 2 threads/task
+    # These settings are ignored on cheyenne and derecho.
+    # PE layouts come from config_pes.xml.
+    CAM_TASKS=64
+    CAM_THREADS=2
+
+    # change parallel configuration on 1 nodes using 32 tasks, 1 threads/task
+    # These settings are ignored on cheyenne and derecho.
+    # PE layouts come from config_pes.xml.
+    CAM_RESTART_TASKS=32
+    CAM_RESTART_THREADS=1
+
+    mach_workspace="/glade/derecho/scratch"
+
+    # Check for CESM baseline directory
+    if [ -n "${BL_TESTDIR}" ] && [ ! -d "${BL_TESTDIR}" ]; then
+        echo "CESM_BASELINE ${BL_TESTDIR} not found.  Check BL_TESTDIR for correct tag name."
+        exit
+    fi
+
+#-------------------------------------------
+
+cat > ${submit_script_cime} << EOF
+#!/bin/bash
+#
+#PBS -N cime-tests
+#PBS -q $CAM_BATCHQ
+#PBS -A $CAM_ACCOUNT
+#PBS -l walltime=4:00:00
+#PBS -l select=1:ncpus=128:mpiprocs=128
+#PBS -j oe
+
+EOF
+
+##^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ writing to batch script ^^^^^^^^^^^^^^^^^^^
+    ;;
+
 
     ##hobart
     hob* | h[[:digit:]]* )
@@ -451,6 +508,9 @@ comp=""
 if [ "${hostname:0:4}" == "chey" ]; then
   cesm_test_mach="cheyenne"
 fi
+if [ "${hostname:0:5}" == "derec" ] || [ "${hostname:0:3}" == "dec" ]; then
+  cesm_test_mach="derecho"
+fi
 if [ "${hostname:0:6}" == "hobart" ]; then
   cesm_test_mach="hobart"
 fi
@@ -471,7 +531,14 @@ if [ "${cesm_test_suite}" != "none" -a -n "${cesm_test_mach}" ]; then
 
 
   for cesm_test in ${cesm_test_suite}; do
-    testargs="--xml-category ${cesm_test} --xml-machine ${cesm_test_mach} --retry 2"
+    # Force derecho to run the cheyenne testlist.
+    # After the transition to derecho is completed, this if statement can be removed and 
+    # just the else needs to remain.
+    if [ "${cesm_test_mach}" == "derecho" ]; then  
+      testargs="--xml-category ${cesm_test} --xml-machine cheyenne --mach ${cesm_test_mach} --retry 2"
+    else
+      testargs="--xml-category ${cesm_test} --xml-machine ${cesm_test_mach} --retry 2"
+    fi
 
     if [ -n "${use_existing}" ]; then
       test_id="${use_existing}"
@@ -549,6 +616,10 @@ if [ "${cesm_test_suite}" != "none" -a -n "${cesm_test_mach}" ]; then
     case $hostname in
         # cheyenne
         chey* | r* )
+          testargs="${testargs} --queue ${CAM_BATCHQ} --test-root ${cesm_testdir} --output-root ${cesm_testdir}"
+          ;;
+        # derecho
+        derc* | dec* )
           testargs="${testargs} --queue ${CAM_BATCHQ} --test-root ${cesm_testdir} --output-root ${cesm_testdir}"
           ;;
         # casper
@@ -630,6 +701,14 @@ if [ "${cesm_test_suite}" != "none" -a -n "${cesm_test_mach}" ]; then
       chmod u+x ${submit_script_cime}
       qsub ${submit_script_cime}
     fi
+
+    if [ "${hostname:0:2}" == "de" ]; then
+      echo "cd ${script_dir}" >> ${submit_script_cime}
+      echo "module load python" >> ${submit_script_cime}
+      echo './create_test' ${testargs} >> ${submit_script_cime}
+      chmod u+x ${submit_script_cime}
+      qsub ${submit_script_cime}
+   fi
 
     if [ "${hostname:0:6}" == "hobart" ]; then
       echo "cd ${script_dir}" >> ${submit_script_cime}
