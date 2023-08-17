@@ -2942,10 +2942,12 @@
 <mpas_time_integration_order  > 2 </mpas_time_integration_order>
 <mpas_dt                      > 1800.0D0 </mpas_dt>
 <mpas_dt hgrid="mpasa120"     >  900.0D0 </mpas_dt>
+<mpas_dt hgrid="mpasa120" waccm_phys="1"> 600.D0 </mpas_dt>
 
 <mpas_split_dynamics_transport>.true.</mpas_split_dynamics_transport>
 <mpas_number_of_sub_steps     > 2 </mpas_number_of_sub_steps>
 <mpas_dynamics_split_steps    > 3 </mpas_dynamics_split_steps>
+<mpas_dynamics_split_steps hgrid="mpasa120" waccm_phys="1"> 4 </mpas_dynamics_split_steps>
 <mpas_h_mom_eddy_visc2        > 0.0D0 </mpas_h_mom_eddy_visc2>
 <mpas_h_mom_eddy_visc4        > 0.0D0 </mpas_h_mom_eddy_visc4>
 <mpas_v_mom_eddy_visc2        > 0.0D0 </mpas_v_mom_eddy_visc2>
@@ -2973,12 +2975,16 @@
 <mpas_smagorinsky_coef        > 0.125D0 </mpas_smagorinsky_coef>
 <mpas_mix_full                > .true. </mpas_mix_full>
 <mpas_epssm                   > 0.1D0 </mpas_epssm>
+<mpas_epssm hgrid="mpasa120" waccm_phys="1"> 0.5D0 </mpas_epssm>
 <mpas_smdiv                   > 0.1D0 </mpas_smdiv>
 <mpas_apvm_upwinding          > 0.5D0 </mpas_apvm_upwinding>
+<mpas_apvm_upwinding hgrid="mpasa120" waccm_phys="1"> 0.0D0 </mpas_apvm_upwinding>
 <mpas_h_ScaleWithMesh         > .true. </mpas_h_ScaleWithMesh>
 <mpas_zd                      > 22000.0D0 </mpas_zd>
+<mpas_zd hgrid="mpasa120" waccm_phys="1"> 80000.0D0 </mpas_zd>
 <mpas_xnutr                   > 0.2D0 </mpas_xnutr>
 <mpas_cam_coef                > 0.0D0 </mpas_cam_coef>
+<mpas_cam_coef hgrid="mpasa120" waccm_phys="1"> 0.2D0 </mpas_cam_coef>
 <mpas_rayleigh_damp_u         > .true. </mpas_rayleigh_damp_u>
 <mpas_rayleigh_damp_u_timescale_days> 5.0 </mpas_rayleigh_damp_u_timescale_days>
 <mpas_number_rayleigh_damp_u_levels> 5 </mpas_number_rayleigh_damp_u_levels>
@@ -2997,13 +3003,6 @@
 <mpas_print_global_minmax_vel  > .true. </mpas_print_global_minmax_vel>
 <mpas_print_detailed_minmax_vel> .false. </mpas_print_detailed_minmax_vel>
 <mpas_print_global_minmax_sca  > .false. </mpas_print_global_minmax_sca>
-
-<mpas_dt hgrid="mpasa120" waccm_phys="1"> 600.D0 </mpas_dt>
-<mpas_dynamics_split_steps hgrid="mpasa120" waccm_phys="1"> 4 </mpas_dynamics_split_steps>
-<mpas_zd hgrid="mpasa120" waccm_phys="1"> 80000.0D0 </mpas_zd>
-<mpas_cam_coef hgrid="mpasa120" waccm_phys="1"> 0.2D0 </mpas_cam_coef>
-<mpas_epssm hgrid="mpasa120" waccm_phys="1"> 0.5D0 </mpas_epssm>
-<mpas_apvm_upwinding hgrid="mpasa120" waccm_phys="1"> 0.0D0 </mpas_apvm_upwinding>
 
 <!-- ================================================================== -->
 <!-- Chemistry Rates Diagnostics                                        -->
