@@ -132,7 +132,7 @@ end subroutine init_hb_diff
 
 !===============================================================================
 
-  subroutine compute_hb_diff(lchnk, ncol,            &
+  subroutine compute_hb_diff(ncol                  , &
        th      ,t       ,q       ,z       ,zi      , &
        pmid    ,u       ,v       ,taux    ,tauy    , &
        shflx   ,qflx    ,obklen  ,ustar   ,pblh    , &
@@ -156,7 +156,6 @@ end subroutine init_hb_diff
     !
     ! Input arguments
     !
-    integer, intent(in) :: lchnk                      ! chunk index (for debug only)
     integer, intent(in) :: ncol                       ! number of atmospheric columns
 
     real(r8), intent(in)  :: th(pcols,pver)           ! potential temperature [K]
@@ -237,7 +236,7 @@ end subroutine init_hb_diff
     ! 
     ! Get pbl exchange coefficients
     !
-    call austausch_pbl(lchnk, ncol,                    &
+    call austausch_pbl(ncol                          , &
          z       ,kvf     ,kqfs    ,khfs    ,kbfs    , &
          obklen  ,ustar   ,wstar   ,pblh    ,kvm     , &
          kvh     ,cgh     ,cgs     ,tpert   ,qpert   , &
@@ -330,6 +329,7 @@ end subroutine init_hb_diff
     kvh(:ncol,:) = kvf(:ncol,:)
     cgh(:ncol,:) = 0._r8
     cgs(:ncol,:) = 0._r8
+
   end subroutine compute_hb_free_atm_diff
 
 
@@ -574,7 +574,7 @@ end subroutine init_hb_diff
   end subroutine pblintd
   !
   !===============================================================================
-  subroutine austausch_pbl(lchnk ,ncol    ,          &
+  subroutine austausch_pbl(ncol                    , &
        z       ,kvf     ,kqfs    ,khfs    ,kbfs    , &
        obklen  ,ustar   ,wstar   ,pblh    ,kvm     , &
        kvh     ,cgh     ,cgs     ,tpert   ,qpert   , &
@@ -610,7 +610,6 @@ end subroutine init_hb_diff
     !
     ! Input arguments
     !
-    integer, intent(in) :: lchnk                    ! local chunk index (for debug only)
     integer, intent(in) :: ncol                     ! number of atmospheric columns
 
     real(r8), intent(in) :: z(pcols,pver)           ! height above surface [m]
