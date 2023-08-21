@@ -1012,7 +1012,7 @@ subroutine vertical_diffusion_tend( &
     ! run HB scheme where CLUBB is not active when running cam_dev
     !
     if (clubb_do_hb_above) then
-      call compute_hb_free_atm_diff( lchnk     , ncol          , &
+      call compute_hb_free_atm_diff( ncol          , &
            th        , state%t  , state%q , state%zm           , &
            state%pmid, state%u  , state%v , tautotx  , tautoty , &
            cam_in%shf, cam_in%cflx(:,1), obklen  , ustar       , &
