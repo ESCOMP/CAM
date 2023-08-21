@@ -1,4 +1,3 @@
-
 module geopotential
 
 !---------------------------------------------------------------------------------
@@ -39,7 +38,8 @@ contains
 !-----------------------------------------------------------------------
 
 use ppgrid, only : pcols
-use air_composition, only: thermodynamic_active_species_num,thermodynamic_active_species_idx
+use air_composition, only: thermodynamic_active_species_num
+use air_composition, only: thermodynamic_active_species_idx, dry_air_species_num
 !------------------------------Arguments--------------------------------
 !
 ! Input arguments
@@ -126,7 +126,7 @@ use air_composition, only: thermodynamic_active_species_num,thermodynamic_active
       ! Compute factor for converting wet to dry mixing ratio (eq.7)
       !
       qfac = 1.0_r8
-      do idx = 1,thermodynamic_active_species_num
+      do idx = dry_air_species_num + 1,thermodynamic_active_species_num
         do k = 1,pver
           do i = 1,ncol
             qfac(i,k) = qfac(i,k)-q(i,k,thermodynamic_active_species_idx(idx))
@@ -137,7 +137,7 @@ use air_composition, only: thermodynamic_active_species_num,thermodynamic_active
       
       ! Compute sum of dry water mixing ratios
       sum_dry_mixing_ratio = 1.0_r8
-      do idx = 1,thermodynamic_active_species_num
+      do idx =  dry_air_species_num + 1,thermodynamic_active_species_num
         do k = 1,pver
           do i = 1,ncol
             sum_dry_mixing_ratio(i,k) = sum_dry_mixing_ratio(i,k)&
