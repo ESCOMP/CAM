@@ -1397,7 +1397,7 @@ end subroutine clubb_init_cnst
 
     call phys_getopts(prog_modal_aero_out=prog_modal_aero, &
                       history_amwg_out=history_amwg, &
-                      history_clubb_out=history_clubb)
+                      history_clubb_out=history_clubb, &
                       do_hb_above_clubb_out=do_hb_above_clubb)
 
     !  Select variables to apply tendencies back to CAM
