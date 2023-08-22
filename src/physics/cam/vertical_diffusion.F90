@@ -139,6 +139,7 @@ integer, allocatable :: pmam_cnst_idx(:)             ! constituent indices of pr
 
 logical              :: do_pbl_diags = .false.
 logical              :: waccmx_mode = .false.
+logical              :: do_hb_above_clubb = .false.
 
 contains
 
@@ -279,7 +280,6 @@ subroutine vertical_diffusion_init(pbuf2d)
   use beljaars_drag_cam, only : beljaars_drag_init
   use upper_bc,          only : ubc_init
   use phys_control,      only : waccmx_is, fv_am_correction
-  use clubb_intr,        only : do_hb_above_clubb
 
   type(physics_buffer_desc), pointer :: pbuf2d(:,:)
   character(128) :: errstring   ! Error status for init_vdiff
@@ -391,6 +391,8 @@ subroutine vertical_diffusion_init(pbuf2d)
   nbot_eddy  = pver
 
   if (masterproc) write(iulog, fmt='(a,i3,5x,a,i3)') 'NTOP_EDDY  =', ntop_eddy, 'NBOT_EDDY  =', nbot_eddy
+
+  call phys_getopts(do_hb_above_clubb_out=do_hb_above_clubb)
 
   select case ( eddy_scheme )
   case ( 'diag_TKE', 'SPCAM_m2005' )
@@ -690,7 +692,6 @@ subroutine vertical_diffusion_tend( &
   use upper_bc,           only : ubc_get_vals, ubc_fixed_temp
   use upper_bc,           only : ubc_get_flxs
   use coords_1d,          only : Coords1D
-  use clubb_intr,         only : do_hb_above_clubb
   use phys_control,       only : cam_physpkg_is
 
   ! --------------- !

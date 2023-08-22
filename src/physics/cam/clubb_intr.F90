@@ -77,7 +77,6 @@ module clubb_intr
 
   logical, public :: do_cldcool
   logical         :: clubb_do_icesuper
-  logical, public :: do_hb_above_clubb = .false.
 #ifdef CLUBB_SGS
   type(clubb_config_flags_type), public :: clubb_config_flags
   real(r8), dimension(nparams), public :: clubb_params    ! Adjustable CLUBB parameters (C1, C2 ...)
@@ -323,6 +322,7 @@ module clubb_intr
   logical            :: clubb_do_liqsupersat = .false.
   logical            :: clubb_do_energyfix   = .true.
   logical            :: history_budget
+  logical            :: do_hb_above_clubb    = .false.
   integer            :: history_budget_histfile_num
   integer            :: edsclr_dim       ! Number of scalars to transport in CLUBB
   integer            :: offset
@@ -472,11 +472,11 @@ module clubb_intr
     use subcol_utils,    only: subcol_get_scheme
 
     !----- Begin Code -----
-
     call phys_getopts( eddy_scheme_out                 = eddy_scheme, &
                        deep_scheme_out                 = deep_scheme, & 
                        history_budget_out              = history_budget, &
-                       history_budget_histfile_num_out = history_budget_histfile_num )
+                       history_budget_histfile_num_out = history_budget_histfile_num, &
+                       do_hb_above_clubb_out           = do_hb_above_clubb)
     subcol_scheme = subcol_get_scheme()
 
     if (trim(subcol_scheme) == 'SILHS') then
@@ -811,8 +811,7 @@ end subroutine clubb_init_cnst
          clubb_skw_max_mag, &
          clubb_tridiag_solve_method, &
          clubb_up2_sfc_coef, &
-         clubb_wpxp_L_thresh, &
-         do_hb_above_clubb
+         clubb_wpxp_L_thresh
 
     !----- Begin Code -----
 
@@ -1128,8 +1127,6 @@ end subroutine clubb_init_cnst
     if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: clubb_l_standard_term_ta")
     call mpi_bcast(clubb_l_partial_upwind_wp3,    1, mpi_logical, mstrid, mpicom, ierr)
     if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: clubb_l_partial_upwind_wp3")
-    call mpi_bcast(do_hb_above_clubb,                1, mpi_logical, mstrid, mpicom, ierr)
-    if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: do_hb_above_clubb")
 
     !  Overwrite defaults if they are true
     if (clubb_history) l_stats = .true.
@@ -1401,6 +1398,7 @@ end subroutine clubb_init_cnst
     call phys_getopts(prog_modal_aero_out=prog_modal_aero, &
                       history_amwg_out=history_amwg, &
                       history_clubb_out=history_clubb)
+                      do_hb_above_clubb_out=do_hb_above_clubb)
 
     !  Select variables to apply tendencies back to CAM
  

@@ -72,7 +72,7 @@ logical           :: history_scwaccm_forcing = .false.
 logical           :: history_chemspecies_srf = .false.
 
 logical           :: do_clubb_sgs
-logical           :: do_hb_above_clubb       ! enable HB vertical mixing above clubb top
+logical           :: do_hb_above_clubb       = .false. ! enable HB vertical mixing above clubb top
 
 ! Check validity of physics_state objects in physics_update.
 logical           :: state_debug_checks   = .false.
