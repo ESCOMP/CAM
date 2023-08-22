@@ -4296,13 +4296,6 @@ Real: number of plumes in mass flux ensemble
 Default: 10
 </entry>
 
-<entry id="clubb_do_hb_above" type="logical" category="pbl"
-       group="clubb_params_nl" valid_values="" >
-Logical: If True activate Holtslag and Boville vertical diffusion scheme where CLUBB is not active
-         (note that CLUBB top is dynamic in each column)
-Default: none
-</entry>
-
 <!-- CARMA Sectional Microphysics -->
 
 <entry id="carma_model" type="char*32" category="carma"
@@ -5121,6 +5114,13 @@ Type of eddy scheme employed by the vertical diffusion package.  'HB' for
 Holtslag and Boville; 'diag_TKE' for diagnostic tke version of Grenier and
 Bretherton; 'HBR' for Rasch modified version of 'HB'.
 Default: set by build-namelist
+</entry>
+
+<entry id="do_hb_above_clubb" type="logical" category="pbl"
+       group="phys_ctl_nl" valid_values="" >
+Logical: If True activate Holtslag and Boville vertical diffusion scheme where CLUBB is not active
+         (note that CLUBB top is dynamic in each column)
+Default: none
 </entry>
 
 <!-- Convective Scavenging -->

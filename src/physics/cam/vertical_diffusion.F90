@@ -128,6 +128,9 @@ integer              :: dragblj_idx  = -1
 integer              :: taubljx_idx  = -1
 integer              :: taubljy_idx  = -1
 
+! pbuf field for clubb top above which HB (Holtslag Boville) scheme may be enabled
+integer              :: clubbtop_idx = -1
+
 logical              :: diff_cnsrv_mass_check        ! do mass conservation check
 logical              :: do_iss                       ! switch for implicit turbulent surface stress
 logical              :: prog_modal_aero = .false.    ! set true if prognostic modal aerosols are present
@@ -204,7 +207,7 @@ subroutine vd_register()
   ! Register physics buffer fields and constituents !
   !------------------------------------------------ !
 
-  use physics_buffer,      only : pbuf_add_field, dtype_r8, dtype_i4, pbuf_get_index
+  use physics_buffer,      only : pbuf_add_field, dtype_r8, dtype_i4
   use trb_mtn_stress_cam,  only : trb_mtn_stress_register
   use beljaars_drag_cam,   only : beljaars_drag_register
   use eddy_diff_cam,       only : eddy_diff_register
@@ -276,7 +279,7 @@ subroutine vertical_diffusion_init(pbuf2d)
   use beljaars_drag_cam, only : beljaars_drag_init
   use upper_bc,          only : ubc_init
   use phys_control,      only : waccmx_is, fv_am_correction
-  use clubb_intr,        only : clubb_do_hb_above
+  use clubb_intr,        only : do_hb_above_clubb
 
   type(physics_buffer_desc), pointer :: pbuf2d(:,:)
   character(128) :: errstring   ! Error status for init_vdiff
@@ -403,10 +406,10 @@ subroutine vertical_diffusion_init(pbuf2d)
      do_pbl_diags = .true.
      call init_hb_diff(gravit, cpair, ntop_eddy, nbot_eddy, pref_mid, karman, eddy_scheme)
      !
-     ! run HB scheme where CLUBB is not active when running cam_dev
+     ! run HB scheme where CLUBB is not active when running cam_dev or cam6 physics
      ! else init_hb_diff is called just for diagnostic purposes
      !
-     if (clubb_do_hb_above) then
+     if (do_hb_above_clubb) then
        if( masterproc ) then
          write(iulog,*) 'vertical_diffusion_init: '
          write(iulog,*) 'eddy_diffusivity scheme where CLUBB is not active:  Holtslag and Boville'
@@ -611,6 +614,9 @@ subroutine vertical_diffusion_init(pbuf2d)
      kvh_idx = pbuf_get_index('kvh')
   end if
 
+  ! pbuf field denoting top of clubb
+  clubbtop_idx = pbuf_get_index('clubbtop')
+
   ! Initialization of some pbuf fields
   if (is_first_step()) then
      ! Initialization of pbuf fields tke, kvh, kvm are done in phys_inidat
@@ -661,7 +667,6 @@ subroutine vertical_diffusion_tend( &
   ! This is an interface routine for vertical diffusion !
   !---------------------------------------------------- !
   use physics_buffer,     only : physics_buffer_desc, pbuf_get_field, pbuf_set_field
-  use physics_buffer,     only : pbuf_get_index
   use physics_types,      only : physics_state, physics_ptend, physics_ptend_init
   use physics_types,      only : set_dry_to_wet, set_wet_to_dry
 
@@ -685,7 +690,7 @@ subroutine vertical_diffusion_tend( &
   use upper_bc,           only : ubc_get_vals, ubc_fixed_temp
   use upper_bc,           only : ubc_get_flxs
   use coords_1d,          only : Coords1D
-  use clubb_intr,         only : clubb_do_hb_above
+  use clubb_intr,         only : do_hb_above_clubb
   use phys_control,       only : cam_physpkg_is
 
   ! --------------- !
@@ -853,7 +858,6 @@ subroutine vertical_diffusion_tend( &
   real(r8) :: tauy(pcols)
   real(r8) :: shflux(pcols)
   real(r8) :: cflux(pcols,pcnst)
-  integer  :: clubbtop_idx
   integer,  pointer :: clubbtop(:)   ! (pcols)
 
   logical  :: lq(pcnst)
@@ -1011,14 +1015,14 @@ subroutine vertical_diffusion_tend( &
     !
     ! run HB scheme where CLUBB is not active when running cam_dev
     !
-    if (clubb_do_hb_above) then
+    if (do_hb_above_clubb) then
       call compute_hb_free_atm_diff( ncol          , &
            th        , state%t  , state%q , state%zm           , &
            state%pmid, state%u  , state%v , tautotx  , tautoty , &
            cam_in%shf, cam_in%cflx(:,1), obklen  , ustar       , &
            kvm       , kvh      , kvq     , cgh      , cgs     , &
            ri        )
-      clubbtop_idx = pbuf_get_index('clubbtop')
+
       call pbuf_get_field(pbuf, clubbtop_idx, clubbtop)
       !
       ! zero out HB where CLUBB is active

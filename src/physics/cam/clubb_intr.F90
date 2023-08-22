@@ -77,7 +77,7 @@ module clubb_intr
 
   logical, public :: do_cldcool
   logical         :: clubb_do_icesuper
-  logical, public :: clubb_do_hb_above = .false.
+  logical, public :: do_hb_above_clubb = .false.
 #ifdef CLUBB_SGS
   type(clubb_config_flags_type), public :: clubb_config_flags
   real(r8), dimension(nparams), public :: clubb_params    ! Adjustable CLUBB parameters (C1, C2 ...)
@@ -468,11 +468,11 @@ module clubb_intr
     !------------------------------------------------ !
 
     !  Add CLUBB fields to pbuf 
-    use physics_buffer,  only: pbuf_add_field, dtype_r8, dtype_i4, dyn_time_lvls, pbuf_get_index
+    use physics_buffer,  only: pbuf_add_field, dtype_r8, dtype_i4, dyn_time_lvls
     use subcol_utils,    only: subcol_get_scheme
 
-    integer :: err_idx, idx
-    
+    !----- Begin Code -----
+
     call phys_getopts( eddy_scheme_out                 = eddy_scheme, &
                        deep_scheme_out                 = deep_scheme, & 
                        history_budget_out              = history_budget, &
@@ -501,7 +501,7 @@ module clubb_intr
        call cnst_add(trim(cnst_names(8)),0._r8,0._r8,0._r8,ixup2,longname='CLUBB 2nd moment u wind',cam_outfld=.false.)
        call cnst_add(trim(cnst_names(9)),0._r8,0._r8,0._r8,ixvp2,longname='CLUBB 2nd moment v wind',cam_outfld=.false.)
     end if
-    if (clubb_do_hb_above) then
+    if (do_hb_above_clubb) then
       call pbuf_add_field('clubbtop', 'physpkg', dtype_i4, (/pcols/), clubbtop_idx)
     endif
 
@@ -812,7 +812,7 @@ end subroutine clubb_init_cnst
          clubb_tridiag_solve_method, &
          clubb_up2_sfc_coef, &
          clubb_wpxp_L_thresh, &
-         clubb_do_hb_above
+         do_hb_above_clubb
 
     !----- Begin Code -----
 
@@ -1128,8 +1128,8 @@ end subroutine clubb_init_cnst
     if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: clubb_l_standard_term_ta")
     call mpi_bcast(clubb_l_partial_upwind_wp3,    1, mpi_logical, mstrid, mpicom, ierr)
     if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: clubb_l_partial_upwind_wp3")
-    call mpi_bcast(clubb_do_hb_above,                1, mpi_logical, mstrid, mpicom, ierr)
-    if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: clubb_do_hb_above")
+    call mpi_bcast(do_hb_above_clubb,                1, mpi_logical, mstrid, mpicom, ierr)
+    if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: do_hb_above_clubb")
 
     !  Overwrite defaults if they are true
     if (clubb_history) l_stats = .true.
@@ -3639,7 +3639,7 @@ end subroutine clubb_init_cnst
     !
     ! set pbuf field so that HB scheme is only applied above CLUBB top
     !
-    if (clubb_do_hb_above) then
+    if (do_hb_above_clubb) then
       call pbuf_set_field(pbuf, clubbtop_idx, clubbtop)
     endif
 
