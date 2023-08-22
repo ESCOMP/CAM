@@ -764,7 +764,7 @@ subroutine dyn_init(dyn_in, dyn_out)
           kmvis_ref,kmcnd_ref,rho_ref)
 
      if (masterproc) then
-        write(iulog,*) "Molecular viscoity and thermal conductivity reference profile"
+        write(iulog,*) "Molecular viscosity and thermal conductivity reference profile"
         write(iulog,*) "k, p, z, km_sponge_factor, kmvis_ref/rho_ref, kmcnd_ref/(cp*rho_ref):"
      end if
      do k=1,nlev
