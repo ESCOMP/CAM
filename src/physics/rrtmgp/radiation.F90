@@ -224,7 +224,6 @@ real(r8), allocatable, target :: plev_rad(:)
 
 ! LW coefficients
 type(ty_gas_optics_rrtmgp) :: kdist_lw ! bpm changed here
-integer :: ngpt_lw
 
 ! SW coefficients
 type(ty_gas_optics_rrtmgp) :: kdist_sw ! bpm changed here
@@ -570,7 +569,6 @@ subroutine radiation_init(pbuf2d)
    call rad_data_init(pbuf2d)  ! initialize output fields for offline driver
    call cloud_rad_props_init()
   
-   ngpt_lw = kdist_lw%get_ngpt() ! these set global values
    ngpt_sw = kdist_sw%get_ngpt()
 
    ! bpm: set the indices used for diagnostics using specific band:
@@ -1114,21 +1112,19 @@ subroutine radiation_tend( &
    logical :: conserve_energy = .false. ! Flag to carry (QRS,QRL)*dp across time steps. 
 
    integer :: iband
-   integer :: nlevcam, nlevrad
    real(r8) :: mem_hw_end, mem_hw_beg, mem_end, mem_beg, temp
 
    !--------------------------------------------------------------------------------------
 
    lchnk = state%lchnk
    ncol = state%ncol
-   nlevcam = size(state%t,2)  ! number of levels in CAM grid
 
    if (present(rd_out)) then
       rd => rd_out
       write_output = .false.
    else
       allocate(rd)
-      ! allocate some elements of rd
+      ! allocate elements of rd for output of fluxes on RRTMGP grid
       if (.not. allocated(rd%fsdn)) then
          allocate(rd%fsdn(pcols,nlay+1), rd%fsdnc(pcols,nlay+1), rd%fsup(pcols,nlay+1), rd%fsupc(pcols,nlay+1), &
                   rd%fldn(pcols,nlay+1), rd%fldnc(pcols,nlay+1), rd%flup(pcols,nlay+1), rd%flupc(pcols,nlay+1) )
@@ -1289,7 +1285,6 @@ subroutine radiation_tend( &
          alb_dif,        & ! output
          tsi             & ! output, total solar irradiance (not scaled)
          )
-      nlevrad = size(t_rad,2)
 
       !!--> Set TSI used in radiation to the value in the solar forcing file.
       !!--> This replaces get_variability() and does same thing. 
