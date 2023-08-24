@@ -92,7 +92,7 @@ module aerosol_state_mod
        class(aerosol_state), intent(in) :: self
        integer, intent(in) :: species_ndx  ! species index
        integer, intent(in) :: bin_ndx      ! bin index
-       real(r8), pointer :: mmr(:,:)       ! mass mixing ratios
+       real(r8), pointer :: mmr(:,:)       ! mass mixing ratios (ncol,nlev)
      end subroutine aero_get_state_mmr
 
      !------------------------------------------------------------------------
@@ -105,7 +105,7 @@ module aerosol_state_mod
        integer, intent(in) :: list_ndx     ! rad climate/diagnostic list index
        integer, intent(in) :: species_ndx  ! species index
        integer, intent(in) :: bin_ndx      ! bin index
-       real(r8), pointer :: mmr(:,:)       ! mass mixing ratios
+       real(r8), pointer :: mmr(:,:)       ! mass mixing ratios (ncol,nlev)
      end subroutine aero_get_list_mmr
 
      !------------------------------------------------------------------------
@@ -115,7 +115,7 @@ module aerosol_state_mod
        import :: aerosol_state, r8
        class(aerosol_state), intent(in) :: self
        integer, intent(in) :: bin_ndx     ! bin index
-       real(r8), pointer   :: num(:,:)    ! number densities
+       real(r8), pointer   :: num(:,:)    ! number densities (ncol,nlev)
      end subroutine aero_get_state_num
 
      !------------------------------------------------------------------------
@@ -225,7 +225,7 @@ module aerosol_state_mod
        integer, intent(in) :: list_ndx     ! rad climate/diagnostic list index
        integer, intent(in) :: bin_ndx      ! bin number
 
-       real(r8), pointer :: kappa(:,:)
+       real(r8), pointer :: kappa(:,:)     ! hygroscopicity (ncol,nlev)
 
      end function aero_hygroscopicity
 

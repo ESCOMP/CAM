@@ -318,7 +318,7 @@ contains
              burden_fields(n)%name(m) = fldname
              write(lngname,'(a,i2.2)') 'Aerosol burden bin ', m
              call addfld (fldname, horiz_only, 'A', 'kg/m2', lngname, flag_xyfill=.true.)
-             if (m>3 .and. history_aero_optics) then
+             if (history_aero_optics) then
                 call add_default (fldname, 1, ' ')
              end if
 
@@ -334,7 +334,7 @@ contains
              aoddust_fields(n)%name(m) = fldname
              write(lngname,'(a,i2,a)') 'Aerosol optical depth, day only, 550 nm mode ',m,' from dust'
              call addfld (aoddust_fields(n)%name(m), horiz_only, 'A', '  ', lngname, flag_xyfill=.true.)
-             if (m>3 .and. history_aero_optics) then
+             if (history_aero_optics) then
                 call add_default (fldname, 1, ' ')
              end if
 
@@ -342,7 +342,7 @@ contains
              burdendn_fields(n)%name(m) = fldname
              write(lngname,'(a,i2)') 'Aerosol burden, day night, bin ', m
              call addfld (burdendn_fields(n)%name(m), horiz_only, 'A', 'kg/m2', lngname, flag_xyfill=.true.)
-             if (m>3 .and. history_aero_optics) then
+             if (history_aero_optics) then
                 call add_default (fldname, 1, ' ')
              end if
 
@@ -358,7 +358,7 @@ contains
              aoddustdn_fields(n)%name(m) = fldname
              write(lngname,'(a,i2,a)') 'Aerosol optical depth 550 nm, day night, bin ',m,' from dust'
              call addfld (aoddustdn_fields(n)%name(m), horiz_only, 'A', '  ', lngname, flag_xyfill=.true.)
-             if (m>3 .and. history_aero_optics) then
+             if (history_aero_optics) then
                 call add_default (fldname, 1, ' ')
              end if
 
@@ -505,8 +505,10 @@ contains
     integer :: iaermod
 
     do iaermod = 1,num_aero_models
-       deallocate(aero_props(iaermod)%obj)
-       nullify(aero_props(iaermod)%obj)
+       if (associated(aero_props(iaermod)%obj)) then
+          deallocate(aero_props(iaermod)%obj)
+          nullify(aero_props(iaermod)%obj)
+       end if
     end do
 
     if (allocated(aero_props)) then
