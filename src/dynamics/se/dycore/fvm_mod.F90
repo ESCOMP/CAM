@@ -290,14 +290,14 @@ subroutine fill_halo_fvm_prealloc(cellghostbuf,elem,fvm,hybrid,nets,nete,ndepth,
     use control_mod,            only: rsplit
     use dimensions_mod,         only: qsize, qsize_d
     use dimensions_mod,         only: fvm_supercycling, fvm_supercycling_jet
-    use dimensions_mod,         only: nc,nhe, nhc, nlev,ntrac, ntrac_d,ns, nhr
+    use dimensions_mod,         only: nc,nhe, nhc, nlev,ntrac, ntrac_d,ns, nhr, use_cslam
     use dimensions_mod,         only: large_Courant_incr
     use dimensions_mod,         only: kmin_jet,kmax_jet
 
     type (parallel_t) :: par
     type (element_t),intent(inout)            :: elem(:)
     !
-    if (ntrac>0) then
+    if (use_cslam) then
       if (par%masterproc) then
         write(iulog,*) "                                           "
         write(iulog,*) "|-----------------------------------------|"
@@ -305,7 +305,7 @@ subroutine fill_halo_fvm_prealloc(cellghostbuf,elem,fvm,hybrid,nets,nete,ndepth,
         write(iulog,*) "|-----------------------------------------|"
         write(iulog,*) "                                           "
       end if
-      if (ntrac>0) then
+      if (use_cslam) then
         if (par%masterproc) then
           write(iulog,*) "Running consistent SE-CSLAM, Lauritzen et al. (2017, MWR)."
           write(iulog,*) "CSLAM = Conservative Semi-LAgrangian Multi-tracer scheme"
@@ -517,8 +517,8 @@ subroutine fill_halo_fvm_prealloc(cellghostbuf,elem,fvm,hybrid,nets,nete,ndepth,
   subroutine fvm_init3(elem,fvm,hybrid,nets,nete,irecons)
     use control_mod     ,       only: neast, nwest, seast, swest
     use fvm_analytic_mod,       only: compute_reconstruct_matrix
-    use dimensions_mod  ,       only: fv_nphys
-    use dimensions_mod,         only: nlev, nc, nhe, nlev, ntrac, ntrac_d,nhc
+    use dimensions_mod  ,       only: fv_nphys, use_cslam
+    use dimensions_mod,         only: nlev, nc, nhe, nlev, nhc
     use coordinate_systems_mod, only: cartesian2D_t,cartesian3D_t
     use coordinate_systems_mod, only: cubedsphere2cart, cart2cubedsphere
     implicit none
@@ -536,7 +536,7 @@ subroutine fill_halo_fvm_prealloc(cellghostbuf,elem,fvm,hybrid,nets,nete,ndepth,
     type (cartesian2D_t)                :: gnom
     type(cartesian3D_t)                 :: tmpcart3d
 
-    if (ntrac>0.and.nc.ne.fv_nphys) then
+    if (use_cslam.and.nc.ne.fv_nphys) then
       !
       ! fill the fvm halo for mapping in d_p_coupling if
       ! physics grid resolution is different than fvm resolution
@@ -728,7 +728,6 @@ subroutine fill_halo_fvm_prealloc(cellghostbuf,elem,fvm,hybrid,nets,nete,ndepth,
     use control_mod, only : neast, nwest, seast, swest
     use coordinate_systems_mod, only : cubedsphere2cart, cart2cubedsphere
     use dimensions_mod, only: fv_nphys, nhe_phys,nhc_phys
-    use dimensions_mod, only: ntrac_d
     use cube_mod       ,only: dmap
     use control_mod    ,only: cubed_sphere_map
     use fvm_analytic_mod, only: compute_reconstruct_matrix

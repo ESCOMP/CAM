@@ -34,8 +34,9 @@ use cam_logfile,        only: iulog
 use cam_abortutils,     only: endrun
 
 use mpas_timekeeping,   only : MPAS_TimeInterval_type
-
 use cam_mpas_subdriver, only: cam_mpas_global_sum_real
+use cam_budget,         only: cam_budget_em_snapshot, cam_budget_em_register
+
 
 use phys_control,       only: use_gw_front, use_gw_front_igw
 
@@ -193,8 +194,6 @@ type dyn_export_t
    real(r8), dimension(:),     pointer :: fzm     ! Interp weight from k layer midpoint to k layer
                                                   ! interface [dimensionless]             (nver)
    real(r8), dimension(:),     pointer :: fzp     ! Interp weight from k-1 layer midpoint to k
-                                                  ! layer interface [dimensionless]       (nver)
-
    !
    ! Invariant -- needed for computing the frontogenesis function
    !
@@ -339,6 +338,7 @@ subroutine dyn_init(dyn_in, dyn_out)
    use mpas_derived_types, only : mpas_pool_type
    use mpas_constants,     only : mpas_constants_compute_derived
    use dyn_tests_utils,    only : vc_dycore, vc_height, string_vc, vc_str_lgth
+   use cam_budget,         only : thermo_budget_history
 
    ! arguments:
    type(dyn_import_t), intent(inout)  :: dyn_in
@@ -371,29 +371,21 @@ subroutine dyn_init(dyn_in, dyn_out)
    character(len=*), parameter :: subname = 'dyn_comp::dyn_init'
 
    ! variables for initializing energy and axial angular momentum diagnostics
-   integer, parameter                         :: num_stages = 3, num_vars = 5
-   character (len = 3), dimension(num_stages) :: stage = (/"dBF","dAP","dAM"/)
+   integer, parameter                         :: num_stages = 6
+   character (len = 8), dimension(num_stages) :: stage = (/"dBF     ","dAP     ","dAM     ","BD_dparm","BD_DMEA ","BD_phys "/)
    character (len = 55),dimension(num_stages) :: stage_txt = (/&
       " dynamics state before physics (d_p_coupling)       ",&
       " dynamics state with T,u,V increment but not q      ",&
-      " dynamics state with full physics increment (incl.q)" &
+      " dynamics state with full physics increment (incl.q)",&
+      "dE/dt params+efix in dycore (dparam)(dAP-dBF)       ",&
+      "dE/dt dry mass adjustment in dycore        (dAM-dAP)",&
+      "dE/dt physics total in dycore (phys)       (dAM-dBF)" &
       /)
-
-   character (len = 2)  , dimension(num_vars) :: vars  = (/"WV"  ,"WL"  ,"WI"  ,"SE"   ,"KE"/)
-   character (len = 45) , dimension(num_vars) :: vars_descriptor = (/&
-      "Total column water vapor                ",&
-      "Total column cloud water                ",&
-      "Total column cloud ice                  ",&
-      "Total column static energy              ",&
-      "Total column kinetic energy             "/)
-   character (len = 14), dimension(num_vars)  :: &
-      vars_unit = (/&
-      "kg/m2        ","kg/m2        ","kg/m2        ","J/m2         ",&
-      "J/m2         "/)
 
    integer :: istage, ivars, m
    character (len=108)         :: str1, str2, str3
    character (len=vc_str_lgth) :: vc_str
+   !-------------------------------------------------------
 
    vc_dycore = vc_height
    if (masterproc) then
@@ -578,39 +570,53 @@ subroutine dyn_init(dyn_in, dyn_out)
    ! Set the interval over which the dycore should integrate during each call to dyn_run.
    call MPAS_set_timeInterval(integrationLength, S=nint(dtime), S_n=0, S_d=1)
 
-   do istage = 1, num_stages
-     do ivars=1, num_vars
-       write(str1,*) TRIM(ADJUSTL(vars(ivars))),"_",TRIM(ADJUSTL(stage(istage)))
-       write(str2,*) TRIM(ADJUSTL(vars_descriptor(ivars)))," ", &
-                           TRIM(ADJUSTL(stage_txt(istage)))
-        write(str3,*) TRIM(ADJUSTL(vars_unit(ivars)))
-        call addfld (TRIM(ADJUSTL(str1)),   horiz_only, 'A', TRIM(ADJUSTL(str3)),TRIM(ADJUSTL(str2)), gridname='mpas_cell')
+   !
+   ! initialize history for MPAS energy budgets
+
+   if (thermo_budget_history) then
+
+      ! Define energy/mass snapshots using stage structure
+      do istage = 1, num_stages
+         call cam_budget_em_snapshot(TRIM(ADJUSTL(stage(istage))), 'dyn', longname=TRIM(ADJUSTL(stage_txt(istage))))
       end do
-    end do
+      !
+      ! initialize MPAS energy budgets
+      ! add budgets that are derived from stages
+      !
+      call cam_budget_em_register('dEdt_param_efix_in_dyn','dAP','dBF',pkgtype='dyn',optype='dif', &
+                      longname="dE/dt parameterizations+efix in dycore (dparam)(dAP-dBF)")
+      call cam_budget_em_register('dEdt_dme_adjust_in_dyn','dAM','dAP',pkgtype='dyn',optype='dif', &
+                      longname="dE/dt dry mass adjustment in dycore (dAM-dAP)")
+      call cam_budget_em_register('dEdt_phys_total_in_dyn','dAM','dBF',pkgtype='dyn',optype='dif', &
+                      longname="dE/dt physics total in dycore (phys) (dAM-dBF)")
+   end if
 
    !
    ! initialize CAM thermodynamic infrastructure
    !
    do m=1,thermodynamic_active_species_num
-     thermodynamic_active_species_idx_dycore(m) = dyn_in % mpas_from_cam_cnst(thermodynamic_active_species_idx(m))
-     if (masterproc) then
-       write(iulog,*) subname//": m,thermodynamic_active_species_idx_dycore: ",m,thermodynamic_active_species_idx_dycore(m)
-     end if
+      thermodynamic_active_species_idx_dycore(m) = dyn_out % cam_from_mpas_cnst(thermodynamic_active_species_idx(m))
+      if (masterproc) then
+         write(iulog,'(a,2I4)') subname//": m,thermodynamic_active_species_idx_dycore: ", &
+                                m,thermodynamic_active_species_idx_dycore(m)
+      end if
    end do
    do m=1,thermodynamic_active_species_liq_num
-     thermodynamic_active_species_liq_idx_dycore(m) = dyn_in % mpas_from_cam_cnst(thermodynamic_active_species_liq_idx(m))
-     if (masterproc) then
-       write(iulog,*) subname//": m,thermodynamic_active_species_idx_liq_dycore: ",m,thermodynamic_active_species_liq_idx_dycore(m)
-     end if
+      thermodynamic_active_species_liq_idx_dycore(m) = dyn_out % cam_from_mpas_cnst(thermodynamic_active_species_liq_idx(m))
+      if (masterproc) then
+         write(iulog,'(a,2I4)') subname//": m,thermodynamic_active_species_idx_liq_dycore: ", &
+                                m,thermodynamic_active_species_liq_idx_dycore(m)
+      end if
    end do
    do m=1,thermodynamic_active_species_ice_num
-     thermodynamic_active_species_ice_idx_dycore(m) = dyn_in % mpas_from_cam_cnst(thermodynamic_active_species_ice_idx(m))
-     if (masterproc) then
-       write(iulog,*) subname//": m,thermodynamic_active_species_idx_ice_dycore: ",m,thermodynamic_active_species_ice_idx_dycore(m)
-     end if
+      thermodynamic_active_species_ice_idx_dycore(m) = dyn_out % cam_from_mpas_cnst(thermodynamic_active_species_ice_idx(m))
+      if (masterproc) then
+         write(iulog,'(a,2I4)') subname//": m,thermodynamic_active_species_idx_ice_dycore: ", &
+                                m,thermodynamic_active_species_ice_idx_dycore(m)
+      end if
    end do
 
-end subroutine dyn_init
+ end subroutine dyn_init
 
 !=========================================================================================
 
@@ -630,6 +636,7 @@ subroutine dyn_run(dyn_in, dyn_out)
    ! Local variables
    type(mpas_pool_type), pointer :: state_pool
    character(len=*), parameter :: subname = 'dyn_comp:dyn_run'
+   real(r8) :: dtime
 
    !----------------------------------------------------------------------------
 
@@ -651,11 +658,10 @@ subroutine dyn_run(dyn_in, dyn_out)
 
 end subroutine dyn_run
 
-!=========================================================================================
 
 subroutine dyn_final(dyn_in, dyn_out)
 
-   use cam_mpas_subdriver, only : cam_mpas_finalize
+  use cam_mpas_subdriver, only : cam_mpas_finalize
 
    ! Deallocates the dynamics import and export states, and finalizes
    ! the MPAS dycore.
@@ -816,7 +822,7 @@ subroutine read_inidat(dyn_in)
    real(r8), pointer :: uReconstructZ(:,:)
 
    integer :: mpas_idx, cam_idx, ierr
-   character(len=16) :: trac_name
+   character(len=32) :: trac_name
 
    character(len=*), parameter :: subname = 'dyn_comp:read_inidat'
    !--------------------------------------------------------------------------------------

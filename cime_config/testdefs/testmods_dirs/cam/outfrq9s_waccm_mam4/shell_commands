@@ -1,0 +1,2 @@
+./xmlchange ROF_NCPL=\$ATM_NCPL
+./xmlchange CAM_CONFIG_OPTS="-phys cam6 -age_of_air_trcs -chem waccm_tsmlt_mam4"
