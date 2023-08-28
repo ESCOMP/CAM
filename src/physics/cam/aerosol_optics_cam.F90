@@ -9,7 +9,7 @@ module aerosol_optics_cam
   use ppgrid, only: pcols, pver
   use physconst, only: rga, rair
   use cam_abortutils, only: endrun
-  use spmd_utils, only : masterproc
+  use spmd_utils, only: masterproc
   use rad_constituents,  only: n_diag, rad_cnst_get_call_list
   use cam_history,       only: addfld, add_default, outfld, horiz_only, fieldname_len
   use cam_history_support, only: fillvalue
@@ -79,6 +79,7 @@ contains
     character(len=*), intent(in)  :: nlfile  ! filepath for file containing namelist input
 
     integer                       :: unitn, ierr
+    character(len=cl)             :: errmsg
     character(len=*), parameter   :: subname = 'aerosol_optics_cam_readnl'
 
     ! ===================
@@ -95,7 +96,8 @@ contains
        if (ierr == 0) then
           read(unitn, aerosol_optics_nl, iostat=ierr)
           if (ierr /= 0) then
-             call endrun(subname // ':: ERROR reading namelist')
+             write(errmsg,'(2a,i10)') subname,':: ERROR reading namelist, error code: ',ierr
+             call endrun(errmsg)
           end if
        end if
        close(unitn)
@@ -121,7 +123,7 @@ contains
     use phys_control,     only: phys_getopts
     use ioFileMod,        only: getfil
 
-    character(len=*), parameter :: prefix = 'aerosol_optics_cam_sw: '
+    character(len=*), parameter :: prefix = 'aerosol_optics_cam_init: '
     integer :: nmodes=0, iaermod, istat, ilist, i
 
     logical :: call_list(0:n_diag)
@@ -134,7 +136,7 @@ contains
     logical :: history_amwg            ! output the variables used by the AMWG diag package
     logical :: history_dust            ! output dust diagnostics
 
-    character(len=256) :: locfile
+    character(len=cl) :: locfile
 
     call phys_getopts(history_amwg_out        = history_amwg, &
                       history_aero_optics_out = history_aero_optics, &
@@ -985,9 +987,7 @@ contains
       call outfld('AODUVdn'//diag(list_idx),  aoduv,  pcols, lchnk)
       call outfld('AODVISdn'//diag(list_idx), aodvis, pcols, lchnk)
       call outfld('AODABSdn'//diag(list_idx),     aodabs,  pcols, lchnk)
-
       call outfld('AODNIRdn'//diag(list_idx), aodnir, pcols, lchnk)
-      call outfld('AODABSdn'//diag(list_idx), aodabs, pcols, lchnk)
       call outfld('AODTOTdn'//diag(list_idx), aodtot, pcols, lchnk)
       call outfld('EXTINCTUVdn'//diag(list_idx),  extinctuv,  pcols, lchnk)
       call outfld('EXTINCTNIRdn'//diag(list_idx), extinctnir, pcols, lchnk)
@@ -1022,7 +1022,6 @@ contains
       call outfld('AODVIS'//diag(list_idx), aodvis, pcols, lchnk)
       call outfld('AODABS'//diag(list_idx), aodabs,  pcols, lchnk)
       call outfld('AODNIR'//diag(list_idx), aodnir, pcols, lchnk)
-      call outfld('AODABS'//diag(list_idx), aodabs, pcols, lchnk)
       call outfld('AODTOT'//diag(list_idx), aodtot, pcols, lchnk)
       call outfld('EXTINCTUV'//diag(list_idx),  extinctuv,  pcols, lchnk)
       call outfld('EXTINCTNIR'//diag(list_idx), extinctnir, pcols, lchnk)

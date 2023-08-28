@@ -24,8 +24,8 @@ module modal_aerosol_state_mod
      procedure :: get_transported
      procedure :: set_transported
      procedure :: ambient_total_bin_mmr
-     procedure :: get_ambient_mmr0
-     procedure :: get_ambient_mmrl
+     procedure :: get_ambient_mmr_0list
+     procedure :: get_ambient_mmr_rlist
      procedure :: get_cldbrne_mmr
      procedure :: get_ambient_num
      procedure :: get_cldbrne_num
@@ -132,28 +132,28 @@ contains
   !------------------------------------------------------------------------------
   ! returns ambient aerosol mass mixing ratio for a given species index and bin index
   !------------------------------------------------------------------------------
-  subroutine get_ambient_mmr0(self, species_ndx, bin_ndx, mmr)
+  subroutine get_ambient_mmr_0list(self, species_ndx, bin_ndx, mmr)
     class(modal_aerosol_state), intent(in) :: self
     integer, intent(in) :: species_ndx  ! species index
     integer, intent(in) :: bin_ndx      ! bin index
-    real(r8), pointer :: mmr(:,:)       ! mass mixing ratios
+    real(r8), pointer :: mmr(:,:)       ! mass mixing ratios (ncol,nlev)
 
     call rad_cnst_get_aer_mmr(0, bin_ndx, species_ndx, 'a', self%state, self%pbuf, mmr)
-  end subroutine get_ambient_mmr0
+  end subroutine get_ambient_mmr_0list
 
   !------------------------------------------------------------------------------
   ! returns ambient aerosol mass mixing ratio for a given radiation diagnostics
   ! list index, species index and bin index
   !------------------------------------------------------------------------------
-  subroutine get_ambient_mmrl(self, list_ndx, species_ndx, bin_ndx, mmr)
+  subroutine get_ambient_mmr_rlist(self, list_ndx, species_ndx, bin_ndx, mmr)
     class(modal_aerosol_state), intent(in) :: self
     integer, intent(in) :: list_ndx     ! rad climate list index
     integer, intent(in) :: species_ndx  ! species index
     integer, intent(in) :: bin_ndx      ! bin index
-    real(r8), pointer :: mmr(:,:)       ! mass mixing ratios
+    real(r8), pointer :: mmr(:,:)       ! mass mixing ratios (ncol,nlev)
 
     call rad_cnst_get_aer_mmr(list_ndx, bin_ndx, species_ndx, 'a', self%state, self%pbuf, mmr)
-  end subroutine get_ambient_mmrl
+  end subroutine get_ambient_mmr_rlist
 
   !------------------------------------------------------------------------------
   ! returns cloud-borne aerosol number mixing ratio for a given species index and bin index
@@ -428,10 +428,10 @@ contains
   !------------------------------------------------------------------------------
   function hygroscopicity(self, list_ndx, bin_ndx) result(kappa)
     class(modal_aerosol_state), intent(in) :: self
-    integer, intent(in) :: list_ndx            ! rad climate list number
-    integer, intent(in) :: bin_ndx             ! bin number
+    integer, intent(in) :: list_ndx        ! rad climate list number
+    integer, intent(in) :: bin_ndx         ! bin number
 
-    real(r8), pointer :: kappa(:,:)
+    real(r8), pointer :: kappa(:,:)        ! hygroscopicity (ncol,nlev)
 
     nullify(kappa)
 

@@ -28,9 +28,9 @@ module aerosol_state_mod
      procedure(aero_get_transported), deferred :: get_transported
      procedure(aero_set_transported), deferred :: set_transported
      procedure(aero_get_amb_total_bin_mmr), deferred :: ambient_total_bin_mmr
-     procedure(aero_get_state_mmr), deferred :: get_ambient_mmr0
-     procedure(aero_get_list_mmr), deferred :: get_ambient_mmrl
-     generic :: get_ambient_mmr=>get_ambient_mmr0,get_ambient_mmrl
+     procedure(aero_get_state_mmr), deferred :: get_ambient_mmr_0list
+     procedure(aero_get_list_mmr), deferred :: get_ambient_mmr_rlist
+     generic :: get_ambient_mmr=>get_ambient_mmr_0list,get_ambient_mmr_rlist
      procedure(aero_get_state_mmr), deferred :: get_cldbrne_mmr
      procedure(aero_get_state_num), deferred :: get_ambient_num
      procedure(aero_get_state_num), deferred :: get_cldbrne_num

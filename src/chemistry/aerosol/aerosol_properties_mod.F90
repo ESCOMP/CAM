@@ -49,9 +49,9 @@ module aerosol_properties_mod
      procedure :: indexer
      procedure :: maxsat
      procedure(aero_amcube), deferred :: amcube
-     procedure :: alogsig0
+     procedure :: alogsig_0list
      procedure(aero_alogsig_rlist), deferred :: alogsig_rlist
-     generic :: alogsig =>  alogsig0,alogsig_rlist
+     generic :: alogsig =>  alogsig_0list,alogsig_rlist
      procedure(aero_number_transported), deferred :: number_transported
      procedure(aero_props_get), deferred :: get
      procedure(aero_actfracs), deferred :: actfracs
@@ -565,12 +565,12 @@ contains
   !------------------------------------------------------------------------------
   ! returns the natural log of geometric standard deviation of the number distribution for aerosol bin
   !------------------------------------------------------------------------------
-  pure real(r8) function alogsig0(self, bin_ndx)
+  pure real(r8) function alogsig_0list(self, bin_ndx)
     class(aerosol_properties), intent(in) :: self
     integer, intent(in) :: bin_ndx           ! bin number
 
-    alogsig0 = self%alogsig_(bin_ndx)
-  end function alogsig0
+    alogsig_0list = self%alogsig_(bin_ndx)
+  end function alogsig_0list
 
   !------------------------------------------------------------------------------
   ! returns maximum supersaturation
