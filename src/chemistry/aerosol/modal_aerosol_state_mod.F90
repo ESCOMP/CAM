@@ -162,7 +162,7 @@ contains
     class(modal_aerosol_state), intent(in) :: self
     integer, intent(in) :: species_ndx  ! species index
     integer, intent(in) :: bin_ndx      ! bin index
-    real(r8), pointer :: mmr(:,:)       ! mass mixing ratios
+    real(r8), pointer :: mmr(:,:)       ! mass mixing ratios (ncol,nlev)
 
     call rad_cnst_get_aer_mmr(0, bin_ndx, species_ndx, 'c', self%state, self%pbuf, mmr)
   end subroutine get_cldbrne_mmr
