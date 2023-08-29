@@ -64,7 +64,7 @@ subroutine read_namelist(nlfilename, single_column, scmlat, scmlon)
    use conv_water,          only: conv_water_readnl
    use rad_constituents,    only: rad_cnst_readnl
    use radiation_data,      only: rad_data_readnl
-   use modal_aer_opt,       only: modal_aer_opt_readnl
+   use aerosol_optics_cam,  only: aerosol_optics_cam_readnl
    use clubb_intr,          only: clubb_readnl
    use chemistry,           only: chem_readnl
    use prescribed_volcaero, only: prescribed_volcaero_readnl
@@ -169,7 +169,7 @@ subroutine read_namelist(nlfilename, single_column, scmlat, scmlon)
    call radiation_readnl(nlfilename)
    call rad_cnst_readnl(nlfilename)
    call rad_data_readnl(nlfilename)
-   call modal_aer_opt_readnl(nlfilename)
+   call aerosol_optics_cam_readnl(nlfilename)
    call chem_readnl(nlfilename)
    call lightning_readnl(nlfilename)
    call prescribed_volcaero_readnl(nlfilename)
