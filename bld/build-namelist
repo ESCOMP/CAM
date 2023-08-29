@@ -2963,6 +2963,12 @@ if ($nl->get_value('use_hemco') =~ m/$TRUE/io) {
     # ignored at runtime when HEMCO is used.
     $nl->delete_variable('chem_inparm', 'ext_frc_specifier');
     $nl->delete_variable('chem_inparm', 'srf_emis_specifier');
+
+    # If using GEOS-Chem reset paths of HEMCO configuration files to local filename only
+    if ($chem =~ /geoschem/) {
+	$nl->set_variable_value('hemco_nl', 'hemco_config_file', "'HEMCO_Config.rc'");
+	$nl->set_variable_value('hemco_nl', 'hemco_diagn_file', "'HEMCO_Diagn.rc'");
+    }
 }
 
 # Physics options
