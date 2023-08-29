@@ -81,10 +81,6 @@ subroutine cam_init(                                             &
    use stepon,           only: stepon_init
    use ionosphere_interface, only: ionosphere_init
 
-#if (defined HEMCO_CESM)
-   use hemco_interface,  only: HCOI_Chunk_Init
-#endif
-
    use camsrfexch,       only: hub2atm_alloc, atm2hub_alloc
    use cam_history,      only: intht
    use history_scam,     only: scm_intht
@@ -186,11 +182,6 @@ subroutine cam_init(                                             &
    ! initialize ionosphere
    call ionosphere_init()
 
-#if (defined HEMCO_CESM)
-   ! initialize harmonized emissions component (HEMCO)
-   call hcoi_chunk_init()
-#endif
-
    if (initial_run_in) then
 
       call dyn_init(dyn_in, dyn_out)
@@ -239,10 +230,6 @@ subroutine cam_run1(cam_in, cam_out)
    use stepon,           only: stepon_run1
    use ionosphere_interface,only: ionosphere_run1
 
-#if (defined HEMCO_CESM)
-   use hemco_interface,  only: HCOI_Chunk_Run
-#endif
-
    type(cam_in_t)  :: cam_in(begchunk:endchunk)
    type(cam_out_t) :: cam_out(begchunk:endchunk)
 
@@ -263,13 +250,6 @@ subroutine cam_run1(cam_in, cam_out)
    ! first phase of ionosphere -- write to IC file if needed
    !----------------------------------------------------------
    call ionosphere_run1(pbuf2d)
-
-#if (defined HEMCO_CESM)
-   !----------------------------------------------------------
-   ! run hemco (first phase?)
-   !----------------------------------------------------------
-   call HCOI_Chunk_Run(cam_in, phys_state, pbuf2d, 1)
-#endif
 
    !
    !----------------------------------------------------------
@@ -302,10 +282,6 @@ subroutine cam_run2( cam_out, cam_in )
    use stepon,           only: stepon_run2
    use ionosphere_interface, only: ionosphere_run2
 
-#if (defined HEMCO_CESM)
-   use hemco_interface,  only: HCOI_Chunk_Run
-#endif
-
    type(cam_out_t), intent(inout) :: cam_out(begchunk:endchunk)
    type(cam_in_t),  intent(inout) :: cam_in(begchunk:endchunk)
 
@@ -313,13 +289,6 @@ subroutine cam_run2( cam_out, cam_in )
       call offline_driver_run( phys_state, pbuf2d, cam_out, cam_in )
       return
    endif
-
-#if (defined HEMCO_CESM)
-   !----------------------------------------------------------
-   ! run hemco (phase 2 before chemistry)
-   !----------------------------------------------------------
-   call HCOI_Chunk_Run(cam_in, phys_state, pbuf2d, 2)
-#endif
 
    !
    ! Second phase of physics (after surface model update)
@@ -458,10 +427,6 @@ subroutine cam_final( cam_out, cam_in )
    use ionosphere_interface, only: ionosphere_final
    use cam_control_mod,      only: initial_run
 
-#if (defined HEMCO_CESM)
-   use hemco_interface,  only: HCOI_Chunk_Final
-#endif
-
    !
    ! Arguments
    !
@@ -475,13 +440,6 @@ subroutine cam_final( cam_out, cam_in )
    call phys_final( phys_state, phys_tend , pbuf2d)
    call stepon_final(dyn_in, dyn_out)
    call ionosphere_final()
-
-#if (defined HEMCO_CESM)
-   !----------------------------------------------------------
-   ! cleanup hemco
-   !----------------------------------------------------------
-   call HCOI_Chunk_Final()
-#endif
 
    if (initial_run) then
       call cam_initfiles_close()
