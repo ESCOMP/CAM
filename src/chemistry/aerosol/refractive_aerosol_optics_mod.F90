@@ -61,8 +61,10 @@ module refractive_aerosol_optics_mod
   end interface refractive_aerosol_optics
 
   ! radius limits (m)
-  real(r8), parameter :: xrmin=log(0.01e-6_r8) ! min log(aerosol surface mode radius)
-  real(r8), parameter :: xrmax=log(25.e-6_r8)  ! max log(aerosol surface mode radius)
+  real(r8), parameter :: radmin = 0.01e-6_r8 ! min aerosol surface mode radius (m)
+  real(r8), parameter :: radmax = 25.e-6_r8  ! max aerosol surface mode radius (m)
+  real(r8), parameter :: xrmin=log(radmin)   ! min log(aerosol surface mode radius)
+  real(r8), parameter :: xrmax=log(radmax)   ! max log(aerosol surface mode radius)
 
 contains
 
@@ -362,7 +364,7 @@ contains
     do k = 1, nlev
        do i = 1, ncol
           ! convert from number mode diameter to surface area
-          radsurf(i,k) = 0.5_r8*dgnumwet(i,k)*explnsigma
+          radsurf(i,k) = max(0.5_r8*dgnumwet(i,k)*explnsigma,radmin)
           logradsurf(i,k) = log(radsurf(i,k))
           ! normalize size parameter
           xrad(i) = max(logradsurf(i,k),xrmin)
