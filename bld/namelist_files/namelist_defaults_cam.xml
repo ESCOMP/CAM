@@ -362,6 +362,8 @@
 <analytic_ic_type phys="held_suarez"> held_suarez_1994 </analytic_ic_type>
 <analytic_ic_type phys="kessler"    > moist_baroclinic_wave_dcmip2016 </analytic_ic_type>
 <analytic_ic_type phys="tj2016"     > moist_baroclinic_wave_dcmip2016 </analytic_ic_type>
+<!-- MPAS Analytic ICs for aquaplanet (experimental) -->
+<analytic_ic_type dyn="mpas" aquaplanet="1"> us_standard_atmosphere </analytic_ic_type>
 
 <!-- Bulk aerosol physical properties (includes optics) -->
 
