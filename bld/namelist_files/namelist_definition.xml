@@ -8096,6 +8096,17 @@ Normally equal to se_vert_num_threads.
 Default: Set by build-namelist.
 </entry>
 
+<entry id="se_pgf_formulation" type="integer" category="se"
+       group="dyn_se_inparm" valid_values="1,2" >
+
+  1: Exner version of pressure gradient force (PGF)
+  see Appendix A in https://agupubs.onlinelibrary.wiley.com/doi/epdf/10.1029/2022MS003192
+
+  2: Traditional pressure gradient formulation (grad p)
+
+  Default: Set by build-namelist.
+</entry>
+
 
 <!-- MPAS dycore -->
 

@@ -3938,6 +3938,7 @@ if ($dyn =~ /se/) {
 		  se_kmin_jet
 		  se_kmax_jet
                   se_molecular_diff
+	          se_pgf_formulation
         );
 
     my %opts;
