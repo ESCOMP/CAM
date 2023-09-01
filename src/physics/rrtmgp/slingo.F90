@@ -9,7 +9,7 @@ use shr_kind_mod,     only: r8 => shr_kind_r8
 use ppgrid,           only: pcols, pver, pverp
 use physics_types,    only: physics_state
 use physics_buffer,   only: physics_buffer_desc, pbuf_get_index, pbuf_get_field, pbuf_old_tim_idx
-use radconstants,     only: nswbands, nlwbands, idx_sw_diag, ot_length, idx_lw_diag, get_sw_spectral_boundaries
+use radconstants,     only: nswbands, nlwbands, get_sw_spectral_boundaries
 use cam_abortutils,   only: endrun
 use cam_history,      only: outfld
 
@@ -79,20 +79,6 @@ subroutine slingo_rad_props_init()
    ! old optics
    call cnst_get_ind('CLDLIQ', ixcldliq)
    call cnst_get_ind('CLDICE', ixcldice)
-
-   !call addfld ('CLWPTH_OLD',(/ 'lev' /), 'I','Kg/m2','old In Cloud Liquid Water Path', sampling_seq='rad_lwsw')
-   !call addfld ('KEXT_OLD',(/ 'lev' /),'I','m^2/kg','old extinction')
-   !call addfld ('CLDOD_OLD',(/ 'lev' /),'I','1','old liquid OD')
-   !call addfld ('REL_OLD',(/ 'lev' /),'I','1','old liquid effective radius (liquid)')
-
-   !call addfld ('CLWPTH_NEW',(/ 'lev' /), 'I','Kg/m2','In Cloud Liquid Water Path', sampling_seq='rad_lwsw')
-   !call addfld ('KEXT_NEW',(/ 'lev' /),'I','m^2/kg','extinction')
-   !call addfld ('CLDOD_NEW',(/ 'lev' /),'I','1','liquid OD')
-
-   !call addfld('CIWPTH_NEW',(/ 'lev' /), 'I','Kg/m2','In Cloud Ice Water Path', sampling_seq='rad_lwsw')
-   !call addfld('CIWPTH_OLD',(/ 'lev' /), 'I','Kg/m2','In Cloud Ice Water Path (old)', sampling_seq='rad_lwsw')
-
-   return
 
 end subroutine slingo_rad_props_init
 
@@ -317,12 +303,6 @@ subroutine slingo_liq_optics_sw(state, pbuf, liq_tau, liq_tau_w, liq_tau_w_g, li
          end do ! End do i=1,Nday
       end do    ! End do k=1,pver
    end do ! nswbands
-
-   !call outfld('CL_OD_SW_OLD',liq_tau(idx_sw_diag,:,:), pcols, lchnk)
-   !call outfld('REL_OLD',rel(:,:), pcols, lchnk)
-   !call outfld('CLWPTH_OLD',cliqwp(:,:), pcols, lchnk)
-   !call outfld('KEXT_OLD',kext(:,:), pcols, lchnk)
-
 
 end subroutine slingo_liq_optics_sw
 

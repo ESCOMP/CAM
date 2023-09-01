@@ -7,7 +7,7 @@ use shr_kind_mod,     only: r8 => shr_kind_r8
 use ppgrid,           only: pcols, pver, pverp
 use physics_types,    only: physics_state
 use physics_buffer,   only: physics_buffer_desc, pbuf_get_index, pbuf_get_field, pbuf_old_tim_idx
-use radconstants,     only: nswbands, nlwbands, idx_sw_diag, ot_length, idx_lw_diag, get_sw_spectral_boundaries
+use radconstants,     only: nswbands, nlwbands, get_sw_spectral_boundaries
 use cam_abortutils,   only: endrun
 use cam_history,      only: outfld
 
@@ -143,10 +143,7 @@ subroutine cloud_rad_props_get_sw(state, pbuf, &
    tau_w_g(:,1:ncol,:) = 0._r8
    tau_w_f(:,1:ncol,:) = 0._r8
 
-
    call ec_ice_optics_sw   (state, pbuf, tau, tau_w, tau_w_g, tau_w_f, oldicewp=.true.)
-!  call outfld ('CI_OD_SW_OLD', ice_tau(idx_sw_diag,:,:), pcols, lchnk)
-
 
 end subroutine cloud_rad_props_get_sw
 !==============================================================================
@@ -182,7 +179,6 @@ subroutine cloud_rad_props_get_lw(state, pbuf, cld_abs_od, diagnosticindex, oldl
    cld_abs_od = 0._r8
 
    call ec_ice_get_rad_props_lw(state, pbuf, cld_abs_od, oldicewp=.true.)
-   !call outfld('CI_OD_LW_OLD', ice_tau_abs_od(idx_lw_diag ,:,:), pcols, lchnk)
       
 end subroutine cloud_rad_props_get_lw
 
@@ -390,17 +386,10 @@ subroutine ec_ice_get_rad_props_lw(state, pbuf, abs_od, oldicewp)
           cldtau(i,k) = kabs*cwp(i,k)
        end do
    end do
-!
+
    do lwband = 1,nlwbands
       abs_od(lwband,1:ncol,1:pver)=cldtau(1:ncol,1:pver)
    enddo
-
-   !if(oldicewp) then
-   !  call outfld('CIWPTH_OLD',cicewp(:,:)/1000,pcols,lchnk)
-   !else
-   !  call outfld('CIWPTH_OLD',iciwpth(:,:),pcols,lchnk)
-   !endif
-   !call outfld('CI_OD_LW_OLD',cldtau(:,:),pcols,lchnk)
 
 end subroutine ec_ice_get_rad_props_lw
 !==============================================================================

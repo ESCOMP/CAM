@@ -5,11 +5,6 @@ module rrtmgp_inputs
 ! RRTMGP.  Subset the number of model levels if CAM's top exceeds RRTMGP's
 ! valid domain.
 !
-! This code is currently set up to send RRTMGP vertical layers ordered bottom
-! to top of model.  Although the RRTMGP is supposed to be agnostic about the   
-! vertical ordering problems have arisen trying to use the top to bottom order
-! as used by CAM's infrastructure.
-!
 !--------------------------------------------------------------------------------
 
 use shr_kind_mod,     only: r8=>shr_kind_r8
@@ -21,23 +16,19 @@ use physics_types,    only: physics_state
 use physics_buffer,   only: physics_buffer_desc
 use camsrfexch,       only: cam_in_t
 
-use radconstants,     only: get_ref_solar_band_irrad, rad_gas_index
-use radconstants,     only: nradgas, gaslist, rrtmg_to_rrtmgp_swbands
-use rad_solar_var,    only: get_variability
-use solar_irrad_data, only : do_spctrl_scaling, sol_tsi
+use radconstants,     only: nswbands, nlwbands, get_sw_spectral_boundaries
+use radconstants,     only: nradgas, gaslist
+
 use rad_constituents, only: rad_cnst_get_gas
 
 use mcica_subcol_gen, only: mcica_subcol_sw, mcica_subcol_lw
 
 use mo_gas_concentrations, only: ty_gas_concs
-use mo_gas_optics_rrtmgp, only: ty_gas_optics_rrtmgp 
-use mo_optical_props, only: ty_optical_props, ty_optical_props_2str, ty_optical_props_1scl
+use mo_gas_optics_rrtmgp,  only: ty_gas_optics_rrtmgp 
+use mo_optical_props,      only: ty_optical_props_2str, ty_optical_props_1scl
 
-! unneeded use mo_rrtmgp_util_string, only: lower_case 
-use cam_logfile,         only: iulog
+use cam_logfile,      only: iulog
 use cam_abortutils,   only: endrun
-
-use cam_history,     only: outfld  ! just for getting ozone VMR above model top.
 
 implicit none
 private
@@ -71,12 +62,18 @@ integer :: ktopradm ! rrtmgp index of layer corresponding to ktopcamm
 integer :: ktopcami ! cam index of top interface
 integer :: ktopradi ! rrtmgp index of interface corresponding to ktopcami
 
+! wavenumber (cm^-1) boundaries of shortwave bands
+real(r8) :: sw_low_bounds(nswbands), sw_high_bounds(nswbands)
+
 !==================================================================================================
 contains
 !==================================================================================================
 
 subroutine rrtmgp_inputs_init(ktcamm, ktradm, ktcami, ktradi)
       
+   ! Note that this routine must be called after the calls to set_wavenumber_bands which set
+   ! the sw/lw band boundaries in the radconstants module.
+
    integer, intent(in) :: ktcamm
    integer, intent(in) :: ktradm
    integer, intent(in) :: ktcami
@@ -87,27 +84,26 @@ subroutine rrtmgp_inputs_init(ktcamm, ktradm, ktcami, ktradi)
    ktopcami = ktcami
    ktopradi = ktradi
 
+   call get_sw_spectral_boundaries(sw_low_bounds, sw_high_bounds, 'cm^-1')
+
 end subroutine rrtmgp_inputs_init
 
 !==================================================================================================
 
 subroutine rrtmgp_set_state( &
-   pstate, cam_in, ncol, nlay, nlwbands, &
-   nswbands, ngpt_sw, nday, idxday, coszrs, &
-   kdist_sw, &   ! eccf, & !!! Removing eccf from arguments, as it is not needed here
+   pstate, cam_in, ncol, nlay, &
+   nday, idxday, coszrs, &
+   kdist_sw, &
    band2gpt_sw,    &
    t_sfc, emis_sfc, t_rad, &
    pmid_rad, pint_rad, t_day, pmid_day, pint_day, &
-   coszrs_day, alb_dir, alb_dif, tsi) 
+   coszrs_day, alb_dir, alb_dif) 
 
    ! arguments
    type(physics_state), target, intent(in) :: pstate
    type(cam_in_t),              intent(in) :: cam_in
    integer,                     intent(in) :: ncol
    integer,                     intent(in) :: nlay
-   integer,                     intent(in) :: nlwbands
-   integer,                     intent(in) :: nswbands
-   integer,                     intent(in) :: ngpt_sw
    integer,                     intent(in) :: nday
    integer,                     intent(in) :: idxday(:)
    real(r8),                    intent(in) :: coszrs(:)
@@ -127,10 +123,6 @@ subroutine rrtmgp_set_state( &
    real(r8), intent(out) :: coszrs_day(nday)         ! cosine of solar zenith angle
    real(r8), intent(out) :: alb_dir(nswbands,nday)   ! surface albedo, direct radiation
    real(r8), intent(out) :: alb_dif(nswbands,nday)   ! surface albedo, diffuse radiation
-   ! real(r8), intent(out) :: solin(ncol)             ! incident flux at domain top [W/m2]
-   ! real(r8), intent(out) :: solar_irrad_gpt(nday,ngpt_sw)  ! incident flux at domain top per gpoint [W/m2] AT DAYLIT POINTS
-   ! real(r8), intent(out) :: tsi_scaling_gpt(ngpt_sw)  ! scale factor for irradiance by gpoint [fraction]
-   real(r8), intent(out) :: tsi ! total irradiance W/m2
 
    ! local variables
    integer :: k, kk, i, iband
@@ -139,10 +131,6 @@ subroutine rrtmgp_set_state( &
 
    real(r8) :: sfac(nswbands)             ! time varying scaling factors due to Solar Spectral
                                           ! Irrad at 1 A.U. per band
-   real(r8) :: wavenumber_limits(2,nswbands)
-
-   ! real(r8) :: toa_flx_by_band(nswbands) ! temporary array of incoming flux by band
-   ! real(r8) :: toa_flx_by_gpt(ngpt_sw) ! temporary array of incoming flux by gpt
 
    character(len=*), parameter :: sub='rrtmgp_set_state'
    character(len=512) :: errmsg
@@ -192,65 +180,16 @@ subroutine rrtmgp_set_state( &
       coszrs_day(i) = coszrs(idxday(i))
    end do
  
-
-   ! total solar incident radiation
-   tsi = sol_tsi ! when using sol_tsi from solar_irrad_data, this is read from a file.
-
-   ! TO BE REMOVED
-   ! We can get TSI from the solar forcing file (above).
-   ! We can't get the scaling here because we might not have access
-   ! to RRTMGP's reference irradiance on bands yet (without running kdist%gas_optics).
-   ! The scaling can be derived in rrtmgp_driver / rte_sw (after %gas_optics provides the toa_flux).
-   ! call get_ref_solar_band_irrad(solar_band_irrad)
-   ! call get_variability(sfac)
-   ! solar_band_irrad = solar_band_irrad(rrtmg_to_rrtmgp_swbands)
-   ! tsi = sum(solar_band_irrad(:)) ! total TSI integrated across bands, BUT NOT scaled for variability
-   ! ! convert from irradiance scale factor per band (sfac) to per gpoint
-   ! ! --> this can then be used in rrtmgp_driver module, rte_sw to scale TOA flux
-   ! tsi_scaling_gpt = 0.0
-
-   ! do iband = 1,nswbands
-   !    tsi_scaling_gpt(band2gpt_sw(1,iband):band2gpt_sw(2,iband)) = sfac(iband)
-   ! end do
-
-   ! if we had a method to produce toa flux by gpoint, we could make that an output here.
-
-   ! <-- begin: old way of setting albedo hard-wired to 14 SW bands -->
-   ! ! Surface albedo (band mapping is hardcoded for RRTMG(P) code)
-   ! ! This mapping assumes nswbands=14.
-   ! if (nswbands /= 14) &
-   !    call endrun(sub//': ERROR: albedo band mapping assumes nswbands=14')
-
-   ! do i = 1, nday
-   !    ! Near-IR bands (1-9 and 14), 820-16000 cm-1, 0.625-12.195 microns
-   !    alb_dir(1:8,i) = cam_in%aldir(idxday(i))
-   !    alb_dif(1:8,i) = cam_in%aldif(idxday(i))
-   !    alb_dir(14,i)  = cam_in%aldir(idxday(i))
-   !    alb_dif(14,i)  = cam_in%aldif(idxday(i))
-
-   !    ! Set band 24 (or, band 9 counting from 1) to use linear average of UV/visible
-   !    ! and near-IR values, since this band straddles 0.7 microns:
-   !    alb_dir(9,i) = 0.5_r8*(cam_in%aldir(idxday(i)) + cam_in%asdir(idxday(i)))
-   !    alb_dif(9,i) = 0.5_r8*(cam_in%aldif(idxday(i)) + cam_in%asdif(idxday(i)))
-
-   !    ! UV/visible bands 25-28 (10-13), 16000-50000 cm-1, 0.200-0.625 micron
-   !    alb_dir(10:13,i) = cam_in%asdir(idxday(i))
-   !    alb_dif(10:13,i) = cam_in%asdif(idxday(i))
-   ! enddo
-   ! <-- end: old way of setting albedo hard-wired to 14 SW bands -->
-
-   ! More flexible way to assign albedo (from E3SM implementation)
-   ! adapted here to loop over bands and cols b/c cam_in has all cols but albedos are daylit cols
-   ! We could remove cols loop if we just set albedos for all columns separate from rrtmgp_set_state.
-   ! Albedos are input as broadband (visible, and near-IR), and we need to map
-   ! these to appropriate bands. Bands are categorized broadly as "visible" or
-   ! "infrared" based on wavenumber, so we get the wavenumber limits here
-   wavenumber_limits = kdist_sw%get_band_lims_wavenumber()
+   ! Assign albedos to the daylight columns (from E3SM implementation)
+   ! Albedos are imported from the surface models as broadband (visible, and near-IR),
+   ! and we need to map these to appropriate narrower bands used in RRTMGP. Bands
+   ! are categorized broadly as "visible/UV" or "infrared" based on wavenumber.
    ! Loop over bands, and determine for each band whether it is broadly in the
-   ! visible or infrared part of the spectrum (visible or "not visible")
+   ! visible or infrared part of the spectrum based on a dividing line of
+   ! 0.7 micron, or 14286 cm^-1
    do iband = 1,nswbands
-      if (is_visible(wavenumber_limits(1,iband)) .and. &
-         is_visible(wavenumber_limits(2,iband))) then
+      if (is_visible(sw_low_bounds(iband)) .and. &
+         is_visible(sw_high_bounds(iband))) then
 
          ! Entire band is in the visible
          do i = 1, nday
@@ -258,8 +197,8 @@ subroutine rrtmgp_set_state( &
             alb_dif(iband,i) = cam_in%asdif(idxday(i))
          end do
 
-      else if (.not.is_visible(wavenumber_limits(1,iband)) .and. &
-               .not.is_visible(wavenumber_limits(2,iband))) then
+      else if (.not.is_visible(sw_low_bounds(iband)) .and. &
+               .not.is_visible(sw_high_bounds(iband))) then
          ! Entire band is in the longwave (near-infrared)
          do i = 1, nday
             alb_dir(iband,i) = cam_in%aldir(idxday(i))
@@ -276,7 +215,6 @@ subroutine rrtmgp_set_state( &
       end if
    end do
 
-
    ! Strictly enforce albedo bounds
    where (alb_dir < 0)
        alb_dir = 0.0_r8
@@ -292,10 +230,14 @@ subroutine rrtmgp_set_state( &
    end where
 
 end subroutine rrtmgp_set_state
-!
 
-! Function to check if a wavenumber is in the visible or IR
+!==================================================================================================
+
 logical function is_visible(wavenumber)
+
+   ! Wavenumber is in the visible if it is above the visible threshold
+   ! wavenumber, and in the infrared if it is below the threshold
+   ! This function doesn't distinquish between visible and UV.
 
    ! wavenumber in inverse cm (cm^-1)
    real(r8), intent(in) :: wavenumber
@@ -303,8 +245,6 @@ logical function is_visible(wavenumber)
    ! Threshold between visible and infrared is 0.7 micron, or 14286 cm^-1
    real(r8), parameter :: visible_wavenumber_threshold = 14286._r8  ! cm^-1
 
-   ! Wavenumber is in the visible if it is above the visible threshold
-   ! wavenumber, and in the infrared if it is below the threshold
    if (wavenumber > visible_wavenumber_threshold) then
       is_visible = .true.
    else
@@ -313,29 +253,29 @@ logical function is_visible(wavenumber)
 
 end function is_visible
 
-
 !==================================================================================================
+
 function get_molar_mass_ratio(gas_name) result(massratio)
    ! return the molar mass ratio of dry air to gas based on gas_name
    character(len=*),intent(in) :: gas_name
    real(r8)                    :: massratio
 
    select case (trim(gas_name)) 
-      case ('h2o', 'H2O') 
+      case ('H2O') 
          massratio = 1.607793_r8
-      case ('co2', 'CO2')
+      case ('CO2')
          massratio = 0.658114_r8
-      case ('o3', 'O3')
+      case ('O3')
          massratio = 0.603428_r8
-      case ('ch4', 'CH4')
+      case ('CH4')
          massratio = 1.805423_r8
-      case ('n2o', 'N2O')
+      case ('N2O')
          massratio = 0.658090_r8
-      case ('o2', 'O2')
+      case ('O2')
          massratio = 0.905140_r8
-      case ('cfc11', 'CFC11')
+      case ('CFC11')
          massratio = 0.210852_r8
-      case ('cfc12', 'CFC12')
+      case ('CFC12')
          massratio = 0.239546_r8
       case default
          call endrun("Invalid gas: "//trim(gas_name))
@@ -379,7 +319,7 @@ subroutine rad_gas_get_vmr(icall, gas_name, pstate, pbuf, nlay, numactivecols, g
 
    mmr = gas_mmr
    ! special case: H2O is specific humidity, not mixing ratio. Use r = q/(1-q):
-   if (gas_name == 'h2o') then 
+   if (gas_name == 'H2O') then 
       mmr = mmr / (1._r8 - mmr)
    end if  
 
@@ -457,7 +397,7 @@ subroutine rad_gas_get_vmr(icall, gas_name, pstate, pbuf, nlay, numactivecols, g
 
    errmsg = gas_concs%set_vmr(gas_name, gas_vmr)
    if (len_trim(errmsg) > 0) then
-      call endrun(sub//': error setting CO2: '//trim(errmsg))
+      call endrun(sub//': ERROR, gas_concs%set_vmr: '//trim(errmsg))
    end if
 
    deallocate(gas_vmr)

@@ -15,6 +15,7 @@ use physics_types,       only: physics_state, physics_ptend
 use physics_buffer,      only: physics_buffer_desc, pbuf_get_field, pbuf_old_tim_idx
 use camsrfexch,          only: cam_out_t, cam_in_t
 use physconst,           only: cappa, cpair, gravit
+use solar_irrad_data,    only: sol_tsi
 
 use time_manager,        only: get_nstep, is_first_restart_step, &
                                get_curr_calday, get_step_size
@@ -27,20 +28,9 @@ use rad_constituents,    only: N_DIAG, rad_cnst_get_call_list, &
                                liqcldoptics,                   &
                                icecldoptics
 
-use radconstants,        only: nswbands, nlwbands, & ! number of bands
-                               idx_sw_diag,        & ! indices for diagnostics
-                               idx_nir_diag,       &
-                               idx_uv_diag,        & 
-                               idx_lw_diag,        &
-                               get_idx_sw_diag,    & ! sets the idx_*_diag in radconstants module
-                               get_idx_nir_diag,   &
-                               get_idx_uv_diag,    &
-                               get_idx_lw_diag,    &  
-                               rrtmg_to_rrtmgp_swbands, & ! maps bands between rrtmg and rrtmgp
-                               get_band_index_by_value, & ! function that figures out band for a wavelength
-                               gasnamelength,      &
-                               nradgas,            &
-                               gaslist
+use radconstants,        only: nswbands, nlwbands, idx_sw_diag, idx_nir_diag, idx_uv_diag, & 
+                               idx_lw_diag, idx_sw_cloudsim, idx_lw_cloudsim,              &
+                               nradgas, gasnamelength, gaslist
 
 use mo_gas_concentrations, only: ty_gas_concs
 use mo_gas_optics_rrtmgp,  only: ty_gas_optics_rrtmgp
@@ -67,13 +57,15 @@ use pio,                 only: file_desc_t,          &
                                PIO_NOWRITE,          &
                                pio_closefile
 
-use cam_abortutils,      only: endrun
-use error_messages,      only: handle_err
-use cam_logfile,         only: iulog
 use scamMod,             only: scm_crm_mode, single_column, have_cld, cldobs
 
 use cospsimulator_intr,  only: docosp, cospsimulator_intr_init, &
                                cospsimulator_intr_run, cosp_nradsteps
+
+use string_utils,        only: to_lower
+use cam_abortutils,      only: endrun
+use error_messages,      only: handle_err
+use cam_logfile,         only: iulog
 
 
 implicit none
@@ -94,7 +86,6 @@ public :: &
 
 integer,public, allocatable :: cosp_cnt(:)       ! counter for cosp
 integer,public              :: cosp_cnt_init = 0 !initial value for cosp counter
-integer, public :: sw_cloudsim_band, lw_cloudsim_band ! radiation bands that COSP uses
 
 real(r8), public, protected :: nextsw_cday       ! future radiation calday for surface models
 
@@ -181,6 +172,10 @@ logical :: spectralflux     = .false. ! calculate fluxes (up and down) per band.
 logical :: graupel_in_rad     = .false. ! graupel in radiation code
 logical :: use_rad_uniform_angle = .false. ! if true, use the namelist rad_uniform_angle for the coszrs calculation
 
+! active_calls is set by a rad_constituents method after parsing namelist input
+! for the rad_climate and rad_diag_N entries.
+logical :: active_calls(0:N_DIAG)
+
 ! Physics buffer indices
 integer :: qrs_idx      = 0 
 integer :: qrl_idx      = 0 
@@ -222,29 +217,22 @@ integer :: ktopradi ! index in RRTMGP arrays of interface corresponding to CAM t
 ! vertical coordinate for output of fluxes on radiation grid
 real(r8), allocatable, target :: plev_rad(:)
 
-! LW coefficients
-type(ty_gas_optics_rrtmgp) :: kdist_lw ! bpm changed here
+! Gas optics objects contain the data read from the coefficients files.
+type(ty_gas_optics_rrtmgp) :: kdist_lw
+type(ty_gas_optics_rrtmgp) :: kdist_sw
 
-! SW coefficients
-type(ty_gas_optics_rrtmgp) :: kdist_sw ! bpm changed here
-integer :: ngpt_sw
-
-! data to go from bands to gpoints (bpm)
-integer, allocatable :: band2gpt_sw(:,:) ! n[s,l]wbands come from radconstants for now
+! data to go from bands to gpoints
+integer, allocatable :: band2gpt_sw(:,:)
 integer, allocatable :: band2gpt_lw(:,:)
 
+! Mapping from RRTMG shortwave bands to RRTMGP.  Currently needed to continue using
+! the SW optics datasets from RRTMG (even thought there is a slight mismatch in the
+! band boundaries of the 2 bands that overlap with the LW bands).
+integer, parameter, dimension(14) :: rrtmg_to_rrtmgp_swbands = &
+   [ 14, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13 ]
 
-! Gases to use in the radiative calculations. 
-! RRTMGP kdist initialization needs to know the names of the
-! gases before these are available via the rad_cnst interface. 
-! TODO: Move this to namelist or somewhere appropriate.
-! NOTE: This list is not the same as `gaslist` in radconstants; is that a problem? Implication for diagnostic calls?
-! character(len=5), dimension(10) :: active_gases = (/ &
-! 'H2O  ', 'CO2  ', 'O3   ', 'N2O  ', &
-! 'CO   ', 'CH4  ', 'O2   ', 'N2   ', &
-! 'CFC11', 'CFC12' /)
-! BPM: use radconstants to define the active gases:
-character(len=gasnamelength), dimension(nradgas) :: active_gases = gaslist
+! lower case version of gaslist for RRTMGP
+character(len=gasnamelength) :: gaslist_lc(nradgas)
 
 type(var_desc_t) :: cospcnt_desc  ! cosp
 type(var_desc_t) :: nextsw_cday_desc
@@ -474,13 +462,12 @@ subroutine radiation_init(pbuf2d)
 
    use physics_buffer,  only: pbuf_get_index, pbuf_set_field
    use phys_control,    only: phys_getopts
-   use rad_solar_var,   only: rad_solar_var_init  ! This initializes total solar irradiance
    use radiation_data,  only: rad_data_init
    use cloud_rad_props, only: cloud_rad_props_init
    use modal_aer_opt,   only: modal_aer_opt_init
    use rrtmgp_inputs,   only: rrtmgp_inputs_init
    use time_manager,    only: is_first_step
-   use radconstants,    only: set_wavenumber_bands, set_irrad_by_band, set_reference_tsi
+   use radconstants,    only: set_wavenumber_bands
 
    ! arguments
    type(physics_buffer_desc), pointer :: pbuf2d(:,:)
@@ -492,8 +479,7 @@ subroutine radiation_init(pbuf2d)
    ! -- needed for the kdist initialization routines 
    type(ty_gas_concs) :: available_gases
 
-   integer :: icall, nmodes
-   logical :: active_calls(0:N_DIAG)
+   integer :: i, icall, nmodes
    integer :: nstep                       ! current timestep number
    logical :: history_amwg                ! output the variables used by the AMWG diag package
    logical :: history_vdiag               ! output the variables used by the AMWG variability diag package
@@ -504,7 +490,6 @@ subroutine radiation_init(pbuf2d)
    integer :: ierr
 
    integer :: dtime
-   real(r8) :: ref_tsi
 
    character(len=*), parameter :: sub = 'radiation_init'
    !-----------------------------------------------------------------------
@@ -538,11 +523,20 @@ subroutine radiation_init(pbuf2d)
    call add_vert_coord('plev_rad', nlay+1, 'Pressures at radiation flux calculations',  &
             'Pa', plev_rad)
 
-   call set_available_gases(active_gases, available_gases) ! gases needed to initialize spectral info
+   ! Create lowercase version of the gaslist for RRTMGP.  The ty_gas_concs objects
+   ! work with CAM's uppercase names, but other objects that get input from the gas
+   ! concs objects don't work.
+   do i = 1, nradgas
+      gaslist_lc(i) = to_lower(gaslist(i))
+   end do
+
+   errmsg = available_gases%init(gaslist_lc)
+   if (len_trim(errmsg) > 0) then
+      call endrun(sub//': ERROR: available_gases%init: '//trim(errmsg))
+   end if
 
    call coefs_init(coefs_lw_file, kdist_lw, available_gases, band2gpt_lw)
-   call coefs_init(coefs_sw_file, kdist_sw, available_gases, band2gpt_sw, ref_tsi) ! bpm : these now provide band2gpt which should be global
-   call set_reference_tsi(ref_tsi)
+   call coefs_init(coefs_sw_file, kdist_sw, available_gases, band2gpt_sw)
 
    ! check number of sw/lw bands in gas optics files
    if (kdist_sw%get_nband() /= nswbands) then
@@ -563,25 +557,11 @@ subroutine radiation_init(pbuf2d)
    call set_wavenumber_bands('sw', kdist_sw%get_nband(), kdist_sw%get_band_lims_wavenumber()) 
    call set_wavenumber_bands('lw', kdist_lw%get_nband(), kdist_lw%get_band_lims_wavenumber())
 
-   call rad_solar_var_init() ! sets the total solar irradiance (I wonder whether this should use kdist information instead of radconstants; alternative use kdist%set_tsi to ensure consistency?)
    call rrtmgp_inputs_init(ktopcamm, ktopradm, ktopcami, ktopradi) ! this sets these values as module data in rrtmgp_inputs
 
    call rad_data_init(pbuf2d)  ! initialize output fields for offline driver
    call cloud_rad_props_init()
   
-   ngpt_sw = kdist_sw%get_ngpt()
-
-   ! bpm: set the indices used for diagnostics using specific band:
-   call get_idx_sw_diag() ! index to sw visible band (441 - 625 nm) 
-   call get_idx_nir_diag() ! index to sw near infrared (778-1240 nm) band
-   call get_idx_uv_diag() ! index to sw uv (345-441 nm) band
-   if (docosp) then
-      sw_cloudsim_band = get_band_index_by_value('sw', 0.67_r8, 'micron')  ! rrtmgp band for .67 micron
-      lw_cloudsim_band = get_band_index_by_value('lw', 10.5_r8, 'micron')
-   end if
-   call get_idx_lw_diag()
-
-
    if (is_first_step()) then
       call pbuf_set_field(pbuf2d, qrl_idx, 0._r8)
    end if
@@ -906,7 +886,7 @@ subroutine radiation_tend( &
 
    !----------------------------------------------------------------------- 
    ! 
-   ! Driver for radiation computation.
+   ! CAM driver for radiation computation.
    ! 
    !-----------------------------------------------------------------------
 
@@ -915,7 +895,6 @@ subroutine radiation_tend( &
    use cam_control_mod,    only: eccen, mvelpp, lambm0, obliqr
    use shr_orb_mod,        only: shr_orb_decl, shr_orb_cosz
 
-   use mo_gas_concentrations, only: ty_gas_concs
    use rrtmgp_inputs,      only: rrtmgp_set_state, rrtmgp_set_gases_lw, rrtmgp_set_cloud_lw, &
                                  rrtmgp_set_aer_lw, rrtmgp_set_gases_sw, rrtmgp_set_cloud_sw, &
                                  rrtmgp_set_aer_sw
@@ -936,8 +915,8 @@ subroutine radiation_tend( &
 
    use mo_fluxes_byband,   only: ty_fluxes_byband
 
-   ! use mo_rrtmgp_clr_all_sky, only: rte_lw, rte_sw
-   use rrtmgp_driver, only: rte_lw, rte_sw
+   ! RRTMGP drivers for flux calculations.
+   use rrtmgp_driver,      only: rte_lw, rte_sw
 
    use radheat,            only: radheat_tend
 
@@ -979,8 +958,8 @@ subroutine radiation_tend( &
    !  chunk_column_index = IdxDay(daylight_column_index)
    integer :: Nday           ! Number of daylight columns
    integer :: Nnite          ! Number of night columns
-   integer :: IdxDay(pcols)  ! Indices of daylight columns -- Dimension is pcols, and is filled from beginning, so idxday(1:nday) are the indices of daylit columns.
-   integer :: IdxNite(pcols) ! Indices of night columns
+   integer :: IdxDay(pcols)  ! chunk indices of daylight columns
+   integer :: IdxNite(pcols) ! chunk indices of night columns
 
    integer :: itim_old
 
@@ -1016,7 +995,6 @@ subroutine radiation_tend( &
    real(r8), allocatable :: coszrs_day(:)
    real(r8), allocatable :: alb_dir(:,:)
    real(r8), allocatable :: alb_dif(:,:)
-   real(r8) :: tsi
 
 
    ! cloud radiative parameters are "in cloud" not "in cell"
@@ -1074,13 +1052,12 @@ subroutine radiation_tend( &
    type(ty_optical_props_1scl) :: cloud_lw
    type(ty_optical_props_2str) :: cloud_sw
 
-   ! Irradiance
    integer :: icall                 ! index through climate/diagnostic radiation calls
-   logical :: active_calls(0:N_DIAG)
 
-   ! gas vmr
+   ! gas vmr.  Separate objects because SW only does calculations for daylight columns.
    type(ty_gas_concs) :: gas_concs_lw
    type(ty_gas_concs) :: gas_concs_sw
+
    ! RRTMGP aerosol objects
    type(ty_optical_props_1scl) :: aer_lw
    type(ty_optical_props_2str) :: aer_sw
@@ -1264,13 +1241,10 @@ subroutine radiation_tend( &
          cam_in,         & ! input (%lwup, %aldir, %asdir, %aldif, %asdif)
          ncol,           & ! input
          nlay,           & ! input
-         nlwbands,       & ! input
-         nswbands,       & ! input
-         ngpt_sw,        & ! input
          nday,           & ! input
          idxday,         & ! input, [would prefer to truncate as 1:ncol]
          coszrs,         & ! input
-         kdist_sw,       & ! input (from init)  ! removed: eccf,           & ! input
+         kdist_sw,       & ! input (from init)
          band2gpt_sw,    & ! input (from init), gpoints by band
          t_sfc,          & ! output
          emis_sfc,       & ! output
@@ -1282,14 +1256,10 @@ subroutine radiation_tend( &
          pint_day,       & ! output
          coszrs_day,     & ! output
          alb_dir,        & ! output
-         alb_dif,        & ! output
-         tsi             & ! output, total solar irradiance (not scaled)
-         )
+         alb_dif)          ! output
 
-      !!--> Set TSI used in radiation to the value in the solar forcing file.
-      !!--> This replaces get_variability() and does same thing. 
-      !!--> The Earth-Sun distance (eccf) provides another scaling, applied later.
-      errmsg = kdist_sw%set_tsi(tsi) ! scales the TSI but does not change spectral distribution
+      ! Set TSI used in rrtmgp to the value from CAM's solar forcing file.
+      errmsg = kdist_sw%set_tsi(sol_tsi)
       if (len_trim(errmsg) > 0) then
          call endrun(sub//': ERROR: kdist_sw%set_tsi: '//trim(errmsg))
       end if
@@ -1468,16 +1438,20 @@ subroutine radiation_tend( &
          if (write_output) then
             call radiation_output_cld(lchnk, ncol, rd)
          end if
-         !
-         ! SHORTWAVE CALCULATION(S)
-         !
-         ! Get the active climate/diagnostic shortwave calculations
-         call rad_cnst_get_call_list(active_calls)
+
+         !=============================!
+         ! SHORTWAVE flux calculations !
+         !=============================!
+
+         ! initialize object for gas concentrations
+         errmsg = gas_concs_sw%init(gaslist_lc)
+         if (len_trim(errmsg) > 0) then
+            call endrun(sub//': ERROR: gas_concs_sw%init: '//trim(errmsg))
+         end if
 
          ! The climate (icall==0) calculation must occur last.
          do icall = N_DIAG, 0, -1
             if (active_calls(icall)) then
-               call set_available_gases(active_gases, gas_concs_sw)  ! set gas concentrations
 
                call rrtmgp_set_gases_sw(             & ! Put gas volume mixing ratio into gas_concs_sw
                                         icall,       & ! input
@@ -1576,9 +1550,10 @@ subroutine radiation_tend( &
       ! This happens between SW and LW (Why?)
       call rad_cnst_out(0, state, pbuf)
 
-      !
-      ! -- LONGWAVE --
-      !
+      !============================!
+      ! LONGWAVE flux calculations !
+      !============================!
+
       if (dolw) then
          if (oldcldoptics) then
             call cloud_rad_props_get_lw(state, pbuf, cld_lw_abs, oldcloud=.true.)
@@ -1653,23 +1628,21 @@ subroutine radiation_tend( &
                                     nlay,                                &
                                     kdist_lw%get_band_lims_wavenumber(), &
                                     name='longwave aerosol optics') 
-
          if (len_trim(errmsg) > 0) then
-            call endrun(sub//': ERROR: aer_lw%init_1scalar: '//trim(errmsg))
+            call endrun(sub//': ERROR: aer_lw%alloc_1scalar: '//trim(errmsg))
          end if
 
-         call rad_cnst_get_call_list(active_calls) ! get list of diagnostic calls
+         ! initialize object for gas concentrations
+         errmsg = gas_concs_lw%init(gaslist_lc)
+         if (len_trim(errmsg) > 0) then
+            call endrun(sub//': ERROR, gas_concs_lw%init: '//trim(errmsg))
+         end if
 
          ! The climate (icall==0) calculation must occur last.
          do icall = N_DIAG, 0, -1
 
             if (active_calls(icall)) then
-               ! initialize the gas concentrations
-               call set_available_gases(active_gases, gas_concs_lw)
-!               errmsg = gas_concs_lw%init(active_gases)
-!               if (len_trim(errmsg) > 0) then
-!                  call endrun(sub//': ERROR code returned by gas_concs_lw%init: '//trim(errmsg))
-!               end if
+
                call rrtmgp_set_gases_lw(icall, state, pbuf, nlay, gas_concs_lw)
 
                call aer_rad_props_lw(              & ! get absorption optical depth
@@ -1703,14 +1676,7 @@ subroutine radiation_tend( &
                                aer_props=aer_lw  & ! optional input, (rrtmgp_set_aer_lw)  
                ) ! note inc_flux is an optional input, but as defined in set_rrtmgp_state, it is only for shortwave
                if (len_trim(errmsg) > 0) then
-                  !
-                  ! DEBUG -- if we die here, find out why
-                  !
-                  write(iulog,*) '** [radiation_tend] DIAGNOSE LW CRASH **'
-                  do i = 1,ncol
-                     write(iulog,*) 'ncol = ',ncol,' t_sfc = ',t_sfc(i),' AT LOCATION lat = ', clat(i), ' lon = ', clon(i)
-                  end do
-                  call endrun(sub//': ERROR code returned by rte_lw: '//trim(errmsg))
+                  call endrun(sub//': ERROR: rte_lw: '//trim(errmsg))
                end if
                !
                ! -- longwave output --
@@ -1743,7 +1709,7 @@ subroutine radiation_tend( &
       if (docosp) then
          ! initialize and calculate emis
          emis(:,:) = 0._r8
-         emis(:ncol,:) = 1._r8 - exp(-cld_lw_abs(lw_cloudsim_band,:ncol,:))
+         emis(:ncol,:) = 1._r8 - exp(-cld_lw_abs(idx_lw_cloudsim,:ncol,:))
          call outfld('EMIS', emis, pcols, lchnk)
 
          ! compute grid-box mean SW and LW snow optical depth for use by COSP
@@ -1756,13 +1722,13 @@ subroutine radiation_tend( &
 
                      ! Add graupel to snow tau for cosp
                      if (cldfgrau_idx > 0 .and. graupel_in_rad) then
-                        gb_snow_tau(i,k) = snow_tau(sw_cloudsim_band,i,k)*cldfsnow(i,k) + &
-                              grau_tau(sw_cloudsim_band,i,k)*cldfgrau(i,k)
-                        gb_snow_lw(i,k)  = snow_lw_abs(lw_cloudsim_band,i,k)*cldfsnow(i,k) + &
-                              grau_lw_abs(lw_cloudsim_band,i,k)*cldfgrau(i,k)
+                        gb_snow_tau(i,k) = snow_tau(idx_sw_cloudsim,i,k)*cldfsnow(i,k) + &
+                              grau_tau(idx_sw_cloudsim,i,k)*cldfgrau(i,k)
+                        gb_snow_lw(i,k)  = snow_lw_abs(idx_lw_cloudsim,i,k)*cldfsnow(i,k) + &
+                              grau_lw_abs(idx_lw_cloudsim,i,k)*cldfgrau(i,k)
                      else
-                        gb_snow_tau(i,k) = snow_tau(sw_cloudsim_band,i,k)*cldfsnow(i,k)
-                        gb_snow_lw(i,k)  = snow_lw_abs(lw_cloudsim_band,i,k)*cldfsnow(i,k)
+                        gb_snow_tau(i,k) = snow_tau(idx_sw_cloudsim,i,k)*cldfsnow(i,k)
+                        gb_snow_lw(i,k)  = snow_lw_abs(idx_lw_cloudsim,i,k)*cldfsnow(i,k)
                      end if
                   end if
                end do
@@ -1778,14 +1744,14 @@ subroutine radiation_tend( &
             ! N.B.: For snow optical properties, the GRID-BOX MEAN shortwave and longwave
             !       optical depths are passed.
             call cospsimulator_intr_run(state,  pbuf, cam_in, emis, coszrs, &
-               cld_swtau_in=cld_tau(sw_cloudsim_band,:,:),&
+               cld_swtau_in=cld_tau(idx_sw_cloudsim,:,:),&
                snow_tau_in=gb_snow_tau, snow_emis_in=gb_snow_lw)
             cosp_cnt(lchnk) = 0
          end if
       end if   
       !!! *** END COSP ***
       
-   else   !  if (dosw .or. dolw) --> no radiation being done.
+   else   ! --> radiative flux calculations not updated
       ! convert radiative heating rates from Q*dp to Q for energy conservation
       ! qrs and qrl are whatever are in pbuf
       ! since those might have been multiplied by pdel, we actually need to divide by pdel 
@@ -1848,9 +1814,9 @@ subroutine radiation_tend( &
    call free_fluxes(flw)
    call free_fluxes(flwc)
 
-!-------------------------------------------------------------------------------
-contains
-!-------------------------------------------------------------------------------
+   !-------------------------------------------------------------------------------
+   contains
+   !-------------------------------------------------------------------------------
 
    subroutine set_sw_diags()
 
@@ -2255,18 +2221,17 @@ subroutine calc_col_mean(state, mmr_pointer, mean_value)
 
 end subroutine calc_col_mean
 
-!===============================================================================
+!=========================================================================================
 
-subroutine coefs_init(coefs_file, kdist, available_gases, band2gpt, tsi_default)
+subroutine coefs_init(coefs_file, kdist, available_gases, band2gpt)
 
    ! Read data from coefficients file.  Initialize the kdist object.
+   ! available_gases object provides the gas names that CAM provides.
 
    ! arguments
    character(len=*),                  intent(in)  :: coefs_file
    class(ty_gas_optics_rrtmgp),       intent(out) :: kdist
-   class(ty_gas_concs),               intent(in)  :: available_gases ! Which gases does the host model have available?
-
-   real(r8), intent(out), optional :: tsi_default  ! RRTMGP reference TSI
+   class(ty_gas_concs),               intent(in)  :: available_gases
 
    ! local variables
    type(file_desc_t)  :: fh    ! pio file handle
@@ -2302,6 +2267,7 @@ subroutine coefs_init(coefs_file, kdist, available_gases, band2gpt, tsi_default)
    real(r8), dimension(:,:),     allocatable :: totplnk
    real(r8), dimension(:,:,:,:), allocatable :: planck_frac
    real(r8), dimension(:),       allocatable :: solar_src_quiet, solar_src_facular, solar_src_sunspot  ! updated from solar_src
+   real(r8)                                  :: tsi_default
    real(r8), dimension(:,:,:),   allocatable :: rayl_lower, rayl_upper
    character(len=32), dimension(:),  allocatable :: gas_minor,         &
                                                     identifier_minor,  &
@@ -2540,15 +2506,6 @@ subroutine coefs_init(coefs_file, kdist, available_gases, band2gpt, tsi_default)
       if (ierr /= PIO_NOERR) call endrun(sub//': error reading optimal_angle_fit')
    end if
 
-   ! solar_src 
-   ! !bpm -- solar_source is not in file, there are solar_source_[facular, sunspot, quiet]
-   ! There's a method that adds them together to get solar_source.
-   ! ierr = pio_inq_varid(fh, 'solar_source', vid)
-   ! if (ierr == PIO_NOERR) then
-   !    allocate(solar_src(gpt))
-   !    ierr = pio_get_var(fh, vid, solar_src)
-   !    if (ierr /= PIO_NOERR) call endrun(sub//': error reading solar_source')
-   ! end if
    ierr = pio_inq_varid(fh, 'solar_source_quiet', vid)
    if (ierr == PIO_NOERR) then
       allocate(solar_src_quiet(gpt))
@@ -2568,7 +2525,6 @@ subroutine coefs_init(coefs_file, kdist, available_gases, band2gpt, tsi_default)
       if (ierr /= PIO_NOERR) call endrun(sub//': error reading solar_source_sunspot')
    end if
 
-   ! +bpm also need to have tsi_default, mg_default, and sb_default
    ierr = pio_inq_varid(fh, 'tsi_default', vid)
    if (ierr == PIO_NOERR) then
       ierr = pio_get_var(fh, vid, tsi_default)
@@ -2836,32 +2792,7 @@ subroutine coefs_init(coefs_file, kdist, available_gases, band2gpt, tsi_default)
    if (allocated(rayl_upper))  deallocate(rayl_upper)
 end subroutine coefs_init
 
-
-
-subroutine set_available_gases(gases, gas_concentrations)
-   ! This subroutine is based on the E3SM implementation. -bpm
-   ! For each gas name in gases, initialize that gas in gas_concentrations.
-   use mo_gas_concentrations, only: ty_gas_concs
-   use mo_rrtmgp_util_string, only: lower_case
-   ! Arguments
-   type(ty_gas_concs), intent(inout) :: gas_concentrations
-   character(len=*),   intent(in)    :: gases(:)
-   ! Local
-   character(len=32), dimension(size(gases)) :: gases_lowercase
-   integer :: igas
-   character(len=128) :: error_msg
-   ! Initialize with lowercase gas names; we should work in lowercase
-   ! whenever possible because we cannot trust string comparisons in RRTMGP
-   ! to be case insensitive ... it *should* work regardless of case.
-   do igas = 1,size(gases)
-      gases_lowercase(igas) = trim(lower_case(gases(igas)))
-   end do
-   error_msg = gas_concentrations%init(gases_lowercase)
-   if (len_trim(error_msg) > 0) then
-      call endrun('Setting available gases. ERROR: '//trim(error_msg))
-   end if
-end subroutine set_available_gases
-
+!=========================================================================================
 
 subroutine reset_fluxes(fluxes)
 

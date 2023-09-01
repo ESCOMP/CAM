@@ -7,7 +7,7 @@ use shr_kind_mod,     only: r8 => shr_kind_r8
 use ppgrid,           only: pcols, pver, pverp
 use physics_types,    only: physics_state
 use physics_buffer,   only: physics_buffer_desc, pbuf_get_index, pbuf_old_tim_idx, pbuf_get_field
-use radconstants,     only: nswbands, nlwbands, idx_sw_diag, ot_length, idx_lw_diag, get_sw_spectral_boundaries
+use radconstants,     only: nswbands, nlwbands, get_sw_spectral_boundaries
 use cam_abortutils,   only: endrun
 use cam_history,      only: outfld
 use rad_constituents, only: iceopticsfile, liqopticsfile
@@ -225,12 +225,6 @@ subroutine old_liquid_optics_sw(state, pbuf, liq_tau, liq_tau_w, liq_tau_w_g, li
          end do ! End do i=1,Nday
       end do    ! End do k=1,pver
    end do ! nswbands
-
-   !call outfld('CL_OD_SW_OLD',liq_tau(idx_sw_diag,:,:), pcols, lchnk)
-   !call outfld('REL_OLD',rel(:,:), pcols, lchnk)
-   !call outfld('CLWPTH_OLD',cliqwp(:,:), pcols, lchnk)
-   !call outfld('KEXT_OLD',kext(:,:), pcols, lchnk)
-
 
 end subroutine old_liquid_optics_sw
 !==============================================================================

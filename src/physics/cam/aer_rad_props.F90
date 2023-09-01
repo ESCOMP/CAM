@@ -11,7 +11,8 @@ use physconst,        only: rga
 use physics_types,    only: physics_state
 
 use physics_buffer,   only: physics_buffer_desc
-use radconstants,     only: nrh, nswbands, nlwbands, idx_sw_diag, ot_length
+use radconstants,     only: nswbands, nlwbands, idx_sw_diag
+use phys_prop,        only: nrh, ot_length
 use rad_constituents, only: rad_cnst_get_info, rad_cnst_get_aer_mmr, &
                             rad_cnst_get_aer_props
 use wv_saturation,    only: qsat
@@ -304,15 +305,14 @@ end subroutine aer_rad_props_sw
 
 subroutine aer_rad_props_lw(list_idx, state, pbuf,  odap_aer)
 
-   use radconstants,  only: ot_length
-
-   use physics_buffer, only : pbuf_get_field, pbuf_get_index, physics_buffer_desc
    ! Purpose: Compute aerosol transmissions needed in absorptivity/
    !    emissivity calculations
 
    ! lw extinction is the same representation for all 
    ! species.  If this changes, this routine will need to do something
    ! similar to the sw with routines like get_hygro_lw_abs
+
+   use physics_buffer, only : pbuf_get_field, pbuf_get_index, physics_buffer_desc
 
    ! Arguments
    integer,             intent(in)  :: list_idx                      ! index of the climate or a diagnostic list
