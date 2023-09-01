@@ -72,7 +72,7 @@ module gw_drag
 
   ! Factor for SH orographic waves.
   real(r8) :: gw_oro_south_fac = 1._r8
-  
+
   ! Frontogenesis function critical threshold.
   real(r8) :: frontgfc = unset_r8
 
@@ -136,9 +136,6 @@ module gw_drag
   type(BeresSourceDesc) :: beres_dp_desc
   type(BeresSourceDesc) :: beres_sh_desc
 
-  ! Width of gaussian used to create frontogenesis tau profile [m/s].
-  real(r8), parameter :: front_gaussian_width = 30._r8
-
   ! Frontogenesis wave settings.
   type(CMSourceDesc) :: cm_desc
   type(CMSourceDesc) :: cm_igw_desc
@@ -183,11 +180,14 @@ module gw_drag
   character(len=1), parameter :: beres_dp_pf = "B"
   character(len=1), parameter :: beres_sh_pf = "S"
 
-  ! namelist 
+  ! namelist
   logical          :: history_amwg                   ! output the variables used by the AMWG diag package
   logical  :: gw_lndscl_sgh = .true. ! scale SGH by land frac
   real(r8) :: gw_prndl = 0.25_r8
   real(r8) :: gw_qbo_hdepth_scaling = 1._r8 ! heating depth scaling factor
+
+  ! Width of gaussian used to create frontogenesis tau profile [m/s].
+  real(r8) :: front_gaussian_width = -huge(1._r8)
 
   logical :: gw_top_taper=.false.
   real(r8), pointer :: vramp(:)=>null()
@@ -232,7 +232,7 @@ subroutine gw_drag_readnl(nlfile)
        rdg_gamma_cd_llb, trpd_leewv_rdg_gamma, bnd_rdggm, &
        gw_oro_south_fac, gw_limit_tau_without_eff, &
        gw_lndscl_sgh, gw_prndl, gw_apply_tndmax, gw_qbo_hdepth_scaling, &
-       gw_top_taper
+       gw_top_taper, front_gaussian_width
   !----------------------------------------------------------------------
 
   if (use_simple_phys) return
@@ -333,6 +333,8 @@ subroutine gw_drag_readnl(nlfile)
   call mpi_bcast(gw_drag_file_sh, len(gw_drag_file_sh), mpi_character, mstrid, mpicom, ierr)
   if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: gw_drag_file_sh")
 
+  call mpi_bcast(front_gaussian_width, 1, mpi_real8, mstrid, mpicom, ierr)
+  if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: front_gaussian_width")
 
   ! Check if fcrit2 was set.
   call shr_assert(fcrit2 /= unset_r8, &
@@ -379,7 +381,7 @@ subroutine gw_init()
 
   ! temporary for restart with ridge scheme
   use cam_initfiles,    only: bnd_topo
-  
+
   use cam_pio_utils,    only: cam_pio_openfile
   use cam_grid_support, only: cam_grid_check, cam_grid_id
   use cam_grid_support, only: cam_grid_get_dim_names
@@ -539,7 +541,7 @@ subroutine gw_init()
 
   ! Initialize subordinate modules.
   call gw_common_init(pver,&
-       tau_0_ubc, ktop, gravit, rair, alpha, gw_prndl, & 
+       tau_0_ubc, ktop, gravit, rair, alpha, gw_prndl, &
        gw_qbo_hdepth_scaling, errstring )
   call shr_assert(trim(errstring) == "", "gw_common_init: "//errstring// &
        errMsg(__FILE__, __LINE__))
@@ -551,7 +553,7 @@ subroutine gw_init()
              &but effgw_oro was not set.")
      end if
   end if
-     
+
   if (use_gw_oro .or. use_gw_rdg_beta .or. use_gw_rdg_gamma) then
 
      sgh_idx = pbuf_get_index('SGH')
@@ -611,7 +613,7 @@ subroutine gw_init()
 
         ! Try to open topo file here.  This workaround will not be needed
         ! once the refactored initialization sequence is on trunk.
-        
+
         allocate(fh_topo)
         ! Error exit is from getfil if file not found.
         call getfil(bnd_topo, bnd_topo_loc)
@@ -627,12 +629,12 @@ subroutine gw_init()
         rdg_mxdis(pcols,prdg,begchunk:endchunk), &
         rdg_anixy(pcols,prdg,begchunk:endchunk), &
         rdg_angll(pcols,prdg,begchunk:endchunk)  )
-   
+
      call infld('GBXAR', fh_topo, dim1name, dim2name, 1, pcols, &
                          begchunk, endchunk, rdg_gbxar, found, gridname='physgrid')
      if (.not. found) call endrun(sub//': ERROR: GBXAR not found on topo file')
      rdg_gbxar = rdg_gbxar * (rearth/1000._r8)*(rearth/1000._r8) ! transform to km^2
- 
+
      call infld('HWDTH', fh_topo, dim1name, 'nrdg', dim2name, 1, pcols, &
                 1, prdg, begchunk, endchunk, rdg_hwdth, found, gridname='physgrid')
      if (.not. found) call endrun(sub//': ERROR: HWDTH not found on topo file')
@@ -707,7 +709,7 @@ subroutine gw_init()
           'interface geopotential heights in GW code ' )
      call addfld('ZMGW',  (/ 'lev' /) , 'A'  ,'m' ,  &
           'midlayer geopotential heights in GW code ' )
- 
+
      call addfld('TAUM1_DIAG' , (/ 'ilev' /) , 'I'  ,'N/m2' , &
           'Ridge based momentum flux profile')
      call addfld('TAU1RDGBETAM' , (/ 'ilev' /) , 'I'  ,'N/m2' , &
@@ -749,7 +751,7 @@ subroutine gw_init()
      if (effgw_rdg_gamma == unset_r8) then
         call endrun(sub//": ERROR: Anisotropic OGW enabled, but effgw_rdg_gamma was not set.")
      end if
-     
+
      call getfil(bnd_rdggm, bnd_rdggm_loc, iflag=1, lexist=found)
      if (found) then
         call cam_pio_openfile(fh_rdggm, bnd_rdggm_loc, PIO_NOWRITE)
@@ -793,7 +795,7 @@ subroutine gw_init()
      call infld('ANGLL', fh_rdggm, dim1name, 'nrdg', dim2name, 1, pcols, &
                 1, prdg, begchunk, endchunk, rdg_angllg, found, gridname='physgrid')
      if (.not. found) call endrun(sub//': ERROR: ANGLL not found on bnd_rdggm')
- 
+
      call pio_closefile(fh_rdggm)
 
      call addfld ('TAU1RDGGAMMAM' , (/ 'ilev' /) , 'I'  ,'N/m2' , &
@@ -1365,7 +1367,7 @@ subroutine gw_tend(state, pbuf, dt, ptend, cam_in, flx_heat)
   real(r8), parameter :: degree2radian = pi/180._r8
   real(r8), parameter :: al0 = 82.5_r8 * degree2radian
   real(r8), parameter :: dlat0 = 5.0_r8 * degree2radian
-  
+
   ! effective gw diffusivity at interfaces needed for output
   real(r8) :: egwdffi(state%ncol,pver+1)
   ! sum from the two types of spectral GW
@@ -1451,7 +1453,7 @@ subroutine gw_tend(state, pbuf, dt, ptend, cam_in, flx_heat)
   ! Totals that accumulate over different sources.
   egwdffi_tot = 0._r8
   flx_heat = 0._r8
-  
+
   if (use_gw_convect_dp) then
      !------------------------------------------------------------------
      ! Convective gravity waves (Beres scheme, deep).
@@ -1802,7 +1804,7 @@ subroutine gw_tend(state, pbuf, dt, ptend, cam_in, flx_heat)
      ! Efficiency of gravity wave momentum transfer.
      ! Take into account that wave sources are only over land.
      call pbuf_get_field(pbuf, sgh_idx, sgh)
- 
+
      if (gw_lndscl_sgh) then
         where (cam_in%landfrac(:ncol) >= epsilon(1._r8))
            effgw = effgw_oro * cam_in%landfrac(:ncol)
@@ -1969,7 +1971,7 @@ subroutine gw_tend(state, pbuf, dt, ptend, cam_in, flx_heat)
   ! Write totals to history file.
   call outfld('EKGW', egwdffi_tot , ncol, lchnk)
   call outfld('TTGW', ptend%s/cpairv(:,:,lchnk),  pcols, lchnk)
- 
+
   call outfld('UTGW_TOTAL', ptend%u, pcols, lchnk)
   call outfld('VTGW_TOTAL', ptend%v, pcols, lchnk)
 
@@ -2143,7 +2145,7 @@ subroutine gw_rdg_calc( &
 
    ! initialize accumulated momentum fluxes and tendencies
    taurx = 0._r8
-   taury = 0._r8 
+   taury = 0._r8
    ttrdg = 0._r8
    utrdg = 0._r8
    vtrdg = 0._r8
@@ -2151,36 +2153,36 @@ subroutine gw_rdg_calc( &
 
    do nn = 1, n_rdg
       kwvrdg  = 0.001_r8 / ( hwdth(:,nn) + 0.001_r8 ) ! this cant be done every time step !!!
-      isoflag = 0   
+      isoflag = 0
       effgw   = effgw_rdg * ( hwdth(1:ncol,nn)* clngt(1:ncol,nn) ) / gbxar(1:ncol)
       effgw   = min( effgw_rdg_max , effgw )
 
       call gw_rdg_src(ncol, band_oro, p, &
          u, v, t, mxdis(:,nn), angll(:,nn), anixy(:,nn), kwvrdg, isoflag, zi, nm, &
-         src_level, tend_level, bwv_level, tlb_level, tau, ubm, ubi, xv, yv,  & 
+         src_level, tend_level, bwv_level, tlb_level, tau, ubm, ubi, xv, yv,  &
          ubmsrc, usrc, vsrc, nsrc, rsrc, m2src, tlb, bwv, Fr1, Fr2, Frx, c)
 
       call gw_rdg_belowpeak(ncol, band_oro, rdg_cd_llb, &
-         t, mxdis(:,nn), anixy(:,nn), kwvrdg, & 
+         t, mxdis(:,nn), anixy(:,nn), kwvrdg, &
          zi, nm, ni, rhoi, &
-         src_level, tau, & 
-         ubmsrc, nsrc, rsrc, m2src, tlb, bwv, Fr1, Fr2, Frx, & 
+         src_level, tau, &
+         ubmsrc, nsrc, rsrc, m2src, tlb, bwv, Fr1, Fr2, Frx, &
          tauoro, taudsw, hdspwv, hdspdw)
 
 
       call gw_rdg_break_trap(ncol, band_oro, &
-         zi, nm, ni, ubm, ubi, rhoi, kwvrdg , bwv, tlb, wbr, & 
-         src_level, tlb_level, hdspwv, hdspdw,  mxdis(:,nn), & 
-         tauoro, taudsw, tau, & 
+         zi, nm, ni, ubm, ubi, rhoi, kwvrdg , bwv, tlb, wbr, &
+         src_level, tlb_level, hdspwv, hdspdw,  mxdis(:,nn), &
+         tauoro, taudsw, tau, &
          ldo_trapped_waves=trpd_leewv)
 
-     
+
       call gw_drag_prof(ncol, band_oro, p, src_level, tend_level, dt, &
          t, vramp,    &
          piln, rhoi, nm, ni, ubm, ubi, xv, yv,   &
          effgw, c, kvtt, q, dse, tau, utgw, vtgw, &
          ttgw, qtgw, egwdffi,   gwut, dttdf, dttke, &
-         kwvrdg=kwvrdg, & 
+         kwvrdg=kwvrdg, &
          satfac_in = 1._r8, lapply_vdiff=gw_rdg_do_vdiff , tau_diag=tau_diag )
 
       ! Add the tendencies from each ridge to the totals.
