@@ -20,13 +20,9 @@ use solar_irrad_data,    only: sol_tsi
 use time_manager,        only: get_nstep, is_first_restart_step, &
                                get_curr_calday, get_step_size
 
-use rad_constituents,    only: N_DIAG, rad_cnst_get_call_list, &
-                               rad_cnst_get_info,              &
-                               rad_cnst_get_gas,               &
-                               rad_cnst_out,                   &
-                               oldcldoptics,                   &
-                               liqcldoptics,                   &
-                               icecldoptics
+use rad_constituents,    only: N_DIAG, rad_cnst_get_call_list,               &
+                               rad_cnst_get_gas, rad_cnst_out, oldcldoptics, &
+                               liqcldoptics, icecldoptics
 
 use radconstants,        only: nswbands, nlwbands, idx_sw_diag, idx_nir_diag, idx_uv_diag, & 
                                idx_lw_diag, idx_sw_cloudsim, idx_lw_cloudsim,              &
@@ -464,7 +460,6 @@ subroutine radiation_init(pbuf2d)
    use phys_control,    only: phys_getopts
    use radiation_data,  only: rad_data_init
    use cloud_rad_props, only: cloud_rad_props_init
-   use modal_aer_opt,   only: modal_aer_opt_init
    use rrtmgp_inputs,   only: rrtmgp_inputs_init
    use time_manager,    only: is_first_step
    use radconstants,    only: set_wavenumber_bands
@@ -479,7 +474,7 @@ subroutine radiation_init(pbuf2d)
    ! -- needed for the kdist initialization routines 
    type(ty_gas_concs) :: available_gases
 
-   integer :: i, icall, nmodes
+   integer :: i, icall
    integer :: nstep                       ! current timestep number
    logical :: history_amwg                ! output the variables used by the AMWG diag package
    logical :: history_vdiag               ! output the variables used by the AMWG variability diag package
@@ -583,13 +578,6 @@ subroutine radiation_init(pbuf2d)
                      history_vdiag_out  = history_vdiag,   &
                      history_budget_out = history_budget,  &
                      history_budget_histfile_num_out = history_budget_histfile_num)
-
-   ! Determine whether modal aerosols are affecting the climate, and if so
-   ! then initialize the modal aerosol optics module
-   call rad_cnst_get_info(0, nmodes=nmodes)
-   if (nmodes > 0) then
-      call modal_aer_opt_init()
-   end if
 
    ! "irad_always" is number of time steps to execute radiation 
    ! continuously from start of initial OR restart run
