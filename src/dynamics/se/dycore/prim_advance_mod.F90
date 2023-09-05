@@ -1212,8 +1212,8 @@ contains
                   cpair*T0*(grad_logexner(:,:,2)-grad_exner(:,:,2)/exner(:,:))
            end if
          else
-           pgf_term(i,j,1)  = density_inv(i,j)*grad_p_full(i,j,1,k)
-           pgf_term(i,j,2)  = density_inv(i,j)*grad_p_full(i,j,2,k)
+           pgf_term(:,:,1)  = density_inv(:,:)*grad_p_full(:,:,1,k)
+           pgf_term(:,:,2)  = density_inv(:,:)*grad_p_full(:,:,2,k)
          endif
 
          do j=1,np
