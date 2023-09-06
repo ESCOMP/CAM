@@ -80,7 +80,6 @@ OPTIONS
      -cpl               Coupling framework [mct | nuopc].  Default: mct.
      -dyn <name>        Dynamical core option: [eul | fv | se | fv3 | mpas].  Default: fv.
      -edit_chem_mech    Invokes CAMCHEM_EDITOR to allow the user to edit the chemistry mechanism file
-     -hemco             Switch enables the use of the Harmonized Emissions Component.
      -hgrid <name>      Specify horizontal grid.  Use nlatxnlon for spectral grids;
                         dlatxdlon for fv grids (dlat and dlon are the grid cell size
                         in degrees for latitude and longitude respectively); nexnp for
@@ -264,7 +263,6 @@ GetOptions(
     "fv3core_libdir=s"          => \$opts{'fv3core_libdir'},
     "gmake=s"                   => \$opts{'gmake'},
     "h|help"                    => \$opts{'help'},
-    "hemco"                     => \$opts{'hemco'},
     "hgrid=s"                   => \$opts{'hgrid'},
     "ionosphere=s"              => \$opts{'ionosphere'},
     "lapack_libdir=s"           => \$opts{'lapack_libdir'},
@@ -1575,14 +1573,6 @@ $nadv = $cfg_ref->get('nadv');
 if ($print>=2) { print "Total advected constituents: $nadv$eol"; }
 
 #-----------------------------------------------------------------------------------------------
-
-# Harmonized Emissions Component (HEMCO)
-if (defined $opts{'hemco'}) {
-    $cfg_ref->set('hemco', $opts{'hemco'});
-}
-my $hemco  = $cfg_ref->get('hemco');
-
-#-----------------------------------------------------------------------------------------------
 # Makefile configuration #######################################################################
 #-----------------------------------------------------------------------------------------------
 
@@ -2112,7 +2102,6 @@ sub write_filepath
     my $waccm_phys    = $cfg_ref->get('waccm_phys');
     my $waccmx        = $cfg_ref->get('waccmx');
     my $ionos         = $cfg_ref->get('ionosphere');
-    my $hemco         = $cfg_ref->get('hemco');
     my $carma         = $cfg_ref->get('carma');
     my $rad           = $cfg_ref->get('rad');
     my $dyn           = $cfg_ref->get('dyn');

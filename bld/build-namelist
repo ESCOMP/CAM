@@ -2051,10 +2051,6 @@ if ($chem =~ /geoschem/) {
 
     my @files;
     # Datasets
-    #@files = ( 'soil_erod_file', 'flbc_file',
-    #           'xs_coef_file','xs_short_file',
-    #           'xs_long_file', 'rsf_file',
-    #           'exo_coldens_file', 'sulf_file' );
     @files = ( 'soil_erod_file', 'flbc_file' );
     foreach my $file (@files) {
         add_default($nl, $file);
