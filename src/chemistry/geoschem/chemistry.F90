@@ -98,7 +98,7 @@ module chemistry
   CHARACTER(LEN=500) :: speciesDB = 'species_database.yml'
 
   ! Location of chemistry input
-  CHARACTER(LEN=256) :: gc_cheminputs
+  CHARACTER(LEN=shr_kind_cl) :: gc_cheminputs
 
   ! Debugging
   LOGICAL :: debug = .TRUE.
@@ -167,8 +167,8 @@ module chemistry
   CHARACTER(len=shr_kind_cl) :: h2orates = ' ' ! pathname for greenhouse gas (lyman-alpha H2O loss)
 
   ! Strings
-  CHARACTER(LEN=255)         :: ThisLoc
-  CHARACTER(LEN=255)         :: ErrMsg
+  CHARACTER(LEN=shr_kind_cl) :: ThisLoc
+  CHARACTER(LEN=shr_kind_cl) :: ErrMsg
 
   ! For dry deposition
   character(len=shr_kind_cl) :: depvel_lnd_file = 'depvel_lnd_file'
@@ -874,7 +874,6 @@ contains
     ! Broadcast to all processors
     !==================================================================
 
-#if defined( SPMD )
     CALL MPIBCAST ( nTracers,    1,                               MPIINT,  0, MPICOM )
     CALL MPIBCAST ( tracerNames, LEN(tracerNames(1))*nTracersMax, MPICHAR, 0, MPICOM )
     CALL MPIBCAST ( nSls,        1,                               MPIINT,  0, MPICOM )
@@ -885,7 +884,6 @@ contains
     CALL MPIBCAST (ghg_chem,           1,                                MPILOG,  0, MPICOM)
     CALL MPIBCAST (bndtvg,             LEN(bndtvg),                      MPICHAR, 0, MPICOM)
     CALL MPIBCAST (h2orates,           LEN(h2orates),                    MPICHAR, 0, MPICOM)
-#endif
 
     IF ( nSls .NE. nSlvd ) THEN
        write(iulog,'(a,i4)') 'nSlvd in geoschem/chem_mods.F90 does not match # non-advected KPP species. Set nSlvd to ', nSls
@@ -1033,8 +1031,8 @@ contains
     LOGICAL                :: Found
 
     ! Strings
-    CHARACTER(LEN=255)     :: historyConfigFile
-    CHARACTER(LEN=255)     :: SpcName
+    CHARACTER(LEN=shr_kind_cl) :: historyConfigFile
+    CHARACTER(LEN=shr_kind_cl) :: SpcName
 
     ! Objects
     TYPE(Species), POINTER :: SpcInfo
@@ -1274,9 +1272,7 @@ contains
           ! Copy the data to a temporary array
           linozData = REAL(Input_Opt%LINOZ_TPARM, r8)
        ENDIF
-#if defined( SPMD )
        CALL MPIBCAST( linozData, nLinoz, MPIR8, 0, MPICOM )
-#endif
        IF ( .NOT. MasterProc ) THEN
           Input_Opt%LINOZ_TPARM = REAL(linozData,fp)
        ENDIF
@@ -1810,10 +1806,8 @@ contains
        CALL freeunit(unitn)
     ENDIF
 
-#ifdef SPMD
     ! Broadcast namelist variables
     CALL MPIBCAST(gc_cheminputs, LEN(gc_cheminputs),      MPICHAR,   0, MPICOM)
-#endif
 
   end subroutine
 !EOC
@@ -1995,10 +1989,11 @@ contains
     REAL(r8)          :: eflx(pcols,pver,pcnst)       ! 3-D emissions in kg/m2/s
 
     ! For GEOS-Chem diagnostics
-    REAL(r8)              :: mmr_tend(state%NCOL,PVER,gas_pcnst)
-    REAL(r8)              :: wk_out(state%NCOL)
-    LOGICAL               :: Found
-    CHARACTER(LEN=255)    :: tagName
+    REAL(r8)          :: mmr_tend(state%NCOL,PVER,gas_pcnst)
+    REAL(r8)          :: wk_out(state%NCOL)
+    LOGICAL           :: Found
+    
+    CHARACTER(LEN=shr_kind_cl) :: tagName
 
     REAL(r8), PARAMETER   :: zlnd  = 0.01_r8   ! Roughness length for soil [m]
     REAL(r8), PARAMETER   :: zslnd = 0.0024_r8 ! Roughness length for snow [m]
@@ -2030,8 +2025,9 @@ contains
     ! Calculating SZA
     REAL(r8)      :: Calday
 
-    CHARACTER(LEN=255)      :: SpcName
-    CHARACTER(LEN=255)      :: Prefix, FieldName
+    CHARACTER(LEN=shr_kind_cl) :: SpcName
+    CHARACTER(LEN=shr_kind_cl) :: Prefix, FieldName
+
     LOGICAL                 :: FND
     INTEGER                 :: SpcId
     TYPE(Species),  POINTER :: SpcInfo
@@ -4389,9 +4385,9 @@ contains
 !===============================================================================
 
   subroutine chem_init_restart(File)
-    use tracer_cnst,      only: init_tracer_cnst_restart
-    use tracer_srcs,      only: init_tracer_srcs_restart
-    use pio, only : file_desc_t
+    use tracer_cnst,      only : init_tracer_cnst_restart
+    use tracer_srcs,      only : init_tracer_srcs_restart
+    use pio,              only : file_desc_t
 
     IMPLICIT NONE
 
@@ -4411,43 +4407,39 @@ contains
 !===============================================================================
 
   subroutine chem_write_restart( File )
-    use tracer_cnst, only: write_tracer_cnst_restart
-    use tracer_srcs, only: write_tracer_srcs_restart
-    !use linoz_data,  only: write_linoz_data_restart
-    use pio, only : file_desc_t
+    use tracer_cnst, only : write_tracer_cnst_restart
+    use tracer_srcs, only : write_tracer_srcs_restart
+    use pio,         only : file_desc_t
 
     IMPLICIT NONE
 
     TYPE(file_desc_t) :: File
 
     WRITE(iulog,'(a)') 'chem_write_restart: writing restarts for tracer sources and offline fields'
-    !
+
     ! data for offline tracers
-    !
     call write_tracer_cnst_restart(File)
     call write_tracer_srcs_restart(File)
-    !call write_linoz_data_restart(File)
+
   end subroutine chem_write_restart
 
 !===============================================================================
 
   subroutine chem_read_restart( File )
-    use tracer_cnst, only: read_tracer_cnst_restart
-    use tracer_srcs, only: read_tracer_srcs_restart
-    !use linoz_data,  only: read_linoz_data_restart
-    use pio, only : file_desc_t
+    use tracer_cnst, only : read_tracer_cnst_restart
+    use tracer_srcs, only : read_tracer_srcs_restart
+    use pio,         only : file_desc_t
 
     IMPLICIT NONE
 
     TYPE(file_desc_t) :: File
 
     WRITE(iulog,'(a)') 'GCCALL CHEM_READ_RESTART'
-    !
+
     ! data for offline tracers
-    !
     call read_tracer_cnst_restart(File)
     call read_tracer_srcs_restart(File)
-    !call read_linoz_data_restart(File)
+
   end subroutine chem_read_restart
 
 !================================================================================

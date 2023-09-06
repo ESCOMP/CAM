@@ -2,25 +2,27 @@
 !--------------------------------------------------------------
 ! ... Basic chemistry parameters and arrays
 !--------------------------------------------------------------
-      use shr_kind_mod,    only : r8 => shr_kind_r8
+      use shr_kind_mod,    only : r8 => shr_kind_r8, shr_kind_cl
       use constituents,    only : pcnst
       implicit none
       save
 
       INTEGER, PARAMETER   :: nTracersMax = 267    ! Must be equal to chem_nadv
       INTEGER              :: nTracers
-      CHARACTER(LEN=255)   :: tracerNames(nTracersMax)
-      CHARACTER(LEN=255)   :: tracerLongNames(nTracersMax)
       REAL(r8)             :: ref_MMR(pcnst)
+
+      CHARACTER(LEN=shr_kind_cl) :: tracerNames(nTracersMax)
+      CHARACTER(LEN=shr_kind_cl) :: tracerLongNames(nTracersMax)
 
       ! Index of first constituent
       INTEGER              :: iFirstCnst
 
       ! Short-lived species (i.e. not advected)
       INTEGER, PARAMETER   :: nSlsMax = 500        ! UNadvected species only
-      INTEGER              :: nSls    
-      CHARACTER(LEN=255)   :: slsNames(nSlsMax)
-      CHARACTER(LEN=255)   :: slsLongnames(nSlsMax)
+      INTEGER              :: nSls
+
+      CHARACTER(LEN=shr_kind_cl) :: slsNames(nSlsMax)
+      CHARACTER(LEN=shr_kind_cl) :: slsLongnames(nSlsMax)
 
       ! Mapping between constituents and GEOS-Chem tracers
       INTEGER              :: map2GC(pcnst)
@@ -100,7 +102,7 @@
       logical :: frc_from_dataset(max(1,extcnt))
       logical :: is_vector
       logical :: is_scalar
-      character(len=255), allocatable :: slvd_lst(:)
+      character(len=shr_kind_cl), allocatable :: slvd_lst(:)
 
       ! Mapping between chemical species and GEOS-Chem species/other tracers
       INTEGER              :: map2chm(gas_pcnst)

@@ -15,7 +15,7 @@ MODULE GeosChem_Emissions_Mod
 !
 ! !USES:
 !
-  USE SHR_KIND_MOD,        ONLY : r8 => shr_kind_r8
+  USE SHR_KIND_MOD,        ONLY : r8 => shr_kind_r8, shr_kind_cl
   USE SPMD_UTILS,          ONLY : MasterProc
   USE CAM_ABORTUTILS,      ONLY : endrun
   USE CHEM_MODS,           ONLY : iFirstCnst
@@ -105,8 +105,8 @@ CONTAINS
     LOGICAL                :: history_cesm_forcing
 
     ! Strings
-    CHARACTER(LEN=255)     :: SpcName
-    CHARACTER(LEN=255)     :: Description
+    CHARACTER(LEN=shr_kind_cl) :: SpcName
+    CHARACTER(LEN=shr_kind_cl) :: Description
 
     ! Real
     REAL(r8)               :: MW
@@ -339,8 +339,8 @@ CONTAINS
     REAL(r8), PARAMETER                    :: m2km  = 1.e-3_r8
 
     ! Strings
-    CHARACTER(LEN=255)                     :: SpcName
-    CHARACTER(LEN=255)                     :: fldname_ns     ! field name HCO_*
+    CHARACTER(LEN=shr_kind_cl)             :: SpcName
+    CHARACTER(LEN=shr_kind_cl)             :: fldname_ns     ! field name HCO_*
 
     !=================================================================
     ! GC_Emissions_Calc begins here!

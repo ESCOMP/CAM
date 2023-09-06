@@ -27,8 +27,6 @@ MODULE GeosChem_History_Mod
   USE ErrCode_Mod
   USE Precision_Mod
 
-  USE cam_abortutils,      only : endrun
-
   IMPLICIT NONE
   PRIVATE
 !

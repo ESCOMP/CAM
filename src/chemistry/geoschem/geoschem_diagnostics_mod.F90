@@ -15,7 +15,7 @@ MODULE GeosChem_Diagnostics_Mod
 !
 ! !USES:
 !
-  USE SHR_KIND_MOD,        ONLY : r8 => shr_kind_r8
+  USE SHR_KIND_MOD,        ONLY : r8 => shr_kind_r8, shr_kind_cl
   USE SHR_CONST_MOD,       ONLY : pi => shr_const_pi
   USE CAM_HISTORY,         ONLY : fieldname_len
   USE CONSTITUENTS,        ONLY : pcnst
@@ -208,11 +208,11 @@ CONTAINS
                                                              ! liquid budgets.
 
     ! Strings
-    CHARACTER(LEN=255)     :: SpcName
-    CHARACTER(LEN=255)     :: tagName
-    CHARACTER(LEN=255)     :: ThisLoc
-    CHARACTER(LEN=255)     :: ErrMsg
-    CHARACTER(LEN=2)       :: unit_basename  ! Units 'kg' or '1'
+    CHARACTER(LEN=shr_kind_cl) :: SpcName
+    CHARACTER(LEN=shr_kind_cl) :: tagName
+    CHARACTER(LEN=shr_kind_cl) :: ThisLoc
+    CHARACTER(LEN=shr_kind_cl) :: ErrMsg
+    CHARACTER(LEN=2)           :: unit_basename  ! Units 'kg' or '1'
 
     ! Objects
     TYPE(Species),     POINTER :: SpcInfo
@@ -921,10 +921,10 @@ CONTAINS
                                                 !  on level edges (T/F)
 
     ! Strings
-    CHARACTER(LEN=255)     :: ThisLoc
-    CHARACTER(LEN=255)     :: ErrMsg
-    CHARACTER(LEN=255)     :: SpcName
-    CHARACTER(LEN=255)     :: tagName
+    CHARACTER(LEN=shr_kind_cl) :: ThisLoc
+    CHARACTER(LEN=shr_kind_cl) :: ErrMsg
+    CHARACTER(LEN=shr_kind_cl) :: SpcName
+    CHARACTER(LEN=shr_kind_cl) :: tagName
 
     ! Real
     REAL(r8)               :: wgt
