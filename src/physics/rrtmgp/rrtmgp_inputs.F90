@@ -56,11 +56,10 @@ real(r8), parameter :: amdc1 = 0.210852_r8   ! Molecular weight of dry air / CFC
 real(r8), parameter :: amdc2 = 0.239546_r8   ! Molecular weight of dry air / CFC12
 
 ! Indices for copying data between cam and rrtmgp arrays
-! Assume the rrtmgp vertical index goes bottom to top of atm
-integer :: ktopcamm ! cam index of top layer
-integer :: ktopradm ! rrtmgp index of layer corresponding to ktopcamm
-integer :: ktopcami ! cam index of top interface
-integer :: ktopradi ! rrtmgp index of interface corresponding to ktopcami
+integer :: ktopcam ! Index in CAM arrays of top level (layer or interface) at which
+                   ! RRTMGP is active.
+integer :: ktoprad ! Index in RRTMGP arrays of the layer or interface corresponding
+                   ! to CAM's top layer or interface
 
 ! wavenumber (cm^-1) boundaries of shortwave bands
 real(r8) :: sw_low_bounds(nswbands), sw_high_bounds(nswbands)
@@ -69,20 +68,16 @@ real(r8) :: sw_low_bounds(nswbands), sw_high_bounds(nswbands)
 contains
 !==================================================================================================
 
-subroutine rrtmgp_inputs_init(ktcamm, ktradm, ktcami, ktradi)
+subroutine rrtmgp_inputs_init(ktcam, ktrad)
       
    ! Note that this routine must be called after the calls to set_wavenumber_bands which set
    ! the sw/lw band boundaries in the radconstants module.
 
-   integer, intent(in) :: ktcamm
-   integer, intent(in) :: ktradm
-   integer, intent(in) :: ktcami
-   integer, intent(in) :: ktradi
+   integer, intent(in) :: ktcam
+   integer, intent(in) :: ktrad
 
-   ktopcamm = ktcamm
-   ktopradm = ktradm
-   ktopcami = ktcami
-   ktopradi = ktradi
+   ktopcam = ktcam
+   ktoprad = ktrad
 
    call get_sw_spectral_boundaries(sw_low_bounds, sw_high_bounds, 'cm^-1')
 
@@ -519,7 +514,7 @@ subroutine rrtmgp_set_cloud_lw(state, nlwbands, cldfrac, c_cld_lw_abs, lwkDist, 
    ! will provide zero optical depths there.
    cloud_lw%tau = 0.0_r8
    do i = 1, ngptlw
-      cloud_lw%tau(:ncol, ktopradm:, i) = taucmcl(i, :ncol, ktopcamm:)
+      cloud_lw%tau(:ncol, ktoprad:, i) = taucmcl(i, :ncol, ktopcam:)
    end do
    errmsg = cloud_lw%validate()
    if (len_trim(errmsg) > 0) then
@@ -546,7 +541,7 @@ subroutine rrtmgp_set_aer_lw(ncol, nlwbands, aer_lw_abs, aer_lw)
    ! If there is an extra layer in the radiation then this initialization
    ! will provide zero optical depths there.
    aer_lw%tau = 0.0_r8
-   aer_lw%tau(:ncol, ktopradm:, :) = aer_lw_abs(:ncol, ktopcamm:, :)
+   aer_lw%tau(:ncol, ktoprad:, :) = aer_lw_abs(:ncol, ktopcam:, :)
    errmsg = aer_lw%validate()
    if (len_trim(errmsg) > 0) then
       call endrun(sub//': ERROR: aer_lw%validate: '//trim(errmsg))
@@ -602,7 +597,7 @@ subroutine rrtmgp_set_cloud_sw( &
    real(r8), allocatable :: day_cld_tau_w_g(:,:,:)
    !--------------------------------------------------------------------------------
    ngptsw = kdist_sw%get_ngpt()
-   nver   = pver - ktopcamm + 1 ! number of CAM's layers in radiation calculation. 
+   nver   = pver - ktopcam + 1 ! number of CAM's layers in radiation calculation. 
 
    ! Compute the input quantities needed for the 2-stream optical props
    ! object.  Also subset the vertical levels and the daylight columns
@@ -621,10 +616,10 @@ subroutine rrtmgp_set_cloud_sw( &
       day_cld_tau_w_g(nswbands,nday,nver))
 
    ! get daylit arrays on radiation levels, note: expect idxday to be truncated to size nday
-   day_cld_tau     = c_cld_tau(    :, idxday(1:nday), ktopcamm:)
-   day_cld_tau_w   = c_cld_tau_w(  :, idxday(1:nday), ktopcamm:)
-   day_cld_tau_w_g = c_cld_tau_w_g(:, idxday(1:nday), ktopcamm:)
-   cldf = cldfrac(idxday(1:nday), ktopcamm:)  ! daylit cloud fraction on radiation levels
+   day_cld_tau     = c_cld_tau(    :, idxday(1:nday), ktopcam:)
+   day_cld_tau_w   = c_cld_tau_w(  :, idxday(1:nday), ktopcam:)
+   day_cld_tau_w_g = c_cld_tau_w_g(:, idxday(1:nday), ktopcam:)
+   cldf = cldfrac(idxday(1:nday), ktopcam:)  ! daylit cloud fraction on radiation levels
    tauc = merge(day_cld_tau, 0.0_r8, day_cld_tau > 0.0_r8)  ! start by setting cloud optical depth, clip @ zero
    asmc = merge(day_cld_tau_w_g / max(day_cld_tau_w, small_val), 0.0_r8, day_cld_tau_w > 0.0_r8)  ! set value of asymmetry
    ssac = merge(max(day_cld_tau_w, small_val) / max(tauc, small_val), 1.0_r8 , tauc > 0.0_r8)
@@ -643,14 +638,14 @@ subroutine rrtmgp_set_cloud_sw( &
 
    ! If there is an extra layer in the radiation then this initialization
    ! will provide the optical properties there.
-   ! These should be shape (ncol, nlay, ngpt); assign levels using ktopradm+k, should 
+   ! These are shape (ncol, nlay, ngpt)
    cloud_sw%tau(:,:,:) = 0.0_r8
    cloud_sw%ssa(:,:,:) = 1.0_r8
    cloud_sw%g(:,:,:)   = 0.0_r8
    do igpt = 1,ngptsw
-      cloud_sw%g  (:, ktopradm:, igpt) = asmcmcl(igpt, ktopcamm:, :)
-      cloud_sw%ssa(:, ktopradm:, igpt) = ssacmcl(igpt, ktopcamm:, :)
-      cloud_sw%tau(:, ktopradm:, igpt) = taucmcl(igpt, ktopcamm:, :)
+      cloud_sw%g  (:, ktoprad:, igpt) = asmcmcl(igpt, ktopcam:, :)
+      cloud_sw%ssa(:, ktoprad:, igpt) = ssacmcl(igpt, ktopcam:, :)
+      cloud_sw%tau(:, ktoprad:, igpt) = taucmcl(igpt, ktopcam:, :)
    end do
 
 
@@ -714,9 +709,11 @@ subroutine rrtmgp_set_aer_sw( &
 
    ! aer_sw is on RAD grid, aer_tau* is on CAM grid ... to make sure they align, use ktop*
    ! aer_sw has dimensions of (nday, nlay, nswbands)
-   aer_sw%tau(1:nday, ktopradm:, :) = max(aer_tau(day_cols, ktopcamm:, :), 0._r8)
-   aer_sw%ssa(1:nday, ktopradm:, :) = merge(aer_tau_w(day_cols, ktopcamm:,:)/aer_tau(day_cols, ktopcamm:, :), 1._r8, aer_tau(day_cols, ktopcamm:, :) > 0._r8)
-   aer_sw%g(  1:nday, ktopradm:, :) = merge(aer_tau_w_g(day_cols, ktopcamm:, :) / aer_tau_w(day_cols, ktopcamm:, :), 0._r8, aer_tau_w(day_cols, ktopcamm:, :) > 1.e-80_r8)
+   aer_sw%tau(1:nday, ktoprad:, :) = max(aer_tau(day_cols, ktopcam:, :), 0._r8)
+   aer_sw%ssa(1:nday, ktoprad:, :) = merge( aer_tau_w(day_cols, ktopcam:,:)/aer_tau(day_cols, ktopcam:, :), &
+                                            1._r8, aer_tau(day_cols, ktopcam:, :) > 0._r8)
+   aer_sw%g(  1:nday, ktoprad:, :) = merge( aer_tau_w_g(day_cols, ktopcam:, :) / aer_tau_w(day_cols, ktopcam:, :), &
+                                            0._r8, aer_tau_w(day_cols, ktopcam:, :) > 1.e-80_r8)
 
    ! impose limits on the components:
    ! aer_sw%tau = max(aer_sw%tau, 0._r) <-- already imposed 
@@ -733,26 +730,5 @@ subroutine rrtmgp_set_aer_sw( &
 end subroutine rrtmgp_set_aer_sw
 
 !==================================================================================================
-
-subroutine expand_and_transpose(ops,arr_in,arr_out)
-   ! based on version in mo_rte_sw
-   class(ty_gas_optics_rrtmgp), intent(in) :: ops  ! spectral information
-   real(r8), dimension(:), intent(in ) :: arr_in  ! (nband)
-   real(r8), dimension(:), intent(out) :: arr_out ! (igpt)
-   ! -------------
-   integer :: nband, ngpt
-   integer :: iband, igpt
-   integer, dimension(2,ops%get_nband()) :: limits
-
-   nband = ops%get_nband()
-   ngpt  = ops%get_ngpt()
-   limits = ops%get_band_lims_gpoint()
-   do iband = 1, nband
-      do igpt = limits(1, iband), limits(2, iband)
-         arr_out(igpt) = arr_in(iband)
-      end do
-   end do
-
- end subroutine expand_and_transpose
 
 end module rrtmgp_inputs

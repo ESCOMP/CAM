@@ -33,9 +33,8 @@ integer, public, protected :: idx_lw_cloudsim = -1 ! band contains 10.5 micron w
 
 ! GASES TREATED BY RADIATION (line spectrae)
 ! These names are recognized by RRTMGP.  They are in the coefficients files as
-! lower case strings.  These upper case names are used by CAM's namelist and can
-! be used to initialize the ty_gas_conc object because the name matching is case
-! insensitive.
+! lower case strings.  These upper case names are used by CAM's namelist and 
+! rad_constituents module.
 integer, public, parameter :: gasnamelength = 5
 integer, public, parameter :: nradgas = 8
 character(len=gasnamelength), public, parameter :: gaslist(nradgas) &

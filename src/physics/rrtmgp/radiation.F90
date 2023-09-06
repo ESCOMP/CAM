@@ -8,7 +8,6 @@ module radiation
 
 use shr_kind_mod,        only: r8=>shr_kind_r8, cl=>shr_kind_cl
 use spmd_utils,          only: masterproc
-use shr_mem_mod,         only: shr_mem_getusage
 use ppgrid,              only: pcols, pver, pverp, begchunk, endchunk
 use ref_pres,            only: pref_edge
 use physics_types,       only: physics_state, physics_ptend
@@ -28,35 +27,25 @@ use radconstants,        only: nswbands, nlwbands, idx_sw_diag, idx_nir_diag, id
                                idx_lw_diag, idx_sw_cloudsim, idx_lw_cloudsim,              &
                                nradgas, gasnamelength, gaslist
 
-use mo_gas_concentrations, only: ty_gas_concs
-use mo_gas_optics_rrtmgp,  only: ty_gas_optics_rrtmgp
+use cospsimulator_intr,  only: docosp, cospsimulator_intr_init, &
+                               cospsimulator_intr_run, cosp_nradsteps
+
+use scamMod,             only: scm_crm_mode, single_column, have_cld, cldobs
 
 use cam_history,         only: addfld, add_default, horiz_only, outfld, hist_fld_active
 use cam_history_support, only: fillvalue, add_vert_coord
 
 use ioFileMod,           only: getfil
 use cam_pio_utils,       only: cam_pio_openfile
-use pio,                 only: file_desc_t,          &  
-                               var_desc_t,           &
-                               pio_int,              &
-                               PIO_NOERR,            &
-                               PIO_INTERNAL_ERROR,   &
-                               pio_seterrorhandling, &
-                               PIO_BCAST_ERROR,      &
-                               pio_inq_dimlen,       &
-                               pio_inq_dimid,        &
-                               pio_inq_varid,        &
-                               pio_def_var,          &
-                               pio_put_var,          &
-                               pio_get_var,          &
-                               pio_put_att,          &
-                               PIO_NOWRITE,          &
-                               pio_closefile
+use pio,                 only: file_desc_t, var_desc_t,                       &
+                               pio_int, pio_double, PIO_NOERR,                &
+                               pio_seterrorhandling, PIO_BCAST_ERROR,         &
+                               pio_inq_dimlen, pio_inq_dimid, pio_inq_varid,  &
+                               pio_def_var, pio_put_var, pio_get_var,         &
+                               pio_put_att, PIO_NOWRITE, pio_closefile
 
-use scamMod,             only: scm_crm_mode, single_column, have_cld, cldobs
-
-use cospsimulator_intr,  only: docosp, cospsimulator_intr_init, &
-                               cospsimulator_intr_run, cosp_nradsteps
+use mo_gas_concentrations, only: ty_gas_concs
+use mo_gas_optics_rrtmgp,  only: ty_gas_optics_rrtmgp
 
 use string_utils,        only: to_lower
 use cam_abortutils,      only: endrun
@@ -205,10 +194,11 @@ integer :: nlay
 !    extra layer that is added between 1 Pa and the model top.
 ! 2. If the WACCM model top is above 1 Pa, then RRMTGP only does calculations
 !    for those model layers that are below 1 Pa.
-integer :: ktopcamm ! index in CAM arrays of top layer at which RRTMGP is active
-integer :: ktopcami ! index in CAM arrays of top interface at which RRTMGP is active
-integer :: ktopradm ! index in RRTMGP arrays of layer corresponding to CAM top layer
-integer :: ktopradi ! index in RRTMGP arrays of interface corresponding to CAM top interface
+integer :: ktopcam ! Index in CAM arrays of top level (layer or interface) at which RRTMGP is active.
+integer :: ktoprad ! Index in RRTMGP arrays of the layer or interface corresponding to CAM's top
+                   ! layer or interface.
+                   ! For CAM's top to bottom indexing, the index of a given layer
+                   ! (midpoint) and the upper interface of that layer, are the same.
 
 ! vertical coordinate for output of fluxes on radiation grid
 real(r8), allocatable, target :: plev_rad(:)
@@ -257,16 +247,10 @@ subroutine radiation_readnl(nlfile)
    character(len=cl) :: rrtmgp_coefs_lw_file, rrtmgp_coefs_sw_file
 
 
-   namelist /radiation_nl/ rrtmgp_coefs_lw_file,         &
-                        rrtmgp_coefs_sw_file,         &
-                        iradsw,                       &
-                        iradlw,                       &
-                        irad_always,                  &
-                        use_rad_dt_cosz,       &
-                        spectralflux,          &
-                        use_rad_uniform_angle, &
-                        rad_uniform_angle,     &
-                        graupel_in_rad
+   namelist /radiation_nl/ &
+      rrtmgp_coefs_lw_file, rrtmgp_coefs_sw_file, iradsw, iradlw,        &
+      irad_always, use_rad_dt_cosz, spectralflux, use_rad_uniform_angle, &
+      rad_uniform_angle, graupel_in_rad
    !-----------------------------------------------------------------------------
 
    if (masterproc) then
@@ -308,7 +292,6 @@ subroutine radiation_readnl(nlfile)
    if (use_rad_uniform_angle .and. rad_uniform_angle == -99._r8) then
       call endrun(subroutine_name // ' ERROR - use_rad_uniform_angle is set to .true, but rad_uniform_angle is not set ')
    end if
-
 
    ! Set module data
    coefs_lw_file   = rrtmgp_coefs_lw_file
@@ -369,7 +352,8 @@ subroutine radiation_register
       call pbuf_add_field('LD'  , 'global',dtype_r8,(/pcols,pverp,nlwbands/), ld_idx) ! longwave downward flux (per band)
    end if
 
-   call rad_data_register()  ! if "fixed dynamical heating", this adds 4 fields to physics buffer (needed?)
+   ! Register fields for offline radiation driver.
+   call rad_data_register()
 
 end subroutine radiation_register
 
@@ -405,6 +389,7 @@ function radiation_do(op, timestep)
       case default
          call endrun('radiation_do: unknown operation:'//op)
    end select
+
 end function radiation_do
 
 !================================================================================================
@@ -452,8 +437,7 @@ end function radiation_nextsw_cday
 
 subroutine radiation_init(pbuf2d)
 
-   ! Initialize the radiation, cloud, and aerosol optics, and solar variability
-   ! parameterizations.  
+   ! Initialize the radiation and cloud optics.
    ! Add fields to the history buffer.
 
    use physics_buffer,  only: pbuf_get_index, pbuf_set_field
@@ -499,19 +483,15 @@ subroutine radiation_init(pbuf2d)
    if (nlay == pverp) then
       ! Top model interface is below 1 Pa.  RRTMGP is active in all model layers plus
       ! 1 extra layer between model top and 1 Pa.
-      ktopcamm = 1
-      ktopcami = 1 
-      ktopradm = 2
-      ktopradi = 2
+      ktopcam = 1
+      ktoprad = 2
       plev_rad(1) = 1.01_r8 ! Top of extra layer, Pa.
       plev_rad(2:) = pref_edge
    else
       ! nlay < pverp.  nlay layers are set by radiation
-      ktopcamm = pverp - nlay + 1
-      ktopcami = pverp - nlay + 1
-      ktopradm = 1
-      ktopradi = 1
-      plev_rad = pref_edge(ktopcami:)
+      ktopcam = pverp - nlay + 1
+      ktoprad = 1
+      plev_rad = pref_edge(ktopcam:)
    end if
 
    ! Define a pressure coordinate to allow output of data on the radiation grid.
@@ -552,9 +532,11 @@ subroutine radiation_init(pbuf2d)
    call set_wavenumber_bands('sw', kdist_sw%get_nband(), kdist_sw%get_band_lims_wavenumber()) 
    call set_wavenumber_bands('lw', kdist_lw%get_nband(), kdist_lw%get_band_lims_wavenumber())
 
-   call rrtmgp_inputs_init(ktopcamm, ktopradm, ktopcami, ktopradi) ! this sets these values as module data in rrtmgp_inputs
+   call rrtmgp_inputs_init(ktopcam, ktoprad)
 
-   call rad_data_init(pbuf2d)  ! initialize output fields for offline driver
+   ! initialize output fields for offline driver
+   call rad_data_init(pbuf2d)
+
    call cloud_rad_props_init()
   
    if (is_first_step()) then
@@ -588,7 +570,8 @@ subroutine radiation_init(pbuf2d)
       irad_always = irad_always + nstep
    end if
 
-   if (docosp) call cospsimulator_intr_init    
+   if (docosp) call cospsimulator_intr_init()
+
    allocate(cosp_cnt(begchunk:endchunk))
    if (is_first_restart_step()) then
       cosp_cnt(begchunk:endchunk) = cosp_cnt_init
@@ -808,7 +791,7 @@ subroutine radiation_define_restart(file)
 
    call pio_seterrorhandling(file, PIO_BCAST_ERROR)
 
-   ierr = pio_def_var(file, 'nextsw_cday', pio_int, nextsw_cday_desc)
+   ierr = pio_def_var(file, 'nextsw_cday', pio_double, nextsw_cday_desc)
    ierr = pio_put_att(file, nextsw_cday_desc, 'long_name', 'future radiation calday for surface models')
    if (docosp) then
       ierr = pio_def_var(File, 'cosp_cnt_init', pio_int, cospcnt_desc)
@@ -1835,18 +1818,18 @@ subroutine radiation_tend( &
       
       ! fns, fcns, rd are on CAM grid (do not have "extra layer" when it is present.)
       do i = 1, nday
-         fns(idxday(i),ktopcami:)  = fsw%flux_net(i, ktopradi:)
-         fcns(idxday(i),ktopcami:) = fswc%flux_net(i,ktopradi:)
-         fsds(idxday(i))           = fsw%flux_dn(i, nlay+1)
-         rd%fsdsc(idxday(i))       = fswc%flux_dn(i, nlay+1)
-         rd%fsutoa(idxday(i))      = fsw%flux_up(i, 1)
-         rd%fsntoa(idxday(i))      = fsw%flux_net(i, 1)   ! net sw flux at TOA (*NOT* the same as fsnt)
-         rd%fsntoac(idxday(i))     = fswc%flux_net(i, 1)  ! net sw clearsky flux at TOA (*NOT* the same as fsntc)
-         rd%solin(idxday(i))       = fswc%flux_dn(i, 1)
-         rd%flux_sw_up(idxday(i),ktopcami:)     = fsw%flux_up(i,ktopradi:)
-         rd%flux_sw_dn(idxday(i),ktopcami:)     = fsw%flux_dn(i,ktopradi:)
-         rd%flux_sw_clr_up(idxday(i),ktopcami:) = fswc%flux_up(i,ktopradi:) 
-         rd%flux_sw_clr_dn(idxday(i),ktopcami:) = fswc%flux_dn(i,ktopradi:)
+         fns(idxday(i),ktopcam:)  = fsw%flux_net(i, ktoprad:)
+         fcns(idxday(i),ktopcam:) = fswc%flux_net(i,ktoprad:)
+         fsds(idxday(i))          = fsw%flux_dn(i, nlay+1)
+         rd%fsdsc(idxday(i))      = fswc%flux_dn(i, nlay+1)
+         rd%fsutoa(idxday(i))     = fsw%flux_up(i, 1)
+         rd%fsntoa(idxday(i))     = fsw%flux_net(i, 1)   ! net sw flux at TOA (*NOT* the same as fsnt)
+         rd%fsntoac(idxday(i))    = fswc%flux_net(i, 1)  ! net sw clearsky flux at TOA (*NOT* the same as fsntc)
+         rd%solin(idxday(i))      = fswc%flux_dn(i, 1)
+         rd%flux_sw_up(idxday(i),ktopcam:)     = fsw%flux_up(i,ktoprad:)
+         rd%flux_sw_dn(idxday(i),ktopcam:)     = fsw%flux_dn(i,ktoprad:)
+         rd%flux_sw_clr_up(idxday(i),ktopcam:) = fswc%flux_up(i,ktoprad:) 
+         rd%flux_sw_clr_dn(idxday(i),ktopcam:) = fswc%flux_dn(i,ktoprad:)
          rd%fsdn(idxday(i),:) = fsw%flux_dn(i,:)
          rd%fsdnc(idxday(i),:) = fswc%flux_dn(i,:)
          rd%fsup(idxday(i),:) = fsw%flux_up(i,:)
@@ -1877,8 +1860,8 @@ subroutine radiation_tend( &
          su  = 0._r8
          sd  = 0._r8
          do i = 1, nday
-            su(idxday(i),ktopcami:,:) = fsw%bnd_flux_up(i,ktopradi:,:)
-            sd(idxday(i),ktopcami:,:) = fsw%bnd_flux_dn(i,ktopradi:,:)
+            su(idxday(i),ktopcam:,:) = fsw%bnd_flux_up(i,ktoprad:,:)
+            sd(idxday(i),ktopcam:,:) = fsw%bnd_flux_dn(i,ktoprad:,:)
          end do
       end if
 
@@ -1923,21 +1906,20 @@ subroutine radiation_tend( &
 
    subroutine set_lw_diags()
 
-      ! Transform RRTMGP output for CAM
-      ! Assumes RRTMGP levels are bottom to top (though it does not care need to be consistent).  
-      ! CAM levels are top to bottom.
+      ! Set CAM LW diagnostics
       !----------------------------------------------------------------------------
  
       fnl = 0._r8
       fcnl = 0._r8
 
       ! RTE-RRTMGP convention for net is (down - up) **CAM assumes (up - down) !!
-      fnl(:ncol,ktopcami:)  = -1._r8 * flw%flux_net(    :, ktopradi:)
-      fcnl(:ncol,ktopcami:) = -1._r8 * flwc%flux_net(   :, ktopradi:)
-      rd%flux_lw_up(:ncol,ktopcami:)     = flw%flux_up( :, ktopradi:)
-      rd%flux_lw_clr_up(:ncol,ktopcami:) = flwc%flux_up(:, ktopradi:)
-      rd%flux_lw_dn(:ncol,ktopcami:)     = flw%flux_dn( :, ktopradi:)
-      rd%flux_lw_clr_dn(:ncol,ktopcami:) = flwc%flux_dn(:, ktopradi:)
+      fnl(:ncol,ktopcam:)  = -1._r8 * flw%flux_net(    :, ktoprad:)
+      fcnl(:ncol,ktopcam:) = -1._r8 * flwc%flux_net(   :, ktoprad:)
+
+      rd%flux_lw_up(:ncol,ktopcam:)     = flw%flux_up( :, ktoprad:)
+      rd%flux_lw_clr_up(:ncol,ktopcam:) = flwc%flux_up(:, ktoprad:)
+      rd%flux_lw_dn(:ncol,ktopcam:)     = flw%flux_dn( :, ktoprad:)
+      rd%flux_lw_clr_dn(:ncol,ktopcam:) = flwc%flux_dn(:, ktoprad:)
 
       call heating_rate('LW', ncol, fnl, qrl)
       call heating_rate('LW', ncol, fcnl, rd%qrlc)
@@ -1951,8 +1933,8 @@ subroutine radiation_tend( &
       cam_out%flwds(:ncol) = flw%flux_dn(:, nlay+1)
       rd%fldsc(:ncol)      = flwc%flux_dn(:, nlay+1)
 
-      rd%flut(:ncol)  = flw%flux_up(:, ktopradi) 
-      rd%flutc(:ncol) = flwc%flux_up(:, ktopradi)
+      rd%flut(:ncol)  = flw%flux_up(:, ktoprad) 
+      rd%flutc(:ncol) = flwc%flux_up(:, ktoprad)
 
       rd%fldn(:ncol,:)  = flw%flux_dn
       rd%fldnc(:ncol,:) = flwc%flux_dn
@@ -1971,8 +1953,8 @@ subroutine radiation_tend( &
       if (spectralflux) then
          lu  = 0._r8
          ld  = 0._r8
-         lu(:ncol, ktopcami:, :)  = flw%bnd_flux_up(:, ktopradi:, :)
-         ld(:ncol, ktopcami:, :)  = flw%bnd_flux_dn(:, ktopradi:, :)
+         lu(:ncol, ktopcam:, :)  = flw%bnd_flux_up(:, ktoprad:, :)
+         ld(:ncol, ktopcam:, :)  = flw%bnd_flux_dn(:, ktoprad:, :)
       end if
 
    end subroutine set_lw_diags
