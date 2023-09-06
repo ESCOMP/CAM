@@ -1,35 +1,21 @@
-!------------------------------------------------------------------------------
-!            "GEOS-Chem" chemistry emissions interface                        !
-!------------------------------------------------------------------------------
-!BOP
-!
-! !MODULE: geoschem_emissions_mod.F90
-!
-! !DESCRIPTION: Module geoschem\_emissions\_mod contains routines which retrieve
-!  emission fluxes from HEMCO and transfers it back to the CESM-GC interface
-!\\
-!\\
-! !INTERFACE:
-!
+! Module geoschem_emissions_mod contains routines which retrieve
+! emission fluxes from HEMCO and transfers it back to the CESM-GC interface
+! 07 Oct 2020 - T. M. Fritz   - Initial version
 MODULE GeosChem_Emissions_Mod
-!
-! !USES:
-!
-  USE SHR_KIND_MOD,        ONLY : r8 => shr_kind_r8, shr_kind_cl
-  USE SPMD_UTILS,          ONLY : MasterProc
-  USE CAM_ABORTUTILS,      ONLY : endrun
-  USE CHEM_MODS,           ONLY : iFirstCnst
-  USE CONSTITUENTS,        ONLY : pcnst, cnst_name
-  USE SHR_MEGAN_MOD,       ONLY : shr_megan_mechcomps, shr_megan_mechcomps_n 
-  USE CAM_LOGFILE,         ONLY : iulog
+
+  ! CAM modules
+  use cam_abortutils,      only : endrun
+  use cam_logfile,         only : iulog
+  use chem_mods,           only : iFirstCnst
+  use constituents,        only : pcnst, cnst_name
+  use shr_kind_mod,        only : r8 => shr_kind_r8, shr_kind_cl
+  use shr_megan_mod,       only : shr_megan_mechcomps, shr_megan_mechcomps_n
+  use spmd_utils,          only : MasterProc
 
   IMPLICIT NONE
 
   PRIVATE
 
-!
-! !PUBLIC MEMBER FUNCTIONS:
-!
   PUBLIC  :: GC_Emissions_Init
   PUBLIC  :: GC_Emissions_Calc
   PUBLIC  :: GC_Emissions_Final
@@ -54,47 +40,21 @@ MODULE GeosChem_Emissions_Mod
 
   ! Cache for is_extfrc?
   LOGICAL,  ALLOCATABLE :: pcnst_is_extfrc(:) ! no idea why the indexing is not 1:gas_pcnst or why iFirstCnst can be < 0
-!
-! !REVISION HISTORY:
-!  07 Oct 2020 - T. M. Fritz   - Initial version
-!  20 Jan 2023 - H.P. Lin      - Update for 2D/3D pbuf switches
-!EOP
-!------------------------------------------------------------------------------
-!BOC
-!
+
 CONTAINS
-!
-!EOC
-!------------------------------------------------------------------------------
-!BOP
-!
-! !IROUTINE: gc_emissions_init
-!
-! !DESCRIPTION: Subroutine GC\_Emissions\_Init initializes the emissions
-!  routine
-!\\
-!\\
-! !INTERFACE:
-!
+
   SUBROUTINE GC_Emissions_Init( )
-!
-! !USES:
-!
-    USE PHYSICS_TYPES,       ONLY : physics_state
-    USE CONSTITUENTS,        ONLY : cnst_get_ind
-    USE PHYS_CONTROL,        ONLY : phys_getopts
-    USE MO_CHEM_UTLS,        ONLY : get_spc_ndx, get_extfrc_ndx
-    USE CAM_HISTORY,         ONLY : addfld, add_default, horiz_only
-    USE FIRE_EMISSIONS,      ONLY : fire_emissions_init
-    USE CHEM_MODS,           ONLY : adv_mass
-    USE INFNAN,              ONLY : NaN, assignment(=)
-!
-! !REVISION HISTORY:
-!  07 Oct 2020 - T. M. Fritz   - Initial version
-!EOP
-!------------------------------------------------------------------------------
-!BOC
-!
+
+    ! CAM modules
+    use cam_history,         only : addfld, add_default, horiz_only
+    use chem_mods,           only : adv_mass
+    use constituents,        only : cnst_get_ind
+    use fire_emissions,      only : fire_emissions_init
+    use infnan,              only : NaN, assignment(=)
+    use mo_chem_utls,        only : get_spc_ndx, get_extfrc_ndx
+    use phys_control,        only : phys_getopts
+    use physics_types,       only : physics_state
+
     ! Integers
     INTEGER                :: IERR
     INTEGER                :: N, II
@@ -110,10 +70,6 @@ CONTAINS
 
     ! Real
     REAL(r8)               :: MW
-
-    !=================================================================
-    ! GC_Emissions_Init begins here!
-    !=================================================================
 
     CALL phys_getopts( history_aerosol_out      = history_aerosol,   &
                        history_chemistry_out    = history_chemistry, &
@@ -247,73 +203,39 @@ CONTAINS
     enddo
 
   END SUBROUTINE GC_Emissions_Init
-!EOC
-!------------------------------------------------------------------------------
-!BOP
-!
-! !IROUTINE: gc_emissions_calc
-!
-! !DESCRIPTION: Subroutine GC\_Emissions\_Calc retrieves emission fluxes
-!  from HEMCO and returns a 3-D array of emission flux to the CESM-GC
-!  interface. On top of passing data, this routine handles a number of checks.
-!\\
-!\\
-! !INTERFACE:
-!
+
   SUBROUTINE GC_Emissions_Calc( state, hco_pbuf2d, State_Met, cam_in, eflx, iStep )
-!
-! !USES:
-!
-    USE State_Met_Mod,       ONLY : MetState
-    USE CAMSRFEXCH,          ONLY : cam_in_t
-    USE CONSTITUENTS,        ONLY : cnst_get_ind, cnst_mw
-    USE PHYSICS_TYPES,       ONLY : physics_state
-    USE PHYSICS_BUFFER,      ONLY : pbuf_get_index, pbuf_get_chunk
-    USE PHYSICS_BUFFER,      ONLY : physics_buffer_desc, pbuf_get_field
-    USE PPGRID,              ONLY : pcols, pver, begchunk
-    USE CAM_HISTORY,         ONLY : outfld
-    USE STRING_UTILS,        ONLY : to_upper
-    USE PHYSCONSTANTS,       ONLY : PI
+    ! Subroutine GC_Emissions_Calc retrieves emission fluxes
+    ! from HEMCO and returns a 3-D array of emission flux to the CESM-GC
+    ! interface. On top of passing data, this routine handles a number of checks.
 
-    ! Lightning emissions
-    USE MO_LIGHTNING,        ONLY : prod_NO
+    ! CAM modules
+    use aero_model,          only : aero_model_emissions ! Aerosol emissions
+    use cam_history,         only : outfld
+    use camsrfexch,          only : cam_in_t
+    use constituents,        only : cnst_get_ind, cnst_mw
+    use fire_emissions,      only : fire_emissions_srf, fire_emissions_vrt ! Fire emissions
+    use mo_lightning,        only : prod_NO! Lightning emissions
+    use physconst,           only : rga, avogad
+    use physics_buffer,      only : pbuf_get_index, pbuf_get_chunk
+    use physics_buffer,      only : physics_buffer_desc, pbuf_get_field
+    use physics_types,       only : physics_state
+    use ppgrid,              only : pcols, pver, begchunk
+    use srf_field_check,     only : active_Fall_flxvoc ! MEGAN emissions
+    use string_utils,        only : to_upper
 
-    ! MEGAN emissions
-    USE SRF_FIELD_CHECK,     ONLY : active_Fall_flxvoc
+    ! GEOS-Chem modules
+    use PhysConstants,       only : AVO, PI
+    use State_Met_Mod,       only : MetState    
 
-    ! Fire emissions
-    USE FIRE_EMISSIONS,      ONLY : fire_emissions_srf
-    USE FIRE_EMISSIONS,      ONLY : fire_emissions_vrt
-
-    ! Aerosol emissions
-    USE AERO_MODEL,          ONLY : aero_model_emissions
-
-    ! GEOS-Chem version of physical constants
-    USE PHYSCONSTANTS,       ONLY : AVO
-    ! CAM version of physical constants
-    USE PHYSCONST,           ONLY : rga, avogad
-!
-! !INPUT PARAMETERS:
-!
     TYPE(physics_state),                INTENT(IN   ) :: state           ! Physics state variables
     TYPE(physics_buffer_desc), POINTER, INTENT(IN   ) :: hco_pbuf2d(:,:) ! Pointer to 2-D pbuf
     TYPE(MetState),                     INTENT(IN   ) :: State_Met       ! Meteorology State object
     INTEGER,                            INTENT(IN   ) :: iStep
-!
-! !OUTPUT PARAMETERS:
-!
-     TYPE(cam_in_t),                    INTENT(INOUT) :: cam_in                 ! import state
+
+    TYPE(cam_in_t),                    INTENT(INOUT) :: cam_in                 ! import state
      REAL(r8),                          INTENT(  OUT) :: eflx(pcols,pver,pcnst) ! 3-D emissions in kg/m2/s
-!
-! !REVISION HISTORY:
-!  07 Oct 2020 - T. M. Fritz   - Initial version
-!  06 Mar 2023 - H.P. Lin      - Now emit surface fluxes directly
-!EOP
-!------------------------------------------------------------------------------
-!BOC
-!
-! !LOCAL VARIABLES:
-!
+
     ! Integers
     INTEGER                                :: LCHNK
     INTEGER                                :: nY, nZ
@@ -342,10 +264,7 @@ CONTAINS
     CHARACTER(LEN=shr_kind_cl)             :: SpcName
     CHARACTER(LEN=shr_kind_cl)             :: fldname_ns     ! field name HCO_*
 
-    !=================================================================
-    ! GC_Emissions_Calc begins here!
-    !=================================================================
-
+    
     ! Initialize pointers
     pbuf_chnk => NULL()
     pbuf_ik   => NULL()
@@ -602,34 +521,12 @@ CONTAINS
     ! eflx(1:nY,nZ,:)     = 0.0e+00_r8
 
   END SUBROUTINE GC_Emissions_Calc
-!EOC
-!------------------------------------------------------------------------------
-!BOP
-!
-! !IROUTINE: gc_emissions_final
-!
-! !DESCRIPTION: Subroutine GC\_Emissions\_Final cleans up the module
-!\\
-!\\
-! !INTERFACE:
-!
+
   SUBROUTINE GC_Emissions_Final
-!
-! !REVISION HISTORY:
-!  07 Oct 2020 - T. M. Fritz   - Initial version
-!EOP
-!------------------------------------------------------------------------------
-!BOC
-!
-    !=================================================================
-    ! GC_Emissions_Final begins here!
-    !=================================================================
 
     IF ( ALLOCATED( megan_indices_map  ) ) DEALLOCATE( megan_indices_map )
     IF ( ALLOCATED( megan_wght_factors ) ) DEALLOCATE( megan_wght_factors )
 
   END SUBROUTINE GC_Emissions_Final
-!EOC
-!------------------------------------------------------------------------------
-!EOC
-  END MODULE GeosChem_Emissions_Mod
+
+END MODULE GeosChem_Emissions_Mod

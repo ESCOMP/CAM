@@ -1,44 +1,27 @@
-!------------------------------------------------------------------------------
-!            GEOS-Chem chemistry diagnostics interface                      !
-!------------------------------------------------------------------------------
-!BOP
-!
-! !MODULE: geoschem_diagnostics_mod.F90
-!
-! !DESCRIPTION: Module geoschem\_diagnostics\_mod contains routines which aim to
-!  diagnose variables from GEOS-Chem
-!\\
-!\\
-! !INTERFACE:
-!
 MODULE GeosChem_Diagnostics_Mod
-!
-! !USES:
-!
-  USE SHR_KIND_MOD,        ONLY : r8 => shr_kind_r8, shr_kind_cl
-  USE SHR_CONST_MOD,       ONLY : pi => shr_const_pi
-  USE CAM_HISTORY,         ONLY : fieldname_len
-  USE CONSTITUENTS,        ONLY : pcnst
-  USE CHEM_MODS,           ONLY : gas_pcnst, map2chm
-  USE CHEM_MODS,           ONLY : iFirstCnst
-  USE MO_TRACNAME,         ONLY : solsym
-  USE SPMD_UTILS,          ONLY : MasterProc
-  USE PPGRID,              ONLY : begchunk, pver
-  USE CAM_LOGFILE,         ONLY : iulog
-  USE STRING_UTILS,        ONLY : to_upper
-  USE Error_Mod                                 ! For error checking
-  USE ErrCode_Mod                               ! Error codes for success or failure
+
+  ! CAM modules
+  use cam_history,    only : fieldname_len
+  use cam_logfile,    only : iulog
+  use chem_mods,      only : gas_pcnst, map2chm, iFirstCnst
+  use constituents,   only : pcnst
+  use mo_tracname,    only : solsym
+  use ppgrid,         only : begchunk, pver
+  use shr_const_mod,  only : pi => shr_const_pi
+  use shr_kind_mod,   only : r8 => shr_kind_r8, shr_kind_cl
+  use spmd_utils,     only : MasterProc
+  use string_utils,   only : to_upper
+
+  ! GEOS-Chem modules
+  use ErrCode_Mod,    only : GC_SUCCESS
 
   IMPLICIT NONE
 
   PRIVATE
 
-!
-! !PUBLIC MEMBER FUNCTIONS:
-!
   PUBLIC :: GC_Diagnostics_Init
   PUBLIC :: GC_Diagnostics_Calc
-  PUBLIC :: wetdep_name, wtrate_name
+  PUBLIC :: wetdep_name, wtrate_name, dtchem_name
 
   CHARACTER(LEN=fieldname_len) :: srcnam(gas_pcnst)      ! Names of source/sink tendencies
   CHARACTER(LEN=fieldname_len) :: wetdep_name(gas_pcnst) ! Wet deposition tendencies
@@ -124,58 +107,34 @@ MODULE GeosChem_Diagnostics_Mod
   integer :: id_o,id_o2,id_h,id_n2o
   integer :: id_co2,id_o3,id_oh,id_ho2,id_so4_a1,id_so4_a2,id_so4_a3
   integer :: id_num_a2,id_num_a3,id_dst_a3,id_ncl_a3
-!
+
 ! !REVISION HISTORY:
 !  28 Oct 2020 - T. M. Fritz   - Initial version
-!EOP
-!------------------------------------------------------------------------------
-!BOC
-!
+
 CONTAINS
-!
-!EOC
-!------------------------------------------------------------------------------
-!BOP
-!
-! !IROUTINE: gc_diagnostics_init
-!
-! !DESCRIPTION: Subroutine GC\_Diagnostics\_Init declares the variables to
-!  diagnosethe
-!\\
-!\\
-! !INTERFACE:
-!
+
   SUBROUTINE GC_Diagnostics_Init( Input_Opt, State_Chm, State_Met )
-!
-! !USES:
-!
-  USE Input_Opt_Mod,       ONLY : OptInput
-  USE State_Chm_Mod,       ONLY : ChmState
-  USE State_Met_Mod,       ONLY : MetState
-  USE State_Diag_Mod,      ONLY : get_TagInfo
-  USE Species_Mod,         ONLY : Species
-  USE Registry_Mod,        ONLY : MetaRegItem, RegItem
-  USE State_Chm_Mod,       ONLY : Ind_
-  USE CONSTITUENTS,        ONLY : cnst_name, sflxnam
-  USE CONSTITUENTS,        ONLY : cnst_get_ind
-  USE CAM_HISTORY,         ONLY : addfld, add_default, horiz_only
-  USE PHYS_CONTROL,        ONLY : phys_getopts
-  USE DRYDEP_MOD,          ONLY : depName
-  USE MO_CHEM_UTLS,        ONLY : get_spc_ndx
-!
-! !INPUT PARAMETERS:
-!
+
+    ! CAM modules 
+    use cam_history,         only : addfld, add_default, horiz_only
+    use constituents,        only : cnst_name, sflxnam, cnst_get_ind
+    use mo_chem_utls,        only : get_spc_ndx
+    use phys_control,        only : phys_getopts
+
+    ! GEOS-Chem modules
+    use Input_Opt_Mod,       only : OptInput
+    use State_Chm_Mod,       only : ChmState
+    use State_Met_Mod,       only : MetState
+    use State_Diag_Mod,      only : get_TagInfo
+    use Species_Mod,         only : Species
+    use Registry_Mod,        only : MetaRegItem, RegItem
+    use State_Chm_Mod,       only : Ind_
+    use DryDep_Mod,          only : depName
+    
     TYPE(OptInput),    INTENT(IN) :: Input_Opt   ! Input options
     TYPE(ChmState),    INTENT(IN) :: State_Chm   ! Chemistry State object
     TYPE(MetState),    INTENT(IN) :: State_Met   ! Meteorology State object
-!
-! !REVISION HISTORY:
-!  20 Oct 2020 - T. M. Fritz   - Initial version
-!EOP
-!------------------------------------------------------------------------------
-!BOC
-!
-    ! Integer
+    
     INTEGER                :: M, N, K, SM
     INTEGER                :: idx
     INTEGER                :: RC
@@ -189,7 +148,6 @@ CONTAINS
     INTEGER                :: history_budget_histfile_num    ! output history file number
                                                              ! for budget fields
 
-    ! Logical
     LOGICAL                :: Found
     LOGICAL                :: compare_uppercase              ! Compare upper-case names
     LOGICAL                :: history_aerosol                ! Output the MAM aerosol
@@ -207,7 +165,6 @@ CONTAINS
                                                              ! cloud ice and cloud
                                                              ! liquid budgets.
 
-    ! Strings
     CHARACTER(LEN=shr_kind_cl) :: SpcName
     CHARACTER(LEN=shr_kind_cl) :: tagName
     CHARACTER(LEN=shr_kind_cl) :: ThisLoc
@@ -839,56 +796,39 @@ CONTAINS
 
     CALL Addfld( 'CT_H2O_GHG',   (/ 'lev' /), 'A','kg/kg/s', 'ghg-chem h2o source/sink' )
 
-    !=======================================================================
-    ! Cleanup and quit
-    !=======================================================================
+
+    ! Cleanup
     Current => NULL()
     Item    => NULL()
 
   END SUBROUTINE GC_Diagnostics_Init
-!EOC
-!------------------------------------------------------------------------------
-!BOP
-!
-! !IROUTINE: gc_diagnostics_calc
-!
-! !DESCRIPTION: Subroutine GC\_Diagnostics\_Calc passes the diagnostics variable
-!  to the CAM History routines
-!\\
-!\\
-! !INTERFACE:
-!
+  
   SUBROUTINE GC_Diagnostics_Calc( Input_Opt,  State_Chm, State_Diag, &
                                   State_Grid, State_Met, cam_in, state, &
                                   mmr_tend,   LCHNK )
-!
-! !USES:
-!
-  USE Input_Opt_Mod,       ONLY : OptInput
-  USE State_Chm_Mod,       ONLY : ChmState
-  USE State_Met_Mod,       ONLY : MetState
-  USE State_Diag_Mod,      ONLY : DgnState
-  USE State_Diag_Mod,      ONLY : get_TagInfo
-  USE State_Grid_Mod,      ONLY : GrdState
-  USE Species_Mod,         ONLY : Species
-  USE Registry_Mod,        ONLY : MetaRegItem, RegItem
-  USE Registry_Mod,        ONLY : Registry_Lookup
-  USE Registry_Params_Mod
-  USE PRECISION_MOD
-  USE CHEM_MODS,           ONLY : adv_mass
-  USE CAM_HISTORY,         ONLY : outfld, hist_fld_active
-  USE CONSTITUENTS,        ONLY : cnst_name, sflxnam
-  USE DRYDEP_MOD,          ONLY : depName, Ndvzind
-  USE CAMSRFEXCH,          ONLY : cam_in_t
-  USE PHYSICS_TYPES,       ONLY : physics_state
-  USE SPMD_UTILS,          ONLY : MasterProc
-  USE PHYSCONST,           ONLY : MWDry
-  USE UCX_MOD,             ONLY : GET_STRAT_OPT!, AERFRAC
-  USE CMN_SIZE_MOD,        ONLY : NDUST
-  USE CMN_FJX_MOD
-!
-! !INPUT PARAMETERS:
-!
+
+    ! CAM modules
+    use cam_history,         only : outfld, hist_fld_active
+    use camsrfexch,          only : cam_in_t
+    use chem_mods,           only : adv_mass
+    use constituents,        only : cnst_name, sflxnam
+    use physconst,           only : MWDry
+    use physics_types,       only : physics_state
+    use spmd_utils,          only : MasterProc
+
+    ! GEOS-Chem modules
+    use CMN_Size_Mod,        only : NDUST
+    use DryDep_Mod,          only : depName, Ndvzind
+    use Input_Opt_Mod,       only : OptInput
+    use Precision_Mod,       only : f8
+    use Species_Mod,         only : Species
+    use State_Chm_Mod,       only : ChmState
+    use State_Diag_Mod,      only : DgnState, get_TagInfo
+    use State_Grid_Mod,      only : GrdState
+    use State_Met_Mod,       only : MetState
+    use Registry_Mod,        only : MetaRegItem, RegItem, Registry_Lookup
+    use UCX_Mod,             only : GET_STRAT_OPT
+
     TYPE(OptInput),      INTENT(IN)    :: Input_Opt   ! Input options
     TYPE(ChmState),      INTENT(INOUT) :: State_Chm   ! Chemistry State object
     TYPE(DgnState),      INTENT(IN)    :: State_Diag  ! Diag State object
@@ -899,13 +839,7 @@ CONTAINS
     REAL(r8),            INTENT(IN)    :: mmr_tend(state%ncol,pver,gas_pcnst)
                                                       ! Net tendency from chemistry in kg/s
     INTEGER,             INTENT(IN)    :: LCHNK       ! Chunk number
-!
-! !REVISION HISTORY:
-!  20 Oct 2020 - T. M. Fritz   - Initial version
-!EOP
-!------------------------------------------------------------------------------
-!BOC
-!
+
     ! Integers
     INTEGER                :: I, J, L, M, N, ND, SM
     INTEGER                :: idx
@@ -1428,9 +1362,7 @@ CONTAINS
        CALL Outfld( TRIM(SpcName), outTmp(:nY,:) , nY, LCHNK )
     ENDIF
 
-    !=======================================================================
-    ! Cleanup and quit
-    !=======================================================================
+    ! Cleanup
     Current => NULL()
     Item    => NULL()
     Ptr0d_8 => NULL()
@@ -1439,7 +1371,6 @@ CONTAINS
     Ptr3d_8 => NULL()
 
   END SUBROUTINE GC_Diagnostics_Calc
-!EOC
-!------------------------------------------------------------------------------
+
   END MODULE GeosChem_Diagnostics_Mod
 

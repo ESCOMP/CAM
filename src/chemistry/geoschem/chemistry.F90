@@ -1,81 +1,50 @@
-!================================================================================================
-! This is the "GEOS-Chem" chemistry module.
-!================================================================================================
-
 module chemistry
-  use shr_kind_mod,        only : r8 => shr_kind_r8, shr_kind_cl
-  use physics_types,       only : physics_state, physics_ptend, physics_ptend_init
+
+  ! CAM modules
+  use cam_abortutils,      only : endrun
+  use cam_logfile,         only : iulog
+  use chem_mods,           only : nTracersMax, nTracers, tracerNames
+  use chem_mods,           only : gas_pcnst, adv_mass, ref_MMR, iFirstCnst
+  use chem_mods,           only : nSlsMax, nSls, slsNames, nSlvd, slvd_Lst
+  use chem_mods,           only : nAerMax, nAer, aerNames, aerAdvMass
+  use chem_mods,           only : map2GC, map2GCinv, map2GC_Sls
+  use chem_mods,           only : mapCnst, map2chm, map2MAM4
+  use constituents,        only : pcnst, cnst_add, cnst_get_ind, cnst_name
+  use mo_tracname,         only : solsym
   use physics_buffer,      only : physics_buffer_desc
-  use ppgrid,              only : begchunk, endchunk, pcols
-  use ppgrid,              only : pver, pverp
-  use constituents,        only : pcnst, cnst_add, cnst_get_ind
-  use constituents,        only : cnst_name
+  use physics_types,       only : physics_state, physics_ptend, physics_ptend_init
+  use ppgrid,              only : begchunk, endchunk, pcols, pver, pverp
   use shr_const_mod,       only : molw_dryair=>SHR_CONST_MWDAIR
   use shr_drydep_mod,      only : nddvels => n_drydep, drydep_list
+  use shr_kind_mod,        only : r8 => shr_kind_r8, shr_kind_cl
   use spmd_utils,          only : MasterProc, myCPU=>Iam, nCPUs=>npes
-  use cam_logfile,         only : iulog
   use string_utils,        only : to_upper
-
-  !--------------------------------------------------------------------
-  ! Basic GEOS-Chem modules
-  !--------------------------------------------------------------------
-  USE DiagList_Mod,        ONLY : DgnList       ! Derived type for diagnostics list
-  USE TaggedDiagList_Mod,  ONLY : TaggedDgnList ! Derived type for tagged diagnostics list
-  USE Input_Opt_Mod,       ONLY : OptInput      ! Derived type for Input Options
-  USE State_Chm_Mod,       ONLY : ChmState      ! Derived type for Chemistry State object
-  USE State_Diag_Mod,      ONLY : DgnState      ! Derived type for Diagnostics State object
-  USE State_Grid_Mod,      ONLY : GrdState      ! Derived type for Grid State object
-  USE State_Met_Mod,       ONLY : MetState      ! Derived type for Meteorology State object
-  USE Species_Mod,         ONLY : Species       ! Derived type for Species object
-  USE GC_Environment_Mod                        ! Runtime GEOS-Chem environment
-  USE ErrCode_Mod                               ! Error codes for success or failure
-  USE Error_Mod                                 ! For error checking
-  USE Precision_Mod,       ONLY : fp, f4        ! Flexible precision
-
-  use chem_mods,           only : nSlvd, slvd_Lst
-
-  !--------------------------------------------------------------------
-  ! GEOS-Chem History exports module
-  !--------------------------------------------------------------------
-  use GeosChem_History_Mod
-
-  !--------------------------------------------------------------------
-  ! CAM modules
-  !--------------------------------------------------------------------
-  ! Exit routine in CAM
-  use cam_abortutils,      only : endrun
-
-  use chem_mods,           only : nTracersMax
-  use chem_mods,           only : nTracers
-  use chem_mods,           only : gas_pcnst
-  use chem_mods,           only : tracerNames
-  use chem_mods,           only : adv_mass
-  use chem_mods,           only : ref_MMR
-  use chem_mods,           only : iFirstCnst
-  use chem_mods,           only : nSlsMax
-  use chem_mods,           only : nSls
-  use chem_mods,           only : slsNames
-  use chem_mods,           only : nAerMax
-  use chem_mods,           only : nAer
-  use chem_mods,           only : aerNames
-  use chem_mods,           only : aerAdvMass
-  use chem_mods,           only : map2GC, map2GCinv
-  use chem_mods,           only : map2GC_Sls
-  use chem_mods,           only : mapCnst
-  use chem_mods,           only : map2chm
-  use chem_mods,           only : map2MAM4
 #if defined( MODAL_AERO )
   use modal_aero_data,     only : ntot_amode
 #endif
+  
+  ! GEOS-Chem derived types
+  USE DiagList_Mod,         ONLY : DgnList          ! Diagnostics list object
+  use GeosChem_History_Mod, ONLY : HistoryConfigObj ! History diagnostic object
+  USE Input_Opt_Mod,        ONLY : OptInput         ! Input Options
+  USE Species_Mod,          ONLY : Species          ! Species object
+  USE State_Chm_Mod,        ONLY : ChmState         ! Chemistry State object
+  USE State_Diag_Mod,       ONLY : DgnState         ! Diagnostics State object
+  USE State_Grid_Mod,       ONLY : GrdState         ! Grid State object
+  USE State_Met_Mod,        ONLY : MetState         ! Meteorology State object
+  USE TaggedDiagList_Mod,   ONLY : TaggedDgnList    ! Ragged diagnostics list
 
-  use mo_tracname,         only : solsym
+  ! GEOS-Chem utilities
+  USE ErrCode_Mod,         ONLY : GC_SUCCESS, GC_FAILURE
+  USE ErrCode_Mod,         ONLY : GC_Error, GC_CheckVar, GC_Warning
+  USE Error_Mod,           ONLY : Error_Stop
+  USE Precision_Mod,       ONLY : fp, f4                 ! Flexible precision
 
   IMPLICIT NONE
   PRIVATE
   SAVE
-  !
+
   ! Public interfaces
-  !
   public :: chem_is                        ! identify which chemistry is being used
   public :: chem_register                  ! register consituents
   public :: chem_is_active                 ! returns true if this package is active (ghg_chem=.true.)
@@ -88,7 +57,6 @@ module chemistry
   public :: chem_read_restart
   public :: chem_init_restart
   public :: chem_readnl                    ! read chem namelist
-
   public :: chem_emissions
   public :: chem_timestep_init
 
@@ -103,20 +71,16 @@ module chemistry
   ! Debugging
   LOGICAL :: debug = .TRUE.
 
-  !-----------------------------
   ! Derived type objects
-  !-----------------------------
-  TYPE(OptInput)             :: Input_Opt       ! Input Options object
-  TYPE(ChmState),ALLOCATABLE :: State_Chm(:)    ! Chemistry State object
-  TYPE(DgnState),ALLOCATABLE :: State_Diag(:)   ! Diagnostics State object
-  TYPE(GrdState),ALLOCATABLE :: State_Grid(:)   ! Grid State object
-  TYPE(MetState),ALLOCATABLE :: State_Met(:)    ! Meteorology State object
-  TYPE(DgnList )             :: Diag_List       ! Diagnostics list object
-  TYPE(TaggedDgnList )       :: TaggedDiag_List ! Tagged diagnostics list object
-
-  TYPE(HistoryConfigObj), POINTER :: HistoryConfig         ! HistoryConfig object for History diagn.
-
-  type(physics_buffer_desc), pointer :: hco_pbuf2d(:,:)    ! Pointer to 2D pbuf
+  TYPE(OptInput)                     :: Input_Opt       ! Input Options object
+  TYPE(ChmState),ALLOCATABLE         :: State_Chm(:)    ! Chemistry State object
+  TYPE(DgnState),ALLOCATABLE         :: State_Diag(:)   ! Diagnostics State object
+  TYPE(GrdState),ALLOCATABLE         :: State_Grid(:)   ! Grid State object
+  TYPE(MetState),ALLOCATABLE         :: State_Met(:)    ! Meteorology State object
+  TYPE(DgnList )                     :: Diag_List       ! Diagnostics list object
+  TYPE(TaggedDgnList )               :: TaggedDiag_List ! Tagged diagnostics list object
+  TYPE(HistoryConfigObj), POINTER    :: HistoryConfig   ! HistoryConfig object for History diagn.
+  type(physics_buffer_desc), POINTER :: hco_pbuf2d(:,:) ! Pointer to 2D pbuf
 
   ! Mimic code in sfcvmr_mod.F90
   TYPE :: SfcMrObj
@@ -130,7 +94,6 @@ module chemistry
 
   ! Field prefix
   CHARACTER(LEN=63), PARAMETER :: Prefix_SfcVMR = 'VMR_'
-
 
   ! Indices of critical species in GEOS-Chem
   INTEGER                    :: iH2O, iO3, iCO2, iSO4
@@ -161,7 +124,6 @@ module chemistry
   INTEGER                    :: ixNDrop   ! Cloud droplet number index
 
   ! ghg
-
   LOGICAL                    :: ghg_chem = .false.  ! .true. => use ghg chem package
   CHARACTER(len=shr_kind_cl) :: bndtvg = ' '   ! pathname for greenhouse gas loss rate
   CHARACTER(len=shr_kind_cl) :: h2orates = ' ' ! pathname for greenhouse gas (lyman-alpha H2O loss)
@@ -173,16 +135,18 @@ module chemistry
   ! For dry deposition
   character(len=shr_kind_cl) :: depvel_lnd_file = 'depvel_lnd_file'
 
-!================================================================================================
-contains
-!================================================================================================
 
+contains
+
+  !================================================================================================
+  ! function chem_is
+  !================================================================================================
   function chem_is (name) result (chem_name_is)
 
+    ! CAM modules
     use string_utils, only : to_lower
 
     character(len=*), intent(in) :: name
-
     logical :: chem_name_is
 
     chem_name_is = (( to_lower(name) == 'geoschem'  ) .or. &
@@ -190,27 +154,32 @@ contains
 
   end function chem_is
 
-!================================================================================================
-
+  !================================================================================================
+  ! subroutine chem_register
+  !================================================================================================
   subroutine chem_register
 
-    use physics_buffer,      only : pbuf_add_field, dtype_r8
-    use PhysConst,           only : MWDry
-    use short_lived_species, only : Register_Short_Lived_Species
-    use State_Grid_Mod,      only : Init_State_Grid, Cleanup_State_Grid
-    use State_Chm_Mod,       only : Init_State_Chm, Cleanup_State_Chm
-    use State_Chm_Mod,       only : Ind_
-    use Input_Opt_Mod,       only : Set_Input_Opt,  Cleanup_Input_Opt
-
-    use mo_sim_dat,          only : set_sim_dat
-    use mo_chem_utls,        only : get_spc_ndx
+    ! CAM modules
     use chem_mods,           only : drySpc_ndx
+    use mo_chem_utls,        only : get_spc_ndx
+    use physconst,           only : MWDry
+    use physics_buffer,      only : pbuf_add_field, dtype_r8
+    use short_lived_species, only : Register_Short_Lived_Species
 #if defined( MODAL_AERO )
     use aero_model,          only : aero_model_register
     use modal_aero_data,     only : nspec_max
     use modal_aero_data,     only : ntot_amode, nspec_amode
     use modal_aero_data,     only : xname_massptr
 #endif
+
+    ! GEOS-Chem interface modules in CAM
+    use mo_sim_dat,          only : set_sim_dat
+
+    ! GEOS-Chem modules
+    use GC_Environment_Mod,  ONLY : GC_Init_Grid
+    use Input_Opt_Mod,       only : Set_Input_Opt,  Cleanup_Input_Opt
+    use State_Chm_Mod,       only : Init_State_Chm, Cleanup_State_Chm, Ind_
+    use State_Grid_Mod,      only : Init_State_Grid, Cleanup_State_Grid
 
     !-----------------------------------------------------------------------
     !
@@ -515,10 +484,10 @@ contains
     CALL cnst_get_ind('H2O',   cH2O,   abort=.True.)
     CALL cnst_get_ind('H2SO4', cH2SO4, abort=.True.)
  
-    !==============================================================
+    !------------------------------------------------------------
     ! Get mapping between dry deposition species and species set
-    !==============================================================
-
+    !------------------------------------------------------------
+    
     nIgnored = 0
 
     if (debug .and. masterproc) write(iulog,'(a,i4,a)') 'chem_register: looping over gas dry deposition list with ', nddvels, ' species'
@@ -622,10 +591,7 @@ contains
 
 #endif
 
-    !==============================================================
     ! Print summary
-    !==============================================================
-
     IF ( MasterProc ) THEN
        Write(iulog,'(/, a)') '### Summary of GEOS-Chem species (end of chem_register): '
        Write(iulog,'( a)') REPEAT( '-', 50 )
@@ -666,24 +632,26 @@ contains
 
   end subroutine chem_register
 
-!===============================================================================
-
+  !================================================================================================
+  ! subroutine chem_readnl
+  !================================================================================================
   subroutine chem_readnl(nlfile)
 
+    ! CAM modules
     use cam_abortutils,  only : endrun
-    use units,           only : getunit, freeunit
+    use chem_mods,       only : drySpc_ndx
+    use gas_wetdep_opts, only : gas_wetdep_readnl
+    use gckpp_Model,     only : nSpec, Spc_Names
     use namelist_utils,  only : find_group_name
+    use mo_lightning,    only : lightning_readnl
+    use units,           only : getunit, freeunit
 #if defined( MODAL_AERO )
     use aero_model,      only : aero_model_readnl
     use dust_model,      only : dust_readnl
 #endif
-    use gas_wetdep_opts, only : gas_wetdep_readnl
-    use mo_lightning,    only : lightning_readnl
 #ifdef SPMD
     use mpishorthand
 #endif
-    use gckpp_Model,     only : nSpec, Spc_Names
-    use chem_mods,       only : drySpc_ndx
 
     ! args
     CHARACTER(LEN=*), INTENT(IN) :: nlfile  ! filepath for file containing namelist input
@@ -710,9 +678,7 @@ contains
     IF ( IERR .NE. 0 ) CALL ENDRUN('Failed to allocate drySpc_ndx')
 
 #if defined( MODAL_AERO_4MODE )
-    !==============================================================
     ! Get names and molar weights of aerosols in MAM4
-    !==============================================================
 
     nAer = 33
 
@@ -769,9 +735,9 @@ contains
 
        Write(iulog,'(/,a,/)') 'Now defining GEOS-Chem tracers and dry deposition mapping...'
 
-       !==============================================================
+       !----------------------------------------------------------
        ! Read GEOS-Chem advected species from geoschem_config.yml
-       !==============================================================
+       !----------------------------------------------------------
 
        unitn = getunit()
 
@@ -823,11 +789,11 @@ contains
           WRITE(tracerNames(I),'(a,I0.4)') 'GCTRC_', I
        ENDDO
 
-       !==============================================================
+       !----------------------------------------------------------
        ! Now go through the KPP mechanism and add any species not
        ! implemented by the tracer list in geoschem_config.yml
-       !==============================================================
-
+       !----------------------------------------------------------
+       
        IF ( nSpec > nSlsMax ) THEN
           CALL ENDRUN('chem_readnl: too many species - increase nSlsmax')
        ENDIF
@@ -850,8 +816,6 @@ contains
           ENDIF
        ENDDO
 
-       !==============================================================
-
        unitn = getunit()
        OPEN( unitn, FILE=TRIM(nlfile), STATUS='old', IOSTAT=IERR )
        IF (IERR .NE. 0) THEN
@@ -870,10 +834,10 @@ contains
 
     ENDIF
 
-    !==================================================================
+    !----------------------------------------------------------
     ! Broadcast to all processors
-    !==================================================================
-
+    !----------------------------------------------------------
+    
     CALL MPIBCAST ( nTracers,    1,                               MPIINT,  0, MPICOM )
     CALL MPIBCAST ( tracerNames, LEN(tracerNames(1))*nTracersMax, MPICHAR, 0, MPICOM )
     CALL MPIBCAST ( nSls,        1,                               MPIINT,  0, MPICOM )
@@ -900,37 +864,31 @@ contains
 
   end subroutine chem_readnl
 
-!================================================================================================
-
+  !================================================================================================
+  ! function chem_is_active
+  !================================================================================================
   function chem_is_active()
-    !-----------------------------------------------------------------------
+
     logical :: chem_is_active
-    !-----------------------------------------------------------------------
 
     chem_is_active = .true.
 
   end function chem_is_active
 
-!================================================================================================
-
+  !================================================================================================
+  ! function chem_implements_cnst
+  !================================================================================================
   function chem_implements_cnst(name)
-    !-----------------------------------------------------------------------
-    !
     ! Purpose: return true if specified constituent is implemented by this package
-    !
     ! Author: B. Eaton
-    !
-    !-----------------------------------------------------------------------
+
     IMPLICIT NONE
-    !-----------------------------Arguments---------------------------------
 
     CHARACTER(LEN=*), INTENT(IN) :: name   ! constituent name
     LOGICAL :: chem_implements_cnst        ! return value
-
     INTEGER :: M
 
     chem_implements_cnst = .false.
-
     DO M = 1, gas_pcnst
        IF (TRIM(solsym(M)) .eq. TRIM(name)) THEN
           chem_implements_cnst = .true.
@@ -940,8 +898,9 @@ contains
 
   end function chem_implements_cnst
 
-!===============================================================================
-
+  !================================================================================================
+  ! subroutine chem_init
+  !================================================================================================
   subroutine chem_init(phys_state, pbuf2d)
     !-----------------------------------------------------------------------
     !
@@ -949,21 +908,24 @@ contains
     !          (and declare history variables)
     !
     !-----------------------------------------------------------------------
-    use physics_buffer,        only : physics_buffer_desc, pbuf_get_index
-    use chem_mods,             only : map2GC_dryDep, drySpc_ndx
 
+    ! CAM modules
+    use cam_abortutils,        only : endrun
+    use chem_mods,             only : map2GC_dryDep, drySpc_ndx
+    use gas_wetdep_opts,       only : gas_wetdep_method
+    use hycoef,                only : ps0, hyai, hybi, hyam
+    use mo_chem_utls,          only : get_spc_ndx
+    use mo_ghg_chem,           only : ghg_chem_init
+    use mo_mean_mass,          only : init_mean_mass
+    use mo_neu_wetdep,         only : neu_wetdep_init
+    use mo_setinv,             only : setinv_inti
+    use Phys_Grid,             only : get_Area_All_p
+    use physics_buffer,        only : physics_buffer_desc, pbuf_get_index
+    use tracer_cnst,           only : tracer_cnst_init
+    use tracer_srcs,           only : tracer_srcs_init
 #ifdef SPMD
     use mpishorthand
 #endif
-    use cam_abortutils,        only : endrun
-    use mo_chem_utls,          only : get_spc_ndx
-
-    use Phys_Grid,             only : get_Area_All_p
-    use hycoef,                only : ps0, hyai, hybi, hyam
-
-    use gas_wetdep_opts,       only : gas_wetdep_method
-    use mo_neu_wetdep,         only : neu_wetdep_init
-
 #if defined( MODAL_AERO )
     use aero_model,            only : aero_model_init
     use mo_setsox,             only : sox_inti
@@ -972,41 +934,32 @@ contains
     use modal_aero_data,       only : xname_massptr
 #endif
 
-    use Input_Opt_Mod
-    use State_Chm_Mod
-    use State_Grid_Mod
-    use State_Met_Mod
-    use DiagList_Mod,          only : Init_DiagList, Print_DiagList
-    use TaggedDiagList_Mod,    only : Init_TaggedDiagList, Print_TaggedDiagList
-    use GC_Grid_Mod,           only : SetGridFromCtrEdges
+    ! GEOS-Chem interface modules in CAM
+    use geoschem_diagnostics_mod, only : GC_Diagnostics_Init
+    use geoschem_emissions_mod,   only : GC_Emissions_Init
+    use geoschem_history_mod,     only : HistoryExports_SetServices
 
-    ! Use GEOS-Chem versions of physical constants
-    use PhysConstants,         only : PI, PI_180, Re
-
-    use Time_Mod,              only : Accept_External_Date_Time
-    use Linoz_Mod,             only : Linoz_Read
-
-    use CMN_Size_Mod
-
-    use Drydep_Mod,            only : depName, Ndvzind
-    use Pressure_Mod,          only : Accept_External_ApBp
+    ! GEOS-Chem modules
     use Chemistry_Mod,         only : Init_Chemistry
-    use Ucx_Mod,               only : Init_Ucx
-    use Linear_Chem_Mod,       only : Init_Linear_Chem
+    use DiagList_Mod,          only : Init_DiagList, Print_DiagList
+    use Drydep_Mod,            only : depName, Ndvzind
+    use Error_Mod,             only : Init_Error
+    use GC_Environment_Mod,    only : GC_Init_Grid, GC_Init_StateObj
+    use GC_Environment_Mod,    only : GC_Init_Extra, GC_Allocate_All
+    use GC_Grid_Mod,           only : SetGridFromCtrEdges
+    use Input_Mod,             only : Read_Input_File, Validate_Directories
+    use Input_Opt_Mod,         only : Set_Input_Opt
     use isorropiaII_Mod,       only : Init_IsorropiaII
-    use Input_Mod,             only : Read_Input_File
-    use Input_Mod,             only : Validate_Directories
-    use Olson_Landmap_Mod
-    use Vdiff_Mod
-
-    use mo_setinv,             only : setinv_inti
-    use mo_mean_mass,          only : init_mean_mass
-    use mo_ghg_chem,           only : ghg_chem_init
-    use tracer_cnst,           only : tracer_cnst_init
-    use tracer_srcs,           only : tracer_srcs_init
-
-    use GeosChem_Emissions_Mod,   only : GC_Emissions_Init
-    use GeosChem_Diagnostics_Mod, only : GC_Diagnostics_Init
+    use Linear_Chem_Mod,       only : Init_Linear_Chem
+    use Linoz_Mod,             only : Linoz_Read
+    use PhysConstants,         only : PI, PI_180, Re
+    use Pressure_Mod,          only : Accept_External_ApBp
+    use State_Chm_Mod,         only : Ind_
+    use State_Grid_Mod,        only : Init_State_Grid, Cleanup_State_Grid
+    use TaggedDiagList_Mod,    only : Init_TaggedDiagList, Print_TaggedDiagList
+    use Time_Mod,              only : Accept_External_Date_Time
+    use Ucx_Mod,               only : Init_Ucx
+    use Vdiff_Mod,             only : Max_PblHt_For_Vdiff 
 
     TYPE(physics_state),                INTENT(IN   ) :: phys_state(BEGCHUNK:ENDCHUNK)
     TYPE(physics_buffer_desc), POINTER, INTENT(INOUT) :: pbuf2d(:,:)
@@ -1154,10 +1107,10 @@ contains
        Input_Opt%SpcDatabaseFile      = TRIM(speciesDB)
        Input_Opt%FAST_JX_DIR          = TRIM(gc_cheminputs)//'FAST_JX/v2020-02/'
 
-       !==================================================================
+       !----------------------------------------------------------
        ! CESM-specific input flags
-       !==================================================================
-
+       !----------------------------------------------------------
+       
        ! onlineAlbedo    -> True  (use CLM albedo)
        !                 -> False (read monthly-mean albedo from HEMCO)
        Input_Opt%onlineAlbedo           = .true.
@@ -1450,13 +1403,13 @@ contains
     ENDIF
 
     IF ( Input_Opt%LDryD ) THEN
-       !==============================================================
+       !----------------------------------------------------------
        ! Get mapping between CESM dry deposited species and the
        ! indices of State_Chm%DryDepVel. This needs to be done after
        ! Init_Drydep
        ! Thibaud M. Fritz - 04 Mar 2020
-       !==============================================================
-
+       !----------------------------------------------------------
+       
        ALLOCATE(map2GC_dryDep(nddvels), STAT=IERR)
        IF ( IERR .NE. 0 ) CALL ENDRUN('Failed to allocate map2GC_dryDep')
 
@@ -1695,14 +1648,16 @@ contains
 
   end subroutine chem_init
 
-!===============================================================================
-
+  !================================================================================================
+  ! chem_timestep_init
+  !================================================================================================
   subroutine chem_timestep_init(phys_state, pbuf2d)
 
-    use physics_buffer,    only : physics_buffer_desc
+    ! CAM modules
     use mo_flbc,           only : flbc_chk
     use mo_ghg_chem,       only : ghg_chem_timestep_init
-
+    use physics_buffer,    only : physics_buffer_desc
+    
     TYPE(physics_state), INTENT(IN):: phys_state(begchunk:endchunk)
     TYPE(physics_buffer_desc), POINTER :: pbuf2d(:,:)
 
@@ -1719,10 +1674,12 @@ contains
 
   end subroutine chem_timestep_init
 
-!===============================================================================
+  !================================================================================================
+  ! subroutine gc_update_timesteps
+  !================================================================================================
+  subroutine gc_update_timesteps(DT)
 
-  subroutine GC_Update_Timesteps(DT)
-
+    ! GEOS-Chem modules
     use Time_Mod,       only : Set_Timesteps
 
     REAL(r8), INTENT(IN) :: DT
@@ -1750,46 +1707,24 @@ contains
         DT_MIN_LAST = DT_MIN
      ENDIF
 
-  end subroutine
+  end subroutine gc_update_timesteps
 
-!===============================================================================
-
-!------------------------------------------------------------------------------
-!BOP
-!
-! !IROUTINE: gc_readnl
-!
-! !DESCRIPTION: Reads the namelist from cam/src/control/runtime_opts.
-!\\
-!\\
-! !INTERFACE:
-!
+  !================================================================================================
+  ! subroutine gc_readnl
+  !================================================================================================
   subroutine gc_readnl(nlfile)
-!
-! !USES:
-!
+    ! Purpose: reads the namelist from cam/src/control/runtime_opts
+
+    ! CAM modules
+    use mpishorthand
     use namelist_utils,  only: find_group_name
     use units,           only: getunit, freeunit
-    use mpishorthand
-!
-! !INPUT PARAMETERS:
-!
+
     character(len=*), intent(in) :: nlfile  ! filepath for file containing namelist input
-!
-! !REVISION HISTORY:
-!  21 Jan 2021 - T.M. Fritz   - Initial version
-!EOP
-!------------------------------------------------------------------------------
-!BOC
-!
-! !LOCAL VARIABLES:
-!
     integer :: unitn, ierr
     character(len=*), parameter :: subname = 'gc_readnl'
 
     namelist /gc_nl/ gc_cheminputs
-
-    !-----------------------------------------------------------------------------
 
     ! Read namelist
     IF ( MasterProc ) THEN
@@ -1809,104 +1744,79 @@ contains
     ! Broadcast namelist variables
     CALL MPIBCAST(gc_cheminputs, LEN(gc_cheminputs),      MPICHAR,   0, MPICOM)
 
-  end subroutine
-!EOC
+  end subroutine gc_readnl
 
-!===============================================================================
-
+  !================================================================================================
+  ! subroutine chem_timestep_tend
+  !================================================================================================
   subroutine chem_timestep_tend( state, ptend, cam_in, cam_out, dT, pbuf, fh2o )
 
+    ! CAM modules
+    use cam_history,         only : outfld, hist_fld_active
+    use camsrfexch,          only : cam_in_t, cam_out_t
+    use chem_mods,           only : drySpc_ndx, map2GC_dryDep
+    use chem_mods,           only : nfs, indexm, gas_pcnst
+    use gas_wetdep_opts,     only : gas_wetdep_method
+    use mo_chem_utls,        only : get_spc_ndx
+    use mo_flbc,             only : flbc_set
+    use mo_ghg_chem,         only : ghg_chem_set_flbc
+    use mo_mean_mass,        only : set_mean_mass
+    use mo_neu_wetdep,       only : neu_wetdep_tend
+    use mo_setinv,           only : setinv
+    use orbit,               only : zenith                         ! For computing SZA
     use physics_buffer,      only : physics_buffer_desc, pbuf_get_field, pbuf_old_tim_idx
     use physics_buffer,      only : pbuf_get_chunk, pbuf_get_index
     use perf_mod,            only : t_startf, t_stopf
-    use cam_history,         only : outfld, hist_fld_active
-    use camsrfexch,          only : cam_in_t, cam_out_t
-
-#ifdef SPMD
-    use mpishorthand
-#endif
-
     use phys_grid,           only : get_ncols_p, get_rlat_all_p, get_rlon_all_p
-
-    use mo_chem_utls,        only : get_spc_ndx
-    use chem_mods,           only : drySpc_ndx, map2GC_dryDep
-    use chem_mods,           only : nfs, indexm, gas_pcnst
-    use mo_mean_mass,        only : set_mean_mass
-    use mo_setinv,           only : setinv
-    use mo_flbc,             only : flbc_set
-    use mo_ghg_chem,         only : ghg_chem_set_flbc
-    use mo_neu_wetdep,       only : neu_wetdep_tend
-    use gas_wetdep_opts,     only : gas_wetdep_method
+    use phys_grid,           only : get_area_all_p, get_lat_all_p, get_lon_all_p
+    use physconst,           only : MWDry, Gravit
+    use rad_constituents,    only : rad_cnst_get_info
+    use short_lived_species, only : get_short_lived_species_gc, set_short_lived_species_gc
+    use time_manager,        only : Get_Curr_Calday, Get_Curr_Date ! For computing SZA
+    use tropopause,          only : Tropopause_findChemTrop, Tropopause_Find
+    use wv_saturation,       only : QSat
 #if defined( MODAL_AERO )
+    use aero_model,          only : aero_model_gasaerexch ! Aqueous chemistry and aerosol growth
     use modal_aero_data,     only : ntot_amode, nspec_amode
     use modal_aero_data,     only : nspec_max, nsoa
     use modal_aero_data,     only : lmassptr_amode, numptr_amode
     use modal_aero_data,     only : lptr_so4_a_amode
     use modal_aero_data,     only : lptr2_soa_a_amode, lptr2_soa_g_amode
 #endif
+#ifdef SPMD
+    use mpishorthand
+#endif
+    
+    ! GEOS-Chem interface modules in CAM
+    use GeosChem_Emissions_Mod,   only : GC_Emissions_Calc
+    use GeosChem_Diagnostics_Mod, only : GC_Diagnostics_Calc, wetdep_name, wtrate_name
+    use GeosChem_History_Mod,     only : HistoryExports_SetDataPointers, CopyGCStates2Exports
 
-    use Diagnostics_Mod,     only : Zero_Diagnostics_StartOfTimestep
-    use Diagnostics_Mod,     only : Set_Diagnostics_EndofTimestep
+    ! GEOS-Chem modules
     use Aerosol_Mod,         only : Set_AerMass_Diagnostic
-    use Olson_Landmap_Mod,   only : Compute_Olson_Landmap
-    use Modis_LAI_Mod,       only : Compute_XLAI
-    use CMN_Size_Mod,        only : NSURFTYPE
-    use Drydep_Mod,          only : Do_Drydep
-    use Drydep_Mod,          only : DEPNAME, NDVZIND
-    use Drydep_Mod,          only : Update_DryDepFreq
-
-    use Calc_Met_Mod,        only : Set_Dry_Surface_Pressure
-    use Calc_Met_Mod,        only : AirQnt
-    use GC_Grid_Mod,         only : SetGridFromCtr
-    use Pressure_Mod,        only : Set_Floating_Pressures
-    use Pressure_Mod,        only : Accept_External_Pedge
-    use Time_Mod,            only : Accept_External_Date_Time
-    use Toms_Mod,            only : Compute_Overhead_O3
+    use Calc_Met_Mod,        only : Set_Dry_Surface_Pressure, AirQnt
     use Chemistry_Mod,       only : Do_Chemistry
-    use Wetscav_Mod,         only : Setup_Wetscav
-    use CMN_Size_Mod,        only : PTop
-    use PBL_Mix_Mod,         only : Compute_PBL_Height
-    use UCX_Mod,             only : Set_H2O_Trac
     use CMN_FJX_MOD,         only : ZPJ
+    use CMN_Size_Mod,        only : NSURFTYPE, PTop
+    use Diagnostics_Mod,     only : Zero_Diagnostics_StartOfTimestep, Set_Diagnostics_EndofTimestep
+    use Drydep_Mod,          only : Do_Drydep, DEPNAME, NDVZIND, Update_DryDepFreq
     use FAST_JX_MOD,         only : RXN_NO2, RXN_O3_1
-    use State_Diag_Mod,      only : get_TagInfo
-    use Unitconv_Mod,        only : Convert_Spc_Units
-    use State_Chm_Mod,       only : Ind_
-
+    use GC_Grid_Mod,         only : SetGridFromCtr
+    use HCO_Interface_GC_Mod,only : Compute_Sflx_For_Vdiff
     use Linear_Chem_Mod,     only : TrID_GC, GC_Bry_TrID, NSCHEM
     use Linear_Chem_Mod,     only : BrPtrDay, BrPtrNight, PLVEC, GMI_OH
-
-    use GeosChem_Emissions_Mod,   only : GC_Emissions_Calc
-    use GeosChem_Diagnostics_Mod, only : GC_Diagnostics_Calc
-    use GeosChem_Diagnostics_Mod, only : wetdep_name, wtrate_name
-
-    use Tropopause,          only : Tropopause_findChemTrop, Tropopause_Find
-    use HCO_Interface_GC_Mod  ! Utility routines for GC-HEMCO interface
-
-    ! For calculating SZA
-    use Orbit,               only : zenith
-    use Time_Manager,        only : Get_Curr_Calday, Get_Curr_Date
-
-    ! Calculating relative humidity
-    use WV_Saturation,       only : QSat
-
-    ! Grid area
-    use Phys_Grid,           only : get_area_all_p, get_lat_all_p, get_lon_all_p
-
-    use short_lived_species, only : get_short_lived_species_gc
-    use short_lived_species, only : set_short_lived_species_gc
-
-#if defined( MODAL_AERO )
-    ! Aqueous chemistry and aerosol growth
-    use aero_model,          only : aero_model_gasaerexch
-#endif
-
-    use rad_constituents,    only : rad_cnst_get_info
-
-    ! GEOS-Chem version of physical constants
+    use Olson_Landmap_Mod,   only : Compute_Olson_Landmap
+    use Modis_LAI_Mod,       only : Compute_XLAI
+    use PBL_Mix_Mod,         only : Compute_PBL_Height
     use PhysConstants,       only : PI, PI_180, g0, AVO, Re, g0_100
-    ! CAM version of physical constants
-    use PhysConst,           only : MWDry, Gravit
+    use Pressure_Mod,        only : Set_Floating_Pressures, Accept_External_Pedge
+    use State_Chm_Mod,       only : Ind_
+    use State_Diag_Mod,      only : get_TagInfo
+    use Time_Mod,            only : Accept_External_Date_Time
+    use Toms_Mod,            only : Compute_Overhead_O3
+    use UCX_Mod,             only : Set_H2O_Trac
+    use Unitconv_Mod,        only : Convert_Spc_Units
+    use Wetscav_Mod,         only : Setup_Wetscav
 
     REAL(r8),            INTENT(IN)    :: dT          ! Time step
     TYPE(physics_state), INTENT(IN)    :: state       ! Physics State variables
@@ -4251,8 +4161,9 @@ contains
 
   end subroutine chem_timestep_tend
 
-!===============================================================================
-
+  !================================================================================================
+  ! subroutine chem_init_cnst
+  !================================================================================================
   subroutine chem_init_cnst(name, latvals, lonvals, mask, q)
 
     CHARACTER(LEN=*), INTENT(IN)  :: name       !  constituent name
@@ -4283,36 +4194,35 @@ contains
 
   end subroutine chem_init_cnst
 
-!===============================================================================
-
+  !================================================================================================
+  ! subroutine chem_final
+  !================================================================================================
   subroutine chem_final
 
+    ! CAM modules
+    use short_lived_species,    only : short_lived_species_final
+
+    ! GEOS-Chem interface modules in CAM
+    use geoschem_emissions_mod, only : GC_Emissions_Final
+    use geoschem_history_mod,   only : Destroy_HistoryConfig
+
+    ! GEOS-Chem modules
+    use Aerosol_Mod,     only : Cleanup_Aerosol
+    use Carbon_Mod,      only : Cleanup_Carbon
+    use CMN_FJX_Mod,     only : Cleanup_CMN_FJX
+    use Drydep_Mod,      only : Cleanup_Drydep
+    use Dust_Mod,        only : Cleanup_Dust
+    use Error_Mod,       only : Cleanup_Error
+    use Fullchem_Mod,    only : Cleanup_FullChem
     use Input_Opt_Mod,   only : Cleanup_Input_Opt
+    use Linear_Chem_Mod, only : Cleanup_Linear_Chem
+    use Pressure_Mod,    only : Cleanup_Pressure
+    use Seasalt_Mod,     only : Cleanup_Seasalt
     use State_Chm_Mod,   only : Cleanup_State_Chm
     use State_Diag_Mod,  only : Cleanup_State_Diag
     use State_Grid_Mod,  only : Cleanup_State_Grid
     use State_Met_Mod,   only : Cleanup_State_Met
-    use Error_Mod,       only : Cleanup_Error
-    use Fullchem_Mod,    only : Cleanup_FullChem
-    use Drydep_Mod,      only : Cleanup_Drydep
-    use Carbon_Mod,      only : Cleanup_Carbon
-    use Dust_Mod,        only : Cleanup_Dust
-    use Seasalt_Mod,     only : Cleanup_Seasalt
-    use Aerosol_Mod,     only : Cleanup_Aerosol
     use Sulfate_Mod,     only : Cleanup_Sulfate
-    use Pressure_Mod,    only : Cleanup_Pressure
-    use Linear_Chem_Mod, only : Cleanup_Linear_Chem
-
-    use CMN_FJX_Mod,     only : Cleanup_CMN_FJX
-
-#ifdef BPCH_DIAG
-    use CMN_O3_Mod,      only : Cleanup_CMN_O3
-    ! Special: cleans up after NDXX_Setup
-    use Diag_Mod,        only : Cleanup_Diag
-#endif
-
-    use GeosChem_Emissions_Mod, only : GC_Emissions_Final
-    use short_lived_species,    only : short_lived_species_final
 
     ! Local variables
     INTEGER  :: I, RC
@@ -4347,17 +4257,6 @@ contains
        CALL Error_Stop( ErrMsg, ThisLoc )
     ENDIF
 
-#ifdef BPCH_DIAG
-    CALL Cleanup_Diag
-
-    ! Call extra cleanup routines, from modules in Headers/
-    CALL Cleanup_CMN_O3( RC )
-    IF ( RC /= GC_SUCCESS ) THEN
-       ErrMsg = 'Error encountered in "Cleanup_CMN_O3"!'
-       CALL Error_Stop( ErrMsg, ThisLoc )
-    ENDIF
-#endif
-
     ! Cleanup Input_Opt
     CALL Cleanup_Input_Opt( Input_Opt, RC )
 
@@ -4382,12 +4281,15 @@ contains
 
   end subroutine chem_final
 
-!===============================================================================
-
+  !================================================================================================
+  ! subroutine chem_init_restart
+  !================================================================================================
   subroutine chem_init_restart(File)
+
+    ! CAM modules
+    use pio,              only : file_desc_t
     use tracer_cnst,      only : init_tracer_cnst_restart
     use tracer_srcs,      only : init_tracer_srcs_restart
-    use pio,              only : file_desc_t
 
     IMPLICIT NONE
 
@@ -4404,12 +4306,15 @@ contains
 
   end subroutine chem_init_restart
 
-!===============================================================================
-
+  !================================================================================================
+  ! subroutine chem_write_restart
+  !================================================================================================
   subroutine chem_write_restart( File )
+
+    ! CAM modules
+    use pio,         only : file_desc_t
     use tracer_cnst, only : write_tracer_cnst_restart
     use tracer_srcs, only : write_tracer_srcs_restart
-    use pio,         only : file_desc_t
 
     IMPLICIT NONE
 
@@ -4423,12 +4328,15 @@ contains
 
   end subroutine chem_write_restart
 
-!===============================================================================
-
+  !================================================================================================
+  ! subroutine chem_read_restart
+  !================================================================================================
   subroutine chem_read_restart( File )
+
+    ! CAM modules
+    use pio,         only : file_desc_t
     use tracer_cnst, only : read_tracer_cnst_restart
     use tracer_srcs, only : read_tracer_srcs_restart
-    use pio,         only : file_desc_t
 
     IMPLICIT NONE
 
@@ -4442,34 +4350,27 @@ contains
 
   end subroutine chem_read_restart
 
-!================================================================================
-
+  !================================================================================================
+  ! subroutine chem_emissions
+  !================================================================================================
   subroutine chem_emissions( state, cam_in, pbuf )
 
-    use physics_buffer,      only : physics_buffer_desc
+    ! CAM modules
     use camsrfexch,          only : cam_in_t
-
-    ! Arguments:
+    use physics_buffer,      only : physics_buffer_desc
 
     TYPE(physics_state),    INTENT(IN)    :: state   ! Physics state variables
     TYPE(cam_in_t),         INTENT(INOUT) :: cam_in  ! import state
     TYPE(physics_buffer_desc), pointer    :: pbuf(:) ! Physics buffer in chunk, for HEMCO
 
     INTEGER :: M, N
-    INTEGER :: LCHNK, nY
+    INTEGER :: nY
     LOGICAL :: rootChunk
 
+    nY = state%NCOL    ! number of atmospheric columns on this chunk
+    rootChunk = ( MasterProc .and. (state%LCHNK .eq. BEGCHUNK) )
 
-    ! LCHNK: which chunk we have on this process
-    LCHNK = state%LCHNK
-    ! NCOL: number of atmospheric columns on this chunk
-    nY    = state%NCOL
-    rootChunk = ( MasterProc.and.(LCHNK.EQ.BEGCHUNK) )
-
-    !-----------------------------------------------------------------------
     ! Reset surface fluxes
-    !-----------------------------------------------------------------------
-
     DO M = iFirstCnst, pcnst
        !N = map2chm(M)
        !IF ( N > 0 ) cam_in%cflx(1:nY,N) = 0.0e+0_r8
@@ -4477,7 +4378,5 @@ contains
     ENDDO
 
   end subroutine chem_emissions
-
-!===============================================================================
 
 end module chemistry

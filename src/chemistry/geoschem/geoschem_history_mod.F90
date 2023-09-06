@@ -22,11 +22,17 @@ MODULE GeosChem_History_Mod
 !
 ! !USES:
 !
-  USE DiagList_Mod
-  USE TaggedDiagList_Mod
-  USE ErrCode_Mod
-  USE Precision_Mod
+  ! CAM modules
+  USE cam_abortutils,     ONLY : endrun
 
+  ! GEOS-Chem modules
+  USE DiagList_Mod,       ONLY : DgnItem, DgnList
+  USE DiagList_Mod,       ONLY : Init_DiagList, Print_DiagList
+  USE ErrCode_Mod,        ONLY : GC_SUCCESS, GC_FAILURE, GC_ERROR
+  USE Precision_Mod,      ONLY : fp, f4, f8
+  USE TaggedDiagList_Mod, ONLY : TaggedDgnList
+  USE TaggedDiagList_Mod, ONLY : Init_TaggedDiagList, Print_TaggedDiagList
+  
   IMPLICIT NONE
   PRIVATE
 !
@@ -201,9 +207,10 @@ CONTAINS
 !
 ! !USES:
 !
-    USE State_Chm_Mod,    ONLY: Get_Metadata_State_Chm
-    USE State_Diag_Mod,   ONLY: Get_Metadata_State_Diag
-    USE State_Met_Mod,    ONLY: Get_Metadata_State_Met
+    ! GEOS-Chem modules
+    USE State_Chm_Mod,    ONLY : Get_Metadata_State_Chm
+    USE State_Diag_Mod,   ONLY : Get_Metadata_State_Diag
+    USE State_Met_Mod,    ONLY : Get_Metadata_State_Met
 !
 ! !INPUT PARAMETERS:
 !
@@ -643,8 +650,11 @@ CONTAINS
 !
 ! !USES:
 !
-    USE cam_history, only: addfld, add_default, horiz_only
-    USE Registry_Params_Mod
+    ! CAM modules
+    USE cam_history,         ONLY : addfld, add_default, horiz_only
+
+    ! GEOS-Chem modules
+    USE Registry_Params_Mod, ONLY : VLocationCenter, VLocationEdge    
 !
 ! !INPUT PARAMETERS:
 !
@@ -769,12 +779,14 @@ CONTAINS
 !
 ! !USES:
 !
-  USE HCO_Interface_GC_Mod, ONLY : HCOI_GC_WriteDiagn
-  USE Input_Opt_Mod,    ONLY : OptInput
-  USE State_Grid_Mod,   ONLY : GrdState
-
-  USE cam_history,      ONLY : hist_fld_active, outfld
-  USE SHR_KIND_MOD,     ONLY : shr_kind_r8
+    ! CAM modules
+    USE cam_history,          ONLY : hist_fld_active, outfld
+    USE shr_kind_mod,         ONLY : shr_kind_r8
+    
+    ! GEOS-Chem modules    
+    USE HCO_Interface_GC_Mod, ONLY : HCOI_GC_WriteDiagn
+    USE Input_Opt_Mod,        ONLY : OptInput
+    USE State_Grid_Mod,       ONLY : GrdState
 !
 ! !INPUT PARAMETERS:
 !
@@ -987,14 +999,15 @@ CONTAINS
 !
 ! !USES:
 !
+    ! CAM modules
+    USE cam_history,    ONLY : hist_fld_active
+
+    ! GEOS-Chem modules
     USE Registry_Mod,   ONLY : Registry_Lookup
-    USE State_Grid_Mod, ONLY : GrdState
     USE State_Chm_Mod,  ONLY : ChmState
     USE State_Diag_Mod, ONLY : DgnState
+    USE State_Grid_Mod, ONLY : GrdState
     USE State_Met_Mod,  ONLY : MetState
-    USE Registry_Params_Mod
-
-    use cam_history, only: hist_fld_active
 !
 ! !INPUT PARAMETERS:
 !

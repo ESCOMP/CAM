@@ -80,7 +80,6 @@ subroutine cam_init(                                             &
    use cam_restart,      only: cam_read_restart
    use stepon,           only: stepon_init
    use ionosphere_interface, only: ionosphere_init
-
    use camsrfexch,       only: hub2atm_alloc, atm2hub_alloc
    use cam_history,      only: intht
    use history_scam,     only: scm_intht

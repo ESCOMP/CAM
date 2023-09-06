@@ -105,10 +105,6 @@ subroutine read_namelist(nlfilename, single_column, scmlat, scmlon)
    use phys_grid_ctem,      only: phys_grid_ctem_readnl
    use mo_lightning,        only: lightning_readnl
 
-#if (defined HEMCO_CESM)
-   use hemco_interface,     only: hemco_readnl
-#endif
-
    !---------------------------Arguments-----------------------------------
 
    character(len=*), intent(in) :: nlfilename
