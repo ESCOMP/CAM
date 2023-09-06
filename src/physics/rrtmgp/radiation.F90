@@ -207,10 +207,6 @@ real(r8), allocatable, target :: plev_rad(:)
 type(ty_gas_optics_rrtmgp) :: kdist_lw
 type(ty_gas_optics_rrtmgp) :: kdist_sw
 
-! data to go from bands to gpoints
-integer, allocatable :: band2gpt_sw(:,:)
-integer, allocatable :: band2gpt_lw(:,:)
-
 ! Mapping from RRTMG shortwave bands to RRTMGP.  Currently needed to continue using
 ! the SW optics datasets from RRTMG (even thought there is a slight mismatch in the
 ! band boundaries of the 2 bands that overlap with the LW bands).
@@ -510,8 +506,9 @@ subroutine radiation_init(pbuf2d)
       call endrun(sub//': ERROR: available_gases%init: '//trim(errmsg))
    end if
 
-   call coefs_init(coefs_lw_file, kdist_lw, available_gases, band2gpt_lw)
-   call coefs_init(coefs_sw_file, kdist_sw, available_gases, band2gpt_sw)
+   ! Read RRTMGP coefficients files and initialize kdist objects.
+   call coefs_init(coefs_lw_file, available_gases, kdist_lw)
+   call coefs_init(coefs_sw_file, available_gases, kdist_sw)
 
    ! check number of sw/lw bands in gas optics files
    if (kdist_sw%get_nband() /= nswbands) then
@@ -1206,28 +1203,12 @@ subroutine radiation_tend( &
          alb_dif(nswbands,nday)   &
       )
 
-
-      call rrtmgp_set_state( & ! Prepares state variables, daylit columns, albedos for RRTMGP
-         state,          & ! input (%t, %pmid, %pint)
-         cam_in,         & ! input (%lwup, %aldir, %asdir, %aldif, %asdif)
-         ncol,           & ! input
-         nlay,           & ! input
-         nday,           & ! input
-         idxday,         & ! input, [would prefer to truncate as 1:ncol]
-         coszrs,         & ! input
-         kdist_sw,       & ! input (from init)
-         band2gpt_sw,    & ! input (from init), gpoints by band
-         t_sfc,          & ! output
-         emis_sfc,       & ! output
-         t_rad,          & ! output
-         pmid_rad,       & ! output
-         pint_rad,       & ! output
-         t_day,          & ! output
-         pmid_day,       & ! output
-         pint_day,       & ! output
-         coszrs_day,     & ! output
-         alb_dir,        & ! output
-         alb_dif)          ! output
+      ! Prepares state variables, daylit columns, albedos for RRTMGP
+      call rrtmgp_set_state( &
+         state, cam_in, ncol, nlay, nday,             &
+         idxday, coszrs, kdist_sw, t_sfc, emis_sfc,   &
+         t_rad, pmid_rad, pint_rad, t_day, pmid_day,  &
+         pint_day, coszrs_day, alb_dir, alb_dif)
 
       ! Set TSI used in rrtmgp to the value from CAM's solar forcing file.
       errmsg = kdist_sw%set_tsi(sol_tsi)
@@ -2193,19 +2174,19 @@ end subroutine calc_col_mean
 
 !=========================================================================================
 
-subroutine coefs_init(coefs_file, kdist, available_gases, band2gpt)
+subroutine coefs_init(coefs_file, available_gases, kdist)
 
    ! Read data from coefficients file.  Initialize the kdist object.
    ! available_gases object provides the gas names that CAM provides.
 
    ! arguments
    character(len=*),                  intent(in)  :: coefs_file
-   class(ty_gas_optics_rrtmgp),       intent(out) :: kdist
    class(ty_gas_concs),               intent(in)  :: available_gases
+   class(ty_gas_optics_rrtmgp),       intent(out) :: kdist
 
    ! local variables
    type(file_desc_t)  :: fh    ! pio file handle
-   character(len=256) :: locfn ! path to actual file used
+   character(len=256) :: locfn ! path to file on local storage
 
    ! File dimensions
    integer ::            &
@@ -2214,7 +2195,7 @@ subroutine coefs_init(coefs_file, kdist, available_gases, band2gpt)
       bnd,               &
       pressure,          &
       temperature,       &
-      absorber_ext,      & ! replaces `major_absorber`
+      absorber_ext,      &
       pressure_interp,   &
       mixing_fraction,   &
       gpt,               &
@@ -2226,8 +2207,8 @@ subroutine coefs_init(coefs_file, kdist, available_gases, band2gpt)
 
    character(32), dimension(:),  allocatable :: gas_names
    integer,  dimension(:,:,:),   allocatable :: key_species
-   integer,  dimension(:,:),     allocatable, intent(out) :: band2gpt  ! -> file : 'bnd_limits_gpt'
-   real(r8), dimension(:,:),     allocatable :: band_lims_wavenum ! -> file : 'bnd_limits_wavenumber'
+   integer,  dimension(:,:),     allocatable :: band2gpt
+   real(r8), dimension(:,:),     allocatable :: band_lims_wavenum
    real(r8), dimension(:),       allocatable :: press_ref, temp_ref
    real(r8)                                  :: press_ref_trop, temp_ref_t, temp_ref_p
    real(r8), dimension(:,:,:),   allocatable :: vmr_ref
@@ -2662,35 +2643,22 @@ subroutine coefs_init(coefs_file, kdist, available_gases, band2gpt)
    ! gas_optics%load() returns a string; a non-empty string indicates an error.
    !
    if (allocated(totplnk) .and. allocated(planck_frac)) then
-      error_msg = kdist%load(available_gases, gas_names, key_species, &
-      band2gpt,                        &
-      band_lims_wavenum,               &
-      press_ref,                       &
-      press_ref_trop,                  &
-      temp_ref,                        &
-      temp_ref_p,                      &
-      temp_ref_t,                      &
-      vmr_ref,                         &
-      kmajor,                          &
-      kminor_lower,                    &
-      kminor_upper,                    &
-      gas_minor,                       &
-      identifier_minor,                &
-      minor_gases_lower,               &
-      minor_gases_upper,               &
-      minor_limits_gpt_lower,          &
-      minor_limits_gpt_upper,          &
-      minor_scales_with_density_lower, &
-      minor_scales_with_density_upper, &
-      scaling_gas_lower,               &
-      scaling_gas_upper,               &
-      scale_by_complement_lower,       &
-      scale_by_complement_upper,       &
-      kminor_start_lower,              &
-      kminor_start_upper,              &
-      totplnk, planck_frac,            &
-      rayl_lower, rayl_upper,          &
-      optimal_angle_fit)
+      error_msg = kdist%load( &
+         available_gases, gas_names, key_species,              &
+         band2gpt, band_lims_wavenum,                          &
+         press_ref, press_ref_trop, temp_ref,                  &
+         temp_ref_p, temp_ref_t, vmr_ref,                      &
+         kmajor, kminor_lower, kminor_upper,                   &
+         gas_minor, identifier_minor,                          &
+         minor_gases_lower, minor_gases_upper,                 &
+         minor_limits_gpt_lower, minor_limits_gpt_upper,       &
+         minor_scales_with_density_lower,                      &
+         minor_scales_with_density_upper,                      &
+         scaling_gas_lower, scaling_gas_upper,                 &
+         scale_by_complement_lower, scale_by_complement_upper, &
+         kminor_start_lower, kminor_start_upper,               &
+         totplnk, planck_frac, rayl_lower, rayl_upper,         &
+         optimal_angle_fit)
    else if (allocated(solar_src_quiet)) then
       error_msg = kdist%load(available_gases, &
       gas_names,                              &
@@ -2738,7 +2706,7 @@ subroutine coefs_init(coefs_file, kdist, available_gases, band2gpt)
 
    deallocate( &
       gas_names, key_species,               &
-      band_lims_wavenum,          &
+      band2gpt, band_lims_wavenum,          &
       press_ref, temp_ref, vmr_ref,         &
       kmajor, kminor_lower, kminor_upper,   &
       gas_minor, identifier_minor,          &
@@ -2751,7 +2719,7 @@ subroutine coefs_init(coefs_file, kdist, available_gases, band2gpt)
       scale_by_complement_lower,            & 
       scale_by_complement_upper,            &
       kminor_start_lower, kminor_start_upper)
-   ! did not deallocate band2gpt because we want to use it later (changed it to intent(out), bpm)
+
    if (allocated(optimal_angle_fit)) deallocate(optimal_angle_fit)
    if (allocated(totplnk))     deallocate(totplnk)
    if (allocated(planck_frac)) deallocate(planck_frac)

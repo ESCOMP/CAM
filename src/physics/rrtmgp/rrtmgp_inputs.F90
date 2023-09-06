@@ -86,27 +86,21 @@ end subroutine rrtmgp_inputs_init
 !==================================================================================================
 
 subroutine rrtmgp_set_state( &
-   pstate, cam_in, ncol, nlay, &
-   nday, idxday, coszrs, &
-   kdist_sw, &
-   band2gpt_sw,    &
-   t_sfc, emis_sfc, t_rad, &
-   pmid_rad, pint_rad, t_day, pmid_day, pint_day, &
-   coszrs_day, alb_dir, alb_dif) 
+   pstate, cam_in, ncol, nlay, nday,           &
+   idxday, coszrs, kdist_sw, t_sfc, emis_sfc,  &
+   t_rad, pmid_rad, pint_rad, t_day, pmid_day, &
+   pint_day, coszrs_day, alb_dir, alb_dif) 
 
    ! arguments
-   type(physics_state), target, intent(in) :: pstate
-   type(cam_in_t),              intent(in) :: cam_in
-   integer,                     intent(in) :: ncol
-   integer,                     intent(in) :: nlay
-   integer,                     intent(in) :: nday
-   integer,                     intent(in) :: idxday(:)
-   real(r8),                    intent(in) :: coszrs(:)
-   ! real(r8),                    intent(in) :: eccf       ! Earth orbit eccentricity factor
-   integer,                     intent(in) :: band2gpt_sw(:,:) !< (2, nswbands)
-
+   type(physics_state),         intent(in) :: pstate    ! CAM physics state
+   type(cam_in_t),              intent(in) :: cam_in    ! CAM import state
+   integer,                     intent(in) :: ncol      ! # cols in chunk
+   integer,                     intent(in) :: nlay      ! # layers in rrtmgp grid
+   integer,                     intent(in) :: nday      ! # daylight columns
+   integer,                     intent(in) :: idxday(:) ! chunk indicies of daylight columns
+   real(r8),                    intent(in) :: coszrs(:) ! cosine of solar zenith angle
    class(ty_gas_optics_rrtmgp), intent(in) :: kdist_sw  ! spectral information
-!!! CHECK pcols vs ncol !!!
+
    real(r8), intent(out) :: t_sfc(ncol)              ! surface temperature [K] 
    real(r8), intent(out) :: emis_sfc(nlwbands,ncol)  ! emissivity at surface []
    real(r8), intent(out) :: t_rad(ncol,nlay)         ! layer midpoint temperatures [K]
@@ -121,11 +115,6 @@ subroutine rrtmgp_set_state( &
 
    ! local variables
    integer :: k, kk, i, iband
-
-   real(r8) :: solar_band_irrad(nswbands) ! specified solar irradiance in each sw band (per radconstants)
-
-   real(r8) :: sfac(nswbands)             ! time varying scaling factors due to Solar Spectral
-                                          ! Irrad at 1 A.U. per band
 
    character(len=*), parameter :: sub='rrtmgp_set_state'
    character(len=512) :: errmsg
