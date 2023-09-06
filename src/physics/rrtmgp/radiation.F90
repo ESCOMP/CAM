@@ -11,21 +11,27 @@ use spmd_utils,          only: masterproc
 use ppgrid,              only: pcols, pver, pverp, begchunk, endchunk
 use ref_pres,            only: pref_edge
 use physics_types,       only: physics_state, physics_ptend
-use physics_buffer,      only: physics_buffer_desc, pbuf_get_field, pbuf_old_tim_idx
+use phys_control,        only: phys_getopts
+use physics_buffer,      only: physics_buffer_desc, pbuf_add_field, dtype_r8, pbuf_get_index, &
+                               pbuf_set_field, pbuf_get_field, pbuf_old_tim_idx
 use camsrfexch,          only: cam_out_t, cam_in_t
 use physconst,           only: cappa, cpair, gravit
 use solar_irrad_data,    only: sol_tsi
 
-use time_manager,        only: get_nstep, is_first_restart_step, &
+use time_manager,        only: get_nstep, is_first_step, is_first_restart_step, &
                                get_curr_calday, get_step_size
 
 use rad_constituents,    only: N_DIAG, rad_cnst_get_call_list,               &
                                rad_cnst_get_gas, rad_cnst_out, oldcldoptics, &
                                liqcldoptics, icecldoptics
 
+use rrtmgp_inputs,       only: rrtmgp_inputs_init
+
 use radconstants,        only: nswbands, nlwbands, idx_sw_diag, idx_nir_diag, idx_uv_diag, & 
                                idx_lw_diag, idx_sw_cloudsim, idx_lw_cloudsim,              &
-                               nradgas, gasnamelength, gaslist
+                               nradgas, gasnamelength, gaslist, set_wavenumber_bands
+
+use cloud_rad_props,     only: cloud_rad_props_init
 
 use cospsimulator_intr,  only: docosp, cospsimulator_intr_init, &
                                cospsimulator_intr_run, cosp_nradsteps
@@ -34,6 +40,8 @@ use scamMod,             only: scm_crm_mode, single_column, have_cld, cldobs
 
 use cam_history,         only: addfld, add_default, horiz_only, outfld, hist_fld_active
 use cam_history_support, only: fillvalue, add_vert_coord
+
+use radiation_data,      only: rad_data_register, rad_data_init
 
 use ioFileMod,           only: getfil
 use cam_pio_utils,       only: cam_pio_openfile
@@ -229,7 +237,6 @@ subroutine radiation_readnl(nlfile)
    ! Read radiation_nl namelist group.
 
    use namelist_utils,  only: find_group_name
-   use units,           only: getunit, freeunit
    use spmd_utils,      only: mpicom, mstrid=>masterprocid, mpi_integer, mpi_logical, &
                               mpi_character
 
@@ -250,8 +257,7 @@ subroutine radiation_readnl(nlfile)
    !-----------------------------------------------------------------------------
 
    if (masterproc) then
-      unitn = getunit()
-      open( unitn, file=trim(nlfile), status='old' )
+      open( newunit=unitn, file=trim(nlfile), status='old' )
       call find_group_name(unitn, 'radiation_nl', status=ierr)
       if (ierr == 0) then
          read(unitn, radiation_nl, iostat=ierr)
@@ -260,7 +266,6 @@ subroutine radiation_readnl(nlfile)
          end if
       end if
       close(unitn)
-      call freeunit(unitn)
    end if
 
    ! Broadcast namelist variables
@@ -325,9 +330,6 @@ end subroutine radiation_readnl
 !================================================================================================
 
 subroutine radiation_register
-
-   use physics_buffer, only: pbuf_add_field, dtype_r8
-   use radiation_data, only: rad_data_register
 
    ! Register radiation fields in the physics buffer
 
@@ -438,14 +440,6 @@ subroutine radiation_init(pbuf2d)
    ! Initialize the radiation and cloud optics.
    ! Add fields to the history buffer.
 
-   use physics_buffer,  only: pbuf_get_index, pbuf_set_field
-   use phys_control,    only: phys_getopts
-   use radiation_data,  only: rad_data_init
-   use cloud_rad_props, only: cloud_rad_props_init
-   use rrtmgp_inputs,   only: rrtmgp_inputs_init
-   use time_manager,    only: is_first_step
-   use radconstants,    only: set_wavenumber_bands
-
    ! arguments
    type(physics_buffer_desc), pointer :: pbuf2d(:,:)
 
@@ -463,7 +457,7 @@ subroutine radiation_init(pbuf2d)
    logical :: history_budget              ! output tendencies and state variables for CAM4
                                           ! temperature, water vapor, cloud ice and cloud
                                           ! liquid budgets.
-   integer :: history_budget_histfile_num ! output history file number for budget fields
+   integer :: history_budget_histfile_num ! history file number for budget fields
    integer :: ierr
 
    integer :: dtime
@@ -1177,18 +1171,10 @@ subroutine radiation_tend( &
    if (dosw .or. dolw) then
 
       allocate( &
-         t_sfc(ncol),             &
-         emis_sfc(nlwbands,ncol), &
-         t_rad(ncol,nlay),        &
-         pmid_rad(ncol,nlay),     &
-         pint_rad(ncol,nlay+1),   &
-         t_day(nday,nlay),        &
-         pmid_day(nday,nlay),     &
-         pint_day(nday,nlay+1),   &
-         coszrs_day(nday),        &
-         alb_dir(nswbands,nday),  &
-         alb_dif(nswbands,nday)   &
-      )
+         t_sfc(ncol), emis_sfc(nlwbands,ncol),                            &
+         t_rad(ncol,nlay), pmid_rad(ncol,nlay), pint_rad(ncol,nlay+1),    &
+         t_day(nday,nlay), pmid_day(nday,nlay), pint_day(nday,nlay+1),    &
+         coszrs_day(nday), alb_dir(nswbands,nday), alb_dif(nswbands,nday) )
 
       ! Prepares state variables, daylit columns, albedos for RRTMGP
       call rrtmgp_set_state( &

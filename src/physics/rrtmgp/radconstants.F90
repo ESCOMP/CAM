@@ -60,8 +60,10 @@ contains
 subroutine set_wavenumber_bands(kdist_sw, kdist_lw)
 
    ! Set the low and high limits of the wavenumber grid for sw and lw.
-   ! Values comes from RRTMGP coefficients datasets, and are stored in the
-   ! kdist objects.  Also set band indices for bands containing specific wavelengths.
+   ! Values come from RRTMGP coefficients datasets, and are stored in the
+   ! kdist objects.
+   !
+   ! Set band indices for bands containing specific wavelengths.
 
    ! Arguments
    type(ty_gas_optics_rrtmgp), intent(in) :: kdist_sw

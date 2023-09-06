@@ -10,7 +10,7 @@ module rrtmgp_inputs
 use shr_kind_mod,     only: r8=>shr_kind_r8
 use ppgrid,           only: pcols, pver, pverp
 
-use physconst,        only: stebol
+use physconst,        only: stebol, pi
 
 use physics_types,    only: physics_state
 use physics_buffer,   only: physics_buffer_desc
@@ -83,16 +83,16 @@ subroutine rrtmgp_inputs_init(ktcam, ktrad)
 
 end subroutine rrtmgp_inputs_init
 
-!==================================================================================================
+!=========================================================================================
 
 subroutine rrtmgp_set_state( &
-   pstate, cam_in, ncol, nlay, nday,           &
+   state, cam_in, ncol, nlay, nday,           &
    idxday, coszrs, kdist_sw, t_sfc, emis_sfc,  &
    t_rad, pmid_rad, pint_rad, t_day, pmid_day, &
    pint_day, coszrs_day, alb_dir, alb_dif) 
 
    ! arguments
-   type(physics_state),         intent(in) :: pstate    ! CAM physics state
+   type(physics_state),         intent(in) :: state     ! CAM physics state
    type(cam_in_t),              intent(in) :: cam_in    ! CAM import state
    integer,                     intent(in) :: ncol      ! # cols in chunk
    integer,                     intent(in) :: nlay      ! # layers in rrtmgp grid
@@ -116,6 +116,8 @@ subroutine rrtmgp_set_state( &
    ! local variables
    integer :: k, kk, i, iband
 
+   real(r8) :: tref_min, tref_max, tmin, tmax
+
    character(len=*), parameter :: sub='rrtmgp_set_state'
    character(len=512) :: errmsg
    !--------------------------------------------------------------------------------
@@ -124,39 +126,42 @@ subroutine rrtmgp_set_state( &
 
    ! Set surface emissivity to 1.0.
    ! The land model *does* have its own surface emissivity, but is not spectrally resolved.
-   ! The LW upward flux is calculated with that land emissivity, and the "radiative temperature" t_sfc is derived
-   ! from that flux. We assume, therefore, that the emissivity is unity to be consistent with t_sfc.
+   ! The LW upward flux is calculated with that land emissivity, and the "radiative temperature"
+   ! t_sfc is derived from that flux. We assume, therefore, that the emissivity is unity
+   ! to be consistent with t_sfc.
    emis_sfc(:,:) = 1._r8
 
+   ! Assume level ordering is the same for both CAM and RRTMGP (top to bottom)
+   t_rad(:,ktoprad:) = state%t(:ncol,ktopcam:)
+   pmid_rad(:,ktoprad:) = state%pmid(:ncol,ktopcam:)
+   pint_rad(:,ktoprad:) = state%pint(:ncol,ktopcam:)
 
-   ! Assume level ordering is the same for both CAM and RAD (top to bottom)
-   if (nlay == pver) then
-      t_rad(:ncol, :) = pstate%t(:ncol, :)
-      pmid_rad(:ncol, :) = pstate%pmid(:ncol, :)
-      pint_rad(:ncol, :) = pstate%pint(:ncol, :)
-   else if (nlay < pver) then
-      t_rad(:ncol, :) = pstate%t(:ncol, pver-nlay+1:pver)
-      pmid_rad(:ncol, :) = pstate%pmid(:ncol, pver-nlay+1:pver)
-      pint_rad(:ncol, :) = pstate%pint(:ncol, pver-nlay+1:pverp)
-   else if (nlay > pver) then
-      t_rad(:ncol, nlay-pver+1:)    = pstate%t(:ncol, :)
-      pmid_rad(:ncol, nlay-pver+1:) = pstate%pmid(:ncol, :)
-      pint_rad(:ncol, nlay-pver+1:) = pstate%pint(:ncol, :)
-   end if
-
-   
+   ! Add extra layer values if needed.
    if (nlay == pverp) then
-      ! add midpoint and top interface values for extra layer
-      t_rad(:,1)      = pstate%t(:ncol,1)
-      pmid_rad(:,1)   = 0.5_r8 * pstate%pint(:ncol,1)
-
-      ! pint_rad(:,nlay+1) = 1.e-2_r8 ! rrtmg value (in hPa?)
-      pint_rad(:,1) = 1.01_r8         ! in Pa
-   else if (nlay > pverp) then
-      call endrun(sub//': ERROR: radiation should not have more layers than CAM has interfaces')
+      t_rad(:,1)      = state%t(:ncol,1)
+      pmid_rad(:,1)   = 0.5_r8 * state%pint(:ncol,1)
+      ! The top reference pressure from the RRTMGP coefficients datasets is 1.005183574463 Pa
+      ! Set the top of the extra layer just below that.
+      pint_rad(:,1) = 1.01_r8
    end if
 
-   ! properties needed at day columns
+   ! Check that the temperatures are within the limits of RRTMGP validity.
+   tref_min = kdist_sw%get_temp_min()
+   tref_max = kdist_sw%get_temp_max()
+   if ( any(t_rad < tref_min) .or. any(t_rad > tref_max) ) then
+      ! Find out of range value and quit.
+      do i = 1, ncol
+         do k = 1, nlay
+            if ( t_rad(i,k) < tref_min .or. t_rad(i,k) > tref_max ) then
+               write(errmsg,*) 'temp outside valid range: ', t_rad(i,k), ': column lat=', &
+                  state%lat(i)*180._r8/pi, ': column lon=', state%lon(i)*180._r8/pi, ': level idx=',k
+               call endrun(sub//': ERROR, '//errmsg)
+            end if
+         end do
+      end do
+   end if
+
+   ! Construct arrays containing only daylight columns
    do i = 1, nday
       t_day(i,:)    = t_rad(idxday(i),:)
       pmid_day(i,:) = pmid_rad(idxday(i),:)
@@ -215,7 +220,7 @@ subroutine rrtmgp_set_state( &
 
 end subroutine rrtmgp_set_state
 
-!==================================================================================================
+!=========================================================================================
 
 logical function is_visible(wavenumber)
 
@@ -237,7 +242,7 @@ logical function is_visible(wavenumber)
 
 end function is_visible
 
-!==================================================================================================
+!=========================================================================================
 
 function get_molar_mass_ratio(gas_name) result(massratio)
    ! return the molar mass ratio of dry air to gas based on gas_name
@@ -266,12 +271,12 @@ function get_molar_mass_ratio(gas_name) result(massratio)
    end select
 end function get_molar_mass_ratio
 
-subroutine rad_gas_get_vmr(icall, gas_name, pstate, pbuf, nlay, numactivecols, gas_concs, indices)
+subroutine rad_gas_get_vmr(icall, gas_name, state, pbuf, nlay, numactivecols, gas_concs, indices)
    ! provides volume mixing ratio into gas_concs data structure
    ! Assumes gas_name will be found with rad_cnst_get_gas(). 
    integer,                     intent(in)    :: icall      ! index of climate/diagnostic radiation call
    character(len=*),            intent(in)    :: gas_name
-   type(physics_state), target, intent(in)    :: pstate
+   type(physics_state), target, intent(in)    :: state
    type(physics_buffer_desc),   pointer       :: pbuf(:)
    integer,                     intent(in)    :: nlay           ! number of layers in radiation calculation
    integer,                     intent(in)    :: numactivecols  ! number of columns, ncol for LW, nday for SW
@@ -298,7 +303,7 @@ subroutine rad_gas_get_vmr(icall, gas_name, pstate, pbuf, nlay, numactivecols, g
    allocate(mmr(numactivecols, nlay))
    allocate(gas_vmr(numactivecols, nlay))
 
-   call rad_cnst_get_gas(icall, gas_name, pstate, pbuf, gas_mmr)
+   call rad_cnst_get_gas(icall, gas_name, state, pbuf, gas_mmr)
    ! copy the gas and actually convert to mmr in case of H2O (specific to mixing ratio)
 
    mmr = gas_mmr
@@ -352,8 +357,8 @@ subroutine rad_gas_get_vmr(icall, gas_name, pstate, pbuf, nlay, numactivecols, g
       amdo = get_molar_mass_ratio('O3')
       do i = 1, numactivecols
             P_top = 50.0_r8                     ! pressure (Pa) at which we assume O3 = 0 in linear decay from CAM top
-            P_int(i) = pstate%pint(idx(i),1) ! pressure (Pa) at upper interface of CAM
-            P_mid(i) = pstate%pmid(idx(i),1) ! pressure (Pa) at midpoint of top layer of CAM
+            P_int(i) = state%pint(idx(i),1) ! pressure (Pa) at upper interface of CAM
+            P_mid(i) = state%pmid(idx(i),1) ! pressure (Pa) at midpoint of top layer of CAM
             alpha(i) = 0.0_r8
             beta(i) = 0.0_r8
             alpha(i) = log(P_int(i)/P_top)
@@ -391,7 +396,7 @@ end subroutine rad_gas_get_vmr
 
 !==================================================================================================
 
-subroutine rrtmgp_set_gases_lw(icall, pstate, pbuf, nlay, gas_concs)
+subroutine rrtmgp_set_gases_lw(icall, state, pbuf, nlay, gas_concs)
 
    ! The gases in the LW coefficients file are:
    ! H2O, CO2, O3, N2O, CO, CH4, O2, N2
@@ -404,7 +409,7 @@ subroutine rrtmgp_set_gases_lw(icall, pstate, pbuf, nlay, gas_concs)
 
    ! arguments
    integer,                     intent(in)    :: icall      ! index of climate/diagnostic radiation call
-   type(physics_state), target, intent(in)    :: pstate
+   type(physics_state), target, intent(in)    :: state
    type(physics_buffer_desc),   pointer       :: pbuf(:)
    integer,                     intent(in)    :: nlay
    type(ty_gas_concs),          intent(inout) :: gas_concs
@@ -417,17 +422,17 @@ subroutine rrtmgp_set_gases_lw(icall, pstate, pbuf, nlay, gas_concs)
    integer :: i
    !--------------------------------------------------------------------------------
 
-   ncol = pstate%ncol
-   lchnk = pstate%lchnk
+   ncol = state%ncol
+   lchnk = state%lchnk
    do i = 1,nradgas
-      call rad_gas_get_vmr(icall, gaslist(i), pstate, pbuf, nlay, ncol, gas_concs)
+      call rad_gas_get_vmr(icall, gaslist(i), state, pbuf, nlay, ncol, gas_concs)
    end do
 end subroutine rrtmgp_set_gases_lw
 
 !==================================================================================================
 
 subroutine rrtmgp_set_gases_sw( &
-   icall, pstate, pbuf, nlay, nday, &
+   icall, state, pbuf, nlay, nday, &
    idxday, gas_concs)
 
    ! Return gas_concs with gas volume mixing ratio on DAYLIT columns.
@@ -439,7 +444,7 @@ subroutine rrtmgp_set_gases_sw( &
 
    ! arguments
    integer,                     intent(in)    :: icall      ! index of climate/diagnostic radiation call
-   type(physics_state), target, intent(in)    :: pstate
+   type(physics_state), target, intent(in)    :: state
    type(physics_buffer_desc),   pointer       :: pbuf(:)
    integer,                     intent(in)    :: nlay
    integer,                     intent(in)    :: nday
@@ -452,7 +457,7 @@ subroutine rrtmgp_set_gases_sw( &
 
    ! use the optional argument indices to specify which columns are sunlit
     do i = 1,nradgas
-      call rad_gas_get_vmr(icall, gaslist(i), pstate, pbuf, nlay, nday, gas_concs, indices=idxday)
+      call rad_gas_get_vmr(icall, gaslist(i), state, pbuf, nlay, nday, gas_concs, indices=idxday)
    end do
 
 end subroutine rrtmgp_set_gases_sw
