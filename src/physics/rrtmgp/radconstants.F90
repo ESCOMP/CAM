@@ -3,8 +3,9 @@ module radconstants
 ! This module contains constants that are specific to the radiative transfer
 ! code used in the RRTMGP model.
 
-use shr_kind_mod,   only: r8 => shr_kind_r8
-use cam_abortutils, only: endrun
+use shr_kind_mod,         only: r8 => shr_kind_r8
+use mo_gas_optics_rrtmgp, only: ty_gas_optics_rrtmgp
+use cam_abortutils,       only: endrun
 
 implicit none
 private
@@ -18,10 +19,12 @@ integer, parameter, public :: nswbands = 14
 integer, parameter, public :: nlwbands = 16
 
 ! Band limits (set from data in RRTMGP coefficient datasets)
-real(r8), allocatable, target :: wavenumber_low_shortwave(:)
-real(r8), allocatable, target :: wavenumber_high_shortwave(:)
-real(r8), allocatable, target :: wavenumber_low_longwave(:)
-real(r8), allocatable, target :: wavenumber_high_longwave(:)
+real(r8), target :: wavenumber_low_shortwave(nswbands)
+real(r8), target :: wavenumber_high_shortwave(nswbands)
+real(r8), target :: wavenumber_low_longwave(nlwbands)
+real(r8), target :: wavenumber_high_longwave(nlwbands)
+
+logical :: wavenumber_boundaries_set = .false.
 
 ! These are indices to specific bands for diagnostic output and COSP input.
 integer, public, protected :: idx_sw_diag = -1     ! band contains 500-nm wave
@@ -50,46 +53,68 @@ public :: &
    get_band_index_by_value,    &
    rad_gas_index
 
-!===============================================================================
+!=========================================================================================
 contains
-!===============================================================================
+!=========================================================================================
 
-subroutine set_wavenumber_bands(swlw, nbands, values)
+subroutine set_wavenumber_bands(kdist_sw, kdist_lw)
 
-   ! Set the low and high limits of the wavenumber grid for sw or lw.
-   ! Values comes from RRTMGP coefficients datasets.
-   ! Also set band indices for bands containing specific wavelengths.
+   ! Set the low and high limits of the wavenumber grid for sw and lw.
+   ! Values comes from RRTMGP coefficients datasets, and are stored in the
+   ! kdist objects.  Also set band indices for bands containing specific wavelengths.
 
-   character(*), intent(in) :: swlw             ! which bands to set ['sw', 'lw']
-   integer,      intent(in) :: nbands
-   real(r8),     intent(in) :: values(2,nbands) ! cm-1
+   ! Arguments
+   type(ty_gas_optics_rrtmgp), intent(in) :: kdist_sw
+   type(ty_gas_optics_rrtmgp), intent(in) :: kdist_lw
 
-   select case(swlw)
-   case ('sw')
-      allocate(wavenumber_low_shortwave(nbands))
-      allocate(wavenumber_high_shortwave(nbands))
-      wavenumber_low_shortwave = values(1,:)
-      wavenumber_high_shortwave = values(2,:)
+   ! Local variables
+   real(r8), allocatable :: values(:,:)
 
-      idx_sw_diag     = get_band_index_by_value('sw', 500.0_r8, 'nm')
-      idx_nir_diag    = get_band_index_by_value('sw', 1000.0_r8, 'nm')
-      idx_uv_diag     = get_band_index_by_value('sw', 400._r8, 'nm')
-      idx_sw_cloudsim = get_band_index_by_value('sw', 0.67_r8, 'micron')
+   character(len=128) :: errmsg
+   character(len=*), parameter :: sub = 'set_wavenumber_bands'
+   !----------------------------------------------------------------------------
 
-   case ('lw')
-      allocate(wavenumber_low_longwave(nbands))
-      allocate(wavenumber_high_longwave(nbands))
-      wavenumber_low_longwave = values(1,:)
-      wavenumber_high_longwave = values(2,:)
+   ! Check that number of sw/lw bands in gas optics files matches the parameters.
+   if (kdist_sw%get_nband() /= nswbands) then
+      write(errmsg,'(a,i4,a,i4)') 'number of sw bands in file, ', kdist_sw%get_nband(), &
+         ", doesn't match parameter nswbands= ", nswbands
+      call endrun(sub//': ERROR: '//trim(errmsg))
+   end if
+   if (kdist_lw%get_nband() /= nlwbands) then
+      write(errmsg,'(a,i4,a,i4)') 'number of lw bands in file, ', kdist_lw%get_nband(), &
+         ", doesn't match parameter nlwbands= ", nlwbands
+      call endrun(sub//': ERROR: '//trim(errmsg))
+   end if
 
-      idx_lw_diag     = get_band_index_by_value('lw', 1000.0_r8, 'cm^-1')
-      idx_lw_cloudsim = get_band_index_by_value('lw', 10.5_r8, 'micron')
+   ! SW band bounds in cm^-1
+   allocate( values(2,nswbands) )
+   values = kdist_sw%get_band_lims_wavenumber()
+   wavenumber_low_shortwave = values(1,:)
+   wavenumber_high_shortwave = values(2,:)
 
-   end select
+   ! Indices into specific bands
+   idx_sw_diag     = get_band_index_by_value('sw', 500.0_r8, 'nm')
+   idx_nir_diag    = get_band_index_by_value('sw', 1000.0_r8, 'nm')
+   idx_uv_diag     = get_band_index_by_value('sw', 400._r8, 'nm')
+   idx_sw_cloudsim = get_band_index_by_value('sw', 0.67_r8, 'micron')
+
+   deallocate(values)
+
+   ! LW band bounds in cm^-1
+   allocate( values(2,nlwbands) )
+   values = kdist_lw%get_band_lims_wavenumber()
+   wavenumber_low_longwave = values(1,:)
+   wavenumber_high_longwave = values(2,:)
+
+   ! Indices into specific bands
+   idx_lw_diag     = get_band_index_by_value('lw', 1000.0_r8, 'cm^-1')
+   idx_lw_cloudsim = get_band_index_by_value('lw', 10.5_r8, 'micron')
+
+   wavenumber_boundaries_set = .true.
 
 end subroutine set_wavenumber_bands
 
-!------------------------------------------------------------------------------
+!=========================================================================================
 
 subroutine get_sw_spectral_boundaries(low_boundaries, high_boundaries, units)
 
@@ -97,6 +122,13 @@ subroutine get_sw_spectral_boundaries(low_boundaries, high_boundaries, units)
 
    real(r8),    intent(out) :: low_boundaries(nswbands), high_boundaries(nswbands)
    character(*), intent(in) :: units ! requested units
+
+   character(len=*), parameter :: sub = 'get_sw_spectral_boundaries'
+   !----------------------------------------------------------------------------
+
+   if (.not. wavenumber_boundaries_set) then
+      call endrun(sub//': ERROR, wavenumber boundaries not set. ')
+   end if
 
    select case (units)
    case ('inv_cm','cm^-1','cm-1')
@@ -115,12 +147,12 @@ subroutine get_sw_spectral_boundaries(low_boundaries, high_boundaries, units)
       low_boundaries  = 1._r8/wavenumber_high_shortwave
       high_boundaries = 1._r8/wavenumber_low_shortwave
    case default
-      call endrun('rad_constants.F90: requested spectral units not recognized: '//units)
+      call endrun(sub//': ERROR, requested spectral units not recognized: '//units)
    end select
 
 end subroutine get_sw_spectral_boundaries
 
-!------------------------------------------------------------------------------
+!=========================================================================================
 
 subroutine get_lw_spectral_boundaries(low_boundaries, high_boundaries, units)
 
@@ -128,6 +160,13 @@ subroutine get_lw_spectral_boundaries(low_boundaries, high_boundaries, units)
 
    real(r8), intent(out) :: low_boundaries(nlwbands), high_boundaries(nlwbands)
    character(*), intent(in) :: units ! requested units
+
+   character(len=*), parameter :: sub = 'get_lw_spectral_boundaries'
+   !----------------------------------------------------------------------------
+
+   if (.not. wavenumber_boundaries_set) then
+      call endrun(sub//': ERROR, wavenumber boundaries not set. ')
+   end if
 
    select case (units)
    case ('inv_cm','cm^-1','cm-1')
@@ -146,12 +185,12 @@ subroutine get_lw_spectral_boundaries(low_boundaries, high_boundaries, units)
       low_boundaries  = 1._r8/wavenumber_high_longwave
       high_boundaries = 1._r8/wavenumber_low_longwave
    case default
-      call endrun('get_lw_spectral_boundaries: spectral units not recognized: '//units)
+      call endrun(sub//': ERROR, requested spectral units not recognized: '//units)
    end select
 
 end subroutine get_lw_spectral_boundaries
 
-!------------------------------------------------------------------------------
+!=========================================================================================
 
 integer function rad_gas_index(gasname)
 
@@ -170,7 +209,7 @@ integer function rad_gas_index(gasname)
    call endrun ("rad_gas_index: can not find gas with name "//gasname)
 end function rad_gas_index
 
-!------------------------------------------------------------------------------
+!=========================================================================================
 
 function get_band_index_by_value(swlw, targetvalue, units) result(ans)
 
@@ -231,6 +270,6 @@ function get_band_index_by_value(swlw, targetvalue, units) result(ans)
    
 end function get_band_index_by_value
 
-!------------------------------------------------------------------------------
+!=========================================================================================
 
 end module radconstants

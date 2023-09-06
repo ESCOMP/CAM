@@ -204,8 +204,8 @@ integer :: ktoprad ! Index in RRTMGP arrays of the layer or interface correspond
 real(r8), allocatable, target :: plev_rad(:)
 
 ! Gas optics objects contain the data read from the coefficients files.
-type(ty_gas_optics_rrtmgp) :: kdist_lw
 type(ty_gas_optics_rrtmgp) :: kdist_sw
+type(ty_gas_optics_rrtmgp) :: kdist_lw
 
 ! Mapping from RRTMG shortwave bands to RRTMGP.  Currently needed to continue using
 ! the SW optics datasets from RRTMG (even thought there is a slight mismatch in the
@@ -305,12 +305,14 @@ subroutine radiation_readnl(nlfile)
 
    if (masterproc) then
       write(iulog,*) 'RRTMGP radiation scheme parameters:'
-      write(iulog,10) trim(coefs_lw_file), trim(coefs_sw_file), iradsw, iradlw, &
-                      irad_always, use_rad_dt_cosz, spectralflux, graupel_in_rad
+      write(iulog,10) trim(coefs_lw_file), trim(coefs_sw_file), nlwbands, nswbands, &
+         iradsw, iradlw, irad_always, use_rad_dt_cosz, spectralflux, graupel_in_rad
    end if
 
 10 format('  LW coefficents file: ',                                a/, &
           '  SW coefficents file: ',                                a/, &
+          '  Number of LW bands:                                 ',i5/, &
+          '  Number of SW bands:                                 ',i5/, &
           '  Frequency (timesteps) of Shortwave Radiation calc:  ',i5/, &
           '  Frequency (timesteps) of Longwave Radiation calc:   ',i5/, &
           '  SW/LW calc done every timestep for first N steps. N=',i5/, &
@@ -507,28 +509,13 @@ subroutine radiation_init(pbuf2d)
    end if
 
    ! Read RRTMGP coefficients files and initialize kdist objects.
-   call coefs_init(coefs_lw_file, available_gases, kdist_lw)
    call coefs_init(coefs_sw_file, available_gases, kdist_sw)
+   call coefs_init(coefs_lw_file, available_gases, kdist_lw)
 
-   ! check number of sw/lw bands in gas optics files
-   if (kdist_sw%get_nband() /= nswbands) then
-      write(errmsg,'(a,i4,a,i4)') 'number of sw bands in file, ', kdist_sw%get_nband(), &
-         ", doesn't match parameter nswbands= ", nswbands
-      call endrun(sub//': ERROR: '//trim(errmsg))
-   end if
-   if (kdist_lw%get_nband() /= nlwbands) then
-      write(errmsg,'(a,i4,a,i4)') 'number of lw bands in file, ', kdist_lw%get_nband(), &
-         ", doesn't match parameter nlwbands= ", nlwbands
-      call endrun(sub//': ERROR: '//trim(errmsg))
-   end if
-   if (masterproc) then
-      write(iulog, *) sub//': NUMBER SW BANDS: ', nswbands,' NUMBER LW BANDS: ', nlwbands
-   end if
+   ! Set the sw/lw band boundaries in radconstants
+   call set_wavenumber_bands(kdist_sw, kdist_lw)
 
-   ! set the sw/lw band limits in radconstants
-   call set_wavenumber_bands('sw', kdist_sw%get_nband(), kdist_sw%get_band_lims_wavenumber()) 
-   call set_wavenumber_bands('lw', kdist_lw%get_nband(), kdist_lw%get_band_lims_wavenumber())
-
+   ! The spectral band boundaries need to be set before this init is called.
    call rrtmgp_inputs_init(ktopcam, ktoprad)
 
    ! initialize output fields for offline driver
