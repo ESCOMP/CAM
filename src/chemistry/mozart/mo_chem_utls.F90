@@ -9,7 +9,7 @@ module mo_chem_utls
 
 contains
 
-  integer function get_spc_ndx( spc_name, compare_uppercase )
+  integer function get_spc_ndx( spc_name, ignore_case )
     !-----------------------------------------------------------------------
     !     ... return overall species index associated with spc_name
     !-----------------------------------------------------------------------
@@ -24,7 +24,7 @@ contains
     !     ... dummy arguments
     !-----------------------------------------------------------------------
     character(len=*), intent(in)           :: spc_name
-    logical,          intent(in), optional :: compare_uppercase
+    logical,          intent(in), optional :: ignore_case
 
     !-----------------------------------------------------------------------
     !     ... local variables
@@ -34,8 +34,8 @@ contains
     logical :: match
 
     convert_to_upper = .false.
-    if ( present( compare_uppercase ) ) then
-       convert_to_upper = compare_uppercase
+    if ( present( ignore_case ) ) then
+       convert_to_upper = ignore_case
     endif
 
     get_spc_ndx = -1

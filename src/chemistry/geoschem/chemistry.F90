@@ -434,7 +434,7 @@ contains
           map2GCinv(M) = N
        ENDIF
        ! Map constituent onto chemically-active species (aka as indexed in solsym)
-       M = get_spc_ndx(TRIM(trueName), compare_uppercase=.true.)
+       M = get_spc_ndx(TRIM(trueName), ignore_case=.true.)
        IF ( M > 0 ) THEN
           mapCnst(N) = M
        ENDIF
@@ -496,7 +496,7 @@ contains
 
        ! The species names need to be convert to upper case as,
        ! for instance, BR2 != Br2
-       drySpc_ndx(N) = get_spc_ndx( to_upper(drydep_list(N)), compare_uppercase=.true. )
+       drySpc_ndx(N) = get_spc_ndx( to_upper(drydep_list(N)), ignore_case=.true. )
 
        if (debug .and. masterproc) write(iulog,'(a,a,a,i4,a,i4)') ' -> species ', trim(drydep_list(N)), ' in dry deposition list at index ', N, ' maps to species in solsym at index ', drySpc_ndx(N)
 
@@ -644,13 +644,12 @@ contains
     use gckpp_Model,     only : nSpec, Spc_Names
     use namelist_utils,  only : find_group_name
     use mo_lightning,    only : lightning_readnl
+    use spmd_utils,      only : mpicom, masterprocid, mpi_success
+    use spmd_utils,      only : mpi_character, mpi_integer, mpi_logical
     use units,           only : getunit, freeunit
 #if defined( MODAL_AERO )
     use aero_model,      only : aero_model_readnl
     use dust_model,      only : dust_readnl
-#endif
-#ifdef SPMD
-    use mpishorthand
 #endif
 
     ! args
@@ -661,6 +660,7 @@ contains
     INTEGER                      :: UNITN, IERR, RC
     CHARACTER(LEN=500)           :: line
     CHARACTER(LEN=63)            :: substrs(2)
+    CHARACTER(LEN=*), PARAMETER  :: subname = 'chem_readnl'
     LOGICAL                      :: validSLS, v_bool
 
     ! Assume a successful return until otherwise
@@ -837,17 +837,40 @@ contains
     !----------------------------------------------------------
     ! Broadcast to all processors
     !----------------------------------------------------------
-    
-    CALL MPIBCAST ( nTracers,    1,                               MPIINT,  0, MPICOM )
-    CALL MPIBCAST ( tracerNames, LEN(tracerNames(1))*nTracersMax, MPICHAR, 0, MPICOM )
-    CALL MPIBCAST ( nSls,        1,                               MPIINT,  0, MPICOM )
-    CALL MPIBCAST ( slsNames,    LEN(slsNames(1))*nSlsMax,        MPICHAR, 0, MPICOM )
+    CALL mpi_bcast(nTracers, 1, mpi_integer, masterprocid, mpicom, ierr)
+    IF ( ierr /= mpi_success ) then
+       CALL endrun(subname//': MPI_BCAST ERROR: nTracers')
+    ENDIF
+    CALL mpi_bcast(tracerNames, LEN(tracerNames(1))*nTracersMax, mpi_character, masterprocid, mpicom, ierr)
+    IF ( ierr /= mpi_success ) then
+       CALL endrun(subname//': MPI_BCAST ERROR: tracerNames')
+    ENDIF
+    CALL mpi_bcast(nSls, 1, mpi_integer, masterprocid, mpicom, ierr)
+    IF ( ierr /= mpi_success ) then
+       CALL endrun(subname//': MPI_BCAST ERROR: nSls')
+    ENDIF
+    CALL mpi_bcast(slsNames, LEN(slsNames(1))*nSlsMax, mpi_character, masterprocid, mpicom, ierr)
+    IF ( ierr /= mpi_success ) then
+       CALL endrun(subname//': MPI_BCAST ERROR: slsNames')
+    ENDIF
 
     ! Broadcast namelist variables
-    CALL MPIBCAST (depvel_lnd_file, LEN(depvel_lnd_file), MPICHAR, 0, MPICOM)
-    CALL MPIBCAST (ghg_chem,           1,                                MPILOG,  0, MPICOM)
-    CALL MPIBCAST (bndtvg,             LEN(bndtvg),                      MPICHAR, 0, MPICOM)
-    CALL MPIBCAST (h2orates,           LEN(h2orates),                    MPICHAR, 0, MPICOM)
+    CALL mpi_bcast(depvel_lnd_file, LEN(depvel_lnd_file), mpi_character, masterprocid, mpicom, ierr)
+    IF ( ierr /= mpi_success ) then
+       CALL endrun(subname//': MPI_BCAST ERROR: depvel_lnd_file')
+    ENDIF
+    CALL mpi_bcast(ghg_chem, 1, mpi_logical, masterprocid, mpicom, ierr)
+    IF ( ierr /= mpi_success ) then
+       CALL endrun(subname//': MPI_BCAST ERROR: ghg_chem')
+    ENDIF
+    CALL mpi_bcast(bndtvg, LEN(bndtvg), mpi_character, masterprocid, mpicom, ierr)
+    IF ( ierr /= mpi_success ) then
+       CALL endrun(subname//': MPI_BCAST ERROR: bndtvg')
+    ENDIF
+    CALL mpi_bcast(h2orates, LEN(h2orates), mpi_character, masterprocid, mpicom, ierr)
+    IF ( ierr /= mpi_success ) then
+       CALL endrun(subname//': MPI_BCAST ERROR: h2orates')
+    ENDIF
 
     IF ( nSls .NE. nSlvd ) THEN
        write(iulog,'(a,i4)') 'nSlvd in geoschem/chem_mods.F90 does not match # non-advected KPP species. Set nSlvd to ', nSls
@@ -921,11 +944,9 @@ contains
     use mo_setinv,             only : setinv_inti
     use Phys_Grid,             only : get_Area_All_p
     use physics_buffer,        only : physics_buffer_desc, pbuf_get_index
+    use spmd_utils,            only : mpicom, masterprocid, mpi_real8, mpi_success
     use tracer_cnst,           only : tracer_cnst_init
     use tracer_srcs,           only : tracer_srcs_init
-#ifdef SPMD
-    use mpishorthand
-#endif
 #if defined( MODAL_AERO )
     use aero_model,            only : aero_model_init
     use mo_setsox,             only : sox_inti
@@ -984,8 +1005,9 @@ contains
     LOGICAL                :: Found
 
     ! Strings
-    CHARACTER(LEN=shr_kind_cl) :: historyConfigFile
-    CHARACTER(LEN=shr_kind_cl) :: SpcName
+    CHARACTER(LEN=shr_kind_cl)  :: historyConfigFile
+    CHARACTER(LEN=shr_kind_cl)  :: SpcName
+    CHARACTER(LEN=*), PARAMETER :: subname = 'chem_init'
 
     ! Objects
     TYPE(Species), POINTER :: SpcInfo
@@ -1225,7 +1247,10 @@ contains
           ! Copy the data to a temporary array
           linozData = REAL(Input_Opt%LINOZ_TPARM, r8)
        ENDIF
-       CALL MPIBCAST( linozData, nLinoz, MPIR8, 0, MPICOM )
+       CALL mpi_bcast(linozData, nLinoz, mpi_real8, masterprocid, mpicom, ierr)
+       IF ( ierr /= mpi_success ) then
+          CALL endrun(subname//': MPI_BCAST ERROR: linozData')
+       ENDIF
        IF ( .NOT. MasterProc ) THEN
           Input_Opt%LINOZ_TPARM = REAL(linozData,fp)
        ENDIF
@@ -1599,8 +1624,8 @@ contains
     ! Free pointer
     SpcInfo => NULL()
 
-    l_H2SO4 = get_spc_ndx('H2SO4', compare_uppercase=.true.)
-    l_SO4   = get_spc_ndx('SO4', compare_uppercase=.true.)
+    l_H2SO4 = get_spc_ndx('H2SO4', ignore_case=.true.)
+    l_SO4   = get_spc_ndx('SO4', ignore_case=.true.)
 
     ! Get indices for physical fields in physics buffer
     NDX_PBLH     = pbuf_get_index('pblh'     )
@@ -1716,7 +1741,7 @@ contains
     ! Purpose: reads the namelist from cam/src/control/runtime_opts
 
     ! CAM modules
-    use mpishorthand
+    use spmd_utils,      only : mpicom, masterprocid, mpi_character, mpi_success
     use namelist_utils,  only: find_group_name
     use units,           only: getunit, freeunit
 
@@ -1742,7 +1767,10 @@ contains
     ENDIF
 
     ! Broadcast namelist variables
-    CALL MPIBCAST(gc_cheminputs, LEN(gc_cheminputs),      MPICHAR,   0, MPICOM)
+    CALL mpi_bcast(gc_cheminputs, LEN(gc_cheminputs), mpi_character, masterprocid, mpicom, ierr)
+    IF ( ierr /= mpi_success ) then
+       CALL endrun(subname//': MPI_BCAST ERROR: gc_cheminputs')
+    ENDIF
 
   end subroutine gc_readnl
 
@@ -1772,6 +1800,7 @@ contains
     use physconst,           only : MWDry, Gravit
     use rad_constituents,    only : rad_cnst_get_info
     use short_lived_species, only : get_short_lived_species_gc, set_short_lived_species_gc
+    use spmd_utils,          only : masterproc
     use time_manager,        only : Get_Curr_Calday, Get_Curr_Date ! For computing SZA
     use tropopause,          only : Tropopause_findChemTrop, Tropopause_Find
     use wv_saturation,       only : QSat
@@ -1783,10 +1812,7 @@ contains
     use modal_aero_data,     only : lptr_so4_a_amode
     use modal_aero_data,     only : lptr2_soa_a_amode, lptr2_soa_g_amode
 #endif
-#ifdef SPMD
-    use mpishorthand
-#endif
-    
+
     ! GEOS-Chem interface modules in CAM
     use GeosChem_Emissions_Mod,   only : GC_Emissions_Calc
     use GeosChem_Diagnostics_Mod, only : GC_Diagnostics_Calc, wetdep_name, wtrate_name
@@ -3840,10 +3866,10 @@ contains
     speciesName_2 = 'ASOAN'
     speciesName_3 = 'SOAIE'
     speciesName_4 = 'SOAGX'
-    K1 = get_spc_ndx(TRIM(speciesName_1), compare_uppercase=.true.)
-    K2 = get_spc_ndx(TRIM(speciesName_2), compare_uppercase=.true.)
-    K3 = get_spc_ndx(TRIM(speciesName_3), compare_uppercase=.true.)
-    K4 = get_spc_ndx(TRIM(speciesName_4), compare_uppercase=.true.)
+    K1 = get_spc_ndx(TRIM(speciesName_1), ignore_case=.true.)
+    K2 = get_spc_ndx(TRIM(speciesName_2), ignore_case=.true.)
+    K3 = get_spc_ndx(TRIM(speciesName_3), ignore_case=.true.)
+    K4 = get_spc_ndx(TRIM(speciesName_4), ignore_case=.true.)
     bulkMass(:nY,:nZ) = 0.0e+00_r8
     DO iBin = 1, 2
        DO M = 1, ntot_amode
@@ -3877,8 +3903,8 @@ contains
           speciesName_1 = 'TSOA3'
           speciesName_2 = 'ASOA3'
        ENDIF
-       K1 = get_spc_ndx(TRIM(speciesName_1), compare_uppercase=.true. )
-       K2 = get_spc_ndx(TRIM(speciesName_2), compare_uppercase=.true. )
+       K1 = get_spc_ndx(TRIM(speciesName_1), ignore_case=.true. )
+       K2 = get_spc_ndx(TRIM(speciesName_2), ignore_case=.true. )
        bulkMass(:nY,:nZ) = 0.0e+00_r8
        DO M = 1, ntot_amode
           N = lptr2_soa_a_amode(M,iBin)
@@ -3899,7 +3925,7 @@ contains
     ! Now deal with gaseous SOA species
     ! Deal with lowest two volatility bins - TSOG0 corresponds to SOAG0 and SOAG1
     speciesName_1 = 'TSOG0'
-    K1 = get_spc_ndx(TRIM(speciesName_1), compare_uppercase=.true.)
+    K1 = get_spc_ndx(TRIM(speciesName_1), ignore_case=.true.)
     N = lptr2_soa_g_amode(1)
     P = mapCnst(N)
     !                                        current mode        other modes (this mapping was verified to be correct.)
@@ -3924,8 +3950,8 @@ contains
           speciesName_1 = 'TSOG3'
           speciesName_2 = 'ASOG3'
        ENDIF
-       K1 = get_spc_ndx(TRIM(speciesName_1), compare_uppercase=.true.)
-       K2 = get_spc_ndx(TRIM(speciesName_2), compare_uppercase=.true.)
+       K1 = get_spc_ndx(TRIM(speciesName_1), ignore_case=.true.)
+       K2 = get_spc_ndx(TRIM(speciesName_2), ignore_case=.true.)
        IF ( P > 0 .AND. K1 > 0 .AND. K2 > 0 ) vmr1(:nY,:nZ,P) = vmr1(:nY,:nZ,K1) + vmr1(:nY,:nZ,K2)
     ENDDO
 
