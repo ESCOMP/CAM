@@ -1298,20 +1298,10 @@ subroutine radiation_tend( &
          ! cloud_sw : cloud optical properties.
          call initialize_rrtmgp_cloud_optics_sw(nday, nlay, kdist_sw, cloud_sw)
    
-         call rrtmgp_set_cloud_sw( & ! the result cloud_sw is gpoints ("quadrature" points)
-            nswbands,              & ! input
-            nday,                  & ! input
-            nlay,                  & ! input
-            idxday(1:ncol),        & ! input, [require to truncate to 1 to ncol b/c the array is size pcol]
-            pmid_day(:,nlay:1:-1), & ! input
-            cldfprime,             & ! input
-            c_cld_tau,             & ! input
-            c_cld_tau_w,           & ! input
-            c_cld_tau_w_g,         & ! input
-            c_cld_tau_w_f,         & ! input
-            kdist_sw,              & ! input
-            cloud_sw               & ! inout, outputs %g, %ssa, %tau 
-         )
+         call rrtmgp_set_cloud_sw( &
+            nswbands, nday, nlay, idxday, pmid_day,                          &
+            cldfprime, c_cld_tau, c_cld_tau_w, c_cld_tau_w_g, c_cld_tau_w_f, &
+            kdist_sw, cloud_sw)
 
          ! allocate object for aerosol optics
          errmsg = aer_sw%alloc_2str(nday, nlay, kdist_sw%get_band_lims_wavenumber(), &
@@ -1324,8 +1314,6 @@ subroutine radiation_tend( &
          ! SHORTWAVE DIAGNOSTICS & OUTPUT
          ! 
          ! cloud optical depth fields for the visible band
-         ! This uses idx_sw_diag to get a specific band; 
-         ! is hard-coded in radconstants and is correct for RRTMGP ordering.
          rd%tot_icld_vistau(:ncol,:) = c_cld_tau(idx_sw_diag,:ncol,:) ! should be equal to cloud_sw%tau except ordering
          rd%liq_icld_vistau(:ncol,:) = liq_tau(idx_sw_diag,:ncol,:)
          rd%ice_icld_vistau(:ncol,:) = ice_tau(idx_sw_diag,:ncol,:)
