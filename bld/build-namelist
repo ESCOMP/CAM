@@ -3,8 +3,7 @@
 #
 # build-namelist
 #
-# This script builds the namelists for the standalone CAM configuration of
-# CESM.
+# This script builds the namelists for the CAM component of CESM.
 #
 # build-namelist is designed to be used in conjuction with configure.
 # By default configure produces a config_cache.xml file that contains all
@@ -49,7 +48,7 @@ OPTIONS
      -case "name"          Case identifier up to 32 characters
      -config "filepath"    Read the given configuration cache file to determine the configuration
                            of the CAM executable.  Default: "config_cache.xml".
-     -csmdata "dir"        Root directory of CCSM input data.
+     -csmdata "dir"        Root directory of CESM input data.
                            Can also be set by using the CSMDATA environment variable.
      -dir "directory"      Directory where output namelist files for each component will be
                            written, i.e., atm_in, drv_in, ice_in, lnd_in, rof_in, and ocn_in.
@@ -93,7 +92,7 @@ EOF
 (my $ProgName = $0) =~ s!(.*)/!!;      # name of this script
 $ProgName = "CAM $ProgName";           # Since multiple components are now using a build-namelist
                                        # utility add "CAM" qualifier to the name.  This helps when
-                                       # looking at error output from the whole CCSM system.
+                                       # looking at error output from the whole CESM system.
 my $ProgDir = $1;                      # name of directory containing this script -- may be a
                                        # relative or absolute path, or null if the script is in
                                        # the user's PATH
@@ -183,7 +182,7 @@ EOF
 
 if ($print>=2) { print "Using CAM configuration cache file $opts{'config'}$eol"; }
 
-# Check that the CCSM inputdata root directory has been specified.
+# Check that the CESM inputdata root directory has been specified.
 my $inputdata_rootdir = undef;
 if (defined($opts{'csmdata'})) {
     $inputdata_rootdir = $opts{'csmdata'};
@@ -192,16 +191,16 @@ elsif (defined $ENV{'CSMDATA'}) {
     $inputdata_rootdir = $ENV{'CSMDATA'};
 }
 else {
-    die "$ProgName - ERROR: CCSM inputdata root directory must be specified by either -csmdata argument\n" .
+    die "$ProgName - ERROR: CESM inputdata root directory must be specified by either -csmdata argument\n" .
         " or by the CSMDATA environment variable. :";
 }
 
-if ($print>=2) { print "CCSM inputdata root directory: $inputdata_rootdir$eol"; }
+if ($print>=2) { print "CESM inputdata root directory: $inputdata_rootdir$eol"; }
 
 # If the -test option is specified, then the inputdata root directory must be local or nfs mounted.
 if ($opts{'test'}) {
 (-d $inputdata_rootdir)  or  die <<"EOF";
-** $ProgName - ERROR: CCSM inputdata root is not a directory: \"$inputdata_rootdir\" **
+** $ProgName - ERROR: CESM inputdata root is not a directory: \"$inputdata_rootdir\" **
 EOF
 }
 
@@ -369,7 +368,9 @@ if (defined $opts{'case'}) { add_default($nl, 'case_name', 'val'=>$opts{'case'})
 # Run type
 if (defined $opts{'runtype'}) { add_default($nl, 'start_type', 'val'=>$opts{'runtype'}); }
 
-# Process the -namelist arg.
+# Process the -namelist argument.  CIME uses this argument to pass the values that have been
+# set by the compset definition via the CAM_NAMELIST_OPTS variable, along with additional
+# settings made in the buildnml script.
 
 if (defined $opts{'namelist'}) {
     # Parse commandline namelist
@@ -387,7 +388,8 @@ if (defined $opts{'namelist'}) {
     $nl->merge_nl($nl_arg_valid);
 }
 
-# Process the -infile arg.
+# Process the -infile argument.  CIME uses this argument to pass the contents of the user_nl_cam
+# file, along with additional settings made in the buildnml script.
 
 if (defined $opts{'infile'}) {
     # Parse namelist input from a file
@@ -404,6 +406,11 @@ if (defined $opts{'infile'}) {
     # and are not overwritten.
     $nl->merge_nl($nl_infile_valid);
 }
+
+# Check for user input via the user_nl_cam file which is inconsistent with settings determined by
+# the compset definition.
+
+check_user_input($nl);
 
 # Process the -use_case arg.
 # Declare global symbol $uc_defaults even if it's not defined, because we check whether it's
@@ -473,9 +480,25 @@ if ($phys eq 'adiabatic') {
     ++$phys_mode_flags;
 }
 my $ideal_mode = 0;
-if ($phys eq 'kessler' or $phys eq 'held_suarez' or $phys eq 'tj2016') {
+if ($phys eq 'kessler' or $phys eq 'held_suarez' or $phys eq 'tj2016' or $phys eq 'grayrad' ) {
     $ideal_mode = 1;
     ++$phys_mode_flags;
+}
+if ($phys eq 'grayrad' ) {
+    add_default($nl, 'frierson_albedo');
+    add_default($nl, 'frierson_c0');
+    add_default($nl, 'frierson_deltas');
+    add_default($nl, 'frierson_fb');
+    add_default($nl, 'frierson_linfrac');
+    add_default($nl, 'frierson_ri_c');
+    add_default($nl, 'frierson_tau_eqtr');
+    add_default($nl, 'frierson_tau_pole');
+    add_default($nl, 'frierson_tdlt');
+    add_default($nl, 'frierson_tmin');
+    add_default($nl, 'frierson_twidth');
+    add_default($nl, 'frierson_wetdrycoef');
+    add_default($nl, 'frierson_wind_min');
+    add_default($nl, 'frierson_z0');
 }
 if ($phys_mode_flags > 1) {
     die "$ProgName - ERROR: Only one of the variables atm_adiabatic, atm_ideal_phys, and aqua_planet can be set .true. \n";
@@ -2319,18 +2342,18 @@ if (($chem =~ /_mam4/ or $chem =~ /_mam5/) and ($phys =~ /cam6/ or $phys =~ /cam
     if ($chem eq 'trop_mam4' or $chem eq 'waccm_sc_mam4'or $chem eq 'ghg_mam4') {
 	# SOA yields (used for the interactive emissions) have been calculated based on the VBS yields in CAM-chem.
 	# Duseong S. Jo, et al. to be submitted to GMD, 2023 -- see https://github.com/ESCOMP/CAM/pull/727 discussion for additional detail.
-        my %soae_fctrs = ('BENZENE_an_srf_file' => '3.4192D0',
-                          'BENZENE_bb_srf_file' => '3.4192D0',
-                          'ISOP_bb_srf_file'    => '0.9058D0',
-                          'MTERP_bb_srf_file'   => '5.8638D0',
-                          'TOLUENE_an_srf_file' => '9.4429D0',
-                          'TOLUENE_bb_srf_file' => '9.4429D0',
-                          'XYLENES_an_srf_file' => '7.3804D0',
-                          'XYLENES_bb_srf_file' => '7.3804D0',
-                          'IVOC_an_srf_file'    => '8.6158D0',
-                          'IVOC_bb_srf_file'    => '8.6158D0',
-                          'SVOC_an_srf_file'    => '16.7388D0',
-                          'SVOC_bb_srf_file'    => '16.7388D0');
+        my %soae_fctrs = ('BENZENE_an_srf_file' => '2.5592D0',
+                          'BENZENE_bb_srf_file' => '2.5592D0',
+                          'ISOP_bb_srf_file'    => '0.5954D0',
+                          'MTERP_bb_srf_file'   => '5.1004D0',
+                          'TOLUENE_an_srf_file' => '8.2367D0',
+                          'TOLUENE_bb_srf_file' => '8.2367D0',
+                          'XYLENES_an_srf_file' => '6.5013D0',
+                          'XYLENES_bb_srf_file' => '6.5013D0',
+                          'IVOC_an_srf_file'    => '8.5371D0',
+                          'IVOC_bb_srf_file'    => '8.5371D0',
+                          'SVOC_an_srf_file'    => '16.650D0',
+                          'SVOC_bb_srf_file'    => '16.650D0');
         foreach my $id (sort keys %soae_fctrs) {
             my $rel_filepath = get_default_value($id, \%verhash);
             my $abs_filepath = set_abs_filepath($rel_filepath, $inputdata_rootdir);
@@ -2413,12 +2436,12 @@ if (($chem =~ /_mam4/ or $chem =~ /_mam5/) and ($phys =~ /cam6/ or $phys =~ /cam
 
     # MEGAN emissions
     if (($chem eq 'trop_mam4' or $chem eq 'waccm_sc_mam4' or $chem eq 'ghg_mam4') and !$aqua_mode and !$scam){
-	my $val = "'SOAE = 0.9058*isoprene + 5.8638*(carene_3 + pinene_a + thujene_a + bornene +',"
+        my $val = "'SOAE = 0.5954*isoprene + 5.1004*(carene_3 + pinene_a + thujene_a + bornene +',"
                 . "' terpineol_4 + terpineol_a + terpinyl_ACT_a + myrtenal + sabinene + pinene_b + camphene +',"
                 . "' fenchene_a + limonene + phellandrene_a + terpinene_a + terpinene_g + terpinolene +',"
                 . "' phellandrene_b + linalool + ionone_b + geranyl_acetone + neryl_acetone + jasmone +',"
                 . "' verbenene + ipsenol + myrcene + ocimene_t_b + ocimene_al + ocimene_c_b + 2met_nonatriene) + ',"
-                . "' 13.4042*(farnescene_a + caryophyllene_b + acoradiene + aromadendrene + bergamotene_a +',"
+                . "' 12.3942*(farnescene_a + caryophyllene_b + acoradiene + aromadendrene + bergamotene_a +',"
                 . "' bergamotene_b + bisabolene_a + bisabolene_b + bourbonene_b + cadinene_d + cadinene_g +',"
                 . "' cedrene_a + copaene_a + cubebene_a + cubebene_b + elemene_b + farnescene_b +',"
                 . "' germacrene_B + germacrene_D + gurjunene_b + humulene_a + humulene_g + isolongifolene +',"
@@ -2854,6 +2877,23 @@ else {
     }
 }
 
+# Harmonized Emissions Component (HEMCO) options
+# Because HEMCO is configured at runtime, all of the options will be
+# present in the namelist.
+add_default($nl, 'use_hemco');
+if ($nl->get_value('use_hemco') =~ m/$TRUE/io) {
+    add_default($nl, 'cam_physics_mesh');
+    add_default($nl, 'hemco_data_root');
+    add_default($nl, 'hemco_config_file');
+    add_default($nl, 'hemco_diagn_file');
+    add_default($nl, 'hemco_grid_xdim');
+    add_default($nl, 'hemco_grid_ydim');
+    # Remove these variables if present in the namelist since they are
+    # ignored at runtime when HEMCO is used.
+    $nl->delete_variable('chem_inparm', 'ext_frc_specifier');
+    $nl->delete_variable('chem_inparm', 'srf_emis_specifier');
+}
+
 # Physics options
 
 # Add the name of the physics package based on the info in configure.  If the user tries
@@ -3029,7 +3069,6 @@ if ($cfg->get('microphys') =~ /^mg/) {
     add_default($nl, 'nucleate_ice_subgrid_strat');
     add_default($nl, 'nucleate_ice_use_troplev');
     add_default($nl, 'cld_macmic_num_steps', 'dtime'=>$dtime);
-    add_default($nl, 'micro_mg_dcs');
     add_default($nl, 'micro_mg_precip_frac_method');
     add_default($nl, 'micro_mg_berg_eff_factor');
     add_default($nl, 'nucleate_ice_incloud');
@@ -3057,6 +3096,31 @@ if ($cfg->get('microphys') =~ /^mg/) {
 	add_default($nl, 'micro_mg_accre_sees_auto');
 	add_default($nl, 'micro_mg_implicit_fall');
     }
+
+    # tunings for micro_mg_dcs
+    my $microphys = $cfg->get('microphys');
+    my $hgrid = $cfg->get('hgrid');
+    my $silhs = $cfg->get('silhs');
+
+    my $micro_mg_dcs = '400.D-6';        # default for cam5/mg1
+
+    if ($microphys =~ /mg2|mg3/) {
+        if ($silhs eq '1') {
+            $micro_mg_dcs = '390.D-6';       # default for SIHLS
+        }
+        elsif ($hgrid =~ /1.9x2.5/ and $phys eq 'cam6') {
+            $micro_mg_dcs = '200.D-6';       # default for FV 2-deg
+        }
+        elsif ($phys eq 'cam6') {
+            $micro_mg_dcs = '500.D-6';   # default for cam6
+        }
+        elsif ($phys eq 'cam_dev') {
+            $micro_mg_dcs = '250.D-6';   # default for cam_dev
+        }
+    }
+
+
+    add_default($nl, 'micro_mg_dcs', 'val'=>$micro_mg_dcs);
 }
 
 # Aerosol Namelist options
@@ -3564,6 +3628,11 @@ if ($waccm_phys or
     }
     add_default($nl, 'gw_qbo_hdepth_scaling', 'val'=>$hdepth_scaling);
     add_default($nl, 'gw_top_taper');
+} elsif ($phys =~ /cam_dev/) {
+    # cam_dev settings for nlev<60 (Other cam_dev set above)
+    add_default($nl, 'use_gw_front'     , 'val'=>'.true.');
+    add_default($nl, 'use_gw_convect_dp', 'val'=>'.true.');
+    add_default($nl, 'gw_qbo_hdepth_scaling', 'val'=>'1.0D0');
 } else {
     add_default($nl, 'use_gw_front'     , 'val'=>'.false.');
     add_default($nl, 'use_gw_convect_dp', 'val'=>'.false.');
@@ -3619,6 +3688,7 @@ if ($do_gw_front_igw) {
 
 if ($do_gw_front or $do_gw_front_igw) {
     add_default($nl, 'frontgfc');
+    add_default($nl, 'front_gaussian_width');
 }
 
 if ($do_gw_convect_dp) {
@@ -3636,8 +3706,8 @@ if ($do_gw_rdg_beta) {
         die "$ProgName - ERROR: beta ridge scheme requires data from a topo file.\n";
     }
     add_default($nl, 'n_rdg_beta',          'val'=>'10');
-    add_default($nl, 'effgw_rdg_beta',      'val'=>'1.0D0');
-    add_default($nl, 'effgw_rdg_beta_max',  'val'=>'1.0D0');
+    add_default($nl, 'effgw_rdg_beta');
+    add_default($nl, 'effgw_rdg_beta_max');
     add_default($nl, 'trpd_leewv_rdg_beta', 'val'=>'.false.');
     add_default($nl, 'rdg_beta_cd_llb',     'val'=>'1.0D0');
 }
@@ -3693,7 +3763,9 @@ if (($do_gw_rdg_beta or $do_gw_rdg_gamma)) {
 #    use tau_0_ubc = .false. to avoid changing answers.
 if ((not $waccm_phys) and
     ($do_gw_front or $do_gw_front_igw or
-     $do_gw_convect_dp or $do_gw_convect_sh)) {
+     $do_gw_convect_dp or $do_gw_convect_sh )) {
+    add_default($nl, 'tau_0_ubc', 'val'=>'.true.');
+} elsif ($phys =~ /cam_dev/) {
     add_default($nl, 'tau_0_ubc', 'val'=>'.true.');
 } elsif (!$simple_phys) {
     add_default($nl, 'tau_0_ubc', 'val'=>'.false.');
@@ -4299,7 +4371,7 @@ sub add_default {
 #
 # ***** N.B. ***** This routine assumes the following variables are in package main::
 #  $definition        -- the namelist definition object
-#  $inputdata_rootdir -- CCSM inputdata root directory
+#  $inputdata_rootdir -- CESM inputdata root directory
 
     my $nl = shift;     # namelist object
     my $var = shift;    # name of namelist variable
@@ -4352,7 +4424,7 @@ sub add_default {
 
     # The default values for input pathnames are relative.  If the namelist
     # variable is defined to be an absolute pathname, then prepend
-    # the CCSM inputdata root directory.
+    # the CESM inputdata root directory.
     if ($is_input_pathname eq 'abs') {
         $val = set_abs_filepath($val, $inputdata_rootdir);
     }
@@ -4517,6 +4589,37 @@ sub fv3_decomp_set{
     }
 
     return "$layoutx,$layouty";
+
+}
+
+#-----------------------------------------------------------------------------------------------
+
+sub check_user_input {
+
+# Check that user input in the user_nl_cam file is consistent with input that has been set by
+# the compset definition via CAM_NAMELIST_OPTS.  This routine is called after build-namelist has
+# processed both the -namelist argument which contains the input from CAM_NAMELIST_OPTS, and
+# the -infile argument which contains input from user_nl_cam.
+#
+# Checks for specific inconsistencies are added here by CAM developers as deemed useful for
+# improving robustness of the user interface.
+
+    my $nl = shift;    # namelist object
+
+    # When HEMCO is being used any emissions or external forcings specified by the
+    # srf_emis_specifier and ext_frc_specifier variables will be ignored at runtime.
+    # Check here that these variable are not set if the compset definition sets
+    # use_hemco=.true.
+
+    my $hemco = $nl->get_value('use_hemco');
+    if (defined $hemco and $hemco =~ m/$TRUE/io) {
+        if (defined $nl->get_value('srf_emis_specifier') or
+            defined $nl->get_value('ext_frc_specifier') ) {
+            die "$ProgName - ERROR: It is not allowed to set either srf_emis_specifier \n",
+                "                   or ext_frc_specifier when HEMCO is used.\n";
+        }
+    }
+
 
 }
 
@@ -4687,7 +4790,7 @@ sub check_input_files {
 
                     # If $name2 starts with a slash, then it is an absolute filepath.
                     # If $name2 starts with a $, then it is an unresolved filepath
-                    # (generated when run from CCSM scripts).
+                    # (generated when run from CIME scripts).
                     # Otherwise check for more fields
                     if ($name2 =~ m:^[/\$]:) {
 
@@ -4827,6 +4930,8 @@ sub check_snapshot_settings {
             push (@validList_bc, ("'kessler_tend'"));
         } elsif ($phys eq 'tj2016') {
             push (@validList_bc, ("'thatcher_jablonowski_precip_tend'"));
+        } elsif ($phys eq 'grayrad') {
+            push (@validList_bc, ("'frierson_tend'"));
         }
         if ($chem ne 'none') {
             push (@validList_bc, ("'chem_timestep_tend'"));
@@ -4941,38 +5046,6 @@ sub check_snapshot_settings {
             }
         }
     }
-}
-
-#-----------------------------------------------------------------------------------------------
-
-sub strip_rootdir {
-
-# Strip a root directory from the begining of a filepath.
-# Allow for the possibility that the root directory is specified as a shell variable
-# to support a CCSM script requirement.
-
-    my ($filepath, $rootdir) = @_;
-
-    # Check whether the rootdir is specified as a shell variable.
-    if ($rootdir =~ m/^\$(\w*)/) {
-
-        my $rootname = $1;
-
-        # Strip off the root directory with the following regexp that
-        # avoids the problem of $rootdir being interpolated to a scalar variable
-        # name...
-        #$filepath =~ s:^\$$rootname::;
-
-        # The CCSM scripts are currently set up to expect the shell variable in the
-        # output file that contains the list of inputdata files.  So in this case
-        # do nothing.
-
-    }
-    else {
-        # Strip off the rootdir specified as a resolved pathname
-        $filepath =~ s:^$rootdir::;
-    }
-    return $filepath;
 }
 
 #-----------------------------------------------------------------------------------------------

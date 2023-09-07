@@ -46,14 +46,22 @@ Switch to turn on analytic initial conditions for the dynamics state:
   0 => no
   1 => yes.
 </entry>
+<entry id="model_top" valid_values="none,lt,mt" value="none">
+Model top specifier - set by compset definition
+  lt: ~ 40 km top
+  mt: ~ 80 km top
+</entry>
 <entry id="waccmx" valid_values="0,1" value="0">
 Option to turn on waccmx thermosphere/ionosphere extension: 0 => no, 1 => yes
 </entry>
 <entry id="ionosphere" valid_values="none,wxie" value="none">
 Ionosphere model used in WACCMX.
 </entry>
-<entry id="phys" valid_values="cam3,cam4,cam5,cam6,cam_dev,held_suarez,adiabatic,kessler,tj2016,spcam_sam1mom,spcam_m2005" value="">
-Physics package: cam3, cam4, cam5, cam6, cam_dev, held_suarez, adiabatic, kessler, tj2016, spcam_sam1mom, spcam_m2005.
+<entry id="phys" valid_values="cam3,cam4,cam5,cam6,cam_dev,held_suarez,adiabatic,kessler,tj2016,grayrad,spcam_sam1mom,spcam_m2005" value="">
+Physics package: cam3, cam4, cam5, cam6, cam_dev, held_suarez, adiabatic, kessler, tj2016, grayrad, spcam_sam1mom, spcam_m2005.
+</entry>
+<entry id="hemco" valid_values="0,1" value="0">
+Switch to turn on Harmonized Emissions Component (HEMCO) for chemistry: 0 => no, 1 => yes.
 </entry>
 <entry id="microphys" valid_values="rk,mg1,mg2,mg3,spcam_m2005,spcam_sam1mom,none" value="">
 Microphysics package: rk (Rasch and Kristjansson), mg1 (Morrison and

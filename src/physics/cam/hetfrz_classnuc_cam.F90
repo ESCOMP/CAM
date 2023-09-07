@@ -8,28 +8,25 @@ module hetfrz_classnuc_cam
 
 use shr_kind_mod,   only: r8=>shr_kind_r8
 use spmd_utils,     only: masterproc
-use ppgrid,         only: pcols, pver, begchunk, endchunk
+use ppgrid,         only: pcols, pver
 use physconst,      only: rair, cpair, rh2o, rhoh2o, mwh2o, tmelt, pi
 use constituents,   only: cnst_get_ind
 use physics_types,  only: physics_state
 use physics_buffer, only: physics_buffer_desc, pbuf_get_index, pbuf_old_tim_idx, pbuf_get_field
-use phys_control,   only: phys_getopts, use_hetfrz_classnuc
-use rad_constituents, only: rad_cnst_get_info, rad_cnst_get_mode_idx, rad_cnst_get_spec_idx, &
-                            rad_cnst_get_aer_mmr, rad_cnst_get_aer_props, &
-                            rad_cnst_get_mode_num, rad_cnst_get_mode_props
-
+use phys_control,   only: use_hetfrz_classnuc
 use physics_buffer, only: pbuf_add_field, dtype_r8, pbuf_old_tim_idx, &
                           pbuf_get_index, pbuf_get_field
-use cam_history,    only: addfld, add_default, outfld
-
+use cam_history,    only: addfld, add_default, outfld, fieldname_len
 use ref_pres,       only: top_lev => trop_cloud_top_lev
 use wv_saturation,  only: svp_water_vect, svp_ice_vect
-
 use cam_logfile,    only: iulog
 use error_messages, only: handle_errmsg, alloc_err
 use cam_abortutils, only: endrun
+use string_utils,   only: int2str
+use hetfrz_classnuc,only: hetfrz_classnuc_init, hetfrz_classnuc_calc
 
-use hetfrz_classnuc,   only: hetfrz_classnuc_init, hetfrz_classnuc_calc
+use aerosol_properties_mod, only: aerosol_properties, aero_name_len
+use aerosol_state_mod, only: aerosol_state
 
 implicit none
 private
@@ -58,83 +55,32 @@ integer :: &
 
 ! pbuf indices for fields provided by heterogeneous freezing
 integer :: &
-   frzimm_idx, &
-   frzcnt_idx, &
-   frzdep_idx
+   frzimm_idx = -1, &
+   frzcnt_idx = -1, &
+   frzdep_idx = -1
 
 ! pbuf indices for fields needed by heterogeneous freezing
 integer :: &
    ast_idx = -1
 
-! modal aerosols
-integer, parameter :: MAM3_nmodes = 3
-integer, parameter :: MAM7_nmodes = 7
-integer, parameter :: MAM4_nmodes = 4
-integer, parameter :: MAM5_nmodes = 5
-integer :: nmodes = -1             ! number of aerosol modes
+type index_t
+   integer :: bin_ndx
+   integer :: spc_ndx
+end type index_t
 
-! mode indices
-integer :: mode_accum_idx  = -1    ! accumulation mode
-integer :: mode_coarse_idx = -1    ! coarse mode
-integer :: mode_finedust_idx = -1  ! fine dust mode
-integer :: mode_coardust_idx = -1  ! coarse dust mode
-integer :: mode_pcarbon_idx = -1   ! primary carbon mode
-integer :: mode_statcoar_idx = -1  ! strat_coarse mode
+type(index_t),allocatable :: indices(:)
+character(len=16),allocatable :: types(:)
+character(len=fieldname_len),allocatable :: tot_dens_hnames(:)
+character(len=fieldname_len),allocatable :: cld_dens_hnames(:)
+character(len=fieldname_len),allocatable :: amb_dens_hnames(:)
+character(len=fieldname_len),allocatable :: coated_dens_hnames(:)
+character(len=fieldname_len),allocatable :: uncoated_dens_hnames(:)
+character(len=fieldname_len),allocatable :: cldfn_dens_hnames(:)
+character(len=fieldname_len),allocatable :: coated_frac_hnames(:)
+character(len=fieldname_len),allocatable :: radius_hnames(:)
+character(len=fieldname_len),allocatable :: wactfac_hnames(:)
 
-! mode properties
-real(r8) :: alnsg_mode_accum
-real(r8) :: alnsg_mode_coarse
-real(r8) :: alnsg_mode_finedust
-real(r8) :: alnsg_mode_coardust
-real(r8) :: alnsg_mode_pcarbon
-real(r8) :: alnsg_mode_statcoar
-
-! specie properties
-real(r8) :: specdens_dust
-real(r8) :: specdens_so4
-real(r8) :: specdens_bc
-real(r8) :: specdens_soa
-real(r8) :: specdens_pom
-
-! List all species
-integer :: ncnst = 0     ! Total number of constituents (mass and number) needed
-                         ! by the parameterization (depends on aerosol model used)
-
-integer :: so4_accum     ! sulfate in accumulation mode
-integer :: bc_accum      ! black-c in accumulation mode
-integer :: pom_accum     ! p-organic in accumulation mode
-integer :: soa_accum     ! s-organic in accumulation mode
-integer :: dst_accum     ! dust in accumulation mode
-integer :: ncl_accum     ! seasalt in accumulation mode
-integer :: num_accum     ! number in accumulation mode
-
-integer :: dst_coarse    ! dust in coarse mode
-integer :: ncl_coarse    ! seasalt in coarse mode
-integer :: so4_coarse    ! sulfate in coarse mode
-integer :: num_coarse    ! number in coarse mode
-
-integer :: dst_finedust  ! dust in finedust mode
-integer :: so4_finedust  ! sulfate in finedust mode
-integer :: num_finedust  ! number in finedust mode
-
-integer :: dst_coardust  ! dust in coardust mode
-integer :: so4_coardust  ! sulfate in coardust mode
-integer :: num_coardust  ! number in coardust mode
-
-integer :: bc_pcarbon    ! black-c in primary carbon mode
-integer :: pom_pcarbon   ! p-organic in primary carbon mode
-integer :: num_pcarbon   ! number in primary carbon mode
-
-! Index arrays for looping over all constituents
-integer, allocatable :: mode_idx(:)
-integer, allocatable :: spec_idx(:)
-
-! Copy of cloud borne aerosols before modification by droplet nucleation
-! The basis is converted from mass to volume.
-real(r8), allocatable :: aer_cb(:,:,:,:)
-
-! Copy of interstitial aerosols with basis converted from mass to volume.
-real(r8), allocatable :: aer(:,:,:,:)
+integer :: tot_num_bins = 0
 
 !===============================================================================
 contains
@@ -201,26 +147,109 @@ end subroutine hetfrz_classnuc_cam_register
 
 !================================================================================================
 
-subroutine hetfrz_classnuc_cam_init(mincld_in)
+subroutine hetfrz_classnuc_cam_init(mincld_in, aero_props)
 
    real(r8), intent(in) :: mincld_in
+   class(aerosol_properties), intent(in) :: aero_props
 
    ! local variables
-   logical  :: prog_modal_aero
-   integer  :: m, n, nspec
-   integer  :: istat
-
-   real(r8) :: sigma_logr_aer
-
-   character(len=32) :: str32
+   integer :: istat, cnt, ibin, ispc
+   character(len=42) :: tmpstr
+   character(len=aero_name_len) :: species_type
    character(len=*), parameter :: routine = 'hetfrz_classnuc_cam_init'
+
    !--------------------------------------------------------------------------------------------
 
    if (.not. use_hetfrz_classnuc) return
 
-   ! This parameterization currently assumes that prognostic modal aerosols are on.  Check...
-   call phys_getopts(prog_modal_aero_out=prog_modal_aero)
-   if (.not. prog_modal_aero) call endrun(routine//': cannot use hetfrz_classnuc without prognostic modal aerosols')
+   cnt = 0
+   do ibin = 1, aero_props%nbins()
+      do ispc = 1, aero_props%nspecies(ibin)
+         if (aero_props%hetfrz_species(ibin,ispc)) then
+            cnt = cnt+1
+         end if
+      end do
+   end do
+
+   tot_num_bins = cnt
+
+   allocate(indices(tot_num_bins), stat=istat)
+   call alloc_err(istat, routine, 'indices', tot_num_bins)
+   allocate(types(tot_num_bins), stat=istat)
+   call alloc_err(istat, routine, 'types', tot_num_bins)
+
+   allocate(tot_dens_hnames(tot_num_bins), stat=istat)
+   call alloc_err(istat, routine, 'tot_dens_hnames', tot_num_bins)
+
+   allocate(cld_dens_hnames(tot_num_bins), stat=istat)
+   call alloc_err(istat, routine, 'cld_dens_hnames', tot_num_bins)
+
+   allocate(cldfn_dens_hnames(tot_num_bins), stat=istat)
+   call alloc_err(istat, routine, 'cldfn_dens_hnames', tot_num_bins)
+
+   allocate(amb_dens_hnames(tot_num_bins), stat=istat)
+   call alloc_err(istat, routine, 'amb_dens_hnames', tot_num_bins)
+
+   allocate(coated_dens_hnames(tot_num_bins), stat=istat)
+   call alloc_err(istat, routine, 'coated_dens_hnames', tot_num_bins)
+
+   allocate(uncoated_dens_hnames(tot_num_bins), stat=istat)
+   call alloc_err(istat, routine, 'uncoated_dens_hnames', tot_num_bins)
+
+   allocate(coated_frac_hnames(tot_num_bins), stat=istat)
+   call alloc_err(istat, routine, 'coated_frac_hnames', tot_num_bins)
+
+   allocate(radius_hnames(tot_num_bins), stat=istat)
+   call alloc_err(istat, routine, 'radius_hnames', tot_num_bins)
+
+   allocate(wactfac_hnames(tot_num_bins), stat=istat)
+   call alloc_err(istat, routine, 'wactfac_hnames', tot_num_bins)
+
+   cnt = 0
+   do ibin = 1, aero_props%nbins()
+
+      do ispc = 1, aero_props%nspecies(ibin)
+         if (aero_props%hetfrz_species(ibin,ispc)) then
+            call aero_props%species_type(ibin, ispc, species_type)
+            cnt = cnt+1
+            indices(cnt)%bin_ndx = ibin
+            indices(cnt)%spc_ndx = ispc
+            types(cnt) = trim(species_type)
+            tmpstr = trim(species_type)//trim(int2str(ibin))
+
+            cldfn_dens_hnames(cnt) = trim(tmpstr)//'_cld_fn'
+            tot_dens_hnames(cnt) = trim(tmpstr)//'_tot_num'
+            cld_dens_hnames(cnt) = trim(tmpstr)//'_cld_num'
+            amb_dens_hnames(cnt) = trim(tmpstr)//'_amb_num'
+            coated_dens_hnames(cnt) = trim(tmpstr)//'_coated'
+            uncoated_dens_hnames(cnt) = trim(tmpstr)//'_uncoated'
+            coated_frac_hnames(cnt) = trim(tmpstr)//'_coated_frac'
+            radius_hnames(cnt) = trim(tmpstr)//'_radius'
+            wactfac_hnames(cnt) = trim(tmpstr)//'_wactfac'
+
+            call addfld(tot_dens_hnames(cnt),(/ 'lev' /), 'A', '#/cm3', &
+                 'total '//trim(tmpstr)//' number density' )
+            call addfld(cld_dens_hnames(cnt),(/ 'lev' /), 'A', '#/cm3', &
+                 'cloud borne '//trim(tmpstr)//' number density' )
+            call addfld(cldfn_dens_hnames(cnt),(/ 'lev' /), 'A', '#/cm3', &
+                 'cloud borne '//trim(tmpstr)//' number density derived from fn' )
+            call addfld(amb_dens_hnames(cnt),(/ 'lev' /), 'A', '#/cm3', &
+                 'ambient '//trim(tmpstr)//' number density' )
+            call addfld(coated_dens_hnames(cnt),(/ 'lev' /), 'A', '#/cm3', &
+                 'coated '//trim(tmpstr)//' number density' )
+            call addfld(uncoated_dens_hnames(cnt),(/ 'lev' /), 'A', '#/cm3', &
+                 'uncoated '//trim(tmpstr)//' number density' )
+            call addfld(coated_frac_hnames(cnt),(/ 'lev' /), 'A', '#/cm3', &
+                 'coated '//trim(tmpstr)//' fraction' )
+            call addfld(radius_hnames(cnt),(/ 'lev' /), 'A', 'm', &
+                 'ambient '//trim(tmpstr)//' radius' )
+            call addfld(wactfac_hnames(cnt),(/ 'lev' /), 'A', ' ', &
+                 trim(tmpstr)//' water activity mass factor' )
+
+         end if
+      end do
+
+   end do
 
    mincld = mincld_in
 
@@ -232,30 +261,9 @@ subroutine hetfrz_classnuc_cam_init(mincld_in)
    ! pbuf fields used by hetfrz_classnuc
    ast_idx      = pbuf_get_index('AST')
 
-   call addfld('bc_num',        (/ 'lev' /), 'A', '#/cm3', 'total bc number')
-   call addfld('dst1_num',      (/ 'lev' /), 'A', '#/cm3', 'total dst1 number')
-   call addfld('dst3_num',      (/ 'lev' /), 'A', '#/cm3', 'total dst3 number')
-   call addfld('bcc_num',       (/ 'lev' /), 'A', '#/cm3', 'coated bc number')
-   call addfld('dst1c_num',     (/ 'lev' /), 'A', '#/cm3', 'coated dst1 number')
-   call addfld('dst3c_num',     (/ 'lev' /), 'A', '#/cm3', 'coated dst3 number')
-   call addfld('bcuc_num',      (/ 'lev' /), 'A', '#/cm3', 'uncoated bc number')
-   call addfld('dst1uc_num',    (/ 'lev' /), 'A', '#/cm3', 'uncoated dst1 number')
-   call addfld('dst3uc_num',    (/ 'lev' /), 'A', '#/cm3', 'uncoated dst3 number')
-
-   call addfld('bc_a1_num',     (/ 'lev' /), 'A', '#/cm3', 'interstitial bc number')
-   call addfld('dst_a1_num',    (/ 'lev' /), 'A', '#/cm3', 'interstitial dst1 number')
-   call addfld('dst_a3_num',    (/ 'lev' /), 'A', '#/cm3', 'interstitial dst3 number')
-   call addfld('bc_c1_num',     (/ 'lev' /), 'A', '#/cm3', 'cloud borne bc number')
-   call addfld('dst_c1_num',    (/ 'lev' /), 'A', '#/cm3', 'cloud borne dst1 number')
-   call addfld('dst_c3_num',    (/ 'lev' /), 'A', '#/cm3', 'cloud borne dst3 number')
-
-   call addfld('fn_bc_c1_num',  (/ 'lev' /), 'A', '#/cm3', 'cloud borne bc number derived from fn')
-   call addfld('fn_dst_c1_num', (/ 'lev' /), 'A', '#/cm3', 'cloud borne dst1 number derived from fn')
-   call addfld('fn_dst_c3_num', (/ 'lev' /), 'A', '#/cm3', 'cloud borne dst3 number derived from fn')
-
-   call addfld('na500',         (/ 'lev' /), 'A', '#/cm3', 'interstitial aerosol number with D>500 nm')
-   call addfld('totna500',      (/ 'lev' /), 'A', '#/cm3', 'total aerosol number with D>500 nm')
-
+   call addfld('FRZIMM', (/ 'lev' /), 'A', ' ', 'immersion  freezing')
+   call addfld('FRZCNT', (/ 'lev' /), 'A', ' ', 'contact    freezing')
+   call addfld('FRZDEP', (/ 'lev' /), 'A', ' ', 'deposition freezing')
    call addfld('FREQIMM', (/ 'lev' /), 'A', 'fraction', 'Fractional occurance of immersion  freezing')
    call addfld('FREQCNT', (/ 'lev' /), 'A', 'fraction', 'Fractional occurance of contact    freezing')
    call addfld('FREQDEP', (/ 'lev' /), 'A', 'fraction', 'Fractional occurance of deposition freezing')
@@ -299,30 +307,6 @@ subroutine hetfrz_classnuc_cam_init(mincld_in)
 
    if (hist_hetfrz_classnuc) then
 
-      call add_default('bc_num', 1, ' ')
-      call add_default('dst1_num', 1, ' ')
-      call add_default('dst3_num', 1, ' ')
-      call add_default('bcc_num', 1, ' ')
-      call add_default('dst1c_num', 1, ' ')
-      call add_default('dst3c_num', 1, ' ')
-      call add_default('bcuc_num', 1, ' ')
-      call add_default('dst1uc_num', 1, ' ')
-      call add_default('dst3uc_num', 1, ' ')
-
-      call add_default('bc_a1_num', 1, ' ')
-      call add_default('dst_a1_num', 1, ' ')
-      call add_default('dst_a3_num', 1, ' ')
-      call add_default('bc_c1_num', 1, ' ')
-      call add_default('dst_c1_num', 1, ' ')
-      call add_default('dst_c3_num', 1, ' ')
-
-      call add_default('fn_bc_c1_num', 1, ' ')
-      call add_default('fn_dst_c1_num', 1, ' ')
-      call add_default('fn_dst_c3_num', 1, ' ')
-
-      call add_default('na500', 1, ' ')
-      call add_default('totna500', 1, ' ')
-
       call add_default('FREQIMM', 1, ' ')
       call add_default('FREQCNT', 1, ' ')
       call add_default('FREQDEP', 1, ' ')
@@ -354,239 +338,22 @@ subroutine hetfrz_classnuc_cam_init(mincld_in)
 
    end if
 
-   ! The following code sets indices of the mode specific species used
-   ! in the module.  Having a list of the species needed allows us to
-   ! allocate temporary space for just those species rather than for all the
-   ! CAM species (pcnst) which may be considerably more than needed.
-   !
-   ! The indices set below are for use with the CAM rad_constituents
-   ! interfaces.  Using the rad_constituents interfaces isolates the physics
-   ! parameterization which requires constituent information from the chemistry
-   ! code which provides that information.
-
-   ! nmodes is the total number of modes
-   call rad_cnst_get_info(0, nmodes=nmodes)
-
-   ! Determine mode indices for all modes referenced in this module.
-   mode_accum_idx    = rad_cnst_get_mode_idx(0, 'accum')
-   mode_coarse_idx   = rad_cnst_get_mode_idx(0, 'coarse')
-   mode_finedust_idx = rad_cnst_get_mode_idx(0, 'fine_dust')
-   mode_coardust_idx = rad_cnst_get_mode_idx(0, 'coarse_dust')
-   mode_pcarbon_idx  = rad_cnst_get_mode_idx(0, 'primary_carbon')
-
-   ! Check that required mode types were found
-   if (nmodes == MAM3_nmodes) then
-      if (mode_accum_idx == -1 .or. mode_coarse_idx == -1) then
-         write(iulog,*) routine//': ERROR required mode type not found - mode idx:', &
-            mode_accum_idx, mode_coarse_idx
-         call endrun(routine//': ERROR required mode type not found')
-      end if
-
-   else if (nmodes == MAM7_nmodes) then
-      if (mode_coardust_idx == -1 .or. mode_finedust_idx == -1 .or. mode_pcarbon_idx == -1) then
-         write(iulog,*) routine//': ERROR required mode type not found - mode idx:', &
-            mode_coardust_idx, mode_finedust_idx, mode_pcarbon_idx
-         call endrun(routine//': ERROR required mode type not found')
-      end if
-   else if (nmodes == MAM4_nmodes .or. nmodes == MAM5_nmodes) then
-      if (mode_accum_idx == -1 .or. mode_coarse_idx == -1 .or. mode_pcarbon_idx == -1) then
-         write(iulog,*) routine//': ERROR required mode type not found - mode idx:', &
-            mode_accum_idx, mode_coarse_idx, mode_pcarbon_idx
-         call endrun(routine//': ERROR required mode type not found')
-      end if
-   end if
-
-   ! Set some mode properties
-
-   call rad_cnst_get_mode_props(0, mode_accum_idx, sigmag=sigma_logr_aer)
-   alnsg_mode_accum = log(sigma_logr_aer)
-
-   if (nmodes == MAM3_nmodes) then
-      call rad_cnst_get_mode_props(0, mode_coarse_idx, sigmag=sigma_logr_aer)
-      alnsg_mode_coarse = log(sigma_logr_aer)
-
-   else if (nmodes == MAM7_nmodes) then
-      call rad_cnst_get_mode_props(0, mode_finedust_idx, sigmag=sigma_logr_aer)
-      alnsg_mode_finedust = log(sigma_logr_aer)
-
-      call rad_cnst_get_mode_props(0, mode_coardust_idx, sigmag=sigma_logr_aer)
-      alnsg_mode_coardust = log(sigma_logr_aer)
-
-      call rad_cnst_get_mode_props(0, mode_pcarbon_idx, sigmag=sigma_logr_aer)
-      alnsg_mode_pcarbon = log(sigma_logr_aer)
-
-   else if (nmodes == MAM4_nmodes .or. nmodes == MAM5_nmodes) then
-      call rad_cnst_get_mode_props(0, mode_coarse_idx, sigmag=sigma_logr_aer)
-      alnsg_mode_coarse = log(sigma_logr_aer)
-
-      call rad_cnst_get_mode_props(0, mode_pcarbon_idx, sigmag=sigma_logr_aer)
-      alnsg_mode_pcarbon = log(sigma_logr_aer)
-   end if
-
-   ! Set list indices for all constituents (mass and number) used in this module.
-   ! The list is specific to the aerosol model used.  Note that the order of the
-   ! constituents in these lists is arbitrary.
-
-   if (nmodes == MAM3_nmodes) then
-      ncnst = 11
-      so4_accum  =  1
-      bc_accum   =  2
-      pom_accum  =  3
-      soa_accum  =  4
-      dst_accum  =  5
-      ncl_accum  =  6
-      num_accum  =  7
-      dst_coarse =  8
-      ncl_coarse =  9
-      so4_coarse = 10
-      num_coarse = 11
-   else if (nmodes == MAM7_nmodes) then
-      ncnst = 15
-      so4_accum    =  1
-      bc_accum     =  2
-      pom_accum    =  3
-      soa_accum    =  4
-      ncl_accum    =  6
-      num_accum    =  7
-      dst_finedust =  8
-      so4_finedust =  9
-      num_finedust = 10
-      dst_coardust = 11
-      so4_coardust = 12
-      num_coardust = 13
-      bc_pcarbon   = 5
-      pom_pcarbon  = 14
-      num_pcarbon  = 15
-   else if (nmodes == MAM4_nmodes  .or. nmodes == MAM5_nmodes) then
-      ncnst = 14
-      so4_accum  =  1
-      bc_accum   =  2
-      pom_accum  =  3
-      soa_accum  =  4
-      dst_accum  =  5
-      ncl_accum  =  6
-      num_accum  =  7
-      dst_coarse =  8
-      ncl_coarse =  9
-      so4_coarse = 10
-      num_coarse = 11
-      bc_pcarbon   = 12
-      pom_pcarbon  = 13
-      num_pcarbon  = 14
-   end if
-
-   ! Allocate arrays to hold specie and mode indices for all constitutents (mass and number)
-   ! needed in this module.
-   allocate(mode_idx(ncnst), spec_idx(ncnst), stat=istat)
-   call alloc_err(istat, routine, 'mode_idx, spec_idx', ncnst)
-   mode_idx = -1
-   spec_idx = -1
-
-   ! Allocate space for copy of cloud borne aerosols before modification by droplet nucleation.
-   allocate(aer_cb(pcols,pver,ncnst,begchunk:endchunk), stat=istat)
-   call alloc_err(istat, routine, 'aer_cb', pcols*pver*ncnst*(endchunk-begchunk+1))
-
-   ! Allocate space for copy of interstitial aerosols with modified basis
-   allocate(aer(pcols,pver,ncnst,begchunk:endchunk), stat=istat)
-   call alloc_err(istat, routine, 'aer', pcols*pver*ncnst*(endchunk-begchunk+1))
-
-   ! The following code sets the species and mode indices for each constituent
-   ! in the list.  The indices are identical in the interstitial and the cloud
-   ! borne phases.
-   ! Specie index 0 is used to indicate the mode number mixing ratio
-
-   ! Indices for species in accumulation mode (so4, bc, pom, soa, nacl, dust)
-   spec_idx(num_accum) = 0
-   mode_idx(num_accum) = mode_accum_idx
-   spec_idx(so4_accum) = rad_cnst_get_spec_idx(0, mode_accum_idx, 'sulfate')
-   mode_idx(so4_accum) = mode_accum_idx
-   spec_idx(bc_accum)  = rad_cnst_get_spec_idx(0, mode_accum_idx, 'black-c')
-   mode_idx(bc_accum)  = mode_accum_idx
-   spec_idx(pom_accum) = rad_cnst_get_spec_idx(0, mode_accum_idx, 'p-organic')
-   mode_idx(pom_accum) = mode_accum_idx
-   spec_idx(soa_accum) = rad_cnst_get_spec_idx(0, mode_accum_idx, 's-organic')
-   mode_idx(soa_accum) = mode_accum_idx
-   spec_idx(ncl_accum) = rad_cnst_get_spec_idx(0, mode_accum_idx, 'seasalt')
-   mode_idx(ncl_accum) = mode_accum_idx
-   if (nmodes == MAM3_nmodes .or. nmodes == MAM4_nmodes .or. nmodes == MAM5_nmodes) then
-      spec_idx(dst_accum) = rad_cnst_get_spec_idx(0, mode_accum_idx, 'dust')
-      mode_idx(dst_accum) = mode_accum_idx
-   end if
-
-   ! Indices for species in coarse mode (dust, nacl, so4)
-   if (mode_coarse_idx > 0) then
-      spec_idx(num_coarse) = 0
-      mode_idx(num_coarse) = mode_coarse_idx
-      spec_idx(ncl_coarse) = rad_cnst_get_spec_idx(0, mode_coarse_idx, 'seasalt')
-      mode_idx(ncl_coarse) = mode_coarse_idx
-      spec_idx(dst_coarse) = rad_cnst_get_spec_idx(0, mode_coarse_idx, 'dust')
-      mode_idx(dst_coarse) = mode_coarse_idx
-      spec_idx(so4_coarse) = rad_cnst_get_spec_idx(0, mode_coarse_idx, 'sulfate')
-      mode_idx(so4_coarse) = mode_coarse_idx
-   end if
-
-   ! Indices for species in fine dust mode (dust, so4)
-   if (mode_finedust_idx > 0) then
-      spec_idx(num_finedust) = 0
-      mode_idx(num_finedust) = mode_finedust_idx
-      spec_idx(dst_finedust) = rad_cnst_get_spec_idx(0, mode_finedust_idx, 'dust')
-      mode_idx(dst_finedust) = mode_finedust_idx
-      spec_idx(so4_finedust) = rad_cnst_get_spec_idx(0, mode_finedust_idx, 'sulfate')
-      mode_idx(so4_finedust) = mode_finedust_idx
-   end if
-
-   ! Indices for species in coarse dust mode (dust, so4)
-   if (mode_coardust_idx > 0) then
-      spec_idx(num_coardust) = 0
-      mode_idx(num_coardust) = mode_coardust_idx
-      spec_idx(dst_coardust) = rad_cnst_get_spec_idx(0, mode_coardust_idx, 'dust')
-      mode_idx(dst_coardust) = mode_coardust_idx
-      spec_idx(so4_coardust) = rad_cnst_get_spec_idx(0, mode_coardust_idx, 'sulfate')
-      mode_idx(so4_coardust) = mode_coardust_idx
-   end if
-
-    ! Indices for species in primary carbon mode (bc, pom)
-   if (mode_pcarbon_idx > 0) then
-      spec_idx(num_pcarbon) = 0
-      mode_idx(num_pcarbon) = mode_pcarbon_idx
-      spec_idx(bc_pcarbon)  = rad_cnst_get_spec_idx(0, mode_pcarbon_idx, 'black-c')
-      mode_idx(bc_pcarbon)  = mode_pcarbon_idx
-      spec_idx(pom_pcarbon) = rad_cnst_get_spec_idx(0, mode_pcarbon_idx, 'p-organic')
-      mode_idx(pom_pcarbon) = mode_pcarbon_idx
-   end if
-
-   ! Check that all required specie types were found
-   if (any(spec_idx == -1)) then
-      write(iulog,*) routine//': ERROR required species type not found - indicies:', spec_idx
-      call endrun(routine//': ERROR required species type not found')
-   end if
-
-   ! Get some specie specific properties.
-   if (nmodes == MAM3_nmodes .or. nmodes == MAM4_nmodes .or. nmodes == MAM5_nmodes) then
-      call rad_cnst_get_aer_props(0, mode_idx(dst_accum), spec_idx(dst_accum), density_aer=specdens_dust)
-   else if (nmodes == MAM7_nmodes) then
-      call rad_cnst_get_aer_props(0, mode_idx(dst_finedust), spec_idx(dst_finedust), density_aer=specdens_dust)
-   end if
-   call rad_cnst_get_aer_props(0, mode_idx(so4_accum), spec_idx(so4_accum), density_aer=specdens_so4)
-   call rad_cnst_get_aer_props(0, mode_idx(bc_accum),  spec_idx(bc_accum),  density_aer=specdens_bc)
-   call rad_cnst_get_aer_props(0, mode_idx(soa_accum), spec_idx(soa_accum), density_aer=specdens_soa)
-   call rad_cnst_get_aer_props(0, mode_idx(pom_accum), spec_idx(pom_accum), density_aer=specdens_pom)
-
-   call hetfrz_classnuc_init(rair, cpair, rh2o, rhoh2o, mwh2o, tmelt, pi, iulog, &
-                             hetfrz_bc_scalfac, hetfrz_dust_scalfac )
+   call hetfrz_classnuc_init(rair, cpair, rh2o, rhoh2o, mwh2o, tmelt, iulog, &
+        hetfrz_bc_scalfac, hetfrz_dust_scalfac )
 
 end subroutine hetfrz_classnuc_cam_init
 
 !================================================================================================
 
-subroutine hetfrz_classnuc_cam_calc( &
-   state, deltatin, factnum, pbuf)
+subroutine hetfrz_classnuc_cam_calc(aero_props, aero_state, state, deltatin, factnum, pbuf)
 
    ! arguments
-   type(physics_state), target, intent(in)    :: state
-   real(r8),                    intent(in)    :: deltatin       ! time step (s)
-   real(r8),                    intent(in)    :: factnum(:,:,:) ! activation fraction for aerosol number
-   type(physics_buffer_desc),   pointer       :: pbuf(:)
+   class(aerosol_properties),   intent(in) :: aero_props
+   class(aerosol_state),        intent(in) :: aero_state
+   type(physics_state), target, intent(in) :: state
+   real(r8),                    intent(in) :: deltatin       ! time step (s)
+   real(r8),                    intent(in) :: factnum(:,:,:) ! activation fraction for aerosol number
+   type(physics_buffer_desc),   pointer    :: pbuf(:)
 
    ! local workspace
 
@@ -604,21 +371,6 @@ subroutine hetfrz_classnuc_cam_calc( &
 
    real(r8) :: lcldm(pcols,pver)
 
-   real(r8), pointer :: ptr2d(:,:)
-
-   real(r8) :: fn(3)
-   real(r8) :: awcam(pcols,pver,3)
-   real(r8) :: awfacm(pcols,pver,3)
-   real(r8) :: hetraer(pcols,pver,3)
-   real(r8) :: dstcoat(pcols,pver,3)
-   real(r8) :: total_interstitial_aer_num(pcols,pver,3)
-   real(r8) :: total_cloudborne_aer_num(pcols,pver,3)
-   real(r8) :: total_aer_num(pcols,pver,3)
-   real(r8) :: coated_aer_num(pcols,pver,3)
-   real(r8) :: uncoated_aer_num(pcols,pver,3)
-
-   real(r8) :: fn_cloudborne_aer_num(pcols,pver,3)
-
    real(r8) :: esi(pcols), esl(pcols)
    real(r8) :: con1, r3lx, supersatice
 
@@ -630,6 +382,7 @@ subroutine hetfrz_classnuc_cam_calc( &
    real(r8) :: frzbcdep(pcols,pver), frzdudep(pcols,pver)
 
    real(r8) :: freqimm(pcols,pver), freqcnt(pcols,pver), freqdep(pcols,pver), freqmix(pcols,pver)
+
    real(r8) :: nnuccc_bc(pcols,pver), nnucct_bc(pcols,pver), nnudep_bc(pcols,pver)
    real(r8) :: nnuccc_dst(pcols,pver), nnucct_dst(pcols,pver), nnudep_dst(pcols,pver)
    real(r8) :: niimm_bc(pcols,pver), nicnt_bc(pcols,pver), nidep_bc(pcols,pver)
@@ -638,8 +391,17 @@ subroutine hetfrz_classnuc_cam_calc( &
    real(r8) :: numice10s_imm_dst(pcols,pver)
    real(r8) :: numice10s_imm_bc(pcols,pver)
 
-   real(r8) :: na500(pcols,pver)
-   real(r8) :: tot_na500(pcols,pver)
+   real(r8) :: coated(pcols,pver,tot_num_bins)
+   real(r8) :: aer_radius(pcols,pver,tot_num_bins)
+   real(r8) :: aer_wactfac(pcols,pver,tot_num_bins)
+
+   real(r8) :: coated_amb_aer_num(pcols,pver,tot_num_bins)
+   real(r8) :: uncoated_amb_aer_num(pcols,pver,tot_num_bins)
+   real(r8) :: amb_aer_num(pcols,pver,tot_num_bins)
+   real(r8) :: cld_aer_num(pcols,pver,tot_num_bins)
+   real(r8) :: tot_aer_num(pcols,pver,tot_num_bins)
+   real(r8) :: fn_cld_aer_num(pcols,pver)
+   real(r8) :: fraction_activated(pcols,pver,tot_num_bins)
 
    character(128) :: errstring   ! Error status
    !-------------------------------------------------------------------------------
@@ -669,85 +431,39 @@ subroutine hetfrz_classnuc_cam_calc( &
       end do
    end do
 
-   ! Convert interstitial and cloud borne aerosols from a mass to a volume basis before
-   ! being used in get_aer_num
-   do i = 1, ncnst
-      ! Check whether constituent is a mass or number mixing ratio
-      if (spec_idx(i) == 0) then
-         call rad_cnst_get_mode_num(0, mode_idx(i), 'a', state, pbuf, ptr2d)
-      else
-         call rad_cnst_get_aer_mmr(0, mode_idx(i), spec_idx(i), 'a', state, pbuf, ptr2d)
-      end if
-      aer(:ncol,:,i,lchnk) = ptr2d(:ncol,:) * rho(:ncol,:)
+   do i = 1,tot_num_bins
 
-      ! Check whether constituent is a mass or number mixing ratio
-      if (spec_idx(i) == 0) then
-         call rad_cnst_get_mode_num(0, mode_idx(i), 'c', state, pbuf, ptr2d)
-      else
-         call rad_cnst_get_aer_mmr(0, mode_idx(i), spec_idx(i), 'c', state, pbuf, ptr2d)
-      end if
-      aer_cb(:ncol,:,i,lchnk) = ptr2d(:ncol,:) * rho(:ncol,:)
-  end do
+      call aero_state%get_amb_species_numdens( indices(i)%bin_ndx, ncol, pver, types(i), aero_props, rho, amb_aer_num(:,:,i))
+      call aero_state%get_cld_species_numdens( indices(i)%bin_ndx, ncol, pver, types(i), aero_props, rho, cld_aer_num(:,:,i))
 
-   ! Init top levels of outputs of get_aer_num
-   total_aer_num              = 0._r8
-   coated_aer_num             = 0._r8
-   uncoated_aer_num           = 0._r8
-   total_interstitial_aer_num = 0._r8
-   total_cloudborne_aer_num   = 0._r8
-   hetraer                    = 0._r8
-   awcam                      = 0._r8
-   awfacm                     = 0._r8
-   dstcoat                    = 0._r8
-   na500                      = 0._r8
-   tot_na500                  = 0._r8
+      tot_aer_num(:ncol,:,i) = cld_aer_num(:ncol,:,i) + amb_aer_num(:ncol,:,i)
 
-   ! output aerosols as reference information for heterogeneous freezing
-   do i = 1, ncol
-      do k = top_lev, pver
-         call get_aer_num(i, k, ncnst, aer(:,:,:,lchnk), aer_cb(:,:,:,lchnk), rho(i,k), &
-            total_aer_num(i,k,:), coated_aer_num(i,k,:), uncoated_aer_num(i,k,:),       &
-            total_interstitial_aer_num(i,k,:), total_cloudborne_aer_num(i,k,:),         &
-            hetraer(i,k,:), awcam(i,k,:), awfacm(i,k,:), dstcoat(i,k,:),                &
-            na500(i,k), tot_na500(i,k))
+      call outfld(tot_dens_hnames(i), tot_aer_num(:,:,i), pcols, lchnk)
+      call outfld(amb_dens_hnames(i), amb_aer_num(:,:,i), pcols, lchnk)
+      call outfld(cld_dens_hnames(i), cld_aer_num(:,:,i), pcols, lchnk)
 
-         fn_cloudborne_aer_num(i,k,1) = total_aer_num(i,k,1)*factnum(i,k,mode_accum_idx)  ! bc
-         if (nmodes == MAM3_nmodes .or. nmodes == MAM4_nmodes) then
-            fn_cloudborne_aer_num(i,k,2) = total_aer_num(i,k,2)*factnum(i,k,mode_accum_idx)  ! dst_a1
-            fn_cloudborne_aer_num(i,k,3) = total_aer_num(i,k,3)*factnum(i,k,mode_coarse_idx) ! dst_a3
-         else if (nmodes == MAM7_nmodes) then
-            fn_cloudborne_aer_num(i,k,2) = total_aer_num(i,k,2)*factnum(i,k,mode_finedust_idx)
-            fn_cloudborne_aer_num(i,k,3) = total_aer_num(i,k,3)*factnum(i,k,mode_coardust_idx)
-         end if
-      end do
+      aer_radius(:ncol,:,i) = aero_state%mass_mean_radius( indices(i)%bin_ndx, indices(i)%spc_ndx,  ncol, pver, aero_props, rho )
+
+      coated(:ncol,:,i) = aero_state%coated_frac( indices(i)%bin_ndx, types(i), ncol, pver, aero_props, aer_radius(:,:,i) )
+
+      call outfld(coated_frac_hnames(i), coated(:,:,i), pcols, lchnk)
+
+      coated_amb_aer_num(:ncol,:,i) = amb_aer_num(:ncol,:,i)*coated(:ncol,:,i)
+      uncoated_amb_aer_num(:ncol,:,i) = amb_aer_num(:ncol,:,i)*(1._r8-coated(:ncol,:,i))
+
+      call outfld(coated_dens_hnames(i), coated_amb_aer_num(:,:,i), pcols, lchnk)
+      call outfld(uncoated_dens_hnames(i), uncoated_amb_aer_num(:,:,i), pcols, lchnk)
+      call outfld(radius_hnames(i), aer_radius(:ncol,:,i), ncol, lchnk)
+
+      call aero_state%watact_mfactor(indices(i)%bin_ndx, types(i), ncol, pver, aero_props, rho, aer_wactfac(:ncol,:,i))
+      call outfld(wactfac_hnames(i), aer_wactfac(:,:,i), pcols, lchnk)
+
+      fn_cld_aer_num(:ncol,:) = tot_aer_num(:ncol,:,i)*factnum(:ncol,:,indices(i)%bin_ndx)
+      call outfld(cldfn_dens_hnames(i), fn_cld_aer_num, pcols, lchnk)
+
+      fraction_activated(:ncol,:,i) = factnum(:ncol,:,indices(i)%bin_ndx)
+
    end do
-
-   call outfld('bc_num',        total_aer_num(:,:,1),    pcols, lchnk)
-   call outfld('dst1_num',      total_aer_num(:,:,2),    pcols, lchnk)
-   call outfld('dst3_num',      total_aer_num(:,:,3),    pcols, lchnk)
-
-   call outfld('bcc_num',       coated_aer_num(:,:,1),   pcols, lchnk)
-   call outfld('dst1c_num',     coated_aer_num(:,:,2),   pcols, lchnk)
-   call outfld('dst3c_num',     coated_aer_num(:,:,3),   pcols, lchnk)
-
-   call outfld('bcuc_num',      uncoated_aer_num(:,:,1), pcols, lchnk)
-   call outfld('dst1uc_num',    uncoated_aer_num(:,:,2), pcols, lchnk)
-   call outfld('dst3uc_num',    uncoated_aer_num(:,:,3), pcols, lchnk)
-
-   call outfld('bc_a1_num',     total_interstitial_aer_num(:,:,1), pcols, lchnk)
-   call outfld('dst_a1_num',    total_interstitial_aer_num(:,:,2), pcols, lchnk)
-   call outfld('dst_a3_num',    total_interstitial_aer_num(:,:,3), pcols, lchnk)
-
-   call outfld('bc_c1_num',     total_cloudborne_aer_num(:,:,1),   pcols, lchnk)
-   call outfld('dst_c1_num',    total_cloudborne_aer_num(:,:,2),   pcols, lchnk)
-   call outfld('dst_c3_num',    total_cloudborne_aer_num(:,:,3),   pcols, lchnk)
-
-   call outfld('fn_bc_c1_num',  fn_cloudborne_aer_num(:,:,1),      pcols, lchnk)
-   call outfld('fn_dst_c1_num', fn_cloudborne_aer_num(:,:,2),      pcols, lchnk)
-   call outfld('fn_dst_c3_num', fn_cloudborne_aer_num(:,:,3),      pcols, lchnk)
-
-   call outfld('na500',         na500,     pcols, lchnk)
-   call outfld('totna500',      tot_na500, pcols, lchnk)
 
    ! frzimm, frzcnt, frzdep are the outputs of this parameterization used by the microphysics
    call pbuf_get_field(pbuf, frzimm_idx, frzimm)
@@ -804,22 +520,13 @@ subroutine hetfrz_classnuc_cam_calc( &
             r3lx = max(4.e-6_r8, r3lx)
             supersatice = esl(i)/esi(i)
 
-            fn(1) = factnum(i,k,mode_accum_idx)  ! bc accumulation mode
-            if (nmodes == MAM3_nmodes .or. nmodes == MAM4_nmodes .or. nmodes == MAM5_nmodes) then
-                fn(2) = factnum(i,k,mode_accum_idx)  ! dust_a1 accumulation mode
-                fn(3) = factnum(i,k,mode_coarse_idx) ! dust_a3 coarse mode
-            else if (nmodes == MAM7_nmodes) then
-                fn(2) = factnum(i,k,mode_finedust_idx)
-                fn(3) = factnum(i,k,mode_coardust_idx)
-            end if
-
-            call hetfrz_classnuc_calc( &
+            call hetfrz_classnuc_calc( tot_num_bins, types, &
                deltatin,  t(i,k),  pmid(i,k),  supersatice,   &
-               fn,  r3lx,  ncic*rho(i,k)*1.0e-6_r8,  frzbcimm(i,k),  frzduimm(i,k),   &
-               frzbccnt(i,k),  frzducnt(i,k),  frzbcdep(i,k),  frzdudep(i,k),  hetraer(i,k,:), &
-               awcam(i,k,:), awfacm(i,k,:), dstcoat(i,k,:), total_aer_num(i,k,:),  &
-               coated_aer_num(i,k,:), uncoated_aer_num(i,k,:), total_interstitial_aer_num(i,k,:), &
-               total_cloudborne_aer_num(i,k,:), errstring)
+               fraction_activated(i,k,:),  r3lx,  ncic*rho(i,k)*1.0e-6_r8,  frzbcimm(i,k),  frzduimm(i,k),   &
+               frzbccnt(i,k),  frzducnt(i,k),  frzbcdep(i,k),  frzdudep(i,k),  aer_radius(i,k,:), &
+               aer_wactfac(i,k,:), coated(i,k,:), tot_aer_num(i,k,:),  &
+               uncoated_amb_aer_num(i,k,:), amb_aer_num(i,k,:), &
+               cld_aer_num(i,k,:), errstring)
 
             call handle_errmsg(errstring, subname="hetfrz_classnuc_calc")
 
@@ -831,6 +538,7 @@ subroutine hetfrz_classnuc_cam_calc( &
             if (frzcnt(i,k) > 0._r8) freqcnt(i,k) = 1._r8
             if (frzdep(i,k) > 0._r8) freqdep(i,k) = 1._r8
             if ((frzimm(i,k) + frzcnt(i,k) + frzdep(i,k)) > 0._r8) freqmix(i,k) = 1._r8
+
          else
             frzimm(i,k) = 0._r8
             frzcnt(i,k) = 0._r8
@@ -858,6 +566,10 @@ subroutine hetfrz_classnuc_cam_calc( &
          numice10s_imm_bc(i,k) = frzbcimm(i,k)*1.0e6_r8*deltatin*(10._r8/deltatin)
       end do
    end do
+
+   call outfld('FRZIMM', frzimm, pcols, lchnk)
+   call outfld('FRZCNT', frzcnt, pcols, lchnk)
+   call outfld('FRZDEP', frzdep, pcols, lchnk)
 
    call outfld('FREQIMM', freqimm, pcols, lchnk)
    call outfld('FREQCNT', freqcnt, pcols, lchnk)
@@ -891,476 +603,6 @@ subroutine hetfrz_classnuc_cam_calc( &
    end associate
 
 end subroutine hetfrz_classnuc_cam_calc
-
-!====================================================================================================
-
-subroutine get_aer_num(ii, kk, ncnst, aer, aer_cb, rhoair,&
-                       total_aer_num,                     &
-                       coated_aer_num,                    &
-                       uncoated_aer_num,                  &
-                       total_interstial_aer_num,          &
-                       total_cloudborne_aer_num,          &
-                       hetraer, awcam, awfacm, dstcoat,   &
-                       na500, tot_na500)
-
-   !*****************************************************************************
-   ! Purpose: Calculate BC and Dust number, including total number(interstitial+
-   !          cloud borne), one monolayer coated number, and uncoated number
-   !
-   ! Author: Yong Wang and Xiaohong Liu, UWyo, 12/2012
-   !*****************************************************************************
-
-   ! input
-   integer,  intent(in) :: ii, kk, ncnst
-   real(r8), intent(in) :: aer(pcols,pver,ncnst)    ! interstitial aerosols, volume basis
-   real(r8), intent(in) :: aer_cb(pcols,pver,ncnst) ! cloud borne aerosols, volume basis
-   real(r8), intent(in) :: rhoair                   ! air density (kg/m3)
-
-   ! The interstitial and cloud borne aerosol concentrations are accessed from
-   ! module variables local to this module.
-
-   ! output
-   real(r8), intent(out) :: total_aer_num(3)            ! #/cm^3
-   real(r8), intent(out) :: total_interstial_aer_num(3) ! #/cm^3
-   real(r8), intent(out) :: total_cloudborne_aer_num(3) ! #/cm^3
-   real(r8), intent(out) :: coated_aer_num(3)           ! #/cm^3
-   real(r8), intent(out) :: uncoated_aer_num(3)         ! #/cm^3
-   real(r8), intent(out) :: hetraer(3)                  ! BC and Dust mass mean radius [m]
-   real(r8), intent(out) :: awcam(3)                    ! modal added mass [mug m-3]
-   real(r8), intent(out) :: awfacm(3)                   ! (OC+BC)/(OC+BC+SO4)
-   real(r8), intent(out) :: dstcoat(3)                  ! coated fraction
-   real(r8), intent(out) :: na500                  ! #/cm^3 interstitial aerosol number with D>500 nm (#/cm^3)
-   real(r8), intent(out) :: tot_na500              ! #/cm^3 total aerosol number with D>500 nm (#/cm^3)
-
-
-   !local variables
-   !------------coated variables--------------------
-   real(r8), parameter :: n_so4_monolayers_dust = 1.0_r8 ! number of so4(+nh4) monolayers needed to coat a dust particle
-   real(r8), parameter :: dr_so4_monolayers_dust = n_so4_monolayers_dust * 4.76e-10_r8
-   real(r8), parameter :: spechygro_so4 = 0.507_r8          ! Sulfate hygroscopicity
-   real(r8), parameter :: spechygro_soa = 0.14_r8           ! SOA hygroscopicity
-   real(r8), parameter :: spechygro_pom = 0.1_r8            ! POM hygroscopicity
-   real(r8), parameter :: soa_equivso4_factor = spechygro_soa/spechygro_so4
-   real(r8), parameter :: pom_equivso4_factor = spechygro_pom/spechygro_so4
-   real(r8) :: vol_shell(3)
-   real(r8) :: vol_core(3)
-   real(r8) :: fac_volsfc_dust_a1, fac_volsfc_dust_a3, fac_volsfc_bc
-   real(r8) :: tmp1, tmp2
-   real(r8) :: bc_num                     ! bc number in accumulation mode for MAM3
-                                          ! bc number in accumulation and primary carbon mode for MAM7 and MAM4
-   real(r8) :: dst1_num, dst3_num         ! dust number in accumulation and corase mode for MAM3
-                                          ! dust number in fine dust and corase dust mode for MAM7 and MAM4
-   logical :: num_to_mass_in = .false.
-   real(r8), parameter :: bc_num_to_mass = 4.669152e+17_r8      ! #/kg from emission
-   real(r8), parameter :: dst1_num_to_mass = 3.484e+15_r8       ! #/kg for dust in accumulation mode
-
-   real(r8) :: dmc, ssmc, so4
-
-   real(r8) :: as_so4, as_du, as_soa
-   real(r8) :: dst1_num_imm, dst3_num_imm, bc_num_imm
-   real(r8) :: dmc_imm, ssmc_imm, so4_imm
-   real(r8) :: as_bc, as_pom, as_ss
-   real(r8) :: bc4_num
-   real(r8) :: r_bc                         ! model radii of BC modes [m]
-   real(r8) :: r_dust_a1, r_dust_a3         ! model radii of dust modes [m]
-
-   integer :: i
-   real(r8) :: dst1_scale
-   !-------------------------------------------------------------------------------
-
-   ! init output vars
-   total_aer_num             = 0._r8
-   total_interstial_aer_num  = 0._r8
-   total_cloudborne_aer_num  = 0._r8
-   coated_aer_num            = 0._r8
-   uncoated_aer_num          = 0._r8
-   hetraer                   = 0._r8
-   awcam                     = 0._r8
-   awfacm                    = 0._r8
-   dstcoat                   = 0._r8
-   na500                     = 0._r8
-   tot_na500                 = 0._r8
-
-   !*****************************************************************************
-   !                calculate intersitial aerosol
-   !*****************************************************************************
-
-   if (nmodes == MAM3_nmodes .or. nmodes == MAM4_nmodes .or. nmodes == MAM5_nmodes) then
-
-      if (.not. num_to_mass_in) then
-
-         as_so4 = aer(ii,kk,so4_accum)
-         as_bc  = aer(ii,kk,bc_accum)
-         as_pom = aer(ii,kk,pom_accum)
-         as_soa = aer(ii,kk,soa_accum)
-         as_ss  = aer(ii,kk,ncl_accum)
-         as_du  = aer(ii,kk,dst_accum)
-
-         if (as_du > 0._r8) then
-            dst1_num = as_du/(as_so4+as_bc+as_pom+as_soa+as_ss+as_du)  &
-                       * aer(ii,kk,num_accum)*1.0e-6_r8 ! #/cm^3
-         else
-            dst1_num = 0.0_r8
-         end if
-
-         if (as_bc > 0._r8) then
-            bc_num = as_bc/(as_so4+as_bc+as_pom+as_soa+as_ss+as_du)  &
-                     * aer(ii,kk,num_accum)*1.0e-6_r8 ! #/cm^3
-         else
-            bc_num = 0.0_r8
-         end if
-
-      else
-
-         dst1_num = aer(ii,kk,dst_accum) * dst1_num_to_mass*1.0e-6_r8 ! #/cm^3, dust # in accumulation mode
-         bc_num = aer(ii,kk,bc_accum) * bc_num_to_mass*1.0e-6_r8      ! #/cm^3
-      end if
-      dmc = aer(ii,kk,dst_coarse)
-      ssmc = aer(ii,kk,ncl_coarse)
-      so4 = aer(ii,kk,so4_coarse)
-
-      if (dmc > 0._r8 ) then
-         dst3_num = dmc/(ssmc+dmc+so4) * aer(ii,kk,num_coarse)*1.0e-6_r8 ! #/cm^3
-      else
-         dst3_num = 0.0_r8
-      end if
-
-      if (nmodes == MAM4_nmodes .or. nmodes == MAM5_nmodes) then
-         if (num_to_mass_in) then
-            bc_num = bc_num+(aer(ii,kk,bc_pcarbon)) * bc_num_to_mass*1.0e-6_r8 ! #/cm^3
-         else
-            as_bc  = aer(ii,kk,bc_pcarbon)
-            as_pom = aer(ii,kk,pom_pcarbon)
-            bc4_num = as_bc/(as_bc+as_pom)*aer(ii,kk,num_pcarbon)*1.0e-6_r8 ! #/cm^3
-            bc_num = bc_num + bc4_num
-         end if
-      end if
-   else if (nmodes == MAM7_nmodes) then
-      bc_num = (aer(ii,kk,bc_accum)+aer(ii,kk,bc_pcarbon)) * bc_num_to_mass*1.0e-6_r8 ! #/cm^3
-      dst1_num = aer(ii,kk,num_finedust)*1.0e-6_r8  ! #/cm^3
-      dst3_num = aer(ii,kk,num_coardust)*1.0e-6_r8 ! #/cm^3
-   end if
-
-   !*****************************************************************************
-   !                calculate cloud borne aerosol
-   !*****************************************************************************
-
-   if (nmodes == MAM3_nmodes .or. nmodes == MAM4_nmodes .or. nmodes == MAM5_nmodes) then
-
-      as_so4 = aer_cb(ii,kk,so4_accum)
-      as_bc  = aer_cb(ii,kk,bc_accum)
-      as_pom = aer_cb(ii,kk,pom_accum)
-      as_soa = aer_cb(ii,kk,soa_accum)
-      as_ss  = aer_cb(ii,kk,ncl_accum)
-      as_du  = aer_cb(ii,kk,dst_accum)
-
-      if (as_du > 0._r8) then
-         dst1_num_imm = as_du/(as_so4+as_bc+as_pom+as_soa+as_ss+as_du)  &
-                       * aer_cb(ii,kk,num_accum)*1.0e-6_r8 ! #/cm^3
-      else
-         dst1_num_imm = 0.0_r8
-      end if
-
-      if (as_bc > 0._r8) then
-         bc_num_imm = as_bc/(as_so4+as_bc+as_pom+as_soa+as_ss+as_du)  &
-                    * aer_cb(ii,kk,num_accum)*1.0e-6_r8 ! #/cm^3
-      else
-         bc_num_imm = 0.0_r8
-      end if
-
-      dmc_imm = aer_cb(ii,kk,dst_coarse)
-      ssmc_imm = aer_cb(ii,kk,ncl_coarse)
-      so4_imm = aer_cb(ii,kk,so4_coarse)
-
-      if (dmc_imm > 0._r8) then
-         dst3_num_imm = dmc_imm/(ssmc_imm+dmc_imm+so4_imm) * aer_cb(ii,kk,num_coarse)*1.0e-6_r8 ! #/cm^3
-      else
-         dst3_num_imm = 0.0_r8
-      end if
-
-   else if (nmodes == MAM7_nmodes) then
-      ! primary carbon mode is insoluble and thus don't consider its cloud-borne state
-      as_so4 = aer_cb(ii,kk,so4_accum)
-      as_bc  = aer_cb(ii,kk,bc_accum)
-      as_pom = aer_cb(ii,kk,pom_accum)
-      as_soa = aer_cb(ii,kk,soa_accum)
-      as_ss  = aer_cb(ii,kk,ncl_accum)
-      if (as_bc > 0._r8) then
-         bc_num_imm = as_bc/(as_so4+as_bc+as_pom+as_soa+as_ss)  &
-                    * aer_cb(ii,kk,num_accum)*1.0e-6_r8 ! #/cm^3
-      else
-         bc_num_imm = 0.0_r8
-      end if
-      dst1_num_imm = aer_cb(ii,kk,num_finedust)*1.0e-6_r8 ! #/cm^3
-      dst3_num_imm = aer_cb(ii,kk,num_coardust)*1.0e-6_r8 ! #/cm^3
-   end if
-
-   total_interstial_aer_num(1) = bc_num
-   total_interstial_aer_num(2) = dst1_num
-   total_interstial_aer_num(3) = dst3_num
-
-   total_cloudborne_aer_num(1) = bc_num_imm
-   total_cloudborne_aer_num(2) = dst1_num_imm
-   total_cloudborne_aer_num(3) = dst3_num_imm
-
-   !*****************************************************************************
-   ! calculate mass mean radius
-   !*****************************************************************************
-
-   if (nmodes == MAM3_nmodes .or. nmodes == MAM4_nmodes .or. nmodes == MAM5_nmodes) then
-
-      if (nmodes == MAM3_nmodes) then
-
-        if (aer(ii,kk,bc_accum)*1.0e-3_r8 > 1.0e-30_r8 .and. bc_num > 1.0e-3_r8) then
-           r_bc = ( 3._r8/(4*pi*specdens_bc)*aer(ii,kk,bc_accum)/(bc_num*1.0e6_r8) )**(1._r8/3._r8)
-        else
-           r_bc = 0.04e-6_r8
-        end if
-
-      else
-        if ((aer(ii,kk,bc_accum)+aer(ii,kk,bc_pcarbon))*1.0e-3_r8 > 1.0e-30_r8 &
-            .and. bc_num > 1.0e-3_r8) then
-            r_bc = ( 3._r8/(4*pi*specdens_bc)*(aer(ii,kk,bc_accum)+aer(ii,kk,bc_pcarbon))/ &
-                    (bc_num*1.0e6_r8) )**(1._r8/3._r8)
-        else
-            r_bc = 0.067e-6_r8 ! from emission size
-        end if
-
-      end if
-
-      if (aer(ii,kk,dst_accum)*1.0e-3_r8 > 1.0e-30_r8 .and. dst1_num > 1.0e-3_r8) then
-         r_dust_a1 = ( 3._r8/(4*pi*specdens_dust)*aer(ii,kk,dst_accum)/(dst1_num*1.0e6_r8) )**(1._r8/3._r8)
-      else
-         r_dust_a1 = 0.258e-6_r8
-      end if
-
-      if (aer(ii,kk,dst_coarse)*1.0e-3_r8 > 1.0e-30_r8 .and. dst3_num > 1.0e-3_r8) then
-         r_dust_a3 = ( 3._r8/(4*pi*specdens_dust)*aer(ii,kk,dst_coarse)/(dst3_num*1.0e6_r8) )**(1._r8/3._r8)
-      else
-         r_dust_a3 = 1.576e-6_r8
-      end if
-
-   else if (nmodes == MAM7_nmodes) then
-
-      if ((aer(ii,kk,bc_accum)+aer(ii,kk,bc_pcarbon))*1.0e-3_r8 > 1.0e-30_r8 &
-          .and. bc_num > 1.0e-3_r8) then
-          r_bc = ( 3._r8/(4*pi*specdens_bc)*(aer(ii,kk,bc_accum)+aer(ii,kk,bc_pcarbon))/ &
-                  (bc_num*1.0e6_r8) )**(1._r8/3._r8)
-      else
-          r_bc = 0.067e-6_r8 ! from emission size
-      end if
-
-      if (aer(ii,kk,dst_finedust)*1.0e-3_r8 > 1.0e-30_r8 .and. dst1_num > 1.0e-3_r8) then
-         r_dust_a1 = ( 3._r8/(4*pi*specdens_dust)*aer(ii,kk,dst_finedust)/(dst1_num*1.0e6_r8) )**(1._r8/3._r8)
-      else
-         r_dust_a1 = 0.258e-6_r8
-      end if
-
-      if (aer(ii,kk,dst_coardust)*1.0e-3_r8 > 1.0e-30_r8 .and. dst3_num > 1.0e-3_r8) then
-         r_dust_a3 = ( 3._r8/(4*pi*specdens_dust)*aer(ii,kk,dst_coardust)/(dst3_num*1.0e6_r8) )**(1._r8/3._r8)
-      else
-         r_dust_a3 = 1.576e-6_r8
-      end if
-   end if
-
-   hetraer(1) = r_bc
-   hetraer(2) = r_dust_a1
-   hetraer(3) = r_dust_a3
-
-   !*****************************************************************************
-   !                calculate coated fraction
-   !*****************************************************************************
-
-   if (nmodes == MAM3_nmodes .or. nmodes == MAM4_nmodes .or. nmodes == MAM5_nmodes) then
-
-      fac_volsfc_bc      = exp(2.5_r8*alnsg_mode_accum**2)
-      fac_volsfc_dust_a1 = exp(2.5_r8*alnsg_mode_accum**2)
-      fac_volsfc_dust_a3 = exp(2.5_r8*alnsg_mode_coarse**2)
-
-      vol_shell(2) = ( aer(ii,kk,so4_accum)/specdens_so4 + &
-                       aer(ii,kk,pom_accum)*pom_equivso4_factor/specdens_pom + &
-                       aer(ii,kk,soa_accum)*soa_equivso4_factor/specdens_soa )/rhoair
-
-      vol_core(2) = aer(ii,kk,dst_accum)/(specdens_dust*rhoair)
-
-      !   ratio1 = vol_shell/vol_core =
-      !      actual hygroscopic-shell-volume/dust-core-volume
-      !   ratio2 = 6.0_r8*dr_so4_monolayers_pcage/(dgncur_a*fac_volsfc_dust)
-      !      = (shell-volume corresponding to n_so4_monolayers_pcage)/core-volume
-      !      The 6.0/(dgncur_a*fac_volsfc_dust) = (mode-surface-area/mode-volume)
-      !   Note that vol_shell includes both so4, pom, AND soa as "equivalent so4",
-      !      The soa_equivso4_factor accounts for the lower hygroscopicity of soa.
-      !
-      !   Define xferfrac_pcage = min( 1.0, ratio1/ratio2)
-      !   But ratio1/ratio2 == tmp1/tmp2, and coding below avoids possible overflow
-
-      ! bc
-      if (nmodes == MAM3_nmodes) then
-        vol_shell(1) = vol_shell(2)
-        vol_core(1) = aer(ii,kk,bc_accum)/(specdens_bc*rhoair)
-        tmp1 = vol_shell(1)*(r_bc*2._r8)*fac_volsfc_bc
-        tmp2 = max(6.0_r8*dr_so4_monolayers_dust*vol_core(1), 0.0_r8)
-        dstcoat(1) = tmp1/tmp2
-      else
-        fac_volsfc_bc      = exp(2.5_r8*alnsg_mode_pcarbon**2)
-        vol_shell(1) = ( aer(ii,kk,pom_pcarbon)*pom_equivso4_factor/specdens_pom )/rhoair
-        vol_core(1)  = aer(ii,kk,bc_pcarbon)/(specdens_bc*rhoair)
-        tmp1 = vol_shell(1)*(r_bc*2._r8)*fac_volsfc_bc
-        tmp2 = max(6.0_r8*dr_so4_monolayers_dust*vol_core(1), 0.0_r8)
-        dstcoat(1) = tmp1/tmp2
-      end if
-
-      ! dust_a1
-      tmp1 = vol_shell(2)*(r_dust_a1*2._r8)*fac_volsfc_dust_a1
-      tmp2 = max(6.0_r8*dr_so4_monolayers_dust*vol_core(2), 0.0_r8)
-      dstcoat(2) = tmp1/tmp2
-
-      ! dust_a3
-      vol_shell(3) = aer(ii,kk,so4_coarse)/(specdens_so4*rhoair)
-      vol_core(3)  = aer(ii,kk,dst_coarse)/(specdens_dust*rhoair)
-      tmp1 = vol_shell(3)*(r_dust_a3*2._r8)*fac_volsfc_dust_a3
-      tmp2 = max(6.0_r8*dr_so4_monolayers_dust*vol_core(3), 0.0_r8)
-      dstcoat(3) = tmp1/tmp2
-
-   else if (nmodes == MAM7_nmodes) then
-
-      ! for BC, only consider primary carbon mode,
-      ! because most of particles in this mode are uncoated
-      ! and nearly all particles in accumulation mode are coated
-      fac_volsfc_bc      = exp(2.5_r8*alnsg_mode_pcarbon**2)
-
-      vol_shell(1) = ( aer(ii,kk,pom_pcarbon)*pom_equivso4_factor/specdens_pom )/rhoair
-      vol_core(1)  = aer(ii,kk,bc_pcarbon)/(specdens_bc*rhoair)
-      tmp1 = vol_shell(1)*(r_bc*2._r8)*fac_volsfc_bc
-      tmp2 = max(6.0_r8*dr_so4_monolayers_dust*vol_core(1), 0.0_r8)
-      dstcoat(1) = tmp1/tmp2
-
-      fac_volsfc_dust_a1 = exp(2.5_r8*alnsg_mode_finedust**2)
-      fac_volsfc_dust_a3 = exp(2.5_r8*alnsg_mode_coardust**2)
-
-      vol_shell(2) = aer(ii,kk,so4_finedust)/(specdens_so4*rhoair)
-      vol_core(2)  = aer(ii,kk,dst_finedust)/(specdens_dust*rhoair)
-
-      tmp1 = vol_shell(2)*(r_dust_a1*2._r8)*fac_volsfc_dust_a1
-      tmp2 = max(6.0_r8*dr_so4_monolayers_dust*vol_core(2), 0.0_r8)
-      dstcoat(2) = tmp1/tmp2
-
-      vol_shell(3) = aer(ii,kk,so4_coardust)/(specdens_so4*rhoair)
-      vol_core(3)  = aer(ii,kk,dst_coardust)/(specdens_dust*rhoair)
-      tmp1 = vol_shell(3)*(r_dust_a3*2._r8)*fac_volsfc_dust_a3
-      tmp2 = max(6.0_r8*dr_so4_monolayers_dust*vol_core(3), 0.0_r8)
-      dstcoat(3) = tmp1/tmp2
-
-   end if
-
-   if (dstcoat(1) > 1._r8)    dstcoat(1) = 1._r8
-   if (dstcoat(1) < 0.001_r8) dstcoat(1) = 0.001_r8
-   if (dstcoat(2) > 1._r8)    dstcoat(2) = 1._r8
-   if (dstcoat(2) < 0.001_r8) dstcoat(2) = 0.001_r8
-   if (dstcoat(3) > 1._r8)    dstcoat(3) = 1._r8
-   if (dstcoat(3) < 0.001_r8) dstcoat(3) = 0.001_r8
-
-   do i = 1, 3
-      total_aer_num(i)    = total_interstial_aer_num(i) + total_cloudborne_aer_num(i)
-      coated_aer_num(i)   = total_interstial_aer_num(i)*dstcoat(i)
-      uncoated_aer_num(i) = total_interstial_aer_num(i)*(1._r8-dstcoat(i))
-   end do
-
-   if (nmodes == MAM4_nmodes .or. nmodes == MAM7_nmodes .or. nmodes == MAM5_nmodes) then
-      if (num_to_mass_in) then
-         coated_aer_num(1)   = (aer(ii,kk,bc_pcarbon)*bc_num_to_mass*1.0e-6_r8)*dstcoat(1)+ &
-                               (aer(ii,kk,bc_accum)*bc_num_to_mass*1.0e-6_r8)
-         uncoated_aer_num(1) = (aer(ii,kk,bc_pcarbon)*bc_num_to_mass*1.0e-6_r8)*(1._r8-dstcoat(1))
-      else
-         coated_aer_num(1)   = bc4_num*dstcoat(1) +  bc_num
-         uncoated_aer_num(1) = bc4_num*(1._r8-dstcoat(1))
-      end if
-   end if
-
-   if (nmodes == MAM3_nmodes .or. nmodes == MAM4_nmodes .or. nmodes == MAM5_nmodes) then
-      dst1_scale = 0.488_r8    ! scaled for D>0.5-1 um from 0.1-1 um
-   else if (nmodes == MAM7_nmodes) then
-      dst1_scale = 0.566_r8    ! scaled for D>0.5-2 um from 0.1-2 um
-   end if
-
-   tot_na500 = total_aer_num(1)*0.0256_r8          & ! scaled for D>0.5 um using Clarke et al., 1997; 2004; 2007: rg=0.1um, sig=1.6
-      + total_aer_num(2)*dst1_scale + total_aer_num(3)
-
-   na500 = total_interstial_aer_num(1)*0.0256_r8   & ! scaled for D>0.5 um using Clarke et al., 1997; 2004; 2007: rg=0.1um, sig=1.6
-      + total_interstial_aer_num(2)*dst1_scale + total_interstial_aer_num(3)
-
-   !*****************************************************************************
-   !                prepare some variables for water activity
-   !*****************************************************************************
-
-   if (nmodes == MAM3_nmodes .or. nmodes == MAM4_nmodes .or. nmodes == MAM5_nmodes) then
-      ! accumulation mode for dust_a1
-      if (aer(ii,kk,num_accum) > 0._r8) then
-         awcam(2) = (dst1_num*1.0e6_r8)/aer(ii,kk,num_accum)* &
-            ( aer(ii,kk,so4_accum) + aer(ii,kk,soa_accum) + &
-            aer(ii,kk,pom_accum) + aer(ii,kk,bc_accum) )*1.0e9_r8 ! [mug m-3]
-      else
-         awcam(2) = 0._r8
-      end if
-
-      if (awcam(2) > 0._r8) then
-         awfacm(2) = ( aer(ii,kk,bc_accum) + aer(ii,kk,soa_accum) + aer(ii,kk,pom_accum) )/ &
-            ( aer(ii,kk,soa_accum) + aer(ii,kk,pom_accum) + aer(ii,kk,so4_accum) + aer(ii,kk,bc_accum) )
-      else
-         awfacm(2) = 0._r8
-      end if
-
-      ! accumulation mode for bc (if MAM4, primary carbon mode is insoluble)
-      if (aer(ii,kk,num_accum) > 0._r8) then
-         awcam(1) = (bc_num*1.0e6_r8)/aer(ii,kk,num_accum)* &
-            ( aer(ii,kk,so4_accum) + aer(ii,kk,soa_accum) + aer(ii,kk,pom_accum) + aer(ii,kk,bc_accum) )*1.0e9_r8 ! [mug m-3]
-      else
-         awcam(1) = 0._r8
-      end if
-      awfacm(1) = awfacm(2)
-
-      ! coarse mode for dust_a3
-      if (aer(ii,kk,num_coarse) > 0._r8) then
-         awcam(3) = (dst3_num*1.0e6_r8)/aer(ii,kk,num_coarse)* aer(ii,kk,so4_coarse)*1.0e9_r8
-      else
-         awcam(3) = 0._r8
-      end if
-      awfacm(3) = 0._r8
-
-   else if (nmodes == MAM7_nmodes) then
-
-      ! accumulation mode for bc (primary carbon mode is insoluble)
-      if (aer(ii,kk,num_accum) > 0._r8) then
-         awcam(1) = (bc_num*1.0e6_r8)/aer(ii,kk,num_accum)* &
-            ( aer(ii,kk,so4_accum) + aer(ii,kk,soa_accum) + aer(ii,kk,pom_accum) + aer(ii,kk,bc_accum) )*1.0e9_r8 ! [mug m-3]
-      else
-         awcam(1) = 0._r8
-      end if
-
-      if (awcam(1) > 0._r8) then
-         awfacm(1) = ( aer(ii,kk,bc_accum) + aer(ii,kk,soa_accum) + aer(ii,kk,pom_accum) )/ &
-            ( aer(ii,kk,soa_accum) + aer(ii,kk,pom_accum) + aer(ii,kk,so4_accum) + aer(ii,kk,bc_accum) )
-      else
-         awfacm(1) = 0._r8
-      end if
-
-      if (aer(ii,kk,num_finedust) > 0._r8) then
-         awcam(2) = (dst1_num*1.0e6_r8)/aer(ii,kk,num_finedust)* aer(ii,kk,so4_finedust)*1.0e9_r8
-      else
-         awcam(2) = 0._r8
-      end if
-      awfacm(2) = 0._r8
-
-      if (aer(ii,kk,num_coardust) > 0._r8) then
-         awcam(3) = (dst3_num*1.0e6_r8)/aer(ii,kk,num_coardust)* aer(ii,kk,so4_coardust)*1.0e9_r8
-      else
-         awcam(3) = 0._r8
-      end if
-      awfacm(3) = 0._r8
-
-   end if
-
-end subroutine get_aer_num
 
 !====================================================================================================
 

@@ -62,11 +62,11 @@
 <nhtfrq>            0,   -1,  -24,  -24, -120,  -24, -120, -240 </nhtfrq>
 <mfilt>             1,   24,    7,    7,   10,  365,   73,   30 </mfilt>
 
-<!-- Monthly --> 
-<fincl1> 
-         'Z3', 'T', 'TIon', 'TElec', 'e', 'U', 'V', 'OMEGA', 'UI', 'VI', 'WI', 'ElecColDens', 'PHIM2D', 'PS', 
-         'PED_CONDUCTANCE', 'HALL_CONDUCTANCE', 'ED1', 'ED2' 'O', 'O2', 'H', 'NO', 'CO2', 'N', 'O1D', 'Op2P', 'Op2D', 'Op', 
-         'Np', 'N2p', 'O2p', 'NOp', 'QJOULE', 'SIGMAHAL', 'SIGMAPED', 'SolIonRate_Tot', 'QRS_TOT', 'QO3', 'QCO2', 
+<!-- Monthly -->
+<fincl1>
+         'Z3', 'T', 'TIon', 'TElec', 'e', 'U', 'V', 'OMEGA', 'UI', 'VI', 'WI', 'ElecColDens', 'PHIM2D', 'PS',
+         'PED_CONDUCTANCE', 'HALL_CONDUCTANCE', 'ED1', 'ED2' 'O', 'O2', 'H', 'NO', 'CO2', 'N', 'O1D', 'Op2P', 'Op2D', 'Op',
+         'Np', 'N2p', 'O2p', 'NOp', 'QJOULE', 'SIGMAHAL', 'SIGMAPED', 'SolIonRate_Tot', 'QRS_TOT', 'QO3', 'QCO2',
          'QNO', 'QO3P', 'QHC2S', 'QJOULE', 'EKGW', 'TTGW', 'UTGW_TOTAL',
          'T_24_COS', 'T_24_SIN', 'T_12_COS', 'T_12_SIN', 'T_08_COS', 'T_08_SIN',
          'U_24_COS', 'U_24_SIN', 'U_12_COS', 'U_12_SIN', 'U_08_COS', 'U_08_SIN',
@@ -75,49 +75,49 @@
          'ALATM', 'ALONM', 'AOA1', 'AOA2', 'BR', 'BRCL', 'BRO', 'BRONO2', 'CCL4', 'CF2CLBR', 'CF3BR', 'CFC11',
          'CFC113', 'CFC12', 'CH2O', 'CH3BR', 'CH3CCL3', 'CH3CL', 'CH3O2', 'CH3OOH', 'CH4', 'CL',
          'CL2', 'CL2O2', 'CLDHGH', 'CLDLOW', 'CLDMED', 'CLDTOT', 'CLO', 'CLONO2', 'CLOUD', 'CO',
-         'DTCOND', 'DTV', 'DUV', 'DVV', 'FLNS', 'FLNSC', 'FLNT', 'FLNTC','FSDS', 'FSNS', 'FSNSC', 'FSNT', 'FSNTC', 
-         'H2', 'H2O', 'H2O2', 'HBR', 'HCFC22', 'HCL', 'HNO3', 'HO2', 'HO2NO2', 'HOBR', 'HOCL', 'HORZ', 
-         'LANDFRAC', 'LHFLX', 'N2O', 'N2O5', 'NO2', 'NO3', 'O3', 'OCLO', 'OCNFRAC', 'OH', 'PHIS', 
+         'DTCOND', 'DTV', 'DUV', 'DVV', 'FLNS', 'FLNSC', 'FLNT', 'FLNTC','FSDS', 'FSNS', 'FSNSC', 'FSNT', 'FSNTC',
+         'H2', 'H2O', 'H2O2', 'HBR', 'HCFC22', 'HCL', 'HNO3', 'HO2', 'HO2NO2', 'HOBR', 'HOCL', 'HORZ',
+         'LANDFRAC', 'LHFLX', 'N2O', 'N2O5', 'NO2', 'NO3', 'O3', 'OCLO', 'OCNFRAC', 'OH', 'PHIS',
          'PRECC', 'PRECL', 'Q', 'QFLX', 'QRL', 'QRS', 'RELHUM', 'SHFLX', 'SOLIN', 'SWCF', 'QCP', 'QTHERMAL',
          'QRL_TOT', 'PSL', 'HNO3_STS', 'HNO3_NAT', 'HNO3_GAS', 'NO_Aircraft', 'NO_Lightning',
          'QRS_AUR', 'QRS_CO2NIR', 'QRS_EUV', 'SAD_ICE', 'SAD_LNAT', 'SAD_SULFC', 'TREFHT',
-         'VERT', 'VTGWORO', 'VTGWSPEC', 'O2_1S', 'O2_1D', 'NOX', 'NOY', 'CLOX', 'CLOY', 'BROX', 'BROY', 
-         'TCLY', 'TOTH', 'UIONTEND', 'VIONTEND', 'DTCORE', 'CLDLIQ', 'CLDICE', 'CONCLD', 'FRONTGF:I', 
-         'BTAUE', 'BTAUW', 'BTAUN', 'BTAUS', 'TAUE', 'TAUW', 'TAUN', 'TAUS', 'TAUGWX', 'TAUGWY', 'TAUX', 'TAUY', 
+         'VERT', 'VTGWORO', 'VTGWSPEC', 'O2_1S', 'O2_1D', 'NOX', 'NOY', 'CLOX', 'CLOY', 'BROX', 'BROY',
+         'TCLY', 'TOTH', 'UIONTEND', 'VIONTEND', 'DTCORE', 'CLDLIQ', 'CLDICE', 'CONCLD', 'FRONTGF:I',
+         'BTAUE', 'BTAUW', 'BTAUN', 'BTAUS', 'TAUE', 'TAUW', 'TAUN', 'TAUS', 'TAUGWX', 'TAUGWY', 'TAUX', 'TAUY',
          'SNOWHLND', 'SNOWHICE', 'ICEFRAC', 'FSDSC', 'SFNO', 'SFCO', 'SFCH2O', 'CFC11STAR', 'TROPP_FD',
          'KVH', 'KVM', 'KVT', 'Qbkgndtot', 'Z3GM', 'OpDens', 'EDens'
 </fincl1>
-<!-- Instantaneous every hour --> 
-<fincl2>  
-         'Z3', 'T', 'TIon', 'TElec', 'e', 'U', 'V', 'OMEGA', 'UI', 'VI', 'WI', 'ElecColDens', 'PHIM2D', 'PS', 
+<!-- Instantaneous every hour -->
+<fincl2>
+         'Z3', 'T', 'TIon', 'TElec', 'e', 'U', 'V', 'OMEGA', 'UI', 'VI', 'WI', 'ElecColDens', 'PHIM2D', 'PS',
          'PED_CONDUCTANCE', 'HALL_CONDUCTANCE', 'ED1', 'ED2', 'O', 'O2', 'H'
 </fincl2>
-<!-- Instantaneous every day --> 
-<fincl3>  
-         'Z3', 'T', 'TIon', 'TElec', 'e', 'U', 'V', 'OMEGA', 'UI', 'VI', 'WI', 'ElecColDens', 'PHIM2D', 'PS', 
-         'PED_CONDUCTANCE', 'HALL_CONDUCTANCE', 'ED1', 'ED2', 'O', 'O2', 'H', 'NO', 'CO2', 'N', 'O1D', 
+<!-- Instantaneous every day -->
+<fincl3>
+         'Z3', 'T', 'TIon', 'TElec', 'e', 'U', 'V', 'OMEGA', 'UI', 'VI', 'WI', 'ElecColDens', 'PHIM2D', 'PS',
+         'PED_CONDUCTANCE', 'HALL_CONDUCTANCE', 'ED1', 'ED2', 'O', 'O2', 'H', 'NO', 'CO2', 'N', 'O1D',
          'Op2P', 'Op2D', 'Op', 'Np', 'N2p', 'O2p', 'NOp', 'QJOULE', 'SIGMAHAL', 'SIGMAPED', 'SolIonRate_Tot',
          'Z3GM', 'OpDens', 'EDens'
 </fincl3>
-<!-- Average every day --> 
-<fincl4>  
-         'Z3', 'T', 'TIon', 'TElec', 'e', 'U', 'V', 'OMEGA', 'UI', 'VI', 'WI', 'ElecColDens', 'PHIM2D', 'PS', 
-         'PED_CONDUCTANCE', 'HALL_CONDUCTANCE', 'ED1', 'ED2', 'O', 'O2', 'H', 'NO', 'CO2', 'N', 'QRS_TOT', 
-         'QO3', 'QCO2', 'QNO', 'QO3P', 'QHC2S', 'QJOULE', 'EKGW', 'TTGW', 'UTGW_TOTAL', 
+<!-- Average every day -->
+<fincl4>
+         'Z3', 'T', 'TIon', 'TElec', 'e', 'U', 'V', 'OMEGA', 'UI', 'VI', 'WI', 'ElecColDens', 'PHIM2D', 'PS',
+         'PED_CONDUCTANCE', 'HALL_CONDUCTANCE', 'ED1', 'ED2', 'O', 'O2', 'H', 'NO', 'CO2', 'N', 'QRS_TOT',
+         'QO3', 'QCO2', 'QNO', 'QO3P', 'QHC2S', 'QJOULE', 'EKGW', 'TTGW', 'UTGW_TOTAL',
          'SolIonRate_Tot', 'Z3GM', 'OpDens', 'EDens'
 </fincl4>
-<!-- Average every 5 days --> 
-<fincl5>  
+<!-- Average every 5 days -->
+<fincl5>
          'T_24_COS', 'T_24_SIN', 'T_12_COS', 'T_12_SIN', 'T_08_COS', 'T_08_SIN',
          'U_24_COS', 'U_24_SIN', 'U_12_COS', 'U_12_SIN', 'U_08_COS', 'U_08_SIN',
          'V_24_COS', 'V_24_SIN', 'V_12_COS', 'V_12_SIN', 'V_08_COS', 'V_08_SIN',
          'OMEGA_24_COS', 'OMEGA_24_SIN', 'OMEGA_12_COS', 'OMEGA_12_SIN', 'OMEGA_08_COS', 'OMEGA_08_SIN'
 </fincl5>
-<!-- Average every day --> 
+<!-- Average every day -->
 <fincl7 dyn="fv">
   'MSKtem','PS','PSL','VTHzm','UVzm','UWzm','Uzm','Vzm','THzm','Wzm','PHIS'
 </fincl7>
-<!-- Average every 5 days --> 
+<!-- Average every 5 days -->
 <fincl8>
   'PS', 'PSL', 'U', 'V', 'T', 'Z3', 'PHIS', 'FRONTGF:I', 'OMEGA', 'O3',
   'REFF_AERO', 'SAD_AERO', 'so4_a1', 'so4_a2', 'so4_a3', 'AODVISstdn', 'NITROP_PD',
@@ -134,10 +134,5 @@
 <history_chemspecies_srf>.false.</history_chemspecies_srf>
 <history_aerosol>.false.</history_aerosol>
 <history_aero_optics>.false.</history_aero_optics>
-
-<rxn_rate_sums>
-  'SolIonRate_Tot = jeuv_1 + jeuv_2 + jeuv_3 + jeuv_4 + jeuv_5 + jeuv_6 + jeuv_7 + jeuv_8 + jeuv_9 + jeuv_10 + jeuv_11 + jeuv_14 + jeuv_15 + jeuv_16 +',
-                   'jeuv_17 + jeuv_18 + jeuv_19 + jeuv_20 + jeuv_21 + jeuv_22 + jeuv_23',
-</rxn_rate_sums>
 
 </namelist_defaults>
