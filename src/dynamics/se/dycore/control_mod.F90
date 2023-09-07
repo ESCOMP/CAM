@@ -126,5 +126,5 @@ module control_mod
   integer, public  :: vert_remap_uvTq_alg, vert_remap_tracer_alg
 
 
-  integer, public :: pgf_formulation !PGF formulation - see prim_advance_mod.F90
+  integer, public :: pgf_formulation = -1 !PGF formulation - see prim_advance_mod.F90
 end module control_mod
