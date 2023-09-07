@@ -1359,15 +1359,10 @@ subroutine radiation_tend( &
          do icall = N_DIAG, 0, -1
             if (active_calls(icall)) then
 
-               call rrtmgp_set_gases_sw(             & ! Put gas volume mixing ratio into gas_concs_sw
-                                        icall,       & ! input
-                                        state,       & ! input ; note: state/pbuf are top-to-bottom
-                                        pbuf,        & ! input 
-                                        nlay,        & ! input
-                                        nday,        & ! input
-                                        idxday,      & ! input [this is full array, but could be 1:nday]
-                                        gas_concs_sw & ! inout ; will be bottom-to-top  !! concentrations will be size ncol, but only 1:nday should be used
-                                       )
+               ! Set gas volume mixing ratios for this call in gas_concs_sw.
+               call rrtmgp_set_gases_sw( &
+                  icall, state, pbuf, nlay, nday, &
+                  idxday, gas_concs_sw)
 
                call aer_rad_props_sw(         & ! Get aerosol shortwave optical properties
                                  icall,       & ! input
