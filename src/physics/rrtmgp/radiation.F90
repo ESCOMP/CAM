@@ -162,7 +162,7 @@ integer :: irad_always = 0 ! Specifies length of time in timesteps (positive)
                            ! initial or restart run
 logical :: use_rad_dt_cosz  = .false. ! if true, use radiation dt for all cosz calculations
 logical :: spectralflux     = .false. ! calculate fluxes (up and down) per band.
-logical :: graupel_in_rad     = .false. ! graupel in radiation code
+logical :: graupel_in_rad   = .false. ! graupel in radiation code
 logical :: use_rad_uniform_angle = .false. ! if true, use the namelist rad_uniform_angle for the coszrs calculation
 
 ! active_calls is set by a rad_constituents method after parsing namelist input
@@ -227,9 +227,9 @@ character(len=gasnamelength) :: gaslist_lc(nradgas)
 type(var_desc_t) :: cospcnt_desc  ! cosp
 type(var_desc_t) :: nextsw_cday_desc
 
-!===============================================================================
+!=========================================================================================
 contains
-!===============================================================================
+!=========================================================================================
 
 
 subroutine radiation_readnl(nlfile)
@@ -517,6 +517,10 @@ subroutine radiation_init(pbuf2d)
 
    call cloud_rad_props_init()
   
+   cld_idx      = pbuf_get_index('CLD')
+   cldfsnow_idx = pbuf_get_index('CLDFSNOW',errcode=ierr)
+   cldfgrau_idx = pbuf_get_index('CLDFGRAU',errcode=ierr)
+
    if (is_first_step()) then
       call pbuf_set_field(pbuf2d, qrl_idx, 0._r8)
    end if
@@ -539,9 +543,8 @@ subroutine radiation_init(pbuf2d)
                      history_budget_out = history_budget,  &
                      history_budget_histfile_num_out = history_budget_histfile_num)
 
-   ! "irad_always" is number of time steps to execute radiation 
-   ! continuously from start of initial OR restart run
-   ! _This gets used in radiation_do_
+   ! "irad_always" is number of time steps to execute radiation continuously from
+   ! start of initial OR restart run
    nstep       = get_nstep()
    if (irad_always > 0) then
       nstep       = get_nstep()
@@ -557,7 +560,6 @@ subroutine radiation_init(pbuf2d)
       cosp_cnt(begchunk:endchunk) = 0     
    end if
 
-
    ! Add fields to history buffer
 
    call addfld('TOT_CLD_VISTAU',  (/ 'lev' /), 'A',   '1',             &
@@ -572,6 +574,17 @@ subroutine radiation_init(pbuf2d)
    call addfld('ICE_ICLD_VISTAU', (/ 'lev' /), 'A',  '1',              &
                'Ice in-cloud extinction visible sw optical depth',     &
                sampling_seq='rad_lwsw', flag_xyfill=.true.)
+
+   if (cldfsnow_idx > 0) then
+      call addfld('SNOW_ICLD_VISTAU', (/ 'lev' /), 'A', '1',           &
+                  'Snow in-cloud extinction visible sw optical depth', &
+                  sampling_seq='rad_lwsw', flag_xyfill=.true.)
+   end if
+   if (cldfgrau_idx > 0 .and. graupel_in_rad) then
+      call addfld('GRAU_ICLD_VISTAU', (/ 'lev' /), 'A', '1',           &
+                  'Graupel in-cloud extinction visible sw optical depth', &
+                  sampling_seq='rad_lwsw', flag_xyfill=.true.)
+   endif
 
 
    ! get list of active radiation calls
@@ -638,7 +651,7 @@ subroutine radiation_init(pbuf2d)
          call addfld('FUSC'//diag(icall),     (/ 'ilev' /), 'I', 'W/m2', 'Shortwave clear-sky upward flux')
          call addfld('FDSC'//diag(icall),     (/ 'ilev' /), 'I', 'W/m2', 'Shortwave clear-sky downward flux')
 
-         ! Fluxes on rrtmgp grid
+         ! Fluxes on RRTMGP grid
          call addfld('FSDN'//diag(icall),  (/ 'plev_rad' /), 'I', 'W/m2', 'SW downward flux on rrtmgp grid')
          call addfld('FSDNC'//diag(icall), (/ 'plev_rad' /), 'I', 'W/m2', 'SW downward clear sky flux on rrtmgp grid')
          call addfld('FSUP'//diag(icall),  (/ 'plev_rad' /), 'I', 'W/m2', 'SW upward flux on rrtmgp grid')
@@ -661,6 +674,13 @@ subroutine radiation_init(pbuf2d)
 
       end if
    end do
+
+   if (scm_crm_mode) then
+      call add_default('FUS     ', 1, ' ')
+      call add_default('FUSC    ', 1, ' ')
+      call add_default('FDS     ', 1, ' ')
+      call add_default('FDSC    ', 1, ' ')
+   endif
 
    ! Add longwave radiation fields to history master field list.
 
@@ -721,9 +741,14 @@ subroutine radiation_init(pbuf2d)
       end if
    end do
 
-   call addfld('EMIS', (/ 'lev' /), 'A', '1', 'Cloud longwave emissivity') ! COSP-related output
+   call addfld('EMIS', (/ 'lev' /), 'A', '1', 'Cloud longwave emissivity')
 
-   ! NOTE: HIRS/MSU diagnostic brightness temperatures are removed.
+   if (scm_crm_mode) then
+      call add_default ('FUL     ', 1, ' ')
+      call add_default ('FULC    ', 1, ' ')
+      call add_default ('FDL     ', 1, ' ')
+      call add_default ('FDLC    ', 1, ' ')
+   endif
 
    ! Heating rate needed for d(theta)/dt computation
    call addfld ('HR',(/ 'lev' /), 'A','K/s','Heating rate needed for d(theta)/dt computation')
@@ -738,20 +763,6 @@ subroutine radiation_init(pbuf2d)
       call add_default('FLUT', 3, ' ')
    end if
    
-   cld_idx      = pbuf_get_index('CLD')
-   cldfsnow_idx = pbuf_get_index('CLDFSNOW',errcode=ierr)
-   cldfgrau_idx = pbuf_get_index('CLDFGRAU',errcode=ierr)
-   if (cldfsnow_idx > 0) then
-      call addfld('SNOW_ICLD_VISTAU', (/ 'lev' /), 'A', '1',           &
-                  'Snow in-cloud extinction visible sw optical depth', &
-                  sampling_seq='rad_lwsw', flag_xyfill=.true.)
-   end if
-   if (cldfgrau_idx > 0 .and. graupel_in_rad) then
-      call addfld('GRAU_ICLD_VISTAU', (/ 'lev' /), 'A', '1',           &
-                  'Graupel in-cloud extinction visible sw optical depth', &
-                  sampling_seq='rad_lwsw', flag_xyfill=.true.)
-   endif
-
 end subroutine radiation_init
 
 !===============================================================================
@@ -913,8 +924,8 @@ subroutine radiation_tend( &
    integer :: itim_old
 
    real(r8), pointer :: cld(:,:)      ! cloud fraction
-   real(r8), pointer :: cldfsnow(:,:) ! cloud fraction of just "snow clouds"- whatever they are
-   real(r8), pointer :: cldfgrau(:,:) ! cloud fraction of just "graupel clouds"- whatever they are
+   real(r8), pointer :: cldfsnow(:,:) => null() ! cloud fraction of just "snow clouds"- whatever they are
+   real(r8), pointer :: cldfgrau(:,:) => null() ! cloud fraction of just "graupel clouds"- whatever they are
    real(r8), pointer :: qrs(:,:) => null()     ! shortwave radiative heating rate 
    real(r8), pointer :: qrl(:,:) => null()     ! longwave  radiative heating rate 
    real(r8), pointer :: fsds(:)  ! Surface solar down flux
@@ -1011,10 +1022,8 @@ subroutine radiation_tend( &
    type(ty_optical_props_1scl) :: aer_lw
    type(ty_optical_props_2str) :: aer_sw
 
-   ! Fluxes
-   ! These are used locally only. SW fluxes are on day columns only. 
-   ! "Output" (i.e. diagnostic) fluxes are provided with rd, fsns, fcns, fnl, fcnl, etc. 
-   ! see set_sw_diags and radiation_output_sw and radiation_output_lw
+   ! Flux objects contain all fluxes computed by RRTMGP.  Includes spectrally resolved and
+   ! total fluxes for all levels of the RRTMGP grid.
    type(ty_fluxes_byband) :: fsw, fswc
    type(ty_fluxes_byband) :: flw, flwc
 
@@ -1024,9 +1033,10 @@ subroutine radiation_tend( &
    real(r8) :: fcnl(pcols,pverp)    ! net clear-sky longwave flux
 
    
-   real(r8) :: emis(pcols,pver)        ! Cloud longwave emissivity           ! for COSP
-   real(r8) :: gb_snow_tau(pcols,pver) ! grid-box mean snow_tau              ! for COSP
-   real(r8) :: gb_snow_lw(pcols,pver)  ! grid-box mean LW snow optical depth ! for COSP
+   ! for COSP
+   real(r8) :: emis(pcols,pver)        ! Cloud longwave emissivity
+   real(r8) :: gb_snow_tau(pcols,pver) ! grid-box mean snow_tau
+   real(r8) :: gb_snow_lw(pcols,pver)  ! grid-box mean LW snow optical depth
 
   
    real(r8) :: ftem(pcols,pver)        ! Temporary workspace for outfld variables
@@ -1036,9 +1046,6 @@ subroutine radiation_tend( &
    character(len=*), parameter :: sub = 'radiation_tend'
 
    logical :: conserve_energy = .false. ! Flag to carry (QRS,QRL)*dp across time steps. 
-
-   integer :: iband
-   real(r8) :: mem_hw_end, mem_hw_beg, mem_end, mem_beg, temp
 
    !--------------------------------------------------------------------------------------
 
@@ -1095,11 +1102,7 @@ subroutine radiation_tend( &
    ! Associate pointers to physics buffer fields
    itim_old = pbuf_old_tim_idx()
    if (cldfsnow_idx > 0) then
-      call pbuf_get_field(pbuf,                            &
-                          cldfsnow_idx,                    &
-                          cldfsnow,                        &
-                          start=(/1,1,itim_old/),          &
-                          kount=(/pcols,pver,1/) )
+      call pbuf_get_field(pbuf, cldfsnow_idx, cldfsnow, start=(/1,1,itim_old/), kount=(/pcols,pver,1/) )
    end if
    if (cldfgrau_idx > 0 .and. graupel_in_rad) then
       call pbuf_get_field(pbuf, cldfgrau_idx, cldfgrau, start=(/1,1,itim_old/), kount=(/pcols,pver,1/) )
@@ -1139,8 +1142,7 @@ subroutine radiation_tend( &
 
    ! Find tropopause height if needed for diagnostic output
    if (hist_fld_active('FSNR') .or. hist_fld_active('FLNR')) then
-      call tropopause_find(state, troplev, tropP=p_trop, &
-                           primary=TROP_ALG_HYBSTOB,     &
+      call tropopause_find(state, troplev, tropP=p_trop, primary=TROP_ALG_HYBSTOB, &
                            backup=TROP_ALG_CLIMATE)
    end if
 
@@ -1183,19 +1185,14 @@ subroutine radiation_tend( &
          t_rad, pmid_rad, pint_rad, t_day, pmid_day,  &
          pint_day, coszrs_day, alb_dir, alb_dif)
 
-      ! Set TSI used in rrtmgp to the value from CAM's solar forcing file.
+      ! Set TSI for RRTMGP to the value from CAM's solar forcing file.
       errmsg = kdist_sw%set_tsi(sol_tsi)
       if (len_trim(errmsg) > 0) then
          call endrun(sub//': ERROR: kdist_sw%set_tsi: '//trim(errmsg))
       end if
 
-      ! check bounds for temperature -- These are specified in the coefficients file,
-      ! and RRTMGP will not operate if outside the specified range.
-      call clipper(t_day, kdist_lw%get_temp_min(), kdist_lw%get_temp_max())
-      call clipper(t_rad, kdist_lw%get_temp_min(), kdist_lw%get_temp_max())    
-
-      ! Modify cloud fraction to account for radiatively active snow and/or graupel
-      call modified_cloud_fraction(cld, cldfsnow, cldfgrau, cldfsnow_idx, cldfgrau_idx, cldfprime)
+      ! Modified cloud fraction accounts for radiatively active snow and/or graupel
+      call modified_cloud_fraction(ncol, cld, cldfsnow, cldfgrau, cldfprime)
 
            
       if (dosw) then
@@ -1293,10 +1290,6 @@ subroutine radiation_tend( &
 
          ! At this point we have cloud optical properties including snow and graupel,
          ! but they need to be re-ordered from the old RRTMG spectral bands to RRTMGP's
-         !
-         ! Mapping from old RRTMG sw bands to new band ordering in RRTMGP
-         ! 1. This should be automated to provide generalization to arbitrary spectral grid.
-         ! 2. This is used for setting cloud and aerosol optical properties, so probably should be put into a different module.   
          c_cld_tau(:,1:ncol,1:pver)     = c_cld_tau    (rrtmg_to_rrtmgp_swbands, 1:ncol, 1:pver)
          c_cld_tau_w(:,1:ncol,1:pver)   = c_cld_tau_w  (rrtmg_to_rrtmgp_swbands, 1:ncol, 1:pver)
          c_cld_tau_w_g(:,1:ncol,1:pver) = c_cld_tau_w_g(rrtmg_to_rrtmgp_swbands, 1:ncol, 1:pver)
@@ -2766,6 +2759,7 @@ subroutine initialize_rrtmgp_fluxes(ncol, nlevels, nbands, fluxes, do_direct)
 
 end subroutine initialize_rrtmgp_fluxes
 
+!=========================================================================================
 
 subroutine initialize_rrtmgp_cloud_optics_sw(ncol, nlevels, kdist, optics)
    ! use mo_gas_optics_rrtmgp,  only: ty_gas_optics_rrtmgp  ! module level
@@ -2845,31 +2839,29 @@ subroutine free_fluxes(fluxes)
    if (associated(fluxes%bnd_flux_dn_dir)) deallocate(fluxes%bnd_flux_dn_dir)
 end subroutine free_fluxes
 
+!=========================================================================================
 
-subroutine modified_cloud_fraction(cld, cldfsnow, cldfgrau, cldfsnow_idx, cldfgrau_idx, cldfprime)
-   real(r8), pointer :: cld(:,:)      ! cloud fraction
-   real(r8), pointer :: cldfsnow(:,:) ! cloud fraction of just "snow clouds"- whatever they are
-   real(r8), pointer :: cldfgrau(:,:) ! cloud fraction of just "graupel clouds"- whatever they are
-   integer, intent(in) :: cldfsnow_idx ! physics buffer index for snow cloud fraction
-   integer, intent(in) :: cldfgrau_idx    ! physics buffer index for graupel cloud fraction
-   real(r8), intent(inout) :: cldfprime(:,:)             ! combined cloud fraction (snow plus regular)
-   integer :: k,i,ncol,nlev
-   
-   ! graupel_in_rad is module data from namelist.
-   ! pcols is "physics columns" and comes from module data.
-   ! pver is "physics vertical levels" and comes from module data.
+subroutine modified_cloud_fraction(ncol, cld, cldfsnow, cldfgrau, cldfprime)
 
+   ! Compute modified cloud fraction, cldfprime.
    ! 1. initialize as cld
-   ! 2. check whether to modify for snow, where snow is, use max(cld, cldfsnow)
-   ! 3. check whether to modify for graupel, where graupel, use max(cldfprime, cldfgrau)
-   !    -- use cldfprime as it will already be modified for snow if necessary, and equal to cld if not.
+   ! 2. modify for snow if cldfsnow is available. use max(cld, cldfsnow)
+   ! 3. modify for graupel if cldfgrau is available and graupel_in_rad is true.
+   !    use max(cldfprime, cldfgrau)
 
-   ncol = size(cld,1)
-   nlev = size(cld,2)
-   cldfprime(1:ncol, 1:nlev) = cld(1:ncol, 1:nlev)  ! originally nlev here was pver 
+   ! Arguments
+   integer,  intent(in)  :: ncol
+   real(r8), pointer     :: cld(:,:)       ! cloud fraction
+   real(r8), pointer     :: cldfsnow(:,:)  ! cloud fraction of just "snow clouds"
+   real(r8), pointer     :: cldfgrau(:,:)  ! cloud fraction of just "graupel clouds"
+   real(r8), intent(out) :: cldfprime(:,:) ! modified cloud fraction
 
-   if (cldfsnow_idx > 0) then
-      do k = 1, nlev 
+   ! Local variables
+   integer :: i, k
+   !----------------------------------------------------------------------------
+
+   if (associated(cldfsnow)) then
+      do k = 1, pver
          do i = 1, ncol
             cldfprime(i,k) = max(cld(i,k), cldfsnow(i,k))
          end do
@@ -2878,8 +2870,8 @@ subroutine modified_cloud_fraction(cld, cldfsnow, cldfgrau, cldfsnow_idx, cldfgr
       cldfprime(:ncol,:) = cld(:ncol,:)
    end if
 
-   if (cldfgrau_idx > 0 .and. graupel_in_rad) then
-      do k = 1, nlev
+   if (associated(cldfgrau) .and. graupel_in_rad) then
+      do k = 1, pver
          do i = 1, ncol
             cldfprime(i,k) = max(cldfprime(i,k), cldfgrau(i,k))
          end do
@@ -2888,9 +2880,8 @@ subroutine modified_cloud_fraction(cld, cldfsnow, cldfgrau, cldfsnow_idx, cldfgr
 
 end subroutine modified_cloud_fraction
 
-!
-! a simple clipping subroutine
-!
+!=========================================================================================
+
 elemental subroutine clipper(scalar, minval, maxval)
    real(r8), intent(inout) :: scalar
    real(r8), intent(in) :: minval, maxval
@@ -2904,6 +2895,7 @@ elemental subroutine clipper(scalar, minval, maxval)
    end if
 end subroutine clipper
 
+!=========================================================================================
 
 end module radiation
 
