@@ -111,7 +111,7 @@
 
       logical, public, protected :: soa_multi_species = .false.
 
-      character(len=16), public, protected, allocatable :: xname_massptr(:,:)     ! names of species in each mode
+      character(len=16), allocatable :: xname_massptr(:,:)     ! names of species in each mode
       character(len=16), allocatable :: xname_massptrcw(:,:)   ! names of cloud-borne species in each mode
 
       complex(r8), allocatable :: &

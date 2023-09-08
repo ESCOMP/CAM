@@ -169,7 +169,7 @@ contains
     use aero_model,          only : aero_model_register
     use modal_aero_data,     only : nspec_max
     use modal_aero_data,     only : ntot_amode, nspec_amode
-    use modal_aero_data,     only : xname_massptr
+    use rad_constituents,    only : rad_cnst_get_info
 #endif
 
     ! GEOS-Chem interface modules in CAM
@@ -205,6 +205,7 @@ contains
     CHARACTER(LEN=128)             :: lngName
     CHARACTER(LEN=64)              :: cnstName
     CHARACTER(LEN=64)              :: trueName
+    CHARACTER(LEN=64)              :: aerName
     LOGICAL                        :: camout
     LOGICAL                        :: ic_from_cam2
     LOGICAL                        :: has_fixed_ubc
@@ -539,18 +540,22 @@ contains
     map2MAM4(:,:) = -1
     iSulf(:)      = -1
 
+    ! ewl notes: xname_massptr returns a name. The select case subsets characters? e.g. 1:3, 4:5, 5:6.
+    ! so want to get a name give an L and M. Need anything else???
+
     DO M = 1, ntot_amode
        DO L = 1, nspec_amode(M)
-          SELECT CASE ( to_upper(xname_massptr(L,M)(:3)) )
+          call rad_cnst_get_info(0,M,L,spec_name=aername)
+          SELECT CASE ( to_upper(aername(:3)) )
              CASE ( 'BC_' )
-                SELECT CASE ( to_upper(xname_massptr(L,M)(4:5)) )
+                SELECT CASE ( to_upper(aername(4:5)) )
                    CASE ( 'A1' )
                        CALL cnst_get_ind( 'BCPI', map2MAM4(L,M) )
                    CASE ( 'A4' )
                        CALL cnst_get_ind( 'BCPO', map2MAM4(L,M) )
                 END SELECT
              CASE ( 'DST' )
-                SELECT CASE ( to_upper(xname_massptr(L,M)(5:6)) )
+                SELECT CASE ( to_upper(aername(5:6)) )
                    ! DST1 - Dust aerosol, Reff = 0.7 micrometers
                    ! DST2 - Dust aerosol, Reff = 1.4 micrometers
                    ! DST3 - Dust aerosol, Reff = 2.4 micrometers
@@ -568,7 +573,7 @@ contains
                 CALL cnst_get_ind( 'SO4', map2MAM4(L,M) )
                 iSulf(M) = L
              CASE ( 'NCL' )
-                SELECT CASE ( to_upper(xname_massptr(L,M)(5:6)) )
+                SELECT CASE ( to_upper(aername(5:6)) )
                    ! SALA - Fine (0.01-0.05 micros) sea salt aerosol
                    ! SALC - Coarse (0.5-8 micros) sea salt aerosol
                    CASE ( 'A1' )
@@ -579,7 +584,7 @@ contains
                       CALL cnst_get_ind( 'SALC', map2MAM4(L,M) )
                 END SELECT
              CASE ( 'POM' )
-                SELECT CASE ( to_upper(xname_massptr(L,M)(5:6)) )
+                SELECT CASE ( to_upper(aername(5:6)) )
                    CASE ( 'A1' )
                       CALL cnst_get_ind( 'OCPI', map2MAM4(L,M) )
                    CASE ( 'A4' )
@@ -952,7 +957,6 @@ contains
     use mo_setsox,             only : sox_inti
     use mo_drydep,             only : drydep_inti
     use modal_aero_data,       only : ntot_amode, nspec_amode
-    use modal_aero_data,       only : xname_massptr
 #endif
 
     ! GEOS-Chem interface modules in CAM
@@ -2221,10 +2225,9 @@ contains
     !   mapCnst(constituent index)      constituent index               chemical tracer index
     !   lmassptr_amode(SM, M)           SM, M                           constituent index (modal)
     !   map2GC(bulk constituent index)  constituent index (bulk)        GEOS-Chem species index (bulk)
-    !   map2MAM4(SM, M)                 SM, M (modal)                   constituent index (bulk)            this is a N to 1 operation.
+    !   map2MAM4(SM, M)                 SM, M (modal)                   constituent index (bulk)
+    !                                                                   (map2MAM4 is a N to 1 operation)
     !
-    ! Query functions:
-    !   xname_massptr(SM, M)            SM, M                           NAME of modal aer (bc_a1, bc_a4, ...)
     !------------------------------------------------------------------------------------------
     binRatio = 0.0e+00_r8
     DO M = 1, ntot_amode
