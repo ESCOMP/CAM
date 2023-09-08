@@ -1211,10 +1211,12 @@ contains
              pgf_term(:,:,2)=pgf_term(:,:,2) + &
                   cpair*T0*(grad_logexner(:,:,2)-grad_exner(:,:,2)/exner(:,:))
            end if
-         else
+         elseif (pgf_formulation==2) then
            pgf_term(:,:,1)  = density_inv(:,:)*grad_p_full(:,:,1,k)
            pgf_term(:,:,2)  = density_inv(:,:)*grad_p_full(:,:,2,k)
-         endif
+         else
+           call endrun('ERROR: bad choice of pgf_formulation (must be 1 or 2)')
+         end if
 
          do j=1,np
            do i=1,np
