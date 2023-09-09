@@ -3,8 +3,9 @@ module rrtmgp_inputs
 !--------------------------------------------------------------------------------
 ! Transform data for state inputs from CAM's data structures to those used by
 ! RRTMGP.  Subset the number of model levels if CAM's top exceeds RRTMGP's
-! valid domain.
-!
+! valid domain.  Add an extra layer if CAM's top is below 1 Pa.
+! The vertical indexing increases from top to bottom of atmosphere in both
+! CAM and RRTMGP arrays.   
 !--------------------------------------------------------------------------------
 
 use shr_kind_mod,     only: r8=>shr_kind_r8
@@ -94,7 +95,7 @@ subroutine rrtmgp_set_state( &
    ! arguments
    type(physics_state),         intent(in) :: state     ! CAM physics state
    type(cam_in_t),              intent(in) :: cam_in    ! CAM import state
-   integer,                     intent(in) :: ncol      ! # cols in chunk
+   integer,                     intent(in) :: ncol      ! # cols in CAM chunk
    integer,                     intent(in) :: nlay      ! # layers in rrtmgp grid
    integer,                     intent(in) :: nday      ! # daylight columns
    integer,                     intent(in) :: idxday(:) ! chunk indicies of daylight columns
@@ -131,7 +132,7 @@ subroutine rrtmgp_set_state( &
    ! to be consistent with t_sfc.
    emis_sfc(:,:) = 1._r8
 
-   ! Assume level ordering is the same for both CAM and RRTMGP (top to bottom)
+   ! Level ordering is the same for both CAM and RRTMGP (top to bottom)
    t_rad(:,ktoprad:) = state%t(:ncol,ktopcam:)
    pmid_rad(:,ktoprad:) = state%pmid(:ncol,ktopcam:)
    pint_rad(:,ktoprad:) = state%pint(:ncol,ktopcam:)
@@ -149,7 +150,7 @@ subroutine rrtmgp_set_state( &
    tref_min = kdist_sw%get_temp_min()
    tref_max = kdist_sw%get_temp_max()
    if ( any(t_rad < tref_min) .or. any(t_rad > tref_max) ) then
-      ! Find out of range value and quit.
+      ! Report out of range value and quit.
       do i = 1, ncol
          do k = 1, nlay
             if ( t_rad(i,k) < tref_min .or. t_rad(i,k) > tref_max ) then
@@ -231,7 +232,7 @@ logical function is_visible(wavenumber)
    ! wavenumber in inverse cm (cm^-1)
    real(r8), intent(in) :: wavenumber
 
-   ! Threshold between visible and infrared is 0.7 micron, or 14286 cm^-1
+   ! Set threshold between visible and infrared to 0.7 micron, or 14286 cm^-1
    real(r8), parameter :: visible_wavenumber_threshold = 14286._r8  ! cm^-1
 
    if (wavenumber > visible_wavenumber_threshold) then
@@ -558,7 +559,7 @@ subroutine rrtmgp_set_cloud_sw( &
    real(r8), allocatable :: ssacmcl(:,:,:)
    real(r8), allocatable :: asmcmcl(:,:,:)
 
-   character(len=32)  :: sub = 'rrtmgp_set_cloud_sw'
+   character(len=*), parameter :: sub = 'rrtmgp_set_cloud_sw'
    character(len=128) :: errmsg
    real(r8) :: small_val = 1.e-80_r8
    real(r8), allocatable :: day_cld_tau(:,:,:)
@@ -641,18 +642,25 @@ end subroutine rrtmgp_set_cloud_sw
 !==================================================================================================
 
 subroutine rrtmgp_set_aer_sw( &
-   nswbands, nday, idxday, aer_tau, aer_tau_w, &
+   nday, idxday, aer_tau, aer_tau_w, &
    aer_tau_w_g, aer_tau_w_f, aer_sw)
 
    ! Load aerosol SW optical properties into the RRTMGP object.
    !
-   ! *** N.B. *** The input optical arrays from CAM are dimensioned in the vertical
-   !              as 0:pver.  The index 0 is for the extra layer used in the radiation
-   !              calculation.  
+   ! CAM fields are products tau, tau*ssa, tau*ssa*asy, tau*ssa*asy*fsf
+   ! Fields expected by RRTMGP are computed by
+   ! aer_sw%tau = aer_tau
+   ! aer_sw%ssa = aer_tau_w / aer_tau
+   ! aer_sw%g   = aer_tau_w_g / aer_taw_w
+   !
+   ! The input optical arrays from CAM are dimensioned in the vertical
+   ! as 0:pver.  The index 0 is for the extra layer used in the radiation
+   ! calculation.  The index ktopcam assumes the CAM vertical indices are
+   ! in the range 1:pver, so using this index correctly ignores vertical
+   ! index 0.  If an "extra" layer is used in the calculations, it is
+   ! provided and set in the RRTMGP aerosol object aer_sw.
 
-
-   ! arguments
-   integer,   intent(in) :: nswbands
+   ! Arguments
    integer,   intent(in) :: nday
    integer,   intent(in) :: idxday(:)
    real(r8),  intent(in) :: aer_tau    (pcols,0:pver,nswbands) ! extinction optical depth
@@ -662,30 +670,31 @@ subroutine rrtmgp_set_aer_sw( &
    type(ty_optical_props_2str), intent(inout) :: aer_sw
 
    ! local variables
-   integer  :: ns
-   integer  :: k, kk
    integer  :: i
-   integer, dimension(nday) :: day_cols
+
+   ! minimum value for aer_tau_w is the same as used in RRTMG code.
+   real(r8), parameter :: tiny = 1.e-80_r8
+
    character(len=32)  :: sub = 'rrtmgp_set_aer_sw'
    character(len=128) :: errmsg
    !--------------------------------------------------------------------------------
+
    ! If there is an extra layer in the radiation then this initialization
    ! will provide default values there.
    aer_sw%tau = 0.0_r8
    aer_sw%ssa = 1.0_r8
    aer_sw%g   = 0.0_r8
-   day_cols = idxday(1:nday)
 
-   ! aer_sw is on RAD grid, aer_tau* is on CAM grid ... to make sure they align, use ktop*
-   ! aer_sw has dimensions of (nday, nlay, nswbands)
-   aer_sw%tau(1:nday, ktoprad:, :) = max(aer_tau(day_cols, ktopcam:, :), 0._r8)
-   aer_sw%ssa(1:nday, ktoprad:, :) = merge( aer_tau_w(day_cols, ktopcam:,:)/aer_tau(day_cols, ktopcam:, :), &
-                                            1._r8, aer_tau(day_cols, ktopcam:, :) > 0._r8)
-   aer_sw%g(  1:nday, ktoprad:, :) = merge( aer_tau_w_g(day_cols, ktopcam:, :) / aer_tau_w(day_cols, ktopcam:, :), &
-                                            0._r8, aer_tau_w(day_cols, ktopcam:, :) > 1.e-80_r8)
+   do i = 1, nday
+      ! aer_sw arrays have dimensions of (nday,nlay,nswbands)
+      aer_sw%tau(i,ktoprad:,:) = max(aer_tau(idxday(i),ktopcam:,:), 0._r8)
+      aer_sw%ssa(i,ktoprad:,:) = merge(aer_tau_w(idxday(i),ktopcam:,:)/aer_tau(idxday(i),ktopcam:,:), &
+                                       1._r8, aer_tau(idxday(i),ktopcam:,:) > 0._r8)
+      aer_sw%g(i,ktoprad:,:) = merge(aer_tau_w_g(idxday(i),ktopcam:,:)/aer_tau_w(idxday(i),ktopcam:,:), &
+                                     0._r8, aer_tau_w(idxday(i),ktopcam:,:) > tiny)
+   end do
 
    ! impose limits on the components:
-   ! aer_sw%tau = max(aer_sw%tau, 0._r) <-- already imposed 
    aer_sw%ssa = min(max(aer_sw%ssa, 0._r8), 1._r8)
    aer_sw%g = min(max(aer_sw%g, -1._r8), 1._r8)
    ! by clamping the values here, the validate method should be guaranteed to succeed,

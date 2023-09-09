@@ -525,7 +525,6 @@ subroutine radiation_init(pbuf2d)
       call pbuf_set_field(pbuf2d, qrl_idx, 0._r8)
    end if
 
-
    ! Set the radiation timestep for cosz calculations if requested using
    ! the adjusted iradsw value from radiation
    if (use_rad_dt_cosz)  then
@@ -924,8 +923,8 @@ subroutine radiation_tend( &
    integer :: itim_old
 
    real(r8), pointer :: cld(:,:)      ! cloud fraction
-   real(r8), pointer :: cldfsnow(:,:) => null() ! cloud fraction of just "snow clouds"- whatever they are
-   real(r8), pointer :: cldfgrau(:,:) => null() ! cloud fraction of just "graupel clouds"- whatever they are
+   real(r8), pointer :: cldfsnow(:,:) => null() ! cloud fraction of just "snow clouds"
+   real(r8), pointer :: cldfgrau(:,:) => null() ! cloud fraction of just "graupel clouds"
    real(r8), pointer :: qrs(:,:) => null()     ! shortwave radiative heating rate 
    real(r8), pointer :: qrl(:,:) => null()     ! longwave  radiative heating rate 
    real(r8), pointer :: fsds(:)  ! Surface solar down flux
@@ -1126,7 +1125,7 @@ subroutine radiation_tend( &
       call pbuf_get_field(pbuf, ld_idx, ld)
    end if
 
-   ! initialize (and reset) all the fluxes // sw fluxes only on nday columns
+   ! Allocate the flux arrays and init to zero.
    call initialize_rrtmgp_fluxes(nday, nlay+1, nswbands, fsw, do_direct=.true.)
    call initialize_rrtmgp_fluxes(nday, nlay+1, nswbands, fswc, do_direct=.true.)
    call initialize_rrtmgp_fluxes(ncol, nlay+1, nlwbands, flw)
@@ -1196,9 +1195,11 @@ subroutine radiation_tend( &
 
            
       if (dosw) then
-         !
-         ! "--- SET OPTICAL PROPERTIES & DO SHORTWAVE CALCULATION ---"
-         !
+
+         !=============================!
+         ! SHORTWAVE cloud optics      !
+         !=============================!
+
          if (oldcldoptics) then
             call ec_ice_optics_sw(state, pbuf, ice_tau, ice_tau_w, ice_tau_w_g, ice_tau_w_f, oldicewp=.false.)
             call slingo_liq_optics_sw(state, pbuf, liq_tau, liq_tau_w, liq_tau_w_g, liq_tau_w_f, oldliqwp=.false.)
@@ -1209,7 +1210,7 @@ subroutine radiation_tend( &
             case ('mitchell')
                call get_ice_optics_sw(state, pbuf, ice_tau, ice_tau_w, ice_tau_w_g, ice_tau_w_f)
             case default
-               call endrun('iccldoptics must be one either ebertcurry or mitchell')
+               call endrun('icecldoptics must be one either ebertcurry or mitchell')
             end select
 
             select case (liqcldoptics)
@@ -1288,12 +1289,20 @@ subroutine radiation_tend( &
             end do
          end if
 
-         ! At this point we have cloud optical properties including snow and graupel,
-         ! but they need to be re-ordered from the old RRTMG spectral bands to RRTMGP's
-         c_cld_tau(:,1:ncol,1:pver)     = c_cld_tau    (rrtmg_to_rrtmgp_swbands, 1:ncol, 1:pver)
-         c_cld_tau_w(:,1:ncol,1:pver)   = c_cld_tau_w  (rrtmg_to_rrtmgp_swbands, 1:ncol, 1:pver)
-         c_cld_tau_w_g(:,1:ncol,1:pver) = c_cld_tau_w_g(rrtmg_to_rrtmgp_swbands, 1:ncol, 1:pver)
-         c_cld_tau_w_f(:,1:ncol,1:pver) = c_cld_tau_w_f(rrtmg_to_rrtmgp_swbands, 1:ncol, 1:pver)
+         ! cloud optical properties need to be re-ordered from the RRTMG spectral bands
+         ! (assumed in the optics datasets) to RRTMGP's
+         ice_tau(:,:ncol,:)       = ice_tau(rrtmg_to_rrtmgp_swbands,:ncol,:)
+         liq_tau(:,:ncol,:)       = liq_tau(rrtmg_to_rrtmgp_swbands,:ncol,:)
+         c_cld_tau(:,:ncol,:)     = c_cld_tau(rrtmg_to_rrtmgp_swbands,:ncol,:)
+         c_cld_tau_w(:,:ncol,:)   = c_cld_tau_w(rrtmg_to_rrtmgp_swbands,:ncol,:)
+         c_cld_tau_w_g(:,:ncol,:) = c_cld_tau_w_g(rrtmg_to_rrtmgp_swbands,:ncol,:)
+         c_cld_tau_w_f(:,:ncol,:) = c_cld_tau_w_f(rrtmg_to_rrtmgp_swbands,:ncol,:)
+         if (cldfsnow_idx > 0) then
+            snow_tau(:,:ncol,:)   = snow_tau(rrtmg_to_rrtmgp_swbands,:ncol,:)
+         end if
+         if (cldfgrau_idx > 0 .and. graupel_in_rad) then
+            grau_tau(:,:ncol,:)   = grau_tau(rrtmg_to_rrtmgp_swbands,:ncol,:)
+         end if
 
          ! cloud_sw : cloud optical properties.
          call initialize_rrtmgp_cloud_optics_sw(nday, nlay, kdist_sw, cloud_sw)
@@ -1303,18 +1312,11 @@ subroutine radiation_tend( &
             cldfprime, c_cld_tau, c_cld_tau_w, c_cld_tau_w_g, c_cld_tau_w_f, &
             kdist_sw, cloud_sw)
 
-         ! allocate object for aerosol optics
-         errmsg = aer_sw%alloc_2str(nday, nlay, kdist_sw%get_band_lims_wavenumber(), &
-                                    name='shortwave aerosol optics') 
-         if (len_trim(errmsg) > 0) then
-            call endrun(sub//': ERROR: aer_sw%alloc_2str: '//trim(errmsg))
-         end if
-
          !
          ! SHORTWAVE DIAGNOSTICS & OUTPUT
          ! 
          ! cloud optical depth fields for the visible band
-         rd%tot_icld_vistau(:ncol,:) = c_cld_tau(idx_sw_diag,:ncol,:) ! should be equal to cloud_sw%tau except ordering
+         rd%tot_icld_vistau(:ncol,:) = c_cld_tau(idx_sw_diag,:ncol,:)
          rd%liq_icld_vistau(:ncol,:) = liq_tau(idx_sw_diag,:ncol,:)
          rd%ice_icld_vistau(:ncol,:) = ice_tau(idx_sw_diag,:ncol,:)
          if (cldfsnow_idx > 0) then
@@ -1345,14 +1347,16 @@ subroutine radiation_tend( &
             call radiation_output_cld(lchnk, ncol, rd)
          end if
 
-         !=============================!
-         ! SHORTWAVE flux calculations !
-         !=============================!
-
-         ! initialize object for gas concentrations
+         ! Initialize object for gas concentrations.
          errmsg = gas_concs_sw%init(gaslist_lc)
          if (len_trim(errmsg) > 0) then
             call endrun(sub//': ERROR: gas_concs_sw%init: '//trim(errmsg))
+         end if
+
+         ! Allocate object for aerosol optics.
+         errmsg = aer_sw%alloc_2str(nday, nlay, kdist_sw%get_band_lims_wavenumber()) 
+         if (len_trim(errmsg) > 0) then
+            call endrun(sub//': ERROR: aer_sw%alloc_2str: '//trim(errmsg))
          end if
 
          ! The climate (icall==0) calculation must occur last.
@@ -1364,67 +1368,35 @@ subroutine radiation_tend( &
                   icall, state, pbuf, nlay, nday, &
                   idxday, gas_concs_sw)
 
-               call aer_rad_props_sw(         & ! Get aerosol shortwave optical properties
-                                 icall,       & ! input
-                                 state,       & ! input
-                                 pbuf,        & ! input pointer
-                                 nnite,       & ! input
-                                 idxnite,     & ! input
-                                 aer_tau,     & ! output
-                                 aer_tau_w,   & ! output
-                                 aer_tau_w_g, & ! output
-                                 aer_tau_w_f  & ! output
-                                    )
-               ! NOTE: CAM fields are products tau, tau*ssa, tau*ssa*asy, tau*ssa*asy*fsf
-               !       but RRTMGP is expecting just the values per band.
-               !       rrtmgp_set_aer_sw does the division and puts values into aer_sw:
-               !       aer_sw%g   = aer_tau_w_g / aer_taw_w
-               !       aer_sw%ssa = aer_tau_w / aer_tau
-               !       aer_sw%tau = aer_tau
-               ! ** As with cloud above, we need to re-order to account for band differences:
+               ! Get aerosol shortwave optical properties.  The output optics arrays
+               ! contain an extra top layer set to zero.
+               call aer_rad_props_sw( &
+                  icall, state, pbuf, nnite, idxnite, &
+                  aer_tau, aer_tau_w, aer_tau_w_g, aer_tau_w_f)
 
-               aer_tau(:, :, :)     = aer_tau(    :, :, rrtmg_to_rrtmgp_swbands)
-               aer_tau_w(:, :, :)   = aer_tau_w(  :, :, rrtmg_to_rrtmgp_swbands)
-               aer_tau_w_g(:, :, :) = aer_tau_w_g(:, :, rrtmg_to_rrtmgp_swbands)
-               aer_tau_w_f(:, :, :) = aer_tau_w_f(:, :, rrtmg_to_rrtmgp_swbands)
+               ! aerosol optical properties need to be re-ordered from the RRTMG spectral bands,
+               ! as assumed in the optics datasets, to the RRTMGP band order.
+               aer_tau(:,:,:)     = aer_tau(:,:,rrtmg_to_rrtmgp_swbands)
+               aer_tau_w(:,:,:)   = aer_tau_w(:,:,rrtmg_to_rrtmgp_swbands)
+               aer_tau_w_g(:,:,:) = aer_tau_w_g(:,:,rrtmg_to_rrtmgp_swbands)
+               aer_tau_w_f(:,:,:) = aer_tau_w_f(:,:,rrtmg_to_rrtmgp_swbands)
                
                ! Convert from the products to individual properties,
                ! and only provide them on the daylit points.
                call rrtmgp_set_aer_sw( &
-                  nswbands,            &
-                  nday,                &
-                  idxday(1:nday),      &  ! required to truncate to 1:nday 
-                  aer_tau,             &
-                  aer_tau_w,           &
-                  aer_tau_w_g,         & 
-                  aer_tau_w_f,         &
-                  aer_sw)
+                  nday, idxday, aer_tau, aer_tau_w, aer_tau_w_g, & 
+                  aer_tau_w_f, aer_sw)
                   
-               ! Compute SW fluxes
+               !=============================!
+               ! SHORTWAVE flux calculations !
+               !=============================!
          
-               ! check that optical properties are in bounds:
-               call clipper(cloud_sw%tau, 0._r8, huge(cloud_sw%tau))
-               call clipper(cloud_sw%ssa, 0._r8, 1._r8)
-               call clipper(cloud_sw%g,  -1._r8, 1._r8)
-
-               ! inputs are the daylit columns --> output fluxes therefore also on daylit columns. 
-               errmsg = rte_sw( kdist_sw,     & ! input (from init)
-                                gas_concs_sw, & ! input, (from rrtmgp_set_gases_sw)
-                                pmid_day,     & ! input, (from rrtmgp_set_state)
-                                t_day,        & ! input, (from rrtmgp_set_state)
-                                pint_day,     & ! input, (from rrtmgp_set_state)
-                                coszrs_day,   & ! input, (from rrtmgp_set_state)
-                                alb_dir,      & ! input, (from rrtmgp_set_state)
-                                alb_dif,      & ! input, (from rrtmgp_set_state)
-                                cloud_sw,     & ! input, (from rrtmgp_set_cloud_sw)
-                                fsw,      & ! inout
-                                fswc,     & ! inout 
-                                aer_props=aer_sw, & ! optional input (from rrtmgp_set_aer_sw)
-                                tsi_scaling=eccf & !< optional input, scaling for irradiance
-               )
-
+               errmsg = rte_sw( &
+                  kdist_sw, gas_concs_sw, pmid_day, t_day, pint_day, &
+                  coszrs_day, alb_dir, alb_dif, cloud_sw, fsw,       &
+                  fswc, aer_props=aer_sw, tsi_scaling=eccf)
                if (len_trim(errmsg) > 0) then
-                  call endrun(sub//': ERROR code returned by rte_sw: '//trim(errmsg))
+                  call endrun(sub//': ERROR in rte_sw: '//trim(errmsg))
                end if
                !
                ! -- shortwave output -- 
@@ -1932,7 +1904,6 @@ end subroutine radiation_tend
 
 !===============================================================================
 
-
 subroutine radiation_output_sw(lchnk, ncol, icall, rd, pbuf, cam_out)
 
    ! Dump shortwave radiation information to history buffer.
@@ -1961,7 +1932,7 @@ subroutine radiation_output_sw(lchnk, ncol, icall, rd, pbuf, cam_out)
 
    call outfld('SOLIN'//diag(icall),    rd%solin,      pcols, lchnk)
 
-   call outfld('QRS'//diag(icall),      qrs(:ncol,:)/cpair,     ncol, lchnk) ! not sure why ncol instead of pcols, but matches RRTMG version
+   call outfld('QRS'//diag(icall),      qrs(:ncol,:)/cpair,     ncol, lchnk)
    call outfld('QRSC'//diag(icall),     rd%qrsc(:ncol,:)/cpair, ncol, lchnk)
 
    call outfld('FSNT'//diag(icall),    rd%flux_sw_net_top, pcols, lchnk)
@@ -2005,7 +1976,6 @@ subroutine radiation_output_sw(lchnk, ncol, icall, rd, pbuf, cam_out)
    call outfld('FSUPC'//diag(icall), rd%fsupc,          pcols, lchnk)
 
 end subroutine radiation_output_sw
-
 
 !===============================================================================
 
@@ -2681,10 +2651,54 @@ end subroutine coefs_init
 
 !=========================================================================================
 
-subroutine reset_fluxes(fluxes)
+subroutine initialize_rrtmgp_fluxes(ncol, nlevels, nbands, fluxes, do_direct)
+
+   ! Allocate flux arrays and set values to zero.
 
    use mo_fluxes_byband, only: ty_fluxes_byband
+
+   ! Arguments
+   integer, intent(in) :: ncol, nlevels, nbands
    type(ty_fluxes_byband), intent(inout) :: fluxes
+   logical, intent(in), optional :: do_direct
+
+   ! Local variables
+   logical :: do_direct_local
+   !----------------------------------------------------------------------------
+
+   if (present(do_direct)) then
+      do_direct_local = .true.
+   else
+      do_direct_local = .false.
+   end if
+
+   ! Broadband fluxes
+   allocate(fluxes%flux_up(ncol, nlevels))
+   allocate(fluxes%flux_dn(ncol, nlevels))
+   allocate(fluxes%flux_net(ncol, nlevels))
+   if (do_direct_local) allocate(fluxes%flux_dn_dir(ncol, nlevels))
+
+   ! Fluxes by band
+   allocate(fluxes%bnd_flux_up(ncol, nlevels, nbands))
+   allocate(fluxes%bnd_flux_dn(ncol, nlevels, nbands))
+   allocate(fluxes%bnd_flux_net(ncol, nlevels, nbands))
+   if (do_direct_local) allocate(fluxes%bnd_flux_dn_dir(ncol, nlevels, nbands))
+
+   ! Initialize
+   call reset_fluxes(fluxes)
+
+end subroutine initialize_rrtmgp_fluxes
+
+!=========================================================================================
+
+subroutine reset_fluxes(fluxes)
+
+   ! Reset flux arrays to zero.
+
+   use mo_fluxes_byband, only: ty_fluxes_byband
+
+   type(ty_fluxes_byband), intent(inout) :: fluxes
+   !----------------------------------------------------------------------------
 
    ! Reset broadband fluxes
    fluxes%flux_up(:,:) = 0._r8
@@ -2703,44 +2717,6 @@ subroutine reset_fluxes(fluxes)
    end if
 
 end subroutine reset_fluxes
-
-
-subroutine initialize_rrtmgp_fluxes(ncol, nlevels, nbands, fluxes, do_direct)
-   ! This closely follows the E3SM implementation.
-   use mo_fluxes_byband, only: ty_fluxes_byband
-   integer, intent(in) :: ncol, nlevels, nbands
-   type(ty_fluxes_byband), intent(inout) :: fluxes
-   logical, intent(in), optional :: do_direct
-
-   logical :: do_direct_local
-
-   if (present(do_direct)) then
-      do_direct_local = .true.
-   else
-      do_direct_local = .false.
-   end if
-
-   ! Allocate flux arrays
-   ! NOTE: fluxes defined at interfaces, so need to either pass nlevels as
-   ! number of model levels plus one, or allocate as nlevels+1 if nlevels
-   ! represents number of model levels rather than number of interface levels.
-
-   ! Broadband fluxes
-   allocate(fluxes%flux_up(ncol, nlevels))
-   allocate(fluxes%flux_dn(ncol, nlevels))
-   allocate(fluxes%flux_net(ncol, nlevels))
-   if (do_direct_local) allocate(fluxes%flux_dn_dir(ncol, nlevels))
-
-   ! Fluxes by band
-   allocate(fluxes%bnd_flux_up(ncol, nlevels, nbands))
-   allocate(fluxes%bnd_flux_dn(ncol, nlevels, nbands))
-   allocate(fluxes%bnd_flux_net(ncol, nlevels, nbands))
-   if (do_direct_local) allocate(fluxes%bnd_flux_dn_dir(ncol, nlevels, nbands))
-
-   ! Initialize
-   call reset_fluxes(fluxes)
-
-end subroutine initialize_rrtmgp_fluxes
 
 !=========================================================================================
 
@@ -2768,6 +2744,7 @@ subroutine initialize_rrtmgp_cloud_optics_sw(ncol, nlevels, kdist, optics)
    optics%g   = 0.0_r8   
 end subroutine initialize_rrtmgp_cloud_optics_sw
 
+!=========================================================================================
 
 subroutine initialize_rrtmgp_cloud_optics_lw(ncol, nlevels, kdist, optics)
    ! use mo_gas_optics_rrtmgp,  only: ty_gas_optics_rrtmgp  ! module level
@@ -2790,6 +2767,7 @@ subroutine initialize_rrtmgp_cloud_optics_lw(ncol, nlevels, kdist, optics)
    
 end subroutine initialize_rrtmgp_cloud_optics_lw
 
+!=========================================================================================
 
 subroutine free_optics_sw(optics)
    use mo_optical_props, only: ty_optical_props_2str
