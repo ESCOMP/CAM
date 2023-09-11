@@ -616,8 +616,10 @@ subroutine vertical_diffusion_init(pbuf2d)
      kvh_idx = pbuf_get_index('kvh')
   end if
 
-  ! pbuf field denoting top of clubb
-  clubbtop_idx = pbuf_get_index('clubbtop')
+  if (do_hb_above_clubb) then
+     ! pbuf field denoting top of clubb
+     clubbtop_idx = pbuf_get_index('clubbtop')
+  end if
 
   ! Initialization of some pbuf fields
   if (is_first_step()) then
