@@ -525,7 +525,7 @@ if [ -n "${CAM_FC}" ]; then
 fi
 
 if [ "${cesm_test_suite}" != "none" -a -n "${cesm_test_mach}" ]; then
-  if [ "${hostname:0:5}" != "izumi" ]; then
+  if [ "${hostname:0:5}" != "izumi" ] && [ "${hostname:0:7}" != "derecho" ]; then
     module load python
   fi
 
@@ -704,7 +704,6 @@ if [ "${cesm_test_suite}" != "none" -a -n "${cesm_test_mach}" ]; then
 
     if [ "${hostname:0:2}" == "de" ]; then
       echo "cd ${script_dir}" >> ${submit_script_cime}
-      echo "module load python" >> ${submit_script_cime}
       echo './create_test' ${testargs} >> ${submit_script_cime}
       chmod u+x ${submit_script_cime}
       qsub ${submit_script_cime}
