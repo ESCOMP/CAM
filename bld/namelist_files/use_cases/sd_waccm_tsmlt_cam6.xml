@@ -68,8 +68,8 @@
 <fexcl1> 'AOA1SRC', 'AOA2SRC', 'NO2_CMXF' </fexcl1>
 
 <fincl1>
-   'ABSORB', 'ACBZO2', 'ACTREL', 'ALKNIT', 'ALKO2', 'ALKOOH', 'AOA1', 'AOA_NH', 'AODABSdn', 'AODBCdn', 'AODdnDUST1', 'AODdnDUST2',
-   'AODdnDUST3', 'AODdnMODE1', 'AODdnMODE2', 'AODdnMODE3', 'AODDUST2', 'AODDUST', 'AODNIRstdn', 'AODPOMdn', 'AODSO4dn', 'AODSOAdn', 'AODSSdn',
+   'ABSORB', 'ACBZO2', 'ACTREL', 'ALKNIT', 'ALKO2', 'ALKOOH', 'AOA1', 'AOA_NH', 'AODABSdn', 'AODBCdn', 'AODdnDUST01', 'AODdnDUST02',
+   'AODdnDUST03', 'AODdn_aitken', 'AODdn_accum', 'AODdn_coarse', 'AODDUST02', 'AODDUST', 'AODNIRstdn', 'AODPOMdn', 'AODSO4dn', 'AODSOAdn', 'AODSSdn',
    'AODUVdn', 'AODUVstdn', 'AODVIS', 'AODVISdn', 'AODVISstdn', 'AQ_SO2', 'AREA', 'AREI', 'AREL', 'bc_a1', 'bc_a1DDF',
    'bc_a1SFWET', 'bc_a4', 'bc_a4_CLXF', 'bc_a4DDF', 'bc_a4SFWET', 'BCARY', 'bc_c1', 'bc_c1DDF', 'bc_c1SFWET', 'bc_c4', 'bc_c4DDF',
    'bc_c4SFWET', 'BENZENE', 'BENZO2', 'BENZOOH', 'BEPOMUC', 'BIGALD1', 'BIGALD2', 'BIGALD3', 'BIGALD4', 'BIGALD', 'BIGALK', 'BIGENE',
@@ -120,7 +120,7 @@
    'S', 'SAD_AERO', 'SAD_ICE', 'SAD_LNAT', 'SAD_SULFC', 'SAD_TROP', 'SF6', 'SFbc_a4', 'SFBCARY',
    'SFBENZENE', 'SFBIGALK', 'SFBIGENE', 'SFC2H2', 'SFC2H4', 'SFC2H5OH', 'SFC2H6', 'SFC3H6', 'SFC3H8', 'SFCH2O', 'SFCH3CHO', 'SFCH3CN',
    'SFCH3COCH3', 'SFCH3COCHO', 'SFCH3COOH', 'SFCH3OH', 'SFCO', 'SFDMS', 'SFdst_a1', 'SFdst_a2', 'SFdst_a3', 'SFGLYALD', 'SFHCN', 'SFHCOOH',
-   'SFISOP', 'SFIVOC', 'SFMEK', 'SFMTERP', 'SFncl_a1', 'SFncl_a2', 'SFncl_a3', 'SFNH3', 'SFNO2', 'SFNO', 'SFnum_a1', 'SFnum_a2',
+   'SFISOP', 'SFIVOC', 'SFMEK', 'SFMTERP', 'SFncl_a1', 'SFncl_a2', 'SFncl_a3', 'SFNH3', 'SFNO', 'SFnum_a1', 'SFnum_a2',
    'SFnum_a3', 'SFpom_a4', 'SFSO2', 'SFso4_a1', 'SFso4_a2', 'SFSVOC', 'SFTOLUENE', 'SFXYLENES', 'SHFLX', 'SO2',
    'SO2_CHML', 'SO2_CHMP', 'SO2_CLXF', 'SO2_XFRC', 'SO3', 'so4_a1', 'so4_a1_CHMP', 'so4_a1_CLXF', 'so4_a1DDF', 'so4_a1_sfgaex1', 'so4_a1SFWET',
    'so4_a2', 'so4_a2_CHMP', 'so4_a2_CLXF', 'so4_a2DDF', 'so4_a2_sfgaex1', 'so4_a2_sfnnuc1', 'so4_a2SFWET', 'so4_a3',

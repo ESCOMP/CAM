@@ -1562,6 +1562,8 @@ $nadv = $cfg_ref->get('nadv');
 if ($print>=2) { print "Total advected constituents: $nadv$eol"; }
 
 #-----------------------------------------------------------------------------------------------
+
+#-----------------------------------------------------------------------------------------------
 # Makefile configuration #######################################################################
 #-----------------------------------------------------------------------------------------------
 
@@ -1927,6 +1929,14 @@ if ($simple_phys) { $cfg_cppdefs .= ' -DSIMPLE'; }
 # UNICON
 if ($unicon) { $cfg_cppdefs .= ' -DUSE_UNICON'; }
 
+# Harmonized Emissions Component (HEMCO)
+# These CPP definitions are used by HEMCO to recognize -
+#   MODEL_     - HEMCO/GEOS-Chem components running in model environment
+#   MODEL_CESM - ...within CESM
+#   USE_REAL8  - HEMCO/GEOS-Chem should use real8 internal precision
+#   HEMCO_CESM - indicates CESM model environment. Deprecated, will be removed soon.
+$cfg_cppdefs .= ' -DMODEL_ -DMODEL_CESM -DHEMCO_CESM -DUSE_REAL8 ';
+
 #-----------------------------------------------------------------------------------------------
 # CPP defines to put on Makefile
 
@@ -2169,6 +2179,20 @@ sub write_filepath
     print $fh "$camsrcdir/src/ionosphere\n";
 
     print $fh "$camsrcdir/src/chemistry/mozart\n";
+
+    print $fh "$camsrcdir/src/hemco\n";
+
+    # shared dependencies for HEMCO (Harmonized Emissions Component)
+    print $fh "$camsrcdir/src/hemco/HEMCO/src/Shared\n";
+    print $fh "$camsrcdir/src/hemco/HEMCO/src/Shared/Headers\n";
+    print $fh "$camsrcdir/src/hemco/HEMCO/src/Shared/GeosUtil\n";
+    print $fh "$camsrcdir/src/hemco/HEMCO/src/Shared/NcdfUtil\n";
+
+    # HEMCO source code directory paths from HEMCO external
+    print $fh "$camsrcdir/src/hemco/HEMCO/src/Core\n";
+    print $fh "$camsrcdir/src/hemco/HEMCO/src/Extensions\n";
+    print $fh "$camsrcdir/src/hemco/HEMCO/src/Interfaces/Shared\n";
+
     print $fh "$camsrcdir/src/chemistry/utils\n";
 
     if ($rad eq 'rrtmg') {

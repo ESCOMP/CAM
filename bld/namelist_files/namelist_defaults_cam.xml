@@ -48,6 +48,8 @@
 <ncdata hgrid="mpasa120" nlev="32" analytic_ic="1" >atm/cam/inic/mpas/mpasa120_L32_notopo_coords_c201216.nc</ncdata>
 <ncdata hgrid="mpasa120" nlev="32" analytic_ic="1" phys="cam6" >atm/cam/inic/mpas/mpasa120_L32_topo_coords_c201022.nc</ncdata>
 <ncdata hgrid="mpasa120" nlev="32" analytic_ic="1" phys="cam_dev" >atm/cam/inic/mpas/mpasa120_L32_topo_coords_c201022.nc</ncdata>
+<ncdata hgrid="mpasa60"  nlev="32" analytic_ic="1" >atm/cam/inic/mpas/mpasa60_L32_notopo_coords_c230707.nc</ncdata>
+<ncdata hgrid="mpasa30"  nlev="32" analytic_ic="1" >atm/cam/inic/mpas/mpasa30_L32_notopo_coords_c230707.nc</ncdata>
 
 <!-- Files with initial conditions -->
 <ncdata dyn="fv"  hgrid="0.23x0.31" nlev="26" ic_ymd="101"      >atm/cam/inic/fv/cami_0000-01-01_0.23x0.31_L26_c100513.nc</ncdata>
@@ -78,6 +80,7 @@
 <ncdata dyn="fv"  hgrid="0.9x1.25"  nlev="32" chem="trop_strat_mam4_ts2">atm/cam/inic/fv/f.e22.FC2010climo.f09_f09_mg17.cam6_2_022.001.cam.i.0016-01-01-00000_c200610.nc</ncdata>
 <ncdata dyn="fv"  hgrid="0.9x1.25"  nlev="32" chem="trop_strat_mam5_vbs">atm/cam/inic/fv/f.e22.FC2010climo.f09_f09_mg17.cam6_2_022.001.cam.i.0016-01-01-00000_c200610.nc</ncdata>
 <ncdata dyn="fv"  hgrid="0.9x1.25"  nlev="32" chem="trop_strat_mam5_ts2">atm/cam/inic/fv/f.e22.FC2010climo.f09_f09_mg17.cam6_2_022.001.cam.i.0016-01-01-00000_c200610.nc</ncdata>
+<ncdata dyn="fv"  hgrid="10x15"     nlev="32" chem="trop_strat_mam5_vbs">atm/cam/inic/fv/FC2000mam5_f10_0002-01-01_c221214.nc</ncdata>
 <ncdata dyn="fv"  hgrid="0.9x1.25"  nlev="32"  ic_ymd="101"     >atm/cam/inic/fv/cami-mam3_0000-01-01_0.9x1.25_L32_c141031.nc</ncdata>
 <ncdata dyn="fv"  hgrid="1.9x2.5"   nlev="32"  ic_ymd="101"     >atm/cam/inic/fv/cami-mam3_0000-01-01_1.9x2.5_L32_c150407.nc</ncdata>
 <ncdata dyn="fv"  hgrid="10x15"     nlev="32"  ic_ymd="101"     >atm/cam/inic/fv/cami-mam4_0000-01-01_10x15_L32_c170914.nc</ncdata>
@@ -122,8 +125,7 @@
 <ncdata dyn="se" hgrid="ne0np4CONUS.ne30x8" nlev="32" chem="trop_strat_mam4_vbs">atm/cam/inic/se/f.e22.FCnudged.ne0CONUSne30x8_ne0CONUSne30x8_mt12.cam6_2_032.002.cam.i.2013-01-01-00000_c200623.nc</ncdata>
 <ncdata dyn="se" hgrid="ne0np4CONUS.ne30x8" nlev="32" chem="trop_strat_mam5_vbs">atm/cam/inic/se/f.e22.FCnudged.ne0CONUSne30x8_ne0CONUSne30x8_mt12.cam6_2_032.002.cam.i.2013-01-01-00000_c200623.nc</ncdata>
 <ncdata dyn="se" hgrid="ne30np4" nlev="58" chem="trop_strat_mam5_vbs">atm/cam/inic/se/f.e22.FCnudged.ne30_ne30_mg17.release-cesm2.2.0_spinup.2010_2020.001.cam.i.2011-01-01-00000_L58_c220310.nc</ncdata>
-<ncdata dyn="se" hgrid="ne30np4" nlev="93" chem="trop_strat_mam5_vbs">atm/cam/inic/se/FCMTHIST_ne30pg3_1980-01-01_c221214.nc</ncdata>
-<ncdata dyn="se" hgrid="10x15"   nlev="32" chem="trop_strat_mam5_vbs">atm/cam/inic/fv/FC2000mam5_f10_0002-01-01_c221214.nc</ncdata>
+<ncdata dyn="se" hgrid="ne30np4" nlev="93" chem="trop_strat_mam5_vbs">atm/cam/inic/se/f.cam6_3_112.FCMTHIST_v0c.ne30.non-ogw-ubcT-effgw0.7.001.cam.i.1998-01-01-00000_c230810.nc</ncdata>
 
 <ncdata dyn="se" hgrid="ne30np4" npg="3" nlev="58">atm/cam/inic/se/FLT_L58_ne30pg3_IC_c220623.nc</ncdata>
 <ncdata dyn="se" hgrid="ne30np4" npg="3" nlev="93">atm/cam/inic/se/cam7_FMT_ne30pg3_mg17_L93_c221118.nc</ncdata>
@@ -712,6 +714,7 @@
 <frontgfc hgrid="ne30np4" >3.00D-15</frontgfc>
 <frontgfc hgrid="4x5"     >7.5D-16</frontgfc>
 <frontgfc hgrid="0.9x1.25">3.0D-15</frontgfc>
+<front_gaussian_width> 30.D0 </front_gaussian_width>
 
 <!-- Polar taper is needed for stability in FV, possibly because grid -->
 <!-- points become too dense near the poles. -->
@@ -828,15 +831,15 @@
 <edyn_grid hgrid="0.47x0.63">320x385</edyn_grid>
 
 <!-- ESMF mesh files for physics decomposition -->
-<cam_physics_mesh waccmx_opt="ionosphere" hgrid="0.47x0.63">atm/cam/coords/fv0.47x0.63_esmf_c210305.nc</cam_physics_mesh>
-<cam_physics_mesh waccmx_opt="ionosphere" hgrid="0.9x1.25">atm/cam/coords/fv0.9x1.25_esmf_c210305.nc</cam_physics_mesh>
-<cam_physics_mesh waccmx_opt="ionosphere" hgrid="1.9x2.5">atm/cam/coords/fv1.9x2.5_esmf_200428.nc</cam_physics_mesh>
-<cam_physics_mesh waccmx_opt="ionosphere" hgrid="4x5">atm/cam/coords/fv4x5_esmf_c210305.nc</cam_physics_mesh>
-<cam_physics_mesh waccmx_opt="ionosphere" hgrid="ne5np4">atm/cam/coords/ne5np4_esmf_20191204.nc</cam_physics_mesh>
-<cam_physics_mesh waccmx_opt="ionosphere" hgrid="ne5np4" npg="3">atm/cam/coords/ne5np4.pg3_esmf_mesh_c210121.nc</cam_physics_mesh>
-<cam_physics_mesh waccmx_opt="ionosphere" hgrid="ne16np4">atm/cam/coords/ne16np4_esmf_c210305.nc</cam_physics_mesh>
-<cam_physics_mesh waccmx_opt="ionosphere" hgrid="ne30np4">atm/cam/coords/ne30np4_esmf_c210305.nc</cam_physics_mesh>
-<cam_physics_mesh waccmx_opt="ionosphere" hgrid="ne30np4" npg="3">atm/cam/coords/ne30pg3_esmf_20200428.nc</cam_physics_mesh>
+<cam_physics_mesh hgrid="0.47x0.63">atm/cam/coords/fv0.47x0.63_esmf_c210305.nc</cam_physics_mesh>
+<cam_physics_mesh hgrid="0.9x1.25">atm/cam/coords/fv0.9x1.25_esmf_c210305.nc</cam_physics_mesh>
+<cam_physics_mesh hgrid="1.9x2.5">atm/cam/coords/fv1.9x2.5_esmf_200428.nc</cam_physics_mesh>
+<cam_physics_mesh hgrid="4x5">atm/cam/coords/fv4x5_esmf_c210305.nc</cam_physics_mesh>
+<cam_physics_mesh hgrid="ne5np4">atm/cam/coords/ne5np4_esmf_20191204.nc</cam_physics_mesh>
+<cam_physics_mesh hgrid="ne5np4" npg="3">atm/cam/coords/ne5np4.pg3_esmf_mesh_c210121.nc</cam_physics_mesh>
+<cam_physics_mesh hgrid="ne16np4">atm/cam/coords/ne16np4_esmf_c210305.nc</cam_physics_mesh>
+<cam_physics_mesh hgrid="ne30np4">atm/cam/coords/ne30np4_esmf_c210305.nc</cam_physics_mesh>
+<cam_physics_mesh hgrid="ne30np4" npg="3">atm/cam/coords/ne30pg3_esmf_20200428.nc</cam_physics_mesh>
 
 <!-- For scaling lightning sources of NOx -->
 <lght_no_prd_factor                                              >1.00D0</lght_no_prd_factor>
@@ -3118,6 +3121,8 @@
 <mpas_time_integration_order  > 2 </mpas_time_integration_order>
 <mpas_dt                      > 1800.0D0 </mpas_dt>
 <mpas_dt hgrid="mpasa120"     >  900.0D0 </mpas_dt>
+<mpas_dt hgrid="mpasa60"      >  450.0D0 </mpas_dt>
+<mpas_dt hgrid="mpasa30"      >  225.0D0 </mpas_dt>
 
 <mpas_split_dynamics_transport>.true.</mpas_split_dynamics_transport>
 <mpas_number_of_sub_steps     > 2 </mpas_number_of_sub_steps>
@@ -3132,6 +3137,8 @@
 
 <mpas_len_disp hgrid="mpasa480">480000.0D0</mpas_len_disp>
 <mpas_len_disp hgrid="mpasa120">120000.0D0</mpas_len_disp>
+<mpas_len_disp hgrid="mpasa60">  60000.0D0</mpas_len_disp>
+<mpas_len_disp hgrid="mpasa30">  30000.0D0</mpas_len_disp>
 
 <mpas_visc4_2dsmag            > 0.05D0 </mpas_visc4_2dsmag>
 <mpas_del4u_div_factor        > 10.0D0 </mpas_del4u_div_factor>
@@ -3178,6 +3185,16 @@
 <!-- Chemistry Rates Diagnostics                                        -->
 <!-- ================================================================== -->
 
+<rxn_rate_sums chem="waccm_ma_mam5">
+  'O3S_Loss = 2.0*O_O3 + O1D_H2O + HO2_O + HO2_O3 + OH_O + OH_O3 + H_O3 + 2.0*NO2_O + 2.0*jno3_b + 2.0*CLO_O + 2.0*jcl2o2 + ',
+	     '2.0*CLO_CLOa + 2.0*CLO_CLOb + 2.0*BRO_CLOb + 2.0*BRO_CLOc + 2.0*BRO_BRO + 2.0*BRO_O + CLO_HO2 + BRO_HO2 + S_O3'
+</rxn_rate_sums>
+<rxn_rate_sums chem="waccm_ma_mam5" waccmx="1">
+  'O3S_Loss = 2.0*O_O3 + O1D_H2O + HO2_O + HO2_O3 + OH_O + OH_O3 + H_O3 + 2.0*NO2_O + 2.0*jno3_b + 2.0*CLO_O + 2.0*jcl2o2 + ',
+	     '2.0*CLO_CLOa + 2.0*CLO_CLOb + 2.0*BRO_CLOb + 2.0*BRO_CLOc + 2.0*BRO_BRO + 2.0*BRO_O + CLO_HO2 + BRO_HO2 + S_O3',
+  'SolIonRate_Tot = jeuv_1 + jeuv_2 + jeuv_3 + jeuv_4 + jeuv_5 + jeuv_6 + jeuv_7 + jeuv_8 + jeuv_9 + jeuv_10 + jeuv_11 + ',
+                   'jeuv_14 + jeuv_15 + jeuv_16 + jeuv_17 + jeuv_18 + jeuv_19 + jeuv_20 + jeuv_21 + jeuv_22 + jeuv_23',
+</rxn_rate_sums>
 <rxn_rate_sums chem="trop_strat_mam5_ts2">
     'O3_Prod = NO_HO2 + CH3O2_NO + HOCH2OO_NO + C2H5O2_NO + CH3CO3_NO + EO2_NO + C3H7O2_NO + PO2_NO + ',
                'RO2_NO + ENEO2_NO + MACRO2_NOa + jhonitr + ',
@@ -3329,4 +3346,30 @@
            ' C3H6_O3 + ISOP_O3 + MVK_O3 + MACR_O3 + MTERP_O3 + BCARY_O3 + S_O3 + SO_O3'
 </rxn_rate_sums>
 
+<!-- HEMCO: Harmonized Emissions Component -->
+<use_hemco>.false.</use_hemco>
+<hemco_data_root>atm/cam/geoschem/emis/ExtData/HEMCO</hemco_data_root>
+<hemco_config_file>atm/cam/geoschem/emis/HEMCO_Config.CC.CEDS_AEIC19.NEx.c230615.rc</hemco_config_file>
+<hemco_diagn_file>atm/cam/geoschem/emis/HEMCO_Diagn.3_5_0.c230307.rc</hemco_diagn_file>
+<hemco_emission_year>-1</hemco_emission_year>
+
+<!-- Default emissions grid resolution at 2x2.5 degree: coarser may result in masking artifacts -->
+<hemco_grid_xdim>144</hemco_grid_xdim>
+<hemco_grid_ydim>91</hemco_grid_ydim>
+
+<!-- if using SE refined mesh use 0.5x0.625 degree grid -->
+<hemco_grid_xdim se_refined_mesh="1">576</hemco_grid_xdim>
+<hemco_grid_ydim se_refined_mesh="1">361</hemco_grid_ydim>
+
+<!-- use 0.9x1.25 degree HEMCO grid for ne30 simulation -->
+<hemco_grid_xdim hgrid="ne30np4">288</hemco_grid_xdim>
+<hemco_grid_ydim hgrid="ne30np4">201</hemco_grid_ydim>
+
+<!-- use 0.9x1.25 degree HEMCO grid for 0.9x1.25 degree simulation -->
+<hemco_grid_xdim hgrid="0.9x1.25">288</hemco_grid_xdim>
+<hemco_grid_ydim hgrid="0.9x1.25">201</hemco_grid_ydim>
+
+<!-- use 2x2.5 degree HEMCO grid for 1.9x2.5 degree simulation -->
+<hemco_grid_xdim hgrid="1.9x2.5">144</hemco_grid_xdim>
+<hemco_grid_ydim hgrid="1.9x2.5">91</hemco_grid_ydim>
 </namelist_defaults>

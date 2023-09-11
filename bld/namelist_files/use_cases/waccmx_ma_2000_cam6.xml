@@ -101,9 +101,4 @@
 
 <fv_div24del2flag>42</fv_div24del2flag>
 
-<rxn_rate_sums>
-  'SolIonRate_Tot = jeuv_1 + jeuv_2 + jeuv_3 + jeuv_4 + jeuv_5 + jeuv_6 + jeuv_7 + jeuv_8 + jeuv_9 + jeuv_10 + jeuv_11 + jeuv_14 + jeuv_15 + jeuv_16 +',
-                   'jeuv_17 + jeuv_18 + jeuv_19 + jeuv_20 + jeuv_21 + jeuv_22 + jeuv_23',
-</rxn_rate_sums>
-
 </namelist_defaults>

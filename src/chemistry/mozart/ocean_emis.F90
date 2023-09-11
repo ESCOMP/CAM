@@ -28,7 +28,7 @@ module ocean_emis
   use ppgrid,         only : pcols, begchunk,endchunk
   use spmd_utils,     only : masterproc
   use cam_abortutils, only : endrun
-  use cam_history,    only : addfld, horiz_only, outfld
+  use cam_history,    only : addfld, add_default, horiz_only, outfld
   use constituents,   only : cnst_get_ind
   use tracer_data,    only : trfld,trfile
   use chem_mods,      only : gas_pcnst
@@ -42,6 +42,7 @@ module ocean_emis
   public :: ocean_emis_init
   public :: ocean_emis_getflux
   public :: ocean_emis_advance
+  public :: ocean_emis_species
 
   type :: Csw
      integer                   :: spc_ndx
@@ -57,7 +58,7 @@ module ocean_emis
 
   logical                :: switch_bubble
   type(Csw), allocatable :: Csw_nM(:)
-  integer                :: n_Csw_files
+  integer                :: n_Csw_files = 0
 
   real(r8), allocatable :: salinity(:,:)
 
@@ -768,6 +769,7 @@ contains
     use pio,              only : pio_inq_varname, file_desc_t, pio_get_att, PIO_NOERR, PIO_GLOBAL
     use pio,              only : pio_seterrorhandling, PIO_BCAST_ERROR
     use string_utils,     only : GLC
+    use phys_control,     only : phys_getopts
 
     integer             :: i, j, l, m, n, nn, astat, vid, ierr, nvars, isec
     integer             :: indx(gas_pcnst)
@@ -793,6 +795,9 @@ contains
     logical,            parameter  :: rmv_file = .false.
 
     character(len=*), parameter :: subname = 'cseawater_ini'
+
+    logical :: history_chemistry
+    call phys_getopts(history_chemistry_out=history_chemistry)
 
     ! ========================================================
     ! Read sea water concentration specifier from the namelist
@@ -956,8 +961,30 @@ contains
             'ocean flux ' // trim(Csw_nM(m)%species)  )
        call addfld('Csw_' // trim(Csw_nM(m)%species), horiz_only, 'A', 'nanomole per liter (nM)', &
             'seeawater concentration ' // trim(Csw_nM(m)%species)  )
+       if (history_chemistry) then
+          call add_default('OCN_FLUX_' // trim(Csw_nM(m)%species), 1, ' ')
+       end if
     end do
 
   end subroutine cseawater_ini
+
+  !--------------------------------------------------------------------------------
+  ! returns TRUE if species has ocean emissions
+  !--------------------------------------------------------------------------------
+  pure logical function ocean_emis_species(name)
+    character(len=*), intent(in) :: name
+
+    integer :: m
+
+    ocean_emis_species = .false.
+
+    spc_loop: do m = 1, n_Csw_files
+       if (trim(name) == trim(Csw_nM(m)%species)) then
+          ocean_emis_species = .true.
+          exit spc_loop
+       end if
+    end do spc_loop
+
+  end function ocean_emis_species
 
 end module ocean_emis

@@ -64,7 +64,7 @@ subroutine read_namelist(nlfilename, single_column, scmlat, scmlon)
    use conv_water,          only: conv_water_readnl
    use rad_constituents,    only: rad_cnst_readnl
    use radiation_data,      only: rad_data_readnl
-   use modal_aer_opt,       only: modal_aer_opt_readnl
+   use aerosol_optics_cam,  only: aerosol_optics_cam_readnl
    use clubb_intr,          only: clubb_readnl
    use chemistry,           only: chem_readnl
    use prescribed_volcaero, only: prescribed_volcaero_readnl
@@ -99,6 +99,7 @@ subroutine read_namelist(nlfilename, single_column, scmlat, scmlon)
    use ionosphere_interface,only: ionosphere_readnl
    use qneg_module,         only: qneg_readnl
    use lunar_tides,         only: lunar_tides_readnl
+   use hemco_interface,     only: hemco_readnl
    use upper_bc,            only: ubc_readnl
    use cam_budget,          only: cam_budget_readnl
    use phys_grid_ctem,      only: phys_grid_ctem_readnl
@@ -168,7 +169,7 @@ subroutine read_namelist(nlfilename, single_column, scmlat, scmlon)
    call radiation_readnl(nlfilename)
    call rad_cnst_readnl(nlfilename)
    call rad_data_readnl(nlfilename)
-   call modal_aer_opt_readnl(nlfilename)
+   call aerosol_optics_cam_readnl(nlfilename)
    call chem_readnl(nlfilename)
    call lightning_readnl(nlfilename)
    call prescribed_volcaero_readnl(nlfilename)
@@ -205,6 +206,7 @@ subroutine read_namelist(nlfilename, single_column, scmlat, scmlon)
    call dyn_readnl(nlfilename)
    call ionosphere_readnl(nlfilename)
    call qneg_readnl(nlfilename)
+   call hemco_readnl(nlfilename)
    call cam_budget_readnl(nlfilename)
    call phys_grid_ctem_readnl(nlfilename)
 
