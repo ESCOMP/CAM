@@ -285,7 +285,7 @@ contains
 
     do icol = 1, ncol
        crefin(icol) = crefin(icol) + self%watervol(icol,ilev)*self%crefwlw(iwav)
-       crefin(icol) = crefin(icol)/max(self%wetvol(icol,ilev), 1.e-40)
+       crefin(icol) = crefin(icol)/max(self%wetvol(icol,ilev), 1.e-40_r8)
 
        refr(icol) = real(crefin(icol))
        refi(icol) = aimag(crefin(icol))
