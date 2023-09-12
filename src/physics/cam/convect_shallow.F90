@@ -730,7 +730,7 @@
    ! Output new partition of cloud condensate variables, as well as precipitation !
    ! ---------------------------------------------------------------------------- ! 
 
-   if( microp_scheme == 'MG' ) then
+   if( microp_scheme == 'MG' .or. microp_scheme == 'PUMAS' ) then
        call cnst_get_ind( 'NUMLIQ', ixnumliq )
        call cnst_get_ind( 'NUMICE', ixnumice )
    endif

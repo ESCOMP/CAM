@@ -48,7 +48,7 @@ subroutine microp_driver_readnl(nlfile)
    call phys_getopts(microp_scheme_out=microp_scheme)
 
    select case (microp_scheme)
-   case ('MG')
+   case ('MG', 'PUMAS')
       call micro_pumas_cam_readnl(nlfile)
    case ('NONE', 'RK', 'SPCAM_sam1mom', 'SPCAM_m2005')
       continue
@@ -65,7 +65,7 @@ subroutine microp_driver_register
 
 
    select case (microp_scheme)
-   case ('MG')
+   case ('MG','PUMAS')
       call micro_pumas_cam_register()
    case ('RK')
       ! microp_driver doesn't handle this one
@@ -93,7 +93,7 @@ function microp_driver_implements_cnst(name)
    microp_driver_implements_cnst = .false.
 
    select case (microp_scheme)
-   case ('MG')
+   case ('MG','PUMAS')
       microp_driver_implements_cnst = micro_pumas_cam_implements_cnst(name)
    case ('NONE', 'RK', 'SPCAM_sam1mom', 'SPCAM_m2005')
       continue
@@ -118,7 +118,7 @@ subroutine microp_driver_init_cnst(name, latvals, lonvals, mask, q)
    !-----------------------------------------------------------------------
 
    select case (microp_scheme)
-   case ('MG')
+   case ('MG','PUMAS')
       call micro_pumas_cam_init_cnst(name, latvals, lonvals, mask, q)
    case ('RK')
       ! microp_driver doesn't handle this one
@@ -145,7 +145,7 @@ subroutine microp_driver_init(pbuf2d)
    !-----------------------------------------------------------------------
 
    select case (microp_scheme)
-   case ('MG')
+   case ('MG','PUMAS')
       call micro_pumas_cam_init(pbuf2d)
    case ('RK')
       ! microp_driver doesn't handle this one
@@ -184,7 +184,7 @@ subroutine microp_driver_tend(state, ptend, dtime, pbuf)
    ! Call MG Microphysics
 
    select case (microp_scheme)
-   case ('MG')
+   case ('MG','PUMAS')
       call t_startf('microp_mg_tend')
       call micro_pumas_cam_tend(state, ptend, dtime, pbuf)
       call t_stopf('microp_mg_tend')

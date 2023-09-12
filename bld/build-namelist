@@ -3020,7 +3020,7 @@ add_default($nl, 'srf_flux_avg', 'val'=>0);
 add_default($nl, 'use_subcol_microp');
 add_default($nl, 'microp_scheme');
 
-if ($cfg->get('microphys') =~ /^mg/) {
+if ($cfg->get('microphys') =~ /^mg|pumas/) {
     add_default($nl, 'micro_mg_version');
     add_default($nl, 'micro_mg_sub_version');
     add_default($nl, 'micro_mg_num_steps');
@@ -3077,7 +3077,7 @@ if ($cfg->get('microphys') =~ /^mg/) {
 
     my $micro_mg_dcs = '400.D-6';        # default for cam5/mg1
 
-    if ($microphys =~ /mg2|mg3/) {
+    if ($microphys =~ /mg2|mg3|pumas/) {
         if ($silhs eq '1') {
             $micro_mg_dcs = '390.D-6';       # default for SIHLS
         }
@@ -4910,7 +4910,7 @@ sub check_snapshot_settings {
                               "'physics_dme_adjust'"));
         push (@validList_bc, ("'dadadj_tend'", "'convect_deep_tend'",
                               "'convect_shallow_tend'"));
-        if ($microphys =~ /^mg/) {
+        if ($microphys =~ /^mg|pumas/) {
             if ($clubb_sgs  =~ /$TRUE/io) {
                 push (@validList_bc, ("'clubb_tend_cam'"));
             } else {

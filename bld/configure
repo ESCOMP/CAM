@@ -88,7 +88,7 @@ OPTIONS
      -macrophys <name>  Specify the macrophysics option [rk | park | clubb_sgs].
      -max_n_rad_cnst <n> Maximum number of constituents that are either radiatively
                         active, or in any single diagnostic list for the radiation.
-     -microphys <name>  Specify the microphysics option [mg1 | mg2 | mg3| rk].
+     -microphys <name>  Specify the microphysics option [mg1 | mg2 | mg3| rk | pumas].
      -model_top <name>  Specify the model_top option [ lt | mt ].
      -nadv <n>          Set total number of advected species to <n>.
      -nadv_tt <n>       Set number of advected test tracers <n>.
@@ -839,6 +839,10 @@ if (defined $opts{'microphys'}) {
     $microphys_pkg = lc($opts{'microphys'});
 }
 
+if($microphys_pkg == 'pumas') {
+    $microphys_pkg = 'mg3';
+}
+
 $cfg_ref->set('microphys', $microphys_pkg);
 
 if ($print>=2) { print "Microphysics package: $microphys_pkg$eol"; }
@@ -854,10 +858,10 @@ if (defined $opts{'carma'}) {
 }
 
 if ($carma_pkg =~ m/cirrus/i) {
-    unless ($microphys_pkg =~ /^mg/) {
+    unless ($microphys_pkg =~ /^mg|pumas/) {
         die <<"EOF";
 **    ERROR: microphysics package set to: $microphys_pkg
-**    The CARMA cirrus model only works with MG microphysics.
+**    The CARMA cirrus model only works with MG or PUMAS microphysics.
 EOF
     }
 }
@@ -881,10 +885,10 @@ if (defined $opts{'clubb_sgs'}) {
 # consistency checks...
 
 # CLUBB_SGS only works with mg microphysics
-if ($clubb_sgs and not ($microphys_pkg =~ m/^mg/ )) {
+if ($clubb_sgs and not ($microphys_pkg =~ m/^mg|pumas/ )) {
     die <<"EOF";
 **    ERROR: microphysics package set to: $microphys_pkg
-**    CLUBB_SGS only works with MG microphysics.
+**    CLUBB_SGS only works with MG or PUMAS microphysics.
 EOF
 }
 
@@ -1021,10 +1025,10 @@ if (defined $opts{'pbl'}) {
 
 # UW PBL only works with mg microphysics
 if ($pbl_pkg =~ m/uw/i) {
-    unless ($microphys_pkg =~ /^mg/) {
+    unless ($microphys_pkg =~ /^mg|pumas/) {
         die <<"EOF";
 **    ERROR: microphysics package set to: $microphys_pkg
-**    The UW PBL scheme only works with MG microphysics.
+**    The UW PBL scheme only works with MG or PUMAS microphysics.
 EOF
     }
 }
@@ -1045,9 +1049,9 @@ my $unicon = $cfg_ref->get('unicon');
 
 # UNICON assumes park macrophysics, uw pbl, and mg microphysics
 if ($unicon and
-    ($macrophys_pkg ne 'park' or $pbl_pkg ne 'uw' or $microphys_pkg !~ m/^mg/) ) {
+    ($macrophys_pkg ne 'park' or $pbl_pkg ne 'uw' or $microphys_pkg !~ m/^mg|pumas/) ) {
     die <<"EOF";
-**    ERROR: UNICON assumes macrophys='park', pbl='uw', microphys='mg*'.  Current values are:
+**    ERROR: UNICON assumes macrophys='park', pbl='uw', microphys='mg*|pumas'.  Current values are:
 **    macrophys: $macrophys_pkg, pbl: $pbl_pkg, microphys: $microphys_pkg.
 EOF
 }
@@ -1506,7 +1510,7 @@ else {
             $nadv += 8;
             if ($print>=2) { print "Advected constituents added by $microphys_pkg microphysics: 8$eol"; }
         }
-        elsif ($microphys_pkg =~/^mg3/) {
+        elsif ($microphys_pkg =~/^mg3|pumas/) {
             $nadv += 10;
             if ($print>=2) { print "Advected constituents added by $microphys_pkg microphysics: 10$eol"; }
         }

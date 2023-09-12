@@ -209,7 +209,7 @@ contains
     if (.not.enabled) return
 
     call phys_getopts(microp_scheme_out=microp_scheme, radiation_scheme_out=rad_scheme)
-    mg_microphys =  (trim(microp_scheme) == 'MG')
+    mg_microphys =  (trim(microp_scheme) == 'MG' .or. trim(microp_scheme) == 'PUMAS')
 
     volcgeom_ifld = pbuf_get_index('VOLC_RAD_GEOM',errcode=err) ! might need 3 more for 3-mode inputs
     volcgeom1_ifld = pbuf_get_index('VOLC_RAD_GEOM1',errcode=err) ! might need 3 more for 3-mode inputs

@@ -58,7 +58,7 @@ contains
     call phys_getopts(radiation_scheme_out=rad_pkg,microp_scheme_out=microp_pgk)
     camrt_rad            = rad_pkg .eq. 'camrt'
     rk_clouds            = microp_pgk == 'RK'
-    mg_clouds            = microp_pgk == 'MG'
+    mg_clouds            = (microp_pgk == 'MG') .or. (microp_pgk == 'PUMAS')
     spcam_m2005_clouds   = microp_pgk == 'SPCAM_m2005'
     spcam_sam1mom_clouds = microp_pgk == 'SPCAM_sam1mom'
     one_mom_clouds       = (rk_clouds .or. spcam_sam1mom_clouds)
