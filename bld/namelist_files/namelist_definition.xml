@@ -5169,6 +5169,13 @@ Bretherton; 'HBR' for Rasch modified version of 'HB'.
 Default: set by build-namelist
 </entry>
 
+<entry id="do_hb_above_clubb" type="logical" category="pbl"
+       group="phys_ctl_nl" valid_values="" >
+Logical: If True activate Holtslag and Boville vertical diffusion scheme where CLUBB is not active
+         (note that CLUBB top is dynamic in each column)
+Default: Set by build-namelist.
+</entry>
+
 <!-- Convective Scavenging -->
 
 <entry id="convproc_do_aer" type="logical"  category="conv"
@@ -8140,6 +8147,17 @@ Default: Set by build-namelist.
 Number of threads to use when processing loops over threads.
 Normally equal to se_vert_num_threads.
 Default: Set by build-namelist.
+</entry>
+
+<entry id="se_pgf_formulation" type="integer" category="se"
+       group="dyn_se_inparm" valid_values="1,2" >
+
+  1: Exner version of pressure gradient force (PGF)
+  see Appendix A in https://agupubs.onlinelibrary.wiley.com/doi/epdf/10.1029/2022MS003192
+
+  2: Traditional pressure gradient formulation (grad p)
+
+  Default: Set by build-namelist.
 </entry>
 
 

@@ -3380,6 +3380,9 @@ if ($clubb_sgs  =~ /$TRUE/io) {
    add_default($nl, 'clubb_mf_L0');
    add_default($nl, 'clubb_mf_ent0');
    add_default($nl, 'clubb_mf_nup');
+
+   #Turn on HB scheme where CLUBB not active
+   add_default($nl, 'do_hb_above_clubb');
 }
 
 # Force exit if running cam_dev and CLUBB is off
@@ -3960,6 +3963,7 @@ if ($dyn =~ /se/) {
 		  se_kmin_jet
 		  se_kmax_jet
                   se_molecular_diff
+	          se_pgf_formulation
         );
 
     my %opts;

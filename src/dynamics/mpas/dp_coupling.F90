@@ -10,7 +10,7 @@ use ppgrid,         only: begchunk, endchunk, pcols, pver, pverp
 use constituents,   only: pcnst, cnst_type
 use physconst,      only: gravit, cappa, rh2o, zvir
 use air_composition,only: cpairv, rairv
-
+use air_composition,only: dry_air_species_num
 use spmd_dyn,       only: local_dp_map, block_buf_nrecs, chunk_buf_nrecs
 use spmd_utils,     only: mpicom, iam, masterproc
 
@@ -243,7 +243,7 @@ subroutine p_d_coupling(phys_state, phys_tend, dyn_in)
 
    allocate( t_tend(pver,nCellsSolve), stat=ierr)
    if( ierr /= 0 ) call endrun(subname//':failed to allocate t_tend array')
-   allocate( q_tend(thermodynamic_active_species_num,pver,nCellsSolve), stat=ierr)
+   allocate( q_tend(thermodynamic_active_species_num-dry_air_species_num,pver,nCellsSolve), stat=ierr)
    if( ierr /= 0 ) call endrun(subname//':failed to allocate q_tend array')
 
    nullify(tend_physics)
@@ -285,7 +285,7 @@ subroutine p_d_coupling(phys_state, phys_tend, dyn_in)
          !
          ! compute tendencies for thermodynamic active species
          !
-         do m=1,thermodynamic_active_species_num
+         do m=dry_air_species_num + 1,thermodynamic_active_species_num
            idx_phys   = thermodynamic_active_species_idx(m)
            idx_dycore = thermodynamic_active_species_idx_dycore(m)
            if (idx_dycore==index_qv) index_qv_phys = m
@@ -388,7 +388,7 @@ subroutine derived_phys(phys_state, phys_tend, pbuf2d)
          ! To be consistent with total energy formula in physic's check_energy module only
          ! include water vapor in moist pdel.
          factor(:ncol,k) = 1.0_r8
-         do m_cnst=1,thermodynamic_active_species_num
+         do m_cnst=dry_air_species_num + 1,thermodynamic_active_species_num
            m = thermodynamic_active_species_idx(m_cnst)
            ! at this point all q's are dry
            factor(:ncol,k) = factor(:ncol,k)+phys_state(lchnk)%q(:ncol,k,m)
@@ -600,7 +600,7 @@ subroutine derived_tend(nCellsSolve, nCells, t_tend, u_tend, v_tend, q_tend, dyn
      !
      ! Rnew and Rold are only needed for diagnostics purposes
      !
-     do m=1,thermodynamic_active_species_num
+     do m=dry_air_species_num+1,thermodynamic_active_species_num
        idx_thermo(m) = m
        idx_dycore                   = thermodynamic_active_species_idx_dycore(m)
        do iCell = 1, nCellsSolve
@@ -612,7 +612,7 @@ subroutine derived_tend(nCellsSolve, nCells, t_tend, u_tend, v_tend, q_tend, dyn
      call get_R(qktmp,idx_thermo,Rnew)
      Rnew = Rnew*cv/Rgas
 
-     do m=1,thermodynamic_active_species_num
+     do m=dry_air_species_num+1,thermodynamic_active_species_num
        idx_dycore    = thermodynamic_active_species_idx_dycore(m)
        do iCell = 1, nCellsSolve
          do k = 1, pver
@@ -673,7 +673,7 @@ subroutine derived_tend(nCellsSolve, nCells, t_tend, u_tend, v_tend, q_tend, dyn
      !
      ! temporarily save thermodynamic active species (n+1)
      !
-     do m=1,thermodynamic_active_species_num
+     do m=dry_air_species_num+1,thermodynamic_active_species_num
        idx_dycore                         = thermodynamic_active_species_idx_dycore(m)
        qk(m,:,: )                         = tracers(idx_dycore,:,1:nCellsSolve)
        tracers(idx_dycore,:,1:nCellsSolve)= qk(m,:,: )-dtime*q_tend(m,:,1:nCellsSolve)
@@ -685,7 +685,7 @@ subroutine derived_tend(nCellsSolve, nCells, t_tend, u_tend, v_tend, q_tend, dyn
           ux(:,1:nCellsSolve)+dtime*u_tend(:,1:nCellsSolve)/rho_zz(:,1:nCellsSolve),       &
           uy(:,1:nCellsSolve)+dtime*v_tend(:,1:nCellsSolve)/rho_zz(:,1:nCellsSolve),'dAP')
      ! revert
-     do m=1,thermodynamic_active_species_num
+     do m=dry_air_species_num+1,thermodynamic_active_species_num
        idx_dycore                         = thermodynamic_active_species_idx_dycore(m)
        tracers(idx_dycore,:,1:nCellsSolve)= qk(m,:,: )
      end do
@@ -762,7 +762,7 @@ subroutine hydrostatic_pressure(nCells, nVertLevels, qsize, index_qv, zz, zgrid,
       do k = nVertLevels, 1, -1
         rhodryk  = zz(k,iCell)* rho_zz(k,iCell) !full CAM physics density
         rhok = 1.0_r8
-        do idx=1,thermodynamic_active_species_num
+        do idx=dry_air_species_num+1,thermodynamic_active_species_num
           rhok = rhok+q(thermodynamic_active_species_idx_dycore(idx),k,iCell)
         end do
         rhok     = rhok*rhodryk  
@@ -772,7 +772,7 @@ subroutine hydrostatic_pressure(nCells, nVertLevels, qsize, index_qv, zz, zgrid,
 
       k = nVertLevels
       sum_water = 1.0_r8
-      do idx=1,thermodynamic_active_species_num
+      do idx=dry_air_species_num+1,thermodynamic_active_species_num
         sum_water = sum_water+q(thermodynamic_active_species_idx_dycore(idx),k,iCell)
       end do
       rhok     = sum_water*zz(k,iCell) * rho_zz(k,iCell)
@@ -790,7 +790,7 @@ subroutine hydrostatic_pressure(nCells, nVertLevels, qsize, index_qv, zz, zgrid,
         ! compute hydrostatic dry interface pressure so that (pintdry(k+1)-pintdry(k))/g is pseudo density
         !
         sum_water = 1.0_r8
-        do idx=1,thermodynamic_active_species_num
+        do idx=dry_air_species_num+1,thermodynamic_active_species_num
           sum_water = sum_water+q(thermodynamic_active_species_idx_dycore(idx),k,iCell)
         end do
         thetavk = theta_m(k,iCell)/sum_water!convert modified theta to virtual theta
@@ -881,7 +881,7 @@ subroutine tot_energy_dyn(nCells, nVertLevels, qsize, index_qv, zz, zgrid, rho_z
         u(iCell,k)             = ux(k,iCell)
         v(iCell,k)             = uy(k,iCell)
         phis(iCell)            = zgrid(1,iCell)*gravit
-        do idx=1,thermodynamic_active_species_num
+        do idx=dry_air_species_num+1,thermodynamic_active_species_num
            idx_tmp = thermodynamic_active_species_idx_dycore(idx)          
            tracers(iCell,k,idx_tmp) = q(idx_tmp,k,iCell)
         end do

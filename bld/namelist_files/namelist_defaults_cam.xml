@@ -266,7 +266,7 @@
 <ncdata dyn="se" hgrid="ne5np4"   nlev="66"           ic_ymd="101">atm/waccm/ic/wa3_ne5np4_1950_spinup.cam2.i.1960-01-01-00000_c150810.nc</ncdata>
 <ncdata dyn="se" hgrid="ne30np4"  nlev="70"           ic_ymd="101">atm/waccm/ic/FW2000_ne30_L70_01-01-0001_c200602.nc</ncdata>
 <ncdata dyn="se" hgrid="ne30np4"  nlev="70"  npg="3" chem="waccm_sc_mam4">atm/waccm/ic/FWsc2000climo_ne30pg3_L70_0002-01-01_c221103.nc</ncdata>
-<ncdata dyn="se" hgrid="ne30np4"  nlev="70"  npg="3"  ic_ymd="101">atm/waccm/ic/FW2000_ne30pg3_L70_01-01-0001_c200602.nc</ncdata>
+<ncdata dyn="se" hgrid="ne30np4"  nlev="70"  npg="3"  ic_ymd="101">atm/waccm/ic/FW2000.ne30pg3_ne30pg3_nlev70_c230906.nc</ncdata>
 <ncdata dyn="se" hgrid="ne30np4"  nlev="110"          ic_ymd="101">atm/waccm/ic/FWsc2000_ne30pg3_L110_01-01-0001_c200521.nc</ncdata>
 
 <ncdata dyn="se" hgrid="ne0np4CONUS.ne30x8"       nlev="70" ic_ymd="101">atm/waccm/ic/FW2000_CONUS_30x8_L70_01-01-0001_c200602.nc</ncdata>
@@ -2117,7 +2117,9 @@
 <clubb_tridiag_solve_method                       > 1       </clubb_tridiag_solve_method>
 <clubb_up2_sfc_coef                               > 2.0     </clubb_up2_sfc_coef>
 <clubb_wpxp_L_thresh                              > 60.0    </clubb_wpxp_L_thresh>
-
+<do_hb_above_clubb                                >.false.  </do_hb_above_clubb>
+<do_hb_above_clubb phys="cam_dev"                 >.true.   </do_hb_above_clubb>
+<do_hb_above_clubb phys="cam6"                    >.true.   </do_hb_above_clubb>
 <!-- SILHS options -->
 <clubb_do_icesuper                      silhs="1" > .true.  </clubb_do_icesuper>
 <clubb_C2rt                             silhs="1" > 0.2     </clubb_C2rt>
@@ -3011,6 +3013,8 @@
 <!-- Defaults for SE                                                    -->
 <!-- ================================================================== -->
 
+<se_pgf_formulation>           1</se_pgf_formulation>
+<se_pgf_formulation waccmx="1">2</se_pgf_formulation>
 <se_ftype> 2 </se_ftype>
 
 <se_large_Courant_incr        > .true.  </se_large_Courant_incr>
