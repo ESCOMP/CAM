@@ -10,19 +10,19 @@ module species_sums_diags
   use ppgrid,           only : pver
   use spmd_utils,       only : masterproc
   use cam_abortutils,   only : endrun
+  use cam_logfile,      only : iulog
   use mo_chem_utls,     only : get_spc_ndx
-  use sums_utils,       only : sums_grp_t, parse_sums
+  use shr_expr_parser_mod , only : shr_exp_parse, shr_exp_item_t, shr_exp_list_destroy
 
   implicit none
-  private 
+  private
   public :: species_sums_init
   public :: species_sums_output
   public :: species_sums_readnl
+  public :: species_sums_final
 
-  integer :: n_vmr_grps = 0
-  type(sums_grp_t), allocatable :: vmr_grps(:)  
-  integer :: n_mmr_grps = 0
-  type(sums_grp_t), allocatable :: mmr_grps(:)  
+  type(shr_exp_item_t), pointer :: vmr_grps => null()
+  type(shr_exp_item_t), pointer :: mmr_grps => null()
 
   integer, parameter :: maxlines = 200
   character(len=CL), allocatable :: vmr_sums(:)
@@ -38,11 +38,11 @@ contains
     use units,           only: getunit, freeunit
     use spmd_utils,      only: mpicom, mpi_character, masterprocid
 
-    ! args 
+    ! args
     character(len=*), intent(in) :: nlfile  ! filepath for file containing namelist input
 
     ! Local variables
-    integer :: unitn, ierr
+    integer :: unitn, ierr, n,i
 
     namelist /species_sums_nl/ vmr_sums, mmr_sums
 
@@ -70,25 +70,72 @@ contains
     call mpi_bcast(vmr_sums,len(vmr_sums(1))*maxlines, mpi_character, masterprocid, mpicom, ierr)
     call mpi_bcast(mmr_sums,len(mmr_sums(1))*maxlines, mpi_character, masterprocid, mpicom, ierr)
 
+    if (masterproc) then
+
+       write(iulog,*) ' '
+       write(iulog,*) 'species_sums_readnl -- vmr_sums :'
+       n = count(len_trim(vmr_sums)>0)
+       do i=1,n
+          write(iulog,*) trim(vmr_sums(i))
+       end do
+
+       write(iulog,*) ' '
+       write(iulog,*) 'species_sums_readnl -- mmr_sums :'
+       n = count(len_trim(mmr_sums)>0)
+       do i=1,n
+          write(iulog,*) trim(mmr_sums(i))
+       end do
+
+    end if
+
+
   end subroutine species_sums_readnl
 !--------------------------------------------------------------------------------
 !--------------------------------------------------------------------------------
   subroutine species_sums_init
 
-    integer :: i
+    type(shr_exp_item_t), pointer :: grp => null()
+
+    integer :: j
 
     ! parse the terms of the summations
-    call parse_sums(vmr_sums, n_vmr_grps, vmr_grps)
+    vmr_grps => shr_exp_parse( vmr_sums )
     deallocate( vmr_sums )
-    call parse_sums(mmr_sums, n_mmr_grps, mmr_grps)
+    mmr_grps => shr_exp_parse( mmr_sums )
     deallocate( mmr_sums )
 
     ! add history fields
-    do i = 1, n_vmr_grps
-       call addfld( vmr_grps(i)%name, (/ 'lev' /),'A', 'mole/mole','summation of species volume mixing ratios')
+
+    if (masterproc) write(iulog,*) 'species_sums_init -- VMR SUMS:'
+    grp => vmr_grps
+    do while(associated(grp))
+
+       if (masterproc) then
+          write(iulog,*) ' grp name : ',trim(grp%name)
+
+          do j = 1, grp%n_terms
+             write(iulog,'(f12.4,a,a)') grp%coeffs(j),' * ',trim(grp%vars(j))
+          end do
+       end if
+
+       call addfld( trim(grp%name), (/ 'lev' /),'A', 'mole/mole','summation of species volume mixing ratios')
+       grp => grp%next_item
     enddo
-    do i = 1, n_mmr_grps
-       call addfld( mmr_grps(i)%name, (/ 'lev' /),'A', 'kg/kg','summation of species mass mixing ratios')
+
+    if (masterproc) write(iulog,*) 'species_sums_init -- MMR SUMS:'
+    grp => mmr_grps
+    do while(associated(grp))
+
+       if (masterproc) then
+          write(iulog,*) ' grp name : ',trim(grp%name)
+
+          do j = 1, grp%n_terms
+             write(iulog,'(f12.4,a,a)') grp%coeffs(j),' * ',trim(grp%vars(j))
+          end do
+       end if
+
+       call addfld( trim(grp%name), (/ 'lev' /),'A', 'kg/kg','summation of species mass mixing ratios')
+       grp => grp%next_item
     enddo
 
   end subroutine species_sums_init
@@ -101,38 +148,53 @@ contains
     real(r8), intent(in)    :: mmr(:,:,:)
     integer,  intent(in)    :: ncol, lchnk
 
-    integer :: i, j, spc_ndx
+    integer :: j, spc_ndx
     real(r8) :: group_sum(ncol,pver)
     character(len=16) :: spc_name
-    
+    type(shr_exp_item_t), pointer :: grp
+
     ! output species groups ( or families )
-    do i = 1, n_vmr_grps
+    grp => vmr_grps
+    do while(associated(grp))
        ! look up the corresponding species index ...
        group_sum(:,:) = 0._r8
-       do j = 1, vmr_grps(i)%nmembers
-          spc_name = vmr_grps(i)%term(j)
+       do j = 1, grp%n_terms
+          spc_name = grp%vars(j)
           spc_ndx = get_spc_ndx( spc_name )
           if ( spc_ndx < 1 ) then
              call endrun('species_sums_output species name not found : '//trim(spc_name))
           endif
-          group_sum(:ncol,:) = group_sum(:ncol,:) + vmr_grps(i)%multipler(j)*vmr(:ncol,:,spc_ndx)
+          group_sum(:ncol,:) = group_sum(:ncol,:) + grp%coeffs(j)*vmr(:ncol,:,spc_ndx)
        enddo
-       call outfld( vmr_grps(i)%name, group_sum(:ncol,:), ncol, lchnk )       
+       call outfld( trim(grp%name), group_sum(:ncol,:), ncol, lchnk )
+       grp => grp%next_item
     end do
-    do i = 1, n_mmr_grps
+
+    grp => mmr_grps
+    do while(associated(grp))
        ! look up the corresponding species index ...
        group_sum(:,:) = 0._r8
-       do j = 1, mmr_grps(i)%nmembers
-          spc_name = mmr_grps(i)%term(j)
+       do j = 1, grp%n_terms
+          spc_name = grp%vars(j)
           spc_ndx = get_spc_ndx( spc_name )
           if ( spc_ndx < 1 ) then
              call endrun('species_sums_output species name not found : '//trim(spc_name))
           endif
-          group_sum(:ncol,:) = group_sum(:ncol,:) + mmr_grps(i)%multipler(j)*mmr(:ncol,:,spc_ndx)
+          group_sum(:ncol,:) = group_sum(:ncol,:) + grp%coeffs(j)*mmr(:ncol,:,spc_ndx)
        enddo
-       call outfld( mmr_grps(i)%name, group_sum(:ncol,:), ncol, lchnk )       
+       call outfld( trim(grp%name), group_sum(:ncol,:), ncol, lchnk )
+       grp => grp%next_item
     end do
 
   end subroutine species_sums_output
+
+!--------------------------------------------------------------------------------
+!--------------------------------------------------------------------------------
+  subroutine species_sums_final
+
+    if (associated(vmr_grps)) call shr_exp_list_destroy(vmr_grps)
+    if (associated(mmr_grps)) call shr_exp_list_destroy(mmr_grps)
+
+  end subroutine species_sums_final
 
 end module species_sums_diags

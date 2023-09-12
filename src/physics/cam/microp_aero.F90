@@ -42,7 +42,7 @@ use ndrop,            only: ndrop_init, dropmixnuc
 use ndrop_bam,        only: ndrop_bam_init, ndrop_bam_run, ndrop_bam_ccn
 
 use hetfrz_classnuc_cam, only: hetfrz_classnuc_cam_readnl, hetfrz_classnuc_cam_register, hetfrz_classnuc_cam_init, &
-                               hetfrz_classnuc_cam_save_cbaero, hetfrz_classnuc_cam_calc
+                               hetfrz_classnuc_cam_calc
 
 use cam_history,      only: addfld, add_default, outfld
 use cam_logfile,      only: iulog
@@ -226,6 +226,7 @@ subroutine microp_aero_init(phys_state,pbuf2d)
          call endrun('ma_convproc_init: construction of modal_aerosol_properties object failed')
       end if
       call ndrop_init(aero_props_obj)
+      call nucleate_ice_cam_init(mincld, bulk_scale, pbuf2d, aero_props=aero_props_obj)
 
       allocate(aero_state(begchunk:endchunk))
       do c = begchunk,endchunk
@@ -328,6 +329,7 @@ subroutine microp_aero_init(phys_state,pbuf2d)
       end do
 
       call ndrop_bam_init()
+      call nucleate_ice_cam_init(mincld, bulk_scale, pbuf2d)
 
    end if
 
@@ -340,8 +342,13 @@ subroutine microp_aero_init(phys_state,pbuf2d)
       call add_default ('WSUB     ', 1, ' ')
    end if
 
-   call nucleate_ice_cam_init(mincld, bulk_scale, pbuf2d)
-   call hetfrz_classnuc_cam_init(mincld)
+   if (use_hetfrz_classnuc) then
+      if (associated(aero_props_obj)) then
+         call hetfrz_classnuc_cam_init(mincld, aero_props_obj)
+      else
+         call endrun(routine//': cannot use hetfrz_classnuc without prognostic aerosols')
+      endif
+   endif
 
 end subroutine microp_aero_init
 
@@ -553,6 +560,11 @@ subroutine microp_aero_run ( &
    call physics_ptend_init(ptend_all, state%psetcols, 'microp_aero')
 
    if (clim_modal_aero) then
+      ! create an aerosol state object specifically for cam state1
+      aero_state1_obj => modal_aerosol_state( state1, pbuf )
+      if (.not.associated(aero_state1_obj)) then
+         call endrun('microp_aero_run: construction of aero_state1_obj modal_aerosol_state object failed')
+      end if
 
       itim_old = pbuf_old_tim_idx()
 
@@ -571,11 +583,6 @@ subroutine microp_aero_run ( &
    rndst(1:ncol,1:pver,2) = rn_dst2
    rndst(1:ncol,1:pver,3) = rn_dst3
    rndst(1:ncol,1:pver,4) = rn_dst4
-
-   ! save copy of cloud borne aerosols for use in heterogeneous freezing
-   if (use_hetfrz_classnuc) then
-      call hetfrz_classnuc_cam_save_cbaero(state1, pbuf)
-   end if
 
    ! initialize time-varying parameters
    do k = top_lev, pver
@@ -670,7 +677,11 @@ subroutine microp_aero_run ( &
    !cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
    !ICE Nucleation
 
-   call nucleate_ice_cam_calc(state1, wsubi, pbuf, deltatin, ptend_loc)
+   if (associated(aero_props_obj).and.associated(aero_state1_obj)) then
+      call nucleate_ice_cam_calc(state1, wsubi, pbuf, deltatin, ptend_loc, aero_props_obj, aero_state1_obj)
+   else
+      call nucleate_ice_cam_calc(state1, wsubi, pbuf, deltatin, ptend_loc)
+   end if
 
    call physics_ptend_sum(ptend_loc, ptend_all, ncol)
    call physics_update(state1, ptend_loc, deltatin)
@@ -708,12 +719,6 @@ subroutine microp_aero_run ( &
 
       call outfld('LCLOUD', lcldn, pcols, lchnk)
 
-      ! create an aerosol state object specifically for cam state1
-      aero_state1_obj => modal_aerosol_state( state1, pbuf )
-      if (.not.associated(aero_state1_obj)) then
-         call endrun('microp_aero_run: construction of aero_state1_obj modal_aerosol_state object failed')
-      end if
-
       allocate(factnum(pcols,pver,aero_props_obj%nbins()),stat=astat)
       if (astat/=0) then
          call endrun('microp_aero_run: not able to allocate factnum')
@@ -731,10 +736,6 @@ subroutine microp_aero_run ( &
               state1, ptend_loc, deltatin, pbuf, wsub, &
               lcldn, lcldo, cldliqf, nctend_mixnuc, factnum)
       end if
-
-      ! destroy the aerosol state object
-      deallocate(aero_state1_obj)
-      nullify(aero_state1_obj)
 
       npccn(:ncol,:) = nctend_mixnuc(:ncol,:)
 
@@ -849,7 +850,7 @@ subroutine microp_aero_run ( &
    ! heterogeneous freezing
    if (use_hetfrz_classnuc) then
 
-      call hetfrz_classnuc_cam_calc(state1, deltatin, factnum, pbuf)
+      call hetfrz_classnuc_cam_calc(aero_props_obj, aero_state1_obj, state1, deltatin, factnum, pbuf)
 
    end if
 
@@ -857,7 +858,13 @@ subroutine microp_aero_run ( &
       deallocate(factnum)
    end if
 
-end subroutine microp_aero_run
+   if (associated(aero_state1_obj)) then
+      ! destroy the aerosol state object
+      deallocate(aero_state1_obj)
+      nullify(aero_state1_obj)
+   endif
+
+ end subroutine microp_aero_run
 
 !=========================================================================================
 

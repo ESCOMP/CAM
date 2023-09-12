@@ -5,7 +5,7 @@ module mo_extfrc
 
   use shr_kind_mod,  only : r8 => shr_kind_r8
   use ppgrid,        only : pver, pverp
-  use chem_mods,     only : gas_pcnst, extcnt, extfrc_lst, frc_from_dataset, adv_mass
+  use chem_mods,     only : extcnt, extfrc_lst, frc_from_dataset, adv_mass
   use spmd_utils,    only : masterproc
   use cam_abortutils,only : endrun
   use cam_history,   only : addfld, outfld, add_default, horiz_only
@@ -78,11 +78,11 @@ contains
     integer :: astat
     integer :: j, l, m, n, i,mm                          ! Indices
     character(len=16)  :: spc_name
-    character(len=256) :: frc_fnames(gas_pcnst)
-    real(r8)           :: frc_scalefactor(gas_pcnst)
-    character(len=16)  :: frc_species(gas_pcnst)
-    integer            :: frc_indexes(gas_pcnst)
-    integer            :: indx(gas_pcnst)
+    character(len=256) :: frc_fnames(size(extfrc_specifier))
+    real(r8)           :: frc_scalefactor(size(extfrc_specifier))
+    character(len=16)  :: frc_species(size(extfrc_specifier))
+    integer            :: frc_indexes(size(extfrc_specifier))
+    integer            :: indx(size(extfrc_specifier))
 
     integer ::  vid, ndims, nvars, isec, ierr, num_dims_xfrc, dimid
     logical, allocatable :: is_sector(:)
@@ -105,7 +105,7 @@ contains
     character(len=256) :: locfn
 
     !-----------------------------------------------------------------------
- 
+
     call phys_getopts( &
          history_aerosol_out = history_aerosol, &
          history_chemistry_out = history_chemistry, &
@@ -119,7 +119,7 @@ contains
     mm = 0
     indx(:) = 0
 
-    count_emis: do n=1,gas_pcnst
+    count_emis: do n=1,size(extfrc_specifier)
 
        if ( len_trim(extfrc_specifier(n) ) == 0 ) then
           exit count_emis
@@ -127,7 +127,7 @@ contains
 
        i = scan(extfrc_specifier(n),'->')
        spc_name = trim(adjustl(extfrc_specifier(n)(:i-1)))
-       
+
        ! need to parse out scalefactor ...
        tmp_string = adjustl(extfrc_specifier(n)(i+2:))
        j = scan( tmp_string, '*' )
@@ -179,7 +179,7 @@ contains
     end if
 
     !-----------------------------------------------------------------------
-    ! Sort the input files so that the emissions sources are summed in the 
+    ! Sort the input files so that the emissions sources are summed in the
     ! same order regardless of the order of the input files in the namelist
     !-----------------------------------------------------------------------
     if (n_frc_files > 0) then
@@ -189,14 +189,14 @@ contains
     !-----------------------------------------------------------------------
     ! 	... setup the forcing type array
     !-----------------------------------------------------------------------
-    do m=1,n_frc_files 
+    do m=1,n_frc_files
        forcings(m)%frc_ndx     = frc_indexes(indx(m))
        forcings(m)%species     = frc_species(indx(m))
        forcings(m)%filename    = frc_fnames(indx(m))
        forcings(m)%scalefactor = frc_scalefactor(indx(m))
     enddo
-    
-    do n= 1,extcnt 
+
+    do n= 1,extcnt
        if (frc_from_dataset(n)) then
           spc_name = extfrc_lst(n)
           call addfld( trim(spc_name)//'_XFRC', (/ 'lev' /), 'A',  'molec/cm3/s', &
@@ -205,7 +205,7 @@ contains
                'vertically intergrated external forcing for '//trim(spc_name) )
           call addfld( trim(spc_name)//'_CMXF', horiz_only,  'A',  'kg/m2/s', &
                'vertically intergrated external forcing for '//trim(spc_name) )
-          if ( history_aerosol .or. history_chemistry ) then 
+          if ( history_aerosol .or. history_chemistry ) then
              call add_default( trim(spc_name)//'_CLXF', 1, ' ' )
              call add_default( trim(spc_name)//'_CMXF', 1, ' ' )
           endif
@@ -250,6 +250,10 @@ contains
 
        forcings(m)%nsectors = 0
 
+       if (masterproc) then
+          write(iulog,'(a,i3,a)') 'extfrc_inti m: ',m,' init file : '//trim(forcings(m)%filename)
+       endif
+
        call getfil (forcings(m)%filename, locfn, 0)
        call cam_pio_openfile ( ncid, trim(locfn), PIO_NOWRITE)
        ierr = pio_inquire (ncid, nVariables=nvars)
@@ -261,7 +265,7 @@ contains
 
        allocate(is_sector(nvars))
        is_sector(:) = .false.
-       
+
        do vid = 1,nvars
 
           ierr = pio_inq_varndims (ncid, vid, ndims)
@@ -282,7 +286,7 @@ contains
 
           forcings(m)%nsectors = forcings(m)%nsectors+1
           is_sector(vid)=.true.
-          
+
        enddo
 
        allocate( forcings(m)%sectors(forcings(m)%nsectors), stat=astat )
@@ -301,7 +305,7 @@ contains
        deallocate(is_sector)
 
        ! Global attribute 'input_method' overrides the ext_frc_type namelist setting on
-       ! a file-by-file basis.  If the ext_frc file does not contain the 'input_method' 
+       ! a file-by-file basis.  If the ext_frc file does not contain the 'input_method'
        ! attribute then the ext_frc_type namelist setting is used.
        call pio_seterrorhandling(ncid, PIO_BCAST_ERROR)
        ierr = pio_get_att(ncid, PIO_GLOBAL, 'input_method', file_interp_type)
@@ -341,7 +345,7 @@ contains
 
     implicit none
 
-    type(physics_state), intent(in):: state(begchunk:endchunk)                 
+    type(physics_state), intent(in):: state(begchunk:endchunk)
     type(physics_buffer_desc), pointer :: pbuf2d(:,:)
 
     !-----------------------------------------------------------------------
