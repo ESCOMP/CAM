@@ -26,6 +26,9 @@ real(r8), target :: wavenumber_high_longwave(nlwbands)
 
 logical :: wavenumber_boundaries_set = .false.
 
+integer, public, protected :: nswgpts  ! # SW gpts
+integer, public, protected :: nlwgpts  ! # LW gpts
+
 ! These are indices to specific bands for diagnostic output and COSP input.
 integer, public, protected :: idx_sw_diag = -1     ! band contains 500-nm wave
 integer, public, protected :: idx_nir_diag = -1    ! band contains 1000-nm wave
@@ -87,6 +90,9 @@ subroutine set_wavenumber_bands(kdist_sw, kdist_lw)
          ", doesn't match parameter nlwbands= ", nlwbands
       call endrun(sub//': ERROR: '//trim(errmsg))
    end if
+
+   nswgpts = kdist_sw%get_ngpt()
+   nlwgpts = kdist_lw%get_ngpt()
 
    ! SW band bounds in cm^-1
    allocate( values(2,nswbands) )

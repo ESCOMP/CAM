@@ -27,9 +27,10 @@ use rad_constituents,    only: N_DIAG, rad_cnst_get_call_list,               &
 
 use rrtmgp_inputs,       only: rrtmgp_inputs_init
 
-use radconstants,        only: nswbands, nlwbands, idx_sw_diag, idx_nir_diag, idx_uv_diag, & 
-                               idx_lw_diag, idx_sw_cloudsim, idx_lw_cloudsim,              &
-                               nradgas, gasnamelength, gaslist, set_wavenumber_bands
+use radconstants,        only: nswbands, nlwbands, nswgpts, nlwgpts, idx_sw_diag,       &
+                               idx_nir_diag, idx_uv_diag, idx_lw_diag, idx_sw_cloudsim, &
+                               idx_lw_cloudsim, nradgas, gasnamelength, gaslist,        &
+                               set_wavenumber_bands
 
 use cloud_rad_props,     only: cloud_rad_props_init
 
@@ -875,7 +876,11 @@ subroutine radiation_tend( &
    use mo_fluxes_byband,   only: ty_fluxes_byband
 
    ! RRTMGP drivers for flux calculations.
-   use rrtmgp_driver,      only: rte_lw, rte_sw
+!++dbg
+!   use rrtmgp_driver,      only: rte_lw, rte_sw
+   use rrtmgp_driver,      only: rte_lw
+   use mo_rte_sw,          only: rte_sw
+!--dbg
 
    use radheat,            only: radheat_tend
 
@@ -1000,12 +1005,16 @@ subroutine radiation_tend( &
    real(r8) :: c_cld_tau_w_f(nswbands,pcols,pver) ! combined cloud forward scattered fraction * w * tau
    real(r8) :: c_cld_lw_abs (nlwbands,pcols,pver) ! combined cloud absorption optics depth (LW)
 
-   ! Aerosol radiative properties **N.B.** These are zero-indexed to be on RADIATION GRID (assumes "extra layer" is being added?)
+   ! Aerosol radiative properties **N.B.** These are zero-indexed to accomodate an "extra layer".
+   ! If no extra layer then the 0 index is ignored.
    real(r8) :: aer_tau    (pcols,0:pver,nswbands) ! aerosol extinction optical depth
    real(r8) :: aer_tau_w  (pcols,0:pver,nswbands) ! aerosol single scattering albedo * tau
    real(r8) :: aer_tau_w_g(pcols,0:pver,nswbands) ! aerosol assymetry parameter * w * tau
    real(r8) :: aer_tau_w_f(pcols,0:pver,nswbands) ! aerosol forward scattered fraction * w * tau
    real(r8) :: aer_lw_abs (pcols,pver,nlwbands)   ! aerosol absorption optics depth (LW)
+
+   ! Set vertical indexing in RRTMGP to be the same as CAM (top to bottom).
+   logical, parameter :: top_at_1 = .true.
 
    ! RRTMGP cloud objects (McICA sampling of cloud optical properties)
    type(ty_optical_props_1scl) :: cloud_lw
@@ -1017,7 +1026,11 @@ subroutine radiation_tend( &
    type(ty_gas_concs) :: gas_concs_lw
    type(ty_gas_concs) :: gas_concs_sw
 
-   ! RRTMGP aerosol objects
+   ! Atmosphere optics.  This object contains gas optics, aerosol optics, and cloud optics.
+!   type(ty_optical_props_1scl) :: gas_optics_lw
+   type(ty_optical_props_2str) :: atm_optics_sw
+
+   ! aerosol optics
    type(ty_optical_props_1scl) :: aer_lw
    type(ty_optical_props_2str) :: aer_sw
 
@@ -1031,6 +1044,8 @@ subroutine radiation_tend( &
    real(r8) :: fnl(pcols,pverp)     ! net longwave flux
    real(r8) :: fcnl(pcols,pverp)    ! net clear-sky longwave flux
 
+   ! TOA solar flux computed by RRTMGP (on gpts).
+   real(r8), allocatable :: toa_flux(:,:)
    
    ! for COSP
    real(r8) :: emis(pcols,pver)        ! Cloud longwave emissivity
@@ -1172,7 +1187,7 @@ subroutine radiation_tend( &
    if (dosw .or. dolw) then
 
       allocate( &
-         t_sfc(ncol), emis_sfc(nlwbands,ncol),                            &
+         t_sfc(ncol), emis_sfc(nlwbands,ncol), toa_flux(nday,nswgpts),     &
          t_rad(ncol,nlay), pmid_rad(ncol,nlay), pint_rad(ncol,nlay+1),    &
          t_day(nday,nlay), pmid_day(nday,nlay), pint_day(nday,nlay+1),    &
          coszrs_day(nday), alb_dir(nswbands,nday), alb_dif(nswbands,nday) )
@@ -1185,7 +1200,7 @@ subroutine radiation_tend( &
          pint_day, coszrs_day, alb_dir, alb_dif)
 
       ! Set TSI for RRTMGP to the value from CAM's solar forcing file.
-      errmsg = kdist_sw%set_tsi(sol_tsi)
+      errmsg = kdist_sw%set_tsi(sol_tsi*eccf)
       if (len_trim(errmsg) > 0) then
          call endrun(sub//': ERROR: kdist_sw%set_tsi: '//trim(errmsg))
       end if
@@ -1312,9 +1327,8 @@ subroutine radiation_tend( &
             cldfprime, c_cld_tau, c_cld_tau_w, c_cld_tau_w_g, c_cld_tau_w_f, &
             kdist_sw, cloud_sw)
 
-         !
-         ! SHORTWAVE DIAGNOSTICS & OUTPUT
-         ! 
+         ! SW cloud diagnostics & output
+
          ! cloud optical depth fields for the visible band
          rd%tot_icld_vistau(:ncol,:) = c_cld_tau(idx_sw_diag,:ncol,:)
          rd%liq_icld_vistau(:ncol,:) = liq_tau(idx_sw_diag,:ncol,:)
@@ -1353,7 +1367,13 @@ subroutine radiation_tend( &
             call endrun(sub//': ERROR: gas_concs_sw%init: '//trim(errmsg))
          end if
 
-         ! Allocate object for aerosol optics.
+         ! Init and allocate arrays in atm optics object.
+         errmsg = atm_optics_sw%alloc_2str(nday, nlay, kdist_sw)
+         if (len_trim(errmsg) > 0) then
+            call endrun(sub//': ERROR: gas_optics_sw%alloc_2str: '//trim(errmsg))
+         end if
+
+         ! Init and allocate arrays in aerosol optics object.
          errmsg = aer_sw%alloc_2str(nday, nlay, kdist_sw%get_band_lims_wavenumber()) 
          if (len_trim(errmsg) > 0) then
             call endrun(sub//': ERROR: aer_sw%alloc_2str: '//trim(errmsg))
@@ -1368,8 +1388,15 @@ subroutine radiation_tend( &
                   icall, state, pbuf, nlay, nday, &
                   idxday, gas_concs_sw)
 
-               ! Get aerosol shortwave optical properties.  The output optics arrays
-               ! contain an extra top layer set to zero.
+               ! Init atm_optics_sw with gas optics.  Also returns TOA solar flux.
+               errmsg = kdist_sw%gas_optics( &
+                  pmid_day, pint_day, t_day, gas_concs_sw, atm_optics_sw, &
+                  toa_flux)
+               if (len_trim(errmsg) > 0) then
+                  call endrun(sub//': ERROR: kdist_sw%gas_optics: '//trim(errmsg))
+               end if
+
+               ! Get aerosol shortwave optical properties on CAM grid.
                call aer_rad_props_sw( &
                   icall, state, pbuf, nnite, idxnite, &
                   aer_tau, aer_tau_w, aer_tau_w_g, aer_tau_w_f)
@@ -1390,17 +1417,37 @@ subroutine radiation_tend( &
                !=============================!
                ! SHORTWAVE flux calculations !
                !=============================!
-         
-               errmsg = rte_sw( &
-                  kdist_sw, gas_concs_sw, pmid_day, t_day, pint_day, &
-                  coszrs_day, alb_dir, alb_dif, cloud_sw, fsw,       &
-                  fswc, aer_props=aer_sw, tsi_scaling=eccf)
+
+               ! Aerosols are included in the clear sky calculation.
+               errmsg = aer_sw%increment(atm_optics_sw)
                if (len_trim(errmsg) > 0) then
-                  call endrun(sub//': ERROR in rte_sw: '//trim(errmsg))
+                  call endrun(sub//': ERROR in aer_sw%increment: '//trim(errmsg))
                end if
-               !
-               ! -- shortwave output -- 
-               !
+
+               errmsg = rte_sw(&
+                  atm_optics_sw, top_at_1, coszrs_day, toa_flux, &
+                  alb_dir, alb_dif, fswc)
+        
+!               errmsg = rte_sw( &
+!                  kdist_sw, gas_concs_sw, pmid_day, t_day, pint_day, &
+!                  coszrs_day, alb_dir, alb_dif, cloud_sw, fsw,       &
+!                  fswc, aer_props=aer_sw, tsi_scaling=eccf)
+               if (len_trim(errmsg) > 0) then
+                  call endrun(sub//': ERROR in clear-sky rte_sw: '//trim(errmsg))
+               end if
+
+               ! Add cloud optics for all-sky calculation
+               errmsg = cloud_sw%increment(atm_optics_sw)
+               if (len_trim(errmsg) > 0) then
+                  call endrun(sub//': ERROR in cloud_sw%increment: '//trim(errmsg))
+               end if
+
+               errmsg = rte_sw(&
+                  atm_optics_sw, top_at_1, coszrs_day, toa_flux, &
+                  alb_dir, alb_dif, fsw)
+               if (len_trim(errmsg) > 0) then
+                  call endrun(sub//': ERROR in all-sky rte_sw: '//trim(errmsg))
+               end if
 
                ! Transform RRTMGP outputs to CAM outputs
                ! - including fsw (W/m2) -> qrs (J/(kgK))
