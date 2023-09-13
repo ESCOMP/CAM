@@ -17,18 +17,18 @@ module clubb_intr
   !                                                                                                      ! 
   !----------------------------------------------------------------------------------------------------- !
 
-  use shr_kind_mod,        only: r8=>shr_kind_r8                                                                  
+  use shr_kind_mod,        only: r8=>shr_kind_r8
   use ppgrid,              only: pver, pverp, pcols, begchunk, endchunk
   use phys_control,        only: phys_getopts
-  use physconst,           only: cpair, gravit, rga, latvap, latice, zvir, rh2o, karman
+  use physconst,           only: cpair, gravit, rga, latvap, latice, zvir, rh2o
   use air_composition,     only: rairv, cpairv
   use cam_history_support, only: max_fieldname_len
 
-  use spmd_utils,          only: masterproc 
-  use constituents,        only: pcnst, cnst_add
-  use pbl_utils,           only: calc_ustar, calc_obklen
-  use ref_pres,            only: top_lev => trop_cloud_top_lev  
-  use zm_conv_intr,        only: zmconv_microp
+  use spmd_utils,       only: masterproc 
+  use constituents,     only: pcnst, cnst_add
+  use pbl_utils,        only: calc_ustar, calc_obklen
+  use ref_pres,         only: top_lev => trop_cloud_top_lev
+  use zm_conv_intr,     only: zmconv_microp
 #ifdef CLUBB_SGS
   use clubb_api_module,    only: pdf_parameter, implicit_coefs_terms
   use clubb_api_module,    only: clubb_config_flags_type, grid, stats, nu_vertical_res_dep
@@ -77,7 +77,6 @@ module clubb_intr
 
   logical, public :: do_cldcool
   logical         :: clubb_do_icesuper
-
 #ifdef CLUBB_SGS
   type(clubb_config_flags_type), public :: clubb_config_flags
   real(r8), dimension(nparams), public :: clubb_params    ! Adjustable CLUBB parameters (C1, C2 ...)
@@ -306,7 +305,7 @@ module clubb_intr
     clubb_l_mono_flux_lim_vm,           & ! Flag to turn on monotonic flux limiter for vm
     clubb_l_mono_flux_lim_spikefix,     & ! Flag to implement monotonic flux limiter code that
                                           ! eliminates spurious drying tendencies at model top  
-    clubb_l_intr_sfc_flux_smooth = .false.  ! Add a locally calculated roughness to upwp and vpwp sfc fluxes
+    clubb_l_intr_sfc_flux_smooth = .false.! Add a locally calculated roughness to upwp and vpwp sfc fluxes
 
 !  Constant parameters
   logical, parameter, private :: &
@@ -323,6 +322,7 @@ module clubb_intr
   logical            :: clubb_do_liqsupersat = .false.
   logical            :: clubb_do_energyfix   = .true.
   logical            :: history_budget
+  logical            :: do_hb_above_clubb    = .false.
   integer            :: history_budget_histfile_num
   integer            :: edsclr_dim       ! Number of scalars to transport in CLUBB
   integer            :: offset
@@ -390,7 +390,8 @@ module clubb_intr
     qsatfac_idx, &      ! subgrid cloud water saturation scaling factor 
     ice_supersat_idx, & ! ice cloud fraction for SILHS
     rcm_idx, &          ! Cloud water mixing ratio for SILHS
-    ztodt_idx           ! physics timestep for SILHS
+    ztodt_idx,&         ! physics timestep for SILHS
+    clubbtop_idx        ! level index for CLUBB top
 
   ! Indices for microphysical covariance tendencies
   integer :: &
@@ -467,13 +468,15 @@ module clubb_intr
     !------------------------------------------------ !
 
     !  Add CLUBB fields to pbuf 
-    use physics_buffer,  only: pbuf_add_field, dtype_r8, dyn_time_lvls
+    use physics_buffer,  only: pbuf_add_field, dtype_r8, dtype_i4, dyn_time_lvls
     use subcol_utils,    only: subcol_get_scheme
-    
+
+    !----- Begin Code -----
     call phys_getopts( eddy_scheme_out                 = eddy_scheme, &
                        deep_scheme_out                 = deep_scheme, & 
                        history_budget_out              = history_budget, &
-                       history_budget_histfile_num_out = history_budget_histfile_num )
+                       history_budget_histfile_num_out = history_budget_histfile_num, &
+                       do_hb_above_clubb_out           = do_hb_above_clubb)
     subcol_scheme = subcol_get_scheme()
 
     if (trim(subcol_scheme) == 'SILHS') then
@@ -498,6 +501,9 @@ module clubb_intr
        call cnst_add(trim(cnst_names(8)),0._r8,0._r8,0._r8,ixup2,longname='CLUBB 2nd moment u wind',cam_outfld=.false.)
        call cnst_add(trim(cnst_names(9)),0._r8,0._r8,0._r8,ixvp2,longname='CLUBB 2nd moment v wind',cam_outfld=.false.)
     end if
+    if (do_hb_above_clubb) then
+      call pbuf_add_field('clubbtop', 'physpkg', dtype_i4, (/pcols/), clubbtop_idx)
+    endif
 
     !  put pbuf_add calls here (see macrop_driver.F90 for sample) use indicies defined at top
     call pbuf_add_field('pblh',       'global', dtype_r8, (/pcols/),                    pblh_idx)
@@ -806,7 +812,7 @@ end subroutine clubb_init_cnst
          clubb_tridiag_solve_method, &
          clubb_up2_sfc_coef, &
          clubb_wpxp_L_thresh
-                               
+
     !----- Begin Code -----
 
     !  Determine if we want clubb_history to be output  
@@ -1273,8 +1279,6 @@ end subroutine clubb_init_cnst
 
     !  From CAM libraries
     use cam_history,            only: addfld, add_default, horiz_only
-    use ref_pres,               only: pref_mid
-    use hb_diff,                only: init_hb_diff
     use rad_constituents,       only: rad_cnst_get_info, rad_cnst_get_mode_num_idx, rad_cnst_get_mam_mmr_idx
     use cam_abortutils,         only: endrun
 
@@ -1338,8 +1342,6 @@ end subroutine clubb_init_cnst
 
     integer :: err_code                   ! Code for when CLUBB fails
     integer :: i, j, k, l                    ! Indices
-    integer :: ntop_eddy                        ! Top    interface level to which eddy vertical diffusion is applied ( = 1 )
-    integer :: nbot_eddy                        ! Bottom interface level to which eddy vertical diffusion is applied ( = pver )
     integer :: nmodes, nspec, m
     integer :: ixq, ixcldice, ixcldliq, ixnumliq, ixnumice
     integer :: lptr
@@ -1395,7 +1397,8 @@ end subroutine clubb_init_cnst
 
     call phys_getopts(prog_modal_aero_out=prog_modal_aero, &
                       history_amwg_out=history_amwg, &
-                      history_clubb_out=history_clubb)
+                      history_clubb_out=history_clubb, &
+                      do_hb_above_clubb_out=do_hb_above_clubb)
 
     !  Select variables to apply tendencies back to CAM
  
@@ -1644,17 +1647,6 @@ end subroutine clubb_init_cnst
        write(iulog,'(a,i0,a)') " CLUBB configurable flags "
        call print_clubb_config_flags_api( iulog, clubb_config_flags ) ! Intent(in)
     end if
-
-    ! ----------------------------------------------------------------- !
-    ! Set-up HB diffusion.  Only initialized to diagnose PBL depth      !
-    ! ----------------------------------------------------------------- !
-
-    ! Initialize eddy diffusivity module
-    
-    ntop_eddy = 1    ! if >1, must be <= nbot_molec
-    nbot_eddy = pver ! currently always pver
-    
-    call init_hb_diff( gravit, cpair, ntop_eddy, nbot_eddy, pref_mid, karman, eddy_scheme )
     
     ! ----------------------------------------------------------------- !
     ! Add output fields for the history files
@@ -1958,6 +1950,7 @@ end subroutine clubb_init_cnst
                               physics_ptend_sum, physics_update, set_wet_to_dry
 
     use physics_buffer, only: pbuf_old_tim_idx, pbuf_get_field, physics_buffer_desc
+    use physics_buffer, only: pbuf_set_field
 
     use constituents,   only: cnst_get_ind, cnst_type
     use camsrfexch,     only: cam_in_t
@@ -1966,7 +1959,6 @@ end subroutine clubb_init_cnst
     use cam_logfile,    only: iulog
     use tropopause,     only: tropopause_findChemTrop
     use time_manager,   only: get_nstep, is_first_restart_step
-      
 #ifdef CLUBB_SGS
     use hb_diff,                   only: pblintd
     use scamMOD,                   only: single_column,scm_clubb_iop_name
@@ -3642,7 +3634,14 @@ end subroutine clubb_init_cnst
         clubbtop(i) = clubbtop(i) + 1
       end do    
     end do
-      
+    !
+    ! set pbuf field so that HB scheme is only applied above CLUBB top
+    !
+    if (do_hb_above_clubb) then
+      call pbuf_set_field(pbuf, clubbtop_idx, clubbtop)
+    endif
+
+
     ! Compute integrals for static energy, kinetic energy, water vapor, and liquid water
     ! after CLUBB is called.  This is for energy conservation purposes.
     se_a(:) = 0._r8
