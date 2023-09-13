@@ -1051,6 +1051,10 @@ subroutine micro_pumas_cam_init(pbuf2d)
 !   call addfld ('nctend_TAU',     (/ 'trop_cld_lev' /), 'A', '#/kg/s',  'cloud liquid number tendency due to autoconversion & accretion from TAU or Emulator code')
 !   call addfld ('qrtend_TAU',     (/ 'trop_cld_lev' /), 'A', 'kg/kg/s',  'rain mass tendency due to autoconversion & accretion from TAU or Emulator code')
 !   call addfld ('nrtend_TAU',     (/ 'trop_cld_lev' /), 'A', '#/kg/s',  'rain number tendency due to autoconversion & accretion from TAU or Emulator code')
+   call addfld ('LAMC',    (/ 'trop_cld_lev' /), 'A', 'unitless',  'Size distribution parameter lambda for liquid'     )
+   call addfld ('LAMR',    (/ 'trop_cld_lev' /), 'A', 'unitless',  'Size distribution parameter lambda for rain'   )
+   call addfld ('PGAM',    (/ 'trop_cld_lev' /), 'A', 'unitless',  'Size distribution parameter mu (pgam) for liquid' )
+   call addfld ('N0R',     (/ 'trop_cld_lev' /), 'A', 'unitless',  'Size distribution parameter n0 for rain' )
 
    if (micro_mg_version > 2) then
          call addfld ('NMELTG',     (/ 'trop_cld_lev' /), 'A', '#/kg/s',  'Number Tendency due to Melting of graupel')
@@ -2371,7 +2375,6 @@ subroutine micro_pumas_cam_tend(state, ptend, dtime, pbuf)
          proc_rates%amk(:ncol,:,:) = proc_rates%amk(:ncol,:,:)/num_steps
          proc_rates%ank(:ncol,:,:) = proc_rates%ank(:ncol,:,:)/num_steps
          proc_rates%amk_out(:ncol,:,:) = proc_rates%amk_out(:ncol,:,:)/num_steps
-         proc_rates%ank_out(:ncol,:,:) = proc_rates%ank_out(:ncol,:,:)/num_steps
       end if
 
    end do
@@ -3282,6 +3285,10 @@ subroutine micro_pumas_cam_tend(state, ptend, dtime, pbuf)
    call outfld('nctend_KK2000',  proc_rates%nctend_KK2000,  ncol, lchnk, avg_subcol_field=use_subcol_microp)
    call outfld('qrtend_KK2000',  proc_rates%qrtend_KK2000,  ncol, lchnk, avg_subcol_field=use_subcol_microp)
    call outfld('nrtend_KK2000',  proc_rates%nrtend_KK2000,  ncol, lchnk, avg_subcol_field=use_subcol_microp)
+   call outfld('LAMC',  proc_rates%lamc_out,  ncol, lchnk, avg_subcol_field=use_subcol_microp)
+   call outfld('LAMR',  proc_rates%lamr_out,  ncol, lchnk, avg_subcol_field=use_subcol_microp)
+   call outfld('PGAM',  proc_rates%pgam_out,  ncol, lchnk, avg_subcol_field=use_subcol_microp)
+   call outfld('N0R',  proc_rates%n0r_out,  ncol, lchnk, avg_subcol_field=use_subcol_microp)
 
    call outfld('MPICLWPI',    iclwpi,      psetcols, lchnk, avg_subcol_field=use_subcol_microp)
    call outfld('MPICIWPI',    iciwpi,      psetcols, lchnk, avg_subcol_field=use_subcol_microp)
