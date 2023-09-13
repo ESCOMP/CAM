@@ -4125,6 +4125,7 @@ subroutine buoyan_dilute(lchnk   ,ncol    , &
   real(r8)           :: q_zdp(pcols,pver)    ! Integrals of q*dp_lev at each level  
   real(r8)           :: dp_zfrac             ! Fraction of vertical grid box below mixing top (usually pblt)
   real(r8)           :: parcel_ztop(pcols)   ! Height of parcel mixing (usually pblt)
+  real(r8)           :: parcel_dz(pcols)     ! Depth of parcel mixing (usually pblt)   
   real(r8)           :: parcel_dp(pcols)     ! Pressure integral over parcel mixing depth (usually pblt)
   real(r8)           :: parcel_hdp(pcols)    ! Pressure*MSE integral over parcel mixing depth (usually pblt)
   real(r8)           :: parcel_qdp(pcols)    ! Pressure*q integral over parcel mixing depth (usually pblt)  
