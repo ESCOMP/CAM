@@ -1646,7 +1646,7 @@ contains
 
     call t_stopf('carma_timestep_tend')
 
-    if( microp_scheme == 'MG' ) then
+    if( microp_scheme == 'MG' .or. microp_scheme == 'PUMAS' ) then
        ! Start co-substepping of macrophysics and microphysics
        cld_macmic_ztodt = ztodt/cld_macmic_num_steps
 
