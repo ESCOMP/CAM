@@ -586,7 +586,6 @@ subroutine radiation_init(pbuf2d)
                   sampling_seq='rad_lwsw', flag_xyfill=.true.)
    endif
 
-
    ! get list of active radiation calls
    call rad_cnst_get_call_list(active_calls)
 
@@ -876,11 +875,8 @@ subroutine radiation_tend( &
    use mo_fluxes_byband,   only: ty_fluxes_byband
 
    ! RRTMGP drivers for flux calculations.
-!++dbg
-!   use rrtmgp_driver,      only: rte_lw, rte_sw
    use rrtmgp_driver,      only: rte_lw
    use mo_rte_sw,          only: rte_sw
-!--dbg
 
    use radheat,            only: radheat_tend
 
@@ -1044,8 +1040,10 @@ subroutine radiation_tend( &
    real(r8) :: fnl(pcols,pverp)     ! net longwave flux
    real(r8) :: fcnl(pcols,pverp)    ! net clear-sky longwave flux
 
-   ! TOA solar flux computed by RRTMGP (on gpts).
+   ! TOA solar flux on gpts
    real(r8), allocatable :: toa_flux(:,:)
+   ! TSI from RRTMGP data
+   real(r8) :: tsi_ref
    
    ! for COSP
    real(r8) :: emis(pcols,pver)        ! Cloud longwave emissivity
@@ -1092,11 +1090,13 @@ subroutine radiation_tend( &
 
    if (use_rad_uniform_angle) then
       do i = 1, ncol
-         coszrs(i) = shr_orb_cosz(calday, clat(i), clon(i), delta, dt_avg, uniform_angle=rad_uniform_angle)
+         coszrs(i) = shr_orb_cosz(calday, clat(i), clon(i), delta, dt_avg, &
+                                  uniform_angle=rad_uniform_angle)
       end do
    else
       do i = 1, ncol
-         coszrs(i) = shr_orb_cosz(calday, clat(i), clon(i), delta, dt_avg) ! if dt_avg /= 0, it triggers using avg coszrs
+         ! if dt_avg /= 0, it triggers using avg coszrs
+         coszrs(i) = shr_orb_cosz(calday, clat(i), clon(i), delta, dt_avg)
       end do
    end if
 
@@ -1171,8 +1171,8 @@ subroutine radiation_tend( &
    ! To avoid non-daylit columns
    ! from having shortwave heating, we should reset here:
    if (nday == 0) then
-      qrs(1:ncol,1:pver) = 0
-      rd%qrsc(1:ncol,1:pver) = 0  ! this is what gets turned into QRSC in output (probably not needed here.)
+      qrs(1:ncol,1:pver) = 0._r8
+      rd%qrsc(1:ncol,1:pver) = 0._r8  ! this is what gets turned into QRSC in output (probably not needed here.)
       dosw = .false.
    end if
 
@@ -1198,12 +1198,6 @@ subroutine radiation_tend( &
          idxday, coszrs, kdist_sw, t_sfc, emis_sfc,   &
          t_rad, pmid_rad, pint_rad, t_day, pmid_day,  &
          pint_day, coszrs_day, alb_dir, alb_dif)
-
-      ! Set TSI for RRTMGP to the value from CAM's solar forcing file.
-      errmsg = kdist_sw%set_tsi(sol_tsi*eccf)
-      if (len_trim(errmsg) > 0) then
-         call endrun(sub//': ERROR: kdist_sw%set_tsi: '//trim(errmsg))
-      end if
 
       ! Modified cloud fraction accounts for radiatively active snow and/or graupel
       call modified_cloud_fraction(ncol, cld, cldfsnow, cldfgrau, cldfprime)
@@ -1396,6 +1390,10 @@ subroutine radiation_tend( &
                   call endrun(sub//': ERROR: kdist_sw%gas_optics: '//trim(errmsg))
                end if
 
+               ! Scale the solar source
+               tsi_ref = sum(toa_flux(1,:))
+               toa_flux = toa_flux * sol_tsi * eccf / tsi_ref
+
                ! Get aerosol shortwave optical properties on CAM grid.
                call aer_rad_props_sw( &
                   icall, state, pbuf, nnite, idxnite, &
@@ -1427,11 +1425,6 @@ subroutine radiation_tend( &
                errmsg = rte_sw(&
                   atm_optics_sw, top_at_1, coszrs_day, toa_flux, &
                   alb_dir, alb_dif, fswc)
-        
-!               errmsg = rte_sw( &
-!                  kdist_sw, gas_concs_sw, pmid_day, t_day, pint_day, &
-!                  coszrs_day, alb_dir, alb_dif, cloud_sw, fsw,       &
-!                  fswc, aer_props=aer_sw, tsi_scaling=eccf)
                if (len_trim(errmsg) > 0) then
                   call endrun(sub//': ERROR in clear-sky rte_sw: '//trim(errmsg))
                end if
@@ -1617,8 +1610,6 @@ subroutine radiation_tend( &
          end if
       end if  ! if (dolw)
 
-      ! replaces old "rrtmg_state_destroy" -- deallocates outputs from rrtmgp_set_state()
-      ! note rd%solin is not being deallocated here, but rd is deallocated after the output stage.
       deallocate( &
          t_sfc, emis_sfc, t_rad, pmid_rad, pint_rad,     &
          t_day, pmid_day, pint_day, coszrs_day, alb_dir, &
@@ -1627,7 +1618,7 @@ subroutine radiation_tend( &
 
       !!! *** BEGIN COSP ***
       if (docosp) then
-         ! initialize and calculate emis
+
          emis(:,:) = 0._r8
          emis(:ncol,:) = 1._r8 - exp(-cld_lw_abs(idx_lw_cloudsim,:ncol,:))
          call outfld('EMIS', emis, pcols, lchnk)
@@ -2626,42 +2617,25 @@ subroutine coefs_init(coefs_file, available_gases, kdist)
          totplnk, planck_frac, rayl_lower, rayl_upper,         &
          optimal_angle_fit)
    else if (allocated(solar_src_quiet)) then
-      error_msg = kdist%load(available_gases, &
-      gas_names,                              &
-      key_species,                            &
-      band2gpt,                               &
-      band_lims_wavenum,                      &
-      press_ref,                              &
-      press_ref_trop,                         &
-      temp_ref,                               &
-      temp_ref_p,                             &
-      temp_ref_t,                             &
-      vmr_ref,                                & 
-      kmajor,                                 &
-      kminor_lower,                           &
-      kminor_upper,                           &
-      gas_minor,                              &
-      identifier_minor,                       &
-      minor_gases_lower,                      &
-      minor_gases_upper,                      &
-      minor_limits_gpt_lower,                 &
-      minor_limits_gpt_upper,                 &
-      minor_scales_with_density_lower,        &
-      minor_scales_with_density_upper,        &
-      scaling_gas_lower,                      &
-      scaling_gas_upper,                      &
-      scale_by_complement_lower,              &
-      scale_by_complement_upper,              &
-      kminor_start_lower,                     &
-      kminor_start_upper,                     &
-      solar_src_quiet,                        &
-      solar_src_facular,                      &
-      solar_src_sunspot,                      &
-      tsi_default,                            &
-      mg_default,                             &
-      sb_default,                             &
-      rayl_lower,                             &
-      rayl_upper)
+      error_msg = kdist%load( &
+         available_gases, gas_names, key_species,               &
+         band2gpt, band_lims_wavenum,                           &
+         press_ref, press_ref_trop, temp_ref,                   &
+         temp_ref_p, temp_ref_t, vmr_ref,                       & 
+         kmajor, kminor_lower, kminor_upper,                    &
+         gas_minor, identifier_minor,                           &
+         minor_gases_lower, minor_gases_upper,                  &
+         minor_limits_gpt_lower, minor_limits_gpt_upper,        &
+         minor_scales_with_density_lower,                       &
+         minor_scales_with_density_upper,                       &
+         scaling_gas_lower, scaling_gas_upper,                  &
+         scale_by_complement_lower,                             &
+         scale_by_complement_upper,                             &
+         kminor_start_lower,                                    &
+         kminor_start_upper,                                    &
+         solar_src_quiet, solar_src_facular, solar_src_sunspot, &
+         tsi_default, mg_default, sb_default,                   &
+         rayl_lower, rayl_upper)
    else
       error_msg = 'must supply either totplnk and planck_frac, or solar_src_[*]'
    end if
