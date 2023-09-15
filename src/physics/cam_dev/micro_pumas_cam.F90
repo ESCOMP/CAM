@@ -3272,6 +3272,10 @@ subroutine micro_pumas_cam_tend(state, ptend, dtime, pbuf)
       call outfld('nc_fixer',     proc_rates%nc_fixer,     ncol, lchnk, avg_subcol_field=use_subcol_microp)
       call outfld('qr_fixer',     proc_rates%qr_fixer,     ncol, lchnk, avg_subcol_field=use_subcol_microp)
       call outfld('nr_fixer',     proc_rates%nr_fixer,     ncol, lchnk, avg_subcol_field=use_subcol_microp)
+      call outfld('LAMC',  proc_rates%lamc_out,  ncol, lchnk, avg_subcol_field=use_subcol_microp)
+      call outfld('LAMR',  proc_rates%lamr_out,  ncol, lchnk, avg_subcol_field=use_subcol_microp)
+      call outfld('PGAM',  proc_rates%pgam_out,  ncol, lchnk, avg_subcol_field=use_subcol_microp)
+      call outfld('N0R',  proc_rates%n0r_out,  ncol, lchnk, avg_subcol_field=use_subcol_microp)
    end if
 
    if (trim(micro_mg_warm_rain) == 'sb2001') then
@@ -3285,10 +3289,6 @@ subroutine micro_pumas_cam_tend(state, ptend, dtime, pbuf)
    call outfld('nctend_KK2000',  proc_rates%nctend_KK2000,  ncol, lchnk, avg_subcol_field=use_subcol_microp)
    call outfld('qrtend_KK2000',  proc_rates%qrtend_KK2000,  ncol, lchnk, avg_subcol_field=use_subcol_microp)
    call outfld('nrtend_KK2000',  proc_rates%nrtend_KK2000,  ncol, lchnk, avg_subcol_field=use_subcol_microp)
-   call outfld('LAMC',  proc_rates%lamc_out,  ncol, lchnk, avg_subcol_field=use_subcol_microp)
-   call outfld('LAMR',  proc_rates%lamr_out,  ncol, lchnk, avg_subcol_field=use_subcol_microp)
-   call outfld('PGAM',  proc_rates%pgam_out,  ncol, lchnk, avg_subcol_field=use_subcol_microp)
-   call outfld('N0R',  proc_rates%n0r_out,  ncol, lchnk, avg_subcol_field=use_subcol_microp)
 
    call outfld('MPICLWPI',    iclwpi,      psetcols, lchnk, avg_subcol_field=use_subcol_microp)
    call outfld('MPICIWPI',    iciwpi,      psetcols, lchnk, avg_subcol_field=use_subcol_microp)
