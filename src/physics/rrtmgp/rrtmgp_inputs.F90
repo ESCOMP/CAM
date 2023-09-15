@@ -1,7 +1,7 @@
 module rrtmgp_inputs
 
 !--------------------------------------------------------------------------------
-! Transform data for state inputs from CAM's data structures to those used by
+! Transform data for inputs from CAM's data structures to those used by
 ! RRTMGP.  Subset the number of model levels if CAM's top exceeds RRTMGP's
 ! valid domain.  Add an extra layer if CAM's top is below 1 Pa.
 ! The vertical indexing increases from top to bottom of atmosphere in both
@@ -80,6 +80,7 @@ subroutine rrtmgp_inputs_init(ktcam, ktrad)
    ktopcam = ktcam
    ktoprad = ktrad
 
+   ! Initialize the module data containing the SW band boundaries.
    call get_sw_spectral_boundaries(sw_low_bounds, sw_high_bounds, 'cm^-1')
 
 end subroutine rrtmgp_inputs_init
