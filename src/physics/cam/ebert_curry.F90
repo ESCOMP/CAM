@@ -174,6 +174,7 @@ subroutine ec_ice_optics_sw   (state, pbuf, ice_tau, ice_tau_w, ice_tau_w_g, ice
    end do ! nswbands
 
 end subroutine ec_ice_optics_sw
+
 !==============================================================================
 
 subroutine ec_ice_get_rad_props_lw(state, pbuf, abs_od, oldicewp)
@@ -257,6 +258,7 @@ subroutine ec_ice_get_rad_props_lw(state, pbuf, abs_od, oldicewp)
    enddo
 
 end subroutine ec_ice_get_rad_props_lw
+
 !==============================================================================
 
 end module ebert_curry

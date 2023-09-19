@@ -24,30 +24,23 @@ public :: &
 
 ! Minimum cloud amount (as a fraction of the grid-box area) to 
 ! distinguish from clear sky
-! 
-   real(r8) cldmin
-   parameter (cldmin = 1.0e-80_r8)
-!
+real(r8), parameter :: cldmin = 1.0e-80_r8
+
 ! Decimal precision of cloud amount (0 -> preserve full resolution;
 ! 10^-n -> preserve n digits of cloud amount)
-! 
-   real(r8) cldeps
-   parameter (cldeps = 0.0_r8)
+real(r8), parameter :: cldeps = 0.0_r8
 
-! 
 ! indexes into pbuf for optical parameters of MG clouds
-! 
-   integer :: iclwp_idx  = 0 
-   integer :: iciwp_idx  = 0
-   integer :: cld_idx    = 0 
-   integer :: rel_idx  = 0
-   integer :: rei_idx  = 0
+integer :: iclwp_idx  = 0 
+integer :: iciwp_idx  = 0
+integer :: cld_idx    = 0 
+integer :: rel_idx  = 0
+integer :: rei_idx  = 0
 
 ! indexes into constituents for old optics
-   integer :: &
-        ixcldliq,   &         ! cloud liquid water index
-        ixcldice              ! cloud liquid water index
-
+integer :: &
+   ixcldliq,   &         ! cloud liquid water index
+   ixcldice              ! cloud liquid water index
 
 !==============================================================================
 contains
@@ -82,7 +75,6 @@ end subroutine slingo_rad_props_init
 
 !==============================================================================
 
-
 subroutine slingo_liq_optics_sw(state, pbuf, liq_tau, liq_tau_w, liq_tau_w_g, liq_tau_w_f, oldliqwp)
 
    type(physics_state), intent(in) :: state
@@ -100,14 +92,6 @@ subroutine slingo_liq_optics_sw(state, pbuf, liq_tau, liq_tau_w, liq_tau_w_g, li
    real(r8), dimension(pcols,pver) :: cliqwp
    real(r8), dimension(nswbands) :: wavmin
    real(r8), dimension(nswbands) :: wavmax
-
-   ! Minimum cloud amount (as a fraction of the grid-box area) to 
-   ! distinguish from clear sky
-   real(r8), parameter :: cldmin = 1.0e-80_r8
-
-   ! Decimal precision of cloud amount (0 -> preserve full resolution;
-   ! 10^-n -> preserve n digits of cloud amount)
-   real(r8), parameter :: cldeps = 0.0_r8
 
    ! A. Slingo's data for cloud particle radiative properties (from 'A GCM
    ! Parameterization for the Shortwave Properties of Water Clouds' JAS
@@ -294,7 +278,6 @@ subroutine slingo_liq_get_rad_props_lw(state, pbuf, abs_od, oldliqwp)
    do lwband = 1,nlwbands
       abs_od(lwband,1:ncol,1:pver)=cldtau(1:ncol,1:pver)
    enddo
-
 
 end subroutine slingo_liq_get_rad_props_lw
 

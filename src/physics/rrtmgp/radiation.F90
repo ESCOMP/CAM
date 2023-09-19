@@ -867,9 +867,9 @@ subroutine radiation_tend( &
    use cloud_rad_props,    only: get_ice_optics_sw,    ice_cloud_get_rad_props_lw,    &
                                  get_liquid_optics_sw, liquid_cloud_get_rad_props_lw, &
                                  get_snow_optics_sw,   snow_cloud_get_rad_props_lw,   &
-                                 cloud_rad_props_get_lw,                              &
-                                 grau_cloud_get_rad_props_lw,                         &
-                                 get_grau_optics_sw
+                                 get_grau_optics_sw,   grau_cloud_get_rad_props_lw,   &
+                                 cloud_rad_props_get_lw
+                                 
 
    use slingo,             only: slingo_liq_get_rad_props_lw, slingo_liq_optics_sw
    use ebert_curry,        only: ec_ice_optics_sw, ec_ice_get_rad_props_lw
