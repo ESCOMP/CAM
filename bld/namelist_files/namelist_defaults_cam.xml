@@ -271,7 +271,7 @@
 <ncdata hgrid="mpasa30"  nlev="32" ic_ymd="20000101" >atm/cam/inic/mpas/cami_01-01-2000_00Z_mpasa30_L32_CFSR_230302.nc</ncdata>
 <!-- EarthWorks Only, 58 vertical levels -->
 <ncdata hgrid="mpasa120" nlev="58" ic_ymd="20000101">atm/cam/inic/mpas/cami_01-01-2000_00Z_mpasa120_L58_c230901.nc</ncdata>
-<ncdata hgrid="mpasa15"  nlev="58"  ic_ymd="20000101">atm/cam/inic/mpas/x1.2621442_camtopo_full_init.nc</ncdata>
+<ncdata hgrid="mpasa15"  nlev="58" ic_ymd="20000101">atm/cam/inic/mpas/cami_01-01-2000_00Z_mpasa15_L58_c230316.nc</ncdata>
 
 <!-- Topography -->
 <bnd_topo hgrid="256x512" >atm/cam/topo/topo-from-cami_0000-01-01_256x512_L26_c030918.nc</bnd_topo>
