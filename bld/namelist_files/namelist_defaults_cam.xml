@@ -3097,6 +3097,9 @@
 <mpas_dt hgrid="mpasa120"     >  900.0D0 </mpas_dt>
 <mpas_dt hgrid="mpasa60"      >  450.0D0 </mpas_dt>
 <mpas_dt hgrid="mpasa30"      >  225.0D0 </mpas_dt>
+<mpas_dt hgrid="mpasa15"      >  112.5D0 </mpas_dt>
+<mpas_dt hgrid="mpasa7.5"     >  56.25D0 </mpas_dt>
+<mpas_dt hgrid="mpasa3.75"    >  28.125D0</mpas_dt>
 
 <mpas_split_dynamics_transport>.true.</mpas_split_dynamics_transport>
 <mpas_number_of_sub_steps     > 2 </mpas_number_of_sub_steps>
@@ -3113,6 +3116,9 @@
 <mpas_len_disp hgrid="mpasa120">120000.0D0</mpas_len_disp>
 <mpas_len_disp hgrid="mpasa60">  60000.0D0</mpas_len_disp>
 <mpas_len_disp hgrid="mpasa30">  30000.0D0</mpas_len_disp>
+<mpas_len_disp hgrid="mpasa15">  15000.0D0</mpas_len_disp>
+<mpas_len_disp hgrid="mpasa7.5">  7500.0D0</mpas_len_disp>
+<mpas_len_disp hgrid="mpasa3.75"> 3750.0D0</mpas_len_disp>
 
 <mpas_visc4_2dsmag            > 0.05D0 </mpas_visc4_2dsmag>
 <mpas_del4u_div_factor        > 10.0D0 </mpas_del4u_div_factor>
