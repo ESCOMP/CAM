@@ -12,7 +12,7 @@
 !!
 !!
 !! @version Jan-2011
-!! @author  Chuck Bardeen 
+!! @author  Chuck Bardeen
 module carma_model_mod
 
   use carma_precision_mod
@@ -38,7 +38,7 @@ module carma_model_mod
 
 #if ( defined SPMD )
   use mpishorthand
-#endif  
+#endif
 
   implicit none
 
@@ -91,9 +91,9 @@ module carma_model_mod
   integer                             :: carma_emis_nLevs        ! number of emission levels
   real(r8), allocatable, dimension(:) :: carma_emis_lev          ! emission levels (Pa)
   real(r8), allocatable, dimension(:) :: carma_emis_rate         ! emission rate lookup table (# cm-3 s-1)
-  integer                             :: carma_emis_ilev_min     ! index of minimum level in table 
-  integer                             :: carma_emis_ilev_max     ! index of maximum level in table 
-  integer                             :: carma_emis_ilev_incr    ! index increment to increase level 
+  integer                             :: carma_emis_ilev_min     ! index of minimum level in table
+  integer                             :: carma_emis_ilev_max     ! index of maximum level in table
+  integer                             :: carma_emis_ilev_incr    ! index increment to increase level
   real(r8)                            :: carma_emis_expected     ! Expected emission rate per column (kg/m2/s)
 
   integer                             :: carma_escale_nLats      ! number of emission scale latitudes
@@ -115,15 +115,15 @@ contains
   !! Defines all the CARMA components (groups, elements, solutes and gases) and process
   !! (coagulation, growth, nucleation) that will be part of the microphysical model.
   !!
-  !!  @version May-2009 
-  !!  @author  Chuck Bardeen 
+  !!  @version May-2009
+  !!  @author  Chuck Bardeen
   subroutine CARMA_DefineModel(carma, rc)
     use ioFileMod,    only: getfil
     use wrap_nf
 
     type(carma_type), intent(inout)    :: carma     !! the carma object
     integer, intent(out)               :: rc        !! return code, negative indicates failure
-    
+
     ! Local variables
     real(kind=f), parameter            :: RHO_METEOR_SMOKE = 2.0_f  ! density of meteor smoke particles (g/cm)
     real(kind=f), parameter            :: rmin     = 2e-8_f         ! minimum radius (cm)
@@ -137,16 +137,16 @@ contains
     integer                            :: imag_vid
     character(len=256)                 :: efile                     ! refractive index file name
     real(kind=f)                       :: interp
-    complex(kind=f)                    :: refidx_ice(NWAVE)         ! the refractive index at each CAM wavelength    
+    complex(kind=f)                    :: refidx_ice(NWAVE)         ! the refractive index at each CAM wavelength
     integer                            :: LUNOPRT
     logical                            :: do_print
-    
+
     ! Default return code.
     rc = RC_OK
-    
+
     call CARMA_Get(carma, rc, do_print=do_print, LUNOPRT=LUNOPRT, wave=wave)
     if (rc < RC_OK) call endrun('CARMA_DefineModel::CARMA_Get failed.')
-    
+
     ! Report model specific configuration parameters.
     if (masterproc) then
       if (do_print) then
@@ -158,8 +158,8 @@ contains
         write(LUNOPRT,*) '  carma_mice_file  = ', trim(carma_mice_file)
       end if
     end if
-    
-    
+
+
     ! Define the Groups
     !
     ! NOTE: For CAM, the optional do_wetdep and do_drydep flags should be
@@ -168,59 +168,59 @@ contains
     call CARMAGROUP_Create(carma, I_GRP_DUST, "meteor smoke", rmin, 2.0_f, I_SPHERE, 1._f, .false., &
                           rc, do_wetdep=.true., do_drydep=.true., solfac=0.3_f, &
                            scavcoef=0.1_f, shortname="DUST")
-                           
+
 
     ! Get the refractive index for ice as a function of wavelength for particle heating
     ! calculations.
     !
     ! NOTE: These values probably should be a band average, but for now just do band centers.
-    
+
     ! Read the values in from Warren et al. 2008.
     if (carma_do_pheat) then
-      if (masterproc) then 
-      
+      if (masterproc) then
+
         ! Open the netcdf file (read only)
         call getfil(carma_mice_file, efile, fid)
         if (do_print) write(LUNOPRT,*) 'carma_init(): Reading ice refractive indexes from ', efile
-  
+
         call wrap_open(efile, 0, fid)
-  
+
         ! Alocate the table arrays
         call wrap_inq_dimid(fid, "wavelength", wave_did)
         call wrap_inq_dimlen(fid, wave_did, warren_nwave)
       endif
-      
+
 #if ( defined SPMD )
         call mpibcast(warren_nwave, 1, mpiint, 0, mpicom)
 #endif
-  
+
         allocate(warren_wave(warren_nwave))
         allocate(warren_real(warren_nwave))
         allocate(warren_imag(warren_nwave))
-  
+
         if (masterproc) then
-          
+
           ! Read in the tables.
           call wrap_inq_varid(fid, 'wavelength', wave_vid)
           call wrap_get_var_realx(fid, wave_vid, warren_wave)
           warren_wave = warren_wave * 1e-4          ! um -> cm
-  
+
           call wrap_inq_varid(fid, 'm_real', real_vid)
           call wrap_get_var_realx(fid, real_vid, warren_real)
-  
+
           call wrap_inq_varid(fid, 'm_imag', imag_vid)
           call wrap_get_var_realx(fid, imag_vid, warren_imag)
-  
+
           ! Close the file.
           call wrap_close(fid)
         end if
-  
+
 #if ( defined SPMD )
         call mpibcast(warren_wave,  warren_nwave, mpir8, 0, mpicom)
         call mpibcast(warren_real,  warren_nwave, mpir8, 0, mpicom)
         call mpibcast(warren_imag,  warren_nwave, mpir8, 0, mpicom)
 #endif
-      
+
       ! Interpolate the values.
       do i = 1, NWAVE
         do j = 1, warren_nwave
@@ -232,18 +232,18 @@ contains
             else
               refidx_ice(i) = cmplx(warren_real(j), warren_imag(j))
             endif
-            
+
             exit
           end if
         end do
       end do
     end if
-    
+
     call CARMAGROUP_Create(carma, I_GRP_CRICE, "ice crystal", rmin, 2.2_f, I_SPHERE, 1._f, .true., &
                           rc, do_mie=carma_do_pheat, refidx=refidx_ice, shortname="CRICE")
     if (rc < 0) call endrun('CARMA_DefineModel::CARMAGROUP_Create failed.')
 
-    
+
     ! Define the Elements
     !
     ! NOTE: For CAM, the optional shortname needs to be provided for the group. These names
@@ -259,17 +259,17 @@ contains
     call CARMAELEMENT_Create(carma, I_ELEM_CRCORE, I_GRP_CRICE, "ice core", RHO_METEOR_SMOKE, &
          I_COREMASS, I_METEOR_SMOKE, rc, shortname="CRCORE")
     if (rc < 0) call endrun('CARMA_DefineModel::CARMA_AddElement failed.')
-    
-    
+
+
     ! Define the Solutes
-    
-    
+
+
     ! Define the Gases
     call CARMAGAS_Create(carma, I_GAS_H2O, "Water Vapor", WTMOL_H2O, &
          I_VAPRTN_H2O_MURPHY2005, I_GCOMP_H2O, rc, shortname="Q", ds_threshold=0.2_f)
     if (rc < RC_OK) call endrun('CARMA_DefineModel::CARMAGAS_Create failed.')
-    
-    
+
+
     ! Define the Processes
     call CARMA_AddCoagulation(carma, I_GRP_DUST, I_GRP_DUST, I_GRP_DUST, I_COLLEC_DATA, rc)
     if (rc < 0) call endrun('CARMA_DefineModel::CARMA_AddCoagulation failed.')
@@ -283,7 +283,7 @@ contains
 
     call CARMA_AddCoagulation(carma, I_GRP_DUST, I_GRP_CRICE, I_GRP_CRICE, I_COLLEC_DATA, rc)
     if (rc < 0) call endrun('CARMA_DefineModel::CARMA_AddCoagulation failed.')
-    
+
     return
   end subroutine CARMA_DefineModel
 
@@ -291,8 +291,8 @@ contains
   !! Defines all the CARMA components (groups, elements, solutes and gases) and process
   !! (coagulation, growth, nucleation) that will be part of the microphysical model.
   !!
-  !!  @version May-2009 
-  !!  @author  Chuck Bardeen 
+  !!  @version May-2009
+  !!  @author  Chuck Bardeen
   !!
   !!  @see CARMASTATE_SetDetrain
   subroutine CARMA_Detrain(carma, cstate, cam_in, dlf, state, icol, dt, rc, rliq, prec_str, snow_str, &
@@ -311,22 +311,22 @@ contains
     real(r8), intent(in)                 :: dt               !! time step (s)
     integer, intent(out)                 :: rc               !! return code, negative indicates failure
     real(r8), intent(inout), optional    :: rliq(pcols)      !! vertical integral of liquid not yet in q(ixcldliq)
-    real(r8), intent(inout), optional    :: prec_str(pcols)  !! [Total] sfc flux of precip from stratiform (m/s) 
+    real(r8), intent(inout), optional    :: prec_str(pcols)  !! [Total] sfc flux of precip from stratiform (m/s)
     real(r8), intent(inout), optional    :: snow_str(pcols)  !! [Total] sfc flux of snow from stratiform (m/s)
     real(r8), intent(out), optional      :: tnd_qsnow(pcols,pver) !! snow mass tendency (kg/kg/s)
     real(r8), intent(out), optional      :: tnd_nsnow(pcols,pver) !! snow number tendency (#/kg/s)
 
     ! Default return code.
     rc = RC_OK
-    
+
     return
   end subroutine CARMA_Detrain
 
 
   !! For diagnostic groups, sets up up the CARMA bins based upon the CAM state.
   !!
-  !!  @version July-2009 
-  !!  @author  Chuck Bardeen 
+  !!  @version July-2009
+  !!  @author  Chuck Bardeen
   subroutine CARMA_DiagnoseBins(carma, cstate, state, pbuf, icol, dt, rc, rliq, prec_str, snow_str)
     use time_manager,     only: is_first_step
 
@@ -340,32 +340,32 @@ contains
     real(r8), intent(in)                  :: dt           !! time step
     integer, intent(out)                  :: rc           !! return code, negative indicates failure
     real(r8), intent(in), optional        :: rliq(pcols)      !! vertical integral of liquid not yet in q(ixcldliq)
-    real(r8), intent(inout), optional     :: prec_str(pcols)  !! [Total] sfc flux of precip from stratiform (m/s) 
+    real(r8), intent(inout), optional     :: prec_str(pcols)  !! [Total] sfc flux of precip from stratiform (m/s)
     real(r8), intent(inout), optional     :: snow_str(pcols)  !! [Total] sfc flux of snow from stratiform (m/s)
-    
+
     real(r8)                             :: mmr(pver) !! elements mass mixing ratio
     integer                              :: ibin      !! bin index
-    
+
     ! Default return code.
     rc = RC_OK
-    
+
     ! By default, do nothing. If diagnosed groups exist, this needs to be replaced by
     ! code to determine the mass in each bin from the CAM state.
-    
+
     return
   end subroutine CARMA_DiagnoseBins
 
 
   !! For diagnostic groups, determines the tendencies on the CAM state from the CARMA bins.
   !!
-  !!  @version July-2009 
-  !!  @author  Chuck Bardeen 
+  !!  @version July-2009
+  !!  @author  Chuck Bardeen
   subroutine CARMA_DiagnoseBulk(carma, cstate, cam_out, state, pbuf, ptend, icol, dt, rc, rliq, prec_str, snow_str, &
     prec_sed, snow_sed, tnd_qsnow, tnd_nsnow, re_ice)
     use camsrfexch,       only: cam_out_t
 
     implicit none
-    
+
     type(carma_type), intent(in)         :: carma     !! the carma object
     type(carmastate_type), intent(inout) :: cstate    !! the carma state object
     type(cam_out_t),      intent(inout)  :: cam_out   !! cam output to surface models
@@ -376,20 +376,20 @@ contains
     real(r8), intent(in)                 :: dt        !! time step
     integer, intent(out)                 :: rc        !! return code, negative indicates failure
     real(r8), intent(inout), optional    :: rliq(pcols)      !! vertical integral of liquid not yet in q(ixcldliq)
-    real(r8), intent(inout), optional    :: prec_str(pcols)  !! [Total] sfc flux of precip from stratiform (m/s) 
+    real(r8), intent(inout), optional    :: prec_str(pcols)  !! [Total] sfc flux of precip from stratiform (m/s)
     real(r8), intent(inout), optional    :: snow_str(pcols)  !! [Total] sfc flux of snow from stratiform (m/s)
     real(r8), intent(inout), optional    :: prec_sed(pcols)       !! total precip from cloud sedimentation (m/s)
     real(r8), intent(inout), optional    :: snow_sed(pcols)       !! snow from cloud ice sedimentation (m/s)
     real(r8), intent(inout), optional    :: tnd_qsnow(pcols,pver) !! snow mass tendency (kg/kg/s)
     real(r8), intent(inout), optional    :: tnd_nsnow(pcols,pver) !! snow number tendency (#/kg/s)
     real(r8), intent(out), optional      :: re_ice(pcols,pver)    !! ice effective radius (m)
-    
+
     ! Default return code.
     rc = RC_OK
-    
+
     ! By default, do nothing. If diagnosed groups exist, this needs to be replaced by
     ! code to determine the bulk mass from the CARMA state.
-    
+
     return
   end subroutine CARMA_DiagnoseBulk
 
@@ -401,9 +401,9 @@ contains
     use camsrfexch,       only: cam_in_t
     use time_manager,  only: get_curr_calday, is_perpetual, get_perp_date, get_curr_date
     use physconst,     only: gravit
-    
+
     implicit none
-    
+
     type(carma_type), intent(in)       :: carma                 !! the carma object
     integer, intent(in)                :: ielem                 !! element index
     integer, intent(in)                :: ibin                  !! bin index
@@ -414,8 +414,8 @@ contains
     real(r8), intent(out)              :: tendency(pcols, pver) !! constituent tendency (kg/kg/s)
     real(r8), intent(out)              :: surfaceFlux(pcols)    !! constituent surface flux (kg/m^2/s)
     integer, intent(out)               :: rc                    !! return code, negative indicates failure
-    
-    integer                            :: ilat                  ! latitude index 
+
+    integer                            :: ilat                  ! latitude index
     integer                            :: iltime                ! local time index
     integer                            :: ncol                  ! number of columns in chunk
     integer                            :: icol                  ! column index
@@ -439,7 +439,7 @@ contains
     integer                            :: ncdate
     real(r8)                           :: ltime                 ! local time
 
-    
+
     ! Default return code.
     rc = RC_OK
 
@@ -460,33 +460,33 @@ contains
 
     ! Add any surface flux here.
     surfaceFlux(:ncol) = 0.0_r8
-    
+
     ! For emissions into the atmosphere, put the emission here.
     !
     ! NOTE: Do not set tendency to be the surface flux. Surface source is put in to
-    ! the bottom layer by vertical diffusion. See vertical_solver module, line 355.            
+    ! the bottom layer by vertical diffusion. See vertical_solver module, line 355.
     tendency(:ncol, :pver) = 0.0_r8
 
 
     ! Only do emission for the first bin of the meteor smoke group.
     call CARMAELEMENT_GET(carma, ielem, rc, igroup=igroup)
     if (RC < RC_ERROR) return
-    
+
     call CARMAGROUP_GET(carma, igroup, rc, shortname=shortname, r=r, dr=dr, rmass=rmass)
     if (RC < RC_ERROR) return
-    
+
     ! For meteoritic dust, the source from the smoke only goes into the
     ! smallest bin (~1.3 nm). The depth that the micrometeorite penetrates
     ! is proportional to the pressure, so the emission is a function of
-    ! pressure. 
+    ! pressure.
     if ((shortname .eq. "DUST") .and. (ibin .eq. 1)) then
 
       ! Set tendencies for any sources or sinks in the atmosphere.
       do k = 1, pver
         do icol = 1, ncol
-      
+
           pressure = state%pmid(icol, k)
-          
+
           ! This is roughly a log-normal approximation to the production
           ! rate, but only applies from about 70 to 110 km.
           !
@@ -503,32 +503,32 @@ contains
             ! surrounding the pressure and do a linear interpolation on the
             ! rate. This linear search is kind of expensive, particularly if
             ! there are a lot of points.
-            ! 
+            !
             ! NOTE: The tendency is on a mass mixing ratio (kg/kg/s)
             do ilev = carma_emis_ilev_min, (carma_emis_ilev_max - carma_emis_ilev_incr), carma_emis_ilev_incr
               if ((pressure >= carma_emis_lev(ilev)) .and. (pressure <= carma_emis_lev(ilev+carma_emis_ilev_incr))) then
                 rate = carma_emis_rate(ilev)
-                
+
                 if (pressure > carma_emis_lev(ilev)) then
                   rate = rate + &
                     ((carma_emis_rate(ilev+carma_emis_ilev_incr) - carma_emis_rate(ilev)) / &
                     (carma_emis_lev(ilev+carma_emis_ilev_incr) - carma_emis_lev(ilev))) * &
                     (pressure - carma_emis_lev(ilev))
                 end if
-                
+
                 rate = rate * (((1.3e-7_r8)**3) / (r(ibin)**3))
                 exit
               end if
             end do
-            
+
             ! Calculate the mass flux in terms of kg/m3/s
             massflux = (rate * rmass(ibin) * 1.0e-3_r8 * 1.0e6_r8)
-            
+
             ! Calculate a scaling if appropriate.
             rfScale(icol) = 1.0_r8
-             
+
             if (carma_do_escale) then
-            
+
               ! Global Scaling
               !
               ! Interpolate the global scale by latitude.
@@ -555,7 +555,7 @@ contains
               if (abs((state%lat(icol) / DEG2RAD) - 90.0) <= 0.00001_r8) then
                  rfScale(icol) = carma_escale_grf(carma_escale_nLats, doy)
               end if
-              
+
               ! Local Time Scaling
               !
               ! Interpolate the local scale by local time.
@@ -577,10 +577,10 @@ contains
                 end if
               end do
             endif
-            
+
             ! Convert the mass flux to a tendency on the mass mixing ratio.
             thickness = state%zi(icol, k) - state%zi(icol, k+1)
-            tendency(icol, k) = (massflux * thickness) / (state%pdel(icol, k) / gravit)        
+            tendency(icol, k) = (massflux * thickness) / (state%pdel(icol, k) / gravit)
           end if
         enddo
       enddo
@@ -590,13 +590,13 @@ contains
       do icol = 1, ncol
         columnMass = sum(tendency(icol, :) * (state%pdel(icol, :) / gravit))
         scale = carma_emis_expected / columnMass
-      
+
         ! Also apply the relative flux scaling. This needs to be done after
         ! the normalization
         tendency(icol, :) = tendency(icol, :) * scale * rfScale(icol)
       end do
     end if
-    
+
     return
   end subroutine CARMA_EmitParticle
 
@@ -642,9 +642,9 @@ contains
     ! Add initialization here.
     call CARMA_Get(carma, rc, do_print=do_print, LUNOPRT=LUNOPRT)
     if (rc < 0) call endrun("CARMA_InitializeModel: CARMA_Get failed.")
-    
+
     ! Initialize the emissions rate table.
-    if (carma_do_emission) then 
+    if (carma_do_emission) then
       if (masterproc) then
 
         ! Open the netcdf file (read only)
@@ -657,7 +657,7 @@ contains
         call wrap_inq_dimid(fid, "lev", lev_did)
         call wrap_inq_dimlen(fid, lev_did, carma_emis_nLevs)
       endif
-    
+
 #if ( defined SPMD )
       call mpibcast(carma_emis_nLevs, 1, mpiint, 0, mpicom)
 #endif
@@ -685,7 +685,7 @@ contains
           if (carma_emis_rate(ilev) <= 0.0) then
             carma_emis_ilev_min  = ilev + 1
           else
-            exit  
+            exit
           endif
         end do
 
@@ -693,7 +693,7 @@ contains
           if (carma_emis_rate(ilev) <= 0.0) then
             carma_emis_ilev_max  = ilev - 1
           else
-            exit  
+            exit
           endif
         end do
 
@@ -703,21 +703,21 @@ contains
           carma_emis_ilev_incr = -1
           tmp = carma_emis_ilev_min
           carma_emis_ilev_min = carma_emis_ilev_max
-          carma_emis_iLev_max = tmp 
+          carma_emis_iLev_max = tmp
         endif
 
         if (do_print) write(LUNOPRT,*) ''
         if (do_print) write(LUNOPRT,*) 'carma_init(): carma_emis_nLevs     = ', carma_emis_nLevs
-        if (do_print) write(LUNOPRT,*) 'carma_init(): carma_emis_ilev_min  = ', carma_emis_ilev_min 
-        if (do_print) write(LUNOPRT,*) 'carma_init(): carma_emis_ilev_max  = ', carma_emis_ilev_max 
-        if (do_print) write(LUNOPRT,*) 'carma_init(): carma_emis_ilev_incr = ', carma_emis_ilev_incr 
+        if (do_print) write(LUNOPRT,*) 'carma_init(): carma_emis_ilev_min  = ', carma_emis_ilev_min
+        if (do_print) write(LUNOPRT,*) 'carma_init(): carma_emis_ilev_max  = ', carma_emis_ilev_max
+        if (do_print) write(LUNOPRT,*) 'carma_init(): carma_emis_ilev_incr = ', carma_emis_ilev_incr
         if (do_print) write(LUNOPRT,*) ''
-        
+
         if (do_print) write(LUNOPRT,*) 'level, pressure (Pa), emission rate (# cm-3 sec-1)'
         do ilev = carma_emis_ilev_min, carma_emis_ilev_max, carma_emis_ilev_incr
           if (do_print) write(LUNOPRT,*) ilev, carma_emis_lev(ilev), carma_emis_rate(ilev)
         enddo
-        
+
         if (do_print) write(LUNOPRT, *) 'carma_init(): Total Emission = ', carma_emis_total, ' (kt/yr)'
         carma_emis_expected = ((carma_emis_total * 1e6_r8) / (3600.0_r8 * 24.0_r8 * 365.0_r8)) / &
              (4.0_r8 * PI * ((REARTH / 100._r8) ** 2))
@@ -737,10 +737,10 @@ contains
 #endif
 
     endif
-    
+
 
     ! Initialize the emissions scaling table.
-    if (carma_do_escale) then 
+    if (carma_do_escale) then
       if (masterproc) then
 
         ! Open the netcdf file (read only)
@@ -755,17 +755,17 @@ contains
 
         call wrap_inq_dimid(fid, "time", time_did)
         call wrap_inq_dimlen(fid, time_did, carma_escale_nTimes)
-        
+
         ! There should be one time for each day of the year, so
         ! quit if it isn't correct.
         if (carma_escale_nTimes .ne. 365) then
           call endrun("CARMA_InitializeModel: Emission scaling file should have entries for 365 days, but doesn't.")
         endif
-        
+
         call wrap_inq_dimid(fid, "ltime", ltime_did)
         call wrap_inq_dimlen(fid, ltime_did, carma_escale_nLTimes)
      endif
-    
+
 #if ( defined SPMD )
       call mpibcast(carma_escale_nLats,   1, mpiint, 0, mpicom)
       call mpibcast(carma_escale_nTimes,  1, mpiint, 0, mpicom)
@@ -794,7 +794,7 @@ contains
 
         call wrap_inq_varid(fid, 'ltime', ltime_vid)
         call wrap_get_var_realx(fid, ltime_vid, carma_escale_ltime)
-        
+
         ! Close the file.
         call wrap_close(fid)
 
@@ -803,7 +803,7 @@ contains
         if (do_print) write(LUNOPRT,*) 'carma_init(): carma_escale_nTimes  = ', carma_escale_nTimes
         if (do_print) write(LUNOPRT,*) 'carma_init(): carma_escale_nLTimes = ', carma_escale_nLTimes
         if (do_print) write(LUNOPRT,*) ''
-        
+
         if (do_print) write(LUNOPRT,*) 'carma_init(): Done with emission scaling tables.'
 
       endif
@@ -816,7 +816,7 @@ contains
 #endif
 
     endif
-    
+
     return
   end subroutine CARMA_InitializeModel
 
@@ -832,7 +832,6 @@ contains
   !! @version May-2009
   subroutine CARMA_InitializeParticle(carma, ielem, ibin, latvals, lonvals, mask, q, rc)
     use shr_kind_mod,   only: r8 => shr_kind_r8
-    use pmgrid,         only: plat, plev, plon
 
     implicit none
 
@@ -854,18 +853,18 @@ contains
 
     return
   end subroutine CARMA_InitializeParticle
-  
-  
+
+
   !!  Called after wet deposition has been performed. Allows the specific model to add
   !!  wet deposition of CARMA aerosols to the aerosols being communicated to the surface.
   !!
-  !!  @version July-2011 
-  !!  @author  Chuck Bardeen 
+  !!  @version July-2011
+  !!  @author  Chuck Bardeen
   subroutine CARMA_WetDeposition(carma, ielem, ibin, sflx, cam_out, state, rc)
     use camsrfexch,       only: cam_out_t
 
     implicit none
-    
+
     type(carma_type), intent(in)         :: carma       !! the carma object
     integer, intent(in)                  :: ielem       !! element index
     integer, intent(in)                  :: ibin        !! bin index
@@ -873,13 +872,13 @@ contains
     type(cam_out_t), intent(inout)       :: cam_out     !! cam output to surface models
     type(physics_state), intent(in)      :: state       !! physics state variables
     integer, intent(out)                 :: rc          !! return code, negative indicates failure
-    
+
     integer    :: icol
- 
+
     ! Default return code.
     rc = RC_OK
-    
+
     return
-  end subroutine CARMA_WetDeposition 
+  end subroutine CARMA_WetDeposition
 
 end module
