@@ -270,7 +270,7 @@
 <ncdata hgrid="mpasa60"  nlev="32" ic_ymd="20000101" >atm/cam/inic/mpas/cami_01-01-2000_00Z_mpasa60_L32_CFSR_c210518.nc</ncdata>
 <ncdata hgrid="mpasa30"  nlev="32" ic_ymd="20000101" >atm/cam/inic/mpas/cami_01-01-2000_00Z_mpasa30_L32_CFSR_230302.nc</ncdata>
 <!-- EarthWorks Only, 58 vertical levels -->
-<ncdata hgdrid="mpasa120" nlev="58" ic_ymd="20000101">atm/cam/inic/mpas/x1.40962.pel.58levels_2000010100_init.nc</ncdata>
+<ncdata hgrid="mpasa120" nlev="58" ic_ymd="20000101">atm/cam/inic/mpas/cami_01-01-2000_00Z_mpasa120_L58_c230901.nc</ncdata>
 
 <!-- Topography -->
 <bnd_topo hgrid="256x512" >atm/cam/topo/topo-from-cami_0000-01-01_256x512_L26_c030918.nc</bnd_topo>
@@ -331,7 +331,7 @@
 <bnd_topo hgrid="mpasa120" >atm/cam/topo/mpas_120_nc3000_Co060_Fi001_MulG_PF_Nsw042_c200921.nc</bnd_topo>
 <bnd_topo hgrid="mpasa60"  >atm/cam/topo/mpas_60_nc3000_Co030_Fi001_MulG_PF_Nsw021.nc</bnd_topo>
 <bnd_topo hgrid="mpasa30"  >atm/cam/topo/mpas_30_nc3000_Co015_Fi001_MulG_PF_Nsw011.nc</bnd_topo>
-<!-- Corresponds to x1.40962.pel.58levels_2000010100_init.nc file -->
+<!-- Corresponds to cami_01-01-2000_00Z_mpasa120_L58_c230901.nc file -->
 <bnd_topo hgrid="mpasa120" nlev="58" >atm/cam/topo/mpasa120_gmted2010_modis_bedmachine_nc3000_Laplace0100_20220728.nc</bnd_topo>
 
 <!-- Scale Dry Air Mass: 0=> no scaling / +nnn=>scale to nnn Pressure  -->
