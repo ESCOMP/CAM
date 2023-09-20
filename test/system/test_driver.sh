@@ -310,7 +310,7 @@ EOF
     # Check for CESM baseline directory
     if [ -n "${BL_TESTDIR}" ] && [ ! -d "${BL_TESTDIR}" ]; then
         echo "CESM_BASELINE ${BL_TESTDIR} not found.  Check BL_TESTDIR for correct tag name."
-        exit
+        exit 3
     fi
 
 #-------------------------------------------
