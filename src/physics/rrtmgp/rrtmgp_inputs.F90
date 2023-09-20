@@ -47,15 +47,6 @@ public :: &
 
 real(r8), parameter :: cldmin = 1.0e-80_r8   ! min cloud fraction
 
-real(r8), parameter :: amdw = 1.607793_r8    ! Molecular weight of dry air / water vapor
-real(r8), parameter :: amdc = 0.658114_r8    ! Molecular weight of dry air / carbon dioxide
-real(r8), parameter :: amdo = 0.603428_r8    ! Molecular weight of dry air / ozone
-real(r8), parameter :: amdm = 1.805423_r8    ! Molecular weight of dry air / methane
-real(r8), parameter :: amdn = 0.658090_r8    ! Molecular weight of dry air / nitrous oxide
-real(r8), parameter :: amdo2 = 0.905140_r8   ! Molecular weight of dry air / oxygen
-real(r8), parameter :: amdc1 = 0.210852_r8   ! Molecular weight of dry air / CFC11
-real(r8), parameter :: amdc2 = 0.239546_r8   ! Molecular weight of dry air / CFC12
-
 ! Indices for copying data between cam and rrtmgp arrays
 integer :: ktopcam ! Index in CAM arrays of top level (layer or interface) at which
                    ! RRTMGP is active.
@@ -247,30 +238,46 @@ end function is_visible
 !=========================================================================================
 
 function get_molar_mass_ratio(gas_name) result(massratio)
+
    ! return the molar mass ratio of dry air to gas based on gas_name
+
    character(len=*),intent(in) :: gas_name
    real(r8)                    :: massratio
 
+   ! local variables
+   real(r8), parameter :: amdw = 1.607793_r8    ! Molecular weight of dry air / water vapor
+   real(r8), parameter :: amdc = 0.658114_r8    ! Molecular weight of dry air / carbon dioxide
+   real(r8), parameter :: amdo = 0.603428_r8    ! Molecular weight of dry air / ozone
+   real(r8), parameter :: amdm = 1.805423_r8    ! Molecular weight of dry air / methane
+   real(r8), parameter :: amdn = 0.658090_r8    ! Molecular weight of dry air / nitrous oxide
+   real(r8), parameter :: amdo2 = 0.905140_r8   ! Molecular weight of dry air / oxygen
+   real(r8), parameter :: amdc1 = 0.210852_r8   ! Molecular weight of dry air / CFC11
+   real(r8), parameter :: amdc2 = 0.239546_r8   ! Molecular weight of dry air / CFC12
+
+   character(len=*), parameter :: sub='get_molar_mass_ratio'
+   !----------------------------------------------------------------------------
+
    select case (trim(gas_name)) 
       case ('H2O') 
-         massratio = 1.607793_r8
+         massratio = amdw
       case ('CO2')
-         massratio = 0.658114_r8
+         massratio = amdc
       case ('O3')
-         massratio = 0.603428_r8
+         massratio = amdo
       case ('CH4')
-         massratio = 1.805423_r8
+         massratio = amdm
       case ('N2O')
-         massratio = 0.658090_r8
+         massratio = amdn
       case ('O2')
-         massratio = 0.905140_r8
+         massratio = amdo2
       case ('CFC11')
-         massratio = 0.210852_r8
+         massratio = amdc1
       case ('CFC12')
-         massratio = 0.239546_r8
+         massratio = amdc2
       case default
-         call endrun("Invalid gas: "//trim(gas_name))
+         call endrun(sub//": Invalid gas: "//trim(gas_name))
    end select
+
 end function get_molar_mass_ratio
 
 !=========================================================================================
@@ -496,6 +503,142 @@ end subroutine rrtmgp_set_cloud_lw
 
 !==================================================================================================
 
+subroutine rrtmgp_set_cloud_sw( &
+   nday, nlay, idxday, pmid, cldfrac,                       &
+   c_cld_tau, c_cld_tau_w, c_cld_tau_w_g, kdist_sw, cloud_sw)
+
+   ! Create MCICA stochastic arrays for cloud SW optical properties.
+   ! Initialize optical properties object (cloud_sw) and load with MCICA columns.
+   !
+   ! The input optical properties are on the CAM grid and are represented as products
+   ! of the extinction optical depth (tau), single scattering albedo (w) and assymetry
+   ! parameter (g).  This routine subsets the input to just the layers and the
+   ! daylight columns used in the radiation calculation.  It also computes the
+   ! individual properties of tau, w, and g for input to the MCICA routine.
+
+   ! arguments
+   integer,  intent(in) :: nday           ! number of daylight columns
+   integer,  intent(in) :: nlay           ! number of layers in radiation calculation (may include "extra layer")
+   integer,  intent(in) :: idxday(:)      ! indices of daylight columns in the chunk
+   real(r8), intent(in) :: pmid(nday,nlay)! pressure at layer midpoints (Pa) used to seed RNG.
+
+   ! cloud fraction and optics are input on the CAM grid
+   real(r8), intent(in) :: cldfrac(pcols,pver)                ! combined cloud fraction
+   real(r8), intent(in) :: c_cld_tau    (nswbands,pcols,pver) ! combined cloud extinction optical depth
+   real(r8), intent(in) :: c_cld_tau_w  (nswbands,pcols,pver) ! combined cloud single scattering albedo * tau
+   real(r8), intent(in) :: c_cld_tau_w_g(nswbands,pcols,pver) ! combined cloud assymetry parameter * w * tau
+
+   class(ty_gas_optics_rrtmgp), intent(in)  :: kdist_sw  ! shortwave gas optics object
+   type(ty_optical_props_2str), intent(out) :: cloud_sw  ! cloud optical properties object
+
+   ! local vars
+   integer, parameter :: changeseed = 1
+
+   integer :: i, k, kk, ns, igpt
+   integer :: ngptsw
+   integer :: nver
+
+   real(r8), allocatable :: cldf(:,:)
+   real(r8), allocatable :: tauc(:,:,:)
+   real(r8), allocatable :: ssac(:,:,:)
+   real(r8), allocatable :: asmc(:,:,:)
+   real(r8), allocatable :: taucmcl(:,:,:)
+   real(r8), allocatable :: ssacmcl(:,:,:)
+   real(r8), allocatable :: asmcmcl(:,:,:)
+
+   real(r8) :: small_val = 1.e-80_r8
+   real(r8), allocatable :: day_cld_tau(:,:,:)
+   real(r8), allocatable :: day_cld_tau_w(:,:,:)
+   real(r8), allocatable :: day_cld_tau_w_g(:,:,:)
+
+   character(len=128) :: errmsg
+   character(len=*), parameter :: sub = 'rrtmgp_set_cloud_sw'
+   !--------------------------------------------------------------------------------
+
+   ! number of g-points.  This is the number of subcolumns constructed by MCICA.
+   ngptsw = kdist_sw%get_ngpt()
+
+   ! number of CAM's layers in radiation calculation.  Does not include the "extra layer".
+   nver   = pver - ktopcam + 1
+
+   allocate( &
+      cldf(nday,nver),           &
+      tauc(nswbands,nday,nver),  &
+      ssac(nswbands,nday,nver),  &
+      asmc(nswbands,nday,nver),  &
+      taucmcl(ngptsw,nday,nver), &
+      ssacmcl(ngptsw,nday,nver), &
+      asmcmcl(ngptsw,nday,nver), &
+      day_cld_tau(nswbands,nday,nver),     &
+      day_cld_tau_w(nswbands,nday,nver),   &
+      day_cld_tau_w_g(nswbands,nday,nver))
+
+   ! Subset the input data so just the daylight columns, and the number of CAM layers in the
+   ! radiation calculation are used by MCICA to produce subcolumns.
+   cldf            = cldfrac(         idxday(1:nday), ktopcam:)
+   day_cld_tau     = c_cld_tau(    :, idxday(1:nday), ktopcam:)
+   day_cld_tau_w   = c_cld_tau_w(  :, idxday(1:nday), ktopcam:)
+   day_cld_tau_w_g = c_cld_tau_w_g(:, idxday(1:nday), ktopcam:)
+
+   ! Compute the optical properties needed for the 2-stream calculations.  These calculations
+   ! are the same as the RRTMG version.
+
+   ! set cloud optical depth, clip @ zero
+   tauc = merge(day_cld_tau, 0.0_r8, day_cld_tau > 0.0_r8)
+   ! set value of asymmetry
+   asmc = merge(day_cld_tau_w_g / max(day_cld_tau_w, small_val), 0.0_r8, day_cld_tau_w > 0.0_r8)
+   ! set value of single scattering albedo
+   ssac = merge(max(day_cld_tau_w, small_val) / max(tauc, small_val), 1.0_r8 , tauc > 0.0_r8)
+   ! set asymmetry to zero when tauc = 0
+   asmc = merge(asmc, 0.0_r8, tauc > 0.0_r8)
+
+   ! MCICA converts from bands to gpts (e.g., 224 g-points instead of 14 bands)
+   call mcica_subcol_sw( &
+      kdist_sw, nswbands, ngptsw, nday, nlay, &
+      nver, changeseed, pmid, cldf, tauc,     &
+      ssac, asmc, taucmcl, ssacmcl, asmcmcl)
+   
+   ! Initialize object for SW cloud optical properties.
+   errmsg = cloud_sw%alloc_2str(nday, nlay, kdist_sw)
+   if (len_trim(errmsg) > 0) then
+      call endrun(trim(sub)//': ERROR: cloud_sw%alloc_2str: '//trim(errmsg))
+   end if
+
+   ! If there is an extra layer in the radiation then this initialization
+   ! will provide the optical properties there.
+   cloud_sw%tau = 0.0_r8
+   cloud_sw%ssa = 1.0_r8
+   cloud_sw%g   = 0.0_r8
+
+   ! Set the properties on g-points.
+   do igpt = 1,ngptsw
+      cloud_sw%g  (:, ktoprad:, igpt) = asmcmcl(igpt, ktopcam:, :)
+      cloud_sw%ssa(:, ktoprad:, igpt) = ssacmcl(igpt, ktopcam:, :)
+      cloud_sw%tau(:, ktoprad:, igpt) = taucmcl(igpt, ktopcam:, :)
+   end do
+
+   ! validate checks the tau > 0, ssa is in range [0,1], and g is in range [-1,1].
+   errmsg = cloud_sw%validate()
+   if (len_trim(errmsg) > 0) then
+      call endrun(sub//': ERROR: cloud_sw%validate: '//trim(errmsg))
+   end if
+
+   ! delta scaling adjusts for forward scattering
+   errmsg = cloud_sw%delta_scale()
+   if (len_trim(errmsg) > 0) then
+      call endrun(sub//': ERROR: cloud_sw%delta_scale: '//trim(errmsg))
+   end if
+
+   ! All information is in cloud_sw, now deallocate local vars.
+   deallocate( &
+      cldf, tauc, ssac, asmc, &
+      taucmcl, ssacmcl, asmcmcl,&
+      day_cld_tau, day_cld_tau_w, day_cld_tau_w_g )
+
+end subroutine rrtmgp_set_cloud_sw
+
+!==================================================================================================
+
 subroutine rrtmgp_set_aer_lw(ncol, nlwbands, aer_lw_abs, aer_lw)
 
    ! Load aerosol optical properties into the RRTMGP object.
@@ -518,127 +661,6 @@ subroutine rrtmgp_set_aer_lw(ncol, nlwbands, aer_lw_abs, aer_lw)
       call endrun(sub//': ERROR: aer_lw%validate: '//trim(errmsg))
    end if
 end subroutine rrtmgp_set_aer_lw
-
-!==================================================================================================
-
-subroutine rrtmgp_set_cloud_sw( &
-   nswbands, nday, nlay, idxday, pmid, cldfrac, &
-   c_cld_tau, c_cld_tau_w, c_cld_tau_w_g, c_cld_tau_w_f, kdist_sw, &
-   cloud_sw)
-
-   ! Create MCICA stochastic arrays for cloud SW optical properties.
-
-   ! arguments
-   integer,                intent(in) :: nswbands
-   integer,                intent(in) :: nday
-   integer,                intent(in) :: nlay           ! number of layers in rad calc (may include "extra layer")
-   integer,                intent(in) :: idxday(:)
-
-   real(r8),               intent(in) :: pmid(nday,nlay)                    ! pressure at layer midpoints (Pa)
-   real(r8),               intent(in) :: cldfrac(pcols,pver)                ! combined cloud fraction (snow plus regular)
-   real(r8),               intent(in) :: c_cld_tau    (nswbands,pcols,pver) ! combined cloud extinction optical depth
-   real(r8),               intent(in) :: c_cld_tau_w  (nswbands,pcols,pver) ! combined cloud single scattering albedo * tau
-   real(r8),               intent(in) :: c_cld_tau_w_g(nswbands,pcols,pver) ! combined cloud assymetry parameter * w * tau
-   real(r8),               intent(in) :: c_cld_tau_w_f(nswbands,pcols,pver) ! combined cloud forward scattered fraction * w * tau
-
-   class(ty_gas_optics_rrtmgp), intent(in)    :: kdist_sw  ! shortwave gas optics object
-   type(ty_optical_props_2str), intent(inout) :: cloud_sw  ! cloud optical properties object
-
-   ! local vars
-   integer, parameter :: changeseed = 1
-
-   integer :: i, k, kk, ns, igpt
-   integer :: ngptsw
-   integer :: nver       ! nver is the number of cam layers in the SW calc.  It
-                         ! does not include the "extra layer".
-
-   real(r8), allocatable :: cldf(:,:)
-   real(r8), allocatable :: tauc(:,:,:)
-   real(r8), allocatable :: ssac(:,:,:)
-   real(r8), allocatable :: asmc(:,:,:)
-   real(r8), allocatable :: taucmcl(:,:,:)
-   real(r8), allocatable :: ssacmcl(:,:,:)
-   real(r8), allocatable :: asmcmcl(:,:,:)
-
-   character(len=*), parameter :: sub = 'rrtmgp_set_cloud_sw'
-   character(len=128) :: errmsg
-   real(r8) :: small_val = 1.e-80_r8
-   real(r8), allocatable :: day_cld_tau(:,:,:)
-   real(r8), allocatable :: day_cld_tau_w(:,:,:)
-   real(r8), allocatable :: day_cld_tau_w_g(:,:,:)
-   !--------------------------------------------------------------------------------
-   ngptsw = kdist_sw%get_ngpt()
-   nver   = pver - ktopcam + 1 ! number of CAM's layers in radiation calculation. 
-
-   ! Compute the input quantities needed for the 2-stream optical props
-   ! object.  Also subset the vertical levels and the daylight columns
-   ! here.  But don't reorder the vertical index because the mcica sub-column
-   ! generator assumes the CAM vertical indexing.
-   allocate( &
-      cldf(nday,nver),           &
-      tauc(nswbands,nday,nver),  &
-      ssac(nswbands,nday,nver),  &
-      asmc(nswbands,nday,nver),  &
-      taucmcl(ngptsw,nday,nver), &
-      ssacmcl(ngptsw,nday,nver), &
-      asmcmcl(ngptsw,nday,nver), &
-      day_cld_tau(nswbands,nday,nver),     &
-      day_cld_tau_w(nswbands,nday,nver),   &
-      day_cld_tau_w_g(nswbands,nday,nver))
-
-   ! get daylit arrays on radiation levels, note: expect idxday to be truncated to size nday
-   day_cld_tau     = c_cld_tau(    :, idxday(1:nday), ktopcam:)
-   day_cld_tau_w   = c_cld_tau_w(  :, idxday(1:nday), ktopcam:)
-   day_cld_tau_w_g = c_cld_tau_w_g(:, idxday(1:nday), ktopcam:)
-   cldf = cldfrac(idxday(1:nday), ktopcam:)  ! daylit cloud fraction on radiation levels
-   tauc = merge(day_cld_tau, 0.0_r8, day_cld_tau > 0.0_r8)  ! start by setting cloud optical depth, clip @ zero
-   asmc = merge(day_cld_tau_w_g / max(day_cld_tau_w, small_val), 0.0_r8, day_cld_tau_w > 0.0_r8)  ! set value of asymmetry
-   ssac = merge(max(day_cld_tau_w, small_val) / max(tauc, small_val), 1.0_r8 , tauc > 0.0_r8)
-   asmc = merge(asmc, 0.0_r8, tauc > 0.0_r8) ! double-check asymmetry; reset when tauc = 0
-
-
-   ! mcica_subcol_sw converts to gpts (e.g., 224 pts instead of 14 bands)
-   ! inputs (pmid, cldf, tauc, ssac, asmc) and outputs (taucmcl, ssacmcl, asmcmcl)
-   ! are on the same nver vertical levels
-   ! output is shape (ngpt, ncol, nver)
-   call mcica_subcol_sw( &
-         kdist_sw, nswbands, ngptsw, nday, nlay, nver, changeseed, &
-         pmid, cldf, tauc, ssac, asmc,     &
-         taucmcl, ssacmcl, asmcmcl) ! 32
-   
-
-   ! If there is an extra layer in the radiation then this initialization
-   ! will provide the optical properties there.
-   ! These are shape (ncol, nlay, ngpt)
-   cloud_sw%tau(:,:,:) = 0.0_r8
-   cloud_sw%ssa(:,:,:) = 1.0_r8
-   cloud_sw%g(:,:,:)   = 0.0_r8
-   do igpt = 1,ngptsw
-      cloud_sw%g  (:, ktoprad:, igpt) = asmcmcl(igpt, ktopcam:, :)
-      cloud_sw%ssa(:, ktoprad:, igpt) = ssacmcl(igpt, ktopcam:, :)
-      cloud_sw%tau(:, ktoprad:, igpt) = taucmcl(igpt, ktopcam:, :)
-   end do
-
-
-   errmsg = cloud_sw%validate()
-   if (len_trim(errmsg) > 0) then
-      call endrun(sub//': ERROR: cloud_sw%validate: '//trim(errmsg))
-   end if
-
-   ! delta scaling adjusts for forward scattering
-   ! If delta_scale() is applied, cloud_sw%tau differs from RRTMG implementation going into SW calculation.   
-   errmsg = cloud_sw%delta_scale()
-   if (len_trim(errmsg) > 0) then
-      call endrun(sub//': ERROR: cloud_sw%delta_scale: '//trim(errmsg))
-   end if
-
-   ! all information is in cloud_sw, now deallocate
-   deallocate( &
-      cldf, tauc, ssac, asmc, &
-      taucmcl, ssacmcl, asmcmcl,&
-      day_cld_tau, day_cld_tau_w, day_cld_tau_w_g )
-
-end subroutine rrtmgp_set_cloud_sw
 
 !==================================================================================================
 
