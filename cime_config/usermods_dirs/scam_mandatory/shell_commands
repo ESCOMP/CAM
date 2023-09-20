@@ -2,8 +2,8 @@
 # these are necessary for scam runs.
 #========================================
 #
-# SCAM works in SPMD mode with a single task, but the default is to run serially.
-./xmlchange MPILIB=mpi-serial
+# SCAM works in SPMD mode with a single task.
+./xmlchange NTASKS=1
 
 # SCAM doesn't have restart functionality yet.
 ./xmlchange REST_OPTION=never

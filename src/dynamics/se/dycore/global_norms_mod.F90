@@ -681,8 +681,10 @@ contains
     do k=1,nlev
       ! Vertical profile from FV dycore (see Lauritzen et al. 2012 DOI:10.1177/1094342011410088)
       scale1        = 0.5_r8*(1.0_r8+tanh(2.0_r8*log(pmid(sponge_del4_lev)/pmid(k))))
-      nu_div_lev(k) = (1.0_r8-scale1)*nu_div+scale1*nu_div_max
-      if (sponge_del4_nu_fac.ne.1.0_r8) then
+      if (sponge_del4_nu_div_fac /= 1.0_r8) then
+        nu_div_lev(k) = (1.0_r8-scale1)*nu_div+scale1*nu_div_max
+      end if
+      if (sponge_del4_nu_fac /= 1.0_r8) then
         nu_lev(k)     = (1.0_r8-scale1)*nu    +scale1*nu_max
         nu_t_lev(k)   = (1.0_r8-scale1)*nu_p  +scale1*nu_max
       end if
