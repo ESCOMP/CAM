@@ -264,7 +264,6 @@ subroutine chem_surfvals_init()
    use infnan,       only: posinf, assignment(=)
    use mo_flbc,      only: flbc_inti
    use phys_control, only: use_simple_phys
-
    !---------------------------Local variables-----------------------------
    integer :: yr, mon, day, ncsec
    character(len=*), parameter :: sub = 'chem_surfvals_init'
@@ -328,7 +327,6 @@ subroutine chem_surfvals_init()
       ! set by lower boundary conditions file
       call flbc_inti( flbc_file, flbc_list, flbc_timing, co2vmr, ch4vmr, n2ovmr, f11vmr, f12vmr )
       call chem_surfvals_set()
-
    endif
 
    if (masterproc) then
@@ -512,6 +510,7 @@ subroutine chem_surfvals_set()
 
    use ppgrid,         only: begchunk, endchunk
    use mo_flbc,        only: flbc_gmean_vmr, flbc_chk
+   use scamMod,        only: single_column, scmiop_flbc_inti
 
 !---------------------------Local variables-----------------------------
 
@@ -527,7 +526,12 @@ subroutine chem_surfvals_set()
    elseif (scenario_ghg == 'CHEM_LBC_FILE') then
       ! set mixing ratios from cam-chem/waccm lbc file 
       call flbc_chk()
-      call flbc_gmean_vmr(co2vmr,ch4vmr,n2ovmr,f11vmr,f12vmr)
+      if (single_column) then
+         call scmiop_flbc_inti( co2vmr, ch4vmr, n2ovmr, f11vmr, f12vmr )
+      else
+         ! set by lower boundary conditions file
+         call flbc_gmean_vmr(co2vmr,ch4vmr,n2ovmr,f11vmr,f12vmr)
+      endif
    endif
 
    if (masterproc .and. is_end_curr_day()) then

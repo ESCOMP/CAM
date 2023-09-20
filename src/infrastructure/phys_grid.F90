@@ -63,6 +63,7 @@ module phys_grid
 
    ! The identifier for the physics grid
    integer, parameter, public          :: phys_decomp = 100
+   integer, parameter, public          :: phys_decomp_scm = 110
 
    !! PUBLIC TYPES
 
@@ -119,6 +120,7 @@ module phys_grid
    integer,          protected, public :: index_bottom_layer = 0
    integer,          protected, public :: index_top_interface = 1
    integer,          protected, public :: index_bottom_interface = 0
+   integer,          public            :: phys_columns_on_task = 0
 
 !==============================================================================
 CONTAINS
@@ -191,6 +193,8 @@ CONTAINS
       use cam_grid_support, only: horiz_coord_t, horiz_coord_create
       use cam_grid_support, only: cam_grid_attribute_copy, cam_grid_attr_exists
       use shr_const_mod,    only: PI => SHR_CONST_PI
+      use scamMod,          only: scmlon,scmlat,single_column
+      use cam_grid_support, only: max_hcoordname_len
 
       ! Local variables
       integer                             :: index
@@ -203,6 +207,7 @@ CONTAINS
       real(r8),               pointer     :: latvals(:)
       real(r8)                            :: lonmin, latmin
       integer(iMap),          pointer     :: grid_map(:,:)
+      integer(iMap),          pointer     :: grid_map_scm(:,:)
       integer(iMap),          allocatable :: coord_map(:)
       type(horiz_coord_t),    pointer     :: lat_coord
       type(horiz_coord_t),    pointer     :: lon_coord
@@ -217,6 +222,9 @@ CONTAINS
       character(len=hclen)                :: copy_gridname
       character(len=*),       parameter   :: subname = 'phys_grid_init: '
       real(r8),               parameter   :: rarea_sphere = 1.0_r8 / (4.0_r8*PI)
+      real (r8),              allocatable :: dynlats(:),dynlons(:),pos_dynlons(:)
+      real (r8)                           :: pos_scmlon,minpoint,testpoint
+      integer                             :: scm_col_index, i
 
       nullify(lonvals)
       nullify(latvals)
@@ -237,6 +245,36 @@ CONTAINS
       ! Gather info from the dycore
       call get_dyn_grid_info(hdim1_d, hdim2_d, pver, index_top_layer,         &
            index_bottom_layer, unstructured, dyn_columns)
+
+      ! Set up the physics decomposition
+      columns_on_task = size(dyn_columns)
+
+      if (single_column) then
+         allocate(dynlats(columns_on_task),dynlons(columns_on_task),pos_dynlons(columns_on_task))
+         dynlats(:) = dyn_columns(:)%lat_deg
+         dynlons(:) = dyn_columns(:)%lon_deg
+
+         pos_dynlons(:)= mod(dynlons(:) + 360._r8,360._r8)
+         pos_scmlon = mod(scmlon  + 360._r8,360._r8)
+
+         if (unstructured) then
+            minpoint=1000.0
+            do i=1,columns_on_task
+               testpoint=abs(pos_dynlons(i)-pos_scmlon)+abs(dynlats(i)-scmlat)
+               if (testpoint .lt. minpoint) then
+                  minpoint=testpoint
+                  scm_col_index=i
+               endif
+            enddo
+         end if
+         hdim1_d = 1
+         hdim2_d = 1
+         phys_columns_on_task = 1
+         deallocate(dynlats,dynlons,pos_dynlons)
+      else
+         phys_columns_on_task = columns_on_task
+      end if
+
       ! hdim1_d * hdim2_d is the total number of columns
       num_global_phys_cols = hdim1_d * hdim2_d
       pverp = pver + 1
@@ -251,14 +289,12 @@ CONTAINS
          index_top_interface = index_top_layer + 1
       end if
 
-      ! Set up the physics decomposition
-      columns_on_task = size(dyn_columns)
       if (allocated(phys_columns)) then
          deallocate(phys_columns)
       end if
-      allocate(phys_columns(columns_on_task))
-      if (columns_on_task > 0) then
-         col_index = columns_on_task
+      allocate(phys_columns(phys_columns_on_task))
+      if (phys_columns_on_task > 0) then
+         col_index = phys_columns_on_task
          num_chunks = col_index / pcols
          if ((num_chunks * pcols) < col_index) then
             num_chunks = num_chunks + 1
@@ -273,21 +309,30 @@ CONTAINS
       col_index = 0
       ! Simple chunk assignment
       do index = begchunk, endchunk
-         chunks(index)%ncols = MIN(pcols, (columns_on_task - col_index))
+         chunks(index)%ncols = MIN(pcols, (phys_columns_on_task - col_index))
          chunks(index)%chunk_index = index
          allocate(chunks(index)%phys_cols(chunks(index)%ncols))
          do phys_col = 1, chunks(index)%ncols
             col_index = col_index + 1
             ! Copy information supplied by the dycore
-            phys_columns(col_index) = dyn_columns(col_index)
+            if (single_column) then
+               
+               phys_columns(col_index) = dyn_columns(scm_col_index)
+               !single column only has 1 global column that is written to at offset 1
+               phys_columns(col_index)%global_col_num = 1
+            else
+               phys_columns(col_index) = dyn_columns(col_index)
+            end if
             ! Fill in physics decomp info
+!jt            phys_columns(col_index)%coord_indices(:)=scm_col_index
+            phys_columns(col_index)%coord_indices(:)=1
             phys_columns(col_index)%phys_task = iam
             phys_columns(col_index)%local_phys_chunk = index
             phys_columns(col_index)%phys_chunk_index = phys_col
             chunks(index)%phys_cols(phys_col) = col_index
          end do
       end do
-
+      
       deallocate(dyn_columns)
 
       ! Add physics-package grid to set of CAM grids
@@ -414,7 +459,7 @@ CONTAINS
             ! (Note, a separate physics grid is only supported for
             !  unstructured grids).
             allocate(area_d(size(grid_map, 2)))
-            do col_index = 1, columns_on_task
+            do col_index = 1, phys_columns_on_task
                area_d(col_index) = phys_columns(col_index)%area
             end do
             call cam_grid_attribute_register('physgrid', 'area',              &
@@ -422,7 +467,7 @@ CONTAINS
             nullify(area_d) ! Belongs to attribute now
 
             allocate(areawt_d(size(grid_map, 2)))
-            do col_index = 1, columns_on_task
+            do col_index = 1, phys_columns_on_task
                areawt_d(col_index) = phys_columns(col_index)%weight*rarea_sphere
             end do
             call cam_grid_attribute_register('physgrid', 'areawt',              &
@@ -433,16 +478,85 @@ CONTAINS
          end if
       end if
       ! Cleanup pointers (they belong to the grid now)
-      nullify(grid_map)
-      deallocate(latvals)
-      nullify(latvals)
-      deallocate(lonvals)
-      nullify(lonvals)
+!jt      nullify(grid_map)
       ! Cleanup, we are responsible for copy attributes
       if (associated(copy_attributes)) then
          deallocate(copy_attributes)
          nullify(copy_attributes)
       end if
+
+      ! if running single_column physgrid can map between a full grid boundary file
+      ! and the single column physics - To write to a single column history file
+      ! we need an additional grid that does not include the dynamics offset of the full grid.
+      if (single_column) then
+         ! First, create a map for the physics grid
+         ! It's structure will depend on whether or not the physics grid is
+         ! unstructured
+         if (unstructured) then
+            allocate(grid_map_scm(3, pcols * (endchunk - begchunk + 1)))
+         else
+            allocate(grid_map_scm(4, pcols * (endchunk - begchunk + 1)))
+         end if
+         ! new grid matches physgrid with the exception of file index which points to the column on the full grid
+         grid_map_scm = grid_map
+         grid_map_scm(3, 1) = int(scm_col_index, iMap)
+         
+         if (unstructured) then
+            ! lonvals/latvals calculated above
+            lon_coord => horiz_coord_create('lon', 'ncol', num_global_phys_cols, &
+                 'longitude', 'degrees_east', 1, size(lonvals), lonvals,         &
+                 map=grid_map_scm(3,:))
+            lat_coord => horiz_coord_create('lat', 'ncol', num_global_phys_cols, &
+                 'latitude', 'degrees_north', 1, size(latvals), latvals,         &
+                 map=grid_map_scm(3,:))
+         else
+            allocate(coord_map(size(grid_map_scm, 2)))
+            ! We need a global minimum longitude and latitude
+            if (npes > 1) then
+               temp = lonmin
+               call MPI_allreduce(temp, lonmin, 1, MPI_INTEGER, MPI_MIN,         &
+                    mpicom, ierr)
+               temp = latmin
+               call MPI_allreduce(temp, latmin, 1, MPI_INTEGER, MPI_MIN,         &
+                    mpicom, ierr)
+               ! Create lon coord map which only writes from one of each unique lon
+               where(latvals == latmin)
+                  coord_map(:) = grid_map_scm(3, :)
+               elsewhere
+                  coord_map(:) = 0_iMap
+               end where
+               lon_coord => horiz_coord_create('lon', 'lon', hdim1_d,            &
+                    'longitude', 'degrees_east', 1, size(lonvals), lonvals,      &
+                    map=coord_map)
+               
+               ! Create lat coord map which only writes from one of each unique lat
+               where(lonvals == lonmin)
+                  coord_map(:) = grid_map_scm(4, :)
+               elsewhere
+                  coord_map(:) = 0_iMap
+               end where
+               lat_coord => horiz_coord_create('lat', 'lat', hdim2_d,            &
+                    'latitude', 'degrees_north', 1, size(latvals), latvals,      &
+                    map=coord_map)
+               deallocate(coord_map)
+            end if
+         end if
+         call cam_grid_register('physgrid_scm', phys_decomp_scm, lat_coord, lon_coord,   &
+              grid_map_scm, unstruct=unstructured, block_indexed=.true.)
+         ! Copy required attributes from the dynamics array
+         nullify(copy_attributes)
+         call physgrid_copy_attributes_d(copy_gridname, copy_attributes)
+         do index = 1, size(copy_attributes)
+            call cam_grid_attribute_copy(copy_gridname, 'physgrid_scm',              &
+                 copy_attributes(index))
+         end do
+      end if
+      nullify(grid_map)
+      nullify(grid_map_scm)
+      deallocate(latvals)
+      nullify(latvals)
+      deallocate(lonvals)
+      nullify(lonvals)
 
       ! Set flag indicating physics grid is now set
       phys_grid_set = .true.
@@ -526,7 +640,7 @@ CONTAINS
    !========================================================================
 
    integer function get_nlcols_p()
-      get_nlcols_p = columns_on_task
+      get_nlcols_p = phys_columns_on_task
    end function get_nlcols_p
 
    !========================================================================

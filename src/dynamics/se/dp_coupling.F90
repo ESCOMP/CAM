@@ -15,7 +15,7 @@ use dyn_comp,       only: dyn_export_t, dyn_import_t
 
 use physics_types,  only: physics_state, physics_tend, physics_cnst_limit
 use phys_grid,      only: get_ncols_p
-use phys_grid,      only: get_dyn_col_p, columns_on_task, get_chunk_info_p
+use phys_grid,      only: get_dyn_col_p, columns_on_task, get_chunk_info_p, phys_columns_on_task
 use physics_buffer, only: physics_buffer_desc, pbuf_get_chunk, pbuf_get_field
 
 use dp_mapping,     only: nphys_pts
@@ -224,7 +224,7 @@ subroutine d_p_coupling(phys_state, phys_tend,  pbuf2d, dyn_out)
       allocate(frontga_phys(pcols, pver, begchunk:endchunk))
    end if
    !$omp parallel do num_threads(max_num_threads) private (col_ind, lchnk, icol, ie, blk_ind, ilyr, m)
-   do col_ind = 1, columns_on_task
+   do col_ind = 1, phys_columns_on_task
       call get_dyn_col_p(col_ind, ie, blk_ind)
       call get_chunk_info_p(col_ind, lchnk, icol)
       phys_state(lchnk)%ps(icol)   = ps_tmp(blk_ind(1), ie)
@@ -306,7 +306,7 @@ subroutine p_d_coupling(phys_state, phys_tend, dyn_in, tl_f, tl_qdp)
 
    ! Convert the physics output state into the dynamics input state.
 
-   use phys_grid,        only: get_dyn_col_p, columns_on_task, get_chunk_info_p
+   use phys_grid,        only: get_dyn_col_p, columns_on_task, get_chunk_info_p, phys_columns_on_task
    use bndry_mod,        only: bndry_exchange
    use edge_mod,         only: edgeVpack, edgeVunpack
    use fvm_mapping,      only: phys2dyn_forcings_fvm
@@ -383,7 +383,7 @@ subroutine p_d_coupling(phys_state, phys_tend, dyn_in, tl_f, tl_qdp)
 
    call t_startf('pd_copy')
    !$omp parallel do num_threads(max_num_threads) private (col_ind, lchnk, icol, ie, blk_ind, ilyr, m)
-   do col_ind = 1, columns_on_task
+   do col_ind = 1, phys_columns_on_task
       call get_dyn_col_p(col_ind, ie, blk_ind)
       call get_chunk_info_p(col_ind, lchnk, icol)
 

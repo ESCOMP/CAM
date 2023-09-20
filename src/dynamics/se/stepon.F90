@@ -1,7 +1,7 @@
 module stepon
 
 use shr_kind_mod,   only: r8 => shr_kind_r8
-use spmd_utils,     only: iam, mpicom
+use spmd_utils,     only: iam, mpicom, masterproc
 use ppgrid,         only: begchunk, endchunk
 
 use physics_types,  only: physics_state, physics_tend
@@ -11,11 +11,16 @@ use perf_mod,       only: t_startf, t_stopf, t_barrierf
 use cam_abortutils, only: endrun
 
 use parallel_mod,   only: par
-use dimensions_mod, only: nelemd
+use dimensions_mod, only: np, npsq, nlev, qsize_d, nelemd
 
 use aerosol_properties_mod, only: aerosol_properties
 use aerosol_state_mod,      only: aerosol_state
 use microp_aero,            only: aerosol_state_object, aerosol_properties_object
+use scamMod,                only: use_iop, doiopupdate, single_column, &
+                                  setiopupdate, setiopupdate_init, readiopdata
+use se_single_column_mod,   only: scm_setfield, scm_setinitial, iop_broadcast
+use dyn_grid,               only: hvcoord
+use time_manager,           only: get_step_size, is_last_step, is_first_step, is_first_restart_step
 
 implicit none
 private
@@ -29,6 +34,7 @@ public stepon_final
 
 class(aerosol_properties), pointer :: aero_props_obj => null()
 logical :: aerosols_transported = .false.
+logical :: iop_update_phase1
 
 !=========================================================================================
 contains
@@ -95,7 +101,6 @@ end subroutine stepon_init
 subroutine stepon_run1( dtime_out, phys_state, phys_tend,               &
                         pbuf2d, dyn_in, dyn_out )
 
-   use time_manager,   only: get_step_size
    use dp_coupling,    only: d_p_coupling
    use physics_buffer, only: physics_buffer_desc
 
@@ -109,7 +114,7 @@ subroutine stepon_run1( dtime_out, phys_state, phys_tend,               &
    type (physics_buffer_desc), pointer :: pbuf2d(:,:)
    !----------------------------------------------------------------------------
 
-   integer :: c
+   integer                       :: c
    class(aerosol_state), pointer :: aero_state_obj
    nullify(aero_state_obj)
 
@@ -122,7 +127,38 @@ subroutine stepon_run1( dtime_out, phys_state, phys_tend,               &
       ! write diagnostic fields on gll grid and initial file
       call diag_dynvar_ic(dyn_out%elem, dyn_out%fvm)
    end if
+   
+   ! Determine whether it is time for an IOP update;
+   ! doiopupdate set to true if model time step > next available IOP 
 
+
+   if (use_iop .and. masterproc) then
+     if (is_first_step()) then 
+       call setiopupdate_init()
+     else
+       call setiopupdate
+     endif
+   end if
+
+   if (single_column) then
+
+     ! If first restart step then ensure that IOP data is read
+     if (is_first_restart_step()) then
+       iop_update_phase1 = .false.
+       call scm_setinitial(dyn_out%elem)
+       if (masterproc) call readiopdata( iop_update_phase1,hvcoord )
+       call iop_broadcast()
+     endif
+
+     iop_update_phase1 = .true. 
+     if ((is_first_restart_step() .or. doiopupdate) .and. masterproc) then
+         call readiopdata(iop_update_phase1,hvcoord)
+     endif
+     call iop_broadcast()
+
+     call scm_setfield(dyn_out%elem,iop_update_phase1)
+   endif
+  
    call t_barrierf('sync_d_p_coupling', mpicom)
    call t_startf('d_p_coupling')
    ! Move data into phys_state structure.
@@ -209,6 +245,10 @@ subroutine stepon_run3(dtime, cam_out, phys_state, dyn_in, dyn_out)
    use dyn_grid,       only: TimeLevel
    use time_mod,       only: TimeLevel_Qdp
    use control_mod,    only: qsplit
+   use constituents,   only: pcnst, cnst_name
+   use cam_history,    only: outfld
+   use time_manager,   only: is_first_step   
+
    ! arguments
    real(r8),            intent(in)    :: dtime   ! Time-step
    type(cam_out_t),     intent(inout) :: cam_out(:) ! Output from CAM to surface
@@ -217,7 +257,46 @@ subroutine stepon_run3(dtime, cam_out, phys_state, dyn_in, dyn_out)
    type (dyn_export_t), intent(inout) :: dyn_out ! Dynamics export container
 
    integer :: tl_f, tl_fQdp
+   integer :: rc, i, j, k, p, ie
+#if defined (BFB_CAM_SCAM_IOP)
+   real(r8) :: forcing_temp(npsq,nlev), forcing_q(npsq,nlev,pcnst)
+   real(r8) :: ftmp_temp(np,np,nlev,nelemd), ftmp_q(np,np,nlev,pcnst,nelemd)
+   real(r8) :: out_temp(npsq,nlev), out_q(npsq,nlev), out_u(npsq,nlev), &
+               out_v(npsq,nlev), out_psv(npsq)  
+#endif   
    !--------------------------------------------------------------------------------------
+
+   call t_startf('comp_adv_tends1')
+   tl_f = TimeLevel%n0
+   call TimeLevel_Qdp(TimeLevel, qsplit, tl_fQdp)
+
+#if (defined BFB_CAM_SCAM_IOP)   
+
+   tl_f = TimeLevel%n0   ! timelevel which was adjusted by physics
+   
+   ! Save ftmp stuff to get state before dynamics is called
+   do ie=1,nelemd
+      ftmp_temp(:,:,:,ie) = dyn_in%elem(ie)%state%T(:,:,:,tl_f)
+      do p = 1, qsize_d
+         ftmp_q(:,:,:,p,ie) = dyn_in%elem(ie)%state%Qdp(:,:,:,p,tl_fQdp)/&
+              dyn_in%elem(ie)%state%dp3d(:,:,:,tl_f)
+      enddo
+   enddo
+#endif   
+
+   if (single_column) then
+
+     ! Update IOP properties e.g. omega, divT, divQ
+
+      if (.not. is_first_step()) iop_update_phase1 = .false. 
+!jt e3sm has this   iop_update_phase1 = .false. 
+      if (doiopupdate) then
+         call scm_setinitial(dyn_out%elem)
+         if (masterproc) call readiopdata(iop_update_phase1,hvcoord)
+         call iop_broadcast()
+         call scm_setfield(dyn_out%elem,iop_update_phase1)
+      endif
+   endif
 
    call t_startf('comp_adv_tends1')
    tl_f = TimeLevel%n0
@@ -236,6 +315,52 @@ subroutine stepon_run3(dtime, cam_out, phys_state, dyn_in, dyn_out)
    call compute_adv_tends_xyz(dyn_in%elem,dyn_in%fvm,1,nelemd,tl_fQdp,tl_f)
    call t_stopf('comp_adv_tends2')
 
+   ! Update to get tendency 
+#if (defined BFB_CAM_SCAM_IOP) 
+   
+   tl_f = TimeLevel%n0
+   
+   do ie=1,nelemd
+      do k=1,nlev
+         do j=1,np
+            do i=1,np
+               
+               ! Note that this calculation will not provide b4b results with 
+               !  an E3SM because the dynamics tendency is not computed in the exact
+               !  same way as an E3SM run, introducing error with roundoff 
+               forcing_temp(i+(j-1)*np,k) = (dyn_in%elem(ie)%state%T(i,j,k,tl_f) - &
+                    ftmp_temp(i,j,k,ie))/dtime - dyn_in%elem(ie)%derived%FT(i,j,k)	
+               out_temp(i+(j-1)*np,k) = dyn_in%elem(ie)%state%T(i,j,k,tl_f)
+               out_u(i+(j-1)*np,k) = dyn_in%elem(ie)%state%v(i,j,1,k,tl_f)
+               out_v(i+(j-1)*np,k) = dyn_in%elem(ie)%state%v(i,j,2,k,tl_f)
+               out_q(i+(j-1)*np,k) = dyn_in%elem(ie)%state%Qdp(i,j,k,1,tl_fQdp)/&
+                    dyn_in%elem(ie)%state%dp3d(i,j,k,tl_f)
+               out_psv(i+(j-1)*np) = dyn_in%elem(ie)%state%psdry(i,j)
+               
+               do p=1,qsize_d
+                  forcing_q(i+(j-1)*np,k,p) = (dyn_in%elem(ie)%state%Qdp(i,j,k,p,tl_fQdp)/&
+                       dyn_in%elem(ie)%state%dp3d(i,j,k,tl_f) - &
+                       ftmp_q(i,j,k,p,ie))/dtime
+               enddo
+               
+            enddo
+         enddo
+      enddo
+      
+      call outfld('Ps',out_psv,npsq,ie)
+      call outfld('t',out_temp,npsq,ie)
+      call outfld('q',out_q,npsq,ie)
+      call outfld('u',out_u,npsq,ie)
+      call outfld('v',out_v,npsq,ie)
+      call outfld('divT3d',forcing_temp,npsq,ie)
+      do p=1,qsize_d
+         call outfld(trim(cnst_name(p))//'_dten',forcing_q(:,:,p),npsq,ie)   
+      enddo
+     
+   enddo
+   
+#endif   
+   
 end subroutine stepon_run3
 
 !=========================================================================================

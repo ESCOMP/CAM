@@ -1633,7 +1633,7 @@ contains
     nullify(attrptr)
     gridind = get_cam_grid_index(id)
     if (gridind > 0) then
-       select case(cam_grids(gridind)%name)
+       select case(trim(cam_grids(gridind)%name))
        case('GLL')
           wtname='area_weight_gll'
        case('EUL')

@@ -20,6 +20,9 @@ module ncdio_atm
   use scamMod,        only: scmlat,scmlon,single_column
   use cam_logfile,    only: iulog
   use string_utils,   only: to_lower
+  use cam_grid_support, only: cam_grid_check, cam_grid_get_decomp, cam_grid_id, &
+                              cam_grid_dimensions, cam_grid_get_latvals, cam_grid_get_lonvals, &
+                              max_hcoordname_len
   !
   ! !PUBLIC TYPES:
   implicit none
@@ -68,8 +71,6 @@ contains
 
     use pio,              only: pio_get_var, pio_read_darray, pio_setdebuglevel
     use pio,              only: PIO_MAX_NAME, pio_inquire, pio_inq_dimname
-    use cam_grid_support, only: cam_grid_check, cam_grid_get_decomp, cam_grid_id, &
-                                cam_grid_dimensions
     use cam_pio_utils,    only: cam_pio_check_var, cam_pio_inq_var_fill
 
     !
@@ -112,10 +113,16 @@ contains
 
     logical                   :: readvar_tmp ! if true, variable is on tape
     character(len=*), parameter :: subname='INFLD_REAL_1D_2D' ! subroutine name
+    character(len=max_hcoordname_len) :: vargridname ! Name of variable's grid
 
     ! For SCAM
     real(r8)                  :: closelat, closelon
     integer                   :: lonidx, latidx
+    real(r8), pointer         :: latvals_deg(:)
+    real(r8), pointer         :: lonvals_deg(:)
+    real(r8), allocatable     :: pos_lonvals(:)
+    real (r8)                 :: pos_scmlon,minpoint,testpoint
+    integer                   :: colidx,nvals
 
     nullify(iodesc)
 
@@ -128,41 +135,40 @@ contains
     ! Error conditions
     !
     if (present(gridname)) then
-      grid_id = cam_grid_id(trim(gridname))
+       vargridname=trim(gridname)
     else
-      grid_id = cam_grid_id('physgrid')
+       vargridname='physgrid'
     end if
+    ! if running single column mode then we need to use scm grid to read proper column
+    if (single_column .and. trim(vargridname)=='physgrid') then
+       vargridname='physgrid_scm'
+    end if
+
+    grid_id = cam_grid_id(trim(vargridname))
+
     if (.not. cam_grid_check(grid_id)) then
       if(masterproc) then
-        if (present(gridname)) then
-          write(errormsg, *)': invalid gridname, "',trim(gridname),'", specified for field ',trim(varname)
-        else
-          write(errormsg, *)': Internal error, no "physgrid" gridname'
-        end if
+         write(errormsg, *)': invalid gridname, "',trim(vargridname),'", specified for field ',trim(varname)
       end if
       call endrun(trim(subname)//errormsg)
     end if
 
+    if (debug .and. masterproc) then
+       write(iulog, '(5a)') trim(subname),': field = ',trim(varname),', grid = ',trim(vargridname)
+       call shr_sys_flush(iulog)
+    end if
+
     ! Get the number of columns in the global grid.
     call cam_grid_dimensions(grid_id, grid_dimlens)
-
-    if (debug .and. masterproc) then
-      if (present(gridname)) then
-        write(iulog, '(5a)') trim(subname),': field = ',trim(varname),', grid = ',trim(gridname)
-      else
-        write(iulog, '(4a)') trim(subname),': field = ',trim(varname),', grid = physgrid'
-      end if
-      call shr_sys_flush(iulog)
-    end if
     !
-    ! Read netCDF file
+    ! read netcdf file
     !
     !
-    ! Check if field is on file; get netCDF variable id
+    ! check if field is on file; get netcdf variable id
     !
     call cam_pio_check_var(ncid, varname, varid, ndims, dimids, dimlens, readvar_tmp)
     !
-    ! If field is on file:
+    ! if field is on file:
     !
     if (readvar_tmp) then
         if (debug .and. masterproc) then
@@ -171,13 +177,13 @@ contains
           call shr_sys_flush(iulog)
         end if
       !
-      ! Get array dimension id's and sizes
+      ! get array dimension id's and sizes
       !
       arraydimsize(1) = (dim1e - dim1b + 1)
       arraydimsize(2) = (dim2e - dim2b + 1)
       do j = 1, 2
         if (arraydimsize(j) /= size(field, j)) then
-          write(errormsg, *) ': Mismatch between array bounds and field size for ', &
+          write(errormsg, *) ': mismatch between array bounds and field size for ', &
                trim(varname), ', dimension', j
           call endrun(trim(subname)//errormsg)
         end if
@@ -188,14 +194,14 @@ contains
       else if (ndims < 1) then
         call endrun(trim(subname)//': too few dimensions for '//trim(varname))
       else
-         ! Check that the number of columns in the file matches the number of
+         ! check that the number of columns in the file matches the number of
          ! columns in the grid object.
-         if (dimlens(1) /= grid_dimlens(1)) then
+         if (dimlens(1) /= grid_dimlens(1) .and. .not. single_column) then
             readvar = .false.
             return
          end if
 
-        ! Check to make sure that the second dimension is time
+        ! check to make sure that the second dimension is time
         if (ndims == 2) then
           ierr = pio_inq_dimname(ncid, dimids(2), tmpname)
           if (trim(tmpname) /= 'time') then
@@ -213,21 +219,15 @@ contains
         ndims = ndims - 1
       end if
 
-      ! NB: strt and cnt were initialized to 1
-      if (single_column) then
-        !!XXgoldyXX: Clearly, this will not work for an unstructured dycore
-        call endrun(trim(subname)//': SCAM not supported in this configuration')
-      else
-        ! All distributed array processing
-        call cam_grid_get_decomp(grid_id, arraydimsize, dimlens(1:ndims),    &
-             pio_double, iodesc)
-        call pio_read_darray(ncid, varid, iodesc, field, ierr)
-        if (present(fillvalue)) then
-           ierr = cam_pio_inq_var_fill(ncid, varid, fillvalue)
-        end if
-     end if
-
-
+      ! nb: strt and cnt were initialized to 1
+      ! all distributed array processing
+      call cam_grid_get_decomp(grid_id, arraydimsize, dimlens(1:ndims),    &
+           pio_double, iodesc)
+      call pio_read_darray(ncid, varid, iodesc, field, ierr)
+      if (present(fillvalue)) then
+         ierr = cam_pio_inq_var_fill(ncid, varid, fillvalue)
+      end if
+      
       if (masterproc) write(iulog,*) subname//': read field '//trim(varname)
 
     end if  ! end of readvar_tmp
@@ -239,25 +239,24 @@ contains
   end subroutine infld_real_1d_2d
 
   !-----------------------------------------------------------------------
-  !BOP
+  !bop
   !
-  ! !IROUTINE: infld_real_2d_2d
+  ! !iroutine: infld_real_2d_2d
   !
-  ! !INTERFACE:
+  ! !interface:
   subroutine infld_real_2d_2d(varname, ncid, dimname1, dimname2,              &
-       dim1b, dim1e, dim2b, dim2e, field, readvar, gridname, timelevel,       &
+       dim1b, dim1e, dim2b, dim2e, field, readvar, gridname, timelevel,    &
        fillvalue)
     !
-    ! !DESCRIPTION:
-    ! Netcdf I/O of initial real field from netCDF file
-    ! Read a 2-D field (or slice) into a 2-D variable
+    ! !description:
+    ! netcdf i/o of initial real field from netcdf file
+    ! read a 2-d field (or slice) into a 2-d variable
     !
-    ! !USES
+    ! !uses
     !
 
     use pio,              only: pio_get_var, pio_read_darray, pio_setdebuglevel
     use pio,              only: PIO_MAX_NAME, pio_inquire, pio_inq_dimname
-    use cam_grid_support, only: cam_grid_check, cam_grid_get_decomp, cam_grid_id
     use cam_pio_utils,    only: cam_permute_array, calc_permutation
     use cam_pio_utils,    only: cam_pio_check_var, cam_pio_inq_var_fill
 
@@ -307,6 +306,7 @@ contains
     logical                   :: readvar_tmp ! if true, variable is on tape
     character(len=*), parameter :: subname='INFLD_REAL_2D_2D' ! subroutine name
     character(len=PIO_MAX_NAME) :: field_dnames(2)
+    character(len=max_hcoordname_len) :: vargridname ! Name of variable's grid
 
     ! For SCAM
     real(r8)                  :: closelat, closelon
@@ -324,35 +324,30 @@ contains
       call infld(varname, ncid, dimname1, dim1b, dim1e, dim2b, dim2e,         &
            field, readvar, gridname, timelevel)
     else
-
       !
       ! Error conditions
       !
       if (present(gridname)) then
-        grid_id = cam_grid_id(trim(gridname))
+        vargridname=trim(gridname)
       else
-        grid_id = cam_grid_id('physgrid')
+        vargridname='physgrid'
       end if
+      ! if running single column mode then we need to use scm grid to read proper column
+      if (single_column .and. trim(vargridname)=='physgrid') then
+        vargridname='physgrid_scm'
+      end if
+      grid_id = cam_grid_id(trim(vargridname))
       if (.not. cam_grid_check(grid_id)) then
         if(masterproc) then
-          if (present(gridname)) then
-            write(errormsg, *)': invalid gridname, "',trim(gridname),'", specified for field ',trim(varname)
-          else
-            write(errormsg, *)': Internal error, no "physgrid" gridname'
-          end if
+           write(errormsg, *)': invalid gridname, "',trim(vargridname),'", specified for field ',trim(varname)
         end if
         call endrun(trim(subname)//errormsg)
       end if
 
-    if (debug .and. masterproc) then
-      if (present(gridname)) then
-        write(iulog, '(5a)') trim(subname),': field = ',trim(varname),', grid = ',trim(gridname)
-      else
-        write(iulog, '(4a)') trim(subname),': field = ',trim(varname),', grid = physgrid'
+      if (debug .and. masterproc) then
+         write(iulog, '(5a)') trim(subname),': field = ',trim(varname),', grid = ',trim(vargridname)
+         call shr_sys_flush(iulog)
       end if
-      call shr_sys_flush(iulog)
-    end if
-
       !
       ! Read netCDF file
       !
@@ -486,8 +481,6 @@ contains
 
     use pio,              only: pio_get_var, pio_read_darray, pio_setdebuglevel
     use pio,              only: PIO_MAX_NAME, pio_inquire, pio_inq_dimname
-    use cam_grid_support, only: cam_grid_check, cam_grid_get_decomp, cam_grid_id, &
-                                cam_grid_dimensions
     use cam_pio_utils,    only: cam_permute_array, calc_permutation
     use cam_pio_utils,    only: cam_pio_check_var, cam_pio_inq_var_fill
 
@@ -541,6 +534,7 @@ contains
     character(len=128)        :: errormsg
     character(len=PIO_MAX_NAME) :: field_dnames(2)
     character(len=PIO_MAX_NAME) :: file_dnames(3)
+    character(len=max_hcoordname_len) :: vargridname ! Name of variable's grid
 
     ! For SCAM
     real(r8)                  :: closelat, closelon
@@ -557,33 +551,29 @@ contains
     ! Error conditions
     !
     if (present(gridname)) then
-      grid_id = cam_grid_id(trim(gridname))
+      vargridname=trim(gridname)
     else
-      grid_id = cam_grid_id('physgrid')
+      vargridname='physgrid'
     end if
+    ! if running single column mode then we need to use scm grid to read proper column
+    if (single_column .and. trim(vargridname)=='physgrid') then
+      vargridname='physgrid_scm'
+    end if
+    grid_id = cam_grid_id(trim(vargridname))
     if (.not. cam_grid_check(grid_id)) then
       if(masterproc) then
-        if (present(gridname)) then
-          write(errormsg, *)': invalid gridname, "',trim(gridname),'", specified for field ',trim(varname)
-        else
-          write(errormsg, *)': Internal error, no "physgrid" gridname'
-        end if
+         write(errormsg, *)': invalid gridname, "',trim(vargridname),'", specified for field ',trim(varname)
       end if
       call endrun(trim(subname)//errormsg)
     end if
 
-    ! Get the number of columns in the global grid.
-    call cam_grid_dimensions(grid_id, grid_dimlens)
-
     if (debug .and. masterproc) then
-      if (present(gridname)) then
-        write(iulog, '(5a)') trim(subname),': field = ',trim(varname),', grid = ',trim(gridname)
-      else
-        write(iulog, '(4a)') trim(subname),': field = ',trim(varname),', grid = physgrid'
-      end if
+      write(iulog, '(5a)') trim(subname),': field = ',trim(varname),', grid = ',trim(vargridname)
       call shr_sys_flush(iulog)
     end if
 
+    ! Get the number of columns in the global grid.
+    call cam_grid_dimensions(grid_id, grid_dimlens)
     !
     ! Read netCDF file
     !
@@ -623,7 +613,7 @@ contains
       else
          ! Check that the number of columns in the file matches the number of
          ! columns in the grid object.
-         if (dimlens(1) /= grid_dimlens(1) .and. dimlens(2) /= grid_dimlens(1)) then
+         if (dimlens(1) /= grid_dimlens(1) .and. dimlens(2) /= grid_dimlens(1) .and. .not. single_column) then
             readvar = .false.
             return
          end if
@@ -649,20 +639,13 @@ contains
       field_dnames(1) = dimname1
       field_dnames(2) = dimname2
       ! NB: strt and cnt were initialized to 1
-      if (single_column) then
-        !!XXgoldyXX: Clearly, this will not work for an unstructured dycore
-        ! Check for permuted dimensions ('out of order' array)
-!       call calc_permutation(dimids(1:2), arraydimids, permutation, ispermuted)
-        call endrun(trim(subname)//': SCAM not supported in this configuration')
-      else
-        ! All distributed array processing
-        call cam_grid_get_decomp(grid_id, arraydimsize, dimlens(1:2),         &
-             pio_double, iodesc, field_dnames=field_dnames,                   &
-             file_dnames=file_dnames(1:2))
-        call pio_read_darray(ncid, varid, iodesc, field, ierr)
-          if (present(fillvalue)) then
-             ierr = cam_pio_inq_var_fill(ncid, varid, fillvalue)
-          end if
+      ! All distributed array processing
+      call cam_grid_get_decomp(grid_id, arraydimsize, dimlens(1:2),         &
+           pio_double, iodesc, field_dnames=field_dnames,                   &
+           file_dnames=file_dnames(1:2))
+      call pio_read_darray(ncid, varid, iodesc, field, ierr)
+      if (present(fillvalue)) then
+         ierr = cam_pio_inq_var_fill(ncid, varid, fillvalue)
       end if
 
       if (masterproc) write(iulog,*) subname//': read field '//trim(varname)
@@ -694,7 +677,6 @@ contains
 
     use pio,              only: pio_get_var, pio_read_darray, pio_setdebuglevel
     use pio,              only: PIO_MAX_NAME, pio_inquire, pio_inq_dimname
-    use cam_grid_support, only: cam_grid_check, cam_grid_get_decomp, cam_grid_id
     use cam_pio_utils,    only: cam_permute_array, calc_permutation
     use cam_pio_utils,    only: cam_pio_check_var, cam_pio_inq_var_fill
 
@@ -749,6 +731,7 @@ contains
     character(len=128)        :: errormsg
     character(len=PIO_MAX_NAME) :: field_dnames(3)
     character(len=PIO_MAX_NAME) :: file_dnames(4)
+    character(len=max_hcoordname_len) :: vargridname ! Name of variable's grid
 
     ! For SCAM
     real(r8)                  :: closelat, closelon
@@ -771,35 +754,30 @@ contains
            dim1b, dim1e, dim2b, dim2e, dim3b, dim3e,                          &
            field, readvar, gridname, timelevel)
     else
-
       !
       ! Error conditions
       !
       if (present(gridname)) then
-        grid_id = cam_grid_id(trim(gridname))
+        vargridname=trim(gridname)
       else
-        grid_id = cam_grid_id('physgrid')
+        vargridname='physgrid'
       end if
+      ! if running single column mode then we need to use scm grid to read proper column
+      if (single_column .and. trim(vargridname)=='physgrid') then
+        vargridname='physgrid_scm'
+      end if
+      grid_id = cam_grid_id(trim(vargridname))
       if (.not. cam_grid_check(grid_id)) then
         if(masterproc) then
-          if (present(gridname)) then
-            write(errormsg, *)': invalid gridname, "',trim(gridname),'", specified for field ',trim(varname)
-          else
-            write(errormsg, *)': Internal error, no "physgrid" gridname'
-          end if
+           write(errormsg, *)': invalid gridname, "',trim(vargridname),'", specified for field ',trim(varname)
         end if
         call endrun(trim(subname)//errormsg)
       end if
 
       if (debug .and. masterproc) then
-        if (present(gridname)) then
-          write(iulog, '(5a)') trim(subname),': field = ',trim(varname),', grid = ',trim(gridname)
-        else
-          write(iulog, '(4a)') trim(subname),': field = ',trim(varname),', grid = physgrid'
-        end if
+        write(iulog, '(5a)') trim(subname),': field = ',trim(varname),', grid = ',trim(vargridname)
         call shr_sys_flush(iulog)
       end if
-
       !
       ! Read netCDF file
       !

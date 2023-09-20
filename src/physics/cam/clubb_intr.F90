@@ -2598,16 +2598,16 @@ end subroutine clubb_init_cnst
     ! Define the grid box size.  CLUBB needs this information to determine what
     !  the maximum length scale should be.  This depends on the column for 
     !  variable mesh grids and lat-lon grids
-    if (single_column) then
-      ! If single column specify grid box size to be something
-      !  similar to a GCM run
-      grid_dx(:) = 100000._r8
-      grid_dy(:) = 100000._r8
-    else
+!!$    if (single_column) then
+!!$      ! If single column specify grid box size to be something
+!!$      !  similar to a GCM run
+!!$      grid_dx(:) = 100000._r8
+!!$      grid_dy(:) = 100000._r8
+!!$    else
      
       call grid_size(state1, grid_dx, grid_dy)
 
-    end if
+!!$    end if
 
     if (clubb_do_icesuper) then
 

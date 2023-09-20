@@ -45,19 +45,23 @@ CONTAINS
 ! Local workspace
 !
     integer m                     ! Index
+    character(len=100) dyngrid
+
+    ! Currently SE is the only supported dycore for REPLAY    
+    dyngrid = 'GLL'
 
 !jt
 !jt Maybe add this to scam specific initialization
 !jt
 
 #if ( defined BFB_CAM_SCAM_IOP )
-    call addfld ('CLAT1&IC',  horiz_only,  'I', ' ','cos lat for bfb testing', gridname='gauss_grid')
+    call addfld ('CLAT1&IC',  horiz_only,  'I', ' ','cos lat for bfb testing', gridname=dyngrid)
     call add_default ('CLAT1&IC',0,'I')
-    call addfld ('CLON1&IC',  horiz_only,  'I', ' ','cos lon for bfb testing', gridname='gauss_grid')
+    call addfld ('CLON1&IC',  horiz_only,  'I', ' ','cos lon for bfb testing', gridname=dyngrid)
     call add_default ('CLON1&IC',0,'I')
-    call addfld ('PHI&IC',    horiz_only,  'I', ' ','lat for bfb testing', gridname='gauss_grid')
+    call addfld ('PHI&IC',    horiz_only,  'I', ' ','lat for bfb testing', gridname=dyngrid)
     call add_default ('PHI&IC',0,  'I')
-    call addfld ('LAM&IC',    horiz_only,  'I', ' ','lon for bfb testing', gridname='gauss_grid')
+    call addfld ('LAM&IC',    horiz_only,  'I', ' ','lon for bfb testing', gridname=dyngrid)
     call add_default ('LAM&IC',0,  'I')
 #endif
 
@@ -72,7 +76,7 @@ CONTAINS
 !
 ! !DESCRIPTION: 
 ! !USES:
-    use iop
+!jt    use iop
     use phys_control,     only: phys_getopts
 ! !ARGUMENTS:
     implicit none
@@ -85,41 +89,49 @@ CONTAINS
 !
 ! !LOCAL VARIABLES:
     integer m
-!-----------------------------------------------------------------------
-    call addfld ('CLAT',    horiz_only,   'A', ' ',   'cos lat for bfb testing', gridname='gauss_grid')
+    character(len=100) dyngrid
+
+    ! Currently SE is the only supported dycore for REPLAY    
+    dyngrid = 'GLL'
+!jt    dyngrid = 'gauss_grid'
+    !-----------------------------------------------------------------------
+    call addfld ('CLAT',    horiz_only,   'A', ' ',   'cos lat for bfb testing', gridname=trim(dyngrid))
     call add_default ('CLAT',2,' ')
-    call addfld ('q',       (/ 'lev' /),  'A', 'kg/kg',  'Q for scam',gridname='gauss_grid')
+    call addfld ('q',       (/ 'lev' /),  'A', 'kg/kg',  'Q for scam',gridname=trim(dyngrid))
     call add_default ('q',2, ' ')
-    call addfld ('u',       (/ 'lev' /),  'A', 'm/s',    'U for scam',gridname='gauss_grid')
+    call addfld ('u',       (/ 'lev' /),  'A', 'm/s',    'U for scam',gridname=trim(dyngrid))
     call add_default ('u',2,' ')
-    call addfld ('v',       (/ 'lev' /),  'A', 'm/s',    'V for scam',gridname='gauss_grid')
+    call addfld ('v',       (/ 'lev' /),  'A', 'm/s',    'V for scam',gridname=trim(dyngrid))
     call add_default ('v',2,' ')
-    call addfld ('t',       (/ 'lev' /),  'A', 'K',      'Temperature for scam',gridname='gauss_grid')
+    call addfld ('t',       (/ 'lev' /),  'A', 'K',      'Temperature for scam',gridname=trim(dyngrid))
     call add_default ('t',2,' ')
     call addfld ('Tg',      horiz_only,   'A', 'K',      'Surface temperature (radiative) for scam',gridname='physgrid')
     call add_default ('Tg',2,' ')
-    call addfld ('Ps',      horiz_only,   'A', 'Pa',     'Ps for scam',gridname='gauss_grid')
+    call addfld ('Ps',      horiz_only,   'A', 'Pa',     'Ps for scam',gridname=trim(dyngrid))
     call add_default ('Ps',2,' ')
-    call addfld ('divT3d',  (/ 'lev' /),  'A', 'K',      'Dynamics Residual for T',gridname='gauss_grid')
+    call addfld ('divT3d',  (/ 'lev' /),  'A', 'K',      'Dynamics Residual for T',gridname=trim(dyngrid))
     call add_default ('divT3d',2,' ')
-    call addfld ('divU3d',  (/ 'lev' /),  'A', 'K',      'Dynamics Residual for U',gridname='gauss_grid')
+    call addfld ('divU3d',  (/ 'lev' /),  'A', 'K',      'Dynamics Residual for U',gridname=trim(dyngrid))
     call add_default ('divU3d',2,' ')
-    call addfld ('divV3d',  (/ 'lev' /),  'A', 'K',      'Dynamics Residual for V',gridname='gauss_grid')
+    call addfld ('divV3d',  (/ 'lev' /),  'A', 'K',      'Dynamics Residual for V',gridname=trim(dyngrid))
     call add_default ('divV3d',2,' ')
-    call addfld ('fixmas',  horiz_only,   'A', 'percent','Mass fixer',gridname='gauss_grid')
+    call addfld ('fixmas',  horiz_only,   'A', 'percent','Mass fixer',gridname=trim(dyngrid))
     call add_default ('fixmas',2,' ')
-    call addfld ('beta',    horiz_only,   'A', 'percent','Mass fixer',gridname='gauss_grid')
+    call addfld ('beta',    horiz_only,   'A', 'percent','Mass fixer',gridname=trim(dyngrid))
     call add_default ('beta',2,' ')
+    call addfld ('heat_glob',horiz_only, 'A', 'K/s', 'Global mean total energy difference')
+    call add_default ('heat_glob',2,' ')
+
     do m=1,pcnst
        call addfld (trim(cnst_name(m))//'_dten', (/ 'lev' /), 'A', 'kg/kg', &
-            trim(cnst_name(m))//' IOP Dynamics Residual for '//trim(cnst_name(m)),gridname='gauss_grid')
+            trim(cnst_name(m))//' IOP Dynamics Residual for '//trim(cnst_name(m)),gridname=trim(dyngrid))
        call add_default (trim(cnst_name(m))//'_dten',2,' ')
-       call addfld (trim(cnst_name(m))//'_alph', horiz_only, 'A', 'kg/kg',trim(cnst_name(m))//' alpha constituent fixer', &
-            gridname='gauss_grid')
-       call add_default (trim(cnst_name(m))//'_alph',2,' ')
-       call addfld (trim(cnst_name(m))//'_dqfx', (/ 'lev' /), 'A', 'kg/kg',trim(cnst_name(m))//' dqfx3 fixer',            &
-            gridname='gauss_grid')
-       call add_default (trim(cnst_name(m))//'_dqfx',2,' ')
+!!$       call addfld (trim(cnst_name(m))//'_alph', horiz_only, 'A', 'kg/kg',trim(cnst_name(m))//' alpha constituent fixer', &
+!!$            gridname=trim(dyngrid))
+!!$       call add_default (trim(cnst_name(m))//'_alph',2,' ')
+!!$       call addfld (trim(cnst_name(m))//'_dqfx', (/ 'lev' /), 'A', 'kg/kg',trim(cnst_name(m))//' dqfx3 fixer',            &
+!!$            gridname=trim(dyngrid))
+!!$       call add_default (trim(cnst_name(m))//'_dqfx',2,' ')
     end do
     call addfld ('shflx',  horiz_only,  'A', 'W/m2', 'Surface sensible heat flux for scam',gridname='physgrid')
     call add_default ('shflx',2,' ')

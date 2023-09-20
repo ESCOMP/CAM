@@ -31,7 +31,9 @@ module check_energy
   use constituents,    only: cnst_get_ind, pcnst, cnst_name, cnst_get_type_byind
   use time_manager,    only: is_first_step
   use cam_logfile,     only: iulog
-
+  use scamMod,         only: single_column, use_camiop, heat_glob_scm
+  use cam_history,     only: outfld
+  
   implicit none
   private
 
@@ -587,8 +589,11 @@ end subroutine check_energy_get_integrals
 !---------------------------Local storage-------------------------------
     integer  :: i                        ! column
     integer  :: ncol                     ! number of atmospheric columns in chunk
+    integer  :: lchnk                    ! chunk number
+    real(r8) :: heat_out(pcols)
 !-----------------------------------------------------------------------
-    ncol = state%ncol
+    lchnk = state%lchnk
+    ncol  = state%ncol
 
     call physics_ptend_init(ptend, state%psetcols, 'chkenergyfix', ls=.true.)
 
@@ -597,7 +602,26 @@ end subroutine check_energy_get_integrals
     heat_glob = 0._r8
 #endif
 ! add (-) global mean total energy difference as heating
+    if (single_column .and. use_camiop) then
+      heat_glob = heat_glob_scm(1)
+    endif
+    
+    ! In single column model we do NOT want to take into
+    !   consideration the dynamics energy fixer.  Since only
+    !   one column of dynamics is active, this data will 
+    !   essentially be garbage. 
+    if (single_column .and. .not. use_camiop) then
+      heat_glob = 0._r8
+    endif
+! add (-) global mean total energy difference as heating
     ptend%s(:ncol,:pver) = heat_glob
+
+#if ( defined BFB_CAM_SCAM_IOP )
+    if (nstep > 0) then
+      heat_out(:ncol) = heat_glob
+      call outfld('heat_glob',  heat_out(:ncol), pcols, lchnk)
+    endif
+#endif
 
 ! compute effective sensible heat flux
     do i = 1, ncol
