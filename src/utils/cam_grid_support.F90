@@ -266,12 +266,13 @@ module cam_grid_support
   ! NB: This will not compile on some pre-13 Intel compilers
   !     (fails on 12.1.0.233 on Frankfurt, passes on 13.0.1.117 on Yellowstone)
   abstract interface
-    subroutine write_cam_grid_attr(attr, File)
+    subroutine write_cam_grid_attr(attr, File, last_entry)
       use pio, only: file_desc_t
       import      :: cam_grid_attribute_t
       ! Dummy arguments
       class(cam_grid_attribute_t), intent(inout) :: attr
       type(file_desc_t),           intent(inout) :: File ! PIO file Handle
+      logical,           optional, intent(in)    :: last_entry
     end subroutine write_cam_grid_attr
   end interface
 
@@ -545,7 +546,7 @@ contains
   !
   !---------------------------------------------------------------------------
 
-  subroutine write_horiz_coord_attr(this, File, dimid_out)
+  subroutine write_horiz_coord_attr(this, File, dimid_out, last_entry)
     use pio, only: file_desc_t, pio_put_att, pio_noerr, pio_double
     use pio, only: pio_bcast_error, pio_seterrorhandling, pio_inq_varid
     use cam_pio_utils, only: cam_pio_def_dim, cam_pio_def_var
@@ -554,6 +555,7 @@ contains
     class(horiz_coord_t), intent(inout) :: this
     type(file_desc_t),    intent(inout) :: File         ! PIO file Handle
     integer,    optional, intent(out)   :: dimid_out
+    logical,    optional, intent(in)    :: last_entry
 
     ! Local variables
     type(var_desc_t)                    :: vardesc
@@ -562,9 +564,16 @@ contains
     integer                             :: bnds_dimid   ! PIO dim ID for bounds
     integer                             :: err_handling
     integer                             :: ierr
+    logical                             :: last_entry_loc
 
     ! We will handle errors for this routine
        call pio_seterrorhandling(File, PIO_BCAST_ERROR,err_handling)
+
+    if (present(last_entry)) then
+       last_entry_loc = last_entry
+    else
+       last_entry_loc = .true.
+    end if
 
     ! Make sure the dimension exists in the file
     call this%get_dim_name(dimname)
@@ -607,6 +616,11 @@ contains
 
     if (present(dimid_out)) then
       dimid_out = dimid
+    end if
+
+    if (.not. last_entry_loc) then
+       ! if we still have more split files to process, enable that
+       deallocate(this%vardesc)
     end if
 
     ! Back to old error handling
@@ -2170,7 +2184,7 @@ contains
   !
   !---------------------------------------------------------------------------
 
-  subroutine write_cam_grid_attr_0d_int(attr, File)
+  subroutine write_cam_grid_attr_0d_int(attr, File, last_entry)
     use pio,           only: file_desc_t, pio_put_att, pio_noerr, pio_int,    &
          pio_inq_att, PIO_GLOBAL
     use cam_pio_utils, only: cam_pio_def_var
@@ -2178,11 +2192,19 @@ contains
     ! Dummy arguments
     class(cam_grid_attribute_0d_int_t), intent(inout) :: attr
     type(file_desc_t),                  intent(inout) :: File ! PIO file Handle
+    logical,           optional,        intent(in)    :: last_entry
 
     ! Local variables
     integer                             :: attrtype
     integer(imap)                       :: attrlen
     integer                             :: ierr
+    logical                             :: last_entry_loc
+
+    if (present(last_entry)) then
+       last_entry_loc = last_entry
+    else
+       last_entry_loc = .true.
+    end if
 
     ! Since more than one grid can share an attribute, assume that if the
     ! vardesc is associated, that grid defined the attribute
@@ -2207,6 +2229,10 @@ contains
       end if
     end if
 
+    if (.not. last_entry_loc .and. associated(attr%vardesc)) then
+       deallocate(attr%vardesc)
+    end if
+
   end subroutine write_cam_grid_attr_0d_int
 
   !---------------------------------------------------------------------------
@@ -2217,18 +2243,26 @@ contains
   !
   !---------------------------------------------------------------------------
 
-  subroutine write_cam_grid_attr_0d_char(attr, File)
+  subroutine write_cam_grid_attr_0d_char(attr, File, last_entry)
     use pio, only: file_desc_t, pio_put_att, pio_noerr,                       &
                    pio_inq_att, PIO_GLOBAL
 
     ! Dummy arguments
     class(cam_grid_attribute_0d_char_t), intent(inout) :: attr
     type(file_desc_t),                   intent(inout) :: File ! PIO file Handle
+    logical,             optional,       intent(in)    :: last_entry
 
     ! Local variables
     integer                             :: attrtype
     integer(imap)                       :: attrlen
     integer                             :: ierr
+    logical                             :: last_entry_loc
+
+    if (present(last_entry)) then
+       last_entry_loc = last_entry
+    else
+       last_entry_loc = .true.
+    end if
 
     ! Since more than one grid can share an attribute, assume that if the
     ! vardesc is associated, that grid defined the attribute
@@ -2243,6 +2277,10 @@ contains
       end if
     end if
 
+    if (.not. last_entry_loc .and. associated(attr%vardesc)) then
+       deallocate(attr%vardesc)
+    end if
+
   end subroutine write_cam_grid_attr_0d_char
 
   !---------------------------------------------------------------------------
@@ -2253,7 +2291,7 @@ contains
   !
   !---------------------------------------------------------------------------
 
-  subroutine write_cam_grid_attr_1d_int(attr, File)
+  subroutine write_cam_grid_attr_1d_int(attr, File, last_entry)
     use pio,           only: file_desc_t, pio_put_att, pio_noerr
     use pio,           only: pio_inq_dimid, pio_int
     use cam_pio_utils, only: cam_pio_def_var, cam_pio_closefile
@@ -2261,11 +2299,19 @@ contains
     ! Dummy arguments
     class(cam_grid_attribute_1d_int_t), intent(inout) :: attr
     type(file_desc_t),                  intent(inout) :: File ! PIO file Handle
+    logical,             optional,      intent(in)    :: last_entry
 
     ! Local variables
     integer                             :: dimid      ! PIO dimension ID
     character(len=120)                  :: errormsg
     integer                             :: ierr
+    logical                             :: last_entry_loc
+
+    if (present(last_entry)) then
+       last_entry_loc = last_entry
+    else
+       last_entry_loc = .true.
+    end if
 
     ! Since more than one grid can share an attribute, assume that if the
     ! vardesc is associated, that grid defined the attribute
@@ -2288,6 +2334,10 @@ contains
       call cam_pio_handle_error(ierr, 'Error writing "long_name" attr in write_cam_grid_attr_1d_int')
     end if
 
+    if (.not. last_entry_loc .and. associated(attr%vardesc)) then
+       deallocate(attr%vardesc)
+    end if
+
   end subroutine write_cam_grid_attr_1d_int
 
   !---------------------------------------------------------------------------
@@ -2298,7 +2348,7 @@ contains
   !
   !---------------------------------------------------------------------------
 
-  subroutine write_cam_grid_attr_1d_r8(attr, File)
+  subroutine write_cam_grid_attr_1d_r8(attr, File, last_entry)
     use pio,           only: file_desc_t, pio_put_att, pio_noerr, pio_double, &
          pio_inq_dimid
     use cam_pio_utils, only: cam_pio_def_var, cam_pio_closefile
@@ -2306,11 +2356,19 @@ contains
     ! Dummy arguments
     class(cam_grid_attribute_1d_r8_t), intent(inout) :: attr
     type(file_desc_t),                 intent(inout) :: File ! PIO file Handle
+    logical,            optional,      intent(in)    :: last_entry
 
     ! Local variables
     integer                             :: dimid      ! PIO dimension ID
     character(len=120)                  :: errormsg
     integer                             :: ierr
+    logical                             :: last_entry_loc
+
+    if (present(last_entry)) then
+       last_entry_loc = last_entry
+    else
+       last_entry_loc = .true.
+    end if
 
     ! Since more than one grid can share an attribute, assume that if the
     ! vardesc is associated, that grid defined the attribute
@@ -2332,6 +2390,10 @@ contains
       ! long_name
       ierr = pio_put_att(File, attr%vardesc, 'long_name', trim(attr%long_name))
       call cam_pio_handle_error(ierr, 'Error writing "long_name" attr in write_cam_grid_attr_1d_r8')
+    end if
+
+    if (.not. last_entry_loc .and. associated(attr%vardesc)) then
+       deallocate(attr%vardesc)
     end if
 
   end subroutine write_cam_grid_attr_1d_r8
@@ -2386,13 +2448,14 @@ contains
   !  coordinates.
   !
   !---------------------------------------------------------------------------
-  subroutine cam_grid_write_attr(File, grid_id, header_info)
+  subroutine cam_grid_write_attr(File, grid_id, header_info, set_attr_flag)
     use pio, only: file_desc_t, PIO_BCAST_ERROR, pio_seterrorhandling
 
     ! Dummy arguments
     type(file_desc_t),            intent(inout) :: File       ! PIO file Handle
     integer,                      intent(in)    :: grid_id
     type(cam_grid_header_info_t), intent(inout) :: header_info
+    logical,         optional,    intent(in)    :: set_attr_flag
 
     ! Local variables
     integer                                     :: gridind
@@ -2400,6 +2463,13 @@ contains
     type(cam_grid_attr_ptr_t),   pointer        :: attrPtr
     integer                                     :: dimids(2)
     integer                                     :: err_handling
+    logical                                     :: set_flag_local
+
+    if (present(set_attr_flag)) then
+       set_flag_local = set_attr_flag
+    else
+       set_flag_local = .true.
+    end if
 
     gridind = get_cam_grid_index(grid_id)
     !! Fill this in to make sure history finds grid
@@ -2432,8 +2502,8 @@ contains
       end if
     else
       ! Write the horizontal coord attributes first so that we have the dims
-      call cam_grids(gridind)%lat_coord%write_attr(File, dimids(2))
-      call cam_grids(gridind)%lon_coord%write_attr(File, dimids(1))
+      call cam_grids(gridind)%lat_coord%write_attr(File, dimids(2), last_entry=set_flag_local)
+      call cam_grids(gridind)%lon_coord%write_attr(File, dimids(1), last_entry=set_flag_local)
 
       if (dimids(2) == dimids(1)) then
         allocate(header_info%hdims(1))
@@ -2451,7 +2521,7 @@ contains
 !!XXgoldyXX: Is this not working in PGI?
 !      attr => attrPtr%getAttr()
         attr => attrPtr%attr
-        call attr%write_attr(File)
+        call attr%write_attr(File, last_entry=set_flag_local)
 !!XXgoldyXX: Is this not working in PGI?
 !      attrPtr => attrPtr%getNext()
         attrPtr => attrPtr%next
@@ -2459,18 +2529,20 @@ contains
 
       ! Back to previous I/O error handling
       call pio_seterrorhandling(File, err_handling)
-
-      cam_grids(gridind)%attrs_defined = .true.
+      if (set_flag_local) then
+         cam_grids(gridind)%attrs_defined = .true.
+      end if
     end if
 
   end subroutine cam_grid_write_attr
 
-  subroutine write_cam_grid_val_0d_int(attr, File)
+  subroutine write_cam_grid_val_0d_int(attr, File, last_entry)
     use pio, only: file_desc_t, pio_put_var
 
     ! Dummy arguments
     class(cam_grid_attribute_0d_int_t), intent(inout) :: attr
     type(file_desc_t),                  intent(inout) :: File
+    logical,          optional,         intent(in)    :: last_entry
 
     ! Local variables
     integer                          :: ierr
@@ -2485,19 +2557,20 @@ contains
 
   end subroutine write_cam_grid_val_0d_int
 
-  subroutine write_cam_grid_val_0d_char(attr, File)
+  subroutine write_cam_grid_val_0d_char(attr, File, last_entry)
     use pio, only: file_desc_t
 
     ! Dummy arguments
     class(cam_grid_attribute_0d_char_t), intent(inout) :: attr
     type(file_desc_t),                   intent(inout) :: File
+    logical,            optional,        intent(in)    :: last_entry
 
     ! This subroutine is a stub because global attributes are written
     ! in define mode
     return
   end subroutine write_cam_grid_val_0d_char
 
-  subroutine write_cam_grid_val_1d_int(attr, File)
+  subroutine write_cam_grid_val_1d_int(attr, File, last_entry)
     use pio,           only: file_desc_t, pio_put_var, pio_int,               &
                              pio_write_darray, io_desc_t, pio_freedecomp
     use cam_pio_utils, only: cam_pio_newdecomp
@@ -2505,6 +2578,7 @@ contains
     ! Dummy arguments
     class(cam_grid_attribute_1d_int_t), intent(inout) :: attr
     type(file_desc_t),                  intent(inout) :: File
+    logical,            optional,       intent(in)    :: last_entry
 
     ! Local variables
     integer                          :: ierr
@@ -2534,7 +2608,7 @@ contains
 
   end subroutine write_cam_grid_val_1d_int
 
-  subroutine write_cam_grid_val_1d_r8(attr, File)
+  subroutine write_cam_grid_val_1d_r8(attr, File, last_entry)
     use pio,           only: file_desc_t, pio_put_var, pio_double,            &
                              pio_write_darray, io_desc_t, pio_freedecomp
     use cam_pio_utils, only: cam_pio_newdecomp
@@ -2542,6 +2616,7 @@ contains
     ! Dummy arguments
     class(cam_grid_attribute_1d_r8_t), intent(inout) :: attr
     type(file_desc_t),                 intent(inout) :: File
+    logical,            optional,      intent(in)    :: last_entry
 
     ! Local variables
     integer                          :: ierr
@@ -2571,18 +2646,26 @@ contains
 
   end subroutine write_cam_grid_val_1d_r8
 
-  subroutine cam_grid_write_var(File, grid_id)
+  subroutine cam_grid_write_var(File, grid_id, set_attr_flag)
    use pio, only: file_desc_t, pio_bcast_error, pio_seterrorhandling
 
     ! Dummy arguments
     type(file_desc_t), intent(inout)     :: File        ! PIO file Handle
     integer,           intent(in)        :: grid_id
+    logical, optional, intent(in)        :: set_attr_flag
 
     ! Local variables
     integer                              :: gridind
     integer                              :: err_handling
     class(cam_grid_attribute_t), pointer :: attr
     type(cam_grid_attr_ptr_t),   pointer :: attrPtr
+    logical                              :: set_flag_local
+
+    if (present(set_attr_flag)) then
+       set_flag_local = set_attr_flag
+    else
+       set_flag_local = .true.
+    end if
 
     gridind = get_cam_grid_index(grid_id)
     ! Only write if not already done
@@ -2608,8 +2691,9 @@ contains
 
       ! Back to previous I/O error handling
       call pio_seterrorhandling(File, err_handling)
-
-      cam_grids(gridind)%attrs_defined = .false.
+      if (set_flag_local) then
+         cam_grids(gridind)%attrs_defined = .false.
+      end if
     end if
 
   end subroutine cam_grid_write_var
