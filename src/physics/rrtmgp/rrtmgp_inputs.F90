@@ -17,17 +17,26 @@ use physics_types,    only: physics_state
 use physics_buffer,   only: physics_buffer_desc
 use camsrfexch,       only: cam_in_t
 
-use radconstants,     only: nswbands, nlwbands, get_sw_spectral_boundaries
+use radconstants,     only: nswbands, nlwbands, nswgpts, get_sw_spectral_boundaries, &
+                            idx_sw_diag, idx_sw_cloudsim
 use radconstants,     only: nradgas, gaslist
 
 use rad_constituents, only: rad_cnst_get_gas
 
+use cloud_rad_props,  only: get_liquid_optics_sw, liquid_cloud_get_rad_props_lw, &
+                            get_ice_optics_sw,    ice_cloud_get_rad_props_lw,    &
+                            get_snow_optics_sw,   snow_cloud_get_rad_props_lw,   &
+                            get_grau_optics_sw,   grau_cloud_get_rad_props_lw
+                                 
 use mcica_subcol_gen, only: mcica_subcol_sw, mcica_subcol_lw
+
+use aer_rad_props,    only: aer_rad_props_sw, aer_rad_props_lw
 
 use mo_gas_concentrations, only: ty_gas_concs
 use mo_gas_optics_rrtmgp,  only: ty_gas_optics_rrtmgp 
 use mo_optical_props,      only: ty_optical_props_2str, ty_optical_props_1scl
 
+use cam_history_support,   only: fillvalue
 use cam_logfile,      only: iulog
 use cam_abortutils,   only: endrun
 
@@ -45,7 +54,10 @@ public :: &
    rrtmgp_set_aer_lw,   &
    rrtmgp_set_aer_sw
 
-real(r8), parameter :: cldmin = 1.0e-80_r8   ! min cloud fraction
+
+! This value is to match the arbitrary small value used in RRTMG to decide
+! when a quantity is effectively zero.
+real(r8), parameter :: tiny = 1.0e-80_r8
 
 ! Indices for copying data between cam and rrtmgp arrays
 integer :: ktopcam ! Index in CAM arrays of top level (layer or interface) at which
@@ -55,6 +67,12 @@ integer :: ktoprad ! Index in RRTMGP arrays of the layer or interface correspond
 
 ! wavenumber (cm^-1) boundaries of shortwave bands
 real(r8) :: sw_low_bounds(nswbands), sw_high_bounds(nswbands)
+
+! Mapping from RRTMG shortwave bands to RRTMGP.  Currently needed to continue using
+! the SW optics datasets from RRTMG (even thought there is a slight mismatch in the
+! band boundaries of the 2 bands that overlap with the LW bands).
+integer, parameter, dimension(14) :: rrtmg_to_rrtmgp_swbands = &
+   [ 14, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13 ]
 
 !==================================================================================================
 contains
@@ -504,40 +522,77 @@ end subroutine rrtmgp_set_cloud_lw
 !==================================================================================================
 
 subroutine rrtmgp_set_cloud_sw( &
-   nday, nlay, idxday, pmid, cldfrac,                       &
-   c_cld_tau, c_cld_tau_w, c_cld_tau_w_g, kdist_sw, cloud_sw)
+   state, pbuf, nlay, nday, idxday, &
+   nnite, idxnite, pmid, cld, cldfsnow, &
+   cldfgrau, cldfprime, graupel_in_rad, kdist_sw, cloud_sw, &
+   tot_cld_vistau, tot_icld_vistau, liq_icld_vistau, ice_icld_vistau, snow_icld_vistau, &
+   grau_icld_vistau, cld_tau_cloudsim, snow_tau_cloudsim, grau_tau_cloudsim)
 
+   ! Compute combined cloud optical properties.
    ! Create MCICA stochastic arrays for cloud SW optical properties.
    ! Initialize optical properties object (cloud_sw) and load with MCICA columns.
-   !
-   ! The input optical properties are on the CAM grid and are represented as products
-   ! of the extinction optical depth (tau), single scattering albedo (w) and assymetry
-   ! parameter (g).  This routine subsets the input to just the layers and the
-   ! daylight columns used in the radiation calculation.  It also computes the
-   ! individual properties of tau, w, and g for input to the MCICA routine.
 
    ! arguments
-   integer,  intent(in) :: nday           ! number of daylight columns
+   type(physics_state), target, intent(in) :: state
+   type(physics_buffer_desc), pointer      :: pbuf(:)
    integer,  intent(in) :: nlay           ! number of layers in radiation calculation (may include "extra layer")
-   integer,  intent(in) :: idxday(:)      ! indices of daylight columns in the chunk
+   integer,  intent(in) :: nday           ! number of daylight columns
+   integer,  intent(in) :: idxday(pcols)  ! indices of daylight columns in the chunk
+   integer,  intent(in) :: nnite          ! number of night columns
+   integer,  intent(in) :: idxnite(pcols) ! indices of night columns in the chunk
+
    real(r8), intent(in) :: pmid(nday,nlay)! pressure at layer midpoints (Pa) used to seed RNG.
 
-   ! cloud fraction and optics are input on the CAM grid
-   real(r8), intent(in) :: cldfrac(pcols,pver)                ! combined cloud fraction
-   real(r8), intent(in) :: c_cld_tau    (nswbands,pcols,pver) ! combined cloud extinction optical depth
-   real(r8), intent(in) :: c_cld_tau_w  (nswbands,pcols,pver) ! combined cloud single scattering albedo * tau
-   real(r8), intent(in) :: c_cld_tau_w_g(nswbands,pcols,pver) ! combined cloud assymetry parameter * w * tau
+   real(r8), pointer    :: cld(:,:)      ! cloud fraction (liq+ice)
+   real(r8), pointer    :: cldfsnow(:,:) ! cloud fraction of just "snow clouds"
+   real(r8), pointer    :: cldfgrau(:,:) ! cloud fraction of just "graupel clouds"
+   real(r8), intent(in) :: cldfprime(pcols,pver) ! combined cloud fraction
 
+   logical,                     intent(in)  :: graupel_in_rad ! graupel in radiation code
    class(ty_gas_optics_rrtmgp), intent(in)  :: kdist_sw  ! shortwave gas optics object
-   type(ty_optical_props_2str), intent(out) :: cloud_sw  ! cloud optical properties object
+   type(ty_optical_props_2str), intent(out) :: cloud_sw  ! SW cloud optical properties object
 
-   ! local vars
+   ! Diagnostic outputs
+   real(r8), intent(out) :: tot_cld_vistau(pcols,pver)   ! gbx total cloud optical depth
+   real(r8), intent(out) :: tot_icld_vistau(pcols,pver)  ! in-cld total cloud optical depth
+   real(r8), intent(out) :: liq_icld_vistau(pcols,pver)  ! in-cld liq cloud optical depth
+   real(r8), intent(out) :: ice_icld_vistau(pcols,pver)  ! in-cld ice cloud optical depth
+   real(r8), intent(out) :: snow_icld_vistau(pcols,pver) ! snow in-cloud visible sw optical depth
+   real(r8), intent(out) :: grau_icld_vistau(pcols,pver) ! Graupel in-cloud visible sw optical depth
+   real(r8), intent(out) :: cld_tau_cloudsim(pcols,pver) ! in-cloud liq+ice optical depth (for COSP)
+   real(r8), intent(out) :: snow_tau_cloudsim(pcols,pver)! in-cloud snow optical depth (for COSP)
+   real(r8), intent(out) :: grau_tau_cloudsim(pcols,pver)! in-cloud Graupel optical depth (for COSP)
+
+   ! Local variables
+
+   integer :: i, k, ncol
+   integer :: igpt, nver
    integer, parameter :: changeseed = 1
 
-   integer :: i, k, kk, ns, igpt
-   integer :: ngptsw
-   integer :: nver
+   ! cloud radiative parameters are "in cloud" not "in cell"
+   real(r8) :: ice_tau    (nswbands,pcols,pver) ! ice extinction optical depth
+   real(r8) :: ice_tau_w  (nswbands,pcols,pver) ! ice single scattering albedo * tau
+   real(r8) :: ice_tau_w_g(nswbands,pcols,pver) ! ice assymetry parameter * tau * w
+   real(r8) :: liq_tau    (nswbands,pcols,pver) ! liquid extinction optical depth
+   real(r8) :: liq_tau_w  (nswbands,pcols,pver) ! liquid single scattering albedo * tau
+   real(r8) :: liq_tau_w_g(nswbands,pcols,pver) ! liquid assymetry parameter * tau * w
+   real(r8) :: cld_tau    (nswbands,pcols,pver) ! cloud extinction optical depth
+   real(r8) :: cld_tau_w  (nswbands,pcols,pver) ! cloud single scattering albedo * tau
+   real(r8) :: cld_tau_w_g(nswbands,pcols,pver) ! cloud assymetry parameter * w * tau
+   real(r8) :: snow_tau    (nswbands,pcols,pver) ! snow extinction optical depth
+   real(r8) :: snow_tau_w  (nswbands,pcols,pver) ! snow single scattering albedo * tau
+   real(r8) :: snow_tau_w_g(nswbands,pcols,pver) ! snow assymetry parameter * tau * w
+   real(r8) :: grau_tau    (nswbands,pcols,pver) ! graupel extinction optical depth
+   real(r8) :: grau_tau_w  (nswbands,pcols,pver) ! graupel single scattering albedo * tau
+   real(r8) :: grau_tau_w_g(nswbands,pcols,pver) ! graupel assymetry parameter * tau * w
+   real(r8) :: c_cld_tau    (nswbands,pcols,pver) ! combined cloud extinction optical depth
+   real(r8) :: c_cld_tau_w  (nswbands,pcols,pver) ! combined cloud single scattering albedo * tau
+   real(r8) :: c_cld_tau_w_g(nswbands,pcols,pver) ! combined cloud assymetry parameter * w * tau
 
+   ! RRTMGP does not use this property in its 2-stream calculations.
+   real(r8) :: sw_tau_w_f(nswbands,pcols,pver) ! Forward scattered fraction * tau * w.
+
+   ! Arrays for converting from CAM chunks to RRTMGP inputs.
    real(r8), allocatable :: cldf(:,:)
    real(r8), allocatable :: tauc(:,:,:)
    real(r8), allocatable :: ssac(:,:,:)
@@ -545,8 +600,6 @@ subroutine rrtmgp_set_cloud_sw( &
    real(r8), allocatable :: taucmcl(:,:,:)
    real(r8), allocatable :: ssacmcl(:,:,:)
    real(r8), allocatable :: asmcmcl(:,:,:)
-
-   real(r8) :: small_val = 1.e-80_r8
    real(r8), allocatable :: day_cld_tau(:,:,:)
    real(r8), allocatable :: day_cld_tau_w(:,:,:)
    real(r8), allocatable :: day_cld_tau_w_g(:,:,:)
@@ -555,27 +608,128 @@ subroutine rrtmgp_set_cloud_sw( &
    character(len=*), parameter :: sub = 'rrtmgp_set_cloud_sw'
    !--------------------------------------------------------------------------------
 
-   ! number of g-points.  This is the number of subcolumns constructed by MCICA.
-   ngptsw = kdist_sw%get_ngpt()
+   ncol = state%ncol
+
+   ! Combine the cloud optical properties.  These calculations are done on CAM "chunks".
+
+   ! gammadist liquid optics
+   call get_liquid_optics_sw(state, pbuf, liq_tau, liq_tau_w, liq_tau_w_g, sw_tau_w_f)
+   ! Mitchell ice optics
+   call get_ice_optics_sw(state, pbuf, ice_tau, ice_tau_w, ice_tau_w_g, sw_tau_w_f)
+
+   cld_tau(:,:ncol,:)     =  liq_tau(:,:ncol,:)     + ice_tau(:,:ncol,:)
+   cld_tau_w(:,:ncol,:)   =  liq_tau_w(:,:ncol,:)   + ice_tau_w(:,:ncol,:)
+   cld_tau_w_g(:,:ncol,:) =  liq_tau_w_g(:,:ncol,:) + ice_tau_w_g(:,:ncol,:)
+
+   ! add in snow
+   if (associated(cldfsnow)) then
+      call get_snow_optics_sw(state, pbuf, snow_tau, snow_tau_w, snow_tau_w_g, sw_tau_w_f)
+      do i = 1, ncol
+         do k = 1, pver
+            if (cldfprime(i,k) > 0.) then
+               c_cld_tau(:,i,k)     = ( cldfsnow(i,k)*snow_tau(:,i,k) &
+                                      + cld(i,k)*cld_tau(:,i,k) )/cldfprime(i,k)
+               c_cld_tau_w(:,i,k)   = ( cldfsnow(i,k)*snow_tau_w(:,i,k)  &
+                                      + cld(i,k)*cld_tau_w(:,i,k) )/cldfprime(i,k)
+               c_cld_tau_w_g(:,i,k) = ( cldfsnow(i,k)*snow_tau_w_g(:,i,k) &
+                                      + cld(i,k)*cld_tau_w_g(:,i,k) )/cldfprime(i,k)
+            else
+               c_cld_tau(:,i,k)     = 0._r8
+               c_cld_tau_w(:,i,k)   = 0._r8
+               c_cld_tau_w_g(:,i,k) = 0._r8
+            end if
+         end do
+      end do
+   else
+      c_cld_tau(:,:ncol,:)     = cld_tau(:,:ncol,:)
+      c_cld_tau_w(:,:ncol,:)   = cld_tau_w(:,:ncol,:)
+      c_cld_tau_w_g(:,:ncol,:) = cld_tau_w_g(:,:ncol,:)
+   end if
+
+   ! add in graupel
+   if (associated(cldfgrau) .and. graupel_in_rad) then
+      call get_grau_optics_sw(state, pbuf, grau_tau, grau_tau_w, grau_tau_w_g, sw_tau_w_f)
+      do i = 1, ncol
+         do k = 1, pver
+            if (cldfprime(i,k) > 0._r8) then
+               c_cld_tau(:,i,k)     = ( cldfgrau(i,k)*grau_tau(:,i,k) &
+                                      + cld(i,k)*c_cld_tau(:,i,k) )/cldfprime(i,k)
+               c_cld_tau_w(:,i,k)   = ( cldfgrau(i,k)*grau_tau_w(:,i,k)  &
+                                      + cld(i,k)*c_cld_tau_w(:,i,k) )/cldfprime(i,k)
+               c_cld_tau_w_g(:,i,k) = ( cldfgrau(i,k)*grau_tau_w_g(:,i,k) &
+                                      + cld(i,k)*c_cld_tau_w_g(:,i,k) )/cldfprime(i,k)
+            else
+               c_cld_tau(:,i,k)     = 0._r8
+               c_cld_tau_w(:,i,k)   = 0._r8
+               c_cld_tau_w_g(:,i,k) = 0._r8
+            end if
+         end do
+      end do
+   end if
+
+   ! cloud optical properties need to be re-ordered from the RRTMG spectral bands
+   ! (assumed in the optics datasets) to RRTMGP's
+   ice_tau(:,:ncol,:)       = ice_tau(rrtmg_to_rrtmgp_swbands,:ncol,:)
+   liq_tau(:,:ncol,:)       = liq_tau(rrtmg_to_rrtmgp_swbands,:ncol,:)
+   c_cld_tau(:,:ncol,:)     = c_cld_tau(rrtmg_to_rrtmgp_swbands,:ncol,:)
+   c_cld_tau_w(:,:ncol,:)   = c_cld_tau_w(rrtmg_to_rrtmgp_swbands,:ncol,:)
+   c_cld_tau_w_g(:,:ncol,:) = c_cld_tau_w_g(rrtmg_to_rrtmgp_swbands,:ncol,:)
+   if (associated(cldfsnow)) then
+      snow_tau(:,:ncol,:)   = snow_tau(rrtmg_to_rrtmgp_swbands,:ncol,:)
+   end if
+   if (associated(cldfgrau) .and. graupel_in_rad) then
+      grau_tau(:,:ncol,:)   = grau_tau(rrtmg_to_rrtmgp_swbands,:ncol,:)
+   end if
+
+   ! Set arrays for diagnostic output.
+   ! cloud optical depth fields for the visible band
+   tot_icld_vistau(:ncol,:) = c_cld_tau(idx_sw_diag,:ncol,:)
+   liq_icld_vistau(:ncol,:) = liq_tau(idx_sw_diag,:ncol,:)
+   ice_icld_vistau(:ncol,:) = ice_tau(idx_sw_diag,:ncol,:)
+   if (associated(cldfsnow)) then
+      snow_icld_vistau(:ncol,:) = snow_tau(idx_sw_diag,:ncol,:)
+   endif
+   if (associated(cldfgrau) .and. graupel_in_rad) then
+      grau_icld_vistau(:ncol,:) = grau_tau(idx_sw_diag,:ncol,:)
+   endif
+
+   ! multiply by total cloud fraction to get gridbox value
+   tot_cld_vistau(:ncol,:) = c_cld_tau(idx_sw_diag,:ncol,:)*cldfprime(:ncol,:)
+
+   ! overwrite night columns with fillvalue
+   do i = 1, Nnite
+      tot_cld_vistau(IdxNite(i),:)   = fillvalue
+      tot_icld_vistau(IdxNite(i),:)  = fillvalue
+      liq_icld_vistau(IdxNite(i),:)  = fillvalue
+      ice_icld_vistau(IdxNite(i),:)  = fillvalue
+      if (associated(cldfsnow)) then
+         snow_icld_vistau(IdxNite(i),:) = fillvalue
+      end if
+      if (associated(cldfgrau) .and. graupel_in_rad) then
+         grau_icld_vistau(IdxNite(i),:) = fillvalue
+      end if
+   end do
+
+   ! Cloud optics for COSP
+   cld_tau_cloudsim = cld_tau(idx_sw_cloudsim,:,:)
+   snow_tau_cloudsim = snow_tau(idx_sw_cloudsim,:,:)
+   grau_tau_cloudsim = grau_tau(idx_sw_cloudsim,:,:)
 
    ! number of CAM's layers in radiation calculation.  Does not include the "extra layer".
-   nver   = pver - ktopcam + 1
+   nver = pver - ktopcam + 1
 
    allocate( &
-      cldf(nday,nver),           &
-      tauc(nswbands,nday,nver),  &
-      ssac(nswbands,nday,nver),  &
-      asmc(nswbands,nday,nver),  &
-      taucmcl(ngptsw,nday,nver), &
-      ssacmcl(ngptsw,nday,nver), &
-      asmcmcl(ngptsw,nday,nver), &
-      day_cld_tau(nswbands,nday,nver),     &
-      day_cld_tau_w(nswbands,nday,nver),   &
-      day_cld_tau_w_g(nswbands,nday,nver))
+      cldf(nday,nver),                      &
+      day_cld_tau(nswbands,nday,nver),      &
+      day_cld_tau_w(nswbands,nday,nver),    &
+      day_cld_tau_w_g(nswbands,nday,nver),  &
+      tauc(nswbands,nday,nver), taucmcl(nswgpts,nday,nver), &
+      ssac(nswbands,nday,nver), ssacmcl(nswgpts,nday,nver), &
+      asmc(nswbands,nday,nver), asmcmcl(nswgpts,nday,nver) )
 
-   ! Subset the input data so just the daylight columns, and the number of CAM layers in the
+   ! Subset "chunk" data so just the daylight columns, and the number of CAM layers in the
    ! radiation calculation are used by MCICA to produce subcolumns.
-   cldf            = cldfrac(         idxday(1:nday), ktopcam:)
+   cldf            = cldfprime(       idxday(1:nday), ktopcam:)
    day_cld_tau     = c_cld_tau(    :, idxday(1:nday), ktopcam:)
    day_cld_tau_w   = c_cld_tau_w(  :, idxday(1:nday), ktopcam:)
    day_cld_tau_w_g = c_cld_tau_w_g(:, idxday(1:nday), ktopcam:)
@@ -586,15 +740,15 @@ subroutine rrtmgp_set_cloud_sw( &
    ! set cloud optical depth, clip @ zero
    tauc = merge(day_cld_tau, 0.0_r8, day_cld_tau > 0.0_r8)
    ! set value of asymmetry
-   asmc = merge(day_cld_tau_w_g / max(day_cld_tau_w, small_val), 0.0_r8, day_cld_tau_w > 0.0_r8)
+   asmc = merge(day_cld_tau_w_g / max(day_cld_tau_w, tiny), 0.0_r8, day_cld_tau_w > 0.0_r8)
    ! set value of single scattering albedo
-   ssac = merge(max(day_cld_tau_w, small_val) / max(tauc, small_val), 1.0_r8 , tauc > 0.0_r8)
+   ssac = merge(max(day_cld_tau_w, tiny) / max(tauc, tiny), 1.0_r8 , tauc > 0.0_r8)
    ! set asymmetry to zero when tauc = 0
    asmc = merge(asmc, 0.0_r8, tauc > 0.0_r8)
 
    ! MCICA converts from bands to gpts (e.g., 224 g-points instead of 14 bands)
    call mcica_subcol_sw( &
-      kdist_sw, nswbands, ngptsw, nday, nlay, &
+      kdist_sw, nswbands, nswgpts, nday, nlay, &
       nver, changeseed, pmid, cldf, tauc,     &
       ssac, asmc, taucmcl, ssacmcl, asmcmcl)
    
@@ -611,13 +765,13 @@ subroutine rrtmgp_set_cloud_sw( &
    cloud_sw%g   = 0.0_r8
 
    ! Set the properties on g-points.
-   do igpt = 1,ngptsw
+   do igpt = 1,nswgpts
       cloud_sw%g  (:, ktoprad:, igpt) = asmcmcl(igpt, ktopcam:, :)
       cloud_sw%ssa(:, ktoprad:, igpt) = ssacmcl(igpt, ktopcam:, :)
       cloud_sw%tau(:, ktoprad:, igpt) = taucmcl(igpt, ktopcam:, :)
    end do
 
-   ! validate checks the tau > 0, ssa is in range [0,1], and g is in range [-1,1].
+   ! validate checks that: tau > 0, ssa is in range [0,1], and g is in range [-1,1].
    errmsg = cloud_sw%validate()
    if (len_trim(errmsg) > 0) then
       call endrun(sub//': ERROR: cloud_sw%validate: '//trim(errmsg))
@@ -665,69 +819,78 @@ end subroutine rrtmgp_set_aer_lw
 !==================================================================================================
 
 subroutine rrtmgp_set_aer_sw( &
-   nday, idxday, aer_tau, aer_tau_w, &
-   aer_tau_w_g, aer_tau_w_f, aer_sw)
+   icall, state, pbuf, nday, idxday, nnite, idxnite, aer_sw)
 
    ! Load aerosol SW optical properties into the RRTMGP object.
-   !
-   ! CAM fields are products tau, tau*ssa, tau*ssa*asy, tau*ssa*asy*fsf
-   ! Fields expected by RRTMGP are computed by
-   ! aer_sw%tau = aer_tau
-   ! aer_sw%ssa = aer_tau_w / aer_tau
-   ! aer_sw%g   = aer_tau_w_g / aer_taw_w
-   !
-   ! The input optical arrays from CAM are dimensioned in the vertical
-   ! as 0:pver.  The index 0 is for the extra layer used in the radiation
+
+   ! Arguments
+   integer,                     intent(in) :: icall
+   type(physics_state), target, intent(in) :: state
+   type(physics_buffer_desc), pointer      :: pbuf(:)
+   integer,  intent(in) :: nday
+   integer,  intent(in) :: idxday(:)
+   integer,  intent(in) :: nnite          ! number of night columns
+   integer,  intent(in) :: idxnite(pcols) ! indices of night columns in the chunk
+
+   type(ty_optical_props_2str), intent(inout) :: aer_sw
+
+   ! local variables
+   integer  :: i, k, ib
+
+   ! The optical arrays dimensioned in the vertical as 0:pver.
+   ! The index 0 is for the extra layer used in the radiation
    ! calculation.  The index ktopcam assumes the CAM vertical indices are
    ! in the range 1:pver, so using this index correctly ignores vertical
    ! index 0.  If an "extra" layer is used in the calculations, it is
    ! provided and set in the RRTMGP aerosol object aer_sw.
-
-   ! Arguments
-   integer,   intent(in) :: nday
-   integer,   intent(in) :: idxday(:)
-   real(r8),  intent(in) :: aer_tau    (pcols,0:pver,nswbands) ! extinction optical depth
-   real(r8),  intent(in) :: aer_tau_w  (pcols,0:pver,nswbands) ! single scattering albedo * tau
-   real(r8),  intent(in) :: aer_tau_w_g(pcols,0:pver,nswbands) ! asymmetry parameter * w * tau
-   real(r8),  intent(in) :: aer_tau_w_f(pcols,0:pver,nswbands) ! forward scattered fraction * w * tau
-   type(ty_optical_props_2str), intent(inout) :: aer_sw
-
-   ! local variables
-   integer  :: i
-
-   ! minimum value for aer_tau_w is the same as used in RRTMG code.
-   real(r8), parameter :: tiny = 1.e-80_r8
-
-   character(len=32)  :: sub = 'rrtmgp_set_aer_sw'
+   real(r8) :: aer_tau    (pcols,0:pver,nswbands) ! extinction optical depth
+   real(r8) :: aer_tau_w  (pcols,0:pver,nswbands) ! single scattering albedo * tau
+   real(r8) :: aer_tau_w_g(pcols,0:pver,nswbands) ! asymmetry parameter * w * tau
+   real(r8) :: aer_tau_w_f(pcols,0:pver,nswbands) ! forward scattered fraction * w * tau
+                                                  ! aer_tau_w_f is not used by RRTMGP.
+   character(len=*), parameter :: sub = 'rrtmgp_set_aer_sw'
    character(len=128) :: errmsg
    !--------------------------------------------------------------------------------
 
+   ! Get aerosol shortwave optical properties.
+   call aer_rad_props_sw( &
+      icall, state, pbuf, nnite, idxnite, &
+      aer_tau, aer_tau_w, aer_tau_w_g, aer_tau_w_f)
+
+   ! aerosol optical properties need to be re-ordered from the RRTMG spectral bands
+   ! (as assumed in the optics datasets) to the RRTMGP band order.
+   aer_tau(:,:,:)     = aer_tau(    :,:,rrtmg_to_rrtmgp_swbands)
+   aer_tau_w(:,:,:)   = aer_tau_w(  :,:,rrtmg_to_rrtmgp_swbands)
+   aer_tau_w_g(:,:,:) = aer_tau_w_g(:,:,rrtmg_to_rrtmgp_swbands)
+                  
    ! If there is an extra layer in the radiation then this initialization
-   ! will provide default values there.
+   ! will provide default values.
    aer_sw%tau = 0.0_r8
    aer_sw%ssa = 1.0_r8
    aer_sw%g   = 0.0_r8
 
+   ! CAM fields are products tau, tau*ssa, tau*ssa*asy
+   ! Fields expected by RRTMGP are computed by
+   ! aer_sw%tau = aer_tau
+   ! aer_sw%ssa = aer_tau_w / aer_tau
+   ! aer_sw%g   = aer_tau_w_g / aer_taw_w
+   ! aer_sw arrays have dimensions of (nday,nlay,nswbands)
+
    do i = 1, nday
-      ! aer_sw arrays have dimensions of (nday,nlay,nswbands)
+      ! set aerosol optical depth, clip to zero
       aer_sw%tau(i,ktoprad:,:) = max(aer_tau(idxday(i),ktopcam:,:), 0._r8)
+      ! set value of single scattering albedo
       aer_sw%ssa(i,ktoprad:,:) = merge(aer_tau_w(idxday(i),ktopcam:,:)/aer_tau(idxday(i),ktopcam:,:), &
                                        1._r8, aer_tau(idxday(i),ktopcam:,:) > 0._r8)
+      ! set value of asymmetry
       aer_sw%g(i,ktoprad:,:) = merge(aer_tau_w_g(idxday(i),ktopcam:,:)/aer_tau_w(idxday(i),ktopcam:,:), &
                                      0._r8, aer_tau_w(idxday(i),ktopcam:,:) > tiny)
    end do
 
-   ! impose limits on the components:
+   ! impose limits on the components
    aer_sw%ssa = min(max(aer_sw%ssa, 0._r8), 1._r8)
-   aer_sw%g = min(max(aer_sw%g, -1._r8), 1._r8)
-   ! by clamping the values here, the validate method should be guaranteed to succeed,
-   ! but we're also saying that any errors in the method to this point are being swept aside. 
-   ! We might want to check for out-of-bounds values and report them in the log file.
+   aer_sw%g   = min(max(aer_sw%g, -1._r8), 1._r8)
 
-   errmsg = aer_sw%validate()
-   if (len_trim(errmsg) > 0) then
-      call endrun(sub//': ERROR: aer_sw%validate: '//trim(errmsg))
-   end if
 end subroutine rrtmgp_set_aer_sw
 
 !==================================================================================================

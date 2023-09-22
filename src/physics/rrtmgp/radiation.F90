@@ -22,13 +22,13 @@ use time_manager,        only: get_nstep, is_first_step, is_first_restart_step, 
                                get_curr_calday, get_step_size
 
 use rad_constituents,    only: N_DIAG, rad_cnst_get_call_list,               &
-                               rad_cnst_get_gas, rad_cnst_out, oldcldoptics, &
-                               liqcldoptics, icecldoptics
+                               rad_cnst_get_gas, rad_cnst_out
+
 
 use rrtmgp_inputs,       only: rrtmgp_inputs_init
 
-use radconstants,        only: nswbands, nlwbands, nswgpts, nlwgpts, idx_sw_diag,       &
-                               idx_nir_diag, idx_uv_diag, idx_lw_diag, idx_sw_cloudsim, &
+use radconstants,        only: nswbands, nlwbands, nswgpts,       &
+                               idx_nir_diag, idx_uv_diag, idx_lw_diag, &
                                idx_lw_cloudsim, nradgas, gasnamelength, gaslist,        &
                                set_wavenumber_bands
 
@@ -40,7 +40,7 @@ use cospsimulator_intr,  only: docosp, cospsimulator_intr_init, &
 use scamMod,             only: scm_crm_mode, single_column, have_cld, cldobs
 
 use cam_history,         only: addfld, add_default, horiz_only, outfld, hist_fld_active
-use cam_history_support, only: fillvalue, add_vert_coord
+use cam_history_support, only: add_vert_coord
 
 use radiation_data,      only: rad_data_register, rad_data_init
 
@@ -236,7 +236,6 @@ type(var_desc_t) :: nextsw_cday_desc
 !=========================================================================================
 contains
 !=========================================================================================
-
 
 subroutine radiation_readnl(nlfile)
 
@@ -880,18 +879,13 @@ subroutine radiation_tend( &
                                  rrtmgp_set_aer_lw, rrtmgp_set_gases_sw, rrtmgp_set_cloud_sw, &
                                  rrtmgp_set_aer_sw
 
-   use aer_rad_props,      only: aer_rad_props_sw, aer_rad_props_lw
+   use aer_rad_props,      only: aer_rad_props_lw
 
-   use cloud_rad_props,    only: get_ice_optics_sw,    ice_cloud_get_rad_props_lw,    &
-                                 get_liquid_optics_sw, liquid_cloud_get_rad_props_lw, &
-                                 get_snow_optics_sw,   snow_cloud_get_rad_props_lw,   &
-                                 get_grau_optics_sw,   grau_cloud_get_rad_props_lw,   &
-                                 cloud_rad_props_get_lw
+   use cloud_rad_props,    only: ice_cloud_get_rad_props_lw,    &
+                                 liquid_cloud_get_rad_props_lw, &
+                                 snow_cloud_get_rad_props_lw,   &
+                                 grau_cloud_get_rad_props_lw
                                  
-
-   use slingo,             only: slingo_liq_get_rad_props_lw, slingo_liq_optics_sw
-   use ebert_curry,        only: ec_ice_optics_sw, ec_ice_get_rad_props_lw
-
    ! RRTMGP drivers for flux calculations.
    use rrtmgp_driver,      only: rte_lw
    use mo_rte_sw,          only: rte_sw
@@ -924,6 +918,7 @@ subroutine radiation_tend( &
    integer  :: i, k
    integer  :: lchnk, ncol
    logical  :: dosw, dolw
+   integer  :: icall           ! loop index for climate/diagnostic radiation calls
 
    real(r8) :: calday          ! current calendar day
    real(r8) :: delta           ! Solar declination angle  in radians
@@ -944,6 +939,7 @@ subroutine radiation_tend( &
    real(r8), pointer :: cld(:,:)      ! cloud fraction
    real(r8), pointer :: cldfsnow(:,:) => null() ! cloud fraction of just "snow clouds"
    real(r8), pointer :: cldfgrau(:,:) => null() ! cloud fraction of just "graupel clouds"
+   real(r8)          :: cldfprime(pcols,pver)   ! combined cloud fraction
    real(r8), pointer :: qrs(:,:) => null()     ! shortwave radiative heating rate 
    real(r8), pointer :: qrl(:,:) => null()     ! longwave  radiative heating rate 
    real(r8), pointer :: fsds(:)  ! Surface solar down flux
@@ -974,54 +970,19 @@ subroutine radiation_tend( &
    real(r8), allocatable :: alb_dir(:,:)
    real(r8), allocatable :: alb_dif(:,:)
 
-   ! Forward scattered fraction * tau * w.  RRTMGP does not use this property
-   ! in its 2-stream calculations.  No need for separate storage for different cloud types.
-   real(r8) :: sw_tau_w_f(nswbands,pcols,pver) 
+   real(r8) :: cld_tau_cloudsim(pcols,pver) ! in-cloud liq+ice optical depth (for COSP)
+   real(r8) :: snow_tau_cloudsim(pcols,pver)! in-cloud snow optical depth (for COSP)
+   real(r8) :: grau_tau_cloudsim(pcols,pver)! in-cloud Graupel optical depth (for COSP)
 
-   ! cloud radiative parameters are "in cloud" not "in cell"
-   real(r8) :: ice_tau    (nswbands,pcols,pver) ! ice extinction optical depth
-   real(r8) :: ice_tau_w  (nswbands,pcols,pver) ! ice single scattering albedo * tau
-   real(r8) :: ice_tau_w_g(nswbands,pcols,pver) ! ice assymetry parameter * tau * w
    real(r8) :: ice_lw_abs (nlwbands,pcols,pver)   ! ice absorption optics depth (LW)
-
-   ! cloud radiative parameters are "in cloud" not "in cell"
-   real(r8) :: liq_tau    (nswbands,pcols,pver) ! liquid extinction optical depth
-   real(r8) :: liq_tau_w  (nswbands,pcols,pver) ! liquid single scattering albedo * tau
-   real(r8) :: liq_tau_w_g(nswbands,pcols,pver) ! liquid assymetry parameter * tau * w
    real(r8) :: liq_lw_abs (nlwbands,pcols,pver) ! liquid absorption optics depth (LW)
-
-   ! cloud radiative parameters are "in cloud" not "in cell"
-   real(r8) :: cld_tau    (nswbands,pcols,pver) ! cloud extinction optical depth
-   real(r8) :: cld_tau_w  (nswbands,pcols,pver) ! cloud single scattering albedo * tau
-   real(r8) :: cld_tau_w_g(nswbands,pcols,pver) ! cloud assymetry parameter * w * tau
    real(r8) :: cld_lw_abs (nlwbands,pcols,pver) ! cloud absorption optics depth (LW)
-
-   ! "snow" cloud radiative parameters are "in cloud" not "in cell"
-   real(r8) :: snow_tau    (nswbands,pcols,pver) ! snow extinction optical depth
-   real(r8) :: snow_tau_w  (nswbands,pcols,pver) ! snow single scattering albedo * tau
-   real(r8) :: snow_tau_w_g(nswbands,pcols,pver) ! snow assymetry parameter * tau * w
    real(r8) :: snow_lw_abs (nlwbands,pcols,pver)! snow absorption optics depth (LW)
-
-   ! Add graupel as another snow species. 
-   ! cloud radiative parameters are "in cloud" not "in cell"
-   real(r8) :: grau_tau    (nswbands,pcols,pver) ! graupel extinction optical depth
-   real(r8) :: grau_tau_w  (nswbands,pcols,pver) ! graupel single scattering albedo * tau
-   real(r8) :: grau_tau_w_g(nswbands,pcols,pver) ! graupel assymetry parameter * tau * w
    real(r8) :: grau_lw_abs (nlwbands,pcols,pver)! graupel absorption optics depth (LW)
-
-   ! combined cloud radiative parameters are "in cloud" not "in cell"
-   real(r8) :: cldfprime(pcols,pver)              ! combined cloud fraction (snow plus regular)
-   real(r8) :: c_cld_tau    (nswbands,pcols,pver) ! combined cloud extinction optical depth
-   real(r8) :: c_cld_tau_w  (nswbands,pcols,pver) ! combined cloud single scattering albedo * tau
-   real(r8) :: c_cld_tau_w_g(nswbands,pcols,pver) ! combined cloud assymetry parameter * w * tau
    real(r8) :: c_cld_lw_abs (nlwbands,pcols,pver) ! combined cloud absorption optics depth (LW)
 
    ! Aerosol radiative properties **N.B.** These are zero-indexed to accomodate an "extra layer".
    ! If no extra layer then the 0 index is ignored.
-   real(r8) :: aer_tau    (pcols,0:pver,nswbands) ! aerosol extinction optical depth
-   real(r8) :: aer_tau_w  (pcols,0:pver,nswbands) ! aerosol single scattering albedo * tau
-   real(r8) :: aer_tau_w_g(pcols,0:pver,nswbands) ! aerosol assymetry parameter * w * tau
-   real(r8) :: aer_tau_w_f(pcols,0:pver,nswbands) ! aerosol forward scattered fraction * w * tau
    real(r8) :: aer_lw_abs (pcols,pver,nlwbands)   ! aerosol absorption optics depth (LW)
 
    ! Set vertical indexing in RRTMGP to be the same as CAM (top to bottom).
@@ -1030,8 +991,6 @@ subroutine radiation_tend( &
    ! RRTMGP cloud objects (McICA sampling of cloud optical properties)
    type(ty_optical_props_1scl) :: cloud_lw
    type(ty_optical_props_2str) :: cloud_sw
-
-   integer :: icall                 ! index through climate/diagnostic radiation calls
 
    ! gas vmr.  Separate objects because SW only does calculations for daylight columns.
    type(ty_gas_concs) :: gas_concs_lw
@@ -1228,134 +1187,14 @@ subroutine radiation_tend( &
 
       if (dosw) then
 
-         if (oldcldoptics) then
-            call ec_ice_optics_sw(state, pbuf, ice_tau, ice_tau_w, ice_tau_w_g, sw_tau_w_f, oldicewp=.false.)
-            call slingo_liq_optics_sw(state, pbuf, liq_tau, liq_tau_w, liq_tau_w_g, sw_tau_w_f, oldliqwp=.false.)
-         else
-            select case (icecldoptics)
-            case ('ebertcurry')
-               call  ec_ice_optics_sw(state, pbuf, ice_tau, ice_tau_w, ice_tau_w_g, sw_tau_w_f, oldicewp=.true.)
-            case ('mitchell')
-               call get_ice_optics_sw(state, pbuf, ice_tau, ice_tau_w, ice_tau_w_g, sw_tau_w_f)
-            case default
-               call endrun('icecldoptics must be one either ebertcurry or mitchell')
-            end select
-
-            select case (liqcldoptics)
-            case ('slingo')
-               call slingo_liq_optics_sw(state, pbuf, liq_tau, liq_tau_w, liq_tau_w_g, sw_tau_w_f, oldliqwp=.true.)
-            case ('gammadist')
-               call get_liquid_optics_sw(state, pbuf, liq_tau, liq_tau_w, liq_tau_w_g, sw_tau_w_f)
-            case default
-               call endrun('liqcldoptics must be either slingo or gammadist')
-            end select
-         end if
-
-         cld_tau(:,:ncol,:)     =  liq_tau(:,:ncol,:)     + ice_tau(:,:ncol,:)
-         cld_tau_w(:,:ncol,:)   =  liq_tau_w(:,:ncol,:)   + ice_tau_w(:,:ncol,:)
-         cld_tau_w_g(:,:ncol,:) =  liq_tau_w_g(:,:ncol,:) + ice_tau_w_g(:,:ncol,:)
-
-         if (cldfsnow_idx > 0) then
-            ! add in snow
-            call get_snow_optics_sw(state, pbuf, snow_tau, snow_tau_w, snow_tau_w_g, sw_tau_w_f)
-            do i = 1, ncol
-               do k = 1, pver
-                  if (cldfprime(i,k) > 0.) then
-                     c_cld_tau(:,i,k)     = ( cldfsnow(i,k)*snow_tau(:,i,k) &
-                                             + cld(i,k)*cld_tau(:,i,k) )/cldfprime(i,k)
-
-                     c_cld_tau_w(:,i,k)   = ( cldfsnow(i,k)*snow_tau_w(:,i,k)  &
-                                             + cld(i,k)*cld_tau_w(:,i,k) )/cldfprime(i,k)
-
-                     c_cld_tau_w_g(:,i,k) = ( cldfsnow(i,k)*snow_tau_w_g(:,i,k) &
-                                             + cld(i,k)*cld_tau_w_g(:,i,k) )/cldfprime(i,k)
-
-                  else
-                     c_cld_tau(:,i,k)     = 0._r8
-                     c_cld_tau_w(:,i,k)   = 0._r8
-                     c_cld_tau_w_g(:,i,k) = 0._r8
-                  end if
-               end do
-            end do
-         else
-            c_cld_tau(:,:ncol,:)     = cld_tau(:,:ncol,:)
-            c_cld_tau_w(:,:ncol,:)   = cld_tau_w(:,:ncol,:)
-            c_cld_tau_w_g(:,:ncol,:) = cld_tau_w_g(:,:ncol,:)
-         end if
-
-         if (cldfgrau_idx > 0 .and. graupel_in_rad) then
-            ! add in graupel
-            call get_grau_optics_sw(state, pbuf, grau_tau, grau_tau_w, grau_tau_w_g, sw_tau_w_f)
-            do i = 1, ncol
-               do k = 1, pver
-
-                  if (cldfprime(i,k) > 0._r8) then
-
-                     c_cld_tau(:,i,k)     = ( cldfgrau(i,k)*grau_tau(:,i,k) &
-                                             + cld(i,k)*c_cld_tau(:,i,k) )/cldfprime(i,k)
-
-                     c_cld_tau_w(:,i,k)   = ( cldfgrau(i,k)*grau_tau_w(:,i,k)  &
-                                             + cld(i,k)*c_cld_tau_w(:,i,k) )/cldfprime(i,k)
-
-                     c_cld_tau_w_g(:,i,k) = ( cldfgrau(i,k)*grau_tau_w_g(:,i,k) &
-                                             + cld(i,k)*c_cld_tau_w_g(:,i,k) )/cldfprime(i,k)
-                  else
-                     c_cld_tau(:,i,k)     = 0._r8
-                     c_cld_tau_w(:,i,k)   = 0._r8
-                     c_cld_tau_w_g(:,i,k) = 0._r8
-                  end if
-               end do
-            end do
-         end if
-
-         ! cloud optical properties need to be re-ordered from the RRTMG spectral bands
-         ! (assumed in the optics datasets) to RRTMGP's
-         ice_tau(:,:ncol,:)       = ice_tau(rrtmg_to_rrtmgp_swbands,:ncol,:)
-         liq_tau(:,:ncol,:)       = liq_tau(rrtmg_to_rrtmgp_swbands,:ncol,:)
-         c_cld_tau(:,:ncol,:)     = c_cld_tau(rrtmg_to_rrtmgp_swbands,:ncol,:)
-         c_cld_tau_w(:,:ncol,:)   = c_cld_tau_w(rrtmg_to_rrtmgp_swbands,:ncol,:)
-         c_cld_tau_w_g(:,:ncol,:) = c_cld_tau_w_g(rrtmg_to_rrtmgp_swbands,:ncol,:)
-         if (cldfsnow_idx > 0) then
-            snow_tau(:,:ncol,:)   = snow_tau(rrtmg_to_rrtmgp_swbands,:ncol,:)
-         end if
-         if (cldfgrau_idx > 0 .and. graupel_in_rad) then
-            grau_tau(:,:ncol,:)   = grau_tau(rrtmg_to_rrtmgp_swbands,:ncol,:)
-         end if
-
          ! Set cloud optical properties in cloud_sw object.
          call rrtmgp_set_cloud_sw( &
-            nday, nlay, idxday, pmid_day, cldfprime,                 &
-            c_cld_tau, c_cld_tau_w, c_cld_tau_w_g, kdist_sw, cloud_sw)
-
-         ! SW cloud diagnostics & output
-
-         ! cloud optical depth fields for the visible band
-         rd%tot_icld_vistau(:ncol,:) = c_cld_tau(idx_sw_diag,:ncol,:)
-         rd%liq_icld_vistau(:ncol,:) = liq_tau(idx_sw_diag,:ncol,:)
-         rd%ice_icld_vistau(:ncol,:) = ice_tau(idx_sw_diag,:ncol,:)
-         if (cldfsnow_idx > 0) then
-            rd%snow_icld_vistau(:ncol,:) = snow_tau(idx_sw_diag,:ncol,:)
-         endif
-         if (cldfgrau_idx > 0 .and. graupel_in_rad) then
-            rd%grau_icld_vistau(:ncol,:) = grau_tau(idx_sw_diag,:ncol,:)
-         endif
-
-         ! multiply by total cloud fraction to get gridbox value
-         rd%tot_cld_vistau(:ncol,:) = c_cld_tau(idx_sw_diag,:ncol,:)*cldfprime(:ncol,:)
-
-         ! add fillvalue for night columns
-         do i = 1, Nnite
-            rd%tot_cld_vistau(IdxNite(i),:)   = fillvalue
-            rd%tot_icld_vistau(IdxNite(i),:)  = fillvalue
-            rd%liq_icld_vistau(IdxNite(i),:)  = fillvalue
-            rd%ice_icld_vistau(IdxNite(i),:)  = fillvalue
-            if (cldfsnow_idx > 0) then
-               rd%snow_icld_vistau(IdxNite(i),:) = fillvalue
-            end if
-            if (cldfgrau_idx > 0 .and. graupel_in_rad) then
-               rd%grau_icld_vistau(IdxNite(i),:) = fillvalue
-            end if
-         end do
+            state, pbuf, nlay, nday, idxday,                              &
+            nnite, idxnite, pmid_day, cld, cldfsnow,                      &
+            cldfgrau, cldfprime, graupel_in_rad, kdist_sw, cloud_sw,      &
+            rd%tot_cld_vistau, rd%tot_icld_vistau, rd%liq_icld_vistau,    &
+            rd%ice_icld_vistau, rd%snow_icld_vistau, rd%grau_icld_vistau, &
+            cld_tau_cloudsim, snow_tau_cloudsim, grau_tau_cloudsim )
 
          if (write_output) then
             call radiation_output_cld(lchnk, ncol, rd)
@@ -1374,7 +1213,6 @@ subroutine radiation_tend( &
          end if
 
          ! Init and allocate arrays in aerosol optics object.
-
          errmsg = aer_sw%alloc_2str(nday, nlay, kdist_sw%get_band_lims_wavenumber()) 
          if (len_trim(errmsg) > 0) then
             call endrun(sub//': ERROR: aer_sw%alloc_2str: '//trim(errmsg))
@@ -1402,23 +1240,9 @@ subroutine radiation_tend( &
                tsi_ref = sum(toa_flux(1,:))
                toa_flux = toa_flux * sol_tsi * eccf / tsi_ref
 
-               ! Get aerosol shortwave optical properties on CAM grid.
-               call aer_rad_props_sw( &
-                  icall, state, pbuf, nnite, idxnite, &
-                  aer_tau, aer_tau_w, aer_tau_w_g, aer_tau_w_f)
-
-               ! aerosol optical properties need to be re-ordered from the RRTMG spectral bands,
-               ! as assumed in the optics datasets, to the RRTMGP band order.
-               aer_tau(:,:,:)     = aer_tau(:,:,rrtmg_to_rrtmgp_swbands)
-               aer_tau_w(:,:,:)   = aer_tau_w(:,:,rrtmg_to_rrtmgp_swbands)
-               aer_tau_w_g(:,:,:) = aer_tau_w_g(:,:,rrtmg_to_rrtmgp_swbands)
-               aer_tau_w_f(:,:,:) = aer_tau_w_f(:,:,rrtmg_to_rrtmgp_swbands)
-               
-               ! Convert from the products to individual properties,
-               ! and only provide them on the daylit points.
+               ! Set SW aerosol optical properties in the aer_sw object.
                call rrtmgp_set_aer_sw( &
-                  nday, idxday, aer_tau, aer_tau_w, aer_tau_w_g, & 
-                  aer_tau_w_f, aer_sw)
+                  icall, state, pbuf, nday, idxday, nnite, idxnite, aer_sw)
                   
                ! Increment the gas optics (in atm_optics_sw) by the aerosol optics in aer_sw.
                errmsg = aer_sw%increment(atm_optics_sw)
@@ -1470,30 +1294,12 @@ subroutine radiation_tend( &
 
       if (dolw) then
 
-         if (oldcldoptics) then
-            call cloud_rad_props_get_lw(state, pbuf, cld_lw_abs, oldcloud=.true.)
-         else
-            select case (icecldoptics)
-            case ('ebertcurry')
-               call ec_ice_get_rad_props_lw(state, pbuf, ice_lw_abs, oldicewp=.true.)
-            case ('mitchell')
-               call ice_cloud_get_rad_props_lw(state, pbuf, ice_lw_abs)
-            case default
-               call endrun('ERROR: icecldoptics must be one either ebertcurry or mitchell')
-            end select
+         call ice_cloud_get_rad_props_lw(state, pbuf, ice_lw_abs)
 
-            select case (liqcldoptics)
-            case ('slingo')
-               call slingo_liq_get_rad_props_lw(state, pbuf, liq_lw_abs, oldliqwp=.true.)
-            case ('gammadist')
-               call liquid_cloud_get_rad_props_lw(state, pbuf, liq_lw_abs)
-            case default
-               call endrun('ERROR: liqcldoptics must be either slingo or gammadist')
-            end select
+         call liquid_cloud_get_rad_props_lw(state, pbuf, liq_lw_abs)
 
-            cld_lw_abs(:,:ncol,:) = liq_lw_abs(:,:ncol,:) + ice_lw_abs(:,:ncol,:)
+         cld_lw_abs(:,:ncol,:) = liq_lw_abs(:,:ncol,:) + ice_lw_abs(:,:ncol,:)
 
-         end if
 
          if (cldfsnow_idx > 0) then
             ! add in snow
@@ -1632,12 +1438,12 @@ subroutine radiation_tend( &
 
                      ! Add graupel to snow tau for cosp
                      if (cldfgrau_idx > 0 .and. graupel_in_rad) then
-                        gb_snow_tau(i,k) = snow_tau(idx_sw_cloudsim,i,k)*cldfsnow(i,k) + &
-                              grau_tau(idx_sw_cloudsim,i,k)*cldfgrau(i,k)
+                        gb_snow_tau(i,k) = snow_tau_cloudsim(i,k)*cldfsnow(i,k) + &
+                                           grau_tau_cloudsim(i,k)*cldfgrau(i,k)
                         gb_snow_lw(i,k)  = snow_lw_abs(idx_lw_cloudsim,i,k)*cldfsnow(i,k) + &
-                              grau_lw_abs(idx_lw_cloudsim,i,k)*cldfgrau(i,k)
+                                           grau_lw_abs(idx_lw_cloudsim,i,k)*cldfgrau(i,k)
                      else
-                        gb_snow_tau(i,k) = snow_tau(idx_sw_cloudsim,i,k)*cldfsnow(i,k)
+                        gb_snow_tau(i,k) = snow_tau_cloudsim(i,k)*cldfsnow(i,k)
                         gb_snow_lw(i,k)  = snow_lw_abs(idx_lw_cloudsim,i,k)*cldfsnow(i,k)
                      end if
                   end if
@@ -1654,7 +1460,7 @@ subroutine radiation_tend( &
             ! N.B.: For snow optical properties, the GRID-BOX MEAN shortwave and longwave
             !       optical depths are passed.
             call cospsimulator_intr_run(state,  pbuf, cam_in, emis, coszrs, &
-               cld_swtau_in=cld_tau(idx_sw_cloudsim,:,:),&
+               cld_swtau_in=cld_tau_cloudsim,&
                snow_tau_in=gb_snow_tau, snow_emis_in=gb_snow_lw)
             cosp_cnt(lchnk) = 0
          end if
