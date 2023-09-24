@@ -167,8 +167,8 @@ subroutine apply_SC_forcing(elem,hvcoord,tl,n,t_before_advance,nets,nete)
     integer ::nelemd_todo, np_todo
     logical ::scm_multcols = .false.
     logical ::iop_nudge_tq = .false.
-    real (r8), dimension(nlev,pcnst) :: stateQ_in, q_update
-    real (r8), dimension(nlev) :: temp_tend, t_update, u_update, v_update
+    real (r8), dimension(nlev,pcnst) :: stateQ_in, q_update, q_phys_frc
+    real (r8), dimension(nlev) :: t_phys_frc, t_update, u_update, v_update
     real (r8), dimension(nlev) :: t_in, u_in, v_in
     real (r8), dimension(nlev) :: relaxt, relaxq
     real (r8), dimension(nlev) :: tdiff_dyn, qdiff_dyn
@@ -186,58 +186,47 @@ subroutine apply_SC_forcing(elem,hvcoord,tl,n,t_before_advance,nets,nete)
     ii=3
     jj=4
 
-  ! Settings for traditional SCM run
-    nelemd_todo = 1
-    np_todo = 1
-
-    if (scm_multcols) then
-       nelemd_todo = nelemd
-       np_todo = np
-    endif
-
-    do k=1,nlev
-      p(k) = hvcoord%hyam(k)*hvcoord%ps0 + hvcoord%hybm(k)*elem(ie)%state%psdry(ii,jj)
-      dpscm(k) = elem(ie)%state%dp3d(ii,jj,k,tl_f)
-    end do
-
     dt = get_step_size()
 
     ! Set initial profiles for current column
     do m=1,pcnst
-       stateQ_in(:nlev,m) =             elem(ie)%state%Qdp(ii,jj,:nlev,m,tl_fqdp)/dpscm(:nlev)
+       stateQ_in(:nlev,m) =             elem(ie)%state%Qdp(ii,jj,:nlev,m,tl_fqdp)/elem(ie)%state%dp3d(ii,jj,:nlev,tl_f)
     end do
     t_in(:nlev) = elem(ie)%state%T(ii,jj,:nlev,tl_f)
     u_in(:nlev) = elem(ie)%state%v(ii,jj,1,:nlev,tl_f)
     v_in(:nlev) = elem(ie)%state%v(ii,jj,2,:nlev,tl_f)
     
-    if (.not. use_3dfrc ) then
-       temp_tend(:) = 0.0_r8
-    else
-       temp_tend(:) = elem(ie)%derived%fT(i,j,:)
-    endif
+!!$    if (.not. use_3dfrc ) then
+!!$       t_phys_frc(:) = 0.0_r8
+!!$    else
+    t_phys_frc(:)   = elem(ie)%derived%fT(ii,jj,:)
+    q_phys_frc(:,:) = elem(ie)%derived%fQ(ii,jj,:,:)/dt
+!!$    endif
 
     ! Call the main subroutine to update t, q, u, and v according to
     !  large scale forcing as specified in IOP file.
     call advance_iop_forcing(dt,elem(ie)%state%psdry(ii,jj),& ! In
-         u_in,v_in,t_in,stateQ_in,temp_tend, hvcoord, &            ! In
+         u_in,v_in,t_in,stateQ_in,t_phys_frc, q_phys_frc, hvcoord, &            ! In
          u_update,v_update,t_update,q_update)                      ! Out
     
     ! Nudge to observations if desired, for T & Q only if in SCM mode
-    if (iop_nudge_tq .and. .not. scm_multcols) then
+    if (iop_nudge_tq ) then
        call advance_iop_nudging(dt,elem(ie)%state%psdry(ii,jj),& ! In
             t_update,q_update(:,1), hvcoord, &                   ! Inn
             t_update,q_update(:,1),relaxt,relaxq)                ! Out
     endif
-    
-    ! Update the q related arrays.  NOTE that Qdp array must
-    !  be updated first to ensure exact restarts
+
+    if (use_3dfrc) then    ! vertical remap of dynamics not run need to update state%dp3d using new psdry
+       do k=1,nlev
+          elem(ie)%state%dp3d(ii,jj,k,tl_f) = (hvcoord%hyai(k+1)-hvcoord%hyai(k))*hvcoord%ps0 + (hvcoord%hybi(k+1)-hvcoord%hybi(k))*elem(ie)%state%psdry(ii,jj)
+       end do
+    end if
+
+    ! Update qdp using new dp3d
     do m=1,pcnst
        ! Update the Qdp array
        elem(ie)%state%Qdp(ii,jj,:nlev,m,tl_fqdp) = &
-            q_update(:nlev,m) * dpscm(:nlev)
-       ! Update the Q array
-!jt       elem(ie)%state%Q(ii,jj,:nlev,m) = &
-!jt            elem(ie)%state%Qdp(ii,jj,:nlev,m,tl_fqdp)/dpscm(:nlev)
+            q_update(:nlev,m) * elem(ie)%state%dp3d(ii,jj,:nlev,tl_f)
     enddo
 
     ! Update prognostic variables to the current values
@@ -253,21 +242,8 @@ subroutine apply_SC_forcing(elem,hvcoord,tl,n,t_before_advance,nets,nete)
     end do
 
     ! Add various diganostic outfld calls
-    
-    if (scm_multcols) then
-      do i=1,np
-        do j=1,np
-          tdiff_out(i+(j-1)*np,:)=tdiff_dyn(:)
-          qdiff_out(i+(j-1)*np,:)=qdiff_dyn(:)
-        end do
-      end do
-      call outfld('TDIFF',tdiff_out,npsq,ie)
-      call outfld('QDIFF',qdiff_out,npsq,ie)
-    else
-      call outfld('TDIFF',tdiff_dyn,1,begchunk)
-      call outfld('QDIFF',qdiff_dyn,1,begchunk)
-    endif
-
+    call outfld('TDIFF',tdiff_dyn,1,begchunk)
+    call outfld('QDIFF',qdiff_dyn,1,begchunk)
     call outfld('TOBS',tobs,1,begchunk)
     call outfld('QOBS',qobs,1,begchunk)
     call outfld('DIVQ',divq,1,begchunk)

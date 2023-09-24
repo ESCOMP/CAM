@@ -831,66 +831,66 @@ contains
       deallocate(tmp)
     end subroutine get_global_ave_surface_pressure
 
-subroutine set_prescribed_scm(elem, fvm, deriv, hvcoord,   &
+    subroutine set_prescribed_scm(elem, fvm, deriv, hvcoord,   &
          hybrid, dt, tl, nets, nete)
-    use control_mod,       only: tstep_type, qsplit
-    use derivative_mod,    only: derivative_t
-    use dimensions_mod,    only: np, nlev
-    use element_mod,       only: element_t
-    use hybvcoord_mod,     only: hvcoord_t
-    use hybrid_mod,        only: hybrid_t
-    use time_mod,          only: TimeLevel_t,  timelevel_qdp, tevolve
-    use fvm_control_volume_mod, only: fvm_struct
-    use cam_thermo,        only: get_kappa_dry
-    use air_composition,   only: thermodynamic_active_species_num
-    use air_composition,   only: thermodynamic_active_species_idx_dycore, get_cp
-    use physconst,         only: cpair
-    implicit none
-
-    type (element_t), intent(inout), target   :: elem(:)
-    type(fvm_struct)     , intent(inout) :: fvm(:)
-    type (derivative_t)  , intent(in) :: deriv
-    type (hvcoord_t)                  :: hvcoord
-    type (hybrid_t)      , intent(in) :: hybrid
-    real (kind=r8), intent(in) :: dt
-    type (TimeLevel_t)   , intent(in) :: tl
-    integer              , intent(in) :: nets
-    integer              , intent(in) :: nete
-
-    ! Local
-    integer        :: ie,nm1,n0,np1,k,qn0,qnp1,m_cnst, nq,p
-    real(kind=r8)  :: eta_dot_dpdn(np,np,nlev+1)
-    
-
-    call t_startf('prim_advance_exp')
-    nm1   = tl%nm1
-    n0    = tl%n0
-    np1   = tl%np1
-
-    !!jt ie needs to be set correctly for IOP's and CAMIOP's
-    ie=35
-    call TimeLevel_Qdp(tl, qsplit, qn0, qnp1)  ! compute current Qdp() timelevel
-
-    do k=1,nlev
-      eta_dot_dpdn(:,:,k)=elem(ie)%derived%omega(:,:,k)
-    enddo  
-    eta_dot_dpdn(:,:,nlev+1) = eta_dot_dpdn(:,:,nlev)
-    
-    do k=1,nlev
-      elem(ie)%state%dp3d(:,:,k,np1) = elem(ie)%state%dp3d(:,:,k,n0) &
-        + dt*(eta_dot_dpdn(:,:,k+1) - eta_dot_dpdn(:,:,k))
-    enddo
-
-    do k=1,nlev
-     elem(ie)%state%T(:,:,k,np1) = elem(ie)%state%T(:,:,k,n0)
-    enddo
-
-    do p=1,qsize
-      do k=1,nlev
-         elem(ie)%state%Qdp(:,:,k,p,qnp1) = elem(ie)%state%Qdp(:,:,k,p,qn0) &
-              + dt*(eta_dot_dpdn(:,:,k+1) - eta_dot_dpdn(:,:,k))
+      use control_mod,       only: tstep_type, qsplit
+      use derivative_mod,    only: derivative_t
+      use dimensions_mod,    only: np, nlev
+      use element_mod,       only: element_t
+      use hybvcoord_mod,     only: hvcoord_t
+      use hybrid_mod,        only: hybrid_t
+      use time_mod,          only: TimeLevel_t,  timelevel_qdp, tevolve
+      use fvm_control_volume_mod, only: fvm_struct
+      use cam_thermo,        only: get_kappa_dry
+      use air_composition,   only: thermodynamic_active_species_num
+      use air_composition,   only: thermodynamic_active_species_idx_dycore, get_cp
+      use physconst,         only: cpair
+      implicit none
+      
+      type (element_t), intent(inout), target   :: elem(:)
+      type(fvm_struct)     , intent(inout) :: fvm(:)
+      type (derivative_t)  , intent(in) :: deriv
+      type (hvcoord_t)                  :: hvcoord
+      type (hybrid_t)      , intent(in) :: hybrid
+      real (kind=r8), intent(in) :: dt
+      type (TimeLevel_t)   , intent(in) :: tl
+      integer              , intent(in) :: nets
+      integer              , intent(in) :: nete
+      
+      ! Local
+      integer        :: ie,nm1,n0,np1,k,qn0,qnp1,m_cnst, nq,p
+      real(kind=r8)  :: eta_dot_dpdn(np,np,nlev+1)
+      
+      
+      call t_startf('prim_advance_exp')
+      nm1   = tl%nm1
+      n0    = tl%n0
+      np1   = tl%np1
+      
+      call TimeLevel_Qdp(tl, qsplit, qn0, qnp1)  ! compute current Qdp() timelevel
+      
+      do ie=nets,nete
+         do k=1,nlev
+            eta_dot_dpdn(:,:,k)=elem(ie)%derived%omega(:,:,k)
+         enddo
+         eta_dot_dpdn(:,:,nlev+1) = eta_dot_dpdn(:,:,nlev)
+         
+         do k=1,nlev
+            elem(ie)%state%dp3d(:,:,k,np1) = elem(ie)%state%dp3d(:,:,k,n0) &
+                 + dt*(eta_dot_dpdn(:,:,k+1) - eta_dot_dpdn(:,:,k))
+         enddo
+         
+         do k=1,nlev
+            elem(ie)%state%T(:,:,k,np1) = elem(ie)%state%T(:,:,k,n0)
+         enddo
+         
+         do p=1,qsize
+            do k=1,nlev
+               elem(ie)%state%Qdp(:,:,k,p,qnp1) = elem(ie)%state%Qdp(:,:,k,p,qn0) &
+                    + elem(ie)%state%Qdp(:,:,k,p,qn0)/elem(ie)%state%dp3d(:,:,k,n0)*dt*(eta_dot_dpdn(:,:,k+1) - eta_dot_dpdn(:,:,k))
+            enddo
+         enddo
       enddo
-    enddo
- end subroutine set_prescribed_scm
+    end subroutine set_prescribed_scm
 
 end module prim_driver_mod

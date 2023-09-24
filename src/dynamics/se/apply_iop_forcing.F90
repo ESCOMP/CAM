@@ -20,7 +20,7 @@ contains
 !=========================================================================
 
 subroutine advance_iop_forcing(scm_dt, ps_in, &                   ! In
-                    u_in, v_in, t_in, q_in, t_phys_frc,hvcoord, & ! In
+                    u_in, v_in, t_in, q_in, t_phys_frc, q_phys_frc, hvcoord, & ! In
                     u_update, v_update, t_update, q_update)       ! Out
 
 !-----------------------------------------------------------------------
@@ -43,6 +43,7 @@ subroutine advance_iop_forcing(scm_dt, ps_in, &                   ! In
   real(r8), intent(in) :: t_in(plev)        ! temperature [K]
   real(r8), intent(in) :: q_in(plev,pcnst)  ! q tracer array [units vary]
   real(r8), intent(in) :: t_phys_frc(plev)  ! temperature forcing from physics [K/s]
+  real(r8), intent(in) :: q_phys_frc(plev,pcnst)  ! temperature forcing from physics [K/s]
   type (hvcoord_t), intent(in)   :: hvcoord
   real(r8), intent(in) :: scm_dt            ! model time step [s]
 
@@ -91,7 +92,7 @@ subroutine advance_iop_forcing(scm_dt, ps_in, &                   ! In
 
     t_update(k) = t_in(k) + t_expan + scm_dt*(t_phys_frc(k) + t_lsf(k))
     do m=1,pcnst
-      q_update(k,m) = q_in(k,m) + scm_dt*q_lsf(k,m)
+      q_update(k,m) = q_in(k,m) + scm_dt*(q_phys_frc(k,m) + q_lsf(k,m))
     end do
   enddo
 

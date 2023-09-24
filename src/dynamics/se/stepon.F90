@@ -260,7 +260,10 @@ subroutine stepon_run3(dtime, cam_out, phys_state, dyn_in, dyn_out)
    integer :: rc, i, j, k, p, ie
 #if defined (BFB_CAM_SCAM_IOP)
    real(r8) :: forcing_temp(npsq,nlev), forcing_q(npsq,nlev,pcnst)
-   real(r8) :: ftmp_temp(np,np,nlev,nelemd), ftmp_q(np,np,nlev,pcnst,nelemd)
+   real(r8) :: ftmp_temp(np,np,nlev,nelemd), ftmp_q(np,np,nlev,pcnst,nelemd), &
+        ftmp_fq(np,np,nlev,pcnst,nelemd), ftmp_q_update(np,np,nlev,pcnst,nelemd), &
+        ftmp_q_diff(np,np,nlev,pcnst,nelemd),ftmp_newqdp_diff(np,np,nlev,pcnst,nelemd), &
+        ftmp_t_update(np,np,nlev,nelemd),ftmp_newt_diff(np,np,nlev,nelemd)
    real(r8) :: out_temp(npsq,nlev), out_q(npsq,nlev), out_u(npsq,nlev), &
                out_v(npsq,nlev), out_psv(npsq)  
 #endif   
@@ -278,6 +281,7 @@ subroutine stepon_run3(dtime, cam_out, phys_state, dyn_in, dyn_out)
    do ie=1,nelemd
       ftmp_temp(:,:,:,ie) = dyn_in%elem(ie)%state%T(:,:,:,tl_f)
       do p = 1, qsize_d
+         ftmp_fq(:,:,:,p,ie)=dyn_in%elem(ie)%derived%FQ(:,:,:,p)/dtime
          ftmp_q(:,:,:,p,ie) = dyn_in%elem(ie)%state%Qdp(:,:,:,p,tl_fQdp)/&
               dyn_in%elem(ie)%state%dp3d(:,:,:,tl_f)
       enddo
@@ -288,8 +292,7 @@ subroutine stepon_run3(dtime, cam_out, phys_state, dyn_in, dyn_out)
 
      ! Update IOP properties e.g. omega, divT, divQ
 
-      if (.not. is_first_step()) iop_update_phase1 = .false. 
-!jt e3sm has this   iop_update_phase1 = .false. 
+      iop_update_phase1 = .false. 
       if (doiopupdate) then
          call scm_setinitial(dyn_out%elem)
          if (masterproc) call readiopdata(iop_update_phase1,hvcoord)
@@ -337,12 +340,20 @@ subroutine stepon_run3(dtime, cam_out, phys_state, dyn_in, dyn_out)
                     dyn_in%elem(ie)%state%dp3d(i,j,k,tl_f)
                out_psv(i+(j-1)*np) = dyn_in%elem(ie)%state%psdry(i,j)
                
+               ftmp_t_update(i,j,k,ie) =  ftmp_temp(i,j,k,ie) + dtime*(dyn_in%elem(ie)%derived%FT(i,j,k)	 + forcing_temp(i+(j-1)*np,k))
+               ftmp_newt_diff(i,j,k,ie) =  dyn_in%elem(ie)%state%T(i,j,k,tl_f)-ftmp_t_update(i,j,k,ie)
+               dyn_in%elem(ie)%state%T(i,j,k,tl_f)=ftmp_t_update(i,j,k,ie)
+               out_temp(i+(j-1)*np,k) = dyn_in%elem(ie)%state%T(i,j,k,tl_f)
                do p=1,qsize_d
                   forcing_q(i+(j-1)*np,k,p) = (dyn_in%elem(ie)%state%Qdp(i,j,k,p,tl_fQdp)/&
                        dyn_in%elem(ie)%state%dp3d(i,j,k,tl_f) - &
-                       ftmp_q(i,j,k,p,ie))/dtime
+                       ftmp_q(i,j,k,p,ie))/dtime - ftmp_fq(i,j,k,p,ie)
+                  ftmp_q_update(i,j,k,p,ie) = ftmp_q(i,j,k,p,ie) + dtime*(ftmp_fq(i,j,k,p,ie) + forcing_q(i+(j-1)*np,k,p))
+                  ftmp_newqdp_diff(i,j,k,p,ie)=dyn_in%elem(ie)%state%Qdp(i,j,k,p,tl_fQdp)-(ftmp_q_update(i,j,k,p,ie)*dyn_in%elem(ie)%state%dp3d(i,j,k,tl_f))
+                  dyn_in%elem(ie)%state%Qdp(i,j,k,p,tl_fQdp)=ftmp_q_update(i,j,k,p,ie)*dyn_in%elem(ie)%state%dp3d(i,j,k,tl_f)
                enddo
-               
+               out_q(i+(j-1)*np,k) = dyn_in%elem(ie)%state%Qdp(i,j,k,1,tl_fQdp)/&
+                    dyn_in%elem(ie)%state%dp3d(i,j,k,tl_f)
             enddo
          enddo
       enddo
