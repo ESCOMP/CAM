@@ -6,12 +6,6 @@
 <!-- Solar data from NRL -->
 <solar_irrad_data_file>atm/cam/solar/SolarForcingCMIP6_18491230-23000102_c20200615.nc</solar_irrad_data_file>
 
-<!-- Initial conditions -->
-<ncdata hgrid="ne30np4" npg="3" nlev="93">atm/cam/inic/se/L93_ne30pg3_ne30pg3_mg17_450_short.cam.i.1979-01-07-00000.nc</ncdata>
-
-<!-- Topography -->
-<bnd_topo hgrid="ne30np4" npg="3">atm/cam/topo/se/ne30pg3_gmted2010_modis_bedmachine_nc3000_Laplace0100_20230105.nc</bnd_topo>
-
 <!-- LBC Files -->
 <flbc_file>atm/waccm/lb/LBC_17500116-20150116_CMIP6_0p5degLat_c180905.nc</flbc_file>
 <flbc_type>'SERIAL'</flbc_type>
@@ -42,18 +36,5 @@
 <!-- Surface emissions -->
 <srf_emis_type>INTERP_MISSING_MONTHS</srf_emis_type>
 <csw_time_type>SERIAL</csw_time_type>
-
-<!-- Dycore settings -->
-<se_rsplit>            6 </se_rsplit>
-<se_nsplit>            3 </se_nsplit>
-<se_hypervis_subcycle> 3 </se_hypervis_subcycle>
-
-<!-- gravity wave settings -->
-<gw_apply_tndmax>   .false. </gw_apply_tndmax>
-<use_gw_convect_dp> .true. </use_gw_convect_dp>
-<use_gw_front>      .true. </use_gw_front>
-
-<tau_0_ubc> .true.  </tau_0_ubc>
-<se_nu_top> 1.E6  </se_nu_top>
 
 </namelist_defaults>

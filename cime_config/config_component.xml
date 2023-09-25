@@ -8,12 +8,12 @@
       CAM
     ===============
    -->
-    <desc atm="CAM60[%1PCT][%4xCO2][%CCTS1]][%CCTS2][%CFIRE][%CVBSX][%NUDG][%PORT][%RCO2][%SCAM][%SDYN][%WCCM][%WCMD][%WCSC][%WCTS][%WXIE][%WXIED]">CAM cam6 physics:</desc>
+    <desc atm="CAM60[%1PCT][%4xCO2][%CCTS1]][%CCTS2][%CFIRE][%CVBSX][%NUDG][%PORT][%RCO2][%SCAM][%SDYN][%WCCM][%WCMD][%WCSC][%WCTS][%WXIE][%WXIED][%HEMCO]">CAM cam6 physics:</desc>
     <desc atm="CAM50[%CCTS1][%CLB][%PORT][%RCO2][%MAM7][%SCAM][%SDYN][%WCSC][%WCTS]"                                                               >CAM cam5 physics:</desc>
     <desc atm="CAM40[%PORT][%RCO2][%SCAM][%SDYN][%TMOZ][%WX][%WXIE][%WXIED][%WCCM][%WCMD]"                                                         >CAM cam4 physics:</desc>
     <desc atm="CAM30"                                                                                                                              >CAM cam3 physics:</desc>
-    <desc atm="CAM[%ADIAB][%DABIP04][%TJ16][%HS94][%KESSLER][%RCO2][%SPCAMS][%SPCAMCLBS][%SPCAMM][%SPCAMCLBM]"                                     >CAM simplified and non-versioned physics :</desc>
-    <desc atm="CAM%DEV[%LT][%MT][%CCTS1][%GHGMAM4]"                                                                                              >CAM7 development physics:</desc>
+    <desc atm="CAM[%ADIAB][%DABIP04][%TJ16][%GRAYRAD][%HS94][%KESSLER][%RCO2][%SPCAMS][%SPCAMCLBS][%SPCAMM][%SPCAMCLBM]"                                     >CAM simplified and non-versioned physics :</desc>
+    <desc atm="CAM%DEV[%LT][%MT][%CCTS1][%GHGMAM4]"                                                                                                 >CAM7 development physics:</desc>
 
   <!--
     ===============
@@ -54,6 +54,13 @@
 
   <!--
     ===============
+     HEMCO Options
+    ===============
+  -->
+    <desc option="HEMCO"        >With Harmonized Emissions Component (HEMCO) for chemistry:</desc>
+
+  <!--
+    ===============
      WACCM Options
     ===============
    -->
@@ -72,6 +79,7 @@
     <desc option="ADIAB"        >CAM dry adiabatic configurarion (no physics forcing):</desc>
     <desc option="DABIP04"      >CAM dry adiabatic baroclinic instability (Polvani et al., 2004):</desc>
     <desc option="TJ16"         >CAM moist Held-Suarez forcing (Thatcher and Jablonowski, 2016):</desc>
+    <desc option="GRAYRAD"      >CAM moist simple model (Frierson, 2006):</desc>
     <desc option="HS94"         >CAM dry Held-Suarez forcing (Held and Suarez (1994)):</desc>
     <desc option="KESSLER"      >CAM moist dynamical core test with Ullrich et al. (2014) baroclinic wave IC, Kessler physics and terminator chemistry:</desc>
 
@@ -161,18 +169,18 @@
       <value compset="_CAM60%WXIED">-chem waccm_mad_mam5</value>
 
       <value compset="_CAM.*%SDYN">-offline_dyn</value>
-
       <value compset="_CAM\d0%SDYN_CLM">-nlev 56</value>
       <value compset="_CAM\d0%CC.*%SDYN">-nlev 56</value>
       <value compset="_CAM\d0%WC.*%SDYN">-nlev 88</value>
       <value compset="_CAM\d0%WX.*%SDYN">-nlev 145</value>
-      <value compset="_CAM.*%LT">-nlev 58</value>
-      <value compset="_CAM.*%MT">-nlev 93</value>
+      <value compset="_CAM.*%LT">-nlev 58 -model_top lt</value>
+      <value compset="_CAM.*%MT">-nlev 93 -model_top mt</value>
 
       <!-- Simple models -->
       <value compset="_CAM%ADIAB">-phys adiabatic</value>
       <value compset="_CAM%DABIP04">-phys adiabatic</value>
       <value compset="_CAM%TJ16">-phys tj2016 -analytic_ic</value>
+      <value compset="_CAM%GRAYRAD">-phys grayrad -analytic_ic</value>
       <value compset="_CAM%HS94">-phys held_suarez -analytic_ic</value>
       <value compset="_CAM%KESSLER">-phys kessler -chem terminator -analytic_ic -nadv_tt=6</value>
 
@@ -207,6 +215,8 @@
       <value compset="1850_CAM60%WCTS"   >waccm_tsmlt_1850_cam6</value>
       <value compset="1850_CAM60%WCCM"   >waccm_ma_1850_cam6</value>
       <value compset="1850_CAM60%WCSC"   >waccm_sc_1850_cam6</value>
+      <value compset="1850_CAM%DEV%LT"   >1850_cam_lt</value>
+      <value compset="1850_CAM%DEV%MT"   >1850_cam_mt</value>
 
       <value compset="2000_CAM40%TMOZ"   >2000_cam4_trop_chem</value>
       <value compset="2000_CAM40%WXIE"   >waccmxie_ma_2000_cam4</value>
@@ -285,6 +295,7 @@
       <value compset="2000_CAM%DABIP04"  >dabi_p2004</value>
       <value compset="CAM%HS94"          >held_suarez_1994</value>
       <value compset="CAM%TJ16"          >dctest_tj2016</value>
+      <value compset="CAM%GRAYRAD"       >dctest_frierson</value>
       <value compset="CAM%KESSLER"       >dctest_baro_kessler</value>
 
       <!-- SCAM defaults to ARM97, all other IOPs are in usermods_dirs -->
@@ -324,6 +335,8 @@
       <value compset="_CAM60%WCTS%1PCT"> flbc_file='$DIN_LOC_ROOT/atm/waccm/lb/LBC_CMIP6_1pctCO2ramp_y1-165_0p5degLat_c180930.nc'</value>
       <value compset="_CAM60%WCTS%1PCT"> nlte_limit_co2=.true.</value>
       <value compset="_BGC%BDRD"> co2_cycle_rad_passive=.true. </value>
+      <!-- hemco (harmonized emissions component) option -->
+      <value compset="_CAM.*%HEMCO"> use_hemco=.true. </value>
       <!-- rearth provided by FMS for FV3 and must remain fixed to that value to maintain consistency between phys/dyn. -->
       <value grid="a%C[0-9]"> rearth = 6.37122D6 </value>
     </values>

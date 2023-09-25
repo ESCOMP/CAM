@@ -54,6 +54,122 @@
           that have only a small number of allowed values.
                                                                         -->
 
+<!-- Frierson Simple Physics Parameters -->
+
+<entry id="frierson_Wind_min" type="real" category="frierson"
+       group="frierson_nl" valid_values="" >
+       Minimum Wind Threshold for surface flux calculations which is
+       added to avoid possible cases that would result in a division by zero.
+       Default: 1.0d-5
+       </entry>
+
+<entry id="frierson_Z0" type="real" category="frierson"
+       group="frierson_nl" valid_values="" >
+       Surface Roughness Length for surface drag calculation.
+       Default: 3.21d-5
+       </entry>
+
+<entry id="frierson_Ri_c" type="real" category="frierson"
+       group="frierson_nl" valid_values="" >
+       Critical Richardson Number for stable mixing cutoff.
+       Default: 1.0
+       </entry>
+
+<entry id="frierson_Fb" type="real" category="frierson"
+       group="frierson_nl" valid_values="" >
+       Surface Layer Fraction of boundary layer depth.
+       The prescribed fraction of the boundary layer depth
+       for surface interactions.
+       Default: 0.1
+       </entry>
+
+<entry id="frierson_Albedo" type="real" category="frierson"
+       group="frierson_nl" valid_values="" >
+       Frierson Albedo: Frierson's Net Solar Flux=>  938.4 = 1360*(1.-0.31)
+       The Frierson model prescribes a net solar flux which incorporated the
+       effects of albedo. Rather than adhering to this formulation, the net
+       solar flux is obtained by a more common practice of specifying an albedo
+       value. For the approximate (simple) solar flux of 1360 W m-2, the albedo
+       value of 0.31 yields the value used by Frierson.
+       Default: 0.31
+       </entry>
+
+<entry id="frierson_DeltaS" type="real" category="frierson"
+       group="frierson_nl" valid_values="" >
+       Latitudinal Variation of Shortwave Radiation.
+       Shortwave radiation contains no seasonal/diurnal variations and has a
+       Latitudinal variation specified by DeltaS according to:
+               R_solar = (R_net/4)*[1 + DeltaS*P_2(Lat)]
+       where P_2 is the second Legendre polynomial.
+       Default: 1.4
+       </entry>
+
+<entry id="frierson_Tau_eqtr" type="real" category="frierson"
+       group="frierson_nl" valid_values="" >
+       Longwave Optical Depth at Equator.
+       The optical depths are specified as a function of Latitude to approximate
+       the effects of water vapor according to:
+        Tau_0 = Tau_eqtr + (Tau_pole - Tau_eqtr)*sin^2(Lat)
+       Default: 6.0
+       </entry>
+
+<entry id="frierson_Tau_pole" type="real" category="frierson"
+       group="frierson_nl" valid_values="" >
+       Longwave Optical Depth at Poles.
+       The optical depths are specified as a function of Latitude to approximate
+       the effects of water vapor according to:
+        Tau_0 = Tau_eqtr + (Tau_pole - Tau_eqtr)*sin^2(Lat)
+       Default: 1.5
+       </entry>
+
+<entry id="frierson_LinFrac" type="real" category="frierson"
+       group="frierson_nl" valid_values="" >
+       Linear Optical Depth Parameter for stratosphere.
+       The pressure dependence of optical depths that approximate the effects of
+       water vapor varies according to:
+          Tau = Tau_0*[ LinFrac*(P/P_s) + (1-LinFrac)*(P/P_s)^4 ]
+       Default: 0.1
+       </entry>
+
+<entry id="frierson_C0" type="real" category="frierson"
+       group="frierson_nl" valid_values="" >
+       Ocean Mixed-Layer Heat Capacity.
+       The ocean surface is a slab mixed layer with a specified heat capacity in units of J K-1 m-2
+       Default: 1.e7
+       </entry>
+
+<entry id="frierson_WetDryCoef" type="real" category="frierson"
+       group="frierson_nl" valid_values="" >
+       Scale Factor for E0 (saturation vapor pressure) to contol wet/dry experiments.
+       WetDryCoef=0  corresponds to the atmosphere in the dry limit.
+       Friersons wet limit corresponds to WetDryCoef=10.
+       Default: 1.
+       </entry>
+
+<entry id="frierson_Tmin" type="real" category="frierson"
+       group="frierson_nl" valid_values="" >
+       Tsrf Initial Condition: Minimum SST (K).
+       The ocean temperatures are initailized with the values:
+        T_s = Tmin + Tdlt*exp[-0.5*(Lat/Twidth)^2]
+       Default: 271.
+       </entry>
+
+<entry id="frierson_Tdlt" type="real" category="frierson"
+       group="frierson_nl" valid_values="" >
+       Tsrf Initial Condition: Equator-Pole SST difference (K).
+       The ocean temperatures are initailized with the values:
+        T_s = Tmin + Tdlt*exp[-0.5*(Lat/Twidth)^2]
+       Default: 39.
+       </entry>
+
+<entry id="frierson_Twidth" type="real" category="frierson"
+       group="frierson_nl" valid_values="" >
+       Tsrf Initial Condition: Latitudinal width parameter for sst (degrees latitude)
+       The ocean temperatures are initailized with the values:
+        T_s = Tmin + Tdlt*exp[-0.5*(Lat/Twidth)^2]
+       Default: 26.
+       </entry>
+
 <!-- Nudging Parameters -->
 
 <entry id="Nudge_Model" type="logical" category="nudging"
@@ -1411,6 +1527,12 @@ Frontogenesis function critical threshold.
 Default: set by build-namelist.
 </entry>
 
+<entry id="front_gaussian_width" type="real" category="gw_drag"
+       group="gw_drag_nl" valid_values="" >
+Width of gaussian used to create frontogenesis tau profile [m/s].
+Default: set by build-namelist.
+</entry>
+
 <entry id="gw_drag_file" type="char*256" input_pathname="abs" category="gw_drag"
        group="gw_drag_nl" valid_values="" >
 Full pathname of Beres lookup table data file for gravity waves sourced
@@ -1908,27 +2030,27 @@ if .true. then output CLUBBs radiative history statistics
 Default: false
 </entry>
 
-<entry id="clubb_vars_zt" type="char*16(10000)"  category="history"
+<entry id="clubb_vars_zt" type="char*35(10000)"  category="history"
        group="clubb_stats_nl" valid_values="" >
 Same as {{ hilight }}fincl1{{ closehilight }}, but for CLUBB statistics on zt grid.
 </entry>
 
-<entry id="clubb_vars_zm" type="char*16(10000)"  category="history"
+<entry id="clubb_vars_zm" type="char*35(10000)"  category="history"
        group="clubb_stats_nl" valid_values="" >
 Same as {{ hilight }}fincl1{{ closehilight }}, but for CLUBB statistics on zm grid.
 </entry>
 
-<entry id="clubb_vars_rad_zt" type="char*16(10000)"  category="history"
+<entry id="clubb_vars_rad_zt" type="char*35(10000)"  category="history"
        group="clubb_stats_nl" valid_values="" >
 Same as {{ hilight }}fincl1{{ closehilight }}, but for CLUBB statistics on radiation zt grid.
 </entry>
 
-<entry id="clubb_vars_rad_zm" type="char*16(10000)"  category="history"
+<entry id="clubb_vars_rad_zm" type="char*35(10000)"  category="history"
        group="clubb_stats_nl" valid_values="" >
 Same as {{ hilight }}fincl1{{ closehilight }}, but for CLUBB statistics on radiation zm grid.
 </entry>
 
-<entry id="clubb_vars_sfc" type="char*16(10000)"  category="history"
+<entry id="clubb_vars_sfc" type="char*35(10000)"  category="history"
        group="clubb_stats_nl" valid_values="" >
 Same as {{ hilight }}fincl1{{ closehilight }}, but for CLUBB statistics on surface.
 </entry>
@@ -4762,7 +4884,7 @@ Default: TRUE
 <!-- Physics control -->
 
 <entry id="cam_physpkg" type="char*16" category="build"
-       group="phys_ctl_nl" valid_values="cam3,cam4,cam5,cam6,adiabatic,held_suarez,kessler" >
+       group="phys_ctl_nl" valid_values="cam3,cam4,cam5,cam6,adiabatic,held_suarez,kessler,frierson" >
 Name of the CAM physics package.  N.B. this variable may not be set by
 the user.  It is set by build-namelist via information in the configure
 cache file to be consistent with how CAM was built.
@@ -4796,6 +4918,14 @@ N.B. this variable may not be set by the user.
 It is set by build-namelist via information in the configure
 cache file to be consistent with how CAM was built.
 Default: set by build-namelist
+</entry>
+
+<entry id="use_hemco" type="logical" category="hemco"
+       group="phys_ctl_nl" valid_values="" >
+If TRUE then the Harmonized Emissions Component, HEMCO, will be used
+to calculate emissions in chemistry. ext_frc_specifier and srf_emis_specifier
+will be ignored.
+Default: FALSE
 </entry>
 
 <entry id="waccmx_opt" type="char*16" category="waccmx"
@@ -4929,6 +5059,45 @@ List of full pathnames of LTR electic potential inputs for both hemispheres.
 Default: NONE.
 </entry>
 
+<!-- HEMCO -->
+<entry id="hemco_data_root" type="char*256" input_pathname="abs" category="hemco"
+       group="hemco_nl" valid_values="" >
+Full pathname of HEMCO data root for use in reading HEMCO input files.
+(e.g., '$DIN_LOC_ROOT/atm/cam/geoschem/emis/ExtData/HEMCO').
+Default: set by build-namelist.
+</entry>
+
+<entry id="hemco_config_file" type="char*256" input_pathname="abs" category="hemco"
+       group="hemco_nl" valid_values="" >
+Full pathname of the HEMCO_Config.rc input file used to configure HEMCO.
+Default: set by build-namelist.
+</entry>
+
+<entry id="hemco_diagn_file" type="char*256" input_pathname="abs" category="hemco"
+       group="hemco_nl" valid_values="" >
+Full pathname of the HEMCO_Diagn.rc input file used to configure HEMCO diagnostics.
+Default: set by build-namelist.
+</entry>
+
+<entry id="hemco_grid_xdim" type="integer" category="hemco"
+       group="hemco_nl" valid_values="">
+Number of x-dimensions in HEMCO internal grid.
+Default: set by build-namelist.
+</entry>
+
+<entry id="hemco_grid_ydim" type="integer" category="hemco"
+       group="hemco_nl" valid_values="">
+Number of y-dimensions in HEMCO internal grid.
+Default: set by build-namelist.
+</entry>
+
+<entry id="hemco_emission_year" type="integer" category="hemco"
+       group="hemco_nl" valid_values="">
+Force emission year for HEMCO clock if positive. This will force cycling of data on this year.
+Default: set by build-namelist for climo cases, otherwise -1 to use model clock.
+</entry>
+
+
 <!-- Reference Pressures -->
 
 <entry id="trop_cloud_top_press" type="real" category="press_lim"
@@ -4998,6 +5167,13 @@ Type of eddy scheme employed by the vertical diffusion package.  'HB' for
 Holtslag and Boville; 'diag_TKE' for diagnostic tke version of Grenier and
 Bretherton; 'HBR' for Rasch modified version of 'HB'.
 Default: set by build-namelist
+</entry>
+
+<entry id="do_hb_above_clubb" type="logical" category="pbl"
+       group="phys_ctl_nl" valid_values="" >
+Logical: If True activate Holtslag and Boville vertical diffusion scheme where CLUBB is not active
+         (note that CLUBB top is dynamic in each column)
+Default: Set by build-namelist.
 </entry>
 
 <!-- Convective Scavenging -->
@@ -5412,7 +5588,7 @@ Default: false
 <!-- Aerosol and cloud optics -->
 
 <entry id="water_refindex_file" type="char*256" input_pathname="abs" category="radiation"
-       group="modal_aer_opt_nl" valid_values="" >
+       group="aerosol_optics_nl" valid_values="" >
 Full pathname of dataset for water refractive indices used in modal aerosol optics
 Default: none
 </entry>
@@ -7977,6 +8153,17 @@ Default: Set by build-namelist.
 Number of threads to use when processing loops over threads.
 Normally equal to se_vert_num_threads.
 Default: Set by build-namelist.
+</entry>
+
+<entry id="se_pgf_formulation" type="integer" category="se"
+       group="dyn_se_inparm" valid_values="1,2" >
+
+  1: Exner version of pressure gradient force (PGF)
+  see Appendix A in https://agupubs.onlinelibrary.wiley.com/doi/epdf/10.1029/2022MS003192
+
+  2: Traditional pressure gradient formulation (grad p)
+
+  Default: Set by build-namelist.
 </entry>
 
 

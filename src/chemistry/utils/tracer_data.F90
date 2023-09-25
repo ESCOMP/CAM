@@ -92,10 +92,10 @@ module tracer_data
      real(r8) :: one_yr = 0
      real(r8) :: curr_mod_time ! model time - calendar day
      real(r8) :: next_mod_time ! model time - calendar day - next time step
-     integer :: nlon
-     integer :: nlat
-     integer :: nlev
-     integer :: nilev
+     integer :: nlon = 0
+     integer :: nlat = 0
+     integer :: nlev = 0
+     integer :: nilev = 0
      integer :: ps_coords(3) ! LATDIM | LONDIM | TIMDIM
      integer :: ps_order(3) ! LATDIM | LONDIM | TIMDIM
      real(r8), pointer, dimension(:) :: lons => null()
@@ -104,7 +104,6 @@ module tracer_data
      real(r8), pointer, dimension(:) :: ilevs => null()
      real(r8), pointer, dimension(:) :: hyam => null()
      real(r8), pointer, dimension(:) :: hybm => null()
-     real(r8), pointer, dimension(:,:) :: ps => null()
      real(r8), pointer, dimension(:) :: hyai => null()
      real(r8), pointer, dimension(:) :: hybi => null()
      real(r8), pointer, dimension(:,:) :: weight_x => null(), weight_y => null()
@@ -340,12 +339,6 @@ contains
        lat_dimid = old_dimid
     endif
 
-    allocate( file%ps(file%nlon,file%nlat), stat=astat )
-    if( astat /= 0 ) then
-       write(iulog,*) 'trcdata_init: file%ps allocation error = ',astat
-       call endrun('trcdata_init: failed to allocate x array')
-    end if
-
     call pio_seterrorhandling(File%curr_fileid, PIO_BCAST_ERROR, oldmethod=err_handling)
     ierr = pio_inq_varid( file%curr_fileid, 'PS', file%ps_id )
     file%has_ps = (ierr==PIO_NOERR)
@@ -435,11 +428,6 @@ contains
           ierr = pio_get_var( file%curr_fileid, varid, file%hybi )
        endif
 
-       allocate( file         %ps  (pcols,begchunk:endchunk), stat=astat   )
-       if( astat/= 0 ) then
-          write(iulog,*) 'trcdata_init: failed to allocate file%ps array; error = ',astat
-          call endrun
-       end if
        allocate( file%ps_in(1)%data(pcols,begchunk:endchunk), stat=astat   )
        if( astat/= 0 ) then
           write(iulog,*) 'trcdata_init: failed to allocate file%ps_in(1)%data array; error = ',astat

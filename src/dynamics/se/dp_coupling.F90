@@ -605,7 +605,7 @@ subroutine derived_phys_dry(phys_state, phys_tend, pbuf2d)
 
       ! wet pressure variables (should be removed from physics!)
       factor_array(:,:) = 1.0_r8
-      do m_cnst=1,thermodynamic_active_species_num
+      do m_cnst=dry_air_species_num + 1,thermodynamic_active_species_num
         m = thermodynamic_active_species_idx(m_cnst)
         do k=1,nlev
           do i=1,ncol
