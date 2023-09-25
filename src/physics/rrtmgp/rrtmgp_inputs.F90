@@ -715,79 +715,84 @@ subroutine rrtmgp_set_cloud_sw( &
    snow_tau_cloudsim = snow_tau(idx_sw_cloudsim,:,:)
    grau_tau_cloudsim = grau_tau(idx_sw_cloudsim,:,:)
 
-   ! number of CAM's layers in radiation calculation.  Does not include the "extra layer".
-   nver = pver - ktopcam + 1
+   ! if no daylight columns the cloud_sw object isn't initialized
+   if (nday > 0) then
 
-   allocate( &
-      cldf(nday,nver),                      &
-      day_cld_tau(nswbands,nday,nver),      &
-      day_cld_tau_w(nswbands,nday,nver),    &
-      day_cld_tau_w_g(nswbands,nday,nver),  &
-      tauc(nswbands,nday,nver), taucmcl(nswgpts,nday,nver), &
-      ssac(nswbands,nday,nver), ssacmcl(nswgpts,nday,nver), &
-      asmc(nswbands,nday,nver), asmcmcl(nswgpts,nday,nver) )
+      ! number of CAM's layers in radiation calculation.  Does not include the "extra layer".
+      nver = pver - ktopcam + 1
 
-   ! Subset "chunk" data so just the daylight columns, and the number of CAM layers in the
-   ! radiation calculation are used by MCICA to produce subcolumns.
-   cldf            = cldfprime(       idxday(1:nday), ktopcam:)
-   day_cld_tau     = c_cld_tau(    :, idxday(1:nday), ktopcam:)
-   day_cld_tau_w   = c_cld_tau_w(  :, idxday(1:nday), ktopcam:)
-   day_cld_tau_w_g = c_cld_tau_w_g(:, idxday(1:nday), ktopcam:)
+      allocate( &
+         cldf(nday,nver),                      &
+         day_cld_tau(nswbands,nday,nver),      &
+         day_cld_tau_w(nswbands,nday,nver),    &
+         day_cld_tau_w_g(nswbands,nday,nver),  &
+         tauc(nswbands,nday,nver), taucmcl(nswgpts,nday,nver), &
+         ssac(nswbands,nday,nver), ssacmcl(nswgpts,nday,nver), &
+         asmc(nswbands,nday,nver), asmcmcl(nswgpts,nday,nver) )
 
-   ! Compute the optical properties needed for the 2-stream calculations.  These calculations
-   ! are the same as the RRTMG version.
+      ! Subset "chunk" data so just the daylight columns, and the number of CAM layers in the
+      ! radiation calculation are used by MCICA to produce subcolumns.
+      cldf            = cldfprime(       idxday(1:nday), ktopcam:)
+      day_cld_tau     = c_cld_tau(    :, idxday(1:nday), ktopcam:)
+      day_cld_tau_w   = c_cld_tau_w(  :, idxday(1:nday), ktopcam:)
+      day_cld_tau_w_g = c_cld_tau_w_g(:, idxday(1:nday), ktopcam:)
 
-   ! set cloud optical depth, clip @ zero
-   tauc = merge(day_cld_tau, 0.0_r8, day_cld_tau > 0.0_r8)
-   ! set value of asymmetry
-   asmc = merge(day_cld_tau_w_g / max(day_cld_tau_w, tiny), 0.0_r8, day_cld_tau_w > 0.0_r8)
-   ! set value of single scattering albedo
-   ssac = merge(max(day_cld_tau_w, tiny) / max(tauc, tiny), 1.0_r8 , tauc > 0.0_r8)
-   ! set asymmetry to zero when tauc = 0
-   asmc = merge(asmc, 0.0_r8, tauc > 0.0_r8)
+      ! Compute the optical properties needed for the 2-stream calculations.  These calculations
+      ! are the same as the RRTMG version.
 
-   ! MCICA converts from bands to gpts (e.g., 224 g-points instead of 14 bands)
-   call mcica_subcol_sw( &
-      kdist_sw, nswbands, nswgpts, nday, nlay, &
-      nver, changeseed, pmid, cldf, tauc,     &
-      ssac, asmc, taucmcl, ssacmcl, asmcmcl)
+      ! set cloud optical depth, clip @ zero
+      tauc = merge(day_cld_tau, 0.0_r8, day_cld_tau > 0.0_r8)
+      ! set value of asymmetry
+      asmc = merge(day_cld_tau_w_g / max(day_cld_tau_w, tiny), 0.0_r8, day_cld_tau_w > 0.0_r8)
+      ! set value of single scattering albedo
+      ssac = merge(max(day_cld_tau_w, tiny) / max(tauc, tiny), 1.0_r8 , tauc > 0.0_r8)
+      ! set asymmetry to zero when tauc = 0
+      asmc = merge(asmc, 0.0_r8, tauc > 0.0_r8)
+
+      ! MCICA converts from bands to gpts (e.g., 224 g-points instead of 14 bands)
+      call mcica_subcol_sw( &
+         kdist_sw, nswbands, nswgpts, nday, nlay, &
+         nver, changeseed, pmid, cldf, tauc,     &
+         ssac, asmc, taucmcl, ssacmcl, asmcmcl)
    
-   ! Initialize object for SW cloud optical properties.
-   errmsg = cloud_sw%alloc_2str(nday, nlay, kdist_sw)
-   if (len_trim(errmsg) > 0) then
-      call endrun(trim(sub)//': ERROR: cloud_sw%alloc_2str: '//trim(errmsg))
+      ! Initialize object for SW cloud optical properties.
+      errmsg = cloud_sw%alloc_2str(nday, nlay, kdist_sw)
+      if (len_trim(errmsg) > 0) then
+         call endrun(trim(sub)//': ERROR: cloud_sw%alloc_2str: '//trim(errmsg))
+      end if
+
+      ! If there is an extra layer in the radiation then this initialization
+      ! will provide the optical properties there.
+      cloud_sw%tau = 0.0_r8
+      cloud_sw%ssa = 1.0_r8
+      cloud_sw%g   = 0.0_r8
+
+      ! Set the properties on g-points.
+      do igpt = 1,nswgpts
+         cloud_sw%g  (:, ktoprad:, igpt) = asmcmcl(igpt, ktopcam:, :)
+         cloud_sw%ssa(:, ktoprad:, igpt) = ssacmcl(igpt, ktopcam:, :)
+         cloud_sw%tau(:, ktoprad:, igpt) = taucmcl(igpt, ktopcam:, :)
+      end do
+
+      ! validate checks that: tau > 0, ssa is in range [0,1], and g is in range [-1,1].
+      errmsg = cloud_sw%validate()
+      if (len_trim(errmsg) > 0) then
+         call endrun(sub//': ERROR: cloud_sw%validate: '//trim(errmsg))
+      end if
+
+      ! delta scaling adjusts for forward scattering
+      errmsg = cloud_sw%delta_scale()
+      if (len_trim(errmsg) > 0) then
+         call endrun(sub//': ERROR: cloud_sw%delta_scale: '//trim(errmsg))
+      end if
+
+      ! All information is in cloud_sw, now deallocate local vars.
+      deallocate( &
+         cldf, tauc, ssac, asmc, &
+         taucmcl, ssacmcl, asmcmcl,&
+         day_cld_tau, day_cld_tau_w, day_cld_tau_w_g )
+
    end if
-
-   ! If there is an extra layer in the radiation then this initialization
-   ! will provide the optical properties there.
-   cloud_sw%tau = 0.0_r8
-   cloud_sw%ssa = 1.0_r8
-   cloud_sw%g   = 0.0_r8
-
-   ! Set the properties on g-points.
-   do igpt = 1,nswgpts
-      cloud_sw%g  (:, ktoprad:, igpt) = asmcmcl(igpt, ktopcam:, :)
-      cloud_sw%ssa(:, ktoprad:, igpt) = ssacmcl(igpt, ktopcam:, :)
-      cloud_sw%tau(:, ktoprad:, igpt) = taucmcl(igpt, ktopcam:, :)
-   end do
-
-   ! validate checks that: tau > 0, ssa is in range [0,1], and g is in range [-1,1].
-   errmsg = cloud_sw%validate()
-   if (len_trim(errmsg) > 0) then
-      call endrun(sub//': ERROR: cloud_sw%validate: '//trim(errmsg))
-   end if
-
-   ! delta scaling adjusts for forward scattering
-   errmsg = cloud_sw%delta_scale()
-   if (len_trim(errmsg) > 0) then
-      call endrun(sub//': ERROR: cloud_sw%delta_scale: '//trim(errmsg))
-   end if
-
-   ! All information is in cloud_sw, now deallocate local vars.
-   deallocate( &
-      cldf, tauc, ssac, asmc, &
-      taucmcl, ssacmcl, asmcmcl,&
-      day_cld_tau, day_cld_tau_w, day_cld_tau_w_g )
 
 end subroutine rrtmgp_set_cloud_sw
 
@@ -853,43 +858,49 @@ subroutine rrtmgp_set_aer_sw( &
    !--------------------------------------------------------------------------------
 
    ! Get aerosol shortwave optical properties.
+   ! Make outfld calls for aerosol optical property diagnostics.
    call aer_rad_props_sw( &
       icall, state, pbuf, nnite, idxnite, &
       aer_tau, aer_tau_w, aer_tau_w_g, aer_tau_w_f)
 
-   ! aerosol optical properties need to be re-ordered from the RRTMG spectral bands
-   ! (as assumed in the optics datasets) to the RRTMGP band order.
-   aer_tau(:,:,:)     = aer_tau(    :,:,rrtmg_to_rrtmgp_swbands)
-   aer_tau_w(:,:,:)   = aer_tau_w(  :,:,rrtmg_to_rrtmgp_swbands)
-   aer_tau_w_g(:,:,:) = aer_tau_w_g(:,:,rrtmg_to_rrtmgp_swbands)
+   ! The aer_sw object is only initialized if nday > 0.
+   if (nday > 0) then
+
+      ! aerosol optical properties need to be re-ordered from the RRTMG spectral bands
+      ! (as assumed in the optics datasets) to the RRTMGP band order.
+      aer_tau(:,:,:)     = aer_tau(    :,:,rrtmg_to_rrtmgp_swbands)
+      aer_tau_w(:,:,:)   = aer_tau_w(  :,:,rrtmg_to_rrtmgp_swbands)
+      aer_tau_w_g(:,:,:) = aer_tau_w_g(:,:,rrtmg_to_rrtmgp_swbands)
                   
-   ! If there is an extra layer in the radiation then this initialization
-   ! will provide default values.
-   aer_sw%tau = 0.0_r8
-   aer_sw%ssa = 1.0_r8
-   aer_sw%g   = 0.0_r8
+      ! If there is an extra layer in the radiation then this initialization
+      ! will provide default values.
+      aer_sw%tau = 0.0_r8
+      aer_sw%ssa = 1.0_r8
+      aer_sw%g   = 0.0_r8
 
-   ! CAM fields are products tau, tau*ssa, tau*ssa*asy
-   ! Fields expected by RRTMGP are computed by
-   ! aer_sw%tau = aer_tau
-   ! aer_sw%ssa = aer_tau_w / aer_tau
-   ! aer_sw%g   = aer_tau_w_g / aer_taw_w
-   ! aer_sw arrays have dimensions of (nday,nlay,nswbands)
+      ! CAM fields are products tau, tau*ssa, tau*ssa*asy
+      ! Fields expected by RRTMGP are computed by
+      ! aer_sw%tau = aer_tau
+      ! aer_sw%ssa = aer_tau_w / aer_tau
+      ! aer_sw%g   = aer_tau_w_g / aer_taw_w
+      ! aer_sw arrays have dimensions of (nday,nlay,nswbands)
 
-   do i = 1, nday
-      ! set aerosol optical depth, clip to zero
-      aer_sw%tau(i,ktoprad:,:) = max(aer_tau(idxday(i),ktopcam:,:), 0._r8)
-      ! set value of single scattering albedo
-      aer_sw%ssa(i,ktoprad:,:) = merge(aer_tau_w(idxday(i),ktopcam:,:)/aer_tau(idxday(i),ktopcam:,:), &
-                                       1._r8, aer_tau(idxday(i),ktopcam:,:) > 0._r8)
-      ! set value of asymmetry
-      aer_sw%g(i,ktoprad:,:) = merge(aer_tau_w_g(idxday(i),ktopcam:,:)/aer_tau_w(idxday(i),ktopcam:,:), &
-                                     0._r8, aer_tau_w(idxday(i),ktopcam:,:) > tiny)
-   end do
+      do i = 1, nday
+         ! set aerosol optical depth, clip to zero
+         aer_sw%tau(i,ktoprad:,:) = max(aer_tau(idxday(i),ktopcam:,:), 0._r8)
+         ! set value of single scattering albedo
+         aer_sw%ssa(i,ktoprad:,:) = merge(aer_tau_w(idxday(i),ktopcam:,:)/aer_tau(idxday(i),ktopcam:,:), &
+                                          1._r8, aer_tau(idxday(i),ktopcam:,:) > 0._r8)
+         ! set value of asymmetry
+         aer_sw%g(i,ktoprad:,:) = merge(aer_tau_w_g(idxday(i),ktopcam:,:)/aer_tau_w(idxday(i),ktopcam:,:), &
+                                        0._r8, aer_tau_w(idxday(i),ktopcam:,:) > tiny)
+      end do
 
-   ! impose limits on the components
-   aer_sw%ssa = min(max(aer_sw%ssa, 0._r8), 1._r8)
-   aer_sw%g   = min(max(aer_sw%g, -1._r8), 1._r8)
+      ! impose limits on the components
+      aer_sw%ssa = min(max(aer_sw%ssa, 0._r8), 1._r8)
+      aer_sw%g   = min(max(aer_sw%g, -1._r8), 1._r8)
+
+   end if
 
 end subroutine rrtmgp_set_aer_sw
 

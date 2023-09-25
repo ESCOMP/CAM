@@ -91,8 +91,6 @@ type rad_out_t
 
    real(r8) :: qrsc(pcols,pver)
 
-   real(r8) :: flux_sw_net_top(pcols)  ! net shortwave flux at top (FSNT)
-   
    real(r8) :: fsnsc(pcols)         ! Clear sky surface abs solar flux
    real(r8) :: fsntc(pcols)         ! Clear sky total column abs solar flux
    real(r8) :: fsdsc(pcols)         ! Clear sky surface downwelling solar flux
@@ -1145,19 +1143,11 @@ subroutine radiation_tend( &
    ! and would get whatever is in pbuf for qrl / qrs. 
    ! To avoid non-daylit columns
    ! from having shortwave heating, we should reset here:
-   if (nday == 0) then
-      qrs(1:ncol,1:pver) = 0._r8
-      rd%qrsc(1:ncol,1:pver) = 0._r8  ! this is what gets turned into QRSC in output (probably not needed here.)
-      dosw = .false.
-   end if
-
-   ! On first time step, do we need to initialize the heating rates in pbuf?
-   ! what about on a restart? 
-   if (get_nstep() == 0) then
-      qrs = 0._r8
-      qrl = 0._r8
-   end if
-
+!   if (nday == 0) then
+!      qrs(1:ncol,1:pver) = 0._r8
+!      rd%qrsc(1:ncol,1:pver) = 0._r8  ! this is what gets turned into QRSC in output (probably not needed here.)
+!      dosw = .false.
+!   end if
 
    if (dosw .or. dolw) then
 
@@ -1200,76 +1190,91 @@ subroutine radiation_tend( &
             call radiation_output_cld(lchnk, ncol, rd)
          end if
 
-         ! Initialize object for gas concentrations.
-         errmsg = gas_concs_sw%init(gaslist_lc)
-         if (len_trim(errmsg) > 0) then
-            call endrun(sub//': ERROR: gas_concs_sw%init: '//trim(errmsg))
-         end if
+         ! If no daylight columns, can't create empty RRTMGP objects
+         if (nday > 0) then
 
-         ! Init and allocate arrays in atm optics object.
-         errmsg = atm_optics_sw%alloc_2str(nday, nlay, kdist_sw)
-         if (len_trim(errmsg) > 0) then
-            call endrun(sub//': ERROR: gas_optics_sw%alloc_2str: '//trim(errmsg))
-         end if
+            ! Initialize object for gas concentrations.
+            errmsg = gas_concs_sw%init(gaslist_lc)
+            if (len_trim(errmsg) > 0) then
+               call endrun(sub//': ERROR: gas_concs_sw%init: '//trim(errmsg))
+            end if
 
-         ! Init and allocate arrays in aerosol optics object.
-         errmsg = aer_sw%alloc_2str(nday, nlay, kdist_sw%get_band_lims_wavenumber()) 
-         if (len_trim(errmsg) > 0) then
-            call endrun(sub//': ERROR: aer_sw%alloc_2str: '//trim(errmsg))
+            ! Init and allocate arrays in atm optics object.
+            errmsg = atm_optics_sw%alloc_2str(nday, nlay, kdist_sw)
+            if (len_trim(errmsg) > 0) then
+               call endrun(sub//': ERROR: gas_optics_sw%alloc_2str: '//trim(errmsg))
+            end if
+
+            ! Init and allocate arrays in aerosol optics object.
+            errmsg = aer_sw%alloc_2str(nday, nlay, kdist_sw%get_band_lims_wavenumber()) 
+            if (len_trim(errmsg) > 0) then
+               call endrun(sub//': ERROR: aer_sw%alloc_2str: '//trim(errmsg))
+            end if
+
          end if
 
          ! The climate (icall==0) calculation must occur last.
          do icall = N_DIAG, 0, -1
             if (active_calls(icall)) then
 
-               ! Set gas volume mixing ratios for this call in gas_concs_sw.
-               call rrtmgp_set_gases_sw( &
-                  icall, state, pbuf, nlay, nday, &
-                  idxday, gas_concs_sw)
+               if (nday > 0) then
 
-               ! Compute the gas optics (stored in atm_optics_sw).
-               ! toa_flux is the reference solar source from RRTMGP data.
-               errmsg = kdist_sw%gas_optics( &
-                  pmid_day, pint_day, t_day, gas_concs_sw, atm_optics_sw, &
-                  toa_flux)
-               if (len_trim(errmsg) > 0) then
-                  call endrun(sub//': ERROR: kdist_sw%gas_optics: '//trim(errmsg))
+                  ! Set gas volume mixing ratios for this call in gas_concs_sw.
+                  call rrtmgp_set_gases_sw( &
+                     icall, state, pbuf, nlay, nday, &
+                     idxday, gas_concs_sw)
+
+                  ! Compute the gas optics (stored in atm_optics_sw).
+                  ! toa_flux is the reference solar source from RRTMGP data.
+                  errmsg = kdist_sw%gas_optics( &
+                     pmid_day, pint_day, t_day, gas_concs_sw, atm_optics_sw, &
+                     toa_flux)
+                  if (len_trim(errmsg) > 0) then
+                     call endrun(sub//': ERROR: kdist_sw%gas_optics: '//trim(errmsg))
+                  end if
+
+                  ! Scale the solar source
+                  tsi_ref = sum(toa_flux(1,:))
+                  toa_flux = toa_flux * sol_tsi * eccf / tsi_ref
+
                end if
 
-               ! Scale the solar source
-               tsi_ref = sum(toa_flux(1,:))
-               toa_flux = toa_flux * sol_tsi * eccf / tsi_ref
-
                ! Set SW aerosol optical properties in the aer_sw object.
+               ! This call made even when no daylight columns because it does some
+               ! diagnostic aerosol output.
                call rrtmgp_set_aer_sw( &
                   icall, state, pbuf, nday, idxday, nnite, idxnite, aer_sw)
                   
-               ! Increment the gas optics (in atm_optics_sw) by the aerosol optics in aer_sw.
-               errmsg = aer_sw%increment(atm_optics_sw)
-               if (len_trim(errmsg) > 0) then
-                  call endrun(sub//': ERROR in aer_sw%increment: '//trim(errmsg))
-               end if
+               if (nday > 0) then
 
-               ! Compute clear-sky fluxes.
-               errmsg = rte_sw(&
-                  atm_optics_sw, top_at_1, coszrs_day, toa_flux, &
-                  alb_dir, alb_dif, fswc)
-               if (len_trim(errmsg) > 0) then
-                  call endrun(sub//': ERROR in clear-sky rte_sw: '//trim(errmsg))
-               end if
+                  ! Increment the gas optics (in atm_optics_sw) by the aerosol optics in aer_sw.
+                  errmsg = aer_sw%increment(atm_optics_sw)
+                  if (len_trim(errmsg) > 0) then
+                     call endrun(sub//': ERROR in aer_sw%increment: '//trim(errmsg))
+                  end if
 
-               ! Increment the aerosol+gas optics (in atm_optics_sw) by the cloud optics in cloud_sw.
-               errmsg = cloud_sw%increment(atm_optics_sw)
-               if (len_trim(errmsg) > 0) then
-                  call endrun(sub//': ERROR in cloud_sw%increment: '//trim(errmsg))
-               end if
+                  ! Compute clear-sky fluxes.
+                  errmsg = rte_sw(&
+                     atm_optics_sw, top_at_1, coszrs_day, toa_flux, &
+                     alb_dir, alb_dif, fswc)
+                  if (len_trim(errmsg) > 0) then
+                     call endrun(sub//': ERROR in clear-sky rte_sw: '//trim(errmsg))
+                  end if
 
-               ! Compute all-sky fluxes.
-               errmsg = rte_sw(&
-                  atm_optics_sw, top_at_1, coszrs_day, toa_flux, &
-                  alb_dir, alb_dif, fsw)
-               if (len_trim(errmsg) > 0) then
-                  call endrun(sub//': ERROR in all-sky rte_sw: '//trim(errmsg))
+                  ! Increment the aerosol+gas optics (in atm_optics_sw) by the cloud optics in cloud_sw.
+                  errmsg = cloud_sw%increment(atm_optics_sw)
+                  if (len_trim(errmsg) > 0) then
+                     call endrun(sub//': ERROR in cloud_sw%increment: '//trim(errmsg))
+                  end if
+
+                  ! Compute all-sky fluxes.
+                  errmsg = rte_sw(&
+                     atm_optics_sw, top_at_1, coszrs_day, toa_flux, &
+                     alb_dir, alb_dif, fsw)
+                  if (len_trim(errmsg) > 0) then
+                     call endrun(sub//': ERROR in all-sky rte_sw: '//trim(errmsg))
+                  end if
+
                end if
 
                ! Transform RRTMGP outputs to CAM outputs and compute heating rates.
@@ -1549,20 +1554,31 @@ subroutine radiation_tend( &
       !-------------------------------------------------------------------------
 
       ! Initialize to provide 0.0 values for night columns.
-      fns         = 0._r8 ! net sw flux
-      fcns        = 0._r8 ! net sw clearsky flux
-      fsds        = 0._r8 ! downward sw flux at surface
-      rd%fsdsc    = 0._r8 ! downward sw clearsky flux at surface
-      rd%fsutoa   = 0._r8 ! upward sw flux at TOA
-      rd%fsntoa   = 0._r8 ! net sw at TOA
-      rd%fsntoac  = 0._r8 ! net sw clearsky flux at TOA
-      rd%solin    = 0._r8 ! solar irradiance at TOA
+      fns               = 0._r8 ! net sw flux
+      fcns              = 0._r8 ! net sw clearsky flux
+      fsds              = 0._r8 ! downward sw flux at surface
+      rd%fsdsc          = 0._r8 ! downward sw clearsky flux at surface
+      rd%fsutoa         = 0._r8 ! upward sw flux at TOA
+      rd%fsntoa         = 0._r8 ! net sw at TOA
+      rd%fsntoac        = 0._r8 ! net sw clearsky flux at TOA
+      rd%solin          = 0._r8 ! solar irradiance at TOA
+      rd%flux_sw_up     = 0._r8
+      rd%flux_sw_dn     = 0._r8
+      rd%flux_sw_clr_up = 0._r8
+      rd%flux_sw_clr_dn = 0._r8
+
       rd%fsdn     = 0._r8
       rd%fsdnc    = 0._r8
       rd%fsup     = 0._r8
       rd%fsupc    = 0._r8
       
-      ! fns, fcns, rd are on CAM grid (do not have "extra layer" when it is present.)
+      qrs      = 0._r8
+      fsns     = 0._r8
+      fsnt     = 0._r8
+      rd%qrsc  = 0._r8
+      rd%fsnsc = 0._r8
+      rd%fsntc = 0._r8
+
       do i = 1, nday
          fns(idxday(i),ktopcam:)  = fsw%flux_net(i, ktoprad:)
          fcns(idxday(i),ktopcam:) = fswc%flux_net(i,ktoprad:)
@@ -1576,18 +1592,19 @@ subroutine radiation_tend( &
          rd%flux_sw_dn(idxday(i),ktopcam:)     = fsw%flux_dn(i,ktoprad:)
          rd%flux_sw_clr_up(idxday(i),ktopcam:) = fswc%flux_up(i,ktoprad:) 
          rd%flux_sw_clr_dn(idxday(i),ktopcam:) = fswc%flux_dn(i,ktoprad:)
+
          rd%fsdn(idxday(i),:) = fsw%flux_dn(i,:)
          rd%fsdnc(idxday(i),:) = fswc%flux_dn(i,:)
          rd%fsup(idxday(i),:) = fsw%flux_up(i,:)
          rd%fsupc(idxday(i),:) = fswc%flux_up(i,:)
       end do
 
+      ! Compute heating rate as a dry static energy tendency.
       call heating_rate('SW', ncol, fns, qrs)
       call heating_rate('SW', ncol, fcns, rd%qrsc)
 
       fsns(:ncol)        = fns(:ncol,pverp)  ! net sw flux at surface
       fsnt(:ncol)        = fns(:ncol,1)      ! net sw flux at top-of-model (w/o extra layer)
-      rd%flux_sw_net_top(:ncol) = fns(:ncol, 1)   
       rd%fsnsc(:ncol)    = fcns(:ncol,pverp) ! net sw clearsky flux at surface
       rd%fsntc(:ncol)    = fcns(:ncol,1)     ! net sw clearsky flux at top
 
@@ -1614,7 +1631,6 @@ subroutine radiation_tend( &
       ! Export surface fluxes
       ! sols(pcols)      Direct solar rad on surface (< 0.7)
       ! soll(pcols)      Direct solar rad on surface (>= 0.7)
-      ! RRTMG: Near-IR bands (1-9 and 14), 820-16000 cm-1, 0.625-12.195 microns
       ! RRTMGP: Near-IR bands (1-10), 820-16000 cm-1, 0.625-12.195 microns
       ! Put half of band 10 in each of the UV/visible and near-IR values,
       ! since this band straddles 0.7 microns:
@@ -1630,8 +1646,6 @@ subroutine radiation_tend( &
       flux_dn_diffuse = fsw%bnd_flux_dn - fsw%bnd_flux_dn_dir
 
       do i = 1, nday
-         ! These use hard-coded indexes assuming default RRTMGP sw bands
-         ! Should be generalized to use specified frequencies.
          cam_out%soll(idxday(i)) = sum(fsw%bnd_flux_dn_dir(i,nlay+1,1:9))      &
                                    + 0.5_r8 * fsw%bnd_flux_dn_dir(i,nlay+1,10) 
 
@@ -1643,7 +1657,6 @@ subroutine radiation_tend( &
          
          cam_out%solsd(idxday(i)) = 0.5_r8 * flux_dn_diffuse(i, nlay+1, 10)    &
                                     + sum(flux_dn_diffuse(i,nlay+1,11:14))
-                                   
       end do
 
    end subroutine set_sw_diags
@@ -1779,7 +1792,7 @@ subroutine radiation_output_sw(lchnk, ncol, icall, rd, pbuf, cam_out)
    call outfld('QRS'//diag(icall),      qrs(:ncol,:)/cpair,     ncol, lchnk)
    call outfld('QRSC'//diag(icall),     rd%qrsc(:ncol,:)/cpair, ncol, lchnk)
 
-   call outfld('FSNT'//diag(icall),    rd%flux_sw_net_top, pcols, lchnk)
+   call outfld('FSNT'//diag(icall),    fsnt,               pcols, lchnk)
    call outfld('FSNTC'//diag(icall),   rd%fsntc,           pcols, lchnk)
    call outfld('FSNTOA'//diag(icall),  rd%fsntoa,          pcols, lchnk)
    call outfld('FSNTOAC'//diag(icall), rd%fsntoac,         pcols, lchnk)
