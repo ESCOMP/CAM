@@ -1802,6 +1802,9 @@ if ($usr_cppdefs and $print>=2) { print "Commandline CPP definitions: \'$usr_cpp
 # the CPP definitions that were explicitly set in the defaults file or by the user on the commandline.
 my $cfg_cppdefs = ' ';
 
+# Turn on CCPP "OLD_CAM"
+$cfg_cppdefs .= " -DOLD_CAM";
+
 # Building for perturbation growth tests
 if ($pergro eq "ON") { $cfg_cppdefs .= " -DPERGRO"; }
 
@@ -2245,6 +2248,9 @@ sub write_filepath
     # be overridden by modules from directories that occur earlier
     # in the list of filepaths.
     print $fh "$camsrcdir/src/physics/cam\n";
+
+    #Add the CCPP'ized subdirectories
+    print $fh "$camsrcdir/src/atmos_phys/zm\n";
 
     # Dynamics package and test utilities
     print $fh "$camsrcdir/src/dynamics/$dyn\n";
