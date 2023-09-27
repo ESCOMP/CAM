@@ -87,7 +87,7 @@ def _build_cam(caseroot, libroot, bldroot):
             shutil.move(filedst_tmp, filedst)
 
         # -------------------------------------------------------
-        # fms is needd by fv3 and should have been built by the framework
+        # fms is needed by fv3 and should have been built by the framework
         # -------------------------------------------------------
         libfms = os.path.join(fmsbuilddir, "libfms.a")
         expect(os.path.isfile(libfms),
