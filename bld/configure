@@ -839,7 +839,7 @@ if (defined $opts{'microphys'}) {
     $microphys_pkg = lc($opts{'microphys'});
 }
 
-if($microphys_pkg == 'pumas') {
+if($microphys_pkg eq 'pumas') {
     $microphys_pkg = 'mg3';
 }
 
