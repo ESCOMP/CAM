@@ -89,10 +89,11 @@ def _build_cam(caseroot, libroot, bldroot):
         # -------------------------------------------------------
         # fms is needed by fv3 and should have been built by the framework
         # -------------------------------------------------------
-        libfms = os.path.join(fmsbuilddir, "libfms.a")
-        expect(os.path.isfile(libfms),
-           "err: Missing the FMS library libfms.a - cannot complete CAM build")
-        shutil.copy(libfms, libroot)
+        if cam_dycore == "fv3":
+            libfms = os.path.join(fmsbuilddir, "libfms.a")
+            expect(os.path.isfile(libfms),
+               "err: Missing the FMS library libfms.a - cannot complete CAM build")
+            shutil.copy(libfms, libroot)
 
         # -------------------------------------------------------
         # build the library
