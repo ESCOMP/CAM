@@ -91,7 +91,7 @@ def _build_cam(caseroot, libroot, bldroot):
         # -------------------------------------------------------
         libfms = os.path.join(fmsbuilddir, "libfms.a")
         expect(os.path.isfile(libfms),
-           " Missing config_cache.xml - cannot run build-namelist")
+           "err: Missing the FMS library libfms.a - cannot complete CAM build")
         shutil.copy(libfms, libroot)
 
         # -------------------------------------------------------
