@@ -60,7 +60,7 @@ def _build_cam(caseroot, libroot, bldroot):
             compiler = case.get_value("COMPILER")
             mpilib = case.get_value("MPILIB")
             debug = "debug" if case.get_value("DEBUG") else "nodebug"
-            threaded = "threads" if case.get_value("BUILD_THREADED") else "nothreads"
+            threaded = "threads" if case.get_value("BUILD_THREADED") or case.get_value("FORCE_BUILD_SMP") else "nothreads"
             comp_interface = case.get_value("COMP_INTERFACE")
             fmsbuilddir = os.path.join(
                 slr, compiler, mpilib, debug, threaded, comp_interface)
