@@ -46,8 +46,12 @@
 <!-- Vertical/Horizontal coordinates only - MPAS initial files for analytic cases-->
 <ncdata hgrid="mpasa480" nlev="32" analytic_ic="1" >atm/cam/inic/mpas/mpasa480_L32_notopo_coords_c201125.nc</ncdata>
 <ncdata hgrid="mpasa120" nlev="32" analytic_ic="1" >atm/cam/inic/mpas/mpasa120_L32_notopo_coords_c201216.nc</ncdata>
+<ncdata hgrid="mpasa120" nlev="32" analytic_ic="1" aquaplanet="1">atm/cam/inic/mpas/mpasa120_L32_notopo_coords_c201216.nc</ncdata>
 <ncdata hgrid="mpasa120" nlev="32" analytic_ic="1" phys="cam6" >atm/cam/inic/mpas/mpasa120_L32_topo_coords_c201022.nc</ncdata>
 <ncdata hgrid="mpasa120" nlev="32" analytic_ic="1" phys="cam_dev" >atm/cam/inic/mpas/mpasa120_L32_topo_coords_c201022.nc</ncdata>
+<ncdata hgrid="mpasa60"  nlev="32" analytic_ic="1" >atm/cam/inic/mpas/mpasa60_L32_notopo_coords_c230707.nc</ncdata>
+<ncdata hgrid="mpasa30"  nlev="32" analytic_ic="1" >atm/cam/inic/mpas/mpasa30_L32_notopo_coords_c230707.nc</ncdata>
+<ncdata hgrid="mpasa15"  nlev="32" analytic_ic="1" >atm/cam/inic/mpas/mpasa15_L32_notopo_coords_c230928.nc</ncdata>
 
 <!-- Files with initial conditions -->
 <ncdata dyn="fv"  hgrid="0.23x0.31" nlev="26" ic_ymd="101"      >atm/cam/inic/fv/cami_0000-01-01_0.23x0.31_L26_c100513.nc</ncdata>
@@ -269,8 +273,13 @@
 
 <ncdata dyn="se" hgrid="ne0np4CONUS.ne30x8"       nlev="70" ic_ymd="101">atm/waccm/ic/FW2000_CONUS_30x8_L70_01-01-0001_c200602.nc</ncdata>
 
-<ncdata hgrid="mpasa120" nlev="32" >atm/cam/inic/mpas/cami_01-01-2000_00Z_mpasa120_L32_CFSR_c210426.nc</ncdata>
-<ncdata hgrid="mpasa480" nlev="32" >atm/cam/inic/mpas/cami_01-01-2000_00Z_mpasa480_L32_CFSR_c211013.nc</ncdata>
+<ncdata hgrid="mpasa480" nlev="32" ic_ymd="20000101" >atm/cam/inic/mpas/cami_01-01-2000_00Z_mpasa480_L32_CFSR_c211013.nc</ncdata>
+<ncdata hgrid="mpasa120" nlev="32" ic_ymd="20000101" >atm/cam/inic/mpas/cami_01-01-2000_00Z_mpasa120_L32_CFSR_c210426.nc</ncdata>
+<ncdata hgrid="mpasa60"  nlev="32" ic_ymd="20000101" >atm/cam/inic/mpas/cami_01-01-2000_00Z_mpasa60_L32_CFSR_c210518.nc</ncdata>
+<ncdata hgrid="mpasa30"  nlev="32" ic_ymd="20000101" >atm/cam/inic/mpas/cami_01-01-2000_00Z_mpasa30_L32_CFSR_230302.nc</ncdata>
+<!-- EarthWorks Only, 58 vertical levels -->
+<ncdata hgrid="mpasa120" nlev="58" ic_ymd="20000101">atm/cam/inic/mpas/cami_01-01-2000_00Z_mpasa120_L58_c230901.nc</ncdata>
+<ncdata hgrid="mpasa15"  nlev="58" ic_ymd="20000101">atm/cam/inic/mpas/cami_01-01-2000_00Z_mpasa15_L58_c230316.nc</ncdata>
 
 <!-- Topography -->
 <bnd_topo hgrid="256x512" >atm/cam/topo/topo-from-cami_0000-01-01_256x512_L26_c030918.nc</bnd_topo>
@@ -327,8 +336,14 @@
 <bnd_topo hgrid="ne0np4.ARCTIC.ne30x4"     >atm/cam/topo/se/ne30x4_ARCTIC_nc3000_Co060_Fi001_MulG_PF_RR_Nsw042_c200428.nc</bnd_topo>
 <bnd_topo hgrid="ne0np4.ARCTICGRIS.ne30x8" >atm/cam/topo/se/ne30x8_ARCTICGRIS_nc3000_Co060_Fi001_MulG_PF_RR_Nsw042_c200428.nc</bnd_topo>
 
-<bnd_topo hgrid="mpasa120" >atm/cam/topo/mpas/mpas_120_nc3000_Co060_Fi001_MulG_PF_Nsw042_c200921.nc</bnd_topo>
+<!-- EarthWorks specific -->
 <bnd_topo hgrid="mpasa480" >atm/cam/topo/mpas_480_nc3000_Co240_Fi001_MulG_PF_Nsw170.nc</bnd_topo>
+<bnd_topo hgrid="mpasa120" >atm/cam/topo/mpas_120_nc3000_Co060_Fi001_MulG_PF_Nsw042_c200921.nc</bnd_topo>
+<bnd_topo hgrid="mpasa60"  >atm/cam/topo/mpas_60_nc3000_Co030_Fi001_MulG_PF_Nsw021.nc</bnd_topo>
+<bnd_topo hgrid="mpasa30"  >atm/cam/topo/mpas_30_nc3000_Co015_Fi001_MulG_PF_Nsw011.nc</bnd_topo>
+<bnd_topo hgrid="mpasa15"  >atm/cam/topo/mpas_15_nc3500_c20230315.nc</bnd_topo>
+<!-- Corresponds to cami_01-01-2000_00Z_mpasa120_L58_c230901.nc file -->
+<bnd_topo hgrid="mpasa120" nlev="58" >atm/cam/topo/mpasa120_gmted2010_modis_bedmachine_nc3000_Laplace0100_20220728.nc</bnd_topo>
 
 <!-- Scale Dry Air Mass: 0=> no scaling / +nnn=>scale to nnn Pressure  -->
 <scale_dry_air_mass                                                                >      0.0D0 </scale_dry_air_mass>
@@ -365,6 +380,8 @@
 <analytic_ic_type phys="kessler"    > moist_baroclinic_wave_dcmip2016 </analytic_ic_type>
 <analytic_ic_type phys="tj2016"     > moist_baroclinic_wave_dcmip2016 </analytic_ic_type>
 <analytic_ic_type phys="grayrad"    > moist_baroclinic_wave_dcmip2016 </analytic_ic_type>
+<!-- MPAS Analytic ICs for aquaplanet (experimental) -->
+<analytic_ic_type dyn="mpas" aquaplanet="1"> us_standard_atmosphere </analytic_ic_type>
 
 <!-- Frierson Gray Radiation -->
 
@@ -1913,8 +1930,11 @@
 <drydep_srf_file hgrid="C192">atm/cam/chem/trop_mam/atmsrf_C192_c200625.nc</drydep_srf_file>
 <drydep_srf_file hgrid="C384">atm/cam/chem/trop_mam/atmsrf_C384_c200625.nc</drydep_srf_file>
 
-<drydep_srf_file hgrid="mpasa120">atm/cam/chem/trop_mam/atmsrf_mpasa120_c090720.nc</drydep_srf_file>
 <drydep_srf_file hgrid="mpasa480">atm/cam/chem/trop_mam/atmsrf_mpasa480_c090720.nc</drydep_srf_file>
+<drydep_srf_file hgrid="mpasa120">atm/cam/chem/trop_mam/atmsrf_mpasa120_c090720.nc</drydep_srf_file>
+<drydep_srf_file hgrid="mpasa60">atm/cam/chem/trop_mam/atmsrf_mpasa60_c210511.nc</drydep_srf_file>
+<drydep_srf_file hgrid="mpasa30">atm/cam/chem/trop_mam/atmsrf_mpasa30_c210601.nc</drydep_srf_file>
+<drydep_srf_file hgrid="mpasa15">atm/cam/chem/trop_mam/atmsrf_mpasa15_c20210804.nc</drydep_srf_file>
 
 <!-- depvel data -->
 <depvel_lnd_file>atm/cam/chem/trop_mozart/dvel/regrid_vegetation.nc</depvel_lnd_file>
@@ -3115,6 +3135,11 @@
 <mpas_time_integration_order  > 2 </mpas_time_integration_order>
 <mpas_dt                      > 1800.0D0 </mpas_dt>
 <mpas_dt hgrid="mpasa120"     >  900.0D0 </mpas_dt>
+<mpas_dt hgrid="mpasa60"      >  450.0D0 </mpas_dt>
+<mpas_dt hgrid="mpasa30"      >  225.0D0 </mpas_dt>
+<mpas_dt hgrid="mpasa15"      >  112.5D0 </mpas_dt>
+<mpas_dt hgrid="mpasa7.5"     >  56.25D0 </mpas_dt>
+<mpas_dt hgrid="mpasa3.75"    >  28.125D0</mpas_dt>
 
 <mpas_split_dynamics_transport>.true.</mpas_split_dynamics_transport>
 <mpas_number_of_sub_steps     > 2 </mpas_number_of_sub_steps>
@@ -3129,6 +3154,11 @@
 
 <mpas_len_disp hgrid="mpasa480">480000.0D0</mpas_len_disp>
 <mpas_len_disp hgrid="mpasa120">120000.0D0</mpas_len_disp>
+<mpas_len_disp hgrid="mpasa60">  60000.0D0</mpas_len_disp>
+<mpas_len_disp hgrid="mpasa30">  30000.0D0</mpas_len_disp>
+<mpas_len_disp hgrid="mpasa15">  15000.0D0</mpas_len_disp>
+<mpas_len_disp hgrid="mpasa7.5">  7500.0D0</mpas_len_disp>
+<mpas_len_disp hgrid="mpasa3.75"> 3750.0D0</mpas_len_disp>
 
 <mpas_visc4_2dsmag            > 0.05D0 </mpas_visc4_2dsmag>
 <mpas_del4u_div_factor        > 10.0D0 </mpas_del4u_div_factor>

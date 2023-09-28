@@ -187,6 +187,7 @@
       <!-- Aquaplanet -->
       <value compset="_DOCN%SOMAQP">-aquaplanet</value>
       <value compset="_DOCN%AQP"   >-aquaplanet</value>
+      <value compset="_DOCN%AQP" grid="a%mpasa[0-9]">-analytic_ic</value>
 
       <!-- PORT -->
       <value compset="%PORT">-offline_drv rad</value>
