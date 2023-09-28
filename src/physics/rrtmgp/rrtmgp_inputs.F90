@@ -125,9 +125,9 @@ subroutine rrtmgp_set_state( &
    real(r8), intent(out) :: alb_dif(nswbands,nday)   ! surface albedo, diffuse radiation
 
    ! local variables
-   integer :: k, kk, i, iband
+   integer :: i, k, iband
 
-   real(r8) :: tref_min, tref_max, tmin, tmax
+   real(r8) :: tref_min, tref_max
 
    character(len=*), parameter :: sub='rrtmgp_set_state'
    character(len=512) :: errmsg
@@ -497,7 +497,7 @@ subroutine rrtmgp_set_cloud_lw( &
    ! Local variables
 
    integer :: i, k, ncol
-   integer :: igpt, nver
+   integer :: nver
 
    ! cloud radiative parameters are "in cloud" not "in cell"
    real(r8) :: liq_lw_abs(nlwbands,pcols,pver)   ! liquid absorption optics depth (LW)
@@ -944,7 +944,7 @@ subroutine rrtmgp_set_aer_sw( &
    type(ty_optical_props_2str), intent(inout) :: aer_sw
 
    ! local variables
-   integer  :: i, k, ib
+   integer  :: i
 
    ! The optical arrays dimensioned in the vertical as 0:pver.
    ! The index 0 is for the extra layer used in the radiation
@@ -958,7 +958,6 @@ subroutine rrtmgp_set_aer_sw( &
    real(r8) :: aer_tau_w_f(pcols,0:pver,nswbands) ! forward scattered fraction * w * tau
                                                   ! aer_tau_w_f is not used by RRTMGP.
    character(len=*), parameter :: sub = 'rrtmgp_set_aer_sw'
-   character(len=128) :: errmsg
    !--------------------------------------------------------------------------------
 
    ! Get aerosol shortwave optical properties.

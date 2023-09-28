@@ -21,15 +21,12 @@ use solar_irrad_data,    only: sol_tsi
 use time_manager,        only: get_nstep, is_first_step, is_first_restart_step, &
                                get_curr_calday, get_step_size
 
-use rad_constituents,    only: N_DIAG, rad_cnst_get_call_list,               &
-                               rad_cnst_get_gas, rad_cnst_out
-
+use rad_constituents,    only: N_DIAG, rad_cnst_get_call_list, rad_cnst_get_gas, rad_cnst_out
 
 use rrtmgp_inputs,       only: rrtmgp_inputs_init
 
-use radconstants,        only: nswbands, nlwbands, nswgpts,       &
-                               nradgas, gasnamelength, gaslist,        &
-                               set_wavenumber_bands
+use radconstants,        only: nradgas, gasnamelength, gaslist, nswbands, nlwbands, &
+                               nswgpts, set_wavenumber_bands
 
 use cloud_rad_props,     only: cloud_rad_props_init
 
@@ -218,12 +215,6 @@ real(r8), allocatable, target :: plev_rad(:)
 type(ty_gas_optics_rrtmgp) :: kdist_sw
 type(ty_gas_optics_rrtmgp) :: kdist_lw
 
-! Mapping from RRTMG shortwave bands to RRTMGP.  Currently needed to continue using
-! the SW optics datasets from RRTMG (even thought there is a slight mismatch in the
-! band boundaries of the 2 bands that overlap with the LW bands).
-integer, parameter, dimension(14) :: rrtmg_to_rrtmgp_swbands = &
-   [ 14, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13 ]
-
 ! lower case version of gaslist for RRTMGP
 character(len=gasnamelength) :: gaslist_lc(nradgas)
 
@@ -405,7 +396,6 @@ real(r8) function radiation_nextsw_cday()
    logical :: dosw       ! true => do shosrtwave calc   
    integer :: offset     ! offset for calendar day calculation
    integer :: dtime      ! integer timestep size
-   real(r8):: calday     ! calendar day of 
    real(r8):: caldayp1   ! calendar day of next time-step
 
    !-----------------------------------------------------------------------
@@ -419,7 +409,7 @@ real(r8) function radiation_nextsw_cday()
       nstep = nstep + 1
       offset = offset + dtime
       if (radiation_do('sw', nstep)) then
-         radiation_nextsw_cday = get_curr_calday(offset=offset) 
+         radiation_nextsw_cday = get_curr_calday(offset=offset)
          dosw = .true.
       end if
    end do
@@ -1022,9 +1012,6 @@ subroutine radiation_tend( &
    character(len=128) :: errmsg
 
    character(len=*), parameter :: sub = 'radiation_tend'
-
-   logical :: conserve_energy = .false. ! Flag to carry (QRS,QRL)*dp across time steps. 
-
    !--------------------------------------------------------------------------------------
 
    lchnk = state%lchnk
@@ -1043,8 +1030,8 @@ subroutine radiation_tend( &
       write_output = .true.
    end if
 
-   dosw = radiation_do('sw', get_nstep())      ! do shortwave heating calc this timestep?
-   dolw = radiation_do('lw', get_nstep())      ! do longwave heating calc this timestep?
+   dosw = radiation_do('sw', get_nstep())      ! do shortwave radiation calc this timestep?
+   dolw = radiation_do('lw', get_nstep())      ! do longwave radiation calc this timestep?
 
    ! Cosine solar zenith angle for current time step
    calday = get_curr_calday()
@@ -1167,7 +1154,7 @@ subroutine radiation_tend( &
             cld_tau_cloudsim, snow_tau_cloudsim, grau_tau_cloudsim )
 
          if (write_output) then
-            call radiation_output_cld(lchnk, ncol, rd)
+            call radiation_output_cld(lchnk, rd)
          end if
 
          ! If no daylight columns, can't create empty RRTMGP objects
@@ -1270,9 +1257,9 @@ subroutine radiation_tend( &
          end do    ! loop over diagnostic calcs (icall)
          
       else
-         if (conserve_energy) then
-            qrs(1:ncol,1:pver) = qrs(1:ncol,1:pver) / state%pdel(1:ncol,1:pver)
-         end if
+         ! SW calc not done.  pbuf carries Q*dp across timesteps.
+         ! Convert to Q before calling radheat_tend.
+         qrs(:ncol,:) = qrs(:ncol,:) / state%pdel(:ncol,:)
       end if  ! if (dosw)
 
       !=======================!
@@ -1362,9 +1349,9 @@ subroutine radiation_tend( &
          end do    ! loop over diagnostic calcs (icall)
 
       else
-         if (conserve_energy) then
-            qrl(1:ncol,1:pver) = qrl(1:ncol,1:pver) / state%pdel(1:ncol,1:pver)
-         end if
+         ! LW calc not done.  pbuf carries Q*dp across timesteps.
+         ! Convert to Q before calling radheat_tend.
+        qrl(:ncol,:) = qrl(:ncol,:) / state%pdel(:ncol,:)
       end if  ! if (dolw)
 
       deallocate( &
@@ -1421,14 +1408,11 @@ subroutine radiation_tend( &
       end if   ! docosp
       
    else
-      ! When radiative flux calculations not done, the quantity Q*dp from the previous
-      ! timestep is retrieved from the physics buffer and used for this timestep.
-      ! It is first converted to Q (dry static energy tendency) before being passed
-      ! to radheat_tend.
-      if (conserve_energy) then
-         qrs(1:ncol,1:pver) = qrs(1:ncol,1:pver) / state%pdel(1:ncol,1:pver)
-         qrl(1:ncol,1:pver) = qrl(1:ncol,1:pver) / state%pdel(1:ncol,1:pver)
-      end if
+      ! Radiative flux calculations not done.  The quantity Q*dp is carried by the
+      ! physics buffer across timesteps.  It must be converted to Q (dry static energy
+      ! tendency) before being passed to radheat_tend.
+      qrs(:ncol,:) = qrs(:ncol,:) / state%pdel(:ncol,:)
+      qrl(:ncol,:) = qrl(:ncol,:) / state%pdel(:ncol,:)
 
    end if   ! if (dosw .or. dolw) then
 
@@ -1453,10 +1437,8 @@ subroutine radiation_tend( &
 
    ! The radiative heating rates are carried in the physics buffer across timesteps
    ! as Q*dp (for energy conservation).
-   if (conserve_energy) then
-      qrs(1:ncol,1:pver) = qrs(1:ncol,1:pver) * state%pdel(1:ncol,1:pver)
-      qrl(1:ncol,1:pver) = qrl(1:ncol,1:pver) * state%pdel(1:ncol,1:pver)
-   end if
+   qrs(:ncol,:) = qrs(:ncol,:) * state%pdel(:ncol,:)
+   qrl(:ncol,:) = qrl(:ncol,:) * state%pdel(:ncol,:)
 
    if (.not. present(rd_out)) then
       deallocate(rd%fsdn, rd%fsdnc, rd%fsup, rd%fsupc, &
@@ -1715,7 +1697,6 @@ subroutine radiation_output_sw(lchnk, ncol, icall, rd, pbuf, cam_out)
    real(r8), pointer :: fsnt(:)
    real(r8), pointer :: fsns(:)
    real(r8), pointer :: fsds(:)
-   real(r8), pointer :: su(:,:),sd(:,:),lu(:,:),ld(:,:)
 
    real(r8) :: ftem(pcols)
    !----------------------------------------------------------------------------
@@ -1775,12 +1756,11 @@ end subroutine radiation_output_sw
 
 !===============================================================================
 
-subroutine radiation_output_cld(lchnk, ncol, rd)
+subroutine radiation_output_cld(lchnk, rd)
 
    ! Dump shortwave cloud optics information to history buffer.
 
    integer ,        intent(in) :: lchnk
-   integer,         intent(in) :: ncol
    type(rad_out_t), intent(in) :: rd
    !----------------------------------------------------------------------------
 
@@ -1859,36 +1839,6 @@ end subroutine radiation_output_lw
 
 !===============================================================================
 
-subroutine calc_col_mean(state, mmr_pointer, mean_value)
-
-   ! Compute the column mean mass mixing ratio.  
-
-   type(physics_state),        intent(in)  :: state
-   real(r8), dimension(:,:),   pointer     :: mmr_pointer  ! mass mixing ratio (lev)
-   real(r8), dimension(pcols), intent(out) :: mean_value   ! column mean mmr
-
-   integer  :: i, k, ncol
-   real(r8) :: ptot(pcols)
-   !-----------------------------------------------------------------------
-
-   ncol         = state%ncol
-   mean_value   = 0.0_r8
-   ptot         = 0.0_r8
-
-   do k=1,pver
-      do i=1,ncol
-         mean_value(i) = mean_value(i) + mmr_pointer(i,k)*state%pdeldry(i,k)
-         ptot(i)         = ptot(i) + state%pdeldry(i,k)
-      end do
-   end do
-   do i=1,ncol
-      mean_value(i) = mean_value(i) / ptot(i)
-   end do
-
-end subroutine calc_col_mean
-
-!=========================================================================================
-
 subroutine coefs_init(coefs_file, available_gases, kdist)
 
    ! Read data from coefficients file.  Initialize the kdist object.
@@ -1916,7 +1866,7 @@ subroutine coefs_init(coefs_file, available_gases, kdist)
       gpt,               &
       temperature_Planck
    
-   integer :: i, j, k
+   integer :: i
    integer :: did, vid
    integer :: ierr
 
@@ -1928,11 +1878,10 @@ subroutine coefs_init(coefs_file, available_gases, kdist)
    real(r8)                                  :: press_ref_trop, temp_ref_t, temp_ref_p
    real(r8), dimension(:,:,:),   allocatable :: vmr_ref
    real(r8), dimension(:,:,:,:), allocatable :: kmajor
- ! ?  real(r8), dimension(:,:,:),   allocatable :: selfrefin, forrefin
    real(r8), dimension(:,:,:),   allocatable :: kminor_lower, kminor_upper
    real(r8), dimension(:,:),     allocatable :: totplnk
    real(r8), dimension(:,:,:,:), allocatable :: planck_frac
-   real(r8), dimension(:),       allocatable :: solar_src_quiet, solar_src_facular, solar_src_sunspot  ! updated from solar_src
+   real(r8), dimension(:),       allocatable :: solar_src_quiet, solar_src_facular, solar_src_sunspot
    real(r8)                                  :: tsi_default
    real(r8), dimension(:,:,:),   allocatable :: rayl_lower, rayl_upper
    character(len=32), dimension(:),  allocatable :: gas_minor,         &
@@ -1973,8 +1922,6 @@ subroutine coefs_init(coefs_file, available_gases, kdist)
    call pio_seterrorhandling(fh, PIO_BCAST_ERROR)
 
 
-   ! Get variables and validate them, then put into kdist
-   
    ! Get dimensions and check for consistency with parameter values
 
    ierr = pio_inq_dimid(fh, 'absorber', did)
@@ -2042,9 +1989,8 @@ subroutine coefs_init(coefs_file, available_gases, kdist)
       ierr = pio_inq_dimlen(fh, did, fit_coeffs)
    end if
 
-
    ! Get variables
-
+   
    ! names of absorbing gases
    allocate(gas_names(absorber))
    ierr = pio_inq_varid(fh, 'gas_names', vid)
@@ -2119,21 +2065,6 @@ subroutine coefs_init(coefs_file, available_gases, kdist)
    if (ierr /= PIO_NOERR) call endrun(sub//': kmajor not found')
    ierr = pio_get_var(fh, vid, kmajor)
    if (ierr /= PIO_NOERR) call endrun(sub//': error reading kmajor')
-
-   ! -bpm - variable wv_self & wv_for not in the newer files.
-   ! ! absorption coefficients due to water vapor self continuum
-   ! allocate(selfrefin(gpt,mixing_fraction,temperature))
-   ! ierr = pio_inq_varid(fh, 'wv_self', vid)
-   ! if (ierr /= PIO_NOERR) call endrun(sub//': wv_self not found')
-   ! ierr = pio_get_var(fh, vid, selfrefin)
-   ! if (ierr /= PIO_NOERR) call endrun(sub//': error reading wv_self')
-
-   ! ! absorption coefficients due to water vapor foreign continuum
-   ! allocate(forrefin(gpt,mixing_fraction,temperature))
-   ! ierr = pio_inq_varid(fh, 'wv_for', vid)
-   ! if (ierr /= PIO_NOERR) call endrun(sub//': wv_for not found')
-   ! ierr = pio_get_var(fh, vid, forrefin)
-   ! if (ierr /= PIO_NOERR) call endrun(sub//': error reading wv_for')
 
    ! absorption coefficients due to minor absorbing gases in lower part of atmosphere
    allocate(kminor_lower(contributors_lower, mixing_fraction, temperature))
@@ -2225,7 +2156,6 @@ subroutine coefs_init(coefs_file, available_gases, kdist)
       if (ierr /= PIO_NOERR) call endrun(sub//': error reading rayl_upper')
    end if
 
-   ! +bpm the others
    allocate(gas_minor(minorabsorbers))
    ierr = pio_inq_varid(fh, 'gas_minor', vid)
    if (ierr /= PIO_NOERR) call endrun(sub//': gas_minor not found')
@@ -2353,10 +2283,9 @@ subroutine coefs_init(coefs_file, available_gases, kdist)
    ! Close file
    call pio_closefile(fh)
 
-   ! Initialize the gas optics class with data. The calls look slightly different depending
-   !   on whether the radiation sources are internal to the atmosphere (longwave) or external (shortwave)
-   ! gas_optics%load() returns a string; a non-empty string indicates an error.
-   !
+   ! Initialize the gas optics object with data. The calls look slightly different depending
+   ! on whether the radiation sources are internal to the atmosphere (longwave) or external (shortwave)
+
    if (allocated(totplnk) .and. allocated(planck_frac)) then
       error_msg = kdist%load( &
          available_gases, gas_names, key_species,              &
@@ -2426,6 +2355,7 @@ subroutine coefs_init(coefs_file, available_gases, kdist)
    if (allocated(solar_src_sunspot)) deallocate(solar_src_sunspot)
    if (allocated(rayl_lower))  deallocate(rayl_lower)
    if (allocated(rayl_upper))  deallocate(rayl_upper)
+
 end subroutine coefs_init
 
 !=========================================================================================
@@ -2574,21 +2504,6 @@ subroutine modified_cloud_fraction(ncol, cld, cldfsnow, cldfgrau, cldfprime)
    end if
 
 end subroutine modified_cloud_fraction
-
-!=========================================================================================
-
-elemental subroutine clipper(scalar, minval, maxval)
-   real(r8), intent(inout) :: scalar
-   real(r8), intent(in) :: minval, maxval
-   if (minval < maxval) then
-      if (scalar < minval) then
-         scalar = minval
-      end if
-      if (scalar > maxval) then
-         scalar = maxval
-      end if
-   end if
-end subroutine clipper
 
 !=========================================================================================
 
