@@ -25,16 +25,10 @@ module mcica_subcol_gen
 ! 
 !----------------------------------------------------------------------------------------
 
-use shr_kind_mod,     only: r8 => shr_kind_r8
-use ppgrid,           only: pcols, pver, pverp
-use cam_abortutils,   only: endrun
-
-use shr_RandNum_mod,  only: ShrKissRandGen
-
-! old: use mo_gas_optics_specification, only: ty_gas_optics_specification
-! use mo_gas_optics, only: ty_gas_optics ! Wrong?
+use shr_kind_mod,         only: r8 => shr_kind_r8
+use ppgrid,               only: pcols, pver
+use shr_RandNum_mod,      only: ShrKissRandGen
 use mo_gas_optics_rrtmgp, only: ty_gas_optics_rrtmgp
-use cam_logfile,         only: iulog  ! just for debugging (BPM)
 
 implicit none
 private
@@ -47,8 +41,8 @@ contains
 !========================================================================================
 
 subroutine mcica_subcol_lw( &
-   kdist, nbnd, ngpt, ncol, changeseed, &
-   pmid, cldfrac, tauc, taucmcl)
+   kdist, nbnd, ngpt, ncol, nver,           &
+   changeseed, pmid, cldfrac, tauc, taucmcl )
 
    ! Arrays use CAM vertical index convention: index increases from top to bottom.
    ! This index ordering is assumed in the maximum-random overlap algorithm which starts
@@ -64,15 +58,15 @@ subroutine mcica_subcol_lw( &
    integer,  intent(in)  :: nbnd                     ! number of spectral bands
    integer,  intent(in)  :: ngpt                     ! number of subcolumns (g-point intervals)
    integer,  intent(in)  :: ncol                     ! number of columns
+   integer,  intent(in)  :: nver                     ! number of layers
    integer,  intent(in)  :: changeseed               ! if the subcolumn generator is called multiple times, 
                                                      ! permute the seed between each call.
    real(r8), intent(in)  :: pmid(pcols,pver)         ! layer pressures (Pa)
-   real(r8), intent(in)  :: cldfrac(pcols,pver)      ! layer cloud fraction
-   real(r8), intent(in)  :: tauc(nbnd,pcols,pver)    ! cloud optical depth
+   real(r8), intent(in)  :: cldfrac(ncol,nver)       ! layer cloud fraction
+   real(r8), intent(in)  :: tauc(nbnd,ncol,nver)     ! cloud optical depth
+   real(r8), intent(out) :: taucmcl(ngpt,ncol,nver)  ! subcolumn cloud optical depth [mcica]
 
-   real(r8), intent(out) :: taucmcl(ngpt,ncol,pver)  ! subcolumn cloud optical depth [mcica]
-
-   ! Local vars
+   ! Local variables
 
    integer :: i, isubcol, k, n
 
@@ -82,11 +76,12 @@ subroutine mcica_subcol_lw( &
    type(ShrKissRandGen) :: kiss_gen  ! KISS RNG object
    integer  :: kiss_seed(ncol,4)
    real(r8) :: rand_num_1d(ncol,1)   ! random number (kissvec)
-   real(r8) :: rand_num(ncol,pver)   ! random number (kissvec)
+   real(r8) :: rand_num(ncol,nver)   ! random number (kissvec)
 
-   real(r8) :: cdf(ngpt,ncol,pver)   ! random numbers
-   logical  :: iscloudy(ngpt,ncol,pver)   ! flag that says whether a gridbox is cloudy
+   real(r8) :: cdf(ngpt,ncol,nver)   ! random numbers
+   logical  :: iscloudy(ngpt,ncol,nver)   ! flag that says whether a gridbox is cloudy
    !------------------------------------------------------------------------------------------ 
+
    ! clip cloud fraction
    cldf(:,:) = cldfrac(:ncol,:)
    where (cldf(:,:) < cldmin)
@@ -122,7 +117,7 @@ subroutine mcica_subcol_lw( &
    !    - if the layer above is cloudy, use the same random number as in the layer above
    !    - if the layer above is clear, use a new random number 
 
-   do k = 2, pver
+   do k = 2, nver
       do i = 1, ncol
          do isubcol = 1, ngpt
             if (cdf(isubcol,i,k-1) > 1._r8 - cldf(i,k-1) ) then
@@ -134,14 +129,14 @@ subroutine mcica_subcol_lw( &
       end do
    end do
  
-   do k = 1, pver
+   do k = 1, nver
       iscloudy(:,:,k) = (cdf(:,:,k) >= 1._r8 - spread(cldf(:,k), dim=1, nCopies=ngpt) )
    end do
 
    ! -- generate subcolumns for homogeneous clouds -----
    ! where there is a cloud, set the subcolumn cloud properties;
    ! incoming tauc should be in-cloud quantites and not grid-averaged quantities
-   do k = 1,pver
+   do k = 1,nver
       do i = 1,ncol
          do isubcol = 1,ngpt
             if (iscloudy(isubcol,i,k) .and. (cldf(i,k) > 0._r8) ) then
@@ -260,7 +255,6 @@ subroutine mcica_subcol_sw( &
  
    do k = 1, nver
       iscloudy(:,:,k) = (cdf(:,:,k) >= 1._r8 - spread(cldf(:,k), dim=1, nCopies=ngpt) )
-      ! write(iulog,*) 'level ',k,' any(iscloud) = ',any(iscloudy(:,1,k))  ! BPM - Debugging - remove when done
    end do
 
    ! -- generate subcolumns for homogeneous clouds -----
@@ -274,7 +268,6 @@ subroutine mcica_subcol_sw( &
                taucmcl(isubcol,i,k) = tauc(n,i,k)
                ssacmcl(isubcol,i,k) = ssac(n,i,k)
                asmcmcl(isubcol,i,k) = asmc(n,i,k)
-               ! write(iulog,*) 'level ',k,' subcolumn ',isubcol, 'CLOUD! ssacmcl = ',ssacmcl(isubcol,i,k),', asmcmcl = ',asmcmcl(isubcol,i,k) ! BPM - Debugging - remove when done
             else
                taucmcl(isubcol,i,k) = 0._r8
                ssacmcl(isubcol,i,k) = 1._r8

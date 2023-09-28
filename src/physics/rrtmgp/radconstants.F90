@@ -26,8 +26,8 @@ real(r8), target :: wavenumber_high_longwave(nlwbands)
 
 logical :: wavenumber_boundaries_set = .false.
 
-integer, public, protected :: nswgpts  ! # SW gpts
-integer, public, protected :: nlwgpts  ! # LW gpts
+integer, public, protected :: nswgpts  ! number of SW g-points
+integer, public, protected :: nlwgpts  ! number of LW g-points
 
 ! These are indices to specific bands for diagnostic output and COSP input.
 integer, public, protected :: idx_sw_diag = -1     ! band contains 500-nm wave

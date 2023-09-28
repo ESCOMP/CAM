@@ -17,9 +17,9 @@ use physics_types,    only: physics_state
 use physics_buffer,   only: physics_buffer_desc
 use camsrfexch,       only: cam_in_t
 
-use radconstants,     only: nswbands, nlwbands, nswgpts, get_sw_spectral_boundaries, &
-                            idx_sw_diag, idx_sw_cloudsim
-use radconstants,     only: nradgas, gaslist
+use radconstants,     only: nradgas, gaslist, nswbands, nlwbands, nswgpts, nlwgpts,   &
+                            get_sw_spectral_boundaries, idx_sw_diag, idx_sw_cloudsim, &
+                            idx_lw_cloudsim
 
 use rad_constituents, only: rad_cnst_get_gas
 
@@ -302,7 +302,8 @@ end function get_molar_mass_ratio
 
 subroutine rad_gas_get_vmr(icall, gas_name, state, pbuf, nlay, numactivecols, gas_concs, idxday)
 
-   ! Set volume mixing ratio in gas_concs data structure.
+   ! Set volume mixing ratio in gas_concs object.
+   ! The gas_concs%set_vmr method copies data into internally allocated storage.
 
    integer,                     intent(in) :: icall      ! index of climate/diagnostic radiation call
    character(len=*),            intent(in) :: gas_name
@@ -466,57 +467,145 @@ end subroutine rrtmgp_set_gases_sw
 
 !==================================================================================================
 
-subroutine rrtmgp_set_cloud_lw(state, nlwbands, cldfrac, c_cld_lw_abs, lwkDist, cloud_lw)
+subroutine rrtmgp_set_cloud_lw( &
+   state, pbuf, nlay, cld, cldfsnow,                        &
+   cldfgrau, cldfprime, graupel_in_rad, kdist_lw, cloud_lw, &
+   cld_lw_abs_cloudsim, snow_lw_abs_cloudsim, grau_lw_abs_cloudsim )
 
+   ! Compute combined cloud optical properties.
    ! Create MCICA stochastic arrays for cloud LW optical properties.
+   ! Initialize optical properties object (cloud_lw) and load with MCICA columns.
 
    ! arguments
-   type(physics_state),         intent(in)    :: state
-   integer,                     intent(in)    :: nlwbands
-   real(r8),                    intent(in)    :: cldfrac(pcols,pver)               ! combined cloud fraction (snow plus regular)
-   real(r8),                    intent(in)    :: c_cld_lw_abs(nlwbands,pcols,pver) ! combined cloud absorption optics depth (LW)
-   class(ty_gas_optics_rrtmgp), intent(in)    :: lwkDist
-   type(ty_optical_props_1scl), intent(inout) :: cloud_lw
-   ! local vars
-   integer :: i
-   integer :: ncol
-   integer :: ngptlw
-   real(r8), allocatable :: taucmcl(:,:,:) ! cloud optical depth [mcica]
-   character(len=32)  :: sub = 'rrtmgp_set_cloud_lw'
-   character(len=128) :: errmsg
-   !--------------------------------------------------------------------------------
-   ncol   = state%ncol
-   ngptlw = lwkDist%get_ngpt()
+   type(physics_state),         intent(in)  :: state
+   type(physics_buffer_desc),   pointer     :: pbuf(:)
+   integer,  intent(in) :: nlay           ! number of layers in radiation calculation (may include "extra layer")
+   real(r8), pointer    :: cld(:,:)       ! cloud fraction (liq+ice)
+   real(r8), pointer    :: cldfsnow(:,:)  ! cloud fraction of just "snow clouds"
+   real(r8), pointer    :: cldfgrau(:,:)  ! cloud fraction of just "graupel clouds"
+   real(r8), intent(in) :: cldfprime(pcols,pver) ! combined cloud fraction
 
-   allocate(taucmcl(ngptlw,ncol,pver))
+   logical,                     intent(in)  :: graupel_in_rad ! use graupel in radiation code
+   class(ty_gas_optics_rrtmgp), intent(in)  :: kdist_lw
+   type(ty_optical_props_1scl), intent(out) :: cloud_lw
+
+   ! Diagnostic outputs
+   real(r8), intent(out) :: cld_lw_abs_cloudsim(pcols,pver) ! in-cloud snow optical depth (for COSP)
+   real(r8), intent(out) :: snow_lw_abs_cloudsim(pcols,pver)! in-cloud snow optical depth (for COSP)
+   real(r8), intent(out) :: grau_lw_abs_cloudsim(pcols,pver)! in-cloud Graupel optical depth (for COSP)
+
+   ! Local variables
+
+   integer :: i, k, ncol
+   integer :: igpt, nver
+
+   ! cloud radiative parameters are "in cloud" not "in cell"
+   real(r8) :: liq_lw_abs(nlwbands,pcols,pver)   ! liquid absorption optics depth (LW)
+   real(r8) :: ice_lw_abs(nlwbands,pcols,pver)   ! ice absorption optics depth (LW)
+   real(r8) :: cld_lw_abs(nlwbands,pcols,pver)   ! cloud absorption optics depth (LW)
+   real(r8) :: snow_lw_abs(nlwbands,pcols,pver)  ! snow absorption optics depth (LW)
+   real(r8) :: grau_lw_abs(nlwbands,pcols,pver)  ! graupel absorption optics depth (LW)
+   real(r8) :: c_cld_lw_abs(nlwbands,pcols,pver) ! combined cloud absorption optics depth (LW)
+
+   ! Arrays for converting from CAM chunks to RRTMGP inputs.
+   real(r8), allocatable :: cldf(:,:)
+   real(r8), allocatable :: tauc(:,:,:)
+   real(r8), allocatable :: taucmcl(:,:,:)
+
+   character(len=128) :: errmsg
+   character(len=*), parameter :: sub = 'rrtmgp_set_cloud_lw'
+   !--------------------------------------------------------------------------------
+
+   ncol   = state%ncol
+
+   ! Combine the cloud optical properties.  These calculations are done on CAM "chunks".
+
+   ! gammadist liquid optics
+   call liquid_cloud_get_rad_props_lw(state, pbuf, liq_lw_abs)
+   ! Mitchell ice optics
+   call ice_cloud_get_rad_props_lw(state, pbuf, ice_lw_abs)
+
+   cld_lw_abs(:,:ncol,:) = liq_lw_abs(:,:ncol,:) + ice_lw_abs(:,:ncol,:)
+
+   if (associated(cldfsnow)) then
+      ! add in snow
+      call snow_cloud_get_rad_props_lw(state, pbuf, snow_lw_abs)
+      do i = 1, ncol
+         do k = 1, pver
+            if (cldfprime(i,k) > 0._r8) then
+               c_cld_lw_abs(:,i,k) = ( cldfsnow(i,k)*snow_lw_abs(:,i,k) &
+                                            + cld(i,k)*cld_lw_abs(:,i,k) )/cldfprime(i,k)
+            else
+               c_cld_lw_abs(:,i,k) = 0._r8
+            end if
+         end do
+      end do
+   else
+      c_cld_lw_abs(:,:ncol,:) = cld_lw_abs(:,:ncol,:)
+   end if
+
+   ! add in graupel
+   if (associated(cldfgrau) .and. graupel_in_rad) then
+      call grau_cloud_get_rad_props_lw(state, pbuf, grau_lw_abs)
+      do i = 1, ncol
+         do k = 1, pver
+            if (cldfprime(i,k) > 0._r8) then
+               c_cld_lw_abs(:,i,k) = ( cldfgrau(i,k)*grau_lw_abs(:,i,k) &
+                                            + cld(i,k)*c_cld_lw_abs(:,i,k) )/cldfprime(i,k)
+            else
+               c_cld_lw_abs(:,i,k) = 0._r8
+            end if
+         end do
+      end do
+   end if
+
+   ! Cloud optics for COSP
+   cld_lw_abs_cloudsim  = cld_lw_abs(idx_lw_cloudsim,:,:)
+   snow_lw_abs_cloudsim = snow_lw_abs(idx_lw_cloudsim,:,:)
+   grau_lw_abs_cloudsim = grau_lw_abs(idx_lw_cloudsim,:,:)
    
-   !***NB*** this code is currently set up to create the subcols for all model layers
-   !         not just the ones where the radiation calc is being done.  Need
-   !         to subset cldfrac and c_cld_lw_abs to avoid computing unneeded random numbers.
+   ! Extract just the layers of CAM where RRTMGP does calculations.
+
+   ! number of CAM's layers in radiation calculation.  Does not include the "extra layer".
+   nver = pver - ktopcam + 1
+
+   allocate( &
+         cldf(ncol,nver),           &
+         tauc(nlwbands,ncol,nver),  &
+         taucmcl(nlwgpts,ncol,nver) )
+
+   ! Subset "chunk" data so just the number of CAM layers in the
+   ! radiation calculation are used by MCICA to produce subcolumns.
+   cldf = cldfprime(:ncol, ktopcam:)
+   tauc = c_cld_lw_abs(:, :ncol, ktopcam:)
    
    call mcica_subcol_lw( &
-      lwkdist,      & ! spectral information
-      nlwbands,     & ! number of spectral bands
-      ngptlw,       & ! number of subcolumns (g-point intervals)
-      ncol,         & ! number of columns
-      ngptlw,       & ! changeseed, should be set to number of subcolumns
-      state%pmid,   & ! layer pressures (Pa)
-      cldfrac,      & ! layer cloud fraction
-      c_cld_lw_abs, & ! cloud optical depth
-      taucmcl       & ! OUTPUT: subcolumn cloud optical depth [mcica] (ngpt, ncol, nver)
-      )
+      kdist_lw, nlwbands, nlwgpts, ncol, nver, &
+      nlwgpts, state%pmid, cldf, tauc, taucmcl )
+
+   errmsg =cloud_lw%alloc_1scl(ncol, nlay, kdist_lw)
+   if (len_trim(errmsg) > 0) then
+      call endrun(sub//': ERROR: cloud_lw%alloc_1scalar: '//trim(errmsg))
+   end if
 
    ! If there is an extra layer in the radiation then this initialization
    ! will provide zero optical depths there.
    cloud_lw%tau = 0.0_r8
-   do i = 1, ngptlw
+
+   ! Set the properties on g-points.
+   do i = 1, nlwgpts
       cloud_lw%tau(:ncol, ktoprad:, i) = taucmcl(i, :ncol, ktopcam:)
    end do
+
+   ! validate checks that: tau > 0
    errmsg = cloud_lw%validate()
    if (len_trim(errmsg) > 0) then
       call endrun(sub//': ERROR: cloud_lw%validate: '//trim(errmsg))
    end if
-   deallocate(taucmcl)
+
+   ! All information is in cloud_lw, now deallocate local vars.
+   deallocate(cldf, tauc, taucmcl)
+
 end subroutine rrtmgp_set_cloud_lw
 
 !==================================================================================================
@@ -798,23 +887,38 @@ end subroutine rrtmgp_set_cloud_sw
 
 !==================================================================================================
 
-subroutine rrtmgp_set_aer_lw(ncol, nlwbands, aer_lw_abs, aer_lw)
+subroutine rrtmgp_set_aer_lw(icall, state, pbuf, aer_lw)
 
-   ! Load aerosol optical properties into the RRTMGP object.
+   ! Load LW aerosol optical properties into the RRTMGP object.
 
-   ! arguments
-   integer,                intent(in)    :: ncol
-   integer,                intent(in)    :: nlwbands
-   real(r8),               intent(in)    :: aer_lw_abs(pcols,pver,nlwbands) ! aerosol absorption optics depth (LW)
+   ! Arguments
+   integer,                     intent(in) :: icall
+   type(physics_state), target, intent(in) :: state
+   type(physics_buffer_desc),   pointer    :: pbuf(:)
+
    type(ty_optical_props_1scl), intent(inout) :: aer_lw
-   character(len=32)  :: sub = 'rrtmgp_set_aer_lw'
-   character(len=128) :: errmsg
 
+   ! Local variables
+   integer :: ncol
+
+   ! Aerosol LW absorption optical depth
+   real(r8) :: aer_lw_abs (pcols,pver,nlwbands)
+
+   character(len=*), parameter :: sub = 'rrtmgp_set_aer_lw'
+   character(len=128) :: errmsg
    !--------------------------------------------------------------------------------
+
+   ncol = state%ncol
+
+   ! Get aerosol longwave optical properties.
+   call aer_rad_props_lw(icall, state, pbuf, aer_lw_abs)
+
    ! If there is an extra layer in the radiation then this initialization
    ! will provide zero optical depths there.
    aer_lw%tau = 0.0_r8
+
    aer_lw%tau(:ncol, ktoprad:, :) = aer_lw_abs(:ncol, ktopcam:, :)
+
    errmsg = aer_lw%validate()
    if (len_trim(errmsg) > 0) then
       call endrun(sub//': ERROR: aer_lw%validate: '//trim(errmsg))
@@ -826,7 +930,7 @@ end subroutine rrtmgp_set_aer_lw
 subroutine rrtmgp_set_aer_sw( &
    icall, state, pbuf, nday, idxday, nnite, idxnite, aer_sw)
 
-   ! Load aerosol SW optical properties into the RRTMGP object.
+   ! Load SW aerosol optical properties into the RRTMGP object.
 
    ! Arguments
    integer,                     intent(in) :: icall
