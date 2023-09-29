@@ -49,10 +49,10 @@ use pio,                 only: file_desc_t, var_desc_t,                       &
                                pio_def_var, pio_put_var, pio_get_var,         &
                                pio_put_att, PIO_NOWRITE, pio_closefile
 
-use mo_source_functions,   only: ty_source_func_lw
 use mo_gas_concentrations, only: ty_gas_concs
 use mo_gas_optics_rrtmgp,  only: ty_gas_optics_rrtmgp
 use mo_optical_props,      only: ty_optical_props_1scl, ty_optical_props_2str
+use mo_source_functions,   only: ty_source_func_lw
 use mo_fluxes_byband,      only: ty_fluxes_byband
 
 use string_utils,        only: to_lower
@@ -108,20 +108,10 @@ type rad_out_t
    real(r8) :: flux_sw_dn(pcols,pverp)     ! downward flux
    real(r8) :: flux_sw_clr_dn(pcols,pverp) ! downward clearsky flux
 
-   real(r8), allocatable :: fsdn(:,:)     ! Downward SW flux on rrtmgp grid
-   real(r8), allocatable :: fsdnc(:,:)    ! Downward SW clear sky flux on rrtmgp grid
-   real(r8), allocatable :: fsup(:,:)     ! Upward SW flux on rrtmgp grid
-   real(r8), allocatable :: fsupc(:,:)    ! Upward SW clear sky flux on rrtmgp grid
-
    real(r8) :: flux_lw_up(pcols,pverp)     ! upward shortwave flux on interfaces
    real(r8) :: flux_lw_clr_up(pcols,pverp) ! upward shortwave clearsky flux
    real(r8) :: flux_lw_dn(pcols,pverp)     ! downward flux
    real(r8) :: flux_lw_clr_dn(pcols,pverp) ! downward clearsky flux
-
-   real(r8), allocatable :: fldn(:,:)     ! Downward LW flux on rrtmgp grid
-   real(r8), allocatable :: fldnc(:,:)    ! Downward LW clear sky flux on rrtmgp grid
-   real(r8), allocatable :: flup(:,:)     ! Upward LW flux on rrtmgp grid
-   real(r8), allocatable :: flupc(:,:)    ! Upward LW clear sky flux on rrtmgp grid
 
    real(r8) :: qrlc(pcols,pver)
 
@@ -490,9 +480,7 @@ subroutine radiation_init(pbuf2d)
    end do
 
    errmsg = available_gases%init(gaslist_lc)
-   if (len_trim(errmsg) > 0) then
-      call endrun(sub//': ERROR: available_gases%init: '//trim(errmsg))
-   end if
+   call stop_on_err(errmsg, sub, 'available_gases%init')
 
    ! Read RRTMGP coefficients files and initialize kdist objects.
    call coefs_init(coefs_sw_file, available_gases, kdist_sw)
@@ -644,16 +632,6 @@ subroutine radiation_init(pbuf2d)
          call addfld('FDSC'//diag(icall),     (/ 'ilev' /), 'I', 'W/m2', &
                      'Shortwave clear-sky downward flux', sampling_seq='rad_lwsw')
 
-         ! Fluxes on RRTMGP grid
-         call addfld('FSDN'//diag(icall),  (/ 'plev_rad' /), 'I', 'W/m2', &
-                     'SW downward flux on rrtmgp grid', sampling_seq='rad_lwsw')
-         call addfld('FSDNC'//diag(icall), (/ 'plev_rad' /), 'I', 'W/m2', &
-                     'SW downward clear sky flux on rrtmgp grid', sampling_seq='rad_lwsw')
-         call addfld('FSUP'//diag(icall),  (/ 'plev_rad' /), 'I', 'W/m2', &
-                     'SW upward flux on rrtmgp grid', sampling_seq='rad_lwsw')
-         call addfld('FSUPC'//diag(icall), (/ 'plev_rad' /), 'I', 'W/m2', &
-                     'SW upward clear sky flux on rrtmgp grid', sampling_seq='rad_lwsw')
-
          if (history_amwg) then
             call add_default('SOLIN'//diag(icall),   1, ' ')
             call add_default('QRS'//diag(icall),     1, ' ')
@@ -722,16 +700,6 @@ subroutine radiation_init(pbuf2d)
                      'Longwave clear-sky upward flux', sampling_seq='rad_lwsw')
          call addfld('FDLC'//diag(icall),   (/ 'ilev' /), 'I', 'W/m2', &
                      'Longwave clear-sky downward flux', sampling_seq='rad_lwsw')
-
-         ! Fluxes on rrtmgp grid
-         call addfld('FLDN'//diag(icall),  (/ 'plev_rad' /), 'I', 'W/m2', &
-                     'LW downward flux on rrtmgp grid', sampling_seq='rad_lwsw')
-         call addfld('FLDNC'//diag(icall), (/ 'plev_rad' /), 'I', 'W/m2', &
-                     'LW downward clear sky flux on rrtmgp grid', sampling_seq='rad_lwsw')
-         call addfld('FLUP'//diag(icall),  (/ 'plev_rad' /), 'I', 'W/m2', &
-                     'LW upward flux on rrtmgp grid', sampling_seq='rad_lwsw')
-         call addfld('FLUPC'//diag(icall), (/ 'plev_rad' /), 'I', 'W/m2', &
-                     'LW upward clear sky flux on rrtmgp grid', sampling_seq='rad_lwsw')
 
          if (history_amwg) then
             call add_default('QRL'//diag(icall),   1, ' ')
@@ -1006,11 +974,9 @@ subroutine radiation_tend( &
    real(r8) :: gb_snow_tau(pcols,pver) ! grid-box mean snow_tau
    real(r8) :: gb_snow_lw(pcols,pver)  ! grid-box mean LW snow optical depth
 
-  
    real(r8) :: ftem(pcols,pver)        ! Temporary workspace for outfld variables
 
    character(len=128) :: errmsg
-
    character(len=*), parameter :: sub = 'radiation_tend'
    !--------------------------------------------------------------------------------------
 
@@ -1022,11 +988,6 @@ subroutine radiation_tend( &
       write_output = .false.
    else
       allocate(rd)
-      ! allocate elements of rd for output of fluxes on RRTMGP grid
-      if (.not. allocated(rd%fsdn)) then
-         allocate(rd%fsdn(pcols,nlay+1), rd%fsdnc(pcols,nlay+1), rd%fsup(pcols,nlay+1), rd%fsupc(pcols,nlay+1), &
-                  rd%fldn(pcols,nlay+1), rd%fldnc(pcols,nlay+1), rd%flup(pcols,nlay+1), rd%flupc(pcols,nlay+1) )
-      end if
       write_output = .true.
    end if
 
@@ -1162,23 +1123,17 @@ subroutine radiation_tend( &
 
             ! Initialize object for gas concentrations.
             errmsg = gas_concs_sw%init(gaslist_lc)
-            if (len_trim(errmsg) > 0) then
-               call endrun(sub//': ERROR: gas_concs_sw%init: '//trim(errmsg))
-            end if
+            call stop_on_err(errmsg, sub, 'gas_concs_sw%init')
 
             ! Initialize object for combined gas + aerosol + cloud optics.
             ! Allocates arrays for properties represented on g-points.
             errmsg = atm_optics_sw%alloc_2str(nday, nlay, kdist_sw)
-            if (len_trim(errmsg) > 0) then
-               call endrun(sub//': ERROR: gas_optics_sw%alloc_2str: '//trim(errmsg))
-            end if
+            call stop_on_err(errmsg, sub, 'atm_optics_sw%alloc_2str')
 
             ! Initialize object for SW aerosol optics.  Allocates arrays 
             ! for properties represented by band.
             errmsg = aer_sw%alloc_2str(nday, nlay, kdist_sw%get_band_lims_wavenumber()) 
-            if (len_trim(errmsg) > 0) then
-               call endrun(sub//': ERROR: aer_sw%alloc_2str: '//trim(errmsg))
-            end if
+            call stop_on_err(errmsg, sub, 'aer_sw%alloc_2str')
 
          end if
 
@@ -1198,9 +1153,7 @@ subroutine radiation_tend( &
                   errmsg = kdist_sw%gas_optics( &
                      pmid_day, pint_day, t_day, gas_concs_sw, atm_optics_sw, &
                      toa_flux)
-                  if (len_trim(errmsg) > 0) then
-                     call endrun(sub//': ERROR: kdist_sw%gas_optics: '//trim(errmsg))
-                  end if
+                  call stop_on_err(errmsg, sub, 'kdist_sw%gas_optics')
 
                   ! Scale the solar source
                   tsi_ref = sum(toa_flux(1,:))
@@ -1218,31 +1171,23 @@ subroutine radiation_tend( &
 
                   ! Increment the gas optics (in atm_optics_sw) by the aerosol optics in aer_sw.
                   errmsg = aer_sw%increment(atm_optics_sw)
-                  if (len_trim(errmsg) > 0) then
-                     call endrun(sub//': ERROR in aer_sw%increment: '//trim(errmsg))
-                  end if
+                  call stop_on_err(errmsg, sub, 'aer_sw%increment')
 
                   ! Compute clear-sky fluxes.
                   errmsg = rte_sw(&
                      atm_optics_sw, top_at_1, coszrs_day, toa_flux, &
                      alb_dir, alb_dif, fswc)
-                  if (len_trim(errmsg) > 0) then
-                     call endrun(sub//': ERROR in clear-sky rte_sw: '//trim(errmsg))
-                  end if
+                  call stop_on_err(errmsg, sub, 'clear-sky rte_sw')
 
                   ! Increment the aerosol+gas optics (in atm_optics_sw) by the cloud optics in cloud_sw.
                   errmsg = cloud_sw%increment(atm_optics_sw)
-                  if (len_trim(errmsg) > 0) then
-                     call endrun(sub//': ERROR in cloud_sw%increment: '//trim(errmsg))
-                  end if
+                  call stop_on_err(errmsg, sub, 'cloud_sw%increment')
 
                   ! Compute all-sky fluxes.
                   errmsg = rte_sw(&
                      atm_optics_sw, top_at_1, coszrs_day, toa_flux, &
                      alb_dir, alb_dif, fsw)
-                  if (len_trim(errmsg) > 0) then
-                     call endrun(sub//': ERROR in all-sky rte_sw: '//trim(errmsg))
-                  end if
+                  call stop_on_err(errmsg, sub, 'all-sky rte_sw')
 
                end if
 
@@ -1270,9 +1215,7 @@ subroutine radiation_tend( &
 
          ! Initialize object for Planck sources.
          errmsg = sources_lw%alloc(ncol, nlay, kdist_lw)
-         if (len_trim(errmsg) > 0) then
-            call endrun(sub//': ERROR, sources_lw%alloc: '//trim(errmsg))
-         end if
+         call stop_on_err(errmsg, sub, 'sources_lw%alloc')
 
          ! Set cloud optical properties in cloud_lw object.
          call rrtmgp_set_cloud_lw( &
@@ -1282,21 +1225,15 @@ subroutine radiation_tend( &
 
          ! Initialize object for gas concentrations
          errmsg = gas_concs_lw%init(gaslist_lc)
-         if (len_trim(errmsg) > 0) then
-            call endrun(sub//': ERROR, gas_concs_lw%init: '//trim(errmsg))
-         end if
+         call stop_on_err(errmsg, sub, 'gas_concs_lw%init')
 
          ! Initialize object for combined gas + aerosol + cloud optics.
          errmsg = atm_optics_lw%alloc_1scl(ncol, nlay, kdist_lw)
-         if (len_trim(errmsg) > 0) then
-            call endrun(sub//': ERROR: gas_optics_lw%alloc_1scl: '//trim(errmsg))
-         end if
+         call stop_on_err(errmsg, sub, 'atm_optics_lw%alloc_1scl')
 
          ! Initialize object for LW aerosol optics.
          errmsg = aer_lw%alloc_1scl(ncol, nlay, kdist_lw%get_band_lims_wavenumber())
-         if (len_trim(errmsg) > 0) then
-            call endrun(sub//': ERROR: aer_lw%alloc_1scl: '//trim(errmsg))
-         end if
+         call stop_on_err(errmsg, sub, 'aer_lw%alloc_1scl')
 
          ! The climate (icall==0) calculation must occur last.
          do icall = N_DIAG, 0, -1
@@ -1310,33 +1247,26 @@ subroutine radiation_tend( &
                errmsg = kdist_lw%gas_optics( &
                   pmid_rad, pint_rad, t_rad, t_sfc, gas_concs_lw, &
                   atm_optics_lw, sources_lw)
+               call stop_on_err(errmsg, sub, 'kdist_lw%gas_optics')
 
                ! Set LW aerosol optical properties in the aer_lw object.
                call rrtmgp_set_aer_lw(icall, state, pbuf, aer_lw)
                
                ! Increment the gas optics by the aerosol optics.
                errmsg = aer_lw%increment(atm_optics_lw)
-               if (len_trim(errmsg) > 0) then
-                  call endrun(sub//': ERROR in aer_lw%increment: '//trim(errmsg))
-               end if
+               call stop_on_err(errmsg, sub, 'aer_lw%increment')
 
                ! Compute clear-sky LW fluxes
                errmsg = rte_lw(atm_optics_lw, top_at_1, sources_lw, emis_sfc, flwc)
-               if (len_trim(errmsg) > 0) then
-                  call endrun(sub//': ERROR in clear-sky rte_lw: '//trim(errmsg))
-               end if
+               call stop_on_err(errmsg, sub, 'clear-sky rte_lw')
 
                ! Increment the gas+aerosol optics by the cloud optics.
                errmsg = cloud_lw%increment(atm_optics_lw)
-               if (len_trim(errmsg) > 0) then
-                  call endrun(sub//': ERROR in cloud_lw%increment: '//trim(errmsg))
-               end if
+               call stop_on_err(errmsg, sub, 'cloud_lw%increment')
 
                ! Compute all-sky LW fluxes
                errmsg = rte_lw(atm_optics_lw, top_at_1, sources_lw, emis_sfc, flw)
-               if (len_trim(errmsg) > 0) then
-                  call endrun(sub//': ERROR in all-sky rte_lw: '//trim(errmsg))
-               end if
+               call stop_on_err(errmsg, sub, 'all-sky rte_lw')
 
                ! Transform RRTMGP outputs to CAM outputs and compute heating rates.
                call set_lw_diags()
@@ -1441,8 +1371,6 @@ subroutine radiation_tend( &
    qrl(:ncol,:) = qrl(:ncol,:) * state%pdel(:ncol,:)
 
    if (.not. present(rd_out)) then
-      deallocate(rd%fsdn, rd%fsdnc, rd%fsup, rd%fsupc, &
-                 rd%fldn, rd%fldnc, rd%flup, rd%flupc )
       deallocate(rd)
    end if
    call free_optics_sw(atm_optics_sw)
@@ -1487,11 +1415,6 @@ subroutine radiation_tend( &
       rd%flux_sw_clr_up = 0._r8
       rd%flux_sw_clr_dn = 0._r8
 
-      rd%fsdn     = 0._r8
-      rd%fsdnc    = 0._r8
-      rd%fsup     = 0._r8
-      rd%fsupc    = 0._r8
-      
       qrs      = 0._r8
       fsns     = 0._r8
       fsnt     = 0._r8
@@ -1512,11 +1435,6 @@ subroutine radiation_tend( &
          rd%flux_sw_dn(idxday(i),ktopcam:)     = fsw%flux_dn(i,ktoprad:)
          rd%flux_sw_clr_up(idxday(i),ktopcam:) = fswc%flux_up(i,ktoprad:) 
          rd%flux_sw_clr_dn(idxday(i),ktopcam:) = fswc%flux_dn(i,ktoprad:)
-
-         rd%fsdn(idxday(i),:) = fsw%flux_dn(i,:)
-         rd%fsdnc(idxday(i),:) = fswc%flux_dn(i,:)
-         rd%fsup(idxday(i),:) = fsw%flux_up(i,:)
-         rd%fsupc(idxday(i),:) = fswc%flux_up(i,:)
       end do
 
       ! Compute heating rate as a dry static energy tendency.
@@ -1614,11 +1532,6 @@ subroutine radiation_tend( &
 
       rd%flut(:ncol)  = flw%flux_up(:, ktoprad) 
       rd%flutc(:ncol) = flwc%flux_up(:, ktoprad)
-
-      rd%fldn(:ncol,:)  = flw%flux_dn
-      rd%fldnc(:ncol,:) = flwc%flux_dn
-      rd%flup(:ncol,:)  = flw%flux_up
-      rd%flupc(:ncol,:) = flwc%flux_up
 
       ! Output fluxes at 200 mb
       call vertinterp(ncol, pcols, pverp, state%pint, 20000._r8, fnl,  rd%fln200)
@@ -1747,11 +1660,6 @@ subroutine radiation_output_sw(lchnk, ncol, icall, rd, pbuf, cam_out)
    call outfld('FDS'//diag(icall),  rd%flux_sw_dn,     pcols, lchnk)
    call outfld('FDSC'//diag(icall), rd%flux_sw_clr_dn, pcols, lchnk)
 
-   call outfld('FSDN'//diag(icall),  rd%fsdn,           pcols, lchnk)
-   call outfld('FSDNC'//diag(icall), rd%fsdnc,          pcols, lchnk)
-   call outfld('FSUP'//diag(icall),  rd%fsup,           pcols, lchnk)
-   call outfld('FSUPC'//diag(icall), rd%fsupc,          pcols, lchnk)
-
 end subroutine radiation_output_sw
 
 !===============================================================================
@@ -1829,11 +1737,6 @@ subroutine radiation_output_lw(lchnk, ncol, icall, rd, pbuf, cam_out)
    call outfld('FDLC'//diag(icall), rd%flux_lw_clr_dn, pcols, lchnk)
    call outfld('FUL'//diag(icall),  rd%flux_lw_up,     pcols, lchnk)
    call outfld('FULC'//diag(icall), rd%flux_lw_clr_up, pcols, lchnk)
-
-   call outfld('FLDN'//diag(icall),  rd%fldn,          pcols, lchnk)
-   call outfld('FLDNC'//diag(icall), rd%fldnc,         pcols, lchnk)
-   call outfld('FLUP'//diag(icall),  rd%flup,          pcols, lchnk)
-   call outfld('FLUPC'//diag(icall), rd%flupc,         pcols, lchnk)
 
 end subroutine radiation_output_lw
 
@@ -1921,8 +1824,7 @@ subroutine coefs_init(coefs_file, available_gases, kdist)
 
    call pio_seterrorhandling(fh, PIO_BCAST_ERROR)
 
-
-   ! Get dimensions and check for consistency with parameter values
+   ! Get dimensions
 
    ierr = pio_inq_dimid(fh, 'absorber', did)
    if (ierr /= PIO_NOERR) call endrun(sub//': absorber not found')
@@ -2052,7 +1954,6 @@ subroutine coefs_init(coefs_file, available_gases, kdist)
    if (ierr /= PIO_NOERR) call endrun(sub//': error reading absorption_coefficient_ref_P')
 
    ! volume mixing ratios for reference atmosphere
-   !  vmr_ref(temperature, absorber_ext, atmos_layer)
    allocate(vmr_ref(atmos_layer, absorber_ext, temperature))
    ierr = pio_inq_varid(fh, 'vmr_ref', vid)
    if (ierr /= PIO_NOERR) call endrun(sub//': vmr_ref not found')
@@ -2283,7 +2184,7 @@ subroutine coefs_init(coefs_file, available_gases, kdist)
    ! Close file
    call pio_closefile(fh)
 
-   ! Initialize the gas optics object with data. The calls look slightly different depending
+   ! Initialize the gas optics object with data. The calls are slightly different depending
    ! on whether the radiation sources are internal to the atmosphere (longwave) or external (shortwave)
 
    if (allocated(totplnk) .and. allocated(planck_frac)) then
@@ -2327,9 +2228,7 @@ subroutine coefs_init(coefs_file, available_gases, kdist)
       error_msg = 'must supply either totplnk and planck_frac, or solar_src_[*]'
    end if
 
-   if (len_trim(error_msg) > 0) then
-      call endrun(sub//': ERROR: '//trim(error_msg))
-   end if
+   call stop_on_err(error_msg, sub, 'kdist%load')
 
    deallocate( &
       gas_names, key_species,               &
@@ -2504,6 +2403,22 @@ subroutine modified_cloud_fraction(ncol, cld, cldfsnow, cldfgrau, cldfprime)
    end if
 
 end subroutine modified_cloud_fraction
+
+!=========================================================================================
+
+subroutine stop_on_err(errmsg, sub, info)
+
+! call endrun if RRTMGP function returns non-empty error message.
+
+   character(len=*), intent(in) :: errmsg    ! return message from RRTMGP function
+   character(len=*), intent(in) :: sub       ! name of calling subroutine
+   character(len=*), intent(in) :: info      ! name of called function
+
+   if (len_trim(errmsg) > 0) then
+      call endrun(trim(sub)//': ERROR: '//trim(info)//': '//trim(errmsg))
+   end if
+
+end subroutine stop_on_err
 
 !=========================================================================================
 
