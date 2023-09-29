@@ -11,20 +11,21 @@ module rate_diags
   use chem_mods,        only : rxt_tag_cnt, rxt_tag_lst, rxt_tag_map
   use ppgrid,           only : pver
   use spmd_utils,       only : masterproc
+  use cam_logfile,      only : iulog
   use cam_abortutils,   only : endrun
-  use sums_utils,       only : sums_grp_t, parse_sums
+  use shr_expr_parser_mod , only : shr_exp_parse, shr_exp_item_t, shr_exp_list_destroy
 
   implicit none
-  private 
+  private
   public :: rate_diags_init
   public :: rate_diags_calc
   public :: rate_diags_readnl
   public :: rate_diags_o3s_loss
+  public :: rate_diags_final
 
   character(len=fieldname_len) :: rate_names(rxt_tag_cnt)
 
-  integer :: ngrps = 0
-  type(sums_grp_t), allocatable :: grps(:)  
+  type(shr_exp_item_t), pointer :: grps_list => null()
 
   integer, parameter :: maxlines = 200
   character(len=CL), allocatable :: rxn_rate_sums(:)
@@ -41,7 +42,7 @@ contains
     use units,           only: getunit, freeunit
     use spmd_utils,      only: mpicom, mpi_character, masterprocid
 
-    ! args 
+    ! args
     character(len=*), intent(in) :: nlfile  ! filepath for file containing namelist input
 
     ! Local variables
@@ -77,9 +78,10 @@ contains
     use phys_control, only : phys_getopts
     use mo_chem_utls, only : get_spc_ndx
 
-    integer :: i, len, pos
+    integer :: i,j, len, pos
     character(len=64) :: name
     logical :: history_scwaccm_forcing
+    type(shr_exp_item_t), pointer :: grp
 
     call phys_getopts( history_scwaccm_forcing_out = history_scwaccm_forcing )
 
@@ -103,11 +105,26 @@ contains
     enddo
 
     ! parse the terms of the summations
-    call parse_sums(rxn_rate_sums, ngrps, grps)
+    grps_list => shr_exp_parse( rxn_rate_sums )
     deallocate( rxn_rate_sums )
 
-    do i = 1, ngrps
-       call addfld( grps(i)%name, (/ 'lev' /),'A', 'molecules/cm3/sec','reaction rate group')
+    if (masterproc) write(iulog,*) 'rate_diags_init :'
+
+    grp => grps_list
+    do while(associated(grp))
+
+       if (masterproc) then
+          write(iulog,*) ' grp name : ',trim(grp%name)
+
+          do j = 1, grp%n_terms
+             write(iulog,'(f12.4,a,a)') grp%coeffs(j),' * ',trim(grp%vars(j))
+          end do
+       end if
+
+       call addfld( grp%name, (/ 'lev' /),'A', 'molecules/cm3/sec','reaction rate group')
+
+       grp => grp%next_item
+
     enddo
 
     o3_ndx = get_spc_ndx('O3')
@@ -127,10 +144,11 @@ contains
 
     integer :: i, j, ndx
     real(r8) :: group_rate(ncol,pver)
+    type(shr_exp_item_t), pointer :: grp
 
     call set_rates( rxt_rates, vmr, ncol )
 
-    ! output individual tagged rates    
+    ! output individual tagged rates
     do i = 1, rxt_tag_cnt
        ! convert from vmr/sec to molecules/cm3/sec
        rxt_rates(:ncol,:,rxt_tag_map(i)) = rxt_rates(:ncol,:,rxt_tag_map(i)) * m(:ncol,:)
@@ -138,13 +156,19 @@ contains
     enddo
 
     ! output rate groups ( or families )
-    do i = 1, ngrps
+
+    grp => grps_list
+    do while(associated(grp))
+
        group_rate(:,:) = 0._r8
-       do j = 1, grps(i)%nmembers
-         ndx = lookup_tag_ndx(grps(i)%term(j))
-         group_rate(:ncol,:) = group_rate(:ncol,:) + grps(i)%multipler(j)*rxt_rates(:ncol,:,ndx)
-       enddo 
-       call outfld( grps(i)%name, group_rate(:ncol,:), ncol, lchnk )       
+       do j = 1, grp%n_terms
+         ndx = lookup_tag_ndx(grp%vars(j))
+         group_rate(:ncol,:) = group_rate(:ncol,:) + grp%coeffs(j)*rxt_rates(:ncol,:,ndx)
+       enddo
+       call outfld( grp%name, group_rate(:ncol,:), ncol, lchnk )
+
+       grp => grp%next_item
+
     end do
 
   end subroutine rate_diags_calc
@@ -161,9 +185,10 @@ contains
 
     real(r8) :: o3s_loss(ncol,pver) ! /sec
 
-    integer :: i, j, ndx
+    integer :: j, ndx
     real(r8) :: group_rate(ncol,pver)
     real(r8) :: lcl_rxt_rates(ncol,pver,rxntot)
+    type(shr_exp_item_t), pointer :: grp
 
     o3s_loss(:,:) = 0._r8
 
@@ -171,19 +196,32 @@ contains
        lcl_rxt_rates(:ncol,:,:) = rxt_rates(:ncol,:,:)
        call set_rates( lcl_rxt_rates, vmr, ncol )
 
-       do i = 1, ngrps
-          if (trim(grps(i)%name)=='O3S_Loss') then
+       grp => grps_list
+       loop: do while(associated(grp))
+
+          if (trim(grp%name)=='O3S_Loss') then
              group_rate(:,:) = 0._r8
-             do j = 1, grps(i)%nmembers
-                ndx = lookup_tag_ndx(grps(i)%term(j))
-                group_rate(:ncol,:) = group_rate(:ncol,:) + grps(i)%multipler(j)*lcl_rxt_rates(:ncol,:,ndx)
+             do j = 1, grp%n_terms
+                ndx = lookup_tag_ndx(grp%vars(j))
+                group_rate(:ncol,:) = group_rate(:ncol,:) + grp%coeffs(j)*lcl_rxt_rates(:ncol,:,ndx)
              enddo
              o3s_loss(:ncol,:) = group_rate(:ncol,:)/vmr(:ncol,:,o3_ndx)
+             exit loop
           endif
-       end do
+          grp => grp%next_item
+
+       end do loop
     endif
 
   end function rate_diags_o3s_loss
+
+!--------------------------------------------------------------------------------
+!--------------------------------------------------------------------------------
+  subroutine rate_diags_final
+
+    if (associated(grps_list)) call shr_exp_list_destroy(grps_list)
+
+  end subroutine rate_diags_final
 
 !-------------------------------------------------------------------
 ! Private routines :
@@ -211,7 +249,7 @@ contains
     if (ndx<0) then
        call endrun('rate_diags: not able to find rxn tag name: '//trim(name))
     endif
-    
+
   end function lookup_tag_ndx
 
 end module rate_diags

@@ -3,27 +3,29 @@ module  zm_microphysics
 !---------------------------------------------------------------------------------
 ! Purpose:
 !   CAM Interface for cumulus microphysics
-! 
-! Author: Xialiang Song and Guang Jun Zhang, June 2010  
+!
+! Author: Xialiang Song and Guang Jun Zhang, June 2010
 !---------------------------------------------------------------------------------
 
 use shr_kind_mod,      only: r8=>shr_kind_r8
-use spmd_utils,        only: masterproc    
+use spmd_utils,        only: masterproc
 use ppgrid,            only: pcols, pver, pverp
 use physconst,         only: gravit, rair, tmelt, cpair, rh2o, r_universal, mwh2o, rhoh2o
 use physconst,         only: latvap, latice
 !use activate_drop_mam, only: actdrop_mam_calc
-use ndrop,             only: activate_modal
+use ndrop,             only: activate_aerosol
 use ndrop_bam,         only: ndrop_bam_run
 use nucleate_ice,      only: nucleati
-use shr_spfn_mod,     only: erf => shr_spfn_erf 
+use shr_spfn_mod,     only: erf => shr_spfn_erf
 use shr_spfn_mod,     only: gamma => shr_spfn_gamma
 use wv_saturation,  only: svp_water, svp_ice
 use cam_logfile,       only: iulog
 use cam_abortutils,        only: endrun
-use micro_mg_utils, only:ice_autoconversion, snow_self_aggregation, accrete_cloud_water_snow, &
+use micro_pumas_utils, only:ice_autoconversion, snow_self_aggregation, accrete_cloud_water_snow, &
                          secondary_ice_production, accrete_rain_snow, heterogeneous_rain_freezing, &
                          accrete_cloud_water_rain, self_collection_rain, accrete_cloud_ice_snow
+use microp_aero, only: aerosol_properties_object
+use aerosol_properties_mod, only: aerosol_properties
 
 implicit none
 private
@@ -51,7 +53,7 @@ real(r8) :: xlf    ! latent heat of freezing
 real(r8) :: rhosn  ! bulk density snow
 real(r8) :: rhoi   ! bulk density ice
 
-real(r8) :: ac,bc,as,bs,ai,bi,ar,br  !fall speed parameters 
+real(r8) :: ac,bc,as,bs,ai,bi,ar,br  !fall speed parameters
 real(r8) :: ci,di    !ice mass-diameter relation parameters
 real(r8) :: cs,ds    !snow mass-diameter relation parameters
 real(r8) :: cr,dr    !drop mass-diameter relation parameters
@@ -193,18 +195,18 @@ contains
 
 subroutine zm_mphyi
 
-!----------------------------------------------------------------------- 
-! 
+!-----------------------------------------------------------------------
+!
 ! Purpose:
 ! initialize constants for the cumulus microphysics
 ! called from zm_conv_init() in zm_conv_intr.F90
 !
 ! Author: Xialiang Song, June 2010
-! 
+!
 !-----------------------------------------------------------------------
 
 !NOTE:
-! latent heats should probably be fixed with temperature 
+! latent heats should probably be fixed with temperature
 ! for energy conservation with the rest of the model
 ! (this looks like a +/- 3 or 4% effect, but will mess up energy balance)
 
@@ -242,7 +244,7 @@ subroutine zm_mphyi
 ! currently we assume spherical particles for cloud ice/snow
 ! m = cD^d
 
-        pi= 3.14159265358979323846_r8     
+        pi= 3.14159265358979323846_r8
 
 ! cloud ice mass-diameter relationship
 
@@ -298,7 +300,7 @@ subroutine zm_mphy(su,    qu,   mu,   du,   eu,    cmel,  cmei,  zf,   pm,   te,
                    fhmlm,  hmpim,  accslm, dlfm,   autoln, accrln, bergnn, fhtimn, fhtctn,    &
                    fhmln,  accsln, activn, dlfn,   autoim, accsim, difm,   nuclin, autoin,    &
                    accsin, hmpin,  difn,   trspcm, trspcn, trspim, trspin, lamc,   pgam  )
-   
+
 
 ! Purpose:
 ! microphysic parameterization for Zhang-McFarlane convection scheme
@@ -355,7 +357,7 @@ subroutine zm_mphy(su,    qu,   mu,   du,   eu,    cmel,  cmei,  zf,   pm,   te,
   real(r8), intent(out) :: nr(pcols,pver)       ! rain number conc
   real(r8), intent(out) :: rprd(pcols,pver)     ! rate of production of precip at that layer
   real(r8), intent(out) :: sprd(pcols,pver)     ! rate of production of snow at that layer
-  real(r8), intent(out) :: frz(pcols,pver)      ! rate of freezing 
+  real(r8), intent(out) :: frz(pcols,pver)      ! rate of freezing
 
 
   real(r8), intent(inout) :: lamc(pcols,pver)     ! slope of cloud liquid size distr
@@ -402,7 +404,7 @@ subroutine zm_mphy(su,    qu,   mu,   du,   eu,    cmel,  cmei,  zf,   pm,   te,
   real(r8) :: deltat                ! time step (s)
   real(r8) :: omsm                  ! number near unity for round-off issues
   real(r8) :: dum                   ! temporary dummy variable
-  real(r8) :: dum1                  ! temporary dummy variable 
+  real(r8) :: dum1                  ! temporary dummy variable
   real(r8) :: dum2                  ! temporary dummy variable
 
   real(r8) :: q(pcols,pver)         ! water vapor mixing ratio (kg/kg)
@@ -484,7 +486,7 @@ subroutine zm_mphy(su,    qu,   mu,   du,   eu,    cmel,  cmei,  zf,   pm,   te,
   real(r8) :: qre                   ! dummy qr for conservation check
   real(r8) :: nre                   ! dummy nr for conservation check
   real(r8) :: qnie                  ! dummy qni for conservation check
-  real(r8) :: nse                   ! dummy ns for conservation check      
+  real(r8) :: nse                   ! dummy ns for conservation check
   real(r8) :: ratio                 ! parameter for conservation check
 
 ! sum of source/sink terms for cloud hydrometeor
@@ -516,7 +518,7 @@ subroutine zm_mphy(su,    qu,   mu,   du,   eu,    cmel,  cmei,  zf,   pm,   te,
 
 ! bulk aerosol variables
   real(r8), allocatable :: naer2(:,:,:)    ! new aerosol number concentration (/m3)
-  real(r8), allocatable :: naer2h(:,:,:)   ! new aerosol number concentration (/m3) 
+  real(r8), allocatable :: naer2h(:,:,:)   ! new aerosol number concentration (/m3)
   real(r8), allocatable :: maerosol(:)     ! aerosol mass conc (kg/m3)
   real(r8) :: so4_num
   real(r8) :: soot_num
@@ -551,7 +553,7 @@ subroutine zm_mphy(su,    qu,   mu,   du,   eu,    cmel,  cmei,  zf,   pm,   te,
   real(r8) :: nidep(pcols,pver)     !number conc of ice nuclei due to deoposion nucleation (hetero nuc) (1/m3)
   real(r8) :: niimm(pcols,pver)     !number conc of ice nuclei due to immersion freezing (hetero nuc) (1/m3)
 
-  real(r8) :: wpice, weff, fhom      ! unused dummies  
+  real(r8) :: wpice, weff, fhom      ! unused dummies
 
 ! loop array variables
   integer i,k, n, l
@@ -582,8 +584,8 @@ subroutine zm_mphy(su,    qu,   mu,   du,   eu,    cmel,  cmei,  zf,   pm,   te,
 ! used in vertical velocity calculation
   real(r8) th(pcols,pver)
   real(r8) qh(pcols,pver)
-  real(r8) zkine(pcols,pver) 
-  real(r8) zbuo(pcols,pver)    
+  real(r8) zkine(pcols,pver)
+  real(r8) zbuo(pcols,pver)
   real(r8) zfacbuo, cwdrag, cwifrac, retv,  zbuoc
   real(r8) zbc, zbe,  zdkbuo, zdken
   real(r8) arcf(pcols,pver)
@@ -601,7 +603,7 @@ subroutine zm_mphy(su,    qu,   mu,   du,   eu,    cmel,  cmei,  zf,   pm,   te,
   real(r8) :: niadj(pcols,pver)     !ice crystal num tendency due to adjustment
   real(r8) :: ncorg, niorg, total
 
-  real(r8) :: rhoh(pcols,pver)    ! air density (kg m-3) at interface 
+  real(r8) :: rhoh(pcols,pver)    ! air density (kg m-3) at interface
   real(r8) :: rhom(pcols,pver)    ! air density (kg m-3) at mid-level
   real(r8) :: tu(pcols,pver)      ! temperature in updraft (K)
 
@@ -611,10 +613,15 @@ subroutine zm_mphy(su,    qu,   mu,   du,   eu,    cmel,  cmei,  zf,   pm,   te,
   real(r8) :: nai_bcphi, nai_dst1, nai_dst2, nai_dst3, nai_dst4
 
   real(r8) flxrm, mvtrm, flxrn, mvtrn, flxsm, mvtsm, flxsn, mvtsn
-  integer  nlr, nls 
+  integer  nlr, nls
 
   real(r8)  rmean, beta6, beta66, r6, r6c
   real(r8)  temp1, temp2, temp3, temp4   ! variable to store output which is not required by this routine
+
+  class(aerosol_properties), pointer :: aero_props_obj => null()
+
+! Aerosol properties
+  aero_props_obj => aerosol_properties_object()
 
 !ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
 ! initialization
@@ -633,9 +640,9 @@ subroutine zm_mphy(su,    qu,   mu,   du,   eu,    cmel,  cmei,  zf,   pm,   te,
         maerosol(aero%nbulk))
 
   end if
-	
+
   deltat= get_step_size()      !for FV dynamical core
-        
+
   ! parameters for scheme
   omsm=0.99999_r8
   zfacbuo = 0.5_r8/(1._r8+0.5_r8)
@@ -643,11 +650,11 @@ subroutine zm_mphy(su,    qu,   mu,   du,   eu,    cmel,  cmei,  zf,   pm,   te,
   cwifrac = 0.5_r8
   retv    = 0.608_r8
   bergtsf = 1800._r8
- 
+
   ! initialize multi-level fields
   do i=1,il2g
      do k=1,pver
-        q(i,k) = qu(i,k)         
+        q(i,k) = qu(i,k)
         tu(i,k)= su(i,k) - grav/cp*zf(i,k)
         t(i,k) = su(i,k) - grav/cp*zf(i,k)
         p(i,k) = 100._r8*pm(i,k)
@@ -669,7 +676,7 @@ subroutine zm_mphy(su,    qu,   mu,   du,   eu,    cmel,  cmei,  zf,   pm,   te,
         qcic(i,k) = 0._r8
         qiic(i,k) = 0._r8
         ncic(i,k) = 0._r8
-        niic(i,k) = 0._r8 
+        niic(i,k) = 0._r8
         qr(i,k)   = 0._r8
         qni(i,k)  = 0._r8
         nr(i,k)   = 0._r8
@@ -681,7 +688,7 @@ subroutine zm_mphy(su,    qu,   mu,   du,   eu,    cmel,  cmei,  zf,   pm,   te,
         nimey(i,k) = 0._r8
         nihf(i,k)  = 0._r8
         nidep(i,k) = 0._r8
-        niimm(i,k) = 0._r8  
+        niimm(i,k) = 0._r8
         fhmrm(i,k) = 0._r8
 
         autolm(i,k) = 0._r8
@@ -736,10 +743,10 @@ subroutine zm_mphy(su,    qu,   mu,   du,   eu,    cmel,  cmei,  zf,   pm,   te,
            qh (i,k) = qe(i,k)
            dz (i,k)  = zf(i,k) - zf(i,k+1)
            ph(i,k)   = p(i,k)
-        else 
+        else
            rhoh(i,k) = 0.5_r8*(p(i,k)+p(i,k-1))/(t(i,k)*rd)
            if (k .eq. pver) then
-              rhom(i,k) = p(i,k)/(rd*t(i,k))   
+              rhom(i,k) = p(i,k)/(rd*t(i,k))
            else
               rhom(i,k) = 2.0_r8*p(i,k)/(rd*(t(i,k)+t(i,k+1)))
            end if
@@ -752,10 +759,10 @@ subroutine zm_mphy(su,    qu,   mu,   du,   eu,    cmel,  cmei,  zf,   pm,   te,
         mua(i,k) = 1.496E-6_r8*t(i,k)**1.5_r8/ &
            (t(i,k)+120._r8)
 
-        rho(i,k) = rhoh(i,k)    
+        rho(i,k) = rhoh(i,k)
 
         ! air density adjustment for fallspeed parameters
-        ! add air density correction factor to the power of 
+        ! add air density correction factor to the power of
         ! 0.54 following Heymsfield and Bansemer 2006
 
         arn(i,k)=ar*(rhosu/rho(i,k))**0.54_r8
@@ -791,7 +798,7 @@ subroutine zm_mphy(su,    qu,   mu,   du,   eu,    cmel,  cmei,  zf,   pm,   te,
      do k=1,pver
         do i=1,il2g
            naer2(i,k,:)=0._r8
-           naer2h(i,k,:)=0._r8      
+           naer2h(i,k,:)=0._r8
            dum2l(i,k)=0._r8
            dum2i(i,k)=0._r8
         end do
@@ -815,7 +822,7 @@ subroutine zm_mphy(su,    qu,   mu,   du,   eu,    cmel,  cmei,  zf,   pm,   te,
               else
                  naer2(i,k,m)=maerosol(m)*aero%num_to_mass_aer(m)
               end if
-              ntaer(i,k) = ntaer(i,k) + naer2(i,k,m) 
+              ntaer(i,k) = ntaer(i,k) + naer2(i,k,m)
            end do
         end do
      end do
@@ -858,7 +865,7 @@ subroutine zm_mphy(su,    qu,   mu,   du,   eu,    cmel,  cmei,  zf,   pm,   te,
            ncde(i,k) = 0._r8
            nide(i,k) = 0._r8
            rprd(i,k) = 0._r8
-           sprd(i,k) = 0._r8  
+           sprd(i,k) = 0._r8
            frz(i,k)  = 0._r8
         end do
         goto 300
@@ -867,7 +874,7 @@ subroutine zm_mphy(su,    qu,   mu,   du,   eu,    cmel,  cmei,  zf,   pm,   te,
      kqc(i) = 1
      kqi(i) = 1
      lcbase(i) = .true.
-     libase(i) = .true. 
+     libase(i) = .true.
 
      ! assign number of steps for iteration
      ! use 2 steps following Song and Zhang, 2011, J. Clim.
@@ -899,7 +906,7 @@ subroutine zm_mphy(su,    qu,   mu,   du,   eu,    cmel,  cmei,  zf,   pm,   te,
            qiic(i,k)=0._r8
            qcic(i,k)=0._r8
            niic(i,k)=0._r8
-           ncic(i,k)=0._r8           
+           ncic(i,k)=0._r8
            qcimp(k) = .false.
            ncimp(k) = .false.
            qiimp(k) = .false.
@@ -949,7 +956,7 @@ subroutine zm_mphy(su,    qu,   mu,   du,   eu,    cmel,  cmei,  zf,   pm,   te,
         end do
 
         do k = pver,msg+2,-1
-  
+
            es(i,k)  = svp_water(t(i,k))     ! over water in mixed clouds
            esi(i,k) = svp_ice(t(i,k))       ! over ice
 
@@ -958,9 +965,9 @@ subroutine zm_mphy(su,    qu,   mu,   du,   eu,    cmel,  cmei,  zf,   pm,   te,
 
               ! initialize precip fallspeeds to zero
               if (it.eq.1) then
-                ums(k)=0._r8 
-                uns(k)=0._r8 
-                umr(k)=0._r8 
+                ums(k)=0._r8
+                uns(k)=0._r8
+                umr(k)=0._r8
                 unr(k)=0._r8
                 prf(k)=0._r8
                 pnrf(k)=0._r8
@@ -987,8 +994,8 @@ subroutine zm_mphy(su,    qu,   mu,   du,   eu,    cmel,  cmei,  zf,   pm,   te,
                  qric(i,k) = qr(i,k)
                  nsic(i,k) = ns(i,k)
                  nric(i,k) = nr(i,k)
-              else 
-                 if (k.le.kqc(i)) then   
+              else
+                 if (k.le.kqc(i)) then
                     qcic(i,k) = qc(i,k)
                     ncic(i,k) = nc(i,k)
 
@@ -998,7 +1005,7 @@ subroutine zm_mphy(su,    qu,   mu,   du,   eu,    cmel,  cmei,  zf,   pm,   te,
                     flxrn = 0._r8
                     mvtrn = 0._r8
                     nlr = 0
-                    
+
                     do kk= k,jt(i)+3,-1
                        if (qr(i,kk-1) .gt. 0._r8) then
                            nlr = nlr + 1
@@ -1033,7 +1040,7 @@ subroutine zm_mphy(su,    qu,   mu,   du,   eu,    cmel,  cmei,  zf,   pm,   te,
                    flxsn = 0._r8
                    mvtsn = 0._r8
                    nls = 0
-  
+
                    do kk= k,jt(i)+3,-1
                      if (qni(i,kk-1) .gt. 0._r8) then
                        nls = nls + 1
@@ -1082,11 +1089,11 @@ subroutine zm_mphy(su,    qu,   mu,   du,   eu,    cmel,  cmei,  zf,   pm,   te,
                  kqi(i)=k
                  libase(i) = .false.
                  qiic(i,k) = dz(i,k)*cmei(i,k-1)/(mu(i,k-1)+dz(i,k)*du(i,k-1))
-                 niic(i,k) = qiic(i,k)/(4._r8/3._r8*pi*25.e-6_r8**3*rhoi)               
+                 niic(i,k) = qiic(i,k)/(4._r8/3._r8*pi*25.e-6_r8**3*rhoi)
               end if
 
               !***************************************************************************
-              ! get size distribution parameters based on in-cloud cloud water/ice 
+              ! get size distribution parameters based on in-cloud cloud water/ice
               ! these calculations also ensure consistency between number and mixing ratio
               !***************************************************************************
               ! cloud ice
@@ -1136,7 +1143,7 @@ subroutine zm_mphy(su,    qu,   mu,   du,   eu,    cmel,  cmei,  zf,   pm,   te,
 
                  ! lammin, 50 micron diameter max mean size
                  lammin = (pgam(i,k)+1._r8)/40.e-6_r8
-                 lammax = (pgam(i,k)+1._r8)/1.e-6_r8 
+                 lammax = (pgam(i,k)+1._r8)/1.e-6_r8
 
                  if (lamc(i,k).lt.lammin) then
                     lamc(i,k) = lammin
@@ -1152,7 +1159,7 @@ subroutine zm_mphy(su,    qu,   mu,   du,   eu,    cmel,  cmei,  zf,   pm,   te,
 
                  ! parameter to calculate droplet freezing
 
-                 cdist1(k) = ncic(i,k)/gamma(pgam(i,k)+1._r8) 
+                 cdist1(k) = ncic(i,k)/gamma(pgam(i,k)+1._r8)
               else
                  lamc(i,k) = 0._r8
                  cdist1(k) = 0._r8
@@ -1169,9 +1176,9 @@ subroutine zm_mphy(su,    qu,   mu,   du,   eu,    cmel,  cmei,  zf,   pm,   te,
                  qi(i,k) = 0._r8
                  ni(i,k) = 0._r8
               end if
-              
+
               !**************************************************************************
-              ! begin micropysical process calculations 
+              ! begin micropysical process calculations
               !**************************************************************************
 
               !.................................................................
@@ -1183,15 +1190,15 @@ subroutine zm_mphy(su,    qu,   mu,   du,   eu,    cmel,  cmei,  zf,   pm,   te,
 
                  ! nprc is increase in rain number conc due to autoconversion
                  ! nprc1 is decrease in cloud droplet conc due to autoconversion
-                 ! Khrouditnov and Kogan (2000) 
+                 ! Khrouditnov and Kogan (2000)
 !                 prc(k) = 1350._r8*qcic(i,k)**2.47_r8*    &
 !                    (ncic(i,k)/1.e6_r8*rho(i,k))**(-1.79_r8)
 
                 ! Liu and Daum(2004)(modified), Wood(2005)
                 rmean = 1.e6_r8*((qcic(i,k)/ncic(i,k))/(4._r8/3._r8*pi*rhow))**(1._r8/3._r8)
 
-                if (rmean .ge. 15._r8) then 
- 
+                if (rmean .ge. 15._r8) then
+
                   beta6  = (1._r8+3._r8/rmean)**(1._r8/3._r8)
                   beta66 = (1._r8+3._r8/rmean)**2._r8
                   r6     = beta6*rmean
@@ -1211,13 +1218,13 @@ subroutine zm_mphy(su,    qu,   mu,   du,   eu,    cmel,  cmei,  zf,   pm,   te,
                  nprc(k)=0._r8
                  nprc1(k)=0._r8
               end if
- 
+
               ! provisional rain mixing ratio and number concentration (qric and nric)
               ! at boundary are estimated via autoconversion
 
               if (k.eq.kqc(i) .and. it.eq.1) then
                  qric(i,k) = prc(k)*dz(i,k)/0.55_r8
-                 nric(i,k) = nprc(k)*dz(i,k)/0.55_r8 
+                 nric(i,k) = nprc(k)*dz(i,k)/0.55_r8
                  qr(i,k) = 0.0_r8
                  nr(i,k) = 0.0_r8
               end if
@@ -1226,9 +1233,9 @@ subroutine zm_mphy(su,    qu,   mu,   du,   eu,    cmel,  cmei,  zf,   pm,   te,
               ! Autoconversion of cloud ice to snow
               ! similar to Ferrier (1994)
 
-              call ice_autoconversion(t(i,k), qiic(i,k), lami(k), n0i(k), dcs, prci(k), nprci(k), 1)  
+              call ice_autoconversion(t(i,k), qiic(i,k), lami(k), n0i(k), dcs, prci(k), nprci(k), 1)
 
-              ! provisional snow mixing ratio and number concentration (qniic and nsic) 
+              ! provisional snow mixing ratio and number concentration (qniic and nsic)
               ! at boundary are estimated via autoconversion
 
               if (k.eq.kqi(i) .and. it.eq.1) then
@@ -1248,7 +1255,7 @@ subroutine zm_mphy(su,    qu,   mu,   du,   eu,    cmel,  cmei,  zf,   pm,   te,
                  nric(i,k)=0._r8
               end if
 
-              ! make sure number concentration is a positive number to avoid 
+              ! make sure number concentration is a positive number to avoid
               ! taking root of negative later
               nric(i,k)=max(nric(i,k),0._r8)
               nsic(i,k)=max(nsic(i,k),0._r8)
@@ -1312,7 +1319,7 @@ subroutine zm_mphy(su,    qu,   mu,   du,   eu,    cmel,  cmei,  zf,   pm,   te,
 
                  ! provisional snow number and mass weighted mean fallspeed (m/s)
                  ums(k) = min(asn(i,k)*gamma(4._r8+bs)/(6._r8*lams(k)**bs),3.6_r8)
-                 uns(k) = min(asn(i,k)*gamma(1._r8+bs)/lams(k)**bs,3.6_r8) 
+                 uns(k) = min(asn(i,k)*gamma(1._r8+bs)/lams(k)**bs,3.6_r8)
               else
                  lams(k) = 0._r8
                  n0s(k) = 0._r8
@@ -1337,9 +1344,9 @@ subroutine zm_mphy(su,    qu,   mu,   du,   eu,    cmel,  cmei,  zf,   pm,   te,
 
               call accrete_cloud_water_snow(t(i,k), rho(i,k), asn(i,k), uns(k), mua(i,k),  &
                      qcic(i,k), ncic(i,k), qniic(i,k), pgam(i,k), lamc(i,k), lams(k), n0s(k), &
-                     psacws(k), npsacws(k), 1) 
+                     psacws(k), npsacws(k), 1)
 
-              ! secondary ice production due to accretion of droplets by snow 
+              ! secondary ice production due to accretion of droplets by snow
               ! (Hallet-Mossop process) (from Cotton et al., 1986)
 
               call secondary_ice_production(t(i,k), psacws(k), msacwi(k), nsacwi(k), 1)
@@ -1362,7 +1369,7 @@ subroutine zm_mphy(su,    qu,   mu,   du,   eu,    cmel,  cmei,  zf,   pm,   te,
               ! formula from Khrouditnov and Kogan (2000)
               ! gravitational collection kernel, droplet fall speed neglected
 
-              call accrete_cloud_water_rain(.true., qric(i,k), qcic(i,k), ncic(i,k), [1._r8], [0._r8], pra(k), npra(k), 1) 
+              call accrete_cloud_water_rain(.true., qric(i,k), qcic(i,k), ncic(i,k), [1._r8], [0._r8], pra(k), npra(k), 1)
 
               !.......................................................................
               ! Self-collection of rain drops
@@ -1387,7 +1394,7 @@ subroutine zm_mphy(su,    qu,   mu,   du,   eu,    cmel,  cmei,  zf,   pm,   te,
 
               !........................................................................
               ! calculate vertical velocity in cumulus updraft
-              
+
               if (k.eq.jb(i)) then
                  zkine(i,jb(i)) = 0.5_r8
                  wu   (i,jb(i)) = 1._r8
@@ -1468,10 +1475,10 @@ subroutine zm_mphy(su,    qu,   mu,   du,   eu,    cmel,  cmei,  zf,   pm,   te,
 
                     end if
 
-                    call activate_modal(  &
+                    call activate_aerosol(  &
                        wu(i,k), wmix, wdiab, wmin, wmax,                 &
                        t(i,k), rho(i,k), naermod, aero%nmodes, vaerosol, &
-                       hygro, fn, fm,                  &
+                       hygro, aero_props_obj, fn, fm,                  &
                        fluxn, fluxm, flux_fullact, in_cloud_in=in_cloud, smax_f=smax_f)
 
                     do m = 1, aero%nmodes
@@ -1484,7 +1491,7 @@ subroutine zm_mphy(su,    qu,   mu,   du,   eu,    cmel,  cmei,  zf,   pm,   te,
                       write(iulog,*) "vaerosol(m)=",vaerosol,"aero%voltonumbhi(m)=",aero%voltonumbhi
                       write(iulog,*) "aero%voltonumblo(m)=",aero%voltonumblo,"k=",k,"i=",i
                       write(iulog,*) "aero%numg_a(i,k,m)=",aero%numg_a(i,k,:),"rho(i,k)=",rho(i,k)
-                      write(iulog,*) "aero%mmrg_a(i,k,l,m)=",aero%mmrg_a(i,k,:,:)                                    
+                      write(iulog,*) "aero%mmrg_a(i,k,l,m)=",aero%mmrg_a(i,k,:,:)
                     end if
 
                     dum2l(i,k) = nlsrc
@@ -1509,7 +1516,7 @@ subroutine zm_mphy(su,    qu,   mu,   du,   eu,    cmel,  cmei,  zf,   pm,   te,
                  ! assume aerosols already activated are equal number of existing droplets for simplicity
                  if (k.eq.kqc(i))  then
                     npccn(k) = dum2l(i,k)/deltat
-                 else  
+                 else
                     npccn(k) = (dum2l(i,k)-ncic(i,k))/deltat
                  end if
 
@@ -1541,7 +1548,7 @@ subroutine zm_mphy(su,    qu,   mu,   du,   eu,    cmel,  cmei,  zf,   pm,   te,
                  dst3_num = 0._r8
                  dst4_num = 0._r8
 
-                 if (aero%scheme == 'modal') then          
+                 if (aero%scheme == 'modal') then
 
                     !For modal aerosols, assume for the upper troposphere:
                     ! soot = accumulation mode
@@ -1553,44 +1560,44 @@ subroutine zm_mphy(su,    qu,   mu,   du,   eu,    cmel,  cmei,  zf,   pm,   te,
                     dmc  = 0.5_r8*(aero%mmrg_a(i,k-1,aero%coarse_dust_idx,aero%mode_coarse_idx)      &
                                   +aero%mmrg_a(i,k,aero%coarse_dust_idx,aero%mode_coarse_idx))
                     ssmc = 0.5_r8*(aero%mmrg_a(i,k-1,aero%coarse_nacl_idx,aero%mode_coarse_idx)      &
-                                  +aero%mmrg_a(i,k,aero%coarse_nacl_idx,aero%mode_coarse_idx))  
+                                  +aero%mmrg_a(i,k,aero%coarse_nacl_idx,aero%mode_coarse_idx))
                     if (dmc > 0._r8) then
-                        dst_num = dmc/(ssmc + dmc) *(aero%numg_a(i,k-1,aero%mode_coarse_idx)         & 
+                        dst_num = dmc/(ssmc + dmc) *(aero%numg_a(i,k-1,aero%mode_coarse_idx)         &
                                   + aero%numg_a(i,k,aero%mode_coarse_idx))*0.5_r8*rho(i,k)*1.0e-6_r8
-                    else 
+                    else
                        dst_num = 0.0_r8
                     end if
                     dgnum_aitken = 0.5_r8*(aero%dgnumg(i,k,aero%mode_aitken_idx)+   &
-                                           aero%dgnumg(i,k-1,aero%mode_aitken_idx))     
+                                           aero%dgnumg(i,k-1,aero%mode_aitken_idx))
                     if (dgnum_aitken > 0._r8) then
                        ! only allow so4 with D>0.1 um in ice nucleation
                        so4_num  = 0.5_r8*(aero%numg_a(i,k-1,aero%mode_aitken_idx)+          &
                           aero%numg_a(i,k,aero%mode_aitken_idx))*rho(i,k)*1.0e-6_r8         &
                           * (0.5_r8 - 0.5_r8*erf(log(0.1e-6_r8/dgnum_aitken)/  &
                           (2._r8**0.5_r8*log(aero%sigmag_aitken))))
-                    else 
-                       so4_num = 0.0_r8 
+                    else
+                       so4_num = 0.0_r8
                     end if
                     so4_num = max(0.0_r8, so4_num)
 
-                 else if (aero%scheme == 'bulk') then          
+                 else if (aero%scheme == 'bulk') then
 
-                    if (aero%idxsul > 0) then 
+                    if (aero%idxsul > 0) then
                        so4_num = naer2h(i,k,aero%idxsul)/25._r8 *1.0e-6_r8
                     end if
-                    if (aero%idxbcphi > 0) then 
+                    if (aero%idxbcphi > 0) then
                        soot_num = naer2h(i,k,aero%idxbcphi)/25._r8 *1.0e-6_r8
                     end if
-                    if (aero%idxdst1 > 0) then 
+                    if (aero%idxdst1 > 0) then
                        dst1_num = naer2h(i,k,aero%idxdst1)/25._r8 *1.0e-6_r8
                     end if
-                    if (aero%idxdst2 > 0) then 
+                    if (aero%idxdst2 > 0) then
                        dst2_num = naer2h(i,k,aero%idxdst2)/25._r8 *1.0e-6_r8
                     end if
-                    if (aero%idxdst3 > 0) then 
+                    if (aero%idxdst3 > 0) then
                        dst3_num = naer2h(i,k,aero%idxdst3)/25._r8 *1.0e-6_r8
                     end if
-                    if (aero%idxdst4 > 0) then 
+                    if (aero%idxdst4 > 0) then
                        dst4_num = naer2h(i,k,aero%idxdst4)/25._r8 *1.0e-6_r8
                     end if
                     dst_num = dst1_num + dst2_num + dst3_num + dst4_num
@@ -1607,7 +1614,7 @@ subroutine zm_mphy(su,    qu,   mu,   du,   eu,    cmel,  cmei,  zf,   pm,   te,
                        1.0e-20_r8, 0.0_r8, rho(i,k), so4_num, dst_num, soot_num, 1.0_r8, &
                        dum2i(i,k), nihf(i,k), niimm(i,k), nidep(i,k), nimey(i,k),   &
                        wpice, weff, fhom, temp1, temp2, temp3, temp4, .true.   )
-                 end if   
+                 end if
                  nihf(i,k)=nihf(i,k)*rho(i,k)           !  convert from #/kg -> #/m3)
                  niimm(i,k)=niimm(i,k)*rho(i,k)
                  nidep(i,k)=nidep(i,k)*rho(i,k)
@@ -1626,7 +1633,7 @@ subroutine zm_mphy(su,    qu,   mu,   du,   eu,    cmel,  cmei,  zf,   pm,   te,
                  dum2i(i,k)=0._r8
               end if
 
-              ! ice nucleation if activated nuclei exist at t<0C 
+              ! ice nucleation if activated nuclei exist at t<0C
 
               if (dum2i(i,k).gt.0._r8.and.t(i,k).lt.tmelt.and. &
                  relhum(i,k)*es(i,k)/esi(i,k).gt. 1.05_r8  .and. k.gt.jt(i)+1) then
@@ -1650,11 +1657,11 @@ subroutine zm_mphy(su,    qu,   mu,   du,   eu,    cmel,  cmei,  zf,   pm,   te,
               !................................................................................
               ! Bergeron process
               ! If 0C< T <-40C and both ice and liquid exist
-         
+
               if (t(i,k).le.273.15_r8 .and. t(i,k).gt.233.15_r8 .and.  &
                  qiic(i,k).gt.0.5e-6_r8 .and. qcic(i,k).gt. qsmall)  then
                  plevap = qcic(i,k)/bergtsf
-                 prb(k) = max(0._r8,plevap) 
+                 prb(k) = max(0._r8,plevap)
                  nprb(k) = prb(k)/(qcic(i,k)/ncic(i,k))
               else
                  prb(k)=0._r8
@@ -1686,10 +1693,10 @@ subroutine zm_mphy(su,    qu,   mu,   du,   eu,    cmel,  cmei,  zf,   pm,   te,
                     naimm = (0.00291_r8*nai_bcphi + 32.3_r8*(nai_dst1 + nai_dst2 + &
                        nai_dst3 + nai_dst4))/ntaerh(i,k)             !m-3
                     if (ttend(k) .lt. 0._r8) then
-                       nnuccc(k) = -naimm*exp(273.15_r8-t(i,k))*ttend(k)*qcic(i,k)/rhow   ! kg-1s-1                        
+                       nnuccc(k) = -naimm*exp(273.15_r8-t(i,k))*ttend(k)*qcic(i,k)/rhow   ! kg-1s-1
                        mnuccc(k) = nnuccc(k)*qcic(i,k)/ncic(i,k)
                     end if
-                 else   
+                 else
                     if (.false.) then
                        ! immersion freezing (Diehl and Wurzler, 2004)
                        ttend(k) = -grav*wu(i,k)/cp/(1.0_r8+gamhat(i,k))
@@ -1713,7 +1720,7 @@ subroutine zm_mphy(su,    qu,   mu,   du,   eu,    cmel,  cmei,  zf,   pm,   te,
                  ! contact freezing (Young, 1974) with hooks into simulated dust
 
                  tcnt=(270.16_r8-t(i,k))**1.3_r8
-                 viscosity=1.8e-5_r8*(t(i,k)/298.0_r8)**0.85_r8    ! Viscosity (kg/m/s)          
+                 viscosity=1.8e-5_r8*(t(i,k)/298.0_r8)**0.85_r8    ! Viscosity (kg/m/s)
                  mfp=2.0_r8*viscosity/(ph(i,k)  &                  ! Mean free path (m)
                     *sqrt(8.0_r8*28.96e-3_r8/(pi*8.314409_r8*t(i,k))))
 
@@ -1721,7 +1728,7 @@ subroutine zm_mphy(su,    qu,   mu,   du,   eu,    cmel,  cmei,  zf,   pm,   te,
                  slip2=1.0_r8+(mfp/rn_dst2)*(1.257_r8+(0.4_r8*Exp(-(1.1_r8*rn_dst2/mfp))))
                  slip3=1.0_r8+(mfp/rn_dst3)*(1.257_r8+(0.4_r8*Exp(-(1.1_r8*rn_dst3/mfp))))
                  slip4=1.0_r8+(mfp/rn_dst4)*(1.257_r8+(0.4_r8*Exp(-(1.1_r8*rn_dst4/mfp))))
-                 
+
                  dfaer1=1.381e-23_r8*t(i,k)*slip1/(6._r8*pi*viscosity*rn_dst1)  ! aerosol diffusivity (m2/s)
                  dfaer2=1.381e-23_r8*t(i,k)*slip2/(6._r8*pi*viscosity*rn_dst2)
                  dfaer3=1.381e-23_r8*t(i,k)*slip3/(6._r8*pi*viscosity*rn_dst3)
@@ -1741,7 +1748,7 @@ subroutine zm_mphy(su,    qu,   mu,   du,   eu,    cmel,  cmei,  zf,   pm,   te,
                     dmc  = 0.5_r8*(aero%mmrg_a(i,k,aero%coarse_dust_idx,aero%mode_coarse_idx)     &
                                   +aero%mmrg_a(i,k-1,aero%coarse_dust_idx,aero%mode_coarse_idx))
                     ssmc = 0.5_r8*(aero%mmrg_a(i,k,aero%coarse_nacl_idx,aero%mode_coarse_idx)     &
-                                  +aero%mmrg_a(i,k-1,aero%coarse_nacl_idx,aero%mode_coarse_idx)) 
+                                  +aero%mmrg_a(i,k-1,aero%coarse_nacl_idx,aero%mode_coarse_idx))
                     if (dmc > 0.0_r8) then
                         nacon3 = dmc/(ssmc + dmc) * (aero%numg_a(i,k,aero%mode_coarse_idx)     &
                                  + aero%numg_a(i,k-1,aero%mode_coarse_idx))*0.5_r8*rho(i,k)
@@ -1775,7 +1782,7 @@ subroutine zm_mphy(su,    qu,   mu,   du,   eu,    cmel,  cmei,  zf,   pm,   te,
                  !                 mnuccc(k)=mnuccc(k)*dum
                  !                 nnuccc(k)=nnuccd(k)
                  !              end if
- 
+
               else
                  mnuccc(k) = 0._r8
                  nnuccc(k) = 0._r8
@@ -1817,14 +1824,14 @@ subroutine zm_mphy(su,    qu,   mu,   du,   eu,    cmel,  cmei,  zf,   pm,   te,
               mtimec=deltat/900._r8
 
               ! conservation of qc
-              ! ice mass production from ice nucleation(deposition/cond.-freezing), mnuccd, 
+              ! ice mass production from ice nucleation(deposition/cond.-freezing), mnuccd,
               ! is considered as a part of cmei.
-                            
+
               qce = mu(i,k)*qc(i,k)-fholm(i,k) +dz(i,k)*cmel(i,k-1)
               dum = arcf(i,k)*(pra(k)+prc(k)+prb(k)+mnuccc(k)+mnucct(k)+msacwi(k)+   &
                                psacws(k))*dz(i,k)
               if( qce.lt.0._r8)  then
-                 qcimp(k) = .true.              
+                 qcimp(k) = .true.
                  prc(k) = 0._r8
                  pra(k) = 0._r8
                  prb(k) = 0._r8
@@ -1838,15 +1845,15 @@ subroutine zm_mphy(su,    qu,   mu,   du,   eu,    cmel,  cmei,  zf,   pm,   te,
                  pra(k) = pra(k)*ratio
                  prb(k) = prb(k)*ratio
                  mnuccc(k) = mnuccc(k)*ratio
-                 mnucct(k) = mnucct(k)*ratio  
-                 msacwi(k) = msacwi(k)*ratio  
-                 psacws(k) = psacws(k)*ratio 
+                 mnucct(k) = mnucct(k)*ratio
+                 msacwi(k) = msacwi(k)*ratio
+                 psacws(k) = psacws(k)*ratio
               end if
 
               ! conservation of nc
               nce = mu(i,k)*nc(i,k)-fholn(i,k) + (arcf(i,k)*npccn(k)*mtimec)*dz(i,k)
               dum = arcf(i,k)*dz(i,k)*(nprc1(k)+npra(k)+nnuccc(k)+nnucct(k)+ &
-                 npsacws(k)+ nprb(k) )              
+                 npsacws(k)+ nprb(k) )
               if (nce.lt.0._r8) then
                  ncimp(k) = .true.
                  nprc1(k) = 0._r8
@@ -1854,21 +1861,21 @@ subroutine zm_mphy(su,    qu,   mu,   du,   eu,    cmel,  cmei,  zf,   pm,   te,
                  nnuccc(k) = 0._r8
                  nnucct(k) = 0._r8
                  npsacws(k) = 0._r8
-                 nprb(k) = 0._r8                                  
+                 nprb(k) = 0._r8
               else if (dum.gt.nce) then
-                 ratio = nce/dum*omsm 
+                 ratio = nce/dum*omsm
                  nprc1(k) = nprc1(k)*ratio
                  npra(k) = npra(k)*ratio
                  nnuccc(k) = nnuccc(k)*ratio
-                 nnucct(k) = nnucct(k)*ratio  
+                 nnucct(k) = nnucct(k)*ratio
                  npsacws(k) = npsacws(k)*ratio
-                 nprb(k) = nprb(k)*ratio                           
+                 nprb(k) = nprb(k)*ratio
               end if
- 
+
               ! conservation of qi
               qie = mu(i,k)*qi(i,k)+fholm(i,k) +dz(i,k)*(cmei(i,k-1) +  &
                     ( mnuccc(k)+mnucct(k)+msacwi(k)+prb(k))*arcf(i,k) )
-              dum = arcf(i,k)*(prci(k)+ prai(k))*dz(i,k) 
+              dum = arcf(i,k)*(prci(k)+ prai(k))*dz(i,k)
               if (qie.lt.0._r8) then
                  qiimp(k) = .true.
                  prci(k) = 0._r8
@@ -1957,7 +1964,7 @@ subroutine zm_mphy(su,    qu,   mu,   du,   eu,    cmel,  cmei,  zf,   pm,   te,
               !*****************************************************************************
 
               if (k.le.kqc(i))   then
-                 qctend(i,k) = (-pra(k)-prc(k)-prb(k)-mnuccc(k)-mnucct(k)-msacwi(k)- &   
+                 qctend(i,k) = (-pra(k)-prc(k)-prb(k)-mnuccc(k)-mnucct(k)-msacwi(k)- &
                                 psacws(k))
 
                  qitend(i,k) = (prb(k)+mnuccc(k)+mnucct(k)+msacwi(k)-prci(k)- prai(k))
@@ -1968,8 +1975,8 @@ subroutine zm_mphy(su,    qu,   mu,   du,   eu,    cmel,  cmei,  zf,   pm,   te,
 
                  ! multiply activation/nucleation by mtime to account for fast timescale
 
-                 nctend(i,k) = npccn(k)*mtimec+(-nnuccc(k)-nnucct(k)-npsacws(k) &    
-                               -npra(k)-nprc1(k)-nprb(k))                           
+                 nctend(i,k) = npccn(k)*mtimec+(-nnuccc(k)-nnucct(k)-npsacws(k) &
+                               -npra(k)-nprc1(k)-nprb(k))
 
                  nitend(i,k) = nnuccd(k)*mtime+(nnuccc(k)+ nnucct(k)+nsacwi(k)-nprci(k)- &
                                nprai(k))
@@ -1998,7 +2005,7 @@ subroutine zm_mphy(su,    qu,   mu,   du,   eu,    cmel,  cmei,  zf,   pm,   te,
                  accsln(i,k-1) = -npsacws(k)*arcf(i,k)
                  activn(i,k-1) = npccn(k)*mtimec*arcf(i,k)
                  fhmln(i,k-1)  = -fholn(i,k)/dz(i,k)
-                 
+
                  !cloud ice------------------------
 
                  autoim(i,k-1) = -prci(k)*arcf(i,k)
@@ -2027,7 +2034,7 @@ subroutine zm_mphy(su,    qu,   mu,   du,   eu,    cmel,  cmei,  zf,   pm,   te,
               if ( k.le.kqi(i) ) then
                  qni(i,k-1) = 1._r8/mu(i,k-1)*                                    &
                     (mu(i,k)*qni(i,k)+dz(i,k)*(qnitend(i,k)+psf(k))*arcf(i,k) )
-                 
+
                  ns(i,k-1) = 1._r8/mu(i,k-1)*                                    &
                     (mu(i,k)*ns(i,k)+dz(i,k)*(nstend(i,k)+pnsf(k))*arcf(i,k) )
 
@@ -2064,7 +2071,7 @@ subroutine zm_mphy(su,    qu,   mu,   du,   eu,    cmel,  cmei,  zf,   pm,   te,
               if (t(i,k-1) < 233.15_r8 .and. qr(i,k-1) > 0._r8) then
 
                  ! make sure freezing rain doesn't increase temperature above threshold
-                 dum = xlf/cp*qr(i,k-1) 
+                 dum = xlf/cp*qr(i,k-1)
                  if (t(i,k-1)+dum.gt.233.15_r8) then
                     dum = -(t(i,k-1)-233.15_r8)*cp/xlf
                     dum = dum/qr(i,k-1)
@@ -2088,8 +2095,8 @@ subroutine zm_mphy(su,    qu,   mu,   du,   eu,    cmel,  cmei,  zf,   pm,   te,
 
                   qcde(i,k) = qc(i,k-1)
 
-                  nc(i,k-1) = (mu(i,k)*nc(i,k) -fholn(i,k) +dz(i,k)*nctend(i,k)*arcf(i,k) )   & 
-                              /(mu(i,k-1)+dz(i,k)*du(i,k-1)) 
+                  nc(i,k-1) = (mu(i,k)*nc(i,k) -fholn(i,k) +dz(i,k)*nctend(i,k)*arcf(i,k) )   &
+                              /(mu(i,k-1)+dz(i,k)*du(i,k-1))
 
                   ncde(i,k) = nc(i,k-1)
               else
@@ -2111,15 +2118,15 @@ subroutine zm_mphy(su,    qu,   mu,   du,   eu,    cmel,  cmei,  zf,   pm,   te,
                  write(iulog,*) "mu(i,k-1)=",mu(i,k-1),"mu(i,k)=",mu(i,k),"nc(i,k)=",ni(i,k)
                  write(iulog,*) "dz(i,k)=",dz(i,k),"du(i,k-1)=",du(i,k-1),"nctend(i,k)=",nctend(i,k)
                  write(iulog,*) "eu(i,k-1)=",eu(i,k-1)
-              end if              
-  
+              end if
+
               ! cloud ice
-              if( k.le.kqi(i)) then  
+              if( k.le.kqi(i)) then
                   qi(i,k-1) = (mu(i,k)*qi(i,k)+fholm(i,k) +dz(i,k)*qitend(i,k)*arcf(i,k)      &
                                +dz(i,k)*cmei(i,k-1) )/(mu(i,k-1)+dz(i,k)*du(i,k-1))
 
                   qide(i,k) = qi(i,k-1)
-                
+
                   ni(i,k-1) = (mu(i,k)*ni(i,k)+fholn(i,k)+dz(i,k)*nitend(i,k)*arcf(i,k) )   &
                               /(mu(i,k-1)+dz(i,k)*du(i,k-1))
 
@@ -2131,7 +2138,7 @@ subroutine zm_mphy(su,    qu,   mu,   du,   eu,    cmel,  cmei,  zf,   pm,   te,
 
               if (qi(i,k-1).lt.0._r8) write(iulog,*) "negative qi(i,k-1)=",qi(i,k-1)
               difm(i,k-1) = -du(i,k-1)*qide(i,k)
-              difn(i,k-1) = -du(i,k-1)*nide(i,k)         
+              difn(i,k-1) = -du(i,k-1)*nide(i,k)
 
               if (qi(i,k-1).le. 0._r8) then
                  qi(i,k-1)=0._r8
@@ -2139,12 +2146,12 @@ subroutine zm_mphy(su,    qu,   mu,   du,   eu,    cmel,  cmei,  zf,   pm,   te,
               end if
 
 
-              if (ni(i,k-1).lt. 0._r8) then  
+              if (ni(i,k-1).lt. 0._r8) then
                  write(iulog,*) "ni(i,k-1)=",ni(i,k-1),"k-1=",k-1,"arcf(i,k)=",arcf(i,k)
                  write(iulog,*) "mu(i,k-1)=",mu(i,k-1),"mu(i,k)=",mu(i,k),"ni(i,k)=",ni(i,k)
                  write(iulog,*) "dz(i,k)=",dz(i,k),"du(i,k-1)=",du(i,k-1),"nitend(i,k)=",nitend(i,k)
                  write(iulog,*) "eu(i,k-1)=",eu(i,k-1)
-              end if            
+              end if
 
 
               frz(i,k-1) = cmei(i,k-1) + arcf(i,k)*(prb(k)+mnuccc(k)+mnucct(k)+msacwi(k)+   &
@@ -2156,10 +2163,10 @@ subroutine zm_mphy(su,    qu,   mu,   du,   eu,    cmel,  cmei,  zf,   pm,   te,
               ! these calculations also ensure consistency between number and mixing ratio
 
               ! following equation(2,3,4) of Morrison and Gettelman, 2008, J. Climate.
-              ! Gamma(n)= (n-1)! 
+              ! Gamma(n)= (n-1)!
               ! lamc <-> lambda for cloud liquid water
               ! pgam <-> meu    for cloud liquid water
-              ! meu=0 for ice,rain and snow         
+              ! meu=0 for ice,rain and snow
               !*******************************************************************************
 
               ! cloud ice
@@ -2205,7 +2212,7 @@ subroutine zm_mphy(su,    qu,   mu,   du,   eu,    cmel,  cmei,  zf,   pm,   te,
                  if (total .ne. 0._r8) then
                     nuclin(i,k-1) = nuclin(i,k-1) + nuclin(i,k-1)*niadj(i,k-1)/total
                     fhtimn(i,k-1) = fhtimn(i,k-1) + fhtimn(i,k-1)*niadj(i,k-1)/total
-                    fhtctn(i,k-1) = fhtctn(i,k-1) + fhtctn(i,k-1)*niadj(i,k-1)/total 
+                    fhtctn(i,k-1) = fhtctn(i,k-1) + fhtctn(i,k-1)*niadj(i,k-1)/total
                     fhmln (i,k-1) = fhmln (i,k-1) + fhmln (i,k-1)*niadj(i,k-1)/total
                     hmpin (i,k-1) = hmpin (i,k-1) + hmpin (i,k-1)*niadj(i,k-1)/total
                  else
@@ -2220,12 +2227,12 @@ subroutine zm_mphy(su,    qu,   mu,   du,   eu,    cmel,  cmei,  zf,   pm,   te,
                  total = autoin(i,k-1)+accsin(i,k-1)
                  if (total .ne. 0._r8) then
                     autoin(i,k-1) = autoin(i,k-1) + autoin(i,k-1)*niadj(i,k-1)/total
-                    accsin(i,k-1) = accsin(i,k-1) + accsin(i,k-1)*niadj(i,k-1)/total 
+                    accsin(i,k-1) = accsin(i,k-1) + accsin(i,k-1)*niadj(i,k-1)/total
                  else
                     total = 2._r8
                     autoin(i,k-1) = autoin(i,k-1) + niadj(i,k-1)/total
-                    accsin(i,k-1) = accsin(i,k-1) + niadj(i,k-1)/total  
-                 end if  
+                    accsin(i,k-1) = accsin(i,k-1) + niadj(i,k-1)/total
+                 end if
               end if
 
               !................................................................................
@@ -2237,7 +2244,7 @@ subroutine zm_mphy(su,    qu,   mu,   du,   eu,    cmel,  cmei,  zf,   pm,   te,
                  nc(i,k-1)=min(nc(i,k-1),qc(i,k-1)*1.e20_r8)
                  ! and make sure it's non-negative
                  ! nc(i,k-1) = max(nc(i,k-1), 0._r8)
-                 if (nc(i,k-1).lt. 0._r8) write(iulog,*) "nc(i,k-1)=",nc(i,k-1) 
+                 if (nc(i,k-1).lt. 0._r8) write(iulog,*) "nc(i,k-1)=",nc(i,k-1)
 
                  ! get pgam from fit to observations of martin et al. 1994
 
@@ -2276,9 +2283,9 @@ subroutine zm_mphy(su,    qu,   mu,   du,   eu,    cmel,  cmei,  zf,   pm,   te,
 
               ncde(i,k)   = nc(i,k-1)
               dlfn(i,k-1) = -du(i,k-1)*ncde(i,k)
-              
+
               ncadj(i,k-1) = (nc(i,k-1)- ncorg)*mu(i,k-1)/dz(i,k)
-              if (ncadj(i,k-1) .lt. 0._r8) then 
+              if (ncadj(i,k-1) .lt. 0._r8) then
                  activn(i,k-1) = activn(i,k-1) + ncadj(i,k-1)
               else if (ncadj(i,k-1) .gt. 0._r8) then
                 total = autoln(i,k-1)+accrln(i,k-1)+bergnn(i,k-1)+accsln(i,k-1)
@@ -2341,7 +2348,7 @@ subroutine zm_mphy(su,    qu,   mu,   du,   eu,    cmel,  cmei,  zf,   pm,   te,
                  end if
 
                  unr(k-1) = min(arn(i,k-1)*gamma(1._r8+br)/lamr(k-1)**br,10._r8)
-                 umr(k-1) = min(arn(i,k-1)*gamma(4._r8+br)/(6._r8*lamr(k-1)**br),10._r8)                   
+                 umr(k-1) = min(arn(i,k-1)*gamma(4._r8+br)/(6._r8*lamr(k-1)**br),10._r8)
               else
                  lamr(k-1) = 0._r8
                  n0r(k-1) = 0._r8
@@ -2380,7 +2387,7 @@ subroutine zm_mphy(su,    qu,   mu,   du,   eu,    cmel,  cmei,  zf,   pm,   te,
               end if
 
               rprd(i,k-1)= (qnitend(i,k) + qrtend(i,k))*arcf(i,k)
-              sprd(i,k-1)=  qnitend(i,k) *arcf(i,k) -fhmrm(i,k-1)       
+              sprd(i,k-1)=  qnitend(i,k) *arcf(i,k) -fhmrm(i,k-1)
 
            end if  ! k<jlcl
 
@@ -2406,7 +2413,7 @@ subroutine zm_mphy(su,    qu,   mu,   du,   eu,    cmel,  cmei,  zf,   pm,   te,
               nc(i,k-1)=0._r8
            end if
 
-           ! make sure number concentration is a positive number to avoid 
+           ! make sure number concentration is a positive number to avoid
            ! taking root of negative
 
            nr(i,k-1)=max(nr(i,k-1),0._r8)

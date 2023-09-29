@@ -1,13 +1,13 @@
 module steady_state_tei
 
-  use shr_kind_mod,   only : r8 => shr_kind_r8            ! Real kind to declare variables
-  use physics_buffer, only : pbuf_get_index, &            !
-                             physics_buffer_desc, &       !
-                             pbuf_get_field, &            ! Needed to access physics buffer
-                             pbuf_set_field
-  use physics_types,  only : physics_state                ! Structures containing physics state variables
-  use ppgrid,         only : pcols, pver, pverp, begchunk, endchunk
-  use cam_abortutils, only : endrun
+  use shr_kind_mod,   only: r8 => shr_kind_r8            ! Real kind to declare variables
+  use physics_buffer, only: pbuf_get_index, &            !
+                            physics_buffer_desc, &       !
+                            pbuf_get_field, &            ! Needed to access physics buffer
+                            pbuf_set_field
+  use physics_types,  only: physics_state                ! Structures containing physics state variables
+  use ppgrid,         only: pcols, pver, pverp, begchunk, endchunk
+  use cam_abortutils, only: endrun
 
   implicit none
   
@@ -38,10 +38,10 @@ contains
 ! Time independent initialization for ionosphere simulation.
 !-----------------------------------------------------------------------
 
-    use constituents,   only : cnst_get_ind
-    use mo_chem_utls,   only : get_spc_ndx                  ! Routine to get index of adv_mass array for short lived species
-    use chem_mods,      only : adv_mass                     ! Array holding mass values for short lived species
-    use infnan,   only: nan, assignment(=)
+    use constituents,   only: cnst_get_ind
+    use mo_chem_utls,   only: get_spc_ndx                  ! Routine to get index of adv_mass array for short lived species
+    use chem_mods,      only: adv_mass                     ! Array holding mass values for short lived species
+    use infnan,         only: nan, assignment(=)
 
     type(physics_buffer_desc), pointer :: pbuf2d(:,:)
     real(r8) :: nanval
@@ -69,12 +69,12 @@ contains
 !==============================================================================
 
   subroutine steady_state_tei_tend(state,istate, dse_tend, pbuf)
-    use tei_mod,          only : settei
-    use physconst,        only : mbarv                       ! Constituent dependent mbar
-    use solar_parms_data, only : f107=>solar_parms_f107      ! 10.7 cm solar flux
-    use mo_apex,          only : alatm
-    use perf_mod,         only : t_startf, t_stopf           ! timing utils
-    use ionos_state_mod,  only : ionos_state
+    use tei_mod,          only: settei
+    use air_composition,  only: mbarv                       ! Constituent dependent mbar
+    use solar_parms_data, only: f107=>solar_parms_f107      ! 10.7 cm solar flux
+    use mo_apex,          only: alatm
+    use perf_mod,         only: t_startf, t_stopf           ! timing utils
+    use ionos_state_mod,  only: ionos_state
     !-------------------------------------------------------------------------------------
     ! Calculate dry static energy and O+ tendency for extended ionosphere simulation 
     !-------------------------------------------------------------------------------------

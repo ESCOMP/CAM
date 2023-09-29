@@ -2210,6 +2210,14 @@ contains
                                       mpas_pool_get_subpool, mpas_pool_shift_time_levels
        use mpas_timekeeping, only : mpas_advance_clock, mpas_get_clock_time, mpas_get_time, MPAS_NOW, &
                                     operator(.lt.), operator(+)
+#ifdef __NVCOMPILER
+       !
+       ! Some versions of the nvfortran compiler complain about the illegal use
+       ! of an operator on a derived type if the following specific
+       ! implementations of the < and + operators are not explicitly imported
+       !
+       use mpas_timekeeping, only : lt_t_t, add_t_ti
+#endif
        use mpas_timer, only : mpas_timer_start, mpas_timer_stop
        use mpas_constants, only : Rv_over_Rd => rvord
 

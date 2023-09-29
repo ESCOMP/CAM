@@ -52,7 +52,8 @@ class SCT(SystemTestsCompareTwo):
             self._case.set_value("NTHRDS_{}".format(comp), 1)
             self._case.set_value("ROOTPE_{}".format(comp), 0)
 
-        self._case.set_value("PTS_MODE","TRUE")
+        if self._case.get_value("COMP_INTERFACE") == "mct":
+            self._case.set_value("PTS_MODE","TRUE")
         self._case.set_value("PTS_LAT",-20.0)
         self._case.set_value("PTS_LON",140.0)
 
@@ -65,12 +66,12 @@ class SCT(SystemTestsCompareTwo):
                                 ignore_fieldlist_diffs=False):
         with self._test_status:
             stat,netcdf_filename,err=run_cmd('ls ./run/case2run/*h1*8400.nc ')
-            stat,DIFFs,err=run_cmd('ncdump -ff -p 9,17 -v QDIFF,TDIFF '+netcdf_filename+' | egrep //\.\*DIFF | sed s/^\ \*// | sed s/\[,\;\].\*// | sed s/^0/0.0/  | uniq')
+            stat,DIFFs,err=run_cmd('ncdump -ff -p 9,17 -v QDIFF,TDIFF '+netcdf_filename+' | egrep //\.\*DIFF | sed s/^\ \*// | sed s/^0,/0.0,/ | sed s/^0\;/0.0\;/ | sed s/\[,\;\].\*// |  uniq')
             array_of_DIFFs=DIFFs.split("\n")
             answer=max([abs(float(x)) for x in array_of_DIFFs])
             comments="Checking QDIFF,TDIFF in SCAM run."
             append_testlog(comments, self._orig_caseroot)
-            # Test for greater that round off changes.
+            # Test for greater than round off changes.
             if answer < 1e-10:
                 self._test_status.set_status("{}_{}_{}".format(COMPARE_PHASE, self._run_one_suffix, self._run_two_suffix), TEST_PASS_STATUS)
                 comments="QDIFF,TDIFF: PASS"

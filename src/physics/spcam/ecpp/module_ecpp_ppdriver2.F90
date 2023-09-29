@@ -1,24 +1,26 @@
 module module_ecpp_ppdriver2
 
 !-------------------------------------------------------------------------------------
-!      Purpose: 
+!      Purpose:
 !      Provide the CAM interface to the Explicit-Cloud Parameterized-Pollutant hygrid
-!      approach for aerosol-cloud interactions in the MMF models.  
-! 
-!      This module was adopted from the one written for the WRF-chem by Dick Easter. 
+!      approach for aerosol-cloud interactions in the MMF models.
 !
-!      Minghuai Wang (Minghuai.Wang@pnl.gov), 2009-11 
+!      This module was adopted from the one written for the WRF-chem by Dick Easter.
+!
+!      Minghuai Wang (Minghuai.Wang@pnl.gov), 2009-11
 !---------------------------------------------------------------------------------------
 
         use shr_kind_mod, only: r8=>shr_kind_r8
-        use ppgrid,       only: pcols, pver, pverp 
+        use ppgrid,       only: pcols, pver, pverp
         use constituents, only: pcnst, cnst_name, cnst_species_class, cnst_spec_class_aerosol, cnst_spec_class_gas
         use crmclouds_camaerosols, only: ecpp_mixnuc_tend => crmclouds_mixnuc_tend
         use cam_abortutils,   only: endrun
 
-        use crmx_ecppvars,     only: nupdraft_in, ndndraft_in, ncls_ecpp_in, ncc_in, nprcp_in 
-        use module_data_ecpp1 
+        use crmx_ecppvars,     only: nupdraft_in, ndndraft_in, ncls_ecpp_in, ncc_in, nprcp_in
+        use module_data_ecpp1
         use module_data_mosaic_asect
+
+        use modal_aerosol_properties_mod, only: modal_aerosol_properties
 
         implicit none
 
@@ -41,14 +43,14 @@ end type ptr2d_t
 !------------------------------------------------------------------------------------------------
         subroutine   papampollu_init ( )
 !------------------------------------------------------------------------------------------------
-! 
+!
 !       initialize some data used in ECPP, and map aerosol inforation in cam4 into mosaic.
 !
 !       Minghuai Wang, 2009-11
 !-------------------------------------------------------------------------------------------------
         use cam_history, only: addfld, add_default, horiz_only
         use modal_aero_data
-        use module_ecpp_td2clm, only:  set_of_aerosol_stuff 
+        use module_ecpp_td2clm, only:  set_of_aerosol_stuff
         use module_ecpp_util,   only:  parampollu_1clm_set_opts
         use phys_control,     only: phys_getopts
 
@@ -60,7 +62,7 @@ end type ptr2d_t
         logical :: history_aerosol
 
 ! get history_aerosol
-        call phys_getopts(history_aerosol_out = history_aerosol) 
+        call phys_getopts(history_aerosol_out = history_aerosol)
 
 ! calculate pi
         pi     = 4._r8*atan(1._r8)
@@ -69,12 +71,12 @@ end type ptr2d_t
 !   set pp options (should this be done from driver?)
 !
 
-        num_chem_ecpp = 2* pcnst 
+        num_chem_ecpp = 2* pcnst
         num_chem = num_chem_ecpp
         param_first_ecpp = 1   ! set to 1 as this can change
         p_qv = 1
         p_qc = 2
-       
+
         allocate (is_aerosol(1:num_chem_ecpp))
         allocate (iphase_of_aerosol(1:num_chem_ecpp))
         allocate (isize_of_aerosol(1:num_chem_ecpp))
@@ -83,15 +85,15 @@ end type ptr2d_t
         allocate (laicwpair_of_aerosol(1:num_chem_ecpp))
 
 !
-!   Map the modal aerosol information in modal_aero_data.F90 to module_data_mosaic_asect.F90 
+!   Map the modal aerosol information in modal_aero_data.F90 to module_data_mosaic_asect.F90
 !   In the ECPP written for the WRF-chem, it used the MOSAIC aerosol data. MOSAIC have different
 !   classifications, and use aeroso types, aerosol size bins, chemical components, and aerosol phases
 !   to describe aerosols. In the CAM4's modal aerosol treatment, it use aerosol modes, and chemical
-!   components to describe aerosols, and interstial and cloud-borne aerosols are separately tracked.  
-!   When the ECPP codes are ported from the WRF-chem into the MMF model (CAM4.0_SAM), 
+!   components to describe aerosols, and interstial and cloud-borne aerosols are separately tracked.
+!   When the ECPP codes are ported from the WRF-chem into the MMF model (CAM4.0_SAM),
 !   the MOSAIC's description of the aerosols are kept, in order to minimize
 !   the codes changes, but the aerosol information in CAM4.0 is mapped into the MOSAIC one in the
-!   following way: aeroso type is equivalent to aerosol modes in CAM4, and aerosol size is one for each aerosol type, 
+!   following way: aeroso type is equivalent to aerosol modes in CAM4, and aerosol size is one for each aerosol type,
 !   and the aerosol chemical composition is just the same as that in CAM4. Interstitial aerosols in CAM4 is put into
 !   the phase 1, and cloud-borne aerosol in CAM4 is put into the pase 2. -Minghuai Wang (minghuai.wang@pnl.gov)
 !
@@ -102,7 +104,7 @@ end type ptr2d_t
 
         ai_phase = 1      ! index for interstial aerosols
         cw_phase = 2      ! index for cloud-borne aerosols
-        
+
         ntype_aer = ntot_amode
         nphase_aer = 2
 
@@ -131,13 +133,13 @@ end type ptr2d_t
 
         do n=1, ntype_aer
           do ll=1, ncomp_aer(n)
-            dens_aer(ll, n) = specdens_amode(ll, n)  
+            dens_aer(ll, n) = specdens_amode(ll, n)
             hygro_aer(ll, n) = spechygro(ll, n)
           end do
 
           sigmag_aer(1, n) = sigmag_amode(n)
 
-! Notes: 
+! Notes:
 !        the tmpa factor is because
 !        dcen_sect, dlo_sect, dhi_sect are used as,
 !            and are compared to, volume-mean diameters
@@ -162,13 +164,13 @@ end type ptr2d_t
         afrac_cut_0p2 = afrac_cut*0.2_r8
         afrac_cut_0p1 = afrac_cut*0.1_r8
 
-! set flags 
+! set flags
         activat_onoff_ecpp = 1      ! droplet activation; 1 turns on activation
-        cldchem_onoff_ecpp = 1      ! cloud chemistry 
+        cldchem_onoff_ecpp = 1      ! cloud chemistry
         rename_onoff_ecpp = 1        ! renaming (modal merging)
 
         wetscav_onoff_ecpp = 400      ! wet removable 400 turn on wet scaving
-        
+
 ! set convection lifetime
         draft_lifetime = 7200       ! seconds, 2 hours lifetime for the momement
 
@@ -209,7 +211,7 @@ end type ptr2d_t
            if(trim(cnst_name(ichem))//'EP' == 'EP') then
               write(0, *) ichem, trim(cnst_name(ichem))//'EP'
               call endrun('ecpp init1')
-           end if 
+           end if
            call addfld(trim(cnst_name(ichem))//'EP',       (/ 'lev' /), 'A', 'kg/kg/s', &
                                                   trim(cnst_name(ichem))//' tendency from ECPP' )
            call addfld(trim(cnst_name(ichem))//'ACHEM_EP', (/ 'lev' /), 'A', 'kg/kg/s', &
@@ -281,7 +283,7 @@ end type ptr2d_t
                   trim(cnst_name(ichem))//' column-integrated tendency from resupspension in wet removable in ECPP (downdraft)' )
            call addfld(trim(cnst_name(ichem))//'SFCONDN_EP', horiz_only, 'A', 'kg/m2/s', &
                   trim(cnst_name(ichem))//' column-integrated tendency from convective transport in ECPP (downdraft)' )
-          endif 
+          endif
 
         end do
         do ichem=param_first_ecpp, pcnst
@@ -372,7 +374,7 @@ end type ptr2d_t
         end if
 
         if(history_aerosol) then
-        do ichem=param_first_ecpp, pcnst 
+        do ichem=param_first_ecpp, pcnst
           if(.not. (cnst_name_cw(ichem) == ' ')) then
             call add_default(trim(cnst_name_cw(ichem))//'SFEP', 1, ' ')
             call add_default(trim(cnst_name_cw(ichem))//'SFACHEM_EP', 1, ' ')
@@ -438,7 +440,7 @@ end type ptr2d_t
 
         end do
 
-! for test purpose, additional 3D tendency 
+! for test purpose, additional 3D tendency
         do ichem=param_first_ecpp, pcnst
          if(trim(cnst_name(ichem)) == 'DMS' .or. trim(cnst_name(ichem)) == 'SO2' .or. &
             trim(cnst_name(ichem)) == 'so4_a1') then
@@ -448,7 +450,7 @@ end type ptr2d_t
           call add_default(trim(cnst_name(ichem))//'ACT_EP', 1, ' ')
           call add_default(trim(cnst_name(ichem))//'WET_EP', 1, ' ')
           call add_default(trim(cnst_name(ichem))//'CONV_EP', 1, ' ')
-         end if 
+         end if
         end do
         end if ! end history_aerosol
 
@@ -456,7 +458,7 @@ end type ptr2d_t
 !==================================================================================================
 
 !--------------------------------------------------------------------------------------------------
-	subroutine parampollu_driver2(                            &
+	subroutine parampollu_driver2( aero_props,                &
                 state, ptend,  pbuf,                              &
 		dtstep_in, dtstep_pp_in,                          &
 		acen_3d, abnd_3d,                                 &
@@ -470,7 +472,7 @@ end type ptr2d_t
 ! modules from CAM
         use physics_types,  only: physics_state, physics_ptend, physics_ptend_init
         use physics_buffer, only: physics_buffer_desc, pbuf_old_tim_idx, pbuf_get_index, pbuf_get_field
-        use physconst,      only: gravit 
+        use physconst,      only: gravit
         use time_manager,   only: get_nstep, is_first_step
         use constituents,   only: cnst_name
         use cam_history,    only: outfld
@@ -489,7 +491,7 @@ end type ptr2d_t
 ! parampollu_driver2 is the interface between wrf-chem and the
 !    parameterized pollutants "1 column" routine
 !
-! main inputs are 
+! main inputs are
 !    aerosol and trace gas mixing ratios for a subset of the
 !	host-code domain
 !    ecpp (sub-grid) cloud statistics for the same subset of domain
@@ -502,13 +504,14 @@ end type ptr2d_t
 
 !   subr arguments
 
+        type(modal_aerosol_properties), intent(in) :: aero_props
 	real(r8), intent(in) :: dtstep_in, dtstep_pp_in
 !   dtstep_in - main model time step (s)
 !   dtstep_pp_in - time step (s) for "parameterized pollutants" calculations
 
         type(physics_state), intent(in) :: state       ! Physics state variables
         type(physics_ptend), intent(inout) :: ptend       ! individual parameterization
-        type(physics_buffer_desc), pointer ::  pbuf(:)   ! physics buffer 
+        type(physics_buffer_desc), pointer ::  pbuf(:)   ! physics buffer
 
 	real(r8), intent(in), dimension( pcols, pverp, 1:ncc_in, 1:ncls_ecpp_in, 1:nprcp_in ) ::   &
 		abnd_3d, abnd_tf_3d, massflxbnd_3d
@@ -553,7 +556,7 @@ end type ptr2d_t
 	integer, dimension( 1:2, 1:maxcls_ecpp ) ::   &
 		kdraft_bot_ecpp, kdraft_top_ecpp,   &
 		mtype_updnenv_ecpp
-	
+
 	real(r8) :: dtstep, dtstep_pp
 	real(r8) :: tmpa, tmpb, tmpc, tmpd
 	real(r8) :: za, zb, zc
@@ -571,14 +574,14 @@ end type ptr2d_t
 !   *** note2- these get checked/adjusted later, so simply setting k--draftbase = kts
 !       and k--drafttop = ktecen is OK
 
-	real(r8)  ::  tcen_bar   (pver)      ! temperature at layer centers (K)  
+	real(r8)  ::  tcen_bar   (pver)      ! temperature at layer centers (K)
         real(r8)  ::  pcen_bar   (pver)      ! pressure at layer centers (K)
         real(r8)  ::  rhocen_bar (pver)      ! air density at layer centers (kg/m3)
         real(r8)  ::  dzcen      (pver)      ! layer depth (m)
         real(r8)  ::  wcen_bar   (pver)      ! vertical velocity at layer centers (m/s)
         real(r8)  ::  rhobnd_bar (pverp)      ! air density at layer boundaries (kg/m3)
         real(r8)  ::  zbnd       (pverp)     ! elevation at layer boundaries (m) ???elevation or height????
-	real(r8)  ::  wbnd_bar   (pverp)     ! vertical velocity at layer boundaries (m/s)  
+	real(r8)  ::  wbnd_bar   (pverp)     ! vertical velocity at layer boundaries (m/s)
 
 	real(r8)  ::  chem_bar (pver, 1:num_chem_ecpp)  !  mixing ratios of trace gase (ppm) and aerosol species
                                                                    !       (ug/kg for mass species, #/kg for number species)
@@ -631,7 +634,7 @@ end type ptr2d_t
                                    ptend_wetscav_cls,   &    ! wet deposition
                                    ptend_wetresu_cls,   &    ! resuspension
                                    ptend_conv_cls            ! convective transport
-                                    
+
         real(r8), dimension(pcols, 1:maxcls_ecpp, 1:num_chem_ecpp) ::  &
                                    ptend_activate_cls_col,  &    ! column-integrated activation tendency for sub transport class
                                    ptend_cldchem_cls_col,   &    ! aqueous chemistry
@@ -640,10 +643,10 @@ end type ptr2d_t
                                    ptend_wetresu_cls_col,   &    ! resuspension
                                    ptend_conv_cls_col            ! convective transport
 
-       
+
         real(r8), dimension(pcols, 1:num_chem_ecpp)  ::                          &
                    ptend_cldchem_col, ptend_rename_col, ptend_wetscav_col, ptend_wetresu_col, ptend_activate_col, ptend_conv_col, &
-                   ptendq_col    ! column-integrated tendency 
+                   ptendq_col    ! column-integrated tendency
 
         real(r8), dimension(pcols, pver, 1:pcnst)  :: ptend_qqcw                 ! tendency for cloud-borne aerosols
 
@@ -655,7 +658,7 @@ end type ptr2d_t
 !-----------------------------------------------------------------------
 !   set flags that turn diagnostic output on/off
 !
-!   for a specific output to be "on", both the 
+!   for a specific output to be "on", both the
 !	idiagaa_ecpp(--) and ldiagaa_ecpp(--) be positive
 !   the ldiagaa_ecpp(--) is the output unit number
 !
@@ -665,7 +668,7 @@ end type ptr2d_t
 !	"rcetestpp diagnostics" block
 !    62 - from subr parampollu_td240clm
 !	short messages on entry and exit, and showing sub-time-step
-!    63 - from subr parampollu_check_adjust_inputs 
+!    63 - from subr parampollu_check_adjust_inputs
 !	shows some summary statistics about the check/adjust process
 !   115, 116, 117 - from subr parampollu_1clm_dumpaa
 !	shows various statistics on transport class and subarea
@@ -684,7 +687,7 @@ end type ptr2d_t
 !   123 - from subr parampollu_tdx_entdet_sub1
 !	diagnostics involving entrainment/detrainment and area changes
 !   124 - from subr parampollu_tdx_main_integ
-!	diagnostics involving sub-time-step for "main integration", 
+!	diagnostics involving sub-time-step for "main integration",
 !	related to stability and courant number
 !   125 - from subr parampollu_tdx_activate_intface
 !	diagnostics involving aerosol activation and associated vertical velocities
@@ -693,35 +696,14 @@ end type ptr2d_t
 !	fractional areas and mass fluxes
 !   141-143 -  from subr parampollu_tdx_wetscav_2
 !       diagnostics for the "new" wetscav code designed for the mmf-with-ecpp
-!   155 - from subr parampollu_check_adjust_inputs 
+!   155 - from subr parampollu_check_adjust_inputs
 !	shows "history" of acen_tavg_use thru the check/adjust process
 !   161, 162, 164  - from subr parampollu_tdx_startup & parampollu_tdx_partition_acw
 !	involves partitioning of cloudborne/interstitial aerosol between clear
 !	and cloudy subareas
 
 !
-	idiagaa_ecpp(:) = 0
-!        idiagaa_ecpp(60:63) = 1
-        idiagaa_ecpp(60:63) = -1 
-	idiagaa_ecpp(115:119) = 1 ; idiagaa_ecpp(118) = 111
-	idiagaa_ecpp(121:125) = 1
-        idiagaa_ecpp(131:135) = 1
-        idiagaa_ecpp(141:143) = 1
-
-	idiagaa_ecpp(155) = 1
-	idiagaa_ecpp(161) = 1 ; idiagaa_ecpp(162) = 1 ; idiagaa_ecpp(164) = 1
-
-        idiagaa_ecpp(131:135) = -1  ! not output in the MMF model
-        idiagaa_ecpp(115:117) = -1  ! not dump the original field in parampollu_td240clm
-        idiagaa_ecpp(118:119) = -1 
-        idiagaa_ecpp(121:125) = -1
-        idiagaa_ecpp(141:143) = -1
-        idiagaa_ecpp(165:167) = -1
-        idiagaa_ecpp(164) = -1
-        idiagaa_ecpp(161) = -1 
-        idiagaa_ecpp(162) = -1
-
-        idiagaa_ecpp(121) = -1
+	idiagaa_ecpp(:) = -1
 
 	do i = 1, 199
 	    ldiagaa_ecpp(i) = i
@@ -746,7 +728,7 @@ end type ptr2d_t
 	lun135 = -1
 	if (idiagaa_ecpp(135) > 0) lun135 = ldiagaa_ecpp(135)
 
-        
+
         ncol = state%ncol
         lchnk = state%lchnk
 
@@ -774,7 +756,7 @@ end type ptr2d_t
     end if ! (lun61 > 0)
 !rcetestpp diagnostics --------------------------------------------------
 
-    if (num_chem_ecpptmp < num_chem_ecpp)  then 
+    if (num_chem_ecpptmp < num_chem_ecpp)  then
       msg = '*** parampollu_driver -- bad num_chem_ecpptmp'
       call endrun(msg)
     end if
@@ -805,7 +787,7 @@ end type ptr2d_t
 	    acldy_cen_tbeg_3d(:,:) = 0.0_r8
 
 	    do k = 1, pver
-	    do i = 1, ncol 
+	    do i = 1, ncol
 		tmpa = 0.0_r8 ; tmpb = 0.0_r8
 		do ipp = 1, nprcp_in
 		do jcls = 1, ncls_ecpp
@@ -824,7 +806,7 @@ end type ptr2d_t
 
 		tmpa = 1.0_r8   ! force to initially clear -- might want to change this
 
-!   when iflag_ecpp_test_fixed_fcloud = 2/3/4/5, force acen_tbeg 100%/0%/70%/30% clear 
+!   when iflag_ecpp_test_fixed_fcloud = 2/3/4/5, force acen_tbeg 100%/0%/70%/30% clear
 		if ((iflag_ecpp_test_fixed_fcloud >= 2) .and. &
 		    (iflag_ecpp_test_fixed_fcloud <= 5)) then
 		    if      (iflag_ecpp_test_fixed_fcloud == 2) then
@@ -874,10 +856,10 @@ end type ptr2d_t
            tcen_bar(pver-k+1)   = state%t(i,k)
            pcen_bar(pver-k+1)   = state%pmid(i,k)
 
-!   dry air density is calcualted, because tracer mixing ratios are defined with respect to dry air in CAM.  
-           rhocen_bar(pver-k+1) = state%pmiddry(i,k)/(287.0_r8*state%t(i,k))    
+!   dry air density is calcualted, because tracer mixing ratios are defined with respect to dry air in CAM.
+           rhocen_bar(pver-k+1) = state%pmiddry(i,k)/(287.0_r8*state%t(i,k))
 
-           wbnd_bar(pver-k+2)   = -1*state%omega(i,k)/(rhocen_bar(pver-k+1)*gravit)   
+           wbnd_bar(pver-k+2)   = -1*state%omega(i,k)/(rhocen_bar(pver-k+1)*gravit)
 
 !   pressure vertical velocity (Pa/s) to height vertical velocity (m/s)
            dzcen(pver-k+1)      = state%pdeldry(i,k)/gravit/rhocen_bar(pver-k+1)
@@ -924,9 +906,9 @@ end type ptr2d_t
         kupdrafttop  = pver
         kdndraftbase = 1
         kdndrafttop  = pver
- 
+
 	kdraft_bot_ecpp(   1:2,jcls) = 1
-	kdraft_top_ecpp(   1:2,jcls) = pver 
+	kdraft_top_ecpp(   1:2,jcls) = pver
 	mtype_updnenv_ecpp(1:2,jcls) = mtype_quiescn_ecpp
 
 ! load updrafts
@@ -947,7 +929,7 @@ end type ptr2d_t
 	    mtype_updnenv_ecpp(1:2,jcls) = mtype_dndraft_ecpp
 	end do
 
-! load mfbnd and "area" arrays for all classes 
+! load mfbnd and "area" arrays for all classes
 	mfbnd(    :,:,:) = 0.0_r8
 	abnd_tavg(:,:,:) = 0.0_r8
 	abnd_tfin(:,:,:) = 0.0_r8
@@ -956,7 +938,7 @@ end type ptr2d_t
 
 	do jcls = 1, ncls_ecpp
 	do icc = 1, 2
-	do k = 1, pver+1 
+	do k = 1, pver+1
             lk=pver+1-k+1
 	    mfbnd(    lk,icc,jcls) = massflxbnd_3d(i, k,icc,jcls,1) &
 	                          + massflxbnd_3d(i, k,icc,jcls,2)
@@ -1033,7 +1015,7 @@ end type ptr2d_t
 	    write(lun,'(a,3i5)') 'dndrafts, nup, ktau', n, nstep, nstep_pp
 	else
 	    n = ncls_ecpp
-	    write(lun,'(a,3i5)') 'quiescents, ncls_ecpp, ktau', n, nstep, nstep_pp 
+	    write(lun,'(a,3i5)') 'quiescents, ncls_ecpp, ktau', n, nstep, nstep_pp
 	end if
 	end do
 
@@ -1057,10 +1039,10 @@ end type ptr2d_t
 	    end if
 	    do ipp = 1, 2
 	    do jcls = jclsaa, jclsbb
-		tmpa = tmpa + abnd_3d(i,ka,1,jcls,ipp) + abnd_3d(i,kb,1,jcls,ipp) 
-		tmpb = tmpb + abnd_3d(i,ka,2,jcls,ipp) + abnd_3d(i,kb,2,jcls,ipp) 
-		tmpc = tmpc + massflxbnd_3d(i,ka,1,jcls,ipp) + massflxbnd_3d(i,kb,1,jcls,ipp) 
-		tmpd = tmpd + massflxbnd_3d(i,ka,2,jcls,ipp) + massflxbnd_3d(i,kb,2,jcls,ipp) 
+		tmpa = tmpa + abnd_3d(i,ka,1,jcls,ipp) + abnd_3d(i,kb,1,jcls,ipp)
+		tmpb = tmpb + abnd_3d(i,ka,2,jcls,ipp) + abnd_3d(i,kb,2,jcls,ipp)
+		tmpc = tmpc + massflxbnd_3d(i,ka,1,jcls,ipp) + massflxbnd_3d(i,kb,1,jcls,ipp)
+		tmpd = tmpd + massflxbnd_3d(i,ka,2,jcls,ipp) + massflxbnd_3d(i,kb,2,jcls,ipp)
 	    end do
 	    end do
 
@@ -1169,8 +1151,8 @@ end type ptr2d_t
 	    if (lun60 > 0) write(lun60,93010) &
 		 'calling parampollu_td240clm - i=', i
 !              write (0, *) i, lchnk, 'before parampollu_td240clm', nstep
-	      call parampollu_td240clm(                           &
-                   nstep, dtstep, nstep_pp, dtstep_pp,             &
+	      call parampollu_td240clm( aero_props,                  &
+                   nstep, dtstep, nstep_pp, dtstep_pp,               &
                    idiagaa_ecpp, ldiagaa_ecpp,                       &
                    tcen_bar, pcen_bar, rhocen_bar, dzcen,            &
                    rhobnd_bar, zbnd, wbnd_bar,                       &
@@ -1182,19 +1164,19 @@ end type ptr2d_t
                    abnd_tavg, acen_tavg, acen_tfin, acen_tbeg,       &
                    acen_prec, rh_sub2,                               &
                    qcloud_sub2, qlsink_sub2, precr_sub2, precs_sub2, &
-                   del_cldchem,  del_rename,                         & 
-                   del_wetscav, del_wetresu,           &
+                   del_cldchem,  del_rename,                         &
+                   del_wetscav, del_wetresu,                         &
                    del_activate, del_conv,                           &
-                   del_chem_col_cldchem(i,:), del_chem_col_rename(i, :), del_chem_col_wetscav(i, :),       &
-                   aqso4_h2o2(i), aqso4_o3(i), xphlwc,                     &
+                   del_chem_col_cldchem(i,:), del_chem_col_rename(i, :), del_chem_col_wetscav(i, :), &
+                   aqso4_h2o2(i), aqso4_o3(i), xphlwc,               &
                    i,      lchnk,      1,pver+1,pver, pbuf           &
                                     )
 !              write (0, *) i, lchnk, 'after parampollu_td240clm', nstep
 
                aqso4_h2o2(i) = aqso4_h2o2(i)/dtstep
-               aqso4_o3(i) = aqso4_o3(i)/dtstep 
+               aqso4_o3(i) = aqso4_o3(i)/dtstep
 
-	else 
+	else
 	end if
 
 
@@ -1203,16 +1185,16 @@ end type ptr2d_t
 !
 	if (itmpa > 0) then
 
-	    do k = 1, pver 
+	    do k = 1, pver
                 lk=pver-k+1
 		acldy_cen_tbeg_3d(i,k) = sum( acen_tfin(lk,2,1:ncls_ecpp) )
 	    end do
 
-! Interstial species 
+! Interstial species
             ptend_qqcw(i,:,:) = 0.0_r8
             do k=1, pver
-               lk=pver-k+1 
-               do ichem=param_first_ecpp, pcnst 
+               lk=pver-k+1
+               do ichem=param_first_ecpp, pcnst
                   if (ptend%lq(ichem)) then
                     ptend%q(i,k,ichem)= (chem_bar(lk, ichem)-state%q(i,k,ichem))/dtstep
                   end if
@@ -1221,9 +1203,9 @@ end type ptr2d_t
                   if(associated(qqcw(ichem)%fldcw)) then
                     ptend_qqcw(i,k,ichem)=(chem_bar(lk, ichem+pcnst)-qqcw(ichem)%fldcw(i,k))/dtstep
                     qqcw(ichem)%fldcw(i,k) = chem_bar(lk, ichem+pcnst)
-                  else 
+                  else
                     ptend_qqcw(i,k,ichem)= 0.0_r8
-                  endif 
+                  endif
                end do
                del_cldchem3d(i,k,:,:,:,:) = del_cldchem(lk,:,:,:,:)/dtstep
                del_rename3d(i,k,:,:,:,:) = del_rename(lk,:,:,:,:)/dtstep
@@ -1233,7 +1215,7 @@ end type ptr2d_t
                del_conv3d(i,k,:,:,:) = del_conv(lk,:,:,:)/dtstep
                xphlwc3d(i,k,:,:,:) = xphlwc(lk,:,:,:)
             end do
-! cloud borne species  
+! cloud borne species
 
 	end if
 
@@ -1289,7 +1271,7 @@ end type ptr2d_t
                 end do
 
                 ptend_activate(i,k,:)  = ptend_activate(i,k,:)+del_activate3d(i,k,icc,jcls,:)
-                ptend_activate_cls(i,k,jcls, :) = ptend_activate_cls(i,k,jcls, :) + del_activate3d(i,k,icc,jcls,:) 
+                ptend_activate_cls(i,k,jcls, :) = ptend_activate_cls(i,k,jcls, :) + del_activate3d(i,k,icc,jcls,:)
                 ptend_conv(i,k,:)      = ptend_conv(i,k,:)+del_conv3d(i,k,icc,jcls,:)
                 ptend_conv_cls(i,k,jcls,:)      = ptend_conv_cls(i,k,jcls,:)+del_conv3d(i,k,icc,jcls,:)
               end do  ! end icc
@@ -1314,11 +1296,11 @@ end type ptr2d_t
             ptendq_col(i,param_first_ecpp:pcnst)     = ptendq_col(i,param_first_ecpp:pcnst)+      &
                                                             ptend%q(i,k,param_first_ecpp:pcnst)*state%pdeldry(i,k)/gravit
             ptendq_col(i,param_first_ecpp+pcnst:pcnst+pcnst)     = ptendq_col(i,param_first_ecpp+pcnst:pcnst+pcnst)+      &
-                                                            ptend_qqcw(i,k,param_first_ecpp:pcnst)*state%pdeldry(i,k)/gravit 
+                                                            ptend_qqcw(i,k,param_first_ecpp:pcnst)*state%pdeldry(i,k)/gravit
           end do
         end do
 
-        do ichem=param_first_ecpp, pcnst 
+        do ichem=param_first_ecpp, pcnst
          if ((cnst_species_class(ichem) == cnst_spec_class_aerosol) .or. &
              (cnst_species_class(ichem) == cnst_spec_class_gas    )) then
            call outfld(trim(cnst_name(ichem))//'EP', ptend%q(:,:,ichem), pcols, lchnk)
@@ -1361,9 +1343,9 @@ end type ptr2d_t
            call outfld(trim(cnst_name(ichem))//'SFCONUP_EP', ptend_conv_cls_col(:,2, ichem), pcols, lchnk)
            call outfld(trim(cnst_name(ichem))//'SFCONDN_EP', ptend_conv_cls_col(:,3, ichem), pcols, lchnk)
          end if
-        end do 
+        end do
 
-        do ichem=param_first_ecpp, pcnst 
+        do ichem=param_first_ecpp, pcnst
            ichem2=ichem+pcnst
            if(.not. (cnst_name_cw(ichem) == ' ')) then
             call outfld(trim(cnst_name_cw(ichem))//'EP', ptend_qqcw(:,:,ichem), pcols, lchnk)
@@ -1417,7 +1399,7 @@ end type ptr2d_t
 !                   write(0, *) 'ecpp qlsink' , qlsinkcen_3d(i, k,2,1:ncls_ecpp,1)*86400, qlsinkcen_3d(i, k,2,1:ncls_ecpp,2)*86400
 !                   write(0, *) 'ecpp wetscav', del_wetscav3d(i,k,2,1:ncls_ecpp,1, ichem2)*1800, &
 !                                del_wetscav3d(i,k,2,1:ncls_ecpp,2, ichem2)*1800
-                    
+
 !                  call endrun('ptend_conv error')
 !                 end if
 !                end if
@@ -1432,11 +1414,11 @@ end type ptr2d_t
 !                            del_chem_col_wetscav(i, ichem2)/dtstep+ptend_cldchem_col(i,ichem2)+ptend_activate_col(i,ichem2)
 !                   call endrun('ptend_conv error')
 !                 end if
-!              end if 
+!              end if
              end do
             end do
            end if
-        end do 
+        end do
 
         call outfld('AQSO4_H2O2_EP', aqso4_h2o2, pcols, lchnk)
         call outfld('AQSO4_O3_EP', aqso4_o3, pcols, lchnk)

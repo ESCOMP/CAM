@@ -13,9 +13,9 @@ use physics_types,  only: physics_state, physics_ptend, physics_tend,  &
 use physics_buffer, only: pbuf_get_index, pbuf_get_field, physics_buffer_desc
 use phys_control,   only: phys_getopts
 
-use micro_mg_cam,   only: micro_mg_cam_readnl, micro_mg_cam_register, &
-                          micro_mg_cam_implements_cnst, micro_mg_cam_init_cnst, &
-                          micro_mg_cam_init, micro_mg_cam_tend
+use micro_pumas_cam,   only: micro_pumas_cam_readnl, micro_pumas_cam_register, &
+                          micro_pumas_cam_implements_cnst, micro_pumas_cam_init_cnst, &
+                          micro_pumas_cam_init, micro_pumas_cam_tend
 use cam_logfile,    only: iulog
 use cam_abortutils, only: endrun
 use perf_mod,       only: t_startf, t_stopf
@@ -49,7 +49,7 @@ subroutine microp_driver_readnl(nlfile)
 
    select case (microp_scheme)
    case ('MG')
-      call micro_mg_cam_readnl(nlfile)
+      call micro_pumas_cam_readnl(nlfile)
    case ('NONE', 'RK', 'SPCAM_sam1mom', 'SPCAM_m2005')
       continue
    case default
@@ -66,7 +66,7 @@ subroutine microp_driver_register
 
    select case (microp_scheme)
    case ('MG')
-      call micro_mg_cam_register()
+      call micro_pumas_cam_register()
    case ('RK')
       ! microp_driver doesn't handle this one
       continue
@@ -94,7 +94,7 @@ function microp_driver_implements_cnst(name)
 
    select case (microp_scheme)
    case ('MG')
-      microp_driver_implements_cnst = micro_mg_cam_implements_cnst(name)
+      microp_driver_implements_cnst = micro_pumas_cam_implements_cnst(name)
    case ('NONE', 'RK', 'SPCAM_sam1mom', 'SPCAM_m2005')
       continue
    case default
@@ -119,7 +119,7 @@ subroutine microp_driver_init_cnst(name, latvals, lonvals, mask, q)
 
    select case (microp_scheme)
    case ('MG')
-      call micro_mg_cam_init_cnst(name, latvals, lonvals, mask, q)
+      call micro_pumas_cam_init_cnst(name, latvals, lonvals, mask, q)
    case ('RK')
       ! microp_driver doesn't handle this one
       continue
@@ -146,7 +146,7 @@ subroutine microp_driver_init(pbuf2d)
 
    select case (microp_scheme)
    case ('MG')
-      call micro_mg_cam_init(pbuf2d)
+      call micro_pumas_cam_init(pbuf2d)
    case ('RK')
       ! microp_driver doesn't handle this one
       continue
@@ -186,7 +186,7 @@ subroutine microp_driver_tend(state, ptend, dtime, pbuf)
    select case (microp_scheme)
    case ('MG')
       call t_startf('microp_mg_tend')
-      call micro_mg_cam_tend(state, ptend, dtime, pbuf)
+      call micro_pumas_cam_tend(state, ptend, dtime, pbuf)
       call t_stopf('microp_mg_tend')
    case ('RK')
       ! microp_driver doesn't handle this one

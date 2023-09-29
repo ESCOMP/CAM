@@ -1,0 +1,31 @@
+<?xml version="1.0"?>
+
+<namelist_defaults>
+
+<!-- make planet orbit circular              -->
+<orb_eccen                >0.</orb_eccen>
+<orb_obliq                >0.</orb_obliq>
+<orb_mvelp                >0.</orb_mvelp>
+<orb_mode>fixed_parameters</orb_mode>
+
+<!-- Force PHIS to be set to zero -->
+<use_topo_file>.false.</use_topo_file>
+
+<!-- history output customization -->
+<empty_htapes>.true.</empty_htapes>
+<nhtfrq>-720</nhtfrq>
+<avgflag_pertape>'A'</avgflag_pertape>
+
+<fincl1>
+ 'U:A','T:A','V:A','Q:A','Z3:A','PRECL:A','PRECC:A','PS:A','SST:A','TS:A', 'gray_DTCOND', 'gray_DQCOND', 'gray_EVAPDT', 'gray_EVAPDQ', 'gray_PRECL' , 'gray_PRECC' , 'gray_Tsurf' , 'gray_Qsurf' , 'gray_Cdrag' , 'gray_Zpbl'  , 'gray_KVH'   , 'gray_KVM'   , 'gray_VSE'   , 'gray_Zm'    , 'gray_Rf'    , 'gray_DTV'   , 'gray_DUV'   , 'gray_DVV'   , 'gray_VD01'  , 'gray_SHflux', 'gray_LHflux', 'gray_TauU'  , 'gray_TauV'  , 'gray_QRL'   , 'gray_QRS'   , 'gray_SWflux', 'gray_LUflux', 'gray_LDflux', 'gray_LWflux', 'gray_LUflux_TOA', 'gray_LDflux_TOA', 'gray_LWflux_TOA'
+</fincl1>
+
+<analytic_ic_type>'moist_baroclinic_wave_dcmip2016'</analytic_ic_type>
+
+<ncdata dyn="fv"  hgrid="1.9x2.5">atm/cam/inic/fv/FGRAYRAD_f19.cam.i.0051-01-01-00000_c20230510.nc</ncdata>
+
+<test_tracer_names>
+ 'TT_SLOT','TT_GBALL','TT_TANH','TT_EM8','TT_Y2_2','TT_Y32_16'
+</test_tracer_names>
+
+</namelist_defaults>

@@ -220,7 +220,7 @@ module cospsimulator_intr
   ! pbuf indices
   integer :: cld_idx, concld_idx, lsreffrain_idx, lsreffsnow_idx, cvreffliq_idx
   integer :: cvreffice_idx, dpcldliq_idx, dpcldice_idx
-  integer :: shcldliq_idx, shcldice_idx, shcldliq1_idx, shcldice1_idx, dpflxprc_idx
+  integer :: shcldliq1_idx, shcldice1_idx, dpflxprc_idx
   integer :: dpflxsnw_idx, shflxprc_idx, shflxsnw_idx, lsflxprc_idx, lsflxsnw_idx
   integer :: rei_idx, rel_idx
   
@@ -687,7 +687,7 @@ CONTAINS
     use mod_cosp_config,  only : R_UNDEF    
     
     integer :: ncid,latid,lonid,did,hrid,minid,secid, istat
-    integer :: i
+    integer :: i, ierr
     
     ! ISCCP OUTPUTS
     if (lisccp_sim) then
@@ -1164,14 +1164,12 @@ CONTAINS
     cvreffice_idx  = pbuf_get_index('CV_REFFICE')
     dpcldliq_idx   = pbuf_get_index('DP_CLDLIQ')
     dpcldice_idx   = pbuf_get_index('DP_CLDICE')
-    shcldliq_idx   = pbuf_get_index('SH_CLDLIQ')
-    shcldice_idx   = pbuf_get_index('SH_CLDICE')
     shcldliq1_idx  = pbuf_get_index('SH_CLDLIQ1')
     shcldice1_idx  = pbuf_get_index('SH_CLDICE1')
     dpflxprc_idx   = pbuf_get_index('DP_FLXPRC')
     dpflxsnw_idx   = pbuf_get_index('DP_FLXSNW')
-    shflxprc_idx   = pbuf_get_index('SH_FLXPRC')
-    shflxsnw_idx   = pbuf_get_index('SH_FLXSNW')
+    shflxprc_idx   = pbuf_get_index('SH_FLXPRC', errcode=ierr)
+    shflxsnw_idx   = pbuf_get_index('SH_FLXSNW', errcode=ierr)
     lsflxprc_idx   = pbuf_get_index('LS_FLXPRC')
     lsflxsnw_idx   = pbuf_get_index('LS_FLXSNW')
     
@@ -1411,6 +1409,7 @@ CONTAINS
     real(r8), pointer, dimension(:,:) :: cv_reffice      ! convective cld ice effective drop size (microns)
     
     !! precip flux pointers (use for cam4 or cam5)
+    real(r8), target, dimension(pcols,pverp) :: zero_ifc ! zero array for interface fields not in the pbuf
     ! Added pointers;  pbuff in zm_conv_intr.F90, calc in zm_conv.F90 
     real(r8), pointer, dimension(:,:) :: dp_flxprc       ! deep interface gbm flux_convective_cloud_rain+snow (kg m^-2 s^-1)
     real(r8), pointer, dimension(:,:) :: dp_flxsnw       ! deep interface gbm flux_convective_cloud_snow (kg m^-2 s^-1) 
@@ -1567,6 +1566,8 @@ CONTAINS
     lchnk = state%lchnk    ! state variable contains a number of columns, one chunk
     ncol  = state%ncol     ! number of columns in the chunk
     
+    zero_ifc = 0._r8
+
     ! Initialize temporary variables as R_UNDEF - need to do this otherwise array expansion puts garbage in history
     ! file for columns over which COSP did make calculations.
     tmp(1:pcols)         = R_UNDEF
@@ -1807,8 +1808,16 @@ CONTAINS
     !! precipitation fluxes (use for both cam4 and cam5 for now....)
     call pbuf_get_field(pbuf, dpflxprc_idx, dp_flxprc  )
     call pbuf_get_field(pbuf, dpflxsnw_idx, dp_flxsnw  )
-    call pbuf_get_field(pbuf, shflxprc_idx, sh_flxprc  )
-    call pbuf_get_field(pbuf, shflxsnw_idx, sh_flxsnw  )
+    if (shflxprc_idx > 0) then
+       call pbuf_get_field(pbuf, shflxprc_idx, sh_flxprc  )
+    else
+       sh_flxprc => zero_ifc
+    end if
+    if (shflxsnw_idx > 0) then
+       call pbuf_get_field(pbuf, shflxsnw_idx, sh_flxsnw  )
+    else
+       sh_flxsnw => zero_ifc
+    end if
     call pbuf_get_field(pbuf, lsflxprc_idx, ls_flxprc  )
     call pbuf_get_field(pbuf, lsflxsnw_idx, ls_flxsnw  )
    

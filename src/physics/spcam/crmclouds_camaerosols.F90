@@ -1,22 +1,22 @@
 module crmclouds_camaerosols
 #if (defined CRM)
-#if (defined MODAL_AERO) 
+#if (defined MODAL_AERO)
 !---------------------------------------------------------------------------------------------
-! Purpose: 
-! 
-!  Provides the necessary subroutines to use cloud fields from the CRM model to drive the 
-!  aerosol-related subroutines in CAM. Several taskes:
-!     i) to fill the physics buffers with those diagnosed from the CRM clouds.  
-!    ii) to provide the interface for some physics prcoesses, such as droplet activaiton, 
-!         and convetive transport. 
+! Purpose:
 !
-!  An alternative (and better?) approach is to use the ECPP (explicit-cloud parameterized-pollutant). 
+!  Provides the necessary subroutines to use cloud fields from the CRM model to drive the
+!  aerosol-related subroutines in CAM. Several taskes:
+!     i) to fill the physics buffers with those diagnosed from the CRM clouds.
+!    ii) to provide the interface for some physics prcoesses, such as droplet activaiton,
+!         and convetive transport.
+!
+!  An alternative (and better?) approach is to use the ECPP (explicit-cloud parameterized-pollutant).
 !  This will be done later.
 !
-!  Revision history: 
+!  Revision history:
 !  July, 27, 2009: Minghuai Wang
-! 
-!-------------------------------------------------------------------------------------------- 
+!
+!--------------------------------------------------------------------------------------------
    use shr_kind_mod,    only: r8 => shr_kind_r8
    use ppgrid
    use cam_abortutils,  only: endrun
@@ -30,12 +30,12 @@ module crmclouds_camaerosols
    save
 
    public :: spcam_modal_aero_wateruptake_dr
-   public :: crmclouds_mixnuc_tend 
-   public :: crmclouds_diag 
+   public :: crmclouds_mixnuc_tend
+   public :: crmclouds_diag
    public :: crmclouds_convect_tend
 
 !======================================================================================================
-contains 
+contains
 
 subroutine spcam_modal_aero_wateruptake_dr(state,pbuf)
 
@@ -149,7 +149,7 @@ subroutine spcam_modal_aero_wateruptake_dr(state,pbuf)
       es_crm(pcols),                           &
       qs_crm(pcols),                           &
       cldnt(pcols, pver),                      &
-      rh_crm(pcols, crm_nx, crm_ny, pver), & 
+      rh_crm(pcols, crm_nx, crm_ny, pver), &
       wtrvol_grid(pcols,pver,nmodes),          &
       wetvol_grid(pcols,pver,nmodes),          &
       ncount_clear(pcols,pver,nmodes),         &
@@ -158,7 +158,7 @@ subroutine spcam_modal_aero_wateruptake_dr(state,pbuf)
       specdens_1(nmodes)                       )
 
    allocate(  &
-      wetrad(pcols,pver,nmodes),   & 
+      wetrad(pcols,pver,nmodes),   &
       wetvol(pcols,pver,nmodes),   &
       wtrvol(pcols,pver,nmodes),   &
       wtpct(pcols,pver,nmodes),    &
@@ -210,7 +210,7 @@ subroutine spcam_modal_aero_wateruptake_dr(state,pbuf)
    call pbuf_get_field(pbuf, qaerwat_idx,     qaerwat)
 
    dgncur_awet(:,:,:) = dgncur_a(:,:,:)
-   qaerwat            = 0._r8 
+   qaerwat            = 0._r8
 
    h2ommr => state%q(:,:,1)
    t      => state%t
@@ -350,11 +350,11 @@ end subroutine spcam_modal_aero_wateruptake_dr
 
 
 !------------------------------------------------------------------------------------------------------
-subroutine crmclouds_mixnuc_tend (state, ptend, dtime, cflx, pblht, pbuf,   &
-                   wwqui_cen, wwqui_cloudy_cen, wwqui_bnd, wwqui_cloudy_bnd )
+subroutine crmclouds_mixnuc_tend( aero_props, aero_state, state, ptend, dtime, cflx, pblht, pbuf,   &
+                                  wwqui_cen, wwqui_cloudy_cen, wwqui_bnd, wwqui_cloudy_bnd )
 !-----------------------------------------------------------------------------------------------------
 !
-! Purpose: to calculate aerosol tendency from dropelt activation and mixing. 
+! Purpose: to calculate aerosol tendency from dropelt activation and mixing.
 !          Adopted from mmicro_pcond in cldwat2m.F90
 !
 !------------------------------------------------------------------------------------------------------
@@ -368,7 +368,12 @@ subroutine crmclouds_mixnuc_tend (state, ptend, dtime, cflx, pblht, pbuf,   &
   use modal_aero_data
   use rad_constituents, only: rad_cnst_get_info
 
-! Input 
+  use modal_aerosol_properties_mod, only: modal_aerosol_properties
+  use modal_aerosol_state_mod, only: modal_aerosol_state
+
+! Input
+  type(modal_aerosol_properties), intent(in) :: aero_props
+  type(modal_aerosol_state), intent(in) :: aero_state
   type(physics_state), intent(in)    :: state   ! state variables
   type(physics_buffer_desc), pointer :: pbuf(:)
   real(r8), intent(in) :: pblht(pcols)          ! PBL height (meter)
@@ -390,15 +395,15 @@ subroutine crmclouds_mixnuc_tend (state, ptend, dtime, cflx, pblht, pbuf,   &
   integer :: lchnk                  ! chunk identifier
   integer :: ncol                   ! number of atmospheric columns
   integer :: nmodes
- 
+
   real(r8) :: nc(pcols, pver)       ! droplet number concentration (#/kg)
   real(r8) :: nctend(pcols, pver)   ! change in droplet number concentration
-  real(r8) :: omega(pcols, pver)    ! grid-averaaged vertical velocity 
+  real(r8) :: omega(pcols, pver)    ! grid-averaaged vertical velocity
   real(r8) :: qc(pcols, pver)       ! liquid water content (kg/kg)
-  real(r8) :: qi(pcols, pver)       ! ice water content (kg/kg) 
+  real(r8) :: qi(pcols, pver)       ! ice water content (kg/kg)
   real(r8) :: lcldn(pcols, pver)
-  real(r8) :: lcldo(pcols, pver) 
-  real(r8) :: cldliqf(pcols, pver) 
+  real(r8) :: lcldo(pcols, pver)
+  real(r8) :: cldliqf(pcols, pver)
 
   real(r8) :: wsub(pcols, pver)     ! subgrid vertical velocity
   real(r8) :: ekd_crm(pcols, pverp)  ! diffusivity
@@ -408,22 +413,22 @@ subroutine crmclouds_mixnuc_tend (state, ptend, dtime, cflx, pblht, pbuf,   &
   real(r8) :: cs(pcols, pver)       ! air density
   real(r8) :: lc(pcols, pverp)       ! mixing length (m)
   real(r8) :: zheight(pcols, pverp)   ! height at lay interface (m)
-  
+
   real(r8) :: alc(pcols, pverp)        ! asymptotic length scale (m)
-  real(r8) :: tendnd(pcols, pver)      ! tendency of cloud droplet number concentrations (not used in the MMF) 
- 
+  real(r8) :: tendnd(pcols, pver)      ! tendency of cloud droplet number concentrations (not used in the MMF)
+
   real(r8),allocatable :: factnum(:,:,:)  ! activation fraction for aerosol number
 
   real(r8) :: qcld, qsmall
 
-  logical :: dommf=.true.              ! value insignificant, if present, means that dropmixnuc is called the mmf part. 
+  logical :: dommf=.true.              ! value insignificant, if present, means that dropmixnuc is called the mmf part.
 
 ! Variables in the physics buffer:
   real(r8), pointer, dimension(:,:) :: cldn    ! cloud fractin at the current time step
   real(r8), pointer, dimension(:,:) :: cldo   ! cloud fraction at the previous time step
   real(r8), pointer, dimension(:,:) :: acldy_cen ! liquid cloud fraction at the previous time step from ECPP
   real(r8), pointer, dimension(:,:) ::  kkvh    ! vertical diffusivity
-  real(r8), pointer, dimension(:,:) :: tke          ! turbulence kenetic energy 
+  real(r8), pointer, dimension(:,:) :: tke          ! turbulence kenetic energy
   real(r8), pointer, dimension(:,:) :: tk_crm     ! m2/s
 
   logical :: lq(pcnst)
@@ -495,7 +500,7 @@ subroutine crmclouds_mixnuc_tend (state, ptend, dtime, cflx, pblht, pbuf,   &
     end do
 
 ! calculate mixing length
-! from Holtslag and Boville, 1993, J. Climate. 
+! from Holtslag and Boville, 1993, J. Climate.
 !
     do k=1, pverp
       if(zheight(i,k).le.pblht(i)) then
@@ -504,7 +509,7 @@ subroutine crmclouds_mixnuc_tend (state, ptend, dtime, cflx, pblht, pbuf,   &
         alc(i,k) = 30._r8+270._r8*exp(1._r8-zheight(i,k)/pblht(i))
       endif
       lc(i,k) = alc(i,k)*karman*zheight(i,k)/(alc(i,k)+karman*zheight(i,k))
-    enddo 
+    enddo
   end do
 
   call outfld('LENGC', lc, pcols, lchnk)
@@ -513,10 +518,10 @@ subroutine crmclouds_mixnuc_tend (state, ptend, dtime, cflx, pblht, pbuf,   &
   do i=1, ncol
     do k=1, pver
 
-! from vertical variance in the quiescent class, which excldues 
-! the contribution from strong updraft and downdraft. 
+! from vertical variance in the quiescent class, which excldues
+! the contribution from strong updraft and downdraft.
        wsub(i,k) = sqrt(wwqui_cloudy_cen(i,k))  ! use variance in cloudy quiescent area
-       wsub(i,k) = min(wsub(i,k), 10._r8) 
+       wsub(i,k) = min(wsub(i,k), 10._r8)
        wsub(i,k) = max(0.20_r8, wsub(i,k))
     end do   ! end k
 
@@ -526,7 +531,7 @@ subroutine crmclouds_mixnuc_tend (state, ptend, dtime, cflx, pblht, pbuf,   &
       k2=max(k-1, 1)
 !
 ! calculate ekd_crm from wsub in the cloudy quiescent class (following a part of ndrop.F90)
-      ekd_crm(i,k) = min(10.0_r8, max(0.20_r8, sqrt(wwqui_cloudy_bnd(i,k))))* lc(i,k) 
+      ekd_crm(i,k) = min(10.0_r8, max(0.20_r8, sqrt(wwqui_cloudy_bnd(i,k))))* lc(i,k)
       kkvh_crm(i,k) = ekd_crm(i,k)
 
 ! set kkvh to kkvh_crm so this will be used in dropmixnuc in the mmf call
@@ -546,7 +551,7 @@ subroutine crmclouds_mixnuc_tend (state, ptend, dtime, cflx, pblht, pbuf,   &
   cldliqf(:,:)    = 1._r8
   lcldn(:,:)      = 0._r8
   lcldo(:,:)      = 0._r8
-  
+
 
   do k=1,pver
    do i=1,ncol
@@ -556,7 +561,7 @@ subroutine crmclouds_mixnuc_tend (state, ptend, dtime, cflx, pblht, pbuf,   &
 #ifdef ECPP
 !
 !      When ECPP is called, activation associated with cloud fraction change is treated in ECPP.
-!      so set two cloud fractio be the same here. 
+!      so set two cloud fractio be the same here.
 !      But ECPP still did not treat activation associated with turbulent scale motion, and is
 !      done in dropmixnuc
          lcldn(i,k)=acldy_cen(i,k)
@@ -575,9 +580,9 @@ subroutine crmclouds_mixnuc_tend (state, ptend, dtime, cflx, pblht, pbuf,   &
 ! should we set omega to be zero ??
   omega(:ncol, :) = state%omega(:ncol, :)
 
-  call dropmixnuc(state, ptend, dtime, pbuf, wsub, lcldn, lcldo, cldliqf, tendnd, factnum, dommf )
+  call dropmixnuc(aero_props, aero_state, state, ptend, dtime, pbuf, wsub, lcldn, lcldo, cldliqf, tendnd, factnum, dommf )
 
-! this part is moved into tphysbc after aerosol stuffs. 
+! this part is moved into tphysbc after aerosol stuffs.
 !
 
   deallocate(factnum)
@@ -589,10 +594,10 @@ end subroutine crmclouds_mixnuc_tend
 subroutine crmclouds_convect_tend(state,  ptend,  ztodt,  pbuf)
 !-----------------------------------------------------------------
 !
-! Purpose: to do convective transport of tracer species using the cloud fields from CRM and using the 
-!          subroutine of convtran. 
+! Purpose: to do convective transport of tracer species using the cloud fields from CRM and using the
+!          subroutine of convtran.
 !
-! Minghuai Wang, July, 2009: adopted from zm_conv_tend_2 
+! Minghuai Wang, July, 2009: adopted from zm_conv_tend_2
 !
 !------------------------------------------------------------------------------------------------------
    use physics_types, only: physics_state, physics_ptend, physics_ptend_init
@@ -600,7 +605,7 @@ subroutine crmclouds_convect_tend(state,  ptend,  ztodt,  pbuf)
    use physics_buffer, only: physics_buffer_desc, pbuf_old_tim_idx, pbuf_get_index, pbuf_get_field
    use constituents,  only: pcnst, cnst_get_ind
    use zm_conv,       only: convtran
-   use error_messages, only: alloc_err  
+   use error_messages, only: alloc_err
 
 ! Arguments
 ! Input variables:
@@ -620,7 +625,7 @@ subroutine crmclouds_convect_tend(state,  ptend,  ztodt,  pbuf)
    real(r8), dimension(pcols,pver) :: dp   ! layer thickness in mbs (between upper/lower interface).
    real(r8), dimension(pcols) :: dsubcld   !  wg layer thickness in mbs between lcl and maxi.
 
-! physics buffer fields 
+! physics buffer fields
    integer itim, ifld
    real(r8), pointer, dimension(:,:,:) :: fracis  ! fraction of transported species that are insoluble
 
@@ -635,12 +640,12 @@ subroutine crmclouds_convect_tend(state,  ptend,  ztodt,  pbuf)
         ! wg top  level index of deep cumulus convection.
    real(r8), pointer, dimension(:) :: maxgr8 !(pcols,begchunk:endchunk)
         ! wg gathered values of maxi.
-   real(r8), pointer, dimension(:) :: ideepr8 !(pcols,begchunk:endchunk)               
+   real(r8), pointer, dimension(:) :: ideepr8 !(pcols,begchunk:endchunk)
         ! w holds position of gathered points vs longitude index
 
    integer :: jt(pcols)
    integer :: maxg(pcols)
-   integer :: ideep(pcols) 
+   integer :: ideep(pcols)
    integer :: lengath !(begchunk:endchunk)
    logical :: lq(pcnst)
 
@@ -688,14 +693,14 @@ subroutine crmclouds_convect_tend(state,  ptend,  ztodt,  pbuf)
    nstep = get_nstep()
 
 !
-!     Convective transport of all trace species except cloud liquid 
+!     Convective transport of all trace species except cloud liquid
 !     and cloud ice done here because we need to do the scavenging first
 !     to determine the interstitial fraction.
 !
    call cnst_get_ind('CLDLIQ', ixcldliq)
    call cnst_get_ind('CLDICE', ixcldice)
 
-   
+
 ! Is this ok to get the index???
    jt = int(jtr8+0.5_r8)
    maxg = int(maxgr8+0.5_r8)
@@ -710,7 +715,7 @@ subroutine crmclouds_convect_tend(state,  ptend,  ztodt,  pbuf)
    end do
 
 !
-! initialize dpdry for call to convtran 
+! initialize dpdry for call to convtran
 ! it is used for tracers of dry smixing ratio type
 !
    dpdry = 0._r8
@@ -719,7 +724,7 @@ subroutine crmclouds_convect_tend(state,  ptend,  ztodt,  pbuf)
      dp(i,:) = state%pdel(ideep(i),:)/100._r8
    end do
 
-! dsubdld is not used in convtran, and is set to be zero. 
+! dsubdld is not used in convtran, and is set to be zero.
    dsubcld = 0._r8
 
 

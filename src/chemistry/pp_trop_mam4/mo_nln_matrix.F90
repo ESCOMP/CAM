@@ -59,6 +59,8 @@
          mat( 26) = lmat( 26)
          mat( 27) = lmat( 27)
          mat( 28) = lmat( 28)
+         mat( 29) = lmat( 29)
+         mat( 30) = lmat( 30)
          mat( 1) = mat( 1) - dti
          mat( 2) = mat( 2) - dti
          mat( 3) = mat( 3) - dti
@@ -83,6 +85,7 @@
          mat( 25) = mat( 25) - dti
          mat( 26) = mat( 26) - dti
          mat( 27) = mat( 27) - dti
-         mat( 28) = mat( 28) - dti
+         mat( 29) = mat( 29) - dti
+         mat( 30) = mat( 30) - dti
       end subroutine nlnmat_finit
       end module mo_nln_matrix

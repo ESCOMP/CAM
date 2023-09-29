@@ -463,12 +463,12 @@ subroutine dyn_init(dyn_in, dyn_out)
 
    ! Initialize FV dynamical core state variables
 
-   use physconst,       only: pi, omega, rearth, rair, cpair, zvir
-   use physconst,       only: thermodynamic_active_species_idx
-   use physconst,       only: thermodynamic_active_species_idx_dycore, rair, cpair
-   use physconst,       only: thermodynamic_active_species_liq_idx,thermodynamic_active_species_ice_idx
-   use physconst,       only: thermodynamic_active_species_liq_idx_dycore,thermodynamic_active_species_ice_idx_dycore
-   use physconst,       only: thermodynamic_active_species_liq_num, thermodynamic_active_species_ice_num
+   use physconst,       only: omega, rearth, rair, cpair, zvir
+   use air_composition, only: thermodynamic_active_species_idx
+   use air_composition, only: thermodynamic_active_species_idx_dycore
+   use air_composition, only: thermodynamic_active_species_liq_idx,thermodynamic_active_species_ice_idx
+   use air_composition, only: thermodynamic_active_species_liq_idx_dycore,thermodynamic_active_species_ice_idx_dycore
+   use air_composition, only: thermodynamic_active_species_liq_num, thermodynamic_active_species_ice_num
    use infnan,          only: inf, assignment(=)
 
    use constituents,    only: pcnst, cnst_name, cnst_longname, tottnam, cnst_get_ind
@@ -847,23 +847,23 @@ subroutine dyn_run(ptop, ndt, te0, dyn_state, dyn_in, dyn_out, rc)
    use metdata, only: met_fix_mass
 
    use shr_reprosum_mod, only: shr_reprosum_calc
-   use physconst,        only: physconst_calc_kappav
+   use cam_thermo,       only: cam_thermo_calc_kappav
 
 #if defined( SPMD )
 #include "mpif.h"
 #endif
 
    ! arguments
-   real(r8),            intent(in)  :: ptop      ! Pressure at model top (interface pres)
-   integer,             intent(in)  :: ndt       ! the large time step in seconds
-                                                 ! Also the mapping time step in this setup
+   real(r8),            intent(in)    :: ptop      ! Pressure at model top (interface pres)
+   integer,             intent(in)    :: ndt       ! the large time step in seconds
+                                                   ! Also the mapping time step in this setup
 
-   real(r8),            intent(out) :: te0       ! Total energy before dynamics
-   type (T_FVDYCORE_STATE), target  :: dyn_state ! Internal state
-   type (dyn_import_t)              :: dyn_in    ! Import container
-   type (dyn_export_t)              :: dyn_out   ! Export container
+   real(r8),            intent(out)   :: te0       ! Total energy before dynamics
+   type (T_FVDYCORE_STATE), target    :: dyn_state ! Internal state
+   type (dyn_import_t), intent(in)    :: dyn_in    ! Import container
+   type (dyn_export_t), intent(inout) :: dyn_out   ! Export container
 
-   integer,             intent(out) :: rc        ! Return code
+   integer,             intent(out)   :: rc        ! Return code
 
    integer, parameter  ::  DYN_RUN_SUCCESS           = 0
    integer, parameter  ::  DYN_RUN_FAILURE           = -1
@@ -1250,7 +1250,7 @@ subroutine dyn_run(ptop, ndt, te0, dyn_state, dyn_in, dyn_out, rc)
 #endif
 
    if (high_alt) then
-      call physconst_calc_kappav(ifirstxy,ilastxy,jfirstxy,jlastxy,1,km, grid%ntotq, tracer, cap3v, cpv=cp3v )
+      call cam_thermo_calc_kappav( tracer, cap3v, cpv=cp3v )
    else
       cp3v  = cp
       cp3vc = cp
@@ -2442,7 +2442,7 @@ subroutine dyn_run(ptop, ndt, te0, dyn_state, dyn_in, dyn_out, rc)
                ! These updates of cp3vc, cap3vc etc are currently not passed back to physics.
                ! This update is put here, after the transpose of pexy to pe, since we need pe (on yz decomp).
 
-               call physconst_calc_kappav(1,im,jfirst,jlast,kfirst,klast, grid%ntotq, q_internal, cap3vc )
+               call cam_thermo_calc_kappav( q_internal, cap3vc )
 
 !$omp parallel do private(i,j,k)
                do k = kfirst,klast

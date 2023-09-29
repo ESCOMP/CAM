@@ -1131,7 +1131,7 @@ end subroutine macrop_driver_tend
 subroutine liquid_macro_tend(npccn,t,p,qv,qc,nc,xxlv,deltat,stend,qvtend,qctend,nctend,vlen)
 
   use wv_sat_methods, only: wv_sat_qsat_ice_vect, wv_sat_qsat_water_vect
-  use micro_mg_utils, only: rhow
+  use micro_pumas_utils, only: rhow
   use physconst,      only: rair
   use cldfrc2m,       only: rhmini_const, rhmaxi_const
 

@@ -1,0 +1,3 @@
+./xmlchange ROF_NCPL=\$ATM_NCPL
+./xmlchange RUN_STARTDATE=0001-12-14
+./xmlchange CAM_CONFIG_OPTS="-phys cam_dev -microphys mg2 -chem ghg_mam4 -nlev 32"

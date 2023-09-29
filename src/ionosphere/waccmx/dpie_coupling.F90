@@ -34,13 +34,18 @@ module dpie_coupling
   logical  :: crit_user_set = .false.
   real(r8), parameter :: amie_default_crit(2) = (/ 35._r8, 40._r8 /)
 
+  logical :: debug_hist
+
 contains
   !----------------------------------------------------------------------
-  subroutine d_pie_init( edyn_active_in, oplus_xport_in, oplus_nsplit_in, crit_colats_deg )
+  subroutine d_pie_init( edyn_active_in, oplus_xport_in, oplus_nsplit_in, crit_colats_deg, ionos_debug_hist )
 
     logical, intent(in) :: edyn_active_in, oplus_xport_in
     integer, intent(in) :: oplus_nsplit_in
     real(r8),intent(in) :: crit_colats_deg(:)
+    logical, intent(in) :: ionos_debug_hist
+
+    debug_hist = ionos_debug_hist
 
     ionos_edyn_active = edyn_active_in
     ionos_oplus_xport = oplus_xport_in
@@ -51,28 +56,6 @@ contains
        crit(:) = crit_colats_deg(:)*dtr
     end if
 
-    ! Dynamo inputs (called from dpie_coupling. Fields are in waccm format, in CGS units):
-    call addfld ('DPIE_OMEGA',(/ 'lev' /), 'I', 'Pa/s    ','OMEGA input to DPIE coupling', gridname='physgrid')
-    call addfld ('DPIE_MBAR' ,(/ 'lev' /), 'I', 'kg/kmole','MBAR Mean Mass from dpie_coupling', gridname='physgrid')
-    call addfld ('DPIE_TN   ',(/ 'lev' /), 'I', 'deg K   ','DPIE_TN'   , gridname='physgrid')
-    call addfld ('DPIE_UN   ',(/ 'lev' /), 'I', 'cm/s    ','DPIE_UN'   , gridname='physgrid')
-    call addfld ('DPIE_VN   ',(/ 'lev' /), 'I', 'cm/s    ','DPIE_VN'   , gridname='physgrid')
-    call addfld ('DPIE_WN   ',(/ 'lev' /), 'I', 'cm/s    ','DPIE_WN'   , gridname='physgrid')
-    call addfld ('DPIE_OM   ',(/ 'lev' /), 'I', 's-1     ','DPIE_OM'   , gridname='physgrid')
-    call addfld ('DPIE_ZHT  ',(/ 'lev' /), 'I', 'cm      ','DPIE_ZHT (geometric height,simple)', gridname='physgrid')
-    call addfld ('DPIE_ZGI  ',(/ 'lev' /), 'I', 'cm      ','DPIE_ZGI (geopotential height on interfaces)', gridname='physgrid')
-    call addfld ('DPIE_O2   ',(/ 'lev' /), 'I', 'mmr     ','DPIE_O2'   , gridname='physgrid')
-    call addfld ('DPIE_O    ',(/ 'lev' /), 'I', 'mmr     ','DPIE_O'    , gridname='physgrid')
-    call addfld ('DPIE_N2   ',(/ 'lev' /), 'I', 'mmr     ','DPIE_N2'   , gridname='physgrid')
-    call addfld ('DPIE_TE   ',(/ 'lev' /), 'I', 'deg K   ','DPIE_TE'   , gridname='physgrid')
-    call addfld ('DPIE_TI   ',(/ 'lev' /), 'I', 'deg K   ','DPIE_TI'   , gridname='physgrid')
-
-
-    call addfld ('DPIE_OPMMR' ,(/ 'lev' /), 'I', 'mmr'  ,'DPIE_OPMMR'  , gridname='physgrid')
-    call addfld ('DPIE_O2P',(/ 'lev' /), 'I', 'm^-3','DPIE_O2P(dpie input)', gridname='physgrid')
-    call addfld ('DPIE_NOP',(/ 'lev' /), 'I', 'm^-3','DPIE_NOP(dpie input)', gridname='physgrid')
-    call addfld ('DPIE_N2P',(/ 'lev' /), 'I', 'm^-3','DPIE_N2P(dpie input)', gridname='physgrid')
-
     call addfld ('HMF2'       , horiz_only , 'I', 'km'  ,'Height of the F2 Layer'      , gridname='physgrid')
     call addfld ('NMF2'       , horiz_only , 'I', 'cm-3','Peak Density of the F2 Layer', gridname='physgrid')
 
@@ -82,10 +65,57 @@ contains
     call addfld ('prescr_efxp'  , horiz_only, 'I','mW/m2','Prescribed energy flux on geo grid'     ,gridname='physgrid')
     call addfld ('prescr_kevp'  , horiz_only, 'I','keV  ','Prescribed mean energy on geo grid'     ,gridname='physgrid')
 
-    call addfld ('WACCM_UI'   ,(/ 'lev' /), 'I', 'm/s'  ,'WACCM_UI (dpie output)', gridname='physgrid')
-    call addfld ('WACCM_VI'   ,(/ 'lev' /), 'I', 'm/s'  ,'WACCM_VI (dpie output)', gridname='physgrid')
-    call addfld ('WACCM_WI'   ,(/ 'lev' /), 'I', 'm/s'  ,'WACCM_WI (dpie output)', gridname='physgrid')
-    call addfld ('WACCM_OP'   ,(/ 'lev' /), 'I', 'kg/kg'  ,'WACCM_OP (dpie output)', gridname='physgrid')
+    call addfld ('prescr_phihm' , horiz_only, 'I','VOLTS','Prescribed Electric Potential-mag grid' ,gridname='gmag_grid')
+    call addfld ('prescr_efxm'  , horiz_only, 'I','mW/m2','Prescribed energy flux on mag grid'     ,gridname='gmag_grid')
+    call addfld ('prescr_kevm'  , horiz_only, 'I','keV  ','Prescribed mean energy on mag grid'     ,gridname='gmag_grid')
+
+    if (debug_hist) then
+       ! Dynamo inputs (called from dpie_coupling. Fields are in waccm format, in CGS units):
+       call addfld ('DPIE_OMEGA',(/ 'lev' /), 'I', 'Pa/s    ','OMEGA input to DPIE coupling', gridname='physgrid')
+       call addfld ('DPIE_MBAR' ,(/ 'lev' /), 'I', 'kg/kmole','MBAR Mean Mass from dpie_coupling', gridname='physgrid')
+       call addfld ('DPIE_TN   ',(/ 'lev' /), 'I', 'deg K   ','DPIE_TN'   , gridname='physgrid')
+       call addfld ('DPIE_UN   ',(/ 'lev' /), 'I', 'cm/s    ','DPIE_UN'   , gridname='physgrid')
+       call addfld ('DPIE_VN   ',(/ 'lev' /), 'I', 'cm/s    ','DPIE_VN'   , gridname='physgrid')
+       call addfld ('DPIE_WN   ',(/ 'lev' /), 'I', 'cm/s    ','DPIE_WN'   , gridname='physgrid')
+       call addfld ('DPIE_OM   ',(/ 'lev' /), 'I', 's-1     ','DPIE_OM'   , gridname='physgrid')
+       call addfld ('DPIE_ZHT  ',(/ 'lev' /), 'I', 'cm      ','DPIE_ZHT (geometric height,simple)', gridname='physgrid')
+       call addfld ('DPIE_ZGI  ',(/ 'lev' /), 'I', 'cm      ','DPIE_ZGI (geopotential height on interfaces)', gridname='physgrid')
+       call addfld ('DPIE_O2   ',(/ 'lev' /), 'I', 'mmr     ','DPIE_O2'   , gridname='physgrid')
+       call addfld ('DPIE_O    ',(/ 'lev' /), 'I', 'mmr     ','DPIE_O'    , gridname='physgrid')
+       call addfld ('DPIE_N2   ',(/ 'lev' /), 'I', 'mmr     ','DPIE_N2'   , gridname='physgrid')
+       call addfld ('DPIE_TE   ',(/ 'lev' /), 'I', 'deg K   ','DPIE_TE'   , gridname='physgrid')
+       call addfld ('DPIE_TI   ',(/ 'lev' /), 'I', 'deg K   ','DPIE_TI'   , gridname='physgrid')
+
+       call addfld ('PED_phys',(/ 'lev' /), 'I', 'S/m','Pedersen Conductivity'  , gridname='physgrid')
+       call addfld ('HAL_phys',(/ 'lev' /), 'I', 'S/m','Hall Conductivity'   , gridname='physgrid')
+
+       call addfld ('DPIE_OPMMR' ,(/ 'lev' /), 'I', 'mmr'  ,'DPIE_OPMMR'  , gridname='physgrid')
+       call addfld ('DPIE_O2P',(/ 'lev' /), 'I', 'm^-3','DPIE_O2P(dpie input)', gridname='physgrid')
+       call addfld ('DPIE_NOP',(/ 'lev' /), 'I', 'm^-3','DPIE_NOP(dpie input)', gridname='physgrid')
+       call addfld ('DPIE_N2P',(/ 'lev' /), 'I', 'm^-3','DPIE_N2P(dpie input)', gridname='physgrid')
+
+       call addfld ('WACCM_UI'   ,(/ 'lev' /), 'I', 'm/s'  ,'WACCM_UI (dpie output)', gridname='physgrid')
+       call addfld ('WACCM_VI'   ,(/ 'lev' /), 'I', 'm/s'  ,'WACCM_VI (dpie output)', gridname='physgrid')
+       call addfld ('WACCM_WI'   ,(/ 'lev' /), 'I', 'm/s'  ,'WACCM_WI (dpie output)', gridname='physgrid')
+       call addfld ('WACCM_OP'   ,(/ 'lev' /), 'I', 'kg/kg'  ,'WACCM_OP (dpie output)', gridname='physgrid')
+
+       call addfld ('EDYN_ADOTV1 ', (/ 'lev' /), 'I', '        ','EDYN_ADOTV1' , gridname='geo_grid')
+       call addfld ('EDYN_ADOTV2 ', (/ 'lev' /), 'I', '        ','EDYN_ADOTV2' , gridname='geo_grid')
+       call addfld ('EDYN_ADOTA1 ', horiz_only , 'I', '        ','EDYN_ADOTA1' , gridname='geo_grid')
+       call addfld ('EDYN_ADOTA2 ', horiz_only , 'I', '        ','EDYN_ADOTA2' , gridname='geo_grid')
+       call addfld ('EDYN_A1DTA2 ', horiz_only , 'I', '        ','EDYN_A1DTA2' , gridname='geo_grid')
+
+       call addfld ('EDYN_SINI   ', horiz_only , 'I', '        ','EDYN_SINI'   , gridname='geo_grid')
+       call addfld ('EDYN_BE3    ', horiz_only , 'I', '        ','EDYN_BE3'    , gridname='geo_grid')
+
+       call addfld ('ADOTA1_MAG', horiz_only , 'I', ' ','ADOTA1 in geo-mag coords' , gridname='gmag_grid')
+       call addfld ('SINI_MAG',   horiz_only , 'I', ' ','sini in geo-mag coords' , gridname='gmag_grid')
+
+       call addfld ('OPLUS', (/ 'lev' /), 'I', 'cm^3','O+ (oplus_xport output)',    gridname='geo_grid')
+       call addfld ('OPtm1i',(/ 'lev' /), 'I', 'cm^3','O+ (oplus_xport output)',    gridname='geo_grid')
+       call addfld ('OPtm1o',(/ 'lev' /), 'I', 'cm^3','O+ (oplus_xport output)',    gridname='geo_grid')
+    endif
+
   end subroutine d_pie_init
 
   !-----------------------------------------------------------------------
@@ -434,27 +464,29 @@ contains
         end do
      end do ! k=1,nlev
 
-     call outfld_phys('DPIE_TN',tn)
-     call outfld_phys('DPIE_UN',u* 100._r8)
-     call outfld_phys('DPIE_VN',v* 100._r8)
-     call outfld_phys('DPIE_WN',wn* 100._r8)
-     call outfld_phys('DPIE_ZHT',zht* 100._r8)
-     call outfld_phys('DPIE_ZGI',zgi* 100._r8)
-     call outfld_phys('DPIE_MBAR',mbar)
+     if (debug_hist) then
+        call outfld_phys('DPIE_TN',tn)
+        call outfld_phys('DPIE_UN',u* 100._r8)
+        call outfld_phys('DPIE_VN',v* 100._r8)
+        call outfld_phys('DPIE_WN',wn* 100._r8)
+        call outfld_phys('DPIE_ZHT',zht* 100._r8)
+        call outfld_phys('DPIE_ZGI',zgi* 100._r8)
+        call outfld_phys('DPIE_MBAR',mbar)
 
-     call outfld_phys('DPIE_N2',n2mmr)
-     call outfld_phys('DPIE_O2',o2mmr)
-     call outfld_phys('DPIE_O',o1mmr)
+        call outfld_phys('DPIE_N2',n2mmr)
+        call outfld_phys('DPIE_O2',o2mmr)
+        call outfld_phys('DPIE_O',o1mmr)
 
-     call outfld_phys('DPIE_OMEGA',omega)
-     call outfld_phys('DPIE_OM',-omega/pmid)
+        call outfld_phys('DPIE_OMEGA',omega)
+        call outfld_phys('DPIE_OM',-omega/pmid)
 
-     call outfld_phys('DPIE_TE',te)
-     call outfld_phys('DPIE_TI',ti)
+        call outfld_phys('DPIE_TE',te)
+        call outfld_phys('DPIE_TI',ti)
 
-     call outfld_phys('DPIE_O2P',o2p)
-     call outfld_phys('DPIE_NOP',nop)
-     call outfld_phys('DPIE_N2P',n2p)
+        call outfld_phys('DPIE_O2P',o2p)
+        call outfld_phys('DPIE_NOP',nop)
+        call outfld_phys('DPIE_N2P',n2p)
+     endif
      call outfld_phys('EDens',ne/1.E6_r8)
      call outfld_phys('OpDens',op/1.E6_r8)
 
@@ -503,11 +535,11 @@ contains
         call outfld_phys1d('HMF2',hmf2)
         call outfld_phys1d('NMF2',nmf2)
      end if
-
-     call outfld_phys('DPIE_OPMMR', opmmr)
-     call outfld_phys('PED_phys', sigma_ped )
-     call outfld_phys('HAL_phys', sigma_hall )
-
+     if (debug_hist) then
+        call outfld_phys('DPIE_OPMMR', opmmr)
+        call outfld_phys('PED_phys', sigma_ped )
+        call outfld_phys('HAL_phys', sigma_hall )
+     endif
      if (ionos_edyn_active .or. ionos_oplus_xport) then
 
         call regrid_phys2geo_3d( zgi,zpot_geo, plev, cols, cole )
@@ -561,25 +593,25 @@ contains
 
        call regrid_geo2mag_3d( adotv1_in, adotv1_mag )
        call regrid_geo2mag_3d( adotv2_in, adotv2_mag )
+       if (debug_hist) then
+          call outfld_geo('EDYN_ADOTV1', adotv1_in(:,:,lev1:lev0:-1) )
+          call outfld_geo('EDYN_ADOTV2', adotv2_in(:,:,lev1:lev0:-1) )
 
-       call outfld_geo('EDYN_ADOTV1', adotv1_in(:,:,lev1:lev0:-1) )
-       call outfld_geo('EDYN_ADOTV2', adotv2_in(:,:,lev1:lev0:-1) )
-
-       call outfld_geo2d( 'EDYN_ADOTA1', adota1_in )
-       call outfld_geo2d( 'EDYN_ADOTA2', adota2_in )
-       call outfld_geo2d( 'EDYN_A1DTA2', a1dta2_in )
-       call outfld_geo2d( 'EDYN_BE3' , be3_in )
-       call outfld_geo2d( 'EDYN_SINI', sini_in )
-
+          call outfld_geo2d( 'EDYN_ADOTA1', adota1_in )
+          call outfld_geo2d( 'EDYN_ADOTA2', adota2_in )
+          call outfld_geo2d( 'EDYN_A1DTA2', a1dta2_in )
+          call outfld_geo2d( 'EDYN_BE3' , be3_in )
+          call outfld_geo2d( 'EDYN_SINI', sini_in )
+       endif
        call regrid_geo2mag_2d( adota1_in, adota1_mag )
        call regrid_geo2mag_2d( adota2_in, adota2_mag )
        call regrid_geo2mag_2d( a1dta2_in, a1dta2_mag )
        call regrid_geo2mag_2d( be3_in, be3_mag )
        call regrid_geo2mag_2d( sini_in, sini_mag )
-
-       call outfld_mag2d('ADOTA1_MAG', adota1_mag )
-       call outfld_mag2d('SINI_MAG', sini_mag )
-
+       if (debug_hist) then
+          call outfld_mag2d('ADOTA1_MAG', adota1_mag )
+          call outfld_mag2d('SINI_MAG', sini_mag )
+       endif
        call regrid_phys2mag_3d( sigma_ped, ped_mag, plev, cols, cole )
        call regrid_phys2mag_3d( sigma_hall, hal_mag, plev, cols, cole )
        call regrid_phys2mag_3d( zgi, zpot_mag, plev, cols, cole )
@@ -641,9 +673,9 @@ contains
        call regrid_phys2geo_3d( pmid, pmid_geo, plev, cols, cole )
        call regrid_phys2geo_3d( mbar, mbar_geo, plev, cols, cole )
 
-       call t_startf('dpie_halo')
        if (mytid<ntask) then
 
+          call t_startf('dpie_halo')
           do k = 1, nlev
              kk = nlev-k+1
              do j = lat0, lat1
@@ -688,9 +720,9 @@ contains
           call mp_pole_halos(ptrs,1,nlev,lon0,lon1,lat0,lat1,nfields,polesign)
           deallocate(ptrs,polesign)
           call t_stopf('dpie_halo')
-
-          call outfld_geokij( 'OPtm1i',optm1_in, lev0,lev1, lon0,lon1, lat0,lat1 )
-
+          if (debug_hist) then
+             call outfld_geokij( 'OPtm1i',optm1_in, lev0,lev1, lon0,lon1, lat0,lat1 )
+          endif
           call t_startf('dpie_oplus_xport')
           do isplit = 1, nspltop
 
@@ -713,9 +745,10 @@ contains
              write(iulog,"('  op_out   min,max (cm^3)=',2es12.4)") minval(op_out)   ,maxval(op_out)
              write(iulog,"(' optm1_out min,max (cm^3)=',2es12.4)") minval(optm1_out),maxval(optm1_out)
           end if
-
-          call outfld_geokij( 'OPLUS', op_out, lev0,lev1, lon0,lon1, lat0,lat1 )
-          call outfld_geokij( 'OPtm1o',optm1_out, lev0,lev1, lon0,lon1, lat0,lat1 )
+          if (debug_hist) then
+             call outfld_geokij( 'OPLUS', op_out, lev0,lev1, lon0,lon1, lat0,lat1 )
+             call outfld_geokij( 'OPtm1o',optm1_out, lev0,lev1, lon0,lon1, lat0,lat1 )
+          endif
           !
           ! Pass new O+ for current and previous time step back to physics (convert from cm^3 to m^3 and back to mmr).
           !
@@ -744,11 +777,12 @@ contains
 
     end if ! ionos_oplus_xport
 
-    call outfld_phys('WACCM_UI',ui)
-    call outfld_phys('WACCM_VI',vi)
-    call outfld_phys('WACCM_WI',wi)
-    call outfld_phys('WACCM_OP',opmmr)
-
+    if (debug_hist) then
+       call outfld_phys('WACCM_UI',ui)
+       call outfld_phys('WACCM_VI',vi)
+       call outfld_phys('WACCM_WI',wi)
+       call outfld_phys('WACCM_OP',opmmr)
+    endif
     call t_stopf('d_pie_coupling')
 
   end subroutine d_pie_coupling

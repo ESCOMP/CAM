@@ -8,6 +8,8 @@
         use physics_buffer, only : physics_buffer_desc
         use shr_kind_mod,   only : r8 => shr_kind_r8
 
+        use modal_aerosol_properties_mod, only: modal_aerosol_properties
+
 	implicit none
 
 
@@ -23,8 +25,8 @@
 !-----------------------------------------------------------------------
 
 !-----------------------------------------------------------------------
-	subroutine parampollu_td240clm(                           &
-		ktau, dtstep, ktau_pp_in, dtstep_pp,          &
+	subroutine parampollu_td240clm( aero_props,               &
+		ktau, dtstep, ktau_pp_in, dtstep_pp,              &
 		idiagaa_ecpp, ldiagaa_ecpp,                       &
 		tcen_bar, pcen_bar, rhocen_bar, dzcen,            &
 		rhobnd_bar, zbnd, wbnd_bar,                       &
@@ -38,9 +40,9 @@
 		rh_sub2, qcloud_sub2, qlsink_sub2,                &
 		precr_sub2, precs_sub2,                           &
                 del_cldchem3d,  del_rename3d,                     &
-                del_wetscav3d, del_wetresu3d,     & 
+                del_wetscav3d, del_wetresu3d,                     &
                 del_activate3d, del_conv3d,                       &
-                del_chem_clm_cldchem, del_chem_clm_rename, del_chem_clm_wetscav,       &
+                del_chem_clm_cldchem, del_chem_clm_rename, del_chem_clm_wetscav, &
                 aqso4_h2o2, aqso4_o3, xphlwc3d,                   &
 		it,      jt,      kts,ktebnd,ktecen, pbuf         )
 
@@ -52,7 +54,7 @@
 !    of the host-code grid
 !
 ! this version uses the hybrid time-dependent up/dndraft formulation
-!   the up and dndrafts are time-dependent, rather than steady state, 
+!   the up and dndrafts are time-dependent, rather than steady state,
 !	with a lifetime equal "draft_lifetime"
 !   in the hybrid formulation, the host-code column is conceptually
 !	divided into ntstep_hybrid == (draft_lifetime/dtstep_pp) pieces
@@ -60,7 +62,7 @@
 !   the up and downdrafts start "fresh" in the first piece
 !   at the end of each "piece integration", the up and downdrafts are
 !	shifted into the next piece
-!   the the drafts evolve over time = draft_lifetime, but different 
+!   the the drafts evolve over time = draft_lifetime, but different
 !	pieces of the environment are affected by different aged drafts
 !   the hybrid approach avoids two problems of the original time-dependent
 !	up/dndraft formulation:
@@ -81,10 +83,11 @@
 
 	use module_ecpp_util, only:  ecpp_error_fatal, ecpp_message, &
                                      parampollu_1clm_set_opts
-                                    
+
         use cam_abortutils, only: endrun
 
 !   arguments
+        type(modal_aerosol_properties), intent(in) :: aero_props
 	integer, intent(in) ::                  &
 		ktau, ktau_pp_in,           &
 		it, jt, kts, ktebnd, ktecen
@@ -96,7 +99,7 @@
 
 	integer, intent(in) :: idiagaa_ecpp(1:199), ldiagaa_ecpp(1:199)
 !   these control diagnostic output
-	
+
 	real(r8), intent(in) :: dtstep, dtstep_pp
 !   dtstep - main model time step (s)
 !   dtstep_pp - time step (s) for "parameterized pollutants" calculations
@@ -137,7 +140,7 @@
 !   mtype_updnenv_ecpp - transport-class (updraft, downdraft, or quiescent)
 
 	real(r8), intent(in), dimension( kts:ktebnd, 0:2, 0:maxcls_ecpp ) ::   &
-		abnd_tavg_ecpp, mfbnd_ecpp 
+		abnd_tavg_ecpp, mfbnd_ecpp
 !	real(r8), intent(in), dimension( kts:ktecen, 0:2, 0:maxcls_ecpp ) ::   &
 !	acen_tavg_ecpp, acen_tbeg_ecpp, acen_prec_ecpp
        real(r8), intent(inout), dimension( kts:ktecen, 0:2, 0:maxcls_ecpp ) ::   &
@@ -145,7 +148,7 @@
 	real(r8), intent(inout), dimension( kts:ktecen, 0:2, 0:maxcls_ecpp ) ::   &
 		acen_tfin_ecpp
 !   abnd_tavg_ecpp - sub-class fractional area (--) at layer bottom boundary
-!   acen_tavg_ecpp, acen_tbeg_ecpp, acen_tfin_ecpp - sub-class fractional area (--) 
+!   acen_tavg_ecpp, acen_tbeg_ecpp, acen_tfin_ecpp - sub-class fractional area (--)
 !	at layer centers
 !	_tavg_ is average for full time period (=dtstep_pp_in)
 !       _tbeg_ is average at beginning of time period
@@ -155,7 +158,7 @@
 !	0 <= acen_prec_ecpp(:,:,:)/acen_tavg_ecpp(:,:,:) <= 1
 !   mfbnd_ecpp - sub-class vertical mass flux (kg/m2/s) at layer bottom boundary.
 !
-!   NOTE 1 - these 6 xxx_ecpp arrays contain statistics from the crm 
+!   NOTE 1 - these 6 xxx_ecpp arrays contain statistics from the crm
 !	post-processor or interface.
 !   Each array has a xxx_use array that contains "checked and adjusted values",
 !	and those values are the ones that are used.
@@ -188,7 +191,7 @@
                                   del_activate3d            ! 3D change in chem_sub from activation/resuspension
 
       real(r8), intent(out), dimension(kts:ktecen, 1:2, 1:maxcls_ecpp, 1:num_chem_ecpp )  ::       &
-                                  del_conv3d            ! 3D change in chem_sub from convective transport 
+                                  del_conv3d            ! 3D change in chem_sub from convective transport
 
         real(r8), intent(out) :: aqso4_h2o2,            &         ! SO4 aqueous phase chemistry due to H2O2 (kg/m2)
                                    aqso4_o3                          ! SO4 aqueous phase chemistry due to O3 (kg/m2)
@@ -214,7 +217,7 @@
 		mtype_updnenv_use
 
 	real(r8) :: draft_area_fudge, draft_area_fudge_1m
-	real(r8) :: tmpa 
+	real(r8) :: tmpa
         real(r8) :: tmpd, tmpe, tmpf, tmpg, tmph
         real(r8) :: tmpveca(100)
         real(r8), save :: tmpvecsva(100), tmpvecsvb(100), tmpvecsvc(100)
@@ -240,7 +243,7 @@
 
 	real(r8), dimension( kts:ktecen, 1:maxcls_ecpp, 1:num_chem_ecpp ) :: &
 		chem_cls
- 
+
 	real(r8), dimension( kts:ktecen, 1:2, 1:maxcls_ecpp, 1:num_chem_ecpp ) ::   &
 		chem_sub_new, chem_sub_beg, chem_sub_ac1sv, chem_sub_hysum
 
@@ -249,7 +252,7 @@
         real(r8), dimension(kts:ktecen, 1:2, 1:maxcls_ecpp, 1:num_chem_ecpp )  ::       &
                                   del_activate3da            ! 3D change in chem_sub from activation/resuspension
 
-        
+
 
 	character(len=120) :: msg
 
@@ -329,7 +332,7 @@
 		acen_tavg_use, acen_tfin_use, acen_prec_use,      &
 		rhodz_cen,                                        &
 		it,      jt,      kts,ktebnd,ktecen               )
- 
+
 !   do startup calcs (for this parampollu timestep)
 	if (ipass_check_adjust_inputs == 1) then
 	    acen_tbeg_use(:,:,:) = acen_tbeg_ecpp(:,:,:)
@@ -379,10 +382,10 @@
 	end do   ! ipass_check_adjust_inputs
 
 
- 
+
 !   *** temporary exit
 	if (iflag_ecpp_test_bypass_1 > 0) return
- 
+
 
 !   save values in these arrays
 	acen_tbeg_usex1(:,:,:) = acen_tbeg_use(:,:,:)
@@ -424,8 +427,8 @@
 !     initial values are taken from chem_sub_new
 !     final   values are put   into chem_sub_new
 	ipass_area_change = 1
-	call parampollu_tdx_area_change(                          &
-		ktau, dtstep, ktau_pp, dtstep_pp,             &
+	call parampollu_tdx_area_change( aero_props,              &
+		ktau, dtstep, ktau_pp, dtstep_pp,                 &
 		idiagaa_ecpp, ldiagaa_ecpp,                       &
 		tcen_bar, pcen_bar, rhocen_bar, dzcen,            &
 		rhobnd_bar, wbnd_bar,                             &
@@ -449,12 +452,12 @@
 ! save current chem_sub values
 	chem_sub_ac1sv(:,:,:,:) = 0.0_r8
 	chem_sub_ac1sv(kts:ktecen,1:2,1:ncls_use,1:num_chem_ecpp) = &
-	  chem_sub_new(kts:ktecen,1:2,1:ncls_use,1:num_chem_ecpp) 
+	  chem_sub_new(kts:ktecen,1:2,1:ncls_use,1:num_chem_ecpp)
 ! initialize chem_sub hybrid-sum
 	chem_sub_hysum(:,:,:,:) = 0.0_r8
 
 	ntstep_hybrid = nint( draft_lifetime / dtstep )
-	ntstep_hybrid = max( 1, ntstep_hybrid ) 
+	ntstep_hybrid = max( 1, ntstep_hybrid )
 	if (lun62 > 0) write(lun62,'(a,2i10)') &
 		'parampollu_td240clm - ktau, ntstep_hybrid', &
 		ktau, ntstep_hybrid
@@ -482,7 +485,7 @@ itstep_hybrid_loop:   &
 !
 	ardz_cen_old(:,:,:) = ardz_cen_new(:,:,:)
 
-	call parampollu_tdx_main_integ(                           &
+	call parampollu_tdx_main_integ( aero_props,               &
 		ktau, dtstep, ktau_pp, dtstep_pp,                 &
                 itstep_hybrid, ntstep_hybrid,                     &
 		idiagaa_ecpp, ldiagaa_ecpp,                       &
@@ -495,9 +498,9 @@ itstep_hybrid_loop:   &
 		kdraft_bot_use, kdraft_top_use,                   &
 		mtype_updnenv_use,                                &
 		chem_sub_new,                                     &
-		del_chem_clm_cldchem, del_chem_clm_rename, del_chem_clm_wetscav,       &
+		del_chem_clm_cldchem, del_chem_clm_rename, del_chem_clm_wetscav, &
                 del_cldchem3d, del_rename3d,                      &
-                del_wetscav3d, del_wetresu3d,      &
+                del_wetscav3d, del_wetresu3d,                     &
                 del_activate3da,                                  &
                 aqso4_h2o2, aqso4_o3, xphlwc3d,                   &
 		mfbnd_use, mfbnd_quiescn_up, mfbnd_quiescn_dn,    &
@@ -572,8 +575,8 @@ itstep_hybrid_loop:   &
 	    ardz_cen_old(:,:,:) = ardz_cen_new(:,:,:)
 	    ardz_cen_new(:,:,:) = ardz_cen_tfin(:,:,:)
 
-	    call parampollu_tdx_area_change(                      &
-		ktau, dtstep, ktau_pp, dtstep_pp,             &
+	    call parampollu_tdx_area_change( aero_props,          &
+		ktau, dtstep, ktau_pp, dtstep_pp,                 &
 		idiagaa_ecpp, ldiagaa_ecpp,                       &
 		tcen_bar, pcen_bar, rhocen_bar, dzcen,            &
 		rhobnd_bar, wbnd_bar,                             &
@@ -685,8 +688,8 @@ itstep_hybrid_loop:   &
 
 
 !-----------------------------------------------------------------------
-	subroutine parampollu_tdx_main_integ(                     &
-		ktau, dtstep, ktau_pp, dtstep_pp,             &
+	subroutine parampollu_tdx_main_integ( aero_props,         &
+		ktau, dtstep, ktau_pp, dtstep_pp,                 &
                 itstep_hybrid, ntstep_hybrid,                     &
 		idiagaa_ecpp, ldiagaa_ecpp,                       &
 		tcen_bar, pcen_bar, rhocen_bar, dzcen,            &
@@ -698,7 +701,7 @@ itstep_hybrid_loop:   &
 		kdraft_bot_use, kdraft_top_use,                   &
 		mtype_updnenv_use,                                &
 		chem_sub_new,                                     &
-		del_chem_clm_cldchem, del_chem_clm_rename, del_chem_clm_wetscav,       &
+		del_chem_clm_cldchem, del_chem_clm_rename, del_chem_clm_wetscav, &
                 del_cldchem3d,  del_rename3d,                     &
                 del_wetscav3d, del_wetresu3d,                     &
                 del_activate3d,                                   &
@@ -723,8 +726,8 @@ itstep_hybrid_loop:   &
 ! incoming chem_sub_new holds current sub-class mixing ratios
 ! outgoing chem_sub_new holds updated sub-class mixing ratios
 !
-! treats 
-!    sub-grid vertical transport and associated horizontal exchange 
+! treats
+!    sub-grid vertical transport and associated horizontal exchange
 !       (entrainment and detrainment)
 !    activation/resuspension
 !    cloud chemistry and wet removal
@@ -745,6 +748,7 @@ itstep_hybrid_loop:   &
 	use module_ecpp_util, only:  ecpp_error_fatal, ecpp_message
 
 !   arguments
+        type(modal_aerosol_properties), intent(in) :: aero_props
 	integer, intent(in) ::                  &
 		ktau, ktau_pp,              &
                 itstep_hybrid, ntstep_hybrid,   &
@@ -798,7 +802,7 @@ itstep_hybrid_loop:   &
                   del_wetresu3d
 
         real(r8), intent(inout), dimension(  kts:ktecen, 1:2, 1:maxcls_ecpp, 1:num_chem_ecpp ) ::    &
-                  del_activate3d             ! 3D change from activation/resuspension 
+                  del_activate3d             ! 3D change from activation/resuspension
 
         real(r8), intent(inout) :: aqso4_h2o2,            &         ! SO4 aqueous phase chemistry due to H2O2 (kg/m2)
                                    aqso4_o3                          ! SO4 aqueous phase chemistry due to O3 (kg/m2)
@@ -917,15 +921,15 @@ itstep_hybrid_loop:   &
 		end if
 
 	    else
-		! +mfbnd_quiescn_up(k+1,icc,0  ) is upwards outflow from sub-class 
+		! +mfbnd_quiescn_up(k+1,icc,0  ) is upwards outflow from sub-class
 		!                                at top of layer (and is >= 0)
-		! +mfbnd_quiescn_dn(k+1,0  ,icc) is dnwards inflow  to   sub-class 
+		! +mfbnd_quiescn_dn(k+1,0  ,icc) is dnwards inflow  to   sub-class
 		!                                at top of layer (and is <= 0)
-		! -mfbnd_quiescn_up(k  ,0, ,icc) is upwards inflow  to   sub-class 
+		! -mfbnd_quiescn_up(k  ,0, ,icc) is upwards inflow  to   sub-class
 		!                                at bottom of layer (and is <= 0)
-		! -mfbnd_quiescn_dn(k  ,icc,0  ) is dnwards outflow from sub-class 
+		! -mfbnd_quiescn_dn(k  ,icc,0  ) is dnwards outflow from sub-class
 		!                                at bottom of layer (and is >= 0)
-		! tmpb = net vertical in/outflows 
+		! tmpb = net vertical in/outflows
 		!        (positive if net outflow, negative if net inflow)
 		tmpb = ( mfbnd_quiescn_up(k+1,icc,0  )   &
 		       + mfbnd_quiescn_dn(k+1,0  ,icc)   &
@@ -962,12 +966,12 @@ itstep_hybrid_loop:   &
 !
 !   calc activation/resuspension fractions associated with ent/det
 !   and vertical transport
-!   
+!
 	if (activate_onoff_use > 0) then
         call t_startf('ecpp_activate')
 	ifrom_where = 10
-	call parampollu_tdx_activate1(                            &
-		ktau, dtstep, ktau_pp, dtstep_pp,             &
+	call parampollu_tdx_activate1( aero_props,                &
+		ktau, dtstep, ktau_pp, dtstep_pp,                 &
 		idiagaa_ecpp, ldiagaa_ecpp,                       &
 		tcen_bar, pcen_bar, rhocen_bar, dzcen,            &
 		rhobnd_bar, wbnd_bar,                             &
@@ -990,14 +994,14 @@ itstep_hybrid_loop:   &
 !   determine number of integration sub-steps
 !	calc "outflow" courant number for each sub-class
 !	    = (sum of outflow air-mass fluxes) * dt / ardz_cen
-!	calc tmpcourmax = maximum outflow courant number 
+!	calc tmpcourmax = maximum outflow courant number
 !	    for all layers and sub-classes
 !	select ntstep_sub (number of integration sub-steps) so that
 !	    (tmpcourmax/ntstep_sub) <= 1.0
 !
 	if (lun124 > 0) &
 	    write( lun124, '(/a,2i5/a)' ) 'new courout stuff -- ktau, ktau_pp', ktau, ktau_pp, &
-	       'k, tmpcouroutc(qu), tmpcouroutb(up), tmpcouroutb(dn)' 
+	       'k, tmpcouroutc(qu), tmpcouroutb(up), tmpcouroutb(dn)'
 	tmp2dxb(:,:) = -1.0_r8
 	tmpcourmax = 0.0_r8
 	do k = ktecen, kts, -1
@@ -1065,7 +1069,7 @@ itstep_hybrid_loop:   &
 !   do multiple integration sub-steps
 !	apply vertical transport and balancing entrainment/detrainment
 !
-!	area change is done elsewhere, so area is fixed at ardz_cen_new 
+!	area change is done elsewhere, so area is fixed at ardz_cen_new
 !       during the integration loop
 !
 main_itstep_sub_loop:   &
@@ -1103,7 +1107,7 @@ main_trans_k_loop:   &
 
 !   la loop goes over all species
 !      for la = non-aerosol species, loop is executed with lc=0
-!      for la = interstitial aerosol species, loop is excecuted with 
+!      for la = interstitial aerosol species, loop is excecuted with
 !         lc=activated counterpart
 !      for la = activated aerosol species, loop is skipped
 main_trans_la_loop:   &
@@ -1151,8 +1155,8 @@ main_trans_la_loop:   &
 !   add entrainment contributions (need activation/resuspension here)
 !
 !+++mhwang
-!   Calculate the fraction of entrainment that may expericence activations. 
-!     (we assume only the new cloudy updraft may experience activation, and 
+!   Calculate the fraction of entrainment that may expericence activations.
+!     (we assume only the new cloudy updraft may experience activation, and
 !      old updraft do not experience activation
 !    Minghuai Wang, 2010-05
             frc_ent_act = 1.0_r8
@@ -1204,7 +1208,7 @@ entrain_iccy_loop:   &
 !+++mhwangtest
 ! turn activation in entrainment off
 !                ido_actres_tmp = 0   ! +++mhwangtest
-                
+
 		if (ido_actres_tmp == 0) then
 		    ! non aicw-aerosol species OR no activation or resuspension
 		    tmp_del_ardzqa = tmp_qyla*tmp_del_ardz
@@ -1227,7 +1231,7 @@ entrain_iccy_loop:   &
 			tmp_del_ardzqc = (tmp_qyla*tmp_fmnact + tmp_qylc)*tmp_del_ardz
 		    end if
 
-		else 
+		else
 		    ! resuspension of lc
 		    tmp_del_ardzqa = (tmp_qyla+tmp_qylc)*tmp_del_ardz
 		    tmp_del_ardzqc = 0.0_r8
@@ -1251,7 +1255,7 @@ entrain_iccy_loop:   &
 
 	    if (jcls == jcls_qu) then
 !   quiescent class -- calc change to layer k mixrat due to vertical transport at lower boundary
-!	mfbnd_quiescn_up(k,icc1,icc2) is upwards mass flux from icc1 to icc2 
+!	mfbnd_quiescn_up(k,icc1,icc2) is upwards mass flux from icc1 to icc2
 !		at bottom of layer k
 !	mfbnd_quiescn_dn(k,icc1,icc2) is downwards ...
 !   activation/resuspension calcs
@@ -1263,7 +1267,7 @@ vert_botqu_iupdn_loop:   &
 		    if (k <= kts) cycle vert_botqu_iupdn_loop   ! skip k=kts
 vert_botqu_iccy_loop:   &
 		do iccy = 1, 2
-		    ! kb & iccy refer to the layer and sub-class from which 
+		    ! kb & iccy refer to the layer and sub-class from which
 		    !    air and tracer mass are leaving
 		    ido_actres_tmp = 0
 		    if (iupdn == 1) then
@@ -1280,7 +1284,7 @@ vert_botqu_iccy_loop:   &
 			end if
 		    else
 			! air is going from kb=k,iccb=icc to k-1,iccy=1:2
-			! since this is a loss from k, we can calc iccy=1&2 
+			! since this is a loss from k, we can calc iccy=1&2
 			!    together using mfbnd_quiescn_dn(k,icc,0)
 			if (iccy > 1) cycle vert_botqu_iccy_loop
 			tmp_del_ardz = mfbnd_quiescn_dn(k,icc,0)*dtstep_sub
@@ -1318,7 +1322,7 @@ vert_botqu_iccy_loop:   &
 			tmp_del_ardzqa = (tmp_qyla*(1.0_r8-tmp_fmnact)     )*tmp_del_ardz
 			tmp_del_ardzqc = (tmp_qyla*tmp_fmnact + tmp_qylc)*tmp_del_ardz
 
-		    else 
+		    else
 			! resuspension of lc
 			tmp_del_ardzqa = (tmp_qyla+tmp_qylc)*tmp_del_ardz
 			tmp_del_ardzqc = 0.0_r8
@@ -1338,7 +1342,7 @@ vert_botqu_iccy_loop:   &
                    if (lc > 0)    &
                    tmp_del_ardzqc_act = tmp_del_ardzqc_act + (tmp_del_ardzqc - tmp_qylc*tmp_del_ardz)
 
-		    ! with "pgf90 -O2", code seg-faulted until following statement 
+		    ! with "pgf90 -O2", code seg-faulted until following statement
 		    !    was added.  (note that it is do-nothing, since la>0 always)
 		    if (la < 0) write(*,*)   &
 			'vert_botqu gggg - icc,iupdn,ido', iccy, iupdn, ido_actres_tmp
@@ -1346,7 +1350,7 @@ vert_botqu_iccy_loop:   &
 		end do vert_botqu_iupdn_loop
 
 !   quiescent class -- calc change to layer k mixrat due to vertical transport at upper boundary
-!	mfbnd_quiescn_up(k+1,icc1,icc2) is upwards mass flux from icc1 to icc2 
+!	mfbnd_quiescn_up(k+1,icc1,icc2) is upwards mass flux from icc1 to icc2
 !		at top of layer k
 !	mfbnd_quiescn_dn(k+1,icc1,icc2) is downwards ...
 !   activation/resuspension calcs
@@ -1361,7 +1365,7 @@ vert_topqu_iccy_loop:   &
 		    ido_actres_tmp = 0
 		    if (iupdn == 1) then
 			! air is going from kb=k,iccb=icc to k+1,iccy=1:2
-			! since this is a loss from k, we can calc iccy=1&2 
+			! since this is a loss from k, we can calc iccy=1&2
 			!    together using mfbnd_quiescn_up(k+1,icc,0)
 			if (iccy > 1) cycle vert_topqu_iccy_loop
 			tmp_del_ardz = -mfbnd_quiescn_up(k+1,icc,0)*dtstep_sub
@@ -1409,7 +1413,7 @@ vert_topqu_iccy_loop:   &
 			tmp_del_ardzqa = (tmp_qyla*(1.0_r8-tmp_fmnact)     )*tmp_del_ardz
 			tmp_del_ardzqc = (tmp_qyla*tmp_fmnact + tmp_qylc)*tmp_del_ardz
 
-		    else 
+		    else
 			! resuspension of lc
 			tmp_del_ardzqa = (tmp_qyla+tmp_qylc)*tmp_del_ardz
 			tmp_del_ardzqc = 0.0_r8
@@ -1424,7 +1428,7 @@ vert_topqu_iccy_loop:   &
                     if (lc > 0)    &
                     tmp_del_ardzqc_act = tmp_del_ardzqc_act + (tmp_del_ardzqc - tmp_qylc*tmp_del_ardz)
 
-		    ! with "pgf90 -O2", code seg-faulted until following statement 
+		    ! with "pgf90 -O2", code seg-faulted until following statement
 		    !    was added.  (note that it is do-nothing, since la>0 always)
 		    if (la < 0) write(*,*)   &
 			'vert_topqu gggg - icc,iupdn,ido', iccy, iupdn, ido_actres_tmp
@@ -1433,7 +1437,7 @@ vert_topqu_iccy_loop:   &
 
 
 	    else
-!   up/dndraft class -- add/subtract vertical transport at lower boundary 
+!   up/dndraft class -- add/subtract vertical transport at lower boundary
 !   no activation/resuspension here as the vertical transport within up/dndrafts
 !      is clear-->clear or cloudy-->cloudy.   (The within up/dndraft
 !      clear<-->cloudy is done by ent/detrainment.)
@@ -1456,7 +1460,7 @@ vert_topqu_iccy_loop:   &
 		    end if
 		end if
 	    end if   ! (k > kts)
-!   up/dndraft class -- add/subtract vertical transport at upper boundary 
+!   up/dndraft class -- add/subtract vertical transport at upper boundary
 	    if (k < ktebnd-1) then
 		tmp_del_ardz = -mfbnd_use(k+1,icc,jcls)*dtstep_sub
 		if (abs(tmp_del_ardz) > 0.0_r8) then
@@ -1534,7 +1538,7 @@ vert_topqu_iccy_loop:   &
 ! move cloud chemistry and wetscavenging outside of istep_sub_loop
 ! inside of the itstep_sub_loop is too expanseive
 ! Minghuai Wang, 2010-04-28
-! 
+!
         itstep_sub = 1
         dtstep_sub = dtstep_pp
 
@@ -1637,8 +1641,8 @@ vert_topqu_iccy_loop:   &
 
 
 !-----------------------------------------------------------------------
-	subroutine parampollu_tdx_area_change(                    &
-		ktau, dtstep, ktau_pp, dtstep_pp,             &
+	subroutine parampollu_tdx_area_change( aero_props,        &
+		ktau, dtstep, ktau_pp, dtstep_pp,                 &
 		idiagaa_ecpp, ldiagaa_ecpp,                       &
 		tcen_bar, pcen_bar, rhocen_bar, dzcen,            &
 		rhobnd_bar, wbnd_bar,                             &
@@ -1671,11 +1675,11 @@ vert_topqu_iccy_loop:   &
 	use module_data_radm2, only:  epsilc
 
 	use module_data_mosaic_asect, only:  ai_phase, cw_phase,   &
-                maxd_asize, maxd_atype   
+                maxd_asize, maxd_atype
 
 	use module_data_ecpp1
 
-	use module_ecpp_util, only:  ecpp_error_fatal, ecpp_message   
+	use module_ecpp_util, only:  ecpp_error_fatal, ecpp_message
 
 !   arguments
 	integer, intent(in) ::                  &
@@ -1687,6 +1691,7 @@ vert_topqu_iccy_loop:   &
 !	chem_driver and routines under it do calculations
 !	over these spatial indices.
 
+        type(modal_aerosol_properties), intent(in) :: aero_props
 	integer, intent(in) :: idiagaa_ecpp(1:199), ldiagaa_ecpp(1:199)
 
 	real(r8), intent(in) :: dtstep, dtstep_pp
@@ -1710,7 +1715,7 @@ vert_topqu_iccy_loop:   &
 
 	integer, intent(in) :: ncls_ecpp
 !   ncls_ecpp - number of ecpp transport classes in the grid column
-	
+
 	integer, intent(inout) :: ipass_area_change
 	integer, intent(in)    :: ncls_use
 
@@ -1816,11 +1821,11 @@ vert_topqu_iccy_loop:   &
 
 !
 !   calc activation/resuspension fractions associated with ent/det
-!   
+!
 	if (activate_onoff_use > 0) then
 	ifrom_where = ipass_area_change
-	call parampollu_tdx_activate1(                            &
-		ktau, dtstep, ktau_pp, dtstep_pp,             &
+	call parampollu_tdx_activate1( aero_props,                &
+		ktau, dtstep, ktau_pp, dtstep_pp,                 &
 		idiagaa_ecpp, ldiagaa_ecpp,                       &
 		tcen_bar, pcen_bar, rhocen_bar, dzcen,            &
 		rhobnd_bar, wbnd_bar,                             &
@@ -1832,7 +1837,7 @@ vert_topqu_iccy_loop:   &
 		chem_sub_new,                                     &
 		mfbnd_use,                                        &
 		ar_bnd_tavg,                                      &
-		ent_airamt,                                       &
+		ent_airamt,                            &
 		ido_actres_horz, fmact_horz, fnact_horz           )
 	end if
 
@@ -1864,7 +1869,7 @@ main_k_loop:   &
 
 !   la loop goes over all species
 !      for la = non-aerosol species, loop is executed with lc=0
-!      for la = interstitial aerosol species, loop is excecuted with 
+!      for la = interstitial aerosol species, loop is excecuted with
 !         lc=activated counterpart
 !      for la = activated aerosol species, loop is skipped
 main_la_loop:   &
@@ -1938,11 +1943,11 @@ main_la_loop:   &
 		    else
 !			tmpa = tmpa + (tmp_qyla*(1.0_r8-tmp_fmnact)     )*tmpd
 !			tmpc = tmpc + (tmp_qyla*tmp_fmnact + tmp_qylc)*tmpd
-                       tmp_del_ardzqa = (tmp_qyla*(1.0_r8-tmp_fmnact)     )*tmpd 
+                       tmp_del_ardzqa = (tmp_qyla*(1.0_r8-tmp_fmnact)     )*tmpd
                        tmp_del_ardzqc = (tmp_qyla*tmp_fmnact + tmp_qylc)*tmpd
 		    end if
 
-		else 
+		else
 		    ! resuspension of lc
 !		    tmpa = tmpa + (tmp_qyla+tmp_qylc)*tmpd
                    tmp_del_ardzqa = (tmp_qyla+tmp_qylc)*tmpd
@@ -2015,7 +2020,7 @@ main_la_loop:   &
 !-----------------------------------------------------------------------
 ! DESCRIPTION
 !
-! parampollu_tdx_entdet_sub1 calculates 
+! parampollu_tdx_entdet_sub1 calculates
 !    the "horizontal exchange coefficients" associated with
 !    area changes or vertical mass fluxes
 !
@@ -2045,7 +2050,7 @@ main_la_loop:   &
 
 	integer, intent(in) :: ncls_ecpp
 !   ncls_ecpp - number of ecpp transport classes in the grid column
-	
+
 	integer, intent(in)    :: ifrom_where
 	integer, intent(in)    :: ncls_use
 
@@ -2061,9 +2066,9 @@ main_la_loop:   &
 	real(r8), intent(inout), dimension( 1:2, 1:maxcls_ecpp, kts:ktecen  ) :: &
 		ent_airamt_tot, det_airamt_tot
 !   ent_airamt_tot(icc,jcls,k) is the total detrainment into layer k,
-!      sub-class icc, class jcls from all other sub-classes 
+!      sub-class icc, class jcls from all other sub-classes
 !   det_airamt_tot(icc,jcls,k) is the total detrainment from layer k,
-!      sub-class icc, class jcls to all other sub-classes 
+!      sub-class icc, class jcls to all other sub-classes
 !   units are (kg/m2)
 !
 !   define entdet_net == ent_airamt_tot - det_airamt_tot
@@ -2091,7 +2096,7 @@ main_la_loop:   &
 !   ent_airamt(iccaa,jclsaa,iccbb,jclsbb,k) is (positive) the entrainment amount
 !      into sub-class (iccaa,jclsaa,k) from sub-class (iccbb,jclsbb,k)
 !   det_airamt(iccaa,jclsaa,iccbb,jclsbb,k) is (positive) the detrainment amount
-!      from sub-class (iccaa,jclsaa,k) into sub-class (iccbb,jclsbb,k) 
+!      from sub-class (iccaa,jclsaa,k) into sub-class (iccbb,jclsbb,k)
 !   units for both are (kg/m2)
 
 
@@ -2137,7 +2142,7 @@ main_la_loop:   &
 		egrp_aaunasi_worst_i=0, dgrp_aaunasi_worst_i=0,   &
 		egrp_aaunasi_worst_j=0, dgrp_aaunasi_worst_j=0,   &
 		egrp_aaunasi_worst_k=0, dgrp_aaunasi_worst_k=0,   &
-		egrp_aaunasi_worst_ktau=0, dgrp_aaunasi_worst_ktau=0 
+		egrp_aaunasi_worst_ktau=0, dgrp_aaunasi_worst_ktau=0
 	real(r8), dimension(3), save ::   &
 		ecls_aaunasi_worst=0.0_r8, dcls_aaunasi_worst=0.0_r8,   &
 		egrp_aaunasi_worst=0.0_r8, dgrp_aaunasi_worst=0.0_r8
@@ -2167,7 +2172,7 @@ main_la_loop:   &
 !   do a very simple calculation that mimics previous code
 !   up and dndrafts entrain-from and detrain-too
 !      the quiescent class with the same icc
-!   (currently the simple calculation results are only used for diagnostic 
+!   (currently the simple calculation results are only used for diagnostic
 !      purposes, but turning them off would mess up the diagnostics.)
 !
 	ent_airamt(:,:,:,:,:) = 0.0_r8
@@ -2180,13 +2185,13 @@ entdet_main_kloop_bb: &
 	do icc = 1, 2
 	    if (jcls == jcls_qu) cycle   ! skip quiescent
 
-	    tmpa4 = ent_airamt_tot(icc,jcls,k) 
+	    tmpa4 = ent_airamt_tot(icc,jcls,k)
 	    if (tmpa4 > 0.0_r8) then
 		ent_airamt( icc,jcls,    icc,jcls_qu, k) = tmpa4
 		det_airamt( icc,jcls_qu, icc,jcls,    k) = tmpa4
 	    end if
 
-	    tmpa4 = det_airamt_tot(icc,jcls,k) 
+	    tmpa4 = det_airamt_tot(icc,jcls,k)
 	    if (tmpa4 > 0.0_r8) then
 		det_airamt( icc,jcls,    icc,jcls_qu, k) = tmpa4
 		ent_airamt( icc,jcls_qu, icc,jcls,    k) = tmpa4
@@ -2248,7 +2253,7 @@ entdet_main_kloop_bb: &
 		jgrp_of_jcls(jcls) = 3
 	    end if
 	end do
-	if (lunaa > 0) write(lunaa,'(a,10(2x,2i3))')  & 
+	if (lunaa > 0) write(lunaa,'(a,10(2x,2i3))')  &
                        'jcls  and jgrp_of_cls', (jcls, jgrp_of_jcls(jcls), jcls=1,ncls_use)
 
 	ent_airamt(:,:,:,:,:) = 0.0_r8
@@ -2281,19 +2286,19 @@ entdet_main_kloop_aa: &
 
 	if (lunaa > 0) then
 	    write(lunaa,'(/a,1p,10e16.8)') 'ardz_cut,rdz', ardz_cut, rhodz_cen(k)
-	    write(lunaa,'( a,1p,10e16.8)') 'ardz_cen_old', ardz_cen_old(k,0,0), ardz_cen_old(k,1:2,1:3) 
-	    write(lunaa,'( a,1p,10e16.8)') 'ardz_cen_new', ardz_cen_new(k,0,0), ardz_cen_new(k,1:2,1:3) 
+	    write(lunaa,'( a,1p,10e16.8)') 'ardz_cen_old', ardz_cen_old(k,0,0), ardz_cen_old(k,1:2,1:3)
+	    write(lunaa,'( a,1p,10e16.8)') 'ardz_cen_new', ardz_cen_new(k,0,0), ardz_cen_new(k,1:2,1:3)
 	    write(lunaa,'( a,1p,10e16.8)') 'new-old     ', (ardz_cen_new(k,0,0)-ardz_cen_new(k,0,0)), &
 	                                                   (ardz_cen_new(k,1:2,1:3)-ardz_cen_old(k,1:2,1:3))
 	    tmpa = 1.0_r8/rhodz_cen(k)
 	    tmpb = sum( ardz_cen_old(k,1:2,1:3) )
 	    tmpc = sum( ardz_cen_new(k,1:2,1:3) )
-	    write(lunaa,'( a,1p,10e16.8)') 'area_cen_old', tmpa*tmpb, tmpa*ardz_cen_old(k,1:2,1:3) 
-	    write(lunaa,'( a,1p,10e16.8)') 'area_cen_new', tmpa*tmpc, tmpa*ardz_cen_new(k,1:2,1:3) 
+	    write(lunaa,'( a,1p,10e16.8)') 'area_cen_old', tmpa*tmpb, tmpa*ardz_cen_old(k,1:2,1:3)
+	    write(lunaa,'( a,1p,10e16.8)') 'area_cen_new', tmpa*tmpc, tmpa*ardz_cen_new(k,1:2,1:3)
 	    write(lunaa,'( a,1p,10e16.8)') 'new-old     ', tmpa*(tmpc-tmpb), &
 	                                                   tmpa*(ardz_cen_new(k,1:2,1:3)-ardz_cen_old(k,1:2,1:3))
-	    write(lunaa,'( a/1p,4(1x,3e11.3))') 'ardz_cen_old(0:2,0:3)', ardz_cen_old(k,0:2,0:3) 
-	    write(lunaa,'( a/1p,4(1x,3e11.3))') 'ardz_cen_new(0:2,0:3)', ardz_cen_new(k,0:2,0:3) 
+	    write(lunaa,'( a/1p,4(1x,3e11.3))') 'ardz_cen_old(0:2,0:3)', ardz_cen_old(k,0:2,0:3)
+	    write(lunaa,'( a/1p,4(1x,3e11.3))') 'ardz_cen_new(0:2,0:3)', ardz_cen_new(k,0:2,0:3)
 	end if
 
 
@@ -2435,7 +2440,7 @@ entdet_main_kloop_aa: &
 	tmpmatbb(1,0) = sum( dgrp_aaunasi(1,2:3) )
 	! tmpmatbb(2,0) = portion of tmpmatbb(0,0) from cloudy draft to all quiescent
 	tmpmatbb(2,0) = sum( dgrp_aaunasi(2,2:3) )
-	tmpmatbb(0,0) = tmpmatbb(1,0) + tmpmatbb(2,0) 
+	tmpmatbb(0,0) = tmpmatbb(1,0) + tmpmatbb(2,0)
 
 	if (tmpmatbb(0,0) > 1.0e-30_r8) then
 
@@ -2446,7 +2451,7 @@ entdet_main_kloop_aa: &
 	! this step can drive the ecls_aaunasi of a quiescent negative,
 	!    and the negative entrainment gets converted to positive detrainment
 	!    (from one quiescent subarea to the other)
-	! when doing area-change, check that this will not make 
+	! when doing area-change, check that this will not make
 	!    dcls_aaunasi exceed dcls_aalimit
 	if (ifrom_where < 10) then
 	    tmpvecbb(1:2) = tmpmatbb(0,1:2)
@@ -2553,7 +2558,7 @@ entdet_main_kloop_aa: &
 	jclsy = jcls_qu
 	jgrpy = jgrp_of_jcls(jclsy)
 
-	! when doing area-change, check that this will not make 
+	! when doing area-change, check that this will not make
 	!    dcls_aalimit negative for either quiescent subarea
 	if (ifrom_where < 10) then
 	    ! total unassigned entrainment to up/dndrafts
@@ -2624,9 +2629,9 @@ entdet_main_kloop_aa: &
 
 !   step 6
 !   quiescent clear <--> quiescent cloudy exchanges
-!	if clear  is detraining and cloudy is entraining, then assign as much as 
+!	if clear  is detraining and cloudy is entraining, then assign as much as
 !	    possible of the det/ent as "clear quiescent" --> "cloudy quiescent"
-!	if cloudy is detraining and clear  is entraining, then assign as much as 
+!	if cloudy is detraining and clear  is entraining, then assign as much as
 !	    possible of the det/ent as "cloudy quiescent" --> "clear quiescent"
 	do jcls = 1, ncls_use
 	    if (jcls /= jcls_qu) cycle
@@ -2878,7 +2883,7 @@ entdet_main_kloop_aa: &
 !-----------------------------------------------------------------------
 ! DESCRIPTION
 !
-! sets following arrays 
+! sets following arrays
 !
 ! is_aerosol   : logical variable, whether it is an aeroosl speices or not
 !
@@ -3006,7 +3011,7 @@ entdet_main_kloop_aa: &
 !
 ! parampollu_tdx_startup does some "startup" calculations
 !
-!    re-initializes the acen_tbeg to all-quiescent and the 
+!    re-initializes the acen_tbeg to all-quiescent and the
 !       chem_cls to chem_bar at the re-init time (if this is turned on)
 !
 !    calculates chem_sub from chem_cls (which involves some assumptions
@@ -3027,7 +3032,7 @@ entdet_main_kloop_aa: &
 
 	use module_data_ecpp1
 
-	use module_ecpp_util, only:  ecpp_error_fatal, ecpp_message   
+	use module_ecpp_util, only:  ecpp_error_fatal, ecpp_message
 
 !   arguments
 	integer, intent(in) ::                  &
@@ -3057,10 +3062,10 @@ entdet_main_kloop_aa: &
 
 	real(r8), intent(inout), dimension( kts:ktecen, 1:maxcls_ecpp, 1:num_chem_ecpp ) :: &
 		chem_cls
- 
+
 	integer, intent(in) :: ncls_ecpp
 !   ncls_ecpp - number of ecpp transport classes in the grid column
-	
+
 	real(r8), intent(inout), dimension( kts:ktecen, 0:2, 0:maxcls_ecpp ) ::   &
 		acen_tbeg
 
@@ -3216,7 +3221,7 @@ acwxx1_k_loop: &
 	    ! no special treatment in this case
 	    if (acen_tbeg_use(k,1,jcls) < afrac_cut_0p5) cycle acwxx1_k_loop
 
-	    ! cloudy subarea ~= 0 and clear subarea > 0 
+	    ! cloudy subarea ~= 0 and clear subarea > 0
 	    ! resuspend any cloudborne material
 	    if (acen_tbeg_use(k,2,jcls) < afrac_cut_0p5) then
 		do la = p1st, num_chem_ecpp
@@ -3234,7 +3239,7 @@ acwxx1_k_loop: &
 		cycle acwxx1_k_loop
 	    end if
 
-	    ! at this point, clear and cloudy subareas > 0 
+	    ! at this point, clear and cloudy subareas > 0
 	    tmp_acen(0:2) = acen_tbeg_use(k,0:2,jcls)
 	    tmp_chem_cls(p1st:num_chem_ecpp) = chem_cls(k,jcls,p1st:num_chem_ecpp)
 	    tmp_chem_sub(1:2,p1st:num_chem_ecpp) = chem_sub_beg(k,1:2,jcls,p1st:num_chem_ecpp)
@@ -3356,7 +3361,7 @@ acwxx1_k_loop: &
 
 ! first partition number and dry-mass species
 !    in a manner that attempts to get the "a+cw" mixing ratios
-!    in clear and cloudy subareas to be equal the 
+!    in clear and cloudy subareas to be equal the
 !    cell/class average (clear+cloudy) "a+cw" mixing ratios
 	    qv_a_x = 0.0_r8 ; qv_a_y = 0.0_r8
 	    do ll = 0, ncomp_aer(itype)
@@ -3370,7 +3375,7 @@ acwxx1_k_loop: &
 
 ! nomenclature for q_...
 !    a = interstitial; c = cloudborne; ac = a+c
-!    x = in clear subarea; y = in cloudy subarea; 
+!    x = in clear subarea; y = in cloudy subarea;
 !        bar = average over both subareas
 !
 ! following always hold
@@ -3552,10 +3557,10 @@ acwxx1_k_loop: &
 
 	real(r8), intent(inout), dimension( kts:ktecen, 1:maxcls_ecpp, 1:num_chem_ecpp ) :: &
 		chem_cls
- 
+
 	integer, intent(in) :: ncls_ecpp
 !   ncls_ecpp - number of ecpp transport classes in the grid column
-	
+
 
 	real(r8), intent(inout), dimension( kts:ktecen, 0:2, 0:maxcls_ecpp ) ::   &
 		acen_tfin_ecpp
@@ -3572,7 +3577,7 @@ acwxx1_k_loop: &
                 del_cldchem3d, del_rename3d, del_wetdep3d, del_wetresu3d
 
         real(r8), intent(in), dimension( kts:ktecen, 1:2, 1:maxcls_ecpp, 1:num_chem_ecpp ) ::   &
-                del_activate3d   
+                del_activate3d
 
         real(r8), intent(out), dimension( kts:ktecen, 1:2, 1:maxcls_ecpp, 1:num_chem_ecpp ) ::   &
                 del_conv3d
@@ -3670,7 +3675,7 @@ acwxx1_k_loop: &
 		end do
 	    end do
 !	    chem_bar(k,l) = max(0.0_r8,tmpa)/tmpb
-            chem_bar(k,l) = tmpa   ! chem_bar is used to calcualte q tendency at the MMF model, 
+            chem_bar(k,l) = tmpa   ! chem_bar is used to calcualte q tendency at the MMF model,
                                    ! so keep it consistent with del_conv3d
 
 	    do jcls = 1, ncls_use
@@ -3878,7 +3883,7 @@ acwxx1_k_loop: &
 !    all mass fluxes are set to zero at/above k_max_wnonzero
 !    up and downdraft mass fluxes and areas are set to zero at/above k_max_updndraft
 !    cloud fractional areas are set to zero at/above k_max_clouds
-!    
+!
 ! the checks and adjustment are designed to eliminate "problems" in
 !    the input/incoming arrays that might cause the rest of the
 !    parampollu code to fail
@@ -3920,16 +3925,16 @@ acwxx1_k_loop: &
 
 	integer, intent(in) :: ncls_ecpp
 	integer, intent(inout) :: ncls_use
-	
+
 	integer, intent(in), dimension( 1:2, 1:maxcls_ecpp ) ::   &
 		kdraft_bot_ecpp, kdraft_top_ecpp,   &
 		mtype_updnenv_ecpp
 	integer, intent(inout), dimension( 1:2, 1:maxcls_ecpp ) ::   &
 		kdraft_bot_use, kdraft_top_use,   &
 		mtype_updnenv_use
-	
+
 	real(r8), intent(in), dimension( kts:ktebnd, 0:2, 0:maxcls_ecpp ) ::   &
-		mfbnd_ecpp, abnd_tavg_ecpp 
+		mfbnd_ecpp, abnd_tavg_ecpp
         real(r8), intent(inout), dimension( kts:ktebnd, 0:2, 0:maxcls_ecpp ) ::   &
                 mfbnd_use, abnd_tavg_use
 	real(r8), intent(in), dimension( kts:ktecen, 0:2, 0:maxcls_ecpp ) ::   &
@@ -3950,7 +3955,7 @@ acwxx1_k_loop: &
 	integer :: ido_downdr_area_zeroout, ido_updndr_area_adjust, ipass_2_changes
 	integer :: ispecial_check_acen_tfin
 	integer :: ja, jb
-	integer :: jcls, jclsbb 
+	integer :: jcls, jclsbb
 	integer :: jclsicc, jclsicc_noc, jclsicc_cld
 	integer :: k, ka, kb, ktmpa, ktmpb
 	integer :: lun63, lun141, lun155
@@ -4002,7 +4007,7 @@ acwxx1_k_loop: &
 
 
 !-----------------------------------------------------
-!   when ipass_check_adjust_inputs == 2, 
+!   when ipass_check_adjust_inputs == 2,
 !   skip to he beginning of the special stuff for ipass_check_adjust_inputs == 2
 	if (ipass_check_adjust_inputs == 2) goto 20000
 !-----------------------------------------------------
@@ -4031,7 +4036,7 @@ acwxx1_k_loop: &
 	rhodz_cen(kts:ktecen) = rhocen_bar(kts:ktecen)*dzcen(kts:ktecen)
 
 
-!   check that 
+!   check that
 !	the mtype_updnenv_use are valid
 !	there is exactly one of each quiescent transport class (cloudy, clear)
 	jclsicc_noc = -1
@@ -4086,8 +4091,8 @@ acwxx1_k_loop: &
 	write(lun155,'(/a,3i5)') 'aaa', ktau, ipass_check_adjust_inputs
 	write(lun155,'(3(i5,i3,1pe16.8))') ((jcls,icc,acen_tavg_use(26,icc,jcls),icc=0,2),jcls=0,3)
 	end if
-!   *** this is for testing 
-!       when iflag_ecpp_test_fixed_fcloud == 2/3/4/5, 
+!   *** this is for testing
+!       when iflag_ecpp_test_fixed_fcloud == 2/3/4/5,
 !           set clear  fractions to 1.0/0.0/0.7/0.3
 !           set cloudy fractions to 0.0/1.0/0.3/0.7
 !
@@ -4157,7 +4162,7 @@ acwxx1_k_loop: &
 		if (abs(tmpa-1.0_r8) < a_sum_toleraa) cycle
 		write(msg,'(2a,i5,1pe15.7)') &
 		    '*** parampollu_check_adjust_inputs - bad ', &
-		    area_name10(i), k, tmpa  
+		    area_name10(i), k, tmpa
 		call ecpp_message( lunout, msg )
 		call ecpp_error_fatal( lunout, msg )
 	    end do
@@ -4435,7 +4440,7 @@ acwxx1_k_loop: &
 	    acen_tfin_use(k,icc,jcls) = tmpb
 	end do
 
-!   for empty sub-class (mfbnd/abnd/acen=0 at all levels), 
+!   for empty sub-class (mfbnd/abnd/acen=0 at all levels),
 !   set kdraft_bot/top_use to ktecen
 	if ((kdraft_bot_use(icc,jcls) < -999888000) .and.   &
 	    (kdraft_top_use(icc,jcls) < -999888000)) then
@@ -4447,7 +4452,7 @@ acwxx1_k_loop: &
 
 !   sum clear and cloudy mfbnd_use
 	do k = kts, ktebnd
-	    mfbnd_use(k,0,jcls) = sum( mfbnd_use(k,1:2,jcls) ) 
+	    mfbnd_use(k,0,jcls) = sum( mfbnd_use(k,1:2,jcls) )
 	end do
 
 3590	continue
@@ -4691,7 +4696,7 @@ acwxx1_k_loop: &
 !
 !   before 15-jul-2008 code
 !      code above may have set afrac_bnd=0 in some transport-class
-!      now adjust afrac_bnd in quiescent transport-class so that 
+!      now adjust afrac_bnd in quiescent transport-class so that
 !          all-transport-class-sum = 1.0
 !
 !   on/after 15-jul-2008 code
@@ -4730,7 +4735,7 @@ acwxx1_k_loop: &
 	    tmp_mfa = 0.0_r8
 	    do jcls = 1, ncls_use
 		if (jcls == jcls_qu) cycle
-		mfbnd_use(k,0,jcls) = sum( mfbnd_use(k,1:2,jcls) ) 
+		mfbnd_use(k,0,jcls) = sum( mfbnd_use(k,1:2,jcls) )
 		tmp_mfa = tmp_mfa + mfbnd_use(k,0,jcls)
 	    end do
 	    jcls = jcls_qu
@@ -4771,7 +4776,7 @@ acwxx1_k_loop: &
 !      tmpvecaa holds clear/cloudy fractions of the   upwind layer
 !      tmpvecbb holds clear/cloudy fractions of the downwind layer
 	    jcls = jcls_qu
-	    tmp0202aa(0:2,0) = mfbnd_use(k,0:2,jcls) 
+	    tmp0202aa(0:2,0) = mfbnd_use(k,0:2,jcls)
 	    tmp0202aa(0:2,1:2) = 0.0_r8
 	    do ja = 1, 2
 		jb = 3-ja
@@ -4786,16 +4791,16 @@ acwxx1_k_loop: &
 		tmp0202aa(0,jb) = sum( tmp0202aa(1:2,jb) )
 	    end do
 	    if (mfbnd_use(k,0,jcls) < 0.0_r8) then
-		mfbnd_quiescn_dn(k,0:2,0:2) = tmp0202aa(0:2,0:2) 
+		mfbnd_quiescn_dn(k,0:2,0:2) = tmp0202aa(0:2,0:2)
 	    else if (mfbnd_use(k,0,jcls) > 0.0_r8) then
-		mfbnd_quiescn_up(k,0:2,0:2) = tmp0202aa(0:2,0:2) 
+		mfbnd_quiescn_up(k,0:2,0:2) = tmp0202aa(0:2,0:2)
 	    end if
 
 !	if ((ipass_check_adjust_inputs == 2) .and. (lun141 > 0)) then
 !	if (k == kts+1) write( 141, '(/a,2i5)' )   &
 !		'mfbnd_quiescn at ktau, ipass =', ktau, ipass_check_adjust_inputs
 !	write( 141, '(i3,1p,2e11.3,2(2x,4e11.3))' ) k, mfbnd_use(k,1:2,jcls),   &
-!	    mfbnd_quiescn_up(k,1:2,1:2), mfbnd_quiescn_dn(k,1:2,1:2) 
+!	    mfbnd_quiescn_up(k,1:2,1:2), mfbnd_quiescn_dn(k,1:2,1:2)
 !	end if
 
 	end do   ! k = kts+1, ktecen
@@ -4946,18 +4951,18 @@ acwxx1_k_loop: &
 		chem_bar
 
 	integer, intent(in) :: ncls_ecpp
-	
+
 	integer, intent(in), dimension( 1:2, 1:maxcls_ecpp ) ::   &
 		kdraft_bot_ecpp, kdraft_top_ecpp,   &
 		mtype_updnenv_ecpp
-	
+
 	real(r8), intent(in), dimension( kts:ktebnd, 0:2, 0:maxcls_ecpp ) ::   &
 		mfbnd, abnd_tavg
 	real(r8), intent(in), dimension( kts:ktecen, 0:2, 0:maxcls_ecpp ) ::   &
 		acen_tavg, acen_tbeg, acen_tfin
-	
+
 	character(len=8), dimension( kts:ktebnd ) :: dumchar8
-	
+
 
 !   local variables
 	integer :: iclrcld
@@ -5027,7 +5032,7 @@ acwxx1_k_loop: &
 	    write(lun,9420) (mfbnd(k,iclrcld,jcls), k=kts,ktebnd)
 	end do
 	end do
-     
+
 
 	write(lun,'(/a)') 'baraa'
 	write(lun,'(a)') ' k     z(km)   p(mb)     rho    t(C) w(cm/s)'
@@ -5049,7 +5054,7 @@ acwxx1_k_loop: &
 	    write(lun,'(/a,7i5)') 'draftbb - ktau_pp, jcls, iclrcld, updn, clrcldy, top, bot =',   &
 		ktau_pp, jcls, iclrcld,   &
 		mtype_updnenv_ecpp(iclrcld,jcls), itmp_mtype_clrcldy(iclrcld),   &
-		kdraft_bot_ecpp(iclrcld,jcls), kdraft_top_ecpp(iclrcld,jcls) 
+		kdraft_bot_ecpp(iclrcld,jcls), kdraft_top_ecpp(iclrcld,jcls)
 
 	    write(lun,'(a)') 'afrac'
 	    do k = kts, ktebnd
@@ -5134,7 +5139,7 @@ acwxx1_k_loop: &
 	do k = ktecen, kts, -1
 	   write(lun,'(i3,2x,3(1x,2f8.5),2x,1p,3(1x,2e10.2))') k,   &
 		acen_tavg(k,1:2,jclsaa:jclsbb),   &
-		mfbnd(k,1:2,jclsaa:jclsbb) 
+		mfbnd(k,1:2,jclsaa:jclsbb)
 	end do
 	end do
 

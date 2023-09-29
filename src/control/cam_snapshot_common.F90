@@ -86,7 +86,10 @@ type (snapshot_type)    ::  cnst_snapshot(pcnst)
 type (snapshot_type)    ::  tend_snapshot(6)
 type (snapshot_type)    ::  cam_in_snapshot(30)
 type (snapshot_type)    ::  cam_out_snapshot(30)
-type (snapshot_type_nd) ::  pbuf_snapshot(250)
+!+++ARH
+!type (snapshot_type_nd) ::  pbuf_snapshot(250)
+type (snapshot_type_nd) ::  pbuf_snapshot(350)
+!---ARH
 
 contains
 
@@ -179,15 +182,18 @@ subroutine cam_snapshot_deactivate()
 end subroutine cam_snapshot_deactivate
 
 
-subroutine cam_state_snapshot_init(cam_snapshot_before_num, cam_snapshot_after_num)
+subroutine cam_state_snapshot_init(cam_snapshot_before_num_in, cam_snapshot_after_num_in)
 
 !--------------------------------------------------------
 ! This subroutine does the addfld calls for state
 !--------------------------------------------------------
 
-   integer,intent(in) :: cam_snapshot_before_num, cam_snapshot_after_num
+   integer,intent(in) :: cam_snapshot_before_num_in, cam_snapshot_after_num_in
 
    nstate_var = 0
+
+   cam_snapshot_before_num = cam_snapshot_before_num_in
+   cam_snapshot_after_num  = cam_snapshot_after_num_in
 
    !--------------------------------------------------------
    ! Add the state variables to the output

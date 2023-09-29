@@ -33,7 +33,7 @@ cheyenne/intel/aux_cam:
 
 izumi/nag/aux_cam:
 
-izumi/pgi/aux_cam:
+izumi/gnu/aux_cam:
 
 CAM tag used for the baseline comparison tests if different than previous
 tag:

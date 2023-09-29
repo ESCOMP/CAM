@@ -35,6 +35,7 @@ module hb_diff
   ! Public interfaces
   public init_hb_diff
   public compute_hb_diff
+  public compute_hb_free_atm_diff
   public pblintd
   !
   ! PBL limits
@@ -131,7 +132,7 @@ end subroutine init_hb_diff
 
 !===============================================================================
 
-  subroutine compute_hb_diff(lchnk, ncol,            &
+  subroutine compute_hb_diff(ncol                  , &
        th      ,t       ,q       ,z       ,zi      , &
        pmid    ,u       ,v       ,taux    ,tauy    , &
        shflx   ,qflx    ,obklen  ,ustar   ,pblh    , &
@@ -139,8 +140,8 @@ end subroutine init_hb_diff
        tpert   ,qpert   ,cldn    ,ocnfrac ,tke     , &
        ri      , &
        eddy_scheme)
-    !----------------------------------------------------------------------- 
-    ! 
+    !-----------------------------------------------------------------------
+    !
     ! Purpose: 
     !  Interface routines for calcualtion and diatnostics of turbulence related
     !  coefficients
@@ -155,7 +156,6 @@ end subroutine init_hb_diff
     !
     ! Input arguments
     !
-    integer, intent(in) :: lchnk                      ! chunk index (for debug only)
     integer, intent(in) :: ncol                       ! number of atmospheric columns
 
     real(r8), intent(in)  :: th(pcols,pver)           ! potential temperature [K]
@@ -196,8 +196,8 @@ end subroutine init_hb_diff
     real(r8) :: rrho(pcols)             ! 1./bottom level density
     real(r8) :: wstar(pcols)            ! convective velocity scale [m/s]
     real(r8) :: kqfs(pcols)             ! kinematic surf constituent flux (kg/m2/s)
-    real(r8) :: khfs(pcols)             ! kinimatic surface heat flux 
-    real(r8) :: kbfs(pcols)             ! surface buoyancy flux 
+    real(r8) :: khfs(pcols)             ! kinimatic surface heat flux
+    real(r8) :: kbfs(pcols)             ! surface buoyancy flux
     real(r8) :: kvf(pcols,pverp)        ! free atmospheric eddy diffsvty [m2/s]
     real(r8) :: s2(pcols,pver)          ! shear squared
     real(r8) :: n2(pcols,pver)          ! brunt vaisaila frequency
@@ -236,7 +236,7 @@ end subroutine init_hb_diff
     ! 
     ! Get pbl exchange coefficients
     !
-    call austausch_pbl(lchnk, ncol,                    &
+    call austausch_pbl(ncol                          , &
          z       ,kvf     ,kqfs    ,khfs    ,kbfs    , &
          obklen  ,ustar   ,wstar   ,pblh    ,kvm     , &
          kvh     ,cgh     ,cgs     ,tpert   ,qpert   , &
@@ -244,9 +244,95 @@ end subroutine init_hb_diff
     !
 
     kvq(:ncol,:) = kvh(:ncol,:)
-
-    return
   end subroutine compute_hb_diff
+
+  subroutine compute_hb_free_atm_diff(ncol,          &
+       th      ,t       ,q       ,z       ,          &
+       pmid    ,u       ,v       ,taux    ,tauy    , &
+       shflx   ,qflx    ,obklen  ,ustar   ,          &
+       kvm     ,kvh     ,kvq     ,cgh     ,cgs     , &
+       ri      )
+    !-----------------------------------------------------------------------
+    !
+    ! This is a version of compute_hb_diff that only computes free
+    ! atmosphere exchange (no PBL computations)
+    !
+    ! Author: B. Stevens (rewrite August 2000)
+    !         Modified by Thomas Toniazzo and Peter H. Lauritzen (June 2023)
+    !
+    !-----------------------------------------------------------------------
+
+    use pbl_utils, only: virtem, calc_ustar, calc_obklen, austausch_atm
+
+    !------------------------------Arguments--------------------------------
+    !
+    ! Input arguments
+    !
+    integer, intent(in) :: ncol                       ! number of atmospheric columns
+
+    real(r8), intent(in)  :: th(pcols,pver)           ! potential temperature [K]
+    real(r8), intent(in)  :: t(pcols,pver)            ! temperature (used for density)
+    real(r8), intent(in)  :: q(pcols,pver)            ! specific humidity [kg/kg]
+    real(r8), intent(in)  :: z(pcols,pver)            ! height above surface [m]
+    real(r8), intent(in)  :: u(pcols,pver)            ! zonal velocity
+    real(r8), intent(in)  :: v(pcols,pver)            ! meridional velocity
+    real(r8), intent(in)  :: taux(pcols)              ! zonal stress [N/m2]
+    real(r8), intent(in)  :: tauy(pcols)              ! meridional stress [N/m2]
+    real(r8), intent(in)  :: shflx(pcols)             ! sensible heat flux
+    real(r8), intent(in)  :: qflx(pcols)              ! water vapor flux
+    real(r8), intent(in)  :: pmid(pcols,pver)         ! midpoint pressures
+    !
+    ! Output arguments
+    !
+    real(r8), intent(out) :: kvm(pcols,pverp)         ! eddy diffusivity for momentum [m2/s]
+    real(r8), intent(out) :: kvh(pcols,pverp)         ! eddy diffusivity for heat [m2/s]
+    real(r8), intent(out) :: kvq(pcols,pverp)         ! eddy diffusivity for constituents [m2/s]
+    real(r8), intent(out) :: cgh(pcols,pverp)         ! counter-gradient term for heat [J/kg/m]
+    real(r8), intent(out) :: cgs(pcols,pverp)         ! counter-gradient star (cg/flux)
+    real(r8), intent(out) :: ustar(pcols)             ! surface friction velocity [m/s]
+    real(r8), intent(out) :: obklen(pcols)            ! Obukhov length
+    real(r8), intent(out) :: ri(pcols,pver)           ! richardson number: n2/s2
+    !
+    !---------------------------Local workspace-----------------------------
+    !
+    real(r8) :: thv(pcols,pver)         ! virtual potential temperature
+    real(r8) :: rrho(pcols)             ! 1./bottom level density
+    real(r8) :: kqfs(pcols)             ! kinematic surf constituent flux (kg/m2/s)
+    real(r8) :: khfs(pcols)             ! kinimatic surface heat flux 
+    real(r8) :: kbfs(pcols)             ! surface buoyancy flux 
+    real(r8) :: kvf(pcols,pverp)        ! free atmospheric eddy diffsvty [m2/s]
+    real(r8) :: s2(pcols,pver)          ! shear squared
+    real(r8) :: n2(pcols,pver)          ! brunt vaisaila frequency
+
+    ! virtual potential temperature
+    call virtem(ncol, (pver-ntop_turb+1), th(:ncol,ntop_turb:),q(:ncol,ntop_turb:), thv(:ncol,ntop_turb:))
+
+    ! Compute ustar, Obukhov length, and kinematic surface fluxes.
+    call calc_ustar(ncol, t(:ncol,pver),pmid(:ncol,pver),taux(:ncol),tauy(:ncol), &
+         rrho(:ncol),ustar(:ncol))
+    call calc_obklen(ncol, th(:ncol,pver), thv(:ncol,pver), qflx(:ncol),  &
+                     shflx(:ncol),   rrho(:ncol),     ustar(:ncol), &
+                     khfs(:ncol),    kqfs(:ncol),     kbfs(:ncol),  &
+                     obklen(:ncol))
+    ! Calculate s2, n2, and Richardson number.
+    call trbintd(ncol    ,                            &
+         thv     ,z       ,u       ,v       , &
+         s2      ,n2      ,ri      )
+    !
+    ! Get free atmosphere exchange coefficients
+    !
+    call austausch_atm(pcols, ncol, pver, ntop_turb, nbot_turb, &
+         ml2, ri, s2, kvf)
+
+    kvq(:ncol,:) = kvf(:ncol,:)
+    kvm(:ncol,:) = kvf(:ncol,:)
+    kvh(:ncol,:) = kvf(:ncol,:)
+    cgh(:ncol,:) = 0._r8
+    cgs(:ncol,:) = 0._r8
+
+  end subroutine compute_hb_free_atm_diff
+
+
   !
   !===============================================================================
   subroutine trbintd(ncol    ,                            &
@@ -488,7 +574,7 @@ end subroutine init_hb_diff
   end subroutine pblintd
   !
   !===============================================================================
-  subroutine austausch_pbl(lchnk ,ncol    ,          &
+  subroutine austausch_pbl(ncol                    , &
        z       ,kvf     ,kqfs    ,khfs    ,kbfs    , &
        obklen  ,ustar   ,wstar   ,pblh    ,kvm     , &
        kvh     ,cgh     ,cgs     ,tpert   ,qpert   , &
@@ -524,7 +610,6 @@ end subroutine init_hb_diff
     !
     ! Input arguments
     !
-    integer, intent(in) :: lchnk                    ! local chunk index (for debug only)
     integer, intent(in) :: ncol                     ! number of atmospheric columns
 
     real(r8), intent(in) :: z(pcols,pver)           ! height above surface [m]

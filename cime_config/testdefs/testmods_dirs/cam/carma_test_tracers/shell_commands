@@ -1,0 +1,2 @@
+./xmlchange --append CAM_CONFIG_OPTS="-carma test_tracers"
+./xmlchange RUN_STARTDATE="0001-01-01"

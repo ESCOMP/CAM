@@ -27,7 +27,8 @@ module clubb_mf
             clubb_mf_Lopt, &
             clubb_mf_ddalph, &
             clubb_mf_up_ndt, &
-            clubb_mf_cp_ndt
+            clubb_mf_cp_ndt, &
+            do_clubb_mf_cmt
 
   !
   ! Lopt 0 = fixed L0
@@ -62,6 +63,7 @@ module clubb_mf
   logical, protected :: do_clubb_mf_mixd = .false.
   logical, protected :: do_clubb_mf_precip = .false.
   logical, protected :: do_clubb_mf_rhtke = .false.
+  logical, protected :: do_clubb_mf_cmt = .false.
   logical :: tht_tweaks = .true.
   integer :: mf_num_cin = 5
 
@@ -86,7 +88,7 @@ module clubb_mf
     namelist /clubb_mf_nl/ clubb_mf_Lopt, clubb_mf_a0, clubb_mf_b0, clubb_mf_L0, clubb_mf_ent0, clubb_mf_alphturb, &
                            clubb_mf_nup, clubb_mf_max_L0, do_clubb_mf, do_clubb_mf_diag, do_clubb_mf_precip, do_clubb_mf_rad, &
                            clubb_mf_fdd, do_clubb_mf_coldpool, clubb_mf_ddalph, clubb_mf_ddbeta, clubb_mf_pwfac, do_clubb_mf_ustar, &
-                           clubb_mf_ddexp, do_clubb_mf_mixd, clubb_mf_up_ndt, clubb_mf_cp_ndt, do_clubb_mf_rhtke
+                           clubb_mf_ddexp, do_clubb_mf_mixd, clubb_mf_up_ndt, clubb_mf_cp_ndt, do_clubb_mf_rhtke, do_clubb_mf_cmt
 
     if (masterproc) then
       open( newunit=iunit, file=trim(nlfile), status='old' )
@@ -146,6 +148,8 @@ module clubb_mf
     if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: do_clubb_mf_mixd")
     call mpi_bcast(do_clubb_mf_rhtke, 1, mpi_logical, mstrid, mpicom, ierr)
     if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: do_clubb_mf_rhtke")
+    call mpi_bcast(do_clubb_mf_cmt, 1, mpi_logical, mstrid, mpicom, ierr)
+    if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: do_clubb_mf_cmt")
 
     if ((.not. do_clubb_mf) .and. do_clubb_mf_diag ) then
        call endrun('clubb_mf_readnl: Error - cannot turn on do_clubb_mf_diag without also turning on do_clubb_mf')
@@ -566,6 +570,7 @@ module clubb_mf
 
      dynamic_L0 = 0._r8
      ztop = 0._r8
+     ddbot= 0
 
      if (bsort) then
        niter_xc = 3
@@ -613,10 +618,10 @@ module clubb_mf
          qstar   = wqt / wstar
          thvstar = wthv / wstar
        end if
-
-       sigmaw   = alphw * wstar * cpfac
-       sigmaqt  = alphqt * abs(qstar) * cpfac
-       sigmathv = alphthv * abs(thvstar) * cpfac
+!+++ARH
+       sigmaw   = alphw * wstar !* cpfac
+       sigmaqt  = alphqt * abs(qstar) !* cpfac
+       sigmathv = alphthv * abs(thvstar) !* cpfac
 
        wmin = sigmaw * pwmin
        wmax = sigmaw * pwmax
@@ -932,7 +937,35 @@ module clubb_mf
              updet(k+1,i) = detn
 
            else
+             ! zero out plumes that terminate at k<3
+             if (k<3) then
+               supqt(:,i) = 0._r8
+               upauto(:,i)= 0._r8
+               supthl(:,i)= 0._r8
+
+               upa(:,i)   = 0._r8
+               upbuoy(:,i)= 0._r8
+               upw(:,i)   = 0._r8
+               upmf(:,i)  = 0._r8
+               upent(:,i) = 0._r8
+               updet(:,i) = 0._r8
+
+               upthv(:,i) = 0._r8
+               upthl(:,i) = 0._r8
+               upqt(:,i)  = 0._r8
+               upqc(:,i)  = 0._r8
+               upqs(:,i)  = 0._r8
+               upu(:,i)   = 0._r8
+               upv(:,i)   = 0._r8
+               upql(:,i)  = 0._r8
+               upqi(:,i)  = 0._r8
+               upqv(:,i)  = 0._r8
+               uplmix(:,i)= 0._r8
+               upth(:,i)  = 0._r8
+             end if
+             ! exit updraft integration
              exit
+             !
            end if
          enddo
        enddo
@@ -975,7 +1008,6 @@ module clubb_mf
          do i=1,clubb_mf_nup
 
            ! find cloud base
-           ddbot(i) = 0
            do k = 1,nz
              if (upqc(k,i) > 0._r8) then
                ddbot(i) = k
@@ -1360,15 +1392,15 @@ module clubb_mf
 !       end do
 !
 
+       ddcp = 0._r8
        if (do_clubb_mf_coldpool .and. clubb_mf_fdd > 0._r8) then
          ! use single level for cold pool param.
          ! reset ddcp
-         ddcp = 0._r8
          do i=1,clubb_mf_nup
            if (ddbot(i) == 0) then
              continue
            else
-             ddcp = ddcp + -1._r8*dna(ddbot(i)+1,i)*dnw(ddbot(i)+1,i)
+             ddcp = ddcp + (-1._r8)*dna(ddbot(i)+1,i)*dnw(ddbot(i)+1,i)
            end if
          end do
        end if
@@ -1423,7 +1455,7 @@ module clubb_mf
          uflx(k)    = uflxup(k) + uflxdn(k)
          vflx(k)    = vflxup(k) + vflxdn(k) 
        enddo
-
+       !
      else
        ddcp = 0._r8
        ztopm1 = zm(1)

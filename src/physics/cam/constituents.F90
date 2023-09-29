@@ -57,8 +57,8 @@ character*5, public :: cnst_molec(pcnst)         ! major or minor species molecu
 real(r8),    public :: cnst_rgas(pcnst)          ! gas constant ()
 real(r8),    public :: qmin     (pcnst)          ! minimum permitted constituent concentration (kg/kg)
 real(r8),    public :: qmincg   (pcnst)          ! for backward compatibility only
-logical,     public :: cnst_fixed_ubc(pcnst) = .false.  ! upper bndy condition = fixed ?
-logical,     public :: cnst_fixed_ubflx(pcnst) = .false.! upper boundary non-zero fixed constituent flux
+logical, public, protected :: cnst_fixed_ubc(pcnst) = .false.     ! upper boundary condition (concentration)
+logical, public, protected :: cnst_fixed_ubflx(pcnst) = .false.   ! upper boundary non-zero fixed constituent flux
 logical, public, protected :: cnst_is_convtran1(pcnst) = .false.  ! do convective transport in phase 1
 logical, public, protected :: cnst_is_convtran2(pcnst) = .false.  ! do convective transport in phase 2
 
@@ -72,7 +72,6 @@ character(len=16), public :: dcconnam  (pcnst)   ! names of convection tendencie
 character(len=16), public :: fixcnam   (pcnst)   ! names of species slt fixer tendencies
 character(len=16), public :: tendnam   (pcnst)   ! names of total tendencies of species
 character(len=16), public :: ptendnam  (pcnst)   ! names of total physics tendencies of species
-character(len=16), public :: dmetendnam(pcnst)   ! names of dme adjusted tracers (FV)
 character(len=16), public :: sflxnam   (pcnst)   ! names of surface fluxes of species
 character(len=16), public :: tottnam   (pcnst)   ! names for horz + vert + fixer tendencies
 
@@ -207,7 +206,7 @@ subroutine cnst_add (name, mwc, cpc, qminc, &
       cnst_molec(ind) = 'minor'
    end if
 
-   ! set outfld type 
+   ! set outfld type
    ! (false: the module declaring the constituent is responsible for outfld calls)
    if (present(cam_outfld)) then
       cam_outfld_(ind) = cam_outfld
@@ -320,7 +319,7 @@ subroutine cnst_set_spec_class(ind, cnst_spec_class_in)
        write(iulog,*) subname//': illegal tracer index: padv, ind = ', padv, ind
        call endrun(subname//': illegal tracer index')
     end if
-    
+
     ! Check designator
     if (cnst_spec_class_in /= cnst_spec_class_undefined  .and. &
         cnst_spec_class_in /= cnst_spec_class_cldphysics .and. &
@@ -393,7 +392,7 @@ end subroutine cnst_get_ind
 
 character*3 function cnst_get_type_byind(ind)
 
-   ! Return the mixing ratio type of a constituent 
+   ! Return the mixing ratio type of a constituent
 
    !-----------------------------Arguments---------------------------------
    integer, intent(in)   :: ind    ! global constituent index (in q array)
@@ -417,7 +416,7 @@ end function cnst_get_type_byind
 
 character*5 function cnst_get_molec_byind (ind)
 
-   ! Return the molecular diffusion type of a constituent 
+   ! Return the molecular diffusion type of a constituent
 
    !-----------------------------Arguments---------------------------------
    integer, intent(in)   :: ind    ! global constituent index (in q array)
@@ -497,7 +496,6 @@ subroutine cnst_chk_dim
       fixcnam   (m)  = 'DF'//cnst_name(m)
       tendnam   (m)  = 'TE'//cnst_name(m)
       ptendnam  (m)  = 'PTE'//cnst_name(m)
-      dmetendnam(m)  = 'DME'//cnst_name(m)
       tottnam   (m)  = 'TA'//cnst_name(m)
       sflxnam(m)     = 'SF'//cnst_name(m)
    end do
@@ -510,7 +508,7 @@ function cnst_cam_outfld(m)
 
    ! Query whether default CAM outfld calls should be made.
 
-   !----------------------------------------------------------------------- 
+   !-----------------------------------------------------------------------
    integer, intent(in) :: m                ! constituent index
 
    logical             :: cnst_cam_outfld  ! true => use default CAM outfld calls
@@ -535,7 +533,7 @@ pure logical function cnst_is_a_water_species(name)
 
    ! test whether the input name matches the name of a water species
 
-   character(len=*), intent(in) :: name  
+   character(len=*), intent(in) :: name
    !-------------------------------------------------------------------------
 
    cnst_is_a_water_species = .false.
@@ -546,7 +544,7 @@ pure logical function cnst_is_a_water_species(name)
        name == 'RAINQM' .or. &
        name == 'SNOWQM' .or. &
        name == 'GRAUQM'      ) cnst_is_a_water_species = .true.
-      
+
 end function cnst_is_a_water_species
 
 !==============================================================================

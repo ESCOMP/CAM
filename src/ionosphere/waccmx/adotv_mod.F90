@@ -82,12 +82,7 @@ contains
                    dvec(i,j,2,2) * vn(k,i,j) + &
                    dvec(i,j,3,2) * wn(k,i,j))
            end do ! k=lev0,lev1-1
-        end do
-     end do
 
-     do j = lat0, lat1
-        if (j==jspole .or. j==jnpole) cycle
-        do i = lon0, lon1
            !
            ! Calculation of adota(n) = d(n)**2/D
            !   a1dta2   = (d(1) dot d(2)) /D

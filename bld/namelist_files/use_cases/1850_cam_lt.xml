@@ -1,0 +1,64 @@
+<?xml version="1.0"?>
+<namelist_defaults>
+
+<!-- Solar data from NRL -->
+<solar_irrad_data_file>atm/cam/solar/SolarForcingCMIP6piControl_c160921.nc</solar_irrad_data_file>
+<solar_data_ymd>   18500101           </solar_data_ymd>
+<solar_data_type>    FIXED            </solar_data_type>
+
+<!-- LBC Files : -->
+<flbc_file>atm/waccm/lb/LBC_17500116-20150116_CMIP6_0p5degLat_c180905.nc</flbc_file>
+<flbc_cycle_yr>1850</flbc_cycle_yr>
+<flbc_type>'CYCLICAL'</flbc_type>
+<flbc_list>'CO2','CH4','N2O','CFC11','CFC12','CFC11eq'</flbc_list>
+
+<!-- Low top upper boundary conditions -->
+<ubc_specifier>'Q:H2O->UBC_FILE'</ubc_specifier>
+<ubc_file_path>atm/cam/chem/ubc/b.e21.BWHIST.f09_g17.CMIP6-historical-WACCM.ensAvg123.cam.h0zm.H2O.185001-201412_c230509cdf5.nc</ubc_file_path>
+<ubc_file_input_type>CYCLICAL</ubc_file_input_type>
+<ubc_file_cycle_yr>1850</ubc_file_cycle_yr>
+
+<!-- ozone data :  -->
+<prescribed_ozone_datapath>   'atm/cam/ozone_strataero'  </prescribed_ozone_datapath>
+<prescribed_ozone_file    >   'ozone_strataero_cyclical_WACCM6_L70_CMIP6-piControl.001_y21-50avg_zm_5day_c180802.nc'       </prescribed_ozone_file>
+<prescribed_ozone_name    >   'O3'  </prescribed_ozone_name>
+<prescribed_ozone_type    >   CYCLICAL   </prescribed_ozone_type>
+<prescribed_ozone_cycle_yr>   1850    </prescribed_ozone_cycle_yr>
+
+<!-- Prescribed stratospheric aerosols : -->
+<prescribed_strataero_cycle_yr>      1850   </prescribed_strataero_cycle_yr>
+<prescribed_strataero_datapath>      'atm/cam/ozone_strataero'   </prescribed_strataero_datapath>
+<prescribed_strataero_file>   'ozone_strataero_cyclical_WACCM6_L70_CMIP6-piControl.001_y21-50avg_zm_5day_c180802.nc' </prescribed_strataero_file>
+<prescribed_strataero_use_chemtrop>  .true.   </prescribed_strataero_use_chemtrop>
+<prescribed_strataero_type>          'CYCLICAL'    </prescribed_strataero_type>
+
+
+<!-- Prescribed oxidants for aerosol chemistry : -->
+<tracer_cnst_cycle_yr >   1850    </tracer_cnst_cycle_yr>
+<tracer_cnst_datapath >   'atm/cam/tracer_cnst'   </tracer_cnst_datapath>
+<tracer_cnst_file     >   'tracer_cnst_WACCM6_halons_3DmonthlyL70_1850climoCMIP6piControl001_y21-50avg_c180802.nc' </tracer_cnst_file>
+<tracer_cnst_specifier>   'O3','OH','NO3','HO2','HALONS' </tracer_cnst_specifier>
+<tracer_cnst_type     >   'CYCLICAL'  </tracer_cnst_type>
+<tracer_cnst_filelist >   ''   </tracer_cnst_filelist>
+
+<!-- External forcing -->
+<ext_frc_type>      CYCLICAL   </ext_frc_type>
+<ext_frc_cycle_yr>  1850       </ext_frc_cycle_yr>
+<ext_frc_specifier>
+     'num_a1 -> $INPUTDATA_ROOT/atm/cam/chem/emis/historical_ne30pg3/emissions-cmip6_num_so4_a1_anthro-ene_vertical_mol_175001-201412_ne30pg3_c20200103.nc',
+     'num_a1 -> $INPUTDATA_ROOT/atm/cam/chem/emis/historical_ne30pg3/emissions-cmip6_num_a1_so4_contvolcano_vertical_850-5000_ne30pg3_c20200125.nc',
+     'num_a2 -> $INPUTDATA_ROOT/atm/cam/chem/emis/historical_ne30pg3/emissions-cmip6_num_a2_so4_contvolcano_vertical_850-5000_ne30pg3_c20200125.nc',
+     'SO2 -> $INPUTDATA_ROOT/atm/cam/chem/emis/historical_ne30pg3/emissions-cmip6_SO2_contvolcano_vertical_850-5000_ne30pg3_c20200125.nc',
+     'so4_a1 -> $INPUTDATA_ROOT/atm/cam/chem/emis/historical_ne30pg3/emissions-cmip6_so4_a1_anthro-ene_vertical_mol_175001-201412_ne30pg3_c20200103.nc',
+     'so4_a1 -> $INPUTDATA_ROOT/atm/cam/chem/emis/historical_ne30pg3/emissions-cmip6_so4_a1_contvolcano_vertical_850-5000_ne30pg3_c20200125.nc',
+     'so4_a2 -> $INPUTDATA_ROOT/atm/cam/chem/emis/historical_ne30pg3/emissions-cmip6_so4_a2_contvolcano_vertical_850-5000_ne30pg3_c20200125.nc'
+</ext_frc_specifier>
+
+<!-- Surface emissions -->
+<srf_emis_type>     CYCLICAL   </srf_emis_type>
+<srf_emis_cycle_yr> 1850       </srf_emis_cycle_yr>
+
+<csw_time_type>CYCLICAL</csw_time_type>
+<csw_cycle_yr>1850 </csw_cycle_yr>
+
+</namelist_defaults>

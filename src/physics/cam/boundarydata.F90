@@ -52,15 +52,15 @@ module boundarydata
 
 contains
   subroutine boundarydata_init(bndyfilename,phys_state,fieldnames,fieldcnt,bndydata,vertextrap)
-    implicit none    
+    implicit none
     character(len=*),intent(in) :: bndyfilename
     type(physics_state), intent(in):: phys_state(begchunk:endchunk)
     integer,intent(in) :: fieldcnt
     character(len=*), intent(in) :: fieldnames(fieldcnt)
-    type(boundarydata_type),intent(out) :: bndydata 
+    type(boundarydata_type),intent(out) :: bndydata
     integer,intent(in), optional :: vertextrap ! if 0 set values outside output grid to 0
                                                ! if 1 set to boundary value
-                                               ! if 2 set to cyclic boundaries 
+                                               ! if 2 set to cyclic boundaries
                                                ! if 3 leave on input data grid and extrapolate later
     real(r8), pointer :: datain(:,:,:,:,:)
     integer :: lchnk
@@ -80,8 +80,8 @@ contains
 
        allocate(bndydata%datainst(size(bndydata%fields,1),size(bndydata%fields,2), &
             begchunk:endchunk,bndydata%fieldcnt))
-    
-       deallocate(datain)    
+
+       deallocate(datain)
     end if
   end subroutine boundarydata_init
 
@@ -99,7 +99,7 @@ contains
     integer :: kmax
     integer :: count(4), start(4), ierr
 
-    
+
     call get_data_bounding_date_indices(bndydata%cdates,bndydata%nm,bndydata%np,cdate,update)
     if(present(update_out)) update_out=update
     nm= bndydata%nm
@@ -108,7 +108,7 @@ contains
     call get_timeinterp_factors(.true., np, bndydata%cdates(nm), bndydata%cdates(np), &
          cdate, fact1, fact2, _FILE)
 
-    if(size(bndydata%fields,5).eq.2) then 
+    if(size(bndydata%fields,5).eq.2) then
        nm=1
        np=2
        if(update) then ! we need to read in the next month and interpolate
@@ -119,8 +119,8 @@ contains
                 cols=1
                 cole=cols+bndydata%count(cols,lchnk)-1
                 do while(cole<=ncol)
-                   
-                   if(bndydata%levsiz==1) then               
+
+                   if(bndydata%levsiz==1) then
                       ndims=2
                       start=(/bndydata%start(cols,lchnk),bndydata%np,-1,-1/)
                       count=(/bndydata%count(cols,lchnk),1,-1,-1/)
@@ -161,15 +161,15 @@ contains
              end if
 #ifdef SPMD
              call mpibcast (datain, bndydata%levsiz*bndydata%latsiz*1*bndydata%fieldcnt, mpir8, 0, mpicom, ierr)
-#endif          
-             bndydata%fields(:,:,:,:,nm) = bndydata%fields(:,:,:,:,np) 
+#endif
+             bndydata%fields(:,:,:,:,nm) = bndydata%fields(:,:,:,:,np)
              call boundarydata_interpolate(phys_state,datain,bndydata)
              deallocate(datain)
           end if
        end if
     end if
     kmax = size(bndydata%fields,2)
-   
+
     do fld=1,bndydata%fieldcnt
        do lchnk=begchunk,endchunk
           if(bndydata%isncol) then
@@ -189,27 +189,27 @@ contains
 
 
   subroutine boundarydata_read(phys_state,bndyfilename,fieldcnt,fieldnames,bndydata,datain)
-    !----------------------------------------------------------------------- 
-    ! 
-    ! Purpose: 
+    !-----------------------------------------------------------------------
+    !
+    ! Purpose:
     ! Do initial read of time-variant boundary dataset, containing
     ! 12 monthly fields as a function of latitude and pressure.  Determine the two
     ! consecutive months between which the current date lies.
-    ! 
-    ! Method: 
-    ! 
+    !
+    ! Method:
+    !
     ! Author: NCAR CMS
     !-----------------------------------------------------------------------
     use ioFileMod, only : getfil
     use bnddyi_mod, only: bnddyi
 
-    implicit none    
+    implicit none
     type(physics_state), intent(in) :: phys_state(begchunk:endchunk)
     character(len=*),intent(in) :: bndyfilename
     integer,intent(in) :: fieldcnt
     character(len=*), intent(in) :: fieldnames(fieldcnt)
     type(boundarydata_type), intent(inout) :: bndydata
-    real(r8), pointer :: datain(:,:,:,:,:)  ! 
+    real(r8), pointer :: datain(:,:,:,:,:)  !
     !
     ! Local variables
     !
@@ -256,7 +256,7 @@ contains
     integer :: cols, cole
     integer ::  ierr, dimcnt
     integer ::  i, ncol, lchnk
-    character(len=256) :: locfn    ! netcdf local filename to open 
+    character(len=256) :: locfn    ! netcdf local filename to open
 
     !
     !-----------------------------------------------------------------------
@@ -303,7 +303,7 @@ contains
        else if (dimname(1:4) .eq. 'ncol') then
           ncoldimid=i
           ncolsiz=dimlen
-          bndydata%isncol=.true. 
+          bndydata%isncol=.true.
        else if (dimname(1:3) .eq. 'lev') then
           levdimid=i
           levsiz=dimlen
@@ -342,8 +342,8 @@ contains
                   _FILE,__LINE__)
              call handle_ncerr( nf90_get_var(bndydata%ncid, hybid, bndydata%hybi ),&
                   _FILE,__LINE__)
-          else 
-             call endrun('Did not recognize a vertical coordinate variable')
+          else
+             call endrun('BOUNDARYDATA_READ: Did not recognize a vertical coordinate variable')
           end if
        else
           levsiz=1
@@ -455,10 +455,10 @@ contains
             bndydata%count(pcols,begchunk:endchunk))
 
 !
-!  For i/o efficiency we read in a block of data which includes the data needed on this 
+!  For i/o efficiency we read in a block of data which includes the data needed on this
 !  processor but which may in fact include data not needed here.  physics cids are just the
 !  offset into the file.
-! 
+!
 
        bndydata%start=-1
        bndydata%count=1
@@ -466,7 +466,7 @@ contains
        maxcid=-1
        do lchnk=begchunk,endchunk
           ncol=phys_state(lchnk)%ncol
-          i=minval(phys_state(lchnk)%cid(1:ncol)) 
+          i=minval(phys_state(lchnk)%cid(1:ncol))
           if(i < mincid) mincid = i
           i=maxval(phys_state(lchnk)%cid(1:ncol))
           if(i > maxcid) maxcid = i
@@ -508,7 +508,7 @@ contains
        end if
        start(2)=1
        count(2)=levsiz
-                
+
        if(bndydata%np>bndydata%nm) then
           count(dimcnt)=2
        else
@@ -550,7 +550,7 @@ contains
        !
        ! get the dimension orientation info from the first variable assume but verify that
        ! all variables requested have the same orientation
-       !  
+       !
        allocate(bndydata%start(4,1),bndydata%count(4,1))
        call handle_ncerr( nf90_inquire_variable(bndydata%ncid,bndydata%dataid(1), &
             ndims=bndydata%ndims,dimids=bndydata%dimids),_FILE,__LINE__)
@@ -588,7 +588,7 @@ contains
                ndims=ndims,dimids=dimids),_FILE,__LINE__)
           if(ndims/=bndydata%ndims .or. dimids(1)/=bndydata%dimids(1).or.&
                dimids(2)/=bndydata%dimids(2) .or. dimids(3)/=bndydata%dimids(3)) then
-             call endrun('Variable dims or order does not match')
+             call endrun('BOUNDARYDATA_READ: Variable dims or order does not match')
           end if
 
           if(bndydata%np .gt. bndydata%nm) then
@@ -597,6 +597,7 @@ contains
                   map=bndydata%map),_FILE,__LINE__)
           else
              bndydata%count(bndydata%thistimedim,1)=1
+             bndydata%start(bndydata%thistimedim,1)=bndydata%nm
              call handle_ncerr( nf90_get_var(bndydata%ncid, bndydata%dataid(i), &
                   datain(:,:,:,1:1,i), bndydata%start(:,1), bndydata%count(:,1), &
                   map=bndydata%map), _FILE,__LINE__)
@@ -612,7 +613,7 @@ contains
     end if
 #ifdef USE_MASTERPROC
  end if
-#ifdef SPMD 
+#ifdef SPMD
  call mpibcast (levsiz, 1, mpiint, 0, mpicom, ierr)
  call mpibcast (latsiz, 1, mpiint, 0, mpicom, ierr)
 #endif
@@ -664,7 +665,7 @@ end subroutine boundarydata_read
     real(r8),intent(in)                  :: datain(:,:,:,:,:)
     type(boundarydata_type), intent(inout) :: bndydata
     type(interp_type) :: interp_wgts, lev_wgts
-      
+
     integer :: k, lchnk, nt, j, fcnt
     real(r8) :: zo(pver)
     real(r8) :: lato(pcols)
@@ -712,7 +713,7 @@ end subroutine boundarydata_read
        ! Input model latitudes already in degrees.
        !
        do j=1,ulatcnt
-          lato(j) = phys_state(lchnk)%ulat(j)*180._r8/pi          
+          lato(j) = phys_state(lchnk)%ulat(j)*180._r8/pi
        end do
 
        call lininterp_init(bndydata%lat,size(bndydata%lat),lato(1:ulatcnt),ulatcnt,1,interp_wgts)
@@ -726,7 +727,7 @@ end subroutine boundarydata_read
              end if
             if(bndydata%vertextrap.lt.3) then
                 call lininterp(transpose(datain(1,:,:,nt,fcnt)),bndydata%latsiz,bndydata%levsiz, &
-                     bndydata%fields(1:ulatcnt,:,lchnk,fcnt,tvalout), ulatcnt, pver, interp_wgts, lev_wgts) 
+                     bndydata%fields(1:ulatcnt,:,lchnk,fcnt,tvalout), ulatcnt, pver, interp_wgts, lev_wgts)
              else
                 do k=1,bndydata%levsiz
                    call lininterp(datain(1,k,:,nt,fcnt),bndydata%latsiz, &
@@ -787,7 +788,7 @@ end subroutine boundarydata_read
           ncdate = yr*10000 + mon*100 + day
 
           write(iulog,*)'model date:', ncdate, ncsec,'boundary data dates:', cdates
-          call endrun('BOUNDARYDATA_READ: Failed to find dates bracketing dates')
+          call endrun('get_data_bounding_date_indices: Failed to find dates bracketing dates')
        end if
     end if
 
@@ -796,14 +797,14 @@ end subroutine boundarydata_read
 
   !================================================================================================
   subroutine boundarydata_vert_interp(lchnk, ncol, levsiz, fldcnt, pin, pmid, datain, dataout)
-    !----------------------------------------------------------------------- 
-    ! 
+    !-----------------------------------------------------------------------
+    !
     ! Purpose: Interpolate ozone from current time-interpolated values to model levels
-    ! 
+    !
     ! Method: Use pressure values to determine interpolation levels
-    ! 
+    !
     ! Author: Bruce Briegleb
-    ! 
+    !
     !--------------------------------------------------------------------------
     implicit none
     ! Arguments
@@ -897,13 +898,13 @@ end subroutine boundarydata_read
 35     continue
     end do
   end subroutine boundarydata_vert_interp
-#if 0  
+#if 0
   subroutine ncol_read_bracket(cid,columnmap,start,count,ncol)
     integer, intent(in) :: cid(:), columnmap(:), ncol
     integer, intent(out) :: start(:), count(:)
 
     integer :: i, j, tcol
-    
+
     tcol = size(columnmap)
     count=1
     do i=1,ncol

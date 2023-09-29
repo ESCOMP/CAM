@@ -429,7 +429,7 @@ subroutine compute_eddy_diff( pbuf, lchnk  ,                                    
   use diffusion_solver, only: compute_vdiff
   use cam_history,      only: outfld
   use phys_debug_util,  only: phys_debug_col
-  use physconst,        only: cpairv
+  use air_composition,  only: cpairv
   use pbl_utils,        only: calc_ustar, austausch_atm
   use error_messages,   only: handle_errmsg
   use coords_1d,        only: Coords1D

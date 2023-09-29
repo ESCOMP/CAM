@@ -25,7 +25,7 @@ contains
     use cam_history,            only: outfld, hist_fld_active
     use time_manager,           only: get_step_size
     use constituents,           only: tottnam,pcnst    
-    use dimensions_mod,         only: nc,np,nlev,ntrac
+    use dimensions_mod,         only: nc,np,nlev,use_cslam
     use element_mod,            only: element_t
     use fvm_control_volume_mod, only: fvm_struct    
     implicit none
@@ -38,7 +38,7 @@ contains
     logical  :: init
     real(r8), allocatable, dimension(:,:) :: ftmp
 
-    if (ntrac>0) then
+    if (use_cslam) then
       nx=nc
     else
       nx=np
@@ -52,7 +52,7 @@ contains
       adv_tendxyz(:,:,:,:,:) = 0._r8
     endif
 
-    if (ntrac>0) then
+    if (use_cslam) then
       do ie=nets,nete
         do ic=1,pcnst
           adv_tendxyz(:,:,:,ic,ie) = fvm(ie)%c(1:nc,1:nc,:,ic) - adv_tendxyz(:,:,:,ic,ie)

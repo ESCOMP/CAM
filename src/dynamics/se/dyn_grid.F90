@@ -41,7 +41,7 @@ use cam_abortutils,         only: endrun
 use pio,                    only: file_desc_t
 
 use dimensions_mod,         only: globaluniquecols, nelem, nelemd, nelemdmax
-use dimensions_mod,         only: ne, np, npsq, fv_nphys, nlev, ntrac
+use dimensions_mod,         only: ne, np, npsq, fv_nphys, nlev, use_cslam
 use element_mod,            only: element_t
 use fvm_control_volume_mod, only: fvm_struct
 use hybvcoord_mod,          only: hvcoord_t
@@ -59,8 +59,10 @@ integer, parameter :: dyn_decomp = 101 ! The SE dynamics grid
 integer, parameter :: fvm_decomp = 102 ! The FVM (CSLAM) grid
 integer, parameter :: physgrid_d = 103 ! physics grid on dynamics decomp
 integer, parameter :: ini_decomp = 104 ! alternate dynamics grid for reading initial file
-
 character(len=3), protected :: ini_grid_name
+
+! Name of horizontal grid dimension in initial file.
+character(len=6), protected :: ini_grid_hdim_name = ''
 
 integer, parameter :: ptimelevels = 2
 
@@ -71,6 +73,7 @@ type(fvm_struct),  pointer :: fvm(:) => null()   ! local FVM elements for this t
 
 public :: dyn_decomp
 public :: ini_grid_name
+public :: ini_grid_hdim_name
 public :: ptimelevels
 public :: TimeLevel
 public :: hvcoord
@@ -98,9 +101,6 @@ public :: dyn_grid_get_colndx ! get element block/column and MPI process indices
 character(len=16),          public :: se_write_grid_file   = 'no'
 character(len=shr_kind_cl), public :: se_grid_filename     = ''
 logical,                    public :: se_write_gll_corners = .false.
-
-! Name of horizontal grid dimension in initial file.
-character(len=6) :: ini_grid_hdim_name = ' '
 
 type(physics_column_t), allocatable, target :: local_dyn_columns(:)
 
@@ -137,7 +137,7 @@ subroutine dyn_grid_init()
    use fvm_mod,             only: fvm_init2, fvm_init3, fvm_pg_init
    use dimensions_mod,      only: irecons_tracer
    use comp_gll_ctr_vol,    only: gll_grid_write
-   use physconst,           only: thermodynamic_active_species_num
+   use air_composition,     only: thermodynamic_active_species_num
 
    ! Local variables
 
@@ -545,12 +545,9 @@ subroutine physgrid_copy_attributes_d(gridname, grid_attribute_names)
       grid_attribute_names(2) = 'ne'
    else
       gridname = 'GLL'
-      allocate(grid_attribute_names(3))
-      ! For standard CAM-SE, we need to copy the area attribute.
-      ! For physgrid, the physics grid will create area (GLL has area_d)
-      grid_attribute_names(1) = 'area'
-      grid_attribute_names(2) = 'np'
-      grid_attribute_names(3) = 'ne'
+      allocate(grid_attribute_names(2))
+      grid_attribute_names(1) = 'np'
+      grid_attribute_names(2) = 'ne'
    end if
 
 end subroutine physgrid_copy_attributes_d
@@ -661,19 +658,19 @@ end subroutine dyn_grid_get_elem_coords
 ! Private routines.
 !=========================================================================================
 
-subroutine get_hdim_name(fh_ini, ini_grid_hdim_name)
+subroutine get_hdim_name(fh_ptr, grid_hdim_name)
    use pio, only: pio_inq_dimid, pio_seterrorhandling
    use pio, only: PIO_BCAST_ERROR, PIO_NOERR
 
-   ! Determine whether the initial file uses 'ncol' or 'ncol_d' horizontal
+   ! Determine whether the supplied file uses 'ncol' or 'ncol_d' horizontal
    ! dimension in the unstructured grid.  It is also possible when using
-   ! analytic initial conditions that the initial file only contains
+   ! analytic initial conditions that the file only contains
    ! vertical coordinates.
    ! Return 'none' if that is the case.
 
    ! Arguments
-   type(file_desc_t),   pointer  :: fh_ini
-   character(len=6), intent(out) :: ini_grid_hdim_name ! horizontal dimension name
+   type(file_desc_t),   pointer  :: fh_ptr
+   character(len=6), intent(out) :: grid_hdim_name ! horizontal dimension name
 
    ! local variables
    integer  :: ierr, pio_errtype
@@ -683,33 +680,33 @@ subroutine get_hdim_name(fh_ini, ini_grid_hdim_name)
    !----------------------------------------------------------------------------
 
    ! Set PIO to return error flags.
-   call pio_seterrorhandling(fh_ini, PIO_BCAST_ERROR, pio_errtype)
+   call pio_seterrorhandling(fh_ptr, PIO_BCAST_ERROR, pio_errtype)
 
-   ! Check for ncol_d first just in case the initial file also contains fields on
+   ! Check for ncol_d first just in case the file also contains fields on
    ! the physics grid.
-   ierr = pio_inq_dimid(fh_ini, 'ncol_d', ncol_did)
+   ierr = pio_inq_dimid(fh_ptr, 'ncol_d', ncol_did)
    if (ierr == PIO_NOERR) then
 
-      ini_grid_hdim_name = 'ncol_d'
+      grid_hdim_name = 'ncol_d'
 
    else
 
       ! if 'ncol_d' not in file, check for 'ncol'
-      ierr = pio_inq_dimid(fh_ini, 'ncol', ncol_did)
+      ierr = pio_inq_dimid(fh_ptr, 'ncol', ncol_did)
 
       if (ierr == PIO_NOERR) then
 
-         ini_grid_hdim_name = 'ncol'
+         grid_hdim_name = 'ncol'
 
       else
 
-         ini_grid_hdim_name = 'none'
+         grid_hdim_name = 'none'
 
       end if
    end if
 
    ! Return PIO to previous error handling.
-   call pio_seterrorhandling(fh_ini, pio_errtype)
+   call pio_seterrorhandling(fh_ptr, pio_errtype)
 
 end subroutine get_hdim_name
 
@@ -735,6 +732,7 @@ subroutine define_cam_grids()
    use cam_grid_support, only: horiz_coord_t, horiz_coord_create
    use cam_grid_support, only: cam_grid_register, cam_grid_attribute_register
    use dimensions_mod,   only: nc
+   use shr_const_mod,       only: PI => SHR_CONST_PI
 
    ! Local variables
    integer                      :: i, ii, j, k, ie, mapind
@@ -746,21 +744,39 @@ subroutine define_cam_grids()
 
    real(r8),        allocatable :: pelat_deg(:)  ! pe-local latitudes (degrees)
    real(r8),        allocatable :: pelon_deg(:)  ! pe-local longitudes (degrees)
-   real(r8),        pointer     :: pearea(:) => null()  ! pe-local areas
-   real(r8)                     :: areaw(np,np)
+   real(r8),        pointer     :: pearea(:)     ! pe-local areas
+   real(r8),        pointer     :: pearea_wt(:)  ! pe-local areas normalized for unit sphere
    integer(iMap)                :: fdofP_local(npsq,nelemd) ! pe-local map for dynamics decomp
    integer(iMap),   allocatable :: pemap(:)                 ! pe-local map for PIO decomp
 
    integer                      :: ncols_fvm, ngcols_fvm
    real(r8),        allocatable :: fvm_coord(:)
    real(r8),            pointer :: fvm_area(:)
+   real(r8),            pointer :: fvm_areawt(:)
    integer(iMap),       pointer :: fvm_map(:)
 
    integer                      :: ncols_physgrid, ngcols_physgrid
    real(r8),        allocatable :: physgrid_coord(:)
    real(r8),            pointer :: physgrid_area(:)
+   real(r8),            pointer :: physgrid_areawt(:)
    integer(iMap),       pointer :: physgrid_map(:)
+
+   real(r8), parameter          :: rarea_unit_sphere = 1.0_r8 / (4.0_r8*PI)
+
    !----------------------------------------------------------------------------
+
+   !-----------------------
+   ! initialize pointers to null
+   !-----------------------
+   nullify(pearea_wt)
+   nullify(pearea)
+   nullify(fvm_area)
+   nullify(fvm_areawt)
+   nullify(fvm_map)
+   nullify(physgrid_area)
+   nullify(physgrid_areawt)
+   nullify(physgrid_map)
+   nullify(grid_map)
 
    !-----------------------
    ! Create GLL grid object
@@ -779,16 +795,17 @@ subroutine define_cam_grids()
    allocate(pelat_deg(np*np*nelemd))
    allocate(pelon_deg(np*np*nelemd))
    allocate(pearea(np*np*nelemd))
+   allocate(pearea_wt(np*np*nelemd))
    allocate(pemap(np*np*nelemd))
 
    pemap = 0_iMap
    ii = 1
    do ie = 1, nelemd
-      areaw = 1.0_r8 / elem(ie)%rspheremp(:,:)
-      pearea(ii:ii+npsq-1) = reshape(areaw, (/ np*np /))
       pemap(ii:ii+npsq-1) = fdofp_local(:,ie)
       do j = 1, np
          do i = 1, np
+            pearea(ii) = elem(ie)%mp(i,j)*elem(ie)%metdet(i,j)
+            pearea_wt(ii) = pearea(ii)*rarea_unit_sphere
             pelat_deg(ii) = elem(ie)%spherep(i,j)%lat * rad2deg
             pelon_deg(ii) = elem(ie)%spherep(i,j)%lon * rad2deg
             ii = ii + 1
@@ -800,7 +817,7 @@ subroutine define_cam_grids()
    ! '_d' suffixes and the physics grid will use the unadorned names.
    ! This allows fields on both the GLL and physics grids to be written to history
    ! output files.
-   if (fv_nphys > 0) then
+   if (trim(ini_grid_hdim_name) == 'ncol_d') then
       latname  = 'lat_d'
       lonname  = 'lon_d'
       ncolname = 'ncol_d'
@@ -811,9 +828,9 @@ subroutine define_cam_grids()
       ncolname = 'ncol'
       areaname = 'area'
    end if
-   lat_coord => horiz_coord_create(trim(latname), trim(ncolname), ngcols_d,  &
+   lat_coord => horiz_coord_create('lat_d', 'ncol_d', ngcols_d,  &
          'latitude', 'degrees_north', 1, size(pelat_deg), pelat_deg, map=pemap)
-   lon_coord => horiz_coord_create(trim(lonname), trim(ncolname), ngcols_d,  &
+   lon_coord => horiz_coord_create('lon_d', 'ncol_d', ngcols_d,  &
          'longitude', 'degrees_east', 1, size(pelon_deg), pelon_deg, map=pemap)
 
    ! Map for GLL grid
@@ -832,15 +849,16 @@ subroutine define_cam_grids()
    ! The native SE GLL grid
    call cam_grid_register('GLL', dyn_decomp, lat_coord, lon_coord,           &
          grid_map, block_indexed=.false., unstruct=.true.)
-   call cam_grid_attribute_register('GLL', trim(areaname), 'gll grid areas', &
-         trim(ncolname), pearea, map=pemap)
+   call cam_grid_attribute_register('GLL', 'area_d', 'gll grid areas', &
+         'ncol_d', pearea, map=pemap)
+   call cam_grid_attribute_register('GLL', 'area_weight_gll', 'gll grid area weights', &
+         'ncol_d', pearea_wt, map=pemap)
    call cam_grid_attribute_register('GLL', 'np', '', np)
    call cam_grid_attribute_register('GLL', 'ne', '', ne)
 
-   ! With CSLAM if the initial file uses the horizontal dimension 'ncol' rather than
-   ! 'ncol_d' then we need a grid object with the names ncol,lat,lon to read it.
-   ! Create that grid object here if it's needed.
-   if (fv_nphys > 0 .and. ini_grid_hdim_name == 'ncol') then
+   ! If dim name is 'ncol', create INI grid
+   ! We will read from INI grid, but use GLL grid for all output
+   if (trim(ini_grid_hdim_name) == 'ncol') then
 
       lat_coord => horiz_coord_create('lat', 'ncol', ngcols_d,  &
          'latitude', 'degrees_north', 1, size(pelat_deg), pelat_deg, map=pemap)
@@ -849,6 +867,10 @@ subroutine define_cam_grids()
 
       call cam_grid_register('INI', ini_decomp, lat_coord, lon_coord,         &
          grid_map, block_indexed=.false., unstruct=.true.)
+      call cam_grid_attribute_register('INI', 'area', 'ini grid areas', &
+               'ncol', pearea, map=pemap)
+      call cam_grid_attribute_register('INI', 'area_weight_ini', 'ini grid area weights', &
+           'ncol', pearea_wt, map=pemap)
 
       ini_grid_name = 'INI'
    else
@@ -866,6 +888,7 @@ subroutine define_cam_grids()
    ! to that memory.  It can be nullified since the attribute object has
    ! the reference.
    nullify(pearea)
+   nullify(pearea_wt)
 
    ! grid_map cannot be deallocated as the cam_filemap_t object just points
    ! to it.  It can be nullified.
@@ -875,13 +898,14 @@ subroutine define_cam_grids()
    ! Create FVM grid object for CSLAM
    !---------------------------------
 
-   if (ntrac > 0) then
+   if (use_cslam) then
 
       ncols_fvm = nc * nc * nelemd
       ngcols_fvm = nc * nc * nelem_d
       allocate(fvm_coord(ncols_fvm))
       allocate(fvm_map(ncols_fvm))
       allocate(fvm_area(ncols_fvm))
+      allocate(fvm_areawt(ncols_fvm))
 
       do ie = 1, nelemd
          k = 1
@@ -891,6 +915,7 @@ subroutine define_cam_grids()
                fvm_coord(mapind) = fvm(ie)%center_cart(i,j)%lon*rad2deg
                fvm_map(mapind) = k + ((elem(ie)%GlobalId-1) * nc * nc)
                fvm_area(mapind) = fvm(ie)%area_sphere(i,j)
+               fvm_areawt(mapind) = fvm_area(mapind)*rarea_unit_sphere
                k = k + 1
             end do
          end do
@@ -931,12 +956,15 @@ subroutine define_cam_grids()
            grid_map, block_indexed=.false., unstruct=.true.)
       call cam_grid_attribute_register('FVM', 'area_fvm', 'fvm grid areas',   &
            'ncol_fvm', fvm_area, map=fvm_map)
+      call cam_grid_attribute_register('FVM', 'area_weight_fvm', 'fvm grid area weights',   &
+           'ncol_fvm', fvm_areawt, map=fvm_map)
       call cam_grid_attribute_register('FVM', 'nc', '', nc)
       call cam_grid_attribute_register('FVM', 'ne', '', ne)
 
       deallocate(fvm_coord)
       deallocate(fvm_map)
       nullify(fvm_area)
+      nullify(fvm_areawt)
       nullify(grid_map)
 
    end if
@@ -952,6 +980,7 @@ subroutine define_cam_grids()
       allocate(physgrid_coord(ncols_physgrid))
       allocate(physgrid_map(ncols_physgrid))
       allocate(physgrid_area(ncols_physgrid))
+      allocate(physgrid_areawt(ncols_physgrid))
 
       do ie = 1, nelemd
          k = 1
@@ -961,6 +990,7 @@ subroutine define_cam_grids()
                physgrid_coord(mapind) = fvm(ie)%center_cart_physgrid(i,j)%lon*rad2deg
                physgrid_map(mapind) = k + ((elem(ie)%GlobalId-1) * fv_nphys * fv_nphys)
                physgrid_area(mapind) = fvm(ie)%area_sphere_physgrid(i,j)
+               physgrid_areawt(mapind) = physgrid_area(mapind)*rarea_unit_sphere
                k = k + 1
             end do
          end do
@@ -1001,12 +1031,15 @@ subroutine define_cam_grids()
            grid_map, block_indexed=.false., unstruct=.true.)
       call cam_grid_attribute_register('physgrid_d', 'area_physgrid', 'physics grid areas',   &
            'ncol', physgrid_area, map=physgrid_map)
+      call cam_grid_attribute_register('physgrid_d', 'area_weight_physgrid', 'physics grid area weight',   &
+           'ncol', physgrid_areawt, map=physgrid_map)
       call cam_grid_attribute_register('physgrid_d', 'fv_nphys', '', fv_nphys)
       call cam_grid_attribute_register('physgrid_d', 'ne',       '', ne)
 
       deallocate(physgrid_coord)
       deallocate(physgrid_map)
       nullify(physgrid_area)
+      nullify(physgrid_areawt)
       nullify(grid_map)
 
    end if

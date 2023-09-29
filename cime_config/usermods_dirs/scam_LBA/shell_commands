@@ -1,6 +1,7 @@
 # setup SCAM lon and lat for this iop
 # this should correspond to the forcing IOP coordinates
-./xmlchange PTS_LON=0.0
+#./xmlchange PTS_LON=0.0
+./xmlchange PTS_LON=295.
 ./xmlchange PTS_LAT=0.0
 
 # Specify the starting/ending time for the IOP

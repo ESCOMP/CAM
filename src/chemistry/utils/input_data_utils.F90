@@ -34,6 +34,7 @@ module input_data_utils
      procedure :: initialize
      procedure :: advance
      procedure :: read_more
+     procedure :: times_check
      procedure :: copy
      procedure :: destroy
   end type time_coordinate
@@ -47,6 +48,7 @@ contains
     use ioFileMod,      only : getfil
     use cam_pio_utils,  only : cam_pio_openfile, cam_pio_closefile
     use string_utils,   only : to_upper
+    use shr_const_mod,  only : SHR_CONST_CDAY
 
     class(time_coordinate), intent(inout) :: this
     character(len=*), intent(in) :: filepath
@@ -69,14 +71,22 @@ contains
 
     integer,  allocatable :: dates(:)
     integer,  allocatable :: datesecs(:)
+    integer,  allocatable :: year(:)
+    integer,  allocatable :: month(:)
+    integer,  allocatable :: day(:)
+    real(r8),  allocatable :: ut(:)
+
     real(r8), allocatable :: times_file(:)
     real(r8), allocatable :: times_modl(:)
     real(r8), allocatable :: time_bnds_file(:,:)
     type(file_desc_t) :: fileid
-    logical :: force_interp
+    logical :: force_interp, time_in_secs
     logical :: set_wghts
     logical :: use_time, adj_times, use_time_bnds
-    integer :: i
+    integer :: i, yri, moni, dayi, hri, mini, seci
+    integer :: err_handling
+
+    character(len=*), parameter :: prefix = 'time_coordinate%initialize: '
 
     if (present(fixed)) this%fixed = fixed
     if (present(fixed_ymd)) this%fixed_ymd = fixed_ymd
@@ -102,7 +112,7 @@ contains
     call getfil( filepath, filen, 0 )
     call cam_pio_openfile( fileid, filen, PIO_NOWRITE )
 
-    call pio_seterrorhandling( fileid, PIO_BCAST_ERROR)
+    call pio_seterrorhandling( fileid, PIO_BCAST_ERROR, oldmethod=err_handling )
 
     call get_dimension( fileid, 'time', this%ntimes )
     allocate ( times_file( this%ntimes ) )
@@ -116,7 +126,8 @@ contains
     ierr = pio_get_att( fileid, varid, 'units', time_units)
     use_time = ierr.eq.PIO_NOERR .and. use_time
     if (use_time) then
-       use_time = time_units(1:10).eq.'days since'
+       use_time = time_units(1:10) == 'days since' .or. &
+                  time_units(1:13) == 'seconds since'
     endif
 
     if (present(try_dates)) then
@@ -141,28 +152,55 @@ contains
           adj_times = (to_upper(time_calendar(1:6)) .ne. to_upper(model_calendar(1:6)))
 
           if (adj_times .and. masterproc) then
-             write(iulog,*) 'time_coordinate%initialize: model calendar '//trim(model_calendar)// &
+             write(iulog,*) prefix//'model calendar '//trim(model_calendar)// &
                             ' does not match input data calendar '//trim(time_calendar)
              write(iulog,*) ' -- will try to use date and datesec in the input file to adjust the time coordinate.'
           end if
        end if
 
-       ! parse out ref date and time
-       !  time:units = "days since YYYY-MM-DD hh:mm:ss" ;
+       time_in_secs = .false.
 
-       yr_str  = time_units(12:15)
-       mon_str = time_units(17:18)
-       day_str = time_units(20:21)
-       hr_str  = time_units(23:24)
-       min_str = time_units(26:27)
+       if (index( time_units, 'days since') > 0) then
+          !  time:units = "days since YYYY-MM-DD hh:mm:ss"
+          !                1234567890123456789012345678901234567890
+          !                         1         2         3
+          yri = 12
+          moni = 17
+          dayi = 20
+          hri = 23
+          mini = 26
+          seci = 29
+       else if(index( time_units, 'seconds since') > 0) then
+          !  time:units = "seconds since YYYY-MM-DD hh:mm:ss"
+          !                1234567890123456789012345678901234567890
+          !                         1         2         3
+          yri = 15
+          moni = 20
+          dayi = 23
+          hri = 26
+          mini = 29
+          seci = 32
+          time_in_secs = .true.
+       else
+          call endrun('time units not recognized')
+       end if
+
+
+       ! parse out ref date and time
+
+       yr_str  = time_units(yri:yri+3)
+       mon_str = time_units(moni:moni+1)
+       day_str = time_units(dayi:dayi+1)
+       hr_str  = time_units(hri:hri+1)
+       min_str = time_units(mini:mini+1)
 
        read( yr_str,  * ) ref_yr
        read( mon_str, * ) ref_mon
        read( day_str, * ) ref_day
        read( hr_str,  * ) ref_hr
        read( min_str, * ) ref_min
-       if (len_trim(time_units).ge.30) then
-          sec_str = time_units(29:30)
+       if (len_trim(time_units)>seci) then
+          sec_str = time_units(seci:seci+1)
           read( sec_str, * ) ref_sec
        else
           ref_sec = 0
@@ -172,8 +210,12 @@ contains
        call set_time_float_from_date( ref_time, ref_yr, ref_mon, ref_day, tod )
 
        ierr = pio_get_var( fileid, varid, times_file )
+       if (time_in_secs) then
+          times_file = times_file/SHR_CONST_CDAY
+       endif
+
        if (ierr.ne.PIO_NOERR) then
-          call endrun('time_coordinate%initialize: not able to read times')
+          call endrun(prefix//'not able to read times')
        endif
 
        times_file = times_file + ref_time
@@ -207,26 +249,89 @@ contains
        ! try using date and datesec
        allocate(dates(this%ntimes), stat=ierr )
        if( ierr /= 0 ) then
-          write(iulog,*) 'time_coordinate%initialize: failed to allocate dates; error = ',ierr
-          call endrun('time_coordinate%initialize: failed to allocate dates')
+          write(iulog,*) prefix//'failed to allocate dates; error = ',ierr
+          call endrun(prefix//'failed to allocate dates')
        end if
 
        allocate(datesecs(this%ntimes), stat=ierr )
        if( ierr /= 0 ) then
-          write(iulog,*) 'time_coordinate%initialize: failed to allocate datesecs; error = ',ierr
-          call endrun('time_coordinate%initialize: failed to allocate datesecs')
+          write(iulog,*) prefix//'failed to allocate datesecs; error = ',ierr
+          call endrun(prefix//'failed to allocate datesecs')
        end if
 
-       ierr = pio_inq_varid( fileid, 'date', varid  )
-       if (ierr/=PIO_NOERR) then
-          call endrun('time_coordinate%initialize: input file must contain time or date variable '//trim(filepath))
+       ierr = pio_inq_varid( fileid, 'date', varid )
+       if (ierr==PIO_NOERR) then
+          ierr = pio_get_var( fileid, varid, dates )
+          if (ierr/=PIO_NOERR) then
+             call endrun(prefix//' error reading date in '//trim(filepath))
+          endif
+       else
+          ! try year, month, day
+          allocate(year(this%ntimes), stat=ierr )
+          if (ierr/=0) then
+             call endrun(prefix//'issue with allocation of year array')
+          endif
+          allocate(month(this%ntimes), stat=ierr )
+          if (ierr/=0) then
+             call endrun(prefix//'issue with allocation of month array')
+          endif
+          allocate(day(this%ntimes), stat=ierr )
+          if (ierr/=0) then
+             call endrun(prefix//'issue with allocation of day array')
+          endif
+
+          ierr = pio_inq_varid( fileid, 'year', varid )
+          if (ierr/=PIO_NOERR) then
+             call endrun(prefix//' error inquiring year var in '//trim(filepath))
+          endif
+          ierr = pio_get_var( fileid, varid, year )
+          if (ierr/=PIO_NOERR) then
+             call endrun(prefix//' error reading year in '//trim(filepath))
+          endif
+
+          ierr = pio_inq_varid( fileid, 'month', varid  )
+          if (ierr/=PIO_NOERR) then
+             call endrun(prefix//' error inquiring month var in '//trim(filepath))
+          endif
+          ierr = pio_get_var( fileid, varid, month )
+          if (ierr/=PIO_NOERR) then
+             call endrun(prefix//' error reading month in '//trim(filepath))
+          endif
+
+          ierr = pio_inq_varid( fileid, 'day', varid  )
+          if (ierr/=PIO_NOERR) then
+             call endrun(prefix//' error inquiring day var in '//trim(filepath))
+          endif
+          ierr = pio_get_var( fileid, varid, day )
+          if (ierr/=PIO_NOERR) then
+             call endrun(prefix//' error reading day in '//trim(filepath))
+          endif
+
+          dates(:) = year(:)*10000 + month(:)*100 + day(:)
+
+          deallocate(year,month,day)
        endif
-       ierr = pio_get_var( fileid, varid, dates )
        ierr = pio_inq_varid( fileid, 'datesec', varid )
        if (ierr==PIO_NOERR) then
           ierr = pio_get_var( fileid, varid, datesecs )
+          if (ierr/=PIO_NOERR) then
+             call endrun(prefix//' error reading datesec in '//trim(filepath))
+          endif
        else
-          datesecs(:) = 0
+          ! try ut
+
+          allocate(ut(this%ntimes), stat=ierr )
+          ierr = pio_inq_varid( fileid, 'ut', varid ) ! fractional hours
+          if (ierr==PIO_NOERR) then
+             ierr = pio_get_var( fileid, varid, ut )
+             if (ierr/=PIO_NOERR) then
+                call endrun(prefix//' error reading ut in '//trim(filepath))
+             endif
+             datesecs = int(3600._r8*ut) ! hours -> secs
+          else
+             datesecs(:) = 0
+          endif
+          deallocate(ut)
        endif
 
        call convert_dates( dates, datesecs, times_modl )
@@ -256,7 +361,7 @@ contains
     deallocate( times_modl, times_file )
     if (use_time_bnds) deallocate(time_bnds_file)
 
-    call pio_seterrorhandling(fileid, PIO_INTERNAL_ERROR)
+    call pio_seterrorhandling( fileid, err_handling )
 
     call cam_pio_closefile(fileid)
 
@@ -297,6 +402,28 @@ contains
     endif
 
   end function read_more
+
+  !-----------------------------------------------------------------------------
+  ! times_check -- returns timing status indicator
+  !  -1 : current model time is before the data times
+  !   0 : current model time is within the data times
+  !   1 : current model time is after the data times
+  !-----------------------------------------------------------------------------
+  integer function times_check(this)
+    class(time_coordinate), intent(in) :: this
+
+    real(r8) :: model_time
+
+    model_time = get_model_time()
+
+    times_check = 0
+    if (model_time<this%times(1)) then
+       times_check = -1
+    else if (model_time>this%times(this%ntimes)) then
+       times_check = 1
+    end if
+
+  end function times_check
 
   !-----------------------------------------------------------------------------
   ! destroy method -- deallocate memory and revert to default settings

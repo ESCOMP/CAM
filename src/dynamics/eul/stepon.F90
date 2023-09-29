@@ -1,9 +1,9 @@
 module stepon
-!----------------------------------------------------------------------- 
-! 
-! Purpose: 
+!-----------------------------------------------------------------------
+!
+! Purpose:
 ! Module for time-stepping of the CAM Eulerian Spectral dynamics.
-! 
+!
 !-----------------------------------------------------------------------
   use shr_kind_mod,     only: r8 => shr_kind_r8
   use shr_sys_mod,      only: shr_sys_flush
@@ -12,13 +12,17 @@ module stepon
   use scanslt,          only: advection_state
   use prognostics,      only: ps, u3, v3, t3, q3, qminus, div, &
                               dpsl, dpsm, omga, phis, n3, n3m2, n3m1
-  use camsrfexch,       only: cam_out_t     
+  use camsrfexch,       only: cam_out_t
   use ppgrid,           only: begchunk, endchunk
   use physics_types,    only: physics_state, physics_tend
   use time_manager,     only: is_first_step, get_step_size
   use iop,              only: setiopupdate, readiopdata
   use scamMod,          only: use_iop,doiopupdate,use_pert_frc,wfld,wfldh,single_column
   use perf_mod
+
+  use aerosol_properties_mod, only: aerosol_properties
+  use aerosol_state_mod,      only: aerosol_state
+  use microp_aero,            only: aerosol_state_object, aerosol_properties_object
 
   implicit none
   private
@@ -55,16 +59,19 @@ module stepon
 
   real(r8) :: etamid(plev)              ! vertical coords at midpoints or pmid if single_column
 
-!======================================================================= 
+  class(aerosol_properties), pointer :: aero_props_obj => null()
+  logical :: aerosols_transported = .false.
+
+!=======================================================================
 contains
-!======================================================================= 
+!=======================================================================
 
 subroutine stepon_init(dyn_in, dyn_out)
-!----------------------------------------------------------------------- 
-! 
+!-----------------------------------------------------------------------
+!
 ! Purpose:  Initialization, primarily of dynamics.
 !
-!----------------------------------------------------------------------- 
+!-----------------------------------------------------------------------
    use dyn_comp,       only: dyn_import_t, dyn_export_t
    use scanslt,        only: scanslt_initial
    use commap,         only: clat
@@ -91,7 +98,7 @@ subroutine stepon_init(dyn_in, dyn_out)
    !
    ! Initial guess for trajectory midpoints in spherical coords.
    ! nstep = 0:  use arrival points as initial guess for trajectory midpoints.
-   ! nstep > 0:  use calculated trajectory midpoints from previous time 
+   ! nstep > 0:  use calculated trajectory midpoints from previous time
    ! step as first guess.
    ! NOTE:  reduce number of iters necessary for convergence after nstep = 1.
    !
@@ -103,7 +110,7 @@ subroutine stepon_init(dyn_in, dyn_out)
                rcoslat(i) = 1._r8/coslat(i)
             end do
          endif
-         !     
+         !
          ! Set current time pressure arrays for model levels etc.
          !
          call plevs0(plon, plon, plev, ps(1,lat,n3), pint, pmid, pdel)
@@ -122,7 +129,7 @@ subroutine stepon_init(dyn_in, dyn_out)
                       dpsm(1,lat), pmid, pdel, rpmid   ,pint(1,plevp), &
                       omga(1,1,lat), plon)
          else
-         
+
             omga(1,:,lat)=wfld(:)
          endif
       end do
@@ -149,23 +156,32 @@ subroutine stepon_init(dyn_in, dyn_out)
       call init_iop_fields()
    endif
 #endif
+
+   ! get aerosol properties
+   aero_props_obj => aerosol_properties_object()
+
+   if (associated(aero_props_obj)) then
+      ! determine if there are transported aerosol contistuents
+      aerosols_transported = aero_props_obj%number_transported()>0
+   end if
+
 end subroutine stepon_init
 
 !
-!======================================================================= 
+!=======================================================================
 !
 
 subroutine stepon_run1( ztodt, phys_state, phys_tend , pbuf2d, dyn_in, dyn_out)
-!----------------------------------------------------------------------- 
-! 
+!-----------------------------------------------------------------------
+!
 ! Purpose:  Phase 1 run method of dynamics. Set the time-step
 !           to use for physics. And couple from dynamics to physics.
 !
-!----------------------------------------------------------------------- 
+!-----------------------------------------------------------------------
   use dyn_comp,       only: dyn_import_t, dyn_export_t
   use time_manager,   only: get_nstep
   use prognostics,    only: pdeld
-  
+
   use dp_coupling,    only: d_p_coupling
   use eul_control_mod,only: eul_nsplit
   use physics_buffer, only : physics_buffer_desc
@@ -177,7 +193,12 @@ subroutine stepon_run1( ztodt, phys_state, phys_tend , pbuf2d, dyn_in, dyn_out)
   type(dyn_export_t) :: dyn_out                      ! included for compatibility
 
   real(r8) :: dtime                     ! timestep size
-  !----------------------------------------------------------------------- 
+
+  integer :: c
+  class(aerosol_state), pointer :: aero_state_obj
+  nullify(aero_state_obj)
+
+ !-----------------------------------------------------------------------
 
   dtime = get_step_size()
 
@@ -187,7 +208,7 @@ subroutine stepon_run1( ztodt, phys_state, phys_tend , pbuf2d, dyn_in, dyn_out)
   if (is_first_step()) ztodt = dtime
 
   ! subcycling case, physics dt is always dtime
-  if (eul_nsplit>1) ztodt = dtime	
+  if (eul_nsplit>1) ztodt = dtime
 
   ! Dump state variables to IC file
   call t_startf ('diag_dynvar_ic')
@@ -204,25 +225,56 @@ subroutine stepon_run1( ztodt, phys_state, phys_tend , pbuf2d, dyn_in, dyn_out)
                      v3(:,:,beglat:endlat,n3m2), q3(:,:,:,beglat:endlat,n3m2), &
                      omga, phis, phys_state, phys_tend,  pbuf2d, pdeld(:,:,:,n3m2))
   call t_stopf  ('d_p_coupling')
+
+  !----------------------------------------------------------
+  ! update aerosol state object from CAM physics state constituents
+  !----------------------------------------------------------
+  if (aerosols_transported) then
+
+     do c = begchunk,endchunk
+        aero_state_obj => aerosol_state_object(c)
+        ! pass number mass or number mixing ratios of aerosol constituents
+        ! to aerosol state object
+        call aero_state_obj%set_transported(phys_state(c)%q)
+     end do
+
+  end if
+
 end subroutine stepon_run1
 
 !
-!======================================================================= 
+!=======================================================================
 !
 
 subroutine stepon_run2( phys_state, phys_tend, dyn_in, dyn_out )
-!----------------------------------------------------------------------- 
-! 
+!-----------------------------------------------------------------------
+!
 ! Purpose:  Phase 2 run method of dynamics. Couple from physics
 !           to dynamics.
 !
-!----------------------------------------------------------------------- 
+!-----------------------------------------------------------------------
   use dyn_comp,       only: dyn_import_t, dyn_export_t
   use dp_coupling,    only: p_d_coupling
-  type(physics_state), intent(in):: phys_state(begchunk:endchunk)
+  type(physics_state), intent(inout):: phys_state(begchunk:endchunk)
   type(physics_tend), intent(in):: phys_tend(begchunk:endchunk)
   type(dyn_import_t) :: dyn_in                       ! included for compatibility
   type(dyn_export_t) :: dyn_out                      ! included for compatibility
+
+  integer :: c
+  class(aerosol_state), pointer :: aero_state_obj
+
+  !----------------------------------------------------------
+  ! update physics state with aerosol constituents
+  !----------------------------------------------------------
+  nullify(aero_state_obj)
+
+  if (aerosols_transported) then
+     do c = begchunk,endchunk
+        aero_state_obj => aerosol_state_object(c)
+        ! get mass or number mixing ratios of aerosol constituents
+        call aero_state_obj%get_transported(phys_state(c)%q)
+     end do
+  end if
 
   call t_startf ('p_d_coupling')
   call p_d_coupling (phys_state, phys_tend, t2, fu, fv, flx_net, &
@@ -231,15 +283,15 @@ subroutine stepon_run2( phys_state, phys_tend, dyn_in, dyn_out )
 end subroutine stepon_run2
 
 !
-!======================================================================= 
+!=======================================================================
 !
 
 subroutine stepon_run3( ztodt, cam_out, phys_state, dyn_in, dyn_out )
-!----------------------------------------------------------------------- 
-! 
+!-----------------------------------------------------------------------
+!
 ! Purpose:  Final phase of dynamics run method. Run the actual dynamics.
 !
-!----------------------------------------------------------------------- 
+!-----------------------------------------------------------------------
   use dyn_comp,       only: dyn_import_t, dyn_export_t
   use eul_control_mod,only: eul_nsplit
   real(r8), intent(in) :: ztodt            ! twice time step unless nstep=0
@@ -247,20 +299,20 @@ subroutine stepon_run3( ztodt, cam_out, phys_state, dyn_in, dyn_out )
   type(physics_state), intent(in):: phys_state(begchunk:endchunk)
   type(dyn_import_t) :: dyn_in                       ! included for compatibility
   type(dyn_export_t) :: dyn_out                      ! included for compatibility
-  real(r8) :: dt_dyn0,dt_dyn 
+  real(r8) :: dt_dyn0,dt_dyn
   integer :: stage
   if (single_column) then
-     
+
      ! Determine whether it is time for an IOP update;
      ! doiopupdate set to true if model time step > next available IOP
      if (use_iop) then
         call setiopupdate
      end if
-     
+
      ! Update IOP properties e.g. omega, divT, divQ
-     
+
      if (doiopupdate) call readiopdata()
-     
+
   endif
 
   !----------------------------------------------------------
@@ -268,7 +320,7 @@ subroutine stepon_run3( ztodt, cam_out, phys_state, dyn_in, dyn_out )
   !----------------------------------------------------------
   call t_startf ('dynpkg')
 
-  if (eul_nsplit==1) then	
+  if (eul_nsplit==1) then
      call dynpkg(adv_state, t2      ,fu      ,fv      ,etamid  ,  &
        cwava   ,detam   ,flx_net ,ztodt)
   else
@@ -279,7 +331,7 @@ subroutine stepon_run3( ztodt, cam_out, phys_state, dyn_in, dyn_out )
      ! convert q adjustment to a tendency
      fq = (qminus(:,:,:,:) - q3(:,:,:,:,n3m2))/ztodt
      ! save a copy of t2,fu,fv
-     t2_save=t2		
+     t2_save=t2
      fu_save=fu
      fv_save=fv
 
@@ -287,8 +339,8 @@ subroutine stepon_run3( ztodt, cam_out, phys_state, dyn_in, dyn_out )
      call dynpkg(adv_state, t2      ,fu      ,fv      ,etamid  ,  &
        cwava   ,detam   ,flx_net ,dt_dyn0)
 
-     do stage=2,eul_nsplit	
-        t2=t2_save		
+     do stage=2,eul_nsplit
+        t2=t2_save
         fu=fu_save
         fv=fv_save
         call apply_fq(qminus,q3(:,:,:,:,n3m2),fq,dt_dyn)
@@ -312,11 +364,11 @@ subroutine apply_fq(qminus,q3,fq,dt)
    real(r8), intent(out) :: qminus(plon,plev,beglat:endlat,pcnst)
    real(r8), intent(in) :: dt
 
-   !local 	
+   !local
    real(r8) :: q_tmp,fq_tmp
    integer :: q,c,k,i
 
-   do q=1,pcnst 
+   do q=1,pcnst
    do c=beglat,endlat
    do k=1,plev
    do i=1,plon
@@ -324,12 +376,12 @@ subroutine apply_fq(qminus,q3,fq,dt)
       q_tmp  = q3(i,k,c,q)
       ! if forcing is > 0, do nothing (it makes q less negative)
       if (fq_tmp<0 .and. q_tmp+fq_tmp<0 ) then
-         ! reduce magnitude of forcing so it wont drive q negative 
+         ! reduce magnitude of forcing so it wont drive q negative
          ! but we only reduce the magnitude of the forcing, dont increase
          ! its magnitude or change the sign
-         
+
          ! if q<=0, then this will set fq=0  (q already negative)
-         ! if q>0, then we know from above that fq < -q < 0, so we 
+         ! if q>0, then we know from above that fq < -q < 0, so we
          ! can reduce the magnitive of fq by setting fq = -q:
          fq_tmp = min(-q_tmp,0._r8)
       endif
@@ -338,20 +390,20 @@ subroutine apply_fq(qminus,q3,fq,dt)
    enddo
    enddo
    enddo
-   	
+
 end subroutine
 
 
 !
-!======================================================================= 
+!=======================================================================
 !
 
 subroutine stepon_final(dyn_in, dyn_out)
-!----------------------------------------------------------------------- 
-! 
+!-----------------------------------------------------------------------
+!
 ! Purpose:  Stepon finalization.
 !
-!----------------------------------------------------------------------- 
+!-----------------------------------------------------------------------
    use dyn_comp,       only: dyn_import_t, dyn_export_t
    use scanslt, only: scanslt_final
    type(dyn_import_t) :: dyn_in                       ! included for compatibility
@@ -365,7 +417,7 @@ subroutine stepon_final(dyn_in, dyn_out)
 
 end subroutine stepon_final
 !
-!======================================================================= 
+!=======================================================================
 !
 
 end module stepon

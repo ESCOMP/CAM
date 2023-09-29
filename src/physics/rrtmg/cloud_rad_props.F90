@@ -6,7 +6,7 @@ module cloud_rad_props
 use shr_kind_mod,     only: r8 => shr_kind_r8
 use ppgrid,           only: pcols, pver, pverp
 use physics_types,    only: physics_state
-use physics_buffer,   only: physics_buffer_desc, pbuf_set_field, pbuf_get_index, pbuf_get_field, &
+use physics_buffer,   only: physics_buffer_desc, pbuf_get_index, pbuf_get_field, &
      pbuf_old_tim_idx
 use radconstants,     only: nswbands, nlwbands, idx_sw_diag, ot_length, idx_lw_diag
 use cam_abortutils,   only: endrun
@@ -52,11 +52,18 @@ real(r8), allocatable :: ssa_sw_ice(:,:)
 real(r8), allocatable :: asm_sw_ice(:,:)
 real(r8), allocatable :: abs_lw_ice(:,:)
 
-! 
+!
 ! indexes into pbuf for optical parameters of MG clouds
-! 
-   integer :: i_dei, i_mu, i_lambda, i_iciwp, i_iclwp, i_des, i_icswp
-   integer :: i_degrau, i_icgrauwp
+!
+   integer :: i_dei=0
+   integer :: i_mu=0
+   integer :: i_lambda=0
+   integer :: i_iciwp=0
+   integer :: i_iclwp=0
+   integer :: i_des=0
+   integer :: i_icswp=0
+   integer :: i_degrau=0
+   integer :: i_icgrauwp=0
 
 ! indexes into constituents for old optics
    integer :: &
@@ -68,7 +75,7 @@ real(r8), allocatable :: abs_lw_ice(:,:)
 contains
 !==============================================================================
 
-subroutine cloud_rad_props_init(pbuf2d)
+subroutine cloud_rad_props_init()
 
    use netcdf
    use spmd_utils,     only: masterproc
@@ -80,8 +87,6 @@ subroutine cloud_rad_props_init(pbuf2d)
    use constituents,   only: cnst_get_ind
    use slingo,         only: slingo_rad_props_init
    use ebert_curry,    only: ec_rad_props_init, scalefactor
-
-   type(physics_buffer_desc), pointer :: pbuf2d(:,:)
 
    character(len=256) :: liquidfile 
    character(len=256) :: icefile 
@@ -99,7 +104,7 @@ subroutine cloud_rad_props_init(pbuf2d)
 
    integer :: err
 
-   liquidfile = liqopticsfile 
+   liquidfile = liqopticsfile
    icefile = iceopticsfile
 
    call slingo_rad_props_init
@@ -115,12 +120,6 @@ subroutine cloud_rad_props_init(pbuf2d)
    i_icswp  = pbuf_get_index('ICSWP',errcode=err)
    i_icgrauwp  = pbuf_get_index('ICGRAUWP',errcode=err) ! Available when using MG3
    i_degrau    = pbuf_get_index('DEGRAU',errcode=err)   ! Available when using MG3
-
-   call pbuf_set_field(pbuf2d, i_dei,       0.0_r8)
-   call pbuf_set_field(pbuf2d, i_des,       0.0_r8)
-   if (i_degrau > 0) then
-      call pbuf_set_field(pbuf2d, i_degrau, 0.0_r8)
-   end if
 
    ! old optics
    call cnst_get_ind('CLDICE', ixcldice)
@@ -202,8 +201,8 @@ subroutine cloud_rad_props_init(pbuf2d)
     call mpibcast(abs_lw_liq, nmu*nlambda*nlwbands, mpir8, 0, mpicom, ierr)
 #endif
    ! I forgot to convert kext from m^2/Volume to m^2/Kg
-   ext_sw_liq = ext_sw_liq / 0.9970449e3_r8 
-   abs_lw_liq = abs_lw_liq / 0.9970449e3_r8 
+   ext_sw_liq = ext_sw_liq / 0.9970449e3_r8
+   abs_lw_liq = abs_lw_liq / 0.9970449e3_r8
 
    ! read ice cloud optics
    if(masterproc) then
@@ -291,7 +290,7 @@ subroutine cloud_rad_props_get_sw(state, pbuf, &
                                   tau, tau_w, tau_w_g, tau_w_f,&
                                   diagnosticindex, oldliq, oldice)
 
-! return totaled (across all species) layer tau, omega, g, f 
+! return totaled (across all species) layer tau, omega, g, f
 ! for all spectral interval for aerosols affecting the climate
 
    ! Arguments
@@ -366,7 +365,7 @@ end subroutine cloud_rad_props_get_sw
 subroutine cloud_rad_props_get_lw(state, pbuf, cld_abs_od, diagnosticindex, oldliq, oldice, oldcloud)
 
 ! Purpose: Compute cloud longwave absorption optical depth
-!    cloud_rad_props_get_lw() is called by radlw() 
+!    cloud_rad_props_get_lw() is called by radlw()
 
    ! Arguments
    type(physics_state), intent(in)  :: state
@@ -396,7 +395,7 @@ subroutine cloud_rad_props_get_lw(state, pbuf, cld_abs_od, diagnosticindex, oldl
    ncol = state%ncol
    lchnk = state%lchnk
 
-   ! compute optical depths cld_absod 
+   ! compute optical depths cld_absod
    cld_abs_od = 0._r8
 
    if(present(oldcloud))then
@@ -429,8 +428,8 @@ subroutine cloud_rad_props_get_lw(state, pbuf, cld_abs_od, diagnosticindex, oldl
    else
       call ice_cloud_get_rad_props_lw(state, pbuf, ice_tau_abs_od)
    endif
-      
-   cld_abs_od(:,1:ncol,:) = liq_tau_abs_od(:,1:ncol,:) + ice_tau_abs_od(:,1:ncol,:) 
+
+   cld_abs_od(:,1:ncol,:) = liq_tau_abs_od(:,1:ncol,:) + ice_tau_abs_od(:,1:ncol,:)
 
 end subroutine cloud_rad_props_get_lw
 
@@ -455,7 +454,7 @@ subroutine get_snow_optics_sw(state, pbuf, tau, tau_w, tau_w_g, tau_w_f)
    call interpolate_ice_optics_sw(state%ncol, icswpth, des, tau, tau_w, &
         tau_w_g, tau_w_f)
 
-end subroutine get_snow_optics_sw   
+end subroutine get_snow_optics_sw
 
 !==============================================================================
 
@@ -485,7 +484,7 @@ subroutine get_grau_optics_sw(state, pbuf, tau, tau_w, tau_w_g, tau_w_f)
          do k = 1, pver
             if (tau(idx_sw_diag,i,k).gt.100._r8) then
                write(iulog,*) 'WARNING: SW Graupel Tau > 100  (i,k,icgrauwpth,degrau,tau):'
-               write(iulog,*) i,k,icgrauwpth(i,k), degrau(i,k), tau(idx_sw_diag,i,k)  
+               write(iulog,*) i,k,icgrauwpth(i,k), degrau(i,k), tau(idx_sw_diag,i,k)
             end if
          enddo
       enddo
@@ -494,7 +493,7 @@ subroutine get_grau_optics_sw(state, pbuf, tau, tau_w, tau_w_g, tau_w_f)
       call endrun('ERROR: Get_grau_optics_sw called when graupel properties not supported')
    end if
 
-end subroutine get_grau_optics_sw   
+end subroutine get_grau_optics_sw
 
 !==============================================================================
 ! Private methods
@@ -594,7 +593,7 @@ subroutine get_liquid_optics_sw(state, pbuf, tau, tau_w, tau_w_g, tau_w_f)
    call pbuf_get_field(pbuf, i_lambda,  lamc)
    call pbuf_get_field(pbuf, i_mu,      pgam)
    call pbuf_get_field(pbuf, i_iclwp,   iclwpth)
-   
+
    do k = 1,pver
       do i = 1,ncol
          if(lamc(i,k) > 0._r8) then ! This seems to be clue from microphysics of no cloud
@@ -673,7 +672,7 @@ subroutine grau_cloud_get_rad_props_lw(state, pbuf, abs_od)
 
    ! This does the same thing as ice_cloud_get_rad_props_lw, except with a
    ! different water path and effective diameter.
-   if((i_icgrauwp > 0) .and. (i_degrau > 0)) then 
+   if((i_icgrauwp > 0) .and. (i_degrau > 0)) then
       call pbuf_get_field(pbuf, i_icgrauwp, icgrauwpth)
       call pbuf_get_field(pbuf, i_degrau,   degrau)
 

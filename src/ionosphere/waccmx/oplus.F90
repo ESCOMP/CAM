@@ -68,10 +68,12 @@ module oplus
     real(r8), allocatable :: expz(:) ! exp(-zp)
     real(r8), allocatable :: zp(:)   ! log pressure (as in tiegcm lev(nlev))
 
+    logical :: debug_hist
+
   contains
 
 !-----------------------------------------------------------------------
-  subroutine oplus_init( adiff_limiter_in, shapiro_const_in, enforce_floor_in, ring_polar_filter_in )
+  subroutine oplus_init( adiff_limiter_in, shapiro_const_in, enforce_floor_in, ring_polar_filter_in, ionos_debug_hist )
 
     use cam_history,  only : addfld, horiz_only
     use filter_module,only : filter_init
@@ -81,6 +83,9 @@ module oplus
     real(r8), intent(in) :: shapiro_const_in
     logical , intent(in) :: enforce_floor_in
     logical , intent(in) :: ring_polar_filter_in
+    logical , intent(in) :: ionos_debug_hist
+
+    debug_hist = ionos_debug_hist
 
     shapiro_const = shapiro_const_in
     enforce_floor = enforce_floor_in
@@ -89,88 +94,89 @@ module oplus
 
     call filter_init( ring_polar_filter )
 
-    !
-    ! Save fields from oplus module:
-    !
-    call addfld ('OPLUS_Z'    ,(/ 'lev' /), 'I', 'cm   ','OPLUS_Z'     , gridname='geo_grid')
-    call addfld ('OPLUS_TN'   ,(/ 'lev' /), 'I', 'deg K','OPLUS_TN'    , gridname='geo_grid')
-    call addfld ('OPLUS_TE'   ,(/ 'lev' /), 'I', 'deg K','OPLUS_TE'    , gridname='geo_grid')
-    call addfld ('OPLUS_TI'   ,(/ 'lev' /), 'I', 'deg K','OPLUS_TI'    , gridname='geo_grid')
-    call addfld ('OPLUS_UN'   ,(/ 'lev' /), 'I', 'cm/s' ,'OPLUS_UN'    , gridname='geo_grid')
-    call addfld ('OPLUS_VN'   ,(/ 'lev' /), 'I', 'cm/s' ,'OPLUS_VN'    , gridname='geo_grid')
-    call addfld ('OPLUS_OM'   ,(/ 'lev' /), 'I', 'Pa/s' ,'OPLUS_OM'    , gridname='geo_grid')
-    call addfld ('OPLUS_O2'   ,(/ 'lev' /), 'I', 'mmr'  ,'OPLUS_O2'    , gridname='geo_grid')
-    call addfld ('OPLUS_O1'   ,(/ 'lev' /), 'I', 'mmr'  ,'OPLUS_O1'    , gridname='geo_grid')
-
-    call addfld ('OPLUS_N2'   ,(/ 'lev' /), 'I', 'mmr'  ,'OPLUS_N2'    , gridname='geo_grid')
-    call addfld ('OPLUS_OP'   ,(/ 'lev' /), 'I', 'cm^3' ,'OPLUS_OP'    , gridname='geo_grid')
-    call addfld ('OPLUS_UI'   ,(/ 'lev' /), 'I', 'm/s'  ,'OPLUS_UI'    , gridname='geo_grid')
-    call addfld ('OPLUS_VI'   ,(/ 'lev' /), 'I', 'm/s'  ,'OPLUS_VI'    , gridname='geo_grid')
-    call addfld ('OPLUS_WI'   ,(/ 'lev' /), 'I', 'm/s'  ,'OPLUS_WI'    , gridname='geo_grid')
-    call addfld ('OPLUS_MBAR' ,(/ 'lev' /), 'I', ' '    ,'OPLUS_MBAR'  , gridname='geo_grid')
-    call addfld ('OPLUS_TR'   ,(/ 'lev' /), 'I', ' '    ,'OPLUS_TR'    , gridname='geo_grid')
-    call addfld ('OPLUS_TP0'  ,(/ 'lev' /), 'I', ' '    ,'OPLUS_TP0'   , gridname='geo_grid')
-    call addfld ('OPLUS_TP1'  ,(/ 'lev' /), 'I', ' '    ,'OPLUS_TP1'   , gridname='geo_grid')
-    !       call addfld ('OPLUS_TP2'  ,(/ 'lev' /), 'I', ' '    ,'OPLUS_TP2'   , gridname='geo_grid')
-    call addfld ('OPLUS_DJ'   ,(/ 'lev' /), 'I', ' '    ,'OPLUS_DJ'    , gridname='geo_grid')
-    call addfld ('OPLUS_HJ'   ,(/ 'lev' /), 'I', ' '    ,'OPLUS_HJ'    , gridname='geo_grid')
-    call addfld ('OPLUS_BVEL' ,(/ 'lev' /), 'I', ' '    ,'OPLUS_BVEL'  , gridname='geo_grid')
-    call addfld ('OPLUS_DIFFJ',(/ 'lev' /), 'I', ' '    ,'OPLUS_DIFFJ' , gridname='geo_grid')
-    call addfld ('OPLUS_OPNM' ,(/ 'lev' /), 'I', ' '    ,'OPLUS_OPNM'  , gridname='geo_grid')
-    call addfld ('OPNM_SMOOTH',(/ 'lev' /), 'I', ' '    ,'OPNM_SMOOTH' , gridname='geo_grid')
-    call addfld ('BDOTDH_OP'  ,(/ 'lev' /), 'I', ' '    ,'BDOTDH_OP'   , gridname='geo_grid')
-    call addfld ('BDOTDH_OPJ' ,(/ 'lev' /), 'I', ' '    ,'BDOTDH_OPJ'  , gridname='geo_grid')
-    call addfld ('BDOTDH_DIFF',(/ 'lev' /), 'I', ' '    ,'BDOTDH_DIFF' , gridname='geo_grid')
-    call addfld ('BDZDVB_OP'  ,(/ 'lev' /), 'I', ' '    ,'BDZDVB_OP'   , gridname='geo_grid')
-    call addfld ('EXPLICIT0'  ,(/ 'lev' /), 'I', ' '    ,'EXPLICIT0'   , gridname='geo_grid')
-
-    call addfld ('EXPLICITa'  ,(/ 'lev' /), 'I', ' '    ,'EXPLICITa'   , gridname='geo_grid') ! part a
-    call addfld ('EXPLICITb'  ,(/ 'lev' /), 'I', ' '    ,'EXPLICITb'   , gridname='geo_grid') ! part b
-    call addfld ('EXPLICIT1'  ,(/ 'lev' /), 'I', ' '    ,'EXPLICIT1'   , gridname='geo_grid') ! complete
-    call addfld ('EXPLICIT'   ,(/ 'lev' /), 'I', ' '    ,'EXPLICIT'    , gridname='geo_grid') ! final w/ poles
-
-    call addfld ('EXPLICIT2'  ,(/ 'lev' /), 'I', ' '    ,'EXPLICIT2'   , gridname='geo_grid')
-    call addfld ('EXPLICIT3'  ,(/ 'lev' /), 'I', ' '    ,'EXPLICIT3'   , gridname='geo_grid')
-    call addfld ('TPHDZ0'     ,(/ 'lev' /), 'I', ' '    ,'TPHDZ0'      , gridname='geo_grid')
-    call addfld ('TPHDZ1'     ,(/ 'lev' /), 'I', ' '    ,'TPHDZ1'      , gridname='geo_grid')
-    call addfld ('DIVBZ'      ,(/ 'lev' /), 'I', ' '    ,'DIVBZ'       , gridname='geo_grid')
-    call addfld ('HDZMBZ'     ,(/ 'lev' /), 'I', ' '    ,'HDZMBZ'      , gridname='geo_grid')
-    call addfld ('HDZPBZ'     ,(/ 'lev' /), 'I', ' '    ,'HDZPBZ'      , gridname='geo_grid')
-    call addfld ('P_COEFF0'   ,(/ 'lev' /), 'I', ' '    ,'P_COEFF0'    , gridname='geo_grid')
-    call addfld ('Q_COEFF0'   ,(/ 'lev' /), 'I', ' '    ,'Q_COEFF0'    , gridname='geo_grid')
-    call addfld ('R_COEFF0'   ,(/ 'lev' /), 'I', ' '    ,'R_COEFF0'    , gridname='geo_grid')
-    call addfld ('P_COEFF0a'  ,(/ 'lev' /), 'I', ' '    ,'P_COEFF0a'   , gridname='geo_grid')
-    call addfld ('Q_COEFF0a'  ,(/ 'lev' /), 'I', ' '    ,'Q_COEFF0a'   , gridname='geo_grid')
-    call addfld ('DJINT'      ,(/ 'lev' /), 'I', ' '    ,'DJINT'       , gridname='geo_grid')
-    call addfld ('BDOTU'      ,(/ 'lev' /), 'I', ' '    ,'BDOTU'       , gridname='geo_grid')
-    call addfld ('R_COEFF0a'  ,(/ 'lev' /), 'I', ' '    ,'R_COEFF0a'   , gridname='geo_grid')
-    call addfld ('P_COEFF1'   ,(/ 'lev' /), 'I', ' '    ,'P_COEFF1'    , gridname='geo_grid')
-    call addfld ('Q_COEFF1'   ,(/ 'lev' /), 'I', ' '    ,'Q_COEFF1'    , gridname='geo_grid')
-    call addfld ('R_COEFF1'   ,(/ 'lev' /), 'I', ' '    ,'R_COEFF1'    , gridname='geo_grid')
-    call addfld ('P_COEFF2'   ,(/ 'lev' /), 'I', ' '    ,'P_COEFF2'    , gridname='geo_grid')
-    call addfld ('Q_COEFF2'   ,(/ 'lev' /), 'I', ' '    ,'Q_COEFF2'    , gridname='geo_grid')
-    call addfld ('R_COEFF2'   ,(/ 'lev' /), 'I', ' '    ,'R_COEFF2'    , gridname='geo_grid')
-
-    call addfld ('P_COEFF'    ,(/ 'lev' /), 'I', ' '    ,'P_COEFF'     , gridname='geo_grid') ! final w/ poles
-    call addfld ('Q_COEFF'    ,(/ 'lev' /), 'I', ' '    ,'Q_COEFF'     , gridname='geo_grid') ! final w/ poles
-    call addfld ('R_COEFF'    ,(/ 'lev' /), 'I', ' '    ,'R_COEFF'     , gridname='geo_grid') ! final w/ poles
-
-    call addfld ('OP_SOLVE'   ,(/ 'lev' /), 'I', ' '    ,'OP_SOLVE'    , gridname='geo_grid')
     call addfld ('op_dt'  ,    (/ 'lev' /), 'I', ' '    ,'op_dt'       , gridname='geo_grid')
     call addfld ('amb_diff'  , (/ 'lev' /), 'I', ' '    ,'amb_diff'    , gridname='geo_grid')
     call addfld ('dfield'  ,   (/ 'lev' /), 'I', ' '    ,'dfield'      , gridname='geo_grid')
     call addfld ('dwind'  ,    (/ 'lev' /), 'I', ' '    ,'dwind'       , gridname='geo_grid')
 
-    call addfld ('OP_OUT'     ,(/ 'lev' /), 'I', 'cm^3' ,'OPLUS (oplus_xport output)', gridname='geo_grid')
-    call addfld ('OPNM_OUT'   ,(/ 'lev' /), 'I', 'cm^3' ,'OPNM_OUT'    , gridname='geo_grid')
-    call addfld ('BMOD2'      ,(/ 'lev' /), 'I', ' '    ,'BMOD2'       , gridname='geo_grid')
+    if (debug_hist) then
+       !
+       ! Save fields from oplus module:
+       !
+       call addfld ('OPLUS_Z'    ,(/ 'lev' /), 'I', 'cm   ','OPLUS_Z'     , gridname='geo_grid')
+       call addfld ('OPLUS_TN'   ,(/ 'lev' /), 'I', 'deg K','OPLUS_TN'    , gridname='geo_grid')
+       call addfld ('OPLUS_TE'   ,(/ 'lev' /), 'I', 'deg K','OPLUS_TE'    , gridname='geo_grid')
+       call addfld ('OPLUS_TI'   ,(/ 'lev' /), 'I', 'deg K','OPLUS_TI'    , gridname='geo_grid')
+       call addfld ('OPLUS_UN'   ,(/ 'lev' /), 'I', 'cm/s' ,'OPLUS_UN'    , gridname='geo_grid')
+       call addfld ('OPLUS_VN'   ,(/ 'lev' /), 'I', 'cm/s' ,'OPLUS_VN'    , gridname='geo_grid')
+       call addfld ('OPLUS_OM'   ,(/ 'lev' /), 'I', 'Pa/s' ,'OPLUS_OM'    , gridname='geo_grid')
+       call addfld ('OPLUS_O2'   ,(/ 'lev' /), 'I', 'mmr'  ,'OPLUS_O2'    , gridname='geo_grid')
+       call addfld ('OPLUS_O1'   ,(/ 'lev' /), 'I', 'mmr'  ,'OPLUS_O1'    , gridname='geo_grid')
 
-    call addfld ('OPLUS_FLUX', horiz_only , 'I', ' ','OPLUS_FLUX', gridname='geo_grid')
-    call addfld ('OPLUS_DIVB', horiz_only , 'I', ' ','OPLUS_DIVB', gridname='geo_grid')
-    call addfld ('OPLUS_BX'  , horiz_only , 'I', ' ','OPLUS_BX'  , gridname='geo_grid')
-    call addfld ('OPLUS_BY'  , horiz_only , 'I', ' ','OPLUS_BY'  , gridname='geo_grid')
-    call addfld ('OPLUS_BZ'  , horiz_only , 'I', ' ','OPLUS_BZ'  , gridname='geo_grid')
-    call addfld ('OPLUS_BMAG', horiz_only , 'I', ' ','OPLUS_BMAG', gridname='geo_grid')
+       call addfld ('OPLUS_N2'   ,(/ 'lev' /), 'I', 'mmr'  ,'OPLUS_N2'    , gridname='geo_grid')
+       call addfld ('OPLUS_OP'   ,(/ 'lev' /), 'I', 'cm^3' ,'OPLUS_OP'    , gridname='geo_grid')
+       call addfld ('OPLUS_UI'   ,(/ 'lev' /), 'I', 'm/s'  ,'OPLUS_UI'    , gridname='geo_grid')
+       call addfld ('OPLUS_VI'   ,(/ 'lev' /), 'I', 'm/s'  ,'OPLUS_VI'    , gridname='geo_grid')
+       call addfld ('OPLUS_WI'   ,(/ 'lev' /), 'I', 'm/s'  ,'OPLUS_WI'    , gridname='geo_grid')
+       call addfld ('OPLUS_MBAR' ,(/ 'lev' /), 'I', ' '    ,'OPLUS_MBAR'  , gridname='geo_grid')
+       call addfld ('OPLUS_TR'   ,(/ 'lev' /), 'I', ' '    ,'OPLUS_TR'    , gridname='geo_grid')
+       call addfld ('OPLUS_TP0'  ,(/ 'lev' /), 'I', ' '    ,'OPLUS_TP0'   , gridname='geo_grid')
+       call addfld ('OPLUS_TP1'  ,(/ 'lev' /), 'I', ' '    ,'OPLUS_TP1'   , gridname='geo_grid')
+       call addfld ('OPLUS_DJ'   ,(/ 'lev' /), 'I', ' '    ,'OPLUS_DJ'    , gridname='geo_grid')
+       call addfld ('OPLUS_HJ'   ,(/ 'lev' /), 'I', ' '    ,'OPLUS_HJ'    , gridname='geo_grid')
+       call addfld ('OPLUS_BVEL' ,(/ 'lev' /), 'I', ' '    ,'OPLUS_BVEL'  , gridname='geo_grid')
+       call addfld ('OPLUS_DIFFJ',(/ 'lev' /), 'I', ' '    ,'OPLUS_DIFFJ' , gridname='geo_grid')
+       call addfld ('OPLUS_OPNM' ,(/ 'lev' /), 'I', ' '    ,'OPLUS_OPNM'  , gridname='geo_grid')
+       call addfld ('OPNM_SMOOTH',(/ 'lev' /), 'I', ' '    ,'OPNM_SMOOTH' , gridname='geo_grid')
+       call addfld ('BDOTDH_OP'  ,(/ 'lev' /), 'I', ' '    ,'BDOTDH_OP'   , gridname='geo_grid')
+       call addfld ('BDOTDH_OPJ' ,(/ 'lev' /), 'I', ' '    ,'BDOTDH_OPJ'  , gridname='geo_grid')
+       call addfld ('BDOTDH_DIFF',(/ 'lev' /), 'I', ' '    ,'BDOTDH_DIFF' , gridname='geo_grid')
+       call addfld ('BDZDVB_OP'  ,(/ 'lev' /), 'I', ' '    ,'BDZDVB_OP'   , gridname='geo_grid')
+       call addfld ('EXPLICIT0'  ,(/ 'lev' /), 'I', ' '    ,'EXPLICIT0'   , gridname='geo_grid')
+
+       call addfld ('EXPLICITa'  ,(/ 'lev' /), 'I', ' '    ,'EXPLICITa'   , gridname='geo_grid') ! part a
+       call addfld ('EXPLICITb'  ,(/ 'lev' /), 'I', ' '    ,'EXPLICITb'   , gridname='geo_grid') ! part b
+       call addfld ('EXPLICIT1'  ,(/ 'lev' /), 'I', ' '    ,'EXPLICIT1'   , gridname='geo_grid') ! complete
+       call addfld ('EXPLICIT'   ,(/ 'lev' /), 'I', ' '    ,'EXPLICIT'    , gridname='geo_grid') ! final w/ poles
+
+       call addfld ('EXPLICIT2'  ,(/ 'lev' /), 'I', ' '    ,'EXPLICIT2'   , gridname='geo_grid')
+       call addfld ('EXPLICIT3'  ,(/ 'lev' /), 'I', ' '    ,'EXPLICIT3'   , gridname='geo_grid')
+       call addfld ('TPHDZ0'     ,(/ 'lev' /), 'I', ' '    ,'TPHDZ0'      , gridname='geo_grid')
+       call addfld ('TPHDZ1'     ,(/ 'lev' /), 'I', ' '    ,'TPHDZ1'      , gridname='geo_grid')
+       call addfld ('DIVBZ'      ,(/ 'lev' /), 'I', ' '    ,'DIVBZ'       , gridname='geo_grid')
+       call addfld ('HDZMBZ'     ,(/ 'lev' /), 'I', ' '    ,'HDZMBZ'      , gridname='geo_grid')
+       call addfld ('HDZPBZ'     ,(/ 'lev' /), 'I', ' '    ,'HDZPBZ'      , gridname='geo_grid')
+       call addfld ('P_COEFF0'   ,(/ 'lev' /), 'I', ' '    ,'P_COEFF0'    , gridname='geo_grid')
+       call addfld ('Q_COEFF0'   ,(/ 'lev' /), 'I', ' '    ,'Q_COEFF0'    , gridname='geo_grid')
+       call addfld ('R_COEFF0'   ,(/ 'lev' /), 'I', ' '    ,'R_COEFF0'    , gridname='geo_grid')
+       call addfld ('P_COEFF0a'  ,(/ 'lev' /), 'I', ' '    ,'P_COEFF0a'   , gridname='geo_grid')
+       call addfld ('Q_COEFF0a'  ,(/ 'lev' /), 'I', ' '    ,'Q_COEFF0a'   , gridname='geo_grid')
+       call addfld ('DJINT'      ,(/ 'lev' /), 'I', ' '    ,'DJINT'       , gridname='geo_grid')
+       call addfld ('BDOTU'      ,(/ 'lev' /), 'I', ' '    ,'BDOTU'       , gridname='geo_grid')
+       call addfld ('R_COEFF0a'  ,(/ 'lev' /), 'I', ' '    ,'R_COEFF0a'   , gridname='geo_grid')
+       call addfld ('P_COEFF1'   ,(/ 'lev' /), 'I', ' '    ,'P_COEFF1'    , gridname='geo_grid')
+       call addfld ('Q_COEFF1'   ,(/ 'lev' /), 'I', ' '    ,'Q_COEFF1'    , gridname='geo_grid')
+       call addfld ('R_COEFF1'   ,(/ 'lev' /), 'I', ' '    ,'R_COEFF1'    , gridname='geo_grid')
+       call addfld ('P_COEFF2'   ,(/ 'lev' /), 'I', ' '    ,'P_COEFF2'    , gridname='geo_grid')
+       call addfld ('Q_COEFF2'   ,(/ 'lev' /), 'I', ' '    ,'Q_COEFF2'    , gridname='geo_grid')
+       call addfld ('R_COEFF2'   ,(/ 'lev' /), 'I', ' '    ,'R_COEFF2'    , gridname='geo_grid')
+
+       call addfld ('P_COEFF'    ,(/ 'lev' /), 'I', ' '    ,'P_COEFF'     , gridname='geo_grid') ! final w/ poles
+       call addfld ('Q_COEFF'    ,(/ 'lev' /), 'I', ' '    ,'Q_COEFF'     , gridname='geo_grid') ! final w/ poles
+       call addfld ('R_COEFF'    ,(/ 'lev' /), 'I', ' '    ,'R_COEFF'     , gridname='geo_grid') ! final w/ poles
+
+       call addfld ('OP_SOLVE'   ,(/ 'lev' /), 'I', ' '    ,'OP_SOLVE'    , gridname='geo_grid')
+       call addfld ('OP_OUT'     ,(/ 'lev' /), 'I', 'cm^3' ,'OPLUS (oplus_xport output)', gridname='geo_grid')
+       call addfld ('OPNM_OUT'   ,(/ 'lev' /), 'I', 'cm^3' ,'OPNM_OUT'    , gridname='geo_grid')
+       call addfld ('BMOD2'      ,(/ 'lev' /), 'I', ' '    ,'BMOD2'       , gridname='geo_grid')
+
+       call addfld ('OPLUS_FLUX', horiz_only , 'I', ' ','OPLUS_FLUX', gridname='geo_grid')
+       call addfld ('OPLUS_DIVB', horiz_only , 'I', ' ','OPLUS_DIVB', gridname='geo_grid')
+       call addfld ('OPLUS_BX'  , horiz_only , 'I', ' ','OPLUS_BX'  , gridname='geo_grid')
+       call addfld ('OPLUS_BY'  , horiz_only , 'I', ' ','OPLUS_BY'  , gridname='geo_grid')
+       call addfld ('OPLUS_BZ'  , horiz_only , 'I', ' ','OPLUS_BZ'  , gridname='geo_grid')
+       call addfld ('OPLUS_BMAG', horiz_only , 'I', ' ','OPLUS_BMAG', gridname='geo_grid')
+    endif
 
     allocate(zp(nlev))      ! log pressure (as in TIEGCM)
     allocate(expz(nlev))    ! exp(-zp)
@@ -406,22 +412,24 @@ module oplus
 ! Save input fields to WACCM histories. Sub savefld_waccm_switch converts
 ! fields from tiegcm-format to waccm-format before saving to waccm histories.
 !
-    call savefld_waccm(tn(:,i0:i1,j0:j1),'OPLUS_TN',nlev,i0,i1,j0,j1)
-    call savefld_waccm(te(:,i0:i1,j0:j1),'OPLUS_TE',nlev,i0,i1,j0,j1)
-    call savefld_waccm(ti(:,i0:i1,j0:j1),'OPLUS_TI',nlev,i0,i1,j0,j1)
-    call savefld_waccm(un(:,i0:i1,j0:j1),'OPLUS_UN',nlev,i0,i1,j0,j1)
-    call savefld_waccm(vn(:,i0:i1,j0:j1),'OPLUS_VN',nlev,i0,i1,j0,j1)
-    call savefld_waccm(om(:,i0:i1,j0:j1),'OPLUS_OM',nlev,i0,i1,j0,j1)
-    call savefld_waccm(zg(:,i0:i1,j0:j1),'OPLUS_Z' ,nlev,i0,i1,j0,j1)
-    call savefld_waccm(o2(:,i0:i1,j0:j1),'OPLUS_O2',nlev,i0,i1,j0,j1)
-    call savefld_waccm(o1(:,i0:i1,j0:j1),'OPLUS_O1',nlev,i0,i1,j0,j1)
-    call savefld_waccm(n2(:,i0:i1,j0:j1),'OPLUS_N2',nlev,i0,i1,j0,j1)
-    call savefld_waccm(op(:,i0:i1,j0:j1),'OPLUS_OP',nlev,i0,i1,j0,j1)
-    call savefld_waccm(ui(:,i0:i1,j0:j1),'OPLUS_UI',nlev,i0,i1,j0,j1)
-    call savefld_waccm(vi(:,i0:i1,j0:j1),'OPLUS_VI',nlev,i0,i1,j0,j1)
-    call savefld_waccm(wi(:,i0:i1,j0:j1),'OPLUS_WI',nlev,i0,i1,j0,j1)
-    call savefld_waccm(mbar(:,i0:i1,j0:j1),'OPLUS_MBAR',nlev,i0,i1,j0,j1)
-    call savefld_waccm(opnm(:,i0:i1,j0:j1),'OPLUS_OPNM',nlev,i0,i1,j0,j1)
+    if (debug_hist) then
+       call savefld_waccm(tn(:,i0:i1,j0:j1),'OPLUS_TN',nlev,i0,i1,j0,j1)
+       call savefld_waccm(te(:,i0:i1,j0:j1),'OPLUS_TE',nlev,i0,i1,j0,j1)
+       call savefld_waccm(ti(:,i0:i1,j0:j1),'OPLUS_TI',nlev,i0,i1,j0,j1)
+       call savefld_waccm(un(:,i0:i1,j0:j1),'OPLUS_UN',nlev,i0,i1,j0,j1)
+       call savefld_waccm(vn(:,i0:i1,j0:j1),'OPLUS_VN',nlev,i0,i1,j0,j1)
+       call savefld_waccm(om(:,i0:i1,j0:j1),'OPLUS_OM',nlev,i0,i1,j0,j1)
+       call savefld_waccm(zg(:,i0:i1,j0:j1),'OPLUS_Z' ,nlev,i0,i1,j0,j1)
+       call savefld_waccm(o2(:,i0:i1,j0:j1),'OPLUS_O2',nlev,i0,i1,j0,j1)
+       call savefld_waccm(o1(:,i0:i1,j0:j1),'OPLUS_O1',nlev,i0,i1,j0,j1)
+       call savefld_waccm(n2(:,i0:i1,j0:j1),'OPLUS_N2',nlev,i0,i1,j0,j1)
+       call savefld_waccm(op(:,i0:i1,j0:j1),'OPLUS_OP',nlev,i0,i1,j0,j1)
+       call savefld_waccm(ui(:,i0:i1,j0:j1),'OPLUS_UI',nlev,i0,i1,j0,j1)
+       call savefld_waccm(vi(:,i0:i1,j0:j1),'OPLUS_VI',nlev,i0,i1,j0,j1)
+       call savefld_waccm(wi(:,i0:i1,j0:j1),'OPLUS_WI',nlev,i0,i1,j0,j1)
+       call savefld_waccm(mbar(:,i0:i1,j0:j1),'OPLUS_MBAR',nlev,i0,i1,j0,j1)
+       call savefld_waccm(opnm(:,i0:i1,j0:j1),'OPLUS_OPNM',nlev,i0,i1,j0,j1)
+    endif
 !
 ! Initialize output op_out with input op at 1:kbot-1, to retain values from
 ! bottom of column up to kbot. This routine will change (transport) these
@@ -436,12 +444,16 @@ module oplus
 ! Output opflux(i,j) is 2d lon x lat subdomain:
 !
     call oplus_flux(opflux,i0,i1,j0,j1)
-    call savefld_waccm(opflux(i0:i1,j0:j1),'OPLUS_FLUX',1,i0,i1,j0,j1)
+    if (debug_hist) then
+       call savefld_waccm(opflux(i0:i1,j0:j1),'OPLUS_FLUX',1,i0,i1,j0,j1)
+    endif
 !
 ! Divergence of B (mag field) is returned by divb in dvb(i0:i1,j0:j1)
 !
     call divb(dvb,i0,i1,j0,j1)
-    call savefld_waccm(dvb(i0:i1,j0:j1),'OPLUS_DIVB',1,i0,i1,j0,j1)
+    if (debug_hist) then
+       call savefld_waccm(dvb(i0:i1,j0:j1),'OPLUS_DIVB',1,i0,i1,j0,j1)
+    endif
 !
 ! The solver will be called only if calltrsolv=true. It is sometimes
 ! set false when skipping parts of the code for debug purposes.
@@ -605,14 +617,16 @@ module oplus
 !
 ! Save to history file (exclude halo points)
 !
-   call savefld_waccm(tr   (:,i0:i1,j0:j1),'OPLUS_TR'   ,nlev,i0,i1,j0,j1)
-   call savefld_waccm(dj   (:,i0:i1,j0:j1),'OPLUS_DJ'   ,nlev,i0,i1,j0,j1)
-   call savefld_waccm(hj   (:,i0:i1,j0:j1),'OPLUS_HJ'   ,nlev,i0,i1,j0,j1)
-   call savefld_waccm(bvel (:,i0:i1,j0:j1),'OPLUS_BVEL' ,nlev,i0,i1,j0,j1)
-   call savefld_waccm(diffj(:,i0:i1,j0:j1),'OPLUS_DIFFJ',nlev,i0,i1,j0,j1)
-   call savefld_waccm(diag0(:,i0:i1,j0:j1),'OPLUS_TP0'  ,nlev,i0,i1,j0,j1)
-   call savefld_waccm(tp   (:,i0:i1,j0:j1),'OPLUS_TP1'  ,nlev,i0,i1,j0,j1)
-   call savefld_waccm(opnm_smooth(:,i0:i1,j0:j1),'OPNM_SMOOTH',nlev,i0,i1,j0,j1)
+    if (debug_hist) then
+       call savefld_waccm(tr   (:,i0:i1,j0:j1),'OPLUS_TR'   ,nlev,i0,i1,j0,j1)
+       call savefld_waccm(dj   (:,i0:i1,j0:j1),'OPLUS_DJ'   ,nlev,i0,i1,j0,j1)
+       call savefld_waccm(hj   (:,i0:i1,j0:j1),'OPLUS_HJ'   ,nlev,i0,i1,j0,j1)
+       call savefld_waccm(bvel (:,i0:i1,j0:j1),'OPLUS_BVEL' ,nlev,i0,i1,j0,j1)
+       call savefld_waccm(diffj(:,i0:i1,j0:j1),'OPLUS_DIFFJ',nlev,i0,i1,j0,j1)
+       call savefld_waccm(diag0(:,i0:i1,j0:j1),'OPLUS_TP0'  ,nlev,i0,i1,j0,j1)
+       call savefld_waccm(tp   (:,i0:i1,j0:j1),'OPLUS_TP1'  ,nlev,i0,i1,j0,j1)
+       call savefld_waccm(opnm_smooth(:,i0:i1,j0:j1),'OPNM_SMOOTH',nlev,i0,i1,j0,j1)
+    endif
 !
 ! Set halo points where needed.
 !
@@ -695,8 +709,10 @@ module oplus
 ! This may not be necessary, but do it for plotting:
     call setpoles(bdotdh_op(kbot:nlev,i0:i1,j0:j1),kbot,nlev,i0,i1,j0,j1)
 
-   call savefld_waccm(bdotdh_op (:,i0:i1,j0:j1),'BDOTDH_OP' ,nlev,i0,i1,j0,j1)
-   call savefld_waccm(bdotdh_opj(:,i0:i1,j0:j1),'BDOTDH_OPJ',nlev,i0,i1,j0,j1)
+    if (debug_hist) then
+       call savefld_waccm(bdotdh_op (:,i0:i1,j0:j1),'BDOTDH_OP' ,nlev,i0,i1,j0,j1)
+       call savefld_waccm(bdotdh_opj(:,i0:i1,j0:j1),'BDOTDH_OPJ',nlev,i0,i1,j0,j1)
+    endif
 !
 ! Note mp_geo_halos will overwrite jm1,jp1 that was set above.
 ! bdotdh_opj needs longitude halos for the bdotdh call below.
@@ -1138,7 +1154,9 @@ module oplus
         diag25(k,i,j1)   = bmod2(i,j1)
       enddo
     enddo
-   call savefld_waccm(diag25,'BMOD2'     ,nlev,i0,i1,j0,j1)
+    if (debug_hist) then
+      call savefld_waccm(diag25,'BMOD2'     ,nlev,i0,i1,j0,j1)
+    endif
 !
 ! Assign polar values to coefficients for trsolv.
 !
@@ -1206,15 +1224,16 @@ module oplus
 !
         enddo ! k=lev0+1,lev1-1
 
-
       enddo
-
-      call savefld_waccm(op_out,'OP_SOLVE',nlev,i0,i1,j0,j1)
 
       call savefld_waccm(op_dt,'op_dt',nlev,i0,i1,j0,j1)
       call savefld_waccm(amb_diff,'amb_diff',nlev,i0,i1,j0,j1)
       call savefld_waccm(dfield,'dfield',nlev,i0,i1,j0,j1)
       call savefld_waccm(dwind,'dwind',nlev,i0,i1,j0,j1)
+
+      if (debug_hist) then
+         call savefld_waccm(op_out,'OP_SOLVE',nlev,i0,i1,j0,j1)
+      endif
 
     else ! trsolv not called (debug only)
       op_out  (kbot:nlev,i0:i1,j0:j1) = op  (kbot:nlev,i0:i1,j0:j1)
@@ -1223,38 +1242,40 @@ module oplus
 !
 ! Write fields from third latitude scan to waccm history:
 !
-   call savefld_waccm(explicit,'EXPLICIT',nlev,i0,i1,j0,j1) ! non-zero at ubc
-   call savefld_waccm(p_coeff ,'P_COEFF' ,nlev,i0,i1,j0,j1) ! zero at ubc?
-   call savefld_waccm(q_coeff ,'Q_COEFF' ,nlev,i0,i1,j0,j1) ! non-zero at ubc
-   call savefld_waccm(r_coeff ,'R_COEFF' ,nlev,i0,i1,j0,j1) ! is set zero at ubc
+    if (debug_hist) then
+       call savefld_waccm(explicit,'EXPLICIT',nlev,i0,i1,j0,j1) ! non-zero at ubc
+       call savefld_waccm(p_coeff ,'P_COEFF' ,nlev,i0,i1,j0,j1) ! zero at ubc?
+       call savefld_waccm(q_coeff ,'Q_COEFF' ,nlev,i0,i1,j0,j1) ! non-zero at ubc
+       call savefld_waccm(r_coeff ,'R_COEFF' ,nlev,i0,i1,j0,j1) ! is set zero at ubc
 
-   call savefld_waccm(bdotdh_diff(:,i0:i1,j0:j1), 'BDOTDH_DIFF',nlev,i0,i1,j0,j1)
-   call savefld_waccm(diag1 ,'BDZDVB_OP',nlev,i0,i1,j0,j1)
-   call savefld_waccm(diag2 ,'EXPLICIT0',nlev,i0,i1,j0,j1)
-   call savefld_waccm(diag26,'EXPLICITa',nlev,i0,i1,j0,j1)
-   call savefld_waccm(diag27,'EXPLICITb',nlev,i0,i1,j0,j1)
-   call savefld_waccm(diag3 ,'EXPLICIT1',nlev,i0,i1,j0,j1)
-   call savefld_waccm(diag4 ,'TPHDZ0'   ,nlev,i0,i1,j0,j1)
-   call savefld_waccm(diag5 ,'TPHDZ1'   ,nlev,i0,i1,j0,j1)
-   call savefld_waccm(diag6 ,'DJINT'    ,nlev,i0,i1,j0,j1)
-   call savefld_waccm(diag7 ,'DIVBZ'    ,nlev,i0,i1,j0,j1)
-   call savefld_waccm(diag8 ,'HDZMBZ'   ,nlev,i0,i1,j0,j1)
-   call savefld_waccm(diag9 ,'HDZPBZ'   ,nlev,i0,i1,j0,j1)
-   call savefld_waccm(diag10,'EXPLICIT2',nlev,i0,i1,j0,j1)
-   call savefld_waccm(diag11,'P_COEFF0' ,nlev,i0,i1,j0,j1)
-   call savefld_waccm(diag12,'Q_COEFF0' ,nlev,i0,i1,j0,j1)
-   call savefld_waccm(diag13,'R_COEFF0' ,nlev,i0,i1,j0,j1)
-   call savefld_waccm(diag14,'BDOTU'    ,nlev,i0,i1,j0,j1)
-   call savefld_waccm(diag15,'P_COEFF1' ,nlev,i0,i1,j0,j1)
-   call savefld_waccm(diag16,'Q_COEFF1' ,nlev,i0,i1,j0,j1)
-   call savefld_waccm(diag17,'R_COEFF1' ,nlev,i0,i1,j0,j1)
-   call savefld_waccm(diag18,'EXPLICIT3',nlev,i0,i1,j0,j1)
-   call savefld_waccm(diag19,'P_COEFF2' ,nlev,i0,i1,j0,j1)
-   call savefld_waccm(diag20,'Q_COEFF2' ,nlev,i0,i1,j0,j1)
-   call savefld_waccm(diag21,'R_COEFF2' ,nlev,i0,i1,j0,j1)
-   call savefld_waccm(diag22,'P_COEFF0a',nlev,i0,i1,j0,j1)
-   call savefld_waccm(diag23,'Q_COEFF0a',nlev,i0,i1,j0,j1)
-   call savefld_waccm(diag24,'R_COEFF0a',nlev,i0,i1,j0,j1)
+       call savefld_waccm(bdotdh_diff(:,i0:i1,j0:j1), 'BDOTDH_DIFF',nlev,i0,i1,j0,j1)
+       call savefld_waccm(diag1 ,'BDZDVB_OP',nlev,i0,i1,j0,j1)
+       call savefld_waccm(diag2 ,'EXPLICIT0',nlev,i0,i1,j0,j1)
+       call savefld_waccm(diag26,'EXPLICITa',nlev,i0,i1,j0,j1)
+       call savefld_waccm(diag27,'EXPLICITb',nlev,i0,i1,j0,j1)
+       call savefld_waccm(diag3 ,'EXPLICIT1',nlev,i0,i1,j0,j1)
+       call savefld_waccm(diag4 ,'TPHDZ0'   ,nlev,i0,i1,j0,j1)
+       call savefld_waccm(diag5 ,'TPHDZ1'   ,nlev,i0,i1,j0,j1)
+       call savefld_waccm(diag6 ,'DJINT'    ,nlev,i0,i1,j0,j1)
+       call savefld_waccm(diag7 ,'DIVBZ'    ,nlev,i0,i1,j0,j1)
+       call savefld_waccm(diag8 ,'HDZMBZ'   ,nlev,i0,i1,j0,j1)
+       call savefld_waccm(diag9 ,'HDZPBZ'   ,nlev,i0,i1,j0,j1)
+       call savefld_waccm(diag10,'EXPLICIT2',nlev,i0,i1,j0,j1)
+       call savefld_waccm(diag11,'P_COEFF0' ,nlev,i0,i1,j0,j1)
+       call savefld_waccm(diag12,'Q_COEFF0' ,nlev,i0,i1,j0,j1)
+       call savefld_waccm(diag13,'R_COEFF0' ,nlev,i0,i1,j0,j1)
+       call savefld_waccm(diag14,'BDOTU'    ,nlev,i0,i1,j0,j1)
+       call savefld_waccm(diag15,'P_COEFF1' ,nlev,i0,i1,j0,j1)
+       call savefld_waccm(diag16,'Q_COEFF1' ,nlev,i0,i1,j0,j1)
+       call savefld_waccm(diag17,'R_COEFF1' ,nlev,i0,i1,j0,j1)
+       call savefld_waccm(diag18,'EXPLICIT3',nlev,i0,i1,j0,j1)
+       call savefld_waccm(diag19,'P_COEFF2' ,nlev,i0,i1,j0,j1)
+       call savefld_waccm(diag20,'Q_COEFF2' ,nlev,i0,i1,j0,j1)
+       call savefld_waccm(diag21,'R_COEFF2' ,nlev,i0,i1,j0,j1)
+       call savefld_waccm(diag22,'P_COEFF0a',nlev,i0,i1,j0,j1)
+       call savefld_waccm(diag23,'Q_COEFF0a',nlev,i0,i1,j0,j1)
+       call savefld_waccm(diag24,'R_COEFF0a',nlev,i0,i1,j0,j1)
+    endif
 !
 !------------------------------------------------------------------------
 !
@@ -1309,8 +1330,10 @@ module oplus
 
 !
 ! Save O+ output to WACCM history (cm^3):
-   call savefld_waccm(op_out  (:,i0:i1,j0:j1),'OP_OUT'  ,nlev,i0,i1,j0,j1)
-   call savefld_waccm(opnm_out(:,i0:i1,j0:j1),'OPNM_OUT',nlev,i0,i1,j0,j1)
+    if (debug_hist) then
+       call savefld_waccm(op_out  (:,i0:i1,j0:j1),'OP_OUT'  ,nlev,i0,i1,j0,j1)
+       call savefld_waccm(opnm_out(:,i0:i1,j0:j1),'OPNM_OUT',nlev,i0,i1,j0,j1)
+    endif
   end subroutine oplus_xport
 !-----------------------------------------------------------------------
   subroutine oplus_flux(opflux,lon0,lon1,lat0,lat1)
@@ -1421,10 +1444,12 @@ module oplus
 
     dvb = 0._r8
 
-    call savefld_waccm(bx(i0:i1,j0:j1),'OPLUS_BX',1,i0,i1,j0,j1)
-    call savefld_waccm(by(i0:i1,j0:j1),'OPLUS_BY',1,i0,i1,j0,j1)
-    call savefld_waccm(bz(i0:i1,j0:j1),'OPLUS_BZ',1,i0,i1,j0,j1)
-    call savefld_waccm(bmod2(i0:i1,j0:j1),'OPLUS_BMAG',1,i0,i1,j0,j1)
+    if (debug_hist) then
+       call savefld_waccm(bx(i0:i1,j0:j1),'OPLUS_BX',1,i0,i1,j0,j1)
+       call savefld_waccm(by(i0:i1,j0:j1),'OPLUS_BY',1,i0,i1,j0,j1)
+       call savefld_waccm(bz(i0:i1,j0:j1),'OPLUS_BZ',1,i0,i1,j0,j1)
+       call savefld_waccm(bmod2(i0:i1,j0:j1),'OPLUS_BMAG',1,i0,i1,j0,j1)
+    endif
 !
 ! Note Rearth is in cm.
 ! (bx,by,bz are set by sub magfield (getapex.F90))

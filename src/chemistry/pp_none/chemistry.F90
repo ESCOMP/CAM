@@ -222,13 +222,15 @@ contains
 
   end subroutine chem_reset_fluxes
 !================================================================================
-  subroutine chem_emissions( state, cam_in )
+  subroutine chem_emissions( state, cam_in, pbuf )
     use camsrfexch,       only: cam_in_t     
+    use physics_buffer,   only: physics_buffer_desc
 
     ! Arguments:
 
     type(physics_state),    intent(in)    :: state   ! Physics state variables
     type(cam_in_t),         intent(inout) :: cam_in  ! import state
+    type(physics_buffer_desc), pointer    :: pbuf(:) ! Physics buffer in chunk, for HEMCO
 
   end subroutine chem_emissions
 end module chemistry

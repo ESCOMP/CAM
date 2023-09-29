@@ -29,9 +29,6 @@
 <prescribed_ozone_type    >CYCLICAL</prescribed_ozone_type>
 <prescribed_ozone_cycle_yr>1990</prescribed_ozone_cycle_yr>
 
-<!-- Set Aquaplanet to True -->
-<aqua_planet              >.true. </aqua_planet>
-
 <!-- Revised physics constants for ape experiments -->
 <sday                     >86164.10063718943</sday>
 <rearth                   >6.37100e6</rearth>
@@ -49,4 +46,3 @@
 <tracer_cnst_specifier    > ""    </tracer_cnst_specifier>
 
 </namelist_defaults>
-

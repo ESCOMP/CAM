@@ -5,7 +5,8 @@ module dadadj_cam
 use shr_kind_mod,    only: r8=>shr_kind_r8, cs=>shr_kind_cs
 use ppgrid,          only: pcols, pver, pverp
 use constituents,    only: pcnst
-use physconst,       only: cappav, cpairv, pi
+use air_composition, only: cappav, cpairv
+use physconst,       only: pi
 use physics_types,   only: physics_state, physics_ptend, physics_ptend_init
 use phys_control,    only: use_simple_phys
 use cam_abortutils,  only: endrun

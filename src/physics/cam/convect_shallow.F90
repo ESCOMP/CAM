@@ -214,7 +214,6 @@
   call addfld( 'CMFMC',      (/ 'ilev' /), 'A', 'kg/m2/s',  'Moist convection (deep+shallow) mass flux'                 )
   call addfld( 'CMFSL',      (/ 'ilev' /), 'A', 'W/m2',     'Moist shallow convection liquid water static energy flux'  )
   call addfld( 'CMFLQ',      (/ 'ilev' /), 'A', 'W/m2',     'Moist shallow convection total water flux'                 )
-  call addfld( 'CIN',        horiz_only,   'A', 'J/kg',     'Convective inhibition'                                     )
   call addfld( 'CBMF',       horiz_only,   'A', 'kg/m2/s',  'Cloud base mass flux'                                      )
   call addfld( 'CLDTOP',     horiz_only,   'I', '1',        'Vertical index of cloud top'                               )
   call addfld( 'CLDBOT',     horiz_only,   'I', '1',        'Vertical index of cloud base'                              )

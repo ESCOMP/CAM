@@ -12,7 +12,7 @@ module restart_dynamics
 ! grid format may also be used for an initial run.
 
 use shr_kind_mod,     only: r8 => shr_kind_r8
-use spmd_utils,       only: iam
+use spmd_utils,       only: iam, masterproc
 
 use constituents,     only: cnst_name
 use dyn_grid,         only: timelevel, fvm, elem, edgebuf
@@ -43,7 +43,7 @@ use cam_abortutils,   only: endrun
 
 use parallel_mod,     only: par
 use thread_mod,       only: horz_num_threads
-use dimensions_mod,   only: np, npsq, ne, nlev, qsize, nelemd, nc, ntrac
+use dimensions_mod,   only: np, npsq, ne, nlev, qsize, nelemd, nc, ntrac, use_cslam
 use dof_mod,          only: UniquePoints
 use element_mod,      only: element_t
 use time_mod,         only: tstep, TimeLevel_Qdp
@@ -148,7 +148,7 @@ subroutine init_restart_dynamics(file, dyn_out)
 
    ! CSLAM restart fields
 
-   if (ntrac > 0) then
+   if (use_cslam) then
 
       grid_id = cam_grid_id('FVM')
       call cam_grid_write_attr(File, grid_id, info)
@@ -223,7 +223,7 @@ subroutine write_restart_dynamics(File, dyn_out)
 
    ! write CSLAM fields
 
-   if (ntrac > 0) then
+   if (use_cslam) then
 
       grid_id = cam_grid_id('FVM')
 
@@ -621,7 +621,7 @@ subroutine read_restart_dynamics(File, dyn_in, dyn_out)
 
    ! read cslam fields
 
-   if (ntrac > 0) then
+   if (use_cslam) then
 
       ! Checks that file and model dimensions agree.
 
@@ -726,9 +726,9 @@ subroutine read_elem()
    call PIO_InitDecomp(pio_subsystem, pio_double, (/ncol,nlev/), ldof, iodesc3d)
    deallocate(ldof)
 
-   allocate(var3d(ncol*nlev), var2d(ncol))
+   allocate(var2d(nelemd*np*np), stat=ierr)
+   if (ierr/=0) call endrun( sub//': not able to allocate var2d' )
    var2d = 0._r8
-   var3d = 0._r8
 
    call pio_setframe(File, psdry_desc, t_idx)
    call pio_read_darray(File, psdry_desc, iodesc2d, var2d, ierr)
@@ -742,6 +742,11 @@ subroutine read_elem()
          end do
       end do
    end do
+
+   deallocate(var2d)
+   allocate(var3d(nelemd*np*np*nlev), stat=ierr)
+   if (ierr/=0) call endrun( sub//': not able to allocate var3d' )
+   var3d = 0._r8
 
    call pio_setframe(File, udesc, t_idx)
    call pio_read_darray(File, udesc, iodesc3d, var3d, ierr)
@@ -805,7 +810,9 @@ subroutine read_elem()
       end do
    end do
 
-   deallocate(var3d, var2d)
+   deallocate(var3d)
+
+   if (masterproc) write(iulog,*) sub//': completed successfully'
 
 end subroutine read_elem
 

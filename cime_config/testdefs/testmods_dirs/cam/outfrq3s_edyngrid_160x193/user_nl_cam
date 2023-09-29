@@ -1,3 +1,6 @@
+ionos_debug_hist=.true.
+fincl6='EX','EY','EZ','ED13D','ED23D','ADOTV1_MAG','ADOTV2_MAG','RJAC11','RJAC22',
+       'WACCM_UI','WACCM_VI','DPIE_ZHT','EDYN_BE3','OPtm1o','OPLUS_TE','EXPLICIT0','P_COEFF'
 mfilt=1,1,1,1,1,1,1,1,1
 ndens=1,1,1,1,1,1,1,1,1
 nhtfrq=3,3,3,3,3,3,3,3,3

@@ -18,7 +18,7 @@ module mo_drydep
   use dyn_grid,         only : get_dyn_grid_parm, get_horiz_grid_d
   use scamMod,          only : single_column
 
-  use seq_drydep_mod,   only : nddvels =>  n_drydep, drydep_list, mapping
+  use shr_drydep_mod,   only : nddvels =>  n_drydep, drydep_list, mapping
   use physconst,        only : karman
 
   use infnan,                only : nan, assignment(=)
@@ -251,7 +251,7 @@ contains
     !-------------------------------------------------------------------------------------
     !        ... assign CO tags to CO
     ! put this kludge in for now ...
-    !  -- should be able to set all these via the table mapping in seq_drydep_mod
+    !  -- should be able to set all these via the table mapping in shr_drydep_mod
     !-------------------------------------------------------------------------------------
     if( cohc_ndx>0 .and. co_ndx>0 ) then
        dvelocity(:ncol,cohc_ndx) = dvelocity(:ncol,co_ndx)
@@ -310,9 +310,7 @@ contains
     real(r8), allocatable :: urban(:,:)
     real(r8), allocatable :: lake(:,:)
     real(r8), allocatable :: wetland(:,:)
-    real(r8), allocatable :: lon_veg(:)
     real(r8), allocatable :: lon_veg_edge(:)
-    real(r8), allocatable :: lat_veg(:)
     real(r8), allocatable :: lat_veg_edge(:)
 
     character(len=32) :: test_name
@@ -399,12 +397,12 @@ contains
     allocate( dep_ra(pcols,n_land_type,begchunk:endchunk),stat=astat )
     if( astat /= 0 ) then
        write(iulog,*) 'dvel_inti: failed to allocate dep_ra; error = ',astat
-       call endrun
+       call endrun('dvel_inti: failed to allocate dep_ra')
     end if
     allocate( dep_rb(pcols,n_land_type,begchunk:endchunk),stat=astat )
     if( astat /= 0 ) then
        write(iulog,*) 'dvel_inti: failed to allocate dep_rb; error = ',astat
-       call endrun
+       call endrun('dvel_inti: failed to allocate dep_rb')
     end if
 
     if (.not.prog_modal_aero) then
@@ -414,7 +412,7 @@ contains
     allocate( fraction_landuse(pcols,n_land_type, begchunk:endchunk),stat=astat )
     if( astat /= 0 ) then
        write(iulog,*) 'dvel_inti: failed to allocate fraction_landuse; error = ',astat
-       call endrun
+       call endrun('dvel_inti: failed to allocate fraction_landuse')
     end if
     fraction_landuse = nan
 
@@ -443,20 +441,19 @@ contains
        !---------------------------------------------------------------------------
        allocate( vegetation_map(nlon_veg,nlat_veg,npft_veg), work(nlon_veg,nlat_veg), stat=astat )
        if( astat /= 0 ) then
-          write(iulog,*) 'dvel_inti: failed to allocate vegation_map; error = ',astat
-          call endrun
+          write(iulog,*) 'dvel_inti: failed to allocate vegetation_map; error = ',astat
+          call endrun('dvel_inti: failed to allocate vegetation_map')
        end if
        allocate( urban(nlon_veg,nlat_veg), lake(nlon_veg,nlat_veg), &
             landmask(nlon_veg,nlat_veg), wetland(nlon_veg,nlat_veg), stat=astat )
        if( astat /= 0 ) then
-          write(iulog,*) 'dvel_inti: failed to allocate vegation_map; error = ',astat
-          call endrun
+          write(iulog,*) 'dvel_inti: failed to allocate vegetation_map; error = ',astat
+          call endrun('dvel_inti: failed to allocate vegetation_map')
        end if
-       allocate( lon_veg(nlon_veg), lat_veg(nlat_veg), &
-            lon_veg_edge(nlon_veg+1), lat_veg_edge(nlat_veg+1), stat=astat )
+       allocate( lon_veg_edge(nlon_veg+1), lat_veg_edge(nlat_veg+1), stat=astat )
        if( astat /= 0 ) then
-          write(iulog,*) 'dvel_inti: failed to allocate vegation lon, lat arrays; error = ',astat
-          call endrun
+          write(iulog,*) 'dvel_inti: failed to allocate vegetation lon, lat arrays; error = ',astat
+          call endrun('dvel_inti: failed to allocate vegetation lon, lat arrays')
        end if
        !---------------------------------------------------------------------------
        ! 	... read the vegetation map and landmask
@@ -495,20 +492,18 @@ contains
        !---------------------------------------------------------------------------
        ! 	... define lat-lon of vegetation map (1x1)
        !---------------------------------------------------------------------------
-       lat_veg(:)      = (/ (-89.5_r8 + (i-1),i=1,nlat_veg  ) /)
-       lon_veg(:)      = (/ (  0.5_r8 + (i-1),i=1,nlon_veg  ) /)
        lat_veg_edge(:) = (/ (-90.0_r8 + (i-1),i=1,nlat_veg+1) /)
        lon_veg_edge(:) = (/ (  0.0_r8 + (i-1),i=1,nlon_veg+1) /)
 
        !---------------------------------------------------------------------------
        ! 	... regrid to model grid
        !---------------------------------------------------------------------------
-       call interp_map( plon, plat, nlon_veg, nlat_veg, npft_veg, lat_veg, lat_veg_edge, &
-            lon_veg, lon_veg_edge, landmask, urban, lake, &
+       call interp_map( plon, plat, nlon_veg, nlat_veg, npft_veg, lat_veg_edge, &
+            lon_veg_edge, landmask, urban, lake, &
             wetland, vegetation_map )
 
        deallocate( vegetation_map, work, stat=astat )
-       deallocate( lon_veg, lat_veg, lon_veg_edge, lat_veg_edge, stat=astat )
+       deallocate( lon_veg_edge, lat_veg_edge, stat=astat )
        deallocate( landmask, urban, lake, wetland, stat=astat )
     endif  ! Unstructured grid
 
@@ -549,8 +544,8 @@ contains
   end subroutine get_landuse_and_soilw_from_file
 
   !-------------------------------------------------------------------------------------
-  subroutine interp_map( plon, plat, nlon_veg, nlat_veg, npft_veg, lat_veg, lat_veg_edge, &
-                         lon_veg, lon_veg_edge, landmask, urban, lake, &
+  subroutine interp_map( plon, plat, nlon_veg, nlat_veg, npft_veg, lat_veg_edge, &
+                         lon_veg_edge, landmask, urban, lake, &
                          wetland, vegetation_map )
 
     use mo_constants, only : r2d
@@ -569,9 +564,7 @@ contains
     real(r8), intent(in)         :: lake(nlon_veg,nlat_veg)
     real(r8), intent(in)         :: wetland(nlon_veg,nlat_veg)
     real(r8), intent(in)         :: vegetation_map(nlon_veg,nlat_veg,npft_veg)
-    real(r8), intent(in)         :: lon_veg(nlon_veg)
     real(r8), intent(in)         :: lon_veg_edge(nlon_veg+1)
-    real(r8), intent(in)         :: lat_veg(nlat_veg)
     real(r8), intent(in)         :: lat_veg_edge(nlat_veg+1)
 
     !-------------------------------------------------------------------------------------
@@ -832,8 +825,8 @@ contains
     ! modified by JFL to be used in MOZART-2 (October 2002)
     !-------------------------------------------------------------------------------------
 
-    use seq_drydep_mod, only: z0, rgso, rgss, ri, rclo, rcls, rlu, rac
-    use seq_drydep_mod, only: seq_drydep_setHCoeff, foxd, drat
+    use shr_drydep_mod, only: z0, rgso, rgss, ri, rclo, rcls, rlu, rac
+    use shr_drydep_mod, only: shr_drydep_setHCoeff, foxd, drat
     use physconst,      only: tmelt
 
     !-------------------------------------------------------------------------------------
@@ -976,7 +969,7 @@ contains
     !-------------------------------------------------------------------------------------
     ! define species-dependent parameters (temperature dependent)
     !-------------------------------------------------------------------------------------
-    call seq_drydep_setHCoeff( ncol, sfc_temp, heff )
+    call shr_drydep_setHCoeff( ncol, sfc_temp, heff )
 
     do lt = 1,n_land_type
        dep_ra (:,lt,lchnk)   = 0._r8

@@ -3,7 +3,8 @@
  iopfile='/glade/u/home/storer/scam_iop_nc/iop_LBA_precip_halfhour.nc'
 
  !ncdata='$DIN_LOC_ROOT/CESM2.F2000climo.IOP_SITES_L128.cam.i.0003-06-01-00000.nc'
- ncdata='/glade/work/aherring/grids/vertical-res/CESM2.F2000climo.IOP_SITES_L128.cam.i.0003-06-01-00000.nc'
+ !ncdata='/glade/work/aherring/grids/vertical-res/CESM2.F2000climo.IOP_SITES_L128.cam.i.0003-06-01-00000.nc'
+ ncdata="$DIN_LOC_ROOT/atm/cam/scam/iop/CESM2.F2000climo.IOP_SITES.cam.i.0003-06-01-00000.nc"
 
  nhtfrq = 1
  mfilt = 720

@@ -378,9 +378,9 @@ subroutine dyn_init(dyn_in, dyn_out)
   use fv_diagnostics_mod, only: fv_diag_init
   use fv_mp_mod,       only: fill_corners, YDir, switch_current_Atm
   use infnan,          only: inf, assignment(=)
-  use physconst,       only: cpwv, cpliq, cpice
-  use physconst,          only: thermodynamic_active_species_num, dry_air_species_num, thermodynamic_active_species_idx
-  use physconst,          only: thermodynamic_active_species_idx_dycore, rair, cpair
+  use physconst,       only: cpwv, cpliq, cpice, rair, cpair
+  use air_composition,    only: thermodynamic_active_species_num, dry_air_species_num, thermodynamic_active_species_idx
+  use air_composition,    only: thermodynamic_active_species_idx_dycore
   use tracer_manager_mod, only: register_tracers
   use dyn_tests_utils,    only: vc_dycore, vc_moist_pressure, string_vc, vc_str_lgth
   ! arguments:
@@ -659,7 +659,7 @@ subroutine dyn_run(dyn_state)
   use fv_control_mod,         only: ngrids
   use fv_dynamics_mod,        only: fv_dynamics
   use fv_sg_mod,              only: fv_subgrid_z
-  use physconst,              only: thermodynamic_active_species_num, thermodynamic_active_species_idx_dycore, &
+  use air_composition,        only: thermodynamic_active_species_num, thermodynamic_active_species_idx_dycore, &
                                     thermodynamic_active_species_cp,thermodynamic_active_species_cv,dry_air_species_num
   use time_manager,           only: get_step_size
   use tracer_manager_mod,     only: get_tracer_index, NO_TRACER
@@ -855,7 +855,7 @@ subroutine read_inidat(dyn_in)
   use dyn_tests_utils,       only: vc_moist_pressure,vc_dry_pressure
   use dimensions_mod,        only: nlev
   use constituents,          only: pcnst, cnst_is_a_water_species
-  use physconst,             only: thermodynamic_active_species_num, dry_air_species_num, thermodynamic_active_species_idx_dycore
+  use air_composition,       only: thermodynamic_active_species_num, dry_air_species_num, thermodynamic_active_species_idx_dycore
   use pio,                   only: file_desc_t, pio_seterrorhandling, pio_bcast_error
   use ppgrid,                only: pver
   use cam_abortutils,        only: endrun
@@ -1384,9 +1384,9 @@ end subroutine read_inidat
 !=======================================================================
 
   subroutine calc_tot_energy_dynamics(atm,suffix)
-    use physconst,              only: gravit, cpair, rearth,omega
-    use physconst,              only: thermodynamic_active_species_num,thermodynamic_active_species_idx_dycore
-    use physconst,              only: thermodynamic_active_species_cp,thermodynamic_active_species_cv,dry_air_species_num
+    use physconst,              only: gravit, cpair, rearth, omega
+    use air_composition,        only: thermodynamic_active_species_num,thermodynamic_active_species_idx_dycore
+    use air_composition,        only: thermodynamic_active_species_cp,thermodynamic_active_species_cv,dry_air_species_num
     use cam_history,            only: outfld, hist_fld_active
     use constituents,           only: cnst_get_ind
     use dimensions_mod,         only: nlev
@@ -1913,7 +1913,7 @@ subroutine set_dry_mass(atm,fixed_global_ave_dry_ps)
   use hycoef,                only: hyai, hybi, ps0
   use dimensions_mod,        only: nlev
   use dyn_grid,              only: mytile
-  use physconst,             only: thermodynamic_active_species_num,thermodynamic_active_species_idx_dycore,dry_air_species_num
+  use air_composition,       only: thermodynamic_active_species_num,thermodynamic_active_species_idx_dycore,dry_air_species_num
 
   ! Arguments
   type (fv_atmos_type), intent(in),  pointer :: Atm(:)
