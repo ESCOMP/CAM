@@ -7,10 +7,13 @@ module ccpp_constituent_prop_mod
    !Define stub version of constituent properties mod
    type, public :: ccpp_constituent_prop_ptr_t
       logical, private :: thermo_active = .false.
+      logical, private :: water_species = .false.
    contains
       procedure :: standard_name     => ccpt_get_standard_name
       procedure :: is_thermo_active  => ccpt_is_thermo_active
+      procedure :: is_water_species  => ccpt_is_water_species
       procedure :: set_thermo_active => ccpt_set_thermo_active
+      procedure :: set_water_species => ccpt_set_water_species
    end type ccpp_constituent_prop_ptr_t
 
    !CCPP properties init routine
@@ -51,7 +54,7 @@ contains
    subroutine ccpt_is_thermo_active(this, val_out, errcode, errmsg)
 
       ! Dummy arguments
-      class(ccpp_constituent_prop_ptr_t), intent(in)  :: this
+      class(ccpp_constituent_prop_ptr_t),   intent(in)  :: this
       logical,                              intent(out) :: val_out
       integer,          optional,           intent(out) :: errcode
       character(len=*), optional,           intent(out) :: errmsg
@@ -68,6 +71,29 @@ contains
       end if
 
    end subroutine ccpt_is_thermo_active
+
+   !------
+
+   subroutine ccpt_is_water_species(this, val_out, errcode, errmsg)
+
+      ! Dummy arguments
+      class(ccpp_constituent_prop_ptr_t),   intent(in)  :: this
+      logical,                              intent(out) :: val_out
+      integer,          optional,           intent(out) :: errcode
+      character(len=*), optional,           intent(out) :: errmsg
+
+      !Pass back water species property:
+      val_out = this%water_species
+
+      !Provide err values if requested:
+      if(present(errcode)) then
+         errcode = 0
+      end if
+      if(present(errmsg)) then
+         errmsg = 'Still Not Used!'
+      end if
+
+   end subroutine ccpt_is_water_species_
 
    !------
 
@@ -95,6 +121,32 @@ contains
 
    end subroutine ccpt_set_thermo_active
 
+   !------
+
+   subroutine ccpt_set_water_species(this, water_flag, errcode, errmsg)
+      ! Set whether this constituent is a water species, which means
+      ! that this constituent represents a particular phase or type
+      ! of water in the atmosphere.
+
+      ! Dummy arguments
+      class(ccpp_constituent_prop_ptr_t),   intent(inout) :: this
+      logical,                              intent(in)    :: water_flag
+      integer,          optional,           intent(out)   :: errcode
+      character(len=*), optional,           intent(out)   :: errmsg
+
+      !Set thermodynamically active flag for this constituent:
+      this%water_species = water_flag
+
+      !Provide err values if requested:
+      if(present(errcode)) then
+         errcode = 0
+      end if
+      if(present(errmsg)) then
+         errmsg = 'Still Not Used!'
+      end if
+
+   end subroutine ccpt_set_water_species
+
 !+++++++++++++++++++++++++++++++++++++++++++++
 !CCPP constituents stub initialization routine
 !+++++++++++++++++++++++++++++++++++++++++++++
@@ -104,6 +156,7 @@ subroutine ccpp_const_props_init()
     !Use statements:
     use constituents,    only: pcnst
     use cam_abortutils,  only: handle_allocate_error
+    use air_composition, only: dry_air_species_num
     use air_composition, only: thermodynamic_active_species_idx
 
     !Local variables:
@@ -120,10 +173,15 @@ subroutine ccpp_const_props_init()
 
     !Set "thermo_active" property:
     do m = 1,pcnst
-       if (any(thermodynamic_active_species_idx == m)) then
+       if(any(thermodynamic_active_species_idx == m)) then
           call ccpp_const_props(m)%set_thermo_active(.true.)
-       else
-          call ccpp_const_props(m)%set_thermo_active(.false.)
+       end if
+    end do
+
+    !Set "water_species" property:
+    do m=1,pcnst
+       if(any(thermodynamic_active_species_idx(dry_air_species_num+1:) == m)) then
+          call ccpp_const_props(m)%set_water_species(.true.)
        end if
     end do
 
