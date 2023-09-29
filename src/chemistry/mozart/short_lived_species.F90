@@ -138,7 +138,7 @@ contains
     do m=1,nslvd
 
        if (cam_chempkg_is('geoschem_mam4')) then
-          write(fieldname,'(a,a)') trim(slvd_lst(m))
+          fieldname = trim(slvd_lst(m))
        else
           n = map(m)
           fieldname = solsym(n)

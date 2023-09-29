@@ -3,7 +3,6 @@ module mo_chem_utls
 
   private
   public :: get_spc_ndx, get_het_ndx, get_extfrc_ndx, get_rxt_ndx, get_inv_ndx
-  public :: utls_chem_is
 
   save
 
@@ -173,16 +172,5 @@ contains
     end do
 
   end function get_rxt_ndx
-
-  logical function utls_chem_is (name) result(chem_is)
-    use string_utils, only : to_lower
-
-    character(len=*), intent(in) :: name
-    chem_is = .false.
-    if ( to_lower(name) == 'mozart' ) then
-       chem_is = .true.
-    endif
-
-  end function utls_chem_is
 
 end module mo_chem_utls

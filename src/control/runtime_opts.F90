@@ -209,9 +209,6 @@ subroutine read_namelist(nlfilename, single_column, scmlat, scmlon)
    call hemco_readnl(nlfilename)
    call cam_budget_readnl(nlfilename)
    call phys_grid_ctem_readnl(nlfilename)
-#if (defined HEMCO_CESM)
-   call hemco_readnl(nlfilename)
-#endif
 
 end subroutine read_namelist
 
