@@ -123,7 +123,7 @@
   <compset>
     <alias>FSCAM</alias>
     <lname>2000_CAM60%SCAM_CLM50%SP_CICE%PRES_DOCN%DOM_SROF_SGLC_SWAV</lname>
-  <!--     <science_support grid="T42_T42"/> -->
+    <science_support grid="T42_T42"/>
   </compset>
 
   <compset>

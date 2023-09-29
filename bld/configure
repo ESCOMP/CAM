@@ -1190,7 +1190,7 @@ if (defined $opts{'scam'}) {
 }
 my $scam = $cfg_ref->get('scam') ? "ON" : "OFF";
 
-# The only dycore supported in SCAM mode is Eulerian
+# The only dycores supported in SCAM mode are Eulerian and Spectral Elements
 if ($scam eq 'ON' and !($dyn_pkg eq 'eul' or $dyn_pkg eq 'se')) {
     die <<"EOF";
 **  ERROR: SCAM mode only works with Eulerian dycore.
