@@ -589,8 +589,8 @@
 <iceopticsfile rad="rrtmgp">atm/cam/physprops/iceoptics_c080917.nc</iceopticsfile>
 <liqopticsfile rad="rrtmgp">atm/cam/physprops/F_nwvl200_mu20_lam50_res64_t298_c080428.nc</liqopticsfile>
 
-<rrtmgp_coefs_lw_file>src/physics/rrtmgp/ext/rrtmgp/data/rrtmgp-data-lw-g128-210809.nc</rrtmgp_coefs_lw_file>
-<rrtmgp_coefs_sw_file>src/physics/rrtmgp/ext/rrtmgp/data/rrtmgp-data-sw-g112-210809.nc</rrtmgp_coefs_sw_file>
+<rrtmgp_coefs_lw_file>src/physics/rrtmgp/data/rrtmgp-gas-lw-g128.nc</rrtmgp_coefs_lw_file>
+<rrtmgp_coefs_sw_file>src/physics/rrtmgp/data/rrtmgp-gas-sw-g112.nc</rrtmgp_coefs_sw_file>
 
 <!-- CAM-RT absorptivity/emissivity lookup table -->
 <absems_data rad="camrt">atm/cam/rad/abs_ems_factors_fastvx.c030508.nc</absems_data>

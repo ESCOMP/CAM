@@ -693,15 +693,16 @@ my $rad_pkg = $cfg->get('rad');
 if ($rad_pkg eq 'camrt') {
     add_default($nl, 'absems_data');
 }
-elsif ($rad_pkg eq 'rrtmgp') {
-    # Data for gas optics is provided with the source code.  The paths to this data
-    # are relative to the root directory of the cam component.
+elsif ($rad_pkg =~ m/rrtmgp/) {
+    # Dataset for gas optics are checked out of an external repo into
+    # the source code directory.  The paths to this data are relative
+    # to the root directory of the cam component.
     my $cam_dir = $cfg->get('cam_dir');
 
     add_default($nl, 'rrtmgp_coefs_lw_file');
     my $rel_path = $nl->get_value('rrtmgp_coefs_lw_file');
     my $abs_path = quote_string(set_abs_filepath($rel_path, $cam_dir));
-    # need to overwrite the relative pathname with the absolute pathname in the namelist object
+    # Overwrite the relative pathname with the absolute pathname in the namelist object
     $nl->set_variable_value('radiation_nl', 'rrtmgp_coefs_lw_file', $abs_path);
 
     add_default($nl, 'rrtmgp_coefs_sw_file');
@@ -863,7 +864,6 @@ if ($chem_rad_passive or $aqua_mode) {
 
 # The aerosol optics depend on which radiative transfer model is used due to differing
 # wavelength bands used.
-my $rrtmg = $rad_pkg eq 'rrtmg' ? 1 : 0;
 
 # @aero_names contains the names of the entities (bulk aerosols and modes)
 # that are externally mixed in aerosol optics calculation.  These entities are all
@@ -1242,7 +1242,7 @@ if ($carma eq 'bc_strat') {
     }
 }
 
-if ($rrtmg) {
+if ($rad_pkg eq 'rrtmg') {
 
   # CARMA Microphysics - RRTMG Only
   #
@@ -1662,11 +1662,25 @@ if ($rad_pkg ne 'none') {
 }
 
 # Cloud optics
-if ($rad_pkg =~ /rrtmg/) { # matches both rrtmg and rrtmgp
+if ($rad_pkg =~ m/rrtmg/) { # matches both rrtmg and rrtmgp
     add_default($nl, 'liqcldoptics');
     add_default($nl, 'icecldoptics');
     add_default($nl, 'liqopticsfile');
     add_default($nl, 'iceopticsfile');
+
+    # rrtmgp only implemented with mitchell and gammadist cloud optics
+    if ($rad_pkg =~ m/rrtmgp/) {
+        my $liqcldoptics = $nl->get_value('liqcldoptics');
+        if ($liqcldoptics !~ m/gammadist/) {
+            die "$ProgName - ERROR: RRTMGP only implemented with gammadist liquid cloud optics\n" .
+                "liqcldoptics = $liqcldoptics\n";
+        }
+        my $icecldoptics = $nl->get_value('icecldoptics');
+        if ($icecldoptics !~ m/mitchell/) {
+            die "$ProgName - ERROR: RRTMGP only implemented with mitchell ice cloud optics\n" .
+                "icecldoptics = $icecldoptics\n";
+        }
+    }
 }
 
 # Volcanic Aerosol Mass climatology dataset

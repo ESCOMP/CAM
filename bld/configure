@@ -1088,7 +1088,7 @@ if ($rad_pkg eq 'camrt') {
             "                 with aerosol package $chem_pkg\n";
     }
 }
-elsif ($rad_pkg eq 'rrtmg') {
+elsif ($rad_pkg =~ m/rrtmg/) {
 
     # The rrtmg package doesn't work with the CAM3 prescribed aerosols
     if ($phys_pkg eq 'cam3') {
@@ -1130,7 +1130,7 @@ if ($phys_pkg eq 'spcam_sam1mom') {
 }
 
 if ($phys_pkg eq 'spcam_m2005') {
-   if ($rad_pkg ne 'rrtmg') {
+   if ($rad_pkg !~ m/rrtmg/) {
         die "configure ERROR: radiation package: $rad_pkg is not compatible\n".
             "                 with m2005 -- it should be rrtmg\n";
   }
@@ -2212,16 +2212,16 @@ sub write_filepath
     }
     elsif ($rad eq 'rrtmgp') {
         print $fh "$camsrcdir/src/physics/rrtmgp\n";
-        print $fh "$camsrcdir/src/physics/rrtmgp/ext/rrtmgp\n";
-        print $fh "$camsrcdir/src/physics/rrtmgp/ext/rte\n";
-        if ($use_rrtmgp_gpu) {
-            print $fh "$camsrcdir/src/physics/rrtmgp/ext/rrtmgp/kernels-openacc\n";
-            print $fh "$camsrcdir/src/physics/rrtmgp/ext/rte/kernels-openacc\n";
-        }
-        print $fh "$camsrcdir/src/physics/rrtmgp/ext/rrtmgp/kernels\n";
-        print $fh "$camsrcdir/src/physics/rrtmgp/ext/rte/kernels\n";
         print $fh "$camsrcdir/src/physics/rrtmgp/ext/extensions\n";
-        print $fh "$camsrcdir/src/physics/rrtmgp/ext/extensions/cloud_optics\n";
+        print $fh "$camsrcdir/src/physics/rrtmgp/ext/gas-optics\n";
+        print $fh "$camsrcdir/src/physics/rrtmgp/ext/rrtmgp-frontend\n";
+        print $fh "$camsrcdir/src/physics/rrtmgp/ext/rte-frontend\n";
+        if ($use_rrtmgp_gpu) {
+            print $fh "$camsrcdir/src/physics/rrtmgp/ext/rrtmgp-kernels/accel\n";
+            print $fh "$camsrcdir/src/physics/rrtmgp/ext/rte-kernels/accel\n";
+        }
+        print $fh "$camsrcdir/src/physics/rrtmgp/ext/rrtmgp-kernels\n";
+        print $fh "$camsrcdir/src/physics/rrtmgp/ext/rte-kernels\n";
     }
 
     if ($clubb_sgs) {
