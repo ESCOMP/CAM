@@ -1,28 +1,69 @@
 #! /usr/bin/env python3
 
-"""
-Script run from CIME when calling case.setup
-Expects 3 arguments:
-   (1) case root path
-   (2) cam root path
-   (3) cam configuration options
-"""
+"""Copy GEOS-Chem configuration files from source to the case directory.
+This script is run from CIME when calling case.setup"""
 
-import sys, os, shutil
+import logging
+import os
+import shutil
+import sys
 
-case_root = sys.argv[1]
-cam_root = sys.argv[2]
-cam_options = sys.argv[3]
+_CIMEROOT = os.environ.get("CIMEROOT")
+if _CIMEROOT is None:
+    raise SystemExit("ERROR: must set CIMEROOT environment variable")
+# end if
+_LIBDIR = os.path.join(_CIMEROOT, "CIME", "Tools")
+sys.path.append(_LIBDIR)
+sys.path.insert(0, _CIMEROOT)
 
-# If using GEOS-Chem chemistry then copy GEOS-Chem configuration files from source code to case
-if '-chem geoschem' in cam_options:
-    geoschem_src = os.path.join(cam_root,'src','chemistry','geoschem','geoschem_src')
-    if not os.path.isdir(geoschem_src):
-        raise SystemExit("ERROR: Did not find path to GEOS-Chem source code at {:s}".format(geoschem_src))
-    for fname in ['species_database.yml', 'geoschem_config.yml',
-                  'HISTORY.rc', 'HEMCO_Config.rc', 'HEMCO_Diagn.rc']:
-        file1 = os.path.join(geoschem_src, 'run','CESM', fname)
-        if not os.path.exists(file1):
-            raise SystemExit("ERROR: GEOS-Chem configuration file does not exist: {}".format(file1))
-        file2 = os.path.join(case_root, fname)
-        shutil.copy(file1,file2)
+#pylint: disable=wrong-import-position
+from CIME.case import Case
+
+logger = logging.getLogger(__name__)
+
+if len(sys.argv) != 3:
+    raise SystemExit(f"Incorrect call to {sys.argv[0]}, need CAM root and case root")
+# end if
+cam_root = sys.argv[1]
+case_root = sys.argv[2]
+
+with Case(case_root) as case:
+    cam_config = case.get_value('CAM_CONFIG_OPTS')
+    # Gather case information (from _build_usernl_files in case_setup.py)
+    comp_interface = case.get_value("COMP_INTERFACE")
+
+    if comp_interface == "nuopc":
+        ninst = case.get_value("NINST")
+    elif ninst == 1:
+        ninst = case.get_value("NINST_CAM")
+    # end if
+# end with
+
+# GEOS-Chem only: copy config files to case
+if '-chem geoschem' in cam_config:
+    geoschem_config_src = os.path.join(cam_root, 'src', 'chemistry',
+                                       'geoschem', 'geoschem_src', 'run', 'CESM')
+    if not os.path.isdir(geoschem_config_src):
+        raise SystemExit(f"ERROR: Did not find path to GEOS-Chem source code at {geoschem_config_src}")
+    # end if
+    for fileName in ['species_database.yml', 'geoschem_config.yml', 'HISTORY.rc',
+                     'HEMCO_Config.rc', 'HEMCO_Diagn.rc']:
+        source_file = os.path.join(cam_root, geoschem_config_src, fileName)
+        if not os.path.exists(source_file):
+            raise SystemExit(f"ERROR: Did not find source file, {fileName}")
+        # end if
+        spaths = source_file.splitext(source_file)
+        for inst_num in range(ninst):
+            if ninst > 1:
+                target_file = f"{spaths[0]}_{inst_num+1:04d}{spaths[1]}"
+            else:
+                target_file = os.path.join(case_root, fileName)
+            # end if
+            if not os.path.exists(target_file):
+                logger.info("CAM namelist one-time copy of GEOS-Chem run directory files: source_file %s target_file %s ",
+                            source_file, target_file)
+                shutil.copy(source_file, target_file)
+            # end if
+        # end for
+    # end for
+# end if
