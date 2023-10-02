@@ -93,7 +93,7 @@ contains
          errmsg = 'Still Not Used!'
       end if
 
-   end subroutine ccpt_is_water_species_
+   end subroutine ccpt_is_water_species
 
    !------
 

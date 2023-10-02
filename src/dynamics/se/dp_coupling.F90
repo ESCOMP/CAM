@@ -698,9 +698,9 @@ subroutine derived_phys_dry(phys_state, phys_tend, pbuf2d)
          phys_state(lchnk)%zi    , phys_state(lchnk)%zm      , ncol)
 
       ! Compute initial dry static energy, include surface geopotential
-      call update_dry_static_energy_run(pver, phys_state(lchnk)%t, phys_state%zm,
-                                        phys_state(lchnk)%phis, phys_state(lchnk)%s,
-                                        cpairv(:,:,lchnk), errflg, errmsg)
+      call update_dry_static_energy_run(pver, gravit, phys_state(lchnk)%t, phys_state(lchnk)%zm,         &
+                                        phys_state(lchnk)%phis, phys_state(lchnk)%s, cpairv(:,:,lchnk),  &
+                                        errflg, errmsg)
 
       ! Ensure tracers are all positive
       call qneg3('D_P_COUPLING',lchnk  ,ncol    ,pcols   ,pver    , &
