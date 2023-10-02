@@ -58,6 +58,7 @@ module cam_history
    use solar_wind_data,     only: solar_wind_on, byimf=>solar_wind_byimf, bzimf=>solar_wind_bzimf
    use solar_wind_data,     only: swvel=>solar_wind_swvel, swden=>solar_wind_swden
    use epotential_params,   only: epot_active, epot_crit_colats
+   use cam_grid_support,    only: maxsplitfiles
 
   implicit none
   private
@@ -193,7 +194,6 @@ module cam_history
   logical :: collect_column_output(ptapes)
 
   integer :: maxvarmdims=1
-  integer :: maxsplitfiles=2
   !
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
   !
@@ -789,7 +789,7 @@ CONTAINS
         if ( len_trim(hfilename_spec(t)) == 0 )then
           if ( nhtfrq(t) == 0 )then
             ! Monthly files
-            hfilename_spec(t) = '%c.cam' // trim(inst_suffix) // '.h%ta.%y-%m.nc'
+            hfilename_spec(t) = '%c.cam' // trim(inst_suffix) // '.h%t%f.%y-%m.nc'
           else
             hfilename_spec(t) = '%c.cam' // trim(inst_suffix) // '.h%t%f.%y-%m-%d-%s.nc'
           end if
@@ -4230,7 +4230,6 @@ end subroutine print_active_fldlst
     integer                          :: amode
     logical                          :: interpolate
     logical                          :: patch_output
-    logical                          :: set_flag
     integer                          :: cam_snapshot_before_num
     integer                          :: cam_snapshot_after_num
     character(len=32)                :: cam_take_snapshot_before
@@ -4241,16 +4240,20 @@ end subroutine print_active_fldlst
                       cam_snapshot_before_num_out = cam_snapshot_before_num,  &
                       cam_snapshot_after_num_out  = cam_snapshot_after_num)
 
-    if (masterproc) then
-       write(iulog,*) 'peverwhee - starting h_define'
-    end if
-
     if(restart) then
       tape => restarthistory_tape
       if(masterproc) write(iulog,*)'Opening netcdf history restart file ', trim(hrestpath(t))
     else
       tape => history_tape
-      if(masterproc) write(iulog,*)'Opening netcdf history file ', trim(nhfil(t,1))
+      if(masterproc) then
+         if (hfile_accum(t) .and. hfile_inst(t)) then
+            write(iulog,*)'Opening netcdf history files ', trim(nhfil(t,1)), trim(nhfil(t,2))
+         else if (hfile_accum(t)) then
+            write(iulog,*)'Opening accumulated netcdf history file ', trim(nhfil(t,1))
+         else if (hfile_inst(t)) then
+            write(iulog,*)'Opening instantaneous netcdf history file ', trim(nhfil(t,2))
+         end if
+      end if
     end if
 
     amode = PIO_CLOBBER
@@ -4258,6 +4261,9 @@ end subroutine print_active_fldlst
     if(restart) then
       allocate(tape(t)%Files(1))
       call cam_pio_createfile (tape(t)%Files(1), hrestpath(t), amode)
+    else if (is_initfile(file_index=t)) then
+      allocate(tape(t)%Files(1))
+      call cam_pio_createfile (tape(t)%Files(1), nhfil(t,1), amode)
     else
       ! figure out how many history files to generate for this tape
       if (hfile_accum(t) .and. hfile_inst(t)) then
@@ -4307,12 +4313,7 @@ end subroutine print_active_fldlst
       if(interpolate) then
         allocate(header_info(1))
         do f = 1, size(tape(t)%Files)
-           if (f == size(tape(t)%Files)) then
-              set_flag = .true.
-           else
-              set_flag = .false.
-           end if
-           call cam_grid_write_attr(tape(t)%Files(f), interpolate_info(t)%grid_id, header_info(1), set_attr_flag=set_flag)
+           call cam_grid_write_attr(tape(t)%Files(f), interpolate_info(t)%grid_id, header_info(1), file_index=f)
         end do
       else if (patch_output) then
         ! We are doing patch (column) output
@@ -4329,12 +4330,7 @@ end subroutine print_active_fldlst
         allocate(header_info(size(tape(t)%grid_ids)))
         do i = 1, size(tape(t)%grid_ids)
           do f = 1, size(tape(t)%Files)
-             if (f == size(tape(t)%Files)) then
-                set_flag = .true.
-             else
-                set_flag = .false.
-             end if
-             call cam_grid_write_attr(tape(t)%Files(f), tape(t)%grid_ids(i), header_info(i), set_attr_flag=set_flag)
+             call cam_grid_write_attr(tape(t)%Files(f), tape(t)%grid_ids(i), header_info(i), file_index=f)
           end do
         end do
       end if   ! interpolate
@@ -4841,22 +4837,12 @@ end subroutine print_active_fldlst
     if(.not. is_satfile(t)) then
       if(interpolate) then
         do f = 1, size(tape(t)%Files)
-           if (f == size(tape(t)%Files)) then
-              set_flag = .true.
-           else
-              set_flag = .false.
-           end if
-           call cam_grid_write_var(tape(t)%Files(f), interpolate_info(t)%grid_id, set_attr_flag=set_flag)
+           call cam_grid_write_var(tape(t)%Files(f), interpolate_info(t)%grid_id, file_index=f)
         end do
       else if((.not. patch_output) .or. restart) then
         do i = 1, size(tape(t)%grid_ids)
           do f = 1, size(tape(t)%Files)
-             if (f == size(tape(t)%Files)) then
-                set_flag = .true.
-             else
-                set_flag = .false.
-             end if
-             call cam_grid_write_var(tape(t)%Files(f), tape(t)%grid_ids(i), set_attr_flag=set_flag)
+             call cam_grid_write_var(tape(t)%Files(f), tape(t)%grid_ids(i), file_index=f)
           end do
         end do
       else
@@ -5564,6 +5550,9 @@ end subroutine print_active_fldlst
         !
         ! Starting a new volume => define the metadata
         !
+        fname = ''
+        fname_acc = ''
+        fname_inst = ''
         if (nfils(t)==0 .or. (restart.and.rgnht(t))) then
           if(restart) then
             rhfilename_spec = '%c.cam' // trim(inst_suffix) // '.rh%t.%y-%m-%d-%s.nc'
@@ -5604,11 +5593,19 @@ end subroutine print_active_fldlst
             end if
           end do
           if(.not. restart) then
-            nhfil(t,1) = fname_acc
-            nhfil(t,2) = fname_inst
-            if(masterproc) then
-               write(iulog,*)'WSHIST: accumulated nhfil(',t,')=',trim(nhfil(t,1))
-               write(iulog,*)'WSHIST: instantaneous nhfil(',t,')=',trim(nhfil(t,2))
+            if (is_initfile(file_index=t)) then
+               nhfil(t,1) = fname
+               nhfil(t,2) = fname
+               if(masterproc) then
+                  write(iulog,*)'WSHIST: initfile nhfil(',t,')=',trim(nhfil(t,1))
+               end if
+            else
+               nhfil(t,1) = fname_acc
+               nhfil(t,2) = fname_inst
+               if(masterproc) then
+                  write(iulog,*)'WSHIST: accumulated nhfil(',t,')=',trim(nhfil(t,1))
+                  write(iulog,*)'WSHIST: instantaneous nhfil(',t,')=',trim(nhfil(t,2))
+               end if
             end if
             cpath(t) = nhfil(t,1)
             if ( len_trim(nfpath(t)) == 0 ) nfpath(t) = cpath(t)
@@ -6441,6 +6438,8 @@ end subroutine print_active_fldlst
                call cam_PIO_openfile (tape(t)%Files(f), nhfil(t,f), PIO_WRITE)
             end do
             call h_inquire(t)
+          else
+            deallocate(tape(t)%Files)
           end if
         endif                 ! if 0 timestep of montly run****
       end if                      ! if time dispose history fiels***
