@@ -2680,8 +2680,8 @@ contains
     ! Only write if not already done
     if (cam_grids(gridind)%attrs_defined(file_index_loc)) then
       ! Write the horizontal coorinate values
-      call cam_grids(gridind)%lon_coord%write_var(File)
-      call cam_grids(gridind)%lat_coord%write_var(File)
+      call cam_grids(gridind)%lon_coord%write_var(File, file_index)
+      call cam_grids(gridind)%lat_coord%write_var(File, file_index)
 
       ! We will handle errors for this routine
        call pio_seterrorhandling(File, PIO_BCAST_ERROR,err_handling)
@@ -2700,6 +2700,8 @@ contains
 
       ! Back to previous I/O error handling
       call pio_seterrorhandling(File, err_handling)
+
+      cam_grids(gridind)%attrs_defined(file_index_loc) = .false.
     end if
 
   end subroutine cam_grid_write_var

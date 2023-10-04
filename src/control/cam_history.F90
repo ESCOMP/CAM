@@ -166,7 +166,7 @@ module cam_history
   character(len=max_string_len) :: hrestpath(ptapes) = (/(' ',idx=1,ptapes)/) ! Full history restart pathnames
   character(len=max_string_len) :: nfpath(ptapes) = (/(' ',idx=1,ptapes)/) ! Array of first pathnames, for header
   character(len=max_string_len) :: cpath(ptapes)                   ! Array of current pathnames
-  character(len=max_string_len) :: nhfil(ptapes,2)                 ! Array of current file names
+  character(len=max_string_len) :: nhfil(ptapes,maxsplitfiles)     ! Array of current file names
   character(len=1)  :: avgflag_pertape(ptapes) = (/(' ',idx=1,ptapes)/) ! per tape averaging flag
   character(len=16)  :: logname             ! user name
   character(len=16)  :: host                ! host name
@@ -564,6 +564,7 @@ CONTAINS
     integer                        :: dtime   ! Step time in seconds
     integer                        :: unitn, ierr, f, t
     character(len=8)               :: ctemp      ! Temporary character string
+    character(len=max_string_len)  :: temp_spec
 
     character(len=fieldname_lenp2) :: fincl1(pflds)
     character(len=fieldname_lenp2) :: fincl2(pflds)
@@ -793,6 +794,11 @@ CONTAINS
           else
             hfilename_spec(t) = '%c.cam' // trim(inst_suffix) // '.h%t%f.%y-%m-%d-%s.nc'
           end if
+        else
+           ! Append file type - instantaneous or accumulated - to filename
+           ! specifier provided
+           temp_spec = trim(hfilename_spec(t)) // '%f'
+           hfilename_spec(t) = temp_spec
         end if
         !
         ! Only one time sample allowed per monthly average file
@@ -1640,7 +1646,6 @@ CONTAINS
 
     vdesc => restartvar_getdesc('lcltod_stop')
     ierr = pio_put_var(File, vdesc, lcltod_stop(1:ptapes))
-    write(iulog,*) 'finished put var'
 
     field_name_desc => restartvar_getdesc('field_name')
     decomp_type_desc => restartvar_getdesc('decomp_type')
@@ -2225,6 +2230,7 @@ CONTAINS
         ! Open history restart file
         !
         call getfil (hrestpath(t), locfn)
+        allocate(tape(t)%Files(1))
         call cam_pio_openfile(tape(t)%Files(1), locfn, 0)
         !
         ! Read history restart file
@@ -2278,7 +2284,7 @@ CONTAINS
                  fdims(1:nfdims), dimlens(1:ndims), tape(t)%hlist(fld)%hbuf(:,1,:), vdesc)
           end if
 
-          if ( associated(tape(t)%hlist(f)%sbuf) ) then
+          if ( associated(tape(t)%hlist(fld)%sbuf) ) then
              ! read in variance for standard deviation
              ierr = pio_inq_varid(tape(t)%Files(1), trim(fname_tmp)//'_var', vdesc)
              if (nfdims > 2) then
@@ -5570,23 +5576,23 @@ end subroutine print_active_fldlst
           ! Check that this new filename isn't the same as a previous or current filename
           !
           duplicate = .false.
-          do f = 1, ptapes
+          do f = 1, t
             if (masterproc)then
               if (trim(fname) == trim(nhfil(f,1))) then
                  write(iulog,*)'WSHIST: New filename same as old file = ', trim(fname)
                  duplicate = .true.
               else if (trim(fname_acc) == trim(nhfil(f,1))) then
-                 write(iulog,*)'WSHIST: New filename same as old file = ', trim(fname)
+                 write(iulog,*)'WSHIST: New accumulated filename same as old file = ', trim(fname_acc)
                  duplicate = .true.
               else if (trim(fname_inst) == trim(nhfil(f,2))) then
-                 write(iulog,*)'WSHIST: New filename same as old file = ', trim(fname)
+                 write(iulog,*)'WSHIST: New instantaneous filename same as old file = ', trim(fname_inst)
                  duplicate = .true.
               end if
               if (duplicate) then
                  write(iulog,*)'Is there an error in your filename specifiers?'
-                 write(iulog,*)'hfilename_spec(', t, ') = ', hfilename_spec(t)
+                 write(iulog,*)'hfilename_spec(', t, ') = ', trim(hfilename_spec(t))
                  if ( t /= f )then
-                   write(iulog,*)'hfilename_spec(', f, ') = ', hfilename_spec(f)
+                   write(iulog,*)'hfilename_spec(', f, ') = ', trim(hfilename_spec(f))
                  end if
                  call endrun
               end if
