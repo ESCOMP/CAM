@@ -1073,7 +1073,6 @@ contains
   subroutine create_updaters( this, grids, profiles, radiators, disable_aerosols, &
                               disable_clouds )
 
-    use modal_aer_opt,           only : modal_aer_opt_init
     use ppgrid,                  only : pcols ! maximum number of columns
     use rad_constituents,        only : rad_cnst_get_info
     use musica_assert,           only : assert
@@ -1172,7 +1171,9 @@ contains
     call rad_cnst_get_info( 0, nmodes = n_modes )
     if( n_modes > 0 .and. .not. do_aerosol .and. .not. disable_aerosols ) then
       do_aerosol = .true.
-      call modal_aer_opt_init( )
+      do_aerosol = .false. ! temporarily disable aerosols
+      ! TODO update to use new aerosol_optics class
+      ! call modal_aer_opt_init( )
     else
       ! TODO are there default aerosol optical properties that should be used
       !      when an aerosol module is not available?
