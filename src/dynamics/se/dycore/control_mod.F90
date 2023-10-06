@@ -23,9 +23,6 @@ module control_mod
                                           ! every rsplit tracer timesteps
   logical, public :: variable_nsplit=.false.
 
-  integer, public :: phys_dyn_cp = 1 !=0; no thermal energy scaling of T increment
-                                     !=1; scale increment for cp consistency between dynamics and physics
-
   logical, public :: refined_mesh
 
   integer, public :: vert_remap_q_alg = 10
@@ -127,5 +124,7 @@ module control_mod
   real(r8), public :: molecular_diff = -1.0_r8
 
   integer, public  :: vert_remap_uvTq_alg, vert_remap_tracer_alg
-  
+
+
+  integer, public :: pgf_formulation = -1 !PGF formulation - see prim_advance_mod.F90
 end module control_mod

@@ -188,7 +188,6 @@ subroutine neu_wetdep_init
     call addfld     ('WD_'//trim(gas_wetdep_list(m)),horiz_only, 'A','kg/m2/s','vertical integrated wet deposition flux')
     call addfld     ('HEFF_'//trim(gas_wetdep_list(m)),(/ 'lev' /), 'A','M/atm','Effective Henrys Law coeff.')
     if (history_chemistry) then
-       call add_default('DTWR_'//trim(gas_wetdep_list(m)), 1, ' ')
        call add_default('WD_'//trim(gas_wetdep_list(m)), 1, ' ')
     end if
   end do

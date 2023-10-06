@@ -21,7 +21,7 @@ module carma_intr
   use carmasolute_mod
   use carmastate_mod
   use carma_mod
-  
+
   use shr_kind_mod,   only: r8 => shr_kind_r8
   use spmd_utils,     only: masterproc
   use pmgrid,         only: plat, plev, plevp, plon
@@ -41,15 +41,15 @@ module carma_intr
 
 #if ( defined SPMD )
   use mpishorthand
-#endif  
-  
+#endif
+
   implicit none
-  
+
   private
   save
 
   ! Public interfaces
-  
+
   ! CAM Physics Interface
   public carma_register                 ! register consituents
   public carma_is_active                ! retrns true if this package is active (microphysics = .true.)
@@ -60,16 +60,16 @@ module carma_intr
   public carma_timestep_init            ! initialize timestep dependent variables
   public carma_timestep_tend            ! interface to tendency computation
   public carma_accumulate_stats         ! collect stats from all MPI tasks
-  
+
   ! Other Microphysics
   public carma_emission_tend            ! calculate tendency from emission source function
   public carma_wetdep_tend              ! calculate tendency from wet deposition
-  
+
 
   ! Private data
-  
+
   ! Particle Group Statistics
-  
+
   ! Gridbox average
   integer, parameter             :: NGPDIAGS         = 12         ! Number of particle diagnostics ...
   integer, parameter             :: GPDIAGS_ND       = 1          ! Number density
@@ -88,13 +88,13 @@ module carma_intr
   ! Particle Bin (Element) Statistics
   integer, parameter             :: NBNDIAGS         = 1          ! Number of bin surface diagnostics ...
   integer, parameter             :: BNDIAGS_TP       = 1          ! Delta Particle Temperature [K]
-  
+
   ! Surface
   integer, parameter             :: NSBDIAGS         = 2          ! Number of bin surface diagnostics ...
   integer, parameter             :: SBDIAGS_DD       = 1          ! Dry deposition flux [kg/m2/s]
   integer, parameter             :: SBDIAGS_VD       = 2          ! Dry deposition velocity [cm/s]
-  
-  
+
+
   ! Gas Statistics
   integer, parameter             :: NGSDIAGS         = 5          ! Number of gas diagnostics ...
   integer, parameter             :: GSDIAGS_SI       = 1          ! saturation wrt ice
@@ -102,27 +102,27 @@ module carma_intr
   integer, parameter             :: GSDIAGS_EI       = 3          ! equilibrium vp wrt ice
   integer, parameter             :: GSDIAGS_EL       = 4          ! equilibrium vp wrt water
   integer, parameter             :: GSDIAGS_WT       = 5          ! weight percent composition for aerosols
-  
+
   ! Step Statistics
   integer, parameter             :: NSPDIAGS         = 2          ! Number of step diagnostics ...
   integer, parameter             :: SPDIAGS_NSTEP    = 1          ! number of substeps
   integer, parameter             :: SPDIAGS_LNSTEP   = 2          ! ln(number of substeps)
-  
+
   ! Defaults not in the namelist
   character(len=10), parameter   :: carma_mixtype     = 'wet'     ! mixing ratio type for CARMA constituents
   integer                        :: LUNOPRT           = -1        ! lun for output
-  
-  ! Constituent Mappings      
+
+  ! Constituent Mappings
   integer                        :: icnst4elem(NELEM, NBIN)       ! constituent index for a carma element
   integer                        :: icnst4gas(NGAS)               ! constituent index for a carma gas
 
   character(len=16)              :: btndname(NGROUP, NBIN)        ! names of group per bin tendencies
   character(len=16)              :: etndname(NELEM, NBIN)         ! names of element tendencies
   character(len=16)              :: gtndname(NGAS)                ! names of gas tendencies
-  
+
   ! Flags to indicate whether each constituent could have a CARMA tendency.
   logical                        :: lq_carma(pcnst)
-  
+
   ! The CARMA object stores the configuration inforamtion about CARMA, only one is
   ! is needed per MPI task. In the future, this could potentially be turned into one
   ! per model to allow multiple models with different numbers of bins, ... to be
@@ -133,12 +133,12 @@ module carma_intr
   type(carma_type), target       :: carma                         ! the carma object
 
 
-  ! Physics Buffer Indicies  
+  ! Physics Buffer Indicies
   integer                        :: ipbuf4gas(NGAS)               ! physics buffer index for a carma gas
   integer                        :: ipbuf4t                       ! physics buffer index for a carma temperature
   integer                        :: ipbuf4sati(NGAS)              ! physics buffer index for a carma saturation over ice
   integer                        :: ipbuf4satl(NGAS)              ! physics buffer index for a carma saturation over liquid
-  
+
   ! Globals used for a reference atmosphere.
   real(kind=f)                   :: carma_t_ref(pver)             ! midpoint temperature (Pa)
   real(kind=f)                   :: carma_h2o_ref(pver)           ! h2o mmmr (kg/kg)
@@ -209,13 +209,13 @@ contains
 
     ! Initialize the return code.
     rc = 0
-    
+
     ! Some constants are set on the fly in CAM, so initialize them and any derived "constants" here.
     ! Some of them are needed in CARMA_DefineModel and CARMA_Initialize.
     GRAV = gravit * RM2CGS
-    REARTH  = p_rearth * RM2CGS 
-    WTMOL_AIR = mwdry 
-    WTMOL_H2O = mwh2o 
+    REARTH  = p_rearth * RM2CGS
+    WTMOL_AIR = mwdry
+    WTMOL_H2O = mwh2o
     R_AIR = RGAS / WTMOL_AIR
     CP = cpair * 1.e7_r8 / 1000._r8
     RKAPPA = R_AIR / CP
@@ -225,7 +225,7 @@ contains
 
     ! Find out which radiation scheme is active.
     call phys_getopts(radiation_scheme_out = radiation_scheme)
-   
+
     ! Get the wavelength centers for the CAM longwave and shortwave bands
     ! from the radiation code.
 
@@ -251,15 +251,15 @@ contains
 
     ! Create the CARMA object that will contain all the information about the
     ! how CARMA is configured.
-      
+
     call CARMA_Create(carma, NBIN, NELEM, NGROUP, NSOLUTE, NGAS, NWAVE, rc, &
          LUNOPRT=LUNOPRT, wave=wave, dwave=dwave, do_wave_emit=do_wave_emit)
     if (rc < 0) call endrun('carma_register::CARMA_Create failed.')
-    
+
     ! Define the microphysical model.
     call CARMA_DefineModel(carma, rc)
     if (rc < 0) call endrun('carma_register::CARMA_DefineModel failed.')
-    
+
     if (masterproc) then
       write(LUNOPRT,*) ''
       write(LUNOPRT,*) 'CARMA general settings for ', trim(carma_model), ' model : '
@@ -301,7 +301,7 @@ contains
       write(LUNOPRT,*) '  carma_rad_feedback  = ', carma_rad_feedback
       write(LUNOPRT,*) ''
     endif
-    
+
     ! Intialize the model based upon the namelist configuration.
     !
     ! NOTE: When used with CAM, the latents heats (of melting and evaporation)
@@ -337,8 +337,8 @@ contains
                           gstickl       = carma_gstickl, &
                           tstick        = carma_tstick)
     if (rc < 0) call endrun('carma_register::CARMA_Initialize failed.')
-    
-    
+
+
     ! The elements and gases from CARMA need to be added as constituents in
     ! CAM (if they don't already exist). For the elements, each radius bin
     ! needs to be its own constiuent in CAM.
@@ -349,34 +349,34 @@ contains
     !   2) The molecular weight is in kg/kmol.
     !   3) The specific heat at constant pressure is in J/kg/K.
     !   4) The consituents are added sequentially.
-    
+
     ! Add a CAM constituents for each bin of each element.
     do ielem = 1, NELEM
-    
+
       call CARMAELEMENT_Get(carma, ielem, rc, igroup=igroup, shortname=shortname, name=name)
       if (rc < 0) call endrun('carma_register::CARMAELEMENT_Get failed.')
-      
+
       call CARMAGROUP_Get(carma, igroup, rc, cnsttype=cnsttype, r=r, rmass=rmass, maxbin=maxbin, shortname=grp_short)
       if (rc < 0) call endrun('carma_register::CARMAGROUP_Get failed.')
-      
+
       ! For prognostic groups, all of the bins need to be represented as actual CAM
       ! constituents. Diagnostic groups are determined from state information that
       ! is already present in CAM, and thus their bins only exist in CARMA.
       if (cnsttype == I_CNSTTYPE_PROGNOSTIC) then
-        
+
         do ibin = 1, NBIN
-        
+
           ! Bins past maxbin are treated as diagnostic even if the group
           ! is prognostic and thus are not advected in the paerent model.
           if (ibin <= maxbin) then
-    
+
             write(btndname(igroup, ibin), '(A, I2.2)') trim(grp_short), ibin
 
             write(c_name, '(A, I2.2)') trim(shortname), ibin
             write(c_longname, '(A, e11.4, A)') trim(name) // ', ', r(ibin)*1.e4_r8, ' um'
-             
+
             ! The molecular weight seems to be used for molecular diffusion, which
-            ! doesn't make sense for particles. The CAM solvers are unstable if the 
+            ! doesn't make sense for particles. The CAM solvers are unstable if the
             ! mass provided is large.
             call cnst_add(c_name, WTMOL_AIR, cpair, 0._r8, icnst4elem(ielem, ibin), &
               longname=c_longname, mixtype=carma_mixtype, is_convtran1=is_convtran1(igroup))
@@ -384,28 +384,28 @@ contains
         end do
       end if
     end do
-     
+
     ! Find the constituent for the gas or add it if not found.
     do igas = 1, NGAS
-  
+
       call CARMAGAS_Get(carma, igas, rc, shortname=shortname, name=name, wtmol=wtmol)
       if (rc < 0) call endrun('carma_register::CARMAGAS_Get failed.')
-        
+
       ! Is the gas already defined?
       call cnst_get_ind(shortname, icnst4gas(igas))
-  
+
       ! For substepping, we need to store the last mmr values for the gas.
       call pbuf_add_field('CG' // shortname, 'global',dtype_r8, (/pcols, pver/), ipbuf4gas(igas))
-  
+
       ! For substepping, we need to store the last supersaturations.
       call pbuf_add_field('CI' // shortname, 'global',dtype_r8, (/pcols, pver/), ipbuf4sati(igas))
       call pbuf_add_field('CL' // shortname, 'global',dtype_r8, (/pcols, pver/), ipbuf4satl(igas))
     end do
-     
-  
+
+
     ! For substepping, we need to store the temperature.
     call pbuf_add_field('CT', 'global',dtype_r8, (/pcols, pver/), ipbuf4t)
-    
+
 
     ! Create the optical properties files needed for RRTMG radiative transfer
     ! calculations.
@@ -418,7 +418,7 @@ contains
       call CARMA_CreateOpticsFile(carma, rc)
        if (rc < 0) call endrun('carma_register::carma_CreateOpticsFiles failed.')
     end if
-    
+
     return
   end subroutine carma_register
 
@@ -431,11 +431,11 @@ contains
   !! @version May 2009
   function carma_is_active()
     implicit none
-  
+
     logical :: carma_is_active
-  
+
     carma_is_active = carma_flag
-    
+
     return
   end function carma_is_active
 
@@ -448,38 +448,38 @@ contains
   !! @version May 2009
   function carma_implements_cnst(name)
     implicit none
-    
+
     character(len=*), intent(in) :: name   !! constituent name
     logical :: carma_implements_cnst       ! return value
-    
+
     integer :: igroup
     integer :: ielem
     integer :: ibin
     integer :: igas
     integer :: rc
-    
+
     integer :: cnsttype     ! constituent type
     integer :: maxbin       ! last prognostic bin
 
     rc = 0
-    
+
     carma_implements_cnst = .false.
-    
+
     ! Check each bin to see if it this constituent.
     do ielem = 1, NELEM
       do ibin = 1, NBIN
         call CARMAELEMENT_Get(carma,  ielem, rc, igroup=igroup)
-        if (rc < 0) call endrun('carma_init::CARMAELEMENT_Get failed.')
-        
+        if (rc < 0) call endrun('carma_implements_cnst::CARMAELEMENT_Get failed.')
+
         call CARMAGROUP_Get(carma, igroup, rc, cnsttype=cnsttype, maxbin=maxbin)
-        if (rc < 0) call endrun('carma_init::CARMAGROUP_Get failed.')
-        
+        if (rc < 0) call endrun('carma_implements_cnst::CARMAGROUP_Get failed.')
+
         if (cnsttype == I_CNSTTYPE_PROGNOSTIC) then
-        
+
           ! Bins past maxbin are treated as diagnostic even if the group
           ! is prognostic and thus are not advected in the parent model.
           if (ibin <= maxbin) then
-    
+
             if (name == cnst_name(icnst4elem(ielem, ibin))) then
               carma_implements_cnst = .true.
               return
@@ -487,8 +487,8 @@ contains
           end if
         end if
       end do
-    end do 
-    
+    end do
+
     ! Check each gas to see if it this constituent.
     do igas = 1, NGAS
       if (name == cnst_name(icnst4gas(igas))) then
@@ -496,10 +496,10 @@ contains
          return
       end if
     end do
-    
+
     return
   end function carma_implements_cnst
-  
+
 
   !! Initialize items in CARMA that only need to be initialized once. This
   !! routine is called after carma_register has been called.
@@ -516,7 +516,7 @@ contains
     use phys_control, only: phys_getopts
 
     implicit none
-    
+
     integer           :: iz           ! vertical index
     integer           :: ielem        ! element index
     integer           :: ibin         ! bin index
@@ -529,17 +529,15 @@ contains
     integer           :: maxbin       ! last prognostic bin
     logical           :: is_cloud     ! is the group a cloud?
     logical           :: do_drydep    ! is dry deposition enabled?
- 
-    integer                    :: i
+
     integer                    :: ier
-    integer                    :: ncid, dimid_lev, lev, vid_T
+    integer                    :: ncid, dimid_lev, vid_T
     logical                    :: lexist
     character(len=256)         :: locfn
     integer                    :: nlev
     integer                    :: LUNOPRT              ! logical unit number for output
     logical                    :: do_print             ! do print output?
     logical                    :: history_carma
-    
 
 1   format(a6,4x,a11,4x,a11,4x,a11)
 2   format(i6,4x,3(1pe11.3,4x))
@@ -552,34 +550,34 @@ contains
     ! Set names of constituent sources and declare them as history variables; howver,
     ! only prognostic variables have.
     lq_carma(:) = .false.
-     
+
     do ielem = 1, NELEM
       do ibin = 1, NBIN
         call CARMAELEMENT_Get(carma,  ielem, rc, igroup=igroup)
         if (rc < 0) call endrun('carma_init::CARMAELEMENT_Get failed.')
-        
+
         call CARMAGROUP_Get(carma, igroup, rc, cnsttype=cnsttype, maxbin=maxbin, do_drydep=do_drydep)
         if (rc < 0) call endrun('carma_init::CARMAGROUP_Get failed.')
-        
+
         if (cnsttype == I_CNSTTYPE_PROGNOSTIC) then
 
           ! Bins past maxbin are treated as diagnostic even if the group
           ! is prognostic and thus are not advected in the parent model.
           if (ibin <= maxbin) then
-    
+
             icnst = icnst4elem(ielem, ibin)
-            
+
             ! Indicate that this is a constituent whose tendency could be changed by
             ! CARMA.
             lq_carma(icnst) = .true.
-            
+
             etndname(ielem, ibin) = trim(cnst_name(icnst))
-            
+
             call addfld(cnst_name(icnst),                  (/ 'lev' /), 'A', 'kg/kg',   cnst_longname(icnst))
             if (history_carma) then
                call add_default(cnst_name(icnst), 1, ' ')
             end if
-    
+
             call addfld(trim(etndname(ielem, ibin))//'TC',   (/ 'lev' /), 'A', 'kg/kg/s',  &
                  trim(cnst_name(icnst)) // ' tendency')
             call addfld(trim(etndname(ielem, ibin))//'SF',   horiz_only,  'A', 'kg/m2/s',  &
@@ -608,7 +606,7 @@ contains
     do igroup = 1, NGROUP
       call CARMAGROUP_Get(carma, igroup, rc, shortname=sname, is_cloud=is_cloud, do_drydep=do_drydep)
       if (rc < 0) call endrun('carma_init::CARMAGROUP_GetGroup failed.')
-      
+
       ! Gridbox average
       !
       ! NOTE: Would like use flag_xf_fill for the reffective radius fields, but cam_history
@@ -648,7 +646,7 @@ contains
       if (do_drydep) then
         do ibin = 1, NBIN
           call addfld(trim(btndname(igroup, ibin))//'VD', horiz_only,    'A', 'm/s', &
-               trim(cnst_name(icnst)) // ' dry deposition velocity')
+                      trim(btndname(igroup, ibin))//' dry deposition velocity')
         end do
       end if
 
@@ -674,17 +672,17 @@ contains
            trim(cnst_name(icnst)) // ' equilibrium vmr wrt liquid')
       call addfld(trim(cnst_name(icnst))//'WT', (/ 'lev' /), 'A', '%',       &
            trim(cnst_name(icnst)) // ' weight percent aerosol composition')
-      
+
       if (history_carma) then
          call add_default(trim(cnst_name(icnst))//'SI', 1, ' ')
          call add_default(trim(cnst_name(icnst))//'SL', 1, ' ')
       end if
     end do
-    
+
     if (carma_do_thermo) then
        call addfld('CRTT', (/ 'lev' /), 'A',     'K/s', ' CARMA temperature tendency')
     end if
- 
+
     ! Add fields for diagnostic fields, and make them defaults on the first tape.
     if (carma_do_substep) then
       call addfld('CRNSTEP',  (/ 'lev' /), 'A', ' ', 'number of carma substeps')
@@ -695,8 +693,8 @@ contains
          call add_default('CRLNSTEP', 1, ' ')
       end if
     end if
-    
-    
+
+
     ! Set up the reference atmosphere that can be used for fixed initialization. This is
     ! an approximate atmospheric used to define average fall velocities, coagulation
     ! kernels, and growth parameters.
@@ -705,7 +703,7 @@ contains
       ! NOTE: Reading the initial condtion file using the supplied routines must
       ! be done outside of masterproc, so does this in all threads before deciding
       ! if it will be used. The initial condition file is only opened on an initial run.
-      if (is_first_step()) then      
+      if (is_first_step()) then
         call carma_getT(carma_t_ref)
         if (carma%f_igash2o /= 0)    call carma_getH2O(carma_h2o_ref)
         if (carma%f_igash2So4 /= 0)  call carma_getH2SO4(carma_h2so4_ref)
@@ -714,49 +712,49 @@ contains
       if (masterproc) then
         call CARMA_Get(carma, rc, do_print=do_print, LUNOPRT=LUNOPRT)
         if (rc < 0) call endrun('carma_init::CARMA_Get failed.')
-      
+
         if (do_print) write(LUNOPRT,*) ""
         if (do_print) write(LUNOPRT,*) "CARMA initializing to fixed reference state."
         if (do_print) write(LUNOPRT,*) ""
-      
+
         ! For temperature, get the average temperature from reference temperature file
         ! if it exists or from the initial condition file if the reference temperature file
         ! doesn't exist.
         !
         ! NOTE: The reference temperature file will only be created for an inital run. It
         ! must already exist for a restart run.
-        
+
         ! Does reference temperature file already exist?
         call getfil(carma_reftfile, locfn, iflag=1)
-  
+
         inquire(file=locfn, exist=lexist)
-  
+
         ! Read the reference temperature from the file.
         if (lexist) then
-        
+
           ! Open the netcdf file.
           call wrap_open(trim(locfn), NF90_NOWRITE, ncid)
-  
+
           ! Inquire about dimensions
           call wrap_inq_dimid(ncid, 'lev', dimid_lev)
           call wrap_inq_dimlen(ncid, dimid_lev, nlev)
-          
+
           ! Does the number of levels match?
           if (nlev /= pver) then
             call endrun("carma_init::ERROR - Incompatible number of levels &
                  &in the CARMA reference temperature file ... " // trim(locfn))
           end if
-  
+
           ! Get variable ID for reference temperature
           call wrap_inq_varid(ncid, 'T', vid_T)
-  
+
           ! Read in the temperature data.
           call wrap_get_var_realx(ncid, vid_T, carma_T_ref)
 
           if (carma%f_igash2o /= 0) then
             ! Get variable ID for reference temperature
             call wrap_inq_varid(ncid, 'Q', vid_T)
-  
+
             ! Read in the temperature data.
             call wrap_get_var_realx(ncid, vid_T, carma_h2o_ref)
           end if
@@ -764,25 +762,25 @@ contains
           if (carma%f_igash2so4 /= 0) then
             ! Get variable ID for reference temperature
             call wrap_inq_varid(ncid, 'H2SO4', vid_T)
-  
+
             ! Read in the temperature data.
             call wrap_get_var_realx(ncid, vid_T, carma_h2so4_ref)
           end if
-          
+
           ! Close the file
           call wrap_close(ncid)
-  
+
         ! Is this an initial or restart run?
         else if (is_first_step()) then
 
           if (do_print) write(LUNOPRT,*) ""
           if (do_print) write(LUNOPRT,*) 'Creating CARMA reference temperature file ... ', trim(locfn)
-    
+
           ! Save the average into a file to be used for restarts.
           call CARMA_CreateRefTFile(carma, locfn, pref_mid(:) / 100._r8, &
                carma_t_ref(:), rc, refh2o=carma_h2o_ref(:), refh2so4=carma_h2so4_ref(:))
         else
-          
+
           ! The file must already exist for a restart run.
           call endrun("carma_init::ERROR - Can't find the CARMA reference temperature file ... " // trim(carma_reftfile))
 
@@ -791,14 +789,14 @@ contains
         ! Write out the values that are being used.
         if (do_print) write(LUNOPRT,*) ""
         if (do_print) write(LUNOPRT,1) "Level","Int P (Pa)","Mid P (Pa)","Mid T (K)"
-        
+
         do iz = 1, pver
           if (do_print) write(LUNOPRT,2) iz, pref_edge(iz), pref_mid(iz), carma_t_ref(iz)
         end do
         if (do_print) write(LUNOPRT,2) iz, pref_edge(iz), 0.0_r8, 0.0_r8
         if (do_print) write(LUNOPRT,*) ""
       end if
-      
+
 #ifdef SPMD
 
       ! Communicate the settings to the other MPI tasks.
@@ -810,7 +808,7 @@ contains
     ! Do a model specific initialization.
     call CARMA_InitializeModel(carma, lq_carma, rc)
     if (rc < 0) call endrun('carma_init::CARMA_InitializeModel failed.')
-    
+
     return
   end subroutine carma_init
 
@@ -823,18 +821,18 @@ contains
   !! @version October 2009
   subroutine carma_final
     implicit none
-    
+
     integer           :: rc           ! CARMA return code
     integer           :: LUNOPRT      ! logical unit number for output
     logical           :: do_print     ! do print output?
-            
+
     2 format(' carma_final: overall substepping statistics',/,&
            '    max nsubstep=',1F9.0,/,'    avg nsubstep=',1F9.2,/,&
            '    max nretry=',1F9.0,/,'    avg nretry=',1F10.4)
 
     ! Initialize the return code.
     rc = 0
-    
+
     ! Output the end of run statistics for CARMA
     if (carma_do_substep) then
       if (masterproc) then
@@ -854,12 +852,12 @@ contains
         end if
       end if
     end if
-    
-    
+
+
     ! Do a model specific initialization.
     call CARMA_Destroy(carma, rc)
     if (rc < 0) call endrun('carma_final::CARMA_Destroy failed.')
-    
+
     return
   end subroutine carma_final
 
@@ -881,7 +879,7 @@ contains
     step_nstep        = 0._f
     step_nsubstep     = 0._f
     step_nretry       = 0._f
-    
+
     return
   end subroutine carma_timestep_init
 
@@ -906,9 +904,8 @@ contains
     prec_sed, snow_sed, ustar, obklen)
     use time_manager,     only: get_nstep, get_step_size, is_first_step
     use camsrfexch,       only: cam_in_t, cam_out_t
-    use scamMod,          only: single_column
     use planck,           only: planckIntensity
-    
+
     implicit none
 
     type(physics_state), intent(in)    :: state                 !! physics state variables
@@ -919,7 +916,7 @@ contains
     type(physics_buffer_desc), pointer :: pbuf(:)               !! physics buffer
     real(r8), intent(in), optional     :: dlf(pcols,pver)       !! Detraining cld H20 from convection (kg/kg/s)
     real(r8), intent(inout), optional  :: rliq(pcols)           !! vertical integral of liquid not yet in q(ixcldliq)
-    real(r8), intent(out), optional    :: prec_str(pcols)       !! [Total] sfc flux of precip from stratiform (m/s) 
+    real(r8), intent(out), optional    :: prec_str(pcols)       !! [Total] sfc flux of precip from stratiform (m/s)
     real(r8), intent(out), optional    :: snow_str(pcols)       !! [Total] sfc flux of snow from stratiform   (m/s)
     real(r8), intent(out), optional    :: prec_sed(pcols)       !! total precip from cloud sedimentation (m/s)
     real(r8), intent(out), optional    :: snow_sed(pcols)       !! snow from cloud ice sedimentation (m/s)
@@ -932,26 +929,20 @@ contains
     type(carmastate_type) :: cstate                                 ! the carma state object
     integer               :: igroup                                 ! group index
     integer               :: ielem                                  ! element index
-    integer               :: ielem_nd                               ! index of numder density element in group
     integer               :: ibin                                   ! bin index
     integer               :: igas                                   ! gas index
     integer               :: icol                                   ! column index
     integer               :: icnst                                  ! constituent index
     integer               :: icnst_q                                ! H2O constituent index
-    integer               :: ncol                                   ! number of columns
     integer               :: rc                                     ! CARMA return code
     integer               :: cnsttype                               ! constituent type
     integer               :: maxbin                                 ! last prognostic bin
-    real(r8)              :: spdiags(pcols, pver, NSPDIAGS)         ! CARMA step diagnostic output       
-    real(r8)              :: gsdiags(pcols, pver, NGAS,   NGSDIAGS) ! CARMA gas diagnostic output       
-    real(r8)              :: gpdiags(pcols, pver, NGROUP, NGPDIAGS) ! CARMA group diagnostic output 
-    real(r8)              :: sbdiags(pcols, NBIN, NELEM,  NSBDIAGS) ! CARMA surface bin diagnostic output 
-    real(r8)              :: bndiags(pcols, pver, NBIN, NELEM, NBNDIAGS) ! CARMA bin diagnostic output 
+    real(r8)              :: spdiags(pcols, pver, NSPDIAGS)         ! CARMA step diagnostic output
+    real(r8)              :: gsdiags(pcols, pver, NGAS,   NGSDIAGS) ! CARMA gas diagnostic output
+    real(r8)              :: gpdiags(pcols, pver, NGROUP, NGPDIAGS) ! CARMA group diagnostic output
+    real(r8)              :: sbdiags(pcols, NBIN, NELEM,  NSBDIAGS) ! CARMA surface bin diagnostic output
+    real(r8)              :: bndiags(pcols, pver, NBIN, NELEM, NBNDIAGS) ! CARMA bin diagnostic output
     real(r8)              :: newstate(pver)                         ! next state for a physics state field
-    real(r8)              :: xc(pver)                               ! x center
-    real(r8)              :: dx(pver)                               ! x width
-    real(r8)              :: yc(pver)                               ! y center
-    real(r8)              :: dy(pver)                               ! y width
     real(r8)              :: dz(pver)                               ! z width
     real(r8)              :: satice(pver)                           ! saturation wrt ice
     real(r8)              :: satliq(pver)                           ! saturation wrt liquid
@@ -959,12 +950,10 @@ contains
     real(r8)              :: eqliq(pver)                            ! equil vp wrt liquid
     real(r8)              :: wtpct(pver)                            ! weight percent aerosol composition
     real(r8)              :: time                                   ! the total elapsed time (s)
-    real(r8)              :: dlat                                   ! latitude spacing
     real(r8)              :: r(NBIN)                                ! particle radius (cm)
     real(r8)              :: rmass(NBIN)                            ! particle mass (g)
     real(r8)              :: rrat(NBIN)                             ! particle maximum radius ratio ()
     real(r8)              :: arat(NBIN)                             ! particle area ration ()
-    real(r8)              :: rhoelem                                ! element density (g)
     real(r8)              :: nd(pver)                               ! number density (cm-3)
     real(r8)              :: ad(pver)                               ! area density (um2/cm3)
     real(r8)              :: md(pver)                               ! mass density (g cm-3)
@@ -976,7 +965,7 @@ contains
     real(r8)              :: re2(pver)                              ! N(r)*r^2 (cm2)
     real(r8)              :: re3(pver)                              ! N(r)*r^3 (cm3)
     real(r8)              :: pa(pver)                               ! Projected Area (cm2)
-    real(r8)              :: ar(pver)                               ! Area Ratio 
+    real(r8)              :: ar(pver)                               ! Area Ratio
     real(r8)              :: vm(pver)                               ! Massweighted fall velocity (cm2)
     real(r8)              :: jn(pver)                               ! nucleation (cm-3)
     real(r8)              :: numberDensity(pver)                    ! number density (cm-3)
@@ -998,8 +987,6 @@ contains
     real(r8), pointer, dimension(:,:) :: tnd_nsnow    ! external tendency on snow number(#/kg/s)
     real(r8), pointer, dimension(:,:) :: re_ice       ! ice effective radius (m)
     integer               :: lchnk                                  ! chunk identifier
-    real(r8)              :: coremmr(pver)
-    real(r8)              :: ttlmmr(pver)
     integer               :: iz
     real(r8)              :: cldfrc(pver)                           ! cloud fraction [fraction]
     real(r8)              :: rhcrit(pver)                           ! relative humidity for onset of liquid clouds [fraction]
@@ -1021,7 +1008,6 @@ contains
     real(kind=f)          :: zsubsteps(pver)
     logical               :: is_cloud                               ! is the group a cloud?
     logical               :: is_ice                                 ! is the group ice?
-    integer               :: ienconc
     logical               :: grp_do_drydep                          ! is dry depostion enabled for group?
     logical               :: do_drydep                              ! is dry depostion enabled?
     logical               :: do_fixedinit                           ! do initialization from reference atm?
@@ -1030,42 +1016,42 @@ contains
     real(r8), parameter   :: zzocen = 0.0001_r8                     ! Ocean aerodynamic roughness length [m]
     real(r8), parameter   :: zzsice = 0.0400_r8                     ! Sea ice aerodynamic roughness length [m]
 
-    
+
     ! Initialize the return code.
     rc = 0
 
     ! Initialize the output tendency structure.
     call physics_ptend_init(ptend,state%psetcols,'CARMA', ls=carma_do_thermo, lq=lq_carma)
-    
+
     if (present(prec_sed)) prec_sed(:) = 0._f
     if (present(snow_sed)) snow_sed(:) = 0._f
     if (present(prec_str)) prec_str(:) = 0._f
     if (present(snow_str)) snow_str(:) = 0._f
-    
+
     if (.not. carma_flag) return
 
     ! Determine the current time in seconds.
     time = dt * get_nstep() - 1
-    
+
     ! The CARMA interface assumes that mass mixing ratios are relative to a
     ! wet atmosphere, so convert any dry mass mixing ratios to wet.
     call physics_state_copy(state, state_loc)
     call set_dry_to_wet(state_loc)
-    
+
     spdiags(:, :, :)       = 0.0_r8
     gpdiags(:, :, :, :)    = 0.0_r8
     gsdiags(:, :, :, :)    = 0.0_r8
     sbdiags(:, :, :, :)    = 0.0_r8
     bndiags(:, :, :, :, :) = 0.0_r8
-    
+
     ! Find the constituent index for water vapor.
     call cnst_get_ind('Q', icnst_q)
-    
+
     ! Get pointers into pbuf ...
     lchnk = state_loc%lchnk
-    
+
     call pbuf_get_field(pbuf, ipbuf4t, t_ptr)
-    
+
     ! If doing particle heating, then get pointers to the spectral flux data provided
     ! by the radiation code in the physics buffer.
     !
@@ -1077,7 +1063,7 @@ contains
       call pbuf_get_field(pbuf, pbuf_get_index("LU"), lu_ptr)
       call pbuf_get_field(pbuf, pbuf_get_index("LD"), ld_ptr)
     end if
-    
+
     ! Cloud ice pbuf fields
     if (carma_do_cldice) then
       call pbuf_get_field(pbuf, pbuf_get_index("TND_QSNOW"), tnd_qsnow)
@@ -1096,23 +1082,8 @@ contains
     !
     call CARMA_Get(carma, rc, do_fixedinit=do_fixedinit, do_drydep=do_drydep)
     if (rc < 0) call endrun('carma_timestep_tend::CARMA_Get failed.')
-    
-    if (do_fixedinit) then
-    
-      ! The latitude and longitude are arbitrary, but the dimensions need to be correct.
-      xc = 255._r8
-      yc = 40._r8
 
-      ! Assume resolution is 64x128.
-      if (single_column) then
-        dx = 360._r8 / 128._r8
-        dy = 180._r8 / 64._r8
-      else
-      
-        ! Calculate the x and y coordinates, in degrees latitude and longitude.
-        dx = 360._r8 / plon
-        dy = 180._r8 / (plat-1)
-      end if
+    if (do_fixedinit) then
 
       call CARMASTATE_CreateFromReference(cstate, &
                          carma_ptr, &
@@ -1120,13 +1091,8 @@ contains
                          dt, &
                          pver, &
                          I_HYBRID, &
-                         I_LL, &
                          40._r8, &
                          255._r8, &
-                         xc, &
-                         dx, &
-                         yc, &
-                         dy, &
                          pref_mid_norm, &
                          pref_edge/psurf_ref, &
                          pref_mid(:), &
@@ -1141,42 +1107,11 @@ contains
 
     ! Process each column.
     do icol = 1, state_loc%ncol
-    
-      ! Haven't figured out how to get dimensions for single column. Perhaps should change
-      ! CARMA to work with area rather than dx and dy. For now, just hack something.
-      xc(:) = state_loc%lon(icol) / DEG2RAD
-      yc(:) = state_loc%lat(icol) /  DEG2RAD
-
-      ! Assume resolution is 64x128.
-      if (single_column) then
-        dx = 360._r8 / 128._r8
-        dy = 180._r8 / 64._r8
-      else
-      
-        ! Caclulate the x and y coordinates, in degrees latitude and longitude.
-        dx(:) = 360._r8 / plon
-
-        dlat = 180._r8 / (plat-1)
-
-        ! The pole points need special treatment, since the point is not the
-        ! center of the grid box.
-        !
-        ! In single column mode there is just one latitude, so make it global.
-        if (abs(state_loc%lat(icol) /  DEG2RAD) >= (90._r8 - (90._r8 / (plat-1)))) then
-
-          ! Nudge yc toward the equator.
-          yc(:) = yc(:) - sign(0.25_r8,state_loc%lat(icol)) * dlat
-          
-          dy(:) = dlat / 2._r8
-        else
-          dy(:) = dlat
-        endif
-      end if
 
       if (is_first_step()) then
         t_ptr(icol,:) = state_loc%t(icol,:)
       end if
-      
+
       ! For particle heating, need to get the incoming radiative intensity from
       ! the radiation code.
       !
@@ -1184,11 +1119,11 @@ contains
       ! when the compute_spectral_flux namelist variable is provided to the radiation. This
       ! data needs to be scaled to a radiative intensity by assuming it is isotrotropic.
       radint(:,:) = 0._f
-      
+
       if (carma_do_pheat) then
         call CARMA_Get(carma, rc, dwave=dwave, wave=wave)
         if (rc < 0) call endrun('carma_timestep_tend::CARMA_Get failed.')
-        
+
         ! CARMA may run before the radiation code for the very first time step.
         ! In that case, the lu, ld, su and sd values are NaN. NaN will crash
         ! the model, so instead substitute an approximation that is roughly a
@@ -1206,17 +1141,17 @@ contains
               lu_ptr(icol, iz, iwvl) = planckIntensity(wave(iwvl), state_loc%t(icol, iz)) / 1e7_f * 1e4_f * dwave(iwvl) * PI
             end do
             lu_ptr(icol, pverp, iwvl) = lu_ptr(icol, pver, iwvl)
-            
+
             ld_ptr(icol, 2:pverp, iwvl) = lu_ptr(icol, 1:pver, iwvl)
             ld_ptr(icol, 1, iwvl) = lu_ptr(icol, 2, iwvl)
           end do
         end if
 
-        
+
         do iwvl = 1, nlwbands
           radint(:, iwvl) = (lu_ptr(icol, 2:, iwvl) + ld_ptr(icol, :pver, iwvl)) / 2._r8 / PI / dwave(iwvl)
         end do
-        
+
         do iwvl = 1, nswbands
           radint(:, nlwbands+iwvl) = (su_ptr(icol, 2:, iwvl) + sd_ptr(icol, :pver, iwvl)) / 2._r8 / PI / dwave(nlwbands+iwvl)
         end do
@@ -1228,13 +1163,8 @@ contains
                              dt, &
                              pver, &
                              I_HYBRID, &
-                             I_LL, &
-                             state_loc%lat(icol) / DEG2RAD, &
-                             state_loc%lon(icol) / DEG2RAD, &
-                             xc, &
-                             dx, &
-                             yc, &
-                             dy, &
+                             state_loc%lat(icol) * RAD2DEG, &
+                             state_loc%lon(icol) * RAD2DEG, &
                              pref_mid_norm, &
                              pref_edge/psurf_ref, &
                              state_loc%pmid(icol, :), &
@@ -1254,10 +1184,10 @@ contains
       do ielem = 1, NELEM
         call CARMAELEMENT_Get(carma,  ielem, rc, igroup=igroup)
         if (rc < 0) call endrun('carma_timestep_tend::CARMAELEMENT_Get failed.')
-        
+
         call CARMAGROUP_Get(carma, igroup, rc, cnsttype=cnsttype, maxbin=maxbin)
         if (rc < 0) call endrun('carma_timestep_tend::CARMAGROUP_Get failed.')
-        
+
         if (cnsttype == I_CNSTTYPE_PROGNOSTIC) then
 
           ! For prognostic groups, set the bin from the corresponding constituent.
@@ -1270,7 +1200,7 @@ contains
               if (rc < 0) call endrun('carma_timestep_tend::CARMASTATE_SetBin failed.')
             else
               newstate(:) = 0._f
-              
+
               call CARMASTATE_SetBin(cstate, ielem, ibin, newstate, rc)
               if (rc < 0) call endrun('carma_timestep_tend::CARMASTATE_SetBin failed.')
             end if
@@ -1298,9 +1228,9 @@ contains
 
 
       call CARMA_DiagnoseBins(carma, cstate, state_loc, pbuf, icol, dt, rc, rliq=rliq, prec_str=prec_str, snow_str=snow_str)
-      if (rc < 0) call endrun('carma_timestep_tend::CARMA_DiagnoseBins failed.') 
-      
-      
+      if (rc < 0) call endrun('carma_timestep_tend::CARMA_DiagnoseBins failed.')
+
+
       ! If the model supports detraining of condensed water from convection, then pass
       ! along the condensed H2O.
       call CARMA_Get(carma, rc, do_detrain=do_detrain)
@@ -1311,7 +1241,7 @@ contains
               snow_str=snow_str, tnd_qsnow=tnd_qsnow, tnd_nsnow=tnd_nsnow)
         if (rc < 0) call endrun('carma_timestep_tend::CARMA_Detrain failed.')
       end if
-      
+
 
       ! Now that detrainment has happened, determine the cloud fractions.
       ! These will be used to scale the cloud amount to go from gridbox average to in-cloud
@@ -1326,17 +1256,17 @@ contains
       if (carma_rhcrit /= 0._f) then
         rhcrit(:) = carma_rhcrit
       end if
-      
-      
+
+
       ! For dry deposition, provide a surface friction velocity and an aerodynamic
       ! resistance for each of the land surface types. The values for the land come
       ! from the land model, but those for ocean and sea ice need to be calculated.
       if (do_drydep) then
-      
+
         ! Land
         lndfv = cam_in%fv(icol)
         lndram = cam_in%ram1(icol)
-        
+
         ! Ocean
         ocnfv  = ustar(icol)
         ocnram = 0._r8
@@ -1363,15 +1293,15 @@ contains
                              iceram)
         end if
       end if
-    
-    
+
+
       ! Advance the microphysics one timestep.
       call CARMASTATE_Step(cstate, rc, cldfrc=cldfrc, rhcrit=rhcrit, &
            lndfv=lndfv, ocnfv=ocnfv, icefv=icefv, lndram=lndram, &
            ocnram=ocnram, iceram=iceram, lndfrac=cam_in%landfrac(icol), &
            ocnfrac=cam_in%ocnfrac(icol), icefrac=cam_in%icefrac(icol))
-      if (rc < 0) call endrun('carma_timestep_tend::CARMA_Step failed.') 
-            
+      if (rc < 0) call endrun('carma_timestep_tend::CARMA_Step failed.')
+
 
       ! Get the results for the CARMA particles.
 
@@ -1393,16 +1323,16 @@ contains
 
       ! Calculate the group statistics for all elements.
       dz(:) = state_loc%zi(icol, 1:pver) - state_loc%zi(icol, 2:pverp)
-            
+
       do ielem = 1, NELEM
-      
+
         call CARMAELEMENT_Get(carma, ielem, rc, igroup=igroup)
         if (rc < 0) call endrun('carma_timestep_tend::CARMAELEMENT_Get failed.')
-        
+
         call CARMAGROUP_Get(carma, igroup, rc, cnsttype=cnsttype, r=r, rmass=rmass, maxbin=maxbin, &
                is_cloud=is_cloud, is_ice=is_ice, do_drydep=grp_do_drydep, rrat=rrat, arat=arat)
         if (rc < 0) call endrun('carma_timestep_tend::CARMAGROUP_Get failed.')
-      
+
         ! Intialize the group totals
         nd(:)  = 0.0_r8
         ad(:)  = 0.0_r8
@@ -1423,26 +1353,26 @@ contains
           call CARMASTATE_GetBin(cstate, ielem, ibin, newstate(:), rc, &
                  numberDensity=numberDensity, nucleationRate=nucleationRate, surface=dd, vd=vd, vf=vf, dtpart=dtpart)
           if (rc < 0) call endrun('carma_timestep_tend::CARMASTATE_GetBin failed.')
-          
+
           ! For prognostic groups, set the tendency from the corresponding constituents.
           if (cnsttype == I_CNSTTYPE_PROGNOSTIC) then
-          
+
             ! Bins past maxbin are treated as diagnostic even if the group
             ! is prognostic and thus are not advected in the paerent model.
             if (ibin <= maxbin) then
-    
+
               icnst = icnst4elem(ielem, ibin)
-            
+
               ! Update the consituent tendency.
               ptend%q(icol, :, icnst) = (newstate(:) - state_loc%q(icol, :, icnst)) / dt
-              
+
               if (grp_do_drydep) then
                 sbdiags(icol, ibin, ielem, SBDIAGS_DD) = dd / dt
                 sbdiags(icol, ibin, ielem, SBDIAGS_VD) = - vd / 100._r8
               end if
             end if
           end if
-          
+
           ! Calculate the total densities.
           !
           ! NOTE: Convert AD to um2/cm3.
@@ -1455,7 +1385,7 @@ contains
             mr(:)  = mr(:)  + newstate(:)
             pa(:)  = pa(:)  + numberDensity(:) * PI * ((r(ibin) * rrat(ibin))**2) * arat(ibin)
             vm(:)  = vm(:)  + numberDensity(:) * rmass(ibin) * vf(2:) / 100._f
-        
+
             ! Calculate the optical depth and extinction.
             !
             ! NOTE: Assume Qext = 2 for optical depth. This can be pulled out of CARMA
@@ -1476,11 +1406,11 @@ contains
             jn(:)  = jn(:)  + nucleationRate(:)
           end if
         end do
-      
+
         ! If this is the number element for the group, then write out the
         ! statistics.
         if (numberDensity(1) /= CAM_FILL) then
-          
+
           ! Calculate the effective radius (total volume / total area). Places
           ! with no surface area will cause NaN values.
           !
@@ -1496,9 +1426,9 @@ contains
           end where
 
           ! Store the statistics.
-          
+
           ! Gridbox average
-          gpdiags(icol, :, igroup, GPDIAGS_ND) = nd 
+          gpdiags(icol, :, igroup, GPDIAGS_ND) = nd
           gpdiags(icol, :, igroup, GPDIAGS_AD) = ad
           gpdiags(icol, :, igroup, GPDIAGS_MD) = md
           gpdiags(icol, :, igroup, GPDIAGS_RE) = re
@@ -1509,14 +1439,14 @@ contains
           gpdiags(icol, :, igroup, GPDIAGS_VM) = vm
           gpdiags(icol, :, igroup, GPDIAGS_PA) = pa
           gpdiags(icol, :, igroup, GPDIAGS_AR) = ar
-                  
+
           if (nucleationRate(1) /= CAM_FILL) then
             gpdiags(icol, :, igroup, GPDIAGS_JN) = jn
           end if
         end if
       end do
 
-      
+
       ! Get the results for the CARMA gases.
       do igas = 1, NGAS
         call pbuf_get_field(pbuf, ipbuf4gas(igas), gc_ptr)
@@ -1526,47 +1456,47 @@ contains
         call CARMASTATE_GetGas(cstate, igas, newstate(:), rc, satice=satice, satliq=satliq, &
          eqice=eqice, eqliq=eqliq, wtpct=wtpct)
         if (rc < 0) call endrun('carma_timestep_tend::CARMASTATE_GetGas failed.')
-          
+
         icnst = icnst4gas(igas)
 
         ptend%q(icol, :, icnst) = (newstate(:) - state_loc%q(icol, :, icnst)) / dt
- 
-        gsdiags(icol, :, igas, GSDIAGS_SI) = satice(:) 
+
+        gsdiags(icol, :, igas, GSDIAGS_SI) = satice(:)
         gsdiags(icol, :, igas, GSDIAGS_SL) = satliq(:)
-        gsdiags(icol, :, igas, GSDIAGS_EI) = eqice(:) 
+        gsdiags(icol, :, igas, GSDIAGS_EI) = eqice(:)
         gsdiags(icol, :, igas, GSDIAGS_EL) = eqliq(:)
         gsdiags(icol, :, igas, GSDIAGS_WT) = wtpct(:)
-        
+
         ! Store the values needed for substepping in the physics buffer.
         gc_ptr(icol,:)    = newstate(:)
         sati_ptr(icol, :) = satice(:)
         satl_ptr(icol, :) = satliq(:)
       end do
 
-     
+
       ! Get the results for temperature.
       call CARMASTATE_GetState(cstate, rc, t=newstate(:))
       if (rc < 0) call endrun('carma_timestep_tend::CARMASTATE_GetState failed.')
-          
+
       ! Store the values needed for substepping in the physics buffer.
       t_ptr(icol,:) = newstate(:)
 
-      if (carma_do_thermo) then 
+      if (carma_do_thermo) then
         ptend%s(icol, :) = (newstate(:) - state_loc%t(icol, :)) * cpair / dt
       endif
-      
-      
+
+
       ! Get the substepping statistics
       if (carma_do_substep) then
         call CARMASTATE_Get(cstate, rc, zsubsteps=zsubsteps)
         if (rc < 0) call endrun('carma_timestep_tend::CARMASTATE_Get failed.')
-      
+
         spdiags(icol, :, SPDIAGS_NSTEP) = zsubsteps(:)
         spdiags(icol, :, SPDIAGS_LNSTEP) = log(zsubsteps(:))
       end if
     end do
-    
-    
+
+
     ! Report substep diagnostics
     if (carma_do_substep) then
       call CARMASTATE_Get(cstate, rc, max_nsubstep=max_nsubstep, max_nretry=max_nretry, &
@@ -1576,27 +1506,27 @@ contains
 !$OMP CRITICAL
       step_max_nsubstep = max(step_max_nsubstep, real(max_nsubstep, f))
       step_max_nretry   = max(step_max_nretry, max_nretry)
-    
+
       step_nstep        = step_nstep    + nstep
       step_nsubstep     = step_nsubstep + real(nsubstep, f)
       step_nretry       = step_nretry   + nretry
 !$OMP END CRITICAL
     end if
-     
+
     ! The CARMASTATE object is no longer needed.
     call CARMASTATE_Destroy(cstate, rc)
     if (rc < 0) call endrun('carma_timestep_tend::CARMASTATE_Destroy failed.')
-    
-     
+
+
     ! Output diagnostic fields.
     call carma_output_diagnostics(state_loc, ptend, gpdiags, sbdiags, gsdiags, spdiags, bndiags)
 
   end subroutine carma_timestep_tend
-  
-  
+
+
   subroutine carma_accumulate_stats()
     implicit none
-    
+
     integer               :: istat
     integer               :: rc
     real(kind=f)          :: wrk
@@ -1604,7 +1534,7 @@ contains
     logical               :: do_print             ! do print output?
 
     !  Define formats
-    1 format(' carma: max nsubstep=',1F9.0,3x,'avg nsubstep=',1F9.2,3x,'max nretry=',1F9.0,3x,'avg nretry=',1F10.4)    
+    1 format(' carma: max nsubstep=',1F9.0,3x,'avg nsubstep=',1F9.2,3x,'max nretry=',1F9.0,3x,'avg nretry=',1F10.4)
 
     if (carma_do_substep) then
 
@@ -1619,7 +1549,7 @@ contains
       end if
       step_max_nsubstep = wrk
       glob_max_nsubstep = max(glob_max_nsubstep, wrk)
-      
+
       call mpi_allreduce(step_max_nretry, wrk, 1, mpir8, mpi_max, mpicom, istat)
       if( istat /= MPI_SUCCESS ) then
          if (do_print) write(LUNOPRT,*) 'carma_timestep_tend: MPI_ALLREDUCE for max_nsubstep failed; error = ',istat
@@ -1627,7 +1557,7 @@ contains
       end if
       step_max_nretry = wrk
       glob_max_nretry = max(glob_max_nretry, wrk)
-  
+
       call mpi_allreduce(step_nstep, wrk, 1, mpir8, mpi_sum, mpicom, istat)
       if( istat /= MPI_SUCCESS ) then
          if (do_print) write(LUNOPRT,*) 'carma_timestep_tend: MPI_ALLREDUCE for nstep failed; error = ',istat
@@ -1635,7 +1565,7 @@ contains
       end if
       step_nstep = wrk
       glob_nstep = glob_nstep + wrk
-  
+
       call mpi_allreduce(step_nsubstep, wrk, 1, mpir8, mpi_sum, mpicom, istat)
       if( istat /= MPI_SUCCESS ) then
          if (do_print) write(LUNOPRT,*) 'carma_timestep_tend: MPI_ALLREDUCE for nsubstep failed; error = ',istat
@@ -1643,7 +1573,7 @@ contains
       end if
       step_nsubstep = wrk
       glob_nsubstep = glob_nsubstep + wrk
-  
+
       call mpi_allreduce(step_nretry, wrk, 1, mpir8, mpi_sum, mpicom, istat)
       if( istat /= MPI_SUCCESS ) then
          if (do_print) write(LUNOPRT,*) 'carma_timestep_tend: MPI_ALLREDUCE for nretry failed; error = ',istat
@@ -1659,7 +1589,7 @@ contains
       glob_nstep        = glob_nstep + step_nstep
       glob_nsubstep     = glob_nsubstep + step_nsubstep
       glob_nretry       = glob_nretry + step_nretry
-      
+
 #endif
 
       if (masterproc) then
@@ -1695,7 +1625,7 @@ contains
     real(r8),         intent(in)  :: lonvals(:) !! lon in degrees (ncol)
     logical,          intent(in)  :: mask(:)    !! Only initialize where .true.
     real(r8),         intent(out) :: q(:,:)     !! mass mixing ratio (gcol, lev)
-    
+
     integer                      :: igroup             ! group index
     integer                      :: ielem              ! element index
     integer                      :: ilev               ! level index
@@ -1707,27 +1637,27 @@ contains
 
     ! Initialize the return code.
     rc = 0
-    
+
     ! Determine the element an bin for the particle
     do ielem = 1, NELEM
       do ibin = 1, NBIN
-      
+
         call CARMAELEMENT_Get(carma, ielem, rc, igroup=igroup)
         if (rc < 0) call endrun('carma_timestep_tend::CARMAELEMENT_Get failed.')
-        
+
         call CARMAGROUP_Get(carma, igroup, rc, cnsttype=cnsttype, maxbin=maxbin)
         if (rc < 0) call endrun('carma_timestep_tend::CARMAGROUP_Get failed.')
-        
+
         if (cnsttype == I_CNSTTYPE_PROGNOSTIC) then
 
           ! Bins past maxbin are treated as diagnostic even if the group
           ! is prognostic and thus are not advected in the paerent model.
           if (ibin <= maxbin) then
-    
+
             icnst = icnst4elem(ielem, ibin)
-            
+
             if (cnst_name(icnst) == name) then
-    
+
               ! By default, initialize all constituents to 0.
               do ilev = 1, size(q, 2)
                 where(mask)
@@ -1742,10 +1672,10 @@ contains
         end if
       end do
     end do
-    
+
     ! NOTE: There is currently no initialization for gases, but it could be
     ! added here.
-    
+
     return
   end subroutine carma_init_cnst
 
@@ -1762,11 +1692,11 @@ contains
 
     type(physics_state), intent(in)   :: state          !! Physics state variables - before CARMA
     type(physics_ptend), intent(in)   :: ptend          !! indivdual parameterization tendencies
-    real(r8), intent(in), dimension(pcols, pver, NGROUP, NGPDIAGS) :: gpdiags  !! CARMA group diagnostic output       
-    real(r8), intent(in), dimension(pcols, NBIN, NELEM,  NSBDIAGS) :: sbdiags  !! CARMA surface bin diagnostic output 
-    real(r8), intent(in), dimension(pcols, pver, NGAS,   NGSDIAGS) :: gsdiags  !! CARMA gas diagnostic output       
-    real(r8), intent(in), dimension(pcols, pver, NSPDIAGS)         :: spdiags  !! CARMA step diagnostic output       
-    real(r8), intent(in), dimension(pcols, pver, NBIN, NELEM, NBNDIAGS) :: bndiags !! CARMA bin diagnostic output 
+    real(r8), intent(in), dimension(pcols, pver, NGROUP, NGPDIAGS) :: gpdiags  !! CARMA group diagnostic output
+    real(r8), intent(in), dimension(pcols, NBIN, NELEM,  NSBDIAGS) :: sbdiags  !! CARMA surface bin diagnostic output
+    real(r8), intent(in), dimension(pcols, pver, NGAS,   NGSDIAGS) :: gsdiags  !! CARMA gas diagnostic output
+    real(r8), intent(in), dimension(pcols, pver, NSPDIAGS)         :: spdiags  !! CARMA step diagnostic output
+    real(r8), intent(in), dimension(pcols, pver, NBIN, NELEM, NBNDIAGS) :: bndiags !! CARMA bin diagnostic output
 
     ! Local variables
     integer           :: igroup    ! group index
@@ -1783,46 +1713,46 @@ contains
     integer           :: maxbin    ! last prognostic bin
     logical           :: is_cloud  ! is the group a cloud?
     logical           :: do_drydep ! is dry deposition enabled?
-       
+
     ! Initialize the return code.
     rc = 0
-    
+
     ! Check each column int the chunk.
     lchnk = state%lchnk
     ncol  = state%ncol
 
     ! Output step diagnostics.
     if (carma_do_substep) then
-      call outfld('CRNSTEP',  spdiags(:, :, SPDIAGS_NSTEP), pcols, lchnk) 
-      call outfld('CRLNSTEP', spdiags(:, :, SPDIAGS_LNSTEP), pcols, lchnk) 
+      call outfld('CRNSTEP',  spdiags(:, :, SPDIAGS_NSTEP), pcols, lchnk)
+      call outfld('CRLNSTEP', spdiags(:, :, SPDIAGS_LNSTEP), pcols, lchnk)
     end if
 
     ! Output the particle tendencies.
     do ielem = 1, NELEM
       do ibin = 1, NBIN
-      
+
         call CARMAELEMENT_Get(carma, ielem, rc, igroup=igroup)
         if (rc < 0) call endrun('carma_timestep_tend::CARMAELEMENT_Get failed.')
-        
+
         call CARMAGROUP_Get(carma, igroup, rc, cnsttype=cnsttype, maxbin=maxbin, do_drydep=do_drydep)
         if (rc < 0) call endrun('carma_timestep_tend::CARMAGROUP_Get failed.')
-        
+
         if (cnsttype == I_CNSTTYPE_PROGNOSTIC) then
 
           ! Bins past maxbin are treated as diagnostic even if the group
           ! is prognostic and thus are not advected in the paerent model.
           if (ibin <= maxbin) then
-    
+
             icnst = icnst4elem(ielem, ibin)
-  
-            call outfld(trim(etndname(ielem, ibin))//'TC', ptend%q(:, :, icnst), pcols, lchnk) 
+
+            call outfld(trim(etndname(ielem, ibin))//'TC', ptend%q(:, :, icnst), pcols, lchnk)
 
             if (do_drydep) then
               call outfld(trim(etndname(ielem, ibin))//'DD', sbdiags(:, ibin, ielem, SBDIAGS_DD), pcols, lchnk)
             end if
 
             if (carma_do_pheat) then
-            
+
               ! Only specified for the number density element of the group.
               if (bndiags(1, 1, ibin, ielem, BNDIAGS_TP) /= CAM_FILL) then
                 call outfld(trim(etndname(ielem, ibin))//'TP', bndiags(:, :, ibin, ielem, BNDIAGS_TP), pcols, lchnk)
@@ -1832,56 +1762,56 @@ contains
         end if
       end do
     end do
-    
+
     ! Output the particle diagnostics.
-    do igroup = 1, NGROUP 
+    do igroup = 1, NGROUP
       call CARMAGROUP_Get(carma, igroup, rc, shortname=sname, is_cloud=is_cloud, do_drydep=do_drydep, ienconc=ienconc)
       if (rc < 0) call endrun('carma_output_diagnostics::CARMAGROUP_Get failed.')
-      
+
       ! Gridbox average
-      call outfld(trim(sname)//'ND', gpdiags(:, :, igroup, GPDIAGS_ND), pcols, lchnk) 
-      call outfld(trim(sname)//'AD', gpdiags(:, :, igroup, GPDIAGS_AD), pcols, lchnk) 
-      call outfld(trim(sname)//'MD', gpdiags(:, :, igroup, GPDIAGS_MD), pcols, lchnk) 
-      call outfld(trim(sname)//'RE', gpdiags(:, :, igroup, GPDIAGS_RE), pcols, lchnk) 
-      call outfld(trim(sname)//'RM', gpdiags(:, :, igroup, GPDIAGS_RM), pcols, lchnk) 
-      call outfld(trim(sname)//'JN', gpdiags(:, :, igroup, GPDIAGS_JN), pcols, lchnk) 
-      call outfld(trim(sname)//'MR', gpdiags(:, :, igroup, GPDIAGS_MR), pcols, lchnk) 
-      call outfld(trim(sname)//'EX', gpdiags(:, :, igroup, GPDIAGS_EX), pcols, lchnk) 
-      call outfld(trim(sname)//'OD', gpdiags(:, :, igroup, GPDIAGS_OD), pcols, lchnk) 
-      call outfld(trim(sname)//'PA', gpdiags(:, :, igroup, GPDIAGS_PA), pcols, lchnk) 
-      call outfld(trim(sname)//'AR', gpdiags(:, :, igroup, GPDIAGS_AR), pcols, lchnk) 
-      call outfld(trim(sname)//'VM', gpdiags(:, :, igroup, GPDIAGS_VM), pcols, lchnk) 
-      
+      call outfld(trim(sname)//'ND', gpdiags(:, :, igroup, GPDIAGS_ND), pcols, lchnk)
+      call outfld(trim(sname)//'AD', gpdiags(:, :, igroup, GPDIAGS_AD), pcols, lchnk)
+      call outfld(trim(sname)//'MD', gpdiags(:, :, igroup, GPDIAGS_MD), pcols, lchnk)
+      call outfld(trim(sname)//'RE', gpdiags(:, :, igroup, GPDIAGS_RE), pcols, lchnk)
+      call outfld(trim(sname)//'RM', gpdiags(:, :, igroup, GPDIAGS_RM), pcols, lchnk)
+      call outfld(trim(sname)//'JN', gpdiags(:, :, igroup, GPDIAGS_JN), pcols, lchnk)
+      call outfld(trim(sname)//'MR', gpdiags(:, :, igroup, GPDIAGS_MR), pcols, lchnk)
+      call outfld(trim(sname)//'EX', gpdiags(:, :, igroup, GPDIAGS_EX), pcols, lchnk)
+      call outfld(trim(sname)//'OD', gpdiags(:, :, igroup, GPDIAGS_OD), pcols, lchnk)
+      call outfld(trim(sname)//'PA', gpdiags(:, :, igroup, GPDIAGS_PA), pcols, lchnk)
+      call outfld(trim(sname)//'AR', gpdiags(:, :, igroup, GPDIAGS_AR), pcols, lchnk)
+      call outfld(trim(sname)//'VM', gpdiags(:, :, igroup, GPDIAGS_VM), pcols, lchnk)
+
       if (do_drydep) then
         do ibin = 1, NBIN
           call outfld(trim(btndname(igroup, ibin))//'VD', sbdiags(:, ibin, ienconc, SBDIAGS_VD), pcols, lchnk)
         end do
       end if
     end do
-    
+
     ! Output the gas tendencies.
     do igas = 1, NGAS
       icnst = icnst4gas(igas)
-  
-      call outfld(gtndname(igas), ptend%q(:, :, icnst), pcols, lchnk) 
-      
+
+      call outfld(gtndname(igas), ptend%q(:, :, icnst), pcols, lchnk)
+
       ! Output the supersaturations.
-      call outfld(trim(cnst_name(icnst))//'SI', gsdiags(:, :, igas, GSDIAGS_SI), pcols, lchnk) 
-      call outfld(trim(cnst_name(icnst))//'SL', gsdiags(:, :, igas, GSDIAGS_SL), pcols, lchnk) 
-      call outfld(trim(cnst_name(icnst))//'EI', gsdiags(:, :, igas, GSDIAGS_EI), pcols, lchnk) 
-      call outfld(trim(cnst_name(icnst))//'EL', gsdiags(:, :, igas, GSDIAGS_EL), pcols, lchnk) 
-      call outfld(trim(cnst_name(icnst))//'WT', gsdiags(:, :, igas, GSDIAGS_WT), pcols, lchnk) 
+      call outfld(trim(cnst_name(icnst))//'SI', gsdiags(:, :, igas, GSDIAGS_SI), pcols, lchnk)
+      call outfld(trim(cnst_name(icnst))//'SL', gsdiags(:, :, igas, GSDIAGS_SL), pcols, lchnk)
+      call outfld(trim(cnst_name(icnst))//'EI', gsdiags(:, :, igas, GSDIAGS_EI), pcols, lchnk)
+      call outfld(trim(cnst_name(icnst))//'EL', gsdiags(:, :, igas, GSDIAGS_EL), pcols, lchnk)
+      call outfld(trim(cnst_name(icnst))//'WT', gsdiags(:, :, igas, GSDIAGS_WT), pcols, lchnk)
     end do
-    
+
     ! Output the temperature tendency.
     if (carma_do_thermo) then
-       call outfld('CRTT', ptend%s(:, :) / cpair, pcols, lchnk) 
+       call outfld('CRTT', ptend%s(:, :) / cpair, pcols, lchnk)
     end if
-              
+
     return
   end subroutine carma_output_diagnostics
-       
-    
+
+
   !! Calculate the emissions for CARMA aerosols. This is taken from
   !! the routine aerosol_emis_intr in aerosol_intr.F90 and dust_emis_intr in
   !! dust_intr.F90 by Phil Rasch.
@@ -1893,7 +1823,7 @@ contains
     use camsrfexch,       only: cam_in_t
 
     implicit none
-    
+
     type(physics_state), intent(in )    :: state                !! physics state
     type(physics_ptend), intent(inout)  :: ptend                !! physics state tendencies
     type(cam_in_t),      intent(inout)  :: cam_in               !! surface inputs
@@ -1901,7 +1831,6 @@ contains
 
     integer      :: lchnk                   ! chunk identifier
     integer      :: ncol                    ! number of columns in chunk
-    integer      :: icol                    ! column index
     integer      :: igroup                  ! group index
     integer      :: ielem                   ! element index
     integer      :: ibin                    ! bin index
@@ -1923,34 +1852,34 @@ contains
 
     ncol = state%ncol
     lchnk = state%lchnk
-    
+
     ! Provide emissions rates for particles.
     !
     ! NOTE: This can only be done for prognostic groups.
     do ielem = 1, NELEM
       call CARMAELEMENT_Get(carma, ielem, rc, igroup=igroup)
       if (rc < 0) call endrun('carma_drydep_tend::CARMAELEMENT_Get failed.')
-      
+
       call CARMAGROUP_Get(carma, igroup, rc, cnsttype=cnsttype, maxbin=maxbin)
       if (rc < 0) call endrun('carma_drydep_tend::CARMAGROUP_Get failed.')
-      
+
       if (cnsttype == I_CNSTTYPE_PROGNOSTIC) then
-      
+
         do ibin = 1, NBIN
 
           ! Bins past maxbin are treated as diagnostic even if the group
           ! is prognostic and thus are not advected in the paerent model.
           if (ibin <= maxbin) then
-    
+
             icnst = icnst4elem(ielem, ibin)
-          
+
             call CARMA_EmitParticle(carma, ielem, ibin, icnst, dt, state, cam_in, tendency, surfaceFlux, rc)
             if (rc < 0) call endrun('carma_emission_tend::CARMA_EmitParticle failed.')
-          
+
             ! Add any surface flux here.
             cam_in%cflx(:ncol, icnst) = surfaceFlux(:ncol)
             call outfld(trim(cnst_name(icnst))//'SF', cam_in%cflx(:ncol, icnst), ncol, lchnk)
-            
+
             ! For emissions into the atmosphere, put the emission here.
             ptend%q(:ncol, :pver, icnst) = tendency(:ncol, :pver)
             call outfld(trim(cnst_name(icnst))//'EM', ptend%q(:ncol, :, icnst), ncol, lchnk)
@@ -1958,18 +1887,18 @@ contains
         enddo
       end if
     enddo
-    
+
     ! No emissions rate is set up for gases, but it could be added here.
 
     return
-  end subroutine carma_emission_tend 
+  end subroutine carma_emission_tend
 
 
   !! Calculate the wet deposition for the CARMA aerosols. This is taken from
   !! the routine aerosol_wet_int in aerosol_intr.F90 and dust_wet_intr in
   !! dust_intr.F90 by Phil Rasch.
-  !! 
-  !! Method: 
+  !!
+  !! Method:
   !!  Use a modified version of the scavenging parameterization described in
   !!     Barth et al, 2000, JGR (sulfur cycle paper)
   !!     Rasch et al, 2001, JGR (INDOEX paper)
@@ -1983,7 +1912,7 @@ contains
     use wetdep,        only: clddiag, wetdepa_v1, wetdepa_v2
     use camsrfexch,       only: cam_out_t
     use physconst,     only: gravit
-    
+
     implicit none
 
     real(r8),             intent(in)    :: dt              !! time step (s)
@@ -1997,14 +1926,11 @@ contains
     real(r8)                            :: rainmr(pcols,pver)     ! mixing ratio of rain within cloud volume
     real(r8)                            :: cldv(pcols,pver)       ! cloudy volume undergoing wet chem and scavenging
     real(r8)                            :: cldvcu(pcols,pver)   ! Convective precipitation area, top interface of current layer
-    real(r8)                            :: cldvst(pcols,pver)   ! Stratiform precipitation area, top interface of current layer 
+    real(r8)                            :: cldvst(pcols,pver)   ! Stratiform precipitation area, top interface of current layer
     integer                             :: ielem                  ! element index
     integer                             :: igroup                 ! group index
     integer                             :: ibin                   ! bin index
     integer                             :: icnst                  ! constituent index
-    integer                             :: lat(pcols)             ! latitude indices
-    real(r8)                            :: clat(pcols)            ! latitudes
-    integer                             :: lon(pcols)             ! longtitude indices
     real(r8)                            :: conicw(pcols,pver)     ! convective in-cloud water
     real(r8)                            :: cmfdqr(pcols,pver)     ! convective production of rain
     real(r8)                            :: cldc(pcols,pver)       ! convective cloud fraction, currently empty
@@ -2027,8 +1953,8 @@ contains
     real(r8)                            :: sflx(pcols)            ! Surface Flux (kg/m2/s)
     integer                             :: maxbin
 
-    ! physics buffer 
-    integer itim_old, ifld
+    ! physics buffer
+    integer itim_old
     real(r8), pointer, dimension(:,:)   :: cldn                   ! cloud fraction
     real(r8), pointer, dimension(:,:)   :: cme
     real(r8), pointer, dimension(:,:)   :: prain
@@ -2045,23 +1971,19 @@ contains
 
     ! Initialize the return code.
     rc = 0
-    
+
     ! Initialize the output tendency structure.
     call physics_ptend_init(ptend,state%psetcols, 'CARMA (wetdep)', lq=lq_carma)
 
     if (.not. carma_flag) return
-    if (.not. carma_do_wetdep) return    
+    if (.not. carma_do_wetdep) return
 
     ncol = state%ncol
     lchnk = state%lchnk
 
-    call get_lat_all_p(lchnk, ncol, lat)
-    call get_lon_all_p(lchnk, ncol, lon)
-    call get_rlat_all_p(lchnk, ncol, clat)
-
     ! Associate pointers with physics buffer fields
     itim_old = pbuf_old_tim_idx()
-    
+
     call pbuf_get_field(pbuf, pbuf_get_index('CLD'), cldn, (/1,1,itim_old/),(/pcols,pver,1/))
     call pbuf_get_field(pbuf, pbuf_get_index('QME'), cme )
     call pbuf_get_field(pbuf, pbuf_get_index('PRAIN'), prain )
@@ -2080,14 +2002,14 @@ contains
     call pbuf_get_field(pbuf, pbuf_get_index('DP_FRAC'), dp_frac )
     call pbuf_get_field(pbuf, pbuf_get_index('NEVAPR_SHCU'), evapcsh )
     call pbuf_get_field(pbuf, pbuf_get_index('NEVAPR_DPCU'), evapcdp )
-    
+
     cldc(:ncol,:)  = dp_frac(:ncol,:) + sh_frac(:ncol,:) ! Sungsu included this.
     evapc(:ncol,:) = evapcsh(:ncol,:) + evapcdp(:ncol,:) ! Sungsu included this.
     clds(:ncol,:)  = cldn(:ncol,:) - cldc(:ncol,:)       ! Stratiform cloud fraction
 
 
    cmfdqr(:ncol,:) = rprddp(:ncol,:)  + rprdsh(:ncol,:)
-   
+
     !   fields needed for wet scavenging
     call clddiag( state%t, state%pmid, state%pdel, cmfdqr, evapc, cldn, cldc, clds, cme, evapr, prain, &
          cldv, cldvcu, cldvst, rainmr, ncol )
@@ -2100,33 +2022,33 @@ contains
     ! Iterate over each particle and calculate a tendency from wet
     ! scavenging for it.
     do ielem = 1, NELEM
-    
+
       ! NOTE: This can only be done for prognistic groups.
-    
+
       call CARMAELEMENT_Get(carma, ielem, rc, igroup=igroup)
       if (rc < 0) call endrun('carma_wetdep_tend::CARMAELEMENT_Get failed.')
-      
+
       call CARMAGROUP_Get(carma, igroup, rc, cnsttype=cnsttype, do_wetdep=do_wetdep, &
         solfac=solfac, scavcoef=scavcoef, maxbin=maxbin)
       if (rc < 0) call endrun('carma_wetdep_tend::CARMAGROUP_Get failed.')
-      
+
       if ((do_wetdep) .and. (cnsttype == I_CNSTTYPE_PROGNOSTIC)) then
-      
+
         do ibin = 1, NBIN
-        
+
           ! Bins past maxbin are treated as diagnostic even if the group
           ! is prognostic and thus are not advected in the parent model.
           if (ibin <= maxbin) then
-    
+
             icnst = icnst4elem(ielem, ibin)
-            
+
             scavt    = 0._r8
-            
+
             ! The scavenging coefficient might be calculated as a function of
             ! the aerosol bin at each grid point. However, for now, we will just
             ! use a constant value for each group.
             z_scavcoef(:, :) = scavcoef
-    
+
             if (cam_physpkg_is('cam5') .or. cam_physpkg_is('cam6')) then
 
               call wetdepa_v2( &
@@ -2142,20 +2064,20 @@ contains
                            cme, &
                            evapr, &
                            totcond, &
-                           state%q(:, :, icnst), & 
+                           state%q(:, :, icnst), &
                            dt, &
                            scavt, &
                            iscavt, &
                            cldvcu, &
                            cldvst, &
-                           dlf, & 
-                           fracis(:, :, icnst), & 
+                           dlf, &
+                           fracis(:, :, icnst), &
                            solfac, &
                            ncol, &
                            z_scavcoef)
-                          
+
             else if (cam_physpkg_is('cam4')) then
- 
+
               call wetdepa_v1(state%t, &
                            state%pmid, &
                            state%q, &
@@ -2168,20 +2090,20 @@ contains
                            cme, &
                            evapr, &
                            totcond, &
-                           state%q(:, :, icnst), & 
+                           state%q(:, :, icnst), &
                            dt, &
                            scavt, &
                            iscavt, &
                            cldv, &
-                           fracis(:, :, icnst), & 
+                           fracis(:, :, icnst), &
                            solfac, &
                            ncol, &
                            z_scavcoef)
             else
-            
+
               call endrun('carma_wetdep_tend:: No wet deposition routine is available for this configuration.')
             end if
-                         
+
             ptend%q(:, :, icnst) = scavt
             call outfld(trim(cnst_name(icnst))//'WD', ptend%q(:, :, icnst), pcols, lchnk)
 
@@ -2189,7 +2111,7 @@ contains
 	          ! ptend%q(kg/kg air/s) * pdel(Pa) / gravit (m/s2) => (kg/m2/s)
 	          !  note: 1Pa = 1 kg air * (m/s2) / m2
             sflx(:) = 0._r8
-            
+
             do k = 1,pver
               sflx(:ncol) = sflx(:ncol) - ptend%q(:ncol, k, icnst) * state%pdel(:ncol,k) / gravit
             enddo
@@ -2198,7 +2120,7 @@ contains
 
             ! Add this to the surface amount of the constituent
             call CARMA_WetDeposition(carma, ielem, ibin, sflx, cam_out, state, rc)
- 
+
           end if
         end do
       end if
@@ -2206,8 +2128,8 @@ contains
 
     return
   end subroutine carma_wetdep_tend
-  
-  
+
+
   !! This routine creates files containing optical properties for each radiatively
   !! active particle type. These optical properties are used by the RRTMG radiation
   !! code to include the impact of CARMA particles in the radiative transfer
@@ -2220,7 +2142,7 @@ contains
     use radconstants, only : nswbands, nlwbands
     use wrap_nf
     use wetr, only         : getwetr
-    
+
     implicit none
 
     type(carma_type), intent(inout)     :: carma         !! the carma object
@@ -2242,16 +2164,16 @@ contains
     integer                             :: rhvar, lwvar, swvar
     integer                             :: abs_lw_var
     integer                             :: ext_sw_var, ssa_sw_var, asm_sw_var
-    integer                             :: omdim, andim, namedim 
-    integer                             :: omvar, anvar, namevar 
+    integer                             :: omdim, andim, namedim
+    integer                             :: omvar, anvar, namevar
     integer                             :: dimids(2)
     integer                             :: denvar, slogvar, dryrvar, rminvar, rmaxvar, hygrovar, ntmvar
     real(kind=f)                        :: abs_lw(NMIE_RH, nlwbands)
     real(kind=f)                        :: ext_sw(NMIE_RH, nswbands)
     real(kind=f)                        :: ssa_sw(NMIE_RH, nswbands)
     real(kind=f)                        :: asm_sw(NMIE_RH, nswbands)
-    character(len=8)                    :: c_name                   ! constituent name  
-    character(len=32)                   :: aer_name                 ! long enough for both aername and name  
+    character(len=8)                    :: c_name                   ! constituent name
+    character(len=32)                   :: aer_name                 ! long enough for both aername and name
     character(len=255)                  :: filepath
     real(kind=f)                        :: rwet
     real(kind=f)                        :: Qext
@@ -2265,55 +2187,55 @@ contains
     integer                             :: LUNOPRT              ! logical unit number for output
     logical                             :: do_print             ! do print output?
     integer                             :: ret
-    
-    
+
+
     ! Assume success.
     rc = 0
-    
+
     ! Get the wavelength structure.
     call CARMA_GET(carma, rc, wave=wave, do_print=do_print, LUNOPRT=LUNOPRT)
     if (rc < 0) call endrun('carma_CreateOpticsFile::CARMA_Get failed.')
-    
+
     ! Process each group that is defined in the model.
     do igroup = 1, NGROUP
-    
+
       ! Get the necessary group properties.
       call CARMAGROUP_Get(carma, igroup, rc, do_mie=do_mie, name=name, shortname=shortname, r=r, &
                           rlow=rlow, rup=rup, rmass=rmass, refidx=refidx, irhswell=irhswell, &
                           ienconc=ienconc, cnsttype=cnsttype, maxbin=maxbin)
       if (rc < 0) call endrun('carma_CreateOpticsFile::CARMAGROUP_Get failed.')
-      
+
       ! Are we supposed to do the mie calculation for this group?
       if ((do_mie) .and. (cnsttype == I_CNSTTYPE_PROGNOSTIC)) then
-      
+
         call CARMAELEMENT_Get(carma, ienconc, rc, rho=rho)
         if (rc < 0) call endrun('carma_CreateOpticsFile::CARMAELEMENT_Get failed.')
-      
+
         ! A file needs to be created for each bin.
         do ibin = 1, NBIN
-        
+
           ! Bins past maxbin are treated as diagnostic even if the group
           ! is prognostic and thus are not advected in the paerent model.
           if (ibin <= maxbin) then
-    
+
             write(c_name, '(A, I2.2)') trim(shortname), ibin
-          
+
             ! Construct the path to the file. Each model will have its own subdirectory
             ! where the optical property files are stored.
             filepath = trim(carma_model) // '_' // trim(c_name) // '_rrtmg.nc'
-            
+
             if (do_print) write(LUNOPRT,*) 'Creating CARMA optics file ... ', trim(filepath)
-    
+
             ! Create the file.
             call wrap_create(filepath, NF90_CLOBBER, fid)
-            
+
             ! For non-hygroscopic, only use 1 RH value.
             if (irhswell /= 0) then
               nrh = NMIE_RH
             else
               nrh = min(NMIE_RH, 1)
             end if
-              
+
             ! Define the dimensions: rh, lwbands, swbands
             call wrap_def_dim(fid, 'rh_idx',  nrh,  rhdim)
             call wrap_def_dim(fid, 'lw_band', nlwbands, lwdim)
@@ -2323,23 +2245,23 @@ contains
 
             dimids(1) = rhdim
             call wrap_def_var(fid, 'rh',  NF90_DOUBLE, 1, dimids(1:1), rhvar)
-            
+
             dimids(1) = lwdim
             call wrap_def_var(fid, 'lw_band', NF90_DOUBLE, 1, dimids(1:1), lwvar)
-            
+
             dimids(1) = swdim
             call wrap_def_var(fid, 'sw_band', NF90_DOUBLE, 1, dimids(1:1), swvar)
 
             write(LUNOPRT,*) "Defined rh_idx, lw_band, and sw_band vars."
-            
-            call wrap_put_att_text(fid, rhvar, 'units', 'fraction') 
-            call wrap_put_att_text(fid, lwvar, 'units', 'm') 
-            call wrap_put_att_text(fid, swvar, 'units', 'm') 
-  
+
+            call wrap_put_att_text(fid, rhvar, 'units', 'fraction')
+            call wrap_put_att_text(fid, lwvar, 'units', 'm')
+            call wrap_put_att_text(fid, swvar, 'units', 'm')
+
             call wrap_put_att_text(fid, rhvar, 'long_name', 'relative humidity')
             call wrap_put_att_text(fid, lwvar, 'long_name', 'longwave bands')
             call wrap_put_att_text(fid, swvar, 'long_name', 'shortwave bands')
-            
+
             ! Define the variables: abs_lw, ext_sw, ssa_sw, asm_sw
             dimids(1) = rhdim
             dimids(2) = lwdim
@@ -2347,61 +2269,61 @@ contains
 
             write(LUNOPRT,*) "Defined abs_lw."
 
-            call wrap_put_att_text(fid, abs_lw_var, 'units', 'meter^2 kilogram^-1') 
-            
+            call wrap_put_att_text(fid, abs_lw_var, 'units', 'meter^2 kilogram^-1')
+
             dimids(1) = rhdim
             dimids(2) = swdim
             call wrap_def_var(fid, 'ext_sw', NF90_DOUBLE, 2, dimids, ext_sw_var)
             call wrap_def_var(fid, 'ssa_sw', NF90_DOUBLE, 2, dimids, ssa_sw_var)
             call wrap_def_var(fid, 'asm_sw', NF90_DOUBLE, 2, dimids, asm_sw_var)
-            
+
             write(LUNOPRT,*) "Defined ext_sw, ssa_sw, and asm_sw."
 
-            call wrap_put_att_text(fid, ssa_sw_var, 'units', 'fraction') 
-            call wrap_put_att_text(fid, ext_sw_var, 'units', 'meter^2 kilogram^-1') 
-            call wrap_put_att_text(fid, asm_sw_var, 'units', '-') 
-            
+            call wrap_put_att_text(fid, ssa_sw_var, 'units', 'fraction')
+            call wrap_put_att_text(fid, ext_sw_var, 'units', 'meter^2 kilogram^-1')
+            call wrap_put_att_text(fid, asm_sw_var, 'units', '-')
+
             ! Define the variables for the refractive indicies.
             dimids(1) = swdim
             call wrap_def_var(fid, 'refindex_real_aer_sw', NF90_DOUBLE, 1, dimids(1:1), sw_r_refidx_var)
             call wrap_def_var(fid, 'refindex_im_aer_sw',   NF90_DOUBLE, 1, dimids(1:1), sw_i_refidx_var)
-            
+
             write(LUNOPRT,*) "Defined lw refindex."
 
             dimids(1) = lwdim
             call wrap_def_var(fid, 'refindex_real_aer_lw', NF90_DOUBLE, 1, dimids(1:1), lw_r_refidx_var)
             call wrap_def_var(fid, 'refindex_im_aer_lw',   NF90_DOUBLE, 1, dimids(1:1), lw_i_refidx_var)
-  
+
             write(LUNOPRT,*) "Defined sw refindex."
 
-            call wrap_put_att_text(fid, sw_r_refidx_var, 'units', '-') 
-            call wrap_put_att_text(fid, sw_i_refidx_var, 'units', '-') 
-            call wrap_put_att_text(fid, lw_r_refidx_var, 'units', '-') 
-            call wrap_put_att_text(fid, lw_i_refidx_var, 'units', '-') 
-  
-            call wrap_put_att_text(fid, sw_r_refidx_var, 'long_name', 'real refractive index of aerosol - shortwave') 
-            call wrap_put_att_text(fid, sw_i_refidx_var, 'long_name', 'imaginary refractive index of aerosol - shortwave') 
-            call wrap_put_att_text(fid, lw_r_refidx_var, 'long_name', 'real refractive index of aerosol - longwave') 
-            call wrap_put_att_text(fid, lw_i_refidx_var, 'long_name', 'imaginary refractive index of aerosol - longwave') 
-           
-            
+            call wrap_put_att_text(fid, sw_r_refidx_var, 'units', '-')
+            call wrap_put_att_text(fid, sw_i_refidx_var, 'units', '-')
+            call wrap_put_att_text(fid, lw_r_refidx_var, 'units', '-')
+            call wrap_put_att_text(fid, lw_i_refidx_var, 'units', '-')
+
+            call wrap_put_att_text(fid, sw_r_refidx_var, 'long_name', 'real refractive index of aerosol - shortwave')
+            call wrap_put_att_text(fid, sw_i_refidx_var, 'long_name', 'imaginary refractive index of aerosol - shortwave')
+            call wrap_put_att_text(fid, lw_r_refidx_var, 'long_name', 'real refractive index of aerosol - longwave')
+            call wrap_put_att_text(fid, lw_i_refidx_var, 'long_name', 'imaginary refractive index of aerosol - longwave')
+
+
             ! Define fields that define the aerosol properties.
             call wrap_def_dim(fid, 'opticsmethod_len',  32, omdim)
             dimids(1) = omdim
             call wrap_def_var(fid, 'opticsmethod',  NF90_CHAR, 1, dimids(1:1), omvar)
-  
+
             write(LUNOPRT,*) "Defined omdim."
 
             call wrap_def_dim(fid, 'namelength',  20, andim)
             dimids(1) = andim
             call wrap_def_var(fid, 'aername',  NF90_CHAR, 1, dimids(1:1), anvar)
-  
+
             write(LUNOPRT,*) "Defined aername."
 
             call wrap_def_dim(fid, 'name_len',  32, namedim)
             dimids(1) = namedim
             call wrap_def_var(fid, 'name',  NF90_CHAR, 1, dimids(1:1), namevar)
-  
+
             write(LUNOPRT,*) "Defined name."
 
             call wrap_def_var(fid, 'density',            NF90_DOUBLE, 0, dimids(1:0), denvar)
@@ -2411,42 +2333,42 @@ contains
             call wrap_def_var(fid, 'radmax_aer',         NF90_DOUBLE, 0, dimids(1:0), rmaxvar)
             call wrap_def_var(fid, 'hygroscopicity',     NF90_DOUBLE, 0, dimids(1:0), hygrovar)
             call wrap_def_var(fid, 'num_to_mass_ratio',  NF90_DOUBLE, 0, dimids(1:0), ntmvar)
-            
-            call wrap_put_att_text(fid, denvar,   'units', 'kg m^-3') 
-            call wrap_put_att_text(fid, slogvar,  'units', '-') 
-            call wrap_put_att_text(fid, dryrvar,  'units', 'm') 
-            call wrap_put_att_text(fid, rminvar,  'units', 'm') 
-            call wrap_put_att_text(fid, rmaxvar,  'units', 'm') 
-            call wrap_put_att_text(fid, hygrovar, 'units', '-') 
-            call wrap_put_att_text(fid, ntmvar,   'units', 'kg^-1') 
-  
-            call wrap_put_att_text(fid, denvar,   'long_name', 'aerosol material density') 
-            call wrap_put_att_text(fid, slogvar,  'long_name', 'geometric standard deviation of aerosol') 
-            call wrap_put_att_text(fid, dryrvar,  'long_name', 'dry number mode radius of aerosol') 
-            call wrap_put_att_text(fid, rminvar,  'long_name', 'minimum dry radius of aerosol for bin') 
-            call wrap_put_att_text(fid, rmaxvar,  'long_name', 'maximum dry radius of aerosol for bin') 
-            call wrap_put_att_text(fid, hygrovar, 'long_name', 'hygroscopicity of aerosol') 
-            call wrap_put_att_text(fid, ntmvar,   'long_name', 'ratio of number to mass of aerosol') 
-            
-  
+
+            call wrap_put_att_text(fid, denvar,   'units', 'kg m^-3')
+            call wrap_put_att_text(fid, slogvar,  'units', '-')
+            call wrap_put_att_text(fid, dryrvar,  'units', 'm')
+            call wrap_put_att_text(fid, rminvar,  'units', 'm')
+            call wrap_put_att_text(fid, rmaxvar,  'units', 'm')
+            call wrap_put_att_text(fid, hygrovar, 'units', '-')
+            call wrap_put_att_text(fid, ntmvar,   'units', 'kg^-1')
+
+            call wrap_put_att_text(fid, denvar,   'long_name', 'aerosol material density')
+            call wrap_put_att_text(fid, slogvar,  'long_name', 'geometric standard deviation of aerosol')
+            call wrap_put_att_text(fid, dryrvar,  'long_name', 'dry number mode radius of aerosol')
+            call wrap_put_att_text(fid, rminvar,  'long_name', 'minimum dry radius of aerosol for bin')
+            call wrap_put_att_text(fid, rmaxvar,  'long_name', 'maximum dry radius of aerosol for bin')
+            call wrap_put_att_text(fid, hygrovar, 'long_name', 'hygroscopicity of aerosol')
+            call wrap_put_att_text(fid, ntmvar,   'long_name', 'ratio of number to mass of aerosol')
+
+
             write(LUNOPRT,*) "Defined all variables."
 
-            ! End the defintion phase of the netcdf file.      
+            ! End the defintion phase of the netcdf file.
             call wrap_enddef(fid)
-            
-            
+
+
             ! Write out the dimensions.
             call wrap_put_var_realx(fid, rhvar, mie_rh(:nrh))
             call wrap_put_var_realx(fid, lwvar, wave(:nlwbands) * 1e-2_f)
             call wrap_put_var_realx(fid, swvar, wave(nlwbands+1:) * 1e-2_f)
-            
+
             ! Write out the refractive indicies.
             call wrap_put_var_realx(fid, sw_r_refidx_var, real(refidx(nlwbands+1:)))
             call wrap_put_var_realx(fid, sw_i_refidx_var, aimag(refidx(nlwbands+1:)))
             call wrap_put_var_realx(fid, lw_r_refidx_var, real(refidx(:nlwbands)))
             call wrap_put_var_realx(fid, lw_i_refidx_var, aimag(refidx(:nlwbands)))
-            
-  
+
+
             ! Pad the names out with spaces.
             aer_name = '                                '
             aer_name(1:len(trim(c_name))) = c_name
@@ -2456,7 +2378,7 @@ contains
             call wrap_put_vara_text(fid, namevar, start_text, count_text, (/ aer_name /))
             count_text(1) = 20
             call wrap_put_vara_text(fid, anvar, start_text, count_text, (/ aer_name /))
-            
+
             ! These fields control whether the particle is treated as a CCN. For now,
             ! set these so that CARMA particles are not considered as CCN by the
             ! CAM microphysics.
@@ -2467,7 +2389,7 @@ contains
               count_text(1) = len('insoluble                       ')
               call wrap_put_vara_text(fid, omvar, start_text, count_text, (/ 'insoluble                       ' /))
             end if
-            
+
             call wrap_put_var_realx(fid, denvar,   (/ rho(ibin) * 1e-3_f / 1e-6_f /))
             call wrap_put_var_realx(fid, slogvar,  (/ 0._f /))
             call wrap_put_var_realx(fid, dryrvar,  (/ r(ibin) * 1e-2_f /))
@@ -2475,20 +2397,20 @@ contains
             call wrap_put_var_realx(fid, rmaxvar,  (/ rup(ibin) * 1e-2_f /))
             call wrap_put_var_realx(fid, hygrovar, (/ 0._f /))
             call wrap_put_var_realx(fid, ntmvar,   (/ 1._f / rmass(ibin) / 1e-3_f /))
-           
+
             ! Iterate over a range of relative humidities, since the particle may swell
             ! with relative humidity which will change its optical properties.
             do irh = 1, nrh
-            
+
               ! Determine the wet radius.
               call getwetr(carma, igroup, mie_rh(irh), r(ibin), rwet, rho(ibin), rhopwet, rc)
               if (rc < 0) call endrun('carma_CreateOpticsFile::wetr failed.')
-              
+
               ! Calculate at each wavelength.
               do iwave = 1, NWAVE
 write(carma%f_LUNOPRT,*) "CARMA mie calc:  start  ", igroup, ibin, iwave, carma%f_wave(iwave), carma%f_group(igroup)%f_nmon(ibin)
 
-        
+
                 ! Using Mie code, calculate the optical properties: extinction coefficient,
                 ! single scattering albedo and asymmetry factor.
                 ! Assume the particle is homogeneous (no core).
@@ -2509,18 +2431,18 @@ write(carma%f_LUNOPRT,*) "CARMA mie calc:  start  ", igroup, ibin, iwave, carma%
                          rc)
                 if (rc < 0) call endrun('carma_CreateOpticsFile::mie failed.')
 write(carma%f_LUNOPRT,*) "CARMA mie calc:  done  ", Qext, Qsca, asym
-    
-              
+
+
                 ! Calculate  the shortwave and longwave properties?
                 !
                 ! NOTE: miess is in cgs units, but the optics file needs to be in mks
                 ! units, so perform the necessary conversions.
                 if (iwave <= nlwbands) then
-              
+
                   ! Longwave just needs absorption: abs_lw.
                   abs_lw(irh, iwave) = (Qext - Qsca) * PI * (rwet * 1e-2_f)**2 / (rmass(ibin) * 1e-3_f)
                 else
-               
+
                   ! Shortwave needs extinction, single scattering albedo and asymmetry factor:
                   ! ext_sw, ssa_sw and asm_sw.
                   ext_sw(irh, iwave - nlwbands) = Qext * PI * (rwet * 1e-2_f)**2 / (rmass(ibin) * 1e-3_f)
@@ -2529,14 +2451,14 @@ write(carma%f_LUNOPRT,*) "CARMA mie calc:  done  ", Qext, Qsca, asym
                 end if
               end do
             end do
-            
+
             ! Write out the longwave fields.
             ret = nf90_put_var (fid, abs_lw_var, abs_lw(:nrh, :))
             if (ret/=NF90_NOERR) then
                write(iulog,*)'CARMA_CreateOpticsFile: error writing varid =', abs_lw_var
                call handle_error (ret)
             end if
-            
+
             ! Write out the shortwave fields.
             ret = nf90_put_var (fid, ext_sw_var, ext_sw(:nrh, :))
             if (ret/=NF90_NOERR) then
@@ -2553,23 +2475,23 @@ write(carma%f_LUNOPRT,*) "CARMA mie calc:  done  ", Qext, Qsca, asym
                write(iulog,*)'CARMA_CreateOpticsFile: error writing varid =', asm_sw_var
                call handle_error (ret)
             end if
-            
+
             ! Close the file.
             call wrap_close(fid)
-          end if  
+          end if
         end do
       end if
     end do
-    
+
     return
-  end subroutine CARMA_CreateOpticsFile 
-  
-  
+  end subroutine CARMA_CreateOpticsFile
+
+
   !! This routine creates a file containing a reference temperature profile
   !! for use with fixed initialization.
   subroutine CARMA_CreateRefTFile(carma, filepath, lev, reft, rc, refh2o, refh2so4)
     use wrap_nf
-    
+
     implicit none
 
     type(carma_type), intent(inout)     :: carma          !! the carma object
@@ -2585,54 +2507,54 @@ write(carma%f_LUNOPRT,*) "CARMA mie calc:  done  ", Qext, Qsca, asym
     integer                             :: levdim
     integer                             :: levvar, tvar, h2ovar, h2so4var
     integer                             :: dimids(2)
-    
-    
+
+
     ! Assume success.
     rc = 0
-    
+
     ! Create the file.
     call wrap_create(filepath, NF90_CLOBBER, fid)
-    
-    
+
+
     ! Define the dimensions: lev
     call wrap_def_dim(fid, 'lev',  pver,  levdim)
-            
+
     dimids(1) = levdim
     call wrap_def_var(fid, 'lev',  NF90_DOUBLE, 1, dimids(1:1), levvar)
 
-    call wrap_put_att_text(fid, levvar, 'units', 'level') 
-    call wrap_put_att_text(fid, levvar, 'long_name', 'hybrid level at midpoints (1000*(A+B))') 
-    call wrap_put_att_text(fid, levvar, 'positive', 'down') 
-    call wrap_put_att_text(fid, levvar, 'standard_name', 'atmosphere_hybrid_sigma_pressure_coordinate') 
-    call wrap_put_att_text(fid, levvar, 'formula_terms', 'a: hyam b: hybm p0: P0 ps: PS') 
-            
+    call wrap_put_att_text(fid, levvar, 'units', 'level')
+    call wrap_put_att_text(fid, levvar, 'long_name', 'hybrid level at midpoints (1000*(A+B))')
+    call wrap_put_att_text(fid, levvar, 'positive', 'down')
+    call wrap_put_att_text(fid, levvar, 'standard_name', 'atmosphere_hybrid_sigma_pressure_coordinate')
+    call wrap_put_att_text(fid, levvar, 'formula_terms', 'a: hyam b: hybm p0: P0 ps: PS')
+
     ! Define the variables: T
     call wrap_def_var(fid, 'T', NF90_DOUBLE, 1, dimids(1:1), tvar)
-            
-    call wrap_put_att_text(fid, tvar, 'units', 'K') 
+
+    call wrap_put_att_text(fid, tvar, 'units', 'K')
     call wrap_put_att_text(fid, tvar, 'long_name', 'Temperature')
-    
+
     if ((carma%f_igash2o /= 0) .and. present(refh2o)) then
       call wrap_def_var(fid, 'Q', NF90_DOUBLE, 1, dimids(1:1), h2ovar)
-            
-      call wrap_put_att_text(fid, h2ovar, 'units', 'kg/kg') 
+
+      call wrap_put_att_text(fid, h2ovar, 'units', 'kg/kg')
       call wrap_put_att_text(fid, h2ovar, 'long_name', 'Specific Humidity')
     end if
 
     if ((carma%f_igash2so4 /= 0) .and. present(refh2so4)) then
       call wrap_def_var(fid, 'H2SO4', NF90_DOUBLE, 1, dimids(1:1), h2so4var)
-            
-      call wrap_put_att_text(fid, h2so4var, 'units', 'kg/kg') 
+
+      call wrap_put_att_text(fid, h2so4var, 'units', 'kg/kg')
       call wrap_put_att_text(fid, h2so4var, 'long_name', 'H2SO4')
     end if
-  
-    ! End the defintion phase of the netcdf file.      
+
+    ! End the defintion phase of the netcdf file.
     call wrap_enddef(fid)
-    
-    
+
+
     ! Write out the dimensions.
     call wrap_put_var_realx(fid, levvar, lev)
-    
+
     ! Write out the variables.
     call wrap_put_var_realx(fid, tvar, reft)
 
@@ -2643,14 +2565,14 @@ write(carma%f_LUNOPRT,*) "CARMA mie calc:  done  ", Qext, Qsca, asym
     if ((carma%f_igash2so4 /= 0) .and. present(refh2so4)) then
       call wrap_put_var_realx(fid, h2so4var, refh2so4(:))
     end if
-    
+
     ! Close the file.
     call wrap_close(fid)
-    
+
     return
   end subroutine CARMA_CreateRefTFile
-  
-  
+
+
   !! Calculate the aerodynamic resistance for dry deposition.
   !!
   !! This is based upon Seinfeld and Pandis (1998) page 963, and
@@ -2661,10 +2583,10 @@ write(carma%f_LUNOPRT,*) "CARMA mie calc:  done  ", Qext, Qsca, asym
   !! @author  Tianyi Fan
   !! @version Aug 2011
   subroutine CARMA_calcram(ustar, z0, pdel, pmid, tmid, obklen, ram)
-    use shr_const_mod, only: shr_const_karman  
+    use shr_const_mod, only: shr_const_karman
     use physconst,     only: rair, gravit
 
-    implicit none 
+    implicit none
 
     ! input and output argument
     real(r8), intent(in)    :: ustar     ! friction velocity
@@ -2674,31 +2596,31 @@ write(carma%f_LUNOPRT,*) "CARMA mie calc:  done  ", Qext, Qsca, asym
     real(r8), intent(in)    :: tmid      ! layer mid-point temperature [K]
     real(r8), intent(in)    :: obklen    ! Monin-Obukhov length
     real(r8), intent(out)   :: ram       ! aerodynamic resistance
-  
+
     ! local varibles
     real(r8)                :: z         ! half the layer height
     real(r8)                :: psi       ! stability parameter for z
     real(r8)                :: psi0      ! stability parameter for z0
-    real(r8)                :: nu        ! temparory variable 
+    real(r8)                :: nu        ! temparory variable
     real(r8)                :: nu0       ! temparory variable
     real(r8), parameter     :: xkar = shr_const_karman
-  
-    
+
+
     ! Use half the layer height like Ganzefeld and Lelieveld, 1995
     z = pdel * rair * tmid / pmid / gravit / 2._r8
-    
+
     if (obklen .eq. 0._r8) then
       psi  = 0._r8
       psi0 = 0._r8
     else
       psi  = min(max(z  / obklen, -1._r8), 1._r8)
-      psi0 = min(max(z0 / obklen, -1._r8), 1._r8) 
+      psi0 = min(max(z0 / obklen, -1._r8), 1._r8)
     endif
-    
+
     ! Stable
     if (psi > 0._r8) then
       ram = 1._r8 / xkar / ustar * (log(z / z0) + 4.7_r8 * (psi - psi0))
-    
+
     ! Unstable
     else if (psi < 0._r8) then
       nu  = (1._r8 - 15._r8 *psi)**(.25_r8)
@@ -2712,12 +2634,12 @@ write(carma%f_LUNOPRT,*) "CARMA mie calc:  done  ", Qext, Qsca, asym
       else
         ram = 0._r8
       end if
-    
+
     ! Neutral
     else
       ram = 1._r8 / xkar / ustar * log(z / z0)
     end if
-    
-    return 
-  end subroutine CARMA_calcram 
+
+    return
+  end subroutine CARMA_calcram
 end module carma_intr

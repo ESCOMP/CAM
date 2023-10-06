@@ -51,7 +51,7 @@
 
 <!-- Monthly --> 
 <fincl1>
-         'CFC11STAR', 'AODDUST', 'AODDUST2', 'T', 'U', 'V', 'O3', 'OH',
+         'CFC11STAR', 'AODDUST', 'AODDUST02', 'T', 'U', 'V', 'O3', 'OH',
          'NO3', 'HO2', 'LNO_COL_PROD', 'NO2_CLXF', 'SFNO', 'SFNH3', 'BRO', 'CH3CL',
          'CLO', 'CO2', 'HCL', 'HO2', 'HOCL', 'H2O', 'PHIS', 'Z3',
          'BENZENE', 'C2H2', 'C2H4', 'C2H6', 'C3H8', 'CCL4', 'CFC11', 'CFC113',
@@ -85,8 +85,8 @@
          'REFF_AERO', 'PDELDRY', 'RAD_ICE', 'RAD_LNAT', 'RAD_SULFC', 'H2SO4M_C', 'HNO3_GAS', 'HNO3_STS',
          'HNO3_NAT', 'VEL_NAT2', 'NITROP_PD', 'NOX', 'NOY', 'CLOX', 'CLOY', 'BROX',
          'BROY', 'TCLY', 'TOTH', 'MASS', 'TBRY', 'HCL_GAS', 'wet_deposition_NHx_as_N', 'wet_deposition_NOy_as_N',
-         'HCL_GAS', 'dgnumwet1', 'dgnumwet2', 'dgnumwet3', 'ABSORB', 'AODVISdn', 'AODdnMODE1', 'AODVISstdn',
-         'AODNIRstdn', 'AODUVstdn', 'AODdnMODE2', 'AODdnMODE3', 'AODdnDUST1', 'AODdnDUST2', 'AODdnDUST3', 'AODVISstdn',
+         'HCL_GAS', 'dgnumwet1', 'dgnumwet2', 'dgnumwet3', 'ABSORB', 'AODVISdn', 'AODdn_aitken', 'AODVISstdn',
+         'AODNIRstdn', 'AODUVstdn', 'AODdn_accum', 'AODdn_coarse', 'AODdnDUST01', 'AODdnDUST02', 'AODdnDUST03', 'AODVISstdn',
          'AODUVstdn', 'AODNIRstdn', 'AODNIRstdn', 'AODVISdn', 'AODUVdn', 'EXTINCTdn', 'EXTxASYMdn', 'EXTINCTNIRdn',
          'EXTINCTUVdn', 'WD_ALKNIT', 'WD_ALKOOH', 'WD_BENZOOH', 'WD_BRONO2', 'WD_BZOOH', 'WD_C2H5OH', 'WD_C2H5OOH',
          'WD_C3H7OOH', 'WD_C6H5OOH', 'WD_CH2O', 'WD_CH3CHO', 'WD_CH3CN', 'WD_CH3COCHO', 'WD_CH3COOH', 'WD_CH3COOOH',
