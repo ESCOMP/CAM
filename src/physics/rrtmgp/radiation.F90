@@ -36,7 +36,6 @@ use cospsimulator_intr,  only: docosp, cospsimulator_intr_init, &
 use scamMod,             only: scm_crm_mode, single_column, have_cld, cldobs
 
 use cam_history,         only: addfld, add_default, horiz_only, outfld, hist_fld_active
-use cam_history_support, only: add_vert_coord
 
 use radiation_data,      only: rad_data_register, rad_data_init
 
@@ -169,8 +168,8 @@ integer :: fsns_idx     = 0
 integer :: fsnt_idx     = 0
 integer :: flns_idx     = 0
 integer :: flnt_idx     = 0
-integer :: cldfsnow_idx = 0 
 integer :: cld_idx      = 0 
+integer :: cldfsnow_idx = 0 
 integer :: cldfgrau_idx = 0    
 
 character(len=4) :: diag(0:N_DIAG) =(/'    ','_d1 ','_d2 ','_d3 ','_d4 ','_d5 ',&
@@ -182,6 +181,10 @@ real(r8) :: rad_uniform_angle = -99._r8
 
 ! Number of layers in radiation calculations.
 integer :: nlay
+
+! Number of CAM layers in radiation calculations.  Is either equal to nlay, or is
+! 1 less than nlay if "extra layer" is used in the radiation calculations.
+integer :: nlaycam
 
 ! Indices for copying data between CAM/WACCM and RRTMGP arrays.  Since RRTMGP is
 ! vertical order agnostic we can send data using the top to bottom order used
@@ -197,9 +200,6 @@ integer :: ktoprad ! Index in RRTMGP arrays of the layer or interface correspond
                    ! to CAM's top layer or interface.
                    ! Note: for CAM's top to bottom indexing, the index of a given layer
                    ! (midpoint) and the upper interface of that layer, are the same.
-
-! vertical coordinate for output of fluxes on radiation grid
-real(r8), allocatable, target :: plev_rad(:)
 
 ! Gas optics objects contain the data read from the coefficients files.
 type(ty_gas_optics_rrtmgp) :: kdist_sw
@@ -452,25 +452,20 @@ subroutine radiation_init(pbuf2d)
    ! below 1 Pa then an extra layer is added to the top of the model for
    ! the purpose of the radiation calculation.
    nlay = count( pref_edge(:) > 1._r8 ) ! pascals (0.01 mbar)
-   allocate(plev_rad(nlay+1))
 
    if (nlay == pverp) then
       ! Top model interface is below 1 Pa.  RRTMGP is active in all model layers plus
       ! 1 extra layer between model top and 1 Pa.
       ktopcam = 1
       ktoprad = 2
-      plev_rad(1) = 1.01_r8 ! Top of extra layer, Pa.
-      plev_rad(2:) = pref_edge
+      nlaycam = pver
    else
-      ! nlay < pverp.  nlay layers are set by radiation
-      ktopcam = pverp - nlay + 1
+      ! nlay < pverp.  nlay layers are used in radiation calcs, and they are
+      ! all CAM layers.
+      ktopcam = pver - nlay + 1
       ktoprad = 1
-      plev_rad = pref_edge(ktopcam:)
+      nlaycam = nlay
    end if
-
-   ! Define a pressure coordinate to allow output of data on the radiation grid.
-   call add_vert_coord('plev_rad', nlay+1, 'Pressures at radiation flux calculations',  &
-            'Pa', plev_rad)
 
    ! Create lowercase version of the gaslist for RRTMGP.  The ty_gas_concs objects
    ! work with CAM's uppercase names, but other objects that get input from the gas
@@ -499,8 +494,8 @@ subroutine radiation_init(pbuf2d)
    call cloud_rad_props_init()
   
    cld_idx      = pbuf_get_index('CLD')
-   cldfsnow_idx = pbuf_get_index('CLDFSNOW',errcode=ierr)
-   cldfgrau_idx = pbuf_get_index('CLDFGRAU',errcode=ierr)
+   cldfsnow_idx = pbuf_get_index('CLDFSNOW', errcode=ierr)
+   cldfgrau_idx = pbuf_get_index('CLDFGRAU', errcode=ierr)
 
    if (is_first_step()) then
       call pbuf_set_field(pbuf2d, qrl_idx, 0._r8)
@@ -885,11 +880,11 @@ subroutine radiation_tend( &
    integer :: itim_old
 
    real(r8), pointer :: cld(:,:)      ! cloud fraction
-   real(r8), pointer :: cldfsnow(:,:) => null() ! cloud fraction of just "snow clouds"
-   real(r8), pointer :: cldfgrau(:,:) => null() ! cloud fraction of just "graupel clouds"
+   real(r8), pointer :: cldfsnow(:,:) ! cloud fraction of just "snow clouds"
+   real(r8), pointer :: cldfgrau(:,:) ! cloud fraction of just "graupel clouds"
    real(r8)          :: cldfprime(pcols,pver)   ! combined cloud fraction
-   real(r8), pointer :: qrs(:,:) => null()     ! shortwave radiative heating rate 
-   real(r8), pointer :: qrl(:,:) => null()     ! longwave  radiative heating rate 
+   real(r8), pointer :: qrs(:,:) ! shortwave radiative heating rate 
+   real(r8), pointer :: qrl(:,:) ! longwave  radiative heating rate 
    real(r8), pointer :: fsds(:)  ! Surface solar down flux
    real(r8), pointer :: fsns(:)  ! Surface solar absorbed flux
    real(r8), pointer :: fsnt(:)  ! Net column abs solar flux at model top
@@ -1029,9 +1024,11 @@ subroutine radiation_tend( &
 
    ! Associate pointers to physics buffer fields
    itim_old = pbuf_old_tim_idx()
+   nullify(cldfsnow)
    if (cldfsnow_idx > 0) then
       call pbuf_get_field(pbuf, cldfsnow_idx, cldfsnow, start=(/1,1,itim_old/), kount=(/pcols,pver,1/) )
    end if
+   nullify(cldfgrau)
    if (cldfgrau_idx > 0 .and. graupel_in_rad) then
       call pbuf_get_field(pbuf, cldfgrau_idx, cldfgrau, start=(/1,1,itim_old/), kount=(/pcols,pver,1/) )
    endif
@@ -1219,9 +1216,9 @@ subroutine radiation_tend( &
 
          ! Set cloud optical properties in cloud_lw object.
          call rrtmgp_set_cloud_lw( &
-            state, pbuf, nlay, cld, cldfsnow,                        &
-            cldfgrau, cldfprime, graupel_in_rad, kdist_lw, cloud_lw, &
-            cld_lw_abs_cloudsim, snow_lw_abs_cloudsim, grau_lw_abs_cloudsim )
+            state, pbuf, ncol, nlay, nlaycam, &
+            cld, cldfsnow, cldfgrau, cldfprime, graupel_in_rad, &
+            kdist_lw, cloud_lw, cld_lw_abs_cloudsim, snow_lw_abs_cloudsim, grau_lw_abs_cloudsim)
 
          ! Initialize object for gas concentrations
          errmsg = gas_concs_lw%init(gaslist_lc)
