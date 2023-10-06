@@ -1175,8 +1175,7 @@ contains
          ! vtemp = gradient_sphere(Ephi(:,:),deriv,elem(ie)%Dinv)
          call gradient_sphere(Ephi(:,:),deriv,elem(ie)%Dinv,vtemp)
          density_inv(:,:) = R_dry(:,:,k)*T_v(:,:,k)/p_full(:,:,k)
-
-         if (pgf_formulation==1) then
+         if (pgf_formulation==1.or.(pgf_formulation==3.and.hvcoord%hybm(k)>0._r8)) then
            if (dry_air_species_num==0) then
              exner(:,:)=(p_full(:,:,k)/hvcoord%ps0)**kappa(:,:,k,ie)
              theta_v(:,:)=T_v(:,:,k)/exner(:,:)
@@ -1211,7 +1210,7 @@ contains
              pgf_term(:,:,2)=pgf_term(:,:,2) + &
                   cpair*T0*(grad_logexner(:,:,2)-grad_exner(:,:,2)/exner(:,:))
            end if
-         elseif (pgf_formulation==2) then
+         elseif (pgf_formulation==2.or.pgf_formulation==3) then
            pgf_term(:,:,1)  = density_inv(:,:)*grad_p_full(:,:,1,k)
            pgf_term(:,:,2)  = density_inv(:,:)*grad_p_full(:,:,2,k)
          else
