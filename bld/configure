@@ -2269,6 +2269,7 @@ sub write_filepath
     print $fh "$camsrcdir/src/cpl/$cpl\n";
     print $fh "$camsrcdir/src/control\n";
     print $fh "$camsrcdir/src/utils\n";
+    print $fh "$camsrcdir/src/utils/cam_ccpp\n";
     print $fh "$camsrcdir/src/atmos_phys/utilities\n";
 
 

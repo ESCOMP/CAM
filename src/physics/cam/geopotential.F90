@@ -92,10 +92,7 @@ use geopotential_temp,         only: geopotential_temp_run !CCPP version
     !
     if (.not.(dycore_is('MPAS') .or. dycore_is('SE'))) then
 
-      ! Compute zi, zm from bottom up.
-      ! Note, zi(i,k) is the interface above zm(i,k)
-
-      !dray air gas constant over gravity
+      !dry air gas constant over gravity
       rog(:ncol,:) = rair(:ncol,:) / gravit
 
       ! The surface height is zero by definition.
@@ -103,6 +100,8 @@ use geopotential_temp,         only: geopotential_temp_run !CCPP version
         zi(i,pverp) = 0.0_r8
       end do
 
+      ! Compute zi, zm from bottom up.
+      ! Note, zi(i,k) is the interface above zm(i,k)
       do k = pver, 1, -1
 
         ! First set hydrostatic elements consistent with dynamics
@@ -132,18 +131,22 @@ use geopotential_temp,         only: geopotential_temp_run !CCPP version
     else !Using MPAS or SE dycore
 
       !Determine vertical coordinate type,
-      !uncomment if  FV (LR) or FV3 dycores allow for condensate loading.
-      !if ((dycore_is('LR') .or. dycore_is('FV3'))) then
-      !  lagrang = .true.
-      !else
+      !NOTE: Currently the FV (LR) or FV3 dycores
+      !      do not allow for condensate loading,
+      !      so for now 'lagrang' will always be FALSE.
+      if ((dycore_is('LR') .or. dycore_is('FV3'))) then
+        lagrang = .true.
+      else
         lagrang = .false.
-      !end if
+      end if
 
       !Use CCPP version of geopotential_t:
       call geopotential_temp_run(pver, lagrang, pver, 1, pverp, 1,  &
-        pcnst, piln, pint, pmid, pdel, rpdel, t, q(:,:,ixq), q,     &
-        ccpp_const_props, rair, gravit, zvir, zi, zm, ncol,         &
-        errflg, errmsg)
+        pcnst, piln(1:ncol,:), pint(1:ncol,:), pmid(1:ncol,:),      &
+        pdel(1:ncol,:), rpdel(1:ncol,:), t(1:ncol,:),               &
+        q(1:ncol,:,ixq), q(1:ncol,:,:), ccpp_const_props,           &
+        rair(1:ncol,:), gravit, zvir(1:ncol,:), zi(1:ncol,:),       &
+        zm(1:ncol,:), ncol, errflg, errmsg)
 
     end if
   end subroutine geopotential_t

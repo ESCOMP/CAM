@@ -692,15 +692,17 @@ subroutine derived_phys_dry(phys_state, phys_tend, pbuf2d)
       end do
 
       ! Compute initial geopotential heights - based on full pressure
-      call geopotential_t (phys_state(lchnk)%lnpint, phys_state(lchnk)%lnpmid  , phys_state(lchnk)%pint, &
-         phys_state(lchnk)%pmid  , phys_state(lchnk)%pdel    , phys_state(lchnk)%rpdel                 , &
-         phys_state(lchnk)%t     , phys_state(lchnk)%q(:,:,:), rairv(:,:,lchnk), gravit, zvirv         , &
+      call geopotential_t(phys_state(lchnk)%lnpint, phys_state(lchnk)%lnpmid  , phys_state(lchnk)%pint, &
+         phys_state(lchnk)%pmid  , phys_state(lchnk)%pdel    , phys_state(lchnk)%rpdel                , &
+         phys_state(lchnk)%t     , phys_state(lchnk)%q(:,:,:), rairv(:,:,lchnk), gravit, zvirv        , &
          phys_state(lchnk)%zi    , phys_state(lchnk)%zm      , ncol)
 
       ! Compute initial dry static energy, include surface geopotential
-      call update_dry_static_energy_run(pver, gravit, phys_state(lchnk)%t, phys_state(lchnk)%zm,         &
-                                        phys_state(lchnk)%phis, phys_state(lchnk)%s, cpairv(:,:,lchnk),  &
-                                        errflg, errmsg)
+      call update_dry_static_energy_run(pver, gravit, phys_state(lchnk)%t(1:ncol,:),  &
+                                        phys_state(lchnk)%zm(1:ncol,:),               &
+                                        phys_state(lchnk)%phis(1:ncol),               &
+                                        phys_state(lchnk)%s(1:ncol,:),                &
+                                        cpairv(1:ncol,:,lchnk), errflg, errmsg)
 
       ! Ensure tracers are all positive
       call qneg3('D_P_COUPLING',lchnk  ,ncol    ,pcols   ,pver    , &

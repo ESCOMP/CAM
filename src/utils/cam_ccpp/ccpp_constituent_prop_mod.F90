@@ -1,25 +1,25 @@
-! This module is a placeholder for the CCPP generated module of the same name
+! This module is the CAM version of the CCPP generated module of the same name
 module ccpp_constituent_prop_mod
 
    implicit none
    private
 
-   !Define stub version of constituent properties mod
+   ! Define CAM version of constituent properties mod
    type, public :: ccpp_constituent_prop_ptr_t
       logical, private :: thermo_active = .false.
       logical, private :: water_species = .false.
    contains
-      procedure :: standard_name     => ccpt_get_standard_name
-      procedure :: is_thermo_active  => ccpt_is_thermo_active
-      procedure :: is_water_species  => ccpt_is_water_species
-      procedure :: set_thermo_active => ccpt_set_thermo_active
-      procedure :: set_water_species => ccpt_set_water_species
+      procedure :: standard_name     => ccp_get_standard_name
+      procedure :: is_thermo_active  => ccp_is_thermo_active
+      procedure :: is_water_species  => ccp_is_water_species
+      procedure :: set_thermo_active => ccp_set_thermo_active
+      procedure :: set_water_species => ccp_set_water_species
    end type ccpp_constituent_prop_ptr_t
 
-   !CCPP properties init routine
+   ! CCPP properties init routine
    public :: ccpp_const_props_init
 
-   !Public properties DDT variable:
+   ! Public properties DDT variable:
    type(ccpp_constituent_prop_ptr_t), allocatable, public :: ccpp_const_props(:)
 
 contains
@@ -28,7 +28,7 @@ contains
 !CCPP constituent properties DDT methods
 !+++++++++++++++++++++++++++++++++++++++
 
-   subroutine ccpt_get_standard_name(this, std_name, errcode, errmsg)
+   subroutine ccp_get_standard_name(this, std_name, errcode, errmsg)
       ! Return this constituent's standard name
 
       ! Dummy arguments
@@ -39,7 +39,7 @@ contains
 
       std_name = 'Not Used!'
 
-      !Provide err values if requested:
+      ! Provide err values if requested:
       if(present(errcode)) then
          errcode = 0
       end if
@@ -47,11 +47,11 @@ contains
          errmsg = 'Still Not Used!'
       end if
 
-   end subroutine ccpt_get_standard_name
+   end subroutine ccp_get_standard_name
 
    !------
 
-   subroutine ccpt_is_thermo_active(this, val_out, errcode, errmsg)
+   subroutine ccp_is_thermo_active(this, val_out, errcode, errmsg)
 
       ! Dummy arguments
       class(ccpp_constituent_prop_ptr_t),   intent(in)  :: this
@@ -59,10 +59,10 @@ contains
       integer,          optional,           intent(out) :: errcode
       character(len=*), optional,           intent(out) :: errmsg
 
-      !Pass back thermo active property:
+      ! Pass back thermo active property:
       val_out = this%thermo_active
 
-      !Provide err values if requested:
+      ! Provide err values if requested:
       if(present(errcode)) then
          errcode = 0
       end if
@@ -70,11 +70,11 @@ contains
          errmsg = 'Still Not Used!'
       end if
 
-   end subroutine ccpt_is_thermo_active
+   end subroutine ccp_is_thermo_active
 
    !------
 
-   subroutine ccpt_is_water_species(this, val_out, errcode, errmsg)
+   subroutine ccp_is_water_species(this, val_out, errcode, errmsg)
 
       ! Dummy arguments
       class(ccpp_constituent_prop_ptr_t),   intent(in)  :: this
@@ -82,10 +82,10 @@ contains
       integer,          optional,           intent(out) :: errcode
       character(len=*), optional,           intent(out) :: errmsg
 
-      !Pass back water species property:
+      ! Pass back water species property:
       val_out = this%water_species
 
-      !Provide err values if requested:
+      ! Provide err values if requested:
       if(present(errcode)) then
          errcode = 0
       end if
@@ -93,11 +93,11 @@ contains
          errmsg = 'Still Not Used!'
       end if
 
-   end subroutine ccpt_is_water_species
+   end subroutine ccp_is_water_species
 
    !------
 
-   subroutine ccpt_set_thermo_active(this, thermo_flag, errcode, errmsg)
+   subroutine ccp_set_thermo_active(this, thermo_flag, errcode, errmsg)
       ! Set whether this constituent is thermodynamically active, which
       ! means that certain physics schemes will use this constitutent
       ! when calculating thermodynamic quantities (e.g. enthalpy).
@@ -108,10 +108,10 @@ contains
       integer,          optional,           intent(out)   :: errcode
       character(len=*), optional,           intent(out)   :: errmsg
 
-      !Set thermodynamically active flag for this constituent:
+      ! Set thermodynamically active flag for this constituent:
       this%thermo_active = thermo_flag
 
-      !Provide err values if requested:
+      ! Provide err values if requested:
       if(present(errcode)) then
          errcode = 0
       end if
@@ -119,11 +119,11 @@ contains
          errmsg = 'Still Not Used!'
       end if
 
-   end subroutine ccpt_set_thermo_active
+   end subroutine ccp_set_thermo_active
 
    !------
 
-   subroutine ccpt_set_water_species(this, water_flag, errcode, errmsg)
+   subroutine ccp_set_water_species(this, water_flag, errcode, errmsg)
       ! Set whether this constituent is a water species, which means
       ! that this constituent represents a particular phase or type
       ! of water in the atmosphere.
@@ -134,10 +134,10 @@ contains
       integer,          optional,           intent(out)   :: errcode
       character(len=*), optional,           intent(out)   :: errmsg
 
-      !Set thermodynamically active flag for this constituent:
+      ! Set thermodynamically active flag for this constituent:
       this%water_species = water_flag
 
-      !Provide err values if requested:
+      ! Provide err values if requested:
       if(present(errcode)) then
          errcode = 0
       end if
@@ -145,40 +145,40 @@ contains
          errmsg = 'Still Not Used!'
       end if
 
-   end subroutine ccpt_set_water_species
+   end subroutine ccp_set_water_species
 
-!+++++++++++++++++++++++++++++++++++++++++++++
-!CCPP constituents stub initialization routine
-!+++++++++++++++++++++++++++++++++++++++++++++
+!+++++++++++++++++++++++++++++++++++++++++++++++++++++++
+!CAM-equivalent CCPP constituents initialization routine
+!+++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 subroutine ccpp_const_props_init()
 
-    !Use statements:
+    ! Use statements:
     use constituents,    only: pcnst
     use cam_abortutils,  only: handle_allocate_error
     use air_composition, only: dry_air_species_num
     use air_composition, only: thermodynamic_active_species_idx
 
-    !Local variables:
+    ! Local variables:
     integer :: ierr
     integer :: m
 
     character(len=*), parameter :: subname = 'ccpp_const_prop_init:'
 
-    !Allocate constituents object:
+    ! Allocate constituents object:
     allocate(ccpp_const_props(pcnst), stat=ierr)
 
-    !Check if allocation succeeded:
+    ! Check if allocation succeeded:
     call handle_allocate_error(ierr, subname, 'ccpp_const_props(pcnst)')
 
-    !Set "thermo_active" property:
+    ! Set "thermo_active" property:
     do m = 1,pcnst
        if(any(thermodynamic_active_species_idx == m)) then
           call ccpp_const_props(m)%set_thermo_active(.true.)
        end if
     end do
 
-    !Set "water_species" property:
+    ! Set "water_species" property:
     do m=1,pcnst
        if(any(thermodynamic_active_species_idx(dry_air_species_num+1:) == m)) then
           call ccpp_const_props(m)%set_water_species(.true.)

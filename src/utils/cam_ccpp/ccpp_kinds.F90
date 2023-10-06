@@ -1,4 +1,4 @@
-! This module is a placeholder for the CCPP generated module of the same name
+! This module is the CAM version of the CCPP generated module of the same name
 module ccpp_kinds
 
      use shr_kind_mod,   only: kind_phys => shr_kind_r8
