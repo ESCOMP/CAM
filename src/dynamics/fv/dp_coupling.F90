@@ -573,7 +573,7 @@ chnk_loop2 : &
        end do
        !
        ! Convert dry type constituents from moist to dry mixing ratio
-       ! (note: cam_thermo_dry_air_update assumes dry unless optianal conversion factor provided)
+       ! (note: cam_thermo_dry_air_update assumes dry unless optional conversion factor provided)
        !
        call set_state_pdry(phys_state(lchnk))    ! First get dry pressure to use for this timestep
        call set_wet_to_dry(phys_state(lchnk))    ! Dynamics had moist, physics wants dry
