@@ -7901,7 +7901,7 @@ If &lt; 0, se_sponge_del4_nu_fac is automatically set based on model top locatio
 Default: Set by build-namelist.
 </entry>
 
-<entry id="se_sponge_del4_nu_div_fac" type="integer" category="se"
+<entry id="se_sponge_del4_nu_div_fac" type="real" category="se"
        group="dyn_se_inparm" valid_values="" >
 Divergence damping hyperviscosity coefficient se_nu_div [m^4/s] for u,v is increased to
 se_nu_p*se_sponge_del4_nu_div_fac following a hyperbolic tangent function
@@ -7915,7 +7915,7 @@ If &lt; 0, se_sponge_del4_nu_div_fac is automatically set based on model top loc
 Default: Set by build-namelist.
 </entry>
 
-<entry id="se_sponge_del4_lev" type="real" category="se"
+<entry id="se_sponge_del4_lev" type="integer" category="se"
        group="dyn_se_inparm" valid_values="" >
 Level index around which increased del4 damping is centered.
 
