@@ -14,7 +14,7 @@ module ionosphere_interface
    use physics_buffer,      only: pbuf_get_index
 
    use constituents,        only: cnst_get_ind, cnst_mw
-   use physconst,           only: gravit,rga
+   use physconst,           only: rga
    use oplus,               only: oplus_init
    use edyn_init,           only: edynamo_init
    use pio,                 only: var_desc_t
@@ -744,7 +744,7 @@ module ionosphere_interface
                      tempm(i, k) = r8tmp * (1._r8 + (r8tmp * rearth_inv))
                   end if
                   ! physics state fields on interfaces (but only to pver)
-                  zi_blck(k, j) = phys_state(lchnk)%zi(i, k) + phis(i)/gravit
+                  zi_blck(k, j) = phys_state(lchnk)%zi(i, k) + phis(i)*rga
                   !------------------------------------------------------------
                   ! Convert geopotential to geometric height at interfaces:
                   !------------------------------------------------------------
