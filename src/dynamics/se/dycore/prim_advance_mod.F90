@@ -930,7 +930,7 @@ contains
             !OMP_COLLAPSE_SIMD
             !DIR_VECTOR_ALIGNED
             do j=1,np
-              do i=1,np                
+              do i=1,np
                 v1new=elem(ie)%state%v(i,j,1,k,nt)
                 v2new=elem(ie)%state%v(i,j,2,k,nt)
                 v1   =elem(ie)%state%v(i,j,1,k,nt)- vtens(i,j,1,k,ie)
@@ -1214,7 +1214,7 @@ contains
            pgf_term(:,:,1)  = density_inv(:,:)*grad_p_full(:,:,1,k)
            pgf_term(:,:,2)  = density_inv(:,:)*grad_p_full(:,:,2,k)
          else
-           call endrun('ERROR: bad choice of pgf_formulation (must be 1 or 2)')
+           call endrun('ERROR: bad choice of pgf_formulation (must be 1, 2, or 3)')
          end if
 
          do j=1,np
@@ -1524,12 +1524,12 @@ contains
              active_species_idx_dycore=thermodynamic_active_species_idx_dycore)
         ptop = hyai(1)*ps0
         do j=1,np
-          !get mixing ratio of thermodynamic active species only 
+          !get mixing ratio of thermodynamic active species only
           !(other tracers not used in get_hydrostatic_energy)
           do nq=1,thermodynamic_active_species_num
             m_cnst = thermodynamic_active_species_idx_dycore(nq)
             q(:,:,m_cnst) = elem(ie)%state%Qdp(:,j,:,m_cnst,tl_qdp)/&
-                 elem(ie)%state%dp3d(:,j,:,tl) 
+                 elem(ie)%state%dp3d(:,j,:,tl)
           end do
           call get_hydrostatic_energy(q, &
                .false., elem(ie)%state%dp3d(:,j,:,tl), cp(:,j,:), elem(ie)%state%v(:,j,1,:,tl), &
