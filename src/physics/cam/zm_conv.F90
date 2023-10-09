@@ -4405,6 +4405,9 @@ end if ! Mixed parcel properties
          end do
       end do
       
+      write(iulog,*)'numcin,lel',num_cin,lelten
+	
+
 !                                                                                                                                                                                                                                               
 ! calculate convective available potential energy (cape).                                                                                                                                                                                                
 ! EXCLUDE -ve CAPE for dynamic parcel calculation. 
@@ -4418,6 +4421,8 @@ end if ! Mixed parcel properties
             end do
          end do
       end do     
+
+	 write(iulog,*)'capeten',capeten
 
 !!
 
