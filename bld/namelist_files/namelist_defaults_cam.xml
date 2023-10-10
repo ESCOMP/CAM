@@ -2646,6 +2646,10 @@
 <cldfrc2m_rhmaxis   clubb_sgs="1"                    >  1.0D0  </cldfrc2m_rhmaxis>
 <cldfrc2m_rhmaxis   spcam_clubb_sgs="1"              >  1.0D0  </cldfrc2m_rhmaxis>
 
+<cldfrc2m_qist_min               >1.e-7 </cldfrc2m_qist_min>
+<cldfrc2m_qist_min phys="cam_dev">5.e-6 </cldfrc2m_qist_min>
+<cldfrc2m_qist_max               >5.e-3 </cldfrc2m_qist_max>
+
 <micro_mg_adjust_cpt>.false.</micro_mg_adjust_cpt>
 
 <cldfrc2m_do_subgrid_growth               >.false.</cldfrc2m_do_subgrid_growth>

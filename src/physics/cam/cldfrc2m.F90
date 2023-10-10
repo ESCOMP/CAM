@@ -10,6 +10,7 @@ use wv_saturation,    only: qsat_water, svp_water, svp_ice, &
                             svp_water_vect, svp_ice_vect
 use cam_logfile,      only: iulog
 use cam_abortutils,   only: endrun
+use phys_control,     only: cam_physpkg_is
 
 implicit none
 private
@@ -35,17 +36,16 @@ real(r8) :: cldfrc2m_rhmini            ! Minimum rh for ice cloud fraction > 0.
 real(r8) :: cldfrc2m_rhmaxi
 real(r8) :: cldfrc2m_rhminis           ! Minimum rh for ice cloud fraction > 0 in the stratsophere.
 real(r8) :: cldfrc2m_rhmaxis
+real(r8) :: cldfrc2m_qist_min          ! Minimum in-stratus ice IWC constraint [ kg/kg ]
+real(r8) :: cldfrc2m_qist_max          ! Maximum in-stratus ice IWC constraint [ kg/kg ]
 logical  :: cldfrc2m_do_subgrid_growth = .false.
 ! -------------------------- !
 ! Parameters for Ice Stratus !
 ! -------------------------- !
 real(r8),  protected :: rhmini_const                 ! Minimum rh for ice cloud fraction > 0.
 real(r8),  protected :: rhmaxi_const
-real(r8),  protected :: rhminis_const                 ! Minimum rh for ice cloud fraction > 0.
+real(r8),  protected :: rhminis_const                ! Minimum rh for ice cloud fraction > 0.
 real(r8),  protected :: rhmaxis_const
-
-real(r8),  parameter :: qist_min     = 1.e-7_r8      ! Minimum in-stratus ice IWC constraint [ kg/kg ]
-real(r8),  parameter :: qist_max     = 5.e-3_r8      ! Maximum in-stratus ice IWC constraint [ kg/kg ]
 
 ! ----------------------------- !
 ! Parameters for Liquid Stratus !
@@ -82,7 +82,8 @@ subroutine cldfrc2m_readnl(nlfile)
    integer :: unitn, ierr
    character(len=*), parameter :: subname = 'cldfrc2m_readnl'
 
-   namelist /cldfrc2m_nl/ cldfrc2m_rhmini, cldfrc2m_rhmaxi, cldfrc2m_rhminis, cldfrc2m_rhmaxis, cldfrc2m_do_subgrid_growth
+   namelist /cldfrc2m_nl/ cldfrc2m_rhmini, cldfrc2m_rhmaxi, cldfrc2m_rhminis, cldfrc2m_rhmaxis, cldfrc2m_do_subgrid_growth, &
+                          cldfrc2m_qist_min, cldfrc2m_qist_max
    !-----------------------------------------------------------------------------
 
    if (masterproc) then
@@ -103,7 +104,6 @@ subroutine cldfrc2m_readnl(nlfile)
       rhmaxi_const  = cldfrc2m_rhmaxi
       rhminis_const = cldfrc2m_rhminis
       rhmaxis_const = cldfrc2m_rhmaxis
-
    end if
 
    ! Broadcast namelist variables
@@ -111,6 +111,8 @@ subroutine cldfrc2m_readnl(nlfile)
    call mpi_bcast(rhmaxi_const,               1, mpi_real8,  masterprocid, mpicom, ierr)
    call mpi_bcast(rhminis_const,              1, mpi_real8,  masterprocid, mpicom, ierr)
    call mpi_bcast(rhmaxis_const,              1, mpi_real8,  masterprocid, mpicom, ierr)
+   call mpi_bcast(cldfrc2m_qist_min,          1, mpi_real8,  masterprocid, mpicom, ierr)
+   call mpi_bcast(cldfrc2m_qist_max,          1, mpi_real8,  masterprocid, mpicom, ierr)
    call mpi_bcast(cldfrc2m_do_subgrid_growth, 1, mpi_logical,masterprocid, mpicom, ierr)
 
 end subroutine cldfrc2m_readnl
@@ -879,12 +881,21 @@ subroutine aist_single(qv, T, p, qi, landfrac, snowh, aist, &
            icimr=qi/aist
 
            !minimum
-           if (icimr.lt.qist_min) then
-              aist = max(0._r8,min(1._r8,qi/qist_min))
+           if (icimr.lt.cldfrc2m_qist_min) then
+             if (cam_physpkg_is("cam_dev")) then
+               !
+               ! Take the geometric mean of the iceopt=4 and iceopt=5 values.
+               ! Mods developed by Thomas Toniazzo for NorESM.
+               aist = max(0._r8,min(1._r8,sqrt(aist*qi/cldfrc2m_qist_min)))
+             else
+               !
+               ! Default for iceopt=5
+               aist = max(0._r8,min(1._r8,qi/cldfrc2m_qist_min))
+             end if
            endif
            !maximum
-           if (icimr.gt.qist_max) then
-              aist = max(0._r8,min(1._r8,qi/qist_max))
+           if (icimr.gt.cldfrc2m_qist_max) then
+              aist = max(0._r8,min(1._r8,qi/cldfrc2m_qist_max))
            endif
 
         endif
@@ -1131,12 +1142,21 @@ subroutine aist_vector(qv_in, T_in, p_in, qi_in, ni_in, landfrac_in, snowh_in, a
            icimr=qi/aist
 
            !minimum
-           if (icimr.lt.qist_min) then
-              aist = max(0._r8,min(1._r8,qi/qist_min))
+           if (icimr.lt.cldfrc2m_qist_min) then
+             if (cam_physpkg_is("cam_dev")) then
+               !
+               ! Take the geometric mean of the iceopt=4 and iceopt=5 values.
+               ! Mods developed by Thomas Toniazzo for NorESM.
+               aist = max(0._r8,min(1._r8,sqrt(aist*qi/cldfrc2m_qist_min)))
+             else
+               !
+               ! Default for iceopt=5
+               aist = max(0._r8,min(1._r8,qi/cldfrc2m_qist_min))
+             end if
            endif
            !maximum
-           if (icimr.gt.qist_max) then
-              aist = max(0._r8,min(1._r8,qi/qist_max))
+           if (icimr.gt.cldfrc2m_qist_max) then
+              aist = max(0._r8,min(1._r8,qi/cldfrc2m_qist_max))
            endif
 
          endif
