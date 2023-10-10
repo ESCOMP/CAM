@@ -3460,6 +3460,8 @@ if (!$simple_phys) {
     add_default($nl, 'cldfrc2m_rhmaxi');
     add_default($nl, 'cldfrc2m_rhminis');
     add_default($nl, 'cldfrc2m_rhmaxis');
+    add_default($nl, 'cldfrc2m_qist_min');
+    add_default($nl, 'cldfrc2m_qist_max');
     add_default($nl, 'cldfrc2m_do_subgrid_growth');
 }
 
