@@ -316,14 +316,14 @@ subroutine rad_gas_get_vmr(icall, gas_name, state, pbuf, nlay, numactivecols, ga
 
    integer, optional,          intent(in) :: idxday(:)   ! indices of daylight columns in a chunk
 
-   ! local
+   ! Local variables
    integer :: i, idx(numactivecols)
    real(r8), pointer     :: gas_mmr(:,:)
    real(r8), allocatable :: gas_vmr(:,:)
    real(r8), allocatable :: mmr(:,:)
    real(r8) :: massratio
 
-   ! -- for ozone profile above model
+   ! For ozone profile above model
    real(r8) :: P_top, P_int, P_mid, alpha, beta, a, b, chi_mid, chi_0, chi_eff
 
    character(len=128)          :: errmsg
@@ -468,9 +468,9 @@ end subroutine rrtmgp_set_gases_sw
 !==================================================================================================
 
 subroutine rrtmgp_set_cloud_lw( &
-   state, pbuf, nlay, cld, cldfsnow,                        &
-   cldfgrau, cldfprime, graupel_in_rad, kdist_lw, cloud_lw, &
-   cld_lw_abs_cloudsim, snow_lw_abs_cloudsim, grau_lw_abs_cloudsim )
+   state, pbuf, ncol, nlay, nlaycam, &
+   cld, cldfsnow, cldfgrau, cldfprime, graupel_in_rad, &
+   kdist_lw, cloud_lw, cld_lw_abs_cloudsim, snow_lw_abs_cloudsim, grau_lw_abs_cloudsim)
 
    ! Compute combined cloud optical properties.
    ! Create MCICA stochastic arrays for cloud LW optical properties.
@@ -479,7 +479,9 @@ subroutine rrtmgp_set_cloud_lw( &
    ! arguments
    type(physics_state),         intent(in)  :: state
    type(physics_buffer_desc),   pointer     :: pbuf(:)
+   integer,  intent(in) :: ncol           ! number of columns in CAM chunk
    integer,  intent(in) :: nlay           ! number of layers in radiation calculation (may include "extra layer")
+   integer,  intent(in) :: nlaycam        ! number of CAM layers in radiation calculation
    real(r8), pointer    :: cld(:,:)       ! cloud fraction (liq+ice)
    real(r8), pointer    :: cldfsnow(:,:)  ! cloud fraction of just "snow clouds"
    real(r8), pointer    :: cldfgrau(:,:)  ! cloud fraction of just "graupel clouds"
@@ -496,8 +498,7 @@ subroutine rrtmgp_set_cloud_lw( &
 
    ! Local variables
 
-   integer :: i, k, ncol
-   integer :: nver
+   integer :: i, k
 
    ! cloud radiative parameters are "in cloud" not "in cell"
    real(r8) :: liq_lw_abs(nlwbands,pcols,pver)   ! liquid absorption optics depth (LW)
@@ -508,15 +509,13 @@ subroutine rrtmgp_set_cloud_lw( &
    real(r8) :: c_cld_lw_abs(nlwbands,pcols,pver) ! combined cloud absorption optics depth (LW)
 
    ! Arrays for converting from CAM chunks to RRTMGP inputs.
-   real(r8), allocatable :: cldf(:,:)
-   real(r8), allocatable :: tauc(:,:,:)
-   real(r8), allocatable :: taucmcl(:,:,:)
+   real(r8) :: cldf(ncol,nlaycam)
+   real(r8) :: tauc(nlwbands,ncol,nlaycam)
+   real(r8) :: taucmcl(nlwgpts,ncol,nlaycam)
 
    character(len=128) :: errmsg
    character(len=*), parameter :: sub = 'rrtmgp_set_cloud_lw'
    !--------------------------------------------------------------------------------
-
-   ncol   = state%ncol
 
    ! Combine the cloud optical properties.  These calculations are done on CAM "chunks".
 
@@ -566,22 +565,14 @@ subroutine rrtmgp_set_cloud_lw( &
    
    ! Extract just the layers of CAM where RRTMGP does calculations.
 
-   ! number of CAM's layers in radiation calculation.  Does not include the "extra layer".
-   nver = pver - ktopcam + 1
-
-   allocate( &
-         cldf(ncol,nver),           &
-         tauc(nlwbands,ncol,nver),  &
-         taucmcl(nlwgpts,ncol,nver) )
-
    ! Subset "chunk" data so just the number of CAM layers in the
    ! radiation calculation are used by MCICA to produce subcolumns.
    cldf = cldfprime(:ncol, ktopcam:)
    tauc = c_cld_lw_abs(:, :ncol, ktopcam:)
    
    call mcica_subcol_lw( &
-      kdist_lw, nlwbands, nlwgpts, ncol, nver, &
-      nlwgpts, state%pmid, cldf, tauc, taucmcl )
+      kdist_lw, nlwbands, nlwgpts, ncol, nlaycam, &
+      nlwgpts, state%pmid, cldf, tauc, taucmcl    )
 
    errmsg =cloud_lw%alloc_1scl(ncol, nlay, kdist_lw)
    if (len_trim(errmsg) > 0) then
@@ -602,9 +593,6 @@ subroutine rrtmgp_set_cloud_lw( &
    if (len_trim(errmsg) > 0) then
       call endrun(sub//': ERROR: cloud_lw%validate: '//trim(errmsg))
    end if
-
-   ! All information is in cloud_lw, now deallocate local vars.
-   deallocate(cldf, tauc, taucmcl)
 
 end subroutine rrtmgp_set_cloud_lw
 
