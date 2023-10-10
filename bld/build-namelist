@@ -3115,7 +3115,7 @@ if ($cfg->get('microphys') =~ /^mg/) {
             $micro_mg_dcs = '500.D-6';   # default for cam6
         }
         elsif ($phys eq 'cam_dev') {
-            $micro_mg_dcs = '250.D-6';   # default for cam_dev
+            $micro_mg_dcs = '500.D-6';   # default for cam_dev
         }
     }
 
