@@ -2731,6 +2731,12 @@ Unitless scaling factor for ice fall speed to account for sub-grid scale ice cry
 Default: 1.0
 </entry>
 
+<entry id="micro_mg_vtrms_factor" type="real" category="microphys"
+       group="micro_mg_nl" valid_values="" >
+Unitless scaling factor for snow fall speed to account for sub-grid scale ice crystal shape variability.
+Default: 1.0
+</entry>
+
 <entry id="micro_mg_effi_factor" type="real" category="microphys"
        group="micro_mg_nl" valid_values="" >
 Unitless scaling factor for ice effective radius as seen by radiation. This scaling factor adjusts for sub-grid scale ice crystal shape variability.

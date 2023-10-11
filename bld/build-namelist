@@ -3083,6 +3083,7 @@ if ($cfg->get('microphys') =~ /^mg|pumas/) {
     add_default($nl, 'micro_mg_autocon_lwp_exp');
     add_default($nl, 'micro_mg_homog_size');
     add_default($nl, 'micro_mg_vtrmi_factor');
+    add_default($nl, 'micro_mg_vtrms_factor');
     add_default($nl, 'micro_mg_effi_factor');
     add_default($nl, 'micro_mg_iaccr_factor');
     add_default($nl, 'micro_mg_max_nicons');

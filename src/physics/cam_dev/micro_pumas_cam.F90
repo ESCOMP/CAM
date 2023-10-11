@@ -77,6 +77,7 @@ real(r8) :: micro_mg_autocon_nd_exp    = unset_r8       ! autoconversion nd expo
 real(r8) :: micro_mg_autocon_lwp_exp   = unset_r8       ! autoconversion lwp exponent
 real(r8) :: micro_mg_homog_size        = unset_r8     ! size of freezing homogeneous ice
 real(r8) :: micro_mg_vtrmi_factor      = unset_r8        ! ice fall speed factor
+real(r8) :: micro_mg_vtrms_factor      = unset_r8        ! snow fall speed factor
 real(r8) :: micro_mg_effi_factor       = unset_r8        ! ice effective radius factor
 real(r8) :: micro_mg_iaccr_factor      = unset_r8        ! ice accretion of cloud droplet
 real(r8) :: micro_mg_max_nicons        = unset_r8  ! max allowed ice number concentration
@@ -272,8 +273,8 @@ subroutine micro_pumas_cam_readnl(nlfile)
        microp_uniform, micro_mg_dcs, micro_mg_precip_frac_method, &
        micro_mg_berg_eff_factor, micro_mg_warm_rain, micro_mg_adjust_cpt, &
        micro_mg_do_hail, micro_mg_do_graupel, micro_mg_ngcons, micro_mg_ngnst, &
-       micro_mg_vtrmi_factor, micro_mg_effi_factor, micro_mg_iaccr_factor, &
-       micro_mg_max_nicons, micro_mg_accre_enhan_fact, &
+       micro_mg_vtrmi_factor, micro_mg_vtrms_factor, micro_mg_effi_factor, &
+       micro_mg_iaccr_factor, micro_mg_max_nicons, micro_mg_accre_enhan_fact, &
        micro_mg_autocon_fact, micro_mg_autocon_nd_exp, micro_mg_autocon_lwp_exp, micro_mg_homog_size, &
        micro_mg_nccons, micro_mg_nicons, micro_mg_ncnst, micro_mg_ninst, &
        micro_mg_nrcons, micro_mg_nscons, micro_mg_nrnst, micro_mg_nsnst, &
@@ -387,6 +388,9 @@ subroutine micro_pumas_cam_readnl(nlfile)
   call mpi_bcast(micro_mg_vtrmi_factor, 1, mpi_real8, mstrid, mpicom, ierr)
   if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: micro_mg_vtrmi_factor")
 
+  call mpi_bcast(micro_mg_vtrms_factor, 1, mpi_real8, mstrid, mpicom, ierr)
+  if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: micro_mg_vtrms_factor")
+
   call mpi_bcast(micro_mg_effi_factor, 1, mpi_real8, mstrid, mpicom, ierr)
   if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: micro_mg_effi_factor")
 
@@ -481,6 +485,7 @@ subroutine micro_pumas_cam_readnl(nlfile)
   if(micro_mg_autocon_lwp_exp == unset_r8) call endrun(sub//": FATAL: micro_mg_autocon_lwp_exp is not set")
   if(micro_mg_homog_size == unset_r8) call endrun(sub//": FATAL: micro_mg_homog_size is not set")
   if(micro_mg_vtrmi_factor == unset_r8) call endrun(sub//": FATAL: micro_mg_vtrmi_factor is not set")
+  if(micro_mg_vtrms_factor == unset_r8) call endrun(sub//": FATAL: micro_mg_vtrms_factor is not set")
   if(micro_mg_effi_factor == unset_r8) call endrun(sub//": FATAL: micro_mg_effi_factor is not set")
   if(micro_mg_iaccr_factor == unset_r8) call endrun(sub//": FATAL: micro_mg_iaccr_factor is not set")
   if(micro_mg_max_nicons == unset_r8) call endrun(sub//": FATAL: micro_mg_max_nicons is not set")
@@ -502,6 +507,7 @@ subroutine micro_pumas_cam_readnl(nlfile)
      write(iulog,*) '  micro_mg_autocon_lwp_exp    = ' , micro_mg_autocon_lwp_exp
      write(iulog,*) '  micro_mg_homog_size         = ', micro_mg_homog_size
      write(iulog,*) '  micro_mg_vtrmi_factor       = ', micro_mg_vtrmi_factor
+     write(iulog,*) '  micro_mg_vtrms_factor       = ', micro_mg_vtrms_factor
      write(iulog,*) '  micro_mg_effi_factor        = ', micro_mg_effi_factor
      write(iulog,*) '  micro_mg_iaccr_factor       = ', micro_mg_iaccr_factor
      write(iulog,*) '  micro_mg_max_nicons         = ', micro_mg_max_nicons
@@ -923,8 +929,8 @@ subroutine micro_pumas_cam_init(pbuf2d)
            micro_mg_precip_frac_method, micro_mg_berg_eff_factor, &
            micro_mg_accre_enhan_fact , &
            micro_mg_autocon_fact , micro_mg_autocon_nd_exp, micro_mg_autocon_lwp_exp, micro_mg_homog_size, &
-           micro_mg_vtrmi_factor, micro_mg_effi_factor, micro_mg_iaccr_factor, &
-           micro_mg_max_nicons, &
+           micro_mg_vtrmi_factor, micro_mg_vtrms_factor, micro_mg_effi_factor, &
+           micro_mg_iaccr_factor, micro_mg_max_nicons, &
            allow_sed_supersat, micro_mg_warm_rain, &
            micro_mg_evap_sed_off, micro_mg_icenuc_rh_off, micro_mg_icenuc_use_meyers, &
            micro_mg_evap_scl_ifs, micro_mg_evap_rhthrsh_ifs, &
