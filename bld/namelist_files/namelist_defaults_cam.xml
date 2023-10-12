@@ -2067,7 +2067,6 @@
 <clubb_gamma_coef                                 > 0.308   </clubb_gamma_coef>
 <clubb_gamma_coef phys="cam_dev"                  > 0.3     </clubb_gamma_coef>
 <clubb_gamma_coef hgrid="1.9x2.5" phys="cam6"     > 0.280   </clubb_gamma_coef>
-<clubb_gamma_coef dyn="se"                        > 0.270   </clubb_gamma_coef>
 <clubb_gamma_coefb                                > 0.32    </clubb_gamma_coefb>
 <clubb_gamma_coefb phys="cam_dev"                 > 0.3     </clubb_gamma_coefb>
 <clubb_ipdf_call_placement                        > 2       </clubb_ipdf_call_placement>
@@ -2658,6 +2657,9 @@
 <cldfrc2m_do_subgrid_growth               >.false.</cldfrc2m_do_subgrid_growth>
 <cldfrc2m_do_subgrid_growth phys="cam6"   >.true.</cldfrc2m_do_subgrid_growth>
 <cldfrc2m_do_subgrid_growth phys="cam_dev">.true.</cldfrc2m_do_subgrid_growth>
+
+<cldfrc2m_do_avg_aist_algs                >.false.</cldfrc2m_do_avg_aist_algs>
+<cldfrc2m_do_avg_aist_algs phys="cam_dev" >.true.</cldfrc2m_do_avg_aist_algs>
 
 <!-- Cldwat -->
 <rk_strat_icritc                                                        >  5.0e-6  </rk_strat_icritc>
