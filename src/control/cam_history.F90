@@ -533,6 +533,9 @@ CONTAINS
         tape(t)%hlist(f)%field%meridional_complement = -1
         tape(t)%hlist(f)%field%zonal_complement = -1
       end do
+!      if (.not. hfile_accum(t) .and. .not. hfile_inst(t)) then
+!         hfile_accum(t) = .true.
+!      end if
     end do
     ! Setup vector pairs for unstructured grid interpolation
     call setup_interpolation_and_define_vector_complements()
@@ -1763,7 +1766,7 @@ CONTAINS
       ierr = pio_put_var(File, mdimname_desc, start, hist_coord_name(f))
     end do
 
-    deallocate(xyfill, allmdims)
+    deallocate(xyfill, allmdims, is_subcol, interp_output, restarthistory_tape)
     return
 
   end subroutine write_restart_history
@@ -2133,6 +2136,11 @@ CONTAINS
     gridsontape = -1
     do t = 1, ptapes
       do f = 1, nflds(t)
+        if (tape(t)%hlist(f)%avgflag .eq. 'I') then
+           hfile_inst(t) = .true.
+        else
+           hfile_accum(t) = .true.
+        end if
         call set_field_dimensions(tape(t)%hlist(f)%field)
 
         begdim1 = tape(t)%hlist(f)%field%begdim1
@@ -2359,6 +2367,7 @@ CONTAINS
         nfils(t) = 0
       else
         if (nfils(t) > 0) then
+          allocate(tape(t)%Files(1))
           call getfil (cpath(t), locfn)
           call cam_pio_openfile(tape(t)%Files(1), locfn, PIO_WRITE)
           call h_inquire (t)
@@ -4264,6 +4273,10 @@ end subroutine print_active_fldlst
 
     amode = PIO_CLOBBER
 
+    if (allocated(tape(t)%Files)) then
+       deallocate(tape(t)%Files)
+    end if
+
     if(restart) then
       allocate(tape(t)%Files(1))
       call cam_pio_createfile (tape(t)%Files(1), hrestpath(t), amode)
@@ -5578,13 +5591,13 @@ end subroutine print_active_fldlst
           duplicate = .false.
           do f = 1, t
             if (masterproc)then
-              if (trim(fname) == trim(nhfil(f,1))) then
+              if (trim(fname) == trim(nhfil(f,1)) .and. trim(fname) /= '') then
                  write(iulog,*)'WSHIST: New filename same as old file = ', trim(fname)
                  duplicate = .true.
-              else if (trim(fname_acc) == trim(nhfil(f,1))) then
+              else if (trim(fname_acc) == trim(nhfil(f,1)) .and. trim(fname_acc) /= '') then
                  write(iulog,*)'WSHIST: New accumulated filename same as old file = ', trim(fname_acc)
                  duplicate = .true.
-              else if (trim(fname_inst) == trim(nhfil(f,2))) then
+              else if (trim(fname_inst) == trim(nhfil(f,2)) .and. trim(fname_inst) /= '') then
                  write(iulog,*)'WSHIST: New instantaneous filename same as old file = ', trim(fname_inst)
                  duplicate = .true.
               end if
@@ -5714,7 +5727,7 @@ end subroutine print_active_fldlst
                    ierr=pio_put_var (tape(t)%Files(f), tape(t)%timeid, (/start/),(/count1/),(/time/))
                 end if                   
              else
-                if (hfile_accum(t)) then
+                if (hfile_accum(t) .and. .not. restart) then
                    ! accumulated tape - time is midpoint of time_bounds
                    ierr=pio_put_var (tape(t)%Files(f), tape(t)%timeid, (/start/),(/count1/),(/(tdata(1) + tdata(2)) / 2._r8/))
                 else
@@ -5767,9 +5780,9 @@ end subroutine print_active_fldlst
                      cycle
                   end if
                else
-                  if ((tape(t)%hlist(fld)%avgflag .eq. 'I') .and. hfile_accum(t)) then
+                  if ((tape(t)%hlist(fld)%avgflag .eq. 'I') .and. hfile_accum(t) .and. .not. restart) then
                      cycle
-                  else if ((tape(t)%hlist(fld)%avgflag .ne. 'I') .and. hfile_inst(t)) then
+                  else if ((tape(t)%hlist(fld)%avgflag .ne. 'I') .and. hfile_inst(t) .and. .not. restart) then
                      cycle
                   end if
                end if
