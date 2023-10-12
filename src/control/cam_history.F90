@@ -533,9 +533,6 @@ CONTAINS
         tape(t)%hlist(f)%field%meridional_complement = -1
         tape(t)%hlist(f)%field%zonal_complement = -1
       end do
-!      if (.not. hfile_accum(t) .and. .not. hfile_inst(t)) then
-!         hfile_accum(t) = .true.
-!      end if
     end do
     ! Setup vector pairs for unstructured grid interpolation
     call setup_interpolation_and_define_vector_complements()
@@ -6490,9 +6487,20 @@ end subroutine print_active_fldlst
           ! Must position auxiliary files if not full
           !
           if (.not.nlend .and. .not.lfill(t)) then
-            do f = 1, size(tape(t)%Files)
-               call cam_PIO_openfile (tape(t)%Files(f), nhfil(t,f), PIO_WRITE)
-            end do
+            if (allocated(tape(t)%Files)) then
+               deallocate(tape(t)%Files)
+            end if
+            if (hfile_accum(t) .and. hfile_inst(t)) then
+               allocate(tape(t)%Files(2))
+               call cam_PIO_openfile (tape(t)%Files(1), nhfil(t,1), PIO_WRITE)
+               call cam_PIO_openfile (tape(t)%Files(2), nhfil(t,2), PIO_WRITE)
+            else if (hfile_accum(t)) then
+               allocate(tape(t)%Files(1))
+               call cam_PIO_openfile (tape(t)%Files(1), nhfil(t,1), PIO_WRITE)
+            else if (hfile_inst(t)) then
+               allocate(tape(t)%Files(1))
+               call cam_PIO_openfile (tape(t)%Files(1), nhfil(t,2), PIO_WRITE)
+            end if
             call h_inquire(t)
           else
             deallocate(tape(t)%Files)

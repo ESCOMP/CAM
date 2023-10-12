@@ -65,7 +65,7 @@ class SCT(SystemTestsCompareTwo):
                                 success_change=False,
                                 ignore_fieldlist_diffs=False):
         with self._test_status:
-            stat,netcdf_filename,err=run_cmd('ls ./run/case2run/*h1*8400.nc ')
+            stat,netcdf_filename,err=run_cmd('ls ./run/case2run/*h1a*8400.nc ')
             stat,DIFFs,err=run_cmd('ncdump -ff -p 9,17 -v QDIFF,TDIFF '+netcdf_filename+' | egrep //\.\*DIFF | sed s/^\ \*// | sed s/^0,/0.0,/ | sed s/^0\;/0.0\;/ | sed s/\[,\;\].\*// |  uniq')
             array_of_DIFFs=DIFFs.split("\n")
             answer=max([abs(float(x)) for x in array_of_DIFFs])
