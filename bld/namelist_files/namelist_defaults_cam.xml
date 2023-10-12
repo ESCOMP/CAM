@@ -2272,7 +2272,7 @@
 <cld_macmic_num_steps microphys="mg2" clubb_sgs="1" dtime="450" > 2 </cld_macmic_num_steps>
 <cld_macmic_num_steps microphys="mg2" clubb_sgs="1" dtime="225" > 1 </cld_macmic_num_steps>
 <cld_macmic_num_steps microphys="mg3" clubb_sgs="1" dtime="450" > 2 </cld_macmic_num_steps>
-<cld_macmic_num_steps microphys="mg3" clubb_sgs="1" dtime="225" > 1 </cld_macmic_num_steps
+<cld_macmic_num_steps microphys="mg3" clubb_sgs="1" dtime="225" > 1 </cld_macmic_num_steps>
 
 <!-- Ice nucleation -->
 <nucleate_ice_subgrid                                  >1.0D0</nucleate_ice_subgrid>
