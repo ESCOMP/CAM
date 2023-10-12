@@ -229,11 +229,9 @@ subroutine phys_ctl_readnl(nlfile)
    endif
 
    ! Add a check to make sure CLUBB and MG are used together
-   if ( do_clubb_sgs .and. .not. use_spcam) then
-      if ( (microp_scheme .ne. 'MG') .and. (microp_scheme .ne. 'PUMAS') ) then
-         write(iulog,*)'CLUBB is only compatible with MG or PUMAS microphysics.  Quiting'
-         call endrun('CLUBB and microphysics schemes incompatible')
-      endif
+   if ( do_clubb_sgs .and. ( microp_scheme .ne. 'MG') .and. .not. use_spcam) then
+      write(iulog,*)'CLUBB is only compatible with MG microphysics.  Quiting'
+      call endrun('CLUBB and microphysics schemes incompatible')
    endif
 
    ! Check that eddy_scheme, macrop_scheme, shallow_scheme are all set to CLUBB_SGS if do_clubb_sgs is true
@@ -270,7 +268,7 @@ subroutine phys_ctl_readnl(nlfile)
 
    ! Macro/micro co-substepping support.
    if (cld_macmic_num_steps > 1) then
-      if ((microp_scheme /= "MG" .and. microp_scheme /= "PUMAS") .or. (macrop_scheme /= "park" .and. macrop_scheme /= "CLUBB_SGS")) then
+      if (microp_scheme /= "MG" .or. (macrop_scheme /= "park" .and. macrop_scheme /= "CLUBB_SGS")) then
          call endrun ("Setting cld_macmic_num_steps > 1 is only &
               &supported with Park or CLUBB macrophysics and MG microphysics.")
       end if

@@ -229,7 +229,7 @@ contains
        ! cloud water
        if( microp_scheme == 'RK' ) then
           call rk_stratiform_register()
-       elseif( microp_scheme == 'MG' .or. microp_scheme == 'PUMAS' ) then
+       elseif( microp_scheme == 'MG' ) then
           if (.not. do_clubb_sgs) call macrop_driver_register()
           call microp_aero_register()
           call microp_driver_register()
@@ -919,7 +919,7 @@ contains
 
     if( microp_scheme == 'RK' ) then
        call rk_stratiform_init()
-    elseif( microp_scheme == 'MG' .or. microp_scheme == 'PUMAS' ) then
+    elseif( microp_scheme == 'MG' ) then
        if (.not. do_clubb_sgs) call macrop_driver_init(pbuf2d)
        call microp_aero_init(phys_state,pbuf2d)
        call microp_driver_init(pbuf2d)
@@ -2499,7 +2499,7 @@ contains
 
        call t_stopf('rk_stratiform_tend')
 
-    elseif( microp_scheme == 'MG' .or. microp_scheme == 'PUMAS' ) then
+    elseif( microp_scheme == 'MG' ) then
        ! Start co-substepping of macrophysics and microphysics
        cld_macmic_ztodt = ztodt/cld_macmic_num_steps
 
