@@ -2177,7 +2177,6 @@
 <micro_mg_do_hail                       > .false. </micro_mg_do_hail>
 <micro_mg_do_graupel                    > .false. </micro_mg_do_graupel>
 <micro_mg_do_graupel microphys="mg3"    > .true. </micro_mg_do_graupel>
-<micro_mg_do_graupel microphys="pumas"  > .true. </micro_mg_do_graupel>
 <graupel_in_rad                         > .false. </graupel_in_rad>
 
 <microp_scheme                          >NONE         </microp_scheme>
@@ -2187,7 +2186,7 @@
 <microp_scheme microphys="spcam_m2005"  >SPCAM_m2005  </microp_scheme>
 <microp_scheme microphys="spcam_sam1mom">SPCAM_sam1mom</microp_scheme>
 <microp_scheme microphys="mg3">MG</microp_scheme>
-<microp_scheme microphys="pumas">PUMAS</microp_scheme>
+<microp_scheme microphys="pumas">MG</microp_scheme>
 
 <micro_mg_version     microphys="mg1">    1          </micro_mg_version>
 <micro_mg_sub_version microphys="mg1">    0          </micro_mg_sub_version>
@@ -2200,10 +2199,6 @@
 <micro_mg_version     microphys="mg3">    3          </micro_mg_version>
 <micro_mg_sub_version microphys="mg3">    0          </micro_mg_sub_version>
 <micro_mg_num_steps   microphys="mg3">    1          </micro_mg_num_steps>
-
-<micro_mg_version     microphys="pumas">    3          </micro_mg_version>
-<micro_mg_sub_version microphys="pumas">    0          </micro_mg_sub_version>
-<micro_mg_num_steps   microphys="pumas">    1          </micro_mg_num_steps>
 
 <micro_do_massless_droplet_destroyer                             >  .false. </micro_do_massless_droplet_destroyer>
 <micro_do_massless_droplet_destroyer   microphys="mg2" silhs="1" >  .true.  </micro_do_massless_droplet_destroyer>
@@ -2273,21 +2268,17 @@
 <cld_macmic_num_steps microphys="mg2" clubb_sgs="1" dtime="600" > 1 </cld_macmic_num_steps>
 <cld_macmic_num_steps microphys="mg2" clubb_sgs="1" dtime="300" > 1 </cld_macmic_num_steps>
 <cld_macmic_num_steps microphys="mg3" clubb_sgs="1"> 3 </cld_macmic_num_steps>
-<cld_macmic_num_steps microphys="pumas" clubb_sgs="1"> 3 </cld_macmic_num_steps>
 <!-- hi-res and var-res support for ne120, ARCTIC, ARCTCIGRIS, CONUS -->
 <cld_macmic_num_steps microphys="mg2" clubb_sgs="1" dtime="450" > 2 </cld_macmic_num_steps>
 <cld_macmic_num_steps microphys="mg2" clubb_sgs="1" dtime="225" > 1 </cld_macmic_num_steps>
 <cld_macmic_num_steps microphys="mg3" clubb_sgs="1" dtime="450" > 2 </cld_macmic_num_steps>
 <cld_macmic_num_steps microphys="mg3" clubb_sgs="1" dtime="225" > 1 </cld_macmic_num_steps
-<cld_macmic_num_steps microphys="pumas" clubb_sgs="1" dtime="450" > 2 </cld_macmic_num_steps>
-<cld_macmic_num_steps microphys="pumas" clubb_sgs="1" dtime="225" > 1 </cld_macmic_num_steps>
 
 <!-- Ice nucleation -->
 <nucleate_ice_subgrid                                  >1.0D0</nucleate_ice_subgrid>
 <nucleate_ice_subgrid microphys="mg1"                  >1.2D0</nucleate_ice_subgrid>
 <nucleate_ice_subgrid microphys="mg2"                  >1.2D0</nucleate_ice_subgrid>
 <nucleate_ice_subgrid microphys="mg3"                  >1.2D0</nucleate_ice_subgrid>
-<nucleate_ice_subgrid microphys="pumas"                >1.2D0</nucleate_ice_subgrid>
 <nucleate_ice_subgrid microphys="mg2" silhs="1"        >1.0D0</nucleate_ice_subgrid>
 
 
@@ -2295,7 +2286,6 @@
 <nucleate_ice_subgrid_strat microphys="mg1"            >1.2D0</nucleate_ice_subgrid_strat>
 <nucleate_ice_subgrid_strat microphys="mg2"            >1.2D0</nucleate_ice_subgrid_strat>
 <nucleate_ice_subgrid_strat microphys="mg3"            >1.2D0</nucleate_ice_subgrid_strat>
-<nucleate_ice_subgrid_strat microphys="pumas"            >1.2D0</nucleate_ice_subgrid_strat>
 
 <use_hetfrz_classnuc               >.false.</use_hetfrz_classnuc>
 <use_hetfrz_classnuc phys="cam6"   >.true.</use_hetfrz_classnuc>
@@ -2438,7 +2428,6 @@
 <sol_facti_cloud_borne clubb_sgs="1"                                  >0.6D0</sol_facti_cloud_borne>
 <sol_facti_cloud_borne clubb_sgs="1" microphys="mg2"                  >1.0D0</sol_facti_cloud_borne>
 <sol_facti_cloud_borne clubb_sgs="1" microphys="mg3"                  >1.0D0</sol_facti_cloud_borne>
-<sol_facti_cloud_borne clubb_sgs="1" microphys="pumas"                >1.0D0</sol_facti_cloud_borne>
 
 <sol_factb_interstitial                >0.1D0</sol_factb_interstitial>
 <sol_factb_interstitial unicon="1"     >1.0D0</sol_factb_interstitial>
@@ -2560,7 +2549,6 @@
 <cldfrc_rhminl                   phys="cam_dev" carma="cirrus"        > 0.910D0 </cldfrc_rhminl>
 <cldfrc_rhminl                   phys="cam_dev" microphys="mg2"       > 0.950D0 </cldfrc_rhminl>
 <cldfrc_rhminl                   phys="cam_dev" microphys="mg3"       > 0.950D0 </cldfrc_rhminl>
-<cldfrc_rhminl                   phys="cam_dev" microphys="pumas"     > 0.950D0 </cldfrc_rhminl>
 <cldfrc_rhminl                   phys="cam_dev"                       > 0.8975D0 </cldfrc_rhminl>
 <cldfrc_rhminl hgrid="1.9x2.5"   phys="cam_dev" microphys="mg1"       > 0.8875D0 </cldfrc_rhminl>
 <cldfrc_rhminl hgrid="1.9x2.5"   phys="cam_dev"                       > 0.9125D0 </cldfrc_rhminl>
@@ -2727,12 +2715,10 @@
 <zmconv_momcu                                                         > 0.4000D0 </zmconv_momcu>
 <zmconv_momcu  clubb_sgs="1" microphys="mg2"                          > 0.7000D0 </zmconv_momcu>
 <zmconv_momcu  clubb_sgs="1" microphys="mg3"                          > 0.7000D0 </zmconv_momcu>
-<zmconv_momcu  clubb_sgs="1" microphys="pumas"                        > 0.7000D0 </zmconv_momcu>
 
 <zmconv_momcd                                                         > 0.4000D0 </zmconv_momcd>
 <zmconv_momcd  clubb_sgs="1" microphys="mg2"                          > 0.7000D0 </zmconv_momcd>
 <zmconv_momcd  clubb_sgs="1" microphys="mg3"                          > 0.7000D0 </zmconv_momcd>
-<zmconv_momcd  clubb_sgs="1" microphys="pumas"                        > 0.7000D0 </zmconv_momcd>
 
 <zmconv_c0_lnd                                                        > 0.0030D0 </zmconv_c0_lnd>
 <zmconv_c0_lnd                                    phys="cam5"         > 0.0059D0 </zmconv_c0_lnd>
@@ -2750,7 +2736,6 @@
 <zmconv_c0_lnd                   hgrid="C384"     phys="cam_dev"      > 0.0035D0 </zmconv_c0_lnd>
 <zmconv_c0_lnd  microphys="mg2"  clubb_sgs="1"    phys="cam_dev"      > 0.0075D0 </zmconv_c0_lnd>
 <zmconv_c0_lnd  microphys="mg3"  clubb_sgs="1"    phys="cam_dev"      > 0.0075D0 </zmconv_c0_lnd>
-<zmconv_c0_lnd  microphys="pumas" clubb_sgs="1"   phys="cam_dev"      > 0.0075D0 </zmconv_c0_lnd>
 <zmconv_c0_lnd  dyn="fv"                          phys="cam4"         > 0.0035D0 </zmconv_c0_lnd>
 <zmconv_c0_lnd  dyn="se"                          phys="cam4"         > 0.0035D0 </zmconv_c0_lnd>
 <zmconv_c0_lnd                   hgrid="48x96"    phys="cam4"         > 0.0020D0 </zmconv_c0_lnd>
@@ -2772,7 +2757,6 @@
 <zmconv_c0_ocn                   hgrid="C384"     phys="cam_dev"      > 0.0035D0 </zmconv_c0_ocn>
 <zmconv_c0_ocn  microphys="mg2"  clubb_sgs="1"    phys="cam_dev"      > 0.0300D0 </zmconv_c0_ocn>
 <zmconv_c0_ocn  microphys="mg3"  clubb_sgs="1"    phys="cam_dev"      > 0.0300D0 </zmconv_c0_ocn>
-<zmconv_c0_ocn  microphys="pumas" clubb_sgs="1"   phys="cam_dev"      > 0.0300D0 </zmconv_c0_ocn>
 <zmconv_c0_ocn  dyn="fv"                          phys="cam4"         > 0.0035D0 </zmconv_c0_ocn>
 <zmconv_c0_ocn  dyn="se"                          phys="cam4"         > 0.0035D0 </zmconv_c0_ocn>
 <zmconv_c0_ocn                   hgrid="48x96"    phys="cam4"         > 0.0020D0 </zmconv_c0_ocn>
@@ -2783,7 +2767,6 @@
 <zmconv_ke_lnd                                                        > 3.0E-6 </zmconv_ke_lnd>
 <zmconv_ke_lnd  clubb_sgs="1"  microphys="mg2"                        > 1.0E-5 </zmconv_ke_lnd>
 <zmconv_ke_lnd  clubb_sgs="1"  microphys="mg3"                        > 1.0E-5 </zmconv_ke_lnd>
-<zmconv_ke_lnd  clubb_sgs="1"  microphys="pumas"                      > 1.0E-5 </zmconv_ke_lnd>
 
 <zmconv_ke                                                            > 3.0E-6 </zmconv_ke>
 <zmconv_ke      dyn="fv"                                              > 5.0E-6 </zmconv_ke>
@@ -2941,7 +2924,6 @@
 <water_species_in_air microphys="mg1"                    >'Q','CLDLIQ','CLDICE'                           </water_species_in_air>
 <water_species_in_air microphys="mg2"                    >'Q','CLDLIQ','CLDICE','RAINQM','SNOWQM'         </water_species_in_air>
 <water_species_in_air microphys="mg3"                    >'Q','CLDLIQ','CLDICE','RAINQM','SNOWQM','GRAUQM'</water_species_in_air>
-<water_species_in_air microphys="pumas"                  >'Q','CLDLIQ','CLDICE','RAINQM','SNOWQM','GRAUQM'</water_species_in_air>
 
 <!-- ================================================================== -->
 <!-- Defaults for FV3                                                   -->
@@ -2984,7 +2966,6 @@
 <fv3_nwat phys="cam_dev"                                                    > 5         </fv3_nwat>
 <fv3_nwat phys="cam6"    microphys="mg3"                                    > 6         </fv3_nwat>
 <fv3_nwat phys="cam_dev" microphys="mg3"                                    > 6         </fv3_nwat>
-<fv3_nwat phys="cam_dev" microphys="pumas"                                  > 6         </fv3_nwat>
 <fv3_nwat phys="held_suarez"                                                > 1         </fv3_nwat>
 <fv3_nwat phys="adiabatic"                                                  > 1         </fv3_nwat>
 <fv3_nwat phys="kessler"                                                    > 3         </fv3_nwat>
