@@ -10,7 +10,6 @@ use wv_saturation,    only: qsat_water, svp_water, svp_ice, &
                             svp_water_vect, svp_ice_vect
 use cam_logfile,      only: iulog
 use cam_abortutils,   only: endrun
-use phys_control,     only: cam_physpkg_is
 
 implicit none
 private
@@ -39,6 +38,7 @@ real(r8) :: cldfrc2m_rhmaxis
 real(r8) :: cldfrc2m_qist_min          ! Minimum in-stratus ice IWC constraint [ kg/kg ]
 real(r8) :: cldfrc2m_qist_max          ! Maximum in-stratus ice IWC constraint [ kg/kg ]
 logical  :: cldfrc2m_do_subgrid_growth = .false.
+logical  :: cldfrc2m_do_avg_aist_algs = .false.
 ! -------------------------- !
 ! Parameters for Ice Stratus !
 ! -------------------------- !
@@ -83,7 +83,7 @@ subroutine cldfrc2m_readnl(nlfile)
    character(len=*), parameter :: subname = 'cldfrc2m_readnl'
 
    namelist /cldfrc2m_nl/ cldfrc2m_rhmini, cldfrc2m_rhmaxi, cldfrc2m_rhminis, cldfrc2m_rhmaxis, cldfrc2m_do_subgrid_growth, &
-                          cldfrc2m_qist_min, cldfrc2m_qist_max
+                          cldfrc2m_qist_min, cldfrc2m_qist_max, cldfrc2m_do_avg_aist_algs
    !-----------------------------------------------------------------------------
 
    if (masterproc) then
@@ -114,6 +114,7 @@ subroutine cldfrc2m_readnl(nlfile)
    call mpi_bcast(cldfrc2m_qist_min,          1, mpi_real8,  masterprocid, mpicom, ierr)
    call mpi_bcast(cldfrc2m_qist_max,          1, mpi_real8,  masterprocid, mpicom, ierr)
    call mpi_bcast(cldfrc2m_do_subgrid_growth, 1, mpi_logical,masterprocid, mpicom, ierr)
+   call mpi_bcast(cldfrc2m_do_avg_aist_algs,  1, mpi_logical,masterprocid, mpicom, ierr)
 
 end subroutine cldfrc2m_readnl
 
@@ -141,6 +142,7 @@ subroutine cldfrc2m_init()
       write(iulog,*) '  rhminis           = ', rhminis_const
       write(iulog,*) '  rhmaxis           = ', rhmaxis_const
       write(iulog,*) '  do_subgrid_growth = ', cldfrc2m_do_subgrid_growth
+      write(iulog,*) '  do_avg_aist_algs  = ', cldfrc2m_do_avg_aist_algs
    end if
 
 end subroutine cldfrc2m_init
@@ -882,7 +884,7 @@ subroutine aist_single(qv, T, p, qi, landfrac, snowh, aist, &
 
            !minimum
            if (icimr.lt.cldfrc2m_qist_min) then
-             if (cam_physpkg_is("cam_dev")) then
+             if (cldfrc2m_do_avg_aist_algs) then
                !
                ! Take the geometric mean of the iceopt=4 and iceopt=5 values.
                ! Mods developed by Thomas Toniazzo for NorESM.
@@ -1143,7 +1145,7 @@ subroutine aist_vector(qv_in, T_in, p_in, qi_in, ni_in, landfrac_in, snowh_in, a
 
            !minimum
            if (icimr.lt.cldfrc2m_qist_min) then
-             if (cam_physpkg_is("cam_dev")) then
+             if (cldfrc2m_do_avg_aist_algs) then
                !
                ! Take the geometric mean of the iceopt=4 and iceopt=5 values.
                ! Mods developed by Thomas Toniazzo for NorESM.
