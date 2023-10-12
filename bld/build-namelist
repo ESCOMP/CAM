@@ -3129,6 +3129,7 @@ add_default($nl, 'microp_aero_npccn_scale');
 add_default($nl, 'microp_aero_wsub_scale');
 add_default($nl, 'microp_aero_wsubi_scale');
 add_default($nl, 'microp_aero_wsub_min');
+add_default($nl, 'microp_aero_wsub_min_asf');
 add_default($nl, 'microp_aero_wsubi_min');
 
 # Ice nucleation options

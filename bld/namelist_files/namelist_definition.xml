@@ -2916,7 +2916,7 @@ Default: 1.0
 <entry id="microp_aero_wsub_scale" type="real" category="microphys"
        group="microp_aero_nl" valid_values="" >
 Unitless scaling factor for the liquid droplet subgrid scale vertical velocity during aerosol activation.
-Default: 1.0
+Default: set by build-namelist
 </entry>
 
 <entry id="microp_aero_wsubi_scale" type="real" category="microphys"
@@ -2927,8 +2927,14 @@ Default: 1.0
 
 <entry id="microp_aero_wsub_min" type="real" category="microphys"
        group="microp_aero_nl" valid_values="" >
-Minimum subgrid vertical velocity for liquid droplets during aerosol activation with units of (m s-1).
-Default: 0.2 m s-1
+Minimum subgrid vertical velocity (before scale factor) for liquid droplets during aerosol activation with units of (m s-1).
+Default: set by build-namelist
+</entry>
+
+<entry id="microp_aero_wsub_min_asf" type="real" category="microphys"
+       group="microp_aero_nl" valid_values="" >
+Minimum subgrid vertical velocity (after scale factor) for liquid droplets during aerosol activation with units of (m s-1).
+Default: set by build-namelist
 </entry>
 
 <entry id="microp_aero_wsubi_min" type="real" category="microphys"
