@@ -165,7 +165,7 @@ module cam_history
   character(len=*), parameter   :: history_namelist = 'cam_history_nl'
   character(len=max_string_len) :: hrestpath(ptapes) = (/(' ',idx=1,ptapes)/) ! Full history restart pathnames
   character(len=max_string_len) :: nfpath(ptapes) = (/(' ',idx=1,ptapes)/) ! Array of first pathnames, for header
-  character(len=max_string_len) :: cpath(ptapes)                   ! Array of current pathnames
+  character(len=max_string_len) :: cpath(ptapes,maxsplitfiles)     ! Array of current pathnames
   character(len=max_string_len) :: nhfil(ptapes,maxsplitfiles)     ! Array of current file names
   character(len=1)  :: avgflag_pertape(ptapes) = (/(' ',idx=1,ptapes)/) ! per tape averaging flag
   character(len=16)  :: logname             ! user name
@@ -1090,9 +1090,10 @@ CONTAINS
     rvindex = rvindex + 1
     restartvars(rvindex)%name = 'cpath'
     restartvars(rvindex)%type = pio_char
-    restartvars(rvindex)%ndims = 2
+    restartvars(rvindex)%ndims = 3
     restartvars(rvindex)%dims(1) = max_string_len_dim_ind
     restartvars(rvindex)%dims(2) = ptapes_dim_ind
+    restartvars(rvindex)%dims(3) = max_num_split_files
 
     rvindex = rvindex + 1
     restartvars(rvindex)%name = 'nhfil'
@@ -1631,7 +1632,7 @@ CONTAINS
     vdesc => restartvar_getdesc('nfpath')
     ierr= pio_put_var(File, vdesc, nfpath(1:ptapes))
     vdesc => restartvar_getdesc('cpath')
-    ierr= pio_put_var(File, vdesc,  cpath(1:ptapes))
+    ierr= pio_put_var(File, vdesc, cpath(1:ptapes,:))
     vdesc => restartvar_getdesc('nhfil')
     ierr= pio_put_var(File, vdesc, nhfil(1:ptapes,:))
     vdesc => restartvar_getdesc('ndens')
@@ -1911,7 +1912,7 @@ CONTAINS
     ierr = pio_inq_varid(File, 'nfpath', vdesc)
     ierr = pio_get_var(File, vdesc, nfpath(1:mtapes))
     ierr = pio_inq_varid(File, 'cpath', vdesc)
-    ierr = pio_get_var(File, vdesc, cpath(1:mtapes))
+    ierr = pio_get_var(File, vdesc, cpath(1:mtapes,:))
     ierr = pio_inq_varid(File, 'nhfil', vdesc)
     ierr = pio_get_var(File, vdesc, nhfil(1:mtapes,:))
     ierr = pio_inq_varid(File, 'hrestpath', vdesc)
@@ -2060,7 +2061,8 @@ CONTAINS
 
 
       call strip_null(nfpath(t))
-      call strip_null(cpath(t))
+      call strip_null(cpath(t,1))
+      call strip_null(cpath(t,2))
       call strip_null(hrestpath(t))
       allocate(tape(t)%hlist(nflds(t)))
 
@@ -2238,6 +2240,9 @@ CONTAINS
         ! Open history restart file
         !
         call getfil (hrestpath(t), locfn)
+        if (allocated(tape(t)%Files)) then
+           deallocate(tape(t)%Files)
+        end if
         allocate(tape(t)%Files(1))
         call cam_pio_openfile(tape(t)%Files(1), locfn, 0)
         !
@@ -2357,7 +2362,6 @@ CONTAINS
     !
     ! NOTE:  No need to perform this operation for IC history files or empty files
     !
-
     do t=1,mtapes
       if (is_initfile(file_index=t)) then
         ! Initialize filename specifier for IC file
@@ -2366,10 +2370,25 @@ CONTAINS
       else if (nflds(t) == 0) then
         nfils(t) = 0
       else
+        if (allocated(tape(t)%Files)) then
+           deallocate(tape(t)%Files)
+        end if
         if (nfils(t) > 0) then
-          allocate(tape(t)%Files(1))
-          call getfil (cpath(t), locfn)
-          call cam_pio_openfile(tape(t)%Files(1), locfn, PIO_WRITE)
+           if (hfile_accum(t) .and. hfile_inst(t)) then
+              allocate(tape(t)%Files(2))
+              call getfil (cpath(t,1), locfn)
+              call cam_pio_openfile(tape(t)%Files(1), locfn, PIO_WRITE)
+              call getfil (cpath(t,2), locfn)
+              call cam_pio_openfile(tape(t)%Files(2), locfn, PIO_WRITE)
+           else if (hfile_accum(t)) then
+              allocate(tape(t)%Files(1))
+              call getfil (cpath(t,1), locfn)
+              call cam_pio_openfile(tape(t)%Files(1), locfn, PIO_WRITE)
+           else if (hfile_inst(t)) then
+              allocate(tape(t)%Files(1))
+              call getfil (cpath(t,2), locfn)
+              call cam_pio_openfile(tape(t)%Files(1), locfn, PIO_WRITE)
+           end if
           call h_inquire (t)
           if(is_satfile(t)) then
             !  Initialize the sat following history subsystem
@@ -2388,7 +2407,9 @@ CONTAINS
             deallocate(tape(t)%hlist(f)%varid)
             nullify(tape(t)%hlist(f)%varid)
           end do
-          call cam_pio_closefile(tape(t)%Files(1))
+          do f = 1, size(tape(t)%Files)
+             call cam_pio_closefile(tape(t)%Files(f))
+          end do
           nfils(t) = 0
         end if
       end if
@@ -2418,7 +2439,7 @@ CONTAINS
     !
     integer, intent(in) :: tape  ! Tape number
 
-    get_hfilepath = cpath( tape )
+    get_hfilepath = cpath( tape, 1 )
   end function get_hfilepath
 
   !#######################################################################
@@ -3946,7 +3967,7 @@ end subroutine print_active_fldlst
     !
     ! Local workspace
     !
-    integer                  :: f            ! field index
+    integer                  :: f, fld        ! file, field index
     integer                  :: ierr
     integer                  :: i
     integer                  :: num_patches
@@ -3964,98 +3985,113 @@ end subroutine print_active_fldlst
     !
     ! Create variables for model timing and header information
     !
-    if(.not. is_satfile(t)) then
-      ierr=pio_inq_varid (tape(t)%Files(1),'ndcur   ',    tape(t)%ndcurid)
-      ierr=pio_inq_varid (tape(t)%Files(1),'nscur   ',    tape(t)%nscurid)
-      ierr=pio_inq_varid (tape(t)%Files(1),'nsteph  ',    tape(t)%nstephid)
+    do f = 1, size(tape(t)%Files)
+       if(.not. is_satfile(t)) then
+         ierr=pio_inq_varid (tape(t)%Files(f),'ndcur   ',    tape(t)%ndcurid)
+         ierr=pio_inq_varid (tape(t)%Files(f),'nscur   ',    tape(t)%nscurid)
+         ierr=pio_inq_varid (tape(t)%Files(f),'nsteph  ',    tape(t)%nstephid)
 
-      ierr=pio_inq_varid (tape(t)%Files(1),'time_bounds',   tape(t)%tbndid)
-      ierr=pio_inq_varid (tape(t)%Files(1),'date_written',tape(t)%date_writtenid)
-      ierr=pio_inq_varid (tape(t)%Files(1),'time_written',tape(t)%time_writtenid)
+         ierr=pio_inq_varid (tape(t)%Files(f),'time_bounds',   tape(t)%tbndid)
+         ierr=pio_inq_varid (tape(t)%Files(f),'date_written',tape(t)%date_writtenid)
+         ierr=pio_inq_varid (tape(t)%Files(f),'time_written',tape(t)%time_writtenid)
 #if ( defined BFB_CAM_SCAM_IOP )
-      ierr=pio_inq_varid (tape(t)%Files(1),'tsec    ',tape(t)%tsecid)
-      ierr=pio_inq_varid (tape(t)%Files(1),'bdate   ',tape(t)%bdateid)
+         ierr=pio_inq_varid (tape(t)%Files(f),'tsec    ',tape(t)%tsecid)
+         ierr=pio_inq_varid (tape(t)%Files(f),'bdate   ',tape(t)%bdateid)
 #endif
-      if (.not. is_initfile(file_index=t) ) then
-        ! Don't write the GHG/Solar forcing data to the IC file.  It is never
-        ! read from that file so it's confusing to have it there.
-        ierr=pio_inq_varid (tape(t)%Files(1),'co2vmr  ',    tape(t)%co2vmrid)
-        ierr=pio_inq_varid (tape(t)%Files(1),'ch4vmr  ',    tape(t)%ch4vmrid)
-        ierr=pio_inq_varid (tape(t)%Files(1),'n2ovmr  ',    tape(t)%n2ovmrid)
-        ierr=pio_inq_varid (tape(t)%Files(1),'f11vmr  ',    tape(t)%f11vmrid)
-        ierr=pio_inq_varid (tape(t)%Files(1),'f12vmr  ',    tape(t)%f12vmrid)
-        ierr=pio_inq_varid (tape(t)%Files(1),'sol_tsi ',    tape(t)%sol_tsiid)
-        if (solar_parms_on) then
-          ierr=pio_inq_varid (tape(t)%Files(1),'f107    ',    tape(t)%f107id)
-          ierr=pio_inq_varid (tape(t)%Files(1),'f107a   ',    tape(t)%f107aid)
-          ierr=pio_inq_varid (tape(t)%Files(1),'f107p   ',    tape(t)%f107pid)
-          ierr=pio_inq_varid (tape(t)%Files(1),'kp      ',    tape(t)%kpid)
-          ierr=pio_inq_varid (tape(t)%Files(1),'ap      ',    tape(t)%apid)
-        endif
-        if (solar_wind_on) then
-          ierr=pio_inq_varid (tape(t)%Files(1),'byimf', tape(t)%byimfid)
-          ierr=pio_inq_varid (tape(t)%Files(1),'bzimf', tape(t)%bzimfid)
-          ierr=pio_inq_varid (tape(t)%Files(1),'swvel', tape(t)%swvelid)
-          ierr=pio_inq_varid (tape(t)%Files(1),'swden', tape(t)%swdenid)
-        endif
-        if (epot_active) then
-          ierr=pio_inq_varid (tape(t)%Files(1),'colat_crit1', tape(t)%colat_crit1_id)
-          ierr=pio_inq_varid (tape(t)%Files(1),'colat_crit2', tape(t)%colat_crit2_id)
-        endif
-      end if
-    end if
-    ierr=pio_inq_varid (tape(t)%Files(1),'date    ',    tape(t)%dateid)
-    ierr=pio_inq_varid (tape(t)%Files(1),'datesec ',    tape(t)%datesecid)
-    ierr=pio_inq_varid (tape(t)%Files(1),'time    ',    tape(t)%timeid)
+         if (.not. is_initfile(file_index=t) ) then
+           ! Don't write the GHG/Solar forcing data to the IC file.  It is never
+           ! read from that file so it's confusing to have it there.
+           ierr=pio_inq_varid (tape(t)%Files(f),'co2vmr  ',    tape(t)%co2vmrid)
+           ierr=pio_inq_varid (tape(t)%Files(f),'ch4vmr  ',    tape(t)%ch4vmrid)
+           ierr=pio_inq_varid (tape(t)%Files(f),'n2ovmr  ',    tape(t)%n2ovmrid)
+           ierr=pio_inq_varid (tape(t)%Files(f),'f11vmr  ',    tape(t)%f11vmrid)
+           ierr=pio_inq_varid (tape(t)%Files(f),'f12vmr  ',    tape(t)%f12vmrid)
+           ierr=pio_inq_varid (tape(t)%Files(f),'sol_tsi ',    tape(t)%sol_tsiid)
+           if (solar_parms_on) then
+             ierr=pio_inq_varid (tape(t)%Files(f),'f107    ',    tape(t)%f107id)
+             ierr=pio_inq_varid (tape(t)%Files(f),'f107a   ',    tape(t)%f107aid)
+             ierr=pio_inq_varid (tape(t)%Files(f),'f107p   ',    tape(t)%f107pid)
+             ierr=pio_inq_varid (tape(t)%Files(f),'kp      ',    tape(t)%kpid)
+             ierr=pio_inq_varid (tape(t)%Files(f),'ap      ',    tape(t)%apid)
+           endif
+           if (solar_wind_on) then
+             ierr=pio_inq_varid (tape(t)%Files(f),'byimf', tape(t)%byimfid)
+             ierr=pio_inq_varid (tape(t)%Files(f),'bzimf', tape(t)%bzimfid)
+             ierr=pio_inq_varid (tape(t)%Files(f),'swvel', tape(t)%swvelid)
+             ierr=pio_inq_varid (tape(t)%Files(f),'swden', tape(t)%swdenid)
+           endif
+           if (epot_active) then
+             ierr=pio_inq_varid (tape(t)%Files(f),'colat_crit1', tape(t)%colat_crit1_id)
+             ierr=pio_inq_varid (tape(t)%Files(f),'colat_crit2', tape(t)%colat_crit2_id)
+           endif
+         end if
+       end if
+       ierr=pio_inq_varid (tape(t)%Files(f),'date    ',    tape(t)%dateid)
+       ierr=pio_inq_varid (tape(t)%Files(f),'datesec ',    tape(t)%datesecid)
+       ierr=pio_inq_varid (tape(t)%Files(f),'time    ',    tape(t)%timeid)
 
+       !
+       ! Obtain variable name from ID which was read from restart file
+       !
+       do fld=1,nflds(t)
+         if (size(tape(t)%Files) > 1) then
+            ! we have two files - instantaneous and accumulated
+            if (f == 1) then
+               ! this is the accumulated file - skip instantaneous fields
+               if (tape(t)%hlist(fld)%avgflag == 'I') then
+                  cycle
+               end if
+            else
+               ! this is the instantaneous file - skip accumulated fields
+               if (tape(t)%hlist(fld)%avgflag /= 'I') then
+                  cycle
+               end if
+            end if
+         end if
 
-    !
-    ! Obtain variable name from ID which was read from restart file
-    !
-    do f=1,nflds(t)
-      if(.not. associated(tape(t)%hlist(f)%varid)) then
-        if (associated(tape(t)%patches)) then
-          allocate(tape(t)%hlist(f)%varid(size(tape(t)%patches)))
-        else
-          allocate(tape(t)%hlist(f)%varid(1))
-        end if
-      end if
-      !
-      ! If this field will be put out as columns then get column names for field
-      !
-      if (associated(tape(t)%patches)) then
-        num_patches = size(tape(t)%patches)
-        fldname = strip_suffix(tape(t)%hlist(f)%field%name)
-        do i = 1, num_patches
-          fname_tmp = trim(fldname)
-          call tape(t)%patches(i)%field_name(fname_tmp)
-          ierr = pio_inq_varid(tape(t)%Files(1), trim(fname_tmp), tape(t)%hlist(f)%varid(i))
-          call cam_pio_handle_error(ierr, 'H_INQUIRE: Error getting ID for '//trim(fname_tmp))
-          ierr = pio_get_att(tape(t)%Files(1), tape(t)%hlist(f)%varid(i), 'basename', basename)
-          call cam_pio_handle_error(ierr, 'H_INQUIRE: Error getting basename for '//trim(fname_tmp))
-          if (trim(fldname) /= trim(basename)) then
-            call endrun('H_INQUIRE: basename ('//trim(basename)//') does not match fldname ('//trim(fldname)//')')
-          end if
-        end do
-      else
-        fldname = tape(t)%hlist(f)%field%name
-        ierr = pio_inq_varid(tape(t)%Files(1), trim(fldname), tape(t)%hlist(f)%varid(1))
-        call cam_pio_handle_error(ierr, 'H_INQUIRE: Error getting ID for '//trim(fldname))
-      end if
-      if(tape(t)%hlist(f)%field%numlev>1) then
-        ierr = pio_inq_attlen(tape(t)%Files(1),tape(t)%hlist(f)%varid(1),'mdims', mdimsize)
-        if(.not. associated(tape(t)%hlist(f)%field%mdims)) then
-          allocate(tape(t)%hlist(f)%field%mdims(mdimsize))
-        end if
-        ierr=pio_get_att(tape(t)%Files(1),tape(t)%hlist(f)%varid(1),'mdims', &
-             tape(t)%hlist(f)%field%mdims(1:mdimsize))
-        if(mdimsize > int(maxvarmdims, kind=pio_offset_kind)) then
-           maxvarmdims = int(mdimsize)
-        end if
-      end if
+         if(.not. associated(tape(t)%hlist(fld)%varid)) then
+           if (associated(tape(t)%patches)) then
+             allocate(tape(t)%hlist(fld)%varid(size(tape(t)%patches)))
+           else
+             allocate(tape(t)%hlist(fld)%varid(1))
+           end if
+         end if
+         !
+         ! If this field will be put out as columns then get column names for field
+         !
+         if (associated(tape(t)%patches)) then
+           num_patches = size(tape(t)%patches)
+           fldname = strip_suffix(tape(t)%hlist(fld)%field%name)
+           do i = 1, num_patches
+             fname_tmp = trim(fldname)
+             call tape(t)%patches(i)%field_name(fname_tmp)
+             ierr = pio_inq_varid(tape(t)%Files(f), trim(fname_tmp), tape(t)%hlist(fld)%varid(i))
+             call cam_pio_handle_error(ierr, 'H_INQUIRE: Error getting ID for '//trim(fname_tmp))
+             ierr = pio_get_att(tape(t)%Files(f), tape(t)%hlist(fld)%varid(i), 'basename', basename)
+             call cam_pio_handle_error(ierr, 'H_INQUIRE: Error getting basename for '//trim(fname_tmp))
+             if (trim(fldname) /= trim(basename)) then
+               call endrun('H_INQUIRE: basename ('//trim(basename)//') does not match fldname ('//trim(fldname)//')')
+             end if
+           end do
+         else
+           fldname = tape(t)%hlist(fld)%field%name
+           ierr = pio_inq_varid(tape(t)%Files(f), trim(fldname), tape(t)%hlist(fld)%varid(1))
+           call cam_pio_handle_error(ierr, 'H_INQUIRE: Error getting ID for '//trim(fldname))
+         end if
+         if(tape(t)%hlist(fld)%field%numlev>1) then
+           ierr = pio_inq_attlen(tape(t)%Files(f),tape(t)%hlist(fld)%varid(1),'mdims', mdimsize)
+           if(.not. associated(tape(t)%hlist(fld)%field%mdims)) then
+             allocate(tape(t)%hlist(fld)%field%mdims(mdimsize))
+           end if
+           ierr=pio_get_att(tape(t)%Files(f),tape(t)%hlist(fld)%varid(1),'mdims', &
+                tape(t)%hlist(fld)%field%mdims(1:mdimsize))
+           if(mdimsize > int(maxvarmdims, kind=pio_offset_kind)) then
+              maxvarmdims = int(mdimsize)
+           end if
+         end if
 
+       end do
     end do
-
     if(masterproc) then
       write(iulog,*)'H_INQUIRE: Successfully opened netcdf file '
     end if
@@ -5626,11 +5662,12 @@ end subroutine print_active_fldlst
                   write(iulog,*)'WSHIST: instantaneous nhfil(',t,')=',trim(nhfil(t,2))
                end if
             end if
-            cpath(t) = nhfil(t,1)
-            if ( len_trim(nfpath(t)) == 0 ) nfpath(t) = cpath(t)
-          else
-             nhfil(t,1) = fname
-             nhfil(t,2) = fname
+            cpath(t,1) = nhfil(t,1)
+            cpath(t,2) = nhfil(t,2)
+            if ( len_trim(nfpath(t)) == 0 ) nfpath(t) = cpath(t, 1)
+!          else
+!             nhfil(t,1) = fname
+!             nhfil(t,2) = fname
           end if
           call h_define (t, restart)
         end if
