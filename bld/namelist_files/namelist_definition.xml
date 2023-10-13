@@ -5178,6 +5178,13 @@ Bretherton; 'HBR' for Rasch modified version of 'HB'.
 Default: set by build-namelist
 </entry>
 
+<entry id="do_hb_above_clubb" type="logical" category="pbl"
+       group="phys_ctl_nl" valid_values="" >
+Logical: If True activate Holtslag and Boville vertical diffusion scheme where CLUBB is not active
+         (note that CLUBB top is dynamic in each column)
+Default: Set by build-namelist.
+</entry>
+
 <!-- Convective Scavenging -->
 
 <entry id="convproc_do_aer" type="logical"  category="conv"
@@ -7903,7 +7910,7 @@ If &lt; 0, se_sponge_del4_nu_fac is automatically set based on model top locatio
 Default: Set by build-namelist.
 </entry>
 
-<entry id="se_sponge_del4_nu_div_fac" type="integer" category="se"
+<entry id="se_sponge_del4_nu_div_fac" type="real" category="se"
        group="dyn_se_inparm" valid_values="" >
 Divergence damping hyperviscosity coefficient se_nu_div [m^4/s] for u,v is increased to
 se_nu_p*se_sponge_del4_nu_div_fac following a hyperbolic tangent function
@@ -7917,7 +7924,7 @@ If &lt; 0, se_sponge_del4_nu_div_fac is automatically set based on model top loc
 Default: Set by build-namelist.
 </entry>
 
-<entry id="se_sponge_del4_lev" type="real" category="se"
+<entry id="se_sponge_del4_lev" type="integer" category="se"
        group="dyn_se_inparm" valid_values="" >
 Level index around which increased del4 damping is centered.
 
@@ -8149,6 +8156,17 @@ Default: Set by build-namelist.
 Number of threads to use when processing loops over threads.
 Normally equal to se_vert_num_threads.
 Default: Set by build-namelist.
+</entry>
+
+<entry id="se_pgf_formulation" type="integer" category="se"
+       group="dyn_se_inparm" valid_values="1,2" >
+
+  1: Exner version of pressure gradient force (PGF)
+  see Appendix A in https://agupubs.onlinelibrary.wiley.com/doi/epdf/10.1029/2022MS003192
+
+  2: Traditional pressure gradient formulation (grad p)
+
+  Default: Set by build-namelist.
 </entry>
 
 
