@@ -3154,13 +3154,13 @@ Default: set by build-namelist
 
 <entry id="cldfrc2m_qist_min" type="real" category="conv"
        group="cldfrc2m_nl" valid_values="" >
-Minimum in-stratus ice IWC constraint [ kg/kg ]
+Minimum in-stratus IWC constraint [ kg/kg ]
 Default: set by build-namelist
 </entry>
 
 <entry id="cldfrc2m_qist_max" type="real" category="conv"
        group="cldfrc2m_nl" valid_values="" >
-Maximum in-stratus ice IWC constraint [ kg/kg ]
+Maximum in-stratus IWC constraint [ kg/kg ]
 Default: set by build-namelist
 </entry>
 
