@@ -2226,8 +2226,8 @@
 <microp_aero_npccn_scale                  >  1.D0    </microp_aero_npccn_scale>
 <microp_aero_npccn_scale microphys="mg2"  >  1.D0    </microp_aero_npccn_scale>
 
-<microp_aero_wsub_scale                  >  1.D0    </microp_aero_wsub_scale>
-<microp_aero_wsub_scale phys="cam_dev"   >  0.50D0  </microp_aero_wsub_scale>
+<microp_aero_wsub_scale                  >  1.D0     </microp_aero_wsub_scale>
+<microp_aero_wsub_scale phys="cam_dev"   >  0.375D0  </microp_aero_wsub_scale>
 
 <microp_aero_wsubi_scale                  >  1.D0    </microp_aero_wsubi_scale>
 
