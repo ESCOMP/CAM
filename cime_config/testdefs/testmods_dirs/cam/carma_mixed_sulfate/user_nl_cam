@@ -6,8 +6,9 @@ pbuf_global_allocate=.false.
 history_carma=.true.
 carma_do_fixedinit=.false.
 carma_reftfile="camrun.cam.r.carma_reft.nc"
-flbc_list              = 'CCL4', 'CF2CLBR', 'CF3BR', 'CFC11', 'CFC113', 'CFC12', 'CH3BR', 'CH3CCL3', 'CH3CL', 'CH4', 'CO2', 'H2',
-         'HCFC22', 'N2O', 'OCS' 
+flbc_list = 'CCL4', 'CF2CLBR', 'CF3BR', 'CFC11', 'CFC113', 'CFC12', 'CH3BR', 'CH3CCL3', 'CH3CL', 'CH4', 'CO2', 'H2',
+            'HCFC22', 'N2O', 'OCS'
 solar_data_type='FIXED'
 solar_data_ymd=20000101
-
+carma_maxretries = 40
+ubc_specifier = 'T->MSIS', 'Q->2.d-8vmr', 'CH4->2.d-10vmr', 'H->MSIS', 'N->MSIS', 'O->MSIS', 'O2->MSIS', 'H2->TGCM', 'NO->SNOE'

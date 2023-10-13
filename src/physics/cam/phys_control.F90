@@ -72,6 +72,8 @@ logical           :: history_scwaccm_forcing = .false.
 logical           :: history_chemspecies_srf = .false.
 
 logical           :: do_clubb_sgs
+logical           :: do_hb_above_clubb       = .false. ! enable HB vertical mixing above clubb top
+
 ! Check validity of physics_state objects in physics_update.
 logical           :: state_debug_checks   = .false.
 
@@ -136,7 +138,7 @@ subroutine phys_ctl_readnl(nlfile)
       do_clubb_sgs, state_debug_checks, use_hetfrz_classnuc, use_gw_oro, use_gw_front, &
       use_gw_front_igw, use_gw_convect_dp, use_gw_convect_sh, cld_macmic_num_steps, &
       offline_driver, convproc_do_aer, cam_snapshot_before_num, cam_snapshot_after_num, &
-      cam_take_snapshot_before, cam_take_snapshot_after, cam_physics_mesh, use_hemco
+      cam_take_snapshot_before, cam_take_snapshot_after, cam_physics_mesh, use_hemco, do_hb_above_clubb
    !-----------------------------------------------------------------------------
 
    if (masterproc) then
@@ -199,6 +201,7 @@ subroutine phys_ctl_readnl(nlfile)
    call mpi_bcast(cam_take_snapshot_before,    len(cam_take_snapshot_before), mpi_character, masterprocid, mpicom, ierr)
    call mpi_bcast(cam_take_snapshot_after,     len(cam_take_snapshot_after),  mpi_character, masterprocid, mpicom, ierr)
    call mpi_bcast(cam_physics_mesh,            len(cam_physics_mesh), mpi_character, masterprocid, mpicom, ierr)
+   call mpi_bcast(do_hb_above_clubb,           1,                     mpi_logical,   masterprocid, mpicom, ierr)
    call mpi_bcast(use_hemco,                   1,                     mpi_logical,   masterprocid, mpicom, ierr)
 
    use_spcam       = (     cam_physpkg_is('spcam_sam1mom') &
@@ -256,6 +259,12 @@ subroutine phys_ctl_readnl(nlfile)
          call endrun('cam_dev is not compatible with camrt radiation scheme')
       end if
    end if
+
+   ! do_hb_above_clubb requires that CLUBB is being used
+   if (do_hb_above_clubb .and. .not. do_clubb_sgs) then
+      write(iulog,*)'do_hb_above_clubb requires CLUBB to be active'
+      call endrun('do_hb_above_clubb incompatible with do_clubb_sgs = .false.')
+   endif
 
    ! Macro/micro co-substepping support.
    if (cld_macmic_num_steps > 1) then
@@ -315,7 +324,7 @@ subroutine phys_getopts(deep_scheme_out, shallow_scheme_out, eddy_scheme_out, mi
                         cam_chempkg_out, prog_modal_aero_out, macrop_scheme_out, &
                         do_clubb_sgs_out, use_spcam_out, state_debug_checks_out, cld_macmic_num_steps_out, &
                         offline_driver_out, convproc_do_aer_out, cam_snapshot_before_num_out, cam_snapshot_after_num_out,&
-                        cam_take_snapshot_before_out, cam_take_snapshot_after_out, physics_grid_out)
+                        cam_take_snapshot_before_out, cam_take_snapshot_after_out, physics_grid_out, do_hb_above_clubb_out)
 !-----------------------------------------------------------------------
 ! Purpose: Return runtime settings
 !          deep_scheme_out   : deep convection scheme
@@ -363,6 +372,7 @@ subroutine phys_getopts(deep_scheme_out, shallow_scheme_out, eddy_scheme_out, mi
    character(len=32), intent(out), optional :: cam_take_snapshot_before_out
    character(len=32), intent(out), optional :: cam_take_snapshot_after_out
    character(len=cl), intent(out), optional :: physics_grid_out
+   logical,           intent(out), optional :: do_hb_above_clubb_out
 
    if ( present(deep_scheme_out         ) ) deep_scheme_out          = deep_scheme
    if ( present(shallow_scheme_out      ) ) shallow_scheme_out       = shallow_scheme
@@ -402,6 +412,7 @@ subroutine phys_getopts(deep_scheme_out, shallow_scheme_out, eddy_scheme_out, mi
    if ( present(cam_take_snapshot_before_out) ) cam_take_snapshot_before_out = cam_take_snapshot_before
    if ( present(cam_take_snapshot_after_out ) ) cam_take_snapshot_after_out  = cam_take_snapshot_after
    if ( present(physics_grid_out         ) ) physics_grid_out        = cam_physics_mesh
+   if ( present(do_hb_above_clubb_out    ) ) do_hb_above_clubb_out   = do_hb_above_clubb
 
 end subroutine phys_getopts
 

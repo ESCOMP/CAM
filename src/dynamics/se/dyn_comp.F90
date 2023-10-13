@@ -110,7 +110,7 @@ subroutine dyn_readnl(NLFileName)
    use control_mod,    only: topology, variable_nsplit
    use control_mod,    only: fine_ne, hypervis_power, hypervis_scaling
    use control_mod,    only: max_hypervis_courant, statediag_numtrac,refined_mesh
-   use control_mod,    only: molecular_diff
+   use control_mod,    only: molecular_diff, pgf_formulation
    use control_mod,    only: sponge_del4_nu_div_fac, sponge_del4_nu_fac, sponge_del4_lev
    use dimensions_mod, only: ne, npart
    use dimensions_mod, only: large_Courant_incr
@@ -167,6 +167,7 @@ subroutine dyn_readnl(NLFileName)
    integer                      :: se_kmin_jet
    integer                      :: se_kmax_jet
    real(r8)                     :: se_molecular_diff
+   integer                      :: se_pgf_formulation
 
    namelist /dyn_se_inparm/        &
       se_fine_ne,                  & ! For refined meshes
@@ -211,7 +212,8 @@ subroutine dyn_readnl(NLFileName)
       se_fvm_supercycling_jet,     &
       se_kmin_jet,                 &
       se_kmax_jet,                 &
-      se_molecular_diff
+      se_molecular_diff,           &
+      se_pgf_formulation
 
    !--------------------------------------------------------------------------
 
@@ -285,6 +287,7 @@ subroutine dyn_readnl(NLFileName)
    call MPI_bcast(se_kmin_jet, 1, mpi_integer, masterprocid, mpicom, ierr)
    call MPI_bcast(se_kmax_jet, 1, mpi_integer, masterprocid, mpicom, ierr)
    call MPI_bcast(se_molecular_diff, 1, mpi_real8, masterprocid, mpicom, ierr)
+   call MPI_bcast(se_pgf_formulation, 1, mpi_integer, masterprocid, mpicom, ierr)
 
    if (se_npes <= 0) then
       call endrun('dyn_readnl: ERROR: se_npes must be > 0')
@@ -352,6 +355,7 @@ subroutine dyn_readnl(NLFileName)
    kmax_jet                 = se_kmax_jet
    variable_nsplit          = .false.
    molecular_diff           = se_molecular_diff
+   pgf_formulation          = se_pgf_formulation
 
    if (fv_nphys > 0) then
       ! Use finite volume physics grid and CSLAM for tracer advection
