@@ -1769,7 +1769,7 @@
             <nthrds_cpl>1</nthrds_cpl>
           </nthrds>
         </pes>
-        <pes pesize="any" compset="GC">
+        <pes pesize="any" compset="GEOSCHEM">
           <nthrds>
             <nthrds_atm>1</nthrds_atm>
             <nthrds_lnd>1</nthrds_lnd>

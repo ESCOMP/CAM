@@ -563,27 +563,27 @@
 
   <compset>
     <alias>FC2000climo_GC</alias>
-    <lname>2000_CAM60%GC%HEMCO_CLM50%SP_CICE%PRES_DOCN%DOM_MOSART_CISM2%NOEVOLVE_SWAV</lname>
+    <lname>2000_CAM60%GEOSCHEM%HEMCO_CLM50%SP_CICE%PRES_DOCN%DOM_MOSART_CISM2%NOEVOLVE_SWAV</lname>
   </compset>
 
   <compset>
     <alias>FC2010climo_GC</alias>
-    <lname>2010_CAM60%GC%HEMCO_CLM50%SP_CICE%PRES_DOCN%DOM_MOSART_CISM2%NOEVOLVE_SWAV</lname>
+    <lname>2010_CAM60%GEOSCHEM%HEMCO_CLM50%SP_CICE%PRES_DOCN%DOM_MOSART_CISM2%NOEVOLVE_SWAV</lname>
   </compset>
 
   <compset>
     <alias>FCHIST_GC</alias>
-    <lname>HIST_CAM60%GC%HEMCO_CLM50%SP_CICE%PRES_DOCN%DOM_MOSART_CISM2%NOEVOLVE_SWAV</lname>
+    <lname>HIST_CAM60%GEOSCHEM%HEMCO_CLM50%SP_CICE%PRES_DOCN%DOM_MOSART_CISM2%NOEVOLVE_SWAV</lname>
   </compset>
 
   <compset>
     <alias>FCSD_GC</alias>
-    <lname>HIST_CAM60%GC%HEMCO%SDYN_CLM50%SP_CICE%PRES_DOCN%DOM_MOSART_SGLC_SWAV</lname>
+    <lname>HIST_CAM60%GEOSCHEM%HEMCO%SDYN_CLM50%SP_CICE%PRES_DOCN%DOM_MOSART_SGLC_SWAV</lname>
   </compset>
 
   <compset>
     <alias>FCnudged_GC</alias>
-    <lname>HIST_CAM60%GC%HEMCO%NUDG_CLM50%SP_CICE%PRES_DOCN%DOM_MOSART_SGLC_SWAV</lname>
+    <lname>HIST_CAM60%GEOSCHEM%HEMCO%NUDG_CLM50%SP_CICE%PRES_DOCN%DOM_MOSART_SGLC_SWAV</lname>
   </compset>
 
   <!-- ENTRIES -->
@@ -599,18 +599,18 @@
 	<value  compset="HIST_CAM60%WCMD%SDYN" grid="a%1.9x2.5">1980-01-01</value>
 	<value  compset="HIST_CAM60%WCSC">1850-01-01</value>
 	<value  compset="HIST_CAM60%CCTS[12]">2010-01-01</value>
-	<value  compset="HIST_CAM60%GC">2015-01-01</value>
+	<value  compset="HIST_CAM60%GEOSCHEM">2015-01-01</value>
 	<value  compset="HIST_CAM60%CCTS[12]" grid="a%ne0np4CONUS">2013-01-01</value>
 	<value  compset="HIST_CAM60%CVBSX">1995-01-01</value>
 	<value  compset="HIST_CAM60%CFIRE">1995-01-01</value>
 	<value  compset="RCP[2468]_CAM\d+">2005-01-01</value>
  	<value  compset="_CAM.*%SDYN"                   >2005-01-01</value>
- 	<value  compset="_CAM.*%GC%SDYN"                >2015-01-01</value>
+ 	<value  compset="_CAM.*%GEOSCHEM%SDYN"          >2015-01-01</value>
  	<value  compset="_CAM.*%SDYN" grid="a%0.47x0.63">2010-01-01</value>
 	<value  compset="_CAM60%(WCCM|WCTS|WXIE).*%SDYN">1980-01-01</value>
  	<value  compset="_CAM40%WX.*%SDYN">2000-01-01</value>
-        <value  compset="2000_CAM60%GC">2000-01-01</value>
-        <value  compset="2010_CAM60%GC">2010-01-01</value>
+        <value  compset="2000_CAM60%GEOSCHEM">2000-01-01</value>
+        <value  compset="2010_CAM60%GEOSCHEM">2010-01-01</value>
 
 	<value  compset="C2R4_CAM">2004-01-01</value>
 	<value  compset="C2R[68]_CAM">1950-01-01</value>
@@ -649,7 +649,7 @@
       <values match="first">
         <value compset="SPCAMS">1</value>
         <value compset="SPCAMM">1</value>
-        <value compset="GC">1</value>
+        <value compset="GEOSCHEM">1</value>
       </values>
     </entry>
 
@@ -657,7 +657,7 @@
       <values match="first">
         <value compset="SPCAMS">1</value>
         <value compset="SPCAMM">1</value>
-        <value compset="GC">1</value>
+        <value compset="GEOSCHEM">1</value>
       </values>
     </entry>
 
@@ -665,7 +665,7 @@
       <values match="first">
         <value compset="SPCAMS">1</value>
         <value compset="SPCAMM">1</value>
-        <value compset="GC">1</value>
+        <value compset="GEOSCHEM">1</value>
       </values>
     </entry>
 
@@ -673,7 +673,7 @@
       <values match="first">
         <value compset="SPCAMS">1</value>
         <value compset="SPCAMM">1</value>
-        <value compset="GC">1</value>
+        <value compset="GEOSCHEM">1</value>
       </values>
     </entry>
 
@@ -681,7 +681,7 @@
       <values match="first">
         <value compset="SPCAMS">1</value>
         <value compset="SPCAMM">1</value>
-        <value compset="GC">1</value>
+        <value compset="GEOSCHEM">1</value>
       </values>
     </entry>
 
@@ -689,7 +689,7 @@
       <values match="first">
         <value compset="SPCAMS">1</value>
         <value compset="SPCAMM">1</value>
-        <value compset="GC">1</value>
+        <value compset="GEOSCHEM">1</value>
       </values>
     </entry>
 
@@ -697,7 +697,7 @@
       <values match="first">
         <value compset="SPCAMS">1</value>
         <value compset="SPCAMM">1</value>
-        <value compset="GC">1</value>
+        <value compset="GEOSCHEM">1</value>
       </values>
     </entry>
 
@@ -705,7 +705,7 @@
       <values match="first">
         <value compset="SPCAMS">1</value>
         <value compset="SPCAMM">1</value>
-        <value compset="GC">1</value>
+        <value compset="GEOSCHEM">1</value>
       </values>
     </entry>
 
@@ -713,7 +713,7 @@
       <values match="first">
         <value compset="SPCAMS">1</value>
         <value compset="SPCAMM">1</value>
-        <value compset="GC">1</value>
+        <value compset="GEOSCHEM">1</value>
       </values>
     </entry>
 
@@ -721,7 +721,7 @@
       <values match="first">
         <value compset="SPCAMS">1</value>
         <value compset="SPCAMM">1</value>
-        <value compset="GC">1</value>
+        <value compset="GEOSCHEM">1</value>
       </values>
     </entry>
 
