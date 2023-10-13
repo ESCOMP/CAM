@@ -279,7 +279,7 @@ contains
       call chem_init(phys_state,pbuf2d)
     end if
 
-    ! Initialize stub CCPP constituent properties array
+    ! Initialize CAM CCPP constituent properties array
     ! for use in CCPP-ized physics schemes:
     call ccpp_const_props_init()
 

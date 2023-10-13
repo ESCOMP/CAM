@@ -39,7 +39,7 @@ contains
 
 use ppgrid,                    only: pcols
 use constituents,              only: pcnst, cnst_get_ind
-use ccpp_constituent_prop_mod, only: ccpp_const_props      !CCPP constituent properties array (stub version)
+use ccpp_constituent_prop_mod, only: ccpp_const_props      !CCPP constituent properties array (CAM version)
 use geopotential_temp,         only: geopotential_temp_run !CCPP version
 !------------------------------Arguments--------------------------------
 !
