@@ -1564,6 +1564,7 @@ CONTAINS
 
     integer                   ::  maxnflds
     real(r8)                  ::  integral  ! hbuf area weighted integral
+
     maxnflds = maxval(nflds)
     allocate(xyfill(maxnflds, ptapes))
     xyfill = 0
@@ -1605,6 +1606,7 @@ CONTAINS
 
     vdesc => restartvar_getdesc('fincl')
     ierr= pio_put_var(File, vdesc, fincl(:,1:ptapes))
+
     vdesc => restartvar_getdesc('fincllonlat')
     ierr= pio_put_var(File, vdesc, fincllonlat(:,1:ptapes))
 
@@ -1628,10 +1630,13 @@ CONTAINS
 
     vdesc => restartvar_getdesc('nfpath')
     ierr= pio_put_var(File, vdesc, nfpath(1:ptapes))
+
     vdesc => restartvar_getdesc('cpath')
     ierr= pio_put_var(File, vdesc, cpath(1:ptapes,:))
+
     vdesc => restartvar_getdesc('nhfil')
     ierr= pio_put_var(File, vdesc, nhfil(1:ptapes,:))
+
     vdesc => restartvar_getdesc('ndens')
     ierr= pio_put_var(File, vdesc, ndens(1:ptapes))
     vdesc => restartvar_getdesc('ncprec')
@@ -4313,7 +4318,7 @@ end subroutine print_active_fldlst
     if(restart) then
       allocate(tape(t)%Files(1))
       call cam_pio_createfile (tape(t)%Files(1), hrestpath(t), amode)
-    else if (is_initfile(file_index=t)) then
+    else if (is_initfile(file_index=t) .and. is_satfile(t)) then
       allocate(tape(t)%Files(1))
       call cam_pio_createfile (tape(t)%Files(1), nhfil(t,1), amode)
     else
