@@ -173,7 +173,7 @@ subroutine cnst_add (name, mwc, cpc, qminc, &
    padv = padv+1
    ind  = padv
    if (padv > pcnst) then
-      write(errmsg, *) sub//': FATAL: advected tracer (', trim(name), ') index for greater than pcnst=', pcnst
+      write(errmsg, *) sub//': FATAL: advected tracer (', trim(name), ') index is greater than number of constituents'
       call endrun(errmsg)
    end if
 
