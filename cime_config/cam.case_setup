@@ -2,29 +2,28 @@
 
 # This script is run from CIME when calling case.setup
 
-cam_root=$1
-cam_config=$2
-case_root=$3
+case_root=$1
+cam_root=$2
+cam_options=$3
 
-# GEOS-Chem only: copy config files to case
-gc_option="-chem geoschem"
-if [[ "${cam_config}" == *"${gc_option}"* ]]; then
+# Copy GEOS-Chem configuration files from source code to case
+if [[ "${cam_options}" == *"geoschem"* ]]; then
     geoschem_config_src="${cam_root}/src/chemistry/geoschem/geoschem_src/run/CESM"
     if [ ! -d "${geoschem_config_src}" ]; then
-	echo "ERROR: Did not find path to GEOS-Chem source code at ${geoschem_config_src}"
+	echo "ERROR: GEOS-Chem source code not found at ${geoschem_config_src}"
 	exit 1
     fi
-    fnames=('species_database.yml', 'geoschem_config.yml', 'HISTORY.rc', 'HEMCO_Config.rc', 'HEMCO_Diagn.rc')
+    fnames=('species_database.yml' 'geoschem_config.yml' 'HISTORY.rc' 'HEMCO_Config.rc' 'HEMCO_Diagn.rc')
     for fname in ${fnames[*]}; do
-	sourcefile="${cam_root}/${geoschem_config_src}/${fname}"
-	targetfile="${case_root}/${fileName}"
-	if [ ! -f "${sourcefile}" ]; then
-	    echo "ERROR: Cannot find GEOS-Chem configuration file to move: ${sourcefile}"
+	source_file="${geoschem_config_src}/${fname}"
+	target_file="${case_root}/${fname}"
+	if [ ! -f "${source_file}" ]; then
+	    echo "ERROR: Cannot find GEOS-Chem configuration file ${source_file}"
 	    exit 1
 	fi
-	if [ ! -f "${targetfile}" ]; then
-	    echo "CAM namelist one-time copy of GEOS-Chem run directory files: from ${sourcefile} to ${targetfile}"
+	if [ ! -f "${target_file}" ]; then
+	    echo "One-time copy of GEOS-Chem run directory files from ${source_file} to ${target_file}"
 	fi
-	cp ${sourcefile} ${targetfile}	   			         
+	cp ${source_file} ${target_file}
     done
 fi

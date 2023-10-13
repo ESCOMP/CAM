@@ -221,9 +221,8 @@ def buildnml(case, caseroot, compname):
                           'HISTORY.rc', 'HEMCO_Config.rc', 'HEMCO_Diagn.rc']:
                 file1 = os.path.join(caseroot, fname)
                 file2 = os.path.join(rundir, fname)
-                if not os.path.exists(file2):
-                    logger.info("GEOS-Chem config file copy: file1 %s file2 %s ", file1, file2)
-                    shutil.copy(file1,file2)
+                logger.info("GEOS-Chem config file copy: file1 %s file2 %s ", file1, file2)
+                shutil.copy(file1,file2)
 
 ###############################################################################
 def _main_func():
