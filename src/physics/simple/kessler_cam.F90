@@ -183,68 +183,88 @@ contains
     end do
 
     ! Calculate Exner function:
-    call calc_exner_run(ncol, pver, cpairv(:,:,lchnk), rairv(:,:,lchnk), psurf_ref, state%pmid, pk, errmsg, errflg)
+    call calc_exner_run(ncol, pver, cpairv(1:ncol,:,lchnk), rairv(1:ncol,:,lchnk),   &
+                        psurf_ref, state%pmid(1:ncol,:), pk(1:ncol,:), errmsg, errflg)
     if (errflg /=0) then
        call endrun('kessler_tend error: Error returned from calc_exner_run: '//trim(errmsg))
     end if
 
     ! Calculate potential temperature:
-    call temp_to_potential_temp_run(ncol, pver, temp, pk, th, errmsg, errflg)
+    call temp_to_potential_temp_run(ncol, pver, temp(1:ncol,:), pk(1:ncol,:),        &
+                                    th(1:ncol,:), errmsg, errflg)
     if (errflg /=0) then
        call endrun('kessler_tend error: Error returned from temp_to_potential_temp_run: '//trim(errmsg))
     end if
 
     ! Calculate density using ideal gas law:
-    call calc_dry_air_ideal_gas_density_run(ncol, pver, rairv(:,:,lchnk), state%pmiddry, temp, rho, errmsg, errflg)
+    call calc_dry_air_ideal_gas_density_run(ncol, pver, rairv(1:ncol,:,lchnk),       &
+                                            state%pmiddry(1:ncol,:), temp(1:ncol,:), &
+                                            rho(1:ncol,:), errmsg, errflg)
     if (errflg /=0) then
        call endrun('kessler_tend error: Error returned from pres_to_density_dry_run: '//trim(errmsg))
     end if
 
     ! Convert moist air mixing ratios to dry air mixing ratios:
     !---------------------------------------------------------
-    call wet_to_dry_water_vapor_run(ncol, pver, state%pdel, state%pdeldry, qv, qv_dry, errmsg, errflg)
+    call wet_to_dry_water_vapor_run(ncol, pver, state%pdel(1:ncol,:),                &
+                                    state%pdeldry(1:ncol,:), qv(1:ncol,:),           &
+                                    qv_dry(1:ncol,:), errmsg, errflg)
     if (errflg /=0) then
        call endrun('kessler_tend error: Error returned from wet_to_dry_water_vapor_run: '//trim(errmsg))
     end if
 
-    call wet_to_dry_cloud_liquid_water_run(ncol, pver, state%pdel, state%pdeldry, qc, qc_dry, errmsg, errflg)
+    call wet_to_dry_cloud_liquid_water_run(ncol, pver, state%pdel(1:ncol,:),         &
+                                           state%pdeldry(1:ncol,:), qc(1:ncol,:),    &
+                                           qc_dry(1:ncol,:), errmsg, errflg)
     if (errflg /=0) then
        call endrun('kessler_tend error: Error returned from wet_to_dry_cloud_liquid_water_run: '//trim(errmsg))
     end if
 
-    call wet_to_dry_rain_run(ncol, pver, state%pdel, state%pdeldry, qr, qr_dry, errmsg, errflg)
+    call wet_to_dry_rain_run(ncol, pver, state%pdel(1:ncol,:),                       &
+                             state%pdeldry(1:ncol,:), qr(1:ncol,:),                  &
+                             qr_dry(1:ncol,:), errmsg, errflg)
     if (errflg /=0) then
        call endrun('kessler_tend error: Error returned from wet_to_dry_rain_run: '//trim(errmsg))
     end if
     !---------------------------------------------------------
 
     ! Run Kessler physics scheme:
-    call kessler_run(ncol, pver, ztodt, lyr_surf, lyr_toa, cpairv(:,:,lchnk), &
-                     rairv(:,:,lchnk), rho, state%zm, pk, th, qv_dry, qc_dry, &
-                     qr_dry, prec_sed, relhum, scheme_name, errmsg, errflg)
+    call kessler_run(ncol, pver, ztodt, lyr_surf, lyr_toa, cpairv(1:ncol,:,lchnk),   &
+                     rairv(1:ncol,:,lchnk), rho(1:ncol,:), state%zm(1:ncol,:),       &
+                     pk(1:ncol,:), th(1:ncol,:), qv_dry(1:ncol,:), qc_dry(1:ncol,:), &
+                     qr_dry(1:ncol,:), prec_sed(1:ncol,:), relhum(1:ncol,:),         &
+                     scheme_name, errmsg, errflg)
     if (errflg /=0) then
        call endrun('kessler_tend error: Error returned from kessler_run: '//trim(errmsg))
     end if
 
     ! Calculate air temperature from potential temperature:
-    call potential_temp_to_temp_run(ncol, pver, th, pk, temp, errmsg, errflg)
+    call potential_temp_to_temp_run(ncol, pver, th(1:ncol,:), pk(1:ncol,:),          &
+                                    temp(1:ncol,:), errmsg, errflg)
     if (errflg /=0) then
        call endrun('kessler_tend error: Error returned from potential_temp_to_temp_run: '//trim(errmsg))
     end if
 
     ! Convert dry air mixing ratios to moist air mixing ratios:
     !---------------------------------------------------------
-    call dry_to_wet_water_vapor_run(ncol, pver, state%pdel, state%pdeldry, qv_dry, qv, errmsg, errflg)
+    call dry_to_wet_water_vapor_run(ncol, pver, state%pdel(1:ncol,:),                &
+                                    state%pdeldry(1:ncol,:), qv_dry(1:ncol,:),       &
+                                    qv(1:ncol,:), errmsg, errflg)
     if (errflg /=0) then
        call endrun('kessler_tend error: Error returned from dry_to_wet_water_vapor_run: '//trim(errmsg))
     end if
 
-    call dry_to_wet_cloud_liquid_water_run(ncol, pver, state%pdel, state%pdeldry, qc_dry, qc, errmsg, errflg)
+    call dry_to_wet_cloud_liquid_water_run(ncol, pver, state%pdel(1:ncol,:),         &
+                                           state%pdeldry(1:ncol,:),                  &
+                                           qc_dry(1:ncol,:), qc(1:ncol,:), errmsg,   &
+                                           errflg)
     if (errflg /=0) then
        call endrun('kessler_tend error: Error returned from dry_to_wet_cloud_liquid_water_run: '//trim(errmsg))
     end if
 
-    call dry_to_wet_rain_run(ncol, pver, state%pdel, state%pdeldry, qr_dry, qr, errmsg, errflg)
+    call dry_to_wet_rain_run(ncol, pver, state%pdel(1:ncol,:),                       &
+                             state%pdeldry(1:ncol,:), qr_dry(1:ncol,:),              &
+                             qr(1:ncol,:), errmsg, errflg)
     if (errflg /=0) then
        call endrun('kessler_tend error: Error returned from dry_to_wet_rain_run: '//trim(errmsg))
     end if
