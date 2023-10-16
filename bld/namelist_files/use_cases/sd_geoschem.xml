@@ -6,7 +6,7 @@
 
 <!-- Settings for using GEOS-Chem -->
 
-<gc_cheminputs>/glade/p/univ/umit0034/ExtData/CHEM_INPUTS/</gc_cheminputs>
+<geoschem_cheminputs>/glade/p/univ/umit0034/ExtData/CHEM_INPUTS/</geoschem_cheminputs>
 
 <ncdata dyn="fv"  hgrid="1.9x2.5">/glade/p/univ/umit0034/Shared/GEOS-Chem/f.e20.FCSD.f19_f19_mg17.cesm2.1-exp002.001.cam.i.2005-01-01-00000_c180801.nc</ncdata>
 <bnd_topo hgrid="1.9x2.5">atm/cam/met/MERRA2/1.9x2.5/fv_1.9x2.5_nc3000_Nsw084_Nrs016_Co120_Fi001_ZR_GRNL_MERRA2_c190617.nc</bnd_topo>

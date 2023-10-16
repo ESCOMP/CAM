@@ -66,7 +66,7 @@ module chemistry
   CHARACTER(LEN=500) :: speciesDB = 'species_database.yml'
 
   ! Location of chemistry input
-  CHARACTER(LEN=shr_kind_cl) :: gc_cheminputs
+  CHARACTER(LEN=shr_kind_cl) :: geoschem_cheminputs
 
   ! Debugging
   LOGICAL :: debug = .TRUE.
@@ -724,7 +724,7 @@ contains
 
     CALL lightning_readnl(nlfile)
 
-    CALL gc_readnl(nlfile)
+    CALL geoschem_readnl(nlfile)
 
     IF ( MasterProc ) THEN
 
@@ -1129,9 +1129,9 @@ contains
                              RC         = RC        )
     
        ! First setup directories
-       Input_Opt%Chem_Inputs_Dir      = TRIM(gc_cheminputs)
+       Input_Opt%Chem_Inputs_Dir      = TRIM(geoschem_cheminputs)
        Input_Opt%SpcDatabaseFile      = TRIM(speciesDB)
-       Input_Opt%FAST_JX_DIR          = TRIM(gc_cheminputs)//'FAST_JX/v2020-02/'
+       Input_Opt%FAST_JX_DIR          = TRIM(geoschem_cheminputs)//'FAST_JX/v2020-02/'
 
        !----------------------------------------------------------
        ! CESM-specific input flags
@@ -1739,9 +1739,9 @@ contains
   end subroutine gc_update_timesteps
 
   !================================================================================================
-  ! subroutine gc_readnl
+  ! subroutine geoschem_readnl
   !================================================================================================
-  subroutine gc_readnl(nlfile)
+  subroutine geoschem_readnl(nlfile)
     ! Purpose: reads the namelist from cam/src/control/runtime_opts
 
     ! CAM modules
@@ -1751,17 +1751,17 @@ contains
 
     character(len=*), intent(in) :: nlfile  ! filepath for file containing namelist input
     integer :: unitn, ierr
-    character(len=*), parameter :: subname = 'gc_readnl'
+    character(len=*), parameter :: subname = 'geoschem_readnl'
 
-    namelist /gc_nl/ gc_cheminputs
+    namelist /geoschem_nl/ geoschem_cheminputs
 
     ! Read namelist
     IF ( MasterProc ) THEN
        unitn = getunit()
        OPEN( unitn, FILE=TRIM(nlfile), STATUS='old' )
-       CALL find_group_name(unitn, 'gc_nl', STATUS=ierr)
+       CALL find_group_name(unitn, 'geoschem_nl', STATUS=ierr)
        IF ( ierr == 0 ) THEN
-          READ(unitn, gc_nl, IOSTAT=ierr)
+          READ(unitn, geoschem_nl, IOSTAT=ierr)
           IF ( ierr /= 0 ) THEN
              CALL ENDRUN(subname // ':: ERROR reading namelist')
           ENDIF
@@ -1771,12 +1771,12 @@ contains
     ENDIF
 
     ! Broadcast namelist variables
-    CALL mpi_bcast(gc_cheminputs, LEN(gc_cheminputs), mpi_character, masterprocid, mpicom, ierr)
+    CALL mpi_bcast(geoschem_cheminputs, LEN(geoschem_cheminputs), mpi_character, masterprocid, mpicom, ierr)
     IF ( ierr /= mpi_success ) then
-       CALL endrun(subname//': MPI_BCAST ERROR: gc_cheminputs')
+       CALL endrun(subname//': MPI_BCAST ERROR: geoschem_cheminputs')
     ENDIF
 
-  end subroutine gc_readnl
+  end subroutine geoschem_readnl
 
   !================================================================================================
   ! subroutine chem_timestep_tend
