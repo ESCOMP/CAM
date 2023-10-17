@@ -4476,6 +4476,9 @@ end subroutine print_active_fldlst
 
          ierr=pio_def_var (tape(t)%Files(f),'time_bounds',pio_double,(/bnddim,timdim/),tape(t)%tbndid)
          ierr=pio_put_att (tape(t)%Files(f), tape(t)%tbndid, 'long_name', 'time interval endpoints')
+         str = 'days since ' // date2yyyymmdd(nbdate) // ' ' // sec2hms(nbsec)
+         ierr=pio_put_att (tape(t)%Files(f), tape(t)%tbndid, 'units', trim(str))
+         ierr=pio_put_att (tape(t)%Files(f), tape(t)%tbndid, 'calendar', trim(calendar))
          !
          ! Character
          !
