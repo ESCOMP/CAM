@@ -154,23 +154,20 @@ subroutine rrtmgp_set_state( &
       ! The top reference pressure from the RRTMGP coefficients datasets is 1.005183574463 Pa
       ! Set the top of the extra layer just below that.
       pint_rad(:,1) = 1.01_r8
+   else
+      ! nlay < pverp, thus the 1 Pa level is within a CAM layer.  Assuming the top interface of
+      ! this layer is at a pressure < 1 Pa, we need to adjust the top of this layer so that it
+      ! is within the valid pressure range of RRTMGP (otherwise RRTMGP issues an error).  Then
+      ! set the midpoint pressure halfway between the interfaces.
+      pint_rad(:,1) = 1.01_r8
+      pmid_rad(:,1) = 0.5_r8 * (pint_rad(:,1) + pint_rad(:,2))
    end if
 
-   ! Check that the temperatures are within the limits of RRTMGP validity.
+   ! Limit temperatures to be within the limits of RRTMGP validity.
    tref_min = kdist_sw%get_temp_min()
    tref_max = kdist_sw%get_temp_max()
-   if ( any(t_rad < tref_min) .or. any(t_rad > tref_max) ) then
-      ! Report out of range value and quit.
-      do i = 1, ncol
-         do k = 1, nlay
-            if ( t_rad(i,k) < tref_min .or. t_rad(i,k) > tref_max ) then
-               write(errmsg,*) 'temp outside valid range: ', t_rad(i,k), ': column lat=', &
-                  state%lat(i)*180._r8/pi, ': column lon=', state%lon(i)*180._r8/pi, ': level idx=',k
-               call endrun(sub//': ERROR, '//errmsg)
-            end if
-         end do
-      end do
-   end if
+   t_rad = merge(t_rad, tref_min, t_rad > tref_min)
+   t_rad = merge(t_rad, tref_max, t_rad < tref_max)
 
    ! Construct arrays containing only daylight columns
    do i = 1, nday
