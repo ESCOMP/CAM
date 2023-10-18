@@ -456,7 +456,7 @@
 <bam_SSLTA  rad="rrtmg">atm/cam/physprops/ssam_rrtmg_c080918.nc</bam_SSLTA>
 <bam_SSLTC  rad="rrtmg">atm/cam/physprops/sscm_rrtmg_c080918.nc</bam_SSLTC>
 
-<!-- COPY Optics for RRTMGP -->
+<!-- Bulk aerosols for RRTMGP -->
 <bam_sulf   rad="rrtmgp">atm/cam/physprops/sulfate_rrtmg_c080918.nc</bam_sulf>
 <bam_SO4    rad="rrtmgp">atm/cam/physprops/sulfate_rrtmg_c080918.nc</bam_SO4>
 <bam_dust1  rad="rrtmgp">atm/cam/physprops/dust1_rrtmg_c080918.nc</bam_dust1>
@@ -497,7 +497,8 @@
 <mam_ncl  rad="rrtmg">atm/cam/physprops/ssam_rrtmg_c100508.nc</mam_ncl>
 <mam_dst  rad="rrtmg">atm/cam/physprops/dust_aeronet_rrtmg_c141106.nc</mam_dst>
 <mam_nh4  rad="rrtmg">atm/cam/physprops/sulfate_rrtmg_c080918.nc</mam_nh4>
-<!-- COPY for RRTMGP -->
+
+<!-- Modal aerosol properties for RRTMGP -->
 <mam_so4  rad="rrtmgp">atm/cam/physprops/sulfate_rrtmg_c080918.nc</mam_so4>
 <mam_pom  rad="rrtmgp" mam="3mode">atm/cam/physprops/ocpho_rrtmg_c101112.nc</mam_pom>
 <mam_pom  rad="rrtmgp">atm/cam/physprops/ocpho_rrtmg_c130709.nc</mam_pom>
@@ -514,7 +515,8 @@
 <VOLC_MMR1 rad="rrtmg">atm/cam/physprops/volc_camRRTMG_byradius_sigma1.6_mode1_c210211.nc</VOLC_MMR1>
 <VOLC_MMR2 rad="rrtmg">atm/cam/physprops/volc_camRRTMG_byradius_sigma1.6_mode2_c210211.nc</VOLC_MMR2>
 <VOLC_MMR3 rad="rrtmg">atm/cam/physprops/volc_camRRTMG_byradius_sigma1.2_mode3_c210211.nc</VOLC_MMR3>
-<!-- COPY for RRTMGP -->
+
+<!-- Eruptive volcanic aerosols for RRTMGP -->
 <VOLC_MMR rad="rrtmgp">atm/cam/physprops/volc_camRRTMG_byradius_sigma1.6_c130724.nc</VOLC_MMR>
 <VOLC_MMR1 rad="rrtmgp">atm/cam/physprops/volc_camRRTMG_byradius_sigma1.6_mode1_c210211.nc</VOLC_MMR1>
 <VOLC_MMR2 rad="rrtmgp">atm/cam/physprops/volc_camRRTMG_byradius_sigma1.6_mode2_c210211.nc</VOLC_MMR2>
@@ -549,18 +551,29 @@
 <mam7_mode5_file rad="rrtmg">atm/cam/physprops/mam7_mode5_rrtmg_c120904.nc</mam7_mode5_file>
 <mam7_mode6_file rad="rrtmg">atm/cam/physprops/mam7_mode6_rrtmg_c120904.nc</mam7_mode6_file>
 <mam7_mode7_file rad="rrtmg">atm/cam/physprops/mam7_mode7_rrtmg_c120904.nc</mam7_mode7_file>
-<!-- COPY for RRTMGP -->
+
+<!-- Modal optics for RRTMGP -->
 <mam3_mode1_file rad="rrtmgp">atm/cam/physprops/mam4_mode1_rrtmg_aeronetdust_c141106.nc</mam3_mode1_file>
 <mam3_mode2_file rad="rrtmgp">atm/cam/physprops/mam4_mode2_rrtmg_aitkendust_c141106.nc </mam3_mode2_file>
 <mam3_mode3_file rad="rrtmgp">atm/cam/physprops/mam4_mode3_rrtmg_aeronetdust_c141106.nc</mam3_mode3_file>
+
 <mam3_mode1_file rad="rrtmgp" ver="strat">atm/cam/physprops/mam4_mode1_rrtmg_aeronetdust_sig1.6_dgnh.48_c140304.nc</mam3_mode1_file>
 <mam3_mode3_file rad="rrtmgp" ver="strat">atm/cam/physprops/mam4_mode3_rrtmg_aeronetdust_sig1.2_dgnl.40_c150219.nc</mam3_mode3_file>
+
 <mam4_mode1_file rad="rrtmgp">atm/cam/physprops/mam4_mode1_rrtmg_aeronetdust_c141106.nc</mam4_mode1_file>
 <mam4_mode2_file rad="rrtmgp">atm/cam/physprops/mam4_mode2_rrtmg_aitkendust_c141106.nc</mam4_mode2_file>
 <mam4_mode3_file rad="rrtmgp">atm/cam/physprops/mam4_mode3_rrtmg_aeronetdust_c141106.nc</mam4_mode3_file>
 <mam4_mode4_file rad="rrtmgp">atm/cam/physprops/mam4_mode4_rrtmg_c130628.nc</mam4_mode4_file>
+
 <mam4_mode1_file rad="rrtmgp" ver="strat">atm/cam/physprops/mam4_mode1_rrtmg_aeronetdust_sig1.6_dgnh.48_c140304.nc</mam4_mode1_file>
 <mam4_mode3_file rad="rrtmgp" ver="strat">atm/cam/physprops/mam4_mode3_rrtmg_aeronetdust_sig1.2_dgnl.40_c150219.nc</mam4_mode3_file>
+
+<mam5_mode1_file rad="rrtmgp" ver="strat">atm/cam/physprops/mam4_mode1_rrtmg_aeronetdust_sig1.6_dgnh.48_c140304.nc</mam5_mode1_file>
+<mam5_mode2_file rad="rrtmgp" ver="strat">atm/cam/physprops/mam4_mode2_rrtmg_aitkendust_c141106.nc</mam5_mode2_file>
+<mam5_mode3_file rad="rrtmgp" ver="strat">atm/cam/physprops/mam4_mode3_rrtmg_aeronetdust_c141106.nc</mam5_mode3_file>
+<mam5_mode4_file rad="rrtmgp" ver="strat">atm/cam/physprops/mam4_mode4_rrtmg_c130628.nc</mam5_mode4_file>
+<mam5_mode5_file rad="rrtmgp" ver="strat">atm/cam/physprops/mam4_mode3_rrtmg_aeronetdust_sig1.2_dgnl.40_c150219.nc</mam5_mode5_file>
+
 <mam7_mode1_file rad="rrtmgp">atm/cam/physprops/mam7_mode1_rrtmg_c120904.nc</mam7_mode1_file>
 <mam7_mode2_file rad="rrtmgp">atm/cam/physprops/mam7_mode2_rrtmg_c120904.nc</mam7_mode2_file>
 <mam7_mode3_file rad="rrtmgp">atm/cam/physprops/mam7_mode3_rrtmg_c120904.nc</mam7_mode3_file>

@@ -566,7 +566,11 @@ subroutine rrtmgp_set_cloud_lw( &
    ! radiation calculation are used by MCICA to produce subcolumns.
    cldf = cldfprime(:ncol, ktopcam:)
    tauc = c_cld_lw_abs(:, :ncol, ktopcam:)
+
+   ! Enforce tauc >= 0.
+   tauc = merge(tauc, 0.0_r8, tauc > 0.0_r8)
    
+   ! MCICA uses spectral data (on bands) to construct subcolumns (one per g-point)
    call mcica_subcol_lw( &
       kdist_lw, nlwbands, nlwgpts, ncol, nlaycam, &
       nlwgpts, state%pmid, cldf, tauc, taucmcl    )
@@ -582,7 +586,7 @@ subroutine rrtmgp_set_cloud_lw( &
 
    ! Set the properties on g-points.
    do i = 1, nlwgpts
-      cloud_lw%tau(:ncol, ktoprad:, i) = taucmcl(i, :ncol, ktopcam:)
+      cloud_lw%tau(:,ktoprad:,i) = taucmcl(i,:,:)
    end do
 
    ! validate checks that: tau > 0
@@ -823,7 +827,7 @@ subroutine rrtmgp_set_cloud_sw( &
       ! set asymmetry to zero when tauc = 0
       asmc = merge(asmc, 0.0_r8, tauc > 0.0_r8)
 
-      ! MCICA converts from bands to gpts (e.g., 224 g-points instead of 14 bands)
+      ! MCICA uses spectral data (on bands) to construct subcolumns (one per g-point)
       call mcica_subcol_sw( &
          kdist_sw, nswbands, nswgpts, nday, nlay, &
          nver, changeseed, pmid, cldf, tauc,     &
@@ -843,9 +847,9 @@ subroutine rrtmgp_set_cloud_sw( &
 
       ! Set the properties on g-points.
       do igpt = 1,nswgpts
-         cloud_sw%g  (:, ktoprad:, igpt) = asmcmcl(igpt, ktopcam:, :)
-         cloud_sw%ssa(:, ktoprad:, igpt) = ssacmcl(igpt, ktopcam:, :)
-         cloud_sw%tau(:, ktoprad:, igpt) = taucmcl(igpt, ktopcam:, :)
+         cloud_sw%g  (:,ktoprad:,igpt) = asmcmcl(igpt,:,:)
+         cloud_sw%ssa(:,ktoprad:,igpt) = ssacmcl(igpt,:,:)
+         cloud_sw%tau(:,ktoprad:,igpt) = taucmcl(igpt,:,:)
       end do
 
       ! validate checks that: tau > 0, ssa is in range [0,1], and g is in range [-1,1].
