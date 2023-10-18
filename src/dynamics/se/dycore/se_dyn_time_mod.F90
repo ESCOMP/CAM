@@ -1,4 +1,4 @@
-module dyn_time_mod
+module se_dyn_time_mod
   !------------------
   use shr_kind_mod,   only: r8=>shr_kind_r8
   !------------------
@@ -132,4 +132,4 @@ contains
 !$OMP BARRIER    
   end subroutine TimeLevel_update
 
-end module dyn_time_mod
+end module se_dyn_time_mod

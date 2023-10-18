@@ -54,7 +54,7 @@ subroutine d_p_coupling(phys_state, phys_tend,  pbuf2d, dyn_out)
    use phys_control,           only: use_gw_front, use_gw_front_igw
    use hycoef,                 only: hyai, ps0
    use fvm_mapping,            only: dyn2phys_vector, dyn2phys_all_vars
-   use dyn_time_mod,           only: timelevel_qdp
+   use se_dyn_time_mod,        only: timelevel_qdp
    use control_mod,            only: qsplit
    use test_fvm_mapping,       only: test_mapping_overwrite_dyn_state, test_mapping_output_phys_state
    use prim_advance_mod,       only: tot_energy_dyn
