@@ -4329,10 +4329,10 @@ end subroutine print_active_fldlst
          call cam_pio_createfile (tape(t)%Files(instantaneous_file_index), nhfil(t,instantaneous_file_index), amode)
       else if (hfile_accum(t)) then
          tape(t)%num_files = 1
-         call cam_pio_createfile (tape(t)%Files(1), nhfil(t,instantaneous_file_index), amode)
+         call cam_pio_createfile (tape(t)%Files(1), nhfil(t,accumulated_file_index), amode)
       else if (hfile_inst(t)) then
          tape(t)%num_files = 1
-         call cam_pio_createfile (tape(t)%Files(1), nhfil(t,accumulated_file_index), amode)
+         call cam_pio_createfile (tape(t)%Files(1), nhfil(t,instantaneous_file_index), amode)
       end if
     end if
     if(is_satfile(t)) then
