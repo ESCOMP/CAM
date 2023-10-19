@@ -8174,12 +8174,16 @@ Default: Set by build-namelist.
 </entry>
 
 <entry id="se_pgf_formulation" type="integer" category="se"
-       group="dyn_se_inparm" valid_values="1,2" >
+       group="dyn_se_inparm" valid_values="1,2,3" >
 
   1: Exner version of pressure gradient force (PGF)
   see Appendix A in https://agupubs.onlinelibrary.wiley.com/doi/epdf/10.1029/2022MS003192
 
   2: Traditional pressure gradient formulation (grad p)
+
+  3: Hybrid (formulation 1 where hybm>0 else formulation 2)
+     Use hybrid PGF option for WACCM-x to make WACCM-x consistent with PGF
+     used in CAM in the troposphere and traditional PGF formulation above
 
   Default: Set by build-namelist.
 </entry>
