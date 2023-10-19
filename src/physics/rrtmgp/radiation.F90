@@ -1327,9 +1327,10 @@ subroutine radiation_tend( &
 
             ! N.B.: For snow optical properties, the GRID-BOX MEAN shortwave and longwave
             !       optical depths are passed.
-            call cospsimulator_intr_run(state,  pbuf, cam_in, emis, coszrs, &
-               cld_swtau_in=cld_tau_cloudsim,&
-               snow_tau_in=gb_snow_tau, snow_emis_in=gb_snow_lw)
+            call cospsimulator_intr_run( &
+               state,  pbuf, cam_in, emis, coszrs,                     &
+               cld_swtau_in=cld_tau_cloudsim, snow_tau_in=gb_snow_tau, &
+               snow_emis_in=gb_snow_lw)
             cosp_cnt(lchnk) = 0
          end if
       end if   ! docosp
@@ -1438,10 +1439,10 @@ subroutine radiation_tend( &
       call heating_rate('SW', ncol, fns, qrs)
       call heating_rate('SW', ncol, fcns, rd%qrsc)
 
-      fsns(:ncol)        = fns(:ncol,pverp)  ! net sw flux at surface
-      fsnt(:ncol)        = fns(:ncol,1)      ! net sw flux at top-of-model (w/o extra layer)
-      rd%fsnsc(:ncol)    = fcns(:ncol,pverp) ! net sw clearsky flux at surface
-      rd%fsntc(:ncol)    = fcns(:ncol,1)     ! net sw clearsky flux at top
+      fsns(:ncol)     = fns(:ncol,pverp)    ! net sw flux at surface
+      fsnt(:ncol)     = fns(:ncol,ktopcam)  ! net sw flux at top-of-model (w/o extra layer)
+      rd%fsnsc(:ncol) = fcns(:ncol,pverp)   ! net sw clearsky flux at surface
+      rd%fsntc(:ncol) = fcns(:ncol,ktopcam) ! net sw clearsky flux at top
 
       cam_out%netsw(:ncol) = fsns(:ncol)
 
@@ -1519,10 +1520,10 @@ subroutine radiation_tend( &
       call heating_rate('LW', ncol, fcnl, rd%qrlc)
 
       flns(:ncol) = fnl(:ncol, pverp)
-      flnt(:ncol) = fnl(:ncol, 1)
+      flnt(:ncol) = fnl(:ncol, ktopcam)
 
       rd%flnsc(:ncol) = fcnl(:ncol, pverp)
-      rd%flntc(:ncol) = fcnl(:ncol, 1)    ! net lw flux at top-of-model
+      rd%flntc(:ncol) = fcnl(:ncol, ktopcam)    ! net lw flux at top-of-model
 
       cam_out%flwds(:ncol) = flw%flux_dn(:, nlay+1)
       rd%fldsc(:ncol)      = flwc%flux_dn(:, nlay+1)
@@ -1563,10 +1564,13 @@ subroutine radiation_tend( &
       ! local vars
       integer :: k
 
+      ! Initialize for layers where RRTMGP is not providing fluxes.
+      hrate = 0.0_r8
+
       select case (type)
       case ('LW')
 
-         do k = 1, pver
+         do k = ktopcam, pver
             ! (flux divergence as bottom-MINUS-top) * g/dp
             hrate(:ncol,k) = (flux_net(:ncol,k+1) - flux_net(:ncol,k)) * &
                           gravit / state%pdel(:ncol,k)
@@ -1574,7 +1578,7 @@ subroutine radiation_tend( &
 
       case ('SW')
 
-         do k = 1, pver
+         do k = ktopcam, pver
             ! top - bottom
             hrate(:ncol,k) = (flux_net(:ncol,k) - flux_net(:ncol,k+1)) * &
                           gravit / state%pdel(:ncol,k)
