@@ -5840,9 +5840,7 @@ end subroutine print_active_fldlst
                 nullify(tape(t)%hlist(fld)%varid)
               end if
             end do
-            do f = 1, tape(t)%num_files
-               call cam_pio_closefile(tape(t)%Files(f))
-            end do
+            call cam_pio_closefile(tape(t)%Files(1))
           else
             !$OMP PARALLEL DO PRIVATE (FLD)
             do fld=1,nflds(t)
