@@ -287,7 +287,7 @@ subroutine vertical_diffusion_init(pbuf2d)
   integer        :: nbot_eddy   ! Bottom interface level to which eddy vertical diffusion is applied ( = pver )
   integer        :: k           ! Vertical loop index
 
-  real(r8), parameter :: ntop_eddy_pres = 1.e-5_r8 ! Pressure below which eddy diffusion is not done in WACCM-X. (Pa)
+  real(r8), parameter :: ntop_eddy_pres = 1.e-7_r8 ! Pressure below which eddy diffusion is not done in WACCM-X. (Pa)
 
   integer :: im, l, m, nmodes, nspec
 
@@ -1046,9 +1046,9 @@ subroutine vertical_diffusion_tend( &
       ! PBL diffusion will happen before coupling, so vertical_diffusion
       ! is only handling other things, e.g. some boundary conditions, tms,
       ! and molecular diffusion.
-      
+
       call virtem(ncol, th(:ncol,pver),state%q(:ncol,pver,1), thvs(:ncol))
-      
+
       call calc_ustar( ncol, state%t(:ncol,pver), state%pmid(:ncol,pver), &
            cam_in%wsx(:ncol), cam_in%wsy(:ncol), rrho(:ncol), ustar(:ncol))
       ! Use actual qflux, not lhf/latvap as was done previously
