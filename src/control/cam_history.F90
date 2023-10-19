@@ -3588,7 +3588,7 @@ end subroutine print_active_fldlst
     !
     ! Local variables
     !
-    integer               :: t, f          ! tape, field indices
+    integer               :: t, fld        ! tape, field indices
 
     character*1           :: avgflag       ! averaging flag
 
@@ -3625,30 +3625,30 @@ end subroutine print_active_fldlst
     !      write(iulog,*)'fname_loc=',fname_loc
     do t = 1, ptapes
       if ( .not. masterlist(ff)%thisentry%actflag(t)) cycle
-      f = masterlist(ff)%thisentry%htapeindx(t)
+      fld = masterlist(ff)%thisentry%htapeindx(t)
       !
       ! Update history buffer
       !
-      flag_xyfill = otape(t)%hlist(f)%field%flag_xyfill
-      fillvalue = otape(t)%hlist(f)%field%fillvalue
-      avgflag = otape(t)%hlist(f)%avgflag
-      nacs   => otape(t)%hlist(f)%nacs(:,c)
-      hbuf => otape(t)%hlist(f)%hbuf(:,:,c)
-      if (associated(tape(t)%hlist(f)%wbuf)) then
-         wbuf => otape(t)%hlist(f)%wbuf(:,c)
+      flag_xyfill = otape(t)%hlist(fld)%field%flag_xyfill
+      fillvalue = otape(t)%hlist(fld)%field%fillvalue
+      avgflag = otape(t)%hlist(fld)%avgflag
+      nacs   => otape(t)%hlist(fld)%nacs(:,c)
+      hbuf => otape(t)%hlist(fld)%hbuf(:,:,c)
+      if (associated(tape(t)%hlist(fld)%wbuf)) then
+         wbuf => otape(t)%hlist(fld)%wbuf(:,c)
       endif
-      if (associated(tape(t)%hlist(f)%sbuf)) then
-         sbuf => otape(t)%hlist(f)%sbuf(:,:,c)
+      if (associated(tape(t)%hlist(fld)%sbuf)) then
+         sbuf => otape(t)%hlist(fld)%sbuf(:,:,c)
       endif
-      dimind = otape(t)%hlist(f)%field%get_dims(c)
+      dimind = otape(t)%hlist(fld)%field%get_dims(c)
 
       ! See notes above about validity of avg_subcol_field
-      if (otape(t)%hlist(f)%field%is_subcol) then
+      if (otape(t)%hlist(fld)%field%is_subcol) then
         if (present(avg_subcol_field)) then
           call endrun('OUTFLD: Cannot average '//trim(fname)//', subcolumn output was requested in addfld')
         end if
         avg_subcols = .false.
-      else if (otape(t)%hlist(f)%field%decomp_type == phys_decomp) then
+      else if (otape(t)%hlist(fld)%field%decomp_type == phys_decomp) then
         if (present(avg_subcol_field)) then
           avg_subcols = avg_subcol_field
         else
@@ -3662,15 +3662,15 @@ end subroutine print_active_fldlst
         end if
       end if
 
-      begdim2 = otape(t)%hlist(f)%field%begdim2
-      enddim2 = otape(t)%hlist(f)%field%enddim2
+      begdim2 = otape(t)%hlist(fld)%field%begdim2
+      enddim2 = otape(t)%hlist(fld)%field%enddim2
       if (avg_subcols) then
         allocate(afield(pcols, begdim2:enddim2))
         call subcol_field_avg_handler(idim, field, c, afield)
         ! Hack! Avoid duplicating select statement below
         call outfld(fname, afield, pcols, c)
         deallocate(afield)
-      else if (otape(t)%hlist(f)%field%is_subcol) then
+      else if (otape(t)%hlist(fld)%field%is_subcol) then
         ! We have to assume that using mdimnames (e.g., psubcols) is
         ! incompatible with the begdimx, enddimx usage (checked in addfld)
         ! Since psubcols is included in levels, take that out
@@ -3725,7 +3725,7 @@ end subroutine print_active_fldlst
         case ('L')
           call hbuf_accum_addlcltime(hbuf, ufield, nacs, dimind, pcols,  &
                flag_xyfill, fillvalue, c,                                &
-               otape(t)%hlist(f)%field%decomp_type,                      &
+               otape(t)%hlist(fld)%field%decomp_type,                      &
                lcltod_start(t), lcltod_stop(t))
 
         case ('S') ! Standard deviation
@@ -3767,7 +3767,7 @@ end subroutine print_active_fldlst
         case ('L')
           call hbuf_accum_addlcltime(hbuf, field, nacs, dimind, idim,    &
                flag_xyfill, fillvalue, c,                                &
-               otape(t)%hlist(f)%field%decomp_type,                      &
+               otape(t)%hlist(fld)%field%decomp_type,                      &
                lcltod_start(t), lcltod_stop(t))
 
         case ('S') ! Standard deviation
@@ -4325,25 +4325,20 @@ end subroutine print_active_fldlst
     if(is_satfile(t)) then
       interpolate = .false. ! !!XXgoldyXX: Do we ever want to support this?
       patch_output = .false.
-      do f = 1, tape(t)%num_files
-         call cam_pio_def_dim(tape(t)%Files(f), 'ncol', pio_unlimited, timdim)
-         call cam_pio_def_dim(tape(t)%Files(f), 'nbnd', 2, bnddim)
-      end do
+      call cam_pio_def_dim(tape(t)%Files(1), 'ncol', pio_unlimited, timdim)
+      call cam_pio_def_dim(tape(t)%Files(1), 'nbnd', 2, bnddim)
 
       allocate(latvar(1), lonvar(1))
       allocate(latvar(1)%vd, lonvar(1)%vd)
-      do f = 1, tape(t)%num_files
-         call cam_pio_def_var(tape(t)%Files(f), 'lat', pio_double, (/timdim/),       &
-              latvar(1)%vd)
-         ierr=pio_put_att (tape(t)%Files(f), latvar(1)%vd, 'long_name', 'latitude')
-         ierr=pio_put_att (tape(t)%Files(f), latvar(1)%vd, 'units', 'degrees_north')
+      call cam_pio_def_var(tape(t)%Files(1), 'lat', pio_double, (/timdim/),       &
+           latvar(1)%vd)
+      ierr=pio_put_att (tape(t)%Files(1), latvar(1)%vd, 'long_name', 'latitude')
+      ierr=pio_put_att (tape(t)%Files(1), latvar(1)%vd, 'units', 'degrees_north')
 
-         call cam_pio_def_var(tape(t)%Files(f), 'lon', pio_double, (/timdim/),       &
-              lonvar(1)%vd)
-         ierr=pio_put_att (tape(t)%Files(f), lonvar(1)%vd,'long_name','longitude')
-         ierr=pio_put_att (tape(t)%Files(f), lonvar(1)%vd,'units','degrees_east')
-      end do
-
+      call cam_pio_def_var(tape(t)%Files(1), 'lon', pio_double, (/timdim/),       &
+           lonvar(1)%vd)
+      ierr=pio_put_att (tape(t)%Files(1), lonvar(1)%vd,'long_name','longitude')
+      ierr=pio_put_att (tape(t)%Files(1), lonvar(1)%vd,'units','degrees_east')
     else
       !
       ! Setup netcdf file - create the dimensions of lat,lon,time,level
@@ -4949,7 +4944,7 @@ end subroutine print_active_fldlst
 
   !#######################################################################
 
-  subroutine h_normalize (f, t)
+  subroutine h_normalize (fld, t)
 
     use cam_history_support, only: dim_index_2d
     use time_manager, only: get_nstep
@@ -4966,7 +4961,7 @@ end subroutine print_active_fldlst
     !
     ! Input arguments
     !
-    integer, intent(in) :: f       ! field index
+    integer, intent(in) :: fld     ! field index
     integer, intent(in) :: t       ! tape index
     !
     ! Local workspace
@@ -4988,16 +4983,16 @@ end subroutine print_active_fldlst
 
     call t_startf ('h_normalize')
 
-    call tape(t)%hlist(f)%field%get_bounds(3, begdim3, enddim3)
+    call tape(t)%hlist(fld)%field%get_bounds(3, begdim3, enddim3)
 
     !
     ! normalize by number of accumulations for averaged case
     !
-    flag_xyfill = tape(t)%hlist(f)%field%flag_xyfill
-    avgflag = tape(t)%hlist(f)%avgflag
+    flag_xyfill = tape(t)%hlist(fld)%field%flag_xyfill
+    avgflag = tape(t)%hlist(fld)%avgflag
 
     do c = begdim3, enddim3
-      dimind = tape(t)%hlist(f)%field%get_dims(c)
+      dimind = tape(t)%hlist(fld)%field%get_dims(c)
 
       ib = dimind%beg1
       ie = dimind%end1
@@ -5006,55 +5001,55 @@ end subroutine print_active_fldlst
 
       if (flag_xyfill) then
         do k = jb, je
-          where (tape(t)%hlist(f)%nacs(ib:ie, c) == 0)
-            tape(t)%hlist(f)%hbuf(ib:ie,k,c) = tape(t)%hlist(f)%field%fillvalue
+          where (tape(t)%hlist(fld)%nacs(ib:ie, c) == 0)
+            tape(t)%hlist(fld)%hbuf(ib:ie,k,c) = tape(t)%hlist(fld)%field%fillvalue
           endwhere
         end do
       end if
 
       if (avgflag == 'A' .or. avgflag == 'B' .or. avgflag == 'L') then
-        if (size(tape(t)%hlist(f)%nacs, 1) > 1) then
+        if (size(tape(t)%hlist(fld)%nacs, 1) > 1) then
           do k = jb, je
-            where (tape(t)%hlist(f)%nacs(ib:ie,c) /= 0)
-              tape(t)%hlist(f)%hbuf(ib:ie,k,c) = &
-                   tape(t)%hlist(f)%hbuf(ib:ie,k,c) &
-                   / tape(t)%hlist(f)%nacs(ib:ie,c)
+            where (tape(t)%hlist(fld)%nacs(ib:ie,c) /= 0)
+              tape(t)%hlist(fld)%hbuf(ib:ie,k,c) = &
+                   tape(t)%hlist(fld)%hbuf(ib:ie,k,c) &
+                   / tape(t)%hlist(fld)%nacs(ib:ie,c)
             endwhere
           end do
-        else if(tape(t)%hlist(f)%nacs(1,c) > 0) then
+        else if(tape(t)%hlist(fld)%nacs(1,c) > 0) then
           do k=jb,je
-            tape(t)%hlist(f)%hbuf(ib:ie,k,c) = &
-                 tape(t)%hlist(f)%hbuf(ib:ie,k,c) &
-                 / tape(t)%hlist(f)%nacs(1,c)
+            tape(t)%hlist(fld)%hbuf(ib:ie,k,c) = &
+                 tape(t)%hlist(fld)%hbuf(ib:ie,k,c) &
+                 / tape(t)%hlist(fld)%nacs(1,c)
           end do
         end if
       end if
       currstep=get_nstep()
       if (avgflag == 'N' .and. currstep >  0) then
-         if( currstep > tape(t)%hlist(f)%beg_nstep) then
-            nsteps=currstep-tape(t)%hlist(f)%beg_nstep
+         if( currstep > tape(t)%hlist(fld)%beg_nstep) then
+            nsteps=currstep-tape(t)%hlist(fld)%beg_nstep
             do k=jb,je
-               tape(t)%hlist(f)%hbuf(ib:ie,k,c) = &
-                    tape(t)%hlist(f)%hbuf(ib:ie,k,c) &
+               tape(t)%hlist(fld)%hbuf(ib:ie,k,c) = &
+                    tape(t)%hlist(fld)%hbuf(ib:ie,k,c) &
                     / nsteps
             end do
          else
-            write(errmsg,*) sub,'FATAL: bad nstep normalization, currstep, beg_nstep=',currstep,',',tape(t)%hlist(f)%beg_nstep
+            write(errmsg,*) sub,'FATAL: bad nstep normalization, currstep, beg_nstep=',currstep,',',tape(t)%hlist(fld)%beg_nstep
             call endrun(trim(errmsg))
          end if
       end if
       if (avgflag == 'S') then
          ! standard deviation ...
          ! from http://www.johndcook.com/blog/standard_deviation/
-         tmpfill = merge(tape(t)%hlist(f)%field%fillvalue,0._r8,flag_xyfill)
+         tmpfill = merge(tape(t)%hlist(fld)%field%fillvalue,0._r8,flag_xyfill)
          do k=jb,je
             do i = ib,ie
                ii = merge(i,1,flag_xyfill)
-               if (tape(t)%hlist(f)%nacs(ii,c) > 1) then
-                  variance = tape(t)%hlist(f)%sbuf(i,k,c)/(tape(t)%hlist(f)%nacs(ii,c)-1)
-                  tape(t)%hlist(f)%hbuf(i,k,c) = sqrt(variance)
+               if (tape(t)%hlist(fld)%nacs(ii,c) > 1) then
+                  variance = tape(t)%hlist(fld)%sbuf(i,k,c)/(tape(t)%hlist(fld)%nacs(ii,c)-1)
+                  tape(t)%hlist(fld)%hbuf(i,k,c) = sqrt(variance)
                else
-                  tape(t)%hlist(f)%hbuf(i,k,c) = tmpfill
+                  tape(t)%hlist(fld)%hbuf(i,k,c) = tmpfill
                endif
             end do
          end do
@@ -5068,7 +5063,7 @@ end subroutine print_active_fldlst
 
   !#######################################################################
 
-  subroutine h_zero (f, t)
+  subroutine h_zero (fld, t)
     use cam_history_support, only: dim_index_2d
     use time_manager, only: get_nstep, is_first_restart_step
     !
@@ -5080,7 +5075,7 @@ end subroutine print_active_fldlst
     !
     !-----------------------------------------------------------------------
     !
-    integer, intent(in) :: f     ! field index
+    integer, intent(in) :: fld   ! field index
     integer, intent(in) :: t     ! tape index
     !
     ! Local workspace
@@ -5092,19 +5087,19 @@ end subroutine print_active_fldlst
 
     call t_startf ('h_zero')
 
-    call tape(t)%hlist(f)%field%get_bounds(3, begdim3, enddim3)
+    call tape(t)%hlist(fld)%field%get_bounds(3, begdim3, enddim3)
 
     do c = begdim3, enddim3
-      dimind = tape(t)%hlist(f)%field%get_dims(c)
-      tape(t)%hlist(f)%hbuf(dimind%beg1:dimind%end1,dimind%beg2:dimind%end2,c)=0._r8
-      if (associated(tape(t)%hlist(f)%sbuf)) then ! zero out variance buffer for standard deviation
-         tape(t)%hlist(f)%sbuf(dimind%beg1:dimind%end1,dimind%beg2:dimind%end2,c)=0._r8
+      dimind = tape(t)%hlist(fld)%field%get_dims(c)
+      tape(t)%hlist(fld)%hbuf(dimind%beg1:dimind%end1,dimind%beg2:dimind%end2,c)=0._r8
+      if (associated(tape(t)%hlist(fld)%sbuf)) then ! zero out variance buffer for standard deviation
+         tape(t)%hlist(fld)%sbuf(dimind%beg1:dimind%end1,dimind%beg2:dimind%end2,c)=0._r8
       end if
     end do
-    tape(t)%hlist(f)%nacs(:,:) = 0
+    tape(t)%hlist(fld)%nacs(:,:) = 0
 
     !Don't reset beg_nstep if this is a restart
-    if (.not. is_first_restart_step()) tape(t)%hlist(f)%beg_nstep = get_nstep()
+    if (.not. is_first_restart_step()) tape(t)%hlist(fld)%beg_nstep = get_nstep()
 
     call t_stopf ('h_zero')
 
@@ -5113,7 +5108,7 @@ end subroutine print_active_fldlst
 
   !#######################################################################
 
-  subroutine h_global (f, t)
+  subroutine h_global (fld, t)
 
     use cam_history_support, only: dim_index_2d
     use shr_reprosum_mod,    only: shr_reprosum_calc
@@ -5127,7 +5122,7 @@ end subroutine print_active_fldlst
     !
     !-----------------------------------------------------------------------
     !
-    integer, intent(in) :: f     ! field index
+    integer, intent(in) :: fld   ! field index
     integer, intent(in) :: t     ! tape index
     !
     ! Local workspace
@@ -5145,42 +5140,42 @@ end subroutine print_active_fldlst
     call t_startf ('h_global')
 
     ! wbuf contains the area weighting for this field decomposition
-    if (associated(tape(t)%hlist(f)%wbuf) ) then
+    if (associated(tape(t)%hlist(fld)%wbuf) ) then
        
-       begdim1    =  tape(t)%hlist(f)%field%begdim1
-       enddim1    =  tape(t)%hlist(f)%field%enddim1
+       begdim1    =  tape(t)%hlist(fld)%field%begdim1
+       enddim1    =  tape(t)%hlist(fld)%field%enddim1
        fdims(1)   =  enddim1 - begdim1 + 1
-       begdim2    =  tape(t)%hlist(f)%field%begdim2
-       enddim2    =  tape(t)%hlist(f)%field%enddim2
+       begdim2    =  tape(t)%hlist(fld)%field%begdim2
+       enddim2    =  tape(t)%hlist(fld)%field%enddim2
        fdims(2)   =  enddim2 - begdim2 + 1
-       begdim3    =  tape(t)%hlist(f)%field%begdim3
-       enddim3    =  tape(t)%hlist(f)%field%enddim3
+       begdim3    =  tape(t)%hlist(fld)%field%begdim3
+       enddim3    =  tape(t)%hlist(fld)%field%enddim3
        fdims(3)   =  enddim3 - begdim3 + 1
        
        allocate(globalarr(fdims(1)*fdims(2)*fdims(3)))
        count=0
        globalarr=0._r8
        do ie = begdim3, enddim3
-          dimind = tape(t)%hlist(f)%field%get_dims(ie)
+          dimind = tape(t)%hlist(fld)%field%get_dims(ie)
           do j1 = dimind%beg2, dimind%end2
              do i1 = dimind%beg1, dimind%end1
                 count=count+1
-                globalarr(count)=globalarr(count)+tape(t)%hlist(f)%hbuf(i1,j1,ie)*tape(t)%hlist(f)%wbuf(i1,ie)
+                globalarr(count)=globalarr(count)+tape(t)%hlist(fld)%hbuf(i1,j1,ie)*tape(t)%hlist(fld)%wbuf(i1,ie)
              end do
           end do
        end do
        ! call fixed-point algorithm
        call shr_reprosum_calc (globalarr, globalsum, count, count, 1, commid=mpicom)
-       if (masterproc) write(iulog,*)'h_global:field:',trim(tape(t)%hlist(f)%field%name),' global integral=',globalsum(1)
+       if (masterproc) write(iulog,*)'h_global:field:',trim(tape(t)%hlist(fld)%field%name),' global integral=',globalsum(1)
        ! store global entry for this history tape entry
-       call tape(t)%hlist(f)%put_global(globalsum(1))
+       call tape(t)%hlist(fld)%put_global(globalsum(1))
        ! deallocate temp array
        deallocate(globalarr)
     end if
     call t_stopf ('h_global')
   end subroutine h_global
 
-  subroutine h_field_op (f, t)
+  subroutine h_field_op (fld, t)
     use cam_history_support, only: dim_index_2d
     !
     !-----------------------------------------------------------------------
@@ -5191,43 +5186,43 @@ end subroutine print_active_fldlst
     !
     !-----------------------------------------------------------------------
     !
-    integer, intent(in) :: f        ! field index
+    integer, intent(in) :: fld      ! field index
     integer, intent(in) :: t        ! tape index
     !
     ! Local workspace
     !
     type (dim_index_2d) :: dimind   ! 2-D dimension index
     integer :: c                    ! chunk index
-    integer :: f1,f2                ! fields to be operated on
+    integer :: fld1,fld2            ! fields to be operated on
     integer :: begdim1, begdim2, begdim3              ! on-node chunk or lat start index
     integer :: enddim1, enddim2, enddim3              ! on-node chunk or lat end index
     character(len=field_op_len) :: optype             ! field operation only sum or diff supported
 
     call t_startf ('h_field_op')
-    f1 = tape(t)%hlist(f)%field%op_field1_id
-    f2 = tape(t)%hlist(f)%field%op_field2_id
-    optype =  trim(adjustl(tape(t)%hlist(f)%field%field_op))
+    fld1 = tape(t)%hlist(fld)%field%op_field1_id
+    fld2 = tape(t)%hlist(fld)%field%op_field2_id
+    optype =  trim(adjustl(tape(t)%hlist(fld)%field%field_op))
 
-    begdim3  = tape(t)%hlist(f)%field%begdim3
-    enddim3  = tape(t)%hlist(f)%field%enddim3
+    begdim3  = tape(t)%hlist(fld)%field%begdim3
+    enddim3  = tape(t)%hlist(fld)%field%enddim3
 
     do c = begdim3, enddim3
-      dimind = tape(t)%hlist(f)%field%get_dims(c)
+      dimind = tape(t)%hlist(fld)%field%get_dims(c)
       if (trim(optype) == 'dif') then 
-         tape(t)%hlist(f)%hbuf(dimind%beg1:dimind%end1,dimind%beg2:dimind%end2,c) = &
-         tape(t)%hlist(f1)%hbuf(dimind%beg1:dimind%end1,dimind%beg2:dimind%end2,c) - &
-         tape(t)%hlist(f2)%hbuf(dimind%beg1:dimind%end1,dimind%beg2:dimind%end2,c)
+         tape(t)%hlist(fld)%hbuf(dimind%beg1:dimind%end1,dimind%beg2:dimind%end2,c) = &
+         tape(t)%hlist(fld1)%hbuf(dimind%beg1:dimind%end1,dimind%beg2:dimind%end2,c) - &
+         tape(t)%hlist(fld2)%hbuf(dimind%beg1:dimind%end1,dimind%beg2:dimind%end2,c)
       else if (trim(optype) == 'sum') then
-         tape(t)%hlist(f)%hbuf(dimind%beg1:dimind%end1,dimind%beg2:dimind%end2,c) = &
-         tape(t)%hlist(f1)%hbuf(dimind%beg1:dimind%end1,dimind%beg2:dimind%end2,c) + &
-         tape(t)%hlist(f2)%hbuf(dimind%beg1:dimind%end1,dimind%beg2:dimind%end2,c)
+         tape(t)%hlist(fld)%hbuf(dimind%beg1:dimind%end1,dimind%beg2:dimind%end2,c) = &
+         tape(t)%hlist(fld1)%hbuf(dimind%beg1:dimind%end1,dimind%beg2:dimind%end2,c) + &
+         tape(t)%hlist(fld2)%hbuf(dimind%beg1:dimind%end1,dimind%beg2:dimind%end2,c)
       else
          call endrun('h_field_op: ERROR: composed field operation type unknown:'//trim(optype))
       end if
     end do
     ! Set nsteps for composed fields using value of one of the component fields
-    tape(t)%hlist(f)%beg_nstep=tape(t)%hlist(f1)%beg_nstep
-    tape(t)%hlist(f)%nacs(:,:)=tape(t)%hlist(f1)%nacs(:,:)
+    tape(t)%hlist(fld)%beg_nstep=tape(t)%hlist(fld1)%beg_nstep
+    tape(t)%hlist(fld)%nacs(:,:)=tape(t)%hlist(fld1)%nacs(:,:)
     call t_stopf ('h_field_op')
   end subroutine h_field_op
 
@@ -5343,10 +5338,10 @@ end subroutine print_active_fldlst
                  mdimsize, ncreal, fdecomp)
           else if (tape(t)%hlist(fld)%field%zonal_complement > 0) then
             ! We don't want to double write so do nothing here
-!            compind = tape(t)%hlist(f)%field%zonal_complement
+!            compind = tape(t)%hlist(fld)%field%zonal_complement
 !            compid => tape(t)%hlist(compind)%varid(index)
 !            call write_interpolated(tape(t)%Files(f), compid, varid,              &
-!                 tape(t)%hlist(compind)%hbuf, tape(t)%hlist(f)%hbuf,          &
+!                 tape(t)%hlist(compind)%hbuf, tape(t)%hlist(fld)%hbuf,          &
 !                 mdimsize, PIO_DOUBLE, fdecomp)
           else
             ! Scalar field
@@ -6822,10 +6817,10 @@ end subroutine print_active_fldlst
     logical :: hist_fld_col_active(numcols)
 
     ! Local variables
-    integer                         :: ff          ! masterlist index pointer
+    integer                         :: ffld        ! masterlist index pointer
     integer                         :: i
     integer                         :: t           ! history file (tape) index
-    integer                         :: f           ! field index
+    integer                         :: fld         ! field index
     integer                         :: decomp
     logical                         :: activeloc(numcols)
     integer                         :: num_patches
@@ -6841,22 +6836,22 @@ end subroutine print_active_fldlst
     hist_fld_col_active = .false.
 
     ! Check for name in the master list.
-    call get_field_properties(fname, found, tape_out=tape, ff_out=ff)
+    call get_field_properties(fname, found, tape_out=tape, ff_out=ffld)
 
     ! If not in master list then return.
     if (.not. found) return
 
     ! If in master list, but not active on any file then return
-    if (.not. masterlist(ff)%thisentry%act_sometape) return
+    if (.not. masterlist(ffld)%thisentry%act_sometape) return
 
     ! Loop over history files and check for the field/column in each one
     do t = 1, ptapes
 
       ! Is the field active in this file?  If not the cycle to next file.
-      if (.not. masterlist(ff)%thisentry%actflag(t)) cycle
+      if (.not. masterlist(ffld)%thisentry%actflag(t)) cycle
 
-      f = masterlist(ff)%thisentry%htapeindx(t)
-      decomp = tape(t)%hlist(f)%field%decomp_type
+      fld = masterlist(ffld)%thisentry%htapeindx(t)
+      decomp = tape(t)%hlist(fld)%field%decomp_type
       patch_output = associated(tape(t)%patches)
 
       ! Check whether this file has patch (column) output.
