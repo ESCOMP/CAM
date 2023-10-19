@@ -2400,7 +2400,9 @@ CONTAINS
         !
         if (nfils(t) >= mfilt(t)) then
           if (masterproc) then
-            write(iulog,*)'READ_RESTART_HISTORY: nf_close(',t,')=',nhfil(t,1), mfilt(t)
+            do f = 1, tape(t)%num_files
+               write(iulog,*)'READ_RESTART_HISTORY: nf_close(',t,')=',nhfil(t,f), mfilt(t)
+            end do
           end if
           do fld=1,nflds(t)
             deallocate(tape(t)%hlist(fld)%varid)
