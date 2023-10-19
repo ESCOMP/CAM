@@ -142,6 +142,10 @@ module cam_history
   integer, parameter :: max_hcoordname_len_dim_ind = 10
   integer, parameter :: max_num_split_files        = 11
 
+  ! Indices for split history files; must be 1 and 2, but could be swapped if desired
+  integer, parameter :: accumulated_file_index     =  1
+  integer, parameter :: instantaneous_file_index   =  2
+
   integer :: nfmaster = 0             ! number of fields in master field list
   integer :: nflds(ptapes)            ! number of fields per tape
 
@@ -2371,17 +2375,17 @@ CONTAINS
         if (nfils(t) > 0) then
            if (hfile_accum(t) .and. hfile_inst(t)) then
               tape(t)%num_files = 2
-              call getfil (cpath(t,1), locfn)
-              call cam_pio_openfile(tape(t)%Files(1), locfn, PIO_WRITE)
-              call getfil (cpath(t,2), locfn)
-              call cam_pio_openfile(tape(t)%Files(2), locfn, PIO_WRITE)
+              call getfil (cpath(t,accumulated_file_index), locfn)
+              call cam_pio_openfile(tape(t)%Files(accumulated_file_index), locfn, PIO_WRITE)
+              call getfil (cpath(t,instantaneous_file_index), locfn)
+              call cam_pio_openfile(tape(t)%Files(instantaneous_file_index), locfn, PIO_WRITE)
            else if (hfile_accum(t)) then
               tape(t)%num_files = 1
-              call getfil (cpath(t,1), locfn)
+              call getfil (cpath(t,accumulated_file_index), locfn)
               call cam_pio_openfile(tape(t)%Files(1), locfn, PIO_WRITE)
            else if (hfile_inst(t)) then
               tape(t)%num_files = 1
-              call getfil (cpath(t,2), locfn)
+              call getfil (cpath(t,instantaneous_file_index), locfn)
               call cam_pio_openfile(tape(t)%Files(1), locfn, PIO_WRITE)
            end if
           call h_inquire (t)
@@ -2422,7 +2426,7 @@ CONTAINS
 
   !#######################################################################
 
-  character(len=max_string_len) function get_hfilepath( tape )
+  character(len=max_string_len) function get_hfilepath( tape, accumulated_flag )
     !
     !-----------------------------------------------------------------------
     !
@@ -2433,8 +2437,14 @@ CONTAINS
     !-----------------------------------------------------------------------
     !
     integer, intent(in) :: tape  ! Tape number
+    logical, intent(in) :: accumulated_flag ! True if calling routine wants the accumulated
+                                            ! file path, False for instantaneous
 
-    get_hfilepath = cpath( tape, 1 )
+    if (accumulated_flag) then
+       get_hfilepath = cpath( tape, accumulated_file_index )
+    else
+       get_hfilepath = cpath( tape, instantaneous_file_index )
+    end if
   end function get_hfilepath
 
   !#######################################################################
@@ -4029,7 +4039,7 @@ end subroutine print_active_fldlst
        do fld=1,nflds(t)
          if (tape(t)%num_files > 1) then
             ! we have two files - instantaneous and accumulated
-            if (f == 1) then
+            if (f == accumulated_file_index) then
                ! this is the accumulated file - skip instantaneous fields
                if (tape(t)%hlist(fld)%avgflag == 'I') then
                   cycle
@@ -4291,11 +4301,12 @@ end subroutine print_active_fldlst
       tape => history_tape
       if(masterproc) then
          if (hfile_accum(t) .and. hfile_inst(t)) then
-            write(iulog,*)'Opening netcdf history files ', trim(nhfil(t,1)), trim(nhfil(t,2))
+            write(iulog,*)'Opening netcdf history files ', trim(nhfil(t,accumulated_file_index)), &
+                  trim(nhfil(t,instantaneous_file_index))
          else if (hfile_accum(t)) then
-            write(iulog,*)'Opening accumulated netcdf history file ', trim(nhfil(t,1))
+            write(iulog,*)'Opening accumulated netcdf history file ', trim(nhfil(t,accumulated_file_index))
          else if (hfile_inst(t)) then
-            write(iulog,*)'Opening instantaneous netcdf history file ', trim(nhfil(t,2))
+            write(iulog,*)'Opening instantaneous netcdf history file ', trim(nhfil(t,instantaneous_file_index))
          end if
       end if
     end if
@@ -4307,19 +4318,19 @@ end subroutine print_active_fldlst
       call cam_pio_createfile (tape(t)%Files(1), hrestpath(t), amode)
     else if (is_initfile(file_index=t) .or. is_satfile(t)) then
       tape(t)%num_files = 1
-      call cam_pio_createfile (tape(t)%Files(1), nhfil(t,1), amode)
+      call cam_pio_createfile (tape(t)%Files(1), nhfil(t,accumulated_file_index), amode)
     else
       ! figure out how many history files to generate for this tape
       if (hfile_accum(t) .and. hfile_inst(t)) then
          tape(t)%num_files = 2
-         call cam_pio_createfile (tape(t)%Files(1), nhfil(t,1), amode)
-         call cam_pio_createfile (tape(t)%Files(2), nhfil(t,2), amode)
+         call cam_pio_createfile (tape(t)%Files(accumulated_file_index), nhfil(t,accumulated_file_index), amode)
+         call cam_pio_createfile (tape(t)%Files(instantaneous_file_index), nhfil(t,instantaneous_file_index), amode)
       else if (hfile_accum(t)) then
          tape(t)%num_files = 1
-         call cam_pio_createfile (tape(t)%Files(1), nhfil(t,1), amode)
+         call cam_pio_createfile (tape(t)%Files(1), nhfil(t,instantaneous_file_index), amode)
       else if (hfile_inst(t)) then
          tape(t)%num_files = 1
-         call cam_pio_createfile (tape(t)%Files(1), nhfil(t,2), amode)
+         call cam_pio_createfile (tape(t)%Files(1), nhfil(t,accumulated_file_index), amode)
       end if
     end if
     if(is_satfile(t)) then
@@ -4635,7 +4646,7 @@ end subroutine print_active_fldlst
        do fld = 1, nflds(t)
          if (tape(t)%num_files > 1) then
             ! we have two files - instantaneous and accumulated
-            if (f == 1) then
+            if (f == accumulated_file_index) then
                ! this is the accumulated file - skip instantaneous fields
                if (tape(t)%hlist(fld)%avgflag == 'I') then
                   cycle
@@ -5617,10 +5628,10 @@ end subroutine print_active_fldlst
               if (trim(fname) == trim(nhfil(f,1)) .and. trim(fname) /= '') then
                  write(iulog,*)'WSHIST: New filename same as old file = ', trim(fname)
                  duplicate = .true.
-              else if (trim(fname_acc) == trim(nhfil(f,1)) .and. trim(fname_acc) /= '') then
+              else if (trim(fname_acc) == trim(nhfil(f,accumulated_file_index)) .and. trim(fname_acc) /= '') then
                  write(iulog,*)'WSHIST: New accumulated filename same as old file = ', trim(fname_acc)
                  duplicate = .true.
-              else if (trim(fname_inst) == trim(nhfil(f,2)) .and. trim(fname_inst) /= '') then
+              else if (trim(fname_inst) == trim(nhfil(f,instantaneous_file_index)) .and. trim(fname_inst) /= '') then
                  write(iulog,*)'WSHIST: New instantaneous filename same as old file = ', trim(fname_inst)
                  duplicate = .true.
               end if
@@ -5642,15 +5653,14 @@ end subroutine print_active_fldlst
                   write(iulog,*)'WSHIST: initfile nhfil(',t,')=',trim(nhfil(t,1))
                end if
             else
-               nhfil(t,1) = fname_acc
-               nhfil(t,2) = fname_inst
+               nhfil(t,accumulated_file_index) = fname_acc
+               nhfil(t,instantaneous_file_index) = fname_inst
                if(masterproc) then
-                  write(iulog,*)'WSHIST: accumulated nhfil(',t,')=',trim(nhfil(t,1))
-                  write(iulog,*)'WSHIST: instantaneous nhfil(',t,')=',trim(nhfil(t,2))
+                  write(iulog,*)'WSHIST: accumulated nhfil(',t,')=',trim(nhfil(t,accumulated_file_index))
+                  write(iulog,*)'WSHIST: instantaneous nhfil(',t,')=',trim(nhfil(t,instantaneous_file_index))
                end if
             end if
-            cpath(t,1) = nhfil(t,1)
-            cpath(t,2) = nhfil(t,2)
+            cpath(t,:) = nhfil(t,:)
             if ( len_trim(nfpath(t)) == 0 ) nfpath(t) = cpath(t, 1)
           end if
           call h_define (t, restart)
@@ -5740,7 +5750,7 @@ end subroutine print_active_fldlst
           do f = 1, tape(t)%num_files
              if (tape(t)%num_files > 1) then
                 ! We have two files - one for accumulated and one for instantaneous fields
-                if (f == 1) then
+                if (f == accumulated_file_index) then
                    ! accumulated tape - time is midpoint of time_bounds
                    ierr=pio_put_var (tape(t)%Files(f), tape(t)%timeid, (/start/),(/count1/),(/(tdata(1) + tdata(2)) / 2._r8/))
                 else
@@ -5795,9 +5805,10 @@ end subroutine print_active_fldlst
           do fld=1,nflds(t)
             do f = 1, tape(t)%num_files
                if (tape(t)%num_files > 1) then
-                  if ((tape(t)%hlist(fld)%avgflag .eq. 'I') .and. f == 1) then
+                  ! we have a history split, conditionally skip fields that are for the other file
+                  if ((tape(t)%hlist(fld)%avgflag .eq. 'I') .and. f == accumulated_file_index) then
                      cycle
-                  else if ((tape(t)%hlist(fld)%avgflag .ne. 'I') .and. f == 2) then
+                  else if ((tape(t)%hlist(fld)%avgflag .ne. 'I') .and. f == instantaneous_file_index) then
                      cycle
                   end if
                else
@@ -6437,7 +6448,9 @@ end subroutine print_active_fldlst
         ! If so, just close primary unit do not dispose.
         !
         if (masterproc) then
-           write(iulog,*)'WRAPUP: nf_close(',t,')=',trim(nhfil(t,1))
+           do f = 1, tape(t)%num_files
+              write(iulog,*)'WRAPUP: nf_close(',t,')=',trim(nhfil(t,f))
+           end do
         end if
         if(pio_file_is_open(tape(t)%Files(1))) then
           if (nlend .or. lfill(t)) then
@@ -6475,12 +6488,12 @@ end subroutine print_active_fldlst
           !
           if (.not.nlend .and. .not.lfill(t)) then
             if (hfile_accum(t) .and. hfile_inst(t)) then
-               call cam_PIO_openfile (tape(t)%Files(1), nhfil(t,1), PIO_WRITE)
-               call cam_PIO_openfile (tape(t)%Files(2), nhfil(t,2), PIO_WRITE)
+               call cam_PIO_openfile (tape(t)%Files(accumulated_file_index), nhfil(t,accumulated_file_index), PIO_WRITE)
+               call cam_PIO_openfile (tape(t)%Files(instantaneous_file_index), nhfil(t,instantaneous_file_index), PIO_WRITE)
             else if (hfile_accum(t)) then
-               call cam_PIO_openfile (tape(t)%Files(1), nhfil(t,1), PIO_WRITE)
+               call cam_PIO_openfile (tape(t)%Files(1), nhfil(t,accumulated_file_index), PIO_WRITE)
             else if (hfile_inst(t)) then
-               call cam_PIO_openfile (tape(t)%Files(1), nhfil(t,2), PIO_WRITE)
+               call cam_PIO_openfile (tape(t)%Files(1), nhfil(t,instantaneous_file_index), PIO_WRITE)
             end if
             call h_inquire(t)
           end if
