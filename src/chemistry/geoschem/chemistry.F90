@@ -4210,8 +4210,8 @@ contains
     Nullify(NEvapr  )
     Nullify(cmfdqr  )
 
-    IF ( rootChunk ) WRITE(iulog,*) ' GEOS-Chem Chemistry step ', iStep, ' completed'
-    IF ( lastChunk ) WRITE(iulog,*) ' Chemistry completed on all chunks completed of MasterProc'
+    IF ( rootChunk ) WRITE(iulog,*) 'GEOS-Chem Chemistry step ', iStep, ' completed'
+    IF ( lastChunk ) WRITE(iulog,*) 'Chemistry completed on all chunks of root CPU'
     IF ( FIRST ) THEN
         FIRST = .false.
     ENDIF
