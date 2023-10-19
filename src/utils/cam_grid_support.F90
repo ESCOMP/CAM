@@ -38,7 +38,7 @@ module cam_grid_support
     logical                   :: latitude          ! .false. means longitude
     real(r8),         pointer :: bnds(:,:) => NULL() ! bounds, if present
     type(vardesc_ptr_t)       :: vardesc(2)        ! If we are to write coord
-    type(var_desc_t), pointer :: bndsvdesc => NULL() ! If we are to write bounds
+    type(vardesc_ptr_t)       :: bndsvdesc(2)      ! If we are to write bounds
   contains
     procedure                 :: get_coord_len  => horiz_coord_len
     procedure                 :: num_elem       => horiz_coord_num_elem
@@ -603,18 +603,18 @@ contains
       call cam_pio_handle_error(ierr, 'Error writing "units" attr in write_horiz_coord_attr')
       ! Take care of bounds if they exist
       if (associated(this%bnds)) then
-        allocate(this%bndsvdesc)
+        allocate(this%bndsvdesc(file_index_loc)%p)
         ierr=pio_put_att(File, this%vardesc(file_index_loc)%p, 'bounds', trim(this%name)//'_bnds')
         call cam_pio_handle_error(ierr, 'Error writing "'//trim(this%name)//'_bnds" attr in write_horiz_coord_attr')
         call cam_pio_def_dim(File, 'nbnd', 2, bnds_dimid, existOK=.true.)
         call cam_pio_def_var(File, trim(this%name)//'_bnds', pio_double,      &
-             (/ bnds_dimid, dimid /), this%bndsvdesc, existOK=.false.)
+             (/ bnds_dimid, dimid /), this%bndsvdesc(file_index_loc)%p, existOK=.false.)
         call cam_pio_handle_error(ierr, 'Error defining "'//trim(this%name)//'bnds" in write_horiz_coord_attr')
         ! long_name
-        ierr=pio_put_att(File, this%bndsvdesc, 'long_name', trim(this%name)//' bounds')
+        ierr=pio_put_att(File, this%bndsvdesc(file_index_loc)%p, 'long_name', trim(this%name)//' bounds')
         call cam_pio_handle_error(ierr, 'Error writing bounds "long_name" attr in write_horiz_coord_attr')
         ! units
-        ierr=pio_put_att(File, this%bndsvdesc, 'units', trim(this%units))
+        ierr=pio_put_att(File, this%bndsvdesc(file_index_loc)%p, 'units', trim(this%units))
         call cam_pio_handle_error(ierr, 'Error writing bounds "units" attr in write_horiz_coord_attr')
       end if ! There are bounds for this coordinate
     end if ! We define the variable
@@ -696,10 +696,10 @@ contains
         call pio_syncfile(File)
         call pio_freedecomp(File, iodesc)
         ! Take care of bounds if they exist
-        if (associated(this%bnds) .and. associated(this%bndsvdesc)) then
+        if (associated(this%bnds) .and. associated(this%bndsvdesc(file_index_loc)%p)) then
           call pio_initdecomp(piosys, pio_double, (/2, this%dimsize/),        &
                this%map, iodesc)
-          call pio_write_darray(File, this%bndsvdesc, iodesc, this%bnds, ierr)
+          call pio_write_darray(File, this%bndsvdesc(file_index_loc)%p, iodesc, this%bnds, ierr)
           call pio_syncfile(File)
           call pio_freedecomp(File, iodesc)
         end if
@@ -709,8 +709,8 @@ contains
         ! This is a local variable, pio_put_var should work fine
         ierr = pio_put_var(File, this%vardesc(file_index_loc)%p, this%values)
         ! Take care of bounds if they exist
-        if (associated(this%bnds) .and. associated(this%bndsvdesc)) then
-          ierr = pio_put_var(File, this%bndsvdesc, this%bnds)
+        if (associated(this%bnds) .and. associated(this%bndsvdesc(file_index_loc)%p)) then
+          ierr = pio_put_var(File, this%bndsvdesc(file_index_loc)%p, this%bnds)
         end if
       end if
       write(errormsg, *) 'Error writing variable values for ',trim(this%name),&
@@ -724,9 +724,9 @@ contains
       deallocate(this%vardesc(file_index_loc)%p)
       nullify(this%vardesc(file_index_loc)%p)
       ! Same with the bounds descriptor
-      if (associated(this%bndsvdesc)) then
-        deallocate(this%bndsvdesc)
-        nullify(this%bndsvdesc)
+      if (associated(this%bndsvdesc(file_index_loc)%p)) then
+        deallocate(this%bndsvdesc(file_index_loc)%p)
+        nullify(this%bndsvdesc(file_index_loc)%p)
       end if
     end if ! Do we write the variable?
 

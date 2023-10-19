@@ -375,7 +375,7 @@ CONTAINS
     !
     ! Local workspace
     !
-    integer :: t, f              ! tape, field indices
+    integer :: t, fld            ! tape, field indices
     integer :: begdim1           ! on-node dim1 start index
     integer :: enddim1           ! on-node dim1 end index
     integer :: begdim2           ! on-node dim2 start index
@@ -407,18 +407,18 @@ CONTAINS
       write(iulog,*)' ******* MASTER FIELD LIST *******'
     end if
     listentry=>masterlinkedlist
-    f=0
+    fld=0
     do while(associated(listentry))
-      f=f+1
+      fld=fld+1
       if(masterproc) then
         fldname = listentry%field%name
-        write(iulog,9000) f, fldname, listentry%field%units, listentry%field%numlev, &
+        write(iulog,9000) fld, fldname, listentry%field%units, listentry%field%numlev, &
              listentry%avgflag(1), trim(listentry%field%long_name)
 9000    format(i5, 1x, a32, 1x, a16, 1x, i4, 1x, a1, 2x, a)
       end if
       listentry=>listentry%next_entry
     end do
-    nfmaster = f
+    nfmaster = fld
     if(masterproc) write(iulog,*)'intht:nfmaster=',nfmaster
 
     !
@@ -475,29 +475,29 @@ CONTAINS
     ! Initialize history variables
     !
     do t=1,ptapes
-      do f=1,nflds(t)
-        if (tape(t)%hlist(f)%avgflag .eq. 'I') then
+      do fld=1,nflds(t)
+        if (tape(t)%hlist(fld)%avgflag .eq. 'I') then
            hfile_inst(t) = .true.
         else
            hfile_accum(t) = .true.
         end if
-        begdim1  = tape(t)%hlist(f)%field%begdim1
-        enddim1  = tape(t)%hlist(f)%field%enddim1
-        begdim2  = tape(t)%hlist(f)%field%begdim2
-        enddim2  = tape(t)%hlist(f)%field%enddim2
-        begdim3  = tape(t)%hlist(f)%field%begdim3
-        enddim3  = tape(t)%hlist(f)%field%enddim3
-        allocate(tape(t)%hlist(f)%hbuf(begdim1:enddim1,begdim2:enddim2,begdim3:enddim3))
-        tape(t)%hlist(f)%hbuf = 0._r8
-        if (tape(t)%hlist(f)%avgflag .eq. 'S') then ! allocate the variance buffer for standard dev
-           allocate(tape(t)%hlist(f)%sbuf(begdim1:enddim1,begdim2:enddim2,begdim3:enddim3))
-           tape(t)%hlist(f)%sbuf = 0._r8
+        begdim1  = tape(t)%hlist(fld)%field%begdim1
+        enddim1  = tape(t)%hlist(fld)%field%enddim1
+        begdim2  = tape(t)%hlist(fld)%field%begdim2
+        enddim2  = tape(t)%hlist(fld)%field%enddim2
+        begdim3  = tape(t)%hlist(fld)%field%begdim3
+        enddim3  = tape(t)%hlist(fld)%field%enddim3
+        allocate(tape(t)%hlist(fld)%hbuf(begdim1:enddim1,begdim2:enddim2,begdim3:enddim3))
+        tape(t)%hlist(fld)%hbuf = 0._r8
+        if (tape(t)%hlist(fld)%avgflag .eq. 'S') then ! allocate the variance buffer for standard dev
+           allocate(tape(t)%hlist(fld)%sbuf(begdim1:enddim1,begdim2:enddim2,begdim3:enddim3))
+           tape(t)%hlist(fld)%sbuf = 0._r8
         endif
-        if (tape(t)%hlist(f)%avgflag .eq. 'N') then ! set up areawt weight buffer
-           fdecomp = tape(t)%hlist(f)%field%decomp_type
+        if (tape(t)%hlist(fld)%avgflag .eq. 'N') then ! set up areawt weight buffer
+           fdecomp = tape(t)%hlist(fld)%field%decomp_type
            if (any(allgrids_wt(:)%decomp_type == fdecomp)) then
               wtidx=MAXLOC(allgrids_wt(:)%decomp_type, MASK = allgrids_wt(:)%decomp_type .EQ. fdecomp)
-              tape(t)%hlist(f)%wbuf => allgrids_wt(wtidx(1))%wbuf
+              tape(t)%hlist(fld)%wbuf => allgrids_wt(wtidx(1))%wbuf
            else
               ! area weights not found for this grid, then create them
               ! first check for an available spot in the array
@@ -512,7 +512,7 @@ CONTAINS
               allgrids_wt(wtidx(1))%wbuf(begdim1:enddim1,begdim3:enddim3)=0._r8
               count=0
               do c=begdim3,enddim3
-                 dimind = tape(t)%hlist(f)%field%get_dims(c)
+                 dimind = tape(t)%hlist(fld)%field%get_dims(c)
                  ib=dimind%beg1
                  ie=dimind%end1
                  do i=ib,ie
@@ -520,18 +520,18 @@ CONTAINS
                     allgrids_wt(wtidx(1))%wbuf(i,c)=areawt(count)
                  end do
               end do
-              tape(t)%hlist(f)%wbuf => allgrids_wt(wtidx(1))%wbuf
+              tape(t)%hlist(fld)%wbuf => allgrids_wt(wtidx(1))%wbuf
            endif
         endif
-        if(tape(t)%hlist(f)%field%flag_xyfill .or. (avgflag_pertape(t) .eq. 'L')) then
-          allocate (tape(t)%hlist(f)%nacs(begdim1:enddim1,begdim3:enddim3))
+        if(tape(t)%hlist(fld)%field%flag_xyfill .or. (avgflag_pertape(t) .eq. 'L')) then
+          allocate (tape(t)%hlist(fld)%nacs(begdim1:enddim1,begdim3:enddim3))
         else
-          allocate (tape(t)%hlist(f)%nacs(1,begdim3:enddim3))
+          allocate (tape(t)%hlist(fld)%nacs(1,begdim3:enddim3))
         end if
-        tape(t)%hlist(f)%nacs(:,:) = 0
-        tape(t)%hlist(f)%beg_nstep = 0
-        tape(t)%hlist(f)%field%meridional_complement = -1
-        tape(t)%hlist(f)%field%zonal_complement = -1
+        tape(t)%hlist(fld)%nacs(:,:) = 0
+        tape(t)%hlist(fld)%beg_nstep = 0
+        tape(t)%hlist(fld)%field%meridional_complement = -1
+        tape(t)%hlist(fld)%field%zonal_complement = -1
       end do
     end do
     ! Setup vector pairs for unstructured grid interpolation
@@ -952,7 +952,7 @@ CONTAINS
     use interp_mod, only: setup_history_interpolation
 
     ! Local variables
-    integer :: hf, f, ff
+    integer :: hf, fld, ffld
     logical :: interp_ok
     character(len=max_fieldname_len) :: mname
     character(len=max_fieldname_len) :: zname
@@ -964,31 +964,31 @@ CONTAINS
            interpolate_output, interpolate_info)
       do hf = 1, ptapes - 2
         if((.not. is_satfile(hf)) .and. (.not. is_initfile(hf))) then
-          do f = 1, nflds(hf)
-            if (field_part_of_vector(trim(tape(hf)%hlist(f)%field%name),      &
+          do fld = 1, nflds(hf)
+            if (field_part_of_vector(trim(tape(hf)%hlist(fld)%field%name),      &
                  mname, zname)) then
               if (len_trim(mname) > 0) then
                 ! This field is a zonal part of a set, find the meridional partner
-                do ff = 1, nflds(hf)
-                  if (trim(mname) == trim(tape(hf)%hlist(ff)%field%name)) then
-                    tape(hf)%hlist(f)%field%meridional_complement = ff
-                    tape(hf)%hlist(ff)%field%zonal_complement     = f
+                do ffld = 1, nflds(hf)
+                  if (trim(mname) == trim(tape(hf)%hlist(ffld)%field%name)) then
+                    tape(hf)%hlist(fld)%field%meridional_complement = ffld
+                    tape(hf)%hlist(ffld)%field%zonal_complement     = fld
                     exit
                   end if
-                  if (ff == nflds(hf)) then
-                    call endrun(trim(subname)//': No meridional match for '//trim(tape(hf)%hlist(f)%field%name))
+                  if (ffld == nflds(hf)) then
+                    call endrun(trim(subname)//': No meridional match for '//trim(tape(hf)%hlist(fld)%field%name))
                   end if
                 end do
               else if (len_trim(zname) > 0) then
                 ! This field is a meridional part of a set, find the zonal partner
-                do ff = 1, nflds(hf)
-                  if (trim(zname) == trim(tape(hf)%hlist(ff)%field%name)) then
-                    tape(hf)%hlist(f)%field%zonal_complement       = ff
-                    tape(hf)%hlist(ff)%field%meridional_complement = f
+                do ffld = 1, nflds(hf)
+                  if (trim(zname) == trim(tape(hf)%hlist(ffld)%field%name)) then
+                    tape(hf)%hlist(fld)%field%zonal_complement       = ffld
+                    tape(hf)%hlist(ffld)%field%meridional_complement = fld
                     exit
                   end if
-                  if (ff == nflds(hf)) then
-                    call endrun(trim(subname)//': No zonal match for '//trim(tape(hf)%hlist(f)%field%name))
+                  if (ffld == nflds(hf)) then
+                    call endrun(trim(subname)//': No zonal match for '//trim(tape(hf)%hlist(fld)%field%name))
                   end if
                 end do
               else
@@ -1007,33 +1007,33 @@ CONTAINS
     integer, intent(in)               :: t     ! Current tape
 
     ! Local variables
-    integer :: f, ff
+    integer :: fld, ffld
     character(len=max_fieldname_len) :: field1
     character(len=max_fieldname_len) :: field2
     character(len=*), parameter      :: subname='define_composed_field_ids'
     logical                          :: is_composed
 
-    do f = 1, nflds(t)
-       call composed_field_info(tape(t)%hlist(f)%field%name,is_composed,fname1=field1,fname2=field2)
+    do fld = 1, nflds(t)
+       call composed_field_info(tape(t)%hlist(fld)%field%name,is_composed,fname1=field1,fname2=field2)
        if (is_composed) then
           if (len_trim(field1) > 0 .and. len_trim(field2) > 0) then
              ! set field1/field2 names for htape from the masterfield list
-             tape(t)%hlist(f)%op_field1=trim(field1)
-             tape(t)%hlist(f)%op_field2=trim(field2)
+             tape(t)%hlist(fld)%op_field1=trim(field1)
+             tape(t)%hlist(fld)%op_field2=trim(field2)
              ! find ids for field1/2
-             do ff = 1, nflds(t)
-                if (trim(field1) == trim(tape(t)%hlist(ff)%field%name)) then
-                   tape(t)%hlist(f)%field%op_field1_id = ff
+             do ffld = 1, nflds(t)
+                if (trim(field1) == trim(tape(t)%hlist(ffld)%field%name)) then
+                   tape(t)%hlist(fld)%field%op_field1_id = ffld
                 end if
-                if (trim(field2) == trim(tape(t)%hlist(ff)%field%name)) then
-                   tape(t)%hlist(f)%field%op_field2_id = ff
+                if (trim(field2) == trim(tape(t)%hlist(ffld)%field%name)) then
+                   tape(t)%hlist(fld)%field%op_field2_id = ffld
                 end if
              end do
-             if (tape(t)%hlist(f)%field%op_field1_id == -1) then
-                call endrun(trim(subname)//': No op_field1 match for '//trim(tape(t)%hlist(f)%field%name))
+             if (tape(t)%hlist(fld)%field%op_field1_id == -1) then
+                call endrun(trim(subname)//': No op_field1 match for '//trim(tape(t)%hlist(fld)%field%name))
              end if
-             if (tape(t)%hlist(f)%field%op_field2_id == -1) then
-                call endrun(trim(subname)//': No op_field2 match for '//trim(tape(t)%hlist(f)%field%name))
+             if (tape(t)%hlist(fld)%field%op_field2_id == -1) then
+                call endrun(trim(subname)//': No op_field2 match for '//trim(tape(t)%hlist(fld)%field%name))
              end if
           else
              call endrun(trim(subname)//': Component fields not found for composed field')
@@ -1523,7 +1523,7 @@ CONTAINS
     !
     ! Local workspace
     !
-    integer :: ierr, t, f
+    integer :: ierr, t, fld
     integer :: rgnht_int(ptapes), start(2), startc(3)
     type(var_desc_t), pointer :: vdesc
 
@@ -1697,40 +1697,40 @@ CONTAINS
     do t = 1,ptapes
       start(2)=t
       startc(3)=t
-      do f=1,nflds(t)
-        start(1)=f
-        startc(2)=f
-        ierr = pio_put_var(File, field_name_desc,startc,tape(t)%hlist(f)%field%name)
-        ierr = pio_put_var(File, decomp_type_desc,start,tape(t)%hlist(f)%field%decomp_type)
-        ierr = pio_put_var(File, numlev_desc,start,tape(t)%hlist(f)%field%numlev)
+      do fld=1,nflds(t)
+        start(1)=fld
+        startc(2)=fld
+        ierr = pio_put_var(File, field_name_desc,startc,tape(t)%hlist(fld)%field%name)
+        ierr = pio_put_var(File, decomp_type_desc,start,tape(t)%hlist(fld)%field%decomp_type)
+        ierr = pio_put_var(File, numlev_desc,start,tape(t)%hlist(fld)%field%numlev)
 
-        ierr = pio_put_var(File, hwrt_prec_desc,start,tape(t)%hlist(f)%hwrt_prec)
-        call tape(t)%hlist(f)%get_global(integral)
+        ierr = pio_put_var(File, hwrt_prec_desc,start,tape(t)%hlist(fld)%hwrt_prec)
+        call tape(t)%hlist(fld)%get_global(integral)
         ierr = pio_put_var(File, hbuf_integral_desc,start,integral)
-        ierr = pio_put_var(File, beg_nstep_desc,start,tape(t)%hlist(f)%beg_nstep)
-        ierr = pio_put_var(File, sseq_desc,startc,tape(t)%hlist(f)%field%sampling_seq)
-        ierr = pio_put_var(File, cm_desc,startc,tape(t)%hlist(f)%field%cell_methods)
-        ierr = pio_put_var(File, longname_desc,startc,tape(t)%hlist(f)%field%long_name)
-        ierr = pio_put_var(File, units_desc,startc,tape(t)%hlist(f)%field%units)
-        ierr = pio_put_var(File, avgflag_desc,start, tape(t)%hlist(f)%avgflag)
+        ierr = pio_put_var(File, beg_nstep_desc,start,tape(t)%hlist(fld)%beg_nstep)
+        ierr = pio_put_var(File, sseq_desc,startc,tape(t)%hlist(fld)%field%sampling_seq)
+        ierr = pio_put_var(File, cm_desc,startc,tape(t)%hlist(fld)%field%cell_methods)
+        ierr = pio_put_var(File, longname_desc,startc,tape(t)%hlist(fld)%field%long_name)
+        ierr = pio_put_var(File, units_desc,startc,tape(t)%hlist(fld)%field%units)
+        ierr = pio_put_var(File, avgflag_desc,start, tape(t)%hlist(fld)%avgflag)
 
-        ierr = pio_put_var(File, fillval_desc,start, tape(t)%hlist(f)%field%fillvalue)
-        ierr = pio_put_var(File, meridional_complement_desc,start, tape(t)%hlist(f)%field%meridional_complement)
-        ierr = pio_put_var(File, zonal_complement_desc,start, tape(t)%hlist(f)%field%zonal_complement)
-        ierr = pio_put_var(File, field_op_desc,startc, tape(t)%hlist(f)%field%field_op)
-        ierr = pio_put_var(File, op_field1_id_desc,start, tape(t)%hlist(f)%field%op_field1_id)
-        ierr = pio_put_var(File, op_field2_id_desc,start, tape(t)%hlist(f)%field%op_field2_id)
-        ierr = pio_put_var(File, op_field1_desc,startc, tape(t)%hlist(f)%op_field1)
-        ierr = pio_put_var(File, op_field2_desc,startc, tape(t)%hlist(f)%op_field2)
-        if(associated(tape(t)%hlist(f)%field%mdims)) then
-          allmdims(1:size(tape(t)%hlist(f)%field%mdims),f,t) = tape(t)%hlist(f)%field%mdims
+        ierr = pio_put_var(File, fillval_desc,start, tape(t)%hlist(fld)%field%fillvalue)
+        ierr = pio_put_var(File, meridional_complement_desc,start, tape(t)%hlist(fld)%field%meridional_complement)
+        ierr = pio_put_var(File, zonal_complement_desc,start, tape(t)%hlist(fld)%field%zonal_complement)
+        ierr = pio_put_var(File, field_op_desc,startc, tape(t)%hlist(fld)%field%field_op)
+        ierr = pio_put_var(File, op_field1_id_desc,start, tape(t)%hlist(fld)%field%op_field1_id)
+        ierr = pio_put_var(File, op_field2_id_desc,start, tape(t)%hlist(fld)%field%op_field2_id)
+        ierr = pio_put_var(File, op_field1_desc,startc, tape(t)%hlist(fld)%op_field1)
+        ierr = pio_put_var(File, op_field2_desc,startc, tape(t)%hlist(fld)%op_field2)
+        if(associated(tape(t)%hlist(fld)%field%mdims)) then
+          allmdims(1:size(tape(t)%hlist(fld)%field%mdims),fld,t) = tape(t)%hlist(fld)%field%mdims
         else
         end if
-        if(tape(t)%hlist(f)%field%flag_xyfill) then
-           xyfill(f,t) = 1
+        if(tape(t)%hlist(fld)%field%flag_xyfill) then
+           xyfill(fld,t) = 1
         end if
-        if(tape(t)%hlist(f)%field%is_subcol) then
-           is_subcol(f,t) = 1
+        if(tape(t)%hlist(fld)%field%is_subcol) then
+           is_subcol(fld,t) = 1
         end if
       end do
       if (interpolate_output(t)) then
@@ -1764,9 +1764,9 @@ CONTAINS
     ierr = pio_put_var(File, interpolate_nlon_desc, interp_output)
     ! Registered history coordinates
     start(1) = 1
-    do f = 1, registeredmdims
-      start(2) = f
-      ierr = pio_put_var(File, mdimname_desc, start, hist_coord_name(f))
+    do fld = 1, registeredmdims
+      start(2) = fld
+      ierr = pio_put_var(File, mdimname_desc, start, hist_coord_name(fld))
     end do
 
     deallocate(xyfill, allmdims, is_subcol, interp_output, restarthistory_tape)
@@ -1801,7 +1801,7 @@ CONTAINS
     !
     ! Local workspace
     !
-    integer t, f, fld, ff            ! tape, file, field indices
+    integer t, f, fld, ffld          ! tape, file, field indices
     integer begdim2                  ! on-node vert start index
     integer enddim2                  ! on-node vert end index
     integer begdim1                  ! on-node dim1 start index
@@ -2068,63 +2068,63 @@ CONTAINS
       call strip_null(hrestpath(t))
       allocate(tape(t)%hlist(nflds(t)))
 
-      do f=1,nflds(t)
-        if (associated(tape(t)%hlist(f)%field%mdims)) then
-          deallocate(tape(t)%hlist(f)%field%mdims)
+      do fld=1,nflds(t)
+        if (associated(tape(t)%hlist(fld)%field%mdims)) then
+          deallocate(tape(t)%hlist(fld)%field%mdims)
         end if
-        nullify(tape(t)%hlist(f)%field%mdims)
-        ierr = pio_get_var(File,fillval_desc, (/f,t/), tape(t)%hlist(f)%field%fillvalue)
-        ierr = pio_get_var(File,meridional_complement_desc, (/f,t/), tape(t)%hlist(f)%field%meridional_complement)
-        ierr = pio_get_var(File,zonal_complement_desc, (/f,t/), tape(t)%hlist(f)%field%zonal_complement)
-        tape(t)%hlist(f)%field%field_op(1:field_op_len) = ' '
-        ierr = pio_get_var(File,field_op_desc, (/1,f,t/), tape(t)%hlist(f)%field%field_op)
-        call strip_null(tape(t)%hlist(f)%field%field_op)
-        ierr = pio_get_var(File,op_field1_id_desc, (/f,t/), tape(t)%hlist(f)%field%op_field1_id)
-        ierr = pio_get_var(File,op_field2_id_desc, (/f,t/), tape(t)%hlist(f)%field%op_field2_id)
-        ierr = pio_get_var(File,avgflag_desc, (/f,t/), tape(t)%hlist(f)%avgflag)
-        ierr = pio_get_var(File,longname_desc, (/1,f,t/), tape(t)%hlist(f)%field%long_name)
-        ierr = pio_get_var(File,units_desc, (/1,f,t/), tape(t)%hlist(f)%field%units)
-        tape(t)%hlist(f)%field%sampling_seq(1:max_chars) = ' '
-        ierr = pio_get_var(File,sseq_desc, (/1,f,t/), tape(t)%hlist(f)%field%sampling_seq)
-        call strip_null(tape(t)%hlist(f)%field%sampling_seq)
-        tape(t)%hlist(f)%field%cell_methods(1:max_chars) = ' '
-        ierr = pio_get_var(File,cm_desc, (/1,f,t/), tape(t)%hlist(f)%field%cell_methods)
-        call strip_null(tape(t)%hlist(f)%field%cell_methods)
-        if(xyfill(f,t) ==1) then
-          tape(t)%hlist(f)%field%flag_xyfill=.true.
+        nullify(tape(t)%hlist(fld)%field%mdims)
+        ierr = pio_get_var(File,fillval_desc, (/fld,t/), tape(t)%hlist(fld)%field%fillvalue)
+        ierr = pio_get_var(File,meridional_complement_desc, (/fld,t/), tape(t)%hlist(fld)%field%meridional_complement)
+        ierr = pio_get_var(File,zonal_complement_desc, (/fld,t/), tape(t)%hlist(fld)%field%zonal_complement)
+        tape(t)%hlist(fld)%field%field_op(1:field_op_len) = ' '
+        ierr = pio_get_var(File,field_op_desc, (/1,fld,t/), tape(t)%hlist(fld)%field%field_op)
+        call strip_null(tape(t)%hlist(fld)%field%field_op)
+        ierr = pio_get_var(File,op_field1_id_desc, (/fld,t/), tape(t)%hlist(fld)%field%op_field1_id)
+        ierr = pio_get_var(File,op_field2_id_desc, (/fld,t/), tape(t)%hlist(fld)%field%op_field2_id)
+        ierr = pio_get_var(File,avgflag_desc, (/fld,t/), tape(t)%hlist(fld)%avgflag)
+        ierr = pio_get_var(File,longname_desc, (/1,fld,t/), tape(t)%hlist(fld)%field%long_name)
+        ierr = pio_get_var(File,units_desc, (/1,fld,t/), tape(t)%hlist(fld)%field%units)
+        tape(t)%hlist(fld)%field%sampling_seq(1:max_chars) = ' '
+        ierr = pio_get_var(File,sseq_desc, (/1,fld,t/), tape(t)%hlist(fld)%field%sampling_seq)
+        call strip_null(tape(t)%hlist(fld)%field%sampling_seq)
+        tape(t)%hlist(fld)%field%cell_methods(1:max_chars) = ' '
+        ierr = pio_get_var(File,cm_desc, (/1,fld,t/), tape(t)%hlist(fld)%field%cell_methods)
+        call strip_null(tape(t)%hlist(fld)%field%cell_methods)
+        if(xyfill(fld,t) ==1) then
+          tape(t)%hlist(fld)%field%flag_xyfill=.true.
         else
-          tape(t)%hlist(f)%field%flag_xyfill=.false.
+          tape(t)%hlist(fld)%field%flag_xyfill=.false.
         end if
-        if(is_subcol(f,t) ==1) then
-           tape(t)%hlist(f)%field%is_subcol=.true.
+        if(is_subcol(fld,t) ==1) then
+           tape(t)%hlist(fld)%field%is_subcol=.true.
         else
-           tape(t)%hlist(f)%field%is_subcol=.false.
+           tape(t)%hlist(fld)%field%is_subcol=.false.
         end if
-        call strip_null(tmpname(f,t))
-        call strip_null(tmpf1name(f,t))
-        call strip_null(tmpf2name(f,t))
-        tape(t)%hlist(f)%field%name = tmpname(f,t)
-        tape(t)%hlist(f)%op_field1 = tmpf1name(f,t)
-        tape(t)%hlist(f)%op_field2 = tmpf2name(f,t)
-        tape(t)%hlist(f)%field%decomp_type = decomp(f,t)
-        tape(t)%hlist(f)%field%numlev = tmpnumlev(f,t)
-        tape(t)%hlist(f)%hwrt_prec = tmpprec(f,t)
-        tape(t)%hlist(f)%beg_nstep = tmpbeg_nstep(f,t)
-        call tape(t)%hlist(f)%put_global(tmpintegral(f,t))
+        call strip_null(tmpname(fld,t))
+        call strip_null(tmpf1name(fld,t))
+        call strip_null(tmpf2name(fld,t))
+        tape(t)%hlist(fld)%field%name = tmpname(fld,t)
+        tape(t)%hlist(fld)%op_field1 = tmpf1name(fld,t)
+        tape(t)%hlist(fld)%op_field2 = tmpf2name(fld,t)
+        tape(t)%hlist(fld)%field%decomp_type = decomp(fld,t)
+        tape(t)%hlist(fld)%field%numlev = tmpnumlev(fld,t)
+        tape(t)%hlist(fld)%hwrt_prec = tmpprec(fld,t)
+        tape(t)%hlist(fld)%beg_nstep = tmpbeg_nstep(fld,t)
+        call tape(t)%hlist(fld)%put_global(tmpintegral(fld,t))
         ! If the field is an advected constituent set the mixing_ratio attribute
-        fname_tmp = strip_suffix(tape(t)%hlist(f)%field%name)
+        fname_tmp = strip_suffix(tape(t)%hlist(fld)%field%name)
         call cnst_get_ind(fname_tmp, idx, abort=.false.)
         mixing_ratio = ''
         if (idx > 0) then
            mixing_ratio = cnst_get_type_byind(idx)
         end if
-        tape(t)%hlist(f)%field%mixing_ratio = mixing_ratio
+        tape(t)%hlist(fld)%field%mixing_ratio = mixing_ratio
 
-        mdimcnt = count(allmdims(:,f,t) > 0)
+        mdimcnt = count(allmdims(:,fld,t) > 0)
         if(mdimcnt > 0) then
-          allocate(tape(t)%hlist(f)%field%mdims(mdimcnt))
+          allocate(tape(t)%hlist(fld)%field%mdims(mdimcnt))
           do i = 1, mdimcnt
-            tape(t)%hlist(f)%field%mdims(i) = get_hist_coord_index(mdimnames(allmdims(i,f,t)))
+            tape(t)%hlist(fld)%field%mdims(i) = get_hist_coord_index(mdimnames(allmdims(i,fld,t)))
           end do
         end if
       end do
@@ -2139,62 +2139,62 @@ CONTAINS
     allocate(gridsontape(cam_grid_num_grids() + 1, ptapes))
     gridsontape = -1
     do t = 1, ptapes
-      do f = 1, nflds(t)
-        if (tape(t)%hlist(f)%avgflag .eq. 'I') then
+      do fld = 1, nflds(t)
+        if (tape(t)%hlist(fld)%avgflag .eq. 'I') then
            hfile_inst(t) = .true.
         else
            hfile_accum(t) = .true.
         end if
-        call set_field_dimensions(tape(t)%hlist(f)%field)
+        call set_field_dimensions(tape(t)%hlist(fld)%field)
 
-        begdim1 = tape(t)%hlist(f)%field%begdim1
-        enddim1 = tape(t)%hlist(f)%field%enddim1
-        begdim2 = tape(t)%hlist(f)%field%begdim2
-        enddim2 = tape(t)%hlist(f)%field%enddim2
-        begdim3 = tape(t)%hlist(f)%field%begdim3
-        enddim3 = tape(t)%hlist(f)%field%enddim3
+        begdim1 = tape(t)%hlist(fld)%field%begdim1
+        enddim1 = tape(t)%hlist(fld)%field%enddim1
+        begdim2 = tape(t)%hlist(fld)%field%begdim2
+        enddim2 = tape(t)%hlist(fld)%field%enddim2
+        begdim3 = tape(t)%hlist(fld)%field%begdim3
+        enddim3 = tape(t)%hlist(fld)%field%enddim3
 
-        allocate(tape(t)%hlist(f)%hbuf(begdim1:enddim1,begdim2:enddim2,begdim3:enddim3))
-        if (tape(t)%hlist(f)%avgflag .eq. 'S') then ! allocate the variance buffer for standard dev
-           allocate(tape(t)%hlist(f)%sbuf(begdim1:enddim1,begdim2:enddim2,begdim3:enddim3))
+        allocate(tape(t)%hlist(fld)%hbuf(begdim1:enddim1,begdim2:enddim2,begdim3:enddim3))
+        if (tape(t)%hlist(fld)%avgflag .eq. 'S') then ! allocate the variance buffer for standard dev
+           allocate(tape(t)%hlist(fld)%sbuf(begdim1:enddim1,begdim2:enddim2,begdim3:enddim3))
         endif
 
-        if (associated(tape(t)%hlist(f)%varid)) then
-          deallocate(tape(t)%hlist(f)%varid)
+        if (associated(tape(t)%hlist(fld)%varid)) then
+          deallocate(tape(t)%hlist(fld)%varid)
         end if
-        nullify(tape(t)%hlist(f)%varid)
-        if (associated(tape(t)%hlist(f)%nacs)) then
-          deallocate(tape(t)%hlist(f)%nacs)
+        nullify(tape(t)%hlist(fld)%varid)
+        if (associated(tape(t)%hlist(fld)%nacs)) then
+          deallocate(tape(t)%hlist(fld)%nacs)
         end if
-        nullify(tape(t)%hlist(f)%nacs)
-        if(tape(t)%hlist(f)%field%flag_xyfill .or. (avgflag_pertape(t)=='L')) then
-          allocate (tape(t)%hlist(f)%nacs(begdim1:enddim1,begdim3:enddim3))
+        nullify(tape(t)%hlist(fld)%nacs)
+        if(tape(t)%hlist(fld)%field%flag_xyfill .or. (avgflag_pertape(t)=='L')) then
+          allocate (tape(t)%hlist(fld)%nacs(begdim1:enddim1,begdim3:enddim3))
         else
-          allocate(tape(t)%hlist(f)%nacs(1,begdim3:enddim3))
+          allocate(tape(t)%hlist(fld)%nacs(1,begdim3:enddim3))
         end if
         ! initialize all buffers to zero - this will be overwritten later by the
         ! data in the history restart file if it exists.
-        call h_zero(f,t)
+        call h_zero(fld,t)
 
         ! Make sure this field's decomp is listed on the tape
-        fdecomp = tape(t)%hlist(f)%field%decomp_type
-        do ff = 1, size(gridsontape, 1)
-          if (fdecomp == gridsontape(ff, t)) then
+        fdecomp = tape(t)%hlist(fld)%field%decomp_type
+        do ffld = 1, size(gridsontape, 1)
+          if (fdecomp == gridsontape(ffld, t)) then
             exit
-          else if (gridsontape(ff, t) < 0) then
-            gridsontape(ff, t) = fdecomp
+          else if (gridsontape(ffld, t) < 0) then
+            gridsontape(ffld, t) = fdecomp
             exit
           end if
         end do
         !
         !rebuild area wt array and set field wbuf pointer
         !
-        if (tape(t)%hlist(f)%avgflag .eq. 'N') then ! set up area weight buffer
-           nullify(tape(t)%hlist(f)%wbuf)
+        if (tape(t)%hlist(fld)%avgflag .eq. 'N') then ! set up area weight buffer
+           nullify(tape(t)%hlist(fld)%wbuf)
 
-           if (any(allgrids_wt(:)%decomp_type == tape(t)%hlist(f)%field%decomp_type)) then
+           if (any(allgrids_wt(:)%decomp_type == tape(t)%hlist(fld)%field%decomp_type)) then
               wtidx=MAXLOC(allgrids_wt(:)%decomp_type, MASK = allgrids_wt(:)%decomp_type .EQ. fdecomp)
-              tape(t)%hlist(f)%wbuf => allgrids_wt(wtidx(1))%wbuf
+              tape(t)%hlist(fld)%wbuf => allgrids_wt(wtidx(1))%wbuf
            else
               ! area weights not found for this grid, then create them
               ! first check for an available spot in the array
@@ -2208,7 +2208,7 @@ CONTAINS
               allocate(allgrids_wt(wtidx(1))%wbuf(begdim1:enddim1,begdim3:enddim3))
               cnt=0
               do c=begdim3,enddim3
-                 dimind = tape(t)%hlist(f)%field%get_dims(c)
+                 dimind = tape(t)%hlist(fld)%field%get_dims(c)
                  ib=dimind%beg1
                  ie=dimind%end1
                  do i=ib,ie
@@ -2216,7 +2216,7 @@ CONTAINS
                     allgrids_wt(wtidx(1))%wbuf(i,c)=areawt(cnt)
                  end do
               end do
-              tape(t)%hlist(f)%wbuf => allgrids_wt(wtidx(1))%wbuf
+              tape(t)%hlist(fld)%wbuf => allgrids_wt(wtidx(1))%wbuf
            endif
         endif
       end do
@@ -2337,18 +2337,18 @@ CONTAINS
       end if  ! rgnht(t)
 
       ! (re)create the master list of grid IDs
-      ff = 0
-      do f = 1, size(gridsontape, 1)
-        if (gridsontape(f, t) > 0) then
-          ff = ff + 1
+      ffld = 0
+      do fld = 1, size(gridsontape, 1)
+        if (gridsontape(fld, t) > 0) then
+          ffld = ffld + 1
         end if
       end do
-      allocate(tape(t)%grid_ids(ff))
-      ff = 1
-      do f = 1, size(gridsontape, 1)
-        if (gridsontape(f, t) > 0) then
-          tape(t)%grid_ids(ff) = gridsontape(f, t)
-          ff = ff + 1
+      allocate(tape(t)%grid_ids(ffld))
+      ffld = 1
+      do fld = 1, size(gridsontape, 1)
+        if (gridsontape(fld, t) > 0) then
+          tape(t)%grid_ids(ffld) = gridsontape(fld, t)
+          ffld = ffld + 1
         end if
       end do
       call patch_init(t)
@@ -2398,9 +2398,9 @@ CONTAINS
           if (masterproc) then
             write(iulog,*)'READ_RESTART_HISTORY: nf_close(',t,')=',nhfil(t,1), mfilt(t)
           end if
-          do f=1,nflds(t)
-            deallocate(tape(t)%hlist(f)%varid)
-            nullify(tape(t)%hlist(f)%varid)
+          do fld=1,nflds(t)
+            deallocate(tape(t)%hlist(fld)%varid)
+            nullify(tape(t)%hlist(fld)%varid)
           end do
           do f = 1, tape(t)%num_files
              call cam_pio_closefile(tape(t)%Files(f))
@@ -2538,8 +2538,8 @@ CONTAINS
     !
     !---------------------------Local variables-----------------------------
     !
-    integer t, f                   ! tape, field indices
-    integer ff                     ! index into include, exclude and fprec list
+    integer t, fld                 ! tape, field indices
+    integer ffld                   ! index into include, exclude and fprec list
     integer :: i
     character(len=fieldname_len) :: name ! field name portion of fincl (i.e. no avgflag separator)
     character(len=max_fieldname_len) :: mastername ! name from masterlist field
@@ -2580,24 +2580,24 @@ CONTAINS
     errors_found = 0
     do t=1,ptapes
 
-      f = 1
+      fld = 1
       n_vec_comp       = 0
       vec_comp_names   = ' '
       vec_comp_avgflag = ' '
-fincls: do while (f < pflds .and. fincl(f,t) /= ' ')
-        name = getname (fincl(f,t))
+fincls: do while (fld < pflds .and. fincl(fld,t) /= ' ')
+        name = getname (fincl(fld,t))
 
         if (.not. dycore_is('FV')) then
            ! filter out fields only provided by FV dycore
            do i = 1, n_fv_only
               if (name == fv_only_flds(i)) then
                  write(errormsg,'(3a,2(i0,a))')'FLDLST: ', trim(name), &
-                    ' in fincl(', f,', ',t, ') only available with FV dycore'
+                    ' in fincl(', fld,', ',t, ') only available with FV dycore'
                  if (masterproc) then
                     write(iulog,*) trim(errormsg)
                     call shr_sys_flush(iulog)
                  end if
-                 f = f + 1
+                 fld = fld + 1
                  cycle fincls
               end if
            end do
@@ -2607,7 +2607,7 @@ fincls: do while (f < pflds .and. fincl(f,t) /= ' ')
         listentry => get_entry_by_name(masterlinkedlist, name)
         if (associated(listentry)) mastername = listentry%field%name
         if (name /= mastername) then
-          write(errormsg,'(3a,2(i0,a))')'FLDLST: ', trim(name), ' in fincl(', f,', ',t, ') not found'
+          write(errormsg,'(3a,2(i0,a))')'FLDLST: ', trim(name), ' in fincl(', fld,', ',t, ') not found'
           if (masterproc) then
              write(iulog,*) trim(errormsg)
              call shr_sys_flush(iulog)
@@ -2617,7 +2617,7 @@ fincls: do while (f < pflds .and. fincl(f,t) /= ' ')
            if (len_trim(mastername)>0 .and. interpolate_output(t)) then
               if (n_vec_comp >= nvecmax) call endrun('FLDLST: need to increase nvecmax')
               ! If this is a vector component then save the name of the complement
-              avgflag = getflag(fincl(f,t))
+              avgflag = getflag(fincl(fld,t))
               if (len_trim(listentry%meridional_field) > 0) then
                  n_vec_comp = n_vec_comp + 1
                  vec_comp_names(n_vec_comp) = listentry%meridional_field
@@ -2629,7 +2629,7 @@ fincls: do while (f < pflds .and. fincl(f,t) /= ' ')
               end if
            end if
         end if
-        f = f + 1
+        fld = fld + 1
       end do fincls
 
       ! Interpolation of vector components requires that both be present.  If the fincl
@@ -2638,11 +2638,11 @@ fincls: do while (f < pflds .and. fincl(f,t) /= ' ')
       ! are also present in the fincl array.
 
       ! The first empty slot in the current fincl array is index f from loop above.
-      add_fincl_idx = f
-      if (f > 1 .and. interpolate_output(t)) then
+      add_fincl_idx = fld
+      if (fld > 1 .and. interpolate_output(t)) then
          do i = 1, n_vec_comp
-            call list_index(fincl(:,t), vec_comp_names(i), ff)
-            if (ff == 0) then
+            call list_index(fincl(:,t), vec_comp_names(i), ffld)
+            if (ffld == 0) then
 
                ! Add vector component to fincl.  Don't need to check whether its in the master
                ! list since this was done at the time of registering the vector components.
@@ -2661,39 +2661,39 @@ fincls: do while (f < pflds .and. fincl(f,t) /= ' ')
          end do
       end if
 
-      f = 1
-      do while (f < pflds .and. fexcl(f,t) /= ' ')
+      fld = 1
+      do while (fld < pflds .and. fexcl(fld,t) /= ' ')
         mastername=''
-        listentry => get_entry_by_name(masterlinkedlist, fexcl(f,t))
+        listentry => get_entry_by_name(masterlinkedlist, fexcl(fld,t))
         if(associated(listentry)) mastername = listentry%field%name
 
-        if (fexcl(f,t) /= mastername) then
-          write(errormsg,'(3a,2(i0,a))')'FLDLST: ', trim(fexcl(f,t)), ' in fexcl(', f,', ',t, ') not found'
+        if (fexcl(fld,t) /= mastername) then
+          write(errormsg,'(3a,2(i0,a))')'FLDLST: ', trim(fexcl(fld,t)), ' in fexcl(', fld,', ',t, ') not found'
           if (masterproc) then
              write(iulog,*) trim(errormsg)
              call shr_sys_flush(iulog)
           end if
           errors_found = errors_found + 1
         end if
-        f = f + 1
+        fld = fld + 1
       end do
 
-      f = 1
-      do while (f < pflds .and. fwrtpr(f,t) /= ' ')
-        name = getname (fwrtpr(f,t))
+      fld = 1
+      do while (fld < pflds .and. fwrtpr(fld,t) /= ' ')
+        name = getname (fwrtpr(fld,t))
         mastername=''
         listentry => get_entry_by_name(masterlinkedlist, name)
         if(associated(listentry)) mastername = listentry%field%name
         if (name /= mastername) then
-          write(errormsg,'(3a,i0,a)')'FLDLST: ', trim(name), ' in fwrtpr(', f, ') not found'
+          write(errormsg,'(3a,i0,a)')'FLDLST: ', trim(name), ' in fwrtpr(', fld, ') not found'
           if (masterproc) then
              write(iulog,*) trim(errormsg)
              call shr_sys_flush(iulog)
           end if
           errors_found = errors_found + 1
         end if
-        do ff=1,f-1                 ! If duplicate entry is found, stop
-          if (trim(name) == trim(getname(fwrtpr(ff,t)))) then
+        do ffld=1,fld-1                 ! If duplicate entry is found, stop
+          if (trim(name) == trim(getname(fwrtpr(ffld,t)))) then
             write(errormsg,'(3a)')'FLDLST: Duplicate field ', trim(name), ' in fwrtpr'
             if (masterproc) then
                write(iulog,*) trim(errormsg)
@@ -2702,7 +2702,7 @@ fincls: do while (f < pflds .and. fincl(f,t) /= ' ')
             errors_found = errors_found + 1
           end if
         end do
-        f = f + 1
+        fld = fld + 1
       end do
     end do
 
@@ -2740,14 +2740,14 @@ fincls: do while (f < pflds .and. fincl(f,t) /= ' ')
       listentry => masterlinkedlist
       do while(associated(listentry))
         mastername = listentry%field%name
-        call list_index (fincl(1,t), mastername, ff)
+        call list_index (fincl(1,t), mastername, ffld)
 
         fieldontape = .false.
-        if (ff > 0) then
+        if (ffld > 0) then
           fieldontape = .true.
         else if ((.not. empty_htapes) .or. (is_initfile(file_index=t))) then
-          call list_index (fexcl(1,t), mastername, ff)
-          if (ff == 0 .and. listentry%actflag(t)) then
+          call list_index (fexcl(1,t), mastername, ffld)
+          if (ffld == 0 .and. listentry%actflag(t)) then
             fieldontape = .true.
           end if
         end if
@@ -2755,11 +2755,11 @@ fincls: do while (f < pflds .and. fincl(f,t) /= ' ')
           ! The field is active so increment the number fo fields and add
           ! its decomp type to the list of decomp types on this tape
           nflds(t) = nflds(t) + 1
-          do ff = 1, size(gridsontape, 1)
-            if (listentry%field%decomp_type == gridsontape(ff, t)) then
+          do ffld = 1, size(gridsontape, 1)
+            if (listentry%field%decomp_type == gridsontape(ffld, t)) then
               exit
-            else if (gridsontape(ff, t) < 0) then
-              gridsontape(ff, t) = listentry%field%decomp_type
+            else if (gridsontape(ffld, t) < 0) then
+              gridsontape(ffld, t) = listentry%field%decomp_type
               exit
             end if
           end do
@@ -2788,27 +2788,27 @@ fincls: do while (f < pflds .and. fincl(f,t) /= ' ')
         ! Allocate the correct number of hentry slots
         allocate(tape(t)%hlist(nflds(t)))
         ! Count up the number of grids output on this tape
-        ff = 0
-        do f = 1, size(gridsontape, 1)
-          if (gridsontape(f, t) > 0) then
-            ff = ff + 1
+        ffld = 0
+        do fld = 1, size(gridsontape, 1)
+          if (gridsontape(fld, t) > 0) then
+            ffld = ffld + 1
           end if
         end do
-        allocate(tape(t)%grid_ids(ff))
-        ff = 1
-        do f = 1, size(gridsontape, 1)
-          if (gridsontape(f, t) > 0) then
-            tape(t)%grid_ids(ff) = gridsontape(f, t)
-            ff = ff + 1
+        allocate(tape(t)%grid_ids(ffld))
+        ffld = 1
+        do fld = 1, size(gridsontape, 1)
+          if (gridsontape(fld, t) > 0) then
+            tape(t)%grid_ids(ffld) = gridsontape(fld, t)
+            ffld = ffld + 1
           end if
         end do
       end if
-      do ff=1,nflds(t)
-        nullify(tape(t)%hlist(ff)%hbuf)
-        nullify(tape(t)%hlist(ff)%sbuf)
-        nullify(tape(t)%hlist(ff)%wbuf)
-        nullify(tape(t)%hlist(ff)%nacs)
-        nullify(tape(t)%hlist(ff)%varid)
+      do ffld=1,nflds(t)
+        nullify(tape(t)%hlist(ffld)%hbuf)
+        nullify(tape(t)%hlist(ffld)%sbuf)
+        nullify(tape(t)%hlist(ffld)%wbuf)
+        nullify(tape(t)%hlist(ffld)%nacs)
+        nullify(tape(t)%hlist(ffld)%varid)
       end do
 
 
@@ -2817,21 +2817,21 @@ fincls: do while (f < pflds .and. fincl(f,t) /= ' ')
       do while(associated(listentry))
         mastername = listentry%field%name
 
-        call list_index (fwrtpr(1,t), mastername, ff)
-        if (ff > 0) then
-          prec_wrt = getflag(fwrtpr(ff,t))
+        call list_index (fwrtpr(1,t), mastername, ffld)
+        if (ffld > 0) then
+          prec_wrt = getflag(fwrtpr(ffld,t))
         else
           prec_wrt = ' '
         end if
 
-        call list_index (fincl(1,t), mastername, ff)
+        call list_index (fincl(1,t), mastername, ffld)
 
-        if (ff > 0) then
-          avgflag = getflag (fincl(ff,t))
+        if (ffld > 0) then
+          avgflag = getflag (fincl(ffld,t))
           call inifld (t, listentry, avgflag,  prec_wrt)
         else if ((.not. empty_htapes) .or. (is_initfile(file_index=t))) then
-          call list_index (fexcl(1,t), mastername, ff)
-          if (ff == 0 .and. listentry%actflag(t)) then
+          call list_index (fexcl(1,t), mastername, ffld)
+          if (ffld == 0 .and. listentry%actflag(t)) then
             call inifld (t, listentry, ' ', prec_wrt)
           else
             listentry%actflag(t) = .false.
@@ -2857,30 +2857,30 @@ fincls: do while (f < pflds .and. fincl(f,t) /= ' ')
       ! entries for efficiency in OUTFLD.  Simple bubble sort.
       !
 !!XXgoldyXX: v In the future, we will sort according to decomp to speed I/O
-      do f=nflds(t)-1,1,-1
-        do ff=1,f
+      do fld=nflds(t)-1,1,-1
+        do ffld=1,fld
 
-          if (tape(t)%hlist(ff)%field%numlev > tape(t)%hlist(ff+1)%field%numlev) then
-            tmp = tape(t)%hlist(ff)
-            tape(t)%hlist(ff  ) = tape(t)%hlist(ff+1)
-            tape(t)%hlist(ff+1) = tmp
+          if (tape(t)%hlist(ffld)%field%numlev > tape(t)%hlist(ffld+1)%field%numlev) then
+            tmp = tape(t)%hlist(ffld)
+            tape(t)%hlist(ffld  ) = tape(t)%hlist(ffld+1)
+            tape(t)%hlist(ffld+1) = tmp
           end if
 
         end do
 
-        do ff=1,f
+        do ffld=1,fld
 
-           if ((tape(t)%hlist(ff)%field%numlev == tape(t)%hlist(ff+1)%field%numlev) .and. &
-                (tape(t)%hlist(ff)%field%name > tape(t)%hlist(ff+1)%field%name)) then
+           if ((tape(t)%hlist(ffld)%field%numlev == tape(t)%hlist(ffld+1)%field%numlev) .and. &
+                (tape(t)%hlist(ffld)%field%name > tape(t)%hlist(ffld+1)%field%name)) then
 
-            tmp = tape(t)%hlist(ff)
-            tape(t)%hlist(ff  ) = tape(t)%hlist(ff+1)
-            tape(t)%hlist(ff+1) = tmp
+            tmp = tape(t)%hlist(ffld)
+            tape(t)%hlist(ffld  ) = tape(t)%hlist(ffld+1)
+            tape(t)%hlist(ffld+1) = tmp
 
-          else if (tape(t)%hlist(ff  )%field%name == tape(t)%hlist(ff+1)%field%name) then
+          else if (tape(t)%hlist(ffld)%field%name == tape(t)%hlist(ffld+1)%field%name) then
 
             write(errormsg,'(2a,2(a,i3))') 'FLDLST: Duplicate field: ', &
-                 trim(tape(t)%hlist(ff)%field%name),', tape = ', t, ', ff = ', ff
+                 trim(tape(t)%hlist(ffld)%field%name),', tape = ', t, ', ffld = ', ffld
             call endrun(errormsg)
 
           end if
@@ -2924,7 +2924,7 @@ fincls: do while (f < pflds .and. fincl(f,t) /= ' ')
 
 subroutine print_active_fldlst()
 
-   integer :: f, ff, i, t
+   integer :: fld, ffld, i, t
    integer :: num_patches
 
    character(len=6) :: prec_str
@@ -2975,23 +2975,23 @@ subroutine print_active_fldlst()
 
          end if
 
-         do f = 1, nflds(t)
+         do fld = 1, nflds(t)
             if (associated(hfile(t)%patches)) then
                num_patches = size(hfile(t)%patches)
-               fldname = strip_suffix(hfile(t)%hlist(f)%field%name)
+               fldname = strip_suffix(hfile(t)%hlist(fld)%field%name)
                do i = 1, num_patches
-                  ff = (f-1)*num_patches + i
+                  ffld = (fld-1)*num_patches + i
                   fname_tmp = trim(fldname)
                   call hfile(t)%patches(i)%field_name(fname_tmp)
-                  write(iulog,9000) ff, fname_tmp, hfile(t)%hlist(f)%field%units, &
-                     hfile(t)%hlist(f)%field%numlev, hfile(t)%hlist(f)%avgflag,   &
-                     trim(hfile(t)%hlist(f)%field%long_name)
+                  write(iulog,9000) ffld, fname_tmp, hfile(t)%hlist(fld)%field%units, &
+                     hfile(t)%hlist(fld)%field%numlev, hfile(t)%hlist(fld)%avgflag,   &
+                     trim(hfile(t)%hlist(fld)%field%long_name)
                end do
             else
-               fldname = hfile(t)%hlist(f)%field%name
-               write(iulog,9000) f, fldname, hfile(t)%hlist(f)%field%units,  &
-                  hfile(t)%hlist(f)%field%numlev, hfile(t)%hlist(f)%avgflag, &
-                  trim(hfile(t)%hlist(f)%field%long_name)
+               fldname = hfile(t)%hlist(fld)%field%name
+               write(iulog,9000) fld, fldname, hfile(t)%hlist(fld)%field%units,  &
+                  hfile(t)%hlist(fld)%field%numlev, hfile(t)%hlist(fld)%avgflag, &
+                  trim(hfile(t)%hlist(fld)%field%long_name)
             end if
 
          end do
@@ -4305,7 +4305,7 @@ end subroutine print_active_fldlst
     if(restart) then
       tape(t)%num_files = 1
       call cam_pio_createfile (tape(t)%Files(1), hrestpath(t), amode)
-    else if (is_initfile(file_index=t) .and. is_satfile(t)) then
+    else if (is_initfile(file_index=t) .or. is_satfile(t)) then
       tape(t)%num_files = 1
       call cam_pio_createfile (tape(t)%Files(1), nhfil(t,1), amode)
     else
@@ -6399,7 +6399,8 @@ end subroutine print_active_fldlst
     logical  :: lhfill           ! true => history file is full
 
     integer  :: t                ! History file number
-    integer  :: f
+    integer  :: f                ! File index
+    integer  :: fld              ! Field index
     real(r8) :: tday             ! Model day number for printout
     !-----------------------------------------------------------------------
 
@@ -6445,10 +6446,10 @@ end subroutine print_active_fldlst
         end if
         if(pio_file_is_open(tape(t)%Files(1))) then
           if (nlend .or. lfill(t)) then
-            do f=1,nflds(t)
-              if (associated(tape(t)%hlist(f)%varid)) then
-                deallocate(tape(t)%hlist(f)%varid)
-                nullify(tape(t)%hlist(f)%varid)
+            do fld=1,nflds(t)
+              if (associated(tape(t)%hlist(fld)%varid)) then
+                deallocate(tape(t)%hlist(fld)%varid)
+                nullify(tape(t)%hlist(fld)%varid)
               end if
             end do
           end if
@@ -6730,7 +6731,7 @@ end subroutine print_active_fldlst
     !
     !  Local.
     !
-    integer :: f
+    integer :: fld
     integer :: t
 
     !
@@ -6748,17 +6749,17 @@ end subroutine print_active_fldlst
     end do
 
     do t = 1, ptapes
-      do f = 1, nflds(t)
-        listentry => get_entry_by_name(masterlinkedlist, tape(t)%hlist(f)%field%name)
+      do fld = 1, nflds(t)
+        listentry => get_entry_by_name(masterlinkedlist, tape(t)%hlist(fld)%field%name)
         if(.not.associated(listentry)) then
           write(iulog,*) 'BLD_HTAPEFLD_INDICES: something wrong, field not found on masterlist'
-          write(iulog,*) 'BLD_HTAPEFLD_INDICES: t, f, ff = ', t, f
-          write(iulog,*) 'BLD_HTAPEFLD_INDICES: tape%name = ', tape(t)%hlist(f)%field%name
+          write(iulog,*) 'BLD_HTAPEFLD_INDICES: t, f, ff = ', t, fld
+          write(iulog,*) 'BLD_HTAPEFLD_INDICES: tape%name = ', tape(t)%hlist(fld)%field%name
           call endrun
         end if
         listentry%act_sometape = .true.
         listentry%actflag(t) = .true.
-        listentry%htapeindx(t) = f
+        listentry%htapeindx(t) = fld
       end do
     end do
 
