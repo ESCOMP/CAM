@@ -145,6 +145,10 @@ module cam_history
   ! Indices for split history files; must be 1 and 2, but could be swapped if desired
   integer, parameter :: accumulated_file_index     =  1
   integer, parameter :: instantaneous_file_index   =  2
+  ! Indices for non-split history files; must all be 1
+  integer, parameter :: sat_file_index             =  1
+  integer, parameter :: restart_file_index         =  1
+  integer, parameter :: init_file_index            =  1
 
   integer :: nfmaster = 0             ! number of fields in master field list
   integer :: nflds(ptapes)            ! number of fields per tape
@@ -2246,7 +2250,7 @@ CONTAINS
         ! Open history restart file
         !
         call getfil (hrestpath(t), locfn)
-        call cam_pio_openfile(tape(t)%Files(1), locfn, 0)
+        call cam_pio_openfile(tape(t)%Files(restart_file_index), locfn, 0)
         !
         ! Read history restart file
         !
@@ -2254,13 +2258,13 @@ CONTAINS
 
           fname_tmp = strip_suffix(tape(t)%hlist(fld)%field%name)
           if(masterproc) write(iulog, *) 'Reading history variable ',fname_tmp
-          ierr = pio_inq_varid(tape(t)%Files(1), fname_tmp, vdesc)
-          call cam_pio_var_info(tape(t)%Files(1), vdesc, ndims, dimids, dimlens)
+          ierr = pio_inq_varid(tape(t)%Files(restart_file_index), fname_tmp, vdesc)
+          call cam_pio_var_info(tape(t)%Files(restart_file_index), vdesc, ndims, dimids, dimlens)
 
           if(.not. associated(tape(t)%hlist(fld)%field%mdims)) then
             dimcnt = 0
             do i=1,ndims
-              ierr = pio_inq_dimname(tape(t)%Files(1), dimids(i), dname_tmp)
+              ierr = pio_inq_dimname(tape(t)%Files(restart_file_index), dimids(i), dname_tmp)
               dimid = get_hist_coord_index(dname_tmp)
               if(dimid >= 1) then
                 dimcnt = dimcnt + 1
@@ -2292,27 +2296,27 @@ CONTAINS
           end if
           fdecomp = tape(t)%hlist(fld)%field%decomp_type
           if (nfdims > 2) then
-            call cam_grid_read_dist_array(tape(t)%Files(1), fdecomp,              &
+            call cam_grid_read_dist_array(tape(t)%Files(restart_file_index), fdecomp,              &
                  fdims(1:nfdims), dimlens(1:ndims), tape(t)%hlist(fld)%hbuf, vdesc)
           else
-            call cam_grid_read_dist_array(tape(t)%Files(1), fdecomp,              &
+            call cam_grid_read_dist_array(tape(t)%Files(restart_file_index), fdecomp,              &
                  fdims(1:nfdims), dimlens(1:ndims), tape(t)%hlist(fld)%hbuf(:,1,:), vdesc)
           end if
 
           if ( associated(tape(t)%hlist(fld)%sbuf) ) then
              ! read in variance for standard deviation
-             ierr = pio_inq_varid(tape(t)%Files(1), trim(fname_tmp)//'_var', vdesc)
+             ierr = pio_inq_varid(tape(t)%Files(restart_file_index), trim(fname_tmp)//'_var', vdesc)
              if (nfdims > 2) then
-                call cam_grid_read_dist_array(tape(t)%Files(1), fdecomp,              &
+                call cam_grid_read_dist_array(tape(t)%Files(restart_file_index), fdecomp,              &
                      fdims(1:nfdims), dimlens(1:ndims), tape(t)%hlist(fld)%sbuf, vdesc)
              else
-                call cam_grid_read_dist_array(tape(t)%Files(1), fdecomp,              &
+                call cam_grid_read_dist_array(tape(t)%Files(restart_file_index), fdecomp,              &
                      fdims(1:nfdims), dimlens(1:ndims), tape(t)%hlist(fld)%sbuf(:,1,:), vdesc)
              end if
           endif
 
-          ierr = pio_inq_varid(tape(t)%Files(1), trim(fname_tmp)//'_nacs', vdesc)
-          call cam_pio_var_info(tape(t)%Files(1), vdesc, nacsdimcnt, dimids, dimlens)
+          ierr = pio_inq_varid(tape(t)%Files(restart_file_index), trim(fname_tmp)//'_nacs', vdesc)
+          call cam_pio_var_info(tape(t)%Files(restart_file_index), vdesc, nacsdimcnt, dimids, dimlens)
           
           if(nacsdimcnt > 0) then
             if (nfdims > 2) then
@@ -2321,22 +2325,22 @@ CONTAINS
             end if
             allocate(tape(t)%hlist(fld)%nacs(begdim1:enddim1,begdim3:enddim3))
             nacs       => tape(t)%hlist(fld)%nacs(:,:)
-            call cam_grid_read_dist_array(tape(t)%Files(1), fdecomp, fdims(1:2),  &
+            call cam_grid_read_dist_array(tape(t)%Files(restart_file_index), fdecomp, fdims(1:2),  &
                  dimlens(1:nacsdimcnt), nacs, vdesc)
           else
             allocate(tape(t)%hlist(fld)%nacs(1,begdim3:enddim3))
-            ierr = pio_get_var(tape(t)%Files(1), vdesc, nacsval)
+            ierr = pio_get_var(tape(t)%Files(restart_file_index), vdesc, nacsval)
             tape(t)%hlist(fld)%nacs(1,:)= nacsval
           end if
 
-          ierr = pio_inq_varid(tape(t)%Files(1), trim(fname_tmp)//'_nacs', vdesc)
-          call cam_pio_var_info(tape(t)%Files(1), vdesc, nacsdimcnt, dimids, dimlens)
+          ierr = pio_inq_varid(tape(t)%Files(restart_file_index), trim(fname_tmp)//'_nacs', vdesc)
+          call cam_pio_var_info(tape(t)%Files(restart_file_index), vdesc, nacsdimcnt, dimids, dimlens)
 
         end do
         !
         ! Done reading this history restart file
         !
-        call cam_pio_closefile(tape(t)%Files(1))
+        call cam_pio_closefile(tape(t)%Files(restart_file_index))
 
       end if  ! rgnht(t)
 
@@ -2392,7 +2396,7 @@ CONTAINS
           if(is_satfile(t)) then
             !  Initialize the sat following history subsystem
             call sat_hist_init()
-            call sat_hist_define(tape(t)%Files(1))
+            call sat_hist_define(tape(t)%Files(sat_file_index))
           end if
         end if
         !
@@ -4317,10 +4321,10 @@ end subroutine print_active_fldlst
 
     if(restart) then
       tape(t)%num_files = 1
-      call cam_pio_createfile (tape(t)%Files(1), hrestpath(t), amode)
+      call cam_pio_createfile (tape(t)%Files(restart_file_index), hrestpath(t), amode)
     else if (is_initfile(file_index=t) .or. is_satfile(t)) then
       tape(t)%num_files = 1
-      call cam_pio_createfile (tape(t)%Files(1), nhfil(t,accumulated_file_index), amode)
+      call cam_pio_createfile (tape(t)%Files(sat_file_index), nhfil(t,sat_file_index), amode)
     else
       ! figure out how many history files to generate for this tape
       if (hfile_accum(t) .and. hfile_inst(t)) then
@@ -4338,20 +4342,20 @@ end subroutine print_active_fldlst
     if(is_satfile(t)) then
       interpolate = .false. ! !!XXgoldyXX: Do we ever want to support this?
       patch_output = .false.
-      call cam_pio_def_dim(tape(t)%Files(1), 'ncol', pio_unlimited, timdim)
-      call cam_pio_def_dim(tape(t)%Files(1), 'nbnd', 2, bnddim)
+      call cam_pio_def_dim(tape(t)%Files(sat_file_index), 'ncol', pio_unlimited, timdim)
+      call cam_pio_def_dim(tape(t)%Files(sat_file_index), 'nbnd', 2, bnddim)
 
       allocate(latvar(1), lonvar(1))
       allocate(latvar(1)%vd, lonvar(1)%vd)
-      call cam_pio_def_var(tape(t)%Files(1), 'lat', pio_double, (/timdim/),       &
+      call cam_pio_def_var(tape(t)%Files(sat_file_index), 'lat', pio_double, (/timdim/),       &
            latvar(1)%vd)
-      ierr=pio_put_att (tape(t)%Files(1), latvar(1)%vd, 'long_name', 'latitude')
-      ierr=pio_put_att (tape(t)%Files(1), latvar(1)%vd, 'units', 'degrees_north')
+      ierr=pio_put_att (tape(t)%Files(sat_file_index), latvar(1)%vd, 'long_name', 'latitude')
+      ierr=pio_put_att (tape(t)%Files(sat_file_index), latvar(1)%vd, 'units', 'degrees_north')
 
-      call cam_pio_def_var(tape(t)%Files(1), 'lon', pio_double, (/timdim/),       &
+      call cam_pio_def_var(tape(t)%Files(sat_file_index), 'lon', pio_double, (/timdim/),       &
            lonvar(1)%vd)
-      ierr=pio_put_att (tape(t)%Files(1), lonvar(1)%vd,'long_name','longitude')
-      ierr=pio_put_att (tape(t)%Files(1), lonvar(1)%vd,'units','degrees_east')
+      ierr=pio_put_att (tape(t)%Files(sat_file_index), lonvar(1)%vd,'long_name','longitude')
+      ierr=pio_put_att (tape(t)%Files(sat_file_index), lonvar(1)%vd,'units','degrees_east')
     else
       !
       ! Setup netcdf file - create the dimensions of lat,lon,time,level
@@ -5649,10 +5653,9 @@ end subroutine print_active_fldlst
           end do
           if(.not. restart) then
             if (is_initfile(file_index=t)) then
-               nhfil(t,1) = fname
-               nhfil(t,2) = fname
+               nhfil(t,:) = fname
                if(masterproc) then
-                  write(iulog,*)'WSHIST: initfile nhfil(',t,')=',trim(nhfil(t,1))
+                  write(iulog,*)'WSHIST: initfile nhfil(',t,')=',trim(nhfil(t,init_file_index))
                end if
             else
                nhfil(t,accumulated_file_index) = fname_acc
@@ -5840,7 +5843,7 @@ end subroutine print_active_fldlst
                 nullify(tape(t)%hlist(fld)%varid)
               end if
             end do
-            call cam_pio_closefile(tape(t)%Files(1))
+            call cam_pio_closefile(tape(t)%Files(restart_file_index))
           else
             !$OMP PARALLEL DO PRIVATE (FLD)
             do fld=1,nflds(t)
