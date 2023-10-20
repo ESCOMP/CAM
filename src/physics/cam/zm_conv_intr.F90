@@ -38,6 +38,7 @@ module zm_conv_intr
       zm_conv_tend,               &! return tendencies
       zm_conv_tend_2               ! return tendencies
 
+   public zmconv_ke, zmconv_ke_lnd,  zmconv_org  ! needed by convect_shallow
 
    integer ::& ! indices for fields in the physics buffer
       zm_mu_idx,      &
@@ -651,6 +652,7 @@ subroutine zm_conv_tend(pblh    ,mcon    ,cme     , &
 
     call zm_conv_evap_run(state1%ncol, pcols, pver, pverp, &
          gravit, latice, latvap, tmelt, &
+         cpair, zmconv_ke, zmconv_ke_lnd, zmconv_org, &
          state1%t,state1%pmid,state1%pdel,state1%q(:pcols,:pver,1), &
          landfrac, &
          ptend_loc%s, tend_s_snwprd, tend_s_snwevmlt, ptend_loc%q(:pcols,:pver,1), &
@@ -710,6 +712,7 @@ subroutine zm_conv_tend(pblh    ,mcon    ,cme     , &
      call t_startf ('zm_conv_momtran_run')
      call zm_conv_momtran_run (ncol, pcols, pver, pverp,                    &
                    l_windt,winds, 2,  mu, md,   &
+                   zmconv_momcu, zmconv_momcd, &
                    du, eu, ed, dp, dsubcld,  &
                    jt, maxg, ideep, 1, lengath,  &
                    nstep,  wind_tends, pguall, pgdall, icwu, icwd, ztodt, seten )

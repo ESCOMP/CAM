@@ -14,6 +14,7 @@
    use physconst,         only : cpair, zvir
    use ppgrid,            only : pver, pcols, pverp
    use zm_conv_evap_mod,  only : zm_conv_evap_run
+   use zm_conv_intr,      only : zmconv_ke, zmconv_ke_lnd,  zmconv_org
    use cam_history,       only : outfld, addfld, horiz_only
    use cam_logfile,       only : iulog
    use phys_control,      only : phys_getopts
@@ -868,6 +869,7 @@
 
     call zm_conv_evap_run( state1%ncol, pcols, pver, pverp,                &
                        gravit, latice, latvap, tmelt,                                &
+                       cpair, zmconv_ke, zmconv_ke_lnd,  zmconv_org, &
                        state1%t, state1%pmid, state1%pdel, state1%q(:pcols,:pver,1), &
 		       landfracdum, &
                        ptend_loc%s, tend_s_snwprd, tend_s_snwevmlt,                  &
