@@ -38,7 +38,8 @@ module cam_history
                            pio_int, pio_real, pio_double, pio_char,           &
                            pio_offset_kind, pio_unlimited, pio_global,        &
                            pio_inq_dimlen, pio_def_var, pio_enddef,           &
-                           pio_put_att, pio_put_var, pio_get_att
+                           pio_put_att, pio_put_var, pio_get_att,             &
+                           pio_file_is_open
 
 
    use perf_mod,            only: t_startf, t_stopf
@@ -145,7 +146,7 @@ module cam_history
   ! Indices for split history files; must be 1 and 2, but could be swapped if desired
   integer, parameter :: accumulated_file_index     =  1
   integer, parameter :: instantaneous_file_index   =  2
-  ! Indices for non-split history files; must all be 1
+  ! Indices for non-split history files; must be 1 or 2
   integer, parameter :: sat_file_index             =  1
   integer, parameter :: restart_file_index         =  1
   integer, parameter :: init_file_index            =  1
@@ -2378,19 +2379,16 @@ CONTAINS
       else
         if (nfils(t) > 0) then
            if (hfile_accum(t) .and. hfile_inst(t)) then
-              tape(t)%num_files = 2
               call getfil (cpath(t,accumulated_file_index), locfn)
               call cam_pio_openfile(tape(t)%Files(accumulated_file_index), locfn, PIO_WRITE)
               call getfil (cpath(t,instantaneous_file_index), locfn)
               call cam_pio_openfile(tape(t)%Files(instantaneous_file_index), locfn, PIO_WRITE)
            else if (hfile_accum(t)) then
-              tape(t)%num_files = 1
               call getfil (cpath(t,accumulated_file_index), locfn)
-              call cam_pio_openfile(tape(t)%Files(1), locfn, PIO_WRITE)
+              call cam_pio_openfile(tape(t)%Files(accumulated_file_index), locfn, PIO_WRITE)
            else if (hfile_inst(t)) then
-              tape(t)%num_files = 1
               call getfil (cpath(t,instantaneous_file_index), locfn)
-              call cam_pio_openfile(tape(t)%Files(1), locfn, PIO_WRITE)
+              call cam_pio_openfile(tape(t)%Files(instantaneous_file_index), locfn, PIO_WRITE)
            end if
           call h_inquire (t)
           if(is_satfile(t)) then
@@ -2404,16 +2402,20 @@ CONTAINS
         !
         if (nfils(t) >= mfilt(t)) then
           if (masterproc) then
-            do f = 1, tape(t)%num_files
-               write(iulog,*)'READ_RESTART_HISTORY: nf_close(',t,')=',nhfil(t,f), mfilt(t)
+            do f = 1, size(tape(t)%Files)
+               if (pio_file_is_open(tape(t)%Files(f))) then
+                  write(iulog,*)'READ_RESTART_HISTORY: nf_close(',t,')=',nhfil(t,f), mfilt(t)
+               end if
             end do
           end if
           do fld=1,nflds(t)
             deallocate(tape(t)%hlist(fld)%varid)
             nullify(tape(t)%hlist(fld)%varid)
           end do
-          do f = 1, tape(t)%num_files
-             call cam_pio_closefile(tape(t)%Files(f))
+          do f = 1, size(tape(t)%Files)
+             if (pio_file_is_open(tape(t)%Files(f))) then
+                call cam_pio_closefile(tape(t)%Files(f))
+             end if
           end do
           nfils(t) = 0
         end if
@@ -3994,7 +3996,10 @@ end subroutine print_active_fldlst
     !
     ! Create variables for model timing and header information
     !
-    do f = 1, tape(t)%num_files
+    do f = 1, size(tape(t)%Files)
+       if (.not. pio_file_is_open(tape(t)%Files(f))) then
+          cycle
+       end if
        if(.not. is_satfile(t)) then
          ierr=pio_inq_varid (tape(t)%Files(f),'ndcur   ',    tape(t)%ndcurid)
          ierr=pio_inq_varid (tape(t)%Files(f),'nscur   ',    tape(t)%nscurid)
@@ -4043,18 +4048,15 @@ end subroutine print_active_fldlst
        ! Obtain variable name from ID which was read from restart file
        !
        do fld=1,nflds(t)
-         if (tape(t)%num_files > 1) then
-            ! we have two files - instantaneous and accumulated
-            if (f == accumulated_file_index) then
-               ! this is the accumulated file - skip instantaneous fields
-               if (tape(t)%hlist(fld)%avgflag == 'I') then
-                  cycle
-               end if
-            else
-               ! this is the instantaneous file - skip accumulated fields
-               if (tape(t)%hlist(fld)%avgflag /= 'I') then
-                  cycle
-               end if
+         if (f == accumulated_file_index) then
+            ! this is the accumulated file - skip instantaneous fields
+            if (tape(t)%hlist(fld)%avgflag == 'I') then
+               cycle
+            end if
+         else
+            ! this is the instantaneous file - skip accumulated fields
+            if (tape(t)%hlist(fld)%avgflag /= 'I') then
+               cycle
             end if
          end if
 
@@ -4219,7 +4221,7 @@ end subroutine print_active_fldlst
     ! Method: Issue the required netcdf wrapper calls to define the history file contents
     !
     !-----------------------------------------------------------------------
-     use phys_control,    only: phys_getopts
+    use phys_control,    only: phys_getopts
     use cam_grid_support, only: cam_grid_header_info_t
     use cam_grid_support, only: cam_grid_write_attr, cam_grid_write_var
     use time_manager,     only: get_step_size, get_ref_date, timemgr_get_calendar_cf
@@ -4320,23 +4322,18 @@ end subroutine print_active_fldlst
     amode = PIO_CLOBBER
 
     if(restart) then
-      tape(t)%num_files = 1
       call cam_pio_createfile (tape(t)%Files(restart_file_index), hrestpath(t), amode)
     else if (is_initfile(file_index=t) .or. is_satfile(t)) then
-      tape(t)%num_files = 1
       call cam_pio_createfile (tape(t)%Files(sat_file_index), nhfil(t,sat_file_index), amode)
     else
       ! figure out how many history files to generate for this tape
       if (hfile_accum(t) .and. hfile_inst(t)) then
-         tape(t)%num_files = 2
          call cam_pio_createfile (tape(t)%Files(accumulated_file_index), nhfil(t,accumulated_file_index), amode)
          call cam_pio_createfile (tape(t)%Files(instantaneous_file_index), nhfil(t,instantaneous_file_index), amode)
       else if (hfile_accum(t)) then
-         tape(t)%num_files = 1
-         call cam_pio_createfile (tape(t)%Files(1), nhfil(t,accumulated_file_index), amode)
+         call cam_pio_createfile (tape(t)%Files(accumulated_file_index), nhfil(t,accumulated_file_index), amode)
       else if (hfile_inst(t)) then
-         tape(t)%num_files = 1
-         call cam_pio_createfile (tape(t)%Files(1), nhfil(t,instantaneous_file_index), amode)
+         call cam_pio_createfile (tape(t)%Files(instantaneous_file_index), nhfil(t,instantaneous_file_index), amode)
       end if
     end if
     if(is_satfile(t)) then
@@ -4368,8 +4365,10 @@ end subroutine print_active_fldlst
       ! Interpolation is special in that we ignore the native grids
       if(interpolate) then
         allocate(header_info(1))
-        do f = 1, tape(t)%num_files
-           call cam_grid_write_attr(tape(t)%Files(f), interpolate_info(t)%grid_id, header_info(1), file_index=f)
+        do f = 1, size(tape(t)%Files)
+           if (pio_file_is_open(tape(t)%Files(f))) then
+              call cam_grid_write_attr(tape(t)%Files(f), interpolate_info(t)%grid_id, header_info(1), file_index=f)
+           end if
         end do
       else if (patch_output) then
         ! We are doing patch (column) output
@@ -4378,23 +4377,29 @@ end subroutine print_active_fldlst
           call endrun('H_DEFINE: header_info should not be allocated for patch output')
         end if
         do i = 1, size(tape(t)%patches)
-          do f = 1, tape(t)%num_files
-             call tape(t)%patches(i)%write_attrs(tape(t)%Files(f))
+          do f = 1, size(tape(t)%Files)
+             if (pio_file_is_open(tape(t)%Files(f))) then
+                call tape(t)%patches(i)%write_attrs(tape(t)%Files(f))
+             end if
           end do
         end do
       else
         allocate(header_info(size(tape(t)%grid_ids)))
         do i = 1, size(tape(t)%grid_ids)
-          do f = 1, tape(t)%num_files
-             call cam_grid_write_attr(tape(t)%Files(f), tape(t)%grid_ids(i), header_info(i), file_index=f)
+          do f = 1, size(tape(t)%Files)
+             if (pio_file_is_open(tape(t)%Files(f))) then
+                call cam_grid_write_attr(tape(t)%Files(f), tape(t)%grid_ids(i), header_info(i), file_index=f)
+             end if
           end do
         end do
       end if   ! interpolate
       ! Define the unlimited time dim
-      do f = 1, tape(t)%num_files
-         call cam_pio_def_dim(tape(t)%Files(f), 'time', pio_unlimited, timdim)
-         call cam_pio_def_dim(tape(t)%Files(f), 'nbnd', 2, bnddim, existOK=.true.)
-         call cam_pio_def_dim(tape(t)%Files(f), 'chars', 8, chardim)
+      do f = 1, size(tape(t)%Files)
+         if (pio_file_is_open(tape(t)%Files(f))) then
+            call cam_pio_def_dim(tape(t)%Files(f), 'time', pio_unlimited, timdim)
+            call cam_pio_def_dim(tape(t)%Files(f), 'nbnd', 2, bnddim, existOK=.true.)
+            call cam_pio_def_dim(tape(t)%Files(f), 'chars', 8, chardim)
+         end if
       end do
     end if   ! is satfile
 
@@ -4421,7 +4426,10 @@ end subroutine print_active_fldlst
       write(time_per_freq,999) 'second_',sec_nhtfrq*dtime
     end if
 999 format(a,i0)
-    do f = 1, tape(t)%num_files
+    do f = 1, size(tape(t)%Files)
+       if (.not. pio_file_is_open(tape(t)%Files(f))) then
+          cycle
+       end if
        ! Store snapshot location
        if (t == cam_snapshot_before_num) then
           ierr=pio_put_att(tape(t)%Files(f), PIO_GLOBAL, 'cam_snapshot_before',      &
@@ -4650,15 +4658,14 @@ end subroutine print_active_fldlst
        !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
        do fld = 1, nflds(t)
-         if (tape(t)%num_files > 1) then
-            ! we have two files - instantaneous and accumulated
+         if (.not. is_satfile(t) .and. .not. restart .and. .not. is_initfile(t)) then
             if (f == accumulated_file_index) then
-               ! this is the accumulated file - skip instantaneous fields
+               ! this is the accumulated file of a potentially split history tape - skip instantaneous fields
                if (tape(t)%hlist(fld)%avgflag == 'I') then
                   cycle
                end if
             else
-               ! this is the instantaneous file - skip accumulated fields
+               ! this is the instantaneous file of a potentially split history tape - skip accumulated fields
                if (tape(t)%hlist(fld)%avgflag /= 'I') then
                   cycle
                end if
@@ -4895,20 +4902,26 @@ end subroutine print_active_fldlst
     !
     if(.not. is_satfile(t)) then
       if(interpolate) then
-        do f = 1, tape(t)%num_files
-           call cam_grid_write_var(tape(t)%Files(f), interpolate_info(t)%grid_id, file_index=f)
+        do f = 1, size(tape(t)%Files)
+           if (pio_file_is_open(tape(t)%Files(f))) then
+              call cam_grid_write_var(tape(t)%Files(f), interpolate_info(t)%grid_id, file_index=f)
+           end if
         end do
       else if((.not. patch_output) .or. restart) then
         do i = 1, size(tape(t)%grid_ids)
-          do f = 1, tape(t)%num_files
-             call cam_grid_write_var(tape(t)%Files(f), tape(t)%grid_ids(i), file_index=f)
+          do f = 1, size(tape(t)%Files)
+             if (pio_file_is_open(tape(t)%Files(F))) then
+                call cam_grid_write_var(tape(t)%Files(f), tape(t)%grid_ids(i), file_index=f)
+             end if
           end do
         end do
       else
         ! Patch output
         do i = 1, size(tape(t)%patches)
-          do f = 1, tape(t)%num_files
-             call tape(t)%patches(i)%write_vals(tape(t)%Files(f))
+          do f = 1, size(tape(t)%Files)
+             if (pio_file_is_open(tape(t)%Files(f))) then
+                call tape(t)%patches(i)%write_vals(tape(t)%Files(f))
+             end if
           end do
         end do
       end if ! interpolate
@@ -4920,7 +4933,10 @@ end subroutine print_active_fldlst
       end if
 
       dtime = get_step_size()
-      do f = 1, tape(t)%num_files
+      do f = 1, size(tape(t)%Files)
+         if (.not. pio_file_is_open(tape(t)%Files(f))) then
+            cycle
+         end if
          ierr = pio_put_var(tape(t)%Files(f), tape(t)%mdtid, (/dtime/))
          call cam_pio_handle_error(ierr, 'h_define: cannot put mdt')
          !
@@ -4953,8 +4969,10 @@ end subroutine print_active_fldlst
     end if
 
     ! Write the mdim variable data
-    do f = 1, tape(t)%num_files
-       call write_hist_coord_vars(tape(t)%Files(f), restart)
+    do f = 1, size(tape(t)%Files)
+       if (pio_file_is_open(tape(t)%Files(f))) then
+          call write_hist_coord_vars(tape(t)%Files(f), restart)
+       end if
     end do
 
   end subroutine h_define
@@ -5685,60 +5703,76 @@ end subroutine print_active_fldlst
           if (interpolate_output(t) .and. (.not. restart)) then
             call set_interp_hfile(t, interpolate_info)
           end if
-          do f = 1, tape(t)%num_files
-             ierr = pio_put_var (tape(t)%Files(f), tape(t)%ndcurid,(/start/), (/count1/),(/ndcur/))
-             ierr = pio_put_var (tape(t)%Files(f), tape(t)%nscurid,(/start/), (/count1/),(/nscur/))
-             ierr = pio_put_var (tape(t)%Files(f), tape(t)%dateid,(/start/), (/count1/),(/ncdate/))
+          do f = 1, size(tape(t)%Files)
+             if (pio_file_is_open(tape(t)%Files(f))) then
+                ierr = pio_put_var (tape(t)%Files(f), tape(t)%ndcurid,(/start/), (/count1/),(/ndcur/))
+                ierr = pio_put_var (tape(t)%Files(f), tape(t)%nscurid,(/start/), (/count1/),(/nscur/))
+                ierr = pio_put_var (tape(t)%Files(f), tape(t)%dateid,(/start/), (/count1/),(/ncdate/))
+             end if
           end do
 
           if (.not. is_initfile(file_index=t)) then
             ! Don't write the GHG/Solar forcing data to the IC file.
-            do f = 1, tape(t)%num_files
-               ierr=pio_put_var (tape(t)%Files(f), tape(t)%co2vmrid,(/start/), (/count1/),(/chem_surfvals_co2_rad(vmr_in=.true.)/))
-               ierr=pio_put_var (tape(t)%Files(f), tape(t)%ch4vmrid,(/start/), (/count1/),(/chem_surfvals_get('CH4VMR')/))
-               ierr=pio_put_var (tape(t)%Files(f), tape(t)%n2ovmrid,(/start/), (/count1/),(/chem_surfvals_get('N2OVMR')/))
-               ierr=pio_put_var (tape(t)%Files(f), tape(t)%f11vmrid,(/start/), (/count1/),(/chem_surfvals_get('F11VMR')/))
-               ierr=pio_put_var (tape(t)%Files(f), tape(t)%f12vmrid,(/start/), (/count1/),(/chem_surfvals_get('F12VMR')/))
-               ierr=pio_put_var (tape(t)%Files(f), tape(t)%sol_tsiid,(/start/), (/count1/),(/sol_tsi/))
+            do f = 1, size(tape(t)%Files)
+               if (pio_file_is_open(tape(t)%Files(f))) then
+                  ierr=pio_put_var (tape(t)%Files(f), tape(t)%co2vmrid,(/start/), (/count1/),(/chem_surfvals_co2_rad(vmr_in=.true.)/))
+                  ierr=pio_put_var (tape(t)%Files(f), tape(t)%ch4vmrid,(/start/), (/count1/),(/chem_surfvals_get('CH4VMR')/))
+                  ierr=pio_put_var (tape(t)%Files(f), tape(t)%n2ovmrid,(/start/), (/count1/),(/chem_surfvals_get('N2OVMR')/))
+                  ierr=pio_put_var (tape(t)%Files(f), tape(t)%f11vmrid,(/start/), (/count1/),(/chem_surfvals_get('F11VMR')/))
+                  ierr=pio_put_var (tape(t)%Files(f), tape(t)%f12vmrid,(/start/), (/count1/),(/chem_surfvals_get('F12VMR')/))
+                  ierr=pio_put_var (tape(t)%Files(f), tape(t)%sol_tsiid,(/start/), (/count1/),(/sol_tsi/))
+               end if
             end do
 
             if (solar_parms_on) then
-              do f = 1, tape(t)%num_files
-                 ierr=pio_put_var (tape(t)%Files(f), tape(t)%f107id, (/start/), (/count1/),(/ f107 /) )
-                 ierr=pio_put_var (tape(t)%Files(f), tape(t)%f107aid,(/start/), (/count1/),(/ f107a /) )
-                 ierr=pio_put_var (tape(t)%Files(f), tape(t)%f107pid,(/start/), (/count1/),(/ f107p /) )
-                 ierr=pio_put_var (tape(t)%Files(f), tape(t)%kpid,   (/start/), (/count1/),(/ kp /) )
-                 ierr=pio_put_var (tape(t)%Files(f), tape(t)%apid,   (/start/), (/count1/),(/ ap /) )
+              do f = 1, size(tape(t)%Files)
+                 if (pio_file_is_open(tape(t)%Files(f))) then
+                    ierr=pio_put_var (tape(t)%Files(f), tape(t)%f107id, (/start/), (/count1/),(/ f107 /) )
+                    ierr=pio_put_var (tape(t)%Files(f), tape(t)%f107aid,(/start/), (/count1/),(/ f107a /) )
+                    ierr=pio_put_var (tape(t)%Files(f), tape(t)%f107pid,(/start/), (/count1/),(/ f107p /) )
+                    ierr=pio_put_var (tape(t)%Files(f), tape(t)%kpid,   (/start/), (/count1/),(/ kp /) )
+                    ierr=pio_put_var (tape(t)%Files(f), tape(t)%apid,   (/start/), (/count1/),(/ ap /) )
+                 end if
               end do
             endif
             if (solar_wind_on) then
-              do f = 1, tape(t)%num_files
-                 ierr=pio_put_var (tape(t)%Files(f), tape(t)%byimfid, (/start/), (/count1/),(/ byimf /) )
-                 ierr=pio_put_var (tape(t)%Files(f), tape(t)%bzimfid, (/start/), (/count1/),(/ bzimf /) )
-                 ierr=pio_put_var (tape(t)%Files(f), tape(t)%swvelid, (/start/), (/count1/),(/ swvel /) )
-                 ierr=pio_put_var (tape(t)%Files(f), tape(t)%swdenid, (/start/), (/count1/),(/ swden /) )
+              do f = 1, size(tape(t)%Files)
+                 if (pio_file_is_open(tape(t)%Files(f))) then
+                    ierr=pio_put_var (tape(t)%Files(f), tape(t)%byimfid, (/start/), (/count1/),(/ byimf /) )
+                    ierr=pio_put_var (tape(t)%Files(f), tape(t)%bzimfid, (/start/), (/count1/),(/ bzimf /) )
+                    ierr=pio_put_var (tape(t)%Files(f), tape(t)%swvelid, (/start/), (/count1/),(/ swvel /) )
+                    ierr=pio_put_var (tape(t)%Files(f), tape(t)%swdenid, (/start/), (/count1/),(/ swden /) )
+                 end if
               end do
             endif
             if (epot_active) then
-              do f = 1, tape(t)%num_files
-                 ierr=pio_put_var (tape(t)%Files(f), tape(t)%colat_crit1_id, (/start/), (/count1/),(/ epot_crit_colats(1) /) )
-                 ierr=pio_put_var (tape(t)%Files(f), tape(t)%colat_crit2_id, (/start/), (/count1/),(/ epot_crit_colats(2) /) )
+              do f = 1, size(tape(t)%Files)
+                 if (pio_file_is_open(tape(t)%Files(f))) then
+                    ierr=pio_put_var (tape(t)%Files(f), tape(t)%colat_crit1_id, (/start/), (/count1/),(/ epot_crit_colats(1) /) )
+                    ierr=pio_put_var (tape(t)%Files(f), tape(t)%colat_crit2_id, (/start/), (/count1/),(/ epot_crit_colats(2) /) )
+                 end if
               end do
             endif
           end if
 
-          do f = 1, tape(t)%num_files
-             ierr = pio_put_var (tape(t)%Files(f), tape(t)%datesecid,(/start/),(/count1/),(/ncsec/))
+          do f = 1, size(tape(t)%Files)
+             if (pio_file_is_open(tape(t)%Files(f))) then
+                ierr = pio_put_var (tape(t)%Files(f), tape(t)%datesecid,(/start/),(/count1/),(/ncsec/))
+             end if
           end do
 #if ( defined BFB_CAM_SCAM_IOP )
           dtime = get_step_size()
           tsec=dtime*nstep
-          do f = 1, tape(t)%num_files
-             ierr = pio_put_var (tape(t)%Files(f), tape(t)%tsecid,(/start/),(/count1/),(/tsec/))
+          do f = 1, size(tape(t)%Files)
+             if (pio_file_is_open(tape(t)%Files(f))) then
+                ierr = pio_put_var (tape(t)%Files(f), tape(t)%tsecid,(/start/),(/count1/),(/tsec/))
+             end if
           end do
 #endif
-          do f = 1, tape(t)%num_files
-             ierr = pio_put_var (tape(t)%Files(f), tape(t)%nstephid,(/start/),(/count1/),(/nstep/))
+          do f = 1, size(tape(t)%Files)
+             if (pio_file_is_open(tape(t)%Files(f))) then
+                ierr = pio_put_var (tape(t)%Files(f), tape(t)%nstephid,(/start/),(/count1/),(/nstep/))
+             end if
           end do
           time = ndcur + nscur/86400._r8
 
@@ -5752,24 +5786,17 @@ end subroutine print_active_fldlst
             tdata(1) = beg_time(t)
             tdata(2) = time
           end if
-          do f = 1, tape(t)%num_files
-             if (tape(t)%num_files > 1) then
-                ! We have two files - one for accumulated and one for instantaneous fields
-                if (f == accumulated_file_index) then
-                   ! accumulated tape - time is midpoint of time_bounds
-                   ierr=pio_put_var (tape(t)%Files(f), tape(t)%timeid, (/start/),(/count1/),(/(tdata(1) + tdata(2)) / 2._r8/))
-                else
-                   ! instantaneous tape - time is current time
-                   ierr=pio_put_var (tape(t)%Files(f), tape(t)%timeid, (/start/),(/count1/),(/time/))
-                end if                   
+          do f = 1, size(tape(t)%Files)
+             if (.not. pio_file_is_open(tape(t)%Files(f))) then
+                cycle
+             end if
+             ! We have two files - one for accumulated and one for instantaneous fields
+             if (f == accumulated_file_index .and. .not. restart .and. .not. is_initfile(t) .and. .not. is_satfile(t)) then
+                ! accumulated tape - time is midpoint of time_bounds
+                ierr=pio_put_var (tape(t)%Files(f), tape(t)%timeid, (/start/),(/count1/),(/(tdata(1) + tdata(2)) / 2._r8/))
              else
-                if (hfile_accum(t) .and. .not. restart) then
-                   ! accumulated tape - time is midpoint of time_bounds
-                   ierr=pio_put_var (tape(t)%Files(f), tape(t)%timeid, (/start/),(/count1/),(/(tdata(1) + tdata(2)) / 2._r8/))
-                else
-                   ! instantaneous tape - time is current time
-                   ierr=pio_put_var (tape(t)%Files(f), tape(t)%timeid, (/start/),(/count1/),(/time/))
-                end if
+                ! not an accumulated history tape - time is current time
+                ierr=pio_put_var (tape(t)%Files(f), tape(t)%timeid, (/start/),(/count1/),(/time/))
              end if
              ierr=pio_put_var (tape(t)%Files(f), tape(t)%tbndid, startc, countc, tdata)
           end do
@@ -5779,9 +5806,11 @@ end subroutine print_active_fldlst
           countc(1) = 8
           countc(2) = 1
           call datetime (cdate, ctime)
-          do f = 1, tape(t)%num_files
-             ierr = pio_put_var (tape(t)%Files(f), tape(t)%date_writtenid, startc, countc, (/cdate/))
-             ierr = pio_put_var (tape(t)%Files(f), tape(t)%time_writtenid, startc, countc, (/ctime/))
+          do f = 1, size(tape(t)%Files)
+             if (pio_file_is_open(tape(t)%Files(f))) then
+                ierr = pio_put_var (tape(t)%Files(f), tape(t)%date_writtenid, startc, countc, (/cdate/))
+                ierr = pio_put_var (tape(t)%Files(f), tape(t)%time_writtenid, startc, countc, (/ctime/))
+             end if
           end do
 
           if(.not. restart) then
@@ -5808,20 +5837,15 @@ end subroutine print_active_fldlst
           !
           call t_startf ('dump_field')
           do fld=1,nflds(t)
-            do f = 1, tape(t)%num_files
-               if (tape(t)%num_files > 1) then
-                  ! we have a history split, conditionally skip fields that are for the other file
-                  if ((tape(t)%hlist(fld)%avgflag .eq. 'I') .and. f == accumulated_file_index) then
-                     cycle
-                  else if ((tape(t)%hlist(fld)%avgflag .ne. 'I') .and. f == instantaneous_file_index) then
-                     cycle
-                  end if
-               else
-                  if ((tape(t)%hlist(fld)%avgflag .eq. 'I') .and. hfile_accum(t) .and. .not. restart) then
-                     cycle
-                  else if ((tape(t)%hlist(fld)%avgflag .ne. 'I') .and. hfile_inst(t) .and. .not. restart) then
-                     cycle
-                  end if
+            do f = 1, size(tape(t)%Files)
+               if (.not. pio_file_is_open(tape(t)%Files(f))) then
+                  cycle
+               end if
+               ! we may have a history split, conditionally skip fields that are for the other file
+               if ((tape(t)%hlist(fld)%avgflag .eq. 'I') .and. f == accumulated_file_index .and. .not. restart) then
+                  cycle
+               else if ((tape(t)%hlist(fld)%avgflag .ne. 'I') .and. f == instantaneous_file_index .and. .not. restart) then
+                  cycle
                end if
                call dump_field(fld, t, f, restart)
             end do
@@ -6382,7 +6406,6 @@ end subroutine print_active_fldlst
     !
     !-----------------------------------------------------------------------
     !
-    use pio, only : pio_file_is_open
     use shr_kind_mod,  only: r8 => shr_kind_r8
     use ioFileMod
     use time_manager,  only: get_nstep, get_curr_date, get_curr_time
@@ -6451,11 +6474,14 @@ end subroutine print_active_fldlst
         ! If so, just close primary unit do not dispose.
         !
         if (masterproc) then
-           do f = 1, tape(t)%num_files
-              write(iulog,*)'WRAPUP: nf_close(',t,')=',trim(nhfil(t,f))
+           do f = 1, size(tape(t)%Files)
+              if (pio_file_is_open(tape(t)%Files(f))) then
+                 write(iulog,*)'WRAPUP: nf_close(',t,')=',trim(nhfil(t,f))
+              end if
            end do
         end if
-        if(pio_file_is_open(tape(t)%Files(1))) then
+        if(pio_file_is_open(tape(t)%Files(accumulated_file_index)) .or. &
+           pio_file_is_open(tape(t)%Files(instantaneous_file_index))) then
           if (nlend .or. lfill(t)) then
             do fld=1,nflds(t)
               if (associated(tape(t)%hlist(fld)%varid)) then
@@ -6465,8 +6491,10 @@ end subroutine print_active_fldlst
             end do
           end if
         end if
-        do f = 1, tape(t)%num_files
-          call cam_pio_closefile(tape(t)%Files(f))
+        do f = 1, size(tape(t)%Files)
+          if (pio_file_is_open(tape(t)%Files(f))) then
+             call cam_pio_closefile(tape(t)%Files(f))
+          end if
         end do
         if (nhtfrq(t) /= 0 .or. nstep > 0) then
 
@@ -6494,9 +6522,9 @@ end subroutine print_active_fldlst
                call cam_PIO_openfile (tape(t)%Files(accumulated_file_index), nhfil(t,accumulated_file_index), PIO_WRITE)
                call cam_PIO_openfile (tape(t)%Files(instantaneous_file_index), nhfil(t,instantaneous_file_index), PIO_WRITE)
             else if (hfile_accum(t)) then
-               call cam_PIO_openfile (tape(t)%Files(1), nhfil(t,accumulated_file_index), PIO_WRITE)
+               call cam_PIO_openfile (tape(t)%Files(accumulated_file_index), nhfil(t,accumulated_file_index), PIO_WRITE)
             else if (hfile_inst(t)) then
-               call cam_PIO_openfile (tape(t)%Files(1), nhfil(t,instantaneous_file_index), PIO_WRITE)
+               call cam_PIO_openfile (tape(t)%Files(instantaneous_file_index), nhfil(t,instantaneous_file_index), PIO_WRITE)
             end if
             call h_inquire(t)
           end if

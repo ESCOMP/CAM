@@ -198,7 +198,6 @@ module cam_history_support
     !
 
     type(file_desc_t) :: Files(maxsplitfiles)  ! PIO file ids
-    integer           :: num_files       ! number of files to use
 
     type(var_desc_t) :: mdtid            ! var id for timestep
     type(var_desc_t) :: ndbaseid         ! var id for base day
