@@ -1111,9 +1111,7 @@ subroutine bulk_props_init(physprop, nc_id)
 
    type(var_desc_T) :: vid
 
-   ! ***N.B.*** RRTMGP hasn't set the value of idx_sw_diag when this routine is 
-   !            called.  The debug option will need to be modified for RRTMGP.
-   logical :: debug = .true.
+   logical :: debug = .false.
 
    character(len=*), parameter :: subname = 'bulk_props_init'
    !------------------------------------------------------------------------------------
