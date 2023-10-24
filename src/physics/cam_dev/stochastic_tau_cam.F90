@@ -5,9 +5,8 @@ module stochastic_tau_cam
 !output the mass and number mixing ratio tendencies in each bin directly.
 !this is then wrapped for CAM. 
 
-use shr_kind_mod,      only: r8=>shr_kind_r8, cl=>shr_kind_cl
+use shr_kind_mod,      only: cl=>shr_kind_cl
 use cam_history,       only: addfld
-use micro_pumas_utils, only: pi, rhow, qsmall
 use cam_logfile,       only: iulog
 
 implicit none
@@ -57,8 +56,7 @@ subroutine stochastic_tau_readnl(nlfile)
   call mpi_bcast(pumas_stochastic_tau_kernel_filename, cl, mpi_character, mstrid, mpicom, ierr)
   if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: pumas_stochastic_tau_kernel_filename")
 
-!CACNOTE
-  write(0,*) ' Inside stochastic_tau_readnl, pumas_stochastic_tau_kernel_filename=',pumas_stochastic_tau_kernel_filename
+  write(iulog,*) 'PUMAS stochastic_tau_readnl, pumas_stochastic_tau_kernel_filename=',pumas_stochastic_tau_kernel_filename
 
 end subroutine stochastic_tau_readnl
 

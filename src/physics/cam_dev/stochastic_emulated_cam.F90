@@ -5,10 +5,8 @@ module stochastic_emulated_cam
 !output the mass and number mixing ratio tendencies in each bin directly.
 !this is then wrapped for CAM. 
 
-use shr_kind_mod,      only: r8=>shr_kind_r8
 use shr_kind_mod,      only: cl=>shr_kind_cl
 use cam_history,       only: addfld
-use micro_pumas_utils, only: pi, rhow, qsmall
 use cam_logfile,       only: iulog
 use cam_abortutils,    only: endrun
 
@@ -27,10 +25,6 @@ integer, parameter, public  :: ncdp = ncd + 1
 character(len=cl) :: stochastic_emulated_filename_quantile = " "
 character(len=cl) :: stochastic_emulated_filename_input_scale = " "
 character(len=cl) :: stochastic_emulated_filename_output_scale = " "
-
-real(r8), public :: mmean(ncd), diammean(ncd)       ! kg & m at bin mid-points
-real(r8), public :: medge(ncdp), diamedge(ncdp)     ! kg & m at bin edges 
-integer, private  :: cutoff_id                       ! cutoff between cloud water and rain drop, D = 40 microns
 
 !===============================================================================
 contains
@@ -74,8 +68,7 @@ subroutine stochastic_emulated_readnl(nlfile)
   call mpi_bcast(stochastic_emulated_filename_output_scale, cl, mpi_character, mstrid, mpicom, ierr)
   if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: stochastic_emulated_filename_output_scale")
 
-!CACNOTE
-  write(0,*) ' Inside stochastic_emulated_readnl, stochastic_emulated_filename_quantile=',&
+  write(iulog,*) 'PUMAS stochastic_emulated_readnl, stochastic_emulated_filename_quantile=',&
                stochastic_emulated_filename_quantile
 
 end subroutine stochastic_emulated_readnl
