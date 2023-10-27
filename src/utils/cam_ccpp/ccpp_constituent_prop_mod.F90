@@ -67,7 +67,7 @@ contains
          errcode = 0
       end if
       if(present(errmsg)) then
-         errmsg = 'Still Not Used!'
+         errmsg = 'Not Used!'
       end if
 
    end subroutine ccp_is_thermo_active
@@ -90,7 +90,7 @@ contains
          errcode = 0
       end if
       if(present(errmsg)) then
-         errmsg = 'Still Not Used!'
+         errmsg = 'Not Used!'
       end if
 
    end subroutine ccp_is_water_species
@@ -116,7 +116,7 @@ contains
          errcode = 0
       end if
       if(present(errmsg)) then
-         errmsg = 'Still Not Used!'
+         errmsg = 'Not Used!'
       end if
 
    end subroutine ccp_set_thermo_active
@@ -142,7 +142,7 @@ contains
          errcode = 0
       end if
       if(present(errmsg)) then
-         errmsg = 'Still Not Used!'
+         errmsg = 'Not Used!'
       end if
 
    end subroutine ccp_set_water_species
