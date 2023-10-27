@@ -3157,8 +3157,8 @@
 <mpas_len_disp hgrid="mpasa60">  60000.0D0</mpas_len_disp>
 <mpas_len_disp hgrid="mpasa30">  30000.0D0</mpas_len_disp>
 <mpas_len_disp hgrid="mpasa15">  15000.0D0</mpas_len_disp>
-<mpas_len_disp hgrid="mpasa7.5">  7500.0D0</mpas_len_disp>
-<mpas_len_disp hgrid="mpasa3.75"> 3750.0D0</mpas_len_disp>
+<mpas_len_disp hgrid="mpasa7p5">  7500.0D0</mpas_len_disp>
+<mpas_len_disp hgrid="mpasa3p75"> 3750.0D0</mpas_len_disp>
 
 <mpas_visc4_2dsmag            > 0.05D0 </mpas_visc4_2dsmag>
 <mpas_del4u_div_factor        > 10.0D0 </mpas_del4u_div_factor>
@@ -3195,6 +3195,8 @@
 <mpas_block_decomp_file_prefix hgrid="mpasa15">atm/cam/inic/mpas/mpasa15.graph.info.part.</mpas_block_decomp_file_prefix>
 <mpas_block_decomp_file_prefix hgrid="mpasa12">atm/cam/inic/mpas/mpasa12.graph.info.part.</mpas_block_decomp_file_prefix>
 <mpas_block_decomp_file_prefix hgrid="mpasa15-3">atm/cam/inic/mpas/mpasa15-3.graph.info.part.</mpas_block_decomp_file_prefix>
+<mpas_block_decomp_file_prefix hgrid="mpasa7p5">atm/cam/inic/mpas/mpasa7.5.graph.info.part.</mpas_block_decomp_file_prefix>
+<mpas_block_decomp_file_prefix hgrid="mpasa3p75">atm/cam/inic/mpas/mpasa3.75.graph.info.part.</mpas_block_decomp_file_prefix>
 
 <mpas_do_restart               > .false. </mpas_do_restart>
 <mpas_print_global_minmax_vel  > .true. </mpas_print_global_minmax_vel>

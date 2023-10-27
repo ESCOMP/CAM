@@ -48,7 +48,7 @@ module atm_comp_nuopc
    use spmd_utils          , only : spmdinit, masterproc, iam, mpicom
    use time_manager        , only : get_curr_calday, advance_timestep, get_curr_date, get_nstep, get_step_size
    use atm_import_export   , only : read_surface_fields_namelists, advertise_fields, realize_fields
-   use atm_import_export   , only : import_fields, export_fields
+   use atm_import_export   , only : import_fields, export_fields, aqua_planet
    use nuopc_shr_methods   , only : chkerr, state_setscalar, state_getscalar, state_diagnose, alarmInit
    use nuopc_shr_methods   , only : set_component_logging, get_component_instance, log_clock_advance
    use perf_mod            , only : t_startf, t_stopf
@@ -375,7 +375,6 @@ contains
     character(len=cl)       :: caseid                            ! case ID
     character(len=cl)       :: ctitle                            ! case title
     character(len=cl)       :: model_doi_url                     ! DOI for CESM model run
-    logical                 :: aqua_planet                       ! Flag to run model in "aqua planet" mode
     logical                 :: brnch_retain_casename             ! true => branch run has same caseid as run being branched from
     logical                 :: single_column = .false.
     character(len=cl)       :: single_column_lnd_domainfile

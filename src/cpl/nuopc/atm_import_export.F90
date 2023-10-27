@@ -51,6 +51,7 @@ module atm_import_export
   integer             , public, protected :: fldsFrAtm_num = 0
   type (fldlist_type) , public, protected :: fldsToAtm(fldsMax)
   type (fldlist_type) , public, protected :: fldsFrAtm(fldsMax)
+  logical             , public            :: aqua_planet                       ! Flag to run model in "aqua planet" mode
 
   ! area correction factors for fluxes send and received from mediator
   real(r8), allocatable :: mod2med_areacor(:)
@@ -194,18 +195,19 @@ contains
        call fldlist_add(fldsFrAtm_num, fldsFrAtm, 'Sa_co2diag' )
     end if
 
-    if (ndep_nflds > 0) then
-       ! The following is when CAM/WACCM computes ndep
-       call set_active_Faxa_nhx(.true.)
-       call set_active_Faxa_noy(.true.)
-    else
-       ! The following is used for reading in stream data
-       call set_active_Faxa_nhx(.false.)
-       call set_active_Faxa_noy(.false.)
-    end if
-    ! Assume that 2 fields are always sent as part of Faxa_ndep
-    call fldlist_add(fldsFrAtm_num, fldsFrAtm, 'Faxa_ndep', ungridded_lbound=1, ungridded_ubound=2)
-
+    if(.not. aqua_planet) then
+       if (ndep_nflds > 0) then
+          ! The following is when CAM/WACCM computes ndep
+          call set_active_Faxa_nhx(.true.)
+          call set_active_Faxa_noy(.true.)
+       else
+          ! The following is used for reading in stream data
+          call set_active_Faxa_nhx(.false.)
+          call set_active_Faxa_noy(.false.)
+       end if
+       ! Assume that 2 fields are always sent as part of Faxa_ndep
+       call fldlist_add(fldsFrAtm_num, fldsFrAtm, 'Faxa_ndep', ungridded_lbound=1, ungridded_ubound=2)
+    endif
     ! lightning flash freq
     if (atm_provides_lightning) then
        call fldlist_add(fldsFrAtm_num, fldsFrAtm, 'Sa_lightning')
@@ -1090,35 +1092,35 @@ contains
           end do
        end do
     end if
-
-    ! If ndep fields are not computed in cam and must be obtained from the ndep input stream
-    call state_getfldptr(exportState, 'Faxa_ndep', fldptr2d=fldptr_ndep, rc=rc)
-    if (ChkErr(rc,__LINE__,u_FILE_u)) return
-    if (.not. active_Faxa_nhx .and. .not. active_Faxa_noy) then
-       if (.not. stream_ndep_is_initialized) then
-          call stream_ndep_init(model_mesh, model_clock, rc)
-          if (ChkErr(rc,__LINE__,u_FILE_u)) return
-          stream_ndep_is_initialized = .true.
-       end if
-       call stream_ndep_interp(cam_out, rc)
+    if(.not. aqua_planet) then
+       ! If ndep fields are not computed in cam and must be obtained from the ndep input stream
+       call state_getfldptr(exportState, 'Faxa_ndep', fldptr2d=fldptr_ndep, rc=rc)
        if (ChkErr(rc,__LINE__,u_FILE_u)) return
-       ! NDEP read from forcing is expected to be in units of gN/m2/sec - but the mediator
-       ! expects units of kgN/m2/sec
-       scale_ndep = .001_r8
-    else
-       ! If waccm computes ndep, then its in units of kgN/m2/s - and the mediator expects
-       ! units of kgN/m2/sec, so the following conversion needs to happen
-       scale_ndep = 1._r8
-    end if
-    g = 1
-    do c = begchunk,endchunk
-       do i = 1,get_ncols_p(c)
-          fldptr_ndep(1,g) = cam_out(c)%nhx_nitrogen_flx(i) * scale_ndep * mod2med_areacor(g)
-          fldptr_ndep(2,g) = cam_out(c)%noy_nitrogen_flx(i) * scale_ndep * mod2med_areacor(g)
-          g = g + 1
+       if (.not. active_Faxa_nhx .and. .not. active_Faxa_noy) then
+          if (.not. stream_ndep_is_initialized) then
+             call stream_ndep_init(model_mesh, model_clock, rc)
+             if (ChkErr(rc,__LINE__,u_FILE_u)) return
+             stream_ndep_is_initialized = .true.
+          end if
+          call stream_ndep_interp(cam_out, rc)
+          if (ChkErr(rc,__LINE__,u_FILE_u)) return
+          ! NDEP read from forcing is expected to be in units of gN/m2/sec - but the mediator
+          ! expects units of kgN/m2/sec
+          scale_ndep = .001_r8
+       else
+          ! If waccm computes ndep, then its in units of kgN/m2/s - and the mediator expects
+          ! units of kgN/m2/sec, so the following conversion needs to happen
+          scale_ndep = 1._r8
+       end if
+       g = 1
+       do c = begchunk,endchunk
+          do i = 1,get_ncols_p(c)
+             fldptr_ndep(1,g) = cam_out(c)%nhx_nitrogen_flx(i) * scale_ndep * mod2med_areacor(g)
+             fldptr_ndep(2,g) = cam_out(c)%noy_nitrogen_flx(i) * scale_ndep * mod2med_areacor(g)
+             g = g + 1
+          end do
        end do
-    end do
-
+    endif
   end subroutine export_fields
 
   !===============================================================================
