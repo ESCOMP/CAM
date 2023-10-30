@@ -232,7 +232,7 @@ contains
     call kessler_run(ncol, pver, ztodt, lyr_surf, lyr_toa, cpairv(1:ncol,:,lchnk),   &
                      rairv(1:ncol,:,lchnk), rho(1:ncol,:), state%zm(1:ncol,:),       &
                      pk(1:ncol,:), th(1:ncol,:), qv_dry(1:ncol,:), qc_dry(1:ncol,:), &
-                     qr_dry(1:ncol,:), prec_sed(1:ncol,:), relhum(1:ncol,:),         &
+                     qr_dry(1:ncol,:), prec_sed(1:ncol), relhum(1:ncol,:),         &
                      scheme_name, errmsg, errflg)
     if (errflg /=0) then
        call endrun('kessler_tend error: Error returned from kessler_run: '//trim(errmsg))
