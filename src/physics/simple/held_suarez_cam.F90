@@ -105,7 +105,7 @@ contains
     call physics_ptend_init(ptend, state%psetcols, 'held_suarez', ls=.true., lu=.true., lv=.true.)
 
     call held_suarez_1994_run(pver, ncol, pref_mid_norm, clat, cappav(1:ncol,:,lchnk), &
-                              cpairv(1:ncol,:,lchnk), & state%pmid(1:ncol,:),          &
+                              cpairv(1:ncol,:,lchnk), state%pmid(1:ncol,:),            &
                               state%u(1:ncol,:), state%v(1:ncol,:), state%t(1:ncol,:), &
                               ptend%u(1:ncol,:), ptend%v(1:ncol,:), ptend%s(1:ncol,:), &
                               scheme_name, errmsg, errflg)
