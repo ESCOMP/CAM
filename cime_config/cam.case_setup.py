@@ -44,15 +44,15 @@ if '-chem geoschem' in cam_config:
     geoschem_config_src = os.path.join(cam_root, 'src', 'chemistry',
                                        'geoschem', 'geoschem_src', 'run', 'CESM')
     if not os.path.isdir(geoschem_config_src):
-        raise SystemExit(f"ERROR: Did not find path to GEOS-Chem source code at {geoschem_config_src}")
+        raise SystemExit(f"ERROR: Did not find path to GEOS-Chem config files at {geoschem_config_src}")
     # end if
     for fileName in ['species_database.yml', 'geoschem_config.yml', 'HISTORY.rc',
                      'HEMCO_Config.rc', 'HEMCO_Diagn.rc']:
         source_file = os.path.join(cam_root, geoschem_config_src, fileName)
         if not os.path.exists(source_file):
-            raise SystemExit(f"ERROR: Did not find source file, {fileName}")
+            raise SystemExit(f"ERROR: Did not find source file, {source_file}")
         # end if
-        spaths = source_file.splitext(source_file)
+        spaths = os.path.splitext(source_file)
         for inst_num in range(ninst):
             if ninst > 1:
                 target_file = f"{spaths[0]}_{inst_num+1:04d}{spaths[1]}"
