@@ -23,7 +23,7 @@ module prim_advection_mod
   use element_mod,            only: element_t
   use fvm_control_volume_mod, only: fvm_struct
   use hybvcoord_mod,          only: hvcoord_t
-  use time_mod,               only: TimeLevel_t, TimeLevel_Qdp
+  use se_dyn_time_mod,        only: TimeLevel_t, TimeLevel_Qdp
   use control_mod,            only: nu_q, nu_p, limiter_option, hypervis_subcycle_q, rsplit
   use edge_mod,               only: edgevpack, edgevunpack, initedgebuffer, initedgesbuffer
 

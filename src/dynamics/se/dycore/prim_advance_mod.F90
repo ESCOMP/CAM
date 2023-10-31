@@ -53,7 +53,7 @@ contains
     use element_mod,       only: element_t
     use hybvcoord_mod,     only: hvcoord_t
     use hybrid_mod,        only: hybrid_t
-    use time_mod,          only: TimeLevel_t,  timelevel_qdp, tevolve
+    use se_dyn_time_mod,   only: TimeLevel_t,  timelevel_qdp, tevolve
     use fvm_control_volume_mod, only: fvm_struct
     use cam_thermo,        only: get_kappa_dry
     use air_composition,   only: thermodynamic_active_species_num
