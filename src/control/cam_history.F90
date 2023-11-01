@@ -5623,7 +5623,7 @@ end subroutine print_active_fldlst
           ! Check that this new filename isn't the same as a previous or current filename
           !
           duplicate = .false.
-          do f = 1, t
+          do f = 1, ptapes
             if (masterproc)then
               if (trim(fname) == trim(nhfil(f,1)) .and. trim(fname) /= '') then
                  write(iulog,*)'WSHIST: New filename same as old file = ', trim(fname)
