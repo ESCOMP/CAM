@@ -53,7 +53,7 @@ contains
     use element_mod,       only: element_t
     use hybvcoord_mod,     only: hvcoord_t
     use hybrid_mod,        only: hybrid_t
-    use time_mod,          only: TimeLevel_t,  timelevel_qdp, tevolve
+    use se_dyn_time_mod,   only: TimeLevel_t,  timelevel_qdp, tevolve
     use fvm_control_volume_mod, only: fvm_struct
     use cam_thermo,        only: get_kappa_dry
     use air_composition,   only: thermodynamic_active_species_num
@@ -930,7 +930,7 @@ contains
             !OMP_COLLAPSE_SIMD
             !DIR_VECTOR_ALIGNED
             do j=1,np
-              do i=1,np                
+              do i=1,np
                 v1new=elem(ie)%state%v(i,j,1,k,nt)
                 v2new=elem(ie)%state%v(i,j,2,k,nt)
                 v1   =elem(ie)%state%v(i,j,1,k,nt)- vtens(i,j,1,k,ie)
@@ -1175,8 +1175,7 @@ contains
          ! vtemp = gradient_sphere(Ephi(:,:),deriv,elem(ie)%Dinv)
          call gradient_sphere(Ephi(:,:),deriv,elem(ie)%Dinv,vtemp)
          density_inv(:,:) = R_dry(:,:,k)*T_v(:,:,k)/p_full(:,:,k)
-
-         if (pgf_formulation==1) then
+         if (pgf_formulation==1.or.(pgf_formulation==3.and.hvcoord%hybm(k)>0._r8)) then
            if (dry_air_species_num==0) then
              exner(:,:)=(p_full(:,:,k)/hvcoord%ps0)**kappa(:,:,k,ie)
              theta_v(:,:)=T_v(:,:,k)/exner(:,:)
@@ -1211,11 +1210,11 @@ contains
              pgf_term(:,:,2)=pgf_term(:,:,2) + &
                   cpair*T0*(grad_logexner(:,:,2)-grad_exner(:,:,2)/exner(:,:))
            end if
-         elseif (pgf_formulation==2) then
+         elseif (pgf_formulation==2.or.pgf_formulation==3) then
            pgf_term(:,:,1)  = density_inv(:,:)*grad_p_full(:,:,1,k)
            pgf_term(:,:,2)  = density_inv(:,:)*grad_p_full(:,:,2,k)
          else
-           call endrun('ERROR: bad choice of pgf_formulation (must be 1 or 2)')
+           call endrun('ERROR: bad choice of pgf_formulation (must be 1, 2, or 3)')
          end if
 
          do j=1,np
@@ -1525,12 +1524,12 @@ contains
              active_species_idx_dycore=thermodynamic_active_species_idx_dycore)
         ptop = hyai(1)*ps0
         do j=1,np
-          !get mixing ratio of thermodynamic active species only 
+          !get mixing ratio of thermodynamic active species only
           !(other tracers not used in get_hydrostatic_energy)
           do nq=1,thermodynamic_active_species_num
             m_cnst = thermodynamic_active_species_idx_dycore(nq)
             q(:,:,m_cnst) = elem(ie)%state%Qdp(:,j,:,m_cnst,tl_qdp)/&
-                 elem(ie)%state%dp3d(:,j,:,tl) 
+                 elem(ie)%state%dp3d(:,j,:,tl)
           end do
           call get_hydrostatic_energy(q, &
                .false., elem(ie)%state%dp3d(:,j,:,tl), cp(:,j,:), elem(ie)%state%v(:,j,1,:,tl), &

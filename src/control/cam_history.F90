@@ -5147,19 +5147,19 @@ end subroutine print_active_fldlst
     !
     type (dim_index_2d)     :: dimind    ! 2-D dimension index
     integer                 :: ie        ! dim3 index
-    integer                 :: count     ! tmp index 
+    integer                 :: count     ! tmp index
     integer                 :: i1        ! dim1 index
     integer                 :: j1        ! dim2 index
     integer                 :: fdims(3)  ! array shape
-    integer                 :: begdim1,enddim1,begdim2,enddim2,begdim3,enddim3        ! 
+    integer                 :: begdim1,enddim1,begdim2,enddim2,begdim3,enddim3        !
     real(r8)                :: globalsum(1) ! globalsum
     real(r8), allocatable   :: globalarr(:) ! globalarr values for this pe
-        
+
     call t_startf ('h_global')
 
     ! wbuf contains the area weighting for this field decomposition
     if (associated(tape(t)%hlist(fld)%wbuf) ) then
-       
+
        begdim1    =  tape(t)%hlist(fld)%field%begdim1
        enddim1    =  tape(t)%hlist(fld)%field%enddim1
        fdims(1)   =  enddim1 - begdim1 + 1
@@ -5169,7 +5169,7 @@ end subroutine print_active_fldlst
        begdim3    =  tape(t)%hlist(fld)%field%begdim3
        enddim3    =  tape(t)%hlist(fld)%field%enddim3
        fdims(3)   =  enddim3 - begdim3 + 1
-       
+
        allocate(globalarr(fdims(1)*fdims(2)*fdims(3)))
        count=0
        globalarr=0._r8
@@ -5226,7 +5226,7 @@ end subroutine print_active_fldlst
 
     do c = begdim3, enddim3
       dimind = tape(t)%hlist(fld)%field%get_dims(c)
-      if (trim(optype) == 'dif') then 
+      if (trim(optype) == 'dif') then
          tape(t)%hlist(fld)%hbuf(dimind%beg1:dimind%end1,dimind%beg2:dimind%end2,c) = &
          tape(t)%hlist(fld1)%hbuf(dimind%beg1:dimind%end1,dimind%beg2:dimind%end2,c) - &
          tape(t)%hlist(fld2)%hbuf(dimind%beg1:dimind%end1,dimind%beg2:dimind%end2,c)
@@ -5792,7 +5792,7 @@ end subroutine print_active_fldlst
           if(.not. restart) then
              !$OMP PARALLEL DO PRIVATE (FLD)
              do fld=1,nflds(t)
-                ! Normalize all non composed fields, composed fields are calculated next using the normalized components 
+                ! Normalize all non composed fields, composed fields are calculated next using the normalized components
                 if (tape(t)%hlist(fld)%avgflag /= 'I'.and..not.tape(t)%hlist(fld)%field%is_composed()) then
                    call h_normalize (fld, t)
                 end if
@@ -6127,7 +6127,7 @@ end subroutine print_active_fldlst
 
     if (present(optype)) then
        ! make sure optype is "sum" or "dif"
-       if (.not.(trim(optype) == 'dif' .or. trim(optype) == 'sum')) then 
+       if (.not.(trim(optype) == 'dif' .or. trim(optype) == 'sum')) then
           write(errormsg, '(2a)')': Fatal : optype must be "sum" or "dif" not ',trim(optype)
           call endrun (trim(subname)//errormsg)
        end if

@@ -786,6 +786,8 @@ contains
     use phys_grid_ctem,     only: phys_grid_ctem_init
     use cam_budget,         only: cam_budget_init
 
+    use ccpp_constituent_prop_mod, only: ccpp_const_props_init
+
     ! Input/output arguments
     type(physics_state), pointer       :: phys_state(:)
     type(physics_tend ), pointer       :: phys_tend(:)
@@ -978,6 +980,10 @@ contains
 
     end if
 
+    ! Initialize CAM CCPP constituent properties array
+    ! for use in CCPP-ized physics schemes:
+    call ccpp_const_props_init()
+
     ! Initialize qneg3 and qneg4
     call qneg_init()
 
@@ -989,7 +995,7 @@ contains
 
     ! Initialize the budget capability
     call cam_budget_init()
- 
+
     ! addfld calls for U, V tendency budget variables that are output in
     ! tphysac, tphysbc
     call addfld ( 'UTEND_DCONV', (/ 'lev' /), 'A', 'm/s2', 'Zonal wind tendency by deep convection')
@@ -1938,7 +1944,7 @@ contains
     else
       !
       ! for moist-mixing ratio based dycores
-      ! 
+      !
       ! Note: this operation will NOT be reverted with set_wet_to_dry after set_dry_to_wet call
       !
       call set_dry_to_wet(state)
@@ -1960,7 +1966,7 @@ contains
     if (vc_dycore == vc_height.or.vc_dycore == vc_dry_pressure) then
       !
       ! MPAS and SE specific scaling of temperature for enforcing energy consistency
-      ! (and to make sure that temperature dependent diagnostic tendencies 
+      ! (and to make sure that temperature dependent diagnostic tendencies
       !  are computed correctly; e.g. dtcore)
       !
       scaling(1:ncol,:)  = cpairv(:ncol,:,lchnk)/cp_or_cv_dycore(:ncol,:,lchnk)

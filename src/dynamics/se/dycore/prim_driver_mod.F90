@@ -28,8 +28,8 @@ contains
     use dimensions_mod,         only: irecons_tracer, fvm_supercycling
     use dimensions_mod,         only: fv_nphys, nc
     use parallel_mod,           only: syncmp
-    use time_mod,               only: timelevel_t, tstep, phys_tscale, nsplit, TimeLevel_Qdp
-    use time_mod,               only: nsplit_baseline,rsplit_baseline
+    use se_dyn_time_mod,        only: timelevel_t, tstep, phys_tscale, nsplit, TimeLevel_Qdp
+    use se_dyn_time_mod,        only: nsplit_baseline,rsplit_baseline
     use prim_state_mod,         only: prim_printstate
     use control_mod,            only: runtype, topology, rsplit, qsplit, rk_stage_user,         &
                                       nu, nu_q, nu_div, hypervis_subcycle, hypervis_subcycle_q, &
@@ -218,7 +218,7 @@ contains
 !
 !
     use hybvcoord_mod, only : hvcoord_t
-    use time_mod,               only: TimeLevel_t, timelevel_update, timelevel_qdp, nsplit
+    use se_dyn_time_mod,        only: TimeLevel_t, timelevel_update, timelevel_qdp, nsplit
     use control_mod,            only: statefreq,qsplit, rsplit, variable_nsplit
     use prim_advance_mod,       only: applycamforcing
     use prim_advance_mod,       only: tot_energy_dyn,compute_omega
@@ -407,7 +407,7 @@ contains
     !       tl%n0    time t + dt_q
     !
     use hybvcoord_mod,          only: hvcoord_t
-    use time_mod,               only: TimeLevel_t, timelevel_update
+    use se_dyn_time_mod,        only: TimeLevel_t, timelevel_update
     use control_mod,            only: statefreq, qsplit, nu_p
     use thread_mod,             only: omp_get_thread_num
     use prim_advance_mod,       only: prim_advance_exp

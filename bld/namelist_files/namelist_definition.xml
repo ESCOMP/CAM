@@ -2916,7 +2916,7 @@ Default: 1.0
 <entry id="microp_aero_wsub_scale" type="real" category="microphys"
        group="microp_aero_nl" valid_values="" >
 Unitless scaling factor for the liquid droplet subgrid scale vertical velocity during aerosol activation.
-Default: 1.0
+Default: set by build-namelist
 </entry>
 
 <entry id="microp_aero_wsubi_scale" type="real" category="microphys"
@@ -2927,8 +2927,14 @@ Default: 1.0
 
 <entry id="microp_aero_wsub_min" type="real" category="microphys"
        group="microp_aero_nl" valid_values="" >
-Minimum subgrid vertical velocity for liquid droplets during aerosol activation with units of (m s-1).
-Default: 0.2 m s-1
+Minimum subgrid vertical velocity (before scale factor) for liquid droplets during aerosol activation with units of (m s-1).
+Default: set by build-namelist
+</entry>
+
+<entry id="microp_aero_wsub_min_asf" type="real" category="microphys"
+       group="microp_aero_nl" valid_values="" >
+Minimum subgrid vertical velocity (after scale factor) for liquid droplets during aerosol activation with units of (m s-1).
+Default: set by build-namelist
 </entry>
 
 <entry id="microp_aero_wsubi_min" type="real" category="microphys"
@@ -3146,11 +3152,29 @@ rhi at which ice cloud fraction = 1 in the stratosphere.
 Default: set by build-namelist
 </entry>
 
+<entry id="cldfrc2m_qist_min" type="real" category="conv"
+       group="cldfrc2m_nl" valid_values="" >
+Minimum in-stratus IWC constraint [ kg/kg ]
+Default: set by build-namelist
+</entry>
+
+<entry id="cldfrc2m_qist_max" type="real" category="conv"
+       group="cldfrc2m_nl" valid_values="" >
+Maximum in-stratus IWC constraint [ kg/kg ]
+Default: set by build-namelist
+</entry>
+
 <entry id="cldfrc2m_do_subgrid_growth" type="logical" category="conv"
        group="cldfrc2m_nl" valid_values="" >
 Use cloud fraction to determine whether to do growth of ice clouds below
 RHice of 1 down to RHice = rhmini.
 Default: .true. for CAM6; all others =&gt; .false.
+</entry>
+
+<entry id="cldfrc2m_do_avg_aist_algs" type="logical" category="conv"
+       group="cldfrc2m_nl" valid_values="" >
+For small ice cloud concentrations, take the geometric mean of the iceopt=4 and iceopt=5 area fractions
+Default: .true. for CAM_DEV; all others .false.
 </entry>
 
 <entry id="zmconv_momcu" type="real" category="conv"
@@ -8150,12 +8174,16 @@ Default: Set by build-namelist.
 </entry>
 
 <entry id="se_pgf_formulation" type="integer" category="se"
-       group="dyn_se_inparm" valid_values="1,2" >
+       group="dyn_se_inparm" valid_values="1,2,3" >
 
   1: Exner version of pressure gradient force (PGF)
   see Appendix A in https://agupubs.onlinelibrary.wiley.com/doi/epdf/10.1029/2022MS003192
 
   2: Traditional pressure gradient formulation (grad p)
+
+  3: Hybrid (formulation 1 where hybm>0 else formulation 2)
+     Use hybrid PGF option for WACCM-x to make WACCM-x consistent with PGF
+     used in CAM in the troposphere and traditional PGF formulation above
 
   Default: Set by build-namelist.
 </entry>
