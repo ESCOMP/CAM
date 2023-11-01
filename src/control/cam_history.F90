@@ -573,7 +573,6 @@ CONTAINS
     integer                        :: dtime   ! Step time in seconds
     integer                        :: unitn, ierr, f, t
     character(len=8)               :: ctemp      ! Temporary character string
-    character(len=max_string_len)  :: temp_spec
 
     character(len=fieldname_lenp2) :: fincl1(pflds)
     character(len=fieldname_lenp2) :: fincl2(pflds)
