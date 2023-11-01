@@ -37,8 +37,8 @@ module cam_grid_support
     integer(iMap),    pointer :: map(:) => NULL()  ! map (dof) for dist. coord
     logical                   :: latitude          ! .false. means longitude
     real(r8),         pointer :: bnds(:,:) => NULL() ! bounds, if present
-    type(vardesc_ptr_t)       :: vardesc(2)        ! If we are to write coord
-    type(vardesc_ptr_t)       :: bndsvdesc(2)      ! If we are to write bounds
+    type(vardesc_ptr_t)       :: vardesc(maxsplitfiles) ! If we are to write coord
+    type(vardesc_ptr_t)       :: bndsvdesc(maxsplitfiles) ! If we are to write bounds
   contains
     procedure                 :: get_coord_len  => horiz_coord_len
     procedure                 :: num_elem       => horiz_coord_num_elem
@@ -59,7 +59,7 @@ module cam_grid_support
   type, abstract :: cam_grid_attribute_t
     character(len=max_hcoordname_len)    :: name = ''      ! attribute name
     character(len=max_chars)             :: long_name = '' ! attribute long_name
-    type(vardesc_ptr_t)                  :: vardesc(2)
+    type(vardesc_ptr_t)                  :: vardesc(maxsplitfiles)
 ! We aren't going to use this until we sort out PGI issues
     class(cam_grid_attribute_t), pointer :: next => NULL()
   contains
