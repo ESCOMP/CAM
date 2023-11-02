@@ -1388,7 +1388,6 @@
   <test compset="F2000dev" grid="ne30pg3_ne30pg3_mg17" name="MGP_D_Ln9" testmods="cam/outfrq3s">
     <machines>
       <machine name="cheyenne" compiler="intel" category="aux_pumas"/>
-      <machine name="derecho" compiler="intel" category="aux_pumas"/>
     </machines>
     <options>
       <option name="wallclock">01:00:00</option>
@@ -1477,7 +1476,6 @@
     <machines>
       <machine name="cheyenne" compiler="intel" category="aux_cam"/>
       <machine name="cheyenne" compiler="intel" category="aux_pumas"/>
-      <machine name="derecho"  compiler="intel" category="aux_pumas"/>
       <machine name="cheyenne" compiler="intel" category="prealpha"/>
     </machines>
     <options>
@@ -1487,7 +1485,6 @@
   <test compset="F2000dev" grid="ne30pg3_ne30pg3_mg17" name="SMS_D_Ln9_Vnuopc" testmods="cam/outfrq9s_pumas_tau" supported="false">
     <machines>
       <machine name="cheyenne" compiler="intel" category="aux_pumas"/>
-      <machine name="derecho"  compiler="intel" category="aux_pumas"/>
     </machines>
     <options>
       <option name="wallclock">01:00:00</option>
@@ -1496,7 +1493,6 @@
   <test compset="F2000dev" grid="ne30pg3_ne30pg3_mg17" name="ERP_D_Ln9_Vnuopc" testmods="cam/outfrq9s_pumas_sb2001" supported="false">
     <machines>
       <machine name="cheyenne" compiler="intel" category="aux_pumas"/>
-      <machine name="derecho"  compiler="intel" category="aux_pumas"/>
     </machines>
     <options>
       <option name="wallclock">01:00:00</option>
@@ -1505,7 +1501,6 @@
   <test compset="F2000dev" grid="ne30pg3_ne30pg3_mg17" name="SMS_D_Ln9_Vnuopc" testmods="cam/outfrq9s_pumas_emulated" supported="false">
     <machines>
       <machine name="cheyenne" compiler="intel" category="aux_pumas"/>
-      <machine name="derecho"  compiler="intel" category="aux_pumas"/>
     </machines>
     <options>
       <option name="wallclock">01:00:00</option>
@@ -1515,7 +1510,6 @@
     <machines>
       <machine name="cheyenne" compiler="intel" category="aux_cam"/>
       <machine name="cheyenne" compiler="intel" category="aux_pumas"/>
-      <machine name="derecho"  compiler="intel" category="aux_pumas"/>
       <machine name="cheyenne" compiler="intel" category="prealpha"/>
     </machines>
     <options>
