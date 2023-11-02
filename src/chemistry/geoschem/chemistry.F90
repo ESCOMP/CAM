@@ -656,6 +656,8 @@ contains
     use aero_model,      only : aero_model_readnl
     use dust_model,      only : dust_readnl
 #endif
+    ! For dry deposition on unstructured grids
+    use mo_drydep,       only : drydep_srf_file
 
     ! args
     CHARACTER(LEN=*), INTENT(IN) :: nlfile  ! filepath for file containing namelist input
@@ -672,9 +674,9 @@ contains
     RC                      = GC_SUCCESS
 
     namelist /chem_inparm/ depvel_lnd_file
+    namelist /chem_inparm/ drydep_srf_file
 
     ! ghg chem
-
     namelist /chem_inparm/ bndtvg, h2orates, ghg_chem
 
     if (debug .and. masterproc) write(iulog,'(a)') 'chem_readnl: reading namelists for GEOS-Chem chemistry'
@@ -831,7 +833,7 @@ contains
        IF (IERR == 0) THEN
           READ(unitn, chem_inparm, IOSTAT=IERR)
           IF (IERR /= 0) THEN
-             CALL endrun('chem_readnl: ERROR reading namelist')
+             CALL endrun('chem_readnl: ERROR reading namelist chem_inparm')
           ENDIF
        ENDIF
        CLOSE(unitn)
@@ -863,6 +865,10 @@ contains
     CALL mpi_bcast(depvel_lnd_file, LEN(depvel_lnd_file), mpi_character, masterprocid, mpicom, ierr)
     IF ( ierr /= mpi_success ) then
        CALL endrun(subname//': MPI_BCAST ERROR: depvel_lnd_file')
+    ENDIF
+    CALL mpi_bcast(drydep_srf_file, LEN(drydep_srf_file), mpi_character, masterprocid, mpicom, ierr)
+    IF ( ierr /= mpi_success ) then
+       CALL endrun(subname//': MPI_BCAST ERROR: drydep_srf_file')
     ENDIF
     CALL mpi_bcast(ghg_chem, 1, mpi_logical, masterprocid, mpicom, ierr)
     IF ( ierr /= mpi_success ) then
@@ -1122,32 +1128,31 @@ contains
     Input_Opt%thisCPU  = myCPU
     Input_Opt%amIRoot  = MasterProc
 
-    !IF ( MasterProc ) THEN
-    IF ( .True. ) THEN
-       CALL Read_Input_File( Input_Opt  = Input_Opt, &
-                             State_Grid = maxGrid,   &
-                             RC         = RC        )
-    
-       ! First setup directories
-       Input_Opt%Chem_Inputs_Dir      = TRIM(geoschem_cheminputs)
-       Input_Opt%SpcDatabaseFile      = TRIM(speciesDB)
-       Input_Opt%FAST_JX_DIR          = TRIM(geoschem_cheminputs)//'FAST_JX/v2020-02/'
+    CALL Read_Input_File( Input_Opt  = Input_Opt, &
+                          State_Grid = maxGrid,   &
+                          RC         = RC        )
 
-       !----------------------------------------------------------
-       ! CESM-specific input flags
-       !----------------------------------------------------------
-       
-       ! onlineAlbedo    -> True  (use CLM albedo)
-       !                 -> False (read monthly-mean albedo from HEMCO)
-       Input_Opt%onlineAlbedo           = .true.
+    ! First setup directories
+    Input_Opt%Chem_Inputs_Dir      = TRIM(geoschem_cheminputs)
+    Input_Opt%SpcDatabaseFile      = TRIM(speciesDB)
+    Input_Opt%FAST_JX_DIR          = TRIM(geoschem_cheminputs)//'FAST_JX/v2020-02/'
 
-       ! applyQtend: apply tendencies of water vapor to specific humidity
-       Input_Opt%applyQtend             = .False.
+    !----------------------------------------------------------
+    ! CESM-specific input flags
+    !----------------------------------------------------------
 
-       IF ( .NOT. Input_Opt%LSOA ) THEN
-          CALL ENDRUN('CESM2-GC requires the complex SOA option to be on!')
-       ENDIF
+    ! onlineAlbedo    -> True  (use CLM albedo)
+    !                 -> False (read monthly-mean albedo from HEMCO)
+    Input_Opt%onlineAlbedo           = .true.
 
+    ! applyQtend: apply tendencies of water vapor to specific humidity
+    Input_Opt%applyQtend             = .False.
+
+    ! correctConvUTLS: Apply photolytic correction for convective scavenging of soluble tracers?
+    Input_Opt%correctConvUTLS        = .true.
+
+    IF ( .NOT. Input_Opt%LSOA ) THEN
+       CALL ENDRUN('CESM2-GC requires the complex SOA option to be on!')
     ENDIF
 
     CALL Validate_Directories( Input_Opt, RC )
@@ -1482,7 +1487,7 @@ contains
     CALL aero_model_init( pbuf2d )
 
     ! Initialize drydep
-    CALL drydep_inti( depvel_lnd_file)
+    CALL drydep_inti( depvel_lnd_file )
 #endif
 
     IF ( gas_wetdep_method == 'NEU' ) THEN
@@ -1592,6 +1597,18 @@ contains
                           State_Chm  = State_Chm(I),             &
                           State_Diag = State_Diag(I),            &
                           State_Grid = State_Grid(I)           )
+
+           ! Because not all CPUs in the communicator have the same amount of chunks,
+           ! it is only guaranteed that the first chunk in all CPUs can participate in
+           ! MPI_bcast of the NOXCOEFF array. So only the root CPU & root chunk will
+           ! read the NOXCOEFF array from disk, then broadcast to all other CPU's first
+           ! chunks, then remaining chunks can be copied locally without MPI. (hplin, 10/17/23)
+           IF( I == BEGCHUNK ) THEN
+              CALL mpi_bcast( State_Chm(I)%NOXCOEFF, size(State_Chm(I)%NOXCOEFF), mpi_real8, masterprocid, mpicom, ierr )
+              IF ( ierr /= mpi_success ) CALL endrun('Error in mpi_bcast of NOXCOEFF in first chunk')
+           ELSE
+              State_CHM(I)%NOXCOEFF = State_Chm(BEGCHUNK)%NOXCOEFF
+           ENDIF
         ENDDO
     ENDIF
 
@@ -1673,7 +1690,7 @@ contains
     ! Cleanup
     Call Cleanup_State_Grid( maxGrid, RC )
 
-    if (debug .and. masterproc) write(iulog,'(a)') 'chem_init: GEOS-Chem chemistry initialization complete'
+    if (masterproc) write(iulog,'(a)') 'chem_init: GEOS-Chem chemistry initialization complete'
 
   end subroutine chem_init
 
@@ -2180,6 +2197,12 @@ contains
     ENDDO
 
 #if defined( MODAL_AERO )
+    ! NOTE: GEOS-Chem bulk aerosol concentrations (BCPI, BCPO, SO4, ...) are ZEROED OUT
+    ! here in order to be reconstructed from the modal concentrations.
+    !
+    ! This means that any changes to the BULK mass will be ignored between the end
+    ! of the gas_phase_chemdr and the beginning of the next!!
+    !
     ! First reset State_Chm%Species to zero out MAM-inherited GEOS-Chem aerosols
     DO M = 1, ntot_amode
        DO SM = 1, nspec_amode(M)
@@ -2227,7 +2250,8 @@ contains
     !   map2GC(bulk constituent index)  constituent index (bulk)        GEOS-Chem species index (bulk)
     !   map2MAM4(SM, M)                 SM, M (modal)                   constituent index (bulk)
     !                                                                   (map2MAM4 is a N to 1 operation)
-    !
+    ! Query functions:
+    !   xname_massptr(SM, M)            SM, M                           NAME of modal aer (bc_a1, bc_a4, ...)
     !------------------------------------------------------------------------------------------
     binRatio = 0.0e+00_r8
     DO M = 1, ntot_amode
@@ -2405,15 +2429,18 @@ contains
     ENDIF
 #endif
 
+    ! Convert mass fluxes to VMR as needed for MAM4 aerosols (these operate on vmr0 - initial and vmr1 - end of timestep)
     DO N = 1, gas_pcnst
        ! See definition of map2chm
        M = map2chm(N)
        IF ( M > 0 ) THEN
+          ! Is a GEOS-Chem species?
           vmr0(:nY,:nZ,N) = State_Chm(LCHNK)%Species(M)%Conc(1,:nY,nZ:1:-1) * &
                             MWDry / adv_mass(N)
           ! We'll substract concentrations after chemistry later
           mmr_tend(:nY,:nZ,N) = REAL(State_Chm(LCHNK)%Species(M)%Conc(1,:nY,nZ:1:-1),r8)
        ELSEIF ( M < 0 ) THEN
+          ! Is a MAM4 species? Get VMR from state%q directly.
           vmr0(:nY,:nZ,N) = state%q(:nY,:nZ,-M) * &
                             MWDry / adv_mass(N)
           mmr_tend(:nY,:nZ,N) = state%q(:nY,:nZ,-M)
@@ -3865,6 +3892,8 @@ contains
 
     ! Deal with aerosol SOA species
     ! First deal with lowest two volatility bins
+    ! Only map TOSA0 (K1) and ASOAN (K2) to soa1_ and soa2_, according to Fritz et al.
+    ! SOAIE (K3) and SOAGX (K4) were mapped in the code but are inconsistent with the model description paper.
     speciesName_1 = 'TSOA0'
     speciesName_2 = 'ASOAN'
     speciesName_3 = 'SOAIE'
@@ -3886,10 +3915,9 @@ contains
           N = lptr2_soa_a_amode(M,iBin)
           IF ( N <= 0 ) CYCLE
           P = mapCnst(N)
-          IF ( P > 0 .AND. K1 > 0 .AND. K2 > 0 .AND. K3 > 0 .AND. K4 > 0 ) THEN
+          IF ( P > 0 .AND. K1 > 0 .AND. K2 > 0 ) THEN
              vmr1(:nY,:nZ,P) = state%q(:nY,:nZ,N) / bulkMass(:nY,:nZ) &
-                             * (vmr1(:nY,:nZ,K1) + vmr1(:nY,:nZ,K2) + &
-                                vmr1(:nY,:nZ,K3) + vmr1(:nY,:nZ,K4))
+                             * (vmr1(:nY,:nZ,K1) + vmr1(:nY,:nZ,K2))
           ENDIF
        ENDDO
     ENDDO
@@ -4182,8 +4210,8 @@ contains
     Nullify(NEvapr  )
     Nullify(cmfdqr  )
 
-    IF ( rootChunk ) WRITE(iulog,*) ' GEOS-Chem Chemistry step ', iStep, ' completed'
-    IF ( lastChunk ) WRITE(iulog,*) ' Chemistry completed on all chunks completed of MasterProc'
+    IF ( rootChunk ) WRITE(iulog,*) 'GEOS-Chem Chemistry step ', iStep, ' completed'
+    IF ( lastChunk ) WRITE(iulog,*) 'Chemistry completed on all chunks of root CPU'
     IF ( FIRST ) THEN
         FIRST = .false.
     ENDIF
