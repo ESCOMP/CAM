@@ -175,7 +175,6 @@
       <value compset="_CAM.*%SDYN">-offline_dyn</value>
       <value compset="_CAM\d0%SDYN_CLM">-nlev 56</value>
       <value compset="_CAM\d0%CC.*%SDYN">-nlev 56</value>
-      <value compset="_CAM\d0%GEOSCHEM.*%SDYN">-nlev 56</value>
       <value compset="_CAM\d0%WC.*%SDYN">-nlev 88</value>
       <value compset="_CAM\d0%WX.*%SDYN">-nlev 145</value>
       <value compset="_CAM.*%LT">-nlev 58 -model_top lt</value>
@@ -299,7 +298,6 @@
       <value compset="_CAM40%WCMD%SDYN"   >sd_waccm_ma_cam4</value>
       <value compset="_CAM60%.*CCTS1%SDYN"  >sd_trop_strat_vbs_cam6</value>
       <value compset="_CAM60%.*CCTS2%SDYN"  >sd_trop_strat2_cam6</value>
-      <value compset="_CAM60%.*GC%SDYN"     >sd_geoschem</value>
       <value compset="_CAM60%SDYN_CLM50"  >sd_cam6</value>
 
       <value compset="2000_CAM%DABIP04"  >dabi_p2004</value>
