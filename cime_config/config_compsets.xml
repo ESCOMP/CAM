@@ -637,7 +637,6 @@
       <values match="first">
         <value compset="SPCAMS">1</value>
         <value compset="SPCAMM">1</value>
-        <value compset="GEOSCHEM">1</value>
       </values>
     </entry>
 
@@ -645,7 +644,6 @@
       <values match="first">
         <value compset="SPCAMS">1</value>
         <value compset="SPCAMM">1</value>
-        <value compset="GEOSCHEM">1</value>
       </values>
     </entry>
 
@@ -653,7 +651,6 @@
       <values match="first">
         <value compset="SPCAMS">1</value>
         <value compset="SPCAMM">1</value>
-        <value compset="GEOSCHEM">1</value>
       </values>
     </entry>
 
@@ -661,7 +658,6 @@
       <values match="first">
         <value compset="SPCAMS">1</value>
         <value compset="SPCAMM">1</value>
-        <value compset="GEOSCHEM">1</value>
       </values>
     </entry>
 
@@ -669,7 +665,6 @@
       <values match="first">
         <value compset="SPCAMS">1</value>
         <value compset="SPCAMM">1</value>
-        <value compset="GEOSCHEM">1</value>
       </values>
     </entry>
 
@@ -677,7 +672,6 @@
       <values match="first">
         <value compset="SPCAMS">1</value>
         <value compset="SPCAMM">1</value>
-        <value compset="GEOSCHEM">1</value>
       </values>
     </entry>
 
@@ -685,7 +679,6 @@
       <values match="first">
         <value compset="SPCAMS">1</value>
         <value compset="SPCAMM">1</value>
-        <value compset="GEOSCHEM">1</value>
       </values>
     </entry>
 
@@ -693,7 +686,6 @@
       <values match="first">
         <value compset="SPCAMS">1</value>
         <value compset="SPCAMM">1</value>
-        <value compset="GEOSCHEM">1</value>
       </values>
     </entry>
 
@@ -701,7 +693,6 @@
       <values match="first">
         <value compset="SPCAMS">1</value>
         <value compset="SPCAMM">1</value>
-        <value compset="GEOSCHEM">1</value>
       </values>
     </entry>
 
@@ -709,7 +700,6 @@
       <values match="first">
         <value compset="SPCAMS">1</value>
         <value compset="SPCAMM">1</value>
-        <value compset="GEOSCHEM">1</value>
       </values>
     </entry>
 
