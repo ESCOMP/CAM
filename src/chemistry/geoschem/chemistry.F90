@@ -1188,7 +1188,7 @@ contains
     CALL Validate_Directories( Input_Opt, RC )
 
     IF ( RC /= GC_SUCCESS ) THEN
-       ErrMsg = 'Error encountered in "Validation_Directories"!'
+       ErrMsg = 'Error encountered in "Validate_Directories"!'
        CALL Error_Stop( ErrMsg, ThisLoc )
     ENDIF
 
@@ -1198,7 +1198,7 @@ contains
                        RC         = RC        )
 
     IF ( RC /= GC_SUCCESS ) THEN
-       ErrMsg = 'Error encountered within call to "GC_Init_Grid"!'
+       ErrMsg = 'Error encountered within call to "GC_Init_Grid" (1 - maxGrid)!'
        CALL Error_Stop( ErrMsg, ThisLoc )
     ENDIF
 
@@ -1229,7 +1229,7 @@ contains
                           RC         = RC             )
 
        IF ( RC /= GC_SUCCESS ) THEN
-          ErrMsg = 'Error encountered within call to "GC_Init_Grid"!'
+          ErrMsg = 'Error encountered within call to "GC_Init_Grid" (2 - chunk)!'
           CALL Error_Stop( ErrMsg, ThisLoc )
        ENDIF
 
