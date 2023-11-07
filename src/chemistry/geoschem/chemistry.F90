@@ -60,6 +60,12 @@ module chemistry
   public :: chem_emissions
   public :: chem_timestep_init
 
+  !
+  ! Private routines:
+  !
+  private :: sect02_mam4
+  private :: erfc_num_recipes
+
   ! Location of valid geoschem_config.yml and species_database.yml
   ! Use local files in run folder
   CHARACTER(LEN=500) :: gcConfig = 'geoschem_config.yml'
@@ -70,6 +76,30 @@ module chemistry
 
   ! Debugging
   LOGICAL :: debug = .TRUE.
+
+  ! Compile-time logical controls. These options are usually not expected
+  ! to change from run to run and significantly affect the behavior
+  ! of the model and thus are not read through the namelist.
+
+  ! Use SOA initial conditions from MAM4 (soaX_aY) or GEOS-Chem (SOA*)
+  ! in the initial conditions (ncdata) / restart file?
+  LOGICAL :: useSOAICfromMAM4 = .TRUE.
+
+  ! Map back SOAs from MAM4 at the beginning of every chemistry timestep?
+  ! There are several implications:
+  ! - MAM4 will perform deposition of SOAs, changing the bulk mass;
+  !   if disabled, only one-way mapping of GC aerosols to MAM4 is done.
+  !   deposition of SOAs will still be performed but based on GEOS-Chem species.
+  ! Either approach is scientifically valid.
+  LOGICAL :: useMAM4mapBackSOA = .FALSE.
+
+  ! Prescribe aerosol size distributions based on Feng et al. (2021) GMD?
+  !  This is intended to stabilize the model if only for gas-phase chemistry
+  !  purposes and will provide a more reasonable radiative/cloud properties.
+  !  However, it will complicate climate/geoengineering simulations as MAM4
+  !  will lose control of the sulfate size distribution.
+  LOGICAL :: usePrescribedAerDistribution = .FALSE.
+
 
   ! Derived type objects
   TYPE(OptInput)                     :: Input_Opt       ! Input Options object
@@ -1160,7 +1190,7 @@ contains
     CALL Validate_Directories( Input_Opt, RC )
 
     IF ( RC /= GC_SUCCESS ) THEN
-       ErrMsg = 'Error encountered in "Validation_Directories"!'
+       ErrMsg = 'Error encountered in "Validate_Directories"!'
        CALL Error_Stop( ErrMsg, ThisLoc )
     ENDIF
 
@@ -1170,7 +1200,7 @@ contains
                        RC         = RC        )
 
     IF ( RC /= GC_SUCCESS ) THEN
-       ErrMsg = 'Error encountered within call to "GC_Init_Grid"!'
+       ErrMsg = 'Error encountered within call to "GC_Init_Grid" (1 - maxGrid)!'
        CALL Error_Stop( ErrMsg, ThisLoc )
     ENDIF
 
@@ -1201,7 +1231,7 @@ contains
                           RC         = RC             )
 
        IF ( RC /= GC_SUCCESS ) THEN
-          ErrMsg = 'Error encountered within call to "GC_Init_Grid"!'
+          ErrMsg = 'Error encountered within call to "GC_Init_Grid" (2 - chunk)!'
           CALL Error_Stop( ErrMsg, ThisLoc )
        ENDIF
 
@@ -1953,6 +1983,15 @@ contains
     INTEGER           :: iMap, nMapping, iBin, binSOA_1, binSOA_2
     INTEGER           :: K1, K2, K3, K4
     LOGICAL           :: isSOA_aerosol
+    CHARACTER(LEN=64) :: aerName
+
+    ! For prescribed aerosol distributions.
+    ! These are REAL because the underlying routines are not r8.
+    REAL              :: prescr_aer_xnum(3)
+    REAL              :: prescr_aer_xmas(3)
+    REAL(r8)          :: vmr_so4_sum(state%ncol, pver)
+    REAL              :: prescr_aer_lbnd, prescr_aer_abnd, prescr_aer_cbnd, prescr_aer_ubnd
+    REAL(r8), POINTER :: dgncur_a(:,:,:)
 
 #endif
 
@@ -2222,6 +2261,12 @@ contains
        DO SM = 1, nspec_amode(M)
           P = map2MAM4(SM,M) ! Constituent index for GEOS-Chem
           IF ( P > 0 ) K = map2GC(P) ! Index in State_Chm
+
+          ! do not zero out sulfate aerosol here since aerosol distribution for sulfate
+          ! will be prescribed (hplin, 5/9/23)
+          call rad_cnst_get_info(0,M,SM,spec_name=aerName)
+          IF ( to_upper(aerName(:3)) == "SO4" ) CYCLE
+
           IF ( K > 0 ) State_Chm(LCHNK)%Species(K)%Conc(1,:nY,:nZ) = 0.0e+00_fp
        ENDDO
     ENDDO
@@ -2236,6 +2281,11 @@ contains
           ! /!\ MAM aerosols (with cnst index N) is mapped onto GEOS-Chem
           ! species (with cnst index P, which corresponds to index K in
           ! State_Chm)
+
+          ! do not zero out sulfate aerosol here since aerosol distribution for sulfate
+          ! will be prescribed (hplin, 5/9/23)
+          call rad_cnst_get_info(0,M,SM,spec_name=aerName)
+          IF ( to_upper(aerName(:3)) == "SO4" ) CYCLE
 
           ! Multiple MAM4 bins are mapped to same GEOS-Chem species
           State_Chm(LCHNK)%Species(K)%Conc(1,:nY,:nZ) = State_Chm(LCHNK)%Species(K)%Conc(1,:nY,:nZ) &
@@ -2306,76 +2356,81 @@ contains
     ! TSOG2 + ASOG2 <- SOAG3
     ! TSOG3 + ASOG3 <- SOAG4
 
-    IF ( iStep > 1 ) THEN
-       ! Do not perform this mapping on initialization as we first want to
-       ! overwrite soa*_a* with the GEOS-Chem SOAs.
-       nMapping = 8
-       DO iMap = 1, nMapping
-          speciesName_1 = ''
-          speciesName_2 = ''
-          speciesName_3 = ''
-          speciesName_4 = ''
-          IF ( iMap == 1 ) THEN
-             binSOA_1 = 1
-             binSOA_2 = 2
-             speciesName_1 = 'TSOA0'
-             speciesName_2 = 'ASOAN'
-             speciesName_3 = 'SOAIE'
-             speciesName_4 = 'SOAGX'
-          ELSEIF ( iMap == 2 ) THEN
-             binSOA_1 = 3
-             binSOA_2 = 3
-             speciesName_1 = 'TSOA1'
-             speciesName_2 = 'ASOA1'
-          ELSEIF ( iMap == 3 ) THEN
-             binSOA_1 = 4
-             binSOA_2 = 4
-             speciesName_1 = 'TSOA2'
-             speciesName_2 = 'ASOA2'
-          ELSEIF ( iMap == 4 ) THEN
-             binSOA_1 = 5
-             binSOA_2 = 5
-             speciesName_1 = 'TSOA3'
-             speciesName_2 = 'ASOA3'
-          ELSEIF ( iMap == 5 ) THEN
-             binSOA_1 = 1
-             binSOA_2 = 2
-             speciesName_1 = 'TSOG0'
-             speciesName_2 = 'TSOG0'
-          ELSEIF ( iMap == 6 ) THEN
-             binSOA_1 = 3
-             binSOA_2 = 3
-             speciesName_1 = 'TSOG1'
-             speciesName_2 = 'ASOG1'
-          ELSEIF ( iMap == 7 ) THEN
-             binSOA_1 = 4
-             binSOA_2 = 4
-             speciesName_1 = 'TSOG2'
-             speciesName_2 = 'ASOG2'
-          ELSEIF ( iMap == 8 ) THEN
-             binSOA_1 = 5
-             binSOA_2 = 5
-             speciesName_1 = 'TSOG3'
-             speciesName_2 = 'ASOG3'
-          ELSE
-             CALL ENDRUN('Unknown SOA mapping!')
-          ENDIF
-          isSOA_aerosol = .False.
-          IF ( iMap <= 4 ) isSOA_aerosol = .True.
+    nMapping = 8
+    DO iMap = 1, nMapping
+       speciesName_1 = ''
+       speciesName_2 = ''
+       speciesName_3 = ''
+       speciesName_4 = ''
+       IF ( iMap == 1 ) THEN
+          binSOA_1 = 1
+          binSOA_2 = 2
+          speciesName_1 = 'TSOA0'
+          speciesName_2 = 'ASOAN'
+          speciesName_3 = 'SOAIE'
+          speciesName_4 = 'SOAGX'
+       ELSEIF ( iMap == 2 ) THEN
+          binSOA_1 = 3
+          binSOA_2 = 3
+          speciesName_1 = 'TSOA1'
+          speciesName_2 = 'ASOA1'
+       ELSEIF ( iMap == 3 ) THEN
+          binSOA_1 = 4
+          binSOA_2 = 4
+          speciesName_1 = 'TSOA2'
+          speciesName_2 = 'ASOA2'
+       ELSEIF ( iMap == 4 ) THEN
+          binSOA_1 = 5
+          binSOA_2 = 5
+          speciesName_1 = 'TSOA3'
+          speciesName_2 = 'ASOA3'
+       ELSEIF ( iMap == 5 ) THEN
+          binSOA_1 = 1
+          binSOA_2 = 2
+          speciesName_1 = 'TSOG0'
+          speciesName_2 = 'TSOG0'
+       ELSEIF ( iMap == 6 ) THEN
+          binSOA_1 = 3
+          binSOA_2 = 3
+          speciesName_1 = 'TSOG1'
+          speciesName_2 = 'ASOG1'
+       ELSEIF ( iMap == 7 ) THEN
+          binSOA_1 = 4
+          binSOA_2 = 4
+          speciesName_1 = 'TSOG2'
+          speciesName_2 = 'ASOG2'
+       ELSEIF ( iMap == 8 ) THEN
+          binSOA_1 = 5
+          binSOA_2 = 5
+          speciesName_1 = 'TSOG3'
+          speciesName_2 = 'ASOG3'
+       ELSE
+          CALL ENDRUN('Unknown SOA mapping!')
+       ENDIF
+       isSOA_aerosol = .False.
+       IF ( iMap <= 4 ) isSOA_aerosol = .True.
 
-          ! Compute total mass from GEOS-Chem species. This sets the ratio between
-          ! speciesId_1 and speciesId_2
-          totMass(:nY,:nZ) = 0.0e+00_r8
+       ! Compute total mass from GEOS-Chem species. This sets the ratio between
+       ! speciesId_1 and speciesId_2
+       totMass(:nY,:nZ) = 0.0e+00_r8
 
-          CALL cnst_get_ind( speciesName_1, speciesId_1, abort=.True. )
-          CALL cnst_get_ind( speciesName_2, speciesId_2, abort=.False. )
-          CALL cnst_get_ind( speciesName_3, speciesId_3, abort=.False. )
-          CALL cnst_get_ind( speciesName_4, speciesId_4, abort=.False. )
-          IF ( speciesId_1 > 0 ) totMass(:nY,:nZ) = totMass(:nY,:nZ) + state%q(:nY,:nZ,speciesId_1)
-          IF ( speciesId_2 > 0 ) totMass(:nY,:nZ) = totMass(:nY,:nZ) + state%q(:nY,:nZ,speciesId_2)
-          IF ( speciesId_3 > 0 ) totMass(:nY,:nZ) = totMass(:nY,:nZ) + state%q(:nY,:nZ,speciesId_3)
-          IF ( speciesId_4 > 0 ) totMass(:nY,:nZ) = totMass(:nY,:nZ) + state%q(:nY,:nZ,speciesId_4)
+       CALL cnst_get_ind( speciesName_1, speciesId_1, abort=.True. )
+       CALL cnst_get_ind( speciesName_2, speciesId_2, abort=.False. )
+       CALL cnst_get_ind( speciesName_3, speciesId_3, abort=.False. )
+       CALL cnst_get_ind( speciesName_4, speciesId_4, abort=.False. )
+       IF ( speciesId_1 > 0 ) totMass(:nY,:nZ) = totMass(:nY,:nZ) + state%q(:nY,:nZ,speciesId_1)
+       IF ( speciesId_2 > 0 ) totMass(:nY,:nZ) = totMass(:nY,:nZ) + state%q(:nY,:nZ,speciesId_2)
+       IF ( speciesId_3 > 0 ) totMass(:nY,:nZ) = totMass(:nY,:nZ) + state%q(:nY,:nZ,speciesId_3)
+       IF ( speciesId_4 > 0 ) totMass(:nY,:nZ) = totMass(:nY,:nZ) + state%q(:nY,:nZ,speciesId_4)
 
+       K1 = Ind_(speciesName_1)
+       K2 = Ind_(speciesName_2)
+       K3 = Ind_(speciesName_3)
+       K4 = Ind_(speciesName_4)
+
+       ! Check whether to overwrite GEOS-Chem SOAs using concentrations from MAM4.
+       IF ( (useMAM4mapBackSOA .or. (iStep == 1 .and. useSOAICfromMAM4)) .and. &  ! If MAM4 should map back SOAs, then
+            (useSOAICfromMAM4  .or. iStep > 1) ) THEN                     ! If use IC, run at all times; otherwise, only run after 1st step to overwrite GC SOAs from soaX_aY
           ! Compute total bulk mass from MAM
           bulkMass(:nY,:nZ) = 0.0e+00_r8
           IF ( isSOA_aerosol ) THEN
@@ -2396,10 +2451,6 @@ contains
              ENDDO
           ENDIF
 
-          K1 = Ind_(speciesName_1)
-          K2 = Ind_(speciesName_2)
-          K3 = Ind_(speciesName_3)
-          K4 = Ind_(speciesName_4)
           DO J = 1, nY
           DO L = 1, nZ
              ! Total SOA aerosol masses from GC are available. Partition according to the ratio given in speciesId_N to totMass summed above.
@@ -2420,12 +2471,19 @@ contains
              ENDIF
           ENDDO
           ENDDO
-          IF ( K1 > 0 ) MMR_Beg(:nY,:nZ,K1) = State_Chm(LCHNK)%Species(K1)%Conc(1,:nY,:nZ)
-          IF ( K2 > 0 ) MMR_Beg(:nY,:nZ,K2) = State_Chm(LCHNK)%Species(K2)%Conc(1,:nY,:nZ)
-          IF ( K3 > 0 ) MMR_Beg(:nY,:nZ,K3) = State_Chm(LCHNK)%Species(K3)%Conc(1,:nY,:nZ)
-          IF ( K4 > 0 ) MMR_Beg(:nY,:nZ,K4) = State_Chm(LCHNK)%Species(K4)%Conc(1,:nY,:nZ)
-       ENDDO
-    ENDIF
+       ENDIF
+
+       ! Regardless of whether MAM4 will overwrite GEOS-Chem SOA, this part must run, as MMR_Beg is used
+       ! for computing the flux. If this step is skipped in the first time step, then MMR_Beg is taken
+       ! as zero and this will result in the entire mass to be provided to the GEOS-Chem species as flux,
+       ! doubling the species MMRs.
+       !
+       ! Thus, the short-circuiting of the MAM4 to GEOS-Chem mapping must only be done above. (hplin, 5/11/23)
+       IF ( K1 > 0 ) MMR_Beg(:nY,:nZ,K1) = State_Chm(LCHNK)%Species(K1)%Conc(1,:nY,:nZ)
+       IF ( K2 > 0 ) MMR_Beg(:nY,:nZ,K2) = State_Chm(LCHNK)%Species(K2)%Conc(1,:nY,:nZ)
+       IF ( K3 > 0 ) MMR_Beg(:nY,:nZ,K3) = State_Chm(LCHNK)%Species(K3)%Conc(1,:nY,:nZ)
+       IF ( K4 > 0 ) MMR_Beg(:nY,:nZ,K4) = State_Chm(LCHNK)%Species(K4)%Conc(1,:nY,:nZ)
+    ENDDO
 
     ! Add gas-phase H2SO4 to GEOS-Chem SO4 (which lumps SO4 aerosol and gaseous)
     K = iSO4
@@ -3852,25 +3910,130 @@ contains
     !==============================================================
 
 #if defined( MODAL_AERO )
-    ! Repartition SO4 into H2SO4 and so4_a*
-    IF ( l_H2SO4 > 0 .AND. l_SO4 > 0 ) THEN
-       P = l_H2SO4
-       ! SO4_gasRatio is mol(SO4) (gaseous) / mol(SO4) (gaseous+aerosol)
-       vmr1(:nY,:nZ,P) = SO4_gasRatio(:nY,:nZ) * vmr1(:nY,:nZ,l_SO4)
-       ! binRatio is mol(SO4) (current bin) / mol(SO4) (all bins)
-       DO M = 1, ntot_amode
-          N = lptr_so4_a_amode(M)
-          IF ( N <= 0 ) CYCLE
-          P = mapCnst(N)
-          vmr1(:nY,:nZ,P) = vmr1(:nY,:nZ,l_SO4)                &
-                          * ( 1.0_r8 - SO4_gasRatio(:nY,:nZ) ) &
-                          * binRatio(iSulf(M),M,:nY,:nZ)
-       ENDDO
-    ENDIF
+    ! Construct dgncur_a array for the dry geometric mean diameter [m]
+    ! of given number distribution. (hplin, 3/6/23)
+    ! Requires a pbuf field DGNUM
+    call pbuf_get_field(pbuf, pbuf_get_index('DGNUM'), dgncur_a)
 
     ! Amount of chemically-produced H2SO4 (mol/mol)
     ! This is archived from fullchem_mod.F90 using SO2 + OH rate from KPP (hplin, 1/25/23)
     del_h2so4_gasprod(:nY,:nZ) = State_Chm(LCHNK)%H2SO4_PRDR(1,:nY,nZ:1:-1)
+
+    ! Prescribe aerosol size distribution using the method in Feng et al., 2021?
+    ! If yes, then vmr1 is overwritten with prescribed values for sulfate distribution
+    ! rather than using values from within MAM4.
+    !
+    ! There are two approaches to where to put in this prescribed value.
+    ! Either before aero_model_gasaerexch, simulating the change in distribution as chem fluxes (1)
+    ! or after, directly overwriting any distribution information coming out of aero_model_gasaerexch (2).
+    !
+    ! Testing needs to be done to see if 1 or 2 is 'better' (more reasonable vs. CC and obs.)
+    if(usePrescribedAerDistribution) then
+        ! Assume all chemically-produced SO4 is in the gas-phase
+        ! and use MAM4 to partition into a1, a2, a3. Later, the bins can be prescribed. (hplin, 3/16/23)
+        ! This will allow total sulfur to be correctly conserved and H2SO4 partitioning is still held.
+        vmr1(:nY,:nZ,l_H2SO4) = vmr0(:nY,:nZ,l_H2SO4) + State_Chm(LCHNK)%H2SO4_PRDR(1,:nY,nZ:1:-1)
+        DO M = 1, ntot_amode
+          N = lptr_so4_a_amode(M)
+          IF ( N <= 0 ) CYCLE
+          P = mapCnst(N)
+          vmr1(:nY,:nZ,P) = vmr0(:nY,:nZ,P)
+        ENDDO
+
+        ! sect02_new only takes dlo and dhi and auto-computes bin spacing.
+        ! it may be necessary to prescribe the bin spacing as well to fit a1-3 definitions
+        ! D < 0.05 is aitken mode, 0.05 to 2 is accumulation mode, D > 2um is coarse.
+
+        prescr_aer_lbnd = 0.0
+        prescr_aer_ubnd = 10.0
+
+        ! First, sum all the available VMRs
+        vmr_so4_sum(:nY,:nZ) = vmr0(:nY,:nZ,mapCnst(lptr_so4_a_amode(1))) + &
+                               vmr0(:nY,:nZ,mapCnst(lptr_so4_a_amode(2))) + &
+                               vmr0(:nY,:nZ,mapCnst(lptr_so4_a_amode(3))  )
+
+        ! Loop through chunks as geometric mean dia is different...
+        DO J = 1, nY
+        DO L = 1, nZ
+            ! Get geometric mean diameters of all aerosol bins before further MAM4 calculation
+            prescr_aer_abnd = (dgncur_a(J, L, 1) + dgncur_a(J, L, 2)) * 1e6 / 2
+            prescr_aer_cbnd = (dgncur_a(J, L, 1) + dgncur_a(J, L, 3)) * 1e6 / 2
+
+            ! thus, sect02_mam4 is developed for this use.
+            call sect02_mam4(dgnum_um = 0.14,                      & ! SO4 geometric mean dia. of log-normal distr [um]
+                             sigmag   = 1.6,                       & ! sigma
+                             duma     = 1.0,                       & ! (unknown scaling factor)
+                             nbin     = 3,                         & ! put into a1, a2, a3 three 'bins'
+                             dlo_sect = (/prescr_aer_lbnd, prescr_aer_abnd, prescr_aer_cbnd/),  & ! diameter bounds [um]
+                             dhi_sect = (/prescr_aer_abnd, prescr_aer_cbnd, prescr_aer_ubnd/), & ! diameter bounds [um]
+                             !dlo_sect = (/0.0390625, 0.1,  2.0/),  & ! diameter bounds [um]
+                             !dhi_sect = (/0.1,       2.0,  10.0/), & ! diameter bounds [um]
+                             !dlo_um   = 0.0390625,                 & ! lower bound um
+                             !dhi_um   = 10.0,                      & ! upper bound um
+                             xnum_sect= prescr_aer_xnum,           & ! prescribed aerosol number ratios
+                             xmas_sect= prescr_aer_xmas)             ! prescribed aerosol mass ratios
+
+            ! apply the ratios into the distribution
+            ! (currently there is no good way to allocate the numbers - thus, this process
+            !  must be done as "chemical fluxes" and ask gasaerexch to do two hard things here:
+            !    - partition H2SO4 into the total aer-phase sulfate
+            !    - readjust num_aX according to changes in SO4 fluxes?) TBD hplin 5/8/23
+
+            ! use prescr_aer_xnum to scale since we are dealing with mol/mol and not mass quantities.
+
+            ! so4_a3 (coarse mode)
+            ! ensure that total num molec is conserved. otherwise, this will be a silent sulfate sink.
+            ! note that prescr_xnum(2) is large, so for maximum precision, use 1.0 to minus it first.
+            prescr_aer_xnum(3) = (1.0 - prescr_aer_xnum(2)) - prescr_aer_xnum(1)
+            prescr_aer_xmas(3) = (1.0 - prescr_aer_xmas(2)) - prescr_aer_xmas(1)
+
+            ! there may also be the case that presc_aer_x(3) is lower than 0 (!) which would be unphysical.
+            ! for safety sake, ensure that coarse sulfate ratio is no lower than 0.01.
+            ! we can compensate from x(2) (accumulation mode) which is generally the greatest.
+            if(prescr_aer_xnum(3) .lt. 0.01) then
+                prescr_aer_xnum(3) = 0.01
+                prescr_aer_xnum(2) = 1.0 - prescr_aer_xnum(3) - prescr_aer_xnum(1)
+            endif
+
+            if(prescr_aer_xmas(3) .lt. 0.01) then
+                prescr_aer_xmas(3) = 0.01
+                prescr_aer_xmas(2) = 1.0 - prescr_aer_xmas(3) - prescr_aer_xmas(1)
+            endif
+
+            ! so4_a2 (aitken mode) -- note this is smallest even though its a2!
+            vmr1(:nY,:nZ,mapCnst(lptr_so4_a_amode(2))) = vmr_so4_sum(:nY,:nZ) * prescr_aer_xnum(1)
+
+            ! so4_a1 (accumulation mode)
+            vmr1(:nY,:nZ,mapCnst(lptr_so4_a_amode(1))) = vmr_so4_sum(:nY,:nZ) * prescr_aer_xnum(2)
+
+            vmr1(:nY,:nZ,mapCnst(lptr_so4_a_amode(3))) = vmr_so4_sum(:nY,:nZ) * prescr_aer_xnum(3)
+
+            ! write out?
+            ! if(masterproc .and. J .eq. 1 .and. L .eq. nZ) then
+            !     write(iulog,*) "prescribe aer (so4): L = ", L, " dgncur_a (um) = ", dgncur_a(J, L, :) * 1e6
+            !     write(iulog,*) "prescribe aer (so4): L = ", L, " prescr_aer_xnum = ", prescr_aer_xnum
+            !     write(iulog,*) "prescribe aer (so4): L = ", L, " prescr_aer_xmas = ", prescr_aer_xmas
+            ! endif
+        ENDDO
+        ENDDO
+    ELSE
+       ! Original approach: no prescribing aerosol size distribution.
+       ! Repartition SO4 into H2SO4 and so4_a*
+       IF ( l_H2SO4 > 0 .AND. l_SO4 > 0 ) THEN
+          P = l_H2SO4
+          ! SO4_gasRatio is mol(SO4) (gaseous) / mol(SO4) (gaseous+aerosol)
+          vmr1(:nY,:nZ,P) = SO4_gasRatio(:nY,:nZ) * vmr1(:nY,:nZ,l_SO4)
+          ! binRatio is mol(SO4) (current bin) / mol(SO4) (all bins)
+          DO M = 1, ntot_amode
+             N = lptr_so4_a_amode(M)
+             IF ( N <= 0 ) CYCLE
+             P = mapCnst(N)
+             vmr1(:nY,:nZ,P) = vmr1(:nY,:nZ,l_SO4)                &
+                             * ( 1.0_r8 - SO4_gasRatio(:nY,:nZ) ) &
+                             * binRatio(iSulf(M),M,:nY,:nZ)
+          ENDDO
+       ENDIF
+    ENDIF
 
     call aero_model_gasaerexch( loffset           = iFirstCnst - 1,         &
                                 ncol              = NCOL,                   &
@@ -4441,5 +4604,112 @@ contains
     ENDDO
 
   end subroutine chem_emissions
+!
+!   P R E S C R I B E   A E R O S O L   D I S T R I B U T I O N
+!
+! Based on code from Feng et al., 2021 GMD (WRF-GC v2.0), by Xu Feng et al.
+! in module_diag_aero_size_info.F, originally based from WRF-Chem.
+!
+! Reference:
+! Feng, X., Lin, H., Fu, T.-M., Sulprizio, M. P., Zhuang, J., Jacob, D. J., Tian, H., Ma, Y., Zhang, L., Wang, X., Chen, Q., and Han, Z.: WRF-GC (v2.0): online two-way coupling of WRF (v3.9.1.1) and GEOS-Chem (v12.7.2) for modeling regional atmospheric chemistry–meteorology interactions, Geosci. Model Dev., 14, 3741–3768, https://doi.org/10.5194/gmd-14-3741-2021, 2021.
+!
 
+  real function erfc_num_recipes( x )
+    !
+    !   from press et al, numerical recipes, 1990, page 164
+    !
+    implicit none
+    real x
+    double precision erfc_dbl, dum, t, z
+    z = abs(x)
+    t = 1.0/(1.0 + 0.5*z)
+    dum =  ( -z*z - 1.26551223 + t*(1.00002368 + t*(0.37409196 +   &
+      t*(0.09678418 + t*(-0.18628806 + t*(0.27886807 +   &
+                                       t*(-1.13520398 +   &
+      t*(1.48851587 + t*(-0.82215223 + t*0.17087277 )))))))))
+    erfc_dbl = t * exp(dum)
+    if (x .lt. 0.0) erfc_dbl = 2.0d0 - erfc_dbl
+    erfc_num_recipes = erfc_dbl
+    return
+  end function erfc_num_recipes
+
+  ! sect02_mam4 is based off sect02_new in WRF-GC, which is based off
+  ! sect02 in WRF-Chem chem/module_optical_averaging.F.
+  !
+  ! user specifies a single log-normal mode and a set of section boundaries
+  ! prog calculates mass and number for each section.
+  subroutine sect02_mam4(dgnum_um, sigmag, duma, nbin, dlo_sect, dhi_sect, &
+                         xnum_sect, xmas_sect)
+        ! INPUT PARAMETERS:
+        ! dgnum_um             *diameter* geometric mean of log-normal distribution [um]
+        ! sigmag               geometric standard deviation of log-normal dist.     [unitless]
+        ! duma                 1.0 ?
+        ! nbin                 # of target bins (wrf-gc = 4, MAM4 = 3)              [count]
+        ! dlo_sect(nbin)       low diameter limit (wrf-gc = 0.0390625)              [um]
+        ! dhi_sect(nbin)       high diameter limit (wrf-gc = 10.0)                  [um]
+
+        ! OUTPUT PARAMETERS:
+        ! xnum_sect(nbin)      aerosol number per bin, ratio of total               [unitless]
+        ! xmas_sect(bin)       aerosol mass per bin, ratio of total                 [unitless]
+
+        implicit none
+        real, dimension(nbin), intent(out) :: xnum_sect, xmas_sect
+        integer                            :: n, nbin
+        real                               :: dgnum, dgnum_um, dhi,  &
+                                              dlo, duma, dumfrac,    &
+                                              dx, sigmag,            &
+                                              sx, sxroot2, thi, tlo, x0, x3, &
+                                              xhi, xlo, xmtot, xntot
+        real, intent(in)                   :: dlo_sect(nbin), dhi_sect(nbin)
+        real                               :: my_dlo_sect(nbin), my_dhi_sect(nbin)
+        real                               :: pi
+        parameter (pi = 3.141592653589)
+
+        xmtot = duma
+        xntot = duma
+
+        ! Compute bins based on number of bins. Originally sect02_new.
+        ! For MAM4, we prescribe the bin ranges as well.
+        ! dlo = dlo_um*1.0E-4
+        ! dhi = dhi_um*1.0E-4
+        ! xlo = log( dlo )
+        ! xhi = log( dhi )
+        ! dx  = (xhi - xlo)/nbin
+        ! do n = 1, nbin
+        !     dlo_sect(n) = exp( xlo + dx*(n-1) )
+        !     dhi_sect(n) = exp( xlo + dx*n )
+        ! end do
+
+        ! dlo_sect and dhi_sect have to be scaled by 1e-4
+        ! in order to fit parameters in the above calculation, if they are prescribed.
+
+        my_dlo_sect(:) = dlo_sect(:) * 1.0e-4
+        my_dhi_sect(:) = dhi_sect(:) * 1.0e-4
+
+        dgnum = dgnum_um*1.0E-4
+        sx = log( sigmag )
+        x0 = log( dgnum )
+        x3 = x0 + 3.*sx*sx
+        sxroot2 = sx * sqrt( 2.0 )
+        do n = 1, nbin
+            xlo = log( my_dlo_sect(n) )
+            xhi = log( my_dhi_sect(n) )
+            tlo = (xlo - x0)/sxroot2
+            thi = (xhi - x0)/sxroot2
+            if (tlo .le. 0.) then
+                dumfrac = 0.5*( erfc_num_recipes(-thi) - erfc_num_recipes(-tlo) )
+            else
+                dumfrac = 0.5*( erfc_num_recipes(tlo) - erfc_num_recipes(thi) )
+            end if
+            xnum_sect(n) = xntot*dumfrac
+            tlo = (xlo - x3)/sxroot2
+            thi = (xhi - x3)/sxroot2
+            if (tlo .le. 0.) then
+                dumfrac = 0.5*( erfc_num_recipes(-thi) - erfc_num_recipes(-tlo) )
+            else
+                dumfrac = 0.5*( erfc_num_recipes(tlo) - erfc_num_recipes(thi) )
+            endif
+            xmas_sect(n) = xmtot*dumfrac
+        enddo
+  end subroutine sect02_mam4
 end module chemistry
