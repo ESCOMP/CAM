@@ -805,16 +805,9 @@ CONTAINS
           end if
         else
            ! Append file type - instantaneous or accumulated - to filename
-           ! specifier provided
-           filename_len = len(trim(hfilename_spec(t)))
-           if (hfilename_spec(t)(filename_len-2:) == '.nc') then
-              ! File template ends in '.nc', place file type flag appropriately
-              hfilename_spec(t) = hfilename_spec(t)(1:filename_len-3) // '%f.nc'
-           else
-              ! File template does not end in '.nc', place file type flag at end
-              ! and append '.nc'
-              hfilename_spec(t) = trim(hfilename_spec(t)) // '%f.nc'
-           end if
+           ! specifier provided (in front of the .nc extension).
+           filename_len = len_trim(hfilename_spec(t))
+           hfilename_spec(t) = hfilename_spec(t)(:filename_len-3)  // '%f.nc'
         end if
         !
         ! Only one time sample allowed per monthly average file
@@ -2525,7 +2518,7 @@ CONTAINS
     case ('N')
       time_op(:) = 'mean_over_nsteps'
     case ('I')
-      time_op(:) = ' '
+      time_op(:) = 'point'
     case ('X')
       time_op(:) = 'maximum'
     case ('M')
