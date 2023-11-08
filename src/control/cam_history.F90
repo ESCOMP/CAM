@@ -573,6 +573,7 @@ CONTAINS
     integer                        :: dtime   ! Step time in seconds
     integer                        :: unitn, ierr, f, t
     character(len=8)               :: ctemp      ! Temporary character string
+    integer                        :: filename_len
 
     character(len=fieldname_lenp2) :: fincl1(pflds)
     character(len=fieldname_lenp2) :: fincl2(pflds)
@@ -805,7 +806,15 @@ CONTAINS
         else
            ! Append file type - instantaneous or accumulated - to filename
            ! specifier provided
-           hfilename_spec(t) = trim(hfilename_spec(t)) // '%f'
+           filename_len = len(trim(hfilename_spec(t)))
+           if (hfilename_spec(t)(filename_len-2:) == '.nc') then
+              ! File template ends in '.nc', place file type flag appropriately
+              hfilename_spec(t) = hfilename_spec(t)(1:filename_len-3) // '%f.nc'
+           else
+              ! File template does not end in '.nc', place file type flag at end
+              ! and append '.nc'
+              hfilename_spec(t) = trim(hfilename_spec(t)) // '%f.nc'
+           end if
         end if
         !
         ! Only one time sample allowed per monthly average file
@@ -2375,11 +2384,11 @@ CONTAINS
         nfils(t) = 0
       else
         if (nfils(t) > 0) then
-           if (hfile_accum(t)) then
+           if (hfile_accum(t) .and. nhtfrq(t) /= 1) then
               call getfil (cpath(t,accumulated_file_index), locfn)
               call cam_pio_openfile(tape(t)%Files(accumulated_file_index), locfn, PIO_WRITE)
            end if
-           if (hfile_inst(t)) then
+           if (hfile_inst(t) .or. nhtfrq(t) == 1) then
               call getfil (cpath(t,instantaneous_file_index), locfn)
               call cam_pio_openfile(tape(t)%Files(instantaneous_file_index), locfn, PIO_WRITE)
            end if
@@ -4043,7 +4052,7 @@ end subroutine print_active_fldlst
        do fld=1,nflds(t)
          if (f == accumulated_file_index) then
             ! this is the accumulated file - skip instantaneous fields
-            if (tape(t)%hlist(fld)%avgflag == 'I') then
+            if (tape(t)%hlist(fld)%avgflag == 'I' .or. nhtfrq(t) == 1) then
                cycle
             end if
          else
@@ -4301,12 +4310,12 @@ end subroutine print_active_fldlst
     else
       tape => history_tape
       if(masterproc) then
-         if (hfile_accum(t) .and. hfile_inst(t)) then
+         if (hfile_accum(t) .and. nhtfrq(t) /= 1 .and. hfile_inst(t)) then
             write(iulog,*)'Opening netcdf history files ', trim(nhfil(t,accumulated_file_index)), &
                   trim(nhfil(t,instantaneous_file_index))
-         else if (hfile_accum(t)) then
+         else if (hfile_accum(t) .and. nhtfrq(t) /= 1) then
             write(iulog,*)'Opening accumulated netcdf history file ', trim(nhfil(t,accumulated_file_index))
-         else if (hfile_inst(t)) then
+         else if (hfile_inst(t) .or. nhtfrq(t) == 1) then
             write(iulog,*)'Opening instantaneous netcdf history file ', trim(nhfil(t,instantaneous_file_index))
          end if
       end if
@@ -4320,10 +4329,10 @@ end subroutine print_active_fldlst
       call cam_pio_createfile (tape(t)%Files(sat_file_index), nhfil(t,sat_file_index), amode)
     else
       ! figure out how many history files to generate for this tape
-      if (hfile_accum(t)) then
+      if (hfile_accum(t) .and. nhtfrq(t) /= 1) then
          call cam_pio_createfile (tape(t)%Files(accumulated_file_index), nhfil(t,accumulated_file_index), amode)
       end if
-      if (hfile_inst(t)) then
+      if (hfile_inst(t) .or. nhtfrq(t) == 1) then
          call cam_pio_createfile (tape(t)%Files(instantaneous_file_index), nhfil(t,instantaneous_file_index), amode)
       end if
     end if
@@ -4645,7 +4654,7 @@ end subroutine print_active_fldlst
          if (.not. is_satfile(t) .and. .not. restart .and. .not. is_initfile(t)) then
             if (f == accumulated_file_index) then
                ! this is the accumulated file of a potentially split history tape - skip instantaneous fields
-               if (tape(t)%hlist(fld)%avgflag == 'I') then
+               if (tape(t)%hlist(fld)%avgflag == 'I' .or. nhtfrq(t) == 1) then
                   cycle
                end if
             else
@@ -4824,8 +4833,8 @@ end subroutine print_active_fldlst
            ! applied later (just before output) than field method which is applied
            ! before outfld call.
            str = tape(t)%hlist(fld)%time_op
-           if (tape(t)%hlist(fld)%avgflag == 'I') then
-              str = 'instantaneous'
+           if (tape(t)%hlist(fld)%avgflag == 'I' .or. nhtfrq(t) == 1) then
+              str = 'point'
            else
               str = tape(t)%hlist(fld)%time_op
            end if
@@ -5623,7 +5632,7 @@ end subroutine print_active_fldlst
           ! Check that this new filename isn't the same as a previous or current filename
           !
           duplicate = .false.
-          do f = 1, ptapes
+          do f = 1, t
             if (masterproc)then
               if (trim(fname) == trim(nhfil(f,1)) .and. trim(fname) /= '') then
                  write(iulog,*)'WSHIST: New filename same as old file = ', trim(fname)
@@ -5767,7 +5776,7 @@ end subroutine print_active_fldlst
                 cycle
              end if
              ! We have two files - one for accumulated and one for instantaneous fields
-             if (f == accumulated_file_index .and. .not. restart .and. .not. is_initfile(t) .and. .not. is_satfile(t)) then
+             if (f == accumulated_file_index .and. .not. restart .and. .not. is_initfile(t) .and.nhtfrq(t) /= 1) then
                 ! accumulated tape - time is midpoint of time_bounds
                 ierr=pio_put_var (tape(t)%Files(f), tape(t)%timeid, (/start/),(/count1/),(/(tdata(1) + tdata(2)) / 2._r8/))
              else
@@ -6494,10 +6503,10 @@ end subroutine print_active_fldlst
           ! Must position auxiliary files if not full
           !
           if (.not.nlend .and. .not.lfill(t)) then
-            if (hfile_accum(t)) then
+            if (hfile_accum(t) .and. nhtfrq(t) /= 1) then
                call cam_PIO_openfile (tape(t)%Files(accumulated_file_index), nhfil(t,accumulated_file_index), PIO_WRITE)
             end if
-            if (hfile_inst(t)) then
+            if (hfile_inst(t) .or. nhtfrq(t) == 1) then
                call cam_PIO_openfile (tape(t)%Files(instantaneous_file_index), nhfil(t,instantaneous_file_index), PIO_WRITE)
             end if
             call h_inquire(t)
