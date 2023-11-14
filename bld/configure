@@ -2204,11 +2204,11 @@ sub write_filepath
     }
 
     if ($clubb_sgs) {
-       print $fh "$camsrcdir/src/physics/clubb\n";
+       print $fh "$camsrcdir/src/physics/clubb/src/CLUBB_core\n";
     }
 
     if ($silhs) {
-       print $fh "$camsrcdir/src/physics/silhs\n";
+       print $fh "$camsrcdir/src/physics/clubb/src/SILHS\n";
     }
 
     if ($phys_pkg eq 'cam_dev') {
