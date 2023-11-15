@@ -2968,7 +2968,7 @@ if ($nl->get_value('use_hemco') =~ m/$TRUE/io) {
         if ($nl->get_value('hemco_config_file') ne "'" . $inputdata_rootdir . "/HEMCO_Config.rc'") {
             die "CAM Namelist ERROR: When running with GEOS-Chem chemistry, hemco_config_file\n".
                 "must not be manually set in the namelist. Instead, modify (or symlink from) the HEMCO_Config.rc\n".
-                "in the case directory, which will be copied to the run directory when submitting,\n".
+                "in the case directory, which will be copied to the run directory when submitting.\n".
                 "Then remove the hemco_config_file option from the user namelist.\n";
         }
 
@@ -2980,7 +2980,7 @@ if ($nl->get_value('use_hemco') =~ m/$TRUE/io) {
         }
 
         $nl->set_variable_value('hemco_nl', 'hemco_config_file', "'HEMCO_Config.rc'");
-	    $nl->set_variable_value('hemco_nl', 'hemco_diagn_file', "'HEMCO_Diagn.rc'");
+        $nl->set_variable_value('hemco_nl', 'hemco_diagn_file', "'HEMCO_Diagn.rc'");
     }
 }
 
