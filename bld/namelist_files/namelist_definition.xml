@@ -7307,9 +7307,9 @@ List of species that undergo dry deposition.
 Default: set by build-namelist.
 </entry>
 
-<entry id="dep_data_file" type="char*500" category="dry_deposition"
+<entry id="dep_data_file" type="char*500" input_pathname="abs" category="dry_deposition"
        group="drydep_inparm" valid_values="" >
-Pathname of file containing gas phase deposition data including effective
+Full pathname of file containing gas phase deposition data including effective
 Henry's law coefficients.
 Default: set by build-namelist.
 </entry>
