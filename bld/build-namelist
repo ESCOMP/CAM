@@ -576,7 +576,7 @@ if ( ($chem ne 'none') or ( $prog_species ) ){
 
     my ( $gas_wetdep_list, $aer_wetdep_list, $aer_sol_facti, $aer_sol_factb, $aer_scav_coef,
          $aer_drydep_list, $gas_drydep_list ) =
-           set_dep_lists( $cfgdir, $chem_proc_src, $chem_src_dir, $nl, $print );
+           set_dep_lists( $chem, $cfgdir, $chem_proc_src, $chem_src_dir, $nl, $print );
 
     if (length($gas_wetdep_list)>2){
       add_default($nl, 'gas_wetdep_method' );
