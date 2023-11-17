@@ -3,10 +3,11 @@
 """
 create the cam library
 """
-#pylint: disable=multiple-imports, wrong-import-position, wildcard-import
-#pylint: disable=unused-wildcard-import, bad-whitespace, too-many-locals
-#pylint: disable=invalid-name
+# pylint: disable=multiple-imports, wrong-import-position, wildcard-import
+# pylint: disable=unused-wildcard-import, bad-whitespace, too-many-locals
+# pylint: disable=invalid-name
 import sys, os, filecmp, shutil, imp
+
 
 _CIMEROOT = os.environ.get("CIMEROOT")
 if _CIMEROOT is None:
@@ -17,51 +18,27 @@ sys.path.append(_LIBDIR)
 
 from standard_script_setup import *
 from CIME.case import Case
-from CIME.utils import run_cmd, expect
+from CIME.utils import run_sub_or_cmd, expect, run_cmd
 from CIME.buildlib import parse_input
 from CIME.build import get_standard_makefile_args
 
 logger = logging.getLogger(__name__)
 
 ###############################################################################
-def _build_fms(caseroot, libroot, bldroot):
-###############################################################################
-
-    with Case(caseroot) as case:
-
-        # Only need FMS for fv3 dycore
-        cam_dycore = case.get_value("CAM_DYCORE")
-        if cam_dycore == 'fv3':
-            # Check to see if some other component built it already
-            if not os.path.exists(os.path.join(libroot,"libfms.a")):
-                # first check for the external FMS library and build it
-                srcroot = case.get_value("SRCROOT")
-                fmsbuildlib = os.path.join(srcroot,"libraries","FMS","buildlib")
-                fmsbuilddir = os.path.join(case.get_value("EXEROOT"),"FMS")
-                expect(os.path.exists(fmsbuildlib), "FMS external not found")
-                stat, _, err = run_cmd("{} {} {} {}".format(fmsbuildlib, case.get_value("EXEROOT"), fmsbuilddir, caseroot), verbose=True)
-                expect(stat==0, "FMS build Failed {}".format(err))
-                
-                libfms = os.path.join(bldroot,"FMS","libfms.a")
-                if os.path.exists(libfms):
-                    shutil.copy(libfms, libroot)
-
-###############################################################################
 def _build_cam(caseroot, libroot, bldroot):
-###############################################################################
+    ###############################################################################
 
     with Case(caseroot, read_only=False) as case:
 
         srcroot = case.get_value("SRCROOT")
-        #-------------------------------------------------------
+        # -------------------------------------------------------
         # Call cam's buildcpp
-        #-------------------------------------------------------
+        # -------------------------------------------------------
         testpath = os.path.join(srcroot, "components", "cam")
         if os.path.exists(testpath):
             srcroot = testpath
 
-        cmd = os.path.join(os.path.join(srcroot,
-                                        "cime_config", "buildcpp"))
+        cmd = os.path.join(os.path.join(srcroot, "cime_config", "buildcpp"))
         logger.info("     ...calling cam buildcpp to set build time options")
         try:
             mod = imp.load_source("buildcpp", cmd)
@@ -76,16 +53,32 @@ def _build_cam(caseroot, libroot, bldroot):
         gmake_j = case.get_value("GMAKE_J")
         gmake = case.get_value("GMAKE")
         mach = case.get_value("MACH")
+        user_incldir = None
+        cam_dycore = case.get_value("CAM_DYCORE")
+        if cam_dycore == "fv3":
+            slr = os.path.abspath(case.get_value("SHAREDLIBROOT"))
+            compiler = case.get_value("COMPILER")
+            mpilib = case.get_value("MPILIB")
+            debug = "debug" if case.get_value("DEBUG") else "nodebug"
+            threaded = "threads" if case.get_value("BUILD_THREADED") or case.get_value("FORCE_BUILD_SMP") else "nothreads"
+            comp_interface = case.get_value("COMP_INTERFACE")
+            fmsbuilddir = os.path.join(
+                slr, compiler, mpilib, debug, threaded, comp_interface)
+            user_incldir = '"-I{} -I{} -I{}"'.format(
+                os.path.join(srcroot, "libraries", "FMS", "src", "include"),
+                os.path.join(srcroot, "libraries", "FMS", "src", "mpp", "include"),
+                fmsbuilddir,
+            )
 
-        #-------------------------------------------------------
+        # -------------------------------------------------------
         # Filepath is created in caseroot/camconf by the call
         # to buildcpp - this needs to be copied to bldroot
-        #-------------------------------------------------------
+        # -------------------------------------------------------
         filesrc = os.path.join(caseroot, "Buildconf", "camconf", "Filepath")
         filedst = os.path.join(bldroot, "Filepath_tmp")
         shutil.copy(filesrc, filedst)
 
-        filedst     = os.path.join(bldroot, "Filepath")
+        filedst = os.path.join(bldroot, "Filepath")
         filedst_tmp = os.path.join(bldroot, "Filepath_tmp")
         if os.path.isfile(filedst):
             if not filecmp.cmp(filedst_tmp, filedst):
@@ -93,27 +86,41 @@ def _build_cam(caseroot, libroot, bldroot):
         else:
             shutil.move(filedst_tmp, filedst)
 
-        #-------------------------------------------------------
+        # -------------------------------------------------------
+        # fms is needed by fv3 and should have been built by the framework
+        # -------------------------------------------------------
+        if cam_dycore == "fv3":
+            libfms = os.path.join(fmsbuilddir, "libfms.a")
+            expect(os.path.isfile(libfms), "FMS library not found {}".format(libfms))
+            shutil.copy(libfms, libroot)
+
+        # -------------------------------------------------------
         # build the library
-        #-------------------------------------------------------
-        complib  = os.path.join(libroot, "libatm.a")
+        # -------------------------------------------------------
+        complib = os.path.join(libroot, "libatm.a")
         makefile = os.path.join(casetools, "Makefile")
 
-        cmd = "{} complib -j {} COMP_NAME=cam COMPLIB={} -f {} {} " \
-            .format(gmake, gmake_j, complib, makefile, get_standard_makefile_args(case))
+        cmd = "{} complib -j {} COMP_NAME=cam COMPLIB={} -f {} {} ".format(
+            gmake, gmake_j, complib, makefile, get_standard_makefile_args(case)
+        )
         if cam_cppdefs:
             cmd += " USER_CPPDEFS='{}'".format(cam_cppdefs)
+
+        if user_incldir:
+            cmd += " USER_INCLDIR={}".format(user_incldir)
 
         rc, out, err = run_cmd(cmd)
         logger.info("%s: \n\n output:\n %s \n\n err:\n\n%s\n", cmd, out, err)
         expect(rc == 0, "Command %s failed with rc=%s" % (cmd, rc))
 
+
 ###############################################################################
+
 
 def _main_func():
     caseroot, libroot, bldroot = parse_input(sys.argv)
-    _build_fms(caseroot, libroot, bldroot)
     _build_cam(caseroot, libroot, bldroot)
+
 
 ###############################################################################
 
