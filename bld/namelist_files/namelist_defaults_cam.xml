@@ -2191,6 +2191,10 @@
 <clubb_mf_cp_ndt                   > 1       </clubb_mf_cp_ndt>
 <do_clubb_mf_rhtke                 > .false. </do_clubb_mf_rhtke>
 <do_clubb_mf_cmt                   > .false. </do_clubb_mf_cmt>
+<do_clubb_mf_lscale_perplume       > .false. </do_clubb_mf_lscale_perplume>
+<do_clubb_mf_coldpool_init         > .false. </do_clubb_mf_coldpool_init>
+<do_clubb_mf_coldpool_perplume     > .false. </do_clubb_mf_coldpool_perplume>
+<clubb_mf_kseed                    > 1       </clubb_mf_kseed>
 
 <!-- Microphysics scheme -->
 <micro_mg_do_hail                       > .false. </micro_mg_do_hail>

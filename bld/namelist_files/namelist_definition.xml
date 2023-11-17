@@ -4410,6 +4410,30 @@ If .true. turn on convective momentum transport
 Default: .false.
 </entry>
 
+<entry id="do_clubb_mf_lscale_perplume" type="logical" category="conv"
+       group="clubb_mf_nl" valid_values="" >
+If .true. set unique entrainment length scale for each plume member
+Default: .false.
+</entry>
+
+<entry id="do_clubb_mf_coldpool_init" type="logical" category="conv"
+       group="clubb_mf_nl" valid_values="" >
+If .true. let cold pool feedback impact plume intialization
+Default: .false.
+</entry>
+
+<entry id="do_clubb_mf_coldpool_perplume" type="logical" category="conv"
+       group="clubb_mf_nl" valid_values="" >
+If .true. set cold pool feedback to unique to each plume member
+Default: .false.
+</entry>
+
+<entry id="clubb_mf_kseed" type="integer" category="conv"
+       group="clubb_mf_nl" valid_values="" >
+Real: level position of state used to seed the random number generator
+Default: 1
+</entry>
+
 <!-- CARMA Sectional Microphysics -->
 
 <entry id="carma_model" type="char*32" category="carma"

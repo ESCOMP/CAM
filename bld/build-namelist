@@ -3403,6 +3403,10 @@ if ($clubb_sgs  =~ /$TRUE/io) {
    add_default($nl, 'clubb_mf_cp_ndt');
    add_default($nl, 'do_clubb_mf_rhtke');
    add_default($nl, 'do_clubb_mf_cmt');
+   add_default($nl, 'clubb_mf_kseed');
+   add_default($nl, 'do_clubb_mf_lscale_perplume');
+   add_default($nl, 'do_clubb_mf_coldpool_perplume');
+   add_default($nl, 'do_clubb_mf_coldpool_init');
 }
 
 # Force exit if running cam_dev and CLUBB is off

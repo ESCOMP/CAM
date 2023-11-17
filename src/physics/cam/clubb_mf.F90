@@ -54,6 +54,7 @@ module clubb_mf
   real(r8) :: clubb_mf_ddexp   = 0._r8
   integer  :: clubb_mf_up_ndt  = 1
   integer  :: clubb_mf_cp_ndt  = 1
+  integer  :: clubb_mf_kseed = 1
   integer, protected :: clubb_mf_nup     = 0
   logical, protected :: do_clubb_mf = .false.
   logical, protected :: do_clubb_mf_diag = .false.
@@ -64,6 +65,9 @@ module clubb_mf
   logical, protected :: do_clubb_mf_precip = .false.
   logical, protected :: do_clubb_mf_rhtke = .false.
   logical, protected :: do_clubb_mf_cmt = .false.
+  logical, protected :: do_clubb_mf_coldpool_init = .false.
+  logical, protected :: do_clubb_mf_coldpool_perplume = .false.
+  logical, protected :: do_clubb_mf_lscale_perplume = .false.
   logical :: tht_tweaks = .true.
   integer :: mf_num_cin = 5
 
@@ -88,7 +92,8 @@ module clubb_mf
     namelist /clubb_mf_nl/ clubb_mf_Lopt, clubb_mf_a0, clubb_mf_b0, clubb_mf_L0, clubb_mf_ent0, clubb_mf_alphturb, &
                            clubb_mf_nup, clubb_mf_max_L0, do_clubb_mf, do_clubb_mf_diag, do_clubb_mf_precip, do_clubb_mf_rad, &
                            clubb_mf_fdd, do_clubb_mf_coldpool, clubb_mf_ddalph, clubb_mf_ddbeta, clubb_mf_pwfac, do_clubb_mf_ustar, &
-                           clubb_mf_ddexp, do_clubb_mf_mixd, clubb_mf_up_ndt, clubb_mf_cp_ndt, do_clubb_mf_rhtke, do_clubb_mf_cmt
+                           clubb_mf_ddexp, do_clubb_mf_mixd, clubb_mf_up_ndt, clubb_mf_cp_ndt, do_clubb_mf_rhtke, do_clubb_mf_cmt, &
+                           do_clubb_mf_coldpool_init, do_clubb_mf_coldpool_perplume, do_clubb_mf_lscale_perplume, clubb_mf_kseed
 
     if (masterproc) then
       open( newunit=iunit, file=trim(nlfile), status='old' )
@@ -150,6 +155,14 @@ module clubb_mf
     if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: do_clubb_mf_rhtke")
     call mpi_bcast(do_clubb_mf_cmt, 1, mpi_logical, mstrid, mpicom, ierr)
     if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: do_clubb_mf_cmt")
+    call mpi_bcast(clubb_mf_kseed, 1, mpi_integer, mstrid, mpicom, ierr)
+    if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: clubb_mf_kseed")
+    call mpi_bcast(do_clubb_mf_coldpool_init, 1, mpi_logical, mstrid, mpicom, ierr)
+    if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: do_clubb_mf_coldpool_init")
+    call mpi_bcast(do_clubb_mf_coldpool_perplume, 1, mpi_logical, mstrid, mpicom, ierr)
+    if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: do_clubb_mf_coldpool_perplume")
+    call mpi_bcast(do_clubb_mf_lscale_perplume, 1, mpi_logical, mstrid, mpicom, ierr)
+    if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: do_clubb_mf_lscae_perplume")
 
     if ((.not. do_clubb_mf) .and. do_clubb_mf_diag ) then
        call endrun('clubb_mf_readnl: Error - cannot turn on do_clubb_mf_diag without also turning on do_clubb_mf')
@@ -250,7 +263,9 @@ module clubb_mf
      real(r8), intent(in)                :: pblh,tpert
      real(r8), intent(in)                :: rhinv
      real(r8), intent(in)                :: ths,ustar
-     real(r8), intent(inout)             :: ztopm1,ddcp,cbm1
+     real(r8), intent(inout)             :: cbm1
+
+     real(r8),dimension(clubb_mf_nup), intent(inout)  :: ztopm1,ddcp
 
      real(r8),dimension(nz,clubb_mf_nup), intent(out) :: upa,     & ! momentum grid
                                                          upw,     & ! momentum grid
@@ -297,8 +312,7 @@ module clubb_mf
                                             sqt,     sthl,                     & ! thermodynamic grid 
                                             precc
 
-     real(r8), intent(out)               :: ztop,    dynamic_L0,  &
-                                            mcape   
+     real(r8),dimension(clubb_mf_nup), intent(out) :: ztop, dynamic_L0, mcape
      ! =============================================================================== !
      ! INTERNAL VARIABLES
      !
@@ -333,8 +347,8 @@ module clubb_mf
      ! other variables
      integer                              :: k,i,kstart,ddtop,kcb
      integer,  dimension(clubb_mf_nup)    :: ddbot,kcbarr
-     real(r8), dimension(clubb_mf_nup)    :: zcb
-     real(r8)                             :: zcb_unset,       cpfac,   &
+     real(r8), dimension(clubb_mf_nup)    :: zcb,cpfac
+     real(r8)                             :: zcb_unset,                &
                                              wthv,   ddint,   iddcp,   &
                                              wstar,  qstar,   thvstar, & 
                                              sigmaw, sigmaqt, sigmathv,&
@@ -453,6 +467,9 @@ module clubb_mf
      !
      ! limiter on cold pool effects
      real(r8),parameter                   :: max_cpfac = 5._r8
+     !
+     ! max limiter on cold pool init effects
+     real(r8),parameter                   :: max_cpinit = 0.5_r8
 
      !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
      !!!!!!!!!!!!!!!!!!!!!! BEGIN CODE !!!!!!!!!!!!!!!!!!!!!!!
@@ -603,9 +620,13 @@ module clubb_mf
        ! Compute cold pool feedback parameter                      ! 
        ! --------------------------------------------------------- !
 
-       cpfac = 1._r8
-       if (do_clubb_mf_coldpool) cpfac = min( (max(ddcp/wstar,1._r8))**clubb_mf_ddbeta, max_cpfac ) 
- 
+       cpfac(:) = 1._r8
+       if (do_clubb_mf_coldpool) then 
+         do i=1,clubb_mf_nup
+           cpfac(i) = min( (max(ddcp(i)/wstar,1._r8))**clubb_mf_ddbeta, max_cpfac ) 
+         end do
+       end if
+
        ! --------------------------------------------------------- !
        ! Construct tri-variate PDF at the surface from wstar       ! 
        ! and initialize plume thv, qt, w                           !
@@ -618,15 +639,22 @@ module clubb_mf
          qstar   = wqt / wstar
          thvstar = wthv / wstar
        end if
-!+++ARH
-       sigmaw   = alphw * wstar !* cpfac
-       sigmaqt  = alphqt * abs(qstar) !* cpfac
-       sigmathv = alphthv * abs(thvstar) !* cpfac
-
-       wmin = sigmaw * pwmin
-       wmax = sigmaw * pwmax
 
        do i=1,clubb_mf_nup
+
+         if (do_clubb_mf_coldpool_init) then
+           sigmaw   = alphw * wstar * (1._r8 + max_cpinit*cpfac(i)/max_cpfac)
+           sigmaqt  = alphqt * abs(qstar) * (1._r8 + max_cpinit*cpfac(i)/max_cpfac)
+           sigmathv = alphthv * abs(thvstar) * (1._r8 + max_cpinit*cpfac(i)/max_cpfac)
+         else
+           sigmaw   = alphw * wstar
+           sigmaqt  = alphqt * abs(qstar)
+           sigmathv = alphthv * abs(thvstar)
+         end if
+
+         wmin = sigmaw * pwmin
+         wmax = sigmaw * pwmax
+
          wlv = wmin + (wmax-wmin) / (real(clubb_mf_nup,r8)) * (real(i-1, r8))
          wtv = wmin + (wmax-wmin) / (real(clubb_mf_nup,r8)) * real(i,r8)
 
@@ -688,34 +716,37 @@ module clubb_mf
          end if
        end do
 
-       ! --------------------------------------------------------- !
-       ! Calculate ztop and dynamic_L based on value of namelist   ! 
-       ! --------------------------------------------------------- !
-       call get_Lscale (nz, zm, tke, wpthlp_env, dzt, iexner_zm, iexner_zt, p_zm, qt, thv, thl, th, &
-                        wmax, wmin, sigmaw, sigmaqt, sigmathv, cwqt, cwthv, zcb_unset, wa, wb,  &
-                        do_condensation, qv, p_zt, zt, tpert, pblh, convh, rhinv, ztopm1, dynamic_L0, ztop, mcape)
+       do i=1,clubb_mf_nup
+         ! --------------------------------------------------------- !
+         ! Calculate ztop and dynamic_L based on value of namelist   ! 
+         ! --------------------------------------------------------- !
+         call get_Lscale (nz, zm, tke, wpthlp_env, dzt, iexner_zm, iexner_zt, p_zm, qt, thv, thl, th, &
+                          wmax, wmin, sigmaw, sigmaqt, sigmathv, cwqt, cwthv, zcb_unset, wa, wb,  &
+                          do_condensation, qv, p_zt, zt, tpert, pblh, convh, rhinv, ztopm1(i), dynamic_L0(i), ztop(i), mcape(i))
 
-       ! cold pool feedback on the entrainmnet length scale
-       dynamic_L0 = dynamic_L0 * cpfac
+         ! cold pool feedback on the entrainmnet length scale
+         dynamic_L0(i) = dynamic_L0(i) * cpfac(i)
 
-       ! limit max/min
-       dynamic_L0 = max(min_L0,dynamic_L0)
-       dynamic_L0 = min(clubb_mf_max_L0,dynamic_L0)
+         ! limit max/min
+         dynamic_L0(i) = max(min_L0,dynamic_L0(i))
+         dynamic_L0(i) = min(clubb_mf_max_L0,dynamic_L0(i))
 
-       ! --------------------------------------------------------- !
-       ! Stochastic entrainmnet calculation                        ! 
-       ! From Suselj et al 2019, after Romps and Kuang 2010        !
-       ! (ideally we wouldn't fill the entire arrray w/ the RNG,   !
-       ! but the RNG doesn't work properly when it operates on     !
-       ! the entire array. I'm not sure why this is happening.)    !
-       ! --------------------------------------------------------- !
-       do k=1,nz-1
-         ! get entrainment coefficient, dz/L0
-         entf(k,:) = dzt(k) / dynamic_L0
+         ! --------------------------------------------------------- !
+         ! Stochastic entrainmnet calculation                        ! 
+         ! From Suselj et al 2019, after Romps and Kuang 2010        !
+         ! (ideally we wouldn't fill the entire arrray w/ the RNG,   !
+         ! but the RNG doesn't work properly when it operates on     !
+         ! the entire array. I'm not sure why this is happening.)    !
+         ! --------------------------------------------------------- !
+         do k=1,nz-1
+           ! get entrainment coefficient, dz/L0
+           entf(k,i) = dzt(k) / dynamic_L0(i)
+         end do
+         !
        end do
 
        ! get poisson, P(dz/L0)
-       call poisson( nz, clubb_mf_nup, entf, enti, u(2:5))
+       call poisson( nz, clubb_mf_nup, entf, enti, u(clubb_mf_kseed+1:clubb_mf_kseed+4))
 
        ! --------------------------------------------------------- !
        ! Main upward sweep to compute updraft properties           ! 
@@ -778,7 +809,7 @@ module clubb_mf
                                     thvn, qcn, thn, qln, qin, qsn, lmixn)
 
                ! critical stopping distance
-               cridis = rle*ztopm1
+               cridis = rle*ztopm1(i)
 
                ! ----------------------------------------------------------------- !
                ! Case 1 : When both cumulus and env. are unsaturated or saturated. !
@@ -857,7 +888,7 @@ module clubb_mf
                rh_L0 = 50._r8*(rhinv**3._r8)
                if (rh_L0 >= 733.34_r8) eturb = 1._r8
              else
-               if (dynamic_L0 >= clubb_mf_max_L0) eturb = 1._r8
+               if (dynamic_L0(i) >= clubb_mf_max_L0) eturb = 1._r8
              end if
              entn = entn * eturb
 
@@ -1044,7 +1075,7 @@ module clubb_mf
                entn = fixent_ent
              else
                ! use deterministic mean entrainment
-               entn = clubb_mf_ent0/dynamic_L0
+               entn = clubb_mf_ent0/dynamic_L0(i)
              end if
 
              ! downdraft qsat
@@ -1316,17 +1347,23 @@ module clubb_mf
        ! --------------------------------------------------------- !
        ! ztopm1 calculation                                        ! 
        ! --------------------------------------------------------- !
-       do k=1,nz
-         ! retrun if no convection at k=2
-         if (k == 2 .and. ac(k) == 0._r8) then
-           sqt(k) = 0_r8
-           sthl(k) = 0._r8
-           ztopm1 = zm(1)
-           ddcp = 0._r8
-           return
-         end if
-         ! height of the plume ensemble
-         if (ac(k) > 0._r8) ztopm1 = zm(k)
+       do i=1,clubb_mf_nup
+         do k=1,nz
+           ! return if no convection at k=2
+           if (k == 2 .and. ac(k) == 0._r8) then
+             sqt(k) = 0_r8
+             sthl(k) = 0._r8
+             ztopm1(:) = zm(1)
+             ddcp(:) = 0._r8
+             return
+           end if
+           ! height of the plume ensemble
+           if (do_clubb_mf_lscale_perplume) then
+             if ((upa(k,i)+dna(k,i)) > 0._r8) ztopm1(i) = zm(k)
+           else
+             if (ac(k) > 0._r8) ztopm1(:) = zm(k)
+           end if
+         end do
        end do
 
        ! --------------------------------------------------------- !
@@ -1392,7 +1429,7 @@ module clubb_mf
 !       end do
 !
 
-       ddcp = 0._r8
+       ddcp(:) = 0._r8
        if (do_clubb_mf_coldpool .and. clubb_mf_fdd > 0._r8) then
          ! use single level for cold pool param.
          ! reset ddcp
@@ -1400,9 +1437,14 @@ module clubb_mf
            if (ddbot(i) == 0) then
              continue
            else
-             ddcp = ddcp + (-1._r8)*dna(ddbot(i)+1,i)*dnw(ddbot(i)+1,i)
+             if (do_clubb_mf_coldpool_perplume) then
+               ddcp(i) = -1._r8*dnw(ddbot(i)+1,i)
+             else
+               ddcp(:) = ddcp(:) + -1._r8*dna(ddbot(i)+1,i)*dnw(ddbot(i)+1,i)
+             end if
            end if
          end do
+         !
        end if
 !---ARH
 
@@ -1457,8 +1499,8 @@ module clubb_mf
        enddo
        !
      else
-       ddcp = 0._r8
-       ztopm1 = zm(1)
+       ddcp(:) = 0._r8
+       ztopm1(:) = zm(1)
      end if  ! ( wthv > 0.0 )
 
   end subroutine integrate_mf
