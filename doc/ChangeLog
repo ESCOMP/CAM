@@ -1,5 +1,458 @@
 ===============================================================
 
+Tag name:cam6_3_132
+Originator(s): cacraig, adamher, Thomas Toniazzo, hannay
+Date: Oct 18, 2023
+One-line Summary: Bring in changes to match run 51
+Github PR URL: https://github.com/ESCOMP/CAM/pull/900
+
+Purpose of changes (include the issue number and title text for each relevant GitHub issue):
+ - Update cam_development to match current tuning runs:  https://github.com/ESCOMP/CAM/issues/895
+ - Discussion also occurred at: https://github.com/NCAR/amwg_dev/discussions/412
+
+Describe any changes made to build system: N/A
+
+Describe any changes made to the namelist:
+ - When running cam_dev, change the values for:
+     micro_mg_dcs
+     clubb_gamma_coef
+     clubb_gamma_coefb
+     microp_aero_wsub_scale
+     microp_aero_wsubi_scale
+     microp_aero_wsub_min
+     micro_mg_vtrmi_factor
+
+ - New namelists implemented:
+     microp_aero_wsub_min_asf: min subgrid vertical velocity (after scale factor) See namelist definition for full description
+     cldfrc2m_do_avg_aist_algs: for small ice cloud concentrations, take the geometric mean of the iceopt=4 and 5 area fractions
+     cldfrc2m_qist_min: min in-stratus ice IWC constraint
+     cldfrc2m_qist_max: max in-stratus ice IWC constraint
+
+List any changes to the defaults for the boundary datasets: N/A
+
+Describe any substantial timing or memory changes: N/A
+
+Code reviewed by: nusbaume, pel, adamrher
+
+List all files eliminated: N/A
+
+List all files added and what they do: N/A
+
+List all existing files that have been modified, and describe the changes:
+M       bld/build-namelist
+M       bld/namelist_files/namelist_defaults_cam.xml
+M       src/physics/cam/cldfrc2m.F90
+M       src/physics/cam/microp_aero.F90
+M       src/physics/cam/ndrop.F90
+M       src/physics/spcam/crmclouds_camaerosols.F90
+          - Change namelist as discussed in the issue/PR and group discussion
+
+M       bld/namelist_files/namelist_definition.xml
+          - Update descriptions and add new ones
+
+M       cime_config/testdefs/testlist_cam.xml
+          - Change a few tests to have them work on derecho
+
+If there were any failures reported from running test_driver.sh on any test
+platform, and checkin with these failures has been OK'd by the gatekeeper,
+then copy the lines from the td.*.status files for the failed tests to the
+appropriate machine below.  All failed tests must be justified.
+
+cheyenne/intel/aux_cam:
+  ERP_Ln9_Vnuopc.C96_C96_mg17.F2000climo.cheyenne_intel.cam-outfrq9s_mg3 (Overall: PEND) details:
+    PEND ERP_Ln9_Vnuopc.C96_C96_mg17.F2000climo.cheyenne_intel.cam-outfrq9s_mg3 MODEL_BUILD RERUN
+  ERP_Ln9_Vnuopc.f09_f09_mg17.FCSD_HCO.cheyenne_intel.cam-outfrq9s (Overall: FAIL) details:
+    FAIL ERP_Ln9_Vnuopc.f09_f09_mg17.FCSD_HCO.cheyenne_intel.cam-outfrq9s COMPARE_base_rest
+  SMS_Lh12_Vnuopc.f09_f09_mg17.FCSD_HCO.cheyenne_intel.cam-outfrq3h (Overall: DIFF) details:
+      - pre-existing failure
+
+  ERC_D_Ln9_P144x1_Vnuopc.ne16pg3_ne16pg3_mg17.QPC6HIST.cheyenne_intel.cam-outfrq3s_ttrac_usecase (Overall: DIFF) details:
+  ERP_D_Ln9.ne30pg3_ne30pg3_mg17.FLTHIST.cheyenne_intel.cam-outfrq9s (Overall: DIFF) details:
+  ERP_Ln9_Vnuopc.ne30_ne30_mg17.FCnudged.cheyenne_intel.cam-outfrq9s (Overall: DIFF) details:
+  ERP_Ln9_Vnuopc.ne30pg3_ne30pg3_mg17.FW2000climo.cheyenne_intel.cam-outfrq9s_wcm_ne30 (Overall: DIFF) details:
+  SMS_D_Ln9.ne30pg3_ne30pg3_mg17.FMTHIST.cheyenne_intel.cam-outfrq9s (Overall: DIFF) details:
+  SMS_D_Ln9_Vnuopc.ne16_ne16_mg17.FX2000.cheyenne_intel.cam-outfrq9s (Overall: DIFF) details:
+  SMS_D_Ln9_Vnuopc_P1280x1.ne0ARCTICne30x4_ne0ARCTICne30x4_mt12.FHIST.cheyenne_intel.cam-outfrq9s (Overall: DIFF) details:
+  SMS_D_Ln9_Vnuopc_P1280x1.ne0CONUSne30x8_ne0CONUSne30x8_mt12.FCHIST.cheyenne_intel.cam-outfrq9s (Overall: DIFF) details:
+  SMS_D_Ln9_Vnuopc_P1280x1.ne30pg3_ne30pg3_mg17.FCLTHIST.cheyenne_intel.cam-outfrq9s (Overall: DIFF) details:
+  SMS_Ld1_Vnuopc.ne30pg3_ne30pg3_mg17.FC2010climo.cheyenne_intel.cam-outfrq1d (Overall: DIFF) details:
+      - expected baseline differences due to removal of cam6 tuning factor for SE dy
+
+  ERP_Ln9_Vnuopc.f09_f09_mg17.F2000dev.cheyenne_intel.cam-outfrq9s_mg3 (Overall: DIFF) details:
+  ERP_D_Ln9_Vnuopc.ne30pg3_ne30pg3_mg17.F2000dev.cheyenne_intel.cam-outfrq9s (Overall: DIFF) details:
+  ERS_Ld3_Vnuopc.f10_f10_mg37.F1850.cheyenne_intel.cam-outfrq1d_14dec_ghg_cam_dev (Overall: DIFF) details:
+  SMS_Ld1_Vnuopc.f19_f19.F2000dev.cheyenne_intel.cam-outfrq1d (Overall: DIFF) details:
+      - expected baseline differences for cam_dev runs
+
+  SMS_D_Ln9_Vnuopc_P1280x1.ne0ARCTICne30x4_ne0ARCTICne30x4_mt12.FHIST.cheyenne_intel.cam-outfrq9s (Overall: DIFF) details:
+  SMS_D_Ln9_Vnuopc_P1280x1.ne0CONUSne30x8_ne0CONUSne30x8_mt12.FCHIST.cheyenne_intel.cam-outfrq9s (Overall: DIFF) details:
+  SMS_D_Ln9_Vnuopc_P1280x1.ne30pg3_ne30pg3_mg17.FCLTHIST.cheyenne_intel.cam-outfrq9s (Overall: DIFF) details:
+      -Changed layout and hence the testname, so no baselines to compare with
+
+izumi/nag/aux_cam:
+  DAE_Vnuopc.f45_f45_mg37.FHS94.izumi_nag.cam-dae (Overall: FAIL)
+      - pre-existing failure
+
+  ERP_Ln9_Vnuopc.ne5pg3_ne5pg3_mg37.QPC6.izumi_nag.cam-outfrq9s_clubbmf (Overall: DIFF) details:
+      - expected baseline differences due to removal of cam6 tuning factor for SE dy
+
+izumi/gnu/aux_cam:
+  SMS_D_Ln9.f10_f10_mg37.2000_CAM%DEV%GHGMAM4_CLM50%SP_CICE%PRES_DOCN%DOM_MOSART_SGLC_SWAV_SESP.izumi_gnu.cam-outfrq9s (Overall: DIFF) details:
+      - expected baseline differences for cam_dev runs
+
+NOTE: Most tests have namelist changes
+
+CAM tag used for the baseline comparison tests if different than previous
+tag: N/A
+
+Summarize any changes to answers, i.e.,
+- what code configurations: All cam_dev and SE cam6
+- what platforms/compilers: All
+- nature of change (roundoff; larger than roundoff but same climate; new
+  climate): Tuning changes  - Climate changing for cam_dev
+
+If this tag changes climate describe the run(s) done to evaluate the new
+climate in enough detail that it(they) could be reproduced, i.e.,
+  - Run which was the prelimiary source of the changes: https://github.com/NCAR/amwg_dev/tree/b.e23_alpha16b.BLT1850.ne30_t232.051
+  - It is important to note that further changes were made to this tag as discussed in the issue/PR and discussion - Adam ran a test
+  to verify the final changes.
+
+===============================================================
+
+Tag name: cam6_3_131
+Originator(s): cacraig
+Date: Oct 17, 2023
+One-line Summary: Update externals to get job_priority setting on derecho
+Github PR URL: https://github.com/ESCOMP/CAM/pull/906
+
+Purpose of changes (include the issue number and title text for each relevant GitHub issue):
+  - Update externals for job_priority and other derecho enhancements: https://github.com/ESCOMP/CAM/issues/905
+     NOTE -- This change brings in an updated CMEPS which is answer changing (see https://github.com/ESCOMP/CMEPS/pull/394)
+
+Describe any changes made to build system: N/A
+
+Describe any changes made to the namelist: N/A
+
+List any changes to the defaults for the boundary datasets: N/A
+
+Describe any substantial timing or memory changes: N/A
+
+Code reviewed by: nusbaume (and Adam and Cecile gave their approval for this to proceed)
+
+List all files eliminated: N/A
+
+List all files added and what they do: N/A
+
+List all existing files that have been modified, and describe the changes:
+M       Externals.cfg
+          - Update the externals
+
+If there were any failures reported from running test_driver.sh on any test
+platform, and checkin with these failures has been OK'd by the gatekeeper,
+then copy the lines from the td.*.status files for the failed tests to the
+appropriate machine below.  All failed tests must be justified.
+
+cheyenne/intel/aux_cam:
+  ERP_Ln9_Vnuopc.C96_C96_mg17.F2000climo.cheyenne_intel.cam-outfrq9s_mg3 (Overall: FAIL) details:
+    FAIL ERP_Ln9_Vnuopc.C96_C96_mg17.F2000climo.cheyenne_intel.cam-outfrq9s_mg3 MODEL_BUILD time=2
+  ERP_Ln9_Vnuopc.f09_f09_mg17.FCSD_HCO.cheyenne_intel.cam-outfrq9s (Overall: FAIL) details:
+    FAIL ERP_Ln9_Vnuopc.f09_f09_mg17.FCSD_HCO.cheyenne_intel.cam-outfrq9s COMPARE_base_rest
+  SMS_Lh12_Vnuopc.f09_f09_mg17.FCSD_HCO.cheyenne_intel.cam-outfrq3h (Overall: DIFF) details:
+      - pre-existing failure
+
+  ERC_D_Ln9_P144x1_Vnuopc.ne16pg3_ne16pg3_mg17.QPC6HIST.cheyenne_intel.cam-outfrq3s_ttrac_usecase (Overall: DIFF) details:
+  ERC_D_Ln9_Vnuopc.f19_f19_mg17.QPC6.cheyenne_intel.cam-outfrq3s_cosp (Overall: DIFF) details:
+  ERC_D_Ln9_Vnuopc.f19_f19_mg17.QPMOZ.cheyenne_intel.cam-outfrq3s (Overall: DIFF) details:
+  ERC_D_Ln9_Vnuopc.f19_f19_mg17.QPX2000.cheyenne_intel.cam-outfrq3s (Overall: DIFF) details:
+  ERC_D_Ln9_Vnuopc.ne16_ne16_mg17.QPC5HIST.cheyenne_intel.cam-outfrq3s_usecase (Overall: DIFF) details:
+  ERI_D_Ln18_Vnuopc.f45_f45_mg37.QPC41850.cheyenne_intel.cam-co2rmp_usecase (Overall: DIFF) details:
+  ERP_D_Ln9.ne30pg3_ne30pg3_mg17.FLTHIST.cheyenne_intel.cam-outfrq9s (Overall: DIFF) details:
+  ERP_D_Ln9_Vnuopc.f09_f09_mg17.QSC6.cheyenne_intel.cam-outfrq9s (Overall: DIFF) details:
+  ERP_D_Ln9_Vnuopc.f19_f19_mg17.QPC6.cheyenne_intel.cam-outfrq9s (Overall: DIFF) details:
+  ERP_D_Ln9_Vnuopc.ne30pg3_ne30pg3_mg17.F2000dev.cheyenne_intel.cam-outfrq9s (Overall: DIFF) details:
+  ERP_Ld3_Vnuopc.f09_f09_mg17.FWHIST.cheyenne_intel.cam-reduced_hist1d (Overall: DIFF) details:
+  ERP_Lh12_Vnuopc.f19_f19_mg17.FW4madSD.cheyenne_intel.cam-outfrq3h (Overall: DIFF) details:
+  ERP_Ln9_P24x3_Vnuopc.f45_f45_mg37.QPWmaC6.cheyenne_intel.cam-outfrq9s_mee_fluxes (Overall: DIFF) details:
+  ERP_Ln9_Vnuopc.f09_f09_mg17.F1850.cheyenne_intel.cam-outfrq9s (Overall: DIFF) details:
+  ERP_Ln9_Vnuopc.f09_f09_mg17.F2000climo.cheyenne_intel.cam-outfrq9s (Overall: DIFF) details:
+  ERP_Ln9_Vnuopc.f09_f09_mg17.F2000dev.cheyenne_intel.cam-outfrq9s_mg3 (Overall: DIFF) details:
+  ERP_Ln9_Vnuopc.f09_f09_mg17.F2010climo.cheyenne_intel.cam-outfrq9s (Overall: DIFF) details:
+  ERP_Ln9_Vnuopc.f09_f09_mg17.FHIST_BDRD.cheyenne_intel.cam-outfrq9s (Overall: DIFF) details:
+  ERP_Ln9_Vnuopc.f19_f19_mg17.FWsc1850.cheyenne_intel.cam-outfrq9s (Overall: DIFF) details:
+  ERP_Ln9_Vnuopc.ne30_ne30_mg17.FCnudged.cheyenne_intel.cam-outfrq9s (Overall: DIFF) details:
+  ERP_Ln9_Vnuopc.ne30pg3_ne30pg3_mg17.FW2000climo.cheyenne_intel.cam-outfrq9s_wcm_ne30 (Overall: DIFF) details:
+  ERS_Ld3_Vnuopc.f10_f10_mg37.F1850.cheyenne_intel.cam-outfrq1d_14dec_ghg_cam_dev (Overall: DIFF) details:
+  ERS_Ln9_P288x1_Vnuopc.mpasa120_mpasa120.F2000climo.cheyenne_intel.cam-outfrq9s_mpasa120 (Overall: DIFF) details:
+  ERS_Ln9_P36x1_Vnuopc.mpasa480_mpasa480.F2000climo.cheyenne_intel.cam-outfrq9s_mpasa480 (Overall: DIFF) details:
+  ERS_Ln9_Vnuopc.f09_f09_mg17.FX2000.cheyenne_intel.cam-outfrq9s (Overall: DIFF) details:
+  ERS_Ln9_Vnuopc.f19_f19_mg17.FSPCAMS.cheyenne_intel.cam-outfrq9s (Overall: DIFF) details:
+  ERS_Ln9_Vnuopc.f19_f19_mg17.FXSD.cheyenne_intel.cam-outfrq9s (Overall: DIFF) details:
+  SCT_D_Ln7_Vnuopc.T42_T42_mg17.QPC5.cheyenne_intel.cam-scm_prep (Overall: DIFF) details:
+  SMS_D_Ld2_Vnuopc.f19_f19_mg17.QPC5HIST.cheyenne_intel.cam-volc_usecase (Overall: DIFF) details:
+  SMS_D_Ln9.ne30pg3_ne30pg3_mg17.FMTHIST.cheyenne_intel.cam-outfrq9s (Overall: DIFF) details:
+  SMS_D_Ln9_Vnuopc.f09_f09_mg17.FCts2nudged.cheyenne_intel.cam-outfrq9s_leapday (Overall: DIFF) details:
+  SMS_D_Ln9_Vnuopc.f09_f09_mg17.FCvbsxHIST.cheyenne_intel.cam-outfrq9s (Overall: DIFF) details:
+  SMS_D_Ln9_Vnuopc.f09_f09_mg17.FSD.cheyenne_intel.cam-outfrq9s (Overall: DIFF) details:
+  SMS_D_Ln9_Vnuopc.f19_f19_mg17.FWma2000climo.cheyenne_intel.cam-outfrq9s (Overall: DIFF) details:
+  SMS_D_Ln9_Vnuopc.f19_f19_mg17.FWma2000climo.cheyenne_intel.cam-outfrq9s_waccm_ma_mam4 (Overall: DIFF) details:
+  SMS_D_Ln9_Vnuopc.f19_f19_mg17.FXHIST.cheyenne_intel.cam-outfrq9s_amie (Overall: DIFF) details:
+  SMS_D_Ln9_Vnuopc.f19_f19_mg17.QPC2000climo.cheyenne_intel.cam-outfrq3s_usecase (Overall: DIFF) details:
+  SMS_D_Ln9_Vnuopc.f19_f19_mg17.QPC5M7.cheyenne_intel.cam-outfrq9s (Overall: DIFF) details:
+  SMS_D_Ln9_Vnuopc.ne16_ne16_mg17.FX2000.cheyenne_intel.cam-outfrq9s (Overall: DIFF) details:
+  SMS_D_Ln9_Vnuopc.ne16_ne16_mg17.QPX2000.cheyenne_intel.cam-outfrq9s (Overall: DIFF) details:
+  SMS_D_Ln9_Vnuopc_P720x1.ne0ARCTICne30x4_ne0ARCTICne30x4_mt12.FHIST.cheyenne_intel.cam-outfrq9s (Overall: DIFF) details:
+  SMS_D_Ln9_Vnuopc_P720x1.ne0CONUSne30x8_ne0CONUSne30x8_mt12.FCHIST.cheyenne_intel.cam-outfrq9s (Overall: DIFF) details:
+  SMS_D_Ln9_Vnuopc_P720x1.ne30pg3_ne30pg3_mg17.FCLTHIST.cheyenne_intel.cam-outfrq9s (Overall: DIFF) details:
+  SMS_Ld1_Vnuopc.f09_f09_mg17.FW2000climo.cheyenne_intel.cam-outfrq1d (Overall: DIFF) details:
+  SMS_Ld1_Vnuopc.f19_f19.F2000dev.cheyenne_intel.cam-outfrq1d (Overall: DIFF) details:
+  SMS_Ld1_Vnuopc.ne30pg3_ne30pg3_mg17.FC2010climo.cheyenne_intel.cam-outfrq1d (Overall: DIFF) details:
+  SMS_Lm13_Vnuopc.f10_f10_mg37.F2000climo.cheyenne_intel.cam-outfrq1m (Overall: DIFF) details:
+  SMS_Ln9_Vnuopc.f09_f09_mg17.F2010climo.cheyenne_intel.cam-nudging (Overall: DIFF) details:
+  SMS_Ln9_Vnuopc.f09_f09_mg17.FW1850.cheyenne_intel.cam-reduced_hist3s (Overall: DIFF) details:
+  SMS_Ln9_Vnuopc.f19_f19.F2000climo.cheyenne_intel.cam-silhs (Overall: DIFF) details:
+  SMS_Ln9_Vnuopc.f19_f19_mg17.FHIST.cheyenne_intel.cam-outfrq9s_nochem (Overall: DIFF) details:
+     - answer changes due to CMEPS update
+
+izumi/nag/aux_cam:
+  DAE_Vnuopc.f45_f45_mg37.FHS94.izumi_nag.cam-dae (Overall: FAIL) details:
+    FAIL DAE_Vnuopc.f45_f45_mg37.FHS94.izumi_nag.cam-dae RUN time=188
+    PEND DAE_Vnuopc.f45_f45_mg37.FHS94.izumi_nag.cam-dae COMPARE_base_da
+      - pre-existing failure
+
+  ERC_D_Ln9_Vnuopc.f10_f10_mg37.QPC5.izumi_nag.cam-carma_sea_salt (Overall: DIFF) details:
+  ERC_D_Ln9_Vnuopc.f10_f10_mg37.QPC5.izumi_nag.cam-outfrq3s_cosp (Overall: DIFF) details:
+  ERC_D_Ln9_Vnuopc.f10_f10_mg37.QPC5.izumi_nag.cam-outfrq3s_subcol (Overall: DIFF) details:
+  ERC_D_Ln9_Vnuopc.f10_f10_mg37.QPC6.izumi_nag.cam-outfrq3s_am (Overall: DIFF) details:
+  ERC_D_Ln9_Vnuopc.f10_f10_mg37.QPC6.izumi_nag.cam-outfrq3s_convmic (Overall: DIFF) details:
+  ERC_D_Ln9_Vnuopc.f10_f10_mg37.QPC6.izumi_nag.cam-outfrq3s_cospsathist (Overall: DIFF) details:
+  ERC_D_Ln9_Vnuopc.f10_f10_mg37.QPC6.izumi_nag.cam-outfrq3s (Overall: DIFF) details:
+  ERC_D_Ln9_Vnuopc.f10_f10_mg37.QPWmaC6.izumi_nag.cam-outfrq3s (Overall: DIFF) details:
+  ERC_D_Ln9_Vnuopc.f10_f10_mg37.QSPCAMS.izumi_nag.cam-outfrq3s (Overall: DIFF) details:
+  ERC_D_Ln9_Vnuopc.ne16_ne16_mg17.QPC4.izumi_nag.cam-outfrq3s_usecase (Overall: DIFF) details:
+  ERC_D_Ln9_Vnuopc.ne16pg3_ne16pg3_mg17.QPC4.izumi_nag.cam-outfrq3s_usecase (Overall: DIFF) details:
+  ERC_D_Ln9_Vnuopc.ne5_ne5_mg37.QPC5.izumi_nag.cam-outfrq3s_ttrac (Overall: DIFF) details:
+  ERC_D_Ln9_Vnuopc.T5_T5_mg37.QPC4.izumi_nag.cam-outfrq3s_usecase (Overall: DIFF) details:
+  ERI_D_Ln18_Vnuopc.f10_f10_mg37.QPC5.izumi_nag.cam-outfrq3s_eoyttrac (Overall: DIFF) details:
+  ERI_D_Ln18_Vnuopc.f19_f19_mg17.QPC6.izumi_nag.cam-ghgrmp_e8 (Overall: DIFF) details:
+  ERP_Ln9_Vnuopc.ne5pg3_ne5pg3_mg37.QPC6.izumi_nag.cam-outfrq9s_clubbmf (Overall: DIFF) details:
+  PLB_D_Ln9_Vnuopc.f10_f10_mg37.QPC5.izumi_nag.cam-ttrac_loadbal0 (Overall: DIFF) details:
+  PLB_D_Ln9_Vnuopc.f10_f10_mg37.QPC5.izumi_nag.cam-ttrac_loadbal1 (Overall: DIFF) details:
+  PLB_D_Ln9_Vnuopc.f10_f10_mg37.QPC5.izumi_nag.cam-ttrac_loadbal3 (Overall: DIFF) details:
+  PLB_D_Ln9_Vnuopc.ne5_ne5_mg37.QPC5.izumi_nag.cam-ttrac_loadbal0 (Overall: DIFF) details:
+  PLB_D_Ln9_Vnuopc.ne5_ne5_mg37.QPC5.izumi_nag.cam-ttrac_loadbal1 (Overall: DIFF) details:
+  PLB_D_Ln9_Vnuopc.ne5_ne5_mg37.QPC5.izumi_nag.cam-ttrac_loadbal3 (Overall: DIFF) details:
+  SMS_D_Ln3_Vnuopc.ne5pg3_ne5pg3_mg37.QPX2000.izumi_nag.cam-outfrq3s (Overall: DIFF) details:
+  SMS_D_Ln6_Vnuopc.ne5_ne5_mg37.QPWmaC4.izumi_nag.cam-outfrq3s_physgrid_tem (Overall: DIFF) details:
+  SMS_D_Ln7_Vnuopc.T42_T42_mg17.QPSCAMC5.izumi_nag.cam-scmarm (Overall: DIFF) details:
+  SMS_D_Ln9_Vnuopc.f10_f10_mg37.QPC5.izumi_nag.cam-rad_diag_mam (Overall: DIFF) details:
+  SMS_D_Ln9_Vnuopc.f10_f10_mg37.QPC6.izumi_nag.cam-outfrq3s_ba (Overall: DIFF) details:
+  SMS_P48x1_D_Ln3_Vnuopc.f09_f09_mg17.QPC6HIST.izumi_nag.cam-outfrq3s_co2cycle_usecase (Overall: DIFF) details:
+  SUB_D_Ln9_Vnuopc.f10_f10_mg37.QPC5.izumi_nag.cam-outfrq3s (Overall: DIFF) details:
+  TMC_D_Vnuopc.f10_f10_mg37.QPC5.izumi_nag.cam-outfrq3s_eoyttrac (Overall: DIFF) details:
+  TMC_D_Vnuopc.T5_T5_mg37.QPC5.izumi_nag.cam-ghgrmp_e8 (Overall: DIFF) details:
+     - answer changes due to CMEPS update
+
+izumi/gnu/aux_cam:
+  ERC_D_Ln9_Vnuopc.f10_f10_mg37.QPC4.izumi_gnu.cam-outfrq3s_diags (Overall: DIFF) details:
+  ERC_D_Ln9_Vnuopc.f10_f10_mg37.QPC5.izumi_gnu.cam-outfrq3s_unicon (Overall: DIFF) details:
+  ERC_D_Ln9_Vnuopc.f10_f10_mg37.QPC5.izumi_gnu.cam-rad_diag (Overall: DIFF) details:
+  ERC_D_Ln9_Vnuopc.f10_f10_mg37.QPSPCAMM.izumi_gnu.cam-outfrq3s (Overall: DIFF) details:
+  ERC_D_Ln9_Vnuopc.ne5_ne5_mg37.QPC4.izumi_gnu.cam-outfrq3s_nudging_ne5_L26 (Overall: DIFF) details:
+  ERC_D_Ln9_Vnuopc.ne5_ne5_mg37.QPC5.izumi_gnu.cam-outfrq3s_ba (Overall: DIFF) details:
+  ERC_D_Ln9_Vnuopc.T5_T5_mg37.QPC3.izumi_gnu.cam-outfrq3s_usecase (Overall: DIFF) details:
+  ERI_D_Ln18_Vnuopc.T5_T5_mg37.QPC4.izumi_gnu.cam-co2rmp (Overall: DIFF) details:
+  ERP_Ln9_Vnuopc.ne5_ne5_mg37.QPC5.izumi_gnu.cam-outfrq9s (Overall: DIFF) details:
+  PLB_D_Ln9_Vnuopc.ne5pg3_ne5pg3_mg37.QPC5.izumi_gnu.cam-ttrac_loadbal0 (Overall: DIFF) details:
+  PLB_D_Ln9_Vnuopc.ne5pg3_ne5pg3_mg37.QPC5.izumi_gnu.cam-ttrac_loadbal1 (Overall: DIFF) details:
+  PLB_D_Ln9_Vnuopc.ne5pg3_ne5pg3_mg37.QPC5.izumi_gnu.cam-ttrac_loadbal3 (Overall: DIFF) details:
+  SCT_D_Ln7_Vnuopc.T42_T42_mg17.QPC4.izumi_gnu.cam-scm_prep (Overall: DIFF) details:
+  SCT_D_Ln7_Vnuopc.T42_T42_mg17.QPC6.izumi_gnu.cam-scm_prep_c6 (Overall: DIFF) details:
+  SMS_D_Ln3_Vnuopc.f10_f10_mg37.QPMOZ.izumi_gnu.cam-outfrq3s_chemproc (Overall: DIFF) details:
+  SMS_D_Ln9.f10_f10_mg37.2000_CAM%DEV%GHGMAM4_CLM50%SP_CICE%PRES_DOCN%DOM_MOSART_SGLC_SWAV_SESP.izumi_gnu.cam-outfrq9s (Overall:
+DIFF) details:
+  SMS_D_Ln9_Vnuopc.f10_f10_mg37.QPWmaC4.izumi_gnu.cam-outfrq9s_apmee (Overall: DIFF) details:
+  SMS_D_Ln9_Vnuopc.ne5pg3_ne5pg3_mg37.QPC5.izumi_gnu.cam-outfrq3s_ttrac (Overall: DIFF) details:
+  SMS_P48x1_D_Ln9_Vnuopc.f19_f19_mg17.FW4madSD.izumi_gnu.cam-outfrq9s (Overall: DIFF) details:
+     - answer changes due to CMEPS update
+
+===============================================================
+===============================================================
+
+Tag name: cam6_3_130
+Originator(s): pel, jet, cacraig
+Date: Oct 06, 2023
+One-line Summary: WACCMX-FV bug fix (correct calling sequenc of wet/dry species conversion), Derecho archive update
+Github PR URL: https://github.com/ESCOMP/CAM/pull/887
+
+Purpose of changes (include the issue number and title text for each relevant GitHub issue):
+ This tag closes the following issues:
+ - Add Derecho support for archiving baselines (https://github.com/ESCOMP/CAM/issue/893)
+ - bug fix: correct timing of wet/dry mixing ratio conversion (https://github.com/ESCOMP/CAM/issues/885)
+ - bug fix: correct se_sponge_del4_nu_div_fac and se_sponge_del4_lev NL type definitions (https://github.com/ESCOMP/CAM/issues/690)
+
+Describe any changes made to build system:
+	Added Derecho support for archiving baselines
+
+Describe any changes made to the namelist:
+	Corrected namelist type definitions for se_sponge_del4_nu_div_fac and se_sponge_del4_lev
+
+List any changes to the defaults for the boundary datasets: N/A
+
+Describe any substantial timing or memory changes: N/A
+
+Code reviewed by: cacraig, nusbaume, pel
+
+List all files eliminated: N/A
+
+List all files added and what they do: N/A
+
+List all existing files that have been modified, and describe the changes:
+
+M       bld/namelist_files/namelist_definition.xml
+           - correct namelist type definitions for se_sponge_del4_nu_div_fac and se_sponge_del4_lev
+
+M       src/dynamics/fv/dp_coupling.F90
+           - correct calling sequence for wet/dry constituent conversion
+
+M       test/system/archive_baseline.sh
+           - Update to archive Derecho baselines
+
+If there were any failures reported from running test_driver.sh on any test
+platform, and checkin with these failures has been OK'd by the gatekeeper,
+then copy the lines from the td.*.status files for the failed tests to the
+appropriate machine below.  All failed tests must be justified.
+
+cheyenne/intel/aux_cam: All BFB except
+  FAIL ERP_Ln9_Vnuopc.C96_C96_mg17.F2000climo.cheyenne_intel.cam-outfrq9s_mg3 MODEL_BUILD time=2
+     - pre-existing failure
+
+  FAIL ERP_Ln9_Vnuopc.f09_f09_mg17.FCSD_HCO.cheyenne_intel.cam-outfrq9s COMPARE_base_rest
+  FAIL SMS_Lh12_Vnuopc.f09_f09_mg17.FCSD_HCO.cheyenne_intel.cam-outfrq3h (Overall: DIFF)
+     - pre-existing failure
+
+  FAIL ERC_D_Ln9_Vnuopc.f19_f19_mg17.QPX2000.cheyenne_intel.cam-outfrq3s (Overall: DIFF)
+  FAIL ERS_Ln9_Vnuopc.f09_f09_mg17.FX2000.cheyenne_intel.cam-outfrq9s (Overall: DIFF)
+  FAIL ERS_Ln9_Vnuopc.f19_f19_mg17.FXSD.cheyenne_intel.cam-outfrq9s (Overall: DIFF)
+  FAIL SMS_D_Ln9_Vnuopc.f19_f19_mg17.FXHIST.cheyenne_intel.cam-outfrq9s_amie (Overall: DIFF)
+     - expected failures: WACCMX differences from correcting calling sequence for wet/dry mixing ratio conversion
+
+izumi/nag/aux_cam: All BFB except
+  DAE_Vnuopc.f45_f45_mg37.FHS94.izumi_nag.cam-dae (Overall: FAIL)
+     - pre-existing failure
+
+izumi/gnu/aux_cam: All BFB
+
+===============================================================
+===============================================================
+
+Tag name: cam6_3_129
+Originator(s): cacraig, fischer, hplin, jet, jedwards
+Date: Oct 04, 2023
+One-line Summary: Update externals to match cesm2_3_alpha16d and bring in test_driver which supports derecho
+Github PR URL: https://github.com/ESCOMP/CAM/pull/888
+
+Purpose of changes (include the issue number and title text for each relevant GitHub issue):
+ - Add derecho support to test_driver (https://github.com/ESCOMP/CAM/pull/879)
+ - Fix long line in HEMCO external (https://github.com/ESCOMP/CAM/issues/871)
+ - Fix building older FMS library (no issue as was discovered during testing, but discussion is in PR#888)
+
+Describe any changes made to build system: N/A
+
+Describe any changes made to the namelist: N/A
+
+List any changes to the defaults for the boundary datasets: N/A
+
+Describe any substantial timing or memory changes: N/A
+
+Code reviewed by: nusbaume, jet, fvitt
+
+List all files eliminated: N/A
+
+List all files added and what they do: N/A
+
+List all existing files that have been modified, and describe the changes:
+
+M       Externals.cfg
+           - update externals to match cesm2_3_alpha16d (ccs_config external is one tag newer)
+
+M       Externals_CAM.cfg
+           - update HEMCO tag to get fix for line too long
+
+M       cime_config/buildlib
+           - Updates for building older FMS library (required with changes in external).  NOTE - The regression test
+	     which tests FV3 (C96_C96_mg17) is broken.  It was verified that the actual test works, but the regression test
+	     no longer compiles properly due to changes in the SHARED_LIB build process.
+
+M       test/system/test_driver.sh
+           - add derecho functionality (uses cheyenne aux_cam hooks to determine tests to run)
+             It is important to note that there are a number of failures when the tests are run on derecho (see
+             github issue https://github.com/ESCOMP/CAM/issues/892 for details)
+
+If there were any failures reported from running test_driver.sh on any test
+platform, and checkin with these failures has been OK'd by the gatekeeper,
+then copy the lines from the td.*.status files for the failed tests to the
+appropriate machine below.  All failed tests must be justified.
+
+cheyenne/intel/aux_cam:
+  FAIL ERP_Ln9_Vnuopc.C96_C96_mg17.F2000climo.cheyenne_intel.cam-outfrq9s_mg3 MODEL_BUILD time=2
+     - Failure of FMS library compilation when more than one regression test is made due to changes in SHAREDLIB_BUILD
+       Was approved at AMP SE/scientist meeting to have this test fail until the upcoming FV3 PR is brought in
+
+  FAIL ERP_Ln9_Vnuopc.f09_f09_mg17.FCSD_HCO.cheyenne_intel.cam-outfrq9s COMPARE_base_rest
+  FAIL SMS_Lh12_Vnuopc.f09_f09_mg17.FCSD_HCO.cheyenne_intel.cam-outfrq3h (Overall: DIFF) details:
+     - pre-existing failure
+
+  ERP_D_Ln9.ne30pg3_ne30pg3_mg17.FLTHIST.cheyenne_intel.cam-outfrq9s (Overall: DIFF) details:
+  ERP_D_Ln9_Vnuopc.ne30pg3_ne30pg3_mg17.F2000dev.cheyenne_intel.cam-outfrq9s (Overall: DIFF) details:
+  ERP_Ld3_Vnuopc.f09_f09_mg17.FWHIST.cheyenne_intel.cam-reduced_hist1d (Overall: DIFF) details:
+  ERP_Lh12_Vnuopc.f19_f19_mg17.FW4madSD.cheyenne_intel.cam-outfrq3h (Overall: DIFF) details:
+  ERP_Ln9_Vnuopc.f09_f09_mg17.F1850.cheyenne_intel.cam-outfrq9s (Overall: DIFF) details:
+  ERP_Ln9_Vnuopc.f09_f09_mg17.F2000climo.cheyenne_intel.cam-outfrq9s (Overall: DIFF) details:
+  ERP_Ln9_Vnuopc.f09_f09_mg17.F2000dev.cheyenne_intel.cam-outfrq9s_mg3 (Overall: DIFF) details:
+  ERP_Ln9_Vnuopc.f09_f09_mg17.F2010climo.cheyenne_intel.cam-outfrq9s (Overall: DIFF) details:
+  ERP_Ln9_Vnuopc.f09_f09_mg17.FHIST_BDRD.cheyenne_intel.cam-outfrq9s (Overall: DIFF) details:
+  ERP_Ln9_Vnuopc.f19_f19_mg17.FWsc1850.cheyenne_intel.cam-outfrq9s (Overall: DIFF) details:
+  ERP_Ln9_Vnuopc.ne30_ne30_mg17.FCnudged.cheyenne_intel.cam-outfrq9s (Overall: DIFF) details:
+  ERP_Ln9_Vnuopc.ne30pg3_ne30pg3_mg17.FW2000climo.cheyenne_intel.cam-outfrq9s_wcm_ne30 (Overall: DIFF) details:
+  ERS_Ld3_Vnuopc.f10_f10_mg37.F1850.cheyenne_intel.cam-outfrq1d_14dec_ghg_cam_dev (Overall: DIFF) details:
+  ERS_Ln9_P288x1_Vnuopc.mpasa120_mpasa120.F2000climo.cheyenne_intel.cam-outfrq9s_mpasa120 (Overall: DIFF) details:
+  ERS_Ln9_P36x1_Vnuopc.mpasa480_mpasa480.F2000climo.cheyenne_intel.cam-outfrq9s_mpasa480 (Overall: DIFF) details:
+  ERS_Ln9_Vnuopc.f09_f09_mg17.FX2000.cheyenne_intel.cam-outfrq9s (Overall: DIFF) details:
+  ERS_Ln9_Vnuopc.f19_f19_mg17.FSPCAMS.cheyenne_intel.cam-outfrq9s (Overall: DIFF) details:
+  ERS_Ln9_Vnuopc.f19_f19_mg17.FXSD.cheyenne_intel.cam-outfrq9s (Overall: DIFF) details:
+  SMS_D_Ln9.ne30pg3_ne30pg3_mg17.FMTHIST.cheyenne_intel.cam-outfrq9s (Overall: DIFF) details:
+  SMS_D_Ln9_Vnuopc.f09_f09_mg17.FCts2nudged.cheyenne_intel.cam-outfrq9s_leapday (Overall: DIFF) details:
+  SMS_D_Ln9_Vnuopc.f09_f09_mg17.FCvbsxHIST.cheyenne_intel.cam-outfrq9s (Overall: DIFF) details:
+  SMS_D_Ln9_Vnuopc.f09_f09_mg17.FSD.cheyenne_intel.cam-outfrq9s (Overall: DIFF) details:
+  SMS_D_Ln9_Vnuopc.f19_f19_mg17.FWma2000climo.cheyenne_intel.cam-outfrq9s (Overall: DIFF) details:
+  SMS_D_Ln9_Vnuopc.f19_f19_mg17.FWma2000climo.cheyenne_intel.cam-outfrq9s_waccm_ma_mam4 (Overall: DIFF) details:
+  SMS_D_Ln9_Vnuopc.f19_f19_mg17.FXHIST.cheyenne_intel.cam-outfrq9s_amie (Overall: DIFF) details:
+  SMS_D_Ln9_Vnuopc.ne16_ne16_mg17.FX2000.cheyenne_intel.cam-outfrq9s (Overall: DIFF) details:
+  SMS_D_Ln9_Vnuopc_P720x1.ne0ARCTICne30x4_ne0ARCTICne30x4_mt12.FHIST.cheyenne_intel.cam-outfrq9s (Overall: DIFF) details:
+  SMS_D_Ln9_Vnuopc_P720x1.ne0CONUSne30x8_ne0CONUSne30x8_mt12.FCHIST.cheyenne_intel.cam-outfrq9s (Overall: DIFF) details:
+  SMS_D_Ln9_Vnuopc_P720x1.ne30pg3_ne30pg3_mg17.FCLTHIST.cheyenne_intel.cam-outfrq9s (Overall: DIFF) details:
+  SMS_D_Ln9_Vnuopc.T42_T42.FSCAM.cheyenne_intel.cam-outfrq9s (Overall: DIFF) details:
+  SMS_Ld1_Vnuopc.f09_f09_mg17.FW2000climo.cheyenne_intel.cam-outfrq1d (Overall: DIFF) details:
+  SMS_Ld1_Vnuopc.f19_f19.F2000dev.cheyenne_intel.cam-outfrq1d (Overall: DIFF) details:
+  SMS_Ld1_Vnuopc.ne30pg3_ne30pg3_mg17.FC2010climo.cheyenne_intel.cam-outfrq1d (Overall: DIFF) details:
+  SMS_Lm13_Vnuopc.f10_f10_mg37.F2000climo.cheyenne_intel.cam-outfrq1m (Overall: DIFF) details:
+  SMS_Ln9_Vnuopc.f19_f19_mg17.FHIST.cheyenne_intel.cam-outfrq9s_nochem (Overall: DIFF) details:
+    - answer changes due to updated externals
+
+izumi/nag/aux_cam:
+  DAE_Vnuopc.f45_f45_mg37.FHS94.izumi_nag.cam-dae (Overall: FAIL) details:
+     - pre-existing failure
+
+izumi/gnu/aux_cam:
+    FAIL SMS_D_Ln9.f10_f10_mg37.2000_CAM%DEV%GHGMAM4_CLM50%SP_CICE%PRES_DOCN%DOM_MOSART_SGLC_SWAV_SESP.izumi_gnu.cam-outfrq9s BASELINE /fs/cgd/csm/models/atm/cam/pretag_bl/cam6_3_128_gnu: FIELDLIST field lists differ (otherwise bit-for-bit)
+    FAIL SMS_P48x1_D_Ln9_Vnuopc.f19_f19_mg17.FW4madSD.izumi_gnu.cam-outfrq9s BASELINE /fs/cgd/csm/models/atm/cam/pretag_bl/cam6_3_128_gnu: DIFF
+     - answer changes due to updated externals
+
+All tests had namelist changes as well
+
+===============================================================
+===============================================================
+
 Tag name: cam6_3_128
 Originator(s): fvitt
 Date: 13 Sep 2023

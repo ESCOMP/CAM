@@ -79,7 +79,8 @@ real(r8) :: bulk_scale    ! prescribed aerosol bulk sulfur scale factor
 real(r8) :: npccn_scale   ! scaling for activated number
 real(r8) :: wsub_scale    ! scaling for sub-grid vertical velocity (liquid)
 real(r8) :: wsubi_scale   ! scaling for sub-grid vertical velocity (ice)
-real(r8) :: wsub_min      ! minimum sub-grid vertical velocity (liquid)
+real(r8) :: wsub_min      ! minimum sub-grid vertical velocity (liquid) before scale factor
+real(r8) :: wsub_min_asf  ! minimum sub-grid vertical velocity (liquid) after scale factor
 real(r8) :: wsubi_min     ! minimum sub-grid vertical velocity (ice)
 
 ! smallest mixing ratio considered in microphysics
@@ -405,20 +406,20 @@ subroutine microp_aero_readnl(nlfile)
    character(len=*), intent(in) :: nlfile  ! filepath for file containing namelist input
 
    ! Namelist variables
-   real(r8) :: microp_aero_bulk_scale = unset_r8 ! prescribed aerosol bulk sulfur scale factor
+   real(r8) :: microp_aero_bulk_scale = unset_r8   ! prescribed aerosol bulk sulfur scale factor
    real(r8) :: microp_aero_npccn_scale = unset_r8  ! prescribed aerosol bulk sulfur scale factor
-   real(r8) :: microp_aero_wsub_scale = unset_r8  ! subgrid vertical velocity (liquid) scale factor
+   real(r8) :: microp_aero_wsub_scale = unset_r8   ! subgrid vertical velocity (liquid) scale factor
    real(r8) :: microp_aero_wsubi_scale = unset_r8  ! subgrid vertical velocity (ice) scale factor
-   real(r8) :: microp_aero_wsub_min = unset_r8  ! subgrid vertical velocity (liquid) minimum
-   real(r8) :: microp_aero_wsubi_min = unset_r8  ! subgrid vertical velocity (ice) minimum
-
+   real(r8) :: microp_aero_wsub_min = unset_r8     ! subgrid vertical velocity (liquid) minimum (before scale factor)
+   real(r8) :: microp_aero_wsub_min_asf = unset_r8 ! subgrid vertical velocity (liquid) minimum (after scale factor)
+   real(r8) :: microp_aero_wsubi_min = unset_r8    ! subgrid vertical velocity (ice) minimum
 
    ! Local variables
    integer :: unitn, ierr
    character(len=*), parameter :: subname = 'microp_aero_readnl'
 
    namelist /microp_aero_nl/ microp_aero_bulk_scale, microp_aero_npccn_scale, microp_aero_wsub_min, &
-                             microp_aero_wsubi_min, microp_aero_wsub_scale, microp_aero_wsubi_scale
+                             microp_aero_wsubi_min, microp_aero_wsub_scale, microp_aero_wsubi_scale, microp_aero_wsub_min_asf
    !-----------------------------------------------------------------------------
 
    if (masterproc) then
@@ -446,6 +447,8 @@ subroutine microp_aero_readnl(nlfile)
    if (ierr /= 0) call endrun(subname//": FATAL: mpi_bcast: microp_aero_wsubi_scale")
    call mpi_bcast(microp_aero_wsub_min, 1, mpi_real8, mstrid, mpicom, ierr)
    if (ierr /= 0) call endrun(subname//": FATAL: mpi_bcast: microp_aero_wsub_min")
+   call mpi_bcast(microp_aero_wsub_min_asf, 1, mpi_real8, mstrid, mpicom, ierr)
+   if (ierr /= 0) call endrun(subname//": FATAL: mpi_bcast: microp_aero_wsub_min_asf")
    call mpi_bcast(microp_aero_wsubi_min, 1, mpi_real8, mstrid, mpicom, ierr)
    if (ierr /= 0) call endrun(subname//": FATAL: mpi_bcast: microp_aero_wsubi_min")
 
@@ -455,6 +458,7 @@ subroutine microp_aero_readnl(nlfile)
    wsub_scale = microp_aero_wsub_scale
    wsubi_scale = microp_aero_wsubi_scale
    wsub_min = microp_aero_wsub_min
+   wsub_min_asf = microp_aero_wsub_min_asf
    wsubi_min = microp_aero_wsubi_min
 
    if(bulk_scale == unset_r8) call endrun(subname//": FATAL: bulk_scale is not set")
@@ -462,6 +466,7 @@ subroutine microp_aero_readnl(nlfile)
    if(wsub_scale == unset_r8) call endrun(subname//": FATAL: wsub_scale is not set")
    if(wsubi_scale == unset_r8) call endrun(subname//": FATAL: wsubi_scale is not set")
    if(wsub_min == unset_r8) call endrun(subname//": FATAL: wsub_min is not set")
+   if(wsub_min_asf == unset_r8) call endrun(subname//": FATAL: wsub_min_asf is not set")
    if(wsubi_min == unset_r8) call endrun(subname//": FATAL: wsubi_min is not set")
 
    call nucleate_ice_cam_readnl(nlfile)
@@ -728,12 +733,12 @@ subroutine microp_aero_run ( &
       ! liquid clouds. This is the same behavior as CAM5.
       if (use_preexisting_ice) then
          call dropmixnuc( aero_props_obj, aero_state1_obj, &
-              state1, ptend_loc, deltatin, pbuf, wsub, &
+              state1, ptend_loc, deltatin, pbuf, wsub, wsub_min_asf, &
               cldn, cldo, cldliqf, nctend_mixnuc, factnum)
       else
          cldliqf = 1._r8
          call dropmixnuc( aero_props_obj, aero_state1_obj, &
-              state1, ptend_loc, deltatin, pbuf, wsub, &
+              state1, ptend_loc, deltatin, pbuf, wsub, wsub_min_asf, &
               lcldn, lcldo, cldliqf, nctend_mixnuc, factnum)
       end if
 
