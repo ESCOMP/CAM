@@ -28,7 +28,8 @@ module clubb_mf
             clubb_mf_ddalph, &
             clubb_mf_up_ndt, &
             clubb_mf_cp_ndt, &
-            do_clubb_mf_cmt
+            do_clubb_mf_cmt, &
+            do_clubb_mf_addtke
 
   !
   ! Lopt 0 = fixed L0
@@ -59,6 +60,7 @@ module clubb_mf
   logical, protected :: do_clubb_mf = .false.
   logical, protected :: do_clubb_mf_diag = .false.
   logical, protected :: do_clubb_mf_rad = .false.
+  logical, protected :: do_clubb_mf_addtke = .false.
   logical, protected :: do_clubb_mf_coldpool = .false.
   logical, protected :: do_clubb_mf_ustar = .false.
   logical, protected :: do_clubb_mf_mixd = .false.
@@ -93,7 +95,8 @@ module clubb_mf
                            clubb_mf_nup, clubb_mf_max_L0, do_clubb_mf, do_clubb_mf_diag, do_clubb_mf_precip, do_clubb_mf_rad, &
                            clubb_mf_fdd, do_clubb_mf_coldpool, clubb_mf_ddalph, clubb_mf_ddbeta, clubb_mf_pwfac, do_clubb_mf_ustar, &
                            clubb_mf_ddexp, do_clubb_mf_mixd, clubb_mf_up_ndt, clubb_mf_cp_ndt, do_clubb_mf_rhtke, do_clubb_mf_cmt, &
-                           do_clubb_mf_coldpool_init, do_clubb_mf_coldpool_perplume, do_clubb_mf_lscale_perplume, clubb_mf_kseed
+                           do_clubb_mf_coldpool_init, do_clubb_mf_coldpool_perplume, do_clubb_mf_lscale_perplume, clubb_mf_kseed, &
+                           do_clubb_mf_addtke
 
     if (masterproc) then
       open( newunit=iunit, file=trim(nlfile), status='old' )
@@ -162,7 +165,9 @@ module clubb_mf
     call mpi_bcast(do_clubb_mf_coldpool_perplume, 1, mpi_logical, mstrid, mpicom, ierr)
     if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: do_clubb_mf_coldpool_perplume")
     call mpi_bcast(do_clubb_mf_lscale_perplume, 1, mpi_logical, mstrid, mpicom, ierr)
-    if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: do_clubb_mf_lscae_perplume")
+    if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: do_clubb_mf_lscale_perplume")
+    call mpi_bcast(do_clubb_mf_addtke, 1, mpi_logical, mstrid, mpicom, ierr)
+    if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: do_clubb_mf_addtke")
 
     if ((.not. do_clubb_mf) .and. do_clubb_mf_diag ) then
        call endrun('clubb_mf_readnl: Error - cannot turn on do_clubb_mf_diag without also turning on do_clubb_mf')

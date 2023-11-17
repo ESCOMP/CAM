@@ -3384,6 +3384,7 @@ if ($clubb_sgs  =~ /$TRUE/io) {
    add_default($nl, 'do_clubb_mf_diag');
    add_default($nl, 'do_clubb_mf_rad');
    add_default($nl, 'do_clubb_mf_precip');
+   add_default($nl, 'do_clubb_mf_addtke');
    add_default($nl, 'clubb_mf_L0');
    add_default($nl, 'clubb_mf_ent0');
    add_default($nl, 'clubb_mf_alphturb');

@@ -34,10 +34,9 @@ module clubb_intr
   use clubb_api_module,    only: pdf_parameter, implicit_coefs_terms
   use clubb_api_module,    only: clubb_config_flags_type, grid, stats, nu_vertical_res_dep
   use clubb_api_module,    only: nparams
-  use clubb_mf,            only: do_clubb_mf, do_clubb_mf_diag
   use cloud_fraction,      only: dp1, dp2
   use clubb_mf,            only: do_clubb_mf, do_clubb_mf_diag, clubb_mf_nup, do_clubb_mf_rad, clubb_mf_Lopt, &
-                                 clubb_mf_ddalph, clubb_mf_up_ndt, clubb_mf_cp_ndt, do_clubb_mf_cmt
+                                 clubb_mf_ddalph, clubb_mf_up_ndt, clubb_mf_cp_ndt, do_clubb_mf_cmt, do_clubb_mf_addtke
   use cam_history_support, only: add_hist_coord
 #endif
 
@@ -5446,7 +5445,13 @@ end subroutine clubb_init_cnst
          wprtp_output(i,k)   = wprtp(i,k)
          rtpthlp_output(i,k) = rtpthlp(i,k)-(apply_const*rtpthlp_const)                !  rtpthlp output
          wp3_output(i,k)     = wp3(i,k) - (apply_const*wp3_const)                      !  wp3 output
-         tke(i,k)            = 0.5_r8*(up2(i,k)+vp2(i,k)+wp2(i,k))                     !  turbulent kinetic energy
+
+         if (do_clubb_mf_addtke) then
+           tke(i,k)            = 0.5_r8*(up2(i,k)+vp2(i,k)+wp2(i,k)+s_aww_output(i,k))   !  turbulent kinetic energy
+         else
+           tke(i,k)            = 0.5_r8*(up2(i,k)+vp2(i,k)+wp2(i,k))                     !  turbulent kinetic energy
+         end if
+
          if (do_clubb_mf) then
            ! comment out for kinemtatic fluxes 
            !mf_thlflx_output(i,k) = mf_thlflx_output(i,k)*rho(i,k)*cpair

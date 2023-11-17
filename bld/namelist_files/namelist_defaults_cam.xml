@@ -2172,6 +2172,7 @@
 <do_clubb_mf_diag                  > .false. </do_clubb_mf_diag>
 <do_clubb_mf_precip                > .false. </do_clubb_mf_precip>
 <do_clubb_mf_rad                   > .false. </do_clubb_mf_rad>
+<do_clubb_mf_addtke                > .false. </do_clubb_mf_addtke>
 <clubb_mf_L0                       > 50.0    </clubb_mf_L0>
 <clubb_mf_ent0                     > 0.2     </clubb_mf_ent0>
 <clubb_mf_alphturb                 > 0.0     </clubb_mf_alphturb>
