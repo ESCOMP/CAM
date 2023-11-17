@@ -121,9 +121,9 @@ OPTIONS
                           test_tracers, test_tracers2].
                         Default: none.
      -chem <name>       Build CAM with specified prognostic chemistry package
-                        [ trop_mam3 | trop_mam4 | trop_mam7 | trop_mozart | trop_strat_mam4_vbs | trop_strat_mam4_vbsext | 
-                          waccm_ma | waccm_mad | waccm_mad_mam4 | waccm_ma_mam4 | 
-                          waccm_ma_sulfur | waccm_sc | waccm_sc_mam4 | waccm_tsmlt_mam4 | 
+                        [ trop_mam3 | trop_mam4 | trop_mam7 | trop_mozart | trop_strat_mam4_vbs | trop_strat_mam4_vbsext |
+                          waccm_ma | waccm_mad | waccm_mad_mam4 | waccm_ma_mam4 |
+                          waccm_ma_sulfur | waccm_sc | waccm_sc_mam4 | waccm_tsmlt_mam4 |
                           terminator | none ].
                         Default: trop_mam4 for cam6 and trop_mam3 for cam5.
      -[no]clubb_sgs     Switch on [off] CLUBB_SGS.  Default: on for cam6, otherwise off.
@@ -1929,7 +1929,7 @@ if ($cfg_ref->get('analytic_ic')) {
 
 #WACCM-X extended thermosphere/ionosphere model
 if ($waccmx) {
-    $cfg_cppdefs .= ' -DWACCMX_PHYS'; 
+    $cfg_cppdefs .= ' -DWACCMX_PHYS';
     if (($dyn_pkg ne 'fv') and ($ionos ne 'none'))  {
         die "ERROR:  Ionosphere is only available for FV dycore \n";
     }
@@ -3075,13 +3075,13 @@ sub write_cosp_makefile
 
 CAM_BLD      := $cam_bld
 COSP_PATH    := $cam_dir/src/physics/cosp2
-ISCCP_PATH   := $cam_dir/src/physics/cosp2/src/simulator/icarus
-RS_PATH      := $cam_dir/src/physics/cosp2/src/simulator/quickbeam
-RT_PATH      := $cam_dir/src/physics/cosp2/src/simulator/rttov
-CS_PATH      := $cam_dir/src/physics/cosp2/src/simulator/actsim
-MISR_PATH    := $cam_dir/src/physics/cosp2/src/simulator/MISR_simulator
-MODIS_PATH   := $cam_dir/src/physics/cosp2/src/simulator/MODIS_simulator
-PARASOL_PATH := $cam_dir/src/physics/cosp2/src/simulator/parasol
+ISCCP_PATH   := $cam_dir/src/physics/cosp2/src/src/simulator/icarus
+RS_PATH      := $cam_dir/src/physics/cosp2/src/src/simulator/quickbeam
+RT_PATH      := $cam_dir/src/physics/cosp2/src/src/simulator/rttov
+CS_PATH      := $cam_dir/src/physics/cosp2/src/src/simulator/actsim
+MISR_PATH    := $cam_dir/src/physics/cosp2/src/src/simulator/MISR_simulator
+MODIS_PATH   := $cam_dir/src/physics/cosp2/src/src/simulator/MODIS_simulator
+PARASOL_PATH := $cam_dir/src/physics/cosp2/src/src/simulator/parasol
 
 EOF
 
