@@ -1310,6 +1310,11 @@
 <so4_a1_an_ext_file   hgrid="ne30np4" npg="3" ver="cam6">atm/cam/chem/emis/historical_ne30pg3/emissions-cmip6_so4_a1_anthro-ene_vertical_mol_175001-201412_ne30pg3_c20200103.nc</so4_a1_an_ext_file>
 <num_a1_an_ext_file   hgrid="ne30np4" npg="3" ver="cam6">atm/cam/chem/emis/historical_ne30pg3/emissions-cmip6_num_so4_a1_anthro-ene_vertical_mol_175001-201412_ne30pg3_c20200103.nc</num_a1_an_ext_file>
 
+<bc_a4_ar_ext_file    hgrid="ne30np4" npg="3" ver="cam6">atm/cam/chem/emis/historical_ne30pg3/emissions-cmip6_bc_a4_aircraft_vertical_1750-2015_ne30pg3_c20231112.nc</bc_a4_ar_ext_file>
+<num_a4_ar_ext_file   hgrid="ne30np4" npg="3" ver="cam6">atm/cam/chem/emis/historical_ne30pg3/emissions-cmip6_num_bc_a4_aircraft_vertical_1750-2015_ne30pg3_c20231112.nc</num_a4_ar_ext_file>
+<no2_ar_ext_file      hgrid="ne30np4" npg="3" ver="cam6">atm/cam/chem/emis/historical_ne30pg3/emissions-cmip6_NO2_aircraft_vertical_1750-2015_ne30pg3_c20231112.nc</no2_ar_ext_file>
+<so2_ar_ext_file      hgrid="ne30np4" npg="3" ver="cam6">atm/cam/chem/emis/historical_ne30pg3/emissions-cmip6_SO2_aircraft_vertical_1750-2015_ne30pg3_c20231112.nc</so2_ar_ext_file>
+
 <!-- ne30 pg2 -->
 
 <dms_ot_srf_file     hgrid="ne30np4" npg="2" ver="cam6">atm/cam/chem/emis/historical_ne30pg2/emissions-cmip6_DMS_other_surface_1750_2015_ne30pg2_c20200630.nc</dms_ot_srf_file>
