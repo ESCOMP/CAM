@@ -104,7 +104,7 @@ subroutine stepon_run1( dtime_out, phys_state, phys_tend,               &
    use dp_coupling,    only: d_p_coupling
    use physics_buffer, only: physics_buffer_desc
 
-   use time_mod,       only: tstep                    ! dynamics timestep
+   use se_dyn_time_mod,only: tstep                    ! dynamics timestep
 
    real(r8),             intent(out)   :: dtime_out   ! Time-step
    type(physics_state),  intent(inout) :: phys_state(begchunk:endchunk)
@@ -190,7 +190,7 @@ subroutine stepon_run2(phys_state, phys_tend, dyn_in, dyn_out)
    use dp_coupling,            only: p_d_coupling
    use dyn_grid,               only: TimeLevel
 
-   use time_mod,               only: TimeLevel_Qdp
+   use se_dyn_time_mod,        only: TimeLevel_Qdp
    use control_mod,            only: qsplit
    use prim_advance_mod,       only: tot_energy_dyn
 
@@ -245,7 +245,7 @@ subroutine stepon_run3(dtime, cam_out, phys_state, dyn_in, dyn_out)
    use dyn_comp,       only: dyn_run
    use advect_tend,    only: compute_adv_tends_xyz
    use dyn_grid,       only: TimeLevel
-   use time_mod,       only: TimeLevel_Qdp
+   use se_dyn_time_mod,only: TimeLevel_Qdp
    use control_mod,    only: qsplit
    use constituents,   only: pcnst, cnst_name
    use cam_history,    only: outfld
@@ -393,7 +393,7 @@ subroutine diag_dynvar_ic(elem, fvm)
    use cam_history,            only: write_inithist, outfld, hist_fld_active, fieldname_len
    use dyn_grid,               only: TimeLevel
 
-   use time_mod,               only: TimeLevel_Qdp   !  dynamics typestep
+   use se_dyn_time_mod,        only: TimeLevel_Qdp   !  dynamics typestep
    use control_mod,            only: qsplit
    use hybrid_mod,             only: config_thread_region, get_loop_ranges
    use hybrid_mod,             only: hybrid_t
