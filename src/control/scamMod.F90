@@ -391,7 +391,7 @@ subroutine scam_readnl(nlfile,single_column_in,scmlat_in,scmlon_in)
      
 end subroutine scam_readnl
 
-subroutine readiopdata(iop_update_phase1, hvcoord)
+subroutine readiopdata(hvcoord)
 !jt  subroutine readiopdata(timelevel)
 
 
@@ -425,7 +425,6 @@ subroutine readiopdata(iop_update_phase1, hvcoord)
 !------------------------------Input Arguments--------------------------
 !     
 !jt integer, optional, intent(in) :: timelevel
-logical,          intent(in) :: iop_update_phase1
 type (hvcoord_t), intent(in) :: hvcoord
 
 !------------------------------Locals-----------------------------------
@@ -727,7 +726,8 @@ type (hvcoord_t), intent(in) :: hvcoord
 !      with capital T defined in cam
 !
 
-!!$   tobs(:)= t3(1,:,1,ntimelevel)
+!jt   tobs(:)= t3(1,:,1,ntimelevel)
+   tobs(:)= 0._r8
 
    if ( use_camiop ) then
      call getinterpncdata( ncid, scmlat, scmlon, ioptimeidx,'t', have_tsair, &
@@ -782,11 +782,12 @@ type (hvcoord_t), intent(in) :: hvcoord
       have_srf = .true.
    endif
 
-!!$   if (is_first_step()) then
-!!$      qinitobs(:,:)=q3(1,:,:,1,ntimelevel)
-!!$   end if
+!jt   if (is_first_step()) then
+!jt      qinitobs(:,:)=q3(1,:,:,1,ntimelevel)
+!jt   end if
 !!$
-!!$   qobs(:)= q3(1,:,1,1,ntimelevel)
+!jt   qobs(:)= q3(1,:,1,1,ntimelevel)
+   qobs(:)= 0._r8
 
    call getinterpncdata( ncid, scmlat, scmlon, ioptimeidx,  'q', have_srf, &
       srf(1), fill_ends, scm_crm_mode, &
@@ -1076,11 +1077,18 @@ type (hvcoord_t), intent(in) :: hvcoord
    
    vertdivt=0._r8
 
-   call getinterpncdata( ncid, scmlat, scmlon, ioptimeidx, 'vertdivT', &
+   call getinterpncdata( ncid, scmlat, scmlon, ioptimeidx, 'vertdivTx', &
       have_srf, srf(1), fill_ends, scm_crm_mode, &
       dplevs, nlev,psobs, hvcoord%hyam, hvcoord%hybm, vertdivt, status )
    if ( status .ne. nf90_noerr ) then
-      have_vertdivt = .false.
+      call getinterpncdata( ncid, scmlat, scmlon, ioptimeidx, 'vertdivT', &
+           have_srf, srf(1), fill_ends, scm_crm_mode, &
+           dplevs, nlev,psobs, hvcoord%hyam, hvcoord%hybm, vertdivt, status )
+      if ( status .ne. nf90_noerr ) then
+         have_vertdivt = .false.
+      else
+         have_vertdivt = .true.
+      endif
    else
       have_vertdivt = .true.
    endif
@@ -1320,7 +1328,7 @@ type (hvcoord_t), intent(in) :: hvcoord
 !     make sure that use_3dfrc flag is set to true if we only have
 !     3d forcing available
 !
-   if (scm_use_3dfrc .and. (have_divt3d .or. have_divq3d)) then
+   if (scm_use_3dfrc .and. (have_divt3d .and. have_divq3d)) then
       use_3dfrc = .true.
    else
       use_3dfrc = .false.

@@ -882,7 +882,7 @@ end subroutine check_energy_get_integrals
 
 !-----------------------------------------------------------------------
 
-    if (.not.thermo_budget_history) return
+!jt    if (.not.thermo_budget_history) return
 
     do i=1,thermo_budget_num_vars
        name_out(i)=trim(thermo_budget_vars(i))//'_'//trim(outfld_name_suffix)
@@ -945,14 +945,14 @@ end subroutine check_energy_get_integrals
       end if
     end if
 
-    call outfld(name_out(seidx)  ,se      , pcols   ,lchnk   )
-    call outfld(name_out(poidx)  ,po      , pcols   ,lchnk   )
-    call outfld(name_out(keidx)  ,ke      , pcols   ,lchnk   )
-    call outfld(name_out(wvidx)  ,wv      , pcols   ,lchnk   )
-    call outfld(name_out(wlidx)  ,liq     , pcols   ,lchnk   )
-    call outfld(name_out(wiidx)  ,ice     , pcols   ,lchnk   )
-    call outfld(name_out(ttidx)  ,tt      , pcols   ,lchnk   )
-    call outfld(name_out(teidx)  ,se+ke+po, pcols   ,lchnk   )
+!!$    call outfld(name_out(seidx)  ,se      , pcols   ,lchnk   )
+!!$    call outfld(name_out(poidx)  ,po      , pcols   ,lchnk   )
+!!$    call outfld(name_out(keidx)  ,ke      , pcols   ,lchnk   )
+!!$    call outfld(name_out(wvidx)  ,wv      , pcols   ,lchnk   )
+!!$    call outfld(name_out(wlidx)  ,liq     , pcols   ,lchnk   )
+!!$    call outfld(name_out(wiidx)  ,ice     , pcols   ,lchnk   )
+!!$    call outfld(name_out(ttidx)  ,tt      , pcols   ,lchnk   )
+!!$    call outfld(name_out(teidx)  ,se+ke+po, pcols   ,lchnk   )
     !
     ! Axial angular momentum diagnostics
     !
@@ -983,8 +983,8 @@ end subroutine check_energy_get_integrals
        end do
     end do
     
-    call outfld(name_out(mridx)  ,mr, pcols,lchnk   )
-    call outfld(name_out(moidx)  ,mo, pcols,lchnk   )
+!!$    call outfld(name_out(mridx)  ,mr, pcols,lchnk   )
+!!$    call outfld(name_out(moidx)  ,mo, pcols,lchnk   )
 
   end subroutine tot_energy_phys
 

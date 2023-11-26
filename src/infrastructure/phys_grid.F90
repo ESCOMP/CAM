@@ -21,7 +21,7 @@ module phys_grid
 !
 !------------------------------------------------------------------------------
    use shr_kind_mod,        only: r8 => shr_kind_r8
-   use ppgrid,              only: begchunk, endchunk
+   use ppgrid,              only: begchunk, endchunk, pver, pverp, pcols
    use physics_column_type, only: physics_column_t
    use perf_mod,            only: t_adj_detailf, t_startf, t_stopf
 
@@ -112,8 +112,8 @@ module phys_grid
 !!XXgoldyXX: ^ temporary interface to allow old code to compile
 
 
-   integer,          protected, public :: pver = 0
-   integer,          protected, public :: pverp = 0
+!jt   integer,          protected, public :: pver = 0
+!jt   integer,          protected, public :: pverp = 0
    integer,          protected, public :: num_global_phys_cols = 0
    integer,          protected, public :: columns_on_task = 0
    integer,          protected, public :: index_top_layer = 0
@@ -132,7 +132,6 @@ CONTAINS
       use cam_logfile,     only: iulog
       use spmd_utils,      only: mpicom, mstrid=>masterprocid, masterproc
       use spmd_utils,      only: mpi_integer
-      use ppgrid,          only: pcols
 
       character(len=*), intent(in) :: nlfile
 
@@ -186,7 +185,6 @@ CONTAINS
       use cam_abortutils,   only: endrun
       use cam_logfile,      only: iulog
       use spmd_utils,       only: npes, mpicom, masterprocid, masterproc, iam
-      use ppgrid,           only: pcols
       use dyn_grid,         only: get_dyn_grid_info, physgrid_copy_attributes_d
       use cam_grid_support, only: cam_grid_register, cam_grid_attribute_register
       use cam_grid_support, only: iMap, hclen => max_hcoordname_len
@@ -194,7 +192,6 @@ CONTAINS
       use cam_grid_support, only: cam_grid_attribute_copy, cam_grid_attr_exists
       use shr_const_mod,    only: PI => SHR_CONST_PI
       use scamMod,          only: scmlon,scmlat,single_column
-      use cam_grid_support, only: max_hcoordname_len
 
       ! Local variables
       integer                             :: index
@@ -224,7 +221,7 @@ CONTAINS
       real(r8),               parameter   :: rarea_sphere = 1.0_r8 / (4.0_r8*PI)
       real (r8),              allocatable :: dynlats(:),dynlons(:),pos_dynlons(:)
       real (r8)                           :: pos_scmlon,minpoint,testpoint
-      integer                             :: scm_col_index, i
+      integer                             :: scm_col_index, i, num_lev
 
       nullify(lonvals)
       nullify(latvals)
@@ -243,7 +240,7 @@ CONTAINS
       call t_startf("phys_grid_init")
 
       ! Gather info from the dycore
-      call get_dyn_grid_info(hdim1_d, hdim2_d, pver, index_top_layer,         &
+      call get_dyn_grid_info(hdim1_d, hdim2_d, num_lev, index_top_layer,         &
            index_bottom_layer, unstructured, dyn_columns)
 
       ! Set up the physics decomposition
@@ -274,10 +271,8 @@ CONTAINS
       else
          phys_columns_on_task = columns_on_task
       end if
-
       ! hdim1_d * hdim2_d is the total number of columns
       num_global_phys_cols = hdim1_d * hdim2_d
-      pverp = pver + 1
       !!XXgoldyXX: Can we enforce interface numbering separate from dycore?
       !!XXgoldyXX: This will work for both CAM and WRF/MPAS physics
       !!XXgoldyXX: This only has a 50% chance of working on a single level model
@@ -316,23 +311,21 @@ CONTAINS
             col_index = col_index + 1
             ! Copy information supplied by the dycore
             if (single_column) then
-               
                phys_columns(col_index) = dyn_columns(scm_col_index)
-               !single column only has 1 global column that is written to at offset 1
+!jt               !scm physics only has 1 global column
                phys_columns(col_index)%global_col_num = 1
+               phys_columns(col_index)%coord_indices(:)=scm_col_index
             else
                phys_columns(col_index) = dyn_columns(col_index)
             end if
             ! Fill in physics decomp info
-!jt            phys_columns(col_index)%coord_indices(:)=scm_col_index
-            phys_columns(col_index)%coord_indices(:)=1
             phys_columns(col_index)%phys_task = iam
             phys_columns(col_index)%local_phys_chunk = index
             phys_columns(col_index)%phys_chunk_index = phys_col
             chunks(index)%phys_cols(phys_col) = col_index
          end do
       end do
-      
+
       deallocate(dyn_columns)
 
       ! Add physics-package grid to set of CAM grids
@@ -1220,7 +1213,6 @@ CONTAINS
    subroutine scatter_field_to_chunk(fdim,mdim,ldim, &
                                      hdim1d,globalfield,localchunks)
       use cam_abortutils, only: endrun
-      use ppgrid, only: pcols
       !-----------------------------------------------------------------------
       !
       ! Purpose: DUMMY FOR WEAK SCALING TESTS

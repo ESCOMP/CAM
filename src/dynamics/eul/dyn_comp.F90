@@ -32,7 +32,7 @@ use eul_control_mod, only: dif2, hdif_order, kmnhdn, hdif_coef, divdampn, eps, &
 
 use scamMod,         only: single_column, use_camiop, have_u, have_v, &
                            have_cldliq, have_cldice, loniop, latiop, scmlat, scmlon, &
-                           qobs,tobs,scm_cambfb_mode
+                           qobs,tobs,scm_cambfb_mode,uobs,vobs,psobs
 
 use cam_pio_utils,   only: clean_iodesc_list, cam_pio_get_var
 use pio,             only: file_desc_t, pio_noerr, pio_inq_varid, pio_get_att, &
@@ -367,8 +367,9 @@ subroutine read_inidat()
 
    use ncdio_atm,        only: infld
 
-   use iop,              only: setiopupdate,readiopdata
-
+   use scamMod,          only: setiopupdate,setiopupdate_init,readiopdata
+   use dyn_grid,         only: hvcoord
+   use iop,              only: iop_update_prognostics
    ! Local variables
 
    integer i,c,m,n,lat                     ! indices
@@ -403,6 +404,7 @@ subroutine read_inidat()
    real(r8), allocatable :: tmp2d(:,:)
 
    character(len=*), parameter :: sub='read_inidat'
+   integer ioptop,k
    !----------------------------------------------------------------------------
 
    fh_ini  => initial_file_get_id()
@@ -581,12 +583,19 @@ subroutine read_inidat()
          latiop(2)=(scmlat+2._r8)*pi/180_r8
          loniop(1)=(mod(scmlon-2.0_r8+360.0_r8,360.0_r8))*pi/180.0_r8
          loniop(2)=(mod(scmlon+2.0_r8+360.0_r8,360.0_r8))*pi/180.0_r8
+         call setiopupdate_init()
          call setiopupdate()
-         ! readiopdata will set all n1 level prognostics to iop value timestep 0
-         call readiopdata(timelevel=1)
-         ! set t3, and q3(n1) values from iop on timestep 0
-         t3(1,:,1,1) = tobs
-         q3(1,:,1,1,1) = qobs
+         call readiopdata(hvcoord)
+         call iop_update_prognostics(1,t3=t3,u3=u3,v3=v3,q3=q3,ps=ps)
+!!$         ! set t3, and q3(n1) values from iop on timestep 0
+!!$         ! Find level where tobs is no longer zero
+!!$         ioptop = minloc(tobs(:), 1, BACK=.true.)+1
+!!$
+!!$         ps(:,:,1) = psobs
+!!$         t3(1,ioptop:,1,1) = tobs(ioptop:)
+!!$         u3(1,ioptop:,1,1) = uobs(ioptop:)
+!!$         v3(1,ioptop:,1,1) = vobs(ioptop:)
+!!$         q3(1,ioptop:,1,1,1) = qobs(ioptop:)
       end if
    end if
 

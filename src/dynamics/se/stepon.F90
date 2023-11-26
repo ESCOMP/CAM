@@ -133,11 +133,11 @@ subroutine stepon_run1( dtime_out, phys_state, phys_tend,               &
 
 
    if (use_iop .and. masterproc) then
-     if (is_first_step()) then 
-       call setiopupdate_init()
-     else
+!!$     if (is_first_step()) then 
+!!$       call setiopupdate_init()
+!!$     else
        call setiopupdate
-     endif
+!!$     endif
    end if
 
    if (single_column) then
@@ -145,14 +145,16 @@ subroutine stepon_run1( dtime_out, phys_state, phys_tend,               &
      ! If first restart step then ensure that IOP data is read
      if (is_first_restart_step()) then
        iop_update_phase1 = .false.
-       call scm_setinitial(dyn_out%elem)
-       if (masterproc) call readiopdata( iop_update_phase1,hvcoord )
+!jt       call scm_setinitial(dyn_out%elem)
+!jt       if (masterproc) call readiopdata( iop_update_phase1,hvcoord )
+       if (masterproc) call readiopdata( hvcoord )
        call iop_broadcast()
      endif
 
      iop_update_phase1 = .true. 
      if ((is_first_restart_step() .or. doiopupdate) .and. masterproc) then
-         call readiopdata(iop_update_phase1,hvcoord)
+!jt         call readiopdata(iop_update_phase1, hvcoord)
+         call readiopdata(hvcoord)
      endif
      call iop_broadcast()
 
@@ -294,8 +296,9 @@ subroutine stepon_run3(dtime, cam_out, phys_state, dyn_in, dyn_out)
 
       iop_update_phase1 = .false. 
       if (doiopupdate) then
-         call scm_setinitial(dyn_out%elem)
-         if (masterproc) call readiopdata(iop_update_phase1,hvcoord)
+!jt         call scm_setinitial(dyn_out%elem)
+!jt         if (masterproc) call readiopdata(iop_update_phase1,hvcoord)
+         if (masterproc) call readiopdata(hvcoord)
          call iop_broadcast()
          call scm_setfield(dyn_out%elem,iop_update_phase1)
       endif

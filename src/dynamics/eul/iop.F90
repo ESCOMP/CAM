@@ -38,7 +38,7 @@ module iop
 !
 ! !PUBLIC MEMBER FUNCTIONS:
   public :: init_iop_fields
-!  public :: scam_use_iop_srf
+  public :: iop_update_prognostics
 ! !PUBLIC DATA:
   public betasav, &
          dqfx3sav, divq3dsav, divt3dsav,divu3dsav,divv3dsav,t2sav,fusav,fvsav
@@ -104,6 +104,39 @@ contains
    endif
   end subroutine init_iop_fields
 
+  subroutine iop_update_prognostics(timelevel,ps,t3,u3,v3,q3)
+!------------------------------------------------------------------------------
+! Copy IOP forcing fields into prognostics which for Eulerian is just PS
+!------------------------------------------------------------------------------
+   use scamMod,             only: tobs,uobs,vobs,qobs,psobs
+   use prognostics,         only: ptimelevels
+   implicit none
+
+   !-----------------------------------------------------------------------
+
+   integer,  intent(in)   :: timelevel
+   real(r8), optional, intent(inout) :: q3(:,:,:,:,:)
+   real(r8), optional, intent(inout) :: u3(:,:,:,:)
+   real(r8), optional, intent(inout) :: v3(:,:,:,:)
+   real(r8), optional, intent(inout) :: t3(:,:,:,:)
+!   real(r8), optional, intent(inout) :: ps(plon,beglat:endlat,ptimelevels)
+   real(r8), optional, intent(inout) :: ps(:,:,:)
+
+!---------------------------Local workspace-----------------------------
+   integer                        :: ioptop
+   character(len=*), parameter    :: sub = "iop_update_prognostics"
+!-----------------------------------------------------------------------
+   ! set prognostics from iop
+   ! Find level where tobs is no longer zero
+   ioptop = minloc(tobs(:), 1, BACK=.true.)+1
+   
+   if (present(ps)) ps(1,1,timelevel)           = psobs
+   if (present(t3)) t3(1,ioptop:,1,timelevel)   = tobs(ioptop:)
+   if (present(u3)) u3(1,ioptop:,1,timelevel)   = uobs(ioptop:)
+   if (present(v3)) v3(1,ioptop:,1,timelevel)   = vobs(ioptop:)
+   if (present(q3)) q3(1,ioptop:,1,1,timelevel) = qobs(ioptop:)
+
+ end subroutine iop_update_prognostics
 
 end module iop
 

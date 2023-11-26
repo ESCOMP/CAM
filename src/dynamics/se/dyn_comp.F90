@@ -46,6 +46,9 @@ use time_mod,               only: nsplit
 use edge_mod,               only: initEdgeBuffer, edgeVpack, edgeVunpack, FreeEdgeBuffer
 use edgetype_mod,           only: EdgeBuffer_t
 use bndry_mod,              only: bndry_exchange
+use se_single_column_mod,   only: scm_setinitial
+use scamMod,                only: single_column, have_divT3d, readiopdata, use_iop, setiopupdate_init, &
+                                  scmlon, scmlat
 
 implicit none
 private
@@ -753,8 +756,13 @@ subroutine dyn_init(dyn_in, dyn_out)
    call set_phis(dyn_in)
 
    if (initial_run) then
-     call read_inidat(dyn_in)
-     call clean_iodesc_list()
+      call read_inidat(dyn_in)
+      if (use_iop .and. masterproc) then
+         call setiopupdate_init()
+         call readiopdata( hvcoord )
+         call scm_setinitial(dyn_in%elem)
+      end if
+      call clean_iodesc_list()
    end if
    !
    ! initialize diffusion in dycore
@@ -979,7 +987,7 @@ subroutine dyn_run(dyn_state)
    use thread_mod,       only: horz_num_threads
    use time_mod,         only: tevolve
    use scamMod,          only: single_column, use_3dfrc
-   use se_single_column_mod, only: apply_SC_forcing
+   use se_single_column_mod, only: apply_SC_forcing,ie_scm
 
    type(dyn_export_t), intent(inout) :: dyn_state
 
@@ -998,6 +1006,7 @@ subroutine dyn_run(dyn_state)
    real(r8), allocatable, dimension(:,:,:) :: ps_before
    real(r8), allocatable, dimension(:,:,:) :: abs_ps_tend
    real (kind=r8)                          :: omega_cn(2,nelemd) !min and max of vertical Courant number
+   integer                                 :: nets_in,nete_in
    !----------------------------------------------------------------------------
 
 #ifdef debug_coupling
@@ -1009,7 +1018,7 @@ subroutine dyn_run(dyn_state)
 
    if (iam >= par%nprocs) return
 
-   if (.not. use_3dfrc) then
+   if (.not. use_3dfrc ) then
 
       ldiag = hist_fld_active('ABS_dPSdt')
       if (ldiag) then
@@ -1121,7 +1130,14 @@ subroutine dyn_run(dyn_state)
          end if
          
          ! forward-in-time RK, with subcycling
-         call prim_run_subcycle(dyn_state%elem, dyn_state%fvm, hybrid, nets, nete, &
+         if (single_column) then
+            nets_in=ie_scm
+            nete_in=ie_scm
+         else
+            nets_in=nets
+            nete_in=nete
+         end if
+         call prim_run_subcycle(dyn_state%elem, dyn_state%fvm, hybrid, nets_in, nete_in, &
               tstep, TimeLevel, hvcoord, n, single_column, omega_cn)
          
          if (ldiag) then
@@ -1357,8 +1373,10 @@ subroutine read_inidat(dyn_in)
       allocate(dbuf3(npsq,nlev,nelemd))
 
       ! Check that columns in IC file match grid definition.
-      call check_file_layout(fh_ini, elem, dyn_cols, 'ncdata', .true.)
-
+      if (.not. single_column) then
+         call check_file_layout(fh_ini, elem, dyn_cols, 'ncdata', .true.)
+      end if
+      
       ! Read 2-D field
 
       fieldname  = 'PS'
@@ -2056,7 +2074,7 @@ subroutine check_file_layout(file, elem, dyn_cols, file_desc, dyn_ok)
    end if
 
    ierr = pio_inq_dimlen(file, ncol_did, ncol_size)
-   if (ncol_size /= dyn_cols) then
+   if (ncol_size /= dyn_cols .and. .not. single_column) then
       if (masterproc) then
          write(iulog, '(a,2(a,i0))') trim(sub), ': ncol_size=', ncol_size, &
              ' : dyn_cols=', dyn_cols

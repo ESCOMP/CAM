@@ -116,7 +116,7 @@ contains
      integer  dummy
      integer  dummy_dyndecomp
      integer  i, k, m              
-     integer  ixcldliq, ixcldice, ixnumliq, ixnumice
+     integer  ixcldliq, ixcldice, ixnumliq, ixnumice, ioptop
      real(r8) weight, fac
      real(r8) pmidm1(plev)       
      real(r8) pintm1(plevp)      
@@ -222,6 +222,7 @@ contains
 
      dummy = 2
      dummy_dyndecomp = 1
+     ioptop = minloc(tobs(:), 1, BACK=.true.)+1
 
 
    ! ------------------------------------------------------------ !
@@ -461,10 +462,12 @@ contains
   endif
   
   if( scm_use_obs_uv .and. have_u .and. have_v ) then 
-     do k = 1, plev
-        ufcst(k) = uobs(k)
-        vfcst(k) = vobs(k)
-     enddo
+     ufcst=u3
+     vfcst=v3
+     ufcst(ioptop:plev)=uobs(ioptop:plev)
+     vfcst(ioptop:plev)=vobs(ioptop:plev)
+     ufcst(:plev)=uobs(:plev)
+     vfcst(:plev)=vobs(:plev)
   endif
   
   if( scm_use_obs_qv .and. have_q ) then 
@@ -544,17 +547,26 @@ contains
   ! --------------------------------------------------------- !
   ! Assign the final forecasted state to the output variables !
   ! --------------------------------------------------------- !
+
+  !Fill out tobs/qobs with background CAM state above IOP top before t3 update below
+  tobs(1:ioptop-1)=t3(1:ioptop-1)
+  qobs(1:ioptop-1)=q3(1:ioptop-1,1)
+
+  t3(:plev)=tfcst(:plev)
+  u3(:plev)=ufcst(:plev)
+  v3(:plev)=vfcst(:plev)
+  q3(:plev,:pcnst)=qfcst(1,:plev,:pcnst)
   
-  t3(1:plev)         = tfcst(1:plev)
-  u3(1:plev)         = ufcst(1:plev)
-  v3(1:plev)         = vfcst(1:plev)
-  q3(1:plev,1:pcnst) = qfcst(1,1:plev,1:pcnst)
+!!$  t3(1:plev)         = tfcst(1:plev)
+!!$  u3(1:plev)         = ufcst(1:plev)
+!!$  v3(1:plev)         = vfcst(1:plev)
+!!$  q3(1:plev,1:pcnst) = qfcst(1,1:plev,1:pcnst)
   
   tdiff(1:plev)  =   t3(1:plev)   - tobs(1:plev)
   qdiff(1:plev)  =   q3(1:plev,1) - qobs(1:plev)
 
-  call outfld( 'QDIFF'  , qdiff,             plon, dummy_dyndecomp )
-  call outfld( 'TDIFF'  , tdiff,             plon, dummy_dyndecomp )
+  call outfld( 'QDIFF'  , qdiff,             plon, dummy )
+  call outfld( 'TDIFF'  , tdiff,             plon, dummy )
   
    return
 

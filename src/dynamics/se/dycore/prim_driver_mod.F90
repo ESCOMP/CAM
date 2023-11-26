@@ -242,7 +242,7 @@ contains
     real (kind=r8)    , intent(inout):: omega_cn(2,nets:nete) !min and max of vertical Courant number    
 
     real(kind=r8)   :: dt_q, dt_remap, dt_phys
-    integer         :: ie, q,k,n0_qdp,np1_qdp,r, nstep_end,region_num_threads,i,j,nets_in,nete_in
+    integer         :: ie, q,k,n0_qdp,np1_qdp,r, nstep_end,region_num_threads,i,j
     real (kind=r8)  :: dp_np1(np,np)
     real (kind=r8)  :: dp_start(np,np,nlev+1,nets:nete),dp_end(np,np,nlev,nets:nete)
     logical         :: compute_diagnostics
@@ -317,15 +317,8 @@ contains
         dp_end(:,:,:,ie) = elem(ie)%state%dp3d(:,:,:,tl%np1)
       end do
     end if
-!    if (single_column) then
-!       nets_in=1
-!       nete_in=1
-!    else
-       nets_in=nets
-       nete_in=nete
-!    endif
     call t_startf('vertical_remap')
-    call vertical_remap(hybrid,elem,fvm,hvcoord,tl%np1,np1_qdp,nets_in,nete_in)
+    call vertical_remap(hybrid,elem,fvm,hvcoord,tl%np1,np1_qdp,nets,nete)
     call t_stopf('vertical_remap')
 
     !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!

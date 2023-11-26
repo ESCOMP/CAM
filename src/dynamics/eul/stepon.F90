@@ -16,14 +16,14 @@ module stepon
   use ppgrid,           only: begchunk, endchunk
   use physics_types,    only: physics_state, physics_tend
   use time_manager,     only: is_first_step, get_step_size
-  use iop,              only: setiopupdate, readiopdata
-  use scamMod,          only: use_iop,doiopupdate,use_pert_frc,wfld,wfldh,single_column
+  use scamMod,          only: use_iop,doiopupdate,use_pert_frc,wfld,wfldh,single_column,setiopupdate, readiopdata
   use perf_mod
 
   use aerosol_properties_mod, only: aerosol_properties
   use aerosol_state_mod,      only: aerosol_state
   use microp_aero,            only: aerosol_state_object, aerosol_properties_object
-
+  use dyn_grid,               only: hvcoord
+  
   implicit none
   private
   save
@@ -294,6 +294,9 @@ subroutine stepon_run3( ztodt, cam_out, phys_state, dyn_in, dyn_out )
 !-----------------------------------------------------------------------
   use dyn_comp,       only: dyn_import_t, dyn_export_t
   use eul_control_mod,only: eul_nsplit
+  use prognostics,    only: ps
+  use iop,            only: iop_update_prognostics
+  
   real(r8), intent(in) :: ztodt            ! twice time step unless nstep=0
   type(cam_out_t), intent(inout) :: cam_out(begchunk:endchunk)
   type(physics_state), intent(in):: phys_state(begchunk:endchunk)
@@ -309,10 +312,13 @@ subroutine stepon_run3( ztodt, cam_out, phys_state, dyn_in, dyn_out )
         call setiopupdate
      end if
 
-     ! Update IOP properties e.g. omega, divT, divQ
+     ! Read IOP data and update prognostics if needed
 
-     if (doiopupdate) call readiopdata()
-
+     if (doiopupdate) then
+        call readiopdata(hvcoord)
+!jt        call iop_update_prognostics(n3,ps=ps(:,:,:))
+        call iop_update_prognostics(n3,ps=ps)
+     end if
   endif
 
   !----------------------------------------------------------
