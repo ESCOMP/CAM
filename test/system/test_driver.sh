@@ -937,7 +937,7 @@ if [ -n "${submit_script_cb}" ]; then
     case $hostname in
         # cheyenne
         chey* | r* )
-            batch_queue_submit='qsub '
+            batch_queue_submit='qsub -V'
 	    ;;
         *)
             echo "ERROR: machine $hostname not currently supported for batch builds"
@@ -1082,7 +1082,7 @@ if [ "${cesm_test_suite}" != "none" -a -n "${cesm_test_mach}" ]; then
       echo "cd ${script_dir}" >> ${submit_script_cime}
       echo './create_test' ${testargs} >> ${submit_script_cime}
       chmod u+x ${submit_script_cime}
-      qsub ${submit_script_cime}
+      qsub -V ${submit_script_cime}
     fi
 
     if [ "${hostname:0:6}" == "hobart" ]; then
@@ -1116,7 +1116,7 @@ if $run_cam_regression; then
   case $hostname in
     ##cheyenne
     ch* | r* )
-	qsub ${submit_script_cb}
+	qsub -V ${submit_script_cb}
 	;;
 
     ##hobart
