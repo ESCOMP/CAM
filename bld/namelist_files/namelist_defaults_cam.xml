@@ -3176,7 +3176,7 @@
 <mpas_zd                      > 22000.0D0 </mpas_zd>
 <mpas_xnutr                   > 0.2D0 </mpas_xnutr>
 <mpas_cam_coef                > 0.0D0 </mpas_cam_coef>
-<mpas_cam_damping_levels      > 3     </mpas_cam_damping_levels>
+<mpas_cam_damping_levels      > 0     </mpas_cam_damping_levels>
 <mpas_rayleigh_damp_u         > .true. </mpas_rayleigh_damp_u>
 <mpas_rayleigh_damp_u_timescale_days> 5.0 </mpas_rayleigh_damp_u_timescale_days>
 <mpas_number_rayleigh_damp_u_levels> 5 </mpas_number_rayleigh_damp_u_levels>

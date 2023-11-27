@@ -8428,7 +8428,7 @@ Default: 0.0
 Number mpas_cam absorbing layers in which to apply 2nd-order horizontal diffusion.
 Viscocity linearly ramps to zero by layer number from the top. mpas_cam_damping_levels and
 mpas_cam_coef must both be greater than 0 for the diffusion to be enabled.
-Default: 3
+Default: 0
 </entry>
 
 <entry id="mpas_rayleigh_damp_u" type="logical" category="mpas"

@@ -1318,7 +1318,7 @@ subroutine cam_mpas_namelist_read(namelistFilename, configPool)
    real(r8)                :: mpas_zd = 22000.0_r8
    real(r8)                :: mpas_xnutr = 0.2_r8
    real(r8)                :: mpas_cam_coef = 0.0_r8
-   integer                 :: mpas_cam_damping_levels = 3
+   integer                 :: mpas_cam_damping_levels = 0
    logical                 :: mpas_rayleigh_damp_u = .true.
    real(r8)                :: mpas_rayleigh_damp_u_timescale_days = 5.0_r8
    integer                 :: mpas_number_rayleigh_damp_u_levels = 3
