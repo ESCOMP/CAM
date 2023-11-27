@@ -8425,11 +8425,10 @@ Default: 0.0
 
 <entry id="mpas_cam_damping_levels" type="integer" category="mpas"
        group="damping" valid_values="">
-Number layers from the top in which to apply cam 2nd-order horizontal
-diffusion. Viscocity linearly ramps to zero by layer number from the top.
-mpas_cam_damping_levels and mpas_cam_coef must both be greater than 0 for the
-diffusion to be enabled. 
-Default: 4
+Number mpas_cam absorbing layers in which to apply 2nd-order horizontal diffusion.
+Viscocity linearly ramps to zero by layer number from the top. mpas_cam_damping_levels and
+mpas_cam_coef must both be greater than 0 for the diffusion to be enabled.
+Default: 3
 </entry>
 
 <entry id="mpas_rayleigh_damp_u" type="logical" category="mpas"
