@@ -2655,7 +2655,7 @@ fincls: do while (fld < pflds .and. fincl(fld,t) /= ' ')
       ! array vec_comp_names.  Next insure (for interpolated output only) that all complements
       ! are also present in the fincl array.
 
-      ! The first empty slot in the current fincl array is index f from loop above.
+      ! The first empty slot in the current fincl array is index fld from loop above.
       add_fincl_idx = fld
       if (fld > 1 .and. interpolate_output(t)) then
          do i = 1, n_vec_comp
@@ -4314,7 +4314,7 @@ end subroutine print_active_fldlst
          if (hfile_accum(t)) then
             ! We have an accumulated file in addition to the instantaneous
             write(iulog,*)'Opening netcdf history files ', trim(nhfil(t,accumulated_file_index)), &
-                  trim(nhfil(t,instantaneous_file_index))
+                  '  ', trim(nhfil(t,instantaneous_file_index))
          else
             ! We just have the instantaneous file
             write(iulog,*)'Opening instantaneous netcdf history file ', trim(nhfil(t,instantaneous_file_index))
