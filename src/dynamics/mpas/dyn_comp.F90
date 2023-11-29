@@ -279,6 +279,7 @@ subroutine dyn_readnl(NLFileName)
    call mpas_pool_add_config(domain_ptr % configs, 'config_restart_timestamp_name', 'restart_timestamp')
    call mpas_pool_add_config(domain_ptr % configs, 'config_IAU_option', 'off')
    call mpas_pool_add_config(domain_ptr % configs, 'config_do_DAcycling', .false.)
+   call mpas_pool_add_config(domain_ptr % configs, 'config_halo_exch_method', 'mpas_halo')
 
    call cam_mpas_init_phase2(pio_subsystem, endrun, timemgr_get_calendar_cf())
 
@@ -1317,6 +1318,7 @@ subroutine cam_mpas_namelist_read(namelistFilename, configPool)
    real(r8)                :: mpas_zd = 22000.0_r8
    real(r8)                :: mpas_xnutr = 0.2_r8
    real(r8)                :: mpas_cam_coef = 0.0_r8
+   integer                 :: mpas_cam_damping_levels = 0
    logical                 :: mpas_rayleigh_damp_u = .true.
    real(r8)                :: mpas_rayleigh_damp_u_timescale_days = 5.0_r8
    integer                 :: mpas_number_rayleigh_damp_u_levels = 3
@@ -1367,6 +1369,7 @@ subroutine cam_mpas_namelist_read(namelistFilename, configPool)
            mpas_zd, &
            mpas_xnutr, &
            mpas_cam_coef, &
+           mpas_cam_damping_levels, &
            mpas_rayleigh_damp_u, &
            mpas_rayleigh_damp_u_timescale_days, &
            mpas_number_rayleigh_damp_u_levels
@@ -1502,6 +1505,7 @@ subroutine cam_mpas_namelist_read(namelistFilename, configPool)
    call mpi_bcast(mpas_zd,       1, mpi_real8, masterprocid, mpicom, mpi_ierr)
    call mpi_bcast(mpas_xnutr,    1, mpi_real8, masterprocid, mpicom, mpi_ierr)
    call mpi_bcast(mpas_cam_coef, 1, mpi_real8, masterprocid, mpicom, mpi_ierr)
+   call mpi_bcast(mpas_cam_damping_levels,             1, mpi_integer, masterprocid, mpicom, mpi_ierr)
    call mpi_bcast(mpas_rayleigh_damp_u,                1, mpi_logical, masterprocid, mpicom, mpi_ierr)
    call mpi_bcast(mpas_rayleigh_damp_u_timescale_days, 1, mpi_real8, masterprocid, mpicom, mpi_ierr)
    call mpi_bcast(mpas_number_rayleigh_damp_u_levels,  1, mpi_integer, masterprocid, mpicom, mpi_ierr)
@@ -1509,6 +1513,7 @@ subroutine cam_mpas_namelist_read(namelistFilename, configPool)
    call mpas_pool_add_config(configPool, 'config_zd', mpas_zd)
    call mpas_pool_add_config(configPool, 'config_xnutr', mpas_xnutr)
    call mpas_pool_add_config(configPool, 'config_mpas_cam_coef', mpas_cam_coef)
+   call mpas_pool_add_config(configPool, 'config_number_cam_damping_levels', mpas_cam_damping_levels)
    call mpas_pool_add_config(configPool, 'config_rayleigh_damp_u', mpas_rayleigh_damp_u)
    call mpas_pool_add_config(configPool, 'config_rayleigh_damp_u_timescale_days', mpas_rayleigh_damp_u_timescale_days)
    call mpas_pool_add_config(configPool, 'config_number_rayleigh_damp_u_levels', mpas_number_rayleigh_damp_u_levels)
@@ -1659,6 +1664,7 @@ subroutine cam_mpas_namelist_read(namelistFilename, configPool)
       write(iulog,*) '   mpas_zd = ', mpas_zd
       write(iulog,*) '   mpas_xnutr = ', mpas_xnutr
       write(iulog,*) '   mpas_cam_coef = ', mpas_cam_coef
+      write(iulog,*) '   mpas_cam_damping_levels = ', mpas_cam_damping_levels
       write(iulog,*) '   mpas_rayleigh_damp_u = ', mpas_rayleigh_damp_u
       write(iulog,*) '   mpas_rayleigh_damp_u_timescale_days = ', mpas_rayleigh_damp_u_timescale_days
       write(iulog,*) '   mpas_number_rayleigh_damp_u_levels = ', mpas_number_rayleigh_damp_u_levels
