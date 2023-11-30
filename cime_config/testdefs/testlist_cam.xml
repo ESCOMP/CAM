@@ -732,7 +732,6 @@
       <machine name="cheyenne" compiler="intel" category="waccm"/>
       <machine name="cheyenne" compiler="intel" category="frontogw_mpas"/>
       <machine name="cheyenne" compiler="intel" category="tem_diags"/>
-      <machine name="derecho" compiler="intel" category="frontogw_mpas"/>
    </machines>
     <options>
       <option name="comment" >TEM diagnostics and zonal-average output</option>
@@ -2139,7 +2138,6 @@
     <machines>
       <machine name="cheyenne" compiler="intel" category="frontogw_mpas"/>
       <machine name="cheyenne" compiler="intel" category="waccm"/>
-      <machine name="derecho" compiler="intel" category="frontogw_mpas"/>
     </machines>
     <options>
       <option name="wallclock">00:30:00</option>
@@ -2149,7 +2147,6 @@
     <machines>
       <machine name="cheyenne" compiler="intel" category="frontogw_mpas"/>
       <machine name="cheyenne" compiler="intel" category="waccm"/>
-      <machine name="derecho" compiler="intel" category="frontogw_mpas"/>
     </machines>
     <options>
       <option name="wallclock">00:30:00</option>
