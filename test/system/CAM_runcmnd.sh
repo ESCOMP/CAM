@@ -41,6 +41,14 @@ if [ $run_mode = mpi ] || [ $run_mode = hybrid ]; then
  	    # cmnd="${cmnd} ddt --connect mpiexec_mpt -np $ntasks omplace -vv "
             ;;
 
+        # Derecho
+	        de*  )
+
+		            cmnd="${cmnd} mpiexec -n $2  "
+			                # cmnd="${cmnd} ddt --connect mpiexec_mpt -np $ntasks omplace -vv "
+					            ;;
+
+
         # hobart and leehill
         hob* | h[[:digit:]]* | le* | izu* | i[[:digit:]]* )
 
