@@ -28,7 +28,7 @@ contains
     use element_mod,            only: element_t, allocate_element_desc
     use fvm_mod,                only: fvm_init1
     use mesh_mod,               only: MeshUseMeshFile
-    use time_mod,               only: timelevel_init, timelevel_t
+    use se_dyn_time_mod,        only: timelevel_init, timelevel_t
     use mass_matrix_mod,        only: mass_matrix
     use derivative_mod,         only: allocate_subcell_integration_matrix_cslam
     use derivative_mod,         only: allocate_subcell_integration_matrix_physgrid

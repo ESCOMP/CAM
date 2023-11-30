@@ -388,6 +388,9 @@ subroutine crmclouds_mixnuc_tend( aero_props, aero_state, state, ptend, dtime, c
   type(physics_ptend), intent(out) :: ptend   ! package tendencies
 
 ! Local variables
+
+  real(r8), parameter :: wsub_min_asf = 0.1D0
+
   integer i,k,m, k1, k2
   integer ifld, itim
   integer ixcldliq, ixcldice, ixnumliq
@@ -580,7 +583,8 @@ subroutine crmclouds_mixnuc_tend( aero_props, aero_state, state, ptend, dtime, c
 ! should we set omega to be zero ??
   omega(:ncol, :) = state%omega(:ncol, :)
 
-  call dropmixnuc(aero_props, aero_state, state, ptend, dtime, pbuf, wsub, lcldn, lcldo, cldliqf, tendnd, factnum, dommf )
+  call dropmixnuc(aero_props, aero_state, state, ptend, dtime, pbuf, wsub, wsub_min_asf, lcldn, lcldo, cldliqf, tendnd, factnum, &
+                  dommf )
 
 ! this part is moved into tphysbc after aerosol stuffs.
 !
