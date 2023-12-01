@@ -2387,6 +2387,11 @@ if (($chem =~ /_mam4/ or $chem =~ /_mam5/) and ($phys =~ /cam6/ or $phys =~ /cam
                     'num_a4_ar_ext_file' => 'num_a4',
                     'no2_ar_ext_file'    => 'NO2',
                     'so2_ar_ext_file'    => 'SO2' );
+    } elsif ($chem =~ /ghg_mam/) {
+        %species = (%species,
+                    'bc_a4_ar_ext_file'  => 'bc_a4',
+                    'num_a4_ar_ext_file' => 'num_a4',
+                    'so2_ar_ext_file'    => 'SO2' );
     }
 
     # for transient cases include volcanic emissions
