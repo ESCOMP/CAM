@@ -274,6 +274,8 @@
 
 <ncdata dyn="se" hgrid="ne0np4CONUS.ne30x8"       nlev="70" ic_ymd="101">atm/waccm/ic/FW2000_CONUS_30x8_L70_01-01-0001_c200602.nc</ncdata>
 
+<ncdata hgrid="mpasa120" nlev="70" waccm_phys="1">atm/waccm/ic/mpasa120km.waccm_fulltopo_c220818.nc</ncdata>
+
 <ncdata hgrid="mpasa120" nlev="32" >atm/cam/inic/mpas/cami_01-01-2000_00Z_mpasa120_L32_CFSR_c210426.nc</ncdata>
 <ncdata hgrid="mpasa480" nlev="32" >atm/cam/inic/mpas/cami_01-01-2000_00Z_mpasa480_L32_CFSR_c211013.nc</ncdata>
 
@@ -3135,12 +3137,14 @@
 <mpas_time_integration_order  > 2 </mpas_time_integration_order>
 <mpas_dt                      > 1800.0D0 </mpas_dt>
 <mpas_dt hgrid="mpasa120"     >  900.0D0 </mpas_dt>
+<mpas_dt hgrid="mpasa120" waccm_phys="1"> 600.D0 </mpas_dt>
 <mpas_dt hgrid="mpasa60"      >  450.0D0 </mpas_dt>
 <mpas_dt hgrid="mpasa30"      >  225.0D0 </mpas_dt>
 
 <mpas_split_dynamics_transport>.true.</mpas_split_dynamics_transport>
 <mpas_number_of_sub_steps     > 2 </mpas_number_of_sub_steps>
 <mpas_dynamics_split_steps    > 3 </mpas_dynamics_split_steps>
+<mpas_dynamics_split_steps hgrid="mpasa120" waccm_phys="1"> 4 </mpas_dynamics_split_steps>
 <mpas_h_mom_eddy_visc2        > 0.0D0 </mpas_h_mom_eddy_visc2>
 <mpas_h_mom_eddy_visc4        > 0.0D0 </mpas_h_mom_eddy_visc4>
 <mpas_v_mom_eddy_visc2        > 0.0D0 </mpas_v_mom_eddy_visc2>
@@ -3170,12 +3174,16 @@
 <mpas_smagorinsky_coef        > 0.125D0 </mpas_smagorinsky_coef>
 <mpas_mix_full                > .true. </mpas_mix_full>
 <mpas_epssm                   > 0.1D0 </mpas_epssm>
+<mpas_epssm hgrid="mpasa120" waccm_phys="1"> 0.5D0 </mpas_epssm>
 <mpas_smdiv                   > 0.1D0 </mpas_smdiv>
 <mpas_apvm_upwinding          > 0.5D0 </mpas_apvm_upwinding>
+<mpas_apvm_upwinding hgrid="mpasa120" waccm_phys="1"> 0.0D0 </mpas_apvm_upwinding>
 <mpas_h_ScaleWithMesh         > .true. </mpas_h_ScaleWithMesh>
 <mpas_zd                      > 22000.0D0 </mpas_zd>
+<mpas_zd hgrid="mpasa120" waccm_phys="1"> 80000.0D0 </mpas_zd>
 <mpas_xnutr                   > 0.2D0 </mpas_xnutr>
 <mpas_cam_coef                > 0.0D0 </mpas_cam_coef>
+<mpas_cam_coef hgrid="mpasa120" waccm_phys="1"> 0.2D0 </mpas_cam_coef>
 <mpas_cam_damping_levels      > 0     </mpas_cam_damping_levels>
 <mpas_rayleigh_damp_u         > .true. </mpas_rayleigh_damp_u>
 <mpas_rayleigh_damp_u_timescale_days> 5.0 </mpas_rayleigh_damp_u_timescale_days>
