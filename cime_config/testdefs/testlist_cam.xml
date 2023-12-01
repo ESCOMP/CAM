@@ -2669,7 +2669,7 @@
       <machine name="cheyenne" compiler="intel" category="waccm"/>
     </machines>
   </test>
-  <test compset="FW2000climo" grid="ne30pg3_ne30pg3_mg17" name="ERP_Ln9_Vnuopc" testmods="cam/outfrq9s_wcm_ne30">
+  <test compset="FW2000climo" grid="ne30pg3_ne30pg3_mg17" name="ERP_Ln9_Vnuopc" testmods="cam/outfrq9s">
     <machines>
       <machine name="cheyenne" compiler="intel" category="waccm"/>
       <machine name="cheyenne" compiler="intel" category="aux_cam"/>
@@ -2678,7 +2678,7 @@
       <option name="wallclock">00:40:00</option>
     </options>
   </test>
-  <test compset="FW2000climo" grid="ne30pg3_ne30pg3_mg17" name="SMS_D_Ln9_Vnuopc" testmods="cam/outfrq9s_wcm_ne30">
+  <test compset="FW2000climo" grid="ne30pg3_ne30pg3_mg17" name="SMS_D_Ln9_Vnuopc" testmods="cam/outfrq9s">
     <machines>
       <machine name="cheyenne" compiler="intel" category="waccm"/>
     </machines>
@@ -2686,7 +2686,7 @@
       <option name="wallclock">00:30:00</option>
     </options>
   </test>
-  <test compset="FW2000climo" grid="ne30_ne30_mg17" name="SMS_Ln9_Vnuopc" testmods="cam/outfrq9s_wcm_ne30">
+  <test compset="FW2000climo" grid="ne30_ne30_mg17" name="SMS_Ln9_Vnuopc" testmods="cam/outfrq9s">
     <machines>
       <machine name="cheyenne" compiler="intel" category="waccm"/>
       <machine name="cheyenne" compiler="intel" category="prealpha"/>
