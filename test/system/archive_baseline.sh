@@ -110,7 +110,7 @@ case $hostname in
     fi
     test_file_list="tests_pretag_derecho"
     cam_tag=$1
-    baselinedir="/glade/p/cesm/amwg/derecho_baselines/$cam_tag"
+    baselinedir="/glade/campaign/cesm/community/amwg/cam_baselines/$cam_tag"
   ;;
 
   * ) echo "ERROR: machine $hostname not currently supported"; exit 1 ;;
