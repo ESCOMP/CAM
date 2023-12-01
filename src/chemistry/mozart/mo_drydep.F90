@@ -2156,7 +2156,7 @@ contains
     if (single_column) then
        if (scm_cambfb_mode) then
           piofile => initial_file_get_id()
-          call shr_scam_getCloseLatLon(piofile%fh,scmlat,scmlon,closelat,closelon,latidx,lonidx)
+          call shr_scam_getCloseLatLon(piofile,scmlat,scmlon,closelat,closelon,latidx,lonidx)
           ploniop=size(loniop)
           platiop=size(latiop)
        else 
