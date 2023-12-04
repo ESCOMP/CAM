@@ -1,3 +1,2 @@
 ./xmlchange ROF_NCPL=\$ATM_NCPL
 ./xmlchange GLC_NCPL=\$ATM_NCPL
-./xmlchange LND_DOMAIN_FILE="domain.lnd.mpasa480_gx1v7.201001.nc"

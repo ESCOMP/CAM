@@ -1,4 +1,3 @@
 hist_nhtfrq = 9
 hist_mfilt  = 1
 hist_ndens  = 1
-fsurdat = '${DIN_LOC_ROOT}/lnd/clm2/surfdata_map/release-clm5.0.34/surfdata_mpasa120_hist_78pfts_CMIP6_simyr2000_c201215.nc'
