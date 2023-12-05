@@ -172,7 +172,7 @@ end subroutine ndrop_init
 !===============================================================================
 
 subroutine dropmixnuc( aero_props, aero_state, &
-   state, ptend, dtmicro, pbuf, wsub, &
+   state, ptend, dtmicro, pbuf, wsub, wmixmin, &
    cldn, cldo, cldliqf, tendnd, factnum, from_spcam)
 
    ! vertical diffusion and nucleation of cloud droplets
@@ -183,6 +183,7 @@ subroutine dropmixnuc( aero_props, aero_state, &
    type(physics_state), target, intent(in)    :: state
    type(physics_ptend),         intent(out)   :: ptend
    real(r8),                    intent(in)    :: dtmicro     ! time step for microphysics (s)
+   real(r8),                    intent(in)    :: wmixmin     ! minimum turbulence vertical velocity (m/s)
 
    type(physics_buffer_desc), pointer :: pbuf(:)
 
@@ -221,9 +222,7 @@ subroutine dropmixnuc( aero_props, aero_state, &
    real(r8) :: raertend(pver)  ! tendency of aerosol mass, number mixing ratios
    real(r8) :: qqcwtend(pver)  ! tendency of cloudborne aerosol mass, number mixing ratios
 
-
    real(r8), parameter :: zkmin = 0.01_r8, zkmax = 100._r8
-   real(r8), parameter :: wmixmin = 0.1_r8        ! minimum turbulence vertical velocity (m/s)
    integer  :: i, k, l, m, mm, n
    integer  :: km1, kp1
    integer  :: nnew, nsav, ntemp

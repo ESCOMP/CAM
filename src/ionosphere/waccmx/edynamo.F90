@@ -1231,6 +1231,7 @@ contains
     enddo
 
     do j=mlat0,mlat1
+      call outfld('PHIHM',phihm(mlon0:omlon1,j),omlon1-mlon0+1,j)
       call outfld('PHIM2D',phim2d(mlon0:omlon1,j),omlon1-mlon0+1,j)
     enddo
 

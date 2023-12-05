@@ -21,7 +21,6 @@
 <!--Species IC -->
 <ncdata dyn="fv"  hgrid="0.9x1.25">cesm2_init/f.e22.FWma2000climo.f09_f09_mg17.cam6_2_021.c20200421/0004-01-01/f.e22.FWma2000climo.f09_f09_mg17.cam6_2_021.c20200421.cam.i.0004-01-01-00000.nc</ncdata>
 <ncdata dyn="fv"  hgrid="1.9x2.5" >cesm2_init/f.e22.FWma2000climo.f19_f19_mg17.cam6_2_021.c20200421/0008-01-01/f.e22.FWma2000climo.f19_f19_mg17.cam6_2_021.c20200421.cam.i.0008-01-01-00000.nc</ncdata>
-<ncdata  hgrid="ne30np4"  npg="3" >cesm2_init/f.e22.FWma2000climo.ne30pg3_ne30pg3_mg17.cam6_2_021.c20200421/0004-01-01/f.e22.FWma2000climo.ne30pg3_ne30pg3_mg17.cam6_2_021.c20200421.cam.i.0004-01-01-00000.nc</ncdata>
 <ncdata dyn="fv"  hgrid="4x5"     >atm/waccm/ic/f2000.waccm-mam3_4x5_L70.cam2.i.0017-01-01.c121113.nc</ncdata>
 
 

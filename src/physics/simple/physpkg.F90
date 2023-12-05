@@ -209,6 +209,8 @@ contains
     use cam_snapshot,       only: cam_snapshot_init
     use cam_budget,         only: cam_budget_init
 
+    use ccpp_constituent_prop_mod, only: ccpp_const_props_init
+
     ! Input/output arguments
     type(physics_state), pointer       :: phys_state(:)
     type(physics_tend ), pointer       :: phys_tend(:)
@@ -259,9 +261,9 @@ contains
     end if
 
     if (ideal_phys) then
-      call held_suarez_init(pbuf2d)
+      call held_suarez_init()
     else if (kessler_phys) then
-      call kessler_cam_init(pbuf2d)
+      call kessler_cam_init()
     else if (tj2016_phys) then
       call thatcher_jablonowski_init(pbuf2d)
     else if (frierson_phys) then
@@ -276,6 +278,10 @@ contains
       ! Prognostic chemistry.
       call chem_init(phys_state,pbuf2d)
     end if
+
+    ! Initialize CAM CCPP constituent properties array
+    ! for use in CCPP-ized physics schemes:
+    call ccpp_const_props_init()
 
     ! Initialize qneg3 and qneg4
     call qneg_init()
