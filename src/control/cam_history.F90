@@ -5507,6 +5507,7 @@ end subroutine print_active_fldlst
     !
     !-----------------------------------------------------------------------
     use time_manager,  only: get_nstep, get_curr_date, get_curr_time, get_step_size
+    use time_manager,  only: set_date_from_time_float
     use chem_surfvals, only: chem_surfvals_get, chem_surfvals_co2_rad
     use solar_irrad_data, only: sol_tsi
     use sat_hist,      only: sat_hist_write
@@ -5534,11 +5535,11 @@ end subroutine print_active_fldlst
 
     integer :: yr, mon, day      ! year, month, and day components of a date
     integer :: nstep             ! current timestep number
-    integer :: ncdate            ! current date in integer format [yyyymmdd]
-    integer :: ncsec             ! current time of day [seconds]
+    integer :: ncdate(maxsplitfiles) ! current (or midpoint) date in integer format [yyyymmdd]
+    integer :: ncsec(maxsplitfiles)  ! current (or midpoint) time of day [seconds]
     integer :: ndcur             ! day component of current time
     integer :: nscur             ! seconds component of current time
-    real(r8) :: time             ! current time
+    real(r8) :: time             ! current (or midpoint) time
     real(r8) :: tdata(2)         ! time interval boundaries
     character(len=max_string_len) :: fname ! Filename
     character(len=max_string_len) :: fname_inst ! Filename for instantaneous tape
@@ -5546,6 +5547,7 @@ end subroutine print_active_fldlst
     logical :: prev              ! Label file with previous date rather than current
     logical :: duplicate         ! Flag for duplicate file name
     integer :: ierr
+    integer :: ncsec_temp
 #if ( defined BFB_CAM_SCAM_IOP )
     integer :: tsec             ! day component of current time
     integer :: dtime            ! seconds component of current time
@@ -5561,8 +5563,8 @@ end subroutine print_active_fldlst
     end if
 
     nstep = get_nstep()
-    call get_curr_date(yr, mon, day, ncsec)
-    ncdate = yr*10000 + mon*100 + day
+    call get_curr_date(yr, mon, day, ncsec(instantaneous_file_index))
+    ncdate(instantaneous_file_index) = yr*10000 + mon*100 + day
     call get_curr_time(ndcur, nscur)
     !
     ! Write time-varying portion of history file header
@@ -5580,7 +5582,7 @@ end subroutine print_active_fldlst
           prev     = .false.
         else
           if (nhtfrq(t) == 0) then
-            hstwr(t) = nstep /= 0 .and. day == 1 .and. ncsec == 0
+            hstwr(t) = nstep /= 0 .and. day == 1 .and. ncsec(instantaneous_file_index) == 0
             prev     = .true.
           else
             hstwr(t) = mod(nstep,nhtfrq(t)) == 0
@@ -5588,22 +5590,39 @@ end subroutine print_active_fldlst
           end if
         end if
       end if
+      time = ndcur + nscur/86400._r8
+      if (is_initfile(file_index=t)) then
+        tdata = time   ! Inithist file is always instantanious data
+      else
+        tdata(1) = beg_time(t)
+        tdata(2) = time
+      end if
+      ! Set midpoint date/datesec for accumulated file
+      call set_date_from_time_float((tdata(1) + tdata(2)) / 2._r8, yr, mon, day, ncsec_temp)
+      ncsec(accumulated_file_index) = ncsec_temp
+      ncdate(accumulated_file_index) = yr*10000 + mon*100 + day
       if (hstwr(t) .or. (restart .and. rgnht(t))) then
         if(masterproc) then
           if(is_initfile(file_index=t)) then
-            write(iulog,100) yr,mon,day,ncsec
+            write(iulog,100) yr,mon,day,ncsec(init_file_index)
 100         format('WSHIST: writing time sample to Initial Conditions h-file', &
                  ' DATE=',i4.4,'/',i2.2,'/',i2.2,' NCSEC=',i6)
           else if(is_satfile(t)) then
-            write(iulog,150) nfils(t),t,yr,mon,day,ncsec
+            write(iulog,150) nfils(t),t,yr,mon,day,ncsec(sat_file_index)
 150         format('WSHIST: writing sat columns ',i6,' to h-file ', &
                  i1,' DATE=',i4.4,'/',i2.2,'/',i2.2,' NCSEC=',i6)
           else if(hstwr(t)) then
-            write(iulog,200) nfils(t),t,yr,mon,day,ncsec
-200         format('WSHIST: writing time sample ',i3,' to h-file ', &
-                 i1,' DATE=',i4.4,'/',i2.2,'/',i2.2,' NCSEC=',i6)
+            do f = 1, maxsplitfiles
+              if (f == instantaneous_file_index) then
+                write(iulog,200) nfils(t),'instantaneous',t,yr,mon,day,ncsec(f)
+              else
+                write(iulog,200) nfils(t),'accumulated',t,yr,mon,day,ncsec(f)
+              end if
+200           format('WSHIST: writing time sample ',i3,' to ', a, ' h-file ', &
+                   i1,' DATE=',i4.4,'/',i2.2,'/',i2.2,' NCSEC=',i6)
+            end do
           else if(restart .and. rgnht(t)) then
-            write(iulog,300) nfils(t),t,yr,mon,day,ncsec
+            write(iulog,300) nfils(t),t,yr,mon,day,ncsec(restart_file_index)
 300         format('WSHIST: writing history restart ',i3,' to hr-file ', &
                  i1,' DATE=',i4.4,'/',i2.2,'/',i2.2,' NCSEC=',i6)
           end if
@@ -5692,7 +5711,7 @@ end subroutine print_active_fldlst
           ierr = pio_put_var (tape(t)%Files(instantaneous_file_index), tape(t)%nscurid,(/start/),(/count1/),(/nscur/))
           do f = 1, maxsplitfiles
              if (pio_file_is_open(tape(t)%Files(f))) then
-                ierr = pio_put_var (tape(t)%Files(f), tape(t)%dateid,(/start/),(/count1/),(/ncdate/))
+                ierr = pio_put_var (tape(t)%Files(f), tape(t)%dateid,(/start/),(/count1/),(/ncdate(f)/))
              end if
           end do
 
@@ -5728,7 +5747,7 @@ end subroutine print_active_fldlst
           end do
           do f = 1, maxsplitfiles
              if (pio_file_is_open(tape(t)%Files(f))) then
-                ierr = pio_put_var (tape(t)%Files(f),tape(t)%datesecid,(/start/),(/count1/),(/ncsec/))
+                ierr = pio_put_var (tape(t)%Files(f),tape(t)%datesecid,(/start/),(/count1/),(/ncsec(f)/))
              end if
           end do
 #if ( defined BFB_CAM_SCAM_IOP )
@@ -5740,24 +5759,11 @@ end subroutine print_active_fldlst
              end if
           end do
 #endif
-!          do f = 1, maxsplitfiles
-!             if (f == instantaneous_file_index .and. pio_file_is_open(tape(t)%Files(f))) then
-!                ierr = pio_put_var (tape(t)%Files(f),tape(t)%nstephid,(/start/),(/count1/),(/nstep/))
-!             end if
-!          end do
           ierr = pio_put_var (tape(t)%Files(instantaneous_file_index),tape(t)%nstephid,(/start/),(/count1/),(/nstep/))
-          time = ndcur + nscur/86400._r8
-
           startc(1) = 1
           startc(2) = start
           countc(1) = 2
           countc(2) = 1
-          if (is_initfile(file_index=t)) then
-            tdata = time   ! Inithist file is always instantanious data
-          else
-            tdata(1) = beg_time(t)
-            tdata(2) = time
-          end if
           do f = 1, maxsplitfiles
              if (.not. pio_file_is_open(tape(t)%Files(f))) then
                 cycle
