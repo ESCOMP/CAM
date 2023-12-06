@@ -5890,8 +5890,8 @@ end subroutine print_active_fldlst
           write(errormsg, *) "Cannot add ", trim(fname),                      &
                "Subcolumn history output only allowed on physgrid"
           call endrun("ADDFLD: "//errormsg)
-          listentry%field%is_subcol = .true.
         end if
+        listentry%field%is_subcol = .true.
       end if
     end if
     ! Levels
