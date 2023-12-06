@@ -476,8 +476,8 @@
 !-----------------------------------------------------------------------
 ! 	... output mag lons, lats
 !-----------------------------------------------------------------------
-      call outfld( 'ALONM', r2d*alonm(:ncol,lchnk), pcols, lchnk )
-      call outfld( 'ALATM', r2d*alatm(:ncol,lchnk), pcols, lchnk )
+      call outfld( 'ALONM', r2d*alonm(:ncol,lchnk), ncol, lchnk )
+      call outfld( 'ALATM', r2d*alatm(:ncol,lchnk), ncol, lchnk )
 
       if (indxQTe>0) then
         call pbuf_get_field(pbuf, indxQTe, qteaur)

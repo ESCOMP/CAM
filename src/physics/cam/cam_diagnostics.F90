@@ -1407,7 +1407,7 @@ contains
     do k=2,pver
       ftem(:ncol,1) = ftem(:ncol,1) + ftem(:ncol,k)
     end do
-    call outfld ('ATMEINT   ',ftem(:ncol,1)  ,pcols   ,lchnk     )
+    call outfld ('ATMEINT   ', ftem(:ncol,1), ncol, lchnk)
 
     !! Boundary layer atmospheric stability, temperature, water vapor diagnostics
 
