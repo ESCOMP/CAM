@@ -274,6 +274,8 @@
 
 <ncdata dyn="se" hgrid="ne0np4CONUS.ne30x8"       nlev="70" ic_ymd="101">atm/waccm/ic/FW2000_CONUS_30x8_L70_01-01-0001_c200602.nc</ncdata>
 
+<ncdata hgrid="mpasa120" nlev="70" waccm_phys="1">atm/waccm/ic/mpasa120km.waccm_fulltopo_c220818.nc</ncdata>
+
 <ncdata hgrid="mpasa120" nlev="32" >atm/cam/inic/mpas/cami_01-01-2000_00Z_mpasa120_L32_CFSR_c210426.nc</ncdata>
 <ncdata hgrid="mpasa480" nlev="32" >atm/cam/inic/mpas/cami_01-01-2000_00Z_mpasa480_L32_CFSR_c211013.nc</ncdata>
 
@@ -1394,6 +1396,11 @@
 <num_a2_cv_ext_file   hgrid="ne30np4" npg="3" ver="cam6">atm/cam/chem/emis/historical_ne30pg3/emissions-cmip6_num_a2_so4_contvolcano_vertical_850-5000_ne30pg3_c20200125.nc</num_a2_cv_ext_file>
 <so4_a1_an_ext_file   hgrid="ne30np4" npg="3" ver="cam6">atm/cam/chem/emis/historical_ne30pg3/emissions-cmip6_so4_a1_anthro-ene_vertical_mol_175001-201412_ne30pg3_c20200103.nc</so4_a1_an_ext_file>
 <num_a1_an_ext_file   hgrid="ne30np4" npg="3" ver="cam6">atm/cam/chem/emis/historical_ne30pg3/emissions-cmip6_num_so4_a1_anthro-ene_vertical_mol_175001-201412_ne30pg3_c20200103.nc</num_a1_an_ext_file>
+
+<bc_a4_ar_ext_file    hgrid="ne30np4" npg="3" ver="cam6">atm/cam/chem/emis/historical_ne30pg3/emissions-cmip6_bc_a4_aircraft_vertical_1750-2015_ne30pg3_c20231112.nc</bc_a4_ar_ext_file>
+<num_a4_ar_ext_file   hgrid="ne30np4" npg="3" ver="cam6">atm/cam/chem/emis/historical_ne30pg3/emissions-cmip6_num_bc_a4_aircraft_vertical_1750-2015_ne30pg3_c20231112.nc</num_a4_ar_ext_file>
+<no2_ar_ext_file      hgrid="ne30np4" npg="3" ver="cam6">atm/cam/chem/emis/historical_ne30pg3/emissions-cmip6_NO2_aircraft_vertical_1750-2015_ne30pg3_c20231112.nc</no2_ar_ext_file>
+<so2_ar_ext_file      hgrid="ne30np4" npg="3" ver="cam6">atm/cam/chem/emis/historical_ne30pg3/emissions-cmip6_SO2_aircraft_vertical_1750-2015_ne30pg3_c20231112.nc</so2_ar_ext_file>
 
 <!-- ne30 pg2 -->
 
@@ -3220,12 +3227,14 @@
 <mpas_time_integration_order  > 2 </mpas_time_integration_order>
 <mpas_dt                      > 1800.0D0 </mpas_dt>
 <mpas_dt hgrid="mpasa120"     >  900.0D0 </mpas_dt>
+<mpas_dt hgrid="mpasa120" waccm_phys="1"> 600.D0 </mpas_dt>
 <mpas_dt hgrid="mpasa60"      >  450.0D0 </mpas_dt>
 <mpas_dt hgrid="mpasa30"      >  225.0D0 </mpas_dt>
 
 <mpas_split_dynamics_transport>.true.</mpas_split_dynamics_transport>
 <mpas_number_of_sub_steps     > 2 </mpas_number_of_sub_steps>
 <mpas_dynamics_split_steps    > 3 </mpas_dynamics_split_steps>
+<mpas_dynamics_split_steps hgrid="mpasa120" waccm_phys="1"> 4 </mpas_dynamics_split_steps>
 <mpas_h_mom_eddy_visc2        > 0.0D0 </mpas_h_mom_eddy_visc2>
 <mpas_h_mom_eddy_visc4        > 0.0D0 </mpas_h_mom_eddy_visc4>
 <mpas_v_mom_eddy_visc2        > 0.0D0 </mpas_v_mom_eddy_visc2>
@@ -3255,12 +3264,17 @@
 <mpas_smagorinsky_coef        > 0.125D0 </mpas_smagorinsky_coef>
 <mpas_mix_full                > .true. </mpas_mix_full>
 <mpas_epssm                   > 0.1D0 </mpas_epssm>
+<mpas_epssm hgrid="mpasa120" waccm_phys="1"> 0.5D0 </mpas_epssm>
 <mpas_smdiv                   > 0.1D0 </mpas_smdiv>
 <mpas_apvm_upwinding          > 0.5D0 </mpas_apvm_upwinding>
+<mpas_apvm_upwinding hgrid="mpasa120" waccm_phys="1"> 0.0D0 </mpas_apvm_upwinding>
 <mpas_h_ScaleWithMesh         > .true. </mpas_h_ScaleWithMesh>
 <mpas_zd                      > 22000.0D0 </mpas_zd>
+<mpas_zd hgrid="mpasa120" waccm_phys="1"> 80000.0D0 </mpas_zd>
 <mpas_xnutr                   > 0.2D0 </mpas_xnutr>
 <mpas_cam_coef                > 0.0D0 </mpas_cam_coef>
+<mpas_cam_coef hgrid="mpasa120" waccm_phys="1"> 0.2D0 </mpas_cam_coef>
+<mpas_cam_damping_levels      > 0     </mpas_cam_damping_levels>
 <mpas_rayleigh_damp_u         > .true. </mpas_rayleigh_damp_u>
 <mpas_rayleigh_damp_u_timescale_days> 5.0 </mpas_rayleigh_damp_u_timescale_days>
 <mpas_number_rayleigh_damp_u_levels> 5 </mpas_number_rayleigh_damp_u_levels>

@@ -734,15 +734,16 @@
       <option name="wallclock">00:10:00</option>
     </options>
   </test>
-  <test compset="FWsc2000climo" grid="mpasa120_mpasa120" name="ERS_Ld3_Vnuopc_P360x1" testmods="cam/outfrq1d_physgrid_tem_mpasa120_wcmsc">
+  <test compset="FWsc2000climo" grid="mpasa120_mpasa120" name="ERS_Ld3" testmods="cam/outfrq1d_physgrid_tem_mpasa120_wcmsc">
     <machines>
       <machine name="cheyenne" compiler="intel" category="prealpha"/>
       <machine name="cheyenne" compiler="intel" category="waccm"/>
+      <machine name="cheyenne" compiler="intel" category="frontogw_mpas"/>
       <machine name="cheyenne" compiler="intel" category="tem_diags"/>
    </machines>
     <options>
       <option name="comment" >TEM diagnostics and zonal-average output</option>
-      <option name="wallclock">00:20:00</option>
+      <option name="wallclock">00:30:00</option>
     </options>
   </test>
   <test compset="FWsc2000climo" grid="f09_f09_mg17" name="ERP_Ln9_Vnuopc" testmods="cam/outfrq9s_physgrid_tem_1deg">
@@ -1773,7 +1774,7 @@
   </test>
   <test compset="FMTHIST" grid="ne30pg3_ne30pg3_mg17" name="SMS_D_Ln9" testmods="cam/outfrq9s_rrtmgp">
     <machines>
-      <machine name="cheyenne" compiler="intel" category="aux_cam"/>
+      <machine name="cheyenne" compiler="intel" category="prealpha"/>
     </machines>
     <options>
       <option name="wallclock">00:20:00</option>
@@ -2158,6 +2159,25 @@
 <!--              @@@@@@@@@@@@@@@@@@@@@@                 -->
 <!--             WACCM COMPSETS                 -->
 <!--              @@@@@@@@@@@@@@@@@@@@@@                 -->
+
+  <test compset="FWsc2000climo" grid="mpasa120_mpasa120" name="SMS_D_Ln9_Vnuopc" testmods="cam/outfrq9s_mpasa120">
+    <machines>
+      <machine name="cheyenne" compiler="intel" category="frontogw_mpas"/>
+      <machine name="cheyenne" compiler="intel" category="waccm"/>
+    </machines>
+    <options>
+      <option name="wallclock">00:30:00</option>
+    </options>
+  </test>
+  <test compset="FWsc2000climo" grid="mpasa120_mpasa120" name="ERS_Ln9_Vnuopc" testmods="cam/outfrq9s_mpasa120">
+    <machines>
+      <machine name="cheyenne" compiler="intel" category="frontogw_mpas"/>
+      <machine name="cheyenne" compiler="intel" category="waccm"/>
+    </machines>
+    <options>
+      <option name="wallclock">00:30:00</option>
+    </options>
+  </test>
 
   <test compset="FWSD" grid="f09_f09_mg17" name="ERP_Lh12_Vnuopc" testmods="cam/outfrq3h">
     <machines>
@@ -2695,7 +2715,7 @@
       <machine name="cheyenne" compiler="intel" category="waccm"/>
     </machines>
   </test>
-  <test compset="FW2000climo" grid="ne30pg3_ne30pg3_mg17" name="ERP_Ln9_Vnuopc" testmods="cam/outfrq9s_wcm_ne30">
+  <test compset="FW2000climo" grid="ne30pg3_ne30pg3_mg17" name="ERP_Ln9_Vnuopc" testmods="cam/outfrq9s">
     <machines>
       <machine name="cheyenne" compiler="intel" category="waccm"/>
       <machine name="cheyenne" compiler="intel" category="aux_cam"/>
@@ -2712,7 +2732,7 @@
       <option name="wallclock">00:40:00</option>
     </options>
   </test>
-  <test compset="FW2000climo" grid="ne30pg3_ne30pg3_mg17" name="SMS_D_Ln9_Vnuopc" testmods="cam/outfrq9s_wcm_ne30">
+  <test compset="FW2000climo" grid="ne30pg3_ne30pg3_mg17" name="SMS_D_Ln9_Vnuopc" testmods="cam/outfrq9s">
     <machines>
       <machine name="cheyenne" compiler="intel" category="waccm"/>
     </machines>
@@ -2720,7 +2740,7 @@
       <option name="wallclock">00:30:00</option>
     </options>
   </test>
-  <test compset="FW2000climo" grid="ne30_ne30_mg17" name="SMS_Ln9_Vnuopc" testmods="cam/outfrq9s_wcm_ne30">
+  <test compset="FW2000climo" grid="ne30_ne30_mg17" name="SMS_Ln9_Vnuopc" testmods="cam/outfrq9s">
     <machines>
       <machine name="cheyenne" compiler="intel" category="waccm"/>
       <machine name="cheyenne" compiler="intel" category="prealpha"/>
