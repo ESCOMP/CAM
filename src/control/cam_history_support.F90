@@ -15,7 +15,7 @@ module cam_history_support
   use cam_logfile,      only: iulog
   use spmd_utils,       only: masterproc
   use cam_grid_support, only: cam_grid_patch_t, cam_grid_header_info_t
-  use cam_grid_support, only: max_hcoordname_len
+  use cam_grid_support, only: max_hcoordname_len, maxsplitfiles
   use cam_pio_utils,    only: cam_pio_handle_error
 
   implicit none
@@ -197,7 +197,7 @@ module cam_history_support
     ! PIO ids
     !
 
-    type(file_desc_t) :: File            ! PIO file id
+    type(file_desc_t) :: Files(maxsplitfiles)  ! PIO file ids
 
     type(var_desc_t) :: mdtid            ! var id for timestep
     type(var_desc_t) :: ndbaseid         ! var id for base day
@@ -220,7 +220,7 @@ module cam_history_support
 #endif
     type(var_desc_t) :: nstephid         ! var id for current timestep
     type(var_desc_t) :: timeid           ! var id for time
-    type(var_desc_t) :: tbndid           ! var id for time_bnds
+    type(var_desc_t) :: tbndid           ! var id for time_bounds
     type(var_desc_t) :: date_writtenid   ! var id for date time sample written
     type(var_desc_t) :: time_writtenid   ! var id for time time sample written
     type(var_desc_t) :: f107id           ! var id for f107
