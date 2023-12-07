@@ -3088,7 +3088,6 @@ if ($cfg->get('microphys') =~ /^mg/) {
     add_default($nl, 'micro_mg_autocon_lwp_exp');
     add_default($nl, 'micro_mg_homog_size');
     add_default($nl, 'micro_mg_vtrmi_factor');
-    add_default($nl, 'micro_mg_vtrms_factor');
     add_default($nl, 'micro_mg_effi_factor');
     add_default($nl, 'micro_mg_iaccr_factor');
     add_default($nl, 'micro_mg_max_nicons');
@@ -3099,6 +3098,7 @@ if ($cfg->get('microphys') =~ /^mg/) {
     if ($phys =~ /cam_dev/) {
         add_default($nl, 'micro_mg_warm_rain');
 	add_default($nl, 'micro_mg_accre_sees_auto');
+	add_default($nl, 'micro_mg_vtrms_factor');
 	add_default($nl, 'micro_mg_implicit_fall');
         add_default($nl, 'pumas_stochastic_tau_kernel_filename', 'val'=>"$cfgdir/../src/physics/pumas/KBARF_tau_kernel.dat");
 
