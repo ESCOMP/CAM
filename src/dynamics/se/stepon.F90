@@ -263,7 +263,7 @@ subroutine diag_dynvar_ic(elem, fvm)
    use constituents,           only: cnst_name
    use element_mod,            only: element_t
    use fvm_control_volume_mod, only: fvm_struct
-   use fvm_mapping,            only: fvm2dyn
+   use fvm_mapping,            only: phys2dyn
    use cam_thermo,             only: get_sum_species, get_dp_ref, get_ps
    use air_composition,        only: thermodynamic_active_species_idx
    use air_composition,        only: thermodynamic_active_species_idx_dycore
@@ -393,18 +393,18 @@ subroutine diag_dynvar_ic(elem, fvm)
    end if
 
    if (write_inithist()) then
-     allocate(fld_2d(np,np))
-     do ie = 1, nelemd
-       call get_ps(elem(ie)%state%Qdp(:,:,:,:,tl_Qdp), thermodynamic_active_species_idx_dycore,&
-            elem(ie)%state%dp3d(:,:,:,tl_f),fld_2d,hyai(1)*ps0)
-       do j = 1, np
-         do i = 1, np
-           ftmp(i+(j-1)*np,1,1) = fld_2d(i,j)
+      allocate(fld_2d(np,np))
+      do ie = 1, nelemd
+         call get_ps(elem(ie)%state%Qdp(:,:,:,:,tl_Qdp), thermodynamic_active_species_idx_dycore,&
+              elem(ie)%state%dp3d(:,:,:,tl_f),fld_2d,hyai(1)*ps0)
+         do j = 1, np
+            do i = 1, np
+               ftmp(i+(j-1)*np,1,1) = fld_2d(i,j)
+            end do
          end do
-       end do
-       call outfld('PS&IC', ftmp(:,1,1), npsq, ie)
-     end do
-     deallocate(fld_2d)
+         call outfld('PS&IC', ftmp(:,1,1), npsq, ie)
+      end do
+      deallocate(fld_2d)
       if (fv_nphys < 1) allocate(factor_array(np,np,nlev))
 
       do ie = 1, nelemd
@@ -414,7 +414,7 @@ subroutine diag_dynvar_ic(elem, fvm)
 
          if (fv_nphys < 1) then
             call get_sum_species(elem(ie)%state%Qdp(:,:,:,:,tl_qdp), &
-               thermodynamic_active_species_idx_dycore, factor_array,dp_dry=elem(ie)%state%dp3d(:,:,:,tl_f))
+                 thermodynamic_active_species_idx_dycore, factor_array,dp_dry=elem(ie)%state%dp3d(:,:,:,tl_f))
             factor_array(:,:,:) = 1.0_r8/factor_array(:,:,:)
             do m_cnst = 1, qsize
                if (cnst_type(m_cnst) == 'wet') then
@@ -436,29 +436,30 @@ subroutine diag_dynvar_ic(elem, fvm)
          hybrid = config_thread_region(par,'serial')
          call get_loop_ranges(hybrid, ibeg=nets, iend=nete)
 
-         allocate(fld_fvm(1-nhc:nc+nhc,1-nhc:nc+nhc,nlev,ntrac,nets:nete))
-         allocate(fld_gll(np,np,nlev,ntrac,nets:nete))
-         allocate(llimiter(ntrac))
+         allocate(fld_fvm(1-nhc:nc+nhc,1-nhc:nc+nhc,nlev,1,nets:nete))
+         allocate(fld_gll(np,np,nlev,1,nets:nete))
+         allocate(llimiter(1))
          allocate(factor_array(nc,nc,nlev))
          llimiter = .true.
-         do ie = nets, nete
-           call get_sum_species(fvm(ie)%c(1:nc,1:nc,:,:),thermodynamic_active_species_idx,factor_array)
-           factor_array(:,:,:) = 1.0_r8/factor_array(:,:,:)
-           do m_cnst = 1, ntrac
-             if (cnst_type(m_cnst) == 'wet') then
-               fld_fvm(1:nc,1:nc,:,m_cnst,ie) = fvm(ie)%c(1:nc,1:nc,:,m_cnst)*factor_array(:,:,:)
-             else
-               fld_fvm(1:nc,1:nc,:,m_cnst,ie) = fvm(ie)%c(1:nc,1:nc,:,m_cnst)
-             end if
-           end do
-         end do
 
-         call fvm2dyn(fld_fvm, fld_gll, hybrid, nets, nete, nlev, ntrac, fvm(nets:nete), llimiter)
+         do m_cnst = 1, ntrac
+            do ie = nets, nete
 
-         do ie = nets, nete
-            do m_cnst = 1, ntrac
+               call get_sum_species(fvm(ie)%c(1:nc,1:nc,:,:),thermodynamic_active_species_idx,factor_array)
+               factor_array(:,:,:) = 1.0_r8/factor_array(:,:,:)
+
+               if (cnst_type(m_cnst) == 'wet') then
+                  fld_fvm(1:nc,1:nc,:,1,ie) = fvm(ie)%c(1:nc,1:nc,:,m_cnst)*factor_array(:,:,:)
+               else
+                  fld_fvm(1:nc,1:nc,:,1,ie) = fvm(ie)%c(1:nc,1:nc,:,m_cnst)
+               end if
+            end do
+
+            call phys2dyn(hybrid,elem,fld_fvm(:,:,:,:,:),fld_gll(:,:,:,:,:),nets,nete,nlev,1,fvm(nets:nete),llimiter)
+
+            do ie = nets, nete
                call outfld(trim(cnst_name(m_cnst))//'&IC', &
-                    RESHAPE(fld_gll(:,:,:,m_cnst,ie), (/npsq,nlev/)), npsq, ie)
+                    RESHAPE(fld_gll(:,:,:,:,ie), (/npsq,nlev/)), npsq, ie)
             end do
          end do
 

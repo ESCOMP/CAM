@@ -304,7 +304,7 @@ contains
     real (kind=r8), intent(inout) :: fld_phys(1-nhc_phys:fv_nphys+nhc_phys,1-nhc_phys:fv_nphys+nhc_phys,num_lev,num_flds, &
          nets:nete)
     real (kind=r8), intent(out)   :: fld_gll(np,np,num_lev,num_flds,nets:nete)
-    type (element_t)     , intent(inout) :: elem(:)
+    type (element_t)     , intent(in)    :: elem(:)
     type(fvm_struct)     , intent(in)    :: fvm(:)
     integer, optional    , intent(in)    :: istart_vector
     logical              , intent(in)    :: llimiter(num_flds)
@@ -451,7 +451,7 @@ contains
       tmp = 1.0_r8
       inv_area  = 1.0_r8/dyn2phys(tmp,elem(ie)%metdet(:,:))
       phis_phys(:,ie) = RESHAPE(dyn2phys(elem(ie)%state%phis(:,:),elem(ie)%metdet(:,:),inv_area),SHAPE(phis_phys(:,ie)))
-      ps_phys(:,ie) = ptop      
+      ps_phys(:,ie) = ptop
       if (nc.ne.fv_nphys) then
         tmp = 1.0_r8
         do k=1,nlev
