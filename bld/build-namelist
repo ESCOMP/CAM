@@ -4051,13 +4051,21 @@ sub fv_decomp_set{
     my $nlev = $cfg->get('nlev');
     my ($ny, $nz);
 
+    my $waccmx = $cfg->get('waccmx');
+    my $nmaglat = 97;
+    my $nmaglon = 80;
+    my $nlatitudes = $nlat;
+    if ($waccmx and $nlat>$nmaglat) {
+	$nlatitudes = $nmaglat; # magnetic grid resolution
+    }
+
     # die if bad input
     if ($ntasks < 1) {
         die "$ProgName - ERROR: fv_decomp_set: bad input: ntasks=$ntasks.\n" .
             "  -ntask argument to build-namelist is wrong.";
     }
 
-    NZ: for ($nz = 1; $nz <= $nlev; ++$nz) {
+    NZLOOP: for ($nz = 1; $nz <= $nlev; ++$nz) {
 
         # test that $nz divides $ntasks
         if ($ntasks%$nz == 0) {
@@ -4066,7 +4074,7 @@ sub fv_decomp_set{
 
             # test that y subdomains contain at least 3 latitudes
             # if so then done
-            if (3*$ny <= $nlat) {last NZ;}
+            if (3*$ny <= $nlatitudes) {last NZLOOP;}
         }
     }
 
@@ -4074,6 +4082,10 @@ sub fv_decomp_set{
     if ($nz > $nlev  or  $ny*$nz != $ntasks) {
         die "$ProgName - ERROR: fv_decomp_set failed to find a decomposition.\n" .
             "  npr_yz needs to be set by the user.";
+    }
+    if ($waccmx and $nmaglon/$nz < 4) {
+	die "$ProgName - ERROR: fv_decomp_set failed to find a decomposition.\n"
+	 . "  Too many MPI tasks to properly decompose WACCMX magnetic grid.";
     }
 
     return "$ny,$nz,$nz,$ny";
