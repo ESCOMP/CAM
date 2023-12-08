@@ -167,6 +167,7 @@ module cam_history
   logical :: rgnht(ptapes) = .false.  ! flag array indicating regeneration volumes
   logical :: hstwr(ptapes) = .false.  ! Flag for history writes
   logical :: empty_htapes  = .false.  ! Namelist flag indicates no default history fields
+  logical :: write_nstep0  = .false.  ! write nstep==0 time sample to history files (except monthly)
   logical :: htapes_defined = .false. ! flag indicates history contents have been defined
 
   character(len=cl) :: model_doi_url = '' ! Model DOI
@@ -626,7 +627,7 @@ CONTAINS
 
     ! History namelist items
     namelist /cam_history_nl/ ndens, nhtfrq, mfilt, inithist, inithist_all,    &
-         avgflag_pertape, empty_htapes, lcltod_start, lcltod_stop,             &
+         avgflag_pertape, empty_htapes, write_nstep0, lcltod_start, lcltod_stop,&
          fincl1lonlat, fincl2lonlat, fincl3lonlat, fincl4lonlat, fincl5lonlat, &
          fincl6lonlat, fincl7lonlat, fincl8lonlat, fincl9lonlat,               &
          fincl10lonlat, collect_column_output, hfilename_spec,                 &
@@ -825,8 +826,14 @@ CONTAINS
       end do
     end if ! masterproc
 
-    ! Print per-tape averaging flags
+    ! log output
     if (masterproc) then
+
+      if (write_nstep0) then
+        write(iulog,*)'nstep==0 time sample will be written to all files except monthly average.'
+      end if
+
+      ! Print per-tape averaging flags
       do t = 1, ptapes
         if (avgflag_pertape(t) /= ' ') then
           write(iulog,*)'Unless overridden by namelist input on a per-field basis (FINCL),'
@@ -885,6 +892,7 @@ CONTAINS
     call mpi_bcast(lcltod_stop,  ptapes, mpi_integer, masterprocid, mpicom, ierr)
     call mpi_bcast(collect_column_output, ptapes, mpi_logical, masterprocid, mpicom, ierr)
     call mpi_bcast(empty_htapes,1, mpi_logical, masterprocid, mpicom, ierr)
+    call mpi_bcast(write_nstep0,1, mpi_logical, masterprocid, mpicom, ierr)
     call mpi_bcast(avgflag_pertape, ptapes, mpi_character, masterprocid, mpicom, ierr)
     call mpi_bcast(hfilename_spec, len(hfilename_spec(1))*ptapes, mpi_character, masterprocid, mpicom, ierr)
     call mpi_bcast(fincl, len(fincl (1,1))*pflds*ptapes, mpi_character, masterprocid, mpicom, ierr)
@@ -5585,9 +5593,20 @@ end subroutine print_active_fldlst
             hstwr(t) = nstep /= 0 .and. day == 1 .and. ncsec(instantaneous_file_index) == 0
             prev     = .true.
           else
-            hstwr(t) = mod(nstep,nhtfrq(t)) == 0
-            prev     = .false.
-          end if
+            if (nstep == 0) then
+              if (write_nstep0) then
+                hstwr(t) = .true.
+              else
+                ! zero the buffers if nstep==0 data not written
+                do f = 1, nflds(t)
+                  call h_zero(f, t)
+                end do
+              end if
+            else
+              hstwr(t) = mod(nstep,nhtfrq(t)) == 0
+            endif
+            prev = .false.
+           end if
         end if
       end if
       time = ndcur + nscur/86400._r8
