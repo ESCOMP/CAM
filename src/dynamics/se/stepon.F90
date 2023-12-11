@@ -282,9 +282,11 @@ subroutine diag_dynvar_ic(elem, fvm)
    real(r8), allocatable :: ftmp(:,:,:)
    real(r8), allocatable :: fld_fvm(:,:,:,:,:), fld_gll(:,:,:,:,:)
    real(r8), allocatable :: fld_2d(:,:)
-   logical,  allocatable :: llimiter(:)
+   logical               :: llimiter(1)
    real(r8)              :: qtmp(np,np,nlev), dp_ref(np,np,nlev), ps_ref(np,np)
    real(r8), allocatable :: factor_array(:,:,:)
+   integer               :: astat
+   character(len=*), parameter :: prefix = 'diag_dynvar_ic: '
    !----------------------------------------------------------------------------
 
    tl_f = timelevel%n0
@@ -405,7 +407,16 @@ subroutine diag_dynvar_ic(elem, fvm)
          call outfld('PS&IC', ftmp(:,1,1), npsq, ie)
       end do
       deallocate(fld_2d)
-      if (fv_nphys < 1) allocate(factor_array(np,np,nlev))
+   endif
+
+   deallocate(ftmp)
+
+   if (write_inithist()) then
+
+      if (fv_nphys < 1) then
+         allocate(factor_array(np,np,nlev),stat=astat)
+         if (astat /= 0) call endrun(prefix//"Allocate factor_array failed")
+      endif
 
       do ie = 1, nelemd
          call outfld('T&IC', RESHAPE(elem(ie)%state%T(:,:,:,tl_f),   (/npsq,nlev/)), npsq, ie)
@@ -436,10 +447,13 @@ subroutine diag_dynvar_ic(elem, fvm)
          hybrid = config_thread_region(par,'serial')
          call get_loop_ranges(hybrid, ibeg=nets, iend=nete)
 
-         allocate(fld_fvm(1-nhc:nc+nhc,1-nhc:nc+nhc,nlev,1,nets:nete))
-         allocate(fld_gll(np,np,nlev,1,nets:nete))
-         allocate(llimiter(1))
-         allocate(factor_array(nc,nc,nlev))
+         allocate(fld_fvm(1-nhc:nc+nhc,1-nhc:nc+nhc,nlev,1,nets:nete),stat=astat)
+         if (astat /= 0) call endrun(prefix//"Allocate fld_fvm failed")
+         allocate(fld_gll(np,np,nlev,1,nets:nete),stat=astat)
+         if (astat /= 0) call endrun(prefix//"Allocate fld_gll failed")
+         allocate(factor_array(nc,nc,nlev),stat=astat)
+         if (astat /= 0) call endrun(prefix//"Allocate factor_array failed")
+
          llimiter = .true.
 
          do m_cnst = 1, ntrac
@@ -465,12 +479,11 @@ subroutine diag_dynvar_ic(elem, fvm)
 
          deallocate(fld_fvm)
          deallocate(fld_gll)
-         deallocate(llimiter)
       end if
-      deallocate(factor_array)
-   end if  ! if (write_inithist)
 
-   deallocate(ftmp)
+      deallocate(factor_array)
+
+   end if  ! if (write_inithist)
 
 end subroutine diag_dynvar_ic
 
