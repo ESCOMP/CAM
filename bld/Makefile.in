@@ -408,7 +408,7 @@ ifeq ($(FC_TYPE),intel)
   CPPDEF        += -DCPRINTEL $(NO_CONTIGUOUS_FLAG)
   CFLAGS        += -std=gnu99
   FC_FLAGS      := -ftz -convert big_endian -fp-model source -no-fma \
-                   -qno-opt-dynamic-align -assume realloc_lhs -xHost
+                   -qno-opt-dynamic-align -assume realloc_lhs
   FC_FLAGS_O3OPT:= $(FC_FLAGS)
   FC_FLAGS_NOOPT:= -ftz -convert big_endian -O0
   FREEFLAGS     := 
