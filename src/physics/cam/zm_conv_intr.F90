@@ -653,7 +653,7 @@ subroutine zm_conv_tend(pblh    ,mcon    ,cme     , &
     call zm_conv_evap_run(state1%ncol, pcols, pver, pverp, &
          gravit, latice, latvap, tmelt, &
          cpair, zmconv_ke, zmconv_ke_lnd, zmconv_org, &
-         state1%t,state1%pmid,state1%pdel,state1%q(:pcols,:pver,1), &
+         state1%t(:,:),state1%pmid,state1%pdel,state1%q(:pcols,:pver,1), &
          landfrac, &
          ptend_loc%s, tend_s_snwprd, tend_s_snwevmlt, ptend_loc%q(:pcols,:pver,1), &
          rprd, cld, ztodt, &
