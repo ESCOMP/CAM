@@ -263,7 +263,7 @@ subroutine diag_dynvar_ic(elem, fvm)
    use constituents,           only: cnst_name
    use element_mod,            only: element_t
    use fvm_control_volume_mod, only: fvm_struct
-   use fvm_mapping,            only: phys2dyn
+   use fvm_mapping,            only: fvm2dyn
    use cam_thermo,             only: get_sum_species, get_dp_ref, get_ps
    use air_composition,        only: thermodynamic_active_species_idx
    use air_composition,        only: thermodynamic_active_species_idx_dycore
@@ -469,7 +469,7 @@ subroutine diag_dynvar_ic(elem, fvm)
                end if
             end do
 
-            call phys2dyn(hybrid,elem,fld_fvm(:,:,:,:,:),fld_gll(:,:,:,:,:),nets,nete,nlev,1,fvm(nets:nete),llimiter)
+            call fvm2dyn(fld_fvm, fld_gll, hybrid, nets, nete, nlev, fvm(nets:nete), llimiter)
 
             do ie = nets, nete
                call outfld(trim(cnst_name(m_cnst))//'&IC', &
