@@ -2584,16 +2584,6 @@ CONTAINS
     !    on that grid.
     integer, allocatable        :: gridsontape(:,:)
 
-    ! The following list of field names are only valid for the FV dycore.  They appear
-    ! in fincl settings of WACCM use case files which are not restricted to the FV dycore.
-    ! To avoid duplicating long fincl lists in use case files to provide both FV and non-FV
-    ! versions this short list of fields is checked for and removed from fincl lists when
-    ! the dycore is not FV.
-    integer, parameter :: n_fv_only = 10
-    character(len=6) :: fv_only_flds(n_fv_only) = &
-       [ 'VTHzm ', 'WTHzm ', 'UVzm  ', 'UWzm  ', 'Uzm   ', 'Vzm   ', 'Wzm   ', &
-         'THzm  ', 'TH    ', 'MSKtem' ]
-
     integer :: n_vec_comp, add_fincl_idx
     integer, parameter :: nvecmax = 50 ! max number of vector components in a fincl list
     character(len=2) :: avg_suffix
@@ -2610,24 +2600,8 @@ CONTAINS
       n_vec_comp       = 0
       vec_comp_names   = ' '
       vec_comp_avgflag = ' '
-fincls: do while (fld < pflds .and. fincl(fld,t) /= ' ')
+      do while (fld < pflds .and. fincl(fld,t) /= ' ')
         name = getname (fincl(fld,t))
-
-        if (.not. dycore_is('FV')) then
-           ! filter out fields only provided by FV dycore
-           do i = 1, n_fv_only
-              if (name == fv_only_flds(i)) then
-                 write(errormsg,'(3a,2(i0,a))')'FLDLST: ', trim(name), &
-                    ' in fincl(', fld,', ',t, ') only available with FV dycore'
-                 if (masterproc) then
-                    write(iulog,*) trim(errormsg)
-                    call shr_sys_flush(iulog)
-                 end if
-                 fld = fld + 1
-                 cycle fincls
-              end if
-           end do
-        end if
 
         mastername=''
         listentry => get_entry_by_name(masterlinkedlist, name)
@@ -2656,7 +2630,7 @@ fincls: do while (fld < pflds .and. fincl(fld,t) /= ' ')
            end if
         end if
         fld = fld + 1
-      end do fincls
+      end do
 
       ! Interpolation of vector components requires that both be present.  If the fincl
       ! specifier contains any vector components, then the complement was saved in the
@@ -6121,8 +6095,8 @@ end subroutine print_active_fldlst
           write(errormsg, *) "Cannot add ", trim(fname),                      &
                "Subcolumn history output only allowed on physgrid"
           call endrun("ADDFLD: "//errormsg)
-          listentry%field%is_subcol = .true.
         end if
+        listentry%field%is_subcol = .true.
       end if
     end if
     ! Levels
