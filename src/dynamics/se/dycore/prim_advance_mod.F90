@@ -53,7 +53,7 @@ contains
     use element_mod,       only: element_t
     use hybvcoord_mod,     only: hvcoord_t
     use hybrid_mod,        only: hybrid_t
-    use time_mod,          only: TimeLevel_t,  timelevel_qdp, tevolve
+    use se_dyn_time_mod,   only: TimeLevel_t,  timelevel_qdp, tevolve
     use fvm_control_volume_mod, only: fvm_struct
     use cam_thermo,        only: get_kappa_dry
     use air_composition,   only: thermodynamic_active_species_num
@@ -78,7 +78,7 @@ contains
     real (kind=r8) :: qwater(np,np,nlev,thermodynamic_active_species_num,nets:nete)
     integer        :: qidx(thermodynamic_active_species_num)
     real (kind=r8) :: kappa(np,np,nlev,nets:nete)
-    call t_startf('prim_advance_exp')
+
     nm1   = tl%nm1
     n0    = tl%n0
     np1   = tl%np1
@@ -257,7 +257,6 @@ contains
 
     call omp_set_nested(.false.)
 
-    call t_stopf('prim_advance_exp')
   end subroutine prim_advance_exp
 
 
@@ -931,7 +930,7 @@ contains
             !OMP_COLLAPSE_SIMD
             !DIR_VECTOR_ALIGNED
             do j=1,np
-              do i=1,np                
+              do i=1,np
                 v1new=elem(ie)%state%v(i,j,1,k,nt)
                 v2new=elem(ie)%state%v(i,j,2,k,nt)
                 v1   =elem(ie)%state%v(i,j,1,k,nt)- vtens(i,j,1,k,ie)
@@ -976,6 +975,7 @@ contains
      !
      ! ===================================
      use dimensions_mod,  only: np, nc, nlev, use_cslam
+     use control_mod,     only: pgf_formulation
      use hybrid_mod,      only: hybrid_t
      use element_mod,     only: element_t
      use derivative_mod,  only: derivative_t, divergence_sphere, gradient_sphere, vorticity_sphere
@@ -1030,9 +1030,8 @@ contains
      real (kind=r8) :: vtens1(np,np,nlev),vtens2(np,np,nlev),ttens(np,np,nlev)
      real (kind=r8) :: stashdp3d (np,np,nlev),tempdp3d(np,np), tempflux(nc,nc,4)
      real (kind=r8) :: ckk, term, T_v(np,np,nlev)
-     real (kind=r8), dimension(np,np,2) :: grad_exner
-     real (kind=r8), dimension(np,np,2) :: grad_exner_term
-     real (kind=r8), dimension(np,np,2) :: grad_logexner
+     real (kind=r8), dimension(np,np,2) :: pgf_term
+     real (kind=r8), dimension(np,np,2) :: grad_exner,grad_logexner
      real (kind=r8) :: T0,T1
      real (kind=r8), dimension(np,np)   :: theta_v
 
@@ -1176,52 +1175,52 @@ contains
          ! vtemp = gradient_sphere(Ephi(:,:),deriv,elem(ie)%Dinv)
          call gradient_sphere(Ephi(:,:),deriv,elem(ie)%Dinv,vtemp)
          density_inv(:,:) = R_dry(:,:,k)*T_v(:,:,k)/p_full(:,:,k)
-
-         if (dry_air_species_num==0) then
-           exner(:,:)=(p_full(:,:,k)/hvcoord%ps0)**kappa(:,:,k,ie)
-           theta_v(:,:)=T_v(:,:,k)/exner(:,:)
-           call gradient_sphere(exner(:,:),deriv,elem(ie)%Dinv,grad_exner)
-
-           grad_exner_term(:,:,1) = cp_dry(:,:,k)*theta_v(:,:)*grad_exner(:,:,1)
-           grad_exner_term(:,:,2) = cp_dry(:,:,k)*theta_v(:,:)*grad_exner(:,:,2)
+         if (pgf_formulation==1.or.(pgf_formulation==3.and.hvcoord%hybm(k)>0._r8)) then
+           if (dry_air_species_num==0) then
+             exner(:,:)=(p_full(:,:,k)/hvcoord%ps0)**kappa(:,:,k,ie)
+             theta_v(:,:)=T_v(:,:,k)/exner(:,:)
+             call gradient_sphere(exner(:,:),deriv,elem(ie)%Dinv,grad_exner)
+             pgf_term(:,:,1) = cp_dry(:,:,k)*theta_v(:,:)*grad_exner(:,:,1)
+             pgf_term(:,:,2) = cp_dry(:,:,k)*theta_v(:,:)*grad_exner(:,:,2)
+           else
+             exner(:,:)=(p_full(:,:,k)/hvcoord%ps0)**kappa(:,:,k,ie)
+             theta_v(:,:)=T_v(:,:,k)/exner(:,:)
+             call gradient_sphere(exner(:,:),deriv,elem(ie)%Dinv,grad_exner)
+             call gradient_sphere(kappa(:,:,k,ie),deriv,elem(ie)%Dinv,grad_kappa_term)
+             suml = exner(:,:)*LOG(p_full(:,:,k)/hvcoord%ps0)
+             grad_kappa_term(:,:,1)=-suml*grad_kappa_term(:,:,1)
+             grad_kappa_term(:,:,2)=-suml*grad_kappa_term(:,:,2)
+             pgf_term(:,:,1) = cp_dry(:,:,k)*theta_v(:,:)*(grad_exner(:,:,1)+grad_kappa_term(:,:,1))
+             pgf_term(:,:,2) = cp_dry(:,:,k)*theta_v(:,:)*(grad_exner(:,:,2)+grad_kappa_term(:,:,2))
+           end if
+           ! balanced ref profile correction:
+           ! reference temperature profile (Simmons and Jiabin, 1991, QJRMS, Section 2a)
+           !
+           !  Tref = T0+T1*Exner
+           !  T1 = .0065*Tref*Cp/g ! = ~191
+           !  T0 = Tref-T1         ! = ~97
+           !
+           T1 = lapse_rate*Tref*cpair*rga
+           T0 = Tref-T1
+           if (hvcoord%hybm(k)>0) then
+             !only apply away from constant pressure levels
+             call gradient_sphere(log(exner(:,:)),deriv,elem(ie)%Dinv,grad_logexner)
+             pgf_term(:,:,1)=pgf_term(:,:,1) + &
+                  cpair*T0*(grad_logexner(:,:,1)-grad_exner(:,:,1)/exner(:,:))
+             pgf_term(:,:,2)=pgf_term(:,:,2) + &
+                  cpair*T0*(grad_logexner(:,:,2)-grad_exner(:,:,2)/exner(:,:))
+           end if
+         elseif (pgf_formulation==2.or.pgf_formulation==3) then
+           pgf_term(:,:,1)  = density_inv(:,:)*grad_p_full(:,:,1,k)
+           pgf_term(:,:,2)  = density_inv(:,:)*grad_p_full(:,:,2,k)
          else
-           exner(:,:)=(p_full(:,:,k)/hvcoord%ps0)**kappa(:,:,k,ie)
-           theta_v(:,:)=T_v(:,:,k)/exner(:,:)
-           call gradient_sphere(exner(:,:),deriv,elem(ie)%Dinv,grad_exner)
-
-           call gradient_sphere(kappa(:,:,k,ie),deriv,elem(ie)%Dinv,grad_kappa_term)
-           suml = exner(:,:)*LOG(p_full(:,:,k)/hvcoord%ps0)
-           grad_kappa_term(:,:,1)=-suml*grad_kappa_term(:,:,1)
-           grad_kappa_term(:,:,2)=-suml*grad_kappa_term(:,:,2)
-
-           grad_exner_term(:,:,1) = cp_dry(:,:,k)*theta_v(:,:)*(grad_exner(:,:,1)+grad_kappa_term(:,:,1))
-           grad_exner_term(:,:,2) = cp_dry(:,:,k)*theta_v(:,:)*(grad_exner(:,:,2)+grad_kappa_term(:,:,2))
+           call endrun('ERROR: bad choice of pgf_formulation (must be 1, 2, or 3)')
          end if
-
-         ! balanced ref profile correction:
-         ! reference temperature profile (Simmons and Jiabin, 1991, QJRMS, Section 2a)
-         !
-         !  Tref = T0+T1*Exner
-         !  T1 = .0065*Tref*Cp/g ! = ~191
-         !  T0 = Tref-T1         ! = ~97
-         !
-         T1 = lapse_rate*Tref*cpair*rga
-         T0 = Tref-T1
-
-         if (hvcoord%hybm(k)>0) then
-           call gradient_sphere(log(exner(:,:)),deriv,elem(ie)%Dinv,grad_logexner)
-           grad_exner_term(:,:,1)=grad_exner_term(:,:,1) + &
-                cpair*T0*(grad_logexner(:,:,1)-grad_exner(:,:,1)/exner(:,:))
-           grad_exner_term(:,:,2)=grad_exner_term(:,:,2) + &
-                cpair*T0*(grad_logexner(:,:,2)-grad_exner(:,:,2)/exner(:,:))
-         end if
-
-
 
          do j=1,np
            do i=1,np
-             glnps1 = grad_exner_term(i,j,1)
-             glnps2 = grad_exner_term(i,j,2)
+             glnps1 = pgf_term(i,j,1)
+             glnps2 = pgf_term(i,j,2)
              v1     = elem(ie)%state%v(i,j,1,k,n0)
              v2     = elem(ie)%state%v(i,j,2,k,n0)
 
@@ -1525,12 +1524,12 @@ contains
              active_species_idx_dycore=thermodynamic_active_species_idx_dycore)
         ptop = hyai(1)*ps0
         do j=1,np
-          !get mixing ratio of thermodynamic active species only 
+          !get mixing ratio of thermodynamic active species only
           !(other tracers not used in get_hydrostatic_energy)
           do nq=1,thermodynamic_active_species_num
             m_cnst = thermodynamic_active_species_idx_dycore(nq)
             q(:,:,m_cnst) = elem(ie)%state%Qdp(:,j,:,m_cnst,tl_qdp)/&
-                 elem(ie)%state%dp3d(:,j,:,tl) 
+                 elem(ie)%state%dp3d(:,j,:,tl)
           end do
           call get_hydrostatic_energy(q, &
                .false., elem(ie)%state%dp3d(:,j,:,tl), cp(:,j,:), elem(ie)%state%v(:,j,1,:,tl), &

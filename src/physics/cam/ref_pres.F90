@@ -1,14 +1,14 @@
 module ref_pres
 !--------------------------------------------------------------------------
-! 
+!
 ! Provides access to reference pressures for use by the physics
 ! parameterizations.  The pressures are provided by the dynamical core
 ! since it determines the grid used by the physics.
-! 
+!
 ! Note that the init method for this module is called before the init
 ! method in physpkg; therefore, most physics modules can use these
 ! reference pressures during their init phases.
-! 
+!
 !--------------------------------------------------------------------------
 
 use shr_kind_mod, only: r8=>shr_kind_r8
@@ -25,7 +25,7 @@ real(r8), protected :: pref_mid_norm(pver)  ! Layer midpoints normalized by
                                             ! surface pressure ('eta' coordinate)
 
 real(r8), protected :: ptop_ref             ! Top of model
-real(r8), protected :: psurf_ref            ! Surface pressure
+real(r8), protected :: psurf_ref            ! reference pressure
 
 ! Number of top levels using pure pressure representation
 integer, protected :: num_pr_lev

@@ -103,6 +103,16 @@ case $hostname in
     baselinedir="/glade/p/cesm/amwg/cesm_baselines/$cam_tag"
   ;;
 
+  de*)
+    echo "server: derecho"
+    if [ -z "$CAM_FC" ]; then
+      CAM_FC="INTEL"
+    fi
+    test_file_list="tests_pretag_derecho"
+    cam_tag=$1
+    baselinedir="/glade/campaign/cesm/community/amwg/cam_baselines/$cam_tag"
+  ;;
+
   * ) echo "ERROR: machine $hostname not currently supported"; exit 1 ;;
 esac
 

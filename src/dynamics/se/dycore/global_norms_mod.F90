@@ -681,8 +681,10 @@ contains
     do k=1,nlev
       ! Vertical profile from FV dycore (see Lauritzen et al. 2012 DOI:10.1177/1094342011410088)
       scale1        = 0.5_r8*(1.0_r8+tanh(2.0_r8*log(pmid(sponge_del4_lev)/pmid(k))))
-      nu_div_lev(k) = (1.0_r8-scale1)*nu_div+scale1*nu_div_max
-      if (sponge_del4_nu_fac.ne.1.0_r8) then
+      if (sponge_del4_nu_div_fac /= 1.0_r8) then
+        nu_div_lev(k) = (1.0_r8-scale1)*nu_div+scale1*nu_div_max
+      end if
+      if (sponge_del4_nu_fac /= 1.0_r8) then
         nu_lev(k)     = (1.0_r8-scale1)*nu    +scale1*nu_max
         nu_t_lev(k)   = (1.0_r8-scale1)*nu_p  +scale1*nu_max
       end if
@@ -735,9 +737,12 @@ contains
     !
     if (ptop>100.0_r8) then
       umax = 120.0_r8
-    else
+    else if (ptop>10.0_r8) then
       umax = 400.0_r8
+    else
+      umax = 800.0_r8
     end if
+
     ugw = 342.0_r8 !max gravity wave speed
 
     dt_max_adv             = S_rk/(umax*max_normDinv*lambda_max*ra)

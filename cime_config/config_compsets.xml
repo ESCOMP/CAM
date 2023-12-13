@@ -62,12 +62,12 @@
   </compset>
 
   <compset>
-    <alias>FLTHIST_v0d</alias>
+    <alias>FLTHIST</alias>
     <lname>HIST_CAM%DEV%LT%GHGMAM4_CLM51%SP_CICE%PRES_DOCN%DOM_MOSART_SGLC_SWAV</lname>
   </compset>
 
   <compset>
-    <alias>FMTHIST_v0d</alias>
+    <alias>FMTHIST</alias>
     <lname>HIST_CAM%DEV%MT%GHGMAM4_CLM51%SP_CICE%PRES_DOCN%DOM_MOSART_SGLC_SWAV</lname>
   </compset>
 

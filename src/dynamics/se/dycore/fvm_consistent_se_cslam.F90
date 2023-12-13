@@ -6,7 +6,7 @@ module fvm_consistent_se_cslam
   use cam_abortutils,         only: endrun
   use cam_logfile,            only: iulog
 
-  use time_mod,               only: timelevel_t
+  use se_dyn_time_mod,        only: timelevel_t
   use element_mod,            only: element_t
   use fvm_control_volume_mod, only: fvm_struct
   use hybrid_mod,             only: hybrid_t, config_thread_region, get_loop_ranges, threadOwnsVertLevel

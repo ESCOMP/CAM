@@ -2387,6 +2387,11 @@ if (($chem =~ /_mam4/ or $chem =~ /_mam5/) and ($phys =~ /cam6/ or $phys =~ /cam
                     'num_a4_ar_ext_file' => 'num_a4',
                     'no2_ar_ext_file'    => 'NO2',
                     'so2_ar_ext_file'    => 'SO2' );
+    } elsif ($chem =~ /ghg_mam/) {
+        %species = (%species,
+                    'bc_a4_ar_ext_file'  => 'bc_a4',
+                    'num_a4_ar_ext_file' => 'num_a4',
+                    'so2_ar_ext_file'    => 'SO2' );
     }
 
     # for transient cases include volcanic emissions
@@ -3115,7 +3120,7 @@ if ($cfg->get('microphys') =~ /^mg/) {
             $micro_mg_dcs = '500.D-6';   # default for cam6
         }
         elsif ($phys eq 'cam_dev') {
-            $micro_mg_dcs = '250.D-6';   # default for cam_dev
+            $micro_mg_dcs = '500.D-6';   # default for cam_dev
         }
     }
 
@@ -3129,6 +3134,7 @@ add_default($nl, 'microp_aero_npccn_scale');
 add_default($nl, 'microp_aero_wsub_scale');
 add_default($nl, 'microp_aero_wsubi_scale');
 add_default($nl, 'microp_aero_wsub_min');
+add_default($nl, 'microp_aero_wsub_min_asf');
 add_default($nl, 'microp_aero_wsubi_min');
 
 # Ice nucleation options
@@ -3380,6 +3386,9 @@ if ($clubb_sgs  =~ /$TRUE/io) {
    add_default($nl, 'clubb_mf_L0');
    add_default($nl, 'clubb_mf_ent0');
    add_default($nl, 'clubb_mf_nup');
+
+   #Turn on HB scheme where CLUBB not active
+   add_default($nl, 'do_hb_above_clubb');
 }
 
 # Force exit if running cam_dev and CLUBB is off
@@ -3457,7 +3466,10 @@ if (!$simple_phys) {
     add_default($nl, 'cldfrc2m_rhmaxi');
     add_default($nl, 'cldfrc2m_rhminis');
     add_default($nl, 'cldfrc2m_rhmaxis');
+    add_default($nl, 'cldfrc2m_qist_min');
+    add_default($nl, 'cldfrc2m_qist_max');
     add_default($nl, 'cldfrc2m_do_subgrid_growth');
+    add_default($nl, 'cldfrc2m_do_avg_aist_algs');
 }
 
 my $rk_strat_polstrat_rhmin = $nl->get_value('rk_strat_polstrat_rhmin');
@@ -3959,6 +3971,7 @@ if ($dyn =~ /se/) {
 		  se_kmin_jet
 		  se_kmax_jet
                   se_molecular_diff
+	          se_pgf_formulation
         );
 
     my %opts;
@@ -4047,6 +4060,7 @@ if ($dyn =~ /mpas/) {
     add_default($nl, 'mpas_zd');
     add_default($nl, 'mpas_xnutr');
     add_default($nl, 'mpas_cam_coef');
+    add_default($nl, 'mpas_cam_damping_levels');
     add_default($nl, 'mpas_print_detailed_minmax_vel');
     add_default($nl, 'mpas_rayleigh_damp_u');
     add_default($nl, 'mpas_rayleigh_damp_u_timescale_days');

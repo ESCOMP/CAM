@@ -17,7 +17,7 @@ use physconst,           only: cappa, cpair
 use time_manager,        only: get_nstep, is_first_restart_step, &
                                get_curr_calday, get_step_size
 
-use rad_constituents,    only: N_DIAG, rad_cnst_get_call_list, rad_cnst_get_info, &
+use rad_constituents,    only: N_DIAG, rad_cnst_get_call_list, &
                                rad_cnst_get_gas, rad_cnst_out, oldcldoptics, &
                                liqcldoptics, icecldoptics
 
@@ -363,7 +363,6 @@ subroutine radiation_init(pbuf2d)
    use rad_solar_var,   only: rad_solar_var_init
    use radiation_data,  only: rad_data_init
    use cloud_rad_props, only: cloud_rad_props_init
-   use modal_aer_opt,   only: modal_aer_opt_init
    use rrtmg_state,     only: rrtmg_state_init
    use time_manager,    only: is_first_step
 
@@ -372,7 +371,7 @@ subroutine radiation_init(pbuf2d)
    type(physics_buffer_desc), pointer :: pbuf2d(:,:)
 
    ! local variables
-   integer :: icall, nmodes
+   integer :: icall
    logical :: active_calls(0:N_DIAG)
    integer :: nstep                       ! current timestep number
    logical :: history_amwg                ! output the variables used by the AMWG diag package
@@ -416,11 +415,6 @@ subroutine radiation_init(pbuf2d)
                      history_vdiag_out  = history_vdiag,   &
                      history_budget_out = history_budget,  &
                      history_budget_histfile_num_out = history_budget_histfile_num)
-
-   ! Determine whether modal aerosols are affecting the climate, and if so
-   ! then initialize the modal aerosol optics module
-   call rad_cnst_get_info(0, nmodes=nmodes)
-   if (nmodes > 0) call modal_aer_opt_init()
 
    ! "irad_always" is number of time steps to execute radiation continuously from start of
    ! initial OR restart run
@@ -1564,4 +1558,3 @@ end subroutine calc_col_mean
 !===============================================================================
 
 end module radiation
-

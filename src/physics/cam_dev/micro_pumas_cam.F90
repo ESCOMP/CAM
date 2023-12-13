@@ -2498,6 +2498,7 @@ subroutine micro_pumas_cam_tend(state, ptend, dtime, pbuf)
 
    !Copy pbuf field from proc_rates back to pbuf pointer
    bergstot(:ncol,top_lev:) = proc_rates%bergstot(:ncol,1:nlev)
+   bergstot(:ncol,1:top_lev-1) = 0._r8
 
    ! ------------------------------------------------------ !
    ! ------------------------------------------------------ !
@@ -2628,6 +2629,7 @@ subroutine micro_pumas_cam_tend(state, ptend, dtime, pbuf)
       nmultgo_grid(:ncol,:top_lev-1) = 0._r8
       nmultrgo_grid(:ncol,:top_lev-1) = 0._r8
       npsacwgo_grid(:ncol,:top_lev-1) = 0._r8
+      bergso_grid(:ncol,:top_lev-1) = 0._r8
 
       ! These pbuf fields need to be assigned.  There is no corresponding subcol_field_avg
       ! as they are reset before being used, so it would be a needless calculation
