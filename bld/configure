@@ -1802,9 +1802,6 @@ if ($usr_cppdefs and $print>=2) { print "Commandline CPP definitions: \'$usr_cpp
 # the CPP definitions that were explicitly set in the defaults file or by the user on the commandline.
 my $cfg_cppdefs = ' ';
 
-# Turn on CCPP "OLD_CAM"
-$cfg_cppdefs .= " -DOLD_CAM";
-
 # Building for perturbation growth tests
 if ($pergro eq "ON") { $cfg_cppdefs .= " -DPERGRO"; }
 

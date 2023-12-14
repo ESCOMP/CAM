@@ -608,7 +608,7 @@ subroutine crmclouds_convect_tend(state,  ptend,  ztodt,  pbuf)
    use time_manager,  only: get_nstep
    use physics_buffer, only: physics_buffer_desc, pbuf_old_tim_idx, pbuf_get_index, pbuf_get_field
    use constituents,  only: pcnst, cnst_get_ind
-   use zm_conv_convtran_mod, only: zm_conv_convtran_run
+   use zm_conv_convtran,only: zm_conv_convtran_run
    use error_messages, only: alloc_err
 
 ! Arguments

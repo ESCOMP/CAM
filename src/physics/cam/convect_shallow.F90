@@ -13,7 +13,7 @@
    use shr_kind_mod,      only : r8=>shr_kind_r8
    use physconst,         only : cpair, zvir
    use ppgrid,            only : pver, pcols, pverp
-   use zm_conv_evap_mod,  only : zm_conv_evap_run
+   use zm_conv_evap,      only : zm_conv_evap_run
    use zm_conv_intr,      only : zmconv_ke, zmconv_ke_lnd,  zmconv_org
    use cam_history,       only : outfld, addfld, horiz_only
    use cam_logfile,       only : iulog

@@ -10,10 +10,10 @@ module zm_conv_intr
    use shr_kind_mod, only: r8=>shr_kind_r8
    use physconst,    only: cpair, epsilo, gravit, latvap, tmelt, rair
    use ppgrid,       only: pver, pcols, pverp, begchunk, endchunk
-   use zm_conv_evap_mod,     only: zm_conv_evap_run
-   use zm_convr_mod,         only: zm_convr_init, zm_convr_run
-   use zm_conv_convtran_mod, only: zm_conv_convtran_run
-   use zm_conv_momtran_mod,  only: zm_conv_momtran_run
+   use zm_conv_evap,         only: zm_conv_evap_run
+   use zm_convr,             only: zm_convr_init, zm_convr_run
+   use zm_conv_convtran,     only: zm_conv_convtran_run
+   use zm_conv_momtran,      only: zm_conv_momtran_run
 
    use rad_constituents, only: rad_cnst_get_info, rad_cnst_get_mode_num, rad_cnst_get_aer_mmr, &
                                rad_cnst_get_aer_props, rad_cnst_get_mode_props !, &
@@ -155,6 +155,7 @@ subroutine zm_conv_register
    ! convective mass fluxes
    call pbuf_add_field('CMFMC_DP', 'physpkg', dtype_r8, (/pcols,pverp/), mconzm_idx)
 
+!CACNOTE - Is zm_org really a constituent or was it just a handy structure to use for an allocatable which persists in the run?
    if (zmconv_org) then
       call cnst_add('ZM_ORG',0._r8,0._r8,0._r8,ixorg,longname='organization parameter')
    endif
@@ -237,7 +238,7 @@ subroutine zm_conv_init(pref_edge)
 
   use cam_history,    only: addfld, add_default, horiz_only
   use ppgrid,         only: pcols, pver
-  use zm_convr_mod,   only: zm_convr_init
+  use zm_convr,       only: zm_convr_init
   use pmgrid,         only: plev,plevp
   use spmd_utils,     only: masterproc
   use phys_control,   only: phys_deepconv_pbl, phys_getopts, cam_physpkg_is
@@ -545,6 +546,7 @@ subroutine zm_conv_tend(pblh    ,mcon    ,cme     , &
 !
    call t_startf ('zm_convr_run')
 
+!CACNOTE - Need to remove the pointer and may need to copy in/out around the zm_convr_run call
    if (zmconv_org) then
       allocate(zm_org2d(pcols,pver))
       org => state%q(:,:,ixorg)
@@ -552,16 +554,31 @@ subroutine zm_conv_tend(pblh    ,mcon    ,cme     , &
    endif
 
 !CACNOTE - Need to check errflg and report errors
-   call zm_convr_run(   ncol    ,  pcols, pver, &
-                    pverp,   gravit  ,latice  ,cpwv    ,cpliq   ,&
-                    rh2o,&
-                    state%t       ,state%q(:,:,1),      prec    ,jctop   ,jcbot   , &
-                    pblh    ,state%zm      ,state%phis    ,state%zi      ,ptend_loc%q(:,:,1)    , &
-                    ptend_loc%s    , state%pmid     ,state%pint    ,state%pdel     , &
-                    .5_r8*ztodt    ,mcon    ,cme     , cape,      &
-                    tpert   ,dlf     ,pflx    ,zdu     ,rprd    , &
-                    mu,      md,      du,      eu,      ed,       &
-                    dp,      dsubcld, jt,      maxg,    ideep,    &
+!   call zm_convr_run(ncol, ncol, pver, &
+!                    pverp, gravit, latice, cpwv, cpliq, rh2o,  &
+!                    state%t(:ncol,:), state%q(:ncol,:,1), prec(:ncol), jctop(:ncol), jcbot(:ncol), &
+!                    pblh(:ncol), state%zm(:ncol,:), state%phis, state%zi(:ncol,:), ptend_loc%q(:ncol,:,1), &
+!                    ptend_loc%s(:ncol,:), state%pmid(:ncol,:), state%pint(:ncol,:), state%pdel(:ncol,:), &
+!                    .5_r8*ztodt, mcon(:ncol,:), cme(:ncol,:), cape(:ncol),      &
+!                    tpert(:ncol), dlf(:ncol,:), pflx(:ncol,:), zdu(:ncol,:), rprd(:ncol,:), &
+!                    mu(:ncol,:), md(:ncol,:), du(:ncol,:), eu(:ncol,:), ed(:ncol,:),       &
+!                    dp(:ncol,:), dsubcld(:ncol), jt(:ncol), maxg(:ncol), ideep(:ncol),    &
+!                    ql(:ncol,:),  rliq(:ncol), landfrac(:ncol),                          &
+!!CACNOTE - This call needs to be used when the pointer attribute is removed from these variables
+!!                    org(:ncol,:), orgt(:ncol,:), zm_org2d(:ncol,:),  &
+!                    org, orgt, zm_org2d,  &
+!                    dif(:ncol,:), dnlf(:ncol,:), dnif(:ncol,:),  &
+!                    rice(:ncol), errmsg, errflg)
+
+   call zm_convr_run(ncol, pcols, pver, &
+                    pverp, gravit, latice, cpwv, cpliq, rh2o,  &
+                    state%t, state%q(:,:,1), prec, jctop, jcbot, &
+                    pblh, state%zm, state%phis, state%zi, ptend_loc%q(:,:,1), &
+                    ptend_loc%s, state%pmid, state%pint, state%pdel, &
+                    .5_r8*ztodt, mcon, cme, cape,      &
+                    tpert, dlf, pflx, zdu, rprd, &
+                    mu, md, du, eu, ed,       &
+                    dp, dsubcld, jt, maxg, ideep,    &
                     ql,  rliq, landfrac,                          &
                     org, orgt, zm_org2d,  &
                     dif, dnlf, dnif,  &
