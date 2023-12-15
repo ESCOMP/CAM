@@ -1045,14 +1045,18 @@ subroutine micro_pumas_cam_init(pbuf2d)
    call addfld ('NMELTO',     (/ 'trop_cld_lev' /), 'A', '#/kg/s',  'Number Tendency due to Melting of cloud ice ')
    call addfld ('NMELTS',     (/ 'trop_cld_lev' /), 'A', '#/kg/s',  'Number Tendency due to Melting of snow')
 
-   call addfld ('qctend_KK2000',     (/ 'trop_cld_lev' /), 'A', 'kg/kg/s',  'cloud liquid mass tendency due to autoconversion  & accretion from KK2000')
-   call addfld ('nctend_KK2000',     (/ 'trop_cld_lev' /), 'A', '#/kg/s',  'cloud number mass tendency due to autoconversion  & accretion from KK2000')
-   call addfld ('qrtend_KK2000',     (/ 'trop_cld_lev' /), 'A', 'kg/kg/s',  'rain mass tendency due to autoconversion  & accretion from KK2000')
-   call addfld ('nrtend_KK2000',     (/ 'trop_cld_lev' /), 'A', '#/kg/s',  'rain number tendency due to autoconversion  & accretion from KK2000')
-   call addfld ('qctend_SB2001',     (/ 'trop_cld_lev' /), 'A', 'kg/kg/s',  'cloud liquid mass tendency due to autoconversion  & accretion from SB2001')
-   call addfld ('nctend_SB2001',     (/ 'trop_cld_lev' /), 'A', '#/kg/s',  'cloud liquid number tendency due to autoconversion  & accretion from SB2001')
-   call addfld ('qrtend_SB2001',     (/ 'trop_cld_lev' /), 'A', 'kg/kg/s',  'rain mass tendency due to autoconversion  & accretion from SB2001')
-   call addfld ('nrtend_SB2001',     (/ 'trop_cld_lev' /), 'A', '#/kg/s',  'rain number tendency due to autoconversion  & accretion from SB2001')
+   if (trim(micro_mg_warm_rain) == 'kk2000') then
+      call addfld ('qctend_KK2000',     (/ 'trop_cld_lev' /), 'A', 'kg/kg/s',  'cloud liquid mass tendency due to autoconversion  & accretion from KK2000')
+      call addfld ('nctend_KK2000',     (/ 'trop_cld_lev' /), 'A', '#/kg/s',  'cloud number mass tendency due to autoconversion  & accretion from KK2000')
+      call addfld ('qrtend_KK2000',     (/ 'trop_cld_lev' /), 'A', 'kg/kg/s',  'rain mass tendency due to autoconversion  & accretion from KK2000')
+      call addfld ('nrtend_KK2000',     (/ 'trop_cld_lev' /), 'A', '#/kg/s',  'rain number tendency due to autoconversion  & accretion from KK2000')
+   end if
+   if (trim(micro_mg_warm_rain) == 'sb2001') then
+      call addfld ('qctend_SB2001',     (/ 'trop_cld_lev' /), 'A', 'kg/kg/s',  'cloud liquid mass tendency due to autoconversion  & accretion from SB2001')
+      call addfld ('nctend_SB2001',     (/ 'trop_cld_lev' /), 'A', '#/kg/s',  'cloud liquid number tendency due to autoconversion  & accretion from SB2001')
+      call addfld ('qrtend_SB2001',     (/ 'trop_cld_lev' /), 'A', 'kg/kg/s',  'rain mass tendency due to autoconversion  & accretion from SB2001')
+      call addfld ('nrtend_SB2001',     (/ 'trop_cld_lev' /), 'A', '#/kg/s',  'rain number tendency due to autoconversion  & accretion from SB2001')
+   end if
    call addfld ('LAMC',    (/ 'trop_cld_lev' /), 'A', 'unitless',  'Size distribution parameter lambda for liquid'     )
    call addfld ('LAMR',    (/ 'trop_cld_lev' /), 'A', 'unitless',  'Size distribution parameter lambda for rain'   )
    call addfld ('PGAM',    (/ 'trop_cld_lev' /), 'A', 'unitless',  'Size distribution parameter mu (pgam) for liquid' )
@@ -3288,11 +3292,12 @@ subroutine micro_pumas_cam_tend(state, ptend, dtime, pbuf)
       call outfld('qrtend_SB2001',  proc_rates%qrtend_SB2001,  ncol, lchnk, avg_subcol_field=use_subcol_microp)
       call outfld('nrtend_SB2001',  proc_rates%nrtend_SB2001,  ncol, lchnk, avg_subcol_field=use_subcol_microp)
    end if
-
-   call outfld('qctend_KK2000',  proc_rates%qctend_KK2000,  ncol, lchnk, avg_subcol_field=use_subcol_microp)
-   call outfld('nctend_KK2000',  proc_rates%nctend_KK2000,  ncol, lchnk, avg_subcol_field=use_subcol_microp)
-   call outfld('qrtend_KK2000',  proc_rates%qrtend_KK2000,  ncol, lchnk, avg_subcol_field=use_subcol_microp)
-   call outfld('nrtend_KK2000',  proc_rates%nrtend_KK2000,  ncol, lchnk, avg_subcol_field=use_subcol_microp)
+   if (trim(micro_mg_warm_rain) == 'kk2000') then
+      call outfld('qctend_KK2000',  proc_rates%qctend_KK2000,  ncol, lchnk, avg_subcol_field=use_subcol_microp)
+      call outfld('nctend_KK2000',  proc_rates%nctend_KK2000,  ncol, lchnk, avg_subcol_field=use_subcol_microp)
+      call outfld('qrtend_KK2000',  proc_rates%qrtend_KK2000,  ncol, lchnk, avg_subcol_field=use_subcol_microp)
+      call outfld('nrtend_KK2000',  proc_rates%nrtend_KK2000,  ncol, lchnk, avg_subcol_field=use_subcol_microp)
+   end if
    call outfld('LAMC',  proc_rates%lamc_out,  ncol, lchnk, avg_subcol_field=use_subcol_microp)
    call outfld('LAMR',  proc_rates%lamr_out,  ncol, lchnk, avg_subcol_field=use_subcol_microp)
    call outfld('PGAM',  proc_rates%pgam_out,  ncol, lchnk, avg_subcol_field=use_subcol_microp)

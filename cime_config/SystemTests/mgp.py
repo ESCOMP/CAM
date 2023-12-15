@@ -12,7 +12,7 @@ as it only does a single build.
 
 import sys
 from CIME.XML.standard_module_setup import *
-from CIME.SystemTests.restart_tests import SystemTestsCompareTwo
+from CIME.SystemTests.system_tests_compare_two import SystemTestsCompareTwo
 
 logger = logging.getLogger(__name__)
 
@@ -22,8 +22,8 @@ class MGP(SystemTestsCompareTwo):
         separate_builds=True,
         run_one_suffix="mg3",
         run_two_suffix="pumas",
-        run_one_description="initial",
-        run_two_description="restart",
+        run_one_description="MG3 microphysics",
+        run_two_description="PUMAS microphysics",
         multisubmit=False,
         **kwargs
     ):

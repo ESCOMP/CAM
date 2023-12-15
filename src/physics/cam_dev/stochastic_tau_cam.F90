@@ -30,6 +30,7 @@ subroutine stochastic_tau_readnl(nlfile)
   use units,           only: getunit, freeunit
   use spmd_utils,      only: mpicom, mstrid=>masterprocid, mpi_character, masterproc
   use cam_abortutils,  only: endrun
+  use string_utils,    only: int2str
 
   character(len=*), intent(in) :: nlfile  ! filepath for file containing namelist input
 
@@ -45,7 +46,7 @@ subroutine stochastic_tau_readnl(nlfile)
      if (ierr == 0) then
         read(unitn, pumas_stochastic_tau_nl, iostat=ierr)
         if (ierr /= 0) then
-           call endrun(sub // ':: ERROR reading namelist')
+           call endrun(sub // ':: ERROR reading namelist, iostat = ' // int2str(ierr))
         end if
      end if
      close(unitn)
@@ -73,8 +74,8 @@ subroutine stochastic_tau_init_cam
     !Note: lev needs to be trop_cld_lev for proc_rates....
     call addfld('amk_c',(/'trop_cld_lev','bins_ncd    '/),'A','kg','cloud liquid mass from bins')
     call addfld('ank_c',(/'trop_cld_lev','bins_ncd    '/),'A','1/kg','cloud liquid number concentration from bins')
-    call addfld('amk_r',(/'trop_cld_lev','bins_ncd    '/),'A','kg','cloud liquid mass from bins')
-    call addfld('ank_r',(/'trop_cld_lev','bins_ncd    '/),'A','1/kg','cloud liquid number concentration from bins')
+    call addfld('amk_r',(/'trop_cld_lev','bins_ncd    '/),'A','kg','rain mass from bins')
+    call addfld('ank_r',(/'trop_cld_lev','bins_ncd    '/),'A','1/kg','rain number concentration from bins')
     call addfld('amk',(/'trop_cld_lev','bins_ncd    '/),'A','kg','all liquid mass from bins')
     call addfld('ank',(/'trop_cld_lev','bins_ncd    '/),'A','1/kg','all liquid number concentration from bins')
     call addfld('amk_out',(/'trop_cld_lev','bins_ncd    '/),'A','kg','all liquid mass from bins')
@@ -104,7 +105,7 @@ subroutine stochastic_tau_init_cam
     call addfld('nrtend_TAU_diag',(/'trop_cld_lev'/),'A','1/kg/s','nr tendency due to TAU bin code')
 
     call addfld('gmnnn_lmnnn_TAU',(/'trop_cld_lev'/),'A','1','sum of mass gain and loss from bin code')
-    call addfld('ML_fixer',(/'trop_cld_lev'/),'A','1','frequency of ML fixer is activated')
+    call addfld('ML_fixer',(/'trop_cld_lev'/),'A','1','frequency that ML fixer is activated')
     call addfld('qc_fixer',(/'trop_cld_lev'/),'A','kg/kg','delta qc due to ML fixer')
     call addfld('nc_fixer',(/'trop_cld_lev'/),'A','kg/kg','delta nc due to ML fixer')
     call addfld('qr_fixer',(/'trop_cld_lev'/),'A','kg/kg','delta qr due to ML fixer')

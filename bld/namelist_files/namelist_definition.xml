@@ -2788,7 +2788,7 @@ Neural net output scaling values file for warm_rain machine learning
 
 <entry id="pumas_stochastic_tau_kernel_filename" type="char*256" input_pathname="abs" category="microphys"
        group="pumas_stochastic_tau_nl" >
-Coefficients for the stochastic collection kernel used by the TAU stochastice collection code, invoked in PUMAS with micro_pumas_warm_rain = 'tau'
+Coefficients for the stochastic collection kernel used by the TAU stochastic collection code, invoked in PUMAS with micro_pumas_warm_rain = 'tau'
 </entry>
 
 <entry id="micro_do_massless_droplet_destroyer" type="logical" category="microphys"
