@@ -1882,6 +1882,15 @@ the {{ hilight }}fincl#{{ closehilight }} namelist items.
 Default: FALSE
 </entry>
 
+<entry id="write_nstep0" type="logical"  category="history"
+       group="cam_history_nl" valid_values="" >
+If true then write the nstep==0 time sample to all history files except
+the monthly average file.  This output is primarily useful for development
+and debugging as it captures changes to the model state made during the
+initialization phase of the run.
+Default: FALSE
+</entry>
+
 <entry id="fexcl1" type="char*24(1000)"  category="history"
        group="cam_history_nl" valid_values="" >
 List of fields to exclude from the 1st history file (by default the name
