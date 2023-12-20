@@ -233,7 +233,7 @@ contains
       chi_eff(:) = chi_eff(:) / 2.1415e-5_r8             ! O3 column above in DU
     endwhere
     
-    call outfld('O3colAbove', chi_eff(:ncol), pcols, lchnk)
+    call outfld('O3colAbove', chi_eff(:ncol), ncol, lchnk)
 
   end subroutine rrtmg_state_update
 
