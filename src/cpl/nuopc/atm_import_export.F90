@@ -244,6 +244,7 @@ contains
     call fldlist_add(fldsToAtm_num, fldsToAtm, 'So_ssq'    )
     call fldlist_add(fldsToAtm_num, fldsToAtm, 'So_re'     )
     call fldlist_add(fldsToAtm_num, fldsToAtm, 'Sx_u10'    )
+    call fldlist_add(fldsToAtm_num, fldsToAtm, 'So_ugustOut')
     call fldlist_add(fldsToAtm_num, fldsToAtm, 'Faxx_taux' )
     call fldlist_add(fldsToAtm_num, fldsToAtm, 'Faxx_tauy' )
     call fldlist_add(fldsToAtm_num, fldsToAtm, 'Faxx_lat'  )
@@ -765,6 +766,19 @@ contains
           end do
        end do
     end if
+
+    call state_getfldptr(importState,  'So_ugustOut', fldptr=fldptr1d, exists=exists, rc=rc)
+    if (ChkErr(rc,__LINE__,u_FILE_u)) return
+    if (exists) then
+       g = 1
+       do c = begchunk,endchunk
+          do i = 1,get_ncols_p(c)
+             cam_in(c)%ugustOut(i) = fldptr1d(g)
+             g = g + 1
+          end do
+       end do
+    end if
+
 
     ! bgc scenarios
     call state_getfldptr(importState,  'Fall_fco2_lnd', fldptr=fldptr1d, exists=exists_fco2_lnd, rc=rc)
