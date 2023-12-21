@@ -1450,7 +1450,7 @@ if ($chem_pkg =~ '_mam3') {
 
 # Customize GEOS-Chem advected species and chemistry CPP definitions
 if ($chem_pkg =~ 'geoschem') {
-    $chem_cppdefs .= ' -DEXTERNAL_GRID -DEXTERNAL_FORCING ';
+    $chem_cppdefs .= ' -DEXTERNAL_GRID -DEXTERNAL_FORCING -DMODEL_CESM -DMODEL_GEOSCHEM';
     if ($chem_pkg =~ '_mam4') {
         $chem_nadv = 267; # includes GC advected species (233), CO2 (1), and MAM aerosols (33)
     }
@@ -2217,6 +2217,11 @@ sub write_filepath
     }
     if ($chem_src_dir) {
         print $fh "$chem_src_dir\n";
+    }
+ 
+    # Cloud-J for computing J-values in chemistry; currently only built for GEOS-Chem
+    if ($chem_pkg =~ 'geoschem') {
+	print $fh "$camsrcdir/src/chemistry/cloud_j/src/Core\n";
     }
 
     # GEOS-Chem must be prior to Mozart
