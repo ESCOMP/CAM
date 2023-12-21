@@ -252,7 +252,7 @@ contains
     ! Options needed by Init_State_Chm
     IO%ITS_A_FULLCHEM_SIM  = .True.
     IO%LLinoz              = .True.
-    IO%LPRT                = .False.
+    IO%Verbose             = .False.
     IO%N_Advect            = nTracers
     DO I = 1, nTracers
        IO%AdvectSpc_Name(I) = TRIM(tracerNames(I))
@@ -971,7 +971,6 @@ contains
     use geoschem_history_mod,     only : HistoryExports_SetServices
 
     ! GEOS-Chem modules
-    use Chemistry_Mod,         only : Init_Chemistry
     use DiagList_Mod,          only : Init_DiagList, Print_DiagList
     use Drydep_Mod,            only : depName, Ndvzind
     use Error_Mod,             only : Init_Error
@@ -983,6 +982,7 @@ contains
     use isorropiaII_Mod,       only : Init_IsorropiaII
     use Linear_Chem_Mod,       only : Init_Linear_Chem
     use Linoz_Mod,             only : Linoz_Read
+    use Photolysis_Mod,        only : Init_Photolysis
     use PhysConstants,         only : PI, PI_180, Re
     use Pressure_Mod,          only : Accept_External_ApBp
     use State_Chm_Mod,         only : Ind_
@@ -1135,7 +1135,7 @@ contains
     ! First setup directories
     Input_Opt%Chem_Inputs_Dir      = TRIM(geoschem_cheminputs)
     Input_Opt%SpcDatabaseFile      = TRIM(speciesDB)
-    Input_Opt%FAST_JX_DIR          = TRIM(geoschem_cheminputs)//'FAST_JX/v2020-02/'
+    Input_Opt%CLOUDJ_DIR          = TRIM(geoschem_cheminputs)//'CLOUD_J/v2023-05/'
 
     !----------------------------------------------------------
     ! CESM-specific input flags
@@ -1356,7 +1356,7 @@ contains
     ENDIF
 
     ! Set a flag to denote if we should print ND70 debug output
-    prtDebug            = ( Input_Opt%LPRT .and. MasterProc )
+    prtDebug            = ( Input_Opt%Verbose .and. MasterProc )
 
     historyConfigFile = 'HISTORY.rc'
     ! This requires geoschem_config.yml and HISTORY.rc to be in the run directory
@@ -1572,17 +1572,19 @@ contains
        CALL Error_Stop( ErrMsg, ThisLoc )
     ENDIF
 
-    IF ( Input_Opt%Its_A_FullChem_Sim .OR. &
-         Input_Opt%Its_An_Aerosol_Sim ) THEN
-       ! This also initializes Fast-JX
-       CALL Init_Chemistry( Input_Opt  = Input_Opt,            &
-                            State_Chm  = State_Chm(BEGCHUNK),  &
-                            State_Diag = State_Diag(BEGCHUNK), &
-                            State_Grid = State_Grid(BEGCHUNK), &
-                            RC         = RC                    )
+    ! Initialize photolysis, including reading files for optical properties.
+    IF ( Input_Opt%ITS_A_FULLCHEM_SIM .or. &
+         Input_Opt%ITS_AN_AEROSOL_SIM ) THEN
+       DO I = BEGCHUNK, ENDCHUNK
+          CALL Init_Photolysis( Input_Opt  = Input_Opt,                &
+                                State_Grid = State_Grid(I),            &
+                                State_Chm  = State_Chm(I),             &
+                                State_Diag = State_Diag(I),            &
+                                RC         = RC                       )
+       ENDDO
 
        IF ( RC /= GC_SUCCESS ) THEN
-          ErrMsg = 'Error encountered in "Init_Chemistry"!'
+          ErrMsg = 'Error encountered in "Init_Photolysis"!'
           CALL Error_Stop( ErrMsg, ThisLoc )
        ENDIF
     ENDIF
@@ -1840,14 +1842,12 @@ contains
     use GeosChem_History_Mod,     only : HistoryExports_SetDataPointers, CopyGCStates2Exports
 
     ! GEOS-Chem modules
-    use Aerosol_Mod,         only : Set_AerMass_Diagnostic
     use Calc_Met_Mod,        only : Set_Dry_Surface_Pressure, AirQnt
     use Chemistry_Mod,       only : Do_Chemistry
-    use CMN_FJX_MOD,         only : ZPJ
     use CMN_Size_Mod,        only : NSURFTYPE, PTop
     use Diagnostics_Mod,     only : Zero_Diagnostics_StartOfTimestep, Set_Diagnostics_EndofTimestep
+    use Diagnostics_Mod,     only : Set_AerMass_Diagnostic
     use Drydep_Mod,          only : Do_Drydep, DEPNAME, NDVZIND, Update_DryDepFreq
-    use FAST_JX_MOD,         only : RXN_NO2, RXN_O3_1
     use GC_Grid_Mod,         only : SetGridFromCtr
     use HCO_Interface_GC_Mod,only : Compute_Sflx_For_Vdiff
     use Linear_Chem_Mod,     only : TrID_GC, GC_Bry_TrID, NSCHEM
@@ -1862,7 +1862,7 @@ contains
     use Time_Mod,            only : Accept_External_Date_Time
     use Toms_Mod,            only : Compute_Overhead_O3
     use UCX_Mod,             only : Set_H2O_Trac
-    use Unitconv_Mod,        only : Convert_Spc_Units
+    use Unitconv_Mod,        only : Convert_Spc_Units, KG_SPECIES_PER_KG_DRY_AIR, UNIT_STR
     use Wetscav_Mod,         only : Setup_Wetscav
 
     REAL(r8),            INTENT(IN)    :: dT          ! Time step
@@ -1990,7 +1990,7 @@ contains
     TYPE(Species),  POINTER :: SpcInfo
     TYPE(SfcMrObj), POINTER :: iSfcMrObj
 
-    CHARACTER(LEN=63)      :: OrigUnit
+    INTEGER                 :: OrigUnit
 
     REAL(r8)               :: SlsData(PCOLS, PVER, nSls)
 
@@ -3641,13 +3641,14 @@ contains
     !-----------------------------------------------------------------------
 
     ! Use units of kg/m2 as State_Chm%Species to add emissions fluxes
-    CALL Convert_Spc_Units( Input_Opt  = Input_Opt,         &
-                            State_Chm  = State_Chm(LCHNK),  &
-                            State_Grid = State_Grid(LCHNK), &
-                            State_Met  = State_Met(LCHNK),  &
-                            OutUnit    = 'kg/m2',           &
-                            RC         = RC,                &
-                            OrigUnit   = OrigUnit          )
+    CALL Convert_Spc_Units( Input_Opt  = Input_Opt,                   &
+                            State_Chm  = State_Chm(LCHNK),            &
+                            State_Grid = State_Grid(LCHNK),           &
+                            State_Met  = State_Met(LCHNK),            &
+                            OutUnit    = KG_SPECIES_PER_KG_DRY_AIR,   &
+                            OrigUnit   = OrigUnit,                    &
+                            RC         = RC                          )
+ 
 
     IF ( RC /= GC_SUCCESS ) THEN
        ErrMsg = 'Error encountered in "Convert_Spc_Units"!'
@@ -3689,7 +3690,7 @@ contains
 
     call t_startf( 'chemdr' )
 
-    ! Get the overhead column O3 for use with FAST-J
+    ! Get the overhead column O3 for computing J-values
     IF ( Input_Opt%Its_A_FullChem_Sim .OR. &
          Input_Opt%Its_An_Aerosol_Sim ) THEN
 
@@ -3758,7 +3759,7 @@ contains
     ENDDO
 
     ! Reset photolysis rates
-    ZPJ = 0.0e+0_r8
+    State_Chm(LCHNK)%Phot%ZPJ = 0.0e+0_r8
 
     ! Perform chemistry
     CALL Do_Chemistry( Input_Opt  = Input_Opt,         &
@@ -3781,9 +3782,9 @@ contains
                                              + MMR_Beg(:nY,:nZ,iCO2)
 
     ! Make sure State_Chm(LCHNK) is back in kg/kg dry!
-    IF ( TRIM(State_Chm(LCHNK)%Spc_Units) /= 'kg/kg dry' ) THEN
-       Write(iulog,*) 'Current  unit = ', TRIM(State_Chm(LCHNK)%Spc_Units)
-       Write(iulog,*) 'Expected unit = kg/ kg dry'
+    IF ( State_Chm(LCHNK)%Spc_Units /= KG_SPECIES_PER_KG_DRY_AIR ) THEN
+       Write(iulog,*) 'Current  unit = ', TRIM(UNIT_STR(State_Chm(LCHNK)%Spc_Units))
+       Write(iulog,*) 'Expected unit = ', TRIM(UNIT_STR(KG_SPECIES_PER_KG_DRY_AIR))
        CALL ENDRUN('Incorrect unit in GEOS-Chem State_Chm%Species')
     ENDIF
 
@@ -3800,7 +3801,7 @@ contains
        CALL pbuf_get_field(pbuf_chnk, tmpIdx, pbuf_i)
 
        ! RXN_NO2: NO2 + hv --> NO  + O
-       pbuf_i(:nY) = ZPJ(1,RXN_NO2,1,:nY)
+       pbuf_i(:nY) = State_Chm(LCHNK)%Phot%ZPJ(1,State_Chm(LCHNK)%Phot%RXN_NO2,1,:nY)
 
        pbuf_chnk => NULL()
        pbuf_i    => NULL()
@@ -3815,7 +3816,7 @@ contains
        CALL pbuf_get_field(pbuf_chnk, tmpIdx, pbuf_i)
 
        ! RXN_O3_1: O3  + hv --> O2  + O
-       pbuf_i(:nY) = ZPJ(1,RXN_O3_1,1,:nY)
+       pbuf_i(:nY) = State_Chm(LCHNK)%Phot%ZPJ(1,State_Chm(LCHNK)%Phot%RXN_O3_1,1,:nY)
        pbuf_chnk => NULL()
        pbuf_i   => NULL()
     ENDIF
@@ -4037,9 +4038,9 @@ contains
     ENDDO
 
     ! Make sure State_Chm(LCHNK) is back in kg/kg dry!
-    IF ( TRIM(State_Chm(LCHNK)%Spc_Units) /= 'kg/kg dry' ) THEN
-       Write(iulog,*) 'Current  unit = ', TRIM(State_Chm(LCHNK)%Spc_Units)
-       Write(iulog,*) 'Expected unit = kg/ kg dry'
+    IF ( State_Chm(LCHNK)%Spc_Units /= KG_SPECIES_PER_KG_DRY_AIR ) THEN
+       Write(iulog,*) 'Current  unit = ', TRIM(UNIT_STR(State_Chm(LCHNK)%Spc_Units))
+       Write(iulog,*) 'Expected unit = ', TRIM(UNIT_STR(KG_SPECIES_PER_KG_DRY_AIR))
        CALL ENDRUN('Incorrect unit in GEOS-Chem State_Chm%Species')
     ENDIF
 
@@ -4264,9 +4265,7 @@ contains
     use geoschem_history_mod,   only : Destroy_HistoryConfig
 
     ! GEOS-Chem modules
-    use Aerosol_Mod,     only : Cleanup_Aerosol
     use Carbon_Mod,      only : Cleanup_Carbon
-    use CMN_FJX_Mod,     only : Cleanup_CMN_FJX
     use Drydep_Mod,      only : Cleanup_Drydep
     use Dust_Mod,        only : Cleanup_Dust
     use Error_Mod,       only : Cleanup_Error
@@ -4289,7 +4288,6 @@ contains
 
     ! Finalize GEOS-Chem
 
-    CALL Cleanup_Aerosol
     CALL Cleanup_Carbon
     CALL Cleanup_Drydep
     CALL Cleanup_Dust
@@ -4307,12 +4305,6 @@ contains
     CALL GC_Emissions_Final
 
     CALL short_lived_species_final()
-
-    CALL Cleanup_CMN_FJX( RC )
-    IF ( RC /= GC_SUCCESS ) THEN
-       ErrMsg = 'Error encountered in "Cleanup_CMN_FJX"!'
-       CALL Error_Stop( ErrMsg, ThisLoc )
-    ENDIF
 
     ! Cleanup Input_Opt
     CALL Cleanup_Input_Opt( Input_Opt, RC )
