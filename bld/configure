@@ -2224,11 +2224,11 @@ sub write_filepath
     }
 
     if ($clubb_sgs) {
-       print $fh "$camsrcdir/src/physics/clubb\n";
+       print $fh "$camsrcdir/src/physics/clubb/src/CLUBB_core\n";
     }
 
     if ($silhs) {
-       print $fh "$camsrcdir/src/physics/silhs\n";
+       print $fh "$camsrcdir/src/physics/clubb/src/SILHS\n";
     }
 
     if ($phys_pkg eq 'cam_dev') {
@@ -2289,6 +2289,7 @@ sub write_filepath
     print $fh "$camsrcdir/src/cpl/$cpl\n";
     print $fh "$camsrcdir/src/control\n";
     print $fh "$camsrcdir/src/utils\n";
+    print $fh "$camsrcdir/src/utils/cam_ccpp\n";
     print $fh "$camsrcdir/src/atmos_phys/utilities\n";
 
 
@@ -2324,13 +2325,13 @@ sub write_cosp_makefile
 
 CAM_BLD      := $cam_bld
 COSP_PATH    := $cam_dir/src/physics/cosp2
-ISCCP_PATH   := $cam_dir/src/physics/cosp2/src/simulator/icarus
-RS_PATH      := $cam_dir/src/physics/cosp2/src/simulator/quickbeam
-RT_PATH      := $cam_dir/src/physics/cosp2/src/simulator/rttov
-CS_PATH      := $cam_dir/src/physics/cosp2/src/simulator/actsim
-MISR_PATH    := $cam_dir/src/physics/cosp2/src/simulator/MISR_simulator
-MODIS_PATH   := $cam_dir/src/physics/cosp2/src/simulator/MODIS_simulator
-PARASOL_PATH := $cam_dir/src/physics/cosp2/src/simulator/parasol
+ISCCP_PATH   := $cam_dir/src/physics/cosp2/src/src/simulator/icarus
+RS_PATH      := $cam_dir/src/physics/cosp2/src/src/simulator/quickbeam
+RT_PATH      := $cam_dir/src/physics/cosp2/src/src/simulator/rttov
+CS_PATH      := $cam_dir/src/physics/cosp2/src/src/simulator/actsim
+MISR_PATH    := $cam_dir/src/physics/cosp2/src/src/simulator/MISR_simulator
+MODIS_PATH   := $cam_dir/src/physics/cosp2/src/src/simulator/MODIS_simulator
+PARASOL_PATH := $cam_dir/src/physics/cosp2/src/src/simulator/parasol
 
 EOF
 

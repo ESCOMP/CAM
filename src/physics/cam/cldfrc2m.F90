@@ -35,17 +35,17 @@ real(r8) :: cldfrc2m_rhmini            ! Minimum rh for ice cloud fraction > 0.
 real(r8) :: cldfrc2m_rhmaxi
 real(r8) :: cldfrc2m_rhminis           ! Minimum rh for ice cloud fraction > 0 in the stratsophere.
 real(r8) :: cldfrc2m_rhmaxis
+real(r8) :: cldfrc2m_qist_min          ! Minimum in-stratus IWC constraint [ kg/kg ]
+real(r8) :: cldfrc2m_qist_max          ! Maximum in-stratus IWC constraint [ kg/kg ]
 logical  :: cldfrc2m_do_subgrid_growth = .false.
+logical  :: cldfrc2m_do_avg_aist_algs = .false.
 ! -------------------------- !
 ! Parameters for Ice Stratus !
 ! -------------------------- !
 real(r8),  protected :: rhmini_const                 ! Minimum rh for ice cloud fraction > 0.
 real(r8),  protected :: rhmaxi_const
-real(r8),  protected :: rhminis_const                 ! Minimum rh for ice cloud fraction > 0.
+real(r8),  protected :: rhminis_const                ! Minimum rh for ice cloud fraction > 0.
 real(r8),  protected :: rhmaxis_const
-
-real(r8),  parameter :: qist_min     = 1.e-7_r8      ! Minimum in-stratus ice IWC constraint [ kg/kg ]
-real(r8),  parameter :: qist_max     = 5.e-3_r8      ! Maximum in-stratus ice IWC constraint [ kg/kg ]
 
 ! ----------------------------- !
 ! Parameters for Liquid Stratus !
@@ -59,10 +59,10 @@ real(r8)             :: rhminl_adj_land_const     ! rhminl adjustment for snowfr
 real(r8)             :: rhminh_const              ! Critical RH for high-level liquid stratus clouds
 real(r8)             :: premit                    ! Top    height for mid-level liquid stratus fraction
 real(r8)             :: premib                    ! Bottom height for mid-level liquid stratus fraction
-integer              :: iceopt                    ! option for ice cloud closure 
-                                                  ! 1=wang & sassen 2=schiller (iciwc)  
+integer              :: iceopt                    ! option for ice cloud closure
+                                                  ! 1=wang & sassen 2=schiller (iciwc)
                                                   ! 3=wood & field, 4=Wilson (based on smith)
-                                                  ! 5=modified slingo (ssat & empyt cloud)        
+                                                  ! 5=modified slingo (ssat & empyt cloud)
 real(r8)             :: icecrit                   ! Critical RH for ice clouds in Wilson & Ballard closure
                                                   ! ( smaller = more ice clouds )
 
@@ -82,7 +82,8 @@ subroutine cldfrc2m_readnl(nlfile)
    integer :: unitn, ierr
    character(len=*), parameter :: subname = 'cldfrc2m_readnl'
 
-   namelist /cldfrc2m_nl/ cldfrc2m_rhmini, cldfrc2m_rhmaxi, cldfrc2m_rhminis, cldfrc2m_rhmaxis, cldfrc2m_do_subgrid_growth
+   namelist /cldfrc2m_nl/ cldfrc2m_rhmini, cldfrc2m_rhmaxi, cldfrc2m_rhminis, cldfrc2m_rhmaxis, cldfrc2m_do_subgrid_growth, &
+                          cldfrc2m_qist_min, cldfrc2m_qist_max, cldfrc2m_do_avg_aist_algs
    !-----------------------------------------------------------------------------
 
    if (masterproc) then
@@ -103,7 +104,6 @@ subroutine cldfrc2m_readnl(nlfile)
       rhmaxi_const  = cldfrc2m_rhmaxi
       rhminis_const = cldfrc2m_rhminis
       rhmaxis_const = cldfrc2m_rhmaxis
-
    end if
 
    ! Broadcast namelist variables
@@ -111,7 +111,10 @@ subroutine cldfrc2m_readnl(nlfile)
    call mpi_bcast(rhmaxi_const,               1, mpi_real8,  masterprocid, mpicom, ierr)
    call mpi_bcast(rhminis_const,              1, mpi_real8,  masterprocid, mpicom, ierr)
    call mpi_bcast(rhmaxis_const,              1, mpi_real8,  masterprocid, mpicom, ierr)
+   call mpi_bcast(cldfrc2m_qist_min,          1, mpi_real8,  masterprocid, mpicom, ierr)
+   call mpi_bcast(cldfrc2m_qist_max,          1, mpi_real8,  masterprocid, mpicom, ierr)
    call mpi_bcast(cldfrc2m_do_subgrid_growth, 1, mpi_logical,masterprocid, mpicom, ierr)
+   call mpi_bcast(cldfrc2m_do_avg_aist_algs,  1, mpi_logical,masterprocid, mpicom, ierr)
 
 end subroutine cldfrc2m_readnl
 
@@ -139,6 +142,9 @@ subroutine cldfrc2m_init()
       write(iulog,*) '  rhminis           = ', rhminis_const
       write(iulog,*) '  rhmaxis           = ', rhmaxis_const
       write(iulog,*) '  do_subgrid_growth = ', cldfrc2m_do_subgrid_growth
+      write(iulog,*) '  do_avg_aist_algs  = ', cldfrc2m_do_avg_aist_algs
+      write(iulog,*) '  cldfrc2m_qist_min = ', cldfrc2m_qist_min
+      write(iulog,*) '  cldfrc2m_qist_max = ', cldfrc2m_qist_max
    end if
 
 end subroutine cldfrc2m_init
@@ -183,7 +189,7 @@ subroutine astG_PDF_single(U, p, qv, landfrac, snowh, a, Ga, orhmin, &
    real(r8) cldrh                                 ! RH of stratus cloud
    real(r8) rhmin                                 ! Critical RH
    real(r8) rhwght
-                            
+
    real(r8) :: rhminl
    real(r8) :: rhminl_adj_land
    real(r8) :: rhminh
@@ -226,7 +232,7 @@ subroutine astG_PDF_single(U, p, qv, landfrac, snowh, a, Ga, orhmin, &
            a  = 1._r8 - (-3._r8/sqrt(2._r8)*(U-cldrh)/dV)**(2._r8/3._r8)
            Ga = dV/sqrt(2._r8)*sqrt(1._r8-a)
        elseif( U .gt. (cldrh-dV) .and. U .le. (cldrh-dV/6._r8) ) then
-           a  = 4._r8*(cos((1._r8/3._r8)*(acos((3._r8/2._r8/sqrt(2._r8))* & 
+           a  = 4._r8*(cos((1._r8/3._r8)*(acos((3._r8/2._r8/sqrt(2._r8))* &
                       (1._r8+(U-cldrh)/dV))-2._r8*3.141592_r8)))**2._r8
            Ga = dV/sqrt(2._r8)*(1._r8/sqrt(a)-sqrt(a))
        elseif( U .le. (cldrh-dV) ) then
@@ -236,7 +242,7 @@ subroutine astG_PDF_single(U, p, qv, landfrac, snowh, a, Ga, orhmin, &
 
        if( freeze_dry ) then
            a  = a *max(0.15_r8,min(1.0_r8,qv/0.0030_r8))
-           Ga = Ga/max(0.15_r8,min(1.0_r8,qv/0.0030_r8)) 
+           Ga = Ga/max(0.15_r8,min(1.0_r8,qv/0.0030_r8))
        endif
 
    elseif( p .lt. premit ) then
@@ -251,7 +257,7 @@ subroutine astG_PDF_single(U, p, qv, landfrac, snowh, a, Ga, orhmin, &
            a  = 1._r8 - (-3._r8/sqrt(2._r8)*(U-cldrh)/dV)**(2._r8/3._r8)
            Ga = dV/sqrt(2._r8)*sqrt(1._r8-a)
        elseif( U .gt. (cldrh-dV) .and. U .le. (cldrh-dV/6._r8) ) then
-           a  = 4._r8*(cos((1._r8/3._r8)*(acos((3._r8/2._r8/sqrt(2._r8))* & 
+           a  = 4._r8*(cos((1._r8/3._r8)*(acos((3._r8/2._r8/sqrt(2._r8))* &
                       (1._r8+(U-cldrh)/dV))-2._r8*3.141592_r8)))**2._r8
            Ga = dV/sqrt(2._r8)*(1._r8/sqrt(a)-sqrt(a))
        elseif( U .le. (cldrh-dV) ) then
@@ -278,7 +284,7 @@ subroutine astG_PDF_single(U, p, qv, landfrac, snowh, a, Ga, orhmin, &
            a  = 1._r8 - (-3._r8/sqrt(2._r8)*(U-cldrh)/dV)**(2._r8/3._r8)
            Ga = dV/sqrt(2._r8)*sqrt(1._r8-a)
        elseif( U .gt. (cldrh-dV) .and. U .le. (cldrh-dV/6._r8) ) then
-           a  = 4._r8*(cos((1._r8/3._r8)*(acos((3._r8/2._r8/sqrt(2._r8))* & 
+           a  = 4._r8*(cos((1._r8/3._r8)*(acos((3._r8/2._r8/sqrt(2._r8))* &
                          (1._r8+(U-cldrh)/dV))-2._r8*3.141592_r8)))**2._r8
            Ga = dV/sqrt(2._r8)*(1._r8/sqrt(a)-sqrt(a))
        elseif( U .le. (cldrh-dV) ) then
@@ -344,7 +350,7 @@ subroutine astG_PDF(U_in, p_in, qv_in, landfrac_in, snowh_in, a_out, Ga_out, nco
    real(r8) cldrh                                 ! RH of stratus cloud
    real(r8) rhmin                                 ! Critical RH
    real(r8) rhwght
-                            
+
    ! Statement functions
    logical land
    land(i) = nint(landfrac_in(i)) == 1
@@ -368,13 +374,13 @@ subroutine astG_PDF(U_in, p_in, qv_in, landfrac_in, snowh_in, a_out, Ga_out, nco
 
    do i = 1, ncol
 
-   U        = U_in(i)      
-   p        = p_in(i)        
-   qv       = qv_in(i)       
-   landfrac = landfrac_in(i) 
-   snowh    = snowh_in(i)    
+   U        = U_in(i)
+   p        = p_in(i)
+   qv       = qv_in(i)
+   landfrac = landfrac_in(i)
+   snowh    = snowh_in(i)
 
-   if (present(rhminl_in))          rhminl          = rhminl_in(i)      
+   if (present(rhminl_in))          rhminl          = rhminl_in(i)
    if (present(rhminl_adj_land_in)) rhminl_adj_land = rhminl_adj_land_in(i)
    if (present(rhminh_in))          rhminh          = rhminh_in(i)
 
@@ -395,7 +401,7 @@ subroutine astG_PDF(U_in, p_in, qv_in, landfrac_in, snowh_in, a_out, Ga_out, nco
            a  = 1._r8 - (-3._r8/sqrt(2._r8)*(U-cldrh)/dV)**(2._r8/3._r8)
            Ga = dV/sqrt(2._r8)*sqrt(1._r8-a)
        elseif( U .gt. (cldrh-dV) .and. U .le. (cldrh-dV/6._r8) ) then
-           a  = 4._r8*(cos((1._r8/3._r8)*(acos((3._r8/2._r8/sqrt(2._r8))* & 
+           a  = 4._r8*(cos((1._r8/3._r8)*(acos((3._r8/2._r8/sqrt(2._r8))* &
                       (1._r8+(U-cldrh)/dV))-2._r8*3.141592_r8)))**2._r8
            Ga = dV/sqrt(2._r8)*(1._r8/sqrt(a)-sqrt(a))
        elseif( U .le. (cldrh-dV) ) then
@@ -405,7 +411,7 @@ subroutine astG_PDF(U_in, p_in, qv_in, landfrac_in, snowh_in, a_out, Ga_out, nco
 
        if( freeze_dry ) then
            a  = a *max(0.15_r8,min(1.0_r8,qv/0.0030_r8))
-           Ga = Ga/max(0.15_r8,min(1.0_r8,qv/0.0030_r8)) 
+           Ga = Ga/max(0.15_r8,min(1.0_r8,qv/0.0030_r8))
        endif
 
    elseif( p .lt. premit ) then
@@ -420,7 +426,7 @@ subroutine astG_PDF(U_in, p_in, qv_in, landfrac_in, snowh_in, a_out, Ga_out, nco
            a  = 1._r8 - (-3._r8/sqrt(2._r8)*(U-cldrh)/dV)**(2._r8/3._r8)
            Ga = dV/sqrt(2._r8)*sqrt(1._r8-a)
        elseif( U .gt. (cldrh-dV) .and. U .le. (cldrh-dV/6._r8) ) then
-           a  = 4._r8*(cos((1._r8/3._r8)*(acos((3._r8/2._r8/sqrt(2._r8))* & 
+           a  = 4._r8*(cos((1._r8/3._r8)*(acos((3._r8/2._r8/sqrt(2._r8))* &
                       (1._r8+(U-cldrh)/dV))-2._r8*3.141592_r8)))**2._r8
            Ga = dV/sqrt(2._r8)*(1._r8/sqrt(a)-sqrt(a))
        elseif( U .le. (cldrh-dV) ) then
@@ -447,7 +453,7 @@ subroutine astG_PDF(U_in, p_in, qv_in, landfrac_in, snowh_in, a_out, Ga_out, nco
            a  = 1._r8 - (-3._r8/sqrt(2._r8)*(U-cldrh)/dV)**(2._r8/3._r8)
            Ga = dV/sqrt(2._r8)*sqrt(1._r8-a)
        elseif( U .gt. (cldrh-dV) .and. U .le. (cldrh-dV/6._r8) ) then
-           a  = 4._r8*(cos((1._r8/3._r8)*(acos((3._r8/2._r8/sqrt(2._r8))* & 
+           a  = 4._r8*(cos((1._r8/3._r8)*(acos((3._r8/2._r8/sqrt(2._r8))* &
                          (1._r8+(U-cldrh)/dV))-2._r8*3.141592_r8)))**2._r8
            Ga = dV/sqrt(2._r8)*(1._r8/sqrt(a)-sqrt(a))
        elseif( U .le. (cldrh-dV) ) then
@@ -458,7 +464,7 @@ subroutine astG_PDF(U_in, p_in, qv_in, landfrac_in, snowh_in, a_out, Ga_out, nco
    endif
 
    a_out(i)  = a
-   Ga_out(i) = Ga 
+   Ga_out(i) = Ga
 
    enddo
 
@@ -471,7 +477,7 @@ subroutine astG_RHU_single(U, p, qv, landfrac, snowh, a, Ga, orhmin, &
    ! --------------------------------------------------------- !
    ! Compute 'stratus fraction(a)' and Gs=(dU/da) from the     !
    ! CAM35 cloud fraction formula.                             !
-   ! Below is valid only for CAMUW at 1.9x2.5 fv dynamics core !  
+   ! Below is valid only for CAMUW at 1.9x2.5 fv dynamics core !
    ! For the other cases, I should re-define 'rhminl,rhminh' & !
    ! 'premib,premit'.                                          !
    ! Note that if U > 1, Ga = 1.e10 instead of Ga = 0, that is !
@@ -524,15 +530,15 @@ subroutine astG_RHU_single(U, p, qv, landfrac, snowh, a, Ga, orhmin, &
            rhmin = rhminl
        endif
        rhdif = (U-rhmin)/(1.0_r8-rhmin)
-       a  = min(1._r8,(max(rhdif,0.0_r8))**2) 
+       a  = min(1._r8,(max(rhdif,0.0_r8))**2)
        if( (U.ge.1._r8) .or. (U.le.rhmin) ) then
             Ga = 1.e20_r8
-       else          
+       else
             Ga = 0.5_r8*(1._r8-rhmin)*((1._r8-rhmin)/(U-rhmin))
        endif
        if( freeze_dry ) then
            a  = a*max(0.15_r8,min(1.0_r8,qv/0.0030_r8))
-           Ga = Ga/max(0.15_r8,min(1.0_r8,qv/0.0030_r8)) 
+           Ga = Ga/max(0.15_r8,min(1.0_r8,qv/0.0030_r8))
        endif
 
    elseif( p .lt. premit ) then
@@ -542,7 +548,7 @@ subroutine astG_RHU_single(U, p, qv, landfrac, snowh, a, Ga, orhmin, &
        a  = min(1._r8,(max(rhdif,0._r8))**2)
        if( (U.ge.1._r8) .or. (U.le.rhmin) ) then
             Ga = 1.e20_r8
-       else          
+       else
             Ga = 0.5_r8*(1._r8-rhmin)*((1._r8-rhmin)/(U-rhmin))
        endif
 
@@ -560,7 +566,7 @@ subroutine astG_RHU_single(U, p, qv, landfrac, snowh, a, Ga, orhmin, &
        a  = min(1._r8,(max(rhdif,0._r8))**2)
        if( (U.ge.1._r8) .or. (U.le.rhmin) ) then
             Ga = 1.e10_r8
-       else          
+       else
             Ga = 0.5_r8*(1._r8-rhmin)*((1._r8-rhmin)/(U-rhmin))
        endif
 
@@ -578,7 +584,7 @@ subroutine astG_RHU(U_in, p_in, qv_in, landfrac_in, snowh_in, a_out, Ga_out, nco
    ! --------------------------------------------------------- !
    ! Compute 'stratus fraction(a)' and Gs=(dU/da) from the     !
    ! CAM35 cloud fraction formula.                             !
-   ! Below is valid only for CAMUW at 1.9x2.5 fv dynamics core !  
+   ! Below is valid only for CAMUW at 1.9x2.5 fv dynamics core !
    ! For the other cases, I should re-define 'rhminl,rhminh' & !
    ! 'premib,premit'.                                          !
    ! Note that if U > 1, Ga = 1.e10 instead of Ga = 0, that is !
@@ -635,13 +641,13 @@ subroutine astG_RHU(U_in, p_in, qv_in, landfrac_in, snowh_in, a_out, Ga_out, nco
 
    do i = 1, ncol
 
-   U        = U_in(i)      
-   p        = p_in(i)        
-   qv       = qv_in(i)       
-   landfrac = landfrac_in(i) 
-   snowh    = snowh_in(i)    
+   U        = U_in(i)
+   p        = p_in(i)
+   qv       = qv_in(i)
+   landfrac = landfrac_in(i)
+   snowh    = snowh_in(i)
 
-   if (present(rhminl_in))          rhminl          = rhminl_in(i)      
+   if (present(rhminl_in))          rhminl          = rhminl_in(i)
    if (present(rhminl_adj_land_in)) rhminl_adj_land = rhminl_adj_land_in(i)
    if (present(rhminh_in))          rhminh          = rhminh_in(i)
 
@@ -653,15 +659,15 @@ subroutine astG_RHU(U_in, p_in, qv_in, landfrac_in, snowh_in, a_out, Ga_out, nco
            rhmin = rhminl
        endif
        rhdif = (U-rhmin)/(1.0_r8-rhmin)
-       a  = min(1._r8,(max(rhdif,0.0_r8))**2) 
+       a  = min(1._r8,(max(rhdif,0.0_r8))**2)
        if( (U.ge.1._r8) .or. (U.le.rhmin) ) then
             Ga = 1.e20_r8
-       else          
+       else
             Ga = 0.5_r8*(1._r8-rhmin)*((1._r8-rhmin)/(U-rhmin))
        endif
        if( freeze_dry ) then
            a  = a*max(0.15_r8,min(1.0_r8,qv/0.0030_r8))
-           Ga = Ga/max(0.15_r8,min(1.0_r8,qv/0.0030_r8)) 
+           Ga = Ga/max(0.15_r8,min(1.0_r8,qv/0.0030_r8))
        endif
 
    elseif( p .lt. premit ) then
@@ -671,7 +677,7 @@ subroutine astG_RHU(U_in, p_in, qv_in, landfrac_in, snowh_in, a_out, Ga_out, nco
        a  = min(1._r8,(max(rhdif,0._r8))**2)
        if( (U.ge.1._r8) .or. (U.le.rhmin) ) then
             Ga = 1.e20_r8
-       else          
+       else
             Ga = 0.5_r8*(1._r8-rhmin)*((1._r8-rhmin)/(U-rhmin))
        endif
 
@@ -689,14 +695,14 @@ subroutine astG_RHU(U_in, p_in, qv_in, landfrac_in, snowh_in, a_out, Ga_out, nco
        a  = min(1._r8,(max(rhdif,0._r8))**2)
        if( (U.ge.1._r8) .or. (U.le.rhmin) ) then
             Ga = 1.e10_r8
-       else          
+       else
             Ga = 0.5_r8*(1._r8-rhmin)*((1._r8-rhmin)/(U-rhmin))
        endif
 
    endif
 
    a_out(i)  = a
-   Ga_out(i) = Ga 
+   Ga_out(i) = Ga
 
    enddo
 
@@ -709,7 +715,7 @@ subroutine aist_single(qv, T, p, qi, landfrac, snowh, aist, &
                        qsatfac_out)
 
    ! --------------------------------------------------------- !
-   ! Compute non-physical ice stratus fraction                 ! 
+   ! Compute non-physical ice stratus fraction                 !
    ! --------------------------------------------------------- !
 
    real(r8), intent(in)  :: qv              ! Grid-mean water vapor[kg/kg]
@@ -797,19 +803,19 @@ subroutine aist_single(qv, T, p, qi, landfrac, snowh, aist, &
      call qsat_water(T, p, es, qs)
      esl = svp_water(T)
      esi = svp_ice(T)
-          
+
      if( iceopt.lt.3 ) then
          if( iceopt.eq.1 ) then
              ttmp = max(195._r8,min(T,253._r8)) - 273.16_r8
              icicval = a + b * ttmp + c * ttmp**2._r8
              rho = p/(rair*T)
-             icicval = icicval * 1.e-6_r8 / rho 
+             icicval = icicval * 1.e-6_r8 / rho
          else
              ttmp = max(190._r8,min(T,273.16_r8))
              icicval = 10._r8 **(as * bs**ttmp + cs)
              icicval = icicval * 1.e-6_r8 * 18._r8 / 28.97_r8
          endif
-         aist =  max(0._r8,min(qi/icicval,1._r8)) 
+         aist =  max(0._r8,min(qi/icicval,1._r8))
      elseif( iceopt.eq.3 ) then
          aist = 1._r8 - exp(-Kc*qi/(qs*(esi/esl)))
          aist = max(0._r8,min(aist,1._r8))
@@ -831,9 +837,9 @@ subroutine aist_single(qv, T, p, qi, landfrac, snowh, aist, &
            ! endif
          endif
          ncf = qi/((1._r8 - icecrit)*qs)
-         if( ncf.le.0._r8 ) then 
+         if( ncf.le.0._r8 ) then
              aist = 0._r8
-         elseif( ncf.gt.0._r8 .and. ncf.le.1._r8/6._r8 ) then 
+         elseif( ncf.gt.0._r8 .and. ncf.le.1._r8/6._r8 ) then
              aist = 0.5_r8*(6._r8 * ncf)**(2._r8/3._r8)
          elseif( ncf.gt.1._r8/6._r8 .and. ncf.lt.1._r8 ) then
              phi = (acos(3._r8*(1._r8-ncf)/2._r8**(3._r8/2._r8))+4._r8*3.1415927_r8)/3._r8
@@ -842,7 +848,7 @@ subroutine aist_single(qv, T, p, qi, landfrac, snowh, aist, &
              aist = 1._r8
          endif
              aist = max(0._r8,min(aist,1._r8))
-     elseif (iceopt.eq.5) then 
+     elseif (iceopt.eq.5) then
         ! set rh ice cloud fraction
         rhi= (qv+qi)/qs * (esl/esi)
         if (rhmaxi .eq. rhmini) then
@@ -863,7 +869,7 @@ subroutine aist_single(qv, T, p, qi, landfrac, snowh, aist, &
         ! NOTE: Limit qsatfac so that adjusted RHliq would be 1. or less.
         if (present(qsatfac_out) .and. cldfrc2m_do_subgrid_growth) then
            qsatfac_out = max(min(qv / qs, 1._r8), (1._r8 - aist) * rhmini + aist * rhmaxi)
-        end if 
+        end if
 
         ! limiter to remove empty cloud and ice with no cloud
         ! and set icecld fraction to mincld if ice exists
@@ -879,19 +885,28 @@ subroutine aist_single(qv, T, p, qi, landfrac, snowh, aist, &
            icimr=qi/aist
 
            !minimum
-           if (icimr.lt.qist_min) then
-              aist = max(0._r8,min(1._r8,qi/qist_min))
+           if (icimr.lt.cldfrc2m_qist_min) then
+             if (cldfrc2m_do_avg_aist_algs) then
+               !
+               ! Take the geometric mean of the iceopt=4 and iceopt=5 values.
+               ! Mods developed by Thomas Toniazzo for NorESM.
+               aist = max(0._r8,min(1._r8,sqrt(aist*qi/cldfrc2m_qist_min)))
+             else
+               !
+               ! Default for iceopt=5
+               aist = max(0._r8,min(1._r8,qi/cldfrc2m_qist_min))
+             end if
            endif
            !maximum
-           if (icimr.gt.qist_max) then
-              aist = max(0._r8,min(1._r8,qi/qist_max))
+           if (icimr.gt.cldfrc2m_qist_max) then
+              aist = max(0._r8,min(1._r8,qi/cldfrc2m_qist_max))
            endif
 
         endif
-     endif 
+     endif
 
    ! 0.999_r8 is added to prevent infinite 'ql_st' at the end of instratus_condensate
-   ! computed after updating 'qi_st'.  
+   ! computed after updating 'qi_st'.
 
      aist = max(0._r8,min(aist,0.999_r8))
 
@@ -904,7 +919,7 @@ subroutine aist_vector(qv_in, T_in, p_in, qi_in, ni_in, landfrac_in, snowh_in, a
                        qsatfac_out )
 
    ! --------------------------------------------------------- !
-   ! Compute non-physical ice stratus fraction                 ! 
+   ! Compute non-physical ice stratus fraction                 !
    ! --------------------------------------------------------- !
 
    real(r8), intent(in)  :: qv_in(pcols)       ! Grid-mean water vapor[kg/kg]
@@ -916,7 +931,7 @@ subroutine aist_vector(qv_in, T_in, p_in, qi_in, ni_in, landfrac_in, snowh_in, a
    real(r8), intent(in)  :: snowh_in(pcols)    ! Snow depth (liquid water equivalent)
 
    real(r8), intent(out) :: aist_out(pcols)    ! Non-physical ice stratus fraction ( 0<= aist <= 1 )
-   integer,  intent(in)  :: ncol 
+   integer,  intent(in)  :: ncol
 
    real(r8), optional, intent(in)  :: rhmaxi_in(pcols)
    real(r8), optional, intent(in)  :: rhmini_in(pcols)          ! Critical relative humidity for               ice stratus
@@ -1013,9 +1028,9 @@ subroutine aist_vector(qv_in, T_in, p_in, qi_in, ni_in, landfrac_in, snowh_in, a
      call svp_ice_vect(T_in(1:ncol), esi(1:ncol), ncol)
 
      do i = 1, ncol
-     
-       landfrac = landfrac_in(i)     
-       snowh = snowh_in(i)   
+
+       landfrac = landfrac_in(i)
+       snowh = snowh_in(i)
        T = T_in(i)
        qv = qv_in(i)
        p = p_in(i)
@@ -1024,23 +1039,23 @@ subroutine aist_vector(qv_in, T_in, p_in, qi_in, ni_in, landfrac_in, snowh_in, a
        qs = qsat_in(i)
 
        if (present(rhmaxi_in))          rhmaxi          = rhmaxi_in(i)
-       if (present(rhmini_in))          rhmini          = rhmini_in(i)      
-       if (present(rhminl_in))          rhminl          = rhminl_in(i)      
+       if (present(rhmini_in))          rhmini          = rhmini_in(i)
+       if (present(rhminl_in))          rhminl          = rhminl_in(i)
        if (present(rhminl_adj_land_in)) rhminl_adj_land = rhminl_adj_land_in(i)
        if (present(rhminh_in))          rhminh          = rhminh_in(i)
-          
+
        if( iceopt.lt.3 ) then
          if( iceopt.eq.1 ) then
              ttmp = max(195._r8,min(T,253._r8)) - 273.16_r8
              icicval = a + b * ttmp + c * ttmp**2._r8
              rho = p/(rair*T)
-             icicval = icicval * 1.e-6_r8 / rho 
+             icicval = icicval * 1.e-6_r8 / rho
          else
              ttmp = max(190._r8,min(T,273.16_r8))
              icicval = 10._r8 **(as * bs**ttmp + cs)
              icicval = icicval * 1.e-6_r8 * 18._r8 / 28.97_r8
          endif
-         aist =  max(0._r8,min(qi/icicval,1._r8)) 
+         aist =  max(0._r8,min(qi/icicval,1._r8))
        elseif( iceopt.eq.3 ) then
          aist = 1._r8 - exp(-Kc*qi/(qs*(esi(i)/esl(i))))
          aist = max(0._r8,min(aist,1._r8))
@@ -1062,9 +1077,9 @@ subroutine aist_vector(qv_in, T_in, p_in, qi_in, ni_in, landfrac_in, snowh_in, a
            ! endif
          endif
          ncf = qi/((1._r8 - icecrit)*qs)
-         if( ncf.le.0._r8 ) then 
+         if( ncf.le.0._r8 ) then
              aist = 0._r8
-         elseif( ncf.gt.0._r8 .and. ncf.le.1._r8/6._r8 ) then 
+         elseif( ncf.gt.0._r8 .and. ncf.le.1._r8/6._r8 ) then
              aist = 0.5_r8*(6._r8 * ncf)**(2._r8/3._r8)
          elseif( ncf.gt.1._r8/6._r8 .and. ncf.lt.1._r8 ) then
              phi = (acos(3._r8*(1._r8-ncf)/2._r8**(3._r8/2._r8))+4._r8*3.1415927_r8)/3._r8
@@ -1073,7 +1088,7 @@ subroutine aist_vector(qv_in, T_in, p_in, qi_in, ni_in, landfrac_in, snowh_in, a
              aist = 1._r8
          endif
              aist = max(0._r8,min(aist,1._r8))
-       elseif (iceopt.eq.5) then 
+       elseif (iceopt.eq.5) then
          ! set rh ice cloud fraction
          rhi= (qv+qi)/qs * (esl(i)/esi(i))
          if (rhmaxi .eq. rhmini) then
@@ -1104,7 +1119,7 @@ subroutine aist_vector(qv_in, T_in, p_in, qi_in, ni_in, landfrac_in, snowh_in, a
          aist =  max(0._r8,min(qi/icicval,1._r8))
          aist =  min(aist,1._r8)
 
-       endif     
+       endif
 
        if (iceopt.eq.5 .or. iceopt.eq.6) then
 
@@ -1131,19 +1146,28 @@ subroutine aist_vector(qv_in, T_in, p_in, qi_in, ni_in, landfrac_in, snowh_in, a
            icimr=qi/aist
 
            !minimum
-           if (icimr.lt.qist_min) then
-              aist = max(0._r8,min(1._r8,qi/qist_min))
+           if (icimr.lt.cldfrc2m_qist_min) then
+             if (cldfrc2m_do_avg_aist_algs) then
+               !
+               ! Take the geometric mean of the iceopt=4 and iceopt=5 values.
+               ! Mods developed by Thomas Toniazzo for NorESM.
+               aist = max(0._r8,min(1._r8,sqrt(aist*qi/cldfrc2m_qist_min)))
+             else
+               !
+               ! Default for iceopt=5
+               aist = max(0._r8,min(1._r8,qi/cldfrc2m_qist_min))
+             end if
            endif
            !maximum
-           if (icimr.gt.qist_max) then
-              aist = max(0._r8,min(1._r8,qi/qist_max))
+           if (icimr.gt.cldfrc2m_qist_max) then
+              aist = max(0._r8,min(1._r8,qi/cldfrc2m_qist_max))
            endif
 
          endif
-       endif 
+       endif
 
        ! 0.999_r8 is added to prevent infinite 'ql_st' at the end of instratus_condensate
-       ! computed after updating 'qi_st'.  
+       ! computed after updating 'qi_st'.
 
        aist = max(0._r8,min(aist,0.999_r8))
 
