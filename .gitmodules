@@ -1,0 +1,78 @@
+[submodule "ccs_config"]
+	path = ccs_config
+	url = https://github.com/ESMCI/ccs_config_cesm
+[submodule "cime"]
+	path = cime
+	url = https://github.com/ESMCI/cime
+[submodule "components/clm"]
+	path = components/clm
+	url = https://github.com/ESCOMP/CTSM
+[submodule "components/cmeps"]
+	path = components/cmeps
+	url = https://github.com/ESCOMP/CMEPS.git
+[submodule "components/cdeps"]
+	path = components/cdeps
+	url = https://github.com/ESCOMP/CDEPS.git
+[submodule "share"]
+	path = share
+	url = https://github.com/ESCOMP/CESM_share
+[submodule "libraries/mct"]
+	path = libraries/mct
+	url = https://github.com/MCSclimate/MCT
+[submodule "libraries/parallelio"]
+	path = libraries/parallelio
+	url = https://github.com/NCAR/ParallelIO
+[submodule "components/rtm"]
+	path = components/rtm
+	url = https://github.com/ESCOMP/RTM
+[submodule "libraries/FMS"]
+	path = libraries/FMS
+	url = https://github.com/ESCOMP/FMS_interface
+[submodule "components/mosart"]
+	path = components/mosart
+	url = https://github.com/ESCOMP/MOSART
+[submodule "components/cism"]
+	path = components/cism
+	url = https://github.com/ESCOMP/CISM-wrapper
+[submodule "chem_proc"]
+	path = chem_proc
+	url = https://github.com/ESCOMP/CHEM_PREPROCESSOR.git
+[submodule "src/physics/carma/base"]
+	path = src/physics/carma/base
+	url = https://github.com/ESCOMP/CARMA_base.git
+[submodule "src/physics/clubb"]
+	path = src/physics/clubb
+	url = https://github.com/CFMIP/COSPv2.0
+[submodule "src/physics/cosp2/src"]
+	path = src/physics/cosp2/src
+	url = https://github.com/CFMIP/COSPv2.0
+[submodule "src/physics/pumas"]
+	path = src/physics/pumas
+	url = https://github.com/ESCOMP/PUMAS
+[submodule "src/physics/pumas-frozen"]
+	path = src/physics/pumas-frozen
+	url = https://github.com/ESCOMP/PUMAS
+[submodule "src/physics/ali_arms"]
+	path = src/physics/ali_arms
+	url = https://github.com/ESCOMP/ALI-ARMS
+[submodule "src/atmos_phys"]
+	path = src/atmos_phys
+	url = https://github.com/ESCOMP/atmospheric_physics
+[submodule "src/dynamics/fv3/atmos_cubed_sphere"]
+	path = src/dynamics/fv3/atmos_cubed_sphere
+	url = https://github.com/ESCOMP/FV3_CESM.git
+[submodule "src/dynamics/mpas/dycore"]
+	path = src/dynamics/mpas/dycore
+	url = https://github.com/MPAS-Dev/MPAS-Model.git
+[submodule "src/hemco"]
+	path = src/hemco
+	url = https://github.com/ESCOMP/HEMCO_CESM.git
+[submodule "components/cpl7"]
+	path = components/cpl7
+	url = https://github.com/ESCOMP/CESM_CPL7andDataComps
+[submodule "components/cice5"]
+	path = components/cice5
+	url = https://github.com/ESCOMP/CESM_CICE5
+[submodule "components/cice"]
+	path = components/cice
+	url = https://github.com/ESCOMP/CESM_CICE
