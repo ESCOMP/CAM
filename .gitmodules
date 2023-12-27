@@ -73,3 +73,6 @@
 [submodule "components/cice"]
 	path = components/cice
 	url = https://github.com/ESCOMP/CESM_CICE
+[submodule "src/physics/clubb"]
+	path = src/physics/clubb
+	url = https://github.com/larson-group/clubb_release
