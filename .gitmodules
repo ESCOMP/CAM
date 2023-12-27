@@ -40,9 +40,6 @@
 [submodule "src/physics/carma/base"]
 	path = src/physics/carma/base
 	url = https://github.com/ESCOMP/CARMA_base.git
-[submodule "src/physics/clubb"]
-	path = src/physics/clubb
-	url = https://github.com/CFMIP/COSPv2.0
 [submodule "src/physics/cosp2/src"]
 	path = src/physics/cosp2/src
 	url = https://github.com/CFMIP/COSPv2.0
