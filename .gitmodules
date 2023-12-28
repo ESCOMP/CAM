@@ -6,7 +6,8 @@
 	url = https://github.com/ESMCI/cime
 [submodule "components/clm"]
 	path = components/clm
-	url = https://github.com/ESCOMP/CTSM
+	url = https://github.com/jedwards4b/ctsm
+	branch = remove_manage_externals
 [submodule "components/cmeps"]
 	path = components/cmeps
 	url = https://github.com/ESCOMP/CMEPS.git

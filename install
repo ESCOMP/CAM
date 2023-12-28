@@ -1,0 +1,50 @@
+#!/bin/bash
+# Script to fetch submodules for CAM
+# if argument -internal-only is supplied then only checkout CAM internal submodules, otherwise checkout everything needed for
+# cam as a top level repository
+#
+
+# Start with sparse checkouts
+
+./git_sparse_checkout  https://github.com/larson-group/clubb_release clubb_4ncar_20221129_59cb19f_branch src/physics/clubb -- src/CLUBB_core/ src/SILHS/
+git restore src/physics/clubb
+
+./git_sparse_checkout https://github.com/CFMIP/COSPv2.0 master src/physics/cosp2/src -- src/
+git restore src/physics/cosp2/src
+
+./git_sparse_checkout https://github.com/MPAS-Dev/MPAS-Model.git develop src/dynamics/mpas/dycore -- src/external/ src/operators/ src/tools/ \
+                      src/core_atmosphere/ src/framework/
+git restore src/dynamics/mpas/dycore
+
+submodules=('chem_proc' 'src/physics/carma/base' 'src/physics/pumas' 'src/physics/pumas-frozen' 'src/physics/ali_arms' 'src/atmos_phys' 'src/dynamics/fv3/atmos_cubed_sphere' 'src/hemco')
+for mod in "${submodules[@]}"
+do
+   echo "Initializing $mod"
+   git submodule update --init $mod
+done
+
+if [ $# -gt 0 ]
+  then
+    exit 0
+fi
+
+
+submodules=('ccs_config' 'components/cice5' 'components/cice' 'components/cmeps' \
+           'components/cdeps' 'components/cpl7' 'share' 'libraries/mct' \
+           'libraries/parallelio' 'cime' 'libraries/FMS' 'components/mosart' \
+           'components/rtm')
+
+for mod in "${submodules[@]}"
+do
+   echo "Initializing $mod"
+   git submodule update --init --recursive $mod
+done
+
+sparse_submodules=('components/clm' 'components/cism')
+for mod in "${sparse_submodules[@]}"
+do
+   echo "Initializing $mod"
+   git submodule update --init $mod
+   pushd $mod
+   bash ./install -internal-only
+done
