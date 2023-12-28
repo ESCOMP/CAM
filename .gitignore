@@ -1,0 +1,20 @@
+# Ignore externals
+bash-scripts
+# Ignore compiled python
+buildnmlc
+buildcppc
+
+# Ignore editor temporaries and backups
+*~
+.#*
+\#*#
+*.swp
+
+# Ignore test output files
+cime-tests.o*
+aux_cam_*.log
+test_driver_*.sh
+cam_test_summaries
+
+# Ignore python bytecode files
+*.pyc

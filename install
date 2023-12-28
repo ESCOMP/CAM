@@ -3,16 +3,19 @@
 # if argument -internal-only is supplied then only checkout CAM internal submodules, otherwise checkout everything needed for
 # cam as a top level repository
 #
-
+git clone -n https://github.com/frgomes/bash-scripts --depth 1
+pushd bash-scripts
+git checkout HEAD -- bin/git_sparse_checkout
+popd
 # Start with sparse checkouts
 
-./git_sparse_checkout  https://github.com/larson-group/clubb_release clubb_4ncar_20221129_59cb19f_branch src/physics/clubb -- src/CLUBB_core/ src/SILHS/
+./bash-scripts/bin/git_sparse_checkout  https://github.com/larson-group/clubb_release clubb_4ncar_20221129_59cb19f_branch src/physics/clubb -- src/CLUBB_core/ src/SILHS/
 git restore src/physics/clubb
 
-./git_sparse_checkout https://github.com/CFMIP/COSPv2.0 master src/physics/cosp2/src -- src/
+./bash-scripts/bin/git_sparse_checkout https://github.com/CFMIP/COSPv2.0 master src/physics/cosp2/src -- src/
 git restore src/physics/cosp2/src
 
-./git_sparse_checkout https://github.com/MPAS-Dev/MPAS-Model.git develop src/dynamics/mpas/dycore -- src/external/ src/operators/ src/tools/ \
+./bash-scripts/bin/git_sparse_checkout https://github.com/MPAS-Dev/MPAS-Model.git develop src/dynamics/mpas/dycore -- src/external/ src/operators/ src/tools/ \
                       src/core_atmosphere/ src/framework/
 git restore src/dynamics/mpas/dycore
 
@@ -47,4 +50,5 @@ do
    git submodule update --init $mod
    pushd $mod
    bash ./install -internal-only
+   popd
 done
