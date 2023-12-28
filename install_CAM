@@ -1,0 +1,28 @@
+#!/bin/bash
+# Script to fetch submodules for CAM
+# Start with sparse checkouts
+root=`pwd`
+
+
+./git_sparse_checkout  https://github.com/larson-group/clubb_release clubb_4ncar_20221129_59cb19f_branch src/physics/clubb -- src/CLUBB_core/ src/SILHS/
+#git -C $root/src/physics/clubb fetch -t --depth=1
+#git -C $root/src/physics/clubb checkout clubb_4ncar_20221129_59cb19f_20230330_branchtag
+git restore src/physics/clubb
+
+./git_sparse_checkout https://github.com/CFMIP/COSPv2.0 master src/physics/cosp2/src -- src/
+#git -C $root/src/physics/cosp2/src fetch -t --depth=1
+#git -C $root/src/physics/cosp2/src checkout v2.1.4cesm
+git restore src/physics/cosp2/src
+
+./git_sparse_checkout https://github.com/MPAS-Dev/MPAS-Model.git develop src/dynamics/mpas/dycore -- src/external/ src/operators/ src/tools/ \
+                      src/core_atmosphere/ src/framework/
+git restore src/dynamics/mpas/dycore
+#git -C $root/src/dynamics/mpas/dycore fetch 
+#git -C $root/src/dynamics/mpas/dycore checkout  b8c33daa
+
+submodules=('chem_proc' 'carma' 'pumas' 'pumas-frozen' 'ali_arms' 'atmos_phys' 'atmos_cubed_sphere' 'hemco')
+for mod in $submodules
+do
+  git submodule update --init $mod
+done
+
