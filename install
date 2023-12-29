@@ -3,10 +3,41 @@
 # if argument -internal-only is supplied then only checkout CAM internal submodules, otherwise checkout everything needed for
 # cam as a top level repository
 #
-git clone -n https://github.com/frgomes/bash-scripts --depth 1
-pushd bash-scripts
-git checkout HEAD -- bin/git_sparse_checkout
-popd
+set -e
+script="install"
+function usage {
+    echo -e "\nusage: $script [-i/--internal-only]\n"
+}
+# Set default arguments
+internal_only=0
+
+# Process arguments
+while [ "$1" != "" ];
+do
+    case $1 in
+
+        # Only checkout CISM internal submodules
+        -i | -internal-only | --internal-only)
+            internal_only=1
+            ;;
+
+        *)
+            echo "$script: illegal option $1"
+            usage
+            exit 1
+            ;;
+    esac
+    shift
+done
+
+########################
+if ! test -f bash-scripts/bin/git_sparse_checkout; then
+  echo "Getting git_sparse_checkout script"
+  git clone -n https://github.com/frgomes/bash-scripts --depth 1
+  pushd bash-scripts 1>/dev/null
+  git checkout HEAD -- bin/git_sparse_checkout
+  popd 1>dev/null
+fi
 # Start with sparse checkouts
 
 ./bash-scripts/bin/git_sparse_checkout  https://github.com/larson-group/clubb_release clubb_4ncar_20221129_59cb19f_branch src/physics/clubb -- src/CLUBB_core/ src/SILHS/
@@ -26,7 +57,7 @@ do
    git submodule update --init $mod
 done
 
-if [ $# -gt 0 ]
+if [ ${internal_only} -eq 1 ]
   then
     exit 0
 fi
@@ -48,7 +79,7 @@ for mod in "${sparse_submodules[@]}"
 do
    echo "Initializing $mod"
    git submodule update --init $mod
-   pushd $mod
+   pushd $mod 1>/dev/null
    bash ./install -internal-only
-   popd
+   popd 1>/dev/null
 done
