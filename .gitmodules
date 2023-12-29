@@ -64,7 +64,7 @@
 	url = https://github.com/MPAS-Dev/MPAS-Model.git
 [submodule "src/hemco"]
 	path = src/hemco
-	url = https://github.com/jedwards4b/HEMCO.git
+	url = https://github.com/jedwards4b/HEMCO_CESM
 [submodule "components/cpl7"]
 	path = components/cpl7
 	url = https://github.com/ESCOMP/CESM_CPL7andDataComps
