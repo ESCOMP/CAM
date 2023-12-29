@@ -3,7 +3,7 @@
 	url = https://github.com/ESMCI/ccs_config_cesm
 [submodule "cime"]
 	path = cime
-	url = https://github.com/ESMCI/cime
+	url = https://github.com/jedwards4b/cime
 [submodule "components/clm"]
 	path = components/clm
 	url = https://github.com/jedwards4b/ctsm
@@ -34,7 +34,7 @@
 	url = https://github.com/ESCOMP/MOSART
 [submodule "components/cism"]
 	path = components/cism
-	url = https://github.com/ESCOMP/CISM-wrapper
+	url = https://github.com/jedwards4b/CISM-wrapper
 [submodule "chem_proc"]
 	path = chem_proc
 	url = https://github.com/ESCOMP/CHEM_PREPROCESSOR.git
