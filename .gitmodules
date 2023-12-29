@@ -28,7 +28,7 @@
 	url = https://github.com/ESCOMP/RTM
 [submodule "libraries/FMS"]
 	path = libraries/FMS
-	url = https://github.com/ESCOMP/FMS_interface
+	url = https://github.com/jedwards4b/FMS_interface
 [submodule "components/mosart"]
 	path = components/mosart
 	url = https://github.com/ESCOMP/MOSART
