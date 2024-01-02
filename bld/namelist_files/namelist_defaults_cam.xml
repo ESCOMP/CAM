@@ -2252,9 +2252,7 @@
 <micro_mg_homog_size  microphys="mg2"  >  25.D-6    </micro_mg_homog_size>
 
 <micro_mg_vtrmi_factor                  >  1.D0    </micro_mg_vtrmi_factor>
-
 <micro_mg_vtrms_factor                  >  1.D0    </micro_mg_vtrms_factor>
-<!--micro_mg_vtrms_factor phys="cam_dev"   >  0.5D0    </micro_mg_vtrms_factor-->
 
 <micro_mg_effi_factor                  >  1.D0    </micro_mg_effi_factor>
 <micro_mg_effi_factor microphys="mg2"  >  1.D0    </micro_mg_effi_factor>
