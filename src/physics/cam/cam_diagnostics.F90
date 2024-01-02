@@ -501,7 +501,7 @@ contains
     call addfld ('TREFHTMX', horiz_only, 'X','K','Maximum reference height temperature over output period')
     call addfld ('QREFHT',   horiz_only, 'A', 'kg/kg','Reference height humidity')
     call addfld ('U10',      horiz_only, 'A', 'm/s','10m wind speed')
-    call addfld ('UGUST',      horiz_only, 'A', 'm/s','Gustiness term added to U10')
+    call addfld ('UGUST',    horiz_only, 'A', 'm/s','Gustiness term added to U10')
     call addfld ('RHREFHT',  horiz_only, 'A', 'fraction','Reference height relative humidity')
 
     call addfld ('LANDFRAC', horiz_only, 'A', 'fraction','Fraction of sfc area covered by land')
@@ -1786,7 +1786,7 @@ contains
       call outfld('TREFHTMN', cam_in%tref,      pcols, lchnk)
       call outfld('QREFHT',   cam_in%qref,      pcols, lchnk)
       call outfld('U10',      cam_in%u10,       pcols, lchnk)
-      call outfld('UGUST',      cam_in%ugustOut,       pcols, lchnk)
+      call outfld('UGUST',    cam_in%ugustOut,  pcols, lchnk)
 
       !
       ! Calculate and output reference height RH (RHREFHT)
