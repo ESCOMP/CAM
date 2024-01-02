@@ -1386,6 +1386,16 @@
     </options>
   </test>
 
+  <test compset="F2000dev" grid="ne30pg3_ne30pg3_mg17" name="MGP_D_Ln9" testmods="cam/outfrq3s">
+    <machines>
+      <machine name="cheyenne" compiler="intel" category="aux_pumas"/>
+    </machines>
+    <options>
+      <option name="wallclock">01:00:00</option>
+      <option name="comment"> Ensuring PUMAS and MG3 config options give the same answers.</option>
+    </options>
+  </test>
+
 <!--              CAM Simple Models                       -->
 
   <test compset="FDABIP04" grid="T42z30_T42_mg17" name="ERP_D_Ln9_Vnuopc" testmods="cam/outfrq9s">
@@ -1467,15 +1477,44 @@
   <test compset="F2000dev" grid="ne30pg3_ne30pg3_mg17" name="ERP_D_Ln9_Vnuopc" testmods="cam/outfrq9s" supported="false">
     <machines>
       <machine name="cheyenne" compiler="intel" category="aux_cam"/>
+      <machine name="cheyenne" compiler="intel" category="aux_pumas"/>
       <machine name="cheyenne" compiler="intel" category="prealpha"/>
     </machines>
     <options>
       <option name="wallclock">01:00:00</option>
     </options>
   </test>
+  <test compset="F2000dev" grid="ne30pg3_ne30pg3_mg17" name="SMS_D_Ln9_Vnuopc" testmods="cam/outfrq9s_pumas_tau" supported="false">
+    <machines>
+      <machine name="cheyenne" compiler="intel" category="aux_pumas"/>
+    </machines>
+    <options>
+      <option name="wallclock">01:00:00</option>
+      <option name="comment">Test PUMAS tau warm rain ML option</option>
+    </options>
+  </test>
+  <test compset="F2000dev" grid="ne30pg3_ne30pg3_mg17" name="ERP_D_Ln9_Vnuopc" testmods="cam/outfrq9s_pumas_sb2001" supported="false">
+    <machines>
+      <machine name="cheyenne" compiler="intel" category="aux_pumas"/>
+    </machines>
+    <options>
+      <option name="wallclock">01:00:00</option>
+      <option name="comment">Test PUMAS sb2001 warm rain option</option>
+    </options>
+  </test>
+  <test compset="F2000dev" grid="ne30pg3_ne30pg3_mg17" name="SMS_D_Ln9_Vnuopc" testmods="cam/outfrq9s_pumas_emulated" supported="false">
+    <machines>
+      <machine name="cheyenne" compiler="intel" category="aux_pumas"/>
+    </machines>
+    <options>
+      <option name="wallclock">01:00:00</option>
+      <option name="comment">Test PUMAS ML emulated warm rain option</option>
+    </options>
+  </test>
   <test compset="F2000dev" grid="f09_f09_mg17" name="ERP_Ln9_Vnuopc" testmods="cam/outfrq9s_mg3" supported="false">
     <machines>
       <machine name="cheyenne" compiler="intel" category="aux_cam"/>
+      <machine name="cheyenne" compiler="intel" category="aux_pumas"/>
       <machine name="cheyenne" compiler="intel" category="prealpha"/>
     </machines>
     <options>
