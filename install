@@ -31,6 +31,8 @@ do
 done
 
 ########################
+
+# Start with sparse checkouts
 if ! test -f bash-scripts/bin/git_sparse_checkout; then
   echo "Getting git_sparse_checkout script"
   git clone -n https://github.com/frgomes/bash-scripts --depth 1
@@ -38,7 +40,11 @@ if ! test -f bash-scripts/bin/git_sparse_checkout; then
   git checkout HEAD -- bin/git_sparse_checkout
   popd 1>/dev/null
 fi
-# Start with sparse checkouts
+
+
+
+
+
 
 ./bash-scripts/bin/git_sparse_checkout  https://github.com/larson-group/clubb_release clubb_4ncar_20221129_59cb19f_branch src/physics/clubb -- src/CLUBB_core/ src/SILHS/
 git restore src/physics/clubb
