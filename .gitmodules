@@ -96,12 +96,18 @@
 [submodule "ali_arms"]
 	path = src/physics/ali_arms
 	url = https://github.com/ESCOMP/ALI-ARMS
+        esmrequired = I:T
 [submodule "cosp2"]
 	path = src/physics/cosp2/src
 	url = https://github.com/CFMIP/COSPv2.0
+        esmsparse = ../.cosp_sparse_checkout
+        esmtag = v2.1.4cesm
 [submodule "clubb"]
 	path = src/physics/clubb
 	url = https://github.com/larson-group/clubb_release
+        esmsparse = ../.clubb_sparse_checkout
+        esmtag = clubb_4ncar_20221129_59cb19f_20230330_branchtag
 [submodule "mpas"]
 	path = src/dynamics/mpas/dycore
 	url = https://github.com/MPAS-Dev/MPAS-Model.git
+        esmsparse = ../.mpas_sparse_checkout
