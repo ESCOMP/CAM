@@ -7,6 +7,7 @@
  fincl3='U','V','T','Q','PS','Nudge_U','Nudge_V','Nudge_T','Nudge_Q','Target_U','Target_V','Target_T','Target_Q'
  nhtfrq=0,-6,1
  mfilt =1,4,48
+ write_nstep0 = .true.
 
  ncdata='$DIN_LOC_ROOT/atm/cam/nudging/ERAI_fv09_BILIN/ERAI_fv09_DART2.cam2.i.2009-01-01-00000.nc'
 /

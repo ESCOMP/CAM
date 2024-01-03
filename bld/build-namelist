@@ -3092,14 +3092,28 @@ if ($cfg->get('microphys') =~ /^mg/) {
     add_default($nl, 'micro_mg_iaccr_factor');
     add_default($nl, 'micro_mg_max_nicons');
 
-    # For CESM2, the decision was made to set micro_do_sb_physics to false
-    add_default($nl, 'micro_do_sb_physics', 'val'=>'.false.');
 
     # namelist options for pumas tag release_v1.22 or later
     #   (currently only in the cam_dev physics package)
     if ($phys =~ /cam_dev/) {
+        add_default($nl, 'micro_mg_warm_rain');
 	add_default($nl, 'micro_mg_accre_sees_auto');
+	add_default($nl, 'micro_mg_vtrms_factor');
 	add_default($nl, 'micro_mg_implicit_fall');
+        add_default($nl, 'pumas_stochastic_tau_kernel_filename', 'val'=>"$cfgdir/../src/physics/pumas/KBARF_tau_kernel.dat");
+
+        #set path for stochastic_tau_kernel_filename
+        my $cam_dir = $cfg->get('cam_dir');
+        add_default($nl, 'pumas_stochastic_tau_kernel_filename');
+        my $rel_path = $nl->get_value('pumas_stochastic_tau_kernel_filename');
+        my $abs_path = quote_string(set_abs_filepath($rel_path, $cam_dir));
+        #overwrite the relative pathname with the absolute pathname
+        $nl->set_variable_value('pumas_stochastic_tau_nl', 'pumas_stochastic_tau_kernel_filename', $abs_path);
+      
+    }else {
+    # For CESM2, the decision was made to set micro_do_sb_physics to false
+    # This variable is replaced with micro_mg_warm_rain in cam_dev runs
+        add_default($nl, 'micro_do_sb_physics', 'val'=>'.false.');
     }
 
     # tunings for micro_mg_dcs

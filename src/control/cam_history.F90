@@ -167,6 +167,7 @@ module cam_history
   logical :: rgnht(ptapes) = .false.  ! flag array indicating regeneration volumes
   logical :: hstwr(ptapes) = .false.  ! Flag for history writes
   logical :: empty_htapes  = .false.  ! Namelist flag indicates no default history fields
+  logical :: write_nstep0  = .false.  ! write nstep==0 time sample to history files (except monthly)
   logical :: htapes_defined = .false. ! flag indicates history contents have been defined
 
   character(len=cl) :: model_doi_url = '' ! Model DOI
@@ -626,7 +627,7 @@ CONTAINS
 
     ! History namelist items
     namelist /cam_history_nl/ ndens, nhtfrq, mfilt, inithist, inithist_all,    &
-         avgflag_pertape, empty_htapes, lcltod_start, lcltod_stop,             &
+         avgflag_pertape, empty_htapes, write_nstep0, lcltod_start, lcltod_stop,&
          fincl1lonlat, fincl2lonlat, fincl3lonlat, fincl4lonlat, fincl5lonlat, &
          fincl6lonlat, fincl7lonlat, fincl8lonlat, fincl9lonlat,               &
          fincl10lonlat, collect_column_output, hfilename_spec,                 &
@@ -825,8 +826,14 @@ CONTAINS
       end do
     end if ! masterproc
 
-    ! Print per-tape averaging flags
+    ! log output
     if (masterproc) then
+
+      if (write_nstep0) then
+        write(iulog,*)'nstep==0 time sample will be written to all files except monthly average.'
+      end if
+
+      ! Print per-tape averaging flags
       do t = 1, ptapes
         if (avgflag_pertape(t) /= ' ') then
           write(iulog,*)'Unless overridden by namelist input on a per-field basis (FINCL),'
@@ -885,6 +892,7 @@ CONTAINS
     call mpi_bcast(lcltod_stop,  ptapes, mpi_integer, masterprocid, mpicom, ierr)
     call mpi_bcast(collect_column_output, ptapes, mpi_logical, masterprocid, mpicom, ierr)
     call mpi_bcast(empty_htapes,1, mpi_logical, masterprocid, mpicom, ierr)
+    call mpi_bcast(write_nstep0,1, mpi_logical, masterprocid, mpicom, ierr)
     call mpi_bcast(avgflag_pertape, ptapes, mpi_character, masterprocid, mpicom, ierr)
     call mpi_bcast(hfilename_spec, len(hfilename_spec(1))*ptapes, mpi_character, masterprocid, mpicom, ierr)
     call mpi_bcast(fincl, len(fincl (1,1))*pflds*ptapes, mpi_character, masterprocid, mpicom, ierr)
@@ -2576,16 +2584,6 @@ CONTAINS
     !    on that grid.
     integer, allocatable        :: gridsontape(:,:)
 
-    ! The following list of field names are only valid for the FV dycore.  They appear
-    ! in fincl settings of WACCM use case files which are not restricted to the FV dycore.
-    ! To avoid duplicating long fincl lists in use case files to provide both FV and non-FV
-    ! versions this short list of fields is checked for and removed from fincl lists when
-    ! the dycore is not FV.
-    integer, parameter :: n_fv_only = 10
-    character(len=6) :: fv_only_flds(n_fv_only) = &
-       [ 'VTHzm ', 'WTHzm ', 'UVzm  ', 'UWzm  ', 'Uzm   ', 'Vzm   ', 'Wzm   ', &
-         'THzm  ', 'TH    ', 'MSKtem' ]
-
     integer :: n_vec_comp, add_fincl_idx
     integer, parameter :: nvecmax = 50 ! max number of vector components in a fincl list
     character(len=2) :: avg_suffix
@@ -2602,24 +2600,8 @@ CONTAINS
       n_vec_comp       = 0
       vec_comp_names   = ' '
       vec_comp_avgflag = ' '
-fincls: do while (fld < pflds .and. fincl(fld,t) /= ' ')
+      do while (fld < pflds .and. fincl(fld,t) /= ' ')
         name = getname (fincl(fld,t))
-
-        if (.not. dycore_is('FV')) then
-           ! filter out fields only provided by FV dycore
-           do i = 1, n_fv_only
-              if (name == fv_only_flds(i)) then
-                 write(errormsg,'(3a,2(i0,a))')'FLDLST: ', trim(name), &
-                    ' in fincl(', fld,', ',t, ') only available with FV dycore'
-                 if (masterproc) then
-                    write(iulog,*) trim(errormsg)
-                    call shr_sys_flush(iulog)
-                 end if
-                 fld = fld + 1
-                 cycle fincls
-              end if
-           end do
-        end if
 
         mastername=''
         listentry => get_entry_by_name(masterlinkedlist, name)
@@ -2648,7 +2630,7 @@ fincls: do while (fld < pflds .and. fincl(fld,t) /= ' ')
            end if
         end if
         fld = fld + 1
-      end do fincls
+      end do
 
       ! Interpolation of vector components requires that both be present.  If the fincl
       ! specifier contains any vector components, then the complement was saved in the
@@ -5585,9 +5567,20 @@ end subroutine print_active_fldlst
             hstwr(t) = nstep /= 0 .and. day == 1 .and. ncsec(instantaneous_file_index) == 0
             prev     = .true.
           else
-            hstwr(t) = mod(nstep,nhtfrq(t)) == 0
-            prev     = .false.
-          end if
+            if (nstep == 0) then
+              if (write_nstep0) then
+                hstwr(t) = .true.
+              else
+                ! zero the buffers if nstep==0 data not written
+                do f = 1, nflds(t)
+                  call h_zero(f, t)
+                end do
+              end if
+            else
+              hstwr(t) = mod(nstep,nhtfrq(t)) == 0
+            endif
+            prev = .false.
+           end if
         end if
       end if
       time = ndcur + nscur/86400._r8
@@ -6102,8 +6095,8 @@ end subroutine print_active_fldlst
           write(errormsg, *) "Cannot add ", trim(fname),                      &
                "Subcolumn history output only allowed on physgrid"
           call endrun("ADDFLD: "//errormsg)
-          listentry%field%is_subcol = .true.
         end if
+        listentry%field%is_subcol = .true.
       end if
     end if
     ! Levels
