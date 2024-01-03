@@ -170,6 +170,7 @@ module cam_history
   character(len=16)  :: host                ! host name
   character(len=8)   :: inithist = 'YEARLY' ! If set to '6-HOURLY, 'DAILY', 'MONTHLY' or
   ! 'YEARLY' then write IC file
+  logical            :: write_camiop = .false. ! setup to use iop fields if true.
   logical            :: inithist_all = .false. ! Flag to indicate set of fields to be
                                           ! included on IC file
                                           !  .false.  include only required fields
@@ -303,8 +304,9 @@ module cam_history
     module procedure addfld_nd
   end interface
 
-  ! Needed by cam_diagnostics
-  public :: inithist_all
+
+  public :: inithist_all  ! Needed by cam_diagnostics
+  public :: write_camiop  ! Needed by cam_comp
 
   integer :: lcltod_start(ptapes) ! start time of day for local time averaging (sec)
   integer :: lcltod_stop(ptapes)  ! stop time of day for local time averaging, stop > start is wrap around (sec)
@@ -823,7 +825,8 @@ CONTAINS
       else if (inithist == 'YEARLY' ) then
         write(iulog,*)'Initial conditions history files will be written yearly.'
       else if (inithist == 'CAMIOP' ) then
-        write(iulog,*)'Initial conditions history files will be written for IOP.'
+         write_camiop=.true.
+         write(iulog,*)'Initial conditions history files will be written for IOP.'
       else if (inithist == 'ENDOFRUN' ) then
         write(iulog,*)'Initial conditions history files will be written at end of run.'
       else
@@ -3948,8 +3951,10 @@ end subroutine print_active_fldlst
       ierr=pio_inq_varid (tape(t)%File,'date_written',tape(t)%date_writtenid)
       ierr=pio_inq_varid (tape(t)%File,'time_written',tape(t)%time_writtenid)
 #if ( defined BFB_CAM_SCAM_IOP )
+      if (write_camiop) then
       ierr=pio_inq_varid (tape(t)%File,'tsec    ',tape(t)%tsecid)
       ierr=pio_inq_varid (tape(t)%File,'bdate   ',tape(t)%bdateid)
+      end if
 #endif
       if (.not. is_initfile(file_index=t) ) then
         ! Don't write the GHG/Solar forcing data to the IC file.  It is never
@@ -4339,7 +4344,7 @@ end subroutine print_active_fldlst
     ierr=pio_put_att (tape(t)%File, PIO_GLOBAL, 'Conventions', trim(str))
     ierr=pio_put_att (tape(t)%File, PIO_GLOBAL, 'source', 'CAM')
 #if ( defined BFB_CAM_SCAM_IOP )
-    ierr=pio_put_att (tape(t)%File, PIO_GLOBAL, 'CAM_GENERATED_FORCING','create SCAM IOP dataset')
+    if (write_camiop) ierr=pio_put_att (tape(t)%File, PIO_GLOBAL, 'CAM_GENERATED_FORCING','create SCAM IOP dataset')
 #endif
     ierr=pio_put_att (tape(t)%File, PIO_GLOBAL, 'case',caseid)
     ierr=pio_put_att (tape(t)%File, PIO_GLOBAL, 'logname',logname)
@@ -4414,9 +4419,11 @@ end subroutine print_active_fldlst
       ierr=pio_put_att (tape(t)%File, tape(t)%nbdateid, 'long_name', trim(str))
 
 #if ( defined BFB_CAM_SCAM_IOP )
+      if (write_camiop) then
       ierr=pio_def_var (tape(t)%File,'bdate',PIO_INT,tape(t)%bdateid)
       str = 'base date (YYYYMMDD)'
       ierr=pio_put_att (tape(t)%File, tape(t)%bdateid, 'long_name', trim(str))
+      end if
 #endif
       ierr=pio_def_var (tape(t)%File,'nbsec',PIO_INT,tape(t)%nbsecid)
       str = 'seconds of base date'
@@ -4533,9 +4540,11 @@ end subroutine print_active_fldlst
 
 
 #if ( defined BFB_CAM_SCAM_IOP )
+      if (write_camiop) then
       ierr=pio_def_var (tape(t)%File,'tsec ',pio_int,(/timdim/), tape(t)%tsecid)
       str = 'current seconds of current date needed for scam'
       ierr=pio_put_att (tape(t)%File, tape(t)%tsecid, 'long_name', trim(str))
+      end if
 #endif
       ierr=pio_def_var (tape(t)%File,'nsteph  ',pio_int,(/timdim/),tape(t)%nstephid)
       str = 'current timestep'
@@ -4796,9 +4805,11 @@ end subroutine print_active_fldlst
         deallocate(latvar)
       end if
 
+      if (write_camiop) then
       dtime = get_step_size()
       ierr = pio_put_var(tape(t)%File, tape(t)%mdtid, (/dtime/))
       call cam_pio_handle_error(ierr, 'h_define: cannot put mdt')
+      end if
       !
       ! Model date info
       !
@@ -4810,8 +4821,10 @@ end subroutine print_active_fldlst
       ierr = pio_put_var(tape(t)%File, tape(t)%nbdateid, (/nbdate/))
       call cam_pio_handle_error(ierr, 'h_define: cannot put nbdate')
 #if ( defined BFB_CAM_SCAM_IOP )
+      if (write_camiop) then
       ierr = pio_put_var(tape(t)%File, tape(t)%bdateid, (/nbdate/))
       call cam_pio_handle_error(ierr, 'h_define: cannot put bdate')
+      end if
 #endif
       ierr = pio_put_var(tape(t)%File, tape(t)%nbsecid, (/nbsec/))
       call cam_pio_handle_error(ierr, 'h_define: cannot put nbsec')
@@ -5562,9 +5575,11 @@ end subroutine print_active_fldlst
 
           ierr = pio_put_var (tape(t)%File, tape(t)%datesecid,(/start/),(/count1/),(/ncsec/))
 #if ( defined BFB_CAM_SCAM_IOP )
+          if (write_camiop) then
           dtime = get_step_size()
           tsec=dtime*nstep
           ierr = pio_put_var (tape(t)%File, tape(t)%tsecid,(/start/),(/count1/),(/tsec/))
+          end if
 #endif
           ierr = pio_put_var (tape(t)%File, tape(t)%nstephid,(/start/),(/count1/),(/nstep/))
           time = ndcur + nscur/86400._r8

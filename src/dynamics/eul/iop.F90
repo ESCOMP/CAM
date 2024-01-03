@@ -1,10 +1,10 @@
 module iop
-!----------------------------------------------------------------------- 
+!-----------------------------------------------------------------------
 !BOP
 !
 ! !MODULE: iop
-! 
-! !DESCRIPTION: 
+!
+! !DESCRIPTION:
 ! iop specific routines
 !
 ! !USES:
@@ -21,14 +21,14 @@ module iop
 
   private
 
-  real(r8), allocatable,target :: dqfx3sav(:,:,:,:)       
-  real(r8), allocatable,target :: t2sav(:,:,:)       
-  real(r8), allocatable,target :: fusav(:,:,:)       
-  real(r8), allocatable,target :: fvsav(:,:,:)       
+  real(r8), allocatable,target :: dqfx3sav(:,:,:,:)
+  real(r8), allocatable,target :: t2sav(:,:,:)
+  real(r8), allocatable,target :: fusav(:,:,:)
+  real(r8), allocatable,target :: fvsav(:,:,:)
   real(r8), allocatable,target :: divq3dsav(:,:,:,:)
-  real(r8), allocatable,target :: divt3dsav(:,:,:)       
-  real(r8), allocatable,target :: divu3dsav(:,:,:)       
-  real(r8), allocatable,target :: divv3dsav(:,:,:)       
+  real(r8), allocatable,target :: divt3dsav(:,:,:)
+  real(r8), allocatable,target :: divu3dsav(:,:,:)
+  real(r8), allocatable,target :: divv3dsav(:,:,:)
   real(r8), allocatable,target :: betasav(:)
 
   integer :: closelatidx,closelonidx,latid,lonid,levid,timeid
@@ -50,7 +50,7 @@ module iop
 !EOP
 !
 ! !PRIVATE MEMBER FUNCTIONS:
-!----------------------------------------------------------------------- 
+!-----------------------------------------------------------------------
 
 contains
    subroutine init_iop_fields()
@@ -64,7 +64,7 @@ contains
    if (eul_nsplit>1) then
       call endrun('iop module cannot be used with eul_nsplit>1')
    endif
-	        
+
    if(.not.allocated(betasav)) then
       allocate (betasav(beglat:endlat))
       betasav(:)=0._r8
@@ -129,14 +129,14 @@ contains
    ! set prognostics from iop
    ! Find level where tobs is no longer zero
    ioptop = minloc(tobs(:), 1, BACK=.true.)+1
-   
    if (present(ps)) ps(1,1,timelevel)           = psobs
    if (present(t3)) t3(1,ioptop:,1,timelevel)   = tobs(ioptop:)
+   if (present(q3)) q3(1,ioptop:,1,1,timelevel) = qobs(ioptop:)
+!!!!!jt revert next line only for bfb
+   ioptop=1
    if (present(u3)) u3(1,ioptop:,1,timelevel)   = uobs(ioptop:)
    if (present(v3)) v3(1,ioptop:,1,timelevel)   = vobs(ioptop:)
-   if (present(q3)) q3(1,ioptop:,1,1,timelevel) = qobs(ioptop:)
 
  end subroutine iop_update_prognostics
 
 end module iop
-

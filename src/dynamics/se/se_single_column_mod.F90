@@ -1,6 +1,6 @@
 module se_single_column_mod
 !--------------------------------------------------------
-! 
+!
 ! Module for the SE single column model
 
 use shr_kind_mod,           only: r8=>shr_kind_r8
@@ -16,7 +16,7 @@ use constituents,           only: cnst_get_ind, pcnst
 use dimensions_mod,         only: nelemd, np, nlev
 use time_manager,           only: get_nstep, is_first_step, get_step_size, is_first_restart_step
 use ppgrid,                 only: begchunk
-use time_mod,               only: timelevel_qdp
+use se_dyn_time_mod,        only: timelevel_qdp
 use cam_history,            only: outfld
 
 implicit none
@@ -83,17 +83,13 @@ subroutine scm_setinitial(elem)
        tobs(:)=elem(ie_scm)%state%T(i_scm,j_scm,:,tl_f)
        qobs(:)=elem(ie_scm)%state%qdp(i_scm,j_scm,:,1,tl_fqdp)/elem(ie_scm)%state%dp3d(i_scm,j_scm,:,tl_f)
     endif
-    
+
     if (get_nstep() .eq. 0) then
-       !jt            do cix = 1, pcnst
-       !jt               if (scm_zero_non_iop_tracers) elem(ie_scm)%state%qdp(i,j,:,cix,tl_qdp_np0) = qmin(cix)*elem(ie_scm)%state%dp3d(i,j,:,tl_qdp_np0)
-       !jt               elem(ie_scm)%state%qdp(ii,j,:,cix,tl_fqdp) = qmin(cix)*elem(ie_scm)%state%dp3d(ii,j,:,tl_f)
-       !jt            end do
        do k=thelev, NLEV
           if (have_t) elem(ie_scm)%state%T(i_scm,j_scm,k,tl_f)=tobs(k)
           if (have_q) elem(ie_scm)%state%qdp(i_scm,j_scm,k,1,tl_fqdp)=qobs(k)*elem(ie_scm)%state%dp3d(i_scm,j_scm,k,tl_f)
        enddo
-       
+
        do k=1,NLEV
           if (have_ps) elem(ie_scm)%state%psdry(i_scm,j_scm) = psobs
           if (have_u) elem(ie_scm)%state%v(i_scm,j_scm,1,k,tl_f) = uobs(k)
@@ -104,11 +100,11 @@ subroutine scm_setinitial(elem)
           if (have_cldice) elem(ie_scm)%state%qdp(i_scm,j_scm,k,icldice,tl_fqdp) = cldiceobs(k)*elem(ie_scm)%state%dp3d(i_scm,j_scm,k,tl_f)
           if (have_omega) elem(ie_scm)%derived%omega(i_scm,j_scm,k) = wfld(k)
        enddo
-       
+
     endif
-    
+
  endif
- 
+
 end subroutine scm_setinitial
 
 subroutine scm_setfield(elem,iop_update_phase1)
@@ -143,112 +139,49 @@ subroutine scm_setfield(elem,iop_update_phase1)
         vobs(k) = elem(ie_scm)%state%v(i_scm,j_scm,2,k,tl_f)
      end if
   end do
-  
+
 end subroutine scm_setfield
 
 subroutine apply_SC_forcing(elem,hvcoord,tl,n,t_before_advance,nets,nete)
-! 
+!
     use scamMod,        only: single_column, use_3dfrc
     use dimensions_mod, only: np, nlev, npsq,qsize_d
     use hybvcoord_mod,  only: hvcoord_t
     use element_mod,    only: element_t
     use physconst,      only: rair
-    use time_mod
+    use se_dyn_time_mod,only: TimeLevel_t
     use time_manager,   only: get_nstep
     use control_mod,    only: qsplit
     use apply_iop_forcing_mod, only:advance_iop_forcing, advance_iop_nudging
     use ppgrid,         only:begchunk
-    integer :: n,nets,nete
-    type (element_t)     , intent(inout), target :: elem(:)
-    type (hvcoord_t)                  :: hvcoord
-    type (TimeLevel_t), intent(in)       :: tl
-    logical :: t_before_advance
 
-    integer :: tl_qdp_np0,tl_qdp_np1
-    integer :: ie,k,i,j,t,m
-    real (r8), dimension(nlev)  :: p
-    real (r8) ::dt
+    type (element_t), intent(inout), target :: elem(:)
+    type (hvcoord_t), intent(in)            :: hvcoord
+    type (TimeLevel_t), intent(in)          :: tl
+    logical, intent(in)                     :: t_before_advance
+    integer, intent(in)                     :: n,nets,nete
 
-    integer ::nelemd_todo, np_todo
-    logical ::scm_multcols = .false.
-    logical ::iop_nudge_tq = .false.
+    integer                                 :: tl_qdp_np0,tl_qdp_np1
+    integer                                 :: ie,k,i,j,t,m
+    real (r8), dimension(nlev)              :: p
+    real (r8)                               :: dt
 
+    integer                                 :: nelemd_todo, np_todo
+    logical                                 :: scm_multcols = .false.
+    logical                                 :: iop_nudge_tq = .false.
 
-!$$    real (r8), pointer :: q_phys_frc(:,:)
-!$$    real (r8)          :: q3m2(nlev,pcnst), q3m1(nlev,pcnst),q3(nlev,pcnst)
-!$$    real (r8), pointer :: t_phys_frc(:), u_phys_frc(:), v_phys_frc(:),t_vfcst(:),u_vfcst(:),v_vfcst(:)
-!$$    real (r8), dimension(nlev) :: t3, u3, v3
-!$$    real (r8), pointer :: t3m1(:), u3m1(:), v3m1(:), t3m2(:), u3m2(:), v3m2(:)
-!$$    real (r8), pointer  :: psm1
-!$$    real (r8), dimension(nlev) :: relaxt, relaxq
-!$$    real (r8), dimension(nlev) :: tdiff_dyn, qdiff_dyn
-!$$    real (r8), dimension(npsq,nlev) :: tdiff_out, qdiff_out
-!$$    real (r8) :: etamid(nlev)
-!$$
-    real (r8), dimension(nlev,pcnst) :: stateQ_in, q_update, q_phys_frc
-    real (r8), dimension(nlev) :: t_phys_frc, t_update, u_update, v_update
-    real (r8), dimension(nlev) :: t_in, u_in, v_in
-    real (r8), dimension(nlev) :: relaxt, relaxq
-    real (r8), dimension(nlev) :: tdiff_dyn, qdiff_dyn
+    real (r8), dimension(nlev,pcnst)        :: stateQ_in, q_update, q_phys_frc
+    real (r8), dimension(nlev)              :: t_phys_frc, t_update, u_update, v_update
+    real (r8), dimension(nlev)              :: t_in, u_in, v_in
+    real (r8), dimension(nlev)              :: relaxt, relaxq
+    real (r8), dimension(nlev)              :: tdiff_dyn, qdiff_dyn
 
-!----------------------------------------------------------------------- 
+!-----------------------------------------------------------------------
 
     tl_f = tl%n0
 
     call TimeLevel_Qdp(tl, qsplit, tl_fqdp)
 
-!$$    dt = get_step_size()
-!$$
-!$$    ! Set initial profiles for current column
-!$$    do m=1,pcnst
-!$$       q3m2(:nlev,m) =             elem(ie_scm)%state%Qdp(i_scm,j_scm,:nlev,m,tl_fqdp)/elem(ie_scm)%state%dp3d(i_scm,j_scm,:nlev,tl_f)
-!$$       q3m1(:nlev,m) =             elem(ie_scm)%state%Qdp(i_scm,j_scm,:nlev,m,tl_fqdp)/elem(ie_scm)%state%dp3d(i_scm,j_scm,:nlev,tl_f)
-!$$!jt       qminus(:nlev,m)    =             elem(ie_scm)%state%Qdp(i_scm,j_scm,:nlev,m,tl_fqdp)/elem(ie_scm)%state%dp3d(i_scm,j_scm,:nlev,tl_f)+q_phys_frc(:nlev)
-!$$    end do
-!$$    t_vfcst => elem(ie_scm)%state%T(i_scm,j_scm,:nlev,tl%n0)
-!$$    u_vfcst => elem(ie_scm)%state%v(i_scm,j_scm,1,:nlev,tl%n0)
-!$$    v_vfcst => elem(ie_scm)%state%v(i_scm,j_scm,2,:nlev,tl%n0)
-!$$    u3m2 => elem(ie_scm)%state%v(i_scm,j_scm,1,:nlev,tl%n0)
-!$$    v3m2 => elem(ie_scm)%state%v(i_scm,j_scm,2,:nlev,tl%n0)
-!$$    t3m2 => elem(ie_scm)%state%T(i_scm,j_scm,:nlev,tl%n0)
-!$$    u3m1 => elem(ie_scm)%state%v(i_scm,j_scm,1,:nlev,tl%nm1)
-!$$    v3m1 => elem(ie_scm)%state%v(i_scm,j_scm,2,:nlev,tl%nm1)
-!$$    t3m1 => elem(ie_scm)%state%T(i_scm,j_scm,:nlev,tl%nm1)
-!$$    psm1        => elem(ie_scm)%state%psdry(i_scm,j_scm)
-!$$!!$    if (.not. use_3dfrc ) then
-!$$!!$       t_phys_frc(:) = 0.0_r8
-!$$!!$    else
-!$$    t_phys_frc   => elem(ie_scm)%derived%fT(i_scm,j_scm,:)
-!$$    u_phys_frc   => elem(ie_scm)%derived%FM(i_scm,j_scm,1,:)
-!$$    v_phys_frc   => elem(ie_scm)%derived%FM(i_scm,j_scm,2,:)
-!$$!jt    q_phys_frc => elem(ie_scm)%derived%fQ(i_scm,j_scm,:,:)*dt/elem(ie_scm)%stat
-!$$!jt    qminus(:nlev) = q3m2+q_phys_frc(:,:)
-!$$!!$    endif
-!$$
-!$$    do k=1,nlev
-!$$       etamid(k) = hvcoord%hyam(k)*hvcoord%ps0 + hvcoord%hybm(k)*psm1
-!$$    end do
-!$$    
-!$$        call forecast(begchunk,psm1,&
-!$$           psm1,psm1,u3,&
-!$$           u3m2,u3m2,&
-!$$           v3,v3m2,&
-!$$           v3m2,t3,&
-!$$           t3m2,t3m2,&
-!$$           q3,q3m2,q3m2,dt,t_phys_frc,u_phys_frc,v_phys_frc,&
-!$$           q3m2,etamid,q3m2,1)
-
-!!$    ! Call the main subroutine to update t, q, u, and v according to
-!!$    ! large scale forcing as specified in IOP file.
-!!$    call advance_iop_forcing(dt        ,hvcoord   ,psm1       , & ! In
-!!$                             u3m1      ,u3m2      ,u_phys_frc , & ! In
-!!$                             v3m1      ,v3m2      ,v_phys_frc , & ! In
-!!$                             t3m1      ,t3m2      ,t_phys_frc , & ! In
-!!$                             q3m1      ,q3m2      ,q_phys_frc , & ! In
-!!$                             u_vfcst   ,v_vfcst   ,t_vfcst  , & ! In
-!!$                             q_vfcst   ,                        & ! In
-!!$                             u3        ,v3        ,t3         , & ! Out
-!!$                             q3        )                          ! Out
     dt = get_step_size()
 
     ! Set initial profiles for current column
@@ -258,20 +191,16 @@ subroutine apply_SC_forcing(elem,hvcoord,tl,n,t_before_advance,nets,nete)
     t_in(:nlev) = elem(ie_scm)%state%T(i_scm,j_scm,:nlev,tl_f)
     u_in(:nlev) = elem(ie_scm)%state%v(i_scm,j_scm,1,:nlev,tl_f)
     v_in(:nlev) = elem(ie_scm)%state%v(i_scm,j_scm,2,:nlev,tl_f)
-    
-!!$    if (.not. use_3dfrc ) then
-!!$       t_phys_frc(:) = 0.0_r8
-!!$    else
+
     t_phys_frc(:)   = elem(ie_scm)%derived%fT(i_scm,j_scm,:)
     q_phys_frc(:,:) = elem(ie_scm)%derived%fQ(i_scm,j_scm,:,:)/dt
-!!$    endif
 
     ! Call the main subroutine to update t, q, u, and v according to
     !  large scale forcing as specified in IOP file.
     call advance_iop_forcing(dt,elem(ie_scm)%state%psdry(i_scm,j_scm),& ! In
          u_in,v_in,t_in,stateQ_in,t_phys_frc, q_phys_frc, hvcoord, &            ! In
          u_update,v_update,t_update,q_update)                      ! Out
-    
+
     ! Nudge to observations if desired, for T & Q only if in SCM mode
     if (iop_nudge_tq ) then
        call advance_iop_nudging(dt,elem(ie_scm)%state%psdry(i_scm,j_scm),& ! In
@@ -303,7 +232,7 @@ subroutine apply_SC_forcing(elem,hvcoord,tl,n,t_before_advance,nets,nete)
        tdiff_dyn(k) = t_update(k)   - tobs(k)
        qdiff_dyn(k) = q_update(k,1) - qobs(k)
     end do
-    write(6,*)'tdiff=',tdiff_dyn
+
     ! Add various diganostic outfld calls
     call outfld('TDIFF',tdiff_dyn,1,begchunk)
     call outfld('QDIFF',qdiff_dyn,1,begchunk)
@@ -324,18 +253,18 @@ subroutine apply_SC_forcing(elem,hvcoord,tl,n,t_before_advance,nets,nete)
     end subroutine apply_SC_forcing
 !=========================================================================
     subroutine iop_broadcast()
-      
+
       !---------------------------------------------------------
-      ! Purpose: When running DP-CRM, broadcast relevant logical 
+      ! Purpose: When running DP-CRM, broadcast relevant logical
       !   flags and data to all processors
       !----------------------------------------------------------
-      
+
       use spmd_utils,   only: mpi_logical, mpi_real8, masterproc, iam, mpicom, mstrid=>masterprocid
       use dimensions_mod,         only: nlev
 
       integer :: ierr
-#ifdef SPMD  
-      
+#ifdef SPMD
+
       call mpi_bcast(have_ps,1,mpi_logical,mstrid,mpicom,ierr)
       call mpi_bcast(have_tg,1,mpi_logical,mstrid,mpicom,ierr)
       call mpi_bcast(have_lhflx,1,mpi_logical,mstrid,mpicom,ierr)
@@ -351,36 +280,36 @@ subroutine apply_SC_forcing(elem,hvcoord,tl,n,t_before_advance,nets,nete)
       call mpi_bcast(have_divt3d,1,mpi_logical,mstrid,mpicom,ierr)
       call mpi_bcast(have_divq3d,1,mpi_logical,mstrid,mpicom,ierr)
       call mpi_bcast(use_3dfrc,1,mpi_logical,mstrid,mpicom,ierr)
-      
+
       call mpi_bcast(psobs,1,mpi_real8,mstrid,mpicom,ierr)
       call mpi_bcast(tground,1,mpi_real8,mstrid,mpicom,ierr)
       call mpi_bcast(lhflxobs,1,mpi_real8,mstrid,mpicom,ierr)
       call mpi_bcast(shflxobs,1,mpi_real8,mstrid,mpicom,ierr)
-      
+
       call mpi_bcast(tobs,nlev,mpi_real8,mstrid,mpicom,ierr)
       call mpi_bcast(qobs,nlev,mpi_real8,mstrid,mpicom,ierr)
       call mpi_bcast(uobs,nlev,mpi_real8,mstrid,mpicom,ierr)
       call mpi_bcast(vobs,nlev,mpi_real8,mstrid,mpicom,ierr)
       call mpi_bcast(cldliqobs,nlev,mpi_real8,mstrid,mpicom,ierr)
-      call mpi_bcast(wfld,nlev,mpi_real8,mstrid,mpicom,ierr) 
-      
+      call mpi_bcast(wfld,nlev,mpi_real8,mstrid,mpicom,ierr)
+
       call mpi_bcast(divt,nlev,mpi_real8,mstrid,mpicom,ierr)
       call mpi_bcast(divq,nlev,mpi_real8,mstrid,mpicom,ierr)
       call mpi_bcast(divt3d,nlev,mpi_real8,mstrid,mpicom,ierr)
       call mpi_bcast(divq3d,nlev,mpi_real8,mstrid,mpicom,ierr)
-      
+
 #endif
-      
+
     end subroutine iop_broadcast
 
 !=========================================================================
     subroutine scm_dyn_grid_indicies(elem,scmlat,scmlon,ie_scm,i_scm,j_scm,indx_scm)
-      
+
       !---------------------------------------------------------
-      ! Purpose: When running DP-CRM, broadcast relevant logical 
+      ! Purpose: When running DP-CRM, broadcast relevant logical
       !   flags and data to all processors
       !----------------------------------------------------------
-      
+
       use dimensions_mod,         only: nlev, nelemd
       use element_mod,            only: element_t
       use shr_const_mod,          only: pi => SHR_CONST_PI
@@ -391,7 +320,7 @@ subroutine apply_SC_forcing(elem,hvcoord,tl,n,t_before_advance,nets,nete)
       integer,         intent(out) :: ie_scm, j_scm, i_scm, indx_scm
 
       integer :: i, j, indx, ie
-      real(r8) :: scmposlon, minpoint, testlat, testlon, testval 
+      real(r8) :: scmposlon, minpoint, testlat, testlon, testval
       integer :: ierr
       real(r8), parameter :: rad2deg = 180.0_r8 / pi
 
@@ -417,15 +346,15 @@ subroutine apply_SC_forcing(elem,hvcoord,tl,n,t_before_advance,nets,nete)
                   minpoint=testval
                   if (minpoint .lt. 1.e-7) minpoint=0._r8
                endif
-               indx=indx+1                   
+               indx=indx+1
             enddo
          enddo
       enddo
-      
+
       if (ie_scm == 0 .or. i_scm == 0 .or. j_scm == 0 .or. indx_scm == 0) then
          call endrun('Could not find closest SCM point on input datafile')
       endif
 
     end subroutine scm_dyn_grid_indicies
-    
+
  end module se_single_column_mod

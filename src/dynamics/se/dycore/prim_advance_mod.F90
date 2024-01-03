@@ -1725,8 +1725,6 @@ contains
      use viscosity_mod,  only: biharmonic_wk_omega
      use cam_thermo,     only: get_dp, MASS_MIXING_RATIO
      use air_composition,only: thermodynamic_active_species_idx_dycore
-     use cam_logfile,     only: iulog
-
      implicit none
      type (hybrid_t)      , intent(in)            :: hybrid
      type (element_t)     , intent(inout), target :: elem(:)

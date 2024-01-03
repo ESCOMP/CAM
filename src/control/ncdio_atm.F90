@@ -139,8 +139,8 @@ contains
     else
        vargridname='physgrid'
     end if
-    ! if running single column mode then we need to use scm grid to read proper column
-    if (single_column .and. trim(vargridname)=='physgrid') then
+
+    if (single_column .and. vargridname=='physgrid') then
        vargridname='physgrid_scm'
     end if
 
@@ -161,14 +161,14 @@ contains
     ! Get the number of columns in the global grid.
     call cam_grid_dimensions(grid_id, grid_dimlens)
     !
-    ! read netcdf file
+    ! Read netCDF file
     !
     !
-    ! check if field is on file; get netcdf variable id
+    ! Check if field is on file; get netCDF variable id
     !
     call cam_pio_check_var(ncid, varname, varid, ndims, dimids, dimlens, readvar_tmp)
     !
-    ! if field is on file:
+    ! If field is on file:
     !
     if (readvar_tmp) then
         if (debug .and. masterproc) then
@@ -177,13 +177,13 @@ contains
           call shr_sys_flush(iulog)
         end if
       !
-      ! get array dimension id's and sizes
+      ! Get array dimension id's and sizes
       !
       arraydimsize(1) = (dim1e - dim1b + 1)
       arraydimsize(2) = (dim2e - dim2b + 1)
       do j = 1, 2
         if (arraydimsize(j) /= size(field, j)) then
-          write(errormsg, *) ': mismatch between array bounds and field size for ', &
+          write(errormsg, *) ': Mismatch between array bounds and field size for ', &
                trim(varname), ', dimension', j
           call endrun(trim(subname)//errormsg)
         end if
@@ -194,14 +194,14 @@ contains
       else if (ndims < 1) then
         call endrun(trim(subname)//': too few dimensions for '//trim(varname))
       else
-         ! check that the number of columns in the file matches the number of
+         ! Check that the number of columns in the file matches the number of
          ! columns in the grid object.
          if (dimlens(1) /= grid_dimlens(1) .and. .not. single_column) then
             readvar = .false.
             return
          end if
 
-        ! check to make sure that the second dimension is time
+        ! Check to make sure that the second dimension is time
         if (ndims == 2) then
           ierr = pio_inq_dimname(ncid, dimids(2), tmpname)
           if (trim(tmpname) /= 'time') then
@@ -227,7 +227,7 @@ contains
       if (present(fillvalue)) then
          ierr = cam_pio_inq_var_fill(ncid, varid, fillvalue)
       end if
-      
+
       if (masterproc) write(iulog,*) subname//': read field '//trim(varname)
 
     end if  ! end of readvar_tmp
@@ -239,20 +239,20 @@ contains
   end subroutine infld_real_1d_2d
 
   !-----------------------------------------------------------------------
-  !bop
+  !BOP
   !
-  ! !iroutine: infld_real_2d_2d
+  ! !IROUTINE: infld_real_2d_2d
   !
-  ! !interface:
+  ! !INTERFACE:
   subroutine infld_real_2d_2d(varname, ncid, dimname1, dimname2,              &
        dim1b, dim1e, dim2b, dim2e, field, readvar, gridname, timelevel,    &
        fillvalue)
     !
-    ! !description:
-    ! netcdf i/o of initial real field from netcdf file
-    ! read a 2-d field (or slice) into a 2-d variable
+    ! !DESCRIPTION:
+    ! Netcdf I/O of initial real field from netCDF file
+    ! Read a 2-D field (or slice) into a 2-D variable
     !
-    ! !uses
+    ! !USES
     !
 
     use pio,              only: pio_get_var, pio_read_darray, pio_setdebuglevel
@@ -324,6 +324,7 @@ contains
       call infld(varname, ncid, dimname1, dim1b, dim1e, dim2b, dim2e,         &
            field, readvar, gridname, timelevel)
     else
+
       !
       ! Error conditions
       !
@@ -332,10 +333,11 @@ contains
       else
         vargridname='physgrid'
       end if
-      ! if running single column mode then we need to use scm grid to read proper column
-      if (single_column .and. trim(vargridname)=='physgrid') then
-        vargridname='physgrid_scm'
+
+      if (single_column .and. vargridname=='physgrid') then
+         vargridname='physgrid_scm'
       end if
+
       grid_id = cam_grid_id(trim(vargridname))
       if (.not. cam_grid_check(grid_id)) then
         if(masterproc) then
@@ -555,10 +557,12 @@ contains
     else
       vargridname='physgrid'
     end if
+
     ! if running single column mode then we need to use scm grid to read proper column
-    if (single_column .and. trim(vargridname)=='physgrid') then
-      vargridname='physgrid_scm'
+    if (single_column .and. vargridname=='physgrid') then
+       vargridname='physgrid_scm'
     end if
+
     grid_id = cam_grid_id(trim(vargridname))
     if (.not. cam_grid_check(grid_id)) then
       if(masterproc) then
@@ -762,10 +766,12 @@ contains
       else
         vargridname='physgrid'
       end if
+
       ! if running single column mode then we need to use scm grid to read proper column
-      if (single_column .and. trim(vargridname)=='physgrid') then
-        vargridname='physgrid_scm'
+      if (single_column .and. vargridname=='physgrid') then
+         vargridname='physgrid_scm'
       end if
+
       grid_id = cam_grid_id(trim(vargridname))
       if (.not. cam_grid_check(grid_id)) then
         if(masterproc) then

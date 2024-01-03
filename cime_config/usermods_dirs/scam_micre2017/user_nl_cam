@@ -1,5 +1,4 @@
 iopfile='$DIN_LOC_ROOT/atm/cam/scam/iop/micre2017_3mo.macquarie2017.iop.nc'
-ncdata ='$DIN_LOC_ROOT/atm/cam/scam/iop/micre2017_3mo.cam.i.2017-01-01-00000.regrid.Gaus_64x128.nc'
 mfilt=9000
 nhtfrq=1
 scm_use_obs_uv = .true.

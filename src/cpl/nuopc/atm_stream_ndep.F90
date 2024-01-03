@@ -243,8 +243,6 @@ contains
     end if
 
     g = 1
-    call truncate_precision(dataptr1d_nhx,size(dataptr1d_nhx),12)
-    call truncate_precision(dataptr1d_noy,size(dataptr1d_noy),12)
     do c = begchunk,endchunk
        do i = 1,get_ncols_p(c)
           cam_out(c)%nhx_nitrogen_flx(i) = dataptr1d_nhx(g)
@@ -255,27 +253,4 @@ contains
 
   end subroutine stream_ndep_interp
 
-  !================================================================
-
-  subroutine truncate_precision(a, n, digits)
-    ! input/output variables
-    real(r8), dimension(n), &
-         & intent(inout) :: a
-    integer, intent(in) :: digits,n
-    
-    ! local variables
-    real(r8) :: scale(n),atmp(n),scale1(n)
-
-    !-----------------------------------------------------------------------
-
-    where (a == 0._r8)
-       a=0._r8
-    elsewhere
-       scale=(floor(log10(dabs(a)))+1 - digits)
-    end where
-    scale=10**scale
-    a=scale*dint(a/scale)
-  end subroutine truncate_precision
-
-  
 end module atm_stream_ndep

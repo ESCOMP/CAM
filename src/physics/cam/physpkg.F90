@@ -1086,9 +1086,7 @@ contains
     use spcam_drivers,  only: tphysbc_spcam
     use spmd_utils,     only: mpicom
     use physics_buffer, only: physics_buffer_desc, pbuf_get_chunk, pbuf_allocate
-#if (defined BFB_CAM_SCAM_IOP )
-    use cam_history,    only: outfld
-#endif
+    use cam_history,    only: outfld, write_camiop
     use cam_abortutils, only: endrun
 #if ( defined OFFLINE_DYN )
      use metdata,       only: get_met_srf1
@@ -1156,11 +1154,11 @@ contains
     !-----------------------------------------------------------------------
     !
 
-#if (defined BFB_CAM_SCAM_IOP )
-    do c=begchunk, endchunk
-      call outfld('Tg',cam_in(c)%ts,pcols   ,c     )
-    end do
-#endif
+    if (write_camiop) then
+       do c=begchunk, endchunk
+          call outfld('Tg',cam_in(c)%ts,pcols   ,c     )
+       end do
+    end if
 
     call t_barrierf('sync_bc_physics', mpicom)
     call t_startf ('bc_physics')

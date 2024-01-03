@@ -222,9 +222,6 @@ subroutine dyn_init(dyn_in, dyn_out)
 #if (defined SPMD)
    use spmd_dyn,             only: spmdbuf
 #endif
-#if (defined BFB_CAM_SCAM_IOP )
-   use history_defaults,     only: initialize_iop_history
-#endif
    use dyn_tests_utils, only: vc_dycore, vc_moist_pressure,string_vc, vc_str_lgth
    ! Arguments are not used in this dycore, included for compatibility
    type(dyn_import_t), intent(out) :: dyn_in
@@ -258,10 +255,6 @@ subroutine dyn_init(dyn_in, dyn_out)
    call set_phis()
 
    if (initial_run) then
-
-#if (defined BFB_CAM_SCAM_IOP )
-      call initialize_iop_history()
-#endif
       call read_inidat()
       call clean_iodesc_list()
    end if
@@ -404,7 +397,6 @@ subroutine read_inidat()
    real(r8), allocatable :: tmp2d(:,:)
 
    character(len=*), parameter :: sub='read_inidat'
-   integer ioptop,k
    !----------------------------------------------------------------------------
 
    fh_ini  => initial_file_get_id()
@@ -587,15 +579,6 @@ subroutine read_inidat()
          call setiopupdate()
          call readiopdata(hvcoord)
          call iop_update_prognostics(1,t3=t3,u3=u3,v3=v3,q3=q3,ps=ps)
-!!$         ! set t3, and q3(n1) values from iop on timestep 0
-!!$         ! Find level where tobs is no longer zero
-!!$         ioptop = minloc(tobs(:), 1, BACK=.true.)+1
-!!$
-!!$         ps(:,:,1) = psobs
-!!$         t3(1,ioptop:,1,1) = tobs(ioptop:)
-!!$         u3(1,ioptop:,1,1) = uobs(ioptop:)
-!!$         v3(1,ioptop:,1,1) = vobs(ioptop:)
-!!$         q3(1,ioptop:,1,1,1) = qobs(ioptop:)
       end if
    end if
 
@@ -617,7 +600,7 @@ subroutine set_phis()
 
    ! Local variables
    type(file_desc_t), pointer :: fh_topo
-   
+
    integer :: ierr, pio_errtype
    integer :: lonid, latid
    integer :: mlon, morec      ! lon/lat dimension lengths from topo file
@@ -637,7 +620,7 @@ subroutine set_phis()
 
    readvar = .false.
 
-   if (associated(fh_topo)) then    
+   if (associated(fh_topo)) then
 
       call pio_seterrorhandling(fh_topo, PIO_BCAST_ERROR, pio_errtype)
 
@@ -724,11 +707,9 @@ subroutine process_inidat(fieldname, m_cnst, fh)
    real(r8), pointer, dimension(:,:,:) :: tmp3d_a, tmp3d_b, tmp3d_extend
    real(r8), pointer, dimension(:,:  ) :: tmp2d_a, tmp2d_b
 
-#if ( defined BFB_CAM_SCAM_IOP )
    real(r8), allocatable :: ps_sav(:,:)
    real(r8), allocatable :: u3_sav(:,:,:)
    real(r8), allocatable :: v3_sav(:,:,:)
-#endif
 
 #if ( defined SPMD )
    integer :: numperlat                   ! number of values per latitude band

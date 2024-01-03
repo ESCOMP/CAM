@@ -19,8 +19,6 @@ use cam_abortutils,   only: endrun
 use cam_logfile,      only: iulog
 use hybvcoord_mod,    only: hvcoord_t
 use shr_const_mod,    only: SHR_CONST_PI, SHR_CONST_REARTH
-use physics_column_type,    only: physics_column_t
-
 
 #if (defined SPMD)
 use spmd_dyn,         only: spmdinit_dyn
@@ -52,7 +50,6 @@ public :: &
    get_horiz_grid_d,         &! horizontal grid coordinates
    get_horiz_grid_dim_d,     &! horizontal dimensions of dynamics grid
    hvcoord,                  &! vertical coordinate parameters
-   get_dyn_grid_info,        &! Return dynamics grid column information
    physgrid_copy_attributes_d
 
 ! The Eulerian dynamics grids
@@ -65,8 +62,6 @@ real(r8), parameter :: rad2deg = 180._r8/SHR_CONST_PI
 integer :: ngcols_d = 0     ! number of dynamics columns
 
 type (hvcoord_t)           :: hvcoord
-
-type(physics_column_t), allocatable, target :: local_dyn_columns(:)
 
 !========================================================================================
 contains
@@ -1211,106 +1206,6 @@ subroutine define_cam_grids()
   nullify(lon_coord)
 
 end subroutine define_cam_grids
-
-!==============================================================================
-
-subroutine get_dyn_grid_info(hdim1_d, hdim2_d, num_lev,                       &
-     index_model_top_layer, index_surface_layer, unstructured, dyn_columns)
-   !------------------------------------------------------------
-   !
-   ! get_dyn_grid_info returns physics grid column information
-   !
-   !------------------------------------------------------------
-   use cam_abortutils,         only: endrun
-   use spmd_utils,             only: iam
-   use commap,                 only: londeg, latdeg, w
-   use pmgrid,                 only: beglat, endlat, plon, plat
-   ! Dummy arguments
-   integer,          intent(out)   :: hdim1_d ! # longitudes or grid size
-   integer,          intent(out)   :: hdim2_d ! # latitudes or 1
-   integer,          intent(out)   :: num_lev ! # levels
-   integer,          intent(out)   :: index_model_top_layer
-   integer,          intent(out)   :: index_surface_layer
-   logical,          intent(out)   :: unstructured
-   ! dyn_columns will contain a copy of the physics column info local to this
-   ! dynamics task
-   type(physics_column_t), allocatable, intent(out) :: dyn_columns(:)
-   ! Local variables
-   integer                         :: blockid(1), bcid(1)
-   integer                         :: lindex
-   integer                         :: gindex
-   integer                         :: num_local_cols
-   integer                         :: ncol
-   integer                         :: ngcols
-   integer                         :: owner
-   integer                         :: indx
-   integer                         :: jndx
-   real(r8),         allocatable   :: clat_d(:), clon_d(:), area_d(:), wght_d(:)
-   real(r8),         parameter     :: radtodeg = 180.0_r8 / SHR_CONST_PI
-   real(r8),         parameter     :: degtorad = SHR_CONST_PI / 180.0_r8
-   character(len=*), parameter     :: subname = 'get_dyn_grid_info'
-
-   unstructured = .false. ! EUL is an structured dycore
-   num_local_cols = plon*(endlat-beglat+1)
-   if (allocated(local_dyn_columns)) then
-      ! Check for correct number of columns
-      if (size(local_dyn_columns) /= num_local_cols) then
-         call endrun(subname//': called with inconsistent column numbers')
-      end if
-   else
-      allocate(local_dyn_columns(num_local_cols))
-   end if
-   hdim1_d = plon
-   hdim2_d = plat
-   num_lev = plev
-   index_model_top_layer = 1
-   index_surface_layer = plev
-   ngcols = plon*plat
-   allocate( clat_d(1:ngcols) )
-   allocate( clon_d(1:ngcols) )
-   allocate( area_d(1:ngcols) )
-   allocate( wght_d(1:ngcols) )
-   call get_horiz_grid_d(ngcols, clat_d_out=clat_d, clon_d_out=clon_d, area_d_out=area_d, wght_d_out=wght_d)
-   ncol = 0
-   do gindex = 1,ngcols
-     call  get_gcol_block_d( gindex, 1, blockid, bcid )
-     owner = get_block_owner_d(blockid(1))
-     if ( iam==owner ) then
-            ncol=ncol+1
-            lindex = bcid(1)
-            local_dyn_columns(lindex)%lat_rad = clat_d(gindex)
-            local_dyn_columns(lindex)%lon_rad = clon_d(gindex)
-            local_dyn_columns(lindex)%lat_deg = clat_d(gindex) * rad2deg
-            local_dyn_columns(lindex)%lon_deg = clon_d(gindex) * rad2deg
-            local_dyn_columns(lindex)%lon_deg = area_d(gindex)
-            local_dyn_columns(lindex)%lon_deg = wght_d(gindex)
-            local_dyn_columns(lindex)%global_col_num = gindex
-            local_dyn_columns(lindex)%dyn_task = iam
-            local_dyn_columns(lindex)%local_dyn_block = blockid(1)-beglat+1
-            local_dyn_columns(lindex)%global_dyn_block = blockid(1)
-            ! get global lat and lon coordinate indices from global column index
-            ! -- plon is global number of longitude grid points
-            jndx = (gindex-1)/plon + 1
-            indx = gindex - (jndx-1)*plon
-            local_dyn_columns(lindex)%coord_indices(1)=indx
-            local_dyn_columns(lindex)%coord_indices(2)=jndx
-         end if
-      end do
-   ! Copy the information to the output array
-   if (allocated(dyn_columns)) then
-      deallocate(dyn_columns)
-   end if
-   allocate(dyn_columns(ncol))
-   do lindex = 1, ncol
-      dyn_columns(lindex) = local_dyn_columns(lindex)
-   end do
-
-   deallocate( clat_d )
-   deallocate( clon_d )
-   deallocate( area_d )
-   deallocate( wght_d )
-
-   end subroutine get_dyn_grid_info
 
 !========================================================================================
 

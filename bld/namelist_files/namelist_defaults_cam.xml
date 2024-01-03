@@ -1902,7 +1902,7 @@
 <drydep_srf_file hgrid="ne5np4"          >atm/cam/chem/trop_mam/atmsrf_ne5np4_110920.nc</drydep_srf_file>
 <drydep_srf_file hgrid="ne5np4"   npg="3">atm/cam/chem/trop_mam/atmsrf_ne5pg3_201105.nc</drydep_srf_file>
 <drydep_srf_file hgrid="ne16np4"         >atm/cam/chem/trop_mam/atmsrf_ne16np4_110920.nc</drydep_srf_file>
-<drydep_srf_file hgrid="ne16np4"  npg="3">atm/cam/chem/trop_mam/atmsrf_ne16pg3_230520.nc</drydep_srf_file>
+<drydep_srf_file hgrid="ne16np4"  npg="3">atm/cam/chem/trop_mam/atmsrf_ne16pg3_c230520.nc</drydep_srf_file>
 <drydep_srf_file hgrid="ne30np4"         >atm/cam/chem/trop_mam/atmsrf_ne30np4_110920.nc</drydep_srf_file>
 <drydep_srf_file hgrid="ne30np4"  npg="2">atm/cam/chem/trop_mam/atmsrf_ne30np4.pg2_200108.nc</drydep_srf_file>
 <drydep_srf_file hgrid="ne30np4"  npg="3">atm/cam/chem/trop_mam/atmsrf_ne30pg3_180522.nc</drydep_srf_file>
@@ -2860,15 +2860,16 @@
 
 
 <!-- default namelist for SCAM mode -->
-<ncdata dyn="eul"   hgrid="64x128"    nlev="30"   scam="1"  >atm/cam/inic/gaus/cami_0000-09-01_64x128_L30_c031210.nc</ncdata>
-<iopfile dyn="eul"                                scam="1"  >atm/cam/scam/iop/ARM97_4scam.nc</iopfile>
+<ncdata  dyn="eul"  hgrid="64x128"    nlev="30"   scam="1"  >atm/cam/inic/gaus/cami_0000-09-01_64x128_L30_c031210.nc</ncdata>
+<iopfile                                          scam="1"  >atm/cam/scam/iop/ARM97_4scam.nc</iopfile>
 <mfilt                                            scam="1"  >   1500     </mfilt>
 <nhtfrq                                           scam="1"  >   9        </nhtfrq>
 <scm_use_obs_uv                                   scam="1"  >   .true.   </scm_use_obs_uv>
+<scale_dry_air_mass                               scam="1"  >   0.0D0    </scale_dry_air_mass>
 <scm_zadv_q  dyn="eul"                            scam="1"  >   slt      </scm_zadv_q>
 <!-- default namelist for SE SCAM mode -->
-<ncdata dyn="se"   hgrid="ne4np4"    nlev="72"   scam="1"  >atm/cam/inic/homme/cami_mam3_Linoz_ne4np4_L72_c160909.nc</ncdata>
-<iopfile dyn="se"   hgrid="ne4np4"    nlev="72"   scam="1"  >atm/cam/scam/iop/TOGAII_4scam.nc</iopfile>
+<ncdata  dyn="se1"   hgrid="ne3np4"                scam="1"  >atm/cam/inic/se/CESM2.F2000climo.ne3np4.cam.i.0003-06-01-00000.nc</ncdata>
+<ncdata  dyn="se"   hgrid="ne3np4"                scam="1"  >allsame</ncdata>
 
 <!-- Eulerian spectral dycore parameters -->
 

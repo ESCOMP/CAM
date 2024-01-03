@@ -32,8 +32,8 @@ module check_energy
   use time_manager,    only: is_first_step
   use cam_logfile,     only: iulog
   use scamMod,         only: single_column, use_camiop, heat_glob_scm
-  use cam_history,     only: outfld
-  
+  use cam_history,     only: outfld, write_camiop
+
   implicit none
   private
 
@@ -511,6 +511,7 @@ end subroutine check_energy_get_integrals
 
     use physics_buffer, only : physics_buffer_desc, pbuf_get_field, pbuf_get_chunk
     use physics_types,   only: dyn_te_idx
+    use cam_history,     only: write_camiop
 !-----------------------------------------------------------------------
 ! Compute global mean total energy of physics input and output states
 ! computed consistently with dynamical core vertical coordinate
@@ -605,23 +606,21 @@ end subroutine check_energy_get_integrals
     if (single_column .and. use_camiop) then
       heat_glob = heat_glob_scm(1)
     endif
-    
+
     ! In single column model we do NOT want to take into
     !   consideration the dynamics energy fixer.  Since only
-    !   one column of dynamics is active, this data will 
-    !   essentially be garbage. 
+    !   one column of dynamics is active, this data will
+    !   essentially be garbage.
     if (single_column .and. .not. use_camiop) then
       heat_glob = 0._r8
     endif
 ! add (-) global mean total energy difference as heating
     ptend%s(:ncol,:pver) = heat_glob
 
-#if ( defined BFB_CAM_SCAM_IOP )
-    if (nstep > 0) then
+    if (nstep > 0 .and. write_camiop) then
       heat_out(:ncol) = heat_glob
       call outfld('heat_glob',  heat_out(:ncol), pcols, lchnk)
     endif
-#endif
 
 ! compute effective sensible heat flux
     do i = 1, ncol
@@ -882,7 +881,7 @@ end subroutine check_energy_get_integrals
 
 !-----------------------------------------------------------------------
 
-!jt    if (.not.thermo_budget_history) return
+    if (.not.thermo_budget_history) return
 
     do i=1,thermo_budget_num_vars
        name_out(i)=trim(thermo_budget_vars(i))//'_'//trim(outfld_name_suffix)
@@ -945,14 +944,14 @@ end subroutine check_energy_get_integrals
       end if
     end if
 
-!!$    call outfld(name_out(seidx)  ,se      , pcols   ,lchnk   )
-!!$    call outfld(name_out(poidx)  ,po      , pcols   ,lchnk   )
-!!$    call outfld(name_out(keidx)  ,ke      , pcols   ,lchnk   )
-!!$    call outfld(name_out(wvidx)  ,wv      , pcols   ,lchnk   )
-!!$    call outfld(name_out(wlidx)  ,liq     , pcols   ,lchnk   )
-!!$    call outfld(name_out(wiidx)  ,ice     , pcols   ,lchnk   )
-!!$    call outfld(name_out(ttidx)  ,tt      , pcols   ,lchnk   )
-!!$    call outfld(name_out(teidx)  ,se+ke+po, pcols   ,lchnk   )
+    call outfld(name_out(seidx)  ,se      , pcols   ,lchnk   )
+    call outfld(name_out(poidx)  ,po      , pcols   ,lchnk   )
+    call outfld(name_out(keidx)  ,ke      , pcols   ,lchnk   )
+    call outfld(name_out(wvidx)  ,wv      , pcols   ,lchnk   )
+    call outfld(name_out(wlidx)  ,liq     , pcols   ,lchnk   )
+    call outfld(name_out(wiidx)  ,ice     , pcols   ,lchnk   )
+    call outfld(name_out(ttidx)  ,tt      , pcols   ,lchnk   )
+    call outfld(name_out(teidx)  ,se+ke+po, pcols   ,lchnk   )
     !
     ! Axial angular momentum diagnostics
     !
@@ -966,10 +965,10 @@ end subroutine check_energy_get_integrals
     ! MR is equation (6) without \Delta A and sum over areas (areas are in units of radians**2)
     ! MO is equation (7) without \Delta A and sum over areas (areas are in units of radians**2)
     !
-    
+
     mr_cnst = rga*rearth**3
     mo_cnst = rga*omega*rearth**4
-    
+
     mr = 0.0_r8
     mo = 0.0_r8
     do k = 1, pver
@@ -977,14 +976,14 @@ end subroutine check_energy_get_integrals
           cos_lat = cos(state%lat(i))
           mr_tmp = mr_cnst*state%u(i,k)*state%pdel(i,k)*cos_lat
           mo_tmp = mo_cnst*state%pdel(i,k)*cos_lat**2
-          
+
           mr(i) = mr(i) + mr_tmp
           mo(i) = mo(i) + mo_tmp
        end do
     end do
-    
-!!$    call outfld(name_out(mridx)  ,mr, pcols,lchnk   )
-!!$    call outfld(name_out(moidx)  ,mo, pcols,lchnk   )
+
+    call outfld(name_out(mridx)  ,mr, pcols,lchnk   )
+    call outfld(name_out(moidx)  ,mo, pcols,lchnk   )
 
   end subroutine tot_energy_phys
 

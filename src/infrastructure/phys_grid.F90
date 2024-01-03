@@ -63,7 +63,7 @@ module phys_grid
 
    ! The identifier for the physics grid
    integer, parameter, public          :: phys_decomp = 100
-   integer, parameter, public          :: phys_decomp_scm = 110
+   integer, parameter, public          :: phys_decomp_scm = 200
 
    !! PUBLIC TYPES
 
@@ -111,9 +111,6 @@ module phys_grid
    end interface get_lon_all_p
 !!XXgoldyXX: ^ temporary interface to allow old code to compile
 
-
-!jt   integer,          protected, public :: pver = 0
-!jt   integer,          protected, public :: pverp = 0
    integer,          protected, public :: num_global_phys_cols = 0
    integer,          protected, public :: columns_on_task = 0
    integer,          protected, public :: index_top_layer = 0
@@ -191,7 +188,7 @@ CONTAINS
       use cam_grid_support, only: horiz_coord_t, horiz_coord_create
       use cam_grid_support, only: cam_grid_attribute_copy, cam_grid_attr_exists
       use shr_const_mod,    only: PI => SHR_CONST_PI
-      use scamMod,          only: scmlon,scmlat,single_column
+      use scamMod,          only: scmlon,scmlat,single_column,closeioplatidx,closeioplonidx
 
       ! Local variables
       integer                             :: index
@@ -226,6 +223,7 @@ CONTAINS
       nullify(lonvals)
       nullify(latvals)
       nullify(grid_map)
+      if (single_column) nullify(grid_map_scm)
       nullify(lat_coord)
       nullify(lon_coord)
       nullify(area_d)
@@ -312,7 +310,7 @@ CONTAINS
             ! Copy information supplied by the dycore
             if (single_column) then
                phys_columns(col_index) = dyn_columns(scm_col_index)
-!jt               !scm physics only has 1 global column
+!              !scm physics only has 1 global column
                phys_columns(col_index)%global_col_num = 1
                phys_columns(col_index)%coord_indices(:)=scm_col_index
             else
@@ -337,10 +335,13 @@ CONTAINS
       ! unstructured
       if (unstructured) then
          allocate(grid_map(3, pcols * (endchunk - begchunk + 1)))
+         if (single_column) allocate(grid_map_scm(3, pcols * (endchunk - begchunk + 1)))
       else
          allocate(grid_map(4, pcols * (endchunk - begchunk + 1)))
+         if (single_column) allocate(grid_map_scm(4, pcols * (endchunk - begchunk + 1)))
       end if
       grid_map = 0_iMap
+      if (single_column) grid_map_scm = 0_iMap
       allocate(latvals(size(grid_map, 2)))
       allocate(lonvals(size(grid_map, 2)))
 
@@ -368,22 +369,29 @@ CONTAINS
             end if
             grid_map(1, index) = int(icol, iMap)
             grid_map(2, index) = int(ichnk, iMap)
+            if (single_column) then
+               grid_map_scm(1, index) = int(icol, iMap)
+               grid_map_scm(2, index) = int(ichnk, iMap)
+            end if
             if (icol <= ncol) then
                if (unstructured) then
                   gcol = phys_columns(col_index)%global_col_num
                   if (gcol > 0) then
-                     grid_map(3, index) = int(gcol, iMap)
+                    grid_map(3, index) = int(gcol, iMap)
+                    if (single_column) grid_map_scm(3, index) = closeioplonidx
                   end if ! else entry remains 0
                else
                   ! lon
                   gcol = phys_columns(col_index)%coord_indices(1)
                   if (gcol > 0) then
                      grid_map(3, index) = int(gcol, iMap)
+                     if (single_column) grid_map_scm(3, index) = closeioplonidx
                   end if ! else entry remains 0
                   ! lat
                   gcol = phys_columns(col_index)%coord_indices(2)
                   if (gcol > 0) then
                      grid_map(4, index) = gcol
+                     if (single_column) grid_map_scm(4, index) = closeioplatidx
                   end if ! else entry remains 0
                end if
             end if ! Else entry remains 0
@@ -436,6 +444,8 @@ CONTAINS
       end if
       call cam_grid_register('physgrid', phys_decomp, lat_coord, lon_coord,   &
            grid_map, unstruct=unstructured, block_indexed=.true.)
+      if (single_column) call cam_grid_register('physgrid_scm', phys_decomp_scm, lat_coord, lon_coord,   &
+           grid_map_scm, unstruct=unstructured, block_indexed=.true.)
       ! Copy required attributes from the dynamics array
       nullify(copy_attributes)
       call physgrid_copy_attributes_d(copy_gridname, copy_attributes)
@@ -471,81 +481,13 @@ CONTAINS
          end if
       end if
       ! Cleanup pointers (they belong to the grid now)
-!jt      nullify(grid_map)
       ! Cleanup, we are responsible for copy attributes
       if (associated(copy_attributes)) then
          deallocate(copy_attributes)
          nullify(copy_attributes)
       end if
-
-      ! if running single_column physgrid can map between a full grid boundary file
-      ! and the single column physics - To write to a single column history file
-      ! we need an additional grid that does not include the dynamics offset of the full grid.
-      if (single_column) then
-         ! First, create a map for the physics grid
-         ! It's structure will depend on whether or not the physics grid is
-         ! unstructured
-         if (unstructured) then
-            allocate(grid_map_scm(3, pcols * (endchunk - begchunk + 1)))
-         else
-            allocate(grid_map_scm(4, pcols * (endchunk - begchunk + 1)))
-         end if
-         ! new grid matches physgrid with the exception of file index which points to the column on the full grid
-         grid_map_scm = grid_map
-         grid_map_scm(3, 1) = int(scm_col_index, iMap)
-         
-         if (unstructured) then
-            ! lonvals/latvals calculated above
-            lon_coord => horiz_coord_create('lon', 'ncol', num_global_phys_cols, &
-                 'longitude', 'degrees_east', 1, size(lonvals), lonvals,         &
-                 map=grid_map_scm(3,:))
-            lat_coord => horiz_coord_create('lat', 'ncol', num_global_phys_cols, &
-                 'latitude', 'degrees_north', 1, size(latvals), latvals,         &
-                 map=grid_map_scm(3,:))
-         else
-            allocate(coord_map(size(grid_map_scm, 2)))
-            ! We need a global minimum longitude and latitude
-            if (npes > 1) then
-               temp = lonmin
-               call MPI_allreduce(temp, lonmin, 1, MPI_INTEGER, MPI_MIN,         &
-                    mpicom, ierr)
-               temp = latmin
-               call MPI_allreduce(temp, latmin, 1, MPI_INTEGER, MPI_MIN,         &
-                    mpicom, ierr)
-               ! Create lon coord map which only writes from one of each unique lon
-               where(latvals == latmin)
-                  coord_map(:) = grid_map_scm(3, :)
-               elsewhere
-                  coord_map(:) = 0_iMap
-               end where
-               lon_coord => horiz_coord_create('lon', 'lon', hdim1_d,            &
-                    'longitude', 'degrees_east', 1, size(lonvals), lonvals,      &
-                    map=coord_map)
-               
-               ! Create lat coord map which only writes from one of each unique lat
-               where(lonvals == lonmin)
-                  coord_map(:) = grid_map_scm(4, :)
-               elsewhere
-                  coord_map(:) = 0_iMap
-               end where
-               lat_coord => horiz_coord_create('lat', 'lat', hdim2_d,            &
-                    'latitude', 'degrees_north', 1, size(latvals), latvals,      &
-                    map=coord_map)
-               deallocate(coord_map)
-            end if
-         end if
-         call cam_grid_register('physgrid_scm', phys_decomp_scm, lat_coord, lon_coord,   &
-              grid_map_scm, unstruct=unstructured, block_indexed=.true.)
-         ! Copy required attributes from the dynamics array
-         nullify(copy_attributes)
-         call physgrid_copy_attributes_d(copy_gridname, copy_attributes)
-         do index = 1, size(copy_attributes)
-            call cam_grid_attribute_copy(copy_gridname, 'physgrid_scm',              &
-                 copy_attributes(index))
-         end do
-      end if
       nullify(grid_map)
-      nullify(grid_map_scm)
+      if (single_column) nullify(grid_map_scm)
       deallocate(latvals)
       nullify(latvals)
       deallocate(lonvals)

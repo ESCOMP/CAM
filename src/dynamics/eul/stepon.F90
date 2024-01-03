@@ -23,7 +23,7 @@ module stepon
   use aerosol_state_mod,      only: aerosol_state
   use microp_aero,            only: aerosol_state_object, aerosol_properties_object
   use dyn_grid,               only: hvcoord
-  
+
   implicit none
   private
   save
@@ -75,12 +75,11 @@ subroutine stepon_init(dyn_in, dyn_out)
    use dyn_comp,       only: dyn_import_t, dyn_export_t
    use scanslt,        only: scanslt_initial
    use commap,         only: clat
+   use cam_history,    only: write_camiop
    use constituents,   only: pcnst
    use physconst,      only: gravit
    use eul_control_mod,only: eul_nsplit
-#if ( defined BFB_CAM_SCAM_IOP )
    use iop,            only:init_iop_fields
-#endif
 !-----------------------------------------------------------------------
 ! Arguments
 !
@@ -151,11 +150,9 @@ subroutine stepon_init(dyn_in, dyn_out)
    call t_stopf ('stepon_startup')
 
 
-#if ( defined BFB_CAM_SCAM_IOP )
-   if (is_first_step()) then
+   if (is_first_step() .and. write_camiop) then
       call init_iop_fields()
    endif
-#endif
 
    ! get aerosol properties
    aero_props_obj => aerosol_properties_object()
@@ -296,7 +293,7 @@ subroutine stepon_run3( ztodt, cam_out, phys_state, dyn_in, dyn_out )
   use eul_control_mod,only: eul_nsplit
   use prognostics,    only: ps
   use iop,            only: iop_update_prognostics
-  
+
   real(r8), intent(in) :: ztodt            ! twice time step unless nstep=0
   type(cam_out_t), intent(inout) :: cam_out(begchunk:endchunk)
   type(physics_state), intent(in):: phys_state(begchunk:endchunk)
@@ -316,7 +313,6 @@ subroutine stepon_run3( ztodt, cam_out, phys_state, dyn_in, dyn_out )
 
      if (doiopupdate) then
         call readiopdata(hvcoord)
-!jt        call iop_update_prognostics(n3,ps=ps(:,:,:))
         call iop_update_prognostics(n3,ps=ps)
      end if
   endif

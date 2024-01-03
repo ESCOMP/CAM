@@ -5,7 +5,7 @@
 module dp_coupling
 
    use shr_kind_mod,      only: r8 => shr_kind_r8
-   use ppgrid,            only: pcols, pver, begchunk, endchunk
+   use ppgrid,            only: pcols, pver
    use pmgrid,            only: plev, beglat, endlat, plon
 
    use phys_grid

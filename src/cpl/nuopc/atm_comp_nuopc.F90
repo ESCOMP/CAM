@@ -2030,10 +2030,6 @@ contains
     mincornerCoord(2) = scol_lat - .1_r8 ! min lat
     maxcornerCoord(1) = scol_lon + .1_r8 ! max lon
     maxcornerCoord(2) = scol_lat + .1_r8 ! max lat
-!jt    mincornerCoord(1) = scol_lon - fraction(scol_lon) ! min lon
-!jt    mincornerCoord(2) = scol_lat - fraction(scol_lat) ! min lat
-!jt    maxcornerCoord(1) = scol_lon + fraction(scol_lon) ! max lon
-!jt    maxcornerCoord(2) = scol_lat + fraction(scol_lat) ! max lat
 
     ! create the ESMF grid
     lgrid = ESMF_GridCreateNoPeriDimUfrm (maxindex=maxindex, &

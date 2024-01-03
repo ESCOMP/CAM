@@ -62,7 +62,7 @@ contains
 !   variables used to calculate CFL
     real (kind=r8) :: dtnu            ! timestep*viscosity parameter
     real (kind=r8) :: dt_dyn_vis      ! viscosity timestep used in dynamics
-    real (kind=r8) :: dt_dyn_del2_sponge, dt_remap 
+    real (kind=r8) :: dt_dyn_del2_sponge, dt_remap
     real (kind=r8) :: dt_tracer_vis      ! viscosity timestep used in tracers
 
     real (kind=r8) :: dp,dp0,T1,T0,pmid_ref(np,np)
@@ -163,7 +163,7 @@ contains
        do k=1,nlev
          pmid_ref =hvcoord%hyam(k)*hvcoord%ps0 + hvcoord%hybm(k)*ps_ref(:,:,ie)
          dp0 = ( hvcoord%hyai(k+1) - hvcoord%hyai(k) )*hvcoord%ps0 + &
-               ( hvcoord%hybi(k+1) - hvcoord%hybi(k) )*hvcoord%ps0    
+               ( hvcoord%hybi(k+1) - hvcoord%hybi(k) )*hvcoord%ps0
          if (hvcoord%hybm(k)>0) then
            elem(ie)%derived%T_ref(:,:,k)    = T0+T1*(pmid_ref/hvcoord%ps0)**cappa
            !
@@ -239,7 +239,7 @@ contains
     type (TimeLevel_t), intent(inout):: tl
     integer, intent(in)              :: nsubstep  ! nsubstep = 1 .. nsplit
     logical,              intent(in) :: single_column
-    real (kind=r8)    , intent(inout):: omega_cn(2,nets:nete) !min and max of vertical Courant number    
+    real (kind=r8)    , intent(inout):: omega_cn(2,nets:nete) !min and max of vertical Courant number
 
     real(kind=r8)   :: dt_q, dt_remap, dt_phys
     integer         :: ie, q,k,n0_qdp,np1_qdp,r, nstep_end,region_num_threads,i,j
@@ -267,7 +267,7 @@ contains
     !
     ! initialize variables for computing vertical Courant number
     !
-    if (variable_nsplit.or.compute_diagnostics) then    
+    if (variable_nsplit.or.compute_diagnostics) then
       if (nsubstep==1) then
         do ie=nets,nete
           omega_cn(1,ie) = 0.0_r8
@@ -285,7 +285,7 @@ contains
 
     call tot_energy_dyn(elem,fvm,nets,nete,tl%n0,n0_qdp,'dAF')
     call ApplyCAMForcing(elem,fvm,tl%n0,n0_qdp,dt_remap,dt_phys,nets,nete,nsubstep)
-    call tot_energy_dyn(elem,fvm,nets,nete,tl%n0,n0_qdp,'dBD')    
+    call tot_energy_dyn(elem,fvm,nets,nete,tl%n0,n0_qdp,'dBD')
     do r=1,rsplit
       if (r.ne.1) call TimeLevel_update(tl,"leapfrog")
       if (single_column) then
@@ -298,6 +298,7 @@ contains
       end if
     enddo
 
+
     ! defer final timelevel update until after remap and diagnostics
     call TimeLevel_Qdp( tl, qsplit, n0_qdp, np1_qdp)
 
@@ -307,12 +308,12 @@ contains
     !  always for tracers
     !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
-    call tot_energy_dyn(elem,fvm,nets,nete,tl%np1,np1_qdp,'dAD')    
+    call tot_energy_dyn(elem,fvm,nets,nete,tl%np1,np1_qdp,'dAD')
 
     if (variable_nsplit.or.compute_diagnostics) then
       !
       ! initialize variables for computing vertical Courant number
-      !      
+      !
       do ie=nets,nete
         dp_end(:,:,:,ie) = elem(ie)%state%dp3d(:,:,:,tl%np1)
       end do
@@ -326,9 +327,8 @@ contains
     !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
     call tot_energy_dyn(elem,fvm,nets,nete,tl%np1,np1_qdp,'dAR')
 
-!!jt check with pel that we don't want to update omega here for scm
     if (nsubstep==nsplit.and. .not. single_column) then
-      call compute_omega(hybrid,tl%np1,np1_qdp,elem,deriv,nets,nete,dt_remap,hvcoord)           
+      call compute_omega(hybrid,tl%np1,np1_qdp,elem,deriv,nets,nete,dt_remap,hvcoord)
     end if
 
     ! now we have:
@@ -429,8 +429,8 @@ contains
 
 #ifdef waccm_debug
   use cam_history, only: outfld
-#endif  
-    
+#endif
+
 
     type (element_t) ,  intent(inout) :: elem(:)
     type(fvm_struct),   intent(inout) :: fvm(:)
@@ -548,20 +548,20 @@ contains
     if (qsize > 0) then
 
       call t_startf('prim_advec_tracers_remap')
-      if(use_cslam) then 
+      if(use_cslam) then
         ! Deactivate threading in the tracer dimension if this is a CSLAM run
         region_num_threads = 1
       else
         region_num_threads=tracer_num_threads
-      endif  
+      endif
       call omp_set_nested(.true.)
       !$OMP PARALLEL NUM_THREADS(region_num_threads), DEFAULT(SHARED), PRIVATE(hybridnew)
-      if(use_cslam) then 
+      if(use_cslam) then
         ! Deactivate threading in the tracer dimension if this is a CSLAM run
         hybridnew = config_thread_region(hybrid,'serial')
       else
         hybridnew = config_thread_region(hybrid,'tracer')
-      endif  
+      endif
       call Prim_Advec_Tracers_remap(elem, deriv,hvcoord,hybridnew,dt_q,tl,nets,nete)
       !$OMP END PARALLEL
       call omp_set_nested(.false.)
@@ -574,7 +574,7 @@ contains
       !
       ! FVM transport
       !
-      if ((mod(rstep,fvm_supercycling) == 0).and.(mod(rstep,fvm_supercycling_jet) == 0)) then        
+      if ((mod(rstep,fvm_supercycling) == 0).and.(mod(rstep,fvm_supercycling_jet) == 0)) then
 
 !        call omp_set_nested(.true.)
 !        !$OMP PARALLEL NUM_THREADS(vert_num_threads), DEFAULT(SHARED), PRIVATE(hybridnew2,kbeg,kend)
@@ -609,7 +609,7 @@ contains
         !
         call Prim_Advec_Tracers_fvm(elem,fvm,hvcoord,hybrid,&
              dt_q,tl,nets,nete,ghostBufQnhcJet_h,ghostBufQ1_h, ghostBufFluxJet_h,kmin_jet,kmax_jet)
-      end if       
+      end if
 
 #ifdef waccm_debug
       do ie=nets,nete
@@ -626,7 +626,7 @@ contains
      !   Here we simply want to compute the floating level tendency
      !   based on the prescribed large scale vertical velocity
      !   Take qsplit dynamics steps and one tracer step
-     !   for vertically lagrangian option, this subroutine does only 
+     !   for vertically lagrangian option, this subroutine does only
      !   the horizontal step
      !
      !   input:
@@ -642,7 +642,7 @@ contains
      !       tl%n0    time t + dt_q
      !
     use hybvcoord_mod,          only: hvcoord_t
-    use time_mod,               only: TimeLevel_t, timelevel_update
+    use se_dyn_time_mod,        only: TimeLevel_t, timelevel_update
     use control_mod,            only: statefreq, qsplit, nu_p
     use thread_mod,             only: omp_get_thread_num
     use prim_advance_mod,       only: prim_advance_exp
@@ -656,8 +656,8 @@ contains
 
 #ifdef waccm_debug
   use cam_history, only: outfld
-#endif  
-    
+#endif
+
 
     type (element_t) ,  intent(inout) :: elem(:)
     type(fvm_struct),   intent(inout) :: fvm(:)
@@ -688,7 +688,6 @@ contains
     ! for use by advection
     ! ===============
     do ie=nets,nete
-!jt      elem(ie)%derived%eta_dot_dpdn=0     ! mean vertical mass flux
       elem(ie)%derived%vn0=0              ! mean horizontal mass flux
       if (nu_p>0) then
          elem(ie)%derived%dpdiss_ave=0
@@ -832,14 +831,14 @@ contains
       use element_mod,       only: element_t
       use hybvcoord_mod,     only: hvcoord_t
       use hybrid_mod,        only: hybrid_t
-      use time_mod,          only: TimeLevel_t,  timelevel_qdp, tevolve
+      use se_dyn_time_mod,   only: TimeLevel_t,  timelevel_qdp, tevolve
       use fvm_control_volume_mod, only: fvm_struct
       use cam_thermo,        only: get_kappa_dry
       use air_composition,   only: thermodynamic_active_species_num
       use air_composition,   only: thermodynamic_active_species_idx_dycore, get_cp
       use physconst,         only: cpair
       implicit none
-      
+
       type (element_t), intent(inout), target   :: elem(:)
       type(fvm_struct)     , intent(inout) :: fvm(:)
       type (derivative_t)  , intent(in) :: deriv
@@ -849,34 +848,34 @@ contains
       type (TimeLevel_t)   , intent(in) :: tl
       integer              , intent(in) :: nets
       integer              , intent(in) :: nete
-      
+
       ! Local
       integer        :: ie,nm1,n0,np1,k,qn0,qnp1,m_cnst, nq,p
       real(kind=r8)  :: eta_dot_dpdn(np,np,nlev+1)
-      
-      
+
+
       call t_startf('prim_advance_exp')
       nm1   = tl%nm1
       n0    = tl%n0
       np1   = tl%np1
-      
+
       call TimeLevel_Qdp(tl, qsplit, qn0, qnp1)  ! compute current Qdp() timelevel
-      
+
       do ie=nets,nete
          do k=1,nlev
             eta_dot_dpdn(:,:,k)=elem(ie)%derived%omega(:,:,k)
          enddo
          eta_dot_dpdn(:,:,nlev+1) = eta_dot_dpdn(:,:,nlev)
-         
+
          do k=1,nlev
             elem(ie)%state%dp3d(:,:,k,np1) = elem(ie)%state%dp3d(:,:,k,n0) &
                  + dt*(eta_dot_dpdn(:,:,k+1) - eta_dot_dpdn(:,:,k))
          enddo
-         
+
          do k=1,nlev
             elem(ie)%state%T(:,:,k,np1) = elem(ie)%state%T(:,:,k,n0)
          enddo
-         
+
          do p=1,qsize
             do k=1,nlev
                elem(ie)%state%Qdp(:,:,k,p,qnp1) = elem(ie)%state%Qdp(:,:,k,p,qn0) &

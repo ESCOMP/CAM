@@ -1,4 +1,3 @@
-
 module scamMod
   !----------------------------------------------------------------------
   !
@@ -15,7 +14,7 @@ module scamMod
   ! this module provide flexibility to affect the forecast by overriding
   ! parameterization prognosed tendencies with observed tendencies
   ! of a particular field program recorded on the IOP file.
-  ! 
+  !
   ! Public functions/subroutines:
   !   scam_readnl
   !-----------------------------------------------------------------------
@@ -23,17 +22,15 @@ module scamMod
 use shr_kind_mod,   only: r8 => shr_kind_r8
 use spmd_utils,     only: masterproc,npes
 use pmgrid,         only: plon, plat, plev, plevp
-use constituents,   only: readtrace, cnst_get_ind, pcnst, cnst_name
+use constituents,   only: cnst_get_ind, pcnst, cnst_name
 use netcdf,         only: NF90_NOERR,NF90_CLOSE,NF90_GET_VAR,NF90_INQUIRE_DIMENSION, &
                           NF90_INQ_DIMID, NF90_INQ_VARID, NF90_NOWRITE, NF90_OPEN, &
                           NF90_GET_ATT,NF90_GLOBAL,NF90_INQUIRE_ATTRIBUTE, &
                           NF90_INQUIRE_VARIABLE, NF90_MAX_VAR_DIMS, nf90_get_var
 use shr_scam_mod,   only: shr_scam_getCloseLatLon
-use dycore,         only: dycore_is
 use cam_logfile,    only: iulog
 use cam_abortutils, only: endrun
-use time_manager,   only: get_curr_date, get_curr_calday,&
-                          get_nstep,is_first_step,get_start_date,timemgr_time_inc
+use time_manager,   only: get_curr_date, get_nstep,is_first_step,get_start_date,timemgr_time_inc
 
 
 implicit none
@@ -41,7 +38,7 @@ private
 
 ! PUBLIC INTERFACES:
 
-public :: scam_readnl         ! read SCAM namelist options 
+public :: scam_readnl         ! read SCAM namelist options
 public :: readiopdata         ! read iop boundary data
 public :: setiopupdate        ! find index in iopboundary data for current time
 public :: plevs0              ! find index in iopboundary data for current time
@@ -53,6 +50,10 @@ public :: setiopupdate_init
 real(r8), public ::  pressure_levels(plev)
 real(r8), public ::  scmlat   ! input namelist latitude for scam
 real(r8), public ::  scmlon   ! input namelist longitude for scam
+real(r8), public ::  closeioplat   ! closest iop latitude for scam
+real(r8), public ::  closeioplon   ! closest iop longitude for scam
+integer,  public ::  closeioplatidx   ! file array index of closest iop latitude for scam
+integer,  public ::  closeioplonidx   ! file array index closest iop longitude for scam
 
 
 integer, parameter :: num_switches = 20
@@ -61,11 +62,11 @@ integer, parameter :: max_path_len = 128
 logical, public ::  single_column         ! Using IOP file or not
 logical, public ::  use_iop               ! Using IOP file or not
 logical, public ::  use_pert_init         ! perturb initial values
-logical, public ::  use_pert_frc          ! perturb forcing 
+logical, public ::  use_pert_frc          ! perturb forcing
 logical, public ::  switch(num_switches)  ! Logical flag settings from GUI
 logical, public ::  l_uvphys              ! If true, update u/v after TPHYS
 logical, public ::  l_uvadvect            ! If true, T, U & V will be passed to SLT
-logical, public ::  l_conv                ! use flux divergence terms for T and q?     
+logical, public ::  l_conv                ! use flux divergence terms for T and q?
 logical, public ::  l_divtr               ! use flux divergence terms for constituents?
 logical, public ::  l_diag                ! do we want available diagnostics?
 
@@ -117,15 +118,15 @@ real(r8), public ::      qobs(plev)          ! actual W.V. Mixing ratio
 real(r8), public ::      qinitobs(plev,pcnst)! initial tracer field
 real(r8), public ::      cldliqobs(plev)     ! actual W.V. Mixing ratio
 real(r8), public ::      cldiceobs(plev)     ! actual W.V. Mixing ratio
-real(r8), public ::      numliqobs(plev)     ! actual 
-real(r8), public ::      numiceobs(plev)     ! actual 
-real(r8), public ::      precobs(1)          ! observed precipitation 
-real(r8), public ::      lhflxobs(1)         ! observed surface latent heat flux 
+real(r8), public ::      numliqobs(plev)     ! actual
+real(r8), public ::      numiceobs(plev)     ! actual
+real(r8), public ::      precobs(1)          ! observed precipitation
+real(r8), public ::      lhflxobs(1)         ! observed surface latent heat flux
 real(r8), public ::      heat_glob_scm(1)    ! observed heat total
 real(r8), public ::      shflxobs(1)         ! observed surface sensible heat flux
 real(r8), public ::      q1obs(plev)         ! observed apparent heat source
 real(r8), public ::      q2obs(plev)         ! observed apparent heat sink
-real(r8), public ::      tdiff(plev)         ! model minus observed temp 
+real(r8), public ::      tdiff(plev)         ! model minus observed temp
 real(r8), public ::      tground(1)          ! ground temperature
 real(r8), public ::      psobs               ! observed surface pressure
 real(r8), public ::      tobs(plev)          ! observed temperature
@@ -166,23 +167,23 @@ integer, public ::     base_secs             ! Time of day of start time (sec)
 ! SCAM public data defaults
 
 logical, public ::  doiopupdate            = .false. ! do we need to read next iop timepoint
-logical, public ::  have_lhflx             = .false. ! dataset contains lhflx 
+logical, public ::  have_lhflx             = .false. ! dataset contains lhflx
 logical, public ::  have_shflx             = .false. ! dataset contains shflx
 logical, public ::  have_heat_glob         = .false. ! dataset contains shflx
 logical, public ::  have_tg                = .false. ! dataset contains tg
 logical, public ::  have_tsair             = .false. ! dataset contains tsair
-logical, public ::  have_divq              = .false. ! dataset contains divq 
+logical, public ::  have_divq              = .false. ! dataset contains divq
 logical, public ::  have_divt              = .false. ! dataset contains divt
-logical, public ::  have_divq3d            = .false. ! dataset contains divq3d 
+logical, public ::  have_divq3d            = .false. ! dataset contains divq3d
 logical, public ::  have_vertdivu          = .false. ! dataset contains vertdivu
 logical, public ::  have_vertdivv          = .false. ! dataset contains vertdivv
 logical, public ::  have_vertdivt          = .false. ! dataset contains vertdivt
-logical, public ::  have_vertdivq          = .false. ! dataset contains vertdivq 
+logical, public ::  have_vertdivq          = .false. ! dataset contains vertdivq
 logical, public ::  have_divt3d            = .false. ! dataset contains divt3d
 logical, public ::  have_divu3d            = .false. ! dataset contains divu3d
 logical, public ::  have_divv3d            = .false. ! dataset contains divv3d
 logical, public ::  have_divu              = .false. ! dataset contains divu
-logical, public ::  have_divv              = .false. ! dataset contains divv 
+logical, public ::  have_divv              = .false. ! dataset contains divv
 logical, public ::  have_omega             = .false. ! dataset contains omega
 logical, public ::  have_phis              = .false. ! dataset contains phis
 logical, public ::  have_ptend             = .false. ! dataset contains ptend
@@ -190,10 +191,10 @@ logical, public ::  have_ps                = .false. ! dataset contains ps
 logical, public ::  have_q                 = .false. ! dataset contains q
 logical, public ::  have_q1                = .false. ! dataset contains Q1
 logical, public ::  have_q2                = .false. ! dataset contains Q2
-logical, public ::  have_prec              = .false. ! dataset contains prec 
+logical, public ::  have_prec              = .false. ! dataset contains prec
 logical, public ::  have_t                 = .false. ! dataset contains t
-logical, public ::  have_u                 = .false. ! dataset contains u 
-logical, public ::  have_v                 = .false. ! dataset contains v 
+logical, public ::  have_u                 = .false. ! dataset contains u
+logical, public ::  have_v                 = .false. ! dataset contains v
 logical, public ::  have_cld               = .false. ! dataset contains cld
 logical, public ::  have_cldliq            = .false. ! dataset contains cldliq
 logical, public ::  have_cldice            = .false. ! dataset contains cldice
@@ -204,10 +205,10 @@ logical, public ::  have_aldir             = .false. ! dataset contains aldir
 logical, public ::  have_aldif             = .false. ! dataset contains aldif
 logical, public ::  have_asdir             = .false. ! dataset contains asdir
 logical, public ::  have_asdif             = .false. ! dataset contains asdif
-logical, public ::  use_camiop             = .false. ! use cam generated forcing 
+logical, public ::  use_camiop             = .false. ! use cam generated forcing
 logical, public ::  use_3dfrc              = .false. ! use 3d forcing
 logical, public ::  isrestart              = .false. ! If this is a restart step or not
-  
+
 ! SCAM namelist defaults
 
 logical, public ::  scm_backfill_iop_w_init = .false. ! Backfill missing IOP data from initial file
@@ -244,7 +245,6 @@ character(len=200), public ::  scm_clubb_iop_name   ! IOP name for CLUBB
 
 integer, allocatable, public :: tsec(:)
 integer, public :: ntime
-save bdate
 
 !=======================================================================
 contains
@@ -280,30 +280,30 @@ subroutine scam_readnl(nlfile,single_column_in,scmlat_in,scmlon_in)
        scm_cambfb_mode,scm_crm_mode,scm_zadv_uv,scm_zadv_T,scm_zadv_q,&
        scm_use_obs_T, scm_use_obs_uv, scm_use_obs_qv, scm_use_3dfrc, &
        scm_relax_linear, scm_relax_tau_top_sec, &
-       scm_relax_tau_bot_sec, scm_force_latlon, scm_relax_fincl, scm_backfill_iop_w_init
+       scm_relax_tau_bot_sec, scm_force_latlon, scm_relax_fincl, &
+       scm_backfill_iop_w_init
 
   single_column=single_column_in
 
   iopfile            = ' '
   scm_clubb_iop_name = ' '
   scm_relax_fincl(:) = ' '
-  
   if( single_column ) then
      if( npes.gt.1) call endrun('SCAM_READNL: SCAM doesnt support using more than 1 pe.')
 
-     if ( .not. (dycore_is('EUL') .or. dycore_is('SE')) .or. plon /= 1 .or. plat /=1 ) then 
+     if ( .not. (dycore_is('EUL') .or. dycore_is('SE')) .or. plon /= 1 .or. plat /=1 ) then
         call endrun('SCAM_SETOPTS: must compile model for SCAM mode when namelist parameter single_column is .true.')
      endif
 
      scmlat=scmlat_in
      scmlon=scmlon_in
-     
+
      if( scmlat .lt. -90._r8 .or. scmlat .gt. 90._r8 ) then
         call endrun('SCAM_READNL: SCMLAT must be between -90. and 90. degrees.')
      elseif( scmlon .lt. 0._r8 .or. scmlon .gt. 360._r8 ) then
         call endrun('SCAM_READNL: SCMLON must be between 0. and 360. degrees.')
      end if
-     
+
      ! Read namelist
      if (masterproc) then
         unitn = getunit()
@@ -318,11 +318,11 @@ subroutine scam_readnl(nlfile,single_column_in,scmlat_in,scmlon_in)
         close(unitn)
         call freeunit(unitn)
      end if
-     
+
      ! Error checking:
-     
+
      iopfile = trim(iopfile)
-     if( iopfile .ne. "" ) then 
+     if( iopfile .ne. "" ) then
         use_iop = .true.
      else
         call endrun('SCAM_READNL: must specify IOP file for single column mode')
@@ -335,18 +335,17 @@ subroutine scam_readnl(nlfile,single_column_in,scmlat_in,scmlon_in)
      else
         use_camiop = .false.
      endif
-     
+
      ! If we are not forcing the lat and lon from the namelist use the closest lat and lon that is found in the IOP file.
      if (.not.scm_force_latlon) then
-        call shr_scam_GetCloseLatLon( ncid, scmlat, scmlon, ioplat, ioplon, latidx, lonidx )
+        call shr_scam_GetCloseLatLon( ncid, scmlat, scmlon, closeioplat, closeioplon, closeioplatidx, closeioplonidx )
         write(iulog,*) 'SCAM_READNL: using closest IOP column to lat/lon specified in drv_in'
         write(iulog,*) '   requested lat,lon    =',scmlat,', ',scmlon
-        write(iulog,*) '   closest IOP lat,lon  =',ioplat,', ',ioplon
-     
-        scmlat = ioplat
-        scmlon = ioplon
+        write(iulog,*) '   closest IOP lat,lon  =',closeioplat,', ',closeioplon
+        scmlat = closeioplat
+        scmlon = closeioplon
      end if
-     
+
      if (masterproc) then
         write (iulog,*) 'Single Column Model Options: '
         write (iulog,*) '============================='
@@ -388,24 +387,19 @@ subroutine scam_readnl(nlfile,single_column_in,scmlat_in,scmlon_in)
         print *
      end if
   end if
-     
+
 end subroutine scam_readnl
 
 subroutine readiopdata(hvcoord)
-!jt  subroutine readiopdata(timelevel)
-
-
 !-----------------------------------------------------------------------
-!     
+!
 !     Open and read netCDF file containing initial IOP  conditions
-!     
+!
 !---------------------------Code history--------------------------------
-!     
+!
 !     Written by J.  Truesdale    August, 1996, revised January, 1998
-!     
+!
 !-----------------------------------------------------------------------
-!jt        use prognostics,         only: n3,t3,q3,u3,v3,ps
-        use ppgrid,              only: begchunk, endchunk
 !jt fix this circular depend	use phys_grid,           only: clat_p
 !jt	use commap,              only: latdeg, clat
         use hybvcoord_mod,       only: hvcoord_t
@@ -421,18 +415,15 @@ subroutine readiopdata(hvcoord)
 #endif
 
    character(len=*), parameter ::  sub = "read_iop_data"
-
+!
 !------------------------------Input Arguments--------------------------
-!     
-!jt integer, optional, intent(in) :: timelevel
+!
 type (hvcoord_t), intent(in) :: hvcoord
-
+!
 !------------------------------Locals-----------------------------------
-!     
-!!$   integer ntimelevel
+!
    integer NCID, status
-   integer time_dimID, lev_dimID,  lev_varID
-   integer tsec_varID, bdate_varID,varid
+   integer time_dimID, lev_dimID,  lev_varID, varid
    integer i,j
    integer nlev
    integer total_levs
@@ -442,12 +433,11 @@ type (hvcoord_t), intent(in) :: hvcoord
    integer k, m
    integer icldliq,icldice
    integer inumliq,inumice,idx
-   integer closelatidx,closelonidx,latid,lonid,levid,timeid,ncolid,ncol
+   integer timeid
 
    logical have_srf              ! value at surface is available
-   logical fill_ends             ! 
+   logical fill_ends             !
    logical have_cnst(pcnst)
-   real(r8) closelat,closelon
    real(r8) dummy
    real(r8) lat,xlat
    real(r8) srf(1)                  ! value at surface
@@ -462,26 +452,19 @@ type (hvcoord_t), intent(in) :: hvcoord
    integer strt4(4),cnt4(4)
    character(len=16) :: lowername
    character(len=128) :: units ! Units
-   integer, allocatable :: tsec(:)
 
    nstep = get_nstep()
    fill_ends= .false.
 
-!!$   if (present(timelevel)) then
-!!$      ntimelevel=timelevel
-!!$   else
-!!$      ntimelevel=n3
-!!$   end if
-
-!     
+!
 !     Open IOP dataset
-!     
+!
   call handle_ncerr( nf90_open (iopfile, 0, ncid),&
        'readiopdata.F90', __LINE__)
 
 !
 !     if the dataset is a CAM generated dataset set use_camiop to true
-!       CAM IOP datasets have a global attribute called CAM_GENERATED_IOP      
+!       CAM IOP datasets have a global attribute called CAM_GENERATED_IOP
 !
    if ( nf90_inquire_attribute( ncid, NF90_GLOBAL, 'CAM_GENERATED_FORCING', attnum=i )== NF90_NOERR ) then
       use_camiop = .true.
@@ -490,7 +473,7 @@ type (hvcoord_t), intent(in) :: hvcoord
    endif
 
 !=====================================================================
-!     
+!
 !     Read time variables
 
 
@@ -507,28 +490,10 @@ type (hvcoord_t), intent(in) :: hvcoord
    call handle_ncerr( nf90_inquire_dimension( ncid, time_dimID, len=ntime ),&
          'readiopdata.F90', __LINE__)
 
-   allocate(tsec(ntime))
-
-   status = nf90_inq_varid (ncid, 'tsec', tsec_varID )
-   call handle_ncerr( nf90_get_var (ncid, tsec_varID, tsec),&
-           'readiopdata.F90', __LINE__)
-   
-   status = nf90_inq_varid (ncid, 'nbdate', bdate_varID )
-   if (status /= NF90_NOERR) then
-      status = nf90_inq_varid (ncid, 'bdate', bdate_varID )
-      if (status /= NF90_NOERR) then
-         if (masterproc) write(iulog,*) sub//':ERROR - readiopdata.F:Could not find variable ID for bdate'
-         status = NF90_CLOSE ( ncid )
-         call endrun
-      end if
-   end if
-   call handle_ncerr( nf90_get_var (ncid, bdate_varID, bdate),&
-        'readiopdata.F90', __LINE__)
-
-!     
+!
 !======================================================
 !     read level data
-!     
+!
    status = NF90_INQ_DIMID( ncid, 'lev', lev_dimID )
    if ( status .ne. nf90_noerr ) then
       if (masterproc) write(iulog,*) sub//':ERROR - readiopdata.F:Could not find variable dim ID  for lev'
@@ -568,45 +533,6 @@ type (hvcoord_t), intent(in) :: hvcoord
       end do
    endif
 
-
-!!$   call shr_scam_GetCloseLatLon(ncid,scmlat,scmlon,closelat,closelon,closelatidx,closelonidx)
-!!$
-!!$   lonid = 0
-!!$   latid = 0
-!!$   levid = 0
-!!$   timeid = 0
-!!$   
-!!$   ncolstatus = NF90_INQ_DIMID( ncid, 'ncol', ncolid )==nf90_noerr
-!!$   ncoldstatus = NF90_INQ_DIMID( ncid, 'ncol_d', ncoldid )
-!!$   if ( NF90_INQ_DIMID( ncid, 'lat', latid )==nf90_noerr .or. NF90_INQ_DIMID( ncid, 'lat_d', latid )==nf90_noerr ) then
-!!$
-!!$      call wrap_inq_dimid(ncid, 'lat', latid)
-!!$      call wrap_inq_dimid(ncid, 'lon', lonid)
-!!$      call wrap_inq_dimid(ncid, 'lev', levid)
-!!$      call wrap_inq_dimid(ncid, 'time', timeid)
-!!$      
-!!$      strt4(1) = closelonidx
-!!$      strt4(2) = closelatidx
-!!$      strt4(3) = iopTimeIdx
-!!$      strt4(4) = 1
-!!$      cnt4(1)  = 1
-!!$      cnt4(2)  = 1
-!!$      cnt4(3)  = 1
-!!$      cnt4(4)  = 1
-!!$   else if ( NF90_INQ_DIMID( ncid, 'ncol', ncolid )==nf90_noerr .or. NF90_INQ_DIMID( ncid, 'ncol_d', ncoldid )==nf90_noerr ) then
-!!$      call wrap_inq_dimid(ncid, 'ncol', ncolid)
-!!$      call wrap_inq_dimid(ncid, 'lev', levid)
-!!$      call wrap_inq_dimid(ncid, 'time', timeid)
-!!$      
-!!$      strt4(1) = closelonidx
-!!$      strt4(2) = iopTimeIdx
-!!$      strt4(3) = 1
-!!$      strt4(4) = 1
-!!$      cnt4(1)  = 1
-!!$      cnt4(2)  = 1
-!!$      cnt4(3)  = 1
-!!$      cnt4(4)  = 1
-!!$   end if
    status = nf90_inq_varid( ncid, 'Ps', varid   )
    if ( status .ne. nf90_noerr ) then
       have_ps = .false.
@@ -625,8 +551,8 @@ type (hvcoord_t), intent(in) :: hvcoord
 
 
 !  If the IOP dataset has hyam,hybm,etc it is assumed to be a hybrid level
-!  dataset.
-	
+!  dataset
+
    status =  nf90_inq_varid( ncid, 'hyam', varid   )
    if ( status == nf90_noerr .and. have_ps) then
       call get_start_count(ncid, varid, scmlat, scmlon, ioptimeidx, strt4, cnt4)
@@ -720,13 +646,10 @@ type (hvcoord_t), intent(in) :: hvcoord
       call wrap_get_vara_realx (ncid,varid,strt4,cnt4,tsair)
       have_tsair = .true.
    endif
-
 !
 !      read in Tobs  For cam generated iop readin small t to avoid confusion
 !      with capital T defined in cam
 !
-
-!jt   tobs(:)= t3(1,:,1,ntimelevel)
    tobs(:)= 0._r8
 
    if ( use_camiop ) then
@@ -747,9 +670,9 @@ type (hvcoord_t), intent(in) :: hvcoord
       else
          if (masterproc) write(iulog,*) sub//':Using value from Analysis Dataset'
       endif
-!     
+!
 !     set T3 to Tobs on first time step
-!     
+!
    else
       have_t = .true.
    endif
@@ -782,13 +705,7 @@ type (hvcoord_t), intent(in) :: hvcoord
       have_srf = .true.
    endif
 
-!jt   if (is_first_step()) then
-!jt      qinitobs(:,:)=q3(1,:,:,1,ntimelevel)
-!jt   end if
-!!$
-!jt   qobs(:)= q3(1,:,1,1,ntimelevel)
    qobs(:)= 0._r8
-
    call getinterpncdata( ncid, scmlat, scmlon, ioptimeidx,  'q', have_srf, &
       srf(1), fill_ends, scm_crm_mode, &
       dplevs, nlev,psobs, hvcoord%hyam, hvcoord%hybm, qobs, status )
@@ -813,7 +730,7 @@ type (hvcoord_t), intent(in) :: hvcoord
    else
       have_cld = .true.
    endif
-   
+
    clwpobs = 0._r8
    call getinterpncdata( ncid, scmlat, scmlon, ioptimeidx,  'clwp', .false., &
       dummy, fill_ends, scm_crm_mode, dplevs, nlev,psobs, hvcoord%hyam, hvcoord%hybm, clwpobs, status )
@@ -825,7 +742,7 @@ type (hvcoord_t), intent(in) :: hvcoord
 
 !
 !	read divq (horizontal advection)
-!      
+!
    status = nf90_inq_varid( ncid, 'divqsrf', varid   )
    if ( status .ne. nf90_noerr ) then
       have_srf = .false.
@@ -877,15 +794,12 @@ type (hvcoord_t), intent(in) :: hvcoord
       status = nf90_get_var(ncid, varid, srf(1), strt4)
       have_srf = .true.
    endif
-
-
 !
 !   add calls to get dynamics tendencies for all prognostic consts
 !
    divq3d=0._r8
 
    do m = 1, pcnst
-
       call getinterpncdata( ncid, scmlat, scmlon, ioptimeidx, trim(cnst_name(m))//'_dten', &
       have_srf, srf(1), fill_ends, scm_crm_mode, &
       dplevs, nlev,psobs, hvcoord%hyam, hvcoord%hybm, divq3d(:,m), status )
@@ -896,7 +810,7 @@ type (hvcoord_t), intent(in) :: hvcoord
          if (m==1) have_divq3d = .true.
          have_cnst(m) = .true.
       endif
-      
+
       coldata = 0._r8
       call getinterpncdata( ncid, scmlat, scmlon, ioptimeidx, trim(cnst_name(m))//'_dqfx', &
       have_srf, srf(1), fill_ends, scm_crm_mode, &
@@ -912,11 +826,9 @@ type (hvcoord_t), intent(in) :: hvcoord
       have_srf, srf(1), fill_ends, scm_crm_mode, &
       dplevs, nlev,psobs, hvcoord%hyam, hvcoord%hybm, tmpdata, status )
       if ( status .ne. nf90_noerr ) then
-!         have_cnst(m) = .false.
          alphacam(m)=0._r8
       else
           alphacam(m)=tmpdata(1)
-!         have_cnst(m) = .true.
       endif
 
    end do
@@ -933,9 +845,6 @@ type (hvcoord_t), intent(in) :: hvcoord
          have_numliq = .false.
       else
          have_numliq = .true.
-!!$         do i=1, PLEV
-!!$            q3(1,i,inumliq,1,ntimelevel)=numliqobs(i)
-!!$         end do
       endif
    else
          have_numliq = .false.
@@ -953,9 +862,6 @@ type (hvcoord_t), intent(in) :: hvcoord
          have_cldliq = .false.
       else
          have_cldliq = .true.
-!!$         do i=1, PLEV
-!!$            q3(1,i,icldliq,1,ntimelevel)=cldliqobs(i)
-!!$         end do
       endif
    else
          have_cldliq = .false.
@@ -971,9 +877,6 @@ type (hvcoord_t), intent(in) :: hvcoord
          have_cldice = .false.
       else
          have_cldice = .true.
-!!$         do i=1, PLEV
-!!$            q3(1,i,icldice,1,ntimelevel)=cldiceobs(i)
-!!$         end do
       endif
    else
       have_cldice = .false.
@@ -990,9 +893,6 @@ type (hvcoord_t), intent(in) :: hvcoord
          have_numice = .false.
       else
          have_numice = .true.
-!!$         do i=1, PLEV
-!!$            q3(1,i,inumice,1,ntimelevel)=numiceobs(i)
-!!$         end do
       endif
    else
       have_numice = .false.
@@ -1000,7 +900,7 @@ type (hvcoord_t), intent(in) :: hvcoord
 
 !
 !	read divu (optional field)
-!      
+!
    status = nf90_inq_varid( ncid, 'divusrf', varid   )
    if ( status .ne. nf90_noerr ) then
       have_srf = .false.
@@ -1021,7 +921,7 @@ type (hvcoord_t), intent(in) :: hvcoord
    endif
 !
 !	read divv (optional field)
-!      
+!
    status = nf90_inq_varid( ncid, 'divvsrf', varid   )
    if ( status .ne. nf90_noerr ) then
       have_srf = .false.
@@ -1042,7 +942,7 @@ type (hvcoord_t), intent(in) :: hvcoord
    endif
 !
 !	read divt (optional field)
-!      
+!
    status = nf90_inq_varid( ncid, 'divtsrf', varid   )
    if ( status .ne. nf90_noerr ) then
       have_srf = .false.
@@ -1053,7 +953,6 @@ type (hvcoord_t), intent(in) :: hvcoord
    endif
 
    divt=0._r8
-
    call getinterpncdata( ncid, scmlat, scmlon, ioptimeidx, &
       'divT', have_srf, srf(1), fill_ends, scm_crm_mode, &
       dplevs, nlev,psobs, hvcoord%hyam, hvcoord%hybm, divt, status )
@@ -1074,9 +973,8 @@ type (hvcoord_t), intent(in) :: hvcoord
       status = nf90_get_var(ncid, varid, srf(1), strt4)
       have_srf = .true.
    endif
-   
-   vertdivt=0._r8
 
+   vertdivt=0._r8
    call getinterpncdata( ncid, scmlat, scmlon, ioptimeidx, 'vertdivTx', &
       have_srf, srf(1), fill_ends, scm_crm_mode, &
       dplevs, nlev,psobs, hvcoord%hyam, hvcoord%hybm, vertdivt, status )
@@ -1198,9 +1096,6 @@ type (hvcoord_t), intent(in) :: hvcoord
       have_u = .false.
    else
       have_u = .true.
-!!$      do i=1, PLEV
-!!$         u3(1,i,1,ntimelevel) = uobs(i)  !     set u to uobs at first time step
-!!$      end do
    endif
 
    status = nf90_inq_varid( ncid, 'vsrf', varid   )
@@ -1221,9 +1116,6 @@ type (hvcoord_t), intent(in) :: hvcoord
       have_v = .false.
    else
       have_v = .true.
-!!$      do i=1, PLEV
-!!$         v3(1,i,1,ntimelevel) = vobs(i)  !     set u to uobs at first time step
-!!$      end do
    endif
    call shr_sys_flush( iulog )
 
@@ -1258,7 +1150,7 @@ type (hvcoord_t), intent(in) :: hvcoord
       have_q2 = .true.
    endif
 
-!  Test for BOTH 'lhflx' and 'lh' without overwriting 'have_lhflx'.  
+!  Test for BOTH 'lhflx' and 'lh' without overwriting 'have_lhflx'.
 !  Analagous changes made for the surface heat flux
 
    status = nf90_inq_varid( ncid, 'lhflx', varid   )
@@ -1294,8 +1186,8 @@ type (hvcoord_t), intent(in) :: hvcoord
    endif
 
    call shr_sys_flush( iulog )
-   ! If REPLAY is used, then need to read in the global                                                                
-   !   energy fixer                                                                                                    
+   ! If REPLAY is used, then need to read in the global
+   !   energy fixer
    status = nf90_inq_varid( ncid, 'heat_glob', varid   )
    if (status .ne. nf90_noerr) then
       have_heat_glob = .false.
@@ -1335,7 +1227,7 @@ type (hvcoord_t), intent(in) :: hvcoord
    endif
 
    call shr_sys_flush( iulog )
-   
+
 !!$   status =  nf90_inq_varid( ncid, 'CLAT', varid   )
 !!$   if ( status == nf90_noerr ) then
 !!$      call wrap_get_vara_realx (ncid,varid,strt4,cnt4,clat)
@@ -1349,7 +1241,7 @@ type (hvcoord_t), intent(in) :: hvcoord
    else
       call get_start_count(ncid, varid, scmlat, scmlon, ioptimeidx, strt4, cnt4)
       status = nf90_get_var(ncid, varid, srf(1), strt4)
-      betacam=srf(1) 
+      betacam=srf(1)
    endif
 
    status =  nf90_inq_varid( ncid, 'fixmas', varid   )
@@ -1366,7 +1258,7 @@ type (hvcoord_t), intent(in) :: hvcoord
    status = nf90_close( ncid )
    call shr_sys_flush( iulog )
 
-   deallocate(dplevs,tsec)
+   deallocate(dplevs)
 
    return
 end subroutine readiopdata
@@ -1374,13 +1266,13 @@ end subroutine readiopdata
 subroutine setiopupdate
 
 !-----------------------------------------------------------------------
-!   
+!
 ! Open and read netCDF file to extract time information
 !
 !---------------------------Code history--------------------------------
 !
 ! Written by John Truesdale    August, 1996
-! 
+!
 !-----------------------------------------------------------------------
   implicit none
 #if ( defined RS6000 )
@@ -1397,102 +1289,22 @@ subroutine setiopupdate
    integer next_date, next_sec
    integer :: ncsec,ncdate                      ! current time of day,date
    integer :: yr, mon, day                      ! year, month, and day component
-   integer :: start_ymd,start_tod
+   integer :: start_ymd,start_tod,dt
 !------------------------------------------------------------------------------
 
-   if ( is_first_step() ) then
-!     
-!     Open  IOP dataset
-!     
-      STATUS = NF90_OPEN( iopfile, NF90_NOWRITE, NCID )
-!     
-!     Read time (tsec) variable 
-!     
-      STATUS = NF90_INQ_VARID( NCID, 'tsec', tsec_varID )
-      if ( STATUS .NE. NF90_NOERR .and. masterproc) write(iulog,*) &
-         sub//':ERROR - setiopupdate.F:', &
-         'Cant get variable ID for tsec'
-
-      STATUS = NF90_INQ_VARID( NCID, 'bdate', bdate_varID )
-      if ( STATUS .NE. NF90_NOERR ) then
-         STATUS = NF90_INQ_VARID( NCID, 'basedate', bdate_varID )
-         if ( STATUS .NE. NF90_NOERR .and. masterproc) write(iulog,*) &
-              sub//':ERROR - setiopupdate.F:Cant get variable ID for bdate'
-      endif
-
-      STATUS = NF90_INQ_DIMID( NCID, 'time', time_dimID )
-      if ( STATUS .NE. NF90_NOERR )  then
-         STATUS = NF90_INQ_DIMID( NCID, 'tsec', time_dimID )
-         if ( STATUS .NE. NF90_NOERR )  then
-            write(iulog,* )'ERROR - setiopupdate.F:Could not find variable dim ID for time'
-            STATUS = NF90_CLOSE ( NCID )
-            return
-         end if
-      end if
-
-      if ( STATUS .NE. NF90_NOERR .and. masterproc) write(iulog,*) &
-           sub//':ERROR - setiopupdate.F:Cant get variable dim ID for time'
-
-      STATUS = NF90_INQUIRE_DIMENSION( NCID, time_dimID, len=ntime )
-      if ( STATUS .NE. NF90_NOERR ) then
-         if (masterproc) write(iulog,*) sub//':ERROR - setiopupdate.F:Cant get time dimlen'
-      endif
-
-      STATUS = NF90_GET_VAR( NCID, tsec_varID, tsec )
-      if ( STATUS .NE. NF90_NOERR )then
-         if (masterproc) write(iulog,*) sub//':ERROR - setiopupdate.F:Cant get variable tsec'
-      endif
-      STATUS = NF90_GET_VAR( NCID, bdate_varID, bdate )
-      if ( STATUS .NE. NF90_NOERR )then
-         if (masterproc) write(iulog,*) sub//':ERROR - setiopupdate.F:Cant get variable bdate'
-      endif
-!     Close the netCDF file
-      STATUS = NF90_CLOSE( NCID )
-!     
-!     determine the last date in the iop dataset
-!     
-      call timemgr_time_inc(bdate, 0, last_date, last_sec, inc_s=tsec(ntime))
-!     
-!     set the iop dataset index
-!    
-      iopTimeIdx=0
-      do i=1,ntime           ! set the first ioptimeidx
-         call timemgr_time_inc(bdate, 0, next_date, next_sec, inc_s=tsec(i))
-         call get_start_date(yr,mon,day,start_tod)
-         start_ymd = yr*10000 + mon*100 + day
-
-         if ( start_ymd > next_date .or. (start_ymd == next_date &
-            .and. start_tod >= next_sec)) then
-            iopTimeIdx = i
-         endif
-      enddo
-
-      call get_curr_date(yr,mon,day,ncsec)
-      ncdate=yr*10000 + mon*100 + day
-
-      if (iopTimeIdx == 0.or.iopTimeIdx >= ntime) then
-         call timemgr_time_inc(bdate, 0, next_date, next_sec, inc_s=tsec(1))
-         if (masterproc) then
-            write(iulog,*) 'Error::setiopupdate: Current model time does not fall within IOP period'
-            write(iulog,*) ' Current CAM Date is ',ncdate,' and ',ncsec,' seconds'
-            write(iulog,*) ' IOP start is        ',next_date,' and ',next_sec,' seconds'
-            write(iulog,*) ' IOP end is          ',last_date,' and ',last_sec,' seconds'
-         end if
-         call endrun
-      endif
-
-      doiopupdate = .true.
+   call get_curr_date(yr,mon,day,ncsec)
+   ncdate=yr*10000 + mon*100 + day
 
 !------------------------------------------------------------------------------
 !     Check if iop data needs to be updated and set doiopupdate accordingly
 !------------------------------------------------------------------------------
-   else                      ! endstep > 1
+
+   if ( is_first_step() ) then
+      doiopupdate = .true.
+
+   else
 
       call timemgr_time_inc(bdate, 0, next_date, next_sec, inc_s=tsec(iopTimeIdx+1))
-
-      call get_curr_date(yr, mon, day, ncsec)
-      ncdate = yr*10000 + mon*100 + day
-
       if ( ncdate > next_date .or. (ncdate == next_date &
          .and. ncsec >= next_sec)) then
          iopTimeIdx = iopTimeIdx + 1
@@ -1502,11 +1314,11 @@ subroutine setiopupdate
          if (masterproc) write(iulog,*) sub//'ncdate=',ncdate,' ncsec=',ncsec
          if (masterproc) write(iulog,*) sub//'next_date=',next_date,' next_sec=',next_sec
          if (masterproc) write(iulog,*) sub//':******* do iop update'
-#endif 
+#endif
       else
          doiopupdate = .false.
       end if
-   endif                     ! if (endstep == 0 )
+   endif                     ! if (endstep = 1 )
 !
 !     make sure we're
 !     not going past end of iop data
@@ -1516,7 +1328,7 @@ subroutine setiopupdate
       if ( .not. scm_backfill_iop_w_init ) then
          call endrun(sub//':ERROR - setiopupdate.c:Reached the end of the time varient dataset')
       else
-         doiopupdate = .false.              
+         doiopupdate = .false.
       end if
    endif
 
@@ -1532,16 +1344,16 @@ end subroutine setiopupdate
 
 subroutine plevs0 (nver    ,ps      ,pint    ,pmid    ,pdel, hvcoord)
 
-!----------------------------------------------------------------------- 
-! 
-! Purpose: 
+!-----------------------------------------------------------------------
+!
+! Purpose:
 ! Define the pressures of the interfaces and midpoints from the
 ! coordinate definitions and the surface pressure.
-! 
-! Method: 
-! 
+!
+! Method:
+!
 ! Author: B. Boville
-! 
+!
 !-----------------------------------------------------------------------
 !
 ! $Id$
@@ -1586,22 +1398,22 @@ subroutine plevs0 (nver    ,ps      ,pint    ,pmid    ,pdel, hvcoord)
 end subroutine plevs0
 
 subroutine scmiop_flbc_inti ( co2vmr, ch4vmr, n2ovmr, f11vmr, f12vmr )
-  !----------------------------------------------------------------------- 
-  ! 
-  ! Purpose: 
+  !-----------------------------------------------------------------------
+  !
+  ! Purpose:
   ! Get start count for variable
-  ! 
-  ! Method: 
-  ! 
+  !
+  ! Method:
+  !
   ! Author:
-  ! 
+  !
   !-----------------------------------------------------------------------
   !
   ! $Id$
   ! $Author$
   !
   !-----------------------------------------------------------------------
-  
+
   implicit none
 
   real(r8), intent(out)  :: co2vmr, ch4vmr, n2ovmr, f11vmr, f12vmr
@@ -1617,22 +1429,22 @@ end subroutine scmiop_flbc_inti
 
 subroutine get_start_count (ncid    ,varid  ,scmlat, scmlon, timeidx, start    ,count)
 
-  !----------------------------------------------------------------------- 
-  ! 
-  ! Purpose: 
+  !-----------------------------------------------------------------------
+  !
+  ! Purpose:
   ! set global lower boundary conditions
-  ! 
-  ! Method: 
-  ! 
+  !
+  ! Method:
+  !
   ! Author:
-  ! 
+  !
   !-----------------------------------------------------------------------
   !
   ! $Id$
   ! $Author$
   !
   !-----------------------------------------------------------------------
-  
+
   implicit none
 
 
@@ -1668,9 +1480,9 @@ subroutine get_start_count (ncid    ,varid  ,scmlat, scmlon, timeidx, start    ,
       write(iulog,* ) 'ERROR - extractdata.F:Cant get dimension IDs for varid', varid
       return
    endif
-!     
-!     Initialize the start and count arrays 
-!     
+!
+!     Initialize the start and count arrays
+!
    dims_set = 0
    nlev = 1
    do i =  var_ndims, 1, -1
@@ -1680,7 +1492,7 @@ subroutine get_start_count (ncid    ,varid  ,scmlat, scmlon, timeidx, start    ,
 
       if ( trim(dim_name) .EQ. 'lat' ) then
          start( i ) =  latIdx
-         count( i ) = 1           ! Extract a single value 
+         count( i ) = 1           ! Extract a single value
          dims_set = dims_set + 1
          usable_var = .true.
       endif
@@ -1708,10 +1520,10 @@ subroutine get_start_count (ncid    ,varid  ,scmlat, scmlon, timeidx, start    ,
          usable_var = .true.
       endif
 
-      if ( trim(dim_name) .EQ. 'time' .OR. trim(dim_name) .EQ. 'tsec' ) then 
+      if ( trim(dim_name) .EQ. 'time' .OR. trim(dim_name) .EQ. 'tsec' ) then
          start( i ) = TimeIdx
-         count( i ) = 1           ! Extract a single value 
-         dims_set = dims_set + 1   
+         count( i ) = 1           ! Extract a single value
+         dims_set = dims_set + 1
          usable_var = .true.
       endif
    end do
@@ -1722,7 +1534,7 @@ subroutine get_start_count (ncid    ,varid  ,scmlat, scmlon, timeidx, start    ,
 subroutine setiopupdate_init
 
 !-----------------------------------------------------------------------
-!   
+!
 ! Open and read netCDF file to extract time information
 !   This subroutine should be called at the first SCM time step
 !
@@ -1730,7 +1542,7 @@ subroutine setiopupdate_init
 !
 ! Written by John Truesdale    August, 1996
 ! Modified for E3SM by  Peter Bogenschutz 2017 - onward
-! 
+!
 !-----------------------------------------------------------------------
   implicit none
 #if ( defined RS6000 )

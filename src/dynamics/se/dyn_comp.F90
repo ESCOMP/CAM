@@ -47,8 +47,7 @@ use edge_mod,               only: initEdgeBuffer, edgeVpack, edgeVunpack, FreeEd
 use edgetype_mod,           only: EdgeBuffer_t
 use bndry_mod,              only: bndry_exchange
 use se_single_column_mod,   only: scm_setinitial
-use scamMod,                only: single_column, have_divT3d, readiopdata, use_iop, setiopupdate_init, &
-                                  scmlon, scmlat
+use scamMod,                only: single_column, readiopdata, use_iop, setiopupdate_init
 
 implicit none
 private
@@ -588,10 +587,6 @@ subroutine dyn_init(dyn_in, dyn_out)
    use air_composition,    only: thermodynamic_active_species_liq_idx_dycore,thermodynamic_active_species_ice_idx_dycore
    use air_composition,    only: thermodynamic_active_species_liq_num, thermodynamic_active_species_ice_num
    use cam_history,        only: addfld, add_default, horiz_only, register_vector_field
-#if (defined BFB_CAM_SCAM_IOP )
-   use history_defaults,   only: initialize_iop_history
-#endif
-
    use gravity_waves_sources, only: gws_init
 
    use thread_mod,         only: horz_num_threads
@@ -748,10 +743,6 @@ subroutine dyn_init(dyn_in, dyn_out)
      nullify(dyn_out%elem)
      nullify(dyn_out%fvm)
    end if
-
-#ifdef BFB_CAM_SCAM_IOP                                  
-   call initialize_iop_history                           
-#endif                                                   
 
    call set_phis(dyn_in)
 
@@ -953,13 +944,11 @@ subroutine dyn_init(dyn_in, dyn_out)
      do m = 1, pcnst
        call addfld(tottnam(m),(/ 'lev' /),'A','kg/kg/s',trim(cnst_name(m))//' horz + vert',  &
             gridname='FVM')
-       call add_default(tottnam(m), 2, ' ')
      end do
    else
      do m = 1, pcnst
        call addfld(tottnam(m),(/ 'lev' /),'A','kg/kg/s',trim(cnst_name(m))//' horz + vert',  &
             gridname='GLL')
-      call add_default(tottnam(m), 2, ' ')
      end do
    end if
    call phys_getopts(history_budget_out=history_budget, history_budget_histfile_num_out=budget_hfile_num)
@@ -981,14 +970,12 @@ subroutine dyn_run(dyn_state)
    use air_composition,  only: thermodynamic_active_species_idx_dycore
    use prim_driver_mod,  only: prim_run_subcycle
    use dimensions_mod,   only: cnst_name_gll
-   use se_dyn_time_mod,  only: tstep, nsplit, timelevel_qdp
+   use se_dyn_time_mod,  only: tstep, nsplit, timelevel_qdp, tevolve
    use hybrid_mod,       only: config_thread_region, get_loop_ranges
    use control_mod,      only: qsplit, rsplit, ftype_conserve
    use thread_mod,       only: horz_num_threads
-   use time_mod,         only: tevolve
    use scamMod,          only: single_column, use_3dfrc
    use se_single_column_mod, only: apply_SC_forcing,ie_scm
-   use se_dyn_time_mod,  only: tevolve
 
    type(dyn_export_t), intent(inout) :: dyn_state
 
@@ -1020,152 +1007,148 @@ subroutine dyn_run(dyn_state)
    if (iam >= par%nprocs) return
 
    if (.not. use_3dfrc ) then
-
-      ldiag = hist_fld_active('ABS_dPSdt')
-      if (ldiag) then
-         allocate(ps_before(np,np,nelemd))
-         allocate(abs_ps_tend(np,np,nelemd))
-         
-      end if
-      
-      !$OMP PARALLEL NUM_THREADS(horz_num_threads), DEFAULT(SHARED), PRIVATE(hybrid,nets,nete,n,ie,m,i,j,k,ftmp)
-      hybrid = config_thread_region(par,'horizontal')
-      call get_loop_ranges(hybrid, ibeg=nets, iend=nete)
-      
-      dtime = get_step_size()
-      rec2dt = 1._r8/dtime
-      
-      tl_f = TimeLevel%n0   ! timelevel which was adjusted by physics
-      call TimeLevel_Qdp(TimeLevel, qsplit, n0_qdp)!get n0_qdp for diagnostics call
-      
-      ! output physics forcing
-      if (hist_fld_active('FU') .or. hist_fld_active('FV') .or.hist_fld_active('FT')) then
-         do ie = nets, nete
-            do k = 1, nlev
-               do j = 1, np
-                  do i = 1, np
-                     ftmp(i+(j-1)*np,k,1) = dyn_state%elem(ie)%derived%FM(i,j,1,k)
-                     ftmp(i+(j-1)*np,k,2) = dyn_state%elem(ie)%derived%FM(i,j,2,k)
-                     ftmp(i+(j-1)*np,k,3) = dyn_state%elem(ie)%derived%FT(i,j,k)
-                  end do
-               end do
-            end do
-            
-            call outfld('FU', ftmp(:,:,1), npsq, ie)
-            call outfld('FV', ftmp(:,:,2), npsq, ie)
-            call outfld('FT', ftmp(:,:,3), npsq, ie)
-         end do
-      end if
-      
-      do m = 1, qsize
-         if (hist_fld_active('F'//trim(cnst_name_gll(m))//'_gll')) then
-            do ie = nets, nete
-               call outfld('F'//trim(cnst_name_gll(m))//'_gll',&
-                    RESHAPE(dyn_state%elem(ie)%derived%FQ(:,:,:,m), (/np*np,nlev/)), npsq, ie)
-            end do
-         end if
-      end do
-      
-      
-      
-      ! convert elem(ie)%derived%fq to mass tendency
-      do ie = nets, nete
-         do m = 1, qsize
-            do k = 1, nlev
-               do j = 1, np
-                  do i = 1, np
-                     dyn_state%elem(ie)%derived%FQ(i,j,k,m) = dyn_state%elem(ie)%derived%FQ(i,j,k,m)* &
-                          rec2dt*dyn_state%elem(ie)%state%dp3d(i,j,k,tl_f)
-                  end do
-               end do
-            end do
-         end do
-      end do
-      
-      
-      if (ftype_conserve>0) then
-         do ie = nets, nete
-            do k=1,nlev
-               do j=1,np
-                  do i = 1, np
-                     pdel     = dyn_state%elem(ie)%state%dp3d(i,j,k,tl_f)
-                     do nq=dry_air_species_num+1,thermodynamic_active_species_num
-                        m_cnst = thermodynamic_active_species_idx_dycore(nq)
-                        pdel = pdel + (dyn_state%elem(ie)%state%qdp(i,j,k,m_cnst,n0_qdp)+dyn_state%elem(ie)%derived%FQ(i,j,k,m_cnst)*dtime)
-                     end do
-                     dyn_state%elem(ie)%derived%FDP(i,j,k) = pdel
-                  end do
-               end do
-            end do
-         end do
-      end if
-      
-      
-      if (use_cslam) then
-         do ie = nets, nete
-            do m = 1, ntrac
-               do k = 1, nlev
-                  do j = 1, nc
-                     do i = 1, nc
-                        dyn_state%fvm(ie)%fc(i,j,k,m) = dyn_state%fvm(ie)%fc(i,j,k,m)* &
-                             rec2dt!*dyn_state%fvm(ie)%dp_fvm(i,j,k)
-                     end do
-                  end do
-               end do
-            end do
-         end do
-      end if
-      
-      
-      
-      if (ldiag) then
-         abs_ps_tend(:,:,nets:nete) = 0.0_r8
-      endif
-      
-      do n = 1, nsplit_local
-         
-         if (ldiag) then
-            do ie = nets, nete
-               ps_before(:,:,ie) = dyn_state%elem(ie)%state%psdry(:,:)
-            end do
-         end if
-         
-         ! forward-in-time RK, with subcycling
-         if (single_column) then
-            nets_in=ie_scm
-            nete_in=ie_scm
-         else
-            nets_in=nets
-            nete_in=nete
-         end if
-         call prim_run_subcycle(dyn_state%elem, dyn_state%fvm, hybrid, nets_in, nete_in, &
-              tstep, TimeLevel, hvcoord, n, single_column, omega_cn)
-         
-         if (ldiag) then
-            do ie = nets, nete
-               abs_ps_tend(:,:,ie) = abs_ps_tend(:,:,ie) +                                &
-                    ABS(ps_before(:,:,ie)-dyn_state%elem(ie)%state%psdry(:,:)) &
-                    /(tstep*qsplit*rsplit)
-            end do
-         end if
-         
-      end do
-      
-      if (ldiag) then
-         do ie=nets,nete
-            abs_ps_tend(:,:,ie)=abs_ps_tend(:,:,ie)/DBLE(nsplit)
-            call outfld('ABS_dPSdt',RESHAPE(abs_ps_tend(:,:,ie),(/npsq/)),npsq,ie)
-         end do
-      end if
-      
-      !$OMP END PARALLEL
-
-      if (ldiag) then
-         deallocate(ps_before,abs_ps_tend)
-      endif
+   ldiag = hist_fld_active('ABS_dPSdt')
+   if (ldiag) then
+      allocate(ps_before(np,np,nelemd))
+      allocate(abs_ps_tend(np,np,nelemd))
 
    end if
 
+   !$OMP PARALLEL NUM_THREADS(horz_num_threads), DEFAULT(SHARED), PRIVATE(hybrid,nets,nete,n,ie,m,i,j,k,ftmp)
+   hybrid = config_thread_region(par,'horizontal')
+   call get_loop_ranges(hybrid, ibeg=nets, iend=nete)
+
+   dtime = get_step_size()
+   rec2dt = 1._r8/dtime
+
+   tl_f = TimeLevel%n0   ! timelevel which was adjusted by physics
+   call TimeLevel_Qdp(TimeLevel, qsplit, n0_qdp)!get n0_qdp for diagnostics call
+
+   ! output physics forcing
+   if (hist_fld_active('FU') .or. hist_fld_active('FV') .or.hist_fld_active('FT')) then
+      do ie = nets, nete
+         do k = 1, nlev
+            do j = 1, np
+               do i = 1, np
+                  ftmp(i+(j-1)*np,k,1) = dyn_state%elem(ie)%derived%FM(i,j,1,k)
+                  ftmp(i+(j-1)*np,k,2) = dyn_state%elem(ie)%derived%FM(i,j,2,k)
+                  ftmp(i+(j-1)*np,k,3) = dyn_state%elem(ie)%derived%FT(i,j,k)
+               end do
+            end do
+         end do
+
+         call outfld('FU', ftmp(:,:,1), npsq, ie)
+         call outfld('FV', ftmp(:,:,2), npsq, ie)
+         call outfld('FT', ftmp(:,:,3), npsq, ie)
+      end do
+   end if
+
+   do m = 1, qsize
+     if (hist_fld_active('F'//trim(cnst_name_gll(m))//'_gll')) then
+       do ie = nets, nete
+         call outfld('F'//trim(cnst_name_gll(m))//'_gll',&
+              RESHAPE(dyn_state%elem(ie)%derived%FQ(:,:,:,m), (/np*np,nlev/)), npsq, ie)
+       end do
+     end if
+   end do
+
+
+
+   ! convert elem(ie)%derived%fq to mass tendency
+   do ie = nets, nete
+      do m = 1, qsize
+         do k = 1, nlev
+            do j = 1, np
+               do i = 1, np
+                  dyn_state%elem(ie)%derived%FQ(i,j,k,m) = dyn_state%elem(ie)%derived%FQ(i,j,k,m)* &
+                     rec2dt*dyn_state%elem(ie)%state%dp3d(i,j,k,tl_f)
+               end do
+            end do
+         end do
+      end do
+   end do
+
+
+   if (ftype_conserve>0) then
+     do ie = nets, nete
+       do k=1,nlev
+         do j=1,np
+           do i = 1, np
+             pdel     = dyn_state%elem(ie)%state%dp3d(i,j,k,tl_f)
+             do nq=dry_air_species_num+1,thermodynamic_active_species_num
+               m_cnst = thermodynamic_active_species_idx_dycore(nq)
+               pdel = pdel + (dyn_state%elem(ie)%state%qdp(i,j,k,m_cnst,n0_qdp)+dyn_state%elem(ie)%derived%FQ(i,j,k,m_cnst)*dtime)
+             end do
+             dyn_state%elem(ie)%derived%FDP(i,j,k) = pdel
+           end do
+         end do
+       end do
+     end do
+   end if
+
+
+   if (use_cslam) then
+      do ie = nets, nete
+         do m = 1, ntrac
+            do k = 1, nlev
+               do j = 1, nc
+                  do i = 1, nc
+                     dyn_state%fvm(ie)%fc(i,j,k,m) = dyn_state%fvm(ie)%fc(i,j,k,m)* &
+                        rec2dt!*dyn_state%fvm(ie)%dp_fvm(i,j,k)
+                  end do
+               end do
+            end do
+         end do
+      end do
+   end if
+
+   if (ldiag) then
+      abs_ps_tend(:,:,nets:nete) = 0.0_r8
+   endif
+
+   do n = 1, nsplit_local
+
+      if (ldiag) then
+         do ie = nets, nete
+            ps_before(:,:,ie) = dyn_state%elem(ie)%state%psdry(:,:)
+         end do
+      end if
+
+      ! forward-in-time RK, with subcycling
+      if (single_column) then
+         nets_in=ie_scm
+         nete_in=ie_scm
+      else
+         nets_in=nets
+         nete_in=nete
+      end if
+      call prim_run_subcycle(dyn_state%elem, dyn_state%fvm, hybrid, nets_in, nete_in, &
+                             tstep, TimeLevel, hvcoord, n, single_column, omega_cn)
+
+      if (ldiag) then
+         do ie = nets, nete
+            abs_ps_tend(:,:,ie) = abs_ps_tend(:,:,ie) +                                &
+               ABS(ps_before(:,:,ie)-dyn_state%elem(ie)%state%psdry(:,:)) &
+               /(tstep*qsplit*rsplit)
+         end do
+      end if
+
+   end do
+
+   if (ldiag) then
+      do ie=nets,nete
+         abs_ps_tend(:,:,ie)=abs_ps_tend(:,:,ie)/DBLE(nsplit)
+         call outfld('ABS_dPSdt',RESHAPE(abs_ps_tend(:,:,ie),(/npsq/)),npsq,ie)
+      end do
+   end if
+
+   !$OMP END PARALLEL
+
+   if (ldiag) then
+      deallocate(ps_before,abs_ps_tend)
+   endif
+
+   end if ! not use_3dfrc
 
    if (single_column) then
       call apply_SC_forcing(dyn_state%elem,hvcoord,TimeLevel,3,.false.,nets,nete)
@@ -1377,7 +1360,6 @@ subroutine read_inidat(dyn_in)
       if (.not. single_column) then
          call check_file_layout(fh_ini, elem, dyn_cols, 'ncdata', .true.)
       end if
-      
       ! Read 2-D field
 
       fieldname  = 'PS'
@@ -1896,10 +1878,14 @@ subroutine set_phis(dyn_in)
 
       ! Set name of grid object which will be used to read data from file
       ! into internal data structure via PIO.
-      if (fv_nphys == 0) then
-         grid_name = 'GLL'
+      if (single_column) then
+         grid_name = 'SCM'
       else
-         grid_name = 'physgrid_d'
+         if (fv_nphys == 0) then
+            grid_name = 'GLL'
+         else
+            grid_name = 'physgrid_d'
+         end if
       end if
 
       ! Get number of global columns from the grid object and check that
@@ -1913,7 +1899,7 @@ subroutine set_phis(dyn_in)
          call endrun(sub//': dimension ncol not found in bnd_topo file')
       end if
       ierr = pio_inq_dimlen(fh_topo, ncol_did, ncol_size)
-      if (ncol_size /= dyn_cols) then
+      if (ncol_size /= dyn_cols .and. .not. single_column) then
          if (masterproc) then
             write(iulog,*) sub//': ncol_size=', ncol_size, ' : dyn_cols=', dyn_cols
          end if
@@ -2075,7 +2061,7 @@ subroutine check_file_layout(file, elem, dyn_cols, file_desc, dyn_ok)
    end if
 
    ierr = pio_inq_dimlen(file, ncol_did, ncol_size)
-   if (ncol_size /= dyn_cols .and. .not. single_column) then
+   if (ncol_size /= dyn_cols) then
       if (masterproc) then
          write(iulog, '(a,2(a,i0))') trim(sub), ': ncol_size=', ncol_size, &
              ' : dyn_cols=', dyn_cols
