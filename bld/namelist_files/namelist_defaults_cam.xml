@@ -2019,6 +2019,7 @@
 
 <!-- CLUBB options -->
 <clubb_beta                                       > 2.4     </clubb_beta>
+<clubb_bv_efold                                   > 5.0     </clubb_bv_efold>
 <clubb_c1                                         > 1.0     </clubb_c1>
 <clubb_c1b                                        > 1.0     </clubb_c1b>
 <clubb_c11                                        > 0.7D0   </clubb_c11>
@@ -2121,6 +2122,8 @@
 <clubb_tridiag_solve_method                       > 1       </clubb_tridiag_solve_method>
 <clubb_up2_sfc_coef                               > 2.0     </clubb_up2_sfc_coef>
 <clubb_wpxp_L_thresh                              > 60.0    </clubb_wpxp_L_thresh>
+<clubb_wpxp_Ri_exp                                > 0.5     </clubb_wpxp_Ri_exp>
+<clubb_z_displace                                 > 25.0    </clubb_z_displace>
 <do_hb_above_clubb                                >.false.  </do_hb_above_clubb>
 <do_hb_above_clubb phys="cam_dev"                 >.true.   </do_hb_above_clubb>
 <do_hb_above_clubb phys="cam6"                    >.true.   </do_hb_above_clubb>
@@ -2149,6 +2152,7 @@
 <clubb_skw_max_mag                      silhs="1" > 10.0    </clubb_skw_max_mag>
 <clubb_up2_sfc_coef                     silhs="1" > 4.0     </clubb_up2_sfc_coef>
 <clubb_C_wp2_splat                      silhs="1" > 0.0     </clubb_C_wp2_splat>
+<clubb_bv_efold                         silhs="1" > 5.0     </clubb_bv_efold>
 
 <clubb_l_brunt_vaisala_freq_moist       silhs="1" > .true.  </clubb_l_brunt_vaisala_freq_moist>
 <clubb_l_call_pdf_closure_twice         silhs="1" > .false. </clubb_l_call_pdf_closure_twice>
