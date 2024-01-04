@@ -1,11 +1,11 @@
+[submodule "ali_arms"]
+	path = src/physics/ali_arms
+	url = https://github.com/ESCOMP/ALI-ARMS
+        esmrequired = I:T
 [submodule "cime"]
 	path = cime
 	url = https://github.com/jedwards4b/cime
         esmrequired = T:T
-[submodule "ali_arms"]
-	path = ali_arms
-	url = https://github.com/ESCOMP/ALI-ARMS
-        esmrequired = I:T
 [submodule "cosp2"]
 	path = src/physics/cosp2/src
 	url = https://github.com/CFMIP/COSPv2.0
