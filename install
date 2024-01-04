@@ -46,13 +46,13 @@ fi
 
 
 
-./bash-scripts/bin/git_sparse_checkout  https://github.com/larson-group/clubb_release clubb_4ncar_20221129_59cb19f_branch src/physics/clubb -- src/CLUBB_core/ src/SILHS/
+./bin/git_sparse_checkout  https://github.com/larson-group/clubb_release clubb_4ncar_20221129_59cb19f_branch src/physics/clubb -- src/CLUBB_core/ src/SILHS/
 git restore src/physics/clubb
 
-./bash-scripts/bin/git_sparse_checkout https://github.com/CFMIP/COSPv2.0 master src/physics/cosp2/src -- src/
+./bin/git_sparse_checkout https://github.com/CFMIP/COSPv2.0 master src/physics/cosp2/src -- src/
 git restore src/physics/cosp2/src
 
-./bash-scripts/bin/git_sparse_checkout https://github.com/MPAS-Dev/MPAS-Model.git develop src/dynamics/mpas/dycore -- src/external/ src/operators/ src/tools/ \
+./bin/git_sparse_checkout https://github.com/MPAS-Dev/MPAS-Model.git develop src/dynamics/mpas/dycore -- src/external/ src/operators/ src/tools/ \
                       src/core_atmosphere/ src/framework/
 git restore src/dynamics/mpas/dycore
 
