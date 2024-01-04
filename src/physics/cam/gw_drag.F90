@@ -968,6 +968,14 @@ subroutine gw_init()
           'Moving Mountain - midpoint wind in direction of wave')
      call addfld ('HDEPTH_MOVMTN',horiz_only,'I','km', &
           'Heating Depth')
+     call addfld ('UCONV_MOVMTN',horiz_only,'I','m/s', &
+          'Source-level X-wind')
+     call addfld ('VCONV_MOVMTN',horiz_only,'I','m/s', &
+          'Source-level Y-wind')
+     call addfld ('CS_MOVMTN',horiz_only,'I','m/s', &
+          'phase speed')
+     call addfld ('CS1_MOVMTN',horiz_only,'I','m/s', &
+          'phase speed')
      call addfld ('NETDT_MOVMTN',(/ 'lev' /),'I','K/s', &
           'Net heating rate')
      !call addfld ('TENDLEV_MOVMTN',horiz_only,'I','m', &
@@ -1669,12 +1677,11 @@ subroutine gw_tend(state, pbuf, dt, ptend, cam_in, flx_heat)
 
      !effgw = 0.5_r8
      effgw = 1._r8
-     call gw_movmtn_src(ncol, band_movmtn , movmtn_desc, &
+     call gw_movmtn_src(ncol, lchnk, band_movmtn , movmtn_desc, &
           u, v,ttend_dp(:ncol,:), zm, src_level, tend_level, &
           tau, ubm, ubi, xv, yv, &
           c, hdepth)
 
-     call outfld('TAU_MOVMTN', tau(:,:,:), ncol, lchnk)
      call outfld('UBI_MOVMTN', ubi, ncol, lchnk)
      call outfld('UBM_MOVMTN', ubm, ncol, lchnk)
 #if 1
@@ -1710,6 +1717,7 @@ subroutine gw_tend(state, pbuf, dt, ptend, cam_in, flx_heat)
         ptend%s(:ncol,k) = ptend%s(:ncol,k) + ttgw(:,k)
      end do
      
+     call outfld('TAU_MOVMTN', tau(:,0,:), ncol, lchnk)
      call outfld('VTGW_MOVMTN', vtgw, ncol, lchnk)
      call outfld('UTGW_MOVMTN', utgw, ncol, lchnk)
      call outfld('HDEPTH_MOVMTN', hdepth/1000._r8, ncol, lchnk)

@@ -34,7 +34,7 @@ contains
 
 !==========================================================================
 
-subroutine gw_movmtn_src(ncol, band, desc, u, v, &
+subroutine gw_movmtn_src(ncol,lchnk, band, desc, u, v, &
      netdt, zm, src_level, tend_level, tau, ubm, ubi, xv, yv, &
      c, hdepth)
 !-----------------------------------------------------------------------
@@ -51,10 +51,10 @@ subroutine gw_movmtn_src(ncol, band, desc, u, v, &
 !-----------------------------------------------------------------------
   use gw_utils, only: get_unit_vector, dot_2d, midpoint_interp
   use gw_common, only: GWBand, pver, qbo_hdepth_scaling
-
+  use cam_history, only: outfld
 !------------------------------Arguments--------------------------------
   ! Column dimension.
-  integer, intent(in) :: ncol
+  integer, intent(in) :: ncol , lchnk
 
   ! Wavelengths triggered by convection.
   type(GWBand), intent(in) :: band
@@ -224,6 +224,13 @@ subroutine gw_movmtn_src(ncol, band, desc, u, v, &
     ! yv(i) = -1._r8*vdiff(i)/abs(vdiff(i))
   end do
   call get_unit_vector(udiff, vdiff, xv, yv, ubi(:,desc%k))
+
+  call outfld('UCONV_MOVMTN', uconv, ncol, lchnk)
+  call outfld('VCONV_MOVMTN', vconv, ncol, lchnk)
+  call outfld('CS_MOVMTN', CS, ncol, lchnk)
+  call outfld('CS1_MOVMTN', CS1, ncol, lchnk)
+
+
   
   ! Project the local wind at midpoints onto the source wind. looping through altitudes ubm is a profile projected on to the steering level
   do k = 1, pver
