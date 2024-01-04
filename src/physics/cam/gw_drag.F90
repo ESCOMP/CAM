@@ -976,6 +976,10 @@ subroutine gw_init()
           'phase speed')
      call addfld ('CS1_MOVMTN',horiz_only,'I','m/s', &
           'phase speed')
+     call addfld ('SRC_LEVEL_MOVMTN',horiz_only,'I','1', &
+          'launch level for movmtn GW')
+     call addfld ('TND_LEVEL_MOVMTN',horiz_only,'I','1', &
+          'tendency lowest level for movmtn GW')
      call addfld ('NETDT_MOVMTN',(/ 'lev' /),'I','K/s', &
           'Net heating rate')
      !call addfld ('TENDLEV_MOVMTN',horiz_only,'I','m', &
@@ -1682,6 +1686,8 @@ subroutine gw_tend(state, pbuf, dt, ptend, cam_in, flx_heat)
           tau, ubm, ubi, xv, yv, &
           c, hdepth)
 
+     call outfld('SRC_LEVEL_MOVMTN', 1._r8*src_level, ncol, lchnk)
+     call outfld('TND_LEVEL_MOVMTN', 1._r8*tend_level, ncol, lchnk)
      call outfld('UBI_MOVMTN', ubi, ncol, lchnk)
      call outfld('UBM_MOVMTN', ubm, ncol, lchnk)
 #if 1
