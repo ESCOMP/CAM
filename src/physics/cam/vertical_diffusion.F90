@@ -287,7 +287,7 @@ subroutine vertical_diffusion_init(pbuf2d)
   integer        :: nbot_eddy   ! Bottom interface level to which eddy vertical diffusion is applied ( = pver )
   integer        :: k           ! Vertical loop index
 
-  real(r8), parameter :: ntop_eddy_pres = 1.e-5_r8 ! Pressure below which eddy diffusion is not done in WACCM-X. (Pa)
+  real(r8), parameter :: ntop_eddy_pres = 1.e-7_r8 ! Pressure below which eddy diffusion is not done in WACCM-X. (Pa)
 
   integer :: im, l, m, nmodes, nspec
 
@@ -1046,9 +1046,9 @@ subroutine vertical_diffusion_tend( &
       ! PBL diffusion will happen before coupling, so vertical_diffusion
       ! is only handling other things, e.g. some boundary conditions, tms,
       ! and molecular diffusion.
-      
+
       call virtem(ncol, th(:ncol,pver),state%q(:ncol,pver,1), thvs(:ncol))
-      
+
       call calc_ustar( ncol, state%t(:ncol,pver), state%pmid(:ncol,pver), &
            cam_in%wsx(:ncol), cam_in%wsy(:ncol), rrho(:ncol), ustar(:ncol))
       ! Use actual qflux, not lhf/latvap as was done previously
@@ -1108,9 +1108,9 @@ subroutine vertical_diffusion_tend( &
      call outfld( 'slv_pre_PBL  ', slv_prePBL,                pcols, lchnk )
      call outfld( 'u_pre_PBL    ', state%u,                   pcols, lchnk )
      call outfld( 'v_pre_PBL    ', state%v,                   pcols, lchnk )
-     call outfld( 'qv_pre_PBL   ', state%q(:ncol,:,1),        pcols, lchnk )
-     call outfld( 'ql_pre_PBL   ', state%q(:ncol,:,ixcldliq), pcols, lchnk )
-     call outfld( 'qi_pre_PBL   ', state%q(:ncol,:,ixcldice), pcols, lchnk )
+     call outfld( 'qv_pre_PBL   ', state%q(:,:,1),            pcols, lchnk )
+     call outfld( 'ql_pre_PBL   ', state%q(:,:,ixcldliq),     pcols, lchnk )
+     call outfld( 'qi_pre_PBL   ', state%q(:,:,ixcldice),     pcols, lchnk )
      call outfld( 't_pre_PBL    ', state%t,                   pcols, lchnk )
      call outfld( 'rh_pre_PBL   ', ftem_prePBL,               pcols, lchnk )
 
@@ -1472,11 +1472,11 @@ subroutine vertical_diffusion_tend( &
      call outfld( 'vflx_cg_PBL'  , vflx_cg,                   pcols, lchnk )
      call outfld( 'slten_PBL'    , slten,                     pcols, lchnk )
      call outfld( 'qtten_PBL'    , qtten,                     pcols, lchnk )
-     call outfld( 'uten_PBL'     , ptend%u(:ncol,:),          pcols, lchnk )
-     call outfld( 'vten_PBL'     , ptend%v(:ncol,:),          pcols, lchnk )
-     call outfld( 'qvten_PBL'    , ptend%q(:ncol,:,1),        pcols, lchnk )
-     call outfld( 'qlten_PBL'    , ptend%q(:ncol,:,ixcldliq), pcols, lchnk )
-     call outfld( 'qiten_PBL'    , ptend%q(:ncol,:,ixcldice), pcols, lchnk )
+     call outfld( 'uten_PBL'     , ptend%u,                   pcols, lchnk )
+     call outfld( 'vten_PBL'     , ptend%v,                   pcols, lchnk )
+     call outfld( 'qvten_PBL'    , ptend%q(:,:,1),            pcols, lchnk )
+     call outfld( 'qlten_PBL'    , ptend%q(:,:,ixcldliq),     pcols, lchnk )
+     call outfld( 'qiten_PBL'    , ptend%q(:,:,ixcldice),     pcols, lchnk )
      call outfld( 'tten_PBL'     , tten,                      pcols, lchnk )
      call outfld( 'rhten_PBL'    , rhten,                     pcols, lchnk )
 

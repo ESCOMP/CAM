@@ -7,7 +7,7 @@ module geopotential
 ! The hydrostatic matrix elements must be consistent with the dynamics algorithm.
 ! The diagonal element is the itegration weight from interface k+1 to midpoint k.
 ! The offdiagonal element is the weight between interfaces.
-! 
+!
 ! Author: B.Boville, Feb 2001 from earlier code by Boville and S.J. Lin
 !---------------------------------------------------------------------------------
 
@@ -29,17 +29,18 @@ contains
        t      , q      , rair   , gravit , zvir   ,          &
        zi     , zm     , ncol   )
 
-!----------------------------------------------------------------------- 
-! 
-! Purpose: 
-! Compute the geopotential height (above the surface) at the midpoints and 
+!-----------------------------------------------------------------------
+!
+! Purpose:
+! Compute the geopotential height (above the surface) at the midpoints and
 ! interfaces using the input temperatures and pressures.
 !
 !-----------------------------------------------------------------------
 
-use ppgrid, only : pcols
-use air_composition, only: thermodynamic_active_species_num
-use air_composition, only: thermodynamic_active_species_idx, dry_air_species_num
+use ppgrid,                    only: pcols
+use constituents,              only: pcnst, cnst_get_ind
+use ccpp_constituent_prop_mod, only: ccpp_const_props      !CCPP constituent properties array (CAM version)
+use geopotential_temp,         only: geopotential_temp_run !CCPP version
 !------------------------------Arguments--------------------------------
 !
 ! Input arguments
@@ -65,6 +66,8 @@ use air_composition, only: thermodynamic_active_species_idx, dry_air_species_num
 !
 !---------------------------Local variables-----------------------------
 !
+    logical  :: lagrang                 ! Lagrangian vertical coordinate flag
+    integer  :: ixq                     ! state constituent array index for water vapor
     integer  :: i,k,idx                 ! Lon, level indices, water species index
     real(r8) :: hkk(ncol)               ! diagonal element of hydrostatic matrix
     real(r8) :: hkl(ncol)               ! off-diagonal element
@@ -74,28 +77,35 @@ use air_composition, only: thermodynamic_active_species_idx, dry_air_species_num
     real(r8) :: qfac(ncol,pver)         ! factor to convert from wet to dry mixing ratio
     real(r8) :: sum_dry_mixing_ratio(ncol,pver)! sum of dry water mixing ratios
 
+    !CCPP-required variables (not used):
+    integer            :: errflg
+    character(len=512) :: errmsg
+
 !
 !-----------------------------------------------------------------------
 !
-    rog(:ncol,:) = rair(:ncol,:) / gravit
-
-! The surface height is zero by definition.
-
-    do i = 1,ncol
-       zi(i,pverp) = 0.0_r8
-    end do
-
-    ! Compute zi, zm from bottom up. 
-    ! Note, zi(i,k) is the interface above zm(i,k)
+    !Determine index for water vapor mass mixing ratio
+    call cnst_get_ind('Q', ixq)
 
     !
     ! original code for backwards compatability with FV and EUL
     !
     if (.not.(dycore_is('MPAS') .or. dycore_is('SE'))) then
+
+      !dry air gas constant over gravity
+      rog(:ncol,:) = rair(:ncol,:) / gravit
+
+      ! The surface height is zero by definition.
+      do i = 1,ncol
+        zi(i,pverp) = 0.0_r8
+      end do
+
+      ! Compute zi, zm from bottom up.
+      ! Note, zi(i,k) is the interface above zm(i,k)
       do k = pver, 1, -1
-        
+
         ! First set hydrostatic elements consistent with dynamics
-        
+
         if ((dycore_is('LR') .or. dycore_is('FV3'))) then
           do i = 1,ncol
             hkl(i) = piln(i,k+1) - piln(i,k)
@@ -107,83 +117,37 @@ use air_composition, only: thermodynamic_active_species_idx, dry_air_species_num
             hkk(i) = 0.5_r8 * hkl(i)
           end do
         end if
-        
+
         ! Now compute tv, zm, zi
-        
+
         do i = 1,ncol
-          tvfac   = 1._r8 + zvir(i,k) * q(i,k,1)
+          tvfac   = 1._r8 + zvir(i,k) * q(i,k,ixq)
           tv      = t(i,k) * tvfac
-          
+
           zm(i,k) = zi(i,k+1) + rog(i,k) * tv * hkk(i)
           zi(i,k) = zi(i,k+1) + rog(i,k) * tv * hkl(i)
         end do
       end do
-    else
-      !
-      ! For the computation of generalized virtual temperature (equation 16
-      ! in Lauritzen et al. (2018);  https://doi.org/10.1029/2017MS001257)
-      !
-      ! Compute factor for converting wet to dry mixing ratio (eq.7)
-      !
-      qfac = 1.0_r8
-      do idx = dry_air_species_num + 1,thermodynamic_active_species_num
-        do k = 1,pver
-          do i = 1,ncol
-            qfac(i,k) = qfac(i,k)-q(i,k,thermodynamic_active_species_idx(idx))
-          end do
-        end do
-      end do
-      qfac = 1.0_r8/qfac
-      
-      ! Compute sum of dry water mixing ratios
-      sum_dry_mixing_ratio = 1.0_r8
-      do idx =  dry_air_species_num + 1,thermodynamic_active_species_num
-        do k = 1,pver
-          do i = 1,ncol
-            sum_dry_mixing_ratio(i,k) = sum_dry_mixing_ratio(i,k)&
-                 +q(i,k,thermodynamic_active_species_idx(idx))*qfac(i,k)
-          end do
-        end do
-      end do
-      sum_dry_mixing_ratio(:,:) = 1.0_r8/sum_dry_mixing_ratio(:,:)
-      ! Compute zi, zm from bottom up. 
-      ! Note, zi(i,k) is the interface above zm(i,k)
-      do k = pver, 1, -1
-        
-        ! First set hydrostatic elements consistent with dynamics
- 
-        !
-        ! the outcommented code is left for when/if we will support
-        ! FV3 and/or FV with condensate loading
-        !
-       
-!        if ((dycore_is('LR') .or. dycore_is('FV3'))) then
-!          do i = 1,ncol
-!            hkl(i) = piln(i,k+1) - piln(i,k)
-!            hkk(i) = 1._r8 - pint(i,k) * hkl(i) * rpdel(i,k)
-!          end do
-!        else!MPAS, SE or EUL
-          !
-          ! For SE   : pmid = 0.5*(pint(k+1)+pint(k))
-          ! For MPAS : pmid is computed from theta_m, rhodry, etc.
-          !
-          do i = 1,ncol
-            hkl(i) = pdel(i,k) / pmid(i,k)
-            hkk(i) = 0.5_r8 * hkl(i)
-          end do
-!        end if
-        
-        ! Now compute tv, zm, zi
-        
-        do i = 1,ncol
-          tvfac   = (1._r8 + (zvir(i,k)+1.0_r8) * q(i,k,1)*qfac(i,k))*sum_dry_mixing_ratio(i,k)
-          tv      = t(i,k) * tvfac
-          
-          zm(i,k) = zi(i,k+1) + rog(i,k) * tv * hkk(i)
-          zi(i,k) = zi(i,k+1) + rog(i,k) * tv * hkl(i)
-        end do
-      end do
+    else !Using MPAS or SE dycore
+
+      !Determine vertical coordinate type,
+      !NOTE: Currently the FV (LR) or FV3 dycores
+      !      do not allow for condensate loading,
+      !      so for now 'lagrang' will always be FALSE.
+      if ((dycore_is('LR') .or. dycore_is('FV3'))) then
+        lagrang = .true.
+      else
+        lagrang = .false.
+      end if
+
+      !Use CCPP version of geopotential_t:
+      call geopotential_temp_run(pver, lagrang, pver, 1, pverp, 1,  &
+        pcnst, piln(1:ncol,:), pint(1:ncol,:), pmid(1:ncol,:),      &
+        pdel(1:ncol,:), rpdel(1:ncol,:), t(1:ncol,:),               &
+        q(1:ncol,:,ixq), q(1:ncol,:,:), ccpp_const_props,           &
+        rair(1:ncol,:), gravit, zvir(1:ncol,:), zi(1:ncol,:),       &
+        zm(1:ncol,:), ncol, errflg, errmsg)
+
     end if
-    return
   end subroutine geopotential_t
 end module geopotential
