@@ -25,6 +25,7 @@
 [submodule "cdeps"]
 	path = components/cdeps
 	url = https://github.com/jedwards4b/CDEPS.git
+        esmtag = cdeps1.0.24_rme1
 [submodule "cice6"]
 	path = components/cice
 	url = https://github.com/ESCOMP/CESM_CICE
