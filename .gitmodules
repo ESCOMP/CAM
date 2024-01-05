@@ -59,6 +59,7 @@
 [submodule "hemco"]
 	path = src/hemco
 	url = https://github.com/jedwards4b/HEMCO_CESM
+        esmtag = hemco-cesm1_2_1_hemco3_6_3_cesm_rme
 [submodule "pumas"]
 	path = src/physics/pumas
 	url = https://github.com/ESCOMP/PUMAS
