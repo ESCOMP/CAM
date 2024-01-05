@@ -22,7 +22,7 @@
         esmsparse = ../.mpas_sparse_checkout
 [submodule "cdeps"]
 	path = components/cdeps
-	url = https://github.com/ESCOMP/CDEPS.git
+	url = https://github.com/jedwards4b/CDEPS.git
 [submodule "cice6"]
 	path = components/cice
 	url = https://github.com/ESCOMP/CESM_CICE
