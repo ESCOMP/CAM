@@ -1,103 +1,131 @@
 [submodule "ali_arms"]
-	path = src/physics/ali_arms
-	url = https://github.com/ESCOMP/ALI-ARMS
-        esmrequired = I:T
-        esmtag = ALI_ARMS_v1.0.1
+path = src/physics/ali_arms
+url = https://github.com/ESCOMP/ALI-ARMS
+esmrequired = I:T
+esmtag = ALI_ARMS_v1.0.1
+
 [submodule "cime"]
-	path = cime
-	url = https://github.com/jedwards4b/cime
-        esmrequired = T:T
+path = cime
+url = https://github.com/jedwards4b/cime
+esmrequired = T:T
+
 [submodule "cosp2"]
-	path = src/physics/cosp2/src
-	url = https://github.com/CFMIP/COSPv2.0
-        esmsparse = ../.cosp_sparse_checkout
-        esmtag = v2.1.4cesm
+path = src/physics/cosp2/src
+url = https://github.com/CFMIP/COSPv2.0
+esmsparse = ../.cosp_sparse_checkout
+esmtag = v2.1.4cesm
+
 [submodule "clubb"]
-	path = src/physics/clubb
-	url = https://github.com/larson-group/clubb_release
-        esmsparse = ../.clubb_sparse_checkout
-        esmtag = clubb_4ncar_20221129_59cb19f_20230330_branchtag
+path = src/physics/clubb
+url = https://github.com/larson-group/clubb_release
+esmsparse = ../.clubb_sparse_checkout
+esmtag = clubb_4ncar_20221129_59cb19f_20230330_branchtag
+
 [submodule "mpas"]
-	path = src/dynamics/mpas/dycore
-	url = https://github.com/MPAS-Dev/MPAS-Model.git
-        esmsparse = ../.mpas_sparse_checkout
-        esmtag = v8.0.1
+path = src/dynamics/mpas/dycore
+url = https://github.com/MPAS-Dev/MPAS-Model.git
+esmsparse = ../.mpas_sparse_checkout
+esmtag = v8.0.1
+
 [submodule "cdeps"]
-	path = components/cdeps
-	url = https://github.com/jedwards4b/CDEPS.git
-        esmtag = cdeps1.0.24_rme1
+path = components/cdeps
+url = https://github.com/jedwards4b/CDEPS.git
+esmtag = cdeps1.0.24_rme1
+
 [submodule "cice6"]
-	path = components/cice
-	url = https://github.com/ESCOMP/CESM_CICE
+path = components/cice
+url = https://github.com/jedwards4b/CESM_CICE
+esmtag = cesm_cice6_4_1_10_rme01
+
 [submodule "cice5"]
-	path = components/cice5
-	url = https://github.com/ESCOMP/CESM_CICE5
+path = components/cice5
+url = https://github.com/ESCOMP/CESM_CICE5
+esmtag = cice5_20220204
+
 [submodule "cism"]
-	path = components/cism
-	url = https://github.com/jedwards4b/CISM-wrapper
+path = components/cism
+url = https://github.com/jedwards4b/CISM-wrapper
+
 [submodule "clm"]
-	path = components/clm
-	url = https://github.com/jedwards4b/ctsm
+path = components/clm
+url = https://github.com/jedwards4b/ctsm
+
 [submodule "cmeps"]
-	path = components/cmeps
-	url = https://github.com/ESCOMP/CMEPS.git
-        esmtag = cmeps0.14.49
+path = components/cmeps
+url = https://github.com/ESCOMP/CMEPS.git
+esmtag = cmeps0.14.49
+
 [submodule "cpl7"]
-	path = components/cpl7
-	url = https://github.com/ESCOMP/CESM_CPL7andDataComps
-        esmtag = cpl77.0.8
+path = components/cpl7
+url = https://github.com/ESCOMP/CESM_CPL7andDataComps
+esmtag = cpl77.0.8
+
 [submodule "mosart"]
-	path = components/mosart
-	url = https://github.com/ESCOMP/MOSART
-        esmtag = mosart1_0_48
+path = components/mosart
+url = https://github.com/ESCOMP/MOSART
+esmtag = mosart1_0_48
+
 [submodule "rtm"]
-	path = components/rtm
-	url = https://github.com/ESCOMP/RTM
+path = components/rtm
+url = https://github.com/ESCOMP/RTM
+
 [submodule "fms"]
-	path = libraries/FMS
-	url = https://github.com/jedwards4b/FMS_interface
-        esmtag = fi_20211011_rme1
+path = libraries/FMS
+url = https://github.com/jedwards4b/FMS_interface
+esmtag = fi_20211011_rme1
+
 [submodule "parallelio"]
-	path = libraries/parallelio
-	url = https://github.com/NCAR/ParallelIO
-        esmtag = pio2_6_2
+path = libraries/parallelio
+url = https://github.com/NCAR/ParallelIO
+esmtag = pio2_6_2
+
 [submodule "mct"]
-	path = libraries/mct
-	url = https://github.com/MCSclimate/MCT
-        esmtag = MCT_2.11.0
+path = libraries/mct
+url = https://github.com/MCSclimate/MCT
+esmtag = MCT_2.11.0
+
 [submodule "hemco"]
-	path = src/hemco
-	url = https://github.com/jedwards4b/HEMCO_CESM
-        esmtag = hemco-cesm1_2_1_hemco3_6_3_cesm_rme
+path = src/hemco
+url = https://github.com/jedwards4b/HEMCO_CESM
+esmtag = hemco-cesm1_2_1_hemco3_6_3_cesm_rme
+
 [submodule "pumas"]
-	path = src/physics/pumas
-	url = https://github.com/ESCOMP/PUMAS
-        esmtag = pumas_cam-release_v1.34
+path = src/physics/pumas
+url = https://github.com/ESCOMP/PUMAS
+esmtag = pumas_cam-release_v1.34
+
 [submodule "pumas-frozen"]
-	path = src/physics/pumas-frozen
-	url = https://github.com/ESCOMP/PUMAS
-        esmtag = pumas_cam-release_v1.17_rename
+path = src/physics/pumas-frozen
+url = https://github.com/ESCOMP/PUMAS
+esmtag = pumas_cam-release_v1.17_rename
+
 [submodule "carma"]
-	path = src/physics/carma/base
-	url = https://github.com/ESCOMP/CARMA_base.git
-        esmtag = carma4_05
+path = src/physics/carma/base
+url = https://github.com/ESCOMP/CARMA_base.git
+esmtag = carma4_05
+
 [submodule "atmos_phys"]
-	path = src/atmos_phys
-	url = https://github.com/ESCOMP/atmospheric_physics
-        esmtag = atmos_phys0_01_000
+path = src/atmos_phys
+url = https://github.com/ESCOMP/atmospheric_physics
+esmtag = atmos_phys0_01_000
+
 [submodule "atmos_cubed_sphere"]
-	path = src/dynamics/fv3/atmos_cubed_sphere
-	url = https://github.com/ESCOMP/FV3_CESM.git
-        esmtag = fv3_cesm.04
+path = src/dynamics/fv3/atmos_cubed_sphere
+url = https://github.com/ESCOMP/FV3_CESM.git
+esmtag = fv3_cesm.04
+
 [submodule "ccs_config"]
-	path = ccs_config
-	url = https://github.com/ESMCI/ccs_config_cesm/
-        esmtag = ccs_config_cesm0.0.88
+path = ccs_config
+url = https://github.com/ESMCI/ccs_config_cesm/
+esmtag = ccs_config_cesm0.0.88
+
 [submodule "chem_proc"]
-	path = chem_proc
-	url = https://github.com/ESCOMP/CHEM_PREPROCESSOR.git
-        esmtag = chem_proc5_0_05
+path = chem_proc
+url = https://github.com/ESCOMP/CHEM_PREPROCESSOR.git
+esmtag = chem_proc5_0_05
+
 [submodule "share"]
-	path = share
-	url = https://github.com/ESCOMP/CESM_share
-        esmtag = share1.0.17
+path = share
+url = https://github.com/ESCOMP/CESM_share
+esmtag = share1.0.17
+
