@@ -9,6 +9,7 @@
     url = https://github.com/jedwards4b/cime
     fxrequired = T:T
     fxtag = cime6.0.198_rme01
+
 [submodule "cosp2"]
     path = src/physics/cosp2/src
     url = https://github.com/CFMIP/COSPv2.0
@@ -31,102 +32,125 @@
     path = components/cdeps
     url = https://github.com/jedwards4b/CDEPS.git 
     fxtag = cdeps1.0.24_rme1
+    fxrequired = T:T
 
 [submodule "cice6"]
     path = components/cice
     url = https://github.com/jedwards4b/CESM_CICE
     fxtag = cesm_cice6_4_1_10_rme01
+    fxrequired = T:T
 
 [submodule "cice5"]
     path = components/cice5
     url = https://github.com/ESCOMP/CESM_CICE5
     fxtag = cice5_20220128
+    fxrequired = T:T
 
 [submodule "cism"]
     path = components/cism
     url = https://github.com/jedwards4b/CISM-wrapper
+    fxtag = cismwrap_2_1_96_rme01
+    fxrequired = T:T
 
 [submodule "clm"]
     path = components/clm
     url = https://github.com/jedwards4b/ctsm
     fxtag = ctsm5.1.dev130-rme01    
+    fxrequired = T:T
+
 [submodule "cmeps"]
     path = components/cmeps
     url = https://github.com/ESCOMP/CMEPS.git
     fxtag = cmeps0.14.49
+    fxrequired = T:T
 
 [submodule "cpl7"]
     path = components/cpl7
     url = https://github.com/ESCOMP/CESM_CPL7andDataComps
     fxtag = cpl77.0.8
+    fxrequired = T:T
 
 [submodule "mosart"]
     path = components/mosart
     url = https://github.com/ESCOMP/MOSART
     fxtag = mosart1_0_48
+    fxrequired = T:T
 
 [submodule "rtm"]
     path = components/rtm
     url = https://github.com/ESCOMP/RTM
     fxtag = rtm1_0_78
+    fxrequired = T:T
 
 [submodule "fms"]
     path = libraries/FMS
     url = https://github.com/jedwards4b/FMS_interface
     fxtag = fi_20211011_rme1
+    fxrequired = T:T
 
 [submodule "parallelio"]
     path = libraries/parallelio
     url = https://github.com/NCAR/ParallelIO
     fxtag = pio2_6_2
+    fxrequired = T:T
 
 [submodule "mct"] 
     path = libraries/mct
     url = https://github.com/MCSclimate/MCT
     fxtag = MCT_2.11.0
+    fxrequired = T:T
 
 [submodule "hemco"]
     path = src/hemco
     url = https://github.com/jedwards4b/HEMCO_CESM
     fxtag = hemco-cesm1_2_1_hemco3_6_3_cesm_rme
+    fxrequired = I:T
 
 [submodule "pumas"]
     path = src/physics/pumas
     url = https://github.com/ESCOMP/PUMAS
     fxtag = pumas_cam-release_v1.34
+    fxrequired = I:T
 
 [submodule "pumas-frozen"]
     path = src/physics/pumas-frozen
     url = https://github.com/ESCOMP/PUMAS
     fxtag = pumas_cam-release_v1.17_rename
+    fxrequired = I:T
 
 [submodule "carma"]
     path = src/physics/carma/base
     url = https://github.com/ESCOMP/CARMA_base.git
     fxtag = carma4_05
+    fxrequired = I:T
 
 [submodule "atmos_phys"]
     path = src/atmos_phys
     url = https://github.com/ESCOMP/atmospheric_physics
     fxtag = atmos_phys0_01_000
+    fxrequired = I:T
 
 [submodule "atmos_cubed_sphere"]
     path = src/dynamics/fv3/atmos_cubed_sphere
     url = https://github.com/ESCOMP/FV3_CESM.git
     fxtag = fv3_cesm.04
+    fxrequired = I:T
 
 [submodule "ccs_config"]
     path = ccs_config
     url = https://github.com/ESMCI/ccs_config_cesm/
     fxtag = ccs_config_cesm0.0.88
+    fxrequired = T:T
 
 [submodule "chem_proc"]
     path = chem_proc
     url = https://github.com/ESCOMP/CHEM_PREPROCESSOR.git
     fxtag = chem_proc5_0_05
+    fxrequired = I:T
 
 [submodule "share"]
     path = share
     url = https://github.com/ESCOMP/CESM_share
     fxtag = share1.0.17
+    fxrequired = T:T
 

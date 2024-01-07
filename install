@@ -7,8 +7,8 @@ set -e
 dir=$(git rev-parse --show-toplevel)
 if ! test -f ${dir}/bin/git-fleximod; then
   echo "Getting checkout tools"
-  git -C ${dir} clone https://github.com/jedwards4b/gitscripts --depth 1 bin
+  git -C ${dir} clone https://github.com/jedwards4b/git-fleximod --depth 1 bin
 fi
 pushd ${dir} 1>/dev/null
-python ./bin/git-fleximod "$@"
+python ./bin/git-fleximod install "$@"
 popd 1>/dev/null
