@@ -55,7 +55,7 @@
 [submodule "clm"]
     path = components/clm
     url = https://github.com/jedwards4b/ctsm
-    fxtag = ctsm5.1.dev130-rme01    
+    fxtag = ctsm5.1.dev130-rme02
     fxrequired = T:T
 
 [submodule "cmeps"]
