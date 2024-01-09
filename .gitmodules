@@ -8,7 +8,7 @@
     path = cime
     url = https://github.com/jedwards4b/cime
     fxrequired = T:T
-    fxtag = cime6.0.198_rme01
+    fxtag = cime6.0.198_rme02
 
 [submodule "cosp2"]
     path = src/physics/cosp2/src
@@ -144,7 +144,7 @@
 
 [submodule "chem_proc"]
     path = chem_proc
-    url = https://github.com/ESCOMP/CHEM_PREPROCESSOR.git
+	url = https://github.com/ESCOMP/CHEM_PREPROCESSOR.git
     fxtag = chem_proc5_0_05
     fxrequired = I:T
 
