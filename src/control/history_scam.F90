@@ -39,8 +39,6 @@ CONTAINS
 !-----------------------------------------------------------------------
 ! Local variables
 !
-      integer m,j        ! Indices
-      real(r8) dummy
       character(len=100) dyngrid
 
       if (dycore_is('SE')) then
@@ -125,7 +123,6 @@ CONTAINS
 ! !USES:
     use constituents,     only: pcnst, cnst_name
     use dycore,           only: dycore_is
-    use phys_control,     only: phys_getopts
 ! !ARGUMENTS:
     implicit none
 !
@@ -138,6 +135,7 @@ CONTAINS
 ! !LOCAL VARIABLES:
     integer m
     character(len=100) dyngrid
+!-----------------------------------------------------------------------
 
     if (dycore_is('SE')) then
        dyngrid = 'GLL'
@@ -147,7 +145,6 @@ CONTAINS
        dyngrid = 'unknown'
     end if
 
-!-----------------------------------------------------------------------
     if (trim(dyngrid) == 'gauss_grid') then
     call addfld ('CLAT1&IC',  horiz_only,  'I', ' ','cos lat for bfb testing', gridname=trim(dyngrid))
     call add_default ('CLAT1&IC',0,'I')

@@ -31,10 +31,6 @@ module iop
   real(r8), allocatable,target :: divv3dsav(:,:,:)
   real(r8), allocatable,target :: betasav(:)
 
-  integer :: closelatidx,closelonidx,latid,lonid,levid,timeid
-
-  real(r8):: closelat,closelon
-
 !
 ! !PUBLIC MEMBER FUNCTIONS:
   public :: init_iop_fields
@@ -109,7 +105,6 @@ contains
 ! Copy IOP forcing fields into prognostics which for Eulerian is just PS
 !------------------------------------------------------------------------------
    use scamMod,             only: tobs,uobs,vobs,qobs,psobs
-   use prognostics,         only: ptimelevels
    implicit none
 
    !-----------------------------------------------------------------------
@@ -119,7 +114,6 @@ contains
    real(r8), optional, intent(inout) :: u3(:,:,:,:)
    real(r8), optional, intent(inout) :: v3(:,:,:,:)
    real(r8), optional, intent(inout) :: t3(:,:,:,:)
-!   real(r8), optional, intent(inout) :: ps(plon,beglat:endlat,ptimelevels)
    real(r8), optional, intent(inout) :: ps(:,:,:)
 
 !---------------------------Local workspace-----------------------------

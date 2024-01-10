@@ -11,18 +11,18 @@ use perf_mod,       only: t_startf, t_stopf, t_barrierf
 use cam_abortutils, only: endrun
 
 use parallel_mod,   only: par
-use dimensions_mod, only: np, npsq, nlev, qsize_d, nelemd
+use dimensions_mod, only: np, npsq, nlev, nelemd
 
 use aerosol_properties_mod, only: aerosol_properties
 use aerosol_state_mod,      only: aerosol_state
 use microp_aero,            only: aerosol_state_object, aerosol_properties_object
 use scamMod,                only: use_iop, doiopupdate, single_column, &
-                                  setiopupdate, setiopupdate_init, readiopdata
-use se_single_column_mod,   only: scm_setfield, scm_setinitial, iop_broadcast
+                                  setiopupdate, readiopdata
+use se_single_column_mod,   only: scm_setfield, iop_broadcast
 use dyn_grid,               only: hvcoord
-use time_manager,           only: get_step_size, is_last_step, is_first_step, is_first_restart_step
+use time_manager,           only: get_step_size, is_first_restart_step
 use cam_history,            only: outfld, write_camiop, addfld, add_default, horiz_only
-use cam_history,            only: write_inithist, outfld, hist_fld_active, fieldname_len
+use cam_history,            only: write_inithist, hist_fld_active, fieldname_len
 
 implicit none
 private
@@ -236,12 +236,11 @@ subroutine stepon_run3(dtime, cam_out, phys_state, dyn_in, dyn_out)
 
    use camsrfexch,     only: cam_out_t
    use dyn_comp,       only: dyn_run
-   use advect_tend,    only: compute_adv_tends_xyz
+   use advect_tend,    only: compute_adv_tends_xyz, compute_write_iop_fields
    use dyn_grid,       only: TimeLevel
    use se_dyn_time_mod,only: TimeLevel_Qdp
    use control_mod,    only: qsplit
    use constituents,   only: pcnst, cnst_name
-   use time_manager,   only: is_first_step
 
    ! arguments
    real(r8),            intent(in)    :: dtime   ! Time-step
@@ -251,38 +250,10 @@ subroutine stepon_run3(dtime, cam_out, phys_state, dyn_in, dyn_out)
    type (dyn_export_t), intent(inout) :: dyn_out ! Dynamics export container
 
    integer :: tl_f, tl_fQdp
-   integer :: rc, i, j, k, p, ie
-   real(r8) :: forcing_temp(npsq,nlev), forcing_q(npsq,nlev,pcnst)
-   real(r8) :: ftmp_temp(np,np,nlev,nelemd), ftmp_q(np,np,nlev,pcnst,nelemd), &
-        ftmp_fq(np,np,nlev,pcnst,nelemd), ftmp_q_update(np,np,nlev,pcnst,nelemd), &
-        ftmp_q_diff(np,np,nlev,pcnst,nelemd),ftmp_newqdp_diff(np,np,nlev,pcnst,nelemd), &
-        ftmp_t_update(np,np,nlev,nelemd),ftmp_newt_diff(np,np,nlev,nelemd)
-   real(r8) :: out_temp(npsq,nlev), out_q(npsq,nlev), out_u(npsq,nlev), &
-               out_v(npsq,nlev), out_psv(npsq)
    !--------------------------------------------------------------------------------------
 
-   call t_startf('comp_adv_tends1')
-   tl_f = TimeLevel%n0
-   call TimeLevel_Qdp(TimeLevel, qsplit, tl_fQdp)
-
-   if (write_camiop) then
-      tl_f = TimeLevel%n0   ! timelevel which was adjusted by physics
-
-      ! Save ftmp stuff to get state before dynamics is called
-      do ie=1,nelemd
-         ftmp_temp(:,:,:,ie) = dyn_in%elem(ie)%state%T(:,:,:,tl_f)
-         do p = 1, qsize_d
-            ftmp_fq(:,:,:,p,ie)=dyn_in%elem(ie)%derived%FQ(:,:,:,p)/dtime
-            ftmp_q(:,:,:,p,ie) = dyn_in%elem(ie)%state%Qdp(:,:,:,p,tl_fQdp)/&
-                 dyn_in%elem(ie)%state%dp3d(:,:,:,tl_f)
-         enddo
-      enddo
-   end if
-
    if (single_column) then
-
-     ! Update IOP properties e.g. omega, divT, divQ
-
+      ! Update IOP properties e.g. omega, divT, divQ
       iop_update_phase1 = .false.
       if (doiopupdate) then
          if (masterproc) call readiopdata(hvcoord)
@@ -295,6 +266,7 @@ subroutine stepon_run3(dtime, cam_out, phys_state, dyn_in, dyn_out)
    tl_f = TimeLevel%n0
    call TimeLevel_Qdp(TimeLevel, qsplit, tl_fQdp)
    call compute_adv_tends_xyz(dyn_in%elem,dyn_in%fvm,1,nelemd,tl_fQdp,tl_f)
+   if (write_camiop) call compute_write_iop_fields(dyn_in%elem,dyn_in%fvm,1,nelemd,tl_fQdp,tl_f)
    call t_stopf('comp_adv_tends1')
 
    call t_barrierf('sync_dyn_run', mpicom)
@@ -306,59 +278,8 @@ subroutine stepon_run3(dtime, cam_out, phys_state, dyn_in, dyn_out)
    tl_f = TimeLevel%n0
    call TimeLevel_Qdp(TimeLevel, qsplit, tl_fQdp)
    call compute_adv_tends_xyz(dyn_in%elem,dyn_in%fvm,1,nelemd,tl_fQdp,tl_f)
+   if (write_camiop) call compute_write_iop_fields(dyn_in%elem,dyn_in%fvm,1,nelemd,tl_fQdp,tl_f)
    call t_stopf('comp_adv_tends2')
-
-   ! Update to get tendency
-   if (write_camiop) then
-      tl_f = TimeLevel%n0
-
-      do ie=1,nelemd
-         do k=1,nlev
-            do j=1,np
-               do i=1,np
-
-                  ! Note that this calculation will not provide b4b results with
-                  !  an E3SM because the dynamics tendency is not computed in the exact
-                  !  same way as an E3SM run, introducing error with roundoff
-                  forcing_temp(i+(j-1)*np,k) = (dyn_in%elem(ie)%state%T(i,j,k,tl_f) - &
-                       ftmp_temp(i,j,k,ie))/dtime - dyn_in%elem(ie)%derived%FT(i,j,k)
-                  out_temp(i+(j-1)*np,k) = dyn_in%elem(ie)%state%T(i,j,k,tl_f)
-                  out_u(i+(j-1)*np,k) = dyn_in%elem(ie)%state%v(i,j,1,k,tl_f)
-                  out_v(i+(j-1)*np,k) = dyn_in%elem(ie)%state%v(i,j,2,k,tl_f)
-                  out_q(i+(j-1)*np,k) = dyn_in%elem(ie)%state%Qdp(i,j,k,1,tl_fQdp)/&
-                       dyn_in%elem(ie)%state%dp3d(i,j,k,tl_f)
-                  out_psv(i+(j-1)*np) = dyn_in%elem(ie)%state%psdry(i,j)
-
-                  ftmp_t_update(i,j,k,ie) =  ftmp_temp(i,j,k,ie) + dtime*(dyn_in%elem(ie)%derived%FT(i,j,k)	 + forcing_temp(i+(j-1)*np,k))
-                  ftmp_newt_diff(i,j,k,ie) =  dyn_in%elem(ie)%state%T(i,j,k,tl_f)-ftmp_t_update(i,j,k,ie)
-                  dyn_in%elem(ie)%state%T(i,j,k,tl_f)=ftmp_t_update(i,j,k,ie)
-                  out_temp(i+(j-1)*np,k) = dyn_in%elem(ie)%state%T(i,j,k,tl_f)
-                  do p=1,qsize_d
-                     forcing_q(i+(j-1)*np,k,p) = (dyn_in%elem(ie)%state%Qdp(i,j,k,p,tl_fQdp)/&
-                          dyn_in%elem(ie)%state%dp3d(i,j,k,tl_f) - &
-                          ftmp_q(i,j,k,p,ie))/dtime - ftmp_fq(i,j,k,p,ie)
-                     ftmp_q_update(i,j,k,p,ie) = ftmp_q(i,j,k,p,ie) + dtime*(ftmp_fq(i,j,k,p,ie) + forcing_q(i+(j-1)*np,k,p))
-                     ftmp_newqdp_diff(i,j,k,p,ie)=dyn_in%elem(ie)%state%Qdp(i,j,k,p,tl_fQdp)-(ftmp_q_update(i,j,k,p,ie)*dyn_in%elem(ie)%state%dp3d(i,j,k,tl_f))
-                     dyn_in%elem(ie)%state%Qdp(i,j,k,p,tl_fQdp)=ftmp_q_update(i,j,k,p,ie)*dyn_in%elem(ie)%state%dp3d(i,j,k,tl_f)
-                  enddo
-                  out_q(i+(j-1)*np,k) = dyn_in%elem(ie)%state%Qdp(i,j,k,1,tl_fQdp)/&
-                       dyn_in%elem(ie)%state%dp3d(i,j,k,tl_f)
-               enddo
-            enddo
-         enddo
-
-         call outfld('Ps',out_psv,npsq,ie)
-         call outfld('t',out_temp,npsq,ie)
-         call outfld('q',out_q,npsq,ie)
-         call outfld('u',out_u,npsq,ie)
-         call outfld('v',out_v,npsq,ie)
-         call outfld('divT3d',forcing_temp,npsq,ie)
-         do p=1,qsize_d
-            call outfld(trim(cnst_name(p))//'_dten',forcing_q(:,:,p),npsq,ie)
-         enddo
-
-      enddo
-   end if
 
 end subroutine stepon_run3
 

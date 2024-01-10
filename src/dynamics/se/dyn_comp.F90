@@ -1151,7 +1151,7 @@ subroutine dyn_run(dyn_state)
    end if ! not use_3dfrc
 
    if (single_column) then
-      call apply_SC_forcing(dyn_state%elem,hvcoord,TimeLevel,3,.false.,nets,nete)
+      call apply_SC_forcing(dyn_state%elem,hvcoord,TimeLevel,3,.false.)
    end if
 
    ! output vars on CSLAM fvm grid

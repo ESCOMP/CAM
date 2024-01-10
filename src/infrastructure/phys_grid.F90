@@ -253,7 +253,7 @@ CONTAINS
          pos_scmlon = mod(scmlon  + 360._r8,360._r8)
 
          if (unstructured) then
-            minpoint=1000.0
+            minpoint=1000.0_r8
             do i=1,columns_on_task
                testpoint=abs(pos_dynlons(i)-pos_scmlon)+abs(dynlats(i)-scmlat)
                if (testpoint .lt. minpoint) then

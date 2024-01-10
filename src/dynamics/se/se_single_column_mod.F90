@@ -13,7 +13,7 @@ use scamMod,                only: have_t, have_q, have_u, have_v, have_ps, have_
                                   have_omega, have_cldliq, have_divt, have_divq, have_divt3d, have_divq3d, &
                                   use_3dfrc,scmlat,scmlon
 use constituents,           only: cnst_get_ind, pcnst
-use dimensions_mod,         only: nelemd, np, nlev
+use dimensions_mod,         only: nelemd, np, nlev, qsize
 use time_manager,           only: get_nstep, is_first_step, get_step_size, is_first_restart_step
 use ppgrid,                 only: begchunk
 use se_dyn_time_mod,        only: timelevel_qdp
@@ -40,7 +40,6 @@ contains
 
 subroutine scm_setinitial(elem)
 
-  use constituents, only: qmin
   use dyn_grid,     only: TimeLevel
   use control_mod,  only: qsplit
 
@@ -48,7 +47,7 @@ subroutine scm_setinitial(elem)
 
   type(element_t), intent(inout) :: elem(:)
 
-  integer i, j, k, cix, ie
+  integer k
   integer inumliq, inumice, icldliq, icldice
   integer              :: tl_f, tl_fqdp
 
@@ -122,7 +121,7 @@ subroutine scm_setfield(elem,iop_update_phase1)
   logical, intent(in) :: iop_update_phase1
   type(element_t), intent(inout) :: elem(:)
 
-  integer i, j, k, ie
+  integer              :: k
   integer              :: tl_f, tl_fqdp
 
   tl_f = timelevel%n0
@@ -142,34 +141,23 @@ subroutine scm_setfield(elem,iop_update_phase1)
 
 end subroutine scm_setfield
 
-subroutine apply_SC_forcing(elem,hvcoord,tl,n,t_before_advance,nets,nete)
+subroutine apply_SC_forcing(elem,hvcoord,tl,n,t_before_advance)
 !
     use scamMod,        only: single_column, use_3dfrc
-    use dimensions_mod, only: np, nlev, npsq,qsize_d
     use hybvcoord_mod,  only: hvcoord_t
-    use element_mod,    only: element_t
-    use physconst,      only: rair
     use se_dyn_time_mod,only: TimeLevel_t
-    use time_manager,   only: get_nstep
     use control_mod,    only: qsplit
     use apply_iop_forcing_mod, only:advance_iop_forcing, advance_iop_nudging
-    use ppgrid,         only:begchunk
 
     type (element_t), intent(inout), target :: elem(:)
     type (hvcoord_t), intent(in)            :: hvcoord
     type (TimeLevel_t), intent(in)          :: tl
     logical, intent(in)                     :: t_before_advance
-    integer, intent(in)                     :: n,nets,nete
+    integer, intent(in)                     :: n
 
-    integer                                 :: tl_qdp_np0,tl_qdp_np1
-    integer                                 :: ie,k,i,j,t,m
-    real (r8), dimension(nlev)              :: p
+    integer                                 :: k, m
     real (r8)                               :: dt
-
-    integer                                 :: nelemd_todo, np_todo
-    logical                                 :: scm_multcols = .false.
     logical                                 :: iop_nudge_tq = .false.
-
     real (r8), dimension(nlev,pcnst)        :: stateQ_in, q_update, q_phys_frc
     real (r8), dimension(nlev)              :: t_phys_frc, t_update, u_update, v_update
     real (r8), dimension(nlev)              :: t_in, u_in, v_in
@@ -193,7 +181,7 @@ subroutine apply_SC_forcing(elem,hvcoord,tl,n,t_before_advance,nets,nete)
     v_in(:nlev) = elem(ie_scm)%state%v(i_scm,j_scm,2,:nlev,tl_f)
 
     t_phys_frc(:)   = elem(ie_scm)%derived%fT(i_scm,j_scm,:)
-    q_phys_frc(:,:) = elem(ie_scm)%derived%fQ(i_scm,j_scm,:,:)/dt
+    q_phys_frc(:,:qsize) = elem(ie_scm)%derived%fQ(i_scm,j_scm,:,:qsize)/dt
 
     ! Call the main subroutine to update t, q, u, and v according to
     !  large scale forcing as specified in IOP file.
@@ -260,7 +248,6 @@ subroutine apply_SC_forcing(elem,hvcoord,tl,n,t_before_advance,nets,nete)
       !----------------------------------------------------------
 
       use spmd_utils,   only: mpi_logical, mpi_real8, masterproc, iam, mpicom, mstrid=>masterprocid
-      use dimensions_mod,         only: nlev
 
       integer :: ierr
 #ifdef SPMD
@@ -310,8 +297,6 @@ subroutine apply_SC_forcing(elem,hvcoord,tl,n,t_before_advance,nets,nete)
       !   flags and data to all processors
       !----------------------------------------------------------
 
-      use dimensions_mod,         only: nlev, nelemd
-      use element_mod,            only: element_t
       use shr_const_mod,          only: pi => SHR_CONST_PI
       use cam_abortutils,         only: endrun
 
@@ -344,7 +329,7 @@ subroutine apply_SC_forcing(elem,hvcoord,tl,n,t_before_advance,nets,nete)
                   i_scm=i
                   j_scm=j
                   minpoint=testval
-                  if (minpoint .lt. 1.e-7) minpoint=0._r8
+                  if (minpoint .lt. 1.e-7_r8) minpoint=0._r8
                endif
                indx=indx+1
             enddo

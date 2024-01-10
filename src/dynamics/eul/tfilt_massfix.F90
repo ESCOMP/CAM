@@ -287,9 +287,6 @@ subroutine tfilt_massfixrun (ztodt,         lat,    u3m1,   u3,     &
                dqfx3(i,k,m) = dqfxcam(i,k,m)
             else
                dqfx3(i,k,m) = alpha(m)*etamid(k)*abs(qfcst(i,k,m) - qminus(i,k,m))
-!!$#if ( defined BFB_CAM_SCAM_IOP )
-!!$               dqfx3sav(i,k,m,lat) = dqfx3(i,k,m)
-!!$#endif
                if (write_camiop) then
                   dqfx3sav(i,k,m,lat) = dqfx3(i,k,m)
                endif

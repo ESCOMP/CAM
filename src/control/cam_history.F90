@@ -4805,11 +4805,9 @@ end subroutine print_active_fldlst
         deallocate(latvar)
       end if
 
-      if (write_camiop) then
       dtime = get_step_size()
       ierr = pio_put_var(tape(t)%File, tape(t)%mdtid, (/dtime/))
       call cam_pio_handle_error(ierr, 'h_define: cannot put mdt')
-      end if
       !
       ! Model date info
       !

@@ -644,20 +644,8 @@ contains
     use hybvcoord_mod,          only: hvcoord_t
     use se_dyn_time_mod,        only: TimeLevel_t, timelevel_update
     use control_mod,            only: statefreq, qsplit, nu_p
-    use thread_mod,             only: omp_get_thread_num
-    use prim_advance_mod,       only: prim_advance_exp
-    use prim_advection_mod,     only: prim_advec_tracers_remap, prim_advec_tracers_fvm, deriv
-    use derivative_mod,         only: subcell_integration
-    use hybrid_mod,             only: set_region_num_threads, config_thread_region, get_loop_ranges
-    use dimensions_mod,         only: use_cslam,fvm_supercycling,fvm_supercycling_jet
-    use dimensions_mod,         only: kmin_jet, kmax_jet
-    use fvm_mod,                only: ghostBufQnhc_vh,ghostBufQ1_vh, ghostBufFlux_vh
-    use fvm_mod,                only: ghostBufQ1_h,ghostBufQnhcJet_h, ghostBufFluxJet_h
-
-#ifdef waccm_debug
-  use cam_history, only: outfld
-#endif
-
+    use prim_advection_mod,     only: deriv
+    use hybrid_mod,             only: config_thread_region, get_loop_ranges
 
     type (element_t) ,  intent(inout) :: elem(:)
     type(fvm_struct),   intent(inout) :: fvm(:)
@@ -669,19 +657,7 @@ contains
     type (TimeLevel_t), intent(inout) :: tl
     integer, intent(in)               :: rstep ! vertical remap subcycling step
 
-    type (hybrid_t):: hybridnew,hybridnew2
-    real(kind=r8)  :: st, st1, dp
-    integer        :: ie,t,q,k,i,j,n, n_Q
-    integer        :: ithr
-    integer        :: region_num_threads
-    integer        :: kbeg,kend
-
-    real (kind=r8) :: tempdp3d(np,np), x
-    real (kind=r8) :: tempmass(nc,nc)
-    real (kind=r8) :: tempflux(nc,nc,4)
-
-    real (kind=r8) :: dp_np1(np,np)
-
+    integer        :: ie,n
 
     ! ===============
     ! initialize mean flux accumulation variables and save some variables at n0
@@ -700,22 +676,22 @@ contains
     ! Dynamical Step
     ! ===============
 
-    call t_startf('prim_advance_exp')
+    call t_startf('set_prescribed_scm')
 
     call set_prescribed_scm(elem, fvm, deriv, hvcoord,   &
          hybrid, dt, tl, nets, nete)
 
-    call t_stopf('prim_advance_exp')
+    call t_stopf('set_prescribed_scm')
 
     do n=2,qsplit
        call TimeLevel_update(tl,"leapfrog")
 
-       call t_startf('prim_advance_exp')
+       call t_startf('set_prescribed_scm')
 
        call set_prescribed_scm(elem, fvm, deriv, hvcoord,   &
             hybrid, dt, tl, nets, nete)
 
-       call t_stopf('prim_advance_exp')
+       call t_stopf('set_prescribed_scm')
   enddo
 
   end subroutine prim_step_scm
@@ -831,12 +807,8 @@ contains
       use element_mod,       only: element_t
       use hybvcoord_mod,     only: hvcoord_t
       use hybrid_mod,        only: hybrid_t
-      use se_dyn_time_mod,   only: TimeLevel_t,  timelevel_qdp, tevolve
+      use se_dyn_time_mod,   only: TimeLevel_t,  timelevel_qdp
       use fvm_control_volume_mod, only: fvm_struct
-      use cam_thermo,        only: get_kappa_dry
-      use air_composition,   only: thermodynamic_active_species_num
-      use air_composition,   only: thermodynamic_active_species_idx_dycore, get_cp
-      use physconst,         only: cpair
       implicit none
 
       type (element_t), intent(inout), target   :: elem(:)
@@ -850,11 +822,10 @@ contains
       integer              , intent(in) :: nete
 
       ! Local
-      integer        :: ie,nm1,n0,np1,k,qn0,qnp1,m_cnst, nq,p
+      integer        :: ie,nm1,n0,np1,k,qn0,qnp1,p
       real(kind=r8)  :: eta_dot_dpdn(np,np,nlev+1)
 
 
-      call t_startf('prim_advance_exp')
       nm1   = tl%nm1
       n0    = tl%n0
       np1   = tl%np1

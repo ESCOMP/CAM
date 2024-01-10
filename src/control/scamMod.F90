@@ -270,9 +270,7 @@ subroutine scam_readnl(nlfile,single_column_in,scmlat_in,scmlon_in)
   integer :: unitn, ierr, i
   integer  :: ncid
   integer  :: iatt
-  integer  :: latidx, lonidx
   logical  :: adv
-  real(r8) :: ioplat,ioplon
 
 ! this list should include any variable that you might want to include in the namelist
   namelist /scam_nl/ iopfile, scm_iop_lhflxshflxTg, scm_iop_Tg, scm_relaxation, &
@@ -429,17 +427,14 @@ type (hvcoord_t), intent(in) :: hvcoord
    integer total_levs
    integer u_attlen
 
-   integer nstep
    integer k, m
    integer icldliq,icldice
-   integer inumliq,inumice,idx
-   integer timeid
+   integer inumliq,inumice
 
    logical have_srf              ! value at surface is available
    logical fill_ends             !
    logical have_cnst(pcnst)
    real(r8) dummy
-   real(r8) lat,xlat
    real(r8) srf(1)                  ! value at surface
    real(r8) hyam(plev),hybm(plev)
    real(r8) pmid(plev)  ! pressure at model levels (time n)
@@ -450,7 +445,7 @@ type (hvcoord_t), intent(in) :: hvcoord
    real(r8) coldata(plev)
    real(r8), allocatable :: dplevs( : )
    integer strt4(4),cnt4(4)
-   character(len=16) :: lowername
+   integer nstep
    character(len=128) :: units ! Units
 
    nstep = get_nstep()
@@ -1282,14 +1277,9 @@ subroutine setiopupdate
 
 !------------------------------Locals-----------------------------------
 
-   integer NCID,i
-   integer tsec_varID, time_dimID
-   integer bdate_varID
-   integer STATUS
    integer next_date, next_sec
    integer :: ncsec,ncdate                      ! current time of day,date
    integer :: yr, mon, day                      ! year, month, and day component
-   integer :: start_ymd,start_tod,dt
 !------------------------------------------------------------------------------
 
    call get_curr_date(yr,mon,day,ncsec)
@@ -1361,7 +1351,6 @@ subroutine plevs0 (nver    ,ps      ,pint    ,pmid    ,pdel, hvcoord)
 !
 !-----------------------------------------------------------------------
 
-  use pmgrid,       only: plev, plevp
   use hybvcoord_mod, only : hvcoord_t
   implicit none
 
@@ -1381,7 +1370,7 @@ subroutine plevs0 (nver    ,ps      ,pint    ,pmid    ,pdel, hvcoord)
 !
 ! Set interface pressures
 !
-!$OMP PARALLEL DO PRIVATE (K, I)
+!$OMP PARALLEL DO PRIVATE (K)
   do k=1,nver+1
      pint(k) = hvcoord%hyai(k)*hvcoord%ps0 + hvcoord%hybi(k)*ps
   end do
@@ -1556,11 +1545,9 @@ subroutine setiopupdate_init
    integer bdate_varID
    integer STATUS
    integer next_date, next_sec
-   integer next_date_print, next_sec_print
    integer :: ncsec,ncdate                      ! current time of day,date
    integer :: yr, mon, day                      ! year, month, and day component
    integer :: start_ymd,start_tod
-   logical :: doiter
 !------------------------------------------------------------------------------
 
     ! Open and read pertinent information from the IOP file

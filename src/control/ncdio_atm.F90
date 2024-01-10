@@ -43,11 +43,8 @@ module ncdio_atm
      module procedure infld_real_3d_3d
   end interface
 
-
   public :: infld
 
-  integer STATUS
-  real(r8) surfdat
   !-----------------------------------------------------------------------
 
 contains
@@ -69,8 +66,8 @@ contains
     ! !USES
     !
 
-    use pio,              only: pio_get_var, pio_read_darray, pio_setdebuglevel
-    use pio,              only: PIO_MAX_NAME, pio_inquire, pio_inq_dimname
+    use pio,              only: pio_read_darray, pio_setdebuglevel
+    use pio,              only: PIO_MAX_NAME, pio_inq_dimname
     use cam_pio_utils,    only: cam_pio_check_var, cam_pio_inq_var_fill
 
     !
@@ -94,7 +91,7 @@ contains
     ! !LOCAL VARIABLES:
     type(io_desc_t), pointer  :: iodesc
     integer                   :: grid_id   ! grid ID for data mapping
-    integer                   :: i, j      ! indices
+    integer                   :: j         ! indice
     integer                   :: ierr      ! error status
     type(var_desc_t)          :: varid     ! variable id
     integer                   :: no_fill
@@ -105,9 +102,6 @@ contains
     integer                   :: dimlens(PIO_MAX_VAR_DIMS) ! file variable shape
     integer                   :: grid_dimlens(2)
 
-    ! Offsets for reading global variables
-    integer                   :: strt(1) = 1 ! start ncol index for netcdf 1-d
-    integer                   :: cnt (1) = 1 ! ncol count for netcdf 1-d
     character(len=PIO_MAX_NAME) :: tmpname
     character(len=128)        :: errormsg
 
@@ -115,21 +109,12 @@ contains
     character(len=*), parameter :: subname='INFLD_REAL_1D_2D' ! subroutine name
     character(len=max_hcoordname_len) :: vargridname ! Name of variable's grid
 
-    ! For SCAM
-    real(r8)                  :: closelat, closelon
-    integer                   :: lonidx, latidx
-    real(r8), pointer         :: latvals_deg(:)
-    real(r8), pointer         :: lonvals_deg(:)
-    real(r8), allocatable     :: pos_lonvals(:)
-    real (r8)                 :: pos_scmlon,minpoint,testpoint
-    integer                   :: colidx,nvals
-
-    nullify(iodesc)
-
     !
     !-----------------------------------------------------------------------
     !
     !    call pio_setdebuglevel(3)
+
+    nullify(iodesc)
 
     !
     ! Error conditions
@@ -256,7 +241,7 @@ contains
     !
 
     use pio,              only: pio_get_var, pio_read_darray, pio_setdebuglevel
-    use pio,              only: PIO_MAX_NAME, pio_inquire, pio_inq_dimname
+    use pio,              only: PIO_MAX_NAME, pio_inq_dimname
     use cam_pio_utils,    only: cam_permute_array, calc_permutation
     use cam_pio_utils,    only: cam_pio_check_var, cam_pio_inq_var_fill
 
@@ -482,8 +467,7 @@ contains
     !
 
     use pio,              only: pio_get_var, pio_read_darray, pio_setdebuglevel
-    use pio,              only: PIO_MAX_NAME, pio_inquire, pio_inq_dimname
-    use cam_pio_utils,    only: cam_permute_array, calc_permutation
+    use pio,              only: PIO_MAX_NAME, pio_inq_dimname
     use cam_pio_utils,    only: cam_pio_check_var, cam_pio_inq_var_fill
 
     !
@@ -510,14 +494,11 @@ contains
     ! !LOCAL VARIABLES:
     type(io_desc_t), pointer  :: iodesc
     integer                   :: grid_id   ! grid ID for data mapping
-    integer                   :: i, j, k   ! indices
+    integer                   :: j         ! indice
     integer                   :: ierr      ! error status
     type(var_desc_t)          :: varid     ! variable id
 
     integer                   :: arraydimsize(3) ! field dimension lengths
-    integer                   :: arraydimids(2) ! Dimension IDs
-    integer                   :: permutation(2)
-    logical                   :: ispermuted
 
     integer                   :: ndims ! number of dimensions
     integer                   :: dimids(PIO_MAX_VAR_DIMS) ! file variable dims
@@ -529,8 +510,6 @@ contains
     integer                   :: cnt (3) = 1 ! ncol, lev counts for netcdf 2-d
     character(len=PIO_MAX_NAME) :: tmpname
 
-    real(r8), pointer         :: tmp3d(:,:,:) ! input data for permutation
-
     logical                   :: readvar_tmp ! if true, variable is on tape
     character(len=*), parameter :: subname='INFLD_REAL_2D_3D' ! subroutine name
     character(len=128)        :: errormsg
@@ -538,16 +517,12 @@ contains
     character(len=PIO_MAX_NAME) :: file_dnames(3)
     character(len=max_hcoordname_len) :: vargridname ! Name of variable's grid
 
-    ! For SCAM
-    real(r8)                  :: closelat, closelon
-    integer                   :: lonidx, latidx
-
-    nullify(iodesc)
-
     !
     !-----------------------------------------------------------------------
     !
     !    call pio_setdebuglevel(3)
+
+    nullify(iodesc)
 
     !
     ! Error conditions
@@ -680,7 +655,7 @@ contains
     !
 
     use pio,              only: pio_get_var, pio_read_darray, pio_setdebuglevel
-    use pio,              only: PIO_MAX_NAME, pio_inquire, pio_inq_dimname
+    use pio,              only: PIO_MAX_NAME, pio_inq_dimname
     use cam_pio_utils,    only: cam_permute_array, calc_permutation
     use cam_pio_utils,    only: cam_pio_check_var, cam_pio_inq_var_fill
 
