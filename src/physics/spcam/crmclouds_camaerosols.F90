@@ -732,11 +732,14 @@ subroutine crmclouds_convect_tend(state,  ptend,  ztodt,  pbuf)
    dsubcld = 0._r8
 
 
-   call zm_conv_convtran_run (pcols,pver,                                    &
-                  ptend%lq,state%q, pcnst,  mu(:,:), md(:,:),   &
-                  du(:,:), eu(:,:), ed(:,:), dp(:,:), dsubcld(:),  &
-                  jt(:),maxg(:),ideep(:), 1, lengath,  &
-                  nstep,   fracis,  ptend%q, dpdry, ztodt  )
+   !REMOVECAM - no longer need these when CAM is retired and pcols no longer exists
+   ptend%q(:,:,:) = 0._r8
+   !REMOVECAM_END
+   call zm_conv_convtran_run (ncol,pver,                                    &
+                  ptend%lq,state%q(:ncol,:,:), pcnst,  mu(:ncol,:), md(:ncol,:),   &
+                  du(:ncol,:), eu(:ncol,:), ed(:ncol,:), dp(:ncol,:), dsubcld(:ncol),  &
+                  jt(:ncol),maxg(:ncol),ideep(:ncol), 1, lengath,  &
+                  nstep,   fracis(:ncol,:,:),  ptend%q(:ncol,:,:), dpdry(:ncol,:), ztodt  )
 
 end subroutine crmclouds_convect_tend
 !=====================================================================================================

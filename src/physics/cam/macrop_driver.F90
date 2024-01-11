@@ -868,7 +868,11 @@ end subroutine macrop_driver_readnl
  ! This uses a ramp ( -30 ~ -10 for fice, -5 ~ 0 for fsnow ).
  ! The ramp within convective cloud may be different
 
-   call cldfrc_fice( ncol, state_loc%t, fice, fsnow )
+!REMOVECAM - no longer need these when CAM is retired and pcols no longer exists
+   fice(:,:) = 0._r8
+   fsnow(:,:) = 0._r8
+!REMOVECAM_END
+   call cldfrc_fice( ncol, state_loc%t(:ncol,:), fice(:ncol,:), fsnow(:ncol,:) )
 
 
    lq(:)        = .FALSE.

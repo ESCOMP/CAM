@@ -486,7 +486,10 @@ subroutine zm_conv_tend(pblh    ,mcon    ,cme     , &
    integer  :: ii
 
    real(r8),pointer :: zm_org2d(:,:)
-   real(r8),pointer :: orgt(:,:), org(:,:)
+   real(r8),allocatable :: orgt_alloc(:,:), org_alloc(:,:)
+
+   real(r8) :: zm_org2d_noalloc(state%ncol,pver)
+   real(r8) :: orgt_noalloc(state%ncol,pver), org_noalloc(state%ncol,pver)
 
    logical  :: lq(pcnst)
 
@@ -546,43 +549,60 @@ subroutine zm_conv_tend(pblh    ,mcon    ,cme     , &
 !
    call t_startf ('zm_convr_run')
 
-!CACNOTE - Need to remove the pointer and may need to copy in/out around the zm_convr_run call
    if (zmconv_org) then
       allocate(zm_org2d(pcols,pver))
-      org => state%q(:,:,ixorg)
-      orgt => ptend_loc%q(:,:,ixorg)
+      allocate(org_alloc(ncol,pver))
+      allocate(orgt_alloc(ncol,pver))
+      org_noalloc(:ncol,:) = state%q(1:ncol,:,ixorg)
    endif
 
-!CACNOTE - Need to check errflg and report errors
-!   call zm_convr_run(ncol, ncol, pver, &
-!                    pverp, gravit, latice, cpwv, cpliq, rh2o,  &
-!                    state%t(:ncol,:), state%q(:ncol,:,1), prec(:ncol), jctop(:ncol), jcbot(:ncol), &
-!                    pblh(:ncol), state%zm(:ncol,:), state%phis, state%zi(:ncol,:), ptend_loc%q(:ncol,:,1), &
-!                    ptend_loc%s(:ncol,:), state%pmid(:ncol,:), state%pint(:ncol,:), state%pdel(:ncol,:), &
-!                    .5_r8*ztodt, mcon(:ncol,:), cme(:ncol,:), cape(:ncol),      &
-!                    tpert(:ncol), dlf(:ncol,:), pflx(:ncol,:), zdu(:ncol,:), rprd(:ncol,:), &
-!                    mu(:ncol,:), md(:ncol,:), du(:ncol,:), eu(:ncol,:), ed(:ncol,:),       &
-!                    dp(:ncol,:), dsubcld(:ncol), jt(:ncol), maxg(:ncol), ideep(:ncol),    &
-!                    ql(:ncol,:),  rliq(:ncol), landfrac(:ncol),                          &
-!!CACNOTE - This call needs to be used when the pointer attribute is removed from these variables
-!!                    org(:ncol,:), orgt(:ncol,:), zm_org2d(:ncol,:),  &
-!                    org, orgt, zm_org2d,  &
-!                    dif(:ncol,:), dnlf(:ncol,:), dnif(:ncol,:),  &
-!                    rice(:ncol), errmsg, errflg)
+!REMOVECAM - no longer need these when CAM is retired and pcols no longer exists
+   ptend_loc%q(:,:,1) = 0._r8
+   ptend_loc%s(:,:) = 0._r8
+   mcon(:,:) = 0._r8
+   dlf(:,:) = 0._r8
+   pflx(:,:) = 0._r8
+   cme(:,:) = 0._r8
+   cape(:) = 0._r8
+   zdu(:,:) = 0._r8
+   rprd(:,:) = 0._r8
+   dif(:,:) = 0._r8
+   dnlf(:,:) = 0._r8
+   dnif(:,:) = 0._r8
+   mu(:,:) = 0._r8
+   eu(:,:) = 0._r8
+   du(:,:) = 0._r8
+   md(:,:) = 0._r8
+   ed(:,:) = 0._r8
+   dp(:,:) = 0._r8
+   dsubcld(:) = 0._r8
+   jctop(:) = 0._r8
+   jcbot(:) = 0._r8
+   prec(:) = 0._r8
+   rliq(:) = 0._r8
+   rice(:) = 0._r8
+   ideep(:) = 0._r8
+!REMOVECAM_END
 
-   call zm_convr_run(ncol, pcols, pver, &
+!CACNOTE - Need to check errflg and report errors
+   call zm_convr_run(ncol, pver, &
                     pverp, gravit, latice, cpwv, cpliq, rh2o,  &
-                    state%t, state%q(:,:,1), prec, jctop, jcbot, &
-                    pblh, state%zm, state%phis, state%zi, ptend_loc%q(:,:,1), &
-                    ptend_loc%s, state%pmid, state%pint, state%pdel, &
-                    .5_r8*ztodt, mcon, cme, cape,      &
-                    tpert, dlf, pflx, zdu, rprd, &
-                    mu, md, du, eu, ed,       &
-                    dp, dsubcld, jt, maxg, ideep,    &
-                    ql,  rliq, landfrac,                          &
-                    org, orgt, zm_org2d,  &
-                    dif, dnlf, dnif,  &
-                    rice, errmsg, errflg)
+                    state%t(:ncol,:), state%q(:ncol,:,1), prec(:ncol), jctop(:ncol), jcbot(:ncol), &
+                    pblh(:ncol), state%zm(:ncol,:), state%phis, state%zi(:ncol,:), ptend_loc%q(:ncol,:,1), &
+                    ptend_loc%s(:ncol,:), state%pmid(:ncol,:), state%pint(:ncol,:), state%pdel(:ncol,:), &
+                    .5_r8*ztodt, mcon(:ncol,:), cme(:ncol,:), cape(:ncol),      &
+                    tpert(:ncol), dlf(:ncol,:), pflx(:ncol,:), zdu(:ncol,:), rprd(:ncol,:), &
+                    mu(:ncol,:), md(:ncol,:), du(:ncol,:), eu(:ncol,:), ed(:ncol,:),       &
+                    dp(:ncol,:), dsubcld(:ncol), jt(:ncol), maxg(:ncol), ideep(:ncol),    &
+                    ql(:ncol,:),  rliq(:ncol), landfrac(:ncol),                          &
+                    org_noalloc(:,:), orgt_noalloc(:,:), zm_org2d_noalloc(:,:),  &
+                    dif(:ncol,:), dnlf(:ncol,:), dnif(:ncol,:),  &
+                    rice(:ncol), errmsg, errflg)
+
+   if (zmconv_org) then
+      ptend_loc%q(:,:,ixorg)=orgt_noalloc(:ncol,:)
+      zm_org2d(:ncol,:) = zm_org2d_noalloc(:ncol,:)
+   endif
 
    lengath = count(ideep > 0)
 
@@ -666,15 +686,20 @@ subroutine zm_conv_tend(pblh    ,mcon    ,cme     , &
     call pbuf_get_field(pbuf, dp_cldice_idx, dp_cldice  )
     dp_cldliq(:ncol,:) = 0._r8
     dp_cldice(:ncol,:) = 0._r8
+!REMOVECAM - no longer need these when CAM is retired and pcols no longer exists
+    flxprec(:,:) = 0._r8
+    flxsnow(:,:) = 0._r8
+    snow(:) = 0._r8
+!REMOVECAM_END
 
-    call zm_conv_evap_run(state1%ncol, pcols, pver, pverp, &
+    call zm_conv_evap_run(state1%ncol, pver, pverp, &
          gravit, latice, latvap, tmelt, &
          cpair, zmconv_ke, zmconv_ke_lnd, zmconv_org, &
-         state1%t(:,:),state1%pmid,state1%pdel,state1%q(:pcols,:pver,1), &
-         landfrac, &
-         ptend_loc%s, tend_s_snwprd, tend_s_snwevmlt, ptend_loc%q(:pcols,:pver,1), &
-         rprd, cld, ztodt, &
-         prec, snow, ntprprd, ntsnprd , flxprec, flxsnow)
+         state1%t(:ncol,:),state1%pmid(:ncol,:),state1%pdel(:ncol,:),state1%q(:ncol,:pver,1), &
+         landfrac(:ncol), &
+         ptend_loc%s(:ncol,:), tend_s_snwprd(:ncol,:), tend_s_snwevmlt(:ncol,:), ptend_loc%q(:ncol,:pver,1), &
+         rprd(:ncol,:), cld(:ncol,:), ztodt, &
+         prec(:ncol), snow(:ncol), ntprprd(:ncol,:), ntsnprd(:ncol,:), flxprec(:ncol,:), flxsnow(:ncol,:) )
 
     evapcdp(:ncol,:pver) = ptend_loc%q(:ncol,:pver,1)
 
@@ -727,12 +752,18 @@ subroutine zm_conv_tend(pblh    ,mcon    ,cme     , &
      l_windt(2) = .true.
 
      call t_startf ('zm_conv_momtran_run')
-     call zm_conv_momtran_run (ncol, pcols, pver, pverp,                    &
-                   l_windt,winds, 2,  mu, md,   &
+
+!REMOVECAM - no longer need this when CAM is retired and pcols no longer exists
+     wind_tends(:,:,:) = 0._r8
+!REMOVECAM_END
+
+     call zm_conv_momtran_run (ncol, pver, pverp,                    &
+                   l_windt,winds(:ncol,:,:), 2,  mu(:ncol,:), md(:ncol,:),   &
                    zmconv_momcu, zmconv_momcd, &
-                   du, eu, ed, dp, dsubcld,  &
-                   jt, maxg, ideep, 1, lengath,  &
-                   nstep,  wind_tends, pguall, pgdall, icwu, icwd, ztodt, seten )
+                   du(:ncol,:), eu(:ncol,:), ed(:ncol,:), dp(:ncol,:), dsubcld(:ncol),  &
+                   jt(:ncol), maxg(:ncol), ideep(:ncol), 1, lengath,  &
+                   nstep,  wind_tends(:ncol,:,:), pguall(:ncol,:,:), pgdall(:ncol,:,:), &
+                   icwu(:ncol,:,:), icwd(:ncol,:,:), ztodt, seten(:ncol,:) )
      call t_stopf ('zm_conv_momtran_run')
 
      ptend_loc%u(:ncol,:pver) = wind_tends(:ncol,:pver,1)
@@ -781,11 +812,16 @@ subroutine zm_conv_tend(pblh    ,mcon    ,cme     , &
    fake_dpdry(:,:) = 0._r8
 
    call t_startf ('convtran1')
-   call zm_conv_convtran_run (pcols, pver,          &
-                  ptend_loc%lq,state1%q, pcnst,  mu, md,   &
-                  du, eu, ed, dp, dsubcld,  &
-                  jt,maxg, ideep, 1, lengath,  &
-                  nstep,   fracis,  ptend_loc%q, fake_dpdry, ztodt)
+
+!REMOVECAM - no longer need this when CAM is retired and pcols no longer exists
+   ptend_loc%q(:,:,:) = 0._r8
+!REMOVECAM_END
+
+   call zm_conv_convtran_run (ncol, pver,          &
+                  ptend_loc%lq,state1%q(:ncol,:,:), pcnst,  mu(:ncol,:), md(:ncol,:),   &
+                  du(:ncol,:), eu(:ncol,:), ed(:ncol,:), dp(:ncol,:), dsubcld(:ncol),  &
+                  jt(:ncol), maxg(:ncol), ideep(:ncol), 1, lengath,  &
+                  nstep,   fracis(:ncol,:,:),  ptend_loc%q(:ncol,:,:), fake_dpdry(:ncol,:), ztodt)
    call t_stopf ('convtran1')
 
    call outfld('ZMDICE ',ptend_loc%q(1,1,ixcldice) ,pcols   ,lchnk   )
@@ -826,6 +862,7 @@ subroutine zm_conv_tend_2( state,  ptend,  ztodt, pbuf)
    integer :: i, lchnk, istat
    integer :: lengath          ! number of columns with deep convection
    integer :: nstep
+   integer :: ncol
 
    real(r8), dimension(pcols,pver) :: dpdry
 
@@ -858,10 +895,12 @@ subroutine zm_conv_tend_2( state,  ptend,  ztodt, pbuf)
    call pbuf_get_field(pbuf, zm_maxg_idx,    maxg)
    call pbuf_get_field(pbuf, zm_ideep_idx,   ideep)
 
-   lengath = count(ideep > 0)
 
    lchnk = state%lchnk
+   ncol  = state%ncol
    nstep = get_nstep()
+
+   lengath = count(ideep > 0)
 
    if (any(ptend%lq(:))) then
       ! initialize dpdry for call to convtran
@@ -872,11 +911,16 @@ subroutine zm_conv_tend_2( state,  ptend,  ztodt, pbuf)
       end do
 
       call t_startf ('convtran2')
-      call zm_conv_convtran_run (pcols, pver,     &
-                     ptend%lq,state%q, pcnst,  mu, md,   &
-                     du, eu, ed, dp, dsubcld,  &
-                     jt, maxg, ideep, 1, lengath,  &
-                     nstep,   fracis,  ptend%q, dpdry, ztodt)
+
+!REMOVECAM - no longer need this when CAM is retired and pcols no longer exists
+   ptend%q(:,:,:) = 0._r8
+!REMOVECAM_END
+
+      call zm_conv_convtran_run (ncol, pver,          &
+                  ptend%lq,state%q(:ncol,:,:), pcnst,  mu(:ncol,:), md(:ncol,:),   &
+                  du(:ncol,:), eu(:ncol,:), ed(:ncol,:), dp(:ncol,:), dsubcld(:ncol),  &
+                  jt(:ncol), maxg(:ncol), ideep(:ncol), 1, lengath,  &
+                  nstep,   fracis(:ncol,:,:),  ptend%q(:ncol,:,:), dpdry(:ncol,:), ztodt)
       call t_stopf ('convtran2')
    end if
 
