@@ -5,10 +5,10 @@
 set -e
 ########################
 dir=$(git rev-parse --show-toplevel)
-if ! test -f ${dir}/bin/git-fleximod; then
-  echo "Getting checkout tools"
-  git -C ${dir} clone https://github.com/jedwards4b/git-fleximod --depth 1 bin
+if ! test -f ${dir}/git-fleximod/src/git-fleximod; then
+  echo "Getting git-fleximod"
+  git -C ${dir} clone https://github.com/jedwards4b/git-fleximod --depth 1 -b 0.1.4
 fi
 pushd ${dir} 1>/dev/null
-python ./bin/git-fleximod install "$@"
+python ./git-fleximod/src/git-fleximod install "$@"
 popd 1>/dev/null
