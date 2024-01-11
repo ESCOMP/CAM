@@ -12,7 +12,7 @@ cat << EOF1
 NAME
 
 	archive_baseline.sh - archive pretag baselines to set locations on
-                              hobart, izumi and cheyenne.
+                              hobart, izumi and derecho.
 
 
 SYNOPSIS
@@ -32,7 +32,7 @@ BASELINE ARCHIVED LOCATION
 
 	hobart, izumi:     /fs/cgd/csm/models/atm/cam/pretag_bl/TAGNAME_pgi
 	                   /fs/cgd/csm/models/atm/cam/pretag_bl/TAGNAME_nag
-        cheyenne:  /glade/p/cesm/amwg/cesm_baselines/TAGNAME
+        derecho:  /glade/campaign/cesm/community/amwg/cam_baselines/TAGNAME
 
 
 
@@ -91,16 +91,6 @@ case $hostname in
     test_file_list="tests_pretag_izumi_${CAM_FC,,}"
     cam_tag=$1_${CAM_FC,,}
     baselinedir="/fs/cgd/csm/models/atm/cam/pretag_bl/$cam_tag"
-  ;;
-
-  ch*)
-    echo "server: cheyenne"
-    if [ -z "$CAM_FC" ]; then
-      CAM_FC="INTEL"
-    fi
-    test_file_list="tests_pretag_cheyenne"
-    cam_tag=$1
-    baselinedir="/glade/p/cesm/amwg/cesm_baselines/$cam_tag"
   ;;
 
   de*)

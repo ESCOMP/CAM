@@ -2053,7 +2053,7 @@ subroutine spcam_radiation_finalize_sam1mom(cam_in, state, pbuf, rad_avgdata, ca
     call outfld('FSN200  ',rad_avgdata%fsn200_m(:),pcols,lchnk)
     call outfld('FSN200C ',rad_avgdata%fsn200c_m(:),pcols,lchnk)
     call outfld('FSNR'    ,rad_avgdata%fsnr_m(:)  ,pcols,lchnk)
-    call outfld('SWCF    ',rad_avgdata%fsntoa_m(:ncol)-rad_avgdata%fsntoac_m(:ncol)  ,pcols,lchnk)
+    call outfld('SWCF    ',rad_avgdata%fsntoa_m(:ncol)-rad_avgdata%fsntoac_m(:ncol)  ,ncol,lchnk)
 
     do i=1, Nday
        do k=1, pver

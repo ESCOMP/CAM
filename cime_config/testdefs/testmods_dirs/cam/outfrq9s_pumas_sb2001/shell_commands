@@ -1,0 +1,3 @@
+./xmlchange ROF_NCPL=\$ATM_NCPL
+./xmlchange GLC_NCPL=\$ATM_NCPL
+./xmlchange CAM_CONFIG_OPTS=' -microphys pumas' --append
