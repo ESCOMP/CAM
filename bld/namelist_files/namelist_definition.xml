@@ -4054,7 +4054,7 @@ This equation calculates an in-cloud Brunt-Vaisala frequency.
 
 <entry id="clubb_l_C2_cloud_frac" type="logical" category="pblrad"
        group="clubb_params_nl" valid_values="" >
-Flag to use cloud fraction to adjust the value of the    
+Flag to use cloud fraction to adjust the value of the
 turbulent dissipation coefficient, C2.
 </entry>
 
