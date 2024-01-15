@@ -8,7 +8,7 @@
     path = cime
     url = https://github.com/jedwards4b/cime
     fxrequired = T:T
-    fxtag = cime6.0.198_rme03
+    fxtag = cime6.0.198_rme04
 
 [submodule "cosp2"]
     path = src/physics/cosp2/src
