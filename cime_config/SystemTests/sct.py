@@ -43,7 +43,7 @@ class SCT(SystemTestsCompareTwo):
         append_to_user_nl_files(caseroot = self._get_caseroot(), component = "cam", contents = "MFILT    = 1,7,1,1,1,1")
         append_to_user_nl_files(caseroot = self._get_caseroot(), component = "cam", contents = "nhtfrq   = 1,1,1,1,1,1")
         append_to_user_nl_files(caseroot = self._get_caseroot(), component = "cam", contents = "fincl2='T','Q','TDIFF','QDIFF','LANDFRAC'")
-        append_to_user_nl_files(caseroot = self._get_caseroot(), component = "cam", contents = "iopfile = '../"+case_name+".cam.h1."+RUN_STARTDATE+"-00000.nc'")
+        append_to_user_nl_files(caseroot = self._get_caseroot(), component = "cam", contents = "iopfile = '../"+case_name+".cam.h1i."+RUN_STARTDATE+"-00000.nc'")
         append_to_user_nl_files(caseroot = self._get_caseroot(), component = "cam", contents = "inithist = 'YEARLY'")
         append_to_user_nl_files(caseroot = self._get_caseroot(), component = "cam", contents = "scm_cambfb_mode                = .true.")
         append_to_user_nl_files(caseroot = self._get_caseroot(), component = "cam", contents = "scm_use_obs_uv         = .true.")
@@ -65,7 +65,7 @@ class SCT(SystemTestsCompareTwo):
                                 success_change=False,
                                 ignore_fieldlist_diffs=False):
         with self._test_status:
-            stat,netcdf_filename,err=run_cmd('ls ./run/case2run/*h1*8400.nc ')
+            stat,netcdf_filename,err=run_cmd('ls ./run/case2run/*h1i*8400.nc ')
             stat,DIFFs,err=run_cmd('ncdump -ff -p 9,17 -v QDIFF,TDIFF '+netcdf_filename+' | egrep //\.\*DIFF | sed s/^\ \*// | sed s/^0,/0.0,/ | sed s/^0\;/0.0\;/ | sed s/\[,\;\].\*// |  uniq')
             array_of_DIFFs=DIFFs.split("\n")
             answer=max([abs(float(x)) for x in array_of_DIFFs])

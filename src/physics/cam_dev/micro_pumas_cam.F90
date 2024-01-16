@@ -7,6 +7,7 @@ module micro_pumas_cam
 !---------------------------------------------------------------------------------
 
 use shr_kind_mod,   only: r8=>shr_kind_r8
+use shr_kind_mod,   only: cl=>shr_kind_cl
 use spmd_utils,     only: masterproc
 use ppgrid,         only: pcols, pver, pverp, psubcols
 use physconst,      only: gravit, rair, tmelt, cpair, rh2o, rhoh2o, &
@@ -76,6 +77,7 @@ real(r8) :: micro_mg_autocon_nd_exp    = unset_r8       ! autoconversion nd expo
 real(r8) :: micro_mg_autocon_lwp_exp   = unset_r8       ! autoconversion lwp exponent
 real(r8) :: micro_mg_homog_size        = unset_r8     ! size of freezing homogeneous ice
 real(r8) :: micro_mg_vtrmi_factor      = unset_r8        ! ice fall speed factor
+real(r8) :: micro_mg_vtrms_factor      = unset_r8        ! snow fall speed factor
 real(r8) :: micro_mg_effi_factor       = unset_r8        ! ice effective radius factor
 real(r8) :: micro_mg_iaccr_factor      = unset_r8        ! ice accretion of cloud droplet
 real(r8) :: micro_mg_max_nicons        = unset_r8  ! max allowed ice number concentration
@@ -235,8 +237,8 @@ integer :: &
    frzcnt_idx = -1, &
    frzdep_idx = -1
 
-logical :: allow_sed_supersat  ! allow supersaturated conditions after sedimentation loop
-logical :: micro_do_sb_physics = .false. ! do SB 2001 autoconversion and accretion
+logical :: allow_sed_supersat                      ! allow supersaturated conditions after sedimentation loop
+character(len=16) :: micro_mg_warm_rain= 'kk2000'  ! 'tau', 'emulated', 'sb2001' and ' kk2000'
 
 integer :: bergso_idx = -1
 
@@ -250,6 +252,9 @@ subroutine micro_pumas_cam_readnl(nlfile)
   use units,           only: getunit, freeunit
   use spmd_utils,      only: mpicom, mstrid=>masterprocid, mpi_integer, mpi_real8, &
                              mpi_logical, mpi_character
+
+  use stochastic_emulated_cam, only: stochastic_emulated_readnl
+  use stochastic_tau_cam,      only: stochastic_tau_readnl
 
   character(len=*), intent(in) :: nlfile  ! filepath for file containing namelist input
 
@@ -266,10 +271,10 @@ subroutine micro_pumas_cam_readnl(nlfile)
   namelist /micro_mg_nl/ micro_mg_version, micro_mg_sub_version, &
        micro_mg_do_cldice, micro_mg_do_cldliq, micro_mg_num_steps, &
        microp_uniform, micro_mg_dcs, micro_mg_precip_frac_method, &
-       micro_mg_berg_eff_factor, micro_do_sb_physics, micro_mg_adjust_cpt, &
+       micro_mg_berg_eff_factor, micro_mg_warm_rain, micro_mg_adjust_cpt, &
        micro_mg_do_hail, micro_mg_do_graupel, micro_mg_ngcons, micro_mg_ngnst, &
-       micro_mg_vtrmi_factor, micro_mg_effi_factor, micro_mg_iaccr_factor, &
-       micro_mg_max_nicons, micro_mg_accre_enhan_fact, &
+       micro_mg_vtrmi_factor, micro_mg_vtrms_factor, micro_mg_effi_factor, &
+       micro_mg_iaccr_factor, micro_mg_max_nicons, micro_mg_accre_enhan_fact, &
        micro_mg_autocon_fact, micro_mg_autocon_nd_exp, micro_mg_autocon_lwp_exp, micro_mg_homog_size, &
        micro_mg_nccons, micro_mg_nicons, micro_mg_ncnst, micro_mg_ninst, &
        micro_mg_nrcons, micro_mg_nscons, micro_mg_nrnst, micro_mg_nsnst, &
@@ -383,6 +388,9 @@ subroutine micro_pumas_cam_readnl(nlfile)
   call mpi_bcast(micro_mg_vtrmi_factor, 1, mpi_real8, mstrid, mpicom, ierr)
   if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: micro_mg_vtrmi_factor")
 
+  call mpi_bcast(micro_mg_vtrms_factor, 1, mpi_real8, mstrid, mpicom, ierr)
+  if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: micro_mg_vtrms_factor")
+
   call mpi_bcast(micro_mg_effi_factor, 1, mpi_real8, mstrid, mpicom, ierr)
   if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: micro_mg_effi_factor")
 
@@ -395,8 +403,8 @@ subroutine micro_pumas_cam_readnl(nlfile)
   call mpi_bcast(micro_mg_precip_frac_method, 16, mpi_character, mstrid, mpicom, ierr)
   if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: micro_mg_precip_frac_method")
 
-  call mpi_bcast(micro_do_sb_physics, 1, mpi_logical, mstrid, mpicom, ierr)
-  if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: micro_do_sb_physics")
+  call mpi_bcast(micro_mg_warm_rain, 16, mpi_character, mstrid, mpicom, ierr)
+  if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: micro_mg_warm_rain")
 
   call mpi_bcast(micro_mg_adjust_cpt, 1, mpi_logical, mstrid, mpicom, ierr)
   if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: micro_mg_adjust_cpt")
@@ -477,6 +485,7 @@ subroutine micro_pumas_cam_readnl(nlfile)
   if(micro_mg_autocon_lwp_exp == unset_r8) call endrun(sub//": FATAL: micro_mg_autocon_lwp_exp is not set")
   if(micro_mg_homog_size == unset_r8) call endrun(sub//": FATAL: micro_mg_homog_size is not set")
   if(micro_mg_vtrmi_factor == unset_r8) call endrun(sub//": FATAL: micro_mg_vtrmi_factor is not set")
+  if(micro_mg_vtrms_factor == unset_r8) call endrun(sub//": FATAL: micro_mg_vtrms_factor is not set")
   if(micro_mg_effi_factor == unset_r8) call endrun(sub//": FATAL: micro_mg_effi_factor is not set")
   if(micro_mg_iaccr_factor == unset_r8) call endrun(sub//": FATAL: micro_mg_iaccr_factor is not set")
   if(micro_mg_max_nicons == unset_r8) call endrun(sub//": FATAL: micro_mg_max_nicons is not set")
@@ -498,11 +507,12 @@ subroutine micro_pumas_cam_readnl(nlfile)
      write(iulog,*) '  micro_mg_autocon_lwp_exp    = ' , micro_mg_autocon_lwp_exp
      write(iulog,*) '  micro_mg_homog_size         = ', micro_mg_homog_size
      write(iulog,*) '  micro_mg_vtrmi_factor       = ', micro_mg_vtrmi_factor
+     write(iulog,*) '  micro_mg_vtrms_factor       = ', micro_mg_vtrms_factor
      write(iulog,*) '  micro_mg_effi_factor        = ', micro_mg_effi_factor
      write(iulog,*) '  micro_mg_iaccr_factor       = ', micro_mg_iaccr_factor
      write(iulog,*) '  micro_mg_max_nicons         = ', micro_mg_max_nicons
      write(iulog,*) '  micro_mg_precip_frac_method = ', micro_mg_precip_frac_method
-     write(iulog,*) '  micro_do_sb_physics         = ', micro_do_sb_physics
+     write(iulog,*) '  micro_mg_warm_rain          = ', micro_mg_warm_rain
      write(iulog,*) '  micro_mg_adjust_cpt         = ', micro_mg_adjust_cpt
      write(iulog,*) '  micro_mg_nccons             = ', micro_mg_nccons
      write(iulog,*) '  micro_mg_nicons             = ', micro_mg_nicons
@@ -529,6 +539,13 @@ subroutine micro_pumas_cam_readnl(nlfile)
      write(iulog,*) '  micro_mg_accre_sees_auto     = ', micro_mg_accre_sees_auto
   end if
 
+  ! Read in the emulated or tau namelist if needed
+  if( trim(micro_mg_warm_rain) == 'emulated') then
+     call stochastic_emulated_readnl(nlfile)
+  else if (trim(micro_mg_warm_rain) == 'tau') then
+     call stochastic_tau_readnl(nlfile)
+  end if
+
 contains
 
   subroutine bad_version_endrun
@@ -544,7 +561,6 @@ end subroutine micro_pumas_cam_readnl
 !================================================================================================
 
 subroutine micro_pumas_cam_register
-
    use cam_history_support, only: add_vert_coord, hist_dimension_values
    use cam_abortutils,      only: handle_allocate_error
 
@@ -843,6 +859,8 @@ subroutine micro_pumas_cam_init(pbuf2d)
    use time_manager,   only: is_first_step
    use micro_pumas_utils, only: micro_pumas_utils_init
    use micro_pumas_v1, only: micro_mg_init3_0 => micro_pumas_init
+   use stochastic_tau_cam, only:  stochastic_tau_init_cam
+   use stochastic_emulated_cam, only:  stochastic_emulated_init_cam
 
    !-----------------------------------------------------------------------
    !
@@ -862,6 +880,9 @@ subroutine micro_pumas_cam_init(pbuf2d)
    integer :: budget_histfile      ! output history file number for budget fields
    integer :: ierr
    character(128) :: errstring     ! return status (non-blank for error return)
+
+   character(len=cl) :: stochastic_emulated_filename_quantile, stochastic_emulated_filename_input_scale, &
+                                       stochastic_emulated_filename_output_scale
 
    !-----------------------------------------------------------------------
 
@@ -890,6 +911,15 @@ subroutine micro_pumas_cam_init(pbuf2d)
          ncnst = 10
    end if
 
+   ! If Machine learning is turned on, perform its initializations
+   if (trim(micro_mg_warm_rain) == 'tau') then
+      call stochastic_tau_init_cam()
+   else if( trim(micro_mg_warm_rain) == 'emulated') then
+      call stochastic_emulated_init_cam(stochastic_emulated_filename_quantile, &
+                                       stochastic_emulated_filename_input_scale, &
+                                       stochastic_emulated_filename_output_scale)
+   end if
+
    call micro_mg_init3_0( &
            r8, gravit, rair, rh2o, cpair, &
            tmelt, latvap, latice, rhmini, &
@@ -899,16 +929,18 @@ subroutine micro_pumas_cam_init(pbuf2d)
            micro_mg_precip_frac_method, micro_mg_berg_eff_factor, &
            micro_mg_accre_enhan_fact , &
            micro_mg_autocon_fact , micro_mg_autocon_nd_exp, micro_mg_autocon_lwp_exp, micro_mg_homog_size, &
-           micro_mg_vtrmi_factor, micro_mg_effi_factor, micro_mg_iaccr_factor, &
-           micro_mg_max_nicons, &
-           allow_sed_supersat, micro_do_sb_physics, &
+           micro_mg_vtrmi_factor, micro_mg_vtrms_factor, micro_mg_effi_factor, &
+           micro_mg_iaccr_factor, micro_mg_max_nicons, &
+           allow_sed_supersat, micro_mg_warm_rain, &
            micro_mg_evap_sed_off, micro_mg_icenuc_rh_off, micro_mg_icenuc_use_meyers, &
            micro_mg_evap_scl_ifs, micro_mg_evap_rhthrsh_ifs, &
            micro_mg_rainfreeze_ifs,  micro_mg_ifs_sed, micro_mg_precip_fall_corr,&
            micro_mg_accre_sees_auto, micro_mg_implicit_fall, &
            micro_mg_nccons, micro_mg_nicons, micro_mg_ncnst, &
            micro_mg_ninst, micro_mg_ngcons, micro_mg_ngnst, &
-           micro_mg_nrcons,  micro_mg_nrnst, micro_mg_nscons, micro_mg_nsnst, errstring)
+           micro_mg_nrcons,  micro_mg_nrnst, micro_mg_nscons, micro_mg_nsnst, &
+           stochastic_emulated_filename_quantile, stochastic_emulated_filename_input_scale, &
+           stochastic_emulated_filename_output_scale, iulog, errstring)
 
    call handle_errmsg(errstring, subname="micro_pumas_cam_init")
 
@@ -1012,6 +1044,23 @@ subroutine micro_pumas_cam_init(pbuf2d)
    call addfld ('NSSEDTEN',   (/ 'trop_cld_lev' /), 'A', '#/kg/s',  'Number Tendency due to snow sedimentation')
    call addfld ('NMELTO',     (/ 'trop_cld_lev' /), 'A', '#/kg/s',  'Number Tendency due to Melting of cloud ice ')
    call addfld ('NMELTS',     (/ 'trop_cld_lev' /), 'A', '#/kg/s',  'Number Tendency due to Melting of snow')
+
+   if (trim(micro_mg_warm_rain) == 'kk2000') then
+      call addfld ('qctend_KK2000',     (/ 'trop_cld_lev' /), 'A', 'kg/kg/s',  'cloud liquid mass tendency due to autoconversion  & accretion from KK2000')
+      call addfld ('nctend_KK2000',     (/ 'trop_cld_lev' /), 'A', '#/kg/s',  'cloud number mass tendency due to autoconversion  & accretion from KK2000')
+      call addfld ('qrtend_KK2000',     (/ 'trop_cld_lev' /), 'A', 'kg/kg/s',  'rain mass tendency due to autoconversion  & accretion from KK2000')
+      call addfld ('nrtend_KK2000',     (/ 'trop_cld_lev' /), 'A', '#/kg/s',  'rain number tendency due to autoconversion  & accretion from KK2000')
+   end if
+   if (trim(micro_mg_warm_rain) == 'sb2001') then
+      call addfld ('qctend_SB2001',     (/ 'trop_cld_lev' /), 'A', 'kg/kg/s',  'cloud liquid mass tendency due to autoconversion  & accretion from SB2001')
+      call addfld ('nctend_SB2001',     (/ 'trop_cld_lev' /), 'A', '#/kg/s',  'cloud liquid number tendency due to autoconversion  & accretion from SB2001')
+      call addfld ('qrtend_SB2001',     (/ 'trop_cld_lev' /), 'A', 'kg/kg/s',  'rain mass tendency due to autoconversion  & accretion from SB2001')
+      call addfld ('nrtend_SB2001',     (/ 'trop_cld_lev' /), 'A', '#/kg/s',  'rain number tendency due to autoconversion  & accretion from SB2001')
+   end if
+   call addfld ('LAMC',    (/ 'trop_cld_lev' /), 'A', 'unitless',  'Size distribution parameter lambda for liquid'     )
+   call addfld ('LAMR',    (/ 'trop_cld_lev' /), 'A', 'unitless',  'Size distribution parameter lambda for rain'   )
+   call addfld ('PGAM',    (/ 'trop_cld_lev' /), 'A', 'unitless',  'Size distribution parameter mu (pgam) for liquid' )
+   call addfld ('N0R',     (/ 'trop_cld_lev' /), 'A', 'unitless',  'Size distribution parameter n0 for rain' )
 
    if (micro_mg_version > 2) then
          call addfld ('NMELTG',     (/ 'trop_cld_lev' /), 'A', '#/kg/s',  'Number Tendency due to Melting of graupel')
@@ -1423,6 +1472,8 @@ subroutine micro_pumas_cam_tend(state, ptend, dtime, pbuf)
    use wv_saturation,   only: qsat
    use infnan,          only: nan, assignment(=)
    use cam_abortutils,  only: handle_allocate_error
+
+   use stochastic_tau_cam, only: ncd
 
    type(physics_state),         intent(in)    :: state
    type(physics_ptend),         intent(out)   :: ptend
@@ -1849,7 +1900,7 @@ subroutine micro_pumas_cam_tend(state, ptend, dtime, pbuf)
    !     all the other arrays in this routine are dimensioned pver.  This is required because
    !     PUMAS only gets the top_lev:pver array subsection, and the proc_rates arrays
    !     need to be the same levels.
-   call proc_rates%allocate(ncol,nlev, errstring)
+   call proc_rates%allocate(ncol, nlev, ncd, micro_mg_warm_rain, errstring)
 
    call handle_errmsg(errstring, subname="micro_pumas_cam_tend")
 
@@ -2321,6 +2372,16 @@ subroutine micro_pumas_cam_tend(state, ptend, dtime, pbuf)
 
       ! Update local state
       call physics_update(state_loc, ptend_loc, dtime/num_steps)
+
+      if (trim(micro_mg_warm_rain) == 'tau') then
+         proc_rates%amk_c(:ncol,:,:) = proc_rates%amk_c(:ncol,:,:)/num_steps
+         proc_rates%ank_c(:ncol,:,:) = proc_rates%ank_c(:ncol,:,:)/num_steps
+         proc_rates%amk_r(:ncol,:,:) = proc_rates%amk_r(:ncol,:,:)/num_steps
+         proc_rates%ank_r(:ncol,:,:) = proc_rates%ank_r(:ncol,:,:)/num_steps
+         proc_rates%amk(:ncol,:,:) = proc_rates%amk(:ncol,:,:)/num_steps
+         proc_rates%ank(:ncol,:,:) = proc_rates%ank(:ncol,:,:)/num_steps
+         proc_rates%amk_out(:ncol,:,:) = proc_rates%amk_out(:ncol,:,:)/num_steps
+      end if
 
    end do
 
@@ -3192,6 +3253,56 @@ subroutine micro_pumas_cam_tend(state, ptend, dtime, pbuf)
    call outfld( 'MPDI2P', ftem_grid, pcols, lchnk)
 
    ! Output fields which have not been averaged already, averaging if use_subcol_microp is true
+   if (trim(micro_mg_warm_rain) == 'tau' .or. trim(micro_mg_warm_rain) == 'emulated') then
+      call outfld('scale_qc',    proc_rates%scale_qc,    ncol, lchnk, avg_subcol_field=use_subcol_microp)
+      call outfld('scale_nc',    proc_rates%scale_nc,    ncol, lchnk, avg_subcol_field=use_subcol_microp)
+      call outfld('scale_qr',    proc_rates%scale_qr,    ncol, lchnk, avg_subcol_field=use_subcol_microp)
+      call outfld('scale_nr',    proc_rates%scale_nr,    ncol, lchnk, avg_subcol_field=use_subcol_microp)
+      call outfld('amk_c',       proc_rates%amk_c,       ncol, lchnk, avg_subcol_field=use_subcol_microp)
+      call outfld('ank_c',       proc_rates%ank_c,       ncol, lchnk, avg_subcol_field=use_subcol_microp)
+      call outfld('amk_r',       proc_rates%amk_r,       ncol, lchnk, avg_subcol_field=use_subcol_microp)
+      call outfld('ank_r',       proc_rates%ank_r,       ncol, lchnk, avg_subcol_field=use_subcol_microp)
+      call outfld('amk',         proc_rates%amk,         ncol, lchnk, avg_subcol_field=use_subcol_microp)
+      call outfld('ank',         proc_rates%ank,         ncol, lchnk, avg_subcol_field=use_subcol_microp)
+      call outfld('amk_out',     proc_rates%amk_out,     ncol, lchnk, avg_subcol_field=use_subcol_microp)
+      call outfld('ank_out',     proc_rates%ank_out,     ncol, lchnk, avg_subcol_field=use_subcol_microp)
+      call outfld('QC_TAU_out',  proc_rates%qc_out_TAU,      ncol, lchnk, avg_subcol_field=use_subcol_microp)
+      call outfld('NC_TAU_out',  proc_rates%nc_out_TAU,      ncol, lchnk, avg_subcol_field=use_subcol_microp)
+      call outfld('QR_TAU_out',  proc_rates%qr_out_TAU,      ncol, lchnk, avg_subcol_field=use_subcol_microp)
+      call outfld('NR_TAU_out',  proc_rates%nr_out_TAU,      ncol, lchnk, avg_subcol_field=use_subcol_microp)
+      call outfld('qctend_TAU',  proc_rates%qctend_TAU,  ncol, lchnk, avg_subcol_field=use_subcol_microp)
+      call outfld('nctend_TAU',  proc_rates%nctend_TAU,  ncol, lchnk, avg_subcol_field=use_subcol_microp)
+      call outfld('qrtend_TAU',  proc_rates%qrtend_TAU,  ncol, lchnk, avg_subcol_field=use_subcol_microp)
+      call outfld('nrtend_TAU',  proc_rates%nrtend_TAU,  ncol, lchnk, avg_subcol_field=use_subcol_microp)
+      call outfld('gmnnn_lmnnn_TAU',  proc_rates%gmnnn_lmnnn_TAU,  ncol, lchnk, avg_subcol_field=use_subcol_microp)
+      call outfld('ML_fixer',     proc_rates%ML_fixer,     ncol, lchnk, avg_subcol_field=use_subcol_microp)
+      call outfld('qc_fixer',     proc_rates%qc_fixer,     ncol, lchnk, avg_subcol_field=use_subcol_microp)
+      call outfld('nc_fixer',     proc_rates%nc_fixer,     ncol, lchnk, avg_subcol_field=use_subcol_microp)
+      call outfld('qr_fixer',     proc_rates%qr_fixer,     ncol, lchnk, avg_subcol_field=use_subcol_microp)
+      call outfld('nr_fixer',     proc_rates%nr_fixer,     ncol, lchnk, avg_subcol_field=use_subcol_microp)
+      call outfld('QC_TAU_in',   proc_rates%qc_in_TAU,      ncol, lchnk, avg_subcol_field=use_subcol_microp)
+      call outfld('NC_TAU_in',   proc_rates%nc_in_TAU,      ncol, lchnk, avg_subcol_field=use_subcol_microp)
+      call outfld('QR_TAU_in',   proc_rates%qr_in_TAU,      ncol, lchnk, avg_subcol_field=use_subcol_microp)
+      call outfld('NR_TAU_in',   proc_rates%nr_in_TAU,      ncol, lchnk, avg_subcol_field=use_subcol_microp)
+   end if
+
+   if (trim(micro_mg_warm_rain) == 'sb2001') then
+      call outfld('qctend_SB2001',  proc_rates%qctend_SB2001,  ncol, lchnk, avg_subcol_field=use_subcol_microp)
+      call outfld('nctend_SB2001',  proc_rates%nctend_SB2001,  ncol, lchnk, avg_subcol_field=use_subcol_microp)
+      call outfld('qrtend_SB2001',  proc_rates%qrtend_SB2001,  ncol, lchnk, avg_subcol_field=use_subcol_microp)
+      call outfld('nrtend_SB2001',  proc_rates%nrtend_SB2001,  ncol, lchnk, avg_subcol_field=use_subcol_microp)
+   end if
+   if (trim(micro_mg_warm_rain) == 'kk2000') then
+      call outfld('qctend_KK2000',  proc_rates%qctend_KK2000,  ncol, lchnk, avg_subcol_field=use_subcol_microp)
+      call outfld('nctend_KK2000',  proc_rates%nctend_KK2000,  ncol, lchnk, avg_subcol_field=use_subcol_microp)
+      call outfld('qrtend_KK2000',  proc_rates%qrtend_KK2000,  ncol, lchnk, avg_subcol_field=use_subcol_microp)
+      call outfld('nrtend_KK2000',  proc_rates%nrtend_KK2000,  ncol, lchnk, avg_subcol_field=use_subcol_microp)
+   end if
+   call outfld('LAMC',  proc_rates%lamc_out,  ncol, lchnk, avg_subcol_field=use_subcol_microp)
+   call outfld('LAMR',  proc_rates%lamr_out,  ncol, lchnk, avg_subcol_field=use_subcol_microp)
+   call outfld('PGAM',  proc_rates%pgam_out,  ncol, lchnk, avg_subcol_field=use_subcol_microp)
+   call outfld('N0R',  proc_rates%n0r_out,  ncol, lchnk, avg_subcol_field=use_subcol_microp)
+
    call outfld('MPICLWPI',    iclwpi,      psetcols, lchnk, avg_subcol_field=use_subcol_microp)
    call outfld('MPICIWPI',    iciwpi,      psetcols, lchnk, avg_subcol_field=use_subcol_microp)
    call outfld('REFL',        refl,        psetcols, lchnk, avg_subcol_field=use_subcol_microp)
@@ -3392,7 +3503,7 @@ subroutine micro_pumas_cam_tend(state, ptend, dtime, pbuf)
    end if
 
    ! deallocate the proc_rates DDT
-   call proc_rates%deallocate()
+   call proc_rates%deallocate(micro_mg_warm_rain)
 
    ! ptend_loc is deallocated in physics_update above
    call physics_state_dealloc(state_loc)
