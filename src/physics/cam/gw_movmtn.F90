@@ -1,3 +1,4 @@
+#define DEVELOPTEST
 module gw_movmtn
 
 !
@@ -90,13 +91,19 @@ subroutine gw_movmtn_src(ncol,lchnk, band, desc, u, v, &
   ! Column and (vertical) level indices.
   integer :: i, k
 
-  ! Zonal/meridional wind at roughly the level where the convection occurs.
-  real(r8) :: uconv(ncol), vconv(ncol)
+  ! Zonal/meridional wind at steering level, i.e., 'cell speed'.
+  ! May be later modified by retrograde motion .... 
+  real(r8) :: usteer(ncol), vsteer(ncol)
+  real(r8) :: uwavef(ncol,pver),vwavef(ncol,pver)
+  ! Steering level (integer converted to real*8)
+  real(r8) :: steer_level(ncol)
+  ! Retrograde motion of Cell
+  real(r8) :: Cell_Retro_Speed(ncol)
 
   ! Maximum heating rate.
   real(r8) :: q0(ncol), qj(ncol)
-  ! determined by vector direction of wind at 700hPa
-  real(r8) :: xv700(ncol), yv700(ncol), u700(ncol) 
+  ! unit vector components at steering level and mag
+  real(r8) :: xv_steer(ncol), yv_steer(ncol), umag_steer(ncol) 
   ! Bottom/top heating range index.
   integer  :: boti(ncol), topi(ncol)
   ! Index for looking up heating depth dimension in the table.
@@ -111,6 +118,9 @@ subroutine gw_movmtn_src(ncol,lchnk, band, desc, u, v, &
   real(r8) :: CS(ncol),CS1(ncol)
   ! Wind speeds in wave direction
   real(r8) :: udiff(ncol),vdiff(ncol)
+  ! "on-crest" source level wind
+  real(r8) :: ubmsrc(ncol),ubisrc(ncol)
+  
   ! Index to shift spectra relative to ground.
   integer :: shift
   ! Other wind quantities
@@ -134,23 +144,38 @@ subroutine gw_movmtn_src(ncol,lchnk, band, desc, u, v, &
   q0 = 0.0_r8
   tau0 = 0.0_r8
 
-    !write(*,*) " DUMMY call ... of gw_movmtn_src "
-    !RETURN
-
   !------------------------------------------------------------------------
   ! Determine wind and unit vectors approximately at the source (steering level), then
   ! project winds.
   !------------------------------------------------------------------------
 
-  ! Source wind speed and direction. (at 700hPa)
-  uconv = u(:,desc%k)  !k defined in line21 (at specified altitude)
-  vconv = v(:,desc%k)
-  
+  ! Winds at 'steering level' 
+  usteer = u(:,desc%k)  !k defined in line21 (at specified altitude)
+  vsteer = v(:,desc%k)
+  steer_level = 1._r8 * desc%k
   ! all GW calculations on a plane, which in our case is the wind at 700hPa  source level -> ubi is wind in this plane
   ! Get the unit vector components and magnitude at the source level.
-  call get_unit_vector(uconv, vconv, xv700, yv700, u700)
-  !u700 = dot_2d(uconv, vconv, xv700,yv700)
-  
+  call get_unit_vector(usteer, vsteer, xv_steer, yv_steer, umag_steer)
+
+  !-------------------------------------------------------------------------
+  ! If we want to account for some retorgrade cell motion,
+  ! it should be done by vector subtraction from (usteer,vsteer).
+  ! We assume the retrograde motion is in the same direction as
+  ! (usteer,vsteer) or the unit vector (xv_steer,yv_steer). Then, the
+  ! vector retrograde motion is just:
+  !      = -Cell_Retrograde_Speed * (xv_steer,yv_steer)
+  ! and we would modify usteer and vsteer
+  !     usteer = usteer - Cell_Retrograde_Speed * xv_steer
+  !     vsteer = vsteer - Cell_Retrograde_Speed * yv_steer
+  !-----------------------------------------------------------------------
+  do i=1,ncol
+     Cell_Retro_Speed(i) = min( sqrt(usteer(i)**2 + vsteer(i)**2), 0._r8)
+  end do
+  do i=1,ncol
+     usteer(i) = usteer(i) - xv_steer(i)*Cell_Retro_Speed(i)
+     vsteer(i) = vsteer(i) - yv_steer(i)*Cell_Retro_Speed(i)
+  end do
+
   ! Calculate heating depth.
   !
   ! Heating depth is defined as the first height range from the bottom in
@@ -160,6 +185,11 @@ subroutine gw_movmtn_src(ncol,lchnk, band, desc, u, v, &
   ! First find the indices for the top and bottom of the heating range.  !nedt is heating profile from Zhang McFarlane (it's pressure coordinates, therefore k=0 is the top)
   boti = 0 !bottom
   topi = 0  !top
+  !+++jtb
+#ifdef DEVELOPTEST  
+  boti=pver
+  topi=desc%k-5
+#else
   do k = pver, 1, -1 !start at surface
      do i = 1, ncol
         if (boti(i) == 0) then
@@ -184,7 +214,8 @@ subroutine gw_movmtn_src(ncol,lchnk, band, desc, u, v, &
      ! When all done, exit.
      if (all(topi /= 0)) exit
   end do
-
+#endif
+ 
   ! Heating depth in m.  (top-bottom altitudes)
   hdepth = [ ( (zm(i,topi(i))-zm(i,boti(i))), i = 1, ncol ) ]
 
@@ -213,29 +244,69 @@ subroutine gw_movmtn_src(ncol,lchnk, band, desc, u, v, &
  
   ! Moving Mountain wind speeds
   ! Storm speed is taken to be the source wind speed.
-  CS1 = max(sqrt(uconv**2._r8 + vconv**2._r8)-10._r8, 0._r8)
-  CS = CS1*xv700 + CS1*yv700 
-  ! calculate the xv and yv in the frame of reference of the wave 
+  !+++jtb
   
+  CS1 = sqrt( usteer**2._r8 + vsteer**2._r8 ) 
+  CS = CS1*xv_steer + CS1*yv_steer 
+  ! calculate the xv and yv in the frame of reference of the wave 
+
+
+  ! These are wind profiles relative to steering (or cell) motion.
+  ! If steering wind=0 then this is just like orog gwave
   do i=1,ncol
-     udiff(i) = u(i,topi(i)) - uconv(i)
-     vdiff(i) = v(i,topi(i)) - vconv(i)
+     udiff(i) = u(i,topi(i)) - usteer(i)
+     vdiff(i) = v(i,topi(i)) - vsteer(i)
+     do k=1,pver
+        uwavef(i, k ) = u(i, k ) - usteer(i)
+        vwavef(i, k ) = v(i, k ) - vsteer(i)
+     end do
     ! xv(i) = -1._r8*udiff(i)/abs(udiff(i))
     ! yv(i) = -1._r8*vdiff(i)/abs(vdiff(i))
   end do
-  call get_unit_vector(udiff, vdiff, xv, yv, ubi(:,desc%k))
+  call get_unit_vector(udiff , vdiff , xv, yv, ubisrc )
 
-  call outfld('UCONV_MOVMTN', uconv, ncol, lchnk)
-  call outfld('VCONV_MOVMTN', vconv, ncol, lchnk)
+  call outfld('UCONV_MOVMTN', usteer, ncol, lchnk)
+  call outfld('VCONV_MOVMTN', vsteer, ncol, lchnk)
   call outfld('CS_MOVMTN', CS, ncol, lchnk)
   call outfld('CS1_MOVMTN', CS1, ncol, lchnk)
-
+  call outfld('STEER_LEVEL_MOVMTN',steer_level, ncol, lchnk )
 
   
   ! Project the local wind at midpoints onto the source wind. looping through altitudes ubm is a profile projected on to the steering level
   do k = 1, pver
-     ubm(:,k) = -1._r8*dot_2d(u(:,k), v(:,k), xv, yv)
+     !ubm(:,k) = -1._r8*dot_2d(u(:,k), v(:,k), xv, yv)
+     ! let's just try everything in frame of the wave
+     ! remove -1._r8*
+     ubm(:,k) = dot_2d(uwavef(:,k), vwavef(:,k), xv, yv)
   end do
+
+  ! Source level on-crest wind
+  do i=1,ncol
+     ubmsrc(i) = ubm(i,topi(i))
+  end do
+
+  ! adjust everything so that source level wave frame on-crest wind
+  ! is always positive. Also adjust unit vector comps xv,yv
+  do k=1,pver
+     do i=1,ncol
+        ubm(i,k) = sign( 1._r8 , ubmsrc(i) )* ubm(i,k)
+     end do
+  end do
+  !
+  do i=1,ncol
+     xv(i) = sign( 1._r8 , ubmsrc(i) ) * xv(i)
+     yv(i) = sign( 1._r8 , ubmsrc(i) ) * yv(i)
+  end do
+  !
+  !ubmsrc = abs( ubmsrc )
+
+  !Subtract steering wind/cell speed
+  do k=1,pver
+     do i=1,ncol
+        ubm(i,k) = ubm(i,k) - CS1(i)
+     end do
+  end do
+
   
   ! Compute the interface wind projection by averaging the midpoint winds. (both same wind profile, just at different points of the grid)
   ! Use the top level wind at the top interface.
@@ -253,7 +324,11 @@ subroutine gw_movmtn_src(ncol,lchnk, band, desc, u, v, &
   end do
 
   ! Set phase speeds; just use reference speeds.
-  c = spread(band%cref, 1, ncol)
+  !+++jtb
+  !c=0
+  !Need to be really sure about the sign here
+  c(:,0) = -CS1(:) !!spread(band%cref, 1, ncol)
+
   !-----------------------------------------------------------------------
   ! Gravity wave sources
   !-----------------------------------------------------------------------
@@ -265,7 +340,7 @@ subroutine gw_movmtn_src(ncol,lchnk, band, desc, u, v, &
      ! Look up spectrum only if the heating depth is large enough, else leave
      ! tau = 0.
      !---------------------------------------------------------------------
-
+#ifndef DEVELOPTEST
      if (hd_idx(i) > 0) then
         !------------------------------------------------------------------
         ! Look up the spectrum using depth and uh.
@@ -282,9 +357,12 @@ subroutine gw_movmtn_src(ncol,lchnk, band, desc, u, v, &
         c0(i,:) = CS(i) 
         c_idx(i,:) = index_of_nearest(c0(i,:),c(i,:))
         !write(1112) taumm(i)
-        tau(i,c_idx(i,:),topi(i):topi(i)+1) = taumm(i) !input tau to top +1 level, interface level just below top of heating, remember it's in pressure - everything is upside down (source level of GWs, level where GWs are launched)
-        
+        tau(i,c_idx(i,:),topi(i):topi(i)+1) = taumm(i) !input tau to top +1 level, interface level just below top of heating, remember it's in pressure - everything is upside down (source level of GWs, level where GWs are launched)        
      end if ! heating depth above min and not at the pole
+#else
+     !+++jtb
+     tau(i,0,topi(i):pver+1 ) = 0.1_r8/10000._r8
+#endif
      
   enddo
   !-----------------------------------------------------------------------

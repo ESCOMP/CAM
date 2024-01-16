@@ -155,6 +155,14 @@ module gw_drag
   integer :: frontga_idx  = -1
   integer :: sgh_idx      = -1
 
+  !+++jtb
+  ! From CLUBB
+  integer :: ttend_clubb_idx  = -1
+  integer :: upwp_clubb_gw_idx   = -1
+  integer :: vpwp_clubb_gw_idx   = -1
+  integer :: thlp2_clubb_gw_idx  = -1
+
+
   !+++ temp
   logical :: use_gw_movmtn = .true.
  
@@ -928,6 +936,14 @@ subroutine gw_init()
 
   ! ========= Moving Mountain initialization! ==========================
   if (use_gw_movmtn) then
+
+     !+++ jtb
+     ! get pbuf indices for CLUBB couplings
+     ttend_clubb_idx     = pbuf_get_index('TTEND_CLUBB')
+     thlp2_clubb_gw_idx  = pbuf_get_index('THLP2_CLUBB_GW')
+     upwp_clubb_gw_idx   = pbuf_get_index('UPWP_CLUBB_GW')
+     vpwp_clubb_gw_idx   = pbuf_get_index('VPWP_CLUBB_GW')
+
      ! Read moving mountain file.
      gw_drag_file_mm = '/glade/work/bramberg/cases/CESM/components/cam/src/physics/cam/mfc0lookup_mm.nc'
 
@@ -943,11 +959,16 @@ subroutine gw_init()
      call gw_init_movmtn(gw_drag_file_mm, band_movmtn, movmtn_desc)
      ! set 700hPa index
      do k = 0, pver
+        !+++jtb
         ! 700 hPa index
-        if (pref_edge(k+1) < 70000._r8) movmtn_desc%k = k+1
+        ! if (pref_edge(k+1) < 70000._r8) movmtn_desc%k = k+1
+        ! 950 hPa index
+        if (pref_edge(k+1) < 95000._r8) movmtn_desc%k = k+1
      end do
     ! Don't use deep convection heating depths below this limit.
-     movmtn_desc%min_hdepth = 1000._r8
+     !movmtn_desc%min_hdepth = 1000._r8
+     !+++jtb
+     movmtn_desc%min_hdepth = 1._r8
      if (masterproc) then
         write (iulog,*) 'Moving mountain deep level =',movmtn_desc%k
      end if
@@ -976,14 +997,22 @@ subroutine gw_init()
           'phase speed')
      call addfld ('CS1_MOVMTN',horiz_only,'I','m/s', &
           'phase speed')
+     call addfld ('STEER_LEVEL_MOVMTN',horiz_only,'I','1', &
+          'steering level for movmtn GW')
      call addfld ('SRC_LEVEL_MOVMTN',horiz_only,'I','1', &
           'launch level for movmtn GW')
      call addfld ('TND_LEVEL_MOVMTN',horiz_only,'I','1', &
           'tendency lowest level for movmtn GW')
      call addfld ('NETDT_MOVMTN',(/ 'lev' /),'I','K/s', &
           'Net heating rate')
-     !call addfld ('TENDLEV_MOVMTN',horiz_only,'I','m', &
-     !     'Tendency level')
+     call addfld ('TTEND_CLUBB',(/ 'lev' /),'A','K/s', &
+          'Net heating rate')
+     call addfld ('THLP2_CLUBB_GW',(/ 'ilev' /),'A','K+2', &
+          'THLP variance from CLUBB to GW')
+     call addfld ('UPWP_CLUBB_GW',(/ 'ilev' /),'A','m+2 s-2', &
+          'X-momflux from CLUBB to GW')
+     call addfld ('VPWP_CLUBB_GW',(/ 'ilev' /),'A','m+2 s-2', &
+          'Y-momflux from CLUBB to GW')
   end if
 
   if (use_gw_convect_dp) then
@@ -1523,6 +1552,13 @@ subroutine gw_tend(state, pbuf, dt, ptend, cam_in, flx_heat)
   ! Temperature change due to shallow convection.
   real(r8), pointer :: ttend_sh(:,:)
 
+  !+++jtb
+  !  New couplings from CLUBB
+  real(r8), pointer :: ttend_clubb(:,:)
+  real(r8), pointer :: thlp2_clubb_gw(:,:)
+  real(r8), pointer :: upwp_clubb_gw(:,:)
+  real(r8), pointer :: vpwp_clubb_gw(:,:)
+
   ! Standard deviation of orography.
   real(r8), pointer :: sgh(:)
 
@@ -1674,10 +1710,19 @@ subroutine gw_tend(state, pbuf, dt, ptend, cam_in, flx_heat)
      ! Set up heating
      call pbuf_get_field(pbuf, ttend_dp_idx, ttend_dp)
 
+     !+++jtb
+     !   New couplings from CLUBB
+     call pbuf_get_field(pbuf, ttend_clubb_idx, ttend_clubb)
+     call pbuf_get_field(pbuf, thlp2_clubb_gw_idx, thlp2_clubb_gw)
+     call pbuf_get_field(pbuf, upwp_clubb_gw_idx, upwp_clubb_gw)
+     call pbuf_get_field(pbuf, vpwp_clubb_gw_idx, vpwp_clubb_gw)
+
      if(masterproc) then
        write(iulog,*) " Moving mountain development code"
        write(iulog,*) " in moving mountain gw "
-     end if
+       write(iulog,*) " shape of c " , shape(c)
+       write(iulog,*) " values of c " , c
+    end if
 
      !effgw = 0.5_r8
      effgw = 1._r8
@@ -1696,7 +1741,7 @@ subroutine gw_tend(state, pbuf, dt, ptend, cam_in, flx_heat)
           piln, rhoi,       nm,   ni, ubm,  ubi,  xv,    yv,   &
           effgw,   c,       kvtt, q,  dse,  tau,  utgw,  vtgw, &
           ttgw, qtgw, egwdffi,  gwut, dttdf, dttke,            &
-          lapply_effgw_in=gw_apply_tndmax)
+          lapply_effgw_in=gw_apply_tndmax )
 
      ! Project stress into directional components.
      taucd = calc_taucd(ncol, band_movmtn%ngwv, tend_level, tau, c, xv, yv, ubi)
@@ -1727,8 +1772,12 @@ subroutine gw_tend(state, pbuf, dt, ptend, cam_in, flx_heat)
      call outfld('VTGW_MOVMTN', vtgw, ncol, lchnk)
      call outfld('UTGW_MOVMTN', utgw, ncol, lchnk)
      call outfld('HDEPTH_MOVMTN', hdepth/1000._r8, ncol, lchnk)
-     call outfld('NETDT_MOVMTN', ttend_dp, pcols, lchnk) 
-     !call outfld('TENDLEV_MOVMTN', tend_level, ncol, lchnk)
+     call outfld('NETDT_MOVMTN', ttend_dp, pcols, lchnk)
+     !+++jtb new from CLUBB
+     call outfld('TTEND_CLUBB', ttend_clubb, pcols, lchnk) 
+     call outfld('THLP2_CLUBB_GW', thlp2_clubb_gw, pcols, lchnk) 
+     call outfld('UPWP_CLUBB_GW', upwp_clubb_gw, pcols, lchnk) 
+     call outfld('VPWP_CLUBB_GW', vpwp_clubb_gw, pcols, lchnk) 
 #endif
      
      deallocate(tau, gwut, c)
@@ -1747,6 +1796,9 @@ subroutine gw_tend(state, pbuf, dt, ptend, cam_in, flx_heat)
      ! Set up heating
      call pbuf_get_field(pbuf, ttend_dp_idx, ttend_dp)
 
+     if(masterproc) then
+       write(iulog,*) " in gw_convect_dp ...  "
+     end if
      ! Efficiency of gravity wave momentum transfer.
      ! This is really only to remove the pole points.
      where (pi/2._r8 - abs(state1%lat(:ncol)) >= 4*epsilon(1._r8))
