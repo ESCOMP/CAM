@@ -43,7 +43,7 @@
 [submodule "cice5"]
     path = components/cice5
     url = https://github.com/ESCOMP/CESM_CICE5
-    fxtag = cice5_20220128
+    fxtag = cice5_20220204
     fxrequired = T:T
 
 [submodule "cism"]
