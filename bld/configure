@@ -1410,11 +1410,11 @@ if ($chem_pkg =~ '_mam3') {
 
 # Set GEOS-Chem CPP definitions here
 if ($chem_pkg =~ 'geoschem') {
-    $chem_cppdefs .= ' -DEXTERNAL_GRID -DEXTERNAL_FORCING -DLINUX_IFORT -DUSE_REAL8 -DMODEL_ -DMODEL_CESM';
-    $chem_nadv = 267; # includes GC advected species (233), CO2 (1), and MAM aerosols (33)
+    $chem_cppdefs .= ' -DEXTERNAL_GRID -DEXTERNAL_FORCING';
+    if ($chem_pkg eq 'geoschem_mam4') {
+        $chem_nadv = 267; # includes GC advected species (233), CO2 (1), and MAM aerosols (33)
+    }
 }
-
-
 # CARMA sectional microphysics
 #
 # New CARMA models need to define the number of advected constituents.
