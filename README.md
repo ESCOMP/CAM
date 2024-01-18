@@ -7,3 +7,5 @@
 ### CAM6 namelist settings - http://www.cesm.ucar.edu/models/cesm2/settings/current/cam_nml.html
 
 Please see the [wiki](https://github.com/ESCOMP/CAM/wiki) for complete documentation on CAM, getting started with git and how to contribute to CAM's development.
+
+To download the complete source code run ./bin/git-fleximod install from the top level cam directory.
