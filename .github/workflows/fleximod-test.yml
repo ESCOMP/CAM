@@ -1,11 +1,11 @@
 on:
   push:
     branches:
-      - master
+      - cam_development
       - remove_manage_externals
   pull_request:
     branches:
-      - master
+      - cam_development
       - remove_manage_externals
 jobs:
   test:
