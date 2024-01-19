@@ -488,8 +488,8 @@ subroutine zm_conv_tend(pblh    ,mcon    ,cme     , &
    real(r8),pointer :: zm_org2d(:,:)
    real(r8),allocatable :: orgt_alloc(:,:), org_alloc(:,:)
 
-   real(r8) :: zm_org2d_noalloc(state%ncol,pver)
-   real(r8) :: orgt_noalloc(state%ncol,pver), org_noalloc(state%ncol,pver)
+   real(r8) :: zm_org2d_ncol(state%ncol,pver)
+   real(r8) :: orgt_ncol(state%ncol,pver), org_ncol(state%ncol,pver)
 
    logical  :: lq(pcnst)
 
@@ -553,7 +553,7 @@ subroutine zm_conv_tend(pblh    ,mcon    ,cme     , &
       allocate(zm_org2d(pcols,pver))
       allocate(org_alloc(ncol,pver))
       allocate(orgt_alloc(ncol,pver))
-      org_noalloc(:ncol,:) = state%q(1:ncol,:,ixorg)
+      org_ncol(:ncol,:) = state%q(1:ncol,:,ixorg)
    endif
 
 !REMOVECAM - no longer need these when CAM is retired and pcols no longer exists
@@ -595,16 +595,17 @@ subroutine zm_conv_tend(pblh    ,mcon    ,cme     , &
                     mu(:ncol,:), md(:ncol,:), du(:ncol,:), eu(:ncol,:), ed(:ncol,:),       &
                     dp(:ncol,:), dsubcld(:ncol), jt(:ncol), maxg(:ncol), ideep(:ncol),    &
                     ql(:ncol,:),  rliq(:ncol), landfrac(:ncol),                          &
-                    org_noalloc(:,:), orgt_noalloc(:,:), zm_org2d_noalloc(:,:),  &
+                    org_ncol(:,:), orgt_ncol(:,:), zm_org2d_ncol(:,:),  &
                     dif(:ncol,:), dnlf(:ncol,:), dnif(:ncol,:),  &
                     rice(:ncol), errmsg, errflg)
 
    if (zmconv_org) then
-      ptend_loc%q(:,:,ixorg)=orgt_noalloc(:ncol,:)
-      zm_org2d(:ncol,:) = zm_org2d_noalloc(:ncol,:)
+      ptend_loc%q(:,:,ixorg)=orgt_ncol(:ncol,:)
+      zm_org2d(:ncol,:) = zm_org2d_ncol(:ncol,:)
    endif
 
    lengath = count(ideep > 0)
+   if (lengath > ncol) lengath = ncol  ! should not happen, but force it to not be larger than ncol for safety sake
 
    call outfld('CAPE', cape, pcols, lchnk)        ! RBN - CAPE output
 !
@@ -901,6 +902,7 @@ subroutine zm_conv_tend_2( state,  ptend,  ztodt, pbuf)
    nstep = get_nstep()
 
    lengath = count(ideep > 0)
+   if (lengath > ncol) lengath = ncol  ! should not happen, but force it to not be larger than ncol for safety sake
 
    if (any(ptend%lq(:))) then
       ! initialize dpdry for call to convtran
