@@ -1297,8 +1297,12 @@ subroutine setiopupdate
       call timemgr_time_inc(bdate, 0, next_date, next_sec, inc_s=tsec(iopTimeIdx+1))
       if ( ncdate > next_date .or. (ncdate == next_date &
          .and. ncsec >= next_sec)) then
-         iopTimeIdx = iopTimeIdx + 1
          doiopupdate = .true.
+         ! check to see if we need to move iopindex ahead more than 1 step
+         do while ( ncdate > next_date .or. (ncdate == next_date .and. ncsec >= next_sec))
+            iopTimeIdx = iopTimeIdx + 1
+            call timemgr_time_inc(bdate, 0, next_date, next_sec, inc_s=tsec(iopTimeIdx+1))
+         end do
 #if DEBUG > 2
          if (masterproc) write(iulog,*) sub//'nstep = ',get_nstep()
          if (masterproc) write(iulog,*) sub//'ncdate=',ncdate,' ncsec=',ncsec
