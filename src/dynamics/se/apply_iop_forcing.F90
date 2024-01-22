@@ -1,7 +1,7 @@
 module apply_iop_forcing_mod
 
 use shr_kind_mod,   only:r8 => shr_kind_r8, i8 => shr_kind_i8
-use pmgrid
+use pmgrid,         only:plev, plevp
 use constituents,   only:pcnst, cnst_get_ind
 use physconst,      only:rair,cpair
 use cam_logfile,    only:iulog

@@ -11,7 +11,7 @@ use spmd_utils,      only: masterproc, npes, mpicom, mpir8
 
 use physconst,       only: pi
 use pmgrid,          only: plon, plat, plev, plevp, plnlv, beglat, endlat
-use commap,          only: clat, clon
+use commap,          only: clat, clon, latdeg
 use dyn_grid,        only: ptimelevels
 
 
@@ -531,8 +531,9 @@ subroutine read_inidat()
          if (.not. readvar) then
             call endrun('CLAT not on iop initial file')
          else
-            clat(:) = clat2d(1,:)
-            clat_p(:)=clat(:)
+            clat = clat2d(1,1)
+            clat_p(:)=clat2d(1,1)
+            latdeg(1) = clat(1)*45._r8/atan(1._r8)
          end if
 
          fieldname = 'CLON1'

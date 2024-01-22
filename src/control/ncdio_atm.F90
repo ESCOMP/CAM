@@ -91,7 +91,7 @@ contains
     ! !LOCAL VARIABLES:
     type(io_desc_t), pointer  :: iodesc
     integer                   :: grid_id   ! grid ID for data mapping
-    integer                   :: j         ! indice
+    integer                   :: j         ! index
     integer                   :: ierr      ! error status
     type(var_desc_t)          :: varid     ! variable id
     integer                   :: no_fill
@@ -494,7 +494,7 @@ contains
     ! !LOCAL VARIABLES:
     type(io_desc_t), pointer  :: iodesc
     integer                   :: grid_id   ! grid ID for data mapping
-    integer                   :: j         ! indice
+    integer                   :: j         ! index
     integer                   :: ierr      ! error status
     type(var_desc_t)          :: varid     ! variable id
 

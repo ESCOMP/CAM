@@ -287,7 +287,7 @@ subroutine scam_readnl(nlfile,single_column_in,scmlat_in,scmlon_in)
   scm_clubb_iop_name = ' '
   scm_relax_fincl(:) = ' '
   if( single_column ) then
-     if( npes.gt.1) call endrun('SCAM_READNL: SCAM doesnt support using more than 1 pe.')
+     if( npes>1) call endrun('SCAM_READNL: SCAM doesnt support using more than 1 pe.')
 
      if ( .not. (dycore_is('EUL') .or. dycore_is('SE')) .or. plon /= 1 .or. plat /=1 ) then
         call endrun('SCAM_SETOPTS: must compile model for SCAM mode when namelist parameter single_column is .true.')
@@ -296,9 +296,9 @@ subroutine scam_readnl(nlfile,single_column_in,scmlat_in,scmlon_in)
      scmlat=scmlat_in
      scmlon=scmlon_in
 
-     if( scmlat .lt. -90._r8 .or. scmlat .gt. 90._r8 ) then
+     if( scmlat < -90._r8 .or. scmlat > 90._r8 ) then
         call endrun('SCAM_READNL: SCMLAT must be between -90. and 90. degrees.')
-     elseif( scmlon .lt. 0._r8 .or. scmlon .gt. 360._r8 ) then
+     elseif( scmlon < 0._r8 .or. scmlon > 360._r8 ) then
         call endrun('SCAM_READNL: SCMLON must be between 0. and 360. degrees.')
      end if
 
@@ -320,7 +320,7 @@ subroutine scam_readnl(nlfile,single_column_in,scmlat_in,scmlon_in)
      ! Error checking:
 
      iopfile = trim(iopfile)
-     if( iopfile .ne. "" ) then
+     if( iopfile /= "" ) then
         use_iop = .true.
      else
         call endrun('SCAM_READNL: must specify IOP file for single column mode')
@@ -328,7 +328,7 @@ subroutine scam_readnl(nlfile,single_column_in,scmlat_in,scmlon_in)
 
      call wrap_open( iopfile, NF90_NOWRITE, ncid )
 
-     if( nf90_inquire_attribute( ncid, NF90_GLOBAL, 'CAM_GENERATED_FORCING', iatt ) .EQ. NF90_NOERR ) then
+     if( nf90_inquire_attribute( ncid, NF90_GLOBAL, 'CAM_GENERATED_FORCING', iatt ) ==  NF90_NOERR ) then
         use_camiop = .true.
      else
         use_camiop = .false.
@@ -371,7 +371,7 @@ subroutine scam_readnl(nlfile,single_column_in,scmlat_in,scmlon_in)
         write (iulog,*) '  scm_relax_finc: '
         ! output scm_relax_fincl character array
         do i=1,pcnst
-           if (scm_relax_fincl(i) .ne. '') then
+           if (scm_relax_fincl(i) /= '') then
               adv = mod(i,4)==0
               if (adv) then
                  write (iulog, "(A18)") "'"//trim(scm_relax_fincl(i))//"',"
@@ -398,8 +398,6 @@ subroutine readiopdata(hvcoord)
 !     Written by J.  Truesdale    August, 1996, revised January, 1998
 !
 !-----------------------------------------------------------------------
-!jt fix this circular depend	use phys_grid,           only: clat_p
-!jt	use commap,              only: latdeg, clat
         use hybvcoord_mod,       only: hvcoord_t
         use getinterpnetcdfdata, only: getinterpncdata
         use shr_sys_mod,         only: shr_sys_flush
@@ -490,7 +488,7 @@ type (hvcoord_t), intent(in) :: hvcoord
 !     read level data
 !
    status = NF90_INQ_DIMID( ncid, 'lev', lev_dimID )
-   if ( status .ne. nf90_noerr ) then
+   if ( status /= nf90_noerr ) then
       if (masterproc) write(iulog,*) sub//':ERROR - readiopdata.F:Could not find variable dim ID  for lev'
       status = NF90_CLOSE ( ncid )
       return
@@ -502,7 +500,7 @@ type (hvcoord_t), intent(in) :: hvcoord
    allocate(dplevs(nlev+1))
 
    status = NF90_INQ_VARID( ncid, 'lev', lev_varID )
-   if ( status .ne. nf90_noerr ) then
+   if ( status /= nf90_noerr ) then
       if (masterproc) write(iulog,*) sub//':ERROR - readiopdata.F:Could not find variable ID for lev'
       status = NF90_CLOSE ( ncid )
       return
@@ -529,7 +527,7 @@ type (hvcoord_t), intent(in) :: hvcoord
    endif
 
    status = nf90_inq_varid( ncid, 'Ps', varid   )
-   if ( status .ne. nf90_noerr ) then
+   if ( status /= nf90_noerr ) then
       have_ps = .false.
       if (masterproc) write(iulog,*) sub//':Could not find variable Ps'
       if ( .not. scm_backfill_iop_w_init ) then
@@ -588,7 +586,7 @@ type (hvcoord_t), intent(in) :: hvcoord
       call get_start_count(ncid, varid, scmlat, scmlon, ioptimeidx, strt4, cnt4)
       call wrap_get_vara_realx (ncid,varid,strt4,cnt4,co2vmrobs)
    else
-      write(6,*)'using column value of co2vmr from boundary data as global volume mixing ratio'
+      if (is_first_step()) write(iulog,*)'using column value of co2vmr from boundary data as global volume mixing ratio'
    end if
    status =  nf90_inq_varid( ncid, 'ch4vmr', varid   )
    if ( status == nf90_noerr) then
@@ -596,7 +594,7 @@ type (hvcoord_t), intent(in) :: hvcoord
       call get_start_count(ncid, varid, scmlat, scmlon, ioptimeidx, strt4, cnt4)
       call wrap_get_vara_realx (ncid,varid,strt4,cnt4,ch4vmrobs)
    else
-      write(6,*)'using column value of ch4vmr from boundary data as global volume mixing ratio'
+      if (is_first_step()) write(iulog,*)'using column value of ch4vmr from boundary data as global volume mixing ratio'
    end if
    status =  nf90_inq_varid( ncid, 'n2ovmr', varid   )
    if ( status == nf90_noerr) then
@@ -604,7 +602,7 @@ type (hvcoord_t), intent(in) :: hvcoord
       call get_start_count(ncid, varid, scmlat, scmlon, ioptimeidx, strt4, cnt4)
       call wrap_get_vara_realx (ncid,varid,strt4,cnt4,n2ovmrobs)
    else
-      write(6,*)'using column value of n2ovmr from boundary data as global volume mixing ratio'
+      if (is_first_step()) write(iulog,*)'using column value of n2ovmr from boundary data as global volume mixing ratio'
    end if
    status =  nf90_inq_varid( ncid, 'f11vmr', varid   )
    if ( status == nf90_noerr) then
@@ -612,7 +610,7 @@ type (hvcoord_t), intent(in) :: hvcoord
       call get_start_count(ncid, varid, scmlat, scmlon, ioptimeidx, strt4, cnt4)
       call wrap_get_vara_realx (ncid,varid,strt4,cnt4,f11vmrobs)
    else
-      write(6,*)'using column value of f11vmr from boundary data as global volume mixing ratio'
+      if (is_first_step()) write(iulog,*)'using column value of f11vmr from boundary data as global volume mixing ratio'
    end if
    status =  nf90_inq_varid( ncid, 'f12vmr', varid   )
    if ( status == nf90_noerr) then
@@ -620,7 +618,7 @@ type (hvcoord_t), intent(in) :: hvcoord
       call get_start_count(ncid, varid, scmlat, scmlon, ioptimeidx, strt4, cnt4)
       call wrap_get_vara_realx (ncid,varid,strt4,cnt4,f12vmrobs)
    else
-      write(6,*)'using column value of f12vmr from boundary data as global volume mixing ratio'
+      if (is_first_step()) write(iulog,*)'using column value of f12vmr from boundary data as global volume mixing ratio'
    end if
    status =  nf90_inq_varid( ncid, 'soltsi', varid   )
    if ( status == nf90_noerr) then
@@ -628,13 +626,13 @@ type (hvcoord_t), intent(in) :: hvcoord
       call get_start_count(ncid, varid, scmlat, scmlon, ioptimeidx, strt4, cnt4)
       call wrap_get_vara_realx (ncid,varid,strt4,cnt4,soltsiobs)
    else
-      write(6,*)'using column value of soltsi from boundary data as global solar tsi'
+      if (is_first_step()) write(iulog,*)'using column value of soltsi from boundary data as global solar tsi'
    end if
 !=====================================================================
 !get global vmrs from camiop file
 
    status =  nf90_inq_varid( ncid, 'Tsair', varid   )
-   if ( status .ne. nf90_noerr ) then
+   if ( status /= nf90_noerr ) then
       have_tsair = .false.
    else
       call get_start_count(ncid, varid, scmlat, scmlon, ioptimeidx, strt4, cnt4)
@@ -656,7 +654,7 @@ type (hvcoord_t), intent(in) :: hvcoord
           tsair(1), fill_ends, scm_crm_mode, &
           dplevs, nlev,psobs, hvcoord%hyam, hvcoord%hybm, tobs, status )
    endif
-   if ( status .ne. nf90_noerr ) then
+   if ( status /= nf90_noerr ) then
       have_t = .false.
       if (masterproc) write(iulog,*) sub//':Could not find variable T'
       if ( .not. scm_backfill_iop_w_init ) then
@@ -673,7 +671,7 @@ type (hvcoord_t), intent(in) :: hvcoord
    endif
 
    status = nf90_inq_varid( ncid, 'Tg', varid   )
-   if (status .ne. nf90_noerr) then
+   if (status /= nf90_noerr) then
       if (masterproc) write(iulog,*) sub//':Could not find variable Tg on IOP dataset'
       if ( have_tsair ) then
          if (masterproc) write(iulog,*) sub//':Using Tsair'
@@ -692,7 +690,7 @@ type (hvcoord_t), intent(in) :: hvcoord
 
    status = nf90_inq_varid( ncid, 'qsrf', varid   )
 
-   if ( status .ne. nf90_noerr ) then
+   if ( status /= nf90_noerr ) then
       have_srf = .false.
    else
       call get_start_count(ncid, varid, scmlat, scmlon, ioptimeidx, strt4, cnt4)
@@ -704,7 +702,7 @@ type (hvcoord_t), intent(in) :: hvcoord
    call getinterpncdata( ncid, scmlat, scmlon, ioptimeidx,  'q', have_srf, &
       srf(1), fill_ends, scm_crm_mode, &
       dplevs, nlev,psobs, hvcoord%hyam, hvcoord%hybm, qobs, status )
-   if ( status .ne. nf90_noerr ) then
+   if ( status /= nf90_noerr ) then
       have_q = .false.
       if (masterproc) write(iulog,*) sub//':Could not find variable q'
       if ( .not. scm_backfill_iop_w_init ) then
@@ -720,7 +718,7 @@ type (hvcoord_t), intent(in) :: hvcoord
    cldobs = 0._r8
    call getinterpncdata( ncid, scmlat, scmlon, ioptimeidx,  'cld', .false., &
       dummy, fill_ends, scm_crm_mode, dplevs, nlev,psobs, hvcoord%hyam, hvcoord%hybm, cldobs, status )
-   if ( status .ne. nf90_noerr ) then
+   if ( status /= nf90_noerr ) then
       have_cld = .false.
    else
       have_cld = .true.
@@ -729,7 +727,7 @@ type (hvcoord_t), intent(in) :: hvcoord
    clwpobs = 0._r8
    call getinterpncdata( ncid, scmlat, scmlon, ioptimeidx,  'clwp', .false., &
       dummy, fill_ends, scm_crm_mode, dplevs, nlev,psobs, hvcoord%hyam, hvcoord%hybm, clwpobs, status )
-   if ( status .ne. nf90_noerr ) then
+   if ( status /= nf90_noerr ) then
       have_clwp = .false.
    else
       have_clwp = .true.
@@ -739,7 +737,7 @@ type (hvcoord_t), intent(in) :: hvcoord
 !	read divq (horizontal advection)
 !
    status = nf90_inq_varid( ncid, 'divqsrf', varid   )
-   if ( status .ne. nf90_noerr ) then
+   if ( status /= nf90_noerr ) then
       have_srf = .false.
    else
       call get_start_count(ncid, varid, scmlat, scmlon, ioptimeidx, strt4, cnt4)
@@ -752,7 +750,7 @@ type (hvcoord_t), intent(in) :: hvcoord
    call getinterpncdata( ncid, scmlat, scmlon, ioptimeidx, &
         'divq', have_srf, srf(1), fill_ends, scm_crm_mode, &
         dplevs, nlev,psobs, hvcoord%hyam, hvcoord%hybm, divq(:,1), status )
-   if ( status .ne. nf90_noerr ) then
+   if ( status /= nf90_noerr ) then
       have_divq = .false.
    else
       have_divq = .true.
@@ -762,7 +760,7 @@ type (hvcoord_t), intent(in) :: hvcoord
 !     read vertdivq if available
 !
    status = nf90_inq_varid( ncid, 'vertdivqsrf', varid   )
-   if ( status .ne. nf90_noerr ) then
+   if ( status /= nf90_noerr ) then
       have_srf = .false.
    else
       call get_start_count(ncid, varid, scmlat, scmlon, ioptimeidx, strt4, cnt4)
@@ -775,14 +773,14 @@ type (hvcoord_t), intent(in) :: hvcoord
    call getinterpncdata( ncid, scmlat, scmlon, ioptimeidx, 'vertdivq', &
         have_srf, srf(1), fill_ends, scm_crm_mode, &
         dplevs, nlev,psobs, hvcoord%hyam, hvcoord%hybm, vertdivq(:,1), status )
-   if ( status .ne. nf90_noerr ) then
+   if ( status /= nf90_noerr ) then
       have_vertdivq = .false.
    else
       have_vertdivq = .true.
    endif
 
    status = nf90_inq_varid( ncid, 'vertdivqsrf', varid   )
-   if ( status .ne. nf90_noerr ) then
+   if ( status /= nf90_noerr ) then
       have_srf = .false.
    else
       call get_start_count(ncid, varid, scmlat, scmlon, ioptimeidx, strt4, cnt4)
@@ -798,7 +796,7 @@ type (hvcoord_t), intent(in) :: hvcoord
       call getinterpncdata( ncid, scmlat, scmlon, ioptimeidx, trim(cnst_name(m))//'_dten', &
       have_srf, srf(1), fill_ends, scm_crm_mode, &
       dplevs, nlev,psobs, hvcoord%hyam, hvcoord%hybm, divq3d(:,m), status )
-      if ( status .ne. nf90_noerr ) then
+      if ( status /= nf90_noerr ) then
          have_cnst(m) = .false.
          divq3d(1:,m)=0._r8
       else
@@ -810,7 +808,7 @@ type (hvcoord_t), intent(in) :: hvcoord
       call getinterpncdata( ncid, scmlat, scmlon, ioptimeidx, trim(cnst_name(m))//'_dqfx', &
       have_srf, srf(1), fill_ends, scm_crm_mode, &
       dplevs, nlev,psobs, hvcoord%hyam, hvcoord%hybm, coldata, status )
-      if ( STATUS .NE. NF90_NOERR ) then
+      if ( STATUS /= NF90_NOERR ) then
          dqfxcam(1,:,m)=0._r8
       else
          dqfxcam(1,:,m)=coldata(:)
@@ -820,7 +818,7 @@ type (hvcoord_t), intent(in) :: hvcoord
       call getinterpncdata( ncid, scmlat, scmlon, ioptimeidx, trim(cnst_name(m))//'_alph', &
       have_srf, srf(1), fill_ends, scm_crm_mode, &
       dplevs, nlev,psobs, hvcoord%hyam, hvcoord%hybm, tmpdata, status )
-      if ( status .ne. nf90_noerr ) then
+      if ( status /= nf90_noerr ) then
          alphacam(m)=0._r8
       else
           alphacam(m)=tmpdata(1)
@@ -836,7 +834,7 @@ type (hvcoord_t), intent(in) :: hvcoord
       call getinterpncdata( ncid, scmlat, scmlon, ioptimeidx, 'NUMLIQ', &
            have_srf, srf(1), fill_ends, scm_crm_mode, &
            dplevs, nlev,psobs, hvcoord%hyam, hvcoord%hybm, numliqobs, status )
-      if ( status .ne. nf90_noerr ) then
+      if ( status /= nf90_noerr ) then
          have_numliq = .false.
       else
          have_numliq = .true.
@@ -853,7 +851,7 @@ type (hvcoord_t), intent(in) :: hvcoord
       call getinterpncdata( ncid, scmlat, scmlon, ioptimeidx, 'CLDLIQ', &
            have_srf, srf(1), fill_ends, scm_crm_mode, &
            dplevs, nlev,psobs, hvcoord%hyam, hvcoord%hybm, cldliqobs, status )
-      if ( status .ne. nf90_noerr ) then
+      if ( status /= nf90_noerr ) then
          have_cldliq = .false.
       else
          have_cldliq = .true.
@@ -868,7 +866,7 @@ type (hvcoord_t), intent(in) :: hvcoord
       call getinterpncdata( ncid, scmlat, scmlon, ioptimeidx, 'CLDICE', &
            have_srf, srf(1), fill_ends, scm_crm_mode, &
            dplevs, nlev,psobs, hvcoord%hyam, hvcoord%hybm, cldiceobs, status )
-      if ( status .ne. nf90_noerr ) then
+      if ( status /= nf90_noerr ) then
          have_cldice = .false.
       else
          have_cldice = .true.
@@ -884,7 +882,7 @@ type (hvcoord_t), intent(in) :: hvcoord
       call getinterpncdata( ncid, scmlat, scmlon, ioptimeidx, 'NUMICE', &
          have_srf, srf(1), fill_ends, scm_crm_mode, &
          dplevs, nlev,psobs, hvcoord%hyam, hvcoord%hybm, numiceobs, status )
-      if ( status .ne. nf90_noerr ) then
+      if ( status /= nf90_noerr ) then
          have_numice = .false.
       else
          have_numice = .true.
@@ -897,7 +895,7 @@ type (hvcoord_t), intent(in) :: hvcoord
 !	read divu (optional field)
 !
    status = nf90_inq_varid( ncid, 'divusrf', varid   )
-   if ( status .ne. nf90_noerr ) then
+   if ( status /= nf90_noerr ) then
       have_srf = .false.
    else
       call get_start_count(ncid, varid, scmlat, scmlon, ioptimeidx, strt4, cnt4)
@@ -909,7 +907,7 @@ type (hvcoord_t), intent(in) :: hvcoord
    call getinterpncdata( ncid, scmlat, scmlon, ioptimeidx, 'divu', &
       have_srf, srf(1), fill_ends, scm_crm_mode, &
       dplevs, nlev,psobs, hvcoord%hyam, hvcoord%hybm, divu, status )
-   if ( status .ne. nf90_noerr ) then
+   if ( status /= nf90_noerr ) then
       have_divu = .false.
    else
       have_divu = .true.
@@ -918,7 +916,7 @@ type (hvcoord_t), intent(in) :: hvcoord
 !	read divv (optional field)
 !
    status = nf90_inq_varid( ncid, 'divvsrf', varid   )
-   if ( status .ne. nf90_noerr ) then
+   if ( status /= nf90_noerr ) then
       have_srf = .false.
    else
       call get_start_count(ncid, varid, scmlat, scmlon, ioptimeidx, strt4, cnt4)
@@ -930,7 +928,7 @@ type (hvcoord_t), intent(in) :: hvcoord
    call getinterpncdata( ncid, scmlat, scmlon, ioptimeidx, 'divv', &
       have_srf, srf(1), fill_ends, scm_crm_mode, &
       dplevs, nlev,psobs, hvcoord%hyam, hvcoord%hybm, divv, status )
-   if ( status .ne. nf90_noerr ) then
+   if ( status /= nf90_noerr ) then
       have_divv = .false.
    else
       have_divv = .true.
@@ -939,7 +937,7 @@ type (hvcoord_t), intent(in) :: hvcoord
 !	read divt (optional field)
 !
    status = nf90_inq_varid( ncid, 'divtsrf', varid   )
-   if ( status .ne. nf90_noerr ) then
+   if ( status /= nf90_noerr ) then
       have_srf = .false.
    else
       call get_start_count(ncid, varid, scmlat, scmlon, ioptimeidx, strt4, cnt4)
@@ -951,7 +949,7 @@ type (hvcoord_t), intent(in) :: hvcoord
    call getinterpncdata( ncid, scmlat, scmlon, ioptimeidx, &
       'divT', have_srf, srf(1), fill_ends, scm_crm_mode, &
       dplevs, nlev,psobs, hvcoord%hyam, hvcoord%hybm, divt, status )
-   if ( status .ne. nf90_noerr ) then
+   if ( status /= nf90_noerr ) then
       have_divt = .false.
    else
       have_divt = .true.
@@ -961,7 +959,7 @@ type (hvcoord_t), intent(in) :: hvcoord
 !     read vertdivt if available
 !
    status = nf90_inq_varid( ncid, 'vertdivTsrf', varid   )
-   if ( status .ne. nf90_noerr ) then
+   if ( status /= nf90_noerr ) then
       have_srf = .false.
    else
       call get_start_count(ncid, varid, scmlat, scmlon, ioptimeidx, strt4, cnt4)
@@ -973,11 +971,11 @@ type (hvcoord_t), intent(in) :: hvcoord
    call getinterpncdata( ncid, scmlat, scmlon, ioptimeidx, 'vertdivTx', &
       have_srf, srf(1), fill_ends, scm_crm_mode, &
       dplevs, nlev,psobs, hvcoord%hyam, hvcoord%hybm, vertdivt, status )
-   if ( status .ne. nf90_noerr ) then
+   if ( status /= nf90_noerr ) then
       call getinterpncdata( ncid, scmlat, scmlon, ioptimeidx, 'vertdivT', &
            have_srf, srf(1), fill_ends, scm_crm_mode, &
            dplevs, nlev,psobs, hvcoord%hyam, hvcoord%hybm, vertdivt, status )
-      if ( status .ne. nf90_noerr ) then
+      if ( status /= nf90_noerr ) then
          have_vertdivt = .false.
       else
          have_vertdivt = .true.
@@ -990,7 +988,7 @@ type (hvcoord_t), intent(in) :: hvcoord
 !      (optional field)
 
    status = nf90_inq_varid( ncid, 'divT3dsrf', varid   )
-   if ( status .ne. nf90_noerr ) then
+   if ( status /= nf90_noerr ) then
       have_srf = .false.
    else
       call get_start_count(ncid, varid, scmlat, scmlon, ioptimeidx, strt4, cnt4)
@@ -1003,7 +1001,7 @@ type (hvcoord_t), intent(in) :: hvcoord
    call getinterpncdata( ncid, scmlat, scmlon, ioptimeidx, 'divT3d', &
       have_srf, srf(1), fill_ends, scm_crm_mode, &
       dplevs, nlev,psobs, hvcoord%hyam, hvcoord%hybm, divt3d, status )
-   if ( status .ne. nf90_noerr ) then
+   if ( status /= nf90_noerr ) then
       have_divt3d = .false.
    else
       have_divt3d = .true.
@@ -1014,7 +1012,7 @@ type (hvcoord_t), intent(in) :: hvcoord
    call getinterpncdata( ncid, scmlat, scmlon, ioptimeidx, 'divU3d', &
       have_srf, srf(1), fill_ends, scm_crm_mode, &
       dplevs, nlev,psobs, hvcoord%hyam, hvcoord%hybm, divu3d, status )
-   if ( status .ne. nf90_noerr ) then
+   if ( status /= nf90_noerr ) then
       have_divu3d = .false.
    else
       have_divu3d = .true.
@@ -1025,14 +1023,14 @@ type (hvcoord_t), intent(in) :: hvcoord
    call getinterpncdata( ncid, scmlat, scmlon, ioptimeidx, 'divV3d', &
       have_srf, srf(1), fill_ends, scm_crm_mode, &
       dplevs, nlev,psobs, hvcoord%hyam, hvcoord%hybm, divv3d, status )
-   if ( status .ne. nf90_noerr ) then
+   if ( status /= nf90_noerr ) then
       have_divv3d = .false.
    else
       have_divv3d = .true.
    endif
 
    status = nf90_inq_varid( ncid, 'Ptend', varid   )
-   if ( status .ne. nf90_noerr ) then
+   if ( status /= nf90_noerr ) then
       have_ptend = .false.
       if (masterproc) write(iulog,*) sub//':Could not find variable Ptend. Setting to zero'
       ptend = 0.0_r8
@@ -1048,7 +1046,7 @@ type (hvcoord_t), intent(in) :: hvcoord
    call getinterpncdata( ncid, scmlat, scmlon, ioptimeidx, &
       'omega', .true., ptend, fill_ends, scm_crm_mode, &
       dplevs, nlev,psobs, hvcoord%hyam, hvcoord%hybm, wfld, status )
-   if ( status .ne. nf90_noerr ) then
+   if ( status /= nf90_noerr ) then
       have_omega = .false.
       if (masterproc) write(iulog,*) sub//':Could not find variable omega'
       if ( .not. scm_backfill_iop_w_init ) then
@@ -1074,7 +1072,7 @@ type (hvcoord_t), intent(in) :: hvcoord
    end do
 
    status = nf90_inq_varid( ncid, 'usrf', varid   )
-   if ( status .ne. nf90_noerr ) then
+   if ( status /= nf90_noerr ) then
       have_srf = .false.
    else
       call get_start_count(ncid, varid, scmlat, scmlon, ioptimeidx, strt4, cnt4)
@@ -1087,14 +1085,14 @@ type (hvcoord_t), intent(in) :: hvcoord
    call getinterpncdata( ncid, scmlat, scmlon, ioptimeidx, &
       'u', have_srf, srf(1), fill_ends, scm_crm_mode, &
       dplevs, nlev,psobs, hvcoord%hyam, hvcoord%hybm, uobs, status )
-   if ( status .ne. nf90_noerr ) then
+   if ( status /= nf90_noerr ) then
       have_u = .false.
    else
       have_u = .true.
    endif
 
    status = nf90_inq_varid( ncid, 'vsrf', varid   )
-   if ( status .ne. nf90_noerr ) then
+   if ( status /= nf90_noerr ) then
       have_srf = .false.
    else
       call get_start_count(ncid, varid, scmlat, scmlon, ioptimeidx, strt4, cnt4)
@@ -1107,7 +1105,7 @@ type (hvcoord_t), intent(in) :: hvcoord
    call getinterpncdata( ncid, scmlat, scmlon, ioptimeidx, &
       'v', have_srf, srf(1), fill_ends, scm_crm_mode, &
       dplevs, nlev,psobs, hvcoord%hyam, hvcoord%hybm, vobs, status )
-   if ( status .ne. nf90_noerr ) then
+   if ( status /= nf90_noerr ) then
       have_v = .false.
    else
       have_v = .true.
@@ -1115,7 +1113,7 @@ type (hvcoord_t), intent(in) :: hvcoord
    call shr_sys_flush( iulog )
 
    status = nf90_inq_varid( ncid, 'Prec', varid   )
-   if ( status .ne. nf90_noerr ) then
+   if ( status /= nf90_noerr ) then
       have_prec = .false.
    else
       call get_start_count(ncid, varid, scmlat, scmlon, ioptimeidx, strt4, cnt4)
@@ -1128,7 +1126,7 @@ type (hvcoord_t), intent(in) :: hvcoord
    call getinterpncdata( ncid, scmlat, scmlon, ioptimeidx, 'Q1', &
       .false., dummy, fill_ends, scm_crm_mode, & ! datasets don't contain Q1 at surface
       dplevs, nlev,psobs, hvcoord%hyam, hvcoord%hybm, q1obs, status )
-   if ( status .ne. nf90_noerr ) then
+   if ( status /= nf90_noerr ) then
       have_q1 = .false.
    else
       have_q1 = .true.
@@ -1139,7 +1137,7 @@ type (hvcoord_t), intent(in) :: hvcoord
    call getinterpncdata( ncid, scmlat, scmlon, ioptimeidx, 'Q2', &
       .false., dummy, fill_ends, scm_crm_mode, & ! datasets don't contain Q2 at surface
       dplevs, nlev,psobs, hvcoord%hyam, hvcoord%hybm, q1obs, status )
-   if ( status .ne. nf90_noerr ) then
+   if ( status /= nf90_noerr ) then
       have_q2 = .false.
    else
       have_q2 = .true.
@@ -1149,9 +1147,9 @@ type (hvcoord_t), intent(in) :: hvcoord
 !  Analagous changes made for the surface heat flux
 
    status = nf90_inq_varid( ncid, 'lhflx', varid   )
-   if ( status .ne. nf90_noerr ) then
+   if ( status /= nf90_noerr ) then
       status = nf90_inq_varid( ncid, 'lh', varid   )
-      if ( status .ne. nf90_noerr ) then
+      if ( status /= nf90_noerr ) then
         have_lhflx = .false.
       else
          call get_start_count(ncid, varid, scmlat, scmlon, ioptimeidx, strt4, cnt4)
@@ -1165,9 +1163,9 @@ type (hvcoord_t), intent(in) :: hvcoord
    endif
 
    status = nf90_inq_varid( ncid, 'shflx', varid   )
-   if ( status .ne. nf90_noerr ) then
+   if ( status /= nf90_noerr ) then
       status = nf90_inq_varid( ncid, 'sh', varid   )
-      if ( status .ne. nf90_noerr ) then
+      if ( status /= nf90_noerr ) then
         have_shflx = .false.
       else
          call get_start_count(ncid, varid, scmlat, scmlon, ioptimeidx, strt4, cnt4)
@@ -1184,7 +1182,7 @@ type (hvcoord_t), intent(in) :: hvcoord
    ! If REPLAY is used, then need to read in the global
    !   energy fixer
    status = nf90_inq_varid( ncid, 'heat_glob', varid   )
-   if (status .ne. nf90_noerr) then
+   if (status /= nf90_noerr) then
       have_heat_glob = .false.
    else
       call wrap_get_vara_realx (ncid,varid,strt4,cnt4,heat_glob_scm)
@@ -1223,15 +1221,8 @@ type (hvcoord_t), intent(in) :: hvcoord
 
    call shr_sys_flush( iulog )
 
-!!$   status =  nf90_inq_varid( ncid, 'CLAT', varid   )
-!!$   if ( status == nf90_noerr ) then
-!!$      call wrap_get_vara_realx (ncid,varid,strt4,cnt4,clat)
-!!$!jt fix this circ depend      clat_p(1)=clat(1)
-!!$      latdeg(1) = clat(1)*45._r8/atan(1._r8)
-!!$   endif
-
    status =  nf90_inq_varid( ncid, 'beta', varid   )
-   if ( status .ne. nf90_noerr ) then
+   if ( status /= nf90_noerr ) then
       betacam = 0._r8
    else
       call get_start_count(ncid, varid, scmlat, scmlon, ioptimeidx, strt4, cnt4)
@@ -1240,7 +1231,7 @@ type (hvcoord_t), intent(in) :: hvcoord
    endif
 
    status =  nf90_inq_varid( ncid, 'fixmas', varid   )
-   if ( status .ne. nf90_noerr ) then
+   if ( status /= nf90_noerr ) then
       fixmascam=1.0_r8
    else
       call get_start_count(ncid, varid, scmlat, scmlon, ioptimeidx, strt4, cnt4)
@@ -1463,13 +1454,13 @@ subroutine get_start_count (ncid    ,varid  ,scmlat, scmlon, timeidx, start    ,
 !
 !     surface variables
 !
-   if ( var_ndims .EQ. 0 ) then
+   if ( var_ndims == 0 ) then
       call endrun('SCAMMOD: var_ndims is 0 for varid:',varid)
       return
    endif
 
    STATUS = NF90_INQUIRE_VARIABLE( NCID, varID, dimids=var_dimIDs)
-   if ( STATUS .NE. NF90_NOERR ) then
+   if ( STATUS /= NF90_NOERR ) then
       write(iulog,* ) 'ERROR - extractdata.F:Cant get dimension IDs for varid', varid
       return
    endif
@@ -1483,21 +1474,21 @@ subroutine get_start_count (ncid    ,varid  ,scmlat, scmlon, timeidx, start    ,
       usable_var = .false.
       STATUS = NF90_INQUIRE_DIMENSION( NCID, var_dimIDs( i ), dim_name )
 
-      if ( trim(dim_name) .EQ. 'lat' ) then
+      if ( trim(dim_name) == 'lat' ) then
          start( i ) =  latIdx
          count( i ) = 1           ! Extract a single value
          dims_set = dims_set + 1
          usable_var = .true.
       endif
 
-      if ( trim(dim_name) .EQ. 'lon' .or. trim(dim_name) .EQ. 'ncol' .or. trim(dim_name) .EQ. 'ncol_d' ) then
+      if ( trim(dim_name) == 'lon' .or. trim(dim_name) == 'ncol' .or. trim(dim_name) == 'ncol_d' ) then
          start( i ) = lonIdx
          count( i ) = 1           ! Extract a single value
          dims_set = dims_set + 1
          usable_var = .true.
       endif
 
-      if ( trim(dim_name) .EQ. 'lev' ) then
+      if ( trim(dim_name) == 'lev' ) then
          STATUS = NF90_INQUIRE_DIMENSION( NCID, var_dimIDs( i ), len=nlev )
          start( i ) = 1
          count( i ) = nlev       ! Extract all levels
@@ -1505,7 +1496,7 @@ subroutine get_start_count (ncid    ,varid  ,scmlat, scmlon, timeidx, start    ,
          usable_var = .true.
       endif
 
-      if ( trim(dim_name) .EQ. 'ilev' ) then
+      if ( trim(dim_name) == 'ilev' ) then
          STATUS = NF90_INQUIRE_DIMENSION( NCID, var_dimIDs( i ), len=nlev )
          start( i ) = 1
          count( i ) = nlev        ! Extract all levels
@@ -1513,7 +1504,7 @@ subroutine get_start_count (ncid    ,varid  ,scmlat, scmlon, timeidx, start    ,
          usable_var = .true.
       endif
 
-      if ( trim(dim_name) .EQ. 'time' .OR. trim(dim_name) .EQ. 'tsec' ) then
+      if ( trim(dim_name) == 'time' .OR. trim(dim_name) == 'tsec' ) then
          start( i ) = TimeIdx
          count( i ) = 1           ! Extract a single value
          dims_set = dims_set + 1
@@ -1561,42 +1552,42 @@ subroutine setiopupdate_init
     ! Read time (tsec) variable
 
     STATUS = NF90_INQ_VARID( NCID, 'tsec', tsec_varID )
-    if ( STATUS .NE. NF90_NOERR ) write(iulog,*)'ERROR - setiopupdate.F:', &
+    if ( STATUS /= NF90_NOERR ) write(iulog,*)'ERROR - setiopupdate.F:', &
        'Cant get variable ID for tsec'
 
     STATUS = NF90_INQ_VARID( NCID, 'bdate', bdate_varID )
-    if ( STATUS .NE. NF90_NOERR ) then
+    if ( STATUS /= NF90_NOERR ) then
        STATUS = NF90_INQ_VARID( NCID, 'basedate', bdate_varID )
-       if ( STATUS .NE. NF90_NOERR )         &
+       if ( STATUS /= NF90_NOERR )         &
           write(iulog,*)'ERROR - setiopupdate.F:Cant get variable ID for bdate'
     endif
 
     STATUS = NF90_INQ_DIMID( NCID, 'time', time_dimID )
-    if ( STATUS .NE. NF90_NOERR )  then
+    if ( STATUS /= NF90_NOERR )  then
        STATUS = NF90_INQ_DIMID( NCID, 'tsec', time_dimID )
-       if ( STATUS .NE. NF90_NOERR )  then
+       if ( STATUS /= NF90_NOERR )  then
           write(iulog,* )'ERROR - setiopupdate.F:Could not find variable dim ID for time'
           STATUS = NF90_CLOSE ( NCID )
           return
        end if
     end if
 
-    if ( STATUS .NE. NF90_NOERR )  &
+    if ( STATUS /= NF90_NOERR )  &
        write(iulog,*)'ERROR - setiopupdate.F:Cant get variable dim ID for time'
 
     STATUS = NF90_INQUIRE_DIMENSION( NCID, time_dimID, len=ntime )
-    if ( STATUS .NE. NF90_NOERR )then
+    if ( STATUS /= NF90_NOERR )then
        write(iulog,*)'ERROR - setiopupdate.F:Cant get time dimlen'
     endif
 
     if (.not.allocated(tsec)) allocate(tsec(ntime))
 
     STATUS = NF90_GET_VAR( NCID, tsec_varID, tsec )
-    if ( STATUS .NE. NF90_NOERR )then
+    if ( STATUS /= NF90_NOERR )then
        write(iulog,*)'ERROR - setiopupdate.F:Cant get variable tsec'
     endif
     STATUS = NF90_GET_VAR( NCID, bdate_varID, bdate )
-    if ( STATUS .NE. NF90_NOERR )then
+    if ( STATUS /= NF90_NOERR )then
        write(iulog,*)'ERROR - setiopupdate.F:Cant get variable bdate'
     endif
 
@@ -1614,8 +1605,8 @@ subroutine setiopupdate_init
        call get_start_date(yr,mon,day,start_tod)
        start_ymd = yr*10000 + mon*100 + day
 
-       if ( start_ymd .gt. next_date .or. (start_ymd .eq. next_date &
-          .and. start_tod .ge. next_sec)) then
+       if ( start_ymd > next_date .or. (start_ymd == next_date &
+          .and. start_tod >= next_sec)) then
           iopTimeIdx = i
        endif
     enddo
@@ -1623,7 +1614,7 @@ subroutine setiopupdate_init
     call get_curr_date(yr,mon,day,ncsec)
     ncdate=yr*10000 + mon*100 + day
 
-    if (iopTimeIdx == 0.or.iopTimeIdx .ge. ntime) then
+    if (iopTimeIdx == 0.or.iopTimeIdx >= ntime) then
        call timemgr_time_inc(bdate, 0, next_date, next_sec, inc_s=tsec(1))
        write(iulog,*) 'Error::setiopupdate: Current model time does not fall within IOP period'
        write(iulog,*) ' Current CAM Date is ',ncdate,' and ',ncsec,' seconds'

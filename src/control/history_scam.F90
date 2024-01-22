@@ -118,23 +118,25 @@ CONTAINS
    end subroutine scm_intht
 !#######################################################################
    subroutine initialize_iop_history()
+!-----------------------------------------------------------------------
 !
-! !DESCRIPTION:
+! Purpose: Add fields and set defaults for SCAM CAM BFB IOP initial file
+! as well as single column output history
+!
+! Method: Call a subroutine to add each field
+!
+!-----------------------------------------------------------------------
+!
 ! !USES:
     use constituents,     only: pcnst, cnst_name
     use dycore,           only: dycore_is
 ! !ARGUMENTS:
     implicit none
-!
-! !CALLED FROM:
-!
-! !REVISION HISTORY:
-!
-!EOP
-!
+
 ! !LOCAL VARIABLES:
     integer m
     character(len=100) dyngrid
+
 !-----------------------------------------------------------------------
 
     if (dycore_is('SE')) then
@@ -146,22 +148,22 @@ CONTAINS
     end if
 
     if (trim(dyngrid) == 'gauss_grid') then
-    call addfld ('CLAT1&IC',  horiz_only,  'I', ' ','cos lat for bfb testing', gridname=trim(dyngrid))
-    call add_default ('CLAT1&IC',0,'I')
-    call addfld ('CLON1&IC',  horiz_only,  'I', ' ','cos lon for bfb testing', gridname=trim(dyngrid))
-    call add_default ('CLON1&IC',0,'I')
-    call addfld ('PHI&IC',    horiz_only,  'I', ' ','lat for bfb testing', gridname=trim(dyngrid))
-    call add_default ('PHI&IC',0,  'I')
-    call addfld ('LAM&IC',    horiz_only,  'I', ' ','lon for bfb testing', gridname=trim(dyngrid))
-    call add_default ('LAM&IC',0,  'I')
+       call addfld ('CLAT1&IC',  horiz_only,  'I', ' ','cos lat for bfb testing', gridname=trim(dyngrid))
+       call add_default ('CLAT1&IC',0,'I')
+       call addfld ('CLON1&IC',  horiz_only,  'I', ' ','cos lon for bfb testing', gridname=trim(dyngrid))
+       call add_default ('CLON1&IC',0,'I')
+       call addfld ('PHI&IC',    horiz_only,  'I', ' ','lat for bfb testing', gridname=trim(dyngrid))
+       call add_default ('PHI&IC',0,  'I')
+       call addfld ('LAM&IC',    horiz_only,  'I', ' ','lon for bfb testing', gridname=trim(dyngrid))
+       call add_default ('LAM&IC',0,  'I')
 
-    call addfld ('CLAT',    horiz_only,   'A', ' ',   'cos lat for bfb testing', gridname=trim(dyngrid))
-    call add_default ('CLAT',2,' ')
+       call addfld ('CLAT',    horiz_only,   'A', ' ',   'cos lat for bfb testing', gridname=trim(dyngrid))
+       call add_default ('CLAT',2,' ')
 
-    call addfld ('fixmas',  horiz_only,   'A', 'percent','Mass fixer',gridname=trim(dyngrid))
-    call add_default ('fixmas',2,' ')
-    call addfld ('beta',    horiz_only,   'A', 'percent','Mass fixer',gridname=trim(dyngrid))
-    call add_default ('beta',2,' ')
+       call addfld ('fixmas',  horiz_only,   'A', 'percent','Mass fixer',gridname=trim(dyngrid))
+       call add_default ('fixmas',2,' ')
+       call addfld ('beta',    horiz_only,   'A', 'percent','Mass fixer',gridname=trim(dyngrid))
+       call add_default ('beta',2,' ')
     end if
 
     call addfld ('q',       (/ 'lev' /),  'A', 'kg/kg',  'Q for scam',gridname=trim(dyngrid))
@@ -189,12 +191,12 @@ CONTAINS
             trim(cnst_name(m))//' IOP Dynamics Residual for '//trim(cnst_name(m)),gridname=trim(dyngrid))
        call add_default (trim(cnst_name(m))//'_dten',2,' ')
        if (trim(dyngrid) == 'gauss_grid') then
-       call addfld (trim(cnst_name(m))//'_alph', horiz_only, 'A', 'kg/kg',trim(cnst_name(m))//' alpha constituent fixer', &
-            gridname=trim(dyngrid))
-       call add_default (trim(cnst_name(m))//'_alph',2,' ')
-       call addfld (trim(cnst_name(m))//'_dqfx', (/ 'lev' /), 'A', 'kg/kg',trim(cnst_name(m))//' dqfx3 fixer',            &
-            gridname=trim(dyngrid))
-       call add_default (trim(cnst_name(m))//'_dqfx',2,' ')
+          call addfld (trim(cnst_name(m))//'_alph', horiz_only, 'A', 'kg/kg',trim(cnst_name(m))//' alpha constituent fixer', &
+               gridname=trim(dyngrid))
+          call add_default (trim(cnst_name(m))//'_alph',2,' ')
+          call addfld (trim(cnst_name(m))//'_dqfx', (/ 'lev' /), 'A', 'kg/kg',trim(cnst_name(m))//' dqfx3 fixer',            &
+               gridname=trim(dyngrid))
+          call add_default (trim(cnst_name(m))//'_dqfx',2,' ')
        end if
     end do
     call addfld ('shflx',  horiz_only,  'A', 'W/m2', 'Surface sensible heat flux for scam',gridname='physgrid')
