@@ -532,7 +532,7 @@ subroutine ma_convproc_dp_intr(                &
 
    integer :: i
    integer :: itmpveca(pcols)
-   integer :: l, lchnk, lun
+   integer :: l, lchnk, lun, ncol
    integer :: nstep
 
    real(r8) :: dpdry(pcols,pver)     ! layer delta-p-dry (mb)
@@ -565,6 +565,7 @@ subroutine ma_convproc_dp_intr(                &
    ! Initialize
 
    lchnk = state%lchnk
+   ncol = state%ncol
    nstep = get_nstep()
    lun   = iulog
 
