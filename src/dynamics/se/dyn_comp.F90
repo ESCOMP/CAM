@@ -1,3 +1,4 @@
+!#define old_cam
 module dyn_comp
 
 ! CAM interfaces to the SE Dynamical Core
@@ -42,7 +43,11 @@ use dimensions_mod,         only: nelemd, nlev, np, npsq, ntrac, nc, fv_nphys
 use dimensions_mod,         only: qsize, use_cslam
 use element_mod,            only: element_t, elem_state_t
 use fvm_control_volume_mod, only: fvm_struct
+#ifdef old_cam
+use time_mod,        only: nsplit
+#else
 use se_dyn_time_mod,        only: nsplit
+#endif
 use edge_mod,               only: initEdgeBuffer, edgeVpack, edgeVunpack, FreeEdgeBuffer
 use edgetype_mod,           only: EdgeBuffer_t
 use bndry_mod,              only: bndry_exchange
@@ -110,7 +115,7 @@ subroutine dyn_readnl(NLFileName)
    use control_mod,    only: topology, variable_nsplit
    use control_mod,    only: fine_ne, hypervis_power, hypervis_scaling
    use control_mod,    only: max_hypervis_courant, statediag_numtrac,refined_mesh
-   use control_mod,    only: molecular_diff, pgf_formulation
+   use control_mod,    only: molecular_diff, pgf_formulation, dribble_in_rsplit_loop
    use control_mod,    only: sponge_del4_nu_div_fac, sponge_del4_nu_fac, sponge_del4_lev
    use dimensions_mod, only: ne, npart
    use dimensions_mod, only: large_Courant_incr
@@ -168,7 +173,55 @@ subroutine dyn_readnl(NLFileName)
    integer                      :: se_kmax_jet
    real(r8)                     :: se_molecular_diff
    integer                      :: se_pgf_formulation
-
+   integer                      :: se_dribble_in_rsplit_loop
+#ifndef old_cam   
+   namelist /dyn_se_inparm/        &
+      se_fine_ne,                  & ! For refined meshes
+      se_ftype,                    & ! forcing type
+      se_statediag_numtrac,        &
+      se_fv_nphys,                 &
+      se_hypervis_power,           &
+      se_hypervis_scaling,         &
+      se_hypervis_subcycle,        &
+      se_hypervis_subcycle_sponge, &
+      se_hypervis_subcycle_q,      &
+      se_limiter_option,           &
+      se_max_hypervis_courant,     &
+      se_mesh_file,                & ! Refined mesh definition file
+      se_ne,                       &
+      se_npes,                     &
+      se_nsplit,                   & ! # of dyn steps per physics timestep
+      se_nu,                       &
+      se_nu_div,                   &
+      se_nu_p,                     &
+      se_nu_top,                   &
+      se_sponge_del4_nu_fac,       &
+      se_sponge_del4_nu_div_fac,   &
+      se_sponge_del4_lev,          &
+      se_qsplit,                   &
+      se_refined_mesh,             &
+      se_rsplit,                   &
+      se_statefreq,                & ! number of steps per printstate call
+      se_tstep_type,               &
+      se_vert_remap_T,             &
+      se_vert_remap_uvTq_alg,      &
+      se_vert_remap_tracer_alg,    &
+      se_write_grid_file,          &
+      se_grid_filename,            &
+      se_write_gll_corners,        &
+      se_horz_num_threads,         &
+      se_vert_num_threads,         &
+      se_tracer_num_threads,       &
+      se_write_restart_unstruct,   &
+      se_large_Courant_incr,       &
+      se_fvm_supercycling,         &
+      se_fvm_supercycling_jet,     &
+      se_kmin_jet,                 &
+      se_kmax_jet,                 &
+      se_molecular_diff,           &
+      se_pgf_formulation,          &
+      se_dribble_in_rsplit_loop
+#else
    namelist /dyn_se_inparm/        &
       se_fine_ne,                  & ! For refined meshes
       se_ftype,                    & ! forcing type
@@ -214,7 +267,7 @@ subroutine dyn_readnl(NLFileName)
       se_kmax_jet,                 &
       se_molecular_diff,           &
       se_pgf_formulation
-
+#endif
    !--------------------------------------------------------------------------
 
    ! defaults for variables not set by build-namelist
@@ -288,7 +341,9 @@ subroutine dyn_readnl(NLFileName)
    call MPI_bcast(se_kmax_jet, 1, mpi_integer, masterprocid, mpicom, ierr)
    call MPI_bcast(se_molecular_diff, 1, mpi_real8, masterprocid, mpicom, ierr)
    call MPI_bcast(se_pgf_formulation, 1, mpi_integer, masterprocid, mpicom, ierr)
-
+#ifndef old_cam   
+   call MPI_bcast(se_dribble_in_rsplit_loop, 1, mpi_integer, masterprocid, mpicom, ierr)
+#endif
    if (se_npes <= 0) then
       call endrun('dyn_readnl: ERROR: se_npes must be > 0')
    end if
@@ -356,7 +411,9 @@ subroutine dyn_readnl(NLFileName)
    variable_nsplit          = .false.
    molecular_diff           = se_molecular_diff
    pgf_formulation          = se_pgf_formulation
-
+#ifndef old_cam      
+   dribble_in_rsplit_loop   = se_dribble_in_rsplit_loop
+#endif   
    if (fv_nphys > 0) then
       ! Use finite volume physics grid and CSLAM for tracer advection
       nphys_pts = fv_nphys*fv_nphys
@@ -799,28 +856,49 @@ subroutine dyn_init(dyn_in, dyn_out)
    !
    nu_scale_top(:) = 0.0_r8
    if (nu_top>0) then
-     ptop  = hvcoord%hyai(1)*hvcoord%ps0
-     if (ptop>300.0_r8) then
-       !
-       ! for low tops the tanh formulae below makes the sponge excessively deep
-       !
-       nu_scale_top(1) = 4.0_r8
-       nu_scale_top(2) = 2.0_r8
-       nu_scale_top(3) = 1.0_r8
-       ksponge_end = 3
-     else
-       do k=1,nlev
-         press = hvcoord%hyam(k)*hvcoord%ps0+hvcoord%hybm(k)*pstd
-         nu_scale_top(k) = 8.0_r8*(1.0_r8+tanh(1.0_r8*log(ptop/press(1)))) ! tau will be maximum 8 at model top
-         if (nu_scale_top(k).ge.0.15_r8) then
-           ksponge_end = k
-         else
-           nu_scale_top(k) = 0.0_r8
-         end if
-       end do
-     end if
+      ptop  = hvcoord%hyai(1)*hvcoord%ps0
+      if (ptop>300.0_r8) then
+         !
+         ! for low tops the tanh formulae below makes the sponge excessively deep
+         !
+         nu_scale_top(1) = 4.0_r8
+         nu_scale_top(2) = 2.0_r8
+         nu_scale_top(3) = 1.0_r8
+         ksponge_end = 3
+      else if (ptop>100.0_r8) then
+         !
+         ! CAM6 top (~225 Pa) or CAM7 low top
+         !
+         ! For backwards compatibility numbers below match tanh profile
+         ! used in FV
+         !
+         nu_scale_top(1) = 4.4_r8
+         nu_scale_top(2) = 1.3_r8
+         nu_scale_top(3) = 3.9_r8
+         ksponge_end = 3
+      else if (ptop>1e-1_r8) then
+         !
+         ! CAM7 FMT
+         !
+         nu_scale_top(1) = 3.0_r8
+         nu_scale_top(2) = 1.0_r8
+         nu_scale_top(3) = 0.1_r8
+         nu_scale_top(4) = 0.05_r8
+         ksponge_end = 4
+      else if (ptop>1e-4_r8) then
+         !
+         ! WACCM and WACCM-x
+         !
+         nu_scale_top(1) = 5.0_r8
+         nu_scale_top(2) = 5.0_r8
+         nu_scale_top(3) = 5.0_r8
+         nu_scale_top(4) = 2.0_r8
+         nu_scale_top(5) = 1.0_r8
+         nu_scale_top(6) = 0.1_r8
+         ksponge_end = 6
+      end if
    else
-     ksponge_end = 0
+      ksponge_end = 0
    end if
    ksponge_end = MAX(MAX(ksponge_end,1),kmol_end)
    if (masterproc) then
@@ -963,11 +1041,14 @@ subroutine dyn_run(dyn_state)
    use air_composition,  only: thermodynamic_active_species_idx_dycore
    use prim_driver_mod,  only: prim_run_subcycle
    use dimensions_mod,   only: cnst_name_gll
-   use se_dyn_time_mod,  only: tstep, nsplit, timelevel_qdp
+#ifdef old_cam
+   use time_mod,  only: tstep, nsplit, timelevel_qdp, tevolve
+#else
+   use se_dyn_time_mod,  only: tstep, nsplit, timelevel_qdp, tevolve
+#endif
    use hybrid_mod,       only: config_thread_region, get_loop_ranges
    use control_mod,      only: qsplit, rsplit, ftype_conserve
    use thread_mod,       only: horz_num_threads
-   use se_dyn_time_mod,  only: tevolve
 
    type(dyn_export_t), intent(inout) :: dyn_state
 
@@ -1042,24 +1123,23 @@ subroutine dyn_run(dyn_state)
      end if
    end do
 
-
-
    ! convert elem(ie)%derived%fq to mass tendency
-   do ie = nets, nete
-      do m = 1, qsize
+   if (.not.use_cslam) then
+     do ie = nets, nete
+       do m = 1, qsize
          do k = 1, nlev
-            do j = 1, np
-               do i = 1, np
-                  dyn_state%elem(ie)%derived%FQ(i,j,k,m) = dyn_state%elem(ie)%derived%FQ(i,j,k,m)* &
-                     rec2dt*dyn_state%elem(ie)%state%dp3d(i,j,k,tl_f)
-               end do
-            end do
+           do j = 1, np
+             do i = 1, np
+               dyn_state%elem(ie)%derived%FQ(i,j,k,m) = dyn_state%elem(ie)%derived%FQ(i,j,k,m)* &
+                    rec2dt*dyn_state%elem(ie)%state%dp3d(i,j,k,tl_f)
+             end do
+           end do
          end do
-      end do
-   end do
+       end do
+     end do
+   end if
 
-
-   if (ftype_conserve>0) then
+   if (ftype_conserve>0.and..not.use_cslam) then
      do ie = nets, nete
        do k=1,nlev
          do j=1,np
@@ -1075,7 +1155,6 @@ subroutine dyn_run(dyn_state)
        end do
      end do
    end if
-
 
    if (use_cslam) then
       do ie = nets, nete
@@ -1795,6 +1874,7 @@ subroutine set_phis(dyn_in)
    integer                          :: ierr, pio_errtype
 
    character(len=max_fieldname_len) :: fieldname
+   character(len=max_fieldname_len) :: fieldname_gll
    character(len=max_hcoordname_len):: grid_name
    integer                          :: dims(2)
    integer                          :: dyn_cols
@@ -1878,12 +1958,36 @@ subroutine set_phis(dyn_in)
       end if
 
       fieldname = 'PHIS'
-      if (dyn_field_exists(fh_topo, trim(fieldname))) then
+      fieldname_gll = 'PHIS_gll'
+      if (fv_nphys>0.and.dyn_field_exists(fh_topo, trim(fieldname_gll),required=.false.)) then
+         !
+         ! If physgrid it is recommended to read in PHIS on the GLL grid and then
+         ! map to the physgrid in d_p_coupling
+         !
+         ! This requires a topo file with PHIS_gll on it ...
+         !
+         if (masterproc) then
+            write(iulog, *) "Reading in PHIS on GLL grid (mapped to physgrid in d_p_coupling)"
+         end if
+         call read_dyn_var(fieldname_gll, fh_topo, 'ncol_gll', phis_tmp)
+      else if (dyn_field_exists(fh_topo, trim(fieldname))) then
          if (fv_nphys == 0) then
-           call read_dyn_var(fieldname, fh_topo, 'ncol', phis_tmp)
+            if (masterproc) then
+               write(iulog, *) "Reading in PHIS"
+            end if
+            call read_dyn_var(fieldname, fh_topo, 'ncol', phis_tmp)
          else
-           call read_phys_field_2d(fieldname, fh_topo, 'ncol', phis_phys_tmp)
-           call map_phis_from_physgrid_to_gll(dyn_in%fvm, elem, phis_phys_tmp, &
+            !
+            ! For backwards compatibility we allow reading in PHIS on the physgrid
+            ! which is then mapped to the GLL grid and back to the physgrid in d_p_coupling
+            ! (the latter is to avoid noise in derived quantities such as PSL)
+            !
+            if (masterproc) then
+               write(iulog, *) "Reading in PHIS on physgrid"
+               write(iulog, *) "Recommended to read in PHIS on GLL grid"
+            end if
+            call read_phys_field_2d(fieldname, fh_topo, 'ncol', phis_phys_tmp)
+            call map_phis_from_physgrid_to_gll(dyn_in%fvm, elem, phis_phys_tmp, &
                 phis_tmp, pmask)
          end if
       else
@@ -1916,44 +2020,6 @@ subroutine set_phis(dyn_in)
                               PHIS_OUT=phis_tmp, mask=pmask(:))
       deallocate(glob_ind)
 
-      if (fv_nphys > 0) then
-
-         ! initialize PHIS on physgrid
-         allocate(latvals_phys(fv_nphys*fv_nphys*nelemd))
-         allocate(lonvals_phys(fv_nphys*fv_nphys*nelemd))
-         indx = 1
-         do ie = 1, nelemd
-            do j = 1, fv_nphys
-               do i = 1, fv_nphys
-                  latvals_phys(indx) = dyn_in%fvm(ie)%center_cart_physgrid(i,j)%lat
-                  lonvals_phys(indx) = dyn_in%fvm(ie)%center_cart_physgrid(i,j)%lon
-                  indx = indx + 1
-               end do
-            end do
-         end do
-
-         allocate(pmask_phys(fv_nphys*fv_nphys*nelemd))
-         pmask_phys(:) = .true.
-         allocate(glob_ind(fv_nphys*fv_nphys*nelemd))
-
-         j = 1
-         do ie = 1, nelemd
-            do i = 1, fv_nphys*fv_nphys
-               ! Create a global(ish) column index
-               glob_ind(j) = elem(ie)%GlobalId
-               j = j + 1
-            end do
-         end do
-
-         call analytic_ic_set_ic(vcoord, latvals_phys, lonvals_phys, glob_ind, &
-                                 PHIS_OUT=phis_phys_tmp, mask=pmask_phys)
-
-         deallocate(latvals_phys)
-         deallocate(lonvals_phys)
-         deallocate(pmask_phys)
-         deallocate(glob_ind)
-      end if
-
    end if
 
    deallocate(pmask)
@@ -1969,14 +2035,8 @@ subroutine set_phis(dyn_in)
          end do
       end do
    end do
-   if (fv_nphys > 0) then
-      do ie = 1, nelemd
-         dyn_in%fvm(ie)%phis_physgrid = RESHAPE(phis_phys_tmp(:,ie),(/fv_nphys,fv_nphys/))
-      end do
-   end if
-
    deallocate(phis_tmp)
-   if (fv_nphys > 0) then
+   if (allocated(phis_phys_tmp)) then
       deallocate(phis_phys_tmp)
    end if
 

@@ -141,7 +141,7 @@ CONTAINS
 
     do ie=nets,nete
       ! pressure at model top
-      pint(:,:) = hvcoord%hyai(1) 
+      pint(:,:) = hvcoord%hyai(1)*hvcoord%ps0
       do k=1,nlev
         ! moist pressure at mid points
         sum_water(:,:) = 1.0_r8

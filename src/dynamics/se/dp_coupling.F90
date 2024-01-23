@@ -1,3 +1,4 @@
+!#define old_cam
 module dp_coupling
 
 !-------------------------------------------------------------------------------
@@ -54,7 +55,11 @@ subroutine d_p_coupling(phys_state, phys_tend,  pbuf2d, dyn_out)
    use phys_control,           only: use_gw_front, use_gw_front_igw
    use hycoef,                 only: hyai, ps0
    use fvm_mapping,            only: dyn2phys_vector, dyn2phys_all_vars
+#ifdef old_cam
+   use time_mod,        only: timelevel_qdp
+#else
    use se_dyn_time_mod,        only: timelevel_qdp
+#endif
    use control_mod,            only: qsplit
    use test_fvm_mapping,       only: test_mapping_overwrite_dyn_state, test_mapping_output_phys_state
    use prim_advance_mod,       only: tot_energy_dyn
@@ -427,8 +432,9 @@ subroutine p_d_coupling(phys_state, phys_tend, dyn_in, tl_f, tl_qdp)
          !JMD        hybrid = config_thread_region(par,'horizontal')
          hybrid = config_thread_region(par,'serial')
          call get_loop_ranges(hybrid,ibeg=nets,iend=nete)
-
-         ! high-order mapping of ft and fm (and fq if no cslam) using fvm technology
+         !
+         ! high-order mapping of ft and fm using fvm technology
+         !
          call t_startf('phys2dyn')
          call phys2dyn_forcings_fvm(elem, dyn_in%fvm, hybrid,nets,nete,ntrac==0, tl_f, tl_qdp)
          call t_stopf('phys2dyn')
@@ -474,19 +480,20 @@ subroutine p_d_coupling(phys_state, phys_tend, dyn_in, tl_f, tl_qdp)
             dyn_in%elem(ie)%derived%FT(:,:,k) =                            &
                  dyn_in%elem(ie)%derived%FT(:,:,k) *                       &
                  dyn_in%elem(ie)%spheremp(:,:)
-            do m = 1, qsize
-               dyn_in%elem(ie)%derived%FQ(:,:,k,m) =                       &
-                    dyn_in%elem(ie)%derived%FQ(:,:,k,m) *                  &
-                    dyn_in%elem(ie)%spheremp(:,:)
-            end do
          end do
       end if
       kptr = 0
       call edgeVpack(edgebuf, dyn_in%elem(ie)%derived%FM(:,:,:,:), 2*nlev, kptr, ie)
       kptr = kptr + 2*nlev
       call edgeVpack(edgebuf, dyn_in%elem(ie)%derived%FT(:,:,:), nlev, kptr, ie)
-      kptr = kptr + nlev
-      call edgeVpack(edgebuf, dyn_in%elem(ie)%derived%FQ(:,:,:,:), nlev*qsize, kptr, ie)
+      if (fv_nphys < 1) then
+         !
+         ! if using CSLAM qdp is being overwritten with CSLAM values in the dynamics
+         ! so no need to do boundary exchange of tracer tendency on GLL grid here
+         !
+         kptr = kptr + nlev
+         call edgeVpack(edgebuf, dyn_in%elem(ie)%derived%FQ(:,:,:,:), nlev*qsize, kptr, ie)
+      end if
    end do
 
    if (iam < par%nprocs) then
@@ -499,7 +506,9 @@ subroutine p_d_coupling(phys_state, phys_tend, dyn_in, tl_f, tl_qdp)
       kptr = kptr + 2*nlev
       call edgeVunpack(edgebuf, dyn_in%elem(ie)%derived%FT(:,:,:), nlev, kptr, ie)
       kptr = kptr + nlev
-      call edgeVunpack(edgebuf, dyn_in%elem(ie)%derived%FQ(:,:,:,:), nlev*qsize, kptr, ie)
+      if (fv_nphys < 1) then
+         call edgeVunpack(edgebuf, dyn_in%elem(ie)%derived%FQ(:,:,:,:), nlev*qsize, kptr, ie)
+      end if
       if (fv_nphys > 0) then
          do k = 1, nlev
             dyn_in%elem(ie)%derived%FM(:,:,1,k) =                             &
@@ -511,11 +520,6 @@ subroutine p_d_coupling(phys_state, phys_tend, dyn_in, tl_f, tl_qdp)
             dyn_in%elem(ie)%derived%FT(:,:,k) =                               &
                  dyn_in%elem(ie)%derived%FT(:,:,k) *                          &
                  dyn_in%elem(ie)%rspheremp(:,:)
-            do m = 1, qsize
-               dyn_in%elem(ie)%derived%FQ(:,:,k,m) =                          &
-                    dyn_in%elem(ie)%derived%FQ(:,:,k,m) *                     &
-                    dyn_in%elem(ie)%rspheremp(:,:)
-            end do
          end do
       end if
    end do
@@ -546,7 +550,9 @@ subroutine derived_phys_dry(phys_state, phys_tend, pbuf2d)
    use shr_const_mod,   only: shr_const_rwv
    use phys_control,    only: waccmx_is
    use geopotential,    only: geopotential_t
+#ifndef old_cam   
    use static_energy,   only: update_dry_static_energy_run
+#endif
    use check_energy,    only: check_energy_timestep_init
    use hycoef,          only: hyai, ps0
    use shr_vmath_mod,   only: shr_vmath_log
@@ -696,14 +702,21 @@ subroutine derived_phys_dry(phys_state, phys_tend, pbuf2d)
          phys_state(lchnk)%pmid  , phys_state(lchnk)%pdel    , phys_state(lchnk)%rpdel                , &
          phys_state(lchnk)%t     , phys_state(lchnk)%q(:,:,:), rairv(:,:,lchnk), gravit, zvirv        , &
          phys_state(lchnk)%zi    , phys_state(lchnk)%zm      , ncol)
-
+#ifdef old_cam
+      do k = 1, pver
+        do i = 1, ncol
+           phys_state(lchnk)%s(i,k) = cpairv(i,k,lchnk)*phys_state(lchnk)%t(i,k) &
+                                      + gravit*phys_state(lchnk)%zm(i,k) + phys_state(lchnk)%phis(i)
+        end do
+     end do
+#else
       ! Compute initial dry static energy, include surface geopotential
       call update_dry_static_energy_run(pver, gravit, phys_state(lchnk)%t(1:ncol,:),  &
                                         phys_state(lchnk)%zm(1:ncol,:),               &
                                         phys_state(lchnk)%phis(1:ncol),               &
                                         phys_state(lchnk)%s(1:ncol,:),                &
                                         cpairv(1:ncol,:,lchnk), errflg, errmsg)
-
+#endif
       ! Ensure tracers are all positive
       call qneg3('D_P_COUPLING',lchnk  ,ncol    ,pcols   ,pver    , &
            1, pcnst, qmin  ,phys_state(lchnk)%q)

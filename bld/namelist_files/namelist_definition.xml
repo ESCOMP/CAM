@@ -8233,6 +8233,20 @@ Default: Set by build-namelist.
   Default: Set by build-namelist.
 </entry>
 
+<entry id="se_dribble_in_rsplit_loop" type="integer" category="se"
+       group="dyn_se_inparm" valid_values="0,1" >
+
+  0: physics tendencies will be added every vertical remapping time-step (dt_phys/se_nsplit)
+     for se_ftype=0,2
+
+  1: physics tendencies will be added every dynamics time-step (dt_phys/se_nsplit*se_rsplit)
+     for se_ftype=0,2
+
+     If se_ftype=1 then se_dribble_in_rsplit_loop has no effect since physics tendencies are added as an adjustment
+
+  Default: Set by build-namelist.
+</entry>
+
 
 <!-- MPAS dycore -->
 

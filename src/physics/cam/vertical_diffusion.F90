@@ -280,6 +280,7 @@ subroutine vertical_diffusion_init(pbuf2d)
   use beljaars_drag_cam, only : beljaars_drag_init
   use upper_bc,          only : ubc_init
   use phys_control,      only : waccmx_is, fv_am_correction
+  use ref_pres,          only : ptop_ref
 
   type(physics_buffer_desc), pointer :: pbuf2d(:,:)
   character(128) :: errstring   ! Error status for init_vdiff
@@ -301,6 +302,27 @@ subroutine vertical_diffusion_init(pbuf2d)
 
   if (masterproc) then
      write(iulog,*)'Initializing vertical diffusion (vertical_diffusion_init)'
+     if (ptop_ref>1e-1_r8.and.ptop_ref<100.0_r8) then
+        !
+        ! CAM7 FMT
+        !
+        write(iulog,*)'Artificial sponge layer vertical diffusion added:'
+        write(iulog,*)'vertical diffusion coefficient at interface 1 is increased by 2.0E6 m^2/s2'
+        write(iulog,*)'vertical diffusion coefficient at interface 2 is increased by 2.0E6 m^2/s2'
+        write(iulog,*)'vertical diffusion coefficient at interface 3 is increased by 0.5E6 m^2/s2'
+        write(iulog,*)'vertical diffusion coefficient at interface 4 is increased by 0.1E6 m^2/s2'
+     else if (ptop_ref>1e-4_r8) then
+        !
+        ! WACCM and WACCM-x
+        !
+        write(iulog,*)'Artificial sponge layer vertical diffusion added:'
+        write(iulog,*)'vertical diffusion coefficient at interface 1 is increased by 2.0E6 m^2/s2'
+        write(iulog,*)'vertical diffusion coefficient at interface 2 is increased by 2.0E6 m^2/s2'
+        write(iulog,*)'vertical diffusion coefficient at interface 3 is increased by 1.5E6 m^2/s2'
+        write(iulog,*)'vertical diffusion coefficient at interface 4 is increased by 1.0E6 m^2/s2'
+        write(iulog,*)'vertical diffusion coefficient at interface 5 is increased by 0.5E6 m^2/s2'
+        write(iulog,*)'vertical diffusion coefficient at interface 6 is increased by 0.1E6 m^2/s2'
+     end if
   end if
 
   ! Check to see if WACCM-X is on (currently we don't care whether the
@@ -633,7 +655,6 @@ subroutine vertical_diffusion_init(pbuf2d)
         call pbuf_set_field(pbuf2d, qti_flx_idx,  0.0_r8)
      end if
   end if
-
 end subroutine vertical_diffusion_init
 
 ! =============================================================================== !
@@ -695,6 +716,7 @@ subroutine vertical_diffusion_tend( &
   use upper_bc,           only : ubc_get_flxs
   use coords_1d,          only : Coords1D
   use phys_control,       only : cam_physpkg_is
+  use ref_pres,           only : ptop_ref
 
   ! --------------- !
   ! Input Arguments !
@@ -1067,6 +1089,36 @@ subroutine vertical_diffusion_tend( &
 
   call outfld( 'ustar',   ustar(:), pcols, lchnk )
   call outfld( 'obklen', obklen(:), pcols, lchnk )
+  !
+  ! add sponge layer vertical diffusion
+  !
+  if (ptop_ref>300.0_r8) then
+     !
+     ! for low tops the tanh formulae below makes the sponge excessively deep
+     !
+  else if (ptop_ref>100.0_r8) then
+     !
+     ! CAM6 top (~225 Pa) or CAM7 low top
+     !
+  else if (ptop_ref>1e-1_r8) then
+     !
+     ! CAM7 FMT
+     !
+     kvm(:ncol,1) = kvm(:ncol,1)+2E6_r8
+     kvm(:ncol,2) = kvm(:ncol,2)+2E6_r8
+     kvm(:ncol,3) = kvm(:ncol,3)+0.5E6_r8
+     kvm(:ncol,4) = kvm(:ncol,4)+0.1E6_r8
+  else if (ptop_ref>1e-4_r8) then
+     !
+     ! WACCM and WACCM-x
+     !
+     kvm(:ncol,1) = kvm(:ncol,1)+2E6_r8
+     kvm(:ncol,2) = kvm(:ncol,2)+2E6_r8
+     kvm(:ncol,3) = kvm(:ncol,3)+1.5E6_r8
+     kvm(:ncol,4) = kvm(:ncol,4)+1.0E6_r8
+     kvm(:ncol,5) = kvm(:ncol,5)+0.5E6_r8
+     kvm(:ncol,6) = kvm(:ncol,6)+0.1E6_r8
+  end if
 
   ! kvh (in pbuf) is used by other physics parameterizations, and as an initial guess in compute_eddy_diff
   ! on the next timestep.  It is not updated by the compute_vdiff call below.
