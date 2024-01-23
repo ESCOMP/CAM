@@ -6028,7 +6028,7 @@ radiatively passive.
 Default: FALSE
 </entry>
 
-<entry id="gas_wetdep_method" type="char*9" category="cam_chem"
+<entry id="gas_wetdep_method" type="char*3" category="cam_chem"
        group="wetdep_inparm" valid_values="MOZ,NEU,OFF" >
 Wet deposition method used
   MOZ --> mozart scheme is used

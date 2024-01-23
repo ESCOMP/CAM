@@ -583,10 +583,6 @@ if ( ($chem ne 'none') or ( $prog_species ) ){
       add_default($nl, 'gas_wetdep_list', 'val'=>$gas_wetdep_list );
     }
 
-    if ($chem =~ /geoschem/) {
-      $prescribe_aerosols = $FALSE;
-    }
-
     if (length($aer_wetdep_list)>2){
         # determine if prescribed aerosols are not needed ...
         if ($aer_wetdep_list =~ /so4/i &&
