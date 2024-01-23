@@ -751,10 +751,10 @@ subroutine cldfrc(lchnk   ,ncol    , pbuf,  &
 
 ! Arguments
     integer,  intent(in)  :: ncol                 ! number of active columns
-    real(r8), intent(in)  :: t(pcols,pver)        ! temperature
+    real(r8), intent(in)  :: t(:,:)        ! temperature
 
-    real(r8), intent(out) :: fice(pcols,pver)     ! Fractional ice content within cloud
-    real(r8), intent(out) :: fsnow(pcols,pver)    ! Fractional snow content for convection
+    real(r8), intent(out) :: fice(:,:)     ! Fractional ice content within cloud
+    real(r8), intent(out) :: fsnow(:,:)    ! Fractional snow content for convection
 
 ! Local variables
     real(r8) :: tmax_fice                         ! max temperature for cloud ice formation

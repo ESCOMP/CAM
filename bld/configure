@@ -2250,6 +2250,9 @@ sub write_filepath
     # in the list of filepaths.
     print $fh "$camsrcdir/src/physics/cam\n";
 
+    #Add the CCPP'ized subdirectories
+    print $fh "$camsrcdir/src/atmos_phys/zm\n";
+
     # Dynamics package and test utilities
     print $fh "$camsrcdir/src/dynamics/$dyn\n";
     if($dyn eq 'se') {
