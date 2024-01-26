@@ -697,6 +697,10 @@ subroutine derived_phys_dry(phys_state, phys_tend, pbuf2d)
          end if
       end do
 
+      ! Ensure tracers are all positive
+      call qneg3('D_P_COUPLING',lchnk  ,ncol    ,pcols   ,pver    , &
+           1, pcnst, qmin  ,phys_state(lchnk)%q)
+
       ! Compute initial geopotential heights - based on full pressure
       call geopotential_t(phys_state(lchnk)%lnpint, phys_state(lchnk)%lnpmid  , phys_state(lchnk)%pint, &
          phys_state(lchnk)%pmid  , phys_state(lchnk)%pdel    , phys_state(lchnk)%rpdel                , &
@@ -717,10 +721,6 @@ subroutine derived_phys_dry(phys_state, phys_tend, pbuf2d)
                                         phys_state(lchnk)%s(1:ncol,:),                &
                                         cpairv(1:ncol,:,lchnk), errflg, errmsg)
 #endif
-      ! Ensure tracers are all positive
-      call qneg3('D_P_COUPLING',lchnk  ,ncol    ,pcols   ,pver    , &
-           1, pcnst, qmin  ,phys_state(lchnk)%q)
-
       ! Compute energy and water integrals of input state
       pbuf_chnk => pbuf_get_chunk(pbuf2d, lchnk)
       call check_energy_timestep_init(phys_state(lchnk), phys_tend(lchnk), pbuf_chnk)
