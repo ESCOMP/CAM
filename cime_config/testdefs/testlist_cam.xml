@@ -329,16 +329,6 @@
       <option name="wallclock">00:30:00</option>
     </options>
   </test>
-<!--              112 tsm, ter, tbl                              -->
-  <test compset="QPC3" grid="T5_T5_mg37" name="ERC_D_Ln9_Vnuopc" testmods="cam/outfrq3s_usecase">
-    <machines>
-      <machine name="izumi" compiler="gnu" category="aux_cam"/>
-    </machines>
-    <options>
-      <option name="comment" >112 tsm, ter</option>
-      <option name="wallclock">00:30:00</option>
-    </options>
-  </test>
 <!--              113 tsm, ter, T8                              -->
   <test compset="QPC4" grid="T5_T5_mg37" name="ERC_D_Ln9_Vnuopc" testmods="cam/outfrq3s_usecase">
     <machines>
@@ -516,16 +506,6 @@
     </machines>
     <options>
       <option name="comment" >339 tsm, ter</option>
-      <option name="wallclock">00:30:00</option>
-    </options>
-  </test>
-<!--              367                         -->
-  <test compset="QPC6" grid="f10_f10_mg37" name="ERC_D_Ln9_Vnuopc" testmods="cam/outfrq3s_convmic">
-    <machines>
-      <machine name="izumi" compiler="nag" category="aux_cam"/>
-    </machines>
-    <options>
-      <option name="comment" >367 tsm, ter</option>
       <option name="wallclock">00:30:00</option>
     </options>
   </test>
