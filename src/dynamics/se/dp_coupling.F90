@@ -545,9 +545,7 @@ subroutine derived_phys_dry(phys_state, phys_tend, pbuf2d)
    use shr_const_mod,   only: shr_const_rwv
    use phys_control,    only: waccmx_is
    use geopotential,    only: geopotential_t
-#ifndef old_cam   
    use static_energy,   only: update_dry_static_energy_run
-#endif
    use check_energy,    only: check_energy_timestep_init
    use hycoef,          only: hyai, ps0
    use shr_vmath_mod,   only: shr_vmath_log
