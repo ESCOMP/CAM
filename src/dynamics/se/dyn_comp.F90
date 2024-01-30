@@ -169,7 +169,6 @@ subroutine dyn_readnl(NLFileName)
    real(r8)                     :: se_molecular_diff
    integer                      :: se_pgf_formulation
    integer                      :: se_dribble_in_rsplit_loop
-#ifndef old_cam   
    namelist /dyn_se_inparm/        &
       se_fine_ne,                  & ! For refined meshes
       se_ftype,                    & ! forcing type
@@ -216,53 +215,6 @@ subroutine dyn_readnl(NLFileName)
       se_molecular_diff,           &
       se_pgf_formulation,          &
       se_dribble_in_rsplit_loop
-#else
-   namelist /dyn_se_inparm/        &
-      se_fine_ne,                  & ! For refined meshes
-      se_ftype,                    & ! forcing type
-      se_statediag_numtrac,        &
-      se_fv_nphys,                 &
-      se_hypervis_power,           &
-      se_hypervis_scaling,         &
-      se_hypervis_subcycle,        &
-      se_hypervis_subcycle_sponge, &
-      se_hypervis_subcycle_q,      &
-      se_limiter_option,           &
-      se_max_hypervis_courant,     &
-      se_mesh_file,                & ! Refined mesh definition file
-      se_ne,                       &
-      se_npes,                     &
-      se_nsplit,                   & ! # of dyn steps per physics timestep
-      se_nu,                       &
-      se_nu_div,                   &
-      se_nu_p,                     &
-      se_nu_top,                   &
-      se_sponge_del4_nu_fac,       &
-      se_sponge_del4_nu_div_fac,   &
-      se_sponge_del4_lev,          &
-      se_qsplit,                   &
-      se_refined_mesh,             &
-      se_rsplit,                   &
-      se_statefreq,                & ! number of steps per printstate call
-      se_tstep_type,               &
-      se_vert_remap_T,             &
-      se_vert_remap_uvTq_alg,      &
-      se_vert_remap_tracer_alg,    &
-      se_write_grid_file,          &
-      se_grid_filename,            &
-      se_write_gll_corners,        &
-      se_horz_num_threads,         &
-      se_vert_num_threads,         &
-      se_tracer_num_threads,       &
-      se_write_restart_unstruct,   &
-      se_large_Courant_incr,       &
-      se_fvm_supercycling,         &
-      se_fvm_supercycling_jet,     &
-      se_kmin_jet,                 &
-      se_kmax_jet,                 &
-      se_molecular_diff,           &
-      se_pgf_formulation
-#endif
    !--------------------------------------------------------------------------
 
    ! defaults for variables not set by build-namelist
