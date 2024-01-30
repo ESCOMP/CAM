@@ -20,6 +20,8 @@
   <test compset="FC2000climo_GC" grid="f09_f09_mg17" name="ERP_Ln9_Vnuopc" testmods="cam/outfrq9s">
     <machines>
       <machine name="derecho" compiler="intel" category="geoschem"/>
+      <machine name="derecho" compiler="intel" category="prealpha"/>
+      <machine name="derecho" compiler="intel" category="aux_cam"/>
     </machines>
     <options>
       <option name="wallclock">00:10:00</option>
@@ -45,6 +47,8 @@
   <test compset="FC2010climo_GC" grid="f09_f09_mg17" name="ERP_Ln9_Vnuopc" testmods="cam/outfrq9s">
     <machines>
       <machine name="derecho" compiler="intel" category="geoschem"/>
+      <machine name="derecho" compiler="intel" category="prealpha"/>
+      <machine name="derecho" compiler="intel" category="aux_cam"/>
     </machines>
     <options>
       <option name="wallclock">00:10:00</option>
@@ -1728,6 +1732,8 @@
   <test compset="FCnudged_GC" grid="f09_f09_mg17" name="ERP_Ln9_Vnuopc" testmods="cam/outfrq3s_zmean_nudging">
     <machines>
       <machine name="derecho" compiler="intel" category="geoschem"/>
+      <machine name="derecho" compiler="intel" category="prealpha"/>
+      <machine name="derecho" compiler="intel" category="aux_cam"/>
     </machines>
     <options>
       <option name="wallclock">00:30:00</option>
@@ -1948,6 +1954,8 @@
   <test compset="FCHIST_GC" grid="f09_f09_mg17" name="SMS_Ld1_Vnuopc" testmods="cam/outfrq1d">
     <machines>
       <machine name="derecho" compiler="intel" category="geoschem"/>
+      <machine name="derecho" compiler="intel" category="prealpha"/>
+      <machine name="derecho" compiler="intel" category="aux_cam"/>
     </machines>
   </test>
   <test compset="FCvbsxHIST" grid="f09_f09_mg17" name="SMS_D_Ln9_Vnuopc" testmods="cam/outfrq9s">
