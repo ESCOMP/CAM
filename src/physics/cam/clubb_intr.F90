@@ -1427,7 +1427,7 @@ end subroutine clubb_init_cnst
     logical, parameter :: l_input_fields = .false. ! Always false for CAM-CLUBB.
     logical, parameter :: l_update_pressure = .false. ! Always false for CAM-CLUBB.
 
-    integer :: nlev
+    integer :: nlev, ierr=0
 
     real(r8) :: &
       C1, C1b, C1c, C2rt, C2thl, C2rtthl, &
@@ -1465,7 +1465,8 @@ end subroutine clubb_init_cnst
     allocate( &
        pdf_params_chnk(begchunk:endchunk),   &
        pdf_params_zm_chnk(begchunk:endchunk), &
-       pdf_implicit_coefs_terms_chnk(begchunk:endchunk) )
+       pdf_implicit_coefs_terms_chnk(begchunk:endchunk), stat=ierr )
+    if( ierr /= 0 ) call endrun(' clubb_ini_cam: failed to allocate pdf_params')
 
     ! ----------------------------------------------------------------- !
     ! Determine how many constituents CLUBB will transport.  Note that  
@@ -1831,13 +1832,18 @@ end subroutine clubb_init_cnst
                               stats_zt(:), stats_zm(:), stats_sfc(:), &
                               stats_rad_zt(:), stats_rad_zm(:))
 
-       allocate(out_zt(pcols,pverp,stats_zt(1)%num_output_fields))
-       allocate(out_zm(pcols,pverp,stats_zm(1)%num_output_fields))
-       allocate(out_sfc(pcols,1,stats_sfc(1)%num_output_fields))
+       allocate(out_zt(pcols,pverp,stats_zt(1)%num_output_fields), stat=ierr)
+       if( ierr /= 0 ) call endrun( 'clubb_ini_cam: Unable to allocate out_zt' )
+       allocate(out_zm(pcols,pverp,stats_zm(1)%num_output_fields), stat=ierr)
+       if( ierr /= 0 ) call endrun( 'clubb_ini_cam: Unable to allocate out_zm' )
+       allocate(out_sfc(pcols,1,stats_sfc(1)%num_output_fields), stat=ierr)
+       if( ierr /= 0 ) call endrun( 'clubb_ini_cam: Unable to allocate out_sfc' )
 
        if ( stats_metadata%l_output_rad_files ) then
-         allocate(out_radzt(pcols,pverp,stats_rad_zt(1)%num_output_fields))
-         allocate(out_radzm(pcols,pverp,stats_rad_zm(1)%num_output_fields))
+          allocate(out_radzt(pcols,pverp,stats_rad_zt(1)%num_output_fields), stat=ierr)
+          if( ierr /= 0 ) call endrun( 'clubb_ini_cam: Unable to allocate out_radzt' )
+          allocate(out_radzm(pcols,pverp,stats_rad_zm(1)%num_output_fields), stat=ierr)
+          if( ierr /= 0 ) call endrun( 'clubb_ini_cam: Unable to allocate out_radzm' )
        end if
 
     endif
@@ -3796,12 +3802,14 @@ end subroutine clubb_init_cnst
         ptend_loc%q(i,k,ixcldliq) = (rcm(i,k) - state1%q(i,k,ixcldliq))     / hdtime ! Tendency of liquid water
         ptend_loc%s(i,k)          = (clubb_s(i,k) - state1%s(i,k))          / hdtime ! Tendency of static energy
 
-        rtm_integral_ltend(i) = rtm_integral_ltend(i) + ptend_loc%q(i,k,ixcldliq)*state1%pdel(i,k)/gravit
-        rtm_integral_vtend(i) = rtm_integral_vtend(i) + ptend_loc%q(i,k,ixq)*state1%pdel(i,k)/gravit
+        rtm_integral_ltend(i) = rtm_integral_ltend(i) + ptend_loc%q(i,k,ixcldliq)*state1%pdel(i,k)
+        rtm_integral_vtend(i) = rtm_integral_vtend(i) + ptend_loc%q(i,k,ixq)*state1%pdel(i,k)
 
       end do
     end do
-    
+
+    rtm_integral_ltend(i) = rtm_integral_ltend(i)/gravit
+    rtm_integral_vtend(i) = rtm_integral_vtend(i)/gravit
     
     if (clubb_do_adv) then
       if (macmic_it == cld_macmic_num_steps) then
@@ -4761,10 +4769,10 @@ end function diag_ustar
       if ( abs( stats_metadata%stats_tsamp/delt - floor(stats_metadata%stats_tsamp/delt) ) > 1.e-8_r8 ) then
          l_error = .true.  ! This will cause the run to stop.
          write(fstderr,*) 'Error:  stats_tsamp should be an even multiple of ',  &
-                          'delt (which is dtmain).  Check the appropriate ',  &
-                          'model.in file.'
+                          'the clubb time step (delt below)'
          write(fstderr,*) 'stats_tsamp = ', stats_metadata%stats_tsamp
          write(fstderr,*) 'delt = ', delt
+         call endrun ("stats_init_clubb:  CLUBB stats_tsamp must be an even multiple of the timestep")
       endif
 
       !  Initialize zt (mass points)
@@ -4777,6 +4785,7 @@ end function diag_ustar
       enddo
       ntot = i - 1
       if ( ntot == nvarmax_zt ) then
+         l_error = .true.
          write(fstderr,*) "There are more statistical variables listed in ",  &
                           "clubb_vars_zt than allowed for by nvarmax_zt."
          write(fstderr,*) "Check the number of variables listed for clubb_vars_zt ",  &
@@ -4788,16 +4797,22 @@ end function diag_ustar
       stats_zt(j)%num_output_fields = ntot
       stats_zt(j)%kk = nnzp
 
-      allocate( stats_zt(j)%z( stats_zt(j)%kk ) )
+      allocate( stats_zt(j)%z( stats_zt(j)%kk ), stat=ierr )
+      if( ierr /= 0 ) call endrun("stats_init_clubb: Failed to allocate stats_zt%z")
 
-      allocate( stats_zt(j)%accum_field_values( 1, 1, stats_zt(j)%kk, stats_zt(j)%num_output_fields ) )
-      allocate( stats_zt(j)%accum_num_samples( 1, 1, stats_zt(j)%kk, stats_zt(j)%num_output_fields ) )
-      allocate( stats_zt(j)%l_in_update( 1, 1, stats_zt(j)%kk, stats_zt(j)%num_output_fields ) )
+      allocate( stats_zt(j)%accum_field_values( 1, 1, stats_zt(j)%kk, stats_zt(j)%num_output_fields ), stat=ierr )
+      if( ierr /= 0 ) call endrun("stats_init_clubb: Failed to allocate stats_zt%accum_field_values")
+      allocate( stats_zt(j)%accum_num_samples( 1, 1, stats_zt(j)%kk, stats_zt(j)%num_output_fields ), stat=ierr )
+      if( ierr /= 0 ) call endrun("stats_init_clubb: Failed to allocate stats_zt%accum_num_samples")
+      allocate( stats_zt(j)%l_in_update( 1, 1, stats_zt(j)%kk, stats_zt(j)%num_output_fields ), stat=ierr )
+      if( ierr /= 0 ) call endrun("stats_init_clubb: Failed to allocate stats_zt%l_in_update")
       call stats_zero( stats_zt(j)%kk, stats_zt(j)%num_output_fields, stats_zt(j)%accum_field_values, &
                        stats_zt(j)%accum_num_samples, stats_zt(j)%l_in_update )
 
-      allocate( stats_zt(j)%file%grid_avg_var( stats_zt(j)%num_output_fields ) )
-      allocate( stats_zt(j)%file%z( stats_zt(j)%kk ) )
+      allocate( stats_zt(j)%file%grid_avg_var( stats_zt(j)%num_output_fields ), stat=ierr )
+      if( ierr /= 0 ) call endrun("stats_init_clubb: Failed to allocate stats_zt%file%grid_avg_var")
+      allocate( stats_zt(j)%file%z( stats_zt(j)%kk ), stat=ierr )
+      if( ierr /= 0 ) call endrun("stats_init_clubb: Failed to allocate stats_zt%file%z")
 
       !  Default initialization for array indices for zt
       call stats_init_zt_api( clubb_vars_zt, &
@@ -4814,6 +4829,7 @@ end function diag_ustar
       end do
       ntot = i - 1
       if ( ntot == nvarmax_zm ) then
+         l_error = .true.  ! This will cause the run to stop.
          write(fstderr,*) "There are more statistical variables listed in ",  &
                           "clubb_vars_zm than allowed for by nvarmax_zm."
          write(fstderr,*) "Check the number of variables listed for clubb_vars_zm ",  &
@@ -4889,6 +4905,7 @@ end function diag_ustar
          end do
          ntot = i - 1
          if ( ntot == nvarmax_rad_zm ) then
+            l_error = .true.  ! This will cause the run to stop.
             write(fstderr,*) "There are more statistical variables listed in ",  &
                              "clubb_vars_rad_zm than allowed for by nvarmax_rad_zm."
             write(fstderr,*) "Check the number of variables listed for clubb_vars_rad_zm ",  &
@@ -4928,6 +4945,7 @@ end function diag_ustar
       end do
       ntot = i - 1
       if ( ntot == nvarmax_sfc ) then
+         l_error = .true.  ! This will cause the run to stop.
          write(fstderr,*) "There are more statistical variables listed in ",  &
                           "clubb_vars_sfc than allowed for by nvarmax_sfc."
          write(fstderr,*) "Check the number of variables listed for clubb_vars_sfc ",  &
@@ -4990,20 +5008,29 @@ end function diag_ustar
     if (stats_metadata%l_output_rad_files) then     
 
        do i = 1, stats_rad_zt(1)%num_output_fields
-          call addfld( trim(stats_rad_zt(1)%file%grid_avg_var(i)%name), (/ 'ilev' /), 'A', &
+          temp1 = trim(stats_rad_zt(1)%file%grid_avg_var(i)%name)
+          sub   = temp1
+          if (len(temp1) > max_fieldname_len) sub = temp1(1:max_fieldname_len)
+          call addfld( trim(sub), (/ 'ilev' /), 'A', &
                        trim(stats_rad_zt(1)%file%grid_avg_var(i)%units), &
                        trim(stats_rad_zt(1)%file%grid_avg_var(i)%description) )
        enddo
     
        do i = 1, stats_rad_zm(1)%num_output_fields
-          call addfld( trim(stats_rad_zm(1)%file%grid_avg_var(i)%name), (/ 'ilev' /), 'A', &
+          temp1 = trim(stats_rad_zm(1)%file%grid_avg_var(i)%name)
+          sub   = temp1
+          if (len(temp1) > max_fieldname_len) sub = temp1(1:max_fieldname_len)
+          call addfld( trim(sub), (/ 'ilev' /), 'A', &
                        trim(stats_rad_zm(1)%file%grid_avg_var(i)%units), &
                        trim(stats_rad_zm(1)%file%grid_avg_var(i)%description) )
        enddo
     endif
     
     do i = 1, stats_sfc(1)%num_output_fields
-       call addfld( trim(stats_sfc(1)%file%grid_avg_var(i)%name), horiz_only, 'A', &
+       temp1 = trim(stats_sfc(1)%file%grid_avg_var(i)%name)
+       sub   = temp1
+       if (len(temp1) > max_fieldname_len) sub = temp1(1:max_fieldname_len)
+       call addfld( trim(sub), horiz_only, 'A', &
                     trim(stats_sfc(1)%file%grid_avg_var(i)%units), &
                     trim(stats_sfc(1)%file%grid_avg_var(i)%description) )
     enddo
