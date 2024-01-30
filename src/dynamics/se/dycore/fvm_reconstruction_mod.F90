@@ -105,7 +105,6 @@ contains
        if(FVM_TIMERS) call t_startf('FVM:reconstruction:part#1')
        if (nhe>0) then
           do itr=1,ntrac_in
-             !f=-9e9_r8
              call extend_panel_interpolate(nc,nhc,nhr,nht,ns,nh,&
                   fcube(:,:,k_in,itr),cubeboundary,halo_interp_weight,ibase,f(:,:,1),f(:,:,2:3))             
              call get_gradients(f(:,:,:),jx,jy,irecons,recons(:,:,:,itr),&
