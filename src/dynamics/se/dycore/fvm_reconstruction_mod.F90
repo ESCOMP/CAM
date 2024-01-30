@@ -113,8 +113,6 @@ contains
           end do
        else
           do itr=1,ntrac_in
-             !to avoid floating point exception for uninitialized variables !xxx
-             !in non-existent cells (corners of cube)
              call extend_panel_interpolate(nc,nhc,nhr,nht,ns,nh,&
                   fcube(:,:,k_in,itr),cubeboundary,halo_interp_weight,ibase,f(:,:,1))
              call get_gradients(f(:,:,:),jx,jy,irecons,recons(:,:,:,itr),&
