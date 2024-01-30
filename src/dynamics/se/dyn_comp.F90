@@ -288,9 +288,7 @@ subroutine dyn_readnl(NLFileName)
    call MPI_bcast(se_kmax_jet, 1, mpi_integer, masterprocid, mpicom, ierr)
    call MPI_bcast(se_molecular_diff, 1, mpi_real8, masterprocid, mpicom, ierr)
    call MPI_bcast(se_pgf_formulation, 1, mpi_integer, masterprocid, mpicom, ierr)
-#ifndef old_cam   
    call MPI_bcast(se_dribble_in_rsplit_loop, 1, mpi_integer, masterprocid, mpicom, ierr)
-#endif
    if (se_npes <= 0) then
       call endrun('dyn_readnl: ERROR: se_npes must be > 0')
    end if
@@ -358,9 +356,7 @@ subroutine dyn_readnl(NLFileName)
    variable_nsplit          = .false.
    molecular_diff           = se_molecular_diff
    pgf_formulation          = se_pgf_formulation
-#ifndef old_cam      
    dribble_in_rsplit_loop   = se_dribble_in_rsplit_loop
-#endif   
    if (fv_nphys > 0) then
       ! Use finite volume physics grid and CSLAM for tracer advection
       nphys_pts = fv_nphys*fv_nphys
