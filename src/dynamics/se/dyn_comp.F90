@@ -1,4 +1,3 @@
-!#define old_cam
 module dyn_comp
 
 ! CAM interfaces to the SE Dynamical Core
@@ -43,11 +42,7 @@ use dimensions_mod,         only: nelemd, nlev, np, npsq, ntrac, nc, fv_nphys
 use dimensions_mod,         only: qsize, use_cslam
 use element_mod,            only: element_t, elem_state_t
 use fvm_control_volume_mod, only: fvm_struct
-#ifdef old_cam
-use time_mod,        only: nsplit
-#else
 use se_dyn_time_mod,        only: nsplit
-#endif
 use edge_mod,               only: initEdgeBuffer, edgeVpack, edgeVunpack, FreeEdgeBuffer
 use edgetype_mod,           only: EdgeBuffer_t
 use bndry_mod,              only: bndry_exchange
@@ -1041,11 +1036,7 @@ subroutine dyn_run(dyn_state)
    use air_composition,  only: thermodynamic_active_species_idx_dycore
    use prim_driver_mod,  only: prim_run_subcycle
    use dimensions_mod,   only: cnst_name_gll
-#ifdef old_cam
-   use time_mod,  only: tstep, nsplit, timelevel_qdp, tevolve
-#else
    use se_dyn_time_mod,  only: tstep, nsplit, timelevel_qdp, tevolve
-#endif
    use hybrid_mod,       only: config_thread_region, get_loop_ranges
    use control_mod,      only: qsplit, rsplit, ftype_conserve
    use thread_mod,       only: horz_num_threads

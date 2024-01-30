@@ -1,4 +1,3 @@
-!#define old_cam
 !#define _DBG_ print *,"file: ",__FILE__," line: ",__LINE__," ithr: ",hybrid%ithr
 #define _DBG_
 module prim_driver_mod
@@ -28,13 +27,8 @@ contains
     use dimensions_mod,         only: irecons_tracer, fvm_supercycling
     use dimensions_mod,         only: fv_nphys, nc
     use parallel_mod,           only: syncmp
-#ifdef old_cam
-    use time_mod,               only: timelevel_t, tstep, phys_tscale, nsplit, TimeLevel_Qdp
-    use time_mod,               only: nsplit_baseline,rsplit_baseline
-#else
     use se_dyn_time_mod,        only: timelevel_t, tstep, phys_tscale, nsplit, TimeLevel_Qdp
     use se_dyn_time_mod,        only: nsplit_baseline,rsplit_baseline
-#endif
     use prim_state_mod,         only: prim_printstate
     use control_mod,            only: runtype, topology, rsplit, qsplit, rk_stage_user,         &
                                       nu, nu_q, nu_div, hypervis_subcycle, hypervis_subcycle_q, &
@@ -224,11 +218,7 @@ contains
 !
 !
     use hybvcoord_mod, only : hvcoord_t
-#ifdef old_cam
-    use time_mod,               only: TimeLevel_t, timelevel_update, timelevel_qdp, nsplit
-#else
     use se_dyn_time_mod,        only: TimeLevel_t, timelevel_update, timelevel_qdp, nsplit
-#endif
     use control_mod,            only: statefreq,qsplit, rsplit, variable_nsplit, dribble_in_rsplit_loop
     use prim_advance_mod,       only: applycamforcing
     use prim_advance_mod,       only: tot_energy_dyn,compute_omega
@@ -432,11 +422,7 @@ contains
     !       tl%n0    time t + dt_q
     !
     use hybvcoord_mod,          only: hvcoord_t
-#ifdef old_cam
-    use time_mod,               only: TimeLevel_t, timelevel_update
-#else
     use se_dyn_time_mod,        only: TimeLevel_t, timelevel_update
-#endif
     use control_mod,            only: statefreq, qsplit, nu_p
     use thread_mod,             only: omp_get_thread_num
     use prim_advance_mod,       only: prim_advance_exp
@@ -447,11 +433,7 @@ contains
     use dimensions_mod,         only: kmin_jet, kmax_jet
     use fvm_mod,                only: ghostBufQnhc_vh,ghostBufQ1_vh, ghostBufFlux_vh
     use fvm_mod,                only: ghostBufQ1_h,ghostBufQnhcJet_h, ghostBufFluxJet_h
-#ifdef old_cam
-    use time_mod,               only: timelevel_qdp
-#else
     use se_dyn_time_mod,        only: timelevel_qdp
-#endif
     use fvm_mapping,            only: cslam2gll
 #ifdef waccm_debug
   use cam_history, only: outfld

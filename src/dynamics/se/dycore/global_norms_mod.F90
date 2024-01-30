@@ -1,4 +1,3 @@
-!#define old_cam
 module global_norms_mod
 
   use shr_kind_mod, only: r8=>shr_kind_r8

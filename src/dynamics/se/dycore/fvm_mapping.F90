@@ -1,4 +1,3 @@
-!#define old_cam
 !
 ! pg3->GLL and GLL->pg3 mapping algorithm described in:
 !

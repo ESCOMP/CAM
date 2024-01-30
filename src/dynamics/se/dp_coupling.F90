@@ -1,4 +1,3 @@
-!#define old_cam
 module dp_coupling
 
 !-------------------------------------------------------------------------------
@@ -55,11 +54,7 @@ subroutine d_p_coupling(phys_state, phys_tend,  pbuf2d, dyn_out)
    use phys_control,           only: use_gw_front, use_gw_front_igw
    use hycoef,                 only: hyai, ps0
    use fvm_mapping,            only: dyn2phys_vector, dyn2phys_all_vars
-#ifdef old_cam
-   use time_mod,        only: timelevel_qdp
-#else
    use se_dyn_time_mod,        only: timelevel_qdp
-#endif
    use control_mod,            only: qsplit
    use test_fvm_mapping,       only: test_mapping_overwrite_dyn_state, test_mapping_output_phys_state
    use prim_advance_mod,       only: tot_energy_dyn
@@ -706,21 +701,12 @@ subroutine derived_phys_dry(phys_state, phys_tend, pbuf2d)
          phys_state(lchnk)%pmid  , phys_state(lchnk)%pdel    , phys_state(lchnk)%rpdel                , &
          phys_state(lchnk)%t     , phys_state(lchnk)%q(:,:,:), rairv(:,:,lchnk), gravit, zvirv        , &
          phys_state(lchnk)%zi    , phys_state(lchnk)%zm      , ncol)
-#ifdef old_cam
-      do k = 1, pver
-        do i = 1, ncol
-           phys_state(lchnk)%s(i,k) = cpairv(i,k,lchnk)*phys_state(lchnk)%t(i,k) &
-                                      + gravit*phys_state(lchnk)%zm(i,k) + phys_state(lchnk)%phis(i)
-        end do
-     end do
-#else
       ! Compute initial dry static energy, include surface geopotential
       call update_dry_static_energy_run(pver, gravit, phys_state(lchnk)%t(1:ncol,:),  &
                                         phys_state(lchnk)%zm(1:ncol,:),               &
                                         phys_state(lchnk)%phis(1:ncol),               &
                                         phys_state(lchnk)%s(1:ncol,:),                &
                                         cpairv(1:ncol,:,lchnk), errflg, errmsg)
-#endif
       ! Compute energy and water integrals of input state
       pbuf_chnk => pbuf_get_chunk(pbuf2d, lchnk)
       call check_energy_timestep_init(phys_state(lchnk), phys_tend(lchnk), pbuf_chnk)
