@@ -613,10 +613,6 @@ if ( ($chem ne 'none') or ( $prog_species ) ){
     if (length($aer_drydep_list)>2){
         add_default($nl, 'aer_drydep_list', 'val'=>$aer_drydep_list );
     }
-    $nl->set_variable_value('aerosol_nl', 'aer_drydep_list', $aer_drydep_list);
-    $nl->set_variable_value('aerosol_nl', 'aer_wetdep_list', $aer_wetdep_list);
-    $nl->set_variable_value('drydep_inparm', 'drydep_list', $gas_drydep_list);
-    $nl->set_variable_value('wetdep_inparm', 'gas_wetdep_list', $gas_wetdep_list);
 }
 if ($chem) {
     # drydep_srf_file is only needed for prognostic MAM when the grid is unstructured.
