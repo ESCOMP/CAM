@@ -1172,7 +1172,7 @@ end subroutine clubb_init_cnst
     call mpi_bcast(clubb_l_standard_term_ta,    1, mpi_logical, mstrid, mpicom, ierr)
     if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: clubb_l_standard_term_ta")
     call mpi_bcast(clubb_l_partial_upwind_wp3,    1, mpi_logical, mstrid, mpicom, ierr)
-    if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: clubb_l_partial_upwind_wp3"
+    if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: clubb_l_partial_upwind_wp3")
     call mpi_bcast(clubb_l_C2_cloud_frac,    1, mpi_logical, mstrid, mpicom, ierr)
     if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: clubb_l_C2_cloud_frac")
     call mpi_bcast(clubb_l_calc_thlp2_rad,    1, mpi_logical, mstrid, mpicom, ierr)
@@ -3805,12 +3805,12 @@ end subroutine clubb_init_cnst
         rtm_integral_ltend(i) = rtm_integral_ltend(i) + ptend_loc%q(i,k,ixcldliq)*state1%pdel(i,k)
         rtm_integral_vtend(i) = rtm_integral_vtend(i) + ptend_loc%q(i,k,ixq)*state1%pdel(i,k)
 
-      end do
-    end do
+     end do
+   end do
 
-    rtm_integral_ltend(i) = rtm_integral_ltend(i)/gravit
-    rtm_integral_vtend(i) = rtm_integral_vtend(i)/gravit
-    
+   rtm_integral_ltend(:) = rtm_integral_ltend(:)/gravit
+   rtm_integral_vtend(:) = rtm_integral_vtend(:)/gravit
+     
     if (clubb_do_adv) then
       if (macmic_it == cld_macmic_num_steps) then
         
