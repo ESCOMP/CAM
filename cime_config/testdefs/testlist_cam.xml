@@ -1705,14 +1705,13 @@
       <option name="comment">Zonal Mean Nudged</option>
     </options>
   </test>
-  <test compset="FCnudged_GC" grid="f09_f09_mg17" name="ERP_Ln9_Vnuopc" testmods="cam/outfrq3s_zmean_nudging">
+  <test compset="FCnudged_GC" grid="f09_f09_mg17" name="ERP_Ln9_Vnuopc" testmods="cam/outfrq9s">
     <machines>
       <machine name="derecho" compiler="intel" category="geoschem"/>
       <machine name="derecho" compiler="intel" category="prealpha"/>
     </machines>
     <options>
-      <option name="wallclock">00:30:00</option>
-      <option name="comment">Zonal Mean Nudged</option>
+      <option name="wallclock">00:20:00</option>
     </options>
   </test>
   
