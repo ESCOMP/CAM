@@ -27,6 +27,7 @@
       public :: jshort
       public :: sphers
       public :: slant_col
+      public :: calc_jno
       public :: nj
 
       save

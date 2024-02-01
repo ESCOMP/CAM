@@ -211,6 +211,17 @@ def buildnml(case, caseroot, compname):
         if (os.path.isfile(file1)) and (not os.path.isfile(file2)):
             shutil.copy(file1,file2)
 
+        # Temporary copy of TUV-x data for development
+        dest_data = os.path.join(rundir, "data")
+        if os.path.exists(dest_data):
+            shutil.rmtree(dest_data)
+        shutil.copytree(os.path.join(srcroot, "libraries", "musica", "lib", \
+                                     "tuv-x", "data"), dest_data)
+        shutil.copy2(os.path.join(srcroot, "cime_config", "tuvx_MOZART.json"), \
+                     os.path.join(rundir, "tuvx_MOZART.json"))
+        shutil.copy2(os.path.join(srcroot, "cime_config", "tuvx_MOZART_TS1.json"), \
+                     os.path.join(rundir, "tuvx_MOZART_TS1.json"))
+
 ###############################################################################
 def _main_func():
 

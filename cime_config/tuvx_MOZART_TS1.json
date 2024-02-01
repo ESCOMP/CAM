@@ -1,0 +1,1880 @@
+{
+   "__description": "TUV-x configuration for the MOZART-TS1 and MOZART-TSMLT chemical mechanisms",
+   "O2 absorption" : {
+     "cross section parameters file": "data/cross_sections/O2_parameters.txt"
+   },
+   "grids": [
+   ],
+   "profiles": [
+   ],
+   "radiative transfer": {
+      "solver": {
+         "type": "discrete ordinate",
+         "number of streams": 4
+      },
+      "cross sections": [
+         {
+            "name": "air",
+            "type": "air"
+         },
+         {
+            "name": "O3",
+            "netcdf files": [
+              { "file path": "data/cross_sections/O3_1.nc" },
+              { "file path": "data/cross_sections/O3_2.nc" },
+              { "file path": "data/cross_sections/O3_3.nc" },
+              { "file path": "data/cross_sections/O3_4.nc" }
+            ],
+            "type": "O3"
+         },
+         {
+            "name": "O2",
+            "netcdf files": [
+              {
+                "file path": "data/cross_sections/O2_1.nc",
+                "lower extrapolation": { "type": "boundary" },
+                "interpolator": { "type": "fractional target" }
+              }
+            ],
+            "type": "base"
+         }
+      ],
+      "radiators": [
+         {
+            "name": "air",
+            "type": "base",
+            "treat as air": true,
+            "cross section": "air",
+            "vertical profile": "air",
+            "vertical profile units": "molecule cm-3"
+         },
+         {
+            "name": "O2",
+            "type": "base",
+            "cross section": "O2",
+            "vertical profile": "O2",
+            "vertical profile units": "molecule cm-3"
+         },
+         {
+            "name": "O3",
+            "type": "base",
+            "cross section": "O3",
+            "vertical profile": "O3",
+            "vertical profile units": "molecule cm-3"
+         }
+      ]
+   },
+   "photolysis": {
+      "reactions": [
+         {
+            "name": "jo2_a",
+            "__reaction": "O2 + hv -> O + O1D",
+            "cross section": {
+               "apply O2 bands": true,
+               "netcdf files": [
+                {
+                   "file path": "data/cross_sections/O2_1.nc",
+                   "lower extrapolation": { "type": "boundary" },
+                   "interpolator": { "type": "fractional target" }
+                 }
+               ],
+               "type": "base"
+            },
+            "quantum yield": {
+              "type": "base",
+              "constant value": 0,
+              "override bands": [
+                {
+                  "band": "lyman-alpha",
+                  "value": 0.53
+                },
+                {
+                  "band": "schumann-runge continuum",
+                  "value": 1.0
+                }
+              ]
+            }
+         },
+         {
+            "name": "jo2_b",
+            "__reaction": "O2 + hv -> O + O",
+            "cross section": {
+               "netcdf files": [
+                 {
+                   "file path": "data/cross_sections/O2_1.nc",
+                   "lower extrapolation": { "type": "boundary" },
+                   "interpolator": { "type": "fractional target" }
+                 }
+               ],
+               "type": "base"
+            },
+            "quantum yield": {
+               "type": "base",
+               "constant value": 1.0,
+               "override bands": [
+                 {
+                   "band": "lyman-alpha",
+                   "value": 0.47
+                 },
+                 {
+                   "band": "schumann-runge continuum",
+                   "value": 0.0
+                 }
+               ]
+            }
+         },
+         {
+            "name": "jo3_a",
+            "__reaction": "O3 + hv -> O2 + O(1D)",
+            "cross section": {
+               "netcdf files": [
+                 { "file path": "data/cross_sections/O3_1.nc" },
+                 { "file path": "data/cross_sections/O3_2.nc" },
+                 { "file path": "data/cross_sections/O3_3.nc" },
+                 { "file path": "data/cross_sections/O3_4.nc" }
+               ],
+               "type": "O3"
+            },
+            "quantum yield": {
+               "type": "O3+hv->O2+O(1D)"
+            }
+         },
+         {
+            "name": "jo3_b",
+            "__reaction": "O3 + hv -> O2 + O(3P)",
+            "cross section": {
+               "netcdf files": [
+                 { "file path": "data/cross_sections/O3_1.nc" },
+                 { "file path": "data/cross_sections/O3_2.nc" },
+                 { "file path": "data/cross_sections/O3_3.nc" },
+                 { "file path": "data/cross_sections/O3_4.nc" }
+               ],
+               "type": "O3"
+            },
+            "quantum yield": {
+               "type": "O3+hv->O2+O(3P)"
+            }
+         },
+         {
+            "name": "jn2o",
+            "__reaction": "N2O + hv -> N2 + O(1D)",
+            "cross section": {
+               "type": "N2O+hv->N2+O(1D)"
+            },
+            "quantum yield": {
+               "type": "base",
+               "constant value": 1.0
+            }
+         },
+         {
+            "name": "jno2",
+            "__reaction": "NO2 + hv -> NO + O(3P)",
+            "cross section": {
+               "netcdf files": [
+                 { "file path": "data/cross_sections/NO2_1.nc" }
+               ],
+               "type": "NO2 tint"
+            },
+            "quantum yield": {
+               "netcdf files": ["data/quantum_yields/NO2_1.nc"],
+               "type": "NO2 tint",
+               "lower extrapolation": { "type": "boundary" }
+            }
+         },
+         {
+            "name": "jn2o5_a",
+            "__reaction": "N2O5 + hv -> NO2 + NO3",
+            "cross section": {
+               "netcdf files": [
+                 { "file path": "data/cross_sections/N2O5_1.nc" },
+                 { "file path": "data/cross_sections/N2O5_2.nc" }
+               ],
+               "type": "N2O5+hv->NO2+NO3"
+            },
+            "quantum yield": {
+               "type": "base",
+               "netcdf files": [ "data/quantum_yields/N2O5_NO3_NO2.nc" ]
+            }
+         },
+         {
+            "name": "jn2o5_b",
+            "__reaction": "N2O5 + hv -> NO + O + NO3",
+            "cross section": {
+               "netcdf files": [
+                 { "file path": "data/cross_sections/N2O5_1.nc" },
+                 { "file path": "data/cross_sections/N2O5_2.nc" }
+               ],
+               "type": "N2O5+hv->NO2+NO3"
+            },
+            "quantum yield": {
+               "type": "base",
+               "netcdf files": [ "data/quantum_yields/N2O5_NO3_NO_O.nc" ]
+            }
+         },
+         {
+            "name": "jhno3",
+            "__reaction": "HNO3 + hv -> OH + NO2",
+            "cross section": {
+               "netcdf files": [
+                 { "file path": "data/cross_sections/HNO3_JPL06.nc" }
+               ],
+               "type": "HNO3+hv->OH+NO2"
+            },
+            "quantum yield": {
+               "type": "base",
+               "constant value": 1.0
+            }
+         },
+         {
+            "name": "jno3_a",
+            "__reaction": "NO3 + hv -> NO2 + O(3P)",
+            "cross section": {
+               "netcdf files": [
+                 { "file path": "data/cross_sections/NO3_1.nc" }
+               ],
+               "type": "base"
+            },
+            "quantum yield": {
+               "netcdf files": [
+                  "data/quantum_yields/NO3-NO2+O(3P)_1.nc"
+               ],
+               "type": "tint",
+               "lower extrapolation": {
+                  "type": "constant",
+                  "value": 1.0
+               }
+            }
+         },
+         {
+            "name": "jno3_b",
+            "__reaction": "NO3 + hv -> NO + O2",
+            "cross section": {
+               "netcdf files": [
+                 { "file path": "data/cross_sections/NO3_1.nc" }
+               ],
+               "type": "base"
+            },
+            "quantum yield": {
+               "netcdf files": [
+                  "data/quantum_yields/NO3-NO+O2_1.nc"
+               ],
+               "type": "tint"
+            }
+         },
+         {
+            "name": "jch3ooh",
+            "__reaction": "CH3OOH + hv -> CH3O + OH",
+            "cross section": {
+               "netcdf files": [
+                 { "file path": "data/cross_sections/CH3OOH_1.nc" }
+               ],
+               "type": "base"
+            },
+            "quantum yield": {
+               "type": "base",
+               "constant value": 1.0
+            }
+         },
+         {
+            "name": "jch2o_a",
+            "__reaction": "CH2O + hv -> H + HCO",
+            "cross section": {
+               "netcdf files": [
+                 { "file path": "data/cross_sections/CH2O_1.nc" }
+               ],
+               "type": "CH2O"
+            },
+            "quantum yield": {
+               "netcdf files": [
+                  "data/quantum_yields/CH2O_1.nc"
+               ],
+               "type": "base",
+               "lower extrapolation": {
+                  "type": "boundary"
+               }
+            }
+         },
+         {
+            "name": "jch2o_b",
+            "__reaction": "CH2O + hv -> H2 + CO",
+            "cross section": {
+               "netcdf files": [
+                 { "file path": "data/cross_sections/CH2O_1.nc" }
+               ],
+               "type": "CH2O"
+            },
+            "quantum yield": {
+               "netcdf files": [
+                  "data/quantum_yields/CH2O_1.nc"
+               ],
+               "type": "CH2O",
+               "lower extrapolation": {
+                  "type": "boundary"
+               }
+            }
+         },
+         {
+            "name": "jh2o2",
+            "__reaction": "H2O2 + hv -> OH + OH",
+            "cross section": {
+               "netcdf files": [
+                 { "file path": "data/cross_sections/H2O2_1.nc" }
+               ],
+               "type": "H2O2+hv->OH+OH"
+            },
+            "quantum yield": {
+               "type": "base",
+               "constant value": 1.0
+            }
+         },
+         {
+            "name": "jch3cho",
+            "__reaction": "CH3CHO + hv -> CH3 + HCO",
+            "cross section": {
+               "netcdf files": [
+                 { "file path": "data/cross_sections/CH3CHO_1.nc" }
+               ],
+               "type": "base"
+            },
+            "quantum yield": {
+               "netcdf files": [
+                  "data/quantum_yields/CH3CHO_1.nc"
+               ],
+               "type": "CH3CHO+hv->CH3+HCO"
+            }
+         },
+         {
+            "name": "jpan",
+            "__reaction": "PAN + hv -> 0.6*CH3CO3 + 0.6*NO2 + 0.4*CH3O2 + 0.4*NO3 + 0.4*CO2",
+            "cross section": {
+               "netcdf files": [
+                 { "file path": "data/cross_sections/PAN_1.nc" }
+               ],
+               "type": "CH3ONO2+hv->CH3O+NO2"
+            },
+            "quantum yield": {
+               "type": "base",
+               "constant value": 1.0
+            }
+         },
+         {
+            "name": "jmvk",
+            "__reaction": "MVK + hv -> 0.7*C3H6 + 0.7*CO + 0.3*CH3O2 + 0.3*CH3CO3",
+            "cross section": {
+               "netcdf files": [
+                 { "file path": "data/cross_sections/MVK_1.nc" }
+               ],
+               "type": "base"
+            },
+            "quantum yield": {
+               "type": "MVK+hv->Products"
+            }
+         },
+         {
+            "name": "jacet",
+            "__reaction": "CH3COCH3 + hv -> CH3CO + CH3",
+            "cross section": {
+               "type": "temperature based",
+               "netcdf file": "data/cross_sections/CH3CL_JPL06.nc",
+               "parameterization": {
+                 "AA": [ -299.80,    5.1047, -3.3630e-2, 9.5805e-5, -1.0135e-7 ],
+                 "BB": [ -7.1727, 1.4837e-1, -1.1463e-3, 3.9188e-6, -4.9994e-9 ],
+                 "lp": [     0.0,       1.0,        2.0,       3.0,        4.0 ],
+                 "minimum wavelength": 174.1,
+                 "maximum wavelength": 216.0,
+                 "base temperature": 273.0,
+                 "base wavelength": 0.0,
+                 "logarithm": "base 10",
+                 "temperature ranges": [
+                   {
+                     "maximum": 209.999999999999,
+                     "fixed value": 210.0
+                   },
+                   {
+                     "minimum": 210,
+                     "maximum": 300
+                   },
+                   {
+                     "minimum": 300.00000000001,
+                     "fixed value": 300.0
+                   }
+                 ]
+               }
+             },
+             "quantum yield": {
+               "type": "base",
+               "constant value": 1.0
+             }
+         },
+         {
+            "name": "jmgly",
+            "__reaction": "CH3COCHO + hv -> CH3CO3 + CO + HO2",
+            "cross section": {
+               "netcdf files": [
+                 { "file path": "data/cross_sections/CH3COCHO_1.nc" }
+               ],
+               "type": "base"
+            },
+            "quantum yield": {
+               "type": "CH3COCHO+hv->CH3CO+HCO"
+            }
+         },
+         {
+            "name": "jglyald",
+            "__reaction": "GLYALD + hv -> 2*HO2 + CO + CH2O",
+            "cross section": {
+               "netcdf files": [
+                 { "file path": "data/cross_sections/HOCH2CHO_1.nc" }
+               ],
+               "type": "base"
+            },
+            "quantum yield": {
+               "type": "base",
+               "constant value": 0.5
+            }
+         },
+         {
+            "name": "jglyoxal",
+            "__reaction": "GLYOXAL + hv -> 2*CO + 2*HO2",
+            "__comments": "TODO the products of this reaction don't exactly match",
+            "cross section": {
+               "netcdf files": [
+                 { "file path": "data/cross_sections/CHOCHO_1.nc" }
+               ],
+               "type": "base"
+            },
+            "quantum yield": {
+               "netcdf files": [
+                  "data/quantum_yields/CHOCHO-H2_CO_CO_1.nc"
+               ],
+               "type": "base",
+               "lower extrapolation": {
+                  "type": "boundary"
+               }
+            }
+         },
+         {
+            "name": "jbrcl",
+            "__reaction": "BrCl + hv -> Br + Cl",
+            "cross section": {
+               "netcdf files": [
+                 { "file path": "data/cross_sections/BrCl_1.nc" }
+               ],
+               "type": "base"
+            },
+            "quantum yield": {
+               "type": "base",
+               "constant value": 1.0
+            }
+         },
+         {
+            "name": "jbro",
+            "__reaction": "BrO + hv -> Br + O",
+            "cross section": {
+               "netcdf files": [
+                 {
+                   "file path": "data/cross_sections/BRO_JPL06.nc"
+                 }
+               ],
+               "type": "base"
+            },
+            "quantum yield": {
+               "type": "base",
+               "constant value": 1.0
+            }
+         },
+         {
+            "name": "jbrono2_a",
+            "__reaction": "BrONO2 + hv -> Br + NO3",
+            "cross section": {
+               "type": "temperature based",
+               "parameterization": {
+                 "type": "TAYLOR_SERIES",
+                 "netcdf file": {
+                   "file path": "data/cross_sections/BRONO2_JPL06.nc"
+                 },
+                 "base temperature": 296.0,
+                 "temperature ranges": [
+                   {
+                     "maximum": 199.999999999999,
+                     "fixed value": 200.0
+                   },
+                   {
+                     "minimum": 200.0,
+                     "maximum": 296.0
+                   },
+                   {
+                     "minimum": 296.00000000001,
+                     "fixed value": 296.0
+                   }
+                 ]
+               }
+             },
+            "quantum yield": {
+               "type": "base",
+               "constant value": 0.85
+            }
+         },
+         {
+            "name": "jbrono2_b",
+            "__reaction": "BrONO2 + hv -> BrO + NO2",
+            "cross section": {
+               "type": "temperature based",
+               "parameterization": {
+                 "type": "TAYLOR_SERIES",
+                 "netcdf file": {
+                   "file path": "data/cross_sections/BRONO2_JPL06.nc"
+                 },
+                 "base temperature": 296.0,
+                 "temperature ranges": [
+                   {
+                     "maximum": 199.999999999999,
+                     "fixed value": 200.0
+                   },
+                   {
+                     "minimum": 200.0,
+                     "maximum": 296.0
+                   },
+                   {
+                     "minimum": 296.00000000001,
+                     "fixed value": 296.0
+                   }
+                 ]
+               }
+             },
+            "quantum yield": {
+               "type": "base",
+               "constant value": 0.15
+            }
+         },
+         {
+            "name": "jccl4",
+            "__reaction": "CCl4 + hv -> Products",
+            "cross section": {
+               "netcdf files": [
+                 { "file path": "data/cross_sections/CCl4_1.nc" }
+               ],
+               "type": "CCl4+hv->Products"
+            },
+            "quantum yield": {
+               "type": "base",
+               "constant value": 1.0
+            }
+         },
+         {
+            "name": "jcf2clbr",
+            "__reaction": "CF2BrCl + hv -> Products",
+            "cross section": {
+               "netcdf files": [
+                 { "file path": "data/cross_sections/CF2BrCl_1.nc" }
+               ],
+               "type": "base"
+            },
+            "quantum yield": {
+               "type": "base",
+               "constant value": 1.0
+            }
+         },
+         {
+            "name": "jcf3br",
+            "__reaction": "CF3Br + hv -> Products",
+            "cross section": {
+               "type": "temperature based",
+               "netcdf file": "data/cross_sections/H1301_JPL06.nc",
+               "parameterization": {
+                 "AA": [     62.563,   -2.0068,  1.6592e-2, -5.6465e-5,   6.7459e-8 ],
+                 "BB": [ -9.1755e-1, 1.8575e-2, -1.3857e-4,  4.5066e-7, -5.3803e-10 ],
+                 "lp": [        0.0,       1.0,        2.0,        3.0,         4.0 ],
+                 "minimum wavelength": 178.0,
+                 "maximum wavelength": 280.0,
+                 "base temperature": 273.0,
+                 "base wavelength": 0.0,
+                 "logarithm": "base 10",
+                 "temperature ranges": [
+                   {
+                     "maximum": 209.999999999999,
+                     "fixed value": 210.0
+                   },
+                   {
+                     "minimum": 210.0,
+                     "maximum": 300.0
+                   },
+                   {
+                     "minimum": 300.00000000001,
+                     "fixed value": 300.0
+                   }
+                 ]
+               }
+             },
+            "quantum yield": {
+               "type": "base",
+               "constant value": 1.0
+            }
+         },
+         {
+            "name": "jcfcl3",
+            "__reaction": "CCl3F + hv -> Products",
+            "cross section": {
+               "type": "temperature based",
+               "netcdf file": "data/cross_sections/CFCL3_JPL06.nc",
+               "parameterization": {
+                 "AA": [ -84.611, 7.9551e-1, -2.0550e-3, -4.4812e-6,  1.5838e-8 ],
+                 "BB": [ -5.7912, 1.1689e-1, -8.8069e-4,  2.9335e-6, -3.6421e-9 ],
+                 "lp": [     0.0,       1.0,        2.0,        3.0,        4.0 ],
+                 "minimum wavelength": 174.1,
+                 "maximum wavelength": 230.0,
+                 "base temperature": 273.0,
+                 "base wavelength": 0.0,
+                 "logarithm": "base 10",
+                 "temperature ranges": [
+                   {
+                     "maximum": 209.999999999999,
+                     "fixed value": 210.0
+                   },
+                   {
+                     "minimum": 210,
+                     "maximum": 300
+                   },
+                   {
+                     "minimum": 300.00000000001,
+                     "fixed value": 300.0
+                   }
+                 ]
+               }
+             },
+            "quantum yield": {
+               "type": "base",
+               "constant value": 1.0
+            }
+         },
+         {
+            "name": "jcfc113",
+            "__reaction": "CFC-113 + hv -> Products",
+            "cross section": {
+               "type": "temperature based",
+               "netcdf file": "data/cross_sections/CFC113_JPL06.nc",
+               "parameterization": {
+                 "AA": [ -1087.9,     20.004, -1.3920e-1,  4.2828e-4, -4.9384e-7 ],
+                 "BB": [  12.493, -2.3937e-1,  1.7142e-3, -5.4393e-6,  6.4548e-9 ],
+                 "lp": [     0.0,        1.0,        2.0,        3.0,        4.0 ],
+                 "minimum wavelength": 182.0,
+                 "maximum wavelength": 230.0,
+                 "base temperature": 273.0,
+                 "base wavelength": 0.0,
+                 "logarithm": "base 10",
+                 "temperature ranges": [
+                   {
+                     "maximum": 209.999999999999,
+                     "fixed value": 210.0
+                   },
+                   {
+                     "minimum": 210,
+                     "maximum": 300
+                   },
+                   {
+                     "minimum": 300.00000000001,
+                     "fixed value": 300.0
+                   }
+                 ]
+               }
+             },
+            "quantum yield": {
+               "type": "base",
+               "constant value": 1.0
+            }
+         },
+         {
+            "name": "jcfc114",
+            "__reaction": "CFC-114 + hv -> Products",
+            "cross section": {
+               "type": "temperature based",
+               "netcdf file": "data/cross_sections/CFC114_JPL10.nc",
+               "parameterization": {
+                 "AA": [ -160.50,     2.4807, -1.5202e-2,  3.8412e-5, -3.4373e-8 ],
+                 "BB": [  -1.5296, 3.5248e-2, -2.9951e-4,  1.1129e-6, -1.5259e-9 ],
+                 "lp": [     0.0,        1.0,        2.0,        3.0,        4.0 ],
+                 "minimum wavelength": 172.0,
+                 "maximum wavelength": 220.0,
+                 "base temperature": 273.0,
+                 "base wavelength": 0.0,
+                 "logarithm": "base 10",
+                 "temperature ranges": [
+                   {
+                     "maximum": 209.999999999999,
+                     "fixed value": 210.0
+                   },
+                   {
+                     "minimum": 210,
+                     "maximum": 300
+                   },
+                   {
+                     "minimum": 300.00000000001,
+                     "fixed value": 300.0
+                   }
+                 ]
+               }
+             },
+            "quantum yield": {
+               "type": "base",
+               "constant value": 1.0
+            }
+         },
+         {
+            "name": "jcfc115",
+            "__reaction": "CFC-115 + hv -> Products",
+            "cross section": {
+               "type": "base",
+               "netcdf files": [
+                 { "file path": "data/cross_sections/CFC115_JPL10.nc" }
+               ]
+             },
+            "quantum yield": {
+               "type": "base",
+               "constant value": 1.0
+            }
+         },
+         {
+            "name": "jcf2cl2",
+            "__reaction": "CCl2F2 + hv -> Products",
+            "cross section": {
+               "type": "temperature based",
+               "netcdf file": "data/cross_sections/CF2CL2_JPL06.nc",
+               "parameterization": {
+                 "AA": [ -43.8954569, -2.403597e-1, -4.2619e-4, 9.8743e-6, 0.0 ],
+                 "BB": [   4.8438e-3,   4.96145e-4, -5.6953e-6,       0.0, 0.0 ],
+                 "lp": [         0.0,          1.0,        2.0,       3.0, 4.0 ],
+                 "minimum wavelength": 200.0,
+                 "maximum wavelength": 231.0,
+                 "base temperature": 296.0,
+                 "base wavelength": 200.0,
+                 "logarithm": "natural",
+                 "temperature ranges": [
+                   {
+                     "maximum": 219.999999999999,
+                     "fixed value": 220.0
+                   },
+                   {
+                     "minimum": 220,
+                     "maximum": 296
+                   },
+                   {
+                     "minimum": 296.00000000001,
+                     "fixed value": 296.0
+                   }
+                 ]
+               }
+             },
+            "quantum yield": {
+               "type": "base",
+               "constant value": 1.0
+            }
+         },
+         {
+            "name": "jch2br2",
+            "__reaction": "CH2BR2 + hv -> 2*BR",
+            "cross section": {
+               "type": "temperature based",
+               "netcdf file": "data/cross_sections/CH2BR2_1.nc",
+               "parameterization": {
+                  "AA": [ -70.211776,  1.940326e-1, 2.726152e-3, -1.695472e-5, 2.500066e-8  ],
+                  "BB": [   2.899280, -4.327724e-2, 2.391599e-4, -5.807506e-7, 5.244883e-10 ],
+                  "lp": [        0.0,          1.0,          2.0,         3.0,          4.0 ],
+                  "minimum wavelength": 210.0,
+                  "maximum wavelength": 290.0,
+                  "base temperature": 273.0,
+                  "base wavelength": 0.0,
+                  "logarithm": "base 10",
+                  "temperature ranges": [
+                     {
+                        "maximum": 209.999999999999,
+                        "fixed value": 210.0
+                     },
+                     {
+                        "minimum": 210,
+                        "maximum": 300
+                     },
+                     {
+                        "minimum": 300.00000000001,
+                        "fixed value": 300.0
+                     }
+                  ]
+               }
+            },
+            "quantum yield": {
+               "type": "base",
+               "constant value": 1.0
+            }
+         },
+         {
+            "name": "jch3br",
+            "__reaction": "CH3Br + hv -> Products",
+            "cross section": {
+               "type": "temperature based",
+               "netcdf file": "data/cross_sections/CH3BR_JPL06.nc",
+               "parameterization": {
+                 "AA": [    46.520,    -1.4580, 1.1469e-2, -3.7627e-5,  4.3264e-8 ],
+                 "BB": [ 9.3408e-1, -1.6887e-2, 1.1487e-4, -3.4881e-7, 3.9945e-10 ],
+                 "lp": [       0.0,        1.0,       2.0,        3.0,        4.0 ],
+                 "minimum wavelength": 200.0,
+                 "maximum wavelength": 280.0,
+                 "base temperature": 273.0,
+                 "base wavelength": 0.0,
+                 "logarithm": "base 10",
+                 "temperature ranges": [
+                   {
+                     "maximum": 209.999999999999,
+                     "fixed value": 210.0
+                   },
+                   {
+                     "minimum": 210,
+                     "maximum": 300
+                   },
+                   {
+                     "minimum": 300.00000000001,
+                     "fixed value": 300.0
+                   }
+                 ]
+               }
+             },
+            "quantum yield": {
+               "type": "base",
+               "constant value": 1.0
+            }
+         },
+         {
+            "name": "jch3ccl3",
+            "__reaction": "CH3CCl3+hv->Products",
+            "cross section": {
+               "netcdf files": [
+                 { "file path": "data/cross_sections/CH3CCl3_1.nc" }
+               ],
+               "type": "tint"
+            },
+            "quantum yield": {
+               "type": "base",
+               "constant value": 1.0
+            }
+         },
+         {
+            "name": "jch3cl",
+            "__reaction": "CH3Cl + hv -> Products",
+            "cross section": {
+               "netcdf files": [
+                 { "file path": "data/cross_sections/CH3Cl_1.nc" }
+               ],
+               "type": "tint"
+            },
+            "quantum yield": {
+               "type": "base",
+               "constant value": 1.0
+            }
+         },
+         {
+            "name": "jchbr3",
+            "__reaction": "CHBr3 + hv -> Products",
+            "cross section": {
+               "type": "temperature based",
+               "netcdf file": "data/cross_sections/CHBR3_JPL10.nc",
+               "parameterization": {
+                 "AA": [ -32.6067,    0.10308,   6.39e-5, -7.7392e-7,  -2.2513e-9, 6.1376e-12 ],
+                 "BB": [   0.1582, -0.0014758, 3.8058e-6,  9.187e-10, -1.0772e-11,        0.0 ],
+                 "lp": [      0.0,        1.0,       2.0,        3.0,         4.0,        5.0 ],
+                 "minimum wavelength": 260.0,
+                 "maximum wavelength": 362.0,
+                 "base temperature": 296.0,
+                 "base wavelength": 0.0,
+                 "logarithm": "base 10",
+                 "invert temperature offset": true,
+                 "temperature ranges": [
+                   {
+                     "maximum": 259.999999999999,
+                     "fixed value": 260.0
+                   },
+                   {
+                     "minimum": 260.0
+                   }
+                 ]
+               }
+             },
+            "quantum yield": {
+               "type": "base",
+               "constant value": 1.0
+            }
+         },
+         {
+            "name": "jcl2",
+            "__reaction": "Cl2 + hv -> Cl + Cl",
+            "cross section": {
+               "type": "Cl2+hv->Cl+Cl"
+            },
+            "quantum yield": {
+               "type": "base",
+               "constant value": 1.0
+            }
+         },
+         {
+            "name": "jcl2o2",
+            "__reaction": "ClOOCl + hv -> Cl + ClOO",
+            "__comments": "TODO - this doesn't exactly match the products in TS1",
+            "cross section": {
+               "netcdf files": [
+                  { "file path": "data/cross_sections/CL2O2_JPL10.nc" }
+               ],
+               "type": "base"
+            },
+            "quantum yield": {
+               "type": "base",
+               "constant value": 1.0
+            }
+         },
+         {
+            "name": "jclo",
+            "__reaction": "ClO + hv -> Cl + O",
+            "cross section": {
+               "netcdf files": [
+                  { "file path": "data/cross_sections/CLO_JPL06.nc" }
+               ],
+               "type": "base"
+            },
+            "quantum yield": {
+               "type": "base",
+               "constant value": 1.0
+            }
+         },
+         {
+            "name": "jclono2_a",
+            "__reaction": "ClONO2 + hv -> Cl + NO3",
+            "cross section": {
+               "netcdf files": [
+                 { "file path": "data/cross_sections/ClONO2_1.nc" }
+               ],
+               "type": "ClONO2"
+            },
+            "quantum yield": {
+               "type": "ClONO2+hv->Cl+NO3"
+            }
+         },
+         {
+            "name": "jclono2_b",
+            "__reaction": "ClONO2 + hv -> ClO + NO2",
+            "cross section": {
+               "netcdf files": [
+                 { "file path": "data/cross_sections/ClONO2_1.nc" }
+               ],
+               "type": "ClONO2"
+            },
+            "quantum yield": {
+               "type": "ClONO2+hv->ClO+NO2"
+            }
+         },
+         {
+            "name": "jcof2",
+            "__reaction": "CF2O + hv -> Products",
+            "cross section": {
+               "netcdf files": [
+                 { "file path": "data/cross_sections/CF2O_1.nc" }
+               ],
+               "type": "base"
+            },
+            "quantum yield": {
+               "type": "base",
+               "constant value": 1.0
+            }
+         },
+         {
+            "name": "jcofcl",
+            "__reaction": "CClFO + hv -> Products",
+            "cross section": {
+               "netcdf files": [
+                 { "file path": "data/cross_sections/CClFO_1.nc" }
+               ],
+               "type": "base"
+            },
+            "quantum yield": {
+               "type": "base",
+               "constant value": 1.0
+            }
+         },
+         {
+            "name": "jh2402",
+            "__reaction": "H2402 + hv -> 2*BR + 2*COF2",
+            "__comments": "TUV data set name CF2BrCF2Br",
+            "cross section": {
+               "type": "temperature based",
+               "netcdf file": "data/cross_sections/H2402_JPL06.nc",
+               "parameterization": {
+                 "AA": [      34.026,    -1.152616, 8.959798e-3,   -2.9089e-5,  3.307212e-8 ],
+                 "BB": [ 4.010664e-1, -8.358968e-3, 6.415741e-5, -2.157554e-7, 2.691871e-10 ],
+                 "lp": [         0.0,          1.0,         2.0,          3.0,          4.0 ],
+                 "minimum wavelength": 190.0,
+                 "maximum wavelength": 290.0,
+                 "base temperature": 273.0,
+                 "base wavelength": 0.0,
+                 "logarithm": "base 10",
+                 "temperature ranges": [
+                   {
+                     "maximum": 209.999999999999,
+                     "fixed value": 210.0
+                   },
+                   {
+                     "minimum": 210.0,
+                     "maximum": 300.0
+                   },
+                   {
+                     "minimum": 300.00000000001,
+                     "fixed value": 300.0
+                   }
+                 ]
+               }
+             },
+            "quantum yield": {
+               "type": "base",
+               "constant value": 1.0
+            }
+         },
+         {
+            "name": "jhcfc141b",
+            "__reaction": "HCFC-141b + hv -> Products",
+            "cross section": {
+               "type": "temperature based",
+               "netcdf file": "data/cross_sections/HCFC141b_JPL10.nc",
+               "parameterization": {
+                 "AA": [ -682.913042,    12.122290, -8.187699e-2,  2.437244e-4, -2.719103e-7 ],
+                 "BB": [    4.074747, -8.053899e-2,  5.946552e-4, -1.945048e-6,  2.380143e-9 ],
+                 "lp": [         0.0,          1.0,          2.0,          3.0,          4.0 ],
+                 "minimum wavelength": 172.0,
+                 "maximum wavelength": 240.0,
+                 "base temperature": 273.0,
+                 "base wavelength": 0.0,
+                 "logarithm": "base 10",
+                 "temperature ranges": [
+                   {
+                     "maximum": 209.999999999999,
+                     "fixed value": 210.0
+                   },
+                   {
+                     "minimum": 210.0,
+                     "maximum": 300.0
+                   },
+                   {
+                     "minimum": 300.00000000001,
+                     "fixed value": 300.0
+                   }
+                 ]
+               }
+             },
+            "quantum yield": {
+               "type": "base",
+               "constant value": 1.0
+            }
+         },
+         {
+            "name": "jhcfc142b",
+            "__reaction": "HCFC-142b + hv -> Products",
+            "cross section": {
+               "type": "temperature based",
+               "netcdf file": "data/cross_sections/HCFC142b_JPL10.nc",
+               "parameterization": {
+                 "AA": [ -328.092008,     6.342799, -4.810362e-2,  1.611991e-4, -2.042613e-7 ],
+                 "BB": [ 4.289533e-1, -9.042817e-3,  7.018009e-5, -2.389064e-7, 3.039799e-10 ],
+                 "lp": [         0.0,          1.0,          2.0,          3.0,          4.0 ],
+                 "minimum wavelength": 172.0,
+                 "maximum wavelength": 230.0,
+                 "base temperature": 273.0,
+                 "base wavelength": 0.0,
+                 "logarithm": "base 10",
+                 "temperature ranges": [
+                   {
+                     "maximum": 209.999999999999,
+                     "fixed value": 210.0
+                   },
+                   {
+                     "minimum": 210.0,
+                     "maximum": 300.0
+                   },
+                   {
+                     "minimum": 300.00000000001,
+                     "fixed value": 300.0
+                   }
+                 ]
+               }
+             },
+            "quantum yield": {
+               "type": "base",
+               "constant value": 1.0
+            }
+         },
+         {
+            "name": "jhcfc22",
+            "__reaction": "HCFC-22 + hv -> Products",
+            "cross section": {
+               "type": "temperature based",
+               "netcdf file": "data/cross_sections/HCFC22_JPL06.nc",
+               "parameterization wavelength grid": {
+                 "name": "custom wavelengths",
+                 "type": "from config file",
+                 "units": "nm",
+                 "values": [
+                   169.0, 171.0, 173.0, 175.0, 177.0, 179.0, 181.0, 183.0, 185.0,
+                   187.0, 189.0, 191.0, 193.0, 195.0, 197.0, 199.0, 201.0, 203.0,
+                   205.0, 207.0, 209.0, 211.0, 213.0, 215.0, 217.0, 219.0, 221.0
+                 ]
+               },
+               "parameterization": {
+                 "AA": [   -106.029,    1.5038, -8.2476e-3, 1.4206e-5 ],
+                 "BB": [ -1.3399e-1, 2.7405e-3, -1.8028e-5, 3.8504e-8 ],
+                 "lp": [        0.0,       1.0,        2.0,       3.0 ],
+                 "minimum wavelength": 174.0,
+                 "maximum wavelength": 204.0,
+                 "base temperature": 273.0,
+                 "base wavelength": 0.0,
+                 "logarithm": "base 10",
+                 "temperature ranges": [
+                   {
+                     "maximum": 209.999999999999,
+                     "fixed value": 210.0
+                   },
+                   {
+                     "minimum": 210.0,
+                     "maximum": 300.0
+                   },
+                   {
+                     "minimum": 300.00000000001,
+                     "fixed value": 300.0
+                   }
+                 ]
+               }
+             },
+            "quantum yield": {
+               "type": "base",
+               "constant value": 1.0
+            }
+         },
+         {
+            "name": "jhcl",
+            "__reaction": "HCl + hv -> H + Cl",
+            "cross section": {
+               "netcdf files": [
+                 { "file path": "data/cross_sections/HCl_1.nc" }
+               ],
+               "type": "base"
+            },
+            "quantum yield": {
+               "type": "base",
+               "constant value": 1.0
+            }
+         },
+         {
+            "name": "jhobr",
+            "__reaction": "HOBr + hv -> OH + Br",
+            "cross section": {
+               "type": "HOBr+hv->OH+Br"
+            },
+            "quantum yield": {
+               "type": "base",
+               "constant value": 1.0
+            }
+         },
+         {
+            "name": "jhocl",
+            "__reaction": "HOCl + hv -> HO + Cl",
+            "cross section": {
+               "netcdf files": [
+                 { "file path": "data/cross_sections/HOCl_1.nc" }
+               ],
+               "type": "base"
+            },
+            "quantum yield": {
+               "type": "base",
+               "constant value": 1.0
+            }
+         },
+         {
+            "name": "joclo",
+            "__reaction": "OClO + hv -> Products",
+            "cross section": {
+               "netcdf files": [
+                 { "file path": "data/cross_sections/OClO_1.nc" },
+                 { "file path": "data/cross_sections/OClO_2.nc" },
+                 { "file path": "data/cross_sections/OClO_3.nc" }
+               ],
+               "type": "OClO+hv->Products"
+            },
+            "quantum yield": {
+               "type": "base",
+               "constant value": 1.0
+            }
+         },
+         {
+            "name": "jho2no2_a",
+            "__reaction": "HNO4 + hv -> OH + NO3",
+            "cross section": {
+               "type": "temperature based",
+               "netcdf file": "data/cross_sections/HO2NO2_JPL06.nc",
+               "parameterization": {
+                 "type": "BURKHOLDER",
+                 "netcdf file": {
+                   "file path": "data/cross_sections/HO2NO2_temp_JPL06.nc"
+                 },
+                 "A": -988.0,
+                 "B": 0.69,
+                 "temperature ranges": [
+                   {
+                     "maximum": 279.999999999999,
+                     "fixed value": 280.0
+                   },
+                   {
+                     "minimum": 280.0,
+                     "maximum": 350.0
+                   },
+                   {
+                     "minimum": 350.00000000001,
+                     "fixed value": 350.0
+                   }
+                 ]
+               }
+             },
+             "quantum yield": {
+               "type": "base",
+               "constant value": 0.30,
+               "override bands": [
+                 {
+                   "band": "range",
+                   "minimum wavelength": 200.0,
+                   "value": 0.20
+                 }
+               ]
+             }
+         },
+         {
+            "name": "jho2no2_b",
+            "__reaction": "HNO4 + hv -> HO2 + NO2",
+            "cross section": {
+               "type": "temperature based",
+               "netcdf file": "data/cross_sections/HO2NO2_JPL06.nc",
+               "parameterization": {
+                 "type": "BURKHOLDER",
+                 "netcdf file": {
+                   "file path": "data/cross_sections/HO2NO2_temp_JPL06.nc"
+                 },
+                 "A": -988.0,
+                 "B": 0.69,
+                 "temperature ranges": [
+                   {
+                     "maximum": 279.999999999999,
+                     "fixed value": 280.0
+                   },
+                   {
+                     "minimum": 280.0,
+                     "maximum": 350.0
+                   },
+                   {
+                     "minimum": 350.00000000001,
+                     "fixed value": 350.0
+                   }
+                 ]
+               }             
+            },
+               "quantum yield": {
+                 "type": "base",
+                 "constant value": 0.70,
+                 "override bands": [
+                   {
+                     "band": "range",
+                     "minimum wavelength": 200.0,
+                     "value": 0.80
+                   }
+                 ]
+               }
+         },
+         {
+            "name": "jmacr_a",
+            "__reaction": "CH2=C(CH3)CHO->1.34HO2+0.66MCO3+1.34CH2O+CH3CO3",
+            "__comments": "Methacrolein photolysis channel 1",
+            "cross section": {
+               "netcdf files": [
+                 { "file path": "data/cross_sections/Methacrolein_1.nc" }
+               ],
+               "type": "base"
+            },
+            "quantum yield": {
+               "type": "base",
+               "constant value": 0.005
+            }
+         },
+         {
+            "name": "jmacr_b",
+            "__reaction": "CH2=C(CH3)CHO->0.66OH+1.34CO",
+            "__comments": "Methacrolein photolysis channel 2",
+            "cross section": {
+               "netcdf files": [
+                 { "file path": "data/cross_sections/Methacrolein_1.nc" }
+               ],
+               "type": "base"
+            },
+            "quantum yield": {
+               "type": "base",
+               "constant value": 0.005
+            }
+         },
+         {
+            "name": "jhyac",
+            "__reaction": "CH2(OH)COCH3->CH3CO3+HO2+CH2O",
+            "__comments": "hydroxy acetone TODO: the products of this reaction differ from standalone TUV-x",
+            "cross section": {
+               "netcdf files": [
+                 { "file path": "data/cross_sections/Hydroxyacetone_1.nc" }
+               ],
+               "type": "base"
+            },
+            "quantum yield": {
+               "type": "base",
+               "constant value": 0.65
+            }
+         },
+         {
+            "name": "jh2o_a",
+            "__reaction": "H2O + hv -> OH + H",
+            "cross section": {
+               "type": "base",
+               "merge data": true,
+               "netcdf files": [
+                  {
+                     "file path": "data/cross_sections/H2O_1.nc",
+                     "zero above": 183.0
+                  },
+                  {
+                     "file path": "data/cross_sections/H2O_2.nc",
+                     "zero below": 183.00000000001,
+                     "zero above": 190.0
+                  },
+                  {
+                     "file path": "data/cross_sections/H2O_3.nc",
+                     "zero below": 190.00000000001
+                  }
+               ]
+            },
+            "quantum yield" : {
+               "type": "base",
+               "netcdf files": [ "data/quantum_yields/H2O_H_OH.nc" ]
+            }
+         },
+         {
+            "name": "jh2o_b",
+            "__reaction": "H2O + hv -> H2 + O1D",
+            "cross section": {
+               "type": "base",
+               "merge data": true,
+               "netcdf files": [
+                  {
+                     "file path": "data/cross_sections/H2O_1.nc",
+                     "zero above": 183.0
+                  },
+                  {
+                     "file path": "data/cross_sections/H2O_2.nc",
+                     "zero below": 183.00000000001,
+                     "zero above": 190.0
+                  },
+                  {
+                     "file path": "data/cross_sections/H2O_3.nc",
+                     "zero below": 190.00000000001
+                  }
+               ]
+            },
+            "quantum yield" : {
+               "type": "base",
+               "netcdf files": [ "data/quantum_yields/H2O_H2_O1D.nc" ]
+            }
+         },
+         {
+            "name": "jh2o_c",
+            "__reaction": "H2O + hv -> 2*H + O",
+            "cross section": {
+               "type": "base",
+               "merge data": true,
+               "netcdf files": [
+                  {
+                     "file path": "data/cross_sections/H2O_1.nc",
+                     "zero above": 183.0
+                  },
+                  {
+                     "file path": "data/cross_sections/H2O_2.nc",
+                     "zero below": 183.00000000001,
+                     "zero above": 190.0
+                  },
+                  {
+                     "file path": "data/cross_sections/H2O_3.nc",
+                     "zero below": 190.00000000001
+                  }
+               ]
+            },
+            "quantum yield" : {
+               "type": "base",
+               "netcdf files": [ "data/quantum_yields/H2O_2H_O3P.nc" ]
+            }
+         },
+         {
+            "name": "jch4_a",
+            "__reaction": "CH4 + hv -> H + CH3O2",
+            "cross section": {
+               "type": "base",
+               "netcdf files": [
+                  { "file path": "data/cross_sections/CH4_1.nc" }
+               ]
+            },
+            "quantum yield": {
+               "type": "base",
+               "constant value": 0.45
+            }
+         },
+         {
+            "name": "jch4_b",
+            "__reaction": "CH4 + hv -> 1.44*H2 + 0.18*CH2O + 0.18*O + 0.33*OH + 0.33*H + 0.44*CO2 + 0.38*CO + 0.05*H2O",
+            "cross section": {
+               "type": "base",
+               "netcdf files": [
+                  { "file path": "data/cross_sections/CH4_1.nc" }
+               ]
+            },
+            "quantum yield": {
+               "type": "base",
+               "constant value": 0.55
+            }
+         },
+         {
+            "name": "jco2",
+            "__reaction": "CO2 + hv -> CO + O",
+            "cross section": {
+               "type": "base",
+               "netcdf files": [
+                  { "file path": "data/cross_sections/CO2_1.nc" }
+               ]
+            },
+            "quantum yield": {
+               "type": "base",
+               "constant value": 1.0
+            }
+         },
+         {
+            "name": "jhbr",
+            "__reaction": "HBR + hv -> BR + H",
+            "cross section": {
+               "type": "base",
+               "netcdf files": [
+                  { "file path": "data/cross_sections/HBr_1.nc" }
+               ]
+            },
+            "quantum yield": {
+               "type": "base",
+               "constant value": 1.0
+            }
+         },
+         {
+            "name": "jhf",
+            "__reaction": "HF + hv -> H + F",
+            "cross section": {
+               "type": "base",
+               "netcdf files": [
+                  { "file path": "data/cross_sections/HF_1.nc" }
+               ]
+            },
+            "quantum yield": {
+               "type": "base",
+               "constant value": 1.0
+            }
+         },
+         {
+            "name": "jsf6",
+            "__reaction": "SF6 + hv -> sink",
+            "cross section": {
+               "type": "base",
+               "netcdf files": [
+                  { "file path": "data/cross_sections/SF6_1.nc" }
+               ]
+            },
+            "quantum yield": {
+               "type": "base",
+               "constant value": 1.0
+            }
+         },
+         {
+            "name": "jh2so4",
+            "__reaction": "H2SO4 + hv -> SO3 + H2O",
+            "cross section": {
+               "type": "base",
+               "data": {
+                 "default value": 0.0,
+                 "point values": [
+                   { "wavelength": 121.65, "value":      6.3e-17 },
+                   { "wavelength":  525.0, "value":     1.43e-26 },
+                   { "wavelength":  625.0, "value":   1.8564e-25 },
+                   { "wavelength":  725.0, "value": 3.086999e-24 }
+                 ]
+               }
+             },
+            "quantum yield": {
+               "type": "H2SO4 Mills",
+               "netcdf files": [
+                 "data/quantum_yields/H2SO4_mills.nc"
+               ],
+               "parameterized wavelengths": [
+                 525,
+                 625,
+                 725
+               ],
+               "collision interval s": [
+                 1.1e-9,
+                 8.9e-9,
+                 1.7e-7
+               ],
+               "molecular diameter m": 4.18e-10,
+               "molecular weight kg mol-1": 98.078479e-3
+             }
+         },
+         {
+            "name": "jocs",
+            "__reaction": "OCS + hv -> S + CO",
+            "cross section": {
+               "type": "base",
+               "netcdf files": [
+                  { "file path": "data/cross_sections/OCS_1.nc" }
+               ]
+            },
+            "quantum yield": {
+               "type": "base",
+               "constant value": 1.0
+            }
+         },
+         {
+            "name": "jso",
+            "__reaction": "SO + hv -> S + O",
+            "cross section": {
+               "type": "base",
+               "netcdf files": [
+                  { "file path": "data/cross_sections/SO_1.nc" }
+               ]
+            },
+            "quantum yield": {
+               "type": "base",
+               "constant value": 1.0
+            }
+         },
+         {
+            "name": "jso2",
+            "__reaction": "SO2 + hv -> SO + O",
+            "cross section": {
+               "type": "base",
+               "netcdf files": [
+                  { "file path": "data/cross_sections/SO2_Mills.nc" }
+               ]
+            },
+            "quantum yield": {
+               "type": "base",
+               "constant value": 1.0
+            }
+         },
+         {
+            "name": "jso3",
+            "__reaction": "SO3 + hv -> SO2 + O",
+            "cross section": {
+               "type": "base",
+               "netcdf files": [
+                  { "file path": "data/cross_sections/SO3_1.nc" }
+               ]
+            },
+            "quantum yield": {
+               "type": "base",
+               "constant value": 1.0
+            }
+         },
+         {
+            "name": "jno_i",
+            "__reaction": "NO + hv -> NOp + e",
+            "cross section": {
+               "type": "base",
+               "data": {
+                  "default value": 0.0,
+                  "point values": [
+                     { "wavelength": 121.65, "value": 2.0e-18 }
+                  ]
+               }
+            },
+            "quantum yield": {
+               "type": "base",
+               "constant value": 1.0
+            }
+         }
+      ]
+   },
+   "__CAM options": {
+     "aliasing": {
+       "default matching": "backup",
+       "pairs": [
+           {
+              "to": "jalknit",
+              "__reaction": "ALKNIT + hv -> NO2 + 0.4*CH3CHO + 0.1*CH2O + 0.25*CH3COCH3 + HO2 + 0.8*MEK",
+              "from": "jch3ooh"
+           },
+           {
+              "to": "jpooh",
+              "__reaction": "POOH (C3H6OHOOH) + hv -> CH3CHO + CH2O + HO2 + OH",
+              "from": "jch3ooh"
+           },
+           {
+              "to": "jch3co3h",
+              "__reaction": "CH3COOOH + hv -> CH3O2 + OH + CO2",
+              "from": "jh2o2",
+              "scale by": 0.28
+           },
+           {
+              "to": "jmpan",
+              "__reaction": "MPAN + hv -> MCO3 + NO2",
+              "from": "jpan"
+           },
+           {
+              "to": "jc2h5ooh",
+              "__reaction": "C2H5OOH + hv -> CH3CHO + HO2 + OH",
+              "from": "jch3ooh"
+           },
+           {
+              "to": "jc3h7ooh",
+              "__reaction": "C3H7OOH + hv -> 0.82*CH3COCH3 + OH + HO2",
+              "from": "jch3ooh"
+           },
+           {
+              "to": "jc6h5ooh",
+              "__reaction": "C6H5OOH + hv -> PHENO + OH",
+              "from": "jch3ooh"
+           },
+           {
+              "to": "jeooh",
+              "__reaction": "EOOH + hv -> EO + OH",
+              "from": "jch3ooh"
+           },
+           {
+              "to": "jrooh",
+              "__reaction": "ROOH + hv -> CH3CO3 + CH2O + OH",
+              "from": "jch3ooh"
+           },
+           {
+              "to": "jxooh",
+              "__reaction": "XOOH + hv -> OH",
+              "from": "jch3ooh"
+           },
+           {
+              "to": "jonitr",
+              "__reaction": "ONITR + hv -> NO2",
+              "from": "jch3cho"
+           },
+           {
+              "to": "jisopooh",
+              "__reaction": "ISOPOOH + hv -> 0.402*MVK + 0.288*MACR + 0.69*CH2O + HO2",
+              "from": "jch3ooh"
+           },
+           {
+              "to": "jmek",
+              "__reaction": "MEK + hv -> CH3CO3 + C2H5O2",
+              "from": "jacet"
+           },
+           {
+              "to": "jalkooh",
+              "__reaction": "ALKOOH + hv  -> .4*CH3CHO + .1*CH2O + .25*CH3COCH3 + .9*HO2 + .8*MEK + OH",
+              "from": "jch3ooh"
+           },
+           {
+              "to": "jbenzooh",
+              "__reaction": "BENZOOH + hv -> OH + GLYOXAL + 0.5*BIGALD1 + HO2",
+              "from": "jch3ooh"
+           },
+           {
+              "to": "jbepomuc",
+              "__reaction": "BEPOMUC + hv -> BIGALD1 + 1.5*HO2 + 1.5*CO",
+              "from": "jno2",
+              "scale by": 0.1
+           },
+           {
+              "to": "jbigald",
+              "__reaction": "BIGALD + hv -> 0.45*CO + 0.13*GLYOXAL + 0.56*HO2 + 0.13*CH3CO3 + 0.18*CH3COCHO",
+              "from": "jno2",
+              "scale by": 0.2
+           },
+           {
+              "to": "jbigald1",
+              "__reaction": "BIGALD1 + hv -> 0.6*MALO2 + HO2",
+              "from": "jno2",
+              "scale by": 0.14
+           },
+           {
+              "to": "jbigald2",
+              "__reaction": "BIGALD2 + hv -> 0.6*HO2 + 0.6*DICARBO2",
+              "from": "jno2",
+              "scale by": 0.2
+           },
+           {
+              "to": "jbigald3",
+              "__reaction": "BIGALD3 + hv -> 0.6*HO2 + 0.6*CO + 0.6*MDIALO2",
+              "from": "jno2",
+              "scale by": 0.2
+           },
+           {
+              "to": "jbigald4",
+              "__reaction": "BIGALD4 + hv -> HO2 + CO + CH3COCHO + CH3CO3",
+              "from": "jno2",
+              "scale by": 0.006
+           },
+           {
+              "to": "jbzooh",
+              "__reaction": "BZOOH + hv -> BZALD + OH + HO2",
+              "from": "jch3ooh"
+           },
+           {
+              "to": "jmekooh",
+              "__reaction": "MEKOOH + hv  -> OH + CH3CO3 + CH3CHO",
+              "from": "jch3ooh"
+           },
+           {
+              "to": "jtolooh",
+              "__reaction": "TOLOOH + hv  -> OH + .45*GLYOXAL + .45*CH3COCHO + .9*BIGALD",
+              "from": "jch3ooh"
+           },
+           {
+              "to": "jterpooh",
+              "__reaction": "TERPOOH + hv  -> OH + .1*CH3COCH3 + HO2 + MVK + MACR",
+              "from": "jch3ooh"
+           },
+           {
+              "to": "jhonitr",
+              "__reaction": "HONITR + hv -> NO2 + 0.67*HO2 + 0.33*CH3CHO + 0.33*CH2O + 0.33*CO + 0.33*GLYALD + 0.33*CH3CO3 + 0.17*HYAC + 0.17*CH3COCH3",
+              "from": "jch2o_a"
+           },
+           {
+              "to": "jhpald",
+              "__reaction": "HPALD + hv -> BIGALD3 + OH + HO2",
+              "from": "jno2",
+              "scale by": 0.006
+           },
+           {
+              "to": "jisopnooh",
+              "__reaction": "ISOPNOOH + hv -> NO2 + HO2 + ISOPOOH",
+              "from": "jch3ooh"
+           },
+           {
+              "to": "jnc4cho",
+              "__reaction": "NC4CHO + hv -> BIGALD3 + NO2 + HO2",
+              "from": "jch2o_a"
+           },
+           {
+              "to": "jnoa",
+              "__reaction": "NOA + hv -> NO2 + CH2O + CH3CO3",
+              "from": "jch2o_a"
+           },
+           {
+              "to": "jnterpooh",
+              "__reaction": "NTERPOOH + hv -> TERPROD1 + NO2 + OH",
+              "from": "jch3ooh"
+           },
+           {
+              "to": "jphenooh",
+              "__reaction": "PHENOOH + hv -> OH + HO2 + 0.7*GLYOXAL",
+              "from": "jch3ooh"
+           },
+           {
+              "to": "jtepomuc",
+              "__reaction": "TEPOMUC + hv -> 0.5*CH3CO3 + HO2 + 1.5*CO",
+              "from": "jno2",
+              "scale by": 0.1
+           },
+           {
+              "to": "jterp2ooh",
+              "__reaction": "TERP2OOH + hv -> OH + 0.375*CH2O + 0.3*CH3COCH3 + 0.25*CO + CO2 + TERPROD2 + HO2 + 0.25*GLYALD",
+              "from": "jch3ooh"
+           },
+           {
+              "to": "jterpnit",
+              "__reaction": "TERPNIT + hv -> TERPROD1 + NO2 + HO2",
+              "from": "jch3ooh"
+           },
+           {
+              "to": "jterprd1",
+              "__reaction": "TERPROD1 + hv -> HO2 + CO + TERPROD2",
+              "from": "jch3cho"
+           },
+           {
+              "to": "jterprd2",
+              "__reaction": "TERPROD2 + hv -> 0.15*RO2 + 0.68*CH2O + 0.8*CO2 + 0.5*CH3COCH3 + 0.65*CH3CO3 + 1.2*HO2 + 1.7*CO",
+              "from": "jch3cho"
+           },
+           {
+              "to": "jxylenooh",
+              "__reaction": "XYLENOOH + hv -> OH + HO2 + 0.34*GLYOXAL + 0.54*CH3COCHO + 0.06*BIGALD1 + 0.2*BIGALD2 + 0.15*BIGALD3 + 0.21*BIGALD4",
+              "from": "jch3ooh"
+           },
+           {
+              "to": "jxylolooh",
+              "__reaction": "XYLOLOOH + hv -> OH + 0.17*GLYOXAL + 0.51*CH3COCHO + HO2",
+              "from": "jch3ooh"
+           },
+           {
+              "to": "jsoa1_a1",
+              "__reaction": "soa1_a1 + hv -> Products",
+              "from": "jno2",
+              "scale by": 0.0004
+           },
+           {
+              "to": "jsoa1_a2",
+              "__reaction": "soa1_a2 + hv -> Products",
+              "from": "jno2",
+              "scale by": 0.0004
+           },
+           {
+              "to": "jsoa2_a1",
+              "__reaction": "soa2_a1 + hv -> Products",
+              "from": "jno2",
+              "scale by": 0.0004
+           },
+           {
+              "to": "jsoa2_a2",
+              "__reaction": "soa2_a2 + hv -> Products",
+              "from": "jno2",
+              "scale by": 0.0004
+           },
+           {
+              "to": "jsoa3_a1",
+              "__reaction": "soa3_a1 + hv -> Products",
+              "from": "jno2",
+              "scale by": 0.0004
+           },
+           {
+              "to": "jsoa3_a2",
+              "__reaction": "soa3_a2 + hv -> Products",
+              "from": "jno2",
+              "scale by": 0.0004
+           },
+           {
+              "to": "jsoa4_a1",
+              "__reaction": "soa4_a1 + hv -> Products",
+              "from": "jno2",
+              "scale by": 0.0004
+           },
+           {
+              "to": "jsoa4_a2",
+              "__reaction": "soa4_a2 + hv -> Products",
+              "from": "jno2",
+              "scale by": 0.0004
+           },
+           {
+              "to": "jsoa5_a1",
+              "__reaction": "soa5_a1 + hv -> Products",
+              "from": "jno2",
+              "scale by": 0.0004
+           },
+           {
+              "to": "jsoa5_a2",
+              "__reaction": "soa5_a2 + hv -> Products",
+              "from": "jno2",
+              "scale by": 0.0004
+           }
+        ]
+     }
+   }
+}

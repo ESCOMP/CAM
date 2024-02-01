@@ -7,7 +7,7 @@ create the cam library
 # pylint: disable=unused-wildcard-import, bad-whitespace, too-many-locals
 # pylint: disable=invalid-name
 import sys, os, filecmp, shutil, imp
-
+from glob import glob
 
 _CIMEROOT = os.environ.get("CIMEROOT")
 if _CIMEROOT is None:
@@ -21,6 +21,7 @@ from CIME.case import Case
 from CIME.utils import run_sub_or_cmd, expect, run_cmd
 from CIME.buildlib import parse_input
 from CIME.build import get_standard_makefile_args
+from CIME.XML.env_build import EnvBuild
 
 logger = logging.getLogger(__name__)
 
@@ -113,12 +114,231 @@ def _build_cam(caseroot, libroot, bldroot):
         logger.info("%s: \n\n output:\n %s \n\n err:\n\n%s\n", cmd, out, err)
         expect(rc == 0, "Command %s failed with rc=%s" % (cmd, rc))
 
+###############################################################################
+def _run_cmd(command, working_dir):
+###############################################################################
+
+    rc, out, err = run_cmd(command, from_dir=working_dir, verbose=True)
+    expect(rc == 0, "Command {} failed with rc={}".format(command, rc))
+
+###############################################################################
+def _cmake_default_args(caseroot):
+###############################################################################
+# Returns a dictionary of CMake variables based on the Macros.cmake file for
+# the build.
+
+    build = EnvBuild(case_root=caseroot)
+    with Case(caseroot) as case:
+        macro_path = os.path.abspath(os.path.join(caseroot, "cmake_macros", ""))
+        args = "-DCONVERT_TO_MAKE=ON "
+        args += "-DCASEROOT={} ".format(caseroot)
+        args += "-DCOMPILER={} ".format(build.get_value("COMPILER"))
+        args += "-DOS={} ".format(build.get_value("OS"))
+        args += "-DMACH={} ".format(case.get_value("MACH"))
+        args += "-DCMAKE_C_COMPILER_WORKS=1 "
+        args += "-DCMAKE_Fortran_COMPILER_WORKS=1 "
+        args += "-DCMAKE_CXX_COMPILER_WORKS=1 "
+        cmd = "cmake {} .".format(args)
+        rc, out, err = run_cmd(cmd, combine_output=True, from_dir=macro_path)
+        expect(rc == 0, "Command {} failed with rc={} out={} err={}".format(cmd, rc, out, err))
+
+        arg_dict = {}
+        for line in out.splitlines():
+            if ":=" in line:
+                key, val = line.split(":=")
+                arg_dict[key.replace('CIME_SET_MAKEFILE_VAR','').strip()] = val.strip()
+
+        return arg_dict
+
+###############################################################################
+def _build_json_fortran(caseroot, libroot, bldroot):
+###############################################################################
+# Builds the json-fortran library and updates the case variables used to set
+# the include paths and linked libraries
+
+    with Case(caseroot) as case:
+        bldpath = os.path.join(bldroot, "json-fortran")
+        if not os.path.exists(bldpath):
+            os.makedirs(bldpath)
+        srcpath = os.path.abspath(os.path.join(case.get_value("COMP_ROOT_DIR_ATM"), \
+                                               "libraries", "json-fortran", ""))
+        logger.info("Building json-fortran in {} from source in {}\n".format(bldpath, srcpath))
+
+        arg_dict = _cmake_default_args(caseroot)
+        cmake_args = "-DCMAKE_Fortran_COMPILER={} ".format(arg_dict["SFC"])
+        cmake_args += "-DCMAKE_C_COMPILER_WORKS=1 "
+        cmake_args += "-DCMAKE_CXX_COMPILER_WORKS=1 "
+        cmake_args += "-DCMAKE_BUILD_TYPE=Release "
+        cmake_args += "-DSKIP_DOC_GEN:BOOL=TRUE "
+        cmake_args += "-DCMAKE_INSTALL_PREFIX='{}' ".format(libroot)
+        cmake_args += srcpath
+
+        _run_cmd("cmake {}".format(cmake_args), bldpath)
+        _run_cmd(case.get_value("GMAKE"), bldpath)
+        _run_cmd("{} install".format(case.get_value("GMAKE")), bldpath)
+
+        # add json-fortran to include paths
+        incldir = os.environ.get('USER_INCLDIR')
+        if incldir is None:
+            incldir = ''
+        os.environ['USER_INCLDIR'] = incldir + \
+            " -I{} ".format(_json_fortran_include_dir(libroot))
+
+        # create simlink to library in folder CIME expects libraries to be in
+        dst = os.path.join(libroot, "libjsonfortran.a")
+        if os.path.isfile(dst):
+            os.remove(dst)
+        os.symlink(_json_fortran_lib_path(libroot), dst)
+
+###############################################################################
+def _json_fortran_include_dir(libroot):
+###############################################################################
+# Returns the path to the json-fortran include directory
+
+    jsoninc = os.path.join(_json_fortran_install_dir(libroot), "lib", "")
+    expect(os.path.exists(jsoninc), \
+           "JSON-Fortran include directory not found at {}".format(jsoninc))
+    return jsoninc
+
+###############################################################################
+def _json_fortran_lib_path(libroot):
+###############################################################################
+# Returns the path to the json-fortran library
+
+    jsonlib = os.path.join(_json_fortran_install_dir(libroot), "lib", "libjsonfortran.a")
+    expect(os.path.exists(jsonlib), \
+           "JSON-Fortran library not found at {}".format(jsonlib))
+    return jsonlib
+
+###############################################################################
+def _json_fortran_install_dir(libroot):
+###############################################################################
+# Returns the path to the json-fortran install directory
+
+    jsonpaths = glob(os.path.join(libroot, "jsonfortran*"))
+    expect(len(jsonpaths)>0, \
+           "JSON-Fortran not found at {}".format(libroot))
+    expect(len(jsonpaths)<2, \
+           "Multiple JSON-Fortran versions found at {}".format(libroot))
+    expect(os.path.exists(jsonpaths[0]), \
+           "JSON-Fortran install directory not found at {}".format(jsonpaths[0]))
+    return jsonpaths[0]
+
+###############################################################################
+def _build_musica(caseroot, libroot, bldroot):
+###############################################################################
+# Builds the musica library, including TUV-x, musica, and MICM
+# and updates the case variables used to set the include paths
+# and linked libraries
+
+    build = EnvBuild(case_root=caseroot)
+    with Case(caseroot) as case:
+        bldpath = os.path.join(bldroot, "musica")
+        if not os.path.exists(bldpath):
+            os.makedirs(bldpath)
+        jsoninc = _json_fortran_include_dir(libroot)
+        jsonlib = _json_fortran_lib_path(libroot)
+        srcpath = os.path.abspath(os.path.join(case.get_value("COMP_ROOT_DIR_ATM"), \
+                                               "libraries", "musica", ""))
+        logger.info("Building musica in {} from source in {}\n".format(bldpath, srcpath))
+
+        arg_dict = _cmake_default_args(caseroot)
+        if build.get_value("MPILIB") == "mpi-serial":
+            cmake_args = "-DCMAKE_Fortran_COMPILER={} ".format(arg_dict["SFC"])
+        else:
+            cmake_args = "-DCMAKE_Fortran_COMPILER={} ".format(arg_dict["MPIFC"])
+            cmake_args += "-DENABLE_MPI:BOOL=TRUE "
+        if case.get_value("DEBUG"):
+            cmake_args += "-DCMAKE_BUILD_TYPE=Debug "
+        else:
+            cmake_args += "-DCMAKE_BUILD_TYPE=Release "
+        cmake_args += "-DENABLE_UTIL_ONLY=ON "
+        cmake_args += "-DCMAKE_C_COMPILER_WORKS=1 "
+        cmake_args += "-DCMAKE_CXX_COMPILER_WORKS=1 "
+        cmake_args += "-DENABLE_MICM=OFF "
+        cmake_args += "-DENABLE_TUVX=ON "
+        cmake_args += "-DENABLE_TESTS=OFF "
+        cmake_args += "-DENABLE_COVERAGE=OFF "
+        cmake_args += "-DJSON_INCLUDE_DIR={} ".format(jsoninc)
+        cmake_args += "-DJSON_LIB={} ".format(jsonlib)
+        cmake_args += "-DCMAKE_Fortran_FLAGS='{}' ".format(arg_dict["FFLAGS"])
+        cmake_args += "-DCMAKE_INSTALL_PREFIX='{}' ".format(libroot)
+        cmake_args += srcpath
+
+        _run_cmd("cmake {}".format(cmake_args), bldpath)
+        _run_cmd(case.get_value("GMAKE"), bldpath)
+        _run_cmd("{} install".format(case.get_value("GMAKE")), bldpath)
+
+        # add musica to include paths
+        incldir = os.environ.get('USER_INCLDIR')
+        if incldir is None:
+            incldir = ''
+        os.environ['USER_INCLDIR'] = incldir + \
+            " -I{} ".format(_musica_include_dir(libroot))
+
+        # create simlink to library in folder CIME expects libraries to be in
+        dst = os.path.join(libroot, "libmusica.a")
+        if os.path.isfile(dst):
+            os.remove(dst)
+        os.symlink(_musica_lib_path(libroot), dst)
+
+###############################################################################
+def _musica_include_dir(libroot):
+###############################################################################
+# Returns the path to the musica include directory
+
+    coreinc = os.path.join(_musica_install_dir(libroot), "include", "")
+    expect(os.path.exists(coreinc), \
+           "musica include directory not found at {}".format(coreinc))
+    return coreinc
+
+###############################################################################
+def _musica_lib_path(libroot):
+###############################################################################
+# Returns the path to the musica library
+
+    corelib = os.path.join(_musica_install_dir(libroot), "lib64", "libmusica.a")
+    if not os.path.exists(corelib):
+        corelib = os.path.join(_musica_install_dir(libroot), "lib", "libmusica.a")
+    expect(os.path.exists(corelib), \
+           "musica library not found at {}".format(corelib))
+    return corelib
+
+###############################################################################
+def _musica_install_dir(libroot):
+###############################################################################
+# Returns the path to the musica install directory
+
+    corepaths = glob(os.path.join(libroot, "musica*"))
+    expect(len(corepaths)>0, \
+           "musica not found at {}".format(libroot))
+    expect(len(corepaths)<2, \
+           "Multiple musica versions found at {}".format(libroot))
+    expect(os.path.exists(corepaths[0]), \
+           "musica install directory not found at {}".format(corepaths[0]))
+    return corepaths[0]
+
+###############################################################################
+def _musica_package_dir(libroot):
+###############################################################################
+# Returns the path to the musica CMake package
+
+    paths = glob(os.path.join(libroot, "musica*", "cmake", "musica*" ))
+    expect(len(paths)>0, \
+           "musica package not found at {}".format(libroot))
+    expect(len(paths)<2, \
+           "Multiple musica versions found at {}".format(libroot))
+    expect(os.path.exists(paths[0]), \
+           "musica package directory not found at {}".format(paths[0]))
+    return paths[0]
 
 ###############################################################################
 
 
 def _main_func():
     caseroot, libroot, bldroot = parse_input(sys.argv)
+    _build_json_fortran(caseroot, libroot, bldroot)
+    _build_musica(caseroot, libroot, bldroot)
     _build_cam(caseroot, libroot, bldroot)
 
 

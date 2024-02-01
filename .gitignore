@@ -15,6 +15,8 @@ src/dynamics/fv3/atmos_cubed_sphere
 libraries/FMS
 libraries/mct
 libraries/parallelio
+libraries/musica
+libraries/json-fortran
 src/atmos_phys
 src/dynamics/mpas/dycore
 share
@@ -22,6 +24,9 @@ src/hemco
 # Ignore compiled python
 buildnmlc
 buildcppc
+
+# ignore ide configs
+.vscode
 
 # Ignore editor temporaries and backups
 *~
