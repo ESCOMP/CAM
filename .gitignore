@@ -25,6 +25,9 @@ src/hemco
 buildnmlc
 buildcppc
 
+# ignore ide configs
+.vscode
+
 # Ignore editor temporaries and backups
 *~
 .#*
