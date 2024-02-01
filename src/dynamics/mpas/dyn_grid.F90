@@ -130,7 +130,7 @@ subroutine dyn_grid_init()
 
    ! MPAS-A always requires at least one scalar (qv).  CAM has the same requirement
    ! and it is enforced by the configure script which sets the cpp macrop PCNST.
-   call cam_mpas_init_phase3(fh_ini, pcnst, endrun)
+   call cam_mpas_init_phase3(fh_ini, pcnst)
 
    ! Read or compute all time-invariant fields for the MPAS-A dycore
    ! Time-invariant fields are stored in the MPAS mesh pool.  This call

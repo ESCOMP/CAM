@@ -4,7 +4,7 @@ module prim_state_mod
   use dimensions_mod,   only: nlev, np, nc, qsize_d, ntrac_d
   use parallel_mod,     only: ordered
   use hybrid_mod,       only: hybrid_t
-  use time_mod,         only: timelevel_t, TimeLevel_Qdp, time_at
+  use se_dyn_time_mod,  only: timelevel_t, TimeLevel_Qdp, time_at
   use control_mod,      only: qsplit, statediag_numtrac
   use global_norms_mod, only: global_integrals_general
   use element_mod,      only: element_t
@@ -24,7 +24,7 @@ CONTAINS
     use air_composition,        only: thermodynamic_active_species_idx_dycore, dry_air_species_num
     use air_composition,        only: thermodynamic_active_species_num,thermodynamic_active_species_idx
     use cam_control_mod,        only: initial_run
-    use time_mod,               only: tstep
+    use se_dyn_time_mod,        only: tstep
     use control_mod,            only: rsplit, qsplit
     use perf_mod,       only: t_startf, t_stopf
     type (element_t),             intent(inout) :: elem(:)
@@ -345,10 +345,10 @@ CONTAINS
   subroutine adjust_nsplit(elem, tl,hybrid,nets,nete, fvm, omega_cn)
     use dimensions_mod,         only: ksponge_end
     use dimensions_mod,         only: fvm_supercycling, fvm_supercycling_jet
-    use time_mod,               only: tstep
+    use se_dyn_time_mod,        only: tstep
     use control_mod,            only: rsplit, qsplit
     use perf_mod,               only: t_startf, t_stopf
-    use time_mod,               only: nsplit, nsplit_baseline,rsplit_baseline
+    use se_dyn_time_mod,        only: nsplit, nsplit_baseline,rsplit_baseline
     use control_mod,            only: qsplit, rsplit
     use time_manager,           only: get_step_size
     use cam_abortutils,         only: endrun

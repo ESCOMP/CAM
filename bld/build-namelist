@@ -2387,6 +2387,11 @@ if (($chem =~ /_mam4/ or $chem =~ /_mam5/) and ($phys =~ /cam6/ or $phys =~ /cam
                     'num_a4_ar_ext_file' => 'num_a4',
                     'no2_ar_ext_file'    => 'NO2',
                     'so2_ar_ext_file'    => 'SO2' );
+    } elsif ($chem =~ /ghg_mam/) {
+        %species = (%species,
+                    'bc_a4_ar_ext_file'  => 'bc_a4',
+                    'num_a4_ar_ext_file' => 'num_a4',
+                    'so2_ar_ext_file'    => 'SO2' );
     }
 
     # for transient cases include volcanic emissions
@@ -3087,14 +3092,28 @@ if ($cfg->get('microphys') =~ /^mg/) {
     add_default($nl, 'micro_mg_iaccr_factor');
     add_default($nl, 'micro_mg_max_nicons');
 
-    # For CESM2, the decision was made to set micro_do_sb_physics to false
-    add_default($nl, 'micro_do_sb_physics', 'val'=>'.false.');
 
     # namelist options for pumas tag release_v1.22 or later
     #   (currently only in the cam_dev physics package)
     if ($phys =~ /cam_dev/) {
+        add_default($nl, 'micro_mg_warm_rain');
 	add_default($nl, 'micro_mg_accre_sees_auto');
+	add_default($nl, 'micro_mg_vtrms_factor');
 	add_default($nl, 'micro_mg_implicit_fall');
+        add_default($nl, 'pumas_stochastic_tau_kernel_filename', 'val'=>"$cfgdir/../src/physics/pumas/KBARF_tau_kernel.dat");
+
+        #set path for stochastic_tau_kernel_filename
+        my $cam_dir = $cfg->get('cam_dir');
+        add_default($nl, 'pumas_stochastic_tau_kernel_filename');
+        my $rel_path = $nl->get_value('pumas_stochastic_tau_kernel_filename');
+        my $abs_path = quote_string(set_abs_filepath($rel_path, $cam_dir));
+        #overwrite the relative pathname with the absolute pathname
+        $nl->set_variable_value('pumas_stochastic_tau_nl', 'pumas_stochastic_tau_kernel_filename', $abs_path);
+      
+    }else {
+    # For CESM2, the decision was made to set micro_do_sb_physics to false
+    # This variable is replaced with micro_mg_warm_rain in cam_dev runs
+        add_default($nl, 'micro_do_sb_physics', 'val'=>'.false.');
     }
 
     # tunings for micro_mg_dcs
@@ -3115,7 +3134,7 @@ if ($cfg->get('microphys') =~ /^mg/) {
             $micro_mg_dcs = '500.D-6';   # default for cam6
         }
         elsif ($phys eq 'cam_dev') {
-            $micro_mg_dcs = '250.D-6';   # default for cam_dev
+            $micro_mg_dcs = '500.D-6';   # default for cam_dev
         }
     }
 
@@ -3129,6 +3148,7 @@ add_default($nl, 'microp_aero_npccn_scale');
 add_default($nl, 'microp_aero_wsub_scale');
 add_default($nl, 'microp_aero_wsubi_scale');
 add_default($nl, 'microp_aero_wsub_min');
+add_default($nl, 'microp_aero_wsub_min_asf');
 add_default($nl, 'microp_aero_wsubi_min');
 
 # Ice nucleation options
@@ -3460,7 +3480,10 @@ if (!$simple_phys) {
     add_default($nl, 'cldfrc2m_rhmaxi');
     add_default($nl, 'cldfrc2m_rhminis');
     add_default($nl, 'cldfrc2m_rhmaxis');
+    add_default($nl, 'cldfrc2m_qist_min');
+    add_default($nl, 'cldfrc2m_qist_max');
     add_default($nl, 'cldfrc2m_do_subgrid_growth');
+    add_default($nl, 'cldfrc2m_do_avg_aist_algs');
 }
 
 my $rk_strat_polstrat_rhmin = $nl->get_value('rk_strat_polstrat_rhmin');
@@ -3477,7 +3500,6 @@ if (!$simple_phys) {
     add_default($nl, 'zmconv_ke');
     add_default($nl, 'zmconv_ke_lnd');
     add_default($nl, 'zmconv_org');
-    add_default($nl, 'zmconv_microp');
     add_default($nl, 'zmconv_num_cin');
     add_default($nl, 'zmconv_dmpdz');
     add_default($nl, 'zmconv_tiedke_add');
@@ -4052,6 +4074,7 @@ if ($dyn =~ /mpas/) {
     add_default($nl, 'mpas_zd');
     add_default($nl, 'mpas_xnutr');
     add_default($nl, 'mpas_cam_coef');
+    add_default($nl, 'mpas_cam_damping_levels');
     add_default($nl, 'mpas_print_detailed_minmax_vel');
     add_default($nl, 'mpas_rayleigh_damp_u');
     add_default($nl, 'mpas_rayleigh_damp_u_timescale_days');

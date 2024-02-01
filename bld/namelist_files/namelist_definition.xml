@@ -1882,6 +1882,15 @@ the {{ hilight }}fincl#{{ closehilight }} namelist items.
 Default: FALSE
 </entry>
 
+<entry id="write_nstep0" type="logical"  category="history"
+       group="cam_history_nl" valid_values="" >
+If true then write the nstep==0 time sample to all history files except
+the monthly average file.  This output is primarily useful for development
+and debugging as it captures changes to the model state made during the
+initialization phase of the run.
+Default: FALSE
+</entry>
+
 <entry id="fexcl1" type="char*24(1000)"  category="history"
        group="cam_history_nl" valid_values="" >
 List of fields to exclude from the 1st history file (by default the name
@@ -2731,6 +2740,12 @@ Unitless scaling factor for ice fall speed to account for sub-grid scale ice cry
 Default: 1.0
 </entry>
 
+<entry id="micro_mg_vtrms_factor" type="real" category="microphys"
+       group="micro_mg_nl" valid_values="" >
+Unitless scaling factor for snow fall speed to account for sub-grid scale ice crystal shape variability.
+Default: 1.0
+</entry>
+
 <entry id="micro_mg_effi_factor" type="real" category="microphys"
        group="micro_mg_nl" valid_values="" >
 Unitless scaling factor for ice effective radius as seen by radiation. This scaling factor adjusts for sub-grid scale ice crystal shape variability.
@@ -2748,11 +2763,41 @@ Default: 1
 Maximum allowed ice number concentration
 Default: 1.0e8
 </entry>
-x
+
 <entry id="micro_do_sb_physics" type="logical" category="microphys"
        group="micro_mg_nl" valid_values="" >
 Do Seifert and Behang (2001) autoconversion and accretion physics when set to true.
 Default: .false.
+</entry>
+
+<entry id="micro_mg_warm_rain" type="char*16" category="microphys"
+       group="micro_mg_nl" valid_values="kk2000,sb2001,tau,emulated" >
+Warm rain process
+sb2001 turns on alternative autoconversion and accretion scheme for liquid in microphysics (Seifert and Behang 2001)
+kk2000 uses original autoconversion and accretion scheme for liquid in microphysics
+tau replaces autoconversion and accretion with a faster emulator to generate machine learning training data
+emulated turns on use of machine learning for warm rain
+Default: set in namelist_defaults
+</entry>
+
+<entry id="stochastic_emulated_filename_quantile" type="char*256" input_pathname="abs" category="microphys"
+       group="stochastic_emulated_nl" >
+Neural net file for warm_rain machine learning
+</entry>
+
+<entry id="stochastic_emulated_filename_input_scale" type="char*256" input_pathname="abs" category="microphys"
+       group="stochastic_emulated_nl" >
+Neural net input scaling values file for warm_rain machine learning
+</entry>
+
+<entry id="stochastic_emulated_filename_output_scale" type="char*256" input_pathname="abs" category="microphys"
+       group="stochastic_emulated_nl" >
+Neural net output scaling values file for warm_rain machine learning
+</entry>
+
+<entry id="pumas_stochastic_tau_kernel_filename" type="char*256" input_pathname="abs" category="microphys"
+       group="pumas_stochastic_tau_nl" >
+Coefficients for the stochastic collection kernel used by the TAU stochastic collection code, invoked in PUMAS with micro_pumas_warm_rain = 'tau'
 </entry>
 
 <entry id="micro_do_massless_droplet_destroyer" type="logical" category="microphys"
@@ -2916,7 +2961,7 @@ Default: 1.0
 <entry id="microp_aero_wsub_scale" type="real" category="microphys"
        group="microp_aero_nl" valid_values="" >
 Unitless scaling factor for the liquid droplet subgrid scale vertical velocity during aerosol activation.
-Default: 1.0
+Default: set by build-namelist
 </entry>
 
 <entry id="microp_aero_wsubi_scale" type="real" category="microphys"
@@ -2927,8 +2972,14 @@ Default: 1.0
 
 <entry id="microp_aero_wsub_min" type="real" category="microphys"
        group="microp_aero_nl" valid_values="" >
-Minimum subgrid vertical velocity for liquid droplets during aerosol activation with units of (m s-1).
-Default: 0.2 m s-1
+Minimum subgrid vertical velocity (before scale factor) for liquid droplets during aerosol activation with units of (m s-1).
+Default: set by build-namelist
+</entry>
+
+<entry id="microp_aero_wsub_min_asf" type="real" category="microphys"
+       group="microp_aero_nl" valid_values="" >
+Minimum subgrid vertical velocity (after scale factor) for liquid droplets during aerosol activation with units of (m s-1).
+Default: set by build-namelist
 </entry>
 
 <entry id="microp_aero_wsubi_min" type="real" category="microphys"
@@ -3146,11 +3197,29 @@ rhi at which ice cloud fraction = 1 in the stratosphere.
 Default: set by build-namelist
 </entry>
 
+<entry id="cldfrc2m_qist_min" type="real" category="conv"
+       group="cldfrc2m_nl" valid_values="" >
+Minimum in-stratus IWC constraint [ kg/kg ]
+Default: set by build-namelist
+</entry>
+
+<entry id="cldfrc2m_qist_max" type="real" category="conv"
+       group="cldfrc2m_nl" valid_values="" >
+Maximum in-stratus IWC constraint [ kg/kg ]
+Default: set by build-namelist
+</entry>
+
 <entry id="cldfrc2m_do_subgrid_growth" type="logical" category="conv"
        group="cldfrc2m_nl" valid_values="" >
 Use cloud fraction to determine whether to do growth of ice clouds below
 RHice of 1 down to RHice = rhmini.
 Default: .true. for CAM6; all others =&gt; .false.
+</entry>
+
+<entry id="cldfrc2m_do_avg_aist_algs" type="logical" category="conv"
+       group="cldfrc2m_nl" valid_values="" >
+For small ice cloud concentrations, take the geometric mean of the iceopt=4 and iceopt=5 area fractions
+Default: .true. for CAM_DEV; all others .false.
 </entry>
 
 <entry id="zmconv_momcu" type="real" category="conv"
@@ -3195,12 +3264,6 @@ Default: set by build-namelist
 Include organization parameterization in ZM.   This value is set to true automatically
 if -zmconv_org is set in configure.
 Default: .false., unless -zmconv_org set in configure
-</entry>
-
-<entry id="zmconv_microp" type="logical" category="conv"
-       group="zmconv_nl" valid_values="" >
-Turn on convective microphysics
-Default: .false.
 </entry>
 
 <entry id="zmconv_num_cin" type="integer" category="conv"
@@ -7912,7 +7975,7 @@ If &lt; 0, se_sponge_del4_nu_fac is automatically set based on model top locatio
 Default: Set by build-namelist.
 </entry>
 
-<entry id="se_sponge_del4_nu_div_fac" type="integer" category="se"
+<entry id="se_sponge_del4_nu_div_fac" type="real" category="se"
        group="dyn_se_inparm" valid_values="" >
 Divergence damping hyperviscosity coefficient se_nu_div [m^4/s] for u,v is increased to
 se_nu_p*se_sponge_del4_nu_div_fac following a hyperbolic tangent function
@@ -7926,7 +7989,7 @@ If &lt; 0, se_sponge_del4_nu_div_fac is automatically set based on model top loc
 Default: Set by build-namelist.
 </entry>
 
-<entry id="se_sponge_del4_lev" type="real" category="se"
+<entry id="se_sponge_del4_lev" type="integer" category="se"
        group="dyn_se_inparm" valid_values="" >
 Level index around which increased del4 damping is centered.
 
@@ -8161,12 +8224,16 @@ Default: Set by build-namelist.
 </entry>
 
 <entry id="se_pgf_formulation" type="integer" category="se"
-       group="dyn_se_inparm" valid_values="1,2" >
+       group="dyn_se_inparm" valid_values="1,2,3" >
 
   1: Exner version of pressure gradient force (PGF)
   see Appendix A in https://agupubs.onlinelibrary.wiley.com/doi/epdf/10.1029/2022MS003192
 
   2: Traditional pressure gradient formulation (grad p)
+
+  3: Hybrid (formulation 1 where hybm>0 else formulation 2)
+     Use hybrid PGF option for WACCM-x to make WACCM-x consistent with PGF
+     used in CAM in the troposphere and traditional PGF formulation above
 
   Default: Set by build-namelist.
 </entry>
@@ -8394,13 +8461,24 @@ Default: 0.2
 
 <entry id="mpas_cam_coef" type="real" category="mpas"
        group="damping" valid_values="">
-Coefficient for scaling the 2nd-order horizontal diffusion in the mpas_cam absorbing layer.
-A value of 1.0 will result in layered diffusion similar to CAM-SE and gives damping
-coefficients of 0.2216E7, 0.6482E6, 0.1927E6 in the top-most three layers on the dynamics
-variables u, w, and theta. The top 3 damping coefficients scale linearly with
-mpas_cam_coef. 0.0 disables SE like 2nd-order diffusion in the absorbing layer and is the
-current default. Sponge layer absorption can also be provided by Rayleigh damping.
+Coefficient for scaling the 2nd-order horizontal diffusion in the mpas_cam absorbing
+layer. The absorbing layer depth is controlled with mpas_cam_damping_levels. The damping
+coefficients scale linearly with mpas_cam_coef. A value of 0.0 (or
+mpas_cam_damping_levels=0) disables the 2nd-order diffusion in the absorbing layer. Sponge
+layer absorption can also be provided by Rayleigh damping.
+
+E.g. a value of 1.0 with mpas_cam_damping_levels=3 will result in damping coefficients of
+2E6 m^2/s, 6E5, 2E5 in the top-most three layers on the dynamics variables u, w, and
+theta.
 Default: 0.0
+</entry>
+
+<entry id="mpas_cam_damping_levels" type="integer" category="mpas"
+       group="damping" valid_values="">
+Number mpas_cam absorbing layers in which to apply 2nd-order horizontal diffusion.
+Viscocity linearly ramps to zero by layer number from the top. mpas_cam_damping_levels and
+mpas_cam_coef must both be greater than 0 for the diffusion to be enabled.
+Default: 0
 </entry>
 
 <entry id="mpas_rayleigh_damp_u" type="logical" category="mpas"
