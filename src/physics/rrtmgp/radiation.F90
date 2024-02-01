@@ -67,7 +67,6 @@ save
 public :: &
    radiation_readnl,         &! read namelist variables
    radiation_register,       &! registers radiation physics buffer fields
-   radiation_nextsw_cday,    &! calendar day of next radiation calculation
    radiation_do,             &! query which radiation calcs are done this timestep
    radiation_init,           &! initialization
    radiation_define_restart, &! define variables for restart
@@ -107,8 +106,8 @@ type rad_out_t
    real(r8) :: flux_sw_dn(pcols,pverp)     ! downward flux
    real(r8) :: flux_sw_clr_dn(pcols,pverp) ! downward clearsky flux
 
-   real(r8) :: flux_lw_up(pcols,pverp)     ! upward shortwave flux on interfaces
-   real(r8) :: flux_lw_clr_up(pcols,pverp) ! upward shortwave clearsky flux
+   real(r8) :: flux_lw_up(pcols,pverp)     ! upward longwave flux on interfaces
+   real(r8) :: flux_lw_clr_up(pcols,pverp) ! upward longwave clearsky flux
    real(r8) :: flux_lw_dn(pcols,pverp)     ! downward flux
    real(r8) :: flux_lw_clr_dn(pcols,pverp) ! downward clearsky flux
 
@@ -221,13 +220,14 @@ subroutine radiation_readnl(nlfile)
 
    use namelist_utils,  only: find_group_name
    use spmd_utils,      only: mpicom, mstrid=>masterprocid, mpi_integer, mpi_logical, &
-                              mpi_character
+                              mpi_character, mpi_real8
 
    character(len=*), intent(in) :: nlfile  ! filepath for file containing namelist input
 
    ! Local variables
    integer :: unitn, ierr
    integer :: dtime      ! timestep size
+   character(len=32) :: errmsg
    character(len=*), parameter :: sub = 'radiation_readnl'
 
    character(len=cl) :: rrtmgp_coefs_lw_file, rrtmgp_coefs_sw_file
@@ -244,7 +244,8 @@ subroutine radiation_readnl(nlfile)
       if (ierr == 0) then
          read(unitn, radiation_nl, iostat=ierr)
          if (ierr /= 0) then
-            call endrun(sub//': ERROR reading namelist')
+            write(errmsg,'(a,i5)') 'iostat =', ierr
+            call endrun(sub//': ERROR reading namelist: '//trim(errmsg))
          end if
       end if
       close(unitn)
@@ -267,7 +268,7 @@ subroutine radiation_readnl(nlfile)
    if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: spectralflux")
    call mpi_bcast(use_rad_uniform_angle, 1, mpi_logical, mstrid, mpicom, ierr)
    if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: use_rad_uniform_angle")
-   call mpi_bcast(rad_uniform_angle, 1, mpi_logical, mstrid, mpicom, ierr)
+   call mpi_bcast(rad_uniform_angle, 1, mpi_real8, mstrid, mpicom, ierr)
    if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: rad_uniform_angle")   
    call mpi_bcast(graupel_in_rad, 1, mpi_logical, mstrid, mpicom, ierr)
    if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: graupel_in_rad")
@@ -379,7 +380,8 @@ end function radiation_do
 
 real(r8) function radiation_nextsw_cday()
   
-   ! Return calendar day of next sw radiation calculation
+   ! If a SW radiation calculation will be done on the next time-step, then return
+   ! the calendar day of that time-step.  Otherwise return -1.0
 
    ! Local variables
    integer :: nstep      ! timestep counter
@@ -440,7 +442,7 @@ subroutine radiation_init(pbuf2d)
                                           ! temperature, water vapor, cloud ice and cloud
                                           ! liquid budgets.
    integer :: history_budget_histfile_num ! history file number for budget fields
-   integer :: ierr
+   integer :: ierr, istat
 
    integer :: dtime
 
@@ -520,15 +522,15 @@ subroutine radiation_init(pbuf2d)
 
    ! "irad_always" is number of time steps to execute radiation continuously from
    ! start of initial OR restart run
-   nstep       = get_nstep()
+   nstep = get_nstep()
    if (irad_always > 0) then
-      nstep       = get_nstep()
       irad_always = irad_always + nstep
    end if
 
    if (docosp) call cospsimulator_intr_init()
 
-   allocate(cosp_cnt(begchunk:endchunk))
+   allocate(cosp_cnt(begchunk:endchunk), stat=istat)
+   call check_allocate(istat, sub, 'cosp_cnt')
    if (is_first_restart_step()) then
       cosp_cnt(begchunk:endchunk) = cosp_cnt_init
    else
@@ -858,7 +860,7 @@ subroutine radiation_tend( &
                                    ! if the argument is not present
    logical  :: write_output
   
-   integer  :: i, k
+   integer  :: i, k, istat
    integer  :: lchnk, ncol
    logical  :: dosw, dolw
    integer  :: icall           ! loop index for climate/diagnostic radiation calls
@@ -982,7 +984,8 @@ subroutine radiation_tend( &
       rd => rd_out
       write_output = .false.
    else
-      allocate(rd)
+      allocate(rd, stat=istat)
+      call check_allocate(istat, sub, 'rd')
       write_output = .true.
    end if
 
@@ -1078,9 +1081,11 @@ subroutine radiation_tend( &
 
       allocate( &
          t_sfc(ncol), emis_sfc(nlwbands,ncol), toa_flux(nday,nswgpts),     &
-         t_rad(ncol,nlay), pmid_rad(ncol,nlay), pint_rad(ncol,nlay+1),    &
-         t_day(nday,nlay), pmid_day(nday,nlay), pint_day(nday,nlay+1),    &
-         coszrs_day(nday), alb_dir(nswbands,nday), alb_dif(nswbands,nday) )
+         t_rad(ncol,nlay), pmid_rad(ncol,nlay), pint_rad(ncol,nlay+1),     &
+         t_day(nday,nlay), pmid_day(nday,nlay), pint_day(nday,nlay+1),     &
+         coszrs_day(nday), alb_dir(nswbands,nday), alb_dif(nswbands,nday), &
+         stat=istat)
+      call check_allocate(istat, sub, 't_sfc,..,alb_dif')
 
       ! Prepares state variables, daylit columns, albedos for RRTMGP
       call rrtmgp_set_state( &
@@ -1282,9 +1287,8 @@ subroutine radiation_tend( &
       end if  ! if (dolw)
 
       deallocate( &
-         t_sfc, emis_sfc, t_rad, pmid_rad, pint_rad,     &
-         t_day, pmid_day, pint_day, coszrs_day, alb_dir, &
-         alb_dif)
+         t_sfc, emis_sfc, toa_flux, t_rad, pmid_rad, pint_rad,  &
+         t_day, pmid_day, pint_day, coszrs_day, alb_dir, alb_dif)
 
       !================!
       ! COSP simulator !
@@ -1573,7 +1577,7 @@ subroutine radiation_tend( &
          do k = ktopcam, pver
             ! (flux divergence as bottom-MINUS-top) * g/dp
             hrate(:ncol,k) = (flux_net(:ncol,k+1) - flux_net(:ncol,k)) * &
-                          gravit / state%pdel(:ncol,k)
+                          gravit * state%rpdel(:ncol,k)
          end do
 
       case ('SW')
@@ -1581,7 +1585,7 @@ subroutine radiation_tend( &
          do k = ktopcam, pver
             ! top - bottom
             hrate(:ncol,k) = (flux_net(:ncol,k) - flux_net(:ncol,k+1)) * &
-                          gravit / state%pdel(:ncol,k)
+                          gravit * state%rpdel(:ncol,k)
          end do
 
       end select
@@ -1772,7 +1776,7 @@ subroutine coefs_init(coefs_file, available_gases, kdist)
    
    integer :: i
    integer :: did, vid
-   integer :: ierr
+   integer :: ierr, istat
 
    character(32), dimension(:),  allocatable :: gas_names
    integer,  dimension(:,:,:),   allocatable :: key_species
@@ -1895,35 +1899,40 @@ subroutine coefs_init(coefs_file, available_gases, kdist)
    ! Get variables
    
    ! names of absorbing gases
-   allocate(gas_names(absorber))
+   allocate(gas_names(absorber), stat=istat)
+   call check_allocate(istat, sub, 'gas_names')
    ierr = pio_inq_varid(fh, 'gas_names', vid)
    if (ierr /= PIO_NOERR) call endrun(sub//': gas_names not found')
    ierr = pio_get_var(fh, vid, gas_names)
    if (ierr /= PIO_NOERR) call endrun(sub//': error reading gas_names')
 
    ! key species pair for each band
-   allocate(key_species(2,atmos_layer,bnd))
+   allocate(key_species(2,atmos_layer,bnd), stat=istat)
+   call check_allocate(istat, sub, 'key_species')
    ierr = pio_inq_varid(fh, 'key_species', vid)
    if (ierr /= PIO_NOERR) call endrun(sub//': key_species not found')
    ierr = pio_get_var(fh, vid, key_species)
    if (ierr /= PIO_NOERR) call endrun(sub//': error reading key_species')
 
    ! beginning and ending gpoint for each band
-   allocate(band2gpt(2,bnd))
+   allocate(band2gpt(2,bnd), stat=istat)
+   call check_allocate(istat, sub, 'band2gpt')
    ierr = pio_inq_varid(fh, 'bnd_limits_gpt', vid)
    if (ierr /= PIO_NOERR) call endrun(sub//': bnd_limits_gpt not found')
    ierr = pio_get_var(fh, vid, band2gpt)
    if (ierr /= PIO_NOERR) call endrun(sub//': error reading bnd_limits_gpt')
 
    ! beginning and ending wavenumber for each band
-   allocate(band_lims_wavenum(2,bnd))
+   allocate(band_lims_wavenum(2,bnd), stat=istat)
+   call check_allocate(istat, sub, 'band_lims_wavenum')
    ierr = pio_inq_varid(fh, 'bnd_limits_wavenumber', vid)
    if (ierr /= PIO_NOERR) call endrun(sub//': bnd_limits_wavenumber not found')
    ierr = pio_get_var(fh, vid, band_lims_wavenum)
    if (ierr /= PIO_NOERR) call endrun(sub//': error reading bnd_limits_wavenumber')
 
    ! pressures [hPa] for reference atmosphere; press_ref(# reference layers)
-   allocate(press_ref(pressure))
+   allocate(press_ref(pressure), stat=istat)
+   call check_allocate(istat, sub, 'press_ref')
    ierr = pio_inq_varid(fh, 'press_ref', vid)
    if (ierr /= PIO_NOERR) call endrun(sub//': press_ref not found')
    ierr = pio_get_var(fh, vid, press_ref)
@@ -1936,7 +1945,8 @@ subroutine coefs_init(coefs_file, available_gases, kdist)
    if (ierr /= PIO_NOERR) call endrun(sub//': error reading press_ref_trop')
 
    ! temperatures [K] for reference atmosphere; temp_ref(# reference layers)
-   allocate(temp_ref(temperature))
+   allocate(temp_ref(temperature), stat=istat)
+   call check_allocate(istat, sub, 'temp_ref')
    ierr = pio_inq_varid(fh, 'temp_ref', vid)
    if (ierr /= PIO_NOERR) call endrun(sub//': temp_ref not found')
    ierr = pio_get_var(fh, vid, temp_ref)
@@ -1955,28 +1965,32 @@ subroutine coefs_init(coefs_file, available_gases, kdist)
    if (ierr /= PIO_NOERR) call endrun(sub//': error reading absorption_coefficient_ref_P')
 
    ! volume mixing ratios for reference atmosphere
-   allocate(vmr_ref(atmos_layer, absorber_ext, temperature))
+   allocate(vmr_ref(atmos_layer, absorber_ext, temperature), stat=istat)
+   call check_allocate(istat, sub, 'vmr_ref')
    ierr = pio_inq_varid(fh, 'vmr_ref', vid)
    if (ierr /= PIO_NOERR) call endrun(sub//': vmr_ref not found')
    ierr = pio_get_var(fh, vid, vmr_ref)
    if (ierr /= PIO_NOERR) call endrun(sub//': error reading vmr_ref')
 
    ! absorption coefficients due to major absorbing gases
-   allocate(kmajor(gpt,mixing_fraction,pressure_interp,temperature))
+   allocate(kmajor(gpt,mixing_fraction,pressure_interp,temperature), stat=istat)
+   call check_allocate(istat, sub, 'kmajor')
    ierr = pio_inq_varid(fh, 'kmajor', vid)
    if (ierr /= PIO_NOERR) call endrun(sub//': kmajor not found')
    ierr = pio_get_var(fh, vid, kmajor)
    if (ierr /= PIO_NOERR) call endrun(sub//': error reading kmajor')
 
    ! absorption coefficients due to minor absorbing gases in lower part of atmosphere
-   allocate(kminor_lower(contributors_lower, mixing_fraction, temperature))
+   allocate(kminor_lower(contributors_lower, mixing_fraction, temperature), stat=istat)
+   call check_allocate(istat, sub, 'kminor_lower')
    ierr = pio_inq_varid(fh, 'kminor_lower', vid)
    if (ierr /= PIO_NOERR) call endrun(sub//': kminor_lower not found')
    ierr = pio_get_var(fh, vid, kminor_lower)
    if (ierr /= PIO_NOERR) call endrun(sub//': error reading kminor_lower')
 
    ! absorption coefficients due to minor absorbing gases in upper part of atmosphere
-   allocate(kminor_upper(contributors_upper, mixing_fraction, temperature))
+   allocate(kminor_upper(contributors_upper, mixing_fraction, temperature), stat=istat)
+   call check_allocate(istat, sub, 'kminor_upper')
    ierr = pio_inq_varid(fh, 'kminor_upper', vid)
    if (ierr /= PIO_NOERR) call endrun(sub//': kminor_upper not found')
    ierr = pio_get_var(fh, vid, kminor_upper)
@@ -1985,7 +1999,8 @@ subroutine coefs_init(coefs_file, available_gases, kdist)
    ! integrated Planck function by band
    ierr = pio_inq_varid(fh, 'totplnk', vid)
    if (ierr == PIO_NOERR) then
-      allocate(totplnk(temperature_Planck,bnd))
+      allocate(totplnk(temperature_Planck,bnd), stat=istat)
+      call check_allocate(istat, sub, 'totplnk')
       ierr = pio_get_var(fh, vid, totplnk)
       if (ierr /= PIO_NOERR) call endrun(sub//': error reading totplnk')
    end if
@@ -1993,33 +2008,40 @@ subroutine coefs_init(coefs_file, available_gases, kdist)
    ! Planck fractions
    ierr = pio_inq_varid(fh, 'plank_fraction', vid)
    if (ierr == PIO_NOERR) then
-      allocate(planck_frac(gpt,mixing_fraction,pressure_interp,temperature))
+      allocate(planck_frac(gpt,mixing_fraction,pressure_interp,temperature), stat=istat)
+      call check_allocate(istat, sub, 'planck_frac')
       ierr = pio_get_var(fh, vid, planck_frac)
       if (ierr /= PIO_NOERR) call endrun(sub//': error reading plank_fraction')
    end if
 
    ierr = pio_inq_varid(fh, 'optimal_angle_fit', vid)
    if (ierr == PIO_NOERR) then
-      allocate(optimal_angle_fit(fit_coeffs, bnd))
+      allocate(optimal_angle_fit(fit_coeffs, bnd), stat=istat)
+      call check_allocate(istat, sub, 'optiman_angle_fit')
       ierr = pio_get_var(fh, vid, optimal_angle_fit)
       if (ierr /= PIO_NOERR) call endrun(sub//': error reading optimal_angle_fit')
    end if
 
    ierr = pio_inq_varid(fh, 'solar_source_quiet', vid)
    if (ierr == PIO_NOERR) then
-      allocate(solar_src_quiet(gpt))
+      allocate(solar_src_quiet(gpt), stat=istat)
+      call check_allocate(istat, sub, 'solar_src_quiet')
       ierr = pio_get_var(fh, vid, solar_src_quiet)
       if (ierr /= PIO_NOERR) call endrun(sub//': error reading solar_source_quiet')
    end if
+
    ierr = pio_inq_varid(fh, 'solar_source_facular', vid)
    if (ierr == PIO_NOERR) then
-      allocate(solar_src_facular(gpt))
+      allocate(solar_src_facular(gpt), stat=istat)
+      call check_allocate(istat, sub, 'solar_src_facular')
       ierr = pio_get_var(fh, vid, solar_src_facular)
       if (ierr /= PIO_NOERR) call endrun(sub//': error reading solar_source_facular')
    end if
+
    ierr = pio_inq_varid(fh, 'solar_source_sunspot', vid)
    if (ierr == PIO_NOERR) then
-      allocate(solar_src_sunspot(gpt))
+      allocate(solar_src_sunspot(gpt), stat=istat)
+      call check_allocate(istat, sub, 'solar_src_sunspot')
       ierr = pio_get_var(fh, vid, solar_src_sunspot)
       if (ierr /= PIO_NOERR) call endrun(sub//': error reading solar_source_sunspot')
    end if
@@ -2045,7 +2067,8 @@ subroutine coefs_init(coefs_file, available_gases, kdist)
    ! rayleigh scattering contribution in lower part of atmosphere
    ierr = pio_inq_varid(fh, 'rayl_lower', vid)
    if (ierr == PIO_NOERR) then
-      allocate(rayl_lower(gpt,mixing_fraction,temperature))
+      allocate(rayl_lower(gpt,mixing_fraction,temperature), stat=istat)
+      call check_allocate(istat, sub, 'rayl_lower')
       ierr = pio_get_var(fh, vid, rayl_lower)
       if (ierr /= PIO_NOERR) call endrun(sub//': error reading rayl_lower')
    end if
@@ -2053,50 +2076,59 @@ subroutine coefs_init(coefs_file, available_gases, kdist)
    ! rayleigh scattering contribution in upper part of atmosphere
    ierr = pio_inq_varid(fh, 'rayl_upper', vid)
    if (ierr == PIO_NOERR) then
-      allocate(rayl_upper(gpt,mixing_fraction,temperature))
+      allocate(rayl_upper(gpt,mixing_fraction,temperature), stat=istat)
+      call check_allocate(istat, sub, 'rayl_upper')
       ierr = pio_get_var(fh, vid, rayl_upper)
       if (ierr /= PIO_NOERR) call endrun(sub//': error reading rayl_upper')
    end if
 
-   allocate(gas_minor(minorabsorbers))
+   allocate(gas_minor(minorabsorbers), stat=istat)
+   call check_allocate(istat, sub, 'gas_minor')
    ierr = pio_inq_varid(fh, 'gas_minor', vid)
    if (ierr /= PIO_NOERR) call endrun(sub//': gas_minor not found')
    ierr = pio_get_var(fh, vid, gas_minor)
    if (ierr /= PIO_NOERR) call endrun(sub//': error reading gas_minor')
 
-   allocate(identifier_minor(minorabsorbers))
+   allocate(identifier_minor(minorabsorbers), stat=istat)
+   call check_allocate(istat, sub, 'identifier_minor')
    ierr = pio_inq_varid(fh, 'identifier_minor', vid)
    if (ierr /= PIO_NOERR) call endrun(sub//': identifier_minor not found')
    ierr = pio_get_var(fh, vid, identifier_minor)
    if (ierr /= PIO_NOERR) call endrun(sub//': error reading identifier_minor')
    
-   allocate(minor_gases_lower(minor_absorber_intervals_lower))
+   allocate(minor_gases_lower(minor_absorber_intervals_lower), stat=istat)
+   call check_allocate(istat, sub, 'minor_gases_lower')
    ierr = pio_inq_varid(fh, 'minor_gases_lower', vid)
    if (ierr /= PIO_NOERR) call endrun(sub//': minor_gases_lower not found')
    ierr = pio_get_var(fh, vid, minor_gases_lower)
    if (ierr /= PIO_NOERR) call endrun(sub//': error reading minor_gases_lower')
 
-   allocate(minor_gases_upper(minor_absorber_intervals_upper))
+   allocate(minor_gases_upper(minor_absorber_intervals_upper), stat=istat)
+   call check_allocate(istat, sub, 'minor_gases_upper')
    ierr = pio_inq_varid(fh, 'minor_gases_upper', vid)
    if (ierr /= PIO_NOERR) call endrun(sub//': minor_gases_upper not found')
    ierr = pio_get_var(fh, vid, minor_gases_upper)
    if (ierr /= PIO_NOERR) call endrun(sub//': error reading minor_gases_upper')
 
-   allocate(minor_limits_gpt_lower(pairs,minor_absorber_intervals_lower))
+   allocate(minor_limits_gpt_lower(pairs,minor_absorber_intervals_lower), stat=istat)
+   call check_allocate(istat, sub, 'minor_limits_gpt_lower')
    ierr = pio_inq_varid(fh, 'minor_limits_gpt_lower', vid)
    if (ierr /= PIO_NOERR) call endrun(sub//': minor_limits_gpt_lower not found')
    ierr = pio_get_var(fh, vid, minor_limits_gpt_lower)
    if (ierr /= PIO_NOERR) call endrun(sub//': error reading minor_limits_gpt_lower')
 
-   allocate(minor_limits_gpt_upper(pairs,minor_absorber_intervals_upper))
+   allocate(minor_limits_gpt_upper(pairs,minor_absorber_intervals_upper), stat=istat)
+   call check_allocate(istat, sub, 'minor_limits_gpt_upper')
    ierr = pio_inq_varid(fh, 'minor_limits_gpt_upper', vid)
    if (ierr /= PIO_NOERR) call endrun(sub//': minor_limits_gpt_upper not found')
    ierr = pio_get_var(fh, vid, minor_limits_gpt_upper)
    if (ierr /= PIO_NOERR) call endrun(sub//': error reading minor_limits_gpt_upper')
 
    !  Read as integer and convert to logical
-   allocate(int2log(minor_absorber_intervals_lower))
-   allocate(minor_scales_with_density_lower(minor_absorber_intervals_lower))
+   allocate(int2log(minor_absorber_intervals_lower), stat=istat)
+   call check_allocate(istat, sub, 'int2log for lower')
+   allocate(minor_scales_with_density_lower(minor_absorber_intervals_lower), stat=istat)
+   call check_allocate(istat, sub, 'minor_scales_with_density_lower')
    ierr = pio_inq_varid(fh, 'minor_scales_with_density_lower', vid)
    if (ierr /= PIO_NOERR) call endrun(sub//': minor_scales_with_density_lower not found')
    ierr = pio_get_var(fh, vid, int2log)
@@ -2111,8 +2143,10 @@ subroutine coefs_init(coefs_file, available_gases, kdist)
    deallocate(int2log)
 
    ! Read as integer and convert to logical
-   allocate(int2log(minor_absorber_intervals_upper))
-   allocate(minor_scales_with_density_upper(minor_absorber_intervals_upper))
+   allocate(int2log(minor_absorber_intervals_upper), stat=istat)
+   call check_allocate(istat, sub, 'int2log for upper')
+   allocate(minor_scales_with_density_upper(minor_absorber_intervals_upper), stat=istat)
+   call check_allocate(istat, sub, 'minor_scales_with_density_upper')
    ierr = pio_inq_varid(fh, 'minor_scales_with_density_upper', vid)
    if (ierr /= PIO_NOERR) call endrun(sub//': minor_scales_with_density_upper not found')
    ierr = pio_get_var(fh, vid, int2log)
@@ -2127,8 +2161,10 @@ subroutine coefs_init(coefs_file, available_gases, kdist)
    deallocate(int2log)
 
    ! Read as integer and convert to logical
-   allocate(int2log(minor_absorber_intervals_lower))
-   allocate(scale_by_complement_lower(minor_absorber_intervals_lower))
+   allocate(int2log(minor_absorber_intervals_lower), stat=istat)
+   call check_allocate(istat, sub, 'int2log for lower')
+   allocate(scale_by_complement_lower(minor_absorber_intervals_lower), stat=istat)
+   call check_allocate(istat, sub, 'scale_by_complement_lower')
    ierr = pio_inq_varid(fh, 'scale_by_complement_lower', vid)
    if (ierr /= PIO_NOERR) call endrun(sub//': scale_by_complement_lower not found')
    ierr = pio_get_var(fh, vid, int2log)
@@ -2143,8 +2179,10 @@ subroutine coefs_init(coefs_file, available_gases, kdist)
    deallocate(int2log)
 
    ! Read as integer and convert to logical
-   allocate(int2log(minor_absorber_intervals_upper))
-   allocate(scale_by_complement_upper(minor_absorber_intervals_upper))
+   allocate(int2log(minor_absorber_intervals_upper), stat=istat)
+   call check_allocate(istat, sub, 'int2log for upper')
+   allocate(scale_by_complement_upper(minor_absorber_intervals_upper), stat=istat)
+   call check_allocate(istat, sub, 'scale_by_complement_upper')
    ierr = pio_inq_varid(fh, 'scale_by_complement_upper', vid)
    if (ierr /= PIO_NOERR) call endrun(sub//': scale_by_complement_upper not found')
    ierr = pio_get_var(fh, vid, int2log)
@@ -2158,25 +2196,29 @@ subroutine coefs_init(coefs_file, available_gases, kdist)
    end do
    deallocate(int2log)
 
-   allocate(scaling_gas_lower(minor_absorber_intervals_lower))
+   allocate(scaling_gas_lower(minor_absorber_intervals_lower), stat=istat)
+   call check_allocate(istat, sub, 'scaling_gas_lower')
    ierr = pio_inq_varid(fh, 'scaling_gas_lower', vid)
    if (ierr /= PIO_NOERR) call endrun(sub//': scaling_gas_lower not found')
    ierr = pio_get_var(fh, vid, scaling_gas_lower)
    if (ierr /= PIO_NOERR) call endrun(sub//': error reading scaling_gas_lower')
 
-   allocate(scaling_gas_upper(minor_absorber_intervals_upper))
+   allocate(scaling_gas_upper(minor_absorber_intervals_upper), stat=istat)
+   call check_allocate(istat, sub, 'scaling_gas_upper')
    ierr = pio_inq_varid(fh, 'scaling_gas_upper', vid)
    if (ierr /= PIO_NOERR) call endrun(sub//': scaling_gas_upper not found')
    ierr = pio_get_var(fh, vid, scaling_gas_upper)
    if (ierr /= PIO_NOERR) call endrun(sub//': error reading scaling_gas_upper')
 
-   allocate(kminor_start_lower(minor_absorber_intervals_lower))
+   allocate(kminor_start_lower(minor_absorber_intervals_lower), stat=istat)
+   call check_allocate(istat, sub, 'kminor_start_lower')
    ierr = pio_inq_varid(fh, 'kminor_start_lower', vid)
    if (ierr /= PIO_NOERR) call endrun(sub//': kminor_start_lower not found')
    ierr = pio_get_var(fh, vid, kminor_start_lower)
    if (ierr /= PIO_NOERR) call endrun(sub//': error reading kminor_start_lower')
 
-   allocate(kminor_start_upper(minor_absorber_intervals_upper))
+   allocate(kminor_start_upper(minor_absorber_intervals_upper), stat=istat)
+   call check_allocate(istat, sub, 'kminor_start_upper')
    ierr = pio_inq_varid(fh, 'kminor_start_upper', vid)
    if (ierr /= PIO_NOERR) call endrun(sub//': kminor_start_upper not found')
    ierr = pio_get_var(fh, vid, kminor_start_upper)
@@ -2238,23 +2280,23 @@ subroutine coefs_init(coefs_file, available_gases, kdist)
       kmajor, kminor_lower, kminor_upper,   &
       gas_minor, identifier_minor,          &
       minor_gases_lower, minor_gases_upper, &
-      scaling_gas_lower, scaling_gas_upper, & 
       minor_limits_gpt_lower,               & 
       minor_limits_gpt_upper,               &
       minor_scales_with_density_lower,      &
       minor_scales_with_density_upper,      &
       scale_by_complement_lower,            & 
       scale_by_complement_upper,            &
+      scaling_gas_lower, scaling_gas_upper, & 
       kminor_start_lower, kminor_start_upper)
 
+   if (allocated(totplnk))           deallocate(totplnk)
+   if (allocated(planck_frac))       deallocate(planck_frac)
    if (allocated(optimal_angle_fit)) deallocate(optimal_angle_fit)
-   if (allocated(totplnk))     deallocate(totplnk)
-   if (allocated(planck_frac)) deallocate(planck_frac)
    if (allocated(solar_src_quiet))   deallocate(solar_src_quiet)
    if (allocated(solar_src_facular)) deallocate(solar_src_facular)
    if (allocated(solar_src_sunspot)) deallocate(solar_src_sunspot)
-   if (allocated(rayl_lower))  deallocate(rayl_lower)
-   if (allocated(rayl_upper))  deallocate(rayl_upper)
+   if (allocated(rayl_lower))        deallocate(rayl_lower)
+   if (allocated(rayl_upper))        deallocate(rayl_upper)
 
 end subroutine coefs_init
 
@@ -2271,6 +2313,8 @@ subroutine initialize_rrtmgp_fluxes(ncol, nlevels, nbands, fluxes, do_direct)
 
    ! Local variables
    logical :: do_direct_local
+   integer :: istat
+   character(len=*), parameter :: sub = 'initialize_rrtmgp_fluxes'
    !----------------------------------------------------------------------------
 
    if (present(do_direct)) then
@@ -2280,16 +2324,28 @@ subroutine initialize_rrtmgp_fluxes(ncol, nlevels, nbands, fluxes, do_direct)
    end if
 
    ! Broadband fluxes
-   allocate(fluxes%flux_up(ncol, nlevels))
-   allocate(fluxes%flux_dn(ncol, nlevels))
-   allocate(fluxes%flux_net(ncol, nlevels))
-   if (do_direct_local) allocate(fluxes%flux_dn_dir(ncol, nlevels))
+   allocate(fluxes%flux_up(ncol, nlevels), stat=istat)
+   call check_allocate(istat, sub, 'fluxes%flux_up')
+   allocate(fluxes%flux_dn(ncol, nlevels), stat=istat)
+   call check_allocate(istat, sub, 'fluxes%flux_dn')
+   allocate(fluxes%flux_net(ncol, nlevels), stat=istat)
+   call check_allocate(istat, sub, 'fluxes%flux_net')
+   if (do_direct_local) then
+      allocate(fluxes%flux_dn_dir(ncol, nlevels), stat=istat)
+      call check_allocate(istat, sub, 'fluxes%flux_dn_dir')
+   end if
 
    ! Fluxes by band
-   allocate(fluxes%bnd_flux_up(ncol, nlevels, nbands))
-   allocate(fluxes%bnd_flux_dn(ncol, nlevels, nbands))
-   allocate(fluxes%bnd_flux_net(ncol, nlevels, nbands))
-   if (do_direct_local) allocate(fluxes%bnd_flux_dn_dir(ncol, nlevels, nbands))
+   allocate(fluxes%bnd_flux_up(ncol, nlevels, nbands), stat=istat)
+   call check_allocate(istat, sub, 'fluxes%bnd_flux_up')
+   allocate(fluxes%bnd_flux_dn(ncol, nlevels, nbands), stat=istat)
+   call check_allocate(istat, sub, 'fluxes%bnd_flux_dn')
+   allocate(fluxes%bnd_flux_net(ncol, nlevels, nbands), stat=istat)
+   call check_allocate(istat, sub, 'fluxes%bnd_flux_net')
+   if (do_direct_local) then
+      allocate(fluxes%bnd_flux_dn_dir(ncol, nlevels, nbands), stat=istat)
+      call check_allocate(istat, sub, 'fluxes%bnd_flux_dn_dir')
+   end if
 
    ! Initialize
    call reset_fluxes(fluxes)
@@ -2420,6 +2476,22 @@ subroutine stop_on_err(errmsg, sub, info)
    end if
 
 end subroutine stop_on_err
+
+!=========================================================================================
+
+subroutine check_allocate(istat, sub, info)
+
+   ! call endrun if allocate returns non-zero status
+
+   integer,          intent(in) :: istat     ! return status from allocate
+   character(len=*), intent(in) :: sub       ! name of calling subroutine
+   character(len=*), intent(in) :: info      ! identify which call failed
+
+   if (istat /= 0) then
+      call endrun(trim(sub)//': ERROR allocating: '//trim(info))
+   end if
+
+end subroutine check_allocate
 
 !=========================================================================================
 

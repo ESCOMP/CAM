@@ -728,8 +728,8 @@ subroutine radiation_tend( &
                                  ice_cloud_get_rad_props_lw, cloud_rad_props_get_lw, &
                                  grau_cloud_get_rad_props_lw, get_grau_optics_sw, &
                                  snow_cloud_get_rad_props_lw, get_snow_optics_sw
-   use slingo,             only: slingo_liq_get_rad_props_lw, slingo_liq_optics_sw
-   use ebert_curry,        only: ec_ice_optics_sw, ec_ice_get_rad_props_lw
+   use slingo_liq_optics,  only: slingo_liq_get_rad_props_lw, slingo_liq_optics_sw
+   use ebert_curry_ice_optics, only: ec_ice_optics_sw, ec_ice_get_rad_props_lw
 
    use rad_solar_var,      only: get_variability
    use radsw,              only: rad_rrtmg_sw

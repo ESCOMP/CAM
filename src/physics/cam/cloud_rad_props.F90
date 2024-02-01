@@ -10,12 +10,11 @@ use physics_buffer,   only: physics_buffer_desc, pbuf_get_index, pbuf_get_field,
 use constituents,     only: cnst_get_ind
 use radconstants,     only: nswbands, nlwbands, idx_sw_diag
 use rad_constituents, only: iceopticsfile, liqopticsfile
-use oldcloud,         only: oldcloud_init, oldcloud_lw, &
+use oldcloud_optics,  only: oldcloud_init, oldcloud_lw, &
                             old_liq_get_rad_props_lw, old_ice_get_rad_props_lw
                             
-
-use slingo,           only: slingo_rad_props_init
-use ebert_curry,      only: ec_rad_props_init, scalefactor
+use slingo_liq_optics,      only: slingo_rad_props_init
+use ebert_curry_ice_optics, only: ec_rad_props_init, scalefactor
 
 use interpolate_data, only: interp_type, lininterp_init, lininterp, &
                             extrap_method_bndry, lininterp_finish
@@ -101,6 +100,7 @@ subroutine cloud_rad_props_init()
    integer :: d_id, ext_sw_ice_id, ssa_sw_ice_id, asm_sw_ice_id, abs_lw_ice_id
 
    integer :: err
+   character(len=*), parameter :: sub = 'cloud_rad_props_init'
 
    liquidfile = liqopticsfile
    icefile = iceopticsfile
@@ -131,11 +131,11 @@ subroutine cloud_rad_props_init()
 
       call handle_ncerr(nf90_inq_dimid( ncid, 'lw_band', dimid), 'getting lw_band dim')
       call handle_ncerr(nf90_inquire_dimension( ncid, dimid, len=f_nlwbands), 'getting n lw bands')
-      if (f_nlwbands /= nlwbands) call endrun('number of lw bands does not match')
+      if (f_nlwbands /= nlwbands) call endrun(sub//': number of lw bands does not match')
 
       call handle_ncerr(nf90_inq_dimid( ncid, 'sw_band', dimid), 'getting sw_band_dim')
       call handle_ncerr(nf90_inquire_dimension( ncid, dimid, len=f_nswbands), 'getting n sw bands')
-      if (f_nswbands /= nswbands) call endrun('number of sw bands does not match')
+      if (f_nswbands /= nswbands) call endrun(sub//': number of sw bands does not match')
 
       call handle_ncerr(nf90_inq_dimid( ncid, 'mu', mudimid), 'getting mu dim')
       call handle_ncerr(nf90_inquire_dimension( ncid, mudimid, len=nmu), 'getting n mu samples')
@@ -210,12 +210,12 @@ subroutine cloud_rad_props_init()
       call handle_ncerr(nf90_inq_dimid( ncid, 'lw_band', dimid), 'getting lw_band dim')
       call handle_ncerr(nf90_inquire_dimension( ncid, dimid, len=f_nlwbands), 'getting n lw bands')
       if (f_nlwbands /= nlwbands) then
-         call endrun('number of lw bands does not match')
+         call endrun(sub//': number of lw bands does not match')
       end if
       call handle_ncerr(nf90_inq_dimid( ncid, 'sw_band', dimid), 'getting sw_band_dim')
       call handle_ncerr(nf90_inquire_dimension( ncid, dimid, len=f_nswbands), 'getting n sw bands')
       if (f_nswbands /= nswbands) then
-         call endrun('number of sw bands does not match')
+         call endrun(sub//': number of sw bands does not match')
       end if
       call handle_ncerr(nf90_inq_dimid( ncid, 'd_eff', d_dimid), 'getting deff dim')
       call handle_ncerr(nf90_inquire_dimension( ncid, d_dimid, len=n_g_d), 'getting n deff samples')
@@ -347,7 +347,7 @@ subroutine get_ice_optics_sw(state, pbuf, tau, tau_w, tau_w_g, tau_w_f)
 
    real(r8),intent(out) :: tau    (nswbands,pcols,pver) ! extinction optical depth
    real(r8),intent(out) :: tau_w  (nswbands,pcols,pver) ! single scattering albedo * tau
-   real(r8),intent(out) :: tau_w_g(nswbands,pcols,pver) ! assymetry parameter * tau * w
+   real(r8),intent(out) :: tau_w_g(nswbands,pcols,pver) ! asymetry parameter * tau * w
    real(r8),intent(out) :: tau_w_f(nswbands,pcols,pver) ! forward scattered fraction * tau * w
 
    real(r8), pointer :: iciwpth(:,:), dei(:,:)
@@ -370,7 +370,7 @@ subroutine get_snow_optics_sw(state, pbuf, tau, tau_w, tau_w_g, tau_w_f)
 
    real(r8),intent(out) :: tau    (nswbands,pcols,pver) ! extinction optical depth
    real(r8),intent(out) :: tau_w  (nswbands,pcols,pver) ! single scattering albedo * tau
-   real(r8),intent(out) :: tau_w_g(nswbands,pcols,pver) ! assymetry parameter * tau * w
+   real(r8),intent(out) :: tau_w_g(nswbands,pcols,pver) ! asymetry parameter * tau * w
    real(r8),intent(out) :: tau_w_f(nswbands,pcols,pver) ! forward scattered fraction * tau * w
 
    real(r8), pointer :: icswpth(:,:), des(:,:)
@@ -393,12 +393,13 @@ subroutine get_grau_optics_sw(state, pbuf, tau, tau_w, tau_w_g, tau_w_f)
 
    real(r8),intent(out) :: tau    (nswbands,pcols,pver) ! extinction optical depth
    real(r8),intent(out) :: tau_w  (nswbands,pcols,pver) ! single scattering albedo * tau
-   real(r8),intent(out) :: tau_w_g(nswbands,pcols,pver) ! assymetry parameter * tau * w
+   real(r8),intent(out) :: tau_w_g(nswbands,pcols,pver) ! asymetry parameter * tau * w
    real(r8),intent(out) :: tau_w_f(nswbands,pcols,pver) ! forward scattered fraction * tau * w
 
    real(r8), pointer :: icgrauwpth(:,:), degrau(:,:)
 
    integer :: i,k
+   character(len=*), parameter :: sub = 'get_grau_optics_sw'
 
    ! This does the same thing as get_ice_optics_sw, except with a different
    ! water path and effective diameter.
@@ -419,7 +420,7 @@ subroutine get_grau_optics_sw(state, pbuf, tau, tau_w, tau_w_g, tau_w_f)
       enddo
 
    else
-      call endrun('ERROR: Get_grau_optics_sw called when graupel properties not supported')
+      call endrun(sub//': ERROR: Get_grau_optics_sw called when graupel properties not supported')
    end if
 
 end subroutine get_grau_optics_sw
@@ -520,6 +521,7 @@ subroutine grau_cloud_get_rad_props_lw(state, pbuf, abs_od)
    real(r8), intent(out) :: abs_od(nlwbands,pcols,pver)
 
    real(r8), pointer :: icgrauwpth(:,:), degrau(:,:)
+   character(len=*), parameter :: sub = 'grau_cloud_get_rad_props_lw'
 
    ! This does the same thing as ice_cloud_get_rad_props_lw, except with a
    ! different water path and effective diameter.
@@ -529,7 +531,7 @@ subroutine grau_cloud_get_rad_props_lw(state, pbuf, abs_od)
 
       call interpolate_ice_optics_lw(state%ncol,icgrauwpth, degrau, abs_od)
    else
-      call endrun('ERROR: Grau_cloud_get_rad_props_lw called when graupel &
+      call endrun(sub//': ERROR: Grau_cloud_get_rad_props_lw called when graupel &
            &properties not supported')
    end if
 
@@ -566,7 +568,7 @@ subroutine interpolate_ice_optics_sw(ncol, iciwpth, dei, tau, tau_w, &
 
   real(r8),intent(out) :: tau    (nswbands,pcols,pver) ! extinction optical depth
   real(r8),intent(out) :: tau_w  (nswbands,pcols,pver) ! single scattering albedo * tau
-  real(r8),intent(out) :: tau_w_g(nswbands,pcols,pver) ! assymetry parameter * tau * w
+  real(r8),intent(out) :: tau_w_g(nswbands,pcols,pver) ! asymetry parameter * tau * w
   real(r8),intent(out) :: tau_w_f(nswbands,pcols,pver) ! forward scattered fraction * tau * w
 
   type(interp_type) :: dei_wgts

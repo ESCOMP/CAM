@@ -1099,6 +1099,11 @@ elsif ($rad_pkg =~ m/rrtmg/) {
         die "configure ERROR: radiation package: $rad_pkg is not compatible\n".
             "                 with physics package $phys_pkg\n";
     }
+
+    # RRTMGP not currently working with CARMA
+    if ($rad_pkg eq 'rrtmgp' and $carma_pkg ne 'none') {
+        die "configure ERROR: The CARMA microphysics package does not currently work with RRTMGP\n";
+    }
 }
 
 $cfg_ref->set('rad', $rad_pkg);

@@ -53,7 +53,6 @@ subroutine mcica_subcol_lw( &
    ! number of subcolumns
 
    ! arguments
-   ! class(ty_gas_optics), intent(in) :: kdist  ! spectral information ! Wrong?
    class(ty_gas_optics_rrtmgp), intent(in) :: kdist  ! spectral information
    integer,  intent(in)  :: nbnd                     ! number of spectral bands
    integer,  intent(in)  :: ngpt                     ! number of subcolumns (g-point intervals)
@@ -169,7 +168,6 @@ subroutine mcica_subcol_sw( &
    ! number of subcolumns
 
    ! arguments
-   ! class(ty_gas_optics), intent(in) :: kdist  ! spectral information  ! Wrong?
    class(ty_gas_optics_rrtmgp), intent(in) :: kdist  ! spectral information
    integer,  intent(in)  :: nbnd                    ! number of spectral bands
    integer,  intent(in)  :: ngpt                    ! number of subcolumns (g-point intervals)

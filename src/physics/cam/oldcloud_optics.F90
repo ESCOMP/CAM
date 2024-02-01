@@ -1,4 +1,4 @@
-module oldcloud
+module oldcloud_optics
 
 !------------------------------------------------------------------------------------------------
 !------------------------------------------------------------------------------------------------
@@ -10,7 +10,7 @@ use physics_buffer,   only: physics_buffer_desc, pbuf_get_index, pbuf_old_tim_id
 use constituents,     only: cnst_get_ind
 use physconst,        only: gravit
 use radconstants,     only: nlwbands
-use ebert_curry,      only: scalefactor
+use ebert_curry_ice_optics, only: scalefactor
 
 use cam_abortutils,   only: endrun
 
@@ -79,8 +79,6 @@ subroutine oldcloud_init()
    call cnst_get_ind('CLDICE', ixcldice)
    call cnst_get_ind('CLDLIQ', ixcldliq)
 
-   return
-
 end subroutine oldcloud_init
 
 !==============================================================================
@@ -106,10 +104,8 @@ subroutine oldcloud_lw(state,pbuf,cld_abs_od,oldwp)
    integer :: ncol, itim_old, lwband, i, k, lchnk
    real(r8), pointer, dimension(:,:) :: iclwpth, iciwpth
 
-    real(r8) :: kabs, kabsi
-    real(r8) kabsl                  ! longwave liquid absorption coeff (m**2/g)
-    parameter (kabsl = 0.090361_r8)
-
+   real(r8) :: kabs, kabsi
+   real(r8), parameter :: kabsl = 0.090361_r8 ! longwave liquid absorption coeff (m**2/g)
 
  
    ncol = state%ncol
@@ -152,7 +148,6 @@ subroutine oldcloud_lw(state,pbuf,cld_abs_od,oldwp)
           !in range of 13 > rei > 130 micron (Ebert and Curry 92)
           kabsi = 0.005_r8 + 1._r8/min(max(13._r8,scalefactor*rei(i,k)),130._r8)
           kabs = kabsl*(1._r8-ficemr(i,k)) + kabsi*ficemr(i,k)
-          !emis(i,k) = 1._r8 - exp(-1.66_r8*kabs*clwp(i,k))
           cldtau(i,k) = kabs*cwp(i,k)
        end do
    end do
@@ -185,8 +180,7 @@ subroutine old_liq_get_rad_props_lw(state, pbuf, abs_od, oldliqwp)
    integer :: ncol, itim_old, lwband, i, k, lchnk 
 
    real(r8) :: kabs, kabsi
-   real(r8) kabsl                  ! longwave liquid absorption coeff (m**2/g)
-   parameter (kabsl = 0.090361_r8)
+   real(r8), parameter :: kabsl = 0.090361_r8 ! longwave liquid absorption coeff (m**2/g)
 
    real(r8), pointer, dimension(:,:) :: iclwpth, iciwpth
 
@@ -234,11 +228,10 @@ subroutine old_liq_get_rad_props_lw(state, pbuf, abs_od, oldliqwp)
           !in range of 13 > rei > 130 micron (Ebert and Curry 92)
           kabsi = 0.005_r8 + 1._r8/min(max(13._r8,scalefactor*rei(i,k)),130._r8)
           kabs = kabsl*(1._r8-ficemr(i,k)) ! + kabsi*ficemr(i,k)
-          !emis(i,k) = 1._r8 - exp(-1.66_r8*kabs*clwp(i,k))
           cldtau(i,k) = kabs*cwp(i,k)
        end do
    end do
-!
+
    do lwband = 1,nlwbands
       abs_od(lwband,1:ncol,1:pver)=cldtau(1:ncol,1:pver)
    enddo
@@ -267,10 +260,8 @@ subroutine old_ice_get_rad_props_lw(state, pbuf, abs_od, oldicewp)
    real(r8), pointer, dimension(:,:) :: rei
    integer :: ncol, itim_old, lwband, i, k, lchnk
 
-    real(r8) :: kabs, kabsi
-
-    real(r8) kabsl                  ! longwave liquid absorption coeff (m**2/g)
-    parameter (kabsl = 0.090361_r8)
+   real(r8) :: kabs, kabsi
+   real(r8), parameter :: kabsl = 0.090361_r8 ! longwave liquid absorption coeff (m**2/g)
 
    real(r8), pointer, dimension(:,:) :: iclwpth, iciwpth
 
@@ -318,11 +309,10 @@ subroutine old_ice_get_rad_props_lw(state, pbuf, abs_od, oldicewp)
           !in range of 13 > rei > 130 micron (Ebert and Curry 92)
           kabsi = 0.005_r8 + 1._r8/min(max(13._r8,scalefactor*rei(i,k)),130._r8)
           kabs =  kabsi*ficemr(i,k) ! kabsl*(1._r8-ficemr(i,k)) + kabsi*ficemr(i,k)
-          !emis(i,k) = 1._r8 - exp(-1.66_r8*kabs*clwp(i,k))
           cldtau(i,k) = kabs*cwp(i,k)
        end do
    end do
-!
+
    do lwband = 1,nlwbands
       abs_od(lwband,1:ncol,1:pver)=cldtau(1:ncol,1:pver)
    enddo
@@ -331,4 +321,4 @@ end subroutine old_ice_get_rad_props_lw
 
 !==============================================================================
 
-end module oldcloud
+end module oldcloud_optics

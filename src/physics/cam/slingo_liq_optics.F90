@@ -1,4 +1,4 @@
-module slingo
+module slingo_liq_optics
 
 !------------------------------------------------------------------------------------------------
 !  Implements Slingo Optics for MG/RRTMG for liquid clouds and
@@ -281,4 +281,4 @@ subroutine slingo_liq_get_rad_props_lw(state, pbuf, abs_od, oldliqwp)
 
 end subroutine slingo_liq_get_rad_props_lw
 
-end module slingo
+end module slingo_liq_optics

@@ -1,4 +1,4 @@
-module ebert_curry
+module ebert_curry_ice_optics
 
 
 use shr_kind_mod,     only: r8 => shr_kind_r8
@@ -261,4 +261,4 @@ end subroutine ec_ice_get_rad_props_lw
 
 !==============================================================================
 
-end module ebert_curry
+end module ebert_curry_ice_optics

@@ -37,7 +37,7 @@ integer, public, protected :: idx_lw_diag = -1     ! band contains 1000 cm-1 wav
 integer, public, protected :: idx_sw_cloudsim = -1 ! band contains 670-nm wave (for COSP)
 integer, public, protected :: idx_lw_cloudsim = -1 ! band contains 10.5 micron wave (for COSP)
 
-! GASES TREATED BY RADIATION (line spectrae)
+! GASES TREATED BY RADIATION (line spectra)
 ! These names are recognized by RRTMGP.  They are in the coefficients files as
 ! lower case strings.  These upper case names are used by CAM's namelist and 
 ! rad_constituents module.
@@ -73,6 +73,7 @@ subroutine set_wavenumber_bands(kdist_sw, kdist_lw)
    type(ty_gas_optics_rrtmgp), intent(in) :: kdist_lw
 
    ! Local variables
+   integer :: istat
    real(r8), allocatable :: values(:,:)
 
    character(len=128) :: errmsg
@@ -95,7 +96,10 @@ subroutine set_wavenumber_bands(kdist_sw, kdist_lw)
    nlwgpts = kdist_lw%get_ngpt()
 
    ! SW band bounds in cm^-1
-   allocate( values(2,nswbands) )
+   allocate( values(2,nswbands), stat=istat )
+   if (istat/=0) then
+      call endrun(sub//': ERROR allocating array: values(2,nswbands)')
+   end if
    values = kdist_sw%get_band_lims_wavenumber()
    wavenumber_low_shortwave = values(1,:)
    wavenumber_high_shortwave = values(2,:)
@@ -109,7 +113,10 @@ subroutine set_wavenumber_bands(kdist_sw, kdist_lw)
    deallocate(values)
 
    ! LW band bounds in cm^-1
-   allocate( values(2,nlwbands) )
+   allocate( values(2,nlwbands), stat=istat )
+   if (istat/=0) then
+      call endrun(sub//': ERROR allocating array: values(2,nlwbands)')
+   end if
    values = kdist_lw%get_band_lims_wavenumber()
    wavenumber_low_longwave = values(1,:)
    wavenumber_high_longwave = values(2,:)
@@ -233,6 +240,10 @@ function get_band_index_by_value(swlw, targetvalue, units) result(ans)
    real(r8) :: tgt
    integer  :: nbnds, i
 
+   character(len=128) :: errmsg
+   character(len=*), parameter :: sub = 'get_band_index_by_value'
+   !----------------------------------------------------------------------------
+
    select case (swlw)
    case ('sw','SW','shortwave')
       nbnds = nswbands
@@ -273,7 +284,8 @@ function get_band_index_by_value(swlw, targetvalue, units) result(ans)
    end do
 
    if (ans == 0) then
-      call endrun('radconstants.F90: get_band_index_by_value: band not found: ')
+      write(errmsg,'(f10.3,a,a)') targetvalue, ' ', trim(units)
+      call endrun(sub//': band not found containing wave: '//trim(errmsg))
    end if
    
 end function get_band_index_by_value
