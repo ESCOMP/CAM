@@ -31,7 +31,7 @@
     url = https://github.com/MPAS-Dev/MPAS-Model.git
     fxurl = https://github.com/MPAS-Dev/MPAS-Model.git
     fxsparse = ../.mpas_sparse_checkout
-    fxtag = b8c33daa
+    fxtag = v8.0.1
 
 [submodule "cdeps"]
     path = components/cdeps
