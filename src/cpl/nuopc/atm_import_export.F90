@@ -243,6 +243,7 @@ contains
     call fldlist_add(fldsToAtm_num, fldsToAtm, 'Si_snowh'  )
     call fldlist_add(fldsToAtm_num, fldsToAtm, 'So_ssq'    )
     call fldlist_add(fldsToAtm_num, fldsToAtm, 'So_re'     )
+    call fldlist_add(fldsToAtm_num, fldsToAtm, 'So_ustar'  )
     call fldlist_add(fldsToAtm_num, fldsToAtm, 'Sx_u10'    )
     call fldlist_add(fldsToAtm_num, fldsToAtm, 'Faxx_taux' )
     call fldlist_add(fldsToAtm_num, fldsToAtm, 'Faxx_tauy' )

@@ -9,6 +9,7 @@ src/physics/carma/base
 src/physics/clubb
 src/physics/cosp2/src
 src/physics/silhs
+src/chemistry/geoschem/geoschem_src
 src/physics/pumas
 src/physics/pumas-frozen
 src/dynamics/fv3/atmos_cubed_sphere

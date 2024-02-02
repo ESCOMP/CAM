@@ -17,6 +17,14 @@
       <option name="wallclock">00:10:00</option>
     </options>
   </test>
+  <test compset="FC2000climo_GC" grid="f09_f09_mg17" name="ERP_Ln9_Vnuopc" testmods="cam/outfrq9s">
+    <machines>
+      <machine name="derecho" compiler="intel" category="geoschem"/>
+    </machines>
+    <options>
+      <option name="wallclock">00:10:00</option>
+    </options>
+  </test>
   <test compset="F2000climo" grid="f09_f09_mg17" name="ERP_D_Ln9_Vnuopc" testmods="cam/outfrq9s">
     <machines>
       <machine name="izumi"    compiler="nag" category="aux_cam_one"/>
@@ -29,6 +37,14 @@
     <machines>
       <machine name="derecho" compiler="intel" category="prealpha"/>
       <machine name="derecho" compiler="intel" category="aux_cam"/>
+    </machines>
+    <options>
+      <option name="wallclock">00:10:00</option>
+    </options>
+  </test>
+  <test compset="FC2010climo_GC" grid="f09_f09_mg17" name="ERP_Ln9_Vnuopc" testmods="cam/outfrq9s">
+    <machines>
+      <machine name="derecho" compiler="intel" category="geoschem"/>
     </machines>
     <options>
       <option name="wallclock">00:10:00</option>
@@ -1689,6 +1705,16 @@
       <option name="comment">Zonal Mean Nudged</option>
     </options>
   </test>
+  <test compset="FCnudged_GC" grid="f09_f09_mg17" name="ERP_Ln9_Vnuopc" testmods="cam/outfrq9s">
+    <machines>
+      <machine name="derecho" compiler="intel" category="geoschem"/>
+      <machine name="derecho" compiler="intel" category="prealpha"/>
+    </machines>
+    <options>
+      <option name="wallclock">00:20:00</option>
+      <option name="comment">GEOS-Chem Nudged</option>
+    </options>
+  </test>
   <test compset="QPC4" grid="f10_f10_mg37" name="ERC_D_Ln9_Vnuopc" testmods="cam/outfrq3s_nudging_f10_L26">
     <machines>
       <machine name="izumi" compiler="nag" category="zmean_nudging"/>
@@ -1896,7 +1922,17 @@
     </machines>
     <options>
       <option name="wallclock">02:00:00</option>
-      <option name="comment">"Free running CAM-Chem on a reginally refined grid"</option>
+      <option name="comment">"Free running CAM-Chem on a regionally refined grid"</option>
+    </options>
+  </test>
+  <test compset="FCHIST_GC" grid="f09_f09_mg17" name="SMS_Ld1_Vnuopc" testmods="cam/outfrq1d">
+    <machines>
+      <machine name="derecho" compiler="intel" category="geoschem"/>
+      <machine name="derecho" compiler="intel" category="aux_cam"/>
+    </machines>
+    <options>
+      <option name="wallclock">00:20:00</option>
+      <option name="comment">Free running GEOS-Chem</option>
     </options>
   </test>
   <test compset="FCvbsxHIST" grid="f09_f09_mg17" name="SMS_D_Ln9_Vnuopc" testmods="cam/outfrq9s">
