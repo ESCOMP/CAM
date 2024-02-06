@@ -206,8 +206,8 @@ subroutine rrtmgp_set_state( &
          ! the albedo to be the average of the visible and near-infrared
          ! broadband albedos
          do i = 1, nday
-            alb_dir(iband,i) = 0.5 * (cam_in%aldir(idxday(i)) + cam_in%asdir(idxday(i)))
-            alb_dif(iband,i) = 0.5 * (cam_in%aldif(idxday(i)) + cam_in%asdif(idxday(i)))
+            alb_dir(iband,i) = 0.5_r8 * (cam_in%aldir(idxday(i)) + cam_in%asdir(idxday(i)))
+            alb_dif(iband,i) = 0.5_r8 * (cam_in%aldif(idxday(i)) + cam_in%asdif(idxday(i)))
          end do
       end if
    end do

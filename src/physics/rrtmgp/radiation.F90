@@ -52,6 +52,7 @@ use mo_gas_concentrations, only: ty_gas_concs
 use mo_gas_optics_rrtmgp,  only: ty_gas_optics_rrtmgp
 use mo_optical_props,      only: ty_optical_props_1scl, ty_optical_props_2str
 use mo_source_functions,   only: ty_source_func_lw
+use mo_fluxes,             only: ty_fluxes_broadband
 use mo_fluxes_byband,      only: ty_fluxes_byband
 
 use string_utils,        only: to_lower
@@ -955,10 +956,13 @@ subroutine radiation_tend( &
    type(ty_optical_props_1scl) :: aer_lw
    type(ty_optical_props_2str) :: aer_sw
 
-   ! Flux objects contain all fluxes computed by RRTMGP.  Includes spectrally resolved and
-   ! total fluxes for all levels of the RRTMGP grid.
-   type(ty_fluxes_byband) :: fsw, fswc
-   type(ty_fluxes_byband) :: flw, flwc
+   ! Flux objects contain all fluxes computed by RRTMGP.
+   ! SW allsky fluxes always include spectrally resolved fluxes needed for surface models.
+   type(ty_fluxes_byband) :: fsw
+   ! LW allsky fluxes only need spectrally resolved fluxes when spectralflux=.true.
+   type(ty_fluxes_byband) :: flw
+   ! Only broadband fluxes needed for clear sky (diagnostics).
+   type(ty_fluxes_broadband) :: fswc, flwc
 
    ! Arrays for output diagnostics on CAM grid.
    real(r8) :: fns(pcols,pverp)     ! net shortwave flux
@@ -1758,8 +1762,8 @@ subroutine coefs_init(coefs_file, available_gases, kdist)
    class(ty_gas_optics_rrtmgp),       intent(out) :: kdist
 
    ! local variables
-   type(file_desc_t)  :: fh    ! pio file handle
-   character(len=256) :: locfn ! path to file on local storage
+   type(file_desc_t) :: fh    ! pio file handle
+   character(len=cl) :: locfn ! path to file on local storage
 
    ! File dimensions
    integer ::            &
@@ -2124,9 +2128,10 @@ subroutine coefs_init(coefs_file, available_gases, kdist)
    ierr = pio_get_var(fh, vid, minor_limits_gpt_upper)
    if (ierr /= PIO_NOERR) call endrun(sub//': error reading minor_limits_gpt_upper')
 
-   !  Read as integer and convert to logical
+   ! Read as integer and convert to logical
    allocate(int2log(minor_absorber_intervals_lower), stat=istat)
    call check_allocate(istat, sub, 'int2log for lower')
+
    allocate(minor_scales_with_density_lower(minor_absorber_intervals_lower), stat=istat)
    call check_allocate(istat, sub, 'minor_scales_with_density_lower')
    ierr = pio_inq_varid(fh, 'minor_scales_with_density_lower', vid)
@@ -2140,29 +2145,7 @@ subroutine coefs_init(coefs_file, available_gases, kdist)
          minor_scales_with_density_lower(i) = .true.
       end if
    end do
-   deallocate(int2log)
 
-   ! Read as integer and convert to logical
-   allocate(int2log(minor_absorber_intervals_upper), stat=istat)
-   call check_allocate(istat, sub, 'int2log for upper')
-   allocate(minor_scales_with_density_upper(minor_absorber_intervals_upper), stat=istat)
-   call check_allocate(istat, sub, 'minor_scales_with_density_upper')
-   ierr = pio_inq_varid(fh, 'minor_scales_with_density_upper', vid)
-   if (ierr /= PIO_NOERR) call endrun(sub//': minor_scales_with_density_upper not found')
-   ierr = pio_get_var(fh, vid, int2log)
-   if (ierr /= PIO_NOERR) call endrun(sub//': error reading minor_scales_with_density_upper')
-   do i = 1,minor_absorber_intervals_upper
-      if (int2log(i) .eq. 0) then
-         minor_scales_with_density_upper(i) = .false.
-      else
-         minor_scales_with_density_upper(i) = .true.
-      end if
-   end do
-   deallocate(int2log)
-
-   ! Read as integer and convert to logical
-   allocate(int2log(minor_absorber_intervals_lower), stat=istat)
-   call check_allocate(istat, sub, 'int2log for lower')
    allocate(scale_by_complement_lower(minor_absorber_intervals_lower), stat=istat)
    call check_allocate(istat, sub, 'scale_by_complement_lower')
    ierr = pio_inq_varid(fh, 'scale_by_complement_lower', vid)
@@ -2176,11 +2159,27 @@ subroutine coefs_init(coefs_file, available_gases, kdist)
          scale_by_complement_lower(i) = .true.
       end if
    end do
+
    deallocate(int2log)
 
    ! Read as integer and convert to logical
    allocate(int2log(minor_absorber_intervals_upper), stat=istat)
    call check_allocate(istat, sub, 'int2log for upper')
+
+   allocate(minor_scales_with_density_upper(minor_absorber_intervals_upper), stat=istat)
+   call check_allocate(istat, sub, 'minor_scales_with_density_upper')
+   ierr = pio_inq_varid(fh, 'minor_scales_with_density_upper', vid)
+   if (ierr /= PIO_NOERR) call endrun(sub//': minor_scales_with_density_upper not found')
+   ierr = pio_get_var(fh, vid, int2log)
+   if (ierr /= PIO_NOERR) call endrun(sub//': error reading minor_scales_with_density_upper')
+   do i = 1,minor_absorber_intervals_upper
+      if (int2log(i) .eq. 0) then
+         minor_scales_with_density_upper(i) = .false.
+      else
+         minor_scales_with_density_upper(i) = .true.
+      end if
+   end do
+
    allocate(scale_by_complement_upper(minor_absorber_intervals_upper), stat=istat)
    call check_allocate(istat, sub, 'scale_by_complement_upper')
    ierr = pio_inq_varid(fh, 'scale_by_complement_upper', vid)
@@ -2194,6 +2193,7 @@ subroutine coefs_init(coefs_file, available_gases, kdist)
          scale_by_complement_upper(i) = .true.
       end if
    end do
+
    deallocate(int2log)
 
    allocate(scaling_gas_lower(minor_absorber_intervals_lower), stat=istat)
@@ -2307,9 +2307,9 @@ subroutine initialize_rrtmgp_fluxes(ncol, nlevels, nbands, fluxes, do_direct)
    ! Allocate flux arrays and set values to zero.
 
    ! Arguments
-   integer, intent(in) :: ncol, nlevels, nbands
-   type(ty_fluxes_byband), intent(inout) :: fluxes
-   logical, intent(in), optional :: do_direct
+   integer,                    intent(in)    :: ncol, nlevels, nbands
+   class(ty_fluxes_broadband), intent(inout) :: fluxes
+   logical, optional,          intent(in)    :: do_direct
 
    ! Local variables
    logical :: do_direct_local
@@ -2335,17 +2335,23 @@ subroutine initialize_rrtmgp_fluxes(ncol, nlevels, nbands, fluxes, do_direct)
       call check_allocate(istat, sub, 'fluxes%flux_dn_dir')
    end if
 
-   ! Fluxes by band
-   allocate(fluxes%bnd_flux_up(ncol, nlevels, nbands), stat=istat)
-   call check_allocate(istat, sub, 'fluxes%bnd_flux_up')
-   allocate(fluxes%bnd_flux_dn(ncol, nlevels, nbands), stat=istat)
-   call check_allocate(istat, sub, 'fluxes%bnd_flux_dn')
-   allocate(fluxes%bnd_flux_net(ncol, nlevels, nbands), stat=istat)
-   call check_allocate(istat, sub, 'fluxes%bnd_flux_net')
-   if (do_direct_local) then
-      allocate(fluxes%bnd_flux_dn_dir(ncol, nlevels, nbands), stat=istat)
-      call check_allocate(istat, sub, 'fluxes%bnd_flux_dn_dir')
-   end if
+   select type (fluxes)
+   type is (ty_fluxes_byband)
+      ! Fluxes by band always needed for SW.  Only allocate for LW
+      ! when spectralflux is true.
+      if (nbands == nswbands .or. spectralflux) then
+         allocate(fluxes%bnd_flux_up(ncol, nlevels, nbands), stat=istat)
+         call check_allocate(istat, sub, 'fluxes%bnd_flux_up')
+         allocate(fluxes%bnd_flux_dn(ncol, nlevels, nbands), stat=istat)
+         call check_allocate(istat, sub, 'fluxes%bnd_flux_dn')
+         allocate(fluxes%bnd_flux_net(ncol, nlevels, nbands), stat=istat)
+         call check_allocate(istat, sub, 'fluxes%bnd_flux_net')
+         if (do_direct_local) then
+            allocate(fluxes%bnd_flux_dn_dir(ncol, nlevels, nbands), stat=istat)
+            call check_allocate(istat, sub, 'fluxes%bnd_flux_dn_dir')
+         end if
+      end if
+   end select
 
    ! Initialize
    call reset_fluxes(fluxes)
@@ -2358,24 +2364,23 @@ subroutine reset_fluxes(fluxes)
 
    ! Reset flux arrays to zero.
 
-   type(ty_fluxes_byband), intent(inout) :: fluxes
+   class(ty_fluxes_broadband), intent(inout) :: fluxes
    !----------------------------------------------------------------------------
 
    ! Reset broadband fluxes
    fluxes%flux_up(:,:) = 0._r8
    fluxes%flux_dn(:,:) = 0._r8
    fluxes%flux_net(:,:) = 0._r8
-   if (associated(fluxes%flux_dn_dir)) then
-      fluxes%flux_dn_dir(:,:) = 0._r8
-   end if
+   if (associated(fluxes%flux_dn_dir)) fluxes%flux_dn_dir(:,:) = 0._r8
 
-   ! Reset band-by-band fluxes
-   fluxes%bnd_flux_up(:,:,:) = 0._r8
-   fluxes%bnd_flux_dn(:,:,:) = 0._r8
-   fluxes%bnd_flux_net(:,:,:) = 0._r8
-   if (associated(fluxes%bnd_flux_dn_dir)) then
-      fluxes%bnd_flux_dn_dir(:,:,:) = 0._r8
-   end if
+   select type (fluxes)
+   type is (ty_fluxes_byband)
+      ! Reset band-by-band fluxes
+      if (associated(fluxes%bnd_flux_up)) fluxes%bnd_flux_up(:,:,:) = 0._r8
+      if (associated(fluxes%bnd_flux_dn)) fluxes%bnd_flux_dn(:,:,:) = 0._r8
+      if (associated(fluxes%bnd_flux_net)) fluxes%bnd_flux_net(:,:,:) = 0._r8
+      if (associated(fluxes%bnd_flux_dn_dir)) fluxes%bnd_flux_dn_dir(:,:,:) = 0._r8
+   end select
 
 end subroutine reset_fluxes
 
@@ -2407,16 +2412,20 @@ end subroutine free_optics_lw
 
 subroutine free_fluxes(fluxes)
 
-   type(ty_fluxes_byband), intent(inout) :: fluxes
+   class(ty_fluxes_broadband), intent(inout) :: fluxes
 
    if (associated(fluxes%flux_up)) deallocate(fluxes%flux_up)
    if (associated(fluxes%flux_dn)) deallocate(fluxes%flux_dn)
    if (associated(fluxes%flux_net)) deallocate(fluxes%flux_net)
    if (associated(fluxes%flux_dn_dir)) deallocate(fluxes%flux_dn_dir)
-   if (associated(fluxes%bnd_flux_up)) deallocate(fluxes%bnd_flux_up)
-   if (associated(fluxes%bnd_flux_dn)) deallocate(fluxes%bnd_flux_dn)
-   if (associated(fluxes%bnd_flux_net)) deallocate(fluxes%bnd_flux_net)
-   if (associated(fluxes%bnd_flux_dn_dir)) deallocate(fluxes%bnd_flux_dn_dir)
+
+   select type (fluxes)
+   type is (ty_fluxes_byband)
+      if (associated(fluxes%bnd_flux_up)) deallocate(fluxes%bnd_flux_up)
+      if (associated(fluxes%bnd_flux_dn)) deallocate(fluxes%bnd_flux_dn)
+      if (associated(fluxes%bnd_flux_net)) deallocate(fluxes%bnd_flux_net)
+      if (associated(fluxes%bnd_flux_dn_dir)) deallocate(fluxes%bnd_flux_dn_dir)
+   end select
 
 end subroutine free_fluxes
 
