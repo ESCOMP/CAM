@@ -39,6 +39,7 @@ use mo_optical_props,      only: ty_optical_props_2str, ty_optical_props_1scl
 use cam_history_support,   only: fillvalue
 use cam_logfile,      only: iulog
 use cam_abortutils,   only: endrun
+use error_messages,   only: alloc_err
 
 implicit none
 private
@@ -230,7 +231,7 @@ end subroutine rrtmgp_set_state
 
 !=========================================================================================
 
-logical function is_visible(wavenumber)
+pure logical function is_visible(wavenumber)
 
    ! Wavenumber is in the visible if it is above the visible threshold
    ! wavenumber, and in the infrared if it is below the threshold
@@ -315,6 +316,7 @@ subroutine rad_gas_get_vmr(icall, gas_name, state, pbuf, nlay, numactivecols, ga
 
    ! Local variables
    integer :: i, idx(numactivecols)
+   integer :: istat
    real(r8), pointer     :: gas_mmr(:,:)
    real(r8), allocatable :: gas_vmr(:,:)
    real(r8), allocatable :: mmr(:,:)
@@ -341,8 +343,10 @@ subroutine rad_gas_get_vmr(icall, gas_name, state, pbuf, nlay, numactivecols, ga
    call rad_cnst_get_gas(icall, gas_name, state, pbuf, gas_mmr)
 
    ! Copy into storage for RRTMGP
-   allocate(mmr(numactivecols, nlay))
-   allocate(gas_vmr(numactivecols, nlay))
+   allocate(mmr(numactivecols, nlay), stat=istat)
+   call alloc_err(istat, sub, 'mmr', numactivecols*nlay)
+   allocate(gas_vmr(numactivecols, nlay), stat=istat)
+   call alloc_err(istat, sub, 'gas_vmr', numactivecols*nlay)
 
    do i = 1, numactivecols
       mmr(i,ktoprad:) = gas_mmr(idx(i),ktopcam:)
@@ -370,12 +374,10 @@ subroutine rad_gas_get_vmr(icall, gas_name, state, pbuf, nlay, numactivecols, ga
    ! to produce temperatures at the top of CAM that are most consistent with WACCM at similar pressure levels. 
 
    if ((gas_name == 'O3') .and. (nlay == pverp)) then
+      P_top = 50.0_r8
       do i = 1, numactivecols
-            P_top = 50.0_r8
             P_int = state%pint(idx(i),1) ! pressure (Pa) at upper interface of CAM
             P_mid = state%pmid(idx(i),1) ! pressure (Pa) at midpoint of top layer of CAM
-            alpha = 0.0_r8
-            beta = 0.0_r8
             alpha = log(P_int/P_top)
             beta =  log(P_mid/P_int)/log(P_mid/P_top)
       
@@ -387,8 +389,6 @@ subroutine rad_gas_get_vmr(icall, gas_name, state, pbuf, nlay, numactivecols, ga
                chi_0 = chi_mid /  (1._r8 + beta)
                chi_eff = chi_0 * (a + b)
                gas_vmr(i,1) = chi_eff
-               chi_eff = chi_eff * P_int / massratio / 9.8_r8 ! O3 column above in kg m-2
-               chi_eff = chi_eff / 2.1415e-5_r8               ! O3 column above in DU
             end if
       end do
    end if
@@ -489,7 +489,7 @@ subroutine rrtmgp_set_cloud_lw( &
    type(ty_optical_props_1scl), intent(out) :: cloud_lw
 
    ! Diagnostic outputs
-   real(r8), intent(out) :: cld_lw_abs_cloudsim(pcols,pver) ! in-cloud snow optical depth (for COSP)
+   real(r8), intent(out) :: cld_lw_abs_cloudsim(pcols,pver) ! in-cloud liq+ice optical depth (for COSP)
    real(r8), intent(out) :: snow_lw_abs_cloudsim(pcols,pver)! in-cloud snow optical depth (for COSP)
    real(r8), intent(out) :: grau_lw_abs_cloudsim(pcols,pver)! in-cloud Graupel optical depth (for COSP)
 
@@ -645,27 +645,28 @@ subroutine rrtmgp_set_cloud_sw( &
 
    integer :: i, k, ncol
    integer :: igpt, nver
+   integer :: istat
    integer, parameter :: changeseed = 1
 
    ! cloud radiative parameters are "in cloud" not "in cell"
    real(r8) :: ice_tau    (nswbands,pcols,pver) ! ice extinction optical depth
    real(r8) :: ice_tau_w  (nswbands,pcols,pver) ! ice single scattering albedo * tau
-   real(r8) :: ice_tau_w_g(nswbands,pcols,pver) ! ice assymetry parameter * tau * w
+   real(r8) :: ice_tau_w_g(nswbands,pcols,pver) ! ice asymmetry parameter * tau * w
    real(r8) :: liq_tau    (nswbands,pcols,pver) ! liquid extinction optical depth
    real(r8) :: liq_tau_w  (nswbands,pcols,pver) ! liquid single scattering albedo * tau
-   real(r8) :: liq_tau_w_g(nswbands,pcols,pver) ! liquid assymetry parameter * tau * w
+   real(r8) :: liq_tau_w_g(nswbands,pcols,pver) ! liquid asymmetry parameter * tau * w
    real(r8) :: cld_tau    (nswbands,pcols,pver) ! cloud extinction optical depth
    real(r8) :: cld_tau_w  (nswbands,pcols,pver) ! cloud single scattering albedo * tau
-   real(r8) :: cld_tau_w_g(nswbands,pcols,pver) ! cloud assymetry parameter * w * tau
+   real(r8) :: cld_tau_w_g(nswbands,pcols,pver) ! cloud asymmetry parameter * w * tau
    real(r8) :: snow_tau    (nswbands,pcols,pver) ! snow extinction optical depth
    real(r8) :: snow_tau_w  (nswbands,pcols,pver) ! snow single scattering albedo * tau
-   real(r8) :: snow_tau_w_g(nswbands,pcols,pver) ! snow assymetry parameter * tau * w
+   real(r8) :: snow_tau_w_g(nswbands,pcols,pver) ! snow asymmetry parameter * tau * w
    real(r8) :: grau_tau    (nswbands,pcols,pver) ! graupel extinction optical depth
    real(r8) :: grau_tau_w  (nswbands,pcols,pver) ! graupel single scattering albedo * tau
-   real(r8) :: grau_tau_w_g(nswbands,pcols,pver) ! graupel assymetry parameter * tau * w
+   real(r8) :: grau_tau_w_g(nswbands,pcols,pver) ! graupel asymmetry parameter * tau * w
    real(r8) :: c_cld_tau    (nswbands,pcols,pver) ! combined cloud extinction optical depth
    real(r8) :: c_cld_tau_w  (nswbands,pcols,pver) ! combined cloud single scattering albedo * tau
-   real(r8) :: c_cld_tau_w_g(nswbands,pcols,pver) ! combined cloud assymetry parameter * w * tau
+   real(r8) :: c_cld_tau_w_g(nswbands,pcols,pver) ! combined cloud asymmetry parameter * w * tau
 
    ! RRTMGP does not use this property in its 2-stream calculations.
    real(r8) :: sw_tau_w_f(nswbands,pcols,pver) ! Forward scattered fraction * tau * w.
@@ -806,7 +807,8 @@ subroutine rrtmgp_set_cloud_sw( &
          day_cld_tau_w_g(nswbands,nday,nver),  &
          tauc(nswbands,nday,nver), taucmcl(nswgpts,nday,nver), &
          ssac(nswbands,nday,nver), ssacmcl(nswgpts,nday,nver), &
-         asmc(nswbands,nday,nver), asmcmcl(nswgpts,nday,nver) )
+         asmc(nswbands,nday,nver), asmcmcl(nswgpts,nday,nver), stat=istat)
+      call alloc_err(istat, sub, 'cldf,..,asmcmcl', 9*nswgpts*nday*nver)
 
       ! Subset "chunk" data so just the daylight columns, and the number of CAM layers in the
       ! radiation calculation are used by MCICA to produce subcolumns.
