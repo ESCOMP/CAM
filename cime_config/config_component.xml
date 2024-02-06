@@ -8,9 +8,9 @@
       CAM
     ===============
    -->
-    <desc atm="CAM60[%1PCT][%4xCO2][%CCTS1]][%CCTS2][%CFIRE][%CVBSX][%NUDG][%PORT][%RCO2][%SCAM][%SDYN][%WCCM][%WCMD][%WCSC][%WCTS][%WXIE][%WXIED][%HEMCO]">CAM cam6 physics:</desc>
-    <desc atm="CAM50[%CCTS1][%CLB][%PORT][%RCO2][%MAM7][%SCAM][%SDYN][%WCSC][%WCTS]"                                                               >CAM cam5 physics:</desc>
-    <desc atm="CAM40[%PORT][%RCO2][%SCAM][%SDYN][%TMOZ][%WX][%WXIE][%WXIED][%WCCM][%WCMD]"                                                         >CAM cam4 physics:</desc>
+    <desc atm="CAM60[%1PCT][%4xCO2][%CCTS1]][%CCTS2][%CFIRE][%CVBSX][%NUDG][%PORT][%RCO2][%SCAM][%SDYN][%WCCM][%WCMD][%WCSC][%WCTS][%WXIE][%WXIED][%HEMCO][%GEOSCHEM]">CAM cam6 physics:</desc>
+    <desc atm="CAM50[%CCTS1][%CLB][%PORT][%RCO2][%MAM7][%SCAM][%SDYN][%WCSC][%WCTS][%GEOSCHEM]"                                                               >CAM cam5 physics:</desc>
+    <desc atm="CAM40[%PORT][%RCO2][%SCAM][%SDYN][%TMOZ][%WX][%WXIE][%WXIED][%WCCM][%WCMD][%GEOSCHEM]"                                                         >CAM cam4 physics:</desc>
     <desc atm="CAM30"                                                                                                                              >CAM cam3 physics:</desc>
     <desc atm="CAM[%ADIAB][%DABIP04][%TJ16][%GRAYRAD][%HS94][%KESSLER][%RCO2][%SPCAMS][%SPCAMCLBS][%SPCAMM][%SPCAMCLBM]"                                     >CAM simplified and non-versioned physics :</desc>
     <desc atm="CAM%DEV[%LT][%MT][%CCTS1][%GHGMAM4]"                                                                                                 >CAM7 development physics:</desc>
@@ -38,6 +38,7 @@
    -->
     <desc option="CCTS1"        >CAM-Chem troposphere/stratosphere chemistry with simplified VBS-SOA:</desc>
     <desc option="CCTS2"        >CAM-Chem troposphere/stratosphere chemistry with simplified VBS-SOA and expanded isoprene and terpene oxidation:</desc>
+    <desc option="GEOSCHEM"     >GEOS-Chem troposphere/stratosphere chemistry :</desc>
     <desc option="CFIRE"        >CAM-Chem troposphere/stratosphere chem with simplified volatility basis set SOA scheme and fire emissons :</desc>
     <desc option="CLB"          >CAM CLUBB - turned on by default in CAM60:</desc>
     <desc option="CVBSX"        >CAM-Chem troposphere/stratosphere chem with extended volatility basis set SOA scheme and modal aersols :</desc>
@@ -138,6 +139,7 @@
       <value compset="_CAM%DEV">-phys cam_dev</value>
       <value compset="_CAM.*(%GHGMAM4)">-chem ghg_mam4</value>
       <value compset="_CAM.*(%CCTS1|%CFIRE)">-chem trop_strat_mam5_vbs</value>
+      <value compset="_CAM60.*%(GEOSCHEM)">-chem geoschem_mam4</value>
 
       <value compset="%MAM7">-chem trop_mam7</value>
       <value compset="CAM60%CVBSX">-chem trop_strat_mam5_vbsext</value>
@@ -228,6 +230,7 @@
       <value compset="2000_CAM60%WCCM"   >waccm_ma_2000_cam6</value>
       <value compset="2000_CAM60%WCSC"   >waccm_sc_2000_cam6</value>
       <value compset="2000_CAM60%.*CCTS1"  >2000_trop_strat_vbs_cam6</value>
+      <value compset="2000_CAM60%GEOSCHEM" >2000_geoschem</value>
       <value compset="2000_CAM60%WXIE"   >waccmx_ma_2000_cam6</value>
 
       <value compset="2000_CAM30_SLND_SICE_DOCN%AQP"   >aquaplanet_cam3</value>
@@ -244,6 +247,7 @@
       <value compset="2010_CAM60%.*CCTS1"  >2010_trop_strat_vbs_cam6</value>
       <value compset="2010_CAM60%WCTS"   >waccm_tsmlt_2010_cam6</value>
       <value compset="2010_CAM60%WCSC"   >waccm_sc_2010_cam6</value>
+      <value compset="2010_CAM60%GEOSCHEM">2010_geoschem</value>
 
       <value compset="AMIP_CAM50"        >1850-2005_cam5</value>
       <value compset="AMIP_CAM40"        >1850-2005_cam4</value>
@@ -264,6 +268,8 @@
       <value compset="HIST_CAM60%.*CCTS[12]%NUDG">hist_trop_strat_nudged_cam6</value>
       <value compset="HIST_CAM60%CVBSX"  >hist_trop_strat_vbsext_cam6</value>
       <value compset="HIST_CAM60%CFIRE"  >hist_trop_strat_vbsfire_cam6</value>
+      <value compset="HIST_CAM60%GEOSCHEM">hist_geoschem</value>
+      <value compset="HIST_CAM60%GEOSCHEM%NUDG">hist_geoschem_nudged</value>
       <value compset="HIST_CAM60%WXIE"   >waccmx_ma_hist_cam6</value>
 
       <value compset="PIPD_CAM50"        >1850-PD_cam5</value>
