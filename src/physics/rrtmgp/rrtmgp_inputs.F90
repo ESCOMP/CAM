@@ -705,7 +705,7 @@ subroutine rrtmgp_set_cloud_sw( &
       call get_snow_optics_sw(state, pbuf, snow_tau, snow_tau_w, snow_tau_w_g, sw_tau_w_f)
       do i = 1, ncol
          do k = 1, pver
-            if (cldfprime(i,k) > 0.) then
+            if (cldfprime(i,k) > 0._r8) then
                c_cld_tau(:,i,k)     = ( cldfsnow(i,k)*snow_tau(:,i,k) &
                                       + cld(i,k)*cld_tau(:,i,k) )/cldfprime(i,k)
                c_cld_tau_w(:,i,k)   = ( cldfsnow(i,k)*snow_tau_w(:,i,k)  &
