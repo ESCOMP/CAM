@@ -1,0 +1,50 @@
+Below are Sasha's notes from 02/09/2024.
+We are using cesm2.1.5 except that the fv dycore code was backed out to cam_cesm2_1_rel_31
+That seems to be more stable in initialization.  
+
+
+Running S2S Realtime on Derecho with Ecflow
+November 7, 2023 (sglanvil running the 2023-11-06 CAM forecast; currently skipping WACCM)
+
+ssh -XY sglanvil@derecho.hpc.ucar.edu 
+sudox ssfcst
+
+module load ncarenv/23.09 ecflow cesmdev/1.0  (jim added to .bashrc, so no longer needed)
+cd /glade/u/home/ssfcst/cesm2cam6_DARTatm/CESM2-Realtime-Forecast/ecflow
+export ECF_PORT=35254
+export ECF_HOST=derecho4
+export CESM_WORKFLOW=cesm2cam6_DARTatm
+export PROJECT=CESM0020
+python workflow.py --date YYYY-MM-DD
+python cesm2cam6_YYYY_MM_DD/client.py
+—> will say “RuntimeError…failed!...Delete…could not find node at path…” (IGNORE)
+
+2011-01-03
+2011-01-10
+2011-01-17
+2011-01-24
+2011-01-31
+2011-02-07
+2011-02-14
+
+Notes
+Logs are written to cesm2cam6_YYYY_MM_DD/log
+You can run for many dates at the same time.
+To monitor the runs:  ecflow_ui &
+env | grep ECF (to see HOST and PORT like this)
+ECF_HOST=derecho4
+ECF_PORT=35254
+Servers -> Manage server -> Add server
+nickname: s2sGUI
+ecflow documentation is at:  https://ecflow.readthedocs.io/en/latest/index.html
+Output goes to /glade/derecho/scratch/ssfcst/cesm2cam6/   (no more v2 in output)
+New staging directory: /glade/derecho/scratch/ssfcst/cesm2cam6/StageIC
+
+For NOAA/analysis scripts/websites: we need to change “cesm2cam6” back to “cesm2cam6v2”…
+cd /glade/derecho/scratch/ssfcst/cesm2cam6/
+find . -name "*cesm2cam6_11dec2023*" -exec cp --parents "{}" /glade/cheyenne/scratch/ssfcst/cesm2cam6v2/ \;
+find . -name "*cesm2cam6_2023-12-11*" -exec cp --parents "{}" /glade/cheyenne/scratch/ssfcst/cesm2cam6v2/ \;
+
+
+
+
