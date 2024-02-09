@@ -295,8 +295,6 @@ type t_fvdycore_state
    integer  :: div24del2flag ! 2 for 2nd order div damping, 4 for 4th order div damping,
                              ! 42 for 4th order div damping plus 2nd order velocity damping
    real(r8) :: del2coef      ! strength of 2nd order velocity damping
-   logical  :: high_order_top! use normal 4-order PPM calculation near the model top
-   logical  :: am_geom_crrct ! apply correction for angular momentum (AM) conservation in geometry
    logical  :: am_correction ! apply correction for angular momentum (AM) conservation in SW eqns
    logical  :: am_fixer      ! apply global fixer to conserve AM
    logical  :: am_fix_lbl    ! apply global AM fixer level by level
@@ -722,7 +720,7 @@ end subroutine spmd_vars_init
 !========================================================================================
 
 subroutine grid_vars_init(pi, ae, om, dt, fft_flt, &
-                          am_geom_crrct, grid)
+                          am_correction, grid)
 
    ! Initialize FV specific GRID vars
    ! 
@@ -741,7 +739,7 @@ subroutine grid_vars_init(pi, ae, om, dt, fft_flt, &
    real(r8), intent(in) :: om     ! angular velocity of earth's rotation 
    real(r8), intent(in) :: dt
    integer,  intent(in) :: fft_flt
-   logical,  intent(in) :: am_geom_crrct
+   logical,  intent(in) :: am_correction
 
    type( T_FVDYCORE_GRID ), intent(inout) :: grid
 
@@ -814,7 +812,7 @@ subroutine grid_vars_init(pi, ae, om, dt, fft_flt, &
 
    ! Define cosine at edges..
    
-   if (am_geom_crrct) then 
+   if (am_correction) then 
       do j = 2, jm
          ph5     = -0.5_r8*pi + ((j-1)-0.5_r8)*(pi/(jm-1._r8))
          cose(j) = cos(ph5)
@@ -832,7 +830,7 @@ subroutine grid_vars_init(pi, ae, om, dt, fft_flt, &
 
    sinp( 1) = -1._r8
    sinp(jm) =  1._r8
-   if (am_geom_crrct) then 
+   if (am_correction) then 
       do j = 2, jm-1
          sinp(j) =        (cose(j) - cose(j+1))/grid%dp  ! sqrt(cosp^2+sinp^2)=1
       end do
@@ -956,7 +954,7 @@ subroutine grid_vars_init(pi, ae, om, dt, fft_flt, &
 
    ! Compute coriolis parameter at cell corners.
 
-   if (am_geom_crrct) then
+   if (am_correction) then
       do j = js2gc, jn1gc
          grid%fc(j) = (om+om)*grid%sine(j)
       end do

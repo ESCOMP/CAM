@@ -5,7 +5,7 @@
 ! !INTERFACE:
 
 subroutine uv3s_update(grid, dua, u3s, dva, v3s, dt5, &
-                       am_geom_crrct)
+                       am_correction)
 
 ! !USES:
 
@@ -27,7 +27,7 @@ subroutine uv3s_update(grid, dua, u3s, dva, v3s, dt5, &
 ! dvdt on A-grid 
       real(r8),intent(in)  :: dva(grid%ifirstxy:grid%ilastxy,grid%km,grid%jfirstxy:grid%jlastxy)
       real(r8),intent(in)  :: dt5     ! weighting factor
-      logical, intent(in)  :: am_geom_crrct
+      logical, intent(in)  :: am_correction
 
 ! !INPUT/OUTPUT PARAMETERS:
       real(r8), intent(inout) :: u3s(grid%ifirstxy:grid%ilastxy,grid%jfirstxy:grid%jlastxy, &
@@ -121,7 +121,7 @@ subroutine uv3s_update(grid, dua, u3s, dva, v3s, dt5, &
 ! Adjust D-grid winds by interpolating A-grid tendencies.
 !
 
-         if (am_geom_crrct) then
+         if (am_correction) then
             do j = jfirstxy+1, jlastxy
                do i = ifirstxy, ilastxy
                   tmp         =  u3s(i,j,k)
@@ -149,7 +149,7 @@ subroutine uv3s_update(grid, dua, u3s, dva, v3s, dt5, &
         enddo
 
 #if defined( SPMD )
-        if (am_geom_crrct) then
+        if (am_correction) then
            if ( jfirstxy .gt. 1 ) then
               do i = ifirstxy, ilastxy
                  tmp                =  u3s(i,jfirstxy,k)

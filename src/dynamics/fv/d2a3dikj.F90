@@ -14,7 +14,7 @@ contains
 !
 ! !INTERFACE:
 
-      subroutine d2a3dikj(grid, am_geom_crrct, u, v, ua, va)
+      subroutine d2a3dikj(grid, am_correction, u, v, ua, va)
 
 ! !USES:
 
@@ -36,7 +36,7 @@ contains
       implicit none
 ! !INPUT PARAMETERS:
       type (t_fvdycore_grid), intent(in) :: grid
-      logical,  intent(in) :: am_geom_crrct
+      logical,  intent(in) :: am_correction
       real(r8), intent(in) :: u(grid%ifirstxy:grid%ilastxy,                  &
                                 grid%jfirstxy:grid%jlastxy,grid%km) ! U-Wind
       real(r8), intent(in) :: v(grid%ifirstxy:grid%ilastxy,                  &
@@ -127,7 +127,7 @@ contains
 
       if ( jlastxy .lt. jm ) then
 
-         if (am_geom_crrct) then
+         if (am_correction) then
 !$omp  parallel do private(i, k)
             do k = 1, km
                do i = ifirstxy, ilastxy
@@ -146,7 +146,7 @@ contains
       end if
 #endif
 
-      if (am_geom_crrct) then
+      if (am_correction) then
 !$omp  parallel do private(i,j,k)
          do k = 1, km
             do j = jfirstxy, jlastxy-1

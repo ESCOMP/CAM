@@ -18,7 +18,7 @@ contains
                      hs,      cp3v,    cap3v,  kord,    peln,            &
                      te0,     te,      dz,     mfx,     mfy,             &
                      uc,      vc,     du_s,    du_w,                     &
-                     am_geom_crrct, am_diag_lbl)
+                     am_correction, am_diag_lbl)
 !
 ! !USES:
 
@@ -84,7 +84,7 @@ contains
    real(r8) pkz(grid%ifirstxy:grid%ilastxy,grid%jfirstxy:grid%jlastxy,grid%km)     ! layer-mean pk for converting t to pt
 
    ! AM conservation mods
-   logical, intent(in)  ::  am_geom_crrct ! logical switch for AM correction
+   logical, intent(in)  ::  am_correction ! logical switch for AM correction
    logical, intent(in)  ::  am_diag_lbl   ! input
 
    real(r8), intent(in)                 :: du_s(grid%km)
@@ -628,7 +628,7 @@ contains
 
         if(j /= 1) then
 
-           if (am_geom_crrct) then
+           if (am_correction) then
 
               ! WS 99.07.29 : protect j==jfirst case
               if (j > jfirst) then
@@ -678,7 +678,7 @@ contains
                  enddo
               enddo
 
-           else  ! not am_geom_crrct
+           else  ! not am_correction
 
               ! WS 99.07.29 : protect j==jfirst case
               if (j > jfirst) then
@@ -710,7 +710,7 @@ contains
 #endif
               endif  ! (j > jfirst)
 
-           endif ! (am_geom_crrct)
+           endif ! (am_correction)
 
 !-------------------------------
 
@@ -720,7 +720,7 @@ contains
                           0,    0,   itot, i1-ifirst+1, i2-ifirst+1,      &
                           j,    jfirst, jlast,  -1,    kord)
 
-          if (am_geom_crrct) then
+          if (am_correction) then
 
              ! compute zonal momentum difference due to remapping
              do k=1,km

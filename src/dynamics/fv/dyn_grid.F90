@@ -130,7 +130,7 @@ subroutine dyn_grid_init()
    ! Initialize FV specific grid object variables
    dt = get_step_size()
    call grid_vars_init(pi, rearth, omega, dt, state%fft_flt, &
-                       state%am_geom_crrct, grid)
+                       state%am_correction, grid)
 
    ! initialize commap variables
 

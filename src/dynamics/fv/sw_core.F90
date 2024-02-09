@@ -63,7 +63,7 @@ contains
  subroutine c_sw(grid,   u,       v,      pt,       delp,               &
                  u2,     v2,                                            &
                  uc,     vc,      ptc,    delpf,    ptk,                &
-                 tiny,   iord,    jord, am_geom_crrct)
+                 tiny,   iord,    jord, am_correction)
 
 ! Routine for shallow water dynamics on the C-grid
 
@@ -78,7 +78,7 @@ contains
   type (T_FVDYCORE_GRID), intent(in) :: grid
   integer, intent(in):: iord
   integer, intent(in):: jord
-  logical, intent(in):: am_geom_crrct
+  logical, intent(in):: am_correction
 
   real(r8), intent(in):: u2(grid%im,grid%jfirst-grid%ng_d:grid%jlast+grid%ng_d)
   real(r8), intent(in):: v2(grid%im,grid%jfirst-grid%ng_s:grid%jlast+grid%ng_d)
@@ -267,7 +267,7 @@ contains
 
 ! New va definition
 
-        if (am_geom_crrct) then
+        if (am_correction) then
            do j=js2g1,jn2g0                     ! va needed on S (for YCC, iv==1)
               do i=1,im
                  ! weight by cos 
@@ -504,11 +504,11 @@ contains
 ! !INTERFACE:
  subroutine d_sw( grid,  u,      v,        uc,     vc,               &   
                   pt,    delp,   delpf,    cx3,    cy3,              &
-                  mfx,   mfy,    cdx,      cdy,           &
+                  mfx,   mfy,    cdx,      cdy,          &
                   cdxde, cdxdp,  cdyde,   cdydp,                     & !ldel2 variables
                   cdxdiv,  cdydiv, cdx4,  cdy4,  cdtau4,  &
                   ldiv2, ldiv4, ldel2, &
-                  iord,  jord,  tiny, am_correction,      &
+                  iord,  jord,  tiny, am_correction, &
                   ddp, duc, vf)
 !--------------------------------------------------------------------------
 ! Routine for shallow water dynamics on the D-grid
@@ -1376,7 +1376,7 @@ contains
 !
 ! !INTERFACE:
  subroutine d2a2c_winds(grid, u, v, ua, va, uc, vc, u_cen, v_cen, &
-                        reset_winds, met_rlx, am_geom_crrct)
+                        reset_winds, met_rlx, am_correction)
 
   implicit none
 
@@ -1395,7 +1395,7 @@ contains
   real(r8), intent(in):: u_cen(grid%im,grid%jfirst-grid%ng_d:grid%jlast+grid%ng_d)
   real(r8), intent(in):: v_cen(grid%im,grid%jfirst-grid%ng_s:grid%jlast+grid%ng_d)
   real(r8), intent(in):: met_rlx
-  logical,  intent(in):: am_geom_crrct
+  logical,  intent(in):: am_correction
 
 ! !DESCRIPTION:
 !
@@ -1553,7 +1553,7 @@ contains
           va(im,j) = v(im,j) + v(1,j)
     enddo
 
-    if (am_geom_crrct) then
+    if (am_correction) then
        do j = js2gd, jn2gsm1
           do i = 1, im
              ua(i,j) =(u(i,j)*cose(j) + u(i,j+1)*cose(j+1))/cosp(j) ! curl free -> curl free
@@ -1637,7 +1637,7 @@ contains
           enddo
         enddo
 
-        if (am_geom_crrct) then
+        if (am_correction) then
            do j = js2g2, jn1g2       ! vc needed N*2, S*2 (for ycc), va defined at poles
               do i = 1, im
                  vc(i,j) = D0_25*(va(i,j)*cosp(j) + va(i,j-1)*cosp(j-1))/cose(j) ! div free -> div free
