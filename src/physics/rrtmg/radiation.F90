@@ -806,28 +806,28 @@ subroutine radiation_tend( &
    ! cloud radiative parameters are "in cloud" not "in cell"
    real(r8) :: ice_tau    (nswbands,pcols,pver) ! ice extinction optical depth
    real(r8) :: ice_tau_w  (nswbands,pcols,pver) ! ice single scattering albedo * tau
-   real(r8) :: ice_tau_w_g(nswbands,pcols,pver) ! ice assymetry parameter * tau * w
+   real(r8) :: ice_tau_w_g(nswbands,pcols,pver) ! ice asymmetry parameter * tau * w
    real(r8) :: ice_tau_w_f(nswbands,pcols,pver) ! ice forward scattered fraction * tau * w
    real(r8) :: ice_lw_abs (nlwbands,pcols,pver)   ! ice absorption optics depth (LW)
 
    ! cloud radiative parameters are "in cloud" not "in cell"
    real(r8) :: liq_tau    (nswbands,pcols,pver) ! liquid extinction optical depth
    real(r8) :: liq_tau_w  (nswbands,pcols,pver) ! liquid single scattering albedo * tau
-   real(r8) :: liq_tau_w_g(nswbands,pcols,pver) ! liquid assymetry parameter * tau * w
+   real(r8) :: liq_tau_w_g(nswbands,pcols,pver) ! liquid asymmetry parameter * tau * w
    real(r8) :: liq_tau_w_f(nswbands,pcols,pver) ! liquid forward scattered fraction * tau * w
    real(r8) :: liq_lw_abs (nlwbands,pcols,pver) ! liquid absorption optics depth (LW)
 
    ! cloud radiative parameters are "in cloud" not "in cell"
    real(r8) :: cld_tau    (nswbands,pcols,pver) ! cloud extinction optical depth
    real(r8) :: cld_tau_w  (nswbands,pcols,pver) ! cloud single scattering albedo * tau
-   real(r8) :: cld_tau_w_g(nswbands,pcols,pver) ! cloud assymetry parameter * w * tau
+   real(r8) :: cld_tau_w_g(nswbands,pcols,pver) ! cloud asymmetry parameter * w * tau
    real(r8) :: cld_tau_w_f(nswbands,pcols,pver) ! cloud forward scattered fraction * w * tau
    real(r8) :: cld_lw_abs (nlwbands,pcols,pver) ! cloud absorption optics depth (LW)
 
    ! cloud radiative parameters are "in cloud" not "in cell"
    real(r8) :: snow_tau    (nswbands,pcols,pver) ! snow extinction optical depth
    real(r8) :: snow_tau_w  (nswbands,pcols,pver) ! snow single scattering albedo * tau
-   real(r8) :: snow_tau_w_g(nswbands,pcols,pver) ! snow assymetry parameter * tau * w
+   real(r8) :: snow_tau_w_g(nswbands,pcols,pver) ! snow asymmetry parameter * tau * w
    real(r8) :: snow_tau_w_f(nswbands,pcols,pver) ! snow forward scattered fraction * tau * w
    real(r8) :: snow_lw_abs (nlwbands,pcols,pver)! snow absorption optics depth (LW)
 
@@ -835,7 +835,7 @@ subroutine radiation_tend( &
    ! cloud radiative parameters are "in cloud" not "in cell"
    real(r8) :: grau_tau    (nswbands,pcols,pver) ! graupel extinction optical depth
    real(r8) :: grau_tau_w  (nswbands,pcols,pver) ! graupel single scattering albedo * tau
-   real(r8) :: grau_tau_w_g(nswbands,pcols,pver) ! graupel assymetry parameter * tau * w
+   real(r8) :: grau_tau_w_g(nswbands,pcols,pver) ! graupel asymmetry parameter * tau * w
    real(r8) :: grau_tau_w_f(nswbands,pcols,pver) ! graupel forward scattered fraction * tau * w
    real(r8) :: grau_lw_abs (nlwbands,pcols,pver)! graupel absorption optics depth (LW)
 
@@ -843,7 +843,7 @@ subroutine radiation_tend( &
    real(r8) :: cldfprime(pcols,pver)              ! combined cloud fraction (snow plus regular)
    real(r8) :: c_cld_tau    (nswbands,pcols,pver) ! combined cloud extinction optical depth
    real(r8) :: c_cld_tau_w  (nswbands,pcols,pver) ! combined cloud single scattering albedo * tau
-   real(r8) :: c_cld_tau_w_g(nswbands,pcols,pver) ! combined cloud assymetry parameter * w * tau
+   real(r8) :: c_cld_tau_w_g(nswbands,pcols,pver) ! combined cloud asymmetry parameter * w * tau
    real(r8) :: c_cld_tau_w_f(nswbands,pcols,pver) ! combined cloud forward scattered fraction * w * tau
    real(r8) :: c_cld_lw_abs (nlwbands,pcols,pver) ! combined cloud absorption optics depth (LW)
 
@@ -855,7 +855,7 @@ subroutine radiation_tend( &
    ! Aerosol radiative properties
    real(r8) :: aer_tau    (pcols,0:pver,nswbands) ! aerosol extinction optical depth
    real(r8) :: aer_tau_w  (pcols,0:pver,nswbands) ! aerosol single scattering albedo * tau
-   real(r8) :: aer_tau_w_g(pcols,0:pver,nswbands) ! aerosol assymetry parameter * w * tau
+   real(r8) :: aer_tau_w_g(pcols,0:pver,nswbands) ! aerosol asymmetry parameter * w * tau
    real(r8) :: aer_tau_w_f(pcols,0:pver,nswbands) ! aerosol forward scattered fraction * w * tau
    real(r8) :: aer_lw_abs (pcols,pver,nlwbands)   ! aerosol absorption optics depth (LW)
 

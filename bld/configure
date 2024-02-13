@@ -1077,7 +1077,7 @@ if (defined $opts{'rad'}) {
     # the radiation package name in the config_cache file.
     if ($rad_pkg eq 'rrtmgp_gpu') {
         $use_rrtmgp_gpu = 1;
-        $rad_pkg =~ s!_gpu!!
+        $rad_pkg = 'rrtmgp';
     }
 }
 

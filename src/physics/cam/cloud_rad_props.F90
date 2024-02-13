@@ -71,6 +71,8 @@ integer :: &
    ixcldice,           & ! cloud ice water index
    ixcldliq              ! cloud liquid water index
 
+real(r8), parameter :: tiny = 1.e-80_r8
+
 !==============================================================================
 contains
 !==============================================================================
@@ -347,7 +349,7 @@ subroutine get_ice_optics_sw(state, pbuf, tau, tau_w, tau_w_g, tau_w_f)
 
    real(r8),intent(out) :: tau    (nswbands,pcols,pver) ! extinction optical depth
    real(r8),intent(out) :: tau_w  (nswbands,pcols,pver) ! single scattering albedo * tau
-   real(r8),intent(out) :: tau_w_g(nswbands,pcols,pver) ! asymetry parameter * tau * w
+   real(r8),intent(out) :: tau_w_g(nswbands,pcols,pver) ! asymmetry parameter * tau * w
    real(r8),intent(out) :: tau_w_f(nswbands,pcols,pver) ! forward scattered fraction * tau * w
 
    real(r8), pointer :: iciwpth(:,:), dei(:,:)
@@ -370,7 +372,7 @@ subroutine get_snow_optics_sw(state, pbuf, tau, tau_w, tau_w_g, tau_w_f)
 
    real(r8),intent(out) :: tau    (nswbands,pcols,pver) ! extinction optical depth
    real(r8),intent(out) :: tau_w  (nswbands,pcols,pver) ! single scattering albedo * tau
-   real(r8),intent(out) :: tau_w_g(nswbands,pcols,pver) ! asymetry parameter * tau * w
+   real(r8),intent(out) :: tau_w_g(nswbands,pcols,pver) ! asymmetry parameter * tau * w
    real(r8),intent(out) :: tau_w_f(nswbands,pcols,pver) ! forward scattered fraction * tau * w
 
    real(r8), pointer :: icswpth(:,:), des(:,:)
@@ -393,7 +395,7 @@ subroutine get_grau_optics_sw(state, pbuf, tau, tau_w, tau_w_g, tau_w_f)
 
    real(r8),intent(out) :: tau    (nswbands,pcols,pver) ! extinction optical depth
    real(r8),intent(out) :: tau_w  (nswbands,pcols,pver) ! single scattering albedo * tau
-   real(r8),intent(out) :: tau_w_g(nswbands,pcols,pver) ! asymetry parameter * tau * w
+   real(r8),intent(out) :: tau_w_g(nswbands,pcols,pver) ! asymmetry parameter * tau * w
    real(r8),intent(out) :: tau_w_f(nswbands,pcols,pver) ! forward scattered fraction * tau * w
 
    real(r8), pointer :: icgrauwpth(:,:), degrau(:,:)
@@ -433,7 +435,7 @@ subroutine get_liquid_optics_sw(state, pbuf, tau, tau_w, tau_w_g, tau_w_f)
 
    real(r8),intent(out) :: tau    (nswbands,pcols,pver) ! extinction optical depth
    real(r8),intent(out) :: tau_w  (nswbands,pcols,pver) ! single scattering albedo * tau
-   real(r8),intent(out) :: tau_w_g(nswbands,pcols,pver) ! asymetry parameter * tau * w
+   real(r8),intent(out) :: tau_w_g(nswbands,pcols,pver) ! asymmetry parameter * tau * w
    real(r8),intent(out) :: tau_w_f(nswbands,pcols,pver) ! forward scattered fraction * tau * w
 
    real(r8), pointer, dimension(:,:) :: lamc, pgam, iclwpth
@@ -568,7 +570,7 @@ subroutine interpolate_ice_optics_sw(ncol, iciwpth, dei, tau, tau_w, &
 
   real(r8),intent(out) :: tau    (nswbands,pcols,pver) ! extinction optical depth
   real(r8),intent(out) :: tau_w  (nswbands,pcols,pver) ! single scattering albedo * tau
-  real(r8),intent(out) :: tau_w_g(nswbands,pcols,pver) ! asymetry parameter * tau * w
+  real(r8),intent(out) :: tau_w_g(nswbands,pcols,pver) ! asymmetry parameter * tau * w
   real(r8),intent(out) :: tau_w_f(nswbands,pcols,pver) ! forward scattered fraction * tau * w
 
   type(interp_type) :: dei_wgts
@@ -578,7 +580,7 @@ subroutine interpolate_ice_optics_sw(ncol, iciwpth, dei, tau, tau_w, &
 
   do k = 1,pver
      do i = 1,ncol
-        if( iciwpth(i,k) < 1.e-80_r8 .or. dei(i,k) == 0._r8) then
+        if( iciwpth(i,k) < tiny .or. dei(i,k) == 0._r8) then
            ! if ice water path is too small, OD := 0
            tau    (:,i,k) = 0._r8
            tau_w  (:,i,k) = 0._r8
@@ -626,7 +628,7 @@ subroutine interpolate_ice_optics_lw(ncol, iciwpth, dei, abs_od)
   do k = 1,pver
      do i = 1,ncol
         ! if ice water path is too small, OD := 0
-        if( iciwpth(i,k) < 1.e-80_r8 .or. dei(i,k) == 0._r8) then
+        if( iciwpth(i,k) < tiny .or. dei(i,k) == 0._r8) then
            abs_od (:,i,k) = 0._r8
         else
            ! for each cell interpolate to find weights in g_d_eff grid.
@@ -659,7 +661,7 @@ subroutine gam_liquid_lw(clwptn, lamc, pgam, abs_od)
   type(interp_type) :: mu_wgts
   type(interp_type) :: lambda_wgts
 
-  if (clwptn < 1.e-80_r8) then
+  if (clwptn < tiny) then
     abs_od = 0._r8
     return
   endif
@@ -693,7 +695,7 @@ subroutine gam_liquid_sw(clwptn, lamc, pgam, tau, tau_w, tau_w_g, tau_w_f)
   type(interp_type) :: mu_wgts
   type(interp_type) :: lambda_wgts
 
-  if (clwptn < 1.e-80_r8) then
+  if (clwptn < tiny) then
     tau = 0._r8
     tau_w = 0._r8
     tau_w_g = 0._r8

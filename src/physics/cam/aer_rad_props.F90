@@ -130,7 +130,7 @@ subroutine aer_rad_props_sw(list_idx, state, pbuf,  nnite, idxnite, &
 
    real(r8), intent(out) :: tau    (pcols,0:pver,nswbands) ! aerosol extinction optical depth
    real(r8), intent(out) :: tau_w  (pcols,0:pver,nswbands) ! aerosol single scattering albedo * tau
-   real(r8), intent(out) :: tau_w_g(pcols,0:pver,nswbands) ! aerosol assymetry parameter * tau * w
+   real(r8), intent(out) :: tau_w_g(pcols,0:pver,nswbands) ! aerosol asymmetry parameter * tau * w
    real(r8), intent(out) :: tau_w_f(pcols,0:pver,nswbands) ! aerosol forward scattered fraction * tau * w
 
    ! Local variables

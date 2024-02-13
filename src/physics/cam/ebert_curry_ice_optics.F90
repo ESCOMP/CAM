@@ -61,7 +61,7 @@ subroutine ec_ice_optics_sw   (state, pbuf, ice_tau, ice_tau_w, ice_tau_w_g, ice
 
    real(r8),intent(out) :: ice_tau    (nswbands,pcols,pver) ! extinction optical depth
    real(r8),intent(out) :: ice_tau_w  (nswbands,pcols,pver) ! single scattering albedo * tau
-   real(r8),intent(out) :: ice_tau_w_g(nswbands,pcols,pver) ! assymetry parameter * tau * w
+   real(r8),intent(out) :: ice_tau_w_g(nswbands,pcols,pver) ! asymmetry parameter * tau * w
    real(r8),intent(out) :: ice_tau_w_f(nswbands,pcols,pver) ! forward scattered fraction * tau * w
    logical, intent(in) :: oldicewp
 

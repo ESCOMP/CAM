@@ -13,8 +13,8 @@ save
 
 ! Number of bands in SW and LW.  These values must match data in the RRTMGP coefficients datasets.
 ! But they are needed to allocate space in the physics buffer and need to be available before the
-! RRTMGP datasets are read.  So they are set as parameters here and checked in radiation_init after
-! the datasets are read.
+! RRTMGP datasets are read.  So they are set as parameters here and checked in the 
+! set_wavenumber_bands subroutine after the datasets are read.
 integer, parameter, public :: nswbands = 14
 integer, parameter, public :: nlwbands = 16
 

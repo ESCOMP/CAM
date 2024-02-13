@@ -1,5 +1,14 @@
 module mcica_subcol_gen
 
+!----------------------------------------------------------------------------------------
+! 
+! Purpose: Create McICA stochastic arrays for cloud optical properties.
+! Input cloud optical properties directly: cloud optical depth, single
+! scattering albedo and asymmetry parameter.  Output will be stochastic
+! arrays of these variables.  (longwave scattering is not yet available)
+!
+! Original code: From RRTMG, with the following copyright notice,
+! based on Raisanen et al., QJRMS, 2004:
 !  --------------------------------------------------------------------------
 ! |                                                                          |
 ! |  Copyright 2006-2007, Atmospheric & Environmental Research, Inc. (AER).  |
@@ -9,15 +18,8 @@ module mcica_subcol_gen
 ! |                       (http://www.rtweb.aer.com/)                        |
 ! |                                                                          |
 !  --------------------------------------------------------------------------
-
-!----------------------------------------------------------------------------------------
-! 
-! Purpose: Create McICA stochastic arrays for cloud optical properties.
-! Input cloud optical properties directly: cloud optical depth, single
-! scattering albedo and asymmetry parameter.  Output will be stochastic
-! arrays of these variables.  (longwave scattering is not yet available)
-!
-! Original code: From RRTMG based on Raisanen et al., QJRMS, 2004.
+! This code is a refactored version of code originally in the files
+! mcica_subcol_gen_lw.F90 and mcica_subcol_gen_sw.F90
 ! 
 ! Uses the KISS random number generator.
 !
