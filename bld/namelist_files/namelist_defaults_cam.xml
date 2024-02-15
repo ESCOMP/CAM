@@ -2020,7 +2020,7 @@
 
 <!-- effective Henry's coef data for wet and dry deposition -->
 <dep_data_file>atm/cam/chem/trop_mozart/dvel/dep_data_c20221208.nc</dep_data_file>
-<dep_data_file chem="geoschem_mam4">atm/cam/chem/geoschem/dvel/dep_data_file_geoschem_c230417.nc</dep_data_file>
+<dep_data_file chem="geoschem_mam4">atm/cam/chem/geoschem/dvel/dep_data_file_geoschem_v14.3_2023Jan05.nc</dep_data_file>
 
 <!-- photolysis inputs -->
 <xs_coef_file>atm/waccm/phot/effxstex.txt</xs_coef_file>
