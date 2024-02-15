@@ -36,25 +36,24 @@
       ! cls_rxt_cnt(:,1) = (/     37,    61,     0,    30 /)
       ! cls_rxt_cnt(:,4) = (/     23,   174,   326,   191 /)
 
-      ! GEOS-Chem tracers (advected species) are placed first along MAM
-      ! aerosols, as those will be constituents. MAM requires that there
+      ! GEOS-Chem tracers (advected species) are placed before MAM
+      ! aerosols which are also constituents. MAM requires that there
       ! is a linear mapping between solsym and constituents
 
-      ! ewl notes: added HMS (for GEOS-Chem 13.3)
-      !            added AONITA, AROMP4, AROMP5, BALD, BENZP, BZCO3H, 
-      !            BZPAN, C2H2, C2H4, CSL, ETHN, ETHP, MCT, NPHEN, PHEN for 14.0
-      !            Removed non-advected GEOS-Chem species for 14.0, except CO2
-      !            which is a constituent, as well as OH and HO2 for diagnostic
-      !            output.
+      ! notes: v13.3: Added HMS
+      !        v14.0: Added AONITA, AROMP4, AROMP5, BALD, BENZP, BZCO3H, BZPAN,
+      !                     C2H2, C2H4, CSL, ETHN, ETHP, MCT, NPHEN, PHEN
+      !               Removed non-advected GEOS-Chem species except: CO2, OH, HO2
+      !                     (CO2 is a constituent and OH and HO2 used for diagnostics)
+      !        v14.3: Added BUTDI, FURA
       !
-      ! Currently include GC advected species (233), MAM aerosols (33), CO2 (1),
-      ! and OH and HO2 (2).
+      ! Currently include GC advected species (235), MAM aerosols (33), CO2 (1),
+      ! and OH and HO2 (2). Total sum should equal length of solsym.
       ! If changed, update to match solsym length:
       !   1. cam/bld/configure variable $chem_nadv
       !   2. cam/src/chemistry/geoschem/chem_mods.F90 vars gas_pcnst and nTracersMax
       ! Also update adv_mass to store MWs for species in solsym (ewl, 8/8/22)
-      solsym(:269) = (/ 'ACET           ', &
-                        'ACTA           ','AERI           ', &
+      solsym(:271) = (/ 'ACET           ','ACTA           ','AERI           ', &
                         'ALD2           ','ALK4           ','ASOA1          ', &
                         'ASOA2          ','ASOA3          ','ASOAN          ', &
                         'ASOG1          ','ASOG2          ','ASOG3          ', &
@@ -63,7 +62,8 @@
                         'BCPO           ','BENZ           ','BENZP          ', &
                         'BR             ','BR2            ','BRCL           ', &
                         'BRNO2          ','BRNO3          ','BRO            ', &
-                        'BRSALA         ','BRSALC         ','BZCO3H         ', &
+                        'BRSALA         ','BRSALC         ','BUTDI          ', &
+                        'BZCO3H         ',                                     &
                         'BZPAN          ','C2H2           ','C2H4           ', &
                         'C2H6           ','C3H8           ','CCL4           ', &
                         'CFC11          ','CFC113         ','CFC114         ', &
@@ -75,19 +75,19 @@
                         'CL             ','CL2            ','CL2O2          ', &
                         'CLNO2          ','CLNO3          ','CLO            ', &
                         'CLOO           ','CLOCK          ','CO             ', & 
-                        'CSL            ', &
+                        'CSL            ',                                     &
                         'DMS            ','DST1           ','DST2           ', &
                         'DST3           ','DST4           ','EOH            ', &
                         'ETHLN          ','ETHN           ','ETHP           ', &
-                        'ETNO3          ','ETP            ', &
-                        'GLYC           ','GLYX           ', &
+                        'ETNO3          ','ETP            ','FURA           ', &
+                        'GLYC           ','GLYX           ',                   &
                         'H1211          ','H1301          ','H2402          ', &
                         'H2O            ','H2O2           ','HAC            ', &
                         'HBR            ','HC5A           ','HCFC123        ', &
                         'HCFC141B       ','HCFC142B       ','HCFC22         ', &
                         'HCL            ','HCOOH          ','HI             ', &
                         'HMHP           ','HMML           ','HMS            ', &
-                        'HNO2           ', &
+                        'HNO2           ',                                     &
                         'HNO3           ','HNO4           ','HOBR           ', &
                         'HOCL           ','HOI            ','HONIT          ', &
                         'HPALD1         ','HPALD2         ','HPALD3         ', &
@@ -108,7 +108,7 @@
                         'MACR1OOH       ','MAP            ','MCRDH          ', &
                         'MCRENOL        ','MCRHN          ','MCRHNB         ', &
                         'MCRHP          ','MCT            ','MEK            ', &
-                        'MENO3          ', &
+                        'MENO3          ',                                     &
                         'MGLY           ','MOH            ','MONITA         ', &
                         'MONITS         ','MONITU         ','MP             ', &
                         'MPAN           ','MPN            ','MSA            ', &
@@ -118,7 +118,7 @@
                         'N2O            ','N2O5           ','NH3            ', &
                         'NH4            ','NIT            ','NITS           ', &
                         'NO             ','NO2            ','NO3            ', &
-                        'NPHEN          ', &
+                        'NPHEN          ',                                     &
                         'NPRNO3         ','O3             ','OCLO           ', &
                         'OCPI           ','OCPO           ','OCS            ', &
                         'OIO            ','PAN            ','PFE            ', &
