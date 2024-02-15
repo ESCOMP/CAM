@@ -1135,7 +1135,9 @@ contains
     ! First setup directories
     Input_Opt%Chem_Inputs_Dir      = TRIM(geoschem_cheminputs)
     Input_Opt%SpcDatabaseFile      = TRIM(speciesDB)
-    Input_Opt%CLOUDJ_DIR          = TRIM(geoschem_cheminputs)//'CLOUD_J/v2023-05/'
+    !Input_Opt%CLOUDJ_DIR          = TRIM(geoschem_cheminputs)//'CLOUD_J/v2023-05/'
+    Input_Opt%FAST_JX_DIR          = '/glade/u/home/elundgren/data/FAST_JX/v2021-10/'
+    Input_Opt%CLOUDJ_DIR           = '/glade/u/home/elundgren/data/CLOUD_J/v2023-05/'
 
     !----------------------------------------------------------
     ! CESM-specific input flags
