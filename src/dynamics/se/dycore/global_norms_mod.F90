@@ -600,7 +600,7 @@ contains
     lev_set = sponge_del4_lev < 0
     if (ptop>1000.0_r8) then
       !
-      ! low top (~10 Pa)
+      ! low top; usually idealized test cases
       !
       top_000_032km = .true.
     else if (ptop>100.0_r8) then
