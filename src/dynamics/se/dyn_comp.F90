@@ -1927,7 +1927,8 @@ subroutine set_phis(dyn_in)
             end if
             call read_phys_field_2d(fieldname, fh_topo, 'ncol', phis_phys_tmp)
             call map_phis_from_physgrid_to_gll(dyn_in%fvm, elem, phis_phys_tmp, &
-                phis_tmp, pmask)
+                 phis_tmp, pmask)
+            deallocate(phis_phys_tmp)
          end if
       else
          call endrun(sub//': Could not find PHIS field on input datafile')
@@ -1975,9 +1976,6 @@ subroutine set_phis(dyn_in)
       end do
    end do
    deallocate(phis_tmp)
-   if (allocated(phis_phys_tmp)) then
-      deallocate(phis_phys_tmp)
-   end if
 
    ! boundary exchange to update the redundent columns in the element objects
    do ie = 1, nelemd
