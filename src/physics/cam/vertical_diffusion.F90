@@ -1092,17 +1092,9 @@ subroutine vertical_diffusion_tend( &
   !
   ! add sponge layer vertical diffusion
   !
-  if (ptop_ref>300.0_r8) then
+  if (ptop_ref>1e-1_r8.and.ptop_ref<100.0_r8) then
      !
-     ! for low tops the tanh formulae below makes the sponge excessively deep
-     !
-  else if (ptop_ref>100.0_r8) then
-     !
-     ! CAM6 top (~225 Pa) or CAM7 low top
-     !
-  else if (ptop_ref>1e-1_r8) then
-     !
-     ! CAM7 FMT
+     ! CAM7 FMT (but not CAM6 top (~225 Pa) or CAM7 low top or lower)
      !
      kvm(:ncol,1) = kvm(:ncol,1)+2E6_r8
      kvm(:ncol,2) = kvm(:ncol,2)+2E6_r8
