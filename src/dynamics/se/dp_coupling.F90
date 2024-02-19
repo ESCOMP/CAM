@@ -501,7 +501,7 @@ subroutine p_d_coupling(phys_state, phys_tend, dyn_in, tl_f, tl_qdp)
       kptr = kptr + 2*nlev
       call edgeVunpack(edgebuf, dyn_in%elem(ie)%derived%FT(:,:,:), nlev, kptr, ie)
       kptr = kptr + nlev
-      if (fv_nphys < 1) then
+      if (.not. use_cslam) then
          call edgeVunpack(edgebuf, dyn_in%elem(ie)%derived%FQ(:,:,:,:), nlev*qsize, kptr, ie)
       end if
       if (fv_nphys > 0) then
