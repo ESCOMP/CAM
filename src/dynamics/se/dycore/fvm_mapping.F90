@@ -119,7 +119,8 @@ contains
       !
       ! do mapping of fu,fv,ft
       !
-      call phys2dyn(hybrid,elem,fld_phys(:,:,:,1:3,:),fld_gll(:,:,:,:,:),nets,nete,nlev,3,fvm,llimiter(1:),2,.true.)
+      call phys2dyn(hybrid,elem,fld_phys(:,:,:,1:3,:),fld_gll,nets,nete,nlev,3,fvm,llimiter, &
+                             istart_vector=2,halo_filled=.true.)
       do ie=nets,nete
         elem(ie)%derived%fT(:,:,:)   = fld_gll(:,:,:,1,ie)
         elem(ie)%derived%fM(:,:,1,:) = fld_gll(:,:,:,2,ie)
