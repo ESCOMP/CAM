@@ -19,6 +19,7 @@ module fvm_mapping
   use element_mod,            only: element_t
   use fvm_control_volume_mod, only: fvm_struct
   use perf_mod,       only: t_startf, t_stopf
+  use cam_abortutils,         only: endrun
 
   implicit none
   private
@@ -48,7 +49,6 @@ contains
     use dimensions_mod,         only: np, nc,nlev
     use dimensions_mod,         only: fv_nphys, nhc_phys,ntrac,nhc,ksponge_end, nu_scale_top
     use hybrid_mod,             only: hybrid_t
-    use cam_abortutils,         only: endrun
     use air_composition,        only: thermodynamic_active_species_num, thermodynamic_active_species_idx
     type (element_t), intent(inout):: elem(:)
     type(fvm_struct), intent(inout):: fvm(:)
@@ -66,6 +66,8 @@ contains
     integer              :: nflds
     logical, allocatable :: llimiter(:)
 
+    integer :: ierr=0
+
     if (no_cslam) then
       call endrun("phys2dyn_forcings_fvm: no cslam case: NOT SUPPORTED")
     else if (nc.ne.fv_nphys) then
@@ -78,9 +80,21 @@ contains
       !
       call t_startf('p2d-pg2:copying')
       nflds = 4+ntrac
-      allocate(fld_phys(1-nhc_phys:fv_nphys+nhc_phys,1-nhc_phys:fv_nphys+nhc_phys,nlev,nflds,nets:nete))
-      allocate(fld_gll(np,np,nlev,3,nets:nete))
-      allocate(llimiter(nflds))
+      allocate(fld_phys(1-nhc_phys:fv_nphys+nhc_phys,1-nhc_phys:fv_nphys+nhc_phys,nlev,nflds,nets:nete), stat=ierr)
+      if( ierr /= 0 ) then
+         write(iulog,*) 'phys2dyn_forcings_fvm:  fld_phys allocation error = ',ierr
+         call endrun('phys2dyn_forcings_fvm: failed to allocate fld_phys array')
+      end if
+      allocate(fld_gll(np,np,nlev,3,nets:nete), stat=ierr)
+      if( ierr /= 0 ) then
+         write(iulog,*) 'phys2dyn_forcings_fvm:  fld_gll allocation error = ',ierr
+         call endrun('phys2dyn_forcings_fvm: failed to allocate fld_gll array')
+      end if
+      allocate(llimiter(nflds), stat=ierr)
+      if( ierr /= 0 ) then
+         write(iulog,*) 'phys2dyn_forcings_fvm:  llimiter allocation error = ',ierr
+         call endrun('phys2dyn_forcings_fvm: failed to allocate llimiter array')
+      end if
       fld_phys = -9.99E99_r8!xxx necessary?
 
       llimiter          = .false.
