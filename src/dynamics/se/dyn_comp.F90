@@ -618,12 +618,14 @@ subroutine dyn_init(dyn_in, dyn_out)
    integer :: m_cnst, m
 
    ! variables for initializing energy and axial angular momentum diagnostics
-   integer, parameter                         :: num_stages = 12
-   character (len = 4), dimension(num_stages) :: stage         = (/"dED","dAF","dBD","dAD","dAR","dBF","dBH","dCH","dAH","dBS","dAS","p2d"/)
+   integer, parameter                         :: num_stages = 14
+   character (len = 4), dimension(num_stages) :: stage         = (/"dED","dAF","dBD","dBL","dAL","dAD","dAR","dBF","dBH","dCH","dAH","dBS","dAS","p2d"/)
    character (len = 70),dimension(num_stages) :: stage_txt = (/&
       " end of previous dynamics                           ",& !dED
       " from previous remapping or state passed to dynamics",& !dAF - state in beginning of nsplit loop
       " state after applying CAM forcing                   ",& !dBD - state after applyCAMforcing
+      " before floating dynamics                           ",& !dBL
+      " after floating dynamics                            ",& !dAL
       " before vertical remapping                          ",& !dAD - state before vertical remapping
       " after vertical remapping                           ",& !dAR - state at end of nsplit loop
       " state passed to parameterizations                  ",& !dBF
@@ -927,8 +929,8 @@ subroutine dyn_init(dyn_in, dyn_out)
       !
       ! Register tendency (difference) budgets
       !
-      call cam_budget_em_register('dEdt_floating_dyn'   ,'dAD','dBD','dyn','dif', &
-                      longname="dE/dt floating dynamics (dAD-dBD)"               )
+      call cam_budget_em_register('dEdt_floating_dyn'   ,'dAL','dBL','dyn','dif', &
+                      longname="dE/dt floating dynamics (dAL-dBL)"               )
       call cam_budget_em_register('dEdt_vert_remap'     ,'dAR','dAD','dyn','dif', &
                       longname="dE/dt vertical remapping (dAR-dAD)"              )
       call cam_budget_em_register('dEdt_phys_tot_in_dyn','dBD','dAF','dyn','dif', &

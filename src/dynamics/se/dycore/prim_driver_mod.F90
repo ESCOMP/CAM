@@ -301,9 +301,13 @@ contains
       ! right after physics overwrite Qdp with CSLAM values
       !
       if (use_cslam.and.nsubstep==1.and.r==1) then
+         call tot_energy_dyn(elem,fvm,nets,nete,tl%n0,n0_qdp,'dAF')
          call cslam2gll(elem, fvm, hybrid,nets,nete, tl%n0, n0_qdp)
+         call tot_energy_dyn(elem,fvm,nets,nete,tl%n0,n0_qdp,'dBD')
       end if
+      call tot_energy_dyn(elem,fvm,nets,nete,tl%n0,n0_qdp,'dBL')
       call prim_step(elem, fvm, hybrid,nets,nete, dt, tl, hvcoord,r,nsubstep==nsplit,dt_remap)
+      call tot_energy_dyn(elem,fvm,nets,nete,tl%np1,n0_qdp,'dAL')
     enddo
 
     
@@ -565,7 +569,7 @@ contains
       !$OMP END PARALLEL
       call omp_set_nested(.false.)
       call t_stopf('prim_advec_tracers_remap')
-    else
+   else
       !
       ! only run fvm transport every fvm_supercycling rstep
       !
