@@ -1355,7 +1355,7 @@ contains
                elem(ie)%state%dp3d(:,:,:,tl_f)
        end do
      end do
-     deallocate(fld_fvm,llimiter)
+     deallocate(fld_fvm, fld_gll, llimiter)
      call t_stopf('cslam2gll')
    end subroutine cslam2gll
 end module fvm_mapping
