@@ -472,7 +472,7 @@ subroutine dyn_readnl(NLFileName)
          end if
       end if
 
-      if (fv_nphys > 0) then
+      if (use_cslam) then
          write(iulog, '(a)') 'dyn_readnl: physics will run on FVM points; advection by CSLAM'
          write(iulog,'(a,i0)') 'dyn_readnl: se_fv_nphys = ', fv_nphys
       else
@@ -1847,7 +1847,7 @@ subroutine set_phis(dyn_in)
    allocate(phis_tmp(npsq,nelemd))
    phis_tmp = 0.0_r8
 
-   if (fv_nphys > 0) then
+   if (use_cslam) then
       allocate(phis_phys_tmp(fv_nphys**2,nelemd))
       phis_phys_tmp = 0.0_r8
       do ie=1,nelemd
@@ -1872,7 +1872,7 @@ subroutine set_phis(dyn_in)
 
       ! Set name of grid object which will be used to read data from file
       ! into internal data structure via PIO.
-      if (fv_nphys == 0) then
+      if (.not.use_cslam) then
          grid_name = 'GLL'
       else
          grid_name = 'physgrid_d'
@@ -1898,7 +1898,7 @@ subroutine set_phis(dyn_in)
 
       fieldname = 'PHIS'
       fieldname_gll = 'PHIS_gll'
-      if (fv_nphys>0.and.dyn_field_exists(fh_topo, trim(fieldname_gll),required=.false.)) then
+      if (use_cslam.and.dyn_field_exists(fh_topo, trim(fieldname_gll),required=.false.)) then
          !
          ! If physgrid it is recommended to read in PHIS on the GLL grid and then
          ! map to the physgrid in d_p_coupling
@@ -1910,7 +1910,7 @@ subroutine set_phis(dyn_in)
          end if
          call read_dyn_var(fieldname_gll, fh_topo, 'ncol_gll', phis_tmp)
       else if (dyn_field_exists(fh_topo, trim(fieldname))) then
-         if (fv_nphys == 0) then
+         if (.not.use_cslam) then
             if (masterproc) then
                write(iulog, *) "Reading in PHIS"
             end if
