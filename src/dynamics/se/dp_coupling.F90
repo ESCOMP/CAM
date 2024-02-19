@@ -481,7 +481,7 @@ subroutine p_d_coupling(phys_state, phys_tend, dyn_in, tl_f, tl_qdp)
       call edgeVpack(edgebuf, dyn_in%elem(ie)%derived%FM(:,:,:,:), 2*nlev, kptr, ie)
       kptr = kptr + 2*nlev
       call edgeVpack(edgebuf, dyn_in%elem(ie)%derived%FT(:,:,:), nlev, kptr, ie)
-      if (fv_nphys < 1) then
+      if (.not. use_cslam) then
          !
          ! if using CSLAM qdp is being overwritten with CSLAM values in the dynamics
          ! so no need to do boundary exchange of tracer tendency on GLL grid here
