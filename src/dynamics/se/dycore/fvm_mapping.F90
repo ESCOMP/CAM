@@ -50,6 +50,7 @@ contains
     use dimensions_mod,         only: fv_nphys, nhc_phys,ntrac,nhc,ksponge_end, nu_scale_top
     use hybrid_mod,             only: hybrid_t
     use air_composition,        only: thermodynamic_active_species_num, thermodynamic_active_species_idx
+    use cam_abortutils,         only: endrun
     type (element_t), intent(inout):: elem(:)
     type(fvm_struct), intent(inout):: fvm(:)
 
