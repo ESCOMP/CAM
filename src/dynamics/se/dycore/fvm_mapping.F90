@@ -260,11 +260,9 @@ contains
     !
     !*********************************************
     !
-    fill_halo = .false.
+    fill_halo = .true.
     if (present(halo_filled)) then
-      if (.not.halo_filled) fill_halo = .true.
-    else
-      fill_halo = .true.
+       fill_halo = .not. halo_filled
     end if
 
     if (fill_halo) then
