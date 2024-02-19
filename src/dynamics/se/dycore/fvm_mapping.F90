@@ -1295,7 +1295,10 @@ contains
        save_q_phys(:,:,k,m_cnst,ie) = q_phys(:,:,m_cnst)
      end do
    end subroutine get_q_overlap_save
-
+   !
+   ! Routine to overwrite thermodynamic active tracers on the GLL grid with CSLAM values
+   ! by Lagrange interpolation from 3x3 CSLAM grid to GLL grid.
+   !
    subroutine cslam2gll(elem, fvm, hybrid,nets,nete, tl_f, tl_qdp)
      use dimensions_mod,  only: nc,nlev,np,nhc
      use hybrid_mod,      only: hybrid_t
