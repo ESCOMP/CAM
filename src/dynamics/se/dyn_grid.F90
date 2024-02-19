@@ -177,7 +177,7 @@ subroutine dyn_grid_init()
    if (iam < par%nprocs) then
 
       call prim_init1(elem, fvm, par, TimeLevel)
-      if (fv_nphys > 0) then
+      if (use_cslam) then
          call dp_init(elem, fvm)
       end if
 
