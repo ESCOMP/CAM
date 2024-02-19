@@ -199,7 +199,7 @@ contains
     type (hybrid_t)      , intent(in)    :: hybrid
     type(fvm_struct)     , intent(in)    :: fvm(nets:nete)
     logical              , intent(in)    :: llimiter(num_flds)
-    logical, optional    , intent(in)    :: halo_filled
+    logical, optional    , intent(in)    :: halo_filled !optional if boundary exchange for fld_fvm has already been called
 
     integer                              :: ie, iwidth
     logical                              :: fill_halo
