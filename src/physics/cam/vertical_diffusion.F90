@@ -307,21 +307,21 @@ subroutine vertical_diffusion_init(pbuf2d)
         ! CAM7 FMT
         !
         write(iulog,*)'Artificial sponge layer vertical diffusion added:'
-        write(iulog,*)'vertical diffusion coefficient at interface 1 is increased by 2.0E6 m^2/s2'
-        write(iulog,*)'vertical diffusion coefficient at interface 2 is increased by 2.0E6 m^2/s2'
-        write(iulog,*)'vertical diffusion coefficient at interface 3 is increased by 0.5E6 m^2/s2'
-        write(iulog,*)'vertical diffusion coefficient at interface 4 is increased by 0.1E6 m^2/s2'
+        write(iulog,*)'vertical diffusion coefficient at interface 1 is increased by 2.0E6 m2 s-2'
+        write(iulog,*)'vertical diffusion coefficient at interface 2 is increased by 2.0E6 m2 s-2'
+        write(iulog,*)'vertical diffusion coefficient at interface 3 is increased by 0.5E6 m2 s-2'
+        write(iulog,*)'vertical diffusion coefficient at interface 4 is increased by 0.1E6 m2 s-2'
      else if (ptop_ref>1e-4_r8) then
         !
         ! WACCM and WACCM-x
         !
         write(iulog,*)'Artificial sponge layer vertical diffusion added:'
-        write(iulog,*)'vertical diffusion coefficient at interface 1 is increased by 2.0E6 m^2/s2'
-        write(iulog,*)'vertical diffusion coefficient at interface 2 is increased by 2.0E6 m^2/s2'
-        write(iulog,*)'vertical diffusion coefficient at interface 3 is increased by 1.5E6 m^2/s2'
-        write(iulog,*)'vertical diffusion coefficient at interface 4 is increased by 1.0E6 m^2/s2'
-        write(iulog,*)'vertical diffusion coefficient at interface 5 is increased by 0.5E6 m^2/s2'
-        write(iulog,*)'vertical diffusion coefficient at interface 6 is increased by 0.1E6 m^2/s2'
+        write(iulog,*)'vertical diffusion coefficient at interface 1 is increased by 2.0E6 m2 s-2'
+        write(iulog,*)'vertical diffusion coefficient at interface 2 is increased by 2.0E6 m2 s-2'
+        write(iulog,*)'vertical diffusion coefficient at interface 3 is increased by 1.5E6 m2 s-2'
+        write(iulog,*)'vertical diffusion coefficient at interface 4 is increased by 1.0E6 m2 s-2'
+        write(iulog,*)'vertical diffusion coefficient at interface 5 is increased by 0.5E6 m2 s-2'
+        write(iulog,*)'vertical diffusion coefficient at interface 6 is increased by 0.1E6 m2 s-2'
      end if
   end if
 
