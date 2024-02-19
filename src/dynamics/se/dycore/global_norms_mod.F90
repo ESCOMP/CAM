@@ -634,38 +634,24 @@ contains
     !
     ! if user or namelist is not specifying sponge del4 settings here are best guesses (empirically determined)
     !
-    umax = 0.0_r8
-    if (top_000_032km) then
-      umax = 120._r8
-      if (sponge_del4_lev       <0) sponge_del4_lev        = 1
-      if (sponge_del4_nu_fac    <0) sponge_del4_nu_fac     = 1.0_r8
-      if (sponge_del4_nu_div_fac<0) sponge_del4_nu_div_fac = 1.0_r8
-    end if
+    if (sponge_del4_lev       <0) sponge_del4_lev        = 1
+    if (sponge_del4_nu_fac    <0) sponge_del4_nu_fac     = 1.0_r8
+    if (sponge_del4_nu_div_fac<0) sponge_del4_nu_div_fac = 1.0_r8
 
-    if (top_032_042km) then
-      umax = 120._r8
-      if (sponge_del4_lev       <0) sponge_del4_lev        = 1
-      if (sponge_del4_nu_fac    <0) sponge_del4_nu_fac     = 1.0_r8
-      if (sponge_del4_nu_div_fac<0) sponge_del4_nu_div_fac = 1.0_r8
-    end if
-
-    if (top_042_090km) then
-      umax = 240._r8
-      if (sponge_del4_lev       <0) sponge_del4_lev        = 1
-      if (sponge_del4_nu_fac    <0) sponge_del4_nu_fac     = 1.0_r8
-      if (sponge_del4_nu_div_fac<0) sponge_del4_nu_div_fac = 1.0_r8
-    end if
-
-    if (top_090_140km) then
-      umax = 300._r8
-    end if
-    if (top_140_600km) then
-      umax = 800._r8
-    end if
-    if (top_090_140km.or.top_140_600km) then
+    if (top_090_140km.or.top_140_600km) then ! defaults for waccm(x)
       if (sponge_del4_lev       <0) sponge_del4_lev        = 20
       if (sponge_del4_nu_fac    <0) sponge_del4_nu_fac     = 5.0_r8
       if (sponge_del4_nu_div_fac<0) sponge_del4_nu_div_fac = 10.0_r8
+    end if
+
+    ! set max wind speed for diagnostics
+    umax = 120.0_r8
+    if (top_042_090km) then
+       umax = 240._r8
+    else if (top_090_140km) then
+       umax = 300._r8
+    else if (top_140_600km) then
+       umax = 800._r8
     end if
     !
     ! Log sponge layer configuration
