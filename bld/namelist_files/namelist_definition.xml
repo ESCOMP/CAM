@@ -1882,6 +1882,15 @@ the {{ hilight }}fincl#{{ closehilight }} namelist items.
 Default: FALSE
 </entry>
 
+<entry id="write_nstep0" type="logical"  category="history"
+       group="cam_history_nl" valid_values="" >
+If true then write the nstep==0 time sample to all history files except
+the monthly average file.  This output is primarily useful for development
+and debugging as it captures changes to the model state made during the
+initialization phase of the run.
+Default: FALSE
+</entry>
+
 <entry id="fexcl1" type="char*24(1000)"  category="history"
        group="cam_history_nl" valid_values="" >
 List of fields to exclude from the 1st history file (by default the name
@@ -2731,6 +2740,12 @@ Unitless scaling factor for ice fall speed to account for sub-grid scale ice cry
 Default: 1.0
 </entry>
 
+<entry id="micro_mg_vtrms_factor" type="real" category="microphys"
+       group="micro_mg_nl" valid_values="" >
+Unitless scaling factor for snow fall speed to account for sub-grid scale ice crystal shape variability.
+Default: 1.0
+</entry>
+
 <entry id="micro_mg_effi_factor" type="real" category="microphys"
        group="micro_mg_nl" valid_values="" >
 Unitless scaling factor for ice effective radius as seen by radiation. This scaling factor adjusts for sub-grid scale ice crystal shape variability.
@@ -2748,11 +2763,41 @@ Default: 1
 Maximum allowed ice number concentration
 Default: 1.0e8
 </entry>
-x
+
 <entry id="micro_do_sb_physics" type="logical" category="microphys"
        group="micro_mg_nl" valid_values="" >
 Do Seifert and Behang (2001) autoconversion and accretion physics when set to true.
 Default: .false.
+</entry>
+
+<entry id="micro_mg_warm_rain" type="char*16" category="microphys"
+       group="micro_mg_nl" valid_values="kk2000,sb2001,tau,emulated" >
+Warm rain process
+sb2001 turns on alternative autoconversion and accretion scheme for liquid in microphysics (Seifert and Behang 2001)
+kk2000 uses original autoconversion and accretion scheme for liquid in microphysics
+tau replaces autoconversion and accretion with a faster emulator to generate machine learning training data
+emulated turns on use of machine learning for warm rain
+Default: set in namelist_defaults
+</entry>
+
+<entry id="stochastic_emulated_filename_quantile" type="char*256" input_pathname="abs" category="microphys"
+       group="stochastic_emulated_nl" >
+Neural net file for warm_rain machine learning
+</entry>
+
+<entry id="stochastic_emulated_filename_input_scale" type="char*256" input_pathname="abs" category="microphys"
+       group="stochastic_emulated_nl" >
+Neural net input scaling values file for warm_rain machine learning
+</entry>
+
+<entry id="stochastic_emulated_filename_output_scale" type="char*256" input_pathname="abs" category="microphys"
+       group="stochastic_emulated_nl" >
+Neural net output scaling values file for warm_rain machine learning
+</entry>
+
+<entry id="pumas_stochastic_tau_kernel_filename" type="char*256" input_pathname="abs" category="microphys"
+       group="pumas_stochastic_tau_nl" >
+Coefficients for the stochastic collection kernel used by the TAU stochastic collection code, invoked in PUMAS with micro_pumas_warm_rain = 'tau'
 </entry>
 
 <entry id="micro_do_massless_droplet_destroyer" type="logical" category="microphys"
@@ -3219,12 +3264,6 @@ Default: set by build-namelist
 Include organization parameterization in ZM.   This value is set to true automatically
 if -zmconv_org is set in configure.
 Default: .false., unless -zmconv_org set in configure
-</entry>
-
-<entry id="zmconv_microp" type="logical" category="conv"
-       group="zmconv_nl" valid_values="" >
-Turn on convective microphysics
-Default: .false.
 </entry>
 
 <entry id="zmconv_num_cin" type="integer" category="conv"
@@ -4928,7 +4967,7 @@ Default: set by build-namelist
 		     trop_strat_mam4_vbs,trop_strat_mam4_vbsext,trop_strat_mam5_ts2,trop_strat_mam5_vbs,
 		     trop_strat_mam5_vbsext,waccm_ma,waccm_mad,waccm_ma_sulfur,waccm_sc,waccm_sc_mam4,
 		     waccm_mad_mam4,waccm_ma_mam4,waccm_tsmlt_mam4,waccm_tsmlt_mam4_vbsext,waccm_mad_mam5,
-		     waccm_ma_mam5,waccm_tsmlt_mam5,waccm_tsmlt_mam5_vbsext">
+		     waccm_ma_mam5,waccm_tsmlt_mam5,waccm_tsmlt_mam5_vbsext,geoschem">
 Name of the CAM chemistry package.  N.B. this variable may not be set by
 the user.  It is set by build-namelist via information in the configure
 cache file to be consistent with how CAM was built.
@@ -5084,6 +5123,7 @@ Default: NONE.
 </entry>
 
 <!-- HEMCO -->
+
 <entry id="hemco_data_root" type="char*256" input_pathname="abs" category="hemco"
        group="hemco_nl" valid_values="" >
 Full pathname of HEMCO data root for use in reading HEMCO input files.
@@ -5119,6 +5159,14 @@ Default: set by build-namelist.
        group="hemco_nl" valid_values="">
 Force emission year for HEMCO clock if positive. This will force cycling of data on this year.
 Default: set by build-namelist for climo cases, otherwise -1 to use model clock.
+</entry>
+
+<!-- GEOS-Chem model -->
+
+<entry id="geoschem_cheminputs" type="char*256" input_pathname="abs" category="geoschem"
+       group="geoschem_nl" valid_values="" >
+Full pathname to GEOS-Chem chemistry inputs directory
+Default: set by build-namelist.
 </entry>
 
 
@@ -8417,13 +8465,24 @@ Default: 0.2
 
 <entry id="mpas_cam_coef" type="real" category="mpas"
        group="damping" valid_values="">
-Coefficient for scaling the 2nd-order horizontal diffusion in the mpas_cam absorbing layer.
-A value of 1.0 will result in layered diffusion similar to CAM-SE and gives damping
-coefficients of 0.2216E7, 0.6482E6, 0.1927E6 in the top-most three layers on the dynamics
-variables u, w, and theta. The top 3 damping coefficients scale linearly with
-mpas_cam_coef. 0.0 disables SE like 2nd-order diffusion in the absorbing layer and is the
-current default. Sponge layer absorption can also be provided by Rayleigh damping.
+Coefficient for scaling the 2nd-order horizontal diffusion in the mpas_cam absorbing
+layer. The absorbing layer depth is controlled with mpas_cam_damping_levels. The damping
+coefficients scale linearly with mpas_cam_coef. A value of 0.0 (or
+mpas_cam_damping_levels=0) disables the 2nd-order diffusion in the absorbing layer. Sponge
+layer absorption can also be provided by Rayleigh damping.
+
+E.g. a value of 1.0 with mpas_cam_damping_levels=3 will result in damping coefficients of
+2E6 m^2/s, 6E5, 2E5 in the top-most three layers on the dynamics variables u, w, and
+theta.
 Default: 0.0
+</entry>
+
+<entry id="mpas_cam_damping_levels" type="integer" category="mpas"
+       group="damping" valid_values="">
+Number mpas_cam absorbing layers in which to apply 2nd-order horizontal diffusion.
+Viscocity linearly ramps to zero by layer number from the top. mpas_cam_damping_levels and
+mpas_cam_coef must both be greater than 0 for the diffusion to be enabled.
+Default: 0
 </entry>
 
 <entry id="mpas_rayleigh_damp_u" type="logical" category="mpas"

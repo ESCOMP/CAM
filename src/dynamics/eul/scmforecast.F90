@@ -472,10 +472,11 @@ contains
      enddo
   endif
 
-  !Fill out tobs/qobs with background CAM state above IOP top before t3/q3 update below
-  tobs(1:ioptop-1)=t3(1:ioptop-1)
-  qobs(1:ioptop-1)=q3(1:ioptop-1,1)
-
+  !If not using camiop then fillt tobs/qobs with background CAM state above IOP top before t3/q3 update below
+   if( .not. use_camiop ) then
+      tobs(1:ioptop-1)=t3(1:ioptop-1)
+      qobs(1:ioptop-1)=q3(1:ioptop-1,1)
+   end if
   ! ------------------------------------------------------------------- !
   ! Relaxation to the observed or specified state                       !
   ! We should specify relaxation time scale ( rtau ) and                !
@@ -506,19 +507,19 @@ contains
 
   do k = 1, plev
      if( scm_relaxation ) then
-        if ( pmidm1(k).le.scm_relax_bot_p.and.pmidm1(k).ge.scm_relax_top_p ) then ! inside layer
+        if ( pmidm1(k)<=scm_relax_bot_p.and.pmidm1(k) >= scm_relax_top_p ) then ! inside layer
            if (scm_relax_linear) then
               rtau(k) = rslope*pmidm1(k) + rycept ! linear regime
            else
               rtau(k)         = max( ztodt, scm_relax_tau_sec ) ! constant for whole layer / no relax outside
            endif
-        else if  (scm_relax_linear .and. pmidm1(k).le.scm_relax_top_p ) then ! not linear => do nothing / linear => use upper value
+        else if  (scm_relax_linear .and. pmidm1(k)<=scm_relax_top_p ) then ! not linear => do nothing / linear => use upper value
            rtau(k) = scm_relax_tau_top_sec ! above layer keep rtau equal to the top
         endif
         ! +BPM: this can't be the best way...
         ! I put this in because if rtau doesn't get set above, then I don't want to do any relaxation in that layer.
         ! maybe the logic of this whole loop needs to be re-thinked.
-        if (rtau(k).ne.0) then
+        if (rtau(k) /= 0) then
            relax_T(k)      = -  ( tfcst(k)     - tobs(k) )    / rtau(k)
            relax_u(k)      = -  ( ufcst(k)     - uobs(k) )    / rtau(k)
            relax_v(k)      = -  ( vfcst(k)     - vobs(k) )    / rtau(k)
@@ -526,14 +527,14 @@ contains
            do m = 2, pcnst
               relax_q(k,m) = -  ( qfcst(1,k,m) - qinitobs(k,m)   )    / rtau(k)
            enddo
-           if (scm_fincl_empty .or. ANY(scm_relax_fincl(:).eq.'T')) &
+           if (scm_fincl_empty .or. ANY(scm_relax_fincl(:)=='T')) &
                 tfcst(k)        =      tfcst(k)     + relax_T(k)   * ztodt
-           if (scm_fincl_empty .or.ANY(scm_relax_fincl(:).eq.'U')) &
+           if (scm_fincl_empty .or.ANY(scm_relax_fincl(:)=='U')) &
                 ufcst(k)        =      ufcst(k)     + relax_u(k)   * ztodt
-           if (scm_fincl_empty .or. ANY(scm_relax_fincl(:).eq.'V')) &
+           if (scm_fincl_empty .or. ANY(scm_relax_fincl(:)=='V')) &
                 vfcst(k)        =      vfcst(k)     + relax_v(k)   * ztodt
            do m = 1, pcnst
-              if (scm_fincl_empty .or. ANY(scm_relax_fincl(:) .eq. trim(to_upper(cnst_name(m)))) ) then
+              if (scm_fincl_empty .or. ANY(scm_relax_fincl(:) == trim(to_upper(cnst_name(m)))) ) then
                  qfcst(1,k,m) =      qfcst(1,k,m) + relax_q(k,m) * ztodt
               end if
            enddo

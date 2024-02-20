@@ -256,7 +256,7 @@ CONTAINS
             minpoint=1000.0_r8
             do i=1,columns_on_task
                testpoint=abs(pos_dynlons(i)-pos_scmlon)+abs(dynlats(i)-scmlat)
-               if (testpoint .lt. minpoint) then
+               if (testpoint < minpoint) then
                   minpoint=testpoint
                   scm_col_index=i
                endif

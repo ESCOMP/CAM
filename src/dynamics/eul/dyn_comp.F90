@@ -523,6 +523,7 @@ subroutine read_inidat()
    deallocate ( phis_tmp )
 
    if (single_column) then
+      call setiopupdate_init()
       if ( scm_cambfb_mode ) then
 
          fieldname = 'CLAT1'
@@ -576,7 +577,6 @@ subroutine read_inidat()
          latiop(2)=(scmlat+2._r8)*pi/180_r8
          loniop(1)=(mod(scmlon-2.0_r8+360.0_r8,360.0_r8))*pi/180.0_r8
          loniop(2)=(mod(scmlon+2.0_r8+360.0_r8,360.0_r8))*pi/180.0_r8
-         call setiopupdate_init()
          call setiopupdate()
          call readiopdata(hvcoord)
          call iop_update_prognostics(1,t3=t3,u3=u3,v3=v3,q3=q3,ps=ps)
@@ -708,9 +708,11 @@ subroutine process_inidat(fieldname, m_cnst, fh)
    real(r8), pointer, dimension(:,:,:) :: tmp3d_a, tmp3d_b, tmp3d_extend
    real(r8), pointer, dimension(:,:  ) :: tmp2d_a, tmp2d_b
 
+#if ( defined BFB_CAM_SCAM_IOP )
    real(r8), allocatable :: ps_sav(:,:)
    real(r8), allocatable :: u3_sav(:,:,:)
    real(r8), allocatable :: v3_sav(:,:,:)
+#endif
 
 #if ( defined SPMD )
    integer :: numperlat                   ! number of values per latitude band

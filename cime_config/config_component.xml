@@ -8,12 +8,12 @@
       CAM
     ===============
    -->
-    <desc atm="CAM60[%1PCT][%4xCO2][%CCTS1]][%CCTS2][%CFIRE][%CVBSX][%NUDG][%PORT][%RCO2][%SCAM][%SDYN][%WCCM][%WCMD][%WCSC][%WCTS][%WXIE][%WXIED][%HEMCO]">CAM cam6 physics:</desc>
-    <desc atm="CAM50[%CCTS1][%CLB][%PORT][%RCO2][%MAM7][%SCAM][%SDYN][%WCSC][%WCTS]"                                                               >CAM cam5 physics:</desc>
-    <desc atm="CAM40[%PORT][%RCO2][%SCAM][%SDYN][%TMOZ][%WX][%WXIE][%WXIED][%WCCM][%WCMD]"                                                         >CAM cam4 physics:</desc>
-    <desc atm="CAM30"                                                                                                                              >CAM cam3 physics:</desc>
-    <desc atm="CAM[%ADIAB][%DABIP04][%TJ16][%GRAYRAD][%HS94][%KESSLER][%RCO2][%SPCAMS][%SPCAMCLBS][%SPCAMM][%SPCAMCLBM]"                                     >CAM simplified and non-versioned physics :</desc>
-    <desc atm="CAM%DEV[%LT][%MT][%CCTS1][%GHGMAM4]"                                                                                                 >CAM7 development physics:</desc>
+    <desc atm="CAM60[%1PCT][%4xCO2][%CCTS1]][%CCTS2][%CFIRE][%CVBSX][%NUDG][%PORT][%RCO2][%SDYN][%WCCM][%WCMD][%WCSC][%WCTS][%WXIE][%WXIED][%HEMCO][%GEOSCHEM][%SCAMARM95][%SCAMARM97][%SCAMATEX][%SCAMBOMEX][%SCAMCGILSS11][%SCAMCGILSS12][%SCAMCGILSS6][%SCAMDYCOMSRF01][%SCAMDYCOMSRF02][%SCAMGATE3][%SCAMMPACE][%SCAMRICO][%SCAMSPARTICUS][%SCAMTOGA2][%SCAMTWP06][%SCAMCAMFRC]"                     >CAM cam6 physics:</desc>
+    <desc atm="CAM50[%CCTS1][%CLB][%PORT][%RCO2][%MAM7][%SDYN][%WCSC][%WCTS][%GEOSCHEM][%SCAMARM95][%SCAMARM97][%SCAMATEX][%SCAMBOMEX][%SCAMCGILSS11][%SCAMCGILSS12][%SCAMCGILSS6][%SCAMDYCOMSRF01][%SCAMDYCOMSRF02][%SCAMGATE3][%SCAMMPACE][%SCAMRICO][%SCAMSPARTICUS][%SCAMTOGA2][%SCAMTWP06][%SCAMCAMFRC]                             "                                                               >CAM cam5 physics:</desc>
+    <desc atm="CAM40[%PORT][%RCO2][%SDYN][%TMOZ][%WX][%WXIE][%WXIED][%WCCM][%WCMD][%GEOSCHEM][%SCAMARM95][%SCAMARM97][%SCAMATEX][%SCAMBOMEX][%SCAMCGILSS11][%SCAMCGILSS12][%SCAMCGILSS6][%SCAMDYCOMSRF01][%SCAMDYCOMSRF02][%SCAMGATE3][%SCAMMPACE][%SCAMRICO][%SCAMSPARTICUS][%SCAMTOGA2][%SCAMTWP06][%SCAMCAMFRC]                             "                                                         >CAM cam4 physics:</desc>
+    <desc atm="CAM30"                                                                                                                                  >CAM cam3 physics:</desc>
+    <desc atm="CAM[%ADIAB][%DABIP04][%TJ16][%GRAYRAD][%HS94][%KESSLER][%RCO2][%SPCAMS][%SPCAMCLBS][%SPCAMM][%SPCAMCLBM]"                               >CAM simplified and non-versioned physics :</desc>
+    <desc atm="CAM%DEV[%LT][%MT][%CCTS1][%GHGMAM4]"                                                                                                    >CAM7 development physics:</desc>
 
   <!--
     ===============
@@ -28,7 +28,7 @@
      SINGLE COLUMN CAM
     ===============
    -->
-    <desc atm="CAM[456]0%SCAM">CAM stand-alone single column mode -- need to define usermods directory with IOP settings:</desc>
+    <desc atm="CAM60%SCAM">CAM stand-alone single column mode -- user defined IOP settings can be placed under the usermods scam_user directory:</desc>
     <desc atm="[%SDYN]">CAM specified dynamics is used in finite volume dynamical core:</desc>
     <desc atm="[%NUDG]">CAM physics is nudged towards prescribed meteorology:</desc>
   <!--
@@ -38,6 +38,7 @@
    -->
     <desc option="CCTS1"        >CAM-Chem troposphere/stratosphere chemistry with simplified VBS-SOA:</desc>
     <desc option="CCTS2"        >CAM-Chem troposphere/stratosphere chemistry with simplified VBS-SOA and expanded isoprene and terpene oxidation:</desc>
+    <desc option="GEOSCHEM"     >GEOS-Chem troposphere/stratosphere chemistry :</desc>
     <desc option="CFIRE"        >CAM-Chem troposphere/stratosphere chem with simplified volatility basis set SOA scheme and fire emissons :</desc>
     <desc option="CLB"          >CAM CLUBB - turned on by default in CAM60:</desc>
     <desc option="CVBSX"        >CAM-Chem troposphere/stratosphere chem with extended volatility basis set SOA scheme and modal aersols :</desc>
@@ -138,12 +139,12 @@
       <value compset="_CAM%DEV">-phys cam_dev</value>
       <value compset="_CAM.*(%GHGMAM4)">-chem ghg_mam4</value>
       <value compset="_CAM.*(%CCTS1|%CFIRE)">-chem trop_strat_mam5_vbs</value>
+      <value compset="_CAM60.*%(GEOSCHEM)">-chem geoschem_mam4</value>
 
       <value compset="%MAM7">-chem trop_mam7</value>
       <value compset="CAM60%CVBSX">-chem trop_strat_mam5_vbsext</value>
       <value compset="CAM60%CCTS2">-chem trop_strat_mam5_ts2</value>
       <value compset="_CAM50%CLB">-clubb_sgs</value>
-      <value compset="_(CAM40|CAM50|CAM60).*%SCAM">-scam</value>
       <value compset="CAM%SPCAMS">-rad camrt -chem none -spcam_nx 32 -spcam_ny 1 -spcam_dx 4000 -spcam_dt 20 -phys spcam_sam1mom </value>
       <value compset="CAM%SPCAMCLBS">-rad camrt -chem none -spcam_nx 32 -spcam_ny 1 -spcam_dx 4000 -spcam_dt 20 -phys spcam_sam1mom -spcam_clubb_sgs </value>
       <value compset="CAM%SPCAMM">-rad rrtmg -chem trop_mam3 -spcam_nx 32 -spcam_ny 1 -spcam_dx 4000 -spcam_dt 20 -phys spcam_m2005 </value>
@@ -175,6 +176,25 @@
       <value compset="_CAM\d0%WX.*%SDYN">-nlev 145</value>
       <value compset="_CAM.*%LT">-nlev 58 -model_top lt</value>
       <value compset="_CAM.*%MT">-nlev 93 -model_top mt</value>
+
+      <!-- SCAM IOPs -->
+      <value compset="_CAM.*%SCAMARM95">-scam arm95</value>
+      <value compset="_CAM.*%SCAMARM97">-scam arm97</value>
+      <value compset="_CAM.*%SCAMATEX">-scam atex</value>
+      <value compset="_CAM.*%SCAMBOMEX">-scam bomex</value>
+      <value compset="_CAM.*%SCAMCGILSS11">-scam cgilss11</value>
+      <value compset="_CAM.*%SCAMCGILSS12">-scam cgilss12</value>
+      <value compset="_CAM.*%SCAMCGILSS6">-scam cgilss6</value>
+      <value compset="_CAM.*%SCAMDYCOMSRF01">-scam dycomsrf01</value>
+      <value compset="_CAM.*%SCAMDYCOMSRF02">-scam dycomsrf02</value>
+      <value compset="_CAM.*%SCAMGATE3">-scam gateIII</value>
+      <value compset="_CAM.*%SCAMMPACE">-scam mpace</value>
+      <value compset="_CAM.*%SCAMRICO">-scam rico</value>
+      <value compset="_CAM.*%SCAMSPARTICUS">-scam sparticus</value>
+      <value compset="_CAM.*%SCAMTOGA2">-scam togaII</value>
+      <value compset="_CAM.*%SCAMTOGA2">-scam user</value>
+      <value compset="_CAM.*%SCAMTWP06">-scam twp06</value>
+      <value compset="_CAM.*%SCAMCAMFRC">-scam camfrc</value>
 
       <!-- Simple models -->
       <value compset="_CAM%ADIAB">-phys adiabatic</value>
@@ -228,6 +248,7 @@
       <value compset="2000_CAM60%WCCM"   >waccm_ma_2000_cam6</value>
       <value compset="2000_CAM60%WCSC"   >waccm_sc_2000_cam6</value>
       <value compset="2000_CAM60%.*CCTS1"  >2000_trop_strat_vbs_cam6</value>
+      <value compset="2000_CAM60%GEOSCHEM" >2000_geoschem</value>
       <value compset="2000_CAM60%WXIE"   >waccmx_ma_2000_cam6</value>
 
       <value compset="2000_CAM30_SLND_SICE_DOCN%AQP"   >aquaplanet_cam3</value>
@@ -244,6 +265,7 @@
       <value compset="2010_CAM60%.*CCTS1"  >2010_trop_strat_vbs_cam6</value>
       <value compset="2010_CAM60%WCTS"   >waccm_tsmlt_2010_cam6</value>
       <value compset="2010_CAM60%WCSC"   >waccm_sc_2010_cam6</value>
+      <value compset="2010_CAM60%GEOSCHEM">2010_geoschem</value>
 
       <value compset="AMIP_CAM50"        >1850-2005_cam5</value>
       <value compset="AMIP_CAM40"        >1850-2005_cam4</value>
@@ -264,6 +286,8 @@
       <value compset="HIST_CAM60%.*CCTS[12]%NUDG">hist_trop_strat_nudged_cam6</value>
       <value compset="HIST_CAM60%CVBSX"  >hist_trop_strat_vbsext_cam6</value>
       <value compset="HIST_CAM60%CFIRE"  >hist_trop_strat_vbsfire_cam6</value>
+      <value compset="HIST_CAM60%GEOSCHEM">hist_geoschem</value>
+      <value compset="HIST_CAM60%GEOSCHEM%NUDG">hist_geoschem_nudged</value>
       <value compset="HIST_CAM60%WXIE"   >waccmx_ma_hist_cam6</value>
 
       <value compset="PIPD_CAM50"        >1850-PD_cam5</value>
@@ -297,9 +321,6 @@
       <value compset="CAM%TJ16"          >dctest_tj2016</value>
       <value compset="CAM%GRAYRAD"       >dctest_frierson</value>
       <value compset="CAM%KESSLER"       >dctest_baro_kessler</value>
-
-      <!-- SCAM defaults to ARM97, all other IOPs are in usermods_dirs -->
-      <!--       <value compset="CAM[456]0%SCAM"    >scam_arm97</value> -->
     </values>
     <group>run_component_cam</group>
     <file>env_run.xml</file>
@@ -356,7 +377,7 @@
     <values match="last">
     <value compset="DOCN%AQP">$COMP_ROOT_DIR_ATM/cime_config/usermods_dirs/aquap</value>
     <value compset="DOCN%SOMAQP">$COMP_ROOT_DIR_ATM/cime_config/usermods_dirs/aquap</value>
-    <value compset="CAM[456]0%.*SCAM" >$COMP_ROOT_DIR_ATM/cime_config/usermods_dirs/scam_mandatory</value>
+    <value compset="CAM.*%SCAMCAMFRC">$COMP_ROOT_DIR_ATM/cime_config/usermods_dirs/scam_camfrc</value>
     </values>
     <group>run_component_cam</group>
     <file>env_case.xml</file>

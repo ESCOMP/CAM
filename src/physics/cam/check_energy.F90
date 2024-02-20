@@ -602,7 +602,7 @@ end subroutine check_energy_get_integrals
     ! disable the energy fix for offline driver
     heat_glob = 0._r8
 #endif
-! add (-) global mean total energy difference as heating
+    ! add global mean total energy difference as heating
     if (single_column .and. use_camiop) then
       heat_glob = heat_glob_scm(1)
     endif

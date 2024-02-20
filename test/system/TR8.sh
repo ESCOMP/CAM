@@ -54,12 +54,12 @@ fi
 #Check Chemistry
 if [ -d "${CAM_ROOT}/components/cam" ]; then
 
-ruby $ADDREALKIND_EXE -r r8 -l 1 -d $CAM_ROOT/components/cam/src/chemistry
+ruby $ADDREALKIND_EXE -r r8 -l 1 -d $CAM_ROOT/components/cam/src/chemistry -s geoschem
 rc=`expr $? + $rc`
 
 else
 
-ruby $ADDREALKIND_EXE -r r8 -l 1 -d $CAM_ROOT/src/chemistry
+ruby $ADDREALKIND_EXE -r r8 -l 1 -d $CAM_ROOT/src/chemistry -s geoschem
 rc=`expr $? + $rc`
 
 fi

@@ -326,9 +326,11 @@ subroutine diag_dynvar_ic(elem, fvm)
    real(r8), allocatable :: ftmp(:,:,:)
    real(r8), allocatable :: fld_fvm(:,:,:,:,:), fld_gll(:,:,:,:,:)
    real(r8), allocatable :: fld_2d(:,:)
-   logical,  allocatable :: llimiter(:)
+   logical               :: llimiter(1)
    real(r8)              :: qtmp(np,np,nlev), dp_ref(np,np,nlev), ps_ref(np,np)
    real(r8), allocatable :: factor_array(:,:,:)
+   integer               :: astat
+   character(len=*), parameter :: prefix = 'diag_dynvar_ic: '
    !----------------------------------------------------------------------------
 
    tl_f = timelevel%n0
@@ -437,19 +439,28 @@ subroutine diag_dynvar_ic(elem, fvm)
    end if
 
    if (write_inithist()) then
-     allocate(fld_2d(np,np))
-     do ie = 1, nelemd
-       call get_ps(elem(ie)%state%Qdp(:,:,:,:,tl_Qdp), thermodynamic_active_species_idx_dycore,&
-            elem(ie)%state%dp3d(:,:,:,tl_f),fld_2d,hyai(1)*ps0)
-       do j = 1, np
-         do i = 1, np
-           ftmp(i+(j-1)*np,1,1) = fld_2d(i,j)
+      allocate(fld_2d(np,np))
+      do ie = 1, nelemd
+         call get_ps(elem(ie)%state%Qdp(:,:,:,:,tl_Qdp), thermodynamic_active_species_idx_dycore,&
+              elem(ie)%state%dp3d(:,:,:,tl_f),fld_2d,hyai(1)*ps0)
+         do j = 1, np
+            do i = 1, np
+               ftmp(i+(j-1)*np,1,1) = fld_2d(i,j)
+            end do
          end do
-       end do
-       call outfld('PS&IC', ftmp(:,1,1), npsq, ie)
-     end do
-     deallocate(fld_2d)
-      if (fv_nphys < 1) allocate(factor_array(np,np,nlev))
+         call outfld('PS&IC', ftmp(:,1,1), npsq, ie)
+      end do
+      deallocate(fld_2d)
+   endif
+
+   deallocate(ftmp)
+
+   if (write_inithist()) then
+
+      if (fv_nphys < 1) then
+         allocate(factor_array(np,np,nlev),stat=astat)
+         if (astat /= 0) call endrun(prefix//"Allocate factor_array failed")
+      endif
 
       do ie = 1, nelemd
          call outfld('T&IC', RESHAPE(elem(ie)%state%T(:,:,:,tl_f),   (/npsq,nlev/)), npsq, ie)
@@ -458,7 +469,7 @@ subroutine diag_dynvar_ic(elem, fvm)
 
          if (fv_nphys < 1) then
             call get_sum_species(elem(ie)%state%Qdp(:,:,:,:,tl_qdp), &
-               thermodynamic_active_species_idx_dycore, factor_array,dp_dry=elem(ie)%state%dp3d(:,:,:,tl_f))
+                 thermodynamic_active_species_idx_dycore, factor_array,dp_dry=elem(ie)%state%dp3d(:,:,:,tl_f))
             factor_array(:,:,:) = 1.0_r8/factor_array(:,:,:)
             do m_cnst = 1, qsize
                if (cnst_type(m_cnst) == 'wet') then
@@ -480,40 +491,43 @@ subroutine diag_dynvar_ic(elem, fvm)
          hybrid = config_thread_region(par,'serial')
          call get_loop_ranges(hybrid, ibeg=nets, iend=nete)
 
-         allocate(fld_fvm(1-nhc:nc+nhc,1-nhc:nc+nhc,nlev,ntrac,nets:nete))
-         allocate(fld_gll(np,np,nlev,ntrac,nets:nete))
-         allocate(llimiter(ntrac))
-         allocate(factor_array(nc,nc,nlev))
+         allocate(fld_fvm(1-nhc:nc+nhc,1-nhc:nc+nhc,nlev,1,nets:nete),stat=astat)
+         if (astat /= 0) call endrun(prefix//"Allocate fld_fvm failed")
+         allocate(fld_gll(np,np,nlev,1,nets:nete),stat=astat)
+         if (astat /= 0) call endrun(prefix//"Allocate fld_gll failed")
+         allocate(factor_array(nc,nc,nlev),stat=astat)
+         if (astat /= 0) call endrun(prefix//"Allocate factor_array failed")
+
          llimiter = .true.
-         do ie = nets, nete
-           call get_sum_species(fvm(ie)%c(1:nc,1:nc,:,:),thermodynamic_active_species_idx,factor_array)
-           factor_array(:,:,:) = 1.0_r8/factor_array(:,:,:)
-           do m_cnst = 1, ntrac
-             if (cnst_type(m_cnst) == 'wet') then
-               fld_fvm(1:nc,1:nc,:,m_cnst,ie) = fvm(ie)%c(1:nc,1:nc,:,m_cnst)*factor_array(:,:,:)
-             else
-               fld_fvm(1:nc,1:nc,:,m_cnst,ie) = fvm(ie)%c(1:nc,1:nc,:,m_cnst)
-             end if
-           end do
-         end do
 
-         call fvm2dyn(fld_fvm, fld_gll, hybrid, nets, nete, nlev, ntrac, fvm(nets:nete), llimiter)
+         do m_cnst = 1, ntrac
+            do ie = nets, nete
 
-         do ie = nets, nete
-            do m_cnst = 1, ntrac
+               call get_sum_species(fvm(ie)%c(1:nc,1:nc,:,:),thermodynamic_active_species_idx,factor_array)
+               factor_array(:,:,:) = 1.0_r8/factor_array(:,:,:)
+
+               if (cnst_type(m_cnst) == 'wet') then
+                  fld_fvm(1:nc,1:nc,:,1,ie) = fvm(ie)%c(1:nc,1:nc,:,m_cnst)*factor_array(:,:,:)
+               else
+                  fld_fvm(1:nc,1:nc,:,1,ie) = fvm(ie)%c(1:nc,1:nc,:,m_cnst)
+               end if
+            end do
+
+            call fvm2dyn(fld_fvm, fld_gll, hybrid, nets, nete, nlev, fvm(nets:nete), llimiter)
+
+            do ie = nets, nete
                call outfld(trim(cnst_name(m_cnst))//'&IC', &
-                    RESHAPE(fld_gll(:,:,:,m_cnst,ie), (/npsq,nlev/)), npsq, ie)
+                    RESHAPE(fld_gll(:,:,:,:,ie), (/npsq,nlev/)), npsq, ie)
             end do
          end do
 
          deallocate(fld_fvm)
          deallocate(fld_gll)
-         deallocate(llimiter)
       end if
-      deallocate(factor_array)
-   end if  ! if (write_inithist)
 
-   deallocate(ftmp)
+      deallocate(factor_array)
+
+   end if  ! if (write_inithist)
 
 end subroutine diag_dynvar_ic
 

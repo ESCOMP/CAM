@@ -582,7 +582,6 @@ type (hvcoord_t), intent(in) :: hvcoord
 !get global vmrs from camiop file
    status =  nf90_inq_varid( ncid, 'co2vmr', varid   )
    if ( status == nf90_noerr) then
-!      have_co2vmr=.true.
       call get_start_count(ncid, varid, scmlat, scmlon, ioptimeidx, strt4, cnt4)
       call wrap_get_vara_realx (ncid,varid,strt4,cnt4,co2vmrobs)
    else
@@ -590,7 +589,6 @@ type (hvcoord_t), intent(in) :: hvcoord
    end if
    status =  nf90_inq_varid( ncid, 'ch4vmr', varid   )
    if ( status == nf90_noerr) then
-!      have_ch4vmr=.true.
       call get_start_count(ncid, varid, scmlat, scmlon, ioptimeidx, strt4, cnt4)
       call wrap_get_vara_realx (ncid,varid,strt4,cnt4,ch4vmrobs)
    else
@@ -598,7 +596,6 @@ type (hvcoord_t), intent(in) :: hvcoord
    end if
    status =  nf90_inq_varid( ncid, 'n2ovmr', varid   )
    if ( status == nf90_noerr) then
-!      have_n2ovmr=.true.
       call get_start_count(ncid, varid, scmlat, scmlon, ioptimeidx, strt4, cnt4)
       call wrap_get_vara_realx (ncid,varid,strt4,cnt4,n2ovmrobs)
    else
@@ -606,7 +603,6 @@ type (hvcoord_t), intent(in) :: hvcoord
    end if
    status =  nf90_inq_varid( ncid, 'f11vmr', varid   )
    if ( status == nf90_noerr) then
-!      have_f11vmr=.true.
       call get_start_count(ncid, varid, scmlat, scmlon, ioptimeidx, strt4, cnt4)
       call wrap_get_vara_realx (ncid,varid,strt4,cnt4,f11vmrobs)
    else
@@ -614,7 +610,6 @@ type (hvcoord_t), intent(in) :: hvcoord
    end if
    status =  nf90_inq_varid( ncid, 'f12vmr', varid   )
    if ( status == nf90_noerr) then
-!      have_f12vmr=.true.
       call get_start_count(ncid, varid, scmlat, scmlon, ioptimeidx, strt4, cnt4)
       call wrap_get_vara_realx (ncid,varid,strt4,cnt4,f12vmrobs)
    else
@@ -622,7 +617,6 @@ type (hvcoord_t), intent(in) :: hvcoord
    end if
    status =  nf90_inq_varid( ncid, 'soltsi', varid   )
    if ( status == nf90_noerr) then
-!      have_soltsi=.true.
       call get_start_count(ncid, varid, scmlat, scmlon, ioptimeidx, strt4, cnt4)
       call wrap_get_vara_realx (ncid,varid,strt4,cnt4,soltsiobs)
    else
@@ -796,6 +790,7 @@ type (hvcoord_t), intent(in) :: hvcoord
       call getinterpncdata( ncid, scmlat, scmlon, ioptimeidx, trim(cnst_name(m))//'_dten', &
       have_srf, srf(1), fill_ends, scm_crm_mode, &
       dplevs, nlev,psobs, hvcoord%hyam, hvcoord%hybm, divq3d(:,m), status )
+      write(iulog,*)'checking ',trim(cnst_name(m))//'_dten',status
       if ( status /= nf90_noerr ) then
          have_cnst(m) = .false.
          divq3d(1:,m)=0._r8
@@ -1001,6 +996,7 @@ type (hvcoord_t), intent(in) :: hvcoord
    call getinterpncdata( ncid, scmlat, scmlon, ioptimeidx, 'divT3d', &
       have_srf, srf(1), fill_ends, scm_crm_mode, &
       dplevs, nlev,psobs, hvcoord%hyam, hvcoord%hybm, divt3d, status )
+      write(iulog,*)'checking divT3d:',status,nf90_noerr
    if ( status /= nf90_noerr ) then
       have_divt3d = .false.
    else
@@ -1213,10 +1209,12 @@ type (hvcoord_t), intent(in) :: hvcoord
 !     make sure that use_3dfrc flag is set to true if we only have
 !     3d forcing available
 !
-   if (scm_use_3dfrc .and. (have_divt3d .and. have_divq3d)) then
-      use_3dfrc = .true.
-   else
-      use_3dfrc = .false.
+   if (scm_use_3dfrc) then
+      if (have_divt3d .and. have_divq3d) then
+         use_3dfrc = .true.
+      else
+         call endrun(sub//':ERROR :IOP file must have both divt3d and divq3d forcing when scm_use_3dfrc is set to .true.')
+      endif
    endif
 
    call shr_sys_flush( iulog )

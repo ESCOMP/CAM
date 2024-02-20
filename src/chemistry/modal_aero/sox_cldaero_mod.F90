@@ -13,7 +13,7 @@ module sox_cldaero_mod
   use modal_aero_data, only : cnst_name_cw, specmw_so4_amode
   use chem_mods,       only : adv_mass
   use physconst,       only : gravit
-  use phys_control,    only : phys_getopts
+  use phys_control,    only : phys_getopts, cam_chempkg_is
   use cldaero_mod,     only : cldaero_uptakerate
   use chem_mods,       only : gas_pcnst
 
@@ -228,6 +228,12 @@ contains
     dqdt_aqh2so4(:,:,:) = 0.0_r8
     dqdt_aqhprxn(:,:) = 0.0_r8
     dqdt_aqo3rxn(:,:) = 0.0_r8
+
+    ! Avoid double counting in-cloud sulfur oxidation when running with
+    ! GEOS-Chem. If running with GEOS-Chem then sulfur oxidation
+    ! is performed internally to GEOS-Chem. Here, we just return to the 
+    ! parent routine and thus we do not apply tendencies calculated by MAM.
+    if ( cam_chempkg_is('geoschem_mam4') ) return
 
     lev_loop: do k = 1,pver
        col_loop: do i = 1,ncol

@@ -26,6 +26,7 @@ module fvm_mod
 
   type (EdgeBuffer_t) :: edgeveloc
   type (EdgeBuffer_t), public  :: ghostBufQnhc_s
+  type (EdgeBuffer_t), public  :: ghostBufQnhc_t1
   type (EdgeBuffer_t), public  :: ghostBufQnhc_vh
   type (EdgeBuffer_t), public  :: ghostBufQnhc_h
   type (EdgeBuffer_t), public  :: ghostBufQ1_h
@@ -487,6 +488,7 @@ subroutine fill_halo_fvm_prealloc(cellghostbuf,elem,fvm,hybrid,nets,nete,ndepth,
     ! changes the values for reverse
 
     call initghostbuffer(hybrid%par,ghostBufQnhc_s,elem,nlev*(ntrac+1),nhc,nc,nthreads=1)
+    call initghostbuffer(hybrid%par,ghostBufQnhc_t1,elem,nlev, nhc,nc,nthreads=1)
     call initghostbuffer(hybrid%par,ghostBufQnhc_h,elem,nlev*(ntrac+1),nhc,nc,nthreads=horz_num_threads)
     call initghostbuffer(hybrid%par,ghostBufQnhc_vh,elem,nlev*(ntrac+1),nhc,nc,nthreads=vert_num_threads*horz_num_threads)
     klev = kmax_jet-kmin_jet+1

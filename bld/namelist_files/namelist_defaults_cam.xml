@@ -219,6 +219,11 @@
 <ncdata           hgrid="8x16"      nlev="30"              ic_ymd="101" >atm/cam/inic/gaus/cami_0000-01-01_8x16_L30_c090102.nc</ncdata>
 
 <ncdata dyn="se" hgrid="ne3np4"   nlev="32"             ic_ymd="101" >atm/cam/inic/se/cam6_QPC6_topo_ne3pg3_mg37_L32_01-01-31_c221214.nc</ncdata>
+<ncdata dyn="se" hgrid="ne3np4"   nlev="32"             ic_ymd="901" >atm/cam/inic/se/CESM2.F2000climo.ne3np4.cam.i.0003-09-01-00000.nc</ncdata>
+<ncdata dyn="se" hgrid="ne3np4"   nlev="30"             ic_ymd="101" >atm/cam/inic/se/cami_0000-01-01_ne3np4_L30_c120315.nc</ncdata>
+<ncdata dyn="se" hgrid="ne3np4"   nlev="30"             ic_ymd="901" >atm/cam/inic/se/cami_0000-01-01_ne3np4_L30_c120315.nc</ncdata>
+<ncdata dyn="se" hgrid="ne3np4"   nlev="26"             ic_ymd="101" >atm/cam/inic/se/cami_0000-01-01_ne3np4_L26_c120525.nc</ncdata>
+<ncdata dyn="se" hgrid="ne3np4"   nlev="26"             ic_ymd="901" >atm/cam/inic/se/cami_0000-01-01_ne3np4_L26_c120525.nc</ncdata>
 <ncdata dyn="se" hgrid="ne3np4"   nlev="58"             ic_ymd="101" >atm/cam/inic/se/cam6_QPC6_topo_ne3pg3_mg37_L58_01-01-31_c221214.nc</ncdata>
 <ncdata dyn="se" hgrid="ne3np4"   nlev="93"             ic_ymd="101" >atm/cam/inic/se/cam6_QPC6_topo_ne3pg3_mg37_L93_01-01-31_c221214.nc</ncdata>
 <ncdata dyn="se" hgrid="ne5np4"   nlev="30"             ic_ymd="101" >atm/cam/inic/homme/cami-mam3_0000-01_ne5np4_L30.140707.nc</ncdata>
@@ -273,6 +278,8 @@
 <ncdata dyn="se" hgrid="ne30np4"  nlev="110"          ic_ymd="101">atm/waccm/ic/FWsc2000_ne30pg3_L110_01-01-0001_c200521.nc</ncdata>
 
 <ncdata dyn="se" hgrid="ne0np4CONUS.ne30x8"       nlev="70" ic_ymd="101">atm/waccm/ic/FW2000_CONUS_30x8_L70_01-01-0001_c200602.nc</ncdata>
+
+<ncdata hgrid="mpasa120" nlev="70" waccm_phys="1">atm/waccm/ic/mpasa120km.waccm_fulltopo_c220818.nc</ncdata>
 
 <ncdata hgrid="mpasa120" nlev="32" >atm/cam/inic/mpas/cami_01-01-2000_00Z_mpasa120_L32_CFSR_c210426.nc</ncdata>
 <ncdata hgrid="mpasa480" nlev="32" >atm/cam/inic/mpas/cami_01-01-2000_00Z_mpasa480_L32_CFSR_c211013.nc</ncdata>
@@ -738,6 +745,7 @@
 <effgw_beres_dp waccm_phys="1" hgrid="0.9x1.25"               >0.5D0</effgw_beres_dp>
 <effgw_beres_dp waccm_phys="1" hgrid="ne30np4" nlev="70"      >0.5D0</effgw_beres_dp>
 <effgw_beres_dp waccm_phys="1" hgrid="ne30np4" nlev="110"     >0.7D0</effgw_beres_dp>
+<effgw_beres_dp chem="geoschem_mam4" hgrid="0.9x1.25"   >0.5D0</effgw_beres_dp>
 <effgw_beres_dp chem="trop_strat_mam4_vbs" hgrid="0.9x1.25"   >0.5D0</effgw_beres_dp>
 <effgw_beres_dp chem="trop_strat_mam4_vbsext" hgrid="0.9x1.25">0.5D0</effgw_beres_dp>
 <effgw_beres_dp chem="trop_strat_mam5_vbs" hgrid="0.9x1.25"   >0.5D0</effgw_beres_dp>
@@ -761,29 +769,34 @@
 <gw_drag_file_sh>atm/waccm/gw/mfspectra_shallow_c140530.nc</gw_drag_file_sh>
 <gw_prndl                               >0.25d0 </gw_prndl>
 <gw_prndl                 waccm_phys="1">0.5d0  </gw_prndl>
+<gw_prndl     chem="geoschem_mam4">0.5d0  </gw_prndl>
 <gw_prndl     chem="trop_strat_mam4_vbs">0.5d0  </gw_prndl>
 <gw_prndl     chem="trop_strat_mam4_vbsext">0.5d0  </gw_prndl>
 <gw_prndl     chem="trop_strat_mam5_vbs">0.5d0  </gw_prndl>
 <gw_prndl     chem="trop_strat_mam5_vbsext">0.5d0  </gw_prndl>
 <gw_oro_south_fac                       >1.d0   </gw_oro_south_fac>
 <gw_oro_south_fac         waccm_phys="1">2.d0   </gw_oro_south_fac>
+<gw_oro_south_fac chem="geoschem_mam4">2.d0   </gw_oro_south_fac>
 <gw_oro_south_fac chem="trop_strat_mam4_vbs">2.d0   </gw_oro_south_fac>
 <gw_oro_south_fac chem="trop_strat_mam4_vbsext">2.d0   </gw_oro_south_fac>
 <gw_oro_south_fac chem="trop_strat_mam5_vbs">2.d0   </gw_oro_south_fac>
 <gw_oro_south_fac chem="trop_strat_mam5_vbsext">2.d0   </gw_oro_south_fac>
 <gw_lndscl_sgh                          >.true. </gw_lndscl_sgh>
 <gw_lndscl_sgh            waccm_phys="1">.false.</gw_lndscl_sgh>
+<gw_lndscl_sgh chem="geoschem_mam4">.false.</gw_lndscl_sgh>
 <gw_lndscl_sgh chem="trop_strat_mam4_vbs">.false.</gw_lndscl_sgh>
 <gw_lndscl_sgh chem="trop_strat_mam4_vbsext">.false.</gw_lndscl_sgh>
 <gw_lndscl_sgh chem="trop_strat_mam5_vbs">.false.</gw_lndscl_sgh>
 <gw_lndscl_sgh chem="trop_strat_mam5_vbsext">.false.</gw_lndscl_sgh>
 <gw_limit_tau_without_eff               >.false.</gw_limit_tau_without_eff>
 <gw_limit_tau_without_eff waccm_phys="1">.true. </gw_limit_tau_without_eff>
+<gw_limit_tau_without_eff chem="geoschem_mam4">.true. </gw_limit_tau_without_eff>
 <gw_limit_tau_without_eff chem="trop_strat_mam4_vbs">.true. </gw_limit_tau_without_eff>
 <gw_limit_tau_without_eff chem="trop_strat_mam4_vbsext">.true. </gw_limit_tau_without_eff>
 <gw_limit_tau_without_eff chem="trop_strat_mam5_vbs">.true. </gw_limit_tau_without_eff>
 <gw_limit_tau_without_eff chem="trop_strat_mam5_vbsext">.true. </gw_limit_tau_without_eff>
 <gw_apply_tndmax                          >.true. </gw_apply_tndmax>
+<gw_apply_tndmax chem="geoschem_mam4">.false.</gw_apply_tndmax>
 <gw_apply_tndmax phys="cam_dev"           >.false.</gw_apply_tndmax>
 <gw_apply_tndmax            waccm_phys="1">.false.</gw_apply_tndmax>
 <gw_apply_tndmax chem="trop_strat_mam4_vbs">.false.</gw_apply_tndmax>
@@ -1309,6 +1322,11 @@
 <num_a2_cv_ext_file   hgrid="ne30np4" npg="3" ver="cam6">atm/cam/chem/emis/historical_ne30pg3/emissions-cmip6_num_a2_so4_contvolcano_vertical_850-5000_ne30pg3_c20200125.nc</num_a2_cv_ext_file>
 <so4_a1_an_ext_file   hgrid="ne30np4" npg="3" ver="cam6">atm/cam/chem/emis/historical_ne30pg3/emissions-cmip6_so4_a1_anthro-ene_vertical_mol_175001-201412_ne30pg3_c20200103.nc</so4_a1_an_ext_file>
 <num_a1_an_ext_file   hgrid="ne30np4" npg="3" ver="cam6">atm/cam/chem/emis/historical_ne30pg3/emissions-cmip6_num_so4_a1_anthro-ene_vertical_mol_175001-201412_ne30pg3_c20200103.nc</num_a1_an_ext_file>
+
+<bc_a4_ar_ext_file    hgrid="ne30np4" npg="3" ver="cam6">atm/cam/chem/emis/historical_ne30pg3/emissions-cmip6_bc_a4_aircraft_vertical_1750-2015_ne30pg3_c20231112.nc</bc_a4_ar_ext_file>
+<num_a4_ar_ext_file   hgrid="ne30np4" npg="3" ver="cam6">atm/cam/chem/emis/historical_ne30pg3/emissions-cmip6_num_bc_a4_aircraft_vertical_1750-2015_ne30pg3_c20231112.nc</num_a4_ar_ext_file>
+<no2_ar_ext_file      hgrid="ne30np4" npg="3" ver="cam6">atm/cam/chem/emis/historical_ne30pg3/emissions-cmip6_NO2_aircraft_vertical_1750-2015_ne30pg3_c20231112.nc</no2_ar_ext_file>
+<so2_ar_ext_file      hgrid="ne30np4" npg="3" ver="cam6">atm/cam/chem/emis/historical_ne30pg3/emissions-cmip6_SO2_aircraft_vertical_1750-2015_ne30pg3_c20231112.nc</so2_ar_ext_file>
 
 <!-- ne30 pg2 -->
 
@@ -1928,6 +1946,7 @@
 
 <!-- effective Henry's coef data for wet and dry deposition -->
 <dep_data_file>atm/cam/chem/trop_mozart/dvel/dep_data_c20221208.nc</dep_data_file>
+<dep_data_file chem="geoschem_mam4">atm/cam/chem/geoschem/dvel/dep_data_file_geoschem_c230417.nc</dep_data_file>
 
 <!-- photolysis inputs -->
 <xs_coef_file>atm/waccm/phot/effxstex.txt</xs_coef_file>
@@ -2189,6 +2208,7 @@
 <microp_scheme microphys="spcam_m2005"  >SPCAM_m2005  </microp_scheme>
 <microp_scheme microphys="spcam_sam1mom">SPCAM_sam1mom</microp_scheme>
 <microp_scheme microphys="mg3">MG</microp_scheme>
+<microp_scheme microphys="pumas">MG</microp_scheme>
 
 <micro_mg_version     microphys="mg1">    1          </micro_mg_version>
 <micro_mg_sub_version microphys="mg1">    0          </micro_mg_sub_version>
@@ -2245,6 +2265,7 @@
 <micro_mg_homog_size  microphys="mg2"  >  25.D-6    </micro_mg_homog_size>
 
 <micro_mg_vtrmi_factor                  >  1.D0    </micro_mg_vtrmi_factor>
+<micro_mg_vtrms_factor                  >  1.D0    </micro_mg_vtrms_factor>
 
 <micro_mg_effi_factor                  >  1.D0    </micro_mg_effi_factor>
 <micro_mg_effi_factor microphys="mg2"  >  1.D0    </micro_mg_effi_factor>
@@ -2257,6 +2278,7 @@
 
 <micro_mg_implicit_fall    phys="cam_dev" > .true. </micro_mg_implicit_fall>
 <micro_mg_accre_sees_auto  phys="cam_dev" > .true. </micro_mg_accre_sees_auto>
+<micro_mg_warm_rain        phys="cam_dev" > kk2000 </micro_mg_warm_rain>
 <micro_mg_precip_fall_corr phys="cam_dev" > .true. </micro_mg_precip_fall_corr>
 
 <cld_macmic_num_steps>                                            1 </cld_macmic_num_steps>
@@ -2786,7 +2808,6 @@
 <zmconv_org                                                           > .false. </zmconv_org>
 <zmconv_org                                        zmconv_org="1"     > .true.  </zmconv_org>
 
-<zmconv_microp                                                        > .false. </zmconv_microp>
 <zmconv_num_cin                                                       > 5       </zmconv_num_cin>
 <zmconv_num_cin                                       phys="cam6"     > 1       </zmconv_num_cin>
 <zmconv_num_cin                                       phys="cam_dev"  > 1       </zmconv_num_cin>
@@ -2858,16 +2879,130 @@
 
 
 <!-- default namelist for SCAM mode -->
-<ncdata  dyn="eul"  hgrid="64x128"    nlev="30"   scam="1"  >atm/cam/inic/gaus/cami_0000-09-01_64x128_L30_c031210.nc</ncdata>
-<iopfile                                          scam="1"  >atm/cam/scam/iop/ARM97_4scam.nc</iopfile>
-<mfilt                                            scam="1"  >   1500     </mfilt>
-<nhtfrq                                           scam="1"  >   9        </nhtfrq>
-<scm_use_obs_uv                                   scam="1"  >   .true.   </scm_use_obs_uv>
-<scale_dry_air_mass                               scam="1"  >   0.0D0    </scale_dry_air_mass>
-<scm_zadv_q  dyn="eul"                            scam="1"  >   slt      </scm_zadv_q>
-<!-- default namelist for SE SCAM mode -->
-<ncdata  dyn="se1"   hgrid="ne3np4"                scam="1"  >atm/cam/inic/se/CESM2.F2000climo.ne3np4.cam.i.0003-06-01-00000.nc</ncdata>
-<ncdata  dyn="se"   hgrid="ne3np4"                scam="1"  >allsame</ncdata>
+<nhtfrq                          scam="1"                   > 1         </nhtfrq>
+<mfilt                           scam="1"                   > 10000     </mfilt>
+<scm_use_obs_uv                  scam="1"                   > .true.    </scm_use_obs_uv>
+<scale_dry_air_mass              scam="1"        dyn="se"   > 0.0D0     </scale_dry_air_mass>
+<scm_relaxation                  scam="1"                   > .true.    </scm_relaxation>
+<scm_relax_fincl   phys="cam6"   scam="1"  >
+  'T', 'bc_a1', 'bc_a4', 'dst_a1', 'dst_a2', 'dst_a3', 'ncl_a1', 'ncl_a2', 'ncl_a3',
+  'num_a1', 'num_a2', 'num_a3', 'num_a4', 'pom_a1', 'pom_a4', 'so4_a1', 'so4_a2', 'so4_a3', 'soa_a1', 'soa_a2'
+</scm_relax_fincl>
+<scm_relax_fincl   phys="cam5"   scam="1"  >
+  'T', 'bc_a1', 'bc_a4', 'dst_a1', 'dst_a2', 'dst_a3', 'ncl_a1', 'ncl_a2', 'ncl_a3',
+  'num_a1', 'num_a2', 'num_a3', 'num_a4', 'pom_a1', 'pom_a4', 'so4_a1', 'so4_a2', 'so4_a3', 'soa_a1', 'soa_a2'
+</scm_relax_fincl>
+<scm_relax_fincl   phys="cam_dev"scam="1"  >
+  'T', 'bc_a1', 'bc_a4', 'dst_a1', 'dst_a2', 'dst_a3', 'ncl_a1', 'ncl_a2', 'ncl_a3',
+  'num_a1', 'num_a2', 'num_a3', 'num_a4', 'pom_a1', 'pom_a4', 'so4_a1', 'so4_a2', 'so4_a3', 'soa_a1', 'soa_a2'
+</scm_relax_fincl>
+<scm_relax_bot_p                 scam="1"                  > 105000.D0  </scm_relax_bot_p>
+<scm_relax_top_p                 scam="1"                  > 200.D0     </scm_relax_top_p>
+<scm_relax_linear                scam="1"                  > .true.     </scm_relax_linear>
+<scm_relax_tau_bot_sec           scam="1"                  > 864000.D0  </scm_relax_tau_bot_sec>
+<scm_relax_tau_top_sec           scam="1"                  > 172800.D0  </scm_relax_tau_top_sec>
+
+
+<!-- iop spefic defaults for SCAM mode -->
+
+<!-- "IOP: ARM 1995 (18 Jul 1995 - 2 Aug 1995)" -->
+<ncdata             hgrid="ne3np4"    nlev="32"       scam_iop="arm95"     >atm/cam/inic/se/CESM2.F2000climo.ne3np4.cam.i.0003-06-01-00000.nc</ncdata>
+<ncdata             hgrid="64x128"    nlev="32"       scam_iop="arm95"     >atm/cam/inic/gaus/CESM2.F2000climo.64x128.cam.i.0003-06-01-00000.nc</ncdata>
+<iopfile                                              scam_iop="arm95"     >atm/cam/scam/iop/ARM95_4scam.nc</iopfile>
+<co2vmr                                               scam_iop="arm95"     > 368.9e-6  </co2vmr>
+
+<!-- "IOP: ARM 1997 (18 Jun 1997 - 17 Jul 1997)" -->
+<ncdata             hgrid="ne3np4"    nlev="32"       scam_iop="arm95"     >atm/cam/inic/se/CESM2.F2000climo.ne3np4.cam.i.0003-06-01-00000.nc</ncdata>
+<ncdata             hgrid="64x128"    nlev="32"       scam_iop="arm95"     >atm/cam/inic/gaus/CESM2.F2000climo.64x128.cam.i.0003-06-01-00000.nc</ncdata>
+<iopfile                                              scam_iop="arm97"     >atm/cam/scam/iop/ARM97_4scam.nc</iopfile>
+<co2vmr                                               scam_iop="arm97"     > 368.9e-6  </co2vmr>
+
+<ncdata             hgrid="ne3np4"    nlev="32"       scam_iop="atex"      >atm/cam/inic/se/CESM2.F2000climo.ne3np4.cam.i.0003-02-01-00000.nc</ncdata>
+<ncdata             hgrid="64x128"    nlev="32"       scam_iop="atex"      >atm/cam/inic/gaus/CESM2.F2000climo.64x128.cam.i.0003-02-01-00000.nc</ncdata>
+<iopfile                                              scam_iop="atex"      >atm/cam/scam/iop/ATEX_48hr_4scam.nc</iopfile>
+
+<ncdata             hgrid="ne3np4"    nlev="32"       scam_iop="bomex"     >atm/cam/inic/se/CESM2.F2000climo.ne3np4.cam.i.0003-06-01-00000.nc</ncdata>
+<ncdata             hgrid="64x128"    nlev="32"       scam_iop="bomex"     >atm/cam/inic/gaus/CESM2.F2000climo.64x128.cam.i.0003-06-01-00000.nc</ncdata>
+<iopfile                                              scam_iop="bomex"     >atm/cam/scam/iop/BOMEX_5day_4scam.nc</iopfile>
+
+<ncdata             hgrid="ne3np4"    nlev="32"       scam_iop="cgilsS11"  >atm/cam/inic/se/CESM2.F2000climo.ne3np4.cam.i.0003-07-01-00000.nc</ncdata>
+<ncdata             hgrid="64x128"    nlev="32"       scam_iop="cgilsS11"  >atm/cam/inic/gaus/CESM2.F2000climo.64x128.cam.i.0003-07-01-00000.nc</ncdata>
+<iopfile                                              scam_iop="cgilsS11"  >atm/cam/scam/iop/S11_CTL_MixedLayerInit_reduced.nc</iopfile>
+
+<ncdata             hgrid="ne3np4"    nlev="32"       scam_iop="cgilsS12"  >atm/cam/inic/se/CESM2.F2000climo.ne3np4.cam.i.0003-07-01-00000.nc</ncdata>
+<ncdata             hgrid="64x128"    nlev="32"       scam_iop="cgilsS12"  >atm/cam/inic/gaus/CESM2.F2000climo.64x128.cam.i.0003-07-01-00000.nc</ncdata>
+<iopfile                                              scam_iop="cgilsS12"  >atm/cam/scam/iop/S12_CTL_MixedLayerInit_reduced.nc</iopfile>
+
+<ncdata             hgrid="ne3np4"    nlev="32"       scam_iop="cgilsS6"   >atm/cam/inic/se/CESM2.F2000climo.ne3np4.cam.i.0003-07-01-00000.nc</ncdata>
+<ncdata             hgrid="64x128"    nlev="32"       scam_iop="cgilsS6"  >atm/cam/inic/gaus/CESM2.F2000climo.64x128.cam.i.0003-07-01-00000.nc</ncdata>
+<iopfile                                              scam_iop="cgilsS6"   >atm/cam/scam/iop/S6_CTL_reduced.nc</iopfile>
+
+<ncdata             hgrid="ne3np4"    nlev="32"       scam_iop="dycomsRF01">atm/cam/inic/se/CESM2.F2000climo.ne3np4.cam.i.0003-07-01-00000.nc</ncdata>
+<ncdata             hgrid="64x128"    nlev="32"       scam_iop="dycomsRF01"  >atm/cam/inic/gaus/CESM2.F2000climo.64x128.cam.i.0003-07-01-00000.nc</ncdata>
+<iopfile                                              scam_iop="dycomsRF01">atm/cam/scam/iop/DYCOMSrf01_4day_4scam.nc</iopfile>
+
+<ncdata             hgrid="ne3np4"    nlev="32"       scam_iop="dycomsRF02">atm/cam/inic/se/CESM2.F2000climo.ne3np4.cam.i.0003-07-01-00000.nc</ncdata>
+<ncdata             hgrid="64x128"    nlev="32"       scam_iop="dycomsRF02"  >atm/cam/inic/gaus/CESM2.F2000climo.64x128.cam.i.0003-07-01-00000.nc</ncdata>
+<iopfile                                              scam_iop="dycomsRF02">atm/cam/scam/iop/DYCOMSrf02_48hr_4scam.nc</iopfile>
+
+<!-- "IOP: GARP Atlantic Tropical Experiment 1974 (30 Aug. 1974 - 18 Sept. 1974)" -->
+<ncdata             hgrid="ne3np4"    nlev="32"       scam_iop="gateiii"   >atm/cam/inic/se/CESM2.F2000climo.ne3np4.cam.i.0003-08-01-00000.nc</ncdata>
+<ncdata             hgrid="64x128"    nlev="32"       scam_iop="gateIII"   >atm/cam/inic/gaus/CESM2.F2000climo.64x128.cam.i.0003-08-01-00000.nc</ncdata>
+<iopfile                                              scam_iop="gateiii"   >atm/cam/scam/iop/GATEIII_4scam_c170809.nc</iopfile>
+
+<ncdata             hgrid="ne3np4"    nlev="32"       scam_iop="micre2017" >atm/cam/scam/iop/micre2017_3mo.cam.i.2017-01-01-00000.regrid.ne3np4.nc</ncdata>
+<ncdata             hgrid="64x128"    nlev="32"       scam_iop="micre2017" >atm/cam/scam/iop/micre2017_3mo.cam.i.2017-01-01-00000.regrid.Gaus_64x128.nc</ncdata>
+<iopfile                                              scam_iop="micre2017" >atm/cam/scam/iop/micre2017_3mo.macquarie2017.iop.nc</iopfile>
+
+<!-- "IOP: MPACE 2004 (05 Oct 2004 - 22 Oct  2004)" -->
+<ncdata             hgrid="ne3np4"    nlev="32"       scam_iop="mpace"     >atm/cam/inic/se/CESM2.F2000climo.ne3np4.cam.i.0003-10-01-00000.nc</ncdata>
+<ncdata             hgrid="64x128"    nlev="32"       scam_iop="mpace"  >atm/cam/inic/gaus/CESM2.F2000climo.64x128.cam.i.0003-10-01-00000.nc</ncdata>
+<iopfile                                              scam_iop="mpace"     >atm/cam/scam/iop/MPACE_4scam.nc</iopfile>
+<fincl1                                               scam_iop="mpace"     >
+        'CLDST', 'CNVCLD',
+        'ICWMR','ICIMR','FREQL','FREQI','LANDFRAC','CDNUMC','FICE','WSUB','CCN3','ICLDIWP',
+        'CDNUMC', 'AQSNOW',  'WSUB', 'CCN3', 'FREQI', 'FREQL', 'FREQR', 'FREQS', 'CLDLIQ', 'CLDICE',
+        'FSDS', 'FLDS','AREL','AREI','NSNOW','QSNOW','DSNOW',
+        'FLNT','FLNTC','FSNT','FSNTC','FSNS','FSNSC','FLNT','FLNTC','QRS','QRSC','QRL','QRLC',
+        'LWCF','SWCF', 'NCAI', 'NCAL', 'NIHF','NIDEP','NIIMM','NIMEY','ICLDIWP','ICLDTWP', 'CONCLD',
+        'QCSEVAP', 'QISEVAP', 'QVRES', 'CMELIQ', 'CMEIOUT', 'EVAPPREC', 'EVAPSNOW', 'TAQ',
+        'ICLMRCU', 'ICIMRCU' ,'ICWMRSH' ,'ICWMRDP', 'ICLMRTOT' , 'ICIMRTOT' , 'SH_CLD' ,  'DP_CLD',
+        'LIQCLDF','ICECLDF', 'ICWMRST', 'ICIMRST', 'EFFLIQ', 'EFFICE','ADRAIN','ADSNOW','WSUBI',
+        'TGCLDLWP','GCLDLWP'
+</fincl1>
+
+<ncdata             hgrid="ne3np4"    nlev="32"       scam_iop="rico"      >atm/cam/inic/se/CESM2.F2000climo.ne3np4.cam.i.0003-07-01-00000.nc</ncdata>
+<ncdata             hgrid="64x128"    nlev="32"       scam_iop="rico"      >atm/cam/inic/gaus/CESM2.F2000climo.64x128.cam.i.0003-07-01-00000.nc</ncdata>
+<iopfile                                              scam_iop="rico"      >atm/cam/scam/iop/RICO_3day_4scam.nc</iopfile>
+
+<ncdata             hgrid="ne3np4"    nlev="32"       scam_iop="SAS"       >atm/cam/inic/se/CESM2.F2000climo.ne3np4.cam.i.0003-06-01-00000.nc</ncdata>
+<ncdata             hgrid="64x128"    nlev="32"       scam_iop="SAS"       >atm/cam/inic/gaus/CESM2.F2000climo.64x128.cam.i.0003-06-01-00000.nc</ncdata>
+<iopfile                                              scam_iop="SAS"       >atm/cam/scam/iop/SAS_ideal_4scam.nc</iopfile>
+<co2vmr                                               scam_iop="SAS"       > 368.9e-6  </co2vmr>
+<use_gw_front                                         scam_iop="SAS"       > .false.   </use_gw_front>
+<scm_backfill_iop_w_init                              scam_iop="SAS"       > .true.    </scm_backfill_iop_w_init>
+
+<!-- "IOP: Small Particles in Cirrus  2010 (01 April 2010 - 30 April 2010)" -->
+<ncdata             hgrid="ne3np4"    nlev="32"       scam_iop="sparticus" >atm/cam/inic/se/CESM2.F2000climo.ne3np4.cam.i.0003-04-01-00000.nc</ncdata>
+<ncdata             hgrid="64x128"    nlev="32"       scam_iop="sparticus" >atm/cam/inic/gaus/CESM2.F2000climo.64x128.cam.i.0003-04-01-00000.nc</ncdata>
+<iopfile                                              scam_iop="sparticus" >atm/cam/scam/iop/SPARTICUS_4scam.nc</iopfile>
+
+<!-- "IOP: TOGA COARE IOP2 1992 ( 18 Dec. 1992 - 08 Jan. 1993)" -->
+<ncdata             hgrid="ne3np4"    nlev="32"       scam_iop="togaII" >atm/cam/inic/se/CESM2.F2000climo.ne3np4.cam.i.0003-12-01-00000.nc</ncdata>
+<ncdata             hgrid="64x128"    nlev="32"       scam_iop="togaII" >atm/cam/inic/gaus/CESM2.F2000climo.64x128.cam.i.0003-12-01-00000.nc</ncdata>
+<iopfile                                              scam_iop="togaII" >atm/cam/scam/iop/TOGAII_4scam.nc</iopfile>
+
+<!-- "IOP: TWP-ICE 2006 (17 Jan 2006 - 12 Feb 2006)" -->
+<ncdata             hgrid="ne3np4"    nlev="32"       scam_iop="twp06" >atm/cam/inic/se/CESM2.F2000climo.ne3np4.cam.i.0003-01-01-00000.nc</ncdata>
+<ncdata             hgrid="64x128"    nlev="32"       scam_iop="twp06" >atm/cam/inic/gaus/CESM2.F2000climo.64x128.cam.i.0003-01-01-00000.nc</ncdata>
+<iopfile                                              scam_iop="twp06" >atm/cam/scam/iop/TWP06_4scam.nc</iopfile>
+<iradlw                                               scam_iop="twp06" > 1  </iradlw>
+<iradsw                                               scam_iop="twp06" > 1  </iradsw>
+
+<!-- "IOP: CAM Forcing file" -->
+<ncdata            hgrid="ne3np4"    nlev="32"        scam_iop="camfrc"     >atm/cam/inic/se/CESM2.F2000climo.ne3np4.cam.i.0003-06-01-00000.nc</ncdata>
+<ncdata            hgrid="64x128"    nlev="32"        scam_iop="camfrc"     >atm/cam/inic/gaus/CESM2.F2000climo.64x128.cam.i.0003-06-01-00000.nc</ncdata>
+<iopfile                                              scam_iop="camfrc"     >atm/cam/scam/iop/ARM97_4scam.nc</iopfile>
 
 <!-- Eulerian spectral dycore parameters -->
 
@@ -3140,12 +3275,14 @@
 <mpas_time_integration_order  > 2 </mpas_time_integration_order>
 <mpas_dt                      > 1800.0D0 </mpas_dt>
 <mpas_dt hgrid="mpasa120"     >  900.0D0 </mpas_dt>
+<mpas_dt hgrid="mpasa120" waccm_phys="1"> 600.D0 </mpas_dt>
 <mpas_dt hgrid="mpasa60"      >  450.0D0 </mpas_dt>
 <mpas_dt hgrid="mpasa30"      >  225.0D0 </mpas_dt>
 
 <mpas_split_dynamics_transport>.true.</mpas_split_dynamics_transport>
 <mpas_number_of_sub_steps     > 2 </mpas_number_of_sub_steps>
 <mpas_dynamics_split_steps    > 3 </mpas_dynamics_split_steps>
+<mpas_dynamics_split_steps hgrid="mpasa120" waccm_phys="1"> 4 </mpas_dynamics_split_steps>
 <mpas_h_mom_eddy_visc2        > 0.0D0 </mpas_h_mom_eddy_visc2>
 <mpas_h_mom_eddy_visc4        > 0.0D0 </mpas_h_mom_eddy_visc4>
 <mpas_v_mom_eddy_visc2        > 0.0D0 </mpas_v_mom_eddy_visc2>
@@ -3175,12 +3312,17 @@
 <mpas_smagorinsky_coef        > 0.125D0 </mpas_smagorinsky_coef>
 <mpas_mix_full                > .true. </mpas_mix_full>
 <mpas_epssm                   > 0.1D0 </mpas_epssm>
+<mpas_epssm hgrid="mpasa120" waccm_phys="1"> 0.5D0 </mpas_epssm>
 <mpas_smdiv                   > 0.1D0 </mpas_smdiv>
 <mpas_apvm_upwinding          > 0.5D0 </mpas_apvm_upwinding>
+<mpas_apvm_upwinding hgrid="mpasa120" waccm_phys="1"> 0.0D0 </mpas_apvm_upwinding>
 <mpas_h_ScaleWithMesh         > .true. </mpas_h_ScaleWithMesh>
 <mpas_zd                      > 22000.0D0 </mpas_zd>
+<mpas_zd hgrid="mpasa120" waccm_phys="1"> 80000.0D0 </mpas_zd>
 <mpas_xnutr                   > 0.2D0 </mpas_xnutr>
 <mpas_cam_coef                > 0.0D0 </mpas_cam_coef>
+<mpas_cam_coef hgrid="mpasa120" waccm_phys="1"> 0.2D0 </mpas_cam_coef>
+<mpas_cam_damping_levels      > 0     </mpas_cam_damping_levels>
 <mpas_rayleigh_damp_u         > .true. </mpas_rayleigh_damp_u>
 <mpas_rayleigh_damp_u_timescale_days> 5.0 </mpas_rayleigh_damp_u_timescale_days>
 <mpas_number_rayleigh_damp_u_levels> 5 </mpas_number_rayleigh_damp_u_levels>
@@ -3391,4 +3533,5 @@
 <!-- use 2x2.5 degree HEMCO grid for 1.9x2.5 degree simulation -->
 <hemco_grid_xdim hgrid="1.9x2.5">144</hemco_grid_xdim>
 <hemco_grid_ydim hgrid="1.9x2.5">91</hemco_grid_ydim>
+
 </namelist_defaults>

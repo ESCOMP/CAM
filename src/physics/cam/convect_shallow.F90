@@ -13,7 +13,8 @@
    use shr_kind_mod,      only : r8=>shr_kind_r8
    use physconst,         only : cpair, zvir
    use ppgrid,            only : pver, pcols, pverp
-   use zm_conv,           only : zm_conv_evap
+   use zm_conv_evap,      only : zm_conv_evap_run
+   use zm_conv_intr,      only : zmconv_ke, zmconv_ke_lnd,  zmconv_org
    use cam_history,       only : outfld, addfld, horiz_only
    use cam_logfile,       only : iulog
    use phys_control,      only : phys_getopts
@@ -366,7 +367,7 @@
 
    use time_manager,    only : get_nstep
    use wv_saturation,   only : qsat
-   use physconst,       only : latice, latvap, rhoh2o
+   use physconst,       only : latice, latvap, rhoh2o, tmelt, gravit
 
    use spmd_utils, only : iam
    implicit none
@@ -838,7 +839,7 @@
    ! ------------------------------------------------------------------------ !
    ! UW-Shallow Cumulus scheme includes                                       !
    ! evaporation physics inside in it. So when 'shallow_scheme = UW', we must !
-   ! NOT perform below 'zm_conv_evap'.                                        !
+   ! NOT perform below 'zm_conv_evap_run'.                                    !
    ! ------------------------------------------------------------------------ !
 
    if( shallow_scheme .eq. 'Hack' ) then
@@ -856,7 +857,7 @@
 
     lq(1) = .TRUE.
     lq(2:) = .FALSE.
-    call physics_ptend_init(ptend_loc, state1%psetcols, 'zm_conv_evap', ls=.true., lq=lq)
+    call physics_ptend_init(ptend_loc, state1%psetcols, 'zm_conv_evap_run', ls=.true., lq=lq)
 
     call pbuf_get_field(pbuf, sh_flxprc_idx, flxprec    )
     call pbuf_get_field(pbuf, sh_flxsnw_idx, flxsnow    )
@@ -867,17 +868,24 @@
     sh_cldliq(:ncol,:) = 0._r8
     sh_cldice(:ncol,:) = 0._r8
 
-    call zm_conv_evap( state1%ncol, state1%lchnk,                                    &
-                       state1%t, state1%pmid, state1%pdel, state1%q(:pcols,:pver,1), &
-		       landfracdum, &
-                       ptend_loc%s, tend_s_snwprd, tend_s_snwevmlt,                  &
-                       ptend_loc%q(:pcols,:pver,1),                                  &
-                       rprdsh, cld, ztodt,                                           &
-                       precc, snow, ntprprd, ntsnprd , flxprec, flxsnow )
+    !REMOVECAM - no longer need these when CAM is retired and pcols no longer exists
+    tend_s_snwprd(:,:) = 0._r8
+    tend_s_snwevmlt(:,:) = 0._r8
+    snow(:) = 0._r8
+    !REMOVECAM_END
 
-   ! ------------------------------------------ !
-   ! record history variables from zm_conv_evap !
-   ! ------------------------------------------ !
+    call zm_conv_evap_run(state1%ncol, pver, pverp, &
+         gravit, latice, latvap, tmelt, &
+         cpair, zmconv_ke, zmconv_ke_lnd, zmconv_org, &
+         state1%t(:ncol,:),state1%pmid(:ncol,:),state1%pdel(:ncol,:),state1%q(:ncol,:pver,1), &
+         landfracdum(:ncol), &
+         ptend_loc%s(:ncol,:), tend_s_snwprd(:ncol,:), tend_s_snwevmlt(:ncol,:), ptend_loc%q(:ncol,:pver,1), &
+         rprdsh(:ncol,:), cld(:ncol,:), ztodt, &
+         precc(:ncol), snow(:ncol), ntprprd(:ncol,:), ntsnprd(:ncol,:), flxprec(:ncol,:), flxsnow(:ncol,:) )
+
+   ! ---------------------------------------------- !
+   ! record history variables from zm_conv_evap_run !
+   ! ---------------------------------------------- !
 
    evapcsh(:ncol,:pver) = ptend_loc%q(:ncol,:pver,1)
 

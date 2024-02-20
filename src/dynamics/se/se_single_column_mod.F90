@@ -56,7 +56,7 @@ subroutine scm_setinitial(elem)
   tl_f = timelevel%n0
   call TimeLevel_Qdp(timelevel, qsplit, tl_fqdp)
 
-  if (.not. use_camiop .and. get_nstep() .eq. 0) then
+  if (.not. use_camiop .and. get_nstep()  ==  0) then
     call cnst_get_ind('NUMLIQ', inumliq, abort=.false.)
     call cnst_get_ind('NUMICE', inumice, abort=.false.)
     call cnst_get_ind('CLDLIQ', icldliq)
@@ -65,7 +65,7 @@ subroutine scm_setinitial(elem)
     ! Find level where tobs is no longer zero
     thelev=1
     do k=1, NLEV
-       if (tobs(k) .ne. 0) then
+       if (tobs(k)  /=  0) then
           thelev=k
           go to 1000
        endif
@@ -73,7 +73,7 @@ subroutine scm_setinitial(elem)
 
 1000 continue
 
-    if (get_nstep() .le. 1) then
+    if (get_nstep()  <=  1) then
        do k=1,thelev-1
           tobs(k)=elem(ie_scm)%state%T(i_scm,j_scm,k,tl_f)
           qobs(k)=elem(ie_scm)%state%qdp(i_scm,j_scm,k,1,tl_fqdp)/elem(ie_scm)%state%dp3d(i_scm,j_scm,k,tl_f)
@@ -83,7 +83,7 @@ subroutine scm_setinitial(elem)
        qobs(:)=elem(ie_scm)%state%qdp(i_scm,j_scm,:,1,tl_fqdp)/elem(ie_scm)%state%dp3d(i_scm,j_scm,:,tl_f)
     endif
 
-    if (get_nstep() .eq. 0) then
+    if (get_nstep()  ==  0) then
        do k=thelev, NLEV
           if (have_t) elem(ie_scm)%state%T(i_scm,j_scm,k,tl_f)=tobs(k)
           if (have_q) elem(ie_scm)%state%qdp(i_scm,j_scm,k,1,tl_fqdp)=qobs(k)*elem(ie_scm)%state%dp3d(i_scm,j_scm,k,tl_f)
@@ -192,8 +192,8 @@ subroutine apply_SC_forcing(elem,hvcoord,tl,n,t_before_advance)
     ! Nudge to observations if desired, for T & Q only if in SCM mode
     if (iop_nudge_tq ) then
        call advance_iop_nudging(dt,elem(ie_scm)%state%psdry(i_scm,j_scm),& ! In
-            t_update,q_update(:,1), hvcoord, &                   ! Inn
-            t_update,q_update(:,1),relaxt,relaxq)                ! Out
+            t_update,q_update,u_update,v_update, hvcoord, &                ! Inout
+            relaxt,relaxq)                                                 ! Out
     endif
 
     if (use_3dfrc) then    ! vertical remap of dynamics not run need to update state%dp3d using new psdry
@@ -321,15 +321,15 @@ subroutine apply_SC_forcing(elem,hvcoord,tl,n,t_before_advance)
             do i=1, np
                testlat=elem(ie)%spherep(i,j)%lat * rad2deg
                testlon=elem(ie)%spherep(i,j)%lon * rad2deg
-               if (testlon .lt. 0._r8) testlon=testlon+360._r8
+               if (testlon  <  0._r8) testlon=testlon+360._r8
                testval=abs(scmlat-testlat)+abs(scmposlon-testlon)
-               if (testval .lt. minpoint) then
+               if (testval  <  minpoint) then
                   ie_scm=ie
                   indx_scm=indx
                   i_scm=i
                   j_scm=j
                   minpoint=testval
-                  if (minpoint .lt. 1.e-7_r8) minpoint=0._r8
+                  if (minpoint  <  1.e-7_r8) minpoint=0._r8
                endif
                indx=indx+1
             enddo
