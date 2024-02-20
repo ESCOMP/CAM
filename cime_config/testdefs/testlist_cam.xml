@@ -1805,7 +1805,7 @@
       <machine name="derecho" compiler="intel" category="aux_cam"/>
     </machines>
     <options>
-      <option name="wallclock">00:30:00</option>
+      <option name="wallclock">00:20:00</option>
       <option name="comment">CAM7 dev low top ~40 km w/ RRTMGP</option>
     </options>
   </test>
@@ -2785,7 +2785,7 @@
       <machine name="derecho" compiler="intel" category="aux_cam"/>
     </machines>
     <options>
-      <option name="wallclock">00:40:00</option>
+      <option name="wallclock">00:10:00</option>
       <option name="comment">WACCM w/ RRTMGP</option>
     </options>
   </test>
