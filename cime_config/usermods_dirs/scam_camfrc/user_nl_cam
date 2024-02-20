@@ -1,0 +1,10 @@
+mfilt=2088
+nhtfrq=1
+co2vmr=368.9e-6
+scm_use_obs_uv = .true.
+scm_relaxation         = .false.
+scm_relax_bot_p              = 105000.
+scm_relax_top_p        = 200.
+scm_relax_linear             = .true.
+scm_relax_tau_bot_sec                = 864000.
+scm_relax_tau_top_sec                = 172800.

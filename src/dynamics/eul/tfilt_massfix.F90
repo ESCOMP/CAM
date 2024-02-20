@@ -38,7 +38,7 @@ subroutine tfilt_massfixrun (ztodt,         lat,    u3m1,   u3,     &
 !-----------------------------------------------------------------------
    use shr_kind_mod,    only: r8 => shr_kind_r8
    use cam_control_mod, only: ideal_phys, tj2016_phys
-   use cam_history,     only: outfld
+   use cam_history,     only: outfld, write_camiop
    use eul_control_mod, only: fixmas,eps
    use pmgrid,          only: plon, plev, plevp, plat
    use commap,          only: clat
@@ -51,10 +51,9 @@ subroutine tfilt_massfixrun (ztodt,         lat,    u3m1,   u3,     &
    use phys_control,    only: phys_getopts
    use qneg_module,     only: qneg3
 
-#if ( defined BFB_CAM_SCAM_IOP )
    use iop
    use constituents,    only: cnst_get_ind, cnst_name
-#endif
+
    implicit none
 
 !
@@ -139,12 +138,10 @@ subroutine tfilt_massfixrun (ztodt,         lat,    u3m1,   u3,     &
 !   real(r8) engk                   ! Kinetic   energy integral
 !   real(r8) engp                   ! Potential energy integral
    integer i, k, m,j,ixcldliq,ixcldice,ixnumliq,ixnumice
-#if ( defined BFB_CAM_SCAM_IOP )
    real(r8) :: u3forecast(plon,plev)
    real(r8) :: v3forecast(plon,plev)
    real(r8) :: t3forecast(plon,plev),delta_t3(plon,plev)
    real(r8) :: q3forecast(plon,plev,pcnst),delta_q3(plon,plev,pcnst)
-#endif
    real(r8) fixmas_plon(plon)
    real(r8) beta_plon(plon)
    real(r8) clat_plon(plon)
@@ -152,64 +149,63 @@ subroutine tfilt_massfixrun (ztodt,         lat,    u3m1,   u3,     &
 
 !-----------------------------------------------------------------------
    nstep = get_nstep()
-#if ( defined BFB_CAM_SCAM_IOP )
-!
-! Calculate 3d dynamics term
-!
-   do k=1,plev
-      do i=1,nlon
-         divt3dsav(i,k,lat)=(t3(i,k)-tm2(i,k))/ztodt -t2sav(i,k,lat)
-         divu3dsav(i,k,lat)=(u3(i,k)-um2(i,k))/ztodt -fusav(i,k,lat)
-         divv3dsav(i,k,lat)=(v3(i,k)-vm2(i,k))/ztodt -fvsav(i,k,lat)
-         t3forecast(i,k)=tm2(i,k)+ztodt*t2sav(i,k,lat)+ztodt*divt3dsav(i,k,lat)
-         u3forecast(i,k)=um2(i,k)+ztodt*fusav(i,k,lat)+ztodt*divu3dsav(i,k,lat)
-         v3forecast(i,k)=vm2(i,k)+ztodt*fvsav(i,k,lat)+ztodt*divv3dsav(i,k,lat)
-      end do
-   end do
-   do i=1,nlon
-      do m=1,pcnst
-         do k=1,plev
-            divq3dsav(i,k,m,lat)= (qfcst(i,k,m)-qminus(i,k,m))/ztodt
-            q3forecast(i,k,m)=qminus(i,k,m)+divq3dsav(i,k,m,lat)*ztodt
+   if (write_camiop) then
+      !
+      ! Calculate 3d dynamics term
+      !
+      do k=1,plev
+         do i=1,nlon
+            divt3dsav(i,k,lat)=(t3(i,k)-tm2(i,k))/ztodt -t2sav(i,k,lat)
+            divu3dsav(i,k,lat)=(u3(i,k)-um2(i,k))/ztodt -fusav(i,k,lat)
+            divv3dsav(i,k,lat)=(v3(i,k)-vm2(i,k))/ztodt -fvsav(i,k,lat)
+            t3forecast(i,k)=tm2(i,k)+ztodt*t2sav(i,k,lat)+ztodt*divt3dsav(i,k,lat)
+            u3forecast(i,k)=um2(i,k)+ztodt*fusav(i,k,lat)+ztodt*divu3dsav(i,k,lat)
+            v3forecast(i,k)=vm2(i,k)+ztodt*fvsav(i,k,lat)+ztodt*divv3dsav(i,k,lat)
          end do
       end do
-   end do
+      do i=1,nlon
+         do m=1,pcnst
+            do k=1,plev
+               divq3dsav(i,k,m,lat)= (qfcst(i,k,m)-qminus(i,k,m))/ztodt
+               q3forecast(i,k,m)=qminus(i,k,m)+divq3dsav(i,k,m,lat)*ztodt
+            end do
+         end do
+      end do
 
 
-   q3(:nlon,:,:)=q3forecast(:nlon,:,:)
-   t3(:nlon,:)=t3forecast(:nlon,:)
-   qfcst(:nlon,:,:)=q3(:nlon,:,:)
+      q3(:nlon,:,:)=q3forecast(:nlon,:,:)
+      t3(:nlon,:)=t3forecast(:nlon,:)
+      qfcst(:nlon,:,:)=q3(:nlon,:,:)
 
-!
-! outflds for iop history tape - to get bit for bit with scam
-! the n-1 values are put out.  After the fields are written out
-! the current time level of info will be buffered for output next
-! timestep
-!
-   call outfld('t',t3  ,plon   ,lat     )
-   call outfld('q',q3  ,plon   ,lat     )
-   call outfld('Ps',ps ,plon   ,lat     )
-   call outfld('u',u3  ,plon   ,lat     )
-   call outfld('v',v3  ,plon   ,lat     )
-!
-! read single values into plon arrays for output to history tape
-! it would be nice if history tape supported 1 dimensional array variables
-!
-   fixmas_plon(:)=fixmas
-   beta_plon(:)=beta
-   clat_plon(:)=clat(lat)
+      !
+      ! outflds for iop history tape - to get bit for bit with scam
+      ! the n-1 values are put out.  After the fields are written out
+      ! the current time level of info will be buffered for output next
+      ! timestep
+      !
+      call outfld('t',t3  ,plon   ,lat     )
+      call outfld('q',q3  ,plon   ,lat     )
+      call outfld('Ps',ps ,plon   ,lat     )
+      call outfld('u',u3  ,plon   ,lat     )
+      call outfld('v',v3  ,plon   ,lat     )
+      !
+      ! read single values into plon arrays for output to history tape
+      ! it would be nice if history tape supported 1 dimensional array variables
+      !
+      fixmas_plon(:)=fixmas
+      beta_plon(:)=beta
+      clat_plon(:)=clat(lat)
 
-   call outfld('fixmas',fixmas_plon,plon   ,lat     )
-   call outfld('beta',beta_plon  ,plon   ,lat     )
-   call outfld('CLAT    ',clat_plon  ,plon   ,lat     )
-   call outfld('divT3d',divt3dsav(1,1,lat)  ,plon   ,lat     )
-   call outfld('divU3d',divu3dsav(1,1,lat)  ,plon   ,lat     )
-   call outfld('divV3d',divv3dsav(1,1,lat)  ,plon   ,lat     )
-   do m =1,pcnst
-      call outfld(trim(cnst_name(m))//'_dten',divq3dsav(1,1,m,lat)  ,plon   ,lat     )
-   end do
-#endif
-
+      call outfld('fixmas',fixmas_plon,plon   ,lat     )
+      call outfld('beta',beta_plon  ,plon   ,lat     )
+      call outfld('CLAT    ',clat_plon  ,plon   ,lat     )
+      call outfld('divT3d',divt3dsav(1,1,lat)  ,plon   ,lat     )
+      call outfld('divU3d',divu3dsav(1,1,lat)  ,plon   ,lat     )
+      call outfld('divV3d',divv3dsav(1,1,lat)  ,plon   ,lat     )
+      do m =1,pcnst
+         call outfld(trim(cnst_name(m))//'_dten',divq3dsav(1,1,m,lat)  ,plon   ,lat     )
+      end do
+   end if
 
    coslat = cos(clat(lat))
    do i=1,nlon
@@ -291,9 +287,9 @@ subroutine tfilt_massfixrun (ztodt,         lat,    u3m1,   u3,     &
                dqfx3(i,k,m) = dqfxcam(i,k,m)
             else
                dqfx3(i,k,m) = alpha(m)*etamid(k)*abs(qfcst(i,k,m) - qminus(i,k,m))
-#if ( defined BFB_CAM_SCAM_IOP )
-               dqfx3sav(i,k,m,lat) = dqfx3(i,k,m)
-#endif
+               if (write_camiop) then
+                  dqfx3sav(i,k,m,lat) = dqfx3(i,k,m)
+               endif
             endif
          end do
          if (lfixlim) then
@@ -333,14 +329,13 @@ subroutine tfilt_massfixrun (ztodt,         lat,    u3m1,   u3,     &
       end do ! i
    end do ! k
 
-
-#if ( defined BFB_CAM_SCAM_IOP )
-   do m=1,pcnst
-      alpha_plon(:)= alpha(m)
-      call outfld(trim(cnst_name(m))//'_alph',alpha_plon ,plon   ,lat     )
-      call outfld(trim(cnst_name(m))//'_dqfx',dqfx3sav(1,1,m,lat) ,plon   ,lat     )
-   end do
-#endif
+   if (write_camiop) then
+      do m=1,pcnst
+         alpha_plon(:)= alpha(m)
+         call outfld(trim(cnst_name(m))//'_alph',alpha_plon ,plon   ,lat     )
+         call outfld(trim(cnst_name(m))//'_dqfx',dqfx3sav(1,1,m,lat) ,plon   ,lat     )
+      end do
+   end if
 !
 ! Check for and correct invalid constituents
 !

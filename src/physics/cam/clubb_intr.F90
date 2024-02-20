@@ -35,6 +35,7 @@ module clubb_intr
   use clubb_mf,            only: do_clubb_mf, do_clubb_mf_diag
   use cloud_fraction,      only: dp1, dp2
 #endif
+  use scamMOD,            only: single_column,scm_clubb_iop_name,scm_cambfb_mode
 
   implicit none
 #ifdef CLUBB_SGS
@@ -303,7 +304,7 @@ module clubb_intr
     clubb_l_mono_flux_lim_um,           & ! Flag to turn on monotonic flux limiter for um
     clubb_l_mono_flux_lim_vm,           & ! Flag to turn on monotonic flux limiter for vm
     clubb_l_mono_flux_lim_spikefix,     & ! Flag to implement monotonic flux limiter code that
-                                          ! eliminates spurious drying tendencies at model top  
+                                          ! eliminates spurious drying tendencies at model top
     clubb_l_intr_sfc_flux_smooth = .false.! Add a locally calculated roughness to upwp and vpwp sfc fluxes
 
 !  Constant parameters
@@ -466,7 +467,7 @@ module clubb_intr
     ! Register physics buffer fields and constituents !
     !------------------------------------------------ !
 
-    !  Add CLUBB fields to pbuf 
+    !  Add CLUBB fields to pbuf
     use physics_buffer,  only: pbuf_add_field, dtype_r8, dtype_i4, dyn_time_lvls
     use subcol_utils,    only: subcol_get_scheme
 
@@ -1953,7 +1954,6 @@ end subroutine clubb_init_cnst
     use time_manager,   only: get_nstep, is_first_restart_step
 #ifdef CLUBB_SGS
     use hb_diff,                   only: pblintd
-    use scamMOD,                   only: single_column,scm_clubb_iop_name
     use clubb_api_module, only: &
       nparams, &
       setup_parameters_api, &
@@ -2583,16 +2583,8 @@ end subroutine clubb_init_cnst
     ! Define the grid box size.  CLUBB needs this information to determine what
     !  the maximum length scale should be.  This depends on the column for
     !  variable mesh grids and lat-lon grids
-    if (single_column) then
-      ! If single column specify grid box size to be something
-      !  similar to a GCM run
-      grid_dx(:) = 100000._r8
-      grid_dy(:) = 100000._r8
-    else
 
-      call grid_size(state1, grid_dx, grid_dy)
-
-    end if
+    call grid_size(state1, grid_dx, grid_dy)
 
     if (clubb_do_icesuper) then
 
@@ -2891,7 +2883,7 @@ end subroutine clubb_init_cnst
     ! This section of code block is NOT called in       !
     ! global simulations                                !
     ! ------------------------------------------------- !
-    if (single_column) then
+    if (single_column .and. .not. scm_cambfb_mode) then
 
       !  Initialize zo if variable ustar is used
       if (cam_in%landfrac(1) >= 0.5_r8) then
@@ -4083,7 +4075,7 @@ end subroutine clubb_init_cnst
       enddo
     enddo
 
-    if (single_column) then
+    if (single_column .and. .not. scm_cambfb_mode) then
       if (trim(scm_clubb_iop_name)  ==  'ATEX_48hr'       .or. &
           trim(scm_clubb_iop_name)  ==  'BOMEX_5day'      .or. &
           trim(scm_clubb_iop_name)  ==  'DYCOMSrf01_4day' .or. &

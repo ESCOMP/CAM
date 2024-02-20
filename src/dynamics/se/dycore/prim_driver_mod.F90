@@ -62,7 +62,7 @@ contains
 !   variables used to calculate CFL
     real (kind=r8) :: dtnu            ! timestep*viscosity parameter
     real (kind=r8) :: dt_dyn_vis      ! viscosity timestep used in dynamics
-    real (kind=r8) :: dt_dyn_del2_sponge, dt_remap 
+    real (kind=r8) :: dt_dyn_del2_sponge, dt_remap
     real (kind=r8) :: dt_tracer_vis      ! viscosity timestep used in tracers
 
     real (kind=r8) :: dp,dp0,T1,T0,pmid_ref(np,np)
@@ -163,7 +163,7 @@ contains
        do k=1,nlev
          pmid_ref =hvcoord%hyam(k)*hvcoord%ps0 + hvcoord%hybm(k)*ps_ref(:,:,ie)
          dp0 = ( hvcoord%hyai(k+1) - hvcoord%hyai(k) )*hvcoord%ps0 + &
-               ( hvcoord%hybi(k+1) - hvcoord%hybi(k) )*hvcoord%ps0    
+               ( hvcoord%hybi(k+1) - hvcoord%hybi(k) )*hvcoord%ps0
          if (hvcoord%hybm(k)>0) then
            elem(ie)%derived%T_ref(:,:,k)    = T0+T1*(pmid_ref/hvcoord%ps0)**cappa
            !
@@ -184,7 +184,7 @@ contains
 !=======================================================================================================!
 
 
-  subroutine prim_run_subcycle(elem, fvm, hybrid,nets,nete, dt, tl, hvcoord,nsubstep, omega_cn)
+  subroutine prim_run_subcycle(elem, fvm, hybrid,nets,nete, dt, tl, hvcoord,nsubstep, single_column, omega_cn)
 !
 !   advance all variables (u,v,T,ps,Q,C) from time t to t + dt_q
 !
@@ -238,7 +238,8 @@ contains
     real(kind=r8), intent(in)        :: dt  ! "timestep dependent" timestep
     type (TimeLevel_t), intent(inout):: tl
     integer, intent(in)              :: nsubstep  ! nsubstep = 1 .. nsplit
-    real (kind=r8)    , intent(inout):: omega_cn(2,nets:nete) !min and max of vertical Courant number    
+    logical,              intent(in) :: single_column
+    real (kind=r8)    , intent(inout):: omega_cn(2,nets:nete) !min and max of vertical Courant number
 
     real(kind=r8)   :: dt_q, dt_remap, dt_phys
     integer         :: ie, q,k,n0_qdp,np1_qdp,r, nstep_end,region_num_threads,i,j
@@ -266,7 +267,7 @@ contains
     !
     ! initialize variables for computing vertical Courant number
     !
-    if (variable_nsplit.or.compute_diagnostics) then    
+    if (variable_nsplit.or.compute_diagnostics) then
       if (nsubstep==1) then
         do ie=nets,nete
           omega_cn(1,ie) = 0.0_r8
@@ -284,13 +285,20 @@ contains
 
     call tot_energy_dyn(elem,fvm,nets,nete,tl%n0,n0_qdp,'dAF')
     call ApplyCAMForcing(elem,fvm,tl%n0,n0_qdp,dt_remap,dt_phys,nets,nete,nsubstep)
-    call tot_energy_dyn(elem,fvm,nets,nete,tl%n0,n0_qdp,'dBD')    
+    call tot_energy_dyn(elem,fvm,nets,nete,tl%n0,n0_qdp,'dBD')
     do r=1,rsplit
       if (r.ne.1) call TimeLevel_update(tl,"leapfrog")
-      call prim_step(elem, fvm, hybrid,nets,nete, dt, tl, hvcoord,r)
+      if (single_column) then
+         ! Single Column Case
+         ! Loop over rsplit vertically lagrangian timesiteps
+         call prim_step_scm(elem, fvm, hybrid,nets,nete, dt, tl, hvcoord,r)
+      else
+         ! Loop over rsplit vertically lagrangian timesiteps
+         call prim_step(elem, fvm, hybrid,nets,nete, dt, tl, hvcoord,r)
+      end if
     enddo
 
-    
+
     ! defer final timelevel update until after remap and diagnostics
     call TimeLevel_Qdp( tl, qsplit, n0_qdp, np1_qdp)
 
@@ -300,12 +308,12 @@ contains
     !  always for tracers
     !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
-    call tot_energy_dyn(elem,fvm,nets,nete,tl%np1,np1_qdp,'dAD')    
+    call tot_energy_dyn(elem,fvm,nets,nete,tl%np1,np1_qdp,'dAD')
 
     if (variable_nsplit.or.compute_diagnostics) then
       !
       ! initialize variables for computing vertical Courant number
-      !      
+      !
       do ie=nets,nete
         dp_end(:,:,:,ie) = elem(ie)%state%dp3d(:,:,:,tl%np1)
       end do
@@ -319,8 +327,8 @@ contains
     !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
     call tot_energy_dyn(elem,fvm,nets,nete,tl%np1,np1_qdp,'dAR')
 
-    if (nsubstep==nsplit) then
-      call compute_omega(hybrid,tl%np1,np1_qdp,elem,deriv,nets,nete,dt_remap,hvcoord)           
+    if (nsubstep==nsplit.and. .not. single_column) then
+      call compute_omega(hybrid,tl%np1,np1_qdp,elem,deriv,nets,nete,dt_remap,hvcoord)
     end if
 
     ! now we have:
@@ -421,8 +429,8 @@ contains
 
 #ifdef waccm_debug
   use cam_history, only: outfld
-#endif  
-    
+#endif
+
 
     type (element_t) ,  intent(inout) :: elem(:)
     type(fvm_struct),   intent(inout) :: fvm(:)
@@ -540,20 +548,20 @@ contains
     if (qsize > 0) then
 
       call t_startf('prim_advec_tracers_remap')
-      if(use_cslam) then 
+      if(use_cslam) then
         ! Deactivate threading in the tracer dimension if this is a CSLAM run
         region_num_threads = 1
       else
         region_num_threads=tracer_num_threads
-      endif  
+      endif
       call omp_set_nested(.true.)
       !$OMP PARALLEL NUM_THREADS(region_num_threads), DEFAULT(SHARED), PRIVATE(hybridnew)
-      if(use_cslam) then 
+      if(use_cslam) then
         ! Deactivate threading in the tracer dimension if this is a CSLAM run
         hybridnew = config_thread_region(hybrid,'serial')
       else
         hybridnew = config_thread_region(hybrid,'tracer')
-      endif  
+      endif
       call Prim_Advec_Tracers_remap(elem, deriv,hvcoord,hybridnew,dt_q,tl,nets,nete)
       !$OMP END PARALLEL
       call omp_set_nested(.false.)
@@ -566,7 +574,7 @@ contains
       !
       ! FVM transport
       !
-      if ((mod(rstep,fvm_supercycling) == 0).and.(mod(rstep,fvm_supercycling_jet) == 0)) then        
+      if ((mod(rstep,fvm_supercycling) == 0).and.(mod(rstep,fvm_supercycling_jet) == 0)) then
 
 !        call omp_set_nested(.true.)
 !        !$OMP PARALLEL NUM_THREADS(vert_num_threads), DEFAULT(SHARED), PRIVATE(hybridnew2,kbeg,kend)
@@ -601,7 +609,7 @@ contains
         !
         call Prim_Advec_Tracers_fvm(elem,fvm,hvcoord,hybrid,&
              dt_q,tl,nets,nete,ghostBufQnhcJet_h,ghostBufQ1_h, ghostBufFluxJet_h,kmin_jet,kmax_jet)
-      end if       
+      end if
 
 #ifdef waccm_debug
       do ie=nets,nete
@@ -612,8 +620,81 @@ contains
     endif
 
    end subroutine prim_step
+   subroutine prim_step_scm(elem, fvm, hybrid,nets,nete, dt, tl, hvcoord, rstep)
+     !
+     !   prim_step version for single column model (SCM)
+     !   Here we simply want to compute the floating level tendency
+     !   based on the prescribed large scale vertical velocity
+     !   Take qsplit dynamics steps and one tracer step
+     !   for vertically lagrangian option, this subroutine does only
+     !   the horizontal step
+     !
+     !   input:
+     !       tl%nm1   not used
+     !       tl%n0    data at time t
+     !       tl%np1   new values at t+dt_q
+     !
+     !   then we update timelevel pointers:
+     !       tl%nm1 = tl%n0
+     !       tl%n0  = tl%np1
+     !   so that:
+     !       tl%nm1   tracers:  t    dynamics:  t+(qsplit-1)*dt
+     !       tl%n0    time t + dt_q
+     !
+    use hybvcoord_mod,          only: hvcoord_t
+    use se_dyn_time_mod,        only: TimeLevel_t, timelevel_update
+    use control_mod,            only: statefreq, qsplit, nu_p
+    use prim_advection_mod,     only: deriv
+    use hybrid_mod,             only: config_thread_region, get_loop_ranges
 
+    type (element_t) ,  intent(inout) :: elem(:)
+    type(fvm_struct),   intent(inout) :: fvm(:)
+    type (hybrid_t),    intent(in)    :: hybrid  ! distributed parallel structure (shared)
+    type (hvcoord_t),   intent(in)    :: hvcoord         ! hybrid vertical coordinate struct
+    integer,            intent(in)    :: nets  ! starting thread element number (private)
+    integer,            intent(in)    :: nete  ! ending thread element number   (private)
+    real(kind=r8),      intent(in)    :: dt  ! "timestep dependent" timestep
+    type (TimeLevel_t), intent(inout) :: tl
+    integer, intent(in)               :: rstep ! vertical remap subcycling step
 
+    integer        :: ie,n
+
+    ! ===============
+    ! initialize mean flux accumulation variables and save some variables at n0
+    ! for use by advection
+    ! ===============
+    do ie=nets,nete
+      elem(ie)%derived%vn0=0              ! mean horizontal mass flux
+      if (nu_p>0) then
+         elem(ie)%derived%dpdiss_ave=0
+         elem(ie)%derived%dpdiss_biharmonic=0
+      endif
+      elem(ie)%derived%dp(:,:,:)=elem(ie)%state%dp3d(:,:,:,tl%n0)
+    enddo
+
+    ! ===============
+    ! Dynamical Step
+    ! ===============
+
+    call t_startf('set_prescribed_scm')
+
+    call set_prescribed_scm(elem, fvm, deriv, hvcoord,   &
+         hybrid, dt, tl, nets, nete)
+
+    call t_stopf('set_prescribed_scm')
+
+    do n=2,qsplit
+       call TimeLevel_update(tl,"leapfrog")
+
+       call t_startf('set_prescribed_scm')
+
+       call set_prescribed_scm(elem, fvm, deriv, hvcoord,   &
+            hybrid, dt, tl, nets, nete)
+
+       call t_stopf('set_prescribed_scm')
+  enddo
+
+  end subroutine prim_step_scm
 !=======================================================================================================!
 
 
@@ -717,5 +798,62 @@ contains
       global_ave_ps_inic = global_integral(elem, tmp(:,:,nets:nete),hybrid,np,nets,nete)
       deallocate(tmp)
     end subroutine get_global_ave_surface_pressure
+
+    subroutine set_prescribed_scm(elem, fvm, deriv, hvcoord,   &
+         hybrid, dt, tl, nets, nete)
+      use control_mod,       only: tstep_type, qsplit
+      use derivative_mod,    only: derivative_t
+      use dimensions_mod,    only: np, nlev
+      use element_mod,       only: element_t
+      use hybvcoord_mod,     only: hvcoord_t
+      use hybrid_mod,        only: hybrid_t
+      use se_dyn_time_mod,   only: TimeLevel_t,  timelevel_qdp
+      use fvm_control_volume_mod, only: fvm_struct
+      implicit none
+
+      type (element_t), intent(inout), target   :: elem(:)
+      type(fvm_struct)     , intent(inout) :: fvm(:)
+      type (derivative_t)  , intent(in) :: deriv
+      type (hvcoord_t)                  :: hvcoord
+      type (hybrid_t)      , intent(in) :: hybrid
+      real (kind=r8), intent(in) :: dt
+      type (TimeLevel_t)   , intent(in) :: tl
+      integer              , intent(in) :: nets
+      integer              , intent(in) :: nete
+
+      ! Local
+      integer        :: ie,nm1,n0,np1,k,qn0,qnp1,p
+      real(kind=r8)  :: eta_dot_dpdn(np,np,nlev+1)
+
+
+      nm1   = tl%nm1
+      n0    = tl%n0
+      np1   = tl%np1
+
+      call TimeLevel_Qdp(tl, qsplit, qn0, qnp1)  ! compute current Qdp() timelevel
+
+      do ie=nets,nete
+         do k=1,nlev
+            eta_dot_dpdn(:,:,k)=elem(ie)%derived%omega(:,:,k)
+         enddo
+         eta_dot_dpdn(:,:,nlev+1) = eta_dot_dpdn(:,:,nlev)
+
+         do k=1,nlev
+            elem(ie)%state%dp3d(:,:,k,np1) = elem(ie)%state%dp3d(:,:,k,n0) &
+                 + dt*(eta_dot_dpdn(:,:,k+1) - eta_dot_dpdn(:,:,k))
+         enddo
+
+         do k=1,nlev
+            elem(ie)%state%T(:,:,k,np1) = elem(ie)%state%T(:,:,k,n0)
+         enddo
+
+         do p=1,qsize
+            do k=1,nlev
+               elem(ie)%state%Qdp(:,:,k,p,qnp1) = elem(ie)%state%Qdp(:,:,k,p,qn0) &
+                    + elem(ie)%state%Qdp(:,:,k,p,qn0)/elem(ie)%state%dp3d(:,:,k,n0)*dt*(eta_dot_dpdn(:,:,k+1) - eta_dot_dpdn(:,:,k))
+            enddo
+         enddo
+      enddo
+    end subroutine set_prescribed_scm
 
 end module prim_driver_mod
