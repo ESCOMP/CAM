@@ -855,18 +855,21 @@ contains
     ! low level, so init it early. Must at least do this before radiation.
     call wv_sat_init
 
+    ! solar irradiance data modules
+    call solar_data_init()
+
     ! CAM3 prescribed aerosols
     if (cam3_aero_data_on) call cam3_aero_data_init(phys_state)
 
     ! Initialize rad constituents and their properties
     call rad_cnst_init()
+
+    call radiation_init(pbuf2d)
+
     call aer_rad_props_init()
 
     ! initialize carma
     call carma_init()
-
-    ! solar irradiance data modules
-    call solar_data_init()
 
     ! Prognostic chemistry.
     call chem_init(phys_state,pbuf2d)
@@ -905,8 +908,6 @@ contains
           call waccmx_phys_ion_elec_temp_init(pbuf2d)
        endif
     endif
-
-    call radiation_init(pbuf2d)
 
     call cloud_diagnostics_init()
 

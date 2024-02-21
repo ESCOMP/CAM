@@ -103,7 +103,7 @@ OPTIONS
      -prog_species <list>Comma-separate list of prognostic mozart species packages.
                         Currently available: DST,SSLT,SO4,GHG,OC,BC,CARBON16
      -psubcols <n>      Maximum number of sub-columns in a run - set to 1 if not using sub-columns (default)
-     -rad <name>        Specify the radiation package [rrtmg | camrt]
+     -rad <name>        Specify the radiation package [rrtmg | rrtmgp | rrtmgp_gpu | camrt]
      -silhs             Switch on SILHS.
      -spcam_clubb_sgs   Turn on the SPCAM version of CLUBB
      -spcam_nx <n>      SPCAM x-grid. - defaults to 4 (note the CRM requires spcam_nx to be greater than or equal to 4)
@@ -1069,8 +1069,16 @@ elsif ($phys_pkg =~ m/^cam[56]$|^cam_dev$|^spcam_m2005$/) {
     $rad_pkg = 'rrtmg';
 }
 # Allow the user to override the default via the commandline.
+my $use_rrtmgp_gpu = 0;
 if (defined $opts{'rad'}) {
     $rad_pkg = lc($opts{'rad'});
+    # If the radiation package is set to rrtmgp_gpu then will add the gpu code version
+    # (openmp and openacc) to the Filepath file, but strip off the "_gpu" when setting
+    # the radiation package name in the config_cache file.
+    if ($rad_pkg eq 'rrtmgp_gpu') {
+        $use_rrtmgp_gpu = 1;
+        $rad_pkg = 'rrtmgp';
+    }
 }
 
 # consistency checks...
@@ -1083,12 +1091,17 @@ if ($rad_pkg eq 'camrt') {
             "                 with aerosol package $chem_pkg\n";
     }
 }
-elsif ($rad_pkg eq 'rrtmg') {
+elsif ($rad_pkg =~ m/rrtmg/) {
 
     # The rrtmg package doesn't work with the CAM3 prescribed aerosols
     if ($phys_pkg eq 'cam3') {
         die "configure ERROR: radiation package: $rad_pkg is not compatible\n".
             "                 with physics package $phys_pkg\n";
+    }
+
+    # RRTMGP not currently working with CARMA
+    if ($rad_pkg eq 'rrtmgp' and $carma_pkg ne 'none') {
+        die "configure ERROR: The CARMA microphysics package does not currently work with RRTMGP\n";
     }
 }
 
@@ -1125,7 +1138,7 @@ if ($phys_pkg eq 'spcam_sam1mom') {
 }
 
 if ($phys_pkg eq 'spcam_m2005') {
-   if ($rad_pkg ne 'rrtmg') {
+   if ($rad_pkg !~ m/rrtmg/) {
         die "configure ERROR: radiation package: $rad_pkg is not compatible\n".
             "                 with m2005 -- it should be rrtmg\n";
   }
@@ -2230,6 +2243,19 @@ sub write_filepath
     }
     elsif ($rad eq 'camrt') {
         print $fh "$camsrcdir/src/physics/camrt\n";
+    }
+    elsif ($rad eq 'rrtmgp') {
+        print $fh "$camsrcdir/src/physics/rrtmgp\n";
+        print $fh "$camsrcdir/src/physics/rrtmgp/ext/extensions\n";
+        print $fh "$camsrcdir/src/physics/rrtmgp/ext/gas-optics\n";
+        print $fh "$camsrcdir/src/physics/rrtmgp/ext/rrtmgp-frontend\n";
+        print $fh "$camsrcdir/src/physics/rrtmgp/ext/rte-frontend\n";
+        if ($use_rrtmgp_gpu) {
+            print $fh "$camsrcdir/src/physics/rrtmgp/ext/rrtmgp-kernels/accel\n";
+            print $fh "$camsrcdir/src/physics/rrtmgp/ext/rte-kernels/accel\n";
+        }
+        print $fh "$camsrcdir/src/physics/rrtmgp/ext/rrtmgp-kernels\n";
+        print $fh "$camsrcdir/src/physics/rrtmgp/ext/rte-kernels\n";
     }
 
     if ($clubb_sgs) {

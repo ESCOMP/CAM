@@ -5467,7 +5467,7 @@ Default: Unused
 
 <!-- Radiation -->
 <entry id="radiation_scheme" type="char*16" category="radiation"
-       group="phys_ctl_nl" valid_values="rrtmg,camrt" >
+       group="phys_ctl_nl" valid_values="rrtmgp,rrtmg,camrt" >
 Type of radiation scheme employed.
 Default: set by build-namelist
 </entry>
@@ -5656,6 +5656,25 @@ Default: 'A'
 Switch to turn on Fixed Dynamical Heating in the offline radiation tool (PORT).
 Default: false
 </entry>
+
+<!-- RRTMGP -->
+
+<entry id="rrtmgp_coefs_lw_file" type="char*256" category="radiation"
+       group="radiation_nl" valid_values="" >
+Relative pathname for LW gas optics coefficients for RRTMGP.  This data is
+part of the RRTMGP source, thus this pathname is relative to the root source
+code directory for the CAM component.
+Default: set by build-namelist.
+</entry>
+
+<entry id="rrtmgp_coefs_sw_file" type="char*256" category="radiation"
+       group="radiation_nl" valid_values="" >
+Relative pathname for SW gas optics coefficients for RRTMGP.  This data is
+part of the RRTMGP source, thus this pathname is relative to the root source
+code directory for the CAM component.
+Default: set by build-namelist.
+</entry>
+
 
 <!-- Aerosol and cloud optics -->
 
