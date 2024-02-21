@@ -216,13 +216,15 @@ def buildnml(case, caseroot, compname):
         # copy geos-chem config files to rundir if using geos-chem chemistry
         # -----------------------------------------------------
 
-        if os.path.isdir(rundir) and '-chem geoschem' in CAM_CONFIG_OPTS:
-            for fname in ['species_database.yml', 'geoschem_config.yml',
-                          'HISTORY.rc', 'HEMCO_Config.rc', 'HEMCO_Diagn.rc']:
-                file1 = os.path.join(caseroot, fname)
-                file2 = os.path.join(rundir, fname)
-                logger.info("GEOS-Chem config file copy: file1 %s file2 %s ", file1, file2)
-                shutil.copy(file1,file2)
+        if os.path.isdir(rundir) \
+            and os.path.exists(os.path.join(caseroot, "species_database.yaml"))\
+            and '-chem geoschem' in CAM_CONFIG_OPTS:
+               for fname in ['species_database.yml', 'geoschem_config.yml',
+                             'HISTORY.rc', 'HEMCO_Config.rc', 'HEMCO_Diagn.rc']:
+                   file1 = os.path.join(caseroot, fname)
+                   file2 = os.path.join(rundir, fname)
+                   logger.info("GEOS-Chem config file copy: file1 %s file2 %s ", file1, file2)
+                   shutil.copy(file1,file2)
 
 ###############################################################################
 def _main_func():
