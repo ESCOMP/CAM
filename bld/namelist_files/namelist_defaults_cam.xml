@@ -459,6 +459,36 @@
 <bam_SSLTA  rad="rrtmg">atm/cam/physprops/ssam_rrtmg_c080918.nc</bam_SSLTA>
 <bam_SSLTC  rad="rrtmg">atm/cam/physprops/sscm_rrtmg_c080918.nc</bam_SSLTC>
 
+<!-- Bulk aerosols for RRTMGP -->
+<bam_sulf   rad="rrtmgp">atm/cam/physprops/sulfate_rrtmg_c080918.nc</bam_sulf>
+<bam_SO4    rad="rrtmgp">atm/cam/physprops/sulfate_rrtmg_c080918.nc</bam_SO4>
+<bam_dust1  rad="rrtmgp">atm/cam/physprops/dust1_rrtmg_c080918.nc</bam_dust1>
+<bam_DST01  rad="rrtmgp">atm/cam/physprops/dust1_rrtmg_c080918.nc</bam_DST01>
+<bam_dust2  rad="rrtmgp">atm/cam/physprops/dust2_rrtmg_c080918.nc</bam_dust2>
+<bam_DST02  rad="rrtmgp">atm/cam/physprops/dust2_rrtmg_c080918.nc</bam_DST02>
+<bam_dust3  rad="rrtmgp">atm/cam/physprops/dust3_rrtmg_c080918.nc</bam_dust3>
+<bam_DST03  rad="rrtmgp">atm/cam/physprops/dust3_rrtmg_c080918.nc</bam_DST03>
+<bam_dust4  rad="rrtmgp">atm/cam/physprops/dust4_rrtmg_c080918.nc</bam_dust4>
+<bam_DST04  rad="rrtmgp">atm/cam/physprops/dust4_rrtmg_c080918.nc</bam_DST04>
+<bam_bcar1  rad="rrtmgp">atm/cam/physprops/bcpho_rrtmg_c080918.nc</bam_bcar1>
+<bam_CB1    rad="rrtmgp">atm/cam/physprops/bcpho_rrtmg_c080918.nc</bam_CB1>
+<bam_bcar2  rad="rrtmgp">atm/cam/physprops/bcphi_rrtmg_c080918.nc</bam_bcar2>
+<bam_CB2    rad="rrtmgp">atm/cam/physprops/bcphi_rrtmg_c080918.nc</bam_CB2>
+<bam_ocar1  rad="rrtmgp">atm/cam/physprops/ocpho_rrtmg_c080918.nc</bam_ocar1>
+<bam_OC1    rad="rrtmgp">atm/cam/physprops/ocpho_rrtmg_c080918.nc</bam_OC1>
+<bam_ocar2  rad="rrtmgp">atm/cam/physprops/ocphi_rrtmg_c080918.nc</bam_ocar2>
+<bam_OC2    rad="rrtmgp">atm/cam/physprops/ocphi_rrtmg_c080918.nc</bam_OC2>
+<bam_sslt1  rad="rrtmgp">atm/cam/physprops/seasalt1_rrtmg_c080918.nc</bam_sslt1>
+<bam_SSLT01 rad="rrtmgp">atm/cam/physprops/seasalt1_rrtmg_c080918.nc</bam_SSLT01>
+<bam_sslt2  rad="rrtmgp">atm/cam/physprops/seasalt2_rrtmg_c080918.nc</bam_sslt2>
+<bam_SSLT02 rad="rrtmgp">atm/cam/physprops/seasalt2_rrtmg_c080918.nc</bam_SSLT02>
+<bam_sslt3  rad="rrtmgp">atm/cam/physprops/seasalt3_rrtmg_c080918.nc</bam_sslt3>
+<bam_SSLT03 rad="rrtmgp">atm/cam/physprops/seasalt3_rrtmg_c080918.nc</bam_SSLT03>
+<bam_sslt4  rad="rrtmgp">atm/cam/physprops/seasalt4_rrtmg_c080918.nc</bam_sslt4>
+<bam_SSLT04 rad="rrtmgp">atm/cam/physprops/seasalt4_rrtmg_c080918.nc</bam_SSLT04>
+<bam_SSLTA  rad="rrtmgp">atm/cam/physprops/ssam_rrtmg_c080918.nc</bam_SSLTA>
+<bam_SSLTC  rad="rrtmgp">atm/cam/physprops/sscm_rrtmg_c080918.nc</bam_SSLTC>
+
 <!-- CAM-Chem modal aerosols (different names used in prescribed and prognostic modes) -->
 <!-- Optics for RRTMG -->
 <!-- modal aerosol properties files -->
@@ -471,6 +501,16 @@
 <mam_dst  rad="rrtmg">atm/cam/physprops/dust_aeronet_rrtmg_c141106.nc</mam_dst>
 <mam_nh4  rad="rrtmg">atm/cam/physprops/sulfate_rrtmg_c080918.nc</mam_nh4>
 
+<!-- Modal aerosol properties for RRTMGP -->
+<mam_so4  rad="rrtmgp">atm/cam/physprops/sulfate_rrtmg_c080918.nc</mam_so4>
+<mam_pom  rad="rrtmgp" mam="3mode">atm/cam/physprops/ocpho_rrtmg_c101112.nc</mam_pom>
+<mam_pom  rad="rrtmgp">atm/cam/physprops/ocpho_rrtmg_c130709.nc</mam_pom>
+<mam_soa  rad="rrtmgp">atm/cam/physprops/ocphi_rrtmg_c100508.nc</mam_soa>
+<mam_bc   rad="rrtmgp">atm/cam/physprops/bcpho_rrtmg_c100508.nc</mam_bc>
+<mam_ncl  rad="rrtmgp">atm/cam/physprops/ssam_rrtmg_c100508.nc</mam_ncl>
+<mam_dst  rad="rrtmgp">atm/cam/physprops/dust_aeronet_rrtmg_c141106.nc</mam_dst>
+<mam_nh4  rad="rrtmgp">atm/cam/physprops/sulfate_rrtmg_c080918.nc</mam_nh4>
+
 <!-- Eruptive volcanic aerosols  -->
 <VOLC_MMR                        rad="camrt">atm/cam/physprops/volc_camRT_byradius_sigma1.6_c130724.nc</VOLC_MMR>
 <VOLC_MMR chem="none"            rad="camrt">atm/cam/physprops/sulfuricacid_cam3_c080918.nc</VOLC_MMR>
@@ -478,6 +518,12 @@
 <VOLC_MMR1 rad="rrtmg">atm/cam/physprops/volc_camRRTMG_byradius_sigma1.6_mode1_c210211.nc</VOLC_MMR1>
 <VOLC_MMR2 rad="rrtmg">atm/cam/physprops/volc_camRRTMG_byradius_sigma1.6_mode2_c210211.nc</VOLC_MMR2>
 <VOLC_MMR3 rad="rrtmg">atm/cam/physprops/volc_camRRTMG_byradius_sigma1.2_mode3_c210211.nc</VOLC_MMR3>
+
+<!-- Eruptive volcanic aerosols for RRTMGP -->
+<VOLC_MMR rad="rrtmgp">atm/cam/physprops/volc_camRRTMG_byradius_sigma1.6_c130724.nc</VOLC_MMR>
+<VOLC_MMR1 rad="rrtmgp">atm/cam/physprops/volc_camRRTMG_byradius_sigma1.6_mode1_c210211.nc</VOLC_MMR1>
+<VOLC_MMR2 rad="rrtmgp">atm/cam/physprops/volc_camRRTMG_byradius_sigma1.6_mode2_c210211.nc</VOLC_MMR2>
+<VOLC_MMR3 rad="rrtmgp">atm/cam/physprops/volc_camRRTMG_byradius_sigma1.2_mode3_c210211.nc</VOLC_MMR3>
 
 <!-- Modal optics calculations -->
 <mam3_mode1_file rad="rrtmg">atm/cam/physprops/mam4_mode1_rrtmg_aeronetdust_c141106.nc</mam3_mode1_file>
@@ -509,6 +555,36 @@
 <mam7_mode6_file rad="rrtmg">atm/cam/physprops/mam7_mode6_rrtmg_c120904.nc</mam7_mode6_file>
 <mam7_mode7_file rad="rrtmg">atm/cam/physprops/mam7_mode7_rrtmg_c120904.nc</mam7_mode7_file>
 
+<!-- Modal optics for RRTMGP -->
+<mam3_mode1_file rad="rrtmgp">atm/cam/physprops/mam4_mode1_rrtmg_aeronetdust_c141106.nc</mam3_mode1_file>
+<mam3_mode2_file rad="rrtmgp">atm/cam/physprops/mam4_mode2_rrtmg_aitkendust_c141106.nc </mam3_mode2_file>
+<mam3_mode3_file rad="rrtmgp">atm/cam/physprops/mam4_mode3_rrtmg_aeronetdust_c141106.nc</mam3_mode3_file>
+
+<mam3_mode1_file rad="rrtmgp" ver="strat">atm/cam/physprops/mam4_mode1_rrtmg_aeronetdust_sig1.6_dgnh.48_c140304.nc</mam3_mode1_file>
+<mam3_mode3_file rad="rrtmgp" ver="strat">atm/cam/physprops/mam4_mode3_rrtmg_aeronetdust_sig1.2_dgnl.40_c150219.nc</mam3_mode3_file>
+
+<mam4_mode1_file rad="rrtmgp">atm/cam/physprops/mam4_mode1_rrtmg_aeronetdust_c141106.nc</mam4_mode1_file>
+<mam4_mode2_file rad="rrtmgp">atm/cam/physprops/mam4_mode2_rrtmg_aitkendust_c141106.nc</mam4_mode2_file>
+<mam4_mode3_file rad="rrtmgp">atm/cam/physprops/mam4_mode3_rrtmg_aeronetdust_c141106.nc</mam4_mode3_file>
+<mam4_mode4_file rad="rrtmgp">atm/cam/physprops/mam4_mode4_rrtmg_c130628.nc</mam4_mode4_file>
+
+<mam4_mode1_file rad="rrtmgp" ver="strat">atm/cam/physprops/mam4_mode1_rrtmg_aeronetdust_sig1.6_dgnh.48_c140304.nc</mam4_mode1_file>
+<mam4_mode3_file rad="rrtmgp" ver="strat">atm/cam/physprops/mam4_mode3_rrtmg_aeronetdust_sig1.2_dgnl.40_c150219.nc</mam4_mode3_file>
+
+<mam5_mode1_file rad="rrtmgp" ver="strat">atm/cam/physprops/mam4_mode1_rrtmg_aeronetdust_sig1.6_dgnh.48_c140304.nc</mam5_mode1_file>
+<mam5_mode2_file rad="rrtmgp" ver="strat">atm/cam/physprops/mam4_mode2_rrtmg_aitkendust_c141106.nc</mam5_mode2_file>
+<mam5_mode3_file rad="rrtmgp" ver="strat">atm/cam/physprops/mam4_mode3_rrtmg_aeronetdust_c141106.nc</mam5_mode3_file>
+<mam5_mode4_file rad="rrtmgp" ver="strat">atm/cam/physprops/mam4_mode4_rrtmg_c130628.nc</mam5_mode4_file>
+<mam5_mode5_file rad="rrtmgp" ver="strat">atm/cam/physprops/mam4_mode3_rrtmg_aeronetdust_sig1.2_dgnl.40_c150219.nc</mam5_mode5_file>
+
+<mam7_mode1_file rad="rrtmgp">atm/cam/physprops/mam7_mode1_rrtmg_c120904.nc</mam7_mode1_file>
+<mam7_mode2_file rad="rrtmgp">atm/cam/physprops/mam7_mode2_rrtmg_c120904.nc</mam7_mode2_file>
+<mam7_mode3_file rad="rrtmgp">atm/cam/physprops/mam7_mode3_rrtmg_c120904.nc</mam7_mode3_file>
+<mam7_mode4_file rad="rrtmgp">atm/cam/physprops/mam7_mode4_rrtmg_c120904.nc</mam7_mode4_file>
+<mam7_mode5_file rad="rrtmgp">atm/cam/physprops/mam7_mode5_rrtmg_c120904.nc</mam7_mode5_file>
+<mam7_mode6_file rad="rrtmgp">atm/cam/physprops/mam7_mode6_rrtmg_c120904.nc</mam7_mode6_file>
+<mam7_mode7_file rad="rrtmgp">atm/cam/physprops/mam7_mode7_rrtmg_c120904.nc</mam7_mode7_file>
+
 <water_refindex_file>atm/cam/physprops/water_refindex_rrtmg_c080910.nc</water_refindex_file>
 
 <modal_accum_coarse_exch               >.false.</modal_accum_coarse_exch>
@@ -522,6 +598,15 @@
 <icecldoptics  rad="rrtmg">mitchell</icecldoptics>
 <iceopticsfile rad="rrtmg">atm/cam/physprops/iceoptics_c080917.nc</iceopticsfile>
 <liqopticsfile rad="rrtmg">atm/cam/physprops/F_nwvl200_mu20_lam50_res64_t298_c080428.nc</liqopticsfile>
+
+<!-- RRTMGP -->
+<liqcldoptics  rad="rrtmgp">gammadist</liqcldoptics>
+<icecldoptics  rad="rrtmgp">mitchell</icecldoptics>
+<iceopticsfile rad="rrtmgp">atm/cam/physprops/iceoptics_c080917.nc</iceopticsfile>
+<liqopticsfile rad="rrtmgp">atm/cam/physprops/F_nwvl200_mu20_lam50_res64_t298_c080428.nc</liqopticsfile>
+
+<rrtmgp_coefs_lw_file>src/physics/rrtmgp/data/rrtmgp-gas-lw-g128.nc</rrtmgp_coefs_lw_file>
+<rrtmgp_coefs_sw_file>src/physics/rrtmgp/data/rrtmgp-gas-sw-g112.nc</rrtmgp_coefs_sw_file>
 
 <!-- CAM-RT absorptivity/emissivity lookup table -->
 <absems_data rad="camrt">atm/cam/rad/abs_ems_factors_fastvx.c030508.nc</absems_data>
@@ -1908,7 +1993,7 @@
 <gas_wetdep_method  phys="spcam_m2005"   >OFF</gas_wetdep_method>
 
 <!-- Dry Dep surface data file needed by prognostic MAM on unstructured grid only. -->
-<drydep_srf_file hgrid="ne3np4"  npg="3" >atm/cam/chem/trop_mam/atmsrf_ne3np4.pg3_c221214.nc</drydep_srf_file>
+<drydep_srf_file hgrid="ne3np4"  npg="3" >atm/cam/chem/trop_mam/atmsrf_ne3np4.pg3_221214.nc</drydep_srf_file>
 <drydep_srf_file hgrid="ne5np4"          >atm/cam/chem/trop_mam/atmsrf_ne5np4_110920.nc</drydep_srf_file>
 <drydep_srf_file hgrid="ne5np4"   npg="3">atm/cam/chem/trop_mam/atmsrf_ne5pg3_201105.nc</drydep_srf_file>
 <drydep_srf_file hgrid="ne16np4"         >atm/cam/chem/trop_mam/atmsrf_ne16np4_110920.nc</drydep_srf_file>

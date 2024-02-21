@@ -255,7 +255,7 @@ subroutine rad_rrtmg_sw(lchnk,ncol       ,rrtmg_levs   ,r_state      , &
    ! Aerosol radiative property arrays
    real(r8) :: tauxar(pcols,0:pver) ! aerosol extinction optical depth
    real(r8) :: wa(pcols,0:pver) ! aerosol single scattering albedo
-   real(r8) :: ga(pcols,0:pver) ! aerosol assymetry parameter
+   real(r8) :: ga(pcols,0:pver) ! aerosol asymmetry parameter
    real(r8) :: fa(pcols,0:pver) ! aerosol forward scattered fraction
 
    ! CRM

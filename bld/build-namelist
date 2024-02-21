@@ -694,6 +694,23 @@ my $rad_pkg = $cfg->get('rad');
 if ($rad_pkg eq 'camrt') {
     add_default($nl, 'absems_data');
 }
+elsif ($rad_pkg =~ m/rrtmgp/) {
+    # Dataset for gas optics are checked out of an external repo into
+    # the source code directory.  The paths to this data are relative
+    # to the root directory of the cam component.
+    my $cam_dir = $cfg->get('cam_dir');
+
+    add_default($nl, 'rrtmgp_coefs_lw_file');
+    my $rel_path = $nl->get_value('rrtmgp_coefs_lw_file');
+    my $abs_path = quote_string(set_abs_filepath($rel_path, $cam_dir));
+    # Overwrite the relative pathname with the absolute pathname in the namelist object
+    $nl->set_variable_value('radiation_nl', 'rrtmgp_coefs_lw_file', $abs_path);
+
+    add_default($nl, 'rrtmgp_coefs_sw_file');
+    $rel_path = $nl->get_value('rrtmgp_coefs_sw_file');
+    my $abs_path = quote_string(set_abs_filepath($rel_path, $cam_dir));
+    $nl->set_variable_value('radiation_nl', 'rrtmgp_coefs_sw_file', $abs_path);
+}
 
 # Solar irradiance
 
@@ -705,15 +722,20 @@ if (defined $nl->get_value('solar_const') and
 
 }
 
-if ($rad_pkg eq 'rrtmg' or $chem =~ /waccm/) {
+if ($rad_pkg =~ /rrtmg/ or $chem =~ /waccm/) {
 
    if (defined $nl->get_value('solar_const')) {
-      die "$ProgName - ERROR: Specifying solar_const with RRTMG or WACCM is not allowed.\n"
+      die "$ProgName - ERROR: Specifying solar_const with RRTMG/RRTMGP or WACCM is not allowed.\n"
    }
 
    # use solar data file as the default for rrtmg and waccm_ma
    add_default($nl, 'solar_irrad_data_file');
-   add_default($nl, 'solar_htng_spctrl_scl', 'val'=>'.true.');
+
+   # This option only used by camrt and rrtmg radiation schemes.
+   # The solar spectral scaling is done internal to RRTMGP code.
+   if ($rad_pkg ne 'rrtmgp') {
+       add_default($nl, 'solar_htng_spctrl_scl', 'val'=>'.true.');
+   }
 
 }
 elsif (!$simple_phys) {
@@ -843,7 +865,6 @@ if ($chem_rad_passive or $aqua_mode) {
 
 # The aerosol optics depend on which radiative transfer model is used due to differing
 # wavelength bands used.
-my $rrtmg = $rad_pkg eq 'rrtmg' ? 1 : 0;
 
 # @aero_names contains the names of the entities (bulk aerosols and modes)
 # that are externally mixed in aerosol optics calculation.  These entities are all
@@ -1121,7 +1142,7 @@ if ($aer_model eq 'mam' ) {
   }
 
   if ($rad_prog_sslt) {
-    if ($rrtmg) {
+    if ($rad_pkg =~ /rrtmg/) {
         push(@aero_names, "SSLT01", "SSLT02", "SSLT03", "SSLT04");
         push(@aerosources, "A:", "A:", "A:", "A:" );
     } else {
@@ -1129,7 +1150,7 @@ if ($aer_model eq 'mam' ) {
         push(@aerosources, "N:", "N:");
     }
   } elsif ($moz_aero_data =~ /$TRUE/io ) {
-    if ($rrtmg) {
+    if ($rad_pkg =~ /rrtmg/) {
         push(@aero_names, "sslt1", "sslt2", "sslt3", "sslt4");
         push(@aerosources, "N:", "N:", "N:", "N:" );
     } else {
@@ -1224,7 +1245,7 @@ if ($carma eq 'bc_strat') {
     }
 }
 
-if ($rrtmg) {
+if ($rad_pkg eq 'rrtmg') {
 
   # CARMA Microphysics - RRTMG Only
   #
@@ -1644,11 +1665,25 @@ if ($rad_pkg ne 'none') {
 }
 
 # Cloud optics
-if ($rrtmg) {
+if ($rad_pkg =~ m/rrtmg/) { # matches both rrtmg and rrtmgp
     add_default($nl, 'liqcldoptics');
     add_default($nl, 'icecldoptics');
     add_default($nl, 'liqopticsfile');
     add_default($nl, 'iceopticsfile');
+
+    # rrtmgp only implemented with mitchell and gammadist cloud optics
+    if ($rad_pkg =~ m/rrtmgp/) {
+        my $liqcldoptics = $nl->get_value('liqcldoptics');
+        if ($liqcldoptics !~ m/gammadist/) {
+            die "$ProgName - ERROR: RRTMGP only implemented with gammadist liquid cloud optics\n" .
+                "liqcldoptics = $liqcldoptics\n";
+        }
+        my $icecldoptics = $nl->get_value('icecldoptics');
+        if ($icecldoptics !~ m/mitchell/) {
+            die "$ProgName - ERROR: RRTMGP only implemented with mitchell ice cloud optics\n" .
+                "icecldoptics = $icecldoptics\n";
+        }
+    }
 }
 
 # Volcanic Aerosol Mass climatology dataset
