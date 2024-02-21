@@ -419,6 +419,7 @@
   <test compset="QPC5" grid="f10_f10_mg37" name="PLB_D_Ln9" testmods="cam/ttrac_loadbal1">
     <machines>
       <machine name="izumi" compiler="nag" category="aux_cam"/>
+      <machine name="izumi" compiler="nag" category="prealpha"/>
     </machines>
     <options>
       <option name="comment" >301 plb</option>
@@ -499,6 +500,7 @@
   <test compset="QPC5" grid="f10_f10_mg37" name="SUB_D_Ln9" testmods="cam/outfrq3s">
     <machines>
       <machine name="izumi" compiler="nag" category="aux_cam"/>
+      <machine name="izumi" compiler="nag" category="prealpha"/>
     </machines>
     <options>
       <option name="comment" >325 eq</option>
