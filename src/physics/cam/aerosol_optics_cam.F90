@@ -3,7 +3,8 @@ module aerosol_optics_cam
   use shr_kind_mod, only: cl => shr_kind_cl
   use cam_logfile,  only: iulog
   use radconstants, only: nswbands, nlwbands, idx_sw_diag, idx_uv_diag, idx_nir_diag
-  use radconstants, only: ot_length, get_lw_spectral_boundaries
+  use radconstants, only: get_lw_spectral_boundaries
+  use phys_prop,    only: ot_length
   use physics_types,only: physics_state
   use physics_buffer,only: physics_buffer_desc
   use ppgrid, only: pcols, pver

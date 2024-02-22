@@ -12,6 +12,8 @@ ruby $ADDREALKIND_EXE -r r8 -l 1 -d $CAM_ROOT/components/cam/src/physics/camrt
 rc=`expr $? + $rc`
 ruby $ADDREALKIND_EXE -r r8 -l 1 -d $CAM_ROOT/components/cam/src/physics/rrtmg -s aer_src
 rc=`expr $? + $rc`
+ruby $ADDREALKIND_EXE -r r8 -l 1 -d $CAM_ROOT/components/cam/src/physics/rrtmgp -s data,ext
+rc=`expr $? + $rc`
 ruby $ADDREALKIND_EXE -r r8 -l 1 -d $CAM_ROOT/components/cam/src/physics/simple
 rc=`expr $? + $rc`
 ruby $ADDREALKIND_EXE -r r8 -l 1 -d $CAM_ROOT/components/cam/src/physics/waccm
@@ -26,6 +28,8 @@ rc=$?
 ruby $ADDREALKIND_EXE -r r8 -l 1 -d $CAM_ROOT/src/physics/camrt
 rc=`expr $? + $rc`
 ruby $ADDREALKIND_EXE -r r8 -l 1 -d $CAM_ROOT/src/physics/rrtmg -s aer_src
+rc=`expr $? + $rc`
+ruby $ADDREALKIND_EXE -r r8 -l 1 -d $CAM_ROOT/src/physics/rrtmgp -s data,ext
 rc=`expr $? + $rc`
 ruby $ADDREALKIND_EXE -r r8 -l 1 -d $CAM_ROOT/src/physics/simple
 rc=`expr $? + $rc`
@@ -54,12 +58,12 @@ fi
 #Check Chemistry
 if [ -d "${CAM_ROOT}/components/cam" ]; then
 
-ruby $ADDREALKIND_EXE -r r8 -l 1 -d $CAM_ROOT/components/cam/src/chemistry
+ruby $ADDREALKIND_EXE -r r8 -l 1 -d $CAM_ROOT/components/cam/src/chemistry -s geoschem
 rc=`expr $? + $rc`
 
 else
 
-ruby $ADDREALKIND_EXE -r r8 -l 1 -d $CAM_ROOT/src/chemistry
+ruby $ADDREALKIND_EXE -r r8 -l 1 -d $CAM_ROOT/src/chemistry -s geoschem
 rc=`expr $? + $rc`
 
 fi

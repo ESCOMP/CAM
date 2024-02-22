@@ -237,7 +237,7 @@ subroutine radcswmx(lchnk   ,ncol    ,                         &
 ! 
    real(r8),intent(in) :: E_aer_tau    (pcols,0:pver,nswbands) ! aerosol extinction optical depth
    real(r8),intent(in) :: E_aer_tau_w  (pcols,0:pver,nswbands) ! aerosol single scattering albedo * tau
-   real(r8),intent(in) :: E_aer_tau_w_g(pcols,0:pver,nswbands) ! aerosol assymetry parameter * w * tau
+   real(r8),intent(in) :: E_aer_tau_w_g(pcols,0:pver,nswbands) ! aerosol asymmetry parameter * w * tau
    real(r8),intent(in) :: E_aer_tau_w_f(pcols,0:pver,nswbands) ! aerosol forward scattered fraction * w * tau
 
 ! 
@@ -288,7 +288,7 @@ subroutine radcswmx(lchnk   ,ncol    ,                         &
 !
    real(r8):: aer_tau    (pcols,0:pver,nswbands) ! aerosol extinction optical depth
    real(r8):: aer_tau_w  (pcols,0:pver,nswbands) ! aerosol single scattering albedo * tau
-   real(r8):: aer_tau_w_g(pcols,0:pver,nswbands) ! aerosol assymetry parameter * w * tau
+   real(r8):: aer_tau_w_g(pcols,0:pver,nswbands) ! aerosol asymmetry parameter * w * tau
    real(r8):: aer_tau_w_f(pcols,0:pver,nswbands) ! aerosol forward scattered fraction * w * tau
    real(r8) :: pmid(pcols,pver) ! Level pressure
    real(r8) :: pint(pcols,pverp) ! Interface pressure
@@ -1994,7 +1994,7 @@ subroutine raddedmx(coszrs  ,ndayc   ,abh2o   , &
 !
    real(r8) trmin                ! Minimum total transmission allowed
    real(r8) wray                 ! Rayleigh single scatter albedo
-   real(r8) gray                 ! Rayleigh asymetry parameter
+   real(r8) gray                 ! Rayleigh asymmetry parameter
    real(r8) fray                 ! Rayleigh forward scattered fraction
 
    parameter (trmin = 1.e-3_r8)
