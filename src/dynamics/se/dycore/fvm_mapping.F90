@@ -50,7 +50,6 @@ contains
     use dimensions_mod,         only: fv_nphys, nhc_phys,ntrac,nhc,ksponge_end, nu_scale_top
     use hybrid_mod,             only: hybrid_t
     use air_composition,        only: thermodynamic_active_species_num, thermodynamic_active_species_idx
-    use cam_abortutils,         only: endrun
     type (element_t), intent(inout):: elem(:)
     type(fvm_struct), intent(inout):: fvm(:)
 
@@ -67,7 +66,7 @@ contains
     integer              :: nflds
     logical, allocatable :: llimiter(:)
 
-    integer :: ierr=0
+    integer :: ierr
 
     if (no_cslam) then
       call endrun("phys2dyn_forcings_fvm: no cslam case: NOT SUPPORTED")
@@ -1313,7 +1312,7 @@ contains
      type (hybrid_t), intent(in)    :: hybrid  ! distributed parallel structure (shared)
      integer, intent(in)            :: nets, nete, tl_f, tl_qdp
 
-     integer                                             :: ie,i,j,k,m_cnst,nq
+     integer                                             :: ie,i,j,k,m_cnst,nq,ierr
      real (kind=r8), dimension(:,:,:,:,:)  , allocatable :: fld_fvm, fld_gll
      !
      ! for tensor product Lagrange interpolation
@@ -1322,9 +1321,28 @@ contains
      logical, allocatable :: llimiter(:)
      call t_startf('cslam2gll')
      nflds = thermodynamic_active_species_num
-     allocate(fld_fvm(1-nhc:nc+nhc,1-nhc:nc+nhc,nlev,nflds,nets:nete))
-     allocate(fld_gll(np,np,nlev,thermodynamic_active_species_num,nets:nete))
-     allocate(llimiter(nflds))
+
+     !Allocate variables
+     !------------------
+     allocate(fld_fvm(1-nhc:nc+nhc,1-nhc:nc+nhc,nlev,nflds,nets:nete), stat=ierr)
+     if( ierr /= 0 ) then
+         write(iulog,*) 'cslam2gll: fld_fvm allocation error = ', ierr
+         call endrun('cslam2gll: failed to allocate fld_fvm array')
+     end if
+
+     allocate(fld_gll(np,np,nlev,thermodynamic_active_species_num,nets:nete),stat=ierr)
+     if( ierr /= 0 ) then
+         write(iulog,*) 'cslam2gll: fld_gll allocation error = ', ierr
+         call endrun('cslam2gll: failed to allocate fld_gll array')
+     end if
+
+     allocate(llimiter(nflds), stat=ierr)
+     if( ierr /= 0 ) then
+         write(iulog,*) 'cslam2gll: llimiter allocation error = ', ierr
+         call endrun('cslam2gll: failed to allocate llimiter array')
+     end if
+     !------------------
+
      llimiter(1:nflds) = .false.
      do ie=nets,nete
        do m_cnst=1,thermodynamic_active_species_num
