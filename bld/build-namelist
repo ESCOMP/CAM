@@ -540,7 +540,7 @@ my $rad_prog_bcarb = (($prog_species =~ "BC"   or $aero_chem) and !($chem_rad_pa
 my $rad_prog_sulf  = (($prog_species =~ "SO4"  or $aero_chem) and !($chem_rad_passive));
 my $rad_prog_dust  = (($prog_species =~ "DST"  or $aero_chem) and !($chem_rad_passive));
 my $rad_prog_sslt  = (($prog_species =~ "SSLT" or $aero_chem) and !($chem_rad_passive));
-my $rad_prog_ozone = (($chem =~ "mozart" or $chem =~ "waccm_ma" or $chem =~ "tsmlt" or $chem =~ "trop_strat") and !($chem_rad_passive));
+my $rad_prog_ozone = (($chem =~ "mozart" or $chem =~ "waccm_ma" or $chem =~ "tsmlt" or $chem =~ "trop_strat" or $chem =~ /geoschem/) and !($chem_rad_passive));
 
 # Check for eruptive volcano emissions.  These will be radiatively active by default, but
 # only if using BAM and the camrt radiation package
@@ -576,12 +576,13 @@ if ( ($chem ne 'none') or ( $prog_species ) ){
 
     my ( $gas_wetdep_list, $aer_wetdep_list, $aer_sol_facti, $aer_sol_factb, $aer_scav_coef,
          $aer_drydep_list, $gas_drydep_list ) =
-           set_dep_lists( $cfgdir, $chem_proc_src, $chem_src_dir, $nl, $print );
+           set_dep_lists( $chem, $cfgdir, $chem_proc_src, $chem_src_dir, $nl, $print );
 
     if (length($gas_wetdep_list)>2){
       add_default($nl, 'gas_wetdep_method' );
       add_default($nl, 'gas_wetdep_list', 'val'=>$gas_wetdep_list );
     }
+
     if (length($aer_wetdep_list)>2){
         # determine if prescribed aerosols are not needed ...
         if ($aer_wetdep_list =~ /so4/i &&
@@ -693,6 +694,23 @@ my $rad_pkg = $cfg->get('rad');
 if ($rad_pkg eq 'camrt') {
     add_default($nl, 'absems_data');
 }
+elsif ($rad_pkg =~ m/rrtmgp/) {
+    # Dataset for gas optics are checked out of an external repo into
+    # the source code directory.  The paths to this data are relative
+    # to the root directory of the cam component.
+    my $cam_dir = $cfg->get('cam_dir');
+
+    add_default($nl, 'rrtmgp_coefs_lw_file');
+    my $rel_path = $nl->get_value('rrtmgp_coefs_lw_file');
+    my $abs_path = quote_string(set_abs_filepath($rel_path, $cam_dir));
+    # Overwrite the relative pathname with the absolute pathname in the namelist object
+    $nl->set_variable_value('radiation_nl', 'rrtmgp_coefs_lw_file', $abs_path);
+
+    add_default($nl, 'rrtmgp_coefs_sw_file');
+    $rel_path = $nl->get_value('rrtmgp_coefs_sw_file');
+    my $abs_path = quote_string(set_abs_filepath($rel_path, $cam_dir));
+    $nl->set_variable_value('radiation_nl', 'rrtmgp_coefs_sw_file', $abs_path);
+}
 
 # Solar irradiance
 
@@ -704,15 +722,20 @@ if (defined $nl->get_value('solar_const') and
 
 }
 
-if ($rad_pkg eq 'rrtmg' or $chem =~ /waccm/) {
+if ($rad_pkg =~ /rrtmg/ or $chem =~ /waccm/) {
 
    if (defined $nl->get_value('solar_const')) {
-      die "$ProgName - ERROR: Specifying solar_const with RRTMG or WACCM is not allowed.\n"
+      die "$ProgName - ERROR: Specifying solar_const with RRTMG/RRTMGP or WACCM is not allowed.\n"
    }
 
    # use solar data file as the default for rrtmg and waccm_ma
    add_default($nl, 'solar_irrad_data_file');
-   add_default($nl, 'solar_htng_spctrl_scl', 'val'=>'.true.');
+
+   # This option only used by camrt and rrtmg radiation schemes.
+   # The solar spectral scaling is done internal to RRTMGP code.
+   if ($rad_pkg ne 'rrtmgp') {
+       add_default($nl, 'solar_htng_spctrl_scl', 'val'=>'.true.');
+   }
 
 }
 elsif (!$simple_phys) {
@@ -842,7 +865,6 @@ if ($chem_rad_passive or $aqua_mode) {
 
 # The aerosol optics depend on which radiative transfer model is used due to differing
 # wavelength bands used.
-my $rrtmg = $rad_pkg eq 'rrtmg' ? 1 : 0;
 
 # @aero_names contains the names of the entities (bulk aerosols and modes)
 # that are externally mixed in aerosol optics calculation.  These entities are all
@@ -862,7 +884,7 @@ my $radval = "'A:Q:H2O'";
 if (($chem =~ /waccm_ma/ or $chem =~ /waccm_tsmlt/) and !$chem_rad_passive) {
     $radval .= ",'A:O2:O2','A:CO2:CO2'";
 }
-elsif ($chem =~ /trop_strat/ and !$chem_rad_passive) {
+elsif (($chem =~ /trop_strat/ or $chem =~ /geoschem/) and !$chem_rad_passive) {
     $radval .= ",'N:O2:O2','A:CO2:CO2'";
 }
 elsif (($co2_cycle and !$co2_cycle_rad_passive) or ($chem =~ /ghg_mam4/)) {
@@ -897,6 +919,8 @@ if ((($chem =~ /ghg_mam4/) or ($chem =~ /waccm_ma/) or ($chem =~ /waccm_sc_mam/)
     $radval .= ",'A:N2O:N2O','A:CH4:CH4','A:CFC11:CFC11','A:CFC12:CFC12'";
 } elsif ($prog_ghg1 and !$prog_ghg2  and !$chem_rad_passive ) {
     $radval .= ",'A:N2O:N2O','A:CH4:CH4','N:CFC11:CFC11','N:CFC12:CFC12'";
+} elsif ($chem =~ /geoschem/) {
+    $radval .= ",'A:N2O:N2O','A:CH4:CH4','A:CFC11:CFC11','A:CFC12:CFC12'";
 } else {
     $radval .= ",'N:N2O:N2O','N:CH4:CH4','N:CFC11:CFC11','N:CFC12:CFC12'";
 }
@@ -1118,7 +1142,7 @@ if ($aer_model eq 'mam' ) {
   }
 
   if ($rad_prog_sslt) {
-    if ($rrtmg) {
+    if ($rad_pkg =~ /rrtmg/) {
         push(@aero_names, "SSLT01", "SSLT02", "SSLT03", "SSLT04");
         push(@aerosources, "A:", "A:", "A:", "A:" );
     } else {
@@ -1126,7 +1150,7 @@ if ($aer_model eq 'mam' ) {
         push(@aerosources, "N:", "N:");
     }
   } elsif ($moz_aero_data =~ /$TRUE/io ) {
-    if ($rrtmg) {
+    if ($rad_pkg =~ /rrtmg/) {
         push(@aero_names, "sslt1", "sslt2", "sslt3", "sslt4");
         push(@aerosources, "N:", "N:", "N:", "N:" );
     } else {
@@ -1221,7 +1245,7 @@ if ($carma eq 'bc_strat') {
     }
 }
 
-if ($rrtmg) {
+if ($rad_pkg eq 'rrtmg') {
 
   # CARMA Microphysics - RRTMG Only
   #
@@ -1641,11 +1665,25 @@ if ($rad_pkg ne 'none') {
 }
 
 # Cloud optics
-if ($rrtmg) {
+if ($rad_pkg =~ m/rrtmg/) { # matches both rrtmg and rrtmgp
     add_default($nl, 'liqcldoptics');
     add_default($nl, 'icecldoptics');
     add_default($nl, 'liqopticsfile');
     add_default($nl, 'iceopticsfile');
+
+    # rrtmgp only implemented with mitchell and gammadist cloud optics
+    if ($rad_pkg =~ m/rrtmgp/) {
+        my $liqcldoptics = $nl->get_value('liqcldoptics');
+        if ($liqcldoptics !~ m/gammadist/) {
+            die "$ProgName - ERROR: RRTMGP only implemented with gammadist liquid cloud optics\n" .
+                "liqcldoptics = $liqcldoptics\n";
+        }
+        my $icecldoptics = $nl->get_value('icecldoptics');
+        if ($icecldoptics !~ m/mitchell/) {
+            die "$ProgName - ERROR: RRTMGP only implemented with mitchell ice cloud optics\n" .
+                "icecldoptics = $icecldoptics\n";
+        }
+    }
 }
 
 # Volcanic Aerosol Mass climatology dataset
@@ -2018,6 +2056,34 @@ if (($chem =~ /trop_mozart/ or $chem =~ /trop_strat/ or $chem =~ /waccm_tsmlt/) 
     }
 }
 
+if ($chem =~ /geoschem/) {
+
+    my $val;
+
+    # Species with fixed lower boundary
+    $val = "'CCL4','CH4','N2O','CO2','CFC11','CFC12','CH3BR','CH3CCL3','CH3CL'"
+           .",'HCFC22','CFC114','CFC115','HCFC141B','HCFC142B','CH2BR2','CHBR3','H2402'";
+
+    if ($chem_has_ocs) {
+        $val .= ",'OCS'";
+    }
+    if (chem_has_species($cfg, 'SF6')) {
+        $val .= ",'SF6'";
+    }
+    add_default($nl, 'flbc_list', 'val'=>$val);
+    unless (defined $nl->get_value('flbc_type')) {
+        add_default($nl, 'flbc_type',  'val'=>'CYCLICAL');
+        add_default($nl, 'flbc_cycle_yr',  'val'=>'2000');
+    }
+
+    my @files;
+    # Datasets
+    @files = ( 'soil_erod_file', 'flbc_file' );
+    foreach my $file (@files) {
+        add_default($nl, $file);
+    }
+}
+
 if ($chem =~ /trop_mozart/ or $chem =~ /trop_strat/ or $chem =~ /waccm_tsmlt/) {
 
     my $val;
@@ -2364,10 +2430,12 @@ if (($chem =~ /_mam4/ or $chem =~ /_mam5/) and ($phys =~ /cam6/ or $phys =~ /cam
             }
         }
     }
-    add_default($nl, 'srf_emis_specifier', 'val'=>$val);
-    unless (defined $nl->get_value('srf_emis_type')) {
-        add_default($nl, 'srf_emis_type',      'val'=>'CYCLICAL');
-        add_default($nl, 'srf_emis_cycle_yr',  'val'=>2000);
+    if ($chem !~ /geoschem/) {
+        add_default($nl, 'srf_emis_specifier', 'val'=>$val);
+        unless (defined $nl->get_value('srf_emis_type')) {
+            add_default($nl, 'srf_emis_type',      'val'=>'CYCLICAL');
+            add_default($nl, 'srf_emis_cycle_yr',  'val'=>2000);
+        }
     }
 
     # Vertical emission datasets:
@@ -2433,10 +2501,12 @@ if (($chem =~ /_mam4/ or $chem =~ /_mam5/) and ($phys =~ /cam6/ or $phys =~ /cam
             $first = 0;
         }
     }
-    add_default($nl, 'ext_frc_specifier', 'val'=>$val);
-    unless (defined $nl->get_value('ext_frc_type')) {
-        add_default($nl, 'ext_frc_type',      'val'=>"'CYCLICAL'");
-        add_default($nl, 'ext_frc_cycle_yr',  'val'=>2000);
+    if ($chem !~ /geoschem/) {
+        add_default($nl, 'ext_frc_specifier', 'val'=>$val);
+        unless (defined $nl->get_value('ext_frc_type')) {
+            add_default($nl, 'ext_frc_type',      'val'=>"'CYCLICAL'");
+            add_default($nl, 'ext_frc_cycle_yr',  'val'=>2000);
+        }
     }
 
     # MEGAN emissions
@@ -2478,6 +2548,30 @@ if (($chem =~ /_mam4/ or $chem =~ /_mam5/) and ($phys =~ /cam6/ or $phys =~ /cam
                 . "'BIGALK = pentane + hexane + heptane + tricyclene',"
                 . "'BIGENE = butene',"
                 . "'TOLUENE = toluene'";
+        add_default($nl, 'megan_specifier', 'val'=>$val);
+        add_default($nl, 'megan_factors_file');
+        add_default($nl, 'megan_mapped_emisfctrs', 'val'=>'.false.');
+    }
+    if ($chem =~ /geoschem/) {
+        my $val = "'ISOP = isoprene',"
+                . "'MOH = methanol',"
+                . "'EOH = ethanol',"
+                . "'CH2O = formaldehyde',"
+                . "'ALD2 = acetaldehyde',"
+                . "'ACTA = acetic_acid',"
+                . "'ACET = acetone',"
+                . "'HCOOH = formic_acid',"
+                . "'HCN = hydrogen_cyanide',"
+                . "'CO = carbon_monoxide',"
+                . "'C2H6 = ethane',"
+                . "'C2H4 = ethene',"
+                . "'C3H8 = propane',"
+                . "'ALK4 = pentane + hexane + heptane + tricyclene',"
+                . "'PRPE = propene + butene',"
+                . "'TOLU = toluene',"
+                . "'LIMO = limonene',"
+                . "'MTPA = pinene_a + pinene_b + sabinene + carene_3',"
+                . "'MTPO = terpinene_g + terpinene_a + terpinolene + myrcene + ocimene_al + ocimene_t_b + ocimene_c_b + thujene_a + 2met_styrene + cymene_p + cymene_o + bornene + fenchene_a + camphene + phellandrene_a + phellandrene_b'";
         add_default($nl, 'megan_specifier', 'val'=>$val);
         add_default($nl, 'megan_factors_file');
         add_default($nl, 'megan_mapped_emisfctrs', 'val'=>'.false.');
@@ -2897,6 +2991,29 @@ if ($nl->get_value('use_hemco') =~ m/$TRUE/io) {
     # ignored at runtime when HEMCO is used.
     $nl->delete_variable('chem_inparm', 'ext_frc_specifier');
     $nl->delete_variable('chem_inparm', 'srf_emis_specifier');
+
+    if ($chem =~ /geoschem/) {
+
+        # For now, HEMCO config and diagnostic configuration files are always used from
+        # the case directory. Exit if user has specified other paths in the user namelist
+        # because it will not work.
+        if ($nl->get_value('hemco_config_file') ne "'" . $inputdata_rootdir . "/HEMCO_Config.rc'") {
+            die "CAM Namelist ERROR: When running with GEOS-Chem chemistry, hemco_config_file\n".
+                "must not be manually set in the namelist. Instead, modify (or symlink from) the HEMCO_Config.rc\n".
+                "in the case directory, which will be copied to the run directory when submitting.\n".
+                "Then remove the hemco_config_file option from the user namelist.\n";
+        }
+
+        if ($nl->get_value('hemco_diagn_file') ne "'" . $inputdata_rootdir . "/HEMCO_Diagn.rc'") {
+            die "CAM Namelist ERROR: When running with GEOS-Chem chemistry, hemco_diagn_file\n".
+                "must not be manually set in the namelist. Instead, modify (or symlink from) the HEMCO_Diagn.rc\n".
+                "in the case directory, which will be copied to the run directory when submitting.\n".
+                "Then remove the hemco_diagn_file option from the user namelist.\n";
+        }
+
+        $nl->set_variable_value('hemco_nl', 'hemco_config_file', "'HEMCO_Config.rc'");
+        $nl->set_variable_value('hemco_nl', 'hemco_diagn_file', "'HEMCO_Diagn.rc'");
+    }
 }
 
 # Physics options
@@ -3025,7 +3142,7 @@ if (!$simple_phys) {
 }
 
 # tropopause level used in gas-phase / aerosol processes
-if (($chem ne 'none') and ($chem ne 'terminator')) {
+if (($chem ne 'none') and ($chem ne 'terminator') and !($chem =~ /geoschem/)) {
     add_default($nl, 'chem_use_chemtrop');
 }
 
@@ -3562,7 +3679,7 @@ if ( length($nl->get_value('soil_erod_file'))>0 ) {
         add_default($nl, 'dust_emis_fact', 'tms'=>'1');
     }
     else {
-        if ($chem =~ /trop_strat/ or $chem =~ /waccm_ma/ or $chem =~ /waccm_tsmlt/ or $chem =~ /trop_mozart/) {
+        if ($chem =~ /trop_strat/ or $chem =~ /geoschem/ or $chem =~ /waccm_ma/ or $chem =~ /waccm_tsmlt/ or $chem =~ /trop_mozart/) {
             add_default($nl, 'dust_emis_fact', 'ver'=>'chem');
         }
         else {

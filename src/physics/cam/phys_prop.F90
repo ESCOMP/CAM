@@ -11,7 +11,7 @@ module phys_prop
 
 use shr_kind_mod,   only: r8 => shr_kind_r8
 use spmd_utils,     only: masterproc
-use radconstants,   only: nrh, nlwbands, nswbands, idx_sw_diag
+use radconstants,   only: nlwbands, nswbands, idx_sw_diag
 use ioFileMod,      only: getfil
 use cam_pio_utils,  only: cam_pio_openfile
 use pio,            only: file_desc_t, var_desc_t, pio_get_var, pio_inq_varid, &
@@ -26,6 +26,7 @@ private
 save
 
 integer, parameter, public :: ot_length = 32
+
 public :: &
    physprop_accum_unique_files,  &! Make a list of the unique set of files that contain properties
                                   ! This is an initialization step that must be done before calling physprop_init
@@ -105,6 +106,10 @@ type (physprop_type), pointer :: physprop(:)
 ! array.
 character(len=256), allocatable :: uniquefilenames(:)
  
+! Number of evenly spaced intervals in rh used in this module and in the aer_rad_props module
+! for calculations of aerosol hygroscopic growth.
+integer, parameter, public :: nrh = 1000
+
 !================================================================================================
 contains
 !================================================================================================
@@ -1106,7 +1111,7 @@ subroutine bulk_props_init(physprop, nc_id)
 
    type(var_desc_T) :: vid
 
-   logical :: debug = .true.
+   logical :: debug = .false.
 
    character(len=*), parameter :: subname = 'bulk_props_init'
    !------------------------------------------------------------------------------------
@@ -1134,7 +1139,7 @@ subroutine bulk_props_init(physprop, nc_id)
    ierr = pio_get_var(nc_id, vid, physprop%num_to_mass_aer)
       
    ! Output select data to log file
-   if (debug .and. masterproc) then
+   if (debug .and. masterproc .and. idx_sw_diag > 0) then
       if (trim(physprop%aername) == 'SULFATE') then
          write(iulog, '(2x, a)') '_______ hygroscopic growth in visible band _______'
          call aer_optics_log_rh('SO4', physprop%sw_hygro_ext(:,idx_sw_diag), &
