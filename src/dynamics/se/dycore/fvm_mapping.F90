@@ -90,7 +90,7 @@ contains
          write(iulog,*) 'phys2dyn_forcings_fvm:  fld_gll allocation error = ',ierr
          call endrun('phys2dyn_forcings_fvm: failed to allocate fld_gll array')
       end if
-      allocate(llimiter(nflds), stat=ierr)
+      allocate(llimiter(3), stat=ierr)
       if( ierr /= 0 ) then
          write(iulog,*) 'phys2dyn_forcings_fvm:  llimiter allocation error = ',ierr
          call endrun('phys2dyn_forcings_fvm: failed to allocate llimiter array')
