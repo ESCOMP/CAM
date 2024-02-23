@@ -141,6 +141,8 @@ logical              :: do_pbl_diags = .false.
 logical              :: waccmx_mode = .false.
 logical              :: do_hb_above_clubb = .false.
 
+real(r8),allocatable :: kvm_sponge(:)
+
 contains
 
   ! =============================================================================== !
@@ -290,7 +292,7 @@ subroutine vertical_diffusion_init(pbuf2d)
 
   real(r8), parameter :: ntop_eddy_pres = 1.e-7_r8 ! Pressure below which eddy diffusion is not done in WACCM-X. (Pa)
 
-  integer :: im, l, m, nmodes, nspec
+  integer :: im, l, m, nmodes, nspec, ierr
 
   logical :: history_amwg                 ! output the variables used by the AMWG diag package
   logical :: history_eddy                 ! output the eddy variables
@@ -298,30 +300,49 @@ subroutine vertical_diffusion_init(pbuf2d)
   integer :: history_budget_histfile_num  ! output history file number for budget fields
   logical :: history_waccm                ! output variables of interest for WACCM runs
 
-  ! ----------------------------------------------------------------- !
-
+  !
+  ! add sponge layer vertical diffusion
+  !
+  if (ptop_ref>1e-1_r8.and.ptop_ref<100.0_r8) then
+     !
+     ! CAM7 FMT (but not CAM6 top (~225 Pa) or CAM7 low top or lower)
+     !
+     allocate(kvm_sponge(4), stat=ierr)
+     if( ierr /= 0 ) then
+        write(iulog,*) 'vertical_diffusion_init:  kvm_sponge allocation error = ',ierr
+        call endrun('vertical_diffusion_init: failed to allocate kvm_sponge array')
+     end if
+     kvm_sponge(1) = 2E6_r8
+     kvm_sponge(2) = 2E6_r8
+     kvm_sponge(3) = 0.5E6_r8
+     kvm_sponge(4) = 0.1E6_r8
+  else if (ptop_ref>1e-4_r8) then
+     !
+     ! WACCM and WACCM-x
+     !
+     allocate(kvm_sponge(6), stat=ierr)
+     if( ierr /= 0 ) then
+        write(iulog,*) 'vertical_diffusion_init:  kvm_sponge allocation error = ',ierr
+        call endrun('vertical_diffusion_init: failed to allocate kvm_sponge array')
+     end if
+     kvm_sponge(1) = 2E6_r8
+     kvm_sponge(2) = 2E6_r8
+     kvm_sponge(3) = 1.5E6_r8
+     kvm_sponge(4) = 1.0E6_r8
+     kvm_sponge(5) = 0.5E6_r8
+     kvm_sponge(6) = 0.1E6_r8
+  else
+     allocate(kvm_sponge(1))
+     kvm_sponge(1) = 0.0_r8
+  end if
+  
   if (masterproc) then
      write(iulog,*)'Initializing vertical diffusion (vertical_diffusion_init)'
-     if (ptop_ref>1e-1_r8.and.ptop_ref<100.0_r8) then
-        !
-        ! CAM7 FMT
-        !
+     if (maxval(kvm_sponge(:))>0.0_r8) then
         write(iulog,*)'Artificial sponge layer vertical diffusion added:'
-        write(iulog,*)'vertical diffusion coefficient at interface 1 is increased by 2.0E6 m2 s-2'
-        write(iulog,*)'vertical diffusion coefficient at interface 2 is increased by 2.0E6 m2 s-2'
-        write(iulog,*)'vertical diffusion coefficient at interface 3 is increased by 0.5E6 m2 s-2'
-        write(iulog,*)'vertical diffusion coefficient at interface 4 is increased by 0.1E6 m2 s-2'
-     else if (ptop_ref>1e-4_r8) then
-        !
-        ! WACCM and WACCM-x
-        !
-        write(iulog,*)'Artificial sponge layer vertical diffusion added:'
-        write(iulog,*)'vertical diffusion coefficient at interface 1 is increased by 2.0E6 m2 s-2'
-        write(iulog,*)'vertical diffusion coefficient at interface 2 is increased by 2.0E6 m2 s-2'
-        write(iulog,*)'vertical diffusion coefficient at interface 3 is increased by 1.5E6 m2 s-2'
-        write(iulog,*)'vertical diffusion coefficient at interface 4 is increased by 1.0E6 m2 s-2'
-        write(iulog,*)'vertical diffusion coefficient at interface 5 is increased by 0.5E6 m2 s-2'
-        write(iulog,*)'vertical diffusion coefficient at interface 6 is increased by 0.1E6 m2 s-2'
+        do k=1,size(kvm_sponge(:),1)
+           write(iulog,'(a44,i2,a17,e7.2,a8)') 'vertical diffusion coefficient at interface',k,' is increased by ',kvm_sponge(k),' m2 s-2'
+        end do
      end if
   end if
 
@@ -1092,25 +1113,9 @@ subroutine vertical_diffusion_tend( &
   !
   ! add sponge layer vertical diffusion
   !
-  if (ptop_ref>1e-1_r8.and.ptop_ref<100.0_r8) then
-     !
-     ! CAM7 FMT (but not CAM6 top (~225 Pa) or CAM7 low top or lower)
-     !
-     kvm(:ncol,1) = kvm(:ncol,1)+2E6_r8
-     kvm(:ncol,2) = kvm(:ncol,2)+2E6_r8
-     kvm(:ncol,3) = kvm(:ncol,3)+0.5E6_r8
-     kvm(:ncol,4) = kvm(:ncol,4)+0.1E6_r8
-  else if (ptop_ref>1e-4_r8) then
-     !
-     ! WACCM and WACCM-x
-     !
-     kvm(:ncol,1) = kvm(:ncol,1)+2E6_r8
-     kvm(:ncol,2) = kvm(:ncol,2)+2E6_r8
-     kvm(:ncol,3) = kvm(:ncol,3)+1.5E6_r8
-     kvm(:ncol,4) = kvm(:ncol,4)+1.0E6_r8
-     kvm(:ncol,5) = kvm(:ncol,5)+0.5E6_r8
-     kvm(:ncol,6) = kvm(:ncol,6)+0.1E6_r8
-  end if
+  do k=1,size(kvm_sponge(:),1)
+     kvm(:ncol,1) = kvm(:ncol,1)+kvm_sponge(k)
+  end do
 
   ! kvh (in pbuf) is used by other physics parameterizations, and as an initial guess in compute_eddy_diff
   ! on the next timestep.  It is not updated by the compute_vdiff call below.
