@@ -247,44 +247,75 @@ subroutine apply_SC_forcing(elem,hvcoord,tl,n,t_before_advance)
       !   flags and data to all processors
       !----------------------------------------------------------
 
-      use spmd_utils,   only: mpi_logical, mpi_real8, masterproc, iam, mpicom, mstrid=>masterprocid
+      use spmd_utils,             only: mpi_logical, mpi_real8, masterproc, iam, mpicom, mstrid=>masterprocid
+      use cam_abortutils,         only: endrun
 
       integer :: ierr
+      character(len=*), parameter :: sub = 'radiation_readnl'
+
 #ifdef SPMD
-
       call mpi_bcast(have_ps,1,mpi_logical,mstrid,mpicom,ierr)
+      if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: have_ps")
       call mpi_bcast(have_tg,1,mpi_logical,mstrid,mpicom,ierr)
+      if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: have_tg")
       call mpi_bcast(have_lhflx,1,mpi_logical,mstrid,mpicom,ierr)
+      if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: have_lhflx")
       call mpi_bcast(have_shflx,1,mpi_logical,mstrid,mpicom,ierr)
+      if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: have_shflx")
       call mpi_bcast(have_t,1,mpi_logical,mstrid,mpicom,ierr)
+      if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: have_t")
       call mpi_bcast(have_q,1,mpi_logical,mstrid,mpicom,ierr)
+      if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: have_q")
       call mpi_bcast(have_u,1,mpi_logical,mstrid,mpicom,ierr)
+      if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: have_u")
       call mpi_bcast(have_v,1,mpi_logical,mstrid,mpicom,ierr)
+      if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: have_v")
       call mpi_bcast(have_omega,1,mpi_logical,mstrid,mpicom,ierr)
+      if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: have_omega")
       call mpi_bcast(have_cldliq,1,mpi_logical,mstrid,mpicom,ierr)
+      if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: have_cldliq")
       call mpi_bcast(have_divt,1,mpi_logical,mstrid,mpicom,ierr)
+      if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: have_divt")
       call mpi_bcast(have_divq,1,mpi_logical,mstrid,mpicom,ierr)
+      if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: have_divq")
       call mpi_bcast(have_divt3d,1,mpi_logical,mstrid,mpicom,ierr)
+      if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: have_divt3d")
       call mpi_bcast(have_divq3d,1,mpi_logical,mstrid,mpicom,ierr)
+      if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: have_divq3d")
       call mpi_bcast(use_3dfrc,1,mpi_logical,mstrid,mpicom,ierr)
-
+      if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: use_3dfrc")
+      
       call mpi_bcast(psobs,1,mpi_real8,mstrid,mpicom,ierr)
+      if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: psobs")
       call mpi_bcast(tground,1,mpi_real8,mstrid,mpicom,ierr)
+      if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: tground")
       call mpi_bcast(lhflxobs,1,mpi_real8,mstrid,mpicom,ierr)
+      if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: lhflxobs")
       call mpi_bcast(shflxobs,1,mpi_real8,mstrid,mpicom,ierr)
-
+      if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: shflxobs")
+      
       call mpi_bcast(tobs,nlev,mpi_real8,mstrid,mpicom,ierr)
+      if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: tobs")
       call mpi_bcast(qobs,nlev,mpi_real8,mstrid,mpicom,ierr)
+      if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: qobs")
       call mpi_bcast(uobs,nlev,mpi_real8,mstrid,mpicom,ierr)
+      if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: uobs")
       call mpi_bcast(vobs,nlev,mpi_real8,mstrid,mpicom,ierr)
+      if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: vobs")
       call mpi_bcast(cldliqobs,nlev,mpi_real8,mstrid,mpicom,ierr)
+      if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: cldliqobs")
       call mpi_bcast(wfld,nlev,mpi_real8,mstrid,mpicom,ierr)
-
+      if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: wfld")
+      
       call mpi_bcast(divt,nlev,mpi_real8,mstrid,mpicom,ierr)
+      if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: divt")
       call mpi_bcast(divq,nlev,mpi_real8,mstrid,mpicom,ierr)
+      if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: divq")
       call mpi_bcast(divt3d,nlev,mpi_real8,mstrid,mpicom,ierr)
+      if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: divt3d")
       call mpi_bcast(divq3d,nlev,mpi_real8,mstrid,mpicom,ierr)
-
+      if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: divq3d")
+      
 #endif
 
     end subroutine iop_broadcast
