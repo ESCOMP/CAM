@@ -1,0 +1,206 @@
+[submodule "ccs_config"]
+path = ccs_config
+url = https://github.com/ESMCI/ccs_config_cesm
+fxtag = ccs_config_cesm0.0.85
+fxurl = https://github.com/ESMCI/ccs_config_cesm
+fxrequired = ToplevelRequired
+
+[submodule "cice5"]
+path = components/cice5
+url = https://github.com/ESCOMP/CESM_CICE5
+fxtag = cice5_20220204
+fxurl = https://github.com/ESCOMP/CESM_CICE5
+fxrequired = ToplevelRequired
+
+[submodule "cice6"]
+path = components/cice
+url = https://github.com/jedwards4b/CESM_CICE
+fxtag = rme/cesm_cice6_4_1_13
+fxurl = https://github.com/ESCOMP/CESM_CICE
+fxrequired = ToplevelRequired
+
+[submodule "cmeps"]
+path = components/cmeps
+url = https://github.com/ESCOMP/CMEPS.git
+fxtag = cmeps0.14.49
+fxurl = https://github.com/ESCOMP/CMEPS.git
+fxrequired = ToplevelRequired
+
+[submodule "cdeps"]
+path = components/cdeps
+url = https://github.com/jedwards4b/CDEPS.git
+fxtag = rme/cdeps1.0.28
+fxurl = https://github.com/ESCOMP/CDEPS.git
+fxrequired = ToplevelRequired
+
+[submodule "cpl7"]
+path = components/cpl7
+url = https://github.com/ESCOMP/CESM_CPL7andDataComps
+fxtag = cpl77.0.7
+fxurl = https://github.com/ESCOMP/CESM_CPL7andDataComps
+fxrequired = ToplevelRequired
+
+[submodule "share"]
+path = share
+url = https://github.com/ESCOMP/CESM_share
+fxtag = share1.0.18
+fxurl = https://github.com/ESCOMP/CESM_share
+fxrequired = ToplevelRequired
+
+[submodule "mct"]
+path = libraries/mct
+url = https://github.com/MCSclimate/MCT
+fxtag = MCT_2.11.0
+fxurl = https://github.com/MCSclimate/MCT
+fxrequired = ToplevelRequired
+
+[submodule "parallelio"]
+path = libraries/parallelio
+url = https://github.com/NCAR/ParallelIO
+fxtag = pio2_6_2
+fxurl = https://github.com/NCAR/ParallelIO
+fxrequired = ToplevelRequired
+
+[submodule "cime"]
+path = cime
+url = https://github.com/ESMCI/cime
+fxtag = cime6.0.221
+fxurl = https://github.com/ESMCI/cime
+fxrequired = ToplevelRequired
+
+[submodule "cism"]
+path = components/cism
+url = https://github.com/ESCOMP/CISM-wrapper
+fxtag = cismwrap_2_1_96
+fxurl = https://github.com/ESCOMP/CISM-wrapper
+fxrequired = ToplevelRequired
+
+[submodule "clm"]
+path = components/clm
+url = https://github.com/ESCOMP/CTSM
+fxtag = ctsm5.1.dev145
+fxurl = https://github.com/ESCOMP/CTSM
+fxrequired = ToplevelRequired
+
+[submodule "fms"]
+path = libraries/FMS
+url = https://github.com/ESCOMP/FMS_interface
+fxtag = fi_20211011
+fxurl = https://github.com/ESCOMP/FMS_interface
+fxrequired = ToplevelRequired
+
+[submodule "mosart"]
+path = components/mosart
+url = https://github.com/ESCOMP/MOSART
+fxtag = mosart1_0_48
+fxurl = https://github.com/ESCOMP/MOSART
+fxrequired = ToplevelRequired
+
+[submodule "rtm"]
+path = components/rtm
+url = https://github.com/ESCOMP/RTM
+fxurl = https://github.com/ESCOMP/RTM
+fxtag = rtm1_0_78
+fxrequired = ToplevelRequired
+
+[submodule "chem_proc"]
+path = chem_proc
+url = https://github.com/ESCOMP/CHEM_PREPROCESSOR.git
+fxtag = chem_proc5_0_05
+fxurl = https://github.com/ESCOMP/CHEM_PREPROCESSOR.git
+fxrequired = AlwaysRequired
+
+[submodule "carma"]
+path = src/physics/carma/base
+url = https://github.com/ESCOMP/CARMA_base.git
+fxtag = carma4_01
+fxurl = https://github.com/ESCOMP/CARMA_base.git
+fxrequired = AlwaysRequired
+
+[submodule "cosp2"]
+path = src/physics/cosp2/src
+url = https://github.com/CFMIP/COSPv2.0
+fxtag = v2.1.4cesm
+fxurl = https://github.com/CFMIP/COSPv2.0
+fxsparse = ../.cosp_sparse_checkout
+fxrequired = AlwaysRequired
+
+[submodule "clubb"]
+path = src/physics/clubb
+url = https://github.com/larson-group/clubb_release
+fxtag = clubb_4ncar_20221129_59cb19f_20230330_branchtag
+fxurl = https://github.com/larson-group/clubb_release
+fxsparse = ../.clubb_sparse_checkout
+fxrequired = AlwaysRequired
+
+[submodule "pumas"]
+path = src/physics/pumas
+url = https://github.com/ESCOMP/PUMAS
+fxtag = pumas_cam-release_v1.35
+fxurl = https://github.com/ESCOMP/PUMAS
+fxrequired = AlwaysRequired
+
+[submodule "pumas-frozen"]
+path = src/physics/pumas-frozen
+url = https://github.com/ESCOMP/PUMAS
+fxtag = pumas_cam-release_v1.17_rename
+fxurl = https://github.com/ESCOMP/PUMAS
+fxrequired = AlwaysRequired
+
+[submodule "ali_arms"]
+path = src/physics/ali_arms
+url = https://github.com/ESCOMP/ALI-ARMS
+fxtag = ALI_ARMS_v1.0.1
+fxurl = https://github.com/ESCOMP/ALI-ARMS
+fxrequired = AlwaysRequired
+
+[submodule "atmos_phys"]
+path = src/atmos_phys
+url = https://github.com/ESCOMP/atmospheric_physics
+fxtag = atmos_phys0_02_000
+fxurl = https://github.com/ESCOMP/atmospheric_physics
+fxrequired = AlwaysRequired
+
+[submodule "atmos_cubed_sphere"]
+path = src/dynamics/fv3/atmos_cubed_sphere
+url = https://github.com/ESCOMP/FV3_CESM.git
+fxtag = fv3_cesm.04
+fxurl = https://github.com/ESCOMP/FV3_CESM.git
+fxrequired = AlwaysRequired
+
+[submodule "mpas"]
+path = src/dynamics/mpas/dycore
+url = https://github.com/MPAS-Dev/MPAS-Model.git
+fxtag = b8c33daa
+fxurl = https://github.com/MPAS-Dev/MPAS-Model.git
+fxsparse = ../.mpas_sparse_checkout
+fxrequired = AlwaysRequired
+
+[submodule "geoschem"]
+path = src/chemistry/geoschem/geoschem_src
+url = https://github.com/geoschem/geos-chem.git
+fxtag = 14.1.2
+fxurl = https://github.com/geoschem/geos-chem.git
+fxrequired = AlwaysRequired
+
+[submodule "hemco"]
+path = src/hemco
+url = https://github.com/ESCOMP/HEMCO_CESM.git
+fxtag = hemco-cesm1_2_1_hemco3_6_3_cesm
+fxurl = https://github.com/ESCOMP/HEMCO_CESM.git
+fxrequired = AlwaysRequired
+
+[submodule "rte-rrtmgp"]
+path = src/physics/rrtmgp/ext
+url = https://github.com/earth-system-radiation/rte-rrtmgp.git
+fxtag = v1.7
+fxurl = https://github.com/earth-system-radiation/rte-rrtmgp.git
+fxrequired = AlwaysRequired
+
+[submodule "rrtmgp-data"]
+path = src/physics/rrtmgp/data
+url = https://github.com/earth-system-radiation/rrtmgp-data.git
+fxtag = v1.8
+fxurl = https://github.com/earth-system-radiation/rrtmgp-data.git
+fxrequired = AlwaysRequired
+
