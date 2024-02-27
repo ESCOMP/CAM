@@ -331,23 +331,16 @@ subroutine vertical_diffusion_init(pbuf2d)
      kvm_sponge(4) = 1.0E6_r8
      kvm_sponge(5) = 0.5E6_r8
      kvm_sponge(6) = 0.1E6_r8
-  else
-     allocate(kvm_sponge(1))
-     kvm_sponge(1) = 0.0_r8
   end if
 
   if (masterproc) then
      write(iulog,*)'Initializing vertical diffusion (vertical_diffusion_init)'
      if (allocated(kvm_sponge(:))) then
-        if (maxval(kvm_sponge(:))>0.0_r8) then
-           write(iulog,*)'Artificial sponge layer vertical diffusion added:'
-           do k=1,size(kvm_sponge(:),1)
-              write(iulog,'(a44,i2,a17,e7.2,a8)') 'vertical diffusion coefficient at interface',k,' is increased by ', &
-                                                  kvm_sponge(k),' m2 s-2'
-           end do
-        end if !maxval > 0
-     else
-        call endrun('vertical_diffusion_init: kvm_sponge not allocated.  Please check model top pressure value')
+        write(iulog,*)'Artificial sponge layer vertical diffusion added:'
+        do k=1,size(kvm_sponge(:),1)
+           write(iulog,'(a44,i2,a17,e7.2,a8)') 'vertical diffusion coefficient at interface',k,' is increased by ', &
+                                                kvm_sponge(k),' m2 s-2'
+        end do
      end if !allocated
   end if
 
@@ -1118,9 +1111,11 @@ subroutine vertical_diffusion_tend( &
   !
   ! add sponge layer vertical diffusion
   !
-  do k=1,size(kvm_sponge(:),1)
-     kvm(:ncol,1) = kvm(:ncol,1)+kvm_sponge(k)
-  end do
+  if (allocated(kvm_sponge)) then
+     do k=1,size(kvm_sponge(:),1)
+        kvm(:ncol,1) = kvm(:ncol,1)+kvm_sponge(k)
+     end do
+  end if
 
   ! kvh (in pbuf) is used by other physics parameterizations, and as an initial guess in compute_eddy_diff
   ! on the next timestep.  It is not updated by the compute_vdiff call below.
