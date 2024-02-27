@@ -339,14 +339,16 @@ subroutine vertical_diffusion_init(pbuf2d)
   if (masterproc) then
      write(iulog,*)'Initializing vertical diffusion (vertical_diffusion_init)'
      if (allocated(kvm_sponge(:))) then
-        write(iulog,*)'Artificial sponge layer vertical diffusion added:'
-        do k=1,size(kvm_sponge(:),1)
-           write(iulog,'(a44,i2,a17,e7.2,a8)') 'vertical diffusion coefficient at interface',k,' is increased by ', &
-                                               kvm_sponge(k),' m2 s-2'
-        end do
+        if (maxval(kvm_sponge(:))>0.0_r8) then
+           write(iulog,*)'Artificial sponge layer vertical diffusion added:'
+           do k=1,size(kvm_sponge(:),1)
+              write(iulog,'(a44,i2,a17,e7.2,a8)') 'vertical diffusion coefficient at interface',k,' is increased by ', &
+                                                  kvm_sponge(k),' m2 s-2'
+           end do
+        end if !maxval > 0
      else
         call endrun('vertical_diffusion_init: kvm_sponge not allocated.  Please check model top pressure value')
-     end if
+     end if !allocated
   end if
 
   ! Check to see if WACCM-X is on (currently we don't care whether the
