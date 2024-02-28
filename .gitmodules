@@ -1,7 +1,7 @@
 [submodule "ccs_config"]
 path = ccs_config
 url = https://github.com/ESMCI/ccs_config_cesm
-fxtag = ccs_config_cesm0.0.85
+fxtag = ccs_config_cesm0.0.93
 fxurl = https://github.com/ESMCI/ccs_config_cesm
 fxrequired = ToplevelRequired
 
@@ -15,7 +15,7 @@ fxrequired = ToplevelRequired
 [submodule "cice6"]
 path = components/cice
 url = https://github.com/jedwards4b/CESM_CICE
-fxtag = rme/cesm_cice6_4_1_13
+fxtag = rme/cesm_cice6_5_0_7
 fxurl = https://github.com/ESCOMP/CESM_CICE
 fxrequired = ToplevelRequired
 
@@ -63,8 +63,8 @@ fxrequired = ToplevelRequired
 
 [submodule "cime"]
 path = cime
-url = https://github.com/ESMCI/cime
-fxtag = cime6.0.221
+url = https://github.com/jedwards4b/cime
+fxtag = rme/cime6.0.221
 fxurl = https://github.com/ESMCI/cime
 fxrequired = ToplevelRequired
 
@@ -77,8 +77,8 @@ fxrequired = ToplevelRequired
 
 [submodule "clm"]
 path = components/clm
-url = https://github.com/ESCOMP/CTSM
-fxtag = ctsm5.1.dev145
+url = https://github.com/jedwards4b/CTSM
+fxtag = rme/ctsm5.1.dev147
 fxurl = https://github.com/ESCOMP/CTSM
 fxrequired = ToplevelRequired
 
@@ -185,8 +185,8 @@ fxrequired = AlwaysRequired
 
 [submodule "hemco"]
 path = src/hemco
-url = https://github.com/ESCOMP/HEMCO_CESM.git
-fxtag = hemco-cesm1_2_1_hemco3_6_3_cesm
+url = https://github.com/jedwards4b/HEMCO_CESM.git
+fxtag = rme/hemco-cesm1_2_1_hemco3_6_3_cesm
 fxurl = https://github.com/ESCOMP/HEMCO_CESM.git
 fxrequired = AlwaysRequired
 
