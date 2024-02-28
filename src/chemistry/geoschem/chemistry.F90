@@ -990,6 +990,7 @@ contains
     use TaggedDiagList_Mod,    only : Init_TaggedDiagList, Print_TaggedDiagList
     use Time_Mod,              only : Accept_External_Date_Time
     use Ucx_Mod,               only : Init_Ucx
+    use Unitconv_Mod,          only : MOLES_SPECIES_PER_MOLES_DRY_AIR
     use Vdiff_Mod,             only : Max_PblHt_For_Vdiff 
 
     TYPE(physics_state),                INTENT(IN   ) :: phys_state(BEGCHUNK:ENDCHUNK)
@@ -1420,7 +1421,7 @@ contains
        ENDIF
 
        ! Start with v/v dry (CAM standard)
-       State_Chm(I)%Spc_Units = 'v/v dry'
+       State_Chm(I)%Spc_Units = MOLES_SPECIES_PER_MOLES_DRY_AIR
 
     ENDDO
     Input_Opt%amIRoot = MasterProc
@@ -1864,7 +1865,8 @@ contains
     use Time_Mod,            only : Accept_External_Date_Time
     use Toms_Mod,            only : Compute_Overhead_O3
     use UCX_Mod,             only : Set_H2O_Trac
-    use Unitconv_Mod,        only : Convert_Spc_Units, KG_SPECIES_PER_KG_DRY_AIR, UNIT_STR
+    use Unitconv_Mod,        only : Convert_Spc_Units, UNIT_STR
+    use Unitconv_Mod,        only : KG_SPECIES_PER_KG_DRY_AIR
     use Wetscav_Mod,         only : Setup_Wetscav
 
     REAL(r8),            INTENT(IN)    :: dT          ! Time step
@@ -2100,7 +2102,7 @@ contains
 
     ! 2. Copy tracers into State_Chm
     ! Data was received in kg/kg dry
-    State_Chm(LCHNK)%Spc_Units = 'kg/kg dry'
+    State_Chm(LCHNK)%Spc_Units = KG_SPECIES_PER_KG_DRY_AIR
     ! Initialize ALL State_Chm species data to zero, not just tracers
     DO N = 1, State_Chm(LCHNK)%nSpecies
        State_Chm(LCHNK)%Species(N)%Conc = 0.0e+0_fp
