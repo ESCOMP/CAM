@@ -1403,6 +1403,7 @@ contains
     ENDIF
 
     DO I = BEGCHUNK, ENDCHUNK
+       ! Restrict prints to one thread only
        Input_Opt%amIRoot = (MasterProc .AND. (I == BEGCHUNK))
 
        CALL GC_Init_StateObj( Diag_List       = Diag_List,       & ! Diagnostic list obj
@@ -1579,12 +1580,16 @@ contains
     IF ( Input_Opt%ITS_A_FULLCHEM_SIM .or. &
          Input_Opt%ITS_AN_AEROSOL_SIM ) THEN
        DO I = BEGCHUNK, ENDCHUNK
+          ! Restrict prints to one thread only
+          Input_Opt%amIRoot = (MasterProc .AND. (I == BEGCHUNK))
+
           CALL Init_Photolysis( Input_Opt  = Input_Opt,                &
                                 State_Grid = State_Grid(I),            &
                                 State_Chm  = State_Chm(I),             &
                                 State_Diag = State_Diag(I),            &
                                 RC         = RC                       )
        ENDDO
+       Input_Opt%amIRoot = MasterProc
 
        IF ( RC /= GC_SUCCESS ) THEN
           ErrMsg = 'Error encountered in "Init_Photolysis"!'
