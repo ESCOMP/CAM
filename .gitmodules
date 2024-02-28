@@ -78,7 +78,7 @@ fxrequired = ToplevelRequired
 [submodule "clm"]
 path = components/clm
 url = https://github.com/jedwards4b/CTSM
-fxtag = rme/ctsm5.1.dev147
+fxtag = rme_tags/CESM3_dev.n04_ctsm5.1.dev166.01
 fxurl = https://github.com/ESCOMP/CTSM
 fxrequired = ToplevelRequired
 
