@@ -376,8 +376,8 @@ subroutine neu_wetdep_tend(lchnk,ncol,mmr,pmid,pdel,zint,tfld,delt, &
           else if( m == nh3_ndx ) then
              heff(:,k,m) = heff(:,k,m)*(1._r8 + dk1s(:)*ph/dk2s(:))
           else
-             write(iulog,*) 'error in assigning henrys law coefficients'
-             write(iulog,*) 'species ',m
+             if ( masterproc ) write(iulog,*) 'error in assigning henrys law coefficients'
+             if ( masterproc ) write(iulog,*) 'species ',m
           end if
         end if
       end if
