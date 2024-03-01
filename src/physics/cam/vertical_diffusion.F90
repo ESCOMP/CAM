@@ -335,7 +335,7 @@ subroutine vertical_diffusion_init(pbuf2d)
 
   if (masterproc) then
      write(iulog,*)'Initializing vertical diffusion (vertical_diffusion_init)'
-     if (allocated(kvm_sponge(:))) then
+     if (allocated(kvm_sponge)) then
         write(iulog,*)'Artificial sponge layer vertical diffusion added:'
         do k=1,size(kvm_sponge(:),1)
            write(iulog,'(a44,i2,a17,e7.2,a8)') 'vertical diffusion coefficient at interface',k,' is increased by ', &
