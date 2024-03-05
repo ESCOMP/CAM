@@ -199,7 +199,7 @@ contains
                out_v(i+(j-1)*np,:) = elem(ie)%state%v(i,j,2,:,n0)
                out_ps(i+(j-1)*np) = elem(ie)%state%psdry(i,j)
 
-               ! to retain bfb for scam check, replace state q and t with roundoff version calculated using the ordering and tendencies of the
+               ! to retain bfb, replace state q and t with roundoff version calculated using the ordering and tendencies of the
                ! scam prognostic equation
                elem(ie)%state%T(i,j,:,n0) =  iop_ttendxyz_init(i,j,:,ie) + dt*(elem(ie)%derived%FT(i,j,:) + t_adv(i+(j-1)*np,:))
                out_t(i+(j-1)*np,:) = elem(ie)%state%T(i,j,:,n0)

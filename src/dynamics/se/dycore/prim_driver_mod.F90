@@ -850,7 +850,8 @@ contains
          do p=1,qsize
             do k=1,nlev
                elem(ie)%state%Qdp(:,:,k,p,qnp1) = elem(ie)%state%Qdp(:,:,k,p,qn0) &
-                    + elem(ie)%state%Qdp(:,:,k,p,qn0)/elem(ie)%state%dp3d(:,:,k,n0)*dt*(eta_dot_dpdn(:,:,k+1) - eta_dot_dpdn(:,:,k))
+                    + elem(ie)%state%Qdp(:,:,k,p,qn0)/elem(ie)%state%dp3d(:,:,k,n0) * &
+                    dt*(eta_dot_dpdn(:,:,k+1) - eta_dot_dpdn(:,:,k))
             enddo
          enddo
       enddo

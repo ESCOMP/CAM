@@ -215,8 +215,8 @@ logical, public ::  scm_backfill_iop_w_init = .false. ! Backfill missing IOP dat
 logical, public ::  scm_relaxation         = .false. ! Use relaxation
 logical, public ::  scm_crm_mode           = .false. ! Use column radiation mode
 logical, public ::  scm_cambfb_mode        = .false. ! Use extra CAM IOP fields to assure bit for bit match with CAM run
-logical, public ::  scm_use_obs_T          = .false. ! Use the SCAM-IOP specified observed T   at each time step instead of forecasting.
-logical, public ::  scm_force_latlon       = .false. ! force scam to use the lat lon fields specified in the scam namelist not what is closest to iop avail lat lon
+logical, public ::  scm_use_obs_T          = .false. ! Use the SCAM-IOP observed T at each timestep instead of forecasting.
+logical, public ::  scm_force_latlon       = .false. ! force scam to use the lat lon fields specified in the namelist not closest
 real(r8), public              ::  scm_relaxation_low      ! lowest level to apply relaxation
 real(r8), public              ::  scm_relaxation_high     ! highest level to apply relaxation
 real(r8), public              ::  scm_relax_top_p       = 1.e36_r8 ! upper bound for scm relaxation
@@ -234,10 +234,10 @@ character(len=26), public  :: scm_relax_fincl(pcnst)
 ! note that scm_use_obs_uv is set to true to be consistent with CAM BFB testing
 !
 
-logical, public ::  scm_use_obs_uv         = .true. ! Use the SCAM-IOP specified observed u,v at each time step instead of forecasting.
+logical, public ::  scm_use_obs_uv         = .true. ! Use the SCAM-IOP observed u,v at each time step instead of forecasting.
 
-logical, public ::  scm_use_obs_qv         = .false. ! Use the SCAM-IOP specified observed qv  at each time step instead of forecasting.
-logical, public ::  scm_use_3dfrc          = .false. ! Use the CAM/SCAM-IOP 3d forcing if true, else use dycore vertical plus horizontal advective forcing
+logical, public ::  scm_use_obs_qv         = .false. ! Use the SCAM-IOPobserved qv  at each time step instead of forecasting.
+logical, public ::  scm_use_3dfrc          = .false. ! Use CAMIOP 3d forcing if true, else use dycore vertical plus horizontal
 logical, public ::  scm_iop_lhflxshflxTg   = .false. !turn off LW rad
 logical, public ::  scm_iop_Tg             = .false. !turn off LW rad
 
