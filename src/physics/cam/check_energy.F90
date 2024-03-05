@@ -602,19 +602,15 @@ end subroutine check_energy_get_integrals
     ! disable the energy fix for offline driver
     heat_glob = 0._r8
 #endif
-    ! add global mean total energy difference as heating
-    if (single_column .and. use_camiop) then
-      heat_glob = heat_glob_scm(1)
-    endif
 
-    ! In single column model we do NOT want to take into
-    !   consideration the dynamics energy fixer.  Since only
-    !   one column of dynamics is active, this data will
-    !   essentially be garbage.
-    if (single_column .and. .not. use_camiop) then
-      heat_glob = 0._r8
+    ! Special handling of energy fix for SCAM - supplied via CAMIOP - zero's for normal IOPs
+    if (single_column) then
+       if ( use_camiop) then
+          heat_glob = heat_glob_scm(1)
+       else
+          heat_glob = 0._r8
+       endif
     endif
-! add (-) global mean total energy difference as heating
     ptend%s(:ncol,:pver) = heat_glob
 
     if (nstep > 0 .and. write_camiop) then

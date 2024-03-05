@@ -32,7 +32,7 @@ public scm_dyn_grid_indicies
 
 integer, public :: indx_scm, ie_scm, i_scm, j_scm
 
-integer                      :: tl_f, tl_fqdp, thelev
+integer         :: tl_f, tl_fqdp, thelev
 
 !=========================================================================
 contains
@@ -47,9 +47,8 @@ subroutine scm_setinitial(elem)
 
   type(element_t), intent(inout) :: elem(:)
 
-  integer k
-  integer inumliq, inumice, icldliq, icldice
-  integer              :: tl_f, tl_fqdp
+  integer              :: levidx(1)
+  integer              :: inumliq, inumice, icldliq, icldice, levidx(1)
 
   call scm_dyn_grid_indicies(elem,scmlat,scmlon,ie_scm,i_scm,j_scm,indx_scm)
 
@@ -63,15 +62,8 @@ subroutine scm_setinitial(elem)
     call cnst_get_ind('CLDICE', icldice)
 
     ! Find level where tobs is no longer zero
-    thelev=1
-    do k=1, NLEV
-       if (tobs(k)  /=  0) then
-          thelev=k
-          go to 1000
-       endif
-    enddo
-
-1000 continue
+    levidx=MINLOC(tobs, MASK = tobs == 0._r8)
+    thelev=levidx(1)
 
     if (get_nstep()  <=  1) then
        do k=1,thelev-1
@@ -93,10 +85,14 @@ subroutine scm_setinitial(elem)
           if (have_ps) elem(ie_scm)%state%psdry(i_scm,j_scm) = psobs
           if (have_u) elem(ie_scm)%state%v(i_scm,j_scm,1,k,tl_f) = uobs(k)
           if (have_v) elem(ie_scm)%state%v(i_scm,j_scm,2,k,tl_f) = vobs(k)
-          if (have_numliq) elem(ie_scm)%state%qdp(i_scm,j_scm,k,inumliq,tl_fqdp) = numliqobs(k)*elem(ie_scm)%state%dp3d(i_scm,j_scm,k,tl_f)
-          if (have_cldliq) elem(ie_scm)%state%qdp(i_scm,j_scm,k,icldliq,tl_fqdp) = cldliqobs(k)*elem(ie_scm)%state%dp3d(i_scm,j_scm,k,tl_f)
-          if (have_numice) elem(ie_scm)%state%qdp(i_scm,j_scm,k,inumice,tl_fqdp) = numiceobs(k)*elem(ie_scm)%state%dp3d(i_scm,j_scm,k,tl_f)
-          if (have_cldice) elem(ie_scm)%state%qdp(i_scm,j_scm,k,icldice,tl_fqdp) = cldiceobs(k)*elem(ie_scm)%state%dp3d(i_scm,j_scm,k,tl_f)
+          if (have_numliq) elem(ie_scm)%state%qdp(i_scm,j_scm,k,inumliq,tl_fqdp) = &
+               numliqobs(k)*elem(ie_scm)%state%dp3d(i_scm,j_scm,k,tl_f)
+          if (have_cldliq) elem(ie_scm)%state%qdp(i_scm,j_scm,k,icldliq,tl_fqdp) = &
+               cldliqobs(k)*elem(ie_scm)%state%dp3d(i_scm,j_scm,k,tl_f)
+          if (have_numice) elem(ie_scm)%state%qdp(i_scm,j_scm,k,inumice,tl_fqdp) = &
+               numiceobs(k)*elem(ie_scm)%state%dp3d(i_scm,j_scm,k,tl_f)
+          if (have_cldice) elem(ie_scm)%state%qdp(i_scm,j_scm,k,icldice,tl_fqdp) = &
+               cldiceobs(k)*elem(ie_scm)%state%dp3d(i_scm,j_scm,k,tl_f)
           if (have_omega) elem(ie_scm)%derived%omega(i_scm,j_scm,k) = wfld(k)
        enddo
 
@@ -174,7 +170,7 @@ subroutine apply_SC_forcing(elem,hvcoord,tl,n,t_before_advance)
 
     ! Set initial profiles for current column
     do m=1,pcnst
-       stateQ_in(:nlev,m) =             elem(ie_scm)%state%Qdp(i_scm,j_scm,:nlev,m,tl_fqdp)/elem(ie_scm)%state%dp3d(i_scm,j_scm,:nlev,tl_f)
+       stateQ_in(:nlev,m) = elem(ie_scm)%state%Qdp(i_scm,j_scm,:nlev,m,tl_fqdp)/elem(ie_scm)%state%dp3d(i_scm,j_scm,:nlev,tl_f)
     end do
     t_in(:nlev) = elem(ie_scm)%state%T(i_scm,j_scm,:nlev,tl_f)
     u_in(:nlev) = elem(ie_scm)%state%v(i_scm,j_scm,1,:nlev,tl_f)
@@ -198,7 +194,8 @@ subroutine apply_SC_forcing(elem,hvcoord,tl,n,t_before_advance)
 
     if (use_3dfrc) then    ! vertical remap of dynamics not run need to update state%dp3d using new psdry
        do k=1,nlev
-          elem(ie_scm)%state%dp3d(i_scm,j_scm,k,tl_f) = (hvcoord%hyai(k+1)-hvcoord%hyai(k))*hvcoord%ps0 + (hvcoord%hybi(k+1)-hvcoord%hybi(k))*elem(ie_scm)%state%psdry(i_scm,j_scm)
+          elem(ie_scm)%state%dp3d(i_scm,j_scm,k,tl_f) = (hvcoord%hyai(k+1)-hvcoord%hyai(k))*hvcoord%ps0 + &
+               (hvcoord%hybi(k+1)-hvcoord%hybi(k))*elem(ie_scm)%state%psdry(i_scm,j_scm)
        end do
     end if
 
@@ -284,7 +281,7 @@ subroutine apply_SC_forcing(elem,hvcoord,tl,n,t_before_advance)
       if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: have_divq3d")
       call mpi_bcast(use_3dfrc,1,mpi_logical,mstrid,mpicom,ierr)
       if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: use_3dfrc")
-      
+
       call mpi_bcast(psobs,1,mpi_real8,mstrid,mpicom,ierr)
       if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: psobs")
       call mpi_bcast(tground,1,mpi_real8,mstrid,mpicom,ierr)
@@ -293,7 +290,7 @@ subroutine apply_SC_forcing(elem,hvcoord,tl,n,t_before_advance)
       if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: lhflxobs")
       call mpi_bcast(shflxobs,1,mpi_real8,mstrid,mpicom,ierr)
       if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: shflxobs")
-      
+
       call mpi_bcast(tobs,nlev,mpi_real8,mstrid,mpicom,ierr)
       if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: tobs")
       call mpi_bcast(qobs,nlev,mpi_real8,mstrid,mpicom,ierr)
@@ -306,7 +303,7 @@ subroutine apply_SC_forcing(elem,hvcoord,tl,n,t_before_advance)
       if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: cldliqobs")
       call mpi_bcast(wfld,nlev,mpi_real8,mstrid,mpicom,ierr)
       if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: wfld")
-      
+
       call mpi_bcast(divt,nlev,mpi_real8,mstrid,mpicom,ierr)
       if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: divt")
       call mpi_bcast(divq,nlev,mpi_real8,mstrid,mpicom,ierr)
@@ -315,7 +312,7 @@ subroutine apply_SC_forcing(elem,hvcoord,tl,n,t_before_advance)
       if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: divt3d")
       call mpi_bcast(divq3d,nlev,mpi_real8,mstrid,mpicom,ierr)
       if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: divq3d")
-      
+
 #endif
 
     end subroutine iop_broadcast

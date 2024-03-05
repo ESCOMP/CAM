@@ -100,13 +100,15 @@ contains
      real(r8), intent(inout) :: uten_phys(plev)         ! Tendency of u by the sum of 'physics + geostrophic forcing' [ m/s/s ]
      real(r8), intent(inout) :: vten_phys(plev)         ! Tendency of v by the sum of 'physics + geostrophic forcing' [ m/s/s ]
      real(r8)                   qten_phys(plev,pcnst)   ! Tendency of q by the 'physics' [ #/kg/s, kg/kg/s ]
-     real(r8), intent(in)    :: qminus(plon,plev,pcnst) ! ( qminus - q3m2 ) / ztodt = Tendency of tracers by the 'physics' [ #/kg/s, kg/kg/s ]
+     real(r8), intent(in)    :: qminus(plon,plev,pcnst) ! (qminus - q3m2) / ztodt =
+                                                        ! Tendency of tracers by the 'physics' [ #/kg/s, kg/kg/s ]
 
      real(r8), intent(out)   :: t3(plev)                ! Temperature [ K ]
      real(r8), intent(out)   :: u3(plev)                ! Zonal wind [ m/s ]
      real(r8), intent(out)   :: v3(plev)                ! Meridional wind [ m/s ]
      real(r8), intent(inout) :: q3(plev,pcnst)          ! Tracers [ #/kg, kg/kg ]
-     real(r8), intent(inout) :: qfcst(plon,plev,pcnst)  ! ( Input qfcst - q3m2 ) / ztodt = Tendency of q by the sum of 'physics' + 'SLT vertical advection' [ #/kg/s, kg/kg/s ]
+     real(r8), intent(inout) :: qfcst(plon,plev,pcnst)  ! ( Input qfcst - q3m2 ) / ztodt = Tendency of q by the sum of 'physics' +
+                                                        ! 'SLT vertical advection' [ #/kg/s, kg/kg/s ]
 
 
    ! --------------- !
@@ -123,9 +125,12 @@ contains
      real(r8) pdelm1(plev)
      real(r8) wfldint(plevp)
      real(r8) pdelb(plon,plev)
-     real(r8) tfcst(plev)             ! (       tfcst - t3m2 ) / ztodt = Tendency of T by the sum of 'physics' + 'SLT/EUL/XXX vertical advection' [ K/s ]
-     real(r8) ufcst(plev)             ! (       ufcst - u3m2 ) / ztodt = Tendency of u by the sum of 'physics' + 'SLT/EUL/XXX vertical advection' [ m/s/s ]
-     real(r8) vfcst(plev)             ! (       vfcst - u3m2 ) / ztodt = Tendency of v by the sum of 'physics' + 'SLT/EUL/XXX vertical advection' [ m/s/s ]
+     real(r8) tfcst(plev)             ! ( tfcst - t3m2 ) / ztodt = Tendency of T by the sum of 'physics' +
+                                      ! 'SLT/EUL/XXX vertical advection' [ K/s ]
+     real(r8) ufcst(plev)             ! ( ufcst - u3m2 ) / ztodt = Tendency of u by the sum of 'physics' +
+                                      ! 'SLT/EUL/XXX vertical advection' [ m/s/s ]
+     real(r8) vfcst(plev)             ! ( vfcst - u3m2 ) / ztodt = Tendency of v by the sum of 'physics' +
+                                      ! 'SLT/EUL/XXX vertical advection' [ m/s/s ]
      logical scm_fincl_empty
    ! ----------------------------------------------- !
    ! Centered Eulerian vertical advective tendencies !
