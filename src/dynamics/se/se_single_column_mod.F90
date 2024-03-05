@@ -47,8 +47,8 @@ subroutine scm_setinitial(elem)
 
   type(element_t), intent(inout) :: elem(:)
 
-  integer              :: levidx(1)
-  integer              :: inumliq, inumice, icldliq, icldice, levidx(1)
+  integer              :: k, levidx(1)
+  integer              :: inumliq, inumice, icldliq, icldice
 
   call scm_dyn_grid_indicies(elem,scmlat,scmlon,ie_scm,i_scm,j_scm,indx_scm)
 
