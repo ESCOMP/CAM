@@ -1107,7 +1107,7 @@ CONTAINS
             flag_xyfill=.true., fill_value=R_UNDEF)
        call addfld ('MODIS_fracliq',   (/'cosp_scol','lev      '/), 'I','1',      'Fraction of tau from liquid water',  &
             flag_xyfill=.true., fill_value=R_UNDEF)
-       call addfld ('MODIS_asym',      (/'cosp_scol','lev      '/), 'I','1',      'Assymetry parameter (MODIS)',        &
+       call addfld ('MODIS_asym',      (/'cosp_scol','lev      '/), 'I','1',      'Asymmetry parameter (MODIS)',        &
             flag_xyfill=.true., fill_value=R_UNDEF)
        call addfld ('MODIS_ssa',       (/'cosp_scol','lev      '/), 'I','1',      'Single-scattering albedo (MODIS)',   &
             flag_xyfill=.true., fill_value=R_UNDEF)
@@ -3262,7 +3262,7 @@ CONTAINS
             MODIS_snowSize, cospIN%tau_067, MODIS_opticalThicknessLiq,               &
             MODIS_opticalThicknessIce, MODIS_opticalThicknessSnow)                            
        
-       ! Compute assymetry parameter and single scattering albedo 
+       ! Compute asymmetry parameter and single scattering albedo 
        call modis_optics(nPoints, nLevels, nColumns, MODIS_opticalThicknessLiq,      &
             MODIS_waterSize*1.0e6_wp, MODIS_opticalThicknessIce,                     &
             MODIS_iceSize*1.0e6_wp, MODIS_opticalThicknessSnow,                      &

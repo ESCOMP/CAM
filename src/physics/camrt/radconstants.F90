@@ -21,9 +21,6 @@ private
    public :: radconstants_init
    public :: rad_gas_index
 
-! optics files specify a type.  What length is it?
-integer, parameter, public :: ot_length = 32
-
 ! SHORTWAVE DATA
 
 ! number of shorwave spectral intervals
@@ -39,20 +36,6 @@ integer, parameter, public :: idx_uv_diag = 999  ! index to sw uv (345-441 nm) b
 
 
 integer, parameter, public :: idx_lw_diag = 2 ! index to (H20 window) LW band
-
-
-! Number of evenly spaced intervals in rh
-! The globality of this mesh may not be necessary
-! Perhaps it could be specific to the aerosol
-! But it is difficult to see how refined it must be
-! for lookup.  This value was found to be sufficient
-! for Sulfate and probably necessary to resolve the
-! high variation near rh = 1.  Alternative methods
-! were found to be too slow.
-! Optimal approach would be for cam to specify size of aerosol
-! based on each aerosol's characteristics.  Radiation 
-! should know nothing about hygroscopic growth!
-integer, parameter, public :: nrh = 1000  
 
 ! LONGWAVE DATA
 

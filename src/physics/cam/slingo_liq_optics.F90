@@ -1,4 +1,4 @@
-module slingo
+module slingo_liq_optics
 
 !------------------------------------------------------------------------------------------------
 !  Implements Slingo Optics for MG/RRTMG for liquid clouds and
@@ -6,12 +6,12 @@ module slingo
 !------------------------------------------------------------------------------------------------
 
 use shr_kind_mod,     only: r8 => shr_kind_r8
+use physconst,        only: gravit
 use ppgrid,           only: pcols, pver, pverp
 use physics_types,    only: physics_state
 use physics_buffer,   only: physics_buffer_desc, pbuf_get_index, pbuf_get_field, pbuf_old_tim_idx
-use radconstants,     only: nswbands, nlwbands, idx_sw_diag, ot_length, idx_lw_diag, get_sw_spectral_boundaries
+use radconstants,     only: nswbands, nlwbands, get_sw_spectral_boundaries
 use cam_abortutils,   only: endrun
-use cam_history,      only: outfld
 
 implicit none
 private
@@ -19,37 +19,28 @@ save
 
 public :: &
    slingo_rad_props_init,        &
-   cloud_rad_props_get_sw, & ! return SW optical props of total bulk aerosols
-   cloud_rad_props_get_lw,  & ! return LW optical props of total bulk aerosols
    slingo_liq_get_rad_props_lw, &
    slingo_liq_optics_sw
 
 ! Minimum cloud amount (as a fraction of the grid-box area) to 
 ! distinguish from clear sky
-! 
-   real(r8) cldmin
-   parameter (cldmin = 1.0e-80_r8)
-!
+real(r8), parameter :: cldmin = 1.0e-80_r8
+
 ! Decimal precision of cloud amount (0 -> preserve full resolution;
 ! 10^-n -> preserve n digits of cloud amount)
-! 
-   real(r8) cldeps
-   parameter (cldeps = 0.0_r8)
+real(r8), parameter :: cldeps = 0.0_r8
 
-! 
 ! indexes into pbuf for optical parameters of MG clouds
-! 
-   integer :: iclwp_idx  = 0 
-   integer :: iciwp_idx  = 0
-   integer :: cld_idx    = 0 
-   integer :: rel_idx  = 0
-   integer :: rei_idx  = 0
+integer :: iclwp_idx  = 0 
+integer :: iciwp_idx  = 0
+integer :: cld_idx    = 0 
+integer :: rel_idx  = 0
+integer :: rei_idx  = 0
 
 ! indexes into constituents for old optics
-   integer :: &
-        ixcldliq,   &         ! cloud liquid water index
-        ixcldice              ! cloud liquid water index
-
+integer :: &
+   ixcldliq,   &         ! cloud liquid water index
+   ixcldice              ! cloud liquid water index
 
 !==============================================================================
 contains
@@ -80,118 +71,18 @@ subroutine slingo_rad_props_init()
    call cnst_get_ind('CLDLIQ', ixcldliq)
    call cnst_get_ind('CLDICE', ixcldice)
 
-   !call addfld ('CLWPTH_OLD',(/ 'lev' /), 'I','Kg/m2','old In Cloud Liquid Water Path', sampling_seq='rad_lwsw')
-   !call addfld ('KEXT_OLD',(/ 'lev' /),'I','m^2/kg','old extinction')
-   !call addfld ('CLDOD_OLD',(/ 'lev' /),'I','1','old liquid OD')
-   !call addfld ('REL_OLD',(/ 'lev' /),'I','1','old liquid effective radius (liquid)')
-
-   !call addfld ('CLWPTH_NEW',(/ 'lev' /), 'I','Kg/m2','In Cloud Liquid Water Path', sampling_seq='rad_lwsw')
-   !call addfld ('KEXT_NEW',(/ 'lev' /),'I','m^2/kg','extinction')
-   !call addfld ('CLDOD_NEW',(/ 'lev' /),'I','1','liquid OD')
-
-   !call addfld('CIWPTH_NEW',(/ 'lev' /), 'I','Kg/m2','In Cloud Ice Water Path', sampling_seq='rad_lwsw')
-   !call addfld('CIWPTH_OLD',(/ 'lev' /), 'I','Kg/m2','In Cloud Ice Water Path (old)', sampling_seq='rad_lwsw')
-
-   return
-
 end subroutine slingo_rad_props_init
 
 !==============================================================================
 
-subroutine cloud_rad_props_get_sw(state, pbuf, &
-                                  tau, tau_w, tau_w_g, tau_w_f,&
-                                  diagnosticindex)
-
-! return totaled (across all species) layer tau, omega, g, f 
-! for all spectral interval for aerosols affecting the climate
-
-   ! Arguments
-   type(physics_state), intent(in) :: state
-   type(physics_buffer_desc), pointer :: pbuf(:)
-   integer, optional,   intent(in) :: diagnosticindex      ! index (if present) to radiation diagnostic information
-
-   real(r8), intent(out) :: tau    (nswbands,pcols,pver) ! aerosol extinction optical depth
-   real(r8), intent(out) :: tau_w  (nswbands,pcols,pver) ! aerosol single scattering albedo * tau
-   real(r8), intent(out) :: tau_w_g(nswbands,pcols,pver) ! aerosol assymetry parameter * tau * w
-   real(r8), intent(out) :: tau_w_f(nswbands,pcols,pver) ! aerosol forward scattered fraction * tau * w
-
-   ! Local variables
-
-   integer :: ncol
-   integer :: lchnk
-   integer :: k, i    ! lev and daycolumn indices
-   integer :: iswband ! sw band indices
-
-   real(r8) :: liq_tau    (nswbands,pcols,pver) ! aerosol extinction optical depth
-   real(r8) :: liq_tau_w  (nswbands,pcols,pver) ! aerosol single scattering albedo * tau
-   real(r8) :: liq_tau_w_g(nswbands,pcols,pver) ! aerosol assymetry parameter * tau * w
-   real(r8) :: liq_tau_w_f(nswbands,pcols,pver) ! aerosol forward scattered fraction * tau * w
-
-
-   !-----------------------------------------------------------------------------
-
-   ncol  = state%ncol
-   lchnk = state%lchnk
-
-   call slingo_liq_optics_sw(state, pbuf, tau, tau_w, tau_w_g, tau_w_f, oldliqwp=.true. )
-
-end subroutine cloud_rad_props_get_sw
-!==============================================================================
-
-subroutine cloud_rad_props_get_lw(state, pbuf, cld_abs_od, diagnosticindex, oldliq, oldice, oldcloud)
-
-! Purpose: Compute cloud longwave absorption optical depth
-!    cloud_rad_props_get_lw() is called by radlw() 
-
-   ! Arguments
-   type(physics_state), intent(in)  :: state
-   type(physics_buffer_desc), pointer  :: pbuf(:)
-   real(r8),            intent(out) :: cld_abs_od(nlwbands,pcols,pver) ! [fraction] absorption optical depth, per layer
-   integer, optional,   intent(in)  :: diagnosticindex
-   logical, optional,   intent(in)  :: oldliq  ! use old liquid optics
-   logical, optional,   intent(in)  :: oldice  ! use old ice optics
-   logical, optional,   intent(in)  :: oldcloud  ! use old optics for both (b4b)
-
-   ! Local variables
-
-   integer :: bnd_idx     ! LW band index
-   integer :: i           ! column index
-   integer :: k           ! lev index
-   integer :: ncol        ! number of columns
-   integer :: lchnk
-
-   ! rad properties for liquid clouds
-   real(r8) :: liq_tau_abs_od(nlwbands,pcols,pver) ! liquid cloud absorption optical depth
-
-   !-----------------------------------------------------------------------------
-
-   ncol = state%ncol
-   lchnk = state%lchnk
-
-   ! compute optical depths cld_absod 
-   cld_abs_od = 0._r8
-
-   call slingo_liq_get_rad_props_lw(state, pbuf, liq_tau_abs_od, oldliqwp=.true.)
-      
-   cld_abs_od(:,1:ncol,:) = liq_tau_abs_od(:,1:ncol,:) 
-
-end subroutine cloud_rad_props_get_lw
-
-!==============================================================================
-! Private methods
-!==============================================================================
-
-
 subroutine slingo_liq_optics_sw(state, pbuf, liq_tau, liq_tau_w, liq_tau_w_g, liq_tau_w_f, oldliqwp)
-
-   use physconst, only: gravit
 
    type(physics_state), intent(in) :: state
    type(physics_buffer_desc), pointer :: pbuf(:)
 
    real(r8),intent(out) :: liq_tau    (nswbands,pcols,pver) ! extinction optical depth
    real(r8),intent(out) :: liq_tau_w  (nswbands,pcols,pver) ! single scattering albedo * tau
-   real(r8),intent(out) :: liq_tau_w_g(nswbands,pcols,pver) ! assymetry parameter * tau * w
+   real(r8),intent(out) :: liq_tau_w_g(nswbands,pcols,pver) ! asymmetry parameter * tau * w
    real(r8),intent(out) :: liq_tau_w_f(nswbands,pcols,pver) ! forward scattered fraction * tau * w
    logical, intent(in) :: oldliqwp
 
@@ -201,14 +92,6 @@ subroutine slingo_liq_optics_sw(state, pbuf, liq_tau, liq_tau_w, liq_tau_w_g, li
    real(r8), dimension(pcols,pver) :: cliqwp
    real(r8), dimension(nswbands) :: wavmin
    real(r8), dimension(nswbands) :: wavmax
-
-   ! Minimum cloud amount (as a fraction of the grid-box area) to 
-   ! distinguish from clear sky
-   real(r8), parameter :: cldmin = 1.0e-80_r8
-
-   ! Decimal precision of cloud amount (0 -> preserve full resolution;
-   ! 10^-n -> preserve n digits of cloud amount)
-   real(r8), parameter :: cldeps = 0.0_r8
 
    ! A. Slingo's data for cloud particle radiative properties (from 'A GCM
    ! Parameterization for the Shortwave Properties of Water Clouds' JAS
@@ -318,16 +201,9 @@ subroutine slingo_liq_optics_sw(state, pbuf, liq_tau, liq_tau_w, liq_tau_w_g, li
       end do    ! End do k=1,pver
    end do ! nswbands
 
-   !call outfld('CL_OD_SW_OLD',liq_tau(idx_sw_diag,:,:), pcols, lchnk)
-   !call outfld('REL_OLD',rel(:,:), pcols, lchnk)
-   !call outfld('CLWPTH_OLD',cliqwp(:,:), pcols, lchnk)
-   !call outfld('KEXT_OLD',kext(:,:), pcols, lchnk)
-
-
 end subroutine slingo_liq_optics_sw
 
 subroutine slingo_liq_get_rad_props_lw(state, pbuf, abs_od, oldliqwp)
-   use physconst, only: gravit
 
    type(physics_state), intent(in)  :: state
    type(physics_buffer_desc),pointer  :: pbuf(:)
@@ -403,7 +279,6 @@ subroutine slingo_liq_get_rad_props_lw(state, pbuf, abs_od, oldliqwp)
       abs_od(lwband,1:ncol,1:pver)=cldtau(1:ncol,1:pver)
    enddo
 
-
 end subroutine slingo_liq_get_rad_props_lw
 
-end module slingo
+end module slingo_liq_optics

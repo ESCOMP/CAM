@@ -1,15 +1,14 @@
-module ebert_curry
+module ebert_curry_ice_optics
 
-!------------------------------------------------------------------------------------------------
-!------------------------------------------------------------------------------------------------
 
 use shr_kind_mod,     only: r8 => shr_kind_r8
-use ppgrid,           only: pcols, pver, pverp
+use physconst,        only: gravit
+use ppgrid,           only: pcols, pver
 use physics_types,    only: physics_state
 use physics_buffer,   only: physics_buffer_desc, pbuf_get_index, pbuf_get_field, pbuf_old_tim_idx
-use radconstants,     only: nswbands, nlwbands, idx_sw_diag, ot_length, idx_lw_diag, get_sw_spectral_boundaries
+use constituents,     only: cnst_get_ind
+use radconstants,     only: nswbands, nlwbands, get_sw_spectral_boundaries
 use cam_abortutils,   only: endrun
-use cam_history,      only: outfld
 
 implicit none
 private
@@ -17,41 +16,21 @@ save
 
 public :: &
    ec_rad_props_init,        &
-   cloud_rad_props_get_sw, & ! return SW optical props of total bulk aerosols
-   cloud_rad_props_get_lw, & ! return LW optical props of total bulk aerosols
    ec_ice_optics_sw,       &
    ec_ice_get_rad_props_lw
 
 
 real(r8), public, parameter:: scalefactor = 1._r8 !500._r8/917._r8
 
-! Minimum cloud amount (as a fraction of the grid-box area) to 
-! distinguish from clear sky
-! 
-   real(r8) cldmin
-   parameter (cldmin = 1.0e-80_r8)
-!
-! Decimal precision of cloud amount (0 -> preserve full resolution;
-! 10^-n -> preserve n digits of cloud amount)
-! 
-   real(r8) cldeps
-   parameter (cldeps = 0.0_r8)
+! indices into pbuf
+integer :: iciwp_idx   = 0 
+integer :: iclwp_idx   = 0 
+integer :: cld_idx     = 0  
+integer :: rei_idx     = 0  
 
-! 
-! indexes into pbuf for optical parameters of MG clouds
-! 
-   integer :: dei_idx     = 0 
-   integer :: mu_idx      = 0
-   integer :: lambda_idx  = 0 
-   integer :: iciwp_idx   = 0 
-   integer :: iclwp_idx   = 0 
-   integer :: cld_idx     = 0  
-   integer :: rei_idx     = 0  
-
-! indexes into constituents for old optics
-   integer :: &
-        ixcldice,           & ! cloud ice water index
-        ixcldliq              ! cloud liquid water index
+! indices into constituents for old optics
+integer :: ixcldice  ! cloud ice water index
+integer :: ixcldliq  ! cloud liquid water index
 
 
 !==============================================================================
@@ -59,17 +38,6 @@ contains
 !==============================================================================
 
 subroutine ec_rad_props_init()
-
-!   use cam_history, only: addfld
-   use netcdf
-   use spmd_utils,     only: masterproc
-   use ioFileMod,      only: getfil
-   use cam_logfile,    only: iulog
-   use error_messages, only: handle_ncerr
-#if ( defined SPMD )
-   use mpishorthand
-#endif
-   use constituents,   only: cnst_get_ind
 
    integer :: err
 
@@ -82,124 +50,18 @@ subroutine ec_rad_props_init()
    call cnst_get_ind('CLDICE', ixcldice)
    call cnst_get_ind('CLDLIQ', ixcldliq)
 
-   !call addfld ('CLWPTH_OLD',(/ 'lev' /), 'I','Kg/m2','old In Cloud Liquid Water Path', sampling_seq='rad_lwsw')
-   !call addfld ('KEXT_OLD',(/ 'lev' /),'I','m^2/kg','old extinction')
-   !call addfld ('CLDOD_OLD',(/ 'lev' /),'I','1','old liquid OD')
-   !call addfld ('REL_OLD',(/ 'lev' /),'I','1','old liquid effective radius (liquid)')
-
-   !call addfld ('CLWPTH_NEW',(/ 'lev' /), 'I','Kg/m2','In Cloud Liquid Water Path', sampling_seq='rad_lwsw')
-   !call addfld ('KEXT_NEW',(/ 'lev' /),'I','m^2/kg','extinction')
-   !call addfld ('CLDOD_NEW',(/ 'lev' /),'I','1','liquid OD')
-
-   !call addfld('CIWPTH_NEW',(/ 'lev' /), 'I','Kg/m2','In Cloud Ice Water Path', sampling_seq='rad_lwsw')
-   !call addfld('CIWPTH_OLD',(/ 'lev' /), 'I','Kg/m2','In Cloud Ice Water Path (old)', sampling_seq='rad_lwsw')
-
-    return
-
 end subroutine ec_rad_props_init
 
 !==============================================================================
 
-subroutine cloud_rad_props_get_sw(state, pbuf, &
-                                  tau, tau_w, tau_w_g, tau_w_f,&
-                                  diagnosticindex, oldliq, oldice)
-
-! return totaled (across all species) layer tau, omega, g, f 
-! for all spectral interval for aerosols affecting the climate
-
-   ! Arguments
-   type(physics_state), intent(in) :: state
-   type(physics_buffer_desc),  pointer :: pbuf(:)
-   integer, optional,   intent(in) :: diagnosticindex      ! index (if present) to radiation diagnostic information
-
-   real(r8), intent(out) :: tau    (nswbands,pcols,pver) ! aerosol extinction optical depth
-   real(r8), intent(out) :: tau_w  (nswbands,pcols,pver) ! aerosol single scattering albedo * tau
-   real(r8), intent(out) :: tau_w_g(nswbands,pcols,pver) ! aerosol assymetry parameter * tau * w
-   real(r8), intent(out) :: tau_w_f(nswbands,pcols,pver) ! aerosol forward scattered fraction * tau * w
-
-   logical, optional, intent(in) :: oldliq,oldice
-
-   ! Local variables
-
-   integer :: ncol
-   integer :: lchnk
-   integer :: k, i    ! lev and daycolumn indices
-   integer :: iswband ! sw band indices
-
-   !-----------------------------------------------------------------------------
-
-   ncol  = state%ncol
-   lchnk = state%lchnk
-
-   ! initialize to conditions that would cause failure
-   tau     (:,:,:) = -100._r8
-   tau_w   (:,:,:) = -100._r8
-   tau_w_g (:,:,:) = -100._r8
-   tau_w_f (:,:,:) = -100._r8
-
-   ! initialize layers to accumulate od's
-   tau    (:,1:ncol,:) = 0._r8
-   tau_w  (:,1:ncol,:) = 0._r8
-   tau_w_g(:,1:ncol,:) = 0._r8
-   tau_w_f(:,1:ncol,:) = 0._r8
-
-
-   call ec_ice_optics_sw   (state, pbuf, tau, tau_w, tau_w_g, tau_w_f, oldicewp=.true.)
-!  call outfld ('CI_OD_SW_OLD', ice_tau(idx_sw_diag,:,:), pcols, lchnk)
-
-
-end subroutine cloud_rad_props_get_sw
-!==============================================================================
-
-subroutine cloud_rad_props_get_lw(state, pbuf, cld_abs_od, diagnosticindex, oldliq, oldice, oldcloud)
-
-! Purpose: Compute cloud longwave absorption optical depth
-!    cloud_rad_props_get_lw() is called by radlw() 
-
-   ! Arguments
-   type(physics_state), intent(in)  :: state
-   type(physics_buffer_desc), pointer  :: pbuf(:)
-   real(r8),            intent(out) :: cld_abs_od(nlwbands,pcols,pver) ! [fraction] absorption optical depth, per layer
-   integer, optional,   intent(in)  :: diagnosticindex
-   logical, optional,   intent(in)  :: oldliq  ! use old liquid optics
-   logical, optional,   intent(in)  :: oldice  ! use old ice optics
-   logical, optional,   intent(in)  :: oldcloud  ! use old optics for both (b4b)
-
-   ! Local variables
-
-   integer :: bnd_idx     ! LW band index
-   integer :: i           ! column index
-   integer :: k           ! lev index
-   integer :: ncol        ! number of columns
-   integer :: lchnk
-
-   !-----------------------------------------------------------------------------
-
-   ncol = state%ncol
-   lchnk = state%lchnk
-
-   ! compute optical depths cld_absod 
-   cld_abs_od = 0._r8
-
-   call ec_ice_get_rad_props_lw(state, pbuf, cld_abs_od, oldicewp=.true.)
-   !call outfld('CI_OD_LW_OLD', ice_tau_abs_od(idx_lw_diag ,:,:), pcols, lchnk)
-      
-end subroutine cloud_rad_props_get_lw
-
-!==============================================================================
-! Private methods
-!==============================================================================
-
 subroutine ec_ice_optics_sw   (state, pbuf, ice_tau, ice_tau_w, ice_tau_w_g, ice_tau_w_f, oldicewp)
 
-   use physconst,      only: gravit
-
-   type(physics_state), intent(in) :: state
+   type(physics_state),    intent(in) :: state
    type(physics_buffer_desc), pointer :: pbuf(:)
 
    real(r8),intent(out) :: ice_tau    (nswbands,pcols,pver) ! extinction optical depth
    real(r8),intent(out) :: ice_tau_w  (nswbands,pcols,pver) ! single scattering albedo * tau
-   real(r8),intent(out) :: ice_tau_w_g(nswbands,pcols,pver) ! assymetry parameter * tau * w
+   real(r8),intent(out) :: ice_tau_w_g(nswbands,pcols,pver) ! asymmetry parameter * tau * w
    real(r8),intent(out) :: ice_tau_w_f(nswbands,pcols,pver) ! forward scattered fraction * tau * w
    logical, intent(in) :: oldicewp
 
@@ -312,10 +174,10 @@ subroutine ec_ice_optics_sw   (state, pbuf, ice_tau, ice_tau_w, ice_tau_w_g, ice
    end do ! nswbands
 
 end subroutine ec_ice_optics_sw
+
 !==============================================================================
 
 subroutine ec_ice_get_rad_props_lw(state, pbuf, abs_od, oldicewp)
-   use physconst,      only: gravit
 
    type(physics_state), intent(in)   :: state
    type(physics_buffer_desc),pointer :: pbuf(:)
@@ -390,19 +252,13 @@ subroutine ec_ice_get_rad_props_lw(state, pbuf, abs_od, oldicewp)
           cldtau(i,k) = kabs*cwp(i,k)
        end do
    end do
-!
+
    do lwband = 1,nlwbands
       abs_od(lwband,1:ncol,1:pver)=cldtau(1:ncol,1:pver)
    enddo
 
-   !if(oldicewp) then
-   !  call outfld('CIWPTH_OLD',cicewp(:,:)/1000,pcols,lchnk)
-   !else
-   !  call outfld('CIWPTH_OLD',iciwpth(:,:),pcols,lchnk)
-   !endif
-   !call outfld('CI_OD_LW_OLD',cldtau(:,:),pcols,lchnk)
-
 end subroutine ec_ice_get_rad_props_lw
+
 !==============================================================================
 
-end module ebert_curry
+end module ebert_curry_ice_optics
