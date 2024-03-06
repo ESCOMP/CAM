@@ -20,7 +20,7 @@ module clubb_intr
   use shr_kind_mod,        only: r8=>shr_kind_r8
   use ppgrid,              only: pver, pverp, pcols, begchunk, endchunk
   use phys_control,        only: phys_getopts
-  use physconst,           only: cpair, gravit, rga, latvap, latice, zvir, rh2o, karman
+  use physconst,           only: cpair, gravit, rga, latvap, latice, zvir, rh2o, karman, pi
   use air_composition,     only: rairv, cpairv
   use cam_history_support, only: max_fieldname_len
 
@@ -2496,6 +2496,8 @@ end subroutine clubb_init_cnst
     intrinsic :: max
 
     character(len=*), parameter :: subr='clubb_tend_cam'
+    real(r8), parameter :: rad2deg=180.0_r8/pi
+    real(r8) :: tmp_lon1, tmp_lonN
                           
     type(grid) :: gr
     
@@ -3451,8 +3453,13 @@ end subroutine clubb_init_cnst
       ! one value only for the entire chunk
       if ( err_code == clubb_fatal_error ) then
         write(fstderr,*) "Fatal error in CLUBB: at timestep ", get_nstep()
-        write(fstderr,*) "LAT Range: ", state1%lat(1), " -- ", state1%lat(ncol)
-        write(fstderr,*) "LON: Range:", state1%lon(1), " -- ", state1%lon(ncol)
+        write(fstderr,*) "LAT Range: ", state1%lat(1)*rad2deg, &
+             " -- ", state1%lat(ncol)*rad2deg
+        tmp_lon1 = state1%lon(1)*rad2deg
+        tmp_lon1 = state1%lon(ncol)*rad2deg
+        if(tmp_lon1.gt.180.0_r8) then tmp_lon1=tmp_lon1-360.0_r8
+        if(tmp_lonN.gt.180.0_r8) then tmp_lonN=tmp_lonN-360.0_r8
+        write(fstderr,*) "LON: Range:", tmp_lon1, " -- ", tmp_lonN
         call endrun(subr//':  Fatal error in CLUBB library')
       end if
       
