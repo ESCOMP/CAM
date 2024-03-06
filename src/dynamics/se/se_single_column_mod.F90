@@ -62,7 +62,7 @@ subroutine scm_setinitial(elem)
     call cnst_get_ind('CLDICE', icldice)
 
     ! Find level where tobs is no longer zero
-    levidx=MINLOC(tobs, MASK = tobs == 0._r8)
+    levidx=MINLOC(tobs, MASK = tobs /= 0._r8)
     thelev=levidx(1)
 
     if (get_nstep()  <=  1) then
