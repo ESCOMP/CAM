@@ -47,7 +47,7 @@ subroutine scm_setinitial(elem)
 
   type(element_t), intent(inout) :: elem(:)
 
-  integer              :: k, levidx(1)
+  integer              :: k
   integer              :: inumliq, inumice, icldliq, icldice
 
   call scm_dyn_grid_indicies(elem,scmlat,scmlon,ie_scm,i_scm,j_scm,indx_scm)
@@ -62,8 +62,7 @@ subroutine scm_setinitial(elem)
     call cnst_get_ind('CLDICE', icldice)
 
     ! Find level where tobs is no longer zero
-    levidx=MINLOC(tobs, MASK = tobs /= 0._r8)
-    thelev=levidx(1)
+    thelev=minloc(abs(tobs), 1, mask=abs(tobs) > 0)
 
     if (get_nstep()  <=  1) then
        do k=1,thelev-1
