@@ -474,8 +474,6 @@ subroutine zm_conv_tend(pblh    ,mcon    ,cme     , &
    real(r8) :: md_out(pcols,pver)
 
    ! used in momentum transport calculation
-   real(r8) :: winds(pcols, pver, 2)
-   real(r8) :: wind_tends(pcols, pver, 2)
    real(r8) :: pguall(pcols, pver, 2)
    real(r8) :: pgdall(pcols, pver, 2)
    real(r8) :: icwu(pcols,pver, 2)
@@ -503,7 +501,6 @@ subroutine zm_conv_tend(pblh    ,mcon    ,cme     , &
    ftem = 0._r8
    mu_out(:,:) = 0._r8
    md_out(:,:) = 0._r8
-   wind_tends(:ncol,:pver,:) = 0.0_r8
 
    call physics_state_copy(state,state1)             ! copy state to local state1.
 
@@ -588,14 +585,14 @@ subroutine zm_conv_tend(pblh    ,mcon    ,cme     , &
    call zm_convr_run(ncol, pver, &
                     pverp, gravit, latice, cpwv, cpliq, rh2o,  &
                     state%t(:ncol,:), state%q(:ncol,:,1), prec(:ncol), jctop(:ncol), jcbot(:ncol), &
-                    pblh(:ncol), state%zm(:ncol,:), state%phis, state%zi(:ncol,:), ptend_loc%q(:ncol,:,1), &
+                    pblh(:ncol), state%zm(:ncol,:), state%phis(:ncol), state%zi(:ncol,:), ptend_loc%q(:ncol,:,1), &
                     ptend_loc%s(:ncol,:), state%pmid(:ncol,:), state%pint(:ncol,:), state%pdel(:ncol,:), &
                     .5_r8*ztodt, mcon(:ncol,:), cme(:ncol,:), cape(:ncol),      &
                     tpert(:ncol), dlf(:ncol,:), pflx(:ncol,:), zdu(:ncol,:), rprd(:ncol,:), &
                     mu(:ncol,:), md(:ncol,:), du(:ncol,:), eu(:ncol,:), ed(:ncol,:),       &
                     dp(:ncol,:), dsubcld(:ncol), jt(:ncol), maxg(:ncol), ideep(:ncol),    &
                     ql(:ncol,:),  rliq(:ncol), landfrac(:ncol),                          &
-                    org_ncol(:,:), orgt_ncol(:,:), zm_org2d_ncol(:,:),  &
+                    org_ncol(:ncol,:), orgt_ncol(:ncol,:), zm_org2d_ncol(:ncol,:),  &
                     dif(:ncol,:), dnlf(:ncol,:), dnif(:ncol,:),  &
                     rice(:ncol), errmsg, errflg)
 
@@ -746,29 +743,25 @@ subroutine zm_conv_tend(pblh    ,mcon    ,cme     , &
 
      call physics_ptend_init(ptend_loc, state1%psetcols, 'zm_conv_momtran_run', ls=.true., lu=.true., lv=.true.)
 
-     winds(:ncol,:pver,1) = state1%u(:ncol,:pver)
-     winds(:ncol,:pver,2) = state1%v(:ncol,:pver)
-
      l_windt(1) = .true.
      l_windt(2) = .true.
+!REMOVECAM - no longer need these when CAM is retired and pcols no longer exists
+     ptend_loc%s(:,:) = 0._r8
+     ptend_loc%u(:,:) = 0._r8
+     ptend_loc%v(:,:) = 0._r8
+!REMOVECAM_END
 
      call t_startf ('zm_conv_momtran_run')
 
-!REMOVECAM - no longer need this when CAM is retired and pcols no longer exists
-     wind_tends(:,:,:) = 0._r8
-!REMOVECAM_END
-
      call zm_conv_momtran_run (ncol, pver, pverp,                    &
-                   l_windt,winds(:ncol,:,:), 2,  mu(:ncol,:), md(:ncol,:),   &
+                   l_windt,state1%u(:ncol,:), state1%v(:ncol,:), 2,  mu(:ncol,:), md(:ncol,:),   &
                    zmconv_momcu, zmconv_momcd, &
                    du(:ncol,:), eu(:ncol,:), ed(:ncol,:), dp(:ncol,:), dsubcld(:ncol),  &
                    jt(:ncol), maxg(:ncol), ideep(:ncol), 1, lengath,  &
-                   nstep,  wind_tends(:ncol,:,:), pguall(:ncol,:,:), pgdall(:ncol,:,:), &
+                   nstep,  ptend_loc%u(:ncol,:), ptend_loc%v(:ncol,:), pguall(:ncol,:,:), pgdall(:ncol,:,:), &
                    icwu(:ncol,:,:), icwd(:ncol,:,:), ztodt, seten(:ncol,:) )
      call t_stopf ('zm_conv_momtran_run')
 
-     ptend_loc%u(:ncol,:pver) = wind_tends(:ncol,:pver,1)
-     ptend_loc%v(:ncol,:pver) = wind_tends(:ncol,:pver,2)
      ptend_loc%s(:ncol,:pver) = seten(:ncol,:pver)
 
      call physics_ptend_sum(ptend_loc,ptend_all, ncol)
@@ -782,8 +775,8 @@ subroutine zm_conv_tend(pblh    ,mcon    ,cme     , &
         call outfld('ZM_ORG2D', zm_org2d, pcols, lchnk)
      endif
      call outfld('ZMMTT', ftem             , pcols, lchnk)
-     call outfld('ZMMTU', wind_tends(1,1,1), pcols, lchnk)
-     call outfld('ZMMTV', wind_tends(1,1,2), pcols, lchnk)
+     call outfld('ZMMTU', ptend_loc%u(1,1), pcols, lchnk)
+     call outfld('ZMMTV', ptend_loc%v(1,1), pcols, lchnk)
 
      ! Output apparent force from  pressure gradient
      call outfld('ZMUPGU', pguall(1,1,1), pcols, lchnk)
