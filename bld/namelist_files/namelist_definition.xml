@@ -4022,11 +4022,12 @@ each Gaussian.
 </entry>
 
 <entry id="clubb_iiPDF_type" type="integer" category="pblrad"
-       group="clubb_params_nl" valid_values="" >
-Selected option for the two-component normal
-(double Gaussian) PDF type to use for the w, rt,
-and theta-l (or w, chi, and eta) portion of
-CLUBB's multivariate, two-component PDF.
+       group="clubb_params_nl" valid_values="1,2,3,4,5,6,7" >
+Selected option for the two-component normal (double Gaussian) PDF type to use for the w, rt,
+and theta-l (or w, chi, and eta) portion of CLUBB's multivariate, two-component PDF.
+iiPDF_ADG1 = 1 (ADG1 PDF), iiPDF_ADG2 = 2 (ADG2 PDF), iiPDF_3D_Luhar = 3 (3D Luhar PDF),
+iiPDF_new = 4 (new PDF), iiPDF_TSDADG = 5 (TSDADG PDF), iiPDF_LY93 = 6 (Lewellen and Yoh (1993)),
+iiPDF_new_hybrid = 7 (new hybrid PDF)
 </entry>
 
 <entry id="clubb_ipdf_call_placement" type="integer" category="pblrad"
@@ -4242,7 +4243,7 @@ two grid level types.
 
 <entry id="clubb_l_rtm_nudge" type="logical" category="pblrad"
        group="clubb_params_nl" valid_values="" >
-For rtm nudging
+Turn on (true) and off (false) rtm nudging.
 </entry>
 
 <entry id="clubb_l_smooth_Heaviside_tau_wpxp" type="logical" category="pblrad"
@@ -4259,7 +4260,7 @@ advance_wp2_wp3_module.F90 and in advance_xp2_xpyp_module.F90.
 
 <entry id="clubb_l_stability_correct_Kh_N2_zm" type="logical" category="pblrad"
        group="clubb_params_nl" valid_values="" >
-Divides Kh_N2_zm by a stability factor
+Whether or not we want CLUBB to apply a stability correction Kh_N2_zm.
 </entry>
 
 <entry id="clubb_l_stability_correct_tau_zm" type="logical" category="pblrad"
@@ -4271,8 +4272,9 @@ Brunt-Vaisala frequency is large.
 
 <entry id="clubb_l_tke_aniso" type="logical" category="pblrad"
        group="clubb_params_nl" valid_values="" >
-For anisotropic turbulent kinetic energy, i.e.
-TKE = 1/2 (u'^2 + v'^2 + w'^2)
+Use anisotropic turbulent kinetic energy in the CLUBB higher order closure, i.e.
+calculate TKE = 1/2 (u'^2 + v'^2 + w'^2). This improves the simulation of complex
+turbulence but at a greater cost than running without.
 </entry>
 
 <entry id="clubb_l_trapezoidal_rule_zm" type="logical" category="pblrad"
@@ -4293,9 +4295,8 @@ adjustment to PDF fields calculated on thermodynamic vertical grid levels.
 
 <entry id="clubb_l_upwind_xm_ma" type="logical" category="pblrad"
        group="clubb_params_nl" valid_values="" >
-This flag determines whether we want to use an upwind
-differencing approximation rather than a centered
-differencing for turbulent or mean advection terms. It
+This flag determines whether we want to use an upwind differencing approximation
+rather than a centered differencing for turbulent or mean advection terms. It
 affects rtm, thlm, sclrm, um and vm.
 </entry>
 
@@ -4310,7 +4311,7 @@ is used.
 
 <entry id="clubb_l_uv_nudge" type="logical" category="pblrad"
        group="clubb_params_nl" valid_values="" >
-For wind speed nudging.
+Turn on (true) or off (false) uv wind speed nudging.
 </entry>
 
 <entry id="clubb_l_use_C11_Richardson" type="logical" category="pblrad"
