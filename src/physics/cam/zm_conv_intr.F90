@@ -357,7 +357,8 @@ subroutine zm_conv_init(pref_edge)
                   limcnv,zmconv_c0_lnd, zmconv_c0_ocn, zmconv_ke, zmconv_ke_lnd, &
                   zmconv_momcu, zmconv_momcd, zmconv_num_cin, zmconv_org, &
                   no_deep_pbl, zmconv_tiedke_add, &
-                  zmconv_capelmt, zmconv_dmpdz,zmconv_parcel_pbl, zmconv_tau, errmsg, errflg)
+                  zmconv_capelmt, zmconv_dmpdz,zmconv_parcel_pbl, zmconv_tau, &
+                  masterproc, iulog, errmsg, errflg)
 
     cld_idx         = pbuf_get_index('CLD')
     fracis_idx      = pbuf_get_index('FRACIS')
