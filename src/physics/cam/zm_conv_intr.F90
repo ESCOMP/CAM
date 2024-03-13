@@ -585,7 +585,7 @@ subroutine zm_conv_tend(pblh    ,mcon    ,cme     , &
 !CACNOTE - Need to check errflg and report errors
    call zm_convr_run(ncol, pver, &
                     pverp, gravit, latice, cpwv, cpliq, rh2o,  &
-                    state%t(:ncol,:), state%q(:ncol,:,1), prec(:ncol), jctop(:ncol), jcbot(:ncol), &
+                    state%t(:ncol,:), state%q(:ncol,:,1), prec(:ncol),  &
                     pblh(:ncol), state%zm(:ncol,:), state%phis(:ncol), state%zi(:ncol,:), ptend_loc%q(:ncol,:,1), &
                     ptend_loc%s(:ncol,:), state%pmid(:ncol,:), state%pint(:ncol,:), state%pdel(:ncol,:), &
                     .5_r8*ztodt, mcon(:ncol,:), cme(:ncol,:), cape(:ncol),      &
@@ -597,6 +597,7 @@ subroutine zm_conv_tend(pblh    ,mcon    ,cme     , &
                     dif(:ncol,:), dnlf(:ncol,:), dnif(:ncol,:),  &
                     rice(:ncol), errmsg, errflg)
 
+
    if (zmconv_org) then
       ptend_loc%q(:,:,ixorg)=orgt_ncol(:ncol,:)
       zm_org2d(:ncol,:) = zm_org2d_ncol(:ncol,:)
@@ -604,6 +605,13 @@ subroutine zm_conv_tend(pblh    ,mcon    ,cme     , &
 
    lengath = count(ideep > 0)
    if (lengath > ncol) lengath = ncol  ! should not happen, but force it to not be larger than ncol for safety sake
+
+   jctop(:) = pver
+   jcbot(:) = 1
+   do i = 1,lengath
+      jctop(ideep(i)) = jt(i)
+      jcbot(ideep(i)) = maxg(i)
+   end do
 
    call outfld('CAPE', cape, pcols, lchnk)        ! RBN - CAPE output
 !
