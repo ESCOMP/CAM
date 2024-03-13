@@ -368,7 +368,7 @@ end subroutine zm_conv_init
 !subroutine zm_conv_tend(state, ptend, tdt)
 
 subroutine zm_conv_tend(pblh    ,mcon    ,cme     , &
-     tpert   ,pflx    ,zdu      , &
+     tpert   ,zdu      , &
      rliq    ,rice    ,ztodt    , &
      jctop   ,jcbot , &
      state   ,ptend_all   ,landfrac,  pbuf)
@@ -400,7 +400,6 @@ subroutine zm_conv_tend(pblh    ,mcon    ,cme     , &
    real(r8), intent(in) :: landfrac(pcols)             ! RBN - Landfrac
 
    real(r8), intent(out) :: mcon(pcols,pverp)  ! Convective mass flux--m sub c
-   real(r8), intent(out) :: pflx(pcols,pverp)  ! scattered precip flux at each level
    real(r8), intent(out) :: cme(pcols,pver)    ! cmf condensation - evaporation
    real(r8), intent(out) :: zdu(pcols,pver)    ! detraining mass flux
 
@@ -559,7 +558,6 @@ subroutine zm_conv_tend(pblh    ,mcon    ,cme     , &
    ptend_loc%s(:,:) = 0._r8
    mcon(:,:) = 0._r8
    dlf(:,:) = 0._r8
-   pflx(:,:) = 0._r8
    cme(:,:) = 0._r8
    cape(:) = 0._r8
    zdu(:,:) = 0._r8
@@ -589,7 +587,7 @@ subroutine zm_conv_tend(pblh    ,mcon    ,cme     , &
                     pblh(:ncol), state%zm(:ncol,:), state%phis(:ncol), state%zi(:ncol,:), ptend_loc%q(:ncol,:,1), &
                     ptend_loc%s(:ncol,:), state%pmid(:ncol,:), state%pint(:ncol,:), state%pdel(:ncol,:), &
                     .5_r8*ztodt, mcon(:ncol,:), cme(:ncol,:), cape(:ncol),      &
-                    tpert(:ncol), dlf(:ncol,:), pflx(:ncol,:), zdu(:ncol,:), rprd(:ncol,:), &
+                    tpert(:ncol), dlf(:ncol,:), zdu(:ncol,:), rprd(:ncol,:), &
                     mu(:ncol,:), md(:ncol,:), du(:ncol,:), eu(:ncol,:), ed(:ncol,:),       &
                     dp(:ncol,:), dsubcld(:ncol), jt(:ncol), maxg(:ncol), ideep(:ncol),    &
                     ql(:ncol,:),  rliq(:ncol), landfrac(:ncol),                          &
