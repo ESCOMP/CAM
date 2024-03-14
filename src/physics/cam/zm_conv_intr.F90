@@ -773,6 +773,10 @@ subroutine zm_conv_tend(pblh    ,mcon    ,cme     , &
 
      call physics_ptend_sum(ptend_loc,ptend_all, ncol)
 
+     ! Output ptend variables before they are set to zero with physics_update
+     call outfld('ZMMTU', ptend_loc%u(1,1), pcols, lchnk)
+     call outfld('ZMMTV', ptend_loc%v(1,1), pcols, lchnk)
+
      ! update physics state type state1 with ptend_loc
      call physics_update(state1, ptend_loc, ztodt)
 
@@ -782,8 +786,6 @@ subroutine zm_conv_tend(pblh    ,mcon    ,cme     , &
         call outfld('ZM_ORG2D', zm_org2d, pcols, lchnk)
      endif
      call outfld('ZMMTT', ftem             , pcols, lchnk)
-     call outfld('ZMMTU', ptend_loc%u(1,1), pcols, lchnk)
-     call outfld('ZMMTV', ptend_loc%v(1,1), pcols, lchnk)
 
      ! Output apparent force from  pressure gradient
      call outfld('ZMUPGU', pguall(1,1,1), pcols, lchnk)
