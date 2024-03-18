@@ -1229,7 +1229,7 @@
       u(:,:) = 0._r8
       v(:,:) = 0._r8
       w(:,:) = 0._r8
-      ipiv(:) = 0._r8
+      ipiv(:) = 0
 
       do ilon = 0,nmlon                  ! long.
         bnd  = nmlath - ihlat_bnd(ilon)  ! switch from pole=0 to pole =90
