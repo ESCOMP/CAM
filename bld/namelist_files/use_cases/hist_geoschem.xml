@@ -6,13 +6,11 @@
 
 <!-- Settings for using GEOS-Chem -->
 
-<geoschem_cheminputs>/glade/p/univ/umit0034/ExtData/CHEM_INPUTS/</geoschem_cheminputs>
+<geoschem_cheminputs>atm/cam/geoschem/ExtData/CHEM_INPUTS/</geoschem_cheminputs>
 
-<ncdata dyn="fv"  hgrid="0.9x1.25">/glade/p/univ/umit0034/Shared/GEOS-Chem/f.e20.FC2010.f09_f09.144.GC_vbsext.001.cam.i.0007-01-01-00000.nc</ncdata>
+<ncdata dyn="fv"  hgrid="0.9x1.25">atm/cam/geoschem/initial_conditions/f.e20.FC2010.f09_f09.144.GC_vbsext.001.cam.i.0007-01-01-00000.nc</ncdata>
 
-<ncdata dyn="fv"  hgrid="1.9x2.5">/glade/p/univ/umit0034/Shared/GEOS-Chem/f.e20.FC2010.f19_f19.144.GC_vbsext.001.cam.i.0007-01-01-00000.nc</ncdata>
-
-<dep_data_file>/glade/p/univ/umit0034/Shared/dep_data_file_geoschem_c230417.nc</dep_data_file>
+<ncdata dyn="fv"  hgrid="1.9x2.5">atm/cam/geoschem/initial_conditions/f.e20.FC2010.f19_f19.144.GC_vbsext.001.cam.i.0007-01-01-00000.nc</ncdata>
 
 <hemco_config_file>HEMCO_Config.rc</hemco_config_file>
 <hemco_diagn_file>HEMCO_Diagn.rc</hemco_diagn_file>
@@ -36,26 +34,6 @@
 <prescribed_strataero_type>SERIAL</prescribed_strataero_type>
 
 <ndep_list>'noy', 'nhx'</ndep_list>
-
-<!-- Temporarily include the wetdep/drydep lists until there is a better way -->
-
-<!-- gas dry deposition -->
-<drydep_list>'ACET','ACTA','ALD2','AROMP4','AROMP5','ATOOH','BALD','BENZP','BR2','BRCL','BRNO3','BZCO3H','BZPAN','CH2O','CL2','CLNO2','CLNO3','CLO','CLOO','CSL','EOH','ETHLN','ETHN','ETHP','ETNO3','ETP','GLYC','GLYX','H2O2','HAC','HBR','HC5A','HCL','HCOOH','HI','HMHP','HMML','HNO3','HOBR','HOCL','HOI','HONIT','HPALD1','HPALD2','HPALD3','HPALD4','HPETHNL','I2','I2O2','I2O3','I2O4','IBR','ICHE','ICL','ICN','ICPDH','IDC','IDCHP','IDHDP','IDHPE','IDN','IEPOXA','IEPOXB','IEPOXD','IHN1','IHN2','IHN3','IHN4','INPB','INPD','IONO','IONO2','IPRNO3','ITCN','ITHN','LIMO','LVOC','LVOCOA','MACR','MACR1OOH','MAP','MCRDH','MCRENOL','MCRHN','MCRHNB','MCRHP','MCT','MENO3','MGLY','MOH','MONITS','MONITU','MPAN','MTPA','MTPO','MVK','MVKDH','MVKHC','MVKHCB','MVKHP','MVKN','MVKPC','N2O5','NH3','NO2','NPHEN','NPRNO3','O3','PAN','PHEN','PP','PPN','PROPNN','PRPN','PYAC','R4N2','R4P','RA3P','RB3P','RIPA','RIPB','RIPC','RIPD','RP','SO2','AERI','AONITA','ASOA1','ASOA2','ASOA3','ASOAN','ASOG1','ASOG2','ASOG3','BRSALA','BRSALC','INDIOL','IONITA','ISALA','ISALC','MONITA','MSA','NH4','NIT','NITS','SALAAL','SALACL','SALCAL','SALCCL','SO4S','SOAGX','SOAIE','TSOA0','TSOA1','TSOA2','TSOA3','TSOG0','TSOG1','TSOG2','TSOG3','PFE','SO4'
-</drydep_list>
-
-<!-- gas wet deposition list -->
-<!-- species in wetdep but not drydep: MEK, MP, MPN, PRPE -->
-<gas_wetdep_list>'ACTA','ALD2','AROMP4','AROMP5','ATOOH','BALD','BENZP','BR2','BRCL','BZCO3H','BZPAN','CH2O','CSL','EOH','ETHLN','ETHN','ETHP','ETP','GLYC','GLYX','H2O2','HAC','HBR','HC5A','HCL','HCOOH','HI','HMHP','HMML','HNO3','HOBR','HOCL','HOI','HONIT','HPETHNL','I2','I2O2','I2O3','I2O4','IBR','ICHE','ICL','ICN','ICPDH','IDCHP','IDHDP','IDHPE','IDN','IEPOXA','IEPOXB','IEPOXD','IHN1','IHN2','IHN3','IHN4','INPB','INPD','IONO','IONO2','ITCN','ITHN','LIMO','LVOC','LVOCOA','MACR1OOH','MAP','MCRDH','MCRENOL','MCRHN','MCRHNB','MCRHP','MCT','MEK','MGLY','MOH','MONITS','MONITU','MP','MPAN','MPN','MTPA','MTPO','MVK','MVKDH','MVKHC','MVKHCB','MVKHP','MVKN','MVKPC','NH3','NPHEN','PAN','PHEN','PP','PPN','PROPNN','PRPE','PRPN','PYAC','R4N2','R4P','RA3P','RB3P','RIPA','RIPB','RIPC','RIPD','RP','SO2','AERI','AONITA','ASOA1','ASOA2','ASOA3','ASOAN','ASOG1','ASOG2','ASOG3','BRSALA','BRSALC','INDIOL','IONITA','ISALA','ISALC','MONITA','MSA','NH4','NIT','NITS','SALAAL','SALACL','SALCAL','SALCCL','SO4S','SOAGX','SOAIE','TSOA0','TSOA1','TSOA2','TSOA3','TSOG0','TSOG1','TSOG2','TSOG3','PFE','SO4'
-</gas_wetdep_list>
-
-<!-- aerosol dry deposition list -->
-<aer_drydep_list>'dst_a1','so4_a1','nh4_a1','pom_a1','pomff1_a1','pombb1_a1','soa_a1','bc_a1','ncl_a1','num_a1','so4_a2','nh4_a2','soa_a2','ncl_a2','dst_a2','num_a2','dst_a3','ncl_a3','so4_a3','pom_a3','bc_a3','num_a3','ncl_a4','so4_a4','pom_a4','pomff1_a4','pombb1_a4','bc_a4','nh4_a4','num_a4','dst_a5','so4_a5','nh4_a5','num_a5','ncl_a6','so4_a6','nh4_a6','num_a6','dst_a7','so4_a7','nh4_a7','num_a7','soa1_a1','soa1_a2','soa2_a1','soa2_a2','soa3_a1','soa3_a2','soa4_a1','soa4_a2','soa5_a1','soa5_a2','soaff1_a1','soaff2_a1','soaff3_a1','soaff4_a1','soaff5_a1','soabb1_a1','soabb2_a1','soabb3_a1','soabb4_a1','soabb5_a1','soabg1_a1','soabg2_a1','soabg3_a1','soabg4_a1','soabg5_a1','soaff1_a2','soaff2_a2','soaff3_a2','soaff4_a2','soaff5_a2','soabb1_a2','soabb2_a2','soabb3_a2','soabb4_a2','soabb5_a2','soabg1_a2','soabg2_a2','soabg3_a2','soabg4_a2','soabg5_a2'
-</aer_drydep_list>
-
-<!-- aerosol wet deposition list -->
-<aer_wetdep_list>'dst_a1','so4_a1','nh4_a1','pom_a1','pomff1_a1','pombb1_a1','soa_a1','bc_a1','ncl_a1','num_a1','so4_a2','nh4_a2','soa_a2','ncl_a2','dst_a2','num_a2','dst_a3','ncl_a3','so4_a3','pom_a3','bc_a3','num_a3','ncl_a4','so4_a4','pom_a4','pomff1_a4','pombb1_a4','bc_a4','nh4_a4','num_a4','dst_a5','so4_a5','nh4_a5','num_a5','ncl_a6','so4_a6','nh4_a6','num_a6','dst_a7','so4_a7','nh4_a7','num_a7','soa1_a1','soa1_a2','soa2_a1','soa2_a2','soa3_a1','soa3_a2','soa4_a1','soa4_a2','soa5_a1','soa5_a2','soaff1_a1','soaff2_a1','soaff3_a1','soaff4_a1','soaff5_a1','soabb1_a1','soabb2_a1','soabb3_a1','soabb4_a1','soabb5_a1','soabg1_a1','soabg2_a1','soabg3_a1','soabg4_a1','soabg5_a1','soaff1_a2','soaff2_a2','soaff3_a2','soaff4_a2','soaff5_a2','soabb1_a2','soabb2_a2','soabb3_a2','soabb4_a2','soabb5_a2','soabg1_a2','soabg2_a2','soabg3_a2','soabg4_a2','soabg5_a2'
-</aer_wetdep_list>
-
 
 <!-- History Files -->
 

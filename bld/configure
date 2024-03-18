@@ -88,7 +88,7 @@ OPTIONS
      -macrophys <name>  Specify the macrophysics option [rk | park | clubb_sgs].
      -max_n_rad_cnst <n> Maximum number of constituents that are either radiatively
                         active, or in any single diagnostic list for the radiation.
-     -microphys <name>  Specify the microphysics option [mg1 | mg2 | mg3| rk].
+     -microphys <name>  Specify the microphysics option [mg1 | mg2 | mg3| rk | pumas].
      -model_top <name>  Specify the model_top option [ lt | mt ].
      -nadv <n>          Set total number of advected species to <n>.
      -nadv_tt <n>       Set number of advected test tracers <n>.
@@ -592,10 +592,9 @@ if (defined $opts{'chem'}) {
 
     # If the user has specified a simple physics package...
     if ($simple_phys) {
-        # the only valid chemistry options are 'none', 'terminator' and 'geoschem'
-        if (($chem_pkg ne 'none') and ($chem_pkg ne 'terminator') and !($chem_pkg =~ 'geoschem')) {
+        if (($chem_pkg ne 'none') and ($chem_pkg ne 'terminator')) {
             die "configure ERROR: -phys=$phys_pkg  -chem=$chem_pkg\n".
-                "                 -chem can only be set to 'none', 'terminator' or 'geoschem'.\n";
+                "                 -chem can only be set to 'none' or 'terminator'.\n";
         }
     }
     elsif ($phys_pkg =~ m/^cam3$|^cam4$|^spcam_sam1mom$/) {
@@ -839,6 +838,10 @@ if (defined $opts{'microphys'}) {
     $microphys_pkg = lc($opts{'microphys'});
 }
 
+if($microphys_pkg eq 'pumas') {
+    $microphys_pkg = 'mg3';
+}
+
 $cfg_ref->set('microphys', $microphys_pkg);
 
 if ($print>=2) { print "Microphysics package: $microphys_pkg$eol"; }
@@ -857,7 +860,7 @@ if ($carma_pkg =~ m/cirrus/i) {
     unless ($microphys_pkg =~ /^mg/) {
         die <<"EOF";
 **    ERROR: microphysics package set to: $microphys_pkg
-**    The CARMA cirrus model only works with MG microphysics.
+**    The CARMA cirrus model only works with MG or PUMAS microphysics.
 EOF
     }
 }
@@ -884,7 +887,7 @@ if (defined $opts{'clubb_sgs'}) {
 if ($clubb_sgs and not ($microphys_pkg =~ m/^mg/ )) {
     die <<"EOF";
 **    ERROR: microphysics package set to: $microphys_pkg
-**    CLUBB_SGS only works with MG microphysics.
+**    CLUBB_SGS only works with MG or PUMAS microphysics.
 EOF
 }
 
@@ -1024,7 +1027,7 @@ if ($pbl_pkg =~ m/uw/i) {
     unless ($microphys_pkg =~ /^mg/) {
         die <<"EOF";
 **    ERROR: microphysics package set to: $microphys_pkg
-**    The UW PBL scheme only works with MG microphysics.
+**    The UW PBL scheme only works with MG or PUMAS microphysics.
 EOF
     }
 }
@@ -1404,13 +1407,13 @@ if ($chem_pkg =~ '_mam3') {
     $chem_cppdefs = ' -DMODAL_AERO -DMODAL_AERO_7MODE ';
 }
 
-# Set GEOS-Chem CPP definitions here
+# Customize GEOS-Chem advected species and chemistry CPP definitions
 if ($chem_pkg =~ 'geoschem') {
-    $chem_cppdefs .= ' -DEXTERNAL_GRID -DEXTERNAL_FORCING -DLINUX_IFORT -DUSE_REAL8 -DMODEL_ -DMODEL_CESM';
-    $chem_nadv = 267; # includes GC advected species (233), CO2 (1), and MAM aerosols (33)
+    $chem_cppdefs .= ' -DEXTERNAL_GRID -DEXTERNAL_FORCING ';
+    if ($chem_pkg =~ '_mam4') {
+        $chem_nadv = 267; # includes GC advected species (233), CO2 (1), and MAM aerosols (33)
+    }
 }
-
-
 # CARMA sectional microphysics
 #
 # New CARMA models need to define the number of advected constituents.
@@ -1680,7 +1683,7 @@ elsif ($fc =~ /nvfor/)  { $fc_type = 'nvhpc'; }
 
 # User override for Fortran compiler type
 if (defined $opts{'fc_type'}) { $fc_type = $opts{'fc_type'}; }
-if ($fc_type == "oneapi") {$fc_type = 'intel'; }
+if ($fc_type eq "oneapi") {$fc_type = 'intel'; }
 if ($fc_type) {
     $cfg_ref->set('fc_type', $fc_type);
     if ($print>=2) { print "Fortran compiler type: $fc_type$eol"; }
@@ -1945,6 +1948,12 @@ if ($unicon) { $cfg_cppdefs .= ' -DUSE_UNICON'; }
 #   USE_REAL8  - HEMCO/GEOS-Chem should use real8 internal precision
 #   HEMCO_CESM - indicates CESM model environment. Deprecated, will be removed soon.
 $cfg_cppdefs .= ' -DMODEL_ -DMODEL_CESM -DHEMCO_CESM -DUSE_REAL8 ';
+
+# Compiler CPP definitions for GEOS-Chem
+if ($chem_pkg =~ 'geoschem') {
+    if    ($fc_type eq 'intel') { $cfg_cppdefs .= ' -DLINUX_IFORT'; }
+    elsif ($fc_type eq 'gnu')   { $cfg_cppdefs .= ' -DLINUX_GFORTRAN'; }
+}
 
 #-----------------------------------------------------------------------------------------------
 # CPP defines to put on Makefile
@@ -2224,11 +2233,11 @@ sub write_filepath
     }
 
     if ($clubb_sgs) {
-       print $fh "$camsrcdir/src/physics/clubb\n";
+       print $fh "$camsrcdir/src/physics/clubb/src/CLUBB_core\n";
     }
 
     if ($silhs) {
-       print $fh "$camsrcdir/src/physics/silhs\n";
+       print $fh "$camsrcdir/src/physics/clubb/src/SILHS\n";
     }
 
     if ($phys_pkg eq 'cam_dev') {
@@ -2266,6 +2275,9 @@ sub write_filepath
     # in the list of filepaths.
     print $fh "$camsrcdir/src/physics/cam\n";
 
+    #Add the CCPP'ized subdirectories
+    print $fh "$camsrcdir/src/atmos_phys/zm\n";
+
     # Dynamics package and test utilities
     print $fh "$camsrcdir/src/dynamics/$dyn\n";
     if($dyn eq 'se') {
@@ -2289,6 +2301,7 @@ sub write_filepath
     print $fh "$camsrcdir/src/cpl/$cpl\n";
     print $fh "$camsrcdir/src/control\n";
     print $fh "$camsrcdir/src/utils\n";
+    print $fh "$camsrcdir/src/utils/cam_ccpp\n";
     print $fh "$camsrcdir/src/atmos_phys/utilities\n";
 
 
@@ -2324,13 +2337,13 @@ sub write_cosp_makefile
 
 CAM_BLD      := $cam_bld
 COSP_PATH    := $cam_dir/src/physics/cosp2
-ISCCP_PATH   := $cam_dir/src/physics/cosp2/src/simulator/icarus
-RS_PATH      := $cam_dir/src/physics/cosp2/src/simulator/quickbeam
-RT_PATH      := $cam_dir/src/physics/cosp2/src/simulator/rttov
-CS_PATH      := $cam_dir/src/physics/cosp2/src/simulator/actsim
-MISR_PATH    := $cam_dir/src/physics/cosp2/src/simulator/MISR_simulator
-MODIS_PATH   := $cam_dir/src/physics/cosp2/src/simulator/MODIS_simulator
-PARASOL_PATH := $cam_dir/src/physics/cosp2/src/simulator/parasol
+ISCCP_PATH   := $cam_dir/src/physics/cosp2/src/src/simulator/icarus
+RS_PATH      := $cam_dir/src/physics/cosp2/src/src/simulator/quickbeam
+RT_PATH      := $cam_dir/src/physics/cosp2/src/src/simulator/rttov
+CS_PATH      := $cam_dir/src/physics/cosp2/src/src/simulator/actsim
+MISR_PATH    := $cam_dir/src/physics/cosp2/src/src/simulator/MISR_simulator
+MODIS_PATH   := $cam_dir/src/physics/cosp2/src/src/simulator/MODIS_simulator
+PARASOL_PATH := $cam_dir/src/physics/cosp2/src/src/simulator/parasol
 
 EOF
 

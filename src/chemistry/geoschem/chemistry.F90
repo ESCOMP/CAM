@@ -90,6 +90,7 @@ module chemistry
   ! - MAM4 will perform deposition of SOAs, changing the bulk mass;
   !   if disabled, only one-way mapping of GC aerosols to MAM4 is done.
   !   deposition of SOAs will still be performed but based on GEOS-Chem species.
+  !   This is reflected (primarily for sulfate) in geoschem_master_gas_<dry|wet>dep_list.xml.
   ! Either approach is scientifically valid.
   LOGICAL :: useMAM4mapBackSOA = .FALSE.
 
@@ -700,9 +701,6 @@ contains
     CHARACTER(LEN=*), PARAMETER  :: subname = 'chem_readnl'
     LOGICAL                      :: validSLS, v_bool
 
-    ! Assume a successful return until otherwise
-    RC                      = GC_SUCCESS
-
     namelist /chem_inparm/ depvel_lnd_file
     namelist /chem_inparm/ drydep_srf_file
 
@@ -710,6 +708,9 @@ contains
     namelist /chem_inparm/ bndtvg, h2orates, ghg_chem
 
     if (debug .and. masterproc) write(iulog,'(a)') 'chem_readnl: reading namelists for GEOS-Chem chemistry'
+
+    ! Assume a successful return until otherwise
+    RC                      = GC_SUCCESS
 
     ALLOCATE(drySpc_ndx(nddvels), STAT=IERR)
     IF ( IERR .NE. 0 ) CALL ENDRUN('Failed to allocate drySpc_ndx')
