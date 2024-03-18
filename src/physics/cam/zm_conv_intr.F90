@@ -474,10 +474,14 @@ subroutine zm_conv_tend(pblh    ,mcon    ,cme     , &
    real(r8) :: md_out(pcols,pver)
 
    ! used in momentum transport calculation
-   real(r8) :: pguall(pcols, pver, 2)
-   real(r8) :: pgdall(pcols, pver, 2)
-   real(r8) :: icwu(pcols,pver, 2)
-   real(r8) :: icwd(pcols,pver, 2)
+   real(r8) :: pguallu(pcols, pver)
+   real(r8) :: pguallv(pcols, pver)
+   real(r8) :: pgdallu(pcols, pver)
+   real(r8) :: pgdallv(pcols, pver)
+   real(r8) :: icwuu(pcols,pver)
+   real(r8) :: icwuv(pcols,pver)
+   real(r8) :: icwdu(pcols,pver)
+   real(r8) :: icwdv(pcols,pver)
    real(r8) :: seten(pcols, pver)
    logical  :: l_windt(2)
    real(r8) :: tfinal1, tfinal2
@@ -765,8 +769,9 @@ subroutine zm_conv_tend(pblh    ,mcon    ,cme     , &
                    zmconv_momcu, zmconv_momcd, &
                    du(:ncol,:), eu(:ncol,:), ed(:ncol,:), dp(:ncol,:), dsubcld(:ncol),  &
                    jt(:ncol), maxg(:ncol), ideep(:ncol), 1, lengath,  &
-                   nstep,  ptend_loc%u(:ncol,:), ptend_loc%v(:ncol,:), pguall(:ncol,:,:), pgdall(:ncol,:,:), &
-                   icwu(:ncol,:,:), icwd(:ncol,:,:), ztodt, seten(:ncol,:) )
+                   nstep,  ptend_loc%u(:ncol,:), ptend_loc%v(:ncol,:),&
+                   pguallu(:ncol,:), pguallv(:ncol,:),  pgdallu(:ncol,:), pgdallv(:ncol,:), &
+                   icwuu(:ncol,:), icwuv(:ncol,:), icwdu(:ncol,:), icwdv(:ncol,:), ztodt, seten(:ncol,:) )
      call t_stopf ('zm_conv_momtran_run')
 
      ptend_loc%s(:ncol,:pver) = seten(:ncol,:pver)
@@ -788,16 +793,16 @@ subroutine zm_conv_tend(pblh    ,mcon    ,cme     , &
      call outfld('ZMMTT', ftem             , pcols, lchnk)
 
      ! Output apparent force from  pressure gradient
-     call outfld('ZMUPGU', pguall(1,1,1), pcols, lchnk)
-     call outfld('ZMUPGD', pgdall(1,1,1), pcols, lchnk)
-     call outfld('ZMVPGU', pguall(1,1,2), pcols, lchnk)
-     call outfld('ZMVPGD', pgdall(1,1,2), pcols, lchnk)
+     call outfld('ZMUPGU', pguallu(1,1), pcols, lchnk)
+     call outfld('ZMUPGD', pgdallu(1,1), pcols, lchnk)
+     call outfld('ZMVPGU', pguallv(1,1), pcols, lchnk)
+     call outfld('ZMVPGD', pgdallv(1,1), pcols, lchnk)
 
      ! Output in-cloud winds
-     call outfld('ZMICUU', icwu(1,1,1), pcols, lchnk)
-     call outfld('ZMICUD', icwd(1,1,1), pcols, lchnk)
-     call outfld('ZMICVU', icwu(1,1,2), pcols, lchnk)
-     call outfld('ZMICVD', icwd(1,1,2), pcols, lchnk)
+     call outfld('ZMICUU', icwuu(1,1), pcols, lchnk)
+     call outfld('ZMICUD', icwdu(1,1), pcols, lchnk)
+     call outfld('ZMICVU', icwuv(1,1), pcols, lchnk)
+     call outfld('ZMICVD', icwdv(1,1), pcols, lchnk)
 
    end if
 
