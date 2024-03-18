@@ -56,6 +56,7 @@ contains
     use shr_reprosum_mod,       only: repro_sum => shr_reprosum_calc
     use fvm_analytic_mod,       only: compute_basic_coordinate_vars
     use fvm_control_volume_mod, only: fvm_struct, allocate_physgrid_vars
+    use air_composition,        only: thermodynamic_active_species_num
 
     type(element_t),  pointer        :: elem(:)
     type(fvm_struct), pointer        :: fvm(:)
@@ -70,7 +71,7 @@ contains
     integer                        :: ie
     integer                        :: nets, nete
     integer                        :: nelem_edge
-    integer                        :: ierr, j
+    integer                        :: ierr=0, j
     logical,           parameter   :: Debug = .FALSE.
 
     real(r8),          allocatable :: aratio(:,:)
@@ -166,8 +167,39 @@ contains
     call mpi_allreduce(nelemd, nelemdmax, 1, MPI_INTEGER, MPI_MAX, par%comm, ierr)
 
     if (nelemd > 0) then
-      allocate(elem(nelemd))
-      call allocate_element_desc(elem)
+       allocate(elem(nelemd))
+       call allocate_element_desc(elem)
+       if(fv_nphys > 0) then
+          do ie=1,nelemd
+             allocate(elem(ie)%state%Qdp(np,np,nlev,thermodynamic_active_species_num,1), stat=ierr)
+             if( ierr /= 0 ) then
+                call endrun('prim_init1: failed to allocate qdp array')
+             end if
+          end do
+       end if
+    else
+       do ie=1,nelemd
+          allocate(elem(ie)%state%Qdp(np,np,nlev,thermodynamic_active_species_num,2), stat=ierr)
+          if( ierr /= 0 ) then
+             call endrun('prim_init1: failed to allocate qdp array')
+          end if
+          allocate(elem(ie)%derived%FQ(np,np,nlev,thermodynamic_active_species_num), stat=ierr)
+          if( ierr /= 0 ) then
+             call endrun('prim_init1: failed to allocate fq array')
+          end if
+          allocate(elem(ie)%derived%FDP(np,np,nlev), stat=ierr)
+          if( ierr /= 0 ) then
+             call endrun('prim_init1: failed to allocate fdp array')
+          end if
+          allocate(elem(ie)%derived%divdp(np,np,nlev), stat=ierr)
+          if( ierr /= 0 ) then
+             call endrun('prim_init1: failed to allocate divdp array')
+          end if
+          allocate(elem(ie)%derived%divdp_proj(np,np,nlev), stat=ierr)
+          if( ierr /= 0 ) then
+             call endrun('prim_init1: failed to allocate divdp_proj array')
+          end if
+       end do
     end if
 
     if (fv_nphys > 0) then
