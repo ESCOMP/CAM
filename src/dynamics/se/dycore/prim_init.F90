@@ -1,7 +1,7 @@
 module prim_init
 
   use shr_kind_mod,   only: r8=>shr_kind_r8
-  use dimensions_mod, only: nc
+  use dimensions_mod, only: nc, use_cslam
   use reduction_mod,  only: reductionbuffer_ordered_1d_t
   use quadrature_mod, only: quadrature_t, gausslobatto
 
@@ -22,7 +22,7 @@ contains
     use cam_logfile,            only: iulog
     use shr_sys_mod,            only: shr_sys_flush
     use thread_mod,             only: max_num_threads
-    use dimensions_mod,         only: np, nlev, nelem, nelemd, nelemdmax
+    use dimensions_mod,         only: np, nlev, nelem, nelemd, nelemdmax, qsize_d
     use dimensions_mod,         only: GlobalUniqueCols, fv_nphys,irecons_tracer
     use control_mod,            only: topology, partmethod
     use element_mod,            only: element_t, allocate_element_desc
@@ -166,27 +166,36 @@ contains
     end if
     call mpi_allreduce(nelemd, nelemdmax, 1, MPI_INTEGER, MPI_MAX, par%comm, ierr)
 
+    !Allocate elements:
     if (nelemd > 0) then
        allocate(elem(nelemd))
        call allocate_element_desc(elem)
-       if(fv_nphys > 0) then
+       !Allocate Qdp and derived FQ arrays:
+       if(fv_nphys > 0) then !SE-CSLAM
           do ie=1,nelemd
              allocate(elem(ie)%state%Qdp(np,np,nlev,thermodynamic_active_species_num,1), stat=ierr)
              if( ierr /= 0 ) then
-                call endrun('prim_init1: failed to allocate qdp array')
+                call endrun('prim_init1: failed to allocate Qdp array')
+             end if
+             allocate(elem(ie)%derived%FQ(np,np,nlev,thermodynamic_active_species_num), stat=ierr)
+             if( ierr /= 0 ) then
+                call endrun('prim_init1: failed to allocate fq array')
+             end if
+          end do
+       else !Regular SE
+          do ie=1,nelemd
+             allocate(elem(ie)%state%Qdp(np,np,nlev,qsize_d,2), stat=ierr)
+             if( ierr /= 0 ) then
+                call endrun('prim_init1: failed to allocate Qdp array')
+             end if
+             allocate(elem(ie)%derived%FQ(np,np,nlev,qsize_d), stat=ierr)
+             if( ierr /= 0 ) then
+                call endrun('prim_init1: failed to allocate fq array')
              end if
           end do
        end if
-    else
+       !Allocate remaining derived quantity arrays:
        do ie=1,nelemd
-          allocate(elem(ie)%state%Qdp(np,np,nlev,thermodynamic_active_species_num,2), stat=ierr)
-          if( ierr /= 0 ) then
-             call endrun('prim_init1: failed to allocate qdp array')
-          end if
-          allocate(elem(ie)%derived%FQ(np,np,nlev,thermodynamic_active_species_num), stat=ierr)
-          if( ierr /= 0 ) then
-             call endrun('prim_init1: failed to allocate fq array')
-          end if
           allocate(elem(ie)%derived%FDP(np,np,nlev), stat=ierr)
           if( ierr /= 0 ) then
              call endrun('prim_init1: failed to allocate fdp array')
@@ -338,7 +347,7 @@ contains
       elem(ie)%derived%FM=0.0_r8
       elem(ie)%derived%FQ=0.0_r8
       elem(ie)%derived%FT=0.0_r8
-      elem(ie)%derived%FDP=0.0_r8      
+      elem(ie)%derived%FDP=0.0_r8
       elem(ie)%derived%pecnd=0.0_r8
 
       elem(ie)%derived%Omega=0
