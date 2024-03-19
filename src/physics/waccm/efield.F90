@@ -1246,7 +1246,7 @@
       end do
 !
       x(:) = rhs(:)
-      call DGESV( nmax_a, nmax_a, u, nmax_a, ipiv, x, nmax_a, info)
+      call DGESV( nmax_a, 1, u, nmax_a, ipiv, x, nmax_a, info)
       if (info/=0) then
          write(msg,'(a,i4)') 'bnd_sinus -- LAPACK DGESV return error code: ',info
          if (masterproc) write(iulog,*) trim(msg)
