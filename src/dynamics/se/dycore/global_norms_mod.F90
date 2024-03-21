@@ -603,26 +603,31 @@ contains
       ! low top; usually idealized test cases
       !
       top_000_032km = .true.
+      if (hybrid%masterthread) write(iulog,* )"Model top damping configuration: top_000_032km"
     else if (ptop>100.0_r8) then
       !
       ! CAM6 top (~225 Pa) or CAM7 low top
       !
       top_032_042km = .true.
+      if (hybrid%masterthread) write(iulog,* )"Model top damping configuration: top_032_042km"
     else if (ptop>1e-1_r8) then
       !
       ! CAM7 top (~4.35e-1 Pa)
       !
       top_042_090km = .true.
+      if (hybrid%masterthread) write(iulog,* )"Model top damping configuration: top_042_090km"
     else if (ptop>1E-4_r8) then
       !
       ! WACCM top (~4.5e-4 Pa)
       !
       top_090_140km = .true.
+      if (hybrid%masterthread) write(iulog,* )"Model top damping configuration: top_090_140km"
     else
       !
       ! WACCM-x - geospace (~4e-7 Pa)
       !
       top_140_600km = .true.
+      if (hybrid%masterthread) write(iulog,* )"Model top damping configuration: top_140_600km"
     end if
     !
     ! Logging text for sponge layer configuration
@@ -634,14 +639,14 @@ contains
     !
     ! if user or namelist is not specifying sponge del4 settings here are best guesses (empirically determined)
     !
-    if (sponge_del4_lev       <0) sponge_del4_lev        = 1
-    if (sponge_del4_nu_fac    <0) sponge_del4_nu_fac     = 1.0_r8
-    if (sponge_del4_nu_div_fac<0) sponge_del4_nu_div_fac = 1.0_r8
-
     if (top_090_140km.or.top_140_600km) then ! defaults for waccm(x)
       if (sponge_del4_lev       <0) sponge_del4_lev        = 20
       if (sponge_del4_nu_fac    <0) sponge_del4_nu_fac     = 5.0_r8
       if (sponge_del4_nu_div_fac<0) sponge_del4_nu_div_fac = 10.0_r8
+    else
+      if (sponge_del4_lev       <0) sponge_del4_lev        = 1
+      if (sponge_del4_nu_fac    <0) sponge_del4_nu_fac     = 1.0_r8
+      if (sponge_del4_nu_div_fac<0) sponge_del4_nu_div_fac = 1.0_r8
     end if
 
     ! set max wind speed for diagnostics
