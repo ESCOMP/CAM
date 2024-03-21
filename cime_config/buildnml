@@ -173,7 +173,7 @@ def buildnml(case, caseroot, compname):
 
         buildnl_opts += ["-inputdata", input_data_list]
 
-        CAM_NAMELIST_OPTS += " stream_ndep_year_first="     + stream_ndep_year_first 
+        CAM_NAMELIST_OPTS += " stream_ndep_year_first="     + stream_ndep_year_first
         CAM_NAMELIST_OPTS += " stream_ndep_year_last="      + stream_ndep_year_last
         CAM_NAMELIST_OPTS += " stream_ndep_year_align="     + stream_ndep_year_align
         CAM_NAMELIST_OPTS += " stream_ndep_data_filename='" + stream_ndep_data_filename.strip() + "'"
@@ -217,7 +217,7 @@ def buildnml(case, caseroot, compname):
         # -----------------------------------------------------
 
         if os.path.isdir(rundir) \
-            and os.path.exists(os.path.join(caseroot, "species_database.yaml"))\
+            and os.path.exists(os.path.join(caseroot, "species_database.yml"))\
             and '-chem geoschem' in CAM_CONFIG_OPTS:
                for fname in ['species_database.yml', 'geoschem_config.yml',
                              'HISTORY.rc', 'HEMCO_Config.rc', 'HEMCO_Diagn.rc']:
