@@ -2026,7 +2026,7 @@
 
 <!-- effective Henry's coef data for wet and dry deposition -->
 <dep_data_file>atm/cam/chem/trop_mozart/dvel/dep_data_c20221208.nc</dep_data_file>
-<dep_data_file chem="geoschem_mam4">atm/cam/chem/geoschem/dvel/dep_data_file_geoschem_v14.3_2023Jan05.nc</dep_data_file>
+<dep_data_file chem="geoschem_mam4">atm/cam/chem/geoschem/dvel/dep_data_file_geoschem_v14.3_2023Jan08.nc</dep_data_file>
 
 <!-- photolysis inputs -->
 <xs_coef_file>atm/waccm/phot/effxstex.txt</xs_coef_file>
@@ -3699,5 +3699,9 @@
 <!-- use 2x2.5 degree HEMCO grid for 1.9x2.5 degree simulation -->
 <hemco_grid_xdim hgrid="1.9x2.5">144</hemco_grid_xdim>
 <hemco_grid_ydim hgrid="1.9x2.5">91</hemco_grid_ydim>
+
+<!-- GEOS-Chem chemistry -->
+<geoschem_chem_inputs chem="geoschem_mam4">atm/cam/geoschem/emis/ExtData/CHEM_INPUTS</geoschem_chem_inputs>
+<geoschem_photol_inputs chem="geoschem_mam4">atm/cam/geoschem/emis/ExtData/CHEM_INPUTS/CLOUD_J/v2023-05/</geoschem_photol_inputs>
 
 </namelist_defaults>

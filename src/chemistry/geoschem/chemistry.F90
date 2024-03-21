@@ -65,8 +65,8 @@ module chemistry
   CHARACTER(LEN=500) :: gcConfig = 'geoschem_config.yml'
   CHARACTER(LEN=500) :: speciesDB = 'species_database.yml'
 
-  ! Location of chemistry input
-  CHARACTER(LEN=shr_kind_cl) :: geoschem_cheminputs
+  CHARACTER(LEN=shr_kind_cl) :: geoschem_chem_inputs
+  CHARACTER(LEN=shr_kind_cl) :: geoschem_photol_inputs
 
   ! Debugging
   LOGICAL :: debug = .TRUE.
@@ -1134,10 +1134,10 @@ contains
                           RC         = RC        )
 
     ! First setup directories
-    Input_Opt%Chem_Inputs_Dir      = TRIM(geoschem_cheminputs)
+    Input_Opt%Chem_Inputs_Dir      = TRIM(geoschem_chem_inputs)
     Input_Opt%SpcDatabaseFile      = TRIM(speciesDB)
-    Input_Opt%FAST_JX_DIR          = TRIM(geoschem_cheminputs)//'FAST_JX/v2021-10/'
-    Input_Opt%CLOUDJ_DIR           = TRIM(geoschem_cheminputs)//'CLOUD_J/v2023-05/'
+    Input_Opt%FAST_JX_DIR          = TRIM(geoschem_photol_inputs)
+    Input_Opt%CLOUDJ_DIR           = TRIM(geoschem_photol_inputs)
 
     !----------------------------------------------------------
     ! CESM-specific input flags
@@ -1779,7 +1779,8 @@ contains
     integer :: unitn, ierr
     character(len=*), parameter :: subname = 'geoschem_readnl'
 
-    namelist /geoschem_nl/ geoschem_cheminputs
+    namelist /geoschem_nl/ geoschem_chem_inputs
+    namelist /geoschem_nl/ geoschem_photol_inputs
 
     ! Read namelist
     IF ( MasterProc ) THEN
@@ -1797,9 +1798,14 @@ contains
     ENDIF
 
     ! Broadcast namelist variables
-    CALL mpi_bcast(geoschem_cheminputs, LEN(geoschem_cheminputs), mpi_character, masterprocid, mpicom, ierr)
+    CALL mpi_bcast(geoschem_chem_inputs, LEN(geoschem_chem_inputs), mpi_character, masterprocid, mpicom, ierr)
     IF ( ierr /= mpi_success ) then
-       CALL endrun(subname//': MPI_BCAST ERROR: geoschem_cheminputs')
+       CALL endrun(subname//': MPI_BCAST ERROR: geoschem_chem_inputs')
+    ENDIF
+
+    CALL mpi_bcast(geoschem_photol_inputs, LEN(geoschem_photol_inputs), mpi_character, masterprocid, mpicom, ierr)
+    IF ( ierr /= mpi_success ) then
+       CALL endrun(subname//': MPI_BCAST ERROR: geoschem_photol_inputs')
     ENDIF
 
   end subroutine geoschem_readnl
