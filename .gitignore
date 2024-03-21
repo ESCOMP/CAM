@@ -15,8 +15,7 @@ src/dynamics/fv3/atmos_cubed_sphere
 libraries/FMS
 libraries/mct
 libraries/parallelio
-libraries/musica
-libraries/json-fortran
+libraries/tuv-x
 src/atmos_phys
 src/dynamics/mpas/dycore
 share

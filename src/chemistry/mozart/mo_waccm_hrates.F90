@@ -25,6 +25,11 @@
       logical :: has_hrates
       integer :: ele_temp_ndx, ion_temp_ndx
 
+      integer :: cpe_jo2a_ndx = -1
+      integer :: cpe_jo2b_ndx = -1
+      integer :: cpe_jo3a_ndx = -1
+      integer :: cpe_jo3b_ndx = -1
+
       contains
    
       subroutine init_hrates( )
@@ -81,8 +86,33 @@
         attr = 'total jo2 euv photolysis rate'
         call addfld( 'JO2_EUV',    (/ 'lev' /), 'I', '/s', trim(attr) )
 
+        attr = 'O2 + hv -> O1D + O3P tuvx photo-chem heating rate'
+        call addfld( 'QRS_O2A_tuvx',   (/ 'lev' /), 'I', 'K/s', trim(attr) )
+        attr = 'O2 + hv -> O3P + O3P tuvx photo-chem heating rate'
+        call addfld( 'QRS_O2B_tuvx',   (/ 'lev' /), 'I', 'K/s', trim(attr) )
+        attr = 'O3 + hv -> O1D + O2_1S tuvx photo-chem heating rate'
+        call addfld( 'QRS_O3A_tuvx',   (/ 'lev' /), 'I', 'K/s', trim(attr) )
+        attr = 'O3 + hv -> O3P + O2 tuvx photo-chem heating rate'
+        call addfld( 'QRS_O3B_tuvx',   (/ 'lev' /), 'I', 'K/s', trim(attr) )
+
+
+        attr = 'O2 + hv -> O1D + O3P table photo-chem heating rate'
+        call addfld( 'QRS_O2A_tabl',   (/ 'lev' /), 'I', 'K/s', trim(attr) )
+        attr = 'O2 + hv -> O3P + O3P table photo-chem heating rate'
+        call addfld( 'QRS_O2B_tabl',   (/ 'lev' /), 'I', 'K/s', trim(attr) )
+        attr = 'O3 + hv -> O1D + O2_1S table photo-chem heating rate'
+        call addfld( 'QRS_O3A_tabl',   (/ 'lev' /), 'I', 'K/s', trim(attr) )
+        attr = 'O3 + hv -> O3P + O2 table photo-chem heating rate'
+        call addfld( 'QRS_O3B_tabl',   (/ 'lev' /), 'I', 'K/s', trim(attr) )
+
+
         ele_temp_ndx = pbuf_get_index('TElec',errcode=err)! electron temperature index 
         ion_temp_ndx = pbuf_get_index('TIon',errcode=err) ! ion temperature index
+
+        cpe_jo2a_ndx = pbuf_get_index('CPE_jO2a',errcode=err)
+        cpe_jo2b_ndx = pbuf_get_index('CPE_jO2b',errcode=err)
+        cpe_jo3a_ndx = pbuf_get_index('CPE_jO3a',errcode=err)
+        cpe_jo3b_ndx = pbuf_get_index('CPE_jO3b',errcode=err)
 
       end subroutine init_hrates
 
@@ -124,6 +154,9 @@
       use phys_control,      only : waccmx_is
       use orbit,             only : zenith
 
+      use physconst,         only : avogad
+      use mo_tuvx,           only : tuvx_active
+
 !-----------------------------------------------------------------------
 !        ... dummy arguments
 !-----------------------------------------------------------------------
@@ -161,6 +194,14 @@
       real(r8)     ::  qrl_col(pver,4)                               ! column thermal heating > 200nm
       real(r8)     ::  qrs(ncol,pver,4)                              ! chunk thermal heating < 200nm
       real(r8)     ::  qrl(ncol,pver,4)                              ! chunk thermal heating > 200nm
+
+      real(r8)     ::  qr_jo2a_tuvx(ncol,pver)                       ! heating rates (K/s)
+      real(r8)     ::  qr_jo2b_tuvx(ncol,pver)                       ! heating rates (K/s)
+      real(r8)     ::  qr_jo3a_tuvx(ncol,pver)                       ! heating rates (K/s)
+      real(r8)     ::  qr_jo3b_tuvx(ncol,pver)                       ! heating rates (K/s)
+
+      real(r8) ::  hfactor(pver)
+
       real(r8)     ::  euv_hrate_col(pver)                           ! column euv thermal heating rate
       real(r8)     ::  co2_hrate_col(pver)                           ! column co2 nir heating rate
       real(r8)     ::  euv_hrate(ncol,pver)                          ! chunk euv thermal heating rate
@@ -196,6 +237,11 @@
       real(r8), pointer :: ele_temp_fld(:,:) ! electron temperature pointer
       real(r8), pointer :: ion_temp_fld(:,:) ! ion temperature pointer
 
+      real(r8), pointer :: cpe_jo2a(:,:) ! chemical potential energy
+      real(r8), pointer :: cpe_jo2b(:,:) ! chemical potential energy
+      real(r8), pointer :: cpe_jo3a(:,:) ! chemical potential energy
+      real(r8), pointer :: cpe_jo3b(:,:) ! chemical potential energy
+
       if ( ele_temp_ndx>0 .and. ion_temp_ndx>0 ) then
          call pbuf_get_field(pbuf, ele_temp_ndx, ele_temp_fld)
          call pbuf_get_field(pbuf, ion_temp_ndx, ion_temp_fld)
@@ -203,6 +249,11 @@
          ele_temp_fld => state%t
          ion_temp_fld => state%t
       endif
+
+      if (cpe_jo2a_ndx > 0) call pbuf_get_field(pbuf, cpe_jo2a_ndx, cpe_jo2a)
+      if (cpe_jo2b_ndx > 0) call pbuf_get_field(pbuf, cpe_jo2b_ndx, cpe_jo2b)
+      if (cpe_jo3a_ndx > 0) call pbuf_get_field(pbuf, cpe_jo3a_ndx, cpe_jo3a)
+      if (cpe_jo3b_ndx > 0) call pbuf_get_field(pbuf, cpe_jo3b_ndx, cpe_jo3b)
 
       qrs_tot(:ncol,:) = 0._r8
       if (.not. has_hrates) return
@@ -343,6 +394,12 @@
             qrl(:,k,m) = 0._r8
          end do
       end do
+
+      qr_jo2a_tuvx = 0._r8
+      qr_jo2b_tuvx = 0._r8
+      qr_jo3a_tuvx = 0._r8
+      qr_jo3b_tuvx = 0._r8
+
       do k = 1,pver
          euv_hrate(:,k) = 0._r8
          co2_hrate(:,k) = 0._r8
@@ -372,18 +429,29 @@ column_loop : &
             mw(:)       = mbar(i,:)
             cparg(:)    = cpair(i,:)
             do_diag     = .false.
+
             call jshort( pver, sza, o2_line, o3_line, o2cc, &
                          o3cc, tline, zarg, mw, qrs_col, &
                          cparg, lchnk, i, co2cc, scco2, do_diag )
-            call jlong( pver, sza, eff_alb, parg, tline, &
-                        mw, o2_line, o3_line, colo3, qrl_col, &
-                        cparg, kbot_hrates )
-            do m = 1,4
-               qrs(i,pver:1:-1,m) = qrs_col(:,m) * esfact
-            end do
-            do m = 2,4
-               qrl(i,:,m) = qrl_col(:,m) * esfact
-            end do
+
+            if (tuvx_active) then
+               hfactor(:)  = avogad/(cparg(:)*mw(:))
+               qr_jo2a_tuvx(i,:) = cpe_jo2a(i,:) * hfactor(:) * o2_line(:) * esfact
+               qr_jo2b_tuvx(i,:) = cpe_jo2b(i,:) * hfactor(:) * o2_line(:) * esfact
+               qr_jo3a_tuvx(i,:kbot_hrates) = cpe_jo3a(i,:kbot_hrates) * hfactor(:kbot_hrates) * o3_line(:kbot_hrates) * esfact
+               qr_jo3b_tuvx(i,:kbot_hrates) = cpe_jo3b(i,:kbot_hrates) * hfactor(:kbot_hrates) * o3_line(:kbot_hrates) * esfact
+            else
+               call jlong( pver, sza, eff_alb, parg, tline, &
+                           mw, o2_line, o3_line, colo3, qrl_col, &
+                           cparg, kbot_hrates )
+               do m = 1,4
+                  qrs(i,pver:1:-1,m) = qrs_col(:,m) * esfact
+               end do
+               do m = 2,4
+                  qrl(i,:,m) = qrl_col(:,m) * esfact
+               end do
+            end if
+
             call heuv( pver, sza, occ, o2cc, n2cc, &
                        o_line, o2_line, n2_line, cparg, mw, &
                        zarg, euv_hrate_col, kbot_hrates )
@@ -403,6 +471,8 @@ column_loop : &
             write(iulog,*) '==================================='
 #endif
             co2_hrate(i,:kbot_hrates) = co2_hrate_col(:kbot_hrates) * esfact * daypsec
+
+
          end if
       end do column_loop
 
@@ -414,9 +484,22 @@ column_loop : &
       call outfld( 'QRS_LO2B', qrl(:,:,2), ncol, lchnk )
       call outfld( 'QRS_LO3A', qrl(:,:,3), ncol, lchnk )
       call outfld( 'QRS_LO3B', qrl(:,:,4), ncol, lchnk )
+
       call outfld( 'QRS_LO3',  qrl(:,:,3)+qrl(:,:,4), ncol, lchnk )
       call outfld( 'QRS_EUV', euv_hrate(:,:), ncol, lchnk )
       call outfld( 'QRS_CO2NIR', co2_hrate(:,:), ncol, lchnk )
+
+      if (tuvx_active) then
+         call outfld( 'QRS_O2A_tuvx', qr_jo2a_tuvx(:ncol,:), ncol, lchnk )
+         call outfld( 'QRS_O2B_tuvx', qr_jo2b_tuvx(:ncol,:), ncol, lchnk )
+         call outfld( 'QRS_O3A_tuvx', qr_jo3a_tuvx(:ncol,:), ncol, lchnk )
+         call outfld( 'QRS_O3B_tuvx', qr_jo3b_tuvx(:ncol,:), ncol, lchnk )
+      else
+         call outfld( 'QRS_O2A_tabl', qrs(:,:,1)+qrl(:,:,1), ncol, lchnk )
+         call outfld( 'QRS_O2B_tabl', qrs(:,:,2)+qrl(:,:,2), ncol, lchnk )
+         call outfld( 'QRS_O3A_tabl', qrs(:,:,3)+qrl(:,:,3), ncol, lchnk )
+         call outfld( 'QRS_O3B_tabl', qrs(:,:,4)+qrl(:,:,4), ncol, lchnk )
+      endif
 
 !-----------------------------------------------------------------------      
 !     	... chemical pot heating rate
@@ -436,7 +519,7 @@ column_loop : &
       call outfld( 'QRS_AUR', aur_hrate(:,:), ncol, lchnk )
 
 !-----------------------------------------------------------------------      
-!     	... airglow heating rate
+!     	... airglow heating rate -- for diagnostic output only within airglow
 !-----------------------------------------------------------------------      
       call airglow( aghrate, vmr(1,1,id_o2_1s), vmr(1,1,id_o2_1d), vmr(1,1,id_o1d), reaction_rates, cpair, &
                     ncol, lchnk )
@@ -444,11 +527,17 @@ column_loop : &
 !-----------------------------------------------------------------------      
 !     	... form total heating rate
 !-----------------------------------------------------------------------      
-      do k = 1,kbot_hrates
-         qrs_tot(:ncol,k) = qrs(:,k,1) + qrs(:,k,2) + qrs(:,k,3) + qrs(:,k,4) &
-                          + qrl(:,k,1) + qrl(:,k,2) + qrl(:,k,3) + qrl(:,k,4)
-      end do
+      if (tuvx_active) then
+         qrs_tot(:ncol,:kbot_hrates) = qr_jo2a_tuvx(:ncol,:kbot_hrates) + qr_jo2b_tuvx(:ncol,:kbot_hrates) &
+                                     + qr_jo3a_tuvx(:ncol,:kbot_hrates) + qr_jo3b_tuvx(:ncol,:kbot_hrates)
+      else
+         do k = 1,kbot_hrates
+            qrs_tot(:ncol,k) = qrs(:,k,1) + qrs(:,k,2) + qrs(:,k,3) + qrs(:,k,4) &
+                             + qrl(:,k,1) + qrl(:,k,2) + qrl(:,k,3) + qrl(:,k,4)
+         end do
+      end if
       call outfld( 'QTHERMAL', qrs_tot, pcols, lchnk )
+
       do k = 1,kbot_hrates
          qrs_tot(:ncol,k) = qrs_tot(:ncol,k) &
                           + cphrate(:,k) + euv_hrate(:,k) + aur_hrate(:,k) + co2_hrate(:,k)

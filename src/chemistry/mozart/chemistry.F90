@@ -312,13 +312,12 @@ end function chem_is
     call register_cfc11star()
 
     if ( waccmx_is('ionosphere') ) then
-       if( tuvx_active ) then
-         call tuvx_register( )
-       else
+       if( .not. tuvx_active ) then
          call photo_register( )
        end if
        call aurora_register()
     endif
+    call tuvx_register( )
 
     ! add fields to pbuf needed by aerosol models
     call aero_model_register()
