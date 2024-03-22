@@ -108,16 +108,16 @@ module mo_tuvx
       integer                  :: n_special_rates_ = 0      ! number of special photo rates
       integer                  :: n_wavelength_bins_ = 0    ! number of wavelength bins in TUV-x
       type(map_t)              :: photo_rate_map_           ! map between TUV-x and CAM
-      !   photo rate constant arrays
+                                                            !   photo rate constant arrays
       type(grid_updater_t)     :: grids_(NUM_GRIDS)         ! grid updaters
       type(profile_updater_t)  :: profiles_(NUM_PROFILES)   ! profile updaters
       type(radiator_updater_t) :: radiators_(NUM_RADIATORS) ! radiator updaters
       real(r8)                 :: height_delta_(pver+1)     ! change in height in each
-      !   vertical layer (km)
+                                                            !   vertical layer (km)
       real(r8), allocatable    :: wavelength_edges_(:)      ! TUV-x wavelength bin edges (nm)
-      !   on the TUV-x wavelength grid
-      real(r8)                 :: et_flux_ms93_(NUM_BINS_MS93)     ! extraterrestrial flux on the MS93 grid
-      !   [photon cm-2 nm-1 s-1]
+                                                            !   on the TUV-x wavelength grid
+      real(r8)                 :: et_flux_ms93_(NUM_BINS_MS93) ! extraterrestrial flux on the MS93 grid
+                                                               !   [photon cm-2 nm-1 s-1]
    end type tuvx_ptr
    type(tuvx_ptr), allocatable :: tuvx_ptrs(:)
 
@@ -172,7 +172,7 @@ contains
       use cam_logfile,    only : iulog ! log file output unit
       use namelist_utils, only : find_group_name
       use spmd_utils,     only : mpicom, is_main_task => masterproc, &
-         main_task => masterprocid
+                                 main_task => masterprocid
 
       character(len=*), intent(in)  :: nlfile  ! filepath for file containing namelist input
 
@@ -236,9 +236,9 @@ contains
       use musica_assert,           only : assert_msg, die_msg
       use musica_config,           only : config_t
       use musica_mpi,              only : musica_mpi_rank, &
-         musica_mpi_pack_size, &
-         musica_mpi_pack, &
-         musica_mpi_unpack
+                                          musica_mpi_pack_size, &
+                                          musica_mpi_pack, &
+                                          musica_mpi_unpack
       use musica_string,           only : string_t, to_char
       use physics_buffer,          only : physics_buffer_desc
       use physics_buffer,          only : pbuf_set_field
@@ -246,8 +246,8 @@ contains
       use shr_const_mod,           only : pi => shr_const_pi
       use solar_irrad_data,        only : has_spectrum
       use spmd_utils,              only : main_task => masterprocid, &
-         is_main_task => masterproc, &
-         mpicom
+                                          is_main_task => masterproc, &
+                                          mpicom
       use tuvx_grid,               only : grid_t
       use tuvx_grid_warehouse,     only : grid_warehouse_t
       use tuvx_profile_warehouse,  only : profile_warehouse_t
@@ -257,7 +257,7 @@ contains
       character(len=*), intent(in) :: photon_file   ! photon file used in extended-UV module setup
       character(len=*), intent(in) :: electron_file ! electron file used in extended-UV module setup
       real(r8),         intent(in) :: max_solar_zenith_angle ! cutoff solar zenith angle for
-      !    photo rate calculations [degrees]
+                                                             !    photo rate calculations [degrees]
       type(physics_buffer_desc), pointer :: pbuf2d(:,:) ! Physics buffer
 
       character(len=*), parameter :: my_name = "TUV-x wrapper initialization"
@@ -520,9 +520,9 @@ contains
       use cam_history,      only : outfld
       use cam_logfile,      only : iulog        ! log info output unit
       use chem_mods,        only : phtcnt,    & ! number of photolysis reactions
-         gas_pcnst, & ! number of non-fixed species
-         nfs,       & ! number of fixed species
-         nabscol      ! number of absorbing species (radiators)
+                                   gas_pcnst, & ! number of non-fixed species
+                                   nfs,       & ! number of fixed species
+                                   nabscol      ! number of absorbing species (radiators)
       use physics_types,    only : physics_state
       use physics_buffer,   only : physics_buffer_desc
       use physics_buffer,   only : pbuf_get_field
@@ -541,11 +541,11 @@ contains
       real(r8), intent(in)    :: temperature_mid(pcols,pver) ! midpoint temperature (K)
       real(r8), intent(in)    :: surface_temperature(pcols)  ! surface temperature (K)
       real(r8), intent(in)    :: fixed_species_conc(ncol,pver,max(1,nfs))    ! fixed species densities
-      !   (molecule cm-3)
+                                                                             !   (molecule cm-3)
       real(r8), intent(in)    :: species_vmr(ncol,pver,max(1,gas_pcnst))     ! species volume mixing
-      !   ratios (mol mol-1)
+                                                                             !   ratios (mol mol-1)
       real(r8), intent(in)    :: exo_column_conc(ncol,0:pver,max(1,nabscol)) ! layer column densities
-      !   (molecule cm-2)
+                                                                             !   (molecule cm-2)
       real(r8), intent(in)    :: surface_albedo(pcols)       ! surface albedo (unitless)
       real(r8), intent(in)    :: solar_zenith_angle(ncol)    ! solar zenith angle (radians)
       real(r8), intent(in)    :: earth_sun_distance          ! Earth-Sun distance (AU)
@@ -553,7 +553,7 @@ contains
       real(r8), intent(in)    :: cloud_fraction(ncol,pver)   ! cloud fraction (unitless)
       real(r8), intent(in)    :: liquid_water_content(ncol,pver)    ! liquid water content (kg/kg)
       real(r8), intent(inout) :: photolysis_rates(ncol,pver,phtcnt) ! photolysis rate
-      !   constants (1/s)
+                                                                    !   constants (1/s)
 
       integer  :: i_col   ! column index
       integer  :: i_level ! vertical level index
@@ -565,10 +565,10 @@ contains
       real(r8), pointer :: cpe_jo3_b(:,:) ! heating rate for jo3_b in physics buffer
 
       ! working arrays
-      real(r8), allocatable :: photo_rates(:,:,:) ! calculated photo rate constants (column, level, reaction) [s-1]
-      real(r8), allocatable :: optical_depth(:,:,:) ! aerosol optical depth (column, level, wavelength) [unitless]
+      real(r8), allocatable :: photo_rates(:,:,:)              ! calculated photo rate constants (column, level, reaction) [s-1]
+      real(r8), allocatable :: optical_depth(:,:,:)            ! aerosol optical depth (column, level, wavelength) [unitless]
       real(r8), allocatable :: single_scattering_albedo(:,:,:) ! aerosol single scattering albedo (column, level, wavelength) [unitless]
-      real(r8), allocatable :: asymmetry_factor(:,:,:) ! aerosol asymmetry factor (column, level, wavelength) [unitless]
+      real(r8), allocatable :: asymmetry_factor(:,:,:)         ! aerosol asymmetry factor (column, level, wavelength) [unitless]
 
       if( .not. tuvx_active ) return
 
@@ -847,11 +847,11 @@ contains
       use mo_jeuv,      only : jeuv_init ! extreme-UV initialization
 
       character(len=*),     intent(in)  :: photon_file   ! photon file used in extended-UV module
-      !   setup
+                                                         !   setup
       character(len=*),     intent(in)  :: electron_file ! electron file used in extended-UV
-      !   module setup
+                                                         !   module setup
       logical,              intent(out) :: do_euv        ! indicates whether extreme-UV
-      !   calculations are needed
+                                                         !   calculations are needed
 
       integer, allocatable :: euv_index_map(:)
 
@@ -914,9 +914,9 @@ contains
 
       use cam_logfile,   only : iulog       ! log info output unit
       use chem_mods,     only : phtcnt, &   ! number of photolysis reactions
-         rxt_tag_lst ! labels for all chemical reactions
-      ! NOTE photolysis reactions are
-      ! expected to appear first
+                                rxt_tag_lst ! labels for all chemical reactions
+                                            ! NOTE photolysis reactions are
+                                            !   expected to appear first
       use mo_jeuv,       only : neuv        ! number of extreme-UV rates
       use musica_config, only : config_t
       use musica_string, only : string_t
@@ -924,11 +924,11 @@ contains
       type(core_t),   intent(in)    :: core      ! TUV-x core
       type(config_t), intent(inout) :: config    ! CAM<->TUV-x map configuration
       logical,        intent(in)    :: do_euv    ! indicates whether to include
-      !   extreme-UV rates in the mapping
+                                                 !   extreme-UV rates in the mapping
       logical,        intent(out)   :: do_jno    ! indicates whether jno should be
-      !   calculated
+                                                 !   calculated
       integer,        intent(out)   :: jno_index ! index for jno in source photo
-      !   rate array
+                                                 !   rate array
       type(map_t),    intent(out)   :: map
 
       integer :: i_label, i_start, i_end
@@ -1520,20 +1520,20 @@ contains
       optical_depth, single_scattering_albedo, asymmetry_factor )
 
       use chem_mods, only : gas_pcnst, & ! number of non-fixed species
-         nfs,       & ! number of fixed species
-         nabscol,   & ! number of absorbing species (radiators)
-         indexm       ! index for air density in fixed species array
+                            nfs,       & ! number of fixed species
+                            nabscol,   & ! number of absorbing species (radiators)
+                            indexm       ! index for air density in fixed species array
       use ppgrid, only : pcols ! maximum number of columns
 
       class(tuvx_ptr), intent(inout) :: this  ! TUV-x calculator
       integer,         intent(in)    :: i_col ! column to set conditions for
       integer,         intent(in)    :: ncol  ! number of columns
       real(r8),        intent(in)    :: fixed_species_conc(ncol,pver,max(1,nfs))    ! fixed species densities
-      !   (molecule cm-3)
+                                                                                    !   (molecule cm-3)
       real(r8),        intent(in)    :: species_vmr(ncol,pver,max(1,gas_pcnst))     ! species volume mixing
-      !   ratios (mol mol-1)
+                                                                                    !   ratios (mol mol-1)
       real(r8),        intent(in)    :: exo_column_conc(ncol,0:pver,max(1,nabscol)) ! above column densities
-      !   (molecule cm-2)
+                                                                                    !   (molecule cm-2)
       real(r8),        intent(in)    :: delta_pressure(ncol,pver)       ! pressure delta about midpoints (Pa)
       real(r8),        intent(in)    :: cloud_fraction(ncol,pver)       ! cloud fraction (unitless)
       real(r8),        intent(in)    :: liquid_water_content(ncol,pver) ! liquid water content (kg/kg)
@@ -1794,16 +1794,16 @@ contains
       species_vmr, height_mid, height_int, euv_rates )
 
       use chem_mods, only : gas_pcnst, & ! number of non-fixed species
-         nfs, &       ! number of fixed species
-         indexm       ! index for air density in fixed species array
+                            nfs, &       ! number of fixed species
+                            indexm       ! index for air density in fixed species array
       use mo_jeuv,   only : jeuv, neuv   ! number of extreme-UV rates
       use ref_pres,  only : ptop_ref     ! pressure at the top of the column (Pa)
 
       real(r8), intent(in)  :: solar_zenith_angle ! degrees
-      real(r8), intent(in)  :: fixed_species_conc(pver,max(1,nfs))   ! fixed species densities
-      !   (molecule cm-3)
-      real(r8), intent(in)  :: species_vmr(pver,max(1,gas_pcnst))    ! species volume mixing
-      !   ratios (mol mol-1)
+      real(r8), intent(in)  :: fixed_species_conc(pver,max(1,nfs)) ! fixed species densities
+                                                                   !   (molecule cm-3)
+      real(r8), intent(in)  :: species_vmr(pver,max(1,gas_pcnst))  ! species volume mixing
+                                                                   !   ratios (mol mol-1)
       real(r8), intent(in)  :: height_mid(pver)     ! height at mid-points (km)
       real(r8), intent(in)  :: height_int(pver+1)   ! height at interfaces (km)
       real(r8), intent(out) :: euv_rates(pver,neuv) ! calculated extreme-UV rates
@@ -1858,18 +1858,18 @@ contains
       height_int, jno )
 
       use chem_mods, only : gas_pcnst, & ! number of non-fixed species
-         nfs, &       ! number of fixed species
-         indexm       ! index for air density in fixed species array
+                            nfs, &       ! number of fixed species
+                            indexm       ! index for air density in fixed species array
       use mo_jshort, only : sphers, slant_col, calc_jno
       use ref_pres,  only : ptop_ref     ! pressure at the top of the column (Pa)
 
       real(r8), intent(in)  :: solar_zenith_angle                  ! degrees
       real(r8), intent(in)  :: et_flux(NUM_BINS_MS93)              ! extraterrestrial flux MS93 grid
-      !   (photon cm-2 nm-1 s-1)
+                                                                   !   (photon cm-2 nm-1 s-1)
       real(r8), intent(in)  :: fixed_species_conc(pver,max(1,nfs)) ! fixed species densities
-      !   (molecule cm-3)
+                                                                   !   (molecule cm-3)
       real(r8), intent(in)  :: species_vmr(pver,max(1,gas_pcnst))  ! species volume mixing
-      !   ratios (mol mol-1)
+                                                                   !   ratios (mol mol-1)
       real(r8), intent(in)  :: height_int(pver+1)                  ! height at interfaces (km)
       real(r8), intent(out) :: jno(pver)                           ! calculated NO rate
 
