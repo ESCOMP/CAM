@@ -4103,6 +4103,7 @@ if ($dyn =~ /se/) {
 		  se_kmax_jet
                   se_molecular_diff
 	          se_pgf_formulation
+	          se_dribble_in_rsplit_loop
         );
 
     my %opts;

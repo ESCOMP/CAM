@@ -25,9 +25,8 @@ module element_mod
     real (kind=r8) :: T     (np,np,nlev,timelevels)              ! temperature                        
     real (kind=r8) :: dp3d  (np,np,nlev,timelevels)              ! dry delta p on levels              
     real (kind=r8) :: psdry (np,np)                              ! dry surface pressure               
-    real (kind=r8) :: phis  (np,np)                              ! surface geopotential (prescribed)  
-    real (kind=r8) :: Qdp   (np,np,nlev,qsize_d,2)               ! Tracer mass                        
-
+    real (kind=r8) :: phis  (np,np)                              ! surface geopotential (prescribed)
+    real (kind=r8), allocatable :: Qdp(:,:,:,:,:)                ! Tracer mass
   end type elem_state_t
 
   !___________________________________________________________________
@@ -43,20 +42,16 @@ module element_mod
     real (kind=r8) :: phi(np,np,nlev)                          ! geopotential
     real (kind=r8) :: omega(np,np,nlev)                        ! vertical velocity
 
-    ! semi-implicit diagnostics: computed in explict-component, reused in Helmholtz-component.
-    real (kind=r8) :: zeta(np,np,nlev)                         ! relative vorticity
-    real (kind=r8) :: div(np,np,nlev,timelevels)               ! divergence
-
     ! tracer advection fields used for consistency and limiters
     real (kind=r8) :: dp(np,np,nlev)                           ! for dp_tracers at physics timestep
-    real (kind=r8) :: divdp(np,np,nlev)                        ! divergence of dp
-    real (kind=r8) :: divdp_proj(np,np,nlev)                   ! DSSed divdp
+    real (kind=r8), allocatable :: divdp(:,:,:)                ! divergence of dp
+    real (kind=r8), allocatable :: divdp_proj(:,:,:)           ! DSSed divdp
     real (kind=r8) :: mass(MAX(qsize_d,ntrac_d)+9)             ! total tracer mass for diagnostics
 
     ! forcing terms for CAM
-    real (kind=r8) :: FQ(np,np,nlev,qsize_d)                   ! tracer forcing
+    real (kind=r8), allocatable :: FQ(:,:,:,:)                 ! tracer forcing
     real (kind=r8) :: FM(np,np,2,nlev)                         ! momentum forcing
-    real (kind=r8) :: FDP(np,np,nlev)                          ! save full updated dp right after physics
+    real (kind=r8), allocatable :: FDP(:,:,:)                  ! save full updated dp right after physics
     real (kind=r8) :: FT(np,np,nlev)                           ! temperature forcing
     real (kind=r8) :: etadot_prescribed(np,np,nlevp)           ! prescribed vertical tendency
     real (kind=r8) :: u_met(np,np,nlev)                        ! zonal component of prescribed meteorology winds

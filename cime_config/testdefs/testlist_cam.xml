@@ -984,7 +984,7 @@
     </options>
   </test>
 <!--              704 tsm  ter tbl                       -->
-  <test compset="FADIAB" grid="ne5pg4_ne5pg4_mg37" name="ERC_D_Ln9" testmods="cam/outfrq3s">
+  <test compset="FADIAB" grid="ne5pg3_ne5pg3_mg37" name="ERC_D_Ln9" testmods="cam/outfrq3s">
     <machines>
       <machine name="izumi" compiler="gnu" category="aux_cam"/>
     </machines>
