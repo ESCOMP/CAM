@@ -5,7 +5,8 @@ module mo_tuvx
 
    use musica_map,              only : map_t
    use musica_string,           only : string_t
-   use ppgrid,                  only : pver,pverp                ! number of vertical layers
+   use ppgrid,                  only : pver, & ! number of vertical layers
+                                       pverp   ! number of vertical interfaces (pver + 1)
    use shr_kind_mod,            only : r8 => shr_kind_r8, cl=>shr_kind_cl
    use tuvx_core,               only : core_t
    use tuvx_grid_from_host,     only : grid_updater_t
@@ -75,17 +76,17 @@ module mo_tuvx
 
    ! Information needed to access aerosol and cloud optical properties
    logical :: do_aerosol = .false. ! indicates whether aerosol optical properties
-   !   are available and should be used in radiative
-   !   transfer calculations
+                                   !   are available and should be used in radiative
+                                   !   transfer calculations
    logical :: do_clouds  = .false. ! indicates whether cloud optical properties
-   !   should be calculated and used in radiative
-   !   transfer calculations
+                                   !   should be calculated and used in radiative
+                                   !   transfer calculations
 
    ! Information needed to set extended-UV photo rates
-   logical :: do_euv = .false.              ! Indicates whether to calculate
-   !   extended-UV photo rates
-   integer :: ion_rates_pbuf_index = 0      ! Index in physics buffer for
-   !   ionization rates
+   logical :: do_euv = .false.         ! Indicates whether to calculate
+                                       !   extended-UV photo rates
+   integer :: ion_rates_pbuf_index = 0 ! Index in physics buffer for
+                                       !   ionization rates
 
    ! Information needed to do special NO photolysis rate calculation
    logical :: do_jno     = .false. ! Indicates whether to calculate jno
@@ -105,8 +106,7 @@ module mo_tuvx
       integer                  :: n_photo_rates_ = 0        ! number of photo reactions in TUV-x
       integer                  :: n_euv_rates_ = 0          ! number of extreme-UV rates
       integer                  :: n_special_rates_ = 0      ! number of special photo rates
-      real(r8), allocatable    :: photo_rates_(:,:,:)       ! photolysis rate constants
-      !   (column, vertical level, reaction) [s-1]
+      integer                  :: n_wavelength_bins_ = 0    ! number of wavelength bins in TUV-x
       type(map_t)              :: photo_rate_map_           ! map between TUV-x and CAM
       !   photo rate constant arrays
       type(grid_updater_t)     :: grids_(NUM_GRIDS)         ! grid updaters
@@ -115,13 +115,7 @@ module mo_tuvx
       real(r8)                 :: height_delta_(pver+1)     ! change in height in each
       !   vertical layer (km)
       real(r8), allocatable    :: wavelength_edges_(:)      ! TUV-x wavelength bin edges (nm)
-      real(r8), allocatable    :: wavelength_values_(:)     ! Working array for interface values
       !   on the TUV-x wavelength grid
-      real(r8), allocatable    :: wavelength_mid_values_(:) ! Working array for mid-point values
-      !   on the TUV-x wavelength grid
-      real(r8), allocatable    :: optical_depth_(:,:,:)            ! (column, vertical level, wavelength) [unitless]
-      real(r8), allocatable    :: single_scattering_albedo_(:,:,:) ! (column, vertical level, wavelength) [unitless]
-      real(r8), allocatable    :: asymmetry_factor_(:,:,:)         ! (column, vertical level, wavelength) [unitless]
       real(r8)                 :: et_flux_ms93_(NUM_BINS_MS93)     ! extraterrestrial flux on the MS93 grid
       !   [photon cm-2 nm-1 s-1]
    end type tuvx_ptr
@@ -410,17 +404,12 @@ contains
             call create_updaters( tuvx, cam_grids, cam_profiles, cam_radiators, &
                disable_aerosols, disable_clouds )
 
-            ! ===============================================================
-            ! Create a working array for calculated photolysis rate constants
-            ! ===============================================================
+            ! ============================================
+            ! Save the number of photolysis rate constants
+            ! ============================================
             tuvx%n_photo_rates_ = tuvx%core_%number_of_photolysis_reactions( )
             if( do_euv ) tuvx%n_euv_rates_ = neuv
             if( do_jno ) tuvx%n_special_rates_ = tuvx%n_special_rates_ + 1
-            height => tuvx%core_%get_grid( "height", "km" )
-            allocate( tuvx%photo_rates_( pcols, height%ncells_ + 1, &
-               tuvx%n_photo_rates_ + tuvx%n_euv_rates_ + &
-               tuvx%n_special_rates_ ) )
-            deallocate( height )
 
          end associate
       end do
@@ -575,6 +564,12 @@ contains
       real(r8), pointer :: cpe_jo3_a(:,:) ! heating rate for jo3_a in physics buffer
       real(r8), pointer :: cpe_jo3_b(:,:) ! heating rate for jo3_b in physics buffer
 
+      ! working arrays
+      real(r8), allocatable :: photo_rates(:,:,:) ! calculated photo rate constants (column, level, reaction) [s-1]
+      real(r8), allocatable :: optical_depth(:,:,:) ! aerosol optical depth (column, level, wavelength) [unitless]
+      real(r8), allocatable :: single_scattering_albedo(:,:,:) ! aerosol single scattering albedo (column, level, wavelength) [unitless]
+      real(r8), allocatable :: asymmetry_factor(:,:,:) ! aerosol asymmetry factor (column, level, wavelength) [unitless]
+
       if( .not. tuvx_active ) return
 
       call pbuf_get_field(pbuf, cpe_jo2_a_pbuf_index, cpe_jo2_a)
@@ -590,12 +585,18 @@ contains
 
       associate( tuvx => tuvx_ptrs( thread_id( ) ) )
 
-         tuvx%photo_rates_(:,:,:) = 0.0_r8
+         allocate( photo_rates( pcols, pver+2, tuvx%n_photo_rates_ + tuvx%n_euv_rates_ &
+                                               + tuvx%n_special_rates_ ) )
+         allocate( optical_depth( pcols, pver+1, tuvx%n_wavelength_bins_ ) )
+         allocate( single_scattering_albedo( pcols, pver+1, tuvx%n_wavelength_bins_ ) )
+         allocate( asymmetry_factor( pcols, pver+1, tuvx%n_wavelength_bins_ ) )
+         photo_rates(:,:,:) = 0.0_r8
 
          ! ==============================================
          ! set aerosol optical properties for all columns
          ! ==============================================
-         call get_aerosol_optical_properties( tuvx, state, pbuf )
+         call get_aerosol_optical_properties( tuvx, state, pbuf, optical_depth, &
+            single_scattering_albedo, asymmetry_factor )
 
          do i_col = 1, ncol
 
@@ -618,7 +619,8 @@ contains
             call set_radiator_profiles( tuvx, i_col, ncol, fixed_species_conc, &
                species_vmr, exo_column_conc, &
                pressure_delta(1:ncol,:), cloud_fraction, &
-               liquid_water_content )
+               liquid_water_content, optical_depth, &
+               single_scattering_albedo, asymmetry_factor)
 
             ! ===================================================
             ! Calculate photolysis rate constants for this column
@@ -626,7 +628,7 @@ contains
             call tuvx%core_%run( solar_zenith_angle = sza, &
                earth_sun_distance = earth_sun_distance, &
                photolysis_rate_constants = &
-               tuvx%photo_rates_(i_col,:,1:tuvx%n_photo_rates_), &
+               photo_rates(i_col,:,1:tuvx%n_photo_rates_), &
                heating_rates = cpe_rates(i_col,:,:) )
 
             ! ==============================
@@ -640,7 +642,7 @@ contains
                      species_vmr(i_col,:,:), &
                      height_mid(i_col,:), &
                      height_int(i_col,:), &
-                     tuvx%photo_rates_(i_col,2:pver+1,euv_begin:euv_end) )
+                     photo_rates(i_col,2:pver+1,euv_begin:euv_end) )
                end associate
             end if
 
@@ -653,26 +655,26 @@ contains
                   fixed_species_conc(i_col,:,:), &
                   species_vmr(i_col,:,:), &
                   height_int(i_col,:), &
-                  tuvx%photo_rates_(i_col,2:pver+1,jno_index) )
+                  photo_rates(i_col,2:pver+1,jno_index) )
             end if
          end do
 
          ! =====================
          ! Filter negative rates
          ! =====================
-         tuvx%photo_rates_(:,:,:) = max( 0.0_r8, tuvx%photo_rates_(:,:,:) )
+         photo_rates(:,:,:) = max( 0.0_r8, photo_rates(:,:,:) )
 
          ! ============================================
          ! Return the photolysis rates on the CAM grids
          ! ============================================
          do i_col = 1, ncol
             do i_level = 1, pver
-               call tuvx%photo_rate_map_%apply( tuvx%photo_rates_(i_col,pver-i_level+2,:), &
+               call tuvx%photo_rate_map_%apply( photo_rates(i_col,pver-i_level+2,:), &
                   photolysis_rates(i_col,i_level,:) )
             end do
          end do
 
-         call output_diagnostics( tuvx, ncol, lchnk )
+         call output_diagnostics( tuvx, ncol, lchnk, photo_rates )
 
       end associate
 
@@ -1016,13 +1018,15 @@ contains
    !-----------------------------------------------------------------------
    ! Outputs diagnostic information for the current time step
    !-----------------------------------------------------------------------
-   subroutine output_diagnostics( this, ncol, lchnk )
+   subroutine output_diagnostics( this, ncol, lchnk, photo_rates )
 
       use cam_history, only : outfld
 
       type(tuvx_ptr), intent(in) :: this
       integer,        intent(in) :: ncol  ! number of active columns on this thread
       integer,        intent(in) :: lchnk ! identifier for this thread
+      real(r8),       intent(in) :: photo_rates(:,:,:) ! photo rate constants
+                                                       !   (column, level, reaction) [s-1]
 
       integer :: i_diag
 
@@ -1030,7 +1034,7 @@ contains
 
       do i_diag = 1, size( diagnostics )
          associate( diag => diagnostics( i_diag ) )
-            call outfld( "tuvx_"//diag%name_, this%photo_rates_(:ncol,pver+1:2:-1,diag%index_), &
+            call outfld( "tuvx_"//diag%name_, photo_rates(:ncol,pver+1:2:-1,diag%index_), &
                ncol, lchnk )
          end associate
       end do
@@ -1249,17 +1253,9 @@ contains
       ! wavelength grid cannot be updated at runtime
       ! ============================================
       wavelength => grids%get_grid( "wavelength", "nm" )
-      allocate( this%wavelength_edges_(      wavelength%size( ) + 1 ) )
-      allocate( this%wavelength_values_(     wavelength%size( ) + 1 ) )
-      allocate( this%wavelength_mid_values_( wavelength%size( )     ) )
+      this%n_wavelength_bins_ = wavelength%size( )
+      allocate( this%wavelength_edges_( this%n_wavelength_bins_ + 1 ) )
       this%wavelength_edges_(:) = wavelength%edge_(:)
-
-      ! ==============================
-      ! optical property working array
-      ! ==============================
-      allocate( this%optical_depth_(            pcols, height%size( ), wavelength%size( ) ) )
-      allocate( this%single_scattering_albedo_( pcols, height%size( ), wavelength%size( ) ) )
-      allocate( this%asymmetry_factor_(         pcols, height%size( ), wavelength%size( ) ) )
 
       deallocate( height )
       deallocate( wavelength )
@@ -1311,12 +1307,6 @@ contains
          do_aerosol = .true.
          ! TODO update to use new aerosol_optics class
          ! call modal_aer_opt_init( )
-      else
-         ! TODO are there default aerosol optical properties that should be used
-         !      when an aerosol module is not available?
-         this%optical_depth_(:,:,:)            = 0.0_r8
-         this%single_scattering_albedo_(:,:,:) = 0.0_r8
-         this%asymmetry_factor_(:,:,:)         = 0.0_r8
       end if
       host_radiator => radiators%get_radiator( "aerosol" )
       this%radiators_( RADIATOR_INDEX_AEROSOL ) = &
@@ -1437,9 +1427,11 @@ contains
       integer,         intent(in)    :: i_col                 ! column to set conditions for
       real(r8),        intent(in)    :: surface_albedo(pcols) ! surface albedo (unitless)
 
-      this%wavelength_values_(:) = surface_albedo( i_col )
+      real(r8) :: albedos(this%n_wavelength_bins_ + 1)
+
+      albedos(:) = surface_albedo( i_col )
       call this%profiles_( PROFILE_INDEX_ALBEDO )%update( &
-         edge_values = this%wavelength_values_(:) )
+         edge_values = albedos(:) )
 
    end subroutine set_surface_albedo
 
@@ -1458,52 +1450,50 @@ contains
 
       use mo_util,          only : rebin
       use solar_irrad_data, only : nbins,   & ! number of wavelength bins
-         we,      & ! wavelength bin edges
-         sol_etf    ! extraterrestrial flux
-      !   (photon cm-2 nm-1 s-1)
+                                   we,      & ! wavelength bin edges
+                                   sol_etf    ! extraterrestrial flux
+                                              !   (photon cm-2 nm-1 s-1)
 
       class(tuvx_ptr), intent(inout) :: this  ! TUV-x calculator
 
-      real(r8) :: et_flux_orig(nbins)
-      integer  :: n_tuvx_bins, i_bin
+      real(r8) :: et_flux_orig(nbins), tuv_mid_values(this%n_wavelength_bins_), &
+                  tuv_edge_values(this%n_wavelength_bins_ + 1)
+      integer  :: i_bin
 
       ! ===============================================
       ! regrid normalized flux to TUV-x wavelength grid
       !================================================
       et_flux_orig(:) = sol_etf(:)
-      n_tuvx_bins = size(this%wavelength_mid_values_)
-      call rebin( nbins, n_tuvx_bins, we, this%wavelength_edges_, et_flux_orig, &
-         this%wavelength_mid_values_ )
+      call rebin( nbins, this%n_wavelength_bins_, we, this%wavelength_edges_, &
+         et_flux_orig, tuv_mid_values )
 
       ! ========================================================
       ! convert normalized flux to flux on TUV-x wavelength grid
       ! ========================================================
-      this%wavelength_mid_values_(:) = this%wavelength_mid_values_(:) * &
-         ( this%wavelength_edges_(2:n_tuvx_bins+1) - &
-         this%wavelength_edges_(1:n_tuvx_bins) )
+      tuv_mid_values(:) = tuv_mid_values(:) * &
+         ( this%wavelength_edges_(2:this%n_wavelength_bins_+1) - &
+           this%wavelength_edges_(1:this%n_wavelength_bins_) )
 
       ! ====================================
       ! estimate unused edge values for flux
       ! ====================================
-      this%wavelength_values_(1)  = this%wavelength_mid_values_(1) - &
-         ( this%wavelength_mid_values_(2) - &
-         this%wavelength_mid_values_(1) ) * 0.5_r8
-      do i_bin = 2, n_tuvx_bins
-         this%wavelength_values_(i_bin) = this%wavelength_mid_values_(i_bin-1) + &
-            ( this%wavelength_mid_values_(i_bin) - &
-            this%wavelength_mid_values_(i_bin-1) ) * 0.5_r8
+      tuv_edge_values(1)  = tuv_mid_values(1) - &
+         ( tuv_mid_values(2) - tuv_mid_values(1) ) * 0.5_r8
+      do i_bin = 2, this%n_wavelength_bins_
+         tuv_edge_values(i_bin) = tuv_mid_values(i_bin-1) + &
+            ( tuv_mid_values(i_bin) - tuv_mid_values(i_bin-1) ) * 0.5_r8
       end do
-      this%wavelength_values_(n_tuvx_bins+1) = &
-         this%wavelength_mid_values_(n_tuvx_bins) + &
-         ( this%wavelength_mid_values_(n_tuvx_bins) - &
-         this%wavelength_mid_values_(n_tuvx_bins-1) ) * 0.5_r8
+      tuv_edge_values(this%n_wavelength_bins_+1) = &
+         tuv_mid_values(this%n_wavelength_bins_) + &
+         ( tuv_mid_values(this%n_wavelength_bins_) - &
+           tuv_mid_values(this%n_wavelength_bins_-1) ) * 0.5_r8
 
       ! ============================
       ! update TUV-x ET flux profile
       ! ============================
       call this%profiles_( PROFILE_INDEX_ET_FLUX )%update( &
-         mid_point_values = this%wavelength_mid_values_, &
-         edge_values      = this%wavelength_values_)
+         mid_point_values = tuv_mid_values, &
+         edge_values      = tuv_edge_values)
 
       ! ======================================================================
       ! rebin extraterrestrial flux to MS93 grid for use with jno calculations
@@ -1526,13 +1516,14 @@ contains
    ! and pre-calculated values for O2 and O3
    !-----------------------------------------------------------------------
    subroutine set_radiator_profiles( this, i_col, ncol, fixed_species_conc, species_vmr, &
-      exo_column_conc, delta_pressure, cloud_fraction, &
-      liquid_water_content )
+      exo_column_conc, delta_pressure, cloud_fraction, liquid_water_content, &
+      optical_depth, single_scattering_albedo, asymmetry_factor )
 
       use chem_mods, only : gas_pcnst, & ! number of non-fixed species
          nfs,       & ! number of fixed species
          nabscol,   & ! number of absorbing species (radiators)
          indexm       ! index for air density in fixed species array
+      use ppgrid, only : pcols ! maximum number of columns
 
       class(tuvx_ptr), intent(inout) :: this  ! TUV-x calculator
       integer,         intent(in)    :: i_col ! column to set conditions for
@@ -1546,10 +1537,13 @@ contains
       real(r8),        intent(in)    :: delta_pressure(ncol,pver)       ! pressure delta about midpoints (Pa)
       real(r8),        intent(in)    :: cloud_fraction(ncol,pver)       ! cloud fraction (unitless)
       real(r8),        intent(in)    :: liquid_water_content(ncol,pver) ! liquid water content (kg/kg)
+      real(r8),        intent(in)    :: optical_depth(pcols, pver+1, this%n_wavelength_bins_) ! aerosol optical depth [unitless]
+      real(r8),        intent(in)    :: single_scattering_albedo(pcols, pver+1, this%n_wavelength_bins_) ! single scattering albedo [unitless]
+      real(r8),        intent(in)    :: asymmetry_factor(pcols, pver+1, this%n_wavelength_bins_) ! asymmetry factor [unitless]
 
       integer  :: i_level
       real(r8) :: tmp(pver)
-      real(r8) :: tau(pver+1, size(this%wavelength_mid_values_))
+      real(r8) :: tau(pver+1, this%n_wavelength_bins_)
       real(r8) :: edges(pver+2), densities(pver+1)
       real(r8) :: exo_val
       real(r8), parameter :: rgrav = 1.0_r8 / 9.80616_r8 ! reciprocal of acceleration by gravity (s/m)
@@ -1629,9 +1623,9 @@ contains
       ! ===============
       if( do_aerosol ) then
          call this%radiators_( RADIATOR_INDEX_AEROSOL )%update( &
-            optical_depths            = this%optical_depth_(i_col,:,:), &
-            single_scattering_albedos = this%single_scattering_albedo_(i_col,:,:), &
-            asymmetry_factors         = this%asymmetry_factor_(i_col,:,:) )
+            optical_depths            = optical_depth(i_col,:,:), &
+            single_scattering_albedos = single_scattering_albedo(i_col,:,:), &
+            asymmetry_factors         = asymmetry_factor(i_col,:,:) )
       end if
 
       ! =============
@@ -1665,7 +1659,8 @@ contains
    ! Updates working arrays of aerosol optical properties for all
    !   columns from the aerosol package
    !-----------------------------------------------------------------------
-   subroutine get_aerosol_optical_properties( this, state, pbuf )
+   subroutine get_aerosol_optical_properties( this, state, pbuf, optical_depth, &
+      single_scattering_albedo, asymmetry_factor )
 
       use aer_rad_props,    only : aer_rad_props_sw
       use mo_util,          only : rebin
@@ -1678,6 +1673,9 @@ contains
       class(tuvx_ptr),                    intent(inout) :: this  ! TUV-x calculator
       type(physics_state),       target,  intent(in)    :: state
       type(physics_buffer_desc), pointer, intent(inout) :: pbuf(:)
+      real(r8), intent(out) :: optical_depth(pcols,pver+1,this%n_wavelength_bins_) ! aerosol optical depth [unitless]
+      real(r8), intent(out) :: single_scattering_albedo(pcols,pver+1,this%n_wavelength_bins_) ! aerosol single scattering albedo [unitless]
+      real(r8), intent(out) :: asymmetry_factor(pcols,pver+1,this%n_wavelength_bins_) ! aerosol asymmetry factor [unitless]
 
       real(r8) :: wavelength_edges(nswbands+1)       ! CAM radiation wavelength grid edges [nm]
       real(r8) :: aer_tau    (pcols,0:pver,nswbands) ! aerosol extinction optical depth
@@ -1691,10 +1689,15 @@ contains
       integer  :: n_tuvx_bins          ! number of TUV-x wavelength bins
       integer  :: i_col, i_level       ! column and level indices
 
-      ! ============================================
-      ! do nothing if no aerosol module is available
-      ! ============================================
-      if( .not. do_aerosol ) return
+      ! ===================================================================
+      ! return default optical properties if no aerosol module is available
+      ! ===================================================================
+      if( .not. do_aerosol ) then
+         optical_depth(:,:,:) = 0.0_r8
+         single_scattering_albedo(:,:,:) = 0.0_r8
+         asymmetry_factor(:,:,:) = 0.0_r8
+         return
+      end if
 
       ! TODO just assume all daylight columns for now
       !      can adjust later if necessary
@@ -1724,30 +1727,27 @@ contains
       ! regrid optical properties to TUV-x wavelength and height grid
       ! =============================================================
       ! TODO is this the correct regridding scheme to use?
-      n_tuvx_bins = size(this%wavelength_mid_values_)
+      n_tuvx_bins = this%n_wavelength_bins_
       do i_col = 1, pcols
          do i_level = 1, pver
             call rebin(nswbands, n_tuvx_bins, wavelength_edges, this%wavelength_edges_, &
-               aer_tau(i_col,pver-i_level,:), this%optical_depth_(i_col,i_level,:))
+               aer_tau(i_col,pver-i_level,:), optical_depth(i_col,i_level,:))
             call rebin(nswbands, n_tuvx_bins, wavelength_edges, this%wavelength_edges_, &
-               aer_tau_w(i_col,pver-i_level,:), this%single_scattering_albedo_(i_col,i_level,:))
+               aer_tau_w(i_col,pver-i_level,:), single_scattering_albedo(i_col,i_level,:))
             call rebin(nswbands, n_tuvx_bins, wavelength_edges, this%wavelength_edges_, &
-               aer_tau_w_g(i_col,pver-i_level,:), this%asymmetry_factor_(i_col,i_level,:))
+               aer_tau_w_g(i_col,pver-i_level,:), asymmetry_factor(i_col,i_level,:))
          end do
-         this%optical_depth_(i_col,pver+1,:) = &
-            this%optical_depth_(i_col,pver,:)
-         this%single_scattering_albedo_(i_col,pver+1,:) = &
-            this%single_scattering_albedo_(i_col,pver,:)
-         this%asymmetry_factor_(i_col,pver+1,:) = &
-            this%asymmetry_factor_(i_col,pver,:)
+         optical_depth(i_col,pver+1,:) = optical_depth(i_col,pver,:)
+         single_scattering_albedo(i_col,pver+1,:) = single_scattering_albedo(i_col,pver,:)
+         asymmetry_factor(i_col,pver+1,:) = asymmetry_factor(i_col,pver,:)
       end do
 
       ! ================================================================
       ! back-calculate the single scattering albedo and asymmetry factor
       ! ================================================================
-      associate( tau   => this%optical_depth_, &
-         omega => this%single_scattering_albedo_, &
-         g     => this%asymmetry_factor_ )
+      associate( tau   => optical_depth, &
+                 omega => single_scattering_albedo, &
+                 g     => asymmetry_factor )
          where(omega > 0.0_r8)
             g = g / omega
          elsewhere
