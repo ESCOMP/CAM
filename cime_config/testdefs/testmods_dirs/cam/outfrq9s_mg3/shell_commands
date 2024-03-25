@@ -2,5 +2,5 @@
 ./xmlchange GLC_NCPL=\$ATM_NCPL
 ./xmlchange CAM_CONFIG_OPTS=' -microphys mg3' --append
 if [ "`./xmlquery ATM_GRID --value`" == "C96" ]; then
-  ./xmlchange NTASKS=-2
+  ./xmlchange NTASKS=-3
 fi
