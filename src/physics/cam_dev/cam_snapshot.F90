@@ -21,7 +21,7 @@ use cam_logfile,    only: iulog
 use cam_snapshot_common, only: snapshot_type, cam_snapshot_deactivate, cam_snapshot_all_outfld, cam_snapshot_ptend_outfld
 use cam_snapshot_common, only: snapshot_type, cam_state_snapshot_init, cam_cnst_snapshot_init, cam_tend_snapshot_init
 use cam_snapshot_common, only: cam_ptend_snapshot_init, cam_in_snapshot_init, cam_out_snapshot_init
-use cam_snapshot_common, only: cam_pbuf_snapshot_init, snapshot_addfld 
+use cam_snapshot_common, only: cam_pbuf_snapshot_init, snapshot_addfld
 
 implicit  none
 
@@ -58,7 +58,7 @@ subroutine cam_snapshot_init(cam_in_arr, cam_out_arr, pbuf, index)
 
    call phys_getopts(cam_snapshot_before_num_out = cam_snapshot_before_num, &
                      cam_snapshot_after_num_out  = cam_snapshot_after_num)
-                     
+
 
    ! Return if not turned on
    if (cam_snapshot_before_num <= 0 .and. cam_snapshot_after_num <= 0) return ! No snapshot files are being requested
@@ -76,7 +76,7 @@ subroutine cam_snapshot_init(cam_in_arr, cam_out_arr, pbuf, index)
 end subroutine cam_snapshot_init
 
 subroutine cam_snapshot_all_outfld_tphysbc(file_num, state, tend, cam_in, cam_out, pbuf, cmfmc, cmfcme, &
-        pflx, zdu, rliq, rice, dlf, dlf2, rliq2, net_flx)
+        zdu, rliq, rice, dlf, dlf2, rliq2, net_flx)
 
 use time_manager,   only: is_first_step, is_first_restart_step
 
@@ -94,7 +94,6 @@ use time_manager,   only: is_first_step, is_first_restart_step
    type(physics_buffer_desc), pointer, intent(in) :: pbuf(:)
    real(r8),            intent(in) :: cmfmc(:,:)    ! convective mass flux
    real(r8),            intent(in) :: cmfcme(:,:)   ! cmf condensation - evaporation
-   real(r8),            intent(in) :: pflx(:,:)     ! convective rain flux throughout bottom of level
    real(r8),            intent(in) :: zdu(:,:)      ! detraining mass flux from deep convection
    real(r8),            intent(in) :: rliq(:)       ! vertical integral of liquid not yet in q(ixcldliq)
    real(r8),            intent(in) :: rice(:)       ! vertical integral of ice not yet in q(ixcldice)
@@ -108,14 +107,13 @@ use time_manager,   only: is_first_step, is_first_restart_step
    ! Return if the first timestep as not all fields may be filled in and this will cause a core dump
    if (is_first_step().or. is_first_restart_step()) return
 
-   ! Return if not turned on 
+   ! Return if not turned on
    if (cam_snapshot_before_num <= 0 .and. cam_snapshot_after_num <= 0) return ! No snapshot files are being requested
 
    lchnk = state%lchnk
 
    call outfld('tphysbc_cmfmc', cmfmc, pcols, lchnk)
    call outfld('tphysbc_cmfcme', cmfcme, pcols, lchnk)
-   call outfld('tphysbc_pflx', pflx, pcols, lchnk)
    call outfld('tphysbc_zdu', zdu, pcols, lchnk)
    call outfld('tphysbc_rliq', rliq, pcols, lchnk)
    call outfld('tphysbc_rice', rice, pcols, lchnk)
@@ -160,7 +158,7 @@ use time_manager,   only: is_first_step
    ! Return if the first timestep as not all fields may be filled in and this will cause a core dump
    if (is_first_step()) return
 
-   ! Return if not turned on 
+   ! Return if not turned on
    if (cam_snapshot_before_num <= 0 .and. cam_snapshot_after_num <= 0) return ! No snapshot files are being requested
 
    lchnk = state%lchnk
@@ -187,7 +185,7 @@ subroutine cam_tphysbc_snapshot_init(cam_snapshot_before_num, cam_snapshot_after
 !--------------------------------------------------------
 
    integer,intent(in) :: cam_snapshot_before_num, cam_snapshot_after_num
-    
+
    ntphysbc_var = 0
 
    !--------------------------------------------------------
@@ -203,9 +201,6 @@ subroutine cam_tphysbc_snapshot_init(cam_snapshot_before_num, cam_snapshot_after
 
    call snapshot_addfld( ntphysbc_var, tphysbc_snapshot,  cam_snapshot_before_num, cam_snapshot_after_num, &
      'cmfcme',        'tphysbc_cmfcme',         'unset',              'lev')
-
-   call snapshot_addfld( ntphysbc_var, tphysbc_snapshot,  cam_snapshot_before_num, cam_snapshot_after_num, &
-     'pflx',        'tphysbc_pflx',         'unset',              'lev')
 
    call snapshot_addfld( ntphysbc_var, tphysbc_snapshot,  cam_snapshot_before_num, cam_snapshot_after_num, &
      'zdu',        'tphysbc_zdu',         'unset',              'lev')
@@ -239,7 +234,7 @@ subroutine cam_tphysac_snapshot_init(cam_snapshot_before_num, cam_snapshot_after
 !--------------------------------------------------------
 
    integer,intent(in) :: cam_snapshot_before_num, cam_snapshot_after_num
-    
+
    ntphysac_var = 0
 
    !--------------------------------------------------------
