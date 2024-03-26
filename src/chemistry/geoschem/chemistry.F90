@@ -1798,7 +1798,6 @@ contains
     ENDIF
 
     ! Broadcast namelist variables
-    IF ( ierr /= mpi_success ) then
     CALL mpi_bcast(geoschem_chem_inputs, LEN(geoschem_chem_inputs), mpi_character, masterprocid, mpicom, ierr)
     IF ( ierr /= mpi_success ) then
        CALL endrun(subname//': MPI_BCAST ERROR: geoschem_chem_inputs')
