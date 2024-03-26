@@ -3457,8 +3457,8 @@ end subroutine clubb_init_cnst
              " -- ", state1%lat(ncol)*rad2deg
         tmp_lon1 = state1%lon(1)*rad2deg
         tmp_lon1 = state1%lon(ncol)*rad2deg
-        if(tmp_lon1.gt.180.0_r8) then tmp_lon1=tmp_lon1-360.0_r8
-        if(tmp_lonN.gt.180.0_r8) then tmp_lonN=tmp_lonN-360.0_r8
+        if(tmp_lon1.gt.180.0_r8) tmp_lon1=tmp_lon1-360.0_r8
+        if(tmp_lonN.gt.180.0_r8) tmp_lonN=tmp_lonN-360.0_r8
         write(fstderr,*) "LON: Range:", tmp_lon1, " -- ", tmp_lonN
         call endrun(subr//':  Fatal error in CLUBB library')
       end if
