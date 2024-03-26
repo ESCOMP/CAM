@@ -101,6 +101,7 @@ module camsrfexch
      real(r8) :: qref(pcols)             ! ref height specific humidity
      real(r8) :: u10(pcols)              ! 10m wind speed
      real(r8) :: ugustOut(pcols)         ! gustiness added 
+     real(r8) :: u10withGusts(pcols)     ! 10m wind speed with gusts added
      real(r8) :: ts(pcols)               ! merged surface temp
      real(r8) :: sst(pcols)              ! sea surface temp
      real(r8) :: snowhland(pcols)        ! snow depth (liquid water equivalent) over land
@@ -220,6 +221,7 @@ CONTAINS
        cam_in(c)%qref     (:) = 0._r8
        cam_in(c)%u10      (:) = 0._r8
        cam_in(c)%ugustOut (:) = 0._r8
+       cam_in(c)%u10withGusts (:) = 0._r8
        cam_in(c)%ts       (:) = 0._r8
        cam_in(c)%sst      (:) = 0._r8
        cam_in(c)%snowhland(:) = 0._r8
