@@ -217,7 +217,7 @@ def buildnml(case, caseroot, compname):
         # -----------------------------------------------------
 
         if os.path.isdir(rundir) \
-            and os.path.exists(os.path.join(caseroot, "species_database.yaml"))\
+            and os.path.exists(os.path.join(caseroot, "species_database.yml"))\
             and '-chem geoschem' in CAM_CONFIG_OPTS:
                for fname in ['species_database.yml', 'geoschem_config.yml',
                              'HISTORY.rc', 'HEMCO_Config.rc', 'HEMCO_Diagn.rc']:
