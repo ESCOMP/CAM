@@ -3503,4 +3503,8 @@
 <hemco_grid_xdim hgrid="1.9x2.5">144</hemco_grid_xdim>
 <hemco_grid_ydim hgrid="1.9x2.5">91</hemco_grid_ydim>
 
+<!-- GEOS-Chem chemistry -->
+<geoschem_chem_inputs chem="geoschem_mam4">atm/cam/geoschem/emis/ExtData/CHEM_INPUTS</geoschem_chem_inputs>
+<geoschem_photol_inputs chem="geoschem_mam4">atm/cam/geoschem/emis/ExtData/CHEM_INPUTS/CLOUD_J/v2023-05</geoschem_photol_inputs>
+
 </namelist_defaults>
