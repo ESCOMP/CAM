@@ -1,0 +1,223 @@
+<?xml version="1.0"?>
+
+<namelist_defaults>
+
+<!-- Settings in this file were adapted from hist_trop_strat_vbs_cam6.xml and hist_trop_strat_nudged_cam6.xml -->
+
+<!-- Settings for using GEOS-Chem -->
+
+<geoschem_cheminputs>atm/cam/geoschem/ExtData/CHEM_INPUTS/</geoschem_cheminputs>
+
+<ncdata dyn="fv"  hgrid="0.9x1.25">atm/cam/geoschem/initial_conditions/f.e20.FC2010.f09_f09.144.GC_vbsext.001.cam.i.0007-01-01-00000.nc</ncdata>
+
+<ncdata dyn="fv"  hgrid="1.9x2.5">atm/cam/geoschem/initial_conditions//f.e20.FC2010.f19_f19.144.GC_vbsext.001.cam.i.0007-01-01-00000.nc</ncdata>
+
+<hemco_config_file>HEMCO_Config.rc</hemco_config_file>
+<hemco_diagn_file>HEMCO_Diagn.rc</hemco_diagn_file>
+
+<!-- Settings mostly in common with hist_trop_strat_vbs_cam6.xml and hist_trop_strat_nudged_cam6 -->
+
+<start_ymd>00010101</start_ymd>
+
+<!-- Solar data -->
+<solar_irrad_data_file>atm/cam/solar/SolarForcingCMIP6_18491230-23000102_c20200615.nc</solar_irrad_data_file>
+
+<!-- WACCM GW Settings -->
+<use_gw_front>.true.</use_gw_front>
+<use_gw_convect_dp>.true.</use_gw_convect_dp>
+<tau_0_ubc>.false.</tau_0_ubc>
+<gw_qbo_hdepth_scaling>0.25D0</gw_qbo_hdepth_scaling>
+
+<flbc_type>SERIAL</flbc_type>
+<flbc_file>atm/waccm/lb/LBC_1750-2014_CMIP6_0p5degLat_c170126.nc</flbc_file>
+
+<prescribed_strataero_type>SERIAL</prescribed_strataero_type>
+
+<ndep_list>'noy', 'nhx'</ndep_list>
+
+<!-- nudging. this section is added over hist_geoschem.xml to match hist_trop_strat_nudged_cam6.xml -->
+
+<Nudge_Model>.true.</Nudge_Model>
+<Nudge_Path hgrid="0.9x1.25" nlev="32">'atm/cam/met/nudging/MERRA2_fv09_32L/'</Nudge_Path>
+<Nudge_Path hgrid="ne30np4" nlev="32">'atm/cam/met/nudging/MERRA2_ne30_32L/'</Nudge_Path>
+<Nudge_Path hgrid="ne30np4" npg="3" nlev="32">'atm/cam/met/nudging/MERRA2_ne30pg3_32L/'</Nudge_Path>
+<Nudge_Path hgrid="ne0np4CONUS.ne30x8" nlev="32">'atm/cam/met/nudging/MERRA2_ne0CONUS30x8_L32/'</Nudge_Path>
+<Nudge_File_Template hgrid="0.9x1.25" nlev="32">'%y/MERRA2_fv09.cam2.i.%y-%m-%d-%s.nc'</Nudge_File_Template>
+<Nudge_File_Template hgrid="ne30np4" nlev="32">'%y/MERRA2_ne30np4_L32.cam2.i.%y-%m-%d-%s.nc'</Nudge_File_Template>
+<Nudge_File_Template hgrid="ne30np4" npg="3" nlev="32">'%y/MERRA2_ne30pg3_L32.cam2.i.%y-%m-%d-%s.nc'</Nudge_File_Template>
+<Nudge_File_Template hgrid="ne0np4CONUS.ne30x8" nlev="32">'%y/MERRA2_ne0CONUS30x8_L32.cam2.i.%y-%m-%d-%s.nc'</Nudge_File_Template>
+<Nudge_Force_Opt>0</Nudge_Force_Opt>
+<Nudge_TimeScale_Opt>0</Nudge_TimeScale_Opt>
+<Nudge_Times_Per_Day>4</Nudge_Times_Per_Day>
+<Nudge_Times_Per_Day hgrid="ne0np4CONUS.ne30x8">8</Nudge_Times_Per_Day>
+<!-- update to 48 default per MUSICA wiki - https://wiki.ucar.edu/display/MUSICA/MUSICA+version+0 - hplin 11/3/22 -->
+<Model_Times_Per_Day>48</Model_Times_Per_Day>
+<Model_Times_Per_Day hgrid="ne0np4CONUS.ne30x8">384</Model_Times_Per_Day>
+<Nudge_Uprof>1</Nudge_Uprof>
+<Nudge_Ucoef>0.06</Nudge_Ucoef>
+<Nudge_Vprof>1</Nudge_Vprof>
+<Nudge_Vcoef>0.06</Nudge_Vcoef>
+<Nudge_Tprof>1</Nudge_Tprof>
+<Nudge_Tcoef>0.06</Nudge_Tcoef>
+<Nudge_Qprof>0</Nudge_Qprof>
+<Nudge_Qcoef>0.00</Nudge_Qcoef>
+<Nudge_PSprof>0</Nudge_PSprof>
+<Nudge_PScoef>0.00</Nudge_PScoef>
+<Nudge_Beg_Year>2010</Nudge_Beg_Year>
+<Nudge_Beg_Year hgrid="ne0np4CONUS.ne30x8">2013</Nudge_Beg_Year>
+<Nudge_Beg_Month>1</Nudge_Beg_Month>
+<Nudge_Beg_Day>1</Nudge_Beg_Day>
+<Nudge_End_Year>2020</Nudge_End_Year>
+<Nudge_End_Month>12</Nudge_End_Month>
+<Nudge_End_Day>31</Nudge_End_Day>
+<Nudge_Hwin_lat0>0.0</Nudge_Hwin_lat0>
+<Nudge_Hwin_lat0 hgrid="ne0np4CONUS.ne30x8">37.</Nudge_Hwin_lat0>
+<Nudge_Hwin_latWidth>9999.</Nudge_Hwin_latWidth>
+<Nudge_Hwin_latWidth hgrid="ne0np4CONUS.ne30x8">56.</Nudge_Hwin_latWidth>
+<Nudge_Hwin_latDelta>1.</Nudge_Hwin_latDelta>
+<Nudge_Hwin_latDelta hgrid="ne0np4CONUS.ne30x8">5.</Nudge_Hwin_latDelta>
+<Nudge_Hwin_lon0>180.</Nudge_Hwin_lon0>
+<Nudge_Hwin_lon0 hgrid="ne0np4CONUS.ne30x8">264.</Nudge_Hwin_lon0>
+<Nudge_Hwin_lonWidth>9999.</Nudge_Hwin_lonWidth>
+<Nudge_Hwin_lonWidth hgrid="ne0np4CONUS.ne30x8">94.</Nudge_Hwin_lonWidth>
+<Nudge_Hwin_lonDelta>1.</Nudge_Hwin_lonDelta>
+<Nudge_Hwin_lonDelta hgrid="ne0np4CONUS.ne30x8">5.</Nudge_Hwin_lonDelta>
+<Nudge_Hwin_Invert>.false.</Nudge_Hwin_Invert>
+<Nudge_Hwin_Invert hgrid="ne0np4CONUS.ne30x8">.true.</Nudge_Hwin_Invert>
+<Nudge_Vwin_Hindex>33.</Nudge_Vwin_Hindex>
+<Nudge_Vwin_Hdelta>0.001</Nudge_Vwin_Hdelta>
+<Nudge_Vwin_Lindex>0.</Nudge_Vwin_Lindex>
+<Nudge_Vwin_Ldelta>0.1</Nudge_Vwin_Ldelta>
+<Nudge_Vwin_Invert>.false.</Nudge_Vwin_Invert>
+
+<!-- History Files -->
+
+<mfilt>           1,30,365,240,240,480,365,73,30  </mfilt>
+<nhtfrq>          0,-24,-24,-3,-1,1,-24,-120,-240 </nhtfrq>
+<avgflag_pertape>'A','A','A','A','A','A','A','A','I'</avgflag_pertape>
+
+<history_amwg>.true.</history_amwg>
+<history_aerosol>.false.</history_aerosol>
+<history_carma>.false.</history_carma>
+<history_chemistry>.false.</history_chemistry>
+<history_chemspecies_srf>.false.</history_chemspecies_srf>
+<history_clubb>.false.</history_clubb>
+<history_waccm>.false.</history_waccm>
+<history_cesm_forcing>.false.</history_cesm_forcing>
+<history_scwaccm_forcing>.false.</history_scwaccm_forcing>
+
+<fincl1>
+'AREA',
+'HEIGHT',
+'T',
+'U',
+'V',
+'Q',
+'PS',
+'CLOUD',
+'TROPP_P',
+'TROPP_T',
+'TROPP_Z',
+'DF_CO',
+'DF_O3',
+'DF_NO2',
+'DF_SO4',
+'DF_NIT',
+'CT_O3',
+'CT_OH',
+'OHwgtByAirMassColumnFull',
+'Chem_SO3AQ',
+'Jval_Cl2O2',
+'Jval_H2O2',
+'Jval_NO2',
+'Jval_PAN',
+'JvalO3O3P',
+'JvalO3O1D',
+'LNO_COL_PROD',
+'Prod_Ox',
+'Prod_SO4',
+'Prod_CO',
+'Prod_H2O2',
+'ProdCOfromCH4',
+'ProdCOfromNMVOC',
+'Loss_Ox',
+'Loss_CH4',
+'Loss_CO',
+'LossOHbyCH4columnTrop',
+'LossOHbyMCFcolumnTrop',
+'LossHNO3onSeaSalt',
+'ACET',
+'ALD2',
+'ALK4',
+'BR',
+'BRCL',
+'BRNO3',
+'BRO',
+'BROX',
+'BROY',
+'C3H8',
+'CH2O',
+'CH3CL',
+'CH4',
+'CL',
+'CLNO3',
+'CLO',
+'CLOX',
+'CLOY',
+'CO',
+'DMS',
+'EOH',
+'H2O',
+'H2O2',
+'H2SO4',
+'HO2',
+'HOX',
+'HBR',
+'HCL',
+'HOBR',
+'HOCL',
+'HNO3',
+'HNO4',
+'ISOP',
+'MACR',
+'MAP',
+'MEK',
+'MOH',
+'MVK',
+'N2O',
+'N2O5',
+'NHX',
+'NIT',
+'NO',
+'NO2',
+'NO3',
+'NOX',
+'NOY',
+'O3',
+'OH',
+'PAN',
+'PM25',
+'RCHO',
+'SALA',
+'SALC',
+'SO2',
+'SO4',
+'SOX',
+'TOLU',
+'bc_a1',
+'bc_a4',
+'dst_a1',
+'dst_a2',
+'dst_a3',
+'num_a1',
+'num_a2',
+'num_a3',
+'num_a4',
+'pom_a1',
+'pom_a4',
+'so4_a1',
+'so4_a2',
+'so4_a3',
+</fincl1>
+
+</namelist_defaults>

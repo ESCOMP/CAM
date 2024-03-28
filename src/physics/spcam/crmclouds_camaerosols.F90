@@ -599,7 +599,7 @@ subroutine crmclouds_convect_tend(state,  ptend,  ztodt,  pbuf)
 !-----------------------------------------------------------------
 !
 ! Purpose: to do convective transport of tracer species using the cloud fields from CRM and using the
-!          subroutine of convtran.
+!          subroutine of zm_conv_convtran_run.
 !
 ! Minghuai Wang, July, 2009: adopted from zm_conv_tend_2
 !
@@ -608,7 +608,7 @@ subroutine crmclouds_convect_tend(state,  ptend,  ztodt,  pbuf)
    use time_manager,  only: get_nstep
    use physics_buffer, only: physics_buffer_desc, pbuf_old_tim_idx, pbuf_get_index, pbuf_get_field
    use constituents,  only: pcnst, cnst_get_ind
-   use zm_conv,       only: convtran
+   use zm_conv_convtran,only: zm_conv_convtran_run
    use error_messages, only: alloc_err
 
 ! Arguments
@@ -662,7 +662,7 @@ subroutine crmclouds_convect_tend(state,  ptend,  ztodt,  pbuf)
    lq(ixcldice) = .false.
    lq(ixcldliq) = .false.
 
-   call physics_ptend_init(ptend,state%psetcols,'convtran2',lq=lq)
+   call physics_ptend_init(ptend,state%psetcols,'zm_conv_convtran_run2',lq=lq)
 
 !
 ! Associate pointers with physics buffer fields
@@ -719,7 +719,7 @@ subroutine crmclouds_convect_tend(state,  ptend,  ztodt,  pbuf)
    end do
 
 !
-! initialize dpdry for call to convtran
+! initialize dpdry for call to zm_conv_convtran_run
 ! it is used for tracers of dry smixing ratio type
 !
    dpdry = 0._r8
@@ -728,15 +728,18 @@ subroutine crmclouds_convect_tend(state,  ptend,  ztodt,  pbuf)
      dp(i,:) = state%pdel(ideep(i),:)/100._r8
    end do
 
-! dsubdld is not used in convtran, and is set to be zero.
+! dsubdld is not used in zm_conv_convtran_run, and is set to be zero.
    dsubcld = 0._r8
 
 
-   call convtran (lchnk,                                        &
-                  ptend%lq,state%q, pcnst,  mu(:,:), md(:,:),   &
-                  du(:,:), eu(:,:), ed(:,:), dp(:,:), dsubcld(:),  &
-                  jt(:),maxg(:),ideep(:), 1, lengath,  &
-                  nstep,   fracis,  ptend%q, dpdry, ztodt  )
+   !REMOVECAM - no longer need these when CAM is retired and pcols no longer exists
+   ptend%q(:,:,:) = 0._r8
+   !REMOVECAM_END
+   call zm_conv_convtran_run (ncol,pver,                                    &
+                  ptend%lq,state%q(:ncol,:,:), pcnst,  mu(:ncol,:), md(:ncol,:),   &
+                  du(:ncol,:), eu(:ncol,:), ed(:ncol,:), dp(:ncol,:), dsubcld(:ncol),  &
+                  jt(:ncol),maxg(:ncol),ideep(:ncol), 1, lengath,  &
+                  nstep,   fracis(:ncol,:,:),  ptend%q(:ncol,:,:), dpdry(:ncol,:), ztodt  )
 
 end subroutine crmclouds_convect_tend
 !=====================================================================================================

@@ -43,7 +43,7 @@
 !      lrtchk  = .t. for all layers in clear profile
 !      lrtchk  = .t. for cloudy layers in cloud profile 
 !              = .f. for clear layers in cloud profile
-!      pgg     = assymetry factor
+!      pgg     = asymmetry factor
 !      prmuz   = cosine solar zenith angle
 !      ptau    = optical thickness
 !      pw      = single scattering albedo

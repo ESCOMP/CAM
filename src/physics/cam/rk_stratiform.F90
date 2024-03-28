@@ -2,7 +2,7 @@ module rk_stratiform
 
 !-------------------------------------------------------------------------------------------------------
 !
-! Provides the CAM interface to the Rasch and Kristjansson (RK) 
+! Provides the CAM interface to the Rasch and Kristjansson (RK)
 ! prognostic cloud microphysics, and the cam3/4 macrophysics.
 !
 !-------------------------------------------------------------------------------------------------------
@@ -27,26 +27,26 @@ public :: rk_stratiform_init
 public :: rk_stratiform_tend
 public :: rk_stratiform_readnl
 
-! Physics buffer indices 
+! Physics buffer indices
 integer  ::  landm_idx          = 0
 
-integer  ::  qcwat_idx          = 0 
-integer  ::  lcwat_idx          = 0 
-integer  ::  tcwat_idx          = 0 
+integer  ::  qcwat_idx          = 0
+integer  ::  lcwat_idx          = 0
+integer  ::  tcwat_idx          = 0
 
-integer  ::  cld_idx            = 0 
-integer  ::  ast_idx            = 0 
-integer  ::  concld_idx         = 0 
-integer  ::  fice_idx           = 0 
+integer  ::  cld_idx            = 0
+integer  ::  ast_idx            = 0
+integer  ::  concld_idx         = 0
+integer  ::  fice_idx           = 0
 
-integer  ::  qme_idx            = 0 
-integer  ::  prain_idx          = 0 
-integer  ::  nevapr_idx         = 0 
+integer  ::  qme_idx            = 0
+integer  ::  prain_idx          = 0
+integer  ::  nevapr_idx         = 0
 
 integer  ::  wsedl_idx          = 0
 
-integer  ::  rei_idx            = 0 
-integer  ::  rel_idx            = 0 
+integer  ::  rei_idx            = 0
+integer  ::  rel_idx            = 0
 
 integer  ::  shfrc_idx          = 0
 integer  ::  cmfmc_sh_idx       = 0
@@ -92,8 +92,8 @@ contains
    character(len=*), parameter :: subname = 'rk_stratiform_readnl'
 
    ! Namelist variables
-   real(r8) :: rk_strat_icritw  = unset_r8    !   icritw  = threshold for autoconversion of warm ice  
-   real(r8) :: rk_strat_icritc  = unset_r8    !   icritc  = threshold for autoconversion of cold ice  
+   real(r8) :: rk_strat_icritw  = unset_r8    !   icritw  = threshold for autoconversion of warm ice
+   real(r8) :: rk_strat_icritc  = unset_r8    !   icritc  = threshold for autoconversion of cold ice
    real(r8) :: rk_strat_conke   = unset_r8    !   conke   = tunable constant for evaporation of precip
    real(r8) :: rk_strat_r3lcrit = unset_r8    !   r3lcrit = critical radius where liq conversion begins
    real(r8) :: rk_strat_polstrat_rhmin = unset_r8 ! condensation threadhold in polar stratosphere
@@ -144,7 +144,7 @@ subroutine rk_stratiform_register
 
    use constituents, only: cnst_add, pcnst
    use physconst,    only: mwh2o, cpair
-    
+
    use physics_buffer, only : pbuf_add_field, dtype_r8, dyn_time_lvls
 
    !-----------------------------------------------------------------------
@@ -166,7 +166,7 @@ subroutine rk_stratiform_register
    call pbuf_add_field('AST',    'global', dtype_r8, (/pcols,pver,dyn_time_lvls/), ast_idx)
    call pbuf_add_field('CONCLD', 'global', dtype_r8, (/pcols,pver,dyn_time_lvls/), concld_idx)
 
-   call pbuf_add_field('FICE',   'physpkg', dtype_r8, (/pcols,pver/), fice_idx) 
+   call pbuf_add_field('FICE',   'physpkg', dtype_r8, (/pcols,pver/), fice_idx)
 
    call pbuf_add_field('QME',       'physpkg', dtype_r8, (/pcols,pver/), qme_idx)
    call pbuf_add_field('PRAIN',     'physpkg', dtype_r8, (/pcols,pver/), prain_idx)
@@ -186,8 +186,8 @@ end subroutine rk_stratiform_register
 
 function rk_stratiform_implements_cnst(name)
 
-  !----------------------------------------------------------------------------- ! 
-  !                                                                              !    
+  !----------------------------------------------------------------------------- !
+  !                                                                              !
   ! Return true if specified constituent is implemented by this package          !
   !                                                                              !
   !----------------------------------------------------------------------------- !
@@ -208,7 +208,7 @@ subroutine rk_stratiform_init_cnst(name, latvals, lonvals, mask, q)
    !----------------------------------------------------------------------- !
    !                                                                        !
    ! Initialize the cloud water mixing ratios (liquid and ice), if they are !
-   ! not read from the initial file                                         ! 
+   ! not read from the initial file                                         !
    !                                                                        !
    !----------------------------------------------------------------------- !
 
@@ -237,7 +237,7 @@ subroutine rk_stratiform_init()
    !-------------------------------------------- !
    !                                             !
    ! Initialize the cloud water parameterization !
-   !                                             ! 
+   !                                             !
    !-------------------------------------------- !
 
    use physics_buffer,  only: physics_buffer_desc, pbuf_get_index
@@ -247,7 +247,7 @@ subroutine rk_stratiform_init()
    use phys_control,    only: cam_physpkg_is
    use physconst,       only: tmelt, rhodair, rh2o
    use cldwat,          only: inimc
-    
+
    integer :: m, mm
    logical :: history_amwg         ! output the variables used by the AMWG diag package
    logical :: history_aerosol      ! Output the MAM aerosol tendencies
@@ -258,7 +258,7 @@ subroutine rk_stratiform_init()
    !-----------------------------------------------------------------------
 
    call phys_getopts( history_aerosol_out        = history_aerosol      , &
-                      history_amwg_out   = history_amwg                 , & 
+                      history_amwg_out   = history_amwg                 , &
                       history_budget_out         = history_budget       , &
                       history_budget_histfile_num_out = history_budget_histfile_num)
 
@@ -268,7 +268,7 @@ subroutine rk_stratiform_init()
    if( convect_shallow_use_shfrc() ) then
       use_shfrc = .true.
       shfrc_idx = pbuf_get_index('shfrc')
-   else 
+   else
       use_shfrc = .false.
    endif
 
@@ -326,7 +326,7 @@ subroutine rk_stratiform_init()
    call addfld ('ICWMR',      (/ 'lev' /),   'A', 'kg/kg'   , 'Prognostic in-cloud water mixing ratio'                  )
    call addfld ('ICIMR',      (/ 'lev' /),   'A', 'kg/kg'   , 'Prognostic in-cloud ice mixing ratio'                    )
    call addfld ('PCSNOW',     horiz_only   , 'A', 'm/s'     , 'Snow fall from prognostic clouds'                        )
- 
+
    call addfld ('DQSED',      (/ 'lev' /),   'A', 'kg/kg/s' , 'Water vapor tendency from cloud sedimentation'           )
    call addfld ('DLSED',      (/ 'lev' /),   'A', 'kg/kg/s' , 'Cloud liquid tendency from sedimentation'                )
    call addfld ('DISED',      (/ 'lev' /),   'A', 'kg/kg/s' , 'Cloud ice tendency from sedimentation'                   )
@@ -339,7 +339,7 @@ subroutine rk_stratiform_init()
    call addfld ('CNVCLD',     horiz_only,    'A', 'fraction', 'Vertically integrated convective cloud amount'           )
    call addfld ('CLDST',      (/ 'lev' /),   'A', 'fraction', 'Stratus cloud fraction'                                  )
    call addfld ('CONCLD',     (/ 'lev' /),   'A', 'fraction', 'Convective cloud cover'                                  )
-	
+
    call addfld ('AST',        (/ 'lev' /),   'A','fraction' , 'Stratus cloud fraction'                                  )
    call addfld ('LIQCLDF',    (/ 'lev' /),   'A', 'fraction', 'Stratus Liquid cloud fraction'                           )
    call addfld ('ICECLDF',    (/ 'lev' /),   'A', 'fraction', 'Stratus ICE cloud fraction'                              )
@@ -420,11 +420,11 @@ subroutine rk_stratiform_tend( &
    dlf2, rliq, cmfmc, ts,                  &
    sst, zdu)
 
-   !-------------------------------------------------------- !  
-   !                                                         ! 
+   !-------------------------------------------------------- !
+   !                                                         !
    ! Interface to sedimentation, detrain, cloud fraction and !
    !        cloud macro - microphysics subroutines           !
-   !                                                         ! 
+   !                                                         !
    !-------------------------------------------------------- !
 
    use cloud_fraction,   only: cldfrc, cldfrc_fice
@@ -475,7 +475,7 @@ subroutine rk_stratiform_tend( &
    ! Physics buffer fields
    real(r8), pointer :: landm(:)             ! Land fraction ramped over water
 
-   real(r8), pointer :: prec_str(:)          ! [Total] Sfc flux of precip from stratiform [ m/s ] 
+   real(r8), pointer :: prec_str(:)          ! [Total] Sfc flux of precip from stratiform [ m/s ]
    real(r8), pointer :: snow_str(:)          ! [Total] Sfc flux of snow from stratiform   [ m/s ]
    real(r8), pointer :: prec_sed(:)          ! Surface flux of total cloud water from sedimentation
    real(r8), pointer :: snow_sed(:)          ! Surface flux of cloud ice from sedimentation
@@ -517,12 +517,12 @@ subroutine rk_stratiform_tend( &
    real(r8) :: clc(pcols)                              ! Column convective cloud amount
    real(r8) :: relhum(pcols,pver)                      ! RH, output to determine drh/da
    real(r8) :: rhu00(pcols,pver)
-   real(r8) :: rhu002(pcols,pver)                      ! Same as rhu00 but for perturbed rh 
+   real(r8) :: rhu002(pcols,pver)                      ! Same as rhu00 but for perturbed rh
    real(r8) :: rhdfda(pcols,pver)
    real(r8) :: cld2(pcols,pver)                        ! Same as cld but for perturbed rh
-   real(r8) :: concld2(pcols,pver)                     ! Same as concld but for perturbed rh 
-   real(r8) :: cldst2(pcols,pver)                      ! Same as cldst but for perturbed rh 
-   real(r8) :: relhum2(pcols,pver)                     ! RH after  perturbation            
+   real(r8) :: concld2(pcols,pver)                     ! Same as concld but for perturbed rh
+   real(r8) :: cldst2(pcols,pver)                      ! Same as cldst but for perturbed rh
+   real(r8) :: relhum2(pcols,pver)                     ! RH after  perturbation
    real(r8) :: icecldf(pcols,pver)                     ! Ice cloud fraction
    real(r8) :: liqcldf(pcols,pver)                     ! Liquid cloud fraction (combined into cloud)
    real(r8) :: icecldf_out(pcols,pver)                 ! Ice cloud fraction
@@ -547,11 +547,11 @@ subroutine rk_stratiform_tend( &
    real(r8) :: repartht(pcols,pver)                    ! Heating rate due to phase repartition of input precip
    real(r8) :: icimr(pcols,pver)                       ! In cloud ice mixing ratio
    real(r8) :: icwmr(pcols,pver)                       ! In cloud water mixing ratio
-   real(r8) :: fwaut(pcols,pver)              
-   real(r8) :: fsaut(pcols,pver)              
-   real(r8) :: fracw(pcols,pver)              
-   real(r8) :: fsacw(pcols,pver)              
-   real(r8) :: fsaci(pcols,pver)              
+   real(r8) :: fwaut(pcols,pver)
+   real(r8) :: fsaut(pcols,pver)
+   real(r8) :: fracw(pcols,pver)
+   real(r8) :: fsacw(pcols,pver)
+   real(r8) :: fsaci(pcols,pver)
    real(r8) :: cmeice(pcols,pver)                      ! Rate of cond-evap of ice within the cloud
    real(r8) :: cmeliq(pcols,pver)                      ! Rate of cond-evap of liq within the cloud
    real(r8) :: ice2pr(pcols,pver)                      ! Rate of conversion of ice to precip
@@ -569,8 +569,8 @@ subroutine rk_stratiform_tend( &
    real(r8) :: psacio(pcols,pver)                       ! RK accretion of cloud ice by snow (1/s)
 
    real(r8) :: iwc(pcols,pver)                         ! Grid box average ice water content
-   real(r8) :: lwc(pcols,pver)                         ! Grid box average liquid water content  
-   
+   real(r8) :: lwc(pcols,pver)                         ! Grid box average liquid water content
+
    logical  :: lq(pcnst)
    integer  :: troplev(pcols)
    real(r8) :: rlat(pcols)
@@ -598,7 +598,7 @@ subroutine rk_stratiform_tend( &
    call pbuf_get_field(pbuf, ast_idx,     ast,     start=(/1,1,itim_old/), kount=(/pcols,pver,1/) )
 
    call pbuf_get_field(pbuf, fice_idx,    fice)
- 
+
    call pbuf_get_field(pbuf, cmfmc_sh_idx, cmfmc_sh)
 
    call pbuf_get_field(pbuf, prec_str_idx, prec_str)
@@ -616,7 +616,7 @@ subroutine rk_stratiform_tend( &
    call pbuf_get_field(pbuf, rei_idx,    rei)
 
    call pbuf_get_field(pbuf, wsedl_idx,  wsedl)
-   
+
    ! check that qcwat and tcwat were initialized; if not then do it now.
    if (qcwat(1,1) == huge(1._r8)) then
       qcwat(:ncol,:) = state%q(:ncol,:,1)
@@ -636,16 +636,16 @@ subroutine rk_stratiform_tend( &
    ! ------------- !
 
    ! Allow the cloud liquid drops and ice particles to sediment.
-   ! This is done before adding convectively detrained cloud water, 
+   ! This is done before adding convectively detrained cloud water,
    ! because the phase of the detrained water is unknown.
 
    call t_startf('stratiform_sediment')
 
    call cld_sediment_vel( ncol,                                                           &
                           icefrac, landfrac, ocnfrac, state1%pmid, state1%pdel, state1%t, &
-                          cld, state1%q(:,:,ixcldliq), state1%q(:,:,ixcldice),            & 
+                          cld, state1%q(:,:,ixcldliq), state1%q(:,:,ixcldice),            &
                           pvliq, pvice, landm, snowh )
-   
+
    wsedl(:ncol,:pver) = pvliq(:ncol,:pver)/gravit/(state1%pmid(:ncol,:pver)/(287.15_r8*state1%t(:ncol,:pver)))
 
    lq(:)        = .FALSE.
@@ -680,7 +680,7 @@ subroutine rk_stratiform_tend( &
    call physics_ptend_init(ptend_all, state%psetcols, 'stratiform')
    call physics_ptend_sum( ptend_loc, ptend_all, ncol )
 
-   ! Update physics state type state1 with ptend_loc 
+   ! Update physics state type state1 with ptend_loc
    call physics_update( state1, ptend_loc, dtime )
 
    call t_stopf('stratiform_sediment')
@@ -695,13 +695,13 @@ subroutine rk_stratiform_tend( &
 
    ! Put all of the detraining cloud water from convection into the large scale cloud.
    ! It all goes in liquid for the moment.
-   ! Strictly speaking, this approach is detraining all the cconvective water into 
+   ! Strictly speaking, this approach is detraining all the cconvective water into
    ! the environment, not the large-scale cloud.
 
    lq(:)        = .FALSE.
    lq(ixcldliq) = .TRUE.
    call physics_ptend_init( ptend_loc, state1%psetcols, 'pcwdetrain', lq=lq)
-   
+
    do k = 1, pver
       do i = 1, state1%ncol
          ptend_loc%q(i,k,ixcldliq) = dlf(i,k)
@@ -725,7 +725,7 @@ subroutine rk_stratiform_tend( &
    ! -------------------------------------- !
 
    ! ----------------------------------------------------------------------------- !
-   ! Treatment of cloud fraction in CAM4 and CAM5 differs                          !  
+   ! Treatment of cloud fraction in CAM4 and CAM5 differs                          !
    ! (1) CAM4                                                                      !
    !     . Cumulus AMT = Deep    Cumulus AMT ( empirical fcn of mass flux ) +      !
    !                     Shallow Cumulus AMT ( empirical fcn of mass flux )        !
@@ -738,7 +738,7 @@ subroutine rk_stratiform_tend( &
    !     . Stratus AMT = fcn of environmental-mean RH ( no Stability Stratus )     !
    !     . Cumulus and Stratus are non-overlapped with higher priority on Cumulus  !
    !     . Cumulus ( both Deep and Shallow ) has its own LWC and IWC.              !
-   ! ----------------------------------------------------------------------------- ! 
+   ! ----------------------------------------------------------------------------- !
 
    if( use_shfrc ) then
        call pbuf_get_field(pbuf, shfrc_idx, shfrc )
@@ -748,8 +748,8 @@ subroutine rk_stratiform_tend( &
    endif
 
    ! Stratus ('ast' = max(alst,aist)) and total cloud fraction ('cld = ast + concld')
-   ! will be computed using this updated 'concld' in the stratiform macrophysics 
-   ! scheme (mmacro_pcond) later below. 
+   ! will be computed using this updated 'concld' in the stratiform macrophysics
+   ! scheme (mmacro_pcond) later below.
 
    call t_startf("cldfrc")
    call cldfrc( lchnk, ncol, pbuf,                                  &
@@ -759,7 +759,7 @@ subroutine rk_stratiform_tend( &
                 cmfmc, cmfmc_sh, landfrac,snowh, concld, cldst,                    &
                 ts, sst, state1%pint(:,pverp), zdu, ocnfrac, rhu00,                &
                 state1%q(:,:,ixcldice), icecldf, liqcldf,                          &
-                relhum, 0 )    
+                relhum, 0 )
 
    ! Re-calculate cloud with perturbed rh add call cldfrc to estimate rhdfda.
 
@@ -770,7 +770,7 @@ subroutine rk_stratiform_tend( &
                 cmfmc, cmfmc_sh, landfrac, snowh, concld2, cldst2,                 &
                 ts, sst, state1%pint(:,pverp), zdu, ocnfrac, rhu002,               &
                 state1%q(:,:,ixcldice), icecldf2, liqcldf2,                        &
-                relhum2, 1 )              
+                relhum2, 1 )
 
    call t_stopf("cldfrc")
 
@@ -785,7 +785,7 @@ subroutine rk_stratiform_tend( &
             ! Under certain circumstances, rh+ cause cld not to changed
             ! when at an upper limit, or w/ strong subsidence
             if( ( cld2(i,k) - cld(i,k) ) < 1.e-4_r8 ) then
-               rhdfda(i,k) = 0.01_r8*relhum(i,k)*1.e+4_r8  
+               rhdfda(i,k) = 0.01_r8*relhum(i,k)*1.e+4_r8
             else
                rhdfda(i,k) = 0.01_r8*relhum(i,k)/(cld2(i,k)-cld(i,k))
             endif
@@ -802,13 +802,17 @@ subroutine rk_stratiform_tend( &
    rdtime = 1._r8/dtime
 
    ! Define fractional amount of stratus condensate and precipitation in ice phase.
-   ! This uses a ramp ( -30 ~ -10 for fice, -5 ~ 0 for fsnow ). 
+   ! This uses a ramp ( -30 ~ -10 for fice, -5 ~ 0 for fsnow ).
    ! The ramp within convective cloud may be different
 
-   call cldfrc_fice(ncol, state1%t, fice, fsnow)
+!REMOVECAM - no longer need these when CAM is retired and pcols no longer exists
+   fice(:,:) = 0._r8
+   fsnow(:,:) = 0._r8
+!REMOVECAM_END
+   call cldfrc_fice(ncol, state1%t(1:ncol,:), fice(1:ncol,:), fsnow(1:ncol,:))
 
-   ! Perform repartitioning of stratiform condensate.    
-   ! Corresponding heating tendency will be added later. 
+   ! Perform repartitioning of stratiform condensate.
+   ! Corresponding heating tendency will be added later.
 
    lq(:)        = .FALSE.
    lq(ixcldice) = .true.
@@ -830,7 +834,7 @@ subroutine rk_stratiform_tend( &
 
    repartht(:ncol,:pver) = (latice/dtime) * ( state1%q(:ncol,:pver,ixcldice) - repartht(:ncol,:pver) )
 
-   ! Non-micro and non-macrophysical external advective forcings to compute net condensation rate. 
+   ! Non-micro and non-macrophysical external advective forcings to compute net condensation rate.
    ! Note that advective forcing of condensate is aggregated into liquid phase.
 
    qtend(:ncol,:pver) = ( state1%q(:ncol,:pver,1) - qcwat(:ncol,:pver) ) * rdtime
@@ -869,7 +873,7 @@ subroutine rk_stratiform_tend( &
          ptend_loc%q(i,k,ixcldliq) =   qme(i,k)*(1._r8-fice(i,k)) - liq2pr(i,k)
       end do
    end do
- 
+
    do k = 1, pver
       do i = 1, ncol
          ast(i,k)   = cld(i,k)
@@ -960,7 +964,7 @@ subroutine rk_stratiform_tend( &
                    cmfmc, cmfmc_sh, landfrac, snowh, concld, cldst,                   &
                    ts, sst, state1%pint(:,pverp), zdu, ocnfrac, rhu00,                &
                    state1%q(:,:,ixcldice), icecldf, liqcldf,                          &
-                   relhum, 0 )    
+                   relhum, 0 )
       call t_stopf("cldfrc")
 
    endif
@@ -968,7 +972,7 @@ subroutine rk_stratiform_tend( &
    call outfld( 'CONCLD  ', concld, pcols, lchnk )
    call outfld( 'CLDST   ', cldst,  pcols, lchnk )
    call outfld( 'CNVCLD  ', clc,    pcols, lchnk )
-   call outfld( 'AST',      ast,    pcols, lchnk )   
+   call outfld( 'AST',      ast,    pcols, lchnk )
 
    do k = 1, pver
       do i = 1, ncol
@@ -1000,7 +1004,7 @@ subroutine rk_stratiform_tend( &
       tcwat(:ncol,k) = state1%t(:ncol,k)
       lcwat(:ncol,k) = state1%q(:ncol,k,ixcldice) + state1%q(:ncol,k,ixcldliq)
    end do
-  
+
    ! Cloud water and ice particle sizes, saved in physics buffer for radiation
 
    call cldefr( lchnk, ncol, landfrac, state1%t, rel, rei, state1%ps, state1%pmid, landm, icefrac, snowh )
@@ -1025,7 +1029,7 @@ end subroutine rk_stratiform_tend
      use physconst,     only: tmelt
 
      implicit none
-     
+
      integer, intent(in) :: i,k
      type(physics_state), intent(in) :: state1   ! local copy of the state variable
      type(physics_ptend), intent(in) :: ptend  ! local copy of the ptend variable
@@ -1058,11 +1062,11 @@ end subroutine rk_stratiform_tend
      wv = 0
      wi = 0
      wlf = 0
-     wvf = 0 
+     wvf = 0
      wif = 0
 
 
-     write(iulog,*) 
+     write(iulog,*)
      write(iulog,*) ' input state, t, q, l, i ', k, state1%t(i,k), state1%q(i,k,1), state1%q(i,k,ixcldliq),  state1%q(i,k,ixcldice)
      write(iulog,*) ' rain, snow, total from components before accumulation ', qr1, qs1, qr1+qs1
      write(iulog,*) ' total precip before accumulation                      ', k, pr1
@@ -1143,7 +1147,7 @@ end subroutine rk_stratiform_tend
      !               + evapheat(i,k) + prfzheat(i,k) + meltheat(i,k)
 
      res = qs1+qr1-pr1
-     w4 = max(abs(qs1),abs(qr1),abs(pr1)) 
+     w4 = max(abs(qs1),abs(qr1),abs(pr1))
      if (w4.gt.0._r8)  then
         if (res/w4.gt.1.e-14_r8) then
            write(iulog,*) ' imbalance in precips calculated two ways '
@@ -1173,14 +1177,14 @@ end subroutine rk_stratiform_tend
      use ppgrid,        only: pver
      use physconst,     only: tmelt
      use physics_types, only: physics_state
-     
+
      implicit none
 
      type(physics_state), intent(in) :: state1   ! local copy of the state variable
      real(r8), intent(in) :: snow_pcw(pcols)
-     real(r8), intent(in) :: fsaut(pcols,pver)              
-     real(r8), intent(in) :: fsacw(pcols,pver)              
-     real(r8), intent(in) :: fsaci(pcols,pver)              
+     real(r8), intent(in) :: fsaut(pcols,pver)
+     real(r8), intent(in) :: fsacw(pcols,pver)
+     real(r8), intent(in) :: fsaci(pcols,pver)
      real(r8), intent(in) :: meltheat(pcols,pver)          ! heating rate due to phase change of precip
 
 
@@ -1189,7 +1193,7 @@ end subroutine rk_stratiform_tend
 
      ncol = state1%ncol
      lchnk = state1%lchnk
-     
+
      do i = 1,ncol
         if (snow_pcw(i) .gt. 0.01_r8/8.64e4_r8  .and.  state1%t(i,pver) .gt. tmelt) then
            write(iulog,*) ' stratiform: snow, temp, ', i, lchnk, &
@@ -1201,7 +1205,7 @@ end subroutine rk_stratiform_tend
            write(iulog,*) ' meltheat ', meltheat(i,:)
            call endrun ('STRATIFORM_TEND')
         endif
-        
+
         if (snow_pcw(i)*8.64e4_r8 .lt. -1.e-5_r8) then
            write(iulog,*) ' neg snow ', snow_pcw(i)*8.64e4_r8
            write(iulog,*) ' stratiform: snow_pcw, temp, ', i, lchnk, &
@@ -1214,7 +1218,7 @@ end subroutine rk_stratiform_tend
            call endrun ('STRATIFORM_TEND')
         endif
      end do
-     
+
    end subroutine debug_microphys_2
 
   end module rk_stratiform

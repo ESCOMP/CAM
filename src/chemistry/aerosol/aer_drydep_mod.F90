@@ -1,4 +1,4 @@
-module drydep_mod
+module aer_drydep_mod
 
   use shr_kind_mod, only: r8 => shr_kind_r8
   use ppgrid
@@ -265,4 +265,4 @@ contains
 
 
 !##############################################################################
-end module drydep_mod
+end module aer_drydep_mod
