@@ -4109,7 +4109,8 @@ Diagnose correlations instead of using fixed ones
 
 <entry id="clubb_l_diffuse_rtm_and_thlm" type="logical" category="pblrad"
        group="clubb_params_nl" valid_values="" >
-Diffuses rtm and thlm
+Implicit diffusion on moisture and temperature, implemented within CLUBB's
+matrix equations for wprtp/rtm and wpthlp/thlm.
 </entry>
 
 <entry id="clubb_l_do_expldiff_rtm_thlm" type="logical"  category="pblrad"
