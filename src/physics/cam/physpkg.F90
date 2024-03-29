@@ -150,7 +150,6 @@ contains
     use aircraft_emit,      only: aircraft_emit_register
     use cam_diagnostics,    only: diag_register
     use cloud_diagnostics,  only: cloud_diagnostics_register
-    use cospsimulator_intr, only: cospsimulator_intr_register
     use rad_constituents,   only: rad_cnst_get_info ! Added to query if it is a modal aero sim or not
     use radheat,            only: radheat_register
     use subcol,             only: subcol_register
@@ -325,9 +324,6 @@ contains
        call radiation_register
        call cloud_diagnostics_register
        call radheat_register
-
-       ! COSP
-       call cospsimulator_intr_register
 
        ! vertical diffusion
        call vd_register()
