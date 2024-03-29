@@ -317,6 +317,7 @@ def execute_subprocess(commands, status_to_caller=False, output_to_caller=False)
             logging.error(msg)
             log_process_output(error.output)
             fatal_error(msg)
+        output+=error.output
         status = error.returncode
     finally:
         hanging_timer.cancel()

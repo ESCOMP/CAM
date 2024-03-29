@@ -379,8 +379,11 @@ def submodules_update(gitmodules, root_dir, requiredlist, force):
                 atag = git.git_operation("describe", "--tags", "--always").rstrip()
                 if fxtag and fxtag != atag:
                     try:
-                        git.git_operation("checkout", fxtag)
-                        print(f"{name:>20} updated to {fxtag}")
+                        stdout = git.git_operation("checkout", fxtag)
+                        if "error:" in stdout:
+                            print(f"In operation git -C {path} checkout {fxtag}: {stdout}")
+                        else:
+                            print(f"{name:>20} updated to {fxtag}")
                     except Exception as error:
                         print(error)
                 elif not fxtag:
