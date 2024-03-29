@@ -48,12 +48,9 @@ module clubb_intr
                                 stats_rad_zm(pcols),  & ! stats_rad_zm grid
                                 stats_sfc(pcols)        ! stats_sfc
 
-!$omp threadprivate(stats_zt, stats_zm, stats_rad_zt, stats_rad_zm, stats_sfc)
-
   type (stats_metadata_type) :: &
     stats_metadata
 
-!$omp threadprivate(stats_metadata)
 
 #endif
 
