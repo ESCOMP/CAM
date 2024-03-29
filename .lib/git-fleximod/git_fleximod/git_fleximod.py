@@ -382,6 +382,7 @@ def submodules_update(gitmodules, root_dir, requiredlist, force):
                         stdout = git.git_operation("checkout", fxtag)
                         if "error:" in stdout:
                             print(f"In operation git -C {path} checkout {fxtag}: {stdout}")
+                            sys.exit(-1)
                         else:
                             print(f"{name:>20} updated to {fxtag}")
                     except Exception as error:
